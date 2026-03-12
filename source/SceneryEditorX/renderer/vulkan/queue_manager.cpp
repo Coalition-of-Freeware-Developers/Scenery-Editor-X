@@ -619,6 +619,9 @@ namespace SceneryEditorX
 	            case ResourceType::DescriptorSetLayout:
 	                vkDestroyDescriptorSetLayout(device->GetDevice(), static_cast<VkDescriptorSetLayout>(resource), nullptr);
 	                break;
+	            case ResourceType::DescriptorPool:
+					vkDestroyDescriptorPool(device->GetDevice(), static_cast<VkDescriptorPool>(resource), nullptr);
+                    break;
 	            case ResourceType::QueryPool:
 	                vkDestroyQueryPool(device->GetDevice(), static_cast<VkQueryPool>(resource), nullptr);
 	                break;
@@ -628,12 +631,54 @@ namespace SceneryEditorX
 	            case ResourceType::PipelineLayout:
 	                vkDestroyPipelineLayout(device->GetDevice(), static_cast<VkPipelineLayout>(resource), nullptr);
 	                break;
+	            case ResourceType::UniformBuffer:
+                    break;
+	            case ResourceType::UniformBufferSet:
+					break;
 	            case ResourceType::AccelerationStructure: /*functions::destroy_acceleration_structure(device->GetDevice(), static_cast<VkAccelerationStructureKHR>(resource), nullptr);*/
 	                break;
 	            default:
 	                SEDX_CORE_ASSERT(false, "Unknown resource");
 	                break;
-	            }
+                case ResourceType::Unknown:
+                    break;
+                case ResourceType::PhysicalDevice:
+                    break;
+                case ResourceType::Device:
+                    break;
+                case ResourceType::Queue:
+                    break;
+                case ResourceType::CommandBuffer:
+                    break;
+                case ResourceType::DeviceMemory:
+                    break;
+                case ResourceType::Event:
+                    break;
+                case ResourceType::PipelineCache:
+                    break;
+                case ResourceType::RenderPass:
+                    break;
+                case ResourceType::DescriptorSet:
+                    break;
+                case ResourceType::CommandPool:
+                    break;
+                case ResourceType::DebugCallback:
+                    break;
+                case ResourceType::StorageBuffer:
+                    break;
+                case ResourceType::StorageBufferSet:
+                    break;
+                case ResourceType::Texture2D:
+                    break;
+                case ResourceType::TextureCube:
+                    break;
+                case ResourceType::Image2D:
+                    break;
+                case ResourceType::CommandList:
+                    break;
+                case ResourceType::MaxEnum:
+                    break;
+                }
 	
 	            /*
 	            // delete descriptor sets which are now invalid (because they are referring to a deleted resource)

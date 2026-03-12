@@ -21,24 +21,24 @@ namespace SceneryEditorX::UI
 	class UILayer : public Layer
 	{
 	public:
-        UILayer();
-        UILayer(const std::string &name);
-        virtual ~UILayer();
-        virtual void Begin();
-        virtual void End();
+		UILayer();
+		UILayer(const std::string &name);
+		virtual ~UILayer();
+		virtual void Begin();
+		virtual void End();
 
-	    virtual void OnAttach() override;
-        virtual void OnDetach() override;
-        virtual void OnUIRender() override;
+		void OnAttach() override;
+		void OnDetach() override;
+		void OnUIRender() override;
 
-        void SetDarkThemeColors();
-        void SetDarkThemeV2Colors();
+		static void SetDarkThemeColors();
+		static void SetDarkThemeV2Colors();
 
-        void AllowInputEvents(bool allowEvents);
+		void AllowInputEvents(bool allowEvents);
 
-    private:
-        //Ref<CommandBuffer> m_CommandBuffer;
-        float m_Time = 0.0f;
+	private:
+		//Ref<CommandBuffer> m_CommandBuffer;
+		float m_Time = 0.0f;
 	};
 
 }

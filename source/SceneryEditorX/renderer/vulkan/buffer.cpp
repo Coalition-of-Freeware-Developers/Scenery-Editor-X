@@ -46,7 +46,6 @@ namespace SceneryEditorX
 	    bufferCI.size = size;
 	    bufferCI.usage = usage;
 	    bufferCI.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	
 
 	    const VkResult result = MemoryAllocator::CreateBuffer(bufferCI, allocInfo, m_Buffer, m_Allocation);
 	    if (result != VK_SUCCESS)
@@ -65,12 +64,13 @@ namespace SceneryEditorX
 	    }
 	}
 
-	Buffer::Buffer(Buffer &&other) noexcept : m_Buffer(other.m_Buffer), m_Allocation(other.m_Allocation), 
-    m_Allocator(other.m_Allocator), m_MappedData(other.m_MappedData), m_DeviceAddress(other.m_DeviceAddress)
+    Buffer::Buffer(Buffer &&other) noexcept : m_Buffer(other.m_Buffer), m_Allocation(other.m_Allocation), 
+	m_Allocator(other.m_Allocator), m_MappedData(other.m_MappedData), m_ExplicitlyMapped(other.m_ExplicitlyMapped), m_DeviceAddress(other.m_DeviceAddress)
 	{
 	    other.m_Buffer = VK_NULL_HANDLE;
 	    other.m_Allocation = VK_NULL_HANDLE;
 	    other.m_MappedData = nullptr;
+        other.m_ExplicitlyMapped = false;
 	    other.m_DeviceAddress = 0;
 	}
 		
@@ -83,11 +83,13 @@ namespace SceneryEditorX
 	        m_Buffer = other.m_Buffer;
 	        m_Allocation = other.m_Allocation;
 	        m_MappedData = other.m_MappedData;
+            m_ExplicitlyMapped = other.m_ExplicitlyMapped;
 	        m_DeviceAddress = other.m_DeviceAddress;
 	
 	        other.m_Buffer = VK_NULL_HANDLE;
 	        other.m_Allocation = VK_NULL_HANDLE;
 	        other.m_MappedData = nullptr;
+            other.m_ExplicitlyMapped = false;
 	        other.m_DeviceAddress = 0;
 	    }
 	    return *this;
@@ -98,7 +100,7 @@ namespace SceneryEditorX
 	    if (m_Allocation == VK_NULL_HANDLE || m_Allocator == VK_NULL_HANDLE)
 	        return nullptr;
 	
-      if (!m_MappedData)
+        if (!m_MappedData)
 		{
 			VmaAllocationInfo allocationInfo{};
 			vmaGetAllocationInfo(m_Allocator, m_Allocation, &allocationInfo);
@@ -106,12 +108,14 @@ namespace SceneryEditorX
 			if (allocationInfo.pMappedData)
 			{
 				m_MappedData = allocationInfo.pMappedData;
+                m_ExplicitlyMapped = false;
 				return m_MappedData;
 			}
 
 			void* mappedData = nullptr;
 			SEDX_VK_RESULT_ASSERT(vmaMapMemory(m_Allocator, m_Allocation, &mappedData), "Failed to map buffer memory");
 			m_MappedData = mappedData;
+            m_ExplicitlyMapped = true;
 		}
 	
 	    return m_MappedData;
@@ -123,10 +127,11 @@ namespace SceneryEditorX
 	    {
 	        SEDX_CORE_WARN_TAG("Buffer", "Unmap called on invalid allocation/allocator");
 	        m_MappedData = nullptr;
+            m_ExplicitlyMapped = false;
 	        return;
 	    }
 	
-      VmaAllocationInfo allocationInfo{};
+        VmaAllocationInfo allocationInfo{};
 		vmaGetAllocationInfo(m_Allocator, m_Allocation, &allocationInfo);
 
 		if (!m_MappedData && !allocationInfo.pMappedData)
@@ -135,8 +140,12 @@ namespace SceneryEditorX
 			return;
 		}
 	
-	    vmaUnmapMemory(m_Allocator, m_Allocation);
+        if (m_ExplicitlyMapped)
+		{
+			vmaUnmapMemory(m_Allocator, m_Allocation);
+		}
 	    m_MappedData = nullptr;
+        m_ExplicitlyMapped = false;
 	}
 		
     VkDeviceAddress Buffer::DeviceAddress()
@@ -176,23 +185,24 @@ namespace SceneryEditorX
 	
 	void Buffer::Destroy()
 	{
-     if (m_Buffer == VK_NULL_HANDLE && m_Allocation == VK_NULL_HANDLE)
+        if (m_Buffer == VK_NULL_HANDLE && m_Allocation == VK_NULL_HANDLE)
 	        return;
 	
-     if (m_Allocation != VK_NULL_HANDLE && m_Allocator != VK_NULL_HANDLE)
+        if (m_Allocation != VK_NULL_HANDLE && m_Allocator != VK_NULL_HANDLE)
 	    {
-          VmaAllocationInfo allocationInfo{};
+            VmaAllocationInfo allocationInfo{};
 			vmaGetAllocationInfo(m_Allocator, m_Allocation, &allocationInfo);
-
-			if (m_MappedData || allocationInfo.pMappedData)
+            
+            if (m_ExplicitlyMapped)
 			{
 				vmaUnmapMemory(m_Allocator, m_Allocation);
 			}
 	    }
 
 		m_MappedData = nullptr;
+		m_ExplicitlyMapped = false;
 	
-     if (m_Buffer != VK_NULL_HANDLE || m_Allocation != VK_NULL_HANDLE)
+        if (m_Buffer != VK_NULL_HANDLE || m_Allocation != VK_NULL_HANDLE)
 	    {
 	        MemoryAllocator::DestroyBuffer(m_Buffer, m_Allocation);
 	    }

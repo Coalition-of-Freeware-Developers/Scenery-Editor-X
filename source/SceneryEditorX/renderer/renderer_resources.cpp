@@ -34,7 +34,6 @@
 #include "vulkan/buffer.h"
 #include "vulkan/image_resource.h"
 #include "vulkan/sampler.h"
-#include <cstring>
 
 // -------------------------------------------------------
 
@@ -50,7 +49,7 @@ namespace SceneryEditorX
 	static std::array<Ref<ImageResource>, static_cast<uint32_t>(Renderer_RenderTarget::MaxEnum)> s_RenderTargets;
 
 	// Static state object instances (created once, never mutated after init)
-	static std::array<RasterizerState,   static_cast<uint8_t>(Renderer_RasterizerState::MaxEnum)>   s_RasterizerStates  = {
+	static std::array<RasterizerState,   static_cast<uint8_t>(Renderer_RasterizerState::MaxEnum)> s_RasterizerStates  = {
 		RasterizerState{ PolygonMode::Solid,     false },   // Solid
 		RasterizerState{ PolygonMode::Wireframe, false },   // Wireframe
 		RasterizerState{ PolygonMode::Solid,     true,  1.0f, 1.75f }, // Light_point_spot  (depth bias)
@@ -73,13 +72,13 @@ namespace SceneryEditorX
 	};
 
 	// Static members defined here (declared in renderer.h)
-	PushConstantBuffer Renderer::m_pcb_pass_cpu;
-	uint32_t           Renderer::m_draw_call_count          = 0;
+	PushConstantBuffer Renderer::m_Pcb_Pass_Cpu;
+	uint32_t           Renderer::m_DrawCall_Count           = 0;
 	bool               Renderer::m_BindlessSamplers_Dirty   = false;
-	uint32_t           Renderer::m_draw_calls_prepass_count = 0;
-	uint32_t           Renderer::m_indirect_draw_count      = 0;
-	bool               Renderer::m_transparents_present     = false;
-	bool               Renderer::m_is_hiz_suppressed        = false;
+	uint32_t           Renderer::m_DrawCalls_Prepass_Count  = 0;
+	uint32_t           Renderer::m_Indirect_DrawCount       = 0;
+	bool               Renderer::m_Transparents_Present     = false;
+	bool               Renderer::m_Is_Hiz_Suppressed        = false;
 
     namespace
     {
@@ -104,38 +103,33 @@ namespace SceneryEditorX
         SEDX_CORE_ASSERT(device.IsValid(), "GeometryBuffer::Initialize requires a valid device");
 
         constexpr std::array<QuadVertex, 4> quadVertices = {
-            QuadVertex{{-1.0f, -1.0f, 0.0f}, {0.0f, 0.0f}},
-            QuadVertex{{ 1.0f, -1.0f, 0.0f}, {1.0f, 0.0f}},
-            QuadVertex{{ 1.0f,  1.0f, 0.0f}, {1.0f, 1.0f}},
-            QuadVertex{{-1.0f,  1.0f, 0.0f}, {0.0f, 1.0f}},
+            QuadVertex{
+                .position = {-1.0f, -1.0f, 0.0f}, 
+                .uv = {0.0f, 0.0f}},
+            QuadVertex{
+                .position = { 1.0f, -1.0f, 0.0f}, 
+                .uv = {1.0f, 0.0f}},
+            QuadVertex{
+                .position = { 1.0f,  1.0f, 0.0f}, 
+                .uv = {1.0f, 1.0f}},
+            QuadVertex{
+                .position = {-1.0f,  1.0f, 0.0f}, 
+                .uv = {0.0f, 1.0f}},
         };
 
         constexpr std::array<uint16_t, 6> quadIndices = { 0, 1, 2, 2, 3, 0 };
 
         VmaAllocationCreateInfo allocInfo{};
         allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
-        allocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT |
-                          VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+        allocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
 
         const VmaAllocator allocator = device->GetMemoryAllocator().GetAllocator();
 
-        s_GeometryQuadVertexBuffer = CreateRef<Buffer>(
-            allocator,
-            sizeof(quadVertices),
-            VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-            allocInfo
-        );
-        s_GeometryQuadIndexBuffer = CreateRef<Buffer>(
-            allocator,
-            sizeof(quadIndices),
-            VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-            allocInfo
-        );
+        s_GeometryQuadVertexBuffer = CreateRef<Buffer>(allocator, sizeof(quadVertices), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,allocInfo);
+        s_GeometryQuadIndexBuffer = CreateRef<Buffer>(allocator, sizeof(quadIndices), VK_BUFFER_USAGE_INDEX_BUFFER_BIT, allocInfo);
 
-        SEDX_CORE_ASSERT(s_GeometryQuadVertexBuffer && s_GeometryQuadVertexBuffer->Valid(),
-                         "Failed to create static quad vertex buffer");
-        SEDX_CORE_ASSERT(s_GeometryQuadIndexBuffer && s_GeometryQuadIndexBuffer->Valid(),
-                         "Failed to create static quad index buffer");
+        SEDX_CORE_ASSERT(s_GeometryQuadVertexBuffer && s_GeometryQuadVertexBuffer->Valid(), "Failed to create static quad vertex buffer");
+        SEDX_CORE_ASSERT(s_GeometryQuadIndexBuffer && s_GeometryQuadIndexBuffer->Valid(), "Failed to create static quad index buffer");
 
         void* vbData = s_GeometryQuadVertexBuffer->Map();
         void* ibData = s_GeometryQuadIndexBuffer->Map();
@@ -157,15 +151,9 @@ namespace SceneryEditorX
         s_GeometryQuadIndexBuffer.Reset();
     }
 
-    Buffer* GeometryBuffer::GetIndexBuffer()
-    {
-        return s_GeometryQuadIndexBuffer.Get();
-    }
+    Buffer* GeometryBuffer::GetIndexBuffer() { return s_GeometryQuadIndexBuffer.Get(); }
 
-    Buffer* GeometryBuffer::GetVertexBuffer()
-    {
-        return s_GeometryQuadVertexBuffer.Get();
-    }
+    Buffer* GeometryBuffer::GetVertexBuffer() { return s_GeometryQuadVertexBuffer.Get(); }
 
     void Renderer::CreateRenderTargets(const bool createRender, const bool createOutput, const bool createDynamic)
     {
@@ -174,6 +162,8 @@ namespace SceneryEditorX
         uint32_t widthOutput  = static_cast<uint32_t>(GetOutputResolution().x);
         uint32_t heightOutput = static_cast<uint32_t>(GetOutputResolution().y);
 
+#pragma region Mip Count Calculation
+		// lambda to compute mip count based on dimensions and minimum mip size (used for render targets with per-mip views)
         auto compute_mip_count = [](const uint32_t width, const uint32_t height, const uint32_t minDimension)
         {
             uint32_t maxDimension = xMath::Max(width, height);
@@ -185,12 +175,13 @@ namespace SceneryEditorX
             }
             return mipCount;
         };
+#pragma endregion
 
         // avoid combining uav + rtv on frequently accessed targets (forces suboptimal layouts on amd)
         // resolution - render
         if (createRender)
         {
-            // frame
+#pragma region Frame Render Targets
             {
 				s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::frame_render)] = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D,
 					widthRender, heightRender, 1, 1, VK_FORMAT_R16G16B16A16_SFLOAT, UnorderedAccessView | ShaderViews | RenderTargetViews | BlitClear, "frame_render"});
@@ -204,7 +195,8 @@ namespace SceneryEditorX
 					widthRender, heightRender, 1, 1, VK_FORMAT_R16G16B16A16_SFLOAT, ShaderViews | RenderTargetViews | BlitClear, "frame_render_opaque"});
 				SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::frame_render_opaque)] != nullptr, "Failed to create frame_render_opaque render target");
             }
-
+#pragma endregion
+#pragma region G-Buffer Render Targets
             // g-buffer (concurrent sharing: read by async compute for ssao/sss)
             {
                 uint32_t flags = RenderTargetViews | ShaderViews | BlitClear | QueueShare;
@@ -220,7 +212,8 @@ namespace SceneryEditorX
                 s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_depth)]    = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, widthRender, heightRender, 1, 1, VK_FORMAT_D32_SFLOAT, flags, "gbuffer_depth"});
                 SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_depth)] != nullptr, "Failed to create gbuffer_depth render target");
             }
-
+#pragma endregion
+#pragma region Lighting Render Targets
             // light
             {
                 uint32_t flags = UnorderedAccessView | ShaderViews | BlitClear;
@@ -232,7 +225,8 @@ namespace SceneryEditorX
                 s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::light_volumetric)] = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, widthRender, heightRender, 1, 1, VK_FORMAT_B10G11R11_UFLOAT_PACK32, flags, "light_volumetric"});
                 SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::light_volumetric)] != nullptr, "Failed to create light_volumetric render target");
             }
-
+#pragma endregion
+#pragma region Occlusion Render Targets
             // occlusion
             {
                 // amd depth format restrictions: separate texture for uav + manual blit
@@ -243,7 +237,7 @@ namespace SceneryEditorX
                 s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_depth_occluders_hiz)] = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, widthRender, heightRender, 1, hizMipCount, VK_FORMAT_R32_SFLOAT, UnorderedAccessView | ShaderViews | BlitClear | PerMipViews, "depth_occluders_hiz"});
                 SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_depth_occluders_hiz)] != nullptr, "Failed to create depth_occluders_hiz render target");
             }
-
+#pragma endregion
             // misc
             s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::sss)]                = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2DArray, widthRender, heightRender, 4, 1, VK_FORMAT_R16_SFLOAT, UnorderedAccessView | ShaderViews | BlitClear | QueueShare, "sss"});
             SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::sss)] != nullptr, "Failed to create sss render target");
@@ -269,6 +263,7 @@ namespace SceneryEditorX
             SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::shadow_atlas)] != nullptr, "Failed to create shadow_atlas render target");
         }
 
+#pragma region Resolution Output Render Targets
         // resolution - output
         if (createOutput)
         {
@@ -289,7 +284,8 @@ namespace SceneryEditorX
             s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_depth_opaque_output)] = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, widthOutput, heightOutput, 1, 1, VK_FORMAT_D32_SFLOAT, ShaderViews | RenderTargetViews | BlitClear, "depth_opaque_output"});
             SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_depth_opaque_output)] != nullptr, "Failed to create depth_opaque_output render target");
         }
-
+#pragma endregion
+#pragma region Fixed Resolution Render Targets
         // resolution - fixed (created once)
         if (!s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::lut_brdf_specular)])
         {
@@ -301,7 +297,7 @@ namespace SceneryEditorX
             s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::lut_atmosphere_transmittance)] = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, 256, 64, 1, 1, VK_FORMAT_R16G16B16A16_SFLOAT, UnorderedAccessView | ShaderViews, "lut_atmosphere_transmittance"});
             SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::lut_atmosphere_transmittance)] != nullptr, "Failed to create lut_atmosphere_transmittance render target");
             s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::lut_atmosphere_multiscatter)] = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, 32,  32, 1, 1, VK_FORMAT_R16G16B16A16_SFLOAT, UnorderedAccessView | ShaderViews, "lut_atmosphere_multiscatter"});
-			SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::lut_atmosphere_multiscatter)] != nullptr, "Failed to create lut_atmosphere_multiscatter render target");
+			SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::lut_atmosphere_multiscatter)] != nullptr, "Failed to create lut_atmosphere_multi-scatter render target");
 
             // Misc
             s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::blur)] = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, 4096, 4096, 1, 1, VK_FORMAT_R16G16B16A16_SFLOAT, UnorderedAccessView | ShaderViews, "blur_scratch"});
@@ -325,6 +321,7 @@ namespace SceneryEditorX
             s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::cloud_shadow)]       = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, 1024, 1024, 1, 1, VK_FORMAT_R16_SFLOAT, UnorderedAccessView | ShaderViews | QueueShare, "cloud_shadow"});
             SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::cloud_shadow)] != nullptr, "Failed to create cloud_shadow render target");
         }
+#pragma endregion
     }
 
     void Renderer::UpdateOptionalRenderTargets()
@@ -354,51 +351,6 @@ namespace SceneryEditorX
             s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_reflections_albedo)]	= nullptr;
 			SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_reflections_albedo)] == nullptr, "Failed to destroy gbuffer_reflections_albedo render target");
         }
-        
-        /*
-        // restir reservoirs
-        bool need_restir = cvar_restir_pt.GetValueAs<bool>() && RHI_Device::IsSupportedRayTracing();
-        if (need_restir && !render_target(Renderer_RenderTarget::restir_reservoir0))
-        {
-            uint32_t restir_flags = flags | QueueShare;
-
-            static const char* reservoir_names[] =
-            {
-                "restir_reservoir0",         "restir_reservoir1",         "restir_reservoir2",         "restir_reservoir3",         "restir_reservoir4",
-                "restir_reservoir_prev0",    "restir_reservoir_prev1",    "restir_reservoir_prev2",    "restir_reservoir_prev3",    "restir_reservoir_prev4",
-                "restir_reservoir_spatial0", "restir_reservoir_spatial1", "restir_reservoir_spatial2", "restir_reservoir_spatial3", "restir_reservoir_spatial4",
-            };
-
-            for (uint32_t i = 0; i < 15; i++)
-            {
-                auto rt = static_cast<Renderer_RenderTarget>(static_cast<uint32_t>(Renderer_RenderTarget::restir_reservoir0) + i);
-                render_target(rt) = CreateRef<RHI_Texture>(ImageType::Type2D, width, height, 1, 1, VkFormat::R32G32B32A32_Float, restir_flags, reservoir_names[i]);
-            }
-            
-            // nrd denoiser
-            render_target(Renderer_RenderTarget::nrd_viewz)                    = CreateRef<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, VkFormat::R16_Float,          restir_flags, "nrd_viewz");
-            render_target(Renderer_RenderTarget::nrd_normal_roughness)         = CreateRef<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, VkFormat::R10G10B10A2_Unorm,  restir_flags, "nrd_normal_roughness");
-            render_target(Renderer_RenderTarget::nrd_diff_radiance_hitdist)    = CreateRef<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, VkFormat::R16G16B16A16_Float, restir_flags, "nrd_diff_radiance_hitdist");
-            render_target(Renderer_RenderTarget::nrd_spec_radiance_hitdist)    = CreateRef<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, VkFormat::R16G16B16A16_Float, restir_flags, "nrd_spec_radiance_hitdist");
-            render_target(Renderer_RenderTarget::nrd_out_diff_radiance_hitdist)= CreateRef<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, VkFormat::R16G16B16A16_Float, restir_flags, "nrd_out_diff_radiance_hitdist");
-            render_target(Renderer_RenderTarget::nrd_out_spec_radiance_hitdist)= CreateRef<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, VkFormat::R16G16B16A16_Float, restir_flags, "nrd_out_spec_radiance_hitdist");
-        }
-        else if (!need_restir && render_target(Renderer_RenderTarget::restir_reservoir0))
-        {
-            for (uint32_t i = 0; i < 15; i++)
-            {
-                auto rt = static_cast<Renderer_RenderTarget>(static_cast<uint32_t>(Renderer_RenderTarget::restir_reservoir0) + i);
-                render_target(rt) = nullptr;
-            }
-            
-            render_target(Renderer_RenderTarget::nrd_viewz)                     = nullptr;
-            render_target(Renderer_RenderTarget::nrd_normal_roughness)          = nullptr;
-            render_target(Renderer_RenderTarget::nrd_diff_radiance_hitdist)     = nullptr;
-            render_target(Renderer_RenderTarget::nrd_spec_radiance_hitdist)     = nullptr;
-            render_target(Renderer_RenderTarget::nrd_out_diff_radiance_hitdist) = nullptr;
-            render_target(Renderer_RenderTarget::nrd_out_spec_radiance_hitdist) = nullptr;
-        }
-        */
 
     }
 
@@ -427,6 +379,7 @@ namespace SceneryEditorX
     {
         SEDX_CORE_TRACE_TAG("Renderer", "Creating Renderer Samplers");
 
+#pragma region Non-Anisotropic samplers
         // Non-anisotropic samplers - guarded by Ref validity so they are created only once
         if (!s_Samplers[static_cast<uint8_t>(Renderer_Sampler::Compare_depth)])
         {
@@ -498,8 +451,10 @@ namespace SceneryEditorX
 
             SEDX_CORE_TRACE_TAG("Renderer", "Non-anisotropic samplers created");
         }
+#pragma endregion
 
-        // Anisotropic sampler - recreated when upscaling resolution changes to apply negative mip bias
+#pragma region Anisotropic sampler
+        // Recreated when upscaling resolution changes to apply negative mip bias
         {
             float mipBiasNew = 0.0f;
             if (GetOutputResolution().x > GetRendererResolution().x)
@@ -524,6 +479,7 @@ namespace SceneryEditorX
                 SEDX_CORE_TRACE_TAG("Renderer", "Anisotropic sampler created (mip bias: {:.4f}, anisotropy: {:.1f})", mipBias, 16.0f);
             }
         }
+#pragma endregion
 
         m_BindlessSamplers_Dirty = true;
         SEDX_CORE_TRACE_TAG("Renderer", "Sampler setup complete");
@@ -587,10 +543,10 @@ namespace SceneryEditorX
         class StandardQuadMesh final : public Mesh
         {
         public:
-            Buffer* GetVertexBuffer() const override { return GeometryBuffer::GetVertexBuffer(); }
-            Buffer* GetIndexBuffer() const override  { return GeometryBuffer::GetIndexBuffer(); }
-            uint32_t GetGlobalIndexOffset() const override { return 0; }
-            uint32_t GetGlobalVertexOffset() const override { return 0; }
+            [[nodiscard]] Buffer* GetVertexBuffer() const override { return GeometryBuffer::GetVertexBuffer(); }
+            [[nodiscard]] Buffer* GetIndexBuffer() const override  { return GeometryBuffer::GetIndexBuffer(); }
+            [[nodiscard]] uint32_t GetGlobalIndexOffset() const override { return 0; }
+            [[nodiscard]] uint32_t GetGlobalVertexOffset() const override { return 0; }
         };
 
         static StandardQuadMesh s_QuadMesh;

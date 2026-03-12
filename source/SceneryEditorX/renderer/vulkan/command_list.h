@@ -33,18 +33,19 @@
 #include "command_pool.h"
 #include "queue.h"
 #include "viewport.h"
-#include "SceneryEditorX/renderer/renderer_declarations.h"
 #include "pipeline/pipeline.h"
 #include "sync/frame_sync.h"
 #include <colors.h>
+#include <SceneryEditorX/renderer/renderer_declarations.h>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-	class DescriptorSet;
+    class DescriptorSet;
 	class ImageResource;
 	struct Texture;
+	struct PipelineState;
 
     enum class CommandState : uint8_t
 	{
@@ -52,83 +53,343 @@ namespace SceneryEditorX
 		Recording, 
 	    Submitted
 	};
+	
+    // -------------------------------------------------------
 
     class CommandList : public SharedResource
     {
     public:
+        /**
+         * @brief Construct a new Command List object.
+         * @param queue The queue to submit the command list to.
+         * @param cmdPool The command pool to allocate the command list from.
+         * @param name The name of the command list.
+         */
         CommandList(Queue* queue, const CommandPool &cmdPool, const char* name);
         virtual ~CommandList() override;
 
-		void Begin();
+        void Begin();
+
+        /**
+		 * @brief Submit the command list for execution.
+		 * @param semaphoreWait The semaphore to wait on before execution.
+		 * @param isImmediate Whether the submission is immediate.
+		 * @param semaphoreSignal The semaphore to signal after execution.
+		 * @param semaphoreTimeline The timeline semaphore to signal.
+		 * @param timelineValue The value to signal on the timeline semaphore.
+		 */
 		void Submit(FrameSync *semaphoreWait, const bool isImmediate, FrameSync *semaphoreSignal = nullptr, FrameSync *semaphoreTimeline = nullptr, uint64_t timelineValue = 0);
+
+        /**
+		 * @brief Wait for the command list to finish execution.
+		 * @param logWaitTime Whether to log the wait time.
+		 */
 		void WaitForExecution(const bool logWaitTime = false);
+		
+        // -------------------------------------------------------
 
+        /**
+		 * @brief Clear the depth buffer of an image.
+		 * @param img The image resource.
+		 * @param clearDepth The depth value to clear to.
+		 */
 		void ClearDepth(void *img, float clearDepth);
-		void ClearStencil(void *img, uint32_t clearStencil);
-		void ClearTexture(void* img, const Color &color);
-		void ClearTexture(ImageResource* img, const Color &color);
 
-		// Pipeline state
+        /**
+		 * @brief Clear the stencil buffer of an image.
+		 * @param img The image resource.
+		 * @param clearStencil The stencil value to clear to.
+		 */
+		void ClearStencil(void *img, uint32_t clearStencil);
+
+        /**
+		 * @brief Clear the color buffer of an image.
+		 * @param img The image resource.
+		 * @param color The color to clear to.
+		 */
+		void ClearTexture(void* img, const Color &color);
+
+        /**
+		 * @brief Clear the color buffer of an image.
+		 * @param img The image resource.
+		 * @param color The color to clear to.
+		 */
+		void ClearTexture(ImageResource* img, const Color &color);
+		
+        // -------------------------------------------------------
+
+        /**
+		 * @brief Set the pipeline state for the command list.
+		 * @param pso The pipeline state object to set.
+		 */
 		void SetPipelineState(const PipelineState& pso);
+
+        /**
+		 * @brief Push constants to the pipeline.
+		 * @param data The push constant data to set.
+		 */
 		void PushConstants(const PushConstantBuffer& data);
 
 		//void SetPipelineState(PipelineState &pso);
+		
+        // -------------------------------------------------------
 
 		Ref<CommandList> Get() { return {this}; }
 		VkCommandBuffer GetCommandBuffer() const { return m_CmdBuffer; }
 
 		void EndRenderPass();
+
+        /**
+		 * @brief Remove the layout of an image resource.
+		 * @param image The image resource.
+		 */
 		static void RemoveLayout(void* image);
+
+        /**
+		 * @brief Get the layout of an image resource.
+		 * @param image The image resource.
+		 * @param mipIndex The mip level to query.
+		 * @return The image layout.
+		 */
 		static Layout::ImageLayout GetImageLayout(void* image, uint32_t mipIndex);
 
-		// Buffer bindings
+
+        // -------------------------------------------------------
+
+        /**
+		 * @brief Update the contents of a buffer.
+		 * @param buffer The buffer to update.
+		 * @param offset The offset within the buffer to start updating.
+		 * @param size The size of the data to update.
+		 * @param data The data to write to the buffer.
+		 */
 		void UpdateBuffer(Buffer* buffer, const uint64_t offset, const uint64_t size, const void* data);
+
+        /**
+		 * @brief Bind an index buffer for use in rendering.
+		 * @param indexBuffer The index buffer to bind.
+		 */
 		void SetIndexBuffer(const Buffer *indexBuffer);
+
+        /**
+		 * @brief Bind a vertex buffer and an instance buffer for use in rendering.
+		 * @param vertexBuffer The vertex buffer to bind.
+		 * @param instance The instance buffer to bind.
+		 */
 		void SetVertexBuffer(const Buffer *vertexBuffer, const Buffer *instance);
+
+        /**
+		 * @brief Bind a vertex buffer for use in rendering.
+		 * @param vertexBuffer The vertex buffer to bind.
+		 */
 		void SetBufferVertex(Buffer* vertexBuffer);
+
+        /**
+		 * @brief Bind an index buffer for use in rendering.
+		 * @param indexBuffer The index buffer to bind.
+		 */
 		void SetBufferIndex(Buffer* indexBuffer);
+
+        /**
+		 * @brief Bind a buffer to a specific slot for use in shaders.
+		 * @param slot The slot to bind the buffer to.
+		 * @param buffer The buffer to bind.
+		 */
 		void SetBuffer(Renderer_BindingsUav slot, Buffer* buffer);
+		
+        // -------------------------------------------------------
 
 		// Barriers - unified interface
 		//void InsertBarrier(const Barrier& barrier);
 		//void FlushBarriers();
 
-		// Barriers - convenience overloads
-		void InsertBarrier(void* img, Layout::ImageLayout layout, uint32_t mip = ALL_MIPS, uint32_t mipRange = 0);
-		void InsertBarrier(ImageResource* img, BarrierType type);
-		//void InsertBarrier(void* texture, BarrierType syncType);
-		void InsertBarrier(Buffer* buffer);
-		void InsertBarrier(void* image, VkFormat format, uint32_t mipIndex, uint32_t mipRange, uint32_t arrayLength, Layout::ImageLayout layout);
+        // -------------------------------------------------------
 
-		// Blit (compute-driven copy with optional resolution scaling)
+
+        /**
+		 * @brief Insert a barrier for an image resource.
+		 *
+		 * @param img The image resource.
+		 * @param layout The desired image layout.
+		 * @param mip The mip level to apply the barrier to.
+		 * @param mipRange The range of mip levels to apply the barrier to.
+		 */
+		void InsertBarrier(void* img, Layout::ImageLayout layout, uint32_t mip = ALL_MIPS, uint32_t mipRange = 0);
+
+        /**
+		 * @brief Insert a barrier for an image resource.
+		 *
+		 * @param img The image resource.
+		 * @param type The type of barrier to insert.
+		 */
+		void InsertBarrier(ImageResource* img, BarrierType type);
+
+		//void InsertBarrier(void* texture, BarrierType syncType);
+
+        /**
+		 * @brief Insert a barrier for a buffer resource.
+		 * @param buffer The buffer resource.
+		 */
+		void InsertBarrier(Buffer* buffer);
+
+        /**
+		 * @brief Insert a barrier for an image resource with detailed parameters.
+		 *
+		 * @param image The image resource.
+		 * @param format The format of the image.
+		 * @param mipIndex The mip level to apply the barrier to.
+		 * @param mipRange The range of mip levels to apply the barrier to.
+		 * @param arrayLength The number of array layers to apply the barrier to.
+		 * @param layout The desired image layout.
+		 */
+		void InsertBarrier(void* image, VkFormat format, uint32_t mipIndex, uint32_t mipRange, uint32_t arrayLength, Layout::ImageLayout layout);
+		
+        // -------------------------------------------------------
+
+
+        /**
+		 * @brief Blit (compute-driven copy with optional resolution scaling)
+		 *
+		 * @param src The source image resource.
+		 * @param dst The destination image resource.
+		 * @param keepAspect Whether to maintain the aspect ratio.
+		 * @param resolutionScale The scale factor for the resolution.
+		 */
 		void Blit(ImageResource* src, ImageResource* dst, bool keepAspect, float resolutionScale = 1.0f);
 
-		// Immediate Execution
+        // -------------------------------------------------------
+
+        /**
+		* @brief Begin immediate command recording on the queue matching @p type.
+		*
+		* This uses QueueManager's reusable command list pool and starts recording
+		* immediately. The returned command list must be completed with
+		* EndImmediateExecution().
+		*/
 		static CommandList* BeginImmediateExecution(const QueueType type);
+
+        /**
+		 * @brief End immediate command recording for the given command list.
+		 * @param cmdList The command list to end immediate execution for.
+		 */
 		static void EndImmediateExecution(CommandList* cmdList);
+
+        /* @brief Shutdown immediate execution for all command lists. */
 		static void ShutdownImmediateExecution();
 
 		const CommandState GetState() const { return m_State; }
+		
+        // -------------------------------------------------------
 
-		void SetTexture(const uint32_t slot, ImageResource* img, const uint32_t mipIndex = ALL_MIPS, uint32_t mipRange = 0, const bool uav = false);
+        /**
+         * @brief Set a texture for a specific slot.
+         *
+         * @param slot The binding slot to set the texture to (can be either UAV or SRV).
+         * @param img The image resource to bind.
+         * @param mipIndex The mip level to bind (default is ALL_MIPS).
+         * @param mipRange The range of mip levels to bind (default is 0).
+         * @param uav Whether the texture is a UAV (default is false).
+         */
+        void SetTexture(const uint32_t slot, ImageResource* img, const uint32_t mipIndex = ALL_MIPS, uint32_t mipRange = 0, const bool uav = false);
+
+        /**
+		 * @brief Set a texture for a specific slot.
+		 *
+		 * @param slot The binding slot to set the texture to (can be either UAV or SRV).
+		 * @param img The image resource to bind.
+		 * @param mipIndex The mip level to bind (default is ALL_MIPS).
+		 * @param mipRange The range of mip levels to bind (default is 0).
+		 */
 		void SetTexture(const Renderer_BindingsUav slot, ImageResource* img,  const uint32_t mipIndex = ALL_MIPS, uint32_t mipRange = 0) { SetTexture(static_cast<uint32_t>(slot), img, mipIndex, mipRange, true); }
+
+        /**
+		 * @brief Set a texture for a specific slot.
+		 *
+		 * @param slot The binding slot to set the texture to (can be either UAV or SRV).
+		 * @param img The image resource to bind.
+		 * @param mipIndex The mip level to bind (default is ALL_MIPS).
+		 * @param mipRange The range of mip levels to bind (default is 0).
+		 */
 		void SetTexture(const Renderer_BindingsSrv slot, ImageResource* img,  const uint32_t mipIndex = ALL_MIPS, uint32_t mipRange = 0) { SetTexture(static_cast<uint32_t>(slot), img, mipIndex, mipRange, false); }
 
+        // -------------------------------------------------------
 
+        /**
+		 * @brief Draw non-indexed geometry.
+		 *
+		 * @param vertexCount The number of vertices to draw.
+		 * @param vertexOffset The offset within the vertex buffer (default is 0).
+		 */
 		void Draw(const uint32_t vertexCount, const uint32_t vertexOffset = 0);
+
+        /**
+		 * @brief Draw indexed geometry.
+		 *
+		 * @param indexCount The number of indices to draw.
+		 * @param instCount The number of instances to draw (default is 1).
+		 * @param indexOffset The offset within the index buffer (default is 0).
+		 * @param vertexOffset The offset within the vertex buffer (default is 0).
+		 * @param instIndex The starting instance index (default is 0).
+		 */
 		void DrawIndexed(uint32_t indexCount, uint32_t instCount = 1, uint32_t indexOffset = 0, uint32_t vertexOffset = 0, uint32_t instIndex = 0);
+
+        /**
+		 * @brief Draw indexed indirect with count parameters sourced from buffers.
+		 *
+		 * @param drawArgs The buffer containing the draw arguments.
+		 * @param argsOffset The offset within the draw arguments buffer.
+		 * @param countBuffer The buffer containing the draw count.
+		 * @param countOffset The offset within the count buffer.
+		 * @param maxDrawCount The maximum number of draws to execute.
+		 */
 		void DrawIndexedIndirectCount(Buffer* drawArgs, uint64_t argsOffset, Buffer* countBuffer, uint64_t countOffset, uint32_t maxDrawCount);
+
+        /**
+		 * @brief Dispatch a compute shader with the given workgroup dimensions.
+		 *
+		 * @param x The number of workgroups to dispatch in the X dimension.
+		 * @param y The number of workgroups to dispatch in the Y dimension.
+		 * @param z The number of workgroups to dispatch in the Z dimension (default is 1).
+		 */
 		void Dispatch(uint32_t x, uint32_t y, uint32_t z = 1);
+
+        /**
+		 * @brief Dispatch a compute shader with the given image resource.
+		 *
+		 * @param img The image resource to use for the dispatch.
+		 * @param resolutionScale The scale factor for the resolution (default is 1.0f).
+		 */
 		void Dispatch(ImageResource *img, float resolutionScale = 1.0f);
+		
+        // -------------------------------------------------------
 
 		void SetViewport(const Viewport& viewport) const;
 		void SetScissor(const xMath::Rectangle &scissorRect) const;
 		void SetCullMode(const CullMode cullMode);
 
 		Ref<Queue> GetQueue() const { return m_Queue; }
+
 		//void CopyImageToBuffer(Image* src, Buffer* dst);
+
+        /**
+		 * @brief Copy data from a raw pointer to a buffer.
+		 *
+		 * @param src The source data pointer.
+		 * @param dst The destination buffer.
+		 * @param size The size of the data to copy.
+		 */
 		void CopyBufferToBuffer(void* src, Buffer* dst, uint64_t size);
+
+        /**
+		 * @brief Copy data from one buffer to another.
+		 *
+		 * @param src The source buffer.
+		 * @param dst The destination buffer.
+		 * @param size The size of the data to copy.
+		 */
 		void CopyBufferToBuffer(Buffer* src, Buffer* dst, uint64_t size);
+		
+        // -------------------------------------------------------
 
 		/**
 		 * @brief Returns the timeline semaphore value that was last signaled by this command list's most recent submit.

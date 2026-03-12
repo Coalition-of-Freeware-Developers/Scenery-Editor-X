@@ -38,8 +38,8 @@
 
 namespace SceneryEditorX
 {
-class Renderable;
-class Entity;
+    class Renderable;
+    class Entity;
 
     enum CameraMode : uint8_t
 	{
@@ -49,6 +49,16 @@ class Entity;
 		FREE  = BIT(3),
         FIXED = BIT(4)
 	};
+
+	enum class CameraMovement : uint8_t 
+    {
+		FORWARD		= BIT(0),
+		BACKWARD	= BIT(1),
+		LEFT		= BIT(2),
+		RIGHT		= BIT(3),
+		UP			= BIT(4),
+		DOWN		= BIT(5)
+    };
 
     // -------------------------------------------------------
 	

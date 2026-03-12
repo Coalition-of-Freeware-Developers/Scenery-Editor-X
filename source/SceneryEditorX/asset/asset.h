@@ -29,49 +29,132 @@
  * -------------------------------------------------------
  */
 #pragma once
-#include "model.h"
-#include "texture_handle.h"
-#include <string>
-#include <vector>
-#include <SceneryEditorX/renderer/vulkan/descriptor_set.h>
+#include "asset_types.h"
+#include <SceneryEditorX/core/identifiers/uuid.h>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
+	typedef UUID AssetHandle;
 
-    class Asset : public RefCounted
+	/**
+	 * @class Asset
+	 * @brief Represents a generic asset in the Scenery Editor X.
+	 */
+	class Asset : public RefCounted
 	{
 	public:
-	    Asset();
-        virtual ~Asset() override;
-	
-	    // Load a model and associated textures. cmdPool and queue are used to
-	    // transfer/initialize texture images. Returns true on success.
-	    bool Load(VmaAllocator allocator, VkCommandPool cmdPool, VkQueue queue, const std::string& modelFile, const std::vector<std::string>& textureFiles, const VmaAllocationCreateInfo& modelAllocInfo);
-	
-	    // Destroy resources owned by this asset (textures, descriptors, model buffer)
-	    void Destroy(VmaAllocator allocator);
-	
-	    // Accessors
-	    VkBuffer GetModelBuffer() const { return m_Model.GetBuffer(); }
-	    VkDeviceSize GetModelVertexSize() const { return m_Model.GetVertexBufferSize(); }
-	    VkDeviceSize GetModelIndexSize() const { return m_Model.GetIndexBufferSize(); }
-	    uint32_t GetModelIndexCount() const { return m_Model.GetIndexCount(); }
-	    VkDescriptorSet GetDescriptorSet() const { return m_DescriptorOwned.GetSet(); }
-	    VkDescriptorSetLayout GetDescriptorLayout() const { return m_DescriptorOwned.GetLayout(); }
-	
-	    // Vertex input helpers (forwarded to Model)
-        static VkVertexInputBindingDescription GetVertexBindingDescription() { return Model::BindingDescription(); }
-        static std::vector<VkVertexInputAttributeDescription> GetVertexAttributeDescriptions() { return Model::AttributeDescriptions(); }
-	
-	private:
-        Model m_Model = {};
-	    Ref<Device> m_Device;
-	    DescriptorSet m_DescriptorOwned;
-        std::vector<TextureHandle> m_Textures;
-	};
+		AssetHandle pHandle;
+		uint16_t pFlags = (uint16_t)AssetFlag::None;
 
+		virtual ~Asset() {}
+
+		static AssetType GetStaticType() { return AssetType::None; }
+		virtual AssetType GetAssetType() const { return AssetType::None; }
+
+		/**
+		 * @brief Called when a dependency of the asset is updated.
+		 * @param handle The handle of the updated dependency.
+		 */
+		virtual void OnDependencyUpdated(AssetHandle handle) {
+		}
+
+		/**
+		 * @brief Compares this asset with another asset for equality.
+		 * @param other The other asset to compare with.
+		 * @return True if the assets are equal, false otherwise.
+		 */
+		virtual bool operator==(const Asset& other) const { return pHandle == other.pHandle; }
+
+		/**
+		 * @brief Compares this asset with another asset for inequality.
+		 * @param other The other asset to compare with.
+		 * @return True if the assets are not equal, false otherwise.
+		 */
+		virtual bool operator!=(const Asset& other) const { return !(*this == other); }
+
+	private:
+		friend class AssetManager;
+
+		/**
+		 * @brief Checks if the asset is valid.
+		 * @return True if the asset is valid, false otherwise.
+		 */
+		bool IsValid() const
+		{
+			return ((pFlags & (uint16_t)AssetFlag::Missing) | (pFlags & (uint16_t)AssetFlag::Invalid)) == 0;
+		}
+
+		/**
+		 * @brief Checks if a specific flag is set for the asset.
+		 * @param flag The flag to check.
+		 * @return True if the flag is set, false otherwise.
+		 */
+		bool IsFlagSet(AssetFlag flag) const
+		{
+			return (uint16_t)flag & pFlags;
+		}
+
+		/**
+		 * @brief Sets or clears a specific flag for the asset.
+		 * @param flag The flag to set or clear.
+		 * @param value True to set the flag, false to clear it.
+		 */
+		void SetFlag(AssetFlag flag, bool value = true)
+		{
+			if (value)
+			{
+				pFlags |= (uint16_t)flag;
+			}
+			else
+			{
+				pFlags &= ~(uint16_t)flag;
+			}
+		}
+	};
+	
+	// -------------------------------------------------------
+
+	/**
+	 * @brief Represents the result of an asynchronous asset loading operation, containing a reference to the asset and its readiness state.
+	 * @tparam T The type of the asset being loaded.
+	 */
+	template<typename T>
+	struct AsyncAssetResult
+	{
+		Ref<T> p_Asset;
+		bool p_IsReady = false;
+
+		AsyncAssetResult() = default;
+
+		/**
+		 * @brief Copy constructor for AsyncAssetResult.
+		 * @param other The AsyncAssetResult to copy from.
+		 */
+		AsyncAssetResult(const AsyncAssetResult<T>& other) = default;
+
+		/**
+		 * @brief Constructs an AsyncAssetResult with the given asset and readiness state.
+		 * @param asset The asset being loaded.
+		 * @param isReady Indicates whether the asset is ready.
+		 */
+		AsyncAssetResult(Ref<T> asset, bool isReady = false) : p_Asset(asset), p_IsReady(isReady) {}
+
+		/**
+		 * @brief Constructs an AsyncAssetResult from another AsyncAssetResult of a different type, performing a type conversion if possible.
+		 * @tparam T2 The type of the asset in the other AsyncAssetResult.
+		 * @param other The other AsyncAssetResult to convert from.
+		 */
+		template<typename T2>
+		AsyncAssetResult(const AsyncAssetResult<T2>& other) : p_Asset(other.p_Asset.template As<T>()), p_IsReady(other.p_IsReady) {}
+
+		/* @brief Converts the AsyncAssetResult to a Ref<T>, allowing access to the underlying asset. */
+		operator Ref<T>() const { return p_Asset; }
+
+		/* @brief Converts the AsyncAssetResult to a boolean, indicating whether the asset is ready. */
+		operator bool() const { return p_IsReady; }
+	};
 }
 
 // -------------------------------------------------------

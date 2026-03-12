@@ -66,6 +66,7 @@ namespace SceneryEditorX
 	    VmaAllocation m_Allocation{ VK_NULL_HANDLE };
         VmaAllocator m_Allocator{VK_NULL_HANDLE};
 	    void* m_MappedData{ nullptr };
+        bool m_ExplicitlyMapped{ false };
 	    VkDeviceAddress m_DeviceAddress{ 0 };
         uint32_t m_stride_unaligned    = 0;
         uint32_t m_stride              = 0;

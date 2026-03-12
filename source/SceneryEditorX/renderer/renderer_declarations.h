@@ -29,6 +29,9 @@
  * -------------------------------------------------------
  */
 #pragma once
+#include "SceneryEditorX/scene/material.h"
+
+
 #include <array>
 #include <map>
 #include <SceneryEditorX/scene/lights.h>
@@ -558,24 +561,19 @@ namespace SceneryEditorX
     // `Stage::Fragment` and index PipelineState::shaders with the Stage enum directly.
     // -------------------------------------------------------
 
-    // -------------------------------------------------------
-    // Constants
-    // -------------------------------------------------------
-
+#pragma region Constants
     /** Sentinel passed to pso.clear_depth to instruct the pipeline to LOAD existing depth rather than clear it. */
-    inline constexpr float rhi_depth_load  = -1.0f;
-    inline constexpr float depth_load      = rhi_depth_load;
+    inline constexpr float RHI_DEPTH_LOAD  = -1.0f;
+    inline constexpr float DEPTH_LOAD      = RHI_DEPTH_LOAD;
 
     /** Maximum simultaneous colour render targets in a PipelineState. */
     inline constexpr uint32_t MAX_RENDER_TARGET_COUNT  = 8;
     inline constexpr uint32_t MAX_SHADER_STAGES        = 8;
-    inline constexpr uint32_t renderer_max_draw_calls  = 4096;
+    inline constexpr uint32_t RENDERER_MAX_DRAW_CALLS  = 4096;
     inline constexpr uint32_t MAX_MIP_COUNT            = 16;
+#pragma endregion
 
-    // -------------------------------------------------------
-    // PushConstantBuffer
-    // -------------------------------------------------------
-
+#pragma region PushConstantBuffer
     /**
      * @struct PushConstantBuffer
      * @brief Per-pass push constant data uploaded via CommandList::PushConstants().
@@ -583,10 +581,10 @@ namespace SceneryEditorX
      */
     struct PushConstantBuffer
     {
-        uint32_t draw_index     = 0;
-        uint32_t is_transparent = 0;
-        uint32_t material_index = 0;
-        uint32_t _pad0          = 0;
+        uint32_t drawIndex    = 0;
+        uint32_t isTransparent = 0;
+        uint32_t materialIndex = 0;
+        uint32_t _pad0         = 0;
 
         float f3_value[3]  = {};
         float _pad1        = 0.0f;
@@ -596,57 +594,12 @@ namespace SceneryEditorX
         float f2_value[2]  = {};
         float _pad3[2]     = {};
 
-        void set_f2_value (float x, float y)                     { f2_value[0]  = x; f2_value[1]  = y; }
-        void set_f3_value (float x, float y, float z)            { f3_value[0]  = x; f3_value[1]  = y; f3_value[2]  = z; }
-        void set_f3_value2(float x, float y, float z)            { f3_value2[0] = x; f3_value2[1] = y; f3_value2[2] = z; }
-        void set_f4_value (float x, float y, float z, float w)   { f4_value[0]  = x; f4_value[1]  = y; f4_value[2]  = z; f4_value[3] = w; }
+        void SetF2Value (float x, float y)                     { f2_value[0]  = x; f2_value[1]  = y; }
+        void SetF3Value (float x, float y, float z)            { f3_value[0]  = x; f3_value[1]  = y; f3_value[2]  = z; }
+        void SetF3Value2(float x, float y, float z)            { f3_value2[0] = x; f3_value2[1] = y; f3_value2[2] = z; }
+        void SetF4Value (float x, float y, float z, float w)   { f4_value[0]  = x; f4_value[1]  = y; f4_value[2]  = z; f4_value[3] = w; }
     };
-
-    // -------------------------------------------------------
-    // PipelineState
-    // -------------------------------------------------------
-    // Forward declarations required for PipelineState fields
-    // (full definitions live in renderer.h after all includes)
-    // -------------------------------------------------------
-
-    // Color sentinel – matches the Color type used by command lists.
-    // Using a raw float[4] here avoids pulling in <colors.h> from this header.
-    struct PipelineStateColor { float r = 0, g = 0, b = 0, a = 0; };
-
-    // Opaque "load" sentinel colours (negative alpha = "load, don't clear").
-    inline const PipelineStateColor rhi_color_load{ 0.0f, 0.0f, 0.0f, -1.0f };
-
-    /**
-     * @struct PipelineState
-     * @brief High-level, API-agnostic descriptor for a graphics or compute pipeline.
-     *
-     * Passes build a PipelineState, then call CommandList::SetPipelineState() which
-     * resolves or creates the underlying VkPipeline and starts the render pass.
-     */
-    struct PipelineState
-    {
-        const char*        name                   = nullptr;
-
-        // Shader stages – indexed by Stage enum (vertex=0, geometry=1, tess_ctrl=2, tess_eval=3, fragment=4, compute=5)
-        std::map<uint32_t, Shader*> shaders;
-
-        // Pipeline state objects (nullptr = use defaults)
-        RasterizerState*   rasterizer_state        = nullptr;
-        BlendState*        blend_state             = nullptr;
-        DepthStencilState* depth_stencil_state     = nullptr;
-
-        // Render targets
-        std::array<ImageResource*, MAX_RENDER_TARGET_COUNT> render_target_color_textures = {};
-        ImageResource*  render_target_depth_texture = nullptr;
-        ImageResource*  vrs_input_texture           = nullptr;
-
-        // Clear values (rhi_color_load.a < 0 = load; non-negative = clear to this colour)
-        std::array<PipelineStateColor, MAX_RENDER_TARGET_COUNT> clear_color = {};
-        float           clear_depth                 = rhi_depth_load;
-
-        // Misc flags
-        bool            resolution_scale            = false;
-    };
+#pragma endregion
 
     // Forward declarations for ordering
     class Entity;
@@ -667,51 +620,9 @@ namespace SceneryEditorX
     };
 
     // -------------------------------------------------------
-    // MaterialProperty / MaterialTextureType stubs
-    // Used by renderer passes until the full Material system is implemented.
-    // -------------------------------------------------------
-
-    /**
-     * @enum MaterialProperty
-     * @brief Material scalar property identifiers used by renderer passes.
-     */
-    enum class MaterialProperty : uint8_t
-    {
-        Tessellation = 0,
-        CullMode     = 1,
-        MaxEnum
-    };
-
-    /**
-     * @enum MaterialTextureType
-     * @brief Material texture slot identifiers used by renderer passes.
-     */
-    enum class MaterialTextureType : uint8_t
-    {
-        Color  = 0,
-        Normal = 1,
-        MaxEnum
-    };
-
-    // -------------------------------------------------------
     // Minimal scene-object stubs used by renderer passes.
     // Full definitions live in scene/ once those subsystems are complete.
     // -------------------------------------------------------
-
-    /**
-     * @class Material
-     * @brief Stub material class providing the interface consumed by renderer passes.
-     */
-    class Material
-    {
-    public:
-        virtual ~Material() = default;
-        virtual bool  IsTransparent() const                               { return false; }
-        virtual bool  IsAlphaTested() const                               { return false; }
-        virtual float GetProperty(MaterialProperty /*prop*/) const        { return 0.0f;  }
-        virtual uint32_t GetIndex() const                                 { return 0;     }
-        virtual bool  HasTextureOfType(MaterialTextureType /*t*/) const   { return false; }
-    };
 
     /**
      * @class Entity
@@ -789,13 +700,13 @@ namespace SceneryEditorX
      */
     struct Renderer_DrawCall
     {
-        Renderable* renderable        = nullptr; ///< Scene renderable to draw
-        bool        camera_visible    = false;   ///< Passes frustum / occlusion cull
-        bool        is_occluder       = false;   ///< Used as Hi-Z occluder mesh
-        uint32_t    draw_data_index   = 0;       ///< Index into the GPU draw-data buffer
-        uint32_t    lod_index         = 0;       ///< LOD level to render
-        uint32_t    instance_index    = 0;       ///< First instance offset
-        uint32_t    instance_count    = 1;       ///< Number of instances
+        Renderable* renderable       = nullptr; // Scene renderable to draw
+        bool        cameraVisible    = false;   // Passes frustum / occlusion cull
+        bool        isOccluder       = false;   // Used as Hi-Z occluder mesh
+        uint32_t    drawData_Index   = 0;       // Index into the GPU draw-data buffer
+        uint32_t    lodIndex         = 0;       // LOD level to render
+        uint32_t    instanceIndex    = 0;       // First instance offset
+        uint32_t    instanceCount    = 1;       // Number of instances
     };
 
     // -------------------------------------------------------

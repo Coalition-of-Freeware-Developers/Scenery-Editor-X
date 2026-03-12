@@ -35,7 +35,7 @@
 
 namespace SceneryEditorX
 {
-		struct SamplerSpec
+    struct SamplerSpec
 	{
 	    VkFilter min                        = VK_FILTER_NEAREST;
         VkFilter mag                        = VK_FILTER_NEAREST;
@@ -61,7 +61,7 @@ namespace SceneryEditorX
 		VkFilter GetFilterMin()						const { return m_Spec.min; }
         VkFilter GetFilterMag()						const { return m_Spec.mag; }
         VkSamplerMipmapMode GetFilterMipmap()		const { return m_Spec.mipMap; }
-        VkSamplerAddressMode GetAddressMode()const { return m_Spec.addressMode; }
+        VkSamplerAddressMode GetAddressMode()		const { return m_Spec.addressMode; }
         VkCompareOp GetComparisonFunction()			const { return m_Spec.compareFunc; }
         bool GetAnisotropyEnabled()                 const { return m_Spec.anisotropy != 0; }
         bool GetComparisonEnabled()                 const { return m_Spec.compareEnabled; }

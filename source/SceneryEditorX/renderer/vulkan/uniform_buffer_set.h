@@ -29,6 +29,7 @@
  * -------------------------------------------------------
  */
 #pragma once
+#include "buffer.h"
 #include "render_data.h"
 #include <array>
 #include <vma/vk_mem_alloc.h>
@@ -38,7 +39,7 @@
 
 namespace SceneryEditorX
 {
-	class Device;
+    class Device;
 	
 	// Manages a set of per-frame uniform buffers (ShaderDataBuffer). Uses VMA to
 	// allocate buffers that are host-visible and retrieves m_Device addresses for
@@ -46,7 +47,6 @@ namespace SceneryEditorX
 	class UniformBufferSet
 	{
 	public:
-	    UniformBufferSet() = default;
 	    UniformBufferSet(VmaAllocator allocator);
         ~UniformBufferSet();
 
@@ -55,11 +55,12 @@ namespace SceneryEditorX
 	
 	    std::array<ShaderDataBuffer, MAX_FRAMES_IN_FLIGHT> &Buffers() { return m_Buffers; }
 	
-	private:
-        Ref<Device> m_Device;
-	    VmaAllocator m_Allocator;
-	    std::array<ShaderDataBuffer, MAX_FRAMES_IN_FLIGHT> m_Buffers{};
-	    bool m_Destroyed = false;
+    private:
+		Ref<Device> m_Device;
+		VmaAllocator m_Allocator;
+		std::array<ShaderDataBuffer, MAX_FRAMES_IN_FLIGHT> m_Buffers{};
+		std::array<Ref<Buffer>, MAX_FRAMES_IN_FLIGHT> m_BufferObjects{}; // Buffer wrappers managing VMA allocations
+		bool m_Destroyed = false;
 	};
 	
 } // namespace SceneryEditorX

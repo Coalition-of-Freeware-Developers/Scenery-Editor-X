@@ -15,6 +15,7 @@ FILE(GLOB ASSET_MESH_FILES "asset/mesh/*.h" "asset/mesh/*.hpp" "asset/mesh/*.cpp
 FILE(GLOB ASSET_REGISTRY_FILES "asset/registry/*.h" "asset/registry/*.hpp" "asset/registry/*.cpp")
 FILE(GLOB ASSET_DIR "asset/*.h" "asset/*.hpp" "asset/*.cpp")
 
+FILE(GLOB CORE_BASE_ROOT LIST_DIRECTORIES false CONFIGURE_DEPENDS "core/*.h" "core/*.hpp" "core/*.cpp")
 FILE(GLOB CORE_APP "core/application/*.h" "core/application/*.hpp" "core/application/*.cpp")
 FILE(GLOB CORE_EVENTS "core/events/*.h" "core/events/*.hpp" "core/events/*.cpp")
 FILE(GLOB CORE_IDENTIFIERS "core/identifiers/*.h" "core/identifiers/*.hpp" "core/identifiers/*.cpp")
@@ -25,6 +26,7 @@ FILE(GLOB CORE_THREADING "core/threading/*.h" "core/threading/*.hpp" "core/threa
 FILE(GLOB CORE_TIME "core/time/*.h" "core/time/*.hpp" "core/time/*.cpp")
 FILE(GLOB CORE_RESOURCE "core/resource/*.cpp" "core/resource/*.h")
 FILE(GLOB CORE_WINDOW "core/window/*.h" "core/window/*.hpp" "core/window/*.cpp")
+FILE(GLOB CORE_PLATFORM_ROOT LIST_DIRECTORIES false CONFIGURE_DEPENDS "core/platform/*.h" "core/platform/*.hpp" "core/platform/*.cpp")
 FILE(GLOB CORE_PLATFORM_CONFIG_FILES "core/platform/config/*.h" "core/platform/config/*.hpp" "core/platform/config/*.cpp")
 FILE(GLOB CORE_PLATFORM_FILESYSTEM "core/platform/filesystem/*.h" "core/platform/filesystem/*.hpp" "core/platform/filesystem/*.cpp")
 FILE(GLOB CORE_PLATFORM_SETTINGS "core/platform/settings/*.h" "core/platform/settings/*.hpp" "core/platform/settings/*.cpp")
@@ -61,14 +63,16 @@ FILE(GLOB SHADER_FILES "shaders/*.slang" "shaders/*.glsl" "shaders/*.frag" "shad
 FILE(GLOB SERIALIZER_FILES "serialization/*.h" "serialization/*.cpp" "serialization/*.hpp")
 FILE(GLOB SCENE_FILES "scene/*.cpp" "scene/*.h" "scene/*.hpp")
 
+FILE(GLOB UTILS_ROOT LIST_DIRECTORIES false CONFIGURE_DEPENDS "utils/*.cpp" "utils/*.h" "utils/*.hpp")
 FILE(GLOB UTILS_REFLECTION "utils/reflection/*.cpp" "utils/reflection/*.h" "utils/reflection/*.hpp")
 FILE(GLOB UTILS_CONVERSIONS "utils/conversions/*.cpp" "utils/conversions/*.h" "utils/conversions/*.hpp")
 FILE(GLOB UTILS_FILESTREAM "utils/filestreaming/*.cpp" "utils/filestreaming/*.h" "utils/filestreaming/*.hpp")
-#FILE(GLOB VULKAN_RENDER_PASS "renderer/render_pass/*.cpp" "renderer/render_pass/*.h" "renderer/render_pass/*.hpp")
-#FILE(GLOB VULKAN_SHADER_CODE "renderer/shaders/*.cpp" "renderer/shaders/*.h" "renderer/shaders/*.hpp")
 
-#FILE(GLOB UI_ACTIONS "ui/actions/*.cpp" "ui/actions/*.h" "ui/actions/*.hpp")
-#FILE(GLOB UI_PANELS "ui/panels/*.cpp" "ui/panels/*.h" "ui/panels/*.hpp")
+# FILE(GLOB VULKAN_RENDER_PASS "renderer/render_pass/*.cpp" "renderer/render_pass/*.h" "renderer/render_pass/*.hpp")
+# FILE(GLOB VULKAN_SHADER_CODE "renderer/shaders/*.cpp" "renderer/shaders/*.h" "renderer/shaders/*.hpp")
+FILE(GLOB UI_ROOT LIST_DIRECTORIES false CONFIGURE_DEPENDS "ui/*.cpp" "ui/*.h" "ui/*.hpp")
+FILE(GLOB UI_ACTIONS "ui/actions/*.cpp" "ui/actions/*.h" "ui/actions/*.hpp")
+FILE(GLOB UI_PANELS "ui/panels/*.cpp" "ui/panels/*.h" "ui/panels/*.hpp")
 #FILE(GLOB FONT_CODE "renderer/fonts/*.h" "renderer/fonts/*.hpp" "renderer/fonts/*.cpp")
 SET (PROJECT_CONFIG_FILES
 	${CMAKE_SOURCE_DIR}/.clang-format
@@ -102,6 +106,8 @@ ADD_LIBRARY(AppCore
 	${CORE_WINDOW}
 	${LOGGER}
 	${PROJECT}
+	${CORE_BASE_ROOT}
+	${CORE_PLATFORM_ROOT}
 	${CORE_PLATFORM_CONFIG_FILES}
 	${CORE_PLATFORM_FILESYSTEM}
 	${CORE_PLATFORM_SETTINGS}
@@ -127,32 +133,14 @@ ADD_LIBRARY(AppCore
 	# ${VULKAN_RENDER_PASS}
 	# ${VULKAN_SHADER_CODE}
 	# ${FONT_CODE}
-	# ${UI_PANELS}
-	# ${UI_ACTIONS}
+	${UI_ROOT}
+	${UI_PANELS}
+	${UI_ACTIONS}
+
+	${UTILS_ROOT}
 	${UTILS_REFLECTION}
 	${UTILS_CONVERSIONS}
 	${UTILS_FILESTREAM}
-
-	# --------------------------------
-	core/base.h
-	core/version.h
-	core/platform/initializer.cpp
-	core/platform/initializer.h
-	core/platform/entrypoint.h
-	core/platform/platform_context.h
-
-	# --------------------------------
-	utils/container_utils.h
-	utils/delegations.h
-	utils/formatter.h
-	utils/pointers.h
-	utils/size_macro_utils.h
-	utils/static_states.h
-	utils/string_utils.cpp
-	utils/string_utils.h
-	utils/system_detection.h
-	utils/repeat_call_tracker.h
-	utils/repeat_call_tracker.cpp
 
 	# --------------------------------
 	${RESOURCE_FILE}
@@ -185,8 +173,7 @@ SOURCE_GROUP("Asset/Registry" FILES
 	${ASSET_REGISTRY_FILES}
 )
 SOURCE_GROUP("Core" FILES
-	core/base.h
-	core/version.h
+	${CORE_BASE_ROOT}
 )
 SOURCE_GROUP("Core/Application" FILES
 	${CORE_APP}
@@ -222,10 +209,7 @@ SOURCE_GROUP("Core/Resource" FILES
 	${CORE_RESOURCE}
 )
 SOURCE_GROUP("Core/Platform" FILES
-	core/platform/initializer.cpp
-	core/platform/initializer.h
-	core/platform/entrypoint.h
-	core/platform/platform_context.h
+	${CORE_PLATFORM_ROOT}
 )
 SOURCE_GROUP("Core/Platform/Config" FILES
 	${CORE_PLATFORM_CONFIG_FILES}
@@ -245,14 +229,24 @@ SOURCE_GROUP("Core/Platform/Mac" FILES
 SOURCE_GROUP("Core/Platform/Linux" FILES
 	${CORE_LINUX_PLATFORM}
 )
-SOURCE_GROUP("Serialization" FILES
-	${SERIALIZER_FILES}
+SOURCE_GROUP("Project" FILES
+	${PROJECT}
 )
 SOURCE_GROUP("Renderer" FILES
 	${RENDERER_FILES}
 )
+SOURCE_GROUP("Renderer/Fonts" FILES
+	${FONT_CODE}
+)
+SOURCE_GROUP("Renderer/Kosmickrisp" FILES
+	${RENDERER_KOSMICKRISP}
+)
+SOURCE_GROUP("Renderer/Shaders" FILES
+	${VULKAN_SHADER_CODE}
+)
 SOURCE_GROUP("Renderer/Vulkan" FILES
 	${RENDERER_VULKAN}
+	${VULKAN_FILES}
 )
 SOURCE_GROUP("Renderer/Vulkan/Asset" FILES
 	${RENDERER_ASSET_FILES}
@@ -269,19 +263,34 @@ SOURCE_GROUP("Renderer/Vulkan/Shader" FILES
 SOURCE_GROUP("Renderer/Vulkan/Synchronization" FILES
 	${RENDERER_SYNC_FILES}
 )
-SOURCE_GROUP("Renderer/Kosmickrisp" FILES
-	${RENDERER_KOSMICKRISP}
+SOURCE_GROUP("Resources" FILES
+	${RESOURCE_FILE}
+	cpp.hint
 )
+SOURCE_GROUP("Resources/Fonts" FILES
+	${FONT_FILES}
+)
+SOURCE_GROUP("Resources/Icons" FILES
+	${ICON_FILES}
+)
+SOURCE_GROUP("Resources/Shaders" FILES ${SLANG_SHADERS})
+SOURCE_GROUP("Scene" FILES
+	${SCENE}
+	${SCENE_FILES}
+)
+SOURCE_GROUP("Scene/Camera" FILES
+	${SCENE_CAMERA}
+)
+SOURCE_GROUP("Serialization" FILES
+	${SERIALIZER_FILES}
+)
+SOURCE_GROUP("UI" FILES
+	${UI_ROOT}
+)
+SOURCE_GROUP("UI/Actions" FILES ${UI_ACTIONS})
+SOURCE_GROUP("UI/Panels" FILES ${UI_PANELS})
 SOURCE_GROUP("Utilities" FILES
-	utils/container_utils.h
-	utils/delegations.h
-	utils/formatter.h
-	utils/pointers.h
-	utils/size_macro_utils.h
-	utils/static_states.h
-	utils/string_utils.cpp
-	utils/string_utils.h
-	utils/system_detection.h
+	${UTILS_ROOT}
 )
 SOURCE_GROUP("Utilities/File Streaming" FILES
 	${UTILS_FILESTREAM}
@@ -292,84 +301,11 @@ SOURCE_GROUP("Utilities/Reflection" FILES
 SOURCE_GROUP("Utilities/Conversions" FILES
 	${UTILS_CONVERSIONS}
 )
-SOURCE_GROUP("Steam" FILES
-	platform/steam_parser.cpp
-	platform/steam_parser.h
-)
-SOURCE_GROUP("Project" FILES
-	${PROJECT}
-)
-SOURCE_GROUP("Renderer/Vulkan" FILES
-	${VULKAN_FILES}
-)
-SOURCE_GROUP("Renderer/Fonts" FILES
-	${FONT_CODE}
-)
-SOURCE_GROUP("Renderer/Render Passes" FILES
-	${VULKAN_RENDER_PASS}
-)
-SOURCE_GROUP("Scene" FILES
-	${SCENE}
-	${SCENE_FILES}
-)
-SOURCE_GROUP("Renderer/Shaders" FILES
-	${VULKAN_SHADER_CODE}
-)
-SOURCE_GROUP("Utilities" FILES
-	utils/container_utils.h
-	utils/conversions.cpp
-	utils/conversions.h
-	utils/formatter.h
-	utils/static_states.h
-	utils/platform_states.h
-	utils/string.cpp
-	utils/string.h
-	utils/string_utils.h
-	utils/repeat_call_tracker.h
-	utils/repeat_call_tracker.cpp
-)
 SOURCE_GROUP("Utilities/Reflection" FILES ${REFLECTION_FILES})
-SOURCE_GROUP("UI" FILES
-	ui/colors.h
-	ui/fonts.h
-	ui/styles.cpp
-	ui/ui.cpp
-	ui/ui.h
-	ui/ui_context.cpp
-	ui/ui_context.h
-	ui/ui_fonts.cpp
-	ui/ui_fonts.h
-	ui/ui_globals.cpp
-	ui/ui_icons.h
-	ui/ui_layer.cpp
-	ui/ui_layer.h
-	ui/ui_manager.cpp
-	ui/ui_manager.h
-	ui/ui_renderer.cpp
-	ui/ui_renderer.h
-	ui/ui_utils.cpp
-	ui/ui_utils.h
-	ui/ui_widgets.cpp
-	ui/ui_widgets.h
-)
-SOURCE_GROUP("UI/Panels" FILES ${UI_PANELS})
-SOURCE_GROUP("UI/Actions" FILES ${UI_ACTIONS})
-SOURCE_GROUP("Resources" FILES
-    ${RESOURCE_FILE}
-	cpp.hint
-)
-SOURCE_GROUP("Resources/Shaders" FILES ${SLANG_SHADERS})
-SOURCE_GROUP("Resources/Icons" FILES
-    ${ICON_FILES}
-)
-SOURCE_GROUP("Resources/Fonts" FILES
-    ${FONT_FILES}
-)
 
 # --------------------------------
 # SHADERS
 # --------------------------------
-
 # TODO: Needs to be updated to use the SLang compiler instead of glslang.
 
 IF(WIN32)

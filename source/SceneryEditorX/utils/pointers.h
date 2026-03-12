@@ -110,7 +110,7 @@ namespace SceneryEditorX
 		mutable std::atomic<uint32_t> m_RefCount{0};
 	};
 
-    // -------------------------------------------------------
+	// -------------------------------------------------------
 
 	/**
 	 * @brief Alias template for a unique pointer to type T.
@@ -136,10 +136,10 @@ namespace SceneryEditorX
 		return std::make_unique<T>(std::forward<Args>(args)...);
 	}
 
-    // ----------------------------------------------------------
+	// ----------------------------------------------------------
 
-    namespace Internal
-    {
+	namespace Internal
+	{
 		/**
 		 * @brief Control block for managing weak references to an object
 		 *
@@ -157,61 +157,61 @@ namespace SceneryEditorX
 		class ControlBlock
 		{
 		public:
-		    /**
-		     * @brief Constructs a control block for the specified object
-		     * @param ptr Pointer to the object being tracked
-		     */
-		    explicit ControlBlock(T *ptr) noexcept : m_Ptr(ptr), m_WeakCount(0) {}
+			/**
+			 * @brief Constructs a control block for the specified object
+			 * @param ptr Pointer to the object being tracked
+			 */
+			explicit ControlBlock(T *ptr) noexcept : m_Ptr(ptr), m_WeakCount(0) {}
 
-		    /**
-		     * @brief Increments the weak reference count
-		     * Called when a new WeakRef is created or copied to point to this object
-		     */
-		    void IncWeakCount() noexcept { ++m_WeakCount; }
+			/**
+			 * @brief Increments the weak reference count
+			 * Called when a new WeakRef is created or copied to point to this object
+			 */
+			void IncWeakCount() noexcept { ++m_WeakCount; }
 
-		    /**
-		     * @brief Decrements the weak reference count
-		     *
-		     * When the weak count reaches zero and the object pointer is nullptr
-		     * (indicating the object has been destroyed), the control block
-		     * deletes itself as it's no longer needed.
-		     */
-		    void DecWeakCount() noexcept
-		    {
-		        if (--m_WeakCount == 0 && m_Ptr == nullptr)
-		        {
-		            delete this;
-		        }
-		    }
+			/**
+			 * @brief Decrements the weak reference count
+			 *
+			 * When the weak count reaches zero and the object pointer is nullptr
+			 * (indicating the object has been destroyed), the control block
+			 * deletes itself as it's no longer needed.
+			 */
+			void DecWeakCount() noexcept
+			{
+				if (--m_WeakCount == 0 && m_Ptr == nullptr)
+				{
+					delete this;
+				}
+			}
 
-		    /**
-		     * @brief Gets the pointer to the managed object
-		     * @return The pointer to the object, or nullptr if the object has been destroyed
-		     */
-		    T *GetPtr() const noexcept { return m_Ptr; }
+			/**
+			 * @brief Gets the pointer to the managed object
+			 * @return The pointer to the object, or nullptr if the object has been destroyed
+			 */
+			T *GetPtr() const noexcept { return m_Ptr; }
 
-		    /**
-		     * @brief Sets the object pointer
-		     *
-		     * This is typically called with nullptr when the object is being destroyed
-		     * to indicate that the object is no longer valid.
-		     *
-		     * @param ptr The new object pointer value
-		     */
-		    void SetPtr(T *ptr) noexcept { m_Ptr = ptr; }
+			/**
+			 * @brief Sets the object pointer
+			 *
+			 * This is typically called with nullptr when the object is being destroyed
+			 * to indicate that the object is no longer valid.
+			 *
+			 * @param ptr The new object pointer value
+			 */
+			void SetPtr(T *ptr) noexcept { m_Ptr = ptr; }
 
-		    /**
-		     * @brief Gets the current weak reference count
-		     * @return The number of weak references pointing to this control block
-		     */
-		    uint32_t GetWeakCount() const noexcept { return m_WeakCount; }
+			/**
+			 * @brief Gets the current weak reference count
+			 * @return The number of weak references pointing to this control block
+			 */
+			uint32_t GetWeakCount() const noexcept { return m_WeakCount; }
 
 		private:
-            // Pointer to the managed object, or nullptr if destroyed
-		    T *m_Ptr;
+			// Pointer to the managed object, or nullptr if destroyed
+			T *m_Ptr;
 
-		    // Number of weak references to this object
-		    std::atomic<uint32_t> m_WeakCount;
+			// Number of weak references to this object
+			std::atomic<uint32_t> m_WeakCount;
 		};
 
 		/**
@@ -230,98 +230,120 @@ namespace SceneryEditorX
 		class ControlBlockRegistry
 		{
 		public:
-		    /**
-		     * @brief Get the singleton instance of the registry
-		     *
-		     * @return A reference to the singleton instance
-		     */
-		    static ControlBlockRegistry &GetInstance()
-		    {
-		        static ControlBlockRegistry instance;
-		        return instance;
-		    }
+			/**
+			 * @brief Get the singleton instance of the registry
+			 *
+			 * @return A reference to the singleton instance
+			 */
+			static ControlBlockRegistry &GetInstance()
+			{
+				static ControlBlockRegistry instance;
+				return instance;
+			}
 
-		    /**
-		     * @brief Get or create a control block for the specified object pointer
-		     *
-		     * If a control block already exists for the given pointer, it returns that block.
-		     * Otherwise, it creates a new control block, registers it, and returns it.
-		     *
-		     * @param ptr Pointer to the object for which to get/create a control block
-		     * @return Pointer to the control block, or nullptr if ptr is nullptr
-		     */
-		    ControlBlock<T> *GetControlBlock(T *ptr)
-		    {
-		        if (!ptr)
-		            return nullptr;
+			/**
+			 * @brief Get or create a control block for the specified object pointer
+			 *
+			 * If a control block already exists for the given pointer, it returns that block.
+			 * Otherwise, it creates a new control block, registers it, and returns it.
+			 *
+			 * @param ptr Pointer to the object for which to get/create a control block
+			 * @return Pointer to the control block, or nullptr if ptr is nullptr
+			 */
+			ControlBlock<T> *GetControlBlock(T *ptr)
+			{
+				if (!ptr)
+					return nullptr;
 
-		        std::lock_guard<std::mutex> lock(m_Mutex);
-		        auto it = m_Blocks.find(ptr);
-		        if (it != m_Blocks.end())
-		        {
-		            return it->second;
-		        }
+				std::lock_guard<std::mutex> lock(m_Mutex);
+				auto it = m_Blocks.find(ptr);
+				if (it != m_Blocks.end())
+				{
+					return it->second;
+				}
 
-		        auto block = new Internal::ControlBlock<T>(ptr);
-		        m_Blocks[ptr] = block;
-		        return block;
-		    }
+				auto block = new Internal::ControlBlock<T>(ptr);
+				m_Blocks[ptr] = block;
+				return block;
+			}
 
-		    /**
-		     * @brief Remove the control block associated with the specified object pointer
-		     *
-		     * This method is called when an object is being destroyed. It sets the object pointer
-		     * in the control block to nullptr to indicate that the object is no longer valid.
-		     * If there are no weak references to the object, the control block itself is deleted.
-		     *
-		     * @param ptr Pointer to the object whose control block should be removed
-		     */
-		    void RemoveControlBlock(T *ptr)
-		    {
-		        if (!ptr)
-		            return;
+			/**
+			 * @brief Remove the control block associated with the specified object pointer
+			 *
+			 * This method is called when an object is being destroyed. It sets the object pointer
+			 * in the control block to nullptr to indicate that the object is no longer valid.
+			 * If there are no weak references to the object, the control block itself is deleted.
+			 *
+			 * @param ptr Pointer to the object whose control block should be removed
+			 */
+			void RemoveControlBlock(T *ptr)
+			{
+				if (!ptr || m_IsShutDown.load()) return;
+				std::lock_guard<std::mutex> lock(m_Mutex);
+				auto it = m_Blocks.find(ptr);
+				if (it != m_Blocks.end())
+				{
+					it->second->SetPtr(nullptr);
+					if (it->second->GetWeakCount() == 0)
+					{
+						delete it->second;
+					}
+					m_Blocks.erase(it);
+				}
+			}
 
-		        std::lock_guard<std::mutex> lock(m_Mutex);
-		        auto it = m_Blocks.find(ptr);
-		        if (it != m_Blocks.end())
-		        {
-		            it->second->SetPtr(nullptr);
-		            if (it->second->GetWeakCount() == 0)
-		            {
-		                delete it->second;
-		            }
-		            m_Blocks.erase(it);
-		        }
-		    }
+			/**
+			 * @brief Shuts down the control block registry, releasing all resources.
+			 *
+			 * This method deletes all control blocks managed by the registry and
+			 * prevents any further allocations or access to control blocks.
+			 */
+			void Shutdown()
+			{
+				std::lock_guard<std::mutex> lock(m_Mutex);
+				for (auto& [_, block] : m_Blocks)
+					delete block;
+				m_Blocks.clear();
+				m_IsShutDown = true;
+			}
+
+			/**
+			 * @brief Checks if the registry has been shut down.
+			 * @return True if the registry is shut down, false otherwise.
+			 */
+			bool IsShutDown() const noexcept { return m_IsShutDown.load(); }
 
 		private:
-		    /**
-		     * @brief Private constructor to enforce singleton pattern
-		     */
-		    ControlBlockRegistry() = default;
-		    ~ControlBlockRegistry()
-		    {
-		        for (auto &pair : m_Blocks)
-		        {
-		            delete pair.second;
-		        }
-		    }
+			/**
+			 * @brief Private constructor to enforce singleton pattern
+			 */
+			ControlBlockRegistry() = default;
+			~ControlBlockRegistry()
+			{
+				for (auto &pair : m_Blocks)
+				{
+					delete pair.second;
+				}
+			}
 
 			// Mapping from object pointers to their control blocks
-		    std::unordered_map<T *, Internal::ControlBlock<T> *> m_Blocks;
+			std::unordered_map<T *, Internal::ControlBlock<T> *> m_Blocks;
 
 			// Mutex for thread-safe access to the registry
-		    std::mutex m_Mutex;
+			std::mutex m_Mutex;
+
+			// Indicates whether the registry is shut down
+			std::atomic<bool> m_IsShutDown{false};
 		};
 
-    } // namespace Internal
+	} // namespace Internal
 
-    // -----------------------------------------------------------
+	// -----------------------------------------------------------
 
 	template <typename T>
 	class WeakRef;
 
-    // ---------------------------------------------------------
+	// ---------------------------------------------------------
 
 	/**
 	 * @brief A reference-counting smart pointer that manages shared ownership of objects.
@@ -337,10 +359,10 @@ namespace SceneryEditorX
 	{
 	public:
 		/** @brief Default constructor creates a null reference. */
-        constexpr Ref() : m_Ptr(nullptr) {};
+		constexpr Ref() : m_Ptr(nullptr) {};
 
 		/** @brief Constructor from nullptr creates a null reference. */
-        constexpr Ref(std::nullptr_t) : m_Ptr(nullptr) {};
+		constexpr Ref(std::nullptr_t) : m_Ptr(nullptr) {};
 
 		/**
 		 * @brief Constructor from raw pointer. Takes ownership of the object.
@@ -348,9 +370,9 @@ namespace SceneryEditorX
 		 */
 		Ref(T *instance) : m_Ptr(instance)
 		{
-            static_assert(std::is_base_of_v<RefCounted, T>, "Class is not RefCounted!");
+			static_assert(std::is_base_of_v<RefCounted, T>, "Class is not RefCounted!");
 
-            InternalAddRef();
+			InternalAddRef();
 		};
 
 		/**
@@ -461,17 +483,17 @@ namespace SceneryEditorX
 		template <typename U, typename = std::enable_if_t<std::is_convertible_v<U*, T*>>>
 		Ref& operator=(const Ref<U>& other) noexcept
 		{
-		    // Self-assignment or assigning same pointer: do nothing
-		    if (static_cast<const void*>(this) == static_cast<const void*>(&other) || m_Ptr == other.Get())
-		    {
-		        return *this;
-		    }
+			// Self-assignment or assigning same pointer: do nothing
+			if (static_cast<const void*>(this) == static_cast<const void*>(&other) || m_Ptr == other.Get())
+			{
+				return *this;
+			}
 
-		    InternalRelease();
-		    m_Ptr = other.Get();
+			InternalRelease();
+			m_Ptr = other.Get();
 
-		    InternalAddRef();
-		    return *this;
+			InternalAddRef();
+			return *this;
 		}
 
 		/**
@@ -510,17 +532,17 @@ namespace SceneryEditorX
 		template <typename U, typename = std::enable_if_t<std::is_convertible_v<U*, T*>>>
 		Ref& operator=(Ref<U>&& other) noexcept
 		{
-		    // Self-move or moving same pointer: do nothing
-		    if (static_cast<void*>(this) == static_cast<void*>(&other) || m_Ptr == other.Get())
-		    {
-		        return *this;
-		    }
+			// Self-move or moving same pointer: do nothing
+			if (static_cast<void*>(this) == static_cast<void*>(&other) || m_Ptr == other.Get())
+			{
+				return *this;
+			}
 
-		    InternalRelease();
-		    m_Ptr = other.Get();
-		    other.m_Ptr = nullptr;
+			InternalRelease();
+			m_Ptr = other.Get();
+			other.m_Ptr = nullptr;
 
-		    return *this;
+			return *this;
 		}
 
 		/**
@@ -624,7 +646,7 @@ namespace SceneryEditorX
 		{
 			if (!m_Ptr)
 			{
-			    return nullptr;
+				return nullptr;
 			}
 
 			// Increment the ref count for the shared_ptr
@@ -685,7 +707,7 @@ namespace SceneryEditorX
 		 */
 		bool operator!=(std::nullptr_t) const noexcept { return m_Ptr != nullptr; }
 
-    private:
+	private:
 		// Helper for SFINAE-based object comparison
 		template <typename U>
 		static auto HasEqualityOperator(int) -> decltype(std::declval<U>() == std::declval<U>(), std::true_type{});
@@ -696,14 +718,14 @@ namespace SceneryEditorX
 		template <typename U>
 		static bool CompareObjectsImpl(const U& a, const U& b, std::true_type)
 		{
-		    return a == b;
+			return a == b;
 		}
 
 		template <typename U>
 		static bool CompareObjectsImpl(const U& a, const U& b, std::false_type)
 		{
-            // No equality operator available
-		    return false; 
+			// No equality operator available
+			return false; 
 		}
 
 	public:
@@ -718,19 +740,19 @@ namespace SceneryEditorX
 		 */
 		bool EqualsObject(const Ref& other) const noexcept
 		{
-		    if (m_Ptr == other.m_Ptr)
-		        return true;
+			if (m_Ptr == other.m_Ptr)
+				return true;
 
-		    if (!m_Ptr || !other.m_Ptr)
-		        return false;
+			if (!m_Ptr || !other.m_Ptr)
+				return false;
 
-		    // Use compile-time type trait detection instead of runtime function calls
-		    using HasEquality = decltype(HasEqualityOperator<T>(0));
-		    return CompareObjectsImpl(*m_Ptr, *other.m_Ptr, HasEquality{});
+			// Use compile-time type trait detection instead of runtime function calls
+			using HasEquality = decltype(HasEqualityOperator<T>(0));
+			return CompareObjectsImpl(*m_Ptr, *other.m_Ptr, HasEquality{});
 		 }
 
 	private:
-	    // Pointer to the managed object
+		// Pointer to the managed object
 		mutable T* m_Ptr = nullptr;
 
 		// Internal method to add a reference
@@ -739,16 +761,16 @@ namespace SceneryEditorX
 		// Internal method to release the reference
 		void InternalRelease() noexcept;
 
-        // Grant access to specific classes or functions
-        template <typename U>
-        friend class Ref;
+		// Grant access to specific classes or functions
+		template <typename U>
+		friend class Ref;
 
 		// Allow WeakRef to access m_Ptr
-        template <typename U>
-        friend class WeakRef;
+		template <typename U>
+		friend class WeakRef;
 	};
 
-    // -------------------------------------------------------
+	// -------------------------------------------------------
 
 	/**
 	 * @brief A weak reference to an object managed by Ref<T>.
@@ -806,7 +828,7 @@ namespace SceneryEditorX
 		~WeakRef();
 
 		// Internal method to access the control block
-        Internal::ControlBlock<T> *GetControlBlock() const noexcept { return m_ControlBlock; }
+		Internal::ControlBlock<T> *GetControlBlock() const noexcept { return m_ControlBlock; }
 
 		/**
 		 * @brief Copy assignment operator.
@@ -893,15 +915,15 @@ namespace SceneryEditorX
 	private:
 		Internal::ControlBlock<T>* m_ControlBlock = nullptr;
 
-        // Allow all WeakRef instantiations to access each other's private members
-        template <typename> friend class WeakRef;
+		// Allow all WeakRef instantiations to access each other's private members
+		template <typename> friend class WeakRef;
 
 		// Allow Ref<T> to access m_ControlBlock
 		template <typename U>
 		friend class Ref;
 	};
 
-    // -------------------------------------------------------
+	// -------------------------------------------------------
 
 	/**
 	 * @brief Creates a reference-counted object of type T.
@@ -917,12 +939,12 @@ namespace SceneryEditorX
 	template <typename T, typename... Args>
 	Ref<T> CreateRef(Args&&... args)
 	{
-        static_assert(std::is_base_of_v<RefCounted, T>, "Type must inherit from RefCounted");
-        static_assert(std::is_constructible_v<T, Args &&...>, "Type T is not constructible with the provided arguments. Check that T's constructor matches Args.");
-        return Ref<T>(new T(std::forward<Args>(args)...));
+		static_assert(std::is_base_of_v<RefCounted, T>, "Type must inherit from RefCounted");
+		static_assert(std::is_constructible_v<T, Args &&...>, "Type T is not constructible with the provided arguments. Check that T's constructor matches Args.");
+		return Ref<T>(new T(std::forward<Args>(args)...));
 	}
 
-    /**
+	/**
 	 * @brief Increments the reference count for the object.
 	 *
 	 * This method is called when a new reference to the object is created.
@@ -932,16 +954,16 @@ namespace SceneryEditorX
 	 * @tparam T The type of the reference-counted object
 	 * @return void
 	 */
-    template <typename T>
-    void Ref<T>::InternalAddRef() const noexcept
-    {
-        if (m_Ptr)
-        {
-            m_Ptr->IncRefCount();
-        }
-    }
+	template <typename T>
+	void Ref<T>::InternalAddRef() const noexcept
+	{
+		if (m_Ptr)
+		{
+			m_Ptr->IncRefCount();
+		}
+	}
 
-    /**
+	/**
 	 * @brief Releases a reference to the object and potentially deletes it.
 	 *
 	 * This method decrements the reference count of the pointed object.
@@ -957,22 +979,23 @@ namespace SceneryEditorX
 	 * @tparam T The type of the reference-counted object
 	 * @return void
 	 */
-    template <typename T>
-    void Ref<T>::InternalRelease() noexcept
-    {
-        if (m_Ptr)
-        {
-            if (m_Ptr->DecRefCount() == 0)
-            {
-                /// Tick any weak references before deleting the object
-                Internal::ControlBlockRegistry<T>::GetInstance().RemoveControlBlock(m_Ptr);
-                delete m_Ptr;
-            }
-            m_Ptr = nullptr;
-        }
-    }
+	template <typename T>
+	void Ref<T>::InternalRelease() noexcept
+	{
+		if (m_Ptr)
+		{
+			if (m_Ptr->DecRefCount() == 0)
+			{
+				auto& reg = Internal::ControlBlockRegistry<T>::GetInstance();
+				if (!reg.IsShutDown())
+					reg.RemoveControlBlock(m_Ptr);
+				delete m_Ptr;
+			}
+			m_Ptr = nullptr;
+		}
+	}
 
-    /**
+	/**
 	 * @brief Constructs a weak reference from a strong reference.
 	 *
 	 * This constructor creates a WeakRef that weakly references the same object
@@ -989,44 +1012,44 @@ namespace SceneryEditorX
 	 * @note - This constructor enables implicit conversion from Ref<U> to WeakRef<T>
 	 *       when U is convertible to T
 	 */
-    template <typename T>
-    template <typename U, typename>
-    WeakRef<T>::WeakRef(const Ref<U> &ref) noexcept
-    {
-        if (ref)
-        {
-            m_ControlBlock =
-                Internal::ControlBlockRegistry<T>::GetInstance().GetControlBlock(static_cast<T *>(ref.Get()));
-            if (m_ControlBlock)
-            {
-                m_ControlBlock->IncWeakCount();
-            }
-        }
-    }
+	template <typename T>
+	template <typename U, typename>
+	WeakRef<T>::WeakRef(const Ref<U> &ref) noexcept
+	{
+		if (ref)
+		{
+			m_ControlBlock =
+				Internal::ControlBlockRegistry<T>::GetInstance().GetControlBlock(static_cast<T *>(ref.Get()));
+			if (m_ControlBlock)
+			{
+				m_ControlBlock->IncWeakCount();
+			}
+		}
+	}
 
-    /**
-     * @brief Copy constructor for weak references.
-     *
-     * This constructor creates a new WeakRef that weakly references the same object
-     * as the provided source WeakRef. If the source WeakRef is valid (points to a
-     * control block), this constructor:
-     * 1. Copies the control block pointer from the source
-     * 2. Increments the weak reference count in that control block
-     *
-     * @param other The source WeakRef to copy from
-     * @note - This maintains proper reference counting without affecting the
-     *       lifetime of the referenced object
-     */
-    template <typename T>
-    WeakRef<T>::WeakRef(const WeakRef &other) noexcept : m_ControlBlock(other.m_ControlBlock)
-    {
-        if (m_ControlBlock)
-        {
-            m_ControlBlock->IncWeakCount();
-        }
-    }
+	/**
+	 * @brief Copy constructor for weak references.
+	 *
+	 * This constructor creates a new WeakRef that weakly references the same object
+	 * as the provided source WeakRef. If the source WeakRef is valid (points to a
+	 * control block), this constructor:
+	 * 1. Copies the control block pointer from the source
+	 * 2. Increments the weak reference count in that control block
+	 *
+	 * @param other The source WeakRef to copy from
+	 * @note - This maintains proper reference counting without affecting the
+	 *       lifetime of the referenced object
+	 */
+	template <typename T>
+	WeakRef<T>::WeakRef(const WeakRef &other) noexcept : m_ControlBlock(other.m_ControlBlock)
+	{
+		if (m_ControlBlock)
+		{
+			m_ControlBlock->IncWeakCount();
+		}
+	}
 
-    /**
+	/**
 	 * @brief Copy conversion constructor for WeakRef objects of different but compatible types.
 	 *
 	 * This constructor allows creation of a WeakRef<T> from a WeakRef<U> where U is convertible to T
@@ -1042,22 +1065,22 @@ namespace SceneryEditorX
 	 * @param other The source WeakRef<U> to convert from
 	 * @note - This constructor only participates in overload resolution if U* is convertible to T*
 	 */
-    template <typename T>
-    template <typename U, typename>
-    WeakRef<T>::WeakRef(const WeakRef<U> &other) noexcept
-    {
-        if (other.m_ControlBlock)
-        {
-            m_ControlBlock = Internal::ControlBlockRegistry<T>::GetInstance().GetControlBlock(
-                static_cast<T *>(other.m_ControlBlock->GetPtr()));
-            if (m_ControlBlock)
-            {
-                m_ControlBlock->IncWeakCount();
-            }
-        }
-    }
+	template <typename T>
+	template <typename U, typename>
+	WeakRef<T>::WeakRef(const WeakRef<U> &other) noexcept
+	{
+		if (other.m_ControlBlock)
+		{
+			m_ControlBlock = Internal::ControlBlockRegistry<T>::GetInstance().GetControlBlock(
+				static_cast<T *>(other.m_ControlBlock->GetPtr()));
+			if (m_ControlBlock)
+			{
+				m_ControlBlock->IncWeakCount();
+			}
+		}
+	}
 
-    /**
+	/**
 	 * @brief Move constructor for weak references.
 	 *
 	 * This constructor creates a new WeakRef by transferring ownership of the control block
@@ -1074,13 +1097,13 @@ namespace SceneryEditorX
 	 *
 	 * @param other The source WeakRef to move from
 	 */
-    template <typename T>
-    WeakRef<T>::WeakRef(WeakRef &&other) noexcept : m_ControlBlock(other.m_ControlBlock)
-    {
-        other.m_ControlBlock = nullptr;
-    }
+	template <typename T>
+	WeakRef<T>::WeakRef(WeakRef &&other) noexcept : m_ControlBlock(other.m_ControlBlock)
+	{
+		other.m_ControlBlock = nullptr;
+	}
 
-    /**
+	/**
 	 * @brief Move conversion constructor for weak references of different but compatible types.
 	 *
 	 * This constructor moves a WeakRef<U> to a WeakRef<T> where U is convertible to T
@@ -1099,19 +1122,19 @@ namespace SceneryEditorX
 	 * @note - This constructor only participates in overload resolution if U* is convertible to T*
 	 *       (enforced by the SFINAE template parameter)
 	 */
-    template <typename T>
-    template <typename U, typename>
-    WeakRef<T>::WeakRef(WeakRef<U> &&other) noexcept
-    {
-        if (other.m_ControlBlock)
-        {
-            m_ControlBlock = Internal::ControlBlockRegistry<T>::GetInstance().GetControlBlock(
-                static_cast<T *>(other.m_ControlBlock->GetPtr()));
-            other.m_ControlBlock = nullptr;
-        }
-    }
+	template <typename T>
+	template <typename U, typename>
+	WeakRef<T>::WeakRef(WeakRef<U> &&other) noexcept
+	{
+		if (other.m_ControlBlock)
+		{
+			m_ControlBlock = Internal::ControlBlockRegistry<T>::GetInstance().GetControlBlock(
+				static_cast<T *>(other.m_ControlBlock->GetPtr()));
+			other.m_ControlBlock = nullptr;
+		}
+	}
 
-    /**
+	/**
 	 * @brief Destructor for the weak reference.
 	 *
 	 * This destructor properly cleans up resources associated with the weak reference.
@@ -1124,16 +1147,16 @@ namespace SceneryEditorX
 	 * 2. Control blocks are cleaned up when no longer needed
 	 * 3. No memory leaks occur when weak references go out of scope
 	 */
-    template <typename T>
-    WeakRef<T>::~WeakRef()
-    {
-        if (m_ControlBlock)
-        {
-            m_ControlBlock->DecWeakCount();
-        }
-    }
+	template <typename T>
+	WeakRef<T>::~WeakRef()
+	{
+		if (m_ControlBlock)
+		{
+			m_ControlBlock->DecWeakCount();
+		}
+	}
 
-    /**
+	/**
 	 * @brief Copy assignment operator for weak references.
 	 *
 	 * This operator assigns the content of another WeakRef to this WeakRef.
@@ -1153,27 +1176,27 @@ namespace SceneryEditorX
 	 * @note - This operator maintains proper reference counting without affecting the
 	 *       lifetime of the referenced object
 	 */
-    template <typename T>
-    WeakRef<T> &WeakRef<T>::operator=(const WeakRef &other) noexcept
-    {
-        if (this != &other)
-        {
-            if (m_ControlBlock)
-            {
-                m_ControlBlock->DecWeakCount();
-            }
+	template <typename T>
+	WeakRef<T> &WeakRef<T>::operator=(const WeakRef &other) noexcept
+	{
+		if (this != &other)
+		{
+			if (m_ControlBlock)
+			{
+				m_ControlBlock->DecWeakCount();
+			}
 
-            m_ControlBlock = other.m_ControlBlock;
+			m_ControlBlock = other.m_ControlBlock;
 
-            if (m_ControlBlock)
-            {
-                m_ControlBlock->IncWeakCount();
-            }
-        }
-        return *this;
-    }
+			if (m_ControlBlock)
+			{
+				m_ControlBlock->IncWeakCount();
+			}
+		}
+		return *this;
+	}
 
-    /**
+	/**
 	 * @brief Copy conversion assignment operator for WeakRef objects of different but compatible types.
 	 *
 	 * This operator allows assignment of a WeakRef<U> to a WeakRef<T> where U is convertible to T
@@ -1192,30 +1215,30 @@ namespace SceneryEditorX
 	 * @note - This operator only participates in overload resolution if U* is convertible to T*
 	 *       (enforced by the SFINAE template parameter)
 	 */
-    template <typename T>
-    template <typename U, typename>
-    WeakRef<T> &WeakRef<T>::operator=(const WeakRef<U> &other) noexcept
-    {
-        if (m_ControlBlock)
-        {
-            m_ControlBlock->DecWeakCount();
-            m_ControlBlock = nullptr;
-        }
+	template <typename T>
+	template <typename U, typename>
+	WeakRef<T> &WeakRef<T>::operator=(const WeakRef<U> &other) noexcept
+	{
+		if (m_ControlBlock)
+		{
+			m_ControlBlock->DecWeakCount();
+			m_ControlBlock = nullptr;
+		}
 
-        if (other.m_ControlBlock)
-        {
-            m_ControlBlock = Internal::ControlBlockRegistry<T>::GetInstance().GetControlBlock(
-                static_cast<T *>(other.m_ControlBlock->GetPtr()));
-            if (m_ControlBlock)
-            {
-                m_ControlBlock->IncWeakCount();
-            }
-        }
+		if (other.m_ControlBlock)
+		{
+			m_ControlBlock = Internal::ControlBlockRegistry<T>::GetInstance().GetControlBlock(
+				static_cast<T *>(other.m_ControlBlock->GetPtr()));
+			if (m_ControlBlock)
+			{
+				m_ControlBlock->IncWeakCount();
+			}
+		}
 
-        return *this;
-    }
+		return *this;
+	}
 
-    /**
+	/**
 	 * @brief Move assignment operator for weak references.
 	 *
 	 * This operator assigns the content of another WeakRef to this WeakRef through move semantics.
@@ -1232,24 +1255,24 @@ namespace SceneryEditorX
 	 * @param other The source WeakRef to move from
 	 * @return A reference to this WeakRef after the assignment
 	 */
-    template <typename T>
-    WeakRef<T> &WeakRef<T>::operator=(WeakRef &&other) noexcept
-    {
-        if (this != &other)
-        {
-            if (m_ControlBlock)
-            {
-                m_ControlBlock->DecWeakCount();
-            }
+	template <typename T>
+	WeakRef<T> &WeakRef<T>::operator=(WeakRef &&other) noexcept
+	{
+		if (this != &other)
+		{
+			if (m_ControlBlock)
+			{
+				m_ControlBlock->DecWeakCount();
+			}
 
-            m_ControlBlock = other.m_ControlBlock;
-            other.m_ControlBlock = nullptr;
-        }
+			m_ControlBlock = other.m_ControlBlock;
+			other.m_ControlBlock = nullptr;
+		}
 
-        return *this;
-    }
+		return *this;
+	}
 
-    /**
+	/**
 	 * @brief Move conversion assignment operator for weak references of different but compatible types.
 	 *
 	 * This operator moves a WeakRef<U> to a WeakRef<T> where U is convertible to T
@@ -1271,27 +1294,27 @@ namespace SceneryEditorX
 	 * @note - This operator only participates in overload resolution if U* is convertible to T*
 	 *       (enforced by the SFINAE template parameter)
 	 */
-    template <typename T>
-    template <typename U, typename>
-    WeakRef<T> &WeakRef<T>::operator=(WeakRef<U> &&other) noexcept
-    {
-        if (m_ControlBlock)
-        {
-            m_ControlBlock->DecWeakCount();
-            m_ControlBlock = nullptr;
-        }
+	template <typename T>
+	template <typename U, typename>
+	WeakRef<T> &WeakRef<T>::operator=(WeakRef<U> &&other) noexcept
+	{
+		if (m_ControlBlock)
+		{
+			m_ControlBlock->DecWeakCount();
+			m_ControlBlock = nullptr;
+		}
 
-        if (other.m_ControlBlock)
-        {
-            m_ControlBlock = Internal::ControlBlockRegistry<T>::GetInstance().GetControlBlock(
-                static_cast<T *>(other.m_ControlBlock->GetPtr()));
-            other.m_ControlBlock = nullptr;
-        }
+		if (other.m_ControlBlock)
+		{
+			m_ControlBlock = Internal::ControlBlockRegistry<T>::GetInstance().GetControlBlock(
+				static_cast<T *>(other.m_ControlBlock->GetPtr()));
+			other.m_ControlBlock = nullptr;
+		}
 
-        return *this;
-    }
+		return *this;
+	}
 
-    /**
+	/**
 	 * @brief Assignment operator that assigns a strong reference to a weak reference.
 	 *
 	 * This operator assigns a strong reference (Ref<U>) to this weak reference (WeakRef<T>).
@@ -1309,30 +1332,30 @@ namespace SceneryEditorX
 	 * @note - This operator only participates in overload resolution if U* is convertible to T*
 	 *       (enforced by the SFINAE template parameter)
 	 */
-    template <typename T>
-    template <typename U, typename>
-    WeakRef<T> &WeakRef<T>::operator=(const Ref<U> &ref) noexcept
-    {
-        if (m_ControlBlock)
-        {
-            m_ControlBlock->DecWeakCount();
-            m_ControlBlock = nullptr;
-        }
+	template <typename T>
+	template <typename U, typename>
+	WeakRef<T> &WeakRef<T>::operator=(const Ref<U> &ref) noexcept
+	{
+		if (m_ControlBlock)
+		{
+			m_ControlBlock->DecWeakCount();
+			m_ControlBlock = nullptr;
+		}
 
-        if (ref)
-        {
-            m_ControlBlock =
-                Internal::ControlBlockRegistry<T>::GetInstance().GetControlBlock(static_cast<T *>(ref.Get()));
-            if (m_ControlBlock)
-            {
-                m_ControlBlock->IncWeakCount();
-            }
-        }
+		if (ref)
+		{
+			m_ControlBlock =
+				Internal::ControlBlockRegistry<T>::GetInstance().GetControlBlock(static_cast<T *>(ref.Get()));
+			if (m_ControlBlock)
+			{
+				m_ControlBlock->IncWeakCount();
+			}
+		}
 
-        return *this;
-    }
+		return *this;
+	}
 
-    /**
+	/**
 	 * @brief Assignment operator for assigning nullptr to a weak reference.
 	 *
 	 * This operator allows assigning nullptr to a WeakRef, which effectively
@@ -1346,18 +1369,18 @@ namespace SceneryEditorX
 	 * @param unused Nullptr value (not used in the implementation)
 	 * @return A reference to this WeakRef after the assignment
 	 */
-    template <typename T>
-    WeakRef<T> &WeakRef<T>::operator=(std::nullptr_t) noexcept
-    {
-        if (m_ControlBlock)
-        {
-            m_ControlBlock->DecWeakCount();
-            m_ControlBlock = nullptr;
-        }
-        return *this;
-    }
+	template <typename T>
+	WeakRef<T> &WeakRef<T>::operator=(std::nullptr_t) noexcept
+	{
+		if (m_ControlBlock)
+		{
+			m_ControlBlock->DecWeakCount();
+			m_ControlBlock = nullptr;
+		}
+		return *this;
+	}
 
-    /**
+	/**
 	 * @brief Checks if the object pointed to by the weak reference has been destroyed.
 	 *
 	 * This method determines whether the WeakRef is expired by checking if:
@@ -1371,13 +1394,13 @@ namespace SceneryEditorX
 	 * @return true if the referenced object has been destroyed or if this is an empty WeakRef
 	 * @return false if the referenced object is still alive
 	 */
-    template <typename T>
-    bool WeakRef<T>::Expired() const noexcept
-    {
-        return !m_ControlBlock || m_ControlBlock->GetPtr() == nullptr;
-    }
+	template <typename T>
+	bool WeakRef<T>::Expired() const noexcept
+	{
+		return !m_ControlBlock || m_ControlBlock->GetPtr() == nullptr;
+	}
 
-    /**
+	/**
 	 * @brief Attempts to convert a weak reference to a strong reference.
 	 *
 	 * This method tries to obtain a strong reference (Ref<T>) from the weak reference.
@@ -1388,18 +1411,18 @@ namespace SceneryEditorX
 	 * @tparam T The type of the referenced object
 	 * @return Ref<T> A strong reference to the object if it's still alive, or an empty reference otherwise
 	 */
-    template <typename T>
-    Ref<T> WeakRef<T>::Lock() const noexcept
-    {
-        if (!m_ControlBlock || m_ControlBlock->GetPtr() == nullptr) {
-            return Ref<T>(nullptr);
-        }
+	template <typename T>
+	Ref<T> WeakRef<T>::Lock() const noexcept
+	{
+		if (!m_ControlBlock || m_ControlBlock->GetPtr() == nullptr) {
+			return Ref<T>(nullptr);
+		}
 
-        T* ptr = static_cast<T*>(m_ControlBlock->GetPtr());
-        return Ref<T>(ptr);
-    }
+		T* ptr = static_cast<T*>(m_ControlBlock->GetPtr());
+		return Ref<T>(ptr);
+	}
 
-    /**
+	/**
 	 * @brief Resets this weak reference to empty state.
 	 *
 	 * This method explicitly releases the weak reference to any object it might be pointing to.
@@ -1413,17 +1436,17 @@ namespace SceneryEditorX
 	 * @note - This method is often used to explicitly release resources before the WeakRef
 	 *       goes out of scope, or to prepare the WeakRef for reuse.
 	 */
-    template <typename T>
-    void WeakRef<T>::Reset() noexcept
-    {
-        if (m_ControlBlock)
-        {
-            m_ControlBlock->DecWeakCount();
-            m_ControlBlock = nullptr;
-        }
-    }
+	template <typename T>
+	void WeakRef<T>::Reset() noexcept
+	{
+		if (m_ControlBlock)
+		{
+			m_ControlBlock->DecWeakCount();
+			m_ControlBlock = nullptr;
+		}
+	}
 
-    /**
+	/**
 	 * @brief Gets the current number of strong references (Ref<T>) to the object.
 	 *
 	 * This method returns the reference count of the object that this WeakRef
@@ -1436,17 +1459,17 @@ namespace SceneryEditorX
 	 * @tparam T The type of the referenced object
 	 * @return The number of strong references to the object, or 0 if the WeakRef is expired
 	 */
-    template <typename T>
-    uint32_t WeakRef<T>::UseCount() const noexcept
-    {
-        if (m_ControlBlock && m_ControlBlock->GetPtr())
-        {
-            return m_ControlBlock->GetPtr()->GetRefCount();
-        }
-        return 0;
-    }
+	template <typename T>
+	uint32_t WeakRef<T>::UseCount() const noexcept
+	{
+		if (m_ControlBlock && m_ControlBlock->GetPtr())
+		{
+			return m_ControlBlock->GetPtr()->GetRefCount();
+		}
+		return 0;
+	}
 
-    /**
+	/**
 	 * @brief Equality comparison operator for WeakRef objects.
 	 *
 	 * This operator determines if two WeakRef objects reference the same underlying object.
@@ -1462,19 +1485,19 @@ namespace SceneryEditorX
 	 * @return true if both WeakRef objects reference the same object or are both empty
 	 * @return false if the WeakRef objects reference different objects or one is empty and one is not
 	 */
-    template <typename T>
-    bool WeakRef<T>::operator==(const WeakRef &other) const noexcept
-    {
-        if (m_ControlBlock == other.m_ControlBlock)
-            return true;
+	template <typename T>
+	bool WeakRef<T>::operator==(const WeakRef &other) const noexcept
+	{
+		if (m_ControlBlock == other.m_ControlBlock)
+			return true;
 
-        if (!m_ControlBlock || !other.m_ControlBlock)
-            return false;
+		if (!m_ControlBlock || !other.m_ControlBlock)
+			return false;
 
-        return m_ControlBlock->GetPtr() == other.m_ControlBlock->GetPtr();
-    }
+		return m_ControlBlock->GetPtr() == other.m_ControlBlock->GetPtr();
+	}
 
-    /**
+	/**
 	 * @brief Inequality comparison operator for WeakRef objects.
 	 *
 	 * This operator determines if two WeakRef objects reference different underlying objects.
@@ -1489,13 +1512,13 @@ namespace SceneryEditorX
 	 * @return true if the WeakRef objects reference different objects or have different empty states
 	 * @return false if both WeakRef objects reference the same object or are both empty
 	 */
-    template <typename T>
-    bool WeakRef<T>::operator!=(const WeakRef &other) const noexcept
-    {
-        return !(*this == other);
-    }
+	template <typename T>
+	bool WeakRef<T>::operator!=(const WeakRef &other) const noexcept
+	{
+		return !(*this == other);
+	}
 
-    /**
+	/**
 	 * @brief Constructor that creates a strong reference from a weak reference.
 	 *
 	 * This constructor attempts to convert a WeakRef<T> to a Ref<T> by checking if
@@ -1512,110 +1535,110 @@ namespace SceneryEditorX
 	 * @param weak The weak reference to convert to a strong reference
 	 * @note - This enables safe conversion from WeakRef<T> to Ref<T>, preventing access to destroyed objects
 	 */
-    template <typename T>
-    inline Ref<T>::Ref(const WeakRef<T> &weak) noexcept
-    {
-        if (weak.GetControlBlock() && weak.GetControlBlock()->GetPtr()) {
-            m_Ptr = static_cast<T*>(weak.GetControlBlock()->GetPtr());
-            InternalAddRef();
-        } else {
-            m_Ptr = nullptr;
-        }
-    }
+	template <typename T>
+	inline Ref<T>::Ref(const WeakRef<T> &weak) noexcept
+	{
+		if (weak.GetControlBlock() && weak.GetControlBlock()->GetPtr()) {
+			m_Ptr = static_cast<T*>(weak.GetControlBlock()->GetPtr());
+			InternalAddRef();
+		} else {
+			m_Ptr = nullptr;
+		}
+	}
 
-    /**
-     * @brief Equality operator for comparing objects through two Ref instances.
-     *
-     * This operator compares the objects managed by two Ref instances for equality.
-     * It first checks if the Ref instances point to the same address (identity comparison).
-     * If not, it checks if both Refs are valid, and if so, compares the objects using
-     * their operator== implementation.
-     *
-     * This operator requires that type T has a valid operator== defined.
-     *
-     * @tparam T The type of objects managed by the Ref instances
-     * @param lhs The left-hand side Ref for comparison
-     * @param rhs The right-hand side Ref for comparison
-     * @return True if both Refs manage equal objects, false otherwise
-     */
-    template <typename T>
-    bool operator==(const Ref<T> &lhs, const Ref<T> &rhs) noexcept
-    {
-        if (lhs.Get() == rhs.Get())
-            return true;
+	/**
+	 * @brief Equality operator for comparing objects through two Ref instances.
+	 *
+	 * This operator compares the objects managed by two Ref instances for equality.
+	 * It first checks if the Ref instances point to the same address (identity comparison).
+	 * If not, it checks if both Refs are valid, and if so, compares the objects using
+	 * their operator== implementation.
+	 *
+	 * This operator requires that type T has a valid operator== defined.
+	 *
+	 * @tparam T The type of objects managed by the Ref instances
+	 * @param lhs The left-hand side Ref for comparison
+	 * @param rhs The right-hand side Ref for comparison
+	 * @return True if both Refs manage equal objects, false otherwise
+	 */
+	template <typename T>
+	bool operator==(const Ref<T> &lhs, const Ref<T> &rhs) noexcept
+	{
+		if (lhs.Get() == rhs.Get())
+			return true;
 
-        if (!lhs || !rhs)
-            return false;
+		if (!lhs || !rhs)
+			return false;
 
-        return *lhs == *rhs;
-    }
+		return *lhs == *rhs;
+	}
 
-    /**
-     * @brief Inequality operator for comparing objects through two Ref instances.
-     *
-     * This operator compares the objects managed by two Ref instances for inequality.
-     * It is implemented by negating the result of the equality operator.
-     *
-     * This operator requires that type T has a valid operator== defined.
-     *
-     * @tparam T The type of objects managed by the Ref instances
-     * @param lhs The left-hand side Ref for comparison
-     * @param rhs The right-hand side Ref for comparison
-     * @return True if the Refs manage different objects, false if they manage equal objects
-     */
-    template <typename T>
-    bool operator!=(const Ref<T> &lhs, const Ref<T> &rhs) noexcept
-    {
-        return !(lhs == rhs);
-    }
+	/**
+	 * @brief Inequality operator for comparing objects through two Ref instances.
+	 *
+	 * This operator compares the objects managed by two Ref instances for inequality.
+	 * It is implemented by negating the result of the equality operator.
+	 *
+	 * This operator requires that type T has a valid operator== defined.
+	 *
+	 * @tparam T The type of objects managed by the Ref instances
+	 * @param lhs The left-hand side Ref for comparison
+	 * @param rhs The right-hand side Ref for comparison
+	 * @return True if the Refs manage different objects, false if they manage equal objects
+	 */
+	template <typename T>
+	bool operator!=(const Ref<T> &lhs, const Ref<T> &rhs) noexcept
+	{
+		return !(lhs == rhs);
+	}
 
-    /**
-     * @brief Equality operator for comparing objects through two WeakRef instances.
-     *
-     * This operator compares the objects managed by two WeakRef instances for equality.
-     * It first checks if both WeakRefs are not expired and refer to valid objects.
-     * If so, it locks the WeakRefs to obtain strong references (Refs) and compares
-     * the objects using the operator== implementation for Ref<T>.
-     *
-     * This operator requires that type T has a valid operator== defined.
-     *
-     * @tparam T The type of objects managed by the WeakRef instances
-     * @param lhs The left-hand side WeakRef for comparison
-     * @param rhs The right-hand side WeakRef for comparison
-     * @return True if both WeakRefs manage equal objects, false otherwise
-     */
-    template <typename T>
-    bool operator==(const WeakRef<T> &lhs, const WeakRef<T> &rhs) noexcept
-    {
-        if (lhs.Expired() || rhs.Expired())
-            return false;
+	/**
+	 * @brief Equality operator for comparing objects through two WeakRef instances.
+	 *
+	 * This operator compares the objects managed by two WeakRef instances for equality.
+	 * It first checks if both WeakRefs are not expired and refer to valid objects.
+	 * If so, it locks the WeakRefs to obtain strong references (Refs) and compares
+	 * the objects using the operator== implementation for Ref<T>.
+	 *
+	 * This operator requires that type T has a valid operator== defined.
+	 *
+	 * @tparam T The type of objects managed by the WeakRef instances
+	 * @param lhs The left-hand side WeakRef for comparison
+	 * @param rhs The right-hand side WeakRef for comparison
+	 * @return True if both WeakRefs manage equal objects, false otherwise
+	 */
+	template <typename T>
+	bool operator==(const WeakRef<T> &lhs, const WeakRef<T> &rhs) noexcept
+	{
+		if (lhs.Expired() || rhs.Expired())
+			return false;
 
-        auto lhsLocked = lhs.Lock();
-        auto rhsLocked = rhs.Lock();
+		auto lhsLocked = lhs.Lock();
+		auto rhsLocked = rhs.Lock();
 
-        return lhsLocked == rhsLocked;
-    }
+		return lhsLocked == rhsLocked;
+	}
 
-    /**
-     * @brief Inequality operator for comparing objects through two WeakRef instances.
-     *
-     * This operator compares the objects managed by two WeakRef instances for inequality.
-     * It is implemented by negating the result of the equality operator.
-     *
-     * This operator requires that type T has a valid operator== defined.
-     *
-     * @tparam T The type of objects managed by the WeakRef instances
-     * @param lhs The left-hand side WeakRef for comparison
-     * @param rhs The right-hand side WeakRef for comparison
-     * @return True if the WeakRefs manage different objects, false if they manage equal objects
-     */
-    template <typename T>
-    bool operator!=(const WeakRef<T> &lhs, const WeakRef<T> &rhs) noexcept
-    {
-        return !(lhs == rhs);
-    }
+	/**
+	 * @brief Inequality operator for comparing objects through two WeakRef instances.
+	 *
+	 * This operator compares the objects managed by two WeakRef instances for inequality.
+	 * It is implemented by negating the result of the equality operator.
+	 *
+	 * This operator requires that type T has a valid operator== defined.
+	 *
+	 * @tparam T The type of objects managed by the WeakRef instances
+	 * @param lhs The left-hand side WeakRef for comparison
+	 * @param rhs The right-hand side WeakRef for comparison
+	 * @return True if the WeakRefs manage different objects, false if they manage equal objects
+	 */
+	template <typename T>
+	bool operator!=(const WeakRef<T> &lhs, const WeakRef<T> &rhs) noexcept
+	{
+		return !(lhs == rhs);
+	}
 
-    /**
+	/**
 	 * @brief Explicit template instantiation for Ref<RefCounted>
 	 *
 	 * This explicit instantiation ensures that the compiler generates all the code
@@ -1625,9 +1648,9 @@ namespace SceneryEditorX
 	 * RefCounted is the base class for all reference-counted objects in the system,
 	 * so this instantiation is particularly important for the smart pointer system.
 	 */
-    template class Ref<RefCounted>;
+	template class Ref<RefCounted>;
 
-    /**
+	/**
 	 * @brief Explicit template instantiation for WeakRef<RefCounted>
 	 *
 	 * This explicit instantiation ensures that the compiler generates all the code
@@ -1638,7 +1661,7 @@ namespace SceneryEditorX
 	 * deletion when all strong references (Ref<T>) are gone, which is essential for
 	 * breaking reference cycles and implementing observer patterns.
 	 */
-    template class WeakRef<RefCounted>;
+	template class WeakRef<RefCounted>;
 
 }
 

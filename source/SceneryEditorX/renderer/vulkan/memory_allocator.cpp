@@ -42,6 +42,8 @@
 #define VMA_STATIC_VULKAN_FUNCTIONS  0
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 1
 #include "SceneryEditorX/utils/string_utils.h"
+#include "debug/graphics_debug.h"
+
 #include <vma/vk_mem_alloc.h>
 #include <volk/volk.h>
 
@@ -228,7 +230,7 @@ namespace SceneryEditorX
 			SEDX_CORE_ERROR("  GPU mem usage: {}/{}", Utils::BytesToString(stats.used), Utils::BytesToString(stats.totalAvailable));
 		}
 
-		// TODO: Tracking
+		// TODO: Improve memory allocation tracking
 		VmaAllocationInfo allocInfo;
 		vmaGetAllocationInfo(s_AllocatorData->allocator, allocation, &allocInfo);
 		if (allocSize)

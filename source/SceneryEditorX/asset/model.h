@@ -29,7 +29,10 @@
  * -------------------------------------------------------
  */
 #pragma once
+#include "asset.h"
+#include "texture_handle.h"
 #include <SceneryEditorX/renderer/vulkan/buffer.h>
+#include <SceneryEditorX/renderer/vulkan/descriptor_set.h>
 
 // -------------------------------------------------------
 
@@ -38,42 +41,60 @@ namespace SceneryEditorX
 
 	struct Vertex
 	{
-	    Vec3 pos;
-	    Vec3 normal;
-	    Vec2 uv;
+		Vec3 pos;
+		Vec3 normal;
+		Vec2 uv;
 	};
 	
 	// -------------------------------------------------------
 
-    class Model : public RefCounted
+	class Model : public Asset
 	{
 	public:
-	    Model() = default;
-	    ~Model() = default;
+		Model();
+		virtual ~Model() override;
 	
-	    // Load an OBJ and create a single mapped host-visible buffer containing
-	    // vertices followed by indices. Returns true on success.
-	    bool LoadFromObj(const std::string& filename, VmaAllocator allocator, const VmaAllocationCreateInfo& allocInfo);
+		// Load an OBJ and create a single mapped host-visible buffer containing
+		// vertices followed by indices. Returns true on success.
+		bool LoadFromObj(const std::string& filename, VmaAllocator allocator, const VmaAllocationCreateInfo& allocInfo);
+
+		// Load a model and associated textures. cmdPool and queue are used to
+		// transfer/initialize texture images. Returns true on success.
+		bool Load(VmaAllocator allocator, VkCommandPool cmdPool, VkQueue queue, const std::string& modelFile, const std::vector<std::string>& textureFiles, const VmaAllocationCreateInfo& modelAllocInfo);
 	
-	    VkBuffer GetBuffer() const { return m_Buffer.Get(); }
-	    VkDeviceSize GetVertexBufferSize() const { return m_VBufferSize; }
-	    VkDeviceSize GetIndexBufferSize() const { return m_IBufferSize; }
-	    uint32_t GetIndexCount() const { return m_IndexCount; }
+		// Destroy resources owned by this asset (textures, descriptors, model buffer)
+		void Destroy(VmaAllocator allocator);
 	
-	    void Destroy() { m_Buffer.Destroy(); }
+		// Accessors
+		VkDescriptorSet GetDescriptorSet() const { return m_DescriptorOwned.GetSet(); }
+		VkDescriptorSetLayout GetDescriptorLayout() const { return m_DescriptorOwned.GetLayout(); }
 	
-	    // Helpers for vertex input setup
-	    static VkVertexInputBindingDescription BindingDescription();
-	    static std::vector<VkVertexInputAttributeDescription> AttributeDescriptions();
+		// Vertex input helpers (forwarded to Model)
+		static VkVertexInputBindingDescription GetVertexBindingDescription() { return BindingDescription(); }
+		static std::vector<VkVertexInputAttributeDescription> GetVertexAttributeDescriptions() { return AttributeDescriptions(); }
+	
+		VkBuffer GetBuffer() const { return m_Buffer.Get(); }
+		VkDeviceSize GetVertexBufferSize() const { return m_VBufferSize; }
+		VkDeviceSize GetIndexBufferSize() const { return m_IBufferSize; }
+		uint32_t GetIndexCount() const { return m_IndexCount; }
+	
+		void Destroy() { m_Buffer.Destroy(); }
+	
+		// Helpers for vertex input setup
+		static VkVertexInputBindingDescription BindingDescription();
+		static std::vector<VkVertexInputAttributeDescription> AttributeDescriptions();
 	
 	private:
-	    Buffer m_Buffer;
-        Ref<Device> m_Device;
-	    VkDeviceSize m_VBufferSize{ 0 };
-	    VkDeviceSize m_IBufferSize{ 0 };
-	    uint32_t m_IndexCount{ 0 };
-	    std::vector<Vertex> m_Vertices;
-	    std::vector<uint16_t> m_Indices;
+		Buffer m_Buffer;
+		Ref<Device> m_Device;
+		VkDeviceSize m_VBufferSize{ 0 };
+		VkDeviceSize m_IBufferSize{ 0 };
+		uint32_t m_IndexCount{ 0 };
+		std::vector<Vertex> m_Vertices;
+		std::vector<uint16_t> m_Indices;
+		//Model m_Model = {};
+		DescriptorSet m_DescriptorOwned;
+		std::vector<TextureHandle> m_Textures;
 	};
 
 }

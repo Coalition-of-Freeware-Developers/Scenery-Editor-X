@@ -29,80 +29,62 @@
  * -------------------------------------------------------
  */
 #pragma once
-#include <filesystem>
-//#include "SceneryEditorX/asset/managers/asset_manager.h"
-//#include "SceneryEditorX/asset/managers/editor_asset_manager.h"
 #include "project_settings.h"
-#include <SceneryEditorX/core/platform/config/editor_config.hpp>
-#include <SceneryEditorX/logging/asserts.h>
+#include <filesystem>
+#include <SceneryEditorX/asset/asset_manager.h>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
+
 	class Project : public RefCounted
 	{
 	public:
-	    Project();
-        virtual ~Project() override;
+		Project();
+		~Project();
 
-	    // -------------------------------------------------------
+		// -------------------------------------------------------
 
-		const ProjectConfig &GetConfig() const { return config; }
+		const ProjectConfig &GetConfig() const { return m_Config; }
 
-        static std::filesystem::path GetAssetRegistryPath()
-		{
-            SEDX_CORE_ASSERT(activeProject, "No active project set");
-            return std::filesystem::path(activeProject->GetConfig().projectPath) / activeProject->GetConfig().assetRegistry;
-		}
+		static Ref<Project> GetActive() { return m_ActiveProject; }
 
-        static std::filesystem::path GetActiveAssetDirectory()
-		{
-            SEDX_CORE_ASSERT(activeProject, "No active project set");
-            return activeProject->GetAssetDirectory();
-		}
+		static void SetActive(Ref<Project> &project);
 
-        static Ref<Project> GetActive() { return activeProject; }
-        static void SetActive(Ref<Project> &project);
+		void CreateProject(std::string name, std::filesystem::path path);
 
-        void CreateProject(std::string name, std::filesystem::path path);
-	    void Load(const std::filesystem::path &InPath);
-	    void Save(const std::filesystem::path &InPath);
+		void Load(const std::filesystem::path &inPath);
+		void Save(const std::filesystem::path &inPath);
 
-        //static Ref<AssetManager> GetAssetManager() { return s_AssetManager; }
-        //static Ref<EditorAssetManager> GetEditorAssetManager() { return s_AssetManager.As<EditorAssetManager>(); }
+		static Ref<AssetManager> GetAssetManager() { return m_AssetManager; }
 
-        std::filesystem::path GetAssetDirectory();
+		// -------------------------------------------------------
 
-	    // -------------------------------------------------------
+		static const std::string &GetProjectName();
 
-		static const std::string &GetProjectName()
-        {
-            SEDX_CORE_ASSERT(activeProject, "No active project set");
-            return activeProject->GetConfig().name;
-        }
+		static std::filesystem::path GetProjectDirectory();
 
-		static std::filesystem::path GetProjectDirectory()
-		{
-            SEDX_CORE_ASSERT(activeProject, "No active project set");
-            return activeProject->GetConfig().projectPath;
-		}
+		static std::filesystem::path GetAssetRegistryPath();
 
-	    static std::filesystem::path GetCacheDirectory()
-		{
-            SEDX_CORE_ASSERT(activeProject, "No active project set");
-            return std::filesystem::path(activeProject->GetConfig().projectPath) / "../cache";
-		}
+		static std::filesystem::path GetActiveAssetDirectory();
+
+		std::filesystem::path GetAssetDirectory() const;
+
+		static std::filesystem::path GetMeshPath();
+
+		static std::filesystem::path GetCacheDirectory();
+
+		static std::filesystem::path GetScriptModulePath();
 
 	private:
-        ProjectConfig config;
-        std::string projectName;
-        std::filesystem::path projectPath;
-        std::filesystem::path binPath;
+		ProjectConfig m_Config;
+		std::string m_ProjectName;
+		std::filesystem::path m_ProjectPath;
+		std::filesystem::path m_BinPath;
 
-	    //static Ref<AssetManager> s_AssetManager;
-        inline static Ref<Project> activeProject;
-
+		static Ref<AssetManager> m_AssetManager;
+		static Ref<Project> m_ActiveProject;
 	};
 
 }

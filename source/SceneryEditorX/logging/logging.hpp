@@ -60,8 +60,8 @@ namespace SceneryEditorX
 	{
 	public:
 
-        /**
-         * @enum Type
+		/**
+		 * @enum Type
 		 * @brief An enumeration of log types.
 		 *
 		 * This enum is used to specify the type of logger being used.
@@ -72,32 +72,32 @@ namespace SceneryEditorX
 		 * @note - The Core logger is used for core application logging,
 		 * while the Editor logger is used for editor-specific logging.
 		 */
-	    enum class Type : uint8_t
-	    {
-	        Core		= 0,
-	        Editor		= 1,
-            Launcher	= 2
-	    };
+		enum class Type : uint8_t
+		{
+			Core		= 0,
+			Editor		= 1,
+			Launcher	= 2
+		};
 
-	    /**
-	     * @enum Level
+		/**
+		 * @enum Level
 		 * @brief An enumeration of log levels.
 		 *
 		 * This enum is used to specify the severity of log messages.
 		 * It includes levels such as Trace, Info, Warn, Error, and Fatal.
 		 * These levels can be used to filter log messages based on their severity.
 		 */
-	    enum class Level : uint8_t
-	    {
-	        Trace	= 0,
-	        Info	= 1,
-	        Warn	= 2,
-	        Error	= 3,
-	        Fatal	= 4
-	    };
+		enum class Level : uint8_t
+		{
+			Trace	= 0,
+			Info	= 1,
+			Warn	= 2,
+			Error	= 3,
+			Fatal	= 4
+		};
 
-	    /**
-	     * @struct TagDetails
+		/**
+		 * @struct TagDetails
 		 * @brief A structure to hold the details of a tag.
 		 *
 		 * This structure contains information about whether a tag is enabled
@@ -109,70 +109,70 @@ namespace SceneryEditorX
 		 *
 		 * @note - The LevelFilter field can be used to filter log messages based on their severity.
 		 */
-	    struct TagDetails
-	    {
-	        bool enabled = true;
-	        Level levelFilter = Level::Trace;
-	    };
+		struct TagDetails
+		{
+			bool enabled = true;
+			Level levelFilter = Level::Trace;
+		};
 
-	    // ------------------------------------------------
+		// ------------------------------------------------
 
-	    /**
-	     * @fn Init
+		/**
+		 * @fn Init
 		 * @brief Initializes the logger instance.
 		 *
 		 * This function initializes the logger instance with the desired settings.
 		 */
-	    static void Init();
+		static void Init();
 
-	    /**
-	     * @fn LogHeader
+		/**
+		 * @fn LogHeader
 		 * @brief Logs system information to the console.
 		 *
 		 * This function logs system information to the console. It logs the
 		 * operating system version, processor architecture, number of processors,
 		 * page size, and processor type.
 		 */
-	    static void LogHeader();
+		static void LogHeader();
 
-	    /**
-	     * @fn ShutDown
+		/**
+		 * @fn ShutDown
 		 * @brief Shuts down the logger instance.
 		 *
 		 * This function shuts down the logger instance and releases any resources
 		 * associated with it. It should be called before the application exits to
 		 * ensure that all log messages are properly flushed.
 		 */
-	    static void ShutDown();
+		static void ShutDown();
 
-        /**
-         * @brief Converts a Vulkan result code to a human-readable string.
-         * @param result The Vulkan result code to convert.
-         * @return A string representation of the Vulkan result code.
-         */
-        static const char *VkErrorString(VkResult result);
+		/**
+		 * @brief Converts a Vulkan result code to a human-readable string.
+		 * @param result The Vulkan result code to convert.
+		 * @return A string representation of the Vulkan result code.
+		 */
+		static const char *VkErrorString(VkResult result);
 
-        /**
-	     * @fn LogVulkanDebug
+		/**
+		 * @fn LogVulkanDebug
 		 * @brief Logs a message with the specified vulkan log level.
 		 *
 		 * This function logs a message with the vulkan log level to the console and the log file.
 		 *
 		 * @param message The message to log.
 		 */
-	    static void LogVulkanDebug(const std::string &message);
+		static void LogVulkanDebug(const std::string &message);
 
-        /**
-         * @brief Reports an assertion failure.
-         * @param expr The expression that failed.
-         * @param file The file in which the assertion failed.
-         * @param line The line number at which the assertion failed.
-         * @param message The message associated with the assertion failure.
-         * @return True if the assertion failure was reported successfully, false otherwise.
-         */
-        static bool ReportAssertion(const char *expr, const char *file, int line, const std::string &message);
+		/**
+		 * @brief Reports an assertion failure.
+		 * @param expr The expression that failed.
+		 * @param file The file in which the assertion failed.
+		 * @param line The line number at which the assertion failed.
+		 * @param message The message associated with the assertion failure.
+		 * @return True if the assertion failure was reported successfully, false otherwise.
+		 */
+		static bool ReportAssertion(const char *expr, const char *file, int line, const std::string &message);
 
-        /**
+		/**
 		 * @brief Gets the logger instance.
 		 * @return A shared pointer to the logger instance.
 		 *
@@ -181,74 +181,74 @@ namespace SceneryEditorX
 		 *
 		 * @note - The logger instance is initialized in the Init function.
 		 */
-        static std::shared_ptr<spdlog::logger> &GetCoreLogger() { return m_CoreLogger; }
+		static std::shared_ptr<spdlog::logger> &GetCoreLogger() { return m_CoreLogger; }
 
-        /**
-         * @fn GetEditorLogger
-         * @brief Gets the editor logger instance.
-         *
-         * This function returns a shared pointer to the editor logger instance.
-         * It can be used to access the editor logger for logging messages.
-         *
-         * @note - The editor logger instance is initialized in the Init function.
-         * @return A shared pointer to the editor logger instance.
-         */
-        static std::shared_ptr<spdlog::logger> &GetEditorLogger() { return m_EditorLogger; }
+		/**
+		 * @fn GetEditorLogger
+		 * @brief Gets the editor logger instance.
+		 *
+		 * This function returns a shared pointer to the editor logger instance.
+		 * It can be used to access the editor logger for logging messages.
+		 *
+		 * @note - The editor logger instance is initialized in the Init function.
+		 * @return A shared pointer to the editor logger instance.
+		 */
+		static std::shared_ptr<spdlog::logger> &GetEditorLogger() { return m_EditorLogger; }
 
-        /**
-         * @fn GetEditorConsoleLogger
-         * @brief Gets the editor console logger instance.
-         *
-         * This function returns a shared pointer to the editor console logger instance.
-         * It can be used to access the editor console logger for logging messages.
-         *
-         * @return A shared pointer to the editor console logger instance.
-         */
-        static std::shared_ptr<spdlog::logger> &GetEditorConsoleLogger() { return m_ConsoleLogger; }
+		/**
+		 * @fn GetEditorConsoleLogger
+		 * @brief Gets the editor console logger instance.
+		 *
+		 * This function returns a shared pointer to the editor console logger instance.
+		 * It can be used to access the editor console logger for logging messages.
+		 *
+		 * @return A shared pointer to the editor console logger instance.
+		 */
+		static std::shared_ptr<spdlog::logger> &GetEditorConsoleLogger() { return m_ConsoleLogger; }
 
-	    /**
-         * @fn GetLauncherLogger
-         * @brief Gets the launcher logger instance.
-         *
-         * This function returns a shared pointer to the launcher logger instance.
-         * It can be used to access the launcher logger for logging messages.
-         *
-         * @return A shared pointer to the launcher logger instance.
-         */
+		/**
+		 * @fn GetLauncherLogger
+		 * @brief Gets the launcher logger instance.
+		 *
+		 * This function returns a shared pointer to the launcher logger instance.
+		 * It can be used to access the launcher logger for logging messages.
+		 *
+		 * @return A shared pointer to the launcher logger instance.
+		 */
 		static std::shared_ptr<spdlog::logger> &GetLauncherLogger() { return m_LauncherLogger; }
 
-	    // -------------------------------------------------------------
+		// -------------------------------------------------------------
 
-        /**
-         * @brief Checks if a tag is enabled.
-         *
-         * @param tag The tag to check.
-         * @return True if the tag is enabled, false otherwise.
-         */
-        static bool HasTag(const std::string &tag) { return m_EnabledTags.contains(std::string(tag.data(), tag.size())); }
+		/**
+		 * @brief Checks if a tag is enabled.
+		 *
+		 * @param tag The tag to check.
+		 * @return True if the tag is enabled, false otherwise.
+		 */
+		static bool HasTag(const std::string &tag) { return m_EnabledTags.contains(std::string(tag.data(), tag.size())); }
 
-        /**
-         * @brief Gets the tag details for a specific tag.
-         * @return The tag details for the specified tag.
-         */
-        static std::map<std::string, TagDetails> &EnabledTags() { return m_EnabledTags; }
+		/**
+		 * @brief Gets the tag details for a specific tag.
+		 * @return The tag details for the specified tag.
+		 */
+		static std::map<std::string, TagDetails> &EnabledTags() { return m_EnabledTags; }
 
-        /* @brief Sets the tag details for a specific tag. */
-        static void SetDefaultTagSettings();
+		/* @brief Sets the tag details for a specific tag. */
+		static void SetDefaultTagSettings();
 
-        /**
-         * @brief Sets the global log level.
-         * @param level The log level to set.
-         */
-        static void SetGlobalLevel(Level level);
+		/**
+		 * @brief Sets the global log level.
+		 * @param level The log level to set.
+		 */
+		static void SetGlobalLevel(Level level);
 
-        /**
-         * @brief Gets the global spdlog log level.
-         * @return The global spdlog log level.
-         */
-        static spdlog::level::level_enum GetGlobalLogLevel();
+		/**
+		 * @brief Gets the global spdlog log level.
+		 * @return The global spdlog log level.
+		 */
+		static spdlog::level::level_enum GetGlobalLogLevel();
 
-        /**
+		/**
 		 * @brief Sets the initial log level.
 		 * @param level The initial log level to set.
 		 */
@@ -260,96 +260,96 @@ namespace SceneryEditorX
 		 */
 		static Level GetInitialLevel() { return m_InitialLevel; }
 
-        /** 
+		/** 
 		 * @brief Get the log level filter for a specific tag.
 		 * @param tag Tag name (empty string = default/global tag)
 		 * @return The configured Level for the tag or the default level if not configured.
 		 */
 		static Level GetTagLevel(const std::string &tag);
 
-        // -----------------------------------------------------------
+		// -----------------------------------------------------------
 
-    #ifdef SEDX_PLATFORM_WINDOWS
-        template <typename... Args>
-        static void PrintMessage(Log::Type type, Log::Level level, std::format_string<Args...> format, Args &&...args);
-    #else
+	#ifdef SEDX_PLATFORM_WINDOWS
+		template <typename... Args>
+		static void PrintMessage(Log::Type type, Log::Level level, std::format_string<Args...> format, Args &&...args);
+	#else
 		template<typename... Args>
 		static void PrintMessage(Log::Type type, Log::Level level, const std::string_view format, Args&&... args);
-    #endif
-	    template <typename... Args>
-	    static void PrintMessageTag(Log::Type type, Log::Level level, std::string_view tag, std::format_string<Args...> format, Args &&...args);
+	#endif
+		template <typename... Args>
+		static void PrintMessageTag(Log::Type type, Log::Level level, std::string_view tag, std::format_string<Args...> format, Args &&...args);
 
-	    static void PrintMessageTag(Log::Type type, Log::Level level, std::string_view tag, std::string_view message);
+		static void PrintMessageTag(Log::Type type, Log::Level level, std::string_view tag, std::string_view message);
 
-	    template <typename... Args>
-	    static void PrintAssertMessage(Log::Type type, std::string_view prefix, std::format_string<Args...> message, Args &&...args);
+		template <typename... Args>
+		static void PrintAssertMessage(Log::Type type, std::string_view prefix, std::format_string<Args...> message, Args &&...args);
 
-	    static void PrintAssertMessage(Log::Type type, std::string_view prefix);
+		static void PrintAssertMessage(Log::Type type, std::string_view prefix);
 
-	    // -----------------------------------------------------------
+		// -----------------------------------------------------------
 
-	    /**
+		/**
 		 * @brief Converts a log level to a string.
 		 * @param level The log level to convert.
 		 * @return The string representation of the log level.
 		 */
-	    static const char *LevelToString(const Level level)
-	    {
-	        switch (level)
-	        {
+		static const char *LevelToString(const Level level)
+		{
+			switch (level)
+			{
 				case Level::Trace: return "Trace";
 				case Level::Info:  return "Info";
 				case Level::Warn:  return "Warn";
 				case Level::Error: return "Error";
 				case Level::Fatal: return "Fatal";
-	        }
-	        return "";
-	    }
+			}
+			return "";
+		}
 
-	    /**
+		/**
 		* @brief Converts a string to a log level.
 		* @param string The string to convert.
 		* @return The log level corresponding to the string.
 		*/
-	    static Level LevelFromString(std::string_view string)
-	    {
-	        if (string == "Trace")	return Level::Trace;
-	        if (string == "Info")	return Level::Info;
-	        if (string == "Warn")	return Level::Warn;
-	        if (string == "Error")	return Level::Error;
-	        if (string == "Fatal")	return Level::Fatal;
+		static Level LevelFromString(std::string_view string)
+		{
+			if (string == "Trace")	return Level::Trace;
+			if (string == "Info")	return Level::Info;
+			if (string == "Warn")	return Level::Warn;
+			if (string == "Error")	return Level::Error;
+			if (string == "Fatal")	return Level::Fatal;
 
-	        return Level::Trace;
-	    }
+			return Level::Trace;
+		}
 
-        /**
-         * @brief Flushes all loggers.
-         *
-         * This function flushes all loggers to ensure that all log messages
-         * are written to the log files and console.
-         *
-         * @note - This function should be called before the application exits
-         * to ensure that all log messages are properly flushed.
-         */
-        static void FlushAll()
-        {
-            if (m_CoreLogger)		m_CoreLogger->flush();
-            if (m_EditorLogger)		m_EditorLogger->flush();
-            if (m_ConsoleLogger)	m_ConsoleLogger->flush();
+		/**
+		 * @brief Flushes all loggers.
+		 *
+		 * This function flushes all loggers to ensure that all log messages
+		 * are written to the log files and console.
+		 *
+		 * @note - This function should be called before the application exits
+		 * to ensure that all log messages are properly flushed.
+		 */
+		static void FlushAll()
+		{
+			if (m_CoreLogger)		m_CoreLogger->flush();
+			if (m_EditorLogger)		m_EditorLogger->flush();
+			if (m_ConsoleLogger)	m_ConsoleLogger->flush();
 			if (m_LauncherLogger)	m_LauncherLogger->flush();
-        }
+		}
 
 	private:
-	    /**
+		/**
 		 * @brief The logger instances for the Core Logger, Editor Logger, and Editor Debug Logger for the UI debug console.
 		 */
-	    static std::shared_ptr<spdlog::logger> m_CoreLogger;
-	    static std::shared_ptr<spdlog::logger> m_EditorLogger;
-	    static std::shared_ptr<spdlog::logger> m_ConsoleLogger;
-        static std::shared_ptr<spdlog::logger> m_LauncherLogger;
+		static std::shared_ptr<spdlog::logger> m_CoreLogger;
+		static std::shared_ptr<spdlog::logger> m_EditorLogger;
+		static std::shared_ptr<spdlog::logger> m_ConsoleLogger;
+		static std::shared_ptr<spdlog::logger> m_LauncherLogger;
 
 		inline static Level m_InitialLevel = Level::Info;
-	    static std::map<std::string, TagDetails> m_DefaultTagDetails;
+		static std::map<std::string, TagDetails> m_DefaultTagDetails;
 		inline static std::map<std::string, TagDetails> m_EnabledTags;
 	};
 
@@ -427,28 +427,28 @@ namespace SceneryEditorX
 	void Log::PrintMessage(Log::Type type, Log::Level level, const std::string_view format, Args &&...args)
 #endif
 	{
-        if (auto &detail = m_EnabledTags[""]; detail.enabled && detail.levelFilter <= level)
-	    {
-	        auto logger = (type == Type::Core) ? GetCoreLogger() : GetEditorLogger();
-	        switch (level)
-	        {
-	        case Level::Trace:
-	            logger->trace(format, std::forward<Args>(args)...);
-	            break;
-	        case Level::Info:
-	            logger->info(format, std::forward<Args>(args)...);
-	            break;
-	        case Level::Warn:
-	            logger->warn(format, std::forward<Args>(args)...);
-	            break;
-	        case Level::Error:
-	            logger->error(format, std::forward<Args>(args)...);
-	            break;
-	        case Level::Fatal:
-	            logger->critical(format, std::forward<Args>(args)...);
-	            break;
-	        }
-	    }
+		if (auto &detail = m_EnabledTags[""]; detail.enabled && detail.levelFilter <= level)
+		{
+			auto logger = (type == Type::Core) ? GetCoreLogger() : GetEditorLogger();
+			switch (level)
+			{
+			case Level::Trace:
+				logger->trace(format, std::forward<Args>(args)...);
+				break;
+			case Level::Info:
+				logger->info(format, std::forward<Args>(args)...);
+				break;
+			case Level::Warn:
+				logger->warn(format, std::forward<Args>(args)...);
+				break;
+			case Level::Error:
+				logger->error(format, std::forward<Args>(args)...);
+				break;
+			case Level::Fatal:
+				logger->critical(format, std::forward<Args>(args)...);
+				break;
+			}
+		}
 	}
 
 	// ----------------------------------------------------
@@ -456,58 +456,58 @@ namespace SceneryEditorX
 	template <typename... Args>
 	void Log::PrintMessageTag(Log::Type type, Log::Level level, std::string_view tag, const std::format_string<Args...> format, Args &&...args)
 	{
-        if (auto &detail = m_EnabledTags[std::string(tag)]; detail.enabled && detail.levelFilter <= level)
-	    {
-	        auto logger = (type == Type::Core) ? GetCoreLogger() : GetEditorLogger();
-            if (!logger) return;
-	        std::string formatted = std::format(format, std::forward<Args>(args)...);
-	        switch (level)
-	        {
-	        case Level::Trace:
-	            logger->trace("[{}] {}", tag, formatted);
-	            break;
-	        case Level::Info:
-	            logger->info("[{}] {}", tag, formatted);
-	            break;
-	        case Level::Warn:
-	            logger->warn("[{}] {}", tag, formatted);
-	            break;
-	        case Level::Error:
-	            logger->error("[{}] {}", tag, formatted);
-	            break;
-	        case Level::Fatal:
-	            logger->critical("[{}] {}", tag, formatted);
-	            break;
-	        }
-	    }
+		if (auto &detail = m_EnabledTags[std::string(tag)]; detail.enabled && detail.levelFilter <= level)
+		{
+			auto logger = (type == Type::Core) ? GetCoreLogger() : GetEditorLogger();
+			if (!logger) return;
+			std::string formatted = std::format(format, std::forward<Args>(args)...);
+			switch (level)
+			{
+			case Level::Trace:
+				logger->trace("[{}] {}", tag, formatted);
+				break;
+			case Level::Info:
+				logger->info("[{}] {}", tag, formatted);
+				break;
+			case Level::Warn:
+				logger->warn("[{}] {}", tag, formatted);
+				break;
+			case Level::Error:
+				logger->error("[{}] {}", tag, formatted);
+				break;
+			case Level::Fatal:
+				logger->critical("[{}] {}", tag, formatted);
+				break;
+			}
+		}
 	}
 
 	// ----------------------------------------------------
 
 	inline void Log::PrintMessageTag(Log::Type type, Log::Level level, std::string_view tag, std::string_view message)
 	{
-        if (auto &detail = m_EnabledTags[std::string(tag.data(), tag.size())]; detail.enabled && detail.levelFilter <= level)
-	    {
-	        auto logger = (type == Type::Core) ? GetCoreLogger() : GetEditorLogger();
-	        switch (level)
-	        {
-	        case Level::Trace:
-	            logger->trace("[{}] {}", tag, message); // Use curly braces instead of {0} for fmt format strings
-	            break;
-	        case Level::Info:
-	            logger->info("[{}] {}", tag, message);
-	            break;
-	        case Level::Warn:
-	            logger->warn("[{}] {}", tag, message);
-	            break;
-	        case Level::Error:
-	            logger->error("[{}] {}", tag, message);
-	            break;
-	        case Level::Fatal:
-	            logger->critical("[{}] {}", tag, message);
-	            break;
-	        }
-	    }
+		if (auto &detail = m_EnabledTags[std::string(tag.data(), tag.size())]; detail.enabled && detail.levelFilter <= level)
+		{
+			auto logger = (type == Type::Core) ? GetCoreLogger() : GetEditorLogger();
+			switch (level)
+			{
+			case Level::Trace:
+				logger->trace("[{}] {}", tag, message); // Use curly braces instead of {0} for fmt format strings
+				break;
+			case Level::Info:
+				logger->info("[{}] {}", tag, message);
+				break;
+			case Level::Warn:
+				logger->warn("[{}] {}", tag, message);
+				break;
+			case Level::Error:
+				logger->error("[{}] {}", tag, message);
+				break;
+			case Level::Fatal:
+				logger->critical("[{}] {}", tag, message);
+				break;
+			}
+		}
 	}
 
 	// ----------------------------------------------------
@@ -515,11 +515,11 @@ namespace SceneryEditorX
 	template <typename... Args>
 	void Log::PrintAssertMessage(Log::Type type, std::string_view prefix, std::format_string<Args...> message, Args &&...args)
 	{
-	    auto logger = (type == Type::Core) ? GetCoreLogger() : (type == Type::Editor) ? GetEditorLogger() : GetLauncherLogger();
-	    auto formatted = std::format(message, std::forward<Args>(args)...);
-	    logger->error("{}: {}", prefix, formatted);
+		auto logger = (type == Type::Core) ? GetCoreLogger() : (type == Type::Editor) ? GetEditorLogger() : GetLauncherLogger();
+		auto formatted = std::format(message, std::forward<Args>(args)...);
+		logger->error("{}: {}", prefix, formatted);
 	#ifdef SEDX_ASSERT_MESSAGE_BOX
-	    MessageBoxA(nullptr, formatted.c_str(), "Scenery Editor X | Assert", MB_OK | MB_ICONERROR);
+		MessageBoxA(nullptr, formatted.c_str(), "Scenery Editor X | Assert", MB_OK | MB_ICONERROR);
 	#endif
 	}
 
@@ -528,17 +528,16 @@ namespace SceneryEditorX
 
 	inline void Log::PrintAssertMessage(Log::Type type, std::string_view prefix)
 	{
-	    auto logger = (type == Type::Core) ? GetCoreLogger() : (type == Type::Editor) ? GetEditorLogger() : GetLauncherLogger();
-	    logger->error("{}", prefix);
+		auto logger = (type == Type::Core) ? GetCoreLogger() : (type == Type::Editor) ? GetEditorLogger() : GetLauncherLogger();
+		logger->error("{}", prefix);
 	#ifdef SEDX_ASSERT_MESSAGE_BOX
-	    MessageBoxA(nullptr, "- No message -", "Scenery Editor X | Assert", MB_OK | MB_ICONERROR);
+		MessageBoxA(nullptr, "- No message -", "Scenery Editor X | Assert", MB_OK | MB_ICONERROR);
 	#endif
 	}
 
 } // namespace SceneryEditorX
 
 // ----------------------------------------------------
-
 
 /**
  *
@@ -562,6 +561,7 @@ namespace SceneryEditorX
 #define EDITOR_LOG_WARN(...)     ::SceneryEditorX::Log::GetEditorLogger()->warn(__VA_ARGS__)
 #define EDITOR_LOG_ERROR(...)    ::SceneryEditorX::Log::GetEditorLogger()->error(__VA_ARGS__)
 #define EDITOR_LOG_CRITICAL(...) ::SceneryEditorX::Log::GetEditorLogger()->critical(__VA_ARGS__);
+// ----------------------------------------------------
 
 #define VK_CHECK_RESULT(result, operation)																		\
 	if (CoreLogger)																								\
@@ -588,5 +588,14 @@ namespace SceneryEditorX
 			CoreLogger->trace("Vulkan operation '{}' completed successfully", operation);						\
 		}																										\
 	}
+
+// ----------------------------------------------------
+
+#if SEDX_LOG_ASSETREGISTRY
+	#define LOG_ASSET(...) SEDX_CORE_TRACE_TAG("ASSET", __VA_ARGS__)
+#else 
+	#define LOG_ASSET(...)
+#endif
+
 
 // -------------------------------------------------------

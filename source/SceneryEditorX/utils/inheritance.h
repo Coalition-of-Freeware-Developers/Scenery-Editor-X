@@ -29,6 +29,7 @@
  * -------------------------------------------------------
  */
 #pragma once
+#include <SceneryEditorX/asset/asset.h>
 #include <SceneryEditorX/core/resource/iobject.h>
 #include <SceneryEditorX/core/resource/iresource.h>
 
@@ -36,17 +37,23 @@
 
 namespace SceneryEditorX
 {
-    template <typename... Bases>
+	template <typename... Bases>
 	struct InheritanceBundle : Bases... 
-    {
-	    // Bring constructors into scope if needed
-	    using Bases::Bases...; 
+	{
+		// Bring constructors into scope if needed
+		using Bases::Bases...; 
 	};
 
 	typedef InheritanceBundle<RefCounted, IObject> SharedObject;
 
 	typedef InheritanceBundle<RefCounted, IResource> SharedResource;
 
+	/** 
+	 * TODO: Consider whether we want to have a separate SharedAsset type that inherits from Asset instead of IResource.  
+	 * This would allow us to have asset-specific functionality in SharedAsset, while still allowing SharedResource to be used for non-asset resources. 
+	 * For now, we'll just use SharedResource for everything, but this is something to consider for future refactoring. 
+	 */
+	typedef InheritanceBundle<IResource, Asset> SharedAsset;
 
 }
 

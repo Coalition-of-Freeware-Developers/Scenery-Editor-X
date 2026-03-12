@@ -41,7 +41,6 @@
 #include "SceneryEditorX/core/window/window.h"
 #include "SceneryEditorX/ui/ui_layer.h"
 #include "SceneryEditorX/utils/pointers.h"
-#include "SceneryEditorX/utils/static_states.h"
 #include <deque>
 
 // -------------------------------------------------------
@@ -49,89 +48,89 @@
 namespace SceneryEditorX
 {
 	class Application
-    {
-    public:
-	    typedef std::function<void(Event &)> EventCallbackFn;
+	{
+	public:
+		typedef std::function<void(Event &)> EventCallbackFn;
 
-        // -------------------------------------------------------
+		// -------------------------------------------------------
 
-        struct PerformanceTimers
-        {
-            float MainThreadWorkTime = 0.0f;
-            float MainThreadWaitTime = 0.0f;
-            float RenderThreadWorkTime = 0.0f;
-            float RenderThreadWaitTime = 0.0f;
-            float RenderThreadGPUWaitTime = 0.0f;
-            float ScriptUpdate = 0.0f;
-        };
+		struct PerformanceTimers
+		{
+			float MainThreadWorkTime = 0.0f;
+			float MainThreadWaitTime = 0.0f;
+			float RenderThreadWorkTime = 0.0f;
+			float RenderThreadWaitTime = 0.0f;
+			float RenderThreadGPUWaitTime = 0.0f;
+			float ScriptUpdate = 0.0f;
+		};
 
-        // -------------------------------------------------------
+		// -------------------------------------------------------
 
-        Application(const PlatformContext& context);
-        Application(const PlatformContext& context, const AppData& appData);
-        virtual ~Application();
+		Application(const PlatformContext& context);
+		Application(const PlatformContext& context, const AppData& appData);
+		virtual ~Application();
 
-	    virtual void Run();
-        virtual void OnRender();
-        virtual void Tick();
-        virtual void Stop();
+		virtual void Run();
+		virtual void OnRender();
+		virtual void Tick();
+		virtual void Stop();
 
 		virtual void OnInit() {}
-        virtual void OnUpdate() {}
-        virtual void OnShutdown();
+		virtual void OnUpdate() {}
+		virtual void OnShutdown();
 
-	    void PushLayer(Layer *module);
-        void PushOverlay(Layer *module);
-        void PopLayer(Layer *module);
-        void PopOverlay(Layer *module);
+		void PushLayer(Layer *module);
+		void PushOverlay(Layer *module);
+		void PopLayer(Layer *module);
+		void PopOverlay(Layer *module);
 
-        // -------------------------------------------------------
+		// -------------------------------------------------------
 
 		DeltaTime GetDeltaTime() const { return m_DeltaTime; }
 		DeltaTime GetFrameTime() const { return m_FrameTime; }
-        static float GetTime(); // TODO: This should be in "Platform"
+		static float GetTime(); // TODO: This should be in "Platform"
 
-        // -------------------------------------------------------
+		// -------------------------------------------------------
 
-	    PerformanceProfiler* GetPerformanceProfiler() const { return m_Profiler; }
-        inline Window& GetWindow() { return *m_Window; }
-        uint32_t GetCurrentFrameIndex() const { return m_CurrentFrameIndex; }
+		PerformanceProfiler* GetPerformanceProfiler() const { return m_Profiler; }
+		inline Window& GetWindow() { return *m_Window; }
+		uint32_t GetCurrentFrameIndex() const { return m_CurrentFrameIndex; }
 		const AppData &GetAppData() const { return m_AppData; }
-        const PlatformContext* GetPlatformContext() const { return m_PlatformContext; }
-        PerformanceTimers m_PerformanceTimers;
+		const PlatformContext* GetPlatformContext() const { return m_PlatformContext; }
+		PerformanceTimers m_PerformanceTimers;
 
-        // -------------------------------------------------------
+		// -------------------------------------------------------
 
-        static Application &Get() { return *s_AppInstance; }
-	    static const char* GetConfigurationName();
-        static const char *GetPlatformName();
-        static std::thread::id GetMainThreadID();
-        static bool IsMainThread();
+		static Application &Get() { return *s_AppInstance; }
+		static const char* GetConfigurationName();
+		static const char *GetPlatformName();
+		static std::thread::id GetMainThreadID();
+		static bool IsMainThread();
 
-        // -------------------------------------------------------
+		// -------------------------------------------------------
 
-        // Settings accessors (single authoritative instance for the app lifetime)
-        ApplicationSettings& GetSettings() { return m_Settings; }
-        const ApplicationSettings& GetSettings() const { return m_Settings; }
+		// Settings accessors (single authoritative instance for the app lifetime)
+		ApplicationSettings& GetSettings() { return m_Settings; }
+		const ApplicationSettings& GetSettings() const { return m_Settings; }
 
-        // -------------------------------------------------------
+		// -------------------------------------------------------
 
-	    void SetEventCallback(const EventCallbackFn& eventCallback) { m_EventCallbacks.push_back(eventCallback); }
-        void SyncEvents();
-        void ProcessEvents();
-        void OnEvent(Event &event);
-        static bool OnWindowResize(const WindowResizeEvent &e);
-        bool OnWindowMinimize(const WindowMinimizeEvent &e);
-        bool OnWindowClose(WindowCloseEvent &e);
+		void SetEventCallback(const EventCallbackFn& eventCallback) { m_EventCallbacks.push_back(eventCallback); }
+		void SyncEvents();
+		void ProcessEvents();
+		void OnEvent(Event &event);
+		static bool OnWindowResize(const WindowResizeEvent &e);
+		bool OnWindowMinimize(const WindowMinimizeEvent &e);
+		bool OnWindowClose(WindowCloseEvent &e);
 
-        // -------------------------------------------------------
+		// -------------------------------------------------------
 
-        /**
+		/**
 		 * @brief Queues an event to be processed later.
 		 * @tparam Func The type of the function to be queued.
 		 * @param func The function to be queued.
 		 */
-        template <typename Func>
+		template <typename Func>
 		void QueueEvent(Func&& func)
 		{
 			std::scoped_lock lock(m_EventQueueMutex);
@@ -147,12 +146,12 @@ namespace SceneryEditorX
 		template<typename TEvent, bool DispatchImmediately = false, typename... TEventArgs>
 		void DispatchEvent(TEventArgs&&... args)
 		{
-    #ifndef SEDX_COMPILER_GCC
+	#ifndef SEDX_COMPILER_GCC
 			// TODO: GCC causes this to fail for AnimationGraphCompiledEvent for some reason. Investigate.
 			static_assert(std::is_assignable_v<Event, TEvent>);
-    #endif
+	#endif
 
-			Ref<TEvent> event = CreateRef<TEvent>(std::forward<TEventArgs>(args)...);
+			std::shared_ptr<TEvent> event = std::make_shared<TEvent>(std::forward<TEventArgs>(args)...);
 			if constexpr (DispatchImmediately)
 			{
 				OnEvent(*event);
@@ -160,42 +159,42 @@ namespace SceneryEditorX
 			else
 			{
 				std::scoped_lock lock(m_EventQueueMutex);
-				m_EventQueue.emplace_back(false, [event](){ Get().OnEvent(*event); });
+				m_EventQueue.emplace_back(false, [event](){ Application::Get().OnEvent(*event); });
 			}
 		}
 
 	private:
-        void InitializeApplication(const AppData& appData);
+		void InitializeApplication(const AppData& appData);
 
-        Scope<Window> m_Window;
-	    AppData m_AppData;
-        LayerStack m_ModuleStage;
-        UI::UILayer *m_UILayer = nullptr;
+		Scope<Window> m_Window;
+		AppData m_AppData;
+		LayerStack m_ModuleStage;
+		UI::UILayer *m_UILayer = nullptr;
 		DeltaTime m_DeltaTime;
 		DeltaTime m_FrameTime;
 		float m_LastFrameTime = 0.0f;
-	    bool m_IsRunning = true;
-        bool m_IsMinimized = false;
-        bool m_ShowStats = true;
+		bool m_IsRunning = true;
+		bool m_IsMinimized = false;
+		bool m_ShowStats = true;
 
-        const PlatformContext* m_PlatformContext = nullptr;
-        ApplicationSettings m_Settings = ApplicationSettings(std::filesystem::path("settings.cfg"));
-        static Application *s_AppInstance;
-        PerformanceProfiler *m_Profiler = nullptr; // TODO: Should be null in Dist
-        std::unordered_map<const char *, PerformanceProfiler::PerFrameData> m_ProfilerPreviousFrameData;
-        std::deque<std::pair<bool, std::function<void()>>> m_EventQueue;
-        std::mutex m_EventQueueMutex;
-        std::vector<EventCallbackFn> m_EventCallbacks;
+		const PlatformContext* m_PlatformContext = nullptr;
+		ApplicationSettings m_Settings = ApplicationSettings(std::filesystem::path("settings.cfg"));
+		static Application *s_AppInstance;
+		PerformanceProfiler *m_Profiler = nullptr; // TODO: Should be null in Dist
+		std::unordered_map<const char *, PerformanceProfiler::PerFrameData> m_ProfilerPreviousFrameData;
+		std::deque<std::pair<bool, std::function<void()>>> m_EventQueue;
+		std::mutex m_EventQueueMutex;
+		std::vector<EventCallbackFn> m_EventCallbacks;
 		RenderThread m_RenderThread;
 		uint32_t m_CurrentFrameIndex = 0;
-    protected:
-        inline static bool m_IsRunningTime = false;
-    };
+	protected:
+		inline static bool m_IsRunningTime = false;
+	};
 
-    // -------------------------------------------------------
+	// -------------------------------------------------------
 
-    Application *CreateApplication(const std::vector<std::string> &args);
-    Application *CreateApplication(const PlatformContext& context);
+	Application *CreateApplication(const std::vector<std::string> &args);
+	Application *CreateApplication(const PlatformContext& context);
 
 }
 

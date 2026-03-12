@@ -10,7 +10,7 @@
 * Created: 27/12/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/project/platform.h>
+#include <SceneryEditorX/core/platform/platform.h>
 #include <SceneryEditorX/core/application/application.h>
 #include <SceneryEditorX/logging/logging.hpp>
 

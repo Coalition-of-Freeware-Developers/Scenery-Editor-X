@@ -45,10 +45,15 @@ namespace SceneryEditorX
 		std::string sceneryType;
         std::string sceneryVersion;
         std::string assetDir = "Assets";
+        std::string meshPath = "Assets/Meshes";
+        std::string texturePath = "Assets/Textures";
+        std::string pluginPath = "Plugins/Materials";
+        std::string scriptPath = "Plugins/Scripts";
 
 		bool enableAutosave = true;
 		bool enableLighting = true;
 		bool enableWeatherEffects = false;
+        bool enableHotReloading = true;
         int autosaveInterval = 300; // 5 mins in seconds
     };
 

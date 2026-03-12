@@ -178,21 +178,27 @@ namespace SceneryEditorX
 
     Application::~Application()
     {
-        m_Window->SetEventCallback([](Event& e) {});
+		if (m_Window)
+		    m_Window->SetEventCallback([](Event&) {});
+
+		// Stop producing new work first
 		m_RenderThread.Terminate();
 
-		ThreadPool::Shutdown();
-        ResourceCache::Shutdown();
-        ResourceCache::UnloadDefaultResources();
+        // Detach and destroy layers in reverse order (dependencies unwind correctly)
+		for (size_t i = m_ModuleStage.Size(); i > 0; --i)
+		{
+		    Layer* layer = m_ModuleStage[i - 1];
+		    layer->OnDetach();
+		    delete layer;
+		}
 
-        for (size_t i = 0; i < m_ModuleStage.Size(); ++i)
-        {
-            Layer *layer = m_ModuleStage[i];
-            layer->OnDetach();
-            delete layer;
-        }
-        //Project::SetActive(nullptr);
-        Renderer::Shutdown();
+		// Release shared resource owners/caches
+		ResourceCache::UnloadDefaultResources();
+		ResourceCache::Shutdown();
+
+		// Shutdown systems that may hold/consume resources
+		Renderer::Shutdown();
+		ThreadPool::Shutdown();
 
         /*
         /** 

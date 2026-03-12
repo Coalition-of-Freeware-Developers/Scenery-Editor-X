@@ -48,28 +48,28 @@ namespace SceneryEditorX
 	{
 	}
 
-    TextureImage::~TextureImage()
+	TextureImage::~TextureImage()
 	{
 
 	}
 
-    void TextureImage::SaveToFile(const std::string &filePath)
-    {
-        InheritanceBundle<RefCounted, IResource>::SaveToFile(filePath);
-    }
+	void TextureImage::SaveToFile(const std::string &filePath)
+	{
+		InheritanceBundle<RefCounted, IResource>::SaveToFile(filePath);
+	}
 
-    void TextureImage::LoadFromFile(const std::string &filePath)
-    {
-        InheritanceBundle<RefCounted, IResource>::LoadFromFile(filePath);
-    }
+	void TextureImage::LoadFromFile(const std::string &filePath)
+	{
+		InheritanceBundle<RefCounted, IResource>::LoadFromFile(filePath);
+	}
 
-    bool TextureImage::CanSaveToFile() const
-    {
-	    return true;
-    }
+	bool TextureImage::CanSaveToFile() const
+	{
+		return true;
+	}
 
-    Texture TextureImage::Load(VmaAllocator allocator, VkCommandPool oneTimeCmdPool, VkQueue queue, const std::string& path)
-    {
+	Texture TextureImage::Load(VmaAllocator allocator, VkCommandPool oneTimeCmdPool, VkQueue queue, const std::string& path)
+	{
 		Texture out{};
 	
 		ktxTexture* ktxTexture = nullptr;
@@ -94,9 +94,9 @@ namespace SceneryEditorX
 	
 		VmaAllocationCreateInfo texImageAllocCI{};
 		texImageAllocCI.usage = VMA_MEMORY_USAGE_AUTO;
-        if (VkResult r = vmaCreateImage(allocator, &texImgCI, &texImageAllocCI, &out.image, &out.allocation, nullptr); r != VK_SUCCESS)
+		if (VkResult r = vmaCreateImage(allocator, &texImgCI, &texImageAllocCI, &out.image, &out.allocation, nullptr); r != VK_SUCCESS)
 		{
-            SEDX_CORE_WARN_TAG("Texture", "vmaCreateImage failed: {}", r);
+			SEDX_CORE_WARN_TAG("Texture", "vmaCreateImage failed: {}", r);
 			ktxTexture_Destroy(ktxTexture);
 			return out;
 		}
@@ -109,7 +109,7 @@ namespace SceneryEditorX
 		texVewCI.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 		texVewCI.subresourceRange.levelCount = texImgCI.mipLevels;
 		texVewCI.subresourceRange.layerCount = 1;
-        if (vkCreateImageView(device->GetLogicalDevice(), &texVewCI, nullptr, &out.view) != VK_SUCCESS)
+		if (vkCreateImageView(device->GetLogicalDevice(), &texVewCI, nullptr, &out.view) != VK_SUCCESS)
 		{
 			SEDX_CORE_WARN_TAG("Texture", "vkCreateImageView failed");
 			vmaDestroyImage(allocator, out.image, out.allocation);
@@ -128,13 +128,13 @@ namespace SceneryEditorX
 		imgSrcBufferCI.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 
 		VmaAllocationCreateInfo imgSrcAllocCI{};
-        imgSrcAllocCI.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+		imgSrcAllocCI.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
 		imgSrcAllocCI.usage = VMA_MEMORY_USAGE_AUTO;
 
 		if (vmaCreateBuffer(allocator, &imgSrcBufferCI, &imgSrcAllocCI, &imgSrcBuffer, &imgSrcAllocation, nullptr) != VK_SUCCESS)
 		{
-            SEDX_CORE_WARN_TAG("Texture", "vmaCreateBuffer (staging) failed");
-            vkDestroyImageView(device->GetLogicalDevice(), out.view, nullptr);
+			SEDX_CORE_WARN_TAG("Texture", "vmaCreateBuffer (staging) failed");
+			vkDestroyImageView(device->GetLogicalDevice(), out.view, nullptr);
 			vmaDestroyImage(allocator, out.image, out.allocation);
 			ktxTexture_Destroy(ktxTexture);
 			out.image = VK_NULL_HANDLE;
@@ -155,7 +155,7 @@ namespace SceneryEditorX
 		cbOneTimeAI.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 		cbOneTimeAI.commandPool = oneTimeCmdPool;
 		cbOneTimeAI.commandBufferCount = 1;
-        vkAllocateCommandBuffers(device->GetLogicalDevice(), &cbOneTimeAI, &cbOneTime);
+		vkAllocateCommandBuffers(device->GetLogicalDevice(), &cbOneTimeAI, &cbOneTime);
 	
 		VkCommandBufferBeginInfo cbOneTimeBI{};
 		cbOneTimeBI.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;

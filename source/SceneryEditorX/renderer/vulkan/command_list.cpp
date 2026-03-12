@@ -34,6 +34,7 @@
 #include "render_context.h"
 #include "swapchain.h"
 #include "debug/graphics_debug.h"
+#include "pipeline/pipeline_state.h"
 #include <array>
 #include <chrono>
 #include <memory>
@@ -47,22 +48,22 @@
 
 namespace SceneryEditorX
 {
-    struct ImmediateExecutionState
-    {
-        std::unique_ptr<CommandPool> pool;
-        Ref<CommandList> cmdList;
-        std::mutex mutex;
-    };
+	struct ImmediateExecutionState
+	{
+		std::unique_ptr<CommandPool> pool;
+		Ref<CommandList> cmdList;
+		std::mutex mutex;
+	};
 
-    // Per-image layout tracking: key = &VkImage (stable address), value = current layout.
-    // Protected by s_ImageLayoutsMutex for safe concurrent reads from multiple threads.
-    static std::unordered_map<void*, Layout::ImageLayout> s_ImageLayouts;
-    static std::mutex s_ImageLayoutsMutex;
-    static std::array<ImmediateExecutionState, static_cast<size_t>(QueueType::MaxEnum)> s_ImmediateStates;
+	// Per-image layout tracking: key = &VkImage (stable address), value = current layout.
+	// Protected by s_ImageLayoutsMutex for safe concurrent reads from multiple threads.
+	static std::unordered_map<void*, Layout::ImageLayout> s_ImageLayouts;
+	static std::mutex s_ImageLayoutsMutex;
+	static std::array<ImmediateExecutionState, static_cast<size_t>(QueueType::MaxEnum)> s_ImmediateStates;
 
-    #pragma region Static Command Actions
+	#pragma region Static Command Actions
 
-    static VkImageMemoryBarrier2 CreateImageMemoryBarrier(void* img, const VkAccessFlags& srcMask, const VkAccessFlags& dstMask,
+	static VkImageMemoryBarrier2 CreateImageMemoryBarrier(void* img, const VkAccessFlags& srcMask, const VkAccessFlags& dstMask,
 		const VkImageLayout& oldLayout, const VkImageLayout& newLayout, const std::optional<VkImageSubresourceRange>& subresourceRange)
 	{
 		VkImageMemoryBarrier2 barrier{};
@@ -78,26 +79,26 @@ namespace SceneryEditorX
 		
 		if (subresourceRange.has_value())
 		{
-		    const VkImageSubresourceRange& currentSubresourceRange = subresourceRange.value();
+			const VkImageSubresourceRange& currentSubresourceRange = subresourceRange.value();
 			barrier.subresourceRange.aspectMask = currentSubresourceRange.aspectMask;
 			barrier.subresourceRange.baseMipLevel = currentSubresourceRange.baseMipLevel;
 			barrier.subresourceRange.levelCount = currentSubresourceRange.levelCount;
 			barrier.subresourceRange.baseArrayLayer = currentSubresourceRange.baseArrayLayer;
 			barrier.subresourceRange.layerCount = currentSubresourceRange.layerCount;
 		}
-        else
-        {
-            barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		else
+		{
+			barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 			barrier.subresourceRange.baseMipLevel = 0;
 			barrier.subresourceRange.levelCount = 1;
 			barrier.subresourceRange.baseArrayLayer = 0;
 			barrier.subresourceRange.layerCount = 1;
-        }
+		}
 
 		return barrier;
-    }
+	}
 
-    static Layout::ImageLayout GetImageLayoutType(const VkImageLayout& layout)
+	static Layout::ImageLayout GetImageLayoutType(const VkImageLayout& layout)
 	{
 		switch (layout)
 		{
@@ -113,35 +114,35 @@ namespace SceneryEditorX
 				SEDX_CORE_ASSERT(false, "Unsupported image layout!");
 				return Layout::ImageLayout::Undefined; // Fallback
 		}
-    }
+	}
 
-    static VkImageLayout GetVkImageLayout(const Layout::ImageLayout &layout)
-    {
-        switch (layout)
-        {
-            case Layout::ImageLayout::Undefined:					return VK_IMAGE_LAYOUT_UNDEFINED;
-            case Layout::ImageLayout::General:						return VK_IMAGE_LAYOUT_GENERAL;
-            case Layout::ImageLayout::ColorAttachment:				return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-            case Layout::ImageLayout::DepthStencilAttachment:		return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-            case Layout::ImageLayout::DepthStencilRead:				return VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-            case Layout::ImageLayout::ShaderRead:					return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-            case Layout::ImageLayout::TransferSrc:					return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-            case Layout::ImageLayout::TransferDst:					return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-            case Layout::ImageLayout::DepthReadStencilAttachment:	return VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL;
-            case Layout::ImageLayout::DepthAttachmentStencilRead:	return VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL;
-            case Layout::ImageLayout::FragmentShadingRate:			return VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR;
-            case Layout::ImageLayout::DepthAttachment:				return VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
-            case Layout::ImageLayout::DepthRead:					return VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL;
-            case Layout::ImageLayout::StencilAttachment:			return VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL;
-            case Layout::ImageLayout::StencilRead:					return VK_IMAGE_LAYOUT_STENCIL_READ_ONLY_OPTIMAL;
-            case Layout::ImageLayout::Read:							return VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
-            case Layout::ImageLayout::Attachment:					return VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
-            case Layout::ImageLayout::Present:						return VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-            case Layout::ImageLayout::MaxEnum:						return VK_IMAGE_LAYOUT_MAX_ENUM;
-        }
+	static VkImageLayout GetVkImageLayout(const Layout::ImageLayout &layout)
+	{
+		switch (layout)
+		{
+			case Layout::ImageLayout::Undefined:					return VK_IMAGE_LAYOUT_UNDEFINED;
+			case Layout::ImageLayout::General:						return VK_IMAGE_LAYOUT_GENERAL;
+			case Layout::ImageLayout::ColorAttachment:				return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+			case Layout::ImageLayout::DepthStencilAttachment:		return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+			case Layout::ImageLayout::DepthStencilRead:				return VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+			case Layout::ImageLayout::ShaderRead:					return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			case Layout::ImageLayout::TransferSrc:					return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+			case Layout::ImageLayout::TransferDst:					return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+			case Layout::ImageLayout::DepthReadStencilAttachment:	return VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL;
+			case Layout::ImageLayout::DepthAttachmentStencilRead:	return VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL;
+			case Layout::ImageLayout::FragmentShadingRate:			return VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR;
+			case Layout::ImageLayout::DepthAttachment:				return VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+			case Layout::ImageLayout::DepthRead:					return VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL;
+			case Layout::ImageLayout::StencilAttachment:			return VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL;
+			case Layout::ImageLayout::StencilRead:					return VK_IMAGE_LAYOUT_STENCIL_READ_ONLY_OPTIMAL;
+			case Layout::ImageLayout::Read:							return VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
+			case Layout::ImageLayout::Attachment:					return VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
+			case Layout::ImageLayout::Present:						return VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+			case Layout::ImageLayout::MaxEnum:						return VK_IMAGE_LAYOUT_MAX_ENUM;
+		}
 
-        return VK_IMAGE_LAYOUT_MAX_ENUM;
-    }
+		return VK_IMAGE_LAYOUT_MAX_ENUM;
+	}
 
 	static VkCullModeFlags GetCullingType(const CullMode cullMode)
 	{
@@ -241,34 +242,34 @@ namespace SceneryEditorX
 
 #pragma endregion
 
-    // -------------------------------------------------------
+	// -------------------------------------------------------
 
 	CommandList::CommandList(Queue *queue, const CommandPool &cmdPool, const char *name) : InheritanceBundle<RefCounted, IResource>(ResourceType::CommandList)
-    {
-        m_Queue = queue;
+	{
+		m_Queue = queue;
 
-        // Use the device from the supplied CommandPool — safe during Device::Device()
-        // construction because the pool holds an explicit Ref<Device>. Using
-        // RenderContext::Get()->GetDevice() here crashes: RenderContext::m_Device is
-        // not yet assigned when this ctor is called from inside Device::Device().
-        Ref<Device> device = cmdPool.GetDevice();
+		// Use the device from the supplied CommandPool — safe during Device::Device()
+		// construction because the pool holds an explicit Ref<Device>. Using
+		// RenderContext::Get()->GetDevice() here crashes: RenderContext::m_Device is
+		// not yet assigned when this ctor is called from inside Device::Device().
+		Ref<Device> device = cmdPool.GetDevice();
 
-        // Command Buffer
-        {
-            VkCommandBufferAllocateInfo allocateInfo = {};
-            allocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-            allocateInfo.commandPool = cmdPool.GetPool();
-            allocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-            allocateInfo.commandBufferCount = 1;
+		// Command Buffer
+		{
+			VkCommandBufferAllocateInfo allocateInfo = {};
+			allocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+			allocateInfo.commandPool = cmdPool.GetPool();
+			allocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+			allocateInfo.commandBufferCount = 1;
 
-            // allocate
-            SEDX_VK_RESULT_ASSERT(vkAllocateCommandBuffers(device->GetLogicalDevice(), &allocateInfo, &m_CmdBuffer), "Failed to allocate command buffers");
+			// allocate
+			SEDX_VK_RESULT_ASSERT(vkAllocateCommandBuffers(device->GetLogicalDevice(), &allocateInfo, &m_CmdBuffer), "Failed to allocate command buffers");
 
-            // name — pass the logical device explicitly so naming works even during Device construction
-            // before RenderContext::m_Device has been assigned.
-            Debugging::SetResourceName(device->GetLogicalDevice(), m_CmdBuffer, ResourceType::CommandList, name);
-            m_ObjectName = name;
-        }
+			// name — pass the logical device explicitly so naming works even during Device construction
+			// before RenderContext::m_Device has been assigned.
+			Debugging::SetResourceName(device->GetLogicalDevice(), m_CmdBuffer, ResourceType::CommandList, name);
+			m_ObjectName = name;
+		}
 
 		// Thread the logical device down to FrameSync/Fence/Semaphore so that their
 		// CreateSyncObject calls do not touch RenderContext::Get()->GetDevice() — which is
@@ -281,7 +282,7 @@ namespace SceneryEditorX
 
 		// TODO: Initialize Vulkan query pools for GPU timestamping and occlusion queries, setting up the necessary resources and filling them with initial data.
 
-    }
+	}
 
 	CommandList::~CommandList()
 	{
@@ -290,93 +291,87 @@ namespace SceneryEditorX
 
 	Layout::ImageLayout CommandList::GetImageLayout(void *image, uint32_t mipIndex)
 	{
-        std::scoped_lock lock(s_ImageLayoutsMutex);
+		std::scoped_lock lock(s_ImageLayoutsMutex);
 		const auto it = s_ImageLayouts.find(image);
 		if (it != s_ImageLayouts.end())
 			return it->second;
+
 		return Layout::ImageLayout::Undefined;
 	}
 
 	void CommandList::RemoveLayout(void *image)
 	{
-        std::scoped_lock lock(s_ImageLayoutsMutex);
+		std::scoped_lock lock(s_ImageLayoutsMutex);
 		s_ImageLayouts.erase(image);
 	}
 
-    /**
-     * @brief Begin immediate command recording on the queue matching @p type.
-     *
-     * This uses QueueManager's reusable command list pool and starts recording
-     * immediately. The returned command list must be completed with
-     * EndImmediateExecution().
-     */
-    CommandList* CommandList::BeginImmediateExecution(const QueueType type)
-    {
-        Ref<RenderContext> context = RenderContext::Get();
-        SEDX_CORE_ASSERT(context.IsValid(), "RenderContext must be valid for immediate execution");
+	CommandList* CommandList::BeginImmediateExecution(const QueueType type)
+	{
+		Ref<RenderContext> context = RenderContext::Get();
+		SEDX_CORE_ASSERT(context.IsValid(), "RenderContext must be valid for immediate execution");
 
-        Ref<Device> device = context->GetDevice();
-        SEDX_CORE_ASSERT(device.IsValid(), "Device must be valid for immediate execution");
+		Ref<Device> device = context->GetDevice();
+		SEDX_CORE_ASSERT(device.IsValid(), "Device must be valid for immediate execution");
 
-        Ref<QueueManager> queueManager = device->GetQueueManager();
-        SEDX_CORE_ASSERT(queueManager.IsValid(), "QueueManager must be valid for immediate execution");
+		Ref<QueueManager> queueManager = device->GetQueueManager();
+		SEDX_CORE_ASSERT(queueManager.IsValid(), "QueueManager must be valid for immediate execution");
 
-     struct ImmediateState
-        {
-            std::unique_ptr<CommandPool> pool;
-            Ref<CommandList> cmdList;
-            std::mutex mutex;
-        };
-        static std::array<ImmediateState, static_cast<size_t>(QueueType::MaxEnum)> s_ImmediateStates;
+	 struct ImmediateState
+		{
+			std::unique_ptr<CommandPool> pool;
+			Ref<CommandList> cmdList;
+			std::mutex mutex;
+		};
+		static std::array<ImmediateState, static_cast<size_t>(QueueType::MaxEnum)> s_ImmediateStates;
 
-        if (Ref<Queue>* queueRef = queueManager->GetQueue(type); queueRef && *queueRef)
-        {
-            ImmediateState& state = s_ImmediateStates[static_cast<size_t>(type)];
-            std::scoped_lock lock(state.mutex);
+		if (Ref<Queue>* queueRef = queueManager->GetQueue(type); queueRef && *queueRef)
+		{
+			ImmediateState& state = s_ImmediateStates[static_cast<size_t>(type)];
+			std::scoped_lock lock(state.mutex);
 
-            if (!state.pool)
-            {
-                const uint32_t family = queueManager->GetFamilyIndexByType(type);
-                state.pool = std::make_unique<CommandPool>(device, family, CommandPoolType::Resettable);
-            }
+			if (!state.pool)
+			{
+				const uint32_t family = queueManager->GetFamilyIndexByType(type);
+				state.pool = std::make_unique<CommandPool>(device, family, CommandPoolType::Resettable);
+			}
 
-            if (!state.cmdList)
-            {
-                state.cmdList = CreateRef<CommandList>((*queueRef).Get(), *state.pool, "ImmediateCommandList");
-            }
+			if (!state.cmdList)
+			{
+				state.cmdList = CreateRef<CommandList>((*queueRef).Get(), *state.pool, "ImmediateCommandList");
+			}
 
-            if (state.cmdList->GetState() != CommandState::Idle)
-            {
-                state.cmdList->WaitForExecution();
-            }
+			if (state.cmdList->GetState() != CommandState::Idle)
+			{
+				state.cmdList->WaitForExecution();
+			}
 
-            state.cmdList->Begin();
-            return state.cmdList.Get();
-        }
+			state.cmdList->Begin();
+			return state.cmdList.Get();
+		}
 
-        SEDX_CORE_ERROR_TAG("CommandList", "Immediate execution queue not available for type {}", static_cast<uint32_t>(type));
-        return nullptr;
-    }
+		SEDX_CORE_ERROR_TAG("CommandList", "Immediate execution queue not available for type {}", static_cast<uint32_t>(type));
+		return nullptr;
+	}
 
-    /**
-     * @brief Submit and wait for completion of an immediate command list.
-     */
-    void CommandList::EndImmediateExecution(CommandList* cmdList)
-    {
-        SEDX_CORE_ASSERT(cmdList != nullptr, "Immediate command list cannot be null");
-        cmdList->Submit(nullptr, true);
-        cmdList->WaitForExecution();
-    }
+	/**
+	 * @brief Submit and wait for completion of an immediate command list.
+	 */
+	void CommandList::EndImmediateExecution(CommandList* cmdList)
+	{
+		SEDX_CORE_ASSERT(cmdList != nullptr, "Immediate command list cannot be null");
+		cmdList->Submit(nullptr, true);
+		cmdList->WaitForExecution();
+	}
 
-    void CommandList::ShutdownImmediateExecution()
-    {
-        for (auto& state : s_ImmediateStates)
-        {
-            std::scoped_lock lock(state.mutex);
-            state.cmdList.Reset();
-            state.pool.reset();
-        }
-    }
+	void CommandList::ShutdownImmediateExecution()
+	{
+		for (auto& state : s_ImmediateStates)
+		{
+			std::scoped_lock lock(state.mutex);
+			state.cmdList.Reset();
+			state.pool.reset();
+		}
+	}
 	
 	void CommandList::Begin()
 	{
@@ -577,37 +572,37 @@ namespace SceneryEditorX
 		m_State = CommandState::Idle;
 	}
 
-    void CommandList::ClearDepth(void *img, float clearDepth)
-    {
-        SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command List must be in Recording state to clear texture.");
+	void CommandList::ClearDepth(void *img, float clearDepth)
+	{
+		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command List must be in Recording state to clear texture.");
 		SEDX_CORE_ASSERT(img != nullptr, "Must have a valid image.");
 
-        // Transition image to transfer dst layout
+		// Transition image to transfer dst layout
 		InsertBarrier(img, Layout::ImageLayout::TransferDst);
 
-        // Define the range of the image to clear (full image)
+		// Define the range of the image to clear (full image)
 		VkImageSubresourceRange range{};
-        range.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+		range.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
 		range.baseMipLevel = 0;
 		range.levelCount = VK_REMAINING_MIP_LEVELS;
 		range.baseArrayLayer = 0;
 		range.layerCount = VK_REMAINING_ARRAY_LAYERS;
 
-        VkClearDepthStencilValue clearDepthStencil;
+		VkClearDepthStencilValue clearDepthStencil;
 		clearDepthStencil.depth = clearDepth;
 		clearDepthStencil.stencil = 0;
 
-        VkImage vkImage = *reinterpret_cast<VkImage *>(img);
+		VkImage vkImage = *reinterpret_cast<VkImage *>(img);
 
 		vkCmdClearDepthStencilImage(m_CmdBuffer, vkImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clearDepthStencil, 1, &range);
-    }
+	}
 
-    void CommandList::ClearStencil(void *img, uint32_t clearStencil)
-    {
-        SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command List must be in Recording state to clear texture.");
+	void CommandList::ClearStencil(void *img, uint32_t clearStencil)
+	{
+		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command List must be in Recording state to clear texture.");
 		SEDX_CORE_ASSERT(img != nullptr, "Must have a valid image.");
 
-        // Transition image to transfer dst layout
+		// Transition image to transfer dst layout
 		InsertBarrier(img, Layout::ImageLayout::TransferDst);
 
 		VkImageSubresourceRange range{};
@@ -617,24 +612,24 @@ namespace SceneryEditorX
 		range.baseArrayLayer = 0;
 		range.layerCount = VK_REMAINING_ARRAY_LAYERS;
 
-        VkClearDepthStencilValue clearDepthStencil;
+		VkClearDepthStencilValue clearDepthStencil;
 		clearDepthStencil.depth = 0;
 		clearDepthStencil.stencil = clearStencil;
 
-        VkImage vkImage = *reinterpret_cast<VkImage *>(img);
+		VkImage vkImage = *reinterpret_cast<VkImage *>(img);
 
 		vkCmdClearDepthStencilImage(m_CmdBuffer, vkImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clearDepthStencil, 1, &range);
-    }
+	}
 
-    void CommandList::ClearTexture(void *img, const Color &color)
-    {
+	void CommandList::ClearTexture(void *img, const Color &color)
+	{
 		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command List must be in Recording state to clear texture.");
 		SEDX_CORE_ASSERT(img != nullptr, "Must have a valid image.");
 
 		// Transition image to transfer dst layout
 		InsertBarrier(img, Layout::ImageLayout::TransferDst);
 
-        // Define the range of the image to clear (full image)
+		// Define the range of the image to clear (full image)
 		VkImageSubresourceRange range;
 		range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT; // Assuming it's a color image
 		range.baseMipLevel = 0;
@@ -651,554 +646,568 @@ namespace SceneryEditorX
 		VkImage vkImage = *reinterpret_cast<VkImage *>(img);
 
 		// Clear the image
-        vkCmdClearColorImage(m_CmdBuffer, vkImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clearColor, 1, &range);
-    }
+		vkCmdClearColorImage(m_CmdBuffer, vkImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clearColor, 1, &range);
+	}
 
-    void CommandList::ClearTexture(ImageResource* img, const Color &color)
-    {
-        SEDX_CORE_ASSERT(img != nullptr, "ImageResource must be valid");
-        SEDX_CORE_ASSERT(img->Get() != nullptr && *img->Get() != VK_NULL_HANDLE, "ImageResource must contain a valid VkImage");
-        ClearTexture(static_cast<void*>(img->Get()), color);
-    }
+	void CommandList::ClearTexture(ImageResource* img, const Color &color)
+	{
+		SEDX_CORE_ASSERT(img != nullptr, "ImageResource must be valid");
+		SEDX_CORE_ASSERT(img->Get() != nullptr && *img->Get() != VK_NULL_HANDLE, "ImageResource must contain a valid VkImage");
+		ClearTexture(static_cast<void*>(img->Get()), color);
+	}
 
-    void CommandList::SetIndexBuffer(const Buffer *indexBuffer)
-    {
-        SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command List must be in Recording state to set index buffer.");
-        SEDX_CORE_ASSERT(indexBuffer != nullptr, "Index buffer must be valid");
-        SEDX_CORE_ASSERT(indexBuffer->Get() != nullptr, "Index buffer must have a valid buffer");
-        if (m_BufferID_Index == indexBuffer->GetObjectId())
-            return;
+	void CommandList::SetIndexBuffer(const Buffer *indexBuffer)
+	{
+		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command List must be in Recording state to set index buffer.");
+		SEDX_CORE_ASSERT(indexBuffer != nullptr, "Index buffer must be valid");
+		SEDX_CORE_ASSERT(indexBuffer->Get() != nullptr, "Index buffer must have a valid buffer");
+		if (m_BufferID_Index == indexBuffer->GetObjectId())
+			return;
 
-        //bool is16Bit = indexBuffer->GetStride() == sizeof(uint16_t);
+		//bool is16Bit = indexBuffer->GetStride() == sizeof(uint16_t);
 
-        vkCmdBindIndexBuffer(
-            m_CmdBuffer,          // commandBuffer
-            indexBuffer->Get(),   // buffer
-            0,                    // offset
-            VK_INDEX_TYPE_UINT16  // indexType
-        );
+		vkCmdBindIndexBuffer(
+			m_CmdBuffer,          // commandBuffer
+			indexBuffer->Get(),   // buffer
+			0,                    // offset
+			VK_INDEX_TYPE_UINT16  // indexType
+		);
 
-        m_BufferID_Index = indexBuffer->GetObjectId();
-    }
+		m_BufferID_Index = indexBuffer->GetObjectId();
+	}
 
-    void CommandList::SetVertexBuffer(const Buffer *vertexBuffer, const Buffer *instance)
-    {
-        SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command List must be in Recording state to set vertex buffer.");
-        SEDX_CORE_ASSERT(m_CmdBuffer != VK_NULL_HANDLE, "Command List has no active VkCommandBuffer");
-        SEDX_CORE_ASSERT(vertexBuffer != nullptr, "Vertex buffer must be valid");
-        SEDX_CORE_ASSERT(instance != nullptr, "Instance buffer must be valid");
+	void CommandList::SetVertexBuffer(const Buffer *vertexBuffer, const Buffer *instance)
+	{
+		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command List must be in Recording state to set vertex buffer.");
+		SEDX_CORE_ASSERT(m_CmdBuffer != VK_NULL_HANDLE, "Command List has no active VkCommandBuffer");
+		SEDX_CORE_ASSERT(vertexBuffer != nullptr, "Vertex buffer must be valid");
 
-        VkBuffer vertex_buffers[2] = {
-            vertexBuffer->Get(),
-            instance->Get(),
-        };
-        SEDX_CORE_ASSERT(vertex_buffers[0] != VK_NULL_HANDLE && vertex_buffers[1] != VK_NULL_HANDLE,
-            "Vertex and instance buffers must be valid Vulkan handles");
+		const VkBuffer vertexBufferHandle = vertexBuffer->Get();
+		SEDX_CORE_ASSERT(vertexBufferHandle != VK_NULL_HANDLE, "Vertex buffer must have a valid Vulkan handle");
 
-        VkDeviceSize offsets[2] = {0, 0};
+		if (instance != nullptr)
+		{
+			const VkBuffer instanceBufferHandle = instance->Get();
+			SEDX_CORE_ASSERT(instanceBufferHandle != VK_NULL_HANDLE, "Instance buffer must have a valid Vulkan handle");
 
-        vkCmdBindVertexBuffers(m_CmdBuffer, 0, 2, vertex_buffers, offsets);
-    }
+			VkBuffer vertexBuffers[2] = { vertexBufferHandle, instanceBufferHandle };
+			VkDeviceSize offsets[2] = { 0, 0 };
+			vkCmdBindVertexBuffers(m_CmdBuffer, 0, 2, vertexBuffers, offsets);
+			return;
+		}
 
-    void CommandList::EndRenderPass()
-    {
-        if (!m_RenderPassActive)
-            return;
+		VkDeviceSize offset = 0;
+		vkCmdBindVertexBuffers(m_CmdBuffer, 0, 1, &vertexBufferHandle, &offset);
+	}
 
-        vkCmdEndRendering(m_CmdBuffer);
-        m_RenderPassActive = false;
-    }
+	void CommandList::EndRenderPass()
+	{
+		if (!m_RenderPassActive)
+			return;
 
-    void CommandList::InsertBarrier(void *img, Layout::ImageLayout layout, uint32_t mip, uint32_t mipRange)
-    {
-        SEDX_CORE_ASSERT(img != nullptr, "Image handle must be valid for barrier insertion");
-        SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to insert barriers");
+		vkCmdEndRendering(m_CmdBuffer);
+		m_RenderPassActive = false;
+	}
 
-        const uint32_t baseMip = (mip == ALL_MIPS) ? 0 : mip;
-        const Layout::ImageLayout currentLayout = GetImageLayout(img, baseMip);
+	void CommandList::InsertBarrier(void *img, Layout::ImageLayout layout, uint32_t mip, uint32_t mipRange)
+	{
+		SEDX_CORE_ASSERT(img != nullptr, "Image handle must be valid for barrier insertion");
+		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to insert barriers");
 
-        if (currentLayout == layout)
-            return;
+		const uint32_t baseMip = (mip == ALL_MIPS) ? 0 : mip;
+		const Layout::ImageLayout currentLayout = GetImageLayout(img, baseMip);
 
-        const BarrierAccessInfo srcInfo = GetLayoutAccessInfo(currentLayout);
-        const BarrierAccessInfo dstInfo = GetLayoutAccessInfo(layout);
+		if (currentLayout == layout)
+			return;
 
-        VkImageSubresourceRange range{};
-        range.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-        range.baseMipLevel   = baseMip;
-        range.levelCount     = (mip == ALL_MIPS || mipRange == 0) ? VK_REMAINING_MIP_LEVELS : mipRange;
-        range.baseArrayLayer = 0;
-        range.layerCount     = VK_REMAINING_ARRAY_LAYERS;
+		const BarrierAccessInfo srcInfo = GetLayoutAccessInfo(currentLayout);
+		const BarrierAccessInfo dstInfo = GetLayoutAccessInfo(layout);
 
-        VkImageMemoryBarrier2 barrier{};
-        barrier.sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
-        barrier.srcStageMask        = srcInfo.stageFlags;
-        barrier.srcAccessMask       = srcInfo.accessMask;
-        barrier.dstStageMask        = dstInfo.stageFlags;
-        barrier.dstAccessMask       = dstInfo.accessMask;
-        barrier.oldLayout           = GetVkImageLayout(currentLayout);
-        barrier.newLayout           = GetVkImageLayout(layout);
-        barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        barrier.image               = *static_cast<VkImage *>(img);
-        barrier.subresourceRange    = range;
+		VkImageSubresourceRange range{};
+		range.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+		range.baseMipLevel   = baseMip;
+		range.levelCount     = (mip == ALL_MIPS || mipRange == 0) ? VK_REMAINING_MIP_LEVELS : mipRange;
+		range.baseArrayLayer = 0;
+		range.layerCount     = VK_REMAINING_ARRAY_LAYERS;
 
-        VkDependencyInfo depInfo{};
-        depInfo.sType                   = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
-        depInfo.imageMemoryBarrierCount = 1;
-        depInfo.pImageMemoryBarriers    = &barrier;
+		VkImageMemoryBarrier2 barrier{};
+		barrier.sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+		barrier.srcStageMask        = srcInfo.stageFlags;
+		barrier.srcAccessMask       = srcInfo.accessMask;
+		barrier.dstStageMask        = dstInfo.stageFlags;
+		barrier.dstAccessMask       = dstInfo.accessMask;
+		barrier.oldLayout           = GetVkImageLayout(currentLayout);
+		barrier.newLayout           = GetVkImageLayout(layout);
+		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		barrier.image               = *static_cast<VkImage *>(img);
+		barrier.subresourceRange    = range;
 
-        vkCmdPipelineBarrier2(m_CmdBuffer, &depInfo);
+		VkDependencyInfo depInfo{};
+		depInfo.sType                   = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+		depInfo.imageMemoryBarrierCount = 1;
+		depInfo.pImageMemoryBarriers    = &barrier;
 
-        {
-            std::scoped_lock lock(s_ImageLayoutsMutex);
-            s_ImageLayouts[img] = layout;
-        }
-    }
+		vkCmdPipelineBarrier2(m_CmdBuffer, &depInfo);
 
-    void CommandList::InsertBarrier(Buffer *buffer)
-    {
-        SEDX_CORE_ASSERT(buffer != nullptr && buffer->Get() != VK_NULL_HANDLE, "Buffer must be valid for barrier insertion");
-        SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to insert barriers");
+		{
+			std::scoped_lock lock(s_ImageLayoutsMutex);
+			s_ImageLayouts[img] = layout;
+		}
+	}
 
-        VkBufferMemoryBarrier2 barrier{};
-        barrier.sType               = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;
-        barrier.srcStageMask        = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
-        barrier.srcAccessMask       = VK_ACCESS_2_SHADER_WRITE_BIT | VK_ACCESS_2_TRANSFER_WRITE_BIT;
-        barrier.dstStageMask        = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
-        barrier.dstAccessMask       = VK_ACCESS_2_SHADER_READ_BIT  | VK_ACCESS_2_TRANSFER_READ_BIT |
-                                      VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT | VK_ACCESS_2_INDEX_READ_BIT |
-                                      VK_ACCESS_2_UNIFORM_READ_BIT;
-        barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        barrier.buffer              = buffer->Get();
-        barrier.offset              = 0;
-        barrier.size                = VK_WHOLE_SIZE;
+	void CommandList::InsertBarrier(Buffer *buffer)
+	{
+		SEDX_CORE_ASSERT(buffer != nullptr && buffer->Get() != VK_NULL_HANDLE, "Buffer must be valid for barrier insertion");
+		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to insert barriers");
 
-        VkDependencyInfo depInfo{};
-        depInfo.sType                    = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
-        depInfo.bufferMemoryBarrierCount = 1;
-        depInfo.pBufferMemoryBarriers    = &barrier;
+		VkBufferMemoryBarrier2 barrier{};
+		barrier.sType               = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;
+		barrier.srcStageMask        = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+		barrier.srcAccessMask       = VK_ACCESS_2_SHADER_WRITE_BIT | VK_ACCESS_2_TRANSFER_WRITE_BIT;
+		barrier.dstStageMask        = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+		barrier.dstAccessMask       = VK_ACCESS_2_SHADER_READ_BIT  | VK_ACCESS_2_TRANSFER_READ_BIT |
+									  VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT | VK_ACCESS_2_INDEX_READ_BIT |
+									  VK_ACCESS_2_UNIFORM_READ_BIT;
+		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		barrier.buffer              = buffer->Get();
+		barrier.offset              = 0;
+		barrier.size                = VK_WHOLE_SIZE;
 
-        vkCmdPipelineBarrier2(m_CmdBuffer, &depInfo);
-    }
+		VkDependencyInfo depInfo{};
+		depInfo.sType                    = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+		depInfo.bufferMemoryBarrierCount = 1;
+		depInfo.pBufferMemoryBarriers    = &barrier;
 
-    void CommandList::InsertBarrier(void *image, VkFormat format, uint32_t mipIndex, uint32_t mipRange, uint32_t arrayLength, Layout::ImageLayout layout)
-    {
-        SEDX_CORE_ASSERT(image != nullptr, "Image handle must be valid for barrier insertion");
-        SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to insert barriers");
+		vkCmdPipelineBarrier2(m_CmdBuffer, &depInfo);
+	}
 
-        const Layout::ImageLayout currentLayout = GetImageLayout(image, mipIndex);
+	void CommandList::InsertBarrier(void *image, VkFormat format, uint32_t mipIndex, uint32_t mipRange, uint32_t arrayLength, Layout::ImageLayout layout)
+	{
+		SEDX_CORE_ASSERT(image != nullptr, "Image handle must be valid for barrier insertion");
+		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to insert barriers");
 
-        if (currentLayout == layout)
-            return;
+		const Layout::ImageLayout currentLayout = GetImageLayout(image, mipIndex);
 
-        const BarrierAccessInfo srcInfo = GetLayoutAccessInfo(currentLayout);
-        const BarrierAccessInfo dstInfo = GetLayoutAccessInfo(layout);
+		if (currentLayout == layout)
+			return;
 
-        VkImageSubresourceRange range{};
-        range.aspectMask     = GetAspectMaskFromFormat(format);
-        range.baseMipLevel   = mipIndex;
-        range.levelCount     = (mipRange == 0)      ? VK_REMAINING_MIP_LEVELS   : mipRange;
-        range.baseArrayLayer = 0;
-        range.layerCount     = (arrayLength == 0)   ? VK_REMAINING_ARRAY_LAYERS : arrayLength;
+		const BarrierAccessInfo srcInfo = GetLayoutAccessInfo(currentLayout);
+		const BarrierAccessInfo dstInfo = GetLayoutAccessInfo(layout);
 
-        VkImageMemoryBarrier2 barrier{};
-        barrier.sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
-        barrier.srcStageMask        = srcInfo.stageFlags;
-        barrier.srcAccessMask       = srcInfo.accessMask;
-        barrier.dstStageMask        = dstInfo.stageFlags;
-        barrier.dstAccessMask       = dstInfo.accessMask;
-        barrier.oldLayout           = GetVkImageLayout(currentLayout);
-        barrier.newLayout           = GetVkImageLayout(layout);
-        barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        barrier.image               = *static_cast<VkImage *>(image);
-        barrier.subresourceRange    = range;
+		VkImageSubresourceRange range{};
+		range.aspectMask     = GetAspectMaskFromFormat(format);
+		range.baseMipLevel   = mipIndex;
+		range.levelCount     = (mipRange == 0)      ? VK_REMAINING_MIP_LEVELS   : mipRange;
+		range.baseArrayLayer = 0;
+		range.layerCount     = (arrayLength == 0)   ? VK_REMAINING_ARRAY_LAYERS : arrayLength;
 
-        VkDependencyInfo depInfo{};
-        depInfo.sType                   = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
-        depInfo.imageMemoryBarrierCount = 1;
-        depInfo.pImageMemoryBarriers    = &barrier;
+		VkImageMemoryBarrier2 barrier{};
+		barrier.sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+		barrier.srcStageMask        = srcInfo.stageFlags;
+		barrier.srcAccessMask       = srcInfo.accessMask;
+		barrier.dstStageMask        = dstInfo.stageFlags;
+		barrier.dstAccessMask       = dstInfo.accessMask;
+		barrier.oldLayout           = GetVkImageLayout(currentLayout);
+		barrier.newLayout           = GetVkImageLayout(layout);
+		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		barrier.image               = *static_cast<VkImage *>(image);
+		barrier.subresourceRange    = range;
 
-        vkCmdPipelineBarrier2(m_CmdBuffer, &depInfo);
+		VkDependencyInfo depInfo{};
+		depInfo.sType                   = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+		depInfo.imageMemoryBarrierCount = 1;
+		depInfo.pImageMemoryBarriers    = &barrier;
 
-        {
-            std::scoped_lock lock(s_ImageLayoutsMutex);
-            s_ImageLayouts[image] = layout;
-        }
-    }
+		vkCmdPipelineBarrier2(m_CmdBuffer, &depInfo);
 
-    void CommandList::Draw(const uint32_t vertexCount, const uint32_t vertexOffset)
-    {
+		{
+			std::scoped_lock lock(s_ImageLayoutsMutex);
+			s_ImageLayouts[image] = layout;
+		}
+	}
+
+	void CommandList::Draw(const uint32_t vertexCount, const uint32_t vertexOffset)
+	{
 		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command List must be in Recording state to issue draw calls.");
 
-        vkCmdDraw(m_CmdBuffer, vertexCount, 1, vertexOffset, 0);
-    }
-    
-    void CommandList::DrawIndexed(const uint32_t indexCount, const uint32_t instCount, const uint32_t indexOffset, const uint32_t vertexOffset, const uint32_t instIndex)
-    {
-        SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command List must be in Recording state to issue draw calls.");
+		vkCmdDraw(m_CmdBuffer, vertexCount, 1, vertexOffset, 0);
+	}
+	
+	void CommandList::DrawIndexed(const uint32_t indexCount, const uint32_t instCount, const uint32_t indexOffset, const uint32_t vertexOffset, const uint32_t instIndex)
+	{
+		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command List must be in Recording state to issue draw calls.");
 
-        vkCmdDrawIndexed(m_CmdBuffer, indexCount, instCount, indexOffset, static_cast<int32_t>(vertexOffset), instIndex);
-    }
+		vkCmdDrawIndexed(m_CmdBuffer, indexCount, instCount, indexOffset, static_cast<int32_t>(vertexOffset), instIndex);
+	}
 
-    void CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z /*= 1*/)
-    {
-        SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to dispatch compute work");
+	void CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z /*= 1*/)
+	{
+		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to dispatch compute work");
 
-        //PreDraw();
+		//PreDraw();
 
-        vkCmdDispatch(m_CmdBuffer, x, y, z);
-    }
+		vkCmdDispatch(m_CmdBuffer, x, y, z);
+	}
 
-    void CommandList::Dispatch(ImageResource *img, float resolutionScale)
-    {
-        SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to dispatch compute work");
-        SEDX_CORE_ASSERT(img != nullptr, "ImageResource must be valid for compute dispatch");
+	void CommandList::Dispatch(ImageResource *img, float resolutionScale)
+	{
+		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to dispatch compute work");
+		SEDX_CORE_ASSERT(img != nullptr, "ImageResource must be valid for compute dispatch");
 
-        // Clamp scale to [0.5, 1.0]: below 0.5 produces too few workgroups to cover the texture safely
-        resolutionScale = xMath::Clamp(resolutionScale, 0.5f, 1.0f);
+		// Clamp scale to [0.5, 1.0]: below 0.5 produces too few workgroups to cover the texture safely
+		resolutionScale = xMath::Clamp(resolutionScale, 0.5f, 1.0f);
 
-        // Transition to General layout so the compute shader can read/write the image as a UAV
-        InsertBarrier(img->Get(), img->GetImageSpec().format, 0, 0, 0, Layout::ImageLayout::General);
+		// Transition to General layout so the compute shader can read/write the image as a UAV
+		InsertBarrier(img->Get(), img->GetImageSpec().format, 0, 0, 0, Layout::ImageLayout::General);
 
-        const uint32_t threadGroupSize = 8;
+		const uint32_t threadGroupSize = 8;
 
-        // Scaled dimensions — round up to guarantee full coverage at sub-1.0 scales
-        const uint32_t scaledWidth  = static_cast<uint32_t>(ceil(img->GetWidth()  * resolutionScale));
-        const uint32_t scaledHeight = static_cast<uint32_t>(ceil(img->GetHeight() * resolutionScale));
-        const uint32_t scaledDepth  = (img->GetImageSpec().type == ImageType::Type3D)
-            ? static_cast<uint32_t>(ceil(img->GetImageSpec().depth * resolutionScale))
-            : 1;
+		// Scaled dimensions — round up to guarantee full coverage at sub-1.0 scales
+		const uint32_t scaledWidth  = static_cast<uint32_t>(ceil(img->GetWidth()  * resolutionScale));
+		const uint32_t scaledHeight = static_cast<uint32_t>(ceil(img->GetHeight() * resolutionScale));
+		const uint32_t scaledDepth  = (img->GetImageSpec().type == ImageType::Type3D)
+			? static_cast<uint32_t>(ceil(img->GetImageSpec().depth * resolutionScale))
+			: 1;
 
-        // Conservative dispatch counts (ceil division ensures all texels are covered)
-        const uint32_t dispatchX = (scaledWidth  + threadGroupSize - 1) / threadGroupSize;
-        const uint32_t dispatchY = (scaledHeight + threadGroupSize - 1) / threadGroupSize;
-        const uint32_t dispatchZ = (scaledDepth  + threadGroupSize - 1) / threadGroupSize;
+		// Conservative dispatch counts (ceil division ensures all texels are covered)
+		const uint32_t dispatchX = (scaledWidth  + threadGroupSize - 1) / threadGroupSize;
+		const uint32_t dispatchY = (scaledHeight + threadGroupSize - 1) / threadGroupSize;
+		const uint32_t dispatchZ = (scaledDepth  + threadGroupSize - 1) / threadGroupSize;
 
-        Dispatch(dispatchX, dispatchY, dispatchZ);
+		Dispatch(dispatchX, dispatchY, dispatchZ);
 
-        // Transition to ShaderRead so subsequent graphics/compute passes can sample the result
-        InsertBarrier(img->Get(), img->GetImageSpec().format, 0, 0, 0, Layout::ImageLayout::ShaderRead);
-    }
+		// Transition to ShaderRead so subsequent graphics/compute passes can sample the result
+		InsertBarrier(img->Get(), img->GetImageSpec().format, 0, 0, 0, Layout::ImageLayout::ShaderRead);
+	}
 
-    void CommandList::SetViewport(const Viewport &viewport) const
-    {
-        SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to set viewport");
+	void CommandList::SetViewport(const Viewport &viewport) const
+	{
+		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to set viewport");
 
-        VkViewport vkViewport{};
-        vkViewport.x = viewport.x;
-        vkViewport.y = viewport.y;
-        vkViewport.width = viewport.width;
-        vkViewport.height = viewport.height;
-        vkViewport.minDepth = viewport.depth_min;
-        vkViewport.maxDepth = viewport.depth_max;
-        vkCmdSetViewport(m_CmdBuffer, 0, 1, &vkViewport);
-    }
+		VkViewport vkViewport{};
+		vkViewport.x = viewport.x;
+		vkViewport.y = viewport.y;
+		vkViewport.width = viewport.width;
+		vkViewport.height = viewport.height;
+		vkViewport.minDepth = viewport.depth_min;
+		vkViewport.maxDepth = viewport.depth_max;
+		vkCmdSetViewport(m_CmdBuffer, 0, 1, &vkViewport);
+	}
 
-    void CommandList::SetScissor(const xMath::Rectangle &scissorRect) const
-    {
-        SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to set scissor");
+	void CommandList::SetScissor(const xMath::Rectangle &scissorRect) const
+	{
+		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to set scissor");
 
-        VkRect2D scissor;
-        scissor.offset.x = static_cast<int32_t>(scissorRect.x);
-        scissor.offset.y = static_cast<int32_t>(scissorRect.y);
-        scissor.extent.width = static_cast<uint32_t>(scissorRect.width);
-        scissor.extent.height = static_cast<uint32_t>(scissorRect.height);
-        vkCmdSetScissor(m_CmdBuffer, 0, 1, &scissor);
-    }
+		VkRect2D scissor;
+		scissor.offset.x = static_cast<int32_t>(scissorRect.x);
+		scissor.offset.y = static_cast<int32_t>(scissorRect.y);
+		scissor.extent.width = static_cast<uint32_t>(scissorRect.width);
+		scissor.extent.height = static_cast<uint32_t>(scissorRect.height);
+		vkCmdSetScissor(m_CmdBuffer, 0, 1, &scissor);
+	}
 
-    void CommandList::SetCullMode(const CullMode cullMode)
-    {
-        SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to set cull mode");
-        SEDX_CORE_ASSERT(cullMode != CullMode::MaxEnum, "Invalid cull mode. You must specify a valid cull mode.");
+	void CommandList::SetCullMode(const CullMode cullMode)
+	{
+		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to set cull mode");
+		SEDX_CORE_ASSERT(cullMode != CullMode::MaxEnum, "Invalid cull mode. You must specify a valid cull mode.");
 
-        m_CullMode = GetCullingType(cullMode);
-        vkCmdSetCullMode(m_CmdBuffer, m_CullMode);
-    }
+		m_CullMode = GetCullingType(cullMode);
+		vkCmdSetCullMode(m_CmdBuffer, m_CullMode);
+	}
 
-    void CommandList::SetTexture(const uint32_t slot, ImageResource* img, const uint32_t mipIndex /*= all_mips*/, uint32_t mipRange /*= 0*/, const bool uav /*= false*/)
-    {
-        SEDX_CORE_ASSERT(m_State == CommandState::Recording);
+	void CommandList::SetTexture(const uint32_t slot, ImageResource* img, const uint32_t mipIndex /*= all_mips*/, uint32_t mipRange /*= 0*/, const bool uav /*= false*/)
+	{
+		SEDX_CORE_ASSERT(m_State == CommandState::Recording);
 
-        if (mipIndex != ALL_MIPS)
-        {
-            SEDX_CORE_ASSERT(mipRange != 0, "If a mip was specified, then mip_range can't be 0");
-        }
+		if (mipIndex != ALL_MIPS)
+		{
+			SEDX_CORE_ASSERT(mipRange != 0, "If a mip was specified, then mip_range can't be 0");
+		}
 
-        if (!m_DescriptorLayout_Current)
-        {
-            SEDX_CORE_WARN_TAG("CommandList","Descriptor layout not set, try setting texture \"%s\" within a render pass", img->GetObjectName().c_str());
-            return;
-        }
+		if (!m_DescriptorLayout_Current)
+		{
+			SEDX_CORE_WARN_TAG("CommandList","Descriptor layout not set, try setting texture \"%s\" within a render pass", img->GetObjectName().c_str());
+			return;
+		}
 
-        // if the texture is null, or it's still loading, ignore it
-        if (!img || img->GetResourceState() != ResourceState::PreparedForGpu)
-            return;
+		// if the texture is null, or it's still loading, ignore it
+		if (!img || img->GetResourceState() != ResourceState::PreparedForGpu)
+			return;
 
-        // get some texture info
-        const uint32_t mip_count     = img->GetImageSpec().mipCount;
-        const bool mip_specified     = mipIndex != ALL_MIPS;
-        const uint32_t mip_start     = mip_specified ? mipIndex : 0;
-        Layout::ImageLayout current_layout = CommandList::GetImageLayout(img->Get(), mip_start);
+		// get some texture info
+		const uint32_t mip_count     = img->GetImageSpec().mipCount;
+		const bool mip_specified     = mipIndex != ALL_MIPS;
+		const uint32_t mip_start     = mip_specified ? mipIndex : 0;
+		Layout::ImageLayout current_layout = CommandList::GetImageLayout(img->Get(), mip_start);
 
-        SEDX_CORE_ASSERT(current_layout != Layout::ImageLayout::MaxEnum, "Invalid layout");
+		SEDX_CORE_ASSERT(current_layout != Layout::ImageLayout::MaxEnum, "Invalid layout");
 
-        // transition to appropriate layout (if needed)
-        {
-            Layout::ImageLayout targetLayout = Layout::ImageLayout::MaxEnum;
-            if (uav)
-            {
-                SEDX_CORE_ASSERT((img->GetImageSpec().flags & ImageResourceFlags::UnorderedAccessView) != 0);
+		// transition to appropriate layout (if needed)
+		{
+			Layout::ImageLayout targetLayout = Layout::ImageLayout::MaxEnum;
+			if (uav)
+			{
+				SEDX_CORE_ASSERT((img->GetImageSpec().flags & ImageResourceFlags::UnorderedAccessView) != 0);
 
-                // according to section 13.1 of the Vulkan spec, storage textures have to be in a general layout.
-                // https://www.khronos.org/registry/vulkan/specs/1.1-extensions/html/vkspec.html#descriptorsets-storageimage
-                targetLayout = Layout::ImageLayout::General;
-            }
-            else
-            {
-                SEDX_CORE_ASSERT((img->GetImageSpec().flags & ImageResourceFlags::ShaderViews) != 0);
-                targetLayout = Layout::ImageLayout::ShaderRead;
-            }
+				// according to section 13.1 of the Vulkan spec, storage textures have to be in a general layout.
+				// https://www.khronos.org/registry/vulkan/specs/1.1-extensions/html/vkspec.html#descriptorsets-storageimage
+				targetLayout = Layout::ImageLayout::General;
+			}
+			else
+			{
+				SEDX_CORE_ASSERT((img->GetImageSpec().flags & ImageResourceFlags::ShaderViews) != 0);
+				targetLayout = Layout::ImageLayout::ShaderRead;
+			}
 
-            // verify that an appropriate layout has been deduced
-            SEDX_CORE_ASSERT(targetLayout != Layout::ImageLayout::MaxEnum);
+			// verify that an appropriate layout has been deduced
+			SEDX_CORE_ASSERT(targetLayout != Layout::ImageLayout::MaxEnum);
 
-            // determine if a layout transition is needed
-            bool transition_required = current_layout != targetLayout;
-            {
-                bool rest_mips_have_same_layout = true;
-                for (uint32_t i = mip_start; i < mip_count; i++)
-                {
-                    if (targetLayout != CommandList::GetImageLayout(img->Get(), i))
-                    {
-                        rest_mips_have_same_layout = false;
-                        break;
-                    }
-                }
+			// determine if a layout transition is needed
+			bool transition_required = current_layout != targetLayout;
+			{
+				bool rest_mips_have_same_layout = true;
+				for (uint32_t i = mip_start; i < mip_count; i++)
+				{
+					if (targetLayout != CommandList::GetImageLayout(img->Get(), i))
+					{
+						rest_mips_have_same_layout = false;
+						break;
+					}
+				}
 
-                transition_required = !rest_mips_have_same_layout ? true : transition_required;
-            }
+				transition_required = !rest_mips_have_same_layout ? true : transition_required;
+			}
 
-            // transition
-            if (transition_required)
-            {
-                img->SetLayout(targetLayout, this, mipIndex, mipRange);
-            }
-        }
+			// transition
+			if (transition_required)
+			{
+				img->SetLayout(targetLayout, this, mipIndex, mipRange);
+			}
+		}
 
-        // TODO: Bind img to descriptor slot when DescriptorSet exposes a SetTexture API.
-        // m_DescriptorLayout_Current->SetTexture(slot, img, mipIndex, mipRange);
-    }
+		// TODO: Bind img to descriptor slot when DescriptorSet exposes a SetTexture API.
+		// m_DescriptorLayout_Current->SetTexture(slot, img, mipIndex, mipRange);
+	}
 
-    /*
-    void CommandList::CopyImageToBuffer(void *src, Buffer *dst)
-    {
-        SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to copy image to buffer");
-        SEDX_CORE_ASSERT(src != nullptr && dst != nullptr, "Source image and destination buffer must be valid");
+	/*
+	void CommandList::CopyImageToBuffer(void *src, Buffer *dst)
+	{
+		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to copy image to buffer");
+		SEDX_CORE_ASSERT(src != nullptr && dst != nullptr, "Source image and destination buffer must be valid");
 
-        src->SetLayout(Layout::ImageLayout::TransferSrc, this);
+		src->SetLayout(Layout::ImageLayout::TransferSrc, this);
 
-        VkBufferImageCopy region{};
-        region.bufferOffset = 0;
-        region.bufferRowLength = 0;
-        region.bufferImageHeight = 0;
-        region.imageSubresource.aspectMask = GetAspectMask(src->GetFormat());
-        region.imageSubresource.mipLevel = 0;
-        region.imageSubresource.baseArrayLayer = 0;
-        region.imageSubresource.layerCount = 1;
-        region.imageOffset = { 0, 0, 0 };
-        region.imageExtent = { src->GetWidth(), src->GetHeight(), 1 };
+		VkBufferImageCopy region{};
+		region.bufferOffset = 0;
+		region.bufferRowLength = 0;
+		region.bufferImageHeight = 0;
+		region.imageSubresource.aspectMask = GetAspectMask(src->GetFormat());
+		region.imageSubresource.mipLevel = 0;
+		region.imageSubresource.baseArrayLayer = 0;
+		region.imageSubresource.layerCount = 1;
+		region.imageOffset = { 0, 0, 0 };
+		region.imageExtent = { src->GetWidth(), src->GetHeight(), 1 };
 
-        vkCmdCopyImageToBuffer(m_CmdBuffer, src->GetResource(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dst->Get(), 1, &region);
-    }
-    */
+		vkCmdCopyImageToBuffer(m_CmdBuffer, src->GetResource(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dst->Get(), 1, &region);
+	}
+	*/
 
-    void CommandList::CopyBufferToBuffer(void *src, Buffer *dst, uint64_t size)
-    {
-        SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to copy buffer data");
-        SEDX_CORE_ASSERT(src != nullptr && dst != nullptr && size > 0, "Source, destination, and size must be valid");
+	void CommandList::CopyBufferToBuffer(void *src, Buffer *dst, uint64_t size)
+	{
+		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to copy buffer data");
+		SEDX_CORE_ASSERT(src != nullptr && dst != nullptr && size > 0, "Source, destination, and size must be valid");
 
-        VkBufferCopy region{};
-        region.size = size;
-        const VkBuffer srcBuffer = *reinterpret_cast<VkBuffer *>(src);
-        vkCmdCopyBuffer(m_CmdBuffer, srcBuffer, dst->Get(), 1, &region);
-    }
+		VkBufferCopy region{};
+		region.size = size;
+		const VkBuffer srcBuffer = *reinterpret_cast<VkBuffer *>(src);
+		vkCmdCopyBuffer(m_CmdBuffer, srcBuffer, dst->Get(), 1, &region);
+	}
 
-    void CommandList::CopyBufferToBuffer(Buffer *src, Buffer *dst, uint64_t size)
-    {
-        SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to copy buffers");
-        SEDX_CORE_ASSERT(src != nullptr && dst != nullptr && size > 0, "Source, destination, and size must be valid");
+	void CommandList::CopyBufferToBuffer(Buffer *src, Buffer *dst, uint64_t size)
+	{
+		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to copy buffers");
+		SEDX_CORE_ASSERT(src != nullptr && dst != nullptr && size > 0, "Source, destination, and size must be valid");
 
-        VkBufferCopy region{};
-        region.size = size;
-        vkCmdCopyBuffer(m_CmdBuffer, src->Get(), dst->Get(), 1, &region);
-    }
+		VkBufferCopy region{};
+		region.size = size;
+		vkCmdCopyBuffer(m_CmdBuffer, src->Get(), dst->Get(), 1, &region);
+	}
 
-    void CommandList::SetPipelineState(const PipelineState& pso)
-    {
-        SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to set pipeline state");
+	void CommandList::SetPipelineState(const PipelineState& pso)
+	{
+		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to set pipeline state");
 
-        // Compute path is still TODO.
-        if (pso.shaders.contains(static_cast<uint32_t>(Stage::Compute)))
-        {
-            static bool warnedCompute = false;
-            if (!warnedCompute)
-            {
-                SEDX_CORE_WARN_TAG("CommandList", "SetPipelineState: compute pipeline binding not yet wired");
-                warnedCompute = true;
-            }
-            return;
-        }
+		// Compute path is still TODO.
+		if (pso.shaders.contains(static_cast<uint32_t>(Stage::Compute)))
+		{
+			static bool warnedCompute = false;
+			if (!warnedCompute)
+			{
+				SEDX_CORE_WARN_TAG("CommandList", "SetPipelineState: compute pipeline binding not yet wired");
+				warnedCompute = true;
+			}
+			return;
+		}
 
-        ImageResource* colorTarget = pso.render_target_color_textures[0];
-        if (!colorTarget)
-            return;
+		ImageResource* colorTarget = pso.renderTarget_ColorTextures[0];
+		if (!colorTarget)
+			return;
 
-        // Transition attachments and begin dynamic rendering if needed.
-        colorTarget->SetLayout(Layout::ImageLayout::Attachment, this, ALL_MIPS, 0);
-        VkRenderingAttachmentInfo colorAttachment{ VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
-        colorAttachment.imageView = colorTarget->GetImageView();
-        colorAttachment.imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
-        colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-        colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+		// Layout transitions are emitted via vkCmdPipelineBarrier2, which must be
+		// outside an active dynamic rendering instance unless special features are enabled.
+		// Close the current render pass before transitioning attachments.
+		EndRenderPass();
 
-        VkRenderingAttachmentInfo depthAttachment{ VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
-        if (ImageResource* depthTarget = pso.render_target_depth_texture)
-        {
-            depthTarget->SetLayout(Layout::ImageLayout::Attachment, this, ALL_MIPS, 0);
-            depthAttachment.imageView = depthTarget->GetImageView();
-            depthAttachment.imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
-            depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-            depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        }
+		// Transition attachments and begin dynamic rendering if needed.
+		colorTarget->SetLayout(Layout::ImageLayout::Attachment, this, ALL_MIPS, 0);
+		VkRenderingAttachmentInfo colorAttachment{ VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
+		colorAttachment.imageView = colorTarget->GetImageView();
+		colorAttachment.imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
+		colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+		colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 
-        if (!m_RenderPassActive)
-        {
-            VkRenderingInfo renderingInfo{ VK_STRUCTURE_TYPE_RENDERING_INFO };
-            renderingInfo.renderArea.offset = { 0, 0 };
-            renderingInfo.renderArea.extent = { colorTarget->GetWidth(), colorTarget->GetHeight() };
-            renderingInfo.layerCount = 1;
-            renderingInfo.colorAttachmentCount = 1;
-            renderingInfo.pColorAttachments = &colorAttachment;
-            renderingInfo.pDepthAttachment = (depthAttachment.imageView != VK_NULL_HANDLE) ? &depthAttachment : nullptr;
-            vkCmdBeginRendering(m_CmdBuffer, &renderingInfo);
-            m_RenderPassActive = true;
-        }
+		VkRenderingAttachmentInfo depthAttachment{ VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
+		if (ImageResource* depthTarget = pso.renderTarget_DepthTexture)
+		{
+			depthTarget->SetLayout(Layout::ImageLayout::Attachment, this, ALL_MIPS, 0);
+			depthAttachment.imageView = depthTarget->GetImageView();
+			depthAttachment.imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
+			depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+			depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+		}
 
-        if (Ref<RenderContext> context = RenderContext::Get(); context && context->pipeline != VK_NULL_HANDLE)
-        {
-            vkCmdBindPipeline(m_CmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, context->pipeline);
-        }
-    }
+		if (!m_RenderPassActive)
+		{
+			VkRenderingInfo renderingInfo{ VK_STRUCTURE_TYPE_RENDERING_INFO };
+			renderingInfo.renderArea.offset = { 0, 0 };
+			renderingInfo.renderArea.extent = { colorTarget->GetWidth(), colorTarget->GetHeight() };
+			renderingInfo.layerCount = 1;
+			renderingInfo.colorAttachmentCount = 1;
+			renderingInfo.pColorAttachments = &colorAttachment;
+			renderingInfo.pDepthAttachment = (depthAttachment.imageView != VK_NULL_HANDLE) ? &depthAttachment : nullptr;
+			vkCmdBeginRendering(m_CmdBuffer, &renderingInfo);
+			m_RenderPassActive = true;
+		}
 
-    void CommandList::PushConstants(const PushConstantBuffer& data)
-    {
-        SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to push constants");
-        // TODO: Bind data to the active pipeline layout via vkCmdPushConstants.
-        // The layout and stage flags must be sourced from the currently bound pipeline.
-        (void)data;
-        SEDX_CORE_WARN_TAG("CommandList", "PushConstants: stub — pipeline layout not yet wired");
-    }
+		if (Ref<RenderContext> context = RenderContext::Get(); context && context->pipeline != VK_NULL_HANDLE)
+		{
+			vkCmdBindPipeline(m_CmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, context->pipeline);
+		}
+	}
 
-    void CommandList::SetBuffer(Renderer_BindingsUav /*slot*/, Buffer* /*buffer*/)
-    {
-        SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to bind a buffer");
-        // TODO: Bind structured/storage buffer to the UAV slot in the active descriptor set.
-        SEDX_CORE_WARN_TAG("CommandList", "SetBuffer: stub — descriptor update not yet wired");
-    }
+	void CommandList::PushConstants(const PushConstantBuffer& data)
+	{
+		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to push constants");
+		// TODO: Bind data to the active pipeline layout via vkCmdPushConstants.
+		// The layout and stage flags must be sourced from the currently bound pipeline.
+		(void)data;
+		SEDX_CORE_WARN_TAG("CommandList", "PushConstants: stub — pipeline layout not yet wired");
+	}
 
-    void CommandList::SetBufferVertex(Buffer* vertexBuffer)
-    {
-        SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to set vertex buffer");
-        SEDX_CORE_ASSERT(vertexBuffer != nullptr, "Vertex buffer must be valid");
+	void CommandList::SetBuffer(Renderer_BindingsUav /*slot*/, Buffer* /*buffer*/)
+	{
+		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to bind a buffer");
+		// TODO: Bind structured/storage buffer to the UAV slot in the active descriptor set.
+		SEDX_CORE_WARN_TAG("CommandList", "SetBuffer: stub — descriptor update not yet wired");
+	}
 
-        const VkBuffer buf    = vertexBuffer->Get();
-        const VkDeviceSize offset = 0;
-        vkCmdBindVertexBuffers(m_CmdBuffer, 0, 1, &buf, &offset);
-    }
+	void CommandList::SetBufferVertex(Buffer* vertexBuffer)
+	{
+		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to set vertex buffer");
+		SEDX_CORE_ASSERT(vertexBuffer != nullptr, "Vertex buffer must be valid");
 
-    void CommandList::SetBufferIndex(Buffer* indexBuffer)
-    {
-        SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to set index buffer");
-        SEDX_CORE_ASSERT(indexBuffer != nullptr, "Index buffer must be valid");
+		const VkBuffer buf    = vertexBuffer->Get();
+		const VkDeviceSize offset = 0;
+		vkCmdBindVertexBuffers(m_CmdBuffer, 0, 1, &buf, &offset);
+	}
 
-        vkCmdBindIndexBuffer(m_CmdBuffer, indexBuffer->Get(), 0, VK_INDEX_TYPE_UINT32);
-    }
+	void CommandList::SetBufferIndex(Buffer* indexBuffer)
+	{
+		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to set index buffer");
+		SEDX_CORE_ASSERT(indexBuffer != nullptr, "Index buffer must be valid");
 
-    void CommandList::DrawIndexedIndirectCount(Buffer* drawArgs, uint64_t argsOffset, Buffer* countBuffer, uint64_t countOffset, uint32_t maxDrawCount)
-    {
-        SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state for indirect draw");
-        SEDX_CORE_ASSERT(drawArgs != nullptr && countBuffer != nullptr, "Indirect draw buffers must be valid");
+		vkCmdBindIndexBuffer(m_CmdBuffer, indexBuffer->Get(), 0, VK_INDEX_TYPE_UINT32);
+	}
 
-        vkCmdDrawIndexedIndirectCount(
-            m_CmdBuffer,
-            drawArgs->Get(), argsOffset,
-            countBuffer->Get(), countOffset,
-            maxDrawCount,
-            sizeof(VkDrawIndexedIndirectCommand)
-        );
-    }
+	void CommandList::DrawIndexedIndirectCount(Buffer* drawArgs, uint64_t argsOffset, Buffer* countBuffer, uint64_t countOffset, uint32_t maxDrawCount)
+	{
+		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state for indirect draw");
+		SEDX_CORE_ASSERT(drawArgs != nullptr && countBuffer != nullptr, "Indirect draw buffers must be valid");
 
-    void CommandList::InsertBarrier(ImageResource* img, BarrierType type)
-    {
-        SEDX_CORE_ASSERT(img != nullptr, "ImageResource must be valid for barrier insertion");
-        SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to insert barriers");
+		vkCmdDrawIndexedIndirectCount(
+			m_CmdBuffer,
+			drawArgs->Get(), argsOffset,
+			countBuffer->Get(), countOffset,
+			maxDrawCount,
+			sizeof(VkDrawIndexedIndirectCommand)
+		);
+	}
 
-        Layout::ImageLayout targetLayout = Layout::ImageLayout::General;
+	void CommandList::InsertBarrier(ImageResource* img, BarrierType type)
+	{
+		SEDX_CORE_ASSERT(img != nullptr, "ImageResource must be valid for barrier insertion");
+		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to insert barriers");
 
-        switch (type)
-        {
-            case BarrierType::EnsureWriteThenRead:
-                targetLayout = Layout::ImageLayout::ShaderRead;
-                break;
-            case BarrierType::EnsureReadThenWrite:
-            case BarrierType::EnsureWriteThenWrite:
-                targetLayout = Layout::ImageLayout::General;
-                break;
-            default:
-                break;
-        }
+		Layout::ImageLayout targetLayout = Layout::ImageLayout::General;
 
-        InsertBarrier(img->Get(), img->GetImageSpec().format, 0, 0, 0, targetLayout);
-    }
+		switch (type)
+		{
+			case BarrierType::EnsureWriteThenRead:
+				targetLayout = Layout::ImageLayout::ShaderRead;
+				break;
+			case BarrierType::EnsureReadThenWrite:
+			case BarrierType::EnsureWriteThenWrite:
+				targetLayout = Layout::ImageLayout::General;
+				break;
+			default:
+				break;
+		}
 
-    void CommandList::Blit(ImageResource* src, ImageResource* dst, bool /*keepAspect*/, float /*resolutionScale*/)
-    {
-        SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to blit");
-        SEDX_CORE_ASSERT(src != nullptr && dst != nullptr, "Source and destination images must be valid for blit");
+		InsertBarrier(img->Get(), img->GetImageSpec().format, 0, 0, 0, targetLayout);
+	}
 
-        // Transition full mip ranges to keep layout tracking consistent with Vulkan state.
-        // The layout tracker is currently image-wide (not per-mip), so transitioning only mip 0
-        // can lead to validation mismatches on higher mips.
-        InsertBarrier(src->Get(), src->GetImageSpec().format, 0, 0, 0, Layout::ImageLayout::TransferSrc);
-        InsertBarrier(dst->Get(), dst->GetImageSpec().format, 0, 0, 0, Layout::ImageLayout::TransferDst);
+	void CommandList::Blit(ImageResource* src, ImageResource* dst, bool /*keepAspect*/, float /*resolutionScale*/)
+	{
+		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to blit");
+		SEDX_CORE_ASSERT(src != nullptr && dst != nullptr, "Source and destination images must be valid for blit");
 
-        VkImageBlit region{};
-        region.srcSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-        region.srcSubresource.mipLevel       = 0;
-        region.srcSubresource.baseArrayLayer = 0;
-        region.srcSubresource.layerCount     = 1;
-        region.srcOffsets[0]                 = { 0, 0, 0 };
-        region.srcOffsets[1]                 = { static_cast<int32_t>(src->GetWidth()), static_cast<int32_t>(src->GetHeight()), 1 };
+		// vkCmdBlitImage and image layout transitions must run outside an active
+		// dynamic rendering instance.
+		EndRenderPass();
 
-        region.dstSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-        region.dstSubresource.mipLevel       = 0;
-        region.dstSubresource.baseArrayLayer = 0;
-        region.dstSubresource.layerCount     = 1;
-        region.dstOffsets[0]                 = { 0, 0, 0 };
-        region.dstOffsets[1]                 = { static_cast<int32_t>(dst->GetWidth()), static_cast<int32_t>(dst->GetHeight()), 1 };
+		// Transition full mip ranges to keep layout tracking consistent with Vulkan state.
+		// The layout tracker is currently image-wide (not per-mip), so transitioning only mip 0
+		// can lead to validation mismatches on higher mips.
+		InsertBarrier(src->Get(), src->GetImageSpec().format, 0, 0, 0, Layout::ImageLayout::TransferSrc);
+		InsertBarrier(dst->Get(), dst->GetImageSpec().format, 0, 0, 0, Layout::ImageLayout::TransferDst);
 
-        const Ref<Device> device = RenderContext::Get()->GetDevice();
-        vkCmdBlitImage(
-            m_CmdBuffer,
-            *src->Get(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-            *dst->Get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-            1, &region,
-            VK_FILTER_LINEAR
-        );
-    }
+		VkImageBlit region{};
+		region.srcSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+		region.srcSubresource.mipLevel       = 0;
+		region.srcSubresource.baseArrayLayer = 0;
+		region.srcSubresource.layerCount     = 1;
+		region.srcOffsets[0]                 = { 0, 0, 0 };
+		region.srcOffsets[1]                 = { static_cast<int32_t>(src->GetWidth()), static_cast<int32_t>(src->GetHeight()), 1 };
+
+		region.dstSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+		region.dstSubresource.mipLevel       = 0;
+		region.dstSubresource.baseArrayLayer = 0;
+		region.dstSubresource.layerCount     = 1;
+		region.dstOffsets[0]                 = { 0, 0, 0 };
+		region.dstOffsets[1]                 = { static_cast<int32_t>(dst->GetWidth()), static_cast<int32_t>(dst->GetHeight()), 1 };
+
+		const Ref<Device> device = RenderContext::Get()->GetDevice();
+		vkCmdBlitImage(
+			m_CmdBuffer,
+			*src->Get(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+			*dst->Get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+			1, &region,
+			VK_FILTER_LINEAR
+		);
+	}
 
 } // namespace SceneryEditorX
 

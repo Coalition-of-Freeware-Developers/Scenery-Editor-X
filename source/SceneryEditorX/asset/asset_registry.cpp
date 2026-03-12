@@ -23,53 +23,52 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  * -------------------------------------------------------
- * descriptor_set.h
+ * asset_registry.cpp
  * -------------------------------------------------------
- * Created: 09/02/2026
+ * Created: 10/03/2026
  * -------------------------------------------------------
  */
-#pragma once
-#include "descriptor.h"
-#include <vector>
+#include "asset_registry.h"
+#include "SceneryEditorX/core/application/application.h"
 
-// -----------------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-    class Device;
-
-	class DescriptorSet
-	{
-	public:
-        /**
-		 * @brief Construct a new Descriptor Set object.
-		 * @param textureDescriptors The texture descriptors to initialize the descriptor set with.
-		 */
-		DescriptorSet(const std::vector<::VkDescriptorImageInfo>& textureDescriptors);
-	    DescriptorSet() = default;
-	    ~DescriptorSet();
-
-		DescriptorSet(const DescriptorSet&) = delete;
-		DescriptorSet& operator=(const DescriptorSet&) = delete;
-		DescriptorSet(DescriptorSet&& other) noexcept;
-		DescriptorSet& operator=(DescriptorSet&& other) noexcept;
-
-        void Destroy();
-
-        VkDescriptorSetLayout GetLayout() const { return m_Layout; }
-	    VkDescriptorPool GetPool() const { return m_DescriptorPool; }
-	    VkDescriptorSet GetSet() const { return m_Set; }
 	
-	private:
-	    Ref<Device> m_Device;
-	    VkDescriptorSetLayout m_Layout = VK_NULL_HANDLE;
-	    VkDescriptorPool m_DescriptorPool = VK_NULL_HANDLE;
-	    VkDescriptorSet m_Set = VK_NULL_HANDLE;
-	    bool m_Destroyed = false;
-	};
+	const AssetMetadata& AssetRegistry::Get(const AssetHandle handle) const
+	{
+		SEDX_CORE_ASSERT(m_AssetRegistry.contains(handle));
+		LOG_ASSET("Retrieving const handle {}", handle);
+		return m_AssetRegistry.at(handle);
+	}
 
+	void AssetRegistry::Set(const AssetHandle handle, const AssetMetadata& metadata)
+	{
+		SEDX_CORE_ASSERT(metadata.handle == handle);
+		SEDX_CORE_ASSERT(handle != 0);
+		SEDX_CORE_ASSERT(Application::IsMainThread(), "AssetRegistry::Set() has been called from other than the main thread!");
+		m_AssetRegistry[handle] = metadata;
+	}
 
+	bool AssetRegistry::Contains(const AssetHandle handle) const
+	{
+		LOG_ASSET("Contains handle {}", handle);
+		return m_AssetRegistry.contains(handle);
+	}
+	
+	size_t AssetRegistry::Remove(const AssetHandle handle)
+	{
+		LOG_ASSET("Removing handle {}", handle);
+		return m_AssetRegistry.erase(handle);
+	}
 
-    } // namespace SceneryEditorX
+	void AssetRegistry::Clear()
+	{
+		LOG_ASSET("Clearing registry");
+		m_AssetRegistry.clear();
+	}
 
-// -----------------------------------------------------------------
+}
+
+// -------------------------------------------------------

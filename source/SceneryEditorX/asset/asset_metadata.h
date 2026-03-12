@@ -23,53 +23,65 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  * -------------------------------------------------------
- * descriptor_set.h
+ * asset_metadata.h
  * -------------------------------------------------------
- * Created: 09/02/2026
+ * Created: 10/03/2026
  * -------------------------------------------------------
  */
 #pragma once
-#include "descriptor.h"
-#include <vector>
+#include "asset.h"
 
-// -----------------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-    class Device;
 
-	class DescriptorSet
+	/**
+	 * @enum AssetStatus
+	 * @brief Represents the status of an asset, indicating whether it is ready, invalid, or currently loading.
+	 */
+	enum class AssetStatus : uint8_t
 	{
-	public:
-        /**
-		 * @brief Construct a new Descriptor Set object.
-		 * @param textureDescriptors The texture descriptors to initialize the descriptor set with.
-		 */
-		DescriptorSet(const std::vector<::VkDescriptorImageInfo>& textureDescriptors);
-	    DescriptorSet() = default;
-	    ~DescriptorSet();
-
-		DescriptorSet(const DescriptorSet&) = delete;
-		DescriptorSet& operator=(const DescriptorSet&) = delete;
-		DescriptorSet(DescriptorSet&& other) noexcept;
-		DescriptorSet& operator=(DescriptorSet&& other) noexcept;
-
-        void Destroy();
-
-        VkDescriptorSetLayout GetLayout() const { return m_Layout; }
-	    VkDescriptorPool GetPool() const { return m_DescriptorPool; }
-	    VkDescriptorSet GetSet() const { return m_Set; }
-	
-	private:
-	    Ref<Device> m_Device;
-	    VkDescriptorSetLayout m_Layout = VK_NULL_HANDLE;
-	    VkDescriptorPool m_DescriptorPool = VK_NULL_HANDLE;
-	    VkDescriptorSet m_Set = VK_NULL_HANDLE;
-	    bool m_Destroyed = false;
+		None	= 0,
+		Ready	= 1, 
+		Invalid = 2, 
+		Loading = 3
 	};
 
+	/**
+	 * @struct AssetMetadata
+	 * @brief Metadata for an asset, including its handle, type, file path, status, and other relevant information.
+	 */
+	struct AssetMetadata
+	{
+		AssetHandle handle;
+		AssetType type;
+		std::filesystem::path filePath;
 
+		AssetStatus status = AssetStatus::None;
 
-    } // namespace SceneryEditorX
+		uint64_t fileLastWriteTime = 0; // TODO: this is the last write time of the file WE LOADED
+		bool isDataLoaded = false;
 
-// -----------------------------------------------------------------
+		[[nodiscard]] bool IsValid() const { return handle != 0; }
+
+		/// UUID copy-assignment is deleted, so provide an explicit operator= that
+		/// copy-constructs a temporary UUID then move-assigns it.
+		AssetMetadata& operator=(const AssetMetadata& other)
+		{
+			if (this != &other)
+			{
+				handle            = AssetHandle(other.handle);
+				type              = other.type;
+				filePath          = other.filePath;
+				status            = other.status;
+				fileLastWriteTime = other.fileLastWriteTime;
+				isDataLoaded      = other.isDataLoaded;
+			}
+			return *this;
+		}
+	};
+
+}
+
+// -------------------------------------------------------

@@ -30,15 +30,13 @@
  */
 import resources;
 
-// Local vertex input declaration for the grid pass.
-// This avoids pulling the full vertex_processing module dependency chain,
-// which includes advanced material/surface helpers not required by grid.
-struct Vertex_PosUvNorTan
+// Minimal vertex input for the grid pass.
+// Matches the QuadVertex layout (Vec3 position + Vec2 uv) produced by GeometryBuffer.
+// Normal and tangent are not needed by the grid vertex shader.
+struct GridVertex
 {
-    float4 position : POSITION;
-    float2 uv : TEXCOORD;
-    float3 normal : NORMAL;
-    float3 tangent : TANGENT;
+    float3 position : POSITION;
+    float2 uv       : TEXCOORD;
 };
 
 
@@ -61,13 +59,20 @@ struct PixelInput
 };
 
 [shader("vertex")]
-PixelInput main_vs(Vertex_PosUvNorTan input)
+PixelInput main_vs(GridVertex input)
 {
     PixelInput output;
 
-    input.position.w = 1.0f;
-    output.position_world = mul(input.position, draw_data[buffer_pass.draw_index].transform);
+    // buffer_pass.values[0].x carries the grid half-extent set by Pass_Grid.
+    // The quad lives in the XY plane (z = 0); we remap it to the XZ ground plane:
+    //   world.x = input.x * scale
+    //   world.y = 0          (ground level)
+    //   world.z = input.y * scale
+    float scale = buffer_pass.values[0].x;
+    output.position_world = float4(input.position.x * scale, 0.0f, input.position.y * scale, 1.0f);
 
+    // Snap the grid tile origin to the camera's XZ position rounded to the bold-line frequency
+    // so the grid always stays centred under the camera as it moves.
     float2 camera_anchor = floor(buffer_frame.camera_position.xz / frequency_bold) * frequency_bold;
     output.position_world.x += camera_anchor.x;
     output.position_world.z += camera_anchor.y;
