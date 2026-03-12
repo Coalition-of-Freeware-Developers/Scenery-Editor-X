@@ -34,7 +34,45 @@
 
 namespace SceneryEditorX
 {
+	Bitmap::Bitmap() : InheritanceBundle<RefCounted, IResource>(ResourceType::Image2D)
+	{
+	}
 
-}
+	Bitmap::Bitmap(std::filesystem::path filename) : InheritanceBundle<RefCounted, IResource>(ResourceType::Image2D), m_Filename(std::move(filename))
+	{
+		Bitmap::LoadFromFile(m_Filename.string());
+	}
+
+	Bitmap::Bitmap(std::unique_ptr<uint8_t[]> &&data, const UVec2 &size, uint32_t bytesPerPixel) : 
+		InheritanceBundle<RefCounted, IResource>(ResourceType::Image2D), m_Data(std::move(data)), m_Size(size), m_BytesPerPixel(bytesPerPixel)
+	{
+
+	}
+
+	Bitmap::~Bitmap()
+	{
+	}
+
+	uint32_t Bitmap::GetWidth() const
+	{
+		return m_Size.x;
+	}
+
+	uint32_t Bitmap::GetHeight() const
+	{
+		return m_Size.y;
+	}
+
+	void Bitmap::SaveToFile(const std::string &filePath)
+	{
+		InheritanceBundle<RefCounted, IResource>::SaveToFile(filePath);
+	}
+
+	void Bitmap::LoadFromFile(const std::string &filePath)
+	{
+		InheritanceBundle<RefCounted, IResource>::LoadFromFile(filePath);
+	}
+
+} // namespace SceneryEditorX
 
 // -------------------------------------------------------

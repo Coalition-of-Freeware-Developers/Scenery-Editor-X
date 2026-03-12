@@ -66,35 +66,35 @@ namespace SceneryEditorX
 		template<typename T>
 		const T& GetComponent() const;
 		
-        Component* GetComponentByType(ComponentType Type) const;
-        Component* AddComponentByType(ComponentType Type);
-        void RemoveComponentByType(ComponentType Type);
+		Component* GetComponentByType(ComponentType Type) const;
+		Component* AddComponentByType(ComponentType Type);
+		void RemoveComponentByType(ComponentType Type);
 
-        // adds a component of type T
-        template <class T>
-        T* AddComponent()
-        {
-            const ComponentType type = Component::TypeToEnum<T>();
+		// adds a component of type T
+		template <class T>
+		T* AddComponent()
+		{
+			const ComponentType type = Component::TypeToEnum<T>();
 
-            // early exit if the component exists
-            if (T* component = GetComponent<T>())
-                return component;
+			// early exit if the component exists
+			if (T* component = GetComponent<T>())
+				return component;
 
-            // create a new component
-            std::shared_ptr<T> component = std::make_shared<T>(this);
+			// create a new component
+			std::shared_ptr<T> component = std::make_shared<T>(this);
 
-            // save new component
-            m_components[static_cast<uint32_t>(type)] = std::static_pointer_cast<Component>(component);
+			// save new component
+			m_components[static_cast<uint32_t>(type)] = std::static_pointer_cast<Component>(component);
 
-            // initialize component
-            component->SetType(type);
-            component->Initialize();
+			// initialize component
+			component->SetType(type);
+			component->Initialize();
 
-            return component.get();
-        }
+			return component.get();
+		}
 
-        // adds a component of ComponentType
-        Component* AddComponent(ComponentType type);
+		// adds a component of ComponentType
+		Component* AddComponent(ComponentType type);
 
 		// returns a component of type T
 		template <class T>
