@@ -47,24 +47,24 @@ bool appRunning = true; // Global variable to control the application loop
 
 namespace SceneryEditorX
 {
-    Application *Application::s_AppInstance = nullptr;
-    static std::thread::id s_MainThreadID;
+	Application *Application::s_AppInstance = nullptr;
+	static std::thread::id s_MainThreadID;
 
-    // -------------------------------------------------------
+	// -------------------------------------------------------
 
-    /**
-     * @brief Helper function to initialize the application with common setup
-     * @param appData The application data configuration
-     */
-    void Application::InitializeApplication(const AppData &appData)
-    {
-        m_AppData = appData;
+	/**
+	 * @brief Helper function to initialize the application with common setup
+	 * @param appData The application data configuration
+	 */
+	void Application::InitializeApplication(const AppData &appData)
+	{
+		m_AppData = appData;
 
-        // Set working directory if specified
-        if (!appData.WorkingDirectory.empty())
-        {
-            std::filesystem::current_path(appData.WorkingDirectory);
-        }
+		// Set working directory if specified
+		if (!appData.WorkingDirectory.empty())
+		{
+			std::filesystem::current_path(appData.WorkingDirectory);
+		}
 
 		// Create window
 		m_Window = CreateScope<Window>();
@@ -74,122 +74,122 @@ namespace SceneryEditorX
 		// Configure window properties BEFORE renderer init
 		if (appData.SplashScreen)
 		{
-		    m_Window->SetResizable(false);
-		    m_Window->SetDecorated(false);
+			m_Window->SetResizable(false);
+			m_Window->SetDecorated(false);
 		}
 		else
 		{
-		    m_Window->SetResizable(appData.Resizable);
-		    m_Window->SetDecorated(appData.Decorated);
+			m_Window->SetResizable(appData.Resizable);
+			m_Window->SetDecorated(appData.Decorated);
 		}
 		
 		if (appData.StartMaximized)
 		{
-		    m_Window->Maximize();
+			m_Window->Maximize();
 		}
 		else
 		{
-		    m_Window->CenterWindow();
+			m_Window->CenterWindow();
 		}
 		
 		// Set event callback before renderer init (so it can handle any initialization events)
 		m_Window->SetEventCallback([this](Event &e) { OnEvent(e); });
 		m_IsMinimized = false;
 
-        FPSTimer::Init();
-        ThreadPool::Init();
+		FPSTimer::Init();
+		ThreadPool::Init();
 		ResourceCache::Init();
-        RenderContext::Init();
+		RenderContext::Init();
 		Renderer::Init();
-        m_RenderThread.Run();
+		m_RenderThread.Run();
 
 		m_IsRunning = true;
-    }
+	}
 
-    // -------------------------------------------------------
+	// -------------------------------------------------------
 
-    Application::Application(const PlatformContext& context) : m_PlatformContext(&context), m_RenderThread(ThreadingPolicy::MultiThreaded)
-    {
-        s_AppInstance = this;
-        s_MainThreadID = std::this_thread::get_id();
+	Application::Application(const PlatformContext& context) : m_PlatformContext(&context), m_RenderThread(ThreadingPolicy::MultiThreaded)
+	{
+		s_AppInstance = this;
+		s_MainThreadID = std::this_thread::get_id();
 
-        // Set working directory to application root (2 levels up from bin/Debug)
-        /*
-        std::filesystem::path exePath = std::filesystem::current_path();
-        std::filesystem::path repoRoot = exePath.parent_path().parent_path();
-        std::filesystem::current_path(repoRoot);
-        */
+		// Set working directory to application root (2 levels up from bin/Debug)
+		/*
+		std::filesystem::path exePath = std::filesystem::current_path();
+		std::filesystem::path repoRoot = exePath.parent_path().parent_path();
+		std::filesystem::current_path(repoRoot);
+		*/
 
-        /*
-        SEDX_CORE_TRACE("Executable directory: {}", exePath.string());
-        SEDX_CORE_TRACE("Repository root: {}", repoRoot.string());
-        */
-        SEDX_CORE_TRACE("Working directory set to: {}", std::filesystem::current_path().string());
+		/*
+		SEDX_CORE_TRACE("Executable directory: {}", exePath.string());
+		SEDX_CORE_TRACE("Repository root: {}", repoRoot.string());
+		*/
+		SEDX_CORE_TRACE("Working directory set to: {}", std::filesystem::current_path().string());
 
-        // -------------------------------------------------------
+		// -------------------------------------------------------
 
-        SEDX_CORE_TRACE("=== Initializing Application with PlatformContext ===");
-        SEDX_CORE_TRACE("  Working Directory: {}", context.GetWorkingDirectory());
-        SEDX_CORE_TRACE("  Temp Directory: {}", context.GetTempDirectory());
-        SEDX_CORE_TRACE("  Command Line Args: {}", context.GetCommandLineArgs().size());
+		SEDX_CORE_TRACE("=== Initializing Application with PlatformContext ===");
+		SEDX_CORE_TRACE("  Working Directory: {}", context.GetWorkingDirectory());
+		SEDX_CORE_TRACE("  Temp Directory: {}", context.GetTempDirectory());
+		SEDX_CORE_TRACE("  Command Line Args: {}", context.GetCommandLineArgs().size());
 
-        AppData specification;
-        specification.CoreThreadingPolicy = ThreadingPolicy::MultiThreaded;
-        // Apply platform context settings to app data
-        if (!context.GetWorkingDirectory().empty())
-        {
-            specification.WorkingDirectory = context.GetWorkingDirectory();
-        }
+		AppData specification;
+		specification.CoreThreadingPolicy = ThreadingPolicy::MultiThreaded;
+		// Apply platform context settings to app data
+		if (!context.GetWorkingDirectory().empty())
+		{
+			specification.WorkingDirectory = context.GetWorkingDirectory();
+		}
 
-        InitializeApplication(specification);
-    }
+		InitializeApplication(specification);
+	}
 
-    Application::Application(const PlatformContext& context, const AppData& appData) : m_PlatformContext(&context), m_RenderThread(appData.CoreThreadingPolicy)
-    {
-        s_AppInstance = this;
-        s_MainThreadID = std::this_thread::get_id();
+	Application::Application(const PlatformContext& context, const AppData& appData) : m_PlatformContext(&context), m_RenderThread(appData.CoreThreadingPolicy)
+	{
+		s_AppInstance = this;
+		s_MainThreadID = std::this_thread::get_id();
 
-        // Set working directory to application root (2 levels up from bin/Debug)
-        std::filesystem::path exePath = std::filesystem::current_path();
-        std::filesystem::path repoRoot = exePath.parent_path().parent_path();
-        std::filesystem::current_path(repoRoot);
+		// Set working directory to application root (2 levels up from bin/Debug)
+		std::filesystem::path exePath = std::filesystem::current_path();
+		std::filesystem::path repoRoot = exePath.parent_path().parent_path();
+		std::filesystem::current_path(repoRoot);
 
-        SEDX_CORE_TRACE("Executable directory: {}", exePath.string());
-        SEDX_CORE_TRACE("Repository root: {}", repoRoot.string());
-        SEDX_CORE_TRACE("Working directory set to: {}", std::filesystem::current_path().string());
+		SEDX_CORE_TRACE("Executable directory: {}", exePath.string());
+		SEDX_CORE_TRACE("Repository root: {}", repoRoot.string());
+		SEDX_CORE_TRACE("Working directory set to: {}", std::filesystem::current_path().string());
 
-        // -------------------------------------------------------
+		// -------------------------------------------------------
 
-        SEDX_CORE_TRACE("=== Initializing Application with PlatformContext ===");
-        SEDX_CORE_TRACE("  Working Directory: {}", context.GetWorkingDirectory());
-        SEDX_CORE_TRACE("  Temp Directory: {}", context.GetTempDirectory());
-        SEDX_CORE_TRACE("  Command Line Args: {}", context.GetCommandLineArgs().size());
+		SEDX_CORE_TRACE("=== Initializing Application with PlatformContext ===");
+		SEDX_CORE_TRACE("  Working Directory: {}", context.GetWorkingDirectory());
+		SEDX_CORE_TRACE("  Temp Directory: {}", context.GetTempDirectory());
+		SEDX_CORE_TRACE("  Command Line Args: {}", context.GetCommandLineArgs().size());
 
-        AppData specification = appData;
+		AppData specification = appData;
 
-        // Apply platform context settings if not already set in appData
-        if (specification.WorkingDirectory.empty() && !context.GetWorkingDirectory().empty())
-        {
-            specification.WorkingDirectory = context.GetWorkingDirectory();
-        }
+		// Apply platform context settings if not already set in appData
+		if (specification.WorkingDirectory.empty() && !context.GetWorkingDirectory().empty())
+		{
+			specification.WorkingDirectory = context.GetWorkingDirectory();
+		}
 
-        InitializeApplication(specification);
-    }
+		InitializeApplication(specification);
+	}
 
-    Application::~Application()
-    {
+	Application::~Application()
+	{
 		if (m_Window)
-		    m_Window->SetEventCallback([](Event&) {});
+			m_Window->SetEventCallback([](Event&) {});
 
 		// Stop producing new work first
 		m_RenderThread.Terminate();
 
-        // Detach and destroy layers in reverse order (dependencies unwind correctly)
+		// Detach and destroy layers in reverse order (dependencies unwind correctly)
 		for (size_t i = m_ModuleStage.Size(); i > 0; --i)
 		{
-		    Layer* layer = m_ModuleStage[i - 1];
-		    layer->OnDetach();
-		    delete layer;
+			Layer* layer = m_ModuleStage[i - 1];
+			layer->OnDetach();
+			delete layer;
 		}
 
 		// Release shared resource owners/caches
@@ -200,39 +200,39 @@ namespace SceneryEditorX
 		Renderer::Shutdown();
 		ThreadPool::Shutdown();
 
-        /*
-        /** 
-         * Let RAII handle Window destruction, or explicitly reset the RefCounter once
-         * to avoid double-destruction. Do NOT call the destructor directly.
-         #1#
-        if (m_Window)
-        {
-            m_Window->Destroy();
-            m_Window.reset();
-        }*/
+		/*
+		/** 
+		 * Let RAII handle Window destruction, or explicitly reset the RefCounter once
+		 * to avoid double-destruction. Do NOT call the destructor directly.
+		 #1#
+		if (m_Window)
+		{
+			m_Window->Destroy();
+			m_Window.reset();
+		}*/
 
-    }
+	}
 
-    void Application::Tick()
-    {
-        Input::Tick();
+	void Application::Tick()
+	{
+		Input::Tick();
 
-        // Per-frame housekeeping
-        Window::Tick();
-        m_RenderThread.Tick();
-        FPSTimer::PostTick();
-    }
+		// Per-frame housekeeping
+		Window::Tick();
+		m_RenderThread.Tick();
+		FPSTimer::PostTick();
+	}
 
-    void Application::Run()
-    {
-        OnInit(); // Call user-defined initialization function
+	void Application::Run()
+	{
+		OnInit(); // Call user-defined initialization function
 
-        static uint64_t frameCount = 0;
+		static uint64_t frameCount = 0;
 
-        // Main application loop
-        while (m_IsRunning && !m_Window->GetShouldClose())
-        {
-            // Wait for render thread to finish frame
+		// Main application loop
+		while (m_IsRunning && !m_Window->GetShouldClose())
+		{
+			// Wait for render thread to finish frame
 			{
 				Timer timer;
 
@@ -241,120 +241,120 @@ namespace SceneryEditorX
 				m_PerformanceTimers.MainThreadWaitTime = timer.ElapsedMillis();
 			}
 
-            Timer cpuTimer;
+			Timer cpuTimer;
 
-            float time = GetTime();
-            m_FrameTime = time - m_LastFrameTime;
-            m_DeltaTime = xMath::Min<float>(static_cast<float>(m_FrameTime), 0.0333f);
-            m_LastFrameTime = time;
+			float time = GetTime();
+			m_FrameTime = time - m_LastFrameTime;
+			m_DeltaTime = xMath::Min<float>(static_cast<float>(m_FrameTime), 0.0333f);
+			m_LastFrameTime = time;
 
-            // Poll events
-            ProcessEvents();
+			// Poll events
+			ProcessEvents();
 
-            for (size_t i = 0; i < m_ModuleStage.Size(); ++i)
-            {
-                m_ModuleStage[i]->Tick(m_DeltaTime);
-            }
+			for (size_t i = 0; i < m_ModuleStage.Size(); ++i)
+			{
+				m_ModuleStage[i]->Tick(m_DeltaTime);
+			}
 
-            OnUpdate();
-            OnRender();
+			OnUpdate();
+			OnRender();
 
-            Tick();
-            Input::ClearReleasedKeys();
+			Tick();
+			Input::ClearReleasedKeys();
 
-            // Start rendering previous frame
-            m_RenderThread.Kick();
+			// Start rendering previous frame
+			m_RenderThread.Kick();
 
-            m_CurrentFrameIndex = (m_CurrentFrameIndex + 1) % 2;
-            m_PerformanceTimers.MainThreadWorkTime = cpuTimer.ElapsedMillis();
+			m_CurrentFrameIndex = (m_CurrentFrameIndex + 1) % 2;
+			m_PerformanceTimers.MainThreadWorkTime = cpuTimer.ElapsedMillis();
 
-            frameCount++;
-        }
+			frameCount++;
+		}
 
-        m_RenderThread.BlockUntilRenderComplete();
+		m_RenderThread.BlockUntilRenderComplete();
 
-        //SEDX_CORE_INFO_TAG("Application", "=== Exiting Application Main Loop (frames rendered: {}) ===", frameCount);
-        OnShutdown();
-    }
+		//SEDX_CORE_INFO_TAG("Application", "=== Exiting Application Main Loop (frames rendered: {}) ===", frameCount);
+		OnShutdown();
+	}
 
-    void Application::Stop() { m_IsRunning = false; }
+	void Application::Stop() { m_IsRunning = false; }
 
-    void Application::OnRender()
-    {
-        // Override in derived class (Editor::OnRender())
-    }
+	void Application::OnRender()
+	{
+		// Override in derived class (Editor::OnRender())
+	}
 
-    void Application::OnShutdown()
-    {
-        SEDX_CORE_INFO_TAG("Application", "Application::OnShutdown()");
-        SEDX_CORE_TRACE("Shutting down application");
-        m_EventCallbacks.clear();
-        appRunning = false;
-    }
+	void Application::OnShutdown()
+	{
+		SEDX_CORE_INFO_TAG("Application", "Application::OnShutdown()");
+		SEDX_CORE_TRACE("Shutting down application");
+		m_EventCallbacks.clear();
+		appRunning = false;
+	}
 
-    void Application::PushLayer(Layer *module)
-    {
-        m_ModuleStage.PushLayer(module);
-        module->OnAttach();
-    }
+	void Application::PushLayer(Layer *module)
+	{
+		m_ModuleStage.PushLayer(module);
+		module->OnAttach();
+	}
 
-    void Application::PushOverlay(Layer *module)
-    {
+	void Application::PushOverlay(Layer *module)
+	{
 		m_ModuleStage.PushOverlay(module);
-        module->OnAttach();
-    }
+		module->OnAttach();
+	}
 
-    void Application::PopLayer(Layer *module)
-    {
+	void Application::PopLayer(Layer *module)
+	{
 		m_ModuleStage.PopLayer(module);
-        module->OnDetach();
-    }
+		module->OnDetach();
+	}
 
-    void Application::PopOverlay(Layer *module)
-    {
+	void Application::PopOverlay(Layer *module)
+	{
 		m_ModuleStage.PopOverlay(module);
-        module->OnDetach();
-    }
+		module->OnDetach();
+	}
 
-    void Application::SyncEvents()
-    {
-        std::scoped_lock lock(m_EventQueueMutex);
-        for (auto &synced : m_EventQueue | std::views::keys)
-        {
-            synced = true;
-        }
-    }
+	void Application::SyncEvents()
+	{
+		std::scoped_lock lock(m_EventQueueMutex);
+		for (auto &synced : m_EventQueue | std::views::keys)
+		{
+			synced = true;
+		}
+	}
 
 	void Application::ProcessEvents()
 	{
 		Input::TransitionPressedKeys();
 		Input::TransitionPressedButtons();
-        Window::ProcessEvents();
+		Window::ProcessEvents();
 
-        /*
-         * Process custom event queue up until we encounter an event that is not yet synced.
-         * If the application queues such events, it is the application's responsibility to call
-         * SyncEvents() at the appropriate time.
-         */
-        while (true)
-        {
-            std::function<void()> func;
-            {
-                std::scoped_lock lock(m_EventQueueMutex);
-                if (m_EventQueue.empty() || !m_EventQueue.front().first)
-                {
-                    break;
-                }
+		/*
+		 * Process custom event queue up until we encounter an event that is not yet synced.
+		 * If the application queues such events, it is the application's responsibility to call
+		 * SyncEvents() at the appropriate time.
+		 */
+		while (true)
+		{
+			std::function<void()> func;
+			{
+				std::scoped_lock lock(m_EventQueueMutex);
+				if (m_EventQueue.empty() || !m_EventQueue.front().first)
+				{
+					break;
+				}
 
-                func = std::move(m_EventQueue.front().second);
-                m_EventQueue.pop_front();
-            }
+				func = std::move(m_EventQueue.front().second);
+				m_EventQueue.pop_front();
+			}
 
-            if (func)
-            {
-                func();
-            }
-        }
+			if (func)
+			{
+				func();
+			}
+		}
 	}
 
 	void Application::OnEvent(Event& event)
@@ -363,7 +363,7 @@ namespace SceneryEditorX
 		dispatcher.Dispatch<WindowResizeEvent>([this](const WindowResizeEvent& e) { return OnWindowResize(e); });
 		dispatcher.Dispatch<WindowMinimizeEvent>([this](const WindowMinimizeEvent& e) { return OnWindowMinimize(e); });
 		dispatcher.Dispatch<WindowCloseEvent>([this](WindowCloseEvent& e) { return OnWindowClose(e); });
-        
+		
 		for (auto it = m_ModuleStage.End(); it != m_ModuleStage.Begin(); )
 		{
 			(*--it)->OnEvent(event);
@@ -376,7 +376,7 @@ namespace SceneryEditorX
 		 * TODO: Should these callbacks be called BEFORE the layers receive events?
 		 * We may actually want that since most of these callbacks will be functions REQUIRED in order for the game
 		 * to work, and if a layer has already handled the event we may end up with problems.
-         */
+		 */
 		for (auto& eventCallback : m_EventCallbacks)
 		{
 			eventCallback(event);
@@ -393,14 +393,14 @@ namespace SceneryEditorX
 			//m_IsMinimized = true;
 			return false;
 		}
-        //m_IsMinimized = false;
+		//m_IsMinimized = false;
 
 		return false;
 	}
 
 	bool Application::OnWindowMinimize(const WindowMinimizeEvent& e)
 	{
-        m_IsMinimized = e.IsMinimized();
+		m_IsMinimized = e.IsMinimized();
 		return false;
 	}
 
@@ -411,10 +411,10 @@ namespace SceneryEditorX
 	}
 
 	float Application::GetTime() { return Time::GetTime(); }
-    const char* Application::GetConfigurationName() { return SEDX_BUILD_TYPE; }
-    const char* Application::GetPlatformName() { return SEDX_PLATFORM_NAME; }
+	const char* Application::GetConfigurationName() { return SEDX_BUILD_TYPE; }
+	const char* Application::GetPlatformName() { return SEDX_PLATFORM_NAME; }
 	std::thread::id Application::GetMainThreadID() { return s_MainThreadID; }
-    bool Application::IsMainThread() { return std::this_thread::get_id() == s_MainThreadID; }
+	bool Application::IsMainThread() { return std::this_thread::get_id() == s_MainThreadID; }
 
 }
 

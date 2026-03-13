@@ -374,6 +374,7 @@ namespace SceneryEditorX
 		}
 	}
 
+	/*
 	void Renderer::UpdateFrustumAndDistanceCulling()
 	{
 		if (Camera* camera = Scene::GetCamera())
@@ -401,8 +402,9 @@ namespace SceneryEditorX
 			m_is_visible       = true;
 		}
 	}
+	*/
 
-
+	/*
 	void Renderable::UpdateLodIndices()
 	{
 		// screen-space coverage based lod selection
@@ -490,6 +492,7 @@ namespace SceneryEditorX
 
 		m_lod_index = std::clamp(new_lod, 0u, lod_count - 1);
 	}
+	*/
 
 #pragma region Samplers
 

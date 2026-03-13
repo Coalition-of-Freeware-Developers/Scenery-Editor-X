@@ -31,11 +31,13 @@
 // ReSharper disable CppInconsistentNaming
 #pragma once
 //#include <entt/src/entt/entt.hpp>
-#include "components.h"
+#include "component.h"
 #include <SceneryEditorX/utils/inheritance.h>
+#include <array>
+#include <typeindex>
+#include <unordered_map>
 
 // -------------------------------------------------------
-
 
 namespace SceneryEditorX
 {
@@ -57,94 +59,230 @@ namespace SceneryEditorX
 
 		[[nodiscard]] bool IsValid() const;
 
-		template<typename T, typename... Args>
-		T& AddComponent(Args&&... args);
-
-		template<typename T>
-		T& GetComponent();
-
-		template<typename T>
-		const T& GetComponent() const;
-		
 		Component* GetComponentByType(ComponentType Type) const;
 		Component* AddComponentByType(ComponentType Type);
 		void RemoveComponentByType(ComponentType Type);
 
-		// adds a component of type T
-		template <class T>
-		T* AddComponent()
+		/// Adds a component by ComponentType enum value
+		Component* AddComponent(ComponentType type);
+
+		// ---- Struct component access (non-Component subclasses) - returns T& ----
+
+		/**
+		 * @brief Returns a reference to a struct component of type T.
+		 * @tparam T A non-Component struct type (e.g. IDComponent, TagComponent).
+		 * @return Reference to the stored component.
+		 */
+		template<typename T>
+		auto GetComponent() -> std::enable_if_t<!std::is_base_of_v<Component, T>, T&>
+		{
+			auto it = m_structComponents.find(std::type_index(typeid(T)));
+			SEDX_CORE_ASSERT(it != m_structComponents.end(), "Entity does not have component of this type");
+			return std::any_cast<T&>(it->second);
+		}
+
+		/**
+		 * @brief Returns a const reference to a struct component of type T.
+		 * @tparam T A non-Component struct type.
+		 * @return Const reference to the stored component.
+		 */
+		template<typename T>
+		auto GetComponent() const -> std::enable_if_t<!std::is_base_of_v<Component, T>, const T&>
+		{
+			auto it = m_structComponents.find(std::type_index(typeid(T)));
+			SEDX_CORE_ASSERT(it != m_structComponents.end(), "Entity does not have component of this type");
+			return std::any_cast<const T&>(it->second);
+		}
+
+		// ---- Runtime component access (Component subclasses) - returns T* ----
+
+		/**
+		 * @brief Returns a pointer to a runtime component of type T, or nullptr if absent.
+		 * @tparam T A class derived from Component (e.g. CameraComponent, LightComponent).
+		 * @return Pointer to the component, or nullptr.
+		 */
+		template<typename T>
+		auto GetComponent() -> std::enable_if_t<std::is_base_of_v<Component, T>, T*>
 		{
 			const ComponentType type = Component::TypeToEnum<T>();
+			return static_cast<T*>(m_components[static_cast<uint32_t>(type)].get());
+		}
 
-			// early exit if the component exists
-			if (T* component = GetComponent<T>())
-				return component;
+		/**
+		 * @brief Returns a const pointer to a runtime component of type T, or nullptr if absent.
+		 * @tparam T A class derived from Component.
+		 * @return Const pointer to the component, or nullptr.
+		 */
+		template<typename T>
+		auto GetComponent() const -> std::enable_if_t<std::is_base_of_v<Component, T>, const T*>
+		{
+			const ComponentType type = Component::TypeToEnum<T>();
+			return static_cast<const T*>(m_components[static_cast<uint32_t>(type)].get());
+		}
 
-			// create a new component
-			std::shared_ptr<T> component = std::make_shared<T>(this);
+		// ---- AddComponent ----
 
-			// save new component
+		/**
+		 * @brief Constructs and stores a struct component of type T in place.
+		 * @tparam T A non-Component struct type.
+		 * @param args Constructor arguments forwarded to T.
+		 * @return Reference to the newly added component.
+		 */
+		template<typename T, typename... Args>
+		auto AddComponent(Args&&... args) -> std::enable_if_t<!std::is_base_of_v<Component, T>, T&>
+		{
+			m_structComponents[std::type_index(typeid(T))] = T(std::forward<Args>(args)...);
+			return std::any_cast<T&>(m_structComponents[std::type_index(typeid(T))]);
+		}
+
+		/**
+		 * @brief Adds a runtime component of type T. Returns existing component if already present.
+		 * @tparam T A class derived from Component.
+		 * @return Pointer to the component.
+		 */
+		template<typename T>
+		auto AddComponent() -> std::enable_if_t<std::is_base_of_v<Component, T>, T*>
+		{
+			const ComponentType type = Component::TypeToEnum<T>();
+			if (T* existing = GetComponent<T>())
+				return existing;
+			auto component = std::make_shared<T>(this);
 			m_components[static_cast<uint32_t>(type)] = std::static_pointer_cast<Component>(component);
-
-			// initialize component
 			component->SetType(type);
 			component->Initialize();
-
 			return component.get();
 		}
 
-		// adds a component of ComponentType
-		Component* AddComponent(ComponentType type);
+		// ---- RemoveComponent ----
 
-		// returns a component of type T
-		template <class T>
-		T* GetComponent()
+		/**
+		 * @brief Removes a struct component of type T from this entity.
+		 * @tparam T A non-Component struct type.
+		 */
+		template<typename T>
+		auto RemoveComponent() -> std::enable_if_t<!std::is_base_of_v<Component, T>, void>
 		{
-			const ComponentType component_type = Component::TypeToEnum<T>();
-			return static_cast<T*>(m_components[static_cast<uint32_t>(component_type)].get());
+			m_structComponents.erase(std::type_index(typeid(T)));
 		}
 
-		// removes a component
-		template <class T>
-		void RemoveComponent()
+		/**
+		 * @brief Removes a runtime component of type T from this entity.
+		 * @tparam T A class derived from Component.
+		 */
+		template<typename T>
+		auto RemoveComponent() -> std::enable_if_t<std::is_base_of_v<Component, T>, void>
 		{
-			const ComponentType component_type = Component::TypeToEnum<T>();
-			m_components[static_cast<uint32_t>(component_type)] = nullptr;
+			const ComponentType type = Component::TypeToEnum<T>();
+			m_components[static_cast<uint32_t>(type)] = nullptr;
 		}
-		// returns nullptr if entity does not have the requested component type
-		template<typename T>
-		T* TryGetComponent();
 
-		// returns nullptr if entity does not have the requested component type
-		template<typename T>
-		const T* TryGetComponent() const;
+		// ---- TryGetComponent ----
 
+		/**
+		 * @brief Returns a pointer to a struct component of type T, or nullptr if not present.
+		 * @tparam T A non-Component struct type.
+		 */
+		template<typename T>
+		auto TryGetComponent() -> std::enable_if_t<!std::is_base_of_v<Component, T>, T*>
+		{
+			auto it = m_structComponents.find(std::type_index(typeid(T)));
+			if (it == m_structComponents.end())
+				return nullptr;
+			return std::any_cast<T>(&it->second);
+		}
+
+		/**
+		 * @brief Returns a const pointer to a struct component of type T, or nullptr if not present.
+		 * @tparam T A non-Component struct type.
+		 */
+		template<typename T>
+		auto TryGetComponent() const -> std::enable_if_t<!std::is_base_of_v<Component, T>, const T*>
+		{
+			auto it = m_structComponents.find(std::type_index(typeid(T)));
+			if (it == m_structComponents.end())
+				return nullptr;
+			return std::any_cast<T>(&it->second);
+		}
+
+		/**
+		 * @brief Returns a pointer to a runtime component of type T, or nullptr if not present.
+		 * @tparam T A class derived from Component.
+		 */
+		template<typename T>
+		auto TryGetComponent() -> std::enable_if_t<std::is_base_of_v<Component, T>, T*>
+		{
+			return GetComponent<T>();
+		}
+
+		/**
+		 * @brief Returns a const pointer to a runtime component of type T, or nullptr if not present.
+		 * @tparam T A class derived from Component.
+		 */
+		template<typename T>
+		auto TryGetComponent() const -> std::enable_if_t<std::is_base_of_v<Component, T>, const T*>
+		{
+			return GetComponent<T>();
+		}
+
+		// ---- HasComponent / HasAny ----
+
+		/**
+		 * @brief Returns true if the entity has ALL of the specified component types.
+		 * @tparam T... One or more component types to check.
+		 */
 		template<typename... T>
-		bool HasComponent();
+		bool HasComponent()
+		{
+			return (HasSingleComponent<T>() && ...);
+		}
 
+		/**
+		 * @brief Returns true if the entity has ALL of the specified component types (const version).
+		 */
 		template<typename... T>
-		[[nodiscard]] bool HasComponent() const;
+		[[nodiscard]] bool HasComponent() const
+		{
+			return (HasSingleComponent<T>() && ...);
+		}
 
-		template<typename...T>
-		bool HasAny();
+		/**
+		 * @brief Returns true if the entity has ANY of the specified component types.
+		 * @tparam T... One or more component types to check.
+		 */
+		template<typename... T>
+		bool HasAny()
+		{
+			return (HasSingleComponent<T>() || ...);
+		}
 
-		template<typename...T>
-		[[nodiscard]] bool HasAny() const;
+		/**
+		 * @brief Returns true if the entity has ANY of the specified component types (const version).
+		 */
+		template<typename... T>
+		[[nodiscard]] bool HasAny() const
+		{
+			return (HasSingleComponent<T>() || ...);
+		}
 
+		/**
+		 * @brief Removes component of type T if present; no-op if absent.
+		 * @tparam T The component type to remove.
+		 */
 		template<typename T>
-		void RemoveComponent();
-
-		template<typename T>
-		void RemoveComponentIfExists();
+		void RemoveComponentIfExists()
+		{
+			if (HasSingleComponent<T>())
+				RemoveComponent<T>();
+		}
 
 		std::string& Name()
 		{
-			return HasComponent<TagComponent>() ? GetComponent<TagComponent>().tag : m_NoName;
+			return HasComponent<TagComponent>() ? GetComponent<TagComponent>().tag : m_Name;
 		}
 
 		[[nodiscard]] const std::string& Name() const
 		{
-			return HasComponent<TagComponent>() ? GetComponent<TagComponent>().tag : m_NoName;
+			return HasComponent<TagComponent>() ? GetComponent<TagComponent>().tag : m_Name;
 		}
 
 		//operator uint32_t () const { return (uint32_t)m_EntityHandle; }
@@ -223,7 +361,26 @@ namespace SceneryEditorX
 		//entt::entity m_EntityHandle{ entt::null };
 		Scene *m_Scene = nullptr;
 
-		inline static std::string m_NoName = "Unnamed";
+		std::string m_Name = "Unnamed";
+
+		/// Struct/data components (non-Component subclasses from component_sets.h), keyed by type
+		std::unordered_map<std::type_index, std::any> m_structComponents;
+
+		/// Runtime components (Component subclasses), indexed by ComponentType enum
+		std::array<std::shared_ptr<Component>, static_cast<uint32_t>(ComponentType::MaxEnum)> m_components{};
+
+		/**
+		 * @brief Returns true if this entity has a single component of type T.
+		 * @tparam T A struct component or a Component subclass.
+		 */
+		template<typename T>
+		[[nodiscard]] bool HasSingleComponent() const
+		{
+			if constexpr (std::is_base_of_v<Component, T>)
+				return m_components[static_cast<uint32_t>(Component::TypeToEnum<T>())] != nullptr;
+			else
+				return m_structComponents.contains(std::type_index(typeid(T)));
+		}
 
 		friend class Prefab;
 		friend class Scene;

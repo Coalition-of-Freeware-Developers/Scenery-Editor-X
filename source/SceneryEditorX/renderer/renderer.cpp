@@ -413,7 +413,8 @@ namespace SceneryEditorX
 		// Tick the active camera so its matrices are always up-to-date before draw calls
 		if (m_Camera)
 		{
-			m_Camera->Tick();
+		    m_Camera->Tick();
+		    UpdateCameraUBO(m_CurrentFrameIndex); // Ensure UBO is ready before command recording
 		}
 
 		Ref<Device> device = RenderContext::Get()->GetDevice();
@@ -1289,6 +1290,8 @@ namespace SceneryEditorX
 		VkDevice dev = RenderContext::Get()->GetDevice()->GetLogicalDevice();
 		VmaAllocator vma = RenderContext::Get()->GetDevice()->GetMemoryAllocator().GetAllocator();
 
+		SEDX_CORE_TRACE_TAG("Renderer", "Creating camera resources");
+
 		// --- Descriptor set layout: one UBO binding at set 1, binding 0 ---
 		VkDescriptorSetLayoutBinding uboBinding{};
 		uboBinding.binding         = 0;
@@ -1330,14 +1333,18 @@ namespace SceneryEditorX
 
 			// Write identity matrices as initial data so the first frame is stable
 			CameraShaderData defaultData{};
-			defaultData.view                 = Mat4(1.0f);
-			defaultData.projection           = Mat4(1.0f);
-			defaultData.viewProjection       = Mat4(1.0f);
+			defaultData.view                  = Mat4(1.0f);
+			defaultData.projection            = Mat4(1.0f);
+			defaultData.viewProjection        = Mat4(1.0f);
 			defaultData.inverseViewProjection = Mat4(1.0f);
-			defaultData.positionWorld        = Vec3(0.0f, 0.0f, -5.0f);
+			defaultData.positionWorld         = Vec3(0.0f, 0.0f, -5.0f);
 			if (m_CameraUboMapped[i])
+			{
 				std::memcpy(m_CameraUboMapped[i], &defaultData, sizeof(CameraShaderData));
+			}
 		}
+
+		SEDX_CORE_TRACE_TAG("Renderer", "Created camera UBO buffers ({} frames)", MAX_FRAMES_IN_FLIGHT);
 
 		// --- Descriptor pool and sets ---
 		VkDescriptorPoolSize poolSize{};
@@ -1353,6 +1360,8 @@ namespace SceneryEditorX
 		SEDX_VK_RESULT_ASSERT(vkCreateDescriptorPool(dev, &poolCI, nullptr, &m_CameraDescriptorPool),
 							  "Failed to create camera descriptor pool");
 
+		SEDX_CORE_TRACE_TAG("Renderer", "Created camera descriptor pool");
+
 		std::array<VkDescriptorSetLayout, MAX_FRAMES_IN_FLIGHT> layouts;
 		layouts.fill(m_CameraDescriptorSetLayout);
 
@@ -1364,6 +1373,8 @@ namespace SceneryEditorX
 
 		SEDX_VK_RESULT_ASSERT(vkAllocateDescriptorSets(dev, &dsAllocInfo, m_CameraDescriptorSets.data()),
 							  "Failed to allocate camera descriptor sets");
+		
+		SEDX_CORE_TRACE_TAG("Renderer", "Allocated camera descriptor sets");
 
 		// Point each descriptor set at its per-frame UBO
 		for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
@@ -1383,6 +1394,8 @@ namespace SceneryEditorX
 			write.pBufferInfo     = &bufInfo;
 			vkUpdateDescriptorSets(dev, 1, &write, 0, nullptr);
 		}
+
+		SEDX_CORE_TRACE_TAG("Renderer", "Updated camera descriptor sets");
 
 		SEDX_CORE_INFO_TAG("Renderer", "Camera UBO resources created ({} frames)", MAX_FRAMES_IN_FLIGHT);
 	}
@@ -2139,6 +2152,24 @@ namespace SceneryEditorX
 	{
 		// TODO: Implement draw call collection and sorting when the scene and material systems are integrated
 		(void)cmdList;
+	}
+
+	void Renderer::UpdateCameraUBO(uint32_t frameIndex)
+	{
+		if (!m_Camera || !m_CameraUboMapped[frameIndex])
+			return;
+
+		// Prepare data for the GPU
+		CameraShaderData data;
+		data.view                   = m_Camera->GetView();
+		data.projection             = m_Camera->GetProjection();
+		data.viewProjection         = data.projection * data.view;
+		data.inverseViewProjection  = data.viewProjection.GetInverse();
+		data.positionWorld          = m_Camera->GetWorldPosition();
+		data.padding                = 0.0f;
+
+		// Copy to mapped Vulkan buffer
+		memcpy(m_CameraUboMapped[frameIndex], &data, sizeof(CameraShaderData));
 	}
 
 	/*

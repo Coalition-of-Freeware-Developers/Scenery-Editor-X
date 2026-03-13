@@ -112,6 +112,15 @@ namespace SceneryEditorX
 		void SetType(ComponentType type) { m_Type = type; }
 
 		/**
+		 * @brief Maps a Component subclass type T to its ComponentType enum value.
+		 * @tparam T A type derived from Component.
+		 * @return The ComponentType enum value corresponding to T.
+		 * @note This function must be explicitly specialized for each concrete Component subclass.
+		 */
+		template<typename T>
+		static ComponentType TypeToEnum();
+
+		/**
 		 * @brief Gets the attributes of the component.
 		 * @return A constant reference to the vector of attributes.
 		 */

@@ -35,58 +35,58 @@
 
 namespace SceneryEditorX
 {
-    /*
-    Entity Entity::GetParent() const
+	/*
+	Entity Entity::GetParent() const
 	{
-	    return m_Scene->TryGetEntityWithUUID(GetParentUUID());
+		return m_Scene->TryGetEntityWithUUID(GetParentUUID());
 	}
 	*/
 
 	bool Entity::IsAncestorOf(Entity entity) const
 	{
-	    const auto &children = Children();
+		const auto &children = Children();
 	
-	    if (children.empty())
-	    {
-	        return false;
-	    }
+		if (children.empty())
+		{
+			return false;
+		}
 	
-	    for (const UUID &child : children)
-	    {
-	        if (child == entity.GetUUID())
-	        {
-	            return true;
-	        }
-	    }
+		for (const UUID &child : children)
+		{
+			if (child == entity.GetUUID())
+			{
+				return true;
+			}
+		}
 	
-	    /*
-	    for (UUID child : children)
-	    {
-	        if (m_Scene->GetEntityWithUUID(child).IsAncestorOf(entity))
-	        {
-	            return true;
-	        }
-	    }
-	    */
+		/*
+		for (UUID child : children)
+		{
+			if (m_Scene->GetEntityWithUUID(child).IsAncestorOf(entity))
+			{
+				return true;
+			}
+		}
+		*/
 	
-	    return false;
+		return false;
 	}
 
 	//UUID Entity::GetSceneUUID() const { return m_Scene->m_SceneID; }
 
 	/*
 	bool Entity::IsValid() const
-    {
-        return (m_EntityHandle != entt::null) && m_Scene && m_Scene->m_Registry.valid(m_EntityHandle);
-    }
-    */
+	{
+		return (m_EntityHandle != entt::null) && m_Scene && m_Scene->m_Registry.valid(m_EntityHandle);
+	}
+	*/
 
-    bool Entity::IsValid() const
-    {
-        return false;
-    }
+	bool Entity::IsValid() const
+	{
+		return false;
+	}
 
-    Entity::operator bool() const { return IsValid(); }
+	Entity::operator bool() const { return IsValid(); }
 
 }
 

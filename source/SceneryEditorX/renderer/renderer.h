@@ -271,6 +271,8 @@ namespace SceneryEditorX
 		 */
 		static Camera* GetCamera();
 
+		static void UpdateCameraUBO(uint32_t frameIndex);
+
 	private:
 
 		/**
@@ -578,8 +580,10 @@ namespace SceneryEditorX
 		static VmaAllocation m_GridIndexAllocation;
 		static uint32_t m_GridIndexCount;
 
+
 		/* Active camera providing view / projection for every frame */
 		static Camera* m_Camera;
+		static xMath::Frustum m_Frustum;
 
 		/* Per-frame camera uniform buffers (host-visible, mapped), matching CameraShaderData */
 		static VkDescriptorSetLayout m_CameraDescriptorSetLayout;

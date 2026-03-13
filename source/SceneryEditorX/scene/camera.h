@@ -81,7 +81,7 @@ namespace SceneryEditorX
 		Mat4 viewProjection;
 		Mat4 inverseViewProjection;
 		Vec3 positionWorld;
-		float padding;
+		float padding; // Aligned with 'float padding' in Slang
 	};
 
 	class Camera : public Node
@@ -98,14 +98,8 @@ namespace SceneryEditorX
 		Camera(const Camera &) = default;
 		Camera &operator=(const Camera &) = default;
 
-		virtual Entity *GetEntity() const
-		{
-			return nullptr;
-		}
-		virtual xMath::Matrix GetViewProjectionMatrix() const
-		{
-			return xMath::Matrix{};
-		}
+		virtual Entity *GetEntity() const { return nullptr; }
+		virtual xMath::Matrix GetViewProjectionMatrix() const { return xMath::Matrix{}; }
 
 		// Converts a world point to a screen point
 		void WorldToScreenCoordinates(const xMath::Vec3 &worldPos, xMath::Vec2 &screenPos) const;
@@ -131,10 +125,10 @@ namespace SceneryEditorX
 		float GetFarPlane() const { return m_FarPlane; }
 
 		/* @brief Returns the cached view matrix (updated by Tick). */
-		//const Mat4 GetView() const { return m_View; }
+		const Mat4 GetView() const { return m_View; }
 
 		/* @brief Returns the cached projection matrix (updated by Tick). */
-		//const Mat4 GetProjection() const { return m_Projection; }
+		const Mat4 GetProjection() const { return m_Projection; }
 
 		// Frustum
 		bool IsInViewFrustum(const xMath::BoundingBox &boundingBox) const;
@@ -173,13 +167,10 @@ namespace SceneryEditorX
 		Mat4 ComputeProjection(float nearPlane, float farPlane) const;
 
 		void SetOrthographicProjection(float left, float right, float top, float bottom, float nearPlane, float farPlane);
-		void SetPerspectiveProjection(float fovY, float aspect, float nearPlane, float farPlane);
-		void SetViewDirection(glm::vec3 position, glm::vec3 direction, glm::vec3 up = glm::vec3{0.f, -1.f, 0.f});
-		void SetViewTarget(glm::vec3 position, glm::vec3 target, glm::vec3 up = glm::vec3{0.f, -1.f, 0.f});
-		void SetViewYXZ(glm::vec3 position, glm::vec3 rotation);
-
-		const glm::mat4& GetProjection() const { return m_ProjectionMatrix; }
-		const glm::mat4& GetView() const { return m_ViewMatrix; }
+		void SetPerspectiveProjection(float fov_rad, float aspect, float near_z, float far_z);
+		void SetViewDirection(Vec3 position, Vec3 direction, Vec3 up = Vec3{0.f, -1.f, 0.f});
+		void SetViewTarget(Vec3 position, Vec3 target, Vec3 up = Vec3{0.f, -1.f, 0.f});
+		void SetViewYXZ(Vec3 position, Vec3 rotation);
 
 	private:
 		void ComputeMatrices();
@@ -201,8 +192,8 @@ namespace SceneryEditorX
 		CameraType m_ProjectionType   = CameraType::Perspective;
 
 
-		glm::mat4 m_ProjectionMatrix{1.f};
-		glm::mat4 m_ViewMatrix{1.f};
+		xMath::Mat4 m_ProjectionMatrix{1.f};
+		xMath::Mat4 m_ViewMatrix{1.f};
 
 
 		xMath::Mat4 m_View							= xMath::Mat4(1.0f);

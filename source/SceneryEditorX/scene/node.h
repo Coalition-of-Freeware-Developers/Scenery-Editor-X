@@ -41,9 +41,9 @@ namespace SceneryEditorX
 	class Node : public SharedObject
 	{
 	public:
-        Node() = default;
-        virtual ~Node() override = default;
-        //virtual void Serialize(Serializer &ser);
+		Node() = default;
+		virtual ~Node() override = default;
+		//virtual void Serialize(Serializer &ser);
 
 		template <typename T>
 		void GetAll(std::vector<Ref<T>> &all)
@@ -71,51 +71,51 @@ namespace SceneryEditorX
 			return all;
 		}
 	
-	    static void SetParent(const Ref<Node> &child, const Ref<Node> &parent)
-	    {
-	        if (child->m_Parent)
-	        {
-	            const Ref<Node> oldParent = child->m_Parent;
+		static void SetParent(const Ref<Node> &child, const Ref<Node> &parent)
+		{
+			if (child->m_Parent)
+			{
+				const Ref<Node> oldParent = child->m_Parent;
 				const auto it = std::ranges::find_if(oldParent->m_Children, [&](auto &n)
 				{
 					return child->m_ID == n->m_ID;
 				});
-	            SEDX_ASSERT(it != oldParent->m_Children.end(), "Child not found in children vector");
-	            oldParent->m_Children.erase(it);
-	        }
-	        child->m_Parent = parent;
-	        parent->m_Children.push_back(child);
-	    }
+				SEDX_ASSERT(it != oldParent->m_Children.end(), "Child not found in children vector");
+				oldParent->m_Children.erase(it);
+			}
+			child->m_Parent = parent;
+			parent->m_Children.push_back(child);
+		}
 	
-	    static void UpdateChildrenParent(const Ref<Node> &node)
-	    {
-	        for (auto &child : node->m_Children)
-	        {
-	            child->m_Parent = node;
-	            UpdateChildrenParent(child);
-	        }
-	    }
+		static void UpdateChildrenParent(const Ref<Node> &node)
+		{
+			for (auto &child : node->m_Children)
+			{
+				child->m_Parent = node;
+				UpdateChildrenParent(child);
+			}
+		}
 	
-	    static Ref<Node> Clone(Ref<Node> &node);
+		static Ref<Node> Clone(Ref<Node> &node);
 	
-	    Mat4 GetLocalTransform() const;
-	    Mat4 GetWorldTransform() const;
-	    Vec3 GetWorldPosition() const;
-        Mat4 GetParentTransform() const;
-	    Vec3 GetWorldFront() const; 
-        static Mat4 ComposeTransform(const Vec3 &pos, const Vec3 &rot, const Vec3 &scl, const Mat4 &parent = Mat4(1));
+		Mat4 GetLocalTransform() const;
+		Mat4 GetWorldTransform() const;
+		Vec3 GetWorldPosition() const;
+		Mat4 GetParentTransform() const;
+		Vec3 GetWorldFront() const; 
+		static Mat4 ComposeTransform(const Vec3 &pos, const Vec3 &rot, const Vec3 &scl, const Mat4 &parent = Mat4(1));
 
 	protected:
-	    std::vector<Ref<Node>> m_Children;
-	    std::string m_State;
+		std::vector<Ref<Node>> m_Children;
+		std::string m_State;
 
-	    Vec3 position = Vec3(0.0f);
-	    Vec3 rotation = Vec3(0.0f);
-	    Vec3 scale = Vec3(1.0f);
+		Vec3 position = Vec3(0.0f);
+		Vec3 rotation = Vec3(0.0f);
+		Vec3 scale = Vec3(1.0f);
 
 	private:
-	    Ref<Node> m_Parent;
-	    UUID m_ID;
+		Ref<Node> m_Parent;
+		UUID m_ID;
 		friend class AssetManager;
 	};
 

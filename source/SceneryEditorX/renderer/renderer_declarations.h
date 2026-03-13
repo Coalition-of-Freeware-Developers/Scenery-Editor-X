@@ -30,10 +30,6 @@
  */
 #pragma once
 #include "SceneryEditorX/scene/material.h"
-
-
-#include <array>
-#include <map>
 #include <SceneryEditorX/scene/lights.h>
 #include <xMath/includes/xmath.hpp>
 
@@ -41,642 +37,642 @@
 
 namespace SceneryEditorX
 {
-    // -------------------------------------------------------
-    // PolygonMode: rasterisation fill mode
-    // -------------------------------------------------------
+	// -------------------------------------------------------
+	// PolygonMode: rasterisation fill mode
+	// -------------------------------------------------------
 
-    /**
-     * @enum PolygonMode
-     * @brief Vulkan polygon fill mode, exposed on RasterizerState objects.
-     */
-    enum class PolygonMode : uint8_t
-    {
-        Solid,
-        Wireframe,
-        Point,
-        MaxEnum
-    };
+	/**
+	 * @enum PolygonMode
+	 * @brief Vulkan polygon fill mode, exposed on RasterizerState objects.
+	 */
+	enum class PolygonMode : uint8_t
+	{
+		Solid,
+		Wireframe,
+		Point,
+		MaxEnum
+	};
 
-    // -------------------------------------------------------
-    // Forward declarations for state object classes
-    // -------------------------------------------------------
-    class RasterizerState;
-    class BlendState;
-    class DepthStencilState;
-    class ImageResource;
-    class Shader;
-    class Buffer;
+	// -------------------------------------------------------
+	// Forward declarations for state object classes
+	// -------------------------------------------------------
+	class RasterizerState;
+	class BlendState;
+	class DepthStencilState;
+	class ImageResource;
+	class Shader;
+	class Buffer;
 
-    // -------------------------------------------------------
-    // RasterizerState – configures polygon fill, culling, depth bias
-    // -------------------------------------------------------
+	// -------------------------------------------------------
+	// RasterizerState – configures polygon fill, culling, depth bias
+	// -------------------------------------------------------
 
-    /**
-     * @class RasterizerState
-     * @brief Immutable rasterizer configuration object returned by Renderer::GetRasterizerState().
-     */
-    class RasterizerState
-    {
-    public:
-        explicit RasterizerState(PolygonMode polygonMode, bool depthBiasEnabled = false,
-                                 float depthBiasConstant = 0.0f, float depthBiasSlope = 0.0f)
-            : m_PolygonMode(polygonMode)
-            , m_DepthBiasEnabled(depthBiasEnabled)
-            , m_DepthBiasConstant(depthBiasConstant)
-            , m_DepthBiasSlope(depthBiasSlope)
-        {}
+	/**
+	 * @class RasterizerState
+	 * @brief Immutable rasterizer configuration object returned by Renderer::GetRasterizerState().
+	 */
+	class RasterizerState
+	{
+	public:
+		explicit RasterizerState(PolygonMode polygonMode, bool depthBiasEnabled = false,
+								 float depthBiasConstant = 0.0f, float depthBiasSlope = 0.0f)
+			: m_PolygonMode(polygonMode)
+			, m_DepthBiasEnabled(depthBiasEnabled)
+			, m_DepthBiasConstant(depthBiasConstant)
+			, m_DepthBiasSlope(depthBiasSlope)
+		{}
 
-        PolygonMode GetPolygonMode()       const { return m_PolygonMode; }
-        bool        IsDepthBiasEnabled()   const { return m_DepthBiasEnabled; }
-        float       GetDepthBiasConstant() const { return m_DepthBiasConstant; }
-        float       GetDepthBiasSlope()    const { return m_DepthBiasSlope; }
+		PolygonMode GetPolygonMode()       const { return m_PolygonMode; }
+		bool        IsDepthBiasEnabled()   const { return m_DepthBiasEnabled; }
+		float       GetDepthBiasConstant() const { return m_DepthBiasConstant; }
+		float       GetDepthBiasSlope()    const { return m_DepthBiasSlope; }
 
-    private:
-        PolygonMode m_PolygonMode       = PolygonMode::Solid;
-        bool        m_DepthBiasEnabled  = false;
-        float       m_DepthBiasConstant = 0.0f;
-        float       m_DepthBiasSlope    = 0.0f;
-    };
+	private:
+		PolygonMode m_PolygonMode       = PolygonMode::Solid;
+		bool        m_DepthBiasEnabled  = false;
+		float       m_DepthBiasConstant = 0.0f;
+		float       m_DepthBiasSlope    = 0.0f;
+	};
 
-    // -------------------------------------------------------
-    // BlendState – configures colour and alpha blending
-    // -------------------------------------------------------
+	// -------------------------------------------------------
+	// BlendState – configures colour and alpha blending
+	// -------------------------------------------------------
 
-    /**
-     * @class BlendState
-     * @brief Immutable blend configuration object returned by Renderer::GetBlendState().
-     */
-    class BlendState
-    {
-    public:
-        explicit BlendState(bool blendEnabled, VkBlendFactor srcColor = VK_BLEND_FACTOR_ONE,
-                            VkBlendFactor dstColor = VK_BLEND_FACTOR_ZERO,
-                            VkBlendOp     colorOp  = VK_BLEND_OP_ADD,
-                            VkBlendFactor srcAlpha = VK_BLEND_FACTOR_ONE,
-                            VkBlendFactor dstAlpha = VK_BLEND_FACTOR_ZERO,
-                            VkBlendOp     alphaOp  = VK_BLEND_OP_ADD)
-            : m_BlendEnabled(blendEnabled)
-            , m_SrcColor(srcColor), m_DstColor(dstColor), m_ColorOp(colorOp)
-            , m_SrcAlpha(srcAlpha), m_DstAlpha(dstAlpha), m_AlphaOp(alphaOp)
-        {}
+	/**
+	 * @class BlendState
+	 * @brief Immutable blend configuration object returned by Renderer::GetBlendState().
+	 */
+	class BlendState
+	{
+	public:
+		explicit BlendState(bool blendEnabled, VkBlendFactor srcColor = VK_BLEND_FACTOR_ONE,
+							VkBlendFactor dstColor = VK_BLEND_FACTOR_ZERO,
+							VkBlendOp     colorOp  = VK_BLEND_OP_ADD,
+							VkBlendFactor srcAlpha = VK_BLEND_FACTOR_ONE,
+							VkBlendFactor dstAlpha = VK_BLEND_FACTOR_ZERO,
+							VkBlendOp     alphaOp  = VK_BLEND_OP_ADD)
+			: m_BlendEnabled(blendEnabled)
+			, m_SrcColor(srcColor), m_DstColor(dstColor), m_ColorOp(colorOp)
+			, m_SrcAlpha(srcAlpha), m_DstAlpha(dstAlpha), m_AlphaOp(alphaOp)
+		{}
 
-        bool          IsBlendEnabled() const { return m_BlendEnabled; }
-        VkBlendFactor GetSrcColor()    const { return m_SrcColor; }
-        VkBlendFactor GetDstColor()    const { return m_DstColor; }
-        VkBlendOp     GetColorOp()     const { return m_ColorOp;  }
-        VkBlendFactor GetSrcAlpha()    const { return m_SrcAlpha; }
-        VkBlendFactor GetDstAlpha()    const { return m_DstAlpha; }
-        VkBlendOp     GetAlphaOp()     const { return m_AlphaOp;  }
+		bool          IsBlendEnabled() const { return m_BlendEnabled; }
+		VkBlendFactor GetSrcColor()    const { return m_SrcColor; }
+		VkBlendFactor GetDstColor()    const { return m_DstColor; }
+		VkBlendOp     GetColorOp()     const { return m_ColorOp;  }
+		VkBlendFactor GetSrcAlpha()    const { return m_SrcAlpha; }
+		VkBlendFactor GetDstAlpha()    const { return m_DstAlpha; }
+		VkBlendOp     GetAlphaOp()     const { return m_AlphaOp;  }
 
-    private:
-        bool          m_BlendEnabled = false;
-        VkBlendFactor m_SrcColor     = VK_BLEND_FACTOR_ONE;
-        VkBlendFactor m_DstColor     = VK_BLEND_FACTOR_ZERO;
-        VkBlendOp     m_ColorOp      = VK_BLEND_OP_ADD;
-        VkBlendFactor m_SrcAlpha     = VK_BLEND_FACTOR_ONE;
-        VkBlendFactor m_DstAlpha     = VK_BLEND_FACTOR_ZERO;
-        VkBlendOp     m_AlphaOp      = VK_BLEND_OP_ADD;
-    };
+	private:
+		bool          m_BlendEnabled = false;
+		VkBlendFactor m_SrcColor     = VK_BLEND_FACTOR_ONE;
+		VkBlendFactor m_DstColor     = VK_BLEND_FACTOR_ZERO;
+		VkBlendOp     m_ColorOp      = VK_BLEND_OP_ADD;
+		VkBlendFactor m_SrcAlpha     = VK_BLEND_FACTOR_ONE;
+		VkBlendFactor m_DstAlpha     = VK_BLEND_FACTOR_ZERO;
+		VkBlendOp     m_AlphaOp      = VK_BLEND_OP_ADD;
+	};
 
-    // -------------------------------------------------------
-    // DepthStencilState – configures depth/stencil testing and writes
-    // -------------------------------------------------------
+	// -------------------------------------------------------
+	// DepthStencilState – configures depth/stencil testing and writes
+	// -------------------------------------------------------
 
-    /**
-     * @class DepthStencilState
-     * @brief Immutable depth/stencil configuration returned by Renderer::GetDepthStencilState().
-     */
-    class DepthStencilState
-    {
-    public:
-        explicit DepthStencilState(bool depthTestEnable, bool depthWriteEnable,
-                                   VkCompareOp depthCompareOp = VK_COMPARE_OP_LESS)
-            : m_DepthTestEnable(depthTestEnable)
-            , m_DepthWriteEnable(depthWriteEnable)
-            , m_DepthCompareOp(depthCompareOp)
-        {}
+	/**
+	 * @class DepthStencilState
+	 * @brief Immutable depth/stencil configuration returned by Renderer::GetDepthStencilState().
+	 */
+	class DepthStencilState
+	{
+	public:
+		explicit DepthStencilState(bool depthTestEnable, bool depthWriteEnable,
+								   VkCompareOp depthCompareOp = VK_COMPARE_OP_LESS)
+			: m_DepthTestEnable(depthTestEnable)
+			, m_DepthWriteEnable(depthWriteEnable)
+			, m_DepthCompareOp(depthCompareOp)
+		{}
 
-        bool          IsDepthTestEnabled()  const { return m_DepthTestEnable;  }
-        bool          IsDepthWriteEnabled() const { return m_DepthWriteEnable; }
-        VkCompareOp   GetDepthCompareOp()   const { return m_DepthCompareOp;   }
+		bool          IsDepthTestEnabled()  const { return m_DepthTestEnable;  }
+		bool          IsDepthWriteEnabled() const { return m_DepthWriteEnable; }
+		VkCompareOp   GetDepthCompareOp()   const { return m_DepthCompareOp;   }
 
-    private:
-        bool        m_DepthTestEnable  = true;
-        bool        m_DepthWriteEnable = true;
-        VkCompareOp m_DepthCompareOp   = VK_COMPARE_OP_LESS;
-    };
-
-
-    /**
-     * @enum Renderer_RenderTarget
-     * @brief Enumeration of renderer render targets.
-     *
-     * This enum provides a type-safe way to identify and reference
-     * the different render targets used in the rendering system.
-     *
-     * @note - The values in this enum are designed to be compatible with Vulkan's render target types.
-     */
-    enum class Renderer_RenderTarget : uint8_t
-    {
-        gbuffer_color,
-        gbuffer_normal,
-        gbuffer_material,
-        gbuffer_velocity,
-        gbuffer_depth,
-        gbuffer_depth_occluders,
-        gbuffer_depth_occluders_hiz,
-        gbuffer_depth_opaque_output,
-        lut_brdf_specular,
-        lut_atmosphere_scatter,
-        lut_atmosphere_transmittance,
-        lut_atmosphere_multiscatter,
-        light_diffuse,
-        light_specular,
-        light_volumetric,
-        frame_render,
-        frame_render_opaque,
-        frame_output,
-        frame_output_2,
-        ssao,
-        reflections,
-        gbuffer_reflections_position,
-        gbuffer_reflections_normal,
-        gbuffer_reflections_albedo,
-        sss,
-        skysphere,
-        bloom,
-        blur,
-        outline,
-        shading_rate,
-        shadow_atlas,
-        auto_exposure,
-        auto_exposure_previous,
-        // restir reservoir buffers (current frame)
-        restir_reservoir0,
-        restir_reservoir1,
-        restir_reservoir2,
-        restir_reservoir3,
-        restir_reservoir4,
-        // restir reservoir buffers (previous frame for temporal)
-        restir_reservoir_prev0,
-        restir_reservoir_prev1,
-        restir_reservoir_prev2,
-        restir_reservoir_prev3,
-        restir_reservoir_prev4,
-        // restir reservoir buffers (spatial ping-pong)
-        restir_reservoir_spatial0,
-        restir_reservoir_spatial1,
-        restir_reservoir_spatial2,
-        restir_reservoir_spatial3,
-        restir_reservoir_spatial4,
-        // volumetric clouds
-        cloud_noise_shape,
-        cloud_noise_detail,
-        cloud_shadow,
-        // nrd denoiser textures
-        nrd_viewz,
-        nrd_normal_roughness,
-        nrd_diff_radiance_hitdist,
-        nrd_spec_radiance_hitdist,
-        nrd_out_diff_radiance_hitdist,
-        nrd_out_spec_radiance_hitdist,
-        // debug
-        debug_output,
-        MaxEnum
-    };
+	private:
+		bool        m_DepthTestEnable  = true;
+		bool        m_DepthWriteEnable = true;
+		VkCompareOp m_DepthCompareOp   = VK_COMPARE_OP_LESS;
+	};
 
 
-    enum class Renderer_Shader : uint8_t
-    {
-        tessellation_h,
-        tessellation_d,
-        gbuffer_v,
-        gbuffer_p,
-        depth_prepass_v,
-        depth_prepass_alpha_test_p,
-        depth_light_v,
-        depth_light_alpha_color_p,
-        fxaa_c,
-        film_grain_c,
-        motion_blur_c,
-        depth_of_field_c,
-        chromatic_aberration_c,
-        vhs_c,
-        bloom_luminance_c,
-        bloom_blend_frame_c,
-        bloom_upsample_blend_mip_c,
-        bloom_downsample_c,
-        output_c,
-        light_integration_brdf_specular_lut_c,
-        light_integration_environment_filter_c,
-        light_c,
-        light_composition_c,
-        light_image_based_c,
-        line_v,
-        line_p,
-        grid_v,
-        grid_p,
-        outline_v,
-        outline_p,
-        outline_c,
-        font_v,
-        font_p,
-        ssao_c,
-        sss_c_bend,
-        skysphere_c,
-        skysphere_lut_c,
-        skysphere_transmittance_lut_c,
-        skysphere_multiscatter_lut_c,
-        blur_gaussian_c,
-        blur_gaussian_bilaterial_c,
-        variable_rate_shading_c,
-        ffx_cas_c,
-        ffx_spd_average_c,
-        ffx_spd_min_c,
-        ffx_spd_max_c,
-        blit_c,
-        icon_c,
-        dithering_c,
-        transparency_reflection_refraction_c,
-        auto_exposure_c,
-        // restir path tracing gi
-        restir_pt_ray_generation_r,
-        restir_pt_ray_miss_r,
-        restir_pt_ray_hit_r,
-        restir_pt_temporal_c,
-        restir_pt_spatial_c,
-        // volumetric clouds
-        cloud_noise_shape_c,
-        cloud_noise_detail_c,
-        cloud_shadow_c,
-        light_reflections_c,
-        // nrd denoiser
-        nrd_prepare_c,
-        // gpu-driven indirect rendering
-        indirect_cull_c,
-        gbuffer_indirect_v,
-        gbuffer_indirect_p,
-        depth_prepass_indirect_v,
-        // gpu-driven particles
-        particle_emit_c,
-        particle_simulate_c,
-        particle_render_c,
-        // gpu texture compression
-        texture_compress_bc1_c,
-        texture_compress_bc3_c,
-        texture_compress_bc5_c,
-        MaxEnum
-    };
-    
+	/**
+	 * @enum Renderer_RenderTarget
+	 * @brief Enumeration of renderer render targets.
+	 *
+	 * This enum provides a type-safe way to identify and reference
+	 * the different render targets used in the rendering system.
+	 *
+	 * @note - The values in this enum are designed to be compatible with Vulkan's render target types.
+	 */
+	enum class Renderer_RenderTarget : uint8_t
+	{
+		gbuffer_color,
+		gbuffer_normal,
+		gbuffer_material,
+		gbuffer_velocity,
+		gbuffer_depth,
+		gbuffer_depth_occluders,
+		gbuffer_depth_occluders_hiz,
+		gbuffer_depth_opaque_output,
+		lut_brdf_specular,
+		lut_atmosphere_scatter,
+		lut_atmosphere_transmittance,
+		lut_atmosphere_multiscatter,
+		light_diffuse,
+		light_specular,
+		light_volumetric,
+		frame_render,
+		frame_render_opaque,
+		frame_output,
+		frame_output_2,
+		ssao,
+		reflections,
+		gbuffer_reflections_position,
+		gbuffer_reflections_normal,
+		gbuffer_reflections_albedo,
+		sss,
+		skysphere,
+		bloom,
+		blur,
+		outline,
+		shading_rate,
+		shadow_atlas,
+		auto_exposure,
+		auto_exposure_previous,
+		// restir reservoir buffers (current frame)
+		restir_reservoir0,
+		restir_reservoir1,
+		restir_reservoir2,
+		restir_reservoir3,
+		restir_reservoir4,
+		// restir reservoir buffers (previous frame for temporal)
+		restir_reservoir_prev0,
+		restir_reservoir_prev1,
+		restir_reservoir_prev2,
+		restir_reservoir_prev3,
+		restir_reservoir_prev4,
+		// restir reservoir buffers (spatial ping-pong)
+		restir_reservoir_spatial0,
+		restir_reservoir_spatial1,
+		restir_reservoir_spatial2,
+		restir_reservoir_spatial3,
+		restir_reservoir_spatial4,
+		// volumetric clouds
+		cloud_noise_shape,
+		cloud_noise_detail,
+		cloud_shadow,
+		// nrd denoiser textures
+		nrd_viewz,
+		nrd_normal_roughness,
+		nrd_diff_radiance_hitdist,
+		nrd_spec_radiance_hitdist,
+		nrd_out_diff_radiance_hitdist,
+		nrd_out_spec_radiance_hitdist,
+		// debug
+		debug_output,
+		MaxEnum
+	};
 
-    enum class Renderer_Sampler : uint8_t
-    {
-        Compare_depth,
-        Point_clamp_edge,
-        Point_clamp_border,
-        Point_wrap,
-        Bilinear_clamp_edge,
-        Bilinear_clamp_border,
-        Bilinear_wrap,
-        Trilinear_clamp,
-        Anisotropic_wrap,
-        MaxEnum
-    };
 
-    enum class Renderer_Buffer : uint8_t
-    {
-        ConstantFrame,
-        SpdCounter,
-        MaterialParameters,
-        LightParameters,
-        DummyInstance,
-        AABBs,
-        GeometryInfo,
-        IndirectDrawArgs,
-        IndirectDrawData,
-        IndirectDrawDataOut,
-        IndirectDrawArgsOut,
-        IndirectDrawCount,
-        DrawData, // bindless per-draw data (transforms, material index, etc.)
-        // gpu-driven particles
-        ParticleBufferA,
-        ParticleBufferB,
-        ParticleCounter,
-        ParticleEmitter,
-        MaxEnum
-    };
+	enum class Renderer_Shader : uint8_t
+	{
+		tessellation_h,
+		tessellation_d,
+		gbuffer_v,
+		gbuffer_p,
+		depth_prepass_v,
+		depth_prepass_alpha_test_p,
+		depth_light_v,
+		depth_light_alpha_color_p,
+		fxaa_c,
+		film_grain_c,
+		motion_blur_c,
+		depth_of_field_c,
+		chromatic_aberration_c,
+		vhs_c,
+		bloom_luminance_c,
+		bloom_blend_frame_c,
+		bloom_upsample_blend_mip_c,
+		bloom_downsample_c,
+		output_c,
+		light_integration_brdf_specular_lut_c,
+		light_integration_environment_filter_c,
+		light_c,
+		light_composition_c,
+		light_image_based_c,
+		line_v,
+		line_p,
+		grid_v,
+		grid_p,
+		outline_v,
+		outline_p,
+		outline_c,
+		font_v,
+		font_p,
+		ssao_c,
+		sss_c_bend,
+		skysphere_c,
+		skysphere_lut_c,
+		skysphere_transmittance_lut_c,
+		skysphere_multiscatter_lut_c,
+		blur_gaussian_c,
+		blur_gaussian_bilaterial_c,
+		variable_rate_shading_c,
+		ffx_cas_c,
+		ffx_spd_average_c,
+		ffx_spd_min_c,
+		ffx_spd_max_c,
+		blit_c,
+		icon_c,
+		dithering_c,
+		transparency_reflection_refraction_c,
+		auto_exposure_c,
+		// restir path tracing gi
+		restir_pt_ray_generation_r,
+		restir_pt_ray_miss_r,
+		restir_pt_ray_hit_r,
+		restir_pt_temporal_c,
+		restir_pt_spatial_c,
+		// volumetric clouds
+		cloud_noise_shape_c,
+		cloud_noise_detail_c,
+		cloud_shadow_c,
+		light_reflections_c,
+		// nrd denoiser
+		nrd_prepare_c,
+		// gpu-driven indirect rendering
+		indirect_cull_c,
+		gbuffer_indirect_v,
+		gbuffer_indirect_p,
+		depth_prepass_indirect_v,
+		// gpu-driven particles
+		particle_emit_c,
+		particle_simulate_c,
+		particle_render_c,
+		// gpu texture compression
+		texture_compress_bc1_c,
+		texture_compress_bc3_c,
+		texture_compress_bc5_c,
+		MaxEnum
+	};
+	
 
-    enum class StandardTexture : uint8_t
-    {
-        Noise_perlin,
-        Noise_blue, // single blue noise texture (was 8, only 1 used)
-        Checkerboard,
-        Gizmo_light_directional,
-        Gizmo_light_point,
-        Gizmo_light_spot,
-        Gizmo_audio_source,
-        Black,
-        White,
-        MaxEnum
-    };
+	enum class Renderer_Sampler : uint8_t
+	{
+		Compare_depth,
+		Point_clamp_edge,
+		Point_clamp_border,
+		Point_wrap,
+		Bilinear_clamp_edge,
+		Bilinear_clamp_border,
+		Bilinear_wrap,
+		Trilinear_clamp,
+		Anisotropic_wrap,
+		MaxEnum
+	};
 
-    /**
-     * @enum Renderer_RasterizerState
-     * @brief Enumerates the rasterizer pipeline state presets available to the renderer.
-     */
-    enum class Renderer_RasterizerState : uint8_t
-    {
-        Solid,
-        Wireframe,
-        Light_point_spot,
-        Light_directional,
-        MaxEnum
-    };
+	enum class Renderer_Buffer : uint8_t
+	{
+		ConstantFrame,
+		SpdCounter,
+		MaterialParameters,
+		LightParameters,
+		DummyInstance,
+		AABBs,
+		GeometryInfo,
+		IndirectDrawArgs,
+		IndirectDrawData,
+		IndirectDrawDataOut,
+		IndirectDrawArgsOut,
+		IndirectDrawCount,
+		DrawData, // bindless per-draw data (transforms, material index, etc.)
+		// gpu-driven particles
+		ParticleBufferA,
+		ParticleBufferB,
+		ParticleCounter,
+		ParticleEmitter,
+		MaxEnum
+	};
 
-    /**
-     * @enum Renderer_DepthStencilState
-     * @brief Enumerates depth/stencil test and write configuration presets.
-     */
-    enum class Renderer_DepthStencilState : uint8_t
-    {
-        Off,
-        ReadEqual,
-        ReadGreaterEqual,
-        ReadWrite,
-        MaxEnum
-    };
+	enum class StandardTexture : uint8_t
+	{
+		Noise_perlin,
+		Noise_blue, // single blue noise texture (was 8, only 1 used)
+		Checkerboard,
+		Gizmo_light_directional,
+		Gizmo_light_point,
+		Gizmo_light_spot,
+		Gizmo_audio_source,
+		Black,
+		White,
+		MaxEnum
+	};
 
-    enum class Renderer_BindingsSrv
-    {
-        // g-buffer
-        gbuffer_albedo   = 0,
-        gbuffer_normal   = 1,
-        gbuffer_material = 2,
-        gbuffer_velocity = 3,
-        gbuffer_depth    = 4,
+	/**
+	 * @enum Renderer_RasterizerState
+	 * @brief Enumerates the rasterizer pipeline state presets available to the renderer.
+	 */
+	enum class Renderer_RasterizerState : uint8_t
+	{
+		Solid,
+		Wireframe,
+		Light_point_spot,
+		Light_directional,
+		MaxEnum
+	};
 
-        // other
-        ssao = 5,
-    
-        // misc
-        tex   = 6,
-        tex2  = 7,
-        tex3  = 8,
-        tex4  = 9,
-        tex5  = 10,
-        tex6  = 11,
-        tex3d = 12,
+	/**
+	 * @enum Renderer_DepthStencilState
+	 * @brief Enumerates depth/stencil test and write configuration presets.
+	 */
+	enum class Renderer_DepthStencilState : uint8_t
+	{
+		Off,
+		ReadEqual,
+		ReadGreaterEqual,
+		ReadWrite,
+		MaxEnum
+	};
 
-        // noise
-        tex_perlin = 13,
-        // bindless
-        bindless_material_textures   = 14,
-        bindless_material_parameters = 15,
-        bindless_light_parameters    = 16,
-        bindless_aabbs               = 17,
-        bindless_draw_data           = 18,
-        
-        // volumetric clouds 3D noise
-        tex3d_cloud_shape  = 19,
-        tex3d_cloud_detail = 20,
-        // restir reservoir srv bindings (for temporal/spatial read)
-        reservoir_prev0    = 21,
-        reservoir_prev1    = 22,
-        reservoir_prev2    = 23,
-        reservoir_prev3    = 24,
-        reservoir_prev4    = 25,
-    };
+	enum class Renderer_BindingsSrv
+	{
+		// g-buffer
+		gbuffer_albedo   = 0,
+		gbuffer_normal   = 1,
+		gbuffer_material = 2,
+		gbuffer_velocity = 3,
+		gbuffer_depth    = 4,
 
-    enum class Renderer_BindingsUav
-    {
-        tex           = 0,
-        tex2          = 1,
-        tex3          = 2,
-        tex4          = 3,
-        tex3d         = 4,
-        tex_sss       = 5,
-        sb_spd        = 7,
-        tex_spd       = 8,
-        // restir reservoir uav bindings
-        reservoir0    = 20,
-        reservoir1    = 21,
-        reservoir2    = 22,
-        reservoir3    = 23,
-        reservoir4    = 24,
-        // nrd output bindings
-        nrd_viewz              = 25,
-        nrd_normal_roughness   = 26,
-        nrd_diff_radiance      = 27,
-        nrd_spec_radiance      = 28,
-        // integer format textures (vrs, etc)
-        tex_uint               = 29,
-        // gpu-driven indirect drawing
-        indirect_draw_args     = 30,
-        indirect_draw_data     = 31,
-        indirect_draw_args_out = 32,
-        indirect_draw_data_out = 33,
-        indirect_draw_count    = 34,
-        // gpu-driven particles
-        particle_buffer_a      = 35,
-        particle_buffer_b      = 36,
-        particle_counter       = 37,
-        particle_emitter       = 38,
-        // gpu texture compression
-        compress_input         = 39,
-        compress_output        = 40,
-        compress_output_bc1    = 41,
-    };
+		// other
+		ssao = 5,
+	
+		// misc
+		tex   = 6,
+		tex2  = 7,
+		tex3  = 8,
+		tex4  = 9,
+		tex5  = 10,
+		tex6  = 11,
+		tex3d = 12,
 
-    // -------------------------------------------------------
-    // Renderer_BlendState: Alpha-blend preset enumeration
-    // -------------------------------------------------------
+		// noise
+		tex_perlin = 13,
+		// bindless
+		bindless_material_textures   = 14,
+		bindless_material_parameters = 15,
+		bindless_light_parameters    = 16,
+		bindless_aabbs               = 17,
+		bindless_draw_data           = 18,
+		
+		// volumetric clouds 3D noise
+		tex3d_cloud_shape  = 19,
+		tex3d_cloud_detail = 20,
+		// restir reservoir srv bindings (for temporal/spatial read)
+		reservoir_prev0    = 21,
+		reservoir_prev1    = 22,
+		reservoir_prev2    = 23,
+		reservoir_prev3    = 24,
+		reservoir_prev4    = 25,
+	};
 
-    /**
-     * @enum Renderer_BlendState
-     * @brief Enumerates blending mode presets used when configuring render passes.
-     */
-    enum class Renderer_BlendState : uint8_t
-    {
-        Off,
-        Alpha,
-        Additive,
-        Premultiplied,
-        MaxEnum
-    };
+	enum class Renderer_BindingsUav
+	{
+		tex           = 0,
+		tex2          = 1,
+		tex3          = 2,
+		tex4          = 3,
+		tex3d         = 4,
+		tex_sss       = 5,
+		sb_spd        = 7,
+		tex_spd       = 8,
+		// restir reservoir uav bindings
+		reservoir0    = 20,
+		reservoir1    = 21,
+		reservoir2    = 22,
+		reservoir3    = 23,
+		reservoir4    = 24,
+		// nrd output bindings
+		nrd_viewz              = 25,
+		nrd_normal_roughness   = 26,
+		nrd_diff_radiance      = 27,
+		nrd_spec_radiance      = 28,
+		// integer format textures (vrs, etc)
+		tex_uint               = 29,
+		// gpu-driven indirect drawing
+		indirect_draw_args     = 30,
+		indirect_draw_data     = 31,
+		indirect_draw_args_out = 32,
+		indirect_draw_data_out = 33,
+		indirect_draw_count    = 34,
+		// gpu-driven particles
+		particle_buffer_a      = 35,
+		particle_buffer_b      = 36,
+		particle_counter       = 37,
+		particle_emitter       = 38,
+		// gpu texture compression
+		compress_input         = 39,
+		compress_output        = 40,
+		compress_output_bc1    = 41,
+	};
 
-    // -------------------------------------------------------
-    // Renderer_DownsampleFilter: mip-chain downscale filter modes
-    // -------------------------------------------------------
+	// -------------------------------------------------------
+	// Renderer_BlendState: Alpha-blend preset enumeration
+	// -------------------------------------------------------
 
-    /**
-     * @enum Renderer_DownsampleFilter
-     * @brief Filter kernel used by Pass_Downscale when building mip chains via SPD.
-     */
-    enum class Renderer_DownsampleFilter : uint8_t
-    {
-        Average,
-        Min,
-        Max,
-        MaxEnum
-    };
+	/**
+	 * @enum Renderer_BlendState
+	 * @brief Enumerates blending mode presets used when configuring render passes.
+	 */
+	enum class Renderer_BlendState : uint8_t
+	{
+		Off,
+		Alpha,
+		Additive,
+		Premultiplied,
+		MaxEnum
+	};
 
-    // -------------------------------------------------------
-    // BarrierType: simplified image barrier intent
-    // -------------------------------------------------------
+	// -------------------------------------------------------
+	// Renderer_DownsampleFilter: mip-chain downscale filter modes
+	// -------------------------------------------------------
 
-    /**
-     * @enum BarrierType
-     * @brief Coarse-grained barrier intent used by CommandList::InsertBarrier(ImageResource*, BarrierType).
-     * The command list maps these to the correct Vulkan pipeline-stage and access-mask pairs.
-     */
-    enum class BarrierType : uint8_t
-    {
-        EnsureWriteThenRead,   ///< Make previous UAV writes visible to subsequent reads
-        EnsureReadThenWrite,   ///< Ensure prior reads complete before next UAV write
-        EnsureWriteThenWrite,  ///< Serialise two consecutive UAV writes
-        MaxEnum
-    };
+	/**
+	 * @enum Renderer_DownsampleFilter
+	 * @brief Filter kernel used by Pass_Downscale when building mip chains via SPD.
+	 */
+	enum class Renderer_DownsampleFilter : uint8_t
+	{
+		Average,
+		Min,
+		Max,
+		MaxEnum
+	};
 
-    // -------------------------------------------------------
-    // MeshType: standard geometry used in built-in passes
-    // -------------------------------------------------------
+	// -------------------------------------------------------
+	// BarrierType: simplified image barrier intent
+	// -------------------------------------------------------
 
-    /**
-     * @enum MeshType
-     * @brief Identifies built-in primitive meshes managed by the Renderer.
-     */
-    enum class MeshType : uint8_t
-    {
-        Quad,
-        Cube,
-        Sphere,
-        MaxEnum
-    };
+	/**
+	 * @enum BarrierType
+	 * @brief Coarse-grained barrier intent used by CommandList::InsertBarrier(ImageResource*, BarrierType).
+	 * The command list maps these to the correct Vulkan pipeline-stage and access-mask pairs.
+	 */
+	enum class BarrierType : uint8_t
+	{
+		EnsureWriteThenRead,   ///< Make previous UAV writes visible to subsequent reads
+		EnsureReadThenWrite,   ///< Ensure prior reads complete before next UAV write
+		EnsureWriteThenWrite,  ///< Serialise two consecutive UAV writes
+		MaxEnum
+	};
 
-    // -------------------------------------------------------
-    // Stage alias for shader-type shorthand
-    // -------------------------------------------------------
-    // Stage is defined in vulkan/enums.h; ShaderType is an alias used in pass code.
-    // The unscoped alias below lets pass code write `Stage::Pixel` as a synonym for
-    // `Stage::Fragment` and index PipelineState::shaders with the Stage enum directly.
-    // -------------------------------------------------------
+	// -------------------------------------------------------
+	// MeshType: standard geometry used in built-in passes
+	// -------------------------------------------------------
+
+	/**
+	 * @enum MeshType
+	 * @brief Identifies built-in primitive meshes managed by the Renderer.
+	 */
+	enum class MeshType : uint8_t
+	{
+		Quad,
+		Cube,
+		Sphere,
+		MaxEnum
+	};
+
+	// -------------------------------------------------------
+	// Stage alias for shader-type shorthand
+	// -------------------------------------------------------
+	// Stage is defined in vulkan/enums.h; ShaderType is an alias used in pass code.
+	// The unscoped alias below lets pass code write `Stage::Pixel` as a synonym for
+	// `Stage::Fragment` and index PipelineState::shaders with the Stage enum directly.
+	// -------------------------------------------------------
 
 #pragma region Constants
-    /** Sentinel passed to pso.clear_depth to instruct the pipeline to LOAD existing depth rather than clear it. */
-    inline constexpr float RHI_DEPTH_LOAD  = -1.0f;
-    inline constexpr float DEPTH_LOAD      = RHI_DEPTH_LOAD;
+	/** Sentinel passed to pso.clear_depth to instruct the pipeline to LOAD existing depth rather than clear it. */
+	inline constexpr float RHI_DEPTH_LOAD  = -1.0f;
+	inline constexpr float DEPTH_LOAD      = RHI_DEPTH_LOAD;
 
-    /** Maximum simultaneous colour render targets in a PipelineState. */
-    inline constexpr uint32_t MAX_RENDER_TARGET_COUNT  = 8;
-    inline constexpr uint32_t MAX_SHADER_STAGES        = 8;
-    inline constexpr uint32_t RENDERER_MAX_DRAW_CALLS  = 4096;
-    inline constexpr uint32_t MAX_MIP_COUNT            = 16;
+	/** Maximum simultaneous colour render targets in a PipelineState. */
+	inline constexpr uint32_t MAX_RENDER_TARGET_COUNT  = 8;
+	inline constexpr uint32_t MAX_SHADER_STAGES        = 8;
+	inline constexpr uint32_t RENDERER_MAX_DRAW_CALLS  = 4096;
+	inline constexpr uint32_t MAX_MIP_COUNT            = 16;
 #pragma endregion
 
 #pragma region PushConstantBuffer
-    /**
-     * @struct PushConstantBuffer
-     * @brief Per-pass push constant data uploaded via CommandList::PushConstants().
-     * All helper setters mirror the API used in renderer_passes.cpp.
-     */
-    struct PushConstantBuffer
-    {
-        uint32_t drawIndex    = 0;
-        uint32_t isTransparent = 0;
-        uint32_t materialIndex = 0;
-        uint32_t _pad0         = 0;
+	/**
+	 * @struct PushConstantBuffer
+	 * @brief Per-pass push constant data uploaded via CommandList::PushConstants().
+	 * All helper setters mirror the API used in renderer_passes.cpp.
+	 */
+	struct PushConstantBuffer
+	{
+		uint32_t drawIndex    = 0;
+		uint32_t isTransparent = 0;
+		uint32_t materialIndex = 0;
+		uint32_t _pad0         = 0;
 
-        float f3_value[3]  = {};
-        float _pad1        = 0.0f;
-        float f3_value2[3] = {};
-        float _pad2        = 0.0f;
-        float f4_value[4]  = {};
-        float f2_value[2]  = {};
-        float _pad3[2]     = {};
+		float f3_value[3]  = {};
+		float _pad1        = 0.0f;
+		float f3_value2[3] = {};
+		float _pad2        = 0.0f;
+		float f4_value[4]  = {};
+		float f2_value[2]  = {};
+		float _pad3[2]     = {};
 
-        void SetF2Value (float x, float y)                     { f2_value[0]  = x; f2_value[1]  = y; }
-        void SetF3Value (float x, float y, float z)            { f3_value[0]  = x; f3_value[1]  = y; f3_value[2]  = z; }
-        void SetF3Value2(float x, float y, float z)            { f3_value2[0] = x; f3_value2[1] = y; f3_value2[2] = z; }
-        void SetF4Value (float x, float y, float z, float w)   { f4_value[0]  = x; f4_value[1]  = y; f4_value[2]  = z; f4_value[3] = w; }
-    };
+		void SetF2Value (float x, float y)                     { f2_value[0]  = x; f2_value[1]  = y; }
+		void SetF3Value (float x, float y, float z)            { f3_value[0]  = x; f3_value[1]  = y; f3_value[2]  = z; }
+		void SetF3Value2(float x, float y, float z)            { f3_value2[0] = x; f3_value2[1] = y; f3_value2[2] = z; }
+		void SetF4Value (float x, float y, float z, float w)   { f4_value[0]  = x; f4_value[1]  = y; f4_value[2]  = z; f4_value[3] = w; }
+	};
 #pragma endregion
 
-    // Forward declarations for ordering
-    class Entity;
+	// Forward declarations for ordering
+	class Entity;
 
-    /**
-     * @class Light
-     * @brief Stub light class providing the interface consumed by renderer passes.
-     */
-    class Light
-    {
-    public:
-        virtual ~Light() = default;
-        virtual bool         GetFlag(uint32_t /*flag*/) const         { return false;  }
-        virtual float        GetIntensityWatt() const                 { return 0.0f;   }
-        virtual LightType    GetLightType() const                     { return LightType::Point; }
-        virtual Entity*      GetEntity() const                        { return nullptr; }
-        virtual void         SetScreenSpaceShadowsSliceIndex(uint32_t /*idx*/) {}
-    };
+	/**
+	 * @class Light
+	 * @brief Stub light class providing the interface consumed by renderer passes.
+	 */
+	class Light
+	{
+	public:
+		virtual ~Light() = default;
+		virtual bool         GetFlag(uint32_t /*flag*/) const         { return false;  }
+		virtual float        GetIntensityWatt() const                 { return 0.0f;   }
+		virtual LightType    GetLightType() const                     { return LightType::Point; }
+		virtual Entity*      GetEntity() const                        { return nullptr; }
+		virtual void         SetScreenSpaceShadowsSliceIndex(uint32_t /*idx*/) {}
+	};
 
-    // -------------------------------------------------------
-    // Minimal scene-object stubs used by renderer passes.
-    // Full definitions live in scene/ once those subsystems are complete.
-    // -------------------------------------------------------
+	// -------------------------------------------------------
+	// Minimal scene-object stubs used by renderer passes.
+	// Full definitions live in scene/ once those subsystems are complete.
+	// -------------------------------------------------------
 
-    /**
-     * @class Entity
-     * @brief Stub entity class providing the interface consumed by renderer passes.
-     */
-    class Entity
-    {
-    public:
-        virtual ~Entity() = default;
-        virtual xMath::Matrix GetMatrix() const                          { return xMath::Matrix{}; }
-        virtual void SetMatrixPrevious(const xMath::Matrix& /*m*/)       {}
-        virtual xMath::Vec3 GetPosition() const                          { return xMath::Vec3{};   }
-        virtual xMath::Vec3 GetForward() const                           { return xMath::Vec3{0.0f, 0.0f, 1.0f}; }
-        template<typename T> T* GetComponent()                           { return nullptr; }
-    };
+	/**
+	 * @class Entity
+	 * @brief Stub entity class providing the interface consumed by renderer passes.
+	 */
+	class Entity
+	{
+	public:
+		virtual ~Entity() = default;
+		virtual xMath::Matrix GetMatrix() const                          { return xMath::Matrix{}; }
+		virtual void SetMatrixPrevious(const xMath::Matrix& /*m*/)       {}
+		virtual xMath::Vec3 GetPosition() const                          { return xMath::Vec3{};   }
+		virtual xMath::Vec3 GetForward() const                           { return xMath::Vec3{0.0f, 0.0f, 1.0f}; }
+		template<typename T> T* GetComponent()                           { return nullptr; }
+	};
 
-    /**
-     * @class Renderable
-     * @brief Stub renderable class providing the interface consumed by renderer passes.
-     */
-    class Renderable : public RefCounted
-    {
-    public:
-        virtual ~Renderable() = default;
-        virtual Material*   GetMaterial() const                          { return nullptr; }
-        virtual Entity*     GetEntity() const                            { return nullptr; }
-        virtual Buffer*     GetVertexBuffer() const                      { return nullptr; }
-        virtual Buffer*     GetInstanceBuffer() const                    { return nullptr; }
-        virtual Buffer*     GetIndexBuffer() const                       { return nullptr; }
-        virtual uint32_t    GetIndexCount(uint32_t /*lod*/ = 0) const    { return 0; }
-        virtual uint32_t    GetIndexOffset(uint32_t /*lod*/ = 0) const   { return 0; }
-        virtual uint32_t    GetVertexOffset(uint32_t /*lod*/ = 0) const  { return 0; }
-    };
+	/**
+	 * @class Renderable
+	 * @brief Stub renderable class providing the interface consumed by renderer passes.
+	 */
+	class Renderable : public RefCounted
+	{
+	public:
+		virtual ~Renderable() = default;
+		virtual Material*   GetMaterial() const                          { return nullptr; }
+		virtual Entity*     GetEntity() const                            { return nullptr; }
+		virtual Buffer*     GetVertexBuffer() const                      { return nullptr; }
+		virtual Buffer*     GetInstanceBuffer() const                    { return nullptr; }
+		virtual Buffer*     GetIndexBuffer() const                       { return nullptr; }
+		virtual uint32_t    GetIndexCount(uint32_t /*lod*/ = 0) const    { return 0; }
+		virtual uint32_t    GetIndexOffset(uint32_t /*lod*/ = 0) const   { return 0; }
+		virtual uint32_t    GetVertexOffset(uint32_t /*lod*/ = 0) const  { return 0; }
+	};
 
-    /**
-     * @class Mesh
-     * @brief Stub mesh class providing the interface consumed by renderer passes.
-     */
-    class Mesh
-    {
-    public:
-        virtual ~Mesh() = default;
-        virtual Buffer*   GetVertexBuffer() const    { return nullptr; }
-        virtual Buffer*   GetIndexBuffer() const     { return nullptr; }
-        virtual uint32_t  GetGlobalIndexOffset() const  { return 0; }
-        virtual uint32_t  GetGlobalVertexOffset() const { return 0; }
-    };
+	/**
+	 * @class Mesh
+	 * @brief Stub mesh class providing the interface consumed by renderer passes.
+	 */
+	class Mesh
+	{
+	public:
+		virtual ~Mesh() = default;
+		virtual Buffer*   GetVertexBuffer() const    { return nullptr; }
+		virtual Buffer*   GetIndexBuffer() const     { return nullptr; }
+		virtual uint32_t  GetGlobalIndexOffset() const  { return 0; }
+		virtual uint32_t  GetGlobalVertexOffset() const { return 0; }
+	};
 
-     /**
-      * @struct GeometryBuffer
-      * @brief Stub geometry buffer providing bindless index/vertex buffer access.
-      */
-     struct GeometryBuffer
-     {
+	 /**
+	  * @struct GeometryBuffer
+	  * @brief Stub geometry buffer providing bindless index/vertex buffer access.
+	  */
+	 struct GeometryBuffer
+	 {
 		//static Buffer* GetIndexBuffer()  { return nullptr; }
 		//static Buffer* GetVertexBuffer() { return nullptr; }
 		/** @brief Create static geometry resources used by built-in passes (quad VB/IB). */
@@ -687,49 +683,49 @@ namespace SceneryEditorX
 		static Buffer* GetIndexBuffer();
 		/** @brief Get the static quad vertex buffer. */
 		static Buffer* GetVertexBuffer();
-     };
+	 };
 
-    // -------------------------------------------------------
-    // Renderer_DrawCall: per-draw submission record
-    // -------------------------------------------------------
+	// -------------------------------------------------------
+	// Renderer_DrawCall: per-draw submission record
+	// -------------------------------------------------------
 
-    /**
-     * @struct Renderer_DrawCall
-     * @brief Represents one opaque or transparent draw call submitted to the renderer.
-     * Populated by scene traversal, consumed by render passes.
-     */
-    struct Renderer_DrawCall
-    {
-        Renderable* renderable       = nullptr; // Scene renderable to draw
-        bool        cameraVisible    = false;   // Passes frustum / occlusion cull
-        bool        isOccluder       = false;   // Used as Hi-Z occluder mesh
-        uint32_t    drawData_Index   = 0;       // Index into the GPU draw-data buffer
-        uint32_t    lodIndex         = 0;       // LOD level to render
-        uint32_t    instanceIndex    = 0;       // First instance offset
-        uint32_t    instanceCount    = 1;       // Number of instances
-    };
+	/**
+	 * @struct Renderer_DrawCall
+	 * @brief Represents one opaque or transparent draw call submitted to the renderer.
+	 * Populated by scene traversal, consumed by render passes.
+	 */
+	struct Renderer_DrawCall
+	{
+		Renderable* renderable       = nullptr; // Scene renderable to draw
+		bool        cameraVisible    = false;   // Passes frustum / occlusion cull
+		bool        isOccluder       = false;   // Used as Hi-Z occluder mesh
+		uint32_t    drawData_Index   = 0;       // Index into the GPU draw-data buffer
+		uint32_t    lodIndex         = 0;       // LOD level to render
+		uint32_t    instanceIndex    = 0;       // First instance offset
+		uint32_t    instanceCount    = 1;       // Number of instances
+	};
 
-    // -------------------------------------------------------
-    // CVar: lightweight console-variable stub
-    // Provides GetValue() / GetValueAs<T>() used by renderer passes.
-    // Replace with the real console-variable system when available.
-    // -------------------------------------------------------
+	// -------------------------------------------------------
+	// CVar: lightweight console-variable stub
+	// Provides GetValue() / GetValueAs<T>() used by renderer passes.
+	// Replace with the real console-variable system when available.
+	// -------------------------------------------------------
 
-    /**
-     * @struct CVar
-     * @brief Lightweight console-variable stub consumed by renderer pass code.
-     */
-    struct CVar
-    {
-        float m_Value = 0.0f;
+	/**
+	 * @struct CVar
+	 * @brief Lightweight console-variable stub consumed by renderer pass code.
+	 */
+	struct CVar
+	{
+		float m_Value = 0.0f;
 
-        float GetValue() const { return m_Value; }
+		float GetValue() const { return m_Value; }
 
-        template<typename T>
-        T GetValueAs() const { return static_cast<T>(m_Value != 0.0f); }
+		template<typename T>
+		T GetValueAs() const { return static_cast<T>(m_Value != 0.0f); }
 
-        void SetValue(float v) { m_Value = v; }
-    };
+		void SetValue(float v) { m_Value = v; }
+	};
 
 }
 
