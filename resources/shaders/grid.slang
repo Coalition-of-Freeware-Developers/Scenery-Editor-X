@@ -28,14 +28,45 @@
  * Created: 06/03/2026
  * -------------------------------------------------------
  */
-import resources;
+
+// Per-frame constant buffer — must exactly mirror CameraShaderData in camera.h:
+//   Mat4 view, projection, viewProjection, inverseViewProjection  (4 x 64 bytes = 256 bytes)
+//   Vec3 positionWorld + float padding                             (16 bytes)
+// Total: 272 bytes  (bound at set 0, binding 0 as VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+struct FrameBufferData
+{
+    matrix view;
+    matrix projection;
+    matrix view_projection;
+    matrix view_projection_inverted;
+    float3 camera_position;
+    float  padding;
+};
+
+// push constant buffer - carries per-draw and per-pass data
+// draw_index indexes into the bindless draw data buffer for transforms and material info
+// material_index and is_transparent are pass-level state for compute shaders
+// values[] carries generic per-pass parameters (3 x float4)
+struct PassBufferData
+{
+    uint draw_index;
+    uint material_index;
+    uint is_transparent;
+    uint padding;
+    float4 values[3];
+};
+
+// buffers
+[[vk::push_constant]]
+PassBufferData buffer_pass;
+cbuffer BufferFrame : register(b0) { FrameBufferData buffer_frame; };
 
 // Minimal vertex input for the grid pass.
 // Matches the QuadVertex layout (Vec3 position + Vec2 uv) produced by GeometryBuffer.
 // Normal and tangent are not needed by the grid vertex shader.
 struct GridVertex
 {
-    float3 position : POSITION;
+    float4 position : POSITION;
     float2 uv       : TEXCOORD;
 };
 
@@ -77,13 +108,13 @@ PixelInput main_vs(GridVertex input)
     output.position_world.x += camera_anchor.x;
     output.position_world.z += camera_anchor.y;
 
-    output.position = mul(output.position_world, buffer_frame.view_projection_unjittered);
+    output.position = mul(output.position_world, buffer_frame.view_projection);
 
     return output;
 }
 
 [shader("fragment")]
-float4 main_ps(PixelInput input) : SV_TARGET
+float4 main_frag(PixelInput input) : SV_TARGET
 {
     float3 world_pos = input.position_world.xyz;
 

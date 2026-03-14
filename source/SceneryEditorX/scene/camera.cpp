@@ -272,10 +272,10 @@ namespace SceneryEditorX
 		}
 	
 		m_View = GetViewMatrix();
-	  m_Projection = ComputeProjection(m_NearPlane, m_FarPlane);
+	    m_Projection = ComputeProjection(m_NearPlane, m_FarPlane);
 		m_ProjectionNonReverseZ = m_Projection;
 		m_ViewProjection = m_Projection * m_View;
-	 m_ViewProjectionNonReverseZ = m_ViewProjection;
+	    m_ViewProjectionNonReverseZ = m_ViewProjection;
 		m_Frustum = xMath::Frustum(xMath::Matrix(m_View.Data()), xMath::Matrix(m_Projection.Data()));
 		m_CameraFlag.Check();
 	}
@@ -341,7 +341,7 @@ namespace SceneryEditorX
 			}
 	
 			// Keyboard zoom (W/S or Up/Down) while in orbit
-		  if (wDown || upDown)
+		    if (wDown || upDown)
 			{
 				zoom = std::max(0.1f, zoom - moveSpeed * 0.016f);
 				m_CameraFlag.SetDirty();
@@ -364,7 +364,7 @@ namespace SceneryEditorX
 		else if (mode == FLY || mode == FREE)
 		{
 			// Right-mouse drag: look around (yaw / pitch)
-		   if (rightMouseDown)
+		    if (rightMouseDown)
 			{
 				rotation.y += delta.x * mouseSensitivity;
 				rotation.x += delta.y * mouseSensitivity;
@@ -373,7 +373,7 @@ namespace SceneryEditorX
 					rotation.x = std::clamp(rotation.x, -pitchLimit, pitchLimit);
 				}
 				m_CameraFlag.SetDirty();
-			   cameraChanged = true;
+			    cameraChanged = true;
 				action = "look_drag";
 			}
 	
@@ -384,46 +384,46 @@ namespace SceneryEditorX
 			const Vec3 right = xMath::Normalize(xMath::Cross(forward, Vec3(0.0f, 1.0f, 0.0f)));
 			constexpr float speed = moveSpeed * 0.016f; // ~1 frame at 60 fps
 	
-		  if (wDown || upDown)
+		    if (wDown || upDown)
 			{
 				eye += forward * speed;
 				m_CameraFlag.SetDirty();
-			   cameraChanged = true;
+			    cameraChanged = true;
 				action = "move_forward";
 			}
 			if (sDown || downDown)
 			{
 				eye -= forward * speed;
 				m_CameraFlag.SetDirty();
-			   cameraChanged = true;
+			    cameraChanged = true;
 				action = "move_backward";
 			}
 			if (aDown || leftDown)
 			{
 				eye -= right * speed;
 				m_CameraFlag.SetDirty();
-			   cameraChanged = true;
+			    cameraChanged = true;
 				action = "strafe_left";
 			}
-		   if (dDown || rightDown)
+		    if (dDown || rightDown)
 			{
 				eye += right * speed;
 				m_CameraFlag.SetDirty();
 			   cameraChanged = true;
 				action = "strafe_right";
 			}
-		   if (eDown || spaceDown)
+		    if (eDown || spaceDown)
 			{
 				eye.y += speed;
 				m_CameraFlag.SetDirty();
-			   cameraChanged = true;
+			    cameraChanged = true;
 				action = "move_up";
 			}
-		   if (qDown)
+		    if (qDown)
 			{
 				eye.y -= speed;
 				m_CameraFlag.SetDirty();
-			   cameraChanged = true;
+			    cameraChanged = true;
 				action = "move_down";
 			}
 		}
@@ -462,6 +462,7 @@ namespace SceneryEditorX
 				spaceDown);
 		}
 	}
+
 	void Camera::SetOrthographicProjection(float left, float right, float top, float bottom, float nearPlane, float farPlane) 
 	{
 		m_ProjectionMatrix = xMath::Mat4{1.0f};

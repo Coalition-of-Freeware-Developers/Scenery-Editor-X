@@ -37,15 +37,15 @@
 
 namespace ShaderCompiler
 {    
-    enum class State
-    {
-        Idle,
-        Compiling,
-        Succeeded,
-        Failed
-    };
+	enum class State
+	{
+		Idle,
+		Compiling,
+		Succeeded,
+		Failed
+	};
 
-    std::vector<uint32_t> CompileVulkanShader(SceneryEditorX::Stage stage, const std::string& filepath, bool optimize = false);
+	std::vector<uint32_t> CompileVulkanShader(SceneryEditorX::Stage stage, const std::string& filepath, bool optimize = false);
 	std::vector<SceneryEditorX::ShaderInput> Reflect(SceneryEditorX::Stage stage, const std::vector<uint32_t>& shaderBytecode);
 }
 
@@ -54,38 +54,35 @@ namespace ShaderCompiler
 
 namespace SceneryEditorX
 {
-
-
-
 	// Small manager that owns one or more Shader objects along with their
 	// corresponding shader stage flags. This allows Pipeline to accept a single
 	// object that may contain multiple stages (vertex, fragment, etc.).
 	class ShaderManager 
-    {
+	{
 	public:
-	    ShaderManager() = default;
-	    // Convenience ctor: use the same SPIR-V blob for both vertex and fragment
-	    // stages (matches the original sample behavior).
-	    ShaderManager(const void* spirvCode, size_t codeSize);
-	    ShaderManager(const std::vector<std::pair<VkShaderStageFlagBits, std::pair<const void*, size_t>>>& stages);
-        ~ShaderManager();
+		ShaderManager() = default;
+		// Convenience ctor: use the same SPIR-V blob for both vertex and fragment
+		// stages (matches the original sample behavior).
+		ShaderManager(const void* spirvCode, size_t codeSize);
+		ShaderManager(const std::vector<std::pair<VkShaderStageFlagBits, std::pair<const void*, size_t>>>& stages);
+		~ShaderManager();
 
-	    static Ref<Shader>& CreateShader(const std::string& name);
-	    static Ref<Shader>& GetShader(const std::string& name);
-	    static void Clear();
+		static Ref<Shader>& CreateShader(const std::string& name);
+		static Ref<Shader>& GetShader(const std::string& name);
+		static void Clear();
 
-	    size_t StageCount() const { return m_Stages.size(); }
-	    VkShaderStageFlagBits StageAt(size_t i) const { return m_Stages[i]; }
-        VkShaderModule ModuleAt(size_t i) const { return m_Modules[i]; }
+		size_t StageCount() const { return m_Stages.size(); }
+		VkShaderStageFlagBits StageAt(size_t i) const { return m_Stages[i]; }
+		VkShaderModule ModuleAt(size_t i) const { return m_Modules[i]; }
 	
-	    ShaderCompiler::State GetCompilationState() const { return m_CompilationState; }
-        bool IsCompiled() const { return m_CompilationState == ShaderCompiler::State::Succeeded; }
+		ShaderCompiler::State GetCompilationState() const { return m_CompilationState; }
+		bool IsCompiled() const { return m_CompilationState == ShaderCompiler::State::Succeeded; }
 
 	private:
-        std::vector<VkShaderModule> m_Modules{};
-        std::vector<VkShaderStageFlagBits> m_Stages{};
-	    static std::unordered_map<std::string, Ref<Shader>> m_Shaders;
-	    std::atomic<ShaderCompiler::State> m_CompilationState = ShaderCompiler::State::Idle;
+		std::vector<VkShaderModule> m_Modules{};
+		std::vector<VkShaderStageFlagBits> m_Stages{};
+		static std::unordered_map<std::string, Ref<Shader>> m_Shaders;
+		std::atomic<ShaderCompiler::State> m_CompilationState = ShaderCompiler::State::Idle;
 	};
 
 

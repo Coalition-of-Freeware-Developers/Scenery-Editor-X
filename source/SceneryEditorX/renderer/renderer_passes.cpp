@@ -80,15 +80,13 @@ namespace SceneryEditorX
 			// Diagnostic clear so we can verify pass output is actually presented.
 			graphicsPresent->ClearTexture(rt_render, Color(0.8f, 0.1f, 0.1f, 1.0f));
 
-			const bool hasGridShaders = hasShader(Renderer_Shader::grid_v) && hasShader(Renderer_Shader::grid_p);
+			const bool hasGridShaders = hasShader(Renderer_Shader::grid_vertex) && hasShader(Renderer_Shader::grid_frag);
 			const bool hasBlitShader = false; // Temporarily disabled until CommandList pipeline binding is fully wired.
 			static bool s_LoggedBootstrapState = false;
 			if (!s_LoggedBootstrapState)
 			{
-				SEDX_CORE_WARN_TAG("Renderer",
-								   "Bootstrap state: grid shaders={}, blit shader={}",
-								   hasGridShaders,
-								   hasBlitShader);
+				SEDX_CORE_WARN_TAG("Renderer", "Bootstrap state: grid shaders={}, blit shader={}",
+								   hasGridShaders, hasBlitShader);
 				s_LoggedBootstrapState = true;
 			}
 
@@ -102,7 +100,9 @@ namespace SceneryEditorX
 				ImageResource *depthTarget = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
 				rt_render->SetLayout(Layout::ImageLayout::Attachment, graphicsPresent, ALL_MIPS, 0);
 				depthTarget->SetLayout(Layout::ImageLayout::Attachment, graphicsPresent, 0, 0);
-				Pass_Grid(graphicsPresent, rt_render);
+				
+			    Pass_Grid(graphicsPresent, rt_render);
+
 				depthTarget->SetLayout(Layout::ImageLayout::ShaderRead, graphicsPresent, 0, 0);
 				rt_render->SetLayout(Layout::ImageLayout::ShaderRead, graphicsPresent, ALL_MIPS, 0);
 			}
@@ -115,8 +115,8 @@ namespace SceneryEditorX
 			{
 				graphicsPresent->Blit(rt_render, rt_output, false);
 			}
-			Pass_Text(graphicsPresent, rt_output);
 
+			Pass_Text(graphicsPresent, rt_output);
 			rt_output->SetLayout(Layout::ImageLayout::ShaderRead, graphicsPresent, 0, 0);
 
 			// Bootstrap path still needs to submit the graphics command list so
@@ -215,6 +215,7 @@ namespace SceneryEditorX
 
 			// submit phase 1, signal g-buffer ready
 			graphicsPresent->Submit(nullptr, false);
+
 			uint64_t gfxPhase1TimelineValue = graphicsPresent->GetLastTimelineSignalValue();
 			FrameSync *gfxTimeline = graphicsPresent->GetTimelineSemaphore();
 
@@ -224,8 +225,7 @@ namespace SceneryEditorX
 			uint64_t computeTimelineValue = gfxPhase1TimelineValue;
 			FrameSync *computeTimeline = gfxTimeline;
 
-			const bool canUseAsyncCompute =
-				compute && compute->GetQueue() && graphicsPresent->GetQueue() &&
+			const bool canUseAsyncCompute = compute && compute->GetQueue() && graphicsPresent->GetQueue() &&
 				(compute->GetQueue()->GetFamilyIndex() == graphicsPresent->GetQueue()->GetFamilyIndex());
 
 			if (canUseAsyncCompute)
@@ -394,7 +394,7 @@ namespace SceneryEditorX
 			{
 				PipelineState pso;
 				pso.name = "lut_atmospheric_scattering";
-				pso.shaders[static_cast<uint32_t>(Stage::Compute)] = GetShader(Renderer_Shader::skysphere_lut_c);
+				pso.shaders[static_cast<uint32_t>(Stage::Compute)] = GetShader(Renderer_Shader::skysphere_lut_comp);
 				cmdList->SetPipelineState(pso);
 
 				cmdList->SetTexture(Renderer_BindingsUav::tex3d, tex_lut_atmosphere_scatter);
@@ -420,7 +420,7 @@ namespace SceneryEditorX
 		{
 			PipelineState pso;
 			pso.name = "skysphere_atmospheric_scattering";
-			pso.shaders[static_cast<uint32_t>(Stage::Compute)] = GetShader(Renderer_Shader::skysphere_c);
+			pso.shaders[static_cast<uint32_t>(Stage::Compute)] = GetShader(Renderer_Shader::skysphere_comp);
 			cmdList->SetPipelineState(pso);
 
 			cmdList->SetTexture(Renderer_BindingsUav::tex, tex_skysphere);
@@ -493,7 +493,7 @@ namespace SceneryEditorX
 		{
 			PipelineState pso;
 			pso.name = "occluders";
-			pso.shaders[static_cast<uint32_t>(Stage::Vertex)] = GetShader(Renderer_Shader::depth_prepass_v);
+			pso.shaders[static_cast<uint32_t>(Stage::Vertex)] = GetShader(Renderer_Shader::depth_prepass_vertex);
 			pso.rasterizerState = GetRasterizerState(Renderer_RasterizerState::Solid);
 			pso.blendState = GetBlendState(Renderer_BlendState::Off);
 			pso.depthStencil_State = GetDepthStencilState(Renderer_DepthStencilState::ReadWrite);
@@ -596,7 +596,7 @@ namespace SceneryEditorX
 				PipelineState pso;
 				pso.name = "depth_prepass_indirect";
 				pso.shaders[static_cast<uint32_t>(Stage::Vertex)] =
-					GetShader(Renderer_Shader::depth_prepass_indirect_v);
+					GetShader(Renderer_Shader::depth_prepass_indirect_vertex);
 				pso.rasterizerState = rasterizer_state;
 				pso.blendState = GetBlendState(Renderer_BlendState::Off);
 				pso.depthStencil_State = GetDepthStencilState(Renderer_DepthStencilState::ReadWrite);
@@ -623,7 +623,7 @@ namespace SceneryEditorX
 			{
 				PipelineState pso;
 				pso.name = "depth_prepass";
-				pso.shaders[static_cast<uint32_t>(Stage::Vertex)] = GetShader(Renderer_Shader::depth_prepass_v);
+				pso.shaders[static_cast<uint32_t>(Stage::Vertex)] = GetShader(Renderer_Shader::depth_prepass_vertex);
 				pso.rasterizerState = rasterizer_state;
 				pso.blendState = GetBlendState(Renderer_BlendState::Off);
 				pso.depthStencil_State = GetDepthStencilState(Renderer_DepthStencilState::ReadWrite);
@@ -650,7 +650,7 @@ namespace SceneryEditorX
 					{
 						bool is_alpha_tested = material->IsAlphaTested();
 						bool is_tessellated = material->GetProperty(MaterialProperty::Tessellation) > 0.0f;
-						Shader *ps = is_alpha_tested ? GetShader(Renderer_Shader::depth_prepass_alpha_test_p) : nullptr;
+						Shader *ps = is_alpha_tested ? GetShader(Renderer_Shader::depth_prepass_alpha_test_frag) : nullptr;
 						Shader *hs = is_tessellated ? GetShader(Renderer_Shader::tessellation_h) : nullptr;
 						Shader *ds = is_tessellated ? GetShader(Renderer_Shader::tessellation_d) : nullptr;
 
@@ -718,8 +718,8 @@ namespace SceneryEditorX
 			{
 				PipelineState pso;
 				pso.name = "g_buffer_indirect";
-				pso.shaders[static_cast<uint32_t>(Stage::Vertex)] = GetShader(Renderer_Shader::gbuffer_indirect_v);
-				pso.shaders[static_cast<uint32_t>(Stage::Fragment)] = GetShader(Renderer_Shader::gbuffer_indirect_p);
+				pso.shaders[static_cast<uint32_t>(Stage::Vertex)] = GetShader(Renderer_Shader::gbuffer_indirect_vertex);
+				pso.shaders[static_cast<uint32_t>(Stage::Fragment)] = GetShader(Renderer_Shader::gbuffer_indirect_frag);
 				pso.blendState = GetBlendState(Renderer_BlendState::Off);
 				pso.rasterizerState = cvar_wireframe.GetValueAs<bool>()
 										  ? GetRasterizerState(Renderer_RasterizerState::Wireframe)
@@ -766,8 +766,8 @@ namespace SceneryEditorX
 			{
 				PipelineState pso;
 				pso.name = isTransparentPass ? "g_buffer_transparent" : "g_buffer_tessellated";
-				pso.shaders[static_cast<uint32_t>(Stage::Vertex)] = GetShader(Renderer_Shader::gbuffer_v);
-				pso.shaders[static_cast<uint32_t>(Stage::Fragment)] = GetShader(Renderer_Shader::gbuffer_p);
+				pso.shaders[static_cast<uint32_t>(Stage::Vertex)] = GetShader(Renderer_Shader::gbuffer_vertex);
+				pso.shaders[static_cast<uint32_t>(Stage::Fragment)] = GetShader(Renderer_Shader::gbuffer_frag);
 				pso.blendState = GetBlendState(Renderer_BlendState::Off);
 				pso.rasterizerState = cvar_wireframe.GetValueAs<bool>()
 										  ? GetRasterizerState(Renderer_RasterizerState::Wireframe)
@@ -912,15 +912,15 @@ namespace SceneryEditorX
 		if (!cvar_grid.GetValueAs<bool>())
 			return;
 
-		Shader *shader_v = GetShader(Renderer_Shader::grid_v);
-		Shader *shader_p = GetShader(Renderer_Shader::grid_p);
-		if (!shader_v || !shader_p)
+		Shader *shader_vertex = GetShader(Renderer_Shader::grid_vertex);
+		Shader *shader_frag = GetShader(Renderer_Shader::grid_frag);
+		if (!shader_vertex || !shader_frag)
 			return;
 
 		PipelineState pso;
 		pso.name = "grid";
-		pso.shaders[static_cast<uint32_t>(Stage::Vertex)] = shader_v;
-		pso.shaders[static_cast<uint32_t>(Stage::Fragment)] = shader_p;
+		pso.shaders[static_cast<uint32_t>(Stage::Vertex)] = shader_vertex;
+		pso.shaders[static_cast<uint32_t>(Stage::Fragment)] = shader_frag;
 		pso.rasterizerState = GetRasterizerState(Renderer_RasterizerState::Solid);
 		pso.blendState = GetBlendState(Renderer_BlendState::Alpha);
 		pso.depthStencil_State = GetDepthStencilState(Renderer_DepthStencilState::ReadGreaterEqual);
@@ -958,12 +958,7 @@ namespace SceneryEditorX
 	}
 
 	template <typename F>
-	void Renderer::Pass_Compute(CommandList *cmdList,
-								const char *name,
-								Renderer_Shader shaderEnum,
-								ImageResource *in,
-								ImageResource *out,
-								F setup)
+	void Renderer::Pass_Compute(CommandList *cmdList, const char *name, Renderer_Shader shaderEnum, ImageResource *in, ImageResource *out, F setup)
 	{
 		{
 			PipelineState pso;
@@ -994,7 +989,7 @@ namespace SceneryEditorX
 
 		PipelineState pso;
 		pso.name = "screen_space_ambient_occlusion";
-		pso.shaders[static_cast<uint32_t>(Stage::Compute)] = GetShader(Renderer_Shader::ssao_c);
+		pso.shaders[static_cast<uint32_t>(Stage::Compute)] = GetShader(Renderer_Shader::ssao_comp);
 
 		{
 			cmdList->SetPipelineState(pso);
@@ -1272,8 +1267,8 @@ namespace SceneryEditorX
 
 			PipelineState pso;
 			pso.name = "shadow_map";
-			pso.shaders[static_cast<uint32_t>(Stage::Vertex)]    = GetShader(Renderer_Shader::depth_light_v);
-			pso.shaders[static_cast<uint32_t>(Stage::Fragment)]  = GetShader(Renderer_Shader::depth_light_alpha_color_p);
+			pso.shaders[static_cast<uint32_t>(Stage::Vertex)]    = GetShader(Renderer_Shader::depth_light_vertex);
+			pso.shaders[static_cast<uint32_t>(Stage::Fragment)]  = GetShader(Renderer_Shader::depth_light_alpha_color_frag);
 			pso.rasterizerState               = rs;
 			pso.blendState                    = GetBlendState(Renderer_BlendState::Off);
 			pso.depthStencil_State            = GetDepthStencilState(Renderer_DepthStencilState::ReadWrite);
@@ -1651,7 +1646,7 @@ namespace SceneryEditorX
 		Pass_Compute(cmdList, "dithering",   Renderer_Shader::dithering_c,    tex_output, tex_output, nullptr);
 
 		// Film grain
-		Pass_Compute(cmdList, "film_grain",  Renderer_Shader::film_grain_c,   tex_output, tex_output, nullptr);
+		Pass_Compute(cmdList, "film_grain",  Renderer_Shader::film_grain_comp,   tex_output, tex_output, nullptr);
 
 		// Selection outline (optional)
 		{
@@ -1660,7 +1655,7 @@ namespace SceneryEditorX
 			{
 				PipelineState pso;
 				pso.name = "outline_composite";
-				pso.shaders[static_cast<uint32_t>(Stage::Compute)] = GetShader(Renderer_Shader::outline_c);
+				pso.shaders[static_cast<uint32_t>(Stage::Compute)] = GetShader(Renderer_Shader::outline_comp);
 				cmdList->SetPipelineState(pso);
 
 				cmdList->SetTexture(Renderer_BindingsSrv::tex, tex_outline);
@@ -1694,8 +1689,8 @@ namespace SceneryEditorX
 
 	void Renderer::Pass_Text(CommandList* cmdList, ImageResource* out)
 	{
-		Shader* shader_v = GetShader(Renderer_Shader::font_v);
-		Shader* shader_p = GetShader(Renderer_Shader::font_p);
+		Shader* shader_v = GetShader(Renderer_Shader::font_vertex);
+		Shader* shader_p = GetShader(Renderer_Shader::font_frag);
 		if (!shader_v || !shader_p || !out)
 			return;
 

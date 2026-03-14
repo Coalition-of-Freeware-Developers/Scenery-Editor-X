@@ -43,53 +43,53 @@ namespace SceneryEditorX
 
 	void EditorLayer::OnAttach()
 	{
-	    Layer::OnAttach();
-	    m_Camera.Init();
-	    Renderer::SetCamera(&m_Camera);
-	    SEDX_CORE_INFO_TAG("EditorLayer", "Camera initialized and registered with renderer");
+		Layer::OnAttach();
+		m_Camera.Init();
+		Renderer::SetCamera(&m_Camera);
+		SEDX_CORE_INFO_TAG("EditorLayer", "Camera initialized and registered with renderer");
 	}
 
 	void EditorLayer::OnDetach()
 	{
-	    Renderer::SetCamera(nullptr);
-	    Layer::OnDetach();
+		Renderer::SetCamera(nullptr);
+		Layer::OnDetach();
 	}
 
 	void EditorLayer::Tick(DeltaTime dt)
 	{
-	    Layer::Tick(dt);
-        // Camera tick is driven by Renderer::Tick() to keep matrix updates aligned
+		Layer::Tick(dt);
+		// Camera tick is driven by Renderer::Tick() to keep matrix updates aligned
 		// with the active render frame and avoid double-processing input.
 	}
 
 	void EditorLayer::OnUIRender()
 	{
-	    Layer::OnUIRender();
+		Layer::OnUIRender();
 	}
 
 	void EditorLayer::OnEvent(Event &event)
 	{
-	    Layer::OnEvent(event);
+		Layer::OnEvent(event);
 	}
 
 	bool EditorLayer::OnKeyPressedEvent(KeyPressedEvent &e)
-    {
-        return false;
-    }
-
-    bool EditorLayer::OnMouseButtonPressed(MouseButtonPressedEvent &e)
 	{
-        return false;
+		return false;
+	}
+
+	bool EditorLayer::OnMouseButtonPressed(MouseButtonPressedEvent &e)
+	{
+		return false;
 	}
 
 	float EditorLayer::GetSnapValue()
-    {
-        return 0.0f;
-    }
-
-    float EditorLayer::UI_DrawTitlebar()
 	{
-        return 0.0f;
+		return 0.0f;
+	}
+
+	float EditorLayer::UI_DrawTitlebar()
+	{
+		return 0.0f;
 	}
 
 	void EditorLayer::UI_DrawMenubar()
@@ -102,7 +102,7 @@ namespace SceneryEditorX
 
 	bool EditorLayer::UI_TitleBarHitTest(int x, int y) const
 	{
-        return false;
+		return false;
 	}
 
 	void EditorLayer::UI_ShowNewProjectPopup()
@@ -187,61 +187,61 @@ namespace SceneryEditorX
 	}
 
 	void EditorLayer::OpenProject()
-    {
-    }
+	{
+	}
 
-    void EditorLayer::OpenProject(const std::filesystem::path &filepath)
-    {
-    }
+	void EditorLayer::OpenProject(const std::filesystem::path &filepath)
+	{
+	}
 
-    void EditorLayer::CreateProject(const std::filesystem::path &projectPath)
-    {
-    }
+	void EditorLayer::CreateProject(const std::filesystem::path &projectPath)
+	{
+	}
 
-    void EditorLayer::EmptyProject()
-    {
-    }
+	void EditorLayer::EmptyProject()
+	{
+	}
 
-    void EditorLayer::UpdateCurrentProject()
-    {
-    }
+	void EditorLayer::UpdateCurrentProject()
+	{
+	}
 
-    void EditorLayer::SaveProject()
-    {
-    }
+	void EditorLayer::SaveProject()
+	{
+	}
 
-    void EditorLayer::CloseProject(bool unloadProject)
-    {
-    }
+	void EditorLayer::CloseProject(bool unloadProject)
+	{
+	}
 
-    void EditorLayer::NewScene(const std::string &name)
-    {
-    }
+	void EditorLayer::NewScene(const std::string &name)
+	{
+	}
 
-    bool EditorLayer::OpenScene()
-    {
-        return false;
-    }
+	bool EditorLayer::OpenScene()
+	{
+		return false;
+	}
 
-    bool EditorLayer::OpenScene(const std::filesystem::path &filepath, const bool checkAutoSave)
-    {
-        return false;
-    }
+	bool EditorLayer::OpenScene(const std::filesystem::path &filepath, const bool checkAutoSave)
+	{
+		return false;
+	}
 
-    void EditorLayer::SaveScene()
-    {
+	void EditorLayer::SaveScene()
+	{
 
-    }
+	}
 
-    void EditorLayer::SaveSceneAuto()
-    {
+	void EditorLayer::SaveSceneAuto()
+	{
 
-    }
+	}
 
-    void EditorLayer::SaveSceneAs()
-    {
+	void EditorLayer::SaveSceneAs()
+	{
 
-    }
+	}
 
 }
 

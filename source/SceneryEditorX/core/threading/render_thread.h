@@ -40,21 +40,21 @@ namespace SceneryEditorX
 	enum class ThreadingPolicy : uint8_t
 	{
 		None = 0,
-	    SingleThreaded,
-	    MultiThreaded // MultiThreaded will create a Render Thread
+		SingleThreaded,
+		MultiThreaded // MultiThreaded will create a Render Thread
 	};
 
 	class RenderThread
 	{
 	public:
-        enum class State : uint8_t
+		enum class State : uint8_t
 		{
 			Idle = 0,
 			Busy,
 			Kick
 		};
 
-	    RenderThread(ThreadingPolicy policy);
+		RenderThread(ThreadingPolicy policy);
 		~RenderThread();
 
 		void Run();

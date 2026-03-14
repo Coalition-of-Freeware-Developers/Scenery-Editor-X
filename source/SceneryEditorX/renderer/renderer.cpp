@@ -29,11 +29,6 @@
  * -------------------------------------------------------
  */
 #include "renderer.h"
-#include "SceneryEditorX/asset/model.h"
-#include "SceneryEditorX/scene/camera.h"
-#include "SceneryEditorX/scene/scene.h"
-#include "slang/slang-com-ptr.h"
-#include "slang/slang.h"
 #include "vulkan/swapchain.h"
 #include "vulkan/uniform_buffer_set.h"
 #include "vulkan/debug/graphics_debug.h"
@@ -43,8 +38,12 @@
 #include <cstddef>
 #include <SDL3/SDL.h>
 #include <SceneryEditorX/asset/asset_manager.h>
+#include <SceneryEditorX/asset/model.h>
 #include <SceneryEditorX/core/application/application.h>
-#include <glm/glm.hpp>
+#include <SceneryEditorX/scene/camera.h>
+#include <SceneryEditorX/scene/scene.h>
+#include <slang/slang-com-ptr.h>
+#include <slang/slang.h>
 #include <volk/volk.h>
 
 // --------------------------------------------------------------
@@ -193,6 +192,7 @@ namespace SceneryEditorX
 #pragma endregion
 
 #pragma region Lifecycle Methods
+
 	void Renderer::Init()
 	{
 		//SEDX_TRACK_CALL("Renderer::Init");
@@ -413,8 +413,8 @@ namespace SceneryEditorX
 		// Tick the active camera so its matrices are always up-to-date before draw calls
 		if (m_Camera)
 		{
-		    m_Camera->Tick();
-		    UpdateCameraUBO(m_CurrentFrameIndex); // Ensure UBO is ready before command recording
+			m_Camera->Tick();
+			UpdateCameraUBO(m_CurrentFrameIndex); // Ensure UBO is ready before command recording
 		}
 
 		Ref<Device> device = RenderContext::Get()->GetDevice();
@@ -663,7 +663,7 @@ namespace SceneryEditorX
 		}
 
 		// Skip if window is minimized
-		const uint32_t minRenderDimension = 64;
+		constexpr uint32_t minRenderDimension = 64;
 		bool isValidResolution = s_RendererResolution.x >= minRenderDimension && s_RendererResolution.y >= minRenderDimension;
 
 		if (Window::IsMinimized() || !isValidResolution)
@@ -796,7 +796,7 @@ namespace SceneryEditorX
 			RecordRenderCommands(cb, m_SwapchainImageIndex);
 
 			// Transition swapchain image to present layout
-			if (s_Swapchain)
+			if (s_Swapchain.IsValid())
 			{
 				auto &swapchainImages = s_Swapchain->GetImages();
 				if (m_SwapchainImageIndex < swapchainImages.size())
@@ -916,8 +916,7 @@ namespace SceneryEditorX
 		presentInfo.swapchainCount = 1;
 		presentInfo.pSwapchains = &swapchainHandle;
 		presentInfo.pImageIndices = &m_SwapchainImageIndex;
-		SEDX_CORE_TRACE_TAG("Renderer", "Presenting swapchain image index {} for frame {}",
-							m_SwapchainImageIndex, m_FrameNumber);
+		SEDX_CORE_TRACE_TAG("Renderer", "Presenting swapchain image index {} for frame {}", m_SwapchainImageIndex, m_FrameNumber);
 
 		VkResult presentResult = vkQueuePresentKHR(graphicsQueue, &presentInfo);
 		if (presentResult == VK_ERROR_OUT_OF_DATE_KHR || presentResult == VK_SUBOPTIMAL_KHR)
@@ -987,6 +986,7 @@ namespace SceneryEditorX
 		}
 		SEDX_CORE_TRACE_TAG("Renderer", "Allocated {} command buffers", MAX_FRAMES_IN_FLIGHT);
 
+		// TODO: Make a FrameSync class that encapsulates the fences and semaphores for each frame easier to work with and reduce this duplicate static globals usage. 
 		// Create per-frame fences and semaphores and keep wrapper refs alive.
 		s_FenceRefs.clear();
 		s_FenceHandles.clear();
@@ -1287,7 +1287,7 @@ namespace SceneryEditorX
 
 	void Renderer::CreateCameraResources()
 	{
-		VkDevice dev = RenderContext::Get()->GetDevice()->GetLogicalDevice();
+		VkDevice device = RenderContext::Get()->GetDevice()->GetLogicalDevice();
 		VmaAllocator vma = RenderContext::Get()->GetDevice()->GetMemoryAllocator().GetAllocator();
 
 		SEDX_CORE_TRACE_TAG("Renderer", "Creating camera resources");
@@ -1304,7 +1304,7 @@ namespace SceneryEditorX
 		dslCI.bindingCount = 1;
 		dslCI.pBindings    = &uboBinding;
 
-		SEDX_VK_RESULT_ASSERT(vkCreateDescriptorSetLayout(dev, &dslCI, nullptr, &m_CameraDescriptorSetLayout),
+		SEDX_VK_RESULT_ASSERT(vkCreateDescriptorSetLayout(device, &dslCI, nullptr, &m_CameraDescriptorSetLayout),
 							  "Failed to create camera descriptor set layout");
 
 		// --- Per-frame UBO buffers ---
@@ -1337,7 +1337,12 @@ namespace SceneryEditorX
 			defaultData.projection            = Mat4(1.0f);
 			defaultData.viewProjection        = Mat4(1.0f);
 			defaultData.inverseViewProjection = Mat4(1.0f);
-			defaultData.positionWorld         = Vec3(0.0f, 0.0f, -5.0f);
+			// Start slightly away from origin to avoid near-plane issues.
+			defaultData.positionWorld = Vec3(
+				0.0f,		// X left/right
+				3.0f,		// Y up/down
+				-5.0f);	// Z forward/backward
+
 			if (m_CameraUboMapped[i])
 			{
 				std::memcpy(m_CameraUboMapped[i], &defaultData, sizeof(CameraShaderData));
@@ -1357,7 +1362,7 @@ namespace SceneryEditorX
 		poolCI.poolSizeCount = 1;
 		poolCI.pPoolSizes    = &poolSize;
 
-		SEDX_VK_RESULT_ASSERT(vkCreateDescriptorPool(dev, &poolCI, nullptr, &m_CameraDescriptorPool),
+		SEDX_VK_RESULT_ASSERT(vkCreateDescriptorPool(device, &poolCI, nullptr, &m_CameraDescriptorPool),
 							  "Failed to create camera descriptor pool");
 
 		SEDX_CORE_TRACE_TAG("Renderer", "Created camera descriptor pool");
@@ -1371,7 +1376,7 @@ namespace SceneryEditorX
 		dsAllocInfo.descriptorSetCount = MAX_FRAMES_IN_FLIGHT;
 		dsAllocInfo.pSetLayouts        = layouts.data();
 
-		SEDX_VK_RESULT_ASSERT(vkAllocateDescriptorSets(dev, &dsAllocInfo, m_CameraDescriptorSets.data()),
+		SEDX_VK_RESULT_ASSERT(vkAllocateDescriptorSets(device, &dsAllocInfo, m_CameraDescriptorSets.data()),
 							  "Failed to allocate camera descriptor sets");
 		
 		SEDX_CORE_TRACE_TAG("Renderer", "Allocated camera descriptor sets");
@@ -1392,11 +1397,10 @@ namespace SceneryEditorX
 			write.descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 			write.descriptorCount = 1;
 			write.pBufferInfo     = &bufInfo;
-			vkUpdateDescriptorSets(dev, 1, &write, 0, nullptr);
+			vkUpdateDescriptorSets(device, 1, &write, 0, nullptr);
 		}
 
 		SEDX_CORE_TRACE_TAG("Renderer", "Updated camera descriptor sets");
-
 		SEDX_CORE_INFO_TAG("Renderer", "Camera UBO resources created ({} frames)", MAX_FRAMES_IN_FLIGHT);
 	}
 
@@ -1441,7 +1445,7 @@ namespace SceneryEditorX
 			return; // Skip model loading instead of asserting
 		}
 
-				// Directly load test model, bypassing AssetManager for bootstrap testing
+		// Directly load test model, bypassing AssetManager for bootstrap testing
 		m_TestModel = CreateScope<Model>();
 		bool modelLoaded = m_TestModel->Load(allocator, m_CommandPool->GetPool(), (*queuePtr)->GetQueue(),
 									   modelPath.string(), texFiles, bufferAllocCI);
@@ -1468,6 +1472,11 @@ namespace SceneryEditorX
 		}
 	}
 
+	/**
+	 * TODO: Move the shader loading and Slang initialization to a core ShaderManager to 
+	 * avoid having it directly in the Renderer and allow other systems to access 
+	 * compiled shader blobs as needed without depending on the Renderer.
+	 */
 	void Renderer::CreateShaders()
 	{
 		SEDX_CORE_TRACE_TAG("Renderer", "Creating shaders and initializing Slang shader compiler");
@@ -1475,14 +1484,24 @@ namespace SceneryEditorX
 		Slang::ComPtr<slang::IGlobalSession> slangGlobalSession;
 		slang::createGlobalSession(slangGlobalSession.writeRef());
 		auto slangTargets{std::to_array<slang::TargetDesc>(
-			{{.format = SLANG_SPIRV, .profile = slangGlobalSession->findProfile("spirv_1_4")}})};
+			{{
+				.format = SLANG_SPIRV, 
+				.profile = slangGlobalSession->findProfile("spirv_1_4")
+				}}
+		)};
 		auto slangOptions{std::to_array<slang::CompilerOptionEntry>(
-			{{.name = slang::CompilerOptionName::EmitSpirvDirectly,
-			  .value = {.kind = slang::CompilerOptionValueKind::Int, .intValue0 = 1}}})};
+			{{
+				.name = slang::CompilerOptionName::EmitSpirvDirectly,
+				.value = {
+					.kind = slang::CompilerOptionValueKind::Int, 
+					.intValue0 = 1}
+			}}
+		)};
 
 		slang::SessionDesc slangSessionDesc = {};
 		slangSessionDesc.targets = slangTargets.data();
 		slangSessionDesc.targetCount = static_cast<SlangInt>(slangTargets.size());
+
 		// Keep row-major matrix layout to match existing CPU-side xMath uploads.
 		slangSessionDesc.defaultMatrixLayoutMode = SLANG_MATRIX_LAYOUT_ROW_MAJOR;
 		slangSessionDesc.compilerOptionEntries = slangOptions.data();
@@ -1538,8 +1557,8 @@ namespace SceneryEditorX
 				if (gridSpirv && gridSpirv->getBufferSize() > 0)
 				{
 					SEDX_CORE_INFO_TAG("Renderer", "Grid shader module compiled: {}", gridShaderPathString);
-					SetShaderAvailable(Renderer_Shader::grid_v);
-					SetShaderAvailable(Renderer_Shader::grid_p);
+					SetShaderAvailable(Renderer_Shader::grid_vertex);
+					SetShaderAvailable(Renderer_Shader::grid_frag);
 				}
 			}
 		}
@@ -1582,7 +1601,7 @@ namespace SceneryEditorX
 			return;
 		}
 
-		VkDevice dev = RenderContext::Get()->GetDevice()->GetLogicalDevice();
+		VkDevice device = RenderContext::Get()->GetDevice()->GetLogicalDevice();
 
 		// The Slang shader uses `uniform ShaderData *shaderData` (pointer), which Slang
 		// compiles to a push-constant block holding an 8-byte buffer device address.
@@ -1593,25 +1612,38 @@ namespace SceneryEditorX
 
 		// Set 0 = texture sampler array (populated by Asset)
 		// Set 1 = camera UBO  (CameraShaderData, matches CameraBufferData in camera.slang)
+		SEDX_CORE_TRACE_TAG("Renderer", "Creating camera resources");
 		CreateCameraResources();
 
+		SEDX_CORE_TRACE_TAG("Renderer", "Creating grid shader resources");
 		if (gridSpirv && gridSpirv->getBufferSize() > 0)
 		{
 			m_GridShaderManager = CreateScope<ShaderManager>(gridSpirv->getBufferPointer(), gridSpirv->getBufferSize());
 
 			if (m_GridShaderManager && m_GridShaderManager->IsCompiled())
 			{
+
 				VkPipelineLayoutCreateInfo gridLayoutCI{};
 				gridLayoutCI.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 				gridLayoutCI.setLayoutCount = 1;
 				gridLayoutCI.pSetLayouts = &m_CameraDescriptorSetLayout;
 
-				SEDX_VK_RESULT_ASSERT(vkCreatePipelineLayout(dev, &gridLayoutCI, nullptr, &m_GridPipelineLayout),
+				// Must match PassBufferData in resources.slang:
+				// uint4 + float4[3] = 64 bytes.
+				VkPushConstantRange gridPushConstantRange{};
+				gridPushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+				gridPushConstantRange.offset = 0;
+				gridPushConstantRange.size = 64;
+				gridLayoutCI.pushConstantRangeCount = 1;
+				gridLayoutCI.pPushConstantRanges = &gridPushConstantRange;
+
+				SEDX_VK_RESULT_ASSERT(vkCreatePipelineLayout(device, &gridLayoutCI, nullptr, &m_GridPipelineLayout),
 									  "Failed to create grid pipeline layout");
 
+				// Matches grid.slang GridVertex: float4 position + float2 uv (stride 24 bytes)
 				struct GridVertex
 				{
-					float position[3];
+					float position[4]; // float4 - must match grid.slang
 					float uv[2];
 				};
 
@@ -1623,21 +1655,23 @@ namespace SceneryEditorX
 				std::vector<VkVertexInputAttributeDescription> gridAttributes(2);
 				gridAttributes[0] = {
 					.location = 0,
-					.binding = 0,
-					.format = VK_FORMAT_R32G32B32_SFLOAT,
-					.offset = static_cast<uint32_t>(offsetof(GridVertex, position))
+					.binding  = 0,
+					.format   = VK_FORMAT_R32G32B32A32_SFLOAT,
+					.offset   = static_cast<uint32_t>(offsetof(GridVertex, position))
 				};
 				gridAttributes[1] = {
 					.location = 1,
-					.binding = 0,
-					.format = VK_FORMAT_R32G32_SFLOAT,
-					.offset = static_cast<uint32_t>(offsetof(GridVertex, uv))
+					.binding  = 0,
+					.format   = VK_FORMAT_R32G32_SFLOAT,
+					.offset   = static_cast<uint32_t>(offsetof(GridVertex, uv))
 				};
 
 				Pipeline::GraphicsCreateInfo gridPipeCI{};
-				gridPipeCI.device = dev;
+				gridPipeCI.device = device;
 				gridPipeCI.layout = m_GridPipelineLayout;
 				gridPipeCI.shaderManager = m_GridShaderManager.get();
+				gridPipeCI.vertexEntryPoint = "main_vs";
+				gridPipeCI.fragmentEntryPoint = "main_frag";
 				gridPipeCI.vertexBinding = gridBinding;
 				gridPipeCI.vertexAttributes = gridAttributes;
 				gridPipeCI.colorFormat = s_Swapchain->GetImageFormat();
@@ -1646,10 +1680,10 @@ namespace SceneryEditorX
 				m_GridPipeline = Pipeline::CreateGraphics(gridPipeCI);
 
 				const std::array<GridVertex, 4> gridVertices = {
-					GridVertex{{-5000.0f, 0.0f, -5000.0f}, {0.0f, 0.0f}},
-					GridVertex{{ 5000.0f, 0.0f, -5000.0f}, {1.0f, 0.0f}},
-					GridVertex{{ 5000.0f, 0.0f,  5000.0f}, {1.0f, 1.0f}},
-					GridVertex{{-5000.0f, 0.0f,  5000.0f}, {0.0f, 1.0f}}
+					GridVertex{{-1.0f, -1.0f, 0.0f, 1.0f}, {0.0f, 0.0f}},
+					GridVertex{{ 1.0f, -1.0f, 0.0f, 1.0f}, {1.0f, 0.0f}},
+					GridVertex{{ 1.0f,  1.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
+					GridVertex{{-1.0f,  1.0f, 0.0f, 1.0f}, {0.0f, 1.0f}}
 				};
 				const std::array<uint32_t, 6> gridIndices = {0, 1, 2, 2, 3, 0};
 
@@ -1702,10 +1736,10 @@ namespace SceneryEditorX
 		layoutCI.pushConstantRangeCount = 1;
 		layoutCI.pPushConstantRanges    = &pushConst;
 
-		SEDX_VK_RESULT_ASSERT(vkCreatePipelineLayout(dev, &layoutCI, nullptr, &m_BasicPipelineLayout), "Failed to create basic pipeline layout");
+		SEDX_VK_RESULT_ASSERT(vkCreatePipelineLayout(device, &layoutCI, nullptr, &m_BasicPipelineLayout), "Failed to create basic pipeline layout");
 
 		Pipeline::GraphicsCreateInfo pipeCI{};
-		pipeCI.device           = dev;
+		pipeCI.device           = device;
 		pipeCI.layout           = m_BasicPipelineLayout;
 		pipeCI.shaderManager    = m_BasicShaderManager.get();
 		pipeCI.vertexBinding    = Model::GetVertexBindingDescription();
@@ -1767,7 +1801,7 @@ namespace SceneryEditorX
 			VkBufferDeviceAddressInfo bdaInfo{};
 			bdaInfo.sType  = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
 			bdaInfo.buffer = m_BasicShaderDataBuffers[i];
-			m_BasicShaderDataAddresses[i] = vkGetBufferDeviceAddress(dev, &bdaInfo);
+			m_BasicShaderDataAddresses[i] = vkGetBufferDeviceAddress(device, &bdaInfo);
 
 			// Initial transforms: three Suzanne instances spread on the X axis.
 			BasicShaderData sd{};
@@ -2115,7 +2149,19 @@ namespace SceneryEditorX
 			m_GridIndexCount > 0 &&
 			m_CameraDescriptorSets[m_CurrentFrameIndex] != VK_NULL_HANDLE)
 		{
+		 SEDX_CORE_TRACE_TAG("Renderer",
+				"[Grid] Issuing grid draw for frame={} frameIndex={} imageIndex={} pipeline={} layout={} vb={} ib={} indexCount={}",
+				m_FrameNumber,
+				m_CurrentFrameIndex,
+				imageIndex,
+				static_cast<void*>(m_GridPipeline),
+				static_cast<void*>(m_GridPipelineLayout),
+				static_cast<void*>(m_GridVertexBuffer),
+				static_cast<void*>(m_GridIndexBuffer),
+				m_GridIndexCount);
+
 			vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, m_GridPipeline);
+			SEDX_CORE_TRACE_TAG("Renderer", "[Grid] vkCmdBindPipeline issued");
 			vkCmdSetCullMode(cb, VK_CULL_MODE_NONE);
 
 			vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -2123,10 +2169,35 @@ namespace SceneryEditorX
 									0, 1, &m_CameraDescriptorSets[m_CurrentFrameIndex],
 									0, nullptr);
 
+			struct GridPushConstants
+			{
+				uint32_t drawIndex;
+				uint32_t materialIndex;
+				uint32_t isTransparent;
+				uint32_t padding;
+				float values[3][4];
+			};
+
+			GridPushConstants gridPush{};
+			gridPush.drawIndex = 0;
+			gridPush.materialIndex = 0;
+			gridPush.isTransparent = 0;
+			gridPush.padding = 0;
+			gridPush.values[0][0] = 5000.0f; // grid half-extent
+
+			vkCmdPushConstants(cb,
+				m_GridPipelineLayout,
+				VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+				0,
+				sizeof(GridPushConstants),
+				&gridPush);
+
 			VkDeviceSize gridOffset = 0;
 			vkCmdBindVertexBuffers(cb, 0, 1, &m_GridVertexBuffer, &gridOffset);
 			vkCmdBindIndexBuffer(cb, m_GridIndexBuffer, 0, VK_INDEX_TYPE_UINT32);
+		 SEDX_CORE_TRACE_TAG("Renderer", "[Grid] vkCmdBindVertexBuffers + vkCmdBindIndexBuffer issued");
 			vkCmdDrawIndexed(cb, m_GridIndexCount, 1, 0, 0, 0);
+		   SEDX_CORE_TRACE_TAG("Renderer", "[Grid] vkCmdDrawIndexed issued");
 		}
 
 		vkCmdEndRendering(cb);

@@ -191,6 +191,10 @@ namespace SceneryEditorX
 		 */
 		static uint64_t GetFrameNumber();
 
+		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+		/// Render Thread Operations                                                                                      ///
+		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 		/**
 		 * @brief Function executed by the render thread.
 		 * @param renderThread Pointer to the RenderThread instance.
@@ -271,6 +275,13 @@ namespace SceneryEditorX
 		 */
 		static Camera* GetCamera();
 
+		/**
+		 * @brief Update the camera uniform buffer object (UBO) for the current frame.
+		 * @param frameIndex Index of the current frame in flight (0 to MAX_FRAMES_IN_FLIGHT - 1) for double/triple buffering.
+		 * @note This should be called once per frame after setting the camera and before recording draw commands.
+		 * @note This is used to determine which UBO instance to update in a ring buffer setup. 
+		 * @note The camera data should be updated before recording draw commands that use it.
+		 */
 		static void UpdateCameraUBO(uint32_t frameIndex);
 
 	private:
@@ -283,19 +294,13 @@ namespace SceneryEditorX
 		 */
 		static void CreateRenderTargets(const bool createRender, const bool createOutput, const bool createDynamic);
 
-		/**
-		 * @brief Update optional render targets based on current renderer configuration.
-		 */
+		/* @brief Update optional render targets based on current renderer configuration. */
 		static void UpdateOptionalRenderTargets();
 
-		/**
-		 * @brief Create per-frame resources such as command buffers and synchronization objects.
-		 */
+		/* @brief Create per-frame resources such as command buffers and synchronization objects. */
 		static void CreateFrameResources();
 
-		/**
-		 * @brief Destroy per-frame resources such as command buffers and synchronization objects.
-		 */
+		/* @brief Destroy per-frame resources such as command buffers and synchronization objects. */
 		static void DestroyFrameResources();
 
 		/**

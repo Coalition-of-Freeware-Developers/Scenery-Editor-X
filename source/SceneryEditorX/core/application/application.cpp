@@ -29,15 +29,15 @@
  * -------------------------------------------------------
  */
 #include "application.h"
-#include "SceneryEditorX/core/input/input.h"
-#include "SceneryEditorX/core/resource/resource_cache.h"
-#include "SceneryEditorX/core/threading/thread_pool.h"
-#include "SceneryEditorX/core/time/fps_timer.h"
-#include "SceneryEditorX/logging/logging.hpp"
-#include "SceneryEditorX/project/project.h"
-#include "SceneryEditorX/renderer/renderer.h"
-#include "SceneryEditorX/renderer/vulkan/swapchain.h"
-#include "SceneryEditorX/ui/ui_layer.h"
+#include <SceneryEditorX/core/input/input.h>
+#include <SceneryEditorX/core/resource/resource_cache.h>
+#include <SceneryEditorX/core/threading/thread_pool.h>
+#include <SceneryEditorX/core/time/fps_timer.h>
+#include <SceneryEditorX/logging/logging.hpp>
+#include <SceneryEditorX/project/project.h>
+#include <SceneryEditorX/renderer/renderer.h>
+#include <SceneryEditorX/renderer/vulkan/swapchain.h>
+#include <SceneryEditorX/ui/ui_layer.h>
 
 // -------------------------------------------------------
 
@@ -96,12 +96,19 @@ namespace SceneryEditorX
 		m_Window->SetEventCallback([this](Event &e) { OnEvent(e); });
 		m_IsMinimized = false;
 
-		FPSTimer::Init();
-		ThreadPool::Init();
-		ResourceCache::Init();
-		RenderContext::Init();
-		Renderer::Init();
-		m_RenderThread.Run();
+		try
+		{
+			FPSTimer::Init();
+			ThreadPool::Init();
+			ResourceCache::Init();
+			RenderContext::Init();
+			Renderer::Init();
+			m_RenderThread.Run();
+		}
+		catch (const std::exception &e)
+		{
+			SEDX_CORE_FATAL_TAG("Application","Exception during initialization: {}", e.what());
+		}
 
 		m_IsRunning = true;
 	}
@@ -113,17 +120,6 @@ namespace SceneryEditorX
 		s_AppInstance = this;
 		s_MainThreadID = std::this_thread::get_id();
 
-		// Set working directory to application root (2 levels up from bin/Debug)
-		/*
-		std::filesystem::path exePath = std::filesystem::current_path();
-		std::filesystem::path repoRoot = exePath.parent_path().parent_path();
-		std::filesystem::current_path(repoRoot);
-		*/
-
-		/*
-		SEDX_CORE_TRACE("Executable directory: {}", exePath.string());
-		SEDX_CORE_TRACE("Repository root: {}", repoRoot.string());
-		*/
 		SEDX_CORE_TRACE("Working directory set to: {}", std::filesystem::current_path().string());
 
 		// -------------------------------------------------------
@@ -135,6 +131,7 @@ namespace SceneryEditorX
 
 		AppData specification;
 		specification.CoreThreadingPolicy = ThreadingPolicy::MultiThreaded;
+
 		// Apply platform context settings to app data
 		if (!context.GetWorkingDirectory().empty())
 		{
@@ -179,7 +176,9 @@ namespace SceneryEditorX
 	Application::~Application()
 	{
 		if (m_Window)
-			m_Window->SetEventCallback([](Event&) {});
+		{
+		    m_Window->SetEventCallback([](Event&) {});
+		}
 
 		// Stop producing new work first
 		m_RenderThread.Terminate();
@@ -199,17 +198,6 @@ namespace SceneryEditorX
 		// Shutdown systems that may hold/consume resources
 		Renderer::Shutdown();
 		ThreadPool::Shutdown();
-
-		/*
-		/** 
-		 * Let RAII handle Window destruction, or explicitly reset the RefCounter once
-		 * to avoid double-destruction. Do NOT call the destructor directly.
-		 #1#
-		if (m_Window)
-		{
-			m_Window->Destroy();
-			m_Window.reset();
-		}*/
 
 	}
 

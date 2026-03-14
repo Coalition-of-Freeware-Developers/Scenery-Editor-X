@@ -35,50 +35,54 @@
 
 namespace SceneryEditorX
 {
+	/**
+	 * TODO: This class is currently unused, but will be the main way to manage pipeline lifetimes once the renderer is fully modularized and pipelines are created/destroyed by individual modules.
+	 * Should replace and consolidate functionality inside the pipeline class itself.
+	 */
 
-/**
+	/**
 	 * @brief A simple RAII wrapper for Vulkan pipelines and their associated pipeline layouts. This class manages the lifetime of a VkPipeline and VkPipelineLayout, ensuring that they are properly destroyed when no longer needed. The Destroy method allows for explicit cleanup, 
 	 * which is preferred to ensure deterministic ordering during teardown.
 	 */
 	class OwnedPipeline 
-    {
+	{
 	public:
-	    OwnedPipeline() = default;
-	    OwnedPipeline(VkDevice device, VkPipeline pipeline, VkPipelineLayout layout) : m_Device(device), m_Pipeline(pipeline), m_Layout(layout) {}
+		OwnedPipeline() = default;
+		OwnedPipeline(VkDevice device, VkPipeline pipeline, VkPipelineLayout layout) : m_Device(device), m_Pipeline(pipeline), m_Layout(layout) {}
 	
-	    ~OwnedPipeline()
-	    {
-	        if (!m_Destroyed)
+		~OwnedPipeline()
+		{
+			if (!m_Destroyed)
 			{
-	            // best-effort cleanup; explicit destroy(m_Device) preferred
-	        }
-	    }
+				// best-effort cleanup; explicit destroy(m_Device) preferred
+			}
+		}
 	
-	    void Destroy(VkDevice device)
-	    {
-	        if (!m_Destroyed) {
-	            if (m_Pipeline != VK_NULL_HANDLE)
+		void Destroy(VkDevice device)
+		{
+			if (!m_Destroyed) {
+				if (m_Pipeline != VK_NULL_HANDLE)
 				{
-	                vkDestroyPipeline(device, m_Pipeline, nullptr);
-	                m_Pipeline = VK_NULL_HANDLE;
-	            }
-	            if (m_Layout != VK_NULL_HANDLE)
+					vkDestroyPipeline(device, m_Pipeline, nullptr);
+					m_Pipeline = VK_NULL_HANDLE;
+				}
+				if (m_Layout != VK_NULL_HANDLE)
 				{
-	                vkDestroyPipelineLayout(device, m_Layout, nullptr);
-	                m_Layout = VK_NULL_HANDLE;
-	            }
-	            m_Destroyed = true;
-	        }
-	    }
+					vkDestroyPipelineLayout(device, m_Layout, nullptr);
+					m_Layout = VK_NULL_HANDLE;
+				}
+				m_Destroyed = true;
+			}
+		}
 	
-	    VkPipeline GetPipeline() const { return m_Pipeline; }
-	    VkPipelineLayout GetLayout() const { return m_Layout; }
+		VkPipeline GetPipeline() const { return m_Pipeline; }
+		VkPipelineLayout GetLayout() const { return m_Layout; }
 	
 	private:
-	    VkDevice m_Device;
-	    VkPipeline m_Pipeline{ VK_NULL_HANDLE };
-	    VkPipelineLayout m_Layout{ VK_NULL_HANDLE };
-	    bool m_Destroyed = false;
+		VkDevice m_Device;
+		VkPipeline m_Pipeline{ VK_NULL_HANDLE };
+		VkPipelineLayout m_Layout{ VK_NULL_HANDLE };
+		bool m_Destroyed = false;
 	};
 
 }

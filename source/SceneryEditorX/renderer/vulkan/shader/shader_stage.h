@@ -37,7 +37,7 @@
 namespace SceneryEditorX
 {
 
-    class ShaderStage : public RefCounted
+	class ShaderStage : public RefCounted
 	{
 	public:
 		ShaderStage(Stage stage, const std::string& filepath);
@@ -45,7 +45,7 @@ namespace SceneryEditorX
 	
 		void Recompile();
 
-        [[nodiscard]] inline VkShaderModule GetHandle() const { return m_ShaderModule; };
+		[[nodiscard]] inline VkShaderModule GetHandle() const { return m_ShaderModule; };
 		const std::vector<ShaderInput>& GetInput() { return m_Input; }
 	
 		VkPipelineShaderStageCreateInfo const GetStageCreateInfo();

@@ -32,6 +32,9 @@ Scenery Editor X is a modern C++20/C++23 application built with:
 - **Assertion-Driven Development:** Use `SEDX_CORE_ASSERT()` and `SEDX_VERIFY()` for validation
 - **Reflection-Based Serialization:** Use `DESCRIBED()` macro for automatic serialization support
 
+## Project Guidelines
+- For grid.slang pipeline wiring, use shader entry points main_vs (vertex) and main_frag (fragment) as declared in the shader source.
+
 ## Module System Architecture
 
 The Module System is the cornerstone of Scenery Editor X's architecture, providing standardized lifecycle management and proper dependency injection.
