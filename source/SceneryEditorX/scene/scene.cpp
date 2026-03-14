@@ -30,12 +30,13 @@
  */
 #include "scene.h"
 #include "SceneryEditorX/renderer/renderer.h"
+#include <SceneryEditorX/scene/camera.h>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-
+	Ref<Camera> Scene::m_Camera = nullptr;
 	//Entity* s_Camera = nullptr;
 
 	Scene::Scene(std::string name, bool initialize) : m_Name(std::move(name))
@@ -45,11 +46,31 @@ namespace SceneryEditorX
 
 	void Scene::Init()
 	{
+		// Scene owns the default camera lifetime and only hands a raw pointer to renderer.
+		if (!m_Camera)
+		{
+			m_Camera = CreateRef<Camera>();
+
+			// Place the default camera above and behind the origin so the grid is visible.
+			xMath::Vec3 camPos{0.0f, 5.0f, -5.0f};
+			xMath::Vec3 camTarget{0.0f, 0.0f, 0.0f};
+			m_Camera->SetViewTarget(camPos, camTarget, xMath::Vec3{0.0f, 1.0f, 0.0f});
+
+			// 60 degree vertical fov, common aspect fallback in case viewport not yet available.
+			float aspect = 16.0f / 9.0f;
+			float fov_rad = 60.0f * xMath::DEG_TO_RAD;
+			m_Camera->SetPerspectiveProjection(fov_rad, aspect, 0.1f, 10000.0f);
+			m_Camera->Init();
+		}
+
+		Renderer::SetCamera(m_Camera.Get());
 
 	}
 
 	void Scene::Shutdown()
 	{
+		Renderer::SetCamera(nullptr);
+		m_Camera.Reset();
 	}
 
 	void Scene::Tick()
@@ -58,6 +79,11 @@ namespace SceneryEditorX
 
 	Camera *Scene::GetCamera()
 	{
+		if (m_Camera)
+			return m_Camera.Get();
+
+		// Bridge path: if the editor/application set a camera directly on the renderer
+		// before Scene::Init creates a scene-owned camera, surface that camera here.
 		return Renderer::GetCamera();
 	}
 

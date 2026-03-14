@@ -39,7 +39,7 @@ namespace SceneryEditorX
 {
 	class Entity;
 
-/**
+	/**
 	 * @struct ComponentType
 	 * @brief Represents the type of a component.
 	 */
@@ -118,7 +118,7 @@ namespace SceneryEditorX
 		 * @note This function must be explicitly specialized for each concrete Component subclass.
 		 */
 		template<typename T>
-		static ComponentType TypeToEnum();
+		static ComponentType TypeToEnum(ComponentType type);
 
 		/**
 		 * @brief Gets the attributes of the component.

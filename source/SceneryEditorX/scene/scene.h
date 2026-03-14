@@ -41,7 +41,6 @@
 
 // -------------------------------------------------------
 
-
 namespace SceneryEditorX
 {
 	class Entity;
@@ -72,6 +71,8 @@ namespace SceneryEditorX
 		static bool LoadFromFile(const std::string& file_path);
 
 	private:
+	    static Ref<Camera> m_Camera;
+
 		UUID m_SceneID;
 		std::string m_Name;
 		std::string m_ScenePath;

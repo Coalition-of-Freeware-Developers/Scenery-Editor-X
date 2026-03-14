@@ -76,12 +76,12 @@ namespace SceneryEditorX
 	// Align to 16 bytes for standard Vulkan UBO memory requirements (std140)
 	struct alignas(16) CameraShaderData 
 	{
-		Mat4 view;
-		Mat4 projection;
-		Mat4 viewProjection;
-		Mat4 inverseViewProjection;
-		Vec3 positionWorld;
-		float padding; // Aligned with 'float padding' in Slang
+		Mat4 view;                  // View matrix (reverse-Z)
+		Mat4 projection;            // Projection matrix (reverse-Z)
+		Mat4 viewProjection;		// Pre-calculated on CPU to save GPU cycles, as it's commonly used in shaders
+		Mat4 inverseViewProjection; // Pre-inverted to save GPU cycles, as it's commonly used for mirror reconstruction in shaders
+		Vec3 positionWorld;			// Camera position in world space
+		float padding;				// Aligned with 'float padding' in Slang
 	};
 
 	class Camera : public Node
@@ -191,10 +191,8 @@ namespace SceneryEditorX
 		float m_FarPlane              = 10'000.0f; // Max for 32-bit reverse-Z depth buffer.
 		CameraType m_ProjectionType   = CameraType::Perspective;
 
-
 		xMath::Mat4 m_ProjectionMatrix{1.f};
 		xMath::Mat4 m_ViewMatrix{1.f};
-
 
 		xMath::Mat4 m_View							= xMath::Mat4(1.0f);
 		xMath::Mat4 m_Projection					= xMath::Mat4(1.0f);

@@ -410,11 +410,29 @@ namespace SceneryEditorX
 
 	void Renderer::Tick()
 	{
-		// Tick the active camera so its matrices are always up-to-date before draw calls
+		// Prefer the scene-owned camera when available, otherwise keep any camera that
+		// may have been provided directly via Renderer::SetCamera().
+		if (Camera* sceneCamera = Scene::GetCamera())
+		{
+			m_Camera = sceneCamera;
+		}
+
+		// Tick the active camera so its matrices are always up-to-date before draw calls.
 		if (m_Camera)
 		{
 			m_Camera->Tick();
 			UpdateCameraUBO(m_CurrentFrameIndex); // Ensure UBO is ready before command recording
+			SEDX_CORE_TRACE_TAG("CAM", "Camera pos = (X: {:.3f}, Y: {:.3f}, Z: {:.3f})",
+				m_Camera->GetEyePosition().x, m_Camera->GetEyePosition().y, m_Camera->GetEyePosition().z);
+		}
+		else
+		{
+			static bool s_WarnedNoCamera = false;
+			if (!s_WarnedNoCamera)
+			{
+				SEDX_CORE_WARN_TAG("Renderer", "No active Scene camera is set; renderer will use default UBO data until Scene::Init provides one");
+				s_WarnedNoCamera = true;
+			}
 		}
 
 		Ref<Device> device = RenderContext::Get()->GetDevice();
@@ -1652,18 +1670,12 @@ namespace SceneryEditorX
 				gridBinding.stride = sizeof(GridVertex);
 				gridBinding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
-				std::vector<VkVertexInputAttributeDescription> gridAttributes(2);
+			   std::vector<VkVertexInputAttributeDescription> gridAttributes(1);
 				gridAttributes[0] = {
 					.location = 0,
 					.binding  = 0,
 					.format   = VK_FORMAT_R32G32B32A32_SFLOAT,
 					.offset   = static_cast<uint32_t>(offsetof(GridVertex, position))
-				};
-				gridAttributes[1] = {
-					.location = 1,
-					.binding  = 0,
-					.format   = VK_FORMAT_R32G32_SFLOAT,
-					.offset   = static_cast<uint32_t>(offsetof(GridVertex, uv))
 				};
 
 				Pipeline::GraphicsCreateInfo gridPipeCI{};
@@ -2052,29 +2064,21 @@ namespace SceneryEditorX
 		// Upload camera UBO for this frame (view/projection offloaded to camera.slang UBO at set 1)
 		{
 			CameraShaderData cameraData{};
-			if (m_Camera)
+			Camera* activeCamera = Scene::GetCamera();
+			if (!activeCamera)
 			{
-				cameraData = m_Camera->GetShaderData();
+				activeCamera = m_Camera;
+			}
+
+			if (activeCamera)
+			{
+			 cameraData = activeCamera->GetShaderData();
+				m_Camera = activeCamera;
 			}
 			else
 			{
-				// Fallback: static look-at from (0,0,-5) looking at origin
-				const Vec3 eyeDef    = {0.0f, 0.0f, -5.0f};
-				const Vec3 center    = {0.0f, 0.0f,  0.0f};
-				const Vec3 up        = {0.0f, 1.0f,  0.0f};
-				Mat4& v              = cameraData.view;
-				v                    = Mat4::LookAt(eyeDef, center, up);
-
-				// Reverse-Z perspective (45° FOV, aspect from swapchain)
-				const float aspect = static_cast<float>(extent.width) / static_cast<float>(extent.height);
-				constexpr float zNear   = 0.1f;
-				constexpr float zFar    = 100.0f;
-				Mat4& p  = cameraData.projection;
-				p        = Mat4::PerspectiveProjection(aspect, 45.0f, zNear, zFar);
-
-				cameraData.viewProjection        = cameraData.projection * cameraData.view;
-				cameraData.inverseViewProjection = cameraData.viewProjection.GetInverse();
-				cameraData.positionWorld        = eyeDef;
+			  // No synthetic camera fallback here. Keep identity/default UBO data when
+				// no scene-owned camera is available.
 			}
 
 			if (m_CameraUboMapped[m_CurrentFrameIndex])
@@ -2142,14 +2146,14 @@ namespace SceneryEditorX
 			vkCmdDrawIndexed(cb, asset.GetIndexCount(), 3, 0, 0, 0);
 		}
 
-		if (m_GridPipeline != VK_NULL_HANDLE &&
+			if (m_GridPipeline != VK_NULL_HANDLE &&
 			m_GridPipelineLayout != VK_NULL_HANDLE &&
 			m_GridVertexBuffer != VK_NULL_HANDLE &&
 			m_GridIndexBuffer != VK_NULL_HANDLE &&
 			m_GridIndexCount > 0 &&
 			m_CameraDescriptorSets[m_CurrentFrameIndex] != VK_NULL_HANDLE)
-		{
-		 SEDX_CORE_TRACE_TAG("Renderer",
+			{
+			SEDX_CORE_TRACE_TAG("Renderer",
 				"[Grid] Issuing grid draw for frame={} frameIndex={} imageIndex={} pipeline={} layout={} vb={} ib={} indexCount={}",
 				m_FrameNumber,
 				m_CurrentFrameIndex,
@@ -2195,9 +2199,9 @@ namespace SceneryEditorX
 			VkDeviceSize gridOffset = 0;
 			vkCmdBindVertexBuffers(cb, 0, 1, &m_GridVertexBuffer, &gridOffset);
 			vkCmdBindIndexBuffer(cb, m_GridIndexBuffer, 0, VK_INDEX_TYPE_UINT32);
-		 SEDX_CORE_TRACE_TAG("Renderer", "[Grid] vkCmdBindVertexBuffers + vkCmdBindIndexBuffer issued");
+			SEDX_CORE_TRACE_TAG("Renderer", "[Grid] vkCmdBindVertexBuffers + vkCmdBindIndexBuffer issued");
 			vkCmdDrawIndexed(cb, m_GridIndexCount, 1, 0, 0, 0);
-		   SEDX_CORE_TRACE_TAG("Renderer", "[Grid] vkCmdDrawIndexed issued");
+			SEDX_CORE_TRACE_TAG("Renderer", "[Grid] vkCmdDrawIndexed issued");
 		}
 
 		vkCmdEndRendering(cb);
@@ -2227,16 +2231,26 @@ namespace SceneryEditorX
 
 	void Renderer::UpdateCameraUBO(uint32_t frameIndex)
 	{
-		if (!m_Camera || !m_CameraUboMapped[frameIndex])
+		Camera* camera = Scene::GetCamera();
+		if (!camera)
+		{
+			camera = m_Camera;
+		}
+		else
+		{
+			m_Camera = camera;
+		}
+
+		if (!camera || !m_CameraUboMapped[frameIndex])
 			return;
 
 		// Prepare data for the GPU
 		CameraShaderData data;
-		data.view                   = m_Camera->GetView();
-		data.projection             = m_Camera->GetProjection();
+		data.view                   = camera->GetView();
+		data.projection             = camera->GetProjection();
 		data.viewProjection         = data.projection * data.view;
 		data.inverseViewProjection  = data.viewProjection.GetInverse();
-		data.positionWorld          = m_Camera->GetWorldPosition();
+		data.positionWorld          = camera->GetWorldPosition();
 		data.padding                = 0.0f;
 
 		// Copy to mapped Vulkan buffer

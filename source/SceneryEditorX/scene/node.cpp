@@ -37,52 +37,60 @@
 namespace SceneryEditorX
 {
 
-    Mat4 Node::GetLocalTransform() const
-    {
-        using namespace xMath;
-        const Mat4 T = Mat4::Translate(position);
-        const Mat4 R = Mat4::RotationDegrees(rotation);
-        const Mat4 S = Mat4::Scale(scale);
-        return T * R * S;
-    }
+	Ref<Node> Node::Clone(Ref<Node> &node)
+	{
+		return nullptr;
+	}
+	
+	Mat4 Node::GetLocalTransform() const
+	{
+		using namespace xMath;
+		const Mat4 T = Mat4::Translate(position);
+		const Mat4 R = Mat4::RotationDegrees(rotation);
+		const Mat4 S = Mat4::Scale(scale);
+		return T * R * S;
+	}
 
-    Mat4 Node::GetParentTransform() const
-    {
-        if (m_Parent)
-            return m_Parent->GetWorldTransform();
-        return Mat4::Identity();
-    }
+	Mat4 Node::GetParentTransform() const
+	{
+		if (m_Parent)
+		{
+		    return m_Parent->GetWorldTransform();
+		}
 
-    Mat4 Node::GetWorldTransform() const
-    {
-        const Mat4 parent = GetParentTransform();
-        return parent * GetLocalTransform();
-    }
+		return Mat4::Identity();
+	}
 
-    Vec3 Node::GetWorldPosition() const
-    {
-        const Mat4 world = GetWorldTransform();
-        // Translation encoded in the 4th row/column depending on math layout; the
-        // math library used throughout the project exposes the translation via
-        // Mat4::operator[](3) in existing code (see Transforms::Decompose).
-        return Vec3(world[3]);
-    }
+	Mat4 Node::GetWorldTransform() const
+	{
+		const Mat4 parent = GetParentTransform();
+		return parent * GetLocalTransform();
+	}
 
-    Vec3 Node::GetWorldFront() const
-    {
-        const Mat4 world = GetWorldTransform();
-        // Forward vector is stored in the 3rd row/column depending on convention.
-        // Use the 2nd index which matches other usages of the math library.
-        return Vec3(world[2]);
-    }
+	Vec3 Node::GetWorldPosition() const
+	{
+		const Mat4 world = GetWorldTransform();
+		// Translation encoded in the 4th row/column depending on math layout; the
+		// math library used throughout the project exposes the translation via
+		// Mat4::operator[](3) in existing code (see Transforms::Decompose).
+		return Vec3(world[3]);
+	}
 
-    Mat4 Node::ComposeTransform(const Vec3 &pos, const Vec3 &rot, const Vec3 &scl, const Mat4 &parent)
-    {
-        using namespace xMath;
-        const Mat4 T = Mat4::Translate(pos);
-        const Mat4 R = Mat4::RotationDegrees(rot);
-        const Mat4 S = Mat4::Scale(scl);
-        return parent * T * R * S;
-    }
+	Vec3 Node::GetWorldFront() const
+	{
+		const Mat4 world = GetWorldTransform();
+		// Forward vector is stored in the 3rd row/column depending on convention.
+		// Use the 2nd index which matches other usages of the math library.
+		return Vec3(world[2]);
+	}
+
+	Mat4 Node::ComposeTransform(const Vec3 &pos, const Vec3 &rot, const Vec3 &scl, const Mat4 &parent)
+	{
+		using namespace xMath;
+		const Mat4 T = Mat4::Translate(pos);
+		const Mat4 R = Mat4::RotationDegrees(rot);
+		const Mat4 S = Mat4::Scale(scl);
+		return parent * T * R * S;
+	}
 
 }

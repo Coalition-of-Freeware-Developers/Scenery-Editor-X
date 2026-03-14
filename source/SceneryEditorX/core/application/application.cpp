@@ -37,6 +37,7 @@
 #include <SceneryEditorX/project/project.h>
 #include <SceneryEditorX/renderer/renderer.h>
 #include <SceneryEditorX/renderer/vulkan/swapchain.h>
+#include <SceneryEditorX/scene/scene.h>
 #include <SceneryEditorX/ui/ui_layer.h>
 
 // -------------------------------------------------------
@@ -102,6 +103,7 @@ namespace SceneryEditorX
 			ThreadPool::Init();
 			ResourceCache::Init();
 			RenderContext::Init();
+			Scene::Init();
 			Renderer::Init();
 			m_RenderThread.Run();
 		}
@@ -177,7 +179,7 @@ namespace SceneryEditorX
 	{
 		if (m_Window)
 		{
-		    m_Window->SetEventCallback([](Event&) {});
+			m_Window->SetEventCallback([](Event&) {});
 		}
 
 		// Stop producing new work first
@@ -194,6 +196,7 @@ namespace SceneryEditorX
 		// Release shared resource owners/caches
 		ResourceCache::UnloadDefaultResources();
 		ResourceCache::Shutdown();
+		Scene::Shutdown();
 
 		// Shutdown systems that may hold/consume resources
 		Renderer::Shutdown();
