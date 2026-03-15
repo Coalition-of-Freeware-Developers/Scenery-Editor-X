@@ -48,8 +48,8 @@
 
 namespace SceneryEditorX
 {
-	// Static renderer instance (declared in editor.h)
-	Renderer Editor::s_GfxEngine;
+	// Static editor instance (declared in editor.h)
+	Editor* editor = nullptr;
 	
 	// ---------------------------------------------------------
 
@@ -76,6 +76,17 @@ namespace SceneryEditorX
 	static std::filesystem::path s_ProjectSolutionPath = "";
 	static std::vector<std::string> s_ClArguments;
 	static uint32_t s_ClArg_flags = 0;
+
+	static float s_FontSize  = 18.0f;
+	static float s_FontScale = 1.0f;
+
+	/*
+	static void ProcessEvent(Event &event)
+	{
+		SDL_Event* event_sdl = static_cast<SDL_Event*>(std::get<void*>(event));
+		ImGui_ImplSDL3_ProcessEvent(event_sdl);
+	}
+	*/
 
 	// -------------------------------------------------------
 

@@ -46,12 +46,12 @@
 
 namespace SceneryEditorX
 {
-    #define MAX_PROJECT_NAME_LENGTH 255
-    #define MAX_PROJECT_FILEPATH_LENGTH 512
+	#define MAX_PROJECT_NAME_LENGTH 255
+	#define MAX_PROJECT_FILEPATH_LENGTH 512
 
-    // ---------------------------------------------------------
+	// ---------------------------------------------------------
 
-    /**
+	/**
 	 * @class Editor
 	 * @brief Main application class for the Scenery Editor X.
 	 *
@@ -60,50 +60,49 @@ namespace SceneryEditorX
 	 * UI system, asset management, and viewport rendering. It handles initialization,
 	 * main loop execution, frame rendering, and resource management.
 	 */
-    class Editor : public Application
-    {
-    public:
-        explicit Editor(const PlatformContext& context);
-        explicit Editor(const PlatformContext& context, const Ref<UserPreferences> &userPreferences);
-        virtual ~Editor();
+	class Editor : public Application
+	{
+	public:
+		explicit Editor(const PlatformContext& context);
+		explicit Editor(const PlatformContext& context, const Ref<UserPreferences> &userPreferences);
+		virtual ~Editor();
 
-        void Run() override;
-        void Tick() override;
-        void Stop() override;
+		void Run() override;
+		void Tick() override;
+		void Stop() override;
 
-        void OnRender() override;
-        void OnUpdate() override;
-        void OnShutdown() override;
-        void InitEditor();
+		void OnRender() override;
+		void OnUpdate() override;
+		void OnShutdown() override;
+		static void InitEditor();
 
-        void OnEvent(Event &event);
-        bool OnKeyPressedEvent(KeyPressedEvent& e);
+		void OnEvent(Event &event);
+		bool OnKeyPressedEvent(KeyPressedEvent& e);
 		bool OnMouseButtonPressed(MouseButtonPressedEvent& e);
 
-        static bool HasArgument(const std::string &argument);
+		static bool HasArgument(const std::string &argument);
 
-        //void OnCreateMeshFromMeshSource(Entity entity, Ref<MeshSource> meshSource);
-        //void SceneHierarchyInvalidMetadataCallback(Entity entity, AssetHandle handle);
-        //void SceneHierarchySetEditorCameraTransform(Entity entity);
+		//void OnCreateMeshFromMeshSource(Entity entity, Ref<MeshSource> meshSource);
+		//void SceneHierarchyInvalidMetadataCallback(Entity entity, AssetHandle handle);
+		//void SceneHierarchySetEditorCameraTransform(Entity entity);
 
-    private:
-        static void ProcessClArgs();
-        static void UpdateWindowTitle(const std::string &sceneName);
-        void OnInit() override;
+	private:
+		static void ProcessClArgs();
+		static void UpdateWindowTitle(const std::string &sceneName);
+		void OnInit() override;
 
-        Ref<UserPreferences> m_UserPreferences;
+		Ref<UserPreferences> m_UserPreferences;
 
-        static Renderer s_GfxEngine; // Graphics engine instance
 		//std::vector<Ref<UI_Panel>> m_Panels;
-        bool m_ShowStatisticsPanel = false;
-        // std::vector<Ref<Viewport>> m_EditorViewports;
-        // Ref<::Project::DefaultProject> activeProject;
-        // Scope<PanelManager> m_PanelManager;
-        // Ref<EditorConsolePanel> m_ConsolePanel;
+		bool m_ShowStatisticsPanel = false;
+		// std::vector<Ref<Viewport>> m_EditorViewports;
+		// Ref<::Project::DefaultProject> activeProject;
+		// Scope<PanelManager> m_PanelManager;
+		// Ref<EditorConsolePanel> m_ConsolePanel;
 
-        // ---------------------------------------------------------
+		// ---------------------------------------------------------
 
-    };
+	};
 
 }
 

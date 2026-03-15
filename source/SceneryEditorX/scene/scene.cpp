@@ -45,7 +45,7 @@ namespace SceneryEditorX
 	namespace
 	{
 		Scope<Scene> s_ActiveScene = nullptr;
-	    std::unordered_map<entt::entity, Scope<Entity>> s_EntityStorage;
+		std::unordered_map<entt::entity, Scope<Entity>> s_EntityStorage;
 		std::vector<Entity*> s_EntityPointers;
 	}
 
@@ -73,8 +73,9 @@ namespace SceneryEditorX
 			const entt::entity cameraHandle = static_cast<entt::entity>(cameraEntity);
 
 			auto& transform = s_ActiveScene->m_Registry.get<TransformComponent>(cameraHandle);
-			transform.translation = Vec3(0.0f, 5.0f, -5.0f);
-			const Vec3 direction = Normalize(Vec3(0.0f, 0.0f, 0.0f) - transform.translation);
+			constexpr Vec3 kInitialCameraTarget = Vec3(0.0f, 0.0f, 0.0f);
+			transform.translation = Vec3(0.0f, -5.0f, -5.0f);
+			const Vec3 direction = Normalize(kInitialCameraTarget - transform.translation);
 			transform.SetRotationEuler(Vec3(std::asin(direction.y), std::atan2(direction.x, direction.z), 0.0f));
 
 			auto& cameraComponent = s_ActiveScene->m_Registry.emplace<CameraComponent>(cameraHandle);
