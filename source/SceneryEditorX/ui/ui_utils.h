@@ -23,13 +23,13 @@
 /*
 namespace SceneryEditorX::UI
 {
-    ///=========================================================================================
+	///=========================================================================================
 	/// Utilities
 	///=========================================================================================
 
-    ImTextureID GetTextureID(const Ref<Texture2D> &texture);
+	ImTextureID GetTextureID(const Ref<Texture2D> &texture);
 
-    // -------------------------------------------------------
+	// -------------------------------------------------------
 
 	class ScopedStyle
 	{
@@ -40,13 +40,13 @@ namespace SceneryEditorX::UI
 		template<typename T>
 		ScopedStyle(ImGuiStyleVar styleVar, T value)
 		{
-		    ImGui::PushStyleVar(styleVar, value);
+			ImGui::PushStyleVar(styleVar, value);
 		}
 
 		~ScopedStyle() { ImGui::PopStyleVar(); }
 	};
 
-    // -------------------------------------------------------
+	// -------------------------------------------------------
 
 	class ScopedColour
 	{
@@ -57,13 +57,13 @@ namespace SceneryEditorX::UI
 		template<typename T>
 		ScopedColour(ImGuiCol colourId, T colour)
 		{
-		    ImGui::PushStyleColor(colourId, ImColor(colour).Value);
+			ImGui::PushStyleColor(colourId, ImColor(colour).Value);
 		}
 
 		~ScopedColour() { ImGui::PopStyleColor(); }
 	};
 
-    // -------------------------------------------------------
+	// -------------------------------------------------------
 
 	class ScopedFont
 	{
@@ -74,7 +74,7 @@ namespace SceneryEditorX::UI
 		~ScopedFont() { ImGui::PopFont(); }
 	};
 
-    // -------------------------------------------------------
+	// -------------------------------------------------------
 
 	class ScopedID
 	{
@@ -85,21 +85,21 @@ namespace SceneryEditorX::UI
 		template<typename T>
 		ScopedID(T id)
 		{
-		    ImGui::PushID(id);
+			ImGui::PushID(id);
 		}
 
 		~ScopedID() { ImGui::PopID(); }
 	};
 
-    // -------------------------------------------------------
+	// -------------------------------------------------------
 
 	template<>
 	inline ScopedID::ScopedID(const UUID id)
 	{
-	    ImGui::PushID(reinterpret_cast<const void*>(static_cast<uint64_t>(id))); /// because otherwise it will call PushID(int) which is not what we want
+		ImGui::PushID(reinterpret_cast<const void*>(static_cast<uint64_t>(id))); /// because otherwise it will call PushID(int) which is not what we want
 	}
 
-    // -------------------------------------------------------
+	// -------------------------------------------------------
 
 	class ScopedColourStack
 	{
@@ -134,7 +134,7 @@ namespace SceneryEditorX::UI
 		}
 	};
 
-    // -------------------------------------------------------
+	// -------------------------------------------------------
 
 	class ScopedStyleStack
 	{
@@ -169,7 +169,7 @@ namespace SceneryEditorX::UI
 		}
 	};
 
-    // -------------------------------------------------------
+	// -------------------------------------------------------
 
 	class ScopedItemFlags
 	{
@@ -184,7 +184,7 @@ namespace SceneryEditorX::UI
 		~ScopedItemFlags() { ImGui::PopItemFlag(); }
 	};
 
-    // -------------------------------------------------------
+	// -------------------------------------------------------
 
 	class ScopedDisable
 	{
@@ -195,7 +195,7 @@ namespace SceneryEditorX::UI
 		~ScopedDisable();
 	};
 
-    // -------------------------------------------------------
+	// -------------------------------------------------------
 
 	/// The delay won't work on texts, because the timer isn't tracked for them.
 	inline bool IsItemHovered(float delayInSeconds = 0.1f, ImGuiHoveredFlags flags = 0)
@@ -221,9 +221,9 @@ namespace SceneryEditorX::UI
 	}
 
 
-    ///=========================================================================================
-    /// Colors
-    ///=========================================================================================
+	///=========================================================================================
+	/// Colors
+	///=========================================================================================
 
 	inline ImColor ColourWithValue(const ImColor& color, float value)
 	{
@@ -287,16 +287,16 @@ namespace SceneryEditorX::UI
 		return colRaw;
 	}
 
-    // -------------------------------------------------------
+	// -------------------------------------------------------
 
 	/// TODO: move most of the functions in this header into the Draw namespace
 	namespace Draw
-    {
+	{
 		///=========================================================================================
 		/// Lines
 		///=========================================================================================
 
-	    inline void Underline(bool fullWidth = false, float offsetX = 0.0f, float offsetY = -1.0f)
+		inline void Underline(bool fullWidth = false, float offsetX = 0.0f, float offsetY = -1.0f)
 		{
 			if (fullWidth)
 			{
@@ -322,9 +322,9 @@ namespace SceneryEditorX::UI
 		}
 	}
 
-    ///=========================================================================================
-    /// Rectangles
-    ///=========================================================================================
+	///=========================================================================================
+	/// Rectangles
+	///=========================================================================================
 
 	inline ImRect GetItemRect() { return {ImGui::GetItemRectMin(), ImGui::GetItemRectMax()}; }
 
@@ -350,9 +350,9 @@ namespace SceneryEditorX::UI
 
 	inline ImRect RectOffset(const ImRect& rect, ImVec2 xy) { return RectOffset(rect, xy.x, xy.y); }
 
-    ///=========================================================================================
-    /// Window
-    ///=========================================================================================
+	///=========================================================================================
+	/// Window
+	///=========================================================================================
 
 	bool BeginPopup(const char* str_id, ImGuiWindowFlags flags = 0);
 	void EndPopup();
@@ -371,9 +371,9 @@ namespace SceneryEditorX::UI
 	/// AKA ImGui::CollapsingHeader
 	bool ContextMenuHeader(const char* label, ImGuiTreeNodeFlags flags = 0);
 
-    ///=========================================================================================
-    /// Shadows
-    ///=========================================================================================
+	///=========================================================================================
+	/// Shadows
+	///=========================================================================================
 
 	void DrawShadow(const Ref<Texture2D>& shadowImage, int radius, ImVec2 rectMin, ImVec2 rectMax, float alphMultiplier = 1.0f, float lengthStretch = 10.0f,
 		 bool drawLeft = true, bool drawRight = true, bool drawTop = true, bool drawBottom = true);
@@ -393,9 +393,9 @@ namespace SceneryEditorX::UI
 	void DrawShadowInner(const Ref<Texture2D>& shadowImage, int radius, float alpha = 1.0f, float lengthStretch = 10.0f,
 		 bool drawLeft = true, bool drawRight = true, bool drawTop = true, bool drawBottom = true);
 
-    ///=========================================================================================
-    /// Outlines
-    ///=========================================================================================
+	///=========================================================================================
+	/// Outlines
+	///=========================================================================================
 
 	inline void BeginDisabled(bool disabled = true)
 	{
@@ -435,19 +435,19 @@ namespace SceneryEditorX::UI
 		if (flags & OutlineFlags_WhenActive && ImGui::IsItemActive())
 		{
 			if (flags & OutlineFlags_HighlightActive)
-                drawList->AddRect(rect.Min, rect.Max, colourHighlight, rounding, 0, 1.5f);
-            else
-                drawList->AddRect(rect.Min, rect.Max, ImColor(60, 60, 60), rounding, 0, 1.5f);
-        }
+				drawList->AddRect(rect.Min, rect.Max, colourHighlight, rounding, 0, 1.5f);
+			else
+				drawList->AddRect(rect.Min, rect.Max, ImColor(60, 60, 60), rounding, 0, 1.5f);
+		}
 		else if (flags & OutlineFlags_WhenHovered && ImGui::IsItemHovered() && !ImGui::IsItemActive())
-            drawList->AddRect(rect.Min, rect.Max, ImColor(60, 60, 60), rounding, 0, 1.5f);
-        else if (flags & OutlineFlags_WhenInactive && !ImGui::IsItemHovered() && !ImGui::IsItemActive())
-            drawList->AddRect(rect.Min, rect.Max, ImColor(50, 50, 50), rounding, 0, 1.0f);
-    }
+			drawList->AddRect(rect.Min, rect.Max, ImColor(60, 60, 60), rounding, 0, 1.5f);
+		else if (flags & OutlineFlags_WhenInactive && !ImGui::IsItemHovered() && !ImGui::IsItemActive())
+			drawList->AddRect(rect.Min, rect.Max, ImColor(50, 50, 50), rounding, 0, 1.0f);
+	}
 
-    ///=========================================================================================
-    /// Property Fields
-    ///=========================================================================================
+	///=========================================================================================
+	/// Property Fields
+	///=========================================================================================
 
 	/// GetColFunction function takes 'int' index of the option to display and returns ImColor
 	template<typename GetColFunction>
@@ -500,9 +500,9 @@ namespace SceneryEditorX::UI
 		if (indentAfter) ImGui::Indent();
 	}
 
-    ///=========================================================================================
-    /// Button Images
-    ///=========================================================================================
+	///=========================================================================================
+	/// Button Images
+	///=========================================================================================
 
 	void DrawButtonImage(const Ref<Texture2D> &imageNormal, const Ref<Texture2D> &imageHovered, const Ref<Texture2D> &imagePressed, ImU32 tintNormal, ImU32 tintHovered, ImU32 tintPressed, ImVec2 rectMin, ImVec2 rectMax,
 		 ImVec2 uv0 = ImVec2(0.0f, 0.0f), ImVec2 uv1 = ImVec2(1.0f, 1.0f));
@@ -555,9 +555,9 @@ namespace SceneryEditorX::UI
 		DrawButtonImage(image, image, image, tintNormal, tintHovered, tintPressed, ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), uv0, uv1);
 	}
 
-    ///=========================================================================================
-    /// Borders
-    ///=========================================================================================
+	///=========================================================================================
+	/// Borders
+	///=========================================================================================
 
 	inline void DrawBorder(ImVec2 rectMin, ImVec2 rectMax, const ImVec4& borderColour, float thickness = 1.0f, float offsetX = 0.0f, float offsetY = 0.0f)
 	{
@@ -662,32 +662,32 @@ namespace SceneryEditorX::UI
 		DrawBorderVertical(ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), borderColour, thickness, offsetX, offsetY);
 	}
 
-    inline void DrawBorderVertical(float thickness = 1.0f, float offsetX = 0.0f, float offsetY = 0.0f)
+	inline void DrawBorderVertical(float thickness = 1.0f, float offsetX = 0.0f, float offsetY = 0.0f)
 	{
 		DrawBorderVertical(ImGui::GetStyleColorVec4(ImGuiCol_Border), thickness, offsetX, offsetY);
 	}
 
-    ///=========================================================================================
-    /// Custom UI Controls
-    ///=========================================================================================
+	///=========================================================================================
+	/// Custom UI Controls
+	///=========================================================================================
 
 	inline const char* PatchFormatStringFloatToInt(const char* fmt)
 	{
 		if (fmt[0] == '%' && fmt[1] == '.' && fmt[2] == '0' && fmt[3] == 'f' && fmt[4] == 0) /// Fast legacy path for "%.0f" which is expected to be the most common case.
 			return "%d";
 		const char* fmt_start = ImParseFormatFindStart(fmt);    /// Find % (if any, and ignore %%)
-        if (const char* fmt_end = ImParseFormatFindEnd(fmt_start); fmt_end > fmt_start && fmt_end[-1] == 'f')	/// Find end of format specifier, which itself is an exercise of confidence/recklessness (because snprintf is dependent on libc or user).
+		if (const char* fmt_end = ImParseFormatFindEnd(fmt_start); fmt_end > fmt_start && fmt_end[-1] == 'f')	/// Find end of format specifier, which itself is an exercise of confidence/recklessness (because snprintf is dependent on libc or user).
 		{
-        #ifndef IMGUI_DISABLE_OBSOLETE_FUNCTIONS
+		#ifndef IMGUI_DISABLE_OBSOLETE_FUNCTIONS
 			if (fmt_start == fmt && fmt_end[0] == 0)
 				return "%d";
 
 			ImGuiContext& g = *GImGui;
-            ImFormatString(g.TempBuffer.Data, g.TempBuffer.Size, "%.*s%%d%s", (int)(fmt_start - fmt), fmt, fmt_end); /// Honor leading and trailing decorations, but lose alignment/precision.
+			ImFormatString(g.TempBuffer.Data, g.TempBuffer.Size, "%.*s%%d%s", (int)(fmt_start - fmt), fmt, fmt_end); /// Honor leading and trailing decorations, but lose alignment/precision.
 			return g.TempBuffer.Data;
-        #else
+		#else
 			IM_ASSERT(0 && "DragInt(): Invalid format string!"); /// Old versions used a default parameter of "%.0f", please replace with e.g. "%d"
-        #endif
+		#endif
 		}
 
 		return fmt;
@@ -697,11 +697,11 @@ namespace SceneryEditorX::UI
 	{
 		va_list args;
 		va_start(args, fmt);
-	    #ifdef IMGUI_USE_STB_SPRINTF
+		#ifdef IMGUI_USE_STB_SPRINTF
 			int w = stbsp_vsnprintf(buf, (int)buf_size, fmt, args);
-	    #else
+		#else
 			int w = vsnprintf(buf, buf_size, fmt, args);
-	    #endif
+		#endif
 		va_end(args);
 		if (buf == nullptr)
 			return w;
@@ -744,29 +744,29 @@ namespace SceneryEditorX::UI
 		{
 			const bool input_requested_by_tabbing = temp_input_allowed ? (g.NavActivateId == id && (g.NavActivateFlags & ImGuiActivateFlags_PreferInput)) : false;
 			const bool clicked = (hovered && g.IO.MouseClicked[0]);
-            if (const bool double_clicked = (hovered && g.IO.MouseClickedCount[0] == 2); input_requested_by_tabbing || clicked || double_clicked || g.NavActivateId == id)
-            {
-                if (input_requested_by_tabbing || (clicked && g.IO.KeyCtrl) || double_clicked || g.NavActivateId == id)
-                {
-                    ImGui::SetActiveID(id, window);
-                    ImGui::SetFocusID(id, window);
-                    ImGui::FocusWindow(window);
-                    g.ActiveIdUsingNavDirMask = (1 << ImGuiDir_Left) | (1 << ImGuiDir_Right);
-                    temp_input_is_active = true;
-                }
-            }
+			if (const bool double_clicked = (hovered && g.IO.MouseClickedCount[0] == 2); input_requested_by_tabbing || clicked || double_clicked || g.NavActivateId == id)
+			{
+				if (input_requested_by_tabbing || (clicked && g.IO.KeyCtrl) || double_clicked || g.NavActivateId == id)
+				{
+					ImGui::SetActiveID(id, window);
+					ImGui::SetFocusID(id, window);
+					ImGui::FocusWindow(window);
+					g.ActiveIdUsingNavDirMask = (1 << ImGuiDir_Left) | (1 << ImGuiDir_Right);
+					temp_input_is_active = true;
+				}
+			}
 
 			/// Experimental: simple click (without moving) turns Drag into an InputText
 			if (g.IO.ConfigDragClickToInputText && temp_input_allowed && !temp_input_is_active)
-            {
-                if (g.ActiveId == id && hovered && g.IO.MouseReleased[0] && !ImGui::IsMouseDragPastThreshold(0, g.IO.MouseDragThreshold * 0.5f))
-                {
-                    g.NavActivateId = id;
-                    g.NavActivateFlags = ImGuiActivateFlags_PreferInput;
-                    temp_input_is_active = true;
-                }
-            }
-        }
+			{
+				if (g.ActiveId == id && hovered && g.IO.MouseReleased[0] && !ImGui::IsMouseDragPastThreshold(0, g.IO.MouseDragThreshold * 0.5f))
+				{
+					g.NavActivateId = id;
+					g.NavActivateFlags = ImGuiActivateFlags_PreferInput;
+					temp_input_is_active = true;
+				}
+			}
+		}
 
 		if (temp_input_is_active)
 		{
@@ -844,7 +844,7 @@ namespace SceneryEditorX::UI
 	}
 
 	inline bool SliderFloat3(const char* label, float v[3], float v_min, float v_max, const char* format = "%.3f", ImGuiSliderFlags flags = 0)
-    {
+	{
 		bool changed = ImGui::SliderFloat3(label, v, v_min, v_max, format, flags);
 		DrawItemActivityOutline();
 		return changed;
@@ -858,7 +858,7 @@ namespace SceneryEditorX::UI
 	}
 
 	inline bool SliderFloat4(const char* label, float v[4], float v_min, float v_max, const char* format = "%.3f", ImGuiSliderFlags flags = 0)
-    {
+	{
 		bool changed = ImGui::SliderFloat4(label, v, v_min, v_max, format, flags);
 		DrawItemActivityOutline();
 		return changed;

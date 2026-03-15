@@ -11,7 +11,6 @@
 * -------------------------------------------------------
 */
 #pragma once
-//#include "SceneryEditorX/renderer/command_buffer.h"
 #include <SceneryEditorX/core/layers/layer.h>
 
 // -------------------------------------------------------

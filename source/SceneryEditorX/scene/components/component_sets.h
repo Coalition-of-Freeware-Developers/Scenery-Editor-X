@@ -30,59 +30,66 @@
  */
 // ReSharper disable CppNonExplicitConvertingConstructor
 #pragma once
-#include <xMath/includes/xmath.hpp>
-//#include "material.h"
-#include "SceneryEditorX/asset/asset.h"
-#include "SceneryEditorX/core/base.h"
+#include <SceneryEditorX/asset/asset.h>
+#include <SceneryEditorX/core/base.h>
 #include <SceneryEditorX/core/identifiers/uuid.h>
+#include <xMath/includes/xmath.hpp>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
 
+/**
+	 * @struct IDComponent
+	 * @brief Component that stores a unique identifier (UUID) for an entity.
+	 */
 	struct IDComponent
 	{
-		UUID id = UUID();
+		UUID pID = UUID();
 	};
 
 	// -------------------------------------------------------
 
+	/**
+	 * @struct TagComponent
+	 * @brief Component that stores a human-readable name or tag for an entity.
+	 */
 	struct TagComponent
 	{
-		union
-		{
-			std::string tag;
-			const char *ctag; 
-		};
+
+		std::string pTag;
 
 		TagComponent() = default;
 		TagComponent(const TagComponent& other) = default;
-		
-		TagComponent(std::string tag) : tag(std::move(tag)) {}
-		TagComponent(const char* ctag) : ctag(ctag) {}
+		TagComponent(std::string tag) : pTag(std::move(tag)) {}
 
-		operator std::string& () { return tag; }
-		operator const std::string& () const { return tag; }
-
-		operator const char* () const { return ctag; }
-		operator char* () { return const_cast<char*>(ctag); }
+		operator std::string& () { return pTag; }
+		operator const std::string& () const { return pTag; }
 	};
 
 	// -------------------------------------------------------
 
+	/**
+	 * @struct RelationshipComponent
+	 * @brief Component that stores parent-child relationships between entities.
+	 */
 	struct RelationshipComponent
 	{
-		UUID parentHandle;
-		std::vector<UUID> children;
+		UUID pParentHandle{0};
+		std::vector<UUID> pChildren;
 
 		RelationshipComponent() = default;
 		RelationshipComponent(const RelationshipComponent &other) = default;
-		RelationshipComponent(UUID parent) : parentHandle(std::move(parent)) {}
+		RelationshipComponent(UUID parent) : pParentHandle(std::move(parent)) {}
 	};
 
 	// -------------------------------------------------------
 
+	/**
+	 * @struct PrefabComponent
+	 * @brief Component that stores prefab information for an entity.
+	 */
 	struct PrefabComponent
 	{
 		UUID prefabId;
@@ -91,61 +98,87 @@ namespace SceneryEditorX
 
 	// -------------------------------------------------------
 
+	/**
+	 * @struct TransformComponent
+	 * @brief Component that stores transformation data (translation, rotation, scale) for an entity.
+	 */
 	struct TransformComponent
 	{
-		Vec3 translation = {0.0f, 0.0f, 0.0f};
-		Vec3 scale = {1.0f, 1.0f, 1.0f};
 
-	private:
-		/**
-		 * These are private so that you are forced to set them via
-		 * SetRotation() or SetRotationEuler()
-		 * This avoids situation where one of them gets set and the other is forgotten.
-		 *
-		 * Why do we need both a quat and Euler angle representation for rotation?
-		 * Because Euler suffers from gimbal lock -> rotations should be stored as quaternions.
-		 *
-		 * BUT: quaternions are confusing, and humans like to work with Euler angles.
-		 * We cannot store just the quaternions and translate to/from Euler because the conversion
-		 * Euler -> quat -> Euler is not invariant.
-		 *
-		 * It's also sometimes useful to be able to store rotations > 360 degrees which
-		 * quats do not support.
-		 *
-		 * Accordingly, we store Euler for "editor" stuff that humans work with,
-		 * and quats for everything else.  The two are maintained in-sync via the SetRotation()
-		 * methods.
-		 */
-		Vec3 m_RotationEuler = {0.0f, 0.0f, 0.0f};
-		Quat m_Rotation = {1.0f, 0.0f, 0.0f, 0.0f};
+		xMath::Vec3 translation		= {0.0f, 0.0f, 0.0f};
+		xMath::Vec3 rotationEuler	= {0.0f, 0.0f, 0.0f};			// Editor-friendly
+		xMath::Quat rotation		= {1.0f, 0.0f, 0.0f, 0.0f};	// Math-friendly
+		xMath::Vec3 scale			= {1.0f, 1.0f, 1.0f};
 
-	public:
 		TransformComponent() = default;
+
+		/**
+		 * @brief Constructs a TransformComponent by copying another TransformComponent.
+		 * @param other The TransformComponent to copy.
+		 */
 		TransformComponent(const TransformComponent &other) = default;
+
+		/**
+		 * @brief Constructs a TransformComponent with a given translation.
+		 * @param translation The translation vector to initialize the component with.
+		 */
 		TransformComponent(const Vec3 &translation) : translation(translation) {}
 
+		/**
+		 * @brief Gets the local transformation matrix of the component.
+		 * @return The local transformation matrix representing the component's transformation.
+		 */
+		[[nodiscard]] xMath::Mat4 GetLocalTransform() const
+		{
+			return xMath::Mat4::Translate(translation) * rotation.ToMatrix() * xMath::Mat4::Scale(scale);
+		}
+
+		/**
+		 * @brief Gets the transformation matrix of the component.
+		 * @return The transformation matrix representing the component's transformation.
+		 */
 		[[nodiscard]] Mat4 GetTransform() const
 		{
 			// M = T * R * S
 			return Mat4::Translate(translation) * m_Rotation.ToMatrix() * Mat4::Scale(scale);
 		}
 
+		/**
+		 * @brief Sets the transformation of the component.
+		 * @param transform The transformation matrix to set.
+		 */
 		void SetTransform(const Mat4 &transform)
 		{
 			Transforms::Decompose(transform, translation, m_Rotation, scale);
 			m_RotationEuler = m_Rotation.ToEulerRadians(); // Store editor euler in radians
 		}
 
+		/**
+		 * @brief Gets the rotation of the component as Euler angles.
+		 * @return The Euler angles representing the rotation in radians.
+		 */
 		[[nodiscard]] Vec3 GetRotationEuler() const { return m_RotationEuler; }
 
+		/**
+		 * @brief Sets the rotation of the component using Euler angles.
+		 * @param euler The Euler angles representing the rotation in radians.
+		 */
 		void SetRotationEuler(const Vec3 &euler)
 		{
 			m_RotationEuler = euler; // euler is in radians
 			m_Rotation = Quat::EulerRadians(m_RotationEuler);
 		}
 
+		/**
+		 * @brief Gets the rotation of the component as a quaternion.
+		 * @return The quaternion representing the rotation.
+		 */
 		[[nodiscard]] Quat GetRotation() const { return m_Rotation; }
 
+		/**
+		 * @brief Sets the rotation of the component using a quaternion.
+		 * @param quat The quaternion representing the rotation.
+		 */
 		void SetRotation(const Quat &quat)
 		{
 			// wrap given euler angles to range [-pi, pi]
@@ -218,19 +251,50 @@ namespace SceneryEditorX
 			m_RotationEuler = wrap_to_pi(m_RotationEuler);
 		}
 
+	private:
+		/**
+		 * These are private so that you are forced to set them via
+		 * SetRotation() or SetRotationEuler()
+		 * This avoids situation where one of them gets set and the other is forgotten.
+		 *
+		 * Why do we need both a quat and Euler angle representation for rotation?
+		 * Because Euler suffers from gimbal lock -> rotations should be stored as quaternions.
+		 *
+		 * BUT: quaternions are confusing, and humans like to work with Euler angles.
+		 * We cannot store just the quaternions and translate to/from Euler because the conversion
+		 * Euler -> quat -> Euler is not invariant.
+		 *
+		 * It's also sometimes useful to be able to store rotations > 360 degrees which
+		 * quats do not support.
+		 *
+		 * Accordingly, we store Euler for "editor" stuff that humans work with,
+		 * and quats for everything else. The two are maintained in-sync via the SetRotation()
+		 * methods.
+		 */
+		Vec3 m_RotationEuler = {0.0f, 0.0f, 0.0f};
+		Quat m_Rotation = {1.0f, 0.0f, 0.0f, 0.0f};
+
 		//friend class SceneSerializer;
 	};
 
 	// -------------------------------------------------------
 
-	// Entity with this component is the "root" of a dynamic mesh
+	/**
+	 * @struct MeshComponent
+	 * @brief Component that represents a mesh attached to an entity.  
+	 * The mesh can be static or dynamic (skinned/rigged).  
+	 * If the mesh is dynamic, then the entity with this component is considered the "root" of the dynamic mesh hierarchy, 
+	 * and all its descendants with MeshTagComponents are considered part of the same dynamic mesh.
+	 */
 	struct MeshComponent
 	{
 		AssetHandle mesh;
 	};
 
-
-	// Tags entities that are part of a dynamic mesh hierarchy
+	/**
+	 * @struct MeshTagComponent
+	 * @brief Component that tags an entity as part of a dynamic mesh hierarchy.
+	 */
 	struct MeshTagComponent
 	{
 		UUID meshEntity;
@@ -331,45 +395,76 @@ namespace SceneryEditorX
 
 	// -------------------------------------------------------
 
+	/**
+	 * @struct DirectionalLightComponent
+	 * @brief Component that represents a directional light source in the scene, such as the sun.
+	 */
 	struct DirectionalLightComponent
 	{
-		Vec3 radiance = {1.0f, 1.0f, 1.0f};
-		float intensity = 1.0f;
-		float lightSize = 0.5f; // For PCSS
-		float shadowAmount = 1.0f;
+		Vec3 radiance		= {1.0f, 1.0f, 1.0f};
+		float intensity		= 1.0f;
+		float lightSize		= 0.5f; // For PCSS
+		float shadowAmount	= 1.0f;
 
-		bool castShadows = true;
-		bool softShadows = true;
+		bool castShadows	= true;
+		bool softShadows	= true;
 	};
 
 	// -------------------------------------------------------
 
+	/**
+	 * @struct PointLightComponent
+	 * @brief Component that represents a point light source in the scene, which emits light in all directions from a single point.
+	 */
 	struct PointLightComponent
 	{
-		Vec3 radiance = {1.0f, 1.0f, 1.0f};
-		float radius = 10.f;
-		float falloff = 1.f;
-		float minRadius = 1.f;
-		float intensity = 1.0f;
-		float lightSize = 0.5f; // For PCSS
+		Vec3 radiance		= {1.0f, 1.0f, 1.0f};
+		float radius		= 10.f;
+		float falloff		= 1.f;
+		float minRadius		= 1.f;
+		float intensity		= 1.0f;
+		float lightSize		= 0.5f; // For PCSS
 
-		bool castsShadows = true;
-		bool softShadows = true;
+		bool castsShadows	= true;
+		bool softShadows	= true;
 	};
 
 	// -------------------------------------------------------
 
+	/**
+	 * @struct SpotLightComponent
+	 * @brief Component that represents a spotlight source in the scene, which emits light in a cone shape from a single point.
+	 */
 	struct SpotLightComponent
 	{
-		Vec3 radiance{1.0f};
-		float range = 10.0f;
-		float angle = 60.0f;
-		float falloff = 1.0f;
-		float intensity = 1.0f;
-		float angleAttenuation = 5.0f;
+		Vec3 radiance			= {1.0f, 1.0f, 1.0f};
+		float range				= 10.0f;
+		float angle				= 60.0f;
+		float falloff			= 1.0f;
+		float intensity			= 1.0f;
+		float angleAttenuation	= 5.0f;
 
-		bool softShadows = false;
-		bool castsShadows = false;
+		bool softShadows		= false;
+		bool castsShadows		= false;
+	};
+
+	// -------------------------------------------------------
+
+	/**
+	 * @struct CameraComponent
+	 * @brief Component that represents a camera in the scene.
+	 */
+	struct CameraComponent
+	{
+		float horizontalFov_Rad = 90.0f * xMath::DEG_TO_RAD;
+		float nearPlane			= 0.1f;
+		float farPlane			= 10000.0f; // Reverse-Z friendly
+		
+		enum class ProjectionType { Perspective = 0, Orthographic = 1 };
+		ProjectionType projectionType = ProjectionType::Perspective;
+	
+		bool isPrimary = true; // Used by the renderer to find the main view
+		bool useJitter = true; // For TAA/DLSS in your Vulkan pipeline
 	};
 
 	// -------------------------------------------------------

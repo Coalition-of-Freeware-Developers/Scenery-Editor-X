@@ -32,6 +32,7 @@
 #include "SceneryEditorX/core/input/input.h"
 #include "SceneryEditorX/core/window/window.h"
 #include "SceneryEditorX/renderer/renderer.h"
+#include "components/component_sets.h"
 #include <algorithm>
 #include <cmath>
 #include <limits>
@@ -64,8 +65,36 @@ namespace SceneryEditorX
 
 	void Camera::Init()
 	{
+		m_LastViewport = Renderer::GetViewport();
 		m_CameraFlag.SetDirty();
-		ComputeMatrices();
+
+		TransformComponent transform{};
+		transform.translation = eye;
+
+		if (mode == ORBIT)
+		{
+			const Vec3 toTarget = center - eye;
+		   if (Length2(toTarget) > 1e-6f)
+			{
+				const Vec3 forward = xMath::Normalize(toTarget);
+				rotation.x = std::asin(forward.y);
+				rotation.y = std::atan2(forward.x, forward.z);
+			   zoom = Length(toTarget);
+			}
+		}
+
+		transform.SetRotationEuler(rotation);
+
+		CameraComponent cameraData{};
+		cameraData.horizontalFov_Rad = m_HorizontalFov_Rad;
+		cameraData.nearPlane = m_NearPlane;
+		cameraData.farPlane = m_FarPlane;
+		cameraData.projectionType =
+			(m_ProjectionType == CameraType::Orthographic)
+			? CameraComponent::ProjectionType::Orthographic
+			: CameraComponent::ProjectionType::Perspective;
+
+		ComputeMatrices(transform, cameraData, m_LastViewport);
 	}
 
 	void Camera::Tick()
@@ -75,9 +104,95 @@ namespace SceneryEditorX
 			m_LastViewport = currentViewport;
 			m_CameraFlag.SetDirty();
 		}
-	
+
+		// Runtime/editor fallback path: if no ECS system pushes camera data every frame,
+		// keep legacy input-driven camera behavior alive.
 		ProcessCameraInput();
-		ComputeMatrices();
+
+		if (mode == ORBIT)
+		{
+			const float cosPitch = std::cos(rotation.x);
+			const float sinPitch = std::sin(rotation.x);
+			const float cosYaw = std::cos(rotation.y);
+			const float sinYaw = std::sin(rotation.y);
+			eye = center + Vec3(zoom * cosPitch * sinYaw, zoom * sinPitch, zoom * cosPitch * cosYaw);
+		}
+
+		TransformComponent transform{};
+		transform.translation = eye;
+		transform.SetRotationEuler(rotation);
+
+		CameraComponent cameraData{};
+		cameraData.horizontalFov_Rad = m_HorizontalFov_Rad;
+		cameraData.nearPlane = m_NearPlane;
+		cameraData.farPlane = m_FarPlane;
+		cameraData.projectionType =
+			(m_ProjectionType == CameraType::Orthographic)
+			? CameraComponent::ProjectionType::Orthographic
+			: CameraComponent::ProjectionType::Perspective;
+
+		ComputeMatrices(transform, cameraData, m_LastViewport);
+	}
+
+	void Camera::Update(const TransformComponent& transform, const CameraComponent& cameraData, const Viewport& viewport)
+	{
+		m_LastViewport = viewport;
+		m_CameraFlag.SetDirty();
+		ComputeMatrices(transform, cameraData, viewport);
+	}
+
+	void Camera::ProcessInput(TransformComponent& transform, float deltaTime)
+	{
+		constexpr float mouseSensitivity = 0.005f;
+		constexpr float moveSpeed = 5.0f;
+		constexpr float pitchLimit = PI * 0.49f;
+
+		if (deltaTime <= 0.0f)
+		{
+			return;
+		}
+
+		const auto [mouseX, mouseY] = Input::GetMousePosition();
+		const Vec2 currentMouse(mouseX, mouseY);
+		const Vec2 delta = currentMouse - m_LastMousePosition;
+		m_LastMousePosition = currentMouse;
+
+		Vec3 euler = transform.GetRotationEuler();
+		Vec3 translation = transform.translation;
+
+		const bool rightMouseDown = Input::IsMouseButtonDown(MouseButton::Right);
+		if (rightMouseDown)
+		{
+			euler.y += delta.x * mouseSensitivity;
+			euler.x += delta.y * mouseSensitivity;
+			euler.x = std::clamp(euler.x, -pitchLimit, pitchLimit);
+		}
+
+		const float cosPitch = std::cos(euler.x);
+		const Vec3 forward = xMath::Normalize(
+			Vec3(cosPitch * std::sin(euler.y), std::sin(euler.x), cosPitch * std::cos(euler.y)));
+		const Vec3 right = xMath::Normalize(xMath::Cross(forward, Vec3(0.0f, 1.0f, 0.0f)));
+
+		const float speed = moveSpeed * deltaTime;
+		if (Input::IsKeyDown(KeyCode::W) || Input::IsKeyDown(KeyCode::Up))
+			translation += forward * speed;
+		if (Input::IsKeyDown(KeyCode::S) || Input::IsKeyDown(KeyCode::Down))
+			translation -= forward * speed;
+		if (Input::IsKeyDown(KeyCode::A) || Input::IsKeyDown(KeyCode::Left))
+			translation -= right * speed;
+		if (Input::IsKeyDown(KeyCode::D) || Input::IsKeyDown(KeyCode::Right))
+			translation += right * speed;
+		if (Input::IsKeyDown(KeyCode::E) || Input::IsKeyDown(KeyCode::Space))
+			translation.y += speed;
+		if (Input::IsKeyDown(KeyCode::Q))
+			translation.y -= speed;
+
+		transform.translation = translation;
+		transform.SetRotationEuler(euler);
+
+		eye = transform.translation;
+		rotation = euler;
+		m_CameraFlag.SetDirty();
 	}
 
 	void Camera::WorldToScreenCoordinates(const xMath::Vec3 &worldPos, xMath::Vec2 &screenPos) const
@@ -128,7 +243,9 @@ namespace SceneryEditorX
 		}
 	
 		if (minX > maxX)
+		{
 			return Rectangle::Zero;
+		}
 	
 		return {minX, minY, maxX - minX, maxY - minY};
 	}
@@ -196,6 +313,7 @@ namespace SceneryEditorX
 		return m_CameraFlag;
 	}
 
+	/*
 	Mat4 Camera::GetViewMatrix() const
 	{
 		constexpr Vec3 worldUp = Vec3(0.0f, 1.0f, 0.0f);
@@ -216,11 +334,14 @@ namespace SceneryEditorX
 		const Vec3 target = eye + forward;
 		return Mat4::LookAt(eye, target, worldUp);
 	}
+	*/
 
+	/*
 	Mat4 Camera::GetProjectionMatrix() const
 	{
 		return ComputeProjection(m_NearPlane, m_FarPlane);
 	}
+	*/
 
 	void Camera::SetProjection(const CameraType projection)
 	{
@@ -256,11 +377,59 @@ namespace SceneryEditorX
 		return Mat4::Identity();
 	}
 
-	void Camera::ComputeMatrices()
+	void Camera::ComputeMatrices(const TransformComponent& transform, const CameraComponent& cameraData, const Viewport& viewport)
 	{
 		if (!m_CameraFlag.IsDirty())
 			return;
+
+		if (viewport.width <= 0.0f || viewport.height <= 0.0f)
+			return;
+
+		// 1. Calculate Projection Matrix
+		float aspect = (float)viewport.width / (float)viewport.height;
+		if (cameraData.projectionType == CameraComponent::ProjectionType::Perspective)
+		{
+		   m_Projection = xMath::Perspective(cameraData.horizontalFov_Rad, aspect, cameraData.nearPlane, cameraData.farPlane);
+		}
+		else
+		{
+			m_Projection = Mat4::OrthographicProjection(-viewport.width / 2.0f,
+				viewport.width / 2.0f,
+				viewport.height / 2.0f,
+				-viewport.height / 2.0f,
+				cameraData.nearPlane,
+				cameraData.farPlane);
+		}
+		m_ProjectionMatrix = m_Projection;
+		m_ProjectionNonReverseZ = m_Projection;
+
+		// 2. Calculate View Matrix (Replaces SetViewYXZ logic)
+		// We use the TransformComponent's translation and rotation directly
+		xMath::Mat4 translation = xMath::Mat4::Translate(transform.translation);
+		xMath::Mat4 worldRotation = transform.GetRotation().ToMatrix();
+
+		// View Matrix is the inverse of the camera's World Transform
+		// For a camera, View = (Rotation * Translation)^-1
+		m_View = (translation * worldRotation).GetInverse();
+		m_ViewMatrix = m_View;
+		m_ViewProjection = m_Projection * m_View;
+		m_ViewProjectionNonReverseZ = m_ViewProjection;
+
+		eye = transform.translation;
+		rotation = transform.GetRotationEuler();
+		m_HorizontalFov_Rad = cameraData.horizontalFov_Rad;
+		m_NearPlane = cameraData.nearPlane;
+		m_FarPlane = cameraData.farPlane;
+		m_ProjectionType = cameraData.projectionType == CameraComponent::ProjectionType::Orthographic
+			? CameraType::Orthographic
+			: CameraType::Perspective;
+
+		m_Frustum = xMath::Frustum(xMath::Matrix(m_View.Data()), xMath::Matrix(m_Projection.Data()));
+		m_CameraFlag.Check();
 	
+		// -------------------------------------------------------
+
+		/* Uncomment when you want to restore the original ORBIT mode behavior, but it will override the TransformComponent's position/rotation
 		// Orbit mode: derive eye position from spherical coordinates
 		if (mode == ORBIT)
 		{
@@ -272,12 +441,14 @@ namespace SceneryEditorX
 		}
 	
 		m_View = GetViewMatrix();
-	    m_Projection = ComputeProjection(m_NearPlane, m_FarPlane);
+		m_Projection = ComputeProjection(m_NearPlane, m_FarPlane);
 		m_ProjectionNonReverseZ = m_Projection;
 		m_ViewProjection = m_Projection * m_View;
-	    m_ViewProjectionNonReverseZ = m_ViewProjection;
+		m_ViewProjectionNonReverseZ = m_ViewProjection;
 		m_Frustum = xMath::Frustum(xMath::Matrix(m_View.Data()), xMath::Matrix(m_Projection.Data()));
 		m_CameraFlag.Check();
+		*/
+
 	}
 
 	void Camera::ProcessCameraInput()
@@ -324,7 +495,7 @@ namespace SceneryEditorX
 			}
 	
 			// Right-mouse drag: pan (translate center in screen plane)
-		   if (rightMouseDown)
+			if (rightMouseDown)
 			{
 				const float cosPitch = std::cos(rotation.x);
 				const Vec3 forward = xMath::Normalize(
@@ -341,7 +512,7 @@ namespace SceneryEditorX
 			}
 	
 			// Keyboard zoom (W/S or Up/Down) while in orbit
-		    if (wDown || upDown)
+			if (wDown || upDown)
 			{
 				zoom = std::max(0.1f, zoom - moveSpeed * 0.016f);
 				m_CameraFlag.SetDirty();
@@ -364,7 +535,7 @@ namespace SceneryEditorX
 		else if (mode == FLY || mode == FREE)
 		{
 			// Right-mouse drag: look around (yaw / pitch)
-		    if (rightMouseDown)
+			if (rightMouseDown)
 			{
 				rotation.y += delta.x * mouseSensitivity;
 				rotation.x += delta.y * mouseSensitivity;
@@ -373,7 +544,7 @@ namespace SceneryEditorX
 					rotation.x = std::clamp(rotation.x, -pitchLimit, pitchLimit);
 				}
 				m_CameraFlag.SetDirty();
-			    cameraChanged = true;
+				cameraChanged = true;
 				action = "look_drag";
 			}
 	
@@ -384,46 +555,46 @@ namespace SceneryEditorX
 			const Vec3 right = xMath::Normalize(xMath::Cross(forward, Vec3(0.0f, 1.0f, 0.0f)));
 			constexpr float speed = moveSpeed * 0.016f; // ~1 frame at 60 fps
 	
-		    if (wDown || upDown)
+			if (wDown || upDown)
 			{
 				eye += forward * speed;
 				m_CameraFlag.SetDirty();
-			    cameraChanged = true;
+				cameraChanged = true;
 				action = "move_forward";
 			}
 			if (sDown || downDown)
 			{
 				eye -= forward * speed;
 				m_CameraFlag.SetDirty();
-			    cameraChanged = true;
+				cameraChanged = true;
 				action = "move_backward";
 			}
 			if (aDown || leftDown)
 			{
 				eye -= right * speed;
 				m_CameraFlag.SetDirty();
-			    cameraChanged = true;
+				cameraChanged = true;
 				action = "strafe_left";
 			}
-		    if (dDown || rightDown)
+			if (dDown || rightDown)
 			{
 				eye += right * speed;
 				m_CameraFlag.SetDirty();
 			   cameraChanged = true;
 				action = "strafe_right";
 			}
-		    if (eDown || spaceDown)
+			if (eDown || spaceDown)
 			{
 				eye.y += speed;
 				m_CameraFlag.SetDirty();
-			    cameraChanged = true;
+				cameraChanged = true;
 				action = "move_up";
 			}
-		    if (qDown)
+			if (qDown)
 			{
 				eye.y -= speed;
 				m_CameraFlag.SetDirty();
-			    cameraChanged = true;
+				cameraChanged = true;
 				action = "move_down";
 			}
 		}
@@ -465,13 +636,15 @@ namespace SceneryEditorX
 
 	void Camera::SetOrthographicProjection(float left, float right, float top, float bottom, float nearPlane, float farPlane) 
 	{
-		m_ProjectionMatrix = xMath::Mat4{1.0f};
-		m_ProjectionMatrix[0][0] = 2.f / (right - left);
-		m_ProjectionMatrix[1][1] = 2.f / (bottom - top);
-		m_ProjectionMatrix[2][2] = 1.f / (farPlane - nearPlane);
-		m_ProjectionMatrix[3][0] = -(right + left) / (right - left);
-		m_ProjectionMatrix[3][1] = -(bottom + top) / (bottom - top);
-		m_ProjectionMatrix[3][2] = -nearPlane / (farPlane - nearPlane);
+	    m_Projection = xMath::Mat4{1.0f};
+		m_Projection[0][0] = 2.f / (right - left);
+		m_Projection[1][1] = 2.f / (bottom - top);
+		m_Projection[2][2] = 1.f / (farPlane - nearPlane);
+		m_Projection[3][0] = -(right + left) / (right - left);
+		m_Projection[3][1] = -(bottom + top) / (bottom - top);
+		m_Projection[3][2] = -nearPlane / (farPlane - nearPlane);
+		m_ProjectionMatrix = m_Projection;
+		m_ViewProjection = m_Projection * m_View;
 	}
 
 	void Camera::SetPerspectiveProjection(float fov_rad, float aspect, float near_z, float far_z) 
@@ -491,6 +664,8 @@ namespace SceneryEditorX
 		
 		// Z translation
 		m_Projection.rows[3][2] = -(far_z * near_z) / (far_z - near_z);
+	    m_ProjectionMatrix = m_Projection;
+		m_ViewProjection = m_Projection * m_View;
 	}
 
 	void Camera::SetViewDirection(Vec3 position, Vec3 direction, Vec3 up) 
@@ -512,10 +687,18 @@ namespace SceneryEditorX
 		m_ViewMatrix[3][0] = -xMath::Dot(u, position);
 		m_ViewMatrix[3][1] = -xMath::Dot(v, position);
 		m_ViewMatrix[3][2] = -xMath::Dot(w, position);
+		m_View = m_ViewMatrix;
+		m_ViewProjection = m_Projection * m_View;
+		eye = position;
 	}
 
 	void Camera::SetViewTarget(Vec3 position, Vec3 target, Vec3 up) 
 	{
+		center = target;
+		zoom = Length(target - position);
+		const Vec3 direction = xMath::Normalize(target - position);
+		rotation.x = std::asin(direction.y);
+		rotation.y = std::atan2(direction.x, direction.z);
 		SetViewDirection(position, target - position, up);
 	}
 
@@ -543,6 +726,10 @@ namespace SceneryEditorX
 		m_ViewMatrix[3][0] = -xMath::Dot(u, position);
 		m_ViewMatrix[3][1] = -xMath::Dot(v, position);
 		m_ViewMatrix[3][2] = -xMath::Dot(w, position);
+		m_View = m_ViewMatrix;
+		m_ViewProjection = m_Projection * m_View;
+		eye = position;
+		this->rotation = rotation;
 	}
 
 } // namespace SceneryEditorX

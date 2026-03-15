@@ -41,7 +41,7 @@ namespace SceneryEditorX
 
 	/**
 	 * @struct ComponentType
-	 * @brief Represents the type of a component.
+	 * @brief Represents the type of component.
 	 */
 	enum class ComponentType : uint32_t
 	{
@@ -93,12 +93,6 @@ namespace SceneryEditorX
 		/* @brief Called when the component is removed from the entity. */
 		virtual void Remove() {}
 
-		/* @brief Called every frame, before Tick, useful to reset states before the main update. */
-		virtual void PreTick() {}
-
-		/* @brief Called every frame to update the component's state. */
-		virtual void Tick() {}
-
 		/**
 		 * @brief Gets the type of the component.
 		 * @return The ComponentType enum value representing the type of the component.
@@ -143,7 +137,7 @@ namespace SceneryEditorX
 		 * @brief Gets the entity that owns this component.
 		 * @return A pointer to the owning entity.
 		 */
-		[[nodiscard]] Entity * GetEntity() const { return m_EntityPtr; }
+		[[nodiscard]] Entity *GetEntity() const { return m_EntityPtr; }
 
 	protected:
 		/**
@@ -159,9 +153,9 @@ namespace SceneryEditorX
 			m_Attributes.emplace_back(attribute);
 		}
 
-		ComponentType m_Type = ComponentType::MaxEnum; // The type of the component
-		bool m_Enabled = false; // The state of the component
-		Entity* m_EntityPtr = nullptr; // The owner of the component
+		bool m_Enabled		 = false; // The state of the component
+		Entity* m_EntityPtr  = nullptr; // The owner of the component
+	    ComponentType m_Type = ComponentType::MaxEnum; // The type of the component
 
 	private:
 		std::vector<Attribute> m_Attributes; // The attributes of the component

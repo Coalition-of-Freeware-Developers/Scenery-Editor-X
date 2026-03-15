@@ -59,7 +59,8 @@ FILE(GLOB RENDERER_KOSMICKRISP LIST_DIRECTORIES false CONFIGURE_DEPENDS "rendere
 FILE(GLOB LOGGER "logging/*.cpp" "logging/*.h" "logging/*.hpp")
 FILE(GLOB PROJECT "project/*.cpp" "project/*.h" "project/*.hpp")
 FILE(GLOB REFLECTION_FILES "utils/reflection/*.cpp" "utils/reflection/*.h" "utils/reflection/*.hpp")
-FILE(GLOB SCENE "scene/*.cpp" "scene/*.h" "scene/*.hpp")
+FILE(GLOB SCENE LIST_DIRECTORIES false CONFIGURE_DEPENDS "scene/*.cpp" "scene/*.h" "scene/*.hpp")
+FILE(GLOB SCENE_COMPONENTS "scene/components/*.cpp" "scene/components/*.h" "scene/components/*.hpp")
 FILE(GLOB SLANG_SHADERS LIST_DIRECTORIES false CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/resources/shaders/*.slang")
 FILE(GLOB SHADER_FILES "shaders/*.slang" "shaders/*.glsl" "shaders/*.frag" "shaders/*.vert" "shaders/*.comp" "shaders/*.geom" "shaders/*.tesc" "shaders/*.tese")
 FILE(GLOB SERIALIZER_FILES "serialization/*.h" "serialization/*.cpp" "serialization/*.hpp")
@@ -127,6 +128,7 @@ ADD_LIBRARY(AppCore
 	${RENDERER_SYNC_FILES}
 	${RENDERER_KOSMICKRISP}
 	${SCENE}
+	${SCENE_COMPONENTS}
 	${PROJECT_CONFIG_FILES}
 	${SERIALIZER_FILES}
 	${SCENE_FILES}
@@ -285,6 +287,9 @@ SOURCE_GROUP("Resources/Shaders" FILES ${SLANG_SHADERS})
 SOURCE_GROUP("Scene" FILES
 	${SCENE}
 	${SCENE_FILES}
+)
+SOURCE_GROUP("Scene/Components" FILES
+	${SCENE_COMPONENTS}
 )
 SOURCE_GROUP("Scene/Camera" FILES
 	${SCENE_CAMERA}

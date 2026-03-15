@@ -105,42 +105,42 @@ namespace std
 	template <>
 	struct formatter<filesystem::path> : formatter<string>
 	{
-	    /**
+		/**
 		 * Formats the filesystem::path object into the output.
 		 *
 		 * @param path The filesystem path object to format
 		 * @param ctx The formatting context that receives the formatted output
 		 * @return Iterator pointing past the end of the formatted output
 		 */
-	    template <typename FormatContext>
-	    typename FormatContext::iterator format(const filesystem::path &path, FormatContext &ctx) const
-	    {
-	        return formatter<string>::format(path.string(), ctx);
-	    }
+		template <typename FormatContext>
+		typename FormatContext::iterator format(const filesystem::path &path, FormatContext &ctx) const
+		{
+			return formatter<string>::format(path.string(), ctx);
+		}
 	};
 
-    /**
-     * @struct formatter
-     * @brief Specialization of the std::formatter for VkResult enum.
-     *
-     * This formatter enables using std::format() and std::format_to() with
-     * VkResult values in format strings. It inherits from formatter<int>
-     * to leverage integer formatting capabilities for the underlying
-     * integer representation of the VkResult enum.
-     *
-     * @param v The VkResult value to format
-     * @param ctx The formatting context that receives the formatted output
-     * @return Iterator pointing past the end of the formatted output
-     */
-    template <>
-    struct formatter<VkResult, char> : formatter<int, char>
-    {
-        template <class FormatContext>
-        auto format(VkResult v, FormatContext &ctx) const
-        {
-            return formatter<int, char>::format(static_cast<int>(v), ctx);
-        }
-    };
+	/**
+	 * @struct formatter
+	 * @brief Specialization of the std::formatter for VkResult enum.
+	 *
+	 * This formatter enables using std::format() and std::format_to() with
+	 * VkResult values in format strings. It inherits from formatter<int>
+	 * to leverage integer formatting capabilities for the underlying
+	 * integer representation of the VkResult enum.
+	 *
+	 * @param v The VkResult value to format
+	 * @param ctx The formatting context that receives the formatted output
+	 * @return Iterator pointing past the end of the formatted output
+	 */
+	template <>
+	struct formatter<VkResult, char> : formatter<int, char>
+	{
+		template <class FormatContext>
+		auto format(VkResult v, FormatContext &ctx) const
+		{
+			return formatter<int, char>::format(static_cast<int>(v), ctx);
+		}
+	};
 
 	// -------------------------------------------------------
 
@@ -160,9 +160,9 @@ namespace std
 	template <>
 	struct formatter<Vec2>
 	{
-	    char presentation = 'f';
+		char presentation = 'f';
 
-	    /**
+		/**
 		 * @brief Parses the format specification for the vector.
 		 *
 		 * Accepts 'f' for fixed-point notation (default) or 'e' for scientific notation.
@@ -171,20 +171,20 @@ namespace std
 		 * @return Iterator pointing past the parsed format specification
 		 * @throws format_error if the format specification is invalid
 		 */
-	    constexpr auto parse(format_parse_context &ctx) -> decltype(ctx.begin())
-	    {
-	        auto it = ctx.begin();
-            const auto end = ctx.end();
-            if (it != end && (*it == 'f' || *it == 'e'))
-	            presentation = *it++;
+		constexpr auto parse(format_parse_context &ctx) -> decltype(ctx.begin())
+		{
+			auto it = ctx.begin();
+			const auto end = ctx.end();
+			if (it != end && (*it == 'f' || *it == 'e'))
+				presentation = *it++;
 
-	        if (it != end && *it != '}')
-	            throw format_error("invalid format");
+			if (it != end && *it != '}')
+				throw format_error("invalid format");
 
-	        return it;
-	    }
+			return it;
+		}
 
-	    /**
+		/**
 		 * @brief Formats the Vec2 object into the output.
 		 *
 		 * Renders the vector as "(x, y)" with 3 decimal places in either
@@ -194,12 +194,12 @@ namespace std
 		 * @param ctx The formatting context that receives the formatted output
 		 * @return Iterator pointing past the end of the formatted output
 		 */
-	    template <typename FormatContext>
-	    auto format(const Vec2 &vec, FormatContext &ctx) const -> decltype(ctx.out())
-	    {
-	        return presentation == 'f' ? format_to(ctx.out(), "({:.3f}, {:.3f})", vec.x, vec.y)
-	                                   : format_to(ctx.out(), "({:.3e}, {:.3e})", vec.x, vec.y);
-	    }
+		template <typename FormatContext>
+		auto format(const Vec2 &vec, FormatContext &ctx) const -> decltype(ctx.out())
+		{
+			return presentation == 'f' ? format_to(ctx.out(), "({:.3f}, {:.3f})", vec.x, vec.y)
+									   : format_to(ctx.out(), "({:.3e}, {:.3e})", vec.x, vec.y);
+		}
 	};
 
 	// -------------------------------------------------------
@@ -220,9 +220,9 @@ namespace std
 	template <>
 	struct formatter<Vec3>
 	{
-	    char presentation = 'f';
+		char presentation = 'f';
 
-	    /**
+		/**
 		 * @brief Parses the format specification for the vector.
 		 *
 		 * Accepts 'f' for fixed-point notation (default) or 'e' for scientific notation.
@@ -231,20 +231,20 @@ namespace std
 		 * @return Iterator pointing past the parsed format specification
 		 * @throws format_error if the format specification is invalid
 		 */
-	    constexpr auto parse(format_parse_context &ctx) -> decltype(ctx.begin())
-	    {
-	        auto it = ctx.begin();
-            const auto end = ctx.end();
-            if (it != end && (*it == 'f' || *it == 'e'))
-	            presentation = *it++;
+		constexpr auto parse(format_parse_context &ctx) -> decltype(ctx.begin())
+		{
+			auto it = ctx.begin();
+			const auto end = ctx.end();
+			if (it != end && (*it == 'f' || *it == 'e'))
+				presentation = *it++;
 
-	        if (it != end && *it != '}')
-	            throw format_error("invalid format");
+			if (it != end && *it != '}')
+				throw format_error("invalid format");
 
-	        return it;
-	    }
+			return it;
+		}
 
-	    /**
+		/**
 		 * @brief Formats the Vec3 object into the output.
 		 *
 		 * Renders the vector as "(x, y, z)" with 3 decimal places in either
@@ -254,12 +254,12 @@ namespace std
 		 * @param ctx The formatting context that receives the formatted output
 		 * @return Iterator pointing past the end of the formatted output
 		 */
-	    template <typename FormatContext>
-	    auto format(const Vec3 &vec, FormatContext &ctx) const -> decltype(ctx.out())
-	    {
-	        return presentation == 'f' ? format_to(ctx.out(), "({:.3f}, {:.3f}, {:.3f})", vec.x, vec.y, vec.z)
-	                                   : format_to(ctx.out(), "({:.3e}, {:.3e}, {:.3e})", vec.x, vec.y, vec.z);
-	    }
+		template <typename FormatContext>
+		auto format(const Vec3 &vec, FormatContext &ctx) const -> decltype(ctx.out())
+		{
+			return presentation == 'f' ? format_to(ctx.out(), "({:.3f}, {:.3f}, {:.3f})", vec.x, vec.y, vec.z)
+									   : format_to(ctx.out(), "({:.3e}, {:.3e}, {:.3e})", vec.x, vec.y, vec.z);
+		}
 	};
 
 	// -------------------------------------------------------
@@ -280,9 +280,9 @@ namespace std
 	template <>
 	struct formatter<Vec4>
 	{
-	    char presentation = 'f';
+		char presentation = 'f';
 
-	    /**
+		/**
 		 * @brief Parses the format specification for the vector.
 		 *
 		 * Accepts 'f' for fixed-point notation (default) or 'e' for scientific notation.
@@ -291,20 +291,20 @@ namespace std
 		 * @return Iterator pointing past the parsed format specification
 		 * @throws format_error if the format specification is invalid
 		 */
-	    constexpr auto parse(format_parse_context &ctx) -> decltype(ctx.begin())
-	    {
-	        auto it = ctx.begin();
-            const auto end = ctx.end();
-            if (it != end && (*it == 'f' || *it == 'e'))
-	            presentation = *it++;
+		constexpr auto parse(format_parse_context &ctx) -> decltype(ctx.begin())
+		{
+			auto it = ctx.begin();
+			const auto end = ctx.end();
+			if (it != end && (*it == 'f' || *it == 'e'))
+				presentation = *it++;
 
-	        if (it != end && *it != '}')
-	            throw format_error("invalid format");
+			if (it != end && *it != '}')
+				throw format_error("invalid format");
 
-	        return it;
-	    }
+			return it;
+		}
 
-	    /**
+		/**
 		 * @brief Formats the Vec4 object into the output.
 		 *
 		 * Renders the vector as "(x, y, z, w)" with 3 decimal places in either
@@ -314,13 +314,13 @@ namespace std
 		 * @param ctx The formatting context that receives the formatted output
 		 * @return Iterator pointing past the end of the formatted output
 		 */
-	    template <typename FormatContext>
-	    auto format(const Vec4 &vec, FormatContext &ctx) const -> decltype(ctx.out())
-	    {
-	        return presentation == 'f'
-	                   ? format_to(ctx.out(), "({:.3f}, {:.3f}, {:.3f}, {:.3f})", vec.x, vec.y, vec.z, vec.w)
-	                   : format_to(ctx.out(), "({:.3e}, {:.3e}, {:.3e}, {:.3e})", vec.x, vec.y, vec.z, vec.w);
-	    }
+		template <typename FormatContext>
+		auto format(const Vec4 &vec, FormatContext &ctx) const -> decltype(ctx.out())
+		{
+			return presentation == 'f'
+					   ? format_to(ctx.out(), "({:.3f}, {:.3f}, {:.3f}, {:.3f})", vec.x, vec.y, vec.z, vec.w)
+					   : format_to(ctx.out(), "({:.3e}, {:.3e}, {:.3e}, {:.3e})", vec.x, vec.y, vec.z, vec.w);
+		}
 	};
 #endif // __cpp_lib_format
 

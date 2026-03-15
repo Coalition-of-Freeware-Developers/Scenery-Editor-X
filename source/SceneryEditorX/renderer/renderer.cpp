@@ -410,6 +410,9 @@ namespace SceneryEditorX
 
 	void Renderer::Tick()
 	{
+		// Let Scene drive ECS camera entities before renderer reads camera data.
+		Scene::Tick();
+
 		// Prefer the scene-owned camera when available, otherwise keep any camera that
 		// may have been provided directly via Renderer::SetCamera().
 		if (Camera* sceneCamera = Scene::GetCamera())
@@ -417,10 +420,14 @@ namespace SceneryEditorX
 			m_Camera = sceneCamera;
 		}
 
-		// Tick the active camera so its matrices are always up-to-date before draw calls.
+	  // Tick the active camera so its matrices are always up-to-date before draw calls.
+		// If Scene has an ECS camera entity, Scene::Tick already updates the camera controller.
 		if (m_Camera)
 		{
-			m_Camera->Tick();
+			if (!Scene::HasCameraEntity())
+			{
+				m_Camera->Tick();
+			}
 			UpdateCameraUBO(m_CurrentFrameIndex); // Ensure UBO is ready before command recording
 			SEDX_CORE_TRACE_TAG("CAM", "Camera pos = (X: {:.3f}, Y: {:.3f}, Z: {:.3f})",
 				m_Camera->GetEyePosition().x, m_Camera->GetEyePosition().y, m_Camera->GetEyePosition().z);
@@ -2250,7 +2257,7 @@ namespace SceneryEditorX
 		data.projection             = camera->GetProjection();
 		data.viewProjection         = data.projection * data.view;
 		data.inverseViewProjection  = data.viewProjection.GetInverse();
-		data.positionWorld          = camera->GetWorldPosition();
+		data.positionWorld          = camera->GetEyePosition();
 		data.padding                = 0.0f;
 
 		// Copy to mapped Vulkan buffer

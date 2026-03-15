@@ -48,15 +48,15 @@
 
 namespace SceneryEditorX
 {
-    // Static renderer instance (declared in editor.h)
-    Renderer Editor::s_GfxEngine;
+	// Static renderer instance (declared in editor.h)
+	Renderer Editor::s_GfxEngine;
 	
-    // ---------------------------------------------------------
+	// ---------------------------------------------------------
 
-    #define MAX_PROJECT_NAME_LENGTH 255
+	#define MAX_PROJECT_NAME_LENGTH 255
 	#define MAX_PROJECT_FILEPATH_LENGTH 512
 	
-    // ---------------------------------------------------------
+	// ---------------------------------------------------------
 
 	static char* s_ProjectNameBuffer = new char[MAX_PROJECT_NAME_LENGTH];
 	static char* s_OpenProjectFilePathBuffer = new char[MAX_PROJECT_FILEPATH_LENGTH];
@@ -73,312 +73,312 @@ namespace SceneryEditorX
 	#define SCRIPT_ENGINE_DEBUG_PANEL_ID	"ScriptEngineDebugPanel"
 	#define SCENE_RENDERER_PANEL_ID			"SceneRendererPanel"
 
-    static std::filesystem::path s_ProjectSolutionPath = "";
-    static std::vector<std::string> s_ClArguments;
-    static uint32_t s_ClArg_flags = 0;
+	static std::filesystem::path s_ProjectSolutionPath = "";
+	static std::vector<std::string> s_ClArguments;
+	static uint32_t s_ClArg_flags = 0;
 
-    // -------------------------------------------------------
+	// -------------------------------------------------------
 
 	namespace UI
-    {
-        class UIContextImpl;
-    }
+	{
+		class UIContextImpl;
+	}
 
-    namespace
-    {
-	    void WriteCiTestFile(const uint32_t value)
-        {
-            if (Editor::HasArgument("-ci_test"))
-            {
-                std::ofstream file("ci_test.txt");
-                if (file.is_open())
-                {
-                    file << value;
-                    file.close();
-                }
-            }
-        }
+	namespace
+	{
+		void WriteCiTestFile(const uint32_t value)
+		{
+			if (Editor::HasArgument("-ci_test"))
+			{
+				std::ofstream file("ci_test.txt");
+				if (file.is_open())
+				{
+					file << value;
+					file.close();
+				}
+			}
+		}
 
-    }
+	}
 
-    /*
-    Editor::Editor(const std::vector<std::string> &args) : Application(args)
-    {
-        arguments = args;
+	/*
+	Editor::Editor(const std::vector<std::string> &args) : Application(args)
+	{
+		arguments = args;
 
-        const auto start = std::chrono::high_resolution_clock::now();
-        renderContext = RenderContext::Get();
+		const auto start = std::chrono::high_resolution_clock::now();
+		renderContext = RenderContext::Get();
 
-        // Initialize the renderer (this creates the RenderDispatcher as well)
-        Renderer::SetRenderData(Application::Get().GetWindow().GetRenderData());
+		// Initialize the renderer (this creates the RenderDispatcher as well)
+		Renderer::SetRenderData(Application::Get().GetWindow().GetRenderData());
 
-        // TODO: Move project loading to a separate function
-        // activeProject->ReadProjCache();
-        // assetManager.LoadProject(cacheData.projectPath, cacheData.binPath);
-        // m_UserPreferences->GetRecentProjects();
-        // scene = assetManager.GetInitialScene();
-        // camera = assetManager.GetMainCamera(scene);
+		// TODO: Move project loading to a separate function
+		// activeProject->ReadProjCache();
+		// assetManager.LoadProject(cacheData.projectPath, cacheData.binPath);
+		// m_UserPreferences->GetRecentProjects();
+		// scene = assetManager.GetInitialScene();
+		// camera = assetManager.GetMainCamera(scene);
 
-        // m_TitleBarActiveColor = m_TitleBarTargetColor = Colors::Theme::titlebarGreen;
-        Renderer::Init();
+		// m_TitleBarActiveColor = m_TitleBarTargetColor = Colors::Theme::titlebarGreen;
+		Renderer::Init();
 
-        // ImGui::CreateContext(); // TODO: Not sure if this is the right location for this. Maybe move to UI initialization.
+		// ImGui::CreateContext(); // TODO: Not sure if this is the right location for this. Maybe move to UI initialization.
 
-        const auto end = std::chrono::high_resolution_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-    }
-    */
+		const auto end = std::chrono::high_resolution_clock::now();
+		auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+	}
+	*/
 
-    Editor::Editor(const PlatformContext &context) : Application(context)
-    {
-        s_ClArguments = context.GetCommandLineArgs();
-        ProcessClArgs(); // Process command line arguments to set internal flags before initialization
+	Editor::Editor(const PlatformContext &context) : Application(context)
+	{
+		s_ClArguments = context.GetCommandLineArgs();
+		ProcessClArgs(); // Process command line arguments to set internal flags before initialization
 
-        const auto start = std::chrono::high_resolution_clock::now();
-        
-        SEDX_CORE_INFO_TAG("Editor", "=== Initializing Editor with PlatformContext ===");
-        SEDX_CORE_INFO_TAG("Editor", "Working Directory: {}", context.GetWorkingDirectory());
-        SEDX_CORE_INFO_TAG("Editor", "Temp Directory: {}", context.GetTempDirectory());
+		const auto start = std::chrono::high_resolution_clock::now();
+		
+		SEDX_CORE_INFO_TAG("Editor", "=== Initializing Editor with PlatformContext ===");
+		SEDX_CORE_INFO_TAG("Editor", "Working Directory: {}", context.GetWorkingDirectory());
+		SEDX_CORE_INFO_TAG("Editor", "Temp Directory: {}", context.GetTempDirectory());
 
-	    // TODO: Move project loading to a separate function
-        // activeProject->ReadProjCache();
-        // assetManager.LoadProject(cacheData.projectPath, cacheData.binPath);
-        // m_UserPreferences->GetRecentProjects();
-        // scene = assetManager.GetInitialScene();
-        // camera = assetManager.GetMainCamera(scene);
+		// TODO: Move project loading to a separate function
+		// activeProject->ReadProjCache();
+		// assetManager.LoadProject(cacheData.projectPath, cacheData.binPath);
+		// m_UserPreferences->GetRecentProjects();
+		// scene = assetManager.GetInitialScene();
+		// camera = assetManager.GetMainCamera(scene);
 
-        // m_TitleBarActiveColor = m_TitleBarTargetColor = Colors::Theme::titlebarGreen;
+		// m_TitleBarActiveColor = m_TitleBarTargetColor = Colors::Theme::titlebarGreen;
 
-	    PushLayer(new SceneryEditorX::EditorLayer());
+		PushLayer(new SceneryEditorX::EditorLayer());
 
-        const auto end = std::chrono::high_resolution_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-        SEDX_CORE_INFO_TAG("Editor", "Editor initialization complete ({} ms)", duration);
-    }
+		const auto end = std::chrono::high_resolution_clock::now();
+		auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+		SEDX_CORE_INFO_TAG("Editor", "Editor initialization complete ({} ms)", duration);
+	}
 
-    Editor::Editor(const PlatformContext& context, const Ref<UserPreferences> &userPreferences) : Application(context), m_UserPreferences(userPreferences)
-    {
-        s_ClArguments = context.GetCommandLineArgs();
-        ProcessClArgs(); // Process command line arguments to set internal flags before initialization
+	Editor::Editor(const PlatformContext& context, const Ref<UserPreferences> &userPreferences) : Application(context), m_UserPreferences(userPreferences)
+	{
+		s_ClArguments = context.GetCommandLineArgs();
+		ProcessClArgs(); // Process command line arguments to set internal flags before initialization
 
-        const auto start = std::chrono::high_resolution_clock::now();
-        
-        SEDX_CORE_INFO_TAG("Editor", "=== Initializing Editor with PlatformContext and UserPreferences ===");
-        SEDX_CORE_INFO_TAG("Editor", "Working Directory: {}", context.GetWorkingDirectory());
-        SEDX_CORE_INFO_TAG("Editor", "Temp Directory: {}", context.GetTempDirectory());
+		const auto start = std::chrono::high_resolution_clock::now();
+		
+		SEDX_CORE_INFO_TAG("Editor", "=== Initializing Editor with PlatformContext and UserPreferences ===");
+		SEDX_CORE_INFO_TAG("Editor", "Working Directory: {}", context.GetWorkingDirectory());
+		SEDX_CORE_INFO_TAG("Editor", "Temp Directory: {}", context.GetTempDirectory());
 
-        // TODO: Move project loading to a separate function
-        // activeProject->ReadProjCache();
-        // assetManager.LoadProject(cacheData.projectPath, cacheData.binPath);
-        // m_UserPreferences->GetRecentProjects();
-        // scene = assetManager.GetInitialScene();
-        // camera = assetManager.GetMainCamera(scene);
+		// TODO: Move project loading to a separate function
+		// activeProject->ReadProjCache();
+		// assetManager.LoadProject(cacheData.projectPath, cacheData.binPath);
+		// m_UserPreferences->GetRecentProjects();
+		// scene = assetManager.GetInitialScene();
+		// camera = assetManager.GetMainCamera(scene);
 
-        // m_TitleBarActiveColor = m_TitleBarTargetColor = Colors::Theme::titlebarGreen;
-        if (!Window::IsVisible())
-        {
-            SEDX_CORE_WARN_TAG("Editor", "Main window is not visible after creation.");
-        }
+		// m_TitleBarActiveColor = m_TitleBarTargetColor = Colors::Theme::titlebarGreen;
+		if (!Window::IsVisible())
+		{
+			SEDX_CORE_WARN_TAG("Editor", "Main window is not visible after creation.");
+		}
 
-	    PushLayer(new SceneryEditorX::EditorLayer());
+		PushLayer(new SceneryEditorX::EditorLayer());
 
-        const auto end = std::chrono::high_resolution_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-        SEDX_CORE_INFO_TAG("Editor", "Editor initialization complete ({} ms)", duration);
-    }
+		const auto end = std::chrono::high_resolution_clock::now();
+		auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+		SEDX_CORE_INFO_TAG("Editor", "Editor initialization complete ({} ms)", duration);
+	}
 
-    Editor::~Editor()
-    {
-        if (ImGui::GetCurrentContext())
-        {
-            ImGui::Shutdown();
-            ImGui_ImplSDL3_Shutdown();
-            ImGui::DestroyContext();
-        }
+	Editor::~Editor()
+	{
+		if (ImGui::GetCurrentContext())
+		{
+			ImGui::Shutdown();
+			ImGui_ImplSDL3_Shutdown();
+			ImGui::DestroyContext();
+		}
 
-    }
+	}
 
-    void Editor::Run()
-    {
-        SEDX_CORE_INFO_TAG("Editor", "=== Starting Editor Main Loop ===");
+	void Editor::Run()
+	{
+		SEDX_CORE_INFO_TAG("Editor", "=== Starting Editor Main Loop ===");
 
-        Application::Run();
+		Application::Run();
 
-        SEDX_CORE_INFO_TAG("Editor", "=== Editor Main Loop Ended ===");
-    }
+		SEDX_CORE_INFO_TAG("Editor", "=== Editor Main Loop Ended ===");
+	}
 
-    void Editor::Tick()
-    {
-        //SEDX_PROFILE_SCOPE("Editor::Tick");
+	void Editor::Tick()
+	{
+		//SEDX_PROFILE_SCOPE("Editor::Tick");
 
-        // Per-frame editor logic
-        /*
-        if (m_ShowStatisticsPanel)
-        {
-            UI_StatisticsPanel();
-        }
-        */
-        
-        /*// Tick project systems
-        if (Project::GetActive())
-        {
-            UpdateCurrentProject();
-        }*/
-
-    }
-
-    void Editor::Stop()
-    {
-        Application::Stop();
-    }
-
-    void Editor::OnRender()
-    {
-
-    }
-
-    void Editor::OnUpdate()
-    {
-
-    }
-
-    void Editor::OnShutdown()
-    {
-        Application::OnShutdown();
-    }
-
-    void Editor::InitEditor()
-    {
-
-        /*SEDX_CORE_INFO_TAG("EDITOR", "Setting up ImGui docking layout");
-
-        const auto window_flags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoTitleBar |
-                                  ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
-                                  ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
-
-        // Set window position and size
-        const ImGuiViewport *viewport = ImGui::GetMainViewport();
-        ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x, viewport->Pos.y));
-        ImGui::SetNextWindowSize(ImVec2(viewport->Size.x, viewport->Size.y));
-
-        // Set Window Style
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-
-        // Begin Window
-        const char *name = "##main_window";
-        bool open = true;
-        ImGui::Begin(name, &open, window_flags);
-        ImGui::PopStyleVar(3);
-
-        // Setup docking space
-        if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable)
-        {
-            const auto window_id = ImGui::GetID(name);
-            if (!ImGui::DockBuilderGetNode(window_id))
-            {
-                // Reset Current Docking State
-                ImGui::DockBuilderRemoveNode(window_id);
-                ImGui::DockBuilderAddNode(window_id, ImGuiDockNodeFlags_None);
-                ImGui::DockBuilderSetNodeSize(window_id, ImGui::GetMainViewport()->Size);
-
-                // Create dock layout
-                ImGuiID dock_main_id = window_id;
-                ImGuiID dock_right_id =
-                    ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Right, 0.17f, nullptr, &dock_main_id);
-                ImGuiID dock_right_down_id =
-                    ImGui::DockBuilderSplitNode(dock_right_id, ImGuiDir_Down, 0.6f, nullptr, &dock_right_id);
-                ImGuiID dock_down_id =
-                    ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Down, 0.22f, nullptr, &dock_main_id);
-                ImGuiID dock_down_right_id =
-                    ImGui::DockBuilderSplitNode(dock_down_id, ImGuiDir_Right, 0.3f, nullptr, &dock_down_id);
-
-                // Dock Windows
-                ImGui::DockBuilderDockWindow("World", dock_right_id);
-                ImGui::DockBuilderDockWindow("Properties", dock_right_down_id);
-                ImGui::DockBuilderDockWindow("Console", dock_down_id);
-                ImGui::DockBuilderDockWindow("Assets", dock_down_right_id);
-                ImGui::DockBuilderDockWindow("Viewport", dock_main_id);
-
-                ImGui::DockBuilderFinish(dock_main_id);
-            }
-
-            ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
-            ImGui::DockSpace(window_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode);
-            ImGui::PopStyleVar();
-        }
-
-        ImGui::End();*/
-    }
-
-    void Editor::OnEvent(Event &event)
-    {
-    }
-
-    void Editor::UpdateWindowTitle(const std::string &sceneName)
-    {
-        const std::string title = std::format("{0} ({1}) - Scenery Editor X {2}", sceneName, Project::GetActive()->GetConfig().name, SEDX_VERSION);
-        Application::Get().GetWindow().SetTitle(title);
-		SEDX_CORE_TRACE_TAG("Editor", "Window title updated to: {}", title);
-    }
-
-    void Editor::OnInit()
-    {
-        SEDX_CORE_INFO("=== Editor OnInit ===");
-
-        // Initialize ImGui after window is created
-        InitEditor();
-
-        /*// Load default or startup project
-        if (m_UserPreferences && !m_UserPreferences->StartupProject.empty())
-        {
-            OpenProject(m_UserPreferences->StartupProject);
-        }
-        else
-        {
-            EmptyProject();
-        }
+		// Per-frame editor logic
+		/*
+		if (m_ShowStatisticsPanel)
+		{
+			UI_StatisticsPanel();
+		}
 		*/
-        SEDX_CORE_TRACE_TAG("Editor", "Initialization complete");
-    }
+		
+		/*// Tick project systems
+		if (Project::GetActive())
+		{
+			UpdateCurrentProject();
+		}*/
+
+	}
+
+	void Editor::Stop()
+	{
+		Application::Stop();
+	}
+
+	void Editor::OnRender()
+	{
+
+	}
+
+	void Editor::OnUpdate()
+	{
+
+	}
+
+	void Editor::OnShutdown()
+	{
+		Application::OnShutdown();
+	}
+
+	void Editor::InitEditor()
+	{
+
+		/*SEDX_CORE_INFO_TAG("EDITOR", "Setting up ImGui docking layout");
+
+		const auto window_flags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoTitleBar |
+								  ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+								  ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
+
+		// Set window position and size
+		const ImGuiViewport *viewport = ImGui::GetMainViewport();
+		ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x, viewport->Pos.y));
+		ImGui::SetNextWindowSize(ImVec2(viewport->Size.x, viewport->Size.y));
+
+		// Set Window Style
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+
+		// Begin Window
+		const char *name = "##main_window";
+		bool open = true;
+		ImGui::Begin(name, &open, window_flags);
+		ImGui::PopStyleVar(3);
+
+		// Setup docking space
+		if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable)
+		{
+			const auto window_id = ImGui::GetID(name);
+			if (!ImGui::DockBuilderGetNode(window_id))
+			{
+				// Reset Current Docking State
+				ImGui::DockBuilderRemoveNode(window_id);
+				ImGui::DockBuilderAddNode(window_id, ImGuiDockNodeFlags_None);
+				ImGui::DockBuilderSetNodeSize(window_id, ImGui::GetMainViewport()->Size);
+
+				// Create dock layout
+				ImGuiID dock_main_id = window_id;
+				ImGuiID dock_right_id =
+					ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Right, 0.17f, nullptr, &dock_main_id);
+				ImGuiID dock_right_down_id =
+					ImGui::DockBuilderSplitNode(dock_right_id, ImGuiDir_Down, 0.6f, nullptr, &dock_right_id);
+				ImGuiID dock_down_id =
+					ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Down, 0.22f, nullptr, &dock_main_id);
+				ImGuiID dock_down_right_id =
+					ImGui::DockBuilderSplitNode(dock_down_id, ImGuiDir_Right, 0.3f, nullptr, &dock_down_id);
+
+				// Dock Windows
+				ImGui::DockBuilderDockWindow("World", dock_right_id);
+				ImGui::DockBuilderDockWindow("Properties", dock_right_down_id);
+				ImGui::DockBuilderDockWindow("Console", dock_down_id);
+				ImGui::DockBuilderDockWindow("Assets", dock_down_right_id);
+				ImGui::DockBuilderDockWindow("Viewport", dock_main_id);
+
+				ImGui::DockBuilderFinish(dock_main_id);
+			}
+
+			ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
+			ImGui::DockSpace(window_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode);
+			ImGui::PopStyleVar();
+		}
+
+		ImGui::End();*/
+	}
+
+	void Editor::OnEvent(Event &event)
+	{
+	}
+
+	void Editor::UpdateWindowTitle(const std::string &sceneName)
+	{
+		const std::string title = std::format("{0} ({1}) - Scenery Editor X {2}", sceneName, Project::GetActive()->GetConfig().name, SEDX_VERSION);
+		Application::Get().GetWindow().SetTitle(title);
+		SEDX_CORE_TRACE_TAG("Editor", "Window title updated to: {}", title);
+	}
+
+	void Editor::OnInit()
+	{
+		SEDX_CORE_INFO("=== Editor OnInit ===");
+
+		// Initialize ImGui after window is created
+		InitEditor();
+
+		/*// Load default or startup project
+		if (m_UserPreferences && !m_UserPreferences->StartupProject.empty())
+		{
+			OpenProject(m_UserPreferences->StartupProject);
+		}
+		else
+		{
+			EmptyProject();
+		}
+		*/
+		SEDX_CORE_TRACE_TAG("Editor", "Initialization complete");
+	}
 
 
-    /**
-     * @brief Recreates frame-related resources.
-     *
-     * This method is called when the viewport size has changed to rebuild
-     * swap chain images, framebuffers, and other resources needed for rendering.
-     * It properly handles cleanup of old resources and initialization of new ones
-     * based on the current viewport dimensions.
-     */
-    /*
-    void Editor::RecreateFrameResources()
-    {
-        // Wait for the device to finish all operations
-        if (device != VK_NULL_HANDLE)
-            vkDeviceWaitIdle(device);
+	/**
+	 * @brief Recreates frame-related resources.
+	 *
+	 * This method is called when the viewport size has changed to rebuild
+	 * swap chain images, framebuffers, and other resources needed for rendering.
+	 * It properly handles cleanup of old resources and initialization of new ones
+	 * based on the current viewport dimensions.
+	 */
+	/*
+	void Editor::RecreateFrameResources()
+	{
+		// Wait for the device to finish all operations
+		if (device != VK_NULL_HANDLE)
+			vkDeviceWaitIdle(device);
 
-        // Clean up existing viewport resources
-        CleanupViewportResources();
+		// Clean up existing viewport resources
+		CleanupViewportResources();
 
-        // Tick viewport size from the new size
-        viewportData.SetViewportSize(newViewportSize.GetViewportSize());
-        viewportData.viewportResized = false;
+		// Tick viewport size from the new size
+		viewportData.SetViewportSize(newViewportSize.GetViewportSize());
+		viewportData.viewportResized = false;
 
-        // Create new viewport resources with updated dimensions
-        CreateViewportResources();
+		// Create new viewport resources with updated dimensions
+		CreateViewportResources();
 
-        // Log the viewport recreation
-        EDITOR_INFO("Viewport resources recreated with size: {}x{}",
-            viewportData.GetViewportSize().width,
-            viewportData.GetViewportSize().height);
-    }
-    */
+		// Log the viewport recreation
+		EDITOR_INFO("Viewport resources recreated with size: {}x{}",
+			viewportData.GetViewportSize().width,
+			viewportData.GetViewportSize().height);
+	}
+	*/
 
-    /*
-    void Editor::OnAttach()
-    {
+	/*
+	void Editor::OnAttach()
+	{
 
 
 		using namespace glm;
@@ -421,7 +421,7 @@ namespace SceneryEditorX
 
 		contentBrowser->RegisterItemActivateCallbackForType(AssetType::ScriptFile, [this](const AssetMetadata& metadata)
 		{
-            IO::FileSystem::OpenExternally(Project::GetEditorAssetManager()->GetFileSystemPath(metadata));
+			IO::FileSystem::OpenExternally(Project::GetEditorAssetManager()->GetFileSystemPath(metadata));
 		});
 
 		contentBrowser->RegisterAssetCreatedCallback([this](const AssetMetadata& metadata)
@@ -468,12 +468,12 @@ namespace SceneryEditorX
 
 		if (m_UserPreferences->ShowWelcomeScreen)
 			UI_ShowWelcomePopup();
-    }
-     */
+	}
+	 */
 
-    void Editor::ProcessClArgs()
-    {
-        // Common simple flags that exist in the repo already:
+	void Editor::ProcessClArgs()
+	{
+		// Common simple flags that exist in the repo already:
 		// -ci_test  -> used by CI to write a small indicator file (see WriteCiTestFile above)
 		// You can add more handlers here for other flags (e.g. --headless, --log=level, --no-gui, etc.)
 
@@ -482,55 +482,55 @@ namespace SceneryEditorX
 		// Example: existing helper writes a CI file when -ci_test is present
 		if (HasArgument("-ci_test"))
 		{
-		    // The helper in this TU will write "ci_test.txt" containing 1
-		    WriteCiTestFile(1);
+			// The helper in this TU will write "ci_test.txt" containing 1
+			WriteCiTestFile(1);
 		}
 
 		// Iterate and parse key=value style args
 		for (const auto &arg : s_ClArguments)
 		{
-		    // --headless or -no-ui : run without showing UI (example usage, implement the mode as needed)
-		    if (arg == "--headless" || arg == "-no-ui")
-		    {
-		        SEDX_CORE_INFO_TAG("Editor", "Starting in headless/no-ui mode due to argument: {}", arg);
-		        // Set any internal flags or call methods to enter headless mode
-		        // e.g., Application::Get().SetHeadless(true);   // implement as needed
-		    }
+			// --headless or -no-ui : run without showing UI (example usage, implement the mode as needed)
+			if (arg == "--headless" || arg == "-no-ui")
+			{
+				SEDX_CORE_INFO_TAG("Editor", "Starting in headless/no-ui mode due to argument: {}", arg);
+				// Set any internal flags or call methods to enter headless mode
+				// e.g., Application::Get().SetHeadless(true);   // implement as needed
+			}
 
-		    // Change logging level at startup
+			// Change logging level at startup
 			// THIS HAS BEEN MOVED TO PLATFORM CONTEXT INIT
-            /*
-            constexpr std::string logPrefix = "--verbose";
-		    if (arg.starts_with(logPrefix))
-		    {
-		        std::string level = arg.substr(logPrefix.size());
-		        SEDX_CORE_INFO_TAG("Editor", "Requested log level: {}", level);
-		        // Use your logging API to set the level, e.g. Log::SetLevelFromString(level);
-		        // If you don't have such a helper, map strings to levels here and call Log::SetLevel(...)
-		    }
-		    */
+			/*
+			constexpr std::string logPrefix = "--verbose";
+			if (arg.starts_with(logPrefix))
+			{
+				std::string level = arg.substr(logPrefix.size());
+				SEDX_CORE_INFO_TAG("Editor", "Requested log level: {}", level);
+				// Use your logging API to set the level, e.g. Log::SetLevelFromString(level);
+				// If you don't have such a helper, map strings to levels here and call Log::SetLevel(...)
+			}
+			*/
 
-		    // Example: --run-task=name  -> you could dispatch internal tasks or tests
-            constexpr std::string_view taskPrefix = "--run-task=";
-		    if (arg.starts_with(taskPrefix))
-		    {
-		        std::string taskName = arg.substr(taskPrefix.size());
-		        SEDX_CORE_INFO_TAG("Editor", "Dispatching startup task: {}", taskName);
-		        // Dispatch your task: if (taskName == "build-shaders") BuildShaderPack();
-		    }
+			// Example: --run-task=name  -> you could dispatch internal tasks or tests
+			constexpr std::string_view taskPrefix = "--run-task=";
+			if (arg.starts_with(taskPrefix))
+			{
+				std::string taskName = arg.substr(taskPrefix.size());
+				SEDX_CORE_INFO_TAG("Editor", "Dispatching startup task: {}", taskName);
+				// Dispatch your task: if (taskName == "build-shaders") BuildShaderPack();
+			}
 		}
-    }
+	}
 
-    /*
-    bool Editor::UI_TitleBarHitTest(int x, int y) const
-    {
-        return false;
-    }
-    */
+	/*
+	bool Editor::UI_TitleBarHitTest(int x, int y) const
+	{
+		return false;
+	}
+	*/
 
-    /*
-    float Editor::GetSnapValue()
-    {
+	/*
+	float Editor::GetSnapValue()
+	{
 		const auto& editorSettings = EditorSettings::Get();
 
 		switch (m_GizmoType)
@@ -540,21 +540,21 @@ namespace SceneryEditorX
 			case ImGuizmo::OPERATION::SCALE: return editorSettings.ScaleSnapValue;
 		}
 		return 0.0f;
-    }
-    */
+	}
+	*/
 
-    static auto operator<(const ImVec2 &lhs, const ImVec2 &rhs) { return lhs.x < rhs.x && lhs.y < rhs.y; }
+	static auto operator<(const ImVec2 &lhs, const ImVec2 &rhs) { return lhs.x < rhs.x && lhs.y < rhs.y; }
 
-    bool Editor::HasArgument(const std::string &argument)
-    {
-        for (const auto &arg : s_ClArguments)
-        {
-            if (arg == argument)
-                return true;
-        }
+	bool Editor::HasArgument(const std::string &argument)
+	{
+		for (const auto &arg : s_ClArguments)
+		{
+			if (arg == argument)
+				return true;
+		}
 
-        return false;
-    }
+		return false;
+	}
 
 }
 

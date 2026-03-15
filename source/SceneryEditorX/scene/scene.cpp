@@ -29,15 +29,25 @@
  * -------------------------------------------------------
  */
 #include "scene.h"
-#include "SceneryEditorX/renderer/renderer.h"
+#include "entity.h"
+#include "components/component_sets.h"
+#include <algorithm>
+#include <SceneryEditorX/core/window/window.h>
 #include <SceneryEditorX/scene/camera.h>
+#include <entt/entity/fwd.hpp>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
 	Ref<Camera> Scene::m_Camera = nullptr;
-	//Entity* s_Camera = nullptr;
+
+	namespace
+	{
+		Scope<Scene> s_ActiveScene = nullptr;
+	    std::unordered_map<entt::entity, Scope<Entity>> s_EntityStorage;
+		std::vector<Entity*> s_EntityPointers;
+	}
 
 	Scene::Scene(std::string name, bool initialize) : m_Name(std::move(name))
 	{
@@ -46,45 +56,163 @@ namespace SceneryEditorX
 
 	void Scene::Init()
 	{
-		// Scene owns the default camera lifetime and only hands a raw pointer to renderer.
+		if (!s_ActiveScene)
+		{
+			s_ActiveScene = CreateScope<Scene>("MainScene", false);
+		}
+
 		if (!m_Camera)
 		{
 			m_Camera = CreateRef<Camera>();
-
-			// Place the default camera above and behind the origin so the grid is visible.
-			xMath::Vec3 camPos{0.0f, 5.0f, -5.0f};
-			xMath::Vec3 camTarget{0.0f, 0.0f, 0.0f};
-			m_Camera->SetViewTarget(camPos, camTarget, xMath::Vec3{0.0f, 1.0f, 0.0f});
-
-			// 60 degree vertical fov, common aspect fallback in case viewport not yet available.
-			float aspect = 16.0f / 9.0f;
-			float fov_rad = 60.0f * xMath::DEG_TO_RAD;
-			m_Camera->SetPerspectiveProjection(fov_rad, aspect, 0.1f, 10000.0f);
 			m_Camera->Init();
 		}
 
-		Renderer::SetCamera(m_Camera.Get());
+		if (!HasCameraEntity())
+		{
+			Entity cameraEntity = s_ActiveScene->CreateEntity("MainCamera");
+			const entt::entity cameraHandle = static_cast<entt::entity>(cameraEntity);
+
+			auto& transform = s_ActiveScene->m_Registry.get<TransformComponent>(cameraHandle);
+			transform.translation = Vec3(0.0f, 5.0f, -5.0f);
+			const Vec3 direction = Normalize(Vec3(0.0f, 0.0f, 0.0f) - transform.translation);
+			transform.SetRotationEuler(Vec3(std::asin(direction.y), std::atan2(direction.x, direction.z), 0.0f));
+
+			auto& cameraComponent = s_ActiveScene->m_Registry.emplace<CameraComponent>(cameraHandle);
+			cameraComponent.horizontalFov_Rad = 60.0f * xMath::DEG_TO_RAD;
+			cameraComponent.nearPlane = 0.1f;
+			cameraComponent.farPlane = 10000.0f;
+			cameraComponent.projectionType = CameraComponent::ProjectionType::Perspective;
+			cameraComponent.isPrimary = true;
+			cameraComponent.useJitter = true;
+		}
+
+		Tick();
 
 	}
 
 	void Scene::Shutdown()
 	{
-		Renderer::SetCamera(nullptr);
 		m_Camera.Reset();
+		s_EntityStorage.clear();
+		s_EntityPointers.clear();
+		s_ActiveScene.reset();
 	}
 
 	void Scene::Tick()
 	{
+	   if (!s_ActiveScene || !m_Camera)
+			return;
+
+		auto view = s_ActiveScene->m_Registry.view<TransformComponent, CameraComponent>();
+
+		entt::entity selectedCameraEntity = entt::null;
+		view.each([&](const entt::entity entity, TransformComponent&, const CameraComponent& cameraData)
+		{
+			if (selectedCameraEntity != entt::null)
+				return;
+
+			if (cameraData.isPrimary)
+			{
+				selectedCameraEntity = entity;
+				return;
+			}
+
+			if (selectedCameraEntity == entt::null)
+			{
+				selectedCameraEntity = entity;
+			}
+	   });
+
+		if (selectedCameraEntity == entt::null)
+			return;
+
+		auto& transform = view.get<TransformComponent>(selectedCameraEntity);
+		auto& cameraData = view.get<CameraComponent>(selectedCameraEntity);
+
+		constexpr float kFixedDeltaTime = 1.0f / 60.0f;
+		m_Camera->ProcessInput(transform, kFixedDeltaTime);
+		m_Camera->Update(transform, cameraData, Viewport(0.0f, 0.0f,
+			static_cast<float>(Window::GetWidth()),
+			static_cast<float>(Window::GetHeight())));
+
 	}
 
 	Camera *Scene::GetCamera()
 	{
 		if (m_Camera)
+		{
 			return m_Camera.Get();
+		}
 
-		// Bridge path: if the editor/application set a camera directly on the renderer
-		// before Scene::Init creates a scene-owned camera, surface that camera here.
-		return Renderer::GetCamera();
+		return nullptr;
+	}
+
+	bool Scene::HasCameraEntity()
+	{
+		if (!s_ActiveScene)
+			return false;
+
+		auto view = s_ActiveScene->m_Registry.view<TransformComponent, CameraComponent>();
+		return view.size_hint() > 0;
+	}
+
+	std::vector<Entity*> Scene::GetEntities()
+	{
+		return s_EntityPointers;
+	}
+
+	Entity Scene::CreateEntity(const std::string& name)
+	{
+		return CreateEntityWithUUID(UUID(), name);
+	}
+
+	Entity Scene::CreateEntityWithUUID(const UUID &uuid, const std::string& name)
+	{
+		const entt::entity entityHandle = m_Registry.create();
+		m_EntityMap[uuid] = entityHandle;
+
+		m_Registry.emplace<IDComponent>(entityHandle, IDComponent{uuid});
+		m_Registry.emplace<TagComponent>(entityHandle, TagComponent{name});
+		m_Registry.emplace<RelationshipComponent>(entityHandle);
+		m_Registry.emplace<TransformComponent>(entityHandle);
+
+		auto entity = CreateScope<Entity>(entityHandle, this);
+		s_EntityPointers.push_back(entity.get());
+		s_EntityStorage[entityHandle] = std::move(entity);
+
+		return {entityHandle, this};
+	}
+
+	void Scene::DestroyEntity(const Entity &entity)
+	{
+		if (!entity)
+			return;
+
+		const UUID entityId = entity.GetUUID();
+		const entt::entity entityHandle = static_cast<entt::entity>(entity);
+		m_EntityMap.erase(entityId);
+
+		if (const auto storageIt = s_EntityStorage.find(entityHandle); storageIt != s_EntityStorage.end())
+		{
+			const Entity* entityPtr = storageIt->second.get();
+			s_EntityPointers.erase(std::ranges::remove(s_EntityPointers, entityPtr).begin(), s_EntityPointers.end());
+			s_EntityStorage.erase(storageIt);
+		}
+
+		m_Registry.destroy(entityHandle);
+	}
+
+	Entity Scene::TryGetEntityWithUUID(const UUID &uuid)
+	{
+		if (const auto it = m_EntityMap.find(uuid); it != m_EntityMap.end())
+		{
+			if (m_Registry.valid(it->second))
+			{
+				return {it->second, this};
+			}
+		}
+
+		return {};
 	}
 
 	/*

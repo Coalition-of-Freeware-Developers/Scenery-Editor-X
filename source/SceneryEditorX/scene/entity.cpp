@@ -35,6 +35,70 @@
 
 namespace SceneryEditorX
 {
+	Entity::~Entity() = default;
+
+	void Entity::Start()
+	{
+	}
+
+	void Entity::Stop()
+	{
+	}
+
+	void Entity::Tick()
+	{
+	}
+
+	bool Entity::GetActive()
+	{
+		return true;
+	}
+
+	void Entity::SetActive(const bool active)
+	{
+		(void)active;
+	}
+
+	Component* Entity::GetComponentByType(const ComponentType type) const
+	{
+		const uint32_t index = static_cast<uint32_t>(type);
+		if (index >= m_components.size())
+			return nullptr;
+
+		return m_components[index].get();
+	}
+
+	Component* Entity::AddComponentByType(const ComponentType type)
+	{
+		const uint32_t index = static_cast<uint32_t>(type);
+		if (index >= m_components.size())
+			return nullptr;
+
+		if (!m_components[index])
+		{
+			auto component = std::make_shared<Component>(this);
+			component->SetType(type);
+			component->Initialize();
+			m_components[index] = std::move(component);
+		}
+
+		return m_components[index].get();
+	}
+
+	void Entity::RemoveComponentByType(const ComponentType type)
+	{
+		const uint32_t index = static_cast<uint32_t>(type);
+		if (index < m_components.size())
+		{
+			m_components[index] = nullptr;
+		}
+	}
+
+	Component* Entity::AddComponent(const ComponentType type)
+	{
+		return AddComponentByType(type);
+	}
+
 	/*
 	Entity Entity::GetParent() const
 	{
@@ -83,10 +147,15 @@ namespace SceneryEditorX
 
 	bool Entity::IsValid() const
 	{
-		return false;
+	    return (m_EntityHandle != entt::null) && m_Scene && m_Scene->m_Registry.valid(m_EntityHandle);
 	}
 
-	Entity::operator bool() const { return IsValid(); }
+	UUID Entity::GetSceneUUID() const
+	{
+		return m_Scene ? m_Scene->m_SceneID : UUID();
+	}
+
+	//Entity::operator bool() const { return IsValid(); }
 
 }
 
