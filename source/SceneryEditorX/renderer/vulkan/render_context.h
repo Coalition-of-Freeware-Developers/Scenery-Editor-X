@@ -36,69 +36,69 @@
 
 namespace SceneryEditorX
 {
-    class Window;
-    class Swapchain;
+	class Window;
+	class Swapchain;
 
-    class RenderContext : public RefCounted
+	class RenderContext : public RefCounted
 	{
-    public:
-        RenderContext() = default;
-        virtual ~RenderContext() override;
+	public:
+		RenderContext() = default;
+		virtual ~RenderContext() override;
 
-        RenderContext(const RenderContext &) = delete;
-        RenderContext &operator=(const RenderContext &) = delete;
-        RenderContext(RenderContext &&) noexcept;
-        RenderContext &operator=(RenderContext &&) noexcept;
+		RenderContext(const RenderContext &) = delete;
+		RenderContext &operator=(const RenderContext &) = delete;
+		RenderContext(RenderContext &&) noexcept;
+		RenderContext &operator=(RenderContext &&) noexcept;
 
-        static void Init();
-        static Ref<RenderContext> Get();
-        static bool IsInitialized();
-        static VkInstance GetInstance();
+		static void Init();
+		static Ref<RenderContext> Get();
+		static bool IsInitialized();
+		static VkInstance GetInstance();
 
-        Ref<Device> GetDevice() { return m_Device; }
-        const Ref<Device> &GetLogicalDevice() { return m_Device; }
-        static std::vector<uint8_t> GetPipelineCacheData() { return {}; }
+		Ref<Device> GetDevice() { return m_Device; }
+		const Ref<Device> &GetLogicalDevice() { return m_Device; }
+		static std::vector<uint8_t> GetPipelineCacheData() { return {}; }
 
-        Swapchain *swapchain = nullptr;
+		Swapchain *swapchain = nullptr;
 
-        struct Renderable
-        {
-            VkDescriptorSet descriptorSet{VK_NULL_HANDLE};
-            VkBuffer buffer{VK_NULL_HANDLE};
-            VkDeviceSize vertexByteSize{0};
-            VkDeviceSize indexByteSize{0};
-            uint32_t indexCount{0};
-        };
-	    
-	    VkPhysicalDevice physical = VK_NULL_HANDLE;
-	    uint32_t queueFamily = 0;
-	    VkDevice device = VK_NULL_HANDLE;
-	    VkQueue queue = VK_NULL_HANDLE;
-	    VmaAllocator allocator = VK_NULL_HANDLE;
-	    
-	    VkPipeline pipeline = VK_NULL_HANDLE;
-	    VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
-	    VkDescriptorSet descriptorSetTex = VK_NULL_HANDLE;
-	    VkBuffer vBuffer = VK_NULL_HANDLE;
-	    VkDeviceSize vBufSize = 0;
-	    VkDeviceSize indexCount = 0;
+		struct Renderable
+		{
+			VkDescriptorSet descriptorSet{VK_NULL_HANDLE};
+			VkBuffer buffer{VK_NULL_HANDLE};
+			VkDeviceSize vertexByteSize{0};
+			VkDeviceSize indexByteSize{0};
+			uint32_t indexCount{0};
+		};
+		
+		VkPhysicalDevice physical = VK_NULL_HANDLE;
+		uint32_t queueFamily = 0;
+		VkDevice device = VK_NULL_HANDLE;
+		VkQueue queue = VK_NULL_HANDLE;
+		VmaAllocator allocator = VK_NULL_HANDLE;
+		
+		VkPipeline pipeline = VK_NULL_HANDLE;
+		VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
+		VkDescriptorSet descriptorSetTex = VK_NULL_HANDLE;
+		VkBuffer vBuffer = VK_NULL_HANDLE;
+		VkDeviceSize vBufSize = 0;
+		VkDeviceSize indexCount = 0;
 
-	    std::vector<Renderable>* renderables = nullptr; // optional: if provided, renderer will draw these
-	    std::array<ShaderDataBuffer, MAX_FRAMES_IN_FLIGHT>* s_ShaderDataBuffers = nullptr;
-	    std::array<VkCommandBuffer, MAX_FRAMES_IN_FLIGHT>* s_CommandBuffers = nullptr;
+		std::vector<Renderable>* renderables = nullptr; // optional: if provided, renderer will draw these
+		std::array<ShaderDataBuffer, MAX_FRAMES_IN_FLIGHT>* s_ShaderDataBuffers = nullptr;
+		std::array<VkCommandBuffer, MAX_FRAMES_IN_FLIGHT>* s_CommandBuffers = nullptr;
 
-	    // Sync objects are managed by FrameSync (vectors sized at runtime)
-	    std::vector<VkFence>* s_Fences = nullptr;
-	    std::vector<VkSemaphore>* s_PresentSemaphores = nullptr;
-	    std::vector<VkSemaphore>* s_RenderSemaphores = nullptr;
-	    //VkSurfaceCapabilitiesKHR* s_SurfaceCaps = nullptr;
+		// Sync objects are managed by FrameSync (vectors sized at runtime)
+		std::vector<VkFence>* s_Fences = nullptr;
+		std::vector<VkSemaphore>* s_PresentSemaphores = nullptr;
+		std::vector<VkSemaphore>* s_RenderSemaphores = nullptr;
+		//VkSurfaceCapabilitiesKHR* s_SurfaceCaps = nullptr;
 
 	private:
-        friend class Swapchain;
+		friend class Swapchain;
 
-        VkInstance m_Instance = VK_NULL_HANDLE;
-        Ref<Device> m_Device;
-        VkPipelineCache m_PipelineCache = nullptr;
+		VkInstance m_Instance = VK_NULL_HANDLE;
+		Ref<Device> m_Device;
+		VkPipelineCache m_PipelineCache = nullptr;
 	};
 
 }

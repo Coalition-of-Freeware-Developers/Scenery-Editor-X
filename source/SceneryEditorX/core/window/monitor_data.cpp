@@ -43,17 +43,17 @@ namespace SceneryEditorX
 	 * @brief Constructor for MonitorData
 	 * Initializes the monitor data and refreshes the monitor list
 	 */
-    MonitorData::MonitorData() : monitorHandles(nullptr), primaryMonitor(0), monitorCount(0), monitorIndex(0), videoModeIndex(0)
+	MonitorData::MonitorData() : monitorHandles(nullptr), primaryMonitor(0), monitorCount(0), monitorIndex(0), videoModeIndex(0)
 	{
-	    try
-	    {
-	        RefreshDisplayCount();
-	        RefreshMonitorList();
-	    }
-	    catch (const std::exception &e)
-	    {
-	        SEDX_CORE_WARN("Exception during MonitorData initialization: {}", e.what()); // Continue with default values rather than crashing
-	    }
+		try
+		{
+			RefreshDisplayCount();
+			RefreshMonitorList();
+		}
+		catch (const std::exception &e)
+		{
+			SEDX_CORE_WARN("Exception during MonitorData initialization: {}", e.what()); // Continue with default values rather than crashing
+		}
 	}
 	
 	/**
@@ -64,11 +64,11 @@ namespace SceneryEditorX
 	 */
 	MonitorData::~MonitorData()
 	{
-	    if (monitorHandles)
-	    {
-	        SDL_free(monitorHandles);
-	        monitorHandles = nullptr;
-	    }
+		if (monitorHandles)
+		{
+			SDL_free(monitorHandles);
+			monitorHandles = nullptr;
+		}
 	}
 	
 	
@@ -96,105 +96,105 @@ namespace SceneryEditorX
 	 */
 	std::vector<Monitor> MonitorData::GetMonitorStats()
 	{
-	    try
-	    {
-	        // Tick monitor data if needed
-	        RefreshDisplayCount();
+		try
+		{
+			// Tick monitor data if needed
+			RefreshDisplayCount();
 	
-	        // If we already have monitors, return them
-	        if (!monitors.empty())
-	        {
-	            return monitors;
-	        }
+			// If we already have monitors, return them
+			if (!monitors.empty())
+			{
+				return monitors;
+			}
 	
-	        // Otherwise, populate the monitor data
-	        RefreshMonitorList();
+			// Otherwise, populate the monitor data
+			RefreshMonitorList();
 	
-	        // Clear the existing monitor list
-	        monitors.clear();
+			// Clear the existing monitor list
+			monitors.clear();
 	
-	        // Iterate through all displays and populate monitor data
-	        for (int i = 0; i < monitorCount; ++i)
-	        {
+			// Iterate through all displays and populate monitor data
+			for (int i = 0; i < monitorCount; ++i)
+			{
 				Monitor mon{
-                    .monitorID = "",						// Monitor/display name 
-                    .resolution = Vec2(0.0f, 0.0f),    // resolution
-                    .dimensions = Vec2(0.0f, 0.0f),    // physical dimensions in inches
-                    .pixDensity = Vec2(96.0f, 96.0f),  // pixel density (PPI)
-                    .refreshRate = 0,						// refresh rate in Hz
-                    .isPrimary = false,						// Is the primary monitor
-                    .handle = 0								// Handle to the monitor
+					.monitorID = "",						// Monitor/display name 
+					.resolution = Vec2(0.0f, 0.0f),    // resolution
+					.dimensions = Vec2(0.0f, 0.0f),    // physical dimensions in inches
+					.pixDensity = Vec2(96.0f, 96.0f),  // pixel density (PPI)
+					.refreshRate = 0,						// refresh rate in Hz
+					.isPrimary = false,						// Is the primary monitor
+					.handle = 0								// Handle to the monitor
 				};
 
-	            SDL_DisplayID displayID = monitorHandles[i];
+				SDL_DisplayID displayID = monitorHandles[i];
 	
-	            // Get display name
-	            const char *name = SDL_GetDisplayName(displayID);
-	            mon.monitorID = std::string(name ? name : "Unknown");
+				// Get display name
+				const char *name = SDL_GetDisplayName(displayID);
+				mon.monitorID = std::string(name ? name : "Unknown");
 	
-	            // Get current display mode
-	            if (const SDL_DisplayMode *mode = SDL_GetCurrentDisplayMode(displayID))
-	            {
-	                mon.resolution = Vec2(static_cast<float>(mode->w), static_cast<float>(mode->h));
-	                mon.refreshRate = static_cast<int>(std::round(mode->refresh_rate));
-	            }
-	            else
-	            {
-	                mon.resolution = Vec2(0.0f, 0.0f);
-	                mon.refreshRate = 0;
-	            }
+				// Get current display mode
+				if (const SDL_DisplayMode *mode = SDL_GetCurrentDisplayMode(displayID))
+				{
+					mon.resolution = Vec2(static_cast<float>(mode->w), static_cast<float>(mode->h));
+					mon.refreshRate = static_cast<int>(std::round(mode->refresh_rate));
+				}
+				else
+				{
+					mon.resolution = Vec2(0.0f, 0.0f);
+					mon.refreshRate = 0;
+				}
 	
-	            // Get physical dimensions using display bounds
-	            SDL_Rect bounds;
-	            if (SDL_GetDisplayBounds(displayID, &bounds))
-	            {
-	                // Get DPI information to calculate physical size
-	                float contentScale = SDL_GetDisplayContentScale(displayID);
+				// Get physical dimensions using display bounds
+				SDL_Rect bounds;
+				if (SDL_GetDisplayBounds(displayID, &bounds))
+				{
+					// Get DPI information to calculate physical size
+					float contentScale = SDL_GetDisplayContentScale(displayID);
 	
-	                // Check for valid content scale, use default if invalid
-	                if (contentScale <= 0.0f)
-	                {
-	                    contentScale = 1.0f;
-	                }
+					// Check for valid content scale, use default if invalid
+					if (contentScale <= 0.0f)
+					{
+						contentScale = 1.0f;
+					}
 	
-	                float horizontalDPI = 96.0f * contentScale;
-	                float verticalDPI	= horizontalDPI;
+					float horizontalDPI = 96.0f * contentScale;
+					float verticalDPI	= horizontalDPI;
 	
-	                // Calculate physical dimensions in inches
-	                if (horizontalDPI > 0.0f && verticalDPI > 0.0f)
-	                {
-	                    mon.dimensions.x = mon.resolution.x / horizontalDPI;
-	                    mon.dimensions.y = mon.resolution.y / verticalDPI;
-	                    mon.pixDensity.x = horizontalDPI;
-	                    mon.pixDensity.y = verticalDPI;
-	                }
-	                else
-	                {
-	                    mon.dimensions = Vec2(0.0f, 0.0f);
-	                    mon.pixDensity = Vec2(96.0f, 96.0f);
-	                }
-	            }
-	            else
-	            {
-	                mon.dimensions = Vec2(0.0f, 0.0f);
-	                mon.pixDensity = Vec2(96.0f, 96.0f);
-	            }
+					// Calculate physical dimensions in inches
+					if (horizontalDPI > 0.0f && verticalDPI > 0.0f)
+					{
+						mon.dimensions.x = mon.resolution.x / horizontalDPI;
+						mon.dimensions.y = mon.resolution.y / verticalDPI;
+						mon.pixDensity.x = horizontalDPI;
+						mon.pixDensity.y = verticalDPI;
+					}
+					else
+					{
+						mon.dimensions = Vec2(0.0f, 0.0f);
+						mon.pixDensity = Vec2(96.0f, 96.0f);
+					}
+				}
+				else
+				{
+					mon.dimensions = Vec2(0.0f, 0.0f);
+					mon.pixDensity = Vec2(96.0f, 96.0f);
+				}
 	
-	            // Check if this is the primary monitor
-	            mon.isPrimary = (displayID == primaryMonitor);
-	            mon.handle = displayID;
+				// Check if this is the primary monitor
+				mon.isPrimary = (displayID == primaryMonitor);
+				mon.handle = displayID;
 	
-	            monitors.push_back(mon);
-	            SEDX_CORE_TRACE("Monitor {}: {}", i, mon.monitorID);
-	        }
+				monitors.push_back(mon);
+				SEDX_CORE_TRACE("Monitor {}: {}", i, mon.monitorID);
+			}
 	
-	        return monitors;
-	    }
-	    catch (const std::exception &e)
-	    {
-	        SEDX_CORE_WARN("Exception in GetMonitorStats: {}", e.what());
-	        return {}; // Return empty vector on error
-	    }
+			return monitors;
+		}
+		catch (const std::exception &e)
+		{
+			SEDX_CORE_WARN("Exception in GetMonitorStats: {}", e.what());
+			return {}; // Return empty vector on error
+		}
 	}
 	
 	/**
@@ -218,24 +218,24 @@ namespace SceneryEditorX
 	 */
 	void MonitorData::PresentMonitorStats() const
 	{
-	    try
-	    {
-	        for (const auto &data : GetMonitors())
-	        {
-	            SEDX_CORE_TRACE("{}{}: {} x {} pixels, {:0.1f} x {:0.1f} inches, {:0.2f} Pixels",
-	                               data.monitorID,
-	                               data.isPrimary ? " (Primary)" : "",
-	                               data.resolution.x,
-	                               data.resolution.y,
-	                               data.dimensions.x,
-	                               data.dimensions.y,
-	                               data.pixDensity.x);
-	        }
-	    }
-	    catch (const std::exception &e)
-	    {
-	        SEDX_CORE_WARN("Exception in PresentMonitorStats: {}", e.what());
-	    }
+		try
+		{
+			for (const auto &data : GetMonitors())
+			{
+				SEDX_CORE_TRACE("{}{}: {} x {} pixels, {:0.1f} x {:0.1f} inches, {:0.2f} Pixels",
+								   data.monitorID,
+								   data.isPrimary ? " (Primary)" : "",
+								   data.resolution.x,
+								   data.resolution.y,
+								   data.dimensions.x,
+								   data.dimensions.y,
+								   data.pixDensity.x);
+			}
+		}
+		catch (const std::exception &e)
+		{
+			SEDX_CORE_WARN("Exception in PresentMonitorStats: {}", e.what());
+		}
 	}
 	
 	/**
@@ -254,45 +254,45 @@ namespace SceneryEditorX
 	 */
 	Vec2 MonitorData::GetMonitorCenter(SDL_DisplayID *displays)
 	{
-	    try
-	    {
-	        SDL_DisplayID *displaysToUse = (displays != nullptr) ? displays : monitorHandles;
+		try
+		{
+			SDL_DisplayID *displaysToUse = (displays != nullptr) ? displays : monitorHandles;
 	
-	        // Check if monitors are available and monitorIndex is valid
-	        if (monitorIndex < 0 || monitorIndex >= monitorCount || displaysToUse == nullptr)
-	        {
-	            // Get primary monitor and reset monitor index
-	            RefreshDisplayCount();
-	            monitorIndex = 0;
+			// Check if monitors are available and monitorIndex is valid
+			if (monitorIndex < 0 || monitorIndex >= monitorCount || displaysToUse == nullptr)
+			{
+				// Get primary monitor and reset monitor index
+				RefreshDisplayCount();
+				monitorIndex = 0;
 	
-	            // Safety check to prevent infinite recursion
-	            if (monitorHandles && monitorCount > 0)
-	            {
-	                return GetMonitorCenter(monitorHandles); // Recursive call with valid monitor
-	            }
+				// Safety check to prevent infinite recursion
+				if (monitorHandles && monitorCount > 0)
+				{
+					return GetMonitorCenter(monitorHandles); // Recursive call with valid monitor
+				}
 	
-	            SEDX_CORE_WARN("No valid monitors available for GetMonitorCenter");
-	            return {640.0f, 360.0f}; // Default fallback center
-	        }
+				SEDX_CORE_WARN("No valid monitors available for GetMonitorCenter");
+				return {640.0f, 360.0f}; // Default fallback center
+			}
 	
-	        const SDL_DisplayMode *mode = SDL_GetCurrentDisplayMode(displaysToUse[monitorIndex]);
-	        if (!mode)
-	        {
-	            // Fallback if mode cannot be retrieved
-                SEDX_CORE_WARN("Failed to get video mode for monitor {}", monitorIndex);
-	            return {640.0f, 360.0f}; // Default fallback center
-	        }
+			const SDL_DisplayMode *mode = SDL_GetCurrentDisplayMode(displaysToUse[monitorIndex]);
+			if (!mode)
+			{
+				// Fallback if mode cannot be retrieved
+				SEDX_CORE_WARN("Failed to get video mode for monitor {}", monitorIndex);
+				return {640.0f, 360.0f}; // Default fallback center
+			}
 	
-	        const int screenCenterX = mode->w / 2;
-	        const int screenCenterY = mode->h / 2;
+			const int screenCenterX = mode->w / 2;
+			const int screenCenterY = mode->h / 2;
 	
-	        return {static_cast<float>(screenCenterX), static_cast<float>(screenCenterY)};
-	    }
-	    catch (const std::exception &e)
-	    {
-	        SEDX_CORE_WARN("Exception in GetMonitorCenter: {}", e.what());
-	        return {640.0f, 360.0f}; // Default fallback center
-	    }
+			return {static_cast<float>(screenCenterX), static_cast<float>(screenCenterY)};
+		}
+		catch (const std::exception &e)
+		{
+			SEDX_CORE_WARN("Exception in GetMonitorCenter: {}", e.what());
+			return {640.0f, 360.0f}; // Default fallback center
+		}
 	}
 	
 	/**
@@ -301,12 +301,12 @@ namespace SceneryEditorX
 	 */
 	SDL_DisplayID MonitorData::GetPrimaryMonitor() const
 	{
-	    if (primaryMonitor == 0)
-	    {
-	        SEDX_CORE_WARN("Primary monitor not available");
-	    }
+		if (primaryMonitor == 0)
+		{
+			SEDX_CORE_WARN("Primary monitor not available");
+		}
 	
-	    return primaryMonitor;
+		return primaryMonitor;
 	}
 	
 	/**
@@ -316,13 +316,13 @@ namespace SceneryEditorX
 	 */
 	SDL_DisplayID MonitorData::GetCurrentMonitor() const
 	{
-	    if (monitorIndex >= 0 && monitorIndex < monitorCount && monitorHandles != nullptr)
-	    {
-	        return monitorHandles[monitorIndex];
-	    }
+		if (monitorIndex >= 0 && monitorIndex < monitorCount && monitorHandles != nullptr)
+		{
+			return monitorHandles[monitorIndex];
+		}
 	
-	    SEDX_CORE_WARN("Current monitor not available (index: {}, count: {})", monitorIndex, monitorCount);
-	    return 0;
+		SEDX_CORE_WARN("Current monitor not available (index: {}, count: {})", monitorIndex, monitorCount);
+		return 0;
 	}
 	
 	/**
@@ -342,90 +342,90 @@ namespace SceneryEditorX
 	 */
 	void MonitorData::RefreshDisplayCount()
 	{
-	    // Check if SDL is initialized
-	    if (!SDL_WasInit(SDL_INIT_VIDEO))
-	    {
-	        if (!SDL_Init(SDL_INIT_VIDEO))
-	        {
-                SEDX_CORE_WARN("Cannot refresh display count - SDL video initialization failed");
-	            monitorCount = 0;
-	            monitorHandles = nullptr;
-	            primaryMonitor = 0;
-	            return;
-	        }
-	    }
+		// Check if SDL is initialized
+		if (!SDL_WasInit(SDL_INIT_VIDEO))
+		{
+			if (!SDL_Init(SDL_INIT_VIDEO))
+			{
+				SEDX_CORE_WARN("Cannot refresh display count - SDL video initialization failed");
+				monitorCount = 0;
+				monitorHandles = nullptr;
+				primaryMonitor = 0;
+				return;
+			}
+		}
 	
-	    // Free previous display list if exists
-	    if (monitorHandles)
-	    {
-	        SDL_free(monitorHandles);
-	        monitorHandles = nullptr;
-	    }
+		// Free previous display list if exists
+		if (monitorHandles)
+		{
+			SDL_free(monitorHandles);
+			monitorHandles = nullptr;
+		}
 	
-	    // Get displays from SDL3
-	    monitorHandles = SDL_GetDisplays(&monitorCount);
-	    primaryMonitor = SDL_GetPrimaryDisplay();
+		// Get displays from SDL3
+		monitorHandles = SDL_GetDisplays(&monitorCount);
+		primaryMonitor = SDL_GetPrimaryDisplay();
 	
-	    // Safety check to ensure we have at least one monitor
-	    if (monitorCount <= 0 || !monitorHandles)
-	    {
-            SEDX_CORE_WARN("No monitors detected during RefreshDisplayCount");
-	        monitorCount = 0;
-	        if (monitorHandles)
-	        {
-	            SDL_free(monitorHandles);
-	            monitorHandles = nullptr;
-	        }
-	        primaryMonitor = 0;
-	    }
-	    else
-	    {
-            SEDX_CORE_TRACE("Detected {} monitor(s)", monitorCount);
-	    }
+		// Safety check to ensure we have at least one monitor
+		if (monitorCount <= 0 || !monitorHandles)
+		{
+			SEDX_CORE_WARN("No monitors detected during RefreshDisplayCount");
+			monitorCount = 0;
+			if (monitorHandles)
+			{
+				SDL_free(monitorHandles);
+				monitorHandles = nullptr;
+			}
+			primaryMonitor = 0;
+		}
+		else
+		{
+			SEDX_CORE_TRACE("Detected {} monitor(s)", monitorCount);
+		}
 	
-	    // Make sure the current monitor index is valid
-	    if (monitorIndex >= monitorCount)
-	    {
-	        monitorIndex = 0;
-	    }
+		// Make sure the current monitor index is valid
+		if (monitorIndex >= monitorCount)
+		{
+			monitorIndex = 0;
+		}
 	}
 	
 	void MonitorData::RefreshMonitorList()
 	{
-	    if (!SDL_WasInit(SDL_INIT_VIDEO))
-	    {
-	        if (!SDL_Init(SDL_INIT_VIDEO))
-	        {
-                SEDX_CORE_WARN("SDL not initialized - cannot refresh monitor list");
-	            return;
-	        }
-	    }
+		if (!SDL_WasInit(SDL_INIT_VIDEO))
+		{
+			if (!SDL_Init(SDL_INIT_VIDEO))
+			{
+				SEDX_CORE_WARN("SDL not initialized - cannot refresh monitor list");
+				return;
+			}
+		}
 	
-	    // Free previous display list if exists
-	    if (monitorHandles)
-	    {
-	        SDL_free(monitorHandles);
-	        monitorHandles = nullptr;
-	    }
+		// Free previous display list if exists
+		if (monitorHandles)
+		{
+			SDL_free(monitorHandles);
+			monitorHandles = nullptr;
+		}
 	
-	    monitorHandles = SDL_GetDisplays(&monitorCount);
+		monitorHandles = SDL_GetDisplays(&monitorCount);
 	
-	    if (monitorCount > 0 && monitorHandles)
-	    {
-            SEDX_CORE_TRACE("Successfully refreshed monitor list: {} monitor(s) detected", monitorCount);
-	        primaryMonitor = SDL_GetPrimaryDisplay();
-	    }
-	    else
-	    {
-            SEDX_CORE_WARN("No monitors detected");
-	        if (monitorHandles)
-	        {
-	            SDL_free(monitorHandles);
-	            monitorHandles = nullptr;
-	        }
+		if (monitorCount > 0 && monitorHandles)
+		{
+			SEDX_CORE_TRACE("Successfully refreshed monitor list: {} monitor(s) detected", monitorCount);
+			primaryMonitor = SDL_GetPrimaryDisplay();
+		}
+		else
+		{
+			SEDX_CORE_WARN("No monitors detected");
+			if (monitorHandles)
+			{
+				SDL_free(monitorHandles);
+				monitorHandles = nullptr;
+			}
 
-	        primaryMonitor = 0;
-	    }
+			primaryMonitor = 0;
+		}
 	}
 	
 	/**
@@ -447,38 +447,38 @@ namespace SceneryEditorX
 	 */
 	const SDL_DisplayMode **MonitorData::GetVideoModes(const int monitorIndex, int *count)
 	{
-	    // Set default return value for error cases
-	    *count = 0;
+		// Set default return value for error cases
+		*count = 0;
 	
-	    try
-	    {
-	        // Validate index and monitor handles
-	        if (monitorIndex < 0 || monitorIndex >= monitorCount || monitorHandles == nullptr)
-	        {
-                SEDX_CORE_WARN("Invalid monitor index {} for GetVideoModes (total: {})", monitorIndex, monitorCount);
-	            return nullptr;
-	        }
+		try
+		{
+			// Validate index and monitor handles
+			if (monitorIndex < 0 || monitorIndex >= monitorCount || monitorHandles == nullptr)
+			{
+				SEDX_CORE_WARN("Invalid monitor index {} for GetVideoModes (total: {})", monitorIndex, monitorCount);
+				return nullptr;
+			}
 	
-	        // Get video modes from SDL3
-	        SDL_DisplayMode **modes = SDL_GetFullscreenDisplayModes(monitorHandles[monitorIndex], count);
+			// Get video modes from SDL3
+			SDL_DisplayMode **modes = SDL_GetFullscreenDisplayModes(monitorHandles[monitorIndex], count);
 	
-	        // Log result
-	        if (modes && *count > 0)
-	        {
-	            SEDX_CORE_TRACE("Retrieved {} video modes for monitor {}", *count, monitorIndex);
-	        }
-	        else
-	        {
-                SEDX_CORE_WARN("No video modes available for monitor {}", monitorIndex);
-	        }
+			// Log result
+			if (modes && *count > 0)
+			{
+				SEDX_CORE_TRACE("Retrieved {} video modes for monitor {}", *count, monitorIndex);
+			}
+			else
+			{
+				SEDX_CORE_WARN("No video modes available for monitor {}", monitorIndex);
+			}
 	
-	        return const_cast<const SDL_DisplayMode **>(modes);
-	    }
-	    catch (const std::exception &e)
-	    {
-            SEDX_CORE_WARN("Exception in GetVideoModes: {}", e.what());
-	        return nullptr;
-	    }
+			return const_cast<const SDL_DisplayMode **>(modes);
+		}
+		catch (const std::exception &e)
+		{
+			SEDX_CORE_WARN("Exception in GetVideoModes: {}", e.what());
+			return nullptr;
+		}
 	}
 	
 	/**
@@ -488,19 +488,19 @@ namespace SceneryEditorX
 	 */
 	const SDL_DisplayMode *MonitorData::GetCurrentVideoMode() const
 	{
-        if (SDL_DisplayID display = GetCurrentMonitor(); display != 0)
-	    {
-	        const SDL_DisplayMode *mode = SDL_GetCurrentDisplayMode(display);
-	        if (!mode)
-	        {
-	            SEDX_CORE_WARN("Failed to get video mode for current monitor");
-	        }
+		if (SDL_DisplayID display = GetCurrentMonitor(); display != 0)
+		{
+			const SDL_DisplayMode *mode = SDL_GetCurrentDisplayMode(display);
+			if (!mode)
+			{
+				SEDX_CORE_WARN("Failed to get video mode for current monitor");
+			}
 	
-	        return mode;
-	    }
+			return mode;
+		}
 	
-	    SEDX_CORE_WARN("Cannot get current video mode - no monitor available");
-	    return nullptr;
+		SEDX_CORE_WARN("Cannot get current video mode - no monitor available");
+		return nullptr;
 	}
 	
 	/**
@@ -510,30 +510,30 @@ namespace SceneryEditorX
 	 */
 	uint32_t MonitorData::GetWidth()
 	{
-	    if (!SDL_WasInit(SDL_INIT_VIDEO))
-	    {
-	        if (!SDL_Init(SDL_INIT_VIDEO))
-	        {
-	            SEDX_CORE_WARN("GetWidth: SDL video initialization failed");
-	            return 0;
-	        }
-	    }
+		if (!SDL_WasInit(SDL_INIT_VIDEO))
+		{
+			if (!SDL_Init(SDL_INIT_VIDEO))
+			{
+				SEDX_CORE_WARN("GetWidth: SDL video initialization failed");
+				return 0;
+			}
+		}
 	
-	    SDL_DisplayID display = SDL_GetPrimaryDisplay();
-	    if (display == 0)
-	    {
-            SEDX_CORE_WARN("GetWidth: Primary display not available");
-	        return 0;
-	    }
+		SDL_DisplayID display = SDL_GetPrimaryDisplay();
+		if (display == 0)
+		{
+			SEDX_CORE_WARN("GetWidth: Primary display not available");
+			return 0;
+		}
 	
-	    const SDL_DisplayMode *mode = SDL_GetCurrentDisplayMode(display);
-	    if (!mode)
-	    {
-            SEDX_CORE_WARN("GetWidth: Failed to get primary display video mode");
-	        return 0;
-	    }
+		const SDL_DisplayMode *mode = SDL_GetCurrentDisplayMode(display);
+		if (!mode)
+		{
+			SEDX_CORE_WARN("GetWidth: Failed to get primary display video mode");
+			return 0;
+		}
 	
-	    return static_cast<uint32_t>(mode->w);
+		return static_cast<uint32_t>(mode->w);
 	}
 	
 	/**
@@ -543,30 +543,30 @@ namespace SceneryEditorX
 	 */
 	uint32_t MonitorData::GetHeight()
 	{
-	    if (!SDL_WasInit(SDL_INIT_VIDEO))
-	    {
-	        if (!SDL_Init(SDL_INIT_VIDEO))
-	        {
-                SEDX_CORE_WARN("GetHeight: SDL video initialization failed");
-	            return 0;
-	        }
-	    }
+		if (!SDL_WasInit(SDL_INIT_VIDEO))
+		{
+			if (!SDL_Init(SDL_INIT_VIDEO))
+			{
+				SEDX_CORE_WARN("GetHeight: SDL video initialization failed");
+				return 0;
+			}
+		}
 	
-	    SDL_DisplayID display = SDL_GetPrimaryDisplay();
-	    if (display == 0)
-	    {
-            SEDX_CORE_WARN("GetHeight: Primary display not available");
-	        return 0;
-	    }
+		SDL_DisplayID display = SDL_GetPrimaryDisplay();
+		if (display == 0)
+		{
+			SEDX_CORE_WARN("GetHeight: Primary display not available");
+			return 0;
+		}
 	
-	    const SDL_DisplayMode *mode = SDL_GetCurrentDisplayMode(display);
-	    if (!mode)
-	    {
-            SEDX_CORE_WARN("GetHeight: Failed to get primary display video mode");
-	        return 0;
-	    }
+		const SDL_DisplayMode *mode = SDL_GetCurrentDisplayMode(display);
+		if (!mode)
+		{
+			SEDX_CORE_WARN("GetHeight: Failed to get primary display video mode");
+			return 0;
+		}
 	
-	    return static_cast<uint32_t>(mode->h);
+		return static_cast<uint32_t>(mode->h);
 	}
 	
 	
@@ -577,30 +577,30 @@ namespace SceneryEditorX
 	 */
 	float MonitorData::GetRefreshRate()
 	{
-	    if (!SDL_WasInit(SDL_INIT_VIDEO))
-	    {
-	        if (!SDL_Init(SDL_INIT_VIDEO))
-	        {
-                SEDX_CORE_WARN("GetRefreshRate: SDL video initialization failed");
-	            return 0.0f;
-	        }
-	    }
+		if (!SDL_WasInit(SDL_INIT_VIDEO))
+		{
+			if (!SDL_Init(SDL_INIT_VIDEO))
+			{
+				SEDX_CORE_WARN("GetRefreshRate: SDL video initialization failed");
+				return 0.0f;
+			}
+		}
 	
-	    SDL_DisplayID display = SDL_GetPrimaryDisplay();
-	    if (display == 0)
-	    {
-            SEDX_CORE_WARN("GetRefreshRate: Primary display not available");
-	        return 0.0f;
-	    }
+		SDL_DisplayID display = SDL_GetPrimaryDisplay();
+		if (display == 0)
+		{
+			SEDX_CORE_WARN("GetRefreshRate: Primary display not available");
+			return 0.0f;
+		}
 	
-	    const SDL_DisplayMode *mode = SDL_GetCurrentDisplayMode(display);
-	    if (!mode)
-	    {
-            SEDX_CORE_WARN("GetRefreshRate: Failed to get primary display video mode");
-	        return 0.0f;
-	    }
+		const SDL_DisplayMode *mode = SDL_GetCurrentDisplayMode(display);
+		if (!mode)
+		{
+			SEDX_CORE_WARN("GetRefreshRate: Failed to get primary display video mode");
+			return 0.0f;
+		}
 	
-	    return mode->refresh_rate;
+		return mode->refresh_rate;
 	}
 	
 	/**
@@ -610,112 +610,112 @@ namespace SceneryEditorX
 	 */
 	uint32_t MonitorData::GetId()
 	{
-	    if (!SDL_WasInit(SDL_INIT_VIDEO))
-	    {
-	        if (!SDL_Init(SDL_INIT_VIDEO))
-	        {
-                SEDX_CORE_WARN("GetId: SDL video initialization failed");
-	            return 0;
-	        }
-	    }
+		if (!SDL_WasInit(SDL_INIT_VIDEO))
+		{
+			if (!SDL_Init(SDL_INIT_VIDEO))
+			{
+				SEDX_CORE_WARN("GetId: SDL video initialization failed");
+				return 0;
+			}
+		}
 	
-	    int count = 0;
-	    SDL_DisplayID *displays = SDL_GetDisplays(&count);
-	    if (!displays || count <= 0)
-	    {
-            SEDX_CORE_WARN("GetId: No displays enumerated");
-	        if (displays)
-	        {
-	            SDL_free(displays);
-	        }
+		int count = 0;
+		SDL_DisplayID *displays = SDL_GetDisplays(&count);
+		if (!displays || count <= 0)
+		{
+			SEDX_CORE_WARN("GetId: No displays enumerated");
+			if (displays)
+			{
+				SDL_free(displays);
+			}
 
-	        return 0;
-	    }
+			return 0;
+		}
 	
-	    SDL_DisplayID primary = SDL_GetPrimaryDisplay();
-	    if (primary == 0)
-	    {
-            SEDX_CORE_WARN("GetId: Primary display not available");
-	        SDL_free(displays);
-	        return 0;
-	    }
+		SDL_DisplayID primary = SDL_GetPrimaryDisplay();
+		if (primary == 0)
+		{
+			SEDX_CORE_WARN("GetId: Primary display not available");
+			SDL_free(displays);
+			return 0;
+		}
 	
-	    uint32_t result = 0;
-	    for (int i = 0; i < count; ++i)
-	    {
-	        if (displays[i] == primary)
-	        {
-	            result = static_cast<uint32_t>(i);
-	            break;
-	        }
-	    }
+		uint32_t result = 0;
+		for (int i = 0; i < count; ++i)
+		{
+			if (displays[i] == primary)
+			{
+				result = static_cast<uint32_t>(i);
+				break;
+			}
+		}
 	
-	    SDL_free(displays);
-	    return result;
+		SDL_free(displays);
+		return result;
 	}
 	
 	/** @brief Indicates HDR support using SDL3 provides HDR capability queries through display properties. */
 	bool MonitorData::GetHdr()
 	{
-	    if (!SDL_WasInit(SDL_INIT_VIDEO))
-	    {
-	        if (!SDL_Init(SDL_INIT_VIDEO))
-	        {
-                SEDX_CORE_WARN("GetHdr: SDL video initialization failed");
-	            return false;
-	        }
-	    }
+		if (!SDL_WasInit(SDL_INIT_VIDEO))
+		{
+			if (!SDL_Init(SDL_INIT_VIDEO))
+			{
+				SEDX_CORE_WARN("GetHdr: SDL video initialization failed");
+				return false;
+			}
+		}
 	
-	    SDL_DisplayID display = SDL_GetPrimaryDisplay();
-	    if (display == 0)
-	    {
-            SEDX_CORE_WARN("GetHdr: Primary display not available");
-	        return false;
-	    }
+		SDL_DisplayID display = SDL_GetPrimaryDisplay();
+		if (display == 0)
+		{
+			SEDX_CORE_WARN("GetHdr: Primary display not available");
+			return false;
+		}
 	
-	    SDL_PropertiesID props = SDL_GetDisplayProperties(display);
-	    if (props == 0)
-	    {
-	        return false;
-	    }
+		SDL_PropertiesID props = SDL_GetDisplayProperties(display);
+		if (props == 0)
+		{
+			return false;
+		}
 	
-	    // Check if the display supports HDR
-	    return SDL_GetBooleanProperty(props, SDL_PROP_DISPLAY_HDR_ENABLED_BOOLEAN, false);
+		// Check if the display supports HDR
+		return SDL_GetBooleanProperty(props, SDL_PROP_DISPLAY_HDR_ENABLED_BOOLEAN, false);
 	}
 	
 	/** @brief Gets the display's max luminance in nits using SDL3 provides HDR luminance information through display properties. */
 	float MonitorData::GetLuminanceMax()
 	{
-	    if (!SDL_WasInit(SDL_INIT_VIDEO))
-	    {
-	        if (!SDL_Init(SDL_INIT_VIDEO))
-	        {
-                SEDX_CORE_WARN("GetLuminanceMax: SDL video initialization failed");
-	            return 350.0f;
-	        }
-	    }
+		if (!SDL_WasInit(SDL_INIT_VIDEO))
+		{
+			if (!SDL_Init(SDL_INIT_VIDEO))
+			{
+				SEDX_CORE_WARN("GetLuminanceMax: SDL video initialization failed");
+				return 350.0f;
+			}
+		}
 	
-	    SDL_DisplayID display = SDL_GetPrimaryDisplay();
-	    if (display == 0)
-	    {
-            SEDX_CORE_WARN("GetLuminanceMax: Primary display not available");
-	        return 350.0f;
-	    }
+		SDL_DisplayID display = SDL_GetPrimaryDisplay();
+		if (display == 0)
+		{
+			SEDX_CORE_WARN("GetLuminanceMax: Primary display not available");
+			return 350.0f;
+		}
 	
-	    SDL_PropertiesID props = SDL_GetDisplayProperties(display);
-	    if (props == 0)
-	    {
-	        return 350.0f;
-	    }
+		SDL_PropertiesID props = SDL_GetDisplayProperties(display);
+		if (props == 0)
+		{
+			return 350.0f;
+		}
 	
 	// Query SDR white level or max luminance
 	// SDL_PROP_DISPLAY_SDR_WHITE_LEVEL_FLOAT may not be available in all SDL3 versions
 	#ifdef SDL_PROP_DISPLAY_SDR_WHITE_LEVEL_FLOAT
-	    float luminance = SDL_GetFloatProperty(props, SDL_PROP_DISPLAY_SDR_WHITE_LEVEL_FLOAT, 350.0f);
+		float luminance = SDL_GetFloatProperty(props, SDL_PROP_DISPLAY_SDR_WHITE_LEVEL_FLOAT, 350.0f);
 	#else
-	    float luminance = 350.0f; // Default fallback
+		float luminance = 350.0f; // Default fallback
 	#endif
-	    return luminance;
+		return luminance;
 	}
 	
 	/**
@@ -725,9 +725,9 @@ namespace SceneryEditorX
 	 */
 	float MonitorData::GetGamma()
 	{
-	    // SDL3 doesn't provide gamma query, return default value
-	    // This needs to be calibrated per display by the user
-	    return 2.2f;
+		// SDL3 doesn't provide gamma query, return default value
+		// This needs to be calibrated per display by the user
+		return 2.2f;
 	}
 	
 	/**
@@ -737,34 +737,34 @@ namespace SceneryEditorX
 	 */
 	const char *MonitorData::GetName()
 	{
-	    if (!SDL_WasInit(SDL_INIT_VIDEO))
-	    {
-	        if (!SDL_Init(SDL_INIT_VIDEO))
-	        {
-                SEDX_CORE_WARN("GetName: SDL video initialization failed");
-	            static const char *fallback = "Unknown Monitor";
-	            return fallback;
-	        }
-	    }
+		if (!SDL_WasInit(SDL_INIT_VIDEO))
+		{
+			if (!SDL_Init(SDL_INIT_VIDEO))
+			{
+				SEDX_CORE_WARN("GetName: SDL video initialization failed");
+				static const char *fallback = "Unknown Monitor";
+				return fallback;
+			}
+		}
 	
-	    SDL_DisplayID display = SDL_GetPrimaryDisplay();
-	    if (display == 0)
-	    {
-            SEDX_CORE_WARN("GetName: Primary display not available");
-	        static const char *fallback = "Unknown Monitor";
-	        return fallback;
-	    }
+		SDL_DisplayID display = SDL_GetPrimaryDisplay();
+		if (display == 0)
+		{
+			SEDX_CORE_WARN("GetName: Primary display not available");
+			static const char *fallback = "Unknown Monitor";
+			return fallback;
+		}
 	
-	    if (const char *name = SDL_GetDisplayName(display))
-	        return name;
+		if (const char *name = SDL_GetDisplayName(display))
+			return name;
 	
-	    static const char *fallback = "Unknown Monitor";
-	    return fallback;
+		static const char *fallback = "Unknown Monitor";
+		return fallback;
 	}
 	
 	void MonitorData::UpdateMonitorList()
 	{
-	    /**
+		/**
 		 * @brief UpdateMonitorList is reserved for future API expansion.
 		 *
 		 * Currently, all monitor enumeration and refresh logic is handled by RefreshMonitorList().

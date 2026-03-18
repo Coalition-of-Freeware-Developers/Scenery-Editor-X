@@ -42,278 +42,278 @@ namespace SceneryEditorX
 	 */
 	static VkImageAspectFlags GetAspectMask(const VkFormat format)
 	{
-	    switch (format)
-	    {
-	    case VK_FORMAT_D16_UNORM:
-	    case VK_FORMAT_D32_SFLOAT:
-	    case VK_FORMAT_X8_D24_UNORM_PACK32:
-	        return VK_IMAGE_ASPECT_DEPTH_BIT;
-	    case VK_FORMAT_D16_UNORM_S8_UINT:
-	    case VK_FORMAT_D24_UNORM_S8_UINT:
-	    case VK_FORMAT_D32_SFLOAT_S8_UINT:
-	        return VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
-	    case VK_FORMAT_S8_UINT:
-	        return VK_IMAGE_ASPECT_STENCIL_BIT;
-	    default:
-	        return VK_IMAGE_ASPECT_COLOR_BIT;
-	    }
+		switch (format)
+		{
+		case VK_FORMAT_D16_UNORM:
+		case VK_FORMAT_D32_SFLOAT:
+		case VK_FORMAT_X8_D24_UNORM_PACK32:
+			return VK_IMAGE_ASPECT_DEPTH_BIT;
+		case VK_FORMAT_D16_UNORM_S8_UINT:
+		case VK_FORMAT_D24_UNORM_S8_UINT:
+		case VK_FORMAT_D32_SFLOAT_S8_UINT:
+			return VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+		case VK_FORMAT_S8_UINT:
+			return VK_IMAGE_ASPECT_STENCIL_BIT;
+		default:
+			return VK_IMAGE_ASPECT_COLOR_BIT;
+		}
 	}
 
 	ImageResource::ImageResource(const ImgResourceSpec &spec) : SharedResource(ResourceType::Image), m_Spec(spec)
 	{
-       m_Device = RenderContext::Get()->GetDevice();
-        SEDX_CORE_ASSERT(m_Device.IsValid(), "ImageResource requires a valid Device");
+	   m_Device = RenderContext::Get()->GetDevice();
+		SEDX_CORE_ASSERT(m_Device.IsValid(), "ImageResource requires a valid Device");
 
-        if (m_Spec.name)
-        {
-            m_ObjectName = m_Spec.name;
-        }
+		if (m_Spec.name)
+		{
+			m_ObjectName = m_Spec.name;
+		}
 
-        m_Depth = xMath::Max(1u, m_Spec.depth);
-        m_MipCount = xMath::Max(1u, m_Spec.mipCount);
+		m_Depth = xMath::Max(1u, m_Spec.depth);
+		m_MipCount = xMath::Max(1u, m_Spec.mipCount);
 
-        VkImageUsageFlags usage = 0;
-        if ((m_Spec.flags & ShaderViews) != 0) usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
-        if ((m_Spec.flags & UnorderedAccessView) != 0) usage |= VK_IMAGE_USAGE_STORAGE_BIT;
-        if ((m_Spec.flags & RenderTargetViews) != 0)
-        {
-            usage |= IsDepthFormat() ? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT : VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-        }
-        if ((m_Spec.flags & BlitClear) != 0) usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-        // Temporarily avoid adding fragment shading-rate attachment usage here.
-        // Device feature probing may report support while extension wiring is still incomplete,
-        // which triggers validation errors at vkCreateImage.
-        if (usage == 0)
-        {
-            usage = VK_IMAGE_USAGE_SAMPLED_BIT;
-        }
+		VkImageUsageFlags usage = 0;
+		if ((m_Spec.flags & ShaderViews) != 0) usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
+		if ((m_Spec.flags & UnorderedAccessView) != 0) usage |= VK_IMAGE_USAGE_STORAGE_BIT;
+		if ((m_Spec.flags & RenderTargetViews) != 0)
+		{
+			usage |= IsDepthFormat() ? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT : VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+		}
+		if ((m_Spec.flags & BlitClear) != 0) usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+		// Temporarily avoid adding fragment shading-rate attachment usage here.
+		// Device feature probing may report support while extension wiring is still incomplete,
+		// which triggers validation errors at vkCreateImage.
+		if (usage == 0)
+		{
+			usage = VK_IMAGE_USAGE_SAMPLED_BIT;
+		}
 
-        VkImageCreateInfo imageCI{};
-        imageCI.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-        imageCI.imageType = (m_Spec.type == ImageType::Type3D) ? VK_IMAGE_TYPE_3D : VK_IMAGE_TYPE_2D;
-        imageCI.format = m_Spec.format;
-        imageCI.extent.width = m_Spec.width;
-        imageCI.extent.height = m_Spec.height;
-        imageCI.extent.depth = (m_Spec.type == ImageType::Type3D) ? m_Depth : 1u;
-        imageCI.mipLevels = m_MipCount;
-        imageCI.arrayLayers = (m_Spec.type == ImageType::Type3D) ? 1u : m_Depth;
-        imageCI.samples = VK_SAMPLE_COUNT_1_BIT;
-        imageCI.tiling = VK_IMAGE_TILING_OPTIMAL;
-        imageCI.usage = usage;
-        imageCI.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		VkImageCreateInfo imageCI{};
+		imageCI.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+		imageCI.imageType = (m_Spec.type == ImageType::Type3D) ? VK_IMAGE_TYPE_3D : VK_IMAGE_TYPE_2D;
+		imageCI.format = m_Spec.format;
+		imageCI.extent.width = m_Spec.width;
+		imageCI.extent.height = m_Spec.height;
+		imageCI.extent.depth = (m_Spec.type == ImageType::Type3D) ? m_Depth : 1u;
+		imageCI.mipLevels = m_MipCount;
+		imageCI.arrayLayers = (m_Spec.type == ImageType::Type3D) ? 1u : m_Depth;
+		imageCI.samples = VK_SAMPLE_COUNT_1_BIT;
+		imageCI.tiling = VK_IMAGE_TILING_OPTIMAL;
+		imageCI.usage = usage;
+		imageCI.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-        uint32_t queueFamilies[2] = {};
-        if ((m_Spec.flags & QueueShare) != 0)
-        {
-            auto queueManager = m_Device->GetQueueManager();
-            const uint32_t graphicsFamily = queueManager->GetFamilyIndexByType(QueueType::Graphics);
-            const uint32_t computeFamily = queueManager->GetFamilyIndexByType(QueueType::Compute);
-            if (graphicsFamily != computeFamily)
-            {
-                queueFamilies[0] = graphicsFamily;
-                queueFamilies[1] = computeFamily;
-                imageCI.sharingMode = VK_SHARING_MODE_CONCURRENT;
-                imageCI.queueFamilyIndexCount = 2;
-                imageCI.pQueueFamilyIndices = queueFamilies;
-            }
-            else
-            {
-                imageCI.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-            }
-        }
-        else
-        {
-            imageCI.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-        }
+		uint32_t queueFamilies[2] = {};
+		if ((m_Spec.flags & QueueShare) != 0)
+		{
+			auto queueManager = m_Device->GetQueueManager();
+			const uint32_t graphicsFamily = queueManager->GetFamilyIndexByType(QueueType::Graphics);
+			const uint32_t computeFamily = queueManager->GetFamilyIndexByType(QueueType::Compute);
+			if (graphicsFamily != computeFamily)
+			{
+				queueFamilies[0] = graphicsFamily;
+				queueFamilies[1] = computeFamily;
+				imageCI.sharingMode = VK_SHARING_MODE_CONCURRENT;
+				imageCI.queueFamilyIndexCount = 2;
+				imageCI.pQueueFamilyIndices = queueFamilies;
+			}
+			else
+			{
+				imageCI.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+			}
+		}
+		else
+		{
+			imageCI.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+		}
 
-        m_Allocation = m_Device->GetMemoryAllocator().AllocateImage(imageCI, VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE, m_Image, nullptr);
-        SEDX_CORE_ASSERT(m_Allocation != nullptr && m_Image != VK_NULL_HANDLE, "Failed to allocate VkImage for ImageResource");
+		m_Allocation = m_Device->GetMemoryAllocator().AllocateImage(imageCI, VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE, m_Image, nullptr);
+		SEDX_CORE_ASSERT(m_Allocation != nullptr && m_Image != VK_NULL_HANDLE, "Failed to allocate VkImage for ImageResource");
 
-        VkImageViewCreateInfo viewCI{};
-        viewCI.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-        viewCI.image = m_Image;
-        viewCI.format = m_Spec.format;
-        viewCI.viewType = (m_Spec.type == ImageType::Type3D) ? VK_IMAGE_VIEW_TYPE_3D : ((m_Depth > 1) ? VK_IMAGE_VIEW_TYPE_2D_ARRAY : VK_IMAGE_VIEW_TYPE_2D);
-        viewCI.subresourceRange.aspectMask = GetAspectMask(m_Spec.format);
-        viewCI.subresourceRange.baseMipLevel = 0;
-        viewCI.subresourceRange.levelCount = m_MipCount;
-        viewCI.subresourceRange.baseArrayLayer = 0;
-        viewCI.subresourceRange.layerCount = (m_Spec.type == ImageType::Type3D) ? 1u : m_Depth;
+		VkImageViewCreateInfo viewCI{};
+		viewCI.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+		viewCI.image = m_Image;
+		viewCI.format = m_Spec.format;
+		viewCI.viewType = (m_Spec.type == ImageType::Type3D) ? VK_IMAGE_VIEW_TYPE_3D : ((m_Depth > 1) ? VK_IMAGE_VIEW_TYPE_2D_ARRAY : VK_IMAGE_VIEW_TYPE_2D);
+		viewCI.subresourceRange.aspectMask = GetAspectMask(m_Spec.format);
+		viewCI.subresourceRange.baseMipLevel = 0;
+		viewCI.subresourceRange.levelCount = m_MipCount;
+		viewCI.subresourceRange.baseArrayLayer = 0;
+		viewCI.subresourceRange.layerCount = (m_Spec.type == ImageType::Type3D) ? 1u : m_Depth;
 
-        VkImageView imageView = VK_NULL_HANDLE;
-        SEDX_VK_RESULT_ASSERT(vkCreateImageView(m_Device->GetLogicalDevice(), &viewCI, nullptr, &imageView), "Failed to create ImageResource image view");
-        m_ImageViews.push_back(imageView);
+		VkImageView imageView = VK_NULL_HANDLE;
+		SEDX_VK_RESULT_ASSERT(vkCreateImageView(m_Device->GetLogicalDevice(), &viewCI, nullptr, &imageView), "Failed to create ImageResource image view");
+		m_ImageViews.push_back(imageView);
 
-        if (HasPerMipViews() && m_MipCount > 1)
-        {
-            for (uint32_t mip = 0; mip < m_MipCount; ++mip)
-            {
-                VkImageViewCreateInfo mipViewCI = viewCI;
-                mipViewCI.subresourceRange.baseMipLevel = mip;
-                mipViewCI.subresourceRange.levelCount = 1;
-                VkImageView mipView = VK_NULL_HANDLE;
-                SEDX_VK_RESULT_ASSERT(vkCreateImageView(m_Device->GetLogicalDevice(), &mipViewCI, nullptr, &mipView), "Failed to create per-mip ImageResource view");
-                m_ImageViews.push_back(mipView);
-            }
-        }
+		if (HasPerMipViews() && m_MipCount > 1)
+		{
+			for (uint32_t mip = 0; mip < m_MipCount; ++mip)
+			{
+				VkImageViewCreateInfo mipViewCI = viewCI;
+				mipViewCI.subresourceRange.baseMipLevel = mip;
+				mipViewCI.subresourceRange.levelCount = 1;
+				VkImageView mipView = VK_NULL_HANDLE;
+				SEDX_VK_RESULT_ASSERT(vkCreateImageView(m_Device->GetLogicalDevice(), &mipViewCI, nullptr, &mipView), "Failed to create per-mip ImageResource view");
+				m_ImageViews.push_back(mipView);
+			}
+		}
 
-        // Initialize the image to a deterministic first-use layout so descriptor-backed
-        // passes don't sample from VK_IMAGE_LAYOUT_UNDEFINED on frame 0.
-        Layout::ImageLayout initialLayout = Layout::ImageLayout::Undefined;
-        if ((m_Spec.flags & ShaderViews) != 0)
-        {
-           /* Defer pure shader-read initial transitions to first real use; transitioning
-            from UNDEFINED directly to read-only at creation time produces noisy validation
-            messages and is unnecessary for correctness. */
-            initialLayout = Layout::ImageLayout::Undefined;
-        }
-        else if ((m_Spec.flags & UnorderedAccessView) != 0)
-        {
-           initialLayout = Layout::ImageLayout::General;
-        }
-        else if ((m_Spec.flags & RenderTargetViews) != 0)
-        {
-           initialLayout = IsDepthFormat() ? Layout::ImageLayout::DepthAttachment : Layout::ImageLayout::Attachment;
-        }
+		// Initialize the image to a deterministic first-use layout so descriptor-backed
+		// passes don't sample from VK_IMAGE_LAYOUT_UNDEFINED on frame 0.
+		Layout::ImageLayout initialLayout = Layout::ImageLayout::Undefined;
+		if ((m_Spec.flags & ShaderViews) != 0)
+		{
+		   /* Defer pure shader-read initial transitions to first real use; transitioning
+			from UNDEFINED directly to read-only at creation time produces noisy validation
+			messages and is unnecessary for correctness. */
+			initialLayout = Layout::ImageLayout::Undefined;
+		}
+		else if ((m_Spec.flags & UnorderedAccessView) != 0)
+		{
+		   initialLayout = Layout::ImageLayout::General;
+		}
+		else if ((m_Spec.flags & RenderTargetViews) != 0)
+		{
+		   initialLayout = IsDepthFormat() ? Layout::ImageLayout::DepthAttachment : Layout::ImageLayout::Attachment;
+		}
 
-        if (initialLayout != Layout::ImageLayout::Undefined)
-        {
-            if (CommandList* initCmd = CommandList::BeginImmediateExecution(QueueType::Graphics))
-            {
-                SetLayout(initialLayout, initCmd, ALL_MIPS, 0);
-                CommandList::EndImmediateExecution(initCmd);
-            }
-        }
+		if (initialLayout != Layout::ImageLayout::Undefined)
+		{
+			if (CommandList* initCmd = CommandList::BeginImmediateExecution(QueueType::Graphics))
+			{
+				SetLayout(initialLayout, initCmd, ALL_MIPS, 0);
+				CommandList::EndImmediateExecution(initCmd);
+			}
+		}
 
-        m_ResourceState = ResourceState::PreparedForGpu;
+		m_ResourceState = ResourceState::PreparedForGpu;
 	}
 	
 	ImageResource::ImageResource() : SharedResource(ResourceType::Image)
 	{
 	}
 
-    ImageResource::~ImageResource()
-    {
-        if (!m_Device.IsValid())
-            return;
+	ImageResource::~ImageResource()
+	{
+		if (!m_Device.IsValid())
+			return;
 
-        VkDevice device = m_Device->GetLogicalDevice();
-        for (VkImageView view : m_ImageViews)
-        {
-            if (view != VK_NULL_HANDLE)
+		VkDevice device = m_Device->GetLogicalDevice();
+		for (VkImageView view : m_ImageViews)
+		{
+			if (view != VK_NULL_HANDLE)
 				QueueManager::AddDeletionQueue(ResourceType::ImageView, view);
-                //vkDestroyImageView(device, view, nullptr);
-        }
-        m_ImageViews.clear();
+				//vkDestroyImageView(device, view, nullptr);
+		}
+		m_ImageViews.clear();
 
-        if (m_Image != VK_NULL_HANDLE && m_Allocation != nullptr)
-        {
+		if (m_Image != VK_NULL_HANDLE && m_Allocation != nullptr)
+		{
 			QueueManager::AddDeletionQueue(ResourceType::Image, m_Image);
-            //m_Device->GetMemoryAllocator().DestroyImage(m_Image, m_Allocation);
-            m_Image = VK_NULL_HANDLE;
-            m_Allocation = nullptr;
-        }
-    }
+			//m_Device->GetMemoryAllocator().DestroyImage(m_Image, m_Allocation);
+			m_Image = VK_NULL_HANDLE;
+			m_Allocation = nullptr;
+		}
+	}
 
-    void ImageResource::SetLayout(const Layout::ImageLayout newLayout, CommandList* cmdList, uint32_t mipIndex /*= all_mips*/, uint32_t mipRange /*= 0*/)
-    {
-        // Treat (mipIndex=0, mipRange=0) as "all mips" for compatibility with
-        // existing call sites that use 0/0 to mean full-range transitions.
-        const bool fullRangeRequested = (mipIndex == 0 && mipRange == 0);
-        const bool mip_specified = (mipIndex != ALL_MIPS) && !fullRangeRequested;
-        mipIndex                = mip_specified ? mipIndex : 0;
-        mipRange                = mip_specified ? mipRange : m_MipCount;
+	void ImageResource::SetLayout(const Layout::ImageLayout newLayout, CommandList* cmdList, uint32_t mipIndex /*= all_mips*/, uint32_t mipRange /*= 0*/)
+	{
+		// Treat (mipIndex=0, mipRange=0) as "all mips" for compatibility with
+		// existing call sites that use 0/0 to mean full-range transitions.
+		const bool fullRangeRequested = (mipIndex == 0 && mipRange == 0);
+		const bool mip_specified = (mipIndex != ALL_MIPS) && !fullRangeRequested;
+		mipIndex                = mip_specified ? mipIndex : 0;
+		mipRange                = mip_specified ? mipRange : m_MipCount;
 
-        if (mip_specified && mipRange == 0)
-        {
-            mipRange = 1;
-        }
+		if (mip_specified && mipRange == 0)
+		{
+			mipRange = 1;
+		}
 
-        if (m_MipCount == 0)
-        {
-            m_MipCount = 1;
-        }
-    
-        if (mip_specified)
-        {
-            SEDX_CORE_ASSERT(HasPerMipViews());
-            SEDX_CORE_ASSERT(mipIndex + mipRange <= m_MipCount);
-        }
+		if (m_MipCount == 0)
+		{
+			m_MipCount = 1;
+		}
+	
+		if (mip_specified)
+		{
+			SEDX_CORE_ASSERT(HasPerMipViews());
+			SEDX_CORE_ASSERT(mipIndex + mipRange <= m_MipCount);
+		}
 
-        cmdList->InsertBarrier(&m_Image, m_Spec.format, mipIndex, mipRange, GetArrayLength(), newLayout);
-    }
+		cmdList->InsertBarrier(&m_Image, m_Spec.format, mipIndex, mipRange, GetArrayLength(), newLayout);
+	}
 
-    void ImageResource::AllocateMip(uint32_t index)
-    {
-	    // ensure slices exist up to the requested index
-        while (m_slices.size() <= index)
-        { 
-            m_slices.emplace_back();
-        }
+	void ImageResource::AllocateMip(uint32_t index)
+	{
+		// ensure slices exist up to the requested index
+		while (m_slices.size() <= index)
+		{ 
+			m_slices.emplace_back();
+		}
 
-        MipBytes& mip = m_slices[index].mips.emplace_back();
-        m_Depth              = static_cast<uint32_t>(m_slices.size());
-        m_MipCount          = static_cast<uint32_t>(m_slices[index].mips.size());
-        uint32_t mip_index   = static_cast<uint32_t>(m_slices[index].mips.size()) - 1;
-        uint32_t width       = xMath::Max(1u, m_Spec.width >> mip_index);
-        uint32_t height      = xMath::Max(1u, m_Spec.height >> mip_index);
-        uint32_t depth       = (m_Spec.type == ImageType::Type3D) ? (m_Depth >> mip_index) : 1;
-        size_t size_bytes    = CalculateMipSize(width, height, depth, m_Spec.format, m_BitsPerChannel, m_ChannelCount);
-        mip.bytes.resize(size_bytes);
-    }
+		MipBytes& mip = m_slices[index].mips.emplace_back();
+		m_Depth              = static_cast<uint32_t>(m_slices.size());
+		m_MipCount          = static_cast<uint32_t>(m_slices[index].mips.size());
+		uint32_t mip_index   = static_cast<uint32_t>(m_slices[index].mips.size()) - 1;
+		uint32_t width       = xMath::Max(1u, m_Spec.width >> mip_index);
+		uint32_t height      = xMath::Max(1u, m_Spec.height >> mip_index);
+		uint32_t depth       = (m_Spec.type == ImageType::Type3D) ? (m_Depth >> mip_index) : 1;
+		size_t size_bytes    = CalculateMipSize(width, height, depth, m_Spec.format, m_BitsPerChannel, m_ChannelCount);
+		mip.bytes.resize(size_bytes);
+	}
 
-    bool ImageResource::IsDepthFormat() const
-    {
-        return m_Spec.format == VK_FORMAT_D16_UNORM || m_Spec.format == VK_FORMAT_D32_SFLOAT ||
-               m_Spec.format == VK_FORMAT_D32_SFLOAT_S8_UINT;
-    }
+	bool ImageResource::IsDepthFormat() const
+	{
+		return m_Spec.format == VK_FORMAT_D16_UNORM || m_Spec.format == VK_FORMAT_D32_SFLOAT ||
+			   m_Spec.format == VK_FORMAT_D32_SFLOAT_S8_UINT;
+	}
 
-    bool ImageResource::IsCompressedFormat(const VkFormat format)
-    {
-        return format == VK_FORMAT_BC1_RGBA_UNORM_BLOCK || format == VK_FORMAT_BC3_UNORM_BLOCK ||
-               format == VK_FORMAT_BC5_UNORM_BLOCK || format == VK_FORMAT_BC7_UNORM_BLOCK || format == VK_FORMAT_ASTC_4x4_UNORM_BLOCK;
-    }
+	bool ImageResource::IsCompressedFormat(const VkFormat format)
+	{
+		return format == VK_FORMAT_BC1_RGBA_UNORM_BLOCK || format == VK_FORMAT_BC3_UNORM_BLOCK ||
+			   format == VK_FORMAT_BC5_UNORM_BLOCK || format == VK_FORMAT_BC7_UNORM_BLOCK || format == VK_FORMAT_ASTC_4x4_UNORM_BLOCK;
+	}
 
-    size_t ImageResource::CalculateMipSize(uint32_t width, uint32_t height, uint32_t depth, VkFormat format, uint32_t bitsPerChannel, uint32_t channelCount)
-    {
-        SEDX_CORE_ASSERT(width  > 0);
-        SEDX_CORE_ASSERT(height > 0);
-        SEDX_CORE_ASSERT(depth  > 0);
+	size_t ImageResource::CalculateMipSize(uint32_t width, uint32_t height, uint32_t depth, VkFormat format, uint32_t bitsPerChannel, uint32_t channelCount)
+	{
+		SEDX_CORE_ASSERT(width  > 0);
+		SEDX_CORE_ASSERT(height > 0);
+		SEDX_CORE_ASSERT(depth  > 0);
 
-        if (IsCompressedFormat(format))
-        {
-            uint32_t blockSize;
-            uint32_t blockWidth  = 4; // default block width  for BC formats
-            uint32_t blockHeight = 4; // default block height for BC formats
-            switch (format)
-            {
-            case VK_FORMAT_BC1_RGBA_UNORM_BLOCK:
-                blockSize = 8;
-                break;
-            case VK_FORMAT_BC3_UNORM_BLOCK:
-            case VK_FORMAT_BC5_UNORM_BLOCK:
-            case VK_FORMAT_BC7_UNORM_BLOCK:
-                blockSize = 16;
-                break;
-            case VK_FORMAT_ASTC_4x4_UNORM_BLOCK:
-                blockWidth  = 4;
-                blockHeight = 4;
-                blockSize  = 16;
-                break;
-            default:
-                SEDX_CORE_ASSERT(false);
-                return 0;
-            }
-            uint32_t numBlocksWide = (width + blockWidth - 1) / blockWidth;
-            uint32_t numBlocksHigh = (height + blockHeight - 1) / blockHeight;
-            return static_cast<size_t>(numBlocksWide) * static_cast<size_t>(numBlocksHigh) * static_cast<size_t>(depth) * static_cast<size_t>(blockSize);
-        }
+		if (IsCompressedFormat(format))
+		{
+			uint32_t blockSize;
+			uint32_t blockWidth  = 4; // default block width  for BC formats
+			uint32_t blockHeight = 4; // default block height for BC formats
+			switch (format)
+			{
+			case VK_FORMAT_BC1_RGBA_UNORM_BLOCK:
+				blockSize = 8;
+				break;
+			case VK_FORMAT_BC3_UNORM_BLOCK:
+			case VK_FORMAT_BC5_UNORM_BLOCK:
+			case VK_FORMAT_BC7_UNORM_BLOCK:
+				blockSize = 16;
+				break;
+			case VK_FORMAT_ASTC_4x4_UNORM_BLOCK:
+				blockWidth  = 4;
+				blockHeight = 4;
+				blockSize  = 16;
+				break;
+			default:
+				SEDX_CORE_ASSERT(false);
+				return 0;
+			}
+			uint32_t numBlocksWide = (width + blockWidth - 1) / blockWidth;
+			uint32_t numBlocksHigh = (height + blockHeight - 1) / blockHeight;
+			return static_cast<size_t>(numBlocksWide) * static_cast<size_t>(numBlocksHigh) * static_cast<size_t>(depth) * static_cast<size_t>(blockSize);
+		}
 
-        SEDX_CORE_ASSERT(channelCount > 0);
-        SEDX_CORE_ASSERT(bitsPerChannel > 0);
-        return static_cast<size_t>(width) * static_cast<size_t>(height) * static_cast<size_t>(depth) *
-               static_cast<size_t>(channelCount) * static_cast<size_t>(bitsPerChannel / 8);
-    }
+		SEDX_CORE_ASSERT(channelCount > 0);
+		SEDX_CORE_ASSERT(bitsPerChannel > 0);
+		return static_cast<size_t>(width) * static_cast<size_t>(height) * static_cast<size_t>(depth) *
+			   static_cast<size_t>(channelCount) * static_cast<size_t>(bitsPerChannel / 8);
+	}
 
 } // namespace SceneryEditorX
 

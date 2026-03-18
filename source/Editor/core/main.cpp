@@ -30,7 +30,7 @@
  */
 #include <Editor/core/editor.h>
 #include <SceneryEditorX/core/platform/entrypoint.h>
-#include <SceneryEditorX/core/platform/settings/settings.h>
+#include <SceneryEditorX/settings/settings.h>
 
 /// -------------------------------------------------------
 
@@ -142,7 +142,7 @@ namespace SceneryEditorX
 
 // -------------------------------------------------------
 
-Application* SceneryEditorX::CreateApplication(const PlatformContext& context)
+SceneryEditorX::Application * SceneryEditorX::CreateApplication(const PlatformContext& context)
 {
     // Return a new instance of the editor application using PlatformContext
     return new Editor(context);

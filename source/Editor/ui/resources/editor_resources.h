@@ -149,7 +149,7 @@ namespace SceneryEditorX
 		static void Init()
 		{
 			TextureSpecification spec;
-            spec.samplerWrap = SamplerWrap::Clamp;
+			spec.samplerWrap = SamplerWrap::Clamp;
 
 			/// Generic (don't forget to .Reset() these in EditorResources::Shutdown())
 			GearIcon = LoadTexture("Generic/Gear.png", "GearIcon", spec);

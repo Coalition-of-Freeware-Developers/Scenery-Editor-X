@@ -29,45 +29,41 @@
  * -------------------------------------------------------
  */
 #pragma once
+#include "panels/ui_widget.h"
 #include <imgui/imgui.h>
-#include <SceneryEditorX/core/modules/module.h>
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
-namespace SceneryEditorX::UI
+class GUI;
+
+struct UIResource
 {
-    class GUI;
+	ImGuiContext *imguiContext = nullptr;
+	ImGuiIO *imguiIO = nullptr;
+	ImGuiStyle *imguiStyle = nullptr;
+	ImGuiPlatformIO *imguiPlatformIO = nullptr;
+	ImGuiViewport *imguiViewport = nullptr;
+	ImGuiID imguiDockspaceID = 0;
+};
 
-	struct UIResource
-	{
-	    ImGuiContext *imguiContext = nullptr;
-	    ImGuiIO *imguiIO = nullptr;
-	    ImGuiStyle *imguiStyle = nullptr;
-	    ImGuiPlatformIO *imguiPlatformIO = nullptr;
-	    ImGuiViewport *imguiViewport = nullptr;
-        ImGuiID imguiDockspaceID = 0;
-	};
+class UIContext : public Widget
+{
+public:
+	virtual void Begin() = 0;
+	virtual void End() = 0;
 
-	class UIContext : public Module
-	{
-    public:
-        virtual void Begin() = 0;
-        virtual void End() = 0;
+	static SceneryEditorX::Ref<UIContext> CreateRef();
 
-        static Ref<UIContext> CreateRef();
+	virtual void SetGUI(GUI *guiInstance) = 0;
 
-	    virtual void SetGUI(GUI *guiInstance) = 0;
+	static void SetDarkThemeColors();
+	static void SetDarkThemeV2Colors();
+	static void AllowInputEvents(bool allowEvents);
+	static UIContext *Create();
 
-        static void SetDarkThemeColors();
-        static void SetDarkThemeV2Colors();
-        static void AllowInputEvents(bool allowEvents);
-        static UIContext *Create();
+private:
+	UIResource uiResource;
 
-	private:
-        UIResource uiResource;
-	
-	};
+};
 
-}
-
-/// -------------------------------------------------------
+// -------------------------------------------------------

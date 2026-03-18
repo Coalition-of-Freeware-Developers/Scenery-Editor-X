@@ -16,7 +16,7 @@ FILE(GLOB UI_ACTIONS ui/actions/*.cpp ui/actions/*.h ui/actions/*.hpp)
 FILE(GLOB UI_PANELS ui/panels/*.cpp ui/panels/*.h ui/panels/*.hpp)
 FILE(GLOB UI_RESOURCES ui/resources/*.cpp ui/resources/*.h ui/resources/*.hpp)
 
-SET(UI_FILES ${CMAKE_SOURCE_DIR}/source/Editor/ui)
+FILE(GLOB UI_FILES LIST_DIRECTORIES false CONFIGURE_DEPENDS "ui/*.cpp" "ui/*.h" "ui/*.hpp")
 
 SET (PROJECT_CONFIG_FILES
 	${CMAKE_SOURCE_DIR}/.clang-format
@@ -39,12 +39,7 @@ ADD_EXECUTABLE(SceneryEditorX WIN32
 	${FONT_FILES}
 	${PROJECT_CONFIG_FILES}
 	# --------------------------------
-	${UI_FILES}/ui.cpp
-	${UI_FILES}/ui.h
-	${UI_FILES}/ui_context.cpp
-	${UI_FILES}/ui_context.h
-	${UI_FILES}/ui_globals.cpp
-	${UI_FILES}/ui_manager.h
+	${UI_FILES}
 	# --------------------------------
 	${RESOURCE_FILE}
 	SceneryEditorX.rc
@@ -62,12 +57,7 @@ SOURCE_GROUP("Projects" FILES
 	${PROJECT}
 )
 SOURCE_GROUP("UI" FILES
-	${UI_FILES}/ui.cpp
-	${UI_FILES}/ui.h
-	${UI_FILES}/ui_context.cpp
-	${UI_FILES}/ui_context.h
-	${UI_FILES}/ui_globals.cpp
-	${UI_FILES}/ui_manager.h
+	${UI_FILES}
 )
 SOURCE_GROUP("UI/Actions" FILES
 	${UI_ACTIONS}

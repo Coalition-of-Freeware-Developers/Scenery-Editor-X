@@ -31,137 +31,12 @@
 #pragma once
 #include "SceneryEditorX/scene/material.h"
 #include <SceneryEditorX/scene/lights.h>
-#include <xMath/includes/xmath.hpp>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-	// -------------------------------------------------------
-	// PolygonMode: rasterisation fill mode
-	// -------------------------------------------------------
-
-	/**
-	 * @enum PolygonMode
-	 * @brief Vulkan polygon fill mode, exposed on RasterizerState objects.
-	 */
-	enum class PolygonMode : uint8_t
-	{
-		Solid,
-		Wireframe,
-		Point,
-		MaxEnum
-	};
-
-	// -------------------------------------------------------
-	// Forward declarations for state object classes
-	// -------------------------------------------------------
-	class RasterizerState;
-	class BlendState;
-	class DepthStencilState;
-	class ImageResource;
-	class Shader;
 	class Buffer;
-
-	// -------------------------------------------------------
-	// RasterizerState – configures polygon fill, culling, depth bias
-	// -------------------------------------------------------
-
-	/**
-	 * @class RasterizerState
-	 * @brief Immutable rasterizer configuration object returned by Renderer::GetRasterizerState().
-	 */
-	class RasterizerState
-	{
-	public:
-		explicit RasterizerState(PolygonMode polygonMode, bool depthBiasEnabled = false,
-								 float depthBiasConstant = 0.0f, float depthBiasSlope = 0.0f)
-			: m_PolygonMode(polygonMode)
-			, m_DepthBiasEnabled(depthBiasEnabled)
-			, m_DepthBiasConstant(depthBiasConstant)
-			, m_DepthBiasSlope(depthBiasSlope)
-		{}
-
-		PolygonMode GetPolygonMode()       const { return m_PolygonMode; }
-		bool        IsDepthBiasEnabled()   const { return m_DepthBiasEnabled; }
-		float       GetDepthBiasConstant() const { return m_DepthBiasConstant; }
-		float       GetDepthBiasSlope()    const { return m_DepthBiasSlope; }
-
-	private:
-		PolygonMode m_PolygonMode       = PolygonMode::Solid;
-		bool        m_DepthBiasEnabled  = false;
-		float       m_DepthBiasConstant = 0.0f;
-		float       m_DepthBiasSlope    = 0.0f;
-	};
-
-	// -------------------------------------------------------
-	// BlendState – configures colour and alpha blending
-	// -------------------------------------------------------
-
-	/**
-	 * @class BlendState
-	 * @brief Immutable blend configuration object returned by Renderer::GetBlendState().
-	 */
-	class BlendState
-	{
-	public:
-		explicit BlendState(bool blendEnabled, VkBlendFactor srcColor = VK_BLEND_FACTOR_ONE,
-							VkBlendFactor dstColor = VK_BLEND_FACTOR_ZERO,
-							VkBlendOp     colorOp  = VK_BLEND_OP_ADD,
-							VkBlendFactor srcAlpha = VK_BLEND_FACTOR_ONE,
-							VkBlendFactor dstAlpha = VK_BLEND_FACTOR_ZERO,
-							VkBlendOp     alphaOp  = VK_BLEND_OP_ADD)
-			: m_BlendEnabled(blendEnabled)
-			, m_SrcColor(srcColor), m_DstColor(dstColor), m_ColorOp(colorOp)
-			, m_SrcAlpha(srcAlpha), m_DstAlpha(dstAlpha), m_AlphaOp(alphaOp)
-		{}
-
-		bool          IsBlendEnabled() const { return m_BlendEnabled; }
-		VkBlendFactor GetSrcColor()    const { return m_SrcColor; }
-		VkBlendFactor GetDstColor()    const { return m_DstColor; }
-		VkBlendOp     GetColorOp()     const { return m_ColorOp;  }
-		VkBlendFactor GetSrcAlpha()    const { return m_SrcAlpha; }
-		VkBlendFactor GetDstAlpha()    const { return m_DstAlpha; }
-		VkBlendOp     GetAlphaOp()     const { return m_AlphaOp;  }
-
-	private:
-		bool          m_BlendEnabled = false;
-		VkBlendFactor m_SrcColor     = VK_BLEND_FACTOR_ONE;
-		VkBlendFactor m_DstColor     = VK_BLEND_FACTOR_ZERO;
-		VkBlendOp     m_ColorOp      = VK_BLEND_OP_ADD;
-		VkBlendFactor m_SrcAlpha     = VK_BLEND_FACTOR_ONE;
-		VkBlendFactor m_DstAlpha     = VK_BLEND_FACTOR_ZERO;
-		VkBlendOp     m_AlphaOp      = VK_BLEND_OP_ADD;
-	};
-
-	// -------------------------------------------------------
-	// DepthStencilState – configures depth/stencil testing and writes
-	// -------------------------------------------------------
-
-	/**
-	 * @class DepthStencilState
-	 * @brief Immutable depth/stencil configuration returned by Renderer::GetDepthStencilState().
-	 */
-	class DepthStencilState
-	{
-	public:
-		explicit DepthStencilState(bool depthTestEnable, bool depthWriteEnable,
-								   VkCompareOp depthCompareOp = VK_COMPARE_OP_LESS)
-			: m_DepthTestEnable(depthTestEnable)
-			, m_DepthWriteEnable(depthWriteEnable)
-			, m_DepthCompareOp(depthCompareOp)
-		{}
-
-		bool          IsDepthTestEnabled()  const { return m_DepthTestEnable;  }
-		bool          IsDepthWriteEnabled() const { return m_DepthWriteEnable; }
-		VkCompareOp   GetDepthCompareOp()   const { return m_DepthCompareOp;   }
-
-	private:
-		bool        m_DepthTestEnable  = true;
-		bool        m_DepthWriteEnable = true;
-		VkCompareOp m_DepthCompareOp   = VK_COMPARE_OP_LESS;
-	};
-
 
 	/**
 	 * @enum Renderer_RenderTarget
@@ -241,7 +116,13 @@ namespace SceneryEditorX
 		MaxEnum
 	};
 
-
+	/**
+	 * @enum Renderer_Shader
+	 * @brief Enumeration of renderer shaders.
+	 *
+	 * This enum provides a type-safe way to identify and reference
+	 * the different shaders used in the rendering system.
+	 */
 	enum class Renderer_Shader : uint8_t
 	{
 		tessellation_h,
@@ -317,8 +198,14 @@ namespace SceneryEditorX
 		texture_compress_bc5_c,
 		MaxEnum
 	};
-	
 
+	/**
+	 * @enum Renderer_Sampler
+	 * @brief Enumeration of renderer samplers.
+	 *
+	 * This enum provides a type-safe way to identify and reference
+	 * the different samplers used in the rendering system.
+	 */
 	enum class Renderer_Sampler : uint8_t
 	{
 		Compare_depth,
@@ -333,6 +220,13 @@ namespace SceneryEditorX
 		MaxEnum
 	};
 
+	/**
+	 * @enum Renderer_Buffer
+	 * @brief Enumeration of renderer buffers.
+	 *
+	 * This enum provides a type-safe way to identify and reference
+	 * the different buffers used in the rendering system.
+	 */
 	enum class Renderer_Buffer : uint8_t
 	{
 		ConstantFrame,
@@ -356,6 +250,13 @@ namespace SceneryEditorX
 		MaxEnum
 	};
 
+	/**
+	 * @enum StandardTexture
+	 * @brief Enumeration of standard textures provided by the renderer.
+	 * 
+	 * This enum provides a type-safe way to identify and reference
+	 * the different standard textures used in the rendering system.
+	 */
 	enum class StandardTexture : uint8_t
 	{
 		Noise_perlin,
@@ -396,6 +297,13 @@ namespace SceneryEditorX
 		MaxEnum
 	};
 
+	/**
+	 * @enum Renderer_BindingsSrv
+	 *  @brief Enumerates shader resource view (SRV) bindings used by the renderer.
+	 *	
+	 * This enum provides a type-safe way to identify and reference
+	 * the different SRV bindings used in the rendering system.
+	 */
 	enum class Renderer_BindingsSrv
 	{
 		// g-buffer
@@ -437,6 +345,13 @@ namespace SceneryEditorX
 		reservoir_prev4    = 25,
 	};
 
+	/**
+	 * @enum Renderer_BindingsUav
+	 *  @brief Enumerates unordered access view (UAV) bindings used by the renderer.
+	 *	
+	 * This enum provides a type-safe way to identify and reference
+	 * the different UAV bindings used in the rendering system.
+	 */
 	enum class Renderer_BindingsUav
 	{
 		tex           = 0,
@@ -521,9 +436,9 @@ namespace SceneryEditorX
 	 */
 	enum class BarrierType : uint8_t
 	{
-		EnsureWriteThenRead,   ///< Make previous UAV writes visible to subsequent reads
-		EnsureReadThenWrite,   ///< Ensure prior reads complete before next UAV write
-		EnsureWriteThenWrite,  ///< Serialise two consecutive UAV writes
+		EnsureWriteThenRead,   // Make previous UAV writes visible to subsequent reads
+		EnsureReadThenWrite,   // Ensure prior reads complete before next UAV write
+		EnsureWriteThenWrite,  // Serialise two consecutive UAV writes
 		MaxEnum
 	};
 
@@ -563,71 +478,10 @@ namespace SceneryEditorX
 	inline constexpr uint32_t MAX_MIP_COUNT            = 16;
 #pragma endregion
 
-#pragma region PushConstantBuffer
-	/**
-	 * @struct PushConstantBuffer
-	 * @brief Per-pass push constant data uploaded via CommandList::PushConstants().
-	 * All helper setters mirror the API used in renderer_passes.cpp.
-	 */
-	struct PushConstantBuffer
-	{
-		uint32_t drawIndex    = 0;
-		uint32_t isTransparent = 0;
-		uint32_t materialIndex = 0;
-		uint32_t _pad0         = 0;
-
-		float f3_value[3]  = {};
-		float _pad1        = 0.0f;
-		float f3_value2[3] = {};
-		float _pad2        = 0.0f;
-		float f4_value[4]  = {};
-		float f2_value[2]  = {};
-		float _pad3[2]     = {};
-
-		void SetF2Value (float x, float y)                     { f2_value[0]  = x; f2_value[1]  = y; }
-		void SetF3Value (float x, float y, float z)            { f3_value[0]  = x; f3_value[1]  = y; f3_value[2]  = z; }
-		void SetF3Value2(float x, float y, float z)            { f3_value2[0] = x; f3_value2[1] = y; f3_value2[2] = z; }
-		void SetF4Value (float x, float y, float z, float w)   { f4_value[0]  = x; f4_value[1]  = y; f4_value[2]  = z; f4_value[3] = w; }
-	};
-#pragma endregion
-
-	// Forward declarations for ordering
-	class Entity;
-
-	/**
-	 * @class Light
-	 * @brief Stub light class providing the interface consumed by renderer passes.
-	 */
-	class Light
-	{
-	public:
-		virtual ~Light() = default;
-		virtual bool         GetFlag(uint32_t /*flag*/) const         { return false;  }
-		virtual float        GetIntensityWatt() const                 { return 0.0f;   }
-		virtual LightType    GetLightType() const                     { return LightType::Point; }
-		virtual Entity*      GetEntity() const                        { return nullptr; }
-		virtual void         SetScreenSpaceShadowsSliceIndex(uint32_t /*idx*/) {}
-	};
-
 	// -------------------------------------------------------
 	// Minimal scene-object stubs used by renderer passes.
 	// Full definitions live in scene/ once those subsystems are complete.
 	// -------------------------------------------------------
-
-	/**
-	 * @class Entity
-	 * @brief Stub entity class providing the interface consumed by renderer passes.
-	 */
-	class Entity
-	{
-	public:
-		virtual ~Entity() = default;
-		virtual xMath::Matrix GetMatrix() const                          { return xMath::Matrix{}; }
-		virtual void SetMatrixPrevious(const xMath::Matrix& /*m*/)       {}
-		virtual xMath::Vec3 GetPosition() const                          { return xMath::Vec3{};   }
-		virtual xMath::Vec3 GetForward() const                           { return xMath::Vec3{0.0f, 0.0f, 1.0f}; }
-		template<typename T> T* GetComponent()                           { return nullptr; }
-	};
 
 	/**
 	 * @class Renderable
@@ -660,24 +514,6 @@ namespace SceneryEditorX
 		virtual uint32_t  GetGlobalIndexOffset() const  { return 0; }
 		virtual uint32_t  GetGlobalVertexOffset() const { return 0; }
 	};
-
-	 /**
-	  * @struct GeometryBuffer
-	  * @brief Stub geometry buffer providing bindless index/vertex buffer access.
-	  */
-	 struct GeometryBuffer
-	 {
-		//static Buffer* GetIndexBuffer()  { return nullptr; }
-		//static Buffer* GetVertexBuffer() { return nullptr; }
-		/** @brief Create static geometry resources used by built-in passes (quad VB/IB). */
-		static void Initialize();
-		/** @brief Release static geometry resources created by Initialize(). */
-		static void Shutdown();
-		/** @brief Get the static quad index buffer. */
-		static Buffer* GetIndexBuffer();
-		/** @brief Get the static quad vertex buffer. */
-		static Buffer* GetVertexBuffer();
-	 };
 
 	// -------------------------------------------------------
 	// Renderer_DrawCall: per-draw submission record

@@ -29,14 +29,17 @@
  * -------------------------------------------------------
  */
 #include "camera.h"
-#include "SceneryEditorX/core/input/input.h"
-#include "SceneryEditorX/core/window/window.h"
-#include "SceneryEditorX/renderer/renderer.h"
+
+#include "entity.h"
+#include "scene.h"
 #include "components/component_sets.h"
 #include <algorithm>
 #include <cmath>
 #include <limits>
 #include <string>
+#include <SceneryEditorX/core/input/input.h>
+#include <SceneryEditorX/core/window/window.h>
+#include <SceneryEditorX/renderer/renderer.h>
 
 // -------------------------------------------------------
 
@@ -377,6 +380,12 @@ namespace SceneryEditorX
 		return Mat4::Identity();
 	}
 
+
+	Entity *Camera::GetSelectedEntity()
+	{
+		return nullptr;
+	}
+
 	void Camera::ComputeMatrices(const TransformComponent& transform, const CameraComponent& cameraData, const Viewport& viewport)
 	{
 		if (!m_CameraFlag.IsDirty())
@@ -636,7 +645,7 @@ namespace SceneryEditorX
 
 	void Camera::SetOrthographicProjection(float left, float right, float top, float bottom, float nearPlane, float farPlane) 
 	{
-	    m_Projection = xMath::Mat4{1.0f};
+		m_Projection = xMath::Mat4{1.0f};
 		m_Projection[0][0] = 2.f / (right - left);
 		m_Projection[1][1] = 2.f / (bottom - top);
 		m_Projection[2][2] = 1.f / (farPlane - nearPlane);
@@ -664,7 +673,7 @@ namespace SceneryEditorX
 		
 		// Z translation
 		m_Projection.rows[3][2] = -(far_z * near_z) / (far_z - near_z);
-	    m_ProjectionMatrix = m_Projection;
+		m_ProjectionMatrix = m_Projection;
 		m_ViewProjection = m_Projection * m_View;
 	}
 
@@ -730,6 +739,11 @@ namespace SceneryEditorX
 		m_ViewProjection = m_Projection * m_View;
 		eye = position;
 		this->rotation = rotation;
+	}
+
+	void Camera::SetSelectedEntity(Entity *entity)
+	{
+		Scene::GetEntity(entity->GetUUID());
 	}
 
 } // namespace SceneryEditorX

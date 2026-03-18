@@ -36,40 +36,45 @@
 
 namespace SceneryEditorX
 {
-    class Buffer : public SharedObject
+	class Buffer : public SharedObject
 	{
 	public:
-	    Buffer() = default;
-	    Buffer(VmaAllocator allocator, VkDeviceSize size, VkBufferUsageFlags usage, const VmaAllocationCreateInfo& allocInfo);
-        virtual ~Buffer() override;
+		Buffer() = default;
+		//Buffer(BufferType type, uint32_t stride, uint32_t elementCount, const void* data, bool mappable, const char* name);
+		Buffer(VmaAllocator allocator, VkDeviceSize size, VkBufferUsageFlags usage, const VmaAllocationCreateInfo& allocInfo);
+		virtual ~Buffer() override;
 
-        Buffer(const Buffer&) = delete;
-	    Buffer& operator=(const Buffer&) = delete;
-	    Buffer(Buffer&& other) noexcept;
-	    Buffer& operator=(Buffer&& other) noexcept;
+		Buffer(const Buffer&) = delete;
+		Buffer& operator=(const Buffer&) = delete;
+		Buffer(Buffer&& other) noexcept;
+		Buffer& operator=(Buffer&& other) noexcept;
 
-        [[nodiscard]] VkBuffer Get() const { return m_Buffer; }
-        [[nodiscard]] VmaAllocation Allocation() const { return m_Allocation; }
-	    void* Map();
-	    void Unmap();
-	    VkDeviceAddress DeviceAddress();
+		[[nodiscard]] VkBuffer Get() const { return m_Buffer; }
+		[[nodiscard]] VmaAllocation Allocation() const { return m_Allocation; }
+		void* Map();
+		void Unmap();
+		VkDeviceAddress DeviceAddress();
 	
-        [[nodiscard]] bool Valid() const { return m_Buffer != VK_NULL_HANDLE; }
+		[[nodiscard]] bool Valid() const { return m_Buffer != VK_NULL_HANDLE; }
 
 		static void FreeBuffer(VkBuffer buffer, VmaAllocation allocation);
 		static void FreeImageBuffer(VkImage image, VmaAllocation allocation);
-	    void Destroy(); // Explicitly free underlying VMA resources before m_Allocator destruction
-        uint32_t GetStride() const          { return m_stride; }
+		void Destroy(); // Explicitly free underlying VMA resources before m_Allocator destruction
+
+		uint32_t GetStride() const          { return m_Stride; }
+		uint32_t GetElementCount() const    { return m_ElementCount; }
+		void* GetMappedData() const         { return m_MappedData; }
 
 	private:
-	    VkBuffer m_Buffer{ VK_NULL_HANDLE };
-	    VmaAllocation m_Allocation{ VK_NULL_HANDLE };
-        VmaAllocator m_Allocator{VK_NULL_HANDLE};
-	    void* m_MappedData{ nullptr };
-        bool m_ExplicitlyMapped{ false };
-	    VkDeviceAddress m_DeviceAddress{ 0 };
-        uint32_t m_stride_unaligned    = 0;
-        uint32_t m_stride              = 0;
+		VkBuffer m_Buffer{ VK_NULL_HANDLE };
+		VmaAllocation m_Allocation{ VK_NULL_HANDLE };
+		VmaAllocator m_Allocator{VK_NULL_HANDLE};
+		void* m_MappedData{ nullptr };
+		bool m_ExplicitlyMapped{ false };
+		VkDeviceAddress m_DeviceAddress{ 0 };
+		uint32_t m_StrideUnaligned     = 0;
+		uint32_t m_Stride              = 0;
+		uint32_t m_ElementCount        = 0;
 	};
 
 }

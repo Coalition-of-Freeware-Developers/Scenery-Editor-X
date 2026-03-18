@@ -104,7 +104,7 @@ namespace SceneryEditorX
 		KeyState OldState = KeyState::None;
 	};
 
-    // -------------------------------------------------------
+	// -------------------------------------------------------
 
 	class Input
 	{
@@ -133,13 +133,14 @@ namespace SceneryEditorX
 		static void SetCursorMode(CursorMode mode);
 		static CursorMode GetCursorMode();
 
-		/// Internal use only...
+		// Internal use only...
 		static void TransitionPressedKeys();
 		static void TransitionPressedButtons();
 		static void UpdateKeyState(KeyCode key, KeyState newState);
 		static void UpdateKeyMods(std::optional<KeyMods> mods);
 		static void UpdateButtonState(MouseButton button, KeyState newState);
 		static void ClearReleasedKeys();
+
 	private:
 		inline static std::map<KeyCode, KeyData> s_KeyData;
 		inline static std::map<MouseButton, ButtonData> s_MouseData;

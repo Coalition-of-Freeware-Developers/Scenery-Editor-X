@@ -77,13 +77,46 @@ namespace SceneryEditorX
 		static bool SaveToFile(std::string filePath);
 		static bool LoadFromFile(const std::string& file_path);
 
-		Entity CreateEntity(const std::string& name = "Empty Entity");
-		Entity CreateEntityWithUUID(const UUID &uuid, const std::string& name = "Empty Entity");
-		void DestroyEntity(const Entity &entity);
+		/**
+		 * @brief Creates a new entity in the scene.
+		 * @param name The name of the entity.
+		 * @return The created entity.
+		 */
+		static Entity CreateEntity(const std::string& name = "Empty Entity");
 
-		Entity TryGetEntityWithUUID(const UUID &uuid);
+		/**
+		 * @brief Creates a new entity in the scene with a specific UUID.
+		 * @param uuid The UUID of the entity.
+		 * @param name The name of the entity.
+		 * @return The created entity.
+		 */
+		static Entity CreateEntityWithUUID(const UUID &uuid, const std::string& name = "Empty Entity");
 
-		// This allows your renderer to loop over all lights FAST
+		/**
+		 * @brief Retrieves an entity from the scene by its UUID.
+		 * @param uuid The UUID of the entity.
+		 * @return The entity with the specified UUID.
+		 */
+		static Entity GetEntity(const UUID &uuid);
+
+		/**
+		 * @brief Destroys an entity in the scene.
+		 * @param entity The entity to be destroyed.
+		 */
+		static void DestroyEntity(const Entity &entity);
+
+		/**
+		 * @brief Tries to retrieve an entity from the scene by its UUID.
+		 * @param uuid The UUID of the entity.
+		 * @return The entity with the specified UUID, or a null entity if not found.
+		 */
+		static Entity TryGetEntityWithUUID(const UUID &uuid);
+
+		/**
+		 * @brief Retrieves all entities with the specified components.
+		 * @tparam Components The components to filter by.
+		 * @return A view of all entities with the specified components.
+		 */
 		template<typename... Components>
 		auto GetAllEntitiesWith()
 		{

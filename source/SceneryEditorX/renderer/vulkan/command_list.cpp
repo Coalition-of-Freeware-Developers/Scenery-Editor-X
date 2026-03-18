@@ -50,7 +50,7 @@ namespace SceneryEditorX
 {
 	struct ImmediateExecutionState
 	{
-		std::unique_ptr<CommandPool> pool;
+		Scope<CommandPool> pool;
 		Ref<CommandList> cmdList;
 		std::mutex mutex;
 	};
@@ -200,43 +200,68 @@ namespace SceneryEditorX
 		switch (layout)
 		{
 			case Layout::ImageLayout::Undefined:
-				return { VK_ACCESS_2_NONE, VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT };
+				return {
+				    .accessMask = VK_ACCESS_2_NONE, 
+				    .stageFlags = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT 
+				};
 			case Layout::ImageLayout::General:
-				return { VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT,
-						 VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT };
+				return {
+				    .accessMask = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT,
+				    .stageFlags = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT 
+				};
 			case Layout::ImageLayout::ColorAttachment:
 			case Layout::ImageLayout::Attachment:
-				return { VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
-						 VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT };
+				return {
+				    .accessMask = VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+				    .stageFlags = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT 
+				};
 			case Layout::ImageLayout::DepthStencilAttachment:
 			case Layout::ImageLayout::DepthAttachment:
 			case Layout::ImageLayout::StencilAttachment:
-				return { VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-						 VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT };
+				return {
+				    .accessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+				    .stageFlags = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT 
+				};
 			case Layout::ImageLayout::DepthStencilRead:
 			case Layout::ImageLayout::DepthRead:
 			case Layout::ImageLayout::StencilRead:
 			case Layout::ImageLayout::DepthReadStencilAttachment:
 			case Layout::ImageLayout::DepthAttachmentStencilRead:
-				return { VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT,
-						 VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT };
+				return {
+				    .accessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT,
+				    .stageFlags = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT 
+				};
 			case Layout::ImageLayout::ShaderRead:
 			case Layout::ImageLayout::Read:
-				return { VK_ACCESS_2_SHADER_READ_BIT,
-						 VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT |
-						 VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT };
+				return {
+				    .accessMask = VK_ACCESS_2_SHADER_READ_BIT,
+				    .stageFlags = VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT 
+				};
 			case Layout::ImageLayout::TransferSrc:
-				return { VK_ACCESS_2_TRANSFER_READ_BIT, VK_PIPELINE_STAGE_2_TRANSFER_BIT };
+				return {
+				    .accessMask = VK_ACCESS_2_TRANSFER_READ_BIT, 
+				    .stageFlags = VK_PIPELINE_STAGE_2_TRANSFER_BIT 
+				};
 			case Layout::ImageLayout::TransferDst:
-				return { VK_ACCESS_2_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_2_TRANSFER_BIT };
+				return {
+				    .accessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT, 
+				    .stageFlags = VK_PIPELINE_STAGE_2_TRANSFER_BIT
+				};
 			case Layout::ImageLayout::Present:
-				return { VK_ACCESS_2_NONE, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT };
+				return {
+				    .accessMask = VK_ACCESS_2_NONE, 
+				    .stageFlags = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT 
+				};
 			case Layout::ImageLayout::FragmentShadingRate:
-				return { VK_ACCESS_2_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR,
-						 VK_PIPELINE_STAGE_2_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR };
+				return {
+				    .accessMask = VK_ACCESS_2_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR,
+				    .stageFlags = VK_PIPELINE_STAGE_2_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR 
+				};
 			default:
-				return { VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT,
-						 VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT };
+				return {
+				    .accessMask = VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT,
+				    .stageFlags = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT
+				};
 		}
 	}
 
@@ -316,7 +341,7 @@ namespace SceneryEditorX
 		Ref<QueueManager> queueManager = device->GetQueueManager();
 		SEDX_CORE_ASSERT(queueManager.IsValid(), "QueueManager must be valid for immediate execution");
 
-	 struct ImmediateState
+	    struct ImmediateState
 		{
 			std::unique_ptr<CommandPool> pool;
 			Ref<CommandList> cmdList;
@@ -664,6 +689,7 @@ namespace SceneryEditorX
 		if (m_BufferID_Index == indexBuffer->GetObjectId())
 			return;
 
+		// TODO: Support 32-bit index buffers if needed. For now, we assume all index buffers are 16-bit, which is common for most meshes and saves memory bandwidth.
 		//bool is16Bit = indexBuffer->GetStride() == sizeof(uint16_t);
 
 		vkCmdBindIndexBuffer(
@@ -1098,7 +1124,7 @@ namespace SceneryEditorX
 		}
 	}
 
-	void CommandList::PushConstants(const PushConstantBuffer& data)
+	void CommandList::PushConstants(const PushConstantBuffer_Pass& data)
 	{
 		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to push constants");
 		// TODO: Bind data to the active pipeline layout via vkCmdPushConstants.

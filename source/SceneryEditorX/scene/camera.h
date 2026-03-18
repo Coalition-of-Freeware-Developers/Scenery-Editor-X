@@ -313,6 +313,19 @@ namespace SceneryEditorX
 		 */
 		void SetViewYXZ(Vec3 position, Vec3 rotation);
 
+		/**
+		 * @brief Sets the selected entity for the camera.
+		 * @param entity The entity to select.
+		 */
+		static void SetSelectedEntity(Entity* entity);
+
+		/**
+		 * @brief Gets the currently selected entity for the camera.
+		 * @return The currently selected entity.
+		 */
+		Entity* GetSelectedEntity();
+
+
 	private:
 
 		/**

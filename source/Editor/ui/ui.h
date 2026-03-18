@@ -29,9 +29,7 @@
  * -------------------------------------------------------
  */
 #pragma once
-#include <IconsFontAwesome5.h>
 #include <SceneryEditorX/renderer/vulkan/render_context.h>
-#include <SceneryEditorX/renderer/vulkan/renderer.h>
 #include <SceneryEditorX/ui/ui_manager.h>
 #include <imgui/imgui.h>
 
@@ -39,129 +37,9 @@
 
 namespace SceneryEditorX
 {
-class Renderer;
+	enum class IconType : uint8_t;
+	class Renderer;
 }
-struct Icons
-{
-	// Core UI icons
-	static constexpr const char* ARROW_RIGHT = ICON_FA_ARROW_RIGHT;
-	static constexpr const char* ARROW_LEFT = ICON_FA_ARROW_LEFT;
-	static constexpr const char* ARROW_UP = ICON_FA_ARROW_UP;
-	static constexpr const char* ARROW_DOWN = ICON_FA_ARROW_DOWN;
-	static constexpr const char* PLUS = ICON_FA_PLUS;
-	static constexpr const char* MINUS = ICON_FA_MINUS;
-	static constexpr const char* CHECK = ICON_FA_CHECK;
-	static constexpr const char* TIMES = ICON_FA_TIMES;
-	static constexpr const char* TRASH = ICON_FA_TRASH;
-	static constexpr const char* SAVE = ICON_FA_SAVE;
-	static constexpr const char* FOLDER = ICON_FA_FOLDER;
-	static constexpr const char* FOLDER_OPEN = ICON_FA_FOLDER_OPEN;
-	static constexpr const char* FILE = ICON_FA_FILE;
-	static constexpr const char* FILE_ALT = ICON_FA_FILE_ALT;
-
-	// Editor tools
-	static constexpr const char* PENCIL = ICON_FA_PENCIL_ALT;
-	static constexpr const char* EDIT = ICON_FA_EDIT;
-	static constexpr const char* MOVE = ICON_FA_ARROWS_ALT;
-	static constexpr const char* ROTATE = ICON_FA_SYNC;
-	static constexpr const char* SCALE = ICON_FA_EXPAND;
-	static constexpr const char* UNDO = ICON_FA_UNDO;
-	static constexpr const char* REDO = ICON_FA_REDO;
-	static constexpr const char* EYE = ICON_FA_EYE;
-	static constexpr const char* EYE_SLASH = ICON_FA_EYE_SLASH;
-	static constexpr const char* LOCK = ICON_FA_LOCK;
-	static constexpr const char* UNLOCK = ICON_FA_UNLOCK;
-
-	// 3D visualization
-	static constexpr const char* CUBE = ICON_FA_CUBE;
-	static constexpr const char* CUBES = ICON_FA_CUBES;
-	static constexpr const char* MOUNTAIN = ICON_FA_MOUNTAIN;
-	static constexpr const char* MAP = ICON_FA_MAP;
-	static constexpr const char* COMPASS = ICON_FA_COMPASS;
-	static constexpr const char* LOCATION = ICON_FA_MAP_MARKER_ALT;
-	static constexpr const char* RULER = ICON_FA_RULER_COMBINED;
-	static constexpr const char* CROSSHAIRS = ICON_FA_CROSSHAIRS;
-	static constexpr const char* OBJECT_GROUP = ICON_FA_OBJECT_GROUP;
-	static constexpr const char* OBJECT_UNGROUP = ICON_FA_OBJECT_UNGROUP;
-
-	// Interface elements
-	static constexpr const char* COG = ICON_FA_COG;
-	static constexpr const char* COGS = ICON_FA_COGS;
-	static constexpr const char* BARS = ICON_FA_BARS;
-	static constexpr const char* QUESTION = ICON_FA_QUESTION;
-	static constexpr const char* INFO = ICON_FA_INFO_CIRCLE;
-	static constexpr const char* EXCLAMATION = ICON_FA_EXCLAMATION_TRIANGLE;
-	static constexpr const char* SEARCH = ICON_FA_SEARCH;
-	static constexpr const char* HOME = ICON_FA_HOME;
-	static constexpr const char* DOWNLOAD = ICON_FA_DOWNLOAD;
-	static constexpr const char* UPLOAD = ICON_FA_UPLOAD;
-	static constexpr const char* SYNC = ICON_FA_SYNC_ALT;
-	static constexpr const char* PLAY = ICON_FA_PLAY;
-	static constexpr const char* PAUSE = ICON_FA_PAUSE;
-	static constexpr const char* STOP = ICON_FA_STOP;
-
-	// Helper method to get font icon
-	static const char* GetIcon(const std::string& name)
-	{
-		// Map common names to icon constants
-		static const std::unordered_map<std::string, const char*> iconMap = {
-			{"arrow_right", ARROW_RIGHT},
-			{"arrow_left", ARROW_LEFT},
-			{"arrow_up", ARROW_UP},
-			{"arrow_down", ARROW_DOWN},
-			{"plus", PLUS},
-			{"minus", MINUS},
-			{"check", CHECK},
-			{"times", TIMES},
-			{"trash", TRASH},
-			{"save", SAVE},
-			{"folder", FOLDER},
-			{"folder_open", FOLDER_OPEN},
-			{"file", FILE},
-			{"file_alt", FILE_ALT},
-			{"pencil", PENCIL},
-			{"edit", EDIT},
-			{"move", MOVE},
-			{"rotate", ROTATE},
-			{"scale", SCALE},
-			{"undo", UNDO},
-			{"redo", REDO},
-			{"eye", EYE},
-			{"eye_slash", EYE_SLASH},
-			{"lock", LOCK},
-			{"unlock", UNLOCK},
-			{"cube", CUBE},
-			{"cubes", CUBES},
-			{"mountain", MOUNTAIN},
-			{"map", MAP},
-			{"compass", COMPASS},
-			{"location", LOCATION},
-			{"ruler", RULER},
-			{"crosshairs", CROSSHAIRS},
-			{"object_group", OBJECT_GROUP},
-			{"object_ungroup", OBJECT_UNGROUP},
-			{"cog", COG},
-			{"cogs", COGS},
-			{"bars", BARS},
-			{"question", QUESTION},
-			{"info", INFO},
-			{"exclamation", EXCLAMATION},
-			{"search", SEARCH},
-			{"home", HOME},
-			{"download", DOWNLOAD},
-			{"upload", UPLOAD},
-			{"sync", SYNC},
-			{"play", PLAY},
-			{"pause", PAUSE},
-			{"stop", STOP}
-		};
-
-		auto it = iconMap.find(name);
-		return it != iconMap.end() ? it->second : "";
-	}
-};
-
-// -------------------------------------------------------
 
 struct Image
 {
@@ -211,144 +89,37 @@ struct Image
 //};
 
 // -------------------------------------------------------
-namespace SceneryEditorX::UI
+
+namespace UI
 {
-	/**
-	 * @brief Main GUI class responsible for ImGui integration with Vulkan
-	 * 
-	 * This class manages the lifecycle of ImGui resources and provides
-	 * utilities for common UI operations in the editor.
-	 */
-	class GUI
-	{
-	public:
-		GUI();
-		~GUI();
+	static bool ImageButton(SceneryEditorX::Texture *texture, const xMath::Vec2& size, bool border, ImVec4 tint = {1,1,1,1});
 
-		/**
-		 * @brief Initialize ImGui with the provided Vulkan renderer and window
-		 * @param window GLFW window handle
-		 * @param renderer Graphics engine reference
-		 * @return True if initialization was successful
-		 */
-		bool InitGUI(SDL_Window *window, Renderer &renderer);
-	
-		/**
-		 * @brief Set the command buffer for rendering ImGui
-		 * @param cmdBuffer Vulkan command buffer to render into
-		 */
-		void SetActiveCommandBuffer(const VkCommandBuffer cmdBuffer) { activeCommandBuffer = cmdBuffer; }
-		[[nodiscard]] VkCommandBuffer GetActiveCommandBuffer() const { return activeCommandBuffer; }
-	
-		/**
-		 * @brief Handles resizing of the window
-		 * @param width New width of the window
-		 * @param height New height of the window
-		 */
-		void Resize(uint32_t width, uint32_t height);
-	
-		/**
-		 * @brief Begin a new ImGui frame
-		 * 
-		 * This should be called at the start of each frame before any ImGui drawing
-		 */
-		void BeginFrame() const;
+	static void Image(const SceneryEditorX::IconType icon, const float size);
 
-		/**
-		 * @brief End the ImGui frame and render it to the active command buffer
-		 * 
-		 * This should be called after all ImGui drawing is complete
-		 */
-		void EndFrame() const;
-	
-		/**
-		 * @brief Clean up ImGui resources
-		 * 
-		 * This should be called during application shutdown
-		 */
-		void CleanUp();
+	static void Image(SceneryEditorX::Texture *texture, const ImVec2& size, const ImVec4& tint = default_tint, const ImColor& border = ImColor(0, 0, 0, 0));
 
-		/**
-		 * @brief Update the GUI state
-		 * @param deltaTime Time elapsed since last update
-		 */
-		void Update(float deltaTime) const;
-	
-		/**
-		 * @brief Show the ImGui demo window
-		 * @param open Pointer to boolean controlling window visibility
-		 */
-		void ShowDemoWindow(bool *open = nullptr) const;
+	static void Image(SceneryEditorX::Texture *texture, const xMath::Vec2 &size, bool border = false);
 
-		/**
-		 * @brief Shows application info in an ImGui window
-		 * @param appName Application name
-		 */
-		void ShowAppInfo(const std::string &appName) const;
+	static bool ButtonCenteredOnLine(const char *label, float alignment = 0.5f);
 
-		/**
-		 * @brief Initialize a viewport window for rendering
-		 * @param size Initial viewport size
-		 * @param imageView Vulkan image view to render into
-		 * @return True if initialization was successful
-		 */
-		//bool InitViewport(const Viewport &size, VkImageView imageView);
+	static bool CollapsingHeader(const char *label, ImGuiTreeNodeFlags flags = 0);
 
-		/**
-		 * @brief Display the viewport window with the scene rendering
-		 * @param size Reference that will be updated with new viewport size
-		 * @param hovered Will be set to true if mouse is hovering the viewport
-		 * @param imageView Vulkan image view containing the rendered scene
-		 */
-		//void ViewportWindow(Viewport &size, bool &hovered, VkImageView imageView);
+	static bool Button(const char *label, const ImVec2 &size = ImVec2(0, 0));
 
-		/**
-		 * @brief Set ImGui style (colors, sizes, etc.)
-		 */
-		static void SetStyle();
+	static void Image(const SceneryEditorX::IconType icon, const float size, const ImVec4 tint);
 
-		/**
-		 * @brief Configure and load fonts for ImGui
-		 */
-		void SetFonts() const;
+	// image slot - returns true if the user clicked on the slot (for browse functionality)
+	static bool ImageSlot(SceneryEditorX::Texture *texture_in, const std::function<void(SceneryEditorX::Texture *)> &setter);
 
-		/**
-		 * @brief Get a descriptor set for an image to use in ImGui
-		 * @param imageView Vulkan image view
-		 * @param sampler Vulkan sampler
-		 * @param layout Image layout
-		 * @return ImTextureID that can be used with ImGui::Image functions
-		 */
-		ImTextureID GetTextureID(VkImageView imageView, VkSampler sampler, VkImageLayout layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) const;
+	static void Tooltip(const char *text);
 
-		static bool visible;                 /// Used to show/hide the GUI
-		static const std::string defaultFont; /// Default font name
+	// a drag float which will wrap the mouse cursor around the edges of the screen
+	static bool DrawFloatWrap(const char *label, float *v,
+		float v_speed = 1.0f, float v_min = 0.0f, float v_max = 0.0f, const char *format = "%.3f", const ImGuiSliderFlags flags = 0);
 
-	private:
-		//Window *window = nullptr;
-		SDL_Window *window = nullptr;
-		Swapchain *swapchain = nullptr;
-		Device *device = nullptr;
-		Renderer *renderer = nullptr;
-		VkDescriptorPool imguiPool = VK_NULL_HANDLE;
-		VkCommandBuffer activeCommandBuffer = VK_NULL_HANDLE;
+	static bool ComboBox(const char *label, const std::vector<std::string> &options, uint32_t *selectionIndex);
 
-		// State tracking
-		bool initialized = false;
-		float contentScaleFactor = 1.0f; ///  Scale factor to apply due to a difference between the window and GL pixel sizes
-		float dpiFactor = 1.0f;          /// Scale factor to apply to the size of gui elements (expressed in dp)
-		bool viewportInitialized = false;
-
-		/// ImGui window flags
-		const ImGuiWindowFlags commonFlags = ImGuiWindowFlags_NoCollapse;
-		const ImGuiWindowFlags optionsFlags = ImGuiWindowFlags_NoResize;
-		const ImGuiWindowFlags infoFlags = ImGuiWindowFlags_NoMove;
-
-		/// Helper methods
-		bool CreateDescriptorPool();
-		void UpdateDpiScale();
-
-	};
+	static void Vec3(const char *label, xMath::Vec3 &vector, bool vertical = true);
 
 	/**
 	 * @brief Initialize custom ImGui extensions
@@ -357,4 +128,4 @@ namespace SceneryEditorX::UI
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

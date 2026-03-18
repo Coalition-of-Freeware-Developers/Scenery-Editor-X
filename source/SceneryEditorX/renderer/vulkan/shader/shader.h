@@ -37,24 +37,24 @@
 namespace SceneryEditorX
 {
 
-    class Shader : public RefCounted
+	class Shader : public RefCounted
 	{
-    public:
-        Shader() = default;
-        virtual ~Shader() override;
+	public:
+		Shader() = default;
+		virtual ~Shader() override;
 
 		void AddShaderStage(Stage stage, const std::string& filepath);
 		Ref<ShaderStage> GetShaderStage(Stage stage);
 		bool HasStage(Stage stage);
-        VkPipelineShaderStageCreateInfo const GetStageCreateInfo(ShaderStage stage);
+		VkPipelineShaderStageCreateInfo const GetStageCreateInfo(ShaderStage stage);
 
 		void CreateDescriptorSetLayouts();
-        std::map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>> GetDescriptorSetLayoutBindings();
+		std::map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>> GetDescriptorSetLayoutBindings();
 		const std::vector<VkDescriptorSetLayout>& GetDescriptorSetLayouts() { return m_DescriptorSetLayouts; }
 		VkDescriptorSetLayout GetDescriptorSetLayout(uint32_t set) { return m_DescriptorSetLayouts[set]; }
 
-	    const std::vector<ShaderInput> GetInputs(uint32_t set) { return m_Input[set]; }
-	    uint32_t GetNumberOfSets() { return (uint32_t)m_DescriptorSetLayouts.size(); }
+		const std::vector<ShaderInput> GetInputs(uint32_t set) { return m_Input[set]; }
+		uint32_t GetNumberOfSets() { return (uint32_t)m_DescriptorSetLayouts.size(); }
 
 	private:
 		std::unordered_map<Stage, Ref<ShaderStage>> m_Stages;

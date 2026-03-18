@@ -93,7 +93,7 @@ namespace SceneryEditorX
 
 	void Scene::Shutdown()
 	{
-		m_Camera.Reset();
+	    m_Camera.Reset();
 		s_EntityStorage.clear();
 		s_EntityPointers.clear();
 		s_ActiveScene.reset();
@@ -169,29 +169,48 @@ namespace SceneryEditorX
 
 	Entity Scene::CreateEntityWithUUID(const UUID &uuid, const std::string& name)
 	{
-		const entt::entity entityHandle = m_Registry.create();
-		m_EntityMap[uuid] = entityHandle;
+	  if (!s_ActiveScene)
+			return {};
 
-		m_Registry.emplace<IDComponent>(entityHandle, IDComponent{uuid});
-		m_Registry.emplace<TagComponent>(entityHandle, TagComponent{name});
-		m_Registry.emplace<RelationshipComponent>(entityHandle);
-		m_Registry.emplace<TransformComponent>(entityHandle);
+		const entt::entity entityHandle = s_ActiveScene->m_Registry.create();
+		s_ActiveScene->m_EntityMap[uuid] = entityHandle;
 
-		auto entity = CreateScope<Entity>(entityHandle, this);
+	    s_ActiveScene->m_Registry.emplace<IDComponent>(entityHandle, IDComponent{uuid});
+		s_ActiveScene->m_Registry.emplace<TagComponent>(entityHandle, TagComponent{name});
+		s_ActiveScene->m_Registry.emplace<RelationshipComponent>(entityHandle);
+		s_ActiveScene->m_Registry.emplace<TransformComponent>(entityHandle);
+
+	    auto entity = CreateScope<Entity>(entityHandle, s_ActiveScene.get());
 		s_EntityPointers.push_back(entity.get());
 		s_EntityStorage[entityHandle] = std::move(entity);
 
-		return {entityHandle, this};
+		return {entityHandle, s_ActiveScene.get()};
+	}
+
+	Entity Scene::GetEntity(const UUID &uuid)
+	{
+		if (!s_ActiveScene)
+			return {};
+
+		if (const auto it = s_ActiveScene->m_EntityMap.find(uuid); it != s_ActiveScene->m_EntityMap.end())
+		{
+		    if (s_ActiveScene->m_Registry.valid(it->second))
+			{
+			    return {it->second, s_ActiveScene.get()};
+			}
+		}
+		SEDX_CORE_ERROR("Entity with UUID {} not found in scene!", static_cast<uint64_t>(uuid));
+		return {};
 	}
 
 	void Scene::DestroyEntity(const Entity &entity)
 	{
-		if (!entity)
+		if (!s_ActiveScene || !entity)
 			return;
 
 		const UUID entityId = entity.GetUUID();
 		const entt::entity entityHandle = static_cast<entt::entity>(entity);
-		m_EntityMap.erase(entityId);
+		s_ActiveScene->m_EntityMap.erase(entityId);
 
 		if (const auto storageIt = s_EntityStorage.find(entityHandle); storageIt != s_EntityStorage.end())
 		{
@@ -200,16 +219,19 @@ namespace SceneryEditorX
 			s_EntityStorage.erase(storageIt);
 		}
 
-		m_Registry.destroy(entityHandle);
+	    s_ActiveScene->m_Registry.destroy(entityHandle);
 	}
 
 	Entity Scene::TryGetEntityWithUUID(const UUID &uuid)
 	{
-		if (const auto it = m_EntityMap.find(uuid); it != m_EntityMap.end())
+		if (!s_ActiveScene)
+			return {};
+
+		if (const auto it = s_ActiveScene->m_EntityMap.find(uuid); it != s_ActiveScene->m_EntityMap.end())
 		{
-			if (m_Registry.valid(it->second))
+		    if (s_ActiveScene->m_Registry.valid(it->second))
 			{
-				return {it->second, this};
+			  return {it->second, s_ActiveScene.get()};
 			}
 		}
 

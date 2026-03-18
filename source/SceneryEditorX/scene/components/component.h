@@ -29,8 +29,11 @@
  * -------------------------------------------------------
  */
 #pragma once
+#include "component_resolver.h"
 #include "component_sets.h"
 #include <any>
+#include <string_view>
+#include <type_traits>
 #include <SceneryEditorX/utils/inheritance.h>
 
 // -------------------------------------------------------
@@ -38,24 +41,6 @@
 namespace SceneryEditorX
 {
 	class Entity;
-
-	/**
-	 * @struct ComponentType
-	 * @brief Represents the type of component.
-	 */
-	enum class ComponentType : uint32_t
-	{
-		Camera,
-		Light,
-		Renderable,
-		Spline,
-		Terrain,
-		Volume,
-		Script,
-		Plugin,
-		ParticleSystem,
-		MaxEnum
-	};
 
 	/**
 	 * @struct Attribute
@@ -71,7 +56,7 @@ namespace SceneryEditorX
 	 * @class Component
 	 * @brief Represents a component in the scene.
 	 */
-	class Component : SharedObject
+	class Component : public SharedObject
 	{
 	public:
 		/**
@@ -111,8 +96,56 @@ namespace SceneryEditorX
 		 * @return The ComponentType enum value corresponding to T.
 		 * @note This function must be explicitly specialized for each concrete Component subclass.
 		 */
-		template<typename T>
-		static ComponentType TypeToEnum(ComponentType type);
+		template <typename T>
+		static ComponentType TypeToEnum()
+		{
+		  static_assert(ComponentTypeResolver<T>::IS_REGISTERED,
+				"TypeToEnum<T>: T is not a registered SEDX ComponentType / ComponentTypeResolver");
+			return ComponentTypeResolver<T>::TYPE;
+		}
+
+		/**
+		 * @brief Converts a ComponentType value to its string token.
+		 * @param type The component type.
+		 * @return Lowercase/snake_case token for the type, or an empty string_view if invalid.
+		 */
+		[[nodiscard]] static constexpr std::string_view TypeToString(const ComponentType type)
+		{
+			switch (type)
+			{
+			    case ComponentType::Camera:			return "camera";
+				case ComponentType::Light:			return "light";
+				case ComponentType::Renderable:		return "renderable";
+				case ComponentType::Spline:			return "spline";
+				case ComponentType::Terrain:		return "terrain";
+				case ComponentType::Volume:			return "volume";
+				case ComponentType::Script:			return "script";
+				case ComponentType::Plugin:			return "plugin";
+				case ComponentType::ParticleSystem: return "particle_system";
+				default:
+					return {};
+			}
+		}
+
+		/**
+		 * @brief Converts a string token to a ComponentType value.
+		 * @param name Lowercase/snake_case component token.
+		 * @return Matching ComponentType, or ComponentType::MaxEnum if unknown.
+		 */
+		[[nodiscard]] static constexpr ComponentType StringToType(const std::string_view name)
+		{
+		    if (name == "camera")			return ComponentType::Camera;
+			if (name == "light")			return ComponentType::Light;
+			if (name == "renderable")		return ComponentType::Renderable;
+			if (name == "spline")			return ComponentType::Spline;
+			if (name == "terrain")			return ComponentType::Terrain;
+			if (name == "volume")			return ComponentType::Volume;
+			if (name == "script")			return ComponentType::Script;
+			if (name == "plugin")			return ComponentType::Plugin;
+			if (name == "particle_system")	return ComponentType::ParticleSystem;
+
+			return ComponentType::MaxEnum;
+		}
 
 		/**
 		 * @brief Gets the attributes of the component.
@@ -153,14 +186,14 @@ namespace SceneryEditorX
 			m_Attributes.emplace_back(attribute);
 		}
 
-		bool m_Enabled		 = false; // The state of the component
-		Entity* m_EntityPtr  = nullptr; // The owner of the component
-	    ComponentType m_Type = ComponentType::MaxEnum; // The type of the component
+		bool m_Enabled		 = false;					// The state of the component
+		Entity* m_EntityPtr  = nullptr;					// The owner of the component
+		ComponentType m_Type = ComponentType::MaxEnum;	// The type of the component
 
 	private:
 		std::vector<Attribute> m_Attributes; // The attributes of the component
 	};
 
-}
+} // namespace SceneryEditorX
 
 // -------------------------------------------------------

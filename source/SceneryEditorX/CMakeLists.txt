@@ -31,7 +31,6 @@ FILE(GLOB CORE_WINDOW "core/window/*.h" "core/window/*.hpp" "core/window/*.cpp")
 FILE(GLOB CORE_PLATFORM_ROOT LIST_DIRECTORIES false CONFIGURE_DEPENDS "core/platform/*.h" "core/platform/*.hpp" "core/platform/*.cpp")
 FILE(GLOB CORE_PLATFORM_CONFIG_FILES "core/platform/config/*.h" "core/platform/config/*.hpp" "core/platform/config/*.cpp")
 FILE(GLOB CORE_PLATFORM_FILESYSTEM "core/platform/filesystem/*.h" "core/platform/filesystem/*.hpp" "core/platform/filesystem/*.cpp")
-FILE(GLOB CORE_PLATFORM_SETTINGS "core/platform/settings/*.h" "core/platform/settings/*.hpp" "core/platform/settings/*.cpp")
 FILE(GLOB CORE_WINDOWS_PLATFORM "core/platform/windows/*.h" "core/platform/windows/*.hpp" "core/platform/windows/*.cpp")
 FILE(GLOB CORE_MAC_PLATFORM "core/platform/mac/*.h" "core/platform/mac/*.hpp" "core/platform/mac/*.cpp")
 FILE(GLOB CORE_LINUX_PLATFORM "core/platform/linux/*.h" "core/platform/linux/*.hpp" "core/platform/linux/*.cpp")
@@ -64,6 +63,7 @@ FILE(GLOB SCENE_COMPONENTS "scene/components/*.cpp" "scene/components/*.h" "scen
 FILE(GLOB SLANG_SHADERS LIST_DIRECTORIES false CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/resources/shaders/*.slang")
 FILE(GLOB SHADER_FILES "shaders/*.slang" "shaders/*.glsl" "shaders/*.frag" "shaders/*.vert" "shaders/*.comp" "shaders/*.geom" "shaders/*.tesc" "shaders/*.tese")
 FILE(GLOB SERIALIZER_FILES "serialization/*.h" "serialization/*.cpp" "serialization/*.hpp")
+FILE(GLOB SETTINGS_FILES "settings/*.h" "settings/*.hpp" "settings/*.cpp")
 FILE(GLOB SCENE_FILES "scene/*.cpp" "scene/*.h" "scene/*.hpp")
 
 FILE(GLOB UTILS_ROOT LIST_DIRECTORIES false CONFIGURE_DEPENDS "utils/*.cpp" "utils/*.h" "utils/*.hpp")
@@ -73,9 +73,9 @@ FILE(GLOB UTILS_FILESTREAM "utils/filestreaming/*.cpp" "utils/filestreaming/*.h"
 
 # FILE(GLOB VULKAN_RENDER_PASS "renderer/render_pass/*.cpp" "renderer/render_pass/*.h" "renderer/render_pass/*.hpp")
 # FILE(GLOB VULKAN_SHADER_CODE "renderer/shaders/*.cpp" "renderer/shaders/*.h" "renderer/shaders/*.hpp")
-FILE(GLOB UI_ROOT LIST_DIRECTORIES false CONFIGURE_DEPENDS "ui/*.cpp" "ui/*.h" "ui/*.hpp")
-FILE(GLOB UI_ACTIONS "ui/actions/*.cpp" "ui/actions/*.h" "ui/actions/*.hpp")
-FILE(GLOB UI_PANELS "ui/panels/*.cpp" "ui/panels/*.h" "ui/panels/*.hpp")
+#FILE(GLOB UI_ROOT LIST_DIRECTORIES false CONFIGURE_DEPENDS "ui/*.cpp" "ui/*.h" "ui/*.hpp")
+#FILE(GLOB UI_ACTIONS "ui/actions/*.cpp" "ui/actions/*.h" "ui/actions/*.hpp")
+#FILE(GLOB UI_PANELS "ui/panels/*.cpp" "ui/panels/*.h" "ui/panels/*.hpp")
 #FILE(GLOB FONT_CODE "renderer/fonts/*.h" "renderer/fonts/*.hpp" "renderer/fonts/*.cpp")
 SET (PROJECT_CONFIG_FILES
 	${CMAKE_SOURCE_DIR}/.clang-format
@@ -110,16 +110,19 @@ ADD_LIBRARY(AppCore
 	${CORE_THREADING}
 	${CORE_TIME}
 	${CORE_WINDOW}
+
 	${LOGGER}
 	${PROJECT}
+	${SETTINGS_FILES}
+
 	${CORE_BASE_ROOT}
 	${CORE_PLATFORM_ROOT}
 	${CORE_PLATFORM_CONFIG_FILES}
 	${CORE_PLATFORM_FILESYSTEM}
-	${CORE_PLATFORM_SETTINGS}
 	${CORE_WINDOWS_PLATFORM}
 	${CORE_MAC_PLATFORM}
 	${CORE_LINUX_PLATFORM}
+
 	${RENDERER_FILES}
 	${RENDERER_VULKAN}
 	${RENDERER_DEBUG_FILES}
@@ -127,6 +130,7 @@ ADD_LIBRARY(AppCore
 	${RENDERER_SHADER_FILES}
 	${RENDERER_SYNC_FILES}
 	${RENDERER_KOSMICKRISP}
+
 	${SCENE}
 	${SCENE_COMPONENTS}
 	${PROJECT_CONFIG_FILES}
@@ -140,10 +144,9 @@ ADD_LIBRARY(AppCore
 	# ${VULKAN_RENDER_PASS}
 	# ${VULKAN_SHADER_CODE}
 	# ${FONT_CODE}
-	${UI_ROOT}
-	${UI_PANELS}
-	${UI_ACTIONS}
-
+	# ${UI_ROOT}
+	# ${UI_PANELS}
+	# ${UI_ACTIONS}
 	${UTILS_ROOT}
 	${UTILS_REFLECTION}
 	${UTILS_CONVERSIONS}
@@ -227,9 +230,6 @@ SOURCE_GROUP("Core/Platform/Config" FILES
 SOURCE_GROUP("Core/Platform/Files" FILES
 	${CORE_PLATFORM_FILESYSTEM}
 )
-SOURCE_GROUP("Core/Platform/Settings" FILES
-	${CORE_PLATFORM_SETTINGS}
-)
 SOURCE_GROUP("Core/Platform/Windows" FILES
 	${CORE_WINDOWS_PLATFORM}
 )
@@ -294,14 +294,17 @@ SOURCE_GROUP("Scene/Components" FILES
 SOURCE_GROUP("Scene/Camera" FILES
 	${SCENE_CAMERA}
 )
+SOURCE_GROUP("Settings" FILES
+	${SETTINGS_FILES}
+)
 SOURCE_GROUP("Serialization" FILES
 	${SERIALIZER_FILES}
 )
-SOURCE_GROUP("UI" FILES
-	${UI_ROOT}
-)
-SOURCE_GROUP("UI/Actions" FILES ${UI_ACTIONS})
-SOURCE_GROUP("UI/Panels" FILES ${UI_PANELS})
+#SOURCE_GROUP("UI" FILES
+#	${UI_ROOT}
+#)
+#SOURCE_GROUP("UI/Actions" FILES ${UI_ACTIONS})
+#SOURCE_GROUP("UI/Panels" FILES ${UI_PANELS})
 SOURCE_GROUP("Utilities" FILES
 	${UTILS_ROOT}
 )

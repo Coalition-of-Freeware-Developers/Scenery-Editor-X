@@ -29,246 +29,223 @@
  * -------------------------------------------------------
  */
 #include "resource_cache.h"
-#include "SceneryEditorX/core/platform/filesystem/file_manager.hpp"
-#include <cstring>
+
+#include "SceneryEditorX/renderer/vulkan/image_resource.h"
+
+#include <SceneryEditorX/filesystem/file_manager.hpp>
+#include <SceneryEditorX/renderer/vulkan/enums.h>
 
 // -----------------------------------------------------------
 
 namespace SceneryEditorX
 {
-	namespace
-	{
-		std::array<std::string, 6> m_standard_resource_directories;
-		char s_Project_Directory[256] = {};
-		//std::vector<Ref<Resource>> m_resources;
-		std::mutex s_Mutex;
-		bool s_Use_RootShaderDirectory = false;
-		//std::unordered_map<IconType, Ref<Texture>> m_default_icons;
-	} // namespace
-	
+
+	static std::array<std::string, 6> s_StandardResourceDir;
+	static char s_ProjectDir[256] = {};
+	static std::vector<IResource *> s_Resources;
+	static std::vector<Ref<RefCounted>> s_ResourceReferences;
+	static std::mutex s_Mutex;
+	static bool s_Use_RootShaderDirectory = false;
+	std::unordered_map<IconType, Ref<ImageResource>> m_DefaultIcons;
+
 	void ResourceCache::Init()
 	{
-	    // create project directory
-	    SetProjectDirectory("project\\");
-	
-	    // add engine standard resource directories
-	    const std::string data_dir = std::string(GetDataDirectory()) + "\\";
-	    AddResourceDirectory(ResourceDirectory::Environment, std::string(s_Project_Directory) + "environment");
-	    AddResourceDirectory(ResourceDirectory::Fonts, data_dir + "fonts");
-	    AddResourceDirectory(ResourceDirectory::Icons, data_dir + "icons");
-	    AddResourceDirectory(ResourceDirectory::ShaderCompiler, data_dir + "shader_compiler");
-	    AddResourceDirectory(ResourceDirectory::Shaders, data_dir + "shaders");
-	    AddResourceDirectory(ResourceDirectory::Textures, data_dir + "textures");
+		// create project directory
+		SetProjectDirectory("..\\project\\");
+
+		// add engine standard resource directories
+		const std::string dataDir = std::string(GetDataDirectory()) + "\\";
+		AddResourceDirectory(ResourceDirectory::Environment, std::string(s_ProjectDir) + "environment");
+		AddResourceDirectory(ResourceDirectory::Fonts, dataDir + "fonts");
+		AddResourceDirectory(ResourceDirectory::Icons, dataDir + "icons");
+		AddResourceDirectory(ResourceDirectory::Shaders, dataDir + "shaders");
+		AddResourceDirectory(ResourceDirectory::Textures, dataDir + "textures");
 	}
 
 	void ResourceCache::Shutdown()
 	{
+		uint32_t resourceCount = static_cast<uint32_t>(s_Resources.size());
+		s_Resources.clear();
+		s_ResourceReferences.clear();
+		if (resourceCount != 0)
+		{
+			SEDX_CORE_TRACE_TAG("ResourceCache", "%d resources have been cleared", resourceCount);
+		}
 	}
 
 	void ResourceCache::UnloadDefaultResources()
 	{
+		/*m_default_icons.clear();*/
 	}
-	
-	/*
-	void ResourceCache::Shutdown()
-	{
-	    uint32_t resource_count = static_cast<uint32_t>(m_resources.size());
-	    m_resources.clear();
-	    if (resource_count != 0)
-	    {
-	        SEDX_CORE_TRACE("%d resources have been cleared", resource_count);
-	    }
-	}
-	*/
-	
+
 	/*
 	void ResourceCache::LoadDefaultResources()
 	{
-	    const std::string dataDir = std::string(GetDataDirectory()) + "\\";
+		const std::string dataDir = std::string(GetDataDirectory()) + "\\";
 	
-	    m_default_icons[IconType::Console]			= Load<Texture>(dataDir + "icons\\console.png");
-	    m_default_icons[IconType::File]				= Load<Texture>(dataDir + "icons\\file.png");
-	    m_default_icons[IconType::Folder]			= Load<Texture>(dataDir + "icons\\folder.png");
-	    m_default_icons[IconType::Audio]			= Load<Texture>(dataDir + "icons\\audio.png");
-	    m_default_icons[IconType::Model]			= Load<Texture>(dataDir + "icons\\model.png");
-	    m_default_icons[IconType::World]			= Load<Texture>(dataDir + "icons\\world.png");
-	    m_default_icons[IconType::Material]			= Load<Texture>(dataDir + "icons\\material.png");
-	    m_default_icons[IconType::Shader]			= Load<Texture>(dataDir + "icons\\shader.png");
-	    m_default_icons[IconType::Xml]				= Load<Texture>(dataDir + "icons\\xml.png");
-	    m_default_icons[IconType::Dll]				= Load<Texture>(dataDir + "icons\\dll.png");
-	    m_default_icons[IconType::Txt]				= Load<Texture>(dataDir + "icons\\txt.png");
-	    m_default_icons[IconType::Ini]				= Load<Texture>(dataDir + "icons\\ini.png");
-	    m_default_icons[IconType::Exe]				= Load<Texture>(dataDir + "icons\\exe.png");
-	    m_default_icons[IconType::Font]				= Load<Texture>(dataDir + "icons\\font.png");
-	    m_default_icons[IconType::Screenshot]		= Load<Texture>(dataDir + "icons\\screenshot.png");
-	    m_default_icons[IconType::Gear]				= Load<Texture>(dataDir + "icons\\gear.png");
-	    m_default_icons[IconType::Play]				= Load<Texture>(dataDir + "icons\\play.png");
-	    m_default_icons[IconType::Profiler]			= Load<Texture>(dataDir + "icons\\timer.png");
-	    m_default_icons[IconType::ResourceCache]	= Load<Texture>(dataDir + "icons\\resource_viewer.png");
-	    m_default_icons[IconType::RenderDoc]		= Load<Texture>(dataDir + "icons\\renderdoc.png");
-	    m_default_icons[IconType::Shader]			= Load<Texture>(dataDir + "icons\\code.png");
-	    m_default_icons[IconType::Texture]			= Load<Texture>(dataDir + "icons\\texture.png");
-	    m_default_icons[IconType::Minimize]			= Load<Texture>(dataDir + "icons\\window_minimise.png");
-	    m_default_icons[IconType::Maximize]			= Load<Texture>(dataDir + "icons\\window_maximise.png");
-	    m_default_icons[IconType::Close]			= Load<Texture>(dataDir + "icons\\window_close.png");
-	    m_default_icons[IconType::Hybrid]			= Load<Texture>(dataDir + "icons\\hybrid.png");
-	    m_default_icons[IconType::Audio]			= Load<Texture>(dataDir + "icons\\audio.png");
-	    m_default_icons[IconType::Terrain]			= Load<Texture>(dataDir + "icons\\terrain.png");
-	    m_default_icons[IconType::Entity]			= Load<Texture>(dataDir + "icons\\entity.png");
-	    m_default_icons[IconType::Light]			= Load<Texture>(dataDir + "icons\\light.png");
-	    m_default_icons[IconType::Camera]			= Load<Texture>(dataDir + "icons\\camera.png");
-	    m_default_icons[IconType::Physics]			= Load<Texture>(dataDir + "icons\\physics.png");
-	    m_default_icons[IconType::Compressed]		= Load<Texture>(dataDir + "icons\\compressed.png");
-	}
-	*/
-	
-	/*
-	void ResourceCache::UnloadDefaultResources()
-	{
-	    m_default_icons.clear();
-	}
-	*/
-	
-	/*
-	Ref<IResource> &ResourceCache::GetByName(const std::string &name, const ResourceType type)
-	{
-        std::lock_guard<std::mutex> guard(m_mutex);
-	    for (Ref<IResource> &resource : m_resources)
-	    {
-	        if (name == resource->GetObjectName())
-	            return resource;
-	    }
-	    static Ref<IResource> empty;
-	    return empty;
+		m_default_icons[IconType::Console]			= Load<Texture>(dataDir + "icons\\console.png");
+		m_default_icons[IconType::File]				= Load<Texture>(dataDir + "icons\\file.png");
+		m_default_icons[IconType::Folder]			= Load<Texture>(dataDir + "icons\\folder.png");
+		m_default_icons[IconType::Audio]			= Load<Texture>(dataDir + "icons\\audio.png");
+		m_default_icons[IconType::Model]			= Load<Texture>(dataDir + "icons\\model.png");
+		m_default_icons[IconType::World]			= Load<Texture>(dataDir + "icons\\world.png");
+		m_default_icons[IconType::Material]			= Load<Texture>(dataDir + "icons\\material.png");
+		m_default_icons[IconType::Shader]			= Load<Texture>(dataDir + "icons\\shader.png");
+		m_default_icons[IconType::Xml]				= Load<Texture>(dataDir + "icons\\xml.png");
+		m_default_icons[IconType::Dll]				= Load<Texture>(dataDir + "icons\\dll.png");
+		m_default_icons[IconType::Txt]				= Load<Texture>(dataDir + "icons\\txt.png");
+		m_default_icons[IconType::Ini]				= Load<Texture>(dataDir + "icons\\ini.png");
+		m_default_icons[IconType::Exe]				= Load<Texture>(dataDir + "icons\\exe.png");
+		m_default_icons[IconType::Font]				= Load<Texture>(dataDir + "icons\\font.png");
+		m_default_icons[IconType::Screenshot]		= Load<Texture>(dataDir + "icons\\screenshot.png");
+		m_default_icons[IconType::Gear]				= Load<Texture>(dataDir + "icons\\gear.png");
+		m_default_icons[IconType::Play]				= Load<Texture>(dataDir + "icons\\play.png");
+		m_default_icons[IconType::Profiler]			= Load<Texture>(dataDir + "icons\\timer.png");
+		m_default_icons[IconType::ResourceCache]	= Load<Texture>(dataDir + "icons\\resource_viewer.png");
+		m_default_icons[IconType::RenderDoc]		= Load<Texture>(dataDir + "icons\\renderdoc.png");
+		m_default_icons[IconType::Shader]			= Load<Texture>(dataDir + "icons\\code.png");
+		m_default_icons[IconType::Texture]			= Load<Texture>(dataDir + "icons\\texture.png");
+		m_default_icons[IconType::Minimize]			= Load<Texture>(dataDir + "icons\\window_minimise.png");
+		m_default_icons[IconType::Maximize]			= Load<Texture>(dataDir + "icons\\window_maximise.png");
+		m_default_icons[IconType::Close]			= Load<Texture>(dataDir + "icons\\window_close.png");
+		m_default_icons[IconType::Hybrid]			= Load<Texture>(dataDir + "icons\\hybrid.png");
+		m_default_icons[IconType::Audio]			= Load<Texture>(dataDir + "icons\\audio.png");
+		m_default_icons[IconType::Terrain]			= Load<Texture>(dataDir + "icons\\terrain.png");
+		m_default_icons[IconType::Entity]			= Load<Texture>(dataDir + "icons\\entity.png");
+		m_default_icons[IconType::Light]			= Load<Texture>(dataDir + "icons\\light.png");
+		m_default_icons[IconType::Camera]			= Load<Texture>(dataDir + "icons\\camera.png");
+		m_default_icons[IconType::Physics]			= Load<Texture>(dataDir + "icons\\physics.png");
+		m_default_icons[IconType::Compressed]		= Load<Texture>(dataDir + "icons\\compressed.png");
 	}
 	*/
 
-    /*
-    std::vector<Ref<IResource>> ResourceCache::GetByType(const ResourceType type /*= ResourceType::Unknown#1#)
+	IResource *ResourceCache::GetByName(const std::string &name, const ResourceType type)
 	{
-        std::lock_guard<std::mutex> guard(m_mutex);
-        std::vector<Ref<IResource>> resources;
-	    for (Ref<IResource> &resource : m_resources)
-	    {
-	        if (resource->GetResourceType() == type || type == ResourceType::MaxEnum)
-	        {
-	            resources.emplace_back(resource);
-	        }
-	    }
-	    return resources;
+		std::scoped_lock guard(s_Mutex);
+		for (IResource *resource : s_Resources)
+		{
+		 if (resource && name == resource->GetObjectName() && (type == ResourceType::MaxEnum || resource->GetResourceType() == type))
+				return resource;
+		}
+
+		return nullptr;
 	}
-	*/
-	
-	/*
-	uint64_t ResourceCache::GetMemoryUsage(ResourceType type /*= Resource_Unknown#1#)
+
+	std::vector<IResource *> ResourceCache::GetByType(const ResourceType type /*= ResourceType::Unknown*/)
 	{
-        std::lock_guard<std::mutex> guard(m_mutex);
-	    uint64_t size = 0;
-	    for (Ref<IResource> &resource : m_resources)
-	    {
-	        if (resource->GetResourceType() == type || type == ResourceType::MaxEnum)
-	        {
-	            if (SpartanObject *object = dynamic_cast<SpartanObject *>(resource.get()))
-	            {
-	                size += object->GetObjectSize();
-	            }
-	        }
-	    }
-	    return size;
+		std::scoped_lock guard(s_Mutex);
+	  std::vector<IResource *> resources;
+		for (IResource *resource : s_Resources)
+		{
+			if (resource && (resource->GetResourceType() == type || type == ResourceType::MaxEnum))
+			{
+				resources.emplace_back(resource);
+			}
+		}
+		return resources;
 	}
-	*/
+
+	uint64_t ResourceCache::GetMemoryUsage(ResourceType type /*= Resource_Unknown*/)
+	{
+		std::scoped_lock guard(s_Mutex);
+		uint64_t size = 0;
+		for (IResource *resource : s_Resources)
+		{
+			if (resource && (resource->GetResourceType() == type || type == ResourceType::MaxEnum))
+			{
+			   size += resource->GetObjectSize();
+			}
+		}
+		return size;
+	}
 	
-	/*
 	uint32_t ResourceCache::GetResourceCount(const ResourceType type)
 	{
-	    return static_cast<uint32_t>(GetByType(type).size());
+		return static_cast<uint32_t>(GetByType(type).size());
 	}
-	*/
 	
 	void ResourceCache::AddResourceDirectory(const ResourceDirectory type, const std::string &directory)
 	{
-	    m_standard_resource_directories[static_cast<uint32_t>(type)] = directory;
+		s_StandardResourceDir[static_cast<uint32_t>(type)] = directory;
 	}
 
-    /*
-    std::string ResourceCache::GetResourceDirectory(const ResourceDirectory resource_directory_type)
+	std::string ResourceCache::GetResourceDirectory(const ResourceDirectory resourceDirType)
 	{
-        std::string directory = m_standard_resource_directories[static_cast<uint32_t>(resource_directory_type)];
-	    if (s_Use_Root_Shader_Directory)
-	    {
-	        if (resource_directory_type == ResourceDirectory::Shaders)
-	        {
-	            directory = "..\\" + directory;
-	        }
-	    }
-	    return directory;
+		std::string directory = s_StandardResourceDir[static_cast<uint32_t>(resourceDirType)];
+		if (s_Use_RootShaderDirectory)
+		{
+			if (resourceDirType == ResourceDirectory::Shaders)
+			{
+				directory = "..\\" + directory;
+			}
+		}
+		return directory;
 	}
-	*/
 	
-  void ResourceCache::SetProjectDirectory(const char *directory)
+	void ResourceCache::SetProjectDirectory(const char *directory)
 	{
 		if (directory == nullptr || directory[0] == '\0')
 		{
-			s_Project_Directory[0] = '\0';
+			s_ProjectDir[0] = '\0';
 			return;
 		}
 
 		IO::FileSystem::CreateDir(std::filesystem::path(directory));
 
-		std::strncpy(s_Project_Directory, directory, sizeof(s_Project_Directory) - 1);
-		s_Project_Directory[sizeof(s_Project_Directory) - 1] = '\0';
+		std::strncpy(s_ProjectDir, directory, sizeof(s_ProjectDir) - 1);
+		s_ProjectDir[sizeof(s_ProjectDir) - 1] = '\0';
 	}
 
-    std::string ResourceCache::GetProjectDirectoryAbsolute()
+	std::string ResourceCache::GetProjectDirectoryAbsolute()
 	{
-	    return IO::FileSystem::GetWorkingDirectory() + "/" + s_Project_Directory;
+		return IO::FileSystem::GetWorkingDirectory() + "/" + s_ProjectDir;
 	}
 	
 	const char *ResourceCache::GetProjectDirectory()
 	{
-	    return s_Project_Directory;
+		return s_ProjectDir;
 	}
 	
 	const char *ResourceCache::GetDataDirectory()
 	{
-	    return "Data";
+		return "Data";
 	}
 
-    /*
-    std::vector<Ref<IResource>> &ResourceCache::GetResources()
+	std::vector<IResource *> &ResourceCache::GetResources()
 	{
-	    return m_resources;
+		return s_Resources;
 	}
-	*/
 
-    std::mutex &ResourceCache::GetMutex()
+	std::vector<Ref<RefCounted>> &ResourceCache::GetResourceReferences()
 	{
-	    return s_Mutex;
+		return s_ResourceReferences;
 	}
-	
-	/*
+
+	std::mutex &ResourceCache::GetMutex()
+	{
+		return s_Mutex;
+	}
+
 	bool ResourceCache::GetUseRootShaderDirectory()
 	{
-	    return s_Use_Root_Shader_Directory;
+		return s_Use_RootShaderDirectory;
 	}
 	
-	void ResourceCache::SetUseRootShaderDirectory(const bool _use_root_shader_directory)
+	void ResourceCache::SetUseRootShaderDirectory(const bool useRootShaderDirectory)
 	{
-	    s_Use_Root_Shader_Directory = _use_root_shader_directory;
+		s_Use_RootShaderDirectory = useRootShaderDirectory;
 	}
-	*/
-	
-	/*
-	Texture *ResourceCache::GetIcon(IconType type)
+
+	ImageResource *ResourceCache::GetIcon(IconType type)
 	{
-	    auto it = m_default_icons.find(type);
+		auto it = m_DefaultIcons.find(type);
 	
-	    if (it != m_default_icons.end())
-	        return it->second.get();
+		if (it != m_DefaultIcons.end())
+			return it->second.Get();
 	
-	    return m_default_icons[IconType::File].get();
+		return m_DefaultIcons[IconType::File].Get();
 	}
-	*/
+
 }
 
 // -----------------------------------------------------------

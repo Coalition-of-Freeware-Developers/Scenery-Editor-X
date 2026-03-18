@@ -29,8 +29,10 @@
  * -------------------------------------------------------
  */
 #include "bend_sss_cpu.h"
+#include "gbuffer.h"
 #include "renderer.h"
 #include "renderer_declarations.h"
+#include "SceneryEditorX/scene/entity.h"
 #include "vulkan/enums.h"
 #include "vulkan/render_context.h"
 #include "vulkan/pipeline/pipeline_state.h"
@@ -409,10 +411,8 @@ namespace SceneryEditorX
 	{
 		ImageResource *tex_skysphere = GetRenderTarget(Renderer_RenderTarget::skysphere);
 		ImageResource *tex_lut_atmosphere_scatter = GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_scatter);
-		ImageResource *tex_lut_atmosphere_transmittance =
-			GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_transmittance);
-		ImageResource *tex_lut_atmosphere_multiscatter =
-			GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_multiscatter);
+		ImageResource *tex_lut_atmosphere_transmittance = GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_transmittance);
+		ImageResource *tex_lut_atmosphere_multiscatter = GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_multiscatter);
 		ImageResource *tex_cloud_shape = GetRenderTarget(Renderer_RenderTarget::cloud_noise_shape);
 		ImageResource *tex_cloud_detail = GetRenderTarget(Renderer_RenderTarget::cloud_noise_detail);
 
@@ -450,10 +450,8 @@ namespace SceneryEditorX
 
 			PipelineState pso;
 			pso.name = "skysphere_filter";
-			pso.shaders[static_cast<uint32_t>(Stage::Compute)] =
-				GetShader(Renderer_Shader::light_integration_environment_filter_c);
+			pso.shaders[static_cast<uint32_t>(Stage::Compute)] = GetShader(Renderer_Shader::light_integration_environment_filter_c);
 			cmdList->SetPipelineState(pso);
-
 			cmdList->SetTexture(Renderer_BindingsSrv::tex, tex_skysphere);
 
 			for (uint32_t mip_level = 1; mip_level < tex_skysphere->GetImageSpec().mipCount; mip_level++)
@@ -1013,14 +1011,14 @@ namespace SceneryEditorX
 
 			cmdList->SetTexture(Renderer_BindingsSrv::tex, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
 			cmdList->SetTexture(Renderer_BindingsUav::tex_sss, tex_sss);
-			float array_slice_index = 0.0f;
+			float arraySliceIndex = 0.0f;
 			for (Entity *entity : Scene::GetEntities())
 			{
 				Light *light = entity->GetComponent<Light>();
 				if (!light || !light->GetFlag(LightFlags::ShadowsScreenSpace) || light->GetIntensityWatt() == 0.0f)
 					continue;
 
-				if (array_slice_index == static_cast<float>(tex_sss->GetImageSpec().depth))
+				if (arraySliceIndex == static_cast<float>(tex_sss->GetImageSpec().depth))
 				{
 					SEDX_CORE_WARN_TAG("Render Pass",
 									   "Render target has reached the maximum number of lights it can hold");
@@ -1056,10 +1054,10 @@ namespace SceneryEditorX
 										  dispatch_list.LightCoordinate_Shader[2],
 										  dispatch_list.LightCoordinate_Shader[3]);
 
-				light->SetScreenSpaceShadowsSliceIndex(static_cast<uint32_t>(array_slice_index));
+				light->SetScreenSpaceShadowsSliceIndex(static_cast<uint32_t>(arraySliceIndex));
 				float near_val = 1.0f;
 				float far_val = 0.0f;
-				m_Pcb_Pass_Cpu.SetF3Value(near_val, far_val, array_slice_index++);
+				m_Pcb_Pass_Cpu.SetF3Value(near_val, far_val, arraySliceIndex++);
 				m_Pcb_Pass_Cpu.SetF3Value2(1.0f / tex_sss->GetWidth(), 1.0f / tex_sss->GetHeight(), 0.0f);
 
 				for (int32_t dispatch_index = 0; dispatch_index < dispatch_list.DispatchCount; ++dispatch_index)
@@ -1074,7 +1072,7 @@ namespace SceneryEditorX
 				cmdList->InsertBarrier(tex_sss, BarrierType::EnsureWriteThenRead);
 			}
 
-			array_slice_index = 0;
+			arraySliceIndex = 0;
 		}
 	}
 
@@ -1149,7 +1147,7 @@ namespace SceneryEditorX
 			cmdList->SetPipelineState(pso);
 
 			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_depth,    GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
-			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_velocity,  GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity));
+			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_velocity, GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity));
 			cmdList->SetTexture(Renderer_BindingsUav::tex_uint,          tex_vrs);
 
 			cmdList->Dispatch(tex_vrs);
@@ -1583,7 +1581,7 @@ namespace SceneryEditorX
 
 	// -------------------------------------------------------
 	// Pass_PostProcess
-	// Full post-processing stack: bloom, tonemapping, film grain, dithering, outline.
+	// Full post-processing stack: bloom, tone-mapping, film grain, dithering, outline.
 	// Reads from frame_output and writes back to frame_output.
 	// -------------------------------------------------------
 

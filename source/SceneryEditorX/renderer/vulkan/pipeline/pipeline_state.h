@@ -29,12 +29,20 @@
  * -------------------------------------------------------
  */
 #pragma once
-#include <SceneryEditorX/renderer/renderer_declarations.h>
+
+#include <array>
+#include <cstdint>
+#include <map>
 
 // ---------------------------------------------------------
 
 namespace SceneryEditorX
 {
+    class Shader;
+    class ImageResource;
+    class RasterizerState;
+    class BlendState;
+    class DepthStencilState;
 
     /* 
      * Color sentinel – matches the Color type used by command lists.
@@ -69,7 +77,7 @@ namespace SceneryEditorX
         ImageResource*  renderTarget_DepthTexture = nullptr;
         ImageResource*  vrsInputTexture           = nullptr;
 
-        // Clear values (rhi_color_load.a < 0 = load; non-negative = clear to this colour)
+        // Clear values (color_load.a < 0 = load; non-negative = clear to this colour)
         std::array<PipelineStateColor, MAX_RENDER_TARGET_COUNT> clearColor = {};
         float clearDepth = RHI_DEPTH_LOAD;
 

@@ -28,21 +28,20 @@
  * Created: 13/4/2025
  * -------------------------------------------------------
  */
-#include <Editor/core/editor.h>
+#include "editor.h"
 #include "editor_layer.h"
 #include "Editor/projects/project.h"
+#include "Editor/settings/editor_settings.h"
+#include "Editor/ui/ui_impl.h"
+
 #include <ImGuizmo.h>
 #include <imgui.h>
 #include <imgui_impl_sdl3.h>
 #include <imgui_internal.h>
-#include <Editor/settings/editor_settings.h>
 #include <SceneryEditorX/core/application/application.h>
-#include <SceneryEditorX/core/platform/settings/settings.h>
+#include <SceneryEditorX/core/resource/resource_cache.h>
 #include <SceneryEditorX/core/window/window.h>
 #include <SceneryEditorX/project/project.h>
-#include <SceneryEditorX/renderer/vulkan/render_context.h>
-#include <SceneryEditorX/ui/ui.h>
-#include <SceneryEditorX/ui/ui_context.h>
 
 // ---------------------------------------------------------
 
@@ -80,13 +79,13 @@ namespace SceneryEditorX
 	static float s_FontSize  = 18.0f;
 	static float s_FontScale = 1.0f;
 
-	/*
+
 	static void ProcessEvent(Event &event)
 	{
 		SDL_Event* event_sdl = static_cast<SDL_Event*>(std::get<void*>(event));
 		ImGui_ImplSDL3_ProcessEvent(event_sdl);
 	}
-	*/
+
 
 	// -------------------------------------------------------
 
@@ -260,9 +259,33 @@ namespace SceneryEditorX
 
 	void Editor::InitEditor()
 	{
+	    SEDX_CORE_INFO_TAG("EDITOR", "Setting up ImGui docking layout");
 
-		/*SEDX_CORE_INFO_TAG("EDITOR", "Setting up ImGui docking layout");
+		ImGui::CreateContext();
 
+	    // configure ImGui
+		ImGuiIO& io                      = ImGui::GetIO();
+		io.ConfigFlags                  |= ImGuiConfigFlags_NavEnableKeyboard;
+		io.ConfigFlags                  |= ImGuiConfigFlags_DockingEnable;
+		io.ConfigFlags                  |= ImGuiConfigFlags_ViewportsEnable;
+		io.ConfigFlags                  |= ImGuiConfigFlags_NoMouseCursorChange; // cursor control is given to ImGui, but dynamically, from the engine
+		io.ConfigWindowsResizeFromEdges  = true;
+		io.IniFilename                   = "editor.ini";
+
+		// font_bold configuration
+		ImFontConfig config; // config for bold font (mainly for use in headers)
+		config.GlyphOffset.y = -2.0f;
+		
+		const std::string dir_fonts = ResourceCache::GetResourceDirectory(ResourceDirectory::Fonts) + "/";
+		fontNormal            = io.Fonts->AddFontFromFileTTF((dir_fonts + "OpenSans/OpenSans-Medium.ttf").c_str(), s_FontSize * Window::GetDpiScale());
+		fontBold              = io.Fonts->AddFontFromFileTTF((dir_fonts + "OpenSans/OpenSans-Bold.ttf").c_str(), s_FontSize * Window::GetDpiScale(), &config);
+		io.FontGlobalScale     = s_FontScale;
+
+		// initialize imgui backends
+		SEDX_CORE_ASSERT(ImGui_ImplSDL3_InitForVulkan(Window::GetWindow()), "Failed to initialize ImGui's SDL backend");
+		::UI::Initialize();
+
+		/*
 		const auto window_flags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoTitleBar |
 								  ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
 								  ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
@@ -390,8 +413,6 @@ namespace SceneryEditorX
 	/*
 	void Editor::OnAttach()
 	{
-
-
 		using namespace glm;
 
 		memset(s_ProjectNameBuffer, 0, MAX_PROJECT_NAME_LENGTH);
@@ -480,7 +501,7 @@ namespace SceneryEditorX
 		if (m_UserPreferences->ShowWelcomeScreen)
 			UI_ShowWelcomePopup();
 	}
-	 */
+	*/
 
 	void Editor::ProcessClArgs()
 	{
@@ -539,20 +560,18 @@ namespace SceneryEditorX
 	}
 	*/
 
-	/*
 	float Editor::GetSnapValue()
 	{
 		const auto& editorSettings = EditorSettings::Get();
 
 		switch (m_GizmoType)
 		{
-			case ImGuizmo::OPERATION::TRANSLATE: return editorSettings.TranslationSnapValue;
-			case ImGuizmo::OPERATION::ROTATE: return editorSettings.RotationSnapValue;
-			case ImGuizmo::OPERATION::SCALE: return editorSettings.ScaleSnapValue;
+			case ImGuizmo::OPERATION::TRANSLATE: return editorSettings.translationSnapValue;
+			case ImGuizmo::OPERATION::ROTATE: return editorSettings.rotationSnapValue;
+			case ImGuizmo::OPERATION::SCALE: return editorSettings.scaleSnapValue;
 		}
 		return 0.0f;
 	}
-	*/
 
 	static auto operator<(const ImVec2 &lhs, const ImVec2 &rhs) { return lhs.x < rhs.x && lhs.y < rhs.y; }
 

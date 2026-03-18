@@ -34,6 +34,7 @@ Scenery Editor X is a modern C++20/C++23 application built with:
 
 ## Project Guidelines
 - For grid.slang pipeline wiring, use shader entry points main_vs (vertex) and main_frag (fragment) as declared in the shader source.
+- Prefer avoiding macro-based implementations for component type mapping; use explicit C++ constructs (traits/specializations/functions) instead.
 
 ## Module System Architecture
 

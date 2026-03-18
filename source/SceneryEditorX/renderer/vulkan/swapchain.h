@@ -30,6 +30,8 @@
  */
 #pragma once
 #include "device.h"
+#include "SceneryEditorX/core/identifiers/flag.h"
+
 #include <vector>
 #include <vma/vk_mem_alloc.h>
 
@@ -56,6 +58,7 @@ namespace SceneryEditorX
 		VkResult Present(VkQueue presentQueue, uint32_t imageIndex, VkSemaphore waitSemaphore);
 		void SetVsync(bool enabled);
 		bool GetVsync() const;
+		bool IsImageAcquired() const { return m_ImageAcquired; }
 
 		// Accessors
 		[[nodiscard]] VkSwapchainKHR Get() const { return m_Swapchain; }
@@ -67,6 +70,8 @@ namespace SceneryEditorX
 		[[nodiscard]] VkExtent2D GetExtent() const { return m_Extent; }
 		[[nodiscard]] uint32_t GetImageIndex() const { return m_ImageIndex; }
 		[[nodiscard]] VkSurfaceKHR GetSurface() const { return m_Surface; }
+		[[nodiscard]] VkPresentModeKHR GetSwapPresentMode() const { return m_PresentMode; }
+
 		uint32_t GetWidth() const { return m_Width; }
 		uint32_t GetHeight() const { return m_Height; }
 
@@ -77,7 +82,8 @@ namespace SceneryEditorX
 		Ref<Device> m_Device = nullptr;
 		VkSurfaceKHR m_Surface = VK_NULL_HANDLE;
 		VkSwapchainKHR m_Swapchain = VK_NULL_HANDLE;
-		bool m_IsDirty = false;
+		Flag m_IsDirty;
+
 		uint32_t m_ImageIndex = 0;
 		uint32_t m_Width = 0;
 		uint32_t m_Height = 0;

@@ -35,7 +35,6 @@
 
 namespace SceneryEditorX
 {
-	Entity::~Entity() = default;
 
 	void Entity::Start()
 	{

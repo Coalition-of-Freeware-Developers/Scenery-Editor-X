@@ -29,13 +29,14 @@
  * -------------------------------------------------------
  */
 #pragma once
-//#include <SceneryEditorX/asset/object.h>
+#include "components/component.h"
 #include <xMath/includes/colors.h>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
+	class Renderable;
 
 	// -------------------------------------------------------
 
@@ -84,12 +85,11 @@ namespace SceneryEditorX
 
 	// -------------------------------------------------------
 
-	/*
-	class LightNode : public Object
+	class Light : public Component
 	{
 	public:
-		LightNode();
-		virtual ~LightNode() override;
+		Light();
+		virtual ~Light() = default;
 
 		//virtual void Serialize(Serializer &ser);
 
@@ -101,28 +101,28 @@ namespace SceneryEditorX
 		// -------------------------------------------------------
 
 		// Flags
-		bool GetFlag(const LightFlags flag) { return m_flags & flag; }
-		void SetFlag(LightFlags flag, bool enable = true);
+	    bool GetFlag(const LightFlags flag) { return m_Flags & flag; }
+	    void SetFlag(LightFlags flag, bool enable = true);
 		
 		// -------------------------------------------------------
 
 		// Type
-		LightType GetLightType() const { return m_light_type; }
+		LightType GetLightType() const { return m_LightType; }
 		void SetLightType(LightType type);
 
 		// Color
 		void SetTemperature(float temperature_kelvin);
-		float GetTemperature() const { return m_temperature_kelvin; }
+		float GetTemperature() const { return m_TemperatureKelvin; }
 		void SetColor(const Color& rgb);
-		const Color& GetColor() const { return m_color_rgb; }
+		const Color& GetColor() const { return m_Color; }
 
 		// -------------------------------------------------------
 
 		// Intensity
 		void SetIntensity(float lumens_lux);
 		void SetIntensity(LightIntensity intensity);
-		float GetIntensityLumens() const    { return m_intensity_lumens_lux; }
-		LightIntensity GetIntensity() const { return m_intensity; }
+		float GetIntensityLumens() const    { return m_IntensityLumens_Lux; }
+		LightIntensity GetIntensity() const { return m_Intensity; }
 		float GetIntensityWatt() const;
 
 		// Bias
@@ -131,38 +131,37 @@ namespace SceneryEditorX
 
 		// Range
 		void SetRange(float range);
-		auto GetRange() const { return m_range; }
+		auto GetRange() const { return m_Range; }
 
 		// Angle
 		void SetAngle(float angle_rad);
-		auto GetAngle() const { return m_angle_rad; }
+		auto GetAngle() const { return m_Angle_Rad; }
 
 		// Matrices
-		Matrix GetViewProjectionMatrix(uint32_t index) const { return m_matrix_view[index] * m_matrix_projection[index]; }
+		Matrix GetViewProjectionMatrix(uint32_t index) const { return m_Matrix_View[index] * m_Matrix_Projection[index]; }
 
 		// Frustum
 		bool IsInViewFrustum(Renderable* renderable, uint32_t array_index, uint32_t instance_group_index = 0) const;
 
 		// Index
-		void SetIndex(const uint32_t index) { m_index = index; }
-		uint32_t GetIndex() const           { return m_index; }
+		void SetIndex(const uint32_t index) { m_Index = index; }
+		uint32_t GetIndex() const           { return m_Index; }
 
 		// Screen Space Shadows - Slice Index
-		void SetScreenSpaceShadowsSliceIndex(const uint32_t index) { m_index = index; }
-		uint32_t GetScreenSpaceShadowsSliceIndex() const           { return m_index; }
+	    void SetScreenSpaceShadowsSliceIndex(const uint32_t index) { m_Index = index; }
+	    uint32_t GetScreenSpaceShadowsSliceIndex() const           { return m_Index; }
 
 		// Misc
 		bool NeedsSkysphereUpdate() const;
 		uint32_t GetSliceCount() const;
 
 		// Atlas
-		Vec2 GetAtlasOffset(uint32_t slice) const { return m_atlas_offsets[slice]; }
-		Vec2 GetAtlasScale(uint32_t slice) const  { return m_atlas_scales[slice]; }
-		const xMath::Rectangle& GetAtlasRectangle(uint32_t slice) const { return m_atlas_rectangles[slice]; }
+		Vec2 GetAtlasOffset(uint32_t slice) const { return m_Atlas_Offsets[slice]; }
+		Vec2 GetAtlasScale(uint32_t slice) const  { return m_Atlas_Scales[slice]; }
+		const xMath::Rectangle& GetAtlasRectangle(uint32_t slice) const { return m_Atlas_Rectangles[slice]; }
 		void SetAtlasRectangle(uint32_t slice, const xMath::Rectangle& rectangle);
 		void ClearAtlasRectangles();
-		BoundingBox GetBoundingBox() const { return m_bounding_box; }
-
+		BoundingBox GetBoundingBox() const { return m_BoundingBox; }
 
 		Vec3 color = Vec3(1);
 		float intensity = 10.0f;
@@ -199,28 +198,27 @@ namespace SceneryEditorX
 		void UpdateBoundingBox();
 
 		// Properties
-		LightIntensity m_intensity       = LightIntensity::bulb_500_watt;
-		float m_intensity_lumens_lux     = 2600.0f;
-		uint32_t m_flags                 = 0;
-		LightType m_light_type           = LightType::MaxEnum;
-		Color m_color_rgb				 = Color::Black();
-		float m_temperature_kelvin       = 0.0f;
-		float m_range                    = 32.0f;
-		float m_angle_rad                = ToRadians(30.0f);
-		uint32_t m_index                 = 0;
-		BoundingBox m_bounding_box = BoundingBox::Zero;
+		LightIntensity m_Intensity       = LightIntensity::bulb_500_watt;
+		float m_IntensityLumens_Lux      = 2600.0f;
+		uint32_t m_Flags                 = 0;
+		LightType m_LightType            = LightType::MaxEnum;
+		Color m_Color					 = Color::Black();
+		float m_TemperatureKelvin        = 0.0f;
+		float m_Range                    = 32.0f;
+		float m_Angle_Rad                = ToRadians(30.0f);
+		uint32_t m_Index                 = 0;
+		BoundingBox m_BoundingBox		 = BoundingBox::Zero;
 
 		// matrices/frustums per slice/face/cascade
-		std::array<Frustum, 6> m_frustums;
-		std::array<Matrix, 6> m_matrix_view;
-		std::array<Matrix, 6> m_matrix_projection;
+		std::array<Frustum, 6> m_Frustums;
+		std::array<Matrix, 6>  m_Matrix_View;
+		std::array<Matrix, 6>  m_Matrix_Projection;
 
 		// atlas entries per slice/face/cascade
-		std::array<xMath::Rectangle, 6> m_atlas_rectangles;
-		std::array<Vec2, 6> m_atlas_offsets;
-		std::array<Vec2, 6> m_atlas_scales;
+		std::array<xMath::Rectangle, 6> m_Atlas_Rectangles;
+		std::array<Vec2, 6> m_Atlas_Offsets;
+		std::array<Vec2, 6> m_Atlas_Scales;
 	};
-	*/
 
 } 
 

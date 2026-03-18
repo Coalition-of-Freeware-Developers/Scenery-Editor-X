@@ -30,18 +30,18 @@
  */
 #pragma once
 #include "application_data.h"
-#include "SceneryEditorX/core/events/application_events.h"
-#include "SceneryEditorX/core/events/event_system.h"
-#include "SceneryEditorX/core/layers/layer_stack.h"
-#include "SceneryEditorX/core/platform/platform_context.h"
-#include "SceneryEditorX/core/platform/settings/settings.h"
-#include "SceneryEditorX/core/threading/render_thread.h"
-#include "SceneryEditorX/core/time/time.h"
-#include "SceneryEditorX/core/time/timer.h"
-#include "SceneryEditorX/core/window/window.h"
-#include "SceneryEditorX/ui/ui_layer.h"
-#include "SceneryEditorX/utils/pointers.h"
 #include <deque>
+#include <SceneryEditorX/core/events/application_events.h>
+#include <SceneryEditorX/core/events/event_system.h>
+#include <SceneryEditorX/core/layers/layer_stack.h>
+#include <SceneryEditorX/core/platform/platform_context.h>
+#include <SceneryEditorX/core/threading/render_thread.h>
+#include <SceneryEditorX/core/time/time.h>
+#include <SceneryEditorX/core/time/timer.h>
+#include <SceneryEditorX/core/window/window.h>
+#include <SceneryEditorX/settings/settings.h>
+#include <SceneryEditorX/ui/ui_layer.h>
+#include <SceneryEditorX/utils/pointers.h>
 
 // -------------------------------------------------------
 
@@ -110,8 +110,8 @@ namespace SceneryEditorX
 		// -------------------------------------------------------
 
 		// Settings accessors (single authoritative instance for the app lifetime)
-		ApplicationSettings& GetSettings() { return m_Settings; }
-		const ApplicationSettings& GetSettings() const { return m_Settings; }
+		Settings& GetSettings() { return m_Settings; }
+		const Settings& GetSettings() const { return m_Settings; }
 
 		// -------------------------------------------------------
 
@@ -178,7 +178,7 @@ namespace SceneryEditorX
 		bool m_ShowStats = true;
 
 		const PlatformContext* m_PlatformContext = nullptr;
-		ApplicationSettings m_Settings = ApplicationSettings(std::filesystem::path("settings.cfg"));
+		Settings m_Settings = Settings(std::filesystem::path("settings.cfg"));
 		static Application *s_AppInstance;
 		PerformanceProfiler *m_Profiler = nullptr; // TODO: Should be null in Dist
 		std::unordered_map<const char *, PerformanceProfiler::PerFrameData> m_ProfilerPreviousFrameData;

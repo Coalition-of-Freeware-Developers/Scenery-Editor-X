@@ -40,6 +40,7 @@
 #include <SceneryEditorX/asset/asset_manager.h>
 #include <SceneryEditorX/asset/model.h>
 #include <SceneryEditorX/core/application/application.h>
+#include <SceneryEditorX/renderer/gbuffer.h>
 #include <SceneryEditorX/scene/camera.h>
 #include <SceneryEditorX/scene/scene.h>
 #include <slang/slang-com-ptr.h>
@@ -1432,6 +1433,11 @@ namespace SceneryEditorX
 	VkCommandBuffer Renderer::GetCurrentCommandBuffer()
 	{
 		return m_CommandBuffers[m_CurrentFrameIndex];
+	}
+
+	CommandList* Renderer::GetCommandListPresent()
+	{
+		return m_CmdList_Present;
 	}
 
 	void Renderer::CreateModels()

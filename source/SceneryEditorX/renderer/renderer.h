@@ -34,9 +34,13 @@
 #include "vulkan/command_list.h"
 #include "vulkan/command_pool.h"
 #include "vulkan/image_resource.h"
+#include "vulkan/push_constant_buffer.h"
 #include "vulkan/render_context.h"
 #include "vulkan/sampler.h"
 #include "vulkan/viewport.h"
+#include "vulkan/blend_states.h"
+#include "vulkan/depth_stencil.h"
+#include "vulkan/rasterizer.h"
 #include "vulkan/sync/frame_sync.h"
 #include <array>
 #include <SceneryEditorX/core/threading/render_thread.h>
@@ -247,6 +251,12 @@ namespace SceneryEditorX
 		 * @return VkCommandBuffer for recording draw commands.
 		 */
 		static VkCommandBuffer GetCurrentCommandBuffer();
+
+		/**
+		 * @brief Get the active graphics-present command list for the current frame.
+		 * @return Pointer to the current present command list, or nullptr if unavailable.
+		 */
+		static CommandList* GetCommandListPresent();
 		
 		/**
 		 * @brief Create models and upload to GPU. This is separate from shader creation to allow for better error handling and resource management.
@@ -534,7 +544,7 @@ namespace SceneryEditorX
 		static PassState m_PassState;
 
 		// Per-pass push constant staging buffer (written by passes, uploaded by PushConstants())
-		static PushConstantBuffer m_Pcb_Pass_Cpu;
+		static PushConstantBuffer_Pass m_Pcb_Pass_Cpu;
 
 		// CPU-side draw call arrays (populated by scene submission, consumed by passes)
 		static std::array<Renderer_DrawCall, RENDERER_MAX_DRAW_CALLS> m_DrawCalls;

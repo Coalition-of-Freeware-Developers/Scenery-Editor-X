@@ -37,102 +37,281 @@
 namespace SceneryEditorX
 {
 	class Event;
+	struct Flag;
 
 	enum class WindowMode : uint8_t
 	{
-	    Windowed,
-	    WindowedFullScreen,
-	    FullScreen
+		Windowed,
+		WindowedFullScreen,
+		FullScreen
 	};
 
-    // -------------------------------------------------------
+	// -------------------------------------------------------
 
 	class Window
 	{
-        // Forward declared private event types to avoid circular dependency with event_system.h
-        typedef std::function<void(Event &)> EventCallbackFn;
-        static EventCallbackFn s_EventCallback;
+		// Forward declared private event types to avoid circular dependency with event_system.h
+
+		typedef std::function<void(Event &)> EventCallbackFn; // Type alias for event callback function that takes an Event reference and returns void
+		static EventCallbackFn s_EventCallback; // Global event callback function pointer
 
 	public:
-	    static void Create();
-	    static void Tick();
-	    static void ProcessEvents();
-	    static void OnImgui();
-	    static void Destroy();
+		/**
+		 * @brief 
+		 */
+		static void Create();
 
-	    static void ApplyChanges();
-        static void UpdateFramebufferSize();
-	    static bool IsKeyPressed(SDL_Scancode keyCode);
-	    static void SetTitle(const std::string &title);
+		/**
+		 * @brief 
+		 */
+		static void Tick();
 
-	    static SDL_Window *GetWindow();
-        static void *GetRawHandle();
-        static Window Get() { return m_Window; }
-	    static uint32_t GetWidth();
-	    static uint32_t GetHeight();
-        static Vec2 GetWindowSize();
+		/**
+		 * @brief 
+		 */
+		static void ProcessEvents();
 
-	    static bool IsDirty();
-        static void WaitEvents();
+		/**
+		 * @brief 
+		 */
+		static void Destroy();
 
-	    static float GetDeltaTime();
-	    static bool GetShouldClose();
-	    static float GetDeltaScroll();
-	    static Vec2 GetDeltaMouse();
-	    static bool GetFramebufferResized();
+		/**
+		 * @brief 
+		 */
+		static void ApplyChanges();
 
-	    static bool IsKeyDown(SDL_Scancode keyCode);
-	    static bool IsMouseDown(uint8_t buttonCode);
-	    static void SetMode(WindowMode newMode);
-	    static void SetShouldClose(bool close);
-	    static std::vector<std::string> GetAndClearPaths();
-	    static void SetEventCallback(const EventCallbackFn &callback);
+		/**
+		 * @brief 
+		 */
+		static void UpdateFramebufferSize();
 
-	    static void Maximize();
-        static bool IsVisible();
-        static bool IsMaximized();
+		/**
+		 * @brief 
+		 * @param keyCode 
+		 * @return 
+		 */
+		static bool IsKeyPressed(SDL_Scancode keyCode);
+
+		/**
+		 * @brief 
+		 * @param title 
+		 */
+		static void SetTitle(const std::string &title);
+
+		/**
+		 * @brief 
+		 * @return 
+		 */
+		static SDL_Window *GetWindow();
+
+		/**
+		 * @brief 
+		 * @return 
+		 */
+		static void *GetRawHandle();
+
+		/**
+		 * @brief 
+		 * @return 
+		 */
+		static Window Get() { return m_Window; }
+
+		/**
+		 * @brief 
+		 * @return 
+		 */
+		static uint32_t GetWidth();
+
+		/**
+		 * @brief 
+		 * @return 
+		 */
+		static uint32_t GetHeight();
+
+		/**
+		 * @brief 
+		 * @return 
+		 */
+		static Vec2 GetWindowSize();
+
+		/**
+		 * @brief 
+		 * @return 
+		 */
+		static Flag IsDirty();
+
+		/**
+		 * @brief 
+		 */
+		static void WaitEvents();
+
+		/**
+		 * @brief 
+		 * @return 
+		 */
+		static float GetDeltaTime();
+
+		/**
+		 * @brief 
+		 * @return 
+		 */
+		static bool GetShouldClose();
+
+		/**
+		 * @brief 
+		 * @return 
+		 */
+		static float GetDeltaScroll();
+
+		/**
+		 * @brief 
+		 * @return 
+		 */
+		static Vec2 GetDeltaMouse();
+
+		/**
+		 * @brief 
+		 * @return 
+		 */
+		static bool GetFramebufferResized();
+
+		/**
+		 * @brief 
+		 * @param keyCode 
+		 * @return 
+		 */
+		static bool IsKeyDown(SDL_Scancode keyCode);
+
+		/**
+		 * @brief 
+		 * @param buttonCode 
+		 * @return 
+		 */
+		static bool IsMouseDown(uint8_t buttonCode);
+
+		/**
+		 * @brief 
+		 * @param newMode 
+		 */
+		static void SetMode(WindowMode newMode);
+
+		/**
+		 * @brief 
+		 * @param close 
+		 */
+		static void SetShouldClose(bool close);
+
+		/**
+		 * @brief 
+		 * @return 
+		 */
+		static std::vector<std::string> GetAndClearPaths();
+
+		/**
+		 * @brief 
+		 * @param callback 
+		 */
+		static void SetEventCallback(const EventCallbackFn &callback);
+
+		/* @brief Maximizes the window. */
+		static void Maximize();
+
+		/**
+		 * @brief 
+		 * @return 
+		 */
+		static bool IsVisible();
+
+		/**
+		 * @brief 
+		 * @return 
+		 */
+		static bool IsMaximized();
+
+		/**
+		 * @brief 
+		 */
 		static void Minimize();
-        static void Show();
-        static void Hide();
-        static void Focus();
-        static bool IsMinimized();
-	    static void CenterWindow();
 
-	    static void SetResizable(bool value);
-	    static void SetDecorated(bool value);
+		/**
+		 * @brief 
+		 */
+		static void Show();
+
+		/**
+		 * @brief 
+		 */
+		static void Hide();
+
+		/**
+		 * @brief 
+		 */
+		static void Focus();
+
+		/**
+		 * @brief 
+		 * @return 
+		 */
+		static bool IsMinimized();
+
+		/* @brief Centers the window on the screen. */
+		static void CenterWindow();
+
+		/**
+		 * @brief 
+		 * @param value 
+		 */
+		static void SetResizable(bool value);
+
+		/**
+		 * @brief 
+		 * @param value 
+		 */
+		static void SetDecorated(bool value);
+
+		/**
+		 * @brief 
+		 * @return 
+		 */
+		static float GetDpiScale();
 
 	private:
-        static Window m_Window;
-        static const char *name;
-        static int width;
-        static int height;
-        static int posX;
-        static int posY;
-        static int displayIndex;
-        static int displayCount;
-        static int displayModeIndex;
-        static bool framebufferResized;
+		static Window m_Window;		// Singleton instance of the Window class
+		static const char *name;	// Window title
+		static int width;
+		static int height;
+		static int posX;
+		static int posY;
+		static int displayIndex;
+		static int displayCount;
+		static int displayModeIndex;
+		static bool framebufferResized;
 
-        static std::chrono::high_resolution_clock::time_point lastTime;
-        static float deltaTime;
+		static std::chrono::high_resolution_clock::time_point lastTime;
+		static float deltaTime;
 
-        static std::vector<std::string> pathsDrop;
+		static std::vector<std::string> pathsDrop;
 
-        static float scroll;
-        static float deltaScroll;
-        static Vec2 mousePos;
-        static Vec2 deltaMousePos;
+		static float scroll;
+		static float deltaScroll;
+		static Vec2 mousePos;
+		static Vec2 deltaMousePos;
 
-        static char lastKeyState[SDL_SCANCODE_COUNT];
-        static WindowMode mode;
-        static bool borderless;
-        static bool dirty;
-        static bool resizable;
-        static bool decorated;
-        static bool maximized;
-        static bool shouldClose;
+		static char lastKeyState[SDL_SCANCODE_COUNT];
+		static WindowMode mode;
+		static bool borderless;
+		static bool dirty;
+		static bool resizable;
+		static bool decorated;
+		static bool maximized;
+		static bool shouldClose;
 
-        static void HandleEvent(const SDL_Event &event);
+		/**
+		 * @brief 
+		 * @param event 
+		 */
+		static void HandleEvent(const SDL_Event &event);
 	};
 	
 }

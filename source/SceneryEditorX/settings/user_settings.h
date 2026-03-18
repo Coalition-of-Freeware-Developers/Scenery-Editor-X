@@ -29,18 +29,18 @@
  * -------------------------------------------------------
  */
 #pragma once
-#include "SceneryEditorX/project/project_settings.h"
-#include "SceneryEditorX/utils/pointers.h"
 #include <filesystem>
 #include <map>
 #include <string>
+#include <SceneryEditorX/project/project_settings.h>
+#include <SceneryEditorX/utils/pointers.h>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
 	// Forward declarations
-	class ApplicationSettings;
+	class Settings;
 
 	// ----------------------------------------------------
 	// Date/Time Formatting Utilities
@@ -95,7 +95,7 @@ namespace SceneryEditorX
 	 * and recent project history. Uses the ApplicationSettings system for persistent
 	 * storage in .cfg format.
 	 */
-	class UserPreferences : public RefCounted
+	class UserPreferences
 	{
 	public:
 		/**
@@ -112,7 +112,7 @@ namespace SceneryEditorX
 		/**
 		 * @brief Destructor that automatically saves preferences.
 		 */
-        virtual ~UserPreferences() override;
+		virtual ~UserPreferences();
 
 		// ----------------------------------------------------
 		/// Preference Management
@@ -166,7 +166,7 @@ namespace SceneryEditorX
 		void ClearRecentProjects();
 
 		// ----------------------------------------------------
-		/// Persistence
+		// Persistence
 		// ----------------------------------------------------
 
 		/**
@@ -195,9 +195,9 @@ namespace SceneryEditorX
 
 		// Configuration management
 		std::filesystem::path m_ConfigPath;
-		Ref<ApplicationSettings> m_Settings;
+		Ref<Settings> m_Settings;
 
-        // Maximum number of recent projects to keep
+		// Maximum number of recent projects to keep
 		static constexpr size_t MAX_RECENT_PROJECTS = 10;
 
 		void Init();
@@ -219,21 +219,21 @@ namespace SceneryEditorX
 	};
 
 	// ----------------------------------------------------
-	/// Convenience Functions
+	// Convenience Functions
 	// ----------------------------------------------------
 
 	/**
 	 * @brief Creates and loads user preferences from default location.
 	 * @return Shared pointer to loaded user preferences
 	 */
-	Ref<UserPreferences> CreateUserPreferences();
+	UserPreferences CreateUserPreferences();
 
 	/**
 	 * @brief Creates and loads user preferences from custom location.
 	 * @param configPath Path to configuration file
 	 * @return Shared pointer to loaded user preferences
 	 */
-	Ref<UserPreferences> CreateUserPreferences(const std::filesystem::path& configPath);
+	UserPreferences CreateUserPreferences(const std::filesystem::path& configPath);
 
 }
 

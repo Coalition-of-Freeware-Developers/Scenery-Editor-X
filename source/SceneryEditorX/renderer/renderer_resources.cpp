@@ -28,13 +28,14 @@
  * Created: 02/03/2026
  * -------------------------------------------------------
  */
+#include "gbuffer.h"
 #include "renderer.h"
 #include "renderer_declarations.h"
-#include "SceneryEditorX/core/platform/settings/settings.h"
-#include "SceneryEditorX/scene/scene.h"
 #include "vulkan/buffer.h"
 #include "vulkan/image_resource.h"
 #include "vulkan/sampler.h"
+#include <SceneryEditorX/scene/scene.h>
+#include <SceneryEditorX/settings/settings.h>
 
 // -------------------------------------------------------
 
@@ -73,7 +74,7 @@ namespace SceneryEditorX
 	};
 
 	// Static members defined here (declared in renderer.h)
-	PushConstantBuffer Renderer::m_Pcb_Pass_Cpu;
+	PushConstantBuffer_Pass Renderer::m_Pcb_Pass_Cpu;
 	uint32_t           Renderer::m_DrawCall_Count           = 0;
 	bool               Renderer::m_BindlessSamplers_Dirty   = false;
 	uint32_t           Renderer::m_DrawCalls_Prepass_Count  = 0;
@@ -89,8 +90,8 @@ namespace SceneryEditorX
 			xMath::Vec2 uv;
 		};
 
-		static Ref<Buffer> s_GeometryQuadVertexBuffer = nullptr;
-		static Ref<Buffer> s_GeometryQuadIndexBuffer  = nullptr;
+		Ref<Buffer> s_GeometryQuadVertexBuffer = nullptr;
+		Ref<Buffer> s_GeometryQuadIndexBuffer  = nullptr;
 	}
 
 #pragma endregion

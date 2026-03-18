@@ -37,29 +37,29 @@ namespace SceneryEditorX
 	
 	IResource::IResource(const ResourceType type)
 	{
-	    m_ResourceType = type;
+		m_ResourceType = type;
 	}
 	
 	template <typename T>
 	ResourceType IResource::TypeToEnum()
 	{
-	    return ResourceType::Unknown;
+		return ResourceType::Unknown;
 	}
 	
 	template <typename T>
-    static constexpr void ValidateResourceType()
+	static constexpr void ValidateResourceType()
 	{
-	    static_assert(std::is_base_of_v<IResource, T>, "Provided type does not implement IResource");
+		static_assert(std::is_base_of_v<IResource, T>, "Provided type does not implement IResource");
 	}
 	
 	// Explicit template instantiation
 	#define INSTANTIATE_TO_RESOURCE_TYPE(T, enumT)                                                                         \
-	    template <>                                                                                                        \
-	    ResourceType IResource::TypeToEnum<T>()                                                                            \
-	    {                                                                                                                  \
-	        ValidateResourceType<T>();                                                                                     \
-	        return enumT;                                                                                                  \
-	    }
+		template <>                                                                                                        \
+		ResourceType IResource::TypeToEnum<T>()                                                                            \
+		{                                                                                                                  \
+			ValidateResourceType<T>();                                                                                     \
+			return enumT;                                                                                                  \
+		}
 	
 	// To add a new resource to the engine, simply register it here
 	//INSTANTIATE_TO_RESOURCE_TYPE(Image, ResourceType::Texture)

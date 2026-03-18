@@ -48,7 +48,7 @@ namespace SceneryEditorX
 	public:
 		Entity() = default;
 		Entity(entt::entity handle, Scene* scene) : m_EntityHandle(handle), m_Scene(scene) {}
-		~Entity();
+		virtual ~Entity() = default;
 
 		void Start();
 		void Stop();
@@ -57,13 +57,59 @@ namespace SceneryEditorX
 		bool GetActive();
 		void SetActive(const bool active);
 
+		/**
+		 * @brief 
+		 * @return 
+		 */
 		[[nodiscard]] bool IsValid() const;
+
+		/**
+		 * @brief 
+		 * @return  
+		 */
+		virtual xMath::Matrix GetMatrix() const { return xMath::Matrix{}; }
+
+		/**
+		 * @brief 
+		 */
+		virtual void SetMatrixPrevious(const xMath::Matrix& /*m*/) {}
+
+		/**
+		 * @brief 
+		 * @return 
+		 */
+		virtual xMath::Vec3 GetPosition() const { return xMath::Vec3{}; }
+
+		/**
+		 * @brief 
+		 * @return 
+		 */
+		virtual xMath::Vec3 GetRotation() const { return xMath::Vec3{}; }
+
+		virtual xMath::Vec3 GetScale() const { return xMath::Vec3{}; }
+
+		/**
+		 * @brief 
+		 * @return 
+		 */
+		virtual xMath::Vec3 GetForward() const { return xMath::Vec3{0.0f, 0.0f, 1.0f}; }
+
+		/**
+		 * @brief 
+		 * @tparam T 
+		 * @return 
+		 */
+		template<typename T> 
+		T* GetComponent()
+		{
+			return nullptr;
+		}
 
 		Component* GetComponentByType(ComponentType Type) const;
 		Component* AddComponentByType(ComponentType Type);
 		void RemoveComponentByType(ComponentType Type);
 
-		/// Adds a component by ComponentType enum value
+		// Adds a component by ComponentType enum value
 		Component* AddComponent(ComponentType type);
 
 		// ---- Struct component access (non-Component subclasses) - returns T& ----
@@ -87,7 +133,7 @@ namespace SceneryEditorX
 		 * @return Const reference to the stored component.
 		 */
 		template<typename T>
-		auto GetComponent() const -> const T& requires(!std::is_base_of_v<Component, T>)
+		const T &GetComponent() const requires(!std::is_base_of_v<Component, T>)
 		{
 			auto it = m_structComponents.find(std::type_index(typeid(T)));
 			SEDX_CORE_ASSERT(it != m_structComponents.end(), "Entity does not have component of this type");
@@ -102,7 +148,7 @@ namespace SceneryEditorX
 		 * @return Pointer to the component, or nullptr.
 		 */
 		template<typename T>
-		auto GetComponent() -> T* requires(std::is_base_of_v<Component, T>)
+		T *GetComponent() requires(std::is_base_of_v<Component, T>)
 		{
 			const ComponentType type = Component::TypeToEnum<T>();
 			return static_cast<T*>(m_components[static_cast<uint32_t>(type)].get());
@@ -114,7 +160,7 @@ namespace SceneryEditorX
 		 * @return Const pointer to the component, or nullptr.
 		 */
 		template<typename T>
-		auto GetComponent() const -> const T* requires(std::is_base_of_v<Component, T>)
+		const T *GetComponent() const requires(std::is_base_of_v<Component, T>)
 		{
 			const ComponentType type = Component::TypeToEnum<T>();
 			return static_cast<const T*>(m_components[static_cast<uint32_t>(type)].get());
@@ -122,7 +168,7 @@ namespace SceneryEditorX
 
 		// ---- AddComponent ----
 
-	// ---- Component Access (Forwards to Scene Registry) ----
+	    // ---- Component Access (Forwards to Scene Registry) ----
 
 		template<typename T, typename... Args>
 		T& AddComponent(Args&&... args)
@@ -170,7 +216,7 @@ namespace SceneryEditorX
 		Entity GetParent() const
 		{
 			UUID parentId = GetComponent<RelationshipComponent>().pParentHandle;
-			return m_Scene->TryGetEntityWithUUID(parentId);
+			return Scene::TryGetEntityWithUUID(parentId);
 		}
 
 		void SetParent(Entity parent)

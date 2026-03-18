@@ -30,11 +30,12 @@
  */
 #include "window.h"
 #include "monitor_data.h"
-#include "SceneryEditorX/core/input/input.h"
 #include <SceneryEditorX/core/application/application.h>
 #include <SceneryEditorX/core/events/application_events.h>
 #include <SceneryEditorX/core/events/key_events.h>
 #include <SceneryEditorX/core/events/mouse_events.h>
+#include <SceneryEditorX/core/identifiers/flag.h>
+#include <SceneryEditorX/core/input/input.h>
 #include <imgui/imgui.h>
 
 // -------------------------------------------------------
@@ -46,7 +47,6 @@ namespace SceneryEditorX
 	Window Window::m_Window;
 	SDL_Window *s_Window = nullptr;
 	SDL_DisplayID *s_Displays = nullptr;
-
 	// -------------------------------------------------------
 
 	const char *Window::name = "Scenery Editor X";
@@ -91,7 +91,6 @@ namespace SceneryEditorX
 	static int s_Titlebar_HoveredFrames = 0;      // persistence counter for hover state
 
 	// -------------------------------------------------------
-
 
 	static SDL_HitTestResult HitTestCallback(SDL_Window *win, const SDL_Point *area, void *data)
 	{
@@ -793,7 +792,16 @@ namespace SceneryEditorX
 	Vec2 Window::GetWindowSize() { return {static_cast<float>(width), static_cast<float>(height)}; }
 
 	// Accessor implementations (non-inline to avoid static member export issues across DLL boundaries)
-	bool Window::IsDirty() { return dirty; }
+	Flag Window::IsDirty()
+	{
+		Flag dirtyFlag;
+		if (dirty)
+		{
+			dirtyFlag.SetDirty();
+			dirty = false;
+		}
+		return dirtyFlag;
+	}
 	void Window::WaitEvents() { SDL_WaitEvent(nullptr); }
 	float Window::GetDeltaTime() { return deltaTime; }
 	bool Window::GetShouldClose() { return shouldClose; }
@@ -904,7 +912,12 @@ namespace SceneryEditorX
 			SDL_SetWindowBordered(s_Window, value);
 		}
 	}
-		
-}
+
+	float Window::GetDpiScale()
+	{
+		return s_DPI_Scale;
+	}
+
+	} // namespace SceneryEditorX
 
 // -------------------------------------------------------

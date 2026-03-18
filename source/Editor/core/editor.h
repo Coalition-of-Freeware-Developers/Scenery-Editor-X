@@ -29,18 +29,11 @@
  * -------------------------------------------------------
  */
 #pragma once
-#include "Editor/projects/project.h"
-#include "Editor/ui/panels/ui_panel.h"
-#include <Editor/core/viewport.h>
+#include <Editor/ui/ui_widget.h>
 #include <SceneryEditorX/core/application/application.h>
 #include <SceneryEditorX/core/events/key_events.h>
 #include <SceneryEditorX/core/events/mouse_events.h>
-#include <SceneryEditorX/core/platform/settings/user_settings.h>
-#include <SceneryEditorX/core/window/window.h>
-#include <SceneryEditorX/renderer/vulkan/render_context.h>
-#include <SceneryEditorX/renderer/renderer.h>
-#include <SceneryEditorX/ui/ui.h>
-#include <SceneryEditorX/ui/ui_context.h>
+#include <SceneryEditorX/settings/user_settings.h>
 
 // ---------------------------------------------------------
 
@@ -82,26 +75,41 @@ namespace SceneryEditorX
 
 		static bool HasArgument(const std::string &argument);
 
+		template<typename T>
+		T* GetWidget()
+		{
+			for (const auto& widget : m_Widgets)
+			{
+				if (T* widget_t = dynamic_cast<T*>(widget.Get()))
+				{
+					return widget_t;
+				}
+			}
+
+			return nullptr;
+		}
+
 		//void OnCreateMeshFromMeshSource(Entity entity, Ref<MeshSource> meshSource);
 		//void SceneHierarchyInvalidMetadataCallback(Entity entity, AssetHandle handle);
 		//void SceneHierarchySetEditorCameraTransform(Entity entity);
+		
+		inline static ImFont* fontNormal = nullptr;
+		inline static ImFont* fontBold   = nullptr;
 
 	private:
 		static void ProcessClArgs();
+		float GetSnapValue();
 		static void UpdateWindowTitle(const std::string &sceneName);
 		void OnInit() override;
 
 		Ref<UserPreferences> m_UserPreferences;
 
-		//std::vector<Ref<UI_Panel>> m_Panels;
+		std::vector<Ref<Widget>> m_Widgets;
 		bool m_ShowStatisticsPanel = false;
 		// std::vector<Ref<Viewport>> m_EditorViewports;
 		// Ref<::Project::DefaultProject> activeProject;
 		// Scope<PanelManager> m_PanelManager;
 		// Ref<EditorConsolePanel> m_ConsolePanel;
-
-		// ---------------------------------------------------------
-
 	};
 
 }
