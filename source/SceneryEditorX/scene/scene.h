@@ -123,6 +123,43 @@ namespace SceneryEditorX
 			return m_Registry.view<Components...>();
 		}
 
+		/**
+		 * @brief 
+		 * @return The current time of day.
+		 */
+		static float GetTimeOfDay();
+
+
+		/**
+		 * @brief 
+		 * @param timeOfDay 
+		 */
+		static void SetTimeOfDay(float timeOfDay);
+
+		/**
+		 * @brief 
+		 * @return 
+		 */
+		static std::string& GetFilePath();
+
+		/**
+		 * @brief 
+		 * @return 
+		 */
+		static const std::string& GetName();
+
+		/**
+		 * @brief 
+		 * @return 
+		 */
+		static const Vec3 &GetWind();
+
+		/**
+		 * @brief 
+		 * @param wind 
+		 */
+		static void SetWind(const Vec3& wind);
+
 	private:
 		static Ref<Camera> m_Camera;
 

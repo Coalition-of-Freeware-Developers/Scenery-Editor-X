@@ -1,4 +1,4 @@
-/**
+﻿/**
  * -------------------------------------------------------
  * Scenery EditorLayer X
  * -------------------------------------------------------
@@ -29,7 +29,14 @@
  * -------------------------------------------------------
  */
 #include "editor_layer.h"
+#include <Editor/settings/editor_settings.h>
+#include <Editor/ui/actions/gizmos.h>
+#include <Editor/ui/source/imgui/imgui.h>
+#include <Editor/ui/source/imgui/imgui_internal.h>
+#include <Editor/ui/source/imguizmo/ImGuizmo.h>
 #include <SceneryEditorX/renderer/renderer.h>
+#include <SceneryEditorX/scene/entity.h>
+#include <SceneryEditorX/scene/scene.h>
 
 // ---------------------------------------------------------
 
@@ -64,6 +71,135 @@ namespace SceneryEditorX
 	void EditorLayer::OnUIRender()
 	{
 		Layer::OnUIRender();
+
+		// -------------------------------------------------------
+		// Fullscreen dockspace host window
+		// -------------------------------------------------------
+		const ImGuiViewport* vp = ImGui::GetMainViewport();
+		ImGui::SetNextWindowPos(vp->Pos);
+		ImGui::SetNextWindowSize(vp->Size);
+		ImGui::SetNextWindowViewport(vp->ID);
+
+		constexpr ImGuiWindowFlags hostFlags =
+			ImGuiWindowFlags_NoDocking |
+			ImGuiWindowFlags_NoTitleBar |
+			ImGuiWindowFlags_NoCollapse |
+			ImGuiWindowFlags_NoResize |
+			ImGuiWindowFlags_NoMove |
+			ImGuiWindowFlags_NoBringToFrontOnFocus |
+			ImGuiWindowFlags_NoNavFocus |
+			ImGuiWindowFlags_NoBackground;
+
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+		bool dockspaceOpen = true;
+		ImGui::Begin("##DockspaceHost", &dockspaceOpen, hostFlags);
+		ImGui::PopStyleVar(3);
+
+		ImGuiID dockspaceID = ImGui::GetID("MainDockspace");
+		#if defined(IMGUI_HAS_DOCK)
+		if (!ImGui::DockBuilderGetNode(dockspaceID))
+		{
+			ImGui::DockBuilderRemoveNode(dockspaceID);
+			ImGui::DockBuilderAddNode(dockspaceID, ImGuiDockNodeFlags_None);
+			ImGui::DockBuilderSetNodeSize(dockspaceID, vp->Size);
+
+			ImGuiID remaining = dockspaceID;
+
+			// Right panel (World + Properties)
+			ImGuiID rightID;
+			ImGui::DockBuilderSplitNode(remaining, ImGuiDir_Right, 0.18f, &rightID, &remaining);
+			ImGuiID propertiesID;
+			ImGui::DockBuilderSplitNode(rightID, ImGuiDir_Down, 0.55f, &propertiesID, &rightID);
+
+			// Bottom panel (Console + Assets)
+			ImGuiID bottomID;
+			ImGui::DockBuilderSplitNode(remaining, ImGuiDir_Down, 0.22f, &bottomID, &remaining);
+			ImGuiID assetsID;
+			ImGui::DockBuilderSplitNode(bottomID, ImGuiDir_Right, 0.60f, &assetsID, &bottomID);
+
+			// Dock windows
+			ImGui::DockBuilderDockWindow("Viewport",    remaining);
+			ImGui::DockBuilderDockWindow("World",       rightID);
+			ImGui::DockBuilderDockWindow("Properties",  propertiesID);
+			ImGui::DockBuilderDockWindow("Console",     bottomID);
+			ImGui::DockBuilderDockWindow("Assets",      assetsID);
+			ImGui::DockBuilderFinish(dockspaceID);
+		}
+		#endif
+
+		ImGui::DockSpace(dockspaceID, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode);
+		ImGui::End(); // DockspaceHost
+
+		// -------------------------------------------------------
+		// Menu bar
+		// -------------------------------------------------------
+		UI_DrawMenubar();
+
+		// -------------------------------------------------------
+		// Viewport panel
+		// -------------------------------------------------------
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+		ImGui::Begin("Viewport");
+		ImGui::PopStyleVar();
+		{
+			ImVec2 size = ImGui::GetContentRegionAvail();
+			if (size.x > 0 && size.y > 0)
+			{
+				Renderer::SetViewport(size.x, size.y);
+			}
+			// Gizmo overlay
+			Gizmo::Tick();
+		}
+		ImGui::End(); // Viewport
+
+		// -------------------------------------------------------
+		// World hierarchy panel
+		// -------------------------------------------------------
+		ImGui::Begin("World");
+		{
+			for (Entity* entity : Scene::GetEntities())
+			{
+				if (!entity) continue;
+				const bool selected = false; // TODO: tie to selection system
+			 if (ImGui::Selectable(entity->Name().c_str(), selected))
+				{
+					// TODO: set selection
+				}
+			}
+		}
+		ImGui::End(); // World
+
+		// -------------------------------------------------------
+		// Properties panel
+		// -------------------------------------------------------
+		ImGui::Begin("Properties");
+		{
+			// TODO: display selected entity components
+			ImGui::TextDisabled("Select an entity in the World panel");
+		}
+		ImGui::End(); // Properties
+
+		// -------------------------------------------------------
+		// Console panel
+		// -------------------------------------------------------
+		ImGui::Begin("Console");
+		{
+			// TODO: connect to logging system
+			ImGui::TextDisabled("Console output will appear here");
+		}
+		ImGui::End(); // Console
+
+		// -------------------------------------------------------
+		// Assets panel
+		// -------------------------------------------------------
+		ImGui::Begin("Assets");
+		{
+			// TODO: integrate with AssetManager / content browser
+			ImGui::TextDisabled("Project assets will appear here");
+		}
+		ImGui::End(); // Assets
 	}
 
 	void EditorLayer::OnEvent(Event &event)
@@ -83,7 +219,17 @@ namespace SceneryEditorX
 
 	float EditorLayer::GetSnapValue()
 	{
-		return 0.0f;
+		if (!EditorSettings::Get().enableGridSnapping)
+			return 0.0f;
+
+		const auto& settings = EditorSettings::Get();
+		switch (m_GizmoType)
+		{
+			case ImGuizmo::TRANSLATE: return settings.translationSnapValue;
+			case ImGuizmo::ROTATE:    return settings.rotationSnapValue;
+			case ImGuizmo::SCALE:     return settings.scaleSnapValue;
+			default:                  return 0.0f;
+		}
 	}
 
 	float EditorLayer::UI_DrawTitlebar()

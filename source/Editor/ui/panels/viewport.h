@@ -75,7 +75,7 @@ namespace UI
 		bool OnMouseButtonPressed(SceneryEditorX::MouseButtonPressedEvent &e);
 	
 		std::pair<float, float> GetMouseViewportSpace(bool primaryViewport) const;
-		std::pair<Vec3, Vec3> CastRay(float mx, float my) const;
+		std::pair<xMath::Vec3, xMath::Vec3> CastRay(float mx, float my) const;
 	
 		SceneryEditorX::Editor *m_Editor = nullptr;
 		const char* m_ViewportName = "Viewport";

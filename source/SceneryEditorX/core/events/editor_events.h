@@ -41,7 +41,7 @@ namespace SceneryEditorX
 	public:
 		EditorExitPlayModeEvent() = default;
 
-        [[nodiscard]] virtual std::string ToString() const override
+		[[nodiscard]] virtual std::string ToString() const override
 		{
 			std::stringstream ss;
 			ss << "EditorExitPlayModeEvent";
@@ -52,14 +52,14 @@ namespace SceneryEditorX
 		EVENT_CLASS_CATEGORY(EventCategoryEditor)
 	};
 
-    // -------------------------------------------------------------------
+	// -------------------------------------------------------------------
 
 	class AssetReloadedEvent : public Event
 	{
 	public:
-        explicit AssetReloadedEvent(const AssetHandle &assetHandle) : AssetHandle(assetHandle) {}
+		explicit AssetReloadedEvent(const AssetHandle &assetHandle) : AssetHandle(assetHandle) {}
 
-        [[nodiscard]] virtual std::string ToString() const override
+		[[nodiscard]] virtual std::string ToString() const override
 		{
 			std::stringstream ss;
 			ss << "AssetReloadedEvent";
@@ -67,7 +67,7 @@ namespace SceneryEditorX
 		}
 
 		EVENT_CLASS_TYPE(AssetReloaded)
-	    EVENT_CLASS_CATEGORY(EventCategoryEditor)
+		EVENT_CLASS_CATEGORY(EventCategoryEditor)
 
 		AssetHandle AssetHandle;
 	};

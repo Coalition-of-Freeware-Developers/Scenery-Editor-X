@@ -37,6 +37,10 @@
 namespace SceneryEditorX
 {
 
+	/**
+	 * @class Shader
+	 * @brief Represents a Vulkan shader composed of multiple shader stages.
+	 */
 	class Shader : public RefCounted
 	{
 	public:

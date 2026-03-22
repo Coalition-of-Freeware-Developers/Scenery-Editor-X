@@ -126,7 +126,9 @@ namespace SceneryEditorX
 		CommandPool,
 		DebugCallback,
 		AccelerationStructure,
-		
+		Mesh,
+		Material,
+		Font,
 		UniformBuffer,
 		UniformBufferSet,
 		StorageBuffer,
@@ -198,8 +200,19 @@ namespace SceneryEditorX
 		MaxEnum
 	};
 
+	/**
+	 * @brief Namespace for image layout definitions in Vulkan.
+	 *
+	 * This namespace contains an enumeration of possible image layouts
+	 * that can be used in Vulkan applications. Image layouts define
+	 * how the image data is organized and accessed by the GPU.
+	 */
 	namespace Layout
 	{
+		/**
+		 * @enum ImageLayout
+		 * @brief Enumeration of Vulkan image layouts.
+		 */
 		enum ImageLayout : uint8_t
 		{
 			Undefined = 0,
@@ -224,6 +237,13 @@ namespace SceneryEditorX
 		};
 	}
 
+	/**
+	 * @enum CullMode
+	 * @brief Enumeration of culling modes in Vulkan.
+	 * 
+	 * This enum provides a type-safe way to specify which faces of a polygon
+	 * should be culled (not rendered) in the Vulkan rendering pipeline.
+	 */
 	enum class CullMode : uint8_t
 	{
 		None,
@@ -233,6 +253,13 @@ namespace SceneryEditorX
 		MaxEnum
 	};
 
+	/**
+	 * @enum ImageType
+	 * @brief Enumeration of Vulkan image types.
+	 *
+	 * This enum provides a type-safe way to specify the type of an image in Vulkan.
+	 * The image type determines how the image can be used and accessed in the rendering pipeline.
+	 */
 	enum class ImageType : uint8_t
 	{
 		Type1D,
@@ -245,6 +272,6 @@ namespace SceneryEditorX
 		MaxEnum
 	};
 
-} // namespace SceneryEditorX
+}
 
 // -----------------------------------------------------------------

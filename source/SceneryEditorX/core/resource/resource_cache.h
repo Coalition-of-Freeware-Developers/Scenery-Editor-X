@@ -30,6 +30,8 @@
  */
 #pragma once
 #include "iresource.h"
+#include "SceneryEditorX/utils/inheritance.h"
+
 #include <algorithm>
 #include <type_traits>
 #include <SceneryEditorX/renderer/vulkan/enums.h>
@@ -86,6 +88,7 @@ namespace SceneryEditorX
 		ResourceCache,
 		RenderDoc,
 		Texture,
+		Logo,
 		Minimize,
 		Maximize,
 		Close,
@@ -136,11 +139,10 @@ namespace SceneryEditorX
 		template <class T>
 		static Ref<T> GetByName(const std::string &name)
 		{
-			static_assert(std::is_base_of_v<IResource, T>, "Type must inherit from IResource");
-			static_assert(std::is_base_of_v<RefCounted, T>, "Type must inherit from RefCounted to be cached in ResourceCache");
+				static_assert(std::is_base_of_v<SharedResource, T>, "Type must inherit from SharedResource (RefCounted + IResource)");
 
-			Ref<IResource> resource = GetByName(name, IResource::TypeToEnum<T>());
-			return resource ? resource.As<T>() : nullptr;
+			IResource *raw = GetByName(name, IResource::TypeToEnum<T>());
+			return raw ? Ref<T>(static_cast<T *>(raw)) : nullptr;
 		}
 
 		/**
@@ -159,12 +161,11 @@ namespace SceneryEditorX
 		template <class T>
 		static Ref<T> GetByPath(const std::string &path)
 		{
-			static_assert(std::is_base_of_v<IResource, T>, "Type must inherit from IResource");
-			static_assert(std::is_base_of_v<RefCounted, T>, "Type must inherit from RefCounted to be cached in ResourceCache");
+			static_assert(std::is_base_of_v<SharedResource, T>, "Type must inherit from SharedResource (RefCounted + IResource)");
 
-			for (const Ref<IResource> &resource : GetResources())
+			for (const Ref<SharedResource> &resource : GetResources())
 			{
-			 if (resource && path == resource->GetResourceFilePath())
+			    if (resource && path == resource->GetResourceFilePath())
 					return resource.As<T>();
 			}
 			return nullptr;
@@ -179,8 +180,7 @@ namespace SceneryEditorX
 		template <class T>
 		static Ref<T> Cache(const Ref<T> resource)
 		{
-			static_assert(std::is_base_of_v<IResource, T>, "Type must inherit from IResource");
-			static_assert(std::is_base_of_v<RefCounted, T>, "Type must inherit from RefCounted to be cached in ResourceCache");
+			static_assert(std::is_base_of_v<SharedResource, T>, "Type must inherit from SharedResource (RefCounted + IResource)");
 
 			if (!resource)
 				return nullptr;
@@ -212,8 +212,7 @@ namespace SceneryEditorX
 		template <class T>
 		static Ref<T> Load(const std::string &filePath, uint32_t flags = 0)
 		{
-			static_assert(std::is_base_of_v<IResource, T>, "Type must inherit from IResource");
-			static_assert(std::is_base_of_v<RefCounted, T>, "Type must inherit from RefCounted to be loaded via ResourceCache::Load");
+			static_assert(std::is_base_of_v<SharedResource, T>, "Type must inherit from SharedResource (RefCounted + IResource)");
 
 			if (!IO::FileSystem::Exists(filePath))
 			{
@@ -245,8 +244,7 @@ namespace SceneryEditorX
 		template <class T>
 		static void Remove(Ref<T> &resource)
 		{
-			static_assert(std::is_base_of_v<IResource, T>, "Type must inherit from IResource");
-			static_assert(std::is_base_of_v<RefCounted, T>, "Type must inherit from RefCounted to be cached in ResourceCache");
+			static_assert(std::is_base_of_v<SharedResource, T>, "Type must inherit from SharedResource (RefCounted + IResource)");
 
 			if (!resource)
 				return;
@@ -254,7 +252,7 @@ namespace SceneryEditorX
 			std::scoped_lock guard(GetMutex());
 			const uint64_t objectId = resource->GetObjectId();
 			GetResources().erase(std::remove_if(GetResources().begin(), GetResources().end(),
-			 [objectId](const Ref<IResource> &cachedResource)
+			 [objectId](const Ref<SharedResource> &cachedResource)
 				{
 					return cachedResource && cachedResource->GetObjectId() == objectId;
 				}),
@@ -317,7 +315,7 @@ namespace SceneryEditorX
 		 * @brief Retrieves the list of resources.
 		 * @return A reference to the vector of resources.
 		 */
-		static std::vector<IResource*> &GetResources();
+		static std::vector<Ref<SharedResource>> &GetResources();
 
 		/**
 		 * @brief 

@@ -36,40 +36,46 @@
 
 namespace SceneryEditorX
 {
-    class Device;
+	class Device;
 
+/**
+	 * @class DescriptorSet
+	 * @brief Class representing a Vulkan descriptor set.
+	 * 
+	 * A descriptor set is a collection of resources (such as textures, buffers, and samplers)
+	 * that shaders can access during rendering. This class encapsulates the creation, management,
+	 * and destruction of a Vulkan descriptor set.
+	 */
 	class DescriptorSet
 	{
 	public:
-        /**
+		/**
 		 * @brief Construct a new Descriptor Set object.
 		 * @param textureDescriptors The texture descriptors to initialize the descriptor set with.
 		 */
 		DescriptorSet(const std::vector<::VkDescriptorImageInfo>& textureDescriptors);
-	    DescriptorSet() = default;
-	    ~DescriptorSet();
+		DescriptorSet() = default;
+		~DescriptorSet();
 
 		DescriptorSet(const DescriptorSet&) = delete;
 		DescriptorSet& operator=(const DescriptorSet&) = delete;
 		DescriptorSet(DescriptorSet&& other) noexcept;
 		DescriptorSet& operator=(DescriptorSet&& other) noexcept;
 
-        void Destroy();
+		void Destroy();
 
-        VkDescriptorSetLayout GetLayout() const { return m_Layout; }
-	    VkDescriptorPool GetPool() const { return m_DescriptorPool; }
-	    VkDescriptorSet GetSet() const { return m_Set; }
+		VkDescriptorSetLayout GetLayout() const { return m_Layout; }
+		VkDescriptorPool GetPool() const { return m_DescriptorPool; }
+		VkDescriptorSet GetSet() const { return m_Set; }
 	
 	private:
-	    Ref<Device> m_Device;
-	    VkDescriptorSetLayout m_Layout = VK_NULL_HANDLE;
-	    VkDescriptorPool m_DescriptorPool = VK_NULL_HANDLE;
-	    VkDescriptorSet m_Set = VK_NULL_HANDLE;
-	    bool m_Destroyed = false;
+		Ref<Device> m_Device;
+		VkDescriptorSetLayout m_Layout = VK_NULL_HANDLE;
+		VkDescriptorPool m_DescriptorPool = VK_NULL_HANDLE;
+		VkDescriptorSet m_Set = VK_NULL_HANDLE;
+		bool m_Destroyed = false;
 	};
 
-
-
-    } // namespace SceneryEditorX
+} // namespace SceneryEditorX
 
 // -----------------------------------------------------------------

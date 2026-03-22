@@ -29,7 +29,7 @@
  * -------------------------------------------------------
  */
 #include "material.h"
-#include "SceneryEditorX/asset/asset_manager.h"
+#include "SceneryEditorX/asset/manager/asset_manager.h"
 #include <SceneryEditorX/renderer/renderer.h>
 #include <nlohmann/json.hpp>
 
@@ -44,7 +44,7 @@ namespace SceneryEditorX
 
 	// -------------------------------------------------------
 
-	MaterialAsset::MaterialAsset(const std::string &path)
+	MaterialAsset::MaterialAsset(const std::string &path) : IResource(ResourceType::Material)
 	{
 		MaterialAsset::Load(path);
 	}
@@ -337,6 +337,19 @@ namespace SceneryEditorX
 		m_Material->Set(TRANSPARENCY_UNIFORM, transparency);
 	}
 
+
+	ImageResource *MaterialAsset::GetTexture(MaterialTextureType materialTexture, uint32_t slot)
+	{
+	    //return m_Material[(static_cast<uint32_t>(materialTexture) * SLOTS_PER_TEXTURE) + slot];
+		switch (materialTexture)
+		{
+			case MaterialTextureType::Color: return GetAlbedoMap().Get();
+			case MaterialTextureType::Normal: return GetNormalMap().Get();
+			default:
+				SEDX_CORE_ERROR("Unsupported material texture type: {}", static_cast<uint32_t>(materialTexture));
+				return nullptr;
+			}
+	}
 
 	void MaterialAsset::SetDefaults() const
 	{

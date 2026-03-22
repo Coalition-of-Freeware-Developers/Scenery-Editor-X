@@ -31,7 +31,6 @@
 #pragma once
 #include "device.h"
 #include "SceneryEditorX/core/identifiers/flag.h"
-
 #include <vector>
 #include <vma/vk_mem_alloc.h>
 
@@ -41,6 +40,10 @@ namespace SceneryEditorX
 {
 	class Window;
 
+/**
+	 * @class Swapchain
+	 * @brief Manages the Vulkan swapchain, including images, image views, depth resources, and synchronization.
+	 */
 	class Swapchain : public RefCounted
 	{
 	public:

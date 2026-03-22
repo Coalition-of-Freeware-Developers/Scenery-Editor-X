@@ -29,6 +29,7 @@
  * -------------------------------------------------------
  */
 #pragma once
+#include <SceneryEditorX/core/base.h>
 
 // -------------------------------------------------------
 
@@ -48,11 +49,11 @@ namespace SceneryEditorX
 	struct PushConstantBuffer_Pass
 	{
 		uint32_t drawIndex     = 0;
-	    uint32_t materialIndex = 0;
+		uint32_t materialIndex = 0;
 		uint32_t isTransparent = 0;
 		uint32_t padd          = 0;
 
-	    // generic per-pass parameters, laid out as 3 x float4:
+		// generic per-pass parameters, laid out as 3 x float4:
 		// v[0..2]  = f3_value  (e.g. light count, fog, mip level)
 		// v[3]     = f2_value.x
 		// v[4..6]  = f3_value2 (e.g. light index, texel size)
@@ -60,16 +61,59 @@ namespace SceneryEditorX
 		// v[8..11] = f4_value  (e.g. light coordinate, color)
 		float v[12] = {};
 
+		/**
+		 * @brief 
+		 * @param x 
+		 * @param y 
+		 */
 		void SetF2Value(float x, float y) { v[3] = x; v[7] = y; }
 
+		/**
+		 * @brief 
+		 * @param value 
+		 */
 		void SetF3Value(const Vec3& value) { v[0] = value.x; v[1] = value.y; v[2] = value.z; }
+
+		/**
+		 * @brief 
+		 * @param x 
+		 * @param y 
+		 * @param z 
+		 */
 		void SetF3Value(float x, float y = 0.0f, float z = 0.0f) { v[0] = x; v[1] = y; v[2] = z; }
 
+		/**
+		 * @brief 
+		 * @param value 
+		 */
 		void SetF3Value2(const Vec3& value) { v[4] = value.x; v[5] = value.y; v[6] = value.z; }
+
+		/**
+		 * @brief 
+		 * @param x 
+		 * @param y 
+		 * @param z 
+		 */
 		void SetF3Value2(float x, float y, float z) { v[4] = x; v[5] = y; v[6] = z; }
 
+		/**
+		 * @brief 
+		 * @param x 
+		 * @param y 
+		 * @param z 
+		 * @param w 
+		 */
 		void SetF4Value(float x, float y, float z, float w) { v[8] = x; v[9] = y; v[10] = z; v[11] = w; }
-	    void SetF4Value(const xMath::Color& color) { v[8] = color.r; v[9] = color.g; v[10] = color.b; v[11] = color.a; }
+
+		/**
+		 * @brief 
+		 * @param color 
+		 */
+		void SetF4Value(const Vec4& color) { v[8] = color.x; v[9] = color.y; v[10] = color.z; v[11] = color.w; }
+
+		template<typename T>
+		requires requires(const T& color) { color.r; color.g; color.b; color.a; }
+		void SetF4Value(const T& color) { v[8] = color.r; v[9] = color.g; v[10] = color.b; v[11] = color.a; }
 
 	};
 

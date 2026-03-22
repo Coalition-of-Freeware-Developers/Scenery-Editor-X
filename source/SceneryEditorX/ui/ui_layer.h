@@ -15,7 +15,7 @@
 
 // -------------------------------------------------------
 
-namespace SceneryEditorX::UI
+namespace SceneryEditorX
 {
 	class UILayer : public Layer
 	{

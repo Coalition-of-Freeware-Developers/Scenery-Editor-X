@@ -37,6 +37,10 @@
 namespace SceneryEditorX
 {
 
+	/**
+	 * @class ShaderStage
+	 * @brief ShaderStage represents a single stage in the graphics pipeline, encapsulating a Vulkan shader module and its associated inputs.
+	 */
 	class ShaderStage : public RefCounted
 	{
 	public:

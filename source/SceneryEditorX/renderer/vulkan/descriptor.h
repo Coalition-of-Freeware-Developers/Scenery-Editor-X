@@ -36,7 +36,10 @@
 
 namespace SceneryEditorX
 {
-	// Minimal descriptor helper for creating a texture descriptor set layout.
+/**
+	 * @class Descriptor
+	 * @brief A helper class for managing Vulkan descriptor sets, layouts, and pools.
+	 */
 	class Descriptor 
 	{
 	public:

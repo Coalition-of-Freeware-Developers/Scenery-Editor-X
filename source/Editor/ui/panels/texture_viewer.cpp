@@ -29,6 +29,8 @@
  * -------------------------------------------------------
  */
 #include "texure_viewer.h"
+#include "Editor/ui/ui.h"
+
 #include <algorithm>
 #include <SceneryEditorX/renderer/renderer.h>
 #include <SceneryEditorX/renderer/vulkan/image_resource.h>
@@ -58,12 +60,13 @@ namespace
     ImVec2 pan_offset                     = ImVec2(0.0f, 0.0f);
     uint32_t m_visualisation_flags        = 0;
     std::vector<std::string> render_target_names;
-    std::vector<SceneryEditorX::ImageResource*> render_targets;}
+    std::vector<SceneryEditorX::ImageResource*> render_targets;
+}
 
 TextureViewer::TextureViewer(Editor* editor) : Widget(editor)
 {
-    m_title   = "Texture Viewer";
-    m_visible = false;
+    m_Title   = "Texture Viewer";
+    m_Visible = false;
 }
 
 void TextureViewer::OnTick()
@@ -79,11 +82,12 @@ void TextureViewer::OnVisible()
 
     // get render targets
     std::vector<std::pair<std::string, SceneryEditorX::ImageResource*>> sorted_targets;
-    for (const Ref<SceneryEditorX::ImageResource> & render_target : Renderer::GetRenderTargets())
+    for (uint32_t i = 0; i < static_cast<uint32_t>(Renderer_RenderTarget::MaxEnum); ++i)
     {
+        SceneryEditorX::ImageResource* render_target = Renderer::GetRenderTarget(static_cast<Renderer_RenderTarget>(i));
         if (render_target)
         {
-            sorted_targets.emplace_back(render_target->GetObjectName(), render_target.Get());
+            sorted_targets.emplace_back(render_target->GetObjectName(), render_target);
         }
     }
 
@@ -155,7 +159,7 @@ void TextureViewer::OnTickVisible()
             ImVec2 image_pos = ImVec2(cursor_pos.x + pan_offset.x, cursor_pos.y + pan_offset.y);
         
             ImGui::SetCursorScreenPos(image_pos);
-            ImGuiSp::image(texture, Vec2(draw_w, draw_h), ImColor(255, 255, 255, 255), ImColor(40, 40, 40, 255));
+            UI::Image(texture, {draw_w, draw_h}, ImColor(255, 255, 255, 255), ImColor(40, 40, 40, 255));
             ImGui::SetCursorScreenPos(cursor_pos);
         
             ImGuiIO& io = ImGui::GetIO();
@@ -206,7 +210,7 @@ void TextureViewer::OnTickVisible()
         // target selector
         ImGui::Text("Texture");
         ImGui::SameLine();
-        ImGuiSp::combo_box("##texture", render_target_names, &m_texture_index);
+        UI::ComboBox("##texture", render_target_names, &m_texture_index);
 
         if (texture_current)
         {
@@ -216,19 +220,19 @@ void TextureViewer::OnTickVisible()
                 ImGui::Text("Name: %s", texture_current->GetObjectName().c_str());
                 ImGui::Text("Size: %dx%d", texture_current->GetWidth(), texture_current->GetHeight());
                 ImGui::Text("Channels: %d", texture_current->GetChannelCount());
-                ImGui::Text("Format: %s", rhi_format_to_string(texture_current->GetFormat()));
+                ImGui::Text("Format: %d", static_cast<int>(texture_current->GetImageSpec().format));
                 ImGui::Text("Mips: %d", texture_current->GetMipCount());
-                ImGui::Text("Array: %d", texture_current->GetDepth());
+                ImGui::Text("Array: %d", texture_current->GetArrayLength());
             }
 
             // mip and array sliders
             if (texture_current->GetMipCount() > 1)
             {
-                ImGui::SliderInt("Mip Level", &mip_level, 0, static_cast<int>(texture_current->GetMipCount()) - 1);
+                ImGui::SliderInt("Mip Level", &mip_level, 0, static_cast<int>(texture_current->GetMipCount()) - 1, "%d");
             }
-            if (texture_current->GetDepth() > 1)
+            if (texture_current->GetArrayLength() > 1)
             {
-                ImGui::SliderInt("Array Level", &array_level, 0, static_cast<int>(texture_current->GetDepth()) - 1);
+                ImGui::SliderInt("Array Level", &array_level, 0, static_cast<int>(texture_current->GetArrayLength()) - 1, "%d");
             }
 
             // channels

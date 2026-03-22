@@ -67,10 +67,13 @@ namespace SceneryEditorX
 		virtual ~Component() = default;
 
 		/* @brief Called when the component gets added to an entity. */
-		virtual void Initialize() {}
+		virtual void Init() {}
 
 		/* @brief Called every time the simulation starts. */
 		virtual void Start() {}
+
+		/* @brief Called every frame */
+		virtual void Tick() {}
 
 		/* @brief Called every time the simulation stops. */
 		virtual void Stop() {}
@@ -113,7 +116,7 @@ namespace SceneryEditorX
 		{
 			switch (type)
 			{
-			    case ComponentType::Camera:			return "camera";
+				case ComponentType::Camera:			return "camera";
 				case ComponentType::Light:			return "light";
 				case ComponentType::Renderable:		return "renderable";
 				case ComponentType::Spline:			return "spline";
@@ -134,7 +137,7 @@ namespace SceneryEditorX
 		 */
 		[[nodiscard]] static constexpr ComponentType StringToType(const std::string_view name)
 		{
-		    if (name == "camera")			return ComponentType::Camera;
+			if (name == "camera")			return ComponentType::Camera;
 			if (name == "light")			return ComponentType::Light;
 			if (name == "renderable")		return ComponentType::Renderable;
 			if (name == "spline")			return ComponentType::Spline;
@@ -172,6 +175,10 @@ namespace SceneryEditorX
 		 */
 		[[nodiscard]] Entity *GetEntity() const { return m_EntityPtr; }
 
+	    Entity* m_EntityPtr  = nullptr;
+	    bool m_Enabled		 = false;					// The state of the component
+		ComponentType m_Type = ComponentType::MaxEnum;	// The type of the component
+
 	protected:
 		/**
 		 * @brief Registers an attribute for the component.
@@ -185,10 +192,6 @@ namespace SceneryEditorX
 			attribute.set = std::move(setter);
 			m_Attributes.emplace_back(attribute);
 		}
-
-		bool m_Enabled		 = false;					// The state of the component
-		Entity* m_EntityPtr  = nullptr;					// The owner of the component
-		ComponentType m_Type = ComponentType::MaxEnum;	// The type of the component
 
 	private:
 		std::vector<Attribute> m_Attributes; // The attributes of the component

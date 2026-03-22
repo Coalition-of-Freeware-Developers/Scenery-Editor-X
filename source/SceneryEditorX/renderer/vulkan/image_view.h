@@ -36,36 +36,44 @@
 
 namespace SceneryEditorX
 {
-    class Device;
+	class Device;
 
-    struct ImageViewSpec
-    {
-        Ref<Image> image;
-        VkFormat format = VK_FORMAT_UNDEFINED;
-	    uint32_t mip = 0;
-        uint32_t mipCount = 0; // 0 means all mips
-	    uint32_t layer = 0;
-	    uint32_t layerCount = 0; // 0 means all layers
-	    VkImageAspectFlags aspect = VK_IMAGE_ASPECT_NONE;
+	/**
+	 * @struct ImageViewSpec
+	 * @brief Specifies the properties of a Vulkan image view.
+	 */
+	struct ImageViewSpec
+	{
+		Ref<Image> image;
+		VkFormat format = VK_FORMAT_UNDEFINED;
+		uint32_t mip = 0;
+		uint32_t mipCount = 0; // 0 means all mips
+		uint32_t layer = 0;
+		uint32_t layerCount = 0; // 0 means all layers
+		VkImageAspectFlags aspect = VK_IMAGE_ASPECT_NONE;
 
 		const char *name = nullptr;
-    };
+	};
 
-    class ImageView : public SharedObject
+	/**
+	 * @class ImageView
+	 * @brief Represents a Vulkan image view, which is a view into an image resource that can be used for rendering or sampling.
+	 */
+	class ImageView : public SharedObject
 	{
-    public:
-        ImageView(ImageViewSpec spec);
-        virtual ~ImageView() override;
+	public:
+		ImageView(ImageViewSpec spec);
+		virtual ~ImageView() override;
 
-        ImageView(const ImageView&) = delete;
-	    void operator=(const ImageView&)  = delete;
+		ImageView(const ImageView&) = delete;
+		void operator=(const ImageView&)  = delete;
 
 		VkImageView GetImageView() const { return m_ImageView; }
 
-    private:
+	private:
 		Ref<Device> m_Device;
-        ImageViewSpec m_Spec;
-        VkImageView m_ImageView = VK_NULL_HANDLE;
+		ImageViewSpec m_Spec;
+		VkImageView m_ImageView = VK_NULL_HANDLE;
 	};
 
 }

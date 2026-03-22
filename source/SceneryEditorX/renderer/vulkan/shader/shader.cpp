@@ -40,12 +40,12 @@ namespace SceneryEditorX
 
 	Shader::~Shader()
 	{        
-	    const Ref<Device> device = RenderContext::Get()->GetDevice();
-        SEDX_CORE_ASSERT(device.IsValid(), "Invalid device");
+		const Ref<Device> device = RenderContext::Get()->GetDevice();
+		SEDX_CORE_ASSERT(device.IsValid(), "Invalid device");
 
 		for (VkDescriptorSetLayout layout : m_DescriptorSetLayouts)
 		{
-		    vkDestroyDescriptorSetLayout(device->GetLogicalDevice(), layout, nullptr);
+			vkDestroyDescriptorSetLayout(device->GetLogicalDevice(), layout, nullptr);
 		}
 		m_Stages.clear();
 	}
@@ -55,11 +55,11 @@ namespace SceneryEditorX
 		std::map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>> bindings = GetDescriptorSetLayoutBindings();
 	
 		const Ref<Device> device = RenderContext::Get()->GetDevice();
-        SEDX_CORE_ASSERT(device.IsValid(), "Invalid device");
+		SEDX_CORE_ASSERT(device.IsValid(), "Invalid device");
 
 		for (VkDescriptorSetLayout layout : m_DescriptorSetLayouts)
 		{
-		    vkDestroyDescriptorSetLayout(device->GetLogicalDevice(), layout, nullptr);
+			vkDestroyDescriptorSetLayout(device->GetLogicalDevice(), layout, nullptr);
 		}
 		m_DescriptorSetLayouts.clear();
 	
@@ -96,14 +96,14 @@ namespace SceneryEditorX
 	{
 		if (m_Stages.contains(stage))
 		{
-		    return;
+			return;
 		}
 	
 		m_Stages[stage] = CreateRef<ShaderStage>(stage, filepath);
 	
 		for (const ShaderInput& input : m_Stages[stage]->GetInput())
 		{
-		    m_Input[input.set].push_back(input);
+			m_Input[input.set].push_back(input);
 		}
 	}
 	
@@ -117,7 +117,7 @@ namespace SceneryEditorX
 	{
 		if (!m_Stages.contains(stage))
 		{
-		    return false;
+			return false;
 		}
 
 		return true;
@@ -153,7 +153,7 @@ namespace SceneryEditorX
 				}
 				else
 				{
-				    layoutBinding.descriptorCount = i.count;
+					layoutBinding.descriptorCount = i.count;
 				}
 	
 				layoutBinding.stageFlags = GetStage(i.stage);
@@ -163,7 +163,7 @@ namespace SceneryEditorX
 	
 			for (auto &layoutBinding : inputs | std::views::values)
 			{
-			    bindings[set].push_back(layoutBinding);
+				bindings[set].push_back(layoutBinding);
 			}
 		}
 	

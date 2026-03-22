@@ -36,8 +36,12 @@
 
 namespace SceneryEditorX
 {
-	// Pipeline helper: creates pipelines from an input descriptor struct to make
-	// constructing different kinds of pipelines (graphics/compute) easier.
+
+	/**
+	 * @class Pipeline
+	 * @brief A helper class for creating Vulkan pipelines from 
+	 * a single input descriptor struct, to simplify the process of constructing different kinds of pipelines (e.g., graphics, compute).
+	 */
 	class Pipeline 
 	{
 	public:

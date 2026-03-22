@@ -30,7 +30,10 @@
  */
 #include "scene.h"
 #include "entity.h"
+#include "SceneryEditorX/core/time/date_time.h"
 #include "components/component_sets.h"
+#include "components/wind.h"
+
 #include <algorithm>
 #include <SceneryEditorX/core/window/window.h>
 #include <SceneryEditorX/scene/camera.h>
@@ -40,14 +43,14 @@
 
 namespace SceneryEditorX
 {
-	Ref<Camera> Scene::m_Camera = nullptr;
 
-	namespace
-	{
-		Scope<Scene> s_ActiveScene = nullptr;
-		std::unordered_map<entt::entity, Scope<Entity>> s_EntityStorage;
-		std::vector<Entity*> s_EntityPointers;
-	}
+	Ref<Camera> Scene::m_Camera = nullptr;
+	Scope<Scene> s_ActiveScene = nullptr;
+	std::unordered_map<entt::entity, Scope<Entity>> s_EntityStorage;
+	std::vector<Entity*> s_EntityPointers;
+	std::string s_FilePath;
+	std::string s_SceneName; // cached to avoid per-frame allocation
+	std::string s_SceneDescription;
 
 	Scene::Scene(std::string name, bool initialize) : m_Name(std::move(name))
 	{
@@ -93,7 +96,7 @@ namespace SceneryEditorX
 
 	void Scene::Shutdown()
 	{
-	    m_Camera.Reset();
+		m_Camera.Reset();
 		s_EntityStorage.clear();
 		s_EntityPointers.clear();
 		s_ActiveScene.reset();
@@ -175,12 +178,12 @@ namespace SceneryEditorX
 		const entt::entity entityHandle = s_ActiveScene->m_Registry.create();
 		s_ActiveScene->m_EntityMap[uuid] = entityHandle;
 
-	    s_ActiveScene->m_Registry.emplace<IDComponent>(entityHandle, IDComponent{uuid});
+		s_ActiveScene->m_Registry.emplace<IDComponent>(entityHandle, IDComponent{uuid});
 		s_ActiveScene->m_Registry.emplace<TagComponent>(entityHandle, TagComponent{name});
 		s_ActiveScene->m_Registry.emplace<RelationshipComponent>(entityHandle);
 		s_ActiveScene->m_Registry.emplace<TransformComponent>(entityHandle);
 
-	    auto entity = CreateScope<Entity>(entityHandle, s_ActiveScene.get());
+		auto entity = CreateScope<Entity>(entityHandle, s_ActiveScene.get());
 		s_EntityPointers.push_back(entity.get());
 		s_EntityStorage[entityHandle] = std::move(entity);
 
@@ -194,9 +197,9 @@ namespace SceneryEditorX
 
 		if (const auto it = s_ActiveScene->m_EntityMap.find(uuid); it != s_ActiveScene->m_EntityMap.end())
 		{
-		    if (s_ActiveScene->m_Registry.valid(it->second))
+			if (s_ActiveScene->m_Registry.valid(it->second))
 			{
-			    return {it->second, s_ActiveScene.get()};
+				return {it->second, s_ActiveScene.get()};
 			}
 		}
 		SEDX_CORE_ERROR("Entity with UUID {} not found in scene!", static_cast<uint64_t>(uuid));
@@ -219,7 +222,7 @@ namespace SceneryEditorX
 			s_EntityStorage.erase(storageIt);
 		}
 
-	    s_ActiveScene->m_Registry.destroy(entityHandle);
+		s_ActiveScene->m_Registry.destroy(entityHandle);
 	}
 
 	Entity Scene::TryGetEntityWithUUID(const UUID &uuid)
@@ -229,13 +232,44 @@ namespace SceneryEditorX
 
 		if (const auto it = s_ActiveScene->m_EntityMap.find(uuid); it != s_ActiveScene->m_EntityMap.end())
 		{
-		    if (s_ActiveScene->m_Registry.valid(it->second))
+			if (s_ActiveScene->m_Registry.valid(it->second))
 			{
 			  return {it->second, s_ActiveScene.get()};
 			}
 		}
 
 		return {};
+	}
+
+	float Scene::GetTimeOfDay()
+	{
+		return DateTime::Instance().Hour() + DateTime::Instance().Minute() / 60.0f +
+			   DateTime::Instance().Second() / 3600.0f;
+	}
+
+	void Scene::SetTimeOfDay(float timeOfDay)
+	{
+		DateTime::SetTimeOfDay(timeOfDay);
+	}
+
+	std::string &Scene::GetFilePath()
+	{
+		return s_FilePath;
+	}
+
+	const std::string &Scene::GetName()
+	{
+		return s_SceneName;
+	}
+
+	const Vec3& Scene::GetWind()
+	{
+		return Wind::GetWind();
+	}
+
+	void Scene::SetWind(const Vec3 &wind)
+	{
+		Wind::SetWind(wind);
 	}
 
 	/*

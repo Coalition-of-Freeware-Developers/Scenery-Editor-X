@@ -32,6 +32,7 @@
 #include "enums.h"
 #include "render_data.h"
 #include "SceneryEditorX/core/resource/iobject.h"
+#include "SceneryEditorX/utils/inheritance.h"
 
 // -------------------------------------------------------
 
@@ -40,18 +41,30 @@ namespace SceneryEditorX
 	// Forward declaration to avoid circular dependency
 	class Device;
 	class QueueManager;
-	
+
+	/**
+	 * @struct GPUQueue
+	 * @brief Encapsulates a Vulkan queue handle and its associated family index. This struct is used internally by the Queue class to manage Vulkan queues.
+	 */
 	struct GPUQueue
 	{
-	    VkQueue handle = VK_NULL_HANDLE;         // Vulkan queue handle
-	    uint32_t familyIndex = INVALID_VK_INDEX; // Queue family index
+		VkQueue handle = VK_NULL_HANDLE;         // Vulkan queue handle
+		uint32_t familyIndex = INVALID_VK_INDEX; // Queue family index
 	};
-	
-	class Queue : public IObject ,public RefCounted
+
+    /**
+	 * @class Queue
+	 * @brief Represents a GPU queue for command submission. 
+	 * This class manages a Vulkan queue handle, its associated family index, 
+	 * and synchronization primitives (semaphores) for rendering and presentation. 
+	 * It provides methods for submitting command buffers and synchronizing queue operations. 
+	 * Queue instances are created and managed by the QueueManager class.
+	 */
+	class Queue : public SharedObject
 	{ 
 	public:
-	    Queue(const Ref<Device>& device, const QueueType type, const char *name);
-	    virtual ~Queue() override;
+		Queue(const Ref<Device>& device, const QueueType type, const char *name);
+		virtual ~Queue() override;
 	
 		void Init();
 		void Destroy();
@@ -66,44 +79,44 @@ namespace SceneryEditorX
 		void Submit(const VkSubmitInfo2& submitInfo, VkFence fence = VK_NULL_HANDLE);
 
 		static uint32_t AcquireNextImage();
-	    static void SubmitSync(VkCommandBuffer cmdBuffer);
-	    static void SubmitAsync(VkCommandBuffer cmdBuffer);
-	    static void Present(uint32_t imageIdx);
+		static void SubmitSync(VkCommandBuffer cmdBuffer);
+		static void SubmitAsync(VkCommandBuffer cmdBuffer);
+		static void Present(uint32_t imageIdx);
 
-	    static void WaitIdle(const Queue& queue);
-        static void QueueWaitAll(const bool flush);
+		static void WaitIdle(const Queue& queue);
+		static void QueueWaitAll(const bool flush);
 	
-	    static uint32_t GetQueueIndex(const QueueType type);
-	    static Queue *GetQueue(const QueueType type);
-	    uint32_t GetFamilyIndex() const { return m_Queue.familyIndex; }
-	    static void *GetQueueResource(const QueueType type);
+		static uint32_t GetQueueIndex(const QueueType type);
+		static Queue *GetQueue(const QueueType type);
+		uint32_t GetFamilyIndex() const { return m_Queue.familyIndex; }
+		static void *GetQueueResource(const QueueType type);
 
-	    static void AddDeletionQueue(ResourceType resourceType, void *resource);
-	    static void ParseDeletionQueue();
-	    static bool ParseDeletionQueueNeedsTo();
+		static void AddDeletionQueue(ResourceType resourceType, void *resource);
+		static void ParseDeletionQueue();
+		static bool ParseDeletionQueueNeedsTo();
 	
-	    static std::array<Ref<Queue>, static_cast<uint32_t>(QueueType::Unknown)> regular;
-	    static void *graphics;
-	    static void *compute;
-	    static void *copy;
+		static std::array<Ref<Queue>, static_cast<uint32_t>(QueueType::Unknown)> regular;
+		static void *graphics;
+		static void *compute;
+		static void *copy;
 	
-	    static uint32_t indexGraphics;
-	    static uint32_t indexCompute;
-	    static uint32_t indexCopy;
+		static uint32_t indexGraphics;
+		static uint32_t indexCompute;
+		static uint32_t indexCopy;
 	
-	    static std::map<ResourceType, std::vector<void *>> deletionQueue;
-	    static std::mutex mutexDeletionQueue;
+		static std::map<ResourceType, std::vector<void *>> deletionQueue;
+		static std::mutex mutexDeletionQueue;
 	
 	private:
-	    void CreateSemaphores();
-	    GPUQueue m_Queue;
-	    QueueType m_Type;
+		void CreateSemaphores();
+		GPUQueue m_Queue;
+		QueueType m_Type;
 	
-	    Ref<Device> m_Device = nullptr;
-	    VkSwapchainKHR m_SwapChain = VK_NULL_HANDLE;
-	    VkSemaphore m_RenderSemaphore = VK_NULL_HANDLE;
-	    VkSemaphore m_PresentSemaphore = VK_NULL_HANDLE;
-	    const char *name;
+		Ref<Device> m_Device = nullptr;
+		VkSwapchainKHR m_SwapChain = VK_NULL_HANDLE;
+		VkSemaphore m_RenderSemaphore = VK_NULL_HANDLE;
+		VkSemaphore m_PresentSemaphore = VK_NULL_HANDLE;
+		const char *name;
 	};
 
 }

@@ -33,13 +33,16 @@
 #include "renderer.h"
 #include "renderer_declarations.h"
 #include "SceneryEditorX/scene/entity.h"
+#include "SceneryEditorX/scene/mesh.h"
+#include "font/font.h"
 #include "vulkan/enums.h"
 #include "vulkan/render_context.h"
 #include "vulkan/pipeline/pipeline_state.h"
 #include <SceneryEditorX/scene/camera.h>
-#include <SceneryEditorX/scene/lights.h>
 #include <SceneryEditorX/scene/material.h>
 #include <SceneryEditorX/scene/scene.h>
+#include <SceneryEditorX/scene/components/lights.h>
+#include <SceneryEditorX/scene/components/renderable.h>
 
 // -------------------------------------------------------
 
@@ -103,7 +106,7 @@ namespace SceneryEditorX
 				rt_render->SetLayout(Layout::ImageLayout::Attachment, graphicsPresent, ALL_MIPS, 0);
 				depthTarget->SetLayout(Layout::ImageLayout::Attachment, graphicsPresent, 0, 0);
 				
-			    Pass_Grid(graphicsPresent, rt_render);
+				Pass_Grid(graphicsPresent, rt_render);
 
 				depthTarget->SetLayout(Layout::ImageLayout::ShaderRead, graphicsPresent, 0, 0);
 				rt_render->SetLayout(Layout::ImageLayout::ShaderRead, graphicsPresent, ALL_MIPS, 0);
@@ -510,11 +513,14 @@ namespace SceneryEditorX
 					if (!draw_call.isOccluder)
 						continue;
 
-					Renderable *renderable = draw_call.renderable;
-					CullMode cull_mode =
-						static_cast<CullMode>(renderable->GetMaterial()->GetProperty(MaterialProperty::CullMode));
-					cull_mode =
-						(pso.rasterizerState->GetPolygonMode() == PolygonMode::Wireframe) ? CullMode::None : cull_mode;
+				  Renderable *renderable = draw_call.renderable;
+					MaterialAsset* materialAsset = renderable->GetMaterial();
+					Material* material = materialAsset ? materialAsset->GetMaterial().Get() : nullptr;
+					if (!material)
+						continue;
+
+					CullMode cull_mode = static_cast<CullMode>(material->GetProperty(MaterialProperty::CullMode));
+					cull_mode = (pso.rasterizerState->GetPolygonMode() == PolygonMode::Wireframe) ? CullMode::None : cull_mode;
 					cmdList->SetCullMode(cull_mode);
 
 					m_Pcb_Pass_Cpu.drawIndex = draw_call.drawData_Index;
@@ -638,8 +644,9 @@ namespace SceneryEditorX
 				{
 					const Renderer_DrawCall &draw_call = m_DrawCalls_Prepass[i];
 					Renderable *renderable = draw_call.renderable;
-					Material *material = renderable->GetMaterial();
-					if (!material || material->IsTransparent() || !draw_call.cameraVisible)
+					MaterialAsset* materialAsset = renderable->GetMaterial();
+					Material* material = materialAsset ? materialAsset->GetMaterial().Get() : nullptr;
+					if (!materialAsset || !material || materialAsset->IsTransparent() || !draw_call.cameraVisible)
 						continue;
 
 					// skip indirect-path draws
@@ -793,18 +800,19 @@ namespace SceneryEditorX
 				{
 					const Renderer_DrawCall &draw_call = m_DrawCalls[i];
 					Renderable *renderable = draw_call.renderable;
-					Material *material = renderable->GetMaterial();
-					if (!material || !draw_call.cameraVisible)
+					MaterialAsset* materialAsset = renderable->GetMaterial();
+					Material* material = materialAsset ? materialAsset->GetMaterial().Get() : nullptr;
+					if (!materialAsset || !material || !draw_call.cameraVisible)
 						continue;
 
 					if (isTransparentPass)
 					{
-						if (!material->IsTransparent())
+					 if (!materialAsset->IsTransparent())
 							continue;
 					}
 					else
 					{
-						if (material->IsTransparent())
+					  if (materialAsset->IsTransparent())
 							continue;
 
 						if (!IsCpuDrivenDraw(draw_call, material))
@@ -1280,8 +1288,9 @@ namespace SceneryEditorX
 			{
 				const Renderer_DrawCall& draw_call = m_DrawCalls_Prepass[i];
 				Renderable* renderable             = draw_call.renderable;
-				Material*   material               = renderable->GetMaterial();
-				if (!material || material->IsTransparent() || !draw_call.cameraVisible)
+				MaterialAsset* materialAsset = renderable->GetMaterial();
+				Material* material = materialAsset ? materialAsset->GetMaterial().Get() : nullptr;
+				if (!materialAsset || !material || materialAsset->IsTransparent() || !draw_call.cameraVisible)
 					continue;
 
 				m_Pcb_Pass_Cpu.drawIndex     = draw_call.drawData_Index;
@@ -1688,22 +1697,48 @@ namespace SceneryEditorX
 	void Renderer::Pass_Text(CommandList* cmdList, ImageResource* out)
 	{
 		Shader* shader_v = GetShader(Renderer_Shader::font_vertex);
-		Shader* shader_p = GetShader(Renderer_Shader::font_frag);
-		if (!shader_v || !shader_p || !out)
+		Shader* shader_f = GetShader(Renderer_Shader::font_frag);
+
+		if (!shader_v || !shader_f || !out)
 			return;
+
+		Ref<Font> font = GetFont();
+		if (!font->HasText())
+			return;
+
+		font->UpdateVertexAndIndexBuffers(cmdList);
 
 		{
 			PipelineState pso;
-			pso.name                                       = "text";
+			pso.name											= "text";
 			pso.shaders[static_cast<uint32_t>(Stage::Vertex)]   = shader_v;
-			pso.shaders[static_cast<uint32_t>(Stage::Fragment)]  = shader_p;
-			pso.rasterizerState                           = GetRasterizerState(Renderer_RasterizerState::Solid);
-			pso.blendState                                = GetBlendState(Renderer_BlendState::Alpha);
-			pso.depthStencil_State                        = GetDepthStencilState(Renderer_DepthStencilState::Off);
-			pso.renderTarget_ColorTextures[0]            = out;
+			pso.shaders[static_cast<uint32_t>(Stage::Fragment)] = shader_f;
+			pso.rasterizerState									= GetRasterizerState(Renderer_RasterizerState::Solid);
+			pso.blendState										= GetBlendState(Renderer_BlendState::Alpha);
+			pso.depthStencil_State								= GetDepthStencilState(Renderer_DepthStencilState::Off);
+			pso.renderTarget_ColorTextures[0]					= out;
+			pso.clearColor[0]									= RHI_COLOR_LOAD;
 			cmdList->SetPipelineState(pso);
+			cmdList->SetBufferVertex(font->GetVertexBuffer());
+			cmdList->SetBufferIndex(font->GetIndexBuffer());
+			cmdList->SetCullMode(CullMode::Back);
 
-			// TODO: Issue font glyph draw calls from the text/font subsystem once it is wired in.
+			// draw outline
+			if (font->GetOutline() != Font_Outline_None && font->GetOutlineSize() != 0)
+			{
+				m_Pcb_Pass_Cpu.SetF4Value(font->GetColorOutline());
+				cmdList->PushConstants(m_Pcb_Pass_Cpu);
+				cmdList->SetTexture(Renderer_BindingsSrv::tex, font->GetAtlasOutline().Get());
+				cmdList->DrawIndexed(font->GetIndexCount());
+			}
+
+			// draw inline
+			{
+				m_Pcb_Pass_Cpu.SetF4Value(font->GetColor());
+				cmdList->PushConstants(m_Pcb_Pass_Cpu);
+				cmdList->SetTexture(Renderer_BindingsSrv::tex, font->GetAtlas().Get());
+				cmdList->DrawIndexed(font->GetIndexCount());
+			}
 		}
 	}
 

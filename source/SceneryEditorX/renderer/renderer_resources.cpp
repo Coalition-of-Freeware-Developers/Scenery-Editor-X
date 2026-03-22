@@ -31,9 +31,14 @@
 #include "gbuffer.h"
 #include "renderer.h"
 #include "renderer_declarations.h"
+#include "font/font.h"
 #include "vulkan/buffer.h"
 #include "vulkan/image_resource.h"
 #include "vulkan/sampler.h"
+#include <SceneryEditorX/asset/import/texture_importer.h>
+#include <SceneryEditorX/core/resource/resource_cache.h>
+#include <SceneryEditorX/scene/material.h>
+#include <SceneryEditorX/scene/mesh.h>
 #include <SceneryEditorX/scene/scene.h>
 #include <SceneryEditorX/settings/settings.h>
 
@@ -49,6 +54,10 @@ namespace SceneryEditorX
 	static std::array<Ref<Sampler>, static_cast<uint32_t>(Renderer_Sampler::MaxEnum)>			 s_Samplers;
 	static std::array<Ref<Buffer>,  static_cast<uint32_t>(Renderer_Buffer::MaxEnum)>			 s_Buffers;
 	static std::array<Ref<ImageResource>, static_cast<uint32_t>(Renderer_RenderTarget::MaxEnum)> s_RenderTargets;
+	Ref<Font>																					 s_StandardFont;
+	Ref<MaterialAsset>                                                                           s_StandardMaterial;
+	std::array<Ref<ImageResource>, static_cast<uint32_t>(Renderer_StandardTexture::MaxEnum)>	 s_StandardTextures;
+
 
 	// Static state object instances (created once, never mutated after init)
 	static std::array<RasterizerState,   static_cast<uint8_t>(Renderer_RasterizerState::MaxEnum)> s_RasterizerStates  = {
@@ -607,6 +616,124 @@ namespace SceneryEditorX
 		SEDX_CORE_TRACE_TAG("Renderer", "Sampler setup complete");
 	}
 
+	void Renderer::CreateStandardMaterials()
+	{
+		const std::string data_dir = std::string(ResourceCache::GetDataDirectory()) + "/";
+		IO::FileSystem::CreateDir(data_dir);
+
+		s_StandardMaterial = CreateRef<MaterialAsset>();
+		SEDX_CORE_ASSERT(s_StandardMaterial != nullptr, "Failed to create standard material");
+
+		s_StandardMaterial->SetName("standard");
+		s_StandardMaterial->SetAlbedoColor(Vec3(1.0f, 1.0f, 1.0f));
+		s_StandardMaterial->SetMetalness(0.0f);
+		s_StandardMaterial->SetRoughness(1.0f);
+		s_StandardMaterial->SetEmission(0.0f);
+	}
+
+	void Renderer::CreateStandardTextures()
+	{
+	   const std::string dirTexture = ResourceCache::GetResourceDirectory(ResourceDirectory::Textures) + "/";
+
+		for (Ref<ImageResource>& texture : s_StandardTextures)
+		{
+			texture.Reset();
+		}
+
+		#define standard_texture(x) s_StandardTextures[static_cast<uint32_t>(x)]
+
+		auto create_texture = [](const char* name,
+			const uint32_t width,
+			const uint32_t height,
+			const VkFormat format,
+			const uint32_t flags,
+			std::vector<std::byte> pixelBytes,
+			const uint32_t bitsPerChannel,
+			const uint32_t channelCount)
+		{
+			std::vector<MipBytes> mips = { MipBytes{ std::move(pixelBytes) } };
+			std::vector<Slice> slices  = { Slice{ std::move(mips) } };
+			Ref<ImageResource> texture = CreateRef<ImageResource>(ImgResourceSpec{
+				ImageType::Type2D,
+				width,
+				height,
+				1,
+				1,
+				format,
+				flags,
+				name
+			}, std::move(slices));
+
+			if (texture)
+			{
+				texture->SetBitsPerChannel(bitsPerChannel);
+				texture->SetChannelCount(channelCount);
+			}
+
+			return texture;
+		};
+
+		auto create_solid_texture = [&create_texture](const char* name, const std::byte r, const std::byte g, const std::byte b, const std::byte a)
+		{
+			return create_texture(name, 1, 1, VK_FORMAT_R8G8B8A8_UNORM, ShaderViews | UnorderedAccessView,
+				{ r, g, b, a }, 8, 4);
+		};
+
+		auto create_or_load_texture = [&](const Renderer_StandardTexture textureType,
+			const char* name,
+			const std::string& filePath,
+			const std::byte fallbackR,
+			const std::byte fallbackG,
+			const std::byte fallbackB,
+			const std::byte fallbackA)
+		{
+			VkFormat format = VK_FORMAT_R8G8B8A8_UNORM;
+			uint32_t width  = 0;
+			uint32_t height = 0;
+			Memory::Buffer buffer = TextureImporter::ToBufferFromFile(filePath, format, width, height);
+
+			if (buffer && width > 0 && height > 0 && buffer.GetSize() > 0)
+			{
+				std::vector<std::byte> pixels(buffer.GetSize());
+				std::memcpy(pixels.data(), buffer.data, buffer.GetSize());
+				buffer.Release();
+
+				const uint32_t bitsPerChannel = format == VK_FORMAT_R32G32B32A32_SFLOAT ? 32u : 8u;
+				standard_texture(textureType) = create_texture(name, width, height, format, ShaderViews | UnorderedAccessView, std::move(pixels), bitsPerChannel, 4);
+				SEDX_CORE_ASSERT(standard_texture(textureType) != nullptr, "Failed to create loaded standard texture");
+				standard_texture(textureType)->SetResourceFilePath(filePath);
+				SEDX_CORE_INFO_TAG("Renderer", "Loaded standard texture '{}' from '{}' ({}x{})", name, filePath, width, height);
+			}
+			else
+			{
+				standard_texture(textureType) = create_solid_texture(name, fallbackR, fallbackG, fallbackB, fallbackA);
+				SEDX_CORE_WARN_TAG("Renderer", "Failed to load '{}', using fallback for standard texture '{}'", filePath, name);
+			}
+
+			SEDX_CORE_ASSERT(standard_texture(textureType) != nullptr, "Failed to create standard texture");
+		};
+
+		create_or_load_texture(Renderer_StandardTexture::Noise_perlin, "noise_perlin", dirTexture + "noise_perlin.png", std::byte{ 127 }, std::byte{ 127 }, std::byte{ 127 }, std::byte{ 255 });
+		create_or_load_texture(Renderer_StandardTexture::Noise_blue, "noise_blue", dirTexture + "noise_blue_0.png", std::byte{ 127 }, std::byte{ 127 }, std::byte{ 255 }, std::byte{ 255 });
+
+		create_or_load_texture(Renderer_StandardTexture::Gizmo_light_directional, "gizmo_light_directional", dirTexture + "sun.png", std::byte{ 255 }, std::byte{ 230 }, std::byte{ 128 }, std::byte{ 255 });
+		create_or_load_texture(Renderer_StandardTexture::Gizmo_light_point, "gizmo_light_point", dirTexture + "light_bulb.png", std::byte{ 255 }, std::byte{ 255 }, std::byte{ 160 }, std::byte{ 255 });
+		create_or_load_texture(Renderer_StandardTexture::Gizmo_light_spot, "gizmo_light_spot", dirTexture + "flashlight.png", std::byte{ 255 }, std::byte{ 255 }, std::byte{ 255 }, std::byte{ 255 });
+
+		create_or_load_texture(Renderer_StandardTexture::Checkerboard, "checkerboard", dirTexture + "no_texture.png", std::byte{ 180 }, std::byte{ 180 }, std::byte{ 180 }, std::byte{ 255 });
+
+		standard_texture(Renderer_StandardTexture::Black) = create_solid_texture("black_texture", std::byte{ 0 }, std::byte{ 0 }, std::byte{ 0 }, std::byte{ 255 });
+		standard_texture(Renderer_StandardTexture::White) = create_solid_texture("white_texture", std::byte{ 255 }, std::byte{ 255 }, std::byte{ 255 }, std::byte{ 255 });
+
+		SEDX_CORE_ASSERT(standard_texture(Renderer_StandardTexture::Black) != nullptr, "Failed to create black texture");
+		SEDX_CORE_ASSERT(standard_texture(Renderer_StandardTexture::White) != nullptr, "Failed to create white texture");
+	}
+
+	ImageResource * Renderer::GetStandardTexture(const Renderer_StandardTexture type)
+	{
+		return s_StandardTextures[static_cast<uint8_t>(type)].Get();
+	}
+
 	Sampler *Renderer::GetSampler(const Renderer_Sampler type)
 	{
 		return s_Samplers[static_cast<uint8_t>(type)].Get();
@@ -653,7 +780,17 @@ namespace SceneryEditorX
 		return &s_BlendStates[static_cast<uint8_t>(type)];
 	}
 
-	DepthStencilState* Renderer::GetDepthStencilState(const Renderer_DepthStencilState type)
+	Ref<Font>& Renderer::GetFont()
+	{
+		return s_StandardFont;
+	}
+
+	Ref<MaterialAsset> &Renderer::GetStandardMaterial()
+	{
+		return s_StandardMaterial;
+	}
+
+	DepthStencilState * Renderer::GetDepthStencilState(const Renderer_DepthStencilState type)
 	{
 		SEDX_CORE_ASSERT(static_cast<uint8_t>(type) < static_cast<uint8_t>(Renderer_DepthStencilState::MaxEnum),
 						 "Renderer_DepthStencilState out of range");
@@ -665,10 +802,10 @@ namespace SceneryEditorX
 		class StandardQuadMesh final : public Mesh
 		{
 		public:
-			[[nodiscard]] Buffer* GetVertexBuffer() const override { return GeometryBuffer::GetVertexBuffer(); }
-			[[nodiscard]] Buffer* GetIndexBuffer() const override  { return GeometryBuffer::GetIndexBuffer(); }
-			[[nodiscard]] uint32_t GetGlobalIndexOffset() const override { return 0; }
-			[[nodiscard]] uint32_t GetGlobalVertexOffset() const override { return 0; }
+			[[nodiscard]] static Buffer * GetVertexBuffer()
+			{ return GeometryBuffer::GetVertexBuffer(); }
+			[[nodiscard]] static Buffer* GetIndexBuffer()
+			{ return GeometryBuffer::GetIndexBuffer(); }
 		};
 
 		static StandardQuadMesh s_QuadMesh;

@@ -82,6 +82,19 @@ namespace SceneryEditorX
 		}
 	};
 
+	struct EditorAssetLoadResponse
+	{
+		AssetMetadata metadata;
+		Ref<Asset> asset;
+	};
+
+
+	struct RuntimeAssetLoadRequest
+	{
+		AssetHandle sceneHandle;
+		AssetHandle handle;
+	};
+
 }
 
 // -------------------------------------------------------

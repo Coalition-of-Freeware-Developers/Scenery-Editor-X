@@ -43,50 +43,50 @@ namespace SceneryEditorX
 	class TextureHandle 
 	{
 	public:
-	    TextureHandle() = default;
-	    TextureHandle(VmaAllocator allocator, VkCommandPool cmdPool, VkQueue queue, const std::string& filename)
-	    {
-	        TextureImage loader;
-	        m_Texture = loader.Load(allocator, cmdPool, queue, filename);
+		TextureHandle() = default;
+		TextureHandle(VmaAllocator allocator, VkCommandPool cmdPool, VkQueue queue, const std::string& filename)
+		{
+			TextureImage loader;
+			m_Texture = loader.Load(allocator, cmdPool, queue, filename);
 
-	        SEDX_CORE_ASSERT(m_Texture.image != VK_NULL_HANDLE, "Failed to load texture: {}", filename);
-	    }
+			SEDX_CORE_ASSERT(m_Texture.image != VK_NULL_HANDLE, "Failed to load texture: {}", filename);
+		}
 	
-	    ~TextureHandle()
-	    {
-	        if (!m_Destroyed)
+		~TextureHandle()
+		{
+			if (!m_Destroyed)
 			{
-	            // best-effort: user should call destroy explicitly before m_Allocator/m_Device teardown
-	        }
-	    }
+				// best-effort: user should call destroy explicitly before m_Allocator/m_Device teardown
+			}
+		}
 	
-	    void Destroy(VmaAllocator allocator)
-	    {
-            Ref<Device> device = RenderContext::Get()->GetDevice();
+		void Destroy(VmaAllocator allocator)
+		{
+			Ref<Device> device = RenderContext::Get()->GetDevice();
 
-	        if (!m_Destroyed)
+			if (!m_Destroyed)
 			{
-	            if (m_Texture.view != VK_NULL_HANDLE)
-	            {
-	                vkDestroyImageView(device->GetLogicalDevice(), m_Texture.view, nullptr);
-	            }
-	            if (m_Texture.sampler != VK_NULL_HANDLE)
-	            {
-	                vkDestroySampler(device->GetLogicalDevice(), m_Texture.sampler, nullptr);
-	            }
-	            if (m_Texture.image != VK_NULL_HANDLE)
-	            {
-	                vmaDestroyImage(allocator, m_Texture.image, m_Texture.allocation);
-	            }
-	            m_Destroyed = true;
-	        }
-	    }
+				if (m_Texture.view != VK_NULL_HANDLE)
+				{
+					vkDestroyImageView(device->GetLogicalDevice(), m_Texture.view, nullptr);
+				}
+				if (m_Texture.sampler != VK_NULL_HANDLE)
+				{
+					vkDestroySampler(device->GetLogicalDevice(), m_Texture.sampler, nullptr);
+				}
+				if (m_Texture.image != VK_NULL_HANDLE)
+				{
+					vmaDestroyImage(allocator, m_Texture.image, m_Texture.allocation);
+				}
+				m_Destroyed = true;
+			}
+		}
 
-        [[nodiscard]] const Texture& Get() const { return m_Texture; }
+		[[nodiscard]] const Texture& Get() const { return m_Texture; }
 	
 	private:
-	    Texture m_Texture{};
-	    bool m_Destroyed = false;
+		Texture m_Texture{};
+		bool m_Destroyed = false;
 	};
 
 }

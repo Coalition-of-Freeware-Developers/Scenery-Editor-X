@@ -38,28 +38,28 @@
 namespace SceneryEditorX
 {
 
-    static VkImageType GetImageType(const ImageType type)
+	static VkImageType GetImageType(const ImageType type)
 	{
 		switch (type)
 		{
-            case ImageType::Type1D:			return VK_IMAGE_TYPE_1D;
+			case ImageType::Type1D:			return VK_IMAGE_TYPE_1D;
 			case ImageType::Type2D:			return VK_IMAGE_TYPE_2D;
 			case ImageType::Type3D:			return VK_IMAGE_TYPE_3D;
-		    case ImageType::Type1DArray:
-		    case ImageType::Type2DArray:
+			case ImageType::Type1DArray:
+			case ImageType::Type2DArray:
 			case ImageType::TypeCube:
-            case ImageType::TypeCubeArray:
-            case ImageType::MaxEnum:
-                SEDX_CORE_ERROR_TAG("Image", "Invalid VkImageType type.");
-                break;
+			case ImageType::TypeCubeArray:
+			case ImageType::MaxEnum:
+				SEDX_CORE_ERROR_TAG("Image", "Invalid VkImageType type.");
+				break;
 		}
 
-        SEDX_CORE_WARN_TAG("Image", "Unknown ImageType specified, defaulting to VK_IMAGE_TYPE_2D.");
-        return VK_IMAGE_TYPE_2D; // Default fallback
-    }
-    static uint32_t FindMemoryType(uint32_t filter, VkMemoryPropertyFlags flags)
+		SEDX_CORE_WARN_TAG("Image", "Unknown ImageType specified, defaulting to VK_IMAGE_TYPE_2D.");
+		return VK_IMAGE_TYPE_2D; // Default fallback
+	}
+	static uint32_t FindMemoryType(uint32_t filter, VkMemoryPropertyFlags flags)
 	{
-        const Ref<Device> device = RenderContext::Get()->GetDevice();
+		const Ref<Device> device = RenderContext::Get()->GetDevice();
 		VkPhysicalDeviceMemoryProperties memProperties;
 		vkGetPhysicalDeviceMemoryProperties(device->GetPhysicalDevice(), &memProperties);
 	
@@ -78,21 +78,21 @@ namespace SceneryEditorX
 
 	Image::Image(const ImageSpec &spec) : m_Spec(spec)
 	{
-        const Ref<Device> device = RenderContext::Get()->GetDevice();
-        m_Device = device;
-        m_ObjectSize = sizeof(VkImage);
-        m_ObjectName = spec.name ? spec.name : "Unnamed Image";
+		const Ref<Device> device = RenderContext::Get()->GetDevice();
+		m_Device = device;
+		m_ObjectSize = sizeof(VkImage);
+		m_ObjectName = spec.name ? spec.name : "Unnamed Image";
 
-        m_MemProperties = spec.memProperties;
+		m_MemProperties = spec.memProperties;
 	}
 
 	Image::~Image()
 	{
-	    QueueManager::AddDeletionQueue(ResourceType::Image, m_Image);
+		QueueManager::AddDeletionQueue(ResourceType::Image, m_Image);
 	}
 
-    void Image::CreateImage(const ImageSpec &spec, VkImage &outImage, VkDeviceMemory &outMemory)
-    {
+	void Image::CreateImage(const ImageSpec &spec, VkImage &outImage, VkDeviceMemory &outMemory)
+	{
 		const Ref<Device> device = RenderContext::Get()->GetDevice();
 		
 		VkImageCreateInfo imageCI;
@@ -127,7 +127,7 @@ namespace SceneryEditorX
 
 		SEDX_VK_RESULT_ASSERT(vkAllocateMemory(device->GetLogicalDevice(), &allocInfo, nullptr, &outMemory), "Failed to allocate memory for Vulkan Image!");
 		SEDX_VK_RESULT_ASSERT(vkBindImageMemory(device->GetLogicalDevice(), outImage, outMemory, 0), "Failed to bind memory to Vulkan Image!");
-    }
+	}
 
 } // namespace SceneryEditorX
 

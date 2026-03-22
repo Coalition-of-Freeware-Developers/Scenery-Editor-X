@@ -44,7 +44,7 @@ namespace SceneryEditorX
 			m_Fence = CreateRef<Fence>();
 			if (device != VK_NULL_HANDLE)
 			{
-			    m_Fence->CreateSyncObject(device);
+				m_Fence->CreateSyncObject(device);
 			}
 			else
 			{
@@ -67,26 +67,26 @@ namespace SceneryEditorX
 		}
 	}
 
-    FrameSync::~FrameSync()
-    {
-        if (m_Fence)
-        {
-            m_Fence->Destroy();
-            m_Fence.Reset();
-        }
+	FrameSync::~FrameSync()
+	{
+		if (m_Fence)
+		{
+			m_Fence->Destroy();
+			m_Fence.Reset();
+		}
 
-        if (m_RenderSemaphore)
-        {
-            m_RenderSemaphore->Destroy();
-            m_RenderSemaphore.Reset();
-        }
-    }
+		if (m_RenderSemaphore)
+		{
+			m_RenderSemaphore->Destroy();
+			m_RenderSemaphore.Reset();
+		}
+	}
 
 	void FrameSync::Create(const uint32_t framesInFlight, const uint32_t swapchainImageCount)
 	{
-	    // Intentionally minimal for now; keep placeholder for future allocation strategy.
-	    (void)framesInFlight;
-	    (void)swapchainImageCount;
+		// Intentionally minimal for now; keep placeholder for future allocation strategy.
+		(void)framesInFlight;
+		(void)swapchainImageCount;
 	}
 
 } // namespace SceneryEditorX

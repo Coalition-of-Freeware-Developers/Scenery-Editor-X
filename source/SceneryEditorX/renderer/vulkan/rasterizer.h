@@ -51,7 +51,7 @@ namespace SceneryEditorX
 	 * @class RasterizerState
 	 * @brief Immutable rasterizer configuration object returned by Renderer::GetRasterizerState().
 	 */
-	class RasterizerState
+	class RasterizerState : public RefCounted
 	{
 	public:
 		explicit RasterizerState(PolygonMode polygonMode, bool depthBiasEnabled = false,

@@ -30,8 +30,10 @@
  */
 #pragma once
 #include <cfloat>
-#include <imgui.h>
-#include <vector.h>
+#include <SceneryEditorX/core/base.h>
+#include <SceneryEditorX/utils/pointers.h>
+#include <xMath/includes/vector.h>
+#include <Editor/ui/source/imgui/imgui.h>
 
 // -------------------------------------------------------
 

@@ -34,6 +34,7 @@
 #include <format>
 #include <string>
 #include <SceneryEditorX/core/base.h>
+#include <SceneryEditorX/core/identifiers/uuid.h>
 // Prefer public math umbrella include path; fallback to relative if not available
 #include <vulkan/vulkan_core.h>
 #include <xMath/includes/vector.h>
@@ -139,6 +140,20 @@ namespace std
 		auto format(VkResult v, FormatContext &ctx) const
 		{
 			return formatter<int, char>::format(static_cast<int>(v), ctx);
+		}
+	};
+
+	/**
+	 * @struct formatter
+	 * @brief Specialization of std::formatter for SceneryEditorX::UUID.
+	 */
+	template <>
+	struct formatter<SceneryEditorX::UUID, char> : formatter<uint64_t, char>
+	{
+		template <class FormatContext>
+		auto format(const SceneryEditorX::UUID& value, FormatContext& ctx) const
+		{
+			return formatter<uint64_t, char>::format(static_cast<uint64_t>(value), ctx);
 		}
 	};
 

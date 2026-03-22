@@ -38,17 +38,17 @@
 
 namespace SceneryEditorX::Utils
 {
-    namespace String
-    {
+	namespace String
+	{
 		bool EqualsIgnoreCase(const std::string_view a, const std::string_view b)
 		{
 			if (a.size() != b.size())
 				return false;
 
 			return std::ranges::equal(a,b,[](const char a, const char b)
-            {
-                return std::tolower(a) == std::tolower(b);
-            });
+			{
+				return std::tolower(a) == std::tolower(b);
+			});
 		}
 
 		std::string& ToLower(std::string& string)
@@ -57,14 +57,14 @@ namespace SceneryEditorX::Utils
 			return string;
 		}
 
-        std::string ToLower(const std::string &string)
-        {
-            std::string result = string;
-            std::ranges::transform(result, result.begin(), [](unsigned char c) { return tolower(c); });
-            return result;
-        }
+		std::string ToLower(const std::string &string)
+		{
+			std::string result = string;
+			std::ranges::transform(result, result.begin(), [](unsigned char c) { return tolower(c); });
+			return result;
+		}
 
-        std::string ToLowerCopy(const std::string_view string)
+		std::string ToLowerCopy(const std::string_view string)
 		{
 			std::string result(string);
 			ToLower(result);
@@ -73,7 +73,7 @@ namespace SceneryEditorX::Utils
 
 		std::string& ToUpper(std::string& string)
 		{
-            std::ranges::transform(string, string.begin(),[](const unsigned char c) { return std::toupper(c); });
+			std::ranges::transform(string, string.begin(),[](const unsigned char c) { return std::toupper(c); });
 			return string;
 		}
 
@@ -106,11 +106,11 @@ namespace SceneryEditorX::Utils
 			return string.substr(offset, count);
 		}
 
-        // -------------------------------------------------------
+		// -------------------------------------------------------
 
 		const std::string WHITESPACE = " \n\r\t\f\v";
 
-        // -------------------------------------------------------
+		// -------------------------------------------------------
 
 		std::string TrimWhitespace(const std::string& str)
 		{
@@ -144,7 +144,7 @@ namespace SceneryEditorX::Utils
 
 		int32_t CompareCase(std::string_view a, std::string_view b)
 		{
-        #ifdef SEDX_PLATFORM_WINDOWS
+		#ifdef SEDX_PLATFORM_WINDOWS
 			return _stricmp(a.data(), b.data());
 		#else
 			return strcasecmp(a.data(), b.data());
@@ -165,7 +165,7 @@ namespace SceneryEditorX::Utils
 
 	std::string GetExtension(const std::string& filename)
 	{
-        if (std::vector<std::string> parts = SplitString(filename, '.'); parts.size() > 1)
+		if (std::vector<std::string> parts = SplitString(filename, '.'); parts.size() > 1)
 			return parts[parts.size() - 1];
 
 		return "";
@@ -221,10 +221,10 @@ namespace SceneryEditorX::Utils
 	{
 		std::string str(string);
 		for (int i = static_cast<int>(string.size()) - 1; i > 0; --i)
-            if (const auto rightIsLower = [&] { return std::cmp_less(i, string.size()) && std::islower(str[i + 1]); }; std::isupper(str[i]) && (!ifLowerCaseOnTheRight || rightIsLower()))
-                str.insert(i, delimiter);
+			if (const auto rightIsLower = [&] { return std::cmp_less(i, string.size()) && std::islower(str[i + 1]); }; std::isupper(str[i]) && (!ifLowerCaseOnTheRight || rightIsLower()))
+				str.insert(i, delimiter);
 
-        return str;
+		return str;
 	}
 
 	std::string BytesToString(uint64_t bytes)

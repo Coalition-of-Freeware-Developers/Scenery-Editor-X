@@ -11,31 +11,30 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <IconsFontAwesome5.h>
-
-//#include <SceneryEditorX/renderer/viewport.h>
-
-#include <imgui/imgui.h>
 #include "ui_manager.h"
-//#include "SceneryEditorX/renderer/image_data.h"
-#include "SceneryEditorX/renderer/vulkan/render_context.h"
+#include <IconsFontAwesome5.h>
+#include <Editor/ui/source/imgui/imgui.h>
+#include <SceneryEditorX/renderer/vulkan/render_context.h>
 
 // -------------------------------------------------------
 
-struct Image
+namespace SceneryEditorX
 {
-	//std::shared_ptr<ImageResource> resource;
-	uint32_t width = 0;
-	uint32_t height = 0;
-	//ImageUsageFlags usage;
-	//Format format;
-	//Layout::ImageLayout layout;
-	//SceneryEditorX::AspectFlags aspect;
-	uint32_t layers = 1;
-	uint32_t RID();
-	ImTextureID ImGuiRID();
-	ImTextureID ImGuiRID(uint32_t layer);
-};
+	struct Image
+	{
+		//std::shared_ptr<ImageResource> resource;
+		uint32_t width = 0;
+		uint32_t height = 0;
+		//ImageUsageFlags usage;
+		//Format format;
+		//Layout::ImageLayout layout;
+		//SceneryEditorX::AspectFlags aspect;
+		uint32_t layers = 1;
+		uint32_t RID();
+		ImTextureID ImGuiRID();
+		ImTextureID ImGuiRID(uint32_t layer);
+	};
+}
 
 //struct Font
 //{
@@ -184,6 +183,8 @@ private:
 	float dpiFactor = 1.0f;				/// Scale factor to apply to the size of gui elements (expressed in dp)
 	float time = 0.0f;					/// Time elapsed since the last frame
 	SceneryEditorX::Device *m_Device = nullptr;
+	VkDescriptorPool imguiPool = VK_NULL_HANDLE;	/// Descriptor pool for ImGui
+	VkCommandBuffer activeCommandBuffer = VK_NULL_HANDLE;	/// Active command buffer for rendering
 
 	// ImGui window flags
 	const ImGuiWindowFlags commonFlags = ImGuiWindowFlags_NoCollapse;

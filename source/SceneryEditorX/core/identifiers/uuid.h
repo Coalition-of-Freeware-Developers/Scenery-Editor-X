@@ -74,6 +74,7 @@
 #pragma once
 #include <array>
 #include <functional>
+#include <ostream>
 #include <string>
 #include <vector>
 
@@ -916,6 +917,17 @@ namespace SceneryEditorX
 		friend struct std::hash<UUID32>;  // Allow hash specialization access
 		uint32_t m_UUID;                  // The underlying 32-bit identifier value
 	};
+
+   /**
+	 * @brief Stream insertion operator for UUID.
+	 * @param os The output stream.
+	 * @param uuid The UUID to write.
+	 * @return The output stream reference.
+	 */
+	inline std::ostream& operator<<(std::ostream& os, const UUID& uuid)
+	{
+		return os << static_cast<uint64_t>(uuid);
+	}
 
 }
 

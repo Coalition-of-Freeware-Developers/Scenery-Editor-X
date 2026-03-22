@@ -40,10 +40,6 @@ TARGET_INCLUDE_DIRECTORIES(CrashHandler
     PRIVATE
         ${CMAKE_SOURCE_DIR}/source
 		${CMAKE_SOURCE_DIR}/dependency
-        ${CMAKE_SOURCE_DIR}/dependency/imgui
-        ${CMAKE_SOURCE_DIR}/dependency/imgui/backends
-        ${CMAKE_SOURCE_DIR}/dependency/imgui/misc
-        ${CMAKE_SOURCE_DIR}/dependency/ImGuizmo
         ${REGISTRY_KEYS}
         ${PORTABLE_FILE_DIALOGS_INCLUDE_DIRS}
         $ENV{VULKAN_SDK}/Include/
@@ -60,7 +56,6 @@ TARGET_LINK_LIBRARIES(CrashHandler
         GPUOpen::VulkanMemoryAllocator
         CURL::libcurl
         Vulkan::Vulkan
-		imgui
 		libconfig
 		libconfig++
     	SDL3::SDL3

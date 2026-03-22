@@ -29,8 +29,8 @@
  * -------------------------------------------------------
  */
 #include <SceneryEditorX/ui/ui_context.h>
+#include <Editor/ui/source/imgui/imgui.h>
 #include <SceneryEditorX/ui/colors.h>
-#include <imgui/imgui.h>
 
 // -------------------------------------------------------
 

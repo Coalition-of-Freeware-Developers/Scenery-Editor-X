@@ -29,11 +29,28 @@
  * -------------------------------------------------------
  */
 #pragma once
+#include <SceneryEditorX/scene/mesh.h>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
+
+	/**
+	 * @class FBX_Mesh
+	 * @brief A class representing an FBX mesh resource, inheriting from Mesh.
+	 */
+	class FBX_Mesh : public Mesh
+	{
+	public:
+		virtual ~FBX_Mesh() override;
+
+		void SaveToFile(const std::string &filePath) override;
+		void LoadFromFile(const std::string &filePath) override;
+
+	private:
+
+	};
 
 }
 

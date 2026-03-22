@@ -29,9 +29,9 @@
  * -------------------------------------------------------
  */
 #pragma once
+#include <Editor/ui/source/imgui/imgui.h>
 #include <SceneryEditorX/renderer/vulkan/render_context.h>
 #include <SceneryEditorX/ui/ui_manager.h>
-#include <imgui/imgui.h>
 
 // -------------------------------------------------------
 
@@ -92,40 +92,132 @@ struct Image
 
 namespace UI
 {
-	static bool ImageButton(SceneryEditorX::Texture *texture, const xMath::Vec2& size, bool border, ImVec4 tint = {1,1,1,1});
-
-	static void Image(const SceneryEditorX::IconType icon, const float size);
-
-	static void Image(SceneryEditorX::Texture *texture, const ImVec2& size, const ImVec4& tint = default_tint, const ImColor& border = ImColor(0, 0, 0, 0));
-
-	static void Image(SceneryEditorX::Texture *texture, const xMath::Vec2 &size, bool border = false);
-
-	static bool ButtonCenteredOnLine(const char *label, float alignment = 0.5f);
-
-	static bool CollapsingHeader(const char *label, ImGuiTreeNodeFlags flags = 0);
-
-	static bool Button(const char *label, const ImVec2 &size = ImVec2(0, 0));
-
-	static void Image(const SceneryEditorX::IconType icon, const float size, const ImVec4 tint);
-
-	// image slot - returns true if the user clicked on the slot (for browse functionality)
-	static bool ImageSlot(SceneryEditorX::Texture *texture_in, const std::function<void(SceneryEditorX::Texture *)> &setter);
-
-	static void Tooltip(const char *text);
-
-	// a drag float which will wrap the mouse cursor around the edges of the screen
-	static bool DrawFloatWrap(const char *label, float *v,
-		float v_speed = 1.0f, float v_min = 0.0f, float v_max = 0.0f, const char *format = "%.3f", const ImGuiSliderFlags flags = 0);
-
-	static bool ComboBox(const char *label, const std::vector<std::string> &options, uint32_t *selectionIndex);
-
-	static void Vec3(const char *label, xMath::Vec3 &vector, bool vertical = true);
+	static const ImVec4 DEFAULT_TINT(1, 1, 1, 1);
 
 	/**
-	 * @brief Initialize custom ImGui extensions
+	 * @brief 
+	 * @param texture 
+	 * @param size 
+	 * @param border 
+	 * @param tint 
+	 * @return 
 	 */
+	bool ImageButton(SceneryEditorX::ImageResource *texture, const xMath::Vec2& size, bool border, ImVec4 tint = {1,1,1,1});
+
+	/**
+	 * @brief 
+	 * @param icon 
+	 * @param size 
+	 */
+	void Image(const SceneryEditorX::IconType icon, const float size);
+
+	/**
+	 * @brief 
+	 * @param texture 
+	 * @param size 
+	 * @param tint 
+	 * @param border 
+	 */
+	void Image(SceneryEditorX::ImageResource *texture, const ImVec2& size, const ImVec4& tint = DEFAULT_TINT, const ImColor& border = ImColor(0, 0, 0, 0));
+
+	/**
+	 * @brief 
+	 * @param texture 
+	 * @param size 
+	 * @param border 
+	 */
+	void Image(SceneryEditorX::ImageResource *texture, const xMath::Vec2 &size, bool border = false);
+
+	/**
+	 * @brief 
+	 * @param label 
+	 * @param alignment 
+	 * @return 
+	 */
+	bool ButtonCenteredOnLine(const char *label, float alignment = 0.5f);
+
+	/**
+	 * @brief 
+	 * @param label 
+	 * @param flags 
+	 * @return 
+	 */
+	bool CollapsingHeader(const char *label, ImGuiTreeNodeFlags flags = 0);
+
+	/**
+	 * @brief 
+	 * @param label 
+	 * @param size 
+	 * @return 
+	 */
+	bool Button(const char *label, const ImVec2 &size = ImVec2(0, 0));
+
+	/**
+	 * @brief 
+	 * @param label 
+	 * @param value 
+	 * @return 
+	 */
+	bool CheckBox(const char *label, bool *value);
+
+	/**
+	 * @brief 
+	 * @param icon 
+	 * @param size 
+	 * @param tint 
+	 */
+	void Image(const SceneryEditorX::IconType icon, const float size, const ImVec4 tint);
+
+	// image slot - returns true if the user clicked on the slot (for browse functionality)
+	/**
+	 * @brief 
+	 * @param texture_in 
+	 * @param setter 
+	 * @return 
+	 */
+	bool ImageSlot(SceneryEditorX::ImageResource *texture_in, const std::function<void(SceneryEditorX::ImageResource *)> &setter);
+
+	/**
+	 * @brief 
+	 * @param text 
+	 */
+	void Tooltip(const char *text);
+
+	// a drag float which will wrap the mouse cursor around the edges of the screen
+	/**
+	 * @brief 
+	 * @param label 
+	 * @param v 
+	 * @param v_speed 
+	 * @param v_min 
+	 * @param v_max 
+	 * @param format 
+	 * @param flags 
+	 * @return 
+	 */
+	bool DrawFloatWrap(const char *label, float *v, float v_speed = 1.0f, float v_min = 0.0f, float v_max = 0.0f, const char *format = "%.3f", const ImGuiSliderFlags flags = 0);
+
+	/**
+	 * @brief 
+	 * @param label 
+	 * @param options 
+	 * @param selectionIndex 
+	 * @return 
+	 */
+	bool ComboBox(const char *label, const std::vector<std::string> &options, uint32_t *selectionIndex);
+
+	/**
+	 * @brief 
+	 * @param label 
+	 * @param vector 
+	 * @param vertical 
+	 */
+	void Vec3(const char *label, xMath::Vec3 &vector, bool vertical = true);
+
+	/* @brief Initialize custom ImGui extensions */
 	void InitImGuiExtensions();
 
-}
+
+} // namespace UI
 
 // -------------------------------------------------------

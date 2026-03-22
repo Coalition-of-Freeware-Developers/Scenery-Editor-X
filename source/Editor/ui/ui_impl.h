@@ -29,8 +29,11 @@
  * -------------------------------------------------------
  */
 #pragma once
-#include <imgui.h>
+#include <vk_mem_alloc.h>
+#include <Editor/ui/source/imgui/imgui.h>
 #include <SceneryEditorX/renderer/vulkan/push_constant_buffer.h>
+#include <SceneryEditorX/utils/pointers.h>
+#include <vulkan/vulkan.h>
 
 // -------------------------------------------------------
 
@@ -52,7 +55,7 @@ namespace UI
 
 	/**
 	 * @struct ViewportResources
-	 * @brief 
+	 * @brief Per-window ring-buffered vertex/index buffers and push constants for ImGui rendering.
 	 */
 	struct ViewportResources
 	{
@@ -62,102 +65,110 @@ namespace UI
 		std::array<uint32_t, BUFFER_COUNT> vertex_counts = {};
 		SceneryEditorX::PushConstantBuffer_Pass pushConstantBuffer_Pass;
 		uint32_t bufferIndex = 0;
-	
-		ViewportResources() = default;
-		ViewportResources(const char* name)
-		{
 
-			// allocate buffers
+		ViewportResources() = default;
+
+		explicit ViewportResources(const char* name)
+		{
+			VmaAllocationCreateInfo allocCI{};
+			allocCI.usage = VMA_MEMORY_USAGE_AUTO;
+			allocCI.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |
+							VMA_ALLOCATION_CREATE_MAPPED_BIT;
+
 			for (uint32_t i = 0; i < BUFFER_COUNT; i++)
 			{
-				vertex_counts[i]  = 50000;
-				index_counts[i]   = 100000;
-				vertex_buffers[i] = SceneryEditorX::CreateScope<SceneryEditorX::Buffer>(sizeof(ImDrawVert), vertex_counts[i], nullptr, true, name);
-				index_buffers[i]  = SceneryEditorX::CreateScope<SceneryEditorX::Buffer>(sizeof(ImDrawIdx), index_counts[i], nullptr, true, name);
+				vertex_counts[i] = 50000;
+				index_counts[i]  = 100000;
+
+				vertex_buffers[i] = SceneryEditorX::CreateScope<SceneryEditorX::Buffer>(
+					static_cast<VmaAllocator>(nullptr),
+					static_cast<VkDeviceSize>(sizeof(ImDrawVert) * vertex_counts[i]),
+					static_cast<VkBufferUsageFlags>(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
+					allocCI);
+
+				index_buffers[i] = SceneryEditorX::CreateScope<SceneryEditorX::Buffer>(
+					static_cast<VmaAllocator>(nullptr),
+					static_cast<VkDeviceSize>(sizeof(ImDrawIdx) * index_counts[i]),
+					static_cast<VkBufferUsageFlags>(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
+					allocCI);
 			}
 		}
+
+		ViewportResources(const char* name, SceneryEditorX::Swapchain* /*swapchain*/) : ViewportResources(name) {}
 	};
 
 	/**
 	 * @struct WindowData
-	 * @brief 
+	 * @brief Per-window data for ImGui rendering, including viewport resources, swapchain, and command list.
 	 */
 	struct WindowData
 	{
-		SceneryEditorX::Ref<ViewportResources> viewportResources;
+		SceneryEditorX::Scope<ViewportResources> viewportResources;
 		SceneryEditorX::Ref<SceneryEditorX::Swapchain> swapchain;
 		SceneryEditorX::CommandList *cmdList = nullptr;
 	};
 	
 	// main window resources
-	ViewportResources g_ViewportData;
-	
+	extern ViewportResources g_ViewportData;
+
 	// shared resources (between all windows)
-	SceneryEditorX::Ref<SceneryEditorX::ImageResource>     g_FontAtlas;
-	SceneryEditorX::Ref<SceneryEditorX::DepthStencilState> g_DepthStencil_State;
-	SceneryEditorX::Ref<SceneryEditorX::RasterizerState>   g_Rasterizer_State;
-	SceneryEditorX::Ref<SceneryEditorX::BlendState>        g_BlendState;
-	SceneryEditorX::Ref<SceneryEditorX::Shader>            g_VertexShader;
-	SceneryEditorX::Ref<SceneryEditorX::Shader>            g_FragmentShader;
+	extern SceneryEditorX::Ref<SceneryEditorX::ImageResource>     g_FontAtlas;
+	extern SceneryEditorX::Ref<SceneryEditorX::DepthStencilState> g_DepthStencil_State;
+	extern SceneryEditorX::Ref<SceneryEditorX::RasterizerState>   g_Rasterizer_State;
+	extern SceneryEditorX::Ref<SceneryEditorX::BlendState>        g_BlendState;
+	extern SceneryEditorX::Ref<SceneryEditorX::Shader>            g_VertexShader;
+	extern SceneryEditorX::Ref<SceneryEditorX::Shader>            g_FragmentShader;
+
+	/* @brief Initializes the platform-specific interface for ImGui rendering. */
+	void InitializePlatformInterface();
+
+	/* @brief Destroys all allocated resources for ImGui rendering. */
+	void DestroyResources();
+
+	/* @brief Initializes the ImGui rendering system. */
+	void Initialize();
+
+	/* @brief Shuts down the ImGui rendering system. */
+	void Shutdown();
 
 	/**
-	 * @brief 
+	 * @brief Renders the ImGui draw data.
+	 * @param drawData Pointer to the ImGui draw data.
+	 * @param windowData Pointer to the window data, or nullptr for the main window.
+	 * @param clear Whether to clear the screen before rendering.
 	 */
-	static void InitializePlatformInterface();
+	void Render(ImDrawData *drawData, WindowData *windowData = nullptr, const bool clear = true);
 
 	/**
-	 * @brief 
+	 * @brief Creates a new window for the specified ImGui viewport.
+	 * @param viewport Pointer to the ImGui viewport.
 	 */
-	static void DestroyResources();
+	void WindowCreate(ImGuiViewport *viewport);
 
 	/**
-	 * @brief 
+	 * @brief Destroys the window for the specified ImGui viewport.
+	 * @param viewport Pointer to the ImGui viewport.
 	 */
-	static void Initialize();
+	void WindowDestroy(ImGuiViewport *viewport);
 
 	/**
-	 * @brief 
+	 * @brief Resizes the window for the specified ImGui viewport.
+	 * @param viewport Pointer to the ImGui viewport.
+	 * @param size New size for the window.
 	 */
-	static void Shutdown();
+   void WindowResize(ImGuiViewport *viewport, const ImVec2 size);
 
 	/**
-	 * @brief 
-	 * @param drawData 
-	 * @param windowData 
-	 * @param clear 
+	 * @brief Renders the ImGui draw data for the specified viewport.
+	 * @param viewport Pointer to the ImGui viewport.
 	 */
-	static void Render(ImDrawData *drawData, WindowData *windowData = nullptr, const bool clear = true);
+	void WindowRender(ImGuiViewport *viewport, void*);
 
 	/**
-	 * @brief 
-	 * @param viewport 
+	 * @brief Presents the rendered ImGui draw data for the specified viewport.
+	 * @param viewport Pointer to the ImGui viewport.
 	 */
-	static void WindowCreate(ImGuiViewport *viewport);
-
-	/**
-	 * @brief 
-	 * @param viewport 
-	 */
-	static void WindowDestroy(ImGuiViewport *viewport);
-
-	/**
-	 * @brief 
-	 * @param viewport 
-	 * @param size 
-	 */
-	static void WindowResize(ImGuiViewport *viewport, const ImVec2 size);
-
-	/**
-	 * @brief 
-	 * @param viewport 
-	 */
-	static void WindowRender(ImGuiViewport *viewport, void *);
-
-	/**
-	 * @brief 
-	 * @param viewport 
-	 */
-	static void WindowPresent(ImGuiViewport *viewport, void *);
+	void WindowPresent(ImGuiViewport *viewport, void*);
 
 }
 

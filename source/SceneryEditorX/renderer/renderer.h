@@ -30,19 +30,20 @@
  */
 #pragma once
 #include "renderer_declarations.h"
-#include "SceneryEditorX/asset/model.h"
+#include "font/font.h"
+#include "vulkan/blend_states.h"
 #include "vulkan/command_list.h"
 #include "vulkan/command_pool.h"
+#include "vulkan/depth_stencil.h"
 #include "vulkan/image_resource.h"
 #include "vulkan/push_constant_buffer.h"
+#include "vulkan/rasterizer.h"
 #include "vulkan/render_context.h"
 #include "vulkan/sampler.h"
 #include "vulkan/viewport.h"
-#include "vulkan/blend_states.h"
-#include "vulkan/depth_stencil.h"
-#include "vulkan/rasterizer.h"
 #include "vulkan/sync/frame_sync.h"
 #include <array>
+#include <SceneryEditorX/asset/model.h>
 #include <SceneryEditorX/core/threading/render_thread.h>
 #include <SceneryEditorX/core/window/window.h>
 #include <SceneryEditorX/renderer/gpu_stats.h>
@@ -51,6 +52,9 @@
 
 namespace SceneryEditorX
 {
+	class MaterialAsset;
+	class Mesh;
+	enum class MeshType : uint8_t;
 	class AssetManager;
 	struct RendererProperties;
 	class Swapchain;
@@ -173,6 +177,13 @@ namespace SceneryEditorX
 		 */
 		static void BlitToBackBuffer(CommandList *cmdList, ImageResource *texture);
 
+		/**
+		 * @brief Get a render target by type.
+		 * @param type The type of render target to retrieve.
+		 * @return Pointer to the requested render target.
+		 */
+		static ImageResource *GetRenderTarget(Renderer_RenderTarget type);
+
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		/// Render Context Management                                                                                     ///
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -270,7 +281,33 @@ namespace SceneryEditorX
 		/// Util Functions																								  ///
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-		/* @brief Retrieve current GPU memory usage statistics. */
+		static void Screenshot();
+
+		/**
+		 * @brief Returns a pointer to the standard mesh for the given type.
+		 * Meshes are GPU-resident and available after CreateModels().
+		 *
+		 * @param type The type of standard mesh to retrieve.
+		 * @return Pointer to the requested standard mesh.
+		 */
+		static Mesh* GetStandardMesh(MeshType type);
+
+		/**
+		 * @brief Returns a pointer to the standard material for the given type.
+		 * @return Pointer to the requested standard material.
+		 */
+		static Ref<MaterialAsset>& GetStandardMaterial();
+		
+		/**
+		 * @brief Returns the pre-built Font object for the given preset.
+		 * @return Reference to the standard font
+		 */
+		static Ref<Font>& GetFont();
+
+		/* 
+		 * @brief Retrieve current GPU memory usage statistics. 
+		 * @return GPUMemoryStats struct containing current memory usage details.
+		 */
 		static GPUMemoryStats GetGPUMemoryStats();
 
 		/**
@@ -307,10 +344,15 @@ namespace SceneryEditorX
 		/* @brief Update optional render targets based on current renderer configuration. */
 		static void UpdateOptionalRenderTargets();
 
-		/* @brief Create per-frame resources such as command buffers and synchronization objects. */
+		/* 
+		 * @brief Create per-frame resources such as command buffers and synchronization objects. 
+		 */
 		static void CreateFrameResources();
 
-		/* @brief Destroy per-frame resources such as command buffers and synchronization objects. */
+		/* 
+		 * @brief Destroy per-frame resources such as command buffers and synchronization objects. 
+		 * @note This should be called during renderer shutdown and whenever the number of frames in flight changes (e.g., swapchain recreation).
+		 */
 		static void DestroyFrameResources();
 
 		/**
@@ -319,13 +361,6 @@ namespace SceneryEditorX
 		 * @param imageIndex Index of the swapchain image being rendered to (for resource binding)
 		 */
 		static void RecordRenderCommands(VkCommandBuffer cb, uint32_t imageIndex);
-
-		/**
-		 * @brief Get a render target by type.
-		 * @param type The type of render target to retrieve.
-		 * @return Pointer to the requested render target.
-		 */
-		static ImageResource *GetRenderTarget(Renderer_RenderTarget type);
 
 		/**
 		 * @brief Get a structured buffer by type.
@@ -357,6 +392,13 @@ namespace SceneryEditorX
 		static void CreateSamplers();
 
 		/**
+		 * @brief Creates standard materials used by the renderer.
+		 */
+		static void CreateStandardMaterials();
+
+		static void CreateStandardTextures();
+
+		/**
 		 * @brief Get a sampler by type.
 		 * @param type The type of sampler to retrieve.
 		 * @return Pointer to the requested sampler.
@@ -367,6 +409,8 @@ namespace SceneryEditorX
 		static std::array<Ref<Shader>,  static_cast<uint32_t>(Renderer_Shader::MaxEnum)>& GetShaders();
 		static std::array<Ref<Buffer>,  static_cast<uint32_t>(Renderer_Buffer::MaxEnum)>& GetStructuredBuffers();
 		static std::array<Ref<Sampler>, static_cast<uint32_t>(Renderer_Sampler::MaxEnum)>& GetSamplers();
+
+		static ImageResource *GetStandardTexture(Renderer_StandardTexture type);
 
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		/// Render Passes                                                                                                 ///
@@ -448,12 +492,6 @@ namespace SceneryEditorX
 		 * @brief Returns the pre-built DepthStencilState object for the given preset.
 		 */
 		static DepthStencilState* GetDepthStencilState(Renderer_DepthStencilState type);
-
-		/**
-		 * @brief Returns a pointer to the standard mesh for the given type.
-		 * Meshes are GPU-resident and available after CreateModels().
-		 */
-		static class Mesh* GetStandardMesh(MeshType type);
 
 		/**
 		 * @brief Writes per-draw transform and material data into the GPU draw-data buffer.

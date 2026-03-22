@@ -33,11 +33,10 @@
 #include "Editor/projects/project.h"
 #include "Editor/settings/editor_settings.h"
 #include "Editor/ui/ui_impl.h"
-
-#include <ImGuizmo.h>
-#include <imgui.h>
-#include <imgui_impl_sdl3.h>
-#include <imgui_internal.h>
+#include <Editor/ui/source/imgui/imgui.h>
+#include <Editor/ui/source/imgui/imgui_internal.h>
+#include <Editor/ui/source/imgui/backends/imgui_impl_sdl3.h>
+#include <Editor/ui/source/imguizmo/ImGuizmo.h>
 #include <SceneryEditorX/core/application/application.h>
 #include <SceneryEditorX/core/resource/resource_cache.h>
 #include <SceneryEditorX/core/window/window.h>
@@ -78,13 +77,6 @@ namespace SceneryEditorX
 
 	static float s_FontSize  = 18.0f;
 	static float s_FontScale = 1.0f;
-
-
-	static void ProcessEvent(Event &event)
-	{
-		SDL_Event* event_sdl = static_cast<SDL_Event*>(std::get<void*>(event));
-		ImGui_ImplSDL3_ProcessEvent(event_sdl);
-	}
 
 
 	// -------------------------------------------------------
@@ -159,7 +151,11 @@ namespace SceneryEditorX
 
 		// m_TitleBarActiveColor = m_TitleBarTargetColor = Colors::Theme::titlebarGreen;
 
-		PushLayer(new SceneryEditorX::EditorLayer());
+		{
+			auto* layer = new SceneryEditorX::EditorLayer();
+			PushLayer(layer);
+			m_EditorLayer = layer;
+		}
 
 		const auto end = std::chrono::high_resolution_clock::now();
 		auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
@@ -190,7 +186,11 @@ namespace SceneryEditorX
 			SEDX_CORE_WARN_TAG("Editor", "Main window is not visible after creation.");
 		}
 
-		PushLayer(new SceneryEditorX::EditorLayer());
+		{
+			auto* layer = new SceneryEditorX::EditorLayer();
+			PushLayer(layer);
+			m_EditorLayer = layer;
+		}
 
 		const auto end = std::chrono::high_resolution_clock::now();
 		auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
@@ -201,7 +201,7 @@ namespace SceneryEditorX
 	{
 		if (ImGui::GetCurrentContext())
 		{
-			ImGui::Shutdown();
+		  ::UI::Shutdown();
 			ImGui_ImplSDL3_Shutdown();
 			ImGui::DestroyContext();
 		}
@@ -244,7 +244,24 @@ namespace SceneryEditorX
 
 	void Editor::OnRender()
 	{
+		if (!ImGui::GetCurrentContext())
+			return;
 
+		ImGui_ImplSDL3_NewFrame();
+		ImGui::NewFrame();
+		ImGuizmo::BeginFrame();
+
+		if (m_EditorLayer)
+		  m_EditorLayer->OnUIRender();
+
+	  ImGui::Render();
+
+	    ImGuiIO& io = ImGui::GetIO();
+		if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+		{
+			ImGui::UpdatePlatformWindows();
+			ImGui::RenderPlatformWindowsDefault();
+		}
 	}
 
 	void Editor::OnUpdate()
@@ -259,11 +276,11 @@ namespace SceneryEditorX
 
 	void Editor::InitEditor()
 	{
-	    SEDX_CORE_INFO_TAG("EDITOR", "Setting up ImGui docking layout");
+		SEDX_CORE_INFO_TAG("EDITOR", "Setting up ImGui docking layout");
 
 		ImGui::CreateContext();
 
-	    // configure ImGui
+		// configure ImGui
 		ImGuiIO& io                      = ImGui::GetIO();
 		io.ConfigFlags                  |= ImGuiConfigFlags_NavEnableKeyboard;
 		io.ConfigFlags                  |= ImGuiConfigFlags_DockingEnable;
@@ -277,9 +294,9 @@ namespace SceneryEditorX
 		config.GlyphOffset.y = -2.0f;
 		
 		const std::string dir_fonts = ResourceCache::GetResourceDirectory(ResourceDirectory::Fonts) + "/";
-		fontNormal            = io.Fonts->AddFontFromFileTTF((dir_fonts + "OpenSans/OpenSans-Medium.ttf").c_str(), s_FontSize * Window::GetDpiScale());
-		fontBold              = io.Fonts->AddFontFromFileTTF((dir_fonts + "OpenSans/OpenSans-Bold.ttf").c_str(), s_FontSize * Window::GetDpiScale(), &config);
-		io.FontGlobalScale     = s_FontScale;
+		Editor::fontNormal    = io.Fonts->AddFontFromFileTTF((dir_fonts + "OpenSans/OpenSans-Medium.ttf").c_str(), s_FontSize * Window::GetDpiScale());
+		Editor::fontBold      = io.Fonts->AddFontFromFileTTF((dir_fonts + "OpenSans/OpenSans-Bold.ttf").c_str(), s_FontSize * Window::GetDpiScale(), &config);
+		io.FontGlobalScale    = s_FontScale;
 
 		// initialize imgui backends
 		SEDX_CORE_ASSERT(ImGui_ImplSDL3_InitForVulkan(Window::GetWindow()), "Failed to initialize ImGui's SDL backend");
@@ -559,19 +576,6 @@ namespace SceneryEditorX
 		return false;
 	}
 	*/
-
-	float Editor::GetSnapValue()
-	{
-		const auto& editorSettings = EditorSettings::Get();
-
-		switch (m_GizmoType)
-		{
-			case ImGuizmo::OPERATION::TRANSLATE: return editorSettings.translationSnapValue;
-			case ImGuizmo::OPERATION::ROTATE: return editorSettings.rotationSnapValue;
-			case ImGuizmo::OPERATION::SCALE: return editorSettings.scaleSnapValue;
-		}
-		return 0.0f;
-	}
 
 	static auto operator<(const ImVec2 &lhs, const ImVec2 &rhs) { return lhs.x < rhs.x && lhs.y < rhs.y; }
 

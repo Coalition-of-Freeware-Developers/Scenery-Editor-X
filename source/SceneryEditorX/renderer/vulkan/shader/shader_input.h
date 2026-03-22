@@ -40,8 +40,12 @@ namespace SceneryEditorX
 	#define MAXIMUM_ARRAY_ELEMENTS 1024 * 16
 	#define MAX_BINDLESS 1024 * 4
 	
-    // -------------------------------------------------------
+	// -------------------------------------------------------
 
+	/**
+	 * @struct ShaderInput
+	 * @brief Represents a single input variable of a Vulkan shader.
+	 */
 	struct ShaderInput
 	{
 		std::string debugName;
@@ -54,9 +58,14 @@ namespace SceneryEditorX
 		ShaderInputType type;
 	};
 
-    inline VkShaderStageFlagBits GetStage(const Stage &stage)
-    {
-    	switch (stage)
+	/**
+	 * @brief Converts a Stage enum to a VkShaderStageFlagBits value.
+	 * @param stage The Stage enum value to convert.
+	 * @return The corresponding VkShaderStageFlagBits value.
+	 */
+	inline VkShaderStageFlagBits GetStage(const Stage &stage)
+	{
+		switch (stage)
 		{
 			case Stage::Vertex:							return VK_SHADER_STAGE_VERTEX_BIT;
 			case Stage::Geometry:						return VK_SHADER_STAGE_GEOMETRY_BIT;
@@ -70,10 +79,15 @@ namespace SceneryEditorX
 		}
 
 		return VK_SHADER_STAGE_ALL;
-    }
+	}
 
-    inline VkDescriptorType GetInputType(const ShaderInputType &type)
-    {
+	/**
+	 * @brief Converts a ShaderInputType enum to a VkDescriptorType value.
+	 * @param type The ShaderInputType enum value to convert.
+	 * @return The corresponding VkDescriptorType value.
+	 */
+	inline VkDescriptorType GetInputType(const ShaderInputType &type)
+	{
 		switch (type)
 		{
 			case ShaderInputType::UniformBuffer:			return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -87,7 +101,7 @@ namespace SceneryEditorX
 		}
 
 		return VK_DESCRIPTOR_TYPE_MAX_ENUM;
-    }
+	}
 
 
 }

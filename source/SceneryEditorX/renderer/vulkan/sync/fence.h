@@ -37,6 +37,12 @@
 namespace SceneryEditorX
 {
 
+    /**
+     * @class Fence
+     * @brief Fence is a synchronization primitive used to coordinate GPU and CPU operations.
+     *        It encapsulates a Vulkan fence, providing a unified interface for signaling and
+     *        waiting on GPU tasks.
+     */
     class Fence : public SyncObject, public SharedObject
     {
     public:

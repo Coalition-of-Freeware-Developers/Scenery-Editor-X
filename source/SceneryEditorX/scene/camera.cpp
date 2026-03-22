@@ -29,7 +29,6 @@
  * -------------------------------------------------------
  */
 #include "camera.h"
-
 #include "entity.h"
 #include "scene.h"
 #include "components/component_sets.h"
@@ -77,12 +76,12 @@ namespace SceneryEditorX
 		if (mode == ORBIT)
 		{
 			const Vec3 toTarget = center - eye;
-		   if (Length2(toTarget) > 1e-6f)
+			if (Length2(toTarget) > 1e-6f)
 			{
 				const Vec3 forward = xMath::Normalize(toTarget);
 				rotation.x = std::asin(forward.y);
 				rotation.y = std::atan2(forward.x, forward.z);
-			   zoom = Length(toTarget);
+				m_Zoom = Length(toTarget);
 			}
 		}
 
@@ -118,7 +117,7 @@ namespace SceneryEditorX
 			const float sinPitch = std::sin(rotation.x);
 			const float cosYaw = std::cos(rotation.y);
 			const float sinYaw = std::sin(rotation.y);
-			eye = center + Vec3(zoom * cosPitch * sinYaw, zoom * sinPitch, zoom * cosPitch * cosYaw);
+			eye = center + Vec3(m_Zoom * cosPitch * sinYaw, m_Zoom * sinPitch, m_Zoom * cosPitch * cosYaw);
 		}
 
 		TransformComponent transform{};
@@ -386,6 +385,25 @@ namespace SceneryEditorX
 		return nullptr;
 	}
 
+	std::vector<Entity *> &Camera::GetSelectedEntities()
+	{
+		return m_SelectedEntities;
+	}
+
+	bool Camera::IsSelected(Entity *entity) const
+	{
+		return false;
+	}
+
+	bool Camera::IsControlled()
+	{
+		return false;
+	}
+
+	void Camera::ClearSelection()
+	{
+	}
+
 	void Camera::ComputeMatrices(const TransformComponent& transform, const CameraComponent& cameraData, const Viewport& viewport)
 	{
 		if (!m_CameraFlag.IsDirty())
@@ -512,7 +530,7 @@ namespace SceneryEditorX
 				const Vec3 right = xMath::Normalize(xMath::Cross(forward, Vec3(0.0f, 1.0f, 0.0f)));
 				const Vec3 up = xMath::Cross(right, forward);
 	
-				const float panScale = zoom * panSensitivity;
+				const float panScale = m_Zoom * panSensitivity;
 				center -= right * (delta.x * panScale);
 				center += up * (delta.y * panScale);
 				m_CameraFlag.SetDirty();
@@ -523,14 +541,14 @@ namespace SceneryEditorX
 			// Keyboard zoom (W/S or Up/Down) while in orbit
 			if (wDown || upDown)
 			{
-				zoom = std::max(0.1f, zoom - moveSpeed * 0.016f);
+				m_Zoom = std::max(0.1f, m_Zoom - moveSpeed * 0.016f);
 				m_CameraFlag.SetDirty();
 			   cameraChanged = true;
 				action = "zoom_in";
 			}
 			if (sDown || downDown)
 			{
-				zoom += moveSpeed * 0.016f;
+				m_Zoom += moveSpeed * 0.016f;
 				m_CameraFlag.SetDirty();
 			   cameraChanged = true;
 				action = "zoom_out";
@@ -628,7 +646,7 @@ namespace SceneryEditorX
 				center.z,
 				rotation.x,
 				rotation.y,
-				zoom,
+				m_Zoom,
 				wDown,
 				sDown,
 				aDown,
@@ -704,7 +722,7 @@ namespace SceneryEditorX
 	void Camera::SetViewTarget(Vec3 position, Vec3 target, Vec3 up) 
 	{
 		center = target;
-		zoom = Length(target - position);
+		m_Zoom = Length(target - position);
 		const Vec3 direction = xMath::Normalize(target - position);
 		rotation.x = std::asin(direction.y);
 		rotation.y = std::atan2(direction.x, direction.z);

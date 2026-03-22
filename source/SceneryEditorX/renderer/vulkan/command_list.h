@@ -48,6 +48,10 @@ namespace SceneryEditorX
 	struct Texture;
 	struct PipelineState;
 
+	/**
+	 * @enum CommandState
+	 * @brief Represents the state of a command list.
+	 */
 	enum class CommandState : uint8_t
 	{
 		Idle,
@@ -57,6 +61,10 @@ namespace SceneryEditorX
 	
 	// -------------------------------------------------------
 
+	/**
+	 * @class CommandList
+	 * @brief Represents a command list that can be recorded and submitted for execution on the GPU.
+	 */
 	class CommandList : public SharedResource
 	{
 	public:

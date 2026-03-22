@@ -39,92 +39,92 @@ namespace SceneryEditorX
 {
 	bool Descriptor::Init(uint32_t bindingCount, uint32_t descriptorCount)
 	{
-        m_Device = RenderContext::Get()->GetDevice();
+		m_Device = RenderContext::Get()->GetDevice();
 
-	    // Create layout
-	    VkDescriptorSetLayoutBinding binding;
-	    binding.binding = 0;
-	    binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	    binding.descriptorCount = bindingCount;
-	    binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-	    binding.pImmutableSamplers = nullptr;
+		// Create layout
+		VkDescriptorSetLayoutBinding binding;
+		binding.binding = 0;
+		binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		binding.descriptorCount = bindingCount;
+		binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+		binding.pImmutableSamplers = nullptr;
 	
-	    VkDescriptorSetLayoutCreateInfo layoutCI{};
-	    layoutCI.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-	    layoutCI.bindingCount = 1;
-	    layoutCI.pBindings = &binding;
+		VkDescriptorSetLayoutCreateInfo layoutCI{};
+		layoutCI.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+		layoutCI.bindingCount = 1;
+		layoutCI.pBindings = &binding;
 	
-	    SEDX_VK_RESULT_ASSERT(vkCreateDescriptorSetLayout(m_Device->GetLogicalDevice(), &layoutCI, nullptr, &m_Layout), "Attempt to create a DescriptorSetLayout failed");
+		SEDX_VK_RESULT_ASSERT(vkCreateDescriptorSetLayout(m_Device->GetLogicalDevice(), &layoutCI, nullptr, &m_Layout), "Attempt to create a DescriptorSetLayout failed");
 	
-	    // Create pool
-	    VkDescriptorPoolSize poolSize;
-	    poolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	    poolSize.descriptorCount = descriptorCount;
+		// Create pool
+		VkDescriptorPoolSize poolSize;
+		poolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		poolSize.descriptorCount = descriptorCount;
 	
-	    VkDescriptorPoolCreateInfo poolCI{};
-	    poolCI.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	    poolCI.maxSets = 1;
-	    poolCI.poolSizeCount = 1;
-	    poolCI.pPoolSizes = &poolSize;
+		VkDescriptorPoolCreateInfo poolCI{};
+		poolCI.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+		poolCI.maxSets = 1;
+		poolCI.poolSizeCount = 1;
+		poolCI.pPoolSizes = &poolSize;
 	
-	    VkResult r = vkCreateDescriptorPool(m_Device->GetLogicalDevice(), &poolCI, nullptr, &m_Pool);
-	    if (r != VK_SUCCESS) 
-	    {
-	        SEDX_CORE_ERROR_TAG("DescriptorSet", "Attempt to create a DescriptorPool failed: {}", r);
-            vkDestroyDescriptorSetLayout(m_Device->GetLogicalDevice(), m_Layout, nullptr);
-	        m_Layout = VK_NULL_HANDLE;
-	        return false;
-	    }
+		VkResult r = vkCreateDescriptorPool(m_Device->GetLogicalDevice(), &poolCI, nullptr, &m_Pool);
+		if (r != VK_SUCCESS) 
+		{
+			SEDX_CORE_ERROR_TAG("DescriptorSet", "Attempt to create a DescriptorPool failed: {}", r);
+			vkDestroyDescriptorSetLayout(m_Device->GetLogicalDevice(), m_Layout, nullptr);
+			m_Layout = VK_NULL_HANDLE;
+			return false;
+		}
 	
-	    return true;
+		return true;
 	}
 	
 	VkDescriptorSet Descriptor::AllocateAndWrite(const std::vector<VkDescriptorImageInfo>& imageInfos) const
 	{
-	    if (m_Pool == VK_NULL_HANDLE || m_Layout == VK_NULL_HANDLE)
+		if (m_Pool == VK_NULL_HANDLE || m_Layout == VK_NULL_HANDLE)
 			return VK_NULL_HANDLE;
 
-	    uint32_t variableDescCount = static_cast<uint32_t>(imageInfos.size());
+		uint32_t variableDescCount = static_cast<uint32_t>(imageInfos.size());
 	
-	    VkDescriptorSetVariableDescriptorCountAllocateInfo variableDescCountAI{};
-	    variableDescCountAI.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO_EXT;
-	    variableDescCountAI.descriptorSetCount = 1;
-	    variableDescCountAI.pDescriptorCounts = &variableDescCount;
+		VkDescriptorSetVariableDescriptorCountAllocateInfo variableDescCountAI{};
+		variableDescCountAI.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO_EXT;
+		variableDescCountAI.descriptorSetCount = 1;
+		variableDescCountAI.pDescriptorCounts = &variableDescCount;
 	
-	    VkDescriptorSet descriptorSet = VK_NULL_HANDLE;
-	    VkDescriptorSetAllocateInfo allocInfo{};
-	    allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	    allocInfo.pNext = &variableDescCountAI;
-	    allocInfo.descriptorPool = m_Pool;
-	    allocInfo.descriptorSetCount = 1;
-	    allocInfo.pSetLayouts = &m_Layout;
-	    SEDX_VK_RESULT_ASSERT(vkAllocateDescriptorSets(m_Device->GetLogicalDevice(), &allocInfo, &descriptorSet), "Attempt to allocate descriptor sets failed");
+		VkDescriptorSet descriptorSet = VK_NULL_HANDLE;
+		VkDescriptorSetAllocateInfo allocInfo{};
+		allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+		allocInfo.pNext = &variableDescCountAI;
+		allocInfo.descriptorPool = m_Pool;
+		allocInfo.descriptorSetCount = 1;
+		allocInfo.pSetLayouts = &m_Layout;
+		SEDX_VK_RESULT_ASSERT(vkAllocateDescriptorSets(m_Device->GetLogicalDevice(), &allocInfo, &descriptorSet), "Attempt to allocate descriptor sets failed");
 	
-	    VkWriteDescriptorSet writeDescSet{};
-	    writeDescSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	    writeDescSet.dstSet = descriptorSet;
-	    writeDescSet.dstBinding = 0;
-	    writeDescSet.descriptorCount = variableDescCount;
-	    writeDescSet.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	    writeDescSet.pImageInfo = imageInfos.data();
-	    vkUpdateDescriptorSets(m_Device->GetLogicalDevice(), 1, &writeDescSet, 0, nullptr);
+		VkWriteDescriptorSet writeDescSet{};
+		writeDescSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		writeDescSet.dstSet = descriptorSet;
+		writeDescSet.dstBinding = 0;
+		writeDescSet.descriptorCount = variableDescCount;
+		writeDescSet.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		writeDescSet.pImageInfo = imageInfos.data();
+		vkUpdateDescriptorSets(m_Device->GetLogicalDevice(), 1, &writeDescSet, 0, nullptr);
 	
-	    return descriptorSet;
+		return descriptorSet;
 	}
 
-    DescriptorSet::DescriptorSet(const std::vector<VkDescriptorImageInfo> &textureDescriptors)
-    {
-        Ref<Device> device = RenderContext::Get()->GetDevice();
-        m_Device = device;
+	DescriptorSet::DescriptorSet(const std::vector<VkDescriptorImageInfo> &textureDescriptors)
+	{
+		Ref<Device> device = RenderContext::Get()->GetDevice();
+		m_Device = device;
 
-        Descriptor helper;
-        m_Layout = helper.CreateLayout(static_cast<uint32_t>(textureDescriptors.size()));
-        m_DescriptorPool = helper.CreatePool(static_cast<uint32_t>(textureDescriptors.size()));
+		Descriptor helper;
+		m_Layout = helper.CreateLayout(static_cast<uint32_t>(textureDescriptors.size()));
+		m_DescriptorPool = helper.CreatePool(static_cast<uint32_t>(textureDescriptors.size()));
 		SEDX_CORE_ASSERT(m_DescriptorPool != VK_NULL_HANDLE, "DescriptorSet: failed to create descriptor pool");
 
-        m_Set = helper.AllocateAndWrite(m_DescriptorPool, m_Layout, textureDescriptors);
-        SEDX_CORE_ASSERT(m_Set != VK_NULL_HANDLE, "DescriptorSet: failed to allocate descriptor set");
-    }
+		m_Set = helper.AllocateAndWrite(m_DescriptorPool, m_Layout, textureDescriptors);
+		SEDX_CORE_ASSERT(m_Set != VK_NULL_HANDLE, "DescriptorSet: failed to allocate descriptor set");
+	}
 
 	DescriptorSet::DescriptorSet(DescriptorSet&& other) noexcept
 	{
@@ -144,9 +144,9 @@ namespace SceneryEditorX
 	DescriptorSet& DescriptorSet::operator=(DescriptorSet&& other) noexcept
 	{
 		if (this == &other)
-            return *this;
+			return *this;
 
-        Destroy();
+		Destroy();
 
 		m_Device = other.m_Device;
 		m_Layout = other.m_Layout;
@@ -163,33 +163,33 @@ namespace SceneryEditorX
 		return *this;
 	}
 
-    DescriptorSet::~DescriptorSet()
-    {
-        if (!m_Destroyed)
-            Destroy();
-    }
+	DescriptorSet::~DescriptorSet()
+	{
+		if (!m_Destroyed)
+			Destroy();
+	}
 
-    void DescriptorSet::Destroy()
-    {
-        if (!m_Destroyed)
-        {
-            if (m_DescriptorPool != VK_NULL_HANDLE)
-            {
+	void DescriptorSet::Destroy()
+	{
+		if (!m_Destroyed)
+		{
+			if (m_DescriptorPool != VK_NULL_HANDLE)
+			{
 				QueueManager::AddDeletionQueue(ResourceType::DescriptorPool, m_DescriptorPool);
-                //vkDestroyDescriptorPool(m_Device->GetLogicalDevice(), m_DescriptorPool, nullptr);
-                m_DescriptorPool = VK_NULL_HANDLE;
-            }
+				//vkDestroyDescriptorPool(m_Device->GetLogicalDevice(), m_DescriptorPool, nullptr);
+				m_DescriptorPool = VK_NULL_HANDLE;
+			}
 
-            if (m_Layout != VK_NULL_HANDLE)
-            {
+			if (m_Layout != VK_NULL_HANDLE)
+			{
 				QueueManager::AddDeletionQueue(ResourceType::DescriptorSetLayout, m_Layout);
-                //vkDestroyDescriptorSetLayout(m_Device->GetLogicalDevice(), m_Layout, nullptr);
-                m_Layout = VK_NULL_HANDLE;
-            }
+				//vkDestroyDescriptorSetLayout(m_Device->GetLogicalDevice(), m_Layout, nullptr);
+				m_Layout = VK_NULL_HANDLE;
+			}
 
-            m_Destroyed = true;
-        }
-    }
+			m_Destroyed = true;
+		}
+	}
 
 } // namespace SceneryEditorX
 

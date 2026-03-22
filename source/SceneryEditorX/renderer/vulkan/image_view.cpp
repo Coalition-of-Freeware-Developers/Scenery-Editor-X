@@ -40,34 +40,34 @@ namespace SceneryEditorX
 
 	ImageView::ImageView(ImageViewSpec spec) : m_Spec(std::move(spec))
 	{
-        const Ref<Device> device = RenderContext::Get()->GetDevice();
+		const Ref<Device> device = RenderContext::Get()->GetDevice();
 
-	    VkImageViewCreateInfo viewCI;
+		VkImageViewCreateInfo viewCI;
 		viewCI.sType		= VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 		viewCI.pNext		= nullptr;
 		viewCI.flags		= 0;
 		viewCI.image		= m_Spec.image->GetImage();
 		viewCI.viewType		= VK_IMAGE_VIEW_TYPE_2D;
 		viewCI.format		= m_Spec.format;
-	    viewCI.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-        viewCI.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-        viewCI.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-        viewCI.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+		viewCI.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+		viewCI.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+		viewCI.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+		viewCI.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
 		viewCI.subresourceRange.aspectMask		= m_Spec.aspect;
-        viewCI.subresourceRange.baseMipLevel	= m_Spec.mip;
+		viewCI.subresourceRange.baseMipLevel	= m_Spec.mip;
 		viewCI.subresourceRange.levelCount		= m_Spec.mipCount;
-	    viewCI.subresourceRange.baseArrayLayer	= 0;
+		viewCI.subresourceRange.baseArrayLayer	= 0;
 		viewCI.subresourceRange.layerCount		= m_Spec.layerCount;
 
 		SEDX_VK_RESULT_ASSERT(vkCreateImageView(device->GetLogicalDevice(), &viewCI, nullptr, &m_ImageView), "Failed to create image view");
-        Debugging::SetResourceName(m_ImageView, ResourceType::ImageView, m_Spec.name ? m_Spec.name : "Unnamed ImageView");
+		Debugging::SetResourceName(m_ImageView, ResourceType::ImageView, m_Spec.name ? m_Spec.name : "Unnamed ImageView");
 	}
 
 	ImageView::~ImageView()
 	{
 		QueueManager::AddDeletionQueue(ResourceType::ImageView, m_ImageView);
-        m_ImageView = VK_NULL_HANDLE;
-        m_Spec = {};
+		m_ImageView = VK_NULL_HANDLE;
+		m_Spec = {};
 	}
 
 } // namespace SceneryEditorX

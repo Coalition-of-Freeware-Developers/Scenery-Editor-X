@@ -29,13 +29,14 @@
  * -------------------------------------------------------
  */
 #pragma once
-#include <ImGuizmo.h>
+#include <Editor/ui/source/imguizmo/ImGuizmo.h>
 #include <xMath/includes/vector.h>
 
 // -------------------------------------------------------
 
 /**
- * @brief 
+ * @enum ManipulatorType
+ * @brief Defines the type of manipulation operation for the gizmo.
  */
 enum class ManipulatorType : uint32_t
 {
@@ -46,6 +47,17 @@ enum class ManipulatorType : uint32_t
 };
 
 /**
+ * @enum GizmoPivotMode
+ * @brief Defines the pivot point strategy used by the gizmo.
+ */
+enum class GizmoPivotMode : uint8_t
+{
+	Local,
+	World,
+	Center
+};
+
+/**
  * @class Gizmo
  * @brief Represents a gizmo for manipulating objects in the scene.
  */
@@ -53,12 +65,61 @@ class Gizmo
 {
 public:
 	Gizmo() = default;
+
+	/**
+	 * @brief 
+	 * @param type 
+	 */
 	Gizmo(ManipulatorType type);
 
+	/**
+	 * @brief 
+	 */
 	static void Tick();
+
+	/**
+	 * @brief 
+	 * @param position 
+	 * @param rotation 
+	 * @param scale 
+	 */
 	static void DrawGizmo(const xMath::Vec3 &position, const xMath::Vec3 &rotation, const xMath::Vec3 &scale);
+
+	/**
+	 * @brief 
+	 * @return 
+	 */
 	static bool AllowObjectSelection();
+
+	/**
+	 * @brief 
+	 * @return 
+	 */
 	static bool EnableSnapping();
+
+	/**
+	 * @brief 
+	 * @param mode 
+	 */
+	static void SetPivotMode(GizmoPivotMode mode);
+
+	/**
+	 * @brief 
+	 * @return 
+	 */
+	static GizmoPivotMode GetPivotMode();
+
+	/**
+	 * @brief 
+	 * @param mode 
+	 */
+	static void SetTransformMode(ImGuizmo::MODE mode);
+
+	/**
+	 * @brief 
+	 * @return 
+	 */
+	static ImGuizmo::MODE GetTransformMode();
 
 private:
 	ManipulatorType m_Type = ManipulatorType::Translate;

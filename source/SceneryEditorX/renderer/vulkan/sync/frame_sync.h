@@ -37,11 +37,17 @@
 
 namespace SceneryEditorX
 {
-    class CommandList;
-    class RenderContext;
+	class CommandList;
+	class RenderContext;
 	
-    // -------------------------------------------------------
+	// -------------------------------------------------------
 
+	/**
+	 * @class FrameSync
+	 * @brief FrameSync is a synchronization primitive used to coordinate GPU and CPU operations
+	 *        within a frame. It encapsulates a fence and a semaphore, providing a unified interface
+	 *        for signaling and waiting on GPU tasks.
+	 */
 	class FrameSync : public RefCounted
 	{
 	public:
@@ -56,26 +62,26 @@ namespace SceneryEditorX
 		 */
 		explicit FrameSync(SyncType type, VkDevice device = VK_NULL_HANDLE);
 		~FrameSync() override;
-        static void Create(uint32_t framesInFlight, uint32_t swapchainImageCount);
+		static void Create(uint32_t framesInFlight, uint32_t swapchainImageCount);
 
-        uint64_t GetNextSignalValue() { return ++m_Value; }
-        [[nodiscard]] uint64_t GetValue() const { return m_Value; }
+		uint64_t GetNextSignalValue() { return ++m_Value; }
+		[[nodiscard]] uint64_t GetValue() const { return m_Value; }
 
-        // Signaler command list
-        void SetUserCmdList(CommandList *cmdList) { m_User_CmdList = cmdList; }
-        [[nodiscard]] CommandList *GetUserCmdList() const { return m_User_CmdList; }
+		// Signaler command list
+		void SetUserCmdList(CommandList *cmdList) { m_User_CmdList = cmdList; }
+		[[nodiscard]] CommandList *GetUserCmdList() const { return m_User_CmdList; }
 
-        // Access the underlying Vulkan handles (null-safe)
-        [[nodiscard]] VkSemaphore GetVkSemaphore() const { return m_RenderSemaphore ? m_RenderSemaphore->GetSemaphore() : VK_NULL_HANDLE; }
-        [[nodiscard]] VkFence GetVkFence() const { return m_Fence ? m_Fence->GetFence() : VK_NULL_HANDLE; }
+		// Access the underlying Vulkan handles (null-safe)
+		[[nodiscard]] VkSemaphore GetVkSemaphore() const { return m_RenderSemaphore ? m_RenderSemaphore->GetSemaphore() : VK_NULL_HANDLE; }
+		[[nodiscard]] VkFence GetVkFence() const { return m_Fence ? m_Fence->GetFence() : VK_NULL_HANDLE; }
 
-        // Expose refs if callers need strong access
-        [[nodiscard]] Ref<Semaphore> GetSemaphoreRef() const { return m_RenderSemaphore; }
-        [[nodiscard]] Ref<Fence> GetFenceRef() const { return m_Fence; }
+		// Expose refs if callers need strong access
+		[[nodiscard]] Ref<Semaphore> GetSemaphoreRef() const { return m_RenderSemaphore; }
+		[[nodiscard]] Ref<Fence> GetFenceRef() const { return m_Fence; }
 
 	private:
 		Ref<Fence> m_Fence;
-        Ref<Semaphore> m_RenderSemaphore;
+		Ref<Semaphore> m_RenderSemaphore;
 
 		uint64_t m_Value = 0;
 		SyncType m_Type = SyncType::MaxEnum;

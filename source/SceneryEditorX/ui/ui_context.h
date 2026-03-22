@@ -12,7 +12,7 @@
 */
 #pragma once
 #include <SceneryEditorX/core/layers/Layer.h>
-#include <imgui/imgui.h>
+#include <Editor/ui/source/imgui/imgui.h>
 
 // -------------------------------------------------------
 

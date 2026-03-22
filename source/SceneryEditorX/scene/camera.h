@@ -33,6 +33,9 @@
 #include <SceneryEditorX/core/identifiers/flag.h>
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#include "components/renderable.h"
+
+
 #include <glm/glm.hpp>
 #include <xMath/includes/frustum.h>
 
@@ -42,7 +45,6 @@ namespace SceneryEditorX
 {
 	struct TransformComponent;
 	struct CameraComponent;
-	class Renderable;
 	class Entity;
 
 	/**
@@ -184,6 +186,42 @@ namespace SceneryEditorX
 		 */
 		static float GetAspectRatio();
 
+		/**
+		 * @brief 
+		 * @return 
+		 */
+		float GetShutterSpeed() const { return m_ShutterSpeed; }
+
+		/**
+		 * @brief 
+		 * @param shutterSpeed 
+		 */
+		void SetShutterSpeed(const float shutterSpeed)  { m_ShutterSpeed = shutterSpeed; }
+
+		/**
+		 * @brief 
+		 * @return 
+		 */
+		float GetIso() const { return m_ISO; }
+
+		/**
+		 * @brief 
+		 * @param iso 
+		 */
+		void SetIso(const float iso) { m_ISO = iso; }
+
+		/**
+		 * @brief 
+		 * @return 
+		 */
+		float GetAperture() const { return m_Aperture; }
+
+		/**
+		 * @brief 
+		 * @param aperture 
+		 */
+		void SetAperture(const float aperture) { m_Aperture = aperture; }
+
 		/* @brief Returns the current eye (camera world position). */
 		Vec3 GetEyePosition() const;
 
@@ -205,6 +243,12 @@ namespace SceneryEditorX
 		 * @return True if the bounding box is within the view frustum, false otherwise.
 		 */
 		bool IsInViewFrustum(const xMath::BoundingBox &boundingBox) const;
+
+		/**
+		 * @brief 
+		 * @return 
+		 */
+		CameraType GetProjectionType() const { return cameraType; }
 
 		/**
 		 * @brief Checks if a renderable is within the camera's view frustum.
@@ -325,6 +369,42 @@ namespace SceneryEditorX
 		 */
 		Entity* GetSelectedEntity();
 
+		/**
+		 * @brief Gets the currently selected entities for the camera.
+		 * @return A reference to the vector of currently selected entities.
+		 */
+		std::vector<Entity*> &GetSelectedEntities();
+
+		/**
+		 * @brief Checks if the given entity is currently selected by the camera.
+		 * @param entity The entity to check.
+		 * @return True if the entity is selected, false otherwise.
+		 */
+		bool IsSelected(Entity* entity) const;
+
+		/**
+		 * @brief Checks if the camera is currently controlled.
+		 * @return True if the camera is controlled, false otherwise.
+		 */
+		bool IsControlled();
+
+		/* @brief Clears the currently selected entity for the camera. */
+		void ClearSelection();
+
+		float GetExposure() const
+		{
+			// computed ev (using squared aperture for photometric accuracy)
+			// note: this calculates the exposure scale factor (1/l_avg)
+			float ev100 = std::log2((m_Aperture * m_Aperture) / m_ShutterSpeed * 100.0f / m_ISO);
+		
+			// standard output sensitivity (sos) calculation
+			// 1.2 is a common calibration constant (matches ue5/frostbite)
+			// this maps the average scene luminance to middle grey (0.18)
+			const float calibrationConstant = 1.2f;
+			float baseExposure = 1.0f / (calibrationConstant * std::pow(2.0f, ev100));
+		
+			return baseExposure;
+		}
 
 	private:
 
@@ -345,14 +425,20 @@ namespace SceneryEditorX
 		uint32_t m_JitterIndex = 0;
 		Vec3 m_MoveSpeed = Vec3(0.0f);
 
-		bool useJitter = true;
-		float zoom = 10.0f; // Orbit-mode distance from center.
+		bool m_IsControlled = false;
+		bool m_UseJitter = true;
+		float m_Zoom				= 10.0f; // Orbit-mode distance from center.
+		float m_Aperture		= 5.6f;          // aperture value in f-stop. Controls the amount of light, depth of field and chromatic aberration
+		float m_ShutterSpeed	= 1.0f / 125.0f; // length of time for which the camera shutter is open (sec). Also controls the amount of motion blur
+		float m_ISO				= 200.0f;        // sensitivity to light
 
 		Viewport m_LastViewport;
 		float m_HorizontalFov_Rad     = 90.0f * xMath::DEG_TO_RAD;
 		float m_NearPlane             = 0.1f;
 		float m_FarPlane              = 10'000.0f; // Max for 32-bit reverse-Z depth buffer.
 		CameraType m_ProjectionType   = CameraType::Perspective;
+
+		std::vector<Entity *> m_SelectedEntities;
 
 		xMath::Mat4 m_ProjectionMatrix{1.f};
 		xMath::Mat4 m_ViewMatrix{1.f};

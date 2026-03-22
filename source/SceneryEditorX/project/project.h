@@ -31,7 +31,7 @@
 #pragma once
 #include "project_settings.h"
 #include <filesystem>
-#include <SceneryEditorX/asset/asset_manager.h>
+#include <SceneryEditorX/asset/manager/asset_manager.h>
 
 // -------------------------------------------------------
 

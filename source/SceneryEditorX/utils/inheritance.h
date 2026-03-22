@@ -37,7 +37,7 @@
 
 namespace SceneryEditorX
 {
-/**
+	/**
 	 * @brief A utility struct that allows us to create a new type that inherits from multiple base classes.
 	 * @tparam Bases A variadic list of base classes to inherit from. This can be any combination of RefCounted, IObject, IResource, Asset, or any other class.
 	 */

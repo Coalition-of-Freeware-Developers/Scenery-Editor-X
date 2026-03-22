@@ -42,6 +42,8 @@ namespace SceneryEditorX
 	#define MAX_PROJECT_NAME_LENGTH 255
 	#define MAX_PROJECT_FILEPATH_LENGTH 512
 
+	class EditorLayer;
+
 	// ---------------------------------------------------------
 
 	/**
@@ -53,12 +55,12 @@ namespace SceneryEditorX
 	 * UI system, asset management, and viewport rendering. It handles initialization,
 	 * main loop execution, frame rendering, and resource management.
 	 */
-	class Editor : public Application
+	class Editor : public Application, public RefCounted
 	{
 	public:
 		explicit Editor(const PlatformContext& context);
 		explicit Editor(const PlatformContext& context, const Ref<UserPreferences> &userPreferences);
-		virtual ~Editor();
+		virtual ~Editor() override;
 
 		void Run() override;
 		void Tick() override;
@@ -68,6 +70,7 @@ namespace SceneryEditorX
 		void OnUpdate() override;
 		void OnShutdown() override;
 		static void InitEditor();
+		Ref<Editor> Get() { return {this}; }
 
 		void OnEvent(Event &event);
 		bool OnKeyPressedEvent(KeyPressedEvent& e);
@@ -98,11 +101,12 @@ namespace SceneryEditorX
 
 	private:
 		static void ProcessClArgs();
-		float GetSnapValue();
 		static void UpdateWindowTitle(const std::string &sceneName);
 		void OnInit() override;
 
 		Ref<UserPreferences> m_UserPreferences;
+
+		EditorLayer* m_EditorLayer = nullptr; // Non-owning pointer; owned by the LayerStack
 
 		std::vector<Ref<Widget>> m_Widgets;
 		bool m_ShowStatisticsPanel = false;

@@ -211,8 +211,8 @@ ENDFUNCTION()
 OPTION(SEDX_ENABLE_TESTS              	"Build test targets" OFF)
 OPTION(SEDX_ENABLE_DOXYGEN            	"Build Doxygen documentation" OFF)
 OPTION(SEDX_ENABLE_VERSION_INCREMENT 	"Enable automatic semantic versioning, increment on build" OFF)
-OPTION(SEDX_BUILD_IMGUI               	"Build Dear ImGui (bundled sources)" ON)
-OPTION(SEDX_WITH_IMGUI_DEMO           	"Compile ImGui demo window" ON)
+OPTION(SEDX_BUILD_IMGUI               	"Build Dear ImGui (bundled sources)" OFF)
+OPTION(SEDX_WITH_IMGUI_DEMO           	"Compile ImGui demo window" OFF)
 OPTION(SEDX_USE_SYSTEM_SDL           	"Prefer system-provided sdl3 package" OFF)
 OPTION(SEDX_USE_SYSTEM_JSON           	"Prefer system-provided nlohmann_json package" OFF)
 OPTION(SEDX_USE_SYSTEM_ENTT           	"Prefer system-provided EnTT package" OFF)
@@ -549,29 +549,30 @@ ENDIF()
 ############################################
 # ImGui (system or bundled sources)
 ############################################
-IF(SEDX_BUILD_IMGUI)
-	ADD_LIBRARY(imgui
-		${CMAKE_SOURCE_DIR}/dependency/imgui/imgui.cpp
-		${CMAKE_SOURCE_DIR}/dependency/imgui/imgui_draw.cpp
-		${CMAKE_SOURCE_DIR}/dependency/imgui/imgui_widgets.cpp
-		${CMAKE_SOURCE_DIR}/dependency/imgui/imgui_tables.cpp
-		$<$<BOOL:${SEDX_WITH_IMGUI_DEMO}>:${CMAKE_SOURCE_DIR}/dependency/imgui/imgui_demo.cpp>
-		${CMAKE_SOURCE_DIR}/dependency/imgui/backends/imgui_impl_sdl3.cpp
-		${CMAKE_SOURCE_DIR}/dependency/imgui/backends/imgui_impl_vulkan.cpp
-	)
-	TARGET_INCLUDE_DIRECTORIES(imgui
-		PRIVATE
-			${CMAKE_SOURCE_DIR}/dependency/imgui
-			${CMAKE_SOURCE_DIR}/dependency/imgui/backends
-			${CMAKE_SOURCE_DIR}/dependency/imgui/misc
-	)
-	TARGET_LINK_LIBRARIES(imgui
-		PRIVATE
-			SDL3::SDL3
-			Vulkan::Vulkan
-			GPUOpen::VulkanMemoryAllocator
-	)
-ENDIF()
+
+#IF(SEDX_BUILD_IMGUI)
+#	ADD_LIBRARY(imgui
+#		${CMAKE_SOURCE_DIR}/dependency/imgui/imgui.cpp
+#		${CMAKE_SOURCE_DIR}/dependency/imgui/imgui_draw.cpp
+#		${CMAKE_SOURCE_DIR}/dependency/imgui/imgui_widgets.cpp
+#		${CMAKE_SOURCE_DIR}/dependency/imgui/imgui_tables.cpp
+#		$<$<BOOL:${SEDX_WITH_IMGUI_DEMO}>:${CMAKE_SOURCE_DIR}/dependency/imgui/imgui_demo.cpp>
+#		${CMAKE_SOURCE_DIR}/dependency/imgui/backends/imgui_impl_sdl3.cpp
+#		${CMAKE_SOURCE_DIR}/dependency/imgui/backends/imgui_impl_vulkan.cpp
+#	)
+#	TARGET_INCLUDE_DIRECTORIES(imgui
+#		PRIVATE
+#			${CMAKE_SOURCE_DIR}/dependency/imgui
+#			${CMAKE_SOURCE_DIR}/dependency/imgui/backends
+#			${CMAKE_SOURCE_DIR}/dependency/imgui/misc
+#	)
+#	TARGET_LINK_LIBRARIES(imgui
+#		PRIVATE
+#			SDL3::SDL3
+#			Vulkan::Vulkan
+#			GPUOpen::VulkanMemoryAllocator
+#	)
+#ENDIF()
 
 ############################################
 # AppCore

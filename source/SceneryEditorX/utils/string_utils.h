@@ -46,7 +46,7 @@
 namespace SceneryEditorX::Utils
 {
 	namespace String
-    {
+	{
 		bool EqualsIgnoreCase(std::string_view a, std::string_view b);
 		std::string &ToLower(std::string &string);
 		std::string ToLower(const std::string &string);
@@ -65,23 +65,23 @@ namespace SceneryEditorX::Utils
 	/// ==============================================================================
 
 	/// Insert delimiter before each upper case character.
-    std::string SplitAtUpperCase(std::string_view string, std::string_view delimiter = " ", bool ifLowerCaseOnTheRight = true);
-    std::string BytesToString(uint64_t bytes);
+	std::string SplitAtUpperCase(std::string_view string, std::string_view delimiter = " ", bool ifLowerCaseOnTheRight = true);
+	std::string BytesToString(uint64_t bytes);
 
-    int SkipBOM(std::istream &in);
-    std::string ReadFileAndSkipBOM(const std::filesystem::path &filepath);
+	int SkipBOM(std::istream &in);
+	std::string ReadFileAndSkipBOM(const std::filesystem::path &filepath);
 
 	std::string_view GetFilename(std::string_view filepath);
-    std::string GetExtension(const std::string &filename);
-    std::string RemoveExtension(const std::string &filename);
+	std::string GetExtension(const std::string &filename);
+	std::string RemoveExtension(const std::string &filename);
 #if 0 /// Replaced by constexpr version
 	bool StartsWith(const std::string& string, const std::string& start);
 #endif
 
-    /// Keeps delimiters except for spaces, used for shaders
-    std::vector<std::string> SplitStringAndKeepDelims(std::string str);
-    std::vector<std::string> SplitString(std::string_view string, const std::string_view &delimiters);
-    std::vector<std::string> SplitString(std::string_view string, char delimiter);
+	/// Keeps delimiters except for spaces, used for shaders
+	std::vector<std::string> SplitStringAndKeepDelims(std::string str);
+	std::vector<std::string> SplitString(std::string_view string, const std::string_view &delimiters);
+	std::vector<std::string> SplitString(std::string_view string, char delimiter);
 
 	// Helper functions
 	inline bool isWhitespace(const char c) { return c == ' ' || (c <= 13 && c >= 9); }
@@ -181,209 +181,209 @@ namespace SceneryEditorX::Utils
 	/// it might choose different units such as GB, MB, KB or just bytes.
 	std::string GetByteSizeDescription(uint64_t sizeInBytes);
 
-    /// ==============================================================================
+	/// ==============================================================================
 
-    template <class... Durations, class DurationIn>
-    std::tuple<Durations...> BreakDownDuration(DurationIn d)
-    {
-        std::tuple<Durations...> retrieval;
-        using discard = int[];
-        (void)discard{0, (void((std::get<Durations>(retrieval) =
-            std::chrono::duration_cast<Durations>(d), d -= std::chrono::duration_cast<DurationIn>(std::get<Durations>(retrieval)))), 0)...};
+	template <class... Durations, class DurationIn>
+	std::tuple<Durations...> BreakDownDuration(DurationIn d)
+	{
+		std::tuple<Durations...> retrieval;
+		using discard = int[];
+		(void)discard{0, (void((std::get<Durations>(retrieval) =
+			std::chrono::duration_cast<Durations>(d), d -= std::chrono::duration_cast<DurationIn>(std::get<Durations>(retrieval)))), 0)...};
 
-        return retrieval;
-    }
+		return retrieval;
+	}
 
-    /// ==============================================================================
+	/// ==============================================================================
 
-    std::string DurationToString(std::chrono::duration<double> duration);
+	std::string DurationToString(std::chrono::duration<double> duration);
 
-    /// ==============================================================================
+	/// ==============================================================================
 
-    template <typename IsAlreadyUsedFn>
-    std::string AddSuffixToMakeUnique(const std::string &name, IsAlreadyUsedFn &&isUsed)
-    {
-        auto nameToUse = name;
-        int suffix = 1;
+	template <typename IsAlreadyUsedFn>
+	std::string AddSuffixToMakeUnique(const std::string &name, IsAlreadyUsedFn &&isUsed)
+	{
+		auto nameToUse = name;
+		int suffix = 1;
 
-        while (isUsed(nameToUse))
-            nameToUse = name + "_" + ToString(++suffix);
+		while (isUsed(nameToUse))
+			nameToUse = name + "_" + ToString(++suffix);
 
-        return nameToUse;
-    }
+		return nameToUse;
+	}
 
-    /// ==============================================================================
+	/// ==============================================================================
 
-    /// Get<float> -> Get (Float)
-    std::string TemplateToParenthesis(std::string_view name);
+	/// Get<float> -> Get (Float)
+	std::string TemplateToParenthesis(std::string_view name);
 
-    /// Useful for 'Described' types to display type name in GUI or to serialize.
-    std::string CreateUserFriendlyTypeName(std::string_view name);
+	/// Useful for 'Described' types to display type name in GUI or to serialize.
+	std::string CreateUserFriendlyTypeName(std::string_view name);
 
-    /// ==============================================================================
+	/// ==============================================================================
 
-    /// constexpr utilities
-    constexpr bool StartsWith(const std::string_view t, const std::string_view s)
-    {
-        const auto len = s.length();
-        return t.length() >= len && t.substr(0, len) == s;
-    }
+	/// constexpr utilities
+	constexpr bool StartsWith(const std::string_view t, const std::string_view s)
+	{
+		const auto len = s.length();
+		return t.length() >= len && t.substr(0, len) == s;
+	}
 
-    constexpr bool EndsWith(const std::string_view t, const std::string_view s)
-    {
-        const auto len1 = t.length();
-        const auto len2 = s.length();
-        return len1 >= len2 && t.substr(len1 - len2) == s;
-    }
+	constexpr bool EndsWith(const std::string_view t, const std::string_view s)
+	{
+		const auto len1 = t.length();
+		const auto len2 = s.length();
+		return len1 >= len2 && t.substr(len1 - len2) == s;
+	}
 
-    constexpr size_t GetNumberOfTokens(std::string_view source, const std::string_view delimiter)
-    {
-        size_t count = 1;
-        auto pos = source.begin();
-        while (pos != source.end())
-        {
-            if (std::string_view(&*pos, delimiter.size()) == delimiter)
-                ++count;
+	constexpr size_t GetNumberOfTokens(std::string_view source, const std::string_view delimiter)
+	{
+		size_t count = 1;
+		auto pos = source.begin();
+		while (pos != source.end())
+		{
+			if (std::string_view(&*pos, delimiter.size()) == delimiter)
+				++count;
 
-            ++pos;
-        }
-        return count;
-    }
+			++pos;
+		}
+		return count;
+	}
 
-    /// ==============================================================================
+	/// ==============================================================================
 
-    template <size_t N>
-    constexpr std::array<std::string_view, N> SplitString(std::string_view source, const std::string_view delimiter)
-    {
-        std::array<std::string_view, N> tokens;
+	template <size_t N>
+	constexpr std::array<std::string_view, N> SplitString(std::string_view source, const std::string_view delimiter)
+	{
+		std::array<std::string_view, N> tokens;
 
-        auto tokenStart = source.begin();
-        auto pos = tokenStart;
+		auto tokenStart = source.begin();
+		auto pos = tokenStart;
 
-        size_t i = 0;
+		size_t i = 0;
 
-        while (pos != source.end())
-        {
-            if (std::string_view(&*pos, delimiter.size()) == delimiter)
-            {
-                tokens[i] = std::string_view(&*tokenStart, (pos - tokenStart));
-                tokenStart = pos += delimiter.size();
-                ++i;
-            }
-            else
-            {
-                ++pos;
-            }
-        }
+		while (pos != source.end())
+		{
+			if (std::string_view(&*pos, delimiter.size()) == delimiter)
+			{
+				tokens[i] = std::string_view(&*tokenStart, (pos - tokenStart));
+				tokenStart = pos += delimiter.size();
+				++i;
+			}
+			else
+			{
+				++pos;
+			}
+		}
 
-        if (pos != source.begin())
-            tokens[N - 1] = std::string_view(&*tokenStart, pos - tokenStart);
+		if (pos != source.begin())
+			tokens[N - 1] = std::string_view(&*tokenStart, pos - tokenStart);
 
-        return tokens;
-    }
+		return tokens;
+	}
 
-    constexpr std::string_view RemoveNamespace(const std::string_view name)
-    {
-        if (const auto pos = name.find_last_of(':'); pos == std::string_view::npos)
-            return name;
+	constexpr std::string_view RemoveNamespace(const std::string_view name)
+	{
+		if (const auto pos = name.find_last_of(':'); pos == std::string_view::npos)
+			return name;
 
-        return name.substr(name.find_last_of(':') + 1);
-    }
+		return name.substr(name.find_last_of(':') + 1);
+	}
 
-    constexpr std::string_view RemoveOuterNamespace(const std::string_view name)
-    {
-        const auto first = name.find_first_of(':');
-        if (first == std::string_view::npos)
-            return name;
+	constexpr std::string_view RemoveOuterNamespace(const std::string_view name)
+	{
+		const auto first = name.find_first_of(':');
+		if (first == std::string_view::npos)
+			return name;
 
-        if (first < name.size() - 1 && name[first + 1] == ':')
-            return name.substr(first + 2);
+		if (first < name.size() - 1 && name[first + 1] == ':')
+			return name.substr(first + 2);
 
-        return name.substr(first + 1);
-    }
+		return name.substr(first + 1);
+	}
 
-    /// ==============================================================================
+	/// ==============================================================================
 
-    template <size_t N>
-    constexpr std::array<std::string_view, N> RemoveNamespace(std::array<std::string_view, N> memberList)
-    {
-        for (std::string_view &fullName : memberList)
-            fullName = RemoveNamespace(fullName);
+	template <size_t N>
+	constexpr std::array<std::string_view, N> RemoveNamespace(std::array<std::string_view, N> memberList)
+	{
+		for (std::string_view &fullName : memberList)
+			fullName = RemoveNamespace(fullName);
 
-        return memberList;
-    }
+		return memberList;
+	}
 
-    constexpr std::string_view RemovePrefixAndSuffix(std::string_view name)
-    {
-        if (StartsWith(name, "in_"))
-            name.remove_prefix(sizeof("in_") - 1);
-        else if (StartsWith(name, "out_"))
-            name.remove_prefix(sizeof("out_") - 1);
+	constexpr std::string_view RemovePrefixAndSuffix(std::string_view name)
+	{
+		if (StartsWith(name, "in_"))
+			name.remove_prefix(sizeof("in_") - 1);
+		else if (StartsWith(name, "out_"))
+			name.remove_prefix(sizeof("out_") - 1);
 
-        if (EndsWith(name, "_Raw"))
-            name.remove_suffix(sizeof("_Raw") - 1);
+		if (EndsWith(name, "_Raw"))
+			name.remove_suffix(sizeof("_Raw") - 1);
 
-        return name;
-    }
+		return name;
+	}
 
-    // -------------------------------------------------------
+	// -------------------------------------------------------
 
 	inline int HexToInt(const uint32_t unicodeChar)
 	{
-	    const auto d1 = unicodeChar - static_cast<uint32_t>('0'); if (d1 < 10u)  return static_cast<int>(d1);
-	    const auto d2 = d1 + static_cast<uint32_t>('0' - 'a'); if (d2 < 6u)   return static_cast<int>(d2 + 10);
-        if (const auto d3 = d2 + static_cast<uint32_t>('a' - 'A'); d3 < 6u)   return static_cast<int>(d3 + 10);
-	    return -1;
+		const auto d1 = unicodeChar - static_cast<uint32_t>('0'); if (d1 < 10u)  return static_cast<int>(d1);
+		const auto d2 = d1 + static_cast<uint32_t>('0' - 'a'); if (d2 < 6u)   return static_cast<int>(d2 + 10);
+		if (const auto d3 = d2 + static_cast<uint32_t>('a' - 'A'); d3 < 6u)   return static_cast<int>(d3 + 10);
+		return -1;
 	}
 
 	template <typename IntegerType>
 	std::string CreateHexStr(IntegerType value, int minNumDigits)
 	{
-	    static_assert(std::is_integral_v<IntegerType>, "Need to pass integers into this method");
-	    auto intvalue = static_cast<std::make_unsigned_t<IntegerType>>(value);
-	    assert(minNumDigits <= 32);
+		static_assert(std::is_integral_v<IntegerType>, "Need to pass integers into this method");
+		auto intvalue = static_cast<std::make_unsigned_t<IntegerType>>(value);
+		assert(minNumDigits <= 32);
 
-	    char hex[40];
-	    const auto end = hex + sizeof(hex) - 1;
-	    auto d = end;
-	    *d = 0;
+		char hex[40];
+		const auto end = hex + sizeof(hex) - 1;
+		auto d = end;
+		*d = 0;
 
-	    for (;;)
-	    {
-	        *--d = "0123456789abcdef"[static_cast<uint32_t>(intvalue) & 15u];
-	        intvalue = static_cast<decltype(intvalue)>(intvalue >> 4);
-	        --minNumDigits;
+		for (;;)
+		{
+			*--d = "0123456789abcdef"[static_cast<uint32_t>(intvalue) & 15u];
+			intvalue = static_cast<decltype(intvalue)>(intvalue >> 4);
+			--minNumDigits;
 
-	        if (intvalue == 0 && minNumDigits <= 0)
-                return {d, end};
-	    }
+			if (intvalue == 0 && minNumDigits <= 0)
+				return {d, end};
+		}
 	}
 
 	template <typename StringType, typename... OtherReplacements>
 	std::string replace(StringType textToSearch, std::string_view firstToReplace, std::string_view firstReplacement, OtherReplacements&&... otherPairsOfStringsToReplace)
 	{
-	    static_assert((sizeof...(otherPairsOfStringsToReplace) & 1u) == 0, "This function expects a list of pairs of strings as its arguments");
+		static_assert((sizeof...(otherPairsOfStringsToReplace) & 1u) == 0, "This function expects a list of pairs of strings as its arguments");
 
-	    if constexpr (std::is_same_v<const StringType, const std::string_view> || std::is_same_v<const StringType, const char* const>)
-            return replace(std::string(textToSearch), firstToReplace, firstReplacement, std::forward<OtherReplacements>(otherPairsOfStringsToReplace)...);
-        else if constexpr (sizeof...(otherPairsOfStringsToReplace) == 0)
-	    {
-	        size_t pos = 0;
+		if constexpr (std::is_same_v<const StringType, const std::string_view> || std::is_same_v<const StringType, const char* const>)
+			return replace(std::string(textToSearch), firstToReplace, firstReplacement, std::forward<OtherReplacements>(otherPairsOfStringsToReplace)...);
+		else if constexpr (sizeof...(otherPairsOfStringsToReplace) == 0)
+		{
+			size_t pos = 0;
 
-	        for (;;)
-	        {
-	            pos = textToSearch.find(firstToReplace, pos);
+			for (;;)
+			{
+				pos = textToSearch.find(firstToReplace, pos);
 
-	            if (pos == std::string::npos)
-	                return textToSearch;
+				if (pos == std::string::npos)
+					return textToSearch;
 
-	            textToSearch.replace(pos, firstToReplace.length(), firstReplacement);
-	            pos += firstReplacement.length();
-	        }
-	    }
-	    else
-            return replace(replace(std::move(textToSearch), firstToReplace, firstReplacement), std::forward<OtherReplacements>(otherPairsOfStringsToReplace)...);
-    }
+				textToSearch.replace(pos, firstToReplace.length(), firstReplacement);
+				pos += firstReplacement.length();
+			}
+		}
+		else
+			return replace(replace(std::move(textToSearch), firstToReplace, firstReplacement), std::forward<OtherReplacements>(otherPairsOfStringsToReplace)...);
+	}
 
 	inline std::string      trim      (std::string      textToTrim)			{ return TrimStart(TrimEnd(std::move(textToTrim))); }
 	inline std::string_view trim	  (const std::string_view textToTrim)   { return TrimStart(TrimEnd(textToTrim)); }
@@ -393,181 +393,181 @@ namespace SceneryEditorX::Utils
 
 	inline std::string TrimStart(std::string textToTrim)
 	{
-	    auto i = textToTrim.begin();
+		auto i = textToTrim.begin();
 
-	    if (i == textToTrim.end())        return {};
-	    if (!isWhitespace(*i))    return textToTrim;
+		if (i == textToTrim.end())        return {};
+		if (!isWhitespace(*i))    return textToTrim;
 
-	    for (;;)
-	    {
-	        ++i;
+		for (;;)
+		{
+			++i;
 
-	        if (i == textToTrim.end())        return {};
-	        if (!isWhitespace(*i))    return { i, textToTrim.end() };
-	    }
+			if (i == textToTrim.end())        return {};
+			if (!isWhitespace(*i))    return { i, textToTrim.end() };
+		}
 	}
 
 	inline std::string_view TrimStart(std::string_view textToTrim)
 	{
-	    size_t i = 0;
+		size_t i = 0;
 
-	    for (const auto c : textToTrim)
-	    {
-	        if (!isWhitespace(c))
-	        {
-	            textToTrim.remove_prefix(i);
-	            return textToTrim;
-	        }
+		for (const auto c : textToTrim)
+		{
+			if (!isWhitespace(c))
+			{
+				textToTrim.remove_prefix(i);
+				return textToTrim;
+			}
 
-	        ++i;
-	    }
+			++i;
+		}
 
-	    return {};
+		return {};
 	}
 
 	inline std::string TrimEnd(std::string textToTrim)
 	{
-	    for (auto i = textToTrim.end();;)
-	    {
-	        if (i == textToTrim.begin())
-	            return {};
+		for (auto i = textToTrim.end();;)
+		{
+			if (i == textToTrim.begin())
+				return {};
 
-	        --i;
+			--i;
 
-	        if (!isWhitespace(*i))
-	        {
-	            textToTrim.erase(i + 1, textToTrim.end());
-	            return textToTrim;
-	        }
-	    }
+			if (!isWhitespace(*i))
+			{
+				textToTrim.erase(i + 1, textToTrim.end());
+				return textToTrim;
+			}
+		}
 	}
 
 	inline std::string_view TrimEnd(const std::string_view textToTrim)
 	{
-	    for (auto i = textToTrim.length(); i != 0; --i)
-	        if (!isWhitespace(textToTrim[i - 1]))
-	            return textToTrim.substr(0, i);
+		for (auto i = textToTrim.length(); i != 0; --i)
+			if (!isWhitespace(textToTrim[i - 1]))
+				return textToTrim.substr(0, i);
 
-	    return {};
+		return {};
 	}
 
 	inline std::string RemOuterChar(std::string text, const char outerChar)
 	{
-	    if (text.length() >= 2 && text.front() == outerChar && text.back() == outerChar)
-	        return text.substr(1, text.length() - 2);
+		if (text.length() >= 2 && text.front() == outerChar && text.back() == outerChar)
+			return text.substr(1, text.length() - 2);
 
-	    return text;
+		return text;
 	}
 
 	inline std::string ToLowerCase(std::string s)
 	{
-	    std::ranges::transform(s, s.begin(), [](auto c) { return static_cast<char>(std::tolower(static_cast<unsigned char>(c))); });
-	    return s;
+		std::ranges::transform(s, s.begin(), [](auto c) { return static_cast<char>(std::tolower(static_cast<unsigned char>(c))); });
+		return s;
 	}
 
 	inline std::string ToUpperCase(std::string s)
 	{
-	    std::ranges::transform(s, s.begin(), [](auto c) { return static_cast<char>(std::toupper(static_cast<unsigned char>(c))); });
-	    return s;
+		std::ranges::transform(s, s.begin(), [](auto c) { return static_cast<char>(std::toupper(static_cast<unsigned char>(c))); });
+		return s;
 	}
 
 	template <typename CharStartsDelimiter, typename CharIsInDelimiterBody>
 	std::vector<std::string> SplitStr(std::string_view textToSplit, CharStartsDelimiter&& isDelimiterStart, CharIsInDelimiterBody&& isDelimiterBody, const bool includeDelimitersInResult)
 	{
-	    std::vector<std::string> tokens;
-	    auto tokenStart = textToSplit.begin();
-	    auto pos = tokenStart;
+		std::vector<std::string> tokens;
+		auto tokenStart = textToSplit.begin();
+		auto pos = tokenStart;
 
-	    while (pos != textToSplit.end())
-	    {
-	        if (isDelimiterStart(*pos))
-	        {
-	            auto delimiterStart = pos++;
+		while (pos != textToSplit.end())
+		{
+			if (isDelimiterStart(*pos))
+			{
+				auto delimiterStart = pos++;
 
-	            while (pos != textToSplit.end() && isDelimiterBody(*pos))
-	                ++pos;
+				while (pos != textToSplit.end() && isDelimiterBody(*pos))
+					++pos;
 
-	            if (pos != textToSplit.begin())
-	                tokens.emplace_back(tokenStart, includeDelimitersInResult ? pos : delimiterStart);
+				if (pos != textToSplit.begin())
+					tokens.emplace_back(tokenStart, includeDelimitersInResult ? pos : delimiterStart);
 
-	            tokenStart = pos;
-	        }
-	        else
-	        {
-	            ++pos;
-	        }
-	    }
+				tokenStart = pos;
+			}
+			else
+			{
+				++pos;
+			}
+		}
 
-	    if (pos != textToSplit.begin())
-	        tokens.emplace_back(tokenStart, pos);
+		if (pos != textToSplit.begin())
+			tokens.emplace_back(tokenStart, pos);
 
-	    return tokens;
+		return tokens;
 	}
 
 	template <typename IsDelimiterChar>
 	std::vector<std::string> SplitStr(std::string_view textToSplit, IsDelimiterChar&& isDelimiterChar, const bool includeDelimitersInResult)
 	{
-	    std::vector<std::string> tokens;
-	    auto tokenStart = textToSplit.begin();
-	    auto pos = tokenStart;
+		std::vector<std::string> tokens;
+		auto tokenStart = textToSplit.begin();
+		auto pos = tokenStart;
 
-	    while (pos != textToSplit.end())
-	    {
-	        if (isDelimiterChar(*pos))
-	        {
-	            tokens.emplace_back(tokenStart, includeDelimitersInResult ? pos + 1 : pos);
-	            tokenStart = ++pos;
-	        }
-	        else
-	        {
-	            ++pos;
-	        }
-	    }
+		while (pos != textToSplit.end())
+		{
+			if (isDelimiterChar(*pos))
+			{
+				tokens.emplace_back(tokenStart, includeDelimitersInResult ? pos + 1 : pos);
+				tokenStart = ++pos;
+			}
+			else
+			{
+				++pos;
+			}
+		}
 
-	    if (pos != textToSplit.begin())
-	        tokens.emplace_back(tokenStart, pos);
+		if (pos != textToSplit.begin())
+			tokens.emplace_back(tokenStart, pos);
 
-	    return tokens;
+		return tokens;
 	}
 
 	inline std::vector<std::string> SplitStr(const std::string_view textToSplit, const char delimiterCharacter, const bool includeDelimitersInResult)
 	{
-	    return SplitStr(textToSplit, [=](const char c) { return c == delimiterCharacter; }, includeDelimitersInResult);
+		return SplitStr(textToSplit, [=](const char c) { return c == delimiterCharacter; }, includeDelimitersInResult);
 	}
 
 	inline std::vector<std::string> SplitAtWhitespace(const std::string_view text, const bool keepDelimiters)
 	{
-	    return SplitStr(text,
-	                      [](const char c) { return isWhitespace(c); },
-	                      [](const char c) { return isWhitespace(c); }, keepDelimiters);
+		return SplitStr(text,
+						  [](const char c) { return isWhitespace(c); },
+						  [](const char c) { return isWhitespace(c); }, keepDelimiters);
 	}
 
 	inline std::vector<std::string> SplitIntoLines(const std::string_view text, const bool includeNewLinesInResult)
 	{
-	    return SplitStr(text, '\n', includeNewLinesInResult);
+		return SplitStr(text, '\n', includeNewLinesInResult);
 	}
 
 	template <typename ArrayOfStrings>
-    std::string JoinStr(const ArrayOfStrings& strings, const std::string_view separator)
+	std::string JoinStr(const ArrayOfStrings& strings, const std::string_view separator)
 	{
-	    if (strings.empty())
-	        return {};
+		if (strings.empty())
+			return {};
 
-	    auto spaceNeeded = separator.length() * strings.size();
+		auto spaceNeeded = separator.length() * strings.size();
 
-	    for (auto& s : strings)
-	        spaceNeeded += s.length();
+		for (auto& s : strings)
+			spaceNeeded += s.length();
 
-	    std::string result(strings.front());
-	    result.reserve(spaceNeeded);
+		std::string result(strings.front());
+		result.reserve(spaceNeeded);
 
-	    for (size_t i = 1; i < strings.size(); ++i)
-	    {
-	        result += separator;
-	        result += strings[i];
-	    }
+		for (size_t i = 1; i < strings.size(); ++i)
+		{
+			result += separator;
+			result += strings[i];
+		}
 
-	    return result;
+		return result;
 	}
 
 	inline bool contains(const std::string_view text, const std::string_view possibleSubstring)   { return text.find(possibleSubstring) != std::string::npos; }
@@ -576,144 +576,144 @@ namespace SceneryEditorX::Utils
 
 	inline bool startsWith(const std::string_view text, const std::string_view possibleStart)
 	{
-	    const auto len = possibleStart.length();
-	    return text.length() >= len && text.substr(0, len) == possibleStart;
+		const auto len = possibleStart.length();
+		return text.length() >= len && text.substr(0, len) == possibleStart;
 	}
 
 	inline bool endsWith(const std::string_view text, const std::string_view possibleEnd)
 	{
-	    const auto len1 = text.length();
-        const auto len2 = possibleEnd.length();
-        return len1 >= len2 && text.substr(len1 - len2) == possibleEnd;
+		const auto len1 = text.length();
+		const auto len2 = possibleEnd.length();
+		return len1 >= len2 && text.substr(len1 - len2) == possibleEnd;
 	}
 
 	inline std::string GetDurationDescription(const std::chrono::duration<double, std::micro> d)
 	{
-	    const auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(d).count();
+		const auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(d).count();
 
-	    if (microseconds < 0)    return "-" + GetDurationDescription(-d);
-	    if (microseconds == 0)   return "0 sec";
+		if (microseconds < 0)    return "-" + GetDurationDescription(-d);
+		if (microseconds == 0)   return "0 sec";
 
-	    std::string result;
+		std::string result;
 
-	    auto addLevel = [&](const int64_t size, const std::string_view units, const int64_t decimalScale, const int64_t modulo) -> bool
-	    {
-	        if (microseconds < size)
-	            return false;
+		auto addLevel = [&](const int64_t size, const std::string_view units, const int64_t decimalScale, const int64_t modulo) -> bool
+		{
+			if (microseconds < size)
+				return false;
 
-	        if (!result.empty())
-	            result += ' ';
+			if (!result.empty())
+				result += ' ';
 
-	        const auto scaled = (microseconds * decimalScale + size / 2) / size;
-	        auto whole = scaled / decimalScale;
+			const auto scaled = (microseconds * decimalScale + size / 2) / size;
+			auto whole = scaled / decimalScale;
 
-	        if (modulo != 0)
-	            whole = whole % modulo;
+			if (modulo != 0)
+				whole = whole % modulo;
 
-	        result += ToString(whole);
+			result += ToString(whole);
 
-	        if (const auto fraction = scaled % decimalScale)
-	        {
-	            result += '.';
-	            result += static_cast<char>('0' + (fraction / 10));
+			if (const auto fraction = scaled % decimalScale)
+			{
+				result += '.';
+				result += static_cast<char>('0' + (fraction / 10));
 
-	            if (fraction % 10 != 0)
-	                result += static_cast<char>('0' + (fraction % 10));
-	        }
+				if (fraction % 10 != 0)
+					result += static_cast<char>('0' + (fraction % 10));
+			}
 
-	        result += whole == 1 && units.length() > 3 && units.back() == 's' ? units.substr(0, units.length() - 1) : units;
-	        return true;
-	    };
+			result += whole == 1 && units.length() > 3 && units.back() == 's' ? units.substr(0, units.length() - 1) : units;
+			return true;
+		};
 
-	    const bool hours = addLevel(60000000ll * 60ll, " hours", 1, 0);
-	    const bool mins  = addLevel(60000000ll,        " min", 1, hours ? 60 : 0);
+		const bool hours = addLevel(60000000ll * 60ll, " hours", 1, 0);
+		const bool mins  = addLevel(60000000ll,        " min", 1, hours ? 60 : 0);
 
-	    if (hours)
-	        return result;
+		if (hours)
+			return result;
 
-	    if (mins) addLevel(1000000, " sec", 1, 60);
-	    else if (!addLevel(1000000,   " sec", 100, 0))
-	    {
-		    if (!addLevel(1000,  " ms", 100, 0))
-			    addLevel(1,       " microseconds", 100, 0);
-	    }
+		if (mins) addLevel(1000000, " sec", 1, 60);
+		else if (!addLevel(1000000,   " sec", 100, 0))
+		{
+			if (!addLevel(1000,  " ms", 100, 0))
+				addLevel(1,       " microseconds", 100, 0);
+		}
 
-	    return result;
+		return result;
 	}
 
 	template <typename StringType>
 	size_t GetLevenshteinDistance(const StringType& string1, const StringType& string2)
 	{
-	    if (string1.empty())  return string2.length();
-	    if (string2.empty())  return string1.length();
+		if (string1.empty())  return string2.length();
+		if (string2.empty())  return string1.length();
 
-	    auto calculate = [](size_t* costs, const size_t numCosts, const StringType& s1, const StringType& s2) -> size_t
-	    {
-	        for (size_t i = 0; i < numCosts; ++i)
-	            costs[i] = i;
+		auto calculate = [](size_t* costs, const size_t numCosts, const StringType& s1, const StringType& s2) -> size_t
+		{
+			for (size_t i = 0; i < numCosts; ++i)
+				costs[i] = i;
 
-	        size_t p1 = 0;
+			size_t p1 = 0;
 
-	        for (auto c1 : s1)
-	        {
-	            auto corner = p1;
-	            *costs = p1 + 1;
-	            size_t p2 = 0;
+			for (auto c1 : s1)
+			{
+				auto corner = p1;
+				*costs = p1 + 1;
+				size_t p2 = 0;
 
-	            for (auto c2 : s2)
-	            {
-	                auto upper = costs[p2 + 1];
-	                costs[p2 + 1] = c1 == c2 ? corner : xMath::Min({costs[p2], upper, corner}) + 1;
-	                ++p2;
-	                corner = upper;
-	            }
+				for (auto c2 : s2)
+				{
+					auto upper = costs[p2 + 1];
+					costs[p2 + 1] = c1 == c2 ? corner : xMath::Min({costs[p2], upper, corner}) + 1;
+					++p2;
+					corner = upper;
+				}
 
-	            ++p1;
-	        }
+				++p1;
+			}
 
-	        return costs[numCosts - 1];
-	    };
+			return costs[numCosts - 1];
+		};
 
-	    auto sizeNeeded = string2.length() + 1;
-	    constexpr size_t maxStackSize = 96;
+		auto sizeNeeded = string2.length() + 1;
+		constexpr size_t maxStackSize = 96;
 
-	    if (sizeNeeded <= maxStackSize)
-	    {
-	        size_t costs[maxStackSize];
-	        return calculate(costs, sizeNeeded, string1, string2);
-	    }
+		if (sizeNeeded <= maxStackSize)
+		{
+			size_t costs[maxStackSize];
+			return calculate(costs, sizeNeeded, string1, string2);
+		}
 
-	    std::unique_ptr<size_t[]> costs(new size_t[sizeNeeded]);
-	    return calculate(costs.get(), sizeNeeded, string1, string2);
+		std::unique_ptr<size_t[]> costs(new size_t[sizeNeeded]);
+		return calculate(costs.get(), sizeNeeded, string1, string2);
 	}
 
 	inline std::string GetByteSizeDescription(const uint64_t sizeInBytes)
 	{
-	    auto intToStr1DecPlace = [](const uint64_t n, const uint64_t divisor) -> std::string
-	    {
-	        const auto scaled = (n * 10 + divisor / 2) / divisor;
-	        auto result = ToString(scaled / 10);
+		auto intToStr1DecPlace = [](const uint64_t n, const uint64_t divisor) -> std::string
+		{
+			const auto scaled = (n * 10 + divisor / 2) / divisor;
+			auto result = ToString(scaled / 10);
 
-	        if (const auto fraction = scaled % 10)
-	        {
-	            result += '.';
-	            result += static_cast<char>('0' + fraction);
-	        }
+			if (const auto fraction = scaled % 10)
+			{
+				result += '.';
+				result += static_cast<char>('0' + fraction);
+			}
 
-	        return result;
-	    };
+			return result;
+		};
 
-        static constexpr uint64_t maxValue = 1844674407370955161ull;
+		static constexpr uint64_t maxValue = 1844674407370955161ull;
 
-	    if (sizeInBytes >= 0x40000000)  return intToStr1DecPlace(xMath::Min(maxValue, sizeInBytes), 0x40000000) + " GB";
-	    if (sizeInBytes >= 0x100000)    return intToStr1DecPlace(sizeInBytes, 0x100000) + " MB";
-	    if (sizeInBytes >= 0x400)       return intToStr1DecPlace(sizeInBytes, 0x400)    + " KB";
-	    if (sizeInBytes != 1)           return ToString(sizeInBytes) + " bytes";
+		if (sizeInBytes >= 0x40000000)  return intToStr1DecPlace(xMath::Min(maxValue, sizeInBytes), 0x40000000) + " GB";
+		if (sizeInBytes >= 0x100000)    return intToStr1DecPlace(sizeInBytes, 0x100000) + " MB";
+		if (sizeInBytes >= 0x400)       return intToStr1DecPlace(sizeInBytes, 0x400)    + " KB";
+		if (sizeInBytes != 1)           return ToString(sizeInBytes) + " bytes";
 
-	    return "1 byte";
+		return "1 byte";
 	}
 
-    // -------------------------------------------------------
+	// -------------------------------------------------------
 
 }
 

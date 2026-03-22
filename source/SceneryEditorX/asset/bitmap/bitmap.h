@@ -29,19 +29,23 @@
  * -------------------------------------------------------
  */
 #pragma once
-#include "SceneryEditorX/utils/inheritance.h"
+#include <SceneryEditorX/utils/inheritance.h>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
 
+	/**
+	 * @class Bitmap
+	 * @brief A class representing a bitmap image resource, inheriting from SharedResource.
+	 */
 	class Bitmap : public SharedResource
 	{
 	public:
 		Bitmap();
 		explicit Bitmap(std::filesystem::path filename);
-	    Bitmap(std::unique_ptr<uint8_t[]> &&data, const UVec2 &size, uint32_t bytesPerPixel = 4);
+		Bitmap(std::unique_ptr<uint8_t[]> &&data, const UVec2 &size, uint32_t bytesPerPixel = 4);
 		virtual ~Bitmap();
 
 		uint32_t GetWidth() const;
@@ -50,8 +54,8 @@ namespace SceneryEditorX
 		void SaveToFile(const std::string &filePath) override;
 		void LoadFromFile(const std::string &filePath) override;
 
-	    uint32_t GetBytesPerPixel() const { return m_BytesPerPixel; }
-	    void SetBytesPerPixel(uint32_t bytesPerPixel) { this->m_BytesPerPixel = bytesPerPixel; }
+		uint32_t GetBytesPerPixel() const { return m_BytesPerPixel; }
+		void SetBytesPerPixel(uint32_t bytesPerPixel) { this->m_BytesPerPixel = bytesPerPixel; }
 
 	private:
 		std::filesystem::path m_Filename;

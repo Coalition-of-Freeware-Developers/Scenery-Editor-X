@@ -29,8 +29,8 @@
  * -------------------------------------------------------
  */
 #include "ui_widget.h"
-#include <imgui_internal.h>
 #include <Editor/core/editor.h>
+#include <Editor/ui/source/imgui/imgui_internal.h>
 #include <SceneryEditorX/core/window/monitor_data.h>
 #include <SceneryEditorX/renderer/vulkan/viewport.h>
 

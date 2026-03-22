@@ -28,7 +28,14 @@
  * Created: 25/3/2025
  * -------------------------------------------------------
  */
+#include "ui.h"
 #include <SceneryEditorX/ui/ui.h>
+#include "actions/drag_drop.h"
+#include <Editor/ui/source/imgui/imconfig.h>
+#include <Editor/ui/source/imgui/imgui.h>
+#include <Editor/ui/source/imgui/imgui_internal.h>
+#include <Editor/ui/source/imgui/backends/imgui_impl_sdl3.h>
+#include <Editor/ui/source/imgui/backends/imgui_impl_vulkan.h>
 #include <SceneryEditorX/core/application/application.h>
 #include <SceneryEditorX/core/resource/resource_cache.h>
 #include <SceneryEditorX/core/window/monitor_data.h>
@@ -36,11 +43,6 @@
 #include <SceneryEditorX/renderer/renderer.h>
 #include <SceneryEditorX/renderer/vulkan/device.h>
 #include <SceneryEditorX/renderer/vulkan/render_context.h>
-#include <imgui/imconfig.h>
-#include <imgui/imgui.h>
-#include <imgui/imgui_internal.h>
-#include <imgui/backends/imgui_impl_sdl3.h>
-#include <imgui/backends/imgui_impl_vulkan.h>
 
 // -------------------------------------------------------
 
@@ -87,7 +89,6 @@ extern "C"
 // Initialize static members
 bool GUI::visible = true;
 const std::string GUI::DEFAULT_FONT = "Roboto-Regular";
-static const ImVec4 DEFAULT_TINT(1, 1, 1, 1);
 
 // Additional ImGui initialization functions can be placed here if needed
 void InitImGuiExtensions()
@@ -99,7 +100,7 @@ void InitImGuiExtensions()
 namespace UI
 {
 	// Collapsing header
-	bool CollapsingHeader(const char* label, ImGuiTreeNodeFlags flags = 0)
+	bool CollapsingHeader(const char* label, ImGuiTreeNodeFlags flags)
 	{
 		ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
 		bool result = ImGui::CollapsingHeader(label, flags);
@@ -108,7 +109,7 @@ namespace UI
 	}
 
 	// Button
-	bool Button(const char* label, const ImVec2& size = ImVec2(0, 0))
+	bool Button(const char* label, const ImVec2& size)
 	{
 		ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
 		// use label as the id - cursor position was causing id changes between
@@ -118,7 +119,15 @@ namespace UI
 		return result;
 	}
 
-	bool ButtonCenteredOnLine(const char* label, float alignment = 0.5f)
+	bool CheckBox(const char *label, bool *value)
+	{
+		ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
+		bool result = ImGui::Checkbox(label, value);
+		ImGui::PopStyleVar();
+		return result;
+	}
+
+	bool ButtonCenteredOnLine(const char* label, float alignment)
 	{
 		ImGuiStyle& style = ImGui::GetStyle();
 
@@ -134,7 +143,7 @@ namespace UI
 		return ImGui::Button(label);
 	}
 
-	bool ImageButton(Texture* texture, const xMath::Vec2& size, bool border, ImVec4 tint = {1,1,1,1})
+	bool ImageButton(ImageResource* texture, const xMath::Vec2& size, bool border, ImVec4 tint)
 	{
 		if (!border)
 		{
@@ -149,7 +158,7 @@ namespace UI
 		(
 			"",                                     // str_id
 			reinterpret_cast<ImTextureID>(texture), // user_texture_id
-			size,                                   // size
+			ImVec2(size.x, size.y),                                   // size
 			ImVec2(0, 0),                      // uv0
 			ImVec2(1, 1),                      // uv1
 			ImColor(0, 0, 0, 0),          // bg_col
@@ -165,7 +174,7 @@ namespace UI
 		return result;
 	}
 
-	void Image(Texture* texture, const xMath::Vec2& size, bool border = false)
+	void Image(ImageResource* texture, const xMath::Vec2& size, bool border)
 	{
 		if (!border)
 		{
@@ -174,7 +183,7 @@ namespace UI
 
 		ImGui::Image(
 			reinterpret_cast<ImTextureID>(texture),
-			size,
+			ImVec2(size.x, size.y),
 			ImVec2(0, 0),
 			ImVec2(1, 1),
 			DEFAULT_TINT,       // tint
@@ -187,7 +196,7 @@ namespace UI
 		}
 	}
 
-	void Image(Texture* texture, const ImVec2& size, const ImVec4& tint = DEFAULT_TINT, const ImColor& border = ImColor(0, 0, 0, 0))
+	void Image(ImageResource* texture, const ImVec2& size, const ImVec4& tint, const ImColor& border)
 	{
 		ImGui::Image(
 			reinterpret_cast<ImTextureID>(texture),
@@ -223,17 +232,17 @@ namespace UI
 		);
 	}
 
-	bool ImageSlot(Texture *texture_in, const std::function<void(Texture *)> &setter)
+	bool ImageSlot(ImageResource *texture_in, const std::function<void(ImageResource *)> &setter)
 	{
-		const ImVec2 slot_size  = ImVec2(80 * Window::GetDpiScale());
+		const ImVec2 slot_size  = ImVec2(80 * Window::GetDpiScale(), 80 * Window::GetDpiScale());
 		const float button_size = 15.0f * Window::GetDpiScale();
 		bool clicked_for_browse = false;
 
 		ImGui::BeginGroup();
 		{
-			Texture* texture   = texture_in;
-			const ImVec2 pos_image          = ImGui::GetCursorPos();
-			const ImVec2 screen_pos         = ImGui::GetCursorScreenPos();
+			ImageResource* texture   = texture_in;
+			const ImVec2 pos_image          = {ImGui::GetCursorPos().x, ImGui::GetCursorPos().y};
+			const ImVec2 screen_pos         = {ImGui::GetCursorScreenPos().x, ImGui::GetCursorScreenPos().y};
 
 			// x button position (top-right corner)
 			const float x_btn_offset_x = slot_size.x - button_size - 4.0f;
@@ -289,17 +298,17 @@ namespace UI
 				}
 				
 				// draw x icon
-				UI::Image(ResourceCache::GetIcon(IconType::Close), ImVec2(button_size, button_size));
+				Image(ResourceCache::GetIcon(IconType::Close), ImVec2(button_size, button_size));
 			}
 		}
 		ImGui::EndGroup();
 
 		// drop target
-		if (auto payload = receive_drag_drop_payload(DragPayloadType::Texture))
+		if (auto payload = DragDropPayload::ReceiveDragDropPayload(DragPayloadType::Texture))
 		{
 			try
 			{
-				if (const auto tex = ResourceCache::Load<ImageResource>(std::get<const char*>(payload->data)).Get())
+				if (const auto tex = ResourceCache::Load<ImageResource>(std::get<const char*>(payload->GetData())).Get())
 				{
 					setter(tex);
 				}
@@ -326,7 +335,7 @@ namespace UI
 	}
 
 	// a drag float which will wrap the mouse cursor around the edges of the screen
-	bool DrawFloatWrap(const char* label, float* v, float v_speed = 1.0f, float v_min = 0.0f, float v_max = 0.0f, const char* format = "%.3f", const ImGuiSliderFlags flags = 0)
+	bool DrawFloatWrap(const char* label, float* v, float v_speed, float v_min, float v_max, const char* format, const ImGuiSliderFlags flags)
 	{
 		static const uint32_t SCREEN_EDGE_PADDING = 10;
 		ImGuiIO& io = ImGui::GetIO();
@@ -412,7 +421,7 @@ namespace UI
 		return selectionMade;
 	}
 	
-	void Vec3(const char *label, xMath::Vec3 &vector, bool vertical = true)
+	void Vec3(const char *label, xMath::Vec3 &vector, bool vertical)
 	{
 		// configuration
 		const float label_indent = 15.0f * Window::GetDpiScale();
@@ -464,18 +473,18 @@ namespace UI
 			ImGui::TextUnformatted(axis_labels[i]);
 			ImGui::SameLine();
 			ImGui::SetCursorPosX(ImGui::GetCursorPosX() + axis_spacing - ImGui::CalcTextSize(axis_labels[i]).x);
-			xMath::Vec2 pos_post_label = static_cast<TVector2<float>>(ImGui::GetCursorScreenPos());
+			xMath::Vec2 pos_post_label = {ImGui::GetCursorScreenPos().x, ImGui::GetCursorScreenPos().y};
 	
 			// float input
 			ImGui::PushItemWidth(item_width);
-			UI::DrawFloatWrap("##v", values[i], step, std::numeric_limits<float>::lowest(), std::numeric_limits<float>::max(), "%.4f");
+			DrawFloatWrap("##v", values[i], step, std::numeric_limits<float>::lowest(), std::numeric_limits<float>::max(), "%.4f");
 			ImGui::PopItemWidth();
 	
 			// color bar decoration
 			static const xMath::Vec2 size   = xMath::Vec2(4.0f, 19.0f);
 			static const xMath::Vec2 offset = xMath::Vec2(-7.0f, 4.0f);
 			xMath::Vec2 draw_pos            = pos_post_label + offset;
-			ImGui::GetWindowDrawList()->AddRectFilled(draw_pos, draw_pos + size, axis_colors[i]);
+			ImGui::GetWindowDrawList()->AddRectFilled(ImVec2(draw_pos.x, draw_pos.y), ImVec2(draw_pos.x + size.x, draw_pos.y + size.y), axis_colors[i]);
 	
 			ImGui::PopID();
 		}
@@ -656,7 +665,9 @@ void GUI::EndFrame() const
 	ImGui::Render();
 
 	if (activeCommandBuffer != VK_NULL_HANDLE)
+	{
 		ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), activeCommandBuffer);
+	}
 
 	// Tick and render additional platform windows
 	ImGuiIO &io = ImGui::GetIO();
@@ -676,11 +687,13 @@ void GUI::CleanUp()
 	ImGui_ImplVulkan_Shutdown();
 	ImGui_ImplSDL3_Shutdown();
 
+	/*
 	if (imguiPool != VK_NULL_HANDLE)
 	{
 		vkDestroyDescriptorPool(m_Device->GetDevice(), imguiPool, nullptr);
 		imguiPool = VK_NULL_HANDLE;
 	}
+	*/
 
 	ImGui::DestroyContext();
 	initialized = false;

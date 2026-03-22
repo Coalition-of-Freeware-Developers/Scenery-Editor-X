@@ -36,8 +36,8 @@
 namespace SceneryEditorX
 {
 
-    /// Forward declarations
-    class DeltaTime;
+	/// Forward declarations
+	class DeltaTime;
 
 	// ------------------------------------------------
 
@@ -53,11 +53,11 @@ namespace SceneryEditorX
 	{
 	public:
 
-	    /**
-	     * @brief Gets the current time in seconds since GLFW initialization.
-	     * @return float The current system time in seconds.
-	     */
-        static float GetTime();
+		/**
+		 * @brief Gets the current time in seconds since GLFW initialization.
+		 * @return float The current system time in seconds.
+		 */
+		static float GetTime();
 
 		/**
 		 * @brief Gets the current date and time as a 64-bit unsigned integer.
@@ -71,137 +71,137 @@ namespace SceneryEditorX
 		 */
 		static std::string GetCurrentDateTimeString();
 
-        /**
-         * @brief Logs the time taken for a specific operation.
-         * @param title The title of the operation to log.
-         */
-        struct TimeLog
-        {
-            std::string title;
-            explicit TimeLog(const std::string &title, const bool logged = false)
-            {
-                this->title = title;
-                start = std::chrono::high_resolution_clock::now();
-                this->logged = logged;
-            }
+		/**
+		 * @brief Logs the time taken for a specific operation.
+		 * @param title The title of the operation to log.
+		 */
+		struct TimeLog
+		{
+			std::string title;
+			explicit TimeLog(const std::string &title, const bool logged = false)
+			{
+				this->title = title;
+				start = std::chrono::high_resolution_clock::now();
+				this->logged = logged;
+			}
 
-            ~TimeLog()
-            {
-                std::chrono::high_resolution_clock::time_point now = std::chrono::high_resolution_clock::now();
-                const float elapsed = std::chrono::duration_cast<std::chrono::microseconds>(now - start).count() / 1000.0f;
-                if (logged)
-                {
-                    SEDX_CORE_TRACE("{} took {} seconds", title.c_str(), elapsed / 1000.0f);
-                }
-                else
-                {
-                    if (const auto it = _timings.find(title); it == _timings.end())
-                    {
-                        _timings[title] = elapsed;
-                    }
-                    else
-                    {
-                        it->second = (it->second + elapsed) / 2.0f;
-                    }
-                }
-            }
+			~TimeLog()
+			{
+				std::chrono::high_resolution_clock::time_point now = std::chrono::high_resolution_clock::now();
+				const float elapsed = std::chrono::duration_cast<std::chrono::microseconds>(now - start).count() / 1000.0f;
+				if (logged)
+				{
+					SEDX_CORE_TRACE("{} took {} seconds", title.c_str(), elapsed / 1000.0f);
+				}
+				else
+				{
+					if (const auto it = _timings.find(title); it == _timings.end())
+					{
+						_timings[title] = elapsed;
+					}
+					else
+					{
+						it->second = (it->second + elapsed) / 2.0f;
+					}
+				}
+			}
 
 			static const std::unordered_map<std::string, float> &GetCPUTimes() { return _timings; }
-            static std::unordered_map<std::string, float> _timings;
+			static std::unordered_map<std::string, float> _timings;
 
-        private:
-            std::chrono::high_resolution_clock::time_point start;
-            bool logged = false;
-        };
+		private:
+			std::chrono::high_resolution_clock::time_point start;
+			bool logged = false;
+		};
 
-	    /**
-	     * @brief Initializes the Time system.
-	     * Should be called at application startup.
-	     */
-        static void Init();
+		/**
+		 * @brief Initializes the Time system.
+		 * Should be called at application startup.
+		 */
+		static void Init();
 
-	    /**
-	     * @brief Updates the time-related variables each frame.
-	     * Should be called once per frame.
-	     */
-        static void Update(DeltaTime dt);
+		/**
+		 * @brief Updates the time-related variables each frame.
+		 * Should be called once per frame.
+		 */
+		static void Update(DeltaTime dt);
 
-	    /**
-	     * @brief Get the time elapsed since application start in seconds.
-	     * @return float Application runtime in seconds.
-	     */
-        static float GetApplicationTime();
+		/**
+		 * @brief Get the time elapsed since application start in seconds.
+		 * @return float Application runtime in seconds.
+		 */
+		static float GetApplicationTime();
 
-	    /**
-	     * @brief Get the time elapsed since application start in milliseconds.
-	     * @return float Application runtime in milliseconds.
-	     */
-        static float GetApplicationTimeMs();
+		/**
+		 * @brief Get the time elapsed since application start in milliseconds.
+		 * @return float Application runtime in milliseconds.
+		 */
+		static float GetApplicationTimeMs();
 
-	    /**
-	     * @brief Get the current frames per second.
-	     * @return float Current FPS value.
-	     */
-        static float GetFPS();
+		/**
+		 * @brief Get the current frames per second.
+		 * @return float Current FPS value.
+		 */
+		static float GetFPS();
 
-	    /**
-	     * @brief Create a new timer with a specific duration.
-	     * @param durationSeconds Timer duration in seconds.
-	     * @return uint32_t Timer ID that can be used to check the timer's status.
-	     */
-        static uint32_t CreateTimer(float durationSeconds);
+		/**
+		 * @brief Create a new timer with a specific duration.
+		 * @param durationSeconds Timer duration in seconds.
+		 * @return uint32_t Timer ID that can be used to check the timer's status.
+		 */
+		static uint32_t CreateTimer(float durationSeconds);
 
-	    /**
-	     * @brief Check if a timer has completed.
-	     * @param timerID ID of the timer to check.
-	     * @return bool True if timer has completed, false otherwise.
-	     */
-        static bool IsTimerComplete(uint32_t timerID);
+		/**
+		 * @brief Check if a timer has completed.
+		 * @param timerID ID of the timer to check.
+		 * @return bool True if timer has completed, false otherwise.
+		 */
+		static bool IsTimerComplete(uint32_t timerID);
 
-	    /**
-	     * @brief Reset an existing timer.
-	     * @param timerID ID of the timer to reset.
-	     * @param newDurationSeconds Optional new duration in seconds.
-	     */
-        static void ResetTimer(uint32_t timerID, float newDurationSeconds = -1.0f);
+		/**
+		 * @brief Reset an existing timer.
+		 * @param timerID ID of the timer to reset.
+		 * @param newDurationSeconds Optional new duration in seconds.
+		 */
+		static void ResetTimer(uint32_t timerID, float newDurationSeconds = -1.0f);
 
 	private:
-	    struct Timer
-	    {
-	        float duration;
-	        float startTime;
-	        bool isActive;
-	    };
+		struct Timer
+		{
+			float duration;
+			float startTime;
+			bool isActive;
+		};
 
-	    // Time tracking
-	    static inline float s_LastFrameTime = 0.0f;
-	    static inline float s_ApplicationStartTime = 0.0f;
+		// Time tracking
+		static inline float s_LastFrameTime = 0.0f;
+		static inline float s_ApplicationStartTime = 0.0f;
 
-	    // FPS tracking
-	    static inline std::deque<float> s_FrameTimes;
-	    static inline float s_CurrentFPS = 0.0f;
-	    static constexpr size_t s_MaxFrameTimesSamples = 60;
+		// FPS tracking
+		static inline std::deque<float> s_FrameTimes;
+		static inline float s_CurrentFPS = 0.0f;
+		static constexpr size_t s_MaxFrameTimesSamples = 60;
 
-	    // Timer system
-	    static inline std::vector<Timer> s_Timers;
-	    static inline uint32_t s_NextTimerID = 1;
-    };
+		// Timer system
+		static inline std::vector<Timer> s_Timers;
+		static inline uint32_t s_NextTimerID = 1;
+	};
 
-    // -------------------------------------------------------
+	// -------------------------------------------------------
 
 	class DeltaTime
 	{
 	public:
-        DeltaTime() = default;
-        DeltaTime(float time);
+		DeltaTime() = default;
+		DeltaTime(float time);
 
 		/**
-	     * @brief Get the time elapsed since the last frame in seconds.
-	     * @return float Delta time in seconds.
-	     */
+		 * @brief Get the time elapsed since the last frame in seconds.
+		 * @return float Delta time in seconds.
+		 */
 		inline float GetSeconds() const { return dt; }
 
-        /**
+		/**
 		 * @brief Get the time elapsed since the last frame in milliseconds.
 		 * @return float Delta time in milliseconds.
 		 */
@@ -211,17 +211,17 @@ namespace SceneryEditorX
 		 * @brief Get the time elapsed since the last frame in microseconds.
 		 * @return float Delta time in microseconds.
 		 */
-        explicit operator float() const { return dt; }
+		explicit operator float() const { return dt; }
 
-        /**
-         * @brief Compare DeltaTime with another DeltaTime object.
-         * @param x The DeltaTime object to compare with.
-         * @return std::strong_ordering Result of the comparison.
-         */
-        auto operator<=>(float x) const;
+		/**
+		 * @brief Compare DeltaTime with another DeltaTime object.
+		 * @param x The DeltaTime object to compare with.
+		 * @return std::strong_ordering Result of the comparison.
+		 */
+		auto operator<=>(float x) const;
 
-    private:
-        float dt = 0.0f;
+	private:
+		float dt = 0.0f;
 
 		friend class Time;
 	};

@@ -39,7 +39,7 @@ namespace SceneryEditorX
 	 * @class DepthStencilState
 	 * @brief Immutable depth/stencil configuration returned by Renderer::GetDepthStencilState().
 	 */
-	class DepthStencilState
+	class DepthStencilState : public RefCounted
 	{
 	public:
 		explicit DepthStencilState(bool depthTestEnable, bool depthWriteEnable, VkCompareOp depthCompareOp = VK_COMPARE_OP_LESS)

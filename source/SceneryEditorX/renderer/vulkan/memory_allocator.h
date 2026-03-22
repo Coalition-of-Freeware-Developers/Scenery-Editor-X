@@ -29,8 +29,8 @@
  * -------------------------------------------------------
  */
 #pragma once
-#include "SceneryEditorX/core/resource/iobject.h"
-#include "SceneryEditorX/renderer/gpu_stats.h"
+#include <SceneryEditorX/core/resource/iobject.h>
+#include <SceneryEditorX/renderer/gpu_stats.h>
 #include <vma/vk_mem_alloc.h>
 
 // -------------------------------------------------------
@@ -40,53 +40,57 @@ namespace SceneryEditorX
 	struct AllocInfo;
 	class Device;
 
+	/**
+	 * @class MemoryAllocator
+	 * @brief Manages Vulkan memory allocations using the Vulkan Memory Allocator (VMA) library.
+	 */
 	class MemoryAllocator : public IObject
 	{
 	public:
-        MemoryAllocator() = default;
-	    MemoryAllocator(const char* name);
-        ~MemoryAllocator();
+		MemoryAllocator() = default;
+		MemoryAllocator(const char* name);
+		~MemoryAllocator();
 
-        /**
+		/**
 		 * @brief Initializes the memory allocator with the given device.
 		 * @param device The Vulkan device to use for memory allocation.
 		 */
 		static void Init(Ref<Device> device);
 
-        /**
-         * @brief Updates the memory allocator for the given frame count.
-         * @param frameCount The current frame count.
-         */
-        static void Tick(uint64_t frameCount);
+		/**
+		 * @brief Updates the memory allocator for the given frame count.
+		 * @param frameCount The current frame count.
+		 */
+		static void Tick(uint64_t frameCount);
 
-        /**
-         * @brief Saves the allocation information for a given VMA allocation.
-         * @param allocation The VMA allocation handle.
-         * @param allocInfo The allocation information to save.
-         */
-        static void SaveAllocation(VmaAllocation allocation, AllocInfo allocInfo);
+		/**
+		 * @brief Saves the allocation information for a given VMA allocation.
+		 * @param allocation The VMA allocation handle.
+		 * @param allocInfo The allocation information to save.
+		 */
+		static void SaveAllocation(VmaAllocation allocation, AllocInfo allocInfo);
 
-        /**
-         * @brief Frees the memory allocation for a given VMA allocation.
-         * @param allocation The VMA allocation handle to free.
-         */
-        static void FreeAllocation(VmaAllocation allocation);
+		/**
+		 * @brief Frees the memory allocation for a given VMA allocation.
+		 * @param allocation The VMA allocation handle to free.
+		 */
+		static void FreeAllocation(VmaAllocation allocation);
 
-        /**
-         * @brief Shuts down the memory allocator and releases all resources.
-         */
-        static void Shutdown();
+		/**
+		 * @brief Shuts down the memory allocator and releases all resources.
+		 */
+		static void Shutdown();
 
-        /**
-	     * @brief Allocates a buffer using the Vulkan Memory Allocator (VMA).
-	     * @param bufferCI The Vulkan buffer creation info.
-	     * @param usage The VMA memory usage type.
-	     * @param buffOut The output Vulkan buffer handle.
-	     * @return The VMA allocation handle.
-	     */
-	    VmaAllocation AllocateBuffer(VkBufferCreateInfo bufferCI, VmaMemoryUsage usage, VkBuffer& buffOut);
+		/**
+		 * @brief Allocates a buffer using the Vulkan Memory Allocator (VMA).
+		 * @param bufferCI The Vulkan buffer creation info.
+		 * @param usage The VMA memory usage type.
+		 * @param buffOut The output Vulkan buffer handle.
+		 * @return The VMA allocation handle.
+		 */
+		VmaAllocation AllocateBuffer(VkBufferCreateInfo bufferCI, VmaMemoryUsage usage, VkBuffer& buffOut);
 
-        /**
+		/**
 		 * @brief Allocates an image using the Vulkan Memory Allocator (VMA).
 		 * @param imgCI The Vulkan image creation info.
 		 * @param usage The VMA memory usage type.
@@ -96,50 +100,50 @@ namespace SceneryEditorX
 		 */
 		VmaAllocation AllocateImage(VkImageCreateInfo imgCI, VmaMemoryUsage usage, VkImage& imgOut, VkDeviceSize* allocSize = nullptr);
 
-        /**
-	     * @brief Creates a buffer using the Vulkan Memory Allocator (VMA).
-	     * @param bufferCI The Vulkan buffer creation info.
-	     * @param allocInfo The VMA allocation creation info.
-	     * @param outBuffer The output Vulkan buffer handle.
-	     * @param outAllocation The output VMA allocation handle.
-	     * @param outAllocationInfo The output VMA allocation info (optional).
-	     * @return The result of the buffer creation.
-	     */
-	    static VkResult CreateBuffer(const VkBufferCreateInfo& bufferCI, const VmaAllocationCreateInfo& allocInfo, VkBuffer& outBuffer,
-                                 VmaAllocation& outAllocation, VmaAllocationInfo* outAllocationInfo = nullptr);
+		/**
+		 * @brief Creates a buffer using the Vulkan Memory Allocator (VMA).
+		 * @param bufferCI The Vulkan buffer creation info.
+		 * @param allocInfo The VMA allocation creation info.
+		 * @param outBuffer The output Vulkan buffer handle.
+		 * @param outAllocation The output VMA allocation handle.
+		 * @param outAllocationInfo The output VMA allocation info (optional).
+		 * @return The result of the buffer creation.
+		 */
+		static VkResult CreateBuffer(const VkBufferCreateInfo& bufferCI, const VmaAllocationCreateInfo& allocInfo, VkBuffer& outBuffer,
+								 VmaAllocation& outAllocation, VmaAllocationInfo* outAllocationInfo = nullptr);
 
-        /**
-         * @brief Destroys a buffer and frees its associated memory.
-         * @param buffer The Vulkan buffer to destroy.
-         * @param allocation The VMA allocation associated with the buffer.
-         */
-        static void DestroyBuffer(VkBuffer buffer, VmaAllocation allocation);
+		/**
+		 * @brief Destroys a buffer and frees its associated memory.
+		 * @param buffer The Vulkan buffer to destroy.
+		 * @param allocation The VMA allocation associated with the buffer.
+		 */
+		static void DestroyBuffer(VkBuffer buffer, VmaAllocation allocation);
 
-        /**
-         * @brief Destroys an image and frees its associated memory.
-         * @param image The Vulkan image to destroy.
-         * @param allocation The VMA allocation associated with the image.
-         */
-        static void DestroyImage(VkImage image, VmaAllocation allocation);
+		/**
+		 * @brief Destroys an image and frees its associated memory.
+		 * @param image The Vulkan image to destroy.
+		 * @param allocation The VMA allocation associated with the image.
+		 */
+		static void DestroyImage(VkImage image, VmaAllocation allocation);
 
-        /**
-         * @brief Retrieves the VMA allocation associated with a given allocation handle.
-         * @param allocation The VMA allocation handle.
-         * @return The VMA allocation.
-         */
-        static VmaAllocation GetAllocation(VmaAllocation allocation);
+		/**
+		 * @brief Retrieves the VMA allocation associated with a given allocation handle.
+		 * @param allocation The VMA allocation handle.
+		 * @return The VMA allocation.
+		 */
+		static VmaAllocation GetAllocation(VmaAllocation allocation);
 
-        static VmaAllocator GetAllocator();
-        static uint64_t GetAllocatedMemory();
-        static uint64_t GetAvailableMemory();
+		static VmaAllocator GetAllocator();
+		static uint64_t GetAllocatedMemory();
+		static uint64_t GetAvailableMemory();
 
-        /**
-	     * @brief Maps the memory of a given allocation to a pointer of type T.
-	     * @tparam T The type to map the memory to.
-	     * @param allocation The VMA allocation to map.
-	     * @return A pointer to the mapped memory of type T.
-	     */
-	    template<typename T>
+		/**
+		 * @brief Maps the memory of a given allocation to a pointer of type T.
+		 * @tparam T The type to map the memory to.
+		 * @param allocation The VMA allocation to map.
+		 * @return A pointer to the mapped memory of type T.
+		 */
+		template<typename T>
 		T* MapMemory(VmaAllocation allocation)
 		{
 			T* mappedMemory;
@@ -147,16 +151,16 @@ namespace SceneryEditorX
 			return mappedMemory;
 		}
 
-        /**
-         * @brief Unmaps the memory of a given allocation.
-         * @param allocation The VMA allocation to unmap.
-         */
-        static void UnmapMemory(VmaAllocation allocation);
+		/**
+		 * @brief Unmaps the memory of a given allocation.
+		 * @param allocation The VMA allocation to unmap.
+		 */
+		static void UnmapMemory(VmaAllocation allocation);
 
 		static void DumpStats();
-        static GPUMemoryStats GetMemoryStats();
-    private:
-        Ref<Device> m_Device;
+		static GPUMemoryStats GetMemoryStats();
+	private:
+		Ref<Device> m_Device;
 	};
 	
 }

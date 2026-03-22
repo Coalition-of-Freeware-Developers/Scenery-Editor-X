@@ -276,6 +276,24 @@ namespace SceneryEditorX
 		 */
 		static float GetDpiScale();
 
+		/**
+		 * @brief 
+		 * @param height 
+		 */
+		static void SetTitleBarHeight(float height);
+
+		/**
+		 * @brief 
+		 * @param width 
+		 */
+		static void SetTitleBarButtonWidth(float width);
+
+		/**
+		 * @brief 
+		 * @param hovered 
+		 */
+		static void SetTitleBarHovered(bool hovered);
+
 	private:
 		static Window m_Window;		// Singleton instance of the Window class
 		static const char *name;	// Window title

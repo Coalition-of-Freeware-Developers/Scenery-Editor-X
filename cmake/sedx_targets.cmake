@@ -18,7 +18,7 @@ FUNCTION(SEDX_GROUP_TARGETS)
         ENDIF()
     ENDFOREACH()
 
-	FOREACH(T IN ITEMS xMath uninstall imgui ktx json-cpp-gen nlohmann_json)
+	FOREACH(T IN ITEMS xMath uninstall ktx json-cpp-gen nlohmann_json)
         IF(TARGET ${T})
             SET_PROPERTY(TARGET ${T} PROPERTY FOLDER "Dependency")
         ENDIF()
@@ -62,7 +62,7 @@ SET(SEDX_OUTPUT_TARGETS
 	MathTests MemoryAllocatorTests ConversionTests RefTests SettingsTest EdxTests EdxDemoGenerator
 
 	# Libraries
-	nlohmann_json json-cpp-gen imgui xMath libconfig libconfig++ ktx SDL3_test SDL3 SDL3 SDL3-static
+	nlohmann_json json-cpp-gen xMath libconfig libconfig++ ktx SDL3_test SDL3 SDL3 SDL3-static
 	Catch2 Catch2WithMain uninstall $<$<AND:$<CONFIG:Debug>,$<BOOL:${TRACY_ENABLE}>>:TracyClient>
 )
 

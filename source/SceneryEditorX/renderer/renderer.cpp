@@ -29,6 +29,8 @@
  * -------------------------------------------------------
  */
 #include "renderer.h"
+
+#include "SceneryEditorX/core/threading/thread_pool.h"
 #include "vulkan/swapchain.h"
 #include "vulkan/uniform_buffer_set.h"
 #include "vulkan/debug/graphics_debug.h"
@@ -36,9 +38,10 @@
 #include "vulkan/shader/shader_manager.h"
 #include <array>
 #include <cstddef>
+#include <Editor/ui/ui_impl.h>
 #include <SDL3/SDL.h>
-#include <SceneryEditorX/asset/asset_manager.h>
 #include <SceneryEditorX/asset/model.h>
+#include <SceneryEditorX/asset/manager/asset_manager.h>
 #include <SceneryEditorX/core/application/application.h>
 #include <SceneryEditorX/renderer/gbuffer.h>
 #include <SceneryEditorX/scene/camera.h>
@@ -512,6 +515,12 @@ namespace SceneryEditorX
 						s_LoggedMissingPassTargets = true;
 					}
 				}
+			}
+
+			// Submit ImGui draw data to the GPU via the custom UI backend
+			if (ImGui::GetCurrentContext() && ImGui::GetDrawData())
+			{
+				::UI::Render(ImGui::GetDrawData(), nullptr, false);
 			}
 
 			// periodic resource cleanup
@@ -1843,6 +1852,49 @@ namespace SceneryEditorX
 				std::memcpy(m_BasicShaderDataMapped[i], &sd, sizeof(sd));
 			}
 		}
+	}
+
+	void Renderer::Screenshot()
+	{
+	    /*
+	    static uint32_t screenshot_index = 0;
+
+		ImageResource* frame_output = GetRenderTarget(Renderer_RenderTarget::frame_output);
+		uint32_t width            = frame_output->GetWidth();
+		uint32_t height           = frame_output->GetHeight();
+		uint32_t bits_per_channel = frame_output->GetBitsPerChannel();
+		uint32_t channel_count    = frame_output->GetChannelCount();
+		size_t data_size          = static_cast<size_t>(width) * height * (bits_per_channel / 8) * channel_count;
+
+		bool is_hdr = cvar_hdr.GetValueAs<bool>();
+
+		auto staging = CreateRef<Buffer>(RHI_Buffer_Type::Constant, data_size, 1, nullptr, true, "screenshot_staging");
+
+		if (CommandList* cmd_list = CommandList::BeginImmediateExecution(QueueType::Graphics))
+		{
+			cmd_list->CopyTextureToBuffer(frame_output, staging.get());
+			CommandList::EndImmediateExecution(cmd_list);
+		}
+
+		void* mapped_data = staging->GetMappedData();
+		SEDX_CORE_ASSERT(mapped_data, "Staging buffer not mappable");
+
+		uint32_t index = screenshot_index++;
+		std::string exr_path = "screenshot_" + std::to_string(index) + ".exr";
+		std::string png_path = "screenshot_" + std::to_string(index) + ".png";
+
+		ThreadPool::Submit([=]()
+		{
+			SEDX_CORE_INFO_TAG("Renderer", "Saving screenshots...");
+
+			ImageImporter::Save(exr_path, width, height, channel_count, bits_per_channel, mapped_data);
+
+			ImageImporter::SaveSdr(png_path, width, height, channel_count, bits_per_channel, mapped_data, is_hdr);
+
+			SEDX_CORE_INFO_TAG("Renderer", "Screenshots saved as '%s' and '%s'", exr_path.c_str(), png_path.c_str());
+		});
+		*/
+
 	}
 
 #pragma endregion

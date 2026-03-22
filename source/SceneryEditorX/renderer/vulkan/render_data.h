@@ -39,51 +39,51 @@
 namespace SceneryEditorX
 {
 
-    /* Constant representing an invalid Vulkan index. */
-    #define INVALID_VK_INDEX 0xFFFFFFFF
+	/* Constant representing an invalid Vulkan index. */
+	#define INVALID_VK_INDEX 0xFFFFFFFF
 
-    /* Vulkan API version supported by the m_Device */
+	/* Vulkan API version supported by the m_Device */
 	struct ApiVersion
 	{
-	    uint32_t variant = 0, major = 0, minor = 0, patch = 0; // Vulkan version is encoded as: variant(2 bits), major(10 bits), minor(10 bits), patch(10 bits)
+		uint32_t variant = 0, major = 0, minor = 0, patch = 0; // Vulkan version is encoded as: variant(2 bits), major(10 bits), minor(10 bits), patch(10 bits)
 
-        /**
-         * @brief Returns the Vulkan version as a string.
-         * @return A string representing the Vulkan version in the format "major.minor.patch".
-         */
-        [[nodiscard]] std::string VulkanVersionStr() const
+		/**
+		 * @brief Returns the Vulkan version as a string.
+		 * @return A string representing the Vulkan version in the format "major.minor.patch".
+		 */
+		[[nodiscard]] std::string VulkanVersionStr() const
 		{
 			return std::to_string(major) + "." + std::to_string(minor) + "." + std::to_string(patch);
-        }
+		}
 	};
 
 #pragma region Renderer Limits
 
-    constexpr uint8_t  MAX_CONSTANT_BUFFER_COUNT		= 8;
-    constexpr uint32_t MAX_ARRAY_SIZE					= 16384;
+	constexpr uint8_t  MAX_CONSTANT_BUFFER_COUNT		= 8;
+	constexpr uint32_t MAX_ARRAY_SIZE					= 16384;
 
-    constexpr uint32_t MIP_LIST							= std::numeric_limits<uint32_t>::max();
-    constexpr uint32_t ALL_MIPS							= std::numeric_limits<uint32_t>::max();
+	constexpr uint32_t MIP_LIST							= std::numeric_limits<uint32_t>::max();
+	constexpr uint32_t ALL_MIPS							= std::numeric_limits<uint32_t>::max();
 
-    static constexpr uint32_t MAX_FRAMES_IN_FLIGHT		= 2;
-    static constexpr uint32_t MAX_BUFFER_UPDATE_SIZE	= 65536; // vkCmdUpdateBuffer has a limit of 65536 bytes
+	static constexpr uint32_t MAX_FRAMES_IN_FLIGHT		= 2;
+	static constexpr uint32_t MAX_BUFFER_UPDATE_SIZE	= 65536; // vkCmdUpdateBuffer has a limit of 65536 bytes
 
 #pragma endregion
 
 #pragma region Shader Data
 
-    struct ShaderData
-    {
-        std::array<float, 16> viewProjection{};
-    };
+	struct ShaderData
+	{
+		std::array<float, 16> viewProjection{};
+	};
 
-    struct ShaderDataBuffer
-    {
-        VkBuffer buffer = VK_NULL_HANDLE;
-        VmaAllocation allocation = VK_NULL_HANDLE;
-        void *mapped = nullptr;
-        VkDeviceAddress deviceAddress = 0;
-    };
+	struct ShaderDataBuffer
+	{
+		VkBuffer buffer = VK_NULL_HANDLE;
+		VmaAllocation allocation = VK_NULL_HANDLE;
+		void *mapped = nullptr;
+		VkDeviceAddress deviceAddress = 0;
+	};
 
 #pragma endregion
 

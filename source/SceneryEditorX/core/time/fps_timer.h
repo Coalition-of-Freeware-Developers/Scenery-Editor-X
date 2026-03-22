@@ -34,34 +34,34 @@
 
 namespace SceneryEditorX
 {
-    enum class FrameLimits
-    {
-        Unlocked		= BIT(0),
-        Fixed			= BIT(1),
-        FixedToMonitor	= BIT(2)
-    };
+	enum class FrameLimits
+	{
+		Unlocked		= BIT(0),
+		Fixed			= BIT(1),
+		FixedToMonitor	= BIT(2)
+	};
 
-    // TODO: Investigate if making this an inheritance from the Timer classes is beneficial.
-    class FPSTimer
-    {
-    public:
+	// TODO: Investigate if making this an inheritance from the Timer classes is beneficial.
+	class FPSTimer
+	{
+	public:
 		FPSTimer() = default;
 
-        static void Init();
+		static void Init();
 		static void PostTick();
 
-        static float GetFpsLimit();
+		static float GetFpsLimit();
 		static FrameLimits GetFpsLimitType();
-        static void OnVSyncToggled(const bool enabled);
-        static void SetFpsLimit(float fpsIn);
+		static void OnVSyncToggled(const bool enabled);
+		static void SetFpsLimit(float fpsIn);
 
-        static double GetTimeMs();
-        static double GetTimeSec();
-        static double GetDeltaTimeMs();
-        static double GetDeltaTimeSec();
-        static double GetDeltaTimeSmoothedMs();
-        static double GetDeltaTimeSmoothedSec();
-    };
+		static double GetTimeMs();
+		static double GetTimeSec();
+		static double GetDeltaTimeMs();
+		static double GetDeltaTimeSec();
+		static double GetDeltaTimeSmoothedMs();
+		static double GetDeltaTimeSmoothedSec();
+	};
 
 }
 

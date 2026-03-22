@@ -39,6 +39,10 @@ namespace SceneryEditorX
 	class Window;
 	class Swapchain;
 
+	/**
+	 * @class RenderContext
+	 * @brief 
+	 */
 	class RenderContext : public RefCounted
 	{
 	public:
@@ -61,6 +65,10 @@ namespace SceneryEditorX
 
 		Swapchain *swapchain = nullptr;
 
+		/**
+		 * @struct Renderable
+		 * @brief Struct representing a renderable object, containing necessary Vulkan resources and metadata for rendering.
+		 */
 		struct Renderable
 		{
 			VkDescriptorSet descriptorSet{VK_NULL_HANDLE};

@@ -51,7 +51,7 @@ namespace SceneryEditorX
 		 * @brief Construct a modular component that can be plugged into the application.
 		 * @param name The name of the module.
 		 */
-	    Layer(const std::string &name = "Layer");
+		Layer(const std::string &name = "Layer");
 		virtual ~Layer();
 
 		/**
@@ -84,10 +84,10 @@ namespace SceneryEditorX
 		 */
 		virtual void OnEvent(Event &event) {}
 
-	    inline const std::string& GetName() const { return m_DebugName; }
+		inline const std::string& GetName() const { return m_DebugName; }
 
 	protected:
-        std::string m_DebugName; // The name of the module.
+		std::string m_DebugName; // The name of the module.
 	};
 
 }

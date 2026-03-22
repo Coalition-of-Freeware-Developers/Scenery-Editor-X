@@ -36,11 +36,15 @@
 
 namespace SceneryEditorX
 {
+	/**
+	 * @class Buffer
+	 * @brief Represents a Vulkan buffer resource, managing its lifecycle and memory allocation.
+	 */
 	class Buffer : public SharedObject
 	{
 	public:
 		Buffer() = default;
-		//Buffer(BufferType type, uint32_t stride, uint32_t elementCount, const void* data, bool mappable, const char* name);
+		Buffer(size_t stride, uint32_t elementCount, const void *data, bool mappable, const char *name);
 		Buffer(VmaAllocator allocator, VkDeviceSize size, VkBufferUsageFlags usage, const VmaAllocationCreateInfo& allocInfo);
 		virtual ~Buffer() override;
 

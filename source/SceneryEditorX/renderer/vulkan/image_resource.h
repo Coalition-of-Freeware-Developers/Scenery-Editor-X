@@ -39,6 +39,10 @@ namespace SceneryEditorX
 {
 	class Device;
 
+	/**
+	 * @enum ImageResourceFlags
+	 * @brief Flags that specify the properties and usage of an image resource.
+	 */
 	enum ImageResourceFlags : uint32_t
 	{
 		ShaderViews				= BIT(0),
@@ -56,6 +60,10 @@ namespace SceneryEditorX
 		Compress				= BIT(12),
 	};
 
+	/**
+	 * @struct ImgResourceSpec
+	 * @brief Specifies the properties of an image resource, including dimensions, format, and usage flags.
+	 */
 	struct ImgResourceSpec
 	{
 		ImageType type				= ImageType::MaxEnum;
@@ -67,12 +75,29 @@ namespace SceneryEditorX
 		uint32_t flags				= 0;
 		const char* name			= nullptr;
 	};
+			
+	/* @brief Stores the raw byte data for a single mip level. */
+	struct MipBytes
+	{
+		std::vector<std::byte> bytes;
+	};
 
+	/* @brief Stores all mip levels for a single array slice or 3D depth slice. */
+	struct Slice
+	{
+		std::vector<MipBytes> mips;
+	};
+
+	/**
+	 * @class ImageResource
+	 * @brief Represents a Vulkan image resource, encapsulating the VkImage handle, its memory allocation, and associated properties.
+	 */
 	class ImageResource : public SharedResource
 	{
 	public:
-		ImageResource(const ImgResourceSpec &spec);
 		ImageResource();
+		ImageResource(const ImgResourceSpec &spec);
+		ImageResource(const ImgResourceSpec &spec, std::vector<Slice> data);
 		void SetLayout(Layout::ImageLayout newLayout, CommandList *cmdList, uint32_t mipIndex, uint32_t mipRange);
 		virtual ~ImageResource() override;
 
@@ -85,23 +110,16 @@ namespace SceneryEditorX
 		uint32_t GetArrayLength() const { return (m_Spec.type == ImageType::Type3D) ? 1 : m_Depth; }
 		ImgResourceSpec GetImageSpec() const { return m_Spec; }
 
-		/**
-		 * @brief Stores the raw byte data for a single mip level.
-		 */
-		struct MipBytes
-		{
-			std::vector<std::byte> bytes;
-		};
-
-		/**
-		 * @brief Stores all mip levels for a single array slice or 3D depth slice.
-		 */
-		struct Slice
-		{
-			std::vector<MipBytes> mips;
-		};
-
+		void SetFormat(const VkFormat format) { m_Spec.format = format; }
 		void AllocateMip(uint32_t index = 0);
+
+		uint32_t GetBitsPerChannel() const          { return m_BitsPerChannel; }
+		void SetBitsPerChannel(const uint32_t bits) { m_BitsPerChannel = bits; }
+		uint32_t GetBytesPerChannel() const         { return m_BitsPerChannel / 8; }
+		uint32_t GetBytesPerPixel() const           { return (m_BitsPerChannel / 8) * m_ChannelCount; }
+
+		uint32_t GetChannelCount()  const                  { return m_ChannelCount; }
+		void SetChannelCount(const uint32_t channel_count) { m_ChannelCount = channel_count; }
 
 		/**
 		 * @brief Returns true if the resource was created with per-mip image views.
@@ -131,6 +149,9 @@ namespace SceneryEditorX
 
 		static bool IsCompressedFormat(VkFormat format);
 		static size_t CalculateMipSize(uint32_t width, uint32_t height, uint32_t depth, VkFormat format, uint32_t bitsPerChannel, uint32_t channelCount);
+		uint32_t GetMipCount() const    { return m_MipCount; }
+		MipBytes* GetMip(const uint32_t arrayIndex, const uint32_t mipIndex);
+		Slice* GetSlice(const uint32_t arrayIndex);
 
 	private:
 		Ref<Device> m_Device;
@@ -142,7 +163,7 @@ namespace SceneryEditorX
 		uint32_t m_ChannelCount		= 0;
 		VkImage m_Image = VK_NULL_HANDLE;
 		std::vector<VkImageView> m_ImageViews;
-		std::vector<Slice> m_slices;
+		std::vector<Slice> m_Slices;
 		VmaAllocation m_Allocation = nullptr;
 		VkDeviceMemory m_DeviceMemory = nullptr;
 		VkFormat m_CompressionFormat = VK_FORMAT_UNDEFINED;

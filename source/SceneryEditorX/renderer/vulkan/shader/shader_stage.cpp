@@ -41,7 +41,7 @@ namespace SceneryEditorX
 	#define SOURCE_FILEPATH "resources/shaders/"
 	#define CACHE_FILEPATH "cache/shaders/"
 	
-    // -------------------------------------------------------
+	// -------------------------------------------------------
 
 
 	static std::vector<uint32_t> ReadCachedShaderData(const std::string& filepath)
@@ -73,17 +73,17 @@ namespace SceneryEditorX
 		fopen_s(&file, path.c_str(), "wb");
 		if (!file)
 		{
-		    assert(false);
+			assert(false);
 		}
 		fwrite(data, sizeof(uint32_t), size, file);
 		fclose(file);
 	}
 	
-    // -------------------------------------------------------
+	// -------------------------------------------------------
 
 	ShaderStage::ShaderStage(Stage stage, const std::string& filepath) : m_Stage(stage), m_Filepath(filepath)
 	{
-        const Ref<Device> device = RenderContext::Get()->GetDevice();
+		const Ref<Device> device = RenderContext::Get()->GetDevice();
 		std::vector<uint32_t> data;
 	
 		size_t lastD = filepath.find_last_of('/');
@@ -109,7 +109,7 @@ namespace SceneryEditorX
 	
 		if (std::filesystem::exists(cacheFilepath) && !shouldRecompile)
 		{
-            SEDX_CORE_TRACE_TAG("Shader", "Loading shader data from cache: %s", cacheFilepath.c_str());
+			SEDX_CORE_TRACE_TAG("Shader", "Loading shader data from cache: %s", cacheFilepath.c_str());
 			data = ReadCachedShaderData(cacheFilepath);
 		}
 		else
@@ -131,7 +131,7 @@ namespace SceneryEditorX
 	
 	ShaderStage::~ShaderStage()
 	{
-        const Ref<Device> device = RenderContext::Get()->GetDevice();
+		const Ref<Device> device = RenderContext::Get()->GetDevice();
 		SEDX_CORE_ASSERT(device.IsValid(), "Invalid device");
 
 		vkDestroyShaderModule(device->GetLogicalDevice(), m_ShaderModule, nullptr);	
@@ -139,7 +139,7 @@ namespace SceneryEditorX
 	
 	void ShaderStage::Recompile()
 	{
-	    const Ref<Device> device = RenderContext::Get()->GetDevice();
+		const Ref<Device> device = RenderContext::Get()->GetDevice();
 		std::vector<uint32_t> data = ShaderCompiler::CompileVulkanShader(m_Stage, SOURCE_FILEPATH + m_Filepath);
 	
 		std::string shaderName = std::string(m_Filepath.begin(), m_Filepath.begin() + m_Filepath.find_last_of('.'));

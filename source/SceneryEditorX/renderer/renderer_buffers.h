@@ -38,34 +38,34 @@ namespace SceneryEditorX
 	// low frequency - updates once per frame
 	struct ConstantBuffer_Frame
 	{
-		Matrix view;
-		Matrix view_inv;
-		Matrix view_previous;
-		Matrix projection;
-		Matrix projection_inv;
-		Matrix projection_previous;
-		Matrix view_projection;
-		Matrix view_projection_inv;
-		Matrix view_projection_ortho;
-		Matrix view_projection_unjittered;
-		Matrix view_projection_previous;
-		Matrix view_projection_previous_unjittered;
+		xMath::Matrix view;
+		xMath::Matrix view_inv;
+		xMath::Matrix view_previous;
+		xMath::Matrix projection;
+		xMath::Matrix projection_inv;
+		xMath::Matrix projection_previous;
+		xMath::Matrix view_projection;
+		xMath::Matrix view_projection_inv;
+		xMath::Matrix view_projection_ortho;
+		xMath::Matrix view_projection_unjittered;
+		xMath::Matrix view_projection_previous;
+		xMath::Matrix view_projection_previous_unjittered;
 
-		Vec2 resolution_render;
-		Vec2 resolution_output;
+		xMath::Vec2 resolution_render;
+		xMath::Vec2 resolution_output;
 
-		Vec2 taa_jitter_current;
-		Vec2 taa_jitter_previous;
+		xMath::Vec2 taa_jitter_current;
+		xMath::Vec2 taa_jitter_previous;
 
 		float camera_aperture;
 		float delta_time;
 		uint32_t frame;
 		uint32_t options;
 
-		Vec3 camera_position;
+		xMath::Vec3 camera_position;
 		float camera_near;
 
-		Vec3 camera_forward;
+		xMath::Vec3 camera_forward;
 		float camera_far;
 
 		float camera_last_movement_time;
@@ -73,17 +73,17 @@ namespace SceneryEditorX
 		float hdr_max_nits;
 		float padding;
 
-		Vec3 camera_position_previous;
+		xMath::Vec3 camera_position_previous;
 		float resolution_scale;
 
 		double time;
 		float camera_fov;
 		float padding2;
 
-		Vec3 wind;
+		xMath::Vec3 wind;
 		float gamma;
 
-		Vec3 camera_right;
+		xMath::Vec3 camera_right;
 		float camera_exposure;
 
 		// clouds
@@ -100,11 +100,11 @@ namespace SceneryEditorX
 
 	struct ShaderBuffer_Material
 	{
-		Vec4 color = Vec4::Zero;
+		xMath::Vec4 color = xMath::Vec4::Zero;
 
-		Vec2 tiling_uv = Vec2::Zero;
-		Vec2 offset_uv = Vec2::Zero;
-		Vec2 invert_uv = Vec2::Zero;
+		xMath::Vec2 tiling_uv = xMath::Vec2::Zero;
+		xMath::Vec2 offset_uv = xMath::Vec2::Zero;
+		xMath::Vec2 invert_uv = xMath::Vec2::Zero;
 		float roughness_mul = 0.0f;
 		float metallic_mul  = 0.0f;
 		float normal_mul    = 0.0f;
@@ -128,27 +128,27 @@ namespace SceneryEditorX
 
 	struct ShaderBuffer_Light
 	{
-		Color color;
-		Vec3 position;
+		xMath::Color color;
+		xMath::Vec3 position;
 		float intensity;
-		Vec3 direction;
+		xMath::Vec3 direction;
 		float range;
 		float angle;
 		uint32_t flags;
 		uint32_t screen_space_shadows_slice_index;
 		float area_width;  // area light width in meters
 		float area_height; // area light height in meters
-		Matrix view_projection[6];
-		Vec2 atlas_offsets[6];
-		Vec2 atlas_scales[6];
-		Vec2 atlas_texel_sizes[6];
+		xMath::Matrix view_projection[6];
+		xMath::Vec2 atlas_offsets[6];
+		xMath::Vec2 atlas_scales[6];
+		xMath::Vec2 atlas_texel_sizes[6];
 	};
 
 	struct ShaderBuffer_Aabb
 	{
-		Vec3 min;
+		xMath::Vec3 min;
 		float is_occluder;
-		Vec3 max;
+		xMath::Vec3 max;
 		float padding2;
 	};
 
@@ -183,11 +183,11 @@ namespace SceneryEditorX
 	// gpu particle (matches hlsl Particle struct, 64 bytes)
 	struct ShaderBuffer_Particle
 	{
-		Vec3 position;
+		xMath::Vec3 position;
 		float lifetime      = 0.0f; // remaining lifetime
-		Vec3 velocity;
+		xMath::Vec3 velocity;
 		float max_lifetime  = 0.0f; // initial lifetime
-		Vec4 color;			// current rgba
+		xMath::Vec4 color;			// current rgba
 		float size          = 0.0f; // current size
 		float padding1      = 0.0f;
 		float padding2      = 0.0f;
@@ -197,14 +197,14 @@ namespace SceneryEditorX
 	// gpu emitter parameters (matches hlsl EmitterParams struct)
 	struct ShaderBuffer_EmitterParams
 	{
-		Vec3 position;
+		xMath::Vec3 position;
 		float emission_rate   = 0.0f;
 		float lifetime        = 0.0f;
 		float start_speed     = 0.0f;
 		float start_size      = 0.0f;
 		float end_size        = 0.0f;
-		Color start_color;
-		Color end_color;
+		xMath::Color start_color;
+		xMath::Color end_color;
 		float gravity_modifier = 0.0f;
 		float radius           = 0.0f;
 		float delta_time       = 0.0f;

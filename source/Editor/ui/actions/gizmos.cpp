@@ -29,45 +29,96 @@
  * -------------------------------------------------------
  */
 #include "gizmos.h"
-#include <imgui.h>
 #include <vector>
+#include <Editor/ui/source/imgui/imgui.h>
 #include <SceneryEditorX/core/input/input.h>
 #include <SceneryEditorX/scene/camera.h>
 #include <SceneryEditorX/scene/entity.h>
 #include <SceneryEditorX/scene/scene.h>
-#include <xMath/includes/vector.h>
+#include <xMath/includes/mat4.h>
+#include <xMath/includes/math_utils.h>
 
 // -------------------------------------------------------
 
-const xMath::Vec3 SNAP = xMath::Vec3(0.1f, 0.1f, 0.1f);
-
-static bool s_FirstUse = true;
-static std::vector<SceneryEditorX::Entity *> s_EntitiesBeingTransformed;
-static std::vector<xMath::Vec3> s_PositionsPrevious;
-static std::vector<xMath::Quat> s_RotationsPrevious;
-static std::vector<xMath::Vec3> s_ScalesPrevious;
-
-/**
- * @brief 
- * @param position  
- * @param rotation 
- * @param scale 
- * @return 
- */
-static xMath::Matrix CreateRowMajorMatrix(const xMath::Vec3& position, const xMath::Quat& rotation, const xMath::Vec3& scale)
+namespace
 {
-	const xMath::Matrix rotationMatrix = xMath::Matrix::CreateRotation(rotation).Transposed();
+	const xMath::Vec3 SNAP = xMath::Vec3(0.1f, 0.1f, 0.1f);
+	ImGuizmo::MODE s_TransformMode = ImGuizmo::WORLD;
+	GizmoPivotMode s_PivotMode = GizmoPivotMode::Center;
+	bool s_EnableSnapping = false;
 
-	return {
-	    scale.x * rotationMatrix.m00, scale.y * rotationMatrix.m01, scale.z * rotationMatrix.m02, position.x,
-		scale.x * rotationMatrix.m10, scale.y * rotationMatrix.m11, scale.z * rotationMatrix.m12, position.y,
-		scale.x * rotationMatrix.m20, scale.y * rotationMatrix.m21, scale.z * rotationMatrix.m22, position.z,
-		0.0f,                    0.0f                   , 0.0f,                    1.0f
-	};
+	xMath::Vec3 GetEntityPosition(SceneryEditorX::Entity* entity)
+	{
+		if (!entity)
+		{
+			return xMath::Vec3(0.0f, 0.0f, 0.0f);
+		}
+
+		return s_TransformMode == ImGuizmo::WORLD ? entity->GetPosition() : entity->GetPositionLocal();
+	}
+
+	xMath::Vec3 GetEntityRotation(SceneryEditorX::Entity* entity)
+	{
+		if (!entity)
+		{
+			return xMath::Vec3(0.0f, 0.0f, 0.0f);
+		}
+
+		return s_TransformMode == ImGuizmo::WORLD ? entity->GetRotation() : entity->GetRotationLocal();
+	}
+
+	xMath::Vec3 GetEntityScale(SceneryEditorX::Entity* entity)
+	{
+		if (!entity)
+		{
+			return xMath::Vec3(1.0f, 1.0f, 1.0f);
+		}
+
+		return s_TransformMode == ImGuizmo::WORLD ? entity->GetScale() : entity->GetScaleLocal();
+	}
+
+	xMath::Vec3 ComputePivotPosition(const std::vector<SceneryEditorX::Entity*>& selectedEntities, SceneryEditorX::Entity* primaryEntity)
+	{
+		if (!primaryEntity)
+		{
+			return xMath::Vec3(0.0f, 0.0f, 0.0f);
+		}
+
+		if (s_PivotMode == GizmoPivotMode::World)
+		{
+			return GetEntityPosition(primaryEntity);
+		}
+
+		if (s_PivotMode == GizmoPivotMode::Local)
+		{
+			return GetEntityPosition(primaryEntity) + primaryEntity->GetPivotPoint();
+		}
+
+		xMath::Vec3 centerPosition = xMath::Vec3(0.0f, 0.0f, 0.0f);
+		uint32_t validEntityCount = 0;
+		for (SceneryEditorX::Entity* entity : selectedEntities)
+		{
+			if (!entity)
+			{
+				continue;
+			}
+
+			centerPosition += GetEntityPosition(entity);
+			validEntityCount++;
+		}
+
+		if (validEntityCount > 0)
+		{
+			centerPosition /= static_cast<float>(validEntityCount);
+		}
+
+		return centerPosition;
+	}
 }
 
 Gizmo::Gizmo(ManipulatorType type)
 {
+   m_Type = type;
 }
 
 void Gizmo::Tick()
@@ -75,14 +126,13 @@ void Gizmo::Tick()
 	SceneryEditorX::Camera * camera = SceneryEditorX::Scene::GetCamera();
 	if (!camera)
 	{
-	    return;
+		return;
 	}
 
-	// get selected entities
-	const std::vector<SceneryEditorX::Entity *> & selectedEntities = camera->GetSelectedEntities();
+	const std::vector<SceneryEditorX::Entity*>& selectedEntities = camera->GetSelectedEntities();
 	if (selectedEntities.empty())
 	{
-	    return;
+		return;
 	}
 		
 	// use the first entity as the primary for rotation/scale reference
@@ -94,8 +144,20 @@ void Gizmo::Tick()
 	
 	// switch between position, rotation and scale operations, with W, E and R respectively
 	static ImGuizmo::OPERATION transformOperation = ImGuizmo::TRANSLATE;
-	if (!camera->GetFlag(SceneryEditorX::CameraFlags::IsControlled))
+	if (!camera->IsControlled())
 	{
+	   if (SceneryEditorX::Input::IsKeyPressed(SceneryEditorX::KeyCode::Q))
+		{
+			s_TransformMode = s_TransformMode == ImGuizmo::WORLD ? ImGuizmo::LOCAL : ImGuizmo::WORLD;
+		}
+
+		if (SceneryEditorX::Input::IsKeyPressed(SceneryEditorX::KeyCode::P))
+		{
+			s_PivotMode = s_PivotMode == GizmoPivotMode::Center
+				? GizmoPivotMode::Local
+				: static_cast<GizmoPivotMode>(static_cast<uint8_t>(s_PivotMode) + 1);
+		}
+
 		if (SceneryEditorX::Input::IsKeyDown(SceneryEditorX::KeyCode::W))
 		{
 			transformOperation = ImGuizmo::TRANSLATE;
@@ -110,116 +172,83 @@ void Gizmo::Tick()
 		}
 	}
 	
-	// get matrices
-	const xMath::Mat4& matrixView       = camera->GetViewMatrix().GetTranspose();
-	const xMath::Mat4& matrixProjection = camera->GetProjectionMatrix().GetTranspose();
+	const xMath::Mat4 matrixView = camera->GetViewMatrix().GetTranspose();
+	const xMath::Mat4 matrixProjection = camera->GetProjectionMatrix().GetTranspose();
 	
 	// begin
 	const bool isOrthographic = false;
 	ImGuizmo::SetOrthographic(isOrthographic);
 	ImGuizmo::BeginFrame();
 	
-	// calculate center position of all selected entities for gizmo placement
-	static bool useWorldSpace = true;
-	xMath::Vec3 centerPosition = xMath::Vec3::Zero;
-	uint32_t validEntityCount = 0;
-	for (SceneryEditorX::Entity* entity : selectedEntities)
-	{
-	    if (entity)
-		{
-			centerPosition += useWorldSpace ? entity->GetPosition() : entity->GetPositionLocal();
-			validEntityCount++;
-		}
-	}
-	if (validEntityCount > 0)
-	{
-		centerPosition /= static_cast<float>(validEntityCount);
-	}
-	
-	// use center position for gizmo, but primary entity's rotation/scale for orientation
-	xMath::Vec3 position        = centerPosition;
-	xMath::Quat rotation		= useWorldSpace ? primaryEntity->GetRotation() : primaryEntity->GetRotationLocal();
-	xMath::Vec3 scale           = useWorldSpace ? primaryEntity->GetScale() : primaryEntity->GetScaleLocal();
-	xMath::Matrix transformMatrix = CreateRowMajorMatrix(position, rotation, scale);
+	xMath::Vec3 position = ComputePivotPosition(selectedEntities, primaryEntity);
+	xMath::Vec3 rotation = GetEntityRotation(primaryEntity);
+	xMath::Vec3 scale = GetEntityScale(primaryEntity);
+	xMath::Mat4 transformMatrix =
+		xMath::Mat4::Translate(position)
+		* xMath::Mat4::RotationRadians(rotation)
+		* xMath::Mat4::Scale(scale);
 	
 	// save the initial position for delta calculation
 	xMath::Vec3 initialPosition = position;
-	xMath::Quat initialRotation = rotation;
+	xMath::Vec3 initialRotation = rotation;
 	xMath::Vec3 initialScale = scale;
 	
 	// set viewport rectangle
 	ImGuizmo::SetDrawlist();
 	ImGuizmo::SetRect(ImGui::GetWindowPos().x, ImGui::GetWindowPos().y, ImGui::GetWindowWidth(), ImGui::GetWindowHeight());
 	ImGuizmo::Manipulate(
-		&matrixView.m00,
-		&matrixProjection.m00,
+		matrixView.Data(),
+		matrixProjection.Data(),
 		transformOperation,
-		useWorldSpace ? ImGuizmo::WORLD : ImGuizmo::LOCAL,
-		&transformMatrix.m00,
+	  s_TransformMode,
+		transformMatrix.Data(),
 		nullptr,
-		&SNAP.x
+	 s_EnableSnapping ? &SNAP.x : nullptr
 	);
 	
 	// map imguizmo to transform
 	if (ImGuizmo::IsUsing())
 	{
-		// start of handling - save the initial transforms for all entities
-		if (s_FirstUse)
-		{
-			s_EntitiesBeingTransformed.clear();
-			s_PositionsPrevious.clear();
-			s_RotationsPrevious.clear();
-			s_ScalesPrevious.clear();
-			
-			for (SceneryEditorX::Entity* entity : selectedEntities)
-			{
-				if (entity)
-				{
-					s_EntitiesBeingTransformed.push_back(entity);
-					s_PositionsPrevious.push_back(useWorldSpace ? entity->GetPosition() : entity->GetPositionLocal());
-					s_RotationsPrevious.push_back(useWorldSpace ? entity->GetRotation() : entity->GetRotationLocal());
-					s_ScalesPrevious.push_back(useWorldSpace ? entity->GetScale() : entity->GetScaleLocal());
-				}
-			}
-			s_FirstUse = false;
-		}
-	
-		transformMatrix.Transposed().Decompose(scale, rotation, position);
+	    float matrixTranslation[3] = {0.0f, 0.0f, 0.0f};
+		float matrixRotationDegrees[3] = {0.0f, 0.0f, 0.0f};
+		float matrixScale[3] = {1.0f, 1.0f, 1.0f};
+		ImGuizmo::DecomposeMatrixToComponents(transformMatrix.Data(), matrixTranslation, matrixRotationDegrees, matrixScale);
+
+		position = xMath::Vec3(matrixTranslation[0], matrixTranslation[1], matrixTranslation[2]);
+		rotation = xMath::ToRadians(xMath::Vec3(matrixRotationDegrees[0], matrixRotationDegrees[1], matrixRotationDegrees[2]));
+		scale = xMath::Vec3(matrixScale[0], matrixScale[1], matrixScale[2]);
 		
-		// calculate deltas from primary entity
 		xMath::Vec3 positionDelta = position - initialPosition;
-		xMath::Quat rotationDelta = rotation * initialRotation.Inverse();
+	    xMath::Vec3 rotationDelta = rotation - initialRotation;
 		xMath::Vec3 scaleRatio = xMath::Vec3(
 			initialScale.x != 0.0f ? scale.x / initialScale.x : 1.0f,
 			initialScale.y != 0.0f ? scale.y / initialScale.y : 1.0f,
 			initialScale.z != 0.0f ? scale.z / initialScale.z : 1.0f
 		);
 		
-		// apply transforms to all selected entities
 		for (SceneryEditorX::Entity* entity : selectedEntities)
 		{
 			if (!entity)
+		   {
 				continue;
-				
-			if (useWorldSpace)
-			{
-				// for translation, apply the delta
-				entity->SetPosition(entity->GetPosition() + positionDelta);
+			}
 
-				// for rotation, apply the rotation delta
+			if (s_TransformMode == ImGuizmo::WORLD)
+			{
+			 entity->SetPosition(entity->GetPosition() + positionDelta);
+
 				if (transformOperation == ImGuizmo::ROTATE)
 				{
-					entity->SetRotation(rotationDelta * entity->GetRotation());
+				 entity->SetRotation(entity->GetRotation() + rotationDelta);
 				}
 
-				// for scale, apply the ratio
 				if (transformOperation == ImGuizmo::SCALE)
 				{
-					xMath::Vec3 current_scale = entity->GetScale();
+				 xMath::Vec3 currentScale = entity->GetScale();
 					entity->SetScale(xMath::Vec3(
-						current_scale.x * scaleRatio.x,
-						current_scale.y * scaleRatio.y,
-						current_scale.z * scaleRatio.z
+					 currentScale.x * scaleRatio.x,
+						currentScale.y * scaleRatio.y,
+						currentScale.z * scaleRatio.z
 					));
 				}
 			}
@@ -229,29 +258,19 @@ void Gizmo::Tick()
 
 				if (transformOperation == ImGuizmo::ROTATE)
 				{
-					entity->SetRotationLocal(rotationDelta * entity->GetRotationLocal());
+				   entity->SetRotationLocal(entity->GetRotationLocal() + rotationDelta);
 				}
 
 				if (transformOperation == ImGuizmo::SCALE)
 				{
-					xMath::Vec3 current_scale = entity->GetScaleLocal();
+					xMath::Vec3 currentScale = entity->GetScaleLocal();
 					entity->SetScaleLocal(xMath::Vec3(
-						current_scale.x * scaleRatio.x,
-						current_scale.y * scaleRatio.y,
-						current_scale.z * scaleRatio.z
+					 currentScale.x * scaleRatio.x,
+						currentScale.y * scaleRatio.y,
+						currentScale.z * scaleRatio.z
 					));
 				}
 			}
-		}
-	
-		// end of handling - add transforms to the command stack for all entities as a single undo operation
-		if (SceneryEditorX::Input::IsKeyReleased(SceneryEditorX::KeyCode::Click_Left))
-		{
-			if (!s_EntitiesBeingTransformed.empty())
-			{
-				SceneryEditorX::CommandStack::Add<SceneryEditorX::CommandTransformMulti>(s_EntitiesBeingTransformed, s_PositionsPrevious, s_RotationsPrevious, s_ScalesPrevious);
-			}
-			s_FirstUse = true;
 		}
 	}
 }
@@ -267,7 +286,27 @@ bool Gizmo::AllowObjectSelection()
 
 bool Gizmo::EnableSnapping()
 {
-	return false;
+   return s_EnableSnapping;
+}
+
+void Gizmo::SetPivotMode(const GizmoPivotMode mode)
+{
+	s_PivotMode = mode;
+}
+
+GizmoPivotMode Gizmo::GetPivotMode()
+{
+	return s_PivotMode;
+}
+
+void Gizmo::SetTransformMode(const ImGuizmo::MODE mode)
+{
+	s_TransformMode = mode;
+}
+
+ImGuizmo::MODE Gizmo::GetTransformMode()
+{
+	return s_TransformMode;
 }
 
 // -------------------------------------------------------

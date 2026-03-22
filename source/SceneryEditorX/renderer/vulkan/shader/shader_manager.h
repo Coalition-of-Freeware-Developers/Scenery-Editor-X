@@ -35,8 +35,19 @@
 // -------------------------------------------------------
 
 
+/**
+ * @namespace ShaderCompiler
+ * @brief A simple manager for Vulkan shader modules. 
+ * This is not intended to be a full-featured shader management system, 
+ * but rather a minimal wrapper around Vulkan shader modules that allows us to compile and reflect shaders at runtime.
+ */
 namespace ShaderCompiler
-{    
+{
+	/**
+	 * @enum State
+	 * @brief Represents the current state of shader compilation. 
+	 * This can be used to track the progress of shader compilation and handle any errors that may occur during the process. 
+	 */
 	enum class State
 	{
 		Idle,
@@ -45,8 +56,23 @@ namespace ShaderCompiler
 		Failed
 	};
 
+	/**
+	 * @brief Compiles a Vulkan shader from a file.
+	 * @param stage The shader stage to compile.
+	 * @param filepath The path to the shader file.
+	 * @param optimize Whether to optimize the shader during compilation.
+	 * @return A vector of uint32_t representing the compiled SPIR-V bytecode.
+	 */
 	std::vector<uint32_t> CompileVulkanShader(SceneryEditorX::Stage stage, const std::string& filepath, bool optimize = false);
+
+	/**
+	 * @brief Reflects the input variables of a Vulkan shader.
+	 * @param stage The shader stage to reflect.
+	 * @param shaderBytecode The SPIR-V bytecode of the shader.
+	 * @return A vector of ShaderInput structures representing the input variables of the shader.
+	 */
 	std::vector<SceneryEditorX::ShaderInput> Reflect(SceneryEditorX::Stage stage, const std::vector<uint32_t>& shaderBytecode);
+
 }
 
 
@@ -54,9 +80,14 @@ namespace ShaderCompiler
 
 namespace SceneryEditorX
 {
-	// Small manager that owns one or more Shader objects along with their
-	// corresponding shader stage flags. This allows Pipeline to accept a single
-	// object that may contain multiple stages (vertex, fragment, etc.).
+
+	/**
+	 * @class ShaderManager
+	 * @brief Manages Vulkan shader modules and their corresponding stages.
+	 * This class provides a convenient way to handle multiple shader stages within a single object.
+	 * This allows Pipeline to accept a single object that may contain multiple stages (vertex, fragment, etc.).
+	 *
+	 */
 	class ShaderManager 
 	{
 	public:

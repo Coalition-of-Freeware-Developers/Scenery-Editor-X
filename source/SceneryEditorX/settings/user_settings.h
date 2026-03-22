@@ -95,7 +95,7 @@ namespace SceneryEditorX
 	 * and recent project history. Uses the ApplicationSettings system for persistent
 	 * storage in .cfg format.
 	 */
-	class UserPreferences
+	class UserPreferences : public RefCounted
 	{
 	public:
 		/**

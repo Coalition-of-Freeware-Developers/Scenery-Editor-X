@@ -97,6 +97,7 @@ namespace SceneryEditorX
 		uint32_t GetCurrentFrameIndex() const { return m_CurrentFrameIndex; }
 		const AppData &GetAppData() const { return m_AppData; }
 		const PlatformContext* GetPlatformContext() const { return m_PlatformContext; }
+		LayerStack& GetLayerStack() { return m_ModuleStage; }
 		PerformanceTimers m_PerformanceTimers;
 
 		// -------------------------------------------------------
@@ -169,7 +170,7 @@ namespace SceneryEditorX
 		Scope<Window> m_Window;
 		AppData m_AppData;
 		LayerStack m_ModuleStage;
-		UI::UILayer *m_UILayer = nullptr;
+		UILayer *m_UILayer = nullptr;
 		DeltaTime m_DeltaTime;
 		DeltaTime m_FrameTime;
 		float m_LastFrameTime = 0.0f;

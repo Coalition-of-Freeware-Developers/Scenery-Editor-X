@@ -39,7 +39,7 @@ namespace SceneryEditorX
 	 * @class BlendState
 	 * @brief Immutable blend configuration object returned by Renderer::GetBlendState().
 	 */
-	class BlendState
+	class BlendState : public RefCounted
 	{
 	public:
 		explicit BlendState(bool blendEnabled, VkBlendFactor srcColor = VK_BLEND_FACTOR_ONE,

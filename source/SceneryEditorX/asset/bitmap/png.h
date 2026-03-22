@@ -36,6 +36,10 @@
 namespace SceneryEditorX
 {
 
+	/**
+	 * @class PNG_Bitmap
+	 * @brief A class representing a PNG bitmap image resource, inheriting from Bitmap.
+	 */
 	class PNG_Bitmap : public Bitmap
 	{
 	public:

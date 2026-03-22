@@ -40,12 +40,12 @@ namespace SceneryEditorX
 	
 	Fence::Fence()
 	{
-        m_Type = SyncType::Fence;
+		m_Type = SyncType::Fence;
 	}
 
 	Fence::~Fence()
 	{
-       Destroy();
+	   Destroy();
 	}
 
 	void Fence::CreateSyncObject()
@@ -71,38 +71,38 @@ namespace SceneryEditorX
 
 	void Fence::Wait(const uint64_t timeout, const VkFence &fence)
 	{
-	    Ref<Device> device = RenderContext::Get()->GetDevice();
-	    VkResult result = vkWaitForFences(device->GetLogicalDevice(), 1, &fence, true, timeout);
-        if (result == VK_ERROR_DEVICE_LOST)
-        {
-            Device::SetDeviceLost();
-        }
-        SEDX_VK_RESULT_ASSERT(result, "Failed to wait for fence")
+		Ref<Device> device = RenderContext::Get()->GetDevice();
+		VkResult result = vkWaitForFences(device->GetLogicalDevice(), 1, &fence, true, timeout);
+		if (result == VK_ERROR_DEVICE_LOST)
+		{
+			Device::SetDeviceLost();
+		}
+		SEDX_VK_RESULT_ASSERT(result, "Failed to wait for fence")
 	}
 
 	bool Fence::IsSignaled(const VkFence &fence)
-    {
-	    Ref<Device> device = RenderContext::Get()->GetDevice();
-        return vkGetFenceStatus(device->GetLogicalDevice(), fence) == VK_SUCCESS;
-    }
-
-    void Fence::Destroy()
 	{
-        if (m_Fence == VK_NULL_HANDLE)
+		Ref<Device> device = RenderContext::Get()->GetDevice();
+		return vkGetFenceStatus(device->GetLogicalDevice(), fence) == VK_SUCCESS;
+	}
+
+	void Fence::Destroy()
+	{
+		if (m_Fence == VK_NULL_HANDLE)
 		{
 			return;
 		}
 
-	    QueueManager::AddDeletionQueue(ResourceType::Fence, m_Fence);
-	    SEDX_CORE_TRACE_TAG("Fence", "Fence {} scheduled for destruction", m_ObjectName);
-        m_Fence = VK_NULL_HANDLE;
+		QueueManager::AddDeletionQueue(ResourceType::Fence, m_Fence);
+		SEDX_CORE_TRACE_TAG("Fence", "Fence {} scheduled for destruction", m_ObjectName);
+		m_Fence = VK_NULL_HANDLE;
 	}
 
-    void Fence::Reset(const VkFence &fence)
+	void Fence::Reset(const VkFence &fence)
 	{
 		Ref<Device> device = RenderContext::Get()->GetDevice();
 		SEDX_VK_RESULT_ASSERT(vkResetFences(device->GetLogicalDevice(), 1, &fence));
-    }
+	}
 	
 } // namespace SceneryEditorX
 

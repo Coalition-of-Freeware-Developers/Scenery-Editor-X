@@ -36,7 +36,6 @@
 #include <SceneryEditorX/core/events/mouse_events.h>
 #include <SceneryEditorX/core/identifiers/flag.h>
 #include <SceneryEditorX/core/input/input.h>
-#include <imgui/imgui.h>
 
 // -------------------------------------------------------
 
@@ -47,6 +46,8 @@ namespace SceneryEditorX
 	Window Window::m_Window;
 	SDL_Window *s_Window = nullptr;
 	SDL_DisplayID *s_Displays = nullptr;
+
+
 	// -------------------------------------------------------
 
 	const char *Window::name = "Scenery Editor X";
@@ -85,9 +86,9 @@ namespace SceneryEditorX
 	bool Window::shouldClose = false;
 
 	// Custom Title Bar
-	static float s_Titlebar_Height = 40.0f;        // default height, updated by editor
-	static float s_Titlebar_Button_Width = 150.0f; // default width, updated by editor
-	static const float RESIZE_BORDER = 8.0f;     // thickness of resize borders
+	static float s_Titlebar_Height      = 40.0f;  // default height, updated by editor
+	static float s_Titlebar_ButtonWidth = 150.0f; // default width, updated by editor  
+	static const float RESIZE_BORDER    = 8.0f;   // thickness of resize borders
 	static int s_Titlebar_HoveredFrames = 0;      // persistence counter for hover state
 
 	// -------------------------------------------------------
@@ -131,7 +132,7 @@ namespace SceneryEditorX
 		if (y < static_cast<int>(s_Titlebar_Height))
 		{
 			// exclude window buttons area on the right
-			if (x < w - static_cast<int>(s_Titlebar_Button_Width))
+			if (x < w - static_cast<int>(s_Titlebar_ButtonWidth))
 			{
 				// only allow dragging when no imgui items were hovered recently
 				// use persistence to avoid timing issues between hit test and imgui frame
@@ -918,6 +919,31 @@ namespace SceneryEditorX
 		return s_DPI_Scale;
 	}
 
-	} // namespace SceneryEditorX
+	void Window::SetTitleBarHeight(float height)
+	{
+		s_Titlebar_Height = height;
+	}
+
+	void Window::SetTitleBarButtonWidth(float width)
+	{
+		s_Titlebar_ButtonWidth = width;
+	}
+
+	void Window::SetTitleBarHovered(bool hovered)
+	{
+		// use persistence to avoid timing issues between sdl hit test and imgui frame
+		// when hovered, set counter high; when not hovered, decrement until zero
+		const int persistenceFrames = 3;
+		if (hovered)
+		{
+			s_Titlebar_HoveredFrames = persistenceFrames;
+		}
+		else if (s_Titlebar_HoveredFrames > 0)
+		{
+			s_Titlebar_HoveredFrames--;
+		}
+	}
+
+} // namespace SceneryEditorX
 
 // -------------------------------------------------------

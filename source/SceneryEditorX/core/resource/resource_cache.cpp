@@ -42,7 +42,7 @@ namespace SceneryEditorX
 
 	static std::array<std::string, 6> s_StandardResourceDir;
 	static char s_ProjectDir[256] = {};
-	static std::vector<IResource *> s_Resources;
+	static std::vector<Ref<SharedResource>> s_Resources;
 	static std::vector<Ref<RefCounted>> s_ResourceReferences;
 	static std::mutex s_Mutex;
 	static bool s_Use_RootShaderDirectory = false;
@@ -122,10 +122,10 @@ namespace SceneryEditorX
 	IResource *ResourceCache::GetByName(const std::string &name, const ResourceType type)
 	{
 		std::scoped_lock guard(s_Mutex);
-		for (IResource *resource : s_Resources)
+		for (const Ref<SharedResource> &resource : s_Resources)
 		{
 		 if (resource && name == resource->GetObjectName() && (type == ResourceType::MaxEnum || resource->GetResourceType() == type))
-				return resource;
+				return resource.Get();
 		}
 
 		return nullptr;
@@ -135,11 +135,11 @@ namespace SceneryEditorX
 	{
 		std::scoped_lock guard(s_Mutex);
 	  std::vector<IResource *> resources;
-		for (IResource *resource : s_Resources)
+		for (const Ref<SharedResource> &resource : s_Resources)
 		{
 			if (resource && (resource->GetResourceType() == type || type == ResourceType::MaxEnum))
 			{
-				resources.emplace_back(resource);
+				resources.emplace_back(resource.Get());
 			}
 		}
 		return resources;
@@ -149,7 +149,7 @@ namespace SceneryEditorX
 	{
 		std::scoped_lock guard(s_Mutex);
 		uint64_t size = 0;
-		for (IResource *resource : s_Resources)
+		for (const Ref<SharedResource> &resource : s_Resources)
 		{
 			if (resource && (resource->GetResourceType() == type || type == ResourceType::MaxEnum))
 			{
@@ -211,7 +211,7 @@ namespace SceneryEditorX
 		return "Data";
 	}
 
-	std::vector<IResource *> &ResourceCache::GetResources()
+	std::vector<Ref<SharedResource>> &ResourceCache::GetResources()
 	{
 		return s_Resources;
 	}

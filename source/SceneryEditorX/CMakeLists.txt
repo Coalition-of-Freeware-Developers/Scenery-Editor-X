@@ -16,6 +16,10 @@ FILE(GLOB ASSET_REGISTRY_FILES "asset/registry/*.h" "asset/registry/*.hpp" "asse
 FILE(GLOB ASSET_DIR LIST_DIRECTORIES false CONFIGURE_DEPENDS "asset/*.h" "asset/*.hpp" "asset/*.cpp")
 FILE(GLOB ASSET_BITMAP_FILES "asset/bitmap/*.h" "asset/bitmap/*.hpp" "asset/bitmap/*.cpp")
 FILE(GLOB ASSET_MODEL_FILES "asset/model/*.h" "asset/model/*.hpp" "asset/model/*.cpp")
+FILE(GLOB ASSET_IMPORT_FILES "asset/import/*.h" "asset/import/*.hpp" "asset/import/*.cpp")
+FILE(GLOB ASSET_EXPORT_FILES "asset/export/*.h" "asset/export/*.hpp" "asset/export/*.cpp")
+FILE(GLOB ASSET_MANAGER_FILES "asset/manager/*.h" "asset/manager/*.hpp" "asset/manager/*.cpp")
+FILE(GLOB ASSET_SYSTEM_FILES "asset/system/*.h" "asset/system/*.hpp" "asset/system/*.cpp")
 
 FILE(GLOB CORE_BASE_ROOT LIST_DIRECTORIES false CONFIGURE_DEPENDS "core/*.h" "core/*.hpp" "core/*.cpp")
 FILE(GLOB CORE_APP "core/application/*.h" "core/application/*.hpp" "core/application/*.cpp")
@@ -38,6 +42,7 @@ FILE(GLOB CORE_LINUX_PLATFORM "core/platform/linux/*.h" "core/platform/linux/*.h
 # --------------------------------
 
 FILE(GLOB RENDERER_FILES LIST_DIRECTORIES false CONFIGURE_DEPENDS "renderer/*.h" "renderer/*.hpp" "renderer/*.cpp")
+FILE(GLOB RENDERER_FONT_FILES "renderer/font/*.h" "renderer/font/*.hpp" "renderer/font/*.cpp")
 
 # --------------------------------
 
@@ -65,6 +70,7 @@ FILE(GLOB SHADER_FILES "shaders/*.slang" "shaders/*.glsl" "shaders/*.frag" "shad
 FILE(GLOB SERIALIZER_FILES "serialization/*.h" "serialization/*.cpp" "serialization/*.hpp")
 FILE(GLOB SETTINGS_FILES "settings/*.h" "settings/*.hpp" "settings/*.cpp")
 FILE(GLOB SCENE_FILES "scene/*.cpp" "scene/*.h" "scene/*.hpp")
+FILE(GLOB FILESYSTEM_FILES "filesystem/*.h" "filesystem/*.hpp" "filesystem/*.cpp")
 
 FILE(GLOB UTILS_ROOT LIST_DIRECTORIES false CONFIGURE_DEPENDS "utils/*.cpp" "utils/*.h" "utils/*.hpp")
 FILE(GLOB UTILS_REFLECTION "utils/reflection/*.cpp" "utils/reflection/*.h" "utils/reflection/*.hpp")
@@ -76,7 +82,7 @@ FILE(GLOB UTILS_FILESTREAM "utils/filestreaming/*.cpp" "utils/filestreaming/*.h"
 #FILE(GLOB UI_ROOT LIST_DIRECTORIES false CONFIGURE_DEPENDS "ui/*.cpp" "ui/*.h" "ui/*.hpp")
 #FILE(GLOB UI_ACTIONS "ui/actions/*.cpp" "ui/actions/*.h" "ui/actions/*.hpp")
 #FILE(GLOB UI_PANELS "ui/panels/*.cpp" "ui/panels/*.h" "ui/panels/*.hpp")
-#FILE(GLOB FONT_CODE "renderer/fonts/*.h" "renderer/fonts/*.hpp" "renderer/fonts/*.cpp")
+
 SET (PROJECT_CONFIG_FILES
 	${CMAKE_SOURCE_DIR}/.clang-format
 	${CMAKE_SOURCE_DIR}/.editorconfig
@@ -99,6 +105,10 @@ ADD_LIBRARY(AppCore
 	${ASSET_DIR}
 	${ASSET_BITMAP_FILES}
 	${ASSET_MODEL_FILES}
+	${ASSET_IMPORT_FILES}
+	${ASSET_EXPORT_FILES}
+	${ASSET_MANAGER_FILES}
+	${ASSET_SYSTEM_FILES}
 
 	${CORE_APP}
 	${CORE_EVENTS}
@@ -129,12 +139,14 @@ ADD_LIBRARY(AppCore
 	${RENDERER_PIPELINE_FILES}
 	${RENDERER_SHADER_FILES}
 	${RENDERER_SYNC_FILES}
+	${RENDERER_FONT_FILES}
 	${RENDERER_KOSMICKRISP}
 
 	${SCENE}
 	${SCENE_COMPONENTS}
 	${PROJECT_CONFIG_FILES}
 	${SERIALIZER_FILES}
+	${FILESYSTEM_FILES}
 	${SCENE_FILES}
 	${REFLECTION_FILES}
 	${SLANG_SHADERS}
@@ -168,16 +180,19 @@ SOURCE_GROUP("Asset/Bitmap" FILES
 	${ASSET_BITMAP_FILES}
 )
 SOURCE_GROUP("Asset/Importers" FILES
-	${ASSET_IMPORTER_FILES}
+	${ASSET_IMPORT_FILES}
 )
 SOURCE_GROUP("Asset/Exporters" FILES
-	${ASSET_EXPORTER_FILES}
+	${ASSET_EXPORT_FILES}
 )
 SOURCE_GROUP("Asset/Material" FILES
 	${ASSET_MATERIAL_FILES}
 )
-SOURCE_GROUP("Asset/Managers" FILES
+SOURCE_GROUP("Asset/Asset Manager" FILES
 	${ASSET_MANAGER_FILES}
+)
+SOURCE_GROUP("Asset/Asset System" FILES
+	${ASSET_SYSTEM_FILES}
 )
 SOURCE_GROUP("Asset/Model" FILES
 	${ASSET_MODEL_FILES}
@@ -239,6 +254,9 @@ SOURCE_GROUP("Core/Platform/Mac" FILES
 SOURCE_GROUP("Core/Platform/Linux" FILES
 	${CORE_LINUX_PLATFORM}
 )
+SOURCE_GROUP("File Management" FILES
+	${FILESYSTEM_FILES}
+)
 SOURCE_GROUP("Project" FILES
 	${PROJECT}
 )
@@ -246,7 +264,7 @@ SOURCE_GROUP("Renderer" FILES
 	${RENDERER_FILES}
 )
 SOURCE_GROUP("Renderer/Fonts" FILES
-	${FONT_CODE}
+	${RENDERER_FONT_FILES}
 )
 SOURCE_GROUP("Renderer/Kosmickrisp" FILES
 	${RENDERER_KOSMICKRISP}
@@ -325,9 +343,9 @@ SOURCE_GROUP("Utilities/Reflection" FILES ${REFLECTION_FILES})
 # TODO: Needs to be updated to use the SLang compiler instead of glslang.
 
 IF(WIN32)
-    cmake_path(SET GLSL_VALIDATOR "$ENV{VULKAN_SDK}/Bin/glslangValidator.exe")
+	cmake_path(SET GLSL_VALIDATOR "$ENV{VULKAN_SDK}/Bin/glslangValidator.exe")
 ELSE()
-    cmake_path(SET GLSL_VALIDATOR "$ENV{VULKAN_SDK}/bin/glslangValidator")
+	cmake_path(SET GLSL_VALIDATOR "$ENV{VULKAN_SDK}/bin/glslangValidator")
 ENDIF()
 MESSAGE("GLSL VALIDATOR ${GLSL_VALIDATOR}")
 ADD_COMPILE_DEFINITIONS(GLSL_VALIDATOR="${GLSL_VALIDATOR}")
@@ -338,6 +356,8 @@ TARGET_INCLUDE_DIRECTORIES(AppCore
 	PRIVATE
 	${CMAKE_SOURCE_DIR}/source
 	${CMAKE_SOURCE_DIR}/dependency
+	${CMAKE_SOURCE_DIR}/dependency/freeimage
+	${CMAKE_SOURCE_DIR}/dependency/freetype
 	${CMAKE_SOURCE_DIR}/dependency/xMath
 	${CMAKE_SOURCE_DIR}/dependency/entt/src
 	${CMAKE_SOURCE_DIR}/dependency/imgui
@@ -365,11 +385,10 @@ TARGET_LINK_LIBRARIES(AppCore
 		GPUOpen::VulkanMemoryAllocator
 		CURL::libcurl
 		Vulkan::Vulkan
-		imgui
 		libconfig
 		libconfig++
 		XPSceneryLib::XPSceneryLib
-    	SDL3::SDL3
+		SDL3::SDL3
 		dxgi
 		d3d12
 		ktx

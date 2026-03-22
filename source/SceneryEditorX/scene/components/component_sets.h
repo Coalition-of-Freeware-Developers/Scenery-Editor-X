@@ -40,7 +40,7 @@
 namespace SceneryEditorX
 {
 
-/**
+	/**
 	 * @struct IDComponent
 	 * @brief Component that stores a unique identifier (UUID) for an entity.
 	 */
@@ -64,8 +64,8 @@ namespace SceneryEditorX
 		TagComponent(const TagComponent& other) = default;
 		TagComponent(std::string tag) : pTag(std::move(tag)) {}
 
-		operator std::string& () { return pTag; }
-		operator const std::string& () const { return pTag; }
+		operator std::string&() { return pTag; }
+		operator const std::string&() const { return pTag; }
 	};
 
 	// -------------------------------------------------------
@@ -109,6 +109,7 @@ namespace SceneryEditorX
 		xMath::Vec3 rotationEuler	= {0.0f, 0.0f, 0.0f};			// Editor-friendly
 		xMath::Quat rotation		= {1.0f, 0.0f, 0.0f, 0.0f};	// Math-friendly
 		xMath::Vec3 scale			= {1.0f, 1.0f, 1.0f};
+		xMath::Vec3 pivot			= {0.0f, 0.0f, 0.0f};
 
 		TransformComponent() = default;
 

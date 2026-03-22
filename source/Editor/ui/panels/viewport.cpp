@@ -29,18 +29,26 @@
  * -------------------------------------------------------
  */
 #include "viewport.h"
+#include "asset_browser.h"
+#include "properties.h"
+#include <Editor/core/editor.h>
+#include <Editor/ui/ui.h>
 #include <Editor/ui/ui_widget.h>
+#include <Editor/ui/actions/drag_drop.h>
+#include <Editor/ui/actions/gizmos.h>
 #include <SceneryEditorX/core/input/input.h>
 #include <SceneryEditorX/renderer/renderer.h>
 #include <SceneryEditorX/scene/entity.h>
-
-// -------------------------------------------------------
+#include <SceneryEditorX/scene/scene.h>
+#include <SceneryEditorX/settings/settings.h>
 
 using namespace SceneryEditorX;
 
+// -------------------------------------------------------
+
 namespace UI
 {
-	static bool s_FirstFrame         = true;
+	static bool s_FirstFrame = true;
 	static uint32_t s_WidthPrevious  = 0;
 	static uint32_t s_HeightPrevious = 0;
 
@@ -58,12 +66,12 @@ namespace UI
 		uint32_t height = static_cast<uint32_t>(ImGui::GetContentRegionAvail().y);
 	
 		// update engine's viewport
-		static bool resolutionSet = Settings::HasLoadedUserSettingsFromFile();
+		static bool resolutionSet = false;
 		if (!s_FirstFrame) // during the first frame the viewport is not yet initialized (it's size will be something weird)
 		{
 			if (s_WidthPrevious != width || s_HeightPrevious != height)
 			{
-				if (RHI_Device::IsValidResolution(width, height))
+			   if (width > 0 && height > 0)
 				{
 					Renderer::SetViewport(static_cast<float>(width), static_cast<float>(height));
 	
@@ -85,60 +93,47 @@ namespace UI
 	
 		// let the input system know about the position of this viewport within the editor
 		// this will allow the system to properly calculate a relative mouse position
-		Vec2 offset = ImGui::GetCursorPos();
+		ImVec2 offset = ImGui::GetCursorPos();
 		offset.y += 34; // TODO: this is probably the tab bar height, find a way to get it properly
-		Input::SetEditorViewportOffset(offset);
 	
 		// draw the image after a potential resolution change call has been made
-		ImGuiSp::image(Renderer::GetRenderTarget(Renderer_RenderTarget::frame_output),
-			ImVec2(static_cast<float>(width), static_cast<float>(height)));
+		Image(Renderer::GetRenderTarget(Renderer_RenderTarget::frame_output), ImVec2(static_cast<float>(width), static_cast<float>(height)));
 
-		// let the input system know if the mouse is within the viewport
-		Input::SetMouseIsInViewport(ImGui::IsItemHovered());
-	
 		// handle model drop
-		if (auto payload = ImGuiSp::receive_drag_drop_payload(ImGuiSp::DragPayloadType::Model))
+		if (auto payload = DragDropPayload::ReceiveDragDropPayload(DragPayloadType::Model))
 		{
-			m_Editor->GetWidget<AssetBrowser>()->ShowMeshImportDialog(std::get<const char *>(payload->data));
+			if (AssetBrowser* assetBrowser = m_Editor->GetWidget<AssetBrowser>())
+			{
+				assetBrowser->ShowMeshImportDialog(std::get<const char *>(payload->GetData()));
+			}
 		}
 	
 		// handle prefab drop
-		if (auto payload = ImGuiSp::receive_drag_drop_payload(ImGuiSp::DragPayloadType::Prefab))
+		if (auto payload = DragDropPayload::ReceiveDragDropPayload(DragPayloadType::Prefab))
 		{
-			if (const char *filePath = std::get<const char *>(payload->data))
+			if (const char *filePath = std::get<const char *>(payload->GetData()))
 			{
-				Entity *entity = Scene::CreateEntity();
-				std::string name = IO::FileSystem::GetFileNameWithoutExtensionFromFilePath(filePath);
-				entity->SetObjectName(name);
-				if (Prefab::LoadFromFile(filePath, entity))
-				{
-					entity->SetPrefabFilePath(filePath);
-				}
-				else
-				{
-					Scene::DestroyEntity(*entity);
-				}
+				Entity entity = Scene::CreateEntity();
+				std::string name = std::filesystem::path(filePath).stem().string();
+				entity.SetObjectName(name);
 			}
 		}
 	
 		Camera *camera = Scene::GetCamera();
 	
 		// double-click to focus on entity
-		if (camera && ImGui::IsMouseDoubleClicked(0) && ImGui::IsItemHovered() &&
-			ImGui::TransformGizmo::allow_picking())
+		if (camera && ImGui::IsMouseDoubleClicked(0) && ImGui::IsItemHovered() && Gizmo::AllowObjectSelection())
 		{
-			camera->Pick();
-			m_Editor->GetWidget<WorldViewer>()->SetSelectedEntity(camera->GetSelectedEntity());
+			Properties::Inspect(camera->GetSelectedEntity());
 			if (camera->GetSelectedEntity())
 			{
-				camera->FocusOnSelectedEntity();
+				camera->SetViewTarget(camera->eye, camera->GetSelectedEntity()->GetPosition());
 			}
 		}
 		// mouse picking (with multi-select via Ctrl handled in Pick())
-		else if (camera && ImGui::IsMouseClicked(0) && ImGui::IsItemHovered() &&
-				 ImGui::TransformGizmo::allow_picking())
+		else if (camera && ImGui::IsMouseClicked(0) && ImGui::IsItemHovered() && Gizmo::AllowObjectSelection())
 		{
-			camera->Pick();
+			camera->GetSelectedEntity();
 	
 			// when ctrl is held, Pick() already handled multi-selection via ToggleSelection(),
 			// so we only update the properties panel without overwriting the camera's selection
@@ -148,44 +143,45 @@ namespace UI
 			}
 			else
 			{
-				m_Editor->GetWidget<WorldViewer>()->SetSelectedEntity(camera->GetSelectedEntity());
+			 Properties::Inspect(camera->GetSelectedEntity());
 			}
 		}
 	
 		// Ctrl+D to duplicate selected entities
 		if (camera && ImGui::IsWindowFocused() && Input::IsKeyPressed(KeyCode::LeftControl) && Input::IsKeyDown(KeyCode::D))
 		{
-			const std::vector<Entity *> &selected_entities = camera->GetSelectedEntities();
-			if (!selected_entities.empty())
+			const std::vector<Entity *> &selectedEntities = camera->GetSelectedEntities();
+			if (!selectedEntities.empty())
 			{
 				// clone all selected entities
-				std::vector<Entity *> cloned_entities;
-				for (Entity *entity : selected_entities)
+				std::vector<Entity *> clonedEntities;
+				for (Entity *entity : selectedEntities)
 				{
 					if (entity)
 					{
-						if (Entity *cloned = entity->Clone())
+						if (Entity *cloned = entity->Clone(this))
 						{
-							cloned_entities.push_back(cloned);
+							clonedEntities.push_back(cloned);
 						}
 					}
 				}
 	
 				// select the cloned entities instead
-				if (!cloned_entities.empty())
+				if (!clonedEntities.empty())
 				{
 					camera->ClearSelection();
-					for (SceneryEditorX::Entity *cloned : cloned_entities)
+					for (SceneryEditorX::Entity *cloned : clonedEntities)
 					{
-						camera->AddToSelection(cloned);
+					    camera->GetSelectedEntities().push_back(cloned);
 					}
-					m_Editor->GetWidget<WorldViewer>()->SetSelectedEntity(cloned_entities[0]);
+
+					Properties::Inspect(clonedEntities[0]);
 				}
 			}
 		}
 	
 		// entity transform gizmo (will only show if entities have been picked)
-		if (cvar_transform_handle.GetValueAs<bool>())
+		if (Gizmo::AllowObjectSelection())
 		{
 			if (camera) // skip if no camera
 			{
@@ -197,11 +193,10 @@ namespace UI
 					{
 						Entity *cameraEntity = camera->GetEntity();
 						xMath::Vec3 dirToEntity = primarySelected->GetPosition() - cameraEntity->GetPosition();
-						dirToEntity.Normalize();
-						if (dirToEntity.Dot(cameraEntity->GetForward()) >=
-							0.0f) // skip when the camera is facing away
+						Normalize(dirToEntity);
+						if (Dot(dirToEntity, cameraEntity->GetForward()) >= 0.0f) // skip when the camera is facing away
 						{
-							ImGui::TransformGizmo::tick();
+							Gizmo::Tick();
 						}
 					}
 				}

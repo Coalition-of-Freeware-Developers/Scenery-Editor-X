@@ -28,22 +28,87 @@
  * Created: 17/3/2025
  * -------------------------------------------------------
  */
-#include <commdlg.h>
-//#include "SceneryEditorX/asset/asset_manager.h"
 #include "file_manager.hpp"
 #include <codecvt>
+#include <commdlg.h>
 #include <tiny_gltf.h>
-#include <tiny_obj_loader.h>
+#include <SDL3/SDL_misc.h>
+#include <SDL3/SDL_process.h>
 #include <SceneryEditorX/core/platform/config/editor_config.hpp>
 #include <SceneryEditorX/core/time/time.h>
-#include <SceneryEditorX/scene/material.h>
 #include <SceneryEditorX/scene/model_asset.h>
 #include <SceneryEditorX/utils/string_utils.h>
+#include <SceneryEditorX/asset/asset_extensions.h>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX::IO
 {
+
+	// create a silent process (no visible console window) without waiting
+	// caller is responsible for calling SDL_WaitProcess and SDL_DestroyProcess
+	// note: using STDIO_APP for stdout/stderr helps ensure no console window appears
+	static SDL_Process* CreateSilentProcess(const std::vector<std::string>& args)
+	{
+		std::vector<const char*> c_args;
+		for (const auto& arg : args)
+		{
+			c_args.push_back(arg.c_str());
+		}
+
+		c_args.push_back(nullptr);
+
+		SDL_PropertiesID props = SDL_CreateProperties();
+		SDL_SetPointerProperty(props, SDL_PROP_PROCESS_CREATE_ARGS_POINTER, const_cast<char**>(c_args.data()));
+		SDL_SetNumberProperty(props, SDL_PROP_PROCESS_CREATE_STDIN_NUMBER, SDL_PROCESS_STDIO_NULL);
+		SDL_SetNumberProperty(props, SDL_PROP_PROCESS_CREATE_STDOUT_NUMBER, SDL_PROCESS_STDIO_APP);
+		SDL_SetNumberProperty(props, SDL_PROP_PROCESS_CREATE_STDERR_NUMBER, SDL_PROCESS_STDIO_APP);
+		SDL_SetBooleanProperty(props, SDL_PROP_PROCESS_CREATE_BACKGROUND_BOOLEAN, true);
+
+		SDL_Process* process = SDL_CreateProcessWithProperties(props);
+		SDL_DestroyProperties(props);
+		return process;
+	}
+
+	// run a process silently (no visible console window) and wait for completion
+	// note: always using STDIO_APP ensures no console window appears on any platform
+	static void RunSilentProcess(const std::vector<std::string>& args, std::string * output = nullptr)
+	{
+		std::vector<const char*> c_args;
+		for (const auto& arg : args)
+		{
+			c_args.push_back(arg.c_str());
+		}
+
+		c_args.push_back(nullptr);
+	
+		SDL_PropertiesID props = SDL_CreateProperties();
+		SDL_SetPointerProperty(props, SDL_PROP_PROCESS_CREATE_ARGS_POINTER, const_cast<char**>(c_args.data()));
+		SDL_SetNumberProperty(props, SDL_PROP_PROCESS_CREATE_STDIN_NUMBER, SDL_PROCESS_STDIO_NULL);
+		SDL_SetNumberProperty(props, SDL_PROP_PROCESS_CREATE_STDOUT_NUMBER, SDL_PROCESS_STDIO_APP);
+		SDL_SetNumberProperty(props, SDL_PROP_PROCESS_CREATE_STDERR_NUMBER, SDL_PROCESS_STDIO_APP);
+		SDL_SetBooleanProperty(props, SDL_PROP_PROCESS_CREATE_BACKGROUND_BOOLEAN, true);
+	
+		SDL_Process* process = SDL_CreateProcessWithProperties(props);
+		SDL_DestroyProperties(props);
+	
+		if (process)
+		{
+			// read and wait - this drains stdout/stderr and waits for completion
+			size_t data_size = 0;
+			int exit_code = 0;
+			char* data = static_cast<char*>(SDL_ReadProcess(process, &data_size, &exit_code));
+			if (output && data && data_size > 0)
+			{
+				*output = std::string(data, data_size);
+			}
+			if (data)
+				SDL_free(data);
+	
+			SDL_DestroyProcess(process);
+		}
+	}
+
 	// -------------------------------------------------------
 
 	std::filesystem::path FileSystem::GetWorkingDir()
@@ -82,7 +147,10 @@ namespace SceneryEditorX::IO
 			return false;
 
 		if (std::filesystem::is_directory(filepath))
+		{
 			return std::filesystem::remove_all(filepath) > 0;
+		}
+
 		return std::filesystem::remove(filepath);
 	}
 
@@ -96,14 +164,14 @@ namespace SceneryEditorX::IO
 		return Copy(filepath, dest / filepath.filename());
 	}
 
-	bool FileSystem::Exists(const std::filesystem::path &filepath)
-	{
-		return std::filesystem::exists(filepath);
-	}
-
 	bool FileSystem::Exists(const std::string &filepath)
 	{
 		return std::filesystem::exists(std::filesystem::path(filepath));
+	}
+
+	bool FileSystem::Exists(const std::filesystem::path &filepath)
+	{
+		return std::filesystem::exists(filepath);
 	}
 
 	FileStatus FileSystem::TryOpenFile(const std::filesystem::path &filePath)
@@ -114,16 +182,14 @@ namespace SceneryEditorX::IO
 		if (!Exists(filePath))
 			return FileStatus::NotFound;
 
-	#ifdef SEDX_PLATFORM_WINDOWS
-		const HANDLE handle = CreateFileW(
-			filePath.wstring().c_str(),
-			GENERIC_READ,
-			FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
-			nullptr,
-			OPEN_EXISTING,
-			FILE_ATTRIBUTE_NORMAL,
-			nullptr
-		);
+#ifdef SEDX_PLATFORM_WINDOWS
+		const HANDLE handle = CreateFileW(reinterpret_cast<LPCWSTR>(filePath.wstring().c_str()),
+										  GENERIC_READ,
+										  FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+										  nullptr,
+										  OPEN_EXISTING,
+										  FILE_ATTRIBUTE_NORMAL,
+										  nullptr);
 
 		if (handle != INVALID_HANDLE_VALUE)
 		{
@@ -143,7 +209,7 @@ namespace SceneryEditorX::IO
 		default:
 			return FileStatus::UnknownError;
 		}
-	#else
+#else
 		std::ifstream file(filePath, std::ios::binary);
 		if (file.is_open())
 		{
@@ -152,7 +218,19 @@ namespace SceneryEditorX::IO
 		}
 
 		return FileStatus::UnknownError;
-	#endif
+#endif
+	}
+
+	FileStatus FileSystem::TryOpenFileAndWait(const std::filesystem::path &filepath, uint64_t waitms)
+	{
+		FileStatus fileStatus = TryOpenFile(filepath);
+		if (fileStatus == FileStatus::Locked)
+		{
+			using namespace std::chrono_literals;
+			std::this_thread::sleep_for(operator""ms((unsigned long long)waitms));
+			return TryOpenFile(filepath);
+		}
+		return fileStatus;
 	}
 
 	bool FileSystem::Move(const std::filesystem::path &oldFilepath, const std::filesystem::path &newFilepath)
@@ -198,31 +276,10 @@ namespace SceneryEditorX::IO
 		return std::filesystem::is_directory(filepath);
 	}
 
-	FileStatus FileSystem::TryOpenFileAndWait(const std::filesystem::path &filepath, uint64_t waitms)
-	{
-		FileStatus fileStatus = TryOpenFile(filepath);
-		if (fileStatus == FileStatus::Locked)
-		{
-			using namespace std::chrono_literals;
-			std::this_thread::sleep_for(operator""ms((unsigned long long)waitms));
-			return TryOpenFile(filepath);
-		}
-		return fileStatus;
-	}
-
 	/// returns true <=> fileA was last modified more recently than fileB
 	bool FileSystem::IsNewer(const std::filesystem::path &fileA, const std::filesystem::path &fileB)
 	{
 		return std::filesystem::last_write_time(fileA) > std::filesystem::last_write_time(fileB);
-	}
-
-	uint64_t FileSystem::GetLastWriteTime(const std::filesystem::path &filepath)
-	{
-		if (!Exists(filepath))
-			return 0;
-
-		const auto writeTime = std::filesystem::last_write_time(filepath);
-		return static_cast<uint64_t>(writeTime.time_since_epoch().count());
 	}
 
 	bool FileSystem::ShowFileInExplorer(const std::filesystem::path &path)
@@ -231,27 +288,32 @@ namespace SceneryEditorX::IO
 		if (!Exists(absolutePath))
 			return false;
 
-	#ifdef SEDX_PLATFORM_WINDOWS
+#ifdef SEDX_PLATFORM_WINDOWS
 		std::string cmd = std::format("explorer.exe /select,\"{0}\"", absolutePath.string());
-	#elif defined(SEDX_PLATFORM_LINUX)
+#elif defined(SEDX_PLATFORM_LINUX)
 		std::string cmd = std::format("xdg-open \"{0}\"", dirname(absolutePath.string().data()));
-	#endif
+#endif
 		system(cmd.c_str());
 		return true;
 	}
 
 	bool FileSystem::OpenDirectoryInExplorer(const std::filesystem::path &path)
 	{
-	#ifdef SEDX_PLATFORM_WINDOWS
+#ifdef SEDX_PLATFORM_WINDOWS
 		auto absolutePath = std::filesystem::canonical(path);
 		if (!Exists(absolutePath))
 			return false;
 
-		ShellExecute(nullptr, L"explore", absolutePath.wstring().c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+		ShellExecute(nullptr,
+					 L"explore",
+					 reinterpret_cast<LPCWSTR>(absolutePath.wstring().c_str()),
+					 nullptr,
+					 nullptr,
+					 SW_SHOWNORMAL);
 		return true;
-	#elif defined(SEDX_PLATFORM_LINUX)
+#elif defined(SEDX_PLATFORM_LINUX)
 		return ShowFileInExplorer(path);
-	#endif
+#endif
 	}
 
 	std::filesystem::path FileSystem::GetUniqueFileName(const std::filesystem::path &filepath)
@@ -268,15 +330,19 @@ namespace SceneryEditorX::IO
 					return "0" + ToString(counter);
 
 				return ToString(counter);
-			}(); /// Pad with 0 if < 10;
+			}(); // Pad with 0 if < 10;
 
 			std::string newFileName = std::format("{} ({})", Utils::RemoveExtension(filepath.filename().string()), counterStr);
 
 			if (filepath.has_extension())
+			{
 				newFileName = std::format("{}{}", newFileName, filepath.extension().string());
+			}
 
 			if (std::filesystem::exists(filepath.parent_path() / newFileName))
+			{
 				return checkID(checkID);
+			}
 
 			return filepath.parent_path() / newFileName;
 		};
@@ -284,15 +350,26 @@ namespace SceneryEditorX::IO
 		return checkID(checkID);
 	}
 
+	uint64_t FileSystem::GetLastWriteTime(const std::filesystem::path &filepath)
+	{
+		if (!Exists(filepath))
+			return 0;
+
+		const auto writeTime = std::filesystem::last_write_time(filepath);
+		return static_cast<uint64_t>(writeTime.time_since_epoch().count());
+	}
+
 	bool FileSystem::IsEmptyOrWhitespace(const std::string &var)
 	{
 		// Check if it's empty
-		if (var.empty()) return true;
+		if (var.empty())
+			return true;
 
 		// Check if it's made out of whitespace characters
 		for (char _char : var)
 		{
-			if (!isspace(_char))  return false;
+			if (!isspace(_char))
+				return false;
 		}
 
 		return true;
@@ -300,7 +377,8 @@ namespace SceneryEditorX::IO
 
 	bool FileSystem::IsAlphanumeric(const std::string &var)
 	{
-		if (IsEmptyOrWhitespace(var)) return false;
+		if (IsEmptyOrWhitespace(var))
+			return false;
 
 		for (char _char : var)
 		{
@@ -326,7 +404,8 @@ namespace SceneryEditorX::IO
 		}
 
 		// If this is a valid path, return it (otherwise it's a name)
-		if (IsDirectory(textLegal)) return textLegal;
+		if (IsDirectory(textLegal))
+			return textLegal;
 
 		// Remove slashes which are illegal characters for names
 		illegal = "\\/";
@@ -355,7 +434,9 @@ namespace SceneryEditorX::IO
 		return position != std::string::npos ? str.substr(position + exp.length()) : "";
 	}
 
-	std::string FileSystem::GetStringBetweenExpressions(const std::string &str, const std::string &exp_a, const std::string &exp_b)
+	std::string FileSystem::GetStringBetweenExpressions(const std::string &str,
+														const std::string &exp_a,
+														const std::string &exp_b)
 	{
 		// ("The quick brown fox", "The ", " brown") -> "quick"
 		const std::regex baseRegex(exp_a + "(.*)" + exp_b);
@@ -364,7 +445,8 @@ namespace SceneryEditorX::IO
 		{
 			// The first sub_match is the whole string; the next
 			// sub_match is the first parenthesized expression.
-			if (baseMatch.size() == 2) return baseMatch[1].str();
+			if (baseMatch.size() == 2)
+				return baseMatch[1].str();
 		}
 
 		return str;
@@ -458,14 +540,26 @@ namespace SceneryEditorX::IO
 
 		return result.generic_string();
 	}
+	std::string FileSystem::GetParentDirectory(const std::string &path)
+	{
+		auto parentPath = std::filesystem::path(path).parent_path();
+
+		// If there is no parent path, return path as is
+		if (parentPath.empty())
+			return path;
+
+		return parentPath.generic_string();
+	}
 
 	std::string FileSystem::GetFileNameWithoutExtensionFromFilePath(const std::string &path)
 	{
-		const auto file_name = GetFileNameFromFilePath(path);
-		const size_t last_index = file_name.find_last_of('.');
+		const auto fileName = GetFileNameFromFilePath(path);
+		const size_t lastIndex = fileName.find_last_of('.');
 
-		if (last_index != std::string::npos)
-			return file_name.substr(0, last_index);
+		if (lastIndex != std::string::npos)
+		{
+			return fileName.substr(0, lastIndex);
+		}
 
 		return "";
 	}
@@ -477,18 +571,20 @@ namespace SceneryEditorX::IO
 
 	std::vector<std::string> FileSystem::GetFilesInDirectory(const std::string &path)
 	{
-		std::vector<std::string> file_paths;
+		std::vector<std::string> filePaths;
 		const std::filesystem::directory_iterator it_end; // default construction yields past-the-end
 		for (std::filesystem::directory_iterator it(path); it != it_end; ++it)
 		{
 			if (!std::filesystem::is_regular_file(it->status()))
+			{
 				continue;
+			}
 
 			try
 			{
 				// a crash is possible if the characters are
 				// something that can't be converted, like Russian.
-				file_paths.emplace_back(it->path().string());
+				filePaths.emplace_back(it->path().string());
 			}
 			catch (std::system_error &e)
 			{
@@ -496,7 +592,153 @@ namespace SceneryEditorX::IO
 			}
 		}
 
-		return file_paths;
+		return filePaths;
+	}
+
+	bool FileSystem::Delete(const std::string &path)
+	{
+		try
+		{
+			if (std::filesystem::exists(path) && std::filesystem::remove_all(path))
+				return true;
+		}
+		catch (std::filesystem::filesystem_error &e)
+		{
+			SEDX_CORE_ERROR_TAG("File Manager", "Failed to delete path: %s. Error: %s", path.c_str(), e.what());
+		}
+
+		return false;
+	}
+
+	bool FileSystem::IsExecutableInPath(const std::string &executable)
+	{
+		// get PATH using SDL3 cross-platform environment api
+		const char *path_env = SDL_GetEnvironmentVariable(SDL_GetEnvironment(), "PATH");
+		if (!path_env)
+			return false;
+
+		std::string path_str = path_env;
+
+		// detect delimiter and suffix based on COMSPEC presence (runtime detection)
+		const char *comspec = SDL_GetEnvironmentVariable(SDL_GetEnvironment(), "COMSPEC");
+		char delimiter = comspec ? ';' : ':';
+		std::string exe_suffix = comspec ? ".exe" : "";
+
+		// split PATH and search for executable
+		std::vector<std::string> paths;
+		size_t start = 0;
+		size_t end;
+		while ((end = path_str.find(delimiter, start)) != std::string::npos)
+		{
+			paths.emplace_back(path_str.substr(start, end - start));
+			start = end + 1;
+		}
+		paths.emplace_back(path_str.substr(start));
+
+		for (const auto &dir : paths)
+		{
+			std::filesystem::path exe_path = std::filesystem::path(dir) / (executable + exe_suffix);
+			std::error_code ec;
+			if (std::filesystem::exists(exe_path, ec) && std::filesystem::is_regular_file(exe_path, ec))
+				return true;
+		}
+
+		return false;
+	}
+
+	bool FileSystem::CreateArchive(const std::string &path, const std::vector<std::string> &includePaths)
+	{
+		if (includePaths.empty())
+		{
+			SEDX_CORE_ERROR_TAG("File Manager", "No paths provided to archive");
+			return false;
+		}
+
+
+		/**
+		 * TODO: Bundle 7z with the editor if the installer doesn't detect an existing user installation of 7Zip 
+		 * and use a fixed relative path to ensure it is always found
+		 */
+		std::string seven_zip_exe;
+
+		// find 7z executable - check all possible locations and names at runtime
+		std::vector<std::string> candidates = {"7z.exe", "scripts/7z.exe", "7z", "7za"};
+
+		for (const auto &candidate : candidates)
+		{
+			if (Exists(candidate) || IsExecutableInPath(candidate))
+			{
+				seven_zip_exe = candidate;
+				break;
+			}
+		}
+
+		if (seven_zip_exe.empty())
+		{
+			SEDX_CORE_ERROR_TAG("File Manager", "7z not found. Please ensure it exists in the current directory, scripts/, or PATH.");
+			return false;
+		}
+
+		// delete existing archive if it exists
+		if (Exists(path))
+		{
+			Delete(path);
+		}
+
+		SEDX_CORE_INFO_TAG("File Manager", "Creating archive: %s", path.c_str());
+
+		// build command arguments: 7z a archive.7z file1 file2 dir1 ...
+		std::vector<std::string> args = {seven_zip_exe, "a", path};
+		for (const std::string &path : includePaths)
+		{
+			args.push_back(path);
+		}
+		// add silent flags
+		args.emplace_back("-bso0");
+		args.emplace_back("-bsp0");
+
+		RunSilentProcess(args);
+
+		// verify archive was created
+		if (!Exists(path))
+		{
+			SEDX_CORE_ERROR_TAG("File Manager", "Failed to create archive: %s", path.c_str());
+			return false;
+		}
+
+		SEDX_CORE_INFO_TAG("File Manager", "Archive created: %s", path.c_str());
+		return true;
+	}
+
+	void FileSystem::OpenUrl(const char *url)
+	{
+		SDL_OpenURL(url);
+	}
+
+	void FileSystem::OpenUrl(const std::string &url)
+	{
+		SDL_OpenURL(url.c_str());
+	}
+
+	bool FileSystem::IsSceneFile(const std::string &path)
+	{
+	    return IsValidExtension(path, SceneryEditorX::AssetType::Scene);
+	}
+
+	bool FileSystem::IsValidExtension(const std::string &path, SceneryEditorX::AssetType assetType)
+	{
+		if (path.empty())
+			return false;
+
+		// Get extension and normalize to lower-case for comparison
+		std::string ext = Utils::String::ToLowerCopy(Utils::GetExtension(path));
+
+		// Look up extension in the global asset extension map
+		auto it = SceneryEditorX::s_AssetExtensionMap.find(ext);
+		if (it == SceneryEditorX::s_AssetExtensionMap.end())
+			return false;
+
+		return it->second == assetType;
 	}
 
 	// -------------------------------------------------------

@@ -37,6 +37,8 @@
 
 namespace SceneryEditorX
 {
+	class ImageResource;
+
 	/**
 	 * @enum MaterialProperty
 	 * @brief Material scalar property identifiers used by renderer passes.
@@ -54,9 +56,37 @@ namespace SceneryEditorX
 	 */
 	enum class MaterialTextureType : uint8_t
 	{
-		Color   = 0,
-		Normal  = 1,
-		MaxEnum = 255
+		Color		= 0,
+		Normal		= 1,
+		Greyscale	= 2,
+		MaxEnum		= 255
+	};
+
+	/**
+	 * @enum MapBits
+	 * @brief Material map bit identifiers.
+	 */
+	enum class MapBits : uint8_t
+	{
+		Null				= 0,
+		Albedo				= BIT(0),
+		Normal				= BIT(1),
+		MRAO				= BIT(2), // Metalness in R, Roughness in G, Ambient Occlusion in B
+		Emission			= BIT(3),
+		Metalness			= BIT(4),
+		Roughness			= BIT(5),
+		AlphaMask			= BIT(6),
+		AmbientOcclusion	= BIT(7),
+		Specular			= BIT(8),
+		Glossiness          = BIT(9),
+		DetailMap			= BIT(10),
+		BentNormal			= BIT(11),
+		Height				= BIT(12),
+		Mask0				= BIT(13),
+		Mask1				= BIT(14),
+		Mask2				= BIT(15),
+		Mask3				= BIT(16),
+		MaxEnum				= 255
 	};
 
 	/**
@@ -137,12 +167,10 @@ namespace SceneryEditorX
 		virtual Mat3& GetMatrix3(const std::string& name) = 0;
 		virtual Mat4& GetMatrix4(const std::string& name) = 0;
 
-		/*
-		virtual Ref<Texture2D> GetTexture2D(const std::string& name) = 0;
-		virtual Ref<TextureCube> GetTextureCube(const std::string& name) = 0;
-		virtual Ref<Texture2D> TryGetTexture2D(const std::string& name) = 0;
-		virtual Ref<TextureCube> TryGetTextureCube(const std::string& name) = 0;
-		*/
+		virtual Ref<ImageResource> GetTexture2D(const std::string& name) = 0;
+		virtual Ref<ImageResource> GetTextureCube(const std::string& name) = 0;
+		virtual Ref<ImageResource> TryGetTexture2D(const std::string& name) = 0;
+		virtual Ref<ImageResource> TryGetTextureCube(const std::string& name) = 0;
 
 #if 0
 		template<typename T>
@@ -191,13 +219,15 @@ namespace SceneryEditorX
 
 	// -------------------------------------------------------
 
-	class MaterialAsset : public Asset
+	class MaterialAsset : public IResource, public Asset
 	{
 	public:
-		MaterialAsset() : color(1.0f), emission(0.0f), metallic(0.0f), roughness(1.0f) {}
+		MaterialAsset() : IResource(ResourceType::Material), color(1.0f), emission(0.0f), metallic(0.0f), roughness(1.0f) {}
 		explicit MaterialAsset(const std::string & path);
 		virtual ~MaterialAsset() override;
 		//virtual void Serialize(Serializer &ser);
+
+		static const uint32_t SLOTS_PER_TEXTURE = 4;
 
 		// -------------------------------------------------------
 
@@ -236,16 +266,16 @@ namespace SceneryEditorX
 
 		// -------------------------------------------------------
 
-		/*
-		Ref<Texture2D> GetAlbedoMap();
-		Ref<Texture2D> GetRoughnessMap() const;
-		Ref<Texture2D> GetMetalnessMap() const;
-		Ref<Texture2D> GetNormalMap() const;
-		*/
+		Ref<ImageResource> GetAlbedoMap();
+		Ref<ImageResource> GetRoughnessMap() const;
+		Ref<ImageResource> GetMetalnessMap() const;
+		Ref<ImageResource> GetNormalMap() const;
 
 		Ref<Material> GetMaterial() const { return m_Material; }
 		void SetMaterial(const Ref<Material> &material) { m_Material = material; }
 		bool IsTransparent() const { return m_Transparent; }
+
+		ImageResource *GetTexture(MaterialTextureType materialTexture, uint32_t slot);
 
 		// -------------------------------------------------------
 
@@ -253,13 +283,12 @@ namespace SceneryEditorX
 		Vec3 emission = Vec3(0.0f);
 		float metallic = 0.0f;
 		float roughness = 1.0f;
-		/*
-		Ref<TextureAsset> aoMap;
-		Ref<TextureAsset> colorMap;
-		Ref<TextureAsset> normalMap;
-		Ref<TextureAsset> emissionMap;
-		Ref<TextureAsset> metallicRoughnessMap;
-		*/
+
+		//Ref<ImageResource> aoMap;
+		//Ref<ImageResource> colorMap;
+		//Ref<ImageResource> normalMap;
+		//Ref<ImageResource> emissionMap;
+		//Ref<ImageResource> metallicRoughnessMap;
 
 	private:
 		void SetDefaults() const;

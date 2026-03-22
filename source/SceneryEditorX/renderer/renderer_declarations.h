@@ -29,8 +29,8 @@
  * -------------------------------------------------------
  */
 #pragma once
-#include "SceneryEditorX/scene/material.h"
-#include <SceneryEditorX/scene/lights.h>
+#include <SceneryEditorX/scene/components/lights.h>
+#include <SceneryEditorX/scene/components/renderable.h>
 
 // -------------------------------------------------------
 
@@ -113,6 +113,27 @@ namespace SceneryEditorX
 		nrd_out_spec_radiance_hitdist,
 		// debug
 		debug_output,
+		MaxEnum
+	};
+
+	/**
+	 * @enum Renderer_StandardTexture
+	 * @brief Enumeration of standard textures used by the renderer.
+	 *
+	 * This enum provides a type-safe way to identify and reference
+	 * the different standard textures used in the rendering system.
+	 */
+	enum class Renderer_StandardTexture : uint8_t
+	{
+		Noise_perlin,
+		Noise_blue, // single blue noise texture (was 8, only 1 used)
+		Checkerboard,
+		Gizmo_light_directional,
+		Gizmo_light_point,
+		Gizmo_light_spot,
+		Gizmo_audio_source,
+		Black,
+		White,
 		MaxEnum
 	};
 
@@ -443,22 +464,6 @@ namespace SceneryEditorX
 	};
 
 	// -------------------------------------------------------
-	// MeshType: standard geometry used in built-in passes
-	// -------------------------------------------------------
-
-	/**
-	 * @enum MeshType
-	 * @brief Identifies built-in primitive meshes managed by the Renderer.
-	 */
-	enum class MeshType : uint8_t
-	{
-		Quad,
-		Cube,
-		Sphere,
-		MaxEnum
-	};
-
-	// -------------------------------------------------------
 	// Stage alias for shader-type shorthand
 	// -------------------------------------------------------
 	// Stage is defined in vulkan/enums.h; ShaderType is an alias used in pass code.
@@ -477,43 +482,6 @@ namespace SceneryEditorX
 	inline constexpr uint32_t RENDERER_MAX_DRAW_CALLS  = 4096;
 	inline constexpr uint32_t MAX_MIP_COUNT            = 16;
 #pragma endregion
-
-	// -------------------------------------------------------
-	// Minimal scene-object stubs used by renderer passes.
-	// Full definitions live in scene/ once those subsystems are complete.
-	// -------------------------------------------------------
-
-	/**
-	 * @class Renderable
-	 * @brief Stub renderable class providing the interface consumed by renderer passes.
-	 */
-	class Renderable : public RefCounted
-	{
-	public:
-		virtual ~Renderable() = default;
-		virtual Material*   GetMaterial() const                          { return nullptr; }
-		virtual Entity*     GetEntity() const                            { return nullptr; }
-		virtual Buffer*     GetVertexBuffer() const                      { return nullptr; }
-		virtual Buffer*     GetInstanceBuffer() const                    { return nullptr; }
-		virtual Buffer*     GetIndexBuffer() const                       { return nullptr; }
-		virtual uint32_t    GetIndexCount(uint32_t /*lod*/ = 0) const    { return 0; }
-		virtual uint32_t    GetIndexOffset(uint32_t /*lod*/ = 0) const   { return 0; }
-		virtual uint32_t    GetVertexOffset(uint32_t /*lod*/ = 0) const  { return 0; }
-	};
-
-	/**
-	 * @class Mesh
-	 * @brief Stub mesh class providing the interface consumed by renderer passes.
-	 */
-	class Mesh
-	{
-	public:
-		virtual ~Mesh() = default;
-		virtual Buffer*   GetVertexBuffer() const    { return nullptr; }
-		virtual Buffer*   GetIndexBuffer() const     { return nullptr; }
-		virtual uint32_t  GetGlobalIndexOffset() const  { return 0; }
-		virtual uint32_t  GetGlobalVertexOffset() const { return 0; }
-	};
 
 	// -------------------------------------------------------
 	// Renderer_DrawCall: per-draw submission record
