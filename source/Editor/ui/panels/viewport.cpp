@@ -216,7 +216,26 @@ namespace UI
 	
 	void Viewport::SetVisible(bool visible)
 	{
+		m_IsVisible = visible;
+	}
 
+	void Viewport::OnVisible()
+	{
+		m_IsVisible = true;
+	}
+
+	void Viewport::OnInvisible()
+	{
+		m_IsVisible = false;
+	}
+
+	void Viewport::OnPreBegin()
+	{
+		const ImVec2 min = ImGui::GetCursorScreenPos();
+		const ImVec2 avail = ImGui::GetContentRegionAvail();
+
+		m_ViewportBounds[0] = Vec2(min.x, min.y);
+		m_ViewportBounds[1] = Vec2(min.x + avail.x, min.y + avail.y);
 	}
 
 }

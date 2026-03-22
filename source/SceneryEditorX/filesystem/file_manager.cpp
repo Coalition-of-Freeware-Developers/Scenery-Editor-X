@@ -316,6 +316,33 @@ namespace SceneryEditorX::IO
 #endif
 	}
 
+	bool FileSystem::OpenExternally(const std::filesystem::path &path)
+	{
+		if (path.empty())
+			return false;
+
+		const std::filesystem::path absolutePath = std::filesystem::absolute(path);
+
+		if (!Exists(absolutePath))
+			return false;
+
+#ifdef SEDX_PLATFORM_WINDOWS
+		const HINSTANCE result = ShellExecute(nullptr,
+			L"open",
+			reinterpret_cast<LPCWSTR>(absolutePath.wstring().c_str()),
+			nullptr,
+			nullptr,
+			SW_SHOWNORMAL);
+
+		return reinterpret_cast<intptr_t>(result) > 32;
+#elif defined(SEDX_PLATFORM_LINUX)
+		std::string command = std::format("xdg-open \"{}\"", absolutePath.string());
+		return system(command.c_str()) == 0;
+#else
+		return false;
+#endif
+	}
+
 	std::filesystem::path FileSystem::GetUniqueFileName(const std::filesystem::path &filepath)
 	{
 		if (!Exists(filepath))
@@ -723,6 +750,18 @@ namespace SceneryEditorX::IO
 	bool FileSystem::IsSceneFile(const std::string &path)
 	{
 	    return IsValidExtension(path, SceneryEditorX::AssetType::Scene);
+	}
+
+	bool FileDialogs::IsTexture(const std::filesystem::path &path)
+	{
+		const std::string ext = Utils::String::ToLowerCopy(path.extension().string());
+		return ext == ".jpg" || ext == ".png" || ext == ".jpeg" || ext == ".tga" || ext == ".bmp";
+	}
+
+	bool FileDialogs::IsModel(const std::filesystem::path &path)
+	{
+		const std::string ext = Utils::String::ToLowerCopy(path.extension().string());
+		return ext == ".obj" || ext == ".gltf" || ext == ".glb" || ext == ".fbx" || ext == ".3ds";
 	}
 
 	bool FileSystem::IsValidExtension(const std::string &path, SceneryEditorX::AssetType assetType)

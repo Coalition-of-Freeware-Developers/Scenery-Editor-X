@@ -35,6 +35,7 @@
 #include "components/wind.h"
 
 #include <algorithm>
+#include <filesystem>
 #include <SceneryEditorX/core/window/window.h>
 #include <SceneryEditorX/scene/camera.h>
 #include <entt/entity/fwd.hpp>
@@ -163,6 +164,30 @@ namespace SceneryEditorX
 	std::vector<Entity*> Scene::GetEntities()
 	{
 		return s_EntityPointers;
+	}
+
+	bool Scene::SaveToFile(std::string filePath)
+	{
+		if (filePath.empty())
+		{
+			return false;
+		}
+
+		s_FilePath = std::move(filePath);
+		s_SceneName = std::filesystem::path(s_FilePath).stem().string();
+		return true;
+	}
+
+	bool Scene::LoadFromFile(const std::string& file_path)
+	{
+		if (file_path.empty())
+		{
+			return false;
+		}
+
+		s_FilePath = file_path;
+		s_SceneName = std::filesystem::path(file_path).stem().string();
+		return true;
 	}
 
 	Entity Scene::CreateEntity(const std::string& name)

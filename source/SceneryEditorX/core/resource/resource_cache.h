@@ -309,7 +309,7 @@ namespace SceneryEditorX
 		 * @brief Retrieves the data directory.
 		 * @return The path of the data directory.
 		 */
-		static const char *GetDataDirectory();
+		static const char *GetResourceDirectory();
 
 		/**
 		 * @brief Retrieves the list of resources.

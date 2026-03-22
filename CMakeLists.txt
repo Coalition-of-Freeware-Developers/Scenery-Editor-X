@@ -295,6 +295,7 @@ MESSAGE(STATUS "=================================================")
 # Packages and dependencies
 ############################################
 FIND_PACKAGE(Vulkan REQUIRED)
+FIND_PACKAGE(Freetype REQUIRED)
 FIND_PACKAGE(Stb REQUIRED)
 FIND_PACKAGE(spdlog CONFIG REQUIRED)
 FIND_PACKAGE(msdfgen CONFIG REQUIRED)

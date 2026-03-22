@@ -201,26 +201,26 @@ namespace SceneryEditorX
 		{
 			case Layout::ImageLayout::Undefined:
 				return {
-				    .accessMask = VK_ACCESS_2_NONE, 
-				    .stageFlags = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT 
+					.accessMask = VK_ACCESS_2_NONE, 
+					.stageFlags = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT 
 				};
 			case Layout::ImageLayout::General:
 				return {
-				    .accessMask = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT,
-				    .stageFlags = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT 
+					.accessMask = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT,
+					.stageFlags = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT 
 				};
 			case Layout::ImageLayout::ColorAttachment:
 			case Layout::ImageLayout::Attachment:
 				return {
-				    .accessMask = VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
-				    .stageFlags = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT 
+					.accessMask = VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+					.stageFlags = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT 
 				};
 			case Layout::ImageLayout::DepthStencilAttachment:
 			case Layout::ImageLayout::DepthAttachment:
 			case Layout::ImageLayout::StencilAttachment:
 				return {
-				    .accessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-				    .stageFlags = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT 
+					.accessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+					.stageFlags = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT 
 				};
 			case Layout::ImageLayout::DepthStencilRead:
 			case Layout::ImageLayout::DepthRead:
@@ -228,39 +228,39 @@ namespace SceneryEditorX
 			case Layout::ImageLayout::DepthReadStencilAttachment:
 			case Layout::ImageLayout::DepthAttachmentStencilRead:
 				return {
-				    .accessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT,
-				    .stageFlags = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT 
+					.accessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT,
+					.stageFlags = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT 
 				};
 			case Layout::ImageLayout::ShaderRead:
 			case Layout::ImageLayout::Read:
 				return {
-				    .accessMask = VK_ACCESS_2_SHADER_READ_BIT,
-				    .stageFlags = VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT 
+					.accessMask = VK_ACCESS_2_SHADER_READ_BIT,
+					.stageFlags = VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT 
 				};
 			case Layout::ImageLayout::TransferSrc:
 				return {
-				    .accessMask = VK_ACCESS_2_TRANSFER_READ_BIT, 
-				    .stageFlags = VK_PIPELINE_STAGE_2_TRANSFER_BIT 
+					.accessMask = VK_ACCESS_2_TRANSFER_READ_BIT, 
+					.stageFlags = VK_PIPELINE_STAGE_2_TRANSFER_BIT 
 				};
 			case Layout::ImageLayout::TransferDst:
 				return {
-				    .accessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT, 
-				    .stageFlags = VK_PIPELINE_STAGE_2_TRANSFER_BIT
+					.accessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT, 
+					.stageFlags = VK_PIPELINE_STAGE_2_TRANSFER_BIT
 				};
 			case Layout::ImageLayout::Present:
 				return {
-				    .accessMask = VK_ACCESS_2_NONE, 
-				    .stageFlags = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT 
+					.accessMask = VK_ACCESS_2_NONE, 
+					.stageFlags = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT 
 				};
 			case Layout::ImageLayout::FragmentShadingRate:
 				return {
-				    .accessMask = VK_ACCESS_2_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR,
-				    .stageFlags = VK_PIPELINE_STAGE_2_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR 
+					.accessMask = VK_ACCESS_2_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR,
+					.stageFlags = VK_PIPELINE_STAGE_2_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR 
 				};
 			default:
 				return {
-				    .accessMask = VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT,
-				    .stageFlags = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT
+					.accessMask = VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT,
+					.stageFlags = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT
 				};
 		}
 	}
@@ -341,7 +341,7 @@ namespace SceneryEditorX
 		Ref<QueueManager> queueManager = device->GetQueueManager();
 		SEDX_CORE_ASSERT(queueManager.IsValid(), "QueueManager must be valid for immediate execution");
 
-	    struct ImmediateState
+		struct ImmediateState
 		{
 			std::unique_ptr<CommandPool> pool;
 			Ref<CommandList> cmdList;
@@ -679,6 +679,32 @@ namespace SceneryEditorX
 		SEDX_CORE_ASSERT(img != nullptr, "ImageResource must be valid");
 		SEDX_CORE_ASSERT(img->Get() != nullptr && *img->Get() != VK_NULL_HANDLE, "ImageResource must contain a valid VkImage");
 		ClearTexture(static_cast<void*>(img->Get()), color);
+	}
+
+	void CommandList::UpdateBuffer(Buffer* buffer, const uint64_t offset, const uint64_t size, const void* data)
+	{
+		SEDX_CORE_ASSERT(buffer != nullptr, "Buffer must be valid");
+		SEDX_CORE_ASSERT(data != nullptr, "Source data must be valid");
+
+		const uint64_t totalSize = static_cast<uint64_t>(buffer->GetStride()) * static_cast<uint64_t>(buffer->GetElementCount());
+		SEDX_CORE_ASSERT(size > 0, "Update size must be greater than zero");
+		SEDX_CORE_ASSERT(offset + size <= totalSize, "Update range exceeds destination buffer bounds");
+
+		void* destination = buffer->GetMappedData();
+		const bool needsUnmap = destination == nullptr;
+
+		if (!destination)
+		{
+			destination = buffer->Map();
+		}
+
+		SEDX_CORE_ASSERT(destination != nullptr, "Failed to map destination buffer");
+		memcpy(static_cast<uint8_t*>(destination) + offset, data, static_cast<size_t>(size));
+
+		if (needsUnmap)
+		{
+			buffer->Unmap();
+		}
 	}
 
 	void CommandList::SetIndexBuffer(const Buffer *indexBuffer)

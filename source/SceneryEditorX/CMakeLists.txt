@@ -71,6 +71,9 @@ FILE(GLOB SERIALIZER_FILES "serialization/*.h" "serialization/*.cpp" "serializat
 FILE(GLOB SETTINGS_FILES "settings/*.h" "settings/*.hpp" "settings/*.cpp")
 FILE(GLOB SCENE_FILES "scene/*.cpp" "scene/*.h" "scene/*.hpp")
 FILE(GLOB FILESYSTEM_FILES "filesystem/*.h" "filesystem/*.hpp" "filesystem/*.cpp")
+LIST(REMOVE_ITEM ASSET_IMPORT_FILES
+	${CMAKE_CURRENT_SOURCE_DIR}/asset/import/texture_importer.cpp
+)
 
 FILE(GLOB UTILS_ROOT LIST_DIRECTORIES false CONFIGURE_DEPENDS "utils/*.cpp" "utils/*.h" "utils/*.hpp")
 FILE(GLOB UTILS_REFLECTION "utils/reflection/*.cpp" "utils/reflection/*.h" "utils/reflection/*.hpp")
@@ -357,6 +360,7 @@ TARGET_INCLUDE_DIRECTORIES(AppCore
 	${CMAKE_SOURCE_DIR}/source
 	${CMAKE_SOURCE_DIR}/dependency
 	${CMAKE_SOURCE_DIR}/dependency/freeimage
+	${CMAKE_SOURCE_DIR}/dependency/freeimage/FreeImage
 	${CMAKE_SOURCE_DIR}/dependency/freetype
 	${CMAKE_SOURCE_DIR}/dependency/xMath
 	${CMAKE_SOURCE_DIR}/dependency/entt/src
@@ -395,6 +399,7 @@ TARGET_LINK_LIBRARIES(AppCore
 		${Slang_LIBRARY}
 		Shell32.lib
 		xMath::xMath
+	   Freetype::Freetype
 		$<$<AND:$<CONFIG:Debug>,$<BOOL:${TRACY_ENABLE}>>:TracyClient>
 		msdfgen::msdfgen
 )

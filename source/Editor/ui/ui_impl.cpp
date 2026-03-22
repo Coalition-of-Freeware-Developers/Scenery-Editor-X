@@ -107,8 +107,7 @@ namespace UI
 	
 			// compile shaders
 			{
-				const std::string shaderPath =
-					ResourceCache::GetResourceDirectory(ResourceDirectory::Shaders) + "/ui.slang";
+				const std::string shaderPath = ResourceCache::GetResourceDirectory(ResourceDirectory::Shaders) + "/ui.slang";
 	
 				bool async = false;
 				(void)async;
@@ -129,7 +128,6 @@ namespace UI
 			int bpp = 0;
 			ImGuiIO &io = ImGui::GetIO();
 			io.Fonts->GetTexDataAsRGBA32(&pixels, &atlasWidth, &atlasHeight, &bpp);
-	
 	
 			// copy pixel data
 			std::vector<Slice> texture_data;
@@ -220,14 +218,12 @@ namespace UI
 				const uint32_t count_new = drawData->TotalVtxCount + 15000;
 				resources->vertex_counts[bufferIndex] = count_new;
 				resources->vertex_buffers[bufferIndex] =
-					CreateScope<Buffer>(sizeof(ImDrawVert), count_new, nullptr, true, "imgui_vertex_buffer");
+				CreateScope<Buffer>(sizeof(ImDrawVert), count_new, nullptr, true, "imgui_vertex_buffer");
 				vertexBuffer = resources->vertex_buffers[bufferIndex].get();
 	
 				if (count != 0)
 				{
-					SEDX_CORE_INFO_TAG("UI Implementation",
-									   "Vertex buffer has been re-allocated to fit {} vertices",
-									   count_new);
+					SEDX_CORE_INFO_TAG("UI Implementation", "Vertex buffer has been re-allocated to fit {} vertices", count_new);
 				}
 			}
 	
@@ -238,14 +234,12 @@ namespace UI
 				const uint32_t count_new = drawData->TotalIdxCount + 30000;
 				resources->index_counts[bufferIndex] = count_new;
 				resources->index_buffers[bufferIndex] =
-					CreateScope<Buffer>(sizeof(ImDrawIdx), count_new, nullptr, true, "imgui_index_buffer");
+				CreateScope<Buffer>(sizeof(ImDrawIdx), count_new, nullptr, true, "imgui_index_buffer");
 				indexBuffer = resources->index_buffers[bufferIndex].get();
 	
 				if (count != 0)
 				{
-					SEDX_CORE_INFO_TAG("UI Implementation",
-									   "Index buffer has been re-allocated to fit {} indices",
-									   count_new);
+					SEDX_CORE_INFO_TAG("UI Implementation", "Index buffer has been re-allocated to fit {} indices", count_new);
 				}
 			}
 	

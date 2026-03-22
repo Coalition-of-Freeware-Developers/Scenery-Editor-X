@@ -39,7 +39,7 @@ namespace SceneryEditorX
 {
 	
 	#define SOURCE_FILEPATH "resources/shaders/"
-	#define CACHE_FILEPATH "cache/shaders/"
+	#define CACHE_FILEPATH "cache"
 	
 	// -------------------------------------------------------
 
@@ -96,7 +96,9 @@ namespace SceneryEditorX
 		bool shouldRecompile = false;
 	
 		if (!std::filesystem::exists(cacheFilepath))
+		{
 			shouldRecompile = true;
+		}
 		else
 		{
 			std::filesystem::file_time_type lastModifiedCache = std::filesystem::last_write_time(cacheFilepath);
@@ -120,7 +122,15 @@ namespace SceneryEditorX
 		}
 	
 		m_Input = ShaderCompiler::Reflect(stage, data);
-	
+
+		if (data.empty())
+		{
+			SEDX_CORE_ERROR_TAG("Shader", "Failed to compile shader: %s", codeFilepath.c_str());
+			// handle error: set m_ShaderModule = VK_NULL_HANDLE; or throw/return
+			SEDX_CORE_ASSERT(false);
+			return;
+		}
+
 		VkShaderModuleCreateInfo createInfo{};
 		createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 		createInfo.codeSize = data.size() * sizeof(uint32_t);

@@ -29,9 +29,7 @@
  * -------------------------------------------------------
  */
 #include "resource_cache.h"
-
 #include "SceneryEditorX/renderer/vulkan/image_resource.h"
-
 #include <SceneryEditorX/filesystem/file_manager.hpp>
 #include <SceneryEditorX/renderer/vulkan/enums.h>
 
@@ -54,12 +52,15 @@ namespace SceneryEditorX
 		SetProjectDirectory("..\\project\\");
 
 		// add engine standard resource directories
-		const std::string dataDir = std::string(GetDataDirectory()) + "\\";
+		// Note: fonts may live under the project's 'resources' folder rather than the engine 'Data' folder.
+		// Prefer checking the repo 'resources' path for fonts so editor UI can reliably load bundled fonts.
+		const std::string dataDir = std::string(GetResourceDirectory()) + "\\";
 		AddResourceDirectory(ResourceDirectory::Environment, std::string(s_ProjectDir) + "environment");
-		AddResourceDirectory(ResourceDirectory::Fonts, dataDir + "fonts");
-		AddResourceDirectory(ResourceDirectory::Icons, dataDir + "icons");
-		AddResourceDirectory(ResourceDirectory::Shaders, dataDir + "shaders");
-		AddResourceDirectory(ResourceDirectory::Textures, dataDir + "textures");
+		// Use repository 'resources/fonts' as the primary fonts directory (fallback to Data/fonts can be added later)
+		AddResourceDirectory(ResourceDirectory::Fonts, std::string("resources\\fonts"));
+		AddResourceDirectory(ResourceDirectory::Icons, dataDir + "resources\\icons");
+		AddResourceDirectory(ResourceDirectory::Shaders, dataDir + "resources\\shaders");
+		AddResourceDirectory(ResourceDirectory::Textures, dataDir + "resources\\textures");
 	}
 
 	void ResourceCache::Shutdown()
@@ -81,7 +82,7 @@ namespace SceneryEditorX
 	/*
 	void ResourceCache::LoadDefaultResources()
 	{
-		const std::string dataDir = std::string(GetDataDirectory()) + "\\";
+		const std::string dataDir = std::string(GetResourceDirectory()) + "\\";
 	
 		m_default_icons[IconType::Console]			= Load<Texture>(dataDir + "icons\\console.png");
 		m_default_icons[IconType::File]				= Load<Texture>(dataDir + "icons\\file.png");
@@ -124,7 +125,7 @@ namespace SceneryEditorX
 		std::scoped_lock guard(s_Mutex);
 		for (const Ref<SharedResource> &resource : s_Resources)
 		{
-		 if (resource && name == resource->GetObjectName() && (type == ResourceType::MaxEnum || resource->GetResourceType() == type))
+			if (resource && name == resource->GetObjectName() && (type == ResourceType::MaxEnum || resource->GetResourceType() == type))
 				return resource.Get();
 		}
 
@@ -134,7 +135,7 @@ namespace SceneryEditorX
 	std::vector<IResource *> ResourceCache::GetByType(const ResourceType type /*= ResourceType::Unknown*/)
 	{
 		std::scoped_lock guard(s_Mutex);
-	  std::vector<IResource *> resources;
+		std::vector<IResource *> resources;
 		for (const Ref<SharedResource> &resource : s_Resources)
 		{
 			if (resource && (resource->GetResourceType() == type || type == ResourceType::MaxEnum))
@@ -206,9 +207,9 @@ namespace SceneryEditorX
 		return s_ProjectDir;
 	}
 	
-	const char *ResourceCache::GetDataDirectory()
+	const char *ResourceCache::GetResourceDirectory()
 	{
-		return "Data";
+		return "resources";
 	}
 
 	std::vector<Ref<SharedResource>> &ResourceCache::GetResources()

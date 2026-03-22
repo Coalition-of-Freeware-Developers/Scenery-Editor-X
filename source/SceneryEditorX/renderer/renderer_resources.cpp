@@ -618,7 +618,7 @@ namespace SceneryEditorX
 
 	void Renderer::CreateStandardMaterials()
 	{
-		const std::string data_dir = std::string(ResourceCache::GetDataDirectory()) + "/";
+		const std::string data_dir = std::string(ResourceCache::GetResourceDirectory()) + "/";
 		IO::FileSystem::CreateDir(data_dir);
 
 		s_StandardMaterial = CreateRef<MaterialAsset>();

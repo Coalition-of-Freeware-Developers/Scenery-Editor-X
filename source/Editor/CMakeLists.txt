@@ -170,6 +170,7 @@ TARGET_LINK_LIBRARIES(SceneryEditorX
 		d3d12
 		Shell32.lib
 		xMath::xMath
+		Freetype::Freetype
 		edX
 )
 

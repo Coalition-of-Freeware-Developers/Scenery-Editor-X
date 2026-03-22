@@ -294,8 +294,8 @@ namespace SceneryEditorX
 		config.GlyphOffset.y = -2.0f;
 		
 		const std::string dir_fonts = ResourceCache::GetResourceDirectory(ResourceDirectory::Fonts) + "/";
-		Editor::fontNormal    = io.Fonts->AddFontFromFileTTF((dir_fonts + "OpenSans/OpenSans-Medium.ttf").c_str(), s_FontSize * Window::GetDpiScale());
-		Editor::fontBold      = io.Fonts->AddFontFromFileTTF((dir_fonts + "OpenSans/OpenSans-Bold.ttf").c_str(), s_FontSize * Window::GetDpiScale(), &config);
+		Editor::fontNormal    = io.Fonts->AddFontFromFileTTF((dir_fonts + "opensans/OpenSans-Medium.ttf").c_str(), s_FontSize * Window::GetDpiScale());
+		Editor::fontBold      = io.Fonts->AddFontFromFileTTF((dir_fonts + "opensans/OpenSans-Bold.ttf").c_str(), s_FontSize * Window::GetDpiScale(), &config);
 		io.FontGlobalScale    = s_FontScale;
 
 		// initialize imgui backends

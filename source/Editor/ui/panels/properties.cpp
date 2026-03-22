@@ -759,125 +759,17 @@ void Properties::ShowEntity(Entity* entity) const
 	component_end();
 }
 
-/*
 void Properties::ShowScript(Script* script) const
 {
 	if (!script)
 		return;
 
-	if (component_begin("Script", design::accent_script(), script))
+	if (ComponentBegin("Script", design::AccentScript(), nullptr))
 	{
-		// script file path with browse
-		property_resource("Script File", &script->file_path, "lua script file", [script](const std::string& path)
-		{
-			if (IO::FileSystem::IsEngineLuaFile(path))
-			{
-				script->LoadScriptFile(path);
-			}
-		});
-
-		// drag-drop support for lua files
-		if (auto* payload = UI::ReceiveDragDropPayload(UI::DragPayloadType::Lua))
-		{
-			script->LoadScriptFile(std::get<const char*>(payload->data));
-		}
-
-		// status
-		bool is_loaded = script->script.valid();
-		PropertyText("Status", is_loaded ? "Loaded" : "Not Loaded", "whether the script is loaded and valid");
-
-		if (is_loaded)
-		{
-			if (ImGui::BeginTable("ScriptProperties", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp))
-			{
-				ImGui::TableSetupColumn("Property", ImGuiTableColumnFlags_WidthFixed, 150.0f);
-				ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch);
-				ImGui::TableHeadersRow();
-
-				for (auto&& [K, V] : script->script)
-				{
-					std::string key = K.as<std::string>();
-
-					ImGui::TableNextRow();
-					ImGui::TableSetColumnIndex(0);
-					ImGui::Text("%s", key.c_str());
-
-					ImGui::TableSetColumnIndex(1);
-
-					if (V.is<bool>())
-					{
-						bool value = V.as<bool>();
-						if (ImGui::Checkbox(("##" + key).c_str(), &value))
-						{
-							script->script[K] = value;
-						}
-					}
-					else if (V.is<int>())
-					{
-						int value = V.as<int>();
-						ImGui::SetNextItemWidth(-FLT_MIN);
-						if (ImGui::InputInt(("##" + key).c_str(), &value))
-						{
-							script->script[K] = value;
-						}
-					}
-					else if (V.is<float>() || V.is<double>())
-					{
-						float value = V.as<float>();
-						ImGui::SetNextItemWidth(-FLT_MIN);
-						if (ImGui::InputFloat(("##" + key).c_str(), &value))
-						{
-							script->script[K] = value;
-						}
-					}
-					else if (V.is<std::string>())
-					{
-						std::string value = V.as<std::string>();
-						char buffer[256];
-						strncpy_s(buffer, value.c_str(), sizeof(buffer) - 1);
-						buffer[sizeof(buffer) - 1] = '\0';
-
-						ImGui::SetNextItemWidth(-FLT_MIN);
-						if (ImGui::InputText(("##" + key).c_str(), buffer, sizeof(buffer)))
-						{
-							script->script[K] = std::string(buffer);
-						}
-					}
-					else if (V.is<sol::table>())
-					{
-						ImGui::TextDisabled("[Table]");
-					}
-					else if (V.is<sol::function>())
-					{
-						ImGui::TextDisabled("[Function]");
-					}
-					else
-					{
-						ImGui::TextDisabled("[Unknown Type]");
-					}
-				}
-
-				ImGui::EndTable();
-			}
-		}
-
-		layout::group_spacing();
-
-		// reload button
-		float button_width = 80.0f * Window::GetDpiScale();
-		ImGui::SetCursorPosX((ImGui::GetContentRegionAvail().x - button_width) * 0.5f + ImGui::GetCursorPosX());
-		if (UI::Button("Reload", ImVec2(button_width, 0)))
-		{
-			script->LoadScriptFile(script->file_path);
-		}
-		if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
-		{
-			ImGui::SetTooltip("reload the script file");
-		}
+		PropertyText("Status", "Script inspector is temporarily disabled");
 	}
 	component_end();
 }
-*/
 
 void Properties::ShowLight(Light* light) const
 {
@@ -1695,100 +1587,17 @@ void Properties::ShowCamera(Camera* camera) const
 	component_end();
 }
 
-/*
 void Properties::ShowTerrain(Terrain* terrain) const
 {
 	if (!terrain)
 		return;
 
-	if (component_begin("Terrain", design::accent_terrain(), terrain))
+	if (ComponentBegin("Terrain", design::AccentTerrain(), nullptr))
 	{
-		//= REFLECT =====================
-		float min_y = terrain->GetMinY();
-		float max_y = terrain->GetMaxY();
-		//===============================
-
-		layout::section_header("Height Map");
-
-		// height map texture slot and preview
-		ImGui::BeginGroup();
-		{
-			auto height_map_setter = [&terrain](ImageResource* texture) 
-			{
-				terrain->SetHeightMapSeed(texture);
-			};
-
-			// source height map
-			ImGui::TextUnformatted("Source");
-			if (UI::ImageSlot(terrain->GetHeightMapSeed(), height_map_setter))
-			{
-				file_selection::open([terrain](const std::string& path) {
-					if (IO::FileSystem::IsSupportedImageFile(path))
-					{
-						if (const auto tex = ResourceCache::Load<ImageResource>(path).get())
-						{
-							terrain->SetHeightMapSeed(tex);
-						}
-					}
-				});
-			}
-		}
-		ImGui::EndGroup();
-
-		ImGui::SameLine(0, design::spacing_xl);
-
-		// generated preview
-		ImGui::BeginGroup();
-		{
-			ImGui::TextUnformatted("Generated");
-			UI::Image(terrain->GetHeightMapFinal(), ImVec2(80, 80));
-		}
-		ImGui::EndGroup();
-
-		layout::group_spacing();
-
-		// height range
-		PropertyFloat("Min Height", &min_y, 0.1f, -1000.0f, 1000.0f, "minimum terrain height", "%.1f m");
-		PropertyFloat("Max Height", &max_y, 0.1f, -1000.0f, 1000.0f, "maximum terrain height", "%.1f m");
-
-		layout::group_spacing();
-
-		// generate button
-		float button_width = 120.0f * Window::GetDpiScale();
-		ImGui::SetCursorPosX((ImGui::GetContentRegionAvail().x - button_width) * 0.5f + ImGui::GetCursorPosX());
-		if (UI::Button("Generate Terrain", ImVec2(button_width, 0)))
-		{
-			ThreadPool::Submit([terrain]()
-			{
-				terrain->Generate();
-			});
-		}
-
-		layout::separator();
-		layout::section_header("Statistics");
-
-		// stats in a compact format
-		char stat_buf[128];
-		std::snprintf(stat_buf, sizeof(stat_buf), "%.1f km²", terrain->GetArea());
-		PropertyText("Area", stat_buf);
-
-		std::snprintf(stat_buf, sizeof(stat_buf), "%llu", static_cast<unsigned long long>(terrain->GetHeightSampleCount()));
-		PropertyText("Height Samples", stat_buf);
-
-		std::snprintf(stat_buf, sizeof(stat_buf), "%llu", static_cast<unsigned long long>(terrain->GetVertexCount()));
-		PropertyText("Vertices", stat_buf);
-
-		std::snprintf(stat_buf, sizeof(stat_buf), "%llu", static_cast<unsigned long long>(terrain->GetIndexCount()));
-		PropertyText("Indices", stat_buf);
-
-		//= MAP =================================================
-		if (min_y != terrain->GetMinY()) terrain->SetMinY(min_y);
-		if (max_y != terrain->GetMaxY()) terrain->SetMaxY(max_y);
-		//=======================================================
+		PropertyText("Status", "Terrain inspector is temporarily disabled");
 	}
 	component_end();
 }
-*/
 
 void Properties::ShowSpline(Spline* spline) const
 {
@@ -2204,235 +2013,29 @@ void Properties::ShowAudioSource(spartan::AudioSource* audio_source) const
 }
 */
 
-/*
 void Properties::ShowVolume(Volume* volume) const
 {
 	if (!volume)
 		return;
 
-	if (component_begin("Volume", design::accent_volume(), volume))
+   if (ComponentBegin("Volume", design::AccentVolume(), nullptr))
 	{
-		// reflect
-		const xMath::BoundingBox& bounding_box = volume->GetBoundingBox();
-		xMath::Vec3 min = bounding_box.GetMin();
-		xMath::Vec3 max = bounding_box.GetMax();
-
-		layout::section_header("Bounds");
-
-		PropertyVec3("Min", min, "minimum corner");
-		PropertyVec3("Max", max, "maximum corner");
-
-		// map
-		if (min != bounding_box.GetMin() || max != bounding_box.GetMax())
-		{
-			volume->SetBoundingBox(xMath::BoundingBox(min, max));
-		}
-
-		layout::separator();
-		layout::section_header("Render Overrides");
-
-		// scrollable area of render options
-		ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 4.0f);
-		ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.0f, 0.0f, 0.0f, 0.2f));
-
-		if (ImGui::BeginChild("##vol_overrides", ImVec2(0, 220.0f), true))
-		{
-			int id_counter = 0;
-			for (const auto& [cvar_name, cvar] : ConsoleRegistry::Get().GetAll())
-			{
-				// only include renderer options
-				if (cvar_name.size() < 2 || cvar_name[0] != 'r' || cvar_name[1] != '.')
-					continue;
-
-				std::string name(cvar_name);
-				float global_value = std::get<float>(*cvar.m_value_ptr);
-
-				ImGui::PushID(id_counter++);
-
-				bool is_active = volume->GetOptions().find(name) != volume->GetOptions().end();
-
-				// format display name (remove "r." prefix)
-				std::string display_name = name.substr(2);
-
-				// toggle for override
-				if (UI::ToggleSwitch(display_name.c_str(), &is_active))
-				{
-					if (is_active)
-					{
-						volume->SetOption(name.c_str(), global_value);
-					}
-					else
-					{
-						volume->RemoveOption(name.c_str());
-					}
-				}
-
-				// value editor when active
-				if (is_active)
-				{
-					ImGui::SameLine();
-					ImGui::PushItemWidth(-FLT_MIN);
-
-					float value = volume->GetOption(name.c_str());
-					if (UI::DrawFloatWrap("##v", &value, 0.1f))
-					{
-						volume->SetOption(name.c_str(), value);
-					}
-
-					ImGui::PopItemWidth();
-				}
-
-				ImGui::PopID();
-			}
-		}
-		ImGui::EndChild();
-
-		ImGui::PopStyleColor();
-		ImGui::PopStyleVar();
-
-		layout::separator();
-		layout::section_header("Audio Reverb");
-
-		bool reverb_enabled = volume->GetReverbEnabled();
-		PropertyToggle("Enabled", &reverb_enabled, "apply reverb to audio sources inside this volume (derived from volume size)");
-
-		if (reverb_enabled != volume->GetReverbEnabled())
-			volume->SetReverbEnabled(reverb_enabled);
+		PropertyText("Status", "Volume inspector is temporarily disabled");
 	}
 	component_end();
 }
-*/
 
-/*
 void Properties::ShowParticleSystem(ParticleSystem* particle_system) const
 {
 	if (!particle_system)
 		return;
 
-	if (component_begin("Particle System", design::accent_particles(), particle_system))
+	if (ComponentBegin("Particle System", design::AccentParticles(), nullptr))
 	{
-		//= REFLECT =====================================================
-		uint32_t max_particles   = particle_system->GetMaxParticles();
-		float emission_rate      = particle_system->GetEmissionRate();
-		float lifetime           = particle_system->GetLifetime();
-		float start_speed        = particle_system->GetStartSpeed();
-		float start_size         = particle_system->GetStartSize();
-		float end_size           = particle_system->GetEndSize();
-		float gravity_modifier   = particle_system->GetGravityModifier();
-		float emission_radius    = particle_system->GetEmissionRadius();
-		m_colorPicker_particle_start->SetColor(particle_system->GetStartColor());
-		m_colorPicker_particle_end->SetColor(particle_system->GetEndColor());
-		//===============================================================
-
-		// preset selector
-		static std::vector<std::string> preset_names =
-		{
-			"Custom", "Fire", "Smoke", "Steam", "Sparks", "Dust", "Snow",
-			"Rain", "Confetti", "Fireflies", "Blood", "Magic", "Explosion",
-			"Waterfall", "Embers", "Tire Smoke", "Exhaust"
-		};
-		uint32_t preset_index = static_cast<uint32_t>(particle_system->GetPreset());
-		if (PropertyCombo("Preset", preset_names, &preset_index, "apply a preset to quickly configure the particle system"))
-		{
-			particle_system->ApplyPreset(static_cast<ParticlePreset>(preset_index));
-
-			// refresh local copies after preset application
-			max_particles    = particle_system->GetMaxParticles();
-			emission_rate    = particle_system->GetEmissionRate();
-			lifetime         = particle_system->GetLifetime();
-			start_speed      = particle_system->GetStartSpeed();
-			start_size       = particle_system->GetStartSize();
-			end_size         = particle_system->GetEndSize();
-			gravity_modifier = particle_system->GetGravityModifier();
-			emission_radius  = particle_system->GetEmissionRadius();
-			m_colorPicker_particle_start->SetColor(particle_system->GetStartColor());
-			m_colorPicker_particle_end->SetColor(particle_system->GetEndColor());
-		}
-
-		layout::separator();
-		layout::section_header("Emission");
-
-		// max particles
-		float max_p_float = static_cast<float>(max_particles);
-		if (PropertyFloat("Max Particles", &max_p_float, 100.0f, 100.0f, 100000.0f, "maximum number of particles alive at once", "%.0f"))
-		{
-			particle_system->SetMaxParticles(static_cast<uint32_t>(max_p_float));
-		}
-
-		// emission rate
-		if (PropertyFloat("Rate", &emission_rate, 1.0f, 0.0f, 10000.0f, "particles emitted per second", "%.0f /s"))
-		{
-			particle_system->SetEmissionRate(emission_rate);
-		}
-
-		// emission radius
-		if (PropertyFloat("Radius", &emission_radius, 0.01f, 0.0f, 100.0f, "sphere emission radius in meters", "%.2f m"))
-		{
-			particle_system->SetEmissionRadius(emission_radius);
-		}
-
-		layout::separator();
-		layout::section_header("Lifetime & Motion");
-
-		// lifetime
-		if (PropertyFloat("Lifetime", &lifetime, 0.1f, 0.01f, 60.0f, "particle lifetime in seconds", "%.1f s"))
-		{
-			particle_system->SetLifetime(lifetime);
-		}
-
-		// start speed
-		if (PropertyFloat("Start Speed", &start_speed, 0.1f, 0.0f, 100.0f, "initial speed in meters per second", "%.1f m/s"))
-		{
-			particle_system->SetStartSpeed(start_speed);
-		}
-
-		// gravity modifier
-		if (PropertyFloat("Gravity", &gravity_modifier, 0.1f, -20.0f, 20.0f, "gravity multiplier (negative = downward)", "%.1f"))
-		{
-			particle_system->SetGravityModifier(gravity_modifier);
-		}
-
-		layout::separator();
-		layout::section_header("Appearance");
-
-		// start size
-		if (PropertyFloat("Start Size", &start_size, 0.01f, 0.001f, 10.0f, "particle size at birth in meters", "%.3f m"))
-		{
-			particle_system->SetStartSize(start_size);
-		}
-
-		// end size
-		if (PropertyFloat("End Size", &end_size, 0.01f, 0.0f, 10.0f, "particle size at death in meters", "%.3f m"))
-		{
-			particle_system->SetEndSize(end_size);
-		}
-
-		layout::group_spacing();
-
-		// start color
-		ImGui::PushID("particle_start_color");
-		PropertyColor("Start Color", m_colorPicker_particle_start.get(), "particle color at birth");
-		ImGui::PopID();
-
-		// end color
-		ImGui::PushID("particle_end_color");
-		PropertyColor("End Color", m_colorPicker_particle_end.get(), "particle color at death");
-		ImGui::PopID();
-
-		//= MAP ==========================================================
-		if (m_colorPicker_particle_start->GetColor() != particle_system->GetStartColor())
-		{
-			particle_system->SetStartColor(m_colorPicker_particle_start->GetColor());
-		}
-		if (m_colorPicker_particle_end->GetColor() != particle_system->GetEndColor())
-		{
-			particle_system->SetEndColor(m_colorPicker_particle_end->GetColor());
-		}
-		//=================================================================
+		PropertyText("Status", "Particle system inspector is temporarily disabled");
 	}
 	component_end();
 }
-*/
 
 void Properties::ShowAddComponentButton()
 {

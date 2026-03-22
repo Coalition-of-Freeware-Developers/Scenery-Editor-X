@@ -99,6 +99,17 @@ namespace SceneryEditorX
 		SEDX_CORE_TRACE("Material initialized with default values: {}", path);
 	}
 
+	void MaterialAsset::Unload()
+	{
+		m_Material.Reset();
+		m_Maps = MapAssets{};
+	}
+
+	bool MaterialAsset::IsLoaded() const
+	{
+		return !materialPath.empty();
+	}
+
 	/*
 	void MaterialAsset::Unload()
 	{
@@ -178,154 +189,93 @@ namespace SceneryEditorX
 		m_Material->Set(EMISSION_UNIFORM, value);
 	}
 
-	/*
-	Ref<Texture2D> MaterialAsset::GetAlbedoMap()
+	Ref<ImageResource> MaterialAsset::GetAlbedoMap()
 	{
-		// QUESTION: Is there a reason we need to go to the material here?
-		//           Don't we already have the texture handle in m_Maps.AlbedoMap?
-		auto texture = m_Material->TryGetTexture2D(ALBEDO_MAP_UNIFORM);
-		if (!texture.EqualsObject(Renderer::GetWhiteTexture()))
-		{
-			if (texture->handle)
-			{
-				// Return sRGB version of the albedo texture, which is at Handle-1  (see SetAlbedoMap())
-				texture = AssetManager::GetAsset<Texture2D>(texture->handle - 1);
-				SEDX_CORE_ASSERT(texture);
-			}
-		}
-		return texture;
+		return nullptr;
 	}
-	*/
 
-	/*
 	void MaterialAsset::SetAlbedoMap(AssetHandle handle)
 	{
 		m_Maps.AlbedoMap = handle;
-		if (handle)
-		{
-			// Handle + 1 is the linear version of the texture
-			Ref<Texture2D> texture = AssetManager::GetAsset<Texture2D>(handle + 1);
-			if (!texture)
-			{
-				auto textureSRGB = AssetManager::GetAsset<Texture2D>(handle);
-				SEDX_CORE_ASSERT(textureSRGB, "Could not find texture with handle {}", handle); // if this fires, you've passed the wrong handle.  Probably somewhere you retrieved the handle directly from shader.  You need to go through MaterialAsset::GetAlbedoMap()
-				if (textureSRGB)
-				{
-					texture = Texture2D::CreateFromSRGB(textureSRGB);
-					texture->handle = handle + 1;
-					AssetManager::AddMemoryOnlyAsset(texture);
-				}
-			}
-			m_Material->Set(ALBEDO_MAP_UNIFORM, texture);
-			AssetManager::RegisterDependency(handle, pHandle);
-		}
-		else
+		if (handle == AssetHandle{})
 		{
 			ClearAlbedoMap();
 		}
 	}
-	*/
 
-	/*
 	void MaterialAsset::ClearAlbedoMap() const
 	{
-		AssetManager::DeregisterDependency(m_Maps.AlbedoMap, pHandle);
-		m_Material->Set(ALBEDO_MAP_UNIFORM, Renderer::GetWhiteTexture());
+		const_cast<MapAssets&>(m_Maps).AlbedoMap = AssetHandle{};
 	}
-	*/
 
-	/*
-	Ref<Texture2D> MaterialAsset::GetNormalMap() const
+  Ref<ImageResource> MaterialAsset::GetNormalMap() const
 	{
-		return m_Material->TryGetTexture2D(NORMAL_MAP_UNIFORM);
+	 return nullptr;
 	}
-	*/
 
-	/*
 	bool MaterialAsset::IsUsingNormalMap() const
 	{
-		return m_Material->GetBool(USE_NORMAL_MAP_UNIFORM);
+		return m_Maps.NormalMap != AssetHandle{};
 	}
-	*/
 
 	void MaterialAsset::SetUseNormalMap(bool value) const
 	{
 		m_Material->Set(USE_NORMAL_MAP_UNIFORM, value);
 	}
 
-	/*
 	void MaterialAsset::ClearNormalMap() const
 	{
-		//AssetManager::DeregisterDependency(m_Maps.NormalMap, Handle);
-		m_Material->Set(NORMAL_MAP_UNIFORM, Renderer::GetWhiteTexture());
+		const_cast<MapAssets&>(m_Maps).NormalMap = AssetHandle{};
+		SetUseNormalMap(false);
 	}
-	*/
 
-	/*
-	Ref<Texture2D> MaterialAsset::GetMetalnessMap() const
+	Ref<ImageResource> MaterialAsset::GetMetalnessMap() const
 	{
-		return m_Material->TryGetTexture2D(METALNESS_MAP_UNIFORM);
+		return nullptr;
 	}
-	*/
 
-	/*
 	void MaterialAsset::SetMetalnessMap(const AssetHandle &handle)
 	{
 		m_Maps.MetalnessMap = handle;
-
-		if (handle)
-		{
-			const Ref<Texture2D> texture = AssetManager::GetAsset<Texture2D>(handle);
-			m_Material->Set(METALNESS_MAP_UNIFORM, texture);
-			AssetManager::RegisterDependency(handle, pHandle);
-		}
-		else
+		if (handle == AssetHandle{})
 		{
 			ClearMetalnessMap();
 		}
 	}
-	*/
 
-	/*
 	void MaterialAsset::ClearMetalnessMap() const
 	{
-		AssetManager::DeregisterDependency(m_Maps.MetalnessMap, pHandle);
-		m_Material->Set(METALNESS_MAP_UNIFORM, Renderer::GetWhiteTexture());
+		const_cast<MapAssets&>(m_Maps).MetalnessMap = AssetHandle{};
 	}
-	*/
 
-	/*
-	Ref<Texture2D> MaterialAsset::GetRoughnessMap() const
+	Ref<ImageResource> MaterialAsset::GetRoughnessMap() const
 	{
-		return m_Material->TryGetTexture2D(ROUGHNESS_MAP_UNIFORM);
+		return nullptr;
 	}
-	*/
 
-	/*
 	void MaterialAsset::SetRoughnessMap(const AssetHandle &handle)
 	{
 		m_Maps.RoughnessMap = handle;
-
-		if (handle)
-		{
-			Ref<Texture2D> texture = AssetManager::GetAsset<Texture2D>(handle);
-			m_Material->Set(ROUGHNESS_MAP_UNIFORM, texture);
-			AssetManager::RegisterDependency(handle, pHandle);
-		}
-		else
+		if (handle == AssetHandle{})
 		{
 			ClearRoughnessMap();
 		}
 	}
-	*/
 
-	/*
 	void MaterialAsset::ClearRoughnessMap() const
 	{
-		AssetManager::DeregisterDependency(m_Maps.RoughnessMap, pHandle);
-		m_Material->Set(ROUGHNESS_MAP_UNIFORM, Renderer::GetWhiteTexture());
+		const_cast<MapAssets&>(m_Maps).RoughnessMap = AssetHandle{};
 	}
-	*/
+
+	void MaterialAsset::SetNormalMap(const AssetHandle &handle)
+	{
+		m_Maps.NormalMap = handle;
+		SetUseNormalMap(handle != AssetHandle{});
+		if (handle == AssetHandle{})
+		{
+			ClearNormalMap();
+		}
+	}
 
 	float& MaterialAsset::GetTransparency() const
 	{
@@ -340,7 +290,7 @@ namespace SceneryEditorX
 
 	ImageResource *MaterialAsset::GetTexture(MaterialTextureType materialTexture, uint32_t slot)
 	{
-	    //return m_Material[(static_cast<uint32_t>(materialTexture) * SLOTS_PER_TEXTURE) + slot];
+		//return m_Material[(static_cast<uint32_t>(materialTexture) * SLOTS_PER_TEXTURE) + slot];
 		switch (materialTexture)
 		{
 			case MaterialTextureType::Color: return GetAlbedoMap().Get();
@@ -348,7 +298,7 @@ namespace SceneryEditorX
 			default:
 				SEDX_CORE_ERROR("Unsupported material texture type: {}", static_cast<uint32_t>(materialTexture));
 				return nullptr;
-			}
+		}
 	}
 
 	void MaterialAsset::SetDefaults() const
@@ -388,14 +338,12 @@ namespace SceneryEditorX
 			SetMaterial(index, materialAsset);
 	}
 
-	/*
 	void MaterialTable::SetMaterial(const uint32_t index, const AssetHandle &material)
 	{
 		m_Materials[index] = material;
 		if (index >= m_MaterialCount)
 			m_MaterialCount = index + 1;
 	}
-	*/
 
 	void MaterialTable::ClearMaterial(const uint32_t index)
 	{

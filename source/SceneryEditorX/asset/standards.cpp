@@ -29,11 +29,47 @@
  * -------------------------------------------------------
  */
 #include "standards.h"
+#include <algorithm>
+#include <cmath>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
+	Standard::Standard(const float temperature_kelvin, const float alpha)
+	{
+		const float temperature = std::clamp(temperature_kelvin, 1000.0f, 40000.0f) / 100.0f;
+
+		if (temperature <= 66.0f)
+		{
+			r = 1.0f;
+			g = std::clamp(0.390081578769f * std::log(temperature) - 0.631841443788f, 0.0f, 1.0f);
+			if (temperature <= 19.0f)
+			{
+				b = 0.0f;
+			}
+			else
+			{
+				b = std::clamp(0.543206789110f * std::log(temperature - 10.0f) - 1.19625408914f, 0.0f, 1.0f);
+			}
+		}
+		else
+		{
+			r = std::clamp(1.29293618606f * std::pow(temperature - 60.0f, -0.1332047592f), 0.0f, 1.0f);
+			g = std::clamp(1.12989086089f * std::pow(temperature - 60.0f, -0.0755148492f), 0.0f, 1.0f);
+			b = 1.0f;
+		}
+
+		a = std::clamp(alpha, 0.0f, 1.0f);
+	}
+
+	Standard::Standard(const float red, const float green, const float blue, const float alpha)
+		: r(std::clamp(red, 0.0f, 1.0f))
+		, g(std::clamp(green, 0.0f, 1.0f))
+		, b(std::clamp(blue, 0.0f, 1.0f))
+		, a(std::clamp(alpha, 0.0f, 1.0f))
+	{
+	}
 	
 	// materials
 	const Standard Standard::MATERIAL_ALUMINUM			= Standard(0.912f, 0.914f, 0.920f); // metallic: 1.0
