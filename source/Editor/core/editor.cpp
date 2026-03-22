@@ -254,7 +254,7 @@ namespace SceneryEditorX
 		if (m_EditorLayer)
 		  m_EditorLayer->OnUIRender();
 
-	  ImGui::Render();
+		ImGui::Render();
 
 	    ImGuiIO& io = ImGui::GetIO();
 		if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
@@ -292,17 +292,38 @@ namespace SceneryEditorX
 		// font_bold configuration
 		ImFontConfig config; // config for bold font (mainly for use in headers)
 		config.GlyphOffset.y = -2.0f;
-		
-		const std::string dir_fonts = ResourceCache::GetResourceDirectory(ResourceDirectory::Fonts) + "/";
-		Editor::fontNormal    = io.Fonts->AddFontFromFileTTF((dir_fonts + "opensans/OpenSans-Medium.ttf").c_str(), s_FontSize * Window::GetDpiScale());
-		Editor::fontBold      = io.Fonts->AddFontFromFileTTF((dir_fonts + "opensans/OpenSans-Bold.ttf").c_str(), s_FontSize * Window::GetDpiScale(), &config);
-		io.FontGlobalScale    = s_FontScale;
+
+		const std::filesystem::path fontDir = std::filesystem::path(ResourceCache::GetResourceDirectory(ResourceDirectory::Fonts));
+		const std::filesystem::path normalPath = fontDir / "opensans" / "OpenSans-Medium.ttf";
+		const std::filesystem::path boldPath = fontDir / "opensans" / "OpenSans-Bold.ttf";
+
+		if (std::filesystem::exists(normalPath))
+		{
+			Editor::fontNormal = io.Fonts->AddFontFromFileTTF(normalPath.string().c_str(), s_FontSize * Window::GetDpiScale());
+		}
+		else
+		{
+			SEDX_CORE_ERROR_TAG("Editor", "Font not found: %s", normalPath.string().c_str());
+			Editor::fontNormal = io.Fonts->AddFontDefault();
+		}
+
+		if (std::filesystem::exists(boldPath))
+		{
+			Editor::fontBold = io.Fonts->AddFontFromFileTTF(boldPath.string().c_str(), s_FontSize * Window::GetDpiScale(), &config);
+		}
+		else
+		{
+			SEDX_CORE_WARN_TAG("Editor", "Bold font not found: %s", boldPath.string().c_str());
+			Editor::fontBold = nullptr;
+		}
+
+		io.FontGlobalScale = s_FontScale;
 
 		// initialize imgui backends
 		SEDX_CORE_ASSERT(ImGui_ImplSDL3_InitForVulkan(Window::GetWindow()), "Failed to initialize ImGui's SDL backend");
 		::UI::Initialize();
 
-		/*
+			/*
 		const auto window_flags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoTitleBar |
 								  ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
 								  ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;

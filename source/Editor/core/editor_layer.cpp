@@ -163,7 +163,14 @@ namespace SceneryEditorX
 			{
 				if (!entity) continue;
 				const bool selected = false; // TODO: tie to selection system
-			 if (ImGui::Selectable(entity->Name().c_str(), selected))
+
+				std::string displayName = "Unnamed";
+				if (entity->HasComponent<TagComponent>())
+				{
+					displayName = entity->Name();
+				}
+
+				if (ImGui::Selectable(displayName.c_str(), selected))
 				{
 					// TODO: set selection
 				}

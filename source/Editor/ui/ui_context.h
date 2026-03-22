@@ -29,11 +29,11 @@
  * -------------------------------------------------------
  */
 #pragma once
-#include "panels/ui_widget.h"
-#include <imgui/imgui.h>
+//#include "panels/ui_widget.h"
+//#include <imgui/imgui.h>
 
 // -------------------------------------------------------
-
+/*
 class GUI;
 
 struct UIResource
@@ -64,6 +64,6 @@ public:
 private:
 	UIResource uiResource;
 
-};
+};*/
 
 // -------------------------------------------------------

@@ -169,7 +169,7 @@ namespace SceneryEditorX::UI
 		style.FrameBorderSize = 1.0f;
 		style.IndentSpacing = 11.0f;
 	}
-
+/*
 	void UIContext::AllowInputEvents(bool allowEvents)
 	{
 		ImGuiIO &io = ImGui::GetIO();
@@ -184,7 +184,7 @@ namespace SceneryEditorX::UI
 			io.ConfigFlags |= ImGuiConfigFlags_NoMouse;
 			io.ConfigFlags |= ImGuiConfigFlags_NoKeyboard;
 		}
-	}
+	}*/
 
 }
 

@@ -90,8 +90,20 @@ namespace SceneryEditorX
 		std::string directoryPath = std::string(filepath.begin(), filepath.begin() + (lastD != std::string::npos ? lastD : 0));
 		std::string shaderName = std::string(filepath.begin(), filepath.begin() + filepath.find_last_of('.'));
 	
-		std::string codeFilepath = SOURCE_FILEPATH + filepath;
-		std::string cacheFilepath = CACHE_FILEPATH + shaderName + ".spv";
+		// If the provided filepath already references the resources directory (or is absolute),
+		// don't prefix it with SOURCE_FILEPATH to avoid duplicated "resources/shaders/resources/..." paths.
+		std::string codeFilepath;
+		bool filepathStartsWithResources = (filepath.rfind("resources", 0) == 0) || (filepath.rfind("resources\\", 0) == 0);
+		bool filepathLooksAbsolute = !filepath.empty() && (filepath[0] == '/' || (filepath.size() > 1 && filepath[1] == ':'));
+
+		if (filepathStartsWithResources || filepathLooksAbsolute)
+			codeFilepath = filepath;
+		else
+			codeFilepath = std::string(SOURCE_FILEPATH) + filepath;
+		// Use filesystem::path to correctly join cache directory and shader name
+		std::filesystem::path cacheDir = std::filesystem::path(CACHE_FILEPATH);
+		std::filesystem::path cacheFile = cacheDir / (shaderName + ".spv");
+		std::string cacheFilepath = cacheFile.string();
 	
 		bool shouldRecompile = false;
 	
@@ -106,8 +118,10 @@ namespace SceneryEditorX
 			shouldRecompile = lastModifiedShader > lastModifiedCache;
 		}
 	
-		if (!std::filesystem::exists(CACHE_FILEPATH + directoryPath))
-			std::filesystem::create_directories(CACHE_FILEPATH + directoryPath);
+		// Create the cache subdirectory for this shader
+		std::filesystem::path cacheSubdir = cacheDir / directoryPath;
+		if (!std::filesystem::exists(cacheSubdir))
+			std::filesystem::create_directories(cacheSubdir);
 	
 		if (std::filesystem::exists(cacheFilepath) && !shouldRecompile)
 		{
@@ -118,7 +132,8 @@ namespace SceneryEditorX
 		{
 			SEDX_CORE_TRACE_TAG("Shader", "Compiling shader: %s", cacheFilepath.c_str());
 			data = ShaderCompiler::CompileVulkanShader(stage, codeFilepath);
-			WriteShaderBinary(data.data(), (uint32_t)data.size(), cacheFilepath);
+			if (!data.empty())
+				WriteShaderBinary(data.data(), (uint32_t)data.size(), cacheFilepath);
 		}
 	
 		m_Input = ShaderCompiler::Reflect(stage, data);

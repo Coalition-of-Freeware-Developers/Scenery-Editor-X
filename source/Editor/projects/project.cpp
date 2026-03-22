@@ -53,26 +53,26 @@ std::filesystem::path DefaultProject::GetAssetRegistryPath()
 
 void DefaultProject::ReadProjCache()
 {
-    if (std::ifstream cacheFile("data.sedXcache", std::ios::binary); cacheFile.is_open())
-    {
-        cacheFile.read(reinterpret_cast<char *>(&cacheData), sizeof(cacheData));
-        cacheFile.close();
-    }
-    if (!std::filesystem::exists(cacheData.projectPath) || !std::filesystem::exists(cacheData.binPath))
-    {
-        SEDX_CORE_ERROR("Cache file is corrupted. Resetting to default.");
-        cacheData = {};
-        WriteProjCache();
-    }
+	if (std::ifstream cacheFile("data.sedXcache", std::ios::binary); cacheFile.is_open())
+	{
+		cacheFile.read(reinterpret_cast<char *>(&cacheData), sizeof(cacheData));
+		cacheFile.close();
+	}
+	if (!std::filesystem::exists(cacheData.projectPath) || !std::filesystem::exists(cacheData.binPath))
+	{
+		SEDX_CORE_ERROR("Cache file is corrupted. Resetting to default.");
+		cacheData = {};
+		WriteProjCache();
+	}
 }
 
 void DefaultProject::WriteProjCache()
 {
-    if (std::ofstream cacheFile("data.sedXcache", std::ios::binary); cacheFile.is_open())
-    {
-        cacheFile.write(reinterpret_cast<char *>(&cacheData), sizeof(cacheData));
-        cacheFile.close();
-    }
+	if (std::ofstream cacheFile("data.sedXcache", std::ios::binary); cacheFile.is_open())
+	{
+		cacheFile.write(reinterpret_cast<char *>(&cacheData), sizeof(cacheData));
+		cacheFile.close();
+	}
 }
 
 // -------------------------------------------------------------------------

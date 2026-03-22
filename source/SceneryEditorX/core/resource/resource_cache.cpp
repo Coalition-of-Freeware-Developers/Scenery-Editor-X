@@ -56,11 +56,14 @@ namespace SceneryEditorX
 		// Prefer checking the repo 'resources' path for fonts so editor UI can reliably load bundled fonts.
 		const std::string dataDir = std::string(GetResourceDirectory()) + "\\";
 		AddResourceDirectory(ResourceDirectory::Environment, std::string(s_ProjectDir) + "environment");
-		// Use repository 'resources/fonts' as the primary fonts directory (fallback to Data/fonts can be added later)
-		AddResourceDirectory(ResourceDirectory::Fonts, std::string("resources\\fonts"));
-		AddResourceDirectory(ResourceDirectory::Icons, dataDir + "resources\\icons");
-		AddResourceDirectory(ResourceDirectory::Shaders, dataDir + "resources\\shaders");
-		AddResourceDirectory(ResourceDirectory::Textures, dataDir + "resources\\textures");
+
+		// Fonts live under the repository 'assets' folder — prefer that so editor finds bundled fonts
+		AddResourceDirectory(ResourceDirectory::Fonts, std::string("assets\\fonts"));
+
+		// Use dataDir as the base for engine-provided resources and append subfolders
+		AddResourceDirectory(ResourceDirectory::Icons, dataDir + "icons");
+		AddResourceDirectory(ResourceDirectory::Shaders, dataDir + "shaders");
+		AddResourceDirectory(ResourceDirectory::Textures, dataDir + "textures");
 	}
 
 	void ResourceCache::Shutdown()

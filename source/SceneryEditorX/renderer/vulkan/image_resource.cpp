@@ -391,9 +391,10 @@ namespace SceneryEditorX
 		}
 		m_ImageViews.clear();
 
-		if (m_Image != VK_NULL_HANDLE && m_Allocation != nullptr)
+        if (m_Image != VK_NULL_HANDLE)
 		{
-			QueueManager::AddDeletionQueue(ResourceType::Image, m_Image);
+			// Enqueue image + its allocation so the deletion path has the allocation handle
+			QueueManager::AddDeletionQueue(ResourceType::Image, m_Image, m_Allocation);
 			//m_Device->GetMemoryAllocator().DestroyImage(m_Image, m_Allocation);
 			m_Image = VK_NULL_HANDLE;
 			m_Allocation = nullptr;

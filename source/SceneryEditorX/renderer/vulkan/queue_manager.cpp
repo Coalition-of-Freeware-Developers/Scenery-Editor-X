@@ -579,6 +579,13 @@ namespace SceneryEditorX
 			return;
 		}
 	
+        // For image resources, ensure an allocation is provided. If not, log and skip enqueueing
+		if (type == ResourceType::Image && allocation == VK_NULL_HANDLE)
+		{
+			SEDX_CORE_ERROR_TAG("QueueManager", "Attempted to enqueue Image for deletion without VMA allocation; skipping to avoid crash");
+			return;
+		}
+
 		std::scoped_lock guard(s_MutexDeletionQueue);
 		s_DeletionQueue[type].emplace_back(DeletionQueueEntry{resource, allocation});
 		SEDX_CORE_TRACE_TAG("QueueManager", "Added resource of type {} to deletion queue", static_cast<uint32_t>(type));

@@ -37,8 +37,8 @@ namespace SceneryProject
 {
 	struct CacheData
 	{
-	    char projectPath[1024] = "../../project/default.edX";
-	    char binPath[1024] = "../../project/default.bin";
+		char projectPath[1024] = "../../projects/default.edX";
+		char binPath[1024] = "../../projects/default.bin";
 	};
 }
 
@@ -49,14 +49,14 @@ class DefaultProject : public SceneryEditorX::Project
 public:
 	DefaultProject();
 	~DefaultProject();
-    void ReadProjCache();
-    void WriteProjCache();
+	void ReadProjCache();
+	void WriteProjCache();
 
 	static std::filesystem::path GetAssetDirectory();
 	static std::filesystem::path GetAssetRegistryPath();
 
 private:
-    SceneryProject::CacheData cacheData;
+	SceneryProject::CacheData cacheData;
 };
 
 

@@ -135,7 +135,7 @@ namespace SceneryEditorX
 		 */
 		if (!device.IsValid())
 		{
-			SEDX_CORE_WARN_TAG("Device", "Device singleton is not initialized before Tick().");
+			SEDX_CORE_WARN_TAG("MemoryAllocator", "Device singleton is not initialized before Tick().");
 			return;
 		}
 
@@ -187,20 +187,20 @@ namespace SceneryEditorX
 		vmaCreateBuffer(s_AllocatorData->allocator, &bufferCI, &allocCreateInfo, &buffOut, &allocation, nullptr);
 		if (allocation == nullptr)
 		{
-			SEDX_CORE_ERROR_TAG("Renderer", "Failed to allocate GPU buffer!");
-			SEDX_CORE_ERROR("  Requested size: {}", Utils::BytesToString(bufferCI.size));
+			SEDX_CORE_ERROR_TAG("MemoryAllocator", "Failed to allocate GPU buffer!");
+			SEDX_CORE_ERROR("Requested size: {}", Utils::BytesToString(bufferCI.size));
 			auto stats = GetMemoryStats();
-			SEDX_CORE_ERROR("  GPU mem usage: {}/{}", Utils::BytesToString(stats.used), Utils::BytesToString(stats.totalAvailable));
+			SEDX_CORE_ERROR("GPU mem usage: {}/{}", Utils::BytesToString(stats.used), Utils::BytesToString(stats.totalAvailable));
 		}
 
 		// TODO: Tracking
 		VmaAllocationInfo allocInfo{};
 		vmaGetAllocationInfo(s_AllocatorData->allocator, allocation, &allocInfo);
-		SEDX_CORE_TRACE("VulkanAllocator ({0}): allocating buffer; size = {1}", m_ObjectName, Utils::BytesToString(allocInfo.size));
+		SEDX_CORE_TRACE_TAG("MemoryAllocator", "Allocating buffer; size = {0}", m_ObjectName, Utils::BytesToString(allocInfo.size));
 
 		{
 			s_AllocatorData->totalAllocatedBytes += allocInfo.size;
-			SEDX_CORE_TRACE("VulkanAllocator ({0}): total allocated since start is {1}", m_ObjectName, Utils::BytesToString(s_AllocatorData->totalAllocatedBytes));
+			SEDX_CORE_TRACE_TAG("MemoryAllocator", "{0}: total allocated since start is {1}", m_ObjectName, Utils::BytesToString(s_AllocatorData->totalAllocatedBytes));
 		}
 
 	#if SEDX_GPU_TRACK_MEMORY_ALLOCATION
@@ -237,11 +237,11 @@ namespace SceneryEditorX
 		{
 			*allocSize = allocInfo.size;
 		}
-		SEDX_CORE_TRACE("VulkanAllocator ({0}): allocating image; size = {1}", m_ObjectName, Utils::BytesToString(allocInfo.size));
+		SEDX_CORE_TRACE_TAG("MemoryAllocator", "Allocating image; size = {0}", m_ObjectName, Utils::BytesToString(allocInfo.size));
 
 		{
 			s_AllocatorData->totalAllocatedBytes += allocInfo.size;
-			SEDX_CORE_TRACE("VulkanAllocator ({0}): total allocated since start is {1}", m_ObjectName, Utils::BytesToString(s_AllocatorData->totalAllocatedBytes));
+			SEDX_CORE_TRACE_TAG("MemoryAllocator", "{0}: total allocated since start is {1}", m_ObjectName, Utils::BytesToString(s_AllocatorData->totalAllocatedBytes));
 		}
 
 	#if SEDX_GPU_TRACK_MEMORY_ALLOCATION
@@ -290,7 +290,7 @@ namespace SceneryEditorX
 		}
 		else
 		{
-			SEDX_CORE_ERROR("Could not find GPU memory allocation: {}", (void*)allocation);
+			SEDX_CORE_ERROR_TAG("MemoryAllocator", "Could not find GPU memory allocation: {}", (void*)allocation);
 		}
 	#endif
 		SEDX_CORE_TRACE_TAG("MemoryAllocator", "Buffer destroyed");
@@ -311,7 +311,7 @@ namespace SceneryEditorX
 		}
 		else
 		{
-			SEDX_CORE_ERROR("Could not find GPU memory allocation: {}", (void*)allocation);
+			SEDX_CORE_ERROR_TAG("MemoryAllocator", "Could not find GPU memory allocation: {}", (void*)allocation);
 		}
 #endif
 		SEDX_CORE_TRACE_TAG("MemoryAllocator", "Image destroyed");

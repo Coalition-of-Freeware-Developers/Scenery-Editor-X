@@ -532,6 +532,33 @@ namespace SceneryEditorX
 			return nullptr;
 		}
 
+		// ---- HasComponent helpers ----
+
+		/**
+		 * @brief Returns true if the entity has a struct component of type T.
+		 */
+		template<typename T>
+		bool HasComponent() requires(!ComponentTypeResolver<T>::IS_REGISTERED)
+		{
+			return m_structComponents.find(std::type_index(typeid(T))) != m_structComponents.end();
+		}
+
+		/**
+		 * @brief Returns true if the entity has a runtime Component of type T.
+		 */
+		template<typename T>
+		bool HasComponent() requires(ComponentTypeResolver<T>::IS_REGISTERED && std::derived_from<T, Component>)
+		{
+			const ComponentType type = Component::TypeToEnum<T>();
+			return m_components[static_cast<uint32_t>(type)].Get() != nullptr;
+		}
+
+		template<typename T>
+		bool HasComponent() requires(ComponentTypeResolver<T>::IS_REGISTERED && !std::derived_from<T, Component>)
+		{
+			return false;
+		}
+
 		// ---- HasComponent / HasAny ----
 
 		template<typename T>
