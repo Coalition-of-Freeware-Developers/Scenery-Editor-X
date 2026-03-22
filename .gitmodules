@@ -19,9 +19,6 @@
 [submodule "dependency/entt"]
 	path = dependency/entt
 	url = git@github.com:skypjack/entt.git
-[submodule "dependency/imgui"]
-	path = dependency/imgui
-	url = git@github.com:Coalition-of-Freeware-Developers/Scenery-Editor-X-imgui.git
 [submodule "dependency/taskflow"]
 	path = dependency/taskflow
 	url = https://github.com/taskflow/taskflow.git
