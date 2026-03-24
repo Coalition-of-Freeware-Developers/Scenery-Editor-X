@@ -53,7 +53,8 @@ namespace SceneryEditorX
 		Fonts,
 		Icons,
 		Shaders,
-		Textures
+		Textures,
+		Models,
 	};
 
 	/**
