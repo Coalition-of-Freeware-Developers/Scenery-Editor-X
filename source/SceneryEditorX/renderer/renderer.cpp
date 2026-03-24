@@ -985,9 +985,8 @@ namespace SceneryEditorX
 
 		VkCommandBuffer cb = m_CommandBuffers[m_CurrentFrameIndex];
 		if (cb == VK_NULL_HANDLE || !s_Swapchain)
-		{
 			return;
-		}
+
 		SEDX_CORE_TRACE_TAG("Renderer", "Recording draw commands using command buffer for frame {}", m_FrameNumber);
 
 		// Record render commands
@@ -1258,9 +1257,12 @@ namespace SceneryEditorX
 	{
 
 		// Check if the difference is smaller than epsilon (safe ==)
-		if (constexpr float epsilon = 1e-5f; std::abs(s_RendererResolution.x - static_cast<float>(width)) < epsilon &&
-											 std::abs(s_RendererResolution.y - static_cast<float>(height)) < epsilon)
-			return;
+		if (constexpr float epsilon = 1e-5f;
+			std::abs(s_RendererResolution.x - static_cast<float>(width)) < epsilon &&
+			std::abs(s_RendererResolution.y - static_cast<float>(height)) < epsilon)
+		{
+		    return;
+		}
 
 		s_RendererResolution.x = static_cast<float>(width);
 		s_RendererResolution.y = static_cast<float>(height);
@@ -1856,8 +1858,8 @@ namespace SceneryEditorX
 
 	void Renderer::Screenshot()
 	{
-	    /*
-	    static uint32_t screenshot_index = 0;
+		/*
+		static uint32_t screenshot_index = 0;
 
 		ImageResource* frame_output = GetRenderTarget(Renderer_RenderTarget::frame_output);
 		uint32_t width            = frame_output->GetWidth();

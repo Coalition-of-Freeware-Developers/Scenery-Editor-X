@@ -30,6 +30,7 @@
  */
 #include "application.h"
 #include <Editor/core/editor_layer.h>
+#include <Editor/ui/ui_layer.h>
 #include <SceneryEditorX/core/input/input.h>
 #include <SceneryEditorX/core/resource/resource_cache.h>
 #include <SceneryEditorX/core/threading/thread_pool.h>
@@ -103,22 +104,14 @@ namespace SceneryEditorX
 		Renderer::Init();
 		m_RenderThread.Run();
 
-		//m_UILayer = new UILayer;
-		//PushOverlay(m_UILayer);
+	    ResourceCache::Init();
 
-		try
-		{
-			FPSTimer::Init();
-			ThreadPool::Init();
-			ResourceCache::Init();
-			Scene::Init();
+		m_UILayer = new UILayer;
+		PushOverlay(m_UILayer);
 
-
-		}
-		catch (const std::exception &e)
-		{
-			SEDX_CORE_FATAL_TAG("Application","Exception during initialization: {}", e.what());
-		}
+	    FPSTimer::Init();
+	    ThreadPool::Init();
+	    Scene::Init();
 
 		m_IsRunning = true;
 	}
@@ -254,12 +247,10 @@ namespace SceneryEditorX
 
 				OnUpdate();
 				OnRender();
-
 				Tick();
 
 				// Start rendering previous frame
 				m_RenderThread.Kick();
-
 				m_CurrentFrameIndex = (m_CurrentFrameIndex + 1) % 2;
 				m_PerformanceTimers.MainThreadWorkTime = timer.ElapsedMillis();
 

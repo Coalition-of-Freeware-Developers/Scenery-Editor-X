@@ -191,15 +191,13 @@ public:
 				SceneryEditorX::IO::FileSystem::CreateDir(m_PersistentStoragePath);
 		}
 
-		// TODO: Move project loading to a separate function?
-		// activeProject->ReadProjCache();
-		// assetManager.LoadProject(cacheData.projectPath, cacheData.binPath);
-		if (!m_UserPreferences)
+	    if (!m_UserPreferences)
 		{
-		    EDITOR_INFO_TAG("Main", "User Preferences not initialized.");
-		    m_UserPreferences = SceneryEditorX::CreateRef<SceneryEditorX::UserPreferences>();
-		    return;
+			EDITOR_INFO_TAG("Main", "User Preferences not initialized. Creating default preferences and continuing initialization.");
+			m_UserPreferences = SceneryEditorX::CreateRef<SceneryEditorX::UserPreferences>();
+			// continue initialization instead of returning early so the editor layer and UI are created
 		}
+
 		if (m_UserPreferences->GetRecentProjects().empty())
 		{
 			m_UserPreferences->LoadPreferences();
@@ -210,10 +208,6 @@ public:
 
 			m_ProjectPath = m_UserPreferences->GetStartupProject();
 		}
-
-		// scene = assetManager.GetInitialScene();
-		// camera = assetManager.GetMainCamera(scene);
-		// m_TitleBarActiveColor = m_TitleBarTargetColor = Colors::Theme::titlebarGreen;
 
 		if (!SceneryEditorX::Window::IsVisible())
 		{

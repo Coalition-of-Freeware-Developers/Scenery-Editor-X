@@ -181,16 +181,14 @@ namespace SceneryEditorX
 
 		/**
 		 * @brief Returns an iterator to the end of the layer stack.
-		 *
 		 * Enables range-based for loops and standard algorithm usage.
-		 *
 		 * @return Iterator pointing past the last layer
 		 */
 		std::vector<Layer*>::iterator End() { return m_Layers.end(); }
 
 	private:
-		std::vector<Layer*> m_Layers;
-		unsigned int m_LayerInsertIndex = 0;
+		std::vector<Layer*> m_Layers;			// Container for all layers and overlays in the stack
+		unsigned int m_LayerInsertIndex = 0;	// Index separating layers and overlays (overlays are inserted at the end)
 	};
 }
 

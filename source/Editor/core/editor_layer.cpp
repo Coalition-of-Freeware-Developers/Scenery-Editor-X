@@ -121,11 +121,13 @@ namespace SceneryEditorX
 		memset(s_OpenProjectFilePathBuffer, 0, MAX_PROJECT_FILEPATH_LENGTH);
 		memset(s_NewProjectFilePathBuffer, 0, MAX_PROJECT_FILEPATH_LENGTH);
 
-
 		Layer::OnAttach();
 		m_Camera.Init();
 		Renderer::SetCamera(&m_Camera);
 		EDITOR_INFO_TAG("EditorLayer", "Camera initialized and registered with renderer");
+
+		// Initialize ImGui / editor UI layout
+		InitEditor();
 	}
 
 	void EditorLayer::OnDetach()
@@ -260,24 +262,15 @@ namespace SceneryEditorX
 
 		ImGui::End();*/
 	}
+
 	void EditorLayer::OnRender()
 	{
-
 		if (!ImGui::GetCurrentContext())
 			return;
 
 		ImGui_ImplSDL3_NewFrame();
 		ImGui::NewFrame();
 		ImGuizmo::BeginFrame();
-
-		ImGui::Render();
-
-		ImGuiIO& io = ImGui::GetIO();
-		if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-		{
-			ImGui::UpdatePlatformWindows();
-			ImGui::RenderPlatformWindowsDefault();
-		}
 
 		// -------------------------------------------------------
 		// Fullscreen dockspace host window
@@ -305,7 +298,7 @@ namespace SceneryEditorX
 		ImGui::PopStyleVar(3);
 
 		ImGuiID dockspaceID = ImGui::GetID("MainDockspace");
-		#if defined(IMGUI_HAS_DOCK)
+		#ifdef IMGUI_HAS_DOCK
 		if (!ImGui::DockBuilderGetNode(dockspaceID))
 		{
 			ImGui::DockBuilderRemoveNode(dockspaceID);
@@ -414,6 +407,15 @@ namespace SceneryEditorX
 			ImGui::TextDisabled("Project assets will appear here");
 		}
 		ImGui::End(); // Assets
+
+		// Finish ImGui frame and handle multi-viewport rendering after all UI is created
+		ImGui::Render();
+		ImGuiIO& io = ImGui::GetIO();
+		if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+		{
+			ImGui::UpdatePlatformWindows();
+			ImGui::RenderPlatformWindowsDefault();
+		}
 	}
 
 	/*

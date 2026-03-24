@@ -31,6 +31,7 @@
 #pragma once
 #include "application_data.h"
 #include <deque>
+#include <Editor/ui/ui_layer.h>
 #include <SceneryEditorX/core/events/application_events.h>
 #include <SceneryEditorX/core/events/event_system.h>
 #include <SceneryEditorX/core/layers/layer_stack.h>
@@ -169,6 +170,7 @@ namespace SceneryEditorX
 
 		Scope<Window> m_Window;
 		AppData m_AppData;
+		UILayer* m_UILayer;
 		LayerStack m_LayerStack;
 		DeltaTime m_DeltaTime;
 		DeltaTime m_FrameTime;
