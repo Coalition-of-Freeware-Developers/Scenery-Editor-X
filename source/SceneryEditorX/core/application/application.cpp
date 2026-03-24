@@ -98,6 +98,8 @@ namespace SceneryEditorX
 		m_Window->SetEventCallback([this](Event &e) { OnEvent(e); });
 		m_IsMinimized = false;
 
+		// Initialize RenderContext first so device/instance exist for Renderer
+		RenderContext::Init();
 		Renderer::Init();
 		m_RenderThread.Run();
 
@@ -109,7 +111,6 @@ namespace SceneryEditorX
 			FPSTimer::Init();
 			ThreadPool::Init();
 			ResourceCache::Init();
-			RenderContext::Init();
 			Scene::Init();
 
 
