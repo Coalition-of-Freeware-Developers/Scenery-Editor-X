@@ -34,37 +34,22 @@
 
 namespace SceneryEditorX
 {
-	
+	class PerformanceProfiler;
+
 	class Timer
 	{
 	public:
 		SEDX_FORCE_INLINE Timer() { Reset(); }
-        SEDX_FORCE_INLINE ~Timer() = default;
+		SEDX_FORCE_INLINE ~Timer() = default;
 
 		SEDX_FORCE_INLINE void Reset() { m_Start = std::chrono::high_resolution_clock::now(); }
 		SEDX_FORCE_INLINE float Elapsed() const { return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - m_Start).count() * 0.001f * 0.001f; }
-		SEDX_FORCE_INLINE float ElapsedMillis() const { return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - m_Start).count() * 0.001f; }
+		float ElapsedMillis() const;
 	private:
 		std::chrono::time_point<std::chrono::high_resolution_clock> m_Start;
 	};
 
-    // -------------------------------------------------------
-	
-	class ScopedTimer
-	{
-	public:
-        explicit ScopedTimer(std::string name) : m_Name(std::move(name)) {}
-		~ScopedTimer()
-		{
-			float time = m_Timer.ElapsedMillis();
-			SEDX_CORE_TRACE_TAG("Timer", "{0} - {1}ms", m_Name, time);
-		}
-	private:
-		std::string m_Name;
-		Timer m_Timer;
-	};
-
-    // -------------------------------------------------------
+	// -------------------------------------------------------
 
 	class PerformanceProfiler
 	{
@@ -75,18 +60,18 @@ namespace SceneryEditorX
 			uint32_t Samples = 0;
 
 			PerFrameData() = default;
-            explicit PerFrameData(const float time) : Time(time) {}
+			explicit PerFrameData(const float time) : Time(time) {}
 
-            explicit operator float() const { return Time; }
+			explicit operator float() const { return Time; }
 
-            PerFrameData& operator+=(const float time)
+			PerFrameData& operator+=(const float time)
 			{
 				Time += time;
-                return *this;
-            }
+				return *this;
+			}
 
-            std::unordered_map<const char *,PerFrameData>::mapped_type &operator=(float x);
-        };
+			std::unordered_map<const char *,PerFrameData>::mapped_type &operator=(float x);
+		};
 
 		void SetPerFrameTiming(const char* name, const float time)
 		{
@@ -112,7 +97,26 @@ namespace SceneryEditorX
 		inline static std::mutex m_PerFrameDataMutex;
 	};
 
-    // -------------------------------------------------------
+	// -------------------------------------------------------
+
+	class ScopedTimer
+	{
+	public:
+		explicit ScopedTimer(std::string name) : m_Name(std::move(name)) {}
+		~ScopedTimer()
+		{
+			const float time = m_Timer.ElapsedMillis();
+			if (m_Profiler)
+				m_Profiler->SetPerFrameTiming(m_Name.c_str(), time);
+			SEDX_CORE_TRACE_TAG("Timer", "{0} - {1}ms", m_Name, time);
+		}
+	private:
+		std::string m_Name;
+		Timer m_Timer;
+		PerformanceProfiler* m_Profiler = nullptr;
+	};
+
+	// -------------------------------------------------------
 
 	class ScopePerfTimer
 	{
@@ -130,16 +134,16 @@ namespace SceneryEditorX
 		Timer m_Timer;
 	};
 
-#if 1
+	#if 1
 	#define SEDX_SCOPE_PERF(name)\
-	    ScopePerfTimer timer__LINE__(name, Application::Get().GetPerformanceProfiler());
+		ScopePerfTimer timer__LINE__(name, Application::Get().GetPerformanceProfiler());
 
-    #define SEDX_SCOPE_TIMER(name)\
-	    ScopedTimer timer__LINE__(name);
-#else
+	#define SEDX_SCOPE_TIMER(name)\
+		ScopedTimer timer__LINE__(name);
+	#else
 	#define SEDX_SCOPE_PERF(name)
 	#define SEDX_SCOPE_TIMER(name)
-#endif
+	#endif
 
 }
 

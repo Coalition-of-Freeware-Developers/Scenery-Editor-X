@@ -198,12 +198,13 @@ static uint32_t GetDisplayModeIndex(const xMath::Vec2& resolution)
 	return 0;
 }
 
-RenderOptions::RenderOptions(Editor* editor) : Widget(editor)
+RenderOptions::RenderOptions(EditorLayer* editor) : Widget(editor)
 {
 	m_Title = "Renderer Options";
 	m_Visible = false;
 	m_Alpha = 1.0f;
 	m_InitialSize = Vec2(MonitorData::GetWidth() * 0.25f, MonitorData::GetHeight() * 0.5f);
+	m_Editor = editor;
 }
 
 void RenderOptions::OnVisible()

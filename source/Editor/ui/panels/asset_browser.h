@@ -36,7 +36,7 @@
 class AssetBrowser : public Widget
 {
 public:
-    AssetBrowser(SceneryEditorX::Editor *editor);
+    AssetBrowser(SceneryEditorX::EditorLayer *editor);
 
     void OnTickVisible() override;
     static void ShowMeshImportDialog(const std::string& file_path);

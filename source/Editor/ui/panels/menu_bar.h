@@ -30,14 +30,23 @@
  */
 #pragma once
 
-namespace SceneryEditorX { class Editor; }
+namespace SceneryEditorX { class EditorLayer; }
+class UILayer;
 
 // -------------------------------------------------------
 
 class MenuBar
 {
 public:
-    static void Initialize(SceneryEditorX::Editor * editor);
+    static void Initialize(SceneryEditorX::EditorLayer* editor);
+    // Convenience overload to allow UI layer to initialize the menu bar when
+    // refactoring moves the call site. This forwards to the EditorLayer-based
+    // initializer using a reinterpret_cast. The cast is kept explicit to
+    // document the mismatch in types and avoid accidental implicit conversions.
+    static void Initialize(UILayer* uiLayer)
+    {
+        Initialize(reinterpret_cast<SceneryEditorX::EditorLayer*>(uiLayer));
+    }
     static void Tick();
 
     static void ShowWorldSaveDialog();
@@ -45,6 +54,8 @@ public:
 
     static float GetPaddingX() { return 14.0f; }
     static float GetPaddingY() { return 8.0f; }
+private:
+    SceneryEditorX::Ref<SceneryEditorX::EditorLayer> m_Editor;
 };
 
 // -------------------------------------------------------

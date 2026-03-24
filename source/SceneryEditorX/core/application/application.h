@@ -40,7 +40,6 @@
 #include <SceneryEditorX/core/time/timer.h>
 #include <SceneryEditorX/core/window/window.h>
 #include <SceneryEditorX/settings/settings.h>
-#include <SceneryEditorX/ui/ui_layer.h>
 #include <SceneryEditorX/utils/pointers.h>
 
 // -------------------------------------------------------
@@ -72,6 +71,7 @@ namespace SceneryEditorX
 
 		virtual void Run();
 		virtual void OnRender();
+		void RenderUI();
 		virtual void Tick();
 		virtual void Stop();
 
@@ -79,10 +79,10 @@ namespace SceneryEditorX
 		virtual void OnUpdate() {}
 		virtual void OnShutdown();
 
-		void PushLayer(Layer *module);
-		void PushOverlay(Layer *module);
-		void PopLayer(Layer *module);
-		void PopOverlay(Layer *module);
+		void PushLayer(Layer *layer);
+		void PushOverlay(Layer *layer);
+		void PopLayer(Layer *layer);
+		void PopOverlay(Layer *layer);
 
 		// -------------------------------------------------------
 
@@ -97,7 +97,7 @@ namespace SceneryEditorX
 		uint32_t GetCurrentFrameIndex() const { return m_CurrentFrameIndex; }
 		const AppData &GetAppData() const { return m_AppData; }
 		const PlatformContext* GetPlatformContext() const { return m_PlatformContext; }
-		LayerStack& GetLayerStack() { return m_ModuleStage; }
+		LayerStack& GetLayerStack() { return m_LayerStack; }
 		PerformanceTimers m_PerformanceTimers;
 
 		// -------------------------------------------------------
@@ -169,8 +169,7 @@ namespace SceneryEditorX
 
 		Scope<Window> m_Window;
 		AppData m_AppData;
-		LayerStack m_ModuleStage;
-		UILayer *m_UILayer = nullptr;
+		LayerStack m_LayerStack;
 		DeltaTime m_DeltaTime;
 		DeltaTime m_FrameTime;
 		float m_LastFrameTime = 0.0f;

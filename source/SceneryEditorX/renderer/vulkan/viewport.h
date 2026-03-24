@@ -34,7 +34,7 @@
 
 namespace SceneryEditorX
 {
-	class Viewport
+	class Viewport : public RefCounted
 	{
 	public:
 		Viewport(const float x = 0.0f,			const float y = 0.0f,

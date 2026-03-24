@@ -34,10 +34,8 @@
 
 static bool s_Visible = true;
 
-AboutWindow::AboutWindow(const std::string &name)
+AboutWindow::AboutWindow()
 {
-    m_DebugName = name;
-
     if (!s_Visible)
         return;
 }

@@ -55,7 +55,7 @@ enum TextureViewOptions
 class TextureViewer : public Widget
 {
 public:
-    TextureViewer(SceneryEditorX::Editor *editor);
+    TextureViewer(SceneryEditorX::EditorLayer *editor);
 
     void OnTick() override;
     void OnVisible() override;

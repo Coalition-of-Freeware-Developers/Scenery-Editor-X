@@ -29,16 +29,17 @@
  * -------------------------------------------------------
  */
 #include "application.h"
+#include <Editor/core/editor_layer.h>
 #include <SceneryEditorX/core/input/input.h>
 #include <SceneryEditorX/core/resource/resource_cache.h>
 #include <SceneryEditorX/core/threading/thread_pool.h>
 #include <SceneryEditorX/core/time/fps_timer.h>
 #include <SceneryEditorX/logging/logging.hpp>
+#include <SceneryEditorX/logging/profiler.hpp>
 #include <SceneryEditorX/project/project.h>
 #include <SceneryEditorX/renderer/renderer.h>
 #include <SceneryEditorX/renderer/vulkan/swapchain.h>
 #include <SceneryEditorX/scene/scene.h>
-#include <SceneryEditorX/ui/ui_layer.h>
 
 // -------------------------------------------------------
 
@@ -97,6 +98,12 @@ namespace SceneryEditorX
 		m_Window->SetEventCallback([this](Event &e) { OnEvent(e); });
 		m_IsMinimized = false;
 
+		Renderer::Init();
+		m_RenderThread.Run();
+
+		//m_UILayer = new UILayer;
+		//PushOverlay(m_UILayer);
+
 		try
 		{
 			FPSTimer::Init();
@@ -104,8 +111,8 @@ namespace SceneryEditorX
 			ResourceCache::Init();
 			RenderContext::Init();
 			Scene::Init();
-			Renderer::Init();
-			m_RenderThread.Run();
+
+
 		}
 		catch (const std::exception &e)
 		{
@@ -177,18 +184,17 @@ namespace SceneryEditorX
 
 	Application::~Application()
 	{
-		if (m_Window)
-		{
-			m_Window->SetEventCallback([](Event&) {});
-		}
+		EditorLayer::SaveProject();
+
+		m_Window->SetEventCallback([](Event&) {});
 
 		// Stop producing new work first
 		m_RenderThread.Terminate();
 
 		// Detach and destroy layers in reverse order (dependencies unwind correctly)
-		for (size_t i = m_ModuleStage.Size(); i > 0; --i)
+		for (size_t i = m_LayerStack.Size(); i > 0; --i)
 		{
-			Layer* layer = m_ModuleStage[i - 1];
+			Layer* layer = m_LayerStack[i - 1];
 			layer->OnDetach();
 			delete layer;
 		}
@@ -201,15 +207,19 @@ namespace SceneryEditorX
 		// Shutdown systems that may hold/consume resources
 		Renderer::Shutdown();
 		ThreadPool::Shutdown();
-
 	}
 
 	void Application::Tick()
 	{
+		Application* app = this;
 		Input::Tick();
 
 		// Per-frame housekeeping
 		Window::Tick();
+		// Execute UI render calls directly for now to avoid relying on the
+		// renderer submission system while that API is being refactored.
+		app->RenderUI();
+		//app->m_UILayer->End();
 		m_RenderThread.Tick();
 		FPSTimer::PostTick();
 	}
@@ -223,46 +233,45 @@ namespace SceneryEditorX
 		// Main application loop
 		while (m_IsRunning && !m_Window->GetShouldClose())
 		{
+			Timer timer;
+
 			// Wait for render thread to finish frame
 			{
-				Timer timer;
-
 				m_RenderThread.BlockUntilRenderComplete();
-
 				m_PerformanceTimers.MainThreadWaitTime = timer.ElapsedMillis();
 			}
 
-			Timer cpuTimer;
-
-			float time = GetTime();
-			m_FrameTime = time - m_LastFrameTime;
-			m_DeltaTime = xMath::Min<float>(static_cast<float>(m_FrameTime), 0.0333f);
-			m_LastFrameTime = time;
-
-			// Poll events
-			ProcessEvents();
-
-			for (size_t i = 0; i < m_ModuleStage.Size(); ++i)
+			if (!m_IsMinimized)
 			{
-				m_ModuleStage[i]->Tick(m_DeltaTime);
+				// Poll events
+				ProcessEvents();
+
+				for (size_t i = 0; i < m_LayerStack.Size(); ++i)
+				{
+					m_LayerStack[i]->Tick();
+				}
+
+				OnUpdate();
+				OnRender();
+
+				Tick();
+
+				// Start rendering previous frame
+				m_RenderThread.Kick();
+
+				m_CurrentFrameIndex = (m_CurrentFrameIndex + 1) % 2;
+				m_PerformanceTimers.MainThreadWorkTime = timer.ElapsedMillis();
+
+				frameCount++;
 			}
-
-			OnUpdate();
-			OnRender();
-
-			Tick();
-			Input::ClearReleasedKeys();
-
-			// Start rendering previous frame
-			m_RenderThread.Kick();
-
-			m_CurrentFrameIndex = (m_CurrentFrameIndex + 1) % 2;
-			m_PerformanceTimers.MainThreadWorkTime = cpuTimer.ElapsedMillis();
-
-			frameCount++;
 		}
 
+		Input::ClearReleasedKeys();
 		m_RenderThread.BlockUntilRenderComplete();
+		float time = GetTime();
+		m_FrameTime = time - m_LastFrameTime;
+		m_DeltaTime = xMath::Min<float>(static_cast<float>(m_FrameTime), 0.0333f);
+		m_LastFrameTime = time;
 
 		//SEDX_CORE_INFO_TAG("Application", "=== Exiting Application Main Loop (frames rendered: {}) ===", frameCount);
 		OnShutdown();
@@ -272,7 +281,21 @@ namespace SceneryEditorX
 
 	void Application::OnRender()
 	{
-		// Override in derived class (Editor::OnRender())
+		SEDX_CORE_TRACE_TAG("Application", "OnRender() has been called");
+	}
+
+	void Application::RenderUI()
+	{
+		//SEDX_PROFILER_FUNC();
+		//SEDX_SCOPE_PERF("Application::RenderUI");
+		SEDX_CORE_TRACE_TAG("Application", "Rendering UI");
+
+		//m_UILayer->Begin();
+
+		for (int i = 0; i < m_LayerStack.Size(); i++)
+		{
+			m_LayerStack[i]->OnRender();
+		}
 	}
 
 	void Application::OnShutdown()
@@ -283,28 +306,28 @@ namespace SceneryEditorX
 		appRunning = false;
 	}
 
-	void Application::PushLayer(Layer *module)
+	void Application::PushLayer(Layer *layer)
 	{
-		m_ModuleStage.PushLayer(module);
-		module->OnAttach();
+		m_LayerStack.PushLayer(layer);
+		layer->OnAttach();
 	}
 
-	void Application::PushOverlay(Layer *module)
+	void Application::PushOverlay(Layer *layer)
 	{
-		m_ModuleStage.PushOverlay(module);
-		module->OnAttach();
+		m_LayerStack.PushOverlay(layer);
+		layer->OnAttach();
 	}
 
-	void Application::PopLayer(Layer *module)
+	void Application::PopLayer(Layer *layer)
 	{
-		m_ModuleStage.PopLayer(module);
-		module->OnDetach();
+		m_LayerStack.PopLayer(layer);
+		layer->OnDetach();
 	}
 
-	void Application::PopOverlay(Layer *module)
+	void Application::PopOverlay(Layer *layer)
 	{
-		m_ModuleStage.PopOverlay(module);
-		module->OnDetach();
+		m_LayerStack.PopOverlay(layer);
+		layer->OnDetach();
 	}
 
 	void Application::SyncEvents()
@@ -355,7 +378,7 @@ namespace SceneryEditorX
 		dispatcher.Dispatch<WindowMinimizeEvent>([this](const WindowMinimizeEvent& e) { return OnWindowMinimize(e); });
 		dispatcher.Dispatch<WindowCloseEvent>([this](WindowCloseEvent& e) { return OnWindowClose(e); });
 		
-		for (auto it = m_ModuleStage.End(); it != m_ModuleStage.Begin(); )
+		for (auto it = m_LayerStack.End(); it != m_LayerStack.Begin(); )
 		{
 			(*--it)->OnEvent(event);
 			if (event.m_Handled) break;

@@ -33,16 +33,14 @@
 
 // ---------------------------------------------------------
 
-class Editor;
-
 /**
  * @class AboutWindow
  * @brief 
  */
-class AboutWindow : public ChildWindow
+class AboutWindow : public UI::ChildWindow
 {
 public:
-    AboutWindow(const std::string &name);
+    AboutWindow();
 
     bool *ShowWindow() override;
     bool IsVisible() override;

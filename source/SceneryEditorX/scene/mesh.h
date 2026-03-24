@@ -70,10 +70,10 @@ namespace SceneryEditorX
 	static const uint32_t MESH_LOD_COUNT = 5;
 
 	/**
-	 * @struct SubMesh
+	 * @struct LodLevels
 	 * @brief 
 	 */
-	struct SubMesh
+	struct LodLevels
 	{
 		std::vector<MeshLod> lods; // list of LOD levels for this sub-mesh
 	};
@@ -112,7 +112,7 @@ namespace SceneryEditorX
 		void AddGeometry(std::vector<Vertex_PosTexNorTan>& vertices, std::vector<uint32_t>& indices, const bool generateLods, uint32_t* sub_mesh_index = nullptr);
 		std::vector<Vertex_PosTexNorTan>& GetVertices()   { return m_vertices; }
 		std::vector<uint32_t>& GetIndices()                   { return m_indices; }
-		const SubMesh& GetSubMesh(const uint32_t index) const { return m_sub_meshes[index]; }
+		const LodLevels& GetSubMesh(const uint32_t index) const { return m_sub_meshes[index]; }
 
 		// get counts
 		virtual uint32_t GetVertexCount() const;
@@ -147,7 +147,7 @@ namespace SceneryEditorX
 		// geometry
 		std::vector<Vertex_PosTexNorTan> m_vertices;	// all vertices of a model file
 		std::vector<uint32_t> m_indices;                // all indices of a model file
-		std::vector<SubMesh> m_sub_meshes;              // tracks sub-meshes and lods within the above vectors
+		std::vector<LodLevels> m_sub_meshes;              // tracks sub-meshes and lods within the above vectors
 
 		// global geometry buffer offsets (base offsets into the shared vertex/index buffers)
 		uint32_t m_global_vertex_offset = 0;

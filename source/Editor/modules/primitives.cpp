@@ -40,7 +40,7 @@ namespace SceneryEditorX
 
 	ObjectType Primitives::CreateBox(const Vec3 &size)
 	{
-        SEDX_CORE_INFO_TAG("PRIMITIVES", "Creating box primitive with size: ({}, {}, {})", size.x, size.y, size.z);
+        EDITOR_INFO_TAG("PRIMITIVES", "Creating box primitive with size: ({}, {}, {})", size.x, size.y, size.z);
 
         std::vector<MeshVertex> vertices;
 		vertices.resize(24); // 6 faces * 4 vertices per face
@@ -116,7 +116,7 @@ namespace SceneryEditorX
         }
 
         //TODO: Create and return actual ObjectType/ModelAsset from vertices and indices
-        SEDX_CORE_INFO_TAG("PRIMITIVES", "Box primitive created successfully with {} vertices and {} indices",
+        EDITOR_INFO_TAG("PRIMITIVES", "Box primitive created successfully with {} vertices and {} indices",
                            vertices.size(), indices.size());
 	    return {};
 	}
@@ -125,7 +125,7 @@ namespace SceneryEditorX
 
 	ObjectType Primitives::CreateSphere(const float radius)
 	{
-        SEDX_CORE_INFO_TAG("PRIMITIVES", "Creating sphere primitive with radius: {}", radius);
+        EDITOR_INFO_TAG("PRIMITIVES", "Creating sphere primitive with radius: {}", radius);
 
         std::vector<MeshVertex> vertices;
         std::vector<ModelAsset::Index> indices;
@@ -186,7 +186,7 @@ namespace SceneryEditorX
 		}
 
         //TODO: Create and return actual ObjectType/ModelAsset from vertices and indices
-        SEDX_CORE_INFO_TAG("PRIMITIVES", "Sphere primitive created successfully with {} vertices and {} indices",
+        EDITOR_INFO_TAG("PRIMITIVES", "Sphere primitive created successfully with {} vertices and {} indices",
                            vertices.size(), indices.size());
         return {};
 	}
@@ -195,7 +195,7 @@ namespace SceneryEditorX
 
 	ObjectType Primitives::CreateCylinder(float radius, float height)
 	{
-        SEDX_CORE_INFO_TAG("PRIMITIVES", "Creating cylinder primitive with radius: {}, height: {}", radius, height);
+        EDITOR_INFO_TAG("PRIMITIVES", "Creating cylinder primitive with radius: {}, height: {}", radius, height);
 
 		std::vector<MeshVertex> vertices;
 		std::vector<ModelAsset::Index> indices;
@@ -273,7 +273,7 @@ namespace SceneryEditorX
 		}
 
         //TODO: Create and return actual ObjectType/ModelAsset from vertices and indices
-        SEDX_CORE_INFO_TAG("PRIMITIVES", "Cylinder primitive created successfully with {} vertices and {} indices",
+        EDITOR_INFO_TAG("PRIMITIVES", "Cylinder primitive created successfully with {} vertices and {} indices",
                            vertices.size(), indices.size());
 	    return {};
 	}
@@ -282,7 +282,7 @@ namespace SceneryEditorX
 
 	ObjectType Primitives::CreatePlane(const Vec2 &size)
 	{
-        SEDX_CORE_INFO_TAG("PRIMITIVES", "Creating plane primitive with size: ({}, {})", size.x, size.y);
+        EDITOR_INFO_TAG("PRIMITIVES", "Creating plane primitive with size: ({}, {})", size.x, size.y);
 
         std::vector<MeshVertex> vertices;
         std::vector<ModelAsset::Index> indices;
@@ -339,7 +339,7 @@ namespace SceneryEditorX
         indices.push_back({.V1 = 2, .V2 = 3, .V3 = 0});
 
         //TODO: Create and return actual ObjectType/ModelAsset from vertices and indices
-        SEDX_CORE_INFO_TAG("PRIMITIVES", "Plane primitive created successfully with {} vertices and {} indices",
+        EDITOR_INFO_TAG("PRIMITIVES", "Plane primitive created successfully with {} vertices and {} indices",
                            vertices.size(), indices.size());
 	    return {};
 	}
@@ -349,13 +349,13 @@ namespace SceneryEditorX
     /*
     ObjectType Primitives::CreatePrimitiveType(PrimitiveType type, const Vec3& size)
     {
-        SEDX_CORE_INFO_TAG("PRIMITIVES", "Creating primitive of type: {} with size: ({}, {}, {})",
+        EDITOR_INFO_TAG("PRIMITIVES", "Creating primitive of type: {} with size: ({}, {}, {})",
                           static_cast<int>(type), size.x, size.y, size.z);
 
         // Validate input parameters
         if (!ValidatePrimitiveDimensions(type, size))
         {
-            SEDX_CORE_ERROR_TAG("PRIMITIVES", "Invalid dimensions for primitive type: {}", static_cast<int>(type));
+            EDITOR_ERROR_TAG("PRIMITIVES", "Invalid dimensions for primitive type: {}", static_cast<int>(type));
             return {};
         }
 
@@ -368,10 +368,10 @@ namespace SceneryEditorX
             case Cylinder:	return CreateCylinder(size.x, size.y); /// For cylinder, x = radius, y = height
             case Plane:		return CreatePlane(Vec2(size.x, size.y)); /// For plane, use x and y components for width and height
 
-            case None:		SEDX_CORE_WARN_TAG("PRIMITIVES", "Attempted to create primitive of type None");
+            case None:		EDITOR_WARN_TAG("PRIMITIVES", "Attempted to create primitive of type None");
                             break;
             default:
-                SEDX_CORE_ERROR_TAG("PRIMITIVES", "Unknown primitive type: {}", static_cast<int>(type));
+                EDITOR_ERROR_TAG("PRIMITIVES", "Unknown primitive type: {}", static_cast<int>(type));
                 break;
         }
 
@@ -412,7 +412,7 @@ namespace SceneryEditorX
         // - Preview rendering
         // - Create button
 
-        SEDX_CORE_WARN_TAG("PRIMITIVES", "ShowPrimitiveCreationUI not yet implemented");
+        EDITOR_WARN_TAG("PRIMITIVES", "ShowPrimitiveCreationUI not yet implemented");
         isOpen = false;
         return false;
     }
@@ -427,7 +427,7 @@ namespace SceneryEditorX
         // - Validation feedback
         // - OK/Cancel buttons
 
-        SEDX_CORE_WARN_TAG("PRIMITIVES", "ShowTextInputInterface not yet implemented");
+        EDITOR_WARN_TAG("PRIMITIVES", "ShowTextInputInterface not yet implemented");
         return false;
     }
 

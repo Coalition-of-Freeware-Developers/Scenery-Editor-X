@@ -114,11 +114,11 @@ namespace SceneryEditorX
 						);
 
 						std::string systemFormat = dateFormat + " " + fullTimeFormat;
-						SEDX_CORE_TRACE_TAG("USER_PREFS", "Using Windows regional format: {}", systemFormat);
+						SEDX_CORE_TRACE_TAG("UserPreferences", "Using Windows regional format: {}", systemFormat);
 						return systemFormat;
 					}
 				}
-				SEDX_CORE_WARN_TAG("USER_PREFS", "Failed to get Windows regional format, using default");
+				SEDX_CORE_WARN_TAG("UserPreferences", "Failed to get Windows regional format, using default");
 			}
 	#elif defined(SEDX_PLATFORM_LINUX)
 	{
@@ -130,10 +130,10 @@ namespace SceneryEditorX
 		if (dateFormat && timeFormat)
 		{
 			std::string systemFormat = std::string(dateFormat) + " " + std::string(timeFormat);
-			SEDX_CORE_TRACE_TAG("USER_PREFS", "Using Linux regional format: {}", systemFormat);
+			SEDX_CORE_TRACE_TAG("UserPreferences", "Using Linux regional format: {}", systemFormat);
 			return systemFormat;
 		}
-		SEDX_CORE_WARN_TAG("USER_PREFS", "Failed to get Linux regional format, using default");
+		SEDX_CORE_WARN_TAG("UserPreferences", "Failed to get Linux regional format, using default");
 	}
 	#elif defined(SEDX_PLATFORM_MAC)
 	{
@@ -150,7 +150,7 @@ namespace SceneryEditorX
 				if (CFStringGetCString(formatString, buffer, sizeof(buffer), kCFStringEncodingUTF8))
 				{
 					std::string systemFormat(buffer);
-					SEDX_CORE_TRACE_TAG("USER_PREFS", "Using macOS regional format: {}", systemFormat);
+					SEDX_CORE_TRACE_TAG("UserPreferences", "Using macOS regional format: {}", systemFormat);
 					CFRelease(formatter);
 					CFRelease(currentLocale);
 					return systemFormat;
@@ -159,16 +159,16 @@ namespace SceneryEditorX
 			CFRelease(formatter);
 		}
 		CFRelease(currentLocale);
-		SEDX_CORE_WARN_TAG("USER_PREFS", "Failed to get macOS regional format, using default");
+		SEDX_CORE_WARN_TAG("UserPreferences", "Failed to get macOS regional format, using default");
 	}
 	#endif
 		}
 		catch (const std::exception& e)
 		{
-			SEDX_CORE_ERROR_TAG("USER_PREFS", "Exception getting system date format: {}", e.what());
+			SEDX_CORE_ERROR_TAG("UserPreferences", "Exception getting system date format: {}", e.what());
 		}
 
-		SEDX_CORE_TRACE_TAG("USER_PREFS", "Using default format: {}", defaultFormat);
+		SEDX_CORE_TRACE_TAG("UserPreferences", "Using default format: {}", defaultFormat);
 		return defaultFormat;
 	}
 
@@ -201,7 +201,7 @@ namespace SceneryEditorX
 		}
 		catch (const std::exception& e)
 		{
-			SEDX_CORE_ERROR_TAG("USER_PREFS", "Exception checking time format: {}", e.what());
+			SEDX_CORE_ERROR_TAG("UserPreferences", "Exception checking time format: {}", e.what());
 		}
 
 		// Default to 24-hour format
@@ -218,7 +218,7 @@ namespace SceneryEditorX
 			const std::tm* timeInfo = std::localtime(&time);
 			if (!timeInfo)
 			{
-				SEDX_CORE_ERROR_TAG("USER_PREFS", "Failed to convert time_t to tm structure");
+				SEDX_CORE_ERROR_TAG("UserPreferences", "Failed to convert time_t to tm structure");
 				return "";
 			}
 
@@ -237,12 +237,12 @@ namespace SceneryEditorX
 			}
 
 			std::string result = ss.str();
-			SEDX_CORE_TRACE_TAG("USER_PREFS", "Converted time {} to string: '{}'", time, result);
+			SEDX_CORE_TRACE_TAG("UserPreferences", "Converted time {} to string: '{}'", time, result);
 			return result;
 		}
 		catch (const std::exception& e)
 		{
-			SEDX_CORE_ERROR_TAG("USER_PREFS", "Exception converting time to string: {}", e.what());
+			SEDX_CORE_ERROR_TAG("UserPreferences", "Exception converting time to string: {}", e.what());
 			return "";
 		}
 	}
@@ -279,19 +279,19 @@ namespace SceneryEditorX
 				{
 					if (time_t result = std::mktime(&tm); result != -1)
 					{
-						SEDX_CORE_TRACE_TAG("USER_PREFS", "Parsed time string '{}' with format '{}' -> {}", timeString, format, result);
+						SEDX_CORE_TRACE_TAG("UserPreferences", "Parsed time string '{}' with format '{}' -> {}", timeString, format, result);
 						return result;
 					}
 				}
 			}
 
 			/// If all parsing attempts failed, log warning
-			SEDX_CORE_WARN_TAG("USER_PREFS", "Failed to parse time string: '{}'", timeString);
+			SEDX_CORE_WARN_TAG("UserPreferences", "Failed to parse time string: '{}'", timeString);
 			return 0;
 		}
 		catch (const std::exception& e)
 		{
-			SEDX_CORE_ERROR_TAG("USER_PREFS", "Exception parsing time string '{}': {}", timeString, e.what());
+			SEDX_CORE_ERROR_TAG("UserPreferences", "Exception parsing time string '{}': {}", timeString, e.what());
 			return 0;
 		}
 	}
@@ -312,7 +312,7 @@ namespace SceneryEditorX
 
 	UserPreferences::~UserPreferences()
 	{
-		/// Save preferences on destruction
+		// Save preferences on destruction
 		SavePreferences();
 	}
 
@@ -321,7 +321,7 @@ namespace SceneryEditorX
 		if (m_ShowWelcomeScreen != show)
 		{
 			m_ShowWelcomeScreen = show;
-			SEDX_CORE_TRACE_TAG("USER_PREFS", "Welcome screen setting changed: {}", show ? "enabled" : "disabled");
+			SEDX_CORE_TRACE_TAG("UserPreferences", "Welcome screen setting changed: {}", show ? "enabled" : "disabled");
 		}
 	}
 
@@ -330,22 +330,22 @@ namespace SceneryEditorX
 		if (m_StartupProject != projectPath)
 		{
 			m_StartupProject = projectPath;
-			SEDX_CORE_TRACE_TAG("USER_PREFS", "Startup project changed: {}", projectPath.empty() ? "none" : projectPath);
+			SEDX_CORE_TRACE_TAG("UserPreferences", "Startup project changed: {}", projectPath.empty() ? "none" : projectPath);
 		}
 	}
 
 	void UserPreferences::AddRecentProject(const RecentProject& project)
 	{
-		/// Remove existing entry for this project path if it exists
+		// Remove existing entry for this project path if it exists
 		RemoveRecentProject(project.filePath);
 
-		/// Add the new entry
+		// Add the new entry
 		m_RecentProjects[project.lastOpened] = project;
 
-		/// Trim list to maximum size
+		// Trim list to maximum size
 		TrimRecentProjects();
 
-		SEDX_CORE_TRACE_TAG("USER_PREFS", "Added recent project: {}", project.name);
+		SEDX_CORE_TRACE_TAG("UserPreferences", "Added recent project: {}", project.name);
 	}
 
 	void UserPreferences::RemoveRecentProject(const std::string& projectPath)
@@ -355,7 +355,7 @@ namespace SceneryEditorX
 
 		if (it != m_RecentProjects.end())
 		{
-			SEDX_CORE_TRACE_TAG("USER_PREFS", "Removed recent project: {}", it->second.name);
+			SEDX_CORE_TRACE_TAG("UserPreferences", "Removed recent project: {}", it->second.name);
 			m_RecentProjects.erase(it);
 		}
 	}
@@ -364,38 +364,38 @@ namespace SceneryEditorX
 	{
 		size_t count = m_RecentProjects.size();
 		m_RecentProjects.clear();
-		SEDX_CORE_TRACE_TAG("USER_PREFS", "Cleared {} recent projects", count);
+		SEDX_CORE_TRACE_TAG("UserPreferences", "Cleared {} recent projects", count);
 	}
 
 	bool UserPreferences::LoadPreferences()
 	{
 		if (!m_Settings)
 		{
-			SEDX_CORE_ERROR_TAG("USER_PREFS", "Settings not initialized");
+			SEDX_CORE_ERROR_TAG("UserPreferences", "Settings not initialized");
 			return false;
 		}
 
 		try
 		{
-			SEDX_CORE_TRACE_TAG("USER_PREFS", "Loading user preferences from: {}", m_ConfigPath.string());
+			SEDX_CORE_TRACE_TAG("UserPreferences", "Loading user preferences from: {}", m_ConfigPath.string());
 
-			/// Load basic preferences with defaults
+			// Load basic preferences with defaults
 			m_ShowWelcomeScreen = m_Settings->GetBoolOption("user.show_welcome_screen", true);
 			m_StartupProject = m_Settings->GetStringOption("user.startup_project", "");
 
-			/// Load recent projects
+			// Load recent projects
 			LoadRecentProjectsFromSettings();
 
-			SEDX_CORE_TRACE_TAG("USER_PREFS", "User preferences loaded successfully");
-			SEDX_CORE_TRACE_TAG("USER_PREFS", "  Welcome screen: {}", m_ShowWelcomeScreen ? "enabled" : "disabled");
-			SEDX_CORE_TRACE_TAG("USER_PREFS", "  Startup project: {}", m_StartupProject.empty() ? "none" : m_StartupProject);
-			SEDX_CORE_TRACE_TAG("USER_PREFS", "  Recent projects: {}", m_RecentProjects.size());
+			SEDX_CORE_TRACE_TAG("UserPreferences", "User preferences loaded successfully");
+			SEDX_CORE_TRACE_TAG("UserPreferences", "  Welcome screen: {}", m_ShowWelcomeScreen ? "enabled" : "disabled");
+			SEDX_CORE_TRACE_TAG("UserPreferences", "  Startup project: {}", m_StartupProject.empty() ? "none" : m_StartupProject);
+			SEDX_CORE_TRACE_TAG("UserPreferences", "  Recent projects: {}", m_RecentProjects.size());
 
 			return true;
 		}
 		catch (const std::exception& e)
 		{
-			SEDX_CORE_ERROR_TAG("USER_PREFS", "Failed to load user preferences: {}", e.what());
+			SEDX_CORE_ERROR_TAG("UserPreferences", "Failed to load user preferences: {}", e.what());
 			return false;
 		}
 	}
@@ -404,13 +404,13 @@ namespace SceneryEditorX
 	{
 		if (!m_Settings)
 		{
-			SEDX_CORE_ERROR_TAG("USER_PREFS", "Settings not initialized");
+			SEDX_CORE_ERROR_TAG("UserPreferences", "Settings not initialized");
 			return false;
 		}
 
 		try
 		{
-			SEDX_CORE_TRACE_TAG("USER_PREFS", "Saving user preferences to: {}", m_ConfigPath.string());
+			SEDX_CORE_TRACE_TAG("UserPreferences", "Saving user preferences to: {}", m_ConfigPath.string());
 
 			/// Save basic preferences
 			m_Settings->AddBoolOption("user.show_welcome_screen", m_ShowWelcomeScreen);
@@ -422,12 +422,12 @@ namespace SceneryEditorX
 			/// Write to file
 			m_Settings->WriteSettings();
 
-			SEDX_CORE_TRACE_TAG("USER_PREFS", "User preferences saved successfully");
+			SEDX_CORE_TRACE_TAG("UserPreferences", "User preferences saved successfully");
 			return true;
 		}
 		catch (const std::exception& e)
 		{
-			SEDX_CORE_ERROR_TAG("USER_PREFS", "Failed to save user preferences: {}", e.what());
+			SEDX_CORE_ERROR_TAG("UserPreferences", "Failed to save user preferences: {}", e.what());
 			return false;
 		}
 	}
@@ -440,7 +440,7 @@ namespace SceneryEditorX
 			if (const std::filesystem::path configDir = m_ConfigPath.parent_path(); !configDir.empty() && !std::filesystem::exists(configDir))
 			{
 				std::filesystem::create_directories(configDir);
-				SEDX_CORE_TRACE_TAG("USER_PREFS", "Created config directory: {}", configDir.string());
+				SEDX_CORE_TRACE_TAG("UserPreferences", "Created config directory: {}", configDir.string());
 			}
 
 			/// Create the ApplicationSettings instance
@@ -449,7 +449,7 @@ namespace SceneryEditorX
 			/// Try to read existing settings, if file doesn't exist it will be created
 			if (!m_Settings->ReadSettings())
 			{
-				SEDX_CORE_TRACE_TAG("USER_PREFS", "Creating new user preferences file: {}", m_ConfigPath.string());
+				SEDX_CORE_TRACE_TAG("UserPreferences", "Creating new user preferences file: {}", m_ConfigPath.string());
 
 				/// Set default values
 				m_Settings->AddBoolOption("user.show_welcome_screen", true);
@@ -460,7 +460,7 @@ namespace SceneryEditorX
 				m_Settings->WriteSettings();
 			}
 
-			SEDX_CORE_TRACE_TAG("USER_PREFS", "Settings initialized for: {}", m_ConfigPath.string());
+			SEDX_CORE_TRACE_TAG("UserPreferences", "Settings initialized for: {}", m_ConfigPath.string());
 
 			/// Test time conversion functions (only in debug builds)
 	#ifdef SEDX_DEBUG
@@ -469,17 +469,17 @@ namespace SceneryEditorX
 				std::string timeString = TimeToString(currentTime);
 				time_t convertedBack = StringToTime(timeString);
 
-				SEDX_CORE_TRACE_TAG("USER_PREFS", "Time conversion test: {} -> '{}' -> {}",
+				SEDX_CORE_TRACE_TAG("UserPreferences", "Time conversion test: {} -> '{}' -> {}",
 					currentTime, timeString, convertedBack);
 
 				if (std::abs(static_cast<double>(currentTime - convertedBack)) > 1.0)
-					SEDX_CORE_WARN_TAG("USER_PREFS", "Time conversion accuracy issue detected");
+					SEDX_CORE_WARN_TAG("UserPreferences", "Time conversion accuracy issue detected");
 			}
 	#endif
 		}
 		catch (const std::exception& e)
 		{
-			SEDX_CORE_ERROR_TAG("USER_PREFS", "Failed to initialize settings: {}", e.what());
+			SEDX_CORE_ERROR_TAG("UserPreferences", "Failed to initialize settings: {}", e.what());
 		}
 	}
 
@@ -492,7 +492,7 @@ namespace SceneryEditorX
 			/// Get the count of recent projects
 			int projectCount = m_Settings->GetIntOption("user.recent_projects.count", 0);
 
-			SEDX_CORE_TRACE_TAG("USER_PREFS", "Loading {} recent projects", projectCount);
+			SEDX_CORE_TRACE_TAG("UserPreferences", "Loading {} recent projects", projectCount);
 
 			for (auto i = 0; i < projectCount; ++i)
 			{
@@ -511,7 +511,7 @@ namespace SceneryEditorX
 					if (const auto oldTimestamp = static_cast<int64_t>(m_Settings->GetIntOption(basePath + ".last_opened", 0)); oldTimestamp > 0)
 					{
 						lastOpened = static_cast<time_t>(oldTimestamp);
-						SEDX_CORE_TRACE_TAG("USER_PREFS", "Converted old timestamp format for project: {}", name);
+						SEDX_CORE_TRACE_TAG("UserPreferences", "Converted old timestamp format for project: {}", name);
 					}
 				}
 
@@ -525,20 +525,20 @@ namespace SceneryEditorX
 
 					m_RecentProjects[project.lastOpened] = project;
 
-					SEDX_CORE_TRACE_TAG("USER_PREFS", "Loaded recent project: {} at {} (opened: {})",
+					SEDX_CORE_TRACE_TAG("UserPreferences", "Loaded recent project: {} at {} (opened: {})",
 						name, filePath, lastOpenedStr);
 				}
 				else
 				{
-					SEDX_CORE_WARN_TAG("USER_PREFS", "Skipped invalid recent project at index {} (name: '{}', path: '{}', time: '{}')", i, name, filePath, lastOpenedStr);
+					SEDX_CORE_WARN_TAG("UserPreferences", "Skipped invalid recent project at index {} (name: '{}', path: '{}', time: '{}')", i, name, filePath, lastOpenedStr);
 				}
 			}
 
-			SEDX_CORE_TRACE_TAG("USER_PREFS", "Loaded {} valid recent projects", m_RecentProjects.size());
+			SEDX_CORE_TRACE_TAG("UserPreferences", "Loaded {} valid recent projects", m_RecentProjects.size());
 		}
 		catch (const std::exception& e)
 		{
-			SEDX_CORE_ERROR_TAG("USER_PREFS", "Failed to load recent projects: {}", e.what());
+			SEDX_CORE_ERROR_TAG("UserPreferences", "Failed to load recent projects: {}", e.what());
 		}
 	}
 
@@ -567,18 +567,18 @@ namespace SceneryEditorX
 				m_Settings->AddStringOption(basePath + ".file_path", filePath);
 				m_Settings->AddStringOption(basePath + ".last_opened", TimeToString(lastOpened, false));
 
-				SEDX_CORE_TRACE_TAG("USER_PREFS", "Saved recent project: {} at {} (opened: {})", name, filePath, TimeToString(lastOpened, false));
+				SEDX_CORE_TRACE_TAG("UserPreferences", "Saved recent project: {} at {} (opened: {})", name, filePath, TimeToString(lastOpened, false));
 				++index;
 			}
 
 			/// Update the count
 			m_Settings->AddIntOption("user.recent_projects.count", static_cast<int>(m_RecentProjects.size()));
 
-			SEDX_CORE_TRACE_TAG("USER_PREFS", "Saved {} recent projects to settings", m_RecentProjects.size());
+			SEDX_CORE_TRACE_TAG("UserPreferences", "Saved {} recent projects to settings", m_RecentProjects.size());
 		}
 		catch (const std::exception& e)
 		{
-			SEDX_CORE_ERROR_TAG("USER_PREFS", "Failed to save recent projects: {}", e.what());
+			SEDX_CORE_ERROR_TAG("UserPreferences", "Failed to save recent projects: {}", e.what());
 		}
 	}
 
@@ -598,7 +598,7 @@ namespace SceneryEditorX
 			++removedCount;
 		}
 
-		SEDX_CORE_TRACE_TAG("USER_PREFS", "Trimmed {} old recent projects, keeping latest {}", removedCount, UserPreferences::MAX_RECENT_PROJECTS);
+		SEDX_CORE_TRACE_TAG("UserPreferences", "Trimmed {} old recent projects, keeping latest {}", removedCount, UserPreferences::MAX_RECENT_PROJECTS);
 	}
 
 	// ----------------------------------------------------

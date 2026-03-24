@@ -30,7 +30,6 @@
  */
 #include "file_dialog.h"
 #include <fstream>
-#include <Editor/core/editor.h>
 #include <Editor/ui/ui.h>
 #include <Editor/ui/source/imgui/imgui_internal.h>
 #include <SceneryEditorX/core/resource/resource_cache.h>
@@ -192,7 +191,7 @@ void FileDialog::SetCurrentPath(const std::string & path)
     }
 }
 
-bool FileDialog::Show(bool* is_visible, Editor* editor, std::string * directory /*= nullptr*/, std::string * file_path /*= nullptr*/)
+bool FileDialog::Show(bool* is_visible, EditorLayer* editor, std::string * directory /*= nullptr*/, std::string * file_path /*= nullptr*/)
 {
     if (!(*is_visible))
     {
@@ -267,7 +266,7 @@ bool FileDialog::Show(bool* is_visible, Editor* editor, std::string * directory 
     return m_selection_made;
 }
 
-void FileDialog::ShowTop(bool* is_visible, Editor* editor)
+void FileDialog::ShowTop(bool* is_visible, EditorLayer* editor)
 {
     if (m_is_window)
     {
@@ -1169,7 +1168,7 @@ void FileDialog::DialogUpdateFromDirectory(const std::string& file_path)
 {
     if (!IO::FileSystem::IsDirectory(file_path))
     {
-        SEDX_CORE_ERROR_TAG("File Dialog", "provided path doesn't point to a directory.");
+        EDITOR_ERROR_TAG("File Dialog", "provided path doesn't point to a directory.");
         return;
     }
 

@@ -54,12 +54,12 @@ public:
     void SetDirty() { m_is_dirty = true; }
 
     // shows the dialog and returns true if a selection was made
-    bool Show(bool* is_visible, SceneryEditorX::Editor * editor, std::string* directory = nullptr, std::string* file_path = nullptr);
+    bool Show(bool* is_visible, SceneryEditorX::EditorLayer* editor, std::string* directory = nullptr, std::string* file_path = nullptr);
     void SetCallbackOnItemClicked(const std::function<void(const std::string&)>& callback) { m_callback_on_item_clicked = callback; }
     void SetCallbackOnItemDoubleClicked(const std::function<void(const std::string&)>& callback) { m_callback_on_item_double_clicked = callback; }
 
 private:
-    void ShowTop(bool* is_visible, SceneryEditorX::Editor * editor);
+    void ShowTop(bool* is_visible, SceneryEditorX::EditorLayer* editor);
     void ShowMiddle();
     void ShowBottom(bool* is_visible);
     

@@ -29,8 +29,44 @@
  * -------------------------------------------------------
  */
 #pragma once
+#include "Editor/ui/source/imgui/imgui.h"
 
-	// Load Fonts
+// -------------------------------------------------------
+
+namespace  UI
+{
+
+	/**
+	 * @struct FontConfiguration
+	 * @brief 
+	 */
+	struct FontConfiguration
+	{
+		std::string FontName;
+		std::string_view FilePath;
+		float Size = 16.0f;
+		const ImWchar* GlyphRanges = nullptr;
+		bool MergeWithLast = false;
+	};
+	
+	/**
+	 * @class Fonts
+	 * @brief 
+	 */
+	class Fonts
+	{
+	public:
+		static void Add(const FontConfiguration& config, bool isDefault = false);
+		static void PushFont(const std::string& fontName);
+		static void PopFont();
+		static ImFont* Get(const std::string& fontName);
+	};
+
+}
+
+// -------------------------------------------------------
+
+// Load Fonts
 /*
  - If no fonts are loaded, dear imgui will use the default font. You can also load multiple fonts and use ImGui::PushFont()/PopFont() to select them.
  - AddFontFromFileTTF() will return the ImFont* so you can store it if you need to select the font among multiple.
@@ -50,9 +86,6 @@ IM_ASSERT(font != nullptr);
 */
 
 // TODO: Fully integrate the font system into the engine
-
-
-
 
 /*
 ImGuiIO &io = ImGui::GetIO();

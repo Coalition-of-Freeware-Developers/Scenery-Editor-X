@@ -29,7 +29,6 @@
  * -------------------------------------------------------
  */
 #include "ui.h"
-#include <SceneryEditorX/ui/ui.h>
 #include "actions/drag_drop.h"
 #include <Editor/ui/source/imgui/imconfig.h>
 #include <Editor/ui/source/imgui/imgui.h>
@@ -87,8 +86,8 @@ extern "C"
 }
 
 // Initialize static members
-bool GUI::visible = true;
-const std::string GUI::DEFAULT_FONT = "Roboto-Regular";
+//bool GUI::visible = true;
+//const std::string GUI::DEFAULT_FONT = "Roboto-Regular";
 
 // Additional ImGui initialization functions can be placed here if needed
 void InitImGuiExtensions()
@@ -315,7 +314,7 @@ namespace UI
 			}
 			catch (const std::bad_variant_access& e)
 			{
-				SEDX_CORE_ERROR_TAG("UI", "%s", e.what());
+				EDITOR_ERROR_TAG("UI", "%s", e.what());
 			}
 		}
 
@@ -495,13 +494,7 @@ namespace UI
 
 }
 
-GUI::GUI() = default;
-
-GUI::~GUI()
-{
-	CleanUp();
-}
-
+/*
 bool GUI::CreateDescriptorPool()
 {
 	// Create separate descriptor pool for ImGui with FREE_DESCRIPTOR_SET_BIT
@@ -524,7 +517,7 @@ bool GUI::CreateDescriptorPool()
 	poolInfo.poolSizeCount = std::size(poolSizes);
 	poolInfo.pPoolSizes = poolSizes;
 
-	if (vkCreateDescriptorPool(m_Device->GetDevice(), &poolInfo, nullptr /* context.allocatorCallback*/, &imguiPool) != VK_SUCCESS)
+	if (vkCreateDescriptorPool(m_Device->GetDevice(), &poolInfo, nullptr /* context.allocatorCallback#1#, &imguiPool) != VK_SUCCESS)
 	{
 		EDITOR_ERROR("Failed to create ImGui descriptor pool!");
 		return false;
@@ -550,7 +543,7 @@ void GUI::UpdateDpiScale()
 	{
 		dpiFactor = xScale;
 	}
-	*/
+	#1#
 
 	// Tick ImGui style to reflect DPI changes
 	ImGuiStyle &style = ImGui::GetStyle();
@@ -595,7 +588,7 @@ bool GUI::InitGUI()
 
 	/*
 	// Get queue family info
-	RenderData renderData;*/
+	RenderData renderData;#1#
 
 	// Initialize Vulkan backend
 	ImGui_ImplVulkan_InitInfo info{};
@@ -693,7 +686,7 @@ void GUI::CleanUp()
 		vkDestroyDescriptorPool(m_Device->GetDevice(), imguiPool, nullptr);
 		imguiPool = VK_NULL_HANDLE;
 	}
-	*/
+	#1#
 
 	ImGui::DestroyContext();
 	initialized = false;
@@ -786,7 +779,7 @@ void GUI::InitGUI(SDL_Window *window, SceneryEditorX::GraphicsEngine &renderer)
 	//info.Subpass = 0;
 	info.MinImageCount = swapchain->GetSwapChainImages().size();
 	info.ImageCount = swapchain->GetSwapChainImages().size();
-	info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;  /* TODO: Replace when MSAA is implemented properly. #1#
+	info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;  /* TODO: Replace when MSAA is implemented properly. #2#
 	//info.MSAASamples = renderer->msaaSamples;
 	//info.Allocator = nullptr;
 	info.UseDynamicRendering = false;
@@ -813,7 +806,7 @@ void GUI::InitGUI(SDL_Window *window, SceneryEditorX::GraphicsEngine &renderer)
 	initialized = true;
 	EDITOR_INFO("ImGui initialized successfully");
 }
-*/
+#1#
 
 /*
 void GUI::ShowAppInfo(const std::string &appName) const
@@ -837,7 +830,7 @@ void GUI::ShowAppInfo(const std::string &appName) const
 
 	ImGui::End();
 }
-*/
+#1#
 
 /*
 bool GUI::InitViewport(const Viewport &size, VkImageView imageView)
@@ -848,7 +841,7 @@ bool GUI::InitViewport(const Viewport &size, VkImageView imageView)
 	viewportInitialized = true;
 	return true;
 }
-*/
+#1#
 
 /*
 void GUI::ViewportWindow(Viewport &size, bool &hovered, VkImageView imageView)
@@ -875,7 +868,7 @@ void GUI::ViewportWindow(Viewport &size, bool &hovered, VkImageView imageView)
 	ImGui::End();
 	ImGui::PopStyleVar();
 }
-*/
+#1#
 
 /*
 ImTextureID GUI::GetTextureID(const VkImageView imageView, VkSampler sampler, const VkImageLayout layout) const
@@ -911,7 +904,7 @@ ImTextureID GUI::GetTextureID(const VkImageView imageView, VkSampler sampler, co
 	VkDescriptorSet descriptorSet = ImGui_ImplVulkan_AddTexture(actualSampler, imageView, layout);
 	return reinterpret_cast<ImTextureID>(descriptorSet);
 }
-*/
+#1#
 
 void GUI::SetStyle()
 {
@@ -1054,5 +1047,6 @@ void GUI::SetFonts() const
 	io.FontDefault = mainFont; // Set default font
 	io.Fonts->Build();	// Build font atlas
 }
+*/
 
 // -------------------------------------------------------

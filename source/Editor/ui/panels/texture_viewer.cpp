@@ -63,10 +63,11 @@ namespace
     std::vector<SceneryEditorX::ImageResource*> render_targets;
 }
 
-TextureViewer::TextureViewer(Editor* editor) : Widget(editor)
+TextureViewer::TextureViewer(EditorLayer* editor) : Widget(editor)
 {
     m_Title   = "Texture Viewer";
     m_Visible = false;
+    m_Editor = editor;
 }
 
 void TextureViewer::OnTick()

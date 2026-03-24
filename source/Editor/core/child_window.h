@@ -29,25 +29,30 @@
  * -------------------------------------------------------
  */
 #pragma once
-#include <SceneryEditorX/core/layers/layer.h>
 
 // ---------------------------------------------------------
 
-/**
- * @class ChildWindow
- * @brief 
- */
-class ChildWindow : public SceneryEditorX::Layer
+namespace UI
 {
-public:
-	virtual ~ChildWindow() = default;
 
-	static void Init(const std::string &name);
-	virtual void CenterWindow();
+	/**
+	 * @class ChildWindow
+	 * @brief 
+	 */
+	class ChildWindow
+	{
+	public:
+		virtual ~ChildWindow() = default;
 
-	virtual bool IsVisible() = 0;
-	virtual bool *ShowWindow() = 0;
-};
+		static void Init(const std::string &name);
+		virtual void CenterWindow();
+
+		virtual void Tick() = 0;
+		virtual bool IsVisible() = 0;
+		virtual bool *ShowWindow() = 0;
+	};
+
+}
 
 // ---------------------------------------------------------
 

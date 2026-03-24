@@ -377,7 +377,7 @@ namespace SceneryEditorX
 
 			if (!IO::FileSystem::Exists(path))
 			{
-				SEDX_CORE_FATAL("Failed to load icon {0}! The file doesn't exist.", path.string());
+				EDITOR_FATAL("Failed to load icon {0}! The file doesn't exist.", path.string());
 				SEDX_CORE_VERIFY(false);
 				return nullptr;
 			}

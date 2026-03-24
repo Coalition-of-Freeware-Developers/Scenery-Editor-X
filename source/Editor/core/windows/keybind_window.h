@@ -33,17 +33,16 @@
 
 // ---------------------------------------------------------
 
-class Editor;
-
 /**
  * @class KeybindWindow
  * @brief 
  */
-class KeybindWindow : public ChildWindow
+class KeybindWindow : public UI::ChildWindow
 {
 public:
-	KeybindWindow(const std::string &name);
+	KeybindWindow();
 
+	void Tick() override;
 	bool *ShowWindow() override;
 	bool IsVisible() override;
 };

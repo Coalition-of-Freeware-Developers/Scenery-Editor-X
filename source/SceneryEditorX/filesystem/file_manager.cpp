@@ -752,6 +752,27 @@ namespace SceneryEditorX::IO
 	    return IsValidExtension(path, SceneryEditorX::AssetType::Scene);
 	}
 
+// Return a platform-appropriate persistent storage path for the editor.
+// If a user-specific application data folder is available use that, otherwise
+// fall back to the current working directory.
+	std::filesystem::path FileSystem::GetPersistentStoragePath()
+	{
+	#ifdef SEDX_PLATFORM_WINDOWS
+		// Use %APPDATA%\SceneryEditorX
+		const char* appdata = std::getenv("APPDATA");
+		if (appdata && std::strlen(appdata) > 0)
+		{
+			std::filesystem::path p = std::filesystem::path(appdata) / "SceneryEditorX";
+			std::error_code ec;
+			std::filesystem::create_directories(p, ec);
+			return p;
+		}
+	#endif
+	
+		// Fallback - use current working directory
+		return std::filesystem::current_path();
+	}
+
 	bool FileDialogs::IsTexture(const std::filesystem::path &path)
 	{
 		const std::string ext = Utils::String::ToLowerCopy(path.extension().string());

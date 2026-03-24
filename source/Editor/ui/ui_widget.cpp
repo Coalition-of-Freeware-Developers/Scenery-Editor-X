@@ -29,7 +29,7 @@
  * -------------------------------------------------------
  */
 #include "ui_widget.h"
-#include <Editor/core/editor.h>
+#include "Editor/core/editor_layer.h"
 #include <Editor/ui/source/imgui/imgui_internal.h>
 #include <SceneryEditorX/core/window/monitor_data.h>
 #include <SceneryEditorX/renderer/vulkan/viewport.h>
@@ -40,7 +40,7 @@ using namespace SceneryEditorX;
 
 // -------------------------------------------------------
 
-Widget::Widget(Editor *editor)
+Widget::Widget(EditorLayer *editor)
 {
 	m_Editor = editor;
 	m_Window = nullptr;

@@ -37,13 +37,14 @@ namespace SceneryEditorX
 
 	class Camera;
 	class Light;
+	class ParticleSystem;
+	class Plugin;
 	class Renderable;
+	class Script;
 	class Spline;
+	class Submesh;
 	class Terrain;
 	class Volume;
-	class Script;
-	class Plugin;
-	class ParticleSystem;
 
 	/**
 	 * @struct ComponentType
@@ -59,6 +60,7 @@ namespace SceneryEditorX
 		Volume,
 		Script,
 		Plugin,
+		Submesh,
 		ParticleSystem,
 		MaxEnum
 	};
@@ -74,6 +76,10 @@ namespace SceneryEditorX
 		static constexpr ComponentType TYPE = ComponentType::MaxEnum;
 	};
 
+	/**
+	 * @brief 
+	 * @tparam T 
+	 */
 	template <>
 	struct ComponentTypeResolver<Camera>
 	{
@@ -81,6 +87,10 @@ namespace SceneryEditorX
 		static constexpr ComponentType TYPE = ComponentType::Camera;
 	};
 
+	/**
+	 * @brief 
+	 * @tparam T 
+	 */
 	template <>
 	struct ComponentTypeResolver<Light>
 	{
@@ -88,6 +98,21 @@ namespace SceneryEditorX
 		static constexpr ComponentType TYPE = ComponentType::Light;
 	};
 
+	/**
+	 * @brief 
+	 * @tparam T 
+	 */
+	template <>
+	struct ComponentTypeResolver<Submesh>
+	{
+		static constexpr bool IS_REGISTERED = false;
+		static constexpr ComponentType TYPE = ComponentType::Submesh;
+	};
+
+	/**
+	 * @brief 
+	 * @tparam T 
+	 */
 	template <>
 	struct ComponentTypeResolver<Renderable>
 	{
@@ -95,6 +120,10 @@ namespace SceneryEditorX
 		static constexpr ComponentType TYPE = ComponentType::Renderable;
 	};
 
+	/**
+	 * @brief 
+	 * @tparam T 
+	 */
 	template <>
 	struct ComponentTypeResolver<Spline>
 	{
@@ -102,6 +131,10 @@ namespace SceneryEditorX
 		static constexpr ComponentType TYPE = ComponentType::Spline;
 	};
 
+	/**
+	 * @brief 
+	 * @tparam T 
+	 */
 	template <>
 	struct ComponentTypeResolver<Terrain>
 	{
@@ -109,6 +142,10 @@ namespace SceneryEditorX
 		static constexpr ComponentType TYPE = ComponentType::Terrain;
 	};
 
+	/**
+	 * @brief 
+	 * @tparam T 
+	 */
 	template <>
 	struct ComponentTypeResolver<Volume>
 	{
@@ -116,6 +153,10 @@ namespace SceneryEditorX
 		static constexpr ComponentType TYPE = ComponentType::Volume;
 	};
 
+	/**
+	 * @brief 
+	 * @tparam T 
+	 */
 	template <>
 	struct ComponentTypeResolver<Script>
 	{
@@ -123,6 +164,10 @@ namespace SceneryEditorX
 		static constexpr ComponentType TYPE = ComponentType::Script;
 	};
 
+	/**
+	 * @brief 
+	 * @tparam T 
+	 */
 	template <>
 	struct ComponentTypeResolver<Plugin>
 	{
@@ -130,6 +175,10 @@ namespace SceneryEditorX
 		static constexpr ComponentType TYPE = ComponentType::Plugin;
 	};
 
+	/**
+	 * @brief 
+	 * @tparam T 
+	 */
 	template <>
 	struct ComponentTypeResolver<ParticleSystem>
 	{

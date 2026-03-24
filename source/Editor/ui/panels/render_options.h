@@ -36,7 +36,7 @@
 class RenderOptions : public Widget
 {
 public:
-    RenderOptions(SceneryEditorX::Editor * editor);
+    RenderOptions(SceneryEditorX::EditorLayer* editor);
 
     void OnVisible() override;
     void OnTickVisible() override;

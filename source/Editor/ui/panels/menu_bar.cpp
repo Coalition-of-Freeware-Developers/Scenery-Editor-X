@@ -33,8 +33,7 @@
 #include "file_dialog.h"
 #include "properties.h"
 #include "texure_viewer.h"
-#include "viewport.h"
-#include "Editor/core/editor.h"
+#include "scene_viewport.h"
 #include "Editor/ui/ui.h"
 #include <SceneryEditorX/core/version.h>
 #include <SceneryEditorX/core/resource/resource_cache.h>
@@ -44,6 +43,7 @@
 #include <SceneryEditorX/scene/scene.h>
 #include "render_options.h"
 #include "Editor/core/child_window.h"
+#include "Editor/core/editor_layer.h"
 
 #include <SceneryEditorX/renderer/renderer.h>
 
@@ -57,12 +57,12 @@ namespace
 	bool show_imgui_metrics_window = false;
 	bool show_imgui_style_window   = false;
 	bool show_imgui_demo_widow     = false;
-	Editor* editor                 = nullptr;
+	EditorLayer* editor                 = nullptr;
 	std::string file_dialog_selection_path;
 	Scope<FileDialog> file_dialog;
 
 	template <class T>
-	void menu_entry()
+	void MenuEntry()
 	{
 		T* widget = editor->GetWidget<T>();
 
@@ -74,7 +74,7 @@ namespace
 		}
 	}
 
-	namespace windows
+	namespace Windows
 	{
 		void ShowWorldSaveDialog()
 		{
@@ -101,7 +101,7 @@ namespace
 			const std::string& world_file_path = Scene::GetFilePath();
 			if (world_file_path.empty())
 			{
-				SEDX_CORE_ERROR_TAG("Menubar","No world is currently loaded. Save the world first before exporting.");
+				EDITOR_ERROR_TAG("Menubar","No world is currently loaded. Save the world first before exporting.");
 				return;
 			}
 
@@ -126,7 +126,7 @@ namespace
 				// create the archive
 				if (IO::FileSystem::CreateArchive(archive_path, paths_to_include))
 				{
-					SEDX_CORE_INFO_TAG("Menubar","World exported to: %s", archive_path.c_str());
+					EDITOR_INFO_TAG("Menubar","World exported to: %s", archive_path.c_str());
 				}
 			});
 		}
@@ -182,26 +182,26 @@ namespace
 
 				if (ImGui::MenuItem("Load"))
 				{
-					windows::ShowWorldLoadDialog();
+					Windows::ShowWorldLoadDialog();
 				}
 
 				ImGui::Separator();
 
 				if (ImGui::MenuItem("Save", "Ctrl+S"))
 				{
-					windows::ShowWorldSaveDialog();
+					Windows::ShowWorldSaveDialog();
 				}
 
 				if (ImGui::MenuItem("Save As...", "Ctrl+S"))
 				{
-					windows::ShowWorldSaveDialog();
+					Windows::ShowWorldSaveDialog();
 				}
 
 				ImGui::Separator();
 
 				if (ImGui::MenuItem("Export"))
 				{
-					windows::ExportWorld();
+					Windows::ExportWorld();
 				}
 
 				ImGui::EndMenu();
@@ -218,13 +218,13 @@ namespace
 					//menu_entry<Profiler>();
 					//menu_entry<ShaderEditor>();
 					//menu_entry<ScriptEditor>();
-					menu_entry<RenderOptions>();
-					menu_entry<TextureViewer>();
+					MenuEntry<RenderOptions>();
+					MenuEntry<TextureViewer>();
 					//menu_entry<ResourceViewer>();
-					menu_entry<AssetBrowser>();
+					MenuEntry<AssetBrowser>();
 					//menu_entry<Console>();
-					menu_entry<Properties>();
-				    menu_entry<UI::Viewport>();
+					MenuEntry<Properties>();
+				    MenuEntry<SceneViewport>();
 					//menu_entry<WorldViewer>();
 
 					ImGui::EndMenu();
@@ -329,7 +329,7 @@ namespace
 					static auto screenshot_visible = [](Widget*) { return false; };
 					static auto screenshot_press   = [](Widget*)
 					{
-						SEDX_CORE_WARN_TAG("Menubar", "Screenshot functionality is currently disabled.");
+						EDITOR_WARN_TAG("Menubar", "Screenshot functionality is currently disabled.");
 						//Renderer::Screenshot();
 					};
 					toolbar_button(ResourceCache::GetIcon(IconType::Screenshot), "Takes a screenshot and saves it to the executable's folder",
@@ -345,12 +345,12 @@ namespace
 					{
 						if (Debugging::IsRenderdocEnabled())
 						{
-							SEDX_CORE_WARN_TAG("Menubar", "RenderDoc functionality is currently disabled.");
+							EDITOR_WARN_TAG("Menubar", "RenderDoc functionality is currently disabled.");
 							//RenderDoc::FrameCapture();
 						}
 						else
 						{
-							SEDX_CORE_WARN_TAG("Menubar","RenderDoc integration is disabled. To enable, go to \"Debugging.h\", and set \"is_renderdoc_enabled\" to \"true\"");
+							EDITOR_WARN_TAG("Menubar","RenderDoc integration is disabled. To enable, go to \"Debugging.h\", and set \"is_renderdoc_enabled\" to \"true\"");
 						}
 					};
 					toolbar_button(ResourceCache::GetIcon(IconType::RenderDoc), "Captures the next frame and then launches RenderDoc",
@@ -458,9 +458,8 @@ namespace
 	}
 }
 
-void MenuBar::Initialize(SceneryEditorX::Editor * _editor)
+void MenuBar::Initialize(EditorLayer* editor)
 {
-	editor      = _editor;
 	file_dialog = CreateScope<FileDialog>(true, FileDialog_Type_FileSelection, FileDialog_Op_Open, FileDialog_Filter_World);
 
 	//buttons_toolbar::widgets[ResourceCache::GetIcon(IconType::Profiler)]      = editor->GetWidget<Profiler>();
@@ -579,17 +578,17 @@ void MenuBar::Tick()
 	}
 #pragma endregion
 
-	windows::DrawFileDialog();
+	Windows::DrawFileDialog();
 }
 
 void MenuBar::ShowWorldSaveDialog()
 {
-	windows::ShowWorldSaveDialog();
+	Windows::ShowWorldSaveDialog();
 }
 
 void MenuBar::ShowWorldLoadDialog()
 {
-	windows::ShowWorldLoadDialog();
+	Windows::ShowWorldLoadDialog();
 }
 
 /*

@@ -35,18 +35,18 @@
 // -------------------------------------------------------
 
 #ifdef SEDX_DEBUG && SEDX_ENABLE_PROFILING
-    #define TRACY_ENABLE
-    #define SEDX_PROFILING_ENABLED 1
+	#define TRACY_ENABLE
+	#define SEDX_PROFILING_ENABLED 1
 #else SEDX_RELEASE
-    #define SEDX_PROFILING_ENABLED 0
+	#define SEDX_PROFILING_ENABLED 0
 #endif
 
 #if SEDX_ENABLE_PROFILING
-    #include "tracy/Tracy.hpp"
+	#include "tracy/Tracy.hpp"
 
-    // -------------------------------------------------------
+	// -------------------------------------------------------
 
-    // predefined RGB colors for "heavy" point-of-interest operations
+	// predefined RGB colors for "heavy" point-of-interest operations
 	#define SEDX_PROFILE_COLOR_WAIT 0xff0000
 	#define SEDX_PROFILE_COLOR_SUBMIT 0x0000ff
 	#define SEDX_PROFILE_COLOR_PRESENT 0x00ff00
@@ -58,16 +58,16 @@
 	#define SEDX_PROFILE_COLOR_CMD_RTX 0x8b0000
 	#define SEDX_PROFILE_COLOR_CMD_DISPATCH 0x8b0000
 
-    // -------------------------------------------------------
+	// -------------------------------------------------------
 
 	#define SEDX_PROFILE_FUNC()					ZoneScoped
-    #define SEDX_PROFILE_FUNC_COLOR(color)		ZoneScopedC(color)
-    #define SEDX_PROFILE_FRAME(name)			FrameMarkNamed(name)
-    #define SEDX_PROFILE_THREAD(name)			SetThreadName(name)
-    #define SEDX_PROFILE_ZONE(name, color) {					\
+	#define SEDX_PROFILE_FUNC_COLOR(color)		ZoneScopedC(color)
+	#define SEDX_PROFILE_FRAME(name)			FrameMarkNamed(name)
+	#define SEDX_PROFILE_THREAD(name)			SetThreadName(name)
+	#define SEDX_PROFILE_ZONE(name, color) {					\
 		ZoneName(name, strlen(name));							\
 		ZoneScopedC(color);										
-    #define SEDX_PROFILE_ZONE_END() }
+	#define SEDX_PROFILE_ZONE_END() }
 
 #else
 	#define SEDX_PROFILER_FUNC()

@@ -132,6 +132,14 @@ namespace UI
 	void Shutdown();
 
 	/**
+	 * @brief 
+	 * @param windowName 
+	 * @param checkWindow 
+	 * @return 
+	 */
+	bool IsWindowFocused(const char *windowName, const bool checkWindow = true);
+
+	/**
 	 * @brief Renders the ImGui draw data.
 	 * @param drawData Pointer to the ImGui draw data.
 	 * @param windowData Pointer to the window data, or nullptr for the main window.

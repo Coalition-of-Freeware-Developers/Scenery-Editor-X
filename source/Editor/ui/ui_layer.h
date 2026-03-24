@@ -1,4 +1,4 @@
-﻿/**
+/**
  * -------------------------------------------------------
  * Scenery Editor X
  * -------------------------------------------------------
@@ -23,47 +23,46 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  * -------------------------------------------------------
- * ui_context.h
+ * ui_layer.h
  * -------------------------------------------------------
- * Created: 28/3/2025
+ * Created: 23/03/2026
  * -------------------------------------------------------
  */
 #pragma once
-//#include "panels/ui_widget.h"
-//#include <imgui/imgui.h>
+#include "ui_widget.h"
+#include <Editor/core/child_window.h>
+#include <SceneryEditorX/core/layers/layer.h>
 
 // -------------------------------------------------------
-/*
-class GUI;
 
-struct UIResource
-{
-	ImGuiContext *imguiContext = nullptr;
-	ImGuiIO *imguiIO = nullptr;
-	ImGuiStyle *imguiStyle = nullptr;
-	ImGuiPlatformIO *imguiPlatformIO = nullptr;
-	ImGuiViewport *imguiViewport = nullptr;
-	ImGuiID imguiDockspaceID = 0;
-};
-
-class UIContext : public Widget
+/**
+ * @class UILayer
+ * @brief 
+ */
+class UILayer : public SceneryEditorX::Layer
 {
 public:
-	virtual void Begin() = 0;
-	virtual void End() = 0;
+	UILayer();
+	UILayer(const std::string &name);
 
-	static SceneryEditorX::Ref<UIContext> CreateRef();
-
-	virtual void SetGUI(GUI *guiInstance) = 0;
+	void Tick() override;
+	void OnAttach() override;
+	void OnDetach() override;
+	void BeginWindow();
+	void OnRender() override;
 
 	static void SetDarkThemeColors();
 	static void SetDarkThemeV2Colors();
-	static void AllowInputEvents(bool allowEvents);
-	static UIContext *Create();
+
+	void AllowInputEvents(bool allowInput);
+
+	inline static ImFont* fontNormal = nullptr;
+	inline static ImFont* fontBold   = nullptr;
 
 private:
-	UIResource uiResource;
-
-};*/
+	std::vector<SceneryEditorX::Ref<Widget>> m_Widgets;
+	std::vector<UI::ChildWindow> m_ChildWindows;
+};
 
 // -------------------------------------------------------
+

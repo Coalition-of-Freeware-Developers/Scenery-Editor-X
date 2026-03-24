@@ -60,7 +60,7 @@ void DefaultProject::ReadProjCache()
 	}
 	if (!std::filesystem::exists(cacheData.projectPath) || !std::filesystem::exists(cacheData.binPath))
 	{
-		SEDX_CORE_ERROR("Cache file is corrupted. Resetting to default.");
+		EDITOR_ERROR("Cache file is corrupted. Resetting to default.");
 		cacheData = {};
 		WriteProjCache();
 	}

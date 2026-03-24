@@ -31,10 +31,10 @@
 #include "asset_browser.h"
 #include "file_dialog.h"
 #include "properties.h"
-#include "viewport.h"
+#include "scene_viewport.h"
 #include <filesystem>
 #include <string>
-#include <Editor/core/editor.h>
+#include <Editor/core/editor_layer.h>
 #include <Editor/ui/ui.h>
 #include <SceneryEditorX/core/resource/resource_cache.h>
 #include <SceneryEditorX/core/threading/thread_pool.h>
@@ -75,11 +75,11 @@ static void MeshImportDialogCheckbox(const MeshFlags option, const char* label, 
     }
 }
 
-static void MeshImportDialog(Editor *editor)
+static void MeshImportDialog(EditorLayer *editor)
 {
     if (s_MeshImportDialog_IsVisible)
     {
-        const Vec2 center = editor->GetWidget<::UI::Viewport>()->GetCenter();
+        const Vec2 center = editor->GetWidget<SceneViewport>()->GetCenter();
         ImGui::SetNextWindowPos(ImVec2(center.x, center.y), ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.5f));
 
         // Begin
@@ -127,12 +127,13 @@ static void MeshImportDialog(Editor *editor)
 
 // ---------------------------------------------------------
 
-AssetBrowser::AssetBrowser(Editor *editor) : Widget(editor)
+AssetBrowser::AssetBrowser(EditorLayer *editor) : Widget(editor)
 {
     m_Title           = "Assets";
     s_FileDialogView  = CreateScope<FileDialog>(false, FileDialog_Type_Browser,       FileDialog_Op_Load, FileDialog_Filter_All);
     s_FileDialogLoad  = CreateScope<FileDialog>(true,  FileDialog_Type_FileSelection, FileDialog_Op_Load, FileDialog_Filter_Model);
     m_Flags          |= ImGuiWindowFlags_NoScrollbar;
+    m_Editor = editor;
 
     // just clicked, not selected (double-clicked, end of dialog)
     s_FileDialogView->SetCallbackOnItemClicked([this](const std::string& str) { OnPathClicked(str); });

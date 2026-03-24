@@ -30,16 +30,16 @@
  */
 #pragma once
 #include <cfloat>
+#include <Editor/ui/source/imgui/imgui.h>
 #include <SceneryEditorX/core/base.h>
 #include <SceneryEditorX/utils/pointers.h>
 #include <xMath/includes/vector.h>
-#include <Editor/ui/source/imgui/imgui.h>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-	class Editor;
+	class EditorLayer;
 }
 
 struct ImGuiWindow;
@@ -54,7 +54,7 @@ const float DEFAULT_PANEL_PROPERTY = -1.0f;
 class Widget : public SceneryEditorX::RefCounted
 {
 public:
-	Widget(SceneryEditorX::Editor *editor);
+	Widget(SceneryEditorX::EditorLayer *editor);
 	virtual ~Widget() = default;
 
 	void Tick();
@@ -121,7 +121,7 @@ protected:
 	Vec2 m_MinSize		= Vec2(DEFAULT_PANEL_PROPERTY, DEFAULT_PANEL_PROPERTY);
 	Vec2 m_MaxSize		= Vec2(FLT_MAX, FLT_MAX);
 
-	SceneryEditorX::Editor *m_Editor = nullptr;
+	SceneryEditorX::EditorLayer *m_Editor = nullptr;
 	ImGuiWindow *m_Window	= nullptr;
 	const char* m_Title		= "Panel";
 

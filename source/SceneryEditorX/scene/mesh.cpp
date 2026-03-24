@@ -34,11 +34,12 @@
 #include <bounding_box.h>
 #include <SceneryEditorX/logging/asserts.h>
 #include <SceneryEditorX/renderer/gbuffer.h>
-
 #include <algorithm>
 #include <cctype>
 #include <filesystem>
 #include <limits>
+
+// -------------------------------------------------------
 
 namespace
 {
@@ -120,7 +121,7 @@ namespace SceneryEditorX
 
 		for (uint32_t sub_idx = 0; sub_idx < submesh_count; sub_idx++)
 		{
-			const SubMesh& sub = m_sub_meshes[sub_idx];
+			const LodLevels& sub = m_sub_meshes[sub_idx];
 			uint32_t lod_count = static_cast<uint32_t>(sub.lods.size());
 			outfile.write(reinterpret_cast<const char*>(&lod_count), sizeof(uint32_t));
 			SEDX_CORE_INFO_TAG("Mesh","Mesh '%s' sub-mesh %u: saving %u LODs", m_ObjectName.c_str(), sub_idx, lod_count);
@@ -204,7 +205,7 @@ namespace SceneryEditorX
 
 		for (uint32_t sub_idx = 0; sub_idx < submesh_count; sub_idx++)
 		{
-			SubMesh& sub = m_sub_meshes[sub_idx];
+			LodLevels& sub = m_sub_meshes[sub_idx];
 			uint32_t lod_count;
 			infile.read(reinterpret_cast<char*>(&lod_count), sizeof(uint32_t));
 			sub.lods.resize(lod_count);
@@ -280,7 +281,7 @@ namespace SceneryEditorX
 			return;
 		}
 
-		const SubMesh& sub_mesh = m_sub_meshes[sub_mesh_index];
+		const LodLevels& sub_mesh = m_sub_meshes[sub_mesh_index];
 		if (sub_mesh.lods.empty())
 		{
 			SEDX_CORE_ERROR_TAG("Mesh", "GetGeometry: sub-mesh {} has no LODs", sub_mesh_index);
@@ -332,7 +333,7 @@ namespace SceneryEditorX
 	void Mesh::AddGeometry(std::vector<Vertex_PosTexNorTan>& vertices, std::vector<uint32_t>& indices, const bool generateLods, uint32_t* sub_mesh_index)
 	{
 		// create a sub-mesh
-		SubMesh sub_mesh;
+		LodLevels sub_mesh;
 		uint32_t current_sub_mesh_index = static_cast<uint32_t>(m_sub_meshes.size());
 		m_sub_meshes.push_back(sub_mesh); // add it to the list so AddLod() can access it
 

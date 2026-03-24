@@ -1,4 +1,4 @@
-﻿/**
+/**
  * -------------------------------------------------------
  * Scenery Editor X
  * -------------------------------------------------------
@@ -23,22 +23,65 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  * -------------------------------------------------------
- * ui_manager.h
+ * fonts.cpp
  * -------------------------------------------------------
- * Created: 29/3/2025
+ * Created: 23/03/2026
  * -------------------------------------------------------
  */
-#pragma once
-//#include <GLFW/glfw3.h>
-//#include <xMath/includes/xmath.hpp>
-//#include <SceneryEditorX/ui/ui.h>
+#include "fonts.h"
+#include <Editor/ui/source/imgui/imgui.h>
 
 // -------------------------------------------------------
 
-namespace SceneryEditorX::UI
+namespace UI
 {
+	static std::unordered_map<std::string, ImFont*> s_Fonts;
+
+	// -------------------------------------------------------
+
+	void Fonts::Add(const FontConfiguration& config, bool isDefault)
+	{
+		if (s_Fonts.contains(config.FontName))
+		{
+			EDITOR_WARN_TAG("EditorUI", "Tried to add font with name '{0}' but that name is already taken!", config.FontName);
+			return;
+		}
+
+		ImFontConfig imguiFontConfig;
+		imguiFontConfig.MergeMode = config.MergeWithLast;
+		auto& io = ImGui::GetIO();
+		ImFont* font = io.Fonts->AddFontFromFileTTF(config.FilePath.data(), config.Size, &imguiFontConfig, config.GlyphRanges == nullptr ? io.Fonts->GetGlyphRangesDefault() : config.GlyphRanges);
+		SEDX_CORE_VERIFY(font, "Failed to load font file!");
+		s_Fonts[config.FontName] = font;
+
+		if (isDefault)
+			io.FontDefault = font;
+	}
+
+	ImFont* Fonts::Get(const std::string& fontName)
+	{
+		SEDX_CORE_VERIFY(s_Fonts.contains(fontName), "Failed to find font with that name!");
+		return s_Fonts.at(fontName);
+	}
+
+	void Fonts::PushFont(const std::string& fontName)
+	{
+		const auto& io = ImGui::GetIO();
+
+		if (!s_Fonts.contains(fontName))
+		{
+			ImGui::PushFont(io.FontDefault);
+			return;
+		}
+
+		ImGui::PushFont(s_Fonts.at(fontName));
+	}
+
+	void Fonts::PopFont()
+	{
+		ImGui::PopFont();
+	}
 
 }
 
 // -------------------------------------------------------
-

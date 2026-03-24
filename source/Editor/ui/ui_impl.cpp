@@ -30,15 +30,15 @@
  */
 #include "ui_impl.h"
 #include "panels/texure_viewer.h"
-#include <cstring>
+#include "source/imgui/imgui_internal.h"
 #include <SceneryEditorX/core/events/event_system.h>
 #include <SceneryEditorX/core/resource/asset_resource.h>
 #include <SceneryEditorX/core/resource/resource_cache.h>
 #include <SceneryEditorX/core/window/monitor_data.h>
 #include <SceneryEditorX/renderer/renderer.h>
-#include <SceneryEditorX/renderer/vulkan/render_context.h>
 #include <SceneryEditorX/renderer/vulkan/buffer.h>
 #include <SceneryEditorX/renderer/vulkan/queue_manager.h>
+#include <SceneryEditorX/renderer/vulkan/render_context.h>
 #include <SceneryEditorX/renderer/vulkan/swapchain.h>
 #include <SceneryEditorX/renderer/vulkan/debug/graphics_debug.h>
 #include <SceneryEditorX/renderer/vulkan/pipeline/pipeline_state.h>
@@ -168,6 +168,24 @@ namespace UI
 		ImGui::DestroyPlatformWindows();
 	}
 
+	bool IsWindowFocused(const char *windowName, const bool checkWindow)
+	{
+		ImGuiWindow* currentNavWindow = GImGui->NavWindow;
+
+		if (checkWindow)
+		{
+			// Get the actual nav window (not e.g a table)
+			ImGuiWindow* lastWindow = nullptr;
+			while (lastWindow != currentNavWindow)
+			{
+				lastWindow = currentNavWindow;
+				currentNavWindow = currentNavWindow->RootWindow;
+			}
+		}
+
+		return currentNavWindow == ImGui::FindWindowByName(windowName);
+	}
+
 	void Render(ImDrawData *drawData, WindowData *windowData, const bool clear)
 	{
 		if (!drawData || drawData->TotalVtxCount <= 0 || drawData->TotalIdxCount <= 0)
@@ -223,7 +241,7 @@ namespace UI
 	
 				if (count != 0)
 				{
-					SEDX_CORE_INFO_TAG("UI Implementation", "Vertex buffer has been re-allocated to fit {} vertices", count_new);
+					EDITOR_INFO_TAG("UI Implementation", "Vertex buffer has been re-allocated to fit {} vertices", count_new);
 				}
 			}
 	
@@ -239,7 +257,7 @@ namespace UI
 	
 				if (count != 0)
 				{
-					SEDX_CORE_INFO_TAG("UI Implementation", "Index buffer has been re-allocated to fit {} indices", count_new);
+					EDITOR_INFO_TAG("UI Implementation", "Index buffer has been re-allocated to fit {} indices", count_new);
 				}
 			}
 	

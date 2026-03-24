@@ -82,9 +82,6 @@ FILE(GLOB UTILS_FILESTREAM "utils/filestreaming/*.cpp" "utils/filestreaming/*.h"
 
 # FILE(GLOB VULKAN_RENDER_PASS "renderer/render_pass/*.cpp" "renderer/render_pass/*.h" "renderer/render_pass/*.hpp")
 # FILE(GLOB VULKAN_SHADER_CODE "renderer/shaders/*.cpp" "renderer/shaders/*.h" "renderer/shaders/*.hpp")
-#FILE(GLOB UI_ROOT LIST_DIRECTORIES false CONFIGURE_DEPENDS "ui/*.cpp" "ui/*.h" "ui/*.hpp")
-#FILE(GLOB UI_ACTIONS "ui/actions/*.cpp" "ui/actions/*.h" "ui/actions/*.hpp")
-#FILE(GLOB UI_PANELS "ui/panels/*.cpp" "ui/panels/*.h" "ui/panels/*.hpp")
 
 SET (PROJECT_CONFIG_FILES
 	${CMAKE_SOURCE_DIR}/.clang-format

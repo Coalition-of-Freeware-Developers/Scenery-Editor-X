@@ -34,31 +34,41 @@
 #include <SceneryEditorX/core/events/mouse_events.h>
 #include <SceneryEditorX/core/layers/layer.h>
 #include <SceneryEditorX/scene/camera.h>
+#include <SceneryEditorX/scene/scene.h>
+#include <SceneryEditorX/settings/user_settings.h>
 
 // ---------------------------------------------------------
 
 namespace SceneryEditorX
 {
-	class EditorLayer : public Layer
+	class EditorLayer : public Layer, public RefCounted
 	{
 	public:
-		~EditorLayer();
+		EditorLayer(const Ref<UserPreferences>& userPreferences);
+		virtual ~EditorLayer() override;
+
 		void OnAttach() override;
 		void OnDetach() override;
-		void Tick(DeltaTime dt) override;
-		void OnUIRender() override;
-		void OnEvent(Event &event) override;
+	    void Tick() override;
+		void InitEditor();
 
+		void OnRender() override;
+		//void OnUIRender();
+		void OnEvent(Event &event) override;
 		bool OnKeyPressedEvent(KeyPressedEvent& e);
 		bool OnMouseButtonPressed(MouseButtonPressedEvent& e);
 		
+		//static bool HasArgument(const std::string &argument);
+
+		Ref<EditorLayer> Get() { return {this}; }
+
 		void OpenProject();
 		void OpenProject(const std::filesystem::path &filepath);
 		void CreateProject(const std::filesystem::path &projectPath);
 		void EmptyProject();
 		void UpdateCurrentProject();
-		void SaveProject();
-		void CloseProject(bool unloadProject = true);
+		static void SaveProject();
+		static void CloseProject(bool unloadProject = true);
 
 		void NewScene(const std::string &name = "UntitledAirport");
 		bool OpenScene();
@@ -67,7 +77,10 @@ namespace SceneryEditorX
 		void SaveSceneAuto();
 		void SaveSceneAs();
 
-	    /**
+		static bool IsSceneOpen();
+		static bool IsProjectOpen();
+
+		/**
 		 * @brief Retrieves a pointer to the first widget of type T in the editor's widget list. Returns nullptr if no such widget is found.
 		 * @tparam T The type of the widget to retrieve.
 		 * @return A pointer to the first widget of type T, or nullptr if no such widget is found.
@@ -87,13 +100,22 @@ namespace SceneryEditorX
 		}
 
 	private:
-	    std::vector<Ref<Widget>> m_Widgets;
+		Ref<Scene> m_EditorScene;
+		Ref<Scene> m_CurrentScene;
+		Ref<Scene> m_RuntimeScene;
+		std::vector<Ref<Widget>> m_Widgets;
+
+		Vec2 m_ViewportBounds[2];
+		Vec2 m_SecondViewportBounds[2];
+		std::pair<float, float> GetMouseViewportSpace(bool primaryViewport);
+
 		float GetSnapValue();
 		float UI_DrawTitlebar();
 
 		void UI_DrawMenubar();
 		void UI_HandleManualWindowResize();
 		bool UI_TitleBarHitTest(int x, int y) const;
+		static void UpdateWindowTitle(const std::string &sceneName);
 
 		// Popups
 		void UI_ShowNewProjectPopup();
@@ -110,24 +132,26 @@ namespace SceneryEditorX
 		void UI_BuildAssetPackDialog();
 
 		// Viewports
-		/*
 		Ref<Viewport> GetMainViewport();
 		void SetMainViewport(const std::string &viewportName);
-		*/
+		
+		bool m_ViewportPanelMouseOver		= false;
+		bool m_ViewportPanelFocused			= false;
+		bool m_AllowViewportCameraEvents	= false;
+		bool m_ViewportPanel2MouseOver		= false;
+		bool m_ViewportPanel2Focused		= false;
+		bool m_ShowSecondViewport			= false;
 
-		//void DeleteEntity(Entity entity);
-		//void QueueSceneTransition(AssetHandle scene);
-
+		void DeleteEntity(Entity entity);
 		void BuildProjectData();
 		void BuildShaderPack();
 		void BuildSoundBank();
 		void BuildAssetPack();
 		void BuildAll();
-		void RegenerateProjectScriptSolution(const std::filesystem::path &projectPath);
-		void ReloadCSharp();
-		void FocusLogPanel();
 
 		Camera m_Camera;
+		Ref<UserPreferences> m_UserPreferences;
+		std::string m_SceneFilePath;
 
 		uint32_t m_TitleBarTargetColor;
 		uint32_t m_TitleBarActiveColor;
@@ -144,6 +168,7 @@ namespace SceneryEditorX
 		bool m_GizmoWorldOrientation = true;
 		bool m_TitleBarHovered = false;
 		bool m_AnimateTitleBarColor = true;
+		bool m_ShowStatisticsPanel = false;
 
 		struct LoadAutoSavePopupData
 		{

@@ -30,27 +30,71 @@
  */
 #include "keybind_window.h"
 
+#include "Editor/core/editor_layer.h"
+#include "Editor/ui/panels/scene_viewport.h"
+#include "Editor/ui/source/imgui/imgui.h"
+#include <SceneryEditorX/core/window/window.h>
+
 // ---------------------------------------------------------
 
 static bool s_Visible = false;
+static SceneryEditorX::EditorLayer* editor = nullptr;
 
-KeybindWindow::KeybindWindow(const std::string &name)
+KeybindWindow::KeybindWindow()
 {
-    m_DebugName = name;
+	if (!s_Visible)
+		return;
+}
 
-    if (!s_Visible)
-        return;
+void KeybindWindow::Tick()
+{
+	if (!s_Visible)
+		return;
+
+	// center the window on first use, but let user move it freely afterward
+	// Convert the project's Vec2 center to ImGui's ImVec2 explicitly
+	{
+		Vec2 center = editor->GetWidget<SceneViewport>()->GetCenter();
+		ImGui::SetNextWindowPos(ImVec2(center.x, center.y), ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.5f));
+	}
+
+	// set a reasonable default size (wider for the three-column layout)
+	ImGui::SetNextWindowSize(ImVec2(600.0f * SceneryEditorX::Window::GetDpiScale(), 400.0f * SceneryEditorX::Window::GetDpiScale()), ImGuiCond_FirstUseEver);
+
+	if (ImGui::Begin("Controls & Shortcuts", &s_Visible, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDocking))
+	{
+		if (ImGui::BeginTabBar("##controls_tabs"))
+		{
+			if (ImGui::BeginTabItem("Editor Shortcuts"))
+			{
+				ImGui::Spacing();
+				//ShowShortcutTable("##editor_shortcuts_table", editor_shortcuts, std::size(editor_shortcuts));
+				ImGui::EndTabItem();
+			}
+
+			if (ImGui::BeginTabItem("Camera"))
+			{
+				ImGui::Spacing();
+				//show_control_binding_table("##camera_controls_table", camera_controls_full, std::size(camera_controls_full));
+				ImGui::EndTabItem();
+			}
+
+			ImGui::EndTabBar();
+		}
+	}
+
+	ImGui::End();
 }
 
 bool *KeybindWindow::ShowWindow()
 {
-    s_Visible = true;
-    return &s_Visible;
+	s_Visible = true;
+	return &s_Visible;
 }
 
 bool KeybindWindow::IsVisible()
 {
-    return s_Visible;
+	return s_Visible;
 }
 
 

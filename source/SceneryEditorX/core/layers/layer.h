@@ -70,13 +70,13 @@ namespace SceneryEditorX
 		 * @brief Called each frame to update the module.
 		 * Implement module logic that needs to execute each frame.
 		 */
-		virtual void Tick(DeltaTime dt) {}
+		virtual void Tick() {}
 
 		/**
 		 * @brief Renders ImGui elements for this module.
 		 * Implement any ImGui rendering for debugging or UI components.
 		 */
-		virtual void OnUIRender() {}
+		virtual void OnRender() {}
 
 		/**
 		 * @brief Processes events for this module.

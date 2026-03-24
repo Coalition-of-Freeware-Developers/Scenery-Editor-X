@@ -61,7 +61,7 @@ namespace SceneryEditorX
 	 * @class Scene
 	 * @brief Class representing a scene in the editor.
 	 */
-	class Scene
+	class Scene : public RefCounted
 	{
 	public:
 		explicit Scene(std::string name = "UntitledProject", bool initialize = true);

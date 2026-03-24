@@ -59,7 +59,7 @@ namespace SceneryEditorX
 class Properties : public Widget
 {
 public:
-	Properties(SceneryEditorX::Editor * editor);
+	Properties(SceneryEditorX::EditorLayer * editor);
 
 	void OnTickVisible() override;
 
