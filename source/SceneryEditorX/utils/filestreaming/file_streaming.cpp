@@ -50,7 +50,7 @@ namespace SceneryEditorX
 		return true;
 	}
 
-    // -------------------------------------------------------
+	// -------------------------------------------------------
 
 	FileStreamReader::FileStreamReader(const std::filesystem::path& path) : m_Path(path)
 	{

@@ -448,7 +448,7 @@ namespace SceneryEditorX
 			 }
 		 }
 
-		 // At this point we call back to VK_PRESENT_MODE_FIFO_KHR, which as per spec is always present
+		 // At this point we call back to VK_PRESENT_MODE_FIFO_KHR, which as per ext is always present
 		 SEDX_CORE_WARN_TAG("Swapchain", "Requested present mode is not supported. Falling back to VK_PRESENT_MODE_FIFO_KHR");
 		 return VK_PRESENT_MODE_FIFO_KHR;
 	 }

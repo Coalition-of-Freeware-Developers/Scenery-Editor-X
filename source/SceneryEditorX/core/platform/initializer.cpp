@@ -29,8 +29,6 @@
  * -------------------------------------------------------
  */
 #include "initializer.h"
-#include <resource.h>
-#include <SceneryEditorX/core/base.h>
 #include <SceneryEditorX/core/memory/memory.h>
 #include <SceneryEditorX/logging/logging.hpp>
 
@@ -40,39 +38,39 @@ namespace SceneryEditorX
 {
 	static void ApplyCliLoggingOptions(const std::vector<std::string>& args)
 	{
-	    // simple handling: --verbose or --verbose=<Level>
-	    for (const auto &arg : args)
-	    {
-	        if (arg == "--verbose")
-	        {
-	            Log::SetInitialLevel(Log::Level::Trace);
-	            return;
-	        }
-	        constexpr const char prefix[] = "--verbose=";
-	        if (arg.starts_with(prefix))
-	        {
-	            std::string val = arg.substr(sizeof(prefix)-1);
-	            Log::SetInitialLevel(Log::LevelFromString(val));
-	            return;
-	        }
-	    }
+		// simple handling: --verbose or --verbose=<Level>
+		for (const auto &arg : args)
+		{
+			if (arg == "--verbose")
+			{
+				Log::SetInitialLevel(Log::Level::Trace);
+				return;
+			}
+			constexpr const char prefix[] = "--verbose=";
+			if (arg.starts_with(prefix))
+			{
+				std::string val = arg.substr(sizeof(prefix)-1);
+				Log::SetInitialLevel(Log::LevelFromString(val));
+				return;
+			}
+		}
 	}
 
-    void InitCore(const PlatformContext& ctx)
-    {
+	void InitCore(const PlatformContext& ctx)
+	{
 		Allocator::Init();
 
-	    // parse CLI and configure desired logging level BEFORE Log::Init()
-        ApplyCliLoggingOptions(ctx.GetCommandLineArgs());
+		// parse CLI and configure desired logging level BEFORE Log::Init()
+		ApplyCliLoggingOptions(ctx.GetCommandLineArgs());
 
 		Log::Init();
-        Log::LogHeader();
-    }
+		Log::LogHeader();
+	}
 
-    void Shutdown()
-    {
-        Log::ShutDown();
-    }
+	void Shutdown()
+	{
+		Log::ShutDown();
+	}
 
 }
 

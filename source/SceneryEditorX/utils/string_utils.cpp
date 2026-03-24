@@ -28,11 +28,13 @@
  * Created: 20/6/2025
  * -------------------------------------------------------
  */
+// ReSharper disable IdentifierTypo
 #include "string_utils.h"
 #include <algorithm>
 #include <fstream>
 #include <regex>
 #include <utility>
+#include <cstdio>
 
 // -------------------------------------------------------
 
@@ -153,76 +155,15 @@ namespace SceneryEditorX::Utils
 
 	}
 
-	std::string_view GetFilename(const std::string_view filepath)
-	{
-		const std::vector<std::string> parts = SplitString(filepath, "/\\");
-
-		if (!parts.empty())
-			return parts[parts.size() - 1];
-
-		return "";
-	}
-
-	std::string GetExtension(const std::string& filename)
-	{
-		if (std::vector<std::string> parts = SplitString(filename, '.'); parts.size() > 1)
-			return parts[parts.size() - 1];
-
-		return "";
-	}
-
-	std::string RemoveExtension(const std::string& filename)
-	{
-		return filename.substr(0, filename.find_last_of('.'));
-	}
-
-	std::vector<std::string> SplitStringAndKeepDelims(std::string str)
-	{
-		const static std::regex re(R"((^\W|^\w+)|(\w+)|[:()])", std::regex_constants::optimize);
-
-		std::regex_iterator rit(str.begin(), str.end(), re);
-		std::regex_iterator<std::string::iterator> rend;
-		std::vector<std::string> result;
-
-		while (rit != rend)
-		{
-			result.emplace_back(rit->str());
-			++rit;
-		}
-		return result;
-	}
-
-	std::vector<std::string> SplitString(const std::string_view string, const std::string_view& delimiters)
-	{
-		size_t first = 0;
-		std::vector<std::string> result;
-		while (first <= string.size())
-		{
-			const auto second = string.find_first_of(delimiters, first);
-
-			if (first != second)
-				result.emplace_back(string.substr(first, second - first));
-
-			if (second == std::string_view::npos)
-				break;
-
-			first = second + 1;
-		}
-
-		return result;
-	}
-
-	std::vector<std::string> SplitString(const std::string_view string, const char delimiter)
-	{
-		return SplitString(string, std::string(1, delimiter));
-	}
-
-	std::string SplitAtUpperCase(std::string_view string, std::string_view delimiter, bool ifLowerCaseOnTheRight /*= true*/)
+	std::string SplitAtUpperCase(std::string_view string, std::string_view delimiter,  bool ifLowerCaseOnTheRight /*= true*/)
 	{
 		std::string str(string);
 		for (int i = static_cast<int>(string.size()) - 1; i > 0; --i)
-			if (const auto rightIsLower = [&] { return std::cmp_less(i, string.size()) && std::islower(str[i + 1]); }; std::isupper(str[i]) && (!ifLowerCaseOnTheRight || rightIsLower()))
+		{
+			if (const auto rightIsLower = [&] { return std::cmp_less(i, string.size()) && std::islower(str[i + 1]); };
+				std::isupper(str[i]) && (!ifLowerCaseOnTheRight || rightIsLower()))
 				str.insert(i, delimiter);
+		}
 
 		return str;
 	}
@@ -233,53 +174,21 @@ namespace SceneryEditorX::Utils
 		constexpr uint64_t MB = 1024 * 1024;
 		constexpr uint64_t KB = 1024;
 
-		char buffer[32 + 1] {};
+		char buffer[32 + 1]{};
 
 		if (bytes >= GB)
-			snprintf(buffer, sizeof(buffer), "%.2f GB", (float)bytes / (float)GB);
+			snprintf(buffer, sizeof(buffer), "%.2f GB", static_cast<float>(bytes) / static_cast<float>(GB));
 		else if (bytes >= MB)
-			snprintf(buffer, sizeof(buffer), "%.2f MB", (float)bytes / (float)MB);
+			snprintf(buffer, sizeof(buffer), "%.2f MB", static_cast<float>(bytes) / static_cast<float>(MB));
 		else if (bytes >= KB)
-			snprintf(buffer, sizeof(buffer), "%.2f KB", (float)bytes / (float)KB);
+			snprintf(buffer, sizeof(buffer), "%.2f KB", static_cast<float>(bytes) / static_cast<float>(KB));
 		else
-			snprintf(buffer, sizeof(buffer), "%.2f bytes", (float)bytes);
+			snprintf(buffer, sizeof(buffer), "%.2f bytes", static_cast<float>(bytes));
 
-		return std::string(buffer);
+		return {buffer};
 	}
 
-	std::string DurationToString(std::chrono::duration<double> duration)
-	{
-		const auto durations = BreakDownDuration<std::chrono::minutes, std::chrono::seconds, std::chrono::milliseconds>(duration);
-
-		std::stringstream durSs;
-		durSs << std::setfill('0') << std::setw(1) << std::get<0>(durations).count() << ':'
-			<< std::setfill('0') << std::setw(2) << std::get<1>(durations).count() << '.'
-			<< std::setfill('0') << std::setw(3) << std::get<2>(durations).count();
-		return durSs.str();
-	}
-
-	std::string TemplateToParenthesis(std::string_view name)
-	{
-		std::string str(name);
-
-		if (!Utils::contains(name, "<") || !Utils::contains(name, ">"))
-			return str;
-
-		const auto i = str.find('<');
-		if (i > 1 && str[i - 1] != ' ')
-			str.insert(i, " ");
-
-		str[i + 2] = std::toupper(str[i + 2]);
-
-		return Utils::replace(str, "<", "(", ">", ")");
-	}
-
-	std::string CreateUserFriendlyTypeName(std::string_view name)
-	{
-		return TemplateToParenthesis(SplitAtUpperCase(RemoveNamespace(name)));
-	}
-
-	int SkipBOM(std::istream& in)
+	int SkipBOM(std::istream &in)
 	{
 		char test[4] = {};
 		in.seekg(0, std::ios::beg);
@@ -293,8 +202,7 @@ namespace SceneryEditorX::Utils
 		return 0;
 	}
 
-	/// Returns an empty string when failing.
-	std::string ReadFileAndSkipBOM(const std::filesystem::path& filepath)
+	std::string ReadFileAndSkipBOM(const std::filesystem::path &filepath)
 	{
 		std::string result;
 		std::ifstream in(filepath, std::ios::in | std::ios::binary);
@@ -307,13 +215,286 @@ namespace SceneryEditorX::Utils
 			fileSize -= skippedChars - 1;
 			result.resize(fileSize);
 			in.read(result.data() + 1, fileSize);
-			/// Add a dummy tab to beginning of file.
+			// Add a dummy tab to beginning of file.
 			result[0] = '\t';
 		}
 		in.close();
 		return result;
 	}
 
-}
+	std::string_view GetFilename(const std::string_view filepath)
+	{
+		const std::vector<std::string> parts = SplitString(filepath, "/\\");
+
+		if (!parts.empty())
+		{
+			return parts[parts.size() - 1];
+		}
+
+		return "";
+	}
+
+	std::string GetExtension(const std::string &filename)
+	{
+		if (std::vector<std::string> parts = SplitString(filename, '.'); parts.size() > 1)
+		{
+			return parts[parts.size() - 1];
+		}
+
+		return "";
+	}
+
+	std::string RemoveExtension(const std::string &filename)
+	{
+		return filename.substr(0, filename.find_last_of('.'));
+	}
+
+	std::vector<std::string> SplitStringAndKeepDelims(std::string str)
+	{
+		const static std::regex RE(R"((^\W|^\w+)|(\w+)|[:()])", std::regex_constants::optimize);
+
+		std::regex_iterator rit(str.begin(), str.end(), RE);
+		std::regex_iterator<std::string::iterator> rend;
+		std::vector<std::string> result;
+
+		while (rit != rend)
+		{
+			result.emplace_back(rit->str());
+			++rit;
+		}
+
+		return result;
+	}
+
+	std::vector<std::string> SplitString(const std::string_view string, const std::string_view &delimiters)
+	{
+		size_t first = 0;
+		std::vector<std::string> result;
+		while (first <= string.size())
+		{
+			const auto second = string.find_first_of(delimiters, first);
+
+			if (first != second)
+			{
+				result.emplace_back(string.substr(first, second - first));
+			}
+
+			if (second == std::string_view::npos)
+			{
+				break;
+			}
+
+			first = second + 1;
+		}
+
+		return result;
+	}
+
+	std::vector<std::string> SplitString(const std::string_view string, const char delimiter)
+	{
+		return SplitString(string, std::string(1, delimiter));
+	}
+
+	std::string DurationToString(std::chrono::duration<double> duration)
+	{
+		const auto durations = BreakDownDuration<std::chrono::minutes, std::chrono::seconds, std::chrono::milliseconds>(duration);
+
+		std::stringstream durSs;
+		durSs << std::setfill('0') << std::setw(1) << std::get<0>(durations).count() << ':' << std::setfill('0')
+			  << std::setw(2) << std::get<1>(durations).count() << '.' << std::setfill('0') << std::setw(3)
+			  << std::get<2>(durations).count();
+		return durSs.str();
+	}
+
+	std::string TemplateToParenthesis(std::string_view name)
+	{
+		std::string str(name);
+
+		if (!Utils::Contains(name, "<") || !Utils::Contains(name, ">"))
+		{
+			return str;
+		}
+
+		const auto i = str.find('<');
+		if (i > 1 && str[i - 1] != ' ')
+		{
+			str.insert(i, " ");
+		}
+
+		str[i + 2] = std::toupper(str[i + 2]);
+
+		return Utils::Replace(str, "<", "(", ">", ")");
+	}
+
+	std::string CreateUserFriendlyTypeName(std::string_view name)
+	{
+		return TemplateToParenthesis(SplitAtUpperCase(RemoveNamespace(name)));
+	}
+
+	std::string Trim(std::string textToTrim)
+	{
+		return TrimStart(TrimEnd(std::move(textToTrim)));
+	}
+
+	std::string_view Trim(std::string_view textToTrim)
+	{
+		return TrimStart(TrimEnd(textToTrim));
+	}
+
+	std::string_view Trim(const char *textToTrim)
+	{
+		return Trim(std::string_view(textToTrim));
+	}
+
+	std::string TrimStart(std::string textToTrim)
+	{
+		auto i = textToTrim.begin();
+
+		if (i == textToTrim.end())
+			return {};
+		if (!IsWhitespace(*i))
+			return textToTrim;
+
+		for (;;)
+		{
+			++i;
+
+			if (i == textToTrim.end())
+				return {};
+			if (!IsWhitespace(*i))
+				return {i, textToTrim.end()};
+		}
+	}
+
+	std::string_view TrimStart(std::string_view textToTrim)
+	{
+		size_t i = 0;
+
+		for (const auto c : textToTrim)
+		{
+			if (!IsWhitespace(c))
+			{
+				textToTrim.remove_prefix(i);
+				return textToTrim;
+			}
+
+			++i;
+		}
+
+		return {};
+	}
+
+	std::string_view TrimStart(const char *textToTrim)
+	{
+		return TrimStart(std::string_view(textToTrim));
+	}
+
+	std::string TrimEnd(std::string textToTrim)
+	{
+		for (auto i = textToTrim.end();;)
+		{
+			if (i == textToTrim.begin())
+				return {};
+
+			--i;
+
+			if (!IsWhitespace(*i))
+			{
+				textToTrim.erase(i + 1, textToTrim.end());
+				return textToTrim;
+			}
+		}
+	}
+
+	std::string_view TrimEnd(std::string_view textToTrim)
+	{
+		for (auto i = textToTrim.length(); i != 0; --i)
+		{
+			if (!IsWhitespace(textToTrim[i - 1]))
+			{
+				return textToTrim.substr(0, i);
+			}
+		}
+
+		return {};
+	}
+
+	std::string_view TrimEnd(const char *textToTrim)
+	{
+		return TrimEnd(std::string_view(textToTrim));
+	}
+
+	std::string RemoveOuterChar(std::string text, char outerChar)
+	{
+		if (text.length() >= 2 && text.front() == outerChar && text.back() == outerChar)
+			return text.substr(1, text.length() - 2);
+
+		return text;
+	}
+
+	std::string ToLowerCase(std::string s)
+	{
+		std::ranges::transform(s, s.begin(), [](auto c) {
+			return static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+		});
+		return s;
+	}
+
+	std::string ToUpperCase(std::string s)
+	{
+		std::ranges::transform(s, s.begin(), [](auto c) {
+			return static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+		});
+		return s;
+	}
+
+	std::vector<std::string> SplitStr(std::string_view textToSplit, char delimiterCharacter, bool includeDelimitersInResult)
+	{
+		return SplitStr(textToSplit, [=](const char c) { return c == delimiterCharacter; }, includeDelimitersInResult);
+	}
+
+	std::vector<std::string> SplitAtWhitespace(std::string_view text, bool keepDelimiters)
+	{
+		return SplitStr(
+			text,
+			[](const char c) { return IsWhitespace(c); },
+			[](const char c) { return IsWhitespace(c); },
+			keepDelimiters);
+	}
+
+	std::vector<std::string> SplitIntoLines(std::string_view text, bool includeNewLinesInResult)
+	{
+		return SplitStr(text, '\n', includeNewLinesInResult);
+	}
+
+	bool Contains(std::string_view text, std::string_view possibleSubstring)
+	{
+		return text.find(possibleSubstring) != std::string::npos;
+	}
+
+	bool StartsWith(std::string_view text, char possibleStart)
+	{
+		return !text.empty() && text.front() == possibleStart;
+	}
+
+	bool StartsWithStr(const std::string_view text, const std::string_view possibleStart)
+	{
+		const auto len = possibleStart.length();
+		return text.length() >= len && text.substr(0, len) == possibleStart;
+	}
+
+	bool EndsWith(std::string_view text, char possibleEnd)
+	{
+		return !text.empty() && text.back() == possibleEnd;
+	}
+
+	bool EndsWithStr(std::string_view text, std::string_view possibleEnd)
+	{
+		const auto len1 = text.length();
+		const auto len2 = possibleEnd.length();
+		return len1 >= len2 && text.substr(len1 - len2) == possibleEnd;
+	}
+
+	} // namespace SceneryEditorX::Utils
 
 // -------------------------------------------------------

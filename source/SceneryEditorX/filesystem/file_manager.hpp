@@ -35,27 +35,36 @@
 #undef MoveFile
 #undef CopyFile
 #endif
-#include <SceneryEditorX/core/memory/buffer.h>
+
 #include <filesystem>
 #include <string>
 #include <vector>
 #include <SceneryEditorX/asset/asset_types.h>
+#include <SceneryEditorX/core/memory/buffer.h>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX::IO
 {
+	/**
+	 * @enum FileStatus
+	 * @brief Represents the status of a file operation.
+	 */
 	enum class FileStatus : uint8_t
 	{
-		Success = 0,
-		Invalid,
-		NotFound,
-		Locked,
-		AccessDenied,
-		AlreadyExists,
-		UnknownError
+		Success			= 0,
+		Invalid			= 1,
+		NotFound		= 2,
+		Locked			= 3,
+		AccessDenied	= 4,
+		AlreadyExists	= 5,
+		UnknownError	= 6
 	};
 
+	/**
+	 * @class FileManager
+	 * @brief Manages file operations such as reading, writing, and querying file status.
+	 */
 	class FileManager
 	{
 	public:
@@ -99,23 +108,22 @@ namespace SceneryEditorX::IO
 
 	// -------------------------------------------------------
 
+	/**
+	 * @class FileDialogs
+	 * @brief Provides file dialog operations such as opening and saving files.
+	 */
 	class FileDialogs
 	{
 	public:
-		/// These return empty strings if cancelled
 		static std::string OpenFile(const char* filter);
 		static std::string SaveFile(const char* filter);
 
-		// -------------------------------------------------------
-		
 		static bool IsTexture(const std::filesystem::path &path);
 		static bool IsModel(const std::filesystem::path &path);
 
 		static std::vector<uint8_t> ReadFileBytes(const std::filesystem::path &path);
 		static void WriteFileBytes(const std::filesystem::path &path, const std::vector<uint8_t> &content);
 		static void WriteFile(const std::filesystem::path &path, const std::string &content);
-
-		// -------------------------------------------------------
 
 		/*
 		uint64_t Import(const std::filesystem::path &path, AssetManager &assets);
@@ -136,15 +144,19 @@ namespace SceneryEditorX::IO
 
 	/**
 	 * @class FileSystem
-	 * @brief 
+	 * @brief Provides file system operations such as creating, deleting, and querying files and directories.
 	 */
 	class FileSystem
 	{
 	public:
+		/**
+		 * @struct FileDialogItem
+		 * @brief Represents an item in a file dialog, including its name and extension.
+		 */
 		struct FileDialogItem
 		{
-			const char *name;
-			const char *spec;
+			const char *name; // Display name for the file type (e.g., "Text Files")
+			const char *ext; // File specification string (e.g., "*.txt") used for filtering files in the dialog
 		};
 
 		static std::filesystem::path GetWorkingDir();

@@ -41,8 +41,8 @@ namespace SceneryEditorX
 	class LinuxContext final : public PlatformContext
 	{
 	public:
-        LinuxContext(int argc, char **argv);
-        ~LinuxContext() override = default;
+		LinuxContext(int argc, char **argv);
+		~LinuxContext() override = default;
 	};
 
 }

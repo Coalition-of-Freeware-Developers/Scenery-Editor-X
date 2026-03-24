@@ -49,7 +49,7 @@ namespace SceneryEditorX::IO
 	class ConfigLoader
 	{
 	public:
-        enum Segment : uint8_t
+		enum Segment : uint8_t
 		{
 			Segment_COMMON = 0,
 			Segment_LOGGER = 1
@@ -67,7 +67,7 @@ namespace SceneryEditorX::IO
 		int GetCfgByName(int& value, const std::string & name, int segment = Segment_COMMON);
 		int GetConfigByName(bool& value, const std::string & name, int segment = Segment_COMMON);
 	private:
-        ConfigLoader() = default;
+		ConfigLoader() = default;
 		ConfigLoader(const ConfigLoader &) = delete;
 		ConfigLoader& operator=(const ConfigLoader &) = delete;
 

@@ -220,7 +220,7 @@ namespace SceneryEditorX::IO
 	{
 		if (segment == Segment_COMMON)
 		{
-            if (auto it = m_CommonMap.find(name.c_str()); it != m_CommonMap.end())
+			if (auto it = m_CommonMap.find(name.c_str()); it != m_CommonMap.end())
 			{
 				value = it->second;
 				return 0;
@@ -228,7 +228,7 @@ namespace SceneryEditorX::IO
 		}
 		else if (segment == Segment_LOGGER)
 		{
-            if (auto it = m_LoggerMap.find(name.c_str()); it != m_LoggerMap.end())
+			if (auto it = m_LoggerMap.find(name.c_str()); it != m_LoggerMap.end())
 			{
 				value = it->second;
 				return 0;
@@ -274,7 +274,7 @@ namespace SceneryEditorX::IO
 			return -1;
 		}
 		int num = 0;
-        int flag = 1;
+		int flag = 1;
 		for (int i = 0; i < s.length(); ++i)
 		{
 			int c = s.at(i);
@@ -316,7 +316,7 @@ namespace SceneryEditorX::IO
 		std::string s;
 		if (segment == Segment_COMMON)
 		{
-            if (auto it = m_CommonMap.find(name.c_str()); it != m_CommonMap.end())
+			if (auto it = m_CommonMap.find(name.c_str()); it != m_CommonMap.end())
 			{
 				s = it->second;
 				if (s == "false" || s == "FALSE" || s == "False" || s == "0")
@@ -328,7 +328,7 @@ namespace SceneryEditorX::IO
 		}
 		else if (segment == Segment_LOGGER)
 		{
-            if (auto it = m_LoggerMap.find(name.c_str()); it != m_LoggerMap.end())
+			if (auto it = m_LoggerMap.find(name.c_str()); it != m_LoggerMap.end())
 			{
 				s = it->second;
 				if (s == "true" || s == "TRUE" || s == "True" || s == "1")

@@ -32,19 +32,28 @@
  */
 #pragma once
 #include <Windows.h>
-#include <string>
 #include <SceneryEditorX/core/platform/platform_context.h>
 
 // -----------------------------------------------
 
 namespace SceneryEditorX
 {
+	/**
+	 * @class WindowsContext
+	 * @brief Represents the Windows-specific application context.
+	 */
 	class WindowsContext final : public PlatformContext
 	{
 	public:
+		/**
+		 * @brief Constructs a WindowsContext object.
+		 * @param hInstance A handle to the current instance of the application.
+		 * @param hPrevInstance A handle to the previous instance of the application (always NULL in modern Windows).
+		 * @param lpCmdLine The command line for the application, excluding the program name.
+		 * @param nCmdShow Controls how the window is to be shown.
+		 */
 		WindowsContext(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, INT nCmdShow);
 		~WindowsContext() override = default;
-
 	};
 
 } // namespace SceneryEditorX

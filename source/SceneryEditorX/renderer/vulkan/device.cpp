@@ -856,9 +856,9 @@ namespace SceneryEditorX
 		// Store family indices for device creation
 		m_FamilyIndices = familyIndices;
 
-
 		// Create logical device with detected queue families
 		m_LogicalDevice = Create();
+		volkLoadDevice(m_LogicalDevice);
 		SEDX_CORE_ASSERT(m_LogicalDevice != VK_NULL_HANDLE, "Failed to create logical device");
 
 		// Initialize QueueManager after device is created
@@ -1063,7 +1063,7 @@ namespace SceneryEditorX
 		}
 
 		// Load device-level function pointers via volk
-		volkLoadDevice(device);
+		//volkLoadDevice(device);
 
 		// CRITICAL: Validate that device-level functions were loaded correctly
 		// If these are null, volk failed to load from the correct Vulkan driver
