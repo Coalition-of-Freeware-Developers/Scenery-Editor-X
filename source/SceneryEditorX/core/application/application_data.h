@@ -29,9 +29,9 @@
  * -------------------------------------------------------
  */
 #pragma once
-#include "SceneryEditorX/core/threading/render_thread.h"
 #include <filesystem>
 #include <string>
+#include <SceneryEditorX/core/threading/render_thread.h>
 
 // -------------------------------------------------------
 
@@ -66,16 +66,16 @@ namespace SceneryEditorX
 		 */
 		static inline uint32_t version = SEDX_VERSION;
 
-		ThreadingPolicy CoreThreadingPolicy = ThreadingPolicy::MultiThreaded;
-		bool Fullscreen = false;
-		bool NoTitlebar = false;
+		ThreadingPolicy coreThreadingPolicy = ThreadingPolicy::MultiThreaded;
+		bool fullscreen = false;
+		bool noTitlebar = false;
 		bool VSync = false;
-		bool StartMaximized = true;
-		bool Resizable = true;
-		bool Decorated = true;
-		bool SplashScreen = false;
-		std::string WorkingDirectory;
-		std::filesystem::path IconPath;
+		bool startMaximized = true;
+		bool resizable = true;
+		bool decorated = true;
+		bool splashScreen = false;
+		std::string workingDirectory;
+		std::filesystem::path iconPath;
 	};
 
 	/**

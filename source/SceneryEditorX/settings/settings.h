@@ -238,25 +238,25 @@ namespace SceneryEditorX
 		 * @brief Initializes config with default minimal settings.
 		 * Called when no config file exists or when initialization is needed
 		 */
-		void InitMinConfig();
+		static void InitMinConfig();
 
 		/**
 		 * @brief Updates libconfig structure from internal data.
 		 * Converts internal application and X-Plane stats to configuration format
 		 */
-		void UpdateConfigFromData();
+		static void UpdateConfigFromData();
 
 		/**
 		 * @brief Loads settings from config to internal map.
 		 * Populates the settings map with data from the configuration file
 		 */
-		void LoadSettingsToMap();
+		static void LoadSettingsToMap();
 
 		/**
 		 * @brief Ensures that required configuration sections exist.
 		 * Creates any missing required sections in the configuration
 		 */
-		void EnsureRequiredSections();
+		static void EnsureRequiredSections();
 
 		/**
 		 * @brief Creates a setting path with arbitrary type value.
@@ -267,7 +267,7 @@ namespace SceneryEditorX
 		template <typename T>
 		static void CreateSettingPath(const std::string &path, const T &value);
 
-	    static libconfig::Config cfg;						// Configuration object
+		static libconfig::Config cfg;						// Configuration object
 		static XPlaneStats xPlaneStats;						// X-Plane statistics and paths
 		static AppData appStats;							// Application statistics
 		static std::filesystem::path filePath;				// Path to configuration file
@@ -275,8 +275,6 @@ namespace SceneryEditorX
 		static bool configInitialized;						// Flag indicating if config is initialized
 	};
 
-	// ----------------------------------------------------------
-
-} // namespace SceneryEditorX
+}
 
 // -------------------------------------------------------

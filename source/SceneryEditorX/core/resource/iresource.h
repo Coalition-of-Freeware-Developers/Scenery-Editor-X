@@ -31,6 +31,7 @@
 #pragma once
 #include "iobject.h"
 #include <SceneryEditorX/filesystem/file_manager.hpp>
+#include <SceneryEditorX/filesystem/file_system.h>
 #include <SceneryEditorX/renderer/vulkan/enums.h>
 
 // -----------------------------------------------------------------

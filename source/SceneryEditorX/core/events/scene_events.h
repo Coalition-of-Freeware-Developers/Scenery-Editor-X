@@ -155,6 +155,7 @@ namespace SceneryEditorX
 
 		EVENT_CLASS_CATEGORY(EventCategoryScene)
 		EVENT_CLASS_TYPE(SelectionChanged)
+
 	private:
 		SelectionContext m_ContextID;
 		UUID m_SelectionID;

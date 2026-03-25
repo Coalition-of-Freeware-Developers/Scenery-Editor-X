@@ -23,7 +23,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  * -------------------------------------------------------
- * FileDialog.cpp
+ * file_dialog.cpp
  * -------------------------------------------------------
  * Created: 5/2/2025
  * -------------------------------------------------------
@@ -36,7 +36,6 @@ namespace SceneryEditorX::IO
 {
     /**
      * Opens a file dialog to select one or multiple files.
-     *
      * @return A vector of selected file paths.
      */
     void FileDialog::OpenFileDialog(char *fileName, char *filter, char *title)
@@ -54,7 +53,6 @@ namespace SceneryEditorX::IO
 
     /**
      * Opens a file dialog to save a file.
-     *
      * @return The selected file path.
      */
     void FileDialog::SaveFileDialog(char *fileName, char *filter, char *title)

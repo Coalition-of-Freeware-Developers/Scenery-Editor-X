@@ -29,14 +29,14 @@
  * -------------------------------------------------------
  */
 #include "asset_manager.h"
-
-#include "SceneryEditorX/asset/asset_extensions.h"
-#include "SceneryEditorX/asset/asset_metadata.h"
-#include "SceneryEditorX/core/application/application.h"
-#include "SceneryEditorX/utils/string_utils.h"
+#include <SceneryEditorX/asset/asset_extensions.h>
+#include <SceneryEditorX/asset/asset_metadata.h>
+#include <SceneryEditorX/core/application/application.h>
 #include <SceneryEditorX/core/events/editor_events.h>
+#include <SceneryEditorX/filesystem/file_system.h>
 #include <SceneryEditorX/project/project.h>
 #include <SceneryEditorX/renderer/renderer.h>
+#include <SceneryEditorX/utils/string_utils.h>
 
 // -------------------------------------------------------
 

@@ -82,7 +82,6 @@ namespace SceneryEditorX
 
 	/**
 	 * @brief Checks if the system uses 12-hour time format.
-	 *
 	 * @return true if system uses 12-hour format (AM/PM), false for 24-hour
 	 */
 	bool IsSystem12HourFormat();

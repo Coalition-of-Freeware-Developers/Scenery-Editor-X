@@ -49,7 +49,7 @@ namespace SceneryEditorX
 
 	// -------------------------------------------------------
 
-	/// Default section templates for use when creating config sections
+	// Default section templates for use when creating config sections
 	static constexpr const char *APPLICATION_SECTION_TEMPLATE = R"(
 	# Application settings
 	version = "${APP_VERSION}";
@@ -182,7 +182,7 @@ namespace SceneryEditorX
 			{
 				SEDX_CORE_TRACE_TAG("SETTINGS", "Loading SceneryEditorX settings");
 				if (const Setting &app = cfg.lookup("application"); app.exists("no_titlebar"))
-					app.lookupValue("no_titlebar", appStats.NoTitlebar);
+					app.lookupValue("no_titlebar", appStats.noTitlebar);
 			}
 
 			// Populate the settings map for quick access
@@ -769,7 +769,7 @@ namespace SceneryEditorX
 
 	void Settings::UpdateConfigFromData()
 	{
-		/// Update X-Plane data
+		// Update X-Plane data
 		try
 		{
 			Setting &xp = cfg.lookup("x_plane");
@@ -800,14 +800,14 @@ namespace SceneryEditorX
 			EnsureRequiredSections();
 		}
 
-		/// Update application data
+		// Update application data
 		try
 		{
 			Setting &app = cfg.lookup("application");
 
 			if (app.exists("no_titlebar"))
 				app.remove("no_titlebar");
-			app.add("no_titlebar", Setting::TypeBoolean) = appStats.NoTitlebar;
+			app.add("no_titlebar", Setting::TypeBoolean) = appStats.noTitlebar;
 
 			if (app.exists("version"))
 				app.remove("version");
@@ -824,7 +824,7 @@ namespace SceneryEditorX
 	{
 		settings.clear();
 
-		/// Recursive function to traverse config settings
+		// Recursive function to traverse config settings
 		std::function<void(const Setting &, const std::string &)> traverseSettings;
 		traverseSettings = [&](const Setting &setting, const std::string &prefix) {
 			for (int i = 0; i < setting.getLength(); ++i)
@@ -836,17 +836,17 @@ namespace SceneryEditorX
 					traverseSettings(child, name);
 				else
 				{
-					/// Store the value as string in our map
+					// Store the value as string in our map
 					switch (child.getType())
 					{
 					case Setting::TypeInt:
-						settings[name] = ToString(static_cast<int>(child));
+						settings[name] = std::to_string(static_cast<int>(child));
 						break;
 					case Setting::TypeInt64:
-						settings[name] = ToString(static_cast<long long>(child));
+						settings[name] = std::to_string(static_cast<long long>(child));
 						break;
 					case Setting::TypeFloat:
-						settings[name] = ToString(static_cast<double>(child));
+						settings[name] = std::to_string(static_cast<double>(child));
 						break;
 					case Setting::TypeString:
 						settings[name] = static_cast<const char *>(child);
@@ -863,7 +863,7 @@ namespace SceneryEditorX
 					case Setting::TypeList:
 						break;
 					default:
-						/// For arrays, lists, and groups, we skip adding to settings map
+						// For arrays, lists, and groups, we skip adding to settings map
 						break;
 					}
 				}
@@ -875,17 +875,17 @@ namespace SceneryEditorX
 
 	void Settings::EnsureRequiredSections()
 	{
-		/// Ensure application section exists
+		// Ensure application section exists
 		if (!cfg.exists("application"))
 		{
 			Setting &root = cfg.getRoot();
 			root.add("application", Setting::TypeGroup);
 			Setting &app = cfg.lookup("application");
 			app.add("version", Setting::TypeString) = AppData::versionString;
-			app.add("no_titlebar", Setting::TypeBoolean) = appStats.NoTitlebar;
+			app.add("no_titlebar", Setting::TypeBoolean) = appStats.noTitlebar;
 		}
 
-		/// Ensure x_plane section exists
+		// Ensure x_plane section exists
 		if (!cfg.exists("x_plane"))
 		{
 			Setting &root = cfg.getRoot();
@@ -899,40 +899,52 @@ namespace SceneryEditorX
 			xp.add("is_steam", Setting::TypeBoolean) = xPlaneStats.isSteam;
 		}
 
-		/// Ensure ui section exists
+		// Ensure ui section exists
 		if (!cfg.exists("ui"))
 		{
 			Setting &root = cfg.getRoot();
 			root.add("ui", Setting::TypeGroup);
 
-			/// Only add default values if not already set
+			// Only add default values if not already set
 			if (!HasOption("ui.theme"))
-				AddStringOption("ui.theme", "dark");
+			{
+			    AddStringOption("ui.theme", "dark");
+			}
 			if (!HasOption("ui.font_size"))
-				AddIntOption("ui.font_size", 12);
+			{
+			    AddIntOption("ui.font_size", 12);
+			}
 			if (!HasOption("ui.language"))
-				AddStringOption("ui.language", "english");
+			{
+			    AddStringOption("ui.language", "english");
+			}
 		}
 
-		/// Ensure project section exists
+		// Ensure project section exists
 		if (!cfg.exists("project"))
 		{
 			Setting &root = cfg.getRoot();
 			root.add("project", Setting::TypeGroup);
 
-			/// Only add default values if not already set
+			// Only add default values if not already set
 			if (!HasOption("project.auto_save"))
-				AddBoolOption("project.auto_save", true);
+			{
+			    AddBoolOption("project.auto_save", true);
+			}
 			if (!HasOption("project.auto_save_interval"))
-				AddIntOption("project.auto_save_interval", 5);
+			{
+			    AddIntOption("project.auto_save_interval", 5);
+			}
 			if (!HasOption("project.backup_count"))
-				AddIntOption("project.backup_count", 3);
+			{
+			    AddIntOption("project.backup_count", 3);
+			}
 			if (!HasOption("project.default_project_dir"))
 			{
-				/// Set default project directory
+				// Set default project directory
 				std::string defaultDir = "~/Documents/SceneryEditorX";
 
-				/// Replace ~ with actual home directory
+				// Replace ~ with actual home directory
 				if (defaultDir.starts_with("~"))
 				{
 					const char *homeDir = nullptr;
@@ -954,7 +966,7 @@ namespace SceneryEditorX
 	template <typename T>
 	void Settings::CreateSettingPath(const std::string &path, const T &value)
 	{
-		/// Split the path by dots
+		// Split the path by dots
 		std::vector<std::string> parts;
 		std::string temp = path;
 		size_t pos;
@@ -963,16 +975,20 @@ namespace SceneryEditorX
 			parts.push_back(temp.substr(0, pos));
 			temp.erase(0, pos + 1);
 		}
-		parts.push_back(temp); /// Add the last part (name)
 
-		/// Build the path
+		parts.push_back(temp); // Add the last part (name)
+
+		// Build the path
 		Setting *current = &cfg.getRoot();
 		std::string currentPath;
 
 		for (size_t i = 0; i < parts.size() - 1; ++i)
 		{
+
 			if (!currentPath.empty())
-				currentPath += ".";
+			{
+			    currentPath += ".";
+			}
 			currentPath += parts[i];
 
 			try
@@ -981,15 +997,17 @@ namespace SceneryEditorX
 			}
 			catch (const SettingNotFoundException &)
 			{
-				/// Create the group if it doesn't exist
+				// Create the group if it doesn't exist
 				current = &(current->add(parts[i], Setting::TypeGroup));
 			}
 		}
 
-		/// Add the final value
+		// Add the final value
 		const std::string name = parts.back();
 		if (current->exists(name))
-			current->remove(name);
+		{
+		    current->remove(name);
+		}
 
 		if constexpr (std::is_same_v<T, int>)
 		{
@@ -1012,44 +1030,6 @@ namespace SceneryEditorX
 			settings[path] = value;
 		}
 	}
-
-	/*
-	VkDeviceSize ApplicationSettings::GetCustomBufferSize() const
-	{
-		// If not specified, return the default value
-		return GetIntOption("vulkan.custom_buffer_size", static_cast<int>(CUSTOM_BUFFER_SIZE));
-	}
-	*/
-
-	/*
-	bool ApplicationSettings::SetCustomBufferSize(VkDeviceSize size)
-	{
-		// Store in settings
-		AddIntOption("vulkan.custom_buffer_size", static_cast<int>(size));
-		return true;
-	}
-
-	bool ApplicationSettings::ValidateBufferSize(VkDeviceSize size, const VkPhysicalDeviceLimits& deviceLimits)
-	{
-		// Check that buffer size is not larger than the maximum allowed by the device
-		if (size > deviceLimits.maxStorageBufferRange)
-		{
-			SEDX_CORE_ERROR_TAG("SETTINGS", "Requested buffer size ({} bytes) exceeds device maximum ({} bytes)",
-				size, deviceLimits.maxStorageBufferRange);
-			return false;
-		}
-
-		// Ensure the size is a multiple of minStorageBufferOffsetAlignment
-		if (size % deviceLimits.minStorageBufferOffsetAlignment != 0)
-		{
-			SEDX_CORE_WARN_TAG("SETTINGS", "Buffer size {} is not aligned to device requirements ({})",
-				size, deviceLimits.minStorageBufferOffsetAlignment);
-			return false;
-		}
-
-		return true;
-	}
-	*/
 
 }
 
