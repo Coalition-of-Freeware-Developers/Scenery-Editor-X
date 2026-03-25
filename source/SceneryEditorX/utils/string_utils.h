@@ -806,9 +806,9 @@ namespace SceneryEditorX::Utils
 	{
 		static_assert((sizeof...(otherPairsOfStringsToReplace) & 1u) == 0, "This function expects a list of pairs of strings as its arguments");
 
-		if constexpr (std::is_same_v<const StringType, const std::string_view> || std::is_same_v<const StringType, const char *const>)
+	  if constexpr (std::is_same_v<const StringType, const std::string_view> || std::is_same_v<const StringType, const char *const>)
 		{
-			return replace(std::string(textToSearch), firstToReplace, firstReplacement, std::forward<OtherReplacements>(otherPairsOfStringsToReplace)...);
+			return Replace(std::string(textToSearch), firstToReplace, firstReplacement, std::forward<OtherReplacements>(otherPairsOfStringsToReplace)...);
 		}
 		else if constexpr (sizeof...(otherPairsOfStringsToReplace) == 0)
 		{
@@ -827,7 +827,7 @@ namespace SceneryEditorX::Utils
 		}
 		else
 		{
-			return replace(replace(std::move(textToSearch), firstToReplace, firstReplacement), std::forward<OtherReplacements>(otherPairsOfStringsToReplace)...);
+		   return Replace(Replace(std::move(textToSearch), firstToReplace, firstReplacement), std::forward<OtherReplacements>(otherPairsOfStringsToReplace)...);
 		}
 	}
 

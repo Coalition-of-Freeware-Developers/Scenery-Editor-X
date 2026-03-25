@@ -67,8 +67,8 @@ namespace SceneryEditorX
 	class LayerStack
 	{
 	public:
-        LayerStack() = default;
-        ~LayerStack() = default;
+		LayerStack() = default;
+		~LayerStack() = default;
 
 		/**
 		 * @brief Pushes a layer to the front section of the stack
@@ -122,7 +122,7 @@ namespace SceneryEditorX
 		 */
 		void PopLayer(Layer *layer);
 
-	    /**
+		/**
 		 * @brief Removes an overlay from the end section of the stack
 		 * 
 		 * Searches for the specified overlay in the stack and removes it if found. This method
@@ -145,12 +145,12 @@ namespace SceneryEditorX
 		 * @note Asserts if index is out of bounds (index < 0 or index >= Size())
 		 */
 		Layer *operator[](size_t index)
-        {
-            SEDX_CORE_ASSERT(index >= 0 && index < m_Layers.size());
-            return m_Layers[index];
-        }
+		{
+			SEDX_CORE_ASSERT(index >= 0 && index < m_Layers.size());
+			return m_Layers[index];
+		}
 
-	    /**
+		/**
 		 * @brief Accesses a layer by index with bounds checking (const version).
 		 * 
 		 * Provides direct const access to layers in the stack by their index position.
@@ -160,26 +160,26 @@ namespace SceneryEditorX
 		 * @return Const pointer to the layer at the specified index.
 		 * @note Asserts if index is out of bounds (index < 0 or index >= Size()).
 		 */
-        const Layer *operator[](size_t index) const 
-	    {
-            SEDX_CORE_ASSERT(index >= 0 && index < m_Layers.size());
-            return m_Layers[index];
-        }
+		const Layer *operator[](size_t index) const 
+		{
+			SEDX_CORE_ASSERT(index >= 0 && index < m_Layers.size());
+			return m_Layers[index];
+		}
 
-	    /**
+		/**
 		 * @brief Returns the total number of layers in the stack
 		 * @return The count of all layers and overlays currently in the stack
 		 */
-        [[nodiscard]] size_t Size() const { return m_Layers.size(); }
+		[[nodiscard]] size_t Size() const { return m_Layers.size(); }
 
-	    /**
+		/**
 		 * @brief Returns an iterator to the beginning of the layer stack.
 		 * Enables range-based for loops and standard algorithm usage.
 		 * @return Iterator pointing to the first layer (if any)
 		 */
 		std::vector<Layer*>::iterator Begin() { return m_Layers.begin(); }
 
-        /**
+		/**
 		 * @brief Returns an iterator to the end of the layer stack.
 		 *
 		 * Enables range-based for loops and standard algorithm usage.
@@ -189,8 +189,8 @@ namespace SceneryEditorX
 		std::vector<Layer*>::iterator End() { return m_Layers.end(); }
 
 	private:
-        std::vector<Layer*> m_Layers;
-        unsigned int m_LayerInsertIndex = 0;
+		std::vector<Layer*> m_Layers;
+		unsigned int m_LayerInsertIndex = 0;
 	};
 }
 
