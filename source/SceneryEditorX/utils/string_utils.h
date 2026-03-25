@@ -537,28 +537,12 @@ namespace SceneryEditorX::Utils
 	bool StartsWith(std::string_view text, char possibleStart);
 
 	/**
-	 * @brief Check whether text starts with a specific substring.
-	 * @param text The text to test.
-	 * @param possibleStart The substring to test for at the start.
-	 * @return True if text starts with possibleStart.
-	 */
-	bool StartsWith(std::string_view text, std::string_view possibleStart);
-
-	/**
 	 * @brief Check whether text ends with a specific character.
 	 * @param text The text to test.
 	 * @param possibleEnd The character to test for at the end.
 	 * @return True if text ends with possibleEnd.
 	 */
 	bool EndsWith(std::string_view text, char possibleEnd);
-
-	/**
-	 * @brief Check whether text ends with a specific substring.
-	 * @param text The text to test.
-	 * @param possibleEnd The substring to test for at the end.
-	 * @return True if text ends with possibleEnd.
-	 */
-	bool EndsWith(std::string_view text, std::string_view possibleEnd);
 
 	/**
 	 * @brief Compute the Levenshtein edit distance between two strings.
