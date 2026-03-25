@@ -29,46 +29,58 @@
  * -------------------------------------------------------
  */
 #pragma once
-#include "SceneryEditorX/core/memory/buffer.h"
 #include "filestream_reader.h"
 #include "filestream_writer.h"
+#include <SceneryEditorX/core/memory/buffer.h>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-    /// MemoryStreamWriter
+
+	/**
+	 * @class MemoryStreamWriter
+	 * @brief A stream writer that writes data to a memory buffer. 
+	 * This class implements the StreamWriter interface and allows writing data directly into a Memory::Buffer. 
+	 * It maintains an internal write position to keep track of where the next data will be written in the buffer. 
+	 * The class provides methods to check if the stream is good, get and set the current stream position, and write data to the buffer.
+	 */
 	class MemoryStreamWriter : public StreamWriter
 	{
 	public:
 		MemoryStreamWriter(Memory::Buffer & buffer, size_t size);
 		MemoryStreamWriter(const MemoryStreamWriter&) = delete;
-        virtual ~MemoryStreamWriter() override;
+		virtual ~MemoryStreamWriter() override;
 
-        [[nodiscard]] virtual bool IsStreamGood() const override final { return m_WritePos < m_Buffer.size; }
-        virtual uint64_t GetStreamPosition() override final { return m_WritePos; }
-        virtual void SetStreamPosition(uint64_t position) override final { m_WritePos = position; }
-        virtual bool WriteData(const char* data, size_t size) override final;
+		[[nodiscard]] virtual bool IsStreamGood() const override final { return m_WritePos < m_Buffer.size; }
+		virtual uint64_t GetStreamPosition() override final { return m_WritePos; }
+		virtual void SetStreamPosition(uint64_t position) override final { m_WritePos = position; }
+		virtual bool WriteData(const char* data, size_t size) override final;
 
 	private:
-        Memory::Buffer & m_Buffer;
+		Memory::Buffer & m_Buffer;
 		size_t m_WritePos = 0;
 	};
 
-    // -------------------------------------------------------
+	// -------------------------------------------------------
 
-	/// MemoryStreamReader
+	/**
+	 * @class MemoryStreamReader
+	 * @brief A stream reader that reads data from a memory buffer. 
+	 * This class implements the StreamReader interface and allows reading data directly from a Memory::Buffer. 
+	 * It maintains an internal read position to keep track of where the next data will be read from the buffer.
+	 */
 	class MemoryStreamReader : public StreamReader
 	{
 	public:
 		MemoryStreamReader(const Memory::Buffer & buffer);
 		MemoryStreamReader(const MemoryStreamReader&) = delete;
-        virtual ~MemoryStreamReader() override;
+		virtual ~MemoryStreamReader() override;
 
-        [[nodiscard]] virtual bool IsStreamGood() const override final { return m_ReadPos < m_Buffer.size; }
-        virtual uint64_t GetStreamPosition() override final { return m_ReadPos; }
-        virtual void SetStreamPosition(uint64_t position) override final { m_ReadPos = position; }
-        virtual bool ReadData(char* destination, size_t size) override final;
+		[[nodiscard]] virtual bool IsStreamGood() const override final { return m_ReadPos < m_Buffer.size; }
+		virtual uint64_t GetStreamPosition() override final { return m_ReadPos; }
+		virtual void SetStreamPosition(uint64_t position) override final { m_ReadPos = position; }
+		virtual bool ReadData(char* destination, size_t size) override final;
 
 	private:
 		const Memory::Buffer & m_Buffer;

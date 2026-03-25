@@ -36,17 +36,21 @@
 
 namespace SceneryEditorX
 {
+/**
+	 * @class FileStreamWriter
+	 * @brief A class for writing data to a file stream.
+	 */
 	class FileStreamWriter : public StreamWriter
 	{
 	public:
-        explicit FileStreamWriter(const std::filesystem::path& path);
+		explicit FileStreamWriter(const std::filesystem::path& path);
 		FileStreamWriter(const FileStreamWriter&) = delete;
 		virtual ~FileStreamWriter() override;
 
-        [[nodiscard]] virtual bool IsStreamGood() const override final { return m_Stream.good(); }
-        virtual uint64_t GetStreamPosition() override final { return m_Stream.tellp(); }
-        virtual void SetStreamPosition(uint64_t position) override final { m_Stream.seekp(position); }
-        virtual bool WriteData(const char* data, size_t size) override final;
+		[[nodiscard]] virtual bool IsStreamGood() const override final { return m_Stream.good(); }
+		virtual uint64_t GetStreamPosition() override final { return m_Stream.tellp(); }
+		virtual void SetStreamPosition(uint64_t position) override final { m_Stream.seekp(position); }
+		virtual bool WriteData(const char* data, size_t size) override final;
 
 	private:
 		std::filesystem::path m_Path;
@@ -55,18 +59,22 @@ namespace SceneryEditorX
 
 	// -------------------------------------------------------
 
+    /**
+	 * @class FileStreamReader
+	 * @brief A class for reading data from a file stream.
+	 */
 	class FileStreamReader : public StreamReader
 	{
 	public:
-        explicit FileStreamReader(const std::filesystem::path& path);
+		explicit FileStreamReader(const std::filesystem::path& path);
 		FileStreamReader(const FileStreamReader&) = delete;
-        virtual ~FileStreamReader() override;
+		virtual ~FileStreamReader() override;
 
-        [[nodiscard]] const std::filesystem::path& GetFilePath() const { return m_Path; }
-        [[nodiscard]] virtual bool IsStreamGood() const override final { return m_Stream.good(); }
-        virtual uint64_t GetStreamPosition() override { return m_Stream.tellg(); }
-        virtual void SetStreamPosition(uint64_t position) override { m_Stream.seekg(position); }
-        virtual bool ReadData(char* destination, size_t size) override;
+		[[nodiscard]] const std::filesystem::path& GetFilePath() const { return m_Path; }
+		[[nodiscard]] virtual bool IsStreamGood() const override final { return m_Stream.good(); }
+		virtual uint64_t GetStreamPosition() override { return m_Stream.tellg(); }
+		virtual void SetStreamPosition(uint64_t position) override { m_Stream.seekg(position); }
+		virtual bool ReadData(char* destination, size_t size) override;
 
 	private:
 		std::filesystem::path m_Path;

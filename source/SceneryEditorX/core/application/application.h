@@ -79,6 +79,7 @@ namespace SceneryEditorX
 		virtual void OnInit() {}
 		virtual void OnUpdate() {}
 		virtual void OnShutdown();
+		virtual void OnEvent(Event &event);
 
 		void PushLayer(Layer *layer);
 		void PushOverlay(Layer *layer);
@@ -120,7 +121,7 @@ namespace SceneryEditorX
 		void SetEventCallback(const EventCallbackFn& eventCallback) { m_EventCallbacks.push_back(eventCallback); }
 		void SyncEvents();
 		void ProcessEvents();
-		void OnEvent(Event &event);
+
 		static bool OnWindowResize(const WindowResizeEvent &e);
 		bool OnWindowMinimize(const WindowMinimizeEvent &e);
 		bool OnWindowClose(WindowCloseEvent &e);
@@ -149,7 +150,7 @@ namespace SceneryEditorX
 		void DispatchEvent(TEventArgs&&... args)
 		{
 	#ifndef SEDX_COMPILER_GCC
-			// TODO: GCC causes this to fail for AnimationGraphCompiledEvent for some reason. Investigate.
+			// TODO: GCC causes this to fail for some reason. Investigate.
 			static_assert(std::is_assignable_v<Event, TEvent>);
 	#endif
 

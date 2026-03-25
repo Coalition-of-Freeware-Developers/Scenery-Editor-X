@@ -163,7 +163,7 @@ void AssetBrowser::OnTickVisible()
 
 void AssetBrowser::ShowMeshImportDialog(const std::string& file_path)
 {
-    if (IO::FileDialogs::IsModel(file_path))
+    if (IO::FileManager::IsModel(file_path))
     {
         s_MeshImportDialog_IsVisible = true;
         s_MeshImportDialogFlags      = Mesh::GetDefaultFlags();

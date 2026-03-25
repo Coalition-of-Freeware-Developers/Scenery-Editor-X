@@ -29,16 +29,15 @@
  * -------------------------------------------------------
  */
 #include "file_manager.hpp"
+#include "file_system.h"
 #include <codecvt>
 #include <commdlg.h>
-#include <tiny_gltf.h>
-#include <SDL3/SDL_misc.h>
 #include <SDL3/SDL_process.h>
+#include <SceneryEditorX/asset/asset_extensions.h>
 #include <SceneryEditorX/core/platform/config/editor_config.hpp>
 #include <SceneryEditorX/core/time/time.h>
 #include <SceneryEditorX/scene/model_asset.h>
 #include <SceneryEditorX/utils/string_utils.h>
-#include <SceneryEditorX/asset/asset_extensions.h>
 
 // -------------------------------------------------------
 
@@ -752,56 +751,17 @@ namespace SceneryEditorX::IO
 	    return IsValidExtension(path, SceneryEditorX::AssetType::Scene);
 	}
 
-// Return a platform-appropriate persistent storage path for the editor.
-// If a user-specific application data folder is available use that, otherwise
-// fall back to the current working directory.
-	std::filesystem::path FileSystem::GetPersistentStoragePath()
-	{
-	#ifdef SEDX_PLATFORM_WINDOWS
-		// Use %APPDATA%\SceneryEditorX
-		const char* appdata = std::getenv("APPDATA");
-		if (appdata && std::strlen(appdata) > 0)
-		{
-			std::filesystem::path p = std::filesystem::path(appdata) / "SceneryEditorX";
-			std::error_code ec;
-			std::filesystem::create_directories(p, ec);
-			return p;
-		}
-	#endif
-	
-		// Fallback - use current working directory
-		return std::filesystem::current_path();
-	}
-
 	bool FileDialogs::IsTexture(const std::filesystem::path &path)
 	{
 		const std::string ext = Utils::String::ToLowerCopy(path.extension().string());
 		return ext == ".jpg" || ext == ".png" || ext == ".jpeg" || ext == ".tga" || ext == ".bmp";
 	}
 
-	bool FileDialogs::IsModel(const std::filesystem::path &path)
+	bool FileManager::IsModel(const std::filesystem::path &path)
 	{
 		const std::string ext = Utils::String::ToLowerCopy(path.extension().string());
 		return ext == ".obj" || ext == ".gltf" || ext == ".glb" || ext == ".fbx" || ext == ".3ds";
 	}
-
-	bool FileSystem::IsValidExtension(const std::string &path, SceneryEditorX::AssetType assetType)
-	{
-		if (path.empty())
-			return false;
-
-		// Get extension and normalize to lower-case for comparison
-		std::string ext = Utils::String::ToLowerCopy(Utils::GetExtension(path));
-
-		// Look up extension in the global asset extension map
-		auto it = SceneryEditorX::s_AssetExtensionMap.find(ext);
-		if (it == SceneryEditorX::s_AssetExtensionMap.end())
-			return false;
-
-		return it->second == assetType;
-	}
-
-	// -------------------------------------------------------
 
 	/*
 	std::string FileDialogs::OpenFile(const char* filter)
@@ -961,7 +921,7 @@ namespace SceneryEditorX::IO
 			return ImportOBJ(path, assets);
 		}
 		return 0;
-	}
+	}*/
 
 	/**
 	 * @brief Reads the raw bytes from a file.
@@ -974,7 +934,6 @@ namespace SceneryEditorX::IO
 	 * @param filename The name of the file to read.
 	 * @return std::vector<char> A vector containing the raw bytes of the file.
 	*/
-
 	std::vector<uint8_t> FileManager::ReadRawBytes(const std::filesystem::path &path)
 	{
 		std::ifstream input(path, std::ios::binary);
@@ -1047,7 +1006,7 @@ namespace SceneryEditorX::IO
 		{
 			SEDX_CORE_ERROR("Failed to open file: {}", ToString(filename));
 			ErrMsg(std::string("Failed to open file: ") + ToString(filename));
-			return {}; /// Return empty vector on failure
+			return {}; // Return empty vector on failure
 		}
 
 		size_t fileSize = file.tellg();
@@ -1073,36 +1032,6 @@ namespace SceneryEditorX::IO
 
 		SEDX_CORE_TRACE("Successfully read file: {} ({} bytes)", filename, fileSize);
 		return buffer;
-	}
-
-	void FileManager::GetAppData()
-	{
-		if (const char *appDataPath = getenv("APPDATA"))
-		{
-			std::string appDataDir(appDataPath);
-			appDataDir += "\\SceneryEditorX";
-			std::filesystem::create_directories(appDataDir);
-		}
-		else
-			SEDX_CORE_ERROR_TAG("FILE MANAGER", "Failed to get APPDATA environment variable");
-	}
-
-	bool FileSystem::IsFile(const std::string &path)
-	{
-		if (path.empty())
-			return false;
-
-		try
-		{
-			if (std::filesystem::exists(path) && std::filesystem::is_regular_file(path))
-				return true;
-		}
-		catch (std::filesystem::filesystem_error &e)
-		{
-			SEDX_CORE_WARN("%s, %s", e.what(), path.c_str());
-		}
-
-		return false;
 	}
 
 	/*
@@ -1620,9 +1549,11 @@ namespace SceneryEditorX::IO
 	}
 	*/
 
-	// -------------------------------------------------------
+	bool FileManager::IsSceneFile(const std::string &path)
+	{
+		return FileSystem::IsValidExtension(path, AssetType::Scene);
+	}
 
-
-} // namespace SceneryEditorX::IO
+}
 
 // -------------------------------------------------------

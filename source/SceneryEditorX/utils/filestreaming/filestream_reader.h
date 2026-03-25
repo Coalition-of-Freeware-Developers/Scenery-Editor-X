@@ -29,18 +29,22 @@
  * -------------------------------------------------------
  */
 #pragma once
-#include "SceneryEditorX/core/memory/buffer.h"
+#include <SceneryEditorX/core/memory/buffer.h>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-    class StreamReader
+	/**
+	 * @class StreamReader
+	 * @brief Abstract base class for reading data from a stream. Provides an interface for reading raw data, buffers, strings, and collections from a stream.
+	 */
+	class StreamReader
 	{
 	public:
 		virtual ~StreamReader() = default;
 
-        [[nodiscard]] virtual bool IsStreamGood() const = 0;
+		[[nodiscard]] virtual bool IsStreamGood() const = 0;
 		virtual uint64_t GetStreamPosition() = 0;
 		virtual void SetStreamPosition(uint64_t position) = 0;
 		virtual bool ReadData(char* destination, size_t size) = 0;
@@ -143,8 +147,6 @@ namespace SceneryEditorX
 		}
 
 	};
-
-    // -------------------------------------------------------
 
 	template<>
 	inline void StreamReader::ReadArray(std::vector<std::string>& array, uint32_t size)

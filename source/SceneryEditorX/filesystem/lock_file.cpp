@@ -81,7 +81,7 @@ namespace SceneryEditorX::IO
      * @param nFileDescriptor The file descriptor of the file to check.
      * @return bool Returns true if the file is locked, false otherwise.
      */
-    bool lockCheck(int nFileDescriptor)
+    bool LockCheck(int nFileDescriptor)
     {
         HANDLE hFile = reinterpret_cast<HANDLE>(_get_osfhandle(nFileDescriptor));
         if (hFile == INVALID_HANDLE_VALUE)

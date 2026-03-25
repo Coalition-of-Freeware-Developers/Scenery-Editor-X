@@ -30,8 +30,8 @@
  */
 #pragma once
 #include "initializer.h"
-#include "SceneryEditorX/core/base.h"
 #include <memory>
+#include <SceneryEditorX/core/base.h>
 #include <SceneryEditorX/core/application/application.h>
 #include <SceneryEditorX/core/platform/platform_context.h>
 #include <SceneryEditorX/logging/asserts.h>
@@ -39,7 +39,7 @@
 // ----------------------------------------------------
 
 #ifdef PLATFORM__MACOS
-    #include <TargetConditionals.h>
+	#include <TargetConditionals.h>
 #endif
 
 /**
@@ -52,30 +52,30 @@ extern bool appRunning;
 
 namespace SceneryEditorX
 {
-    /**
-     * @brief Platform-independent main function
-     * 
-     * This is the core application entry point that handles initialization,
-     * application creation, running, and cleanup.
-     * 
-     * @param context The platform-specific context containing command-line args and paths
-     * @return Exit code (0 for success)
-     */
-    inline int Main(const PlatformContext& context)
-    {
+	/**
+	 * @brief Platform-independent main function
+	 * 
+	 * This is the core application entry point that handles initialization,
+	 * application creation, running, and cleanup.
+	 * 
+	 * @param context The platform-specific context containing command-line args and paths
+	 * @return Exit code (0 for success)
+	 */
+	inline int Main(const PlatformContext& context)
+	{
 
-        while (appRunning)
+		while (appRunning)
 		{
-            InitCore(context);
-            Application* app = CreateApplication(context);
-            SEDX_CORE_ASSERT(app != nullptr, "Failed to create application");
-            app->Run();
-            delete app;
-            Shutdown();
-        }
+			InitCore(context);
+			Application* app = CreateApplication(context);
+			SEDX_CORE_ASSERT(app != nullptr, "Failed to create application");
+			app->Run();
+			delete app;
+			Shutdown();
+		}
 
-        return 0;
-    }
+		return 0;
+	}
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -83,71 +83,71 @@ namespace SceneryEditorX
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #ifdef SEDX_PLATFORM_WINDOWS
-    #include <Windows.h>
+	#include <Windows.h>
 
-    /**
-     * @brief Creates the platform context for Windows
-     * @note Implemented in windows/entrypoint.cpp
-     */
-    extern SceneryEditorX::Scope<SceneryEditorX::PlatformContext> CreatePlatformContext(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, INT nCmdShow);
+	/**
+	 * @brief Creates the platform context for Windows
+	 * @note Implemented in windows/entrypoint.cpp
+	 */
+	extern SceneryEditorX::Scope<SceneryEditorX::PlatformContext> CreatePlatformContext(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, INT nCmdShow);
 
-    /**
-     * @brief Windows-specific entry point macro
-     * 
-     * Creates the WinMain entry point and a platform_initializer function
-     * that receives the platform context for additional initialization.
-     * 
-     * @param context_type The parameter name for the PlatformContext in platform_initializer
-     */
-    #define APP_MAIN(context_type)                                                                      \
-        int platform_initializer(const SceneryEditorX::PlatformContext&);                               \
-        int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, INT nCmdShow) \
-        {                                                                                               \
-            auto ctx = CreatePlatformContext(hInstance, hPrevInstance, lpCmdLine, nCmdShow);            \
-            platform_initializer(*ctx);                                                                 \
-            return SceneryEditorX::Main(*ctx);                                                          \
-        }                                                                                               \
-        int platform_initializer(const SceneryEditorX::PlatformContext& context_type)
+	/**
+	 * @brief Windows-specific entry point macro
+	 * 
+	 * Creates the WinMain entry point and a platform_initializer function
+	 * that receives the platform context for additional initialization.
+	 * 
+	 * @param context_type The parameter name for the PlatformContext in platform_initializer
+	 */
+	#define APP_MAIN(context_type)                                                                      \
+		int platform_initializer(const SceneryEditorX::PlatformContext&);                               \
+		int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, INT nCmdShow) \
+		{                                                                                               \
+			auto ctx = CreatePlatformContext(hInstance, hPrevInstance, lpCmdLine, nCmdShow);            \
+			platform_initializer(*ctx);                                                                 \
+			return SceneryEditorX::Main(*ctx);                                                          \
+		}                                                                                               \
+		int platform_initializer(const SceneryEditorX::PlatformContext& context_type)
 
 #elif defined(SEDX_PLATFORM_LINUX) || defined(SEDX_PLATFORM_MACOS)
 
-    /**
-     * @brief Creates the platform context for Unix-like systems (Linux/macOS)
-     * @note Implemented in linux/entrypoint.cpp or mac/entrypoint.cpp
-     */
-    extern SceneryEditorX::Scope<SceneryEditorX::PlatformContext> CreatePlatformContext(int argc, char **argv);
+	/**
+	 * @brief Creates the platform context for Unix-like systems (Linux/macOS)
+	 * @note Implemented in linux/entrypoint.cpp or mac/entrypoint.cpp
+	 */
+	extern SceneryEditorX::Scope<SceneryEditorX::PlatformContext> CreatePlatformContext(int argc, char **argv);
 
-    /**
-     * @brief Unix-like platform entry point macro
-     * 
-     * Creates the standard main entry point and a platform_initializer function
-     * that receives the platform context for additional initialization.
-     * 
-     * @param context_type The parameter name for the PlatformContext in platform_initializer
-     */
-    #define APP_MAIN(context_type)                                                  \
-        int platform_initializer(const SceneryEditorX::PlatformContext&);           \
-        int main(int argc, char* argv[])                                            \
-        {                                                                           \
-            auto ctx = CreatePlatformContext(argc, argv);                           \
-            platform_initializer(*ctx);                                             \
-            return SceneryEditorX::Main(*ctx);                                      \
-        }                                                                           \
-        int platform_initializer(const SceneryEditorX::PlatformContext& context_type)
+	/**
+	 * @brief Unix-like platform entry point macro
+	 * 
+	 * Creates the standard main entry point and a platform_initializer function
+	 * that receives the platform context for additional initialization.
+	 * 
+	 * @param context_type The parameter name for the PlatformContext in platform_initializer
+	 */
+	#define APP_MAIN(context_type)                                                  \
+		int platform_initializer(const SceneryEditorX::PlatformContext&);           \
+		int main(int argc, char* argv[])                                            \
+		{                                                                           \
+			auto ctx = CreatePlatformContext(argc, argv);                           \
+			platform_initializer(*ctx);                                             \
+			return SceneryEditorX::Main(*ctx);                                      \
+		}                                                                           \
+		int platform_initializer(const SceneryEditorX::PlatformContext& context_type)
 
 #else
 
-    #include <stdexcept>
-    
-    /**
-     * @brief Fallback for unsupported platforms
-     */
-    #define APP_MAIN(context_type)                                                  \
-        int main(int argc, char* argv[])                                            \
-        {                                                                           \
-            throw std::runtime_error("Unsupported platform");                       \
-        }                                                                           \
-        int unused(const SceneryEditorX::PlatformContext& context_type)
+	#include <stdexcept>
+	
+	/**
+	 * @brief Fallback for unsupported platforms
+	 */
+	#define APP_MAIN(context_type)                                                  \
+		int main(int argc, char* argv[])                                            \
+		{                                                                           \
+			throw std::runtime_error("Unsupported platform");                       \
+		}                                                                           \
+		int unused(const SceneryEditorX::PlatformContext& context_type)
 
 #endif
 

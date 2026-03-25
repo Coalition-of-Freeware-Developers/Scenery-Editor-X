@@ -64,9 +64,9 @@ namespace SceneryEditorX
 		m_AppData = appData;
 
 		// Set working directory if specified
-		if (!appData.WorkingDirectory.empty())
+		if (!appData.workingDirectory.empty())
 		{
-			std::filesystem::current_path(appData.WorkingDirectory);
+			std::filesystem::current_path(appData.workingDirectory);
 		}
 
 		// Create window
@@ -75,18 +75,18 @@ namespace SceneryEditorX
 		m_Window->Create();
 		
 		// Configure window properties BEFORE renderer init
-		if (appData.SplashScreen)
+		if (appData.splashScreen)
 		{
 			m_Window->SetResizable(false);
 			m_Window->SetDecorated(false);
 		}
 		else
 		{
-			m_Window->SetResizable(appData.Resizable);
-			m_Window->SetDecorated(appData.Decorated);
+			m_Window->SetResizable(appData.resizable);
+			m_Window->SetDecorated(appData.decorated);
 		}
 		
-		if (appData.StartMaximized)
+		if (appData.startMaximized)
 		{
 			m_Window->Maximize();
 		}
@@ -133,18 +133,18 @@ namespace SceneryEditorX
 		SEDX_CORE_TRACE("  Command Line Args: {}", context.GetCommandLineArgs().size());
 
 		AppData specification;
-		specification.CoreThreadingPolicy = ThreadingPolicy::MultiThreaded;
+		specification.coreThreadingPolicy = ThreadingPolicy::MultiThreaded;
 
 		// Apply platform context settings to app data
 		if (!context.GetWorkingDirectory().empty())
 		{
-			specification.WorkingDirectory = context.GetWorkingDirectory();
+			specification.workingDirectory = context.GetWorkingDirectory();
 		}
 
 		InitializeApplication(specification);
 	}
 
-	Application::Application(const PlatformContext& context, const AppData& appData) : m_PlatformContext(&context), m_RenderThread(appData.CoreThreadingPolicy)
+	Application::Application(const PlatformContext& context, const AppData& appData) : m_PlatformContext(&context), m_RenderThread(appData.coreThreadingPolicy)
 	{
 		s_AppInstance = this;
 		s_MainThreadID = std::this_thread::get_id();
@@ -168,9 +168,9 @@ namespace SceneryEditorX
 		AppData specification = appData;
 
 		// Apply platform context settings if not already set in appData
-		if (specification.WorkingDirectory.empty() && !context.GetWorkingDirectory().empty())
+		if (specification.workingDirectory.empty() && !context.GetWorkingDirectory().empty())
 		{
-			specification.WorkingDirectory = context.GetWorkingDirectory();
+			specification.workingDirectory = context.GetWorkingDirectory();
 		}
 
 		InitializeApplication(specification);

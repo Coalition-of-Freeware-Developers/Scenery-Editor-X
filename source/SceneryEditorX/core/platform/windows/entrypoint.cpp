@@ -30,6 +30,7 @@
  * Created: 25/5/2025
  * -------------------------------------------------------
  */
+// ReSharper disable CppClangTidyMiscUseInternalLinkage
 #include <Windows.h>
 #include <memory>
 #include <SceneryEditorX/core/platform/windows/context.h>

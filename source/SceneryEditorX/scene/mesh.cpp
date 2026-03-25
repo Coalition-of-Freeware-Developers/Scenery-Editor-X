@@ -160,7 +160,7 @@ namespace SceneryEditorX
 		Timer timer;
 		SetResourceFilePath(file_path);
 
-	 if (IO::FileDialogs::IsModel(file_path))
+	    if (IO::FileManager::IsModel(file_path))
 		{
 		  SEDX_CORE_ERROR_TAG("Mesh", "Foreign model import is not available in Mesh::LoadFromFile yet: {}", file_path);
 			return;

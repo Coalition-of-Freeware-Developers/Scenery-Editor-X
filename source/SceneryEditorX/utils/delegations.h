@@ -44,8 +44,6 @@
 namespace SceneryEditorX::Utils
 {
 
-	// --------------------------------------------
-
 	template <class T>
 	class Delegate;
 
@@ -54,14 +52,17 @@ namespace SceneryEditorX::Utils
 
 	// --------------------------------------------
 
-	/** Simple function delegate to bind a callback of some sort without unnecessary allocations. Faster than std::function. */
+	/** 
+	 * @template Delegate
+	 * @brief Simple function delegate to bind a callback of some sort without unnecessary allocations. Faster than std::function. 
+	 */
 	template <class TReturn, class... TArgs>
 	class Delegate<TReturn(TArgs...)>
 	{
 		friend class MulticastDelegate<TReturn(TArgs...)>;
 
-		using TInstancePtr = void *;
-		using TInternalFunction = TReturn (*)(TInstancePtr, TArgs...);
+		typedef void *TInstancePtr;
+		typedef TReturn (*TInternalFunction)(TInstancePtr, TArgs...);
 
 		struct InvocationElement
 		{

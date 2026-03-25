@@ -20,15 +20,15 @@ namespace SceneryEditorX
 {
     Platform::Platform(const PlatformContext &context)
     {
-        SEDX_CORE_INFO_TAG("PLATFORM", "Platform initialized");
-        SEDX_CORE_INFO_TAG("PLATFORM", "  Working Directory: {}", context.GetWorkingDirectory());
-        SEDX_CORE_INFO_TAG("PLATFORM", "  Temp Directory: {}", context.GetTempDirectory());
-        SEDX_CORE_INFO_TAG("PLATFORM", "  Command Line Args: {}", context.GetCommandLineArgs().size());
+        SEDX_CORE_INFO_TAG("Platform", "Platform initialized");
+        SEDX_CORE_INFO("  Working Directory: {}", context.GetWorkingDirectory());
+        SEDX_CORE_INFO("  Temp Directory: {}", context.GetTempDirectory());
+        SEDX_CORE_INFO("  Command Line Args: {}", context.GetCommandLineArgs().size());
     }
 
     ExitCode Platform::MainLoop()
     {
-        SEDX_CORE_INFO_TAG("PLATFORM", "Starting main loop");
+        SEDX_CORE_INFO_TAG("Platform", "Starting main loop");
 
         ExitCode exitCode = ExitCode::Success;
 
@@ -60,12 +60,12 @@ namespace SceneryEditorX
 
     void Platform::Terminate(ExitCode code)
     {
-        SEDX_CORE_INFO_TAG("PLATFORM", "Platform terminating with code: {}", static_cast<int>(code));
+        SEDX_CORE_INFO_TAG("Platform", "Platform terminating with code: {}", static_cast<int>(code));
     }
 
     void Platform::Close()
     {
-        SEDX_CORE_INFO_TAG("PLATFORM", "Platform close requested");
+        SEDX_CORE_INFO_TAG("Platform", "Platform shutdown requested");
         Application::Get().Stop();
     }
 

@@ -40,7 +40,6 @@
 #include <memory>
 #include <mutex>
 #include <unordered_map>
-#include <SceneryEditorX/asset/texture_image.h>
 #include <SceneryEditorX/renderer/renderer.h>
 #include <volk/volk.h>
 
@@ -48,6 +47,10 @@
 
 namespace SceneryEditorX
 {
+	/**
+	 * @struct ImmediateExecutionState
+	 * @brief Represents the state for immediate execution of command lists.
+	 */
 	struct ImmediateExecutionState
 	{
 		Scope<CommandPool> pool;

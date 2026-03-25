@@ -64,6 +64,11 @@ namespace SceneryEditorX
 	class Scene : public RefCounted
 	{
 	public:
+		/**
+		 * @brief Constructs a new Scene object.
+		 * @param name The name of the scene.
+		 * @param initialize Whether to initialize the scene immediately.
+		 */
 		explicit Scene(std::string name = "UntitledProject", bool initialize = true);
 		static void Init();
 		static void Shutdown();
@@ -74,7 +79,18 @@ namespace SceneryEditorX
 		static Light *GetDirectionalLight() { return nullptr; }
 		static std::vector<Entity*> GetEntities();
 
+		/**
+		 * @brief Saves the current scene to a file.
+		 * @param filePath The path to the file where the scene will be saved.
+		 * @return True if the scene was successfully saved, false otherwise.
+		 */
 		static bool SaveToFile(std::string filePath);
+
+		/**
+		 * @brief Loads a scene from a file.
+		 * @param file_path The path to the file from which the scene will be loaded.
+		 * @return True if the scene was successfully loaded, false otherwise.
+		 */
 		static bool LoadFromFile(const std::string& file_path);
 
 		/**
@@ -124,39 +140,39 @@ namespace SceneryEditorX
 		}
 
 		/**
-		 * @brief 
+		 * @brief Retrieves the current time of day in the scene.
 		 * @return The current time of day.
 		 */
 		static float GetTimeOfDay();
 
 
 		/**
-		 * @brief 
-		 * @param timeOfDay 
+		 * @brief Sets the current time of day in the scene.
+		 * @param timeOfDay The time of day to set.
 		 */
 		static void SetTimeOfDay(float timeOfDay);
 
 		/**
-		 * @brief 
-		 * @return 
+		 * @brief Retrieves the file path of the current scene.
+		 * @return The file path of the current scene.
 		 */
 		static std::string& GetFilePath();
 
 		/**
-		 * @brief 
-		 * @return 
+		 * @brief Retrieves the name of the current scene.
+		 * @return The name of the current scene.
 		 */
 		static const std::string& GetName();
 
 		/**
-		 * @brief 
-		 * @return 
+		 * @brief Retrieves the current wind vector in the scene.
+		 * @return The current wind vector.
 		 */
 		static const Vec3 &GetWind();
 
 		/**
-		 * @brief 
-		 * @param wind 
+		 * @brief Sets the current wind vector in the scene.
+		 * @param wind The wind vector to set.
 		 */
 		static void SetWind(const Vec3& wind);
 

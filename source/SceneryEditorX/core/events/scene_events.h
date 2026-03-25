@@ -2,7 +2,7 @@
  * -------------------------------------------------------
  * Scenery Editor X
  * -------------------------------------------------------
- * Copyright (c) 2026 Thomas Ray 
+ * Copyright (c) 2026 Thomas Ray
  * Copyright (c) 2026 Coalition of Freeware Developers
  * -------------------------------------------------------
  * Permission is hereby granted, free of charge, to any person obtaining a
@@ -28,24 +28,26 @@
  * Created: 14/7/2025
  * -------------------------------------------------------
  */
+// ReSharper disable CppInconsistentNaming
 #pragma once
 #include <SceneryEditorX/core/events/event_system.h>
 #include <SceneryEditorX/scene/scene.h>
+#include <SceneryEditorX/project/selection_manager.h>
 
 // -------------------------------------------------------------------
 
-
 namespace SceneryEditorX
 {
-	// Forward-declare selection context enum so events can reference it
-	// Ensure the forward declaration uses the same underlying type as the
-	// definition in selection_manager.h to avoid mismatched underlying type
-	// errors when compiling across translation units.
+	/**
+	 * @class SceneEvent
+	 * @brief Base class for all scene-related events, providing common access to the associated scene.
+	 */
 	enum class SelectionContext : unsigned char;
 
 	class SceneEvent : public Event
 	{
 	public:
+		[[nodiscard]] const Ref<Scene>& GetScene() const { return m_Scene; }
 		[[nodiscard]] const Ref<Scene>& GetScene() const { return m_Scene; }
 		Ref<Scene> GetScene() { return m_Scene; }
 
@@ -55,6 +57,88 @@ namespace SceneryEditorX
 		Ref<Scene> m_Scene;
 	};
 
+	// -------------------------------------------------------------------
+
+	/**
+	 * @class ScenePreStartEvent
+	 * @brief Event triggered before a scene starts.
+	 */
+	class ScenePreStartEvent : public SceneEvent
+	{
+	public:
+		ScenePreStartEvent(const Ref<Scene>& scene) : SceneEvent(scene) {}
+
+		[[nodiscard]] virtual std::string ToString() const override
+		{
+			std::stringstream ss;
+			ss << "ScenePreStartEvent: " << m_Scene->GetName();
+			return ss.str();
+		}
+
+		EVENT_CLASS_TYPE(ScenePreStart)
+	};
+
+	/**
+	 * @class ScenePostStartEvent
+	 * @brief Event triggered after a scene has started and all systems have initialized.
+	 */
+	class ScenePostStartEvent : public SceneEvent
+	{
+	public:
+		ScenePostStartEvent(const Ref<Scene>& scene) : SceneEvent(scene) {}
+
+		[[nodiscard]] virtual std::string ToString() const override
+		{
+			std::stringstream ss;
+			ss << "ScenePostStartEvent: " << m_Scene->GetName();
+			return ss.str();
+		}
+
+		EVENT_CLASS_TYPE(ScenePostStart)
+	};
+
+	/**
+	 * @class ScenePreStopEvent
+	 * @brief
+	 */
+	class ScenePreStopEvent : public SceneEvent
+	{
+	public:
+		ScenePreStopEvent(const Ref<Scene>& scene) : SceneEvent(scene) {}
+
+		[[nodiscard]] virtual std::string ToString() const override
+		{
+			std::stringstream ss;
+			ss << "ScenePreStopEvent: " << m_Scene->GetName();
+			return ss.str();
+		}
+
+		EVENT_CLASS_TYPE(ScenePreStop)
+	};
+
+	/**
+	 * @class ScenePostStopEvent
+	 * @brief Event triggered after a scene has stopped.
+	 */
+	class ScenePostStopEvent : public SceneEvent
+	{
+	public:
+		explicit ScenePostStopEvent(const Ref<Scene>& scene) : SceneEvent(scene) {}
+
+		[[nodiscard]] virtual std::string ToString() const override
+		{
+			std::stringstream ss;
+			ss << "ScenePostStopEvent: " << m_Scene->GetName();
+			return ss.str();
+		}
+
+		EVENT_CLASS_TYPE(ScenePostStop)
+	};
+
+	/**
+	 * @class SelectionChangedEvent
+	 * @brief Event triggered when the selection changes in a scene.
+	 */
 	class SelectionChangedEvent : public Event
 	{
 	public:
@@ -67,14 +151,19 @@ namespace SceneryEditorX
 		[[nodiscard]] UUID GetSelectionID() const { return m_SelectionID; }
 		[[nodiscard]] bool IsSelected() const { return m_Selected; }
 		[[nodiscard]] virtual std::string ToString() const override
+		[[nodiscard]] SelectionContext GetContextID() const { return m_ContextID; }
+		[[nodiscard]] UUID GetSelectionID() const { return m_SelectionID; }
+		[[nodiscard]] bool IsSelected() const { return m_Selected; }
+		[[nodiscard]] virtual std::string ToString() const override
 		{
 			std::stringstream ss;
-			ss << "EntitySelectionChangedEvent: Context(" << static_cast<int>(m_ContextID) << "), Selection(" << m_SelectionID << "), " << m_Selected;
+			ss << "EntitySelectionChangedEvent: Context(" << static_cast<int>(static_cast<int>(m_ContextID)) << "), Selection(" << m_SelectionID << "), " << m_Selected;
 			return ss.str();
 		}
 
 		EVENT_CLASS_CATEGORY(EventCategoryScene)
 		EVENT_CLASS_TYPE(SelectionChanged)
+
 	private:
 		SelectionContext m_ContextID;
 		UUID m_SelectionID;

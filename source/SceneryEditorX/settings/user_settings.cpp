@@ -87,7 +87,7 @@ namespace SceneryEditorX
 						std::string fullTimeFormat(timeFormat);
 
 						// Replace Windows format specifiers with strftime equivalents
-						dateFormat = Utils::replace(dateFormat,
+						dateFormat = Utils::Replace(dateFormat,
 							"dddd", "%A",  // Full weekday name
 							"ddd", "%a",				// Abbreviated weekday name
 							"dd", "%d",					// Day of month (01-31)
@@ -100,7 +100,7 @@ namespace SceneryEditorX
 							"yy", "%y"					// Two-digit year (e.g., 25)
 						);
 
-						fullTimeFormat = Utils::replace(fullTimeFormat,
+						fullTimeFormat = Utils::Replace(fullTimeFormat,
 							"HH", "%H",    // Hour 24-hour format (00-23)
 							"H", "%#H",					// Hour 24-hour format (0-23) no leading zero
 							"hh", "%I",					// Hour 12-hour format (01-12)
