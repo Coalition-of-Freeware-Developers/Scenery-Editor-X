@@ -69,8 +69,6 @@ namespace SceneryEditorX
 	public:
 		LayerStack() = default;
 		~LayerStack() = default;
-		LayerStack() = default;
-		~LayerStack() = default;
 
 		/**
 		 * @brief Pushes a layer to the front section of the stack

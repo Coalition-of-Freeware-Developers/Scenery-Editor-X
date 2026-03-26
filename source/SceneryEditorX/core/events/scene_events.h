@@ -48,7 +48,6 @@ namespace SceneryEditorX
 	{
 	public:
 		[[nodiscard]] const Ref<Scene>& GetScene() const { return m_Scene; }
-		[[nodiscard]] const Ref<Scene>& GetScene() const { return m_Scene; }
 		Ref<Scene> GetScene() { return m_Scene; }
 
 		EVENT_CLASS_CATEGORY(EventCategoryApplication | EventCategoryScene)
@@ -147,10 +146,6 @@ namespace SceneryEditorX
 		SelectionChangedEvent(SelectionContext contextID, UUID selectionID, const bool selected)
 			: m_ContextID(contextID), m_SelectionID(std::move(selectionID)), m_Selected(selected) {}
 
-		[[nodiscard]] SelectionContext GetContextID() const { return m_ContextID; }
-		[[nodiscard]] UUID GetSelectionID() const { return m_SelectionID; }
-		[[nodiscard]] bool IsSelected() const { return m_Selected; }
-		[[nodiscard]] virtual std::string ToString() const override
 		[[nodiscard]] SelectionContext GetContextID() const { return m_ContextID; }
 		[[nodiscard]] UUID GetSelectionID() const { return m_SelectionID; }
 		[[nodiscard]] bool IsSelected() const { return m_Selected; }
