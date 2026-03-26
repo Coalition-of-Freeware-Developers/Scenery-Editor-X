@@ -164,10 +164,7 @@ static void ProcessClArgs()
 class Editor : public SceneryEditorX::Application
 {
 public:
-	explicit Editor(const SceneryEditorX::PlatformContext& context) : Application(context)
-	{
-
-	}
+	explicit Editor(const SceneryEditorX::PlatformContext& context) : Application(context) {}
 
 	Editor(const SceneryEditorX::PlatformContext &context, const SceneryEditorX::Ref<SceneryEditorX::UserPreferences> &userPreferences) 
 	: Application(context), m_UserPreferences(userPreferences)
@@ -182,10 +179,11 @@ public:
 	virtual void OnInit() override
 	{
 		const auto start = std::chrono::high_resolution_clock::now();
+		std::filesystem::path appdata = SceneryEditorX::IO::FileSystem::GetPersistentStoragePath();
 
 		// Persistent Storage
 		{
-			m_PersistentStoragePath = SceneryEditorX::IO::FileSystem::GetPersistentStoragePath() / "SceneryEditorX";
+			m_PersistentStoragePath = appdata;
 
 			if (!SceneryEditorX::IO::FileSystem::Exists(m_PersistentStoragePath))
 				SceneryEditorX::IO::FileSystem::CreateDir(m_PersistentStoragePath);
@@ -195,18 +193,15 @@ public:
 		{
 			EDITOR_INFO_TAG("Main", "User Preferences not initialized. Creating default preferences and continuing initialization.");
 			m_UserPreferences = SceneryEditorX::CreateRef<SceneryEditorX::UserPreferences>();
-			// continue initialization instead of returning early so the editor layer and UI are created
 		}
 
-		if (m_UserPreferences->GetRecentProjects().empty())
-		{
-			m_UserPreferences->LoadPreferences();
-			if (!m_ProjectPath.empty())
-			{
-				m_UserPreferences->SetStartupProject(m_ProjectPath);
-			}
+		m_UserPreferences->LoadPreferences();
 
+		if (m_UserPreferences->GetRecentProjects().empty() && !m_ProjectPath.empty())
+		{
+		    m_UserPreferences->SetStartupProject(m_ProjectPath);
 			m_ProjectPath = m_UserPreferences->GetStartupProject();
+			m_UserPreferences->LoadPreferences();
 		}
 
 		if (!SceneryEditorX::Window::IsVisible())

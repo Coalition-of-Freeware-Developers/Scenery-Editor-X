@@ -557,6 +557,70 @@ namespace SceneryEditorX::IO
 		return std::filesystem::current_path() / "SceneryEditorX";
 	}
 
+	std::filesystem::path FileSystem::GetAppDataRoaming()
+	{
+		// Prefer USERPROFILE-derived path when available
+		if (auto appDataPath = GetUserProfileDir())
+		{
+			std::filesystem::path p = *appDataPath / "AppData" / "Roaming" / "SceneryEditorX";
+			std::error_code ec;
+			std::filesystem::create_directories(p, ec); // best-effort ensure folder exists
+			return p;
+		}
+
+		return GetPersistentStoragePath();
+
+	}
+
+	std::filesystem::path FileSystem::GetAppDataLocal()
+	{
+		// Prefer USERPROFILE-derived path when available
+		if (auto appDataPath = GetUserProfileDir())
+		{
+			std::filesystem::path p = *appDataPath / "AppData" / "Local" / "SceneryEditorX";
+			std::error_code ec;
+			std::filesystem::create_directories(p, ec); // best-effort ensure folder exists
+			return p;
+		}
+
+		return GetPersistentStoragePath();
+	}
+
+	std::filesystem::path FileSystem::GetProgramFilesPath()
+	{
+	   // Try to detect the platform specific program files location.
+#ifdef SEDX_PLATFORM_WINDOWS
+		// Prefer the 64-bit program files location when available
+		if (const char* p = std::getenv("ProgramW6432"))
+		{
+			return std::filesystem::path(p) / "SceneryEditorX";
+		}
+
+		// Fall back to the standard ProgramFiles environment variable(s)
+		if (const char* p = std::getenv("ProgramFiles"))
+		{
+			return std::filesystem::path(p) / "SceneryEditorX";
+		}
+#else
+		// Non-Windows: prefer common system locations
+		if (std::filesystem::exists("/opt"))
+		{
+			return std::filesystem::path("/opt") / "SceneryEditorX";
+		}
+		if (std::filesystem::exists("/usr/local"))
+		{
+			return std::filesystem::path("/usr/local") / "SceneryEditorX";
+		}
+		if (const char* p = std::getenv("HOME"))
+		{
+			return std::filesystem::path(p) / ".local" / "share" / "SceneryEditorX";
+		}
+#endif
+
+		// Final fallback: use current working directory
+		return std::filesystem::current_path() / "SceneryEditorX";
+	}
+
 	bool FileSystem::CheckEnvVariable(const std::string &key)
 	{
 		if (key.empty())

@@ -76,6 +76,8 @@ namespace SceneryEditorX
 	static float s_FontSize  = 18.0f;
 	static float s_FontScale = 1.0f;
 
+	static bool s_SceneOpen = false;
+	static bool s_ProjectOpen = false;
 		
 	static auto operator<(const ImVec2 &lhs, const ImVec2 &rhs)
 	{
@@ -862,6 +864,7 @@ namespace SceneryEditorX
 
 	void EditorLayer::CloseProject(bool unloadProject)
 	{
+		s_ProjectOpen = false;
 	}
 
 	void EditorLayer::NewScene(const std::string &name)
@@ -877,6 +880,7 @@ namespace SceneryEditorX
 
 		m_Camera = Camera();
 		m_CurrentScene = m_EditorScene;
+		s_SceneOpen = true;
 	}
 
 	bool EditorLayer::OpenScene()
@@ -906,12 +910,12 @@ namespace SceneryEditorX
 
 	bool EditorLayer::IsSceneOpen()
 	{
-		return false;
+		return s_SceneOpen;
 	}
 
 	bool EditorLayer::IsProjectOpen()
 	{
-		return false;
+		return s_ProjectOpen;
 	}
 
 	} // namespace SceneryEditorX

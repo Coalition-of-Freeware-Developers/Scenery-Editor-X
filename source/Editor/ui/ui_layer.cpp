@@ -98,6 +98,7 @@ void UILayer::Tick()
 void UILayer::OnAttach()
 {
     ImGui::CreateContext();
+    std::filesystem::path appdata = IO::FileSystem::GetPersistentStoragePath();
 
     // configure ImGui
     ImGuiIO& io                      = ImGui::GetIO();
@@ -106,16 +107,16 @@ void UILayer::OnAttach()
     io.ConfigFlags                  |= ImGuiConfigFlags_ViewportsEnable;
     io.ConfigFlags                  |= ImGuiConfigFlags_NoMouseCursorChange; // cursor control is given to ImGui, but dynamically, from the engine
     io.ConfigWindowsResizeFromEdges  = true;
-    io.IniFilename                   = "editor.ini";
+    io.IniFilename                   = (appdata / "editor.ini").string().c_str();
 
     // font_bold configuration
     ImFontConfig config; // config for bold font (mainly for use in headers)
-    config.GlyphOffset.y = -2.0f;
+    config.GlyphOffset.y = -2.0f; 
 
-    const std::string dir_fonts = ResourceCache::GetResourceDirectory(ResourceDirectory::Fonts) + "/";
-    fontNormal            = io.Fonts->AddFontFromFileTTF((dir_fonts + "OpenSans/OpenSans-Medium.ttf").c_str(), s_FontSize * Window::GetDpiScale());
-    fontBold              = io.Fonts->AddFontFromFileTTF((dir_fonts + "OpenSans/OpenSans-Bold.ttf").c_str(), s_FontSize * Window::GetDpiScale(), &config);
-    io.FontGlobalScale     = s_FontScale;
+    const std::string dir_fonts = ResourceCache::GetResourceDirectory(ResourceDirectory::Fonts);
+    fontNormal            = io.Fonts->AddFontFromFileTTF((dir_fonts + "opensans/OpenSans-Medium.ttf").c_str(), s_FontSize * Window::GetDpiScale());
+    fontBold              = io.Fonts->AddFontFromFileTTF((dir_fonts + "opensans/OpenSans-Bold.ttf").c_str(), s_FontSize * Window::GetDpiScale(), &config);
+    io.FontGlobalScale    = s_FontScale;
 
     // initialize imgui backends
     SEDX_CORE_ASSERT(ImGui_ImplSDL3_InitForVulkan(static_cast<SDL_Window*>(Window::GetRawHandle())), "Failed to initialize ImGui's SDL backend");

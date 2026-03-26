@@ -30,6 +30,9 @@
  */
 #include "user_settings.h"
 #include "settings.h"
+#include "SceneryEditorX/filesystem/file_system.h"
+#include "SceneryEditorX/project/project.h"
+
 #include <algorithm>
 #include <chrono>
 #include <ctime>
@@ -298,7 +301,7 @@ namespace SceneryEditorX
 
 	// -------------------------------------------------------
 
-	UserPreferences::UserPreferences() : m_ConfigPath("config/user_preferences.cfg")
+	UserPreferences::UserPreferences() : m_ConfigPath("user_preferences.cfg")
 	{
 		Init();
 		LoadPreferences();
@@ -332,6 +335,8 @@ namespace SceneryEditorX
 			m_StartupProject = projectPath;
 			SEDX_CORE_TRACE_TAG("UserPreferences", "Startup project changed: {}", projectPath.empty() ? "none" : projectPath);
 		}
+
+		Project::CreateProject("Default", m_StartupProject);
 	}
 
 	void UserPreferences::AddRecentProject(const RecentProject& project)
@@ -436,33 +441,34 @@ namespace SceneryEditorX
 	{
 		try
 		{
-			/// Ensure the config directory exists
-			if (const std::filesystem::path configDir = m_ConfigPath.parent_path(); !configDir.empty() && !std::filesystem::exists(configDir))
+			std::filesystem::path appdata = IO::FileSystem::GetPersistentStoragePath();
+			if (!IO::FileSystem::Exists(appdata))
 			{
-				std::filesystem::create_directories(configDir);
-				SEDX_CORE_TRACE_TAG("UserPreferences", "Created config directory: {}", configDir.string());
+				IO::FileSystem::CreateDir(appdata);
 			}
 
-			/// Create the ApplicationSettings instance
+			m_ConfigPath = appdata;
+
+			// Create the ApplicationSettings instance
 			m_Settings = CreateRef<Settings>(m_ConfigPath);
 
-			/// Try to read existing settings, if file doesn't exist it will be created
+			// Try to read existing settings, if file doesn't exist it will be created
 			if (!m_Settings->ReadSettings())
 			{
 				SEDX_CORE_TRACE_TAG("UserPreferences", "Creating new user preferences file: {}", m_ConfigPath.string());
 
-				/// Set default values
+				// Set default values
 				m_Settings->AddBoolOption("user.show_welcome_screen", true);
 				m_Settings->AddStringOption("user.startup_project", "");
 				m_Settings->AddIntOption("user.recent_projects.count", 0);
 
-				/// Write initial file
+				// Write initial file
 				m_Settings->WriteSettings();
 			}
 
 			SEDX_CORE_TRACE_TAG("UserPreferences", "Settings initialized for: {}", m_ConfigPath.string());
 
-			/// Test time conversion functions (only in debug builds)
+			// Test time conversion functions (only in debug builds)
 	#ifdef SEDX_DEBUG
 			{
 				time_t currentTime = std::time(nullptr);
@@ -489,7 +495,7 @@ namespace SceneryEditorX
 
 		try
 		{
-			/// Get the count of recent projects
+			// Get the count of recent projects
 			int projectCount = m_Settings->GetIntOption("user.recent_projects.count", 0);
 
 			SEDX_CORE_TRACE_TAG("UserPreferences", "Loading {} recent projects", projectCount);
@@ -498,16 +504,16 @@ namespace SceneryEditorX
 			{
 				std::string basePath = "user.recent_projects.project_" + ToString(i);
 
-				/// Load project data
+				// Load project data
 				std::string name = m_Settings->GetStringOption(basePath + ".name", "");
 				std::string filePath = m_Settings->GetStringOption(basePath + ".file_path", "");
 				std::string lastOpenedStr = m_Settings->GetStringOption(basePath + ".last_opened", "");
 
-				/// Convert string back to time_t, with fallback for old integer format
+				// Convert string back to time_t, with fallback for old integer format
 				time_t lastOpened = StringToTime(lastOpenedStr);
 				if (lastOpened == 0 && !lastOpenedStr.empty())
 				{
-					/// Fallback: Try to read as old integer format for backward compatibility
+					// Fallback: Try to read as old integer format for backward compatibility
 					if (const auto oldTimestamp = static_cast<int64_t>(m_Settings->GetIntOption(basePath + ".last_opened", 0)); oldTimestamp > 0)
 					{
 						lastOpened = static_cast<time_t>(oldTimestamp);
@@ -515,7 +521,7 @@ namespace SceneryEditorX
 					}
 				}
 
-				/// Validate the project data
+				// Validate the project data
 				if (!name.empty() && !filePath.empty() && lastOpened > 0)
 				{
 					RecentProject project;
@@ -607,7 +613,7 @@ namespace SceneryEditorX
 
 	UserPreferences CreateUserPreferences()
 	{
-		return UserPreferences();
+		return {};
 	}
 
 	UserPreferences CreateUserPreferences(const std::filesystem::path& configPath)

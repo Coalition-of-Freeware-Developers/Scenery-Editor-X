@@ -57,8 +57,8 @@ namespace SceneryEditorX
 		const std::string dataDir = std::string(GetResourceDirectory()) + "\\";
 		AddResourceDirectory(ResourceDirectory::Environment, std::string(s_ProjectDir) + "environment");
 
-		// Fonts live under the repository 'assets' folder — prefer that so editor finds bundled fonts
-		AddResourceDirectory(ResourceDirectory::Fonts, std::string("assets\\fonts"));
+		// Fonts live under the project's resources folder — prefer that so editor finds bundled fonts
+		AddResourceDirectory(ResourceDirectory::Fonts, dataDir + "fonts");
 
 		// Use dataDir as the base for engine-provided resources and append subfolders
 		AddResourceDirectory(ResourceDirectory::Icons, dataDir + "icons");
@@ -123,7 +123,7 @@ namespace SceneryEditorX
 	}
 	*/
 
-	IResource *ResourceCache::GetByName(const std::string &name, const ResourceType type)
+	IResource* ResourceCache::GetByName(const std::string &name, const ResourceType type)
 	{
 		std::scoped_lock guard(s_Mutex);
 		for (const Ref<SharedResource> &resource : s_Resources)
@@ -135,7 +135,7 @@ namespace SceneryEditorX
 		return nullptr;
 	}
 
-	std::vector<IResource *> ResourceCache::GetByType(const ResourceType type /*= ResourceType::Unknown*/)
+	std::vector<IResource*> ResourceCache::GetByType(const ResourceType type /*= ResourceType::Unknown*/)
 	{
 		std::scoped_lock guard(s_Mutex);
 		std::vector<IResource *> resources;
@@ -170,7 +170,18 @@ namespace SceneryEditorX
 	
 	void ResourceCache::AddResourceDirectory(const ResourceDirectory type, const std::string &directory)
 	{
-		s_StandardResourceDir[static_cast<uint32_t>(type)] = directory;
+		// Ensure stored directories always terminate with a path separator so callers
+		// can safely append subpaths without accidentally concatenating names
+		// (e.g. "assets\\fonts" + "OpenSans/..." -> "assets\\fontsOpenSans/...").
+		std::string dir = directory;
+		if (!dir.empty())
+		{
+			const char last = dir.back();
+			if (last != '\\' && last != '/')
+				dir.push_back('\\');
+		}
+
+		s_StandardResourceDir[static_cast<uint32_t>(type)] = dir;
 	}
 
 	std::string ResourceCache::GetResourceDirectory(const ResourceDirectory resourceDirType)
@@ -183,6 +194,7 @@ namespace SceneryEditorX
 				directory = "..\\" + directory;
 			}
 		}
+
 		return directory;
 	}
 	
@@ -209,10 +221,16 @@ namespace SceneryEditorX
 	{
 		return s_ProjectDir;
 	}
-	
-	const char *ResourceCache::GetResourceDirectory()
+
+	std::string ResourceCache::GetResourceDirectory()
 	{
-		return "resources";
+#ifdef SEDX_DEBUG
+		std::filesystem::path resourceDir = IO::FileSystem::GetWorkingDirectory() + "\\resources";
+#else
+		std::filesystem::path resourceDir = IO::FileSystem::GetProgramFilesPath() / "\\resources";
+#endif
+		return resourceDir.string();
+		
 	}
 
 	std::vector<Ref<SharedResource>> &ResourceCache::GetResources()

@@ -29,12 +29,10 @@
  * -------------------------------------------------------
  */
 #pragma once
-#include "iresource.h"
-#include "SceneryEditorX/utils/inheritance.h"
-
 #include <algorithm>
 #include <type_traits>
 #include <SceneryEditorX/renderer/vulkan/enums.h>
+#include <SceneryEditorX/utils/inheritance.h>
 #include <SceneryEditorX/utils/pointers.h>
 
 // -----------------------------------------------------------
@@ -306,11 +304,11 @@ namespace SceneryEditorX
 		 */
 		static const char *GetProjectDirectory();
 
-		/**
+	    /**
 		 * @brief Retrieves the data directory.
 		 * @return The path of the data directory.
 		 */
-		static const char *GetResourceDirectory();
+		static std::string GetResourceDirectory();
 
 		/**
 		 * @brief Retrieves the list of resources.

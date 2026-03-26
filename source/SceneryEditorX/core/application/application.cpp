@@ -104,14 +104,14 @@ namespace SceneryEditorX
 		Renderer::Init();
 		m_RenderThread.Run();
 
-	    ResourceCache::Init();
+		ResourceCache::Init();
 
 		m_UILayer = new UILayer;
 		PushOverlay(m_UILayer);
 
-	    FPSTimer::Init();
-	    ThreadPool::Init();
-	    Scene::Init();
+		FPSTimer::Init();
+		ThreadPool::Init();
+		Scene::Init();
 
 		m_IsRunning = true;
 	}
@@ -139,6 +139,36 @@ namespace SceneryEditorX
 		if (!context.GetWorkingDirectory().empty())
 		{
 			specification.workingDirectory = context.GetWorkingDirectory();
+		}
+
+		{
+			auto appDir = IO::FileSystem::GetAppDataLocal();
+			if (!appDir.empty())
+			{
+				IO::FileSystem::CreateDir(appDir / "autosave");
+				IO::FileSystem::CreateDir(appDir / "downloads");
+				IO::FileSystem::CreateDir(appDir / "export");
+				IO::FileSystem::CreateDir(appDir / "import");
+			}
+		}
+
+		{
+			auto appDir = IO::FileSystem::GetAppDataRoaming();
+			if (!appDir.empty())
+			{
+				IO::FileSystem::CreateDir(appDir / "logs");
+				IO::FileSystem::CreateDir(appDir / "plugins");
+			}
+		}
+
+		{
+			const auto &appDir = context.GetTempDirectory();
+			if (!appDir.empty())
+			{
+				IO::FileSystem::CreateDir(appDir + "SceneryEditorX");
+				IO::FileSystem::CreateDir(appDir + "SceneryEditorX\\cache");
+				IO::FileSystem::CreateDir(appDir + "SceneryEditorX\\shader-cache");
+			}
 		}
 
 		InitializeApplication(specification);

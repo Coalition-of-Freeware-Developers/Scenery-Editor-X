@@ -345,12 +345,29 @@ namespace SceneryEditorX::IO
 		 */
 		static std::wstring StringToWstring(const std::string &str);
 
-
 		/**
 		 * @brief Gets the path to the persistent storage directory.
 		 * @return The path to the persistent storage directory.
 		 */
 		static std::filesystem::path GetPersistentStoragePath();
+
+		/**
+		 * @brief Gets the path to the roaming application data directory.
+		 * @return The path to the roaming application data directory.
+		 */
+		static std::filesystem::path GetAppDataRoaming();
+
+		/**
+		 * @brief Gets the path to the local application data directory.
+		 * @return The path to the local application data directory.
+		 */
+		static std::filesystem::path GetAppDataLocal();
+
+		/**
+		 * @brief Gets the path to the program files directory.
+		 * @return The path to the program files directory.
+		 */
+		static std::filesystem::path GetProgramFilesPath();
 
 		/**
 		 * @brief Checks if the specified environment variable exists.
