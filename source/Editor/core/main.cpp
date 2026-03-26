@@ -30,55 +30,19 @@
  */
 #include "editor_layer.h"
 #include <SceneryEditorX/core/platform/entrypoint.h>
-#include <SceneryEditorX/settings/settings.h>
 
 // -------------------------------------------------------
-
-/*
-std::string getDumpDirectory()
-{
-	return std::filesystem::temp_directory_path().string();
-}
-*/
-
-// Initialize the application log and crash handler
-void InitCrashHandlerServices()
-{
-	// Initialize the application logging system
-	//SceneryEditorX::Log::Init();
-	//SceneryEditorX::Log::LogHeader();
-	//EDITOR_INFO("Scenery Editor X Engine is starting...");
-
-	// Initialize the Crash Handler
-	/*
-	CrashHandler::CrashService::CrashHandlerConfig config;
-	config.appVersion = SEDX_VERSION_STRING;
-	config.dumpDir = getDumpDirectory();
-	config.onCrashDetectedCallback = [](const std::string &dumpPath)
-	{
-		// Optional callback - called in the crash context, keep it minimal
-		spdlog::critical("Crash detected, dump saved to: {}", dumpPath);
-	};
-	CrashHandler::CrashService::Init(config);
-	*/
-}
-
-// Shutdown application services
-void EndCrashHandlerServices()
-{
-	// Shut down crash handler before exit
-	// CrashHandler::CrashService::Shutdown();
-
-	//EDITOR_INFO("Scenery Editor X Engine is shutting down...");
-	//SceneryEditorX::Log::FlushAll(); // Make sure to flush logs before shutdown
-	//SceneryEditorX::Log::ShutDown();
-}
 
 static std::filesystem::path s_ProjectSolutionPath = "";
 static std::vector<std::string> s_ClArguments;
 static uint32_t s_ClArg_Flags = 0;
 static auto operator<(const ImVec2 &lhs, const ImVec2 &rhs) { return lhs.x < rhs.x && lhs.y < rhs.y; }
 
+/**
+ * @brief Check if a specific command line argument is present.
+ * @param argument The command line argument to check for.
+ * @return True if the argument is present, false otherwise.
+ */
 static bool HasArgument(const std::string &argument)
 {
 	for (const auto &arg : s_ClArguments)
@@ -90,6 +54,10 @@ static bool HasArgument(const std::string &argument)
 	return false;
 }
 
+/**
+ * @brief Write a CI test file with the specified value.
+ * @param value The value to write to the CI test file.
+ */
 static void WriteCiTestFile(const uint32_t value)
 {
 	if (HasArgument("-ci_test"))
@@ -102,6 +70,9 @@ static void WriteCiTestFile(const uint32_t value)
 	}
 }
 
+/**
+ * @brief Process command line arguments and set internal flags accordingly.
+ */
 static void ProcessClArgs()
 {
 	// Common simple flags that exist in the repo already:

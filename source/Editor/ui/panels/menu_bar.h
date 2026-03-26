@@ -48,6 +48,8 @@ public:
         Initialize(reinterpret_cast<SceneryEditorX::EditorLayer*>(uiLayer));
     }
     static void Tick();
+    // Set the internal editor pointer used by menu bar windows
+    static void SetEditor(SceneryEditorX::EditorLayer* editor);
 
     static void ShowWorldSaveDialog();
     static void ShowWorldLoadDialog();

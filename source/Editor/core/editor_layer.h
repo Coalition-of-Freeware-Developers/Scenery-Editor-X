@@ -29,6 +29,9 @@
  * -------------------------------------------------------
  */
 #pragma once
+#include "child_window.h"
+
+
 #include <Editor/ui/ui_widget.h>
 #include <SceneryEditorX/core/events/key_events.h>
 #include <SceneryEditorX/core/events/mouse_events.h>
@@ -53,8 +56,7 @@ namespace SceneryEditorX
 		void InitEditor();
 
 		void OnRender() override;
-		//void OnUIRender();
-		void OnEvent(Event &event) override;
+	    void OnEvent(Event &event) override;
 		bool OnKeyPressedEvent(KeyPressedEvent& e);
 		bool OnMouseButtonPressed(MouseButtonPressedEvent& e);
 		
@@ -79,6 +81,10 @@ namespace SceneryEditorX
 
 		static bool IsSceneOpen();
 		static bool IsProjectOpen();
+	    static void SetDarkThemeColors();
+	    static void SetDarkThemeV2Colors();
+
+	    void AllowInputEvents(bool allowInput);
 
 		/**
 		 * @brief Retrieves a pointer to the first widget of type T in the editor's widget list. Returns nullptr if no such widget is found.
@@ -99,12 +105,17 @@ namespace SceneryEditorX
 			return nullptr;
 		}
 
+	    inline static ImFont* fontNormal = nullptr;
+	    inline static ImFont* fontBold   = nullptr;
+
 	private:
 		Ref<Scene> m_EditorScene;
 		Ref<Scene> m_CurrentScene;
 		Ref<Scene> m_RuntimeScene;
-		std::vector<Ref<Widget>> m_Widgets;
+	    std::string m_SceneFilePath;
 
+		std::vector<Ref<Widget>> m_Widgets;
+	    std::vector<UI::ChildWindow> m_ChildWindows;
 		Vec2 m_ViewportBounds[2];
 		Vec2 m_SecondViewportBounds[2];
 		std::pair<float, float> GetMouseViewportSpace(bool primaryViewport);
@@ -142,6 +153,7 @@ namespace SceneryEditorX
 		bool m_ViewportPanel2Focused		= false;
 		bool m_ShowSecondViewport			= false;
 
+		void AddEntity(Entity entity);
 		void DeleteEntity(Entity entity);
 		void BuildProjectData();
 		void BuildShaderPack();
@@ -151,7 +163,6 @@ namespace SceneryEditorX
 
 		Camera m_Camera;
 		Ref<UserPreferences> m_UserPreferences;
-		std::string m_SceneFilePath;
 
 		uint32_t m_TitleBarTargetColor;
 		uint32_t m_TitleBarActiveColor;

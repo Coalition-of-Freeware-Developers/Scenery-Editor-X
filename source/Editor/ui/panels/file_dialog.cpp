@@ -47,6 +47,7 @@ namespace
 {
     constexpr const char* EXTENSION_WORLD = ".world";
     constexpr const char* EXTENSION_LUA = ".lua";
+    constexpr const char* EXTENSION_PY = ".py";
     constexpr const char* EXTENSION_MATERIAL = ".material";
     constexpr const char* NewLuaScriptContents = "-- New Lua script\n";
 
@@ -61,7 +62,9 @@ namespace
         for (const char* allowed : extensions)
         {
             if (extension == allowed)
+            {
                 return true;
+            }
         }
         return false;
     }
@@ -74,6 +77,7 @@ namespace
     bool IsEnginePrefabFile(const std::string& path)	{ return HasExtension(path, { ".prefab" }); }
     bool IsEngineWorldFile(const std::string& path)		{ return HasExtension(path, { EXTENSION_WORLD }); }
     bool IsEngineLuaFile(const std::string& path)		{ return HasExtension(path, { EXTENSION_LUA }); }
+    bool IsEnginePythonFile(const std::string& path)	{ return HasExtension(path, { EXTENSION_PY }); }
 
     std::vector<std::string> GetDirectoriesInDirectory(const std::string& path)
     {
@@ -81,7 +85,9 @@ namespace
         for (const auto& entry : std::filesystem::directory_iterator(path))
         {
             if (entry.is_directory())
+            {
                 directories.emplace_back(entry.path().string());
+            }
         }
         return directories;
     }
@@ -90,7 +96,9 @@ namespace
     {
         std::ofstream out(path, std::ios::out | std::ios::trunc);
         if (out.is_open())
+        {
             out << content;
+        }
     }
 }
 
@@ -164,6 +172,9 @@ FileDialog::FileDialog(const bool standaloneWindow, const FileDialog_Type type, 
     m_is_renaming                     = false;
     m_rename_item_id                  = SceneryEditorX::UUID32(0);
     m_context_menu_id                 = SceneryEditorX::UUID32(0);
+
+    // Defensive log to help trace lifetime issues
+    EDITOR_INFO_TAG("File Dialog", "FileDialog constructed (%s window) at %p", m_is_window ? "standalone" : "embedded", static_cast<void*>(this));
 }
 
 void FileDialog::SetOperation(const FileDialog_Operation operation)
@@ -185,6 +196,7 @@ void FileDialog::SetCurrentPath(const std::string & path)
 
     if (!m_current_path.empty())
     {
+        EDITOR_INFO_TAG("File Dialog", "SetCurrentPath -> m_current_path set to '%s' (this=%p)", m_current_path.c_str(), static_cast<void*>(this));
         m_is_dirty = true;
         m_history.push_back(m_current_path);
         m_history_index = m_history.size() - 1;
@@ -193,9 +205,14 @@ void FileDialog::SetCurrentPath(const std::string & path)
 
 bool FileDialog::Show(bool* is_visible, EditorLayer* editor, std::string * directory /*= nullptr*/, std::string * file_path /*= nullptr*/)
 {
-    if (!(*is_visible))
+    // verbose instrumentation: record call site and parameter pointers
+    EDITOR_INFO_TAG("File Dialog", "Show() called on %p, is_visible_ptr=%p (*is_visible=%d), editor=%p, directory_ptr=%p, file_path_ptr=%p",
+        static_cast<void*>(this), static_cast<void*>(is_visible), is_visible ? static_cast<int>(*is_visible) : -1, static_cast<void*>(editor), static_cast<void*>(directory), static_cast<void*>(file_path));
+
+    if (!is_visible || !(*is_visible))
     {
         m_is_dirty = true;
+        EDITOR_INFO_TAG("File Dialog", "Show() early-exit because is_visible is false or null (this=%p)", static_cast<void*>(this));
         return false;
     }
 
@@ -226,6 +243,7 @@ bool FileDialog::Show(bool* is_visible, EditorLayer* editor, std::string * direc
 
     if (m_is_dirty)
     {
+        EDITOR_INFO_TAG("File Dialog", "m_is_dirty set; updating dialog from: %s", m_current_path.c_str());
         if (IO::FileSystem::IsFile(m_current_path))
         {
             DialogUpdateFromDirectory(IO::FileSystem::GetDirectoryFromFilePath(m_current_path));
@@ -319,7 +337,9 @@ void FileDialog::ShowTop(bool* is_visible, EditorLayer* editor)
         m_is_dirty     = true;
     }
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+    {
         ImGui::SetTooltip("alt+left");
+    }
     ImGui::EndDisabled();
     ImGui::SameLine();
 
@@ -333,7 +353,9 @@ void FileDialog::ShowTop(bool* is_visible, EditorLayer* editor)
         m_is_dirty     = true;
     }
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+    {
         ImGui::SetTooltip("alt+right");
+    }
     ImGui::EndDisabled();
     ImGui::SameLine();
 
@@ -352,7 +374,9 @@ void FileDialog::ShowTop(bool* is_visible, EditorLayer* editor)
         }
     }
     if (ImGui::IsItemHovered())
+    {
         ImGui::SetTooltip("alt+up");
+    }
     ImGui::SameLine();
 
     // navigation: refresh button
@@ -361,7 +385,9 @@ void FileDialog::ShowTop(bool* is_visible, EditorLayer* editor)
         m_is_dirty = true;
     }
     if (ImGui::IsItemHovered())
+    {
         ImGui::SetTooltip("f5");
+    }
 
     ImGui::SameLine(0, 12);
 
@@ -456,24 +482,33 @@ void FileDialog::ShowTop(bool* is_visible, EditorLayer* editor)
 
         // grid view button
         if (is_grid_mode)
+        {
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1, 1, 1, 0.15f));
+        }
         if (ImGui::Button("Grid"))
         {
             m_view_mode = View_Grid;
         }
         if (is_grid_mode)
+        {
             ImGui::PopStyleColor();
+        }
+
         ImGui::SameLine();
 
         // list view button
         if (is_list_mode)
+        {
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1, 1, 1, 0.15f));
+        }
         if (ImGui::Button("List"))
         {
             m_view_mode = View_List;
         }
         if (is_list_mode)
+        {
             ImGui::PopStyleColor();
+        }
 
         // size slider (grid view only)
         if (is_grid_mode)
@@ -741,7 +776,7 @@ void FileDialog::RenderGridView()
         float label_x       = card_min.x + (item_width - 4 - xMath::Min(text_size.x, label_max_w)) * 0.5f;
         float label_y       = card_min.y + GRID_ITEM_PADDING + icon_area + 4; // below icon
 
-       // render label
+        // render label
         draw_list->AddText(ImVec2(label_x, label_y), col_text, label.c_str());
 
         // tooltip for truncated labels
@@ -837,7 +872,9 @@ void FileDialog::RenderListView()
         {
             auto& item = m_items[i];
             if (!m_search_filter.PassFilter(item.GetLabel().c_str()))
+            {
                 continue;
+            }
 
             m_displayed_item_count++;
 
@@ -860,7 +897,9 @@ void FileDialog::RenderListView()
                 if (is_single_click)
                 {
                     if (m_callback_on_item_clicked)
+                    {
                         m_callback_on_item_clicked(item.GetPath());
+                    }
                 }
                 else
                 {
@@ -872,7 +911,7 @@ void FileDialog::RenderListView()
 
                     if (m_type == FileDialog_Type_Browser && !item.IsDirectory())
                     {
-                    IO::FileSystem::OpenExternally(item.GetPath());
+                        IO::FileSystem::OpenExternally(item.GetPath());
                     }
                     if (m_callback_on_item_double_clicked)
                     {
@@ -911,12 +950,12 @@ void FileDialog::RenderListView()
 
             // type column
             ImGui::TableSetColumnIndex(1);
-          const std::string typeLabel = item.IsDirectory() ? "Folder" : GetExtensionFromFilePath(item.GetPath());
+            const std::string typeLabel = item.IsDirectory() ? "Folder" : GetExtensionFromFilePath(item.GetPath());
             ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "%s", typeLabel.c_str());
 
             // modified column
             ImGui::TableSetColumnIndex(2);
-          const uint64_t lastWrite = IO::FileSystem::GetLastWriteTime(item.GetPath());
+            const uint64_t lastWrite = IO::FileSystem::GetLastWriteTime(item.GetPath());
             ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "%llu", static_cast<unsigned long long>(lastWrite));
 
             ImGui::PopID();
@@ -945,8 +984,7 @@ void FileDialog::ShowBottom(bool* is_visible)
     {
         // status bar: item count
         ImGui::SetCursorPos(ImVec2(12, bar_y + 5));
-        ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f),
-            m_displayed_item_count == 1 ? "%d item" : "%d items", m_displayed_item_count);
+        ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), m_displayed_item_count == 1 ? "%d item" : "%d items", m_displayed_item_count);
     }
     else
     {
@@ -1022,7 +1060,7 @@ void FileDialog::ItemDrag(FileDialogItem* item) const
 
     if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID))
     {
-       const auto set_payload = [this](const DragPayloadType type, const std::string & path_full, const std::string & path_relative)
+        const auto set_payload = [this](const DragPayloadType type, const std::string & path_full, const std::string & path_relative)
         {
            m_drag_drop_payload = DragDropPayload(type, path_full.c_str(), path_relative.c_str());
             DragDropPayload::CreateDragDropPayload(m_drag_drop_payload);
@@ -1166,9 +1204,10 @@ void FileDialog::ItemContextMenu(FileDialogItem* item)
 
 void FileDialog::DialogUpdateFromDirectory(const std::string& file_path)
 {
+    EDITOR_TRACE_TAG("File Dialog", "DialogUpdateFromDirectory called on %p with path='%s'", static_cast<void*>(this), file_path.c_str());
     if (!IO::FileSystem::IsDirectory(file_path))
     {
-        EDITOR_ERROR_TAG("File Dialog", "provided path doesn't point to a directory.");
+        EDITOR_ERROR_TAG("File Dialog", "provided path doesn't point to a directory: %s", file_path.c_str());
         return;
     }
 
@@ -1190,7 +1229,7 @@ void FileDialog::DialogUpdateFromDirectory(const std::string& file_path)
     {
         for (const std::string & path : paths_anything)
         {
-         if (IsSupportedImageFile(path))
+            if (IsSupportedImageFile(path))
             {
                 ThreadPool::Submit([this, path]()
                 {
@@ -1207,7 +1246,7 @@ void FileDialog::DialogUpdateFromDirectory(const std::string& file_path)
             {
                 m_items.emplace_back(path, ResourceCache::GetIcon(IconType::Model));
             }
-         else if (IsSupportedFontFile(path))
+            else if (IsSupportedFontFile(path))
             {
                 m_items.emplace_back(path, ResourceCache::GetIcon(IconType::Font));
             }
@@ -1215,15 +1254,15 @@ void FileDialog::DialogUpdateFromDirectory(const std::string& file_path)
             {
                 m_items.emplace_back(path, ResourceCache::GetIcon(IconType::Material));
             }
-          else if (IsEnginePrefabFile(path))
+            else if (IsEnginePrefabFile(path))
             {
                 m_items.emplace_back(path, ResourceCache::GetIcon(IconType::Entity));
             }
-           else if (IsEngineWorldFile(path))
+            else if (IsEngineWorldFile(path))
             {
                 m_items.emplace_back(path, ResourceCache::GetIcon(IconType::World));
             }
-           else if (GetExtensionFromFilePath(path) == ".7z")
+            else if (GetExtensionFromFilePath(path) == ".7z")
             {
                 m_items.emplace_back(path, ResourceCache::GetIcon(IconType::Compressed));
             }
@@ -1237,7 +1276,7 @@ void FileDialog::DialogUpdateFromDirectory(const std::string& file_path)
     {
         for (const std::string & anything : paths_anything)
         {
-          if (GetExtensionFromFilePath(anything) == EXTENSION_WORLD)
+            if (GetExtensionFromFilePath(anything) == EXTENSION_WORLD)
             {
                 m_items.emplace_back(anything, ResourceCache::GetIcon(IconType::World));
             }
@@ -1247,7 +1286,7 @@ void FileDialog::DialogUpdateFromDirectory(const std::string& file_path)
     {
         for (const std::string & anything : paths_anything)
         {
-         if (IsSupportedModelFile(anything))
+            if (IsSupportedModelFile(anything))
             {
                 m_items.emplace_back(anything, ResourceCache::GetIcon(IconType::Model));
             }
@@ -1267,13 +1306,17 @@ void FileDialog::DialogUpdateFromDirectory(const std::string& file_path)
         if (m_sort_column == Sort_Name)
             return m_sort_ascending ? a.GetLabel() < b.GetLabel() : a.GetLabel() > b.GetLabel();
 
-     if (m_sort_column == Sort_Type)
+        if (m_sort_column == Sort_Type)
+        {
             return m_sort_ascending ? GetExtensionFromFilePath(a.GetPath()) < GetExtensionFromFilePath(b.GetPath()) :
-                GetExtensionFromFilePath(a.GetPath()) > GetExtensionFromFilePath(b.GetPath());
+               GetExtensionFromFilePath(a.GetPath()) > GetExtensionFromFilePath(b.GetPath());
+        }
 
         if (m_sort_column == Sort_Modified)
+        {
             return m_sort_ascending ? IO::FileSystem::GetLastWriteTime(a.GetPath()) < IO::FileSystem::GetLastWriteTime(b.GetPath()) : 
-        IO::FileSystem::GetLastWriteTime(a.GetPath()) > IO::FileSystem::GetLastWriteTime(b.GetPath());
+            IO::FileSystem::GetLastWriteTime(a.GetPath()) > IO::FileSystem::GetLastWriteTime(b.GetPath());
+        }
 
         return false;
     });

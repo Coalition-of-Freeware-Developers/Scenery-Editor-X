@@ -32,7 +32,6 @@
 #include "panels/texure_viewer.h"
 #include "source/imgui/imgui_internal.h"
 #include <SceneryEditorX/core/events/event_system.h>
-#include <SceneryEditorX/core/resource/asset_resource.h>
 #include <SceneryEditorX/core/resource/resource_cache.h>
 #include <SceneryEditorX/core/window/monitor_data.h>
 #include <SceneryEditorX/renderer/renderer.h>

@@ -31,7 +31,6 @@
 #pragma once
 #include "application_data.h"
 #include <deque>
-#include <Editor/ui/ui_layer.h>
 #include <SceneryEditorX/core/events/application_events.h>
 #include <SceneryEditorX/core/events/event_system.h>
 #include <SceneryEditorX/core/layers/layer_stack.h>
@@ -47,6 +46,13 @@
 
 namespace SceneryEditorX
 {
+	/**
+	 * @class Application
+	 * @brief The Application class is the core of the Scenery Editor X application. 
+	 * It manages the main application loop, event handling, layer management, and performance profiling. 
+	 * It serves as the central point of control for the application's lifecycle and provides access to global resources such as the window, 
+	 * settings, and performance profiler.
+	 */
 	class Application
 	{
 	public:
@@ -171,7 +177,7 @@ namespace SceneryEditorX
 
 		Scope<Window> m_Window;
 		AppData m_AppData;
-		UILayer* m_UILayer;
+		//UILayer* m_UILayer;
 		LayerStack m_LayerStack;
 		DeltaTime m_DeltaTime;
 		DeltaTime m_FrameTime;

@@ -115,6 +115,11 @@ void Widget::Tick()
 
 void Widget::OnPreBegin()
 {
+	// Defensive: ensure we have a valid Editor pointer before dereferencing. Abort early if not.
+	SEDX_CORE_ASSERT(m_Editor != nullptr, "Widget::OnPreBegin called with null m_Editor");
+	if (!m_Editor)
+		return;
+
 	// Set the position to the viewport's center
 	if (Viewport* viewport = m_Editor->GetWidget<Viewport>())
 	{
@@ -127,7 +132,7 @@ void Widget::OnPreBegin()
 
 			ImGui::SetNextWindowPos(center, ImGuiCond_FirstUseEver, pivot);
 		}
-	}	
+	}
 }
 
 Vec2 Widget::GetCenter() const

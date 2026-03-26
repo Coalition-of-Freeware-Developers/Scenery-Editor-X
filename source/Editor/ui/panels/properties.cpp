@@ -29,14 +29,11 @@
  * -------------------------------------------------------
  */
 #include "properties.h"
-
-#include "Editor/core/editor_layer.h"
-#include "Editor/ui/ui_layer.h"
 #include "Editor/ui/actions/color_picker.h"
-#include "Editor/ui/source/imgui/imgui_internal.h"
-
 #include <colors.h>
+#include <Editor/core/editor_layer.h>
 #include <Editor/ui/ui.h>
+#include <Editor/ui/source/imgui/imgui_internal.h>
 #include <SceneryEditorX/core/resource/resource_cache.h>
 #include <SceneryEditorX/core/threading/thread_pool.h>
 #include <SceneryEditorX/core/window/window.h>
@@ -193,7 +190,7 @@ namespace
 		{
 			ImGui::Dummy(ImVec2(0, design::SPACING_SM));
 			ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.85f, 0.85f, 0.85f, 1.0f));
-			ImGui::PushFont(UILayer::fontBold);
+			ImGui::PushFont(EditorLayer::fontBold);
 			ImGui::TextUnformatted(title);
 			ImGui::PopFont();
 			ImGui::PopStyleColor();
@@ -302,7 +299,7 @@ namespace
 		ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
 
 		// draw collapsing header
-		ImGui::PushFont(UILayer::fontBold);
+		ImGui::PushFont(EditorLayer::fontBold);
 		const bool is_expanded = ::UI::CollapsingHeader(name, ImGuiTreeNodeFlags_AllowOverlap | ImGuiTreeNodeFlags_DefaultOpen);
 		ImGui::PopFont();
 
@@ -565,7 +562,7 @@ void Properties::OnTickVisible()
 			ImGui::Dummy(ImVec2(0, design::SPACING_MD));
 
 			ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.9f, 0.85f, 0.4f, 1.0f));
-			ImGui::PushFont(UILayer::fontBold);
+			ImGui::PushFont(EditorLayer::fontBold);
 			char buf[64];
 			std::snprintf(buf, sizeof(buf), "%d entities selected", selected_count);
 			ImGui::TextUnformatted(buf);
@@ -662,7 +659,7 @@ void Properties::ShowEntity(Entity* entity) const
 	{
 		// entity name display
 		ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
-		ImGui::PushFont(UILayer::fontBold);
+		ImGui::PushFont(EditorLayer::fontBold);
 		ImGui::TextUnformatted(entity->GetObjectName().c_str());
 		ImGui::PopFont();
 		ImGui::PopStyleColor();
@@ -2114,7 +2111,7 @@ void Properties::ShowSaveAsPrefabPopup(Entity* entity)
 	if (ImGui::BeginPopup("##SaveAsPrefab"))
 	{
 		ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.85f, 0.85f, 0.85f, 1.0f));
-		ImGui::PushFont(UILayer::fontBold);
+		ImGui::PushFont(EditorLayer::fontBold);
 		ImGui::TextUnformatted("Save as Prefab");
 		ImGui::PopFont();
 		ImGui::PopStyleColor();

@@ -78,6 +78,12 @@ namespace
 	{
 		void ShowWorldSaveDialog()
 		{
+			if (!file_dialog)
+			{
+				EDITOR_WARN_TAG("Menubar", "ShowWorldSaveDialog called but file_dialog is null; creating lazily");
+				file_dialog = CreateScope<FileDialog>(true, FileDialog_Type_FileSelection, FileDialog_Op_Open, FileDialog_Filter_World);
+			}
+
 			file_dialog->SetOperation(FileDialog_Op_Save);
 
 			// navigate to the directory of the currently loaded world
@@ -92,6 +98,12 @@ namespace
 
 		void ShowWorldLoadDialog()
 		{
+			if (!file_dialog)
+			{
+				EDITOR_WARN_TAG("Menubar", "ShowWorldLoadDialog called but file_dialog is null; creating lazily");
+				file_dialog = CreateScope<FileDialog>(true, FileDialog_Type_FileSelection, FileDialog_Op_Open, FileDialog_Filter_World);
+			}
+
 			file_dialog->SetOperation(FileDialog_Op_Load);
 			show_file_dialog = true;
 		}
@@ -137,6 +149,17 @@ namespace
 			{
 				ImGui::SetNextWindowFocus();
 			}
+
+		// lazy-initialize file_dialog if it wasn't created yet (defensive)
+		if (!file_dialog)
+		{
+			EDITOR_WARN_TAG("Menubar", "file_dialog was null in DrawFileDialog(); creating lazily");
+			file_dialog = CreateScope<FileDialog>(true, FileDialog_Type_FileSelection, FileDialog_Op_Open, FileDialog_Filter_World);
+		}
+
+		// verbose instrumentation: log pointers/flags before invoking Show
+		EDITOR_INFO_TAG("Menubar", "Invoking FileDialog::Show - file_dialog=%p, editor=%p, show_file_dialog=%d, selection_path_ptr=%p",
+			static_cast<void*>(file_dialog.get()), static_cast<void*>(editor), static_cast<int>(show_file_dialog), static_cast<void*>(&file_dialog_selection_path));
 
 			if (file_dialog->Show(&show_file_dialog, editor, nullptr, &file_dialog_selection_path))
 			{
@@ -224,7 +247,7 @@ namespace
 					MenuEntry<AssetBrowser>();
 					//menu_entry<Console>();
 					MenuEntry<Properties>();
-				    MenuEntry<SceneViewport>();
+					MenuEntry<SceneViewport>();
 					//menu_entry<WorldViewer>();
 
 					ImGui::EndMenu();
@@ -460,13 +483,38 @@ namespace
 
 void MenuBar::Initialize(EditorLayer* editor)
 {
+	// store editor pointer for use by DrawFileDialog and other windows
+	::editor = editor;
+
+	if (!editor)
+	{
+		EDITOR_WARN_TAG("Menubar", "Initialize called with null EditorLayer pointer");
+	}
+
 	file_dialog = CreateScope<FileDialog>(true, FileDialog_Type_FileSelection, FileDialog_Op_Open, FileDialog_Filter_World);
+
+	// assert and log to help diagnose initialization/lifetime ordering
+	SEDX_CORE_ASSERT(file_dialog != nullptr, "MenuBar::Initialize failed to create file_dialog");
+	EDITOR_INFO_TAG("Menubar", "file_dialog created at %p", static_cast<void*>(file_dialog.get()));
 
 	//buttons_toolbar::widgets[ResourceCache::GetIcon(IconType::Profiler)]      = editor->GetWidget<Profiler>();
 	//buttons_toolbar::widgets[ResourceCache::GetIcon(IconType::ResourceCache)] = editor->GetWidget<ResourceViewer>();
 	//buttons_toolbar::widgets[ResourceCache::GetIcon(IconType::Shader)]        = editor->GetWidget<ShaderEditor>();
 	buttons_toolbar::widgets[ResourceCache::GetIcon(IconType::Gear)]          = editor->GetWidget<RenderOptions>();
 	buttons_toolbar::widgets[ResourceCache::GetIcon(IconType::Texture)]       = editor->GetWidget<TextureViewer>();
+}
+
+void MenuBar::SetEditor(EditorLayer* editorPtr)
+{
+	::editor = editorPtr;
+	if (!editorPtr)
+	{
+		EDITOR_WARN_TAG("Menubar", "MenuBar::SetEditor called with null pointer");
+	}
+	else
+	{
+		EDITOR_INFO_TAG("Menubar", "MenuBar wired to EditorLayer at %p", static_cast<void*>(editorPtr));
+	}
 }
 
 void MenuBar::Tick()

@@ -75,6 +75,13 @@ public:
 	virtual void OnPreBegin();
 
 	/**
+	 * @brief Assign or update the EditorLayer pointer for this widget.
+	 * Used when widgets are created by a UI layer before the EditorLayer
+	 * is available and need to be wired up later.
+	 */
+	void SetEditor(SceneryEditorX::EditorLayer* editor) { m_Editor = editor; }
+
+	/**
 	 * @brief Pushes a style variable onto the ImGui stack. The variable will be automatically popped when the widget is destroyed.
 	 * @tparam T The type of the style variable.
 	 * @param idx The index of the style variable.

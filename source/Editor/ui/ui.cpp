@@ -33,7 +33,6 @@
 #include <Editor/ui/source/imgui/imconfig.h>
 #include <Editor/ui/source/imgui/imgui.h>
 #include <Editor/ui/source/imgui/imgui_internal.h>
-#include <Editor/ui/source/imgui/backends/imgui_impl_sdl3.h>
 #include <Editor/ui/source/imgui/backends/imgui_impl_vulkan.h>
 #include <SceneryEditorX/core/application/application.h>
 #include <SceneryEditorX/core/resource/resource_cache.h>
@@ -41,7 +40,6 @@
 #include <SceneryEditorX/core/window/window.h>
 #include <SceneryEditorX/renderer/renderer.h>
 #include <SceneryEditorX/renderer/vulkan/device.h>
-#include <SceneryEditorX/renderer/vulkan/render_context.h>
 
 // -------------------------------------------------------
 

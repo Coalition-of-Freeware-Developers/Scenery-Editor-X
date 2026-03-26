@@ -30,7 +30,6 @@
  */
 #include "application.h"
 #include <Editor/core/editor_layer.h>
-#include <Editor/ui/ui_layer.h>
 #include <SceneryEditorX/core/input/input.h>
 #include <SceneryEditorX/core/resource/resource_cache.h>
 #include <SceneryEditorX/core/threading/thread_pool.h>
@@ -106,8 +105,8 @@ namespace SceneryEditorX
 
 		ResourceCache::Init();
 
-		m_UILayer = new UILayer;
-		PushOverlay(m_UILayer);
+		/*m_UILayer = new UILayer;
+		PushOverlay(m_UILayer);*/
 
 		FPSTimer::Init();
 		ThreadPool::Init();
@@ -237,13 +236,11 @@ namespace SceneryEditorX
 	{
 		Application* app = this;
 		Input::Tick();
+		Window::Tick();	// Per-frame housekeeping
 
-		// Per-frame housekeeping
-		Window::Tick();
 		// Execute UI render calls directly for now to avoid relying on the
 		// renderer submission system while that API is being refactored.
 		app->RenderUI();
-		//app->m_UILayer->End();
 		m_RenderThread.Tick();
 		FPSTimer::PostTick();
 	}

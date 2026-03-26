@@ -68,6 +68,10 @@ namespace UI
 
 		ViewportResources() = default;
 
+		/**
+		 * @brief Initializes the viewport resources by creating ring-buffered vertex and index buffers for ImGui rendering.
+		 * @param name Name prefix for the buffers (used for debugging purposes). 
+		 */
 		explicit ViewportResources(const char* name)
 		{
 			VmaAllocationCreateInfo allocCI{};
@@ -108,10 +112,10 @@ namespace UI
 		SceneryEditorX::CommandList *cmdList = nullptr;
 	};
 	
-	// main window resources
+	/* Main window resources */
 	extern ViewportResources g_ViewportData;
 
-	// shared resources (between all windows)
+	/* Shared resources (between all windows) */
 	extern SceneryEditorX::Ref<SceneryEditorX::ImageResource>     g_FontAtlas;
 	extern SceneryEditorX::Ref<SceneryEditorX::DepthStencilState> g_DepthStencil_State;
 	extern SceneryEditorX::Ref<SceneryEditorX::RasterizerState>   g_Rasterizer_State;
@@ -132,10 +136,10 @@ namespace UI
 	void Shutdown();
 
 	/**
-	 * @brief 
-	 * @param windowName 
-	 * @param checkWindow 
-	 * @return 
+	 * @brief Checks if the specified window is focused.
+	 * @param windowName Name of the window to check for focus. If nullptr, checks the currently focused window. 
+	 * @param checkWindow Whether to check if the window is focused (true) or if any child window is focused (false).
+	 * @return True if the window is focused, false otherwise.
 	 */
 	bool IsWindowFocused(const char *windowName, const bool checkWindow = true);
 
