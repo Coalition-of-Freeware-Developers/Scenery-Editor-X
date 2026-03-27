@@ -100,7 +100,7 @@ namespace SceneryEditorX
 
 	struct ShaderBuffer_Material
 	{
-		xMath::Vec4 color = xMath::Vec4::Zero;
+		xMath::Vec4 color = xMath::Vec4{0.0f, 0.0f, 0.0f, 0.0f};
 
 		xMath::Vec2 tiling_uv = xMath::Vec2::Zero;
 		xMath::Vec2 offset_uv = xMath::Vec2::Zero;

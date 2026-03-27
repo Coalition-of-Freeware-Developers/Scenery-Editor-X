@@ -31,7 +31,8 @@
 #pragma once
 #include "memory_allocator.h"
 #include "queue_manager.h"
-#include "debug/graphics_checks.h"
+#include <SceneryEditorX/renderer/vulkan/debug/graphics_checks.h>
+#include <SceneryEditorX/utils/pointers.h>
 
 // -----------------------------------------------------------------
 
@@ -39,6 +40,7 @@ namespace SceneryEditorX
 {
 
 	struct HWDeviceInfo;
+	class QueueManager;
 
 	/**
 	 * @struct DeviceStatics

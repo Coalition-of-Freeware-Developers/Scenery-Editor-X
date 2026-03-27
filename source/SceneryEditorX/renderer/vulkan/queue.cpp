@@ -334,6 +334,34 @@ namespace SceneryEditorX
 		WaitIdle(*q);
 	}
 	
+	bool Queue::Present(Swapchain *swapchain, uint32_t imageIdx, FrameSync *waitSemaphore)
+	{
+		std::lock_guard<std::mutex> lock(m_Mutex);
+
+		// get semaphore vulkan resources
+		std::array<VkSemaphore, 1> waitSemaphores = { nullptr };
+		waitSemaphores[0] = static_cast<VkSemaphore>(waitSemaphore->GetVkSemaphore());
+
+		VkPresentInfoKHR present_info   = {};
+		present_info.sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+		present_info.waitSemaphoreCount = 1;
+		present_info.pWaitSemaphores    = waitSemaphores.data();
+		present_info.swapchainCount     = 1;
+		present_info.pSwapchains        = reinterpret_cast<VkSwapchainKHR*>(&swapchain);
+		present_info.pImageIndices      = &imageIdx;
+
+		VkResult result = vkQueuePresentKHR(static_cast<VkQueue>(GetQueueResource(m_Type)), &present_info);
+
+		// vk_error_out_of_date_khr and vk_suboptimal_khr are not errors, they indicate the swapchain needs recreation
+		if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
+		{
+			return false; // signal swapchain needs recreation
+		}
+
+		SEDX_VK_RESULT_ASSERT(result);
+		return true;
+	}
+
 	// -------------------------------------------------------
 	
 	uint32_t Queue::GetQueueIndex(const QueueType type)

@@ -30,6 +30,7 @@
  */
 #include "gbuffer.h"
 #include "renderer.h"
+#include "renderer_buffers.h"
 #include "renderer_declarations.h"
 #include "font/font.h"
 #include "vulkan/buffer.h"
@@ -58,7 +59,6 @@ namespace SceneryEditorX
 	Ref<MaterialAsset>                                                                           s_StandardMaterial;
 	std::array<Ref<ImageResource>, static_cast<uint32_t>(Renderer_StandardTexture::MaxEnum)>	 s_StandardTextures;
 
-
 	// Static state object instances (created once, never mutated after init)
 	static std::array<RasterizerState,   static_cast<uint8_t>(Renderer_RasterizerState::MaxEnum)> s_RasterizerStates  = {
 		RasterizerState{ PolygonMode::Solid,     false },   // Solid
@@ -66,6 +66,7 @@ namespace SceneryEditorX
 		RasterizerState{ PolygonMode::Solid,     true,  1.0f, 1.75f }, // Light_point_spot  (depth bias)
 		RasterizerState{ PolygonMode::Solid,     true,  1.0f, 2.00f }, // Light_directional (depth bias)
 	};
+
 	static std::array<BlendState, static_cast<uint8_t>(Renderer_BlendState::MaxEnum)> s_BlendStates = {
 		BlendState{ false },   // Off
 		BlendState{ true,  VK_BLEND_FACTOR_SRC_ALPHA, VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, VK_BLEND_OP_ADD,
@@ -75,6 +76,7 @@ namespace SceneryEditorX
 		BlendState{ true,  VK_BLEND_FACTOR_ONE,       VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, VK_BLEND_OP_ADD,
 							VK_BLEND_FACTOR_ONE,      VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, VK_BLEND_OP_ADD }, // Premultiplied
 	};
+
 	static std::array<DepthStencilState, static_cast<uint8_t>(Renderer_DepthStencilState::MaxEnum)> s_DepthStencilStates = {
 		DepthStencilState{ false, false, VK_COMPARE_OP_ALWAYS    }, // Off
 		DepthStencilState{ true,  false, VK_COMPARE_OP_EQUAL     }, // ReadEqual
@@ -91,83 +93,12 @@ namespace SceneryEditorX
 	bool               Renderer::m_Transparents_Present     = false;
 	bool               Renderer::m_Is_Hiz_Suppressed        = false;
 
-	namespace
-	{
-		struct QuadVertex
-		{
-			xMath::Vec3 position;
-			xMath::Vec2 uv;
-		};
-
-		Ref<Buffer> s_GeometryQuadVertexBuffer = nullptr;
-		Ref<Buffer> s_GeometryQuadIndexBuffer  = nullptr;
-	}
-
 #pragma endregion
-
-	void GeometryBuffer::Initialize()
-	{
-		if (s_GeometryQuadVertexBuffer && s_GeometryQuadIndexBuffer)
-			return;
-
-		const Ref<Device> device = RenderContext::Get()->GetDevice();
-		SEDX_CORE_ASSERT(device.IsValid(), "GeometryBuffer::Initialize requires a valid device");
-
-		constexpr std::array<QuadVertex, 4> quadVertices = {
-			QuadVertex{
-				.position = {-1.0f, -1.0f, 0.0f}, 
-				.uv = {0.0f, 0.0f}},
-			QuadVertex{
-				.position = { 1.0f, -1.0f, 0.0f}, 
-				.uv = {1.0f, 0.0f}},
-			QuadVertex{
-				.position = { 1.0f,  1.0f, 0.0f}, 
-				.uv = {1.0f, 1.0f}},
-			QuadVertex{
-				.position = {-1.0f,  1.0f, 0.0f}, 
-				.uv = {0.0f, 1.0f}},
-		};
-
-		constexpr std::array<uint16_t, 6> quadIndices = { 0, 1, 2, 2, 3, 0 };
-
-		VmaAllocationCreateInfo allocInfo{};
-		allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
-		allocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
-
-		const VmaAllocator allocator = device->GetMemoryAllocator().GetAllocator();
-
-		s_GeometryQuadVertexBuffer = CreateRef<Buffer>(allocator, sizeof(quadVertices), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,allocInfo);
-		s_GeometryQuadIndexBuffer = CreateRef<Buffer>(allocator, sizeof(quadIndices), VK_BUFFER_USAGE_INDEX_BUFFER_BIT, allocInfo);
-
-		SEDX_CORE_ASSERT(s_GeometryQuadVertexBuffer && s_GeometryQuadVertexBuffer->Valid(), "Failed to create static quad vertex buffer");
-		SEDX_CORE_ASSERT(s_GeometryQuadIndexBuffer && s_GeometryQuadIndexBuffer->Valid(), "Failed to create static quad index buffer");
-
-		void* vbData = s_GeometryQuadVertexBuffer->Map();
-		void* ibData = s_GeometryQuadIndexBuffer->Map();
-		SEDX_CORE_ASSERT(vbData != nullptr, "Failed to map static quad vertex buffer");
-		SEDX_CORE_ASSERT(ibData != nullptr, "Failed to map static quad index buffer");
-
-		std::memcpy(vbData, quadVertices.data(), sizeof(quadVertices));
-		std::memcpy(ibData, quadIndices.data(), sizeof(quadIndices));
-
-		s_GeometryQuadVertexBuffer->Unmap();
-		s_GeometryQuadIndexBuffer->Unmap();
-
-		SEDX_CORE_INFO_TAG("Renderer", "GeometryBuffer initialized (static quad VB/IB)");
-	}
-
-	void GeometryBuffer::Shutdown()
-	{
-		s_GeometryQuadVertexBuffer.Reset();
-		s_GeometryQuadIndexBuffer.Reset();
-	}
-
-	Buffer* GeometryBuffer::GetIndexBuffer() { return s_GeometryQuadIndexBuffer.Get(); }
-
-	Buffer* GeometryBuffer::GetVertexBuffer() { return s_GeometryQuadVertexBuffer.Get(); }
 
 	void Renderer::CreateRenderTargets(const bool createRender, const bool createOutput, const bool createDynamic)
 	{
+		SEDX_CORE_TRACE_TAG("RendererResources", "Creating render targets");
+
 		uint32_t widthRender  = static_cast<uint32_t>(GetRendererResolution().x);
 		uint32_t heightRender = static_cast<uint32_t>(GetRendererResolution().y);
 		uint32_t widthOutput  = static_cast<uint32_t>(GetOutputResolution().x);
@@ -187,6 +118,7 @@ namespace SceneryEditorX
 			return mipCount;
 		};
 #pragma endregion
+		SEDX_CORE_TRACE_TAG("RendererResources", "Mip count calculation completed");
 
 		// avoid combining uav + rtv on frequently accessed targets (forces suboptimal layouts on amd)
 		// resolution - render
@@ -214,12 +146,16 @@ namespace SceneryEditorX
 
 				s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_color)]    = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, widthRender, heightRender, 1, 1, VK_FORMAT_R8G8B8A8_UNORM, flags, "gbuffer_color"});
 				SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_color)] != nullptr, "Failed to create gbuffer_color render target");
+
 				s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_normal)]   = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, widthRender, heightRender, 1, 1, VK_FORMAT_R16G16B16A16_SFLOAT, flags, "gbuffer_normal"});
 				SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_normal)] != nullptr, "Failed to create gbuffer_normal render target");
+
 				s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_material)] = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, widthRender, heightRender, 1, 1, VK_FORMAT_R8G8B8A8_UNORM, flags, "gbuffer_material"});
 				SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_material)] != nullptr, "Failed to create gbuffer_material render target");
+
 				s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_velocity)] = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, widthRender, heightRender, 1, 1, VK_FORMAT_R16G16_SFLOAT, flags, "gbuffer_velocity"});
 				SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_velocity)] != nullptr, "Failed to create gbuffer_velocity render target");
+
 				s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_depth)]    = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, widthRender, heightRender, 1, 1, VK_FORMAT_D32_SFLOAT, flags, "gbuffer_depth"});
 				SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_depth)] != nullptr, "Failed to create gbuffer_depth render target");
 			}
@@ -231,8 +167,10 @@ namespace SceneryEditorX
 
 				s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::light_diffuse)]    = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, widthRender, heightRender, 1, 1, VK_FORMAT_B10G11R11_UFLOAT_PACK32, flags, "light_diffuse"});
 				SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::light_diffuse)] != nullptr, "Failed to create light_diffuse render target");
+
 				s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::light_specular)]   = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, widthRender, heightRender, 1, 1, VK_FORMAT_B10G11R11_UFLOAT_PACK32, flags, "light_specular"});
 				SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::light_specular)] != nullptr, "Failed to create light_specular render target");
+				
 				s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::light_volumetric)] = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, widthRender, heightRender, 1, 1, VK_FORMAT_B10G11R11_UFLOAT_PACK32, flags, "light_volumetric"});
 				SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::light_volumetric)] != nullptr, "Failed to create light_volumetric render target");
 			}
@@ -243,15 +181,18 @@ namespace SceneryEditorX
 				// amd depth format restrictions: separate texture for uav + manual blit
 				s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_depth_occluders)] = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, widthRender, heightRender, 1, 1, VK_FORMAT_D32_SFLOAT, RenderTargetViews | ShaderViews, "depth_occluders"});
 				SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_depth_occluders)] != nullptr, "Failed to create depth_occluders render target");
+
 				// full mip chain so the cull shader can pick a level where the aabb fits in ~1-2 texels
 				uint32_t hizMipCount = static_cast<uint32_t>(floor(log2(static_cast<float>(xMath::Max(widthRender, heightRender))))) + 1;
+
 				s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_depth_occluders_hiz)] = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, widthRender, heightRender, 1, hizMipCount, VK_FORMAT_R32_SFLOAT, UnorderedAccessView | ShaderViews | BlitClear | PerMipViews, "depth_occluders_hiz"});
 				SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_depth_occluders_hiz)] != nullptr, "Failed to create depth_occluders_hiz render target");
 			}
 #pragma endregion
 			// misc
 			s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::sss)]                = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2DArray, widthRender, heightRender, 4, 1, VK_FORMAT_R16_SFLOAT, UnorderedAccessView | ShaderViews | BlitClear | QueueShare, "sss"});
-			SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::sss)] != nullptr, "Failed to create sss render target");
+			SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::sss)] != nullptr, "Failed to create Screen Space Shadows (SSS) render target");
+
 			s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::reflections)]        = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, widthRender, heightRender, 1, 1, VK_FORMAT_R16G16B16A16_SFLOAT, UnorderedAccessView | ShaderViews | BlitClear, "reflections"});
 			SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::reflections)] != nullptr, "Failed to create reflections render target");
 
@@ -282,16 +223,20 @@ namespace SceneryEditorX
 			uint32_t mipCount = compute_mip_count(widthOutput, heightOutput, 16);
 			s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::frame_output)]   = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, widthOutput, heightOutput, 1, mipCount, VK_FORMAT_R16G16B16A16_SFLOAT, UnorderedAccessView | ShaderViews | RenderTargetViews | BlitClear | PerMipViews | QueueShare, "frame_output"});
 			SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::frame_output)] != nullptr, "Failed to create frame_output render target");
+
 			s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::frame_output_2)] = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, widthOutput, heightOutput, 1, 1, VK_FORMAT_R16G16B16A16_SFLOAT, UnorderedAccessView | ShaderViews | RenderTargetViews | BlitClear, "frame_output_2"});
 			SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::frame_output_2)] != nullptr, "Failed to create frame_output_2 render target");
+
 			s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::debug_output)]   = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, widthOutput, heightOutput, 1, 1, VK_FORMAT_R16G16B16A16_SFLOAT, UnorderedAccessView | ShaderViews | RenderTargetViews | BlitClear, "debug_output"});
 			SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::debug_output)] != nullptr, "Failed to create debug_output render target");
 
 			// misc
 			s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::bloom)]                       = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, widthOutput, heightOutput, 1, mipCount, VK_FORMAT_R16G16B16A16_SFLOAT, UnorderedAccessView | ShaderViews | PerMipViews, "bloom"});
 			SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::bloom)] != nullptr, "Failed to create bloom render target");
+
 			s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::outline)]                     = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, widthOutput, heightOutput, 1, 1, VK_FORMAT_R8G8B8A8_UNORM, UnorderedAccessView | ShaderViews | RenderTargetViews, "outline"});
 			SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::outline)] != nullptr, "Failed to create outline render target");
+
 			s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_depth_opaque_output)] = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, widthOutput, heightOutput, 1, 1, VK_FORMAT_D32_SFLOAT, ShaderViews | RenderTargetViews | BlitClear, "depth_opaque_output"});
 			SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_depth_opaque_output)] != nullptr, "Failed to create depth_opaque_output render target");
 		}
@@ -303,10 +248,13 @@ namespace SceneryEditorX
 			// lookup tables
 			s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::lut_brdf_specular)]           = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, 512, 512, 1, 1, VK_FORMAT_R16G16_SFLOAT, UnorderedAccessView | ShaderViews, "lut_brdf_specular"});
 			SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::lut_brdf_specular)] != nullptr, "Failed to create lut_brdf_specular render target");
+
 			s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::lut_atmosphere_scatter)]      = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type3D, 256, 256, 32, 1, VK_FORMAT_R16G16B16A16_SFLOAT, UnorderedAccessView | ShaderViews, "lut_atmosphere_scatter"});
 			SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::lut_atmosphere_scatter)] != nullptr, "Failed to create lut_atmosphere_scatter render target");
+
 			s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::lut_atmosphere_transmittance)] = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, 256, 64, 1, 1, VK_FORMAT_R16G16B16A16_SFLOAT, UnorderedAccessView | ShaderViews, "lut_atmosphere_transmittance"});
 			SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::lut_atmosphere_transmittance)] != nullptr, "Failed to create lut_atmosphere_transmittance render target");
+
 			s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::lut_atmosphere_multiscatter)] = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, 32,  32, 1, 1, VK_FORMAT_R16G16B16A16_SFLOAT, UnorderedAccessView | ShaderViews, "lut_atmosphere_multiscatter"});
 			SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::lut_atmosphere_multiscatter)] != nullptr, "Failed to create lut_atmosphere_multi-scatter render target");
 
@@ -321,14 +269,17 @@ namespace SceneryEditorX
 			// Auto-Exposure
 			s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::auto_exposure)]          = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, 1, 1, 1, 1, VK_FORMAT_R32_SFLOAT, UnorderedAccessView | ShaderViews | BlitClear, "auto_exposure_1"});
 			SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::auto_exposure)] != nullptr, "Failed to create auto_exposure render target");
+
 			s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::auto_exposure_previous)] = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, 1, 1, 1, 1, VK_FORMAT_R32_SFLOAT, UnorderedAccessView | ShaderViews | BlitClear, "auto_exposure_2"});
 			SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::auto_exposure_previous)] != nullptr, "Failed to create auto_exposure_previous render target");
 
 			// Volumetric Clouds (VK_FORMAT_R16G16B16A16_SFLOAT to avoid material texture detection)
 			s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::cloud_noise_shape)]  = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type3D, 128, 128, 128, 1, VK_FORMAT_R16G16B16A16_SFLOAT, UnorderedAccessView | ShaderViews | QueueShare, "cloud_noise_shape"});
 			SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::cloud_noise_shape)] != nullptr, "Failed to create cloud_noise_shape render target");
+
 			s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::cloud_noise_detail)] = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type3D, 32,  32,  32,  1, VK_FORMAT_R16G16B16A16_SFLOAT, UnorderedAccessView | ShaderViews | QueueShare, "cloud_noise_detail"});
 			SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::cloud_noise_detail)] != nullptr, "Failed to create cloud_noise_detail render target");
+
 			s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::cloud_shadow)]       = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, 1024, 1024, 1, 1, VK_FORMAT_R16_SFLOAT, UnorderedAccessView | ShaderViews | QueueShare, "cloud_shadow"});
 			SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::cloud_shadow)] != nullptr, "Failed to create cloud_shadow render target");
 		}
@@ -357,12 +308,15 @@ namespace SceneryEditorX
 		{
 			s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_reflections_position)]  = nullptr;
 			SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_reflections_position)] == nullptr, "Failed to destroy gbuffer_reflections_position render target");
+
 			s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_reflections_normal)]	= nullptr;
 			SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_reflections_normal)] == nullptr, "Failed to destroy gbuffer_reflections_normal render target");
+
 			s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_reflections_albedo)]	= nullptr;
 			SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_reflections_albedo)] == nullptr, "Failed to destroy gbuffer_reflections_albedo render target");
 		}
 
+		SEDX_CORE_TRACE_TAG("RendererResources","Optional render targets updated");
 	}
 
 	ImageResource* Renderer::GetRenderTarget(const Renderer_RenderTarget type)
@@ -790,10 +744,9 @@ namespace SceneryEditorX
 		return s_StandardMaterial;
 	}
 
-	DepthStencilState * Renderer::GetDepthStencilState(const Renderer_DepthStencilState type)
+	DepthStencilState* Renderer::GetDepthStencilState(const Renderer_DepthStencilState type)
 	{
-		SEDX_CORE_ASSERT(static_cast<uint8_t>(type) < static_cast<uint8_t>(Renderer_DepthStencilState::MaxEnum),
-						 "Renderer_DepthStencilState out of range");
+		SEDX_CORE_ASSERT(static_cast<uint8_t>(type) < static_cast<uint8_t>(Renderer_DepthStencilState::MaxEnum), "Renderer_DepthStencilState out of range");
 		return &s_DepthStencilStates[static_cast<uint8_t>(type)];
 	}
 
@@ -825,13 +778,6 @@ namespace SceneryEditorX
 		}
 
 		return nullptr;
-	}
-
-	uint32_t Renderer::WriteDrawData(const xMath::Matrix& /*transform*/)
-	{
-		// TODO: Write the transform matrix into the GPU draw-data structured buffer and return its index.
-		SEDX_CORE_WARN_TAG("Renderer", "WriteDrawData: stub — draw-data buffer not yet wired");
-		return m_DrawDataCount++;
 	}
 
 	bool Renderer::IsCpuDrivenDraw(const Renderer_DrawCall& /*drawCall*/, const Material* /*material*/)

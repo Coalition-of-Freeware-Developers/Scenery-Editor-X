@@ -59,46 +59,46 @@ namespace UI
 	 */
 	struct ViewportResources
 	{
-		std::array<SceneryEditorX::Scope<SceneryEditorX::Buffer>, BUFFER_COUNT> index_buffers;
-		std::array<SceneryEditorX::Scope<SceneryEditorX::Buffer>, BUFFER_COUNT> vertex_buffers;
-		std::array<uint32_t, BUFFER_COUNT> index_counts = {};
-		std::array<uint32_t, BUFFER_COUNT> vertex_counts = {};
+		std::array<SceneryEditorX::Scope<SceneryEditorX::Buffer>, BUFFER_COUNT> indexBuffers;
+		std::array<SceneryEditorX::Scope<SceneryEditorX::Buffer>, BUFFER_COUNT> vertexBuffers;
+		std::array<uint32_t, BUFFER_COUNT> indexCounts = {};
+		std::array<uint32_t, BUFFER_COUNT> vertexCounts = {};
 		SceneryEditorX::PushConstantBuffer_Pass pushConstantBuffer_Pass;
 		uint32_t bufferIndex = 0;
+		SceneryEditorX::Swapchain *swapchain;
 
 		ViewportResources() = default;
 
 		/**
 		 * @brief Initializes the viewport resources by creating ring-buffered vertex and index buffers for ImGui rendering.
-		 * @param name Name prefix for the buffers (used for debugging purposes). 
+		 * @param name Name prefix for the buffers (used for debugging purposes).
+		 * @param swapchain Pointer to the swapchain associated with the viewport, used for buffer creation and synchronization.
 		 */
-		explicit ViewportResources(const char* name)
+		explicit ViewportResources(const char* name, SceneryEditorX::Swapchain *swapchain) : swapchain(swapchain)
 		{
 			VmaAllocationCreateInfo allocCI{};
 			allocCI.usage = VMA_MEMORY_USAGE_AUTO;
-			allocCI.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |
-							VMA_ALLOCATION_CREATE_MAPPED_BIT;
+			allocCI.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
 
 			for (uint32_t i = 0; i < BUFFER_COUNT; i++)
 			{
-				vertex_counts[i] = 50000;
-				index_counts[i]  = 100000;
+				vertexCounts[i] = 50000;
+				indexCounts[i] = 100000;
 
-				vertex_buffers[i] = SceneryEditorX::CreateScope<SceneryEditorX::Buffer>(
+				vertexBuffers[i] = SceneryEditorX::CreateScope<SceneryEditorX::Buffer>(
 					static_cast<VmaAllocator>(nullptr),
-					static_cast<VkDeviceSize>(sizeof(ImDrawVert) * vertex_counts[i]),
+					static_cast<VkDeviceSize>(sizeof(ImDrawVert) * vertexCounts[i]),
 					static_cast<VkBufferUsageFlags>(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
 					allocCI);
 
-				index_buffers[i] = SceneryEditorX::CreateScope<SceneryEditorX::Buffer>(
+				indexBuffers[i] = SceneryEditorX::CreateScope<SceneryEditorX::Buffer>(
 					static_cast<VmaAllocator>(nullptr),
-					static_cast<VkDeviceSize>(sizeof(ImDrawIdx) * index_counts[i]),
+					static_cast<VkDeviceSize>(sizeof(ImDrawIdx) * indexCounts[i]),
 					static_cast<VkBufferUsageFlags>(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
 					allocCI);
 			}
 		}
 
-		ViewportResources(const char* name, SceneryEditorX::Swapchain* /*swapchain*/) : ViewportResources(name) {}
 	};
 
 	/**

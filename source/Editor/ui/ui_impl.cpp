@@ -76,12 +76,12 @@ namespace UI
 		g_VertexShader = nullptr;
 		g_FragmentShader = nullptr;
 	
-		for (auto &ptr : g_ViewportData.index_buffers)
+		for (auto &ptr : g_ViewportData.indexBuffers)
 		{
 			ptr = nullptr;
 		}
 	
-		for (auto &ptr : g_ViewportData.vertex_buffers)
+		for (auto &ptr : g_ViewportData.vertexBuffers)
 		{
 			ptr = nullptr;
 		}
@@ -91,7 +91,7 @@ namespace UI
 	{
 		// create required objects
 		{
-			g_ViewportData = ViewportResources("imgui");
+			g_ViewportData = ViewportResources("imgui",  Renderer::GetSwapChain());
 			g_DepthStencil_State = SceneryEditorX::CreateRef<DepthStencilState>(false, false, VK_COMPARE_OP_ALWAYS);
 			g_Rasterizer_State = SceneryEditorX::CreateRef<RasterizerState>(PolygonMode::Solid, true);
 	
@@ -108,8 +108,7 @@ namespace UI
 			{
 				const std::string shaderPath = ResourceCache::GetResourceDirectory(ResourceDirectory::Shaders) + "/ui.slang";
 	
-				bool async = false;
-				(void)async;
+				//bool async = false;
 	
 				g_VertexShader = CreateRef<Shader>();
 				g_VertexShader->AddShaderStage(Stage::Vertex, shaderPath);
@@ -134,7 +133,7 @@ namespace UI
 			const uint32_t size = atlasWidth * atlasHeight * bpp;
 			mip.resize(size);
 			mip.reserve(size);
-			memcpy(mip.data(), reinterpret_cast<std::byte *>(pixels), size);
+			memcpy(&mip[0], reinterpret_cast<std::byte *>(pixels), size);
 	
 			ImgResourceSpec spec{};
 			spec.type = ImageType::Type2D;
@@ -197,14 +196,14 @@ namespace UI
 			return;
 	
 		// get resources
-		bool isMainWindow = windowData == nullptr;
-		ViewportResources *resources = isMainWindow ? &g_ViewportData : windowData->viewportResources.get();
-		Swapchain *swapchain = isMainWindow ? Renderer::GetSwapChain() : windowData->swapchain.Get();
-		uint32_t bufferIndex = resources->bufferIndex;
-		resources->bufferIndex = (resources->bufferIndex + 1) % BUFFER_COUNT;
-		Buffer *vertexBuffer = resources->vertex_buffers[bufferIndex].get();
-		Buffer *indexBuffer = resources->index_buffers[bufferIndex].get();
-		CommandList *cmdList = Renderer::GetCommandListPresent();
+		bool isMainWindow				= windowData == nullptr;
+		ViewportResources *resources	= isMainWindow ? &g_ViewportData : windowData->viewportResources.get();
+		Swapchain *swapchain			= isMainWindow ? Renderer::GetSwapChain() : windowData->swapchain.Get();
+		uint32_t bufferIndex			= resources->bufferIndex;
+		resources->bufferIndex			= (resources->bufferIndex + 1) % BUFFER_COUNT;
+		Buffer *vertexBuffer			= resources->vertexBuffers[bufferIndex].get();
+		Buffer *indexBuffer				= resources->indexBuffers[bufferIndex].get();
+		CommandList *cmdList			= Renderer::GetCommandListPresent();
 	
 		// if that's a child window, update it's swapchain and give it a command list
 		if (!isMainWindow)
@@ -229,14 +228,14 @@ namespace UI
 		// update vertex and index buffers
 		{
 			// grow vertex buffer as needed
-			if (!vertexBuffer || resources->vertex_counts[bufferIndex] < static_cast<uint32_t>(drawData->TotalVtxCount))
+			if (!vertexBuffer || resources->vertexCounts[bufferIndex] < static_cast<uint32_t>(drawData->TotalVtxCount))
 			{
-				const uint32_t count = resources->vertex_counts[bufferIndex];
+				const uint32_t count = resources->vertexCounts[bufferIndex];
 				const uint32_t count_new = drawData->TotalVtxCount + 15000;
-				resources->vertex_counts[bufferIndex] = count_new;
-				resources->vertex_buffers[bufferIndex] =
+				resources->vertexCounts[bufferIndex] = count_new;
+				resources->vertexBuffers[bufferIndex] =
 				CreateScope<Buffer>(sizeof(ImDrawVert), count_new, nullptr, true, "imgui_vertex_buffer");
-				vertexBuffer = resources->vertex_buffers[bufferIndex].get();
+				vertexBuffer = resources->vertexBuffers[bufferIndex].get();
 	
 				if (count != 0)
 				{
@@ -245,14 +244,14 @@ namespace UI
 			}
 	
 			// grow index buffer as needed
-			if (!indexBuffer || resources->index_counts[bufferIndex] < static_cast<uint32_t>(drawData->TotalIdxCount))
+			if (!indexBuffer || resources->indexCounts[bufferIndex] < static_cast<uint32_t>(drawData->TotalIdxCount))
 			{
-				const uint32_t count = resources->index_counts[bufferIndex];
+				const uint32_t count = resources->indexCounts[bufferIndex];
 				const uint32_t count_new = drawData->TotalIdxCount + 30000;
-				resources->index_counts[bufferIndex] = count_new;
-				resources->index_buffers[bufferIndex] =
+				resources->indexCounts[bufferIndex] = count_new;
+				resources->indexBuffers[bufferIndex] =
 				CreateScope<Buffer>(sizeof(ImDrawIdx), count_new, nullptr, true, "imgui_index_buffer");
-				indexBuffer = resources->index_buffers[bufferIndex].get();
+				indexBuffer = resources->indexBuffers[bufferIndex].get();
 	
 				if (count != 0)
 				{
@@ -397,25 +396,12 @@ namespace UI
 								const float T = drawData->DisplayPos.y;
 								const float B = drawData->DisplayPos.y + drawData->DisplaySize.y;
 	
-								Matrix projection(2.0f / (R - L),
-												  0.0f,
-												  0.0f,
-												  (R + L) / (L - R),
-												  0.0f,
-												  2.0f / (T - B),
-												  0.0f,
-												  (T + B) / (B - T),
-												  0.0f,
-												  0.0f,
-												  0.5f,
-												  0.5f,
-												  0.0f,
-												  0.0f,
-												  0.0f,
-												  1.0f);
-	
-								(void)projection;
-								resources->pushConstantBuffer_Pass.drawIndex = 0;
+								Matrix projection(2.0f / (R - L), 0.0f, 0.0f, (R + L) / (L - R),
+												  0.0f, 2.0f / (T - B), 0.0f, (T + B) / (B - T),
+												  0.0f, 0.0f,			0.5f, 0.5f,
+												  0.0f, 0.0f,			0.0f, 1.0f);
+
+								resources->pushConstantBuffer_Pass.drawIndex = Renderer::WriteDrawData(projection);
 							}
 	
 							cmdList->PushConstants(resources->pushConstantBuffer_Pass);
@@ -445,11 +431,17 @@ namespace UI
 		SEDX_CORE_ASSERT(viewport->PlatformHandle);
 	
 		// note: platformHandle is SDL_Window, PlatformHandleRaw is HWND
-		SDL_Window *sdl_window =
-			SDL_GetWindowFromID(static_cast<uint32_t>(reinterpret_cast<uintptr_t>(viewport->PlatformHandle)));
+		SDL_Window *sdl_window = SDL_GetWindowFromID(static_cast<uint32_t>(reinterpret_cast<uintptr_t>(viewport->PlatformHandle)));
 	
 		WindowData *window = new WindowData();
-		window->swapchain = CreateRef<Swapchain>();
+		SwapchainSpec spec{};
+		spec.sdlWindow = sdl_window;
+		spec.width = static_cast<uint32_t>(viewport->Size.x);
+		spec.height = static_cast<uint32_t>(viewport->Size.y);
+		spec.presentMode = VK_PRESENT_MODE_IMMEDIATE_KHR; // vsync on to avoid tearing in imgui viewports
+		spec.bufferCount = 2;
+		spec.name = "child_window_swapchain";
+		window->swapchain = CreateRef<Swapchain>(spec);
 	
 		window->viewportResources = CreateScope<ViewportResources>("imgui_child_window", window->swapchain.Get());
 		viewport->RendererUserData = window;
@@ -466,8 +458,7 @@ namespace UI
 
 	void WindowResize(ImGuiViewport *viewport, const ImVec2 size)
 	{
-		static_cast<WindowData *>(viewport->RendererUserData)
-			->swapchain->Resize(static_cast<uint32_t>(size.x), static_cast<uint32_t>(size.y));
+		static_cast<WindowData *>(viewport->RendererUserData)->swapchain->Resize(static_cast<uint32_t>(size.x), static_cast<uint32_t>(size.y));
 	}
 
 	void WindowRender(ImGuiViewport *viewport, void *)
@@ -478,7 +469,7 @@ namespace UI
 
 	void WindowPresent(ImGuiViewport *viewport, void *)
 	{
-		WindowData *window = static_cast<WindowData *>(viewport->RendererUserData);
+		WindowData *window = static_cast<WindowData*>(viewport->RendererUserData);
 		if (!window || !window->swapchain)
 			return;
 	

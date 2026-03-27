@@ -447,9 +447,12 @@ namespace SceneryEditorX
 				IO::FileSystem::CreateDir(appdata);
 			}
 
-			m_ConfigPath = appdata;
+			// Store the full path to the user preferences file inside the application persistent storage.
+			// Previously we passed the application directory directly which caused libconfig to
+			// attempt to read/write a directory as a file and produce FileIOException errors.
+			m_ConfigPath = appdata / "user_preferences.cfg";
 
-			// Create the ApplicationSettings instance
+			// Create the ApplicationSettings instance using a valid file path
 			m_Settings = CreateRef<Settings>(m_ConfigPath);
 
 			// Try to read existing settings, if file doesn't exist it will be created

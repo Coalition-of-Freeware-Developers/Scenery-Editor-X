@@ -29,6 +29,7 @@
  * -------------------------------------------------------
  */
 #pragma once
+#include "renderer_buffers.h"
 #include "renderer_declarations.h"
 #include "font/font.h"
 #include "vulkan/blend_states.h"
@@ -184,6 +185,16 @@ namespace SceneryEditorX
 		 */
 		static ImageResource *GetRenderTarget(Renderer_RenderTarget type);
 
+		/**
+		 * @brief Write draw data for a mesh instance.
+		 * @param transform The current transformation matrix of the mesh.
+		 * @param prevTransform The previous transformation matrix of the mesh (for motion blur, etc.).
+		 * @param matIndex The index of the material to use.
+		 * @param isTransparent Whether the mesh is transparent.
+		 * @return Index of the written draw data.
+		 */
+		static uint32_t WriteDrawData(const xMath::Matrix& transform, const xMath::Matrix &prevTransform = xMath::Matrix::Identity, uint32_t matIndex = 0, uint32_t isTransparent = 0);
+
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		/// Render Context Management                                                                                     ///
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -270,7 +281,8 @@ namespace SceneryEditorX
 		static CommandList* GetCommandListPresent();
 		
 		/**
-		 * @brief Create models and upload to GPU. This is separate from shader creation to allow for better error handling and resource management.
+		 * @brief Create models and upload to GPU. 
+		 * This is separate from shader creation to allow for better error handling and resource management.
 		 */
 		static void CreateModels();
 
@@ -281,6 +293,7 @@ namespace SceneryEditorX
 		/// Util Functions																								  ///
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+		/* @brief Capture a screenshot of the current frame and save it to disk. */
 		static void Screenshot();
 
 		/**
@@ -344,9 +357,7 @@ namespace SceneryEditorX
 		/* @brief Update optional render targets based on current renderer configuration. */
 		static void UpdateOptionalRenderTargets();
 
-		/* 
-		 * @brief Create per-frame resources such as command buffers and synchronization objects. 
-		 */
+		/* @brief Create per-frame resources such as command buffers and synchronization objects. */
 		static void CreateFrameResources();
 
 		/* 
@@ -391,11 +402,10 @@ namespace SceneryEditorX
 		 */
 		static void CreateSamplers();
 
-		/**
-		 * @brief Creates standard materials used by the renderer.
-		 */
+		/* @brief Creates standard materials used by the renderer. */
 		static void CreateStandardMaterials();
 
+		/* @brief Creates standard textures used by the renderer. */
 		static void CreateStandardTextures();
 
 		/**
@@ -493,11 +503,6 @@ namespace SceneryEditorX
 		 */
 		static DepthStencilState* GetDepthStencilState(Renderer_DepthStencilState type);
 
-		/**
-		 * @brief Writes per-draw transform and material data into the GPU draw-data buffer.
-		 * @return Index of the written draw-data slot (passed as push constant draw_index).
-		 */
-		static uint32_t WriteDrawData(const xMath::Matrix& transform);
 
 		/**
 		 * @brief Returns true when the given draw call should be submitted via the CPU-driven path.
@@ -518,14 +523,8 @@ namespace SceneryEditorX
 
 		/**
 		 * @brief Writes per-draw transform and material data into the GPU draw-data buffer.
-		 * @param transform Current frame transform matrix
-		 * @param prevTransform Previous frame transform matrix
-		 * @param matIdx Material index
-		 * @param isTransparent Flag indicating if the draw call is transparent
 		 * @return Index of the written draw-data slot (passed as push constant draw_index).
 		 */
-		static uint32_t WriteDrawData(const xMath::Matrix &transform, const xMath::Matrix &prevTransform, uint32_t matIdx, uint32_t isTransparent);
-
 		/**
 		 * @brief 
 		 * @param cmdList 
@@ -546,6 +545,11 @@ namespace SceneryEditorX
 		static Scope<Model> m_TestModel;
 
 		// Bindless
+
+		// bindless draw data
+		static std::array<ShaderBuffer_DrawData, RENDERER_MAX_DRAW_CALLS> m_DrawData_CPU;
+		static uint32_t m_DrawData_Count;
+
 		static std::array<ImageResource*, MAX_ARRAY_SIZE> m_Bindless_Textures;
 		//static std::array<Sb_Light, MAX_ARRAY_SIZE> m_Bindless_Lights;
 		//static std::array<Sb_Aabb, MAX_ARRAY_SIZE> m_Bindless_Aabbs;

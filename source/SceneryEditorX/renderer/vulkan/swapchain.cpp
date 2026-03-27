@@ -48,6 +48,8 @@ namespace SceneryEditorX
 	
 	#pragma region Static Properties
 
+	static bool s_PreDeclared = false;
+
 	/**
 	 * @brief Get the string representation of a Vulkan format.
 	 * @param format The Vulkan format.
@@ -594,6 +596,37 @@ namespace SceneryEditorX
 		CreateSwapchain();
 	}
 
+	Swapchain::Swapchain(const SwapchainSpec &spec)
+	{
+		SDL_Window *sdlWindow = spec.sdlWindow;
+		m_Width = spec.width;
+		m_Height = spec.height;
+		m_PresentMode = spec.presentMode;
+		m_Device = RenderContext::Get()->GetDevice();
+
+		if (!sdlWindow)
+		{
+			SEDX_CORE_ERROR_TAG("Swapchain", "SDL3 window is null, cannot create Vulkan surface");
+			return;
+		}
+
+		VkInstance instance = RenderContext::Get()->GetInstance();
+		if (instance == VK_NULL_HANDLE)
+		{
+			SEDX_CORE_ERROR_TAG("Swapchain", "Vulkan instance is null — cannot create Vulkan surface");
+			return;
+		}
+
+		SEDX_CORE_ASSERT(SDL_Vulkan_CreateSurface(sdlWindow, instance, nullptr, &m_Surface), "Failed to create Vulkan surface for SDL window");
+
+		SEDX_CORE_ASSERT(m_Surface != VK_NULL_HANDLE, "Vulkan surface creation failed");
+		SEDX_CORE_TRACE_TAG("Swapchain", "Vulkan surface created successfully");
+
+		s_PreDeclared = true;
+
+		CreateSwapchain();
+	}
+
 	Swapchain::~Swapchain()
 	{
 		Ref<Device> device = RenderContext::Get()->GetDevice();
@@ -631,6 +664,8 @@ namespace SceneryEditorX
 			vkDestroySurfaceKHR(RenderContext::Get()->GetInstance(), m_Surface, nullptr);
 			m_Surface = VK_NULL_HANDLE;
 		}
+
+		s_PreDeclared = false;
 	}
 
 	void Swapchain::CreateSwapchain()
@@ -686,7 +721,16 @@ namespace SceneryEditorX
 		ci.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
 		ci.preTransform = capabilities.currentTransform;
 		ci.compositeAlpha = GetCompositeAlphaFlags(m_Surface);
-		ci.presentMode = GetPresentMode(m_Surface, m_PresentMode);
+
+		if (s_PreDeclared)
+		{
+			ci.presentMode = m_PresentMode;
+		}
+		else
+		{
+			ci.presentMode = GetPresentMode(m_Surface, m_PresentMode);
+		}
+
 		ci.clipped = VK_TRUE;
 		ci.oldSwapchain = m_Swapchain;
 
@@ -698,7 +742,7 @@ namespace SceneryEditorX
 			vkDestroySwapchainKHR(m_Device->GetLogicalDevice(), ci.oldSwapchain, nullptr);
 		}
 
-	 // Fetch images for the new swapchain first
+		// Fetch images for the new swapchain first
 		uint32_t imgCount = 0;
 		vkGetSwapchainImagesKHR(m_Device->GetLogicalDevice(), m_Swapchain, &imgCount, nullptr);
 		SEDX_CORE_ASSERT(imgCount > 0, "Swapchain created with zero images");
@@ -897,6 +941,34 @@ namespace SceneryEditorX
 
 			SEDX_CORE_ERROR_TAG("Swapchain", "Failed to acquire swapchain image: {}", r);
 			return;
+		}
+	}
+
+	void Swapchain::Present(CommandList *cmdList)
+	{
+		// only present if we successfully acquired an image
+		if (!m_ImageAcquired)
+			return;
+
+	    // use per-image semaphore to avoid reuse conflicts - when this image is re-acquired,
+		// we know the previous presentation completed, so the semaphore is safe to signal again
+		FrameSync* rendering_complete_semaphore = m_CompleteSemaphore[m_ImageIndex].Get();
+		bool success = cmdList->GetQueue()->Present(this, m_ImageIndex, rendering_complete_semaphore);
+
+		// clear acquisition state after presentation
+		m_ImageAcquired = false;
+
+		// if present failed (swapchain out of date), mark for recreation
+		if (!success)
+		{
+			m_IsDirty.SetDirty();
+		}
+
+		// recreate the swapchain if needed - we do it here so that no semaphores are being destroyed while they are being waited for
+		if (m_IsDirty.IsDirty())
+		{
+			CreateSwapchain();
+			m_IsDirty.Check();
 		}
 	}
 

@@ -47,7 +47,6 @@
 #include <SceneryEditorX/renderer/renderer.h>
 #include <SceneryEditorX/scene/entity.h>
 #include <SceneryEditorX/scene/scene.h>
-#include "../ui/imgui_init_guard.h"
 #include "Editor/ui/panels/asset_browser.h"
 #include "Editor/ui/panels/menu_bar.h"
 #include "Editor/ui/panels/render_options.h"
@@ -334,7 +333,10 @@ namespace SceneryEditorX
 		// initialize imgui backends only if backend not already set
 		if (io.BackendPlatformUserData == nullptr)
 		{
-			SEDX_CORE_ASSERT(ImGui_ImplSDL3_InitForVulkan(static_cast<SDL_Window*>(Window::GetRawHandle())), "Failed to initialize ImGui's SDL backend");
+			// Use the actual SDL_Window* owned by our Window wrapper instead of the raw native handle.
+			SDL_Window* sdlWindow = Window::GetWindow();
+			SEDX_CORE_ASSERT(sdlWindow != nullptr, "SDL_Window is null when initializing ImGui SDL backend");
+			SEDX_CORE_ASSERT(ImGui_ImplSDL3_InitForVulkan(sdlWindow), "Failed to initialize ImGui's SDL backend");
 		}
 		else
 		{
@@ -356,157 +358,11 @@ namespace SceneryEditorX
 
 	void EditorLayer::OnRender()
 	{
+		// UI frame creation and rendering are now performed exclusively in EditorLayer::Tick()
+		// to ensure a single ImGui NewFrame()/Render() call per application frame.
+		// Keep OnRender() empty for non-UI rendering or future use.
 		if (!ImGui::GetCurrentContext())
 			return;
-
-		ImGui_ImplSDL3_NewFrame();
-		ImGui::NewFrame();
-		ImGuizmo::BeginFrame();
-
-		// -------------------------------------------------------
-		// Fullscreen dockspace host window
-		// -------------------------------------------------------
-		const ImGuiViewport* vp = ImGui::GetMainViewport();
-		ImGui::SetNextWindowPos(vp->Pos);
-		ImGui::SetNextWindowSize(vp->Size);
-		ImGui::SetNextWindowViewport(vp->ID);
-
-		constexpr ImGuiWindowFlags hostFlags =
-			ImGuiWindowFlags_NoDocking |
-			ImGuiWindowFlags_NoTitleBar |
-			ImGuiWindowFlags_NoCollapse |
-			ImGuiWindowFlags_NoResize |
-			ImGuiWindowFlags_NoMove |
-			ImGuiWindowFlags_NoBringToFrontOnFocus |
-			ImGuiWindowFlags_NoNavFocus |
-			ImGuiWindowFlags_NoBackground;
-
-		ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-		ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-		bool dockspaceOpen = true;
-		ImGui::Begin("##DockspaceHost", &dockspaceOpen, hostFlags);
-		ImGui::PopStyleVar(3);
-
-		ImGuiID dockspaceID = ImGui::GetID("MainDockspace");
-		#ifdef IMGUI_HAS_DOCK
-		if (!ImGui::DockBuilderGetNode(dockspaceID))
-		{
-			ImGui::DockBuilderRemoveNode(dockspaceID);
-			ImGui::DockBuilderAddNode(dockspaceID, ImGuiDockNodeFlags_None);
-			ImGui::DockBuilderSetNodeSize(dockspaceID, vp->Size);
-
-			ImGuiID remaining = dockspaceID;
-
-			// Right panel (World + Properties)
-			ImGuiID rightID;
-			ImGui::DockBuilderSplitNode(remaining, ImGuiDir_Right, 0.18f, &rightID, &remaining);
-			ImGuiID propertiesID;
-			ImGui::DockBuilderSplitNode(rightID, ImGuiDir_Down, 0.55f, &propertiesID, &rightID);
-
-			// Bottom panel (Console + Assets)
-			ImGuiID bottomID;
-			ImGui::DockBuilderSplitNode(remaining, ImGuiDir_Down, 0.22f, &bottomID, &remaining);
-			ImGuiID assetsID;
-			ImGui::DockBuilderSplitNode(bottomID, ImGuiDir_Right, 0.60f, &assetsID, &bottomID);
-
-			// Dock windows
-			ImGui::DockBuilderDockWindow("Viewport",    remaining);
-			ImGui::DockBuilderDockWindow("World",       rightID);
-			ImGui::DockBuilderDockWindow("Properties",  propertiesID);
-			ImGui::DockBuilderDockWindow("Console",     bottomID);
-			ImGui::DockBuilderDockWindow("Assets",      assetsID);
-			ImGui::DockBuilderFinish(dockspaceID);
-		}
-		#endif
-
-		ImGui::DockSpace(dockspaceID, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode);
-		ImGui::End(); // DockspaceHost
-
-		// -------------------------------------------------------
-		// Menu bar
-		// -------------------------------------------------------
-		UI_DrawMenubar();
-
-		// -------------------------------------------------------
-		// Viewport panel
-		// -------------------------------------------------------
-		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-		ImGui::Begin("Viewport");
-		ImGui::PopStyleVar();
-		{
-			ImVec2 size = ImGui::GetContentRegionAvail();
-			if (size.x > 0 && size.y > 0)
-			{
-				Renderer::SetViewport(size.x, size.y);
-			}
-			// Gizmo overlay
-			Gizmo::Tick();
-		}
-		ImGui::End(); // Viewport
-
-		// -------------------------------------------------------
-		// World hierarchy panel
-		// -------------------------------------------------------
-		ImGui::Begin("World");
-		{
-			for (Entity* entity : Scene::GetEntities())
-			{
-				if (!entity) continue;
-				const bool selected = false; // TODO: tie to selection system
-
-				std::string displayName = "Unnamed";
-				if (entity->HasComponent<TagComponent>())
-				{
-					displayName = entity->Name();
-				}
-
-				if (ImGui::Selectable(displayName.c_str(), selected))
-				{
-					// TODO: set selection
-				}
-			}
-		}
-		ImGui::End(); // World
-
-		// -------------------------------------------------------
-		// Properties panel
-		// -------------------------------------------------------
-		ImGui::Begin("Properties");
-		{
-			// TODO: display selected entity components
-			ImGui::TextDisabled("Select an entity in the World panel");
-		}
-		ImGui::End(); // Properties
-
-		// -------------------------------------------------------
-		// Console panel
-		// -------------------------------------------------------
-		ImGui::Begin("Console");
-		{
-			// TODO: connect to logging system
-			ImGui::TextDisabled("Console output will appear here");
-		}
-		ImGui::End(); // Console
-
-		// -------------------------------------------------------
-		// Assets panel
-		// -------------------------------------------------------
-		ImGui::Begin("Assets");
-		{
-			// TODO: integrate with AssetManager / content browser
-			ImGui::TextDisabled("Project assets will appear here");
-		}
-		ImGui::End(); // Assets
-
-		// Finish ImGui frame and handle multi-viewport rendering after all UI is created
-		ImGui::Render();
-		ImGuiIO& io = ImGui::GetIO();
-		if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-		{
-			ImGui::UpdatePlatformWindows();
-			ImGui::RenderPlatformWindowsDefault();
-		}
 	}
 
 	void EditorLayer::OnEvent(Event &event)

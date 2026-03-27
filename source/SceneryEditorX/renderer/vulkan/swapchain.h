@@ -30,8 +30,9 @@
  */
 #pragma once
 #include "device.h"
-#include "SceneryEditorX/core/identifiers/flag.h"
 #include <vector>
+#include <SDL3/SDL_video.h>
+#include <SceneryEditorX/core/identifiers/flag.h>
 #include <vma/vk_mem_alloc.h>
 
 // -------------------------------------------------------
@@ -39,8 +40,20 @@
 namespace SceneryEditorX
 {
 	class Window;
+	class CommandList;
+	class FrameSync;
 
-/**
+	struct SwapchainSpec
+	{
+		SDL_Window *sdlWindow;
+		uint32_t width;
+		uint32_t height;
+		VkPresentModeKHR presentMode = VK_PRESENT_MODE_MAX_ENUM_KHR;
+		uint32_t bufferCount;
+		const char *name;
+	};
+
+	/**
 	 * @class Swapchain
 	 * @brief Manages the Vulkan swapchain, including images, image views, depth resources, and synchronization.
 	 */
@@ -48,6 +61,7 @@ namespace SceneryEditorX
 	{
 	public:
 		Swapchain();
+		Swapchain(const SwapchainSpec &spec);
 		virtual ~Swapchain() override;
 
 		void CreateSwapchain();
@@ -58,6 +72,7 @@ namespace SceneryEditorX
 		void Recreate();
 		void Resize(const uint32_t width, const uint32_t height);
 		void AcquireNextImage();
+		void Present(CommandList *cmdList);
 		VkResult Present(VkQueue presentQueue, uint32_t imageIndex, VkSemaphore waitSemaphore);
 		void SetVsync(bool enabled);
 		bool GetVsync() const;

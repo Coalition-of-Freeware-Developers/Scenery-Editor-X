@@ -30,15 +30,17 @@
  */
 #pragma once
 #include "enums.h"
-#include "render_data.h"
+#include "render_data.h" 
 #include "SceneryEditorX/core/resource/iobject.h"
 #include "SceneryEditorX/utils/inheritance.h"
+#include <mutex>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-	// Forward declaration to avoid circular dependency
+	class FrameSync;
+	class Swapchain;
 	class Device;
 	class QueueManager;
 
@@ -52,7 +54,7 @@ namespace SceneryEditorX
 		uint32_t familyIndex = INVALID_VK_INDEX; // Queue family index
 	};
 
-    /**
+	/**
 	 * @class Queue
 	 * @brief Represents a GPU queue for command submission. 
 	 * This class manages a Vulkan queue handle, its associated family index, 
@@ -82,6 +84,7 @@ namespace SceneryEditorX
 		static void SubmitSync(VkCommandBuffer cmdBuffer);
 		static void SubmitAsync(VkCommandBuffer cmdBuffer);
 		static void Present(uint32_t imageIdx);
+		bool Present(Swapchain *swapchain, uint32_t imageIdx, FrameSync *waitSemaphore);
 
 		static void WaitIdle(const Queue& queue);
 		static void QueueWaitAll(const bool flush);
@@ -117,6 +120,9 @@ namespace SceneryEditorX
 		VkSemaphore m_RenderSemaphore = VK_NULL_HANDLE;
 		VkSemaphore m_PresentSemaphore = VK_NULL_HANDLE;
 		const char *name;
+
+		// Protects per-queue state (semaphores, swapchain handle, etc.) for thread-safe Present/Submit
+		mutable std::mutex m_Mutex;
 	};
 
 }

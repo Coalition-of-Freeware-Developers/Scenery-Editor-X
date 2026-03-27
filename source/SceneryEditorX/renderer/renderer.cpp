@@ -29,7 +29,7 @@
  * -------------------------------------------------------
  */
 #include "renderer.h"
-
+#include "renderer_buffers.h"
 #include "SceneryEditorX/core/threading/thread_pool.h"
 #include "vulkan/swapchain.h"
 #include "vulkan/uniform_buffer_set.h"
@@ -110,6 +110,7 @@ namespace SceneryEditorX
 	Scope<Model> Renderer::m_TestModel = nullptr;
 
 	// Bindless draw data
+	std::array<ShaderBuffer_DrawData, RENDERER_MAX_DRAW_CALLS> Renderer::m_DrawData_CPU;
 	uint32_t Renderer::m_DrawDataCount = 0;
 	CommandList *Renderer::m_CmdList_Compute = nullptr;
 	CommandList *Renderer::m_CmdList_Present = nullptr;
@@ -424,7 +425,7 @@ namespace SceneryEditorX
 			m_Camera = sceneCamera;
 		}
 
-	  // Tick the active camera so its matrices are always up-to-date before draw calls.
+		// Tick the active camera so its matrices are always up-to-date before draw calls.
 		// If Scene has an ECS camera entity, Scene::Tick already updates the camera controller.
 		if (m_Camera)
 		{
@@ -910,6 +911,31 @@ namespace SceneryEditorX
 		// Submit command buffer
 		VkPipelineStageFlags waitStages = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
 
+		// Extra lifetime / uninitialized pattern checks
+		auto IsLikelyUninitialized = [](uint64_t val) {
+			// Common MSVC uninitialized patterns: 0xCCCCCCCCCCCCCCCC, 0xCDCDCDCDCDCDCDCD
+			return val == 0xCCCCCCCCCCCCCCCCULL || val == 0xCDCDCDCDCDCDCDCDULL;
+		};
+
+		// Validate device and logical device
+		VkDevice vkDevice = VK_NULL_HANDLE;
+		if (device.IsValid())
+		{
+			vkDevice = device->GetDevice();
+		}
+		SEDX_CORE_VERIFY(vkDevice != VK_NULL_HANDLE, "Logical VkDevice is invalid before submit");
+
+		// Detect obviously-uninitialized handles
+		uint64_t presentSem = reinterpret_cast<uint64_t>(s_PresentSemaphoreHandles[m_CurrentFrameIndex]);
+		uint64_t renderSem = reinterpret_cast<uint64_t>(s_RenderSemaphoreHandles[m_SwapchainImageIndex]);
+		uint64_t fenceHandle = reinterpret_cast<uint64_t>(s_FenceHandles[m_CurrentFrameIndex]);
+		uint64_t cbHandle = reinterpret_cast<uint64_t>(cb);
+
+		SEDX_CORE_VERIFY(!IsLikelyUninitialized(presentSem), "Present semaphore appears uninitialized: 0x{:x}", presentSem);
+		SEDX_CORE_VERIFY(!IsLikelyUninitialized(renderSem), "Render semaphore appears uninitialized: 0x{:x}", renderSem);
+		SEDX_CORE_VERIFY(!IsLikelyUninitialized(fenceHandle), "Fence handle appears uninitialized: 0x{:x}", fenceHandle);
+		SEDX_CORE_VERIFY(!IsLikelyUninitialized(cbHandle), "Command buffer appears uninitialized: 0x{:x}", cbHandle);
+
 		// Ensure indices are valid
 		if (m_CurrentFrameIndex >= s_PresentSemaphoreHandles.size())
 		{
@@ -928,6 +954,20 @@ namespace SceneryEditorX
 			m_FrameNumber,
 			static_cast<void *>(s_PresentSemaphoreHandles[m_CurrentFrameIndex]),
 			static_cast<void *>(s_RenderSemaphoreHandles[m_SwapchainImageIndex]));
+
+		// Defensive validation of synchronization primitives and handles before submit
+		SEDX_CORE_VERIFY(s_PresentSemaphoreHandles[m_CurrentFrameIndex] != VK_NULL_HANDLE,
+						 "Present semaphore handle invalid for frame {}", m_CurrentFrameIndex);
+		SEDX_CORE_VERIFY(s_RenderSemaphoreHandles[m_SwapchainImageIndex] != VK_NULL_HANDLE,
+						 "Render semaphore handle invalid for swapchain image {}", m_SwapchainImageIndex);
+		SEDX_CORE_VERIFY(s_FenceHandles[m_CurrentFrameIndex] != VK_NULL_HANDLE,
+						 "Fence handle invalid for frame {}", m_CurrentFrameIndex);
+		SEDX_CORE_VERIFY(cb != VK_NULL_HANDLE, "Command buffer invalid for frame {}", m_FrameNumber);
+		SEDX_CORE_VERIFY(s_Swapchain && s_Swapchain->Get() != VK_NULL_HANDLE, "Swapchain invalid before present");
+		// Basic container consistency checks
+		SEDX_CORE_VERIFY(s_PresentSemaphoreHandles.size() == s_FenceHandles.size(),
+						 "Present semaphore count ({}) does not equal fence count ({})",
+						 s_PresentSemaphoreHandles.size(), s_FenceHandles.size());
 
 		VkSubmitInfo submitInfo{};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -952,6 +992,14 @@ namespace SceneryEditorX
 		presentInfo.pSwapchains = &swapchainHandle;
 		presentInfo.pImageIndices = &m_SwapchainImageIndex;
 		SEDX_CORE_TRACE_TAG("Renderer", "Presenting swapchain image index {} for frame {}", m_SwapchainImageIndex, m_FrameNumber);
+
+		// Defensive validation before present
+		SEDX_CORE_VERIFY(presentInfo.pSwapchains != nullptr && presentInfo.pImageIndices != nullptr,
+						 "VkPresentInfoKHR not correctly configured");
+		SEDX_CORE_VERIFY(s_RenderSemaphoreHandles[m_SwapchainImageIndex] != VK_NULL_HANDLE,
+						 "Render semaphore invalid before present");
+		SEDX_CORE_VERIFY(s_Swapchain && s_Swapchain->Get() != VK_NULL_HANDLE,
+						 "Swapchain handle invalid before present");
 
 		VkResult presentResult = vkQueuePresentKHR(graphicsQueue, &presentInfo);
 		if (presentResult == VK_ERROR_OUT_OF_DATE_KHR || presentResult == VK_SUBOPTIMAL_KHR)
@@ -1261,7 +1309,7 @@ namespace SceneryEditorX
 			std::abs(s_RendererResolution.x - static_cast<float>(width)) < epsilon &&
 			std::abs(s_RendererResolution.y - static_cast<float>(height)) < epsilon)
 		{
-		    return;
+			return;
 		}
 
 		s_RendererResolution.x = static_cast<float>(width);
@@ -2417,34 +2465,33 @@ namespace SceneryEditorX
 	}
 	*/
 
-	/*
-	uint32_t Renderer::WriteDrawData(const xMath::Matrix& transform, const xMath::Matrix& transform_previous, uint32_t material_index, uint32_t is_transparent)
+	uint32_t Renderer::WriteDrawData(const xMath::Matrix &transform, const xMath::Matrix &prevTransform, uint32_t matIndex, uint32_t isTransparent)
 	{
-		SEDX_CORE_ASSERT(m_DrawDataCount < renderer_max_draw_calls);
+		// TODO: Write the transform matrix into the GPU draw-data structured buffer and return its index.
+		SEDX_CORE_ASSERT(m_DrawDataCount < RENDERER_MAX_DRAW_CALLS);
 		uint32_t index = m_DrawDataCount++;
 
-		Sb_DrawData& entry       = m_draw_data_cpu[index];
-		entry.transform          = transform;
-		entry.transform_previous = transform_previous;
-		entry.material_index     = material_index;
-		entry.is_transparent     = is_transparent;
-		entry.aabb_index         = 0;
-		entry.padding            = 0;
+		ShaderBuffer_DrawData& entry    = m_DrawData_CPU[index];
+		entry.transform					= transform;
+		entry.transform_previous		= prevTransform;
+		entry.material_index			= matIndex;
+		entry.is_transparent			= isTransparent;
+		entry.aabb_index				= 0;
+		entry.padding					= 0;
 
 		// the draw data buffer is a single large allocation partitioned into per-frame regions;
 		// each frame writes to its own region so there is no write-after-read race with the gpu
-		uint32_t global_index = m_frame_resource_index * renderer_max_draw_calls + index;
+		uint32_t globalIndex = m_ResourceIndex * RENDERER_MAX_DRAW_CALLS + index;
 
 		Buffer* buffer = GetBuffer(Renderer_Buffer::DrawData);
 		if (void* mapped = buffer->GetMappedData())
 		{
-			void* dst = static_cast<char*>(mapped) + global_index * sizeof(Sb_DrawData);
-			memcpy(dst, &entry, sizeof(Sb_DrawData));
+			void* dst = static_cast<char*>(mapped) + globalIndex * sizeof(ShaderBuffer_DrawData);
+			memcpy(dst, &entry, sizeof(ShaderBuffer_DrawData));
 		}
 
-		return global_index;
+		return globalIndex;
 	}
-	*/
 
 	/*
 	void Renderer::UpdateDrawCalls(CommandList* cmdList)
