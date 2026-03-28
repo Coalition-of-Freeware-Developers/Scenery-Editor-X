@@ -107,6 +107,7 @@ namespace SceneryEditorX
 		uint32_t heightOutput = static_cast<uint32_t>(GetOutputResolution().y);
 
 #pragma region Mip Count Calculation
+
 		// lambda to compute mip count based on dimensions and minimum mip size (used for render targets with per-mip views)
 		auto compute_mip_count = [](const uint32_t width, const uint32_t height, const uint32_t minDimension)
 		{
@@ -119,7 +120,9 @@ namespace SceneryEditorX
 			}
 			return mipCount;
 		};
+
 #pragma endregion
+
 		SEDX_CORE_TRACE_TAG("RendererResources", "Mip count calculation completed");
 
 		// avoid combining uav + rtv on frequently accessed targets (forces suboptimal layouts on amd)

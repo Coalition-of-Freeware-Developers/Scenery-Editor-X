@@ -46,65 +46,69 @@ namespace SceneryEditorX
 	{
 	public:
 		/**
-		 * @brief 
+		 * @brief Constructs a DateTime instance representing the current date and time.
 		 */
 		DateTime();
 		~DateTime();
 
+		/**
+		 * @brief Constructs a DateTime instance from a file time.
+		 * @param fileTime The file time to initialize the DateTime instance with.
+		 */
 		explicit DateTime(FileTime fileTime);
 
 		/**
-		 * @brief 
-		 * @return 
+		 * @brief Returns a DateTime instance representing the current date and time.
+		 * @return A DateTime instance representing the current date and time.
 		 */
 		static DateTime Now();
 
 		/**
-		 * @brief 
-		 * @return 
+		 * @brief Returns a DateTime instance representing the current date and time in UTC.
+		 * @return A DateTime instance representing the current date and time in UTC.
 		 */
 		static DateTime UtcNow();
 
 		/**
-		 * @brief 
-		 * @return 
+		 * @brief Returns the second component of the DateTime instance.
+		 * @return The second component of the DateTime instance.
 		 */
 		[[nodiscard]] int Second() const { return m_TimeInfo.tm_sec; }
 
 		/**
-		 * @brief 
-		 * @return 
+		 * @brief Returns the minute component of the DateTime instance.
+		 * @return The minute component of the DateTime instance.
 		 */
 		[[nodiscard]] int Minute() const { return m_TimeInfo.tm_min; }
 
 		/**
-		 * @brief 
-		 * @return 
+		 * @brief Returns the hour component of the DateTime instance. 
+		 * @return The hour component of the DateTime instance.
 		 */
 		[[nodiscard]] int Hour() const { return m_TimeInfo.tm_hour; }
 
 		/**
-		 * @brief 
-		 * @return 
+		 * @brief Returns the day component of the DateTime instance.
+		 * @return The day component of the DateTime instance.
 		 */
 		[[nodiscard]] int Day() const { return m_TimeInfo.tm_mday; }
 
 		/**
-		 * @brief 
-		 * @return 
+		 * @brief Returns the month component of the DateTime instance.
+		 * @return The month component of the DateTime instance.
 		 */
 		[[nodiscard]] int Month() const { return m_TimeInfo.tm_mon + 1; }
 
 		/**
-		 * @brief 
-		 * @return 
+		 * @brief Returns the year component of the DateTime instance.
+		 * @return The year component of the DateTime instance.
 		 */
 		[[nodiscard]] int Year() const { return m_TimeInfo.tm_year + 1900; }
 
 		/**
-		 * @brief 
-		 * @param rhs 
-		 * @return 
+		 * @brief Compares two DateTime instances for equality.
+		 * @param rhs The DateTime instance to compare with.
+		 * @return True if the two DateTime instances are equal, false otherwise.
 		 */
 		bool operator==(const DateTime& rhs) const
 		{
@@ -113,94 +117,94 @@ namespace SceneryEditorX
 		}
 
 		/**
-		 * @brief 
-		 * @param rhs 
-		 * @return 
+		 * @brief Compares two DateTime instances for inequality.
+		 * @param rhs The DateTime instance to compare with.
+		 * @return True if the two DateTime instances are not equal, false otherwise.
 		 */
 		bool operator!=(const DateTime& rhs) const { return !(*this == rhs); }
 
 		/**
-		 * @brief 
-		 * @param time 
+		 * @brief Sets the time of day for the DateTime instance.
+		 * @param time The time of day to set, represented as a float value.
 		 */
 		static void SetTimeOfDay(float time);
 
 		/**
-		 * @brief 
-		 * @param year 
-		 * @param month 
-		 * @param day 
-		 * @param hour 
-		 * @param minute 
-		 * @param second 
+		 * @brief Sets the current date and time for the DateTime instance.
+		 * @param year The year component of the date to set.
+		 * @param month The month component of the date to set.
+		 * @param day The day component of the date to set.
+		 * @param hour The hour component of the time to set.
+		 * @param minute The minute component of the time to set.
+		 * @param second The second component of the time to set.
 		 */
 		static void SetCurrentTime(int year, int month, int day, int hour, int minute, int second);
 
 		/**
-		 * @brief 
-		 * @param seconds 
+		 * @brief Adds a specified number of seconds to the DateTime instance.
+		 * @param seconds The number of seconds to add.
 		 */
 		void AddSeconds(int seconds);
 
 		/**
-		 * @brief 
-		 * @param minutes 
+		 * @brief Adds a specified number of minutes to the DateTime instance.
+		 * @param minutes The number of minutes to add.
 		 */
 		void AddMinutes(int minutes);
 
 		/**
-		 * @brief 
-		 * @param hours 
+		 * @brief Adds a specified number of hours to the DateTime instance.
+		 * @param hours The number of hours to add.
 		 */
 		void AddHours(int hours);
 
 		/**
-		 * @brief 
-		 * @param days 
+		 * @brief Adds a specified number of days to the DateTime instance.
+		 * @param days The number of days to add.
 		 */
 		void AddDays(int days);
 
 		/**
-		 * @brief 
-		 * @param months 
+		 * @brief Adds a specified number of months to the DateTime instance.
+		 * @param months The number of months to add.
 		 */
 		void AddMonths(int months);
 
 		/**
-		 * @brief 
-		 * @param years 
+		 * @brief Adds a specified number of years to the DateTime instance.
+		 * @param years The number of years to add.
 		 */
 		void AddYears(int years);
 
 		/**
-		 * @brief 
-		 * @return 
+		 * @brief Converts the DateTime instance to a 64-bit integer representation.
+		 * @return The 64-bit integer representation of the DateTime instance.
 		 */
 		[[nodiscard]] uint64_t ToNumber() const;
 
 		/**
-		 * @brief 
-		 * @param number 
-		 * @return 
+		 * @brief Creates a DateTime instance from a 64-bit integer representation.
+		 * @param number The 64-bit integer representation of the DateTime instance.
+		 * @return A DateTime instance corresponding to the provided 64-bit integer representation.
 		 */
 		static DateTime FromNumber(uint64_t number);
 
 		/**
-		 * @brief 
-		 * @return 
+		 * @brief Converts the DateTime instance to a string representation.
+		 * @return The string representation of the DateTime instance.
 		 */
 		[[nodiscard]] std::string ToString() const;
 
 		/**
-		 * @brief 
-		 * @param input 
-		 * @return 
+		 * @brief Parses a string representation of a date and time into a DateTime instance.
+		 * @param input The string representation of the date and time to parse.
+		 * @return A DateTime instance corresponding to the provided string representation.
 		 */
 		static DateTime Parse(const std::string &input);
 
 		/**
-		 * @brief 
-		 * @return 
+		 * @brief Returns a reference to the singleton instance of the DateTime class.
+		 * @return A reference to the singleton instance of the DateTime class.
 		 */
 		static DateTime &Instance();
 
@@ -238,7 +242,7 @@ namespace SceneryEditorX
 			};
 		};
 
-		std::tm m_TimeInfo{};
+		std::tm m_TimeInfo{}; // Standard C library structure to hold date and time components (year, month, day, hour, minute, second)
 	};
 }
 

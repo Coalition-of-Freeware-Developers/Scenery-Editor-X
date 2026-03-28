@@ -30,7 +30,6 @@
  */
 #include "renderer.h"
 #include "renderer_buffers.h"
-#include "SceneryEditorX/core/threading/thread_pool.h"
 #include "vulkan/swapchain.h"
 #include "vulkan/uniform_buffer_set.h"
 #include "vulkan/debug/graphics_debug.h"
@@ -521,7 +520,7 @@ namespace SceneryEditorX
 			// Submit ImGui draw data to the GPU via the custom UI backend
 			if (ImGui::GetCurrentContext() && ImGui::GetDrawData())
 			{
-				::UI::Render(ImGui::GetDrawData(), nullptr, false);
+				UI::Render(ImGui::GetDrawData(), nullptr, false);
 			}
 
 			// periodic resource cleanup
@@ -767,11 +766,9 @@ namespace SceneryEditorX
 		// Acquire image and signal the exact semaphore that submit waits on for this frame.
 		{
 			VkResult acquireResult = vkAcquireNextImageKHR(RenderContext::Get()->GetDevice()->GetLogicalDevice(),
-														   s_Swapchain->Get(),
-														   UINT64_MAX,
+														   s_Swapchain->Get(), UINT64_MAX,
 														   s_PresentSemaphoreHandles[m_CurrentFrameIndex],
-														   VK_NULL_HANDLE,
-														   &m_SwapchainImageIndex);
+														   VK_NULL_HANDLE, &m_SwapchainImageIndex);
 
 			if (acquireResult == VK_ERROR_OUT_OF_DATE_KHR || acquireResult == VK_SUBOPTIMAL_KHR)
 			{
@@ -781,9 +778,7 @@ namespace SceneryEditorX
 
 			if (acquireResult != VK_SUCCESS)
 			{
-				SEDX_CORE_WARN_TAG("Renderer",
-								   "vkAcquireNextImageKHR failed with result: {}",
-								   static_cast<int>(acquireResult));
+				SEDX_CORE_WARN_TAG("Renderer", "vkAcquireNextImageKHR failed with result: {}", static_cast<int>(acquireResult));
 				return false;
 			}
 
@@ -912,7 +907,8 @@ namespace SceneryEditorX
 		VkPipelineStageFlags waitStages = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
 
 		// Extra lifetime / uninitialized pattern checks
-		auto IsLikelyUninitialized = [](uint64_t val) {
+		auto IsLikelyUninitialized = [](uint64_t val) 
+		{
 			// Common MSVC uninitialized patterns: 0xCCCCCCCCCCCCCCCC, 0xCDCDCDCDCDCDCDCD
 			return val == 0xCCCCCCCCCCCCCCCCULL || val == 0xCDCDCDCDCDCDCDCDULL;
 		};
@@ -949,8 +945,7 @@ namespace SceneryEditorX
 								m_SwapchainImageIndex, s_RenderSemaphoreHandles.size());
 			return;
 		}
-		SEDX_CORE_TRACE_TAG(
-			"Renderer", "Submitting command buffer for frame {}, waiting on present semaphore {}, signaling render semaphore {}",
+		SEDX_CORE_TRACE_TAG("Renderer", "Submitting command buffer for frame {}, waiting on present semaphore {}, signaling render semaphore {}",
 			m_FrameNumber,
 			static_cast<void *>(s_PresentSemaphoreHandles[m_CurrentFrameIndex]),
 			static_cast<void *>(s_RenderSemaphoreHandles[m_SwapchainImageIndex]));
@@ -1044,8 +1039,8 @@ namespace SceneryEditorX
 
 	void Renderer::BlitToBackBuffer(CommandList *cmdList, ImageResource *img)
 	{
-	    // compute blit: vulkan can't blit depth to float, amd uav requires float
-	    cmdList->Blit(img, s_Swapchain.Get());
+		// compute blit: vulkan can't blit depth to float, amd uav requires float
+		cmdList->Blit(img, s_Swapchain.Get());
 	}
 
 	void Renderer::CreateFrameResources()
@@ -1223,9 +1218,7 @@ namespace SceneryEditorX
 	void Renderer::RenderThreadFunc(RenderThread *renderThread)
 	{
 		while (renderThread->IsRunning())
-		{
 			WaitAndRender(renderThread);
-		}
 	}
 	
 	void Renderer::WaitAndRender(RenderThread* renderThread)
@@ -1267,6 +1260,7 @@ namespace SceneryEditorX
 	{
 		return m_SwapchainImageIndex;
 	}
+
 #pragma endregion
 
 #pragma region Viewport & Image Management
@@ -1979,7 +1973,7 @@ namespace SceneryEditorX
 		// This allows the pass-based pipeline (including editor grid) to appear in-window.
 		// NOTE: Disabled for now because this path may execute while another dynamic
 		// rendering instance is active, which violates Vulkan rules for image barriers/blits.
-		const bool useFrameOutputBlitPath = false;
+		const bool useFrameOutputBlitPath = true;
 		if (ImageResource* frameOutput = GetRenderTarget(Renderer_RenderTarget::frame_output);
 			useFrameOutputBlitPath && frameOutput && frameOutput->Get() && *frameOutput->Get() != VK_NULL_HANDLE)
 		{
@@ -2020,11 +2014,15 @@ namespace SceneryEditorX
 			blit.srcSubresource.mipLevel = 0;
 			blit.srcSubresource.baseArrayLayer = 0;
 			blit.srcSubresource.layerCount = 1;
-			blit.srcOffsets[0] = { 0, 0, 0 };
+			blit.srcOffsets[0] = {
+			    .x = 0, 
+			    .y = 0, 
+			    .z = 0
+			};
 			blit.srcOffsets[1] = {
-				static_cast<int32_t>(frameOutput->GetWidth()),
-				static_cast<int32_t>(frameOutput->GetHeight()),
-				1
+			    .x = static_cast<int32_t>(frameOutput->GetWidth()),
+			    .y = static_cast<int32_t>(frameOutput->GetHeight()),
+			    .z = 1
 			};
 
 			VkExtent2D extent = s_Swapchain->GetExtent();
@@ -2032,15 +2030,19 @@ namespace SceneryEditorX
 			blit.dstSubresource.mipLevel = 0;
 			blit.dstSubresource.baseArrayLayer = 0;
 			blit.dstSubresource.layerCount = 1;
-			blit.dstOffsets[0] = { 0, 0, 0 };
-			blit.dstOffsets[1] = { static_cast<int32_t>(extent.width), static_cast<int32_t>(extent.height), 1 };
+			blit.dstOffsets[0] = {
+			    .x = 0, .y = 0, .z = 0
+			};
+			blit.dstOffsets[1] = {
+			    .x = static_cast<int32_t>(extent.width),
+			    .y = static_cast<int32_t>(extent.height),
+			    .z = 1 
+			};
 
-			vkCmdBlitImage(
-				cb,
+			vkCmdBlitImage(cb,
 				*frameOutput->Get(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
 				swapchainImages[imageIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-				1, &blit,
-				VK_FILTER_LINEAR);
+				1, &blit, VK_FILTER_LINEAR);
 
 			VkImageMemoryBarrier2 postBlit[2]{};
 
@@ -2102,7 +2104,11 @@ namespace SceneryEditorX
 				.oldLayout = colorOldLayout,
 				.newLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
 				.image = swapchainImages[imageIndex],
-				.subresourceRange{.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .layerCount = 1}},
+				.subresourceRange{
+					.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, 
+					.levelCount = 1, 
+					.layerCount = 1}
+			},
 			VkImageMemoryBarrier2{
 				.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
 				.srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
@@ -2114,10 +2120,11 @@ namespace SceneryEditorX
 				.image = depthImage,
 				.subresourceRange{.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,
 								  .levelCount = 1,
-								  .layerCount = 1}}};
-		SEDX_CORE_TRACE_TAG("Renderer",
-							"Transitioning swapchain image {} and depth image to attachment optimal layout",
-							imageIndex);
+								  .layerCount = 1}
+			}
+		};
+
+		SEDX_CORE_TRACE_TAG("Renderer", "Transitioning swapchain image {} and depth image to attachment optimal layout", imageIndex);
 
 		VkDependencyInfo barrierDependencyInfo{};
 		barrierDependencyInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
@@ -2135,7 +2142,8 @@ namespace SceneryEditorX
 													  .imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
 													  .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
 													  .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-													  .clearValue{.color{{0.0f, 0.0f, 0.0f, 1.0f}}}};
+													  .clearValue{.color{{0.0f, 0.0f, 0.0f, 1.0f}}}
+		};
 		SEDX_CORE_TRACE_TAG("Renderer", "Configured color attachment for dynamic rendering");
 
 		VkRenderingAttachmentInfo depthAttachmentInfo{.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
@@ -2143,16 +2151,22 @@ namespace SceneryEditorX
 													  .imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
 													  .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
 													  .storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-													  .clearValue = {.depthStencil = {1.0f, 0}}};
+													  .clearValue = {.depthStencil = {
+													      .depth = 1.0f, 
+													      .stencil = 0}
+													  }
+		};
 		SEDX_CORE_TRACE_TAG("Renderer", "Configured depth attachment for dynamic rendering");
 
 		VkExtent2D extent = s_Swapchain->GetExtent();
-		VkRenderingInfo renderingInfo{.sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
-									  .renderArea{.extent{.width = extent.width, .height = extent.height}},
-									  .layerCount = 1,
-									  .colorAttachmentCount = 1,
-									  .pColorAttachments = &colorAttachmentInfo,
-									  .pDepthAttachment = &depthAttachmentInfo};
+		VkRenderingInfo renderingInfo{
+			.sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
+			.renderArea{.extent{.width = extent.width, .height = extent.height}},
+			.layerCount = 1,
+			.colorAttachmentCount = 1,
+			.pColorAttachments = &colorAttachmentInfo,
+			.pDepthAttachment = &depthAttachmentInfo
+		};
 
 		SEDX_CORE_TRACE_TAG("Renderer", "Beginning dynamic rendering with extent {}x{}", extent.width, extent.height);
 
@@ -2218,7 +2232,6 @@ namespace SceneryEditorX
 			// Static model placements — no rotation.
 			// Model transforms will be driven by the scene/ECS once wired up.
 			pSd->model[0] = Mat4(1.0f);
-
 			pSd->model[1] = Mat4::Translate(Vec3(-3.0f, 0.0f, 0.0f));
 			pSd->model[2] = Mat4::Translate(Vec3( 3.0f, 0.0f, 0.0f));
 		}
@@ -2260,30 +2273,22 @@ namespace SceneryEditorX
 			vkCmdDrawIndexed(cb, asset.GetIndexCount(), 3, 0, 0, 0);
 		}
 
-			if (m_GridPipeline != VK_NULL_HANDLE &&
-			m_GridPipelineLayout != VK_NULL_HANDLE &&
-			m_GridVertexBuffer != VK_NULL_HANDLE &&
-			m_GridIndexBuffer != VK_NULL_HANDLE &&
-			m_GridIndexCount > 0 &&
-			m_CameraDescriptorSets[m_CurrentFrameIndex] != VK_NULL_HANDLE)
-			{
-			SEDX_CORE_TRACE_TAG("Renderer",
-				"[Grid] Issuing grid draw for frame={} frameIndex={} imageIndex={} pipeline={} layout={} vb={} ib={} indexCount={}",
-				m_FrameNumber,
-				m_CurrentFrameIndex,
-				imageIndex,
+		if (m_GridPipeline != VK_NULL_HANDLE && m_GridPipelineLayout != VK_NULL_HANDLE &&
+			m_GridVertexBuffer != VK_NULL_HANDLE && m_GridIndexBuffer != VK_NULL_HANDLE &&
+			m_GridIndexCount > 0 && m_CameraDescriptorSets[m_CurrentFrameIndex] != VK_NULL_HANDLE)
+		{
+				SEDX_CORE_TRACE_TAG("Renderer", "[Grid] Issuing grid draw for frame={} frameIndex={} imageIndex={} pipeline={} layout={} vb={} ib={} indexCount={}",
+				m_FrameNumber, m_CurrentFrameIndex, imageIndex,
 				static_cast<void*>(m_GridPipeline),
 				static_cast<void*>(m_GridPipelineLayout),
 				static_cast<void*>(m_GridVertexBuffer),
-				static_cast<void*>(m_GridIndexBuffer),
-				m_GridIndexCount);
+				static_cast<void*>(m_GridIndexBuffer), m_GridIndexCount);
 
-			vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, m_GridPipeline);
-			SEDX_CORE_TRACE_TAG("Renderer", "[Grid] vkCmdBindPipeline issued");
-			vkCmdSetCullMode(cb, VK_CULL_MODE_NONE);
+				vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, m_GridPipeline);
+				SEDX_CORE_TRACE_TAG("Renderer", "[Grid] vkCmdBindPipeline issued");
+				vkCmdSetCullMode(cb, VK_CULL_MODE_NONE);
 
-			vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS,
-									m_GridPipelineLayout,
+				vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, m_GridPipelineLayout,
 									0, 1, &m_CameraDescriptorSets[m_CurrentFrameIndex],
 									0, nullptr);
 
@@ -2303,12 +2308,8 @@ namespace SceneryEditorX
 			gridPush.padding = 0;
 			gridPush.values[0][0] = 5000.0f; // grid half-extent
 
-			vkCmdPushConstants(cb,
-				m_GridPipelineLayout,
-				VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-				0,
-				sizeof(GridPushConstants),
-				&gridPush);
+			vkCmdPushConstants(cb, m_GridPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+				0, sizeof(GridPushConstants), &gridPush);
 
 			VkDeviceSize gridOffset = 0;
 			vkCmdBindVertexBuffers(cb, 0, 1, &m_GridVertexBuffer, &gridOffset);
@@ -2320,7 +2321,6 @@ namespace SceneryEditorX
 
 		vkCmdEndRendering(cb);
 		SEDX_CORE_TRACE_TAG("Renderer", "Dynamic rendering ended");
-
 	}
 
 	void Renderer::SetCommonTextures(CommandList* cmdList)

@@ -32,6 +32,7 @@
 #include <SceneryEditorX/asset/asset.h>
 #include <SceneryEditorX/core/resource/iobject.h>
 #include <SceneryEditorX/core/resource/iresource.h>
+#include <SceneryEditorX/utils/pointers.h>
 
 // -------------------------------------------------------
 

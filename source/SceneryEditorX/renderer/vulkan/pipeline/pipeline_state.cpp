@@ -42,11 +42,18 @@ namespace SceneryEditorX
 
 	static void Validate(PipelineState& pso)
 	{
-		bool hasShaderCompute     = pso.shaders[Stage::Compute]					? pso.shaders[Stage::Compute]->IsCompiled()					: false;
-		bool hasShaderVertex      = pso.shaders[Stage::Vertex]					? pso.shaders[Stage::Vertex]->IsCompiled()					: false;
-		bool hasShaderHull        = pso.shaders[Stage::TessellationControl]     ? pso.shaders[Stage::TessellationControl]->IsCompiled()     : false;
-		bool hasShaderDomain      = pso.shaders[Stage::TessellationEvaluation]  ? pso.shaders[Stage::TessellationEvaluation]->IsCompiled()  : false;
-		bool hasShaderFragment    = pso.shaders[Stage::Fragment]				? pso.shaders[Stage::Fragment]->IsCompiled()				: false;
+		// The shaders map is keyed by stage index (uint32_t). Use find so we don't insert default entries
+		auto has_shader_for_stage = [&](const Stage s) -> bool {
+			const uint32_t key = static_cast<uint32_t>(s);
+			auto it = pso.shaders.find(key);
+			return (it != pso.shaders.end() && it->second != nullptr && it->second->HasStage(s));
+		};
+
+		bool hasShaderCompute  = has_shader_for_stage(Stage::Compute);
+		bool hasShaderVertex   = has_shader_for_stage(Stage::Vertex);
+		bool hasShaderHull     = has_shader_for_stage(Stage::TessellationControl);
+		bool hasShaderDomain   = has_shader_for_stage(Stage::TessellationEvaluation);
+		bool hasShaderFragment = has_shader_for_stage(Stage::Fragment);
 
 		bool hasSomeShader = hasShaderCompute || hasShaderVertex || hasShaderHull || hasShaderDomain;
 		SEDX_CORE_ASSERT(hasSomeShader, "There is no shader set, ensure that it compiled successfully and that it has been set");
@@ -102,13 +109,15 @@ namespace SceneryEditorX
 			hash = HashCombine(hash, pso.depthStencil_State->GetHash());
 		}
 	
-		// shaders
-		for (Shader* shader : pso.shaders)
+		// shaders (map iteration)
+		for (const auto &kv : pso.shaders)
 		{
+			Shader* shader = kv.second;
 			if (!shader)
 				continue;
-	
-			hash = HashCombine(hash, shader->GetHash());
+
+			// Use pointer address as a stable-enough identity for hashing here
+			hash = HashCombine(hash, static_cast<uint64_t>(reinterpret_cast<uintptr_t>(shader)));
 		}
 	
 		// render target
@@ -166,15 +175,15 @@ namespace SceneryEditorX
 	
 		if (pso.resolutionScale)
 		{ 
-			*width                 = static_cast<uint32_t>(*width * pso.resolutionScale);
-			*height                = static_cast<uint32_t>(*height * pso.resolutionScale);
+			*width  = static_cast<uint32_t>(*width * pso.resolutionScale);
+			*height = static_cast<uint32_t>(*height * pso.resolutionScale);
 		}
 	}
 
 
 	PipelineState::PipelineState()
 	{
-	    m_Hash = ComputeHash(*this);
+		m_Hash = ComputeHash(*this);
 		clearColor.fill(RHI_COLOR_LOAD);
 		renderTarget_ColorTextures.fill(nullptr);
 	}
@@ -198,9 +207,10 @@ namespace SceneryEditorX
 		if (clearStencil != STENCIL_LOAD && clearStencil != STENCIL_DONT_CARE)
 			return true;
 
-		for (const PipelineStateColor& color : clearColor)
+	    for (const PipelineStateColor& color : clearColor)
 		{
-			if (color != RHI_COLOR_LOAD && color != COLOR_DONT_CARE)
+			// Alpha < 0 means "load" guard; non-negative alpha indicates a clear color
+			if (color.a >= 0.0f)
 				return true;
 		}
 
@@ -231,7 +241,9 @@ namespace SceneryEditorX
 
 	bool PipelineState::HasShader(const Stage shaderStage) const
 	{
-		return shaders[static_cast<uint32_t>(shaderStage)] != nullptr;
+		const uint32_t key = static_cast<uint32_t>(shaderStage);
+		auto it = shaders.find(key);
+		return (it != shaders.end() && it->second != nullptr);
 	}
 
 } // namespace SceneryEditorX
