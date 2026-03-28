@@ -29,6 +29,7 @@
  * -------------------------------------------------------
  */
 #pragma once
+#include <SceneryEditorX/utils/inheritance.h>
 
 // -------------------------------------------------------
 
@@ -36,41 +37,59 @@ namespace SceneryEditorX
 {
 
 	/**
+	 * @struct BlendStateSpec
+	 * @brief Specifies the blend state configuration for a render target.
+	 */
+	struct BlendStateSpec
+	{
+		bool			blendEnabled  = false;
+		VkBlendFactor	srcBlend	  = VK_BLEND_FACTOR_SRC_ALPHA;
+		VkBlendFactor	dstBlend	  = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+		VkBlendOp		blendOp		  = VK_BLEND_OP_ADD;
+		VkBlendFactor	srcAlpha      = VK_BLEND_FACTOR_ONE;
+		VkBlendFactor	dstAlpha      = VK_BLEND_FACTOR_ONE;
+		VkBlendOp		alphaOp       = VK_BLEND_OP_ADD;
+		float			blendFactor   = 0.0f;
+	};
+
+	/**
 	 * @class BlendState
 	 * @brief Immutable blend configuration object returned by Renderer::GetBlendState().
 	 */
-	class BlendState : public RefCounted
+	class BlendState : public SharedObject
 	{
 	public:
-		explicit BlendState(bool blendEnabled, VkBlendFactor srcColor = VK_BLEND_FACTOR_ONE,
-							VkBlendFactor dstColor = VK_BLEND_FACTOR_ZERO,
-							VkBlendOp     colorOp  = VK_BLEND_OP_ADD,
-							VkBlendFactor srcAlpha = VK_BLEND_FACTOR_ONE,
-							VkBlendFactor dstAlpha = VK_BLEND_FACTOR_ZERO,
-							VkBlendOp     alphaOp  = VK_BLEND_OP_ADD)
-			: m_BlendEnabled(blendEnabled)
-			, m_SrcColor(srcColor), m_DstColor(dstColor), m_ColorOp(colorOp)
-			, m_SrcAlpha(srcAlpha), m_DstAlpha(dstAlpha), m_AlphaOp(alphaOp)
-		{
-		}
-		[[nodiscard]] bool          IsBlendEnabled() const { return m_BlendEnabled; }
-		[[nodiscard]] VkBlendFactor GetSrcColor()    const { return m_SrcColor; }
-		[[nodiscard]] VkBlendFactor GetDstColor()    const { return m_DstColor; }
-		[[nodiscard]] VkBlendOp     GetColorOp()     const { return m_ColorOp;  }
-		[[nodiscard]] VkBlendFactor GetSrcAlpha()    const { return m_SrcAlpha; }
-		[[nodiscard]] VkBlendFactor GetDstAlpha()    const { return m_DstAlpha; }
-		[[nodiscard]] VkBlendOp     GetAlphaOp()     const { return m_AlphaOp;  }
+		BlendState() = default;
+		BlendState(const BlendStateSpec &spec);
+		~BlendState() = default;
+
+		[[nodiscard]] bool          IsBlendEnabled()				const { return m_BlendEnabled; }
+		[[nodiscard]] VkBlendFactor GetSrcColor()					const { return m_SrcColor; }
+		[[nodiscard]] VkBlendFactor GetDstColor()					const { return m_DstColor; }
+		[[nodiscard]] VkBlendOp     GetColorOp()					const { return m_ColorOp;  }
+		[[nodiscard]] VkBlendFactor GetSrcAlpha()					const { return m_SrcAlpha; }
+		[[nodiscard]] VkBlendFactor GetDstAlpha()					const { return m_DstAlpha; }
+		[[nodiscard]] VkBlendOp     GetAlphaOp()					const { return m_AlphaOp; }
+		[[nodiscard]] VkCompareOp	GetDepthComparisonFunction()	const { return m_Depth_CompFunc; }
+
+		[[nodiscard]] uint64_t GetHash()							const { return m_Hash; }
+	    [[nodiscard]] bool operator==(const BlendState& state)		const { return m_Hash == state.m_Hash; }
 
 	private:
-		bool          m_BlendEnabled = false;
-		VkBlendFactor m_SrcColor     = VK_BLEND_FACTOR_ONE;
-		VkBlendFactor m_DstColor     = VK_BLEND_FACTOR_ZERO;
-		VkBlendOp     m_ColorOp      = VK_BLEND_OP_ADD;
-		VkBlendFactor m_SrcAlpha     = VK_BLEND_FACTOR_ONE;
-		VkBlendFactor m_DstAlpha     = VK_BLEND_FACTOR_ZERO;
-		VkBlendOp     m_AlphaOp      = VK_BLEND_OP_ADD;
-	};
+		BlendStateSpec	m_Spec;
 
+		bool            m_BlendEnabled			= false;
+		VkCompareOp		m_Depth_CompFunc		= VK_COMPARE_OP_NEVER;
+		VkBlendFactor   m_SrcColor				= VK_BLEND_FACTOR_ONE;
+		VkBlendFactor   m_DstColor				= VK_BLEND_FACTOR_ZERO;
+		VkBlendOp       m_ColorOp				= VK_BLEND_OP_ADD;
+		VkBlendFactor   m_SrcAlpha				= VK_BLEND_FACTOR_ONE;
+		VkBlendFactor   m_DstAlpha				= VK_BLEND_FACTOR_ONE;
+		VkBlendOp       m_AlphaOp				= VK_BLEND_OP_ADD;
+	    float			m_BlendFactor           = 1.0f;
+
+		uint64_t m_Hash = 0;
+	};
 
 }
 

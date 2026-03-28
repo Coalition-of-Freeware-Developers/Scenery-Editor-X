@@ -30,15 +30,12 @@
  */
 #pragma once
 #include "renderer_buffers.h"
-#include "renderer_declarations.h"
 #include "font/font.h"
 #include "vulkan/blend_states.h"
 #include "vulkan/command_list.h"
 #include "vulkan/command_pool.h"
-#include "vulkan/depth_stencil.h"
 #include "vulkan/image_resource.h"
 #include "vulkan/push_constant_buffer.h"
-#include "vulkan/rasterizer.h"
 #include "vulkan/render_context.h"
 #include "vulkan/sampler.h"
 #include "vulkan/viewport.h"
@@ -46,7 +43,6 @@
 #include <array>
 #include <SceneryEditorX/asset/model.h>
 #include <SceneryEditorX/core/threading/render_thread.h>
-#include <SceneryEditorX/core/window/window.h>
 #include <SceneryEditorX/renderer/gpu_stats.h>
 
 // -------------------------------------------------------
@@ -545,7 +541,6 @@ namespace SceneryEditorX
 		static Scope<Model> m_TestModel;
 
 		// Bindless
-
 		// bindless draw data
 		static std::array<ShaderBuffer_DrawData, RENDERER_MAX_DRAW_CALLS> m_DrawData_CPU;
 		static uint32_t m_DrawData_Count;
@@ -636,7 +631,6 @@ namespace SceneryEditorX
 		static VkBuffer m_GridIndexBuffer;
 		static VmaAllocation m_GridIndexAllocation;
 		static uint32_t m_GridIndexCount;
-
 
 		/* Active camera providing view / projection for every frame */
 		static Camera* m_Camera;

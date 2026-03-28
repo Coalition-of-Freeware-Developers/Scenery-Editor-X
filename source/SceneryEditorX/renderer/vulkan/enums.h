@@ -272,6 +272,21 @@ namespace SceneryEditorX
 		MaxEnum
 	};
 
+	/**
+	 * @enum BarrierScope
+	 * @brief Enumeration of barrier scopes for Vulkan synchronization.
+	 * Allows specifying barrier scope instead of conservative auto-deduction
+	 */
+	enum class BarrierScope : uint8_t
+	{
+		Auto,     // deduce from layout/usage (default, conservative)
+		Graphics, // vertex/fragment/tessellation stages
+		Compute,  // compute stage only
+		Transfer, // transfer stage only
+		Fragment, // fragment stage only
+		All       // all commands (most conservative, explicit)
+	};
+
 }
 
 // -----------------------------------------------------------------

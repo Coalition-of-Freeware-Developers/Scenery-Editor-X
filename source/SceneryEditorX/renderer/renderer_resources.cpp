@@ -34,7 +34,9 @@
 #include "renderer_declarations.h"
 #include "font/font.h"
 #include "vulkan/buffer.h"
+#include "vulkan/depth_stencil.h"
 #include "vulkan/image_resource.h"
+#include "vulkan/rasterizer.h"
 #include "vulkan/sampler.h"
 #include <SceneryEditorX/asset/import/texture_importer.h>
 #include <SceneryEditorX/core/resource/resource_cache.h>
@@ -61,27 +63,27 @@ namespace SceneryEditorX
 
 	// Static state object instances (created once, never mutated after init)
 	static std::array<RasterizerState,   static_cast<uint8_t>(Renderer_RasterizerState::MaxEnum)> s_RasterizerStates  = {
-		RasterizerState{ PolygonMode::Solid,     false },   // Solid
-		RasterizerState{ PolygonMode::Wireframe, false },   // Wireframe
-		RasterizerState{ PolygonMode::Solid,     true,  1.0f, 1.75f }, // Light_point_spot  (depth bias)
-		RasterizerState{ PolygonMode::Solid,     true,  1.0f, 2.00f }, // Light_directional (depth bias)
+		RasterizerState(RasterStateSpec{ PolygonMode::Solid,     false, true,  0.0f, 0.0f, 0.0f, 1.0f }),   // Solid
+		RasterizerState(RasterStateSpec{ PolygonMode::Wireframe, false, true,  0.0f, 0.0f, 0.0f, 1.0f }),   // Wireframe
+		RasterizerState(RasterStateSpec{ PolygonMode::Solid,     true,  true,  1.0f, 1.75f, 0.0f, 1.0f }), // Light_point_spot  (depth bias)
+		RasterizerState(RasterStateSpec{ PolygonMode::Solid,     true,  true,  1.0f, 2.00f, 0.0f, 1.0f }), // Light_directional (depth bias)
 	};
 
 	static std::array<BlendState, static_cast<uint8_t>(Renderer_BlendState::MaxEnum)> s_BlendStates = {
-		BlendState{ false },   // Off
-		BlendState{ true,  VK_BLEND_FACTOR_SRC_ALPHA, VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, VK_BLEND_OP_ADD,
-							VK_BLEND_FACTOR_ONE,      VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, VK_BLEND_OP_ADD }, // Alpha
-		BlendState{ true,  VK_BLEND_FACTOR_ONE,       VK_BLEND_FACTOR_ONE,                VK_BLEND_OP_ADD,
-							VK_BLEND_FACTOR_ONE,      VK_BLEND_FACTOR_ONE,                VK_BLEND_OP_ADD }, // Additive
-		BlendState{ true,  VK_BLEND_FACTOR_ONE,       VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, VK_BLEND_OP_ADD,
-							VK_BLEND_FACTOR_ONE,      VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, VK_BLEND_OP_ADD }, // Premultiplied
+		BlendState(BlendStateSpec{ false }), // Off
+		BlendState(BlendStateSpec{ true,  VK_BLEND_FACTOR_SRC_ALPHA, VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, VK_BLEND_OP_ADD,
+									VK_BLEND_FACTOR_ONE,      VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, VK_BLEND_OP_ADD, 0.0f }), // Alpha
+		BlendState(BlendStateSpec{ true,  VK_BLEND_FACTOR_ONE,       VK_BLEND_FACTOR_ONE,                VK_BLEND_OP_ADD,
+									VK_BLEND_FACTOR_ONE,      VK_BLEND_FACTOR_ONE,                VK_BLEND_OP_ADD, 0.0f }), // Additive
+		BlendState(BlendStateSpec{ true,  VK_BLEND_FACTOR_ONE,       VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, VK_BLEND_OP_ADD,
+									VK_BLEND_FACTOR_ONE,      VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, VK_BLEND_OP_ADD, 0.0f }), // Premultiplied
 	};
 
 	static std::array<DepthStencilState, static_cast<uint8_t>(Renderer_DepthStencilState::MaxEnum)> s_DepthStencilStates = {
-		DepthStencilState{ false, false, VK_COMPARE_OP_ALWAYS    }, // Off
-		DepthStencilState{ true,  false, VK_COMPARE_OP_EQUAL     }, // ReadEqual
-		DepthStencilState{ true,  false, VK_COMPARE_OP_GREATER_OR_EQUAL }, // ReadGreaterEqual (reverse-z)
-		DepthStencilState{ true,  true,  VK_COMPARE_OP_GREATER   }, // ReadWrite (reverse-z)
+		DepthStencilState(DepthStencilSpec{ false, false, VK_COMPARE_OP_ALWAYS }), // Off
+		DepthStencilState(DepthStencilSpec{ true,  false, VK_COMPARE_OP_EQUAL  }), // ReadEqual
+		DepthStencilState(DepthStencilSpec{ true,  false, VK_COMPARE_OP_GREATER_OR_EQUAL }), // ReadGreaterEqual (reverse-z)
+		DepthStencilState(DepthStencilSpec{ true,  true,  VK_COMPARE_OP_GREATER }), // ReadWrite (reverse-z)
 	};
 
 	// Static members defined here (declared in renderer.h)

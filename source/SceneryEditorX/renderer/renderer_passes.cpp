@@ -36,6 +36,7 @@
 #include "SceneryEditorX/scene/mesh.h"
 #include "font/font.h"
 #include "vulkan/enums.h"
+#include "vulkan/rasterizer.h"
 #include "vulkan/render_context.h"
 #include "vulkan/pipeline/pipeline_state.h"
 #include <SceneryEditorX/scene/camera.h>

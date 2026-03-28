@@ -36,26 +36,54 @@ namespace SceneryEditorX
 {
 
 	/**
+	 * @struct DepthStencilSpec
+	 * @brief 
+	 */
+	struct DepthStencilSpec
+	{
+		bool depth_Test					 = true;
+		bool depth_Write				 = true;
+		VkCompareOp depth_CompFunc		 = VK_COMPARE_OP_LESS_OR_EQUAL;
+		bool stencil_Test				 = false;
+		bool stencil_Write				 = false;
+		VkCompareOp stencil_CompFunc	 = VK_COMPARE_OP_NEVER;
+		VkStencilOp stencil_FailOp		 = VK_STENCIL_OP_ZERO;
+		VkStencilOp stencil_DepthFail_Op = VK_STENCIL_OP_ZERO;
+		VkStencilOp stencil_PassOp		 = VK_STENCIL_OP_ZERO;
+	};
+
+	/**
 	 * @class DepthStencilState
 	 * @brief Immutable depth/stencil configuration returned by Renderer::GetDepthStencilState().
 	 */
 	class DepthStencilState : public RefCounted
 	{
 	public:
-		explicit DepthStencilState(bool depthTestEnable, bool depthWriteEnable, VkCompareOp depthCompareOp = VK_COMPARE_OP_LESS)
-			: m_DepthTestEnable(depthTestEnable)
-			, m_DepthWriteEnable(depthWriteEnable)
-			, m_DepthCompareOp(depthCompareOp)
-		{}
+		DepthStencilState() = default;
+		DepthStencilState(const DepthStencilSpec &spec);
+		~DepthStencilState() = default;
 
 		bool          IsDepthTestEnabled()  const { return m_DepthTestEnable;  }
 		bool          IsDepthWriteEnabled() const { return m_DepthWriteEnable; }
 		VkCompareOp   GetDepthCompareOp()   const { return m_DepthCompareOp;   }
+		[[nodiscard]] uint64_t GetHash()    const { return m_Hash; }
 
 	private:
-		bool        m_DepthTestEnable  = true;
-		bool        m_DepthWriteEnable = true;
-		VkCompareOp m_DepthCompareOp   = VK_COMPARE_OP_LESS;
+		DepthStencilSpec depthSpec;
+
+		bool        m_DepthTestEnable			= false;
+		bool        m_DepthWriteEnable			= false;
+		VkCompareOp m_DepthCompareOp			= VK_COMPARE_OP_LESS;
+		bool		m_StencilTestEnabled        = false;
+		bool		m_StencilWriteEnabled       = false;
+		VkCompareOp m_StencilCompFunc			= VK_COMPARE_OP_NEVER;
+		VkStencilOp m_StencilFailOp             = VK_STENCIL_OP_KEEP;
+		VkStencilOp m_StencilDepthFailOp        = VK_STENCIL_OP_KEEP;
+		VkStencilOp m_StencilPassOp             = VK_STENCIL_OP_REPLACE;
+		uint8_t		m_StencilReadMask			= 1;
+		uint8_t		m_StencilWriteMask			= 1;
+
+		uint64_t	m_Hash						= 0;
 	};
 
 }

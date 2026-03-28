@@ -33,57 +33,83 @@
 #include <array>
 #include <cstdint>
 #include <map>
+#include <SceneryEditorX/renderer/renderer_declarations.h>
 
 // ---------------------------------------------------------
 
 namespace SceneryEditorX
 {
-    class Shader;
-    class ImageResource;
-    class RasterizerState;
-    class BlendState;
-    class DepthStencilState;
+	class Swapchain;
+	class Shader;
+	class ImageResource;
+	class RasterizerState;
+	class BlendState;
+	class DepthStencilState;
 
-    /* 
-     * Color sentinel – matches the Color type used by command lists.
-     * Using a raw float[4] here avoids pulling in <colors.h> from this header. 
-     */
-    struct PipelineStateColor { float r = 0, g = 0, b = 0, a = 0; };
+	/* 
+	 * Color sentinel – matches the Color type used by command lists.
+	 * Using a raw float[4] here avoids pulling in <colors.h> from this header. 
+	 */
+	struct PipelineStateColor { float r = 0, g = 0, b = 0, a = 0; };
 
-    // Opaque "load" sentinel colours (negative alpha = "load, don't clear").
-    inline const PipelineStateColor RHI_COLOR_LOAD{ 0.0f, 0.0f, 0.0f, -1.0f };
+	// Opaque "load" sentinel colours (negative alpha = "load, don't clear").
+	inline constexpr PipelineStateColor RHI_COLOR_LOAD{.r = 0.0f, .g = 0.0f, .b = 0.0f, .a = -1.0f };
 
-    /**
-     * @struct PipelineState
-     * @brief High-level, API-agnostic descriptor for a graphics or compute pipeline.
-     *
-     * Passes build a PipelineState, then call CommandList::SetPipelineState() which
-     * resolves or creates the underlying VkPipeline and starts the render pass.
-     */
-    struct PipelineState
-    {
-        const char* name = nullptr;
+	/**
+	 * @class PipelineState
+	 * @brief High-level, API-agnostic descriptor for a graphics or compute pipeline.
+	 *
+	 * Passes build a PipelineState, then call CommandList::SetPipelineState() which
+	 * resolves or creates the underlying VkPipeline and starts the render pass.
+	 */
+	class PipelineState
+	{
+	public:
+		PipelineState();
+		~PipelineState();
 
-        // Shader stages – indexed by Stage enum (vertex=0, geometry=1, tess_ctrl=2, tess_eval=3, fragment=4, compute=5)
-        std::map<uint32_t, Shader*> shaders;
+		void Prepare();
+		[[nodiscard]] bool HasClearValues() const;
+		[[nodiscard]] bool IsGraphics() const;
+		[[nodiscard]] bool IsCompute() const;
+		[[nodiscard]] bool HasTessellation();
 
-        // Pipeline state objects (nullptr = use defaults)
-        RasterizerState*   rasterizerState        = nullptr;
-        BlendState*        blendState             = nullptr;
-        DepthStencilState* depthStencil_State     = nullptr;
+		[[nodiscard]] uint32_t GetWidth() const  { return m_Width; }
+		[[nodiscard]] uint32_t GetHeight() const { return m_Height; }
+		[[nodiscard]] uint64_t GetHash() const   { return m_Hash; }
 
-        // Render targets
-        std::array<ImageResource*, MAX_RENDER_TARGET_COUNT> renderTarget_ColorTextures = {};
-        ImageResource*  renderTarget_DepthTexture = nullptr;
-        ImageResource*  vrsInputTexture           = nullptr;
+		// Shader stages – indexed by Stage enum (vertex=0, geometry=1, tess_ctrl=2, tess_eval=3, fragment=4, compute=5)
+		std::map<uint32_t, Shader*> shaders;
 
-        // Clear values (color_load.a < 0 = load; non-negative = clear to this colour)
-        std::array<PipelineStateColor, MAX_RENDER_TARGET_COUNT> clearColor = {};
-        float clearDepth = RHI_DEPTH_LOAD;
+		// Pipeline state objects (nullptr = use defaults)
+		RasterizerState*    rasterizerState       = nullptr;
+		BlendState*         blendState            = nullptr;
+		DepthStencilState*  depthStencil_State    = nullptr;
+		VkPrimitiveTopology primitiveTopology	  = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+		bool isMultiview                          = false;
 
-        // Misc flags
-        bool resolutionScale = false;
-    };
+		// Render targets
+		std::array<ImageResource*, MAX_RENDER_TARGET_COUNT> renderTarget_ColorTextures = {};
+		ImageResource*  renderTarget_DepthTexture = nullptr;
+		ImageResource*  vrsInputTexture           = nullptr;
+		Swapchain*		renderTarget_Swapchain    = nullptr;
+		uint32_t renderTarget_ArrayIndex          = 0;
+
+		// Clear values (color_load.a < 0 = load; non-negative = clear to this colour)
+		std::array<PipelineStateColor, MAX_RENDER_TARGET_COUNT> clearColor = {};
+		float clearDepth		= RHI_DEPTH_LOAD;
+		uint32_t clearStencil	= STENCIL_LOAD;
+
+		// Misc flags
+		bool resolutionScale = false;
+		const char* name = nullptr;
+
+	private:
+		[[nodiscard]] bool HasShader(const Stage shaderStage) const;
+		uint32_t m_Width  = 0;
+		uint32_t m_Height = 0;
+		uint64_t m_Hash   = 0;
+	};
 }
 
 // ---------------------------------------------------------

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * -------------------------------------------------------
  * Scenery Editor X
  * -------------------------------------------------------
@@ -23,65 +23,32 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  * -------------------------------------------------------
- * crc_hash.cpp
+ * depth_stencil.cpp
  * -------------------------------------------------------
- * Created: 16/7/2025
+ * Created: 28/03/2026
  * -------------------------------------------------------
  */
-#include "crc_hash.h"
+#include "depth_stencil.h"
+#include <functional>
 
-// ---------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
 
-	/*
-	Hash128 CalculateHash128(const void *data, size_t length)
+	static uint64_t HashCombine(const uint64_t a, const uint64_t b)
 	{
-		XXH128_hash_t hash = XXH3_128bits(data, length);
-		Hash128 out;
-		out.high64 = hash.high64;
-		out.low64 = hash.low64;
-		return out;
+		return a * 31 + b;
 	}
 
-	size_t CalculateHash(const void *data, size_t length)
+	DepthStencilState::DepthStencilState(const DepthStencilSpec &spec)
 	{
-#if IS_64BIT
-		return XXH64(data, length, 0);
-#else
-		return XXH32(data, length, 0);
-#endif
+		std::hash<bool> hasher;
+		m_Hash = HashCombine(m_Hash, static_cast<uint64_t>(hasher(m_DepthTestEnable)));
+		m_Hash = HashCombine(m_Hash, static_cast<uint64_t>(hasher(m_DepthWriteEnable)));
+		m_Hash = HashCombine(m_Hash, static_cast<uint64_t>(m_DepthCompareOp));
 	}
-
-
-	uint32_t CalculateCRC(const void *data, size_t size)
-	{
-		return CRC::Calculate(data, size, CRC::CRC_32());
-	}
-
-	uint32_t CalculateCRC(const void *data, size_t size, uint32_t crc)
-	{
-		return CRC::Calculate(data, size, CRC::CRC_32(), crc);
-	}
-
-	size_t GetCombinedHashes(const Array<size_t> &hashes)
-	{
-		if (hashes.GetSize() == 0)
-			return 0;
-		
-		size_t hash = hashes[0];
-
-		for (int i = 1; i < hashes.GetSize(); i++)
-		{
-			hash = GetCombinedHash(hash, hashes[i]);
-		}
-
-		return hash;
-	} 
-	*/
-
 
 }
 
-// ---------------------------------------------
+// -------------------------------------------------------

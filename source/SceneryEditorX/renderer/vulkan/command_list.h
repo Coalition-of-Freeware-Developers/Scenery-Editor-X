@@ -34,6 +34,7 @@
 #include "queue.h"
 #include "viewport.h"
 #include "pipeline/pipeline.h"
+#include "pipeline/pipeline_state.h"
 #include "sync/frame_sync.h"
 #include <colors.h>
 #include <SceneryEditorX/renderer/renderer_declarations.h>
@@ -42,11 +43,11 @@
 
 namespace SceneryEditorX
 {
-	struct PushConstantBuffer_Pass;
+struct PendingBarrierInfo;
+struct PushConstantBuffer_Pass;
 	class DescriptorSet;
 	class ImageResource;
 	struct Texture;
-	struct PipelineState;
 
 	/**
 	 * @enum CommandState
@@ -142,11 +143,19 @@ namespace SceneryEditorX
 		 */
 		void PushConstants(const PushConstantBuffer_Pass& data);
 
-		//void SetPipelineState(PipelineState &pso);
 		
 		// -------------------------------------------------------
 
+		/**
+		 * @brief 
+		 * @return 
+		 */
 		Ref<CommandList> Get() { return {this}; }
+
+		/**
+		 * @brief 
+		 * @return 
+		 */
 		VkCommandBuffer GetCommandBuffer() const { return m_CmdBuffer; }
 
 		/**
@@ -300,6 +309,10 @@ namespace SceneryEditorX
 		/* @brief Shutdown immediate execution for all command lists. */
 		static void ShutdownImmediateExecution();
 
+		/**
+		 * @brief 
+		 * @return 
+		 */
 		const CommandState GetState() const { return m_State; }
 		
 		// -------------------------------------------------------
@@ -386,10 +399,28 @@ namespace SceneryEditorX
 		
 		// -------------------------------------------------------
 
+		/**
+		 * @brief 
+		 * @param viewport 
+		 */
 		void SetViewport(const Viewport& viewport) const;
+
+		/**
+		 * @brief 
+		 * @param scissorRect 
+		 */
 		void SetScissor(const xMath::Rectangle &scissorRect) const;
+
+		/**
+		 * @brief 
+		 * @param cullMode 
+		 */
 		void SetCullMode(const CullMode cullMode);
 
+		/**
+		 * @brief 
+		 * @return 
+		 */
 		Ref<Queue> GetQueue() const { return m_Queue; }
 
 		/**
@@ -456,12 +487,15 @@ namespace SceneryEditorX
 		uint64_t m_BufferID_Index    = 0;
 
 		Queue *m_Queue;
-		Pipeline m_Pipeline;
 		VkCommandBuffer m_CmdBuffer;
 		std::atomic<CommandState> m_State = CommandState::Idle;
 		VkCullModeFlags m_CullMode = VK_CULL_MODE_BACK_BIT;
 		bool m_RenderPassActive = false;
 		DescriptorSet* m_DescriptorLayout_Current = nullptr;
+
+	    Pipeline m_Pipeline;
+		PipelineState m_pso;
+	    std::vector<PendingBarrierInfo> m_PendingBarriers;
 
 	};  
 

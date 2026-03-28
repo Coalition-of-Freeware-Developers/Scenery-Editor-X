@@ -473,8 +473,15 @@ namespace SceneryEditorX
 
 #pragma region Constants
 	/** Sentinel passed to pso.clear_depth to instruct the pipeline to LOAD existing depth rather than clear it. */
-	inline constexpr float RHI_DEPTH_LOAD  = -1.0f;
-	inline constexpr float DEPTH_LOAD      = RHI_DEPTH_LOAD;
+	inline constexpr float RHI_DEPTH_LOAD		= -1.0f;
+	inline constexpr float DEPTH_LOAD			= RHI_DEPTH_LOAD;
+	inline constexpr float DEPTH_DONT_CARE      = std::numeric_limits<float>::max();
+
+	const Color COLOR_DONT_CARE					= Color(std::numeric_limits<float>::max(), 0.0f, 0.0f, 0.0f);
+	const Color COLOR_LOAD						= Color(std::numeric_limits<float>::infinity(), 0.0f, 0.0f, 0.0f);
+
+	inline constexpr uint32_t STENCIL_DONT_CARE = std::numeric_limits<uint32_t>::max();
+	inline constexpr uint32_t STENCIL_LOAD      = std::numeric_limits<uint32_t>::infinity();
 
 	/** Maximum simultaneous colour render targets in a PipelineState. */
 	inline constexpr uint32_t MAX_RENDER_TARGET_COUNT  = 8;

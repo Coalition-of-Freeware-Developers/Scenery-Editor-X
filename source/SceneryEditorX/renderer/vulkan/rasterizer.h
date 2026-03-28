@@ -48,31 +48,55 @@ namespace SceneryEditorX
 	};
 
 	/**
+	 * @struct RasterStateSpec
+	 * @brief Descriptor struct for creating a RasterizerState object.
+	 * This is used to specify the desired rasterization state when requesting a RasterizerState from the Renderer. 
+	 * It contains fields for polygon mode, depth bias settings, and line width, which are used to configure how primitives are rasterized. 
+	 */
+	struct RasterStateSpec
+	{
+		PolygonMode polygonMode       = PolygonMode::MaxEnum;
+		bool        depthBiasEnabled  = false;
+		bool		depthClipEnabled  = true;
+		float       depthBiasConstant = 0.0f;
+		float       depthBiasSlope    = 0.0f;
+		float		depthBiasClamp    = 0.0f;
+		float		lineWidth         = 1.0f;
+	};
+
+	/**
 	 * @class RasterizerState
 	 * @brief Immutable rasterizer configuration object returned by Renderer::GetRasterizerState().
 	 */
 	class RasterizerState : public RefCounted
 	{
 	public:
-		explicit RasterizerState(PolygonMode polygonMode, bool depthBiasEnabled = false,
-								 float depthBiasConstant = 0.0f, float depthBiasSlope = 0.0f)
-			: m_PolygonMode(polygonMode)
-			, m_DepthBiasEnabled(depthBiasEnabled)
-			, m_DepthBiasConstant(depthBiasConstant)
-			, m_DepthBiasSlope(depthBiasSlope)
-		{
-		}
+		RasterizerState() = default;
+		RasterizerState(const RasterStateSpec &spec);
+		~RasterizerState() = default;
 
 		[[nodiscard]] PolygonMode GetPolygonMode()       const { return m_PolygonMode; }
 		[[nodiscard]] bool        IsDepthBiasEnabled()   const { return m_DepthBiasEnabled; }
+		[[nodiscard]] bool		  IsDepthClipEnabled()   const { return m_DepthClipEnabled; }
 		[[nodiscard]] float       GetDepthBiasConstant() const { return m_DepthBiasConstant; }
 		[[nodiscard]] float       GetDepthBiasSlope()    const { return m_DepthBiasSlope; }
+		[[nodiscard]] float		  GetDepthBiasClamp()    const { return m_DepthBiasClamp; }
+		[[nodiscard]] float		  GetLineWidth()         const { return m_LineWidth; }
+		[[nodiscard]] uint64_t	  GetHash()				 const { return m_Hash; }
+
+		bool operator==(const RasterizerState& state)	 const { return m_Hash == state.GetHash(); }
 
 	private:
+		RasterStateSpec m_Spec;
+
 		PolygonMode m_PolygonMode       = PolygonMode::Solid;
 		bool        m_DepthBiasEnabled  = false;
+		bool		m_DepthClipEnabled	= true;
 		float       m_DepthBiasConstant = 0.0f;
 		float       m_DepthBiasSlope    = 0.0f;
+		float		m_DepthBiasClamp    = 0.0f;
+		float		m_LineWidth         = 1.0f;
+		uint64_t	m_Hash				= 0;
 	};
 
 }

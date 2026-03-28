@@ -34,6 +34,7 @@
 #include "render_context.h"
 #include "swapchain.h"
 #include "debug/graphics_debug.h"
+#include "pipeline/barrier_info.h"
 #include "pipeline/pipeline_state.h"
 #include <array>
 #include <chrono>
@@ -61,14 +62,96 @@ namespace SceneryEditorX
 		};
 	}
 
-	// Per-image layout tracking: key = &VkImage (stable address), value = current layout.
+	// Per-image layout tracking: key = &VkImage (stable address), value = per-mip current layouts.
 	// Protected by s_ImageLayoutsMutex for safe concurrent reads from multiple threads.
-	static std::unordered_map<void*, Layout::ImageLayout> s_ImageLayouts;
+	static std::unordered_map<void*, std::array<Layout::ImageLayout, MAX_MIP_COUNT>> s_ImageLayouts;
 	static std::mutex s_ImageLayoutsMutex;
 	static std::array<ImmediateExecutionState, static_cast<size_t>(QueueType::MaxEnum)> s_ImmediateStates;
+	//std::unordered_map<void*, std::array<Layout::ImageLayout, MAX_MIP_COUNT>> image_Layouts;
+
 
 	#pragma region Static Command Actions
 
+
+	static Layout::ImageLayout GetLayout(void *image, uint32_t mipIndex)
+	{
+		SEDX_CORE_ASSERT(image != nullptr);
+		std::lock_guard<std::mutex> lock(s_ImageLayoutsMutex);
+
+		auto it = s_ImageLayouts.find(image);
+		if (it == s_ImageLayouts.end())
+		{
+			return Layout::ImageLayout::MaxEnum;
+		}
+
+		SEDX_CORE_ASSERT(mipIndex < MAX_MIP_COUNT);
+		return it->second[mipIndex];
+	}
+
+	static void SetLayout(void *image, uint32_t mip_index, uint32_t mip_range, Layout::ImageLayout layout)
+	{
+		SEDX_CORE_ASSERT(image != nullptr);
+		SEDX_CORE_ASSERT(mip_index < MAX_MIP_COUNT);
+		SEDX_CORE_ASSERT(mip_index + mip_range <= MAX_MIP_COUNT);
+		std::lock_guard<std::mutex> lock(s_ImageLayoutsMutex);
+
+		auto it = s_ImageLayouts.find(image);
+		if (it == s_ImageLayouts.end())
+		{
+			std::array<Layout::ImageLayout, MAX_MIP_COUNT> layouts;
+			layouts.fill(Layout::ImageLayout::MaxEnum);
+			s_ImageLayouts[image] = layouts;
+			it = s_ImageLayouts.find(image);
+		}
+
+		uint32_t mip_end = xMath::Min(mip_index + mip_range, MAX_MIP_COUNT);
+		for (uint32_t i = mip_index; i < mip_end; ++i)
+		{
+			it->second[i] = layout;
+		}
+	}
+
+	static void RemoveLayout(void *image)
+	{
+		std::lock_guard<std::mutex> lock(s_ImageLayoutsMutex);
+		s_ImageLayouts.erase(image);
+	}
+
+	// convert scope enum to vulkan pipeline stages
+	static VkPipelineStageFlags2 ScopeToStages(BarrierScope scope, bool isDepth = false)
+	{
+		switch (scope)
+		{
+		case BarrierScope::Graphics:
+			return VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT | VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT |
+				   VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT |
+				   VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT |
+				   (isDepth ? (VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT)
+						: VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT);
+		case BarrierScope::Compute:
+			return VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+		case BarrierScope::Transfer:
+			return VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+		case BarrierScope::Fragment:
+			return VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+		case BarrierScope::All:
+			return VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+		case BarrierScope::Auto:
+		default:
+			return VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT; // auto handled by layout-based deduction
+		}
+	}
+
+	/**
+	 * @brief 
+	 * @param img 
+	 * @param srcMask 
+	 * @param dstMask 
+	 * @param oldLayout 
+	 * @param newLayout 
+	 * @param subresourceRange 
+	 * @return 
+	 */
 	static VkImageMemoryBarrier2 CreateImageMemoryBarrier(void* img, const VkAccessFlags& srcMask, const VkAccessFlags& dstMask,
 		const VkImageLayout& oldLayout, const VkImageLayout& newLayout, const std::optional<VkImageSubresourceRange>& subresourceRange)
 	{
@@ -104,6 +187,11 @@ namespace SceneryEditorX
 		return barrier;
 	}
 
+	/**
+	 * @brief 
+	 * @param layout 
+	 * @return 
+	 */
 	static Layout::ImageLayout GetImageLayoutType(const VkImageLayout& layout)
 	{
 		switch (layout)
@@ -122,6 +210,11 @@ namespace SceneryEditorX
 		}
 	}
 
+	/**
+	 * @brief 
+	 * @param layout 
+	 * @return 
+	 */
 	static VkImageLayout GetVkImageLayout(const Layout::ImageLayout &layout)
 	{
 		switch (layout)
@@ -150,6 +243,11 @@ namespace SceneryEditorX
 		return VK_IMAGE_LAYOUT_MAX_ENUM;
 	}
 
+	/**
+	 * @brief 
+	 * @param cullMode 
+	 * @return 
+	 */
 	static VkCullModeFlags GetCullingType(const CullMode cullMode)
 	{
 		switch (cullMode)
@@ -198,10 +296,15 @@ namespace SceneryEditorX
 	 */
 	struct BarrierAccessInfo
 	{
-		VkAccessFlags2       accessMask;
+		VkAccessFlags2        accessMask;
 		VkPipelineStageFlags2 stageFlags;
 	};
 
+	/**
+	 * @brief 
+	 * @param layout 
+	 * @return  
+	 */
 	static BarrierAccessInfo GetLayoutAccessInfo(const Layout::ImageLayout layout)
 	{
 		switch (layout)
@@ -323,11 +426,12 @@ namespace SceneryEditorX
 
 	Layout::ImageLayout CommandList::GetImageLayout(void *image, uint32_t mipIndex)
 	{
-		std::scoped_lock lock(s_ImageLayoutsMutex);
+	 std::scoped_lock lock(s_ImageLayoutsMutex);
 		const auto it = s_ImageLayouts.find(image);
 		if (it != s_ImageLayouts.end())
 		{
-			return it->second;
+			SEDX_CORE_ASSERT(mipIndex < MAX_MIP_COUNT);
+			return it->second[mipIndex];
 		}
 
 		return Layout::ImageLayout::Undefined;
@@ -356,6 +460,7 @@ namespace SceneryEditorX
 			Ref<CommandList> cmdList;
 			std::mutex mutex;
 		};
+
 		static std::array<ImmediateState, static_cast<size_t>(QueueType::MaxEnum)> s_ImmediateStates;
 
 		if (Ref<Queue>* queueRef = queueManager->GetQueue(type); queueRef && *queueRef)
@@ -814,7 +919,17 @@ namespace SceneryEditorX
 
 		{
 			std::scoped_lock lock(s_ImageLayoutsMutex);
-			s_ImageLayouts[img] = layout;
+			auto it = s_ImageLayouts.find(img);
+			if (it == s_ImageLayouts.end())
+			{
+				std::array<Layout::ImageLayout, MAX_MIP_COUNT> layouts;
+				layouts.fill(Layout::ImageLayout::MaxEnum);
+				s_ImageLayouts[img] = layouts;
+				it = s_ImageLayouts.find(img);
+			}
+			// update full range for simplicity
+			for (uint32_t i = 0; i < MAX_MIP_COUNT; ++i)
+				it->second[i] = layout;
 		}
 	}
 
@@ -887,8 +1002,273 @@ namespace SceneryEditorX
 
 		{
 			std::scoped_lock lock(s_ImageLayoutsMutex);
-			s_ImageLayouts[image] = layout;
+			auto it = s_ImageLayouts.find(image);
+			if (it == s_ImageLayouts.end())
+			{
+				std::array<Layout::ImageLayout, MAX_MIP_COUNT> layouts;
+				layouts.fill(Layout::ImageLayout::MaxEnum);
+				s_ImageLayouts[image] = layouts;
+				it = s_ImageLayouts.find(image);
+			}
+
+			// update affected mips
+			uint32_t mip_end = xMath::Min(mipIndex + ((mipRange == 0) ? MAX_MIP_COUNT : mipRange), MAX_MIP_COUNT);
+			for (uint32_t i = mipIndex; i < mip_end; ++i)
+			{
+				it->second[i] = layout;
+			}
 		}
+	}
+
+	void CommandList::FlushBarriers()
+	{
+		if (m_PendingBarriers.empty())
+			return;	
+		
+		// determine the dst scope hint from the current pso (narrows overly broad auto scopes)
+		BarrierScope pso_scope_hint = BarrierScope::All;
+		if (m_pso.IsCompute())
+			pso_scope_hint = BarrierScope::Compute;
+		else if (m_pso.IsGraphics())
+			pso_scope_hint = BarrierScope::Graphics;
+
+		// helper: set image sync access masks based on layout and sync type
+		auto set_sync_access_masks = [](VkImageMemoryBarrier2& b, Layout::ImageLayout layout, BarrierType sync_type)
+		{
+			bool isReadOnlyLayout = (layout == Layout::ImageLayout::ShaderRead);
+
+			switch (sync_type)
+			{
+				case BarrierType::EnsureWriteThenRead:
+					if (isReadOnlyLayout)
+					{
+						b.srcAccessMask = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_READ_BIT;
+						b.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_READ_BIT;
+					}
+					else
+					{
+						b.srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
+						b.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_READ_BIT;
+					}
+					break;
+				case BarrierType::EnsureReadThenWrite:
+					if (isReadOnlyLayout)
+					{
+						b.srcAccessMask = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_READ_BIT;
+						b.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_READ_BIT;
+					}
+					else
+					{
+						b.srcAccessMask = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_READ_BIT;
+						b.dstAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
+					}
+					break;
+				case BarrierType::EnsureWriteThenWrite:
+					if (isReadOnlyLayout)
+					{
+						b.srcAccessMask = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_READ_BIT;
+						b.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_READ_BIT;
+					}
+					else
+					{
+						b.srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
+						b.dstAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
+					}
+					break;
+			}
+		};
+
+		static thread_local std::vector<VkImageMemoryBarrier2> image_barriers;
+		static thread_local std::vector<VkBufferMemoryBarrier2> buffer_barriers;
+		image_barriers.clear();
+		buffer_barriers.clear();
+
+		for (const auto& pending : m_PendingBarriers)
+		{
+			switch (pending.barrier.type)
+			{
+				case Barrier::Type::ImageLayout:
+				{
+					// use pso-aware scope narrowing for the dst when auto and the target layout is general
+					BarrierScope effective_dst = pending.barrier.scope_dst;
+					if (effective_dst == BarrierScope::Auto && pending.layoutNew == Layout::ImageLayout::General)
+						effective_dst = pso_scope_hint;
+
+					{
+						// Build barrier based on layout info
+						const BarrierAccessInfo srcInfo = GetLayoutAccessInfo(pending.layoutOld);
+						const BarrierAccessInfo dstInfo = GetLayoutAccessInfo(pending.layoutNew);
+
+						VkImageMemoryBarrier2 vk_barrier = {};
+						vk_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+						vk_barrier.srcStageMask = srcInfo.stageFlags;
+						vk_barrier.srcAccessMask = srcInfo.accessMask;
+						vk_barrier.dstStageMask = dstInfo.stageFlags;
+						vk_barrier.dstAccessMask = dstInfo.accessMask;
+						vk_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+						vk_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+						vk_barrier.image = *static_cast<VkImage *>(pending.image);
+						vk_barrier.oldLayout = GetVkImageLayout(pending.layoutOld);
+						vk_barrier.newLayout = GetVkImageLayout(pending.layoutNew);
+						vk_barrier.subresourceRange.aspectMask = pending.aspect_Mask;
+						vk_barrier.subresourceRange.baseMipLevel = pending.mip_Index;
+						vk_barrier.subresourceRange.levelCount = (pending.mip_Range == 0) ? VK_REMAINING_MIP_LEVELS : pending.mip_Range;
+						vk_barrier.subresourceRange.baseArrayLayer = 0;
+						vk_barrier.subresourceRange.layerCount = (pending.array_Length == 0) ? VK_REMAINING_ARRAY_LAYERS : pending.array_Length;
+
+						image_barriers.push_back(vk_barrier);
+					}
+					break;
+				}
+
+				case Barrier::Type::ImageSync:
+				{
+					// resolve stage masks with pso-aware narrowing
+					VkPipelineStageFlags2 src_stages = (pending.barrier.scope_src != BarrierScope::Auto)
+						? ScopeToStages(pending.barrier.scope_src)
+						: (VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT);
+
+					VkPipelineStageFlags2 dst_stages = (pending.barrier.scope_dst != BarrierScope::Auto)
+						? ScopeToStages(pending.barrier.scope_dst)
+						: ScopeToStages(pso_scope_hint, pending.isDepth);
+
+					if (pending.has_PerMipViews)
+					{
+						for (uint32_t mip = 0; mip < pending.per_MipCount; ++mip)
+						{
+							Layout::ImageLayout layout = pending.per_MipLayouts[mip];
+
+							VkImageMemoryBarrier2 vk_barrier           = {};
+							vk_barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+							vk_barrier.srcStageMask                    = src_stages;
+							vk_barrier.dstStageMask                    = dst_stages;
+							vk_barrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+							vk_barrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+							vk_barrier.image                           = *static_cast<VkImage *>(pending.image);
+							vk_barrier.oldLayout                       = GetVkImageLayout(layout);
+							vk_barrier.newLayout                       = GetVkImageLayout(layout); // no transition
+							vk_barrier.subresourceRange.aspectMask     = pending.aspect_Mask;
+							vk_barrier.subresourceRange.baseMipLevel   = mip;
+							vk_barrier.subresourceRange.levelCount     = 1;
+							vk_barrier.subresourceRange.baseArrayLayer = 0;
+							vk_barrier.subresourceRange.layerCount     = pending.array_Length;
+
+							set_sync_access_masks(vk_barrier, layout, pending.barrier.sync_type);
+							image_barriers.push_back(vk_barrier);
+						}
+					}
+					else
+					{
+						Layout::ImageLayout layout = pending.per_MipLayouts[0];
+
+						VkImageMemoryBarrier2 vk_barrier           = {};
+						vk_barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+						vk_barrier.srcStageMask                    = src_stages;
+						vk_barrier.dstStageMask                    = dst_stages;
+						vk_barrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+						vk_barrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+						vk_barrier.image                           = *static_cast<VkImage *>(pending.image);
+						vk_barrier.oldLayout                       = GetVkImageLayout(layout);
+						vk_barrier.newLayout                       = GetVkImageLayout(layout); // no transition
+						vk_barrier.subresourceRange.aspectMask     = pending.aspect_Mask;
+						vk_barrier.subresourceRange.baseMipLevel   = 0;
+						vk_barrier.subresourceRange.levelCount     = pending.per_MipCount;
+						vk_barrier.subresourceRange.baseArrayLayer = 0;
+						vk_barrier.subresourceRange.layerCount     = pending.array_Length;
+
+						set_sync_access_masks(vk_barrier, layout, pending.barrier.sync_type);
+						image_barriers.push_back(vk_barrier);
+					}
+					break;
+				}
+
+				case Barrier::Type::BufferSync:
+				{
+					VkBufferMemoryBarrier2 vk_barrier = {};
+					vk_barrier.sType                  = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;
+					vk_barrier.srcStageMask           = (pending.barrier.scope_src != BarrierScope::Auto)
+						? ScopeToStages(pending.barrier.scope_src)
+						: VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+					vk_barrier.srcAccessMask          = VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT;
+					vk_barrier.dstStageMask           = (pending.barrier.scope_dst != BarrierScope::Auto)
+						? ScopeToStages(pending.barrier.scope_dst)
+						: ScopeToStages(pso_scope_hint);
+					vk_barrier.dstAccessMask          = VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT;
+					vk_barrier.srcQueueFamilyIndex    = VK_QUEUE_FAMILY_IGNORED;
+					vk_barrier.dstQueueFamilyIndex    = VK_QUEUE_FAMILY_IGNORED;
+					// Buffer wrapper exposes Get() for the underlying VkBuffer
+					vk_barrier.buffer                 = static_cast<VkBuffer>(pending.barrier.buffer->Get());
+					vk_barrier.offset                 = pending.barrier.offset;
+					vk_barrier.size                   = (pending.barrier.size == 0) ? VK_WHOLE_SIZE : pending.barrier.size;
+
+					buffer_barriers.push_back(vk_barrier);
+					break;
+				}
+			}
+		}
+		
+		// Update tracked layouts for ImageLayout transitions so the tracker reflects the state after Flush
+		{
+			std::scoped_lock lock(s_ImageLayoutsMutex);
+			for (const auto& pending : m_PendingBarriers)
+			{
+				if (pending.barrier.type == Barrier::Type::ImageLayout)
+				{
+					// Track the top-level layout_new across all mips for simplicity
+					auto it = s_ImageLayouts.find(pending.image);
+					if (it == s_ImageLayouts.end())
+					{
+						std::array<Layout::ImageLayout, MAX_MIP_COUNT> layouts;
+						layouts.fill(Layout::ImageLayout::MaxEnum);
+						s_ImageLayouts[pending.image] = layouts;
+						it = s_ImageLayouts.find(pending.image);
+					}
+					for (uint32_t i = 0; i < MAX_MIP_COUNT; ++i)
+						it->second[i] = pending.layoutNew;
+				}
+			}
+		}
+
+		// compute queues only support a subset of pipeline stages; filter out graphics-only stages
+		if (m_Queue->GetType() == QueueType::Compute)
+		{
+			auto sanitize = [](VkPipelineStageFlags2 stages) -> VkPipelineStageFlags2
+			{
+				const VkPipelineStageFlags2 computeValid =
+					VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT        |
+					VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT     |
+					VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT     |
+					VK_PIPELINE_STAGE_2_TRANSFER_BIT           |
+					VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT       |
+					VK_PIPELINE_STAGE_2_HOST_BIT               |
+					VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+
+				VkPipelineStageFlags2 filtered = stages & computeValid;
+				return filtered ? filtered : VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+			};
+
+			for (auto& b : image_barriers)
+			{
+				b.srcStageMask = sanitize(b.srcStageMask);
+				b.dstStageMask = sanitize(b.dstStageMask);
+			}
+			for (auto& b : buffer_barriers)
+			{
+				b.srcStageMask = sanitize(b.srcStageMask);
+				b.dstStageMask = sanitize(b.dstStageMask);
+			}
+		}
+
+		VkDependencyInfo dependency_info         = {};
+		dependency_info.sType                    = VK_STRUCTURE_TYPE_DEPENDENCY_INFO_KHR;
+		dependency_info.imageMemoryBarrierCount  = static_cast<uint32_t>(image_barriers.size());
+		dependency_info.pImageMemoryBarriers     = image_barriers.data();
+		dependency_info.bufferMemoryBarrierCount = static_cast<uint32_t>(buffer_barriers.size());
+		dependency_info.pBufferMemoryBarriers    = buffer_barriers.data();
+
+		EndRenderPass();
+		vkCmdPipelineBarrier2(m_CmdBuffer, &dependency_info);
+		m_PendingBarriers.clear();
 	}
 
 	void CommandList::Draw(const uint32_t vertexCount, const uint32_t vertexOffset)
@@ -1248,6 +1628,7 @@ namespace SceneryEditorX
 	void CommandList::PushConstants(const PushConstantBuffer_Pass& data)
 	{
 		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to push constants");
+
 		// TODO: Bind data to the active pipeline layout via vkCmdPushConstants.
 		// The layout and stage flags must be sourced from the currently bound pipeline.
 		(void)data;
@@ -1257,6 +1638,7 @@ namespace SceneryEditorX
 	void CommandList::SetBuffer(Renderer_BindingsUav /*slot*/, Buffer* /*buffer*/)
 	{
 		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to bind a buffer");
+
 		// TODO: Bind structured/storage buffer to the UAV slot in the active descriptor set.
 		SEDX_CORE_WARN_TAG("CommandList", "SetBuffer: stub — descriptor update not yet wired");
 	}
@@ -1266,7 +1648,7 @@ namespace SceneryEditorX
 		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to set vertex buffer");
 		SEDX_CORE_ASSERT(vertexBuffer != nullptr, "Vertex buffer must be valid");
 
-		const VkBuffer buf    = vertexBuffer->Get();
+		const VkBuffer buf = vertexBuffer->Get();
 		const VkDeviceSize offset = 0;
 		vkCmdBindVertexBuffers(m_CmdBuffer, 0, 1, &buf, &offset);
 	}

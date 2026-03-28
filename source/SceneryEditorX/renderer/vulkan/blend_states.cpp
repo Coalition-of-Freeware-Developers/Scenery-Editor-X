@@ -1,4 +1,4 @@
-﻿/**
+/**
  * -------------------------------------------------------
  * Scenery Editor X
  * -------------------------------------------------------
@@ -23,65 +23,46 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  * -------------------------------------------------------
- * crc_hash.cpp
+ * blend_states.cpp
  * -------------------------------------------------------
- * Created: 16/7/2025
+ * Created: 28/03/2026
  * -------------------------------------------------------
  */
-#include "crc_hash.h"
+#include "blend_states.h"
 
-// ---------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-
-	/*
-	Hash128 CalculateHash128(const void *data, size_t length)
+	
+	static uint64_t HashCombine(uint64_t a, uint64_t b)
 	{
-		XXH128_hash_t hash = XXH3_128bits(data, length);
-		Hash128 out;
-		out.high64 = hash.high64;
-		out.low64 = hash.low64;
-		return out;
+		return a * 31 + b;
 	}
 
-	size_t CalculateHash(const void *data, size_t length)
+	BlendState::BlendState(const BlendStateSpec &spec)
 	{
-#if IS_64BIT
-		return XXH64(data, length, 0);
-#else
-		return XXH32(data, length, 0);
-#endif
+		// save
+		m_BlendEnabled      = spec.blendEnabled;
+		m_SrcColor			= spec.srcBlend;
+		m_DstColor			= spec.dstBlend;
+		m_ColorOp           = spec.blendOp;
+		m_SrcAlpha			= spec.srcAlpha;
+		m_DstAlpha			= spec.dstAlpha;
+		m_AlphaOp			= spec.alphaOp;
+		m_BlendFactor       = spec.blendFactor;
+
+		// hash
+		m_Hash = HashCombine(m_Hash, m_BlendEnabled);
+		m_Hash = HashCombine(m_Hash, static_cast<uint64_t>(m_SrcColor));
+		m_Hash = HashCombine(m_Hash, static_cast<uint64_t>(m_DstColor));
+		m_Hash = HashCombine(m_Hash, static_cast<uint64_t>(m_ColorOp));
+		m_Hash = HashCombine(m_Hash, static_cast<uint64_t>(m_SrcAlpha));
+		m_Hash = HashCombine(m_Hash, static_cast<uint64_t>(m_DstAlpha));
+		m_Hash = HashCombine(m_Hash, static_cast<uint64_t>(m_AlphaOp));
+		m_Hash = HashCombine(m_Hash, m_BlendFactor);
 	}
-
-
-	uint32_t CalculateCRC(const void *data, size_t size)
-	{
-		return CRC::Calculate(data, size, CRC::CRC_32());
-	}
-
-	uint32_t CalculateCRC(const void *data, size_t size, uint32_t crc)
-	{
-		return CRC::Calculate(data, size, CRC::CRC_32(), crc);
-	}
-
-	size_t GetCombinedHashes(const Array<size_t> &hashes)
-	{
-		if (hashes.GetSize() == 0)
-			return 0;
-		
-		size_t hash = hashes[0];
-
-		for (int i = 1; i < hashes.GetSize(); i++)
-		{
-			hash = GetCombinedHash(hash, hashes[i]);
-		}
-
-		return hash;
-	} 
-	*/
-
 
 }
 
-// ---------------------------------------------
+// -------------------------------------------------------
