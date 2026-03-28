@@ -1042,11 +1042,10 @@ namespace SceneryEditorX
 		SEDX_CORE_TRACE_TAG("Renderer", "Draw commands recorded for frame {}", m_FrameNumber);
 	}
 
-	void Renderer::BlitToBackBuffer(CommandList *cmdList, ImageResource *texture)
+	void Renderer::BlitToBackBuffer(CommandList *cmdList, ImageResource *img)
 	{
-		// TODO: Implement blit-to-swapchain once Swapchain exposes an ImageResource interface
-		(void)cmdList;
-		(void)texture;
+	    // compute blit: vulkan can't blit depth to float, amd uav requires float
+	    cmdList->Blit(img, s_Swapchain.Get());
 	}
 
 	void Renderer::CreateFrameResources()

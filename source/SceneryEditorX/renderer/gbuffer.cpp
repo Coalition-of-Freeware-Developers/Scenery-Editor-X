@@ -37,7 +37,7 @@ namespace SceneryEditorX
 {
 	namespace
 	{
-		/**
+	    /**
 		 * @struct QuadVertex
 		 * @brief Vertex format for the static full-screen quad used in geometry passes. 
 		 */

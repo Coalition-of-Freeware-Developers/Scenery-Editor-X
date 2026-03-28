@@ -174,9 +174,9 @@ namespace SceneryEditorX
 		/**
 		 * @brief Blit a texture to the back buffer.
 		 * @param cmdList Graphics command list for 3D rendering
-		 * @param texture Texture to blit
+		 * @param img Texture to blit
 		 */
-		static void BlitToBackBuffer(CommandList *cmdList, ImageResource *texture);
+		static void BlitToBackBuffer(CommandList *cmdList, ImageResource *img);
 
 		/**
 		 * @brief Get a render target by type.

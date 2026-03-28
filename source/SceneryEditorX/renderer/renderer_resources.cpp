@@ -128,11 +128,11 @@ namespace SceneryEditorX
 			{
 				s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::frame_render)] = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D,
 					widthRender, heightRender, 1, 1, VK_FORMAT_R16G16B16A16_SFLOAT, UnorderedAccessView | ShaderViews | RenderTargetViews | BlitClear, "frame_render"});
-				SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::frame_render)] != nullptr, "Failed to create frame_render render target");
+				SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::frame_render)] != nullptr, "Failed to create frame render target");
 
 				s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::frame_render)] = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D,
 					widthRender, heightRender, 1, 1, VK_FORMAT_R16G16B16A16_SFLOAT, ShaderViews | UnorderedAccessView | RenderTargetViews | BlitClear, "frame_render"});
-				SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::frame_render)] != nullptr, "Failed to create frame_render render target");
+				SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::frame_render)] != nullptr, "Failed to create frame render target");
 
 				s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::frame_render_opaque)] = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D,
 					widthRender, heightRender, 1, 1, VK_FORMAT_R16G16B16A16_SFLOAT, ShaderViews | RenderTargetViews | BlitClear, "frame_render_opaque"});

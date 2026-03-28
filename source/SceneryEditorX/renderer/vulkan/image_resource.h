@@ -98,7 +98,7 @@ namespace SceneryEditorX
 		ImageResource();
 		ImageResource(const ImgResourceSpec &spec);
 		ImageResource(const ImgResourceSpec &spec, std::vector<Slice> data);
-		void SetLayout(Layout::ImageLayout newLayout, CommandList *cmdList, uint32_t mipIndex, uint32_t mipRange);
+		void SetLayout(Layout::ImageLayout newLayout, CommandList *cmdList, uint32_t mipIndex = ALL_MIPS, uint32_t mipRange = 0);
 		virtual ~ImageResource() override;
 
 		uint32_t GetWidth() const           { return m_Spec.width; }
@@ -111,6 +111,7 @@ namespace SceneryEditorX
 		ImgResourceSpec GetImageSpec() const { return m_Spec; }
 
 		void SetFormat(const VkFormat format) { m_Spec.format = format; }
+		VkFormat GetFormat() const { return m_Spec.format; }
 		void AllocateMip(uint32_t index = 0);
 
 		uint32_t GetBitsPerChannel() const          { return m_BitsPerChannel; }

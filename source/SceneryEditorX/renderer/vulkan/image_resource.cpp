@@ -391,7 +391,7 @@ namespace SceneryEditorX
 		}
 		m_ImageViews.clear();
 
-        if (m_Image != VK_NULL_HANDLE)
+		if (m_Image != VK_NULL_HANDLE)
 		{
 			// Enqueue image + its allocation so the deletion path has the allocation handle
 			QueueManager::AddDeletionQueue(ResourceType::Image, m_Image, m_Allocation);
@@ -475,7 +475,7 @@ namespace SceneryEditorX
 			   static_cast<size_t>(channelCount) * static_cast<size_t>(bitsPerChannel / 8);
 	}
 
-	MipBytes *ImageResource::GetMip(const uint32_t arrayIndex, const uint32_t mipIndex)
+	MipBytes* ImageResource::GetMip(const uint32_t arrayIndex, const uint32_t mipIndex)
 	{
 		if (arrayIndex >= m_Slices.size())
 			return nullptr;
@@ -486,7 +486,7 @@ namespace SceneryEditorX
 		return &m_Slices[arrayIndex].mips[mipIndex];
 	}
 
-	Slice *ImageResource::GetSlice(const uint32_t arrayIndex)
+	Slice* ImageResource::GetSlice(const uint32_t arrayIndex)
 	{
 		if (arrayIndex >= m_Slices.size())
 			return nullptr;

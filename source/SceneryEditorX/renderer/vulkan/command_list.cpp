@@ -47,16 +47,19 @@
 
 namespace SceneryEditorX
 {
-	/**
-	 * @struct ImmediateExecutionState
-	 * @brief Represents the state for immediate execution of command lists.
-	 */
-	struct ImmediateExecutionState
+	namespace
 	{
-		Scope<CommandPool> pool;
-		Ref<CommandList> cmdList;
-		std::mutex mutex;
-	};
+		/**
+		* @struct ImmediateExecutionState
+		* @brief Represents the state for immediate execution of command lists.
+		*/
+		struct ImmediateExecutionState
+		{
+			Scope<CommandPool> pool;
+			Ref<CommandList> cmdList;
+			std::mutex mutex;
+		};
+	}
 
 	// Per-image layout tracking: key = &VkImage (stable address), value = current layout.
 	// Protected by s_ImageLayoutsMutex for safe concurrent reads from multiple threads.
@@ -189,6 +192,7 @@ namespace SceneryEditorX
 	}
 
 	/**
+	 * @struct BarrierAccessInfo
 	 * @brief Maps a Layout::ImageLayout to the corresponding Vulkan pipeline stage and access masks.
 	 * Used internally by InsertBarrier to build correct VkImageMemoryBarrier2 entries.
 	 */
@@ -322,7 +326,9 @@ namespace SceneryEditorX
 		std::scoped_lock lock(s_ImageLayoutsMutex);
 		const auto it = s_ImageLayouts.find(image);
 		if (it != s_ImageLayouts.end())
+		{
 			return it->second;
+		}
 
 		return Layout::ImageLayout::Undefined;
 	}
@@ -381,9 +387,6 @@ namespace SceneryEditorX
 		return nullptr;
 	}
 
-	/**
-	 * @brief Submit and wait for completion of an immediate command list.
-	 */
 	void CommandList::EndImmediateExecution(CommandList* cmdList)
 	{
 		SEDX_CORE_ASSERT(cmdList != nullptr, "Immediate command list cannot be null");
@@ -543,14 +546,18 @@ namespace SceneryEditorX
 		// CPU-block in this call.  Reset the fence first since it starts signaled.
 		const VkFence fence = isImmediate ? m_SubmitSync->GetVkFence() : VK_NULL_HANDLE;
 		if (fence != VK_NULL_HANDLE)
+		{
 			Fence::Reset(fence);
+		}
 
 		m_Queue->Submit(submitInfo, fence);
 		m_LastTimelineSignalValue = nextTimelineValue;
 
 		// Record which command list produced the binary wait semaphore's signal
 		if (semaphoreWait)
+		{
 			semaphoreWait->SetUserCmdList(this);
+		}
 
 		m_State = CommandState::Submitted;
 
@@ -1047,28 +1054,113 @@ namespace SceneryEditorX
 		// m_DescriptorLayout_Current->SetTexture(slot, img, mipIndex, mipRange);
 	}
 
-	/*
-	void CommandList::CopyImageToBuffer(void *src, Buffer *dst)
+	void CommandList::Copy(ImageResource *src, Swapchain *dst)
 	{
-		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to copy image to buffer");
-		SEDX_CORE_ASSERT(src != nullptr && dst != nullptr, "Source image and destination buffer must be valid");
+		SEDX_CORE_ASSERT((src->GetFlags() & ImageResourceFlags::BlitClear) != 0, "The image resource needs the BlitClear flag");
+		SEDX_CORE_ASSERT(src->GetWidth() == dst->GetWidth());
+		SEDX_CORE_ASSERT(src->GetHeight() == dst->GetHeight());
+		SEDX_CORE_ASSERT(src->GetFormat() == dst->GetImageFormat());
 
+		VkImageCopy copyRegion               = {};
+		copyRegion.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		copyRegion.srcSubresource.mipLevel   = 0;
+		copyRegion.srcSubresource.layerCount = 1;
+		copyRegion.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		copyRegion.dstSubresource.mipLevel   = 0;
+		copyRegion.dstSubresource.layerCount = 1;
+		copyRegion.extent.width              = src->GetWidth();
+		copyRegion.extent.height             = src->GetHeight();
+		copyRegion.extent.depth              = 1;
+
+		// transition to blit appropriate layouts
+		Layout::ImageLayout initialSrcLayout = GetImageLayout(src, 0);
 		src->SetLayout(Layout::ImageLayout::TransferSrc, this);
+		InsertBarrier(dst->Get(), dst->GetImageFormat(), 0, 1, 1, Layout::ImageLayout::TransferDst);
+		const uint32_t imgIndex = dst->GetImageIndex();
+		// blit
+		vkCmdCopyImage(m_CmdBuffer,
+			static_cast<VkImage>(*src->Get()), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+			static_cast<VkImage>(dst->GetImages()[imgIndex]),  VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+			1, &copyRegion);
 
-		VkBufferImageCopy region{};
-		region.bufferOffset = 0;
-		region.bufferRowLength = 0;
-		region.bufferImageHeight = 0;
-		region.imageSubresource.aspectMask = GetAspectMask(src->GetFormat());
-		region.imageSubresource.mipLevel = 0;
-		region.imageSubresource.baseArrayLayer = 0;
-		region.imageSubresource.layerCount = 1;
-		region.imageOffset = { 0, 0, 0 };
-		region.imageExtent = { src->GetWidth(), src->GetHeight(), 1 };
-
-		vkCmdCopyImageToBuffer(m_CmdBuffer, src->GetResource(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dst->Get(), 1, &region);
+		// transition to the initial layout
+		src->SetLayout(initialSrcLayout, this);
+		InsertBarrier(dst->Get(), dst->GetImageFormat(), 0, 1, 1, Layout::ImageLayout::Present);
 	}
-	*/
+
+	void CommandList::Copy(ImageResource *src, ImageResource *dst, const bool blitMips)
+	{
+		SEDX_CORE_ASSERT((src->GetFlags() & ImageResourceFlags::BlitClear) != 0, "The texture needs the BlitClear flag");
+		SEDX_CORE_ASSERT((dst->GetFlags() & ImageResourceFlags::BlitClear) != 0, "The texture needs the BlitClear flag");
+		SEDX_CORE_ASSERT(src->GetWidth() == dst->GetWidth());
+		SEDX_CORE_ASSERT(src->GetHeight() == dst->GetHeight());
+		SEDX_CORE_ASSERT(src->GetFormat() == dst->GetFormat());
+
+		if (blitMips)
+		{
+			SEDX_CORE_ASSERT(src->GetMipCount() == dst->GetMipCount(),
+				"If the mips are blitted, then the mip count between the source and the destination textures must match");
+		}
+
+		std::array<VkImageCopy, MAX_MIP_COUNT> copyRegions = {};
+		uint32_t copyRegionCount = blitMips ? src->GetMipCount() : 1;
+		for (uint32_t mipIndex = 0; mipIndex < copyRegionCount; mipIndex++)
+		{
+			VkImageCopy& copyRegion              = copyRegions[mipIndex];
+			copyRegion.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			copyRegion.srcSubresource.mipLevel   = mipIndex;
+			copyRegion.srcSubresource.layerCount = 1;
+			copyRegion.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			copyRegion.dstSubresource.mipLevel   = mipIndex;
+			copyRegion.dstSubresource.layerCount = 1;
+			copyRegion.extent.width              = src->GetWidth()  >> mipIndex;
+			copyRegion.extent.height             = src->GetHeight() >> mipIndex;
+			copyRegion.extent.depth              = 1;
+		}
+
+		// save the initial layouts
+		std::array<Layout::ImageLayout, MAX_MIP_COUNT> initialSrcLayouts;
+		std::array<Layout::ImageLayout, MAX_MIP_COUNT> initialDstLayouts;
+
+		for (uint32_t i = 0; i < MAX_MIP_COUNT; ++i)
+		{
+			if (i < copyRegionCount) // only need to preserve layouts for the mips we will touch
+			{
+				initialSrcLayouts[i] = GetImageLayout(src->Get(), i);
+				initialDstLayouts[i] = GetImageLayout(dst->Get(), i);
+			}
+			else
+			{
+				initialSrcLayouts[i] = Layout::ImageLayout::Undefined;
+				initialDstLayouts[i] = Layout::ImageLayout::Undefined;
+			}
+		}
+
+		// transition to blit appropriate layouts
+		src->SetLayout(Layout::ImageLayout::TransferSrc, this);
+		dst->SetLayout(Layout::ImageLayout::TransferDst, this);
+
+		vkCmdCopyImage(m_CmdBuffer,
+			static_cast<VkImage>(*src->Get()), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+			static_cast<VkImage>(*dst->Get()), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+			copyRegionCount, copyRegions.data());
+
+		// transition to the initial layouts
+		if (blitMips)
+		{
+			for (uint32_t i = 0; i < src->GetMipCount(); i++)
+			{
+				src->SetLayout(initialSrcLayouts[i], this, i, 1);
+				dst->SetLayout(initialDstLayouts[i], this, i, 1);
+			}
+		}
+		else
+		{
+			src->SetLayout(initialSrcLayouts[0], this);
+			dst->SetLayout(initialDstLayouts[0], this);
+		}
+
+	}
 
 	void CommandList::CopyBufferToBuffer(void *src, Buffer *dst, uint64_t size)
 	{
@@ -1224,7 +1316,61 @@ namespace SceneryEditorX
 		InsertBarrier(img->Get(), img->GetImageSpec().format, 0, 0, 0, targetLayout);
 	}
 
-	void CommandList::Blit(ImageResource* src, ImageResource* dst, bool /*keepAspect*/, float /*resolutionScale*/)
+	void CommandList::Blit(ImageResource *src, Swapchain *dst)
+	{
+		SEDX_CORE_ASSERT((src->GetFlags() & ImageResourceFlags::BlitClear) != 0, "The texture needs the Texture_ClearOrBlit flag");
+		SEDX_CORE_ASSERT(src->GetWidth() <= dst->GetWidth() && src->GetHeight() <= dst->GetHeight(),
+			"The source texture dimension(s) are larger than the those of the destination texture");
+
+		VkOffset3D srcBlitSize;
+		srcBlitSize.x          = src->GetWidth();
+		srcBlitSize.y          = src->GetHeight();
+		srcBlitSize.z          = 1;
+
+		VkOffset3D destBlitSize;
+		destBlitSize.x          = dst->GetWidth();
+		destBlitSize.y          = dst->GetHeight();
+		destBlitSize.z          = 1;
+
+		VkImageBlit blit_region                   = {};
+		blit_region.srcSubresource.mipLevel       = 0;
+		blit_region.srcSubresource.baseArrayLayer = 0;
+		blit_region.srcSubresource.layerCount     = 1;
+		blit_region.srcSubresource.aspectMask     = GetAspectMaskFromFormat(src->GetFormat());
+		blit_region.srcOffsets[0]                 = {.x = 0, .y = 0, .z = 0 };
+		blit_region.srcOffsets[1]                 = srcBlitSize;
+		blit_region.dstSubresource.mipLevel       = 0;
+		blit_region.dstSubresource.baseArrayLayer = 0;
+		blit_region.dstSubresource.layerCount     = 1;
+		blit_region.dstSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+		blit_region.dstOffsets[0]                 = {.x = 0, .y = 0, .z = 0 };
+		blit_region.dstOffsets[1]                 = destBlitSize;
+
+		// save the initial layout
+		Layout::ImageLayout srcInitLayout = GetImageLayout(src, 0);
+
+		// transition to blit appropriate layouts
+		src->SetLayout(Layout::ImageLayout::TransferSrc, this);
+		const uint32_t imgIndex = dst->GetImageIndex();
+		InsertBarrier(&dst->GetImages()[imgIndex], dst->GetImageFormat(), 0, 1, 1, Layout::ImageLayout::TransferDst);
+
+		// deduce filter
+		bool widthEqual  = src->GetWidth() == dst->GetWidth();
+		bool heightEqual = src->GetHeight() == dst->GetHeight();
+		VkFilter filter = widthEqual && heightEqual ? VkFilter::VK_FILTER_NEAREST : VkFilter::VK_FILTER_LINEAR;
+
+		// blit
+		vkCmdBlitImage(static_cast<VkCommandBuffer>(m_CmdBuffer),
+			*src->Get(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+			dst->GetImages()[imgIndex],  VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+			1, &blit_region, filter);
+
+		// transition to the initial layouts
+		src->SetLayout(srcInitLayout, this);
+		InsertBarrier(dst->Get(), dst->GetImageFormat(), 0, 1, 1, Layout::ImageLayout::Present);
+	}
+
+	void CommandList::Blit(ImageResource *src, ImageResource *dst, bool /*keepAspect*/, float /*resolutionScale*/)
 	{
 		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to blit");
 		SEDX_CORE_ASSERT(src != nullptr && dst != nullptr, "Source and destination images must be valid for blit");
@@ -1262,6 +1408,50 @@ namespace SceneryEditorX
 			1, &region,
 			VK_FILTER_LINEAR
 		);
+	}
+	
+	void CommandList::BlitToArrayLayer(ImageResource* src, ImageResource* dst, uint32_t dstLayer)
+	{
+		SEDX_CORE_ASSERT(src && dst);
+		SEDX_CORE_ASSERT((src->GetFlags() & ImageResourceFlags::BlitClear) != 0);
+		SEDX_CORE_ASSERT((dst->GetFlags() & ImageResourceFlags::BlitClear) != 0);
+
+		Layout::ImageLayout initialSrcLayout = GetImageLayout(src, 0);
+		Layout::ImageLayout initialDstLayout = GetImageLayout(dst, 0);
+
+		src->SetLayout(Layout::ImageLayout::TransferSrc, this);
+		dst->SetLayout(Layout::ImageLayout::TransferDst, this);
+		FlushBarriers();
+
+		VkImageBlit blitRegion = {};
+		blitRegion.srcSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+		blitRegion.srcSubresource.mipLevel       = 0;
+		blitRegion.srcSubresource.baseArrayLayer = 0;
+		blitRegion.srcSubresource.layerCount     = 1;
+		blitRegion.srcOffsets[0]                 = {.x = 0, .y = 0, .z = 0 };
+		blitRegion.srcOffsets[1]                 = {
+			.x = static_cast<int32_t>(src->GetWidth()),
+			.y = static_cast<int32_t>(src->GetHeight()),
+			.z = 1 
+		};
+		blitRegion.dstSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+		blitRegion.dstSubresource.mipLevel       = 0;
+		blitRegion.dstSubresource.baseArrayLayer = dstLayer;
+		blitRegion.dstSubresource.layerCount     = 1;
+		blitRegion.dstOffsets[0]                 = {.x = 0, .y = 0, .z = 0 };
+		blitRegion.dstOffsets[1]                 = {
+			.x = static_cast<int32_t>(dst->GetWidth()),
+			.y = static_cast<int32_t>(dst->GetHeight()),
+			.z = 1 
+		};
+
+		vkCmdBlitImage(m_CmdBuffer,
+			*src->Get(),VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+			*dst->Get(),VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+			1, &blitRegion, VK_FILTER_LINEAR);
+
+		src->SetLayout(initialSrcLayout, this);
+		dst->SetLayout(initialDstLayout, this);
 	}
 
 } // namespace SceneryEditorX

@@ -77,6 +77,9 @@ namespace SceneryEditorX
 		CommandList(Queue* queue, const CommandPool &cmdPool, const char* name);
 		virtual ~CommandList() override;
 
+		/**
+		 * @brief Begin recording commands into the command list.
+		 */
 		void Begin();
 
 		/**
@@ -146,6 +149,9 @@ namespace SceneryEditorX
 		Ref<CommandList> Get() { return {this}; }
 		VkCommandBuffer GetCommandBuffer() const { return m_CmdBuffer; }
 
+		/**
+		 * @brief End the current render pass.
+		 */
 		void EndRenderPass();
 
 		/**
@@ -162,7 +168,6 @@ namespace SceneryEditorX
 		 */
 		static Layout::ImageLayout GetImageLayout(void* image, uint32_t mipIndex);
 
-
 		// -------------------------------------------------------
 
 		/**
@@ -172,7 +177,7 @@ namespace SceneryEditorX
 		 * @param size The size of the data to update.
 		 * @param data The data to write to the buffer.
 		 */
-		void UpdateBuffer(Buffer* buffer, const uint64_t offset, const uint64_t size, const void* data);
+		static void UpdateBuffer(Buffer* buffer, const uint64_t offset, const uint64_t size, const void* data);
 
 		/**
 		 * @brief Bind an index buffer for use in rendering.
@@ -205,15 +210,8 @@ namespace SceneryEditorX
 		 * @param buffer The buffer to bind.
 		 */
 		void SetBuffer(Renderer_BindingsUav slot, Buffer* buffer);
-		
-		// -------------------------------------------------------
-
-		// Barriers - unified interface
-		//void InsertBarrier(const Barrier& barrier);
-		//void FlushBarriers();
 
 		// -------------------------------------------------------
-
 
 		/**
 		 * @brief Insert a barrier for an image resource.
@@ -233,8 +231,6 @@ namespace SceneryEditorX
 		 */
 		void InsertBarrier(ImageResource* img, BarrierType type);
 
-		//void InsertBarrier(void* texture, BarrierType syncType);
-
 		/**
 		 * @brief Insert a barrier for a buffer resource.
 		 * @param buffer The buffer resource.
@@ -252,19 +248,37 @@ namespace SceneryEditorX
 		 * @param layout The desired image layout.
 		 */
 		void InsertBarrier(void* image, VkFormat format, uint32_t mipIndex, uint32_t mipRange, uint32_t arrayLength, Layout::ImageLayout layout);
-		
-		// -------------------------------------------------------
 
+		/**
+		 * @brief Flush all pending barriers to ensure proper synchronization before executing draw or dispatch commands.
+		 */
+		void FlushBarriers();
+
+		// -------------------------------------------------------
 
 		/**
 		 * @brief Blit (compute-driven copy with optional resolution scaling)
-		 *
 		 * @param src The source image resource.
 		 * @param dst The destination image resource.
 		 * @param keepAspect Whether to maintain the aspect ratio.
 		 * @param resolutionScale The scale factor for the resolution.
 		 */
-		void Blit(ImageResource* src, ImageResource* dst, bool keepAspect, float resolutionScale = 1.0f);
+		void Blit(ImageResource *src, ImageResource *dst, bool keepAspect, float resolutionScale = 1.0f);
+
+		/**
+		 * @brief Blit (compute-driven copy without resolution scaling)
+		 * @param src The source image resource.
+		 * @param dst The destination image resource.
+		 */
+		void Blit(ImageResource *src, Swapchain *dst);
+
+		/**
+		 * @brief 
+		 * @param src 
+		 * @param dst 
+		 * @param dstLayer 
+		 */
+		void BlitToArrayLayer(ImageResource *src, ImageResource *dst, uint32_t dstLayer);
 
 		// -------------------------------------------------------
 
@@ -378,7 +392,19 @@ namespace SceneryEditorX
 
 		Ref<Queue> GetQueue() const { return m_Queue; }
 
-		//void CopyImageToBuffer(Image* src, Buffer* dst);
+		/**
+		 * @brief 
+		 * @param src 
+		 * @param dst 
+		 */
+		void Copy(ImageResource* src, Swapchain* dst);
+
+		/**
+		 * @brief 
+		 * @param src 
+		 * @param dst 
+		 */
+		void Copy(ImageResource* src, ImageResource* dst, const bool blitMips);
 
 		/**
 		 * @brief Copy data from a raw pointer to a buffer.
