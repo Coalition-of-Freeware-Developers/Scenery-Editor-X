@@ -37,7 +37,7 @@ namespace SceneryEditorX
 	
 	/**
 	 * @struct AtomicFlag
-	 * @brief A lightweight wrapper around std::atomic_flag providing intuitive dirty state management.
+	 * @brief A lightweight wrapper around std::atomic_flag providing intuitive "dirty" state management.
 	 *
 	 * The AtomicFlag class encapsulates a std::atomic_flag to provide a thread-safe
 	 * mechanism for tracking and resetting a "dirty" state. This is useful for signaling
@@ -52,34 +52,33 @@ namespace SceneryEditorX
 	 */
 	struct AtomicFlag
 	{
-	    /**
-	     * @brief Sets the flag to dirty state.
-	     *
-	     * Marks the flag as dirty by clearing the atomic flag. This operation is atomic
-	     * and can be safely called from multiple threads.
-	     */
-	    SEDX_FORCE_INLINE void SetDirty() { m_Flag.clear(); }
+		/**
+		 * @brief Sets the flag to dirty state.
+		 *
+		 * Marks the flag as dirty by clearing the atomic flag. This operation is atomic
+		 * and can be safely called from multiple threads.
+		 */
+		SEDX_FORCE_INLINE void SetDirty() { m_Flag.clear(); }
 
-	    /**
-	     * @brief Checks if the flag is dirty and atomically resets it if it is.
-	     *
-	     * Atomically tests if the flag is in the dirty state (cleared) and sets it
-	     * (marking it as clean) in a single operation.
-	     *
-	     * @return true if the flag was dirty before this call (indicating data needs processing).
-	     * @return false if the flag was already clean.
-	     */
-	    SEDX_FORCE_INLINE bool Check() { return !m_Flag.test_and_set(); }
+		/**
+		 * @brief Checks if the flag is dirty and atomically resets it if it is.
+		 *
+		 * Atomically tests if the flag is in the dirty state (cleared) and sets it
+		 * (marking it as clean) in a single operation.
+		 *
+		 * @return true if the flag was dirty before this call (indicating data needs processing).
+		 * @return false if the flag was already clean.
+		 */
+		SEDX_FORCE_INLINE bool Check() { return !m_Flag.test_and_set(); }
 
-	    /**
-	     * @brief Constructs an AtomicFlag in clean state.
-	     *
-	     * The flag is initialized to the "clean" state (set).
-	     */
-	    explicit AtomicFlag() noexcept { m_Flag.test_and_set(); }
+		/**
+		 * @brief Constructs an AtomicFlag in clean state.
+		 *
+		 * The flag is initialized to the "clean" state (set).
+		 */
+		explicit AtomicFlag() noexcept { m_Flag.test_and_set(); }
 
-
-        /**
+		/**
 		 * @brief Default destructor for AtomicFlag.
 		 *
 		 * The destructor is defaulted and marked noexcept, as there are no resources that require
@@ -88,40 +87,40 @@ namespace SceneryEditorX
 		 */
 		~AtomicFlag() noexcept = default;
 
-	    /**
-	     * @brief Copy constructor creates a clean flag regardless of source state.
-	     *
-	     * When copying an AtomicFlag, the new instance is always initialized to
-	     * the clean state, regardless of whether the source was dirty or clean.
-	     */
-	    AtomicFlag(const AtomicFlag&) noexcept {}
+		/**
+		 * @brief Copy constructor creates a clean flag regardless of source state.
+		 *
+		 * When copying an AtomicFlag, the new instance is always initialized to
+		 * the clean state, regardless of whether the source was dirty or clean.
+		 */
+		AtomicFlag(const AtomicFlag&) noexcept {}
 
-	    /**
-	     * @brief Copy assignment operator preserves the current instance's state.
-	     *
-	     * The copy assignment operator doesn't modify the current instance's state.
-	     * @return Reference to this instance.
-	     */
-	    AtomicFlag& operator=(const AtomicFlag&) noexcept { return *this; }
+		/**
+		 * @brief Copy assignment operator preserves the current instance's state.
+		 *
+		 * The copy assignment operator doesn't modify the current instance's state.
+		 * @return Reference to this instance.
+		 */
+		AtomicFlag& operator=(const AtomicFlag&) noexcept { return *this; }
 
-	    /**
-	     * @brief Move constructor creates a clean flag regardless of source state.
-	     *
-	     * When moving an AtomicFlag, the new instance is always initialized to
-	     * the clean state, regardless of whether the source was dirty or clean.
-	     */
-	    AtomicFlag(AtomicFlag&&) noexcept {}
+		/**
+		 * @brief Move constructor creates a clean flag regardless of source state.
+		 *
+		 * When moving an AtomicFlag, the new instance is always initialized to
+		 * the clean state, regardless of whether the source was dirty or clean.
+		 */
+		AtomicFlag(AtomicFlag&&) noexcept {}
 
-	    /**
-	     * @brief Move assignment operator preserves the current instance's state.
-	     *
-	     * The move assignment operator doesn't modify the current instance's state.
-	     * @return Reference to this instance.
-	     */
-	    AtomicFlag& operator=(AtomicFlag&&) noexcept { return *this; }
+		/**
+		 * @brief Move assignment operator preserves the current instance's state.
+		 *
+		 * The move assignment operator doesn't modify the current instance's state.
+		 * @return Reference to this instance.
+		 */
+		AtomicFlag& operator=(AtomicFlag&&) noexcept { return *this; }
 
 	private:
-	    std::atomic_flag m_Flag; // The underlying atomic flag that stores the state
+		std::atomic_flag m_Flag; // The underlying atomic flag that stores the state
 	};
 
 }

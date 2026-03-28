@@ -44,8 +44,6 @@
 #include <SceneryEditorX/renderer/vulkan/swapchain.h>
 #include <SceneryEditorX/renderer/vulkan/debug/graphics_debug.h>
 #include <SceneryEditorX/renderer/vulkan/pipeline/pipeline_state.h>
-#include <SceneryEditorX/renderer/vulkan/shader/shader.h>
-
 
 // -------------------------------------------------------
 
@@ -54,7 +52,6 @@ using namespace SceneryEditorX;
 namespace UI
 {
 	ViewportResources g_ViewportData;
-
 	Ref<ImageResource> g_FontAtlas;
 	Ref<DepthStencilState> g_DepthStencil_State;
 	Ref<RasterizerState> g_Rasterizer_State;
@@ -97,20 +94,18 @@ namespace UI
 		// create required objects
 		{
 			g_ViewportData = ViewportResources("imgui",  Renderer::GetSwapChain());
-			g_DepthStencil_State = SceneryEditorX::CreateRef<DepthStencilState>(DepthStencilSpec{ false, false, VK_COMPARE_OP_ALWAYS });
-			g_Rasterizer_State = SceneryEditorX::CreateRef<RasterizerState>(RasterStateSpec{ PolygonMode::Solid, true });
-
-			g_BlendState = SceneryEditorX::CreateRef<BlendState>(BlendStateSpec{
-										true,
-										VK_BLEND_FACTOR_SRC_ALPHA,           // src color
-										VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, // dst color
-										VK_BLEND_OP_ADD,                     // color op
-										VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, // src alpha
-										VK_BLEND_FACTOR_ZERO,                // dst alpha
-										VK_BLEND_OP_ADD,                     // alpha op
-										0.0f                                  // blend factor
-			});
-
+			g_DepthStencil_State = SceneryEditorX::CreateRef<DepthStencilState>(false, false, VK_COMPARE_OP_ALWAYS);
+			g_Rasterizer_State = SceneryEditorX::CreateRef<RasterizerState>(PolygonMode::Solid, true);
+	
+			g_BlendState = SceneryEditorX::CreateRef<BlendState>(true,
+																 VK_BLEND_FACTOR_SRC_ALPHA,           // source blend
+																 VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, // destination blend
+																 VK_BLEND_OP_ADD,                     // blend op
+																 VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, // source blend alpha
+																 VK_BLEND_FACTOR_ZERO, // destination blend alpha
+																 VK_BLEND_OP_ADD       // destination op alpha
+			);
+	
 			// compile shaders
 			{
 				const std::string shaderPath = ResourceCache::GetResourceDirectory(ResourceDirectory::Shaders) + "/ui.slang";

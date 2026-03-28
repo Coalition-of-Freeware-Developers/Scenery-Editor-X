@@ -31,17 +31,16 @@
 #include <SceneryEditorX/core/time/timer.h>
 #include <chrono>
 
-
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-    // Provide assignment from float for PerFrameData (used by older codepaths)
+    // Provide assignment from float for PerFrameData (used by older code-paths)
     std::unordered_map<const char *, PerformanceProfiler::PerFrameData>::mapped_type &
     PerformanceProfiler::PerFrameData::operator=(float x)
     {
-        Time = x;
-        Samples = 1;
+        time = x;
+        samples = 1;
         return *this;
     }
 

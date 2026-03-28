@@ -644,7 +644,7 @@ namespace SceneryEditorX
 		static std::array<VmaAllocation, MAX_FRAMES_IN_FLIGHT> m_CameraUboAllocations;
 		static std::array<void*, MAX_FRAMES_IN_FLIGHT> m_CameraUboMapped;
 
-		/* @brief Creates per-frame camera UBOs, descriptor pool and sets. Called by CreateShaders. */
+		/* @brief Creates per-frame camera UBOs, descriptor pool and sets. */
 		static void CreateCameraResources();
 	};
 
