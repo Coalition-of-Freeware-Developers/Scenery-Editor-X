@@ -235,6 +235,31 @@ IF(SEDX_ENABLE_DOXYGEN)
 	INCLUDE(cmake/doxygen.cmake)
 ENDIF()
 
+# Prefer VMA headers from the Vulkan SDK to avoid ABI mismatches between
+# multiple copies (vcpkg vs SDK). If VULKAN_SDK environment variable is set
+# and the VMA include folder exists there, add it to the front of include
+# search paths for the main target and force consistent VMA call macros.
+if(DEFINED ENV{VULKAN_SDK})
+	set(_VULKAN_SDK_PATH $ENV{VULKAN_SDK})
+	set(_VMA_SDK_INCLUDE "${_VULKAN_SDK_PATH}/Include/vma")
+	if(EXISTS "${_VMA_SDK_INCLUDE}")
+		message(STATUS "Using VMA headers from Vulkan SDK: ${_VMA_SDK_INCLUDE}")
+		# Ensure SDK VMA headers are searched before other include paths
+		include_directories(BEFORE SYSTEM "${_VMA_SDK_INCLUDE}")
+
+		# Force consistent VMA call decoration across all translation units
+		# and avoid differing decorations from vcpkg or other copies.
+		add_compile_definitions(VMA_CALL_PRE= VMA_CALL_POST=)
+
+		# Also expose a variable so per-target configuration can reuse it if needed
+		set(VMA_SDK_INCLUDE_DIR "${_VMA_SDK_INCLUDE}" CACHE INTERNAL "VMA include directory from Vulkan SDK")
+	else()
+		message(STATUS "VMA include not found in VULKAN_SDK (${_VULKAN_SDK_PATH}), falling back to default include paths")
+	endif()
+else()
+	message(STATUS "VULKAN_SDK not defined in environment; using default include paths (vcpkg or system)")
+endif()
+
 # ###########################################
 # Tracy Profiler (optional)
 # ###########################################
@@ -300,7 +325,6 @@ FIND_PACKAGE(Stb REQUIRED)
 FIND_PACKAGE(spdlog CONFIG REQUIRED)
 FIND_PACKAGE(msdfgen CONFIG REQUIRED)
 FIND_PACKAGE(Doxygen QUIET)
-FIND_PACKAGE(VulkanMemoryAllocator CONFIG REQUIRED)
 FIND_PACKAGE(CURL CONFIG REQUIRED)
 FIND_LIBRARY(Slang_LIBRARY NAMES slang HINTS "$ENV{VULKAN_SDK}/lib" REQUIRED)
 FIND_PATH(PORTABLE_FILE_DIALOGS_INCLUDE_DIRS "portable-file-dialogs.h") # Portable File Dialogs header-only

@@ -63,6 +63,7 @@ TARGET_INCLUDE_DIRECTORIES(Launcher
         ${REGISTRY_KEYS}
         ${PORTABLE_FILE_DIALOGS_INCLUDE_DIRS}
         $ENV{VULKAN_SDK}/Include/
+		$ENV{VULKAN_SDK}/Include/vma
         ${Stb_INCLUDE_DIR}
         ${CURL_INCLUDE_DIRS}
 )
@@ -73,7 +74,6 @@ TARGET_LINK_LIBRARIES(Launcher
     PRIVATE
         nlohmann_json
         spdlog::spdlog_header_only
-        GPUOpen::VulkanMemoryAllocator
         CURL::libcurl
         Vulkan::Vulkan
 		ktx

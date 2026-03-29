@@ -73,6 +73,7 @@ IF(SEDX_ENABLE_VULKAN_SMOKE_TESTS)
         ${CMAKE_SOURCE_DIR}/dependency/imgui/misc
         ${CMAKE_SOURCE_DIR}/dependency/xMath
         $ENV{VULKAN_SDK}/Include/
+		$ENV{VULKAN_SDK}/Include/vma
         ${Stb_INCLUDE_DIR}
     )
 
@@ -160,6 +161,8 @@ IF(MSVC)
 ELSE()
     TARGET_COMPILE_OPTIONS(MemoryAllocatorTests PRIVATE -Wall -Wextra -Wpedantic)
 ENDIF()
+
+TARGET_COMPILE_DEFINITIONS(MemoryAllocatorTests PRIVATE VK_USE_64_BIT_NON_DISPATCHABLE_HANDLES)
 
 # Register with CTest
 catch_discover_tests(MemoryAllocatorTests)

@@ -146,6 +146,7 @@ TARGET_INCLUDE_DIRECTORIES(SceneryEditorX
 		${CMAKE_SOURCE_DIR}/dependency/ktx/other_include
 		${PORTABLE_FILE_DIALOGS_INCLUDE_DIRS}
 		$ENV{VULKAN_SDK}/Include/
+		$ENV{VULKAN_SDK}/Include/vma
 		${Stb_INCLUDE_DIR}
 		${CURL_INCLUDE_DIRS}
 )
@@ -157,7 +158,6 @@ TARGET_LINK_LIBRARIES(SceneryEditorX
 		AppCore
 		nlohmann_json::nlohmann_json
 		spdlog::spdlog_header_only
-		GPUOpen::VulkanMemoryAllocator
 		CURL::libcurl
 		Vulkan::Vulkan
 		$<$<AND:$<CONFIG:Debug>,$<BOOL:${TRACY_ENABLE}>>:TracyClient>

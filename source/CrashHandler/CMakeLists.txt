@@ -43,6 +43,7 @@ TARGET_INCLUDE_DIRECTORIES(CrashHandler
         ${REGISTRY_KEYS}
         ${PORTABLE_FILE_DIALOGS_INCLUDE_DIRS}
         $ENV{VULKAN_SDK}/Include/
+		$ENV{VULKAN_SDK}/Include/vma
         ${Stb_INCLUDE_DIR}
         ${CURL_INCLUDE_DIRS}
 )
@@ -53,7 +54,6 @@ TARGET_LINK_LIBRARIES(CrashHandler
     PRIVATE
 		nlohmann_json
         spdlog::spdlog_header_only
-        GPUOpen::VulkanMemoryAllocator
         CURL::libcurl
         Vulkan::Vulkan
 		libconfig
@@ -63,7 +63,6 @@ TARGET_LINK_LIBRARIES(CrashHandler
         d3d12
         Shell32.lib
 		$<$<AND:$<CONFIG:Debug>,$<BOOL:${TRACY_ENABLE}>>:TracyClient>
-
 )
 
 # --------------------------------
@@ -76,6 +75,7 @@ TARGET_COMPILE_DEFINITIONS(CrashHandler
         $<$<CONFIG:Release>:SEDX_RELEASE>
 		SPDLOG_USE_STD_FORMAT
         VK_USE_PLATFORM_WIN32_KHR
+		VK_USE_64_BIT_NON_DISPATCHABLE_HANDLES
         CURL_STATICLIB
 )
 

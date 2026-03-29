@@ -1455,7 +1455,7 @@ namespace SceneryEditorX
 		// transition to blit appropriate layouts
 		Layout::ImageLayout initialSrcLayout = GetImageLayout(src, 0);
 
-	    // determine which swapchain image we will target
+		// determine which swapchain image we will target
 		const uint32_t imgIndex = dst->GetImageIndex();
 		
 		src->SetLayout(Layout::ImageLayout::TransferSrc, this);
@@ -1757,7 +1757,7 @@ namespace SceneryEditorX
 
 		// transition to the initial layouts
 		src->SetLayout(srcInitLayout, this);
-		InsertBarrier(dst->Get(), dst->GetImageFormat(), 0, 1, 1, Layout::ImageLayout::Present);
+		InsertBarrier(&dst->GetImages()[imgIndex], dst->GetImageFormat(), 0, 1, 1, Layout::ImageLayout::Present);
 	}
 
 	void CommandList::Blit(ImageResource *src, ImageResource *dst, bool /*keepAspect*/, float /*resolutionScale*/)
