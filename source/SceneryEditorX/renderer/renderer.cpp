@@ -30,6 +30,8 @@
  */
 #include "renderer.h"
 #include "renderer_buffers.h"
+#include "SceneryEditorX/core/window/monitor_data.h"
+#include "SceneryEditorX/scene/entity.h"
 #include "vulkan/swapchain.h"
 #include "vulkan/uniform_buffer_set.h"
 #include "vulkan/debug/graphics_debug.h"
@@ -48,6 +50,9 @@
 #include <slang/slang-com-ptr.h>
 #include <slang/slang.h>
 #include <volk/volk.h>
+#include <mutex>
+#include <thread>
+#include <sstream>
 
 // --------------------------------------------------------------
 
@@ -56,6 +61,10 @@ namespace SceneryEditorX
 
 #pragma region Static Renderer Properties
 
+/**
+	 * @struct RendererProperties
+	 * @brief Holds various properties and resources used by the Renderer.
+	 */
 	struct RendererProperties
 	{
 		VkDescriptorSet activeRendererDescriptorSet = nullptr;
@@ -103,16 +112,17 @@ namespace SceneryEditorX
 	RendererProperties *Renderer::m_Data = nullptr;
 	static Ref<Swapchain> s_Swapchain = nullptr;
 	std::atomic<bool> Renderer::m_ResourcesInitialized = false;
-	uint32_t Renderer::m_ResourceIndex = 0;
-	Renderer::PassState Renderer::m_PassState = {};
-	Scope<AssetManager> Renderer::s_AssetManager = nullptr;
 	Scope<Model> Renderer::m_TestModel = nullptr;
 
 	// Bindless draw data
 	std::array<ShaderBuffer_DrawData, RENDERER_MAX_DRAW_CALLS> Renderer::m_DrawData_CPU;
-	uint32_t Renderer::m_DrawDataCount = 0;
+	uint32_t Renderer::m_DrawData_Count = 0;
+	Renderer::PassState Renderer::m_PassState = {};
+
 	CommandList *Renderer::m_CmdList_Compute = nullptr;
 	CommandList *Renderer::m_CmdList_Present = nullptr;
+	Scope<AssetManager> Renderer::s_AssetManager = nullptr;
+	uint32_t Renderer::m_ResourceIndex = 0;
 
 	Scope<FrameSync> Renderer::m_FrameSync = nullptr;
 	Scope<CommandPool> Renderer::m_CommandPool = nullptr;
@@ -124,44 +134,52 @@ namespace SceneryEditorX
 	bool Renderer::m_FrameInProgress = false;
 
 	// Basic forward pipeline
-	VkPipeline        Renderer::m_BasicPipeline        = VK_NULL_HANDLE;
-	VkPipelineLayout  Renderer::m_BasicPipelineLayout  = VK_NULL_HANDLE;
+	VkPipeline Renderer::m_BasicPipeline = VK_NULL_HANDLE;
+	VkPipelineLayout Renderer::m_BasicPipelineLayout = VK_NULL_HANDLE;
 	Scope<ShaderManager> Renderer::m_BasicShaderManager = nullptr;
-	std::array<VkBuffer,        MAX_FRAMES_IN_FLIGHT> Renderer::m_BasicShaderDataBuffers     = {};
-	std::array<VmaAllocation,   MAX_FRAMES_IN_FLIGHT> Renderer::m_BasicShaderDataAllocations = {};
-	std::array<void*,           MAX_FRAMES_IN_FLIGHT> Renderer::m_BasicShaderDataMapped      = {};
-	std::array<VkDeviceAddress, MAX_FRAMES_IN_FLIGHT> Renderer::m_BasicShaderDataAddresses   = {};
-	VkPipeline       Renderer::m_GridPipeline       = VK_NULL_HANDLE;
+	std::array<VkBuffer, MAX_FRAMES_IN_FLIGHT> Renderer::m_BasicShaderDataBuffers = {};
+	std::array<VmaAllocation, MAX_FRAMES_IN_FLIGHT> Renderer::m_BasicShaderDataAllocations = {};
+	std::array<void *, MAX_FRAMES_IN_FLIGHT> Renderer::m_BasicShaderDataMapped = {};
+	std::array<VkDeviceAddress, MAX_FRAMES_IN_FLIGHT> Renderer::m_BasicShaderDataAddresses = {};
+	VkPipeline Renderer::m_GridPipeline = VK_NULL_HANDLE;
 	VkPipelineLayout Renderer::m_GridPipelineLayout = VK_NULL_HANDLE;
 	Scope<ShaderManager> Renderer::m_GridShaderManager = nullptr;
-	VkBuffer        Renderer::m_GridVertexBuffer      = VK_NULL_HANDLE;
-	VmaAllocation   Renderer::m_GridVertexAllocation  = VK_NULL_HANDLE;
-	VkBuffer        Renderer::m_GridIndexBuffer       = VK_NULL_HANDLE;
-	VmaAllocation   Renderer::m_GridIndexAllocation   = VK_NULL_HANDLE;
-	uint32_t        Renderer::m_GridIndexCount        = 0;
+	VkBuffer Renderer::m_GridVertexBuffer = VK_NULL_HANDLE;
+	VmaAllocation Renderer::m_GridVertexAllocation = VK_NULL_HANDLE;
+	VkBuffer Renderer::m_GridIndexBuffer = VK_NULL_HANDLE;
+	VmaAllocation Renderer::m_GridIndexAllocation = VK_NULL_HANDLE;
+	uint32_t Renderer::m_GridIndexCount = 0;
 
-	Camera* Renderer::m_Camera = nullptr;
+#pragma region Camera Properties
+
+	Camera *Renderer::m_Camera = nullptr;
 	VkDescriptorSetLayout Renderer::m_CameraDescriptorSetLayout = VK_NULL_HANDLE;
-	VkDescriptorPool      Renderer::m_CameraDescriptorPool      = VK_NULL_HANDLE;
+	VkDescriptorPool Renderer::m_CameraDescriptorPool = VK_NULL_HANDLE;
 	std::array<VkDescriptorSet, MAX_FRAMES_IN_FLIGHT> Renderer::m_CameraDescriptorSets = {};
-	std::array<VkBuffer,        MAX_FRAMES_IN_FLIGHT> Renderer::m_CameraUboBuffers      = {};
-	std::array<VmaAllocation,   MAX_FRAMES_IN_FLIGHT> Renderer::m_CameraUboAllocations  = {};
-	std::array<void*,           MAX_FRAMES_IN_FLIGHT> Renderer::m_CameraUboMapped        = {};
+	std::array<VkBuffer, MAX_FRAMES_IN_FLIGHT> Renderer::m_CameraUboBuffers = {};
+	std::array<VmaAllocation, MAX_FRAMES_IN_FLIGHT> Renderer::m_CameraUboAllocations = {};
+	std::array<void *, MAX_FRAMES_IN_FLIGHT> Renderer::m_CameraUboMapped = {};
 
-	// Resolution & viewport (internal state)
+#pragma endregion
+
+#pragma region Resolution & viewport (internal state)
+
 	static xMath::Vec2 s_RendererResolution(0.0f, 0.0f);
 	static xMath::Vec2 s_OutputResolution(0.0f, 0.0f);
 	static Viewport s_Viewport = Viewport(0, 0, 0, 0);
-	static bool s_OrthoProjection_Dirty = true;
+	static Flag s_OrthoProjection_Dirty;
 	static Scope<UniformBufferSet> s_UniformBuffers = nullptr;
 	static VkSurfaceCapabilitiesKHR s_SurfaceCaps = {};
 	static xMath::Vec2 s_JitterOffset(0.0f, 0.0f);
 	static float s_NearPlane = 0.0f;
 	static float s_FarPlane  = 1.0f;
-	static bool s_DirtyOrthographicProjection   = true;
 	const uint8_t SWAPCHAIN_BUFFER_COUNT = 2;
 	const uint32_t RESOLUTION_SHADOW_MIN = 128;
 	constexpr uint32_t renderer_resource_frame_lifetime = MAX_FRAMES_IN_FLIGHT;
+
+#pragma endregion
+
+#pragma region Frame Synchronization Resources
 
 	static std::vector<Ref<Fence>> s_FenceRefs;
 	static std::vector<VkFence> s_FenceHandles;
@@ -171,6 +189,11 @@ namespace SceneryEditorX
 
 	static std::vector<Ref<Semaphore>> s_RenderSemaphoreRefs;
 	static std::vector<VkSemaphore> s_RenderSemaphoreHandles;
+// Mutex to protect frame-sync container mutations during debugging instrumentation
+static std::mutex s_FrameSyncMutex;
+#pragma endregion
+
+#pragma endregion
 
 	static std::filesystem::path ResolveResourcePath(const std::filesystem::path& relativePath)
 	{
@@ -192,8 +215,6 @@ namespace SceneryEditorX
 
 		return candidates[0];
 	}
-	
-#pragma endregion
 
 #pragma region Lifecycle Methods
 
@@ -209,7 +230,6 @@ namespace SceneryEditorX
 			return;
 		}
 		*/
-
 		SEDX_CORE_TRACE_TAG("Renderer", "=== Initializing Renderer ===");
 
 		// Initialize volk loader
@@ -484,7 +504,7 @@ namespace SceneryEditorX
 			}
 		}
 
-		m_DrawDataCount = 0;
+		m_DrawData_Count = 0;
 
 		if (canRender)
 		{
@@ -655,31 +675,30 @@ namespace SceneryEditorX
 			}*/
 		}
 
-		/*
+
 		UpdateFrameConstantBuffer(m_CmdList_Present);
-		UpdatePersistentLines();
-		AddLinesToBeRendered();
+		//UpdatePersistentLines();
+		//AddLinesToBeRendered();
 		
-		if (can_render)
+		if (canRender)
 		{
 			BlitToBackBuffer(m_CmdList_Present, GetRenderTarget(Renderer_RenderTarget::frame_output));
 		}
 
 		SubmitAndPresent();
 
-		m_lines_vertices.clear();
-		m_icons.clear();
+		//m_lines_vertices.clear();
+		//m_icons.clear();
 
 		// only count frames that actually rendered
-		if (can_render)
+		if (canRender)
 		{
-			s_FrameNumber++;
-			if (s_FrameNumber == 1)
+			m_FrameNumber++;
+			if (m_FrameNumber == 1)
 			{
-				Event(EventType::AppTick);
+				//Event(EventType::AppTick);
 			}
 		}
-		*/
 	}   
 
 #pragma endregion
@@ -1072,43 +1091,62 @@ namespace SceneryEditorX
 		s_RenderSemaphoreHandles.clear();
 
 		// Create fences (one per frame in flight)
-		s_FenceRefs.reserve(MAX_FRAMES_IN_FLIGHT);
-		s_FenceHandles.reserve(MAX_FRAMES_IN_FLIGHT);
-		for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
 		{
-			Ref<Fence> fence = CreateRef<Fence>();
-			fence->CreateSyncObject();
-			s_FenceRefs.push_back(fence);
-			s_FenceHandles.push_back(fence->GetFence());
-			Debugging::SetResourceName(fence.Get()->GetFence(), ResourceType::Fence, "FrameFence");
+			std::scoped_lock lock(s_FrameSyncMutex);
+			std::ostringstream ssteam_fence;
+			ssteam_fence << std::this_thread::get_id();
+			SEDX_CORE_TRACE_TAG("Renderer", "Creating fences ({}) thread id: {}", MAX_FRAMES_IN_FLIGHT, ssteam_fence.str());
+			s_FenceRefs.reserve(MAX_FRAMES_IN_FLIGHT);
+			s_FenceHandles.reserve(MAX_FRAMES_IN_FLIGHT);
+			for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
+			{
+				Ref<Fence> fence = CreateRef<Fence>();
+				fence->CreateSyncObject();
+				s_FenceRefs.push_back(fence);
+				s_FenceHandles.push_back(fence->GetFence());
+				Debugging::SetResourceName(fence.Get()->GetFence(), ResourceType::Fence, "FrameFence");
+			}
 		}
 
 		// Create present semaphores (one per frame in flight)
-		s_PresentSemaphoreRefs.reserve(MAX_FRAMES_IN_FLIGHT);
-		s_PresentSemaphoreHandles.reserve(MAX_FRAMES_IN_FLIGHT);
-		for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
 		{
-			Ref<Semaphore> sem = CreateRef<Semaphore>();
-			sem->CreateSyncObject();
-			s_PresentSemaphoreRefs.push_back(sem);
-			s_PresentSemaphoreHandles.push_back(sem->GetSemaphore());
-			Debugging::SetResourceName(sem.Get()->GetSemaphore(), ResourceType::Semaphore, "PresentSemaphore");
+			std::scoped_lock lock(s_FrameSyncMutex);
+		    std::ostringstream ssteam_present;
+			ssteam_present << std::this_thread::get_id();
+			SEDX_CORE_TRACE_TAG("Renderer", "Creating present semaphores ({}) thread id: {}", MAX_FRAMES_IN_FLIGHT, ssteam_present.str());
+			s_PresentSemaphoreRefs.reserve(MAX_FRAMES_IN_FLIGHT);
+			s_PresentSemaphoreHandles.reserve(MAX_FRAMES_IN_FLIGHT);
+			for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
+			{
+				Ref<Semaphore> sem = CreateRef<Semaphore>();
+				sem->CreateSyncObject();
+				s_PresentSemaphoreRefs.push_back(sem);
+				s_PresentSemaphoreHandles.push_back(sem->GetSemaphore());
+				Debugging::SetResourceName(sem.Get()->GetSemaphore(), ResourceType::Semaphore, "PresentSemaphore");
+			}
 		}
 
 		const uint32_t swapchainImageCount = static_cast<uint32_t>(s_Swapchain->GetImages().size());
 
 		// Create render semaphores (one per swapchain image)
-		s_RenderSemaphoreRefs.reserve(swapchainImageCount);
-		s_RenderSemaphoreHandles.reserve(swapchainImageCount);
-		for (uint32_t i = 0; i < swapchainImageCount; ++i)
 		{
-			Ref<Semaphore> sem = CreateRef<Semaphore>();
-			sem->CreateSyncObject();
-			s_RenderSemaphoreRefs.push_back(sem);
-			s_RenderSemaphoreHandles.push_back(sem->GetSemaphore());
-			Debugging::SetResourceName(sem.Get()->GetSemaphore(), ResourceType::Semaphore, "RenderSemaphore");
+			std::scoped_lock lock(s_FrameSyncMutex);
+		  std::ostringstream ssteam_render;
+			ssteam_render << std::this_thread::get_id();
+			SEDX_CORE_TRACE_TAG("Renderer", "Creating render semaphores ({}) thread id: {}", swapchainImageCount, ssteam_render.str());
+			s_RenderSemaphoreRefs.reserve(swapchainImageCount);
+			s_RenderSemaphoreHandles.reserve(swapchainImageCount);
+			for (uint32_t i = 0; i < swapchainImageCount; ++i)
+			{
+				Ref<Semaphore> sem = CreateRef<Semaphore>();
+				sem->CreateSyncObject();
+				s_RenderSemaphoreRefs.push_back(sem);
+				s_RenderSemaphoreHandles.push_back(sem->GetSemaphore());
+				Debugging::SetResourceName(sem.Get()->GetSemaphore(), ResourceType::Semaphore, "RenderSemaphore");
+			}
 		}
-
+	
+	
 		m_FrameSync = CreateScope<FrameSync>(SyncType::Fence); // keep a simple FrameSync in case other systems expect it
 		SEDX_CORE_TRACE_TAG("Renderer", "Created frame sync objects (fences: {}, present semaphores: {}, render semaphores: {})",
 							static_cast<uint32_t>(s_FenceHandles.size()),
@@ -1124,40 +1162,49 @@ namespace SceneryEditorX
 		SEDX_CORE_TRACE_TAG("Renderer", "Destroying frame resources");
 
 		// Destroy semaphores and fences through wrapper Destroy() so they get scheduled for deletion properly.
-		for (auto &semRef : s_PresentSemaphoreRefs)
 		{
-			if (semRef)
+			std::scoped_lock lock(s_FrameSyncMutex);
+			for (auto &semRef : s_PresentSemaphoreRefs)
 			{
-				semRef->Destroy();
-				semRef.Reset();
+				if (semRef)
+				{
+					semRef->Destroy();
+					semRef.Reset();
+				}
 			}
+			s_PresentSemaphoreHandles.clear();
+			s_PresentSemaphoreRefs.clear();
 		}
-		s_PresentSemaphoreHandles.clear();
-		s_PresentSemaphoreRefs.clear();
 		SEDX_CORE_TRACE_TAG("Renderer", " Destroyed present semaphores");
 
-		for (auto &semRef : s_RenderSemaphoreRefs)
 		{
-			if (semRef)
+			std::scoped_lock lock(s_FrameSyncMutex);
+			for (auto &semRef : s_RenderSemaphoreRefs)
 			{
-				semRef->Destroy();
-				semRef.Reset();
+				if (semRef)
+				{
+					semRef->Destroy();
+					semRef.Reset();
+				}
 			}
+			s_RenderSemaphoreHandles.clear();
+			s_RenderSemaphoreRefs.clear();
 		}
-		s_RenderSemaphoreHandles.clear();
-		s_RenderSemaphoreRefs.clear();
 		SEDX_CORE_TRACE_TAG("Renderer", " Destroyed render semaphores");
 
-		for (auto &fRef : s_FenceRefs)
 		{
-			if (fRef)
+			std::scoped_lock lock(s_FrameSyncMutex);
+			for (auto &fRef : s_FenceRefs)
 			{
-				fRef->Destroy();
-				fRef.Reset();
+				if (fRef)
+				{
+					fRef->Destroy();
+					fRef.Reset();
+				}
 			}
+			s_FenceHandles.clear();
+			s_FenceRefs.clear();
 		}
-		s_FenceHandles.clear();
-		s_FenceRefs.clear();
 		SEDX_CORE_TRACE_TAG("Renderer", " Destroyed fences");
 
 		// Command buffers are freed when command pool is destroyed
@@ -1283,7 +1330,7 @@ namespace SceneryEditorX
 		{
 			s_Viewport.width = width;
 			s_Viewport.height = height;
-			s_OrthoProjection_Dirty = true;
+			s_OrthoProjection_Dirty.SetDirty();
 		}
 
 		SEDX_CORE_TRACE_TAG("Renderer", "Viewport set to {}x{}", width, height);
@@ -2015,14 +2062,14 @@ namespace SceneryEditorX
 			blit.srcSubresource.baseArrayLayer = 0;
 			blit.srcSubresource.layerCount = 1;
 			blit.srcOffsets[0] = {
-			    .x = 0, 
-			    .y = 0, 
-			    .z = 0
+				.x = 0, 
+				.y = 0, 
+				.z = 0
 			};
 			blit.srcOffsets[1] = {
-			    .x = static_cast<int32_t>(frameOutput->GetWidth()),
-			    .y = static_cast<int32_t>(frameOutput->GetHeight()),
-			    .z = 1
+				.x = static_cast<int32_t>(frameOutput->GetWidth()),
+				.y = static_cast<int32_t>(frameOutput->GetHeight()),
+				.z = 1
 			};
 
 			VkExtent2D extent = s_Swapchain->GetExtent();
@@ -2031,12 +2078,12 @@ namespace SceneryEditorX
 			blit.dstSubresource.baseArrayLayer = 0;
 			blit.dstSubresource.layerCount = 1;
 			blit.dstOffsets[0] = {
-			    .x = 0, .y = 0, .z = 0
+				.x = 0, .y = 0, .z = 0
 			};
 			blit.dstOffsets[1] = {
-			    .x = static_cast<int32_t>(extent.width),
-			    .y = static_cast<int32_t>(extent.height),
-			    .z = 1 
+				.x = static_cast<int32_t>(extent.width),
+				.y = static_cast<int32_t>(extent.height),
+				.z = 1 
 			};
 
 			vkCmdBlitImage(cb,
@@ -2152,8 +2199,8 @@ namespace SceneryEditorX
 													  .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
 													  .storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
 													  .clearValue = {.depthStencil = {
-													      .depth = 1.0f, 
-													      .stencil = 0}
+														  .depth = 1.0f, 
+														  .stencil = 0}
 													  }
 		};
 		SEDX_CORE_TRACE_TAG("Renderer", "Configured depth attachment for dynamic rendering");
@@ -2337,11 +2384,210 @@ namespace SceneryEditorX
 		cmdList->SetTexture(Renderer_BindingsSrv::ssao, texSsao);
 	}
 
-	void Renderer::UpdateDrawCalls(CommandList* cmdList)
+	void Renderer::UpdateDrawCalls(CommandList *cmdList)
 	{
 		// TODO: Implement draw call collection and sorting when the scene and material systems are integrated
 		(void)cmdList;
-	}
+
+		/*
+		m_DrawCall_Count          = 0;
+		m_DrawCalls_Prepass_Count = 0;
+		m_DrawData_Count           = 0;
+		m_Transparents_Present     = false;
+
+
+		if (ProgressTracker::IsLoading())
+			return;
+
+
+		// collect draw calls
+		{
+			for (Entity* entity : Scene::GetEntities())
+			{
+				if (!entity->GetActive())
+					continue;
+
+				if (Renderable* renderable = entity->GetComponent<Renderable>())
+				{
+					Material* material = renderable->GetMaterial();
+					if (!material)
+						continue;
+
+					if (material->IsTransparent())
+					{
+						m_Transparents_Present = true;
+					}
+
+					uint32_t draw_data_index = WriteDrawData(
+						entity->GetMatrix(),
+						entity->GetMatrixPrevious(),
+						material->GetIndex(),
+						material->IsTransparent() ? 1 : 0
+					);
+
+					Renderer_DrawCall& draw_call = m_DrawCalls[m_DrawCall_Count++];
+					draw_call.renderable         = renderable;
+					draw_call.distance_squared   = renderable->GetDistanceSquared();
+					draw_call.lodIndex          = renderable->GetLodIndex();
+					draw_call.isOccluder        = false;
+					draw_call.cameraVisible     = renderable->IsVisible();
+					draw_call.instanceIndex     = 0;
+					draw_call.instanceCount     = renderable->GetInstanceCount();
+					draw_call.drawData_Index    = draw_data_index;
+				}
+			}
+
+			// sort: opaque before transparent, then material, then distance
+			std::sort(m_DrawCalls.begin(), m_DrawCalls.begin() + m_DrawCall_Count, [](const Renderer_DrawCall& a, const Renderer_DrawCall& b)
+			{
+				bool a_transparent = a.renderable->GetMaterial()->IsTransparent();
+				bool b_transparent = b.renderable->GetMaterial()->IsTransparent();
+				if (a_transparent != b_transparent)
+				{
+					return !a_transparent;
+				}
+
+				uint64_t a_material_id = a.renderable->GetMaterial()->GetObjectId();
+				uint64_t b_material_id = b.renderable->GetMaterial()->GetObjectId();
+				if (a_material_id != b_material_id)
+				{
+					return a_material_id < b_material_id;
+				}
+
+				if (!a_transparent)
+				{
+					return a.distance_squared < b.distance_squared;
+				}
+				else
+				{
+					return a.distance_squared > b.distance_squared;
+				}
+			});
+		}
+
+		// prepass: visible opaques, sorted by alpha test then distance
+		{
+			for (uint32_t i = 0; i < m_DrawCall_Count; ++i)
+			{
+				const Renderer_DrawCall& dc = m_DrawCalls[i];
+				if (!dc.renderable->GetMaterial()->IsTransparent() && dc.cameraVisible)
+				{
+					m_DrawCalls_Prepass[m_DrawCalls_Prepass_Count++] = dc;
+				}
+			}
+
+			std::sort(m_DrawCalls_Prepass.begin(), m_DrawCalls_Prepass.begin() + m_DrawCalls_Prepass_Count, [](const Renderer_DrawCall& a, const Renderer_DrawCall& b)
+			{
+				bool a_alpha = a.renderable->GetMaterial()->IsAlphaTested();
+				bool b_alpha = b.renderable->GetMaterial()->IsAlphaTested();
+				if (a_alpha != b_alpha)
+				{
+					return !a_alpha;
+				}
+				return a.distance_squared < b.distance_squared;
+			});
+		}
+
+		// indirect draw buffers (gpu-driven path)
+		{
+			m_Indirect_DrawCount = 0;
+			for (uint32_t i = 0; i < m_DrawCall_Count; i++)
+			{
+				const Renderer_DrawCall& dc = m_DrawCalls[i];
+				Renderable* renderable      = dc.renderable;
+				Material* material          = renderable->GetMaterial();
+
+				if (!material || material->IsTransparent())
+					continue;
+				if (IsCpuDrivenDraw(dc, material))
+					continue;
+
+				uint32_t idx = m_Indirect_DrawCount++;
+				if (idx >= MAX_ARRAY_SIZE)
+					break;
+
+				ShaderBuffer_IndirectDrawArgs& args = m_Indirect_DrawArgs[idx];
+				args.index_count          = renderable->GetIndexCount(dc.lodIndex);
+				args.instance_count       = dc.instanceCount;
+				args.first_index          = renderable->GetIndexOffset(dc.lodIndex);
+				args.vertex_offset        = static_cast<int32_t>(renderable->GetVertexOffset(dc.lodIndex));
+				args.first_instance       = dc.instanceIndex;
+
+				// per-draw data (aabb_index includes the frame offset into the shared aabb buffer)
+				uint32_t aabb_frame_offset = m_Frame_Resource_Index * MAX_ARRAY_SIZE;
+				ShaderBuffer_DrawData& data = m_Indirect_DrawData[idx];
+				Entity* entity          = renderable->GetEntity();
+				data.transform          = entity->GetMatrix();
+				data.transform_previous = entity->GetMatrixPrevious();
+				data.material_index     = material->GetIndex();
+				data.is_transparent     = 0;
+				data.aabb_index         = aabb_frame_offset + m_DrawCalls_Prepass_Count + idx;
+				data.padding            = 0;
+			}
+		}
+
+		// select occluders (top N by screen area, with temporal hysteresis)
+		{
+			static std::unordered_set<Renderable*> previous_occluders;
+
+			auto compute_screen_space_area = [&](const BoundingBox& aabb_world) -> float
+			{
+				float area = 0.0f;
+				if (Camera* camera = Scene::GetCamera())
+				{
+					xMath::Rectangle rect_screen = camera->WorldToScreenCoordinates(aabb_world);
+					area = xMath::Clamp(rect_screen.width * rect_screen.height, 0.0f, std::numeric_limits<float>::max());
+				}
+				return area;
+			};
+
+			struct DrawCallArea
+			{
+				uint32_t index;
+				float area;
+			};
+			static std::vector<DrawCallArea> areas;
+			areas.clear();
+			areas.reserve(m_DrawCalls_Prepass_Count);
+
+			for (uint32_t i = 0; i < m_DrawCalls_Prepass_Count; i++)
+			{
+				Renderer_DrawCall& draw_call = m_DrawCalls_Prepass[i];
+				Renderable* renderable = draw_call.renderable;
+				Material* material = renderable->GetMaterial();
+
+				if (!material || material->IsTransparent() || renderable->HasInstancing() || !draw_call.cameraVisible)
+					continue;
+
+				float screen_area = compute_screen_space_area(renderable->GetBoundingBox());
+
+				// temporal hysteresis: bonus for previous occluders
+				if (previous_occluders.contains(renderable))
+				{
+					screen_area *= 1.5f;
+				}
+
+				areas.push_back({.index = i, .area = screen_area });
+			}
+
+			std::ranges::sort(areas.begin(), areas.end(), [](const DrawCallArea& a, const DrawCallArea& b)
+			{
+				return a.area > b.area;
+			});
+
+			const uint32_t max_occluders = 64;
+			uint32_t occluder_count = xMath::Min(max_occluders, static_cast<uint32_t>(areas.size()));
+
+			previous_occluders.clear();
+			for (uint32_t i = 0; i < occluder_count; i++)
+			{
+				m_DrawCalls_Prepass[areas[i].index].isOccluder = true;
+				previous_occluders.insert(m_DrawCalls_Prepass[areas[i].index].renderable);
+			}
+		}
+		*/
+	} 
+
 
 	void Renderer::UpdateCameraUBO(uint32_t frameIndex)
 	{
@@ -2371,104 +2617,109 @@ namespace SceneryEditorX
 		memcpy(m_CameraUboMapped[frameIndex], &data, sizeof(CameraShaderData));
 	}
 
-	/*
-	void Renderer::UpdateFrameConstantBuffer(CommandList* cmdList)
+	void Renderer::UpdateFrameConstantBuffer(CommandList *cmdList)
 	{
+		/* TODO: This function is currently unused, but will be the basis for per-frame shader data updates once the scene and material systems are integrated. */
+
+		(void)cmdList;
+
+		/*
 		// matrices
 		{
-			if (Camera* camera = Scene::GetCamera())
+			if (Camera *camera = Scene::GetCamera())
 			{
-				if (near_plane != camera->GetNearPlane() || far_plane != camera->GetFarPlane())
+				if (s_NearPlane != camera->GetNearPlane() || s_FarPlane != camera->GetFarPlane())
 				{
-					near_plane                    = camera->GetNearPlane();
-					far_plane                     = camera->GetFarPlane();
-					dirty_orthographic_projection = true;
+					s_NearPlane                    = camera->GetNearPlane();
+					s_FarPlane                     = camera->GetFarPlane();
+					s_OrthoProjection_Dirty.SetDirty();
 				}
 
-				m_cb_frame_cpu.view_previous       = m_cb_frame_cpu.view;
-				m_cb_frame_cpu.view                = camera->GetViewMatrix();
-				m_cb_frame_cpu.view_inv            = Matrix::Invert(m_cb_frame_cpu.view);
-				m_cb_frame_cpu.projection_previous = m_cb_frame_cpu.projection;
-				m_cb_frame_cpu.projection          = camera->GetProjectionMatrix();
-				m_cb_frame_cpu.projection_inv      = Matrix::Invert(m_cb_frame_cpu.projection);
+				m_Cb_Frame_Cpu.view_previous       = m_Cb_Frame_Cpu.view;
+				m_Cb_Frame_Cpu.view                = camera->GetViewMatrix();
+				m_Cb_Frame_Cpu.view_inv            = Matrix::Invert(m_Cb_Frame_Cpu.view);
+				m_Cb_Frame_Cpu.projection_previous = m_Cb_Frame_Cpu.projection;
+				m_Cb_Frame_Cpu.projection          = camera->GetProjectionMatrix();
+				m_Cb_Frame_Cpu.projection_inv      = Matrix::Invert(m_Cb_Frame_Cpu.projection);
 			}
 
-			if (dirty_orthographic_projection)
+			if (s_OrthoProjection_Dirty.IsDirty())
 			{ 
 				// near = 0 for ortho (avoids NaN in [3,2] element)
-				Matrix projection_ortho              = Matrix::CreateOrthographicLH(m_viewport.width, m_viewport.height, 0.0f, far_plane);
-				m_cb_frame_cpu.view_projection_ortho = Matrix::CreateLookAtLH(Vector3(0, 0, -near_plane), Vector3::Forward, Vector3::Up) * projection_ortho;
-				dirty_orthographic_projection        = false;
+				Matrix projection_ortho              = Matrix::CreateOrthographicLH(s_Viewport.width, s_Viewport.height, 0.0f, s_FarPlane);
+				m_Cb_Frame_Cpu.view_projection_ortho = Matrix::CreateLookAtLH(Vec3(0, 0, -s_NearPlane), Vec3::Forward, Vec3::Up) * projection_ortho;
+				s_OrthoProjection_Dirty.Check();
 			}
 		}
 
+		/*
 		// taa jitter
 		Renderer_AntiAliasing_Upsampling upsampling_mode = cvar_antialiasing_upsampling.GetValueAs<Renderer_AntiAliasing_Upsampling>();
 		{
 			if (upsampling_mode == Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr)
 			{
-				RHI_VendorTechnology::FSR3_GenerateJitterSample(&jitter_offset.x, &jitter_offset.y);
-				m_cb_frame_cpu.projection *= Matrix::CreateTranslation(Vector3(jitter_offset.x, jitter_offset.y, 0.0f));
+				VendorTechnology::FSR3_GenerateJitterSample(&s_JitterOffset.x, &s_JitterOffset.y);
+				m_Cb_Frame_Cpu.projection *= Matrix::CreateTranslation(Vec3(s_JitterOffset.x, s_JitterOffset.y, 0.0f));
 			}
 			else if (upsampling_mode == Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess)
 			{
-				RHI_VendorTechnology::XeSS_GenerateJitterSample(&jitter_offset.x, &jitter_offset.y);
-				m_cb_frame_cpu.projection *= Matrix::CreateTranslation(Vector3(jitter_offset.x, jitter_offset.y, 0.0f));
+				VendorTechnology::XeSS_GenerateJitterSample(&s_JitterOffset.x, &s_JitterOffset.y);
+				m_Cb_Frame_Cpu.projection *= Matrix::CreateTranslation(Vec3(s_JitterOffset.x, s_JitterOffset.y, 0.0f));
 			}
 			else
 			{
-				jitter_offset = Vector2::Zero;
+				s_JitterOffset = Vec2::Zero;
 			}
 		}
+		#1#
 
-		m_cb_frame_cpu.view_projection_previous = m_cb_frame_cpu.view_projection;
-		m_cb_frame_cpu.view_projection          = m_cb_frame_cpu.view * m_cb_frame_cpu.projection;
-		m_cb_frame_cpu.view_projection_inv      = Matrix::Invert(m_cb_frame_cpu.view_projection);
+		m_Cb_Frame_Cpu.view_projection_previous = m_Cb_Frame_Cpu.view_projection;
+		m_Cb_Frame_Cpu.view_projection          = m_Cb_Frame_Cpu.view * m_Cb_Frame_Cpu.projection;
+		m_Cb_Frame_Cpu.view_projection_inv      = Matrix::Invert(m_Cb_Frame_Cpu.view_projection);
 		if (Camera* camera = Scene::GetCamera())
 		{
-			m_cb_frame_cpu.view_projection_previous_unjittered = m_cb_frame_cpu.view_projection_unjittered;
-			m_cb_frame_cpu.view_projection_unjittered          = m_cb_frame_cpu.view * camera->GetProjectionMatrix();
-			m_cb_frame_cpu.camera_near                         = camera->GetNearPlane();
-			m_cb_frame_cpu.camera_far                          = camera->GetFarPlane();
-			m_cb_frame_cpu.camera_position_previous            = m_cb_frame_cpu.camera_position;
-			m_cb_frame_cpu.camera_position                     = camera->GetEntity()->GetPosition();
-			m_cb_frame_cpu.camera_forward                      = camera->GetEntity()->GetForward();
-			m_cb_frame_cpu.camera_right                        = camera->GetEntity()->GetRight();
-			m_cb_frame_cpu.camera_fov                          = camera->GetFovHorizontalRad();
-			m_cb_frame_cpu.camera_aperture                     = camera->GetAperture();
-			m_cb_frame_cpu.camera_last_movement_time           = (m_cb_frame_cpu.camera_position - m_cb_frame_cpu.camera_position_previous).LengthSquared() != 0.0f
-				? static_cast<float>(Timer::GetTimeSec()) : m_cb_frame_cpu.camera_last_movement_time;
+			m_Cb_Frame_Cpu.view_projection_previous_unjittered = m_Cb_Frame_Cpu.view_projection_unjittered;
+			m_Cb_Frame_Cpu.view_projection_unjittered          = m_Cb_Frame_Cpu.view * camera->GetProjectionMatrix();
+			m_Cb_Frame_Cpu.camera_near                         = camera->GetNearPlane();
+			m_Cb_Frame_Cpu.camera_far                          = camera->GetFarPlane();
+			m_Cb_Frame_Cpu.camera_position_previous            = m_Cb_Frame_Cpu.camera_position;
+			m_Cb_Frame_Cpu.camera_position                     = camera->GetEntity()->GetPosition();
+			m_Cb_Frame_Cpu.camera_forward                      = camera->GetEntity()->GetForward();
+			m_Cb_Frame_Cpu.camera_right                        = camera->GetEntity()->GetRight();
+			m_Cb_Frame_Cpu.camera_fov                          = camera->GetFovHorizontalDeg() * DEG_TO_RAD;
+			m_Cb_Frame_Cpu.camera_aperture                     = camera->GetAperture();
+			m_Cb_Frame_Cpu.camera_last_movement_time           = Length2((m_Cb_Frame_Cpu.camera_position - m_Cb_Frame_Cpu.camera_position_previous)) != 0.0f
+				? static_cast<float>(Timer::GetTimeSec()) : m_Cb_Frame_Cpu.camera_last_movement_time;
 		}
-		m_cb_frame_cpu.resolution_output   = m_resolution_output;
-		m_cb_frame_cpu.resolution_render   = m_resolution_render;
-		m_cb_frame_cpu.taa_jitter_previous = m_cb_frame_cpu.taa_jitter_current;
-		m_cb_frame_cpu.taa_jitter_current  = jitter_offset;
-		m_cb_frame_cpu.time                = Timer::GetTimeSec();
-		m_cb_frame_cpu.delta_time          = static_cast<float>(Timer::GetDeltaTimeSec());
-		m_cb_frame_cpu.frame               = static_cast<uint32_t>(frame_num);
-		m_cb_frame_cpu.resolution_scale    = cvar_resolution_scale.GetValue();
-		m_cb_frame_cpu.hdr_enabled         = cvar_hdr.GetValueAs<bool>() ? 1.0f : 0.0f;
-		m_cb_frame_cpu.hdr_max_nits        = Display::GetLuminanceMax();
-		m_cb_frame_cpu.gamma               = cvar_gamma.GetValue();
-		m_cb_frame_cpu.camera_exposure     = World::GetCamera() ? World::GetCamera()->GetExposure() : 1.0f;
+		m_Cb_Frame_Cpu.resolution_output   = m_resolution_output;
+		m_Cb_Frame_Cpu.resolution_render   = m_resolution_render;
+		m_Cb_Frame_Cpu.taa_jitter_previous = m_Cb_Frame_Cpu.taa_jitter_current;
+		m_Cb_Frame_Cpu.taa_jitter_current  = s_JitterOffset;
+		m_Cb_Frame_Cpu.time                = Timer::GetTimeSec();
+		m_Cb_Frame_Cpu.delta_time          = static_cast<float>(DeltaTime::GetSeconds());
+		m_Cb_Frame_Cpu.frame               = static_cast<uint32_t>(m_FrameNumber);
+		m_Cb_Frame_Cpu.resolution_scale    = cvar_resolution_scale.GetValue();
+		m_Cb_Frame_Cpu.hdr_enabled         = cvar_hdr.GetValueAs<bool>() ? 1.0f : 0.0f;
+		m_Cb_Frame_Cpu.hdr_max_nits        = Monitor::GetLuminanceMax();
+		m_Cb_Frame_Cpu.gamma               = cvar_gamma.GetValue();
+		m_Cb_Frame_Cpu.camera_exposure     = Scene::GetCamera() ? Scene::GetCamera()->GetExposure() : 1.0f;
 
-		m_cb_frame_cpu.cloud_coverage = cvar_cloud_coverage.GetValue();
-		m_cb_frame_cpu.cloud_shadows  = cvar_cloud_shadows.GetValue();
+		m_Cb_Frame_Cpu.cloud_coverage = cvar_cloud_coverage.GetValue();
+		m_Cb_Frame_Cpu.cloud_shadows  = cvar_cloud_shadows.GetValue();
 		// feature bits (must match common_resources.hlsl)
-		m_cb_frame_cpu.set_bit(cvar_ray_traced_reflections.GetValueAs<bool>(), 1 << 0);
-		m_cb_frame_cpu.set_bit(cvar_ssao.GetValueAs<bool>(),                   1 << 1);
-		m_cb_frame_cpu.set_bit(cvar_ray_traced_shadows.GetValueAs<bool>(),     1 << 2);
-		m_cb_frame_cpu.set_bit(cvar_restir_pt.GetValueAs<bool>(),              1 << 3);
+		m_Cb_Frame_Cpu.SetBit(cvar_ssao.GetValueAs<bool>(),                   1 << 1);
+		m_Cb_Frame_Cpu.SetBit(cvar_restir_pt.GetValueAs<bool>(),              1 << 3);
 
-		GetBuffer(Renderer_Buffer::ConstantFrame)->Update(cmdList, &m_cb_frame_cpu);
+		GetBuffer(Renderer_Buffer::ConstantFrame)->Update(cmdList, &m_Cb_Frame_Cpu);
+		*/
+
 	}
-	*/
 
 	uint32_t Renderer::WriteDrawData(const xMath::Matrix &transform, const xMath::Matrix &prevTransform, uint32_t matIndex, uint32_t isTransparent)
 	{
 		// TODO: Write the transform matrix into the GPU draw-data structured buffer and return its index.
-		SEDX_CORE_ASSERT(m_DrawDataCount < RENDERER_MAX_DRAW_CALLS);
-		uint32_t index = m_DrawDataCount++;
+		SEDX_CORE_ASSERT(m_DrawData_Count < RENDERER_MAX_DRAW_CALLS);
+		uint32_t index = m_DrawData_Count++;
 
 		ShaderBuffer_DrawData& entry    = m_DrawData_CPU[index];
 		entry.transform					= transform;
@@ -2491,204 +2742,6 @@ namespace SceneryEditorX
 
 		return globalIndex;
 	}
-
-	/*
-	void Renderer::UpdateDrawCalls(CommandList* cmdList)
-	{
-		m_draw_call_count          = 0;
-		m_draw_calls_prepass_count = 0;
-		m_DrawDataCount          = 0;
-		m_transparents_present     = false;
-		/*if (ProgressTracker::IsLoading())
-			return;#1#
-
-		// collect draw calls
-		{
-			for (Entity* entity : Scene::GetEntities())
-			{
-				if (!entity->GetActive())
-					continue;
-
-				if (Renderable* renderable = entity->GetComponent<Renderable>())
-				{
-					Material* material = renderable->GetMaterial();
-					if (!material)
-						continue;
-
-					if (material->IsTransparent())
-					{
-						m_transparents_present = true;
-					}
-
-					uint32_t draw_data_index = WriteDrawData(
-						entity->GetMatrix(),
-						entity->GetMatrixPrevious(),
-						material->GetIndex(),
-						material->IsTransparent() ? 1 : 0
-					);
-
-					Renderer_DrawCall& draw_call = m_draw_calls[m_draw_call_count++];
-					draw_call.renderable         = renderable;
-					draw_call.distance_squared   = renderable->GetDistanceSquared();
-					draw_call.lod_index          = renderable->GetLodIndex();
-					draw_call.is_occluder        = false;
-					draw_call.camera_visible     = renderable->IsVisible();
-					draw_call.instance_index     = 0;
-					draw_call.instance_count     = renderable->GetInstanceCount();
-					draw_call.draw_data_index    = draw_data_index;
-				}
-			}
-
-			// sort: opaque before transparent, then material, then distance
-			sort(m_draw_calls.begin(), m_draw_calls.begin() + m_draw_call_count, [](const Renderer_DrawCall& a, const Renderer_DrawCall& b)
-			{
-				bool a_transparent = a.renderable->GetMaterial()->IsTransparent();
-				bool b_transparent = b.renderable->GetMaterial()->IsTransparent();
-				if (a_transparent != b_transparent)
-				{
-					return !a_transparent;
-				}
-
-				uint64_t a_material_id = a.renderable->GetMaterial()->GetObjectId();
-				uint64_t b_material_id = b.renderable->GetMaterial()->GetObjectId();
-				if (a_material_id != b_material_id)
-				{
-					return a_material_id < b_material_id;
-				}
-
-				if (!a_transparent)
-				{
-					return a.distance_squared < b.distance_squared;
-				}
-				else
-				{
-					return a.distance_squared > b.distance_squared;
-				}
-			});
-		}
-
-		// prepass: visible opaques, sorted by alpha test then distance
-		{
-			for (uint32_t i = 0; i < m_draw_call_count; ++i)
-			{
-				const Renderer_DrawCall& dc = m_draw_calls[i];
-				if (!dc.renderable->GetMaterial()->IsTransparent() && dc.camera_visible)
-				{
-					m_draw_calls_prepass[m_draw_calls_prepass_count++] = dc;
-				}
-			}
-
-			sort(m_draw_calls_prepass.begin(), m_draw_calls_prepass.begin() + m_draw_calls_prepass_count, [](const Renderer_DrawCall& a, const Renderer_DrawCall& b)
-			{
-				bool a_alpha = a.renderable->GetMaterial()->IsAlphaTested();
-				bool b_alpha = b.renderable->GetMaterial()->IsAlphaTested();
-				if (a_alpha != b_alpha)
-				{
-					return !a_alpha;
-				}
-				return a.distance_squared < b.distance_squared;
-			});
-		}
-
-		// indirect draw buffers (gpu-driven path)
-		{
-			m_indirect_draw_count = 0;
-			for (uint32_t i = 0; i < m_draw_call_count; i++)
-			{
-				const Renderer_DrawCall& dc = m_draw_calls[i];
-				Renderable* renderable      = dc.renderable;
-				Material* material          = renderable->GetMaterial();
-
-				if (!material || material->IsTransparent())
-					continue;
-				if (IsCpuDrivenDraw(dc, material))
-					continue;
-
-				uint32_t idx = m_indirect_draw_count++;
-				if (idx >= MAX_ARRAY_SIZE)
-					break;
-
-				Sb_IndirectDrawArgs& args = m_indirect_draw_args[idx];
-				args.index_count          = renderable->GetIndexCount(dc.lod_index);
-				args.instance_count       = dc.instance_count;
-				args.first_index          = renderable->GetIndexOffset(dc.lod_index);
-				args.vertex_offset        = static_cast<int32_t>(renderable->GetVertexOffset(dc.lod_index));
-				args.first_instance       = dc.instance_index;
-
-				// per-draw data (aabb_index includes the frame offset into the shared aabb buffer)
-				uint32_t aabb_frame_offset = m_frame_resource_index * MAX_ARRAY_SIZE;
-				Sb_DrawData& data       = m_indirect_draw_data[idx];
-				Entity* entity          = renderable->GetEntity();
-				data.transform          = entity->GetMatrix();
-				data.transform_previous = entity->GetMatrixPrevious();
-				data.material_index     = material->GetIndex();
-				data.is_transparent     = 0;
-				data.aabb_index         = aabb_frame_offset + m_draw_calls_prepass_count + idx;
-				data.padding            = 0;
-			}
-		}
-
-		// select occluders (top N by screen area, with temporal hysteresis)
-		{
-			static std::unordered_set<Renderable*> previous_occluders;
-
-			auto compute_screen_space_area = [&](const BoundingBox& aabb_world) -> float
-			{
-				float area = 0.0f;
-				if (Camera* camera = Scene::GetCamera())
-				{
-					xMath::Rectangle rect_screen = camera->WorldToScreenCoordinates(aabb_world);
-					area = xMath::Clamp(rect_screen.width * rect_screen.height, 0.0f, std::numeric_limits<float>::max());
-				}
-				return area;
-			};
-
-			struct DrawCallArea
-			{
-				uint32_t index;
-				float area;
-			};
-			static std::vector<DrawCallArea> areas;
-			areas.clear();
-			areas.reserve(m_draw_calls_prepass_count);
-
-			for (uint32_t i = 0; i < m_draw_calls_prepass_count; i++)
-			{
-				Renderer_DrawCall& draw_call = m_draw_calls_prepass[i];
-				Renderable* renderable = draw_call.renderable;
-				Material* material = renderable->GetMaterial();
-
-				if (!material || material->IsTransparent() || renderable->HasInstancing() || !draw_call.camera_visible)
-					continue;
-
-				float screen_area = compute_screen_space_area(renderable->GetBoundingBox());
-
-				// temporal hysteresis: bonus for previous occluders
-				if (previous_occluders.find(renderable) != previous_occluders.end())
-				{
-					screen_area *= 1.5f;
-				}
-
-				areas.push_back({ i, screen_area });
-			}
-
-			std::ranges::sort(areas.begin(), areas.end(), [](const DrawCallArea& a, const DrawCallArea& b)
-			{
-				return a.area > b.area;
-			});
-
-			const uint32_t max_occluders = 64;
-			uint32_t occluder_count = xMath::Min(max_occluders, static_cast<uint32_t>(areas.size()));
-
-			previous_occluders.clear();
-			for (uint32_t i = 0; i < occluder_count; i++)
-			{
-				m_draw_calls_prepass[areas[i].index].is_occluder = true;
-				previous_occluders.insert(m_draw_calls_prepass[areas[i].index].renderable);
-			}
-		}
-	}
-	*/
 
 #pragma endregion
 

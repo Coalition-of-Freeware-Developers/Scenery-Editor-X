@@ -30,6 +30,7 @@
  */
 #pragma once
 #include "renderer_buffers.h"
+#include "SceneryEditorX/core/identifiers/flag.h"
 #include "font/font.h"
 #include "vulkan/blend_states.h"
 #include "vulkan/command_list.h"
@@ -521,34 +522,42 @@ namespace SceneryEditorX
 		 * @brief Writes per-draw transform and material data into the GPU draw-data buffer.
 		 * @return Index of the written draw-data slot (passed as push constant draw_index).
 		 */
+
 		/**
-		 * @brief 
-		 * @param cmdList 
+		 * @brief Updates the draw calls for the current frame.
+		 * @param cmdList The command list to record the draw calls into.
 		 */
 		static void UpdateDrawCalls(CommandList *cmdList);
 
 		// -------------------------------------------------------
-		
-		CommandList *m_CurrentCmdList;
-		AssetManager *m_AssetManager;
+
+		CommandList *m_CurrentCmdList; // Set at the beginning of each frame, used for resource updates and utility functions.
+		AssetManager *m_AssetManager; // Set during Init, used for loading models, textures, etc.
 
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		/// Static State																								  ///
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 		static RendererProperties *m_Data;
-		static std::atomic<bool> m_ResourcesInitialized;
-		static Scope<Model> m_TestModel;
+		static std::atomic<bool> m_ResourcesInitialized; // Flag to indicate when resources are ready for use, set to true at the end of Init()
+		static Scope<Model> m_TestModel; // Created during Init, used for test draws and as a fallback when model loading fails
 
 		// Bindless
 		// bindless draw data
-		static std::array<ShaderBuffer_DrawData, RENDERER_MAX_DRAW_CALLS> m_DrawData_CPU;
-		static uint32_t m_DrawData_Count;
+		static std::array<ShaderBuffer_DrawData, RENDERER_MAX_DRAW_CALLS> m_DrawData_CPU; // Staging area for draw data written by the CPU; copied to GPU buffer each frame
+	    static std::mutex m_MutexRenderables; // Mutex to protect access to m_DrawData_CPU and m_DrawData_Count during scene submission from multiple threads
+		static uint32_t m_DrawData_Count; // Number of draw data entries written for the current frame; used to determine how many to copy to GPU and how many draw calls to issue
 
+		// Array of pointers to all textures used by the renderer, indexed by material parameters; bound as a bindless array in shaders
 		static std::array<ImageResource*, MAX_ARRAY_SIZE> m_Bindless_Textures;
-		//static std::array<Sb_Light, MAX_ARRAY_SIZE> m_Bindless_Lights;
-		//static std::array<Sb_Aabb, MAX_ARRAY_SIZE> m_Bindless_Aabbs;
-		static bool m_BindlessSamplers_Dirty;
+
+		// Array of light data for all active lights in the scene, indexed by a per-light index; bound as a bindless array in shaders
+		static std::array<ShaderBuffer_Light, MAX_ARRAY_SIZE> m_Bindless_Lights; 
+
+	    // Array of AABB data for all renderables, indexed by a per-renderable index; used for GPU-driven culling and other operations
+		static std::array<ShaderBuffer_Aabb, MAX_ARRAY_SIZE> m_Bindless_Aabbs;
+
+		static Flag m_BindlessSamplers_Dirty;
 
 		// one-shot and feature-toggle state
 		struct PassState
@@ -572,16 +581,13 @@ namespace SceneryEditorX
 
 			// vrs
 			ImageResource* m_VrsLastClearedTexture = nullptr;
-			void Reset()
-			{
-				*this = PassState();
-			}
+			void Reset() { *this = PassState(); }
 
 		};
-		static PassState m_PassState;
 
-		// Per-pass push constant staging buffer (written by passes, uploaded by PushConstants())
-		static PushConstantBuffer_Pass m_Pcb_Pass_Cpu;
+		static PassState m_PassState;
+		static PushConstantBuffer_Pass m_Pcb_Pass_Cpu; // Per-pass push constant staging buffer (written by passes, uploaded by PushConstants())
+		static ConstantBuffer_Frame m_Cb_Frame_Cpu; // Staging area for per-frame constants written by the CPU; copied to GPU buffer each frame
 
 		// CPU-side draw call arrays (populated by scene submission, consumed by passes)
 		static std::array<Renderer_DrawCall, RENDERER_MAX_DRAW_CALLS> m_DrawCalls;
@@ -591,11 +597,6 @@ namespace SceneryEditorX
 		static uint32_t m_Indirect_DrawCount;
 		static bool     m_Transparents_Present;
 		static bool     m_Is_Hiz_Suppressed;
-
-		// CPU-Side draw data staging
-		//static std::array<Sb_DrawData, renderer_max_draw_calls> m_DrawData_CPU;
-		static uint32_t m_DrawDataCount;
-		static std::mutex m_MutexRenderables;
 
 		static CommandList *m_CmdList_Compute;
 		static CommandList *m_CmdList_Present;

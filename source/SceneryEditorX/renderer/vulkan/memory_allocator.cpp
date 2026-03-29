@@ -42,7 +42,6 @@
 #define VMA_STATIC_VULKAN_FUNCTIONS  0
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 1
 #include "SceneryEditorX/utils/string_utils.h"
-#include "debug/graphics_debug.h"
 
 #include <vma/vk_mem_alloc.h>
 #include <volk/volk.h>
@@ -51,30 +50,41 @@
 
 namespace SceneryEditorX
 {
+/**
+	 * @struct SEDX_AllocatorData
+	 * @brief Holds data related to the Vulkan memory allocator.
+	 */
 	struct SEDX_AllocatorData
 	{
 		VmaAllocator allocator;
 		uint64_t totalAllocatedBytes = 0;
-		
 		uint64_t memoryUsage = 0; // all heaps
 	};
 
+	/**
+	 * @enum AllocationType
+	 * @brief Enumeration of allocation types for tracking purposes.
+	 */
 	enum class AllocationType : uint8_t
 	{
-		None = 0, 
-		Buffer = 1, 
-		Image = 2
+		None	= 0, 
+		Buffer	= 1, 
+		Image	= 2
 	};
 
+	/**
+	 * @struct AllocInfo
+	 * @brief Struct to store information about a memory allocation, including its size and type.
+	 */
 	struct AllocInfo
 	{
 		uint64_t allocatedSize = 0;
 		AllocationType type = AllocationType::None;
 	};
 
-	static SEDX_AllocatorData *s_AllocatorData;
-	static std::map<VmaAllocation, AllocInfo> s_AllocationMap;
-	static std::mutex s_MutexAllocator;
+	static SEDX_AllocatorData *s_AllocatorData; // Pointer to the allocator data, initialized in MemoryAllocator::Init()
+	static std::map<VmaAllocation, AllocInfo> s_AllocationMap; // Map to track active allocations and their information
+	static std::mutex s_MutexAllocator; // Mutex to protect access to the allocation map for thread safety
 
 	// -------------------------------------------------------
 

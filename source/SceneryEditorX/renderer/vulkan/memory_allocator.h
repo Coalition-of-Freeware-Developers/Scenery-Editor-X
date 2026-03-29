@@ -133,8 +133,22 @@ namespace SceneryEditorX
 		 */
 		static VmaAllocation GetAllocation(VmaAllocation allocation);
 
+		/**
+		 * @brief 
+		 * @return 
+		 */
 		static VmaAllocator GetAllocator();
+
+		/**
+		 * @brief 
+		 * @return 
+		 */
 		static uint64_t GetAllocatedMemory();
+
+		/**
+		 * @brief 
+		 * @return 
+		 */
 		static uint64_t GetAvailableMemory();
 
 		/**
@@ -157,8 +171,17 @@ namespace SceneryEditorX
 		 */
 		static void UnmapMemory(VmaAllocation allocation);
 
+		/**
+		 * @brief 
+		 */
 		static void DumpStats();
+
+		/**
+		 * @brief 
+		 * @return 
+		 */
 		static GPUMemoryStats GetMemoryStats();
+
 	private:
 		Ref<Device> m_Device;
 	};

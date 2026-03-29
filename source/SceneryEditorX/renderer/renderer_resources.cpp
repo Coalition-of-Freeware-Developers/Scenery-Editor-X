@@ -89,7 +89,7 @@ namespace SceneryEditorX
 	// Static members defined here (declared in renderer.h)
 	PushConstantBuffer_Pass Renderer::m_Pcb_Pass_Cpu;
 	uint32_t           Renderer::m_DrawCall_Count           = 0;
-	bool               Renderer::m_BindlessSamplers_Dirty   = false;
+	Flag               Renderer::m_BindlessSamplers_Dirty;
 	uint32_t           Renderer::m_DrawCalls_Prepass_Count  = 0;
 	uint32_t           Renderer::m_Indirect_DrawCount       = 0;
 	bool               Renderer::m_Transparents_Present     = false;
@@ -571,7 +571,7 @@ namespace SceneryEditorX
 		}
 #pragma endregion
 
-		m_BindlessSamplers_Dirty = true;
+		m_BindlessSamplers_Dirty.SetDirty();
 		SEDX_CORE_TRACE_TAG("Renderer", "Sampler setup complete");
 	}
 

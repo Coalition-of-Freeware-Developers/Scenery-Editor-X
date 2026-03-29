@@ -1454,18 +1454,26 @@ namespace SceneryEditorX
 
 		// transition to blit appropriate layouts
 		Layout::ImageLayout initialSrcLayout = GetImageLayout(src, 0);
-		src->SetLayout(Layout::ImageLayout::TransferSrc, this);
-		InsertBarrier(dst->Get(), dst->GetImageFormat(), 0, 1, 1, Layout::ImageLayout::TransferDst);
+
+	    // determine which swapchain image we will target
 		const uint32_t imgIndex = dst->GetImageIndex();
+		
+		src->SetLayout(Layout::ImageLayout::TransferSrc, this);
+
+		// InsertBarrier expects a pointer to a VkImage; the swapchain stores VkImage handles
+		// in a vector. Pass the address of the selected VkImage element so the barrier code
+		// can dereference it as a VkImage*.
+		InsertBarrier(&dst->GetImages()[imgIndex], dst->GetImageFormat(), 0, 1, 1, Layout::ImageLayout::TransferDst);
+
 		// blit
 		vkCmdCopyImage(m_CmdBuffer,
 			static_cast<VkImage>(*src->Get()), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-			static_cast<VkImage>(dst->GetImages()[imgIndex]),  VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+			static_cast<VkImage>(dst->GetImages()[imgIndex]), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 			1, &copyRegion);
 
 		// transition to the initial layout
 		src->SetLayout(initialSrcLayout, this);
-		InsertBarrier(dst->Get(), dst->GetImageFormat(), 0, 1, 1, Layout::ImageLayout::Present);
+		InsertBarrier(&dst->GetImages()[imgIndex], dst->GetImageFormat(), 0, 1, 1, Layout::ImageLayout::Present);
 	}
 
 	void CommandList::Copy(ImageResource *src, ImageResource *dst, const bool blitMips)
