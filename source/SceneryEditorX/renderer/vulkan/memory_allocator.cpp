@@ -41,8 +41,10 @@
 #define VMA_IMPLEMENTATION
 #define VMA_STATIC_VULKAN_FUNCTIONS  0
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 1
-#include "SceneryEditorX/utils/string_utils.h"
-
+#ifndef VK_USE_64_BIT_NON_DISPATCHABLE_HANDLES
+#define VK_USE_64_BIT_NON_DISPATCHABLE_HANDLES 1
+#endif
+#include <SceneryEditorX/utils/string_utils.h>
 #include <vma/vk_mem_alloc.h>
 #include <volk/volk.h>
 
@@ -50,7 +52,7 @@
 
 namespace SceneryEditorX
 {
-/**
+	/**
 	 * @struct SEDX_AllocatorData
 	 * @brief Holds data related to the Vulkan memory allocator.
 	 */

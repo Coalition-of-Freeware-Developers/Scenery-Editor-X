@@ -31,6 +31,7 @@
 #pragma once
 #include <SceneryEditorX/core/resource/iobject.h>
 #include <SceneryEditorX/renderer/gpu_stats.h>
+#include <vulkan/vulkan.h>
 #include <vma/vk_mem_alloc.h>
 
 // -------------------------------------------------------

@@ -396,7 +396,7 @@ TARGET_LINK_LIBRARIES(AppCore
 		${Slang_LIBRARY}
 		Shell32.lib
 		xMath::xMath
-	   Freetype::Freetype
+	    Freetype::Freetype
 		$<$<AND:$<CONFIG:Debug>,$<BOOL:${TRACY_ENABLE}>>:TracyClient>
 		msdfgen::msdfgen
 )
@@ -411,6 +411,7 @@ TARGET_COMPILE_DEFINITIONS(AppCore
 		SPDLOG_USE_STD_FORMAT
 		VK_NO_PROTOTYPES
 		VK_USE_PLATFORM_WIN32_KHR
+		VK_USE_64_BIT_NON_DISPATCHABLE_HANDLES
 		CURL_STATICLIB
 )
 
