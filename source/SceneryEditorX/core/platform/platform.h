@@ -48,7 +48,7 @@ namespace SceneryEditorX
 		 * @brief Handles the main update and render loop
 		 * @return An exit code representing the outcome of the loop
 		 */
-		ExitCode MainLoop();
+		static ExitCode MainLoop();
 
 		/**
 		 * @brief Handles the update and render of a frame.

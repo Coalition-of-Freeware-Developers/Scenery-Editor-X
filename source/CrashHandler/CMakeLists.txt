@@ -35,17 +35,19 @@ ADD_EXECUTABLE(CrashHandler
 SET_TARGET_PROPERTIES(CrashHandler PROPERTIES OUTPUT_NAME "xService")
 
 # --------------------------------
-
 TARGET_INCLUDE_DIRECTORIES(CrashHandler
-    PRIVATE
-        ${CMAKE_SOURCE_DIR}/source
-		${CMAKE_SOURCE_DIR}/dependency
-        ${REGISTRY_KEYS}
-        ${PORTABLE_FILE_DIALOGS_INCLUDE_DIRS}
-        $ENV{VULKAN_SDK}/Include/
-		$ENV{VULKAN_SDK}/Include/vma
-        ${Stb_INCLUDE_DIR}
-        ${CURL_INCLUDE_DIRS}
+	PRIVATE
+	${CMAKE_SOURCE_DIR}/source
+	${CMAKE_SOURCE_DIR}/dependency
+	${REGISTRY_KEYS}
+	$if(RENDERDOC_ENABLED)
+		${RENDERDOC_INCLUDE_DIRS}
+	$endif()
+	${PORTABLE_FILE_DIALOGS_INCLUDE_DIRS}
+	$ENV{VULKAN_SDK}/Include/
+	$ENV{VULKAN_SDK}/Include/vma
+	${Stb_INCLUDE_DIR}
+	${CURL_INCLUDE_DIRS}
 )
 
 # --------------------------------
@@ -71,6 +73,9 @@ TARGET_COMPILE_DEFINITIONS(CrashHandler
     PUBLIC
         EDITOR
         LAUNCHER
+		$if(RENDERDOC_ENABLED)
+			RENDERDOC_TOOLING_ENABLED
+		$endif()
         $<$<CONFIG:Debug>:SEDX_DEBUG>
         $<$<CONFIG:Release>:SEDX_RELEASE>
 		SPDLOG_USE_STD_FORMAT

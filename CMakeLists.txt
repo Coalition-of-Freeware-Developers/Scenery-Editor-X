@@ -223,6 +223,7 @@ OPTION(SEDX_USE_FETCHCONTENT_XPLIB    	"Fetch X-PlaneSceneryLibrary via FetchCon
 #OPTION(SEDX_PROFILING_ENABLED 			"Enable profiling features (Tracy, etc.)" ON)
 OPTION(TRACY_ENABLE 					"Enable Tracy profiler" OFF)
 OPTION(SEDX_USE_FETCHCONTENT_TRACY    	"Fetch Tracy via FetchContent" ON)
+OPTION(RENDERDOC_ENABLE 				"Enable RenderDoc tooling integration for graphics debugging" ON)
 #OPTION(SEDX_ENABLE_MSDFGEN            	"Enable msdfgen usage" ON)
 
 SET(XMATH_BUILD_TESTS OFF CACHE BOOL "Build xMath tests" FORCE)
@@ -275,6 +276,14 @@ IF(TRACY_ENABLE)
 			ENDIF()
 		ENDFOREACH()
 	ENDIF()
+ENDIF()
+
+# ###########################################
+# RenderDoc Tooling (optional)
+# ###########################################
+IF(RENDERDOC_ENABLE)
+	ADD_COMPILE_DEFINITIONS(RENDERDOC_TOOLING_ENABLED)
+	SET(RENDERDOC_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/dependency/renderdoc)
 ENDIF()
 
 ############################################
@@ -650,6 +659,11 @@ FOREACH(_sedx_dbg_target SceneryEditorX Launcher CrashHandler)
 	IF(TARGET ${_sedx_dbg_target})
 		# Only add --verbose when building Debug and SEDX_VERBOSE_LOGGING is true
 		SET_TARGET_PROPERTIES(${_sedx_dbg_target} PROPERTIES VS_DEBUGGER_COMMAND_ARGUMENTS "$<$<AND:$<CONFIG:Debug>,$<BOOL:${SEDX_VERBOSE_LOGGING}>>:--verbose>" )
+	ENDIF()
+
+	IF(TARGET ${_sedx_dbg_target})
+		# Also set the environment variable SEDX_LOG_LEVEL=trace for maximum logging verbosity when debugging
+		SET_TARGET_PROPERTIES(${_sedx_dbg_target} PROPERTIES VS_DEBUGGER_ENVIRONMENT "$<$<BOOL:${RENDERDOC_ENABLE}>:--renderdoc>")
 	ENDIF()
 ENDFOREACH()
 

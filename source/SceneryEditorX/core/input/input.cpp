@@ -42,6 +42,11 @@ namespace
 	using SceneryEditorX::KeyState;
 	using SceneryEditorX::MouseButton;
 
+	/**
+	 * @brief Converts a KeyCode value to its corresponding SDL_Scancode value, allowing for mapping between the engine's key codes and SDL's scancodes for input handling.
+	 * @param keycode The KeyCode value to be converted.
+	 * @return The corresponding SDL_Scancode value.
+	 */
 	SDL_Scancode KeyCodeToSDLScancode(const KeyCode keycode)
 	{
 		const int key = static_cast<int>(keycode);
@@ -148,6 +153,11 @@ namespace
 		}
 	}
 
+	/**
+	 * @brief Converts an SDL_Scancode value to its corresponding KeyCode value, allowing for mapping between SDL's scancodes and the engine's key codes for input handling.
+	 * @param scancode The SDL_Scancode value to be converted.
+	 * @return The corresponding KeyCode value, or std::nullopt if the scancode does not have a corresponding KeyCode.
+	 */
 	std::optional<KeyCode> SDLScancodeToKeyCode(const SDL_Scancode scancode)
 	{
 		if (scancode >= SDL_SCANCODE_A && scancode <= SDL_SCANCODE_Z)
@@ -252,6 +262,11 @@ namespace
 		}
 	}
 
+	/**
+	 * @brief Converts a character to its corresponding KeyCode value, allowing for mapping between characters and the engine's key codes for input handling.
+	 * @param c The character to be converted.
+	 * @return The corresponding KeyCode value, or std::nullopt if the character does not have a corresponding KeyCode.
+	 */
 	std::optional<KeyCode> CharacterToKeyCode(const char c)
 	{
 		if (c >= 'a' && c <= 'z')
@@ -292,6 +307,11 @@ namespace
 		}
 	}
 
+	/**
+	 * @brief Converts an SDL mouse button value to its corresponding MouseButton value, allowing for mapping between SDL's mouse buttons and the engine's mouse buttons for input handling.
+	 * @param button The SDL mouse button value to be converted.
+	 * @return The corresponding MouseButton value, or std::nullopt if the button does not have a corresponding MouseButton.
+	 */
 	std::optional<MouseButton> SDLMouseButtonToMouseButton(const uint8_t button)
 	{
 		switch (button)
@@ -305,6 +325,11 @@ namespace
 		}
 	}
 
+	/**
+	 * @brief Converts an SDL_Keymod value to its corresponding KeyMods value, allowing for mapping between SDL's key modifiers and the engine's key modifiers for input handling.
+	 * @param mods The SDL_Keymod value to be converted.
+	 * @return The corresponding KeyMods value, or std::nullopt if the mods value does not have a corresponding KeyMods.
+	 */
 	std::optional<KeyMods> KeyModsFromSDLKeymod(const SDL_Keymod mods)
 	{
 		if (mods == 0)
@@ -422,12 +447,12 @@ namespace SceneryEditorX
 
 	bool Input::IsKeyPressed(const KeyCode key)
 	{
-		return s_KeyData.contains(key) && s_KeyData[key].State == KeyState::Pressed;
+		return s_KeyData.contains(key) && s_KeyData[key].state == KeyState::Pressed;
 	}
 
 	bool Input::IsKeyHeld(const KeyCode key)
 	{
-		return s_KeyData.contains(key) && s_KeyData[key].State == KeyState::Held;
+		return s_KeyData.contains(key) && s_KeyData[key].state == KeyState::Held;
 	}
 
 	bool Input::IsKeyDown(KeyCode keycode)
@@ -444,7 +469,7 @@ namespace SceneryEditorX
 
 	bool Input::IsKeyReleased(const KeyCode keycode)
 	{
-		return s_KeyData.contains(keycode) && s_KeyData[keycode].State == KeyState::Released;
+		return s_KeyData.contains(keycode) && s_KeyData[keycode].state == KeyState::Released;
 	}
 
 	bool Input::IsKeyToggledOn(const KeyCode keycode)
@@ -474,12 +499,12 @@ namespace SceneryEditorX
 
 	bool Input::IsMouseButtonPressed(MouseButton button)
 	{
-		return s_MouseData.contains(button) && s_MouseData[button].State == KeyState::Pressed;
+		return s_MouseData.contains(button) && s_MouseData[button].state == KeyState::Pressed;
 	}
 
 	bool Input::IsMouseButtonHeld(MouseButton button)
 	{
-		return s_MouseData.contains(button) && s_MouseData[button].State == KeyState::Held;
+		return s_MouseData.contains(button) && s_MouseData[button].state == KeyState::Held;
 	}
 
 	bool Input::IsMouseButtonDown(MouseButton button)
@@ -501,7 +526,7 @@ namespace SceneryEditorX
 
 	bool Input::IsMouseButtonReleased(const MouseButton button)
 	{
-		return s_MouseData.contains(button) && s_MouseData[button].State == KeyState::Released;
+		return s_MouseData.contains(button) && s_MouseData[button].state == KeyState::Released;
 	}
 
 	float Input::GetMouseX()
@@ -578,7 +603,7 @@ namespace SceneryEditorX
 	{
 		for (const auto& [key, keyData] : s_KeyData)
 		{
-			if (keyData.State == KeyState::Pressed)
+			if (keyData.state == KeyState::Pressed)
 			{
 				UpdateKeyState(key, KeyState::Held);
 			}
@@ -589,7 +614,7 @@ namespace SceneryEditorX
 	{
 		for (const auto& [button, buttonData] : s_MouseData)
 		{
-			if (buttonData.State == KeyState::Pressed)
+			if (buttonData.state == KeyState::Pressed)
 			{
 				UpdateButtonState(button, KeyState::Held);
 			}
@@ -619,16 +644,16 @@ namespace SceneryEditorX
 	void Input::UpdateButtonState(const MouseButton button, const KeyState newState)
 	{
 		auto& mouseData = s_MouseData[button];
-		mouseData.Button = button;
-		mouseData.OldState = mouseData.State;
-		mouseData.State = newState;
+		mouseData.button = button;
+		mouseData.oldState = mouseData.state;
+		mouseData.state = newState;
 	}
 
 	void Input::ClearReleasedKeys()
 	{
 		for (const auto& [key, keyData] : s_KeyData)
 		{
-			if (keyData.State == KeyState::Released)
+			if (keyData.state == KeyState::Released)
 			{
 				UpdateKeyState(key, KeyState::None);
 			}
@@ -636,7 +661,7 @@ namespace SceneryEditorX
 
 		for (const auto& [button, buttonData] : s_MouseData)
 		{
-			if (buttonData.State == KeyState::Released)
+			if (buttonData.state == KeyState::Released)
 			{
 				UpdateButtonState(button, KeyState::None);
 			}

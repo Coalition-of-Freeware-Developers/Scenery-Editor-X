@@ -29,11 +29,10 @@
  * -------------------------------------------------------
  */
 #include "render_context.h"
-#include "SceneryEditorX/core/application/application_data.h"
-#include "SceneryEditorX/core/window/window.h"
-#include "SceneryEditorX/utils/repeat_call_tracker.h"
 #include "debug/graphics_debug.h"
-#include <SDL3/SDL_vulkan.h>
+#include <SceneryEditorX/core/application/application_data.h>
+#include <SceneryEditorX/logging/asserts.h>
+#include <SceneryEditorX/utils/repeat_call_tracker.h>
 #include <volk/volk.h>
 
 // -------------------------------------------------------
@@ -49,7 +48,11 @@ namespace SceneryEditorX
 	static bool s_IsInitialized = false;
 
 	// -------------------------------------------------------
-	
+
+	/**
+	 * @brief  
+	 * @return 
+	 */
 	static uint32_t GetVulkanAPIVersion()
 	{
 		uint32_t apiVersion = 0;
@@ -120,8 +123,9 @@ namespace SceneryEditorX
 			SEDX_CORE_TRACE("Initializing RenderContext");
 
 			VkResult volkRes = volkInitialize();
-			if (volkRes != VK_SUCCESS) {
-				SEDX_CORE_ERROR_TAG("RenderContext", "volkInitialize failed: {}", (int)volkRes);
+			if (volkRes != VK_SUCCESS)
+			{
+				SEDX_CORE_ERROR_TAG("RenderContext", "volkInitialize failed: {}", static_cast<int>(volkRes));
 				return;
 			}
 		
@@ -148,8 +152,6 @@ namespace SceneryEditorX
 			/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 			AppData appData;
-			//uint32_t apiVersion = GetVulkanAPIVersion(); // Get the users highest available version
-
 			VkApplicationInfo appInfo{};
 			appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
 			appInfo.pNext = nullptr;
@@ -242,6 +244,7 @@ namespace SceneryEditorX
 			std::vector<VkLayerProperties> layerNames(layerCount); // Properties of all available Vulkan validation layers on the system.
 			vkEnumerateInstanceLayerProperties(&layerCount, layerNames.data());
 
+
 			/*
 			// Check for validation layer availability
 			if (EnableValidationLayers)
@@ -251,7 +254,7 @@ namespace SceneryEditorX
 
 				// Check for all validation layers and log available ones
 				std::vector<const char *> layersToCheck = {validationLayer[0]};
-				layerChecker.CheckLayers(layersToCheck);
+				GraphicsChecks::CheckLayers(layersToCheck);
 
 				// Specifically check for Khronos validation layer
 				khronosAvailable = layerChecker.CheckValidationLayerSupport();
@@ -260,9 +263,9 @@ namespace SceneryEditorX
 					SEDX_CORE_ERROR_TAG("Graphics Engine", "Khronos validation layer requested but not available!");
 				else
 					SEDX_CORE_TRACE_TAG("Graphics Engine", "Validation layers are available and will be enabled");
-			}*/
+			}
 
-			/*
+
 			// Get all available extensions
 			Extensions extensions;
 			vkEnumerateInstanceExtensionProperties(nullptr, &extensions.extensionCount, nullptr);
@@ -284,7 +287,8 @@ namespace SceneryEditorX
 				}
 				if (!khronosAvailable)
 					SEDX_CORE_ERROR_TAG("Render Context", "Khronos validation layer not available!");
-			}*/
+			}
+			*/
 
 			s_Instance->m_Device = CreateRef<Device>(s_Instance->m_Instance);
 			if (!s_Instance->m_Device || s_Instance->m_Device->GetLogicalDevice() == VK_NULL_HANDLE)

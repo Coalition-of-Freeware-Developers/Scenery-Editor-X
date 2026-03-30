@@ -106,21 +106,21 @@ struct PushConstantBuffer_Pass;
 		 * @param img The image resource.
 		 * @param clearDepth The depth value to clear to.
 		 */
-		void ClearDepth(void *img, float clearDepth);
+		void ClearDepth(VkImage img, float clearDepth);
 
 		/**
 		 * @brief Clear the stencil buffer of an image.
 		 * @param img The image resource.
 		 * @param clearStencil The stencil value to clear to.
 		 */
-		void ClearStencil(void *img, uint32_t clearStencil);
+		void ClearStencil(VkImage img, uint32_t clearStencil);
 
 		/**
 		 * @brief Clear the color buffer of an image.
 		 * @param img The image resource.
 		 * @param color The color to clear to.
 		 */
-		void ClearTexture(void* img, const Color &color);
+		void ClearTexture(VkImage img, const Color &color);
 
 		/**
 		 * @brief Clear the color buffer of an image.
@@ -143,7 +143,6 @@ struct PushConstantBuffer_Pass;
 		 */
 		void PushConstants(const PushConstantBuffer_Pass& data);
 
-		
 		// -------------------------------------------------------
 
 		/**
@@ -158,16 +157,20 @@ struct PushConstantBuffer_Pass;
 		 */
 		VkCommandBuffer GetCommandBuffer() const { return m_CmdBuffer; }
 
-		/**
-		 * @brief End the current render pass.
-		 */
+		/* @brief End the current render pass. */
 		void EndRenderPass();
 
 		/**
 		 * @brief Remove the layout of an image resource.
-		 * @param image The image resource.
+		 * @param image The image resource (raw pointer to VkImage or ImageResource pointer).
 		 */
 		static void RemoveLayout(void* image);
+
+		/* @brief Get the tracked layout for an ImageResource pointer. */
+		static Layout::ImageLayout GetImageLayout(ImageResource* image, uint32_t mipIndex);
+
+		/* @brief Get the tracked layout for a pointer to a VkImage (e.g. ImageResource::Get()). */
+		static Layout::ImageLayout GetImageLayout(VkImage* imagePtr, uint32_t mipIndex);
 
 		/**
 		 * @brief Get the layout of an image resource.
@@ -175,7 +178,7 @@ struct PushConstantBuffer_Pass;
 		 * @param mipIndex The mip level to query.
 		 * @return The image layout.
 		 */
-		static Layout::ImageLayout GetImageLayout(void* image, uint32_t mipIndex);
+		static Layout::ImageLayout GetImageLayout(VkImage image, uint32_t mipIndex);
 
 		// -------------------------------------------------------
 
@@ -224,17 +227,15 @@ struct PushConstantBuffer_Pass;
 
 		/**
 		 * @brief Insert a barrier for an image resource.
-		 *
 		 * @param img The image resource.
 		 * @param layout The desired image layout.
 		 * @param mip The mip level to apply the barrier to.
 		 * @param mipRange The range of mip levels to apply the barrier to.
 		 */
-		void InsertBarrier(void* img, Layout::ImageLayout layout, uint32_t mip = ALL_MIPS, uint32_t mipRange = 0);
+		void InsertBarrier(VkImage img, Layout::ImageLayout layout, uint32_t mip = ALL_MIPS, uint32_t mipRange = 0);
 
 		/**
 		 * @brief Insert a barrier for an image resource.
-		 *
 		 * @param img The image resource.
 		 * @param type The type of barrier to insert.
 		 */
@@ -248,7 +249,6 @@ struct PushConstantBuffer_Pass;
 
 		/**
 		 * @brief Insert a barrier for an image resource with detailed parameters.
-		 *
 		 * @param image The image resource.
 		 * @param format The format of the image.
 		 * @param mipIndex The mip level to apply the barrier to.
@@ -256,11 +256,29 @@ struct PushConstantBuffer_Pass;
 		 * @param arrayLength The number of array layers to apply the barrier to.
 		 * @param layout The desired image layout.
 		 */
-		void InsertBarrier(void* image, VkFormat format, uint32_t mipIndex, uint32_t mipRange, uint32_t arrayLength, Layout::ImageLayout layout);
+		void InsertBarrier(VkImage image, VkFormat format, uint32_t mipIndex, uint32_t mipRange, uint32_t arrayLength, Layout::ImageLayout layout);
 
 		/**
-		 * @brief Flush all pending barriers to ensure proper synchronization before executing draw or dispatch commands.
+		 * @brief Insert a barrier for an image when you have a pointer to a VkImage (e.g. &vector[index] or ImageResource::Get()).
+		 * @param imagePtr Pointer to the VkImage handle.
+		 * @param format The format of the image.
+		 * @param mipIndex The mip level to apply the barrier to.
+		 * @param mipRange The range of mip levels to apply the barrier to.
+		 * @param arrayLength The number of array layers to apply the barrier to.
+		 * @param layout The desired image layout.
 		 */
+		void InsertBarrier(VkImage* imagePtr, VkFormat format, uint32_t mipIndex, uint32_t mipRange, uint32_t arrayLength, Layout::ImageLayout layout);
+
+		/**
+		 * @brief Insert a barrier for an image when you have a pointer to a VkImage (simple overload).
+		 * @param imgPtr Pointer to the VkImage handle.
+		 * @param layout The desired image layout.
+		 * @param mip The mip level to apply the barrier to (default is ALL_MIPS).
+		 * @param mipRange The range of mip levels to apply the barrier to (default is 0).
+		 */
+		void InsertBarrier(VkImage* imgPtr, Layout::ImageLayout layout, uint32_t mip = ALL_MIPS, uint32_t mipRange = 0);
+
+		/* @brief Flush all pending barriers to ensure proper synchronization before executing draw or dispatch commands. */
 		void FlushBarriers();
 
 		// -------------------------------------------------------
@@ -283,7 +301,7 @@ struct PushConstantBuffer_Pass;
 
 		/**
 		 * @brief 
-		 * @param src 
+		 * @param src  
 		 * @param dst 
 		 * @param dstLayer 
 		 */
@@ -293,7 +311,6 @@ struct PushConstantBuffer_Pass;
 
 		/**
 		* @brief Begin immediate command recording on the queue matching @p type.
-		*
 		* This uses QueueManager's reusable command list pool and starts recording
 		* immediately. The returned command list must be completed with
 		* EndImmediateExecution().
@@ -319,7 +336,6 @@ struct PushConstantBuffer_Pass;
 
 		/**
 		 * @brief Set a texture for a specific slot.
-		 *
 		 * @param slot The binding slot to set the texture to (can be either UAV or SRV).
 		 * @param img The image resource to bind.
 		 * @param mipIndex The mip level to bind (default is ALL_MIPS).
@@ -330,7 +346,6 @@ struct PushConstantBuffer_Pass;
 
 		/**
 		 * @brief Set a texture for a specific slot.
-		 *
 		 * @param slot The binding slot to set the texture to (can be either UAV or SRV).
 		 * @param img The image resource to bind.
 		 * @param mipIndex The mip level to bind (default is ALL_MIPS).
@@ -340,7 +355,6 @@ struct PushConstantBuffer_Pass;
 
 		/**
 		 * @brief Set a texture for a specific slot.
-		 *
 		 * @param slot The binding slot to set the texture to (can be either UAV or SRV).
 		 * @param img The image resource to bind.
 		 * @param mipIndex The mip level to bind (default is ALL_MIPS).
@@ -352,7 +366,6 @@ struct PushConstantBuffer_Pass;
 
 		/**
 		 * @brief Draw non-indexed geometry.
-		 *
 		 * @param vertexCount The number of vertices to draw.
 		 * @param vertexOffset The offset within the vertex buffer (default is 0).
 		 */
@@ -493,9 +506,9 @@ struct PushConstantBuffer_Pass;
 		bool m_RenderPassActive = false;
 		DescriptorSet* m_DescriptorLayout_Current = nullptr;
 
-	    Pipeline m_Pipeline;
+		Pipeline m_Pipeline;
 		PipelineState m_pso;
-	    std::vector<PendingBarrierInfo> m_PendingBarriers;
+		std::vector<PendingBarrierInfo> m_PendingBarriers;
 
 	};  
 

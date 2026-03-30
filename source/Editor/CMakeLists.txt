@@ -35,6 +35,7 @@ SET (PROJECT_CONFIG_FILES
 )
 
 # --------------------------------
+
 ADD_EXECUTABLE(SceneryEditorX WIN32
 	entrypoint.cpp
 	${CORE}
@@ -144,6 +145,9 @@ TARGET_INCLUDE_DIRECTORIES(SceneryEditorX
 		${CMAKE_SOURCE_DIR}/dependency/taskflow
 		${CMAKE_SOURCE_DIR}/dependency/ktx/include
 		${CMAKE_SOURCE_DIR}/dependency/ktx/other_include
+		$if(RENDERDOC_ENABLED)
+			${RENDERDOC_INCLUDE_DIRS}
+		$endif()
 		${PORTABLE_FILE_DIALOGS_INCLUDE_DIRS}
 		$ENV{VULKAN_SDK}/Include/
 		$ENV{VULKAN_SDK}/Include/vma
@@ -175,6 +179,13 @@ TARGET_LINK_LIBRARIES(SceneryEditorX
 )
 
 # --------------------------------
+
+IF(RENDERDOC_ENABLE)
+	TARGET_COMPILE_DEFINITIONS(SceneryEditorX
+		PRIVATE
+			RENDERDOC_ENABLED
+	)
+ENDIF()
 
 TARGET_COMPILE_DEFINITIONS(SceneryEditorX
 	PUBLIC

@@ -1,0 +1,28 @@
+{
+    "rdocCaptureSettings": 1,
+    "settings": {
+        "autoStart": false,
+        "commandLine": "--verbose --renderdoc",
+        "environment": [
+        ],
+        "executable": "G:\\Repositorys\\Coalition-of-Freeware-Developers\\Scenery-Editor-X\\bin\\SceneryEditorX_debug.exe",
+        "inject": false,
+        "numQueuedFrames": 10,
+        "options": {
+            "allowFullscreen": true,
+            "allowVSync": true,
+            "apiValidation": true,
+            "captureAllCmdLists": true,
+            "captureCallstacks": true,
+            "captureCallstacksOnlyDraws": false,
+            "debugOutputMute": true,
+            "delayForDebugger": 0,
+            "hookIntoChildren": true,
+            "refAllResources": true,
+            "softMemoryLimit": 0,
+            "verifyBufferAccess": false
+        },
+        "queuedFrameCap": 0,
+        "workingDir": "G:/Repositorys/Coalition-of-Freeware-Developers/Scenery-Editor-X"
+    }
+}

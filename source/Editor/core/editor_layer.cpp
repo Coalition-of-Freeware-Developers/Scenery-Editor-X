@@ -29,6 +29,11 @@
  * -------------------------------------------------------
  */
 #include "editor_layer.h"
+#include "Editor/ui/panels/asset_browser.h"
+#include "Editor/ui/panels/menu_bar.h"
+#include "Editor/ui/panels/render_options.h"
+#include "Editor/ui/panels/scene_viewport.h"
+#include "Editor/ui/panels/texure_viewer.h"
 #include <Editor/projects/project.h>
 #include <Editor/settings/editor_settings.h>
 #include <Editor/ui/ui_impl.h>
@@ -45,13 +50,9 @@
 #include <SceneryEditorX/project/project.h>
 #include <SceneryEditorX/project/selection_manager.h>
 #include <SceneryEditorX/renderer/renderer.h>
+#include <SceneryEditorX/renderer/vulkan/debug/render_doc.h>
 #include <SceneryEditorX/scene/entity.h>
 #include <SceneryEditorX/scene/scene.h>
-#include "Editor/ui/panels/asset_browser.h"
-#include "Editor/ui/panels/menu_bar.h"
-#include "Editor/ui/panels/render_options.h"
-#include "Editor/ui/panels/scene_viewport.h"
-#include "Editor/ui/panels/texure_viewer.h"
 
 // ---------------------------------------------------------
 
@@ -372,6 +373,13 @@ namespace SceneryEditorX
 
 	bool EditorLayer::OnKeyPressedEvent(KeyPressedEvent &e)
 	{
+		// Global editor keybindings that should work regardless of focused UI
+		if (e.GetKeyCode() == KeyCode::F12 && Input::IsKeyDown(SEDX_KEY_LEFT_CONTROL))
+		{
+			SEDX_CORE_INFO_TAG("Editor", "RenderDoc frame capture requested via F12 keybind");
+			RenderDoc::FrameCapture();
+			return true;
+		}
 		if (UI::IsWindowFocused("Viewport") || UI::IsWindowFocused("Scene Hierarchy"))
 		{
 			if ((m_ViewportPanelMouseOver || m_ViewportPanel2MouseOver) && !Input::IsMouseButtonDown(MouseButton::Right) && m_CurrentScene != m_RuntimeScene)

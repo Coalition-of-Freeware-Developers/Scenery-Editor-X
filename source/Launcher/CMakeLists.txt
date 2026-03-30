@@ -60,6 +60,9 @@ TARGET_INCLUDE_DIRECTORIES(Launcher
 		${CMAKE_SOURCE_DIR}/dependency/xMath
 		${CMAKE_SOURCE_DIR}/dependency/ktx/include
 		${CMAKE_SOURCE_DIR}/dependency/ktx/other_include
+		$if(RENDERDOC_ENABLED)
+			${RENDERDOC_INCLUDE_DIRS}
+		$endif()
         ${REGISTRY_KEYS}
         ${PORTABLE_FILE_DIALOGS_INCLUDE_DIRS}
         $ENV{VULKAN_SDK}/Include/
@@ -90,6 +93,13 @@ TARGET_LINK_LIBRARIES(Launcher
 )
 
 # --------------------------------
+
+IF(RENDERDOC_ENABLE)
+	TARGET_COMPILE_DEFINITIONS(Launcher
+		PRIVATE
+		RENDERDOC_ENABLED
+	)
+ENDIF()
 
 TARGET_COMPILE_DEFINITIONS(Launcher
     PUBLIC

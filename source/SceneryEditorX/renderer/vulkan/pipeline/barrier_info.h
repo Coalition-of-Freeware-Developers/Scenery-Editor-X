@@ -29,7 +29,6 @@
  * -------------------------------------------------------
  */
 #pragma once
-
 #include <SceneryEditorX/renderer/renderer_declarations.h>
 #include <SceneryEditorX/renderer/vulkan/enums.h>
 
@@ -39,9 +38,18 @@ namespace SceneryEditorX
 {
     class ImageResource;
 
-    // unified barrier description - can represent any barrier type
+    /**
+     * @struct Barrier
+     * @brief Represents a unified description of a barrier, 
+     * which can be used for image layout transitions, image synchronization, or buffer synchronization.
+     */
     struct Barrier
     {
+        /**
+         * @enum Type
+         * @brief Represents the type of barrier, which can be an image layout transition, 
+         * an image synchronization barrier, or a buffer synchronization barrier. 
+         */
         enum class Type : uint8_t
         {
             ImageLayout, // layout transition
@@ -70,7 +78,14 @@ namespace SceneryEditorX
         uint64_t offset    = 0;
         uint64_t size      = 0; // 0 = whole buffer
 
-        // factory: texture layout transition
+        /**
+         * @brief raw image layout transition (for swapchain etc.)
+         * @param img 
+         * @param new_layout 
+         * @param mip 
+         * @param range 
+         * @return 
+         */
         static Barrier ImageLayout(ImageResource* img, Layout::ImageLayout new_layout, uint32_t mip = std::numeric_limits<uint32_t>::max(), uint32_t range = 0)
         {
             Barrier b;
@@ -82,7 +97,16 @@ namespace SceneryEditorX
             return b;
         }
 
-        // factory: raw image layout transition (for swapchain etc.)
+        /**
+         * @brief raw image layout transition (for swapchain etc.)
+         * @param img 
+         * @param fmt 
+         * @param mip 
+         * @param range 
+         * @param arr_len 
+         * @param new_layout 
+         * @return 
+         */
         static Barrier ImageLayout(void* img, VkFormat fmt, uint32_t mip, uint32_t range, uint32_t arr_len, Layout::ImageLayout new_layout)
         {
             Barrier b;
@@ -96,7 +120,12 @@ namespace SceneryEditorX
             return b;
         }
 
-        // factory: texture sync barrier (no layout change)
+        /**
+         * @brief texture sync barrier (no layout change)
+         * @param img 
+         * @param sync 
+         * @return 
+         */
         static Barrier ImageSync(ImageResource* img, BarrierType sync)
         {
             Barrier b;
@@ -106,7 +135,13 @@ namespace SceneryEditorX
             return b;
         }
 
-        // factory: buffer sync barrier
+        /**
+         * @brief buffer sync barrier
+         * @param buf 
+         * @param off 
+         * @param sz 
+         * @return 
+         */
         static Barrier BufferSync(Buffer* buf, uint64_t off = 0, uint64_t sz = 0)
         {
             Barrier b;
@@ -117,15 +152,29 @@ namespace SceneryEditorX
             return b;
         }
 
-        // chainable scope modifiers
+        /**
+         * @brief 
+         * @param scope 
+         * @return 
+         */
         Barrier& From(BarrierScope scope) { scope_src = scope; return *this; }
+
+        /**
+         * @brief 
+         * @param scope 
+         * @return 
+         */
         Barrier& To(BarrierScope scope)   { scope_dst = scope; return *this; }
     };
 
+    /**
+     * @struct PendingBarrierInfo
+     * @brief Represents information about a pending barrier.
+     */
     struct PendingBarrierInfo
     {
         Barrier barrier;
-        void* image					  = nullptr;
+        VkImage image				  = nullptr;
         uint32_t aspect_Mask		  = 0;
         uint32_t mip_Index			  = 0;
         uint32_t mip_Range			  = 0;
@@ -136,8 +185,8 @@ namespace SceneryEditorX
 
         // for image sync with per-mip views (pre-captured layouts at insert time)
         std::array<Layout::ImageLayout, MAX_MIP_COUNT> per_MipLayouts = {};
-        uint32_t per_MipCount                                         = 0;
-        bool has_PerMipViews                                          = false;
+        uint32_t per_MipCount = 0;
+        bool has_PerMipViews = false;
     };
 
 }

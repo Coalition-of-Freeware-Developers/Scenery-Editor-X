@@ -62,18 +62,41 @@ namespace SceneryEditorX
 		};
 	}
 
+	void CommandList::InsertBarrier(VkImage* imagePtr, VkFormat format, uint32_t mipIndex, uint32_t mipRange, uint32_t arrayLength, Layout::ImageLayout layout)
+	{
+		if (imagePtr == nullptr || *imagePtr == VK_NULL_HANDLE)
+			return;
+	
+		InsertBarrier(*imagePtr, format, mipIndex, mipRange, arrayLength, layout);
+	}
+	
+	void CommandList::InsertBarrier(VkImage* imgPtr, Layout::ImageLayout layout, uint32_t mip, uint32_t mipRange)
+	{
+		if (imgPtr == nullptr || *imgPtr == VK_NULL_HANDLE)
+			return;
+	
+		InsertBarrier(*imgPtr, layout, mip, mipRange);
+	}
+
+	void CommandList::InsertBarrier(VkImage img, Layout::ImageLayout layout, uint32_t mip, uint32_t mipRange)
+	{
+		// Thin wrapper: call the detailed InsertBarrier variant with undefined format/arrayLength
+		if (img == VK_NULL_HANDLE)
+			return;
+	
+		// Use VK_FORMAT_UNDEFINED; the detailed implementation will default to color aspect if needed
+		InsertBarrier(img, VK_FORMAT_UNDEFINED, mip, mipRange, 0, layout);
+	}
+
 	// Per-image layout tracking: key = &VkImage (stable address), value = per-mip current layouts.
 	// Protected by s_ImageLayoutsMutex for safe concurrent reads from multiple threads.
-	static std::unordered_map<void*, std::array<Layout::ImageLayout, MAX_MIP_COUNT>> s_ImageLayouts;
-	static std::mutex s_ImageLayoutsMutex;
+	static std::unordered_map<VkImage, std::array<Layout::ImageLayout, MAX_MIP_COUNT>> s_ImageLayouts;	static std::mutex s_ImageLayoutsMutex;
 	static std::array<ImmediateExecutionState, static_cast<size_t>(QueueType::MaxEnum)> s_ImmediateStates;
 	//std::unordered_map<void*, std::array<Layout::ImageLayout, MAX_MIP_COUNT>> image_Layouts;
 
-
 	#pragma region Static Command Actions
 
-
-	static Layout::ImageLayout GetLayout(void *image, uint32_t mipIndex)
+	static Layout::ImageLayout GetLayout(VkImage image, uint32_t mipIndex)
 	{
 		SEDX_CORE_ASSERT(image != nullptr);
 		std::lock_guard<std::mutex> lock(s_ImageLayoutsMutex);
@@ -88,7 +111,7 @@ namespace SceneryEditorX
 		return it->second[mipIndex];
 	}
 
-	static void SetLayout(void *image, uint32_t mip_index, uint32_t mip_range, Layout::ImageLayout layout)
+	static void SetLayout(VkImage image, uint32_t mip_index, uint32_t mip_range, Layout::ImageLayout layout)
 	{
 		SEDX_CORE_ASSERT(image != nullptr);
 		SEDX_CORE_ASSERT(mip_index < MAX_MIP_COUNT);
@@ -111,7 +134,7 @@ namespace SceneryEditorX
 		}
 	}
 
-	static void RemoveLayout(void *image)
+	static void RemoveLayout(VkImage image)
 	{
 		std::lock_guard<std::mutex> lock(s_ImageLayoutsMutex);
 		s_ImageLayouts.erase(image);
@@ -164,7 +187,15 @@ namespace SceneryEditorX
 		barrier.newLayout = newLayout;
 		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		barrier.image = *static_cast<VkImage*>(img);
+		// img may be a pointer to a VkImage handle (VkImage*). Safely dereference if non-null.
+		if (img)
+		{
+			barrier.image = *static_cast<VkImage*>(img);
+		}
+		else
+		{
+			barrier.image = VK_NULL_HANDLE;
+		}
 		
 		if (subresourceRange.has_value())
 		{
@@ -424,9 +455,9 @@ namespace SceneryEditorX
 		/* TODO: Responsible for cleaning up and deallocating resources associated with query pools by adding them to the deletion queue. */
 	}
 
-	Layout::ImageLayout CommandList::GetImageLayout(void *image, uint32_t mipIndex)
+	Layout::ImageLayout CommandList::GetImageLayout(VkImage image, uint32_t mipIndex)
 	{
-	 std::scoped_lock lock(s_ImageLayoutsMutex);
+		std::scoped_lock lock(s_ImageLayoutsMutex);
 		const auto it = s_ImageLayouts.find(image);
 		if (it != s_ImageLayouts.end())
 		{
@@ -437,10 +468,39 @@ namespace SceneryEditorX
 		return Layout::ImageLayout::Undefined;
 	}
 
+	Layout::ImageLayout CommandList::GetImageLayout(ImageResource* image, uint32_t mipIndex)
+	{
+		SEDX_CORE_ASSERT(image != nullptr, "ImageResource must be valid");
+		VkImage* imgPtr = image->Get();
+		return GetImageLayout(imgPtr, mipIndex);
+	}
+
+	Layout::ImageLayout CommandList::GetImageLayout(VkImage* imagePtr, uint32_t mipIndex)
+	{
+		if (imagePtr == nullptr || *imagePtr == VK_NULL_HANDLE)
+			return Layout::ImageLayout::Undefined;
+
+		return GetImageLayout(*imagePtr, mipIndex);
+	}
+
 	void CommandList::RemoveLayout(void *image)
 	{
 		std::scoped_lock lock(s_ImageLayoutsMutex);
-		s_ImageLayouts.erase(image);
+		// callers may pass either a VkImage value, a VkImage* (pointer to handle), or an ImageResource*
+		if (image == nullptr)
+			return;
+
+		// If the caller passed a VkImage* (pointer to handle), dereference to get the VkImage value
+		if (VkImage* imgPtr = reinterpret_cast<VkImage*>(image))
+		{
+			// reinterpret_cast is used because some call sites pass &vector[index] or ImageResource::Get()
+			VkImage img = *imgPtr;
+			s_ImageLayouts.erase(img);
+			return;
+		}
+
+		// Fallback: try to treat the pointer itself as a VkImage (covers cases where callers passed the handle directly)
+		s_ImageLayouts.erase(static_cast<VkImage>(image));
 	}
 
 	CommandList* CommandList::BeginImmediateExecution(const QueueType type)
@@ -712,10 +772,10 @@ namespace SceneryEditorX
 		m_State = CommandState::Idle;
 	}
 
-	void CommandList::ClearDepth(void *img, float clearDepth)
+	void CommandList::ClearDepth(VkImage img, float clearDepth)
 	{
 		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command List must be in Recording state to clear texture.");
-		SEDX_CORE_ASSERT(img != nullptr, "Must have a valid image.");
+		SEDX_CORE_ASSERT(img != VK_NULL_HANDLE, "Must have a valid image.");
 
 		// Transition image to transfer dst layout
 		InsertBarrier(img, Layout::ImageLayout::TransferDst);
@@ -732,15 +792,15 @@ namespace SceneryEditorX
 		clearDepthStencil.depth = clearDepth;
 		clearDepthStencil.stencil = 0;
 
-		VkImage vkImage = *reinterpret_cast<VkImage *>(img);
+		VkImage vkImage = img;
 
 		vkCmdClearDepthStencilImage(m_CmdBuffer, vkImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clearDepthStencil, 1, &range);
 	}
 
-	void CommandList::ClearStencil(void *img, uint32_t clearStencil)
+	void CommandList::ClearStencil(VkImage img, uint32_t clearStencil)
 	{
 		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command List must be in Recording state to clear texture.");
-		SEDX_CORE_ASSERT(img != nullptr, "Must have a valid image.");
+		SEDX_CORE_ASSERT(img != VK_NULL_HANDLE, "Must have a valid image.");
 
 		// Transition image to transfer dst layout
 		InsertBarrier(img, Layout::ImageLayout::TransferDst);
@@ -756,15 +816,15 @@ namespace SceneryEditorX
 		clearDepthStencil.depth = 0;
 		clearDepthStencil.stencil = clearStencil;
 
-		VkImage vkImage = *reinterpret_cast<VkImage *>(img);
+		VkImage vkImage = img;
 
 		vkCmdClearDepthStencilImage(m_CmdBuffer, vkImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clearDepthStencil, 1, &range);
 	}
 
-	void CommandList::ClearTexture(void *img, const Color &color)
+	void CommandList::ClearTexture(VkImage img, const Color &color)
 	{
 		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command List must be in Recording state to clear texture.");
-		SEDX_CORE_ASSERT(img != nullptr, "Must have a valid image.");
+		SEDX_CORE_ASSERT(img != VK_NULL_HANDLE, "Must have a valid image.");
 
 		// Transition image to transfer dst layout
 		InsertBarrier(img, Layout::ImageLayout::TransferDst);
@@ -783,7 +843,7 @@ namespace SceneryEditorX
 		clearColor.float32[2] = color.b;
 		clearColor.float32[3] = color.a;
 
-		VkImage vkImage = *reinterpret_cast<VkImage *>(img);
+		VkImage vkImage = img;
 
 		// Clear the image
 		vkCmdClearColorImage(m_CmdBuffer, vkImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clearColor, 1, &range);
@@ -793,7 +853,7 @@ namespace SceneryEditorX
 	{
 		SEDX_CORE_ASSERT(img != nullptr, "ImageResource must be valid");
 		SEDX_CORE_ASSERT(img->Get() != nullptr && *img->Get() != VK_NULL_HANDLE, "ImageResource must contain a valid VkImage");
-		ClearTexture(static_cast<void*>(img->Get()), color);
+		ClearTexture(*img->Get(), color);
 	}
 
 	void CommandList::UpdateBuffer(Buffer* buffer, const uint64_t offset, const uint64_t size, const void* data)
@@ -876,13 +936,13 @@ namespace SceneryEditorX
 		m_RenderPassActive = false;
 	}
 
-	void CommandList::InsertBarrier(void *img, Layout::ImageLayout layout, uint32_t mip, uint32_t mipRange)
+	void CommandList::InsertBarrier(VkImage image, VkFormat format, uint32_t mipIndex, uint32_t mipRange, uint32_t arrayLength, Layout::ImageLayout layout)
 	{
-		SEDX_CORE_ASSERT(img != nullptr, "Image handle must be valid for barrier insertion");
+		SEDX_CORE_ASSERT(image != nullptr, "Image handle must be valid for barrier insertion");
 		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to insert barriers");
 
-		const uint32_t baseMip = (mip == ALL_MIPS) ? 0 : mip;
-		const Layout::ImageLayout currentLayout = GetImageLayout(img, baseMip);
+		const uint32_t baseMip = (mipIndex == ALL_MIPS) ? 0 : mipIndex;
+		const Layout::ImageLayout currentLayout = GetImageLayout(image, baseMip);
 
 		if (currentLayout == layout)
 			return;
@@ -893,7 +953,7 @@ namespace SceneryEditorX
 		VkImageSubresourceRange range{};
 		range.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
 		range.baseMipLevel   = baseMip;
-		range.levelCount     = (mip == ALL_MIPS || mipRange == 0) ? VK_REMAINING_MIP_LEVELS : mipRange;
+		range.levelCount     = (mipIndex == ALL_MIPS || mipRange == 0) ? VK_REMAINING_MIP_LEVELS : mipRange;
 		range.baseArrayLayer = 0;
 		range.layerCount     = VK_REMAINING_ARRAY_LAYERS;
 
@@ -907,7 +967,7 @@ namespace SceneryEditorX
 		barrier.newLayout           = GetVkImageLayout(layout);
 		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		barrier.image               = *static_cast<VkImage *>(img);
+		barrier.image               = image;
 		barrier.subresourceRange    = range;
 
 		VkDependencyInfo depInfo{};
@@ -919,13 +979,13 @@ namespace SceneryEditorX
 
 		{
 			std::scoped_lock lock(s_ImageLayoutsMutex);
-			auto it = s_ImageLayouts.find(img);
+			auto it = s_ImageLayouts.find(image);
 			if (it == s_ImageLayouts.end())
 			{
 				std::array<Layout::ImageLayout, MAX_MIP_COUNT> layouts;
 				layouts.fill(Layout::ImageLayout::MaxEnum);
-				s_ImageLayouts[img] = layouts;
-				it = s_ImageLayouts.find(img);
+				s_ImageLayouts[image] = layouts;
+				it = s_ImageLayouts.find(image);
 			}
 			// update full range for simplicity
 			for (uint32_t i = 0; i < MAX_MIP_COUNT; ++i)
@@ -960,77 +1020,21 @@ namespace SceneryEditorX
 		vkCmdPipelineBarrier2(m_CmdBuffer, &depInfo);
 	}
 
-	void CommandList::InsertBarrier(void *image, VkFormat format, uint32_t mipIndex, uint32_t mipRange, uint32_t arrayLength, Layout::ImageLayout layout)
-	{
-		SEDX_CORE_ASSERT(image != nullptr, "Image handle must be valid for barrier insertion");
-		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to insert barriers");
-
-		const Layout::ImageLayout currentLayout = GetImageLayout(image, mipIndex);
-
-		if (currentLayout == layout)
-			return;
-
-		const BarrierAccessInfo srcInfo = GetLayoutAccessInfo(currentLayout);
-		const BarrierAccessInfo dstInfo = GetLayoutAccessInfo(layout);
-
-		VkImageSubresourceRange range{};
-		range.aspectMask     = GetAspectMaskFromFormat(format);
-		range.baseMipLevel   = mipIndex;
-		range.levelCount     = (mipRange == 0)      ? VK_REMAINING_MIP_LEVELS   : mipRange;
-		range.baseArrayLayer = 0;
-		range.layerCount     = (arrayLength == 0)   ? VK_REMAINING_ARRAY_LAYERS : arrayLength;
-
-		VkImageMemoryBarrier2 barrier{};
-		barrier.sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
-		barrier.srcStageMask        = srcInfo.stageFlags;
-		barrier.srcAccessMask       = srcInfo.accessMask;
-		barrier.dstStageMask        = dstInfo.stageFlags;
-		barrier.dstAccessMask       = dstInfo.accessMask;
-		barrier.oldLayout           = GetVkImageLayout(currentLayout);
-		barrier.newLayout           = GetVkImageLayout(layout);
-		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		barrier.image               = *static_cast<VkImage *>(image);
-		barrier.subresourceRange    = range;
-
-		VkDependencyInfo depInfo{};
-		depInfo.sType                   = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
-		depInfo.imageMemoryBarrierCount = 1;
-		depInfo.pImageMemoryBarriers    = &barrier;
-
-		vkCmdPipelineBarrier2(m_CmdBuffer, &depInfo);
-
-		{
-			std::scoped_lock lock(s_ImageLayoutsMutex);
-			auto it = s_ImageLayouts.find(image);
-			if (it == s_ImageLayouts.end())
-			{
-				std::array<Layout::ImageLayout, MAX_MIP_COUNT> layouts;
-				layouts.fill(Layout::ImageLayout::MaxEnum);
-				s_ImageLayouts[image] = layouts;
-				it = s_ImageLayouts.find(image);
-			}
-
-			// update affected mips
-			uint32_t mip_end = xMath::Min(mipIndex + ((mipRange == 0) ? MAX_MIP_COUNT : mipRange), MAX_MIP_COUNT);
-			for (uint32_t i = mipIndex; i < mip_end; ++i)
-			{
-				it->second[i] = layout;
-			}
-		}
-	}
-
 	void CommandList::FlushBarriers()
 	{
 		if (m_PendingBarriers.empty())
 			return;	
 		
 		// determine the dst scope hint from the current pso (narrows overly broad auto scopes)
-		BarrierScope pso_scope_hint = BarrierScope::All;
+		BarrierScope psoScopeHint = BarrierScope::All;
 		if (m_pso.IsCompute())
-			pso_scope_hint = BarrierScope::Compute;
+		{
+			psoScopeHint = BarrierScope::Compute;
+		}
 		else if (m_pso.IsGraphics())
-			pso_scope_hint = BarrierScope::Graphics;
+		{
+			psoScopeHint = BarrierScope::Graphics;
+		}
 
 		// helper: set image sync access masks based on layout and sync type
 		auto set_sync_access_masks = [](VkImageMemoryBarrier2& b, Layout::ImageLayout layout, BarrierType sync_type)
@@ -1092,7 +1096,7 @@ namespace SceneryEditorX
 					// use pso-aware scope narrowing for the dst when auto and the target layout is general
 					BarrierScope effective_dst = pending.barrier.scope_dst;
 					if (effective_dst == BarrierScope::Auto && pending.layoutNew == Layout::ImageLayout::General)
-						effective_dst = pso_scope_hint;
+						effective_dst = psoScopeHint;
 
 					{
 						// Build barrier based on layout info
@@ -1107,7 +1111,8 @@ namespace SceneryEditorX
 						vk_barrier.dstAccessMask = dstInfo.accessMask;
 						vk_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 						vk_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-						vk_barrier.image = *static_cast<VkImage *>(pending.image);
+						// pending.image is stored as a VkImage handle. Assign directly.
+						vk_barrier.image = pending.image;
 						vk_barrier.oldLayout = GetVkImageLayout(pending.layoutOld);
 						vk_barrier.newLayout = GetVkImageLayout(pending.layoutNew);
 						vk_barrier.subresourceRange.aspectMask = pending.aspect_Mask;
@@ -1129,8 +1134,7 @@ namespace SceneryEditorX
 						: (VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT);
 
 					VkPipelineStageFlags2 dst_stages = (pending.barrier.scope_dst != BarrierScope::Auto)
-						? ScopeToStages(pending.barrier.scope_dst)
-						: ScopeToStages(pso_scope_hint, pending.isDepth);
+						? ScopeToStages(pending.barrier.scope_dst) : ScopeToStages(psoScopeHint, pending.isDepth);
 
 					if (pending.has_PerMipViews)
 					{
@@ -1144,7 +1148,8 @@ namespace SceneryEditorX
 							vk_barrier.dstStageMask                    = dst_stages;
 							vk_barrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
 							vk_barrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
-							vk_barrier.image                           = *static_cast<VkImage *>(pending.image);
+							// pending.image is stored as a VkImage handle. Assign directly.
+							vk_barrier.image = pending.image;
 							vk_barrier.oldLayout                       = GetVkImageLayout(layout);
 							vk_barrier.newLayout                       = GetVkImageLayout(layout); // no transition
 							vk_barrier.subresourceRange.aspectMask     = pending.aspect_Mask;
@@ -1167,7 +1172,8 @@ namespace SceneryEditorX
 						vk_barrier.dstStageMask                    = dst_stages;
 						vk_barrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
 						vk_barrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
-						vk_barrier.image                           = *static_cast<VkImage *>(pending.image);
+						// pending.image is stored as a VkImage handle. Assign directly.
+						vk_barrier.image = pending.image;
 						vk_barrier.oldLayout                       = GetVkImageLayout(layout);
 						vk_barrier.newLayout                       = GetVkImageLayout(layout); // no transition
 						vk_barrier.subresourceRange.aspectMask     = pending.aspect_Mask;
@@ -1187,17 +1193,16 @@ namespace SceneryEditorX
 					VkBufferMemoryBarrier2 vk_barrier = {};
 					vk_barrier.sType                  = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;
 					vk_barrier.srcStageMask           = (pending.barrier.scope_src != BarrierScope::Auto)
-						? ScopeToStages(pending.barrier.scope_src)
-						: VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+						? ScopeToStages(pending.barrier.scope_src) : VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
 					vk_barrier.srcAccessMask          = VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT;
 					vk_barrier.dstStageMask           = (pending.barrier.scope_dst != BarrierScope::Auto)
-						? ScopeToStages(pending.barrier.scope_dst)
-						: ScopeToStages(pso_scope_hint);
+						? ScopeToStages(pending.barrier.scope_dst) : ScopeToStages(psoScopeHint);
 					vk_barrier.dstAccessMask          = VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT;
 					vk_barrier.srcQueueFamilyIndex    = VK_QUEUE_FAMILY_IGNORED;
 					vk_barrier.dstQueueFamilyIndex    = VK_QUEUE_FAMILY_IGNORED;
+
 					// Buffer wrapper exposes Get() for the underlying VkBuffer
-					vk_barrier.buffer                 = static_cast<VkBuffer>(pending.barrier.buffer->Get());
+					vk_barrier.buffer                 = pending.barrier.buffer->Get();
 					vk_barrier.offset                 = pending.barrier.offset;
 					vk_barrier.size                   = (pending.barrier.size == 0) ? VK_WHOLE_SIZE : pending.barrier.size;
 
@@ -1224,7 +1229,9 @@ namespace SceneryEditorX
 						it = s_ImageLayouts.find(pending.image);
 					}
 					for (uint32_t i = 0; i < MAX_MIP_COUNT; ++i)
+					{
 						it->second[i] = pending.layoutNew;
+					}
 				}
 			}
 		}
@@ -1274,14 +1281,12 @@ namespace SceneryEditorX
 	void CommandList::Draw(const uint32_t vertexCount, const uint32_t vertexOffset)
 	{
 		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command List must be in Recording state to issue draw calls.");
-
 		vkCmdDraw(m_CmdBuffer, vertexCount, 1, vertexOffset, 0);
 	}
 	
 	void CommandList::DrawIndexed(const uint32_t indexCount, const uint32_t instCount, const uint32_t indexOffset, const uint32_t vertexOffset, const uint32_t instIndex)
 	{
 		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command List must be in Recording state to issue draw calls.");
-
 		vkCmdDrawIndexed(m_CmdBuffer, indexCount, instCount, indexOffset, static_cast<int32_t>(vertexOffset), instIndex);
 	}
 
@@ -1453,6 +1458,7 @@ namespace SceneryEditorX
 		copyRegion.extent.depth              = 1;
 
 		// transition to blit appropriate layouts
+		// src is ImageResource*, so forward to the wrapper that accepts ImageResource*
 		Layout::ImageLayout initialSrcLayout = GetImageLayout(src, 0);
 
 		// determine which swapchain image we will target

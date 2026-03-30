@@ -35,6 +35,7 @@
 #include "vulkan/swapchain.h"
 #include "vulkan/uniform_buffer_set.h"
 #include "vulkan/debug/graphics_debug.h"
+#include "vulkan/debug/render_doc.h"
 #include "vulkan/pipeline/pipeline.h"
 #include "vulkan/shader/shader_manager.h"
 #include <array>
@@ -243,12 +244,10 @@ static std::mutex s_FrameSyncMutex;
 
 		m_Data = new RendererProperties;
 
-		/*
 		if (Debugging::IsRenderdocEnabled())
 		{
 			RenderDoc::OnPreDeviceCreation();
 		}
-		*/
 
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		/// SwapChain                                                                                                     ///
@@ -422,6 +421,11 @@ static std::mutex s_FrameSyncMutex;
 		if (s_Swapchain)
 		{
 			s_Swapchain.Reset();
+		}
+
+	    if (Debugging::IsRenderdocEnabled())
+		{
+			RenderDoc::Shutdown();
 		}
 
 		// Cleanup renderer data

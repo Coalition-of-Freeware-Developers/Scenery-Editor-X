@@ -256,12 +256,14 @@ namespace SceneryEditorX
 			SEDX_CORE_TRACE_TAG("MemoryAllocator", "{0}: total allocated since start is {1}", m_ObjectName, Utils::BytesToString(s_AllocatorData->totalAllocatedBytes));
 		}
 
-	#if SEDX_GPU_TRACK_MEMORY_ALLOCATION
+	//#if SEDX_GPU_TRACK_MEMORY_ALLOCATION
 		auto& allocTrack = s_AllocationMap[allocation];
 		allocTrack.allocatedSize = allocInfo.size;
 		allocTrack.type = AllocationType::Image;
 		s_AllocatorData->memoryUsage += allocInfo.size;
-	#endif
+	//#endif
+
+		SEDX_CORE_TRACE_TAG("MemoryAllocator", "vmaCreateImage returning handle of image allocation {}", (void*)allocation);
 
 		return allocation;
 	}
@@ -293,7 +295,7 @@ namespace SceneryEditorX
 		SEDX_CORE_ASSERT(allocation, "Allocation is null");
 		vmaDestroyBuffer(s_AllocatorData->allocator, buffer, allocation);
 
-	#if SEDX_GPU_TRACK_MEMORY_ALLOCATION
+	//#if SEDX_GPU_TRACK_MEMORY_ALLOCATION
 		auto it = s_AllocationMap.find(allocation);
 		if (it != s_AllocationMap.end())
 		{
@@ -304,7 +306,7 @@ namespace SceneryEditorX
 		{
 			SEDX_CORE_ERROR_TAG("MemoryAllocator", "Could not find GPU memory allocation: {}", (void*)allocation);
 		}
-	#endif
+	//#endif
 		SEDX_CORE_TRACE_TAG("MemoryAllocator", "Buffer destroyed");
 	}
 
@@ -314,7 +316,7 @@ namespace SceneryEditorX
 		SEDX_CORE_ASSERT(allocation);
 		vmaDestroyImage(s_AllocatorData->allocator, image, allocation);
 
-#if SEDX_GPU_TRACK_MEMORY_ALLOCATION
+//#if SEDX_GPU_TRACK_MEMORY_ALLOCATION
 		auto it = s_AllocationMap.find(allocation);
 		if (it != s_AllocationMap.end())
 		{
@@ -325,7 +327,7 @@ namespace SceneryEditorX
 		{
 			SEDX_CORE_ERROR_TAG("MemoryAllocator", "Could not find GPU memory allocation: {}", (void*)allocation);
 		}
-#endif
+//#endif
 		SEDX_CORE_TRACE_TAG("MemoryAllocator", "Image destroyed");
 	}
 
@@ -335,7 +337,7 @@ namespace SceneryEditorX
 		auto it = s_AllocationMap.find(allocation);
 		SEDX_CORE_ASSERT(it != s_AllocationMap.end(), "Allocation not found in map");
 		SEDX_CORE_TRACE_TAG("MemoryAllocator", "GetAllocation called for allocation {0}; found: {1}", (void*)allocation, it != s_AllocationMap.end());
-	  return it != s_AllocationMap.end() ? it->first : nullptr;
+		return it != s_AllocationMap.end() ? it->first : nullptr;
 	}
 
 	VmaAllocator MemoryAllocator::GetAllocator()

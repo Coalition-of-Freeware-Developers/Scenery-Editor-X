@@ -374,7 +374,7 @@ namespace SceneryEditorX
 			SEDX_CORE_ASSERT(mipIndex + mipRange <= m_MipCount);
 		}
 
-		cmdList->InsertBarrier(&m_Image, m_Spec.format, mipIndex, mipRange, GetArrayLength(), newLayout);
+		cmdList->InsertBarrier(m_Image, m_Spec.format, mipIndex, mipRange, GetArrayLength(), newLayout);
 	}
 
 	ImageResource::~ImageResource()
@@ -386,7 +386,9 @@ namespace SceneryEditorX
 		for (VkImageView view : m_ImageViews)
 		{
 			if (view != VK_NULL_HANDLE)
-				QueueManager::AddDeletionQueue(ResourceType::ImageView, view);
+			{
+			    QueueManager::AddDeletionQueue(ResourceType::ImageView, view);
+			}
 			//vkDestroyImageView(device, view, nullptr);
 		}
 		m_ImageViews.clear();
