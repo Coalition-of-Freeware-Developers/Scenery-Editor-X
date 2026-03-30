@@ -590,6 +590,11 @@ namespace SceneryEditorX
 		m_State            = CommandState::Recording;
 		m_RenderPassActive = false;
 
+		// Debugging aid: set a name so we can identify command buffers in tools
+		// and log when Begin is called for non-idle lists.
+		if (m_ObjectName.empty())
+			m_ObjectName = "CommandList";
+
 		// Set common dynamic state for graphics queues so every pass starts from a known baseline.
 		if (m_Queue->GetType() == QueueType::Graphics)
 		{
@@ -766,7 +771,7 @@ namespace SceneryEditorX
 		{
 			const auto endTime = std::chrono::high_resolution_clock::now();
 			const float ms = std::chrono::duration<float, std::milli>(endTime - startTime).count();
-			SEDX_CORE_INFO_TAG("CmdList", "'{}' GPU wait: {:.3f} ms", m_ObjectName, ms);
+			SEDX_CORE_INFO_TAG("CommandList", "'{}' GPU wait: {:.3f} ms", m_ObjectName, ms);
 		}
 
 		m_State = CommandState::Idle;
@@ -939,6 +944,32 @@ namespace SceneryEditorX
 	void CommandList::InsertBarrier(VkImage image, VkFormat format, uint32_t mipIndex, uint32_t mipRange, uint32_t arrayLength, Layout::ImageLayout layout)
 	{
 		SEDX_CORE_ASSERT(image != nullptr, "Image handle must be valid for barrier insertion");
+		// Keep assert for debug, but defensively handle invalid state at runtime to avoid
+		// crashing inside the GPU driver when running release builds or when asserts
+		// are disabled.
+		if (m_CmdBuffer == VK_NULL_HANDLE || m_State != CommandState::Recording)
+		{
+			SEDX_CORE_WARN_TAG("CommandList", "InsertBarrier called on invalid CommandList '{}' (state={}, cmdBuf=0x{:p}) - using immediate fallback",
+				m_ObjectName.c_str(), static_cast<int>(m_State.load()), (void*)m_CmdBuffer);
+#ifdef _DEBUG
+			// Surface the misuse loudly during development.
+			SEDX_CORE_ASSERT(false, "InsertBarrier called on invalid CommandList - investigate caller");
+#endif
+			// Fallback: perform transition using an immediate command list so we do
+			// not call into the driver with an invalid command buffer.
+			CommandList* temp = CommandList::BeginImmediateExecution(QueueType::Graphics);
+			if (temp)
+			{
+				temp->InsertBarrier(image, format, mipIndex, mipRange, arrayLength, layout);
+				CommandList::EndImmediateExecution(temp);
+			}
+			else
+			{
+				SEDX_CORE_WARN_TAG("CommandList", "Failed to acquire immediate command list fallback for InsertBarrier on '{}'", m_ObjectName.c_str());
+			}
+			return;
+		}
+		// Debug-time assert to still catch misuse when assertions are enabled.
 		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to insert barriers");
 
 		const uint32_t baseMip = (mipIndex == ALL_MIPS) ? 0 : mipIndex;
@@ -1130,8 +1161,7 @@ namespace SceneryEditorX
 				{
 					// resolve stage masks with pso-aware narrowing
 					VkPipelineStageFlags2 src_stages = (pending.barrier.scope_src != BarrierScope::Auto)
-						? ScopeToStages(pending.barrier.scope_src)
-						: (VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT);
+						? ScopeToStages(pending.barrier.scope_src) : (VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT);
 
 					VkPipelineStageFlags2 dst_stages = (pending.barrier.scope_dst != BarrierScope::Auto)
 						? ScopeToStages(pending.barrier.scope_dst) : ScopeToStages(psoScopeHint, pending.isDepth);
@@ -1463,23 +1493,23 @@ namespace SceneryEditorX
 
 		// determine which swapchain image we will target
 		const uint32_t imgIndex = dst->GetImageIndex();
-		
+
 		src->SetLayout(Layout::ImageLayout::TransferSrc, this);
 
-		// InsertBarrier expects a pointer to a VkImage; the swapchain stores VkImage handles
-		// in a vector. Pass the address of the selected VkImage element so the barrier code
-		// can dereference it as a VkImage*.
-		InsertBarrier(&dst->GetImages()[imgIndex], dst->GetImageFormat(), 0, 1, 1, Layout::ImageLayout::TransferDst);
+		// Avoid taking address of a possibly-temporary vector element. Copy the handle
+		// to a local VkImage and use the value overload of InsertBarrier.
+		VkImage dstImage = dst->GetImages()[imgIndex];
+		InsertBarrier(dstImage, dst->GetImageFormat(), 0, 1, 1, Layout::ImageLayout::TransferDst);
 
 		// blit
 		vkCmdCopyImage(m_CmdBuffer,
 			static_cast<VkImage>(*src->Get()), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-			static_cast<VkImage>(dst->GetImages()[imgIndex]), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+			dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 			1, &copyRegion);
 
 		// transition to the initial layout
 		src->SetLayout(initialSrcLayout, this);
-		InsertBarrier(&dst->GetImages()[imgIndex], dst->GetImageFormat(), 0, 1, 1, Layout::ImageLayout::Present);
+		InsertBarrier(dstImage, dst->GetImageFormat(), 0, 1, 1, Layout::ImageLayout::Present);
 	}
 
 	void CommandList::Copy(ImageResource *src, ImageResource *dst, const bool blitMips)
@@ -1748,7 +1778,11 @@ namespace SceneryEditorX
 		// transition to blit appropriate layouts
 		src->SetLayout(Layout::ImageLayout::TransferSrc, this);
 		const uint32_t imgIndex = dst->GetImageIndex();
-		InsertBarrier(&dst->GetImages()[imgIndex], dst->GetImageFormat(), 0, 1, 1, Layout::ImageLayout::TransferDst);
+		// Avoid taking address of a possibly-temporary vector element (which can
+		// produce a dangling pointer). Copy the VkImage handle into a local and
+		// use the overload that accepts a VkImage value.
+		VkImage dstImage = dst->GetImages()[imgIndex];
+		InsertBarrier(dstImage, dst->GetImageFormat(), 0, 1, 1, Layout::ImageLayout::TransferDst);
 
 		// deduce filter
 		bool widthEqual  = src->GetWidth() == dst->GetWidth();
@@ -1758,12 +1792,14 @@ namespace SceneryEditorX
 		// blit
 		vkCmdBlitImage(static_cast<VkCommandBuffer>(m_CmdBuffer),
 			*src->Get(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-			dst->GetImages()[imgIndex],  VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+			dstImage,  VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 			1, &blit_region, filter);
 
 		// transition to the initial layouts
 		src->SetLayout(srcInitLayout, this);
-		InsertBarrier(&dst->GetImages()[imgIndex], dst->GetImageFormat(), 0, 1, 1, Layout::ImageLayout::Present);
+		// Reuse the previously-captured handle rather than taking the address of
+		// a potentially temporary vector element.
+		InsertBarrier(dstImage, dst->GetImageFormat(), 0, 1, 1, Layout::ImageLayout::Present);
 	}
 
 	void CommandList::Blit(ImageResource *src, ImageResource *dst, bool /*keepAspect*/, float /*resolutionScale*/)

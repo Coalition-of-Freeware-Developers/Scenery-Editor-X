@@ -330,7 +330,7 @@ struct PushConstantBuffer_Pass;
 		 * @brief 
 		 * @return 
 		 */
-		const CommandState GetState() const { return m_State; }
+		const CommandState GetState() const { return m_State.load(); }
 		
 		// -------------------------------------------------------
 

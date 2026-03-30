@@ -374,6 +374,28 @@ namespace SceneryEditorX
 			SEDX_CORE_ASSERT(mipIndex + mipRange <= m_MipCount);
 		}
 
+		// Defensive: callers sometimes pass a command list that is not in the
+		// `Recording` state (or nullptr). Instead of crashing inside the driver
+		// we perform the transition via an immediate command list when the
+		// provided command list isn't usable. This preserves correctness while
+		// we continue to root-cause why non-recording lists are used.
+		if (cmdList == nullptr || cmdList->GetState() != CommandState::Recording)
+		{
+			// Use a short-lived immediate command list on the graphics queue so
+			// this transition is applied safely on the GPU.
+			CommandList *temp = CommandList::BeginImmediateExecution(QueueType::Graphics);
+			if (temp)
+			{
+				temp->InsertBarrier(m_Image, m_Spec.format, mipIndex, mipRange, GetArrayLength(), newLayout);
+				CommandList::EndImmediateExecution(temp);
+			}
+			else
+			{
+				SEDX_CORE_WARN_TAG("VULKAN", "Failed to acquire temporary command list for image layout transition on '{}'", m_ObjectName.c_str());
+			}
+			return;
+		}
+
 		cmdList->InsertBarrier(m_Image, m_Spec.format, mipIndex, mipRange, GetArrayLength(), newLayout);
 	}
 
