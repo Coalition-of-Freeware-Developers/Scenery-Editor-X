@@ -38,7 +38,7 @@ namespace SceneryEditorX
 {
 	class Device;
 
-/**
+	/**
 	 * @class DescriptorSet
 	 * @brief Class representing a Vulkan descriptor set.
 	 * 

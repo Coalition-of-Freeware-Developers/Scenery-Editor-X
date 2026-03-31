@@ -91,8 +91,7 @@ namespace SceneryEditorX
 			static bool s_LoggedBootstrapState = false;
 			if (!s_LoggedBootstrapState)
 			{
-				SEDX_CORE_WARN_TAG("Renderer", "Bootstrap state: grid shaders={}, blit shader={}",
-								   hasGridShaders, hasBlitShader);
+				SEDX_CORE_WARN_TAG("Renderer", "Bootstrap state: grid shaders={}, blit shader={}", hasGridShaders, hasBlitShader);
 				s_LoggedBootstrapState = true;
 			}
 

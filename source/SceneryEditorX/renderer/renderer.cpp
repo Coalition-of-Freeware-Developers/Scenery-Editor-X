@@ -62,7 +62,7 @@ namespace SceneryEditorX
 
 #pragma region Static Renderer Properties
 
-/**
+	/**
 	 * @struct RendererProperties
 	 * @brief Holds various properties and resources used by the Renderer.
 	 */
@@ -124,6 +124,10 @@ namespace SceneryEditorX
 	CommandList *Renderer::m_CmdList_Present = nullptr;
 	Scope<AssetManager> Renderer::s_AssetManager = nullptr;
 	uint32_t Renderer::m_ResourceIndex = 0;
+
+	// per-frame rotated buffers
+	std::array<Renderer::FrameResource, DRAW_DATA_BUFFER_COUNT> Renderer::m_FrameResources;
+	uint32_t Renderer::m_FrameResource_Index = 0;
 
 	Scope<FrameSync> Renderer::m_FrameSync = nullptr;
 	Scope<CommandPool> Renderer::m_CommandPool = nullptr;
@@ -190,8 +194,9 @@ namespace SceneryEditorX
 
 	static std::vector<Ref<Semaphore>> s_RenderSemaphoreRefs;
 	static std::vector<VkSemaphore> s_RenderSemaphoreHandles;
-// Mutex to protect frame-sync container mutations during debugging instrumentation
-static std::mutex s_FrameSyncMutex;
+	// Mutex to protect frame-sync container mutations during debugging instrumentation
+	static std::mutex s_FrameSyncMutex;
+
 #pragma endregion
 
 #pragma endregion
@@ -215,6 +220,37 @@ static std::mutex s_FrameSyncMutex;
 		}
 
 		return candidates[0];
+	}
+
+	/**
+	 * @brief Refreshes the raw Vulkan handles from the Ref<> containers.
+	 * This function should be called while holding the s_FrameSyncMutex to ensure thread safety.
+	 * @note Call while holding s_FrameSyncMutex when possible.
+	 */
+	static void RefreshSyncHandles()
+	{
+		std::scoped_lock lock(s_FrameSyncMutex);
+
+		s_FenceHandles.clear();
+		s_FenceHandles.reserve(s_FenceRefs.size());
+		for (const auto &f : s_FenceRefs)
+		{
+			s_FenceHandles.push_back(f ? f->GetFence() : VK_NULL_HANDLE);
+		}
+
+		s_PresentSemaphoreHandles.clear();
+		s_PresentSemaphoreHandles.reserve(s_PresentSemaphoreRefs.size());
+		for (const auto &s : s_PresentSemaphoreRefs)
+		{
+			s_PresentSemaphoreHandles.push_back(s ? s->GetSemaphore() : VK_NULL_HANDLE);
+		}
+
+		s_RenderSemaphoreHandles.clear();
+		s_RenderSemaphoreHandles.reserve(s_RenderSemaphoreRefs.size());
+		for (const auto &s : s_RenderSemaphoreRefs)
+		{
+			s_RenderSemaphoreHandles.push_back(s ? s->GetSemaphore() : VK_NULL_HANDLE);
+		}
 	}
 
 #pragma region Lifecycle Methods
@@ -260,6 +296,13 @@ static std::mutex s_FrameSyncMutex;
 		}
 
 		s_Swapchain = CreateRef<Swapchain>();
+		// Temporary debug logging: record when the global swapchain Ref is assigned
+		// This helps trace who/when mutates the global swapchain handle during init.
+		if (s_Swapchain)
+		{
+			SEDX_CORE_TRACE_TAG("Swapchain", "Assigned s_Swapchain: Ref ptr = {}, swapchain handle = 0x{:x}",
+								static_cast<void*>(s_Swapchain.Get()), reinterpret_cast<uint64_t>(s_Swapchain->Get()));
+		}
 		if (Window::GetWindow())
 		{
 			// Verify surface was created
@@ -292,6 +335,9 @@ static std::mutex s_FrameSyncMutex;
 		SEDX_CORE_TRACE_TAG("Renderer", "Created AssetManager");
 
 		CreateFrameResources();
+		// Temporary debug trace: log sync vectors sizes after frame resources creation
+		SEDX_CORE_TRACE_TAG("Renderer", "Trace: After CreateFrameResources sizes - fences={}, present={}, render={}",
+			static_cast<uint32_t>(s_FenceHandles.size()), static_cast<uint32_t>(s_PresentSemaphoreHandles.size()), static_cast<uint32_t>(s_RenderSemaphoreHandles.size()));
 		CreateRenderTargets(true, true, true);
 		CreateModels();
 		GeometryBuffer::Initialize();
@@ -423,7 +469,7 @@ static std::mutex s_FrameSyncMutex;
 			s_Swapchain.Reset();
 		}
 
-	    if (Debugging::IsRenderdocEnabled())
+		if (Debugging::IsRenderdocEnabled())
 		{
 			RenderDoc::Shutdown();
 		}
@@ -609,7 +655,7 @@ static std::mutex s_FrameSyncMutex;
 					if (m_DrawDataCount > 0)
 					{
 						Buffer *buffer = GetBuffer(Renderer_Buffer::DrawData);
-						uint32_t frame_byte_offset = m_frame_resource_index * renderer_max_draw_calls *
+						uint32_t frame_byte_offset = m_FrameResource_Index * renderer_max_draw_calls *
 													 static_cast<uint32_t>(sizeof(Sb_DrawData));
 						uint32_t upload_size = static_cast<uint32_t>(sizeof(Sb_DrawData)) * m_DrawDataCount;
 						m_CmdList_Present->UpdateBuffer(buffer, frame_byte_offset, upload_size, &m_draw_data_cpu[0]);
@@ -741,12 +787,26 @@ static std::mutex s_FrameSyncMutex;
 		{
 			SEDX_CORE_ERROR_TAG("Renderer", "Swapchain has no images, VkSwapchainKHR handle: {}, surface valid: {}",
 								static_cast<void *>(s_Swapchain->Get()), s_Swapchain->GetSurface() != VK_NULL_HANDLE);
-
+			
 			// Attempt to recreate swapchain if surface is available and window is visible
 			if (s_Swapchain->GetSurface() != VK_NULL_HANDLE)
 			{
 				SEDX_CORE_WARN_TAG("Renderer", "Attempting to recreate swapchain...");
+				// Ensure GPU is idle before tearing down per-frame sync objects
+				if (RenderContext::IsInitialized())
+				{
+					Ref<Device> device = RenderContext::Get()->GetDevice();
+					if (device.IsValid() && device->GetQueueManager())
+					{
+						device->GetQueueManager()->WaitIdleAll();
+					}
+				}
+
+				// Destroy frame-sync resources before swapchain recreation and recreate afterwards
+				DestroyFrameResources();
 				s_Swapchain->Recreate();
+				CreateFrameResources();
+
 				if (s_Swapchain != nullptr && !s_Swapchain->GetImages().empty())
 				{
 					SEDX_CORE_TRACE_TAG("Renderer", "Swapchain recreated successfully with {} images",
@@ -944,18 +1004,7 @@ static std::mutex s_FrameSyncMutex;
 		}
 		SEDX_CORE_VERIFY(vkDevice != VK_NULL_HANDLE, "Logical VkDevice is invalid before submit");
 
-		// Detect obviously-uninitialized handles
-		uint64_t presentSem = reinterpret_cast<uint64_t>(s_PresentSemaphoreHandles[m_CurrentFrameIndex]);
-		uint64_t renderSem = reinterpret_cast<uint64_t>(s_RenderSemaphoreHandles[m_SwapchainImageIndex]);
-		uint64_t fenceHandle = reinterpret_cast<uint64_t>(s_FenceHandles[m_CurrentFrameIndex]);
-		uint64_t cbHandle = reinterpret_cast<uint64_t>(cb);
-
-		SEDX_CORE_VERIFY(!IsLikelyUninitialized(presentSem), "Present semaphore appears uninitialized: 0x{:x}", presentSem);
-		SEDX_CORE_VERIFY(!IsLikelyUninitialized(renderSem), "Render semaphore appears uninitialized: 0x{:x}", renderSem);
-		SEDX_CORE_VERIFY(!IsLikelyUninitialized(fenceHandle), "Fence handle appears uninitialized: 0x{:x}", fenceHandle);
-		SEDX_CORE_VERIFY(!IsLikelyUninitialized(cbHandle), "Command buffer appears uninitialized: 0x{:x}", cbHandle);
-
-		// Ensure indices are valid
+		// Ensure indices and swapchain are valid before dereferencing handle arrays
 		if (m_CurrentFrameIndex >= s_PresentSemaphoreHandles.size())
 		{
 			SEDX_CORE_ERROR_TAG("Renderer", "Current frame index {} out of bounds for present semaphores (size {})",
@@ -968,6 +1017,20 @@ static std::mutex s_FrameSyncMutex;
 								m_SwapchainImageIndex, s_RenderSemaphoreHandles.size());
 			return;
 		}
+
+		SEDX_CORE_VERIFY(s_Swapchain && s_Swapchain->Get() != VK_NULL_HANDLE, "Swapchain invalid before present");
+
+		// Detect obviously-uninitialized handles (do this after bounds checks)
+		uint64_t presentSem = reinterpret_cast<uint64_t>(s_PresentSemaphoreHandles[m_CurrentFrameIndex]);
+		uint64_t renderSem = reinterpret_cast<uint64_t>(s_RenderSemaphoreHandles[m_SwapchainImageIndex]);
+		uint64_t fenceHandle = reinterpret_cast<uint64_t>(s_FenceHandles[m_CurrentFrameIndex]);
+		uint64_t cbHandle = reinterpret_cast<uint64_t>(cb);
+
+		SEDX_CORE_VERIFY(!IsLikelyUninitialized(presentSem), "Present semaphore appears uninitialized: 0x{:x}", presentSem);
+		SEDX_CORE_VERIFY(!IsLikelyUninitialized(renderSem), "Render semaphore appears uninitialized: 0x{:x}", renderSem);
+		SEDX_CORE_VERIFY(!IsLikelyUninitialized(fenceHandle), "Fence handle appears uninitialized: 0x{:x}", fenceHandle);
+		SEDX_CORE_VERIFY(!IsLikelyUninitialized(cbHandle), "Command buffer appears uninitialized: 0x{:x}", cbHandle);
+
 		SEDX_CORE_TRACE_TAG("Renderer", "Submitting command buffer for frame {}, waiting on present semaphore {}, signaling render semaphore {}",
 			m_FrameNumber,
 			static_cast<void *>(s_PresentSemaphoreHandles[m_CurrentFrameIndex]),
@@ -1012,12 +1075,9 @@ static std::mutex s_FrameSyncMutex;
 		SEDX_CORE_TRACE_TAG("Renderer", "Presenting swapchain image index {} for frame {}", m_SwapchainImageIndex, m_FrameNumber);
 
 		// Defensive validation before present
-		SEDX_CORE_VERIFY(presentInfo.pSwapchains != nullptr && presentInfo.pImageIndices != nullptr,
-						 "VkPresentInfoKHR not correctly configured");
-		SEDX_CORE_VERIFY(s_RenderSemaphoreHandles[m_SwapchainImageIndex] != VK_NULL_HANDLE,
-						 "Render semaphore invalid before present");
-		SEDX_CORE_VERIFY(s_Swapchain && s_Swapchain->Get() != VK_NULL_HANDLE,
-						 "Swapchain handle invalid before present");
+		SEDX_CORE_VERIFY(presentInfo.pSwapchains != nullptr && presentInfo.pImageIndices != nullptr, "VkPresentInfoKHR not correctly configured");
+		SEDX_CORE_VERIFY(s_RenderSemaphoreHandles[m_SwapchainImageIndex] != VK_NULL_HANDLE, "Render semaphore invalid before present");
+		SEDX_CORE_VERIFY(s_Swapchain && s_Swapchain->Get() != VK_NULL_HANDLE, "Swapchain handle invalid before present");
 
 		VkResult presentResult = vkQueuePresentKHR(graphicsQueue, &presentInfo);
 		if (presentResult == VK_ERROR_OUT_OF_DATE_KHR || presentResult == VK_SUBOPTIMAL_KHR)
@@ -1065,7 +1125,12 @@ static std::mutex s_FrameSyncMutex;
 		// compute blit: vulkan can't blit depth to float, amd uav requires float
 		cmdList->Blit(img, s_Swapchain.Get());
 	}
+	
+#pragma endregion
 
+#pragma region Frame Resource Creation and Destruction
+
+	// This was the prior function for creating frame resources before Blit implementation.
 	void Renderer::CreateFrameResources()
 	{
 		SEDX_CORE_TRACE_TAG("Renderer", "Creating frame resources for {} frames in flight", MAX_FRAMES_IN_FLIGHT);
@@ -1115,7 +1180,7 @@ static std::mutex s_FrameSyncMutex;
 		// Create present semaphores (one per frame in flight)
 		{
 			std::scoped_lock lock(s_FrameSyncMutex);
-		    std::ostringstream ssteam_present;
+			std::ostringstream ssteam_present;
 			ssteam_present << std::this_thread::get_id();
 			SEDX_CORE_TRACE_TAG("Renderer", "Creating present semaphores ({}) thread id: {}", MAX_FRAMES_IN_FLIGHT, ssteam_present.str());
 			s_PresentSemaphoreRefs.reserve(MAX_FRAMES_IN_FLIGHT);
@@ -1128,6 +1193,12 @@ static std::mutex s_FrameSyncMutex;
 				s_PresentSemaphoreHandles.push_back(sem->GetSemaphore());
 				Debugging::SetResourceName(sem.Get()->GetSemaphore(), ResourceType::Semaphore, "PresentSemaphore");
 			}
+		   // Temporary trace: log first present semaphore handle if available
+			if (!s_PresentSemaphoreHandles.empty())
+			{
+				SEDX_CORE_TRACE_TAG("Renderer", "Trace: Present semaphores created: count = {}, first = 0x{:x}",
+					static_cast<uint32_t>(s_PresentSemaphoreHandles.size()), reinterpret_cast<uint64_t>(s_PresentSemaphoreHandles[0]));
+			}
 		}
 
 		const uint32_t swapchainImageCount = static_cast<uint32_t>(s_Swapchain->GetImages().size());
@@ -1135,7 +1206,7 @@ static std::mutex s_FrameSyncMutex;
 		// Create render semaphores (one per swapchain image)
 		{
 			std::scoped_lock lock(s_FrameSyncMutex);
-		  std::ostringstream ssteam_render;
+			std::ostringstream ssteam_render;
 			ssteam_render << std::this_thread::get_id();
 			SEDX_CORE_TRACE_TAG("Renderer", "Creating render semaphores ({}) thread id: {}", swapchainImageCount, ssteam_render.str());
 			s_RenderSemaphoreRefs.reserve(swapchainImageCount);
@@ -1147,6 +1218,12 @@ static std::mutex s_FrameSyncMutex;
 				s_RenderSemaphoreRefs.push_back(sem);
 				s_RenderSemaphoreHandles.push_back(sem->GetSemaphore());
 				Debugging::SetResourceName(sem.Get()->GetSemaphore(), ResourceType::Semaphore, "RenderSemaphore");
+			}
+		   // Temporary trace: log first render semaphore handle if available
+			if (!s_RenderSemaphoreHandles.empty())
+			{
+				SEDX_CORE_TRACE_TAG("Renderer", "Trace: Render semaphores created: count = {}, first = 0x{:x}",
+					static_cast<uint32_t>(s_RenderSemaphoreHandles.size()), reinterpret_cast<uint64_t>(s_RenderSemaphoreHandles[0]));
 			}
 		}
 	
@@ -1160,6 +1237,203 @@ static std::mutex s_FrameSyncMutex;
 		m_FrameSync->SetUserCmdList(nullptr);
 		SEDX_CORE_TRACE_TAG("Renderer", " Frame resources created");
 	}
+
+	// Create synchronization primitives (fences & semaphores) used per-frame and per-swapchain-image.
+	/*
+	void Renderer::CreateFrameResources()
+	{
+		std::scoped_lock lock(s_FrameSyncMutex);
+
+		SEDX_CORE_TRACE_TAG("Renderer", "CreateFrameResources() - entering");
+
+		// Clear any existing resources
+		s_FenceRefs.clear();
+		s_FenceHandles.clear();
+
+		s_PresentSemaphoreRefs.clear();
+		s_PresentSemaphoreHandles.clear();
+
+		s_RenderSemaphoreRefs.clear();
+		s_RenderSemaphoreHandles.clear();
+
+		// Acquire device
+		Ref<Device> device = RenderContext::Get()->GetDevice();
+		VkDevice vkDevice = VK_NULL_HANDLE;
+		if (device.IsValid())
+		{
+			vkDevice = device->GetDevice();
+		}
+
+		// Reserve vector capacity
+		s_FenceRefs.reserve(MAX_FRAMES_IN_FLIGHT);
+		s_FenceHandles.reserve(MAX_FRAMES_IN_FLIGHT);
+
+		for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
+		{
+			Ref<Fence> fence = CreateRef<Fence>();
+			if (vkDevice != VK_NULL_HANDLE)
+			{
+				fence->CreateSyncObject(vkDevice);
+			}
+			else
+			{
+				fence->CreateSyncObject();
+			}
+			s_FenceRefs.push_back(fence);
+			s_FenceHandles.push_back(fence->GetFence());
+		}
+
+		SEDX_CORE_TRACE_TAG("Renderer", "CreateFrameResources() - created {} fences", s_FenceRefs.size());
+
+		// Present semaphores: one per frame-in-flight
+		s_PresentSemaphoreRefs.reserve(MAX_FRAMES_IN_FLIGHT);
+		s_PresentSemaphoreHandles.reserve(MAX_FRAMES_IN_FLIGHT);
+		for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
+		{
+			Ref<Semaphore> sem = CreateRef<Semaphore>(SyncType::Semaphore);
+			if (vkDevice != VK_NULL_HANDLE)
+			{
+				sem->CreateSyncObject(vkDevice);
+			}
+			else
+			{
+				sem->CreateSyncObject();
+			}
+			s_PresentSemaphoreRefs.push_back(sem);
+			s_PresentSemaphoreHandles.push_back(sem->GetSemaphore());
+		}
+
+		SEDX_CORE_TRACE_TAG("Renderer", "CreateFrameResources() - created {} present semaphores", s_PresentSemaphoreRefs.size());
+
+		// Render semaphores: one per swapchain image
+		uint32_t imageCount = 0;
+		if (s_Swapchain)
+		{
+			imageCount = static_cast<uint32_t>(s_Swapchain->GetImages().size());
+		}
+		if (imageCount == 0)
+			imageCount = SWAPCHAIN_BUFFER_COUNT;
+
+		s_RenderSemaphoreRefs.reserve(imageCount);
+		s_RenderSemaphoreHandles.reserve(imageCount);
+		for (uint32_t i = 0; i < imageCount; ++i)
+		{
+			Ref<Semaphore> sem = CreateRef<Semaphore>(SyncType::Semaphore);
+			if (vkDevice != VK_NULL_HANDLE)
+			{
+				sem->CreateSyncObject(vkDevice);
+			}
+			else
+			{
+				sem->CreateSyncObject();
+			}
+			s_RenderSemaphoreRefs.push_back(sem);
+			s_RenderSemaphoreHandles.push_back(sem->GetSemaphore());
+		}
+
+		SEDX_CORE_TRACE_TAG("Renderer", "CreateFrameResources() - created {} render semaphores for swapchain images", s_RenderSemaphoreRefs.size());
+	}
+	*/
+
+	/*
+	void Renderer::DestroyFrameResources()
+	{
+		SEDX_CORE_TRACE_TAG("Renderer", "Destroying frame resources");
+		std::scoped_lock lock(s_FrameSyncMutex);
+
+		SEDX_CORE_TRACE_TAG("Renderer", "DestroyFrameResources() - entering: fences={}, presentSem={}, renderSem={}",
+			s_FenceRefs.size(), s_PresentSemaphoreRefs.size(), s_RenderSemaphoreRefs.size());
+
+		// Release strong references so underlying objects can destroy their Vulkan handles
+		for (auto &f : s_FenceRefs)
+		{
+			if (f)
+			{
+				f.Reset();
+			}
+		}
+		s_FenceRefs.clear();
+		s_FenceHandles.clear();
+
+		for (auto &s : s_PresentSemaphoreRefs)
+		{
+			if (s)
+			{
+				s.Reset();
+			}
+		}
+		s_PresentSemaphoreRefs.clear();
+		s_PresentSemaphoreHandles.clear();
+
+		for (auto &s : s_RenderSemaphoreRefs)
+		{
+			if (s)
+			{
+				s.Reset();
+			}
+		}
+		s_RenderSemaphoreRefs.clear();
+		s_RenderSemaphoreHandles.clear();
+
+		// Clear any pointers exposed to RenderContext to avoid dangling references
+		if (RenderContext::IsInitialized())
+		{
+			RenderContext::Get()->s_Fences = s_FenceHandles.empty() ? nullptr : &s_FenceHandles;
+			RenderContext::Get()->s_PresentSemaphores = s_PresentSemaphoreHandles.empty() ? nullptr : &s_PresentSemaphoreHandles;
+			RenderContext::Get()->s_RenderSemaphores = s_RenderSemaphoreHandles.empty() ? nullptr : &s_RenderSemaphoreHandles;
+		}
+
+		SEDX_CORE_TRACE_TAG("Renderer", "DestroyFrameResources() - complete");
+	}
+	*/
+
+	/*
+	void Renderer::DestroyFrameResources()
+	{
+		SEDX_CORE_TRACE_TAG("Renderer", "Destroying frame resources");
+		std::scoped_lock lock(s_FrameSyncMutex);
+
+		// Release strong references so underlying objects can enqueue their
+		// Vulkan handle destruction via their Destroy() implementations.
+		for (auto &f : s_FenceRefs)
+		{
+			if (f)
+			{
+				f.Reset();
+			}
+		}
+		s_FenceRefs.clear();
+		s_FenceHandles.clear();
+
+		for (auto &s : s_PresentSemaphoreRefs)
+		{
+			if (s)
+			{
+				s.Reset();
+			}
+		}
+		s_PresentSemaphoreRefs.clear();
+		s_PresentSemaphoreHandles.clear();
+
+		for (auto &s : s_RenderSemaphoreRefs)
+		{
+			if (s)
+			{
+				s.Reset();
+			}
+		}
+		s_RenderSemaphoreRefs.clear();
+		s_RenderSemaphoreHandles.clear();
+
+		// Clear any pointers exposed to RenderContext to avoid dangling references
+		if (RenderContext::IsInitialized())
+		{
+			RenderContext::Get()->s_Fences = s_FenceHandles.empty() ? nullptr : &s_FenceHandles;
+			RenderContext::Get()->s_PresentSemaphores = s_PresentSemaphoreHandles.empty() ? nullptr : &s_PresentSemaphoreHandles;
+			RenderContext::Get()->s_RenderSemaphores = s_RenderSemaphoreHandles.empty() ? nullptr : &s_RenderSemaphoreHandles;
+		}
+	}
+	*/
 
 	void Renderer::DestroyFrameResources()
 	{
@@ -1269,7 +1543,9 @@ static std::mutex s_FrameSyncMutex;
 	void Renderer::RenderThreadFunc(RenderThread *renderThread)
 	{
 		while (renderThread->IsRunning())
+		{
 			WaitAndRender(renderThread);
+		}
 	}
 	
 	void Renderer::WaitAndRender(RenderThread* renderThread)
@@ -1992,11 +2268,6 @@ static std::mutex s_FrameSyncMutex;
 	}
 
 #pragma endregion
-	
-	GPUMemoryStats Renderer::GetGPUMemoryStats()
-	{
-		return MemoryAllocator::GetMemoryStats();
-	}
 
 #pragma region Private Rendering Methods
 
@@ -2372,6 +2643,37 @@ static std::mutex s_FrameSyncMutex;
 
 		vkCmdEndRendering(cb);
 		SEDX_CORE_TRACE_TAG("Renderer", "Dynamic rendering ended");
+
+		// Ensure the swapchain image is transitioned to the present layout so
+		// vkQueuePresentKHR sees the image in VK_IMAGE_LAYOUT_PRESENT_SRC_KHR.
+		// When using dynamic rendering or manual transitions earlier in the
+		// frame some implementations require an explicit transition here.
+		{
+			VkImage swapchainImage = swapchainImages[imageIndex];
+			VkImageMemoryBarrier presentBarrier{};
+			presentBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+			presentBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			presentBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			presentBarrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+			presentBarrier.dstAccessMask = 0;
+			presentBarrier.oldLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
+			presentBarrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+			presentBarrier.image = swapchainImage;
+			presentBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			presentBarrier.subresourceRange.baseMipLevel = 0;
+			presentBarrier.subresourceRange.levelCount = 1;
+			presentBarrier.subresourceRange.baseArrayLayer = 0;
+			presentBarrier.subresourceRange.layerCount = 1;
+
+			// Ensure color attachment writes are finished before present
+			vkCmdPipelineBarrier(cb,
+				VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+				VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+				0,
+				0, nullptr,
+				0, nullptr,
+				1, &presentBarrier);
+		}
 	}
 
 	void Renderer::SetCommonTextures(CommandList* cmdList)
@@ -2592,7 +2894,6 @@ static std::mutex s_FrameSyncMutex;
 		*/
 	} 
 
-
 	void Renderer::UpdateCameraUBO(uint32_t frameIndex)
 	{
 		Camera* camera = Scene::GetCamera();
@@ -2748,6 +3049,11 @@ static std::mutex s_FrameSyncMutex;
 	}
 
 #pragma endregion
+		
+	GPUMemoryStats Renderer::GetGPUMemoryStats()
+	{
+		return MemoryAllocator::GetMemoryStats();
+	}
 
 } // namespace SceneryEditorX
 

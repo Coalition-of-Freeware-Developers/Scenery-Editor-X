@@ -545,7 +545,7 @@ namespace SceneryEditorX
 		// Bindless
 		// bindless draw data
 		static std::array<ShaderBuffer_DrawData, RENDERER_MAX_DRAW_CALLS> m_DrawData_CPU; // Staging area for draw data written by the CPU; copied to GPU buffer each frame
-	    static std::mutex m_MutexRenderables; // Mutex to protect access to m_DrawData_CPU and m_DrawData_Count during scene submission from multiple threads
+		static std::mutex m_MutexRenderables; // Mutex to protect access to m_DrawData_CPU and m_DrawData_Count during scene submission from multiple threads
 		static uint32_t m_DrawData_Count; // Number of draw data entries written for the current frame; used to determine how many to copy to GPU and how many draw calls to issue
 
 		// Array of pointers to all textures used by the renderer, indexed by material parameters; bound as a bindless array in shaders
@@ -554,7 +554,7 @@ namespace SceneryEditorX
 		// Array of light data for all active lights in the scene, indexed by a per-light index; bound as a bindless array in shaders
 		static std::array<ShaderBuffer_Light, MAX_ARRAY_SIZE> m_Bindless_Lights; 
 
-	    // Array of AABB data for all renderables, indexed by a per-renderable index; used for GPU-driven culling and other operations
+		// Array of AABB data for all renderables, indexed by a per-renderable index; used for GPU-driven culling and other operations
 		static std::array<ShaderBuffer_Aabb, MAX_ARRAY_SIZE> m_Bindless_Aabbs;
 
 		static Flag m_BindlessSamplers_Dirty;
@@ -613,6 +613,18 @@ namespace SceneryEditorX
 		static uint64_t m_FrameNumber;           // Total frames rendered
 		static uint32_t m_SwapchainImageIndex;   // Current swapchain image
 		static bool m_FrameInProgress;           // True between BeginFrame and EndFrame
+
+		// per-frame gpu buffers, rotated so in-flight frames never race
+		struct FrameResource
+		{
+			Ref<Buffer> m_Indirect_DrawArgs;
+			Ref<Buffer> m_Indirect_DrawData;
+			Ref<Buffer> m_Indirect_DrawArgs_Out;
+			Ref<Buffer> m_Indirect_DrawData_Out;
+			Ref<Buffer> m_Indirect_DrawCount;
+		};
+		static std::array<FrameResource, DRAW_DATA_BUFFER_COUNT> m_FrameResources;
+		static uint32_t m_FrameResource_Index;
 
 		/* Basic forward-rendering pipeline (active until the full deferred pipeline is wired up) */
 		static VkPipeline m_BasicPipeline;

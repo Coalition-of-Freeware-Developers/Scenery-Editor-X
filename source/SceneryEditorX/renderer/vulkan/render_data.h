@@ -67,6 +67,10 @@ namespace SceneryEditorX
 
 	static constexpr uint32_t MAX_FRAMES_IN_FLIGHT		= 2;
 	static constexpr uint32_t MAX_BUFFER_UPDATE_SIZE	= 65536; // vkCmdUpdateBuffer has a limit of 65536 bytes
+	static constexpr uint32_t MAX_DRAW_CALLS			= 20000; // Maximum number of draw calls per frame; used to size CPU-side staging arrays for draw data, etc.
+	static constexpr uint32_t MAX_INSTANCE_COUNT		= 1024;  // Maximum number of instances per draw call; used to size instance data buffers and limit draw calls to avoid GPU timeouts
+	static constexpr uint32_t MAX_RESOURCE_LIFETIME		= 100;	 // Maximum number of frames a resource can live; used to manage resource lifetimes and avoid GPU timeouts
+	static constexpr uint32_t DRAW_DATA_BUFFER_COUNT	= 41;	 // Matches the command list pool size to avoid cpu-gpu memcpy races
 
 #pragma endregion
 

@@ -36,7 +36,7 @@
 
 namespace SceneryEditorX
 {
-/**
+	/**
 	 * @class Descriptor
 	 * @brief A helper class for managing Vulkan descriptor sets, layouts, and pools.
 	 */

@@ -31,6 +31,7 @@
 #pragma once
 #include "device.h"
 #include <vector>
+#include <Editor/ui/ui_impl.h>
 #include <SDL3/SDL_video.h>
 #include <SceneryEditorX/core/identifiers/flag.h>
 #include <vma/vk_mem_alloc.h>
@@ -113,6 +114,8 @@ namespace SceneryEditorX
 		std::vector<Ref<FrameSync>> m_CompleteSemaphore;
 		std::vector<VkImage> m_Images;
 		std::vector<VkImageView> m_ImageViews;
+
+		std::array<VkImageView, 2> m_RenderTargetViews = { nullptr };
 
 		VkImage m_DepthImage{ VK_NULL_HANDLE };
 		VmaAllocation m_DepthAlloc{ VK_NULL_HANDLE };

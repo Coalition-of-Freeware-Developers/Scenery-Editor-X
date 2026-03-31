@@ -43,8 +43,8 @@
 
 namespace SceneryEditorX
 {
-struct PendingBarrierInfo;
-struct PushConstantBuffer_Pass;
+	struct PendingBarrierInfo;
+	struct PushConstantBuffer_Pass;
 	class DescriptorSet;
 	class ImageResource;
 	struct Texture;
@@ -483,6 +483,7 @@ struct PushConstantBuffer_Pass;
 		[[nodiscard]] FrameSync* GetTimelineSemaphore() const { return m_RenderingCompleteTimeline.Get(); }
 
 	private:
+		void PreDraw();
 		void BeginRenderPass();
 
 		// Per-submission sync objects:
@@ -509,6 +510,7 @@ struct PushConstantBuffer_Pass;
 		Pipeline m_Pipeline;
 		PipelineState m_pso;
 		std::vector<PendingBarrierInfo> m_PendingBarriers;
+		std::array<bool, MAX_RENDER_TARGET_COUNT> m_Load_Color_RenderTargets = { false };
 
 	};  
 

@@ -735,6 +735,8 @@ namespace SceneryEditorX
 		ci.oldSwapchain = m_Swapchain;
 
 		SEDX_VK_RESULT_ASSERT(vkCreateSwapchainKHR(m_Device->GetLogicalDevice(), &ci, nullptr, &m_Swapchain), "Failed to create swapchain");
+		// Temporary trace to log swapchain handle returned by vkCreateSwapchainKHR
+		SEDX_CORE_TRACE_TAG("Swapchain", "Trace: vkCreateSwapchainKHR returned m_Swapchain = 0x{:x}", reinterpret_cast<uint64_t>(m_Swapchain));
 	
 		// Destroy old swapchain if it existed
 		if (ci.oldSwapchain != VK_NULL_HANDLE)

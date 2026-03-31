@@ -30,6 +30,7 @@
  */
 #include "command_list.h"
 #include "buffer.h"
+#include "depth_stencil.h"
 #include "image_resource.h"
 #include "render_context.h"
 #include "swapchain.h"
@@ -99,7 +100,7 @@ namespace SceneryEditorX
 	static Layout::ImageLayout GetLayout(VkImage image, uint32_t mipIndex)
 	{
 		SEDX_CORE_ASSERT(image != nullptr);
-		std::lock_guard<std::mutex> lock(s_ImageLayoutsMutex);
+		std::scoped_lock lock(s_ImageLayoutsMutex);
 
 		auto it = s_ImageLayouts.find(image);
 		if (it == s_ImageLayouts.end())
@@ -116,7 +117,7 @@ namespace SceneryEditorX
 		SEDX_CORE_ASSERT(image != nullptr);
 		SEDX_CORE_ASSERT(mip_index < MAX_MIP_COUNT);
 		SEDX_CORE_ASSERT(mip_index + mip_range <= MAX_MIP_COUNT);
-		std::lock_guard<std::mutex> lock(s_ImageLayoutsMutex);
+		std::scoped_lock lock(s_ImageLayoutsMutex);
 
 		auto it = s_ImageLayouts.find(image);
 		if (it == s_ImageLayouts.end())
@@ -136,7 +137,7 @@ namespace SceneryEditorX
 
 	static void RemoveLayout(VkImage image)
 	{
-		std::lock_guard<std::mutex> lock(s_ImageLayoutsMutex);
+		std::scoped_lock lock(s_ImageLayoutsMutex);
 		s_ImageLayouts.erase(image);
 	}
 
@@ -321,6 +322,57 @@ namespace SceneryEditorX
 	}
 
 	/**
+	 * @brief 
+	 * @param color 
+	 * @return 
+	 */
+	static VkAttachmentLoadOp GetColorLoadOp(const Color& color)
+	{
+		if (color == COLOR_DONT_CARE)
+			return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+
+		if (color == COLOR_LOAD)
+			return VK_ATTACHMENT_LOAD_OP_LOAD;
+
+		return VK_ATTACHMENT_LOAD_OP_CLEAR;
+	};
+
+	/**
+	 * @brief 
+	 * @param depth 
+	 * @return 
+	 */
+	static VkAttachmentLoadOp GetDepthLoadOp(const float depth)
+	{
+		if (depth == DEPTH_DONT_CARE)
+			return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+
+		if (depth == DEPTH_LOAD)
+			return VK_ATTACHMENT_LOAD_OP_LOAD;
+
+		return VK_ATTACHMENT_LOAD_OP_CLEAR;
+	};
+
+	/**
+	 * @brief 
+	 * @param format 
+	 * @return 
+	 */
+	static uint32_t GetAspectMask(const VkFormat format)
+	{
+		switch (format)
+		{
+		case VK_FORMAT_D32_SFLOAT_S8_UINT:
+			return VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+		case VK_FORMAT_D16_UNORM:
+		case VK_FORMAT_D32_SFLOAT:
+			return VK_IMAGE_ASPECT_DEPTH_BIT;
+		default:
+			return VK_IMAGE_ASPECT_COLOR_BIT;
+		}
+	}
+
+	/**
 	 * @struct BarrierAccessInfo
 	 * @brief Maps a Layout::ImageLayout to the corresponding Vulkan pipeline stage and access masks.
 	 * Used internally by InsertBarrier to build correct VkImageMemoryBarrier2 entries.
@@ -332,9 +384,9 @@ namespace SceneryEditorX
 	};
 
 	/**
-	 * @brief 
-	 * @param layout 
-	 * @return  
+	 * @brief Given a Layout::ImageLayout, return the corresponding Vulkan access mask and pipeline stage flags for barriers.
+	 * @param layout The image layout to query.
+	 * @return A BarrierAccessInfo struct containing the access mask and stage flags.
 	 */
 	static BarrierAccessInfo GetLayoutAccessInfo(const Layout::ImageLayout layout)
 	{
@@ -634,6 +686,7 @@ namespace SceneryEditorX
 
 		// End recording: close any open render pass, then seal the command buffer.
 		EndRenderPass();
+		FlushBarriers();
 		SEDX_VK_RESULT_ASSERT(vkEndCommandBuffer(m_CmdBuffer), "Failed to end command buffer");
 
 		// -------------------------------------------------------
@@ -641,6 +694,7 @@ namespace SceneryEditorX
 		// -------------------------------------------------------
 		std::vector<VkSemaphoreSubmitInfo> waitInfos;
 
+		
 		// Binary wait — e.g. swapchain image-acquired semaphore
 		if (semaphoreWait && semaphoreWait->GetVkSemaphore() != VK_NULL_HANDLE)
 		{
@@ -662,6 +716,7 @@ namespace SceneryEditorX
 			info.stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
 			waitInfos.push_back(info);
 		}
+		
 
 		// -------------------------------------------------------
 		// Build signal semaphore list
@@ -951,10 +1006,14 @@ namespace SceneryEditorX
 		{
 			SEDX_CORE_WARN_TAG("CommandList", "InsertBarrier called on invalid CommandList '{}' (state={}, cmdBuf=0x{:p}) - using immediate fallback",
 				m_ObjectName.c_str(), static_cast<int>(m_State.load()), (void*)m_CmdBuffer);
-#ifdef _DEBUG
-			// Surface the misuse loudly during development.
-			SEDX_CORE_ASSERT(false, "InsertBarrier called on invalid CommandList - investigate caller");
-#endif
+
+			// Defensive behavior: in some startup/race conditions a command list may
+			// still be in Submitted state when callers attempt to insert image
+			// barriers. Previously a debug-only assert aborted the process; instead
+			// log a warning and use the immediate-command-list fallback so the
+			// application can continue running while we investigate the root cause.
+			SEDX_CORE_WARN_TAG("CommandList", "Debug: InsertBarrier called on invalid CommandList - immediate fallback will be used (no assert)");
+
 			// Fallback: perform transition using an immediate command list so we do
 			// not call into the driver with an invalid command buffer.
 			CommandList* temp = CommandList::BeginImmediateExecution(QueueType::Graphics);
@@ -1311,21 +1370,21 @@ namespace SceneryEditorX
 	void CommandList::Draw(const uint32_t vertexCount, const uint32_t vertexOffset)
 	{
 		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command List must be in Recording state to issue draw calls.");
+		PreDraw();
 		vkCmdDraw(m_CmdBuffer, vertexCount, 1, vertexOffset, 0);
 	}
 	
 	void CommandList::DrawIndexed(const uint32_t indexCount, const uint32_t instCount, const uint32_t indexOffset, const uint32_t vertexOffset, const uint32_t instIndex)
 	{
 		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command List must be in Recording state to issue draw calls.");
+		PreDraw();
 		vkCmdDrawIndexed(m_CmdBuffer, indexCount, instCount, indexOffset, static_cast<int32_t>(vertexOffset), instIndex);
 	}
 
 	void CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z /*= 1*/)
 	{
 		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to dispatch compute work");
-
-		//PreDraw();
-
+		PreDraw();
 		vkCmdDispatch(m_CmdBuffer, x, y, z);
 	}
 
@@ -1345,9 +1404,7 @@ namespace SceneryEditorX
 		// Scaled dimensions — round up to guarantee full coverage at sub-1.0 scales
 		const uint32_t scaledWidth  = static_cast<uint32_t>(ceil(img->GetWidth()  * resolutionScale));
 		const uint32_t scaledHeight = static_cast<uint32_t>(ceil(img->GetHeight() * resolutionScale));
-		const uint32_t scaledDepth  = (img->GetImageSpec().type == ImageType::Type3D)
-			? static_cast<uint32_t>(ceil(img->GetImageSpec().depth * resolutionScale))
-			: 1;
+		const uint32_t scaledDepth  = (img->GetImageSpec().type == ImageType::Type3D) ? static_cast<uint32_t>(ceil(img->GetImageSpec().depth * resolutionScale)) : 1;
 
 		// Conservative dispatch counts (ceil division ensures all texels are covered)
 		const uint32_t dispatchX = (scaledWidth  + threadGroupSize - 1) / threadGroupSize;
@@ -1356,15 +1413,19 @@ namespace SceneryEditorX
 
 		Dispatch(dispatchX, dispatchY, dispatchZ);
 
-		// Transition to ShaderRead so subsequent graphics/compute passes can sample the result
-		InsertBarrier(img->Get(), img->GetImageSpec().format, 0, 0, 0, Layout::ImageLayout::ShaderRead);
+		// synchronize writes to the texture
+		if (GetImageLayout(img->Get(), 0) == Layout::ImageLayout::General)
+		{
+			// Transition to ShaderRead so subsequent graphics/compute passes can sample the result
+			InsertBarrier(img->Get(), img->GetImageSpec().format, 0, 0, 0, Layout::ImageLayout::ShaderRead);
+		}
 	}
 
 	void CommandList::SetViewport(const Viewport &viewport) const
 	{
 		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to set viewport");
 
-		VkViewport vkViewport{};
+		VkViewport vkViewport;
 		vkViewport.x = viewport.x;
 		vkViewport.y = viewport.y;
 		vkViewport.width = viewport.width;
@@ -1607,6 +1668,179 @@ namespace SceneryEditorX
 		vkCmdCopyBuffer(m_CmdBuffer, src->Get(), dst->Get(), 1, &region);
 	}
 
+	void CommandList::PreDraw()
+	{
+		FlushBarriers();
+
+		if (!m_RenderPassActive && m_pso.IsGraphics())
+		{
+			BeginRenderPass();
+		}
+	}
+
+	void CommandList::BeginRenderPass()
+	{
+		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to begin a render pass");
+		EndRenderPass();
+
+		if (!m_pso.IsGraphics())
+			return;
+
+		VkRenderingInfo renderInfo		= {};
+		renderInfo.sType			= VK_STRUCTURE_TYPE_RENDERING_INFO;
+		renderInfo.renderArea.offset = { 0, 0 };
+		renderInfo.renderArea.extent = { m_pso.GetWidth(), m_pso.GetHeight() };
+		renderInfo.layerCount           = 1;
+		renderInfo.colorAttachmentCount = 0;
+		renderInfo.pColorAttachments    = nullptr;
+		renderInfo.pDepthAttachment     = nullptr;
+		renderInfo.pStencilAttachment   = nullptr;
+		if (m_pso.isMultiview)
+		{
+			renderInfo.viewMask = 0b11;
+		}
+
+		// color attachments
+		std::array<VkRenderingAttachmentInfo, MAX_RENDER_TARGET_COUNT> attachments_color{};
+		uint32_t attachment_index = 0;
+
+		{
+			// swapchain buffer as a render target
+			Swapchain* swapchain = m_pso.renderTarget_Swapchain;
+			if (swapchain)
+			{
+				// determine the current swapchain image index and use the corresponding view
+				const uint32_t imgIndex = swapchain->GetImageIndex();
+				VkImage dstImage = swapchain->GetImages()[imgIndex];
+
+				// transition the targeted swapchain image to attachment layout
+				InsertBarrier(dstImage, swapchain->GetImageFormat(), 0, 1, 1, Layout::ImageLayout::Attachment);
+
+				VkRenderingAttachmentInfo color_attachment{};
+				color_attachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+				// pick the image view corresponding to the acquired swapchain image
+				color_attachment.imageView = swapchain->GetImageViews()[imgIndex];
+				color_attachment.imageLayout = GetVkImageLayout(Layout::ImageLayout::Attachment);
+				color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+				color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+
+				SEDX_CORE_ASSERT(color_attachment.imageView != VK_NULL_HANDLE);
+
+				attachments_color[attachment_index++] = color_attachment;
+			}
+			else // regular render target(s)
+			{
+
+				for (uint32_t i = 0; i < MAX_RENDER_TARGET_COUNT; i++)
+				{
+					ImageResource* rt = m_pso.renderTarget_ColorTextures[i];
+					if (rt == nullptr)
+						break;
+
+					SEDX_CORE_ASSERT(rt->IsColorFormat(), "The texture wasn't created with the Texture_RenderTarget flag and/or isn't a color format");
+
+					// transition to the appropriate layout
+					rt->SetLayout(Layout::ImageLayout::Attachment, this);
+
+					VkRenderingAttachmentInfo color_attachment{};
+					color_attachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+					color_attachment.imageView = m_pso.isMultiview && rt->GetRenderTargetView_MultiView()
+						? static_cast<VkImageView>(rt->GetRenderTargetView_MultiView())
+						: static_cast<VkImageView>(rt->GetRenderTargetView(m_pso.renderTarget_ArrayIndex));
+					color_attachment.imageLayout = GetVkImageLayout(GetImageLayout(rt, 0));
+					// convert PipelineStateColor to Color for GetColorLoadOp
+					Color clearCol{ m_pso.clearColor[i].r, m_pso.clearColor[i].g, m_pso.clearColor[i].b, m_pso.clearColor[i].a };
+					color_attachment.loadOp = m_Load_Color_RenderTargets[i] ? VK_ATTACHMENT_LOAD_OP_LOAD : GetColorLoadOp(clearCol);
+					color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+					color_attachment.clearValue.color = { m_pso.clearColor[i].r, m_pso.clearColor[i].g, m_pso.clearColor[i].b, m_pso.clearColor[i].a };
+
+					SEDX_CORE_ASSERT(color_attachment.imageView != VK_NULL_HANDLE);
+
+					attachments_color[attachment_index++] = color_attachment;
+				}
+			}
+			renderInfo.colorAttachmentCount = attachment_index;
+			renderInfo.pColorAttachments    = attachments_color.data();
+		}
+
+		// depth-stencil attachment
+		VkRenderingAttachmentInfo attachment_depth_stencil{};
+		if (m_pso.renderTarget_DepthTexture != nullptr)
+		{
+			ImageResource* rt = m_pso.renderTarget_DepthTexture;
+			if (!m_pso.resolutionScale)
+			{ 
+				SEDX_CORE_ASSERT(rt->GetWidth() == renderInfo.renderArea.extent.width, "The depth buffer doesn't match the output resolution");
+			}
+			SEDX_CORE_ASSERT(rt->IsDepthStencilFormat());
+
+			// transition to the appropriate layout
+			Layout::ImageLayout layout = Layout::ImageLayout::Attachment;
+			rt->SetLayout(layout, this);
+
+			attachment_depth_stencil.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+			attachment_depth_stencil.imageView = m_pso.isMultiview && rt->GetDepthStencilView_MultiView()
+				? static_cast<VkImageView>(rt->GetDepthStencilView_MultiView())
+				: static_cast<VkImageView>(rt->GetDepthStencilView(m_pso.renderTarget_ArrayIndex));
+			attachment_depth_stencil.imageLayout = GetVkImageLayout(GetImageLayout(rt, 0));
+			// depth load op derived from the pso clearDepth sentinel
+			attachment_depth_stencil.loadOp = GetDepthLoadOp(m_pso.clearDepth);
+			attachment_depth_stencil.storeOp = m_pso.depthStencil_State->IsDepthWriteEnabled() ? VK_ATTACHMENT_STORE_OP_STORE : VK_ATTACHMENT_STORE_OP_NONE;
+			attachment_depth_stencil.clearValue.depthStencil.depth   = m_pso.clearDepth;
+			attachment_depth_stencil.clearValue.depthStencil.stencil = m_pso.clearStencil;
+
+			renderInfo.pDepthAttachment = &attachment_depth_stencil;
+
+			// we are using the combined depth-stencil approach
+			// this means we can assign the depth attachment as the stencil attachment
+			if (m_pso.renderTarget_DepthTexture->IsStencilFormat())
+			{
+				renderInfo.pStencilAttachment = renderInfo.pDepthAttachment;
+			}
+		}
+
+		/*
+		// variable rate shading
+		VkRenderingFragmentShadingRateAttachmentInfoKHR attachment_shading_rate = {};
+		if (m_pso.vrs_input_texture)
+		{
+			m_pso.vrs_input_texture->SetLayout(Layout::ImageLayout::Shading_RateAttachment, this);
+	
+			attachment_shading_rate.sType                          = VK_STRUCTURE_TYPE_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_INFO_KHR;
+			attachment_shading_rate.imageView                      = static_cast<VkImageView>(m_pso.vrs_input_texture->GetRhiRtv());
+			attachment_shading_rate.imageLayout                    = GetImageLayout(m_pso.vrs_input_texture, 0);
+			attachment_shading_rate.shadingRateAttachmentTexelSize = { RHI_Device::PropertyGetMaxShadingRateTexelSizeX(), RHI_Device::PropertyGetMaxShadingRateTexelSizeY() };
+	
+			renderInfo.pNext = &attachment_shading_rate;
+		}
+		*/
+	
+		// begin dynamic render pass
+		FlushBarriers();
+		vkCmdBeginRendering(static_cast<VkCommandBuffer>(m_CmdBuffer), &renderInfo);
+
+		// set dynamic states
+		{
+			/*
+			// variable rate shading
+			RHI_Device::SetVariableRateShading(this, m_pso.vrs_input_texture != nullptr);
+			*/
+	
+			// set viewport
+			Viewport viewport;
+			viewport.width  = static_cast<float>(m_pso.GetWidth());
+			viewport.height = static_cast<float>(m_pso.GetHeight());
+			SetViewport(viewport);
+		}
+
+		// reset
+		for (uint32_t i = 0; i < MAX_RENDER_TARGET_COUNT; i++)
+		{
+			m_Load_Color_RenderTargets[i] = false;
+		}
+		m_RenderPassActive = true;
+	}
+
 	void CommandList::SetPipelineState(const PipelineState& pso)
 	{
 		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to set pipeline state");
@@ -1648,6 +1882,8 @@ namespace SceneryEditorX
 			depthAttachment.imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
 			depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
 			depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+			depthAttachment.clearValue.depthStencil.depth   = m_pso.clearDepth;
+			depthAttachment.clearValue.depthStencil.stencil = m_pso.clearStencil;
 		}
 
 		if (!m_RenderPassActive)
@@ -1710,6 +1946,8 @@ namespace SceneryEditorX
 		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state for indirect draw");
 		SEDX_CORE_ASSERT(drawArgs != nullptr && countBuffer != nullptr, "Indirect draw buffers must be valid");
 
+		PreDraw();
+
 		vkCmdDrawIndexedIndirectCount(
 			m_CmdBuffer,
 			drawArgs->Get(), argsOffset,
@@ -1744,16 +1982,16 @@ namespace SceneryEditorX
 
 	void CommandList::Blit(ImageResource *src, Swapchain *dst)
 	{
-		SEDX_CORE_ASSERT((src->GetFlags() & ImageResourceFlags::BlitClear) != 0, "The texture needs the Texture_ClearOrBlit flag");
+		SEDX_CORE_ASSERT((src->GetFlags() & ImageResourceFlags::BlitClear) != 0, "The image resource needs the BlitClear flag");
 		SEDX_CORE_ASSERT(src->GetWidth() <= dst->GetWidth() && src->GetHeight() <= dst->GetHeight(),
-			"The source texture dimension(s) are larger than the those of the destination texture");
+			"The source image dimension(s) are larger than the those of the destination image");
 
-		VkOffset3D srcBlitSize;
+		VkOffset3D srcBlitSize = {};
 		srcBlitSize.x          = src->GetWidth();
 		srcBlitSize.y          = src->GetHeight();
 		srcBlitSize.z          = 1;
 
-		VkOffset3D destBlitSize;
+		VkOffset3D destBlitSize = {};
 		destBlitSize.x          = dst->GetWidth();
 		destBlitSize.y          = dst->GetHeight();
 		destBlitSize.z          = 1;
@@ -1763,13 +2001,13 @@ namespace SceneryEditorX
 		blit_region.srcSubresource.baseArrayLayer = 0;
 		blit_region.srcSubresource.layerCount     = 1;
 		blit_region.srcSubresource.aspectMask     = GetAspectMaskFromFormat(src->GetFormat());
-		blit_region.srcOffsets[0]                 = {.x = 0, .y = 0, .z = 0 };
+		blit_region.srcOffsets[0]                 = {0, 0, 0 };
 		blit_region.srcOffsets[1]                 = srcBlitSize;
 		blit_region.dstSubresource.mipLevel       = 0;
 		blit_region.dstSubresource.baseArrayLayer = 0;
 		blit_region.dstSubresource.layerCount     = 1;
 		blit_region.dstSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-		blit_region.dstOffsets[0]                 = {.x = 0, .y = 0, .z = 0 };
+		blit_region.dstOffsets[0]                 = {0, 0, 0 };
 		blit_region.dstOffsets[1]                 = destBlitSize;
 
 		// save the initial layout

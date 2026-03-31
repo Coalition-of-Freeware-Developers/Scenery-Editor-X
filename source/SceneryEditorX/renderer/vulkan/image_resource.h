@@ -112,6 +112,9 @@ namespace SceneryEditorX
 		uint32_t GetArrayLength() const { return (m_Spec.type == ImageType::Type3D) ? 1 : m_Depth; }
 		ImgResourceSpec GetImageSpec() const { return m_Spec; }
 
+		virtual uint32_t GetFlags() const override { return m_Spec.flags; }
+		virtual void SetFlags(const uint32_t flags) override { m_Spec.flags = flags; IResource::SetFlags(flags); }
+
 		void SetFormat(const VkFormat format) { m_Spec.format = format; }
 		VkFormat GetFormat() const { return m_Spec.format; }
 		void AllocateMip(uint32_t index = 0);
@@ -145,16 +148,30 @@ namespace SceneryEditorX
 		}
 
 		// Format type
-		bool IsDepthFormat() const;
-		bool IsStencilFormat() const      { return m_Spec.format == VK_FORMAT_D32_SFLOAT_S8_UINT; }
-		bool IsDepthStencilFormat() const { return IsDepthFormat() || IsStencilFormat(); }
-		bool IsColorFormat() const        { return !IsDepthStencilFormat(); }
+		bool IsDepthFormat()			const;
+		bool IsShaderResourceView()		const	{ return m_Spec.flags & ShaderViews; }
+		bool IsVariableRateShader()		const	{ return m_Spec.flags & VariableRateShader; }
+		bool IsUnorderedAccessView()	const	{ return m_Spec.flags & UnorderedAccessView; }
+		bool IsRenderTarget()			const	{ return m_Spec.flags & RenderTargetViews; }
+		bool IsStencilFormat()			const	{ return m_Spec.format == VK_FORMAT_D32_SFLOAT_S8_UINT; }
+		bool IsDepthStencilFormat()		const	{ return IsDepthFormat() || IsStencilFormat(); }
+		bool IsDepthStencilView()       const	{ return IsRenderTarget() && IsDepthStencilFormat(); }
+		bool IsColorFormat()			const	{ return IsRenderTarget() && !IsDepthStencilFormat(); }
 
 		static bool IsCompressedFormat(VkFormat format);
 		static size_t CalculateMipSize(uint32_t width, uint32_t height, uint32_t depth, VkFormat format, uint32_t bitsPerChannel, uint32_t channelCount);
-		uint32_t GetMipCount() const    { return m_MipCount; }
+
 		MipBytes* GetMip(const uint32_t arrayIndex, const uint32_t mipIndex);
 		Slice* GetSlice(const uint32_t arrayIndex);
+	    uint32_t GetMipCount() const { return m_MipCount; }
+
+		VkImageView GetShaderResourceView() const						{ return m_ShaderResourceView; }
+		VkImageView GetShaderView_Mip(const uint32_t i) const			{ return m_ShaderResourceView_mips[i]; }
+		VkImageView GetShaderView_Layer(const uint32_t i) const			{ return m_ShaderResourceView_Layers[i]; }
+		VkImageView GetDepthStencilView(const uint32_t i = 0) const		{ return m_DepthStencilView[i]; }
+		VkImageView GetRenderTargetView(const uint32_t i = 0) const		{ return m_RenderTargetView[i]; }
+		VkImageView GetRenderTargetView_MultiView() const				{ return m_RenderTargetView_MultiView; }
+		VkImageView GetDepthStencilView_MultiView() const				{ return m_DepthStencilView_MultiView; }
 
 	private:
 		Ref<Device> m_Device;
@@ -170,6 +187,14 @@ namespace SceneryEditorX
 		VmaAllocation m_Allocation = nullptr;
 		VkDeviceMemory m_DeviceMemory = nullptr;
 		VkFormat m_CompressionFormat = VK_FORMAT_UNDEFINED;
+
+		VkImageView m_ShaderResourceView												= nullptr;     // an srv with all mips
+		std::array<VkImageView, MAX_MIP_COUNT> m_ShaderResourceView_mips				= { nullptr }; // an srv for each mip
+		std::array<VkImageView, MAX_RENDER_TARGET_COUNT> m_ShaderResourceView_Layers	= { nullptr }; // per-layer srvs for array textures
+		std::array<VkImageView, MAX_RENDER_TARGET_COUNT> m_RenderTargetView				= { nullptr };
+		std::array<VkImageView, MAX_RENDER_TARGET_COUNT> m_DepthStencilView				= { nullptr };
+		VkImageView m_RenderTargetView_MultiView										= nullptr;
+		VkImageView m_DepthStencilView_MultiView										= nullptr;
 	};
 }
 
