@@ -1,15 +1,15 @@
-﻿CMAKE_MINIMUM_REQUIRED(VERSION 3.8...4.0)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.8...4.0)
 
 # Allow legacy FetchContent_Populate calls for compatibility with our embedding patch
 IF(POLICY CMP0169)
 	CMAKE_POLICY(SET CMP0169 OLD)
 ENDIF()
 
-############################################
+# ###########################################
 # Global Setup
-############################################
-
+# ###########################################
 SET(TOOLCHAIN_DIRECTORY "${CMAKE_SOURCE_DIR}/cmake/toolchains")
+
 IF(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
 	IF(WIN32 AND EXISTS "${TOOLCHAIN_DIRECTORY}/sedx-windows.cmake")
 		SET(CMAKE_TOOLCHAIN_FILE "${TOOLCHAIN_DIRECTORY}/sedx-windows.cmake" CACHE STRING "" FORCE)
@@ -27,9 +27,9 @@ SET_PROPERTY(GLOBAL PROPERTY USE_FOLDERS ON) # Remove when min is 3.26, see CMP0
 SET_PROPERTY(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT SceneryEditorX)
 SET_PROPERTY(GLOBAL PROPERTY PREDEFINED_TARGETS_FOLDER "_CMakePredefinedTargets")
 
-############################################
+# ###########################################
 # Scenery Editor X - Project Setup
-############################################
+# ###########################################
 PROJECT(SceneryEditorX
 	VERSION 1.0.0
 	DESCRIPTION "A 3d scenery editor for X-Plane 12 airports."
@@ -37,15 +37,15 @@ PROJECT(SceneryEditorX
 	HOMEPAGE_URL "https://github.com/Coalition-of-Freeware-Developers/Scenery-Editor-X"
 )
 
-############################################
+# ###########################################
 # Platform configuration
 # (Handled by SEDX toolchains; keep module path for local cmake helpers)
-############################################
+# ###########################################
 LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-############################################
+# ###########################################
 # Core dependency discovery helpers and options
-############################################
+# ###########################################
 
 # FetchContent availability (for optional vendoring)
 IF(CMAKE_VERSION VERSION_GREATER_EQUAL 3.11)
@@ -54,20 +54,20 @@ ELSE()
 	MESSAGE(STATUS "CMake < 3.11: FetchContent is not available; using bundled subdirectories where applicable.")
 ENDIF()
 
-############################################
+# ###########################################
 # Assets configuration
-############################################
+# ###########################################
 INCLUDE("${CMAKE_SOURCE_DIR}/cmake/assets.cmake")
 
-############################################
+# ###########################################
 # Global debug postfix configuration
-############################################
+# ###########################################
 SET(CMAKE_DEBUG_POSTFIX "_d" CACHE STRING "Debug library postfix")
 SET(CMAKE_EXECUTABLE_DEBUG_POSTFIX "_debug" CACHE STRING "Debug executable postfix")
 
-############################################
+# ###########################################
 # Helper function to apply debug postfix to targets
-############################################
+# ###########################################
 FUNCTION(sedx_apply_debug_postfix TARGET_NAME)
 	IF(TARGET ${TARGET_NAME})
 		GET_TARGET_PROPERTY(_target_type ${TARGET_NAME} TYPE)
@@ -91,9 +91,9 @@ FUNCTION(sedx_apply_debug_postfix TARGET_NAME)
 	ENDIF()
 ENDFUNCTION()
 
-############################################
+# ###########################################
 # Helper to configure PDB output for targets
-############################################
+# ###########################################
 FUNCTION(sedx_configure_pdb_output TARGET_NAME)
 	IF(NOT MSVC)
 		RETURN()
@@ -152,9 +152,9 @@ FUNCTION(sedx_configure_pdb_output TARGET_NAME)
 	ENDIF()
 ENDFUNCTION()
 
-############################################
+# ###########################################
 # Build options (dependency toggles, features)
-############################################
+# ###########################################
 
 # Helper to apply per-target output directories (multi-config aware)
 FUNCTION(SEDX_APPLY_OUTPUT_DIRS)
@@ -176,6 +176,7 @@ FUNCTION(SEDX_APPLY_OUTPUT_DIRS)
 	IF(NOT _libs_dir OR "${_libs_dir}" STREQUAL "")
 		SET(_libs_dir "${CMAKE_SOURCE_DIR}/lib")
 	ENDIF()
+
 	IF(NOT _bin_dir OR "${_bin_dir}" STREQUAL "")
 		SET(_bin_dir "${CMAKE_SOURCE_DIR}/bin")
 	ENDIF()
@@ -207,33 +208,61 @@ FUNCTION(SEDX_APPLY_OUTPUT_DIRS)
 	ENDFOREACH()
 ENDFUNCTION()
 
+OPTION(SEDX_ENABLE_TESTS "Build test targets" OFF)
+OPTION(SEDX_ENABLE_DOXYGEN "Build Doxygen documentation" OFF)
+OPTION(SEDX_ENABLE_VERSION_INCREMENT "Enable automatic semantic versioning, increment on build" OFF)
+OPTION(SEDX_BUILD_IMGUI "Build Dear ImGui (bundled sources)" OFF)
+OPTION(SEDX_WITH_IMGUI_DEMO "Compile ImGui demo window" OFF)
+OPTION(SEDX_USE_SYSTEM_SDL "Prefer system-provided sdl3 package" OFF)
+OPTION(SEDX_USE_SYSTEM_JSON "Prefer system-provided nlohmann_json package" OFF)
+OPTION(SEDX_USE_SYSTEM_ENTT "Prefer system-provided EnTT package" OFF)
+OPTION(SEDX_VERBOSE_LOGGING "Enable verbose logging of Scenery Editor X" ON)
+OPTION(SEDX_USE_FETCHCONTENT_XMATH "Fetch xMath via FetchContent" ON)
+OPTION(SEDX_USE_FETCHCONTENT_EDX "Fetch edX via FetchContent" ON)
+OPTION(SEDX_USE_FETCHCONTENT_XPLIB "Fetch X-PlaneSceneryLibrary via FetchContent" ON)
 
-OPTION(SEDX_ENABLE_TESTS              	"Build test targets" OFF)
-OPTION(SEDX_ENABLE_DOXYGEN            	"Build Doxygen documentation" OFF)
-OPTION(SEDX_ENABLE_VERSION_INCREMENT 	"Enable automatic semantic versioning, increment on build" OFF)
-OPTION(SEDX_BUILD_IMGUI               	"Build Dear ImGui (bundled sources)" OFF)
-OPTION(SEDX_WITH_IMGUI_DEMO           	"Compile ImGui demo window" OFF)
-OPTION(SEDX_USE_SYSTEM_SDL           	"Prefer system-provided sdl3 package" OFF)
-OPTION(SEDX_USE_SYSTEM_JSON           	"Prefer system-provided nlohmann_json package" OFF)
-OPTION(SEDX_USE_SYSTEM_ENTT           	"Prefer system-provided EnTT package" OFF)
-OPTION(SEDX_VERBOSE_LOGGING			 	"Enable verbose logging of Scenery Editor X" ON)
-OPTION(SEDX_USE_FETCHCONTENT_XMATH    	"Fetch xMath via FetchContent" ON)
-OPTION(SEDX_USE_FETCHCONTENT_EDX      	"Fetch edX via FetchContent" ON)
-OPTION(SEDX_USE_FETCHCONTENT_XPLIB    	"Fetch X-PlaneSceneryLibrary via FetchContent" ON)
-#OPTION(SEDX_PROFILING_ENABLED 			"Enable profiling features (Tracy, etc.)" ON)
-OPTION(TRACY_ENABLE 					"Enable Tracy profiler" OFF)
-OPTION(SEDX_USE_FETCHCONTENT_TRACY    	"Fetch Tracy via FetchContent" ON)
-#OPTION(SEDX_ENABLE_MSDFGEN            	"Enable msdfgen usage" ON)
+# OPTION(SEDX_PROFILING_ENABLED 			"Enable profiling features (Tracy, etc.)" ON)
+OPTION(TRACY_ENABLE "Enable Tracy profiler" OFF)
+OPTION(SEDX_USE_FETCHCONTENT_TRACY "Fetch Tracy via FetchContent" ON)
+OPTION(RENDERDOC_ENABLE "Enable RenderDoc tooling integration for graphics debugging" ON)
 
+# OPTION(SEDX_ENABLE_MSDFGEN            	"Enable msdfgen usage" ON)
 SET(XMATH_BUILD_TESTS OFF CACHE BOOL "Build xMath tests" FORCE)
 SET(XMATH_VENDOR_DEPS OFF CACHE BOOL "Vendor deps for xMath" FORCE)
 
-############################################
+# ###########################################
 # Doxygen (optional)
-############################################
+# ###########################################
 IF(SEDX_ENABLE_DOXYGEN)
 	INCLUDE(cmake/doxygen.cmake)
 ENDIF()
+
+# Prefer VMA headers from the Vulkan SDK to avoid ABI mismatches between
+# multiple copies (vcpkg vs SDK). If VULKAN_SDK environment variable is set
+# and the VMA include folder exists there, add it to the front of include
+# search paths for the main target and force consistent VMA call macros.
+if(DEFINED ENV{VULKAN_SDK})
+	set(_VULKAN_SDK_PATH $ENV{VULKAN_SDK})
+	set(_VMA_SDK_INCLUDE "${_VULKAN_SDK_PATH}/Include/vma")
+
+	if(EXISTS "${_VMA_SDK_INCLUDE}")
+		message(STATUS "Using VMA headers from Vulkan SDK: ${_VMA_SDK_INCLUDE}")
+
+		# Ensure SDK VMA headers are searched before other include paths
+		include_directories(BEFORE SYSTEM "${_VMA_SDK_INCLUDE}")
+
+		# Force consistent VMA call decoration across all translation units
+		# and avoid differing decorations from vcpkg or other copies.
+		add_compile_definitions(VMA_CALL_PRE= VMA_CALL_POST=)
+
+		# Also expose a variable so per-target configuration can reuse it if needed
+		set(VMA_SDK_INCLUDE_DIR "${_VMA_SDK_INCLUDE}" CACHE INTERNAL "VMA include directory from Vulkan SDK")
+	else()
+		message(STATUS "VMA include not found in VULKAN_SDK (${_VULKAN_SDK_PATH}), falling back to default include paths")
+	endif()
+else()
+	message(STATUS "VULKAN_SDK not defined in environment; using default include paths (vcpkg or system)")
+endif()
 
 # ###########################################
 # Tracy Profiler (optional)
@@ -252,18 +281,26 @@ IF(TRACY_ENABLE)
 	ENDIF()
 ENDIF()
 
-############################################
-# Global build system defaults
-############################################
-# Override libconfig/bundled defaults before adding subdirectories
-OPTION(BUILD_EXAMPLES  		"Enable examples (3rd-party)" OFF)
-OPTION(BUILD_SHARED_LIBS 	"Build shared libraries by default" OFF)
-OPTION(BUILD_TESTS     		"Enable 3rd-party tests" OFF)
-OPTION(BUILD_FUZZERS  		"Enable 3rd-party fuzzers" OFF)
+# ###########################################
+# RenderDoc Tooling (optional)
+# ###########################################
+IF(RENDERDOC_ENABLE)
+	ADD_COMPILE_DEFINITIONS(RENDERDOC_TOOLING_ENABLED)
+	SET(RENDERDOC_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/dependency/renderdoc)
+ENDIF()
 
-############################################
+# ###########################################
+# Global build system defaults
+# ###########################################
+# Override libconfig/bundled defaults before adding subdirectories
+OPTION(BUILD_EXAMPLES "Enable examples (3rd-party)" OFF)
+OPTION(BUILD_SHARED_LIBS "Build shared libraries by default" OFF)
+OPTION(BUILD_TESTS "Enable 3rd-party tests" OFF)
+OPTION(BUILD_FUZZERS "Enable 3rd-party fuzzers" OFF)
+
+# ###########################################
 # Build system defaults
-############################################
+# ###########################################
 SET(CMAKE_C_STANDARD 17)
 SET(CMAKE_C_STANDARD_REQUIRED ON)
 SET(CMAKE_CXX_STANDARD 20)
@@ -291,16 +328,15 @@ MESSAGE(STATUS "=================================================")
 MESSAGE(STATUS "Beginning project generation for Scenery Editor X")
 MESSAGE(STATUS "=================================================")
 
-############################################
+# ###########################################
 # Packages and dependencies
-############################################
+# ###########################################
 FIND_PACKAGE(Vulkan REQUIRED)
 FIND_PACKAGE(Freetype REQUIRED)
 FIND_PACKAGE(Stb REQUIRED)
 FIND_PACKAGE(spdlog CONFIG REQUIRED)
 FIND_PACKAGE(msdfgen CONFIG REQUIRED)
 FIND_PACKAGE(Doxygen QUIET)
-FIND_PACKAGE(VulkanMemoryAllocator CONFIG REQUIRED)
 FIND_PACKAGE(CURL CONFIG REQUIRED)
 FIND_LIBRARY(Slang_LIBRARY NAMES slang HINTS "$ENV{VULKAN_SDK}/lib" REQUIRED)
 FIND_PATH(PORTABLE_FILE_DIALOGS_INCLUDE_DIRS "portable-file-dialogs.h") # Portable File Dialogs header-only
@@ -311,9 +347,9 @@ IF(MSVC)
 	SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHsc")
 ENDIF()
 
-############################################
+# ###########################################
 # Add KTX library (bundled sources)
-############################################
+# ###########################################
 SET(KTX_DIR ${CMAKE_CURRENT_SOURCE_DIR}/dependency/ktx)
 SET(KTX_SOURCES
 	${KTX_DIR}/lib/texture.c
@@ -338,52 +374,54 @@ ELSE()
 	TARGET_INCLUDE_DIRECTORIES(ktx PRIVATE ${Vulkan_INCLUDE_DIRS})
 ENDIF()
 
-############################################
+# ###########################################
 # SDL (system or bundled)
-############################################
+# ###########################################
 IF(SEDX_USE_SYSTEM_SDL)
 	FIND_PACKAGE(SDL3 CONFIG REQUIRED)
 ELSE()
 	# Disable precompiled headers for SDL to avoid SDL_internal.h include issues
 	SET(CMAKE_DISABLE_PRECOMPILE_HEADERS ON CACHE BOOL "" FORCE)
 	ADD_SUBDIRECTORY(dependency/SDL)
+
 	# Re-enable precompiled headers for other projects
 	SET(CMAKE_DISABLE_PRECOMPILE_HEADERS OFF CACHE BOOL "" FORCE)
 ENDIF()
 
-############################################
+# ###########################################
 # libconfig (bundled)
-############################################
+# ###########################################
 ADD_SUBDIRECTORY(dependency/libconfig)
 
-############################################
+# ###########################################
 # Animation Compression Library - ACL
-############################################
-#ADD_SUBDIRECTORY(dependency/acl)
+# ###########################################
+# ADD_SUBDIRECTORY(dependency/acl)
 
-############################################
+# ###########################################
 # Catch2 (system or bundled)
-############################################
+# ###########################################
 IF(SEDX_USE_SYSTEM_CATCH2)
 	FIND_PACKAGE(Catch2 CONFIG REQUIRED)
 ELSE()
 	ADD_SUBDIRECTORY(dependency/Catch2)
 ENDIF()
 
-############################################
+# ###########################################
 # EnTT (system or bundled)
-############################################
+# ###########################################
 IF(SEDX_USE_SYSTEM_ENTT)
 	FIND_PACKAGE(EnTT CONFIG REQUIRED)
 ELSE()
 	ADD_SUBDIRECTORY(dependency/entt)
 ENDIF()
 
-############################################
+# ###########################################
 # nlohmann/json (system or bundled)
-############################################
+# ###########################################
 IF(SEDX_USE_SYSTEM_JSON)
 	FIND_PACKAGE(nlohmann_json CONFIG REQUIRED)
+
 	# Create compatibility alias to match in-tree target name when using system package
 	IF(TARGET nlohmann_json::nlohmann_json AND NOT TARGET nlohmann_json)
 		ADD_LIBRARY(nlohmann_json INTERFACE IMPORTED)
@@ -393,9 +431,9 @@ ELSE()
 	ADD_SUBDIRECTORY(dependency/json)
 ENDIF()
 
-############################################
+# ###########################################
 # Testing setup (CTest + project tests)
-############################################
+# ###########################################
 IF(SEDX_ENABLE_TESTS)
 	INCLUDE(CTest)
 	SET(BUILD_TESTING ON CACHE BOOL "" FORCE)
@@ -405,9 +443,9 @@ ELSE()
 	SET(BUILD_TESTING OFF CACHE BOOL "" FORCE)
 ENDIF()
 
-############################################
+# ###########################################
 # Math Library (xMath via FetchContent)
-############################################
+# ###########################################
 IF(SEDX_USE_FETCHCONTENT_XMATH AND CMAKE_VERSION VERSION_GREATER_EQUAL 3.11)
 	FETCHCONTENT_DECLARE(
 		xMath
@@ -418,20 +456,23 @@ IF(SEDX_USE_FETCHCONTENT_XMATH AND CMAKE_VERSION VERSION_GREATER_EQUAL 3.11)
 		GIT_SUBMODULES ""
 	)
 	FETCHCONTENT_GETPROPERTIES(xMath)
+
 	IF(NOT xmath_POPULATED)
 		FETCHCONTENT_POPULATE(xMath)
+
 		IF(EXISTS "${xmath_SOURCE_DIR}/cmake/math.cmake")
 			FILE(READ "${xmath_SOURCE_DIR}/cmake/math.cmake" XMATH_MATH_CMAKE)
 			STRING(REPLACE "CMAKE_SOURCE_DIR" "CMAKE_CURRENT_SOURCE_DIR" XMATH_MATH_CMAKE "${XMATH_MATH_CMAKE}")
 			FILE(WRITE "${xmath_SOURCE_DIR}/cmake/math.cmake" "${XMATH_MATH_CMAKE}")
 		ENDIF()
+
 		ADD_SUBDIRECTORY("${xmath_SOURCE_DIR}" "${xmath_BINARY_DIR}")
 	ENDIF()
 ENDIF()
 
-############################################
+# ###########################################
 # edX File Format Library (edX via FetchContent)
-############################################
+# ###########################################
 IF(SEDX_USE_FETCHCONTENT_EDX AND CMAKE_VERSION VERSION_GREATER_EQUAL 3.11)
 	FETCHCONTENT_DECLARE(
 		edX
@@ -442,33 +483,39 @@ IF(SEDX_USE_FETCHCONTENT_EDX AND CMAKE_VERSION VERSION_GREATER_EQUAL 3.11)
 		GIT_SUBMODULES ""
 	)
 	FETCHCONTENT_GETPROPERTIES(edX)
+
 	IF(NOT edx_POPULATED)
 		FETCHCONTENT_POPULATE(edX)
+
 		IF(EXISTS "${edx_SOURCE_DIR}/cmake/edx.cmake")
 			FILE(READ "${edx_SOURCE_DIR}/cmake/edx.cmake" EDX_CMAKE)
 			STRING(REPLACE "CMAKE_SOURCE_DIR" "CMAKE_CURRENT_SOURCE_DIR" EDX_CMAKE "${EDX_CMAKE}")
 			FILE(WRITE "${edx_SOURCE_DIR}/cmake/edx.cmake" "${EDX_CMAKE}")
 		ENDIF()
+
 		# Make edX tolerant of pre-existing nlohmann_json target from our bundled submodule
 		IF(EXISTS "${edx_SOURCE_DIR}/CMakeLists.txt")
 			FILE(READ "${edx_SOURCE_DIR}/CMakeLists.txt" _EDX_TOP)
+
 			# Replace uppercase FIND_PACKAGE call
 			STRING(REPLACE "FIND_PACKAGE(nlohmann_json CONFIG REQUIRED)"
-						   "IF(NOT TARGET nlohmann_json AND NOT TARGET nlohmann_json::nlohmann_json)\n    FIND_PACKAGE(nlohmann_json CONFIG REQUIRED)\nENDIF()"
-						   _EDX_TOP "${_EDX_TOP}")
+				"IF(NOT TARGET nlohmann_json AND NOT TARGET nlohmann_json::nlohmann_json)\n    FIND_PACKAGE(nlohmann_json CONFIG REQUIRED)\nENDIF()"
+				_EDX_TOP "${_EDX_TOP}")
+
 			# Replace lowercase find_package call if present
 			STRING(REPLACE "find_package(nlohmann_json CONFIG REQUIRED)"
-						   "if(NOT TARGET nlohmann_json AND NOT TARGET nlohmann_json::nlohmann_json)\n    find_package(nlohmann_json CONFIG REQUIRED)\nendif()"
-						   _EDX_TOP "${_EDX_TOP}")
+				"if(NOT TARGET nlohmann_json AND NOT TARGET nlohmann_json::nlohmann_json)\n    find_package(nlohmann_json CONFIG REQUIRED)\nendif()"
+				_EDX_TOP "${_EDX_TOP}")
 			FILE(WRITE "${edx_SOURCE_DIR}/CMakeLists.txt" "${_EDX_TOP}")
 		ENDIF()
+
 		ADD_SUBDIRECTORY("${edx_SOURCE_DIR}" "${edx_BINARY_DIR}")
 	ENDIF()
 ENDIF()
 
-############################################
+# ###########################################
 # X-Plane Scenery Library (XPLIB via FetchContent)
-############################################
+# ###########################################
 IF(SEDX_USE_FETCHCONTENT_XPLIB AND CMAKE_VERSION VERSION_GREATER_EQUAL 3.11)
 	FETCHCONTENT_DECLARE(
 		XPSceneryLib
@@ -479,8 +526,10 @@ IF(SEDX_USE_FETCHCONTENT_XPLIB AND CMAKE_VERSION VERSION_GREATER_EQUAL 3.11)
 		GIT_SUBMODULES ""
 	)
 	FETCHCONTENT_GETPROPERTIES(XPSceneryLib)
+
 	IF(NOT xpscenerylib_POPULATED)
 		FETCHCONTENT_POPULATE(XPSceneryLib)
+
 		IF(EXISTS "${xpscenerylib_SOURCE_DIR}/cmake/xplib.cmake")
 			FILE(READ "${xpscenerylib_SOURCE_DIR}/cmake/xplib.cmake" XPSCENERYLIB_CMAKE)
 
@@ -492,12 +541,12 @@ IF(SEDX_USE_FETCHCONTENT_XPLIB AND CMAKE_VERSION VERSION_GREATER_EQUAL 3.11)
 
 			# Ensure source files are actually discovered from xplib/src and headers from xplib/includes
 			STRING(REPLACE "FILE(GLOB XPLIB_HEADER_FILES *.h *.hpp)"
-						   "FILE(GLOB_RECURSE XPLIB_HEADER_FILES\n    \"${CMAKE_CURRENT_SOURCE_DIR}/xplib/includes/*.h\"\n    \"${CMAKE_CURRENT_SOURCE_DIR}/xplib/includes/*.hpp\"\n)"
-						   XPSCENERYLIB_CMAKE "${XPSCENERYLIB_CMAKE}")
+				"FILE(GLOB_RECURSE XPLIB_HEADER_FILES\n    \"${CMAKE_CURRENT_SOURCE_DIR}/xplib/includes/*.h\"\n    \"${CMAKE_CURRENT_SOURCE_DIR}/xplib/includes/*.hpp\"\n)"
+				XPSCENERYLIB_CMAKE "${XPSCENERYLIB_CMAKE}")
 
 			STRING(REPLACE "FILE(GLOB XPLIB_SOURCE_FILES *.cpp)"
-						   "FILE(GLOB_RECURSE XPLIB_SOURCE_FILES\n    \"${CMAKE_CURRENT_SOURCE_DIR}/xplib/src/*.cpp\"\n)"
-						   XPSCENERYLIB_CMAKE "${XPSCENERYLIB_CMAKE}")
+				"FILE(GLOB_RECURSE XPLIB_SOURCE_FILES\n    \"${CMAKE_CURRENT_SOURCE_DIR}/xplib/src/*.cpp\"\n)"
+				XPSCENERYLIB_CMAKE "${XPSCENERYLIB_CMAKE}")
 
 			# Remove stray RESOURCE_FILE reference if not defined
 			STRING(REPLACE "${RESOURCE_FILE}" "" XPSCENERYLIB_CMAKE "${XPSCENERYLIB_CMAKE}")
@@ -515,16 +564,18 @@ IF(SEDX_USE_FETCHCONTENT_XPLIB AND CMAKE_VERSION VERSION_GREATER_EQUAL 3.11)
 
 			# Ensure CMake can determine the linker language and set output name consistently
 			STRING(REPLACE "SET_TARGET_PROPERTIES(XPSceneryLib PROPERTIES"
-						   "SET_TARGET_PROPERTIES(XPSceneryLib PROPERTIES\n    LINKER_LANGUAGE CXX\n    OUTPUT_NAME \"XPSceneryLib\""
-						   XPSCENERYLIB_CMAKE "${XPSCENERYLIB_CMAKE}")
+				"SET_TARGET_PROPERTIES(XPSceneryLib PROPERTIES\n    LINKER_LANGUAGE CXX\n    OUTPUT_NAME \"XPSceneryLib\""
+				XPSCENERYLIB_CMAKE "${XPSCENERYLIB_CMAKE}")
 
 			FILE(WRITE "${xpscenerylib_SOURCE_DIR}/cmake/xplib.cmake" "${XPSCENERYLIB_CMAKE}")
 		ENDIF()
+
 		# Upstream may unconditionally add_subdirectory(tests). If it's absent, stub it.
 		IF(NOT EXISTS "${xpscenerylib_SOURCE_DIR}/tests/CMakeLists.txt")
 			FILE(MAKE_DIRECTORY "${xpscenerylib_SOURCE_DIR}/tests")
 			FILE(WRITE "${xpscenerylib_SOURCE_DIR}/tests/CMakeLists.txt" "# Stubbed tests for XPSceneryLib\n")
 		ENDIF()
+
 		# Ensure top-level continues to reference XPSceneryLib (no hyphen) consistently
 		IF(EXISTS "${xpscenerylib_SOURCE_DIR}/CMakeLists.txt")
 			FILE(READ "${xpscenerylib_SOURCE_DIR}/CMakeLists.txt" _XPL_TOP)
@@ -538,6 +589,7 @@ IF(SEDX_USE_FETCHCONTENT_XPLIB AND CMAKE_VERSION VERSION_GREATER_EQUAL 3.11)
 			STRING(REPLACE "ADD_LIBRARY(XPSceneryLib::XPSceneryLib ALIAS XPSceneryLib)" "ADD_LIBRARY(XPSceneryLib::XPSceneryLib ALIAS XPSceneryLib)" _XPL_TOP "${_XPL_TOP}")
 			FILE(WRITE "${xpscenerylib_SOURCE_DIR}/CMakeLists.txt" "${_XPL_TOP}")
 		ENDIF()
+
 		ADD_SUBDIRECTORY("${xpscenerylib_SOURCE_DIR}" "${xpscenerylib_BINARY_DIR}")
 	ENDIF()
 ENDIF()
@@ -547,57 +599,57 @@ IF(TARGET edX AND TARGET XPSceneryLib)
 	TARGET_LINK_LIBRARIES(edX PUBLIC XPSceneryLib)
 ENDIF()
 
-############################################
+# ###########################################
 # ImGui (system or bundled sources)
-############################################
+# ###########################################
 
-#IF(SEDX_BUILD_IMGUI)
-#	ADD_LIBRARY(imgui
-#		${CMAKE_SOURCE_DIR}/dependency/imgui/imgui.cpp
-#		${CMAKE_SOURCE_DIR}/dependency/imgui/imgui_draw.cpp
-#		${CMAKE_SOURCE_DIR}/dependency/imgui/imgui_widgets.cpp
-#		${CMAKE_SOURCE_DIR}/dependency/imgui/imgui_tables.cpp
-#		$<$<BOOL:${SEDX_WITH_IMGUI_DEMO}>:${CMAKE_SOURCE_DIR}/dependency/imgui/imgui_demo.cpp>
-#		${CMAKE_SOURCE_DIR}/dependency/imgui/backends/imgui_impl_sdl3.cpp
-#		${CMAKE_SOURCE_DIR}/dependency/imgui/backends/imgui_impl_vulkan.cpp
-#	)
-#	TARGET_INCLUDE_DIRECTORIES(imgui
-#		PRIVATE
-#			${CMAKE_SOURCE_DIR}/dependency/imgui
-#			${CMAKE_SOURCE_DIR}/dependency/imgui/backends
-#			${CMAKE_SOURCE_DIR}/dependency/imgui/misc
-#	)
-#	TARGET_LINK_LIBRARIES(imgui
-#		PRIVATE
-#			SDL3::SDL3
-#			Vulkan::Vulkan
-#			GPUOpen::VulkanMemoryAllocator
-#	)
-#ENDIF()
+# IF(SEDX_BUILD_IMGUI)
+# ADD_LIBRARY(imgui
+# ${CMAKE_SOURCE_DIR}/dependency/imgui/imgui.cpp
+# ${CMAKE_SOURCE_DIR}/dependency/imgui/imgui_draw.cpp
+# ${CMAKE_SOURCE_DIR}/dependency/imgui/imgui_widgets.cpp
+# ${CMAKE_SOURCE_DIR}/dependency/imgui/imgui_tables.cpp
+# $<$<BOOL:${SEDX_WITH_IMGUI_DEMO}>:${CMAKE_SOURCE_DIR}/dependency/imgui/imgui_demo.cpp>
+# ${CMAKE_SOURCE_DIR}/dependency/imgui/backends/imgui_impl_sdl3.cpp
+# ${CMAKE_SOURCE_DIR}/dependency/imgui/backends/imgui_impl_vulkan.cpp
+# )
+# TARGET_INCLUDE_DIRECTORIES(imgui
+# PRIVATE
+# ${CMAKE_SOURCE_DIR}/dependency/imgui
+# ${CMAKE_SOURCE_DIR}/dependency/imgui/backends
+# ${CMAKE_SOURCE_DIR}/dependency/imgui/misc
+# )
+# TARGET_LINK_LIBRARIES(imgui
+# PRIVATE
+# SDL3::SDL3
+# Vulkan::Vulkan
+# GPUOpen::VulkanMemoryAllocator
+# )
+# ENDIF()
 
-############################################
+# ###########################################
 # AppCore
-############################################
+# ###########################################
 ADD_SUBDIRECTORY(source/SceneryEditorX)
 
-############################################
+# ###########################################
 # Launcher
-############################################
+# ###########################################
 ADD_SUBDIRECTORY(source/Launcher)
 
-############################################
+# ###########################################
 # Scenery Editor X
-############################################
+# ###########################################
 ADD_SUBDIRECTORY(source/Editor)
 
-############################################
+# ###########################################
 # Crash Handler Service
-############################################
+# ###########################################
 ADD_SUBDIRECTORY(source/CrashHandler)
 
-############################################
+# ###########################################
 # Precompiled Headers
-############################################
+# ###########################################
 MESSAGE(STATUS "=================================================")
 MESSAGE(STATUS "Generating precompiled headers")
 
@@ -605,27 +657,33 @@ INCLUDE(${CMAKE_SOURCE_DIR}/cmake/pch.cmake)
 INCLUDE(${CMAKE_SOURCE_DIR}/cmake/sedx_targets.cmake)
 
 SEDX_ENABLE_PCH(SceneryEditorX ${CMAKE_SOURCE_DIR}/source/Editor/xpeditor_pch.h)
-SEDX_ENABLE_PCH(AppCore        ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/app_pch.h)
-SEDX_ENABLE_PCH(Launcher       ${CMAKE_SOURCE_DIR}/source/Launcher/startup_pch.h)
+SEDX_ENABLE_PCH(AppCore ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/app_pch.h)
+SEDX_ENABLE_PCH(Launcher ${CMAKE_SOURCE_DIR}/source/Launcher/startup_pch.h)
 
 # Group and output dirs
 SEDX_GROUP_TARGETS()
-## Configure per-target output directories using ${CMAKE_CFG_INTDIR} once
-## Note: Avoid mixing target properties with global per-config variables to prevent
-## paths like lib/Debug/Debug from occurring (especially with multi-config generators).
+
+# # Configure per-target output directories using ${CMAKE_CFG_INTDIR} once
+# # Note: Avoid mixing target properties with global per-config variables to prevent
+# # paths like lib/Debug/Debug from occurring (especially with multi-config generators).
 SEDX_APPLY_OUTPUT_DIRS(${LIBS_DIR} ${BIN_DIR})
 
-############################################
+# ###########################################
 # Set Command Line Definitions
-############################################
-## Configure Visual Studio debugger to pass `--verbose` to our executables
+# ###########################################
+# # Configure Visual Studio debugger to pass `--verbose` to our executables
 # If the CMake option SEDX_VERBOSE_LOGGING is enabled and the build config is Debug,
 # pass the `--verbose` CLI flag to the debugger so developers get verbose logging
 # automatically when launching from the IDE.
 FOREACH(_sedx_dbg_target SceneryEditorX Launcher CrashHandler)
 	IF(TARGET ${_sedx_dbg_target})
 		# Only add --verbose when building Debug and SEDX_VERBOSE_LOGGING is true
-		SET_TARGET_PROPERTIES(${_sedx_dbg_target} PROPERTIES VS_DEBUGGER_COMMAND_ARGUMENTS "$<$<AND:$<CONFIG:Debug>,$<BOOL:${SEDX_VERBOSE_LOGGING}>>:--verbose>" )
+		SET_TARGET_PROPERTIES(${_sedx_dbg_target} PROPERTIES VS_DEBUGGER_COMMAND_ARGUMENTS "$<$<AND:$<CONFIG:Debug>,$<BOOL:${SEDX_VERBOSE_LOGGING}>>:--verbose>")
+	ENDIF()
+
+	IF(TARGET ${_sedx_dbg_target})
+		# Also set the environment variable SEDX_LOG_LEVEL=trace for maximum logging verbosity when debugging
+		SET_TARGET_PROPERTIES(${_sedx_dbg_target} PROPERTIES VS_DEBUGGER_ENVIRONMENT "$<$<BOOL:${RENDERDOC_ENABLE}>:--renderdoc>")
 	ENDIF()
 ENDFOREACH()
 
@@ -634,4 +692,4 @@ IF(TARGET SceneryEditorX)
 	SEDX_SET_DEBUGGER_WD(SceneryEditorX)
 ENDIF()
 
-############################################
+# ###########################################

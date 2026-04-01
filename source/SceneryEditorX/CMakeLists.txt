@@ -40,12 +40,10 @@ FILE(GLOB CORE_MAC_PLATFORM "core/platform/mac/*.h" "core/platform/mac/*.hpp" "c
 FILE(GLOB CORE_LINUX_PLATFORM "core/platform/linux/*.h" "core/platform/linux/*.hpp" "core/platform/linux/*.cpp")
 
 # --------------------------------
-
 FILE(GLOB RENDERER_FILES LIST_DIRECTORIES false CONFIGURE_DEPENDS "renderer/*.h" "renderer/*.hpp" "renderer/*.cpp")
 FILE(GLOB RENDERER_FONT_FILES "renderer/font/*.h" "renderer/font/*.hpp" "renderer/font/*.cpp")
 
 # --------------------------------
-
 FILE(GLOB RENDERER_VULKAN LIST_DIRECTORIES false CONFIGURE_DEPENDS "renderer/vulkan/*.h" "renderer/vulkan/*.hpp" "renderer/vulkan/*.cpp")
 FILE(GLOB RENDERER_DEBUG_FILES "renderer/vulkan/debug/*.h" "renderer/vulkan/debug/*.hpp" "renderer/vulkan/debug/*.cpp")
 FILE(GLOB RENDERER_PIPELINE_FILES "renderer/vulkan/pipeline/*.h" "renderer/vulkan/pipeline/*.hpp" "renderer/vulkan/pipeline/*.cpp")
@@ -53,13 +51,11 @@ FILE(GLOB RENDERER_SHADER_FILES "renderer/vulkan/shader/*.h" "renderer/vulkan/sh
 FILE(GLOB RENDERER_SYNC_FILES "renderer/vulkan/sync/*.h" "renderer/vulkan/sync/*.hpp" "renderer/vulkan/sync/*.cpp")
 
 # --------------------------------
-
 FILE(GLOB RENDERER_KOSMICKRISP LIST_DIRECTORIES false CONFIGURE_DEPENDS "renderer/kosmickrisp/*.h" "renderer/kosmickrisp/*.hpp" "renderer/kosmickrisp/*.cpp")
 
 # TODO: Add file groups for the renderer files, such as render passes, shaders, etc.
 
 # --------------------------------
-
 FILE(GLOB LOGGER "logging/*.cpp" "logging/*.h" "logging/*.hpp")
 FILE(GLOB PROJECT "project/*.cpp" "project/*.h" "project/*.hpp")
 FILE(GLOB REFLECTION_FILES "utils/reflection/*.cpp" "utils/reflection/*.h" "utils/reflection/*.hpp")
@@ -82,8 +78,7 @@ FILE(GLOB UTILS_FILESTREAM "utils/filestreaming/*.cpp" "utils/filestreaming/*.h"
 
 # FILE(GLOB VULKAN_RENDER_PASS "renderer/render_pass/*.cpp" "renderer/render_pass/*.h" "renderer/render_pass/*.hpp")
 # FILE(GLOB VULKAN_SHADER_CODE "renderer/shaders/*.cpp" "renderer/shaders/*.h" "renderer/shaders/*.hpp")
-
-SET (PROJECT_CONFIG_FILES
+SET(PROJECT_CONFIG_FILES
 	${CMAKE_SOURCE_DIR}/.clang-format
 	${CMAKE_SOURCE_DIR}/.editorconfig
 	${CMAKE_SOURCE_DIR}/SceneryEditorX.licenseheader
@@ -318,11 +313,12 @@ SOURCE_GROUP("Settings" FILES
 SOURCE_GROUP("Serialization" FILES
 	${SERIALIZER_FILES}
 )
-#SOURCE_GROUP("UI" FILES
-#	${UI_ROOT}
-#)
-#SOURCE_GROUP("UI/Actions" FILES ${UI_ACTIONS})
-#SOURCE_GROUP("UI/Panels" FILES ${UI_PANELS})
+
+# SOURCE_GROUP("UI" FILES
+# ${UI_ROOT}
+# )
+# SOURCE_GROUP("UI/Actions" FILES ${UI_ACTIONS})
+# SOURCE_GROUP("UI/Panels" FILES ${UI_PANELS})
 SOURCE_GROUP("Utilities" FILES
 	${UTILS_ROOT}
 )
@@ -341,12 +337,12 @@ SOURCE_GROUP("Utilities/Reflection" FILES ${REFLECTION_FILES})
 # SHADERS
 # --------------------------------
 # TODO: Needs to be updated to use the SLang compiler instead of glslang.
-
 IF(WIN32)
 	cmake_path(SET GLSL_VALIDATOR "$ENV{VULKAN_SDK}/Bin/glslangValidator.exe")
 ELSE()
 	cmake_path(SET GLSL_VALIDATOR "$ENV{VULKAN_SDK}/bin/glslangValidator")
 ENDIF()
+
 MESSAGE("GLSL VALIDATOR ${GLSL_VALIDATOR}")
 ADD_COMPILE_DEFINITIONS(GLSL_VALIDATOR="${GLSL_VALIDATOR}")
 TARGET_COMPILE_FEATURES(AppCore PRIVATE cxx_std_20)
@@ -370,48 +366,56 @@ TARGET_INCLUDE_DIRECTORIES(AppCore
 	${CMAKE_SOURCE_DIR}/dependency/tinyobj
 	${CMAKE_SOURCE_DIR}/dependency/ktx/include
 	${CMAKE_SOURCE_DIR}/dependency/ktx/other_include
+	$if(RENDERDOC_ENABLED)
+	${RENDERDOC_INCLUDE_DIRS}
+	$endif()
 	${REGISTRY_KEYS}
 	${PORTABLE_FILE_DIALOGS_INCLUDE_DIRS}
 	$ENV{VULKAN_SDK}/Include/
+	$ENV{VULKAN_SDK}/Include/vma
 	${Stb_INCLUDE_DIR}
 	${CURL_INCLUDE_DIRS}
 )
 
 # --------------------------------
-
 TARGET_LINK_LIBRARIES(AppCore
 	PRIVATE
-		nlohmann_json::nlohmann_json
-		spdlog::spdlog_header_only
-		GPUOpen::VulkanMemoryAllocator
-		CURL::libcurl
-		Vulkan::Vulkan
-		libconfig
-		libconfig++
-		XPSceneryLib::XPSceneryLib
-		SDL3::SDL3
-		dxgi
-		d3d12
-		ktx
-		${Slang_LIBRARY}
-		Shell32.lib
-		xMath::xMath
-	   Freetype::Freetype
-		$<$<AND:$<CONFIG:Debug>,$<BOOL:${TRACY_ENABLE}>>:TracyClient>
-		msdfgen::msdfgen
+	nlohmann_json::nlohmann_json
+	spdlog::spdlog_header_only
+	CURL::libcurl
+	Vulkan::Vulkan
+	libconfig
+	libconfig++
+	XPSceneryLib::XPSceneryLib
+	SDL3::SDL3
+	dxgi
+	d3d12
+	ktx
+	${Slang_LIBRARY}
+	Shell32.lib
+	xMath::xMath
+	Freetype::Freetype
+	$<$<AND:$<CONFIG:Debug>,$<BOOL:${TRACY_ENABLE}>>:TracyClient>
+	msdfgen::msdfgen
 )
 
 # --------------------------------
+IF(RENDERDOC_ENABLE)
+	TARGET_COMPILE_DEFINITIONS(AppCore
+		PRIVATE
+		RENDERDOC_ENABLED
+	)
+ENDIF()
 
 TARGET_COMPILE_DEFINITIONS(AppCore
 	PUBLIC
-		APPCORE
-		$<$<CONFIG:Debug>:SEDX_DEBUG>
-		$<$<CONFIG:Release>:SEDX_RELEASE>
-		SPDLOG_USE_STD_FORMAT
-		VK_NO_PROTOTYPES
-		VK_USE_PLATFORM_WIN32_KHR
-		CURL_STATICLIB
+	APPCORE
+	$<$<CONFIG:Debug>:SEDX_DEBUG>
+	$<$<CONFIG:Release>:SEDX_RELEASE>
+	SPDLOG_USE_STD_FORMAT
+	VK_NO_PROTOTYPES
+	VK_USE_PLATFORM_WIN32_KHR
+	CURL_STATICLIB
 )
 
 # --------------------------------

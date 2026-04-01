@@ -29,16 +29,14 @@
  * -------------------------------------------------------
  */
 #include "render_options.h"
-
 #include "Editor/ui/ui.h"
-
-#include <cmath>
 #include <limits>
 #include <string>
 #include <unordered_map>
 #include <vector>
 #include <SceneryEditorX/core/time/fps_timer.h>
 #include <SceneryEditorX/core/window/monitor_data.h>
+#include <SceneryEditorX/core/window/window.h>
 #include <SceneryEditorX/renderer/renderer.h>
 
 using namespace SceneryEditorX;
