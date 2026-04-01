@@ -1,6 +1,5 @@
 {
     "dependencies": [
-        "vulkan-memory-allocator",
         "msdfgen",
         "portable-file-dialogs",
         "spdlog",

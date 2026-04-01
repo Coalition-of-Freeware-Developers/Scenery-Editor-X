@@ -31,6 +31,7 @@
 #pragma once
 #include <vk_mem_alloc.h>
 #include <Editor/ui/source/imgui/imgui.h>
+#include <SceneryEditorX/renderer/vulkan/depth_stencil.h>
 #include <SceneryEditorX/renderer/vulkan/push_constant_buffer.h>
 #include <SceneryEditorX/utils/pointers.h>
 #include <vulkan/vulkan.h>
@@ -41,7 +42,6 @@ namespace SceneryEditorX
 {
 	class ImageResource;
 	class Buffer;
-	class DepthStencilState;
 	class RasterizerState;
 	class BlendState;
 	class Shader;
