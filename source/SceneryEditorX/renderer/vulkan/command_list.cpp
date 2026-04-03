@@ -32,11 +32,16 @@
 #include "buffer.h"
 #include "depth_stencil.h"
 #include "image_resource.h"
+#include "rasterizer.h"
 #include "render_context.h"
 #include "swapchain.h"
 #include "debug/graphics_debug.h"
 #include "pipeline/barrier_info.h"
 #include "pipeline/pipeline_state.h"
+#include "pipeline/pipeline.h"
+#include "shader/shader_stage.h"
+
+#include <SceneryEditorX/renderer/vulkan/push_constant_buffer.h>
 #include <array>
 #include <chrono>
 #include <memory>
@@ -1037,6 +1042,13 @@ namespace SceneryEditorX
 		// Debug-time assert to still catch misuse when assertions are enabled.
 		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to insert barriers");
 
+		// VK_KHR_dynamic_rendering forbids image barriers (vkCmdPipelineBarrier2 with
+		// imageMemoryBarrierCount > 0) inside an active render pass instance unless
+		// VK_KHR_dynamic_rendering_local_read is enabled (it is not).  End the pass
+		// first so the transition is recorded in the correct command stream position.
+		if (m_RenderPassActive)
+			EndRenderPass();
+
 		const uint32_t baseMip = (mipIndex == ALL_MIPS) ? 0 : mipIndex;
 		const uint32_t levelCount = (mipIndex == ALL_MIPS || mipRange == 0) ? VK_REMAINING_MIP_LEVELS : mipRange;
 		const uint32_t layerCount = (arrayLength == 0) ? VK_REMAINING_ARRAY_LAYERS : arrayLength;
@@ -1881,42 +1893,73 @@ namespace SceneryEditorX
 		// Close the current render pass before transitioning attachments.
 		EndRenderPass();
 
-		// Transition attachments and begin dynamic rendering if needed.
+		// Transition the color attachment to VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL.
 		colorTarget->SetLayout(Layout::ImageLayout::Attachment, this, ALL_MIPS, 0);
 		VkRenderingAttachmentInfo colorAttachment{ VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
-		colorAttachment.imageView = colorTarget->GetImageView();
+		colorAttachment.imageView   = colorTarget->GetImageView();
 		colorAttachment.imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
-		colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-		colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+		colorAttachment.loadOp      = VK_ATTACHMENT_LOAD_OP_LOAD;
+		colorAttachment.storeOp     = VK_ATTACHMENT_STORE_OP_STORE;
 
 		VkRenderingAttachmentInfo depthAttachment{ VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
 		if (ImageResource* depthTarget = pso.renderTarget_DepthTexture)
 		{
-			depthTarget->SetLayout(Layout::ImageLayout::Attachment, this, ALL_MIPS, 0);
-			depthAttachment.imageView = depthTarget->GetImageView();
+			// Depth attachments must use DepthStencilAttachment layout, not the generic
+			// Attachment (color) layout.  The barrier for DepthStencilAttachment carries
+			// EARLY/LATE_FRAGMENT_TESTS stages and DEPTH_STENCIL_ATTACHMENT_READ|WRITE
+			// access masks, which eliminates the READ_AFTER_WRITE hazard on the depth
+			// attachment reported by validation (VE-5).
+			depthTarget->SetLayout(Layout::ImageLayout::DepthStencilAttachment, this, ALL_MIPS, 0);
+			depthAttachment.imageView   = depthTarget->GetImageView();
 			depthAttachment.imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
-			depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-			depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-			depthAttachment.clearValue.depthStencil.depth   = m_pso.clearDepth;
-			depthAttachment.clearValue.depthStencil.stencil = m_pso.clearStencil;
+			depthAttachment.loadOp      = VK_ATTACHMENT_LOAD_OP_LOAD;
+			depthAttachment.storeOp     = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+			depthAttachment.clearValue.depthStencil.depth   = pso.clearDepth;
+			depthAttachment.clearValue.depthStencil.stencil = pso.clearStencil;
 		}
 
-		if (!m_RenderPassActive)
+		// Store the incoming PSO so PushConstants() and PreDraw() can reference it.
+		m_pso = pso;
+
+		// Build a format-correct VkPipeline from the PSO.
+// Pipeline() handles both the full bindless path (when m_DescriptorLayout_Current is set)
+// and the minimal bootstrap path (layout = nullptr), centralising all Vulkan pipeline
+// creation in the Pipeline class.
+{
+PipelineState mutablePso = pso;
+m_Pipeline = Pipeline(mutablePso, m_DescriptorLayout_Current);
+}
+
+		VkRenderingInfo renderingInfo{ VK_STRUCTURE_TYPE_RENDERING_INFO };
+		renderingInfo.renderArea.offset    = { 0, 0 };
+		renderingInfo.renderArea.extent    = { colorTarget->GetWidth(), colorTarget->GetHeight() };
+		renderingInfo.layerCount           = 1;
+		renderingInfo.colorAttachmentCount = 1;
+		renderingInfo.pColorAttachments    = &colorAttachment;
+		renderingInfo.pDepthAttachment     = (depthAttachment.imageView != VK_NULL_HANDLE) ? &depthAttachment : nullptr;
+		vkCmdBeginRendering(m_CmdBuffer, &renderingInfo);
+		m_RenderPassActive = true;
+
+		// After vkCmdBeginRendering the driver has implicitly transitioned the attachments.
+		// Stamp the tracked layouts to match the physical GPU state so that post-render
+		// barriers (e.g. the TransferSrc barrier in Blit) use correct srcStageMask /
+		// srcAccessMask and do not produce WRITE_AFTER_WRITE validation errors.
+		SetLayout(*colorTarget->Get(), 0, MAX_MIP_COUNT, Layout::ImageLayout::Attachment);
+		if (pso.renderTarget_DepthTexture)
 		{
-			VkRenderingInfo renderingInfo{ VK_STRUCTURE_TYPE_RENDERING_INFO };
-			renderingInfo.renderArea.offset = { 0, 0 };
-			renderingInfo.renderArea.extent = { colorTarget->GetWidth(), colorTarget->GetHeight() };
-			renderingInfo.layerCount = 1;
-			renderingInfo.colorAttachmentCount = 1;
-			renderingInfo.pColorAttachments = &colorAttachment;
-			renderingInfo.pDepthAttachment = (depthAttachment.imageView != VK_NULL_HANDLE) ? &depthAttachment : nullptr;
-			vkCmdBeginRendering(m_CmdBuffer, &renderingInfo);
-			m_RenderPassActive = true;
+		    SetLayout(*pso.renderTarget_DepthTexture->Get(), 0, MAX_MIP_COUNT, Layout::ImageLayout::DepthStencilAttachment);
 		}
 
-		if (Ref<RenderContext> context = RenderContext::Get(); context && context->pipeline != VK_NULL_HANDLE)
+		if (m_Pipeline.Get() != VK_NULL_HANDLE)
 		{
-			vkCmdBindPipeline(m_CmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, context->pipeline);
+			vkCmdBindPipeline(m_CmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_Pipeline.Get());
+		}
+		else
+		{
+			// Fallback to the bootstrap pipeline from the render context while the
+			// descriptor layout / format-correct pipeline is being wired up.
+			if (Ref<RenderContext> context = RenderContext::Get(); context && context->pipeline != VK_NULL_HANDLE)
+				vkCmdBindPipeline(m_CmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, context->pipeline);
 		}
 	}
 
@@ -1924,10 +1967,39 @@ namespace SceneryEditorX
 	{
 		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to push constants");
 
-		// TODO: Bind data to the active pipeline layout via vkCmdPushConstants.
-		// The layout and stage flags must be sourced from the currently bound pipeline.
-		(void)data;
-		SEDX_CORE_WARN_TAG("CommandList", "PushConstants: stub — pipeline layout not yet wired");
+		// Prefer the layout from the PSO-driven pipeline built in SetPipelineState();
+		// fall back to the bootstrap layout stored in the render context.
+		VkPipelineLayout layout = m_Pipeline.GetLayout();
+		if (layout == VK_NULL_HANDLE)
+		{
+			if (Ref<RenderContext> context = RenderContext::Get())
+				layout = context->pipelineLayout;
+		}
+
+		if (layout == VK_NULL_HANDLE)
+		{
+			static bool warnedOnce = false;
+			if (!warnedOnce)
+			{
+				SEDX_CORE_WARN_TAG("CommandList", "PushConstants: no pipeline layout available — skipping push constant upload");
+				warnedOnce = true;
+			}
+			return;
+		}
+
+		// Derive the stage flags from the compiled pipeline's push-constant reflection;
+		// default to VS|FS if reflection data is absent (covers the grid shader case).
+		const uint32_t stages = m_Pipeline.GetPushConstantStages() != 0
+			? m_Pipeline.GetPushConstantStages()
+			: static_cast<uint32_t>(VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+
+		vkCmdPushConstants(
+			m_CmdBuffer,
+			layout,
+			stages,
+			0,
+			static_cast<uint32_t>(sizeof(PushConstantBuffer_Pass)),
+			&data);
 	}
 
 	void CommandList::SetBuffer(Renderer_BindingsUav /*slot*/, Buffer* /*buffer*/)

@@ -95,16 +95,13 @@ namespace SceneryEditorX
 				s_LoggedBootstrapState = true;
 			}
 
-			// Safety gate: graphics PSO binding (SetPipelineState for non-basic-pipeline PSOs) is
-			// not yet fully wired in the bootstrap path.  Push-constant requirements and vertex
-			// format are now correct — enable this once SetPipelineState correctly creates and
-			// binds graphics pipelines from a PipelineState descriptor.
-			const bool enableBootstrapGridPass = false;
+			// Safety gate: graphics PSO binding is wired via SetPipelineState — enable grid pass.
+			const bool enableBootstrapGridPass = true;
 			if (enableBootstrapGridPass && Scene::GetCamera() && hasGridShaders)
 			{
 				ImageResource *depthTarget = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
 				rt_render->SetLayout(Layout::ImageLayout::Attachment, graphicsPresent, ALL_MIPS, 0);
-				depthTarget->SetLayout(Layout::ImageLayout::Attachment, graphicsPresent, 0, 0);
+				depthTarget->SetLayout(Layout::ImageLayout::DepthStencilAttachment, graphicsPresent, 0, 0);
 				
 				Pass_Grid(graphicsPresent, rt_render);
 
@@ -300,7 +297,7 @@ namespace SceneryEditorX
 			// Infinite editor grid: depth-test against render-resolution depth
 			{
 				ImageResource *depthTarget = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
-				depthTarget->SetLayout(Layout::ImageLayout::Attachment, graphicsPresent, 0, 0);
+				depthTarget->SetLayout(Layout::ImageLayout::DepthStencilAttachment, graphicsPresent, 0, 0);
 				Pass_Grid(graphicsPresent, GetRenderTarget(Renderer_RenderTarget::frame_render));
 				depthTarget->SetLayout(Layout::ImageLayout::ShaderRead, graphicsPresent, 0, 0);
 			}

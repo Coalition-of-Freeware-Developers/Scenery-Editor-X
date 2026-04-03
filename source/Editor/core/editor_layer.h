@@ -116,8 +116,8 @@ namespace SceneryEditorX
 
 		std::vector<Ref<Widget>> m_Widgets;
 	    std::vector<UI::ChildWindow> m_ChildWindows;
-		Vec2 m_ViewportBounds[2];
-		Vec2 m_SecondViewportBounds[2];
+		Vec2 m_ViewportBounds[2]       = {};
+		Vec2 m_SecondViewportBounds[2] = {};
 		std::pair<float, float> GetMouseViewportSpace(bool primaryViewport);
 
 		float GetSnapValue();
@@ -164,9 +164,9 @@ namespace SceneryEditorX
 		Camera m_Camera;
 		Ref<UserPreferences> m_UserPreferences;
 
-		uint32_t m_TitleBarTargetColor;
-		uint32_t m_TitleBarActiveColor;
-		uint32_t m_TitleBarPreviousColor;
+		uint32_t m_TitleBarTargetColor   = 0;
+		uint32_t m_TitleBarActiveColor   = 0;
+		uint32_t m_TitleBarPreviousColor = 0;
 
 		int m_GizmoType = -1; // -1 = no gizmo
 
@@ -195,6 +195,9 @@ namespace SceneryEditorX
 		float m_TimeSinceLastSave = 0.0f;
 		float m_RequiredProjectVersion = 0.0f;
 		float m_AssetUpdatePerf = 0.0f;
+
+		/// Owns the imgui ini path string so io.IniFilename never dangles (C26815).
+		std::string m_IniFilePath;
 
 	#ifdef SEDX_PLATFORM_WINDOWS
 		typedef std::wstring WatcherString;

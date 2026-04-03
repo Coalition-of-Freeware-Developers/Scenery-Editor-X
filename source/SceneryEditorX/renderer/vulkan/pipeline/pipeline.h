@@ -49,9 +49,21 @@ namespace SceneryEditorX
 	{
 	public:
 		Pipeline() = default;
-		Pipeline(PipelineState &state, DescriptorSet *layout);
+
+		/**
+		 * @brief Construct and compile a Vulkan pipeline from a PipelineState.
+		 * @param state  The pipeline state object describing shaders, render targets, and fixed-function state.
+		 * @param layout Optional descriptor set layout for bindless resources and push-constant reflection.
+		 *               When nullptr a minimal push-constant-only VkPipelineLayout is created (bootstrap path).
+		 */
+		Pipeline(PipelineState &state, DescriptorSet *layout = nullptr);
 		virtual ~Pipeline() override;
-	
+
+		Pipeline(Pipeline&& other) noexcept;
+		Pipeline& operator=(Pipeline&& other) noexcept;
+		Pipeline(const Pipeline&) = delete;
+		Pipeline& operator=(const Pipeline&) = delete;
+
 		// Descriptor grouping inputs required for creating a graphics pipeline.
 		struct GraphicsCreateInfo 
 		{
@@ -67,12 +79,10 @@ namespace SceneryEditorX
 		};
 
 		static VkPipelineCache GetPipelineCache();
-		PipelineState* GetState()						{ return &m_State; }
-		VkPipeline Get() const							{ return m_Pipeline; }
-		VkPipelineLayout GetLayout() const				{ return m_Layout; }
-		void SetPipeline(VkPipeline resource)			{ m_Pipeline = resource; if (resource != VK_NULL_HANDLE) m_Destroyed = false; }
-		void SetLayout(VkPipelineLayout layout)			{ m_Layout = layout; if (layout != VK_NULL_HANDLE) m_Destroyed = false; }
-		uint32_t GetPushConstantStages() const			{ return m_PushConstant_Stages; }
+		PipelineState* GetState()			{ return &m_State; }
+		VkPipeline Get() const				{ return m_Pipeline; }
+		VkPipelineLayout GetLayout() const	{ return m_Layout; }
+		uint32_t GetPushConstantStages() const	{ return m_PushConstant_Stages; }
 		void Destroy(VkDevice device = VK_NULL_HANDLE);
 		bool IsDestroyed() const { return m_Destroyed; }
 

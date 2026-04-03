@@ -46,6 +46,7 @@
 #include <SceneryEditorX/renderer/vulkan/swapchain.h>
 #include <SceneryEditorX/renderer/vulkan/debug/graphics_debug.h>
 #include <volk/volk.h>
+#include <SceneryEditorX/renderer/vulkan/push_constant_buffer.h>
 
 // -------------------------------------------------------
 
@@ -132,7 +133,7 @@ namespace SceneryEditorX
 	Pipeline::Pipeline(PipelineState &state, DescriptorSet *layout)
 	{
 		const Ref<Device> device = RenderContext::Get()->GetDevice();
-		m_Device = RenderContext::Get()->GetDevice();
+		m_Device = device;
 		m_State = state;
 
 		// shader stages
@@ -155,12 +156,13 @@ namespace SceneryEditorX
 			}
 		}
 
-		// layout
+		// layout: full bindless path when a DescriptorSet layout is provided, minimal bootstrap path otherwise
+		if (layout != nullptr)
 		{
 			// build descriptor set layouts array - must match order of appearance in common_resources.slang
 			std::array<VkDescriptorSetLayout, static_cast<size_t>(BindlessResource::MaxEnum) + 1> layouts;
 			{
-				layouts[0] = layout ? layout->GetLayout() : VK_NULL_HANDLE;
+				layouts[0] = layout->GetLayout();
 				SEDX_CORE_ASSERT(layouts[0] != VK_NULL_HANDLE);
 
 				for (size_t i = 0; i < static_cast<size_t>(BindlessResource::MaxEnum); i++)
@@ -207,10 +209,31 @@ namespace SceneryEditorX
 			SEDX_VK_RESULT_ASSERT(vkCreatePipelineLayout(device->GetLogicalDevice(), &pipeline_layout_info, nullptr, reinterpret_cast<VkPipelineLayout*>(&m_Layout)));
 
 			// name
-			Debugging::SetResourceName(m_Layout, ResourceType::PipelineLayout, state.name);
-		}
+Debugging::SetResourceName(m_Layout, ResourceType::PipelineLayout, state.name);
+}
+else
+{
+// Bootstrap path: no bindless descriptor sets — minimal push-constant-only VkPipelineLayout.
+// Used for passes that don't yet have a DescriptorSet layout wired (e.g. grid, text, bootstrap).
+VkPushConstantRange pcRange{};
+pcRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT;
+pcRange.offset     = 0;
+pcRange.size       = static_cast<uint32_t>(sizeof(PushConstantBuffer_Pass));
+m_PushConstant_Stages = pcRange.stageFlags;
 
-		if (state.IsCompute())
+VkPipelineLayoutCreateInfo bootstrapLayoutCI{};
+bootstrapLayoutCI.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+bootstrapLayoutCI.pushConstantRangeCount = 1;
+bootstrapLayoutCI.pPushConstantRanges    = &pcRange;
+bootstrapLayoutCI.setLayoutCount         = 0;
+bootstrapLayoutCI.pSetLayouts            = nullptr;
+
+SEDX_VK_RESULT_ASSERT(vkCreatePipelineLayout(device->GetLogicalDevice(), &bootstrapLayoutCI, nullptr,
+reinterpret_cast<VkPipelineLayout*>(&m_Layout)));
+Debugging::SetResourceName(m_Layout, ResourceType::PipelineLayout, state.name);
+}
+
+if (state.IsCompute())
 		{
 			VkComputePipelineCreateInfo pipeline_info = {};
 			pipeline_info.sType                       = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
@@ -564,9 +587,34 @@ namespace SceneryEditorX
 		SEDX_CORE_ASSERT(m_Pipeline != nullptr);
 	}
 
-	Pipeline::~Pipeline()
-	{
-	  Destroy();
+	Pipeline::Pipeline(Pipeline&& other) noexcept
+: m_Device(std::move(other.m_Device))
+, m_Pipeline(std::exchange(other.m_Pipeline, VK_NULL_HANDLE))
+, m_State(std::move(other.m_State))
+, m_Layout(std::exchange(other.m_Layout, VK_NULL_HANDLE))
+, m_PushConstant_Stages(other.m_PushConstant_Stages)
+, m_Destroyed(std::exchange(other.m_Destroyed, true))
+{
+}
+
+Pipeline& Pipeline::operator=(Pipeline&& other) noexcept
+{
+if (this != &other)
+{
+Destroy();
+m_Device              = std::move(other.m_Device);
+m_Pipeline            = std::exchange(other.m_Pipeline, VK_NULL_HANDLE);
+m_State               = std::move(other.m_State);
+m_Layout              = std::exchange(other.m_Layout, VK_NULL_HANDLE);
+m_PushConstant_Stages = other.m_PushConstant_Stages;
+m_Destroyed           = std::exchange(other.m_Destroyed, true);
+}
+return *this;
+}
+
+Pipeline::~Pipeline()
+{
+  Destroy();
 
 		// pipeline cache - save to disk before destroying
 		SavePipelineCache();
@@ -583,9 +631,19 @@ namespace SceneryEditorX
 			return;
 
 		VkDevice logicalDevice = device;
-		if (logicalDevice == VK_NULL_HANDLE && m_Device)
+		if (logicalDevice == VK_NULL_HANDLE)
 		{
-			logicalDevice = m_Device->GetLogicalDevice();
+			if (m_Device)
+			{
+				logicalDevice = m_Device->GetLogicalDevice();
+			}
+			else if (Ref<RenderContext> ctx = RenderContext::Get())
+			{
+				if (Ref<Device> dev = ctx->GetDevice())
+			{
+				logicalDevice = dev->GetLogicalDevice();
+			}
+			}
 		}
 
 		if (logicalDevice != VK_NULL_HANDLE)

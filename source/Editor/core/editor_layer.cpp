@@ -250,13 +250,16 @@ namespace SceneryEditorX
 				window.Tick();
 		}
 		
-		if (Renderer::BeginFrame())
-		{
-		    UI::Render(ImGui::GetDrawData());
-		    Renderer::SubmitAndPresent();
-		}
-		
-		// child windows
+		// Finalize the ImGui frame — this populates GetDrawData() for the render
+		// thread's Renderer::Tick() → UI::Render() call, and satisfies the
+		// internal FrameCountEnded == FrameCount invariant that
+		// UpdatePlatformWindows() asserts on.
+		// NOTE: BeginFrame()/EndFrame()/SubmitAndPresent() are owned exclusively
+		//       by WaitAndRender() on the render thread — do NOT call them here.
+		ImGui::Render();
+
+		// Multi-viewport: propagate draw data to secondary OS windows.
+		// Must come after ImGui::Render().
 		if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
 		{
 			ImGui::UpdatePlatformWindows();
@@ -287,7 +290,9 @@ namespace SceneryEditorX
 		io.ConfigFlags                  |= ImGuiConfigFlags_ViewportsEnable;
 		io.ConfigFlags                  |= ImGuiConfigFlags_NoMouseCursorChange; // cursor control is given to ImGui, but dynamically, from the engine
 		io.ConfigWindowsResizeFromEdges  = true;
-		io.IniFilename                   = (appdata / "editor.ini").string().c_str();
+		// Store the ini path in a member so io.IniFilename points to a stable string (C26815).
+		m_IniFilePath  = (appdata / "editor.ini").string();
+		io.IniFilename = m_IniFilePath.c_str();
 
 		// font_bold configuration
 		ImFontConfig config; // config for bold font (mainly for use in headers)
