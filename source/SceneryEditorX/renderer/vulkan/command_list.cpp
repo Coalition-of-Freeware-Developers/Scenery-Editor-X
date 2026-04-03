@@ -1003,7 +1003,7 @@ namespace SceneryEditorX
 
 	void CommandList::InsertBarrier(VkImage image, VkFormat format, uint32_t mipIndex, uint32_t mipRange, uint32_t arrayLength, Layout::ImageLayout layout)
 	{
-	    SEDX_CORE_ASSERT(image != VK_NULL_HANDLE, "Image handle must be valid for barrier insertion");
+		SEDX_CORE_ASSERT(image != VK_NULL_HANDLE, "Image handle must be valid for barrier insertion");
 		// Keep assert for debug, but defensively handle invalid state at runtime to avoid
 		// crashing inside the GPU driver when running release builds or when asserts
 		// are disabled.
@@ -1021,7 +1021,7 @@ namespace SceneryEditorX
 
 			// Fallback: perform transition using an immediate command list so we do
 			// not call into the driver with an invalid command buffer.
-		    CommandList* temp = CommandList::BeginImmediateExecution(QueueType::Graphics);
+			CommandList* temp = CommandList::BeginImmediateExecution(QueueType::Graphics);
 			if (temp)
 			{
 				if (temp == this)
@@ -1109,7 +1109,7 @@ namespace SceneryEditorX
 	void CommandList::InsertBarrier(Buffer *buffer)
 	{
 		SEDX_CORE_ASSERT(buffer != nullptr && buffer->Get() != VK_NULL_HANDLE, "Buffer must be valid for barrier insertion");
-	    if (m_State != CommandState::Recording)
+		if (m_State != CommandState::Recording)
 		{
 			SEDX_CORE_WARN_TAG("CommandList", "InsertBarrier(Buffer) called while '{}' is not recording (state={}), skipping", m_ObjectName.c_str(), static_cast<int>(m_State.load()));
 			return;
@@ -1868,7 +1868,7 @@ namespace SceneryEditorX
 		m_RenderPassActive = true;
 	}
 
-	void CommandList::SetPipelineState(const PipelineState& pso)
+	void CommandList::SetPipelineState(PipelineState& pso)
 	{
 		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to set pipeline state");
 
@@ -1922,13 +1922,13 @@ namespace SceneryEditorX
 		m_pso = pso;
 
 		// Build a format-correct VkPipeline from the PSO.
-// Pipeline() handles both the full bindless path (when m_DescriptorLayout_Current is set)
-// and the minimal bootstrap path (layout = nullptr), centralising all Vulkan pipeline
-// creation in the Pipeline class.
-{
-PipelineState mutablePso = pso;
-m_Pipeline = Pipeline(mutablePso, m_DescriptorLayout_Current);
-}
+		// Pipeline() handles both the full bindless path (when m_DescriptorLayout_Current is set)
+		// and the minimal bootstrap path (layout = nullptr), centralising all Vulkan pipeline
+		// creation in the Pipeline class.
+		{
+			PipelineState mutablePso = pso;
+			m_Pipeline = Pipeline(mutablePso, m_DescriptorLayout_Current);
+		}
 
 		VkRenderingInfo renderingInfo{ VK_STRUCTURE_TYPE_RENDERING_INFO };
 		renderingInfo.renderArea.offset    = { 0, 0 };
@@ -1947,7 +1947,7 @@ m_Pipeline = Pipeline(mutablePso, m_DescriptorLayout_Current);
 		SetLayout(*colorTarget->Get(), 0, MAX_MIP_COUNT, Layout::ImageLayout::Attachment);
 		if (pso.renderTarget_DepthTexture)
 		{
-		    SetLayout(*pso.renderTarget_DepthTexture->Get(), 0, MAX_MIP_COUNT, Layout::ImageLayout::DepthStencilAttachment);
+			SetLayout(*pso.renderTarget_DepthTexture->Get(), 0, MAX_MIP_COUNT, Layout::ImageLayout::DepthStencilAttachment);
 		}
 
 		if (m_Pipeline.Get() != VK_NULL_HANDLE)

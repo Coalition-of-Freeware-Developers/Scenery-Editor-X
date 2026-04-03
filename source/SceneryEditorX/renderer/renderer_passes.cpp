@@ -332,8 +332,7 @@ namespace SceneryEditorX
 		{
 			PipelineState pso;
 			pso.name = "lut_brdf_specular";
-			pso.shaders[static_cast<uint32_t>(Stage::Compute)] =
-				GetShader(Renderer_Shader::light_integration_brdf_specular_lut_c);
+			pso.shaders[static_cast<uint32_t>(Stage::Compute)] = GetShader(Renderer_Shader::light_integration_brdf_specular_lut_c);
 			cmdList->SetPipelineState(pso);
 
 			cmdList->SetTexture(Renderer_BindingsUav::tex, tex_lut_brdf_specular);
@@ -351,19 +350,16 @@ namespace SceneryEditorX
 
 	void Renderer::Pass_Lut_AtmosphericScattering(CommandList *cmdList)
 	{
-		ImageResource *tex_lut_atmosphere_scatter = GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_scatter);
-		ImageResource *tex_lut_atmosphere_transmittance =
-			GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_transmittance);
-		ImageResource *tex_lut_atmosphere_multiscatter =
-			GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_multiscatter);
+		ImageResource *tex_lut_atmosphere_scatter		= GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_scatter);
+		ImageResource *tex_lut_atmosphere_transmittance = GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_transmittance);
+		ImageResource *tex_lut_atmosphere_multiscatter	= GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_multiscatter);
 
 		{
 			// transmittance lut
 			{
 				PipelineState pso;
 				pso.name = "lut_atmosphere_transmittance";
-				pso.shaders[static_cast<uint32_t>(Stage::Compute)] =
-					GetShader(Renderer_Shader::skysphere_transmittance_lut_c);
+				pso.shaders[static_cast<uint32_t>(Stage::Compute)] = GetShader(Renderer_Shader::skysphere_transmittance_lut_c);
 				cmdList->SetPipelineState(pso);
 
 				cmdList->SetTexture(Renderer_BindingsUav::tex, tex_lut_atmosphere_transmittance);
@@ -376,8 +372,7 @@ namespace SceneryEditorX
 			{
 				PipelineState pso;
 				pso.name = "lut_atmosphere_multiscatter";
-				pso.shaders[static_cast<uint32_t>(Stage::Compute)] =
-					GetShader(Renderer_Shader::skysphere_multiscatter_lut_c);
+				pso.shaders[static_cast<uint32_t>(Stage::Compute)] = GetShader(Renderer_Shader::skysphere_multiscatter_lut_c);
 				cmdList->SetPipelineState(pso);
 
 				cmdList->SetTexture(Renderer_BindingsSrv::tex, tex_lut_atmosphere_transmittance);
@@ -591,21 +586,17 @@ namespace SceneryEditorX
 			{
 				PipelineState pso;
 				pso.name = "depth_prepass_indirect";
-				pso.shaders[static_cast<uint32_t>(Stage::Vertex)] =
-					GetShader(Renderer_Shader::depth_prepass_indirect_vertex);
+				pso.shaders[static_cast<uint32_t>(Stage::Vertex)] = GetShader(Renderer_Shader::depth_prepass_indirect_vertex);
 				pso.rasterizerState = rasterizer_state;
 				pso.blendState = GetBlendState(Renderer_BlendState::Off);
 				pso.depthStencil_State = GetDepthStencilState(Renderer_DepthStencilState::ReadWrite);
-				pso.vrsInputTexture = cvar_variable_rate_shading.GetValueAs<bool>()
-										  ? GetRenderTarget(Renderer_RenderTarget::shading_rate)
-										  : nullptr;
+				pso.vrsInputTexture = cvar_variable_rate_shading.GetValueAs<bool>() ? GetRenderTarget(Renderer_RenderTarget::shading_rate) : nullptr;
 				pso.renderTarget_DepthTexture = tex_depth;
 				pso.resolutionScale = true;
 				pso.clearDepth = 0.0f;
 				cmdList->SetPipelineState(pso);
 				cmdList->SetIndexBuffer(GeometryBuffer::GetIndexBuffer());
-				cmdList->SetBuffer(Renderer_BindingsUav::indirect_draw_data_out,
-								   GetBuffer(Renderer_Buffer::IndirectDrawDataOut));
+				cmdList->SetBuffer(Renderer_BindingsUav::indirect_draw_data_out, GetBuffer(Renderer_Buffer::IndirectDrawDataOut));
 				cmdList->SetCullMode(CullMode::Back);
 
 				cmdList->DrawIndexedIndirectCount(GetBuffer(Renderer_Buffer::IndirectDrawArgsOut),
@@ -623,9 +614,7 @@ namespace SceneryEditorX
 				pso.rasterizerState = rasterizer_state;
 				pso.blendState = GetBlendState(Renderer_BlendState::Off);
 				pso.depthStencil_State = GetDepthStencilState(Renderer_DepthStencilState::ReadWrite);
-				pso.vrsInputTexture = cvar_variable_rate_shading.GetValueAs<bool>()
-										  ? GetRenderTarget(Renderer_RenderTarget::shading_rate)
-										  : nullptr;
+				pso.vrsInputTexture = cvar_variable_rate_shading.GetValueAs<bool>() ? GetRenderTarget(Renderer_RenderTarget::shading_rate) : nullptr;
 				pso.renderTarget_DepthTexture = tex_depth;
 				pso.resolutionScale = true;
 				pso.clearDepth = RHI_DEPTH_LOAD; // load since indirect already wrote depth

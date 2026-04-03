@@ -135,7 +135,7 @@ namespace SceneryEditorX
 		 * @brief Set the pipeline state for the command list.
 		 * @param pso The pipeline state object to set.
 		 */
-		void SetPipelineState(const PipelineState& pso);
+		void SetPipelineState(PipelineState& pso);
 
 		/**
 		 * @brief Push constants to the pipeline.

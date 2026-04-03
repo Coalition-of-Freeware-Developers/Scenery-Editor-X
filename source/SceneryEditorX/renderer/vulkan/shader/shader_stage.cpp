@@ -153,7 +153,7 @@ namespace SceneryEditorX
 		{
 			SEDX_CORE_ERROR_TAG("Shader", "Failed to compile shader: %s", codeFilepath.c_str());
 			// handle error: set m_ShaderModule = VK_NULL_HANDLE; or throw/return
-			SEDX_CORE_ASSERT(false);
+			SEDX_CORE_ASSERT(false, "Failed to compile shader: %s", codeFilepath.c_str());
 			return;
 		}
 
@@ -195,7 +195,7 @@ namespace SceneryEditorX
 		SEDX_VK_RESULT_ASSERT(vkCreateShaderModule(device->GetLogicalDevice(), &createInfo, nullptr, &m_ShaderModule), "Can't create shader module");
 	}
 
-	const VkPipelineShaderStageCreateInfo ShaderStage::GetStageCreateInfo() 
+	VkPipelineShaderStageCreateInfo const ShaderStage::GetStageCreateInfo() 
 	{
 		VkPipelineShaderStageCreateInfo createInfo{};
 		createInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
