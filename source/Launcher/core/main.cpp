@@ -30,114 +30,203 @@
  */
 #include <cstdlib>
 #include <exception>
-#include <Editor/core/editor.h>
 #include <Launcher/core/directory_manager.hpp>
 #include <Launcher/core/launcher.h>
 #include <Launcher/core/splash_handler.h>
 #include <Launcher/registry/reg_check.h>
 #include <SceneryEditorX/core/platform/entryPoint.h>
-#include <SceneryEditorX/core/platform/settings/settings.h>
+#include <SceneryEditorX/settings/user_settings.h>
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
-namespace SceneryEditorX
+static std::filesystem::path s_ProjectSolutionPath = "";
+static std::vector<std::string> s_ClArguments;
+static uint32_t s_ClArg_Flags = 0;
+static auto operator<(const ImVec2 &lhs, const ImVec2 &rhs) { return lhs.x < rhs.x && lhs.y < rhs.y; }
+static SDL_Window* s_SplashScreen_Window = nullptr;
+
+
+/**
+ * @brief 
+ * @param argument 
+ * @return 
+ */
+static bool HasArgument(const std::string &argument)
 {
-
-	/*
-	class Launcher : public Application
+	for (const auto &arg : s_ClArguments)
 	{
-	public:
-        Launcher(const AppData &appData, std::string_view projPath) : Application(appData), m_ProjectPath(projPath)
-        {
-            if (projPath.empty()) m_ProjectPath = "SceneryEditorX/Projects/Default.edX";
-        }
+		if (arg == argument)
+			return true;
+	}
 
-        virtual ~Launcher() override;
-
-		virtual void OnInit() override
-        {
-            // Initialize the user settings
-            m_UserSettings = CreateRef<ApplicationSettings>("settings.cfg");
-            if (!m_UserSettings->ReadSettings())
-            {
-                LAUNCHER_ERROR_TAG("Core", "Failed to initialize user settings for project: {}", m_ProjectPath);
-                return;
-            }
-
-            try
-            {
-                m_Launcher->InitLauncher();
-            }
-            catch (const std::exception &e)
-            {
-                LAUNCHER_ERROR_TAG("Core", "Failed to initialize Launcher: {}", e.what());
-            }
-        }
-
-	    void Tick() override
-        {
-            if (m_EditorXLauncher)
-                m_EditorXLauncher->Tick();
-        }
-
-	    void OnShutdown() override
-        {
-            if (m_EditorXLauncher)
-                m_EditorXLauncher.reset();
-
-            LAUNCHER_CORE_TRACE("Launcher has completed execution.");
-            Application::OnShutdown();
-        }
-
-	private:
-        std::string m_ProjectPath;
-        Ref<ApplicationSettings> m_UserSettings{};
-        Scope<Launcher> m_EditorXLauncher{};
-	};
-	*/
-
+	return false;
 }
 
-void SplashHandler::CreateSplashScreen(GLFWwindow* splash)
+/**
+ * @brief 
+ * @param value 
+ */
+static void WriteCiTestFile(const uint32_t value)
 {
-    glfwWindowHint(GLFW_CLIENT_API,GLFW_NO_API);
-    splash = glfwCreateWindow(978,526,"Scenery Editor X",nullptr,nullptr);
-
-    if (!splash)
-    {
-        LAUNCHER_CORE_ERROR("Failed to create splash screen window.");
-        return;
-    }
-
-    glfwMakeContextCurrent(splash);
-    while (!glfwWindowShouldClose(splash))
-    {
-        glClear(GL_COLOR_BUFFER_BIT);
-        glfwSwapBuffers(splash);
-        glfwPollEvents();
-    }
+	if (HasArgument("-ci_test"))
+	{
+		if (std::ofstream file("ci_test.txt"); file.is_open())
+		{
+			file << value;
+			file.close();
+		}
+	}
 }
 
-static void SplashImg()
+/**
+ * @brief 
+ */
+static void ProcessClArgs()
 {
-    int width,height,channels;
+	// Common simple flags that exist in the repo already:
+	// -ci_test  -> used by CI to write a small indicator file (see WriteCiTestFile above)
+	// You can add more handlers here for other flags (e.g. --headless, --log=level, --no-gui, etc.)
 
-    std::ifstream file(R"(..\..\resources\splash_screen.png)",std::ios::binary | std::ios::ate);
-    if (!file.is_open())
-    {
-        LAUNCHER_CORE_ERROR("Failed to open splash screen image!");
-        return;
-    }
+	EDITOR_TRACE_TAG("Editor", "Processing command line arguments");
 
-    std::streamsize size = file.tellg();
-    file.seekg(0,std::ios::beg);
+	// Example: existing helper writes a CI file when -ci_test is present
+	if (HasArgument("-ci_test"))
+	{
+		// The helper in this TU will write "ci_test.txt" containing 1
+		WriteCiTestFile(1);
+	}
+
+	// Iterate and parse key=value style args
+	for (const auto &arg : s_ClArguments)
+	{
+		// --headless or -no-ui : run without showing UI (example usage, implement the mode as needed)
+		if (arg == "--headless" || arg == "-no-ui")
+		{
+			EDITOR_INFO_TAG("Editor", "Starting in headless/no-ui mode due to argument: {}", arg);
+			// Set any internal flags or call methods to enter headless mode
+			// e.g., Application::Get().SetHeadless(true);   // implement as needed
+		}
+
+		// Change logging level at startup
+		// THIS HAS BEEN MOVED TO PLATFORM CONTEXT INIT
+		/*
+		constexpr std::string logPrefix = "--verbose";
+		if (arg.starts_with(logPrefix))
+		{
+			std::string level = arg.substr(logPrefix.size());
+			EDITOR_INFO_TAG("Editor", "Requested log level: {}", level);
+			// Use your logging API to set the level, e.g. Log::SetLevelFromString(level);
+			// If you don't have such a helper, map strings to levels here and call Log::SetLevel(...)
+		}
+		*/
+
+		// Example: --run-task=name  -> you could dispatch internal tasks or tests
+		constexpr std::string_view taskPrefix = "--run-task=";
+		if (arg.starts_with(taskPrefix))
+		{
+			std::string taskName = arg.substr(taskPrefix.size());
+			EDITOR_INFO_TAG("Editor", "Dispatching startup task: {}", taskName);
+			// Dispatch your task: if (taskName == "build-shaders") BuildShaderPack();
+		}
+	}
 }
 
-SceneryEditorX::Application *SceneryEditorX::CreateApplication(const std::vector<std::string> &args)
+class Launcher : public SceneryEditorX::Application
 {
+public:
+	Launcher(const SceneryEditorX::PlatformContext &context, SceneryEditorX::AppData appData) : Application(context), m_AppData(std::move(appData))
+	{
+	}
 
-    // Return a new instance of the editor application
-    //return new Launcher(args);
+	Launcher(const SceneryEditorX::PlatformContext &context, const SceneryEditorX::Ref<SceneryEditorX::UserPreferences> &userPreferences) 
+	: Application(context), m_UserPreferences(userPreferences)
+	{
+		s_ClArguments = context.GetCommandLineArgs();
+		ProcessClArgs(); // Process command line arguments to set internal flags before initialization
+		EDITOR_INFO_TAG("Editor", "=== Initializing Editor with PlatformContext and UserPreferences ===");
+		EDITOR_INFO_TAG("Editor", "Working Directory: {}", context.GetWorkingDirectory());
+		EDITOR_INFO_TAG("Editor", "Temp Directory: {}", context.GetTempDirectory());
+
+		if (m_ProjectPath.empty())
+			m_ProjectPath = "SceneryEditorX/Projects/Default.edX";
+	}
+
+private:
+	std::string m_ProjectPath;
+	SceneryEditorX::AppData m_AppData;
+	std::filesystem::path m_PersistentStoragePath;
+	SceneryEditorX::Ref<SceneryEditorX::UserPreferences> m_UserPreferences;
+};
+
+void SplashHandler::CreateSplashScreen()
+{
+	// load splash screen image
+	SDL_Surface* image = SDL_LoadPNG("resources/splash_screen.png");
+	if (!image)
+	{
+		LAUNCHER_CORE_ERROR("Failed to load splash screen image: %s", SDL_GetError());
+		return;
+	}
+
+	// create splash screen window centered on screen
+	s_SplashScreen_Window = SDL_CreateWindow(
+		"splash_screen",
+		image->w,
+		image->h,
+		SDL_WINDOW_BORDERLESS | SDL_WINDOW_ALWAYS_ON_TOP
+	);
+
+	if (!s_SplashScreen_Window)
+	{
+		LAUNCHER_CORE_ERROR("Failed to create splash screen window: %s", SDL_GetError());
+		SDL_DestroySurface(image);
+		return;
+	}
+
+	// get window surface
+	SDL_Surface* window_surface = SDL_GetWindowSurface(s_SplashScreen_Window);
+	if (!window_surface)
+	{
+		LAUNCHER_CORE_ERROR("Failed to get window surface: %s", SDL_GetError());
+		SDL_DestroyWindow(s_SplashScreen_Window);
+		SDL_DestroySurface(image);
+		return;
+	}
+
+	// blit image to window surface
+	if (!SDL_BlitSurface(image, nullptr, window_surface, nullptr))
+	{
+		LAUNCHER_CORE_ERROR("Failed to blit surface: %s", SDL_GetError());
+		SDL_DestroyWindow(s_SplashScreen_Window);
+		SDL_DestroySurface(image);
+		return;
+	}
+
+	// update window surface to display the image
+	if (!SDL_UpdateWindowSurface(s_SplashScreen_Window))
+	{
+		LAUNCHER_CORE_ERROR("Failed to update window surface: %s", SDL_GetError());
+		SDL_DestroyWindow(s_SplashScreen_Window);
+		SDL_DestroySurface(image);
+		return;
+	}
+
+	SDL_DestroySurface(image);
+}
+
+SceneryEditorX::Application* SceneryEditorX::CreateApplication(const PlatformContext& context)
+{
+	s_ClArguments = context.GetCommandLineArgs();
+	ProcessClArgs(); // Process command line arguments to set internal flags before initialization
+
+	AppData appData;
+	appData.splashScreen	= true;	 // Ensure splash screen is enabled for the launcher
+	appData.resizable		= false; // Disable resizing for the launcher window
+	appData.fullscreen		= false; // Ensure the launcher does not start in fullscreen
+	appData.decorated		= false;
+
+	// Return a new instance of the launcher application
+	return new Launcher(context, std::move(appData));
 }
 
 /// -------------------------------------------------------

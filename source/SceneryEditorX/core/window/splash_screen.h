@@ -38,29 +38,29 @@
 namespace SceneryEditorX
 {
 
-    class SplashScreen
-    {
-    public:
+	class SplashScreen
+	{
+	public:
 		SplashScreen();
 		~SplashScreen() = default;
-        void HideSplashScreen();
+		void HideSplashScreen();
 		void Show();
-        void Close();
+		void Close();
 
-    private:
-        RenderContext renderContext;
-        GLFWwindow *splashWindow = nullptr;
-        VkSurfaceKHR splashSurface = VK_NULL_HANDLE;
-        Ref<SwapChain> splashSwap;
-        Ref<Texture2D> splashTexture;
+	private:
+		RenderContext renderContext;
+		GLFWwindow *splashWindow = nullptr;
+		VkSurfaceKHR splashSurface = VK_NULL_HANDLE;
+		Ref<SwapChain> splashSwap;
+		Ref<Texture2D> splashTexture;
 
-        // -------------------------------------------------------
+		// -------------------------------------------------------
 
-        bool InitializeSplashContext();
-        bool CreateSplashTexture(unsigned char *imageData, int width, int height);
-        void RenderSplashScreen();
-        void CleanupSplashContext();
-    };
+		bool InitializeSplashContext();
+		bool CreateSplashTexture(unsigned char *imageData, int width, int height);
+		void RenderSplashScreen();
+		void CleanupSplashContext();
+	};
 }
 */
 
