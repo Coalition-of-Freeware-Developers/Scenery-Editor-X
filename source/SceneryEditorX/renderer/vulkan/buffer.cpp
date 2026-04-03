@@ -38,50 +38,47 @@
 namespace SceneryEditorX
 {
 
-Buffer::Buffer(const size_t stride, const uint32_t elementCount, const void *data, const bool mappable, const char *name)
-: m_Allocator(MemoryAllocator::GetAllocator())
-, m_StrideUnaligned(static_cast<uint32_t>(stride))
-, m_Stride(static_cast<uint32_t>(stride))
-, m_ElementCount(elementCount)
-{
-SetObjectName(name ? name : "");
+	Buffer::Buffer(const size_t stride, const uint32_t elementCount, const void *data, const bool mappable, const char *name)
+	: m_Allocator(MemoryAllocator::GetAllocator()), m_StrideUnaligned(static_cast<uint32_t>(stride)), m_Stride(static_cast<uint32_t>(stride)), m_ElementCount(elementCount)
+	{
+		SetObjectName(name ? name : "");
+		
+		const VkDeviceSize totalSize = static_cast<VkDeviceSize>(stride) * elementCount;
+		if (totalSize == 0 || m_Allocator == VK_NULL_HANDLE)
+		return;
+		
+		VkBufferCreateInfo bufferCI{};
+		bufferCI.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+		bufferCI.size = totalSize;
+		bufferCI.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+		bufferCI.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+		
+		VmaAllocationCreateInfo allocCI{};
+		allocCI.usage = VMA_MEMORY_USAGE_AUTO;
+		if (mappable)
+		allocCI.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+	
+		const VkResult result = MemoryAllocator::CreateBuffer(bufferCI, allocCI, m_Buffer, m_Allocation);
+		if (result != VK_SUCCESS)
+		{
+			SEDX_CORE_ERROR_TAG("Buffer", "Failed to create buffer '{}'", name ? name : "");
+			m_Buffer = VK_NULL_HANDLE;
+			m_Allocation = VK_NULL_HANDLE;
+			return;
+		}
+	
+		if (data && mappable)
+		{
+			void *mapped = Map();
+			if (mapped)
+			{
+				memcpy(mapped, data, static_cast<size_t>(totalSize));
+				Unmap();
+			}
+		}
+	}
 
-const VkDeviceSize totalSize = static_cast<VkDeviceSize>(stride) * elementCount;
-if (totalSize == 0 || m_Allocator == VK_NULL_HANDLE)
-return;
-
-VkBufferCreateInfo bufferCI{};
-bufferCI.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-bufferCI.size = totalSize;
-bufferCI.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-bufferCI.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-VmaAllocationCreateInfo allocCI{};
-allocCI.usage = VMA_MEMORY_USAGE_AUTO;
-if (mappable)
-allocCI.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
-
-const VkResult result = MemoryAllocator::CreateBuffer(bufferCI, allocCI, m_Buffer, m_Allocation);
-if (result != VK_SUCCESS)
-{
-SEDX_CORE_ERROR_TAG("Buffer", "Failed to create buffer '{}'", name ? name : "");
-m_Buffer = VK_NULL_HANDLE;
-m_Allocation = VK_NULL_HANDLE;
-return;
-}
-
-if (data && mappable)
-{
-void *mapped = Map();
-if (mapped)
-{
-memcpy(mapped, data, static_cast<size_t>(totalSize));
-Unmap();
-}
-}
-}
-
-Buffer::Buffer(const VmaAllocator allocator, const VkDeviceSize size, const VkBufferUsageFlags usage, const VmaAllocationCreateInfo& allocInfo)
+	Buffer::Buffer(const VmaAllocator allocator, const VkDeviceSize size, const VkBufferUsageFlags usage, const VmaAllocationCreateInfo& allocInfo)
 		: m_Allocator(allocator ? allocator : MemoryAllocator::GetAllocator())
 	{
 		VkBufferCreateInfo bufferCI{};

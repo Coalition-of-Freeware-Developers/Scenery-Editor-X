@@ -28,6 +28,7 @@
  * Created: 02/03/2026
  * -------------------------------------------------------
  */
+// ReSharper disable CommentTypo
 #include "gbuffer.h"
 #include "renderer.h"
 #include "renderer_buffers.h"
@@ -267,7 +268,7 @@ namespace SceneryEditorX
 			s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::blur)] = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, 4096, 4096, 1, 1, VK_FORMAT_R16G16B16A16_SFLOAT, UnorderedAccessView | ShaderViews, "blur_scratch"});
 			SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::blur)] != nullptr, "Failed to create blur render target");
 
-			const uint32_t lowestDimension = 16; // lowest mip is 16x16, preserving directional detail for diffuse IBL (1x1 loses directionality)
+			constexpr uint32_t lowestDimension = 16; // lowest mip is 16x16, preserving directional detail for diffuse IBL (1x1 loses directionality)
 			s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::skysphere)] = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, 4096, 2048, 1, compute_mip_count(4096, 2048, lowestDimension), VK_FORMAT_B10G11R11_UFLOAT_PACK32, UnorderedAccessView | ShaderViews | PerMipViews | BlitClear | QueueShare, "skysphere"});
 			SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::skysphere)] != nullptr, "Failed to create skysphere render target");
 
@@ -688,7 +689,7 @@ namespace SceneryEditorX
 		SEDX_CORE_ASSERT(standard_texture(Renderer_StandardTexture::White) != nullptr, "Failed to create white texture");
 	}
 
-	ImageResource * Renderer::GetStandardTexture(const Renderer_StandardTexture type)
+	ImageResource *Renderer::GetStandardTexture(const Renderer_StandardTexture type)
 	{
 		return s_StandardTextures[static_cast<uint8_t>(type)].Get();
 	}

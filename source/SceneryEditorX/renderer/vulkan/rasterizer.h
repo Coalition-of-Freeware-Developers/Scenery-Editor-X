@@ -29,23 +29,12 @@
  * -------------------------------------------------------
  */
 #pragma once
+#include "enums.h"
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-
-	/**
-	 * @enum PolygonMode
-	 * @brief Vulkan polygon fill mode, exposed on RasterizerState objects.
-	 */
-	enum class PolygonMode : uint8_t
-	{
-		Solid,
-		Wireframe,
-		Point,
-		MaxEnum
-	};
 
 	/**
 	 * @struct RasterStateSpec
@@ -78,7 +67,7 @@ namespace SceneryEditorX
 		[[nodiscard]] PolygonMode GetPolygonMode()       const { return m_PolygonMode; }
 		[[nodiscard]] bool        IsDepthBiasEnabled()   const { return m_DepthBiasEnabled; }
 		[[nodiscard]] bool		  IsDepthClipEnabled()   const { return m_DepthClipEnabled; }
-		[[nodiscard]] float       GetDepthBiasConstant() const { return m_DepthBiasConstant; }
+		[[nodiscard]] float       GetDepthBias()		 const { return m_DepthBias; }
 		[[nodiscard]] float       GetDepthBiasSlope()    const { return m_DepthBiasSlope; }
 		[[nodiscard]] float		  GetDepthBiasClamp()    const { return m_DepthBiasClamp; }
 		[[nodiscard]] float		  GetLineWidth()         const { return m_LineWidth; }
@@ -92,7 +81,7 @@ namespace SceneryEditorX
 		PolygonMode m_PolygonMode       = PolygonMode::Solid;
 		bool        m_DepthBiasEnabled  = false;
 		bool		m_DepthClipEnabled	= true;
-		float       m_DepthBiasConstant = 0.0f;
+		float       m_DepthBias			= 0.0f;
 		float       m_DepthBiasSlope    = 0.0f;
 		float		m_DepthBiasClamp    = 0.0f;
 		float		m_LineWidth         = 1.0f;

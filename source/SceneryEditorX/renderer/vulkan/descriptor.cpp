@@ -1,4 +1,4 @@
-/**
+﻿/**
  * -------------------------------------------------------
  * Scenery Editor X
  * -------------------------------------------------------
@@ -37,9 +37,17 @@
 
 namespace SceneryEditorX
 {
-	Descriptor::Descriptor()
+	Descriptor::Descriptor(const DescriptorSpec &spec) : m_Spec(spec)
 	{
 		m_Device = RenderContext::Get()->GetDevice();
+		m_Name = spec.name;
+		m_Type = spec.type;
+		m_ImgLayout = spec.layout;
+		m_Slot = spec.slot;
+		m_Stage = spec.stage;
+		m_StructSize = spec.structSize;
+		m_AsArray = spec.asArray;
+		m_ArrayLength = spec.arrayLength;
 	}
 
 	Descriptor::~Descriptor()
@@ -143,11 +151,68 @@ namespace SceneryEditorX
 		return descriptorSet;
 	}
 
-	Descriptor::Descriptor(Descriptor &&other) noexcept : m_Device(other.m_Device), m_Pool(other.m_Pool), m_Layout(other.m_Layout)
+	Descriptor::Descriptor(const Descriptor& other)
+		: m_Device(other.m_Device)
+		, m_Spec(other.m_Spec)
+		, m_Slot(other.m_Slot)
+		, m_Stage(other.m_Stage)
+		, m_StructSize(other.m_StructSize)
+		, m_ArrayLength(other.m_ArrayLength)
+		, m_Type(other.m_Type)
+		, m_ImgLayout(other.m_ImgLayout)
+		, m_Pool(VK_NULL_HANDLE)
+		, m_Layout(VK_NULL_HANDLE)
+		, m_AsArray(other.m_AsArray)
+		, m_Name(other.m_Name)
 	{
-		other.m_Device = VK_NULL_HANDLE;
+	}
+
+	Descriptor& Descriptor::operator=(const Descriptor& other)
+	{
+		if (this != &other)
+		{
+			if (m_Device.IsValid())
+			{
+				if (m_Pool != VK_NULL_HANDLE)
+				{
+					vkDestroyDescriptorPool(m_Device->GetLogicalDevice(), m_Pool, nullptr);
+					m_Pool = VK_NULL_HANDLE;
+				}
+				if (m_Layout != VK_NULL_HANDLE)
+				{
+					vkDestroyDescriptorSetLayout(m_Device->GetLogicalDevice(), m_Layout, nullptr);
+					m_Layout = VK_NULL_HANDLE;
+				}
+			}
+			m_Device = other.m_Device;
+			m_Spec = other.m_Spec;
+			m_Slot = other.m_Slot;
+			m_Stage = other.m_Stage;
+			m_StructSize = other.m_StructSize;
+			m_ArrayLength = other.m_ArrayLength;
+			m_Type = other.m_Type;
+			m_ImgLayout = other.m_ImgLayout;
+			m_AsArray = other.m_AsArray;
+			m_Name = other.m_Name;
+		}
+		return *this;
+	}
+
+	Descriptor::Descriptor(Descriptor &&other) noexcept
+		: m_Device(other.m_Device), m_Spec(std::move(other.m_Spec))
+		, m_Slot(other.m_Slot), m_Stage(other.m_Stage)
+		, m_StructSize(other.m_StructSize)
+		, m_ArrayLength(other.m_ArrayLength)
+		, m_Type(other.m_Type), m_ImgLayout(other.m_ImgLayout)
+		, m_Pool(other.m_Pool), m_Layout(other.m_Layout)
+		, m_AsArray(other.m_AsArray), m_Name(std::move(other.m_Name))
+	{
+		other.m_Device = nullptr;
 		other.m_Pool = VK_NULL_HANDLE;
 		other.m_Layout = VK_NULL_HANDLE;
+		other.m_Slot = 0;
+		other.m_Stage = 0;
+		other.m_Type = DescriptorType::MaxEnum;
 	}
 	
 	Descriptor &Descriptor::operator=(Descriptor &&other) noexcept
@@ -158,17 +223,35 @@ namespace SceneryEditorX
 			if (m_Device.IsValid())
 			{
 				if (m_Pool != VK_NULL_HANDLE)
-					vkDestroyDescriptorPool(m_Device->GetLogicalDevice(), m_Pool, nullptr);
+				{
+				    vkDestroyDescriptorPool(m_Device->GetLogicalDevice(), m_Pool, nullptr);
+				}
 				if (m_Layout != VK_NULL_HANDLE)
-					vkDestroyDescriptorSetLayout(m_Device->GetLogicalDevice(), m_Layout, nullptr);
+				{
+				    vkDestroyDescriptorSetLayout(m_Device->GetLogicalDevice(), m_Layout, nullptr);
+				}
 			}
+
 			m_Device = other.m_Device;
+			m_Spec = std::move(other.m_Spec);
+			m_Slot = other.m_Slot;
+			m_Stage = other.m_Stage;
+			m_StructSize = other.m_StructSize;
+			m_ArrayLength = other.m_ArrayLength;
+			m_Type = other.m_Type;
+			m_ImgLayout = other.m_ImgLayout;
 			m_Pool = other.m_Pool;
 			m_Layout = other.m_Layout;
-			other.m_Device = VK_NULL_HANDLE;
+			m_AsArray = other.m_AsArray;
+			m_Name = std::move(other.m_Name);
+			other.m_Device = nullptr;
 			other.m_Pool = VK_NULL_HANDLE;
 			other.m_Layout = VK_NULL_HANDLE;
+			other.m_Slot = 0;
+			other.m_Stage = 0;
+			other.m_Type = DescriptorType::MaxEnum;
 		}
+
 		return *this;
 	}
 	

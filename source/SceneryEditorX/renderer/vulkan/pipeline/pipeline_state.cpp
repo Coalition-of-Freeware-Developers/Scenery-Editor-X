@@ -29,6 +29,9 @@
  * -------------------------------------------------------
  */
 #include "pipeline_state.h"
+
+#include "SceneryEditorX/renderer/vulkan/shader/shader.h"
+
 #include <SceneryEditorX/renderer/vulkan/blend_states.h>
 #include <SceneryEditorX/renderer/vulkan/depth_stencil.h>
 #include <SceneryEditorX/renderer/vulkan/image_resource.h>
@@ -40,6 +43,10 @@
 namespace SceneryEditorX
 {
 
+/**
+	 * @brief 
+	 * @param pso 
+	 */
 	static void Validate(PipelineState& pso)
 	{
 		// The shaders map is keyed by stage index (uint32_t). Use find so we don't insert default entries
@@ -78,12 +85,23 @@ namespace SceneryEditorX
 		SEDX_CORE_ASSERT(pso.name != nullptr, "Name your pipeline state");
 	}
 
+	/**
+	 * @brief 
+	 * @param a 
+	 * @param b 
+	 * @return 
+	 */
 	static uint64_t HashCombine(const uint64_t a, const uint64_t b)
 	{
 		return a * 31 + b;
 	}
 
-	static uint64_t ComputeHash(PipelineState& pso)
+	/**
+	 * @brief  
+	 * @param pso 
+	 * @return 
+	 */
+	static uint64_t ComputeHash(PipelineState &pso)
 	{
 		uint64_t hash = 0;
 	
@@ -117,7 +135,7 @@ namespace SceneryEditorX
 				continue;
 
 			// Use pointer address as a stable-enough identity for hashing here
-			hash = HashCombine(hash, static_cast<uint64_t>(reinterpret_cast<uintptr_t>(shader)));
+			hash = HashCombine(hash, reinterpret_cast<uintptr_t>(shader));
 		}
 	
 		// render target
@@ -144,13 +162,19 @@ namespace SceneryEditorX
 			}
 	
 			hash = HashCombine(hash, pso.renderTarget_ArrayIndex);
-			hash = HashCombine(hash, static_cast<uint64_t>(pso.isMultiview));
+			hash = HashCombine(hash, pso.isMultiview);
 		}
 	
 		return hash;
 	}
 	
-	static void GetDimensions(PipelineState& pso, uint32_t* width, uint32_t* height)
+	/**
+	 * @brief 
+	 * @param pso 
+	 * @param width 
+	 * @param height  
+	 */
+	static void GetDimensions(PipelineState &pso, uint32_t *width, uint32_t *height)
 	{
 		SEDX_CORE_ASSERT(width && height);
 	
@@ -175,8 +199,8 @@ namespace SceneryEditorX
 	
 		if (pso.resolutionScale)
 		{ 
-			*width  = static_cast<uint32_t>(*width * pso.resolutionScale);
-			*height = static_cast<uint32_t>(*height * pso.resolutionScale);
+			*width  = *width * pso.resolutionScale;
+			*height = *height * pso.resolutionScale;
 		}
 	}
 
@@ -194,7 +218,7 @@ namespace SceneryEditorX
 
 	void PipelineState::Prepare()
 	{
-		//m_hash = compute_hash(*this);
+		m_Hash = ComputeHash(*this);
 		GetDimensions(*this, &m_Width, &m_Height);
 		Validate(*this);
 	}
@@ -207,7 +231,7 @@ namespace SceneryEditorX
 		if (clearStencil != STENCIL_LOAD && clearStencil != STENCIL_DONT_CARE)
 			return true;
 
-	    for (const PipelineStateColor& color : clearColor)
+		for (const PipelineStateColor& color : clearColor)
 		{
 			// Alpha < 0 means "load" guard; non-negative alpha indicates a clear color
 			if (color.a >= 0.0f)
@@ -239,11 +263,16 @@ namespace SceneryEditorX
 		return HasShader(Stage::TessellationControl) && HasShader(Stage::TessellationEvaluation);
 	}
 
+	PipelineState PipelineState::GetState()
+	{
+		return {};
+	}
+
 	bool PipelineState::HasShader(const Stage shaderStage) const
 	{
 		const uint32_t key = static_cast<uint32_t>(shaderStage);
 		auto it = shaders.find(key);
-		return (it != shaders.end() && it->second != nullptr);
+		return it != shaders.end() && it->second != nullptr;
 	}
 
 } // namespace SceneryEditorX

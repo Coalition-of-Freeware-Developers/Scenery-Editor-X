@@ -38,6 +38,11 @@
 namespace SceneryEditorX
 {
 
+/**
+	 * @brief Converts an ImageType enum to the corresponding VkImageType.
+	 * @param type The ImageType enum value.
+	 * @return The corresponding VkImageType value.
+	 */
 	static VkImageType GetImageType(const ImageType type)
 	{
 		switch (type)
@@ -57,6 +62,13 @@ namespace SceneryEditorX
 		SEDX_CORE_WARN_TAG("Image", "Unknown ImageType specified, defaulting to VK_IMAGE_TYPE_2D.");
 		return VK_IMAGE_TYPE_2D; // Default fallback
 	}
+
+	/**
+	 * @brief Finds a suitable memory type index based on the provided filter and flags.
+	 * @param filter The memory type filter.
+	 * @param flags The desired memory property flags.
+	 * @return The index of a suitable memory type.
+	 */
 	static uint32_t FindMemoryType(uint32_t filter, VkMemoryPropertyFlags flags)
 	{
 		const Ref<Device> device = RenderContext::Get()->GetDevice();
@@ -75,7 +87,6 @@ namespace SceneryEditorX
 		return 0;
 	}
 
-
 	Image::Image(const ImageSpec &spec) : m_Spec(spec)
 	{
 		const Ref<Device> device = RenderContext::Get()->GetDevice();
@@ -88,7 +99,10 @@ namespace SceneryEditorX
 
 	Image::~Image()
 	{
-		QueueManager::AddDeletionQueue(ResourceType::Image, m_Image);
+		if (m_Image != VK_NULL_HANDLE)
+	    {
+	        QueueManager::AddDeletionQueue(ResourceType::Image, m_Image);
+	    }
 	}
 
 	void Image::CreateImage(const ImageSpec &spec, VkImage &outImage, VkDeviceMemory &outMemory)

@@ -30,6 +30,7 @@
  */
 #include "shader.h"
 #include "shader_stage.h"
+#include <SceneryEditorX/renderer/vulkan/descriptor.h>
 #include <SceneryEditorX/renderer/vulkan/render_context.h>
 #include <volk/volk.h>
 
@@ -70,7 +71,7 @@ namespace SceneryEditorX
 	
 			VkDescriptorSetLayoutCreateInfo createInfo = {};
 			createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-			createInfo.bindingCount = (uint32_t)descLayoutBindings.size();
+			createInfo.bindingCount = static_cast<uint32_t>(descLayoutBindings.size());
 			createInfo.pBindings = descLayoutBindings.data();
 			createInfo.pNext = nullptr;
 	
@@ -142,7 +143,7 @@ namespace SceneryEditorX
 					continue;
 				}
 	
-				VkDescriptorSetLayoutBinding layoutBinding = {};
+				VkDescriptorSetLayoutBinding layoutBinding;
 				layoutBinding.binding = i.binding;
 				layoutBinding.descriptorType = GetInputType(i.type);
 	
@@ -170,6 +171,51 @@ namespace SceneryEditorX
 		return bindings;
 	}
 
+	std::vector<Descriptor> Shader::GetDescriptors()
+	{
+		std::vector<Descriptor> result;
+		
+		for (auto& [set, inputs] : m_Input)
+		{
+			for (const ShaderInput& input : inputs)
+			{
+				DescriptorType descType = DescriptorType::MaxEnum;
+				switch (input.type)
+				{
+				case ShaderInputType::UniformBuffer:
+				case ShaderInputType::UniformBufferSet: descType = DescriptorType::ConstantBuffer;
+				    break;
+				case ShaderInputType::StorageBuffer:
+				case ShaderInputType::StorageBufferSet: descType = DescriptorType::StructuredBuffer;
+				    break;
+				case ShaderInputType::CombinedImageSampler:
+				case ShaderInputType::Texture: descType = DescriptorType::Image;
+				    break;
+				case ShaderInputType::StorageImage: descType = DescriptorType::TextureStorage; 
+				    break;
+				default:	
+				    break;
+				}
+				
+				if (descType == DescriptorType::MaxEnum)
+					continue;
+				
+				DescriptorSpec spec{};
+				spec.name        = input.debugName;
+				spec.type        = descType;
+				spec.layout      = Layout::ImageLayout::MaxEnum;
+				spec.slot        = input.binding;
+				spec.stage       = static_cast<uint32_t>(GetStage(input.stage));
+				spec.structSize  = 0;
+				spec.asArray     = input.count > 1;
+				spec.arrayLength = input.count;
+				result.emplace_back(spec);
+			}
+		}
+		
+		return result;
+	}
+	
 }
 
 // -------------------------------------------------------

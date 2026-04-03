@@ -250,11 +250,11 @@ namespace SceneryEditorX
 				window.Tick();
 		}
 		
-		ImGui::Render();
-		
-		// main window
-		UI::Render(ImGui::GetDrawData());
-		Renderer::SubmitAndPresent();
+		if (Renderer::BeginFrame())
+		{
+		    UI::Render(ImGui::GetDrawData());
+		    Renderer::SubmitAndPresent();
+		}
 		
 		// child windows
 		if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)

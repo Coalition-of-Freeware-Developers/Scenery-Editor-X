@@ -28,6 +28,7 @@
 * Created: 24/02/2026
 * -------------------------------------------------------
 */
+// ReSharper disable CppConstValueFunctionReturnType
 #include "shader_stage.h"
 #include "shader_manager.h"
 #include <SceneryEditorX/renderer/vulkan/render_context.h>
@@ -42,7 +43,6 @@ namespace SceneryEditorX
 	#define CACHE_FILEPATH "cache"
 	
 	// -------------------------------------------------------
-
 
 	static std::vector<uint32_t> ReadCachedShaderData(const std::string& filepath)
 	{
@@ -90,16 +90,23 @@ namespace SceneryEditorX
 		std::string directoryPath = std::string(filepath.begin(), filepath.begin() + (lastD != std::string::npos ? lastD : 0));
 		std::string shaderName = std::string(filepath.begin(), filepath.begin() + filepath.find_last_of('.'));
 	
-		// If the provided filepath already references the resources directory (or is absolute),
-		// don't prefix it with SOURCE_FILEPATH to avoid duplicated "resources/shaders/resources/..." paths.
+		/**
+		 * If the provided filepath already references the resources directory (or is absolute),
+		 * don't prefix it with SOURCE_FILEPATH to avoid duplicated "resources/shaders/resources/..." paths.
+		 */
 		std::string codeFilepath;
-		bool filepathStartsWithResources = (filepath.rfind("resources", 0) == 0) || (filepath.rfind("resources\\", 0) == 0);
+		bool filepathStartsWithResources = (filepath.starts_with("resources")) || (filepath.starts_with("resources\\"));
 		bool filepathLooksAbsolute = !filepath.empty() && (filepath[0] == '/' || (filepath.size() > 1 && filepath[1] == ':'));
 
 		if (filepathStartsWithResources || filepathLooksAbsolute)
+		{
 			codeFilepath = filepath;
+		}
 		else
+		{
 			codeFilepath = std::string(SOURCE_FILEPATH) + filepath;
+		}
+
 		// Use filesystem::path to correctly join cache directory and shader name
 		std::filesystem::path cacheDir = std::filesystem::path(CACHE_FILEPATH);
 		std::filesystem::path cacheFile = cacheDir / (shaderName + ".spv");
@@ -119,9 +126,11 @@ namespace SceneryEditorX
 		}
 	
 		// Create the cache subdirectory for this shader
-		std::filesystem::path cacheSubdir = cacheDir / directoryPath;
-		if (!std::filesystem::exists(cacheSubdir))
-			std::filesystem::create_directories(cacheSubdir);
+		std::filesystem::path cacheSubDir = cacheDir / directoryPath;
+		if (!std::filesystem::exists(cacheSubDir))
+		{
+			std::filesystem::create_directories(cacheSubDir);
+		}
 	
 		if (std::filesystem::exists(cacheFilepath) && !shouldRecompile)
 		{
@@ -133,7 +142,9 @@ namespace SceneryEditorX
 			SEDX_CORE_TRACE_TAG("Shader", "Compiling shader: %s", cacheFilepath.c_str());
 			data = ShaderCompiler::CompileVulkanShader(stage, codeFilepath);
 			if (!data.empty())
-				WriteShaderBinary(data.data(), (uint32_t)data.size(), cacheFilepath);
+			{
+				WriteShaderBinary(data.data(), static_cast<uint32_t>(data.size()), cacheFilepath);
+			}
 		}
 	
 		m_Input = ShaderCompiler::Reflect(stage, data);
@@ -147,9 +158,9 @@ namespace SceneryEditorX
 		}
 
 		VkShaderModuleCreateInfo createInfo{};
-		createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+		createInfo.sType	= VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 		createInfo.codeSize = data.size() * sizeof(uint32_t);
-		createInfo.pCode = data.data();
+		createInfo.pCode	= data.data();
 	
 		SEDX_VK_RESULT_ASSERT(vkCreateShaderModule(device->GetLogicalDevice(), &createInfo, nullptr, &m_ShaderModule), "Can't create shader module")
 	}
@@ -164,27 +175,27 @@ namespace SceneryEditorX
 	
 	void ShaderStage::Recompile()
 	{
-		const Ref<Device> device = RenderContext::Get()->GetDevice();
-		std::vector<uint32_t> data = ShaderCompiler::CompileVulkanShader(m_Stage, SOURCE_FILEPATH + m_Filepath);
+		const Ref<Device> device	= RenderContext::Get()->GetDevice();
+		std::vector<uint32_t> data	= ShaderCompiler::CompileVulkanShader(m_Stage, SOURCE_FILEPATH + m_Filepath);
 	
-		std::string shaderName = std::string(m_Filepath.begin(), m_Filepath.begin() + m_Filepath.find_last_of('.'));
-		std::string cacheFilepath = CACHE_FILEPATH + shaderName + ".spv";
+		std::string shaderName		= std::string(m_Filepath.begin(), m_Filepath.begin() + m_Filepath.find_last_of('.'));
+		std::string cacheFilepath	= CACHE_FILEPATH + shaderName + ".spv";
 		WriteShaderBinary(data.data(), (uint32_t)data.size(), cacheFilepath);
 	
 		m_Input = ShaderCompiler::Reflect(m_Stage, data);
 	
 		VkShaderModuleCreateInfo createInfo{};
-		createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+		createInfo.sType	= VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 		createInfo.codeSize = data.size() * sizeof(uint32_t);
-		createInfo.pCode = data.data();
+		createInfo.pCode	= data.data();
 	
 		vkDestroyShaderModule(device->GetLogicalDevice(), m_ShaderModule, nullptr);
 		m_ShaderModule = VK_NULL_HANDLE;
 	
 		SEDX_VK_RESULT_ASSERT(vkCreateShaderModule(device->GetLogicalDevice(), &createInfo, nullptr, &m_ShaderModule), "Can't create shader module");
 	}
-	
-	VkPipelineShaderStageCreateInfo const ShaderStage::GetStageCreateInfo()
+
+	const VkPipelineShaderStageCreateInfo ShaderStage::GetStageCreateInfo() 
 	{
 		VkPipelineShaderStageCreateInfo createInfo{};
 		createInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;

@@ -35,6 +35,8 @@
 
 namespace SceneryEditorX
 {
+	class ShaderManager;
+
 	/**
 	 * TODO: This class is currently unused, but will be the main way to manage pipeline lifetimes once the renderer is fully modularized and pipelines are created/destroyed by individual modules.
 	 * Should replace and consolidate functionality inside the pipeline class itself.

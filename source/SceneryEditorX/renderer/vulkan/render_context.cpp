@@ -42,8 +42,8 @@ namespace SceneryEditorX
 
 	// Static instance of the render context
 	static Ref<RenderContext> s_Instance = nullptr;
-	constexpr uint32_t StagingBufferSize = 256 * 1024 * 1024;
-	constexpr uint32_t TimeStampPerPool = 64;
+	constexpr uint32_t STAGING_BUFFER_SIZE = 256 * 1024 * 1024;
+	constexpr uint32_t TIME_STAMP_PER_POOL = 64;
 
 	static bool s_IsInitialized = false;
 

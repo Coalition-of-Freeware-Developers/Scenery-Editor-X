@@ -71,7 +71,7 @@ namespace SceneryEditorX
 		[[nodiscard]] VkBlendFactor GetDstAlpha()					const { return m_DstAlpha; }
 		[[nodiscard]] VkBlendOp     GetAlphaOp()					const { return m_AlphaOp; }
 		[[nodiscard]] VkCompareOp	GetDepthComparisonFunction()	const { return m_Depth_CompFunc; }
-
+		[[nodiscard]] float GetBlendFactor()                        const { return m_BlendFactor; }
 		[[nodiscard]] uint64_t GetHash()							const { return m_Hash; }
 	    [[nodiscard]] bool operator==(const BlendState& state)		const { return m_Hash == state.m_Hash; }
 

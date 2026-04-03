@@ -29,24 +29,28 @@
  * -------------------------------------------------------
  */
 #pragma once
+#include "pipeline_state.h"
 #include <vector>
-#include <SceneryEditorX/renderer/vulkan/shader/shader_manager.h>
 
 // --------------------------------------------------------------
 
 namespace SceneryEditorX
 {
+	class Device;
+	class DescriptorSet;
+	class ShaderManager;
 
 	/**
 	 * @class Pipeline
 	 * @brief A helper class for creating Vulkan pipelines from 
 	 * a single input descriptor struct, to simplify the process of constructing different kinds of pipelines (e.g., graphics, compute).
 	 */
-	class Pipeline 
+	class Pipeline : public SharedObject
 	{
 	public:
 		Pipeline() = default;
-		~Pipeline() = default;
+		Pipeline(PipelineState &state, DescriptorSet *layout);
+		virtual ~Pipeline() override;
 	
 		// Descriptor grouping inputs required for creating a graphics pipeline.
 		struct GraphicsCreateInfo 
@@ -61,10 +65,31 @@ namespace SceneryEditorX
 			VkFormat colorFormat{ VK_FORMAT_UNDEFINED };
 			VkFormat depthFormat{ VK_FORMAT_UNDEFINED };
 		};
-	
+
+		static VkPipelineCache GetPipelineCache();
+		PipelineState* GetState()						{ return &m_State; }
+		VkPipeline Get() const							{ return m_Pipeline; }
+		VkPipelineLayout GetLayout() const				{ return m_Layout; }
+		void SetPipeline(VkPipeline resource)			{ m_Pipeline = resource; if (resource != VK_NULL_HANDLE) m_Destroyed = false; }
+		void SetLayout(VkPipelineLayout layout)			{ m_Layout = layout; if (layout != VK_NULL_HANDLE) m_Destroyed = false; }
+		uint32_t GetPushConstantStages() const			{ return m_PushConstant_Stages; }
+		void Destroy(VkDevice device = VK_NULL_HANDLE);
+		bool IsDestroyed() const { return m_Destroyed; }
+
 		// Create a graphics pipeline using a single grouped input structure.
 		// Returns VK_NULL_HANDLE on failure.
-		static VkPipeline CreateGraphics(const GraphicsCreateInfo& info);
+		[[deprecated]] static VkPipeline CreateGraphics(const GraphicsCreateInfo& info);
+
+	private:
+		static void CreatePipelineCache();
+		static void SavePipelineCache();
+
+		Ref<Device> m_Device;
+		VkPipeline m_Pipeline{ VK_NULL_HANDLE };
+		PipelineState m_State;
+		VkPipelineLayout m_Layout{ VK_NULL_HANDLE };
+		uint32_t m_PushConstant_Stages = 0;
+		bool m_Destroyed = false;
 	};
 
 }

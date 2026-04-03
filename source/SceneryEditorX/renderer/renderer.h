@@ -327,9 +327,7 @@ namespace SceneryEditorX
 		 */
 		static void SetCamera(Camera* camera);
 
-		/**
-		 * @brief Returns the currently active camera, or nullptr if none has been set.
-		 */
+		/* @brief Returns the currently active camera, or nullptr if none has been set. */
 		static Camera* GetCamera();
 
 		/**
@@ -340,6 +338,13 @@ namespace SceneryEditorX
 		 * @note The camera data should be updated before recording draw commands that use it.
 		 */
 		static void UpdateCameraUBO(uint32_t frameIndex);
+
+		/**
+		 * @brief Returns a pointer to the standard texture for the given type.
+		 * @param type The type of standard texture to retrieve.
+		 * @return Pointer to the requested standard texture.
+		 */
+		static ImageResource *GetStandardTexture(Renderer_StandardTexture type);
 
 	private:
 
@@ -417,12 +422,15 @@ namespace SceneryEditorX
 		static std::array<Ref<Buffer>,  static_cast<uint32_t>(Renderer_Buffer::MaxEnum)>& GetStructuredBuffers();
 		static std::array<Ref<Sampler>, static_cast<uint32_t>(Renderer_Sampler::MaxEnum)>& GetSamplers();
 
-		static ImageResource *GetStandardTexture(Renderer_StandardTexture type);
-
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		/// Render Passes                                                                                                 ///
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+		/**
+		 * @brief Record the render passes for the current frame.
+		 * @param graphicsPresent Command list for graphics and presentation operations.
+		 * @param compute Command list for compute operations (optional, may be nullptr).
+		 */
 		static void ProduceFrame(CommandList* graphicsPresent, CommandList* compute);
 
 		// One-shot LUT generation passes
@@ -488,24 +496,24 @@ namespace SceneryEditorX
 		 * @brief Returns the pre-built RasterizerState object for the given preset.
 		 * Objects are created once during renderer init and are never mutated.
 		 */
-		static RasterizerState* GetRasterizerState(Renderer_RasterizerState type);
+		static RasterizerState *GetRasterizerState(Renderer_RasterizerState type);
 
 		/**
 		 * @brief Returns the pre-built BlendState object for the given preset.
 		 */
-		static BlendState* GetBlendState(Renderer_BlendState type);
+		static BlendState *GetBlendState(Renderer_BlendState type);
 
 		/**
 		 * @brief Returns the pre-built DepthStencilState object for the given preset.
 		 */
-		static DepthStencilState* GetDepthStencilState(Renderer_DepthStencilState type);
+		static DepthStencilState *GetDepthStencilState(Renderer_DepthStencilState type);
 
 
 		/**
 		 * @brief Returns true when the given draw call should be submitted via the CPU-driven path.
 		 * GPU-indirect draws are handled separately and should be skipped in CPU loops.
 		 */
-		static bool IsCpuDrivenDraw(const struct Renderer_DrawCall& drawCall, const class Material* material);
+		static bool IsCpuDrivenDraw(const Renderer_DrawCall &drawCall, const class Material *material);
 
 		/**
 		 * @brief Binds the common per-frame textures (noise, depth, etc.) that every pass needs.
@@ -519,11 +527,6 @@ namespace SceneryEditorX
 		static void UpdateFrameConstantBuffer(CommandList *cmdList);
 
 		/**
-		 * @brief Writes per-draw transform and material data into the GPU draw-data buffer.
-		 * @return Index of the written draw-data slot (passed as push constant draw_index).
-		 */
-
-		/**
 		 * @brief Updates the draw calls for the current frame.
 		 * @param cmdList The command list to record the draw calls into.
 		 */
@@ -532,7 +535,7 @@ namespace SceneryEditorX
 		// -------------------------------------------------------
 
 		CommandList *m_CurrentCmdList; // Set at the beginning of each frame, used for resource updates and utility functions.
-		AssetManager *m_AssetManager; // Set during Init, used for loading models, textures, etc.
+		AssetManager *m_AssetManager;  // Set during Init, used for loading models, textures, etc.
 
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		/// Static State																								  ///
@@ -557,9 +560,12 @@ namespace SceneryEditorX
 		// Array of AABB data for all renderables, indexed by a per-renderable index; used for GPU-driven culling and other operations
 		static std::array<ShaderBuffer_Aabb, MAX_ARRAY_SIZE> m_Bindless_Aabbs;
 
-		static Flag m_BindlessSamplers_Dirty;
+		static Flag m_BindlessSamplers_Dirty; // Flag to indicate when bindless samplers need to be updated in shaders, set whenever sampler states change (e.g., anisotropy level changes)
 
-		// one-shot and feature-toggle state
+		/**
+		 * @struct PassState
+		 * @brief Tracks one-shot initialization and feature-toggle state for various render passes and resources. 
+		 */
 		struct PassState
 		{
 			// one-shot initialization (run once, never again unless reset)
@@ -585,7 +591,7 @@ namespace SceneryEditorX
 
 		};
 
-		static PassState m_PassState;
+		static PassState m_PassState; // Tracks one-shot initialization and feature-toggle state for various render passes and resources; used to conditionally execute certain passes or initialization steps
 		static PushConstantBuffer_Pass m_Pcb_Pass_Cpu; // Per-pass push constant staging buffer (written by passes, uploaded by PushConstants())
 		static ConstantBuffer_Frame m_Cb_Frame_Cpu; // Staging area for per-frame constants written by the CPU; copied to GPU buffer each frame
 

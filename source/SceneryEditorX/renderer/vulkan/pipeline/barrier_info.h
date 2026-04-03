@@ -129,8 +129,8 @@ namespace SceneryEditorX
         static Barrier ImageSync(ImageResource* img, BarrierType sync)
         {
             Barrier b;
-            b.type      = Type::ImageSync;
-            b.img   = img;
+            b.type		= Type::ImageSync;
+            b.img		= img;
             b.sync_type = sync;
             return b;
         }
@@ -185,8 +185,8 @@ namespace SceneryEditorX
 
         // for image sync with per-mip views (pre-captured layouts at insert time)
         std::array<Layout::ImageLayout, MAX_MIP_COUNT> per_MipLayouts = {};
-        uint32_t per_MipCount = 0;
-        bool has_PerMipViews = false;
+        uint32_t per_MipCount	= 0;
+        bool has_PerMipViews	= false;
     };
 
 }

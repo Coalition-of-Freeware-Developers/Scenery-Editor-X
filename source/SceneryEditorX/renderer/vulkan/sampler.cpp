@@ -70,7 +70,7 @@ namespace SceneryEditorX
 		m_Spec = {};
 		m_Sampler = nullptr;
 	}
-	
-} // namespace SceneryEditorX
+
+}
 
 // -----------------------------------------------------------------

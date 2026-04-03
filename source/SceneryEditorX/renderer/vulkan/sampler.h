@@ -61,11 +61,7 @@ namespace SceneryEditorX
 		Sampler(const SamplerSpec& spec);
 		virtual ~Sampler() override;
 
-		Sampler(const Sampler&);
-		Sampler& operator=(const Sampler&);
-		Sampler(Sampler&&) noexcept;
-		Sampler &operator=(Sampler &&) noexcept;
-
+		VkSampler Get()								const { return m_Sampler; }
 		VkFilter GetFilterMin()						const { return m_Spec.min; }
 		VkFilter GetFilterMag()						const { return m_Spec.mag; }
 		VkSamplerMipmapMode GetFilterMipmap()		const { return m_Spec.mipMap; }

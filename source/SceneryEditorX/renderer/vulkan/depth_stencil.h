@@ -63,10 +63,20 @@ namespace SceneryEditorX
 		DepthStencilState(const DepthStencilSpec &spec);
 		~DepthStencilState() = default;
 
-		bool          IsDepthTestEnabled()  const { return m_DepthTestEnable;  }
-		bool          IsDepthWriteEnabled() const { return m_DepthWriteEnable; }
-		VkCompareOp   GetDepthCompareOp()   const { return m_DepthCompareOp;   }
-		[[nodiscard]] uint64_t GetHash()    const { return m_Hash; }
+		bool          IsDepthTestEnabled()		const { return m_DepthTestEnable;  }
+		bool          IsDepthWriteEnabled()		const { return m_DepthWriteEnable; }
+		bool		  IsStencilTestEnabled()	const { return m_StencilTestEnabled; }
+		bool		  IsStencilWriteEnabled()	const { return m_StencilWriteEnabled; }
+		VkCompareOp	  GetStencilCompFunc()		const { return m_StencilCompFunc; }
+		VkStencilOp	  GetStencilFailOp()		const { return m_StencilFailOp; }
+		VkStencilOp	  GetStencilDepthFailOp()	const { return m_StencilDepthFailOp; }
+		VkStencilOp	  GetStencilPassOp()		const { return m_StencilPassOp; }
+
+		uint8_t       GetStencilReadMask()		const { return m_StencilReadMask; }
+		uint8_t       GetStencilWriteMask()		const { return m_StencilWriteMask; }
+
+		VkCompareOp   GetDepthCompareOp()		const { return m_DepthCompareOp;   }
+		[[nodiscard]] uint64_t GetHash()		const { return m_Hash; }
 
 	private:
 		DepthStencilSpec depthSpec;
@@ -82,7 +92,6 @@ namespace SceneryEditorX
 		VkStencilOp m_StencilPassOp             = VK_STENCIL_OP_REPLACE;
 		uint8_t		m_StencilReadMask			= 1;
 		uint8_t		m_StencilWriteMask			= 1;
-
 		uint64_t	m_Hash						= 0;
 	};
 

@@ -180,7 +180,7 @@ namespace SceneryEditorX
 	static float s_FarPlane  = 1.0f;
 	const uint8_t SWAPCHAIN_BUFFER_COUNT = 2;
 	const uint32_t RESOLUTION_SHADOW_MIN = 128;
-	constexpr uint32_t renderer_resource_frame_lifetime = MAX_FRAMES_IN_FLIGHT;
+	constexpr uint32_t RENDERER_RESOURCE_FRAME_LIFETIME = MAX_FRAMES_IN_FLIGHT;
 
 #pragma endregion
 
@@ -338,6 +338,35 @@ namespace SceneryEditorX
 		// Temporary debug trace: log sync vectors sizes after frame resources creation
 		SEDX_CORE_TRACE_TAG("Renderer", "Trace: After CreateFrameResources sizes - fences={}, present={}, render={}",
 			static_cast<uint32_t>(s_FenceHandles.size()), static_cast<uint32_t>(s_PresentSemaphoreHandles.size()), static_cast<uint32_t>(s_RenderSemaphoreHandles.size()));
+
+		// Structured draw-data buffer used by Renderer::WriteDrawData (including UI path).
+		// Allocate one large mapped buffer partitioned by frame resource index.
+		{
+			auto& structuredBuffers = GetStructuredBuffers();
+			const uint32_t drawDataBufferIndex = static_cast<uint32_t>(Renderer_Buffer::DrawData);
+			const uint32_t drawDataElementCount = RENDERER_MAX_DRAW_CALLS * RENDERER_RESOURCE_FRAME_LIFETIME;
+
+			if (!structuredBuffers[drawDataBufferIndex])
+			{
+				structuredBuffers[drawDataBufferIndex] = CreateRef<Buffer>(
+					sizeof(ShaderBuffer_DrawData),
+					drawDataElementCount,
+					nullptr,
+					true,
+					"draw_data_buffer");
+			}
+
+			if (Buffer* drawDataBuffer = structuredBuffers[drawDataBufferIndex].Get())
+			{
+				drawDataBuffer->Map();
+				SEDX_CORE_ASSERT(drawDataBuffer->GetMappedData() != nullptr, "Failed to map draw_data_buffer");
+			}
+			else
+			{
+				SEDX_CORE_ERROR_TAG("Renderer", "Failed to create draw_data_buffer");
+			}
+		}
+
 		CreateRenderTargets(true, true, true);
 		CreateModels();
 		GeometryBuffer::Initialize();
@@ -452,6 +481,21 @@ namespace SceneryEditorX
 			m_TestModel->Destroy(vma);
 			m_TestModel.reset();
 			SEDX_CORE_TRACE_TAG("Renderer", "Test model destroyed");
+		}
+
+		// Destroy structured buffers and clear references so re-init starts from a clean state.
+		// This prevents stale Ref<Buffer> entries across Init()/Shutdown() cycles.
+		{
+			auto& structuredBuffers = GetStructuredBuffers();
+			for (Ref<Buffer>& bufferRef : structuredBuffers)
+			{
+				if (bufferRef)
+				{
+					bufferRef->Destroy();
+					bufferRef.Reset();
+				}
+			}
+			SEDX_CORE_TRACE_TAG("Renderer", "Structured buffers destroyed");
 		}
 
 		// Destroy frame resources
@@ -596,7 +640,7 @@ namespace SceneryEditorX
 			// periodic resource cleanup
 			{
 				m_ResourceIndex++;
-				if (bool isSyncPoint = m_ResourceIndex == renderer_resource_frame_lifetime)
+				if (bool isSyncPoint = m_ResourceIndex == RENDERER_RESOURCE_FRAME_LIFETIME)
 				{
 					m_ResourceIndex = 0;
 
@@ -726,24 +770,35 @@ namespace SceneryEditorX
 		}
 
 
-		UpdateFrameConstantBuffer(m_CmdList_Present);
+		const bool canRecordOnPresentCmd = m_CmdList_Present && m_CmdList_Present->GetState() == CommandState::Recording;
+		if (canRecordOnPresentCmd)
+		{
+			UpdateFrameConstantBuffer(m_CmdList_Present);
+		}
+		else
+		{
+			static bool s_WarnedNonRecordingPresentCmd = false;
+			if (!s_WarnedNonRecordingPresentCmd)
+			{
+				SEDX_CORE_WARN_TAG("Renderer", "Skipping frame-constant update: present command list is not in recording state");
+				s_WarnedNonRecordingPresentCmd = true;
+			}
+		}
 		//UpdatePersistentLines();
 		//AddLinesToBeRendered();
 		
-		if (canRender)
+		if (canRender && canRecordOnPresentCmd)
 		{
 			BlitToBackBuffer(m_CmdList_Present, GetRenderTarget(Renderer_RenderTarget::frame_output));
 		}
 
-		SubmitAndPresent();
-
 		//m_lines_vertices.clear();
 		//m_icons.clear();
 
-		// only count frames that actually rendered
+		// Frame counters are advanced in SubmitAndPresent() to keep
+		// the frame lifecycle in one place: BeginFrame -> Tick -> EndFrame -> SubmitAndPresent.
 		if (canRender)
 		{
-			m_FrameNumber++;
 			if (m_FrameNumber == 1)
 			{
 				//Event(EventType::AppTick);
@@ -758,6 +813,10 @@ namespace SceneryEditorX
 	bool Renderer::BeginFrame()
 	{
 		SEDX_CORE_TRACE_TAG("Renderer", "Beginning frame {}", m_FrameNumber);
+
+	    // Reset per-frame draw data counter. Must be reset unconditionally (before
+		// any early-return) so WriteDrawData never overflows m_DrawData_CPU[].
+		m_DrawData_Count = 0;
 
 		// Check if we can render
 		if (!m_ResourcesInitialized)
@@ -946,6 +1005,12 @@ namespace SceneryEditorX
 	void Renderer::SubmitAndPresent()
 	{
 		SEDX_CORE_TRACE_TAG("Renderer", "Submitting command buffer and presenting frame {}", m_FrameNumber);
+
+		if (m_FrameInProgress)
+		{
+			SEDX_CORE_ERROR_TAG("Renderer", "SubmitAndPresent called while a frame is still in progress (EndFrame must be called before submit)");
+			return;
+		}
 
 		VkCommandBuffer cb = m_CommandBuffers[m_CurrentFrameIndex];
 		if (cb == VK_NULL_HANDLE)
@@ -3039,10 +3104,36 @@ namespace SceneryEditorX
 		uint32_t globalIndex = m_ResourceIndex * RENDERER_MAX_DRAW_CALLS + index;
 
 		Buffer* buffer = GetBuffer(Renderer_Buffer::DrawData);
-		if (void* mapped = buffer->GetMappedData())
+	    if (!buffer)
+		{
+			static bool s_LoggedMissingDrawDataBuffer = false;
+			if (!s_LoggedMissingDrawDataBuffer)
+			{
+				SEDX_CORE_ERROR_TAG("Renderer", "WriteDrawData skipped: DrawData buffer is null");
+				s_LoggedMissingDrawDataBuffer = true;
+			}
+			return globalIndex;
+		}
+
+		void* mapped = buffer->GetMappedData();
+		if (!mapped)
+		{
+			mapped = buffer->Map();
+		}
+
+		if (mapped)
 		{
 			void* dst = static_cast<char*>(mapped) + globalIndex * sizeof(ShaderBuffer_DrawData);
 			memcpy(dst, &entry, sizeof(ShaderBuffer_DrawData));
+		}
+		else
+		{
+			static bool s_LoggedUnmappedDrawDataBuffer = false;
+			if (!s_LoggedUnmappedDrawDataBuffer)
+			{
+				SEDX_CORE_ERROR_TAG("Renderer", "WriteDrawData skipped: DrawData buffer could not be mapped");
+				s_LoggedUnmappedDrawDataBuffer = true;
+			}
 		}
 
 		return globalIndex;

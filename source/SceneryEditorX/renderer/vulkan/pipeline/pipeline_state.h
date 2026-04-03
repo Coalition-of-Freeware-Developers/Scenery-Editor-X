@@ -78,6 +78,8 @@ namespace SceneryEditorX
 		[[nodiscard]] uint32_t GetHeight() const { return m_Height; }
 		[[nodiscard]] uint64_t GetHash() const   { return m_Hash; }
 
+		static PipelineState GetState();
+
 		// Shader stages – indexed by Stage enum (vertex=0, geometry=1, tess_ctrl=2, tess_eval=3, fragment=4, compute=5)
 		std::map<uint32_t, Shader*> shaders;
 

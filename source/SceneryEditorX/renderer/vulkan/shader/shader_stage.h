@@ -44,21 +44,47 @@ namespace SceneryEditorX
 	class ShaderStage : public RefCounted
 	{
 	public:
+
+		/**
+		 * @brief 
+		 * @param stage 
+		 * @param filepath 
+		 */
 		ShaderStage(Stage stage, const std::string& filepath);
+
+		/**
+		 * @brief 
+		 */
 		virtual ~ShaderStage() override;
-	
+
+		/**
+		 * @brief 
+		 */
 		void Recompile();
 
+		/**
+		 * @brief 
+		 * @return 
+		 */
 		[[nodiscard]] inline VkShaderModule GetHandle() const { return m_ShaderModule; };
+
+		/**
+		 * @brief 
+		 * @return 
+		 */
 		const std::vector<ShaderInput>& GetInput() { return m_Input; }
-	
-		VkPipelineShaderStageCreateInfo const GetStageCreateInfo();
+
+		/**
+		 * @brief 
+		 * @return 
+		 */
+		const VkPipelineShaderStageCreateInfo GetStageCreateInfo();
 	
 	private:
-		Stage m_Stage;
-		std::string m_Filepath;
-		VkShaderModule m_ShaderModule;
-		std::vector<ShaderInput> m_Input;
+		Stage m_Stage;						// The shader stage (e.g., vertex, fragment)
+		std::string m_Filepath;				// Path to the shader source file
+		VkShaderModule m_ShaderModule;		// Vulkan shader module handle
+		std::vector<ShaderInput> m_Input;	// List of shader inputs (uniforms, samplers, etc.)
 	};
 
 }

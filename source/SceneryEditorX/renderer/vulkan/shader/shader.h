@@ -1,4 +1,4 @@
-/**
+﻿/**
  * -------------------------------------------------------
  * Scenery Editor X
  * -------------------------------------------------------
@@ -30,13 +30,13 @@
  */
 #pragma once
 #include "shader_stage.h"
+#include <SceneryEditorX/renderer/vulkan/descriptor.h>
 #include <SceneryEditorX/renderer/vulkan/enums.h>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-
 	/**
 	 * @class Shader
 	 * @brief Represents a Vulkan shader composed of multiple shader stages.
@@ -47,24 +47,88 @@ namespace SceneryEditorX
 		Shader() = default;
 		virtual ~Shader() override;
 
+		/**
+		 * @brief Adds a shader stage to the shader, loading the SPIR-V binary from the specified file path.
+		 * @param stage The shader stage to add.
+		 * @param filepath The file path to the SPIR-V binary.
+		 */
 		void AddShaderStage(Stage stage, const std::string& filepath);
+
+		/**
+		 * @brief Retrieves the shader stage for the specified stage.
+		 * @param stage The shader stage to retrieve.
+		 * @return A reference to the shader stage.
+		 */
 		Ref<ShaderStage> GetShaderStage(Stage stage);
+
+		/**
+		 * @brief Checks if the shader has the specified stage.
+		 * @param stage The shader stage to check.
+		 * @return True if the shader has the stage, false otherwise.
+		 */
 		bool HasStage(Stage stage);
+
+		/**
+		 * @brief Retrieves the pipeline shader stage create info for the specified shader stage.
+		 * @param stage The shader stage to retrieve the create info for.
+		 * @return The pipeline shader stage create info.
+		 */
 		VkPipelineShaderStageCreateInfo const GetStageCreateInfo(ShaderStage stage);
 
+		/**
+		 * @brief Creates the descriptor set layouts for the shader.
+		 */
 		void CreateDescriptorSetLayouts();
+
+		/**
+		 * @brief Retrieves the descriptor set layout bindings for the shader.
+		 * @return A map of descriptor set layout bindings.
+		 */
 		std::map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>> GetDescriptorSetLayoutBindings();
+
+		/**
+		 * @brief Retrieves the descriptor set layouts for the shader.
+		 * @return A vector of descriptor set layouts.
+		 */
 		const std::vector<VkDescriptorSetLayout>& GetDescriptorSetLayouts() { return m_DescriptorSetLayouts; }
+
+		/**
+		 * @brief Retrieves the descriptor set layout for the specified set.
+		 * @param set The descriptor set index.
+		 * @return The descriptor set layout.
+		 */
 		VkDescriptorSetLayout GetDescriptorSetLayout(uint32_t set) { return m_DescriptorSetLayouts[set]; }
 
+		/**
+		 * @brief Retrieves the shader inputs for the specified descriptor set.
+		 * @param set The descriptor set index.
+		 * @return A vector of shader inputs.
+		 */
 		const std::vector<ShaderInput> GetInputs(uint32_t set) { return m_Input[set]; }
-		uint32_t GetNumberOfSets() { return (uint32_t)m_DescriptorSetLayouts.size(); }
+
+		/**
+		 * @brief Retrieves the number of descriptor sets for the shader.
+		 * @return The number of descriptor sets.
+		 */
+		uint32_t GetNumberOfSets() { return static_cast<uint32_t>(m_DescriptorSetLayouts.size()); }
+
+		/**
+		 * @brief Collects all shader inputs across all descriptor sets and converts them to Descriptor objects.
+		 * @return A vector of Descriptor objects representing all bindable resources in this shader.
+		 */
+		std::vector<Descriptor> GetDescriptors();
+
+		/**
+		 * @brief Returns true if all shader stages have been compiled successfully.
+		 * @return True if the shader has at least one stage and all stages have valid modules.
+		 */
+		bool IsCompiled() const { return !m_Stages.empty(); }
 
 	private:
-		std::unordered_map<Stage, Ref<ShaderStage>> m_Stages;
-		std::map<uint32_t, std::vector<ShaderInput>> m_Input;
-		std::set<uint32_t> m_BindlessSets;
-		std::vector<VkDescriptorSetLayout> m_DescriptorSetLayouts;
+		std::unordered_map<Stage, Ref<ShaderStage>> m_Stages;		// Map of shader stages by stage type
+		std::map<uint32_t, std::vector<ShaderInput>> m_Input;		// Map of shader inputs by descriptor set index
+		std::set<uint32_t> m_BindlessSets;							// Set of bindless descriptor sets
+		std::vector<VkDescriptorSetLayout> m_DescriptorSetLayouts;  // Vector of descriptor set layouts
 	};
 
 }

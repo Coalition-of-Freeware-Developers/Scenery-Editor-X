@@ -238,6 +238,18 @@ namespace SceneryEditorX
 	}
 
 	/**
+	 * @enum PolygonMode
+	 * @brief Vulkan polygon fill mode, exposed on RasterizerState objects.
+	 */
+	enum class PolygonMode : uint8_t
+	{
+		Solid,
+		Wireframe,
+		Point,
+		MaxEnum
+	};
+
+	/**
 	 * @enum CullMode
 	 * @brief Enumeration of culling modes in Vulkan.
 	 * 
@@ -287,6 +299,19 @@ namespace SceneryEditorX
 		All       // all commands (most conservative, explicit)
 	};
 
+	/**
+	 * @enum VertexType
+	 * @brief Enumeration of vertex types for input layouts in Vulkan. 
+	 */
+	enum class VertexType : uint8_t
+	{
+		Position,
+		PositionColor,
+		PositionUv,
+		PositionUvNormalTangent,
+		Position2dUvColor8,
+		MaxEnum
+	};
 }
 
 // -----------------------------------------------------------------

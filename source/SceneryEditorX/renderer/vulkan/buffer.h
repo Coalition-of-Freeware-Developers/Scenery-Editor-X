@@ -1,4 +1,4 @@
-/**
+﻿/**
  * -------------------------------------------------------
  * Scenery Editor X
  * -------------------------------------------------------
@@ -127,6 +127,9 @@ namespace SceneryEditorX
 		 * @return The stride of the buffer.
 		 */
 		uint32_t GetStride() const { return m_Stride; }
+		uint32_t GetStrideUnaligned() const { return m_StrideUnaligned; }
+		uint64_t GetObjectSize() const { return static_cast<uint64_t>(m_Stride) * static_cast<uint64_t>(m_ElementCount); }
+		uint32_t GetOffset() const { return 0; }
 
 		/**
 		 * @brief Gets the element count of the buffer.

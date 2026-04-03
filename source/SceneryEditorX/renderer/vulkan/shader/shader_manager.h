@@ -34,7 +34,6 @@
 
 // -------------------------------------------------------
 
-
 /**
  * @namespace ShaderCompiler
  * @brief A simple manager for Vulkan shader modules. 
@@ -92,28 +91,86 @@ namespace SceneryEditorX
 	{
 	public:
 		ShaderManager() = default;
-		// Convenience ctor: use the same SPIR-V blob for both vertex and fragment
-		// stages (matches the original sample behavior).
+
+		/**
+		 * Convenience ctor: use the same SPIR-V blob for both vertex and fragment
+		 * stages (matches the original sample behavior).
+		 */
+
+		/**
+		 * @brief Constructs a ShaderManager with a single SPIR-V blob for both vertex and fragment stages.
+		 * @param spirvCode Pointer to the SPIR-V bytecode.
+		 * @param codeSize Size of the SPIR-V bytecode in bytes.
+		 */
 		ShaderManager(const void* spirvCode, size_t codeSize);
+
+		/**
+		 * @brief Constructs a ShaderManager with multiple SPIR-V blobs for different shader stages.
+		 * @param stages A vector of pairs, each containing a shader stage flag and a pair of SPIR-V bytecode pointer and size.
+		 */
 		ShaderManager(const std::vector<std::pair<VkShaderStageFlagBits, std::pair<const void*, size_t>>>& stages);
+
+		/* @brief Destroys the ShaderManager and releases all associated Vulkan shader modules. */
 		~ShaderManager();
 
+		
+
+		/**
+		 * @brief 
+		 * @param name 
+		 * @return  
+		 */
 		static Ref<Shader>& CreateShader(const std::string& name);
+
+		/**
+		 * @brief 
+		 * @param name 
+		 * @return 
+		 */
 		static Ref<Shader>& GetShader(const std::string& name);
+
+		/**
+		 * @brief 
+		 */
 		static void Clear();
 
+		/**
+		 * @brief 
+		 * @return 
+		 */
 		size_t StageCount() const { return m_Stages.size(); }
+
+		/**
+		 * @brief 
+		 * @param i 
+		 * @return 
+		 */
 		VkShaderStageFlagBits StageAt(size_t i) const { return m_Stages[i]; }
+
+		/**
+		 * @brief 
+		 * @param i 
+		 * @return 
+		 */
 		VkShaderModule ModuleAt(size_t i) const { return m_Modules[i]; }
-	
+
+		/**
+		 * @brief 
+		 * @return 
+		 */
 		ShaderCompiler::State GetCompilationState() const { return m_CompilationState; }
+
+		/**
+		 * @brief 
+		 * @return 
+		 */
 		bool IsCompiled() const { return m_CompilationState == ShaderCompiler::State::Succeeded; }
 
 	private:
-		std::vector<VkShaderModule> m_Modules{};
-		std::vector<VkShaderStageFlagBits> m_Stages{};
-		static std::unordered_map<std::string, Ref<Shader>> m_Shaders;
-		std::atomic<ShaderCompiler::State> m_CompilationState = ShaderCompiler::State::Idle;
+		std::vector<VkShaderModule> m_Modules{};							// Store the Vulkan shader modules for each stage
+		std::vector<VkShaderStageFlagBits> m_Stages{};						// Store the corresponding shader stage flags (e.g., VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_FRAGMENT_BIT)
+		static std::unordered_map<std::string, Ref<Shader>> m_Shaders;						 // Static map to manage shaders by name
+		std::atomic<ShaderCompiler::State> m_CompilationState = ShaderCompiler::State::Idle; // Track the compilation state of the shaders
 	};
 
 

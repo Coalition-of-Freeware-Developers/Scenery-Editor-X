@@ -61,31 +61,77 @@ namespace SceneryEditorX
 		 *               RenderContext — only valid after RenderContext::Init() completes.
 		 */
 		explicit FrameSync(SyncType type, VkDevice device = VK_NULL_HANDLE);
+
+		/**
+		 * @brief 
+		 */
 		~FrameSync() override;
+
+		/**
+		 * @brief 
+		 * @param framesInFlight 
+		 * @param swapchainImageCount 
+		 */
 		static void Create(uint32_t framesInFlight, uint32_t swapchainImageCount);
 
+		/**
+		 * @brief 
+		 * @return 
+		 */
 		uint64_t GetNextSignalValue() { return ++m_Value; }
+
+		/**
+		 * @brief 
+		 * @return 
+		 */
 		[[nodiscard]] uint64_t GetValue() const { return m_Value; }
 
 		// Signaler command list
+		/**
+		 * @brief 
+		 * @param cmdList 
+		 */
 		void SetUserCmdList(CommandList *cmdList) { m_User_CmdList = cmdList; }
+
+		/**
+		 * @brief 
+		 * @return 
+		 */
 		[[nodiscard]] CommandList *GetUserCmdList() const { return m_User_CmdList; }
 
 		// Access the underlying Vulkan handles (null-safe)
+		/**
+		 * @brief 
+		 * @return 
+		 */
 		[[nodiscard]] VkSemaphore GetVkSemaphore() const { return m_RenderSemaphore ? m_RenderSemaphore->GetSemaphore() : VK_NULL_HANDLE; }
+
+		/**
+		 * @brief 
+		 * @return 
+		 */
 		[[nodiscard]] VkFence GetVkFence() const { return m_Fence ? m_Fence->GetFence() : VK_NULL_HANDLE; }
 
 		// Expose refs if callers need strong access
+		/**
+		 * @brief 
+		 * @return 
+		 */
 		[[nodiscard]] Ref<Semaphore> GetSemaphoreRef() const { return m_RenderSemaphore; }
+
+        /**
+		 * @brief 
+		 * @return 
+		 */
 		[[nodiscard]] Ref<Fence> GetFenceRef() const { return m_Fence; }
 
 	private:
-		Ref<Fence> m_Fence;
-		Ref<Semaphore> m_RenderSemaphore;
+		Ref<Fence> m_Fence;						// Only valid for SyncType::Fence
+		Ref<Semaphore> m_RenderSemaphore;		// Only valid for SyncType::Semaphore and SyncType::SemaphoreTimeline
 
-		uint64_t m_Value = 0;
-		SyncType m_Type = SyncType::MaxEnum;
-		CommandList *m_User_CmdList = nullptr;
+		uint64_t m_Value = 0;					// Used for timeline semaphores to track the next signal value
+		SyncType m_Type = SyncType::MaxEnum;	// The type of synchronization primitive this FrameSync represents
+		CommandList *m_User_CmdList = nullptr;	// The command list that will signal this FrameSync; used for timeline semaphore signaling
 	};
 
 }

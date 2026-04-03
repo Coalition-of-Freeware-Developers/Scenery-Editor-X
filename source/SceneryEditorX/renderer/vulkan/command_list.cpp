@@ -998,7 +998,7 @@ namespace SceneryEditorX
 
 	void CommandList::InsertBarrier(VkImage image, VkFormat format, uint32_t mipIndex, uint32_t mipRange, uint32_t arrayLength, Layout::ImageLayout layout)
 	{
-		SEDX_CORE_ASSERT(image != nullptr, "Image handle must be valid for barrier insertion");
+	    SEDX_CORE_ASSERT(image != VK_NULL_HANDLE, "Image handle must be valid for barrier insertion");
 		// Keep assert for debug, but defensively handle invalid state at runtime to avoid
 		// crashing inside the GPU driver when running release builds or when asserts
 		// are disabled.
@@ -1016,9 +1016,14 @@ namespace SceneryEditorX
 
 			// Fallback: perform transition using an immediate command list so we do
 			// not call into the driver with an invalid command buffer.
-			CommandList* temp = CommandList::BeginImmediateExecution(QueueType::Graphics);
+		    CommandList* temp = CommandList::BeginImmediateExecution(QueueType::Graphics);
 			if (temp)
 			{
+				if (temp == this)
+				{
+					SEDX_CORE_WARN_TAG("CommandList", "Immediate fallback resolved to the same command list '{}', skipping barrier to avoid recursion", m_ObjectName.c_str());
+					return;
+				}
 				temp->InsertBarrier(image, format, mipIndex, mipRange, arrayLength, layout);
 				CommandList::EndImmediateExecution(temp);
 			}
@@ -1028,10 +1033,13 @@ namespace SceneryEditorX
 			}
 			return;
 		}
+
 		// Debug-time assert to still catch misuse when assertions are enabled.
 		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to insert barriers");
 
 		const uint32_t baseMip = (mipIndex == ALL_MIPS) ? 0 : mipIndex;
+		const uint32_t levelCount = (mipIndex == ALL_MIPS || mipRange == 0) ? VK_REMAINING_MIP_LEVELS : mipRange;
+		const uint32_t layerCount = (arrayLength == 0) ? VK_REMAINING_ARRAY_LAYERS : arrayLength;
 		const Layout::ImageLayout currentLayout = GetImageLayout(image, baseMip);
 
 		if (currentLayout == layout)
@@ -1041,11 +1049,11 @@ namespace SceneryEditorX
 		const BarrierAccessInfo dstInfo = GetLayoutAccessInfo(layout);
 
 		VkImageSubresourceRange range{};
-		range.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+		range.aspectMask     = (format == VK_FORMAT_UNDEFINED) ? VK_IMAGE_ASPECT_COLOR_BIT : GetAspectMaskFromFormat(format);
 		range.baseMipLevel   = baseMip;
-		range.levelCount     = (mipIndex == ALL_MIPS || mipRange == 0) ? VK_REMAINING_MIP_LEVELS : mipRange;
+		range.levelCount     = levelCount;
 		range.baseArrayLayer = 0;
-		range.layerCount     = VK_REMAINING_ARRAY_LAYERS;
+		range.layerCount     = layerCount;
 
 		VkImageMemoryBarrier2 barrier{};
 		barrier.sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
@@ -1067,7 +1075,7 @@ namespace SceneryEditorX
 
 		vkCmdPipelineBarrier2(m_CmdBuffer, &depInfo);
 
-		{
+	   {
 			std::scoped_lock lock(s_ImageLayoutsMutex);
 			auto it = s_ImageLayouts.find(image);
 			if (it == s_ImageLayouts.end())
@@ -1077,16 +1085,23 @@ namespace SceneryEditorX
 				s_ImageLayouts[image] = layouts;
 				it = s_ImageLayouts.find(image);
 			}
-			// update full range for simplicity
-			for (uint32_t i = 0; i < MAX_MIP_COUNT; ++i)
-				it->second[i] = layout;
-		}
+
+			const uint32_t trackedLevels = (levelCount == VK_REMAINING_MIP_LEVELS) ? (MAX_MIP_COUNT - baseMip) : xMath::Min(levelCount, MAX_MIP_COUNT - baseMip);
+			for (uint32_t i = 0; i < trackedLevels; ++i)
+			{
+				it->second[baseMip + i] = layout;
+			}
+	   }
 	}
 
 	void CommandList::InsertBarrier(Buffer *buffer)
 	{
 		SEDX_CORE_ASSERT(buffer != nullptr && buffer->Get() != VK_NULL_HANDLE, "Buffer must be valid for barrier insertion");
-		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to insert barriers");
+	    if (m_State != CommandState::Recording)
+		{
+			SEDX_CORE_WARN_TAG("CommandList", "InsertBarrier(Buffer) called while '{}' is not recording (state={}), skipping", m_ObjectName.c_str(), static_cast<int>(m_State.load()));
+			return;
+		}
 
 		VkBufferMemoryBarrier2 barrier{};
 		barrier.sType               = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;
@@ -1960,7 +1975,11 @@ namespace SceneryEditorX
 	void CommandList::InsertBarrier(ImageResource* img, BarrierType type)
 	{
 		SEDX_CORE_ASSERT(img != nullptr, "ImageResource must be valid for barrier insertion");
-		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to insert barriers");
+	 if (m_State != CommandState::Recording)
+		{
+			SEDX_CORE_WARN_TAG("CommandList", "InsertBarrier(ImageResource) called while '{}' is not recording (state={}), skipping", m_ObjectName.c_str(), static_cast<int>(m_State.load()));
+			return;
+		}
 
 		Layout::ImageLayout targetLayout = Layout::ImageLayout::General;
 

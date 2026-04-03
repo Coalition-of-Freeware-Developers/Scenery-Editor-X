@@ -124,13 +124,8 @@ namespace SceneryEditorX
 			Pass_Text(graphicsPresent, rt_output);
 			rt_output->SetLayout(Layout::ImageLayout::ShaderRead, graphicsPresent, 0, 0);
 
-			// Bootstrap path still needs to submit the graphics command list so
-			// `frame_output` is actually produced before swapchain presentation.
-			// Do NOT submit the unused compute list here; that can create timeline/cmd reuse hazards.
-			if (graphicsPresent && graphicsPresent->GetState() == CommandState::Recording)
-			{
-				graphicsPresent->Submit(nullptr, false);
-			}
+			// Keep command list recording open here.
+			// Final frame orchestration owns submission/presentation ordering.
 			return;
 		}
 
