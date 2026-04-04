@@ -29,8 +29,12 @@
  * -------------------------------------------------------
  */
 #include "queue_manager.h"
+
+#include "bindless_manager.h"
 #include "device.h"
 #include "render_context.h"
+#include "SceneryEditorX/logging/profiler.hpp"
+
 #include <algorithm>
 #include <string>
 
@@ -345,7 +349,7 @@ namespace SceneryEditorX
 	
 	void QueueManager::AllocateQueue(QueueType type, uint32_t preAllocCmdList, const char *name)
 	{
-		//SEDX_PROFILE_SCOPE("QueueManager::AllocateQueue");
+		SEDX_PROFILE_FUNC("QueueManager::AllocateQueue");
 	
 		// Validate queue type
 		const uint32_t typeIndex = static_cast<uint32_t>(type);
@@ -388,7 +392,7 @@ namespace SceneryEditorX
 			return;
 		}
 	
-		//SEDX_PROFILE_SCOPE("QueueManager::FreeQueue");
+		SEDX_PROFILE_FUNC("QueueManager::FreeQueue");
 	
 		QueueType type = queue->GetType();
 		const uint32_t typeIndex = static_cast<uint32_t>(type);
@@ -425,7 +429,7 @@ namespace SceneryEditorX
 	
 	void QueueManager::WaitIdleAll(const bool flush)
 	{
-		//SEDX_PROFILE_SCOPE("QueueManager::WaitIdleAll");
+		SEDX_PROFILE_FUNC("QueueManager::WaitIdleAll");
 		SEDX_CORE_TRACE_TAG("QueueManager", "Waiting for all GPU queues to become idle...");
 	
 		// Thread-safe iteration with proper synchronization
@@ -506,9 +510,7 @@ namespace SceneryEditorX
 		const uint32_t idx = static_cast<uint32_t>(type);
 		if (idx >= m_GPUQueues.size())
 		{
-			SEDX_CORE_WARN_TAG("QueueManager", "GetQueue called with out-of-range queue type {}",
-				QueueToString(static_cast<QueueType>(idx)));
-
+			SEDX_CORE_WARN_TAG("QueueManager", "GetQueue called with out-of-range queue type {}", QueueToString(static_cast<QueueType>(idx)));
 			return nullptr;
 		}
 	
@@ -534,31 +536,31 @@ namespace SceneryEditorX
 		{
 			switch (type)
 			{
-			case QueueType::Graphics:
-			{
-				SEDX_CORE_TRACE_TAG("QueueManager", "Getting family index for Graphics queue");
-				return m_FamilyIndices.graphics;
-			}
-			case QueueType::Compute:
-			{
-				SEDX_CORE_TRACE_TAG("QueueManager", "Getting family index for Compute queue");
-				return m_FamilyIndices.compute;
-			}
-			case QueueType::Transfer:
-			{
-				SEDX_CORE_TRACE_TAG("QueueManager", "Getting family index for Transfer queue");
-				return m_FamilyIndices.transfer;
-			}
-			case QueueType::Present:
-			{
-				SEDX_CORE_TRACE_TAG("QueueManager", "Getting family index for Present queue");
-				return m_FamilyIndices.present;
-			}
-			default:
-			{
-				SEDX_CORE_WARN_TAG("QueueManager", "GetFamilyIndexByType called with unknown queue type {}", static_cast<uint32_t>(type));
-				break;
-			}
+				case QueueType::Graphics:
+				{
+					SEDX_CORE_TRACE_TAG("QueueManager", "Getting family index for Graphics queue");
+					return m_FamilyIndices.graphics;
+				}
+				case QueueType::Compute:
+				{
+					SEDX_CORE_TRACE_TAG("QueueManager", "Getting family index for Compute queue");
+					return m_FamilyIndices.compute;
+				}
+				case QueueType::Transfer:
+				{
+					SEDX_CORE_TRACE_TAG("QueueManager", "Getting family index for Transfer queue");
+					return m_FamilyIndices.transfer;
+				}
+				case QueueType::Present:
+				{
+					SEDX_CORE_TRACE_TAG("QueueManager", "Getting family index for Present queue");
+					return m_FamilyIndices.present;
+				}
+				default:
+				{
+					SEDX_CORE_WARN_TAG("QueueManager", "GetFamilyIndexByType called with unknown queue type {}", static_cast<uint32_t>(type));
+					break;
+				}
 			}
 		}
 	
@@ -639,63 +641,41 @@ namespace SceneryEditorX
 					vkDestroyPipelineLayout(device->GetDevice(), static_cast<VkPipelineLayout>(resource), nullptr);
 					break;
 				case ResourceType::UniformBuffer:
-					break;
 				case ResourceType::UniformBufferSet:
-					break;
 				case ResourceType::AccelerationStructure: /*functions::destroy_acceleration_structure(device->GetDevice(), static_cast<VkAccelerationStructureKHR>(resource), nullptr);*/
-					break;
-				default:
-					SEDX_CORE_ASSERT(false, "Unknown resource");
-					break;
-				case ResourceType::Unknown:
-					break;
 				case ResourceType::PhysicalDevice:
-					break;
 				case ResourceType::Device:
-					break;
 				case ResourceType::Queue:
-					break;
 				case ResourceType::CommandBuffer:
-					break;
 				case ResourceType::DeviceMemory:
-					break;
 				case ResourceType::Event:
-					break;
 				case ResourceType::PipelineCache:
-					break;
 				case ResourceType::RenderPass:
-					break;
 				case ResourceType::DescriptorSet:
-					break;
 				case ResourceType::CommandPool:
-					break;
 				case ResourceType::DebugCallback:
-					break;
 				case ResourceType::StorageBuffer:
-					break;
 				case ResourceType::StorageBufferSet:
-					break;
 				case ResourceType::Texture2D:
-					break;
 				case ResourceType::TextureCube:
-					break;
 				case ResourceType::Image2D:
-					break;
 				case ResourceType::CommandList:
+				case ResourceType::Unknown:
+				default: SEDX_CORE_ASSERT(false, "Unknown resource");
 					break;
-				case ResourceType::MaxEnum:
+
+				case ResourceType::MaxEnum:  SEDX_CORE_ERROR_TAG("QueueManager","Encountered resource type of MaxEnum");
 					break;
 				}
-	
-				/*
+
 				// delete descriptor sets which are now invalid (because they are referring to a deleted resource)
 				if (type == ResourceType::ImageView || type == ResourceType::Buffer)
 				{
-					for (auto it = Descriptor::sets.begin(); it != Descriptor::sets.end();)
+					for (auto it = BindlessManager::GetDescriptorSets().begin(); it != BindlessManager::GetDescriptorSets().end();)
 					{
-						if (it->second.IsReferingToResource(resource))
+						if (it->second.IsReferringToResource(resource))
 						{
-							it = Descriptor::sets.erase(it);
+							it = BindlessManager::GetDescriptorSets().erase(it);
 							// ideally the descriptor set pool is not oblivious to the fact that we don't use this set anymore
 							// maybe after a certain number of deletions we reset the entire pool to free memory
 						}
@@ -705,7 +685,6 @@ namespace SceneryEditorX
 						}
 					}
 				}
-				*/
 	
 				// samplers are bindless so they just update the set again
 			}
@@ -748,8 +727,7 @@ namespace SceneryEditorX
 			SEDX_CORE_TRACE_TAG("QueueManager", "Deletion queue changed or empty at frame {} with {} objects pending deletion", framesEquilibrium, objectsToDelete);
 			framesEquilibrium = 0; // Reset counter if the count changed or if nothing is in the queue
 		}
-	
-		
+
 		objectsToDeletePrevious = objectsToDelete; // Update the previous object count to the current count
 		SEDX_CORE_TRACE_TAG("QueueManager", "Updated previous deletion count to {}", objectsToDeletePrevious);
 	
@@ -760,7 +738,10 @@ CommandList* QueueManager::NextCommandList()
 {
 	const uint32_t count = static_cast<uint32_t>(m_CmdLists.size());
 	if (count == 0)
-		return nullptr;
+	{
+		SEDX_CORE_TRACE_TAG("QueueManager", "No command lists available");
+	    return nullptr;
+	}
 
 	// Advance index to the next candidate and search for an idle list.
 	m_Index = (m_Index + 1) % count;
@@ -793,9 +774,11 @@ CommandList* QueueManager::NextCommandList()
 		}
 	}
 
-	// No idle lists were available. This can happen during startup races or when
-	// the GPU is still processing earlier work. As a defensive measure, wait for
-	// all queues to become idle and then reuse the current slot.
+	/**
+	 * No idle lists were available. This can happen during startup races or when
+	 * the GPU is still processing earlier work. As a defensive measure, wait for
+	 * all queues to become idle and then reuse the current slot.
+	 */
 	SEDX_CORE_WARN_TAG("QueueManager", "No idle command list found in pool; forcing WaitIdleAll and returning current slot");
 	QueueManager::WaitIdleAll();
 

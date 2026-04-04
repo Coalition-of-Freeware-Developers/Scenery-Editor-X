@@ -30,8 +30,6 @@
  */
 #include "renderer.h"
 #include "renderer_buffers.h"
-#include "SceneryEditorX/core/window/monitor_data.h"
-#include "SceneryEditorX/scene/entity.h"
 #include "vulkan/swapchain.h"
 #include "vulkan/uniform_buffer_set.h"
 #include "vulkan/debug/graphics_debug.h"
@@ -40,20 +38,22 @@
 #include "vulkan/shader/shader_manager.h"
 #include <array>
 #include <cstddef>
+#include <mutex>
+#include <sstream>
+#include <thread>
 #include <Editor/ui/ui_impl.h>
 #include <SDL3/SDL.h>
 #include <SceneryEditorX/asset/model.h>
 #include <SceneryEditorX/asset/manager/asset_manager.h>
 #include <SceneryEditorX/core/application/application.h>
+#include <SceneryEditorX/core/window/monitor_data.h>
 #include <SceneryEditorX/renderer/gbuffer.h>
 #include <SceneryEditorX/scene/camera.h>
+#include <SceneryEditorX/scene/entity.h>
 #include <SceneryEditorX/scene/scene.h>
 #include <slang/slang-com-ptr.h>
 #include <slang/slang.h>
 #include <volk/volk.h>
-#include <mutex>
-#include <thread>
-#include <sstream>
 
 // --------------------------------------------------------------
 
@@ -348,12 +348,7 @@ namespace SceneryEditorX
 
 			if (!structuredBuffers[drawDataBufferIndex])
 			{
-				structuredBuffers[drawDataBufferIndex] = CreateRef<Buffer>(
-					sizeof(ShaderBuffer_DrawData),
-					drawDataElementCount,
-					nullptr,
-					true,
-					"draw_data_buffer");
+				structuredBuffers[drawDataBufferIndex] = CreateRef<Buffer>(sizeof(ShaderBuffer_DrawData), drawDataElementCount, nullptr, true, "draw_data_buffer");
 			}
 
 			if (Buffer* drawDataBuffer = structuredBuffers[drawDataBufferIndex].Get())
@@ -587,7 +582,7 @@ namespace SceneryEditorX
 		// Bootstrap mode currently runs the graphics-only path in ProduceFrame().
 		// Don't acquire/record compute command lists until the deferred compute passes
 		// (and their synchronization) are fully wired.
-		const bool needsComputeCommandList = false;
+		const bool needsComputeCommandList = true;
 		if (canRender && needsComputeCommandList)
 		{
 			m_CmdList_Compute = queueManager->NextCommandList();
@@ -598,7 +593,7 @@ namespace SceneryEditorX
 			}
 		}
 
-		m_DrawData_Count = 0;
+		m_DrawData_Count = 0; // Reset draw call count each frame; it will be incremented by Renderer::WriteDrawData as draw calls are recorded.
 
 		if (canRender)
 		{
@@ -651,6 +646,7 @@ namespace SceneryEditorX
 					}
 
 					// TODO: GetBuffer(Renderer_Buffer::ConstantFrame)->ResetOffset(); // ResetOffset not yet implemented on Buffer
+					GetBuffer(Renderer_Buffer::ConstantFrame)->ResetOffset(); // ResetOffset not yet implemented on Buffer
 				}
 			}
 

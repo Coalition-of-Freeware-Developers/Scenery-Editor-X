@@ -342,6 +342,33 @@ namespace SceneryEditorX
 		{
 			s_Shaders[index] = CreateRef<Shader>();
 		}
+
+		Ref<Shader>& shader = s_Shaders[index];
+		SEDX_CORE_ASSERT(shader != nullptr, "Failed to allocate shader slot for type {}", static_cast<uint32_t>(type));
+
+		switch (type)
+		{
+			case Renderer_Shader::grid_vertex:
+				if (!shader->HasStage(Stage::Vertex))
+				{
+					shader->AddShaderStage(Stage::Vertex, "resources/shaders/grid.slang");
+				}
+				break;
+			case Renderer_Shader::grid_frag:
+				if (!shader->HasStage(Stage::Fragment))
+				{
+					shader->AddShaderStage(Stage::Fragment, "resources/shaders/grid.slang");
+				}
+				break;
+			case Renderer_Shader::blit_c:
+				if (!shader->HasStage(Stage::Compute))
+				{
+					shader->AddShaderStage(Stage::Compute, "resources/shaders/blit.slang");
+				}
+				break;
+			default:
+				break;
+		}
 	}
 
 	/*

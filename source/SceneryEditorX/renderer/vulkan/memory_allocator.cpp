@@ -316,7 +316,7 @@ namespace SceneryEditorX
 		SEDX_CORE_ASSERT(allocation);
 		vmaDestroyImage(s_AllocatorData->allocator, image, allocation);
 
-//#if SEDX_GPU_TRACK_MEMORY_ALLOCATION
+	//#if SEDX_GPU_TRACK_MEMORY_ALLOCATION
 		auto it = s_AllocationMap.find(allocation);
 		if (it != s_AllocationMap.end())
 		{
@@ -327,7 +327,7 @@ namespace SceneryEditorX
 		{
 			SEDX_CORE_ERROR_TAG("MemoryAllocator", "Could not find GPU memory allocation: {}", (void*)allocation);
 		}
-//#endif
+	//#endif
 		SEDX_CORE_TRACE_TAG("MemoryAllocator", "Image destroyed");
 	}
 
