@@ -48,6 +48,9 @@ namespace SceneryEditorX
 	{
 		VkPhysicalDeviceFeatures2 s_Features = {};
 		VkPhysicalDeviceRobustness2FeaturesEXT s_FeaturesRobustness = {};
+	    VkPhysicalDeviceExtendedDynamicStateFeaturesEXT s_FeaturesExtendedDynamicState = {};
+		VkPhysicalDeviceShaderAtomicFloatFeaturesEXT s_FeaturesAtomicFloat = {};
+		VkPhysicalDeviceShaderAtomicFloat2FeaturesEXT s_FeaturesAtomicFloat2 = {};
 		VkPhysicalDeviceVulkan14Features s_Features_1_4 = {};
 		VkPhysicalDeviceVulkan13Features s_Features_1_3 = {};
 		VkPhysicalDeviceVulkan12Features s_Features_1_2 = {};
@@ -71,17 +74,35 @@ namespace SceneryEditorX
 		 */
 		void RebuildPNextChain()
 		{
-			// Start from the end of the chain and work backwards
-			// The final element always has pNext = nullptr
-			s_FeaturesVrs.pNext = nullptr;
-	
-			// Build chain based on supported features
+		   // Build chain from tail to head.
 			void *nextInChain = nullptr;
-	
+
 			// VRS is conditionally included
 			if (s_IsShadingRateSupported)
 			{
+			    s_FeaturesVrs.pNext = nextInChain;
 				nextInChain = &s_FeaturesVrs;
+			}
+
+			// Extended dynamic state is conditionally included
+			if (s_FeaturesExtendedDynamicState.extendedDynamicState == VK_TRUE)
+			{
+				s_FeaturesExtendedDynamicState.pNext = nextInChain;
+				nextInChain = &s_FeaturesExtendedDynamicState;
+			}
+
+			// Atomic float features are conditionally included
+			if (s_FeaturesAtomicFloat2.shaderBufferFloat32AtomicMinMax == VK_TRUE)
+			{
+				s_FeaturesAtomicFloat2.pNext = nextInChain;
+				nextInChain = &s_FeaturesAtomicFloat2;
+			}
+
+			if (s_FeaturesAtomicFloat.shaderBufferFloat32Atomics == VK_TRUE ||
+				s_FeaturesAtomicFloat.shaderBufferFloat32AtomicAdd == VK_TRUE)
+			{
+				s_FeaturesAtomicFloat.pNext = nextInChain;
+				nextInChain = &s_FeaturesAtomicFloat;
 			}
 	
 			// Robustness links to VRS if supported, otherwise nullptr
@@ -122,7 +143,7 @@ namespace SceneryEditorX
 	};
 
 	/**
-	 * @brief Structure to hold information about a physical GPU device.      *
+	 * @brief Structure to hold information about a physical GPU device.
 	 * @note This structure is designed to be a snapshot of the GPU's properties and supported features at the time of enumeration. 
 	 */
 	struct HWDeviceInfo
@@ -242,8 +263,14 @@ namespace SceneryEditorX
 		DeviceFeatures feat{};
 
 		// Features that will be enabled
+		feat.s_FeaturesExtendedDynamicState.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT;
+		feat.s_FeaturesExtendedDynamicState.pNext = nullptr;
+		feat.s_FeaturesAtomicFloat.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_FEATURES_EXT;
+		feat.s_FeaturesAtomicFloat.pNext = &feat.s_FeaturesExtendedDynamicState;
+		feat.s_FeaturesAtomicFloat2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_2_FEATURES_EXT;
+		feat.s_FeaturesAtomicFloat2.pNext = &feat.s_FeaturesAtomicFloat;
 		feat.s_FeaturesVrs.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_FEATURES_KHR;
-		feat.s_FeaturesVrs.pNext = nullptr;
+	    feat.s_FeaturesVrs.pNext = &feat.s_FeaturesAtomicFloat2;
 		feat.s_FeaturesRobustness.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT;
 		feat.s_FeaturesRobustness.pNext = &feat.s_FeaturesVrs;
 		feat.s_Features_1_2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
@@ -264,8 +291,17 @@ namespace SceneryEditorX
 		feat.s_Features.pNext = &feat.s_FeaturesRayTracingPipeline;
 
 		// Detect which features are supported
+	    VkPhysicalDeviceExtendedDynamicStateFeaturesEXT supportExtendedDynamicState = {};
+		supportExtendedDynamicState.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT;
+		VkPhysicalDeviceShaderAtomicFloatFeaturesEXT supportAtomicFloat = {};
+		supportAtomicFloat.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_FEATURES_EXT;
+		supportAtomicFloat.pNext = &supportExtendedDynamicState;
+		VkPhysicalDeviceShaderAtomicFloat2FeaturesEXT supportAtomicFloat2 = {};
+		supportAtomicFloat2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_2_FEATURES_EXT;
+		supportAtomicFloat2.pNext = &supportAtomicFloat;
 		VkPhysicalDeviceFragmentShadingRateFeaturesKHR supportVrs = {};
 		supportVrs.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_FEATURES_KHR;
+	    supportVrs.pNext = &supportAtomicFloat2;
 		VkPhysicalDeviceRobustness2FeaturesEXT supportRobustness = {};
 		supportRobustness.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT;
 		supportRobustness.pNext = &supportVrs;
@@ -308,6 +344,16 @@ namespace SceneryEditorX
 				// support details:
 				// https://vulkan.gpuinfo.org/listdevicescoverage.php?platform=windows&extension=VK_KHR_fragment_shading_rate
 				feat.s_FeaturesVrs.attachmentFragmentShadingRate = VK_TRUE;
+				if (supportVrs.pipelineFragmentShadingRate == VK_TRUE)
+				{
+					feat.s_FeaturesVrs.pipelineFragmentShadingRate = VK_TRUE;
+				}
+
+				// Extended dynamic state
+				if (supportExtendedDynamicState.extendedDynamicState == VK_TRUE)
+				{
+					feat.s_FeaturesExtendedDynamicState.extendedDynamicState = VK_TRUE;
+				}
 			}
 			else
 			{
@@ -444,8 +490,7 @@ namespace SceneryEditorX
 			// Ray Tracing
 			{
 				feat.s_IsRayTracingSupported = supportAccelStruct.accelerationStructure == VK_TRUE &&
-										  supportRayTracingPipeline.rayTracingPipeline == VK_TRUE &&
-										  supportRayQuery.rayQuery == VK_TRUE;
+					supportRayTracingPipeline.rayTracingPipeline == VK_TRUE && supportRayQuery.rayQuery == VK_TRUE;
 
 				if (feat.s_IsRayTracingSupported)
 				{
@@ -467,6 +512,7 @@ namespace SceneryEditorX
 					feat.s_Features.pNext = feat.s_FeaturesRayTracingPipeline.pNext;
 				}
 			}
+
 			{
 				// Geometry
 				SEDX_CORE_ASSERT(support.features.geometryShader == VK_TRUE);
@@ -1052,6 +1098,84 @@ namespace SceneryEditorX
 
 		// Add enabled features from detection
 		DeviceFeatures features = s_PhysicalDevice[m_PhysicalDeviceIndex].s_SupportedFeatures;
+
+		// Resolve requested extended feature set and apply it to the selected device feature snapshot.
+		// This keeps feature enablement policy in one place (GraphicsChecks) while still validating
+		// against the detected hardware capabilities cached in DeviceFeatures.
+		GraphicsChecks::RequestedFeaturesEXTState requestedFeaturesExt{};
+		GraphicsChecks::EnableRequestedFeaturesEXT(m_InstanceProps, requestedFeaturesExt);
+
+		if (requestedFeaturesExt.enableBindless)
+		{
+			const bool supportsPartiallyBound = features.s_Features_1_2.descriptorBindingPartiallyBound == VK_TRUE;
+			const bool supportsRuntimeArray = features.s_Features_1_2.runtimeDescriptorArray == VK_TRUE;
+
+			features.s_Features_1_2.descriptorBindingPartiallyBound =
+				(supportsPartiallyBound && requestedFeaturesExt.indexingFeatures.descriptorBindingPartiallyBound == VK_TRUE) ? VK_TRUE : VK_FALSE;
+			features.s_Features_1_2.runtimeDescriptorArray =
+				(supportsRuntimeArray && requestedFeaturesExt.indexingFeatures.runtimeDescriptorArray == VK_TRUE) ? VK_TRUE : VK_FALSE;
+
+			features.s_IsBindlessSupported =
+				features.s_Features_1_2.descriptorBindingPartiallyBound == VK_TRUE &&
+				features.s_Features_1_2.runtimeDescriptorArray == VK_TRUE;
+
+			if (!features.s_IsBindlessSupported)
+			{
+				SEDX_CORE_WARN_TAG("Device", "Bindless descriptors were requested but are not fully supported by the selected GPU feature set");
+			}
+		}
+		else
+		{
+			features.s_Features_1_2.descriptorBindingPartiallyBound = VK_FALSE;
+			features.s_Features_1_2.runtimeDescriptorArray = VK_FALSE;
+			features.s_IsBindlessSupported = false;
+		}
+
+	    if (requestedFeaturesExt.enableFloat)
+		{
+		  const bool supportsAtomic = features.s_FeaturesAtomicFloat.shaderBufferFloat32Atomics == VK_TRUE;
+			const bool supportsAtomicAdd = features.s_FeaturesAtomicFloat.shaderBufferFloat32AtomicAdd == VK_TRUE;
+
+			features.s_FeaturesAtomicFloat.shaderBufferFloat32Atomics =
+				(supportsAtomic && requestedFeaturesExt.atomicFloatFeatures.shaderBufferFloat32Atomics == VK_TRUE) ? VK_TRUE : VK_FALSE;
+			features.s_FeaturesAtomicFloat.shaderBufferFloat32AtomicAdd =
+				(supportsAtomicAdd && requestedFeaturesExt.atomicFloatFeatures.shaderBufferFloat32AtomicAdd == VK_TRUE) ? VK_TRUE : VK_FALSE;
+
+			if (requestedFeaturesExt.atomicFloatFeatures.shaderBufferFloat32Atomics == VK_TRUE &&
+				features.s_FeaturesAtomicFloat.shaderBufferFloat32Atomics != VK_TRUE)
+			{
+				SEDX_CORE_WARN_TAG("Device", "Requested shaderBufferFloat32Atomics is not supported by the selected GPU");
+			}
+
+			if (requestedFeaturesExt.atomicFloatFeatures.shaderBufferFloat32AtomicAdd == VK_TRUE &&
+				features.s_FeaturesAtomicFloat.shaderBufferFloat32AtomicAdd != VK_TRUE)
+			{
+				SEDX_CORE_WARN_TAG("Device", "Requested shaderBufferFloat32AtomicAdd is not supported by the selected GPU");
+			}
+		}
+
+		if (requestedFeaturesExt.enableFloat2)
+		{
+			const bool supportsAtomicMinMax = features.s_FeaturesAtomicFloat2.shaderBufferFloat32AtomicMinMax == VK_TRUE;
+			features.s_FeaturesAtomicFloat2.shaderBufferFloat32AtomicMinMax =
+				(supportsAtomicMinMax && requestedFeaturesExt.atomicFloat2Features.shaderBufferFloat32AtomicMinMax == VK_TRUE) ? VK_TRUE : VK_FALSE;
+
+			if (requestedFeaturesExt.atomicFloat2Features.shaderBufferFloat32AtomicMinMax == VK_TRUE &&
+				features.s_FeaturesAtomicFloat2.shaderBufferFloat32AtomicMinMax != VK_TRUE)
+			{
+				SEDX_CORE_WARN_TAG("Device", "Requested shaderBufferFloat32AtomicMinMax is not supported by the selected GPU");
+			}
+		}
+
+		if (std::ranges::find(m_InstanceProps.requestedExtensions,
+			GraphicsChecks::GPUExtension::EXTENDED_DYNAMIC_STATE) != m_InstanceProps.requestedExtensions.end())
+		{
+			if (features.s_FeaturesExtendedDynamicState.extendedDynamicState != VK_TRUE)
+			{
+				SEDX_CORE_WARN_TAG("Device", "Extended dynamic state extension requested, but feature extendedDynamicState is not supported by the selected GPU");
+			}
+		}
+
 		features.RebuildPNextChain(); // Fix dangling pointers
 		deviceCreateInfo.pNext = &features.s_Features;
 
@@ -1227,11 +1351,11 @@ namespace SceneryEditorX
 
 		// Log device type summary
 		SEDX_CORE_INFO_TAG("Device", "Device Type Summary:");
-		SEDX_CORE_INFO("- Discrete GPUs: {} (best score: {})", discreteCount, bestDiscrete.IsValid() ? bestDiscrete.featureScore : -1);
-		SEDX_CORE_INFO("- Integrated GPUs: {} (best score: {})", integratedCount, bestIntegrated.IsValid() ? bestIntegrated.featureScore : -1);
-		SEDX_CORE_INFO("- External GPUs: {} (best score: {})", externalCount, bestExternal.IsValid() ? bestExternal.featureScore : -1);
-		SEDX_CORE_INFO("- Virtual GPUs: {} (best score: {})", virtualCount, bestVirtual.IsValid() ? bestVirtual.featureScore : -1);
-		SEDX_CORE_INFO("- Other/Unknown: {} (best score: {})", otherCount, bestOther.IsValid() ? bestOther.featureScore : -1);
+		SEDX_CORE_INFO("- Discrete GPUs: {} (best score: {})",		discreteCount,	 bestDiscrete.IsValid() ? bestDiscrete.featureScore : -1);
+		SEDX_CORE_INFO("- Integrated GPUs: {} (best score: {})",	integratedCount, bestIntegrated.IsValid() ? bestIntegrated.featureScore : -1);
+		SEDX_CORE_INFO("- External GPUs: {} (best score: {})",		externalCount,	 bestExternal.IsValid() ? bestExternal.featureScore : -1);
+		SEDX_CORE_INFO("- Virtual GPUs: {} (best score: {})",		virtualCount,	 bestVirtual.IsValid() ? bestVirtual.featureScore : -1);
+		SEDX_CORE_INFO("- Other/Unknown: {} (best score: {})",		otherCount,		 bestOther.IsValid() ? bestOther.featureScore : -1);
 
 		// Select best device based on priority: Discrete > Integrated > External > Virtual > Other
 		DeviceCandidate selectedCandidate;
@@ -1289,24 +1413,24 @@ namespace SceneryEditorX
 
 		// Log comprehensive selection details
 		SEDX_CORE_INFO_TAG("Device", "=== Selected Physical Device ===");
-		SEDX_CORE_INFO("Index: {}", selectedCandidate.index);
-		SEDX_CORE_INFO("Name: {}", selectedDeviceInfo.name);
-		SEDX_CORE_INFO("Vendor: {}", selectedDeviceInfo.vendorName);
-		SEDX_CORE_INFO("Type: {}", selectedDeviceInfo.type == DeviceType::Discrete ? "Discrete"
-						   : selectedDeviceInfo.type == DeviceType::Integrated ? "Integrated"
-						   : selectedDeviceInfo.type == DeviceType::External   ? "External"
-						   : selectedDeviceInfo.type == DeviceType::Virtual    ? "Virtual" : "Other");
-		SEDX_CORE_INFO("Memory: {} MB", selectedDeviceInfo.memory);
-		SEDX_CORE_INFO("Feature Score: {}", selectedCandidate.featureScore);
+		SEDX_CORE_INFO("Index: {}",	  selectedCandidate.index);
+		SEDX_CORE_INFO("Name: {}",	  selectedDeviceInfo.name);
+		SEDX_CORE_INFO("Vendor: {}",  selectedDeviceInfo.vendorName);
+		SEDX_CORE_INFO("Type: {}",	  selectedDeviceInfo.type == DeviceType::Discrete ? "Discrete"
+						            : selectedDeviceInfo.type == DeviceType::Integrated ? "Integrated"
+						            : selectedDeviceInfo.type == DeviceType::External   ? "External"
+						            : selectedDeviceInfo.type == DeviceType::Virtual    ? "Virtual" : "Other");
+		SEDX_CORE_INFO("Memory: {} MB",		 selectedDeviceInfo.memory);
+		SEDX_CORE_INFO("Feature Score: {}",  selectedCandidate.featureScore);
 		SEDX_CORE_INFO("Driver Version: {}", selectedDeviceInfo.driverVersion);
-		SEDX_CORE_INFO("Vulkan API: {}", selectedDeviceInfo.apiVersion);
+		SEDX_CORE_INFO("Vulkan API: {}",	 selectedDeviceInfo.apiVersion);
 
 		// Log supported advanced features
 		SEDX_CORE_INFO("Advanced Features:");
-		SEDX_CORE_INFO("- Ray Tracing: {}", selectedDeviceInfo.s_SupportedFeatures.s_IsRayTracingSupported ? "Yes" : "No");
-		SEDX_CORE_INFO("- Variable Shading Rate: {}", selectedDeviceInfo.s_SupportedFeatures.s_IsShadingRateSupported ? "Yes" : "No");
-		SEDX_CORE_INFO("- XeSS Support: {}", selectedDeviceInfo.s_SupportedFeatures.s_XessSupported ? "Yes" : "No");
-		SEDX_CORE_INFO("- Bindless Descriptors: {}", selectedDeviceInfo.s_SupportedFeatures.s_IsBindlessSupported ? "Yes" : "No");
+		SEDX_CORE_INFO("- Ray Tracing: {}",				selectedDeviceInfo.s_SupportedFeatures.s_IsRayTracingSupported ? "Yes" : "No");
+		SEDX_CORE_INFO("- Variable Shading Rate: {}",	selectedDeviceInfo.s_SupportedFeatures.s_IsShadingRateSupported ? "Yes" : "No");
+		SEDX_CORE_INFO("- XeSS Support: {}",			selectedDeviceInfo.s_SupportedFeatures.s_XessSupported ? "Yes" : "No");
+		SEDX_CORE_INFO("- Bindless Descriptors: {}",	selectedDeviceInfo.s_SupportedFeatures.s_IsBindlessSupported ? "Yes" : "No");
 
 		return selectedDevice;
 	}

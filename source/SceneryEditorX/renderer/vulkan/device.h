@@ -28,6 +28,7 @@
  * Created: 09/02/2026
  * -------------------------------------------------------
  */
+// ReSharper disable CppInconsistentNaming
 #pragma once
 #include "memory_allocator.h"
 #include "queue_manager.h"
