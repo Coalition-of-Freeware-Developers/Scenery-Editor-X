@@ -579,7 +579,7 @@ if (state.IsCompute())
 					pipelineInfo.flags                        = m_State.vrsInputTexture ? VK_PIPELINE_CREATE_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR : 0;
 				
 					SEDX_VK_RESULT_ASSERT(vkCreateGraphicsPipelines(m_Device->GetLogicalDevice(), static_cast<VkPipelineCache>(GetPipelineCache()), 1, &pipelineInfo, nullptr, reinterpret_cast<VkPipeline*>(&m_Pipeline)));
-					Debugging::SetResourceName(static_cast<void*>(m_Pipeline), ResourceType::Pipeline, state.name);
+					Debugging::SetResourceName(m_Pipeline, ResourceType::Pipeline, state.name);
 				}
 			}
 		}
@@ -587,34 +587,29 @@ if (state.IsCompute())
 		SEDX_CORE_ASSERT(m_Pipeline != nullptr);
 	}
 
-	Pipeline::Pipeline(Pipeline&& other) noexcept
-: m_Device(std::move(other.m_Device))
-, m_Pipeline(std::exchange(other.m_Pipeline, VK_NULL_HANDLE))
-, m_State(std::move(other.m_State))
-, m_Layout(std::exchange(other.m_Layout, VK_NULL_HANDLE))
-, m_PushConstant_Stages(other.m_PushConstant_Stages)
-, m_Destroyed(std::exchange(other.m_Destroyed, true))
-{
-}
+	Pipeline::Pipeline(Pipeline&& other) noexcept : m_Device(std::move(other.m_Device)), m_Pipeline(std::exchange(other.m_Pipeline, VK_NULL_HANDLE)),
+		m_State(other.m_State), m_Layout(std::exchange(other.m_Layout, VK_NULL_HANDLE)), m_PushConstant_Stages(other.m_PushConstant_Stages), 
+		m_Destroyed(std::exchange(other.m_Destroyed, true)) {}
 
-Pipeline& Pipeline::operator=(Pipeline&& other) noexcept
-{
-if (this != &other)
-{
-Destroy();
-m_Device              = std::move(other.m_Device);
-m_Pipeline            = std::exchange(other.m_Pipeline, VK_NULL_HANDLE);
-m_State               = std::move(other.m_State);
-m_Layout              = std::exchange(other.m_Layout, VK_NULL_HANDLE);
-m_PushConstant_Stages = other.m_PushConstant_Stages;
-m_Destroyed           = std::exchange(other.m_Destroyed, true);
-}
-return *this;
-}
+	Pipeline& Pipeline::operator=(Pipeline&& other) noexcept
+	{
+		if (this != &other)
+		{
+			Destroy();
+			m_Device              = std::move(other.m_Device);
+			m_Pipeline            = std::exchange(other.m_Pipeline, VK_NULL_HANDLE);
+			m_State               = other.m_State;
+			m_Layout              = std::exchange(other.m_Layout, VK_NULL_HANDLE);
+			m_PushConstant_Stages = other.m_PushConstant_Stages;
+			m_Destroyed           = std::exchange(other.m_Destroyed, true);
+		}
 
-Pipeline::~Pipeline()
-{
-  Destroy();
+		return *this;
+	}
+	
+	Pipeline::~Pipeline()
+	{
+		Destroy();
 
 		// pipeline cache - save to disk before destroying
 		SavePipelineCache();
@@ -640,9 +635,9 @@ Pipeline::~Pipeline()
 			else if (Ref<RenderContext> ctx = RenderContext::Get())
 			{
 				if (Ref<Device> dev = ctx->GetDevice())
-			{
-				logicalDevice = dev->GetLogicalDevice();
-			}
+				{
+					logicalDevice = dev->GetLogicalDevice();
+				}
 			}
 		}
 
@@ -672,10 +667,8 @@ Pipeline::~Pipeline()
 	VkPipeline Pipeline::CreateGraphics(const GraphicsCreateInfo& info)
 	{
 		if (!info.shaderManager || info.device == VK_NULL_HANDLE)
-		{
 			return VK_NULL_HANDLE;
-		}
-	
+
 		const ShaderManager& shaderManager = *info.shaderManager;
 	
 		// Shader stages (use provided shader manager)
@@ -699,7 +692,7 @@ Pipeline::~Pipeline()
 			}
 			else
 			{
-				sci.pName = "main";
+			    sci.pName = (sci.stage == VK_SHADER_STAGE_COMPUTE_BIT) ? "main_cs" : "main";
 			}
 		
 			shaderStages.push_back(sci);

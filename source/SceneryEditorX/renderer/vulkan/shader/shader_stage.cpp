@@ -38,6 +38,32 @@
 
 namespace SceneryEditorX
 {
+
+	/**
+	 * @brief 
+	 * @param stage 
+	 * @param filepath 
+	 * @return 
+	 */
+	static const char* GetDefaultEntryPoint(const Stage stage, const std::string& filepath)
+	{
+		const bool isSlangShader = filepath.ends_with(".slang");
+		if (!isSlangShader)
+		{
+			return "main";
+		}
+
+		switch (stage)
+		{
+			case Stage::Vertex:					return "main_vs";
+			case Stage::Fragment:				return "main_frag";
+			case Stage::Compute:				return "main_cs";
+			case Stage::Geometry:				return "main_gs";
+			case Stage::TessellationControl:	return "main_tcs";
+			case Stage::TessellationEvaluation:	return "main_tes";
+			default:							return "main";
+		}
+	}
 	
 	#define SOURCE_FILEPATH "resources/shaders/"
 	#define CACHE_FILEPATH "cache"
@@ -83,6 +109,8 @@ namespace SceneryEditorX
 
 	ShaderStage::ShaderStage(Stage stage, const std::string& filepath) : m_Stage(stage), m_Filepath(filepath)
 	{
+	   m_EntryPoint = GetDefaultEntryPoint(stage, filepath);
+
 		const Ref<Device> device = RenderContext::Get()->GetDevice();
 		std::vector<uint32_t> data;
 	
@@ -201,7 +229,7 @@ namespace SceneryEditorX
 		createInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 		createInfo.stage = GetStage(m_Stage);
 		createInfo.module = m_ShaderModule;
-		createInfo.pName = "main";
+	  createInfo.pName = m_EntryPoint.c_str();
 	
 		return createInfo;
 	}

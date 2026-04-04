@@ -96,10 +96,8 @@ namespace SceneryEditorX
 	void Shader::AddShaderStage(Stage stage, const std::string& filepath)
 	{
 		if (m_Stages.contains(stage))
-		{
 			return;
-		}
-	
+
 		m_Stages[stage] = CreateRef<ShaderStage>(stage, filepath);
 	
 		for (const ShaderInput& input : m_Stages[stage]->GetInput())
@@ -110,20 +108,18 @@ namespace SceneryEditorX
 	
 	Ref<ShaderStage> Shader::GetShaderStage(const Stage stage)
 	{
-		SEDX_CORE_ASSERT(m_Stages.contains(stage) == false, "Stage is not present");
-		return m_Stages[stage];
+		SEDX_CORE_ASSERT(m_Stages.contains(stage), "Stage is not present");
+		return m_Stages.at(stage);
 	}
 	
 	bool Shader::HasStage(const Stage stage)
 	{
 		if (!m_Stages.contains(stage))
-		{
 			return false;
-		}
 
 		return true;
 	}
-	
+
 	std::map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>> Shader::GetDescriptorSetLayoutBindings()
 	{
 		std::map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>> bindings;
@@ -184,17 +180,17 @@ namespace SceneryEditorX
 				{
 				case ShaderInputType::UniformBuffer:
 				case ShaderInputType::UniformBufferSet: descType = DescriptorType::ConstantBuffer;
-				    break;
+					break;
 				case ShaderInputType::StorageBuffer:
 				case ShaderInputType::StorageBufferSet: descType = DescriptorType::StructuredBuffer;
-				    break;
+					break;
 				case ShaderInputType::CombinedImageSampler:
 				case ShaderInputType::Texture: descType = DescriptorType::Image;
-				    break;
+					break;
 				case ShaderInputType::StorageImage: descType = DescriptorType::TextureStorage; 
-				    break;
+					break;
 				default:	
-				    break;
+					break;
 				}
 				
 				if (descType == DescriptorType::MaxEnum)

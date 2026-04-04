@@ -68,16 +68,7 @@ namespace SceneryEditorX
 		 */
 		bool HasStage(Stage stage);
 
-		/**
-		 * @brief Retrieves the pipeline shader stage create info for the specified shader stage.
-		 * @param stage The shader stage to retrieve the create info for.
-		 * @return The pipeline shader stage create info.
-		 */
-		VkPipelineShaderStageCreateInfo const GetStageCreateInfo(ShaderStage stage);
-
-		/**
-		 * @brief Creates the descriptor set layouts for the shader.
-		 */
+		/* @brief Creates the descriptor set layouts for the shader. */
 		void CreateDescriptorSetLayouts();
 
 		/**
