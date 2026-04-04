@@ -35,6 +35,7 @@
 #include "SceneryEditorX/core/application/application.h"
 #include "SceneryEditorX/core/events/editor_events.h"
 #include "SceneryEditorX/core/time/timer.h"
+#include "SceneryEditorX/logging/profiler.hpp"
 #include "SceneryEditorX/project/project.h"
 
 #include <SceneryEditorX/filesystem/file_manager.hpp>
@@ -75,11 +76,11 @@ namespace SceneryEditorX
 
 	void EditorAssetSystem::AssetThreadFunc()
 	{
-		//SEDX_PROFILE_THREAD("Asset Thread");
+		SEDX_PROFILE_THREAD("Asset Thread");
 
 		while (m_Running)
 		{
-			//SEDX_PROFILE_SCOPE("Asset Thread Queue");
+			SEDX_PROFILE_FUNC("Asset Thread Queue");
 			AssetMonitorUpdate();
 
 			bool queueEmptyOrStop = false;

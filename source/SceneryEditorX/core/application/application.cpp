@@ -305,7 +305,7 @@ namespace SceneryEditorX
 
 	void Application::RenderUI()
 	{
-		//SEDX_PROFILER_FUNC();
+		//SEDX_PROFILE_FUNC();
 		//SEDX_SCOPE_PERF("Application::RenderUI");
 		SEDX_CORE_TRACE_TAG("Application", "Rendering UI");
 

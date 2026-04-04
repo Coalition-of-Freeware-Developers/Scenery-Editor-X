@@ -30,6 +30,8 @@
  */
 #include "runtime_asset_system.h"
 
+#include "SceneryEditorX/logging/profiler.hpp"
+
 // -------------------------------------------------------
 
 namespace SceneryEditorX
@@ -59,11 +61,11 @@ namespace SceneryEditorX
 
 	void RuntimeAssetSystem::AssetThreadFunc()
 	{
-		//SEDX_PROFILE_THREAD("Asset Thread");
+		SEDX_PROFILE_THREAD("Asset Thread");
 
 		while (m_Running)
 		{
-			//SEDX_PROFILE_SCOPE("Asset Thread Queue");
+			//SEDX_PROFILE_FUNC("Asset Thread Queue");
 
 			// Go through queue and see what needs loading
 			bool queueEmptyOrStop = false;

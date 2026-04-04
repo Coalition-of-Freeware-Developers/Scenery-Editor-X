@@ -47,16 +47,16 @@
 	// -------------------------------------------------------
 
 	// predefined RGB colors for "heavy" point-of-interest operations
-	#define SEDX_PROFILE_COLOR_WAIT 0xff0000
-	#define SEDX_PROFILE_COLOR_SUBMIT 0x0000ff
-	#define SEDX_PROFILE_COLOR_PRESENT 0x00ff00
-	#define SEDX_PROFILE_COLOR_CREATE 0xff6600
-	#define SEDX_PROFILE_COLOR_DESTROY 0xffa500
-	#define SEDX_PROFILE_COLOR_BARRIER 0xffffff
-	#define SEDX_PROFILE_COLOR_CMD_DRAW 0x8b0000
-	#define SEDX_PROFILE_COLOR_CMD_COPY 0x8b0a50
-	#define SEDX_PROFILE_COLOR_CMD_RTX 0x8b0000
-	#define SEDX_PROFILE_COLOR_CMD_DISPATCH 0x8b0000
+	#define SEDX_PROFILE_COLOR_WAIT			0xff0000	// red
+	#define SEDX_PROFILE_COLOR_SUBMIT		0x0000ff	// blue
+	#define SEDX_PROFILE_COLOR_PRESENT		0x00ff00	// green
+	#define SEDX_PROFILE_COLOR_CREATE		0xff6600	// orange
+	#define SEDX_PROFILE_COLOR_DESTROY		0xffa500	// light orange
+	#define SEDX_PROFILE_COLOR_BARRIER		0xffffff	// white
+	#define SEDX_PROFILE_COLOR_CMD_DRAW		0x8b0000	// dark red
+	#define SEDX_PROFILE_COLOR_CMD_COPY		0x8b0a50	// dark pink
+	#define SEDX_PROFILE_COLOR_CMD_RTX		0x8b0000	// dark red
+	#define SEDX_PROFILE_COLOR_CMD_DISPATCH 0x8b0000	// dark red
 
 	// -------------------------------------------------------
 
@@ -70,12 +70,12 @@
 	#define SEDX_PROFILE_ZONE_END() }
 
 #else
-	#define SEDX_PROFILER_FUNC()
-	#define SEDX_PROFILER_FUNC_COLOR(color)
-	#define SEDX_PROFILER_ZONE(name, color) {
-	#define SEDX_PROFILER_ZONE_END() }
-	#define SEDX_PROFILER_THREAD(name)
-	#define SEDX_PROFILER_FRAME(name)
+	#define SEDX_PROFILE_FUNC(void)
+	#define SEDX_PROFILE_FUNC_COLOR(color)
+	#define SEDX_PROFILE_ZONE(name, color) { 
+	#define SEDX_PROFILE_ZONE_END() }
+	#define SEDX_PROFILE_THREAD(name)
+	#define SEDX_PROFILE_FRAME(name)
 #endif
 
 // -------------------------------------------------------
