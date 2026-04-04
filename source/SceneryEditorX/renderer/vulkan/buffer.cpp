@@ -38,9 +38,15 @@
 namespace SceneryEditorX
 {
 
-	Buffer::Buffer(const size_t stride, const uint32_t elementCount, const void *data, const bool mappable, const char *name)
-	: m_Allocator(MemoryAllocator::GetAllocator()), m_StrideUnaligned(static_cast<uint32_t>(stride)), m_Stride(static_cast<uint32_t>(stride)), m_ElementCount(elementCount)
+	Buffer::Buffer(const size_t stride, const uint32_t elementCount, const void *data, const bool mappable, const char *name) : m_Allocator(MemoryAllocator::GetAllocator()), 
+		m_StrideUnaligned(static_cast<uint32_t>(stride)), m_Stride(static_cast<uint32_t>(stride)), m_ElementCount(elementCount)
 	{
+		if (m_Buffer)
+		{
+			QueueManager::AddDeletionQueue(ResourceType::Buffer, m_Buffer);
+			m_Buffer = VK_NULL_HANDLE;
+		}
+
 		SetObjectName(name ? name : "");
 		
 		const VkDeviceSize totalSize = static_cast<VkDeviceSize>(stride) * elementCount;
@@ -78,8 +84,7 @@ namespace SceneryEditorX
 		}
 	}
 
-	Buffer::Buffer(const VmaAllocator allocator, const VkDeviceSize size, const VkBufferUsageFlags usage, const VmaAllocationCreateInfo& allocInfo)
-		: m_Allocator(allocator ? allocator : MemoryAllocator::GetAllocator())
+	Buffer::Buffer(const VmaAllocator allocator, const VkDeviceSize size, const VkBufferUsageFlags usage, const VmaAllocationCreateInfo& allocInfo) : m_Allocator(allocator ? allocator : MemoryAllocator::GetAllocator())
 	{
 		VkBufferCreateInfo bufferCI{};
 		bufferCI.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -104,8 +109,8 @@ namespace SceneryEditorX
 		}
 	}
 
-	Buffer::Buffer(Buffer &&other) noexcept : m_Buffer(other.m_Buffer), m_Allocation(other.m_Allocation), 
-	m_Allocator(other.m_Allocator), m_MappedData(other.m_MappedData), m_ExplicitlyMapped(other.m_ExplicitlyMapped), m_DeviceAddress(other.m_DeviceAddress)
+	Buffer::Buffer(Buffer &&other) noexcept : m_Buffer(other.m_Buffer), m_Allocation(other.m_Allocation), m_Allocator(other.m_Allocator), 
+					m_MappedData(other.m_MappedData), m_DeviceAddress(other.m_DeviceAddress), m_ExplicitlyMapped(other.m_ExplicitlyMapped)
 	{
 		other.m_Buffer = VK_NULL_HANDLE;
 		other.m_Allocation = VK_NULL_HANDLE;
@@ -160,7 +165,7 @@ namespace SceneryEditorX
 	
 		return m_MappedData;
 	}
-		
+
 	void Buffer::Unmap()
 	{
 		if (m_Allocation == VK_NULL_HANDLE || m_Allocator == VK_NULL_HANDLE)
