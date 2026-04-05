@@ -819,6 +819,18 @@ namespace SceneryEditorX
 		return true;
 	}
 
+	void Renderer::RotateFrameBuffers()
+	{
+		m_FrameResource_Index = (m_FrameResource_Index + 1) % DRAW_DATA_BUFFER_COUNT;
+		const FrameResource& fr = m_FrameResources[m_FrameResource_Index];
+
+		s_Buffers[static_cast<uint8_t>(Renderer_Buffer::IndirectDrawArgs)]    = fr.m_Indirect_DrawArgs;
+		s_Buffers[static_cast<uint8_t>(Renderer_Buffer::IndirectDrawData)]    = fr.m_Indirect_DrawData;
+		s_Buffers[static_cast<uint8_t>(Renderer_Buffer::IndirectDrawArgsOut)] = fr.m_Indirect_DrawArgs_Out;
+		s_Buffers[static_cast<uint8_t>(Renderer_Buffer::IndirectDrawDataOut)] = fr.m_Indirect_DrawData_Out;
+		s_Buffers[static_cast<uint8_t>(Renderer_Buffer::IndirectDrawCount)]   = fr.m_Indirect_DrawCount;
+	}
+
 }
 
 // -------------------------------------------------------

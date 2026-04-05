@@ -90,8 +90,42 @@ namespace SceneryEditorX
 		 */
 		void* Map();
 
+		/**
+		 * @brief Maps the buffer memory to a CPU-accessible address and returns it through the provided reference.
+		 * @param resource The buffer resource to map.
+		 * @param data A reference to a pointer that will receive the mapped memory address.
+		 */
+		static void Map(void *resource, void *&data);
+
 		/* @brief Unmaps the buffer memory from a CPU-accessible address. */
 		void Unmap();
+
+		/**
+		 * @brief Unmaps the buffer memory from a CPU-accessible address.
+		 * @param resource The buffer resource to unmap.
+		 */
+		static void Unmap(void *resource);
+
+		/**
+		 * @brief Acquires a staging buffer of the specified size.
+		 * @param size The size of the staging buffer to acquire.
+		 * @return A pointer to the acquired staging buffer.
+		 */
+		static void *AcquireStagingBuffer(uint64_t size);
+
+		/**
+		 * @brief Releases a staging buffer that was previously acquired.
+		 * @param buffer The staging buffer to release.
+		 */
+		static void ReleaseStagingBuffer(void* buffer);
+
+		/**
+		 * @brief Uploads data to a sub-region of the buffer.
+		 * @param data The data to upload to the buffer.
+		 * @param offsetBytes The offset in bytes within the buffer to start the upload.
+		 * @param sizeBytes The size in bytes of the data to upload.
+		 */
+		void UploadSubRegion(const void* data, uint64_t offsetBytes, uint64_t sizeBytes);
 
 		/**
 		 * @brief Gets the device address of the buffer.
@@ -171,12 +205,14 @@ namespace SceneryEditorX
 		VmaAllocator m_Allocator{VK_NULL_HANDLE};	// VMA allocator handle
 		void* m_MappedData{ nullptr };				// Pointer to the mapped data
 		VkDeviceAddress m_DeviceAddress{ 0 };		// Device address of the buffer
-		uint32_t m_StrideUnaligned     = 0;			// Original stride before alignment, used for calculating buffer size and element count
-		uint32_t m_Stride              = 0;			// Aligned stride of each element in the buffer, ensuring proper alignment for GPU access
-		uint32_t m_ElementCount        = 0;			// Number of elements in the buffer, calculated based on the total buffer size and the aligned stride
-		uint32_t m_Offset              = 0;			// Current offset for dynamic buffer updates, used to track where the next data should be written in the buffer
-		bool m_IsFirstUpdate           = true;      // Indicates if the buffer has been updated for the first time, used to determine if the offset should be reset on the first update
-		bool m_ExplicitlyMapped{ false };			// Indicates if the buffer is explicitly mapped
+		uint32_t m_StrideUnaligned		= 0;		// Original stride before alignment, used for calculating buffer size and element count
+		uint32_t m_Stride				= 0;		// Aligned stride of each element in the buffer, ensuring proper alignment for GPU access
+		uint32_t m_ElementCount			= 0;		// Number of elements in the buffer, calculated based on the total buffer size and the aligned stride
+		uint32_t m_Offset				= 0;		// Current offset for dynamic buffer updates, used to track where the next data should be written in the buffer
+		bool m_IsFirstUpdate			= true;     // Indicates if the buffer has been updated for the first time, used to determine if the offset should be reset on the first update
+		bool m_ExplicitlyMapped			= false;	// Indicates if the buffer is explicitly mapped
+		bool m_IsMappable               = false;
+
 	};
 
 }

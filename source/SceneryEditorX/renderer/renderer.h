@@ -516,6 +516,12 @@ namespace SceneryEditorX
 		static bool IsCpuDrivenDraw(const Renderer_DrawCall &drawCall, const class Material *material);
 
 		/**
+		 * @brief Rotates the per-frame buffers to avoid CPU-GPU race conditions without stalling.
+		 * @note This allows the CPU to write to one buffer while the GPU reads from another, with a safe number of buffers in flight as a cushion.
+		 */
+		static void RotateFrameBuffers();
+
+		/**
 		 * @brief Binds the common per-frame textures (noise, depth, etc.) that every pass needs.
 		 */
 		static void SetCommonTextures(CommandList *cmdList);

@@ -37,7 +37,7 @@ namespace SceneryEditorX
 {
 	namespace
 	{
-	    /**
+		/**
 		 * @struct QuadVertex
 		 * @brief Vertex format for the static full-screen quad used in geometry passes. 
 		 */
@@ -52,6 +52,21 @@ namespace SceneryEditorX
 	static Ref<Buffer> s_GeometryQuadVertexBuffer = nullptr;
 	static Ref<Buffer> s_GeometryQuadIndexBuffer  = nullptr;
 	
+	// static member definitions
+	std::vector<Vertex_PosTexNorTan> GeometryBuffer::m_Vertices;
+	std::vector<uint32_t> GeometryBuffer::m_Indices;
+	std::unique_ptr<Buffer> GeometryBuffer::m_VertexBuffer;
+	std::unique_ptr<Buffer> GeometryBuffer::m_IndexBuffer;
+	uint32_t GeometryBuffer::m_VertexCount_Committed = 0;
+	uint32_t GeometryBuffer::m_IndexCount_Committed  = 0;
+	uint32_t GeometryBuffer::m_Vertex_Capacity        = 0;
+	uint32_t GeometryBuffer::m_Index_Capacity         = 0;
+	Flag GeometryBuffer::m_Dirty;
+	bool GeometryBuffer::m_WasRebuilt;
+	std::mutex GeometryBuffer::m_Mutex;
+
+
+
 	void GeometryBuffer::Initialize()
 	{
 		SEDX_CORE_TRACE_TAG("RendererResources", "Initializing GeometryBuffer/G-Buffer");
@@ -112,9 +127,127 @@ namespace SceneryEditorX
 		SEDX_CORE_TRACE_TAG("RendererResources", "Shutting down GeometryBuffer/G-Buffer");
 	}
 
-	Buffer* GeometryBuffer::GetIndexBuffer() { return s_GeometryQuadIndexBuffer.Get(); }
+	uint32_t GeometryBuffer::AppendVertices(const Vertex_PosTexNorTan *data, uint32_t count)
+	{
+		std::scoped_lock lock(m_Mutex);
 
-	Buffer* GeometryBuffer::GetVertexBuffer() { return s_GeometryQuadVertexBuffer.Get(); }
+		uint32_t base_offset = static_cast<uint32_t>(m_Vertices.size());
+		m_Vertices.insert(m_Vertices.end(), data, data + count);
+		m_Dirty.SetDirty();
+		return base_offset;
+	}
+
+	uint32_t GeometryBuffer::AppendIndices(const uint32_t *data, uint32_t count)
+	{
+		std::scoped_lock lock(m_Mutex);
+
+		uint32_t baseOffset = static_cast<uint32_t>(m_Indices.size());
+		m_Indices.insert(m_Indices.end(), data, data + count);
+		m_Dirty.SetDirty();
+
+		return baseOffset;
+	}
+
+	void GeometryBuffer::UpdateVertices(const Vertex_PosTexNorTan *data, uint32_t offset, uint32_t count)
+	{
+		std::scoped_lock lock(m_Mutex);
+
+		SEDX_CORE_ASSERT(offset + count <= static_cast<uint32_t>(m_Vertices.size()), "Vertex update range out of bounds");
+		memcpy(m_Vertices.data() + offset, data, count * sizeof(Vertex_PosTexNorTan));
+
+		if (m_VertexBuffer && offset + count <= m_VertexCount_Committed)
+		{
+			uint64_t byteOffset = static_cast<uint64_t>(offset) * sizeof(Vertex_PosTexNorTan);
+			uint64_t byteSize   = static_cast<uint64_t>(count) * sizeof(Vertex_PosTexNorTan);
+			m_VertexBuffer->UploadSubRegion(data, byteOffset, byteSize);
+		}
+	}
+
+	void GeometryBuffer::BuildIfDirty()
+	{
+		std::scoped_lock lock(m_Mutex);
+
+		if (!m_Dirty.IsDirty() || m_Vertices.empty() || m_Indices.empty())
+			return;
+
+		uint32_t vertexCount = static_cast<uint32_t>(m_Vertices.size());
+		uint32_t indexCount  = static_cast<uint32_t>(m_Indices.size());
+
+		m_WasRebuilt            = false;
+		bool needsFullRebuild = !m_VertexBuffer || !m_IndexBuffer || vertexCount > m_Vertex_Capacity || indexCount > m_Index_Capacity;
+
+		if (needsFullRebuild)
+		{
+			// destroy existing gpu buffers before creating new ones
+			m_VertexBuffer = nullptr;
+			m_IndexBuffer  = nullptr;
+
+			// allocate with headroom so late-arriving meshes don't trigger another rebuild
+			m_Vertex_Capacity = static_cast<uint32_t>(vertexCount * GROWTH_FACTOR);
+			m_Index_Capacity  = static_cast<uint32_t>(indexCount * GROWTH_FACTOR);
+
+			// create vertex buffer with capacity (no initial data - we upload via sub-region)
+			m_VertexBuffer = CreateScope<Buffer>(sizeof(Vertex_PosTexNorTan), m_Vertex_Capacity,
+				nullptr, // no initial data
+				false, "geometry_buffer_vertex");
+
+			// create index buffer with capacity (no initial data)
+			m_IndexBuffer = CreateScope<Buffer>(sizeof(uint32_t), m_Index_Capacity,
+				nullptr, // no initial data
+				false, "geometry_buffer_index");
+
+			// upload all committed data into the newly allocated buffers
+			m_VertexBuffer->UploadSubRegion(m_Vertices.data(), 0, vertexCount * sizeof(Vertex_PosTexNorTan));
+			m_IndexBuffer->UploadSubRegion(m_Indices.data(), 0, indexCount * sizeof(uint32_t));
+
+			m_VertexCount_Committed = vertexCount;
+			m_IndexCount_Committed  = indexCount;
+			m_WasRebuilt = true;
+
+			SEDX_CORE_INFO_TAG("GBuffer","Global geometry buffer built: %u vertices (%.2f MB), %u indices (%.2f MB), capacity: %u vertices, %u indices",
+				vertexCount, (vertexCount * sizeof(Vertex_PosTexNorTan)) / (1024.0f * 1024.0f),
+				indexCount, (indexCount * sizeof(uint32_t)) / (1024.0f * 1024.0f),
+				m_Vertex_Capacity, m_Index_Capacity);
+		}
+		else
+		{
+			// the new data fits within the pre-allocated capacity, upload only the new portion
+			uint32_t newVertices = vertexCount - m_VertexCount_Committed;
+			uint32_t newIndices  = indexCount - m_IndexCount_Committed;
+
+			if (newVertices > 0)
+			{
+				uint64_t offset = static_cast<uint64_t>(m_VertexCount_Committed) * sizeof(Vertex_PosTexNorTan);
+				uint64_t size   = static_cast<uint64_t>(newVertices) * sizeof(Vertex_PosTexNorTan);
+				m_VertexBuffer->UploadSubRegion(m_Vertices.data() + m_VertexCount_Committed, offset, size);
+			}
+
+			if (newIndices > 0)
+			{
+				uint64_t offset = static_cast<uint64_t>(m_IndexCount_Committed) * sizeof(uint32_t);
+				uint64_t size   = static_cast<uint64_t>(newIndices) * sizeof(uint32_t);
+				m_IndexBuffer->UploadSubRegion(m_Indices.data() + m_IndexCount_Committed, offset, size);
+			}
+
+			m_VertexCount_Committed = vertexCount;
+			m_IndexCount_Committed  = indexCount;
+
+			SEDX_CORE_INFO_TAG("GBuffer","Global geometry buffer updated: +%u vertices, +%u indices (sub-region upload, no rebuild)", newVertices, newIndices);
+		}
+
+		m_Dirty.Check();
+	}
+
+	bool GeometryBuffer::WasRebuilt()
+	{
+		bool result = m_WasRebuilt;
+		m_WasRebuilt = false;
+		return result;
+	}
+
+	Buffer *GeometryBuffer::GetIndexBuffer() { return m_IndexBuffer.get(); }
+
+	Buffer *GeometryBuffer::GetVertexBuffer() { return m_VertexBuffer.get(); }
 
 
 }

@@ -56,7 +56,7 @@ namespace SceneryEditorX
 		 * @brief Initializes the memory allocator with the given device.
 		 * @param device The Vulkan device to use for memory allocation.
 		 */
-		static void Init(Ref<Device> device);
+		static void Init(const Ref<Device> &device);
 
 		/**
 		 * @brief Updates the memory allocator for the given frame count.
@@ -173,13 +173,13 @@ namespace SceneryEditorX
 		static void UnmapMemory(VmaAllocation allocation);
 
 		/**
-		 * @brief 
+		 * @brief Dumps the current memory allocation statistics to the console or log.
 		 */
 		static void DumpStats();
 
 		/**
-		 * @brief 
-		 * @return 
+		 * @brief Retrieves the current GPU memory statistics.
+		 * @return The GPU memory statistics.
 		 */
 		static GPUMemoryStats GetMemoryStats();
 

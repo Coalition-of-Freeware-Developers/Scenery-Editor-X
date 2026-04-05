@@ -57,8 +57,8 @@ namespace SceneryEditorX
 		{
 			case Stage::Vertex:					return "main_vs";
 			case Stage::Fragment:				return "main_frag";
-			case Stage::Compute:				return "main_cs";
-			case Stage::Geometry:				return "main_gs";
+			case Stage::Compute:				return "main_comp";
+			case Stage::Geometry:				return "main_geo";
 			case Stage::TessellationControl:	return "main_tcs";
 			case Stage::TessellationEvaluation:	return "main_tes";
 			default:							return "main";

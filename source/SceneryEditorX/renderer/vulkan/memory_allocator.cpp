@@ -53,10 +53,10 @@
 namespace SceneryEditorX
 {
 	/**
-	 * @struct SEDX_AllocatorData
+	 * @struct Renderer_AllocatorData
 	 * @brief Holds data related to the Vulkan memory allocator.
 	 */
-	struct SEDX_AllocatorData
+	struct Renderer_AllocatorData
 	{
 		VmaAllocator allocator;
 		uint64_t totalAllocatedBytes = 0;
@@ -84,7 +84,7 @@ namespace SceneryEditorX
 		AllocationType type = AllocationType::None;
 	};
 
-	static SEDX_AllocatorData *s_AllocatorData; // Pointer to the allocator data, initialized in MemoryAllocator::Init()
+	static Renderer_AllocatorData *s_AllocatorData; // Pointer to the allocator data, initialized in MemoryAllocator::Init()
 	static std::map<VmaAllocation, AllocInfo> s_AllocationMap; // Map to track active allocations and their information
 	static std::mutex s_MutexAllocator; // Mutex to protect access to the allocation map for thread safety
 
@@ -106,12 +106,12 @@ namespace SceneryEditorX
 		SEDX_CORE_TRACE_TAG("MemoryAllocator","Allocation {0}: destroyed", m_ObjectName);
 	}
 
-	void MemoryAllocator::Init(Ref<Device> device)
+	void MemoryAllocator::Init(const Ref<Device> &device)
 	{
 		SEDX_CORE_ASSERT(device != nullptr, "Device cannot be null");
 		SEDX_CORE_ASSERT(device->GetLogicalDevice() != VK_NULL_HANDLE, "Logical device cannot be VK_NULL_HANDLE when initializing VMA allocator");
 		SEDX_CORE_ASSERT(device->GetPhysicalDevice() != VK_NULL_HANDLE, "Physical device cannot be VK_NULL_HANDLE when initializing VMA allocator");
-		s_AllocatorData = new SEDX_AllocatorData();
+		s_AllocatorData = new Renderer_AllocatorData();
 
 		// Zero-initialize and provide the two root function pointers.
 		// With VMA_DYNAMIC_VULKAN_FUNCTIONS=1, VMA will use these to

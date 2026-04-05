@@ -523,6 +523,8 @@ namespace SceneryEditorX
 
 	void Renderer::Tick()
 	{
+		s_Swapchain->AcquireNextImage();
+
 		// Let Scene drive ECS camera entities before renderer reads camera data.
 		Scene::Tick();
 
@@ -542,7 +544,7 @@ namespace SceneryEditorX
 				m_Camera->Tick();
 			}
 			UpdateCameraUBO(m_CurrentFrameIndex); // Ensure UBO is ready before command recording
-			SEDX_CORE_TRACE_TAG("CAM", "Camera pos = (X: {:.3f}, Y: {:.3f}, Z: {:.3f})",
+			SEDX_CORE_TRACE_TAG("Renderer", "Camera pos = (X: {:.3f}, Y: {:.3f}, Z: {:.3f})",
 				m_Camera->GetEyePosition().x, m_Camera->GetEyePosition().y, m_Camera->GetEyePosition().z);
 		}
 		else
@@ -577,6 +579,8 @@ namespace SceneryEditorX
 		SEDX_CORE_ASSERT(m_CmdList_Present != nullptr, "Failed to acquire present command list");
 		m_CmdList_Present->Begin();
 
+#pragma region Compute Command List Setup
+
 		m_CmdList_Compute = nullptr;
 
 		// Bootstrap mode currently runs the graphics-only path in ProduceFrame().
@@ -593,11 +597,24 @@ namespace SceneryEditorX
 			}
 		}
 
+#pragma endregion
+
 		m_DrawData_Count = 0; // Reset draw call count each frame; it will be incremented by Renderer::WriteDrawData as draw calls are recorded.
 
 		if (canRender)
 		{
 			bool isLoading = false;
+
+			// rebuild geometry buffer if new meshes arrived
+			if (!isLoading)
+			{
+				GeometryBuffer::BuildIfDirty();
+			}
+
+			// rotate per-frame buffers to avoid cpu-gpu race conditions without stalling; 
+			// this allows the CPU to write to one buffer while the GPU reads from another, with a safe number of buffers in flight as a cushion
+			RotateFrameBuffers();
+
 			UpdateDrawCalls(m_CmdList_Present);
 
 			// Wire the modern pass-based renderer into the active frame loop.
@@ -632,26 +649,30 @@ namespace SceneryEditorX
 				UI::Render(ImGui::GetDrawData(), nullptr, false);
 			}
 
-			// periodic resource cleanup
+#pragma region Resource Cleanup - Per-frame
+
+			if (QueueManager::NeedToParseDeletionQueue())
+			{
+				// QueueManager::WaitIdleAll();
+				QueueManager::ParseDeletionQueue();
+			}
+
+#pragma endregion
+#pragma region Constant Buffer Offset Resource Cleanup
+
 			{
 				m_ResourceIndex++;
-				if (bool isSyncPoint = m_ResourceIndex == RENDERER_RESOURCE_FRAME_LIFETIME)
+				if (m_ResourceIndex == RENDERER_RESOURCE_FRAME_LIFETIME)
 				{
 					m_ResourceIndex = 0;
-
-					if (QueueManager::NeedToParseDeletionQueue())
-					{
-						QueueManager::WaitIdleAll();
-						QueueManager::ParseDeletionQueue();
-					}
-
-					// TODO: GetBuffer(Renderer_Buffer::ConstantFrame)->ResetOffset(); // ResetOffset not yet implemented on Buffer
 					GetBuffer(Renderer_Buffer::ConstantFrame)->ResetOffset(); // ResetOffset not yet implemented on Buffer
 				}
 			}
 
+#pragma endregion
+#pragma region Bindless Resource Updates
+
 			/*
-			// bindless resource updates
 			if (!isLoading)
 			{
 				bool initialize = GetFrameNumber() == 0;
@@ -763,8 +784,9 @@ namespace SceneryEditorX
 					count_buffer->Update(m_CmdList_Present, &zero, sizeof(uint32_t));
 				}
 			}*/
-		}
+#pragma endregion
 
+		}
 
 		const bool canRecordOnPresentCmd = m_CmdList_Present && m_CmdList_Present->GetState() == CommandState::Recording;
 		if (canRecordOnPresentCmd)
@@ -810,7 +832,7 @@ namespace SceneryEditorX
 	{
 		SEDX_CORE_TRACE_TAG("Renderer", "Beginning frame {}", m_FrameNumber);
 
-	    // Reset per-frame draw data counter. Must be reset unconditionally (before
+		// Reset per-frame draw data counter. Must be reset unconditionally (before
 		// any early-return) so WriteDrawData never overflows m_DrawData_CPU[].
 		m_DrawData_Count = 0;
 
@@ -3100,7 +3122,7 @@ namespace SceneryEditorX
 		uint32_t globalIndex = m_ResourceIndex * RENDERER_MAX_DRAW_CALLS + index;
 
 		Buffer* buffer = GetBuffer(Renderer_Buffer::DrawData);
-	    if (!buffer)
+		if (!buffer)
 		{
 			static bool s_LoggedMissingDrawDataBuffer = false;
 			if (!s_LoggedMissingDrawDataBuffer)
