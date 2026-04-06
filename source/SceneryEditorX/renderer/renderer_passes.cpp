@@ -1700,8 +1700,8 @@ namespace SceneryEditorX
 			pso.renderTarget_ColorTextures[0]					= out;
 			pso.clearColor[0]									= RHI_COLOR_LOAD;
 			cmdList->SetPipelineState(pso);
-			cmdList->SetBufferVertex(font->GetVertexBuffer());
-			cmdList->SetBufferIndex(font->GetIndexBuffer());
+			cmdList->SetVertexBuffer(font->GetVertexBuffer());
+			cmdList->SetIndexBuffer(font->GetIndexBuffer());
 			cmdList->SetCullMode(CullMode::Back);
 
 			// draw outline

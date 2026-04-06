@@ -165,8 +165,8 @@ namespace SceneryEditorX
 
 	Light::Light(Entity* entity) : Component(entity)
 	{
-		m_Matrix_View.fill(Matrix::Identity);
-		m_Matrix_Projection.fill(Matrix::Identity);
+		m_Matrix_View.fill(Matrix::IDENTITY);
+		m_Matrix_Projection.fill(Matrix::IDENTITY);
 
 		SetLightColor(GetSensibleColor(m_LightType));
 		SetIntensity(LightIntensity::bulb_500_watt);
@@ -456,9 +456,9 @@ namespace SceneryEditorX
 	
 	void Light::ClearAtlasRectangles()
 	{
-		m_Atlas_Rectangles.fill(xMath::Rectangle::Zero);
-		m_Atlas_Offsets.fill(Vec2::Zero);
-		m_Atlas_Scales.fill(Vec2::Zero);
+		m_Atlas_Rectangles.fill(xMath::Rectangle::ZERO);
+		m_Atlas_Offsets.fill(Vec2::ZERO);
+		m_Atlas_Scales.fill(Vec2::ZERO);
 	}
 	
 	void Light::UpdateMatrices()
@@ -666,7 +666,7 @@ namespace SceneryEditorX
 		}
 		else // directional
 		{
-			m_BoundingBox = xMath::BoundingBox::Infinite;
+			m_BoundingBox = xMath::BoundingBox::BB_INFINITE;
 		}
 	}
 

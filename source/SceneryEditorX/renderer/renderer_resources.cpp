@@ -748,26 +748,26 @@ namespace SceneryEditorX
 		return s_Buffers;
 	}
 
-	Buffer* Renderer::GetBuffer(const Renderer_Buffer type)
+	Buffer *Renderer::GetBuffer(const Renderer_Buffer type)
 	{
 		return s_Buffers[static_cast<uint8_t>(type)].Get();
 	}
 
-	RasterizerState* Renderer::GetRasterizerState(const Renderer_RasterizerState type)
+	RasterizerState *Renderer::GetRasterizerState(const Renderer_RasterizerState type)
 	{
 		SEDX_CORE_ASSERT(static_cast<uint8_t>(type) < static_cast<uint8_t>(Renderer_RasterizerState::MaxEnum),
 						 "Renderer_RasterizerState out of range");
 		return &s_RasterizerStates[static_cast<uint8_t>(type)];
 	}
 
-	BlendState* Renderer::GetBlendState(const Renderer_BlendState type)
+	BlendState *Renderer::GetBlendState(const Renderer_BlendState type)
 	{
 		SEDX_CORE_ASSERT(static_cast<uint8_t>(type) < static_cast<uint8_t>(Renderer_BlendState::MaxEnum),
 						 "Renderer_BlendState out of range");
 		return &s_BlendStates[static_cast<uint8_t>(type)];
 	}
 
-	Ref<Font>& Renderer::GetFont()
+	Ref<Font> &Renderer::GetFont()
 	{
 		return s_StandardFont;
 	}
@@ -777,13 +777,13 @@ namespace SceneryEditorX
 		return s_StandardMaterial;
 	}
 
-	DepthStencilState* Renderer::GetDepthStencilState(const Renderer_DepthStencilState type)
+	DepthStencilState *Renderer::GetDepthStencilState(const Renderer_DepthStencilState type)
 	{
 		SEDX_CORE_ASSERT(static_cast<uint8_t>(type) < static_cast<uint8_t>(Renderer_DepthStencilState::MaxEnum), "Renderer_DepthStencilState out of range");
 		return &s_DepthStencilStates[static_cast<uint8_t>(type)];
 	}
 
-	Mesh* Renderer::GetStandardMesh(const MeshType /*type*/)
+	Mesh *Renderer::GetStandardMesh(const MeshType /*type*/)
 	{
 		class StandardQuadMesh final : public Mesh
 		{

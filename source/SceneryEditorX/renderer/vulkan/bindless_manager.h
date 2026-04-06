@@ -37,7 +37,7 @@
 #include <vector>
 #include <SceneryEditorX/utils/inheritance.h>
 
- // --------------------------------------------------------------
+// --------------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -95,22 +95,16 @@ namespace SceneryEditorX
 			uint32_t registerShift;  // shader_register_shift_t or _s
 			uint32_t slot;           // hlsl register slot
 			uint32_t count;          // descriptor array count
-			const char* name;
+			const char *name;
 		};
 
-		/**
-		 * @brief Initializes the bindless manager, including creating descriptor pools and set layouts for all bindless resource types.
-		 */
+		/* @brief Initializes the bindless manager, including creating descriptor pools and set layouts for all bindless resource types. */
 		static void Init();
 
-		/**
-		 * @brief Adds the bindless resources to the descriptor pool.
-		 */
+		/* @brief Adds the bindless resources to the descriptor pool. */
 		static void AddToDescriptorPool();
 
-		/**
-		 * @brief Shuts down the bindless manager, releasing all resources.
-		 */
+		/* @brief Shuts down the bindless manager, releasing all resources. */
 		static void Shutdown();
 
 		/**
@@ -146,7 +140,7 @@ namespace SceneryEditorX
 		 * @param outDescriptors The array to store the retrieved descriptors.
 		 * @param outCount The number of descriptors retrieved.
 		 */
-	 void GetDescriptorsFromPipelineState(SceneryEditorX::PipelineState& pipelineState, SceneryEditorX::Descriptor* outDescriptors, size_t& outCount);
+		void GetDescriptorsFromPipelineState(PipelineState& pipelineState, Descriptor* outDescriptors, size_t& outCount);
 
 		/**
 		 * @brief Updates the samplers for a given bindless resource type.
@@ -217,7 +211,6 @@ namespace SceneryEditorX
 		VkDescriptorSet m_Set = VK_NULL_HANDLE;
 
 		std::array<ResourceAllocationState, static_cast<size_t>(BindlessResource::MaxEnum)> m_Resources;
-
 	};
 
 

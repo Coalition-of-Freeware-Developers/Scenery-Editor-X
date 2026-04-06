@@ -29,6 +29,8 @@
  * -------------------------------------------------------
  */
 #include "command_list.h"
+
+#include "bindless_manager.h"
 #include "buffer.h"
 #include "depth_stencil.h"
 #include "image_resource.h"
@@ -68,32 +70,6 @@ namespace SceneryEditorX
 		};
 	}
 
-	void CommandList::InsertBarrier(VkImage* imagePtr, VkFormat format, uint32_t mipIndex, uint32_t mipRange, uint32_t arrayLength, Layout::ImageLayout layout)
-	{
-		if (imagePtr == nullptr || *imagePtr == VK_NULL_HANDLE)
-			return;
-	
-		InsertBarrier(*imagePtr, format, mipIndex, mipRange, arrayLength, layout);
-	}
-	
-	void CommandList::InsertBarrier(VkImage* imgPtr, Layout::ImageLayout layout, uint32_t mip, uint32_t mipRange)
-	{
-		if (imgPtr == nullptr || *imgPtr == VK_NULL_HANDLE)
-			return;
-	
-		InsertBarrier(*imgPtr, layout, mip, mipRange);
-	}
-
-	void CommandList::InsertBarrier(VkImage img, Layout::ImageLayout layout, uint32_t mip, uint32_t mipRange)
-	{
-		// Thin wrapper: call the detailed InsertBarrier variant with undefined format/arrayLength
-		if (img == VK_NULL_HANDLE)
-			return;
-	
-		// Use VK_FORMAT_UNDEFINED; the detailed implementation will default to color aspect if needed
-		InsertBarrier(img, VK_FORMAT_UNDEFINED, mip, mipRange, 0, layout);
-	}
-
 	// Per-image layout tracking: key = &VkImage (stable address), value = per-mip current layouts.
 	// Protected by s_ImageLayoutsMutex for safe concurrent reads from multiple threads.
 	static std::unordered_map<VkImage, std::array<Layout::ImageLayout, MAX_MIP_COUNT>> s_ImageLayouts;	static std::mutex s_ImageLayoutsMutex;
@@ -102,9 +78,15 @@ namespace SceneryEditorX
 
 	#pragma region Static Command Actions
 
+	/**
+	 * @brief Get the current layout of a specific mip level of a Vulkan image.
+	 * @param image vulkan image handle
+	 * @param mipIndex mip level index
+	 * @return current layout of the specified mip level
+	 */
 	static Layout::ImageLayout GetLayout(VkImage image, uint32_t mipIndex)
 	{
-		SEDX_CORE_ASSERT(image != nullptr);
+		SEDX_CORE_ASSERT(image != nullptr, "Image must not be null");
 		std::scoped_lock lock(s_ImageLayoutsMutex);
 
 		auto it = s_ImageLayouts.find(image);
@@ -113,15 +95,22 @@ namespace SceneryEditorX
 			return Layout::ImageLayout::MaxEnum;
 		}
 
-		SEDX_CORE_ASSERT(mipIndex < MAX_MIP_COUNT);
+		SEDX_CORE_ASSERT(mipIndex < MAX_MIP_COUNT, "Mip index out of range");
 		return it->second[mipIndex];
 	}
 
+	/**
+	 * @brief Set the layout of a specific range of mip levels for a Vulkan image.
+	 * @param image vulkan image handle
+	 * @param mip_index starting mip level index
+	 * @param mip_range number of mip levels to set
+	 * @param layout new layout to set
+	 */
 	static void SetLayout(VkImage image, uint32_t mip_index, uint32_t mip_range, Layout::ImageLayout layout)
 	{
-		SEDX_CORE_ASSERT(image != nullptr);
-		SEDX_CORE_ASSERT(mip_index < MAX_MIP_COUNT);
-		SEDX_CORE_ASSERT(mip_index + mip_range <= MAX_MIP_COUNT);
+		SEDX_CORE_ASSERT(image != nullptr, "Image must not be null");
+		SEDX_CORE_ASSERT(mip_index < MAX_MIP_COUNT, "Mip index out of range");
+		SEDX_CORE_ASSERT(mip_index + mip_range <= MAX_MIP_COUNT, "Mip range out of range");
 		std::scoped_lock lock(s_ImageLayoutsMutex);
 
 		auto it = s_ImageLayouts.find(image);
@@ -140,13 +129,22 @@ namespace SceneryEditorX
 		}
 	}
 
+	/**
+	 * @brief Remove the layout tracking for a Vulkan image.
+	 * @param image vulkan image handle
+	 */
 	static void RemoveLayout(VkImage image)
 	{
 		std::scoped_lock lock(s_ImageLayoutsMutex);
 		s_ImageLayouts.erase(image);
 	}
 
-	// convert scope enum to vulkan pipeline stages
+	/**
+	 * @brief Convert a barrier scope to Vulkan pipeline stages.
+	 * @param scope the barrier scope
+	 * @param isDepth whether the barrier is for a depth attachment
+	 * @return the corresponding Vulkan pipeline stage flags
+	 */
 	static VkPipelineStageFlags2 ScopeToStages(BarrierScope scope, bool isDepth = false)
 	{
 		switch (scope)
@@ -172,14 +170,14 @@ namespace SceneryEditorX
 	}
 
 	/**
-	 * @brief 
-	 * @param img 
-	 * @param srcMask 
-	 * @param dstMask 
-	 * @param oldLayout 
-	 * @param newLayout 
-	 * @param subresourceRange 
-	 * @return 
+	 * @brief Create a Vulkan image memory barrier.
+	 * @param img a pointer to the Vulkan image handle
+	 * @param srcMask the source access mask
+	 * @param dstMask the destination access mask
+	 * @param oldLayout the old image layout
+	 * @param newLayout the new image layout
+	 * @param subresourceRange the optional subresource range
+	 * @return the created VkImageMemoryBarrier2 structure
 	 */
 	static VkImageMemoryBarrier2 CreateImageMemoryBarrier(void* img, const VkAccessFlags& srcMask, const VkAccessFlags& dstMask,
 		const VkImageLayout& oldLayout, const VkImageLayout& newLayout, const std::optional<VkImageSubresourceRange>& subresourceRange)
@@ -225,9 +223,9 @@ namespace SceneryEditorX
 	}
 
 	/**
-	 * @brief 
-	 * @param layout 
-	 * @return 
+	 * @brief Convert a Vulkan image layout to its corresponding abstract image layout.
+	 * @param layout the Vulkan image layout to convert
+	 * @return the corresponding abstract image layout
 	 */
 	static Layout::ImageLayout GetImageLayoutType(const VkImageLayout& layout)
 	{
@@ -248,9 +246,9 @@ namespace SceneryEditorX
 	}
 
 	/**
-	 * @brief 
-	 * @param layout 
-	 * @return 
+	 * @brief Convert an abstract image layout to its corresponding Vulkan image layout.
+	 * @param layout the abstract image layout to convert
+	 * @return the corresponding VkImageLayout value
 	 */
 	static VkImageLayout GetVkImageLayout(const Layout::ImageLayout &layout)
 	{
@@ -281,9 +279,9 @@ namespace SceneryEditorX
 	}
 
 	/**
-	 * @brief 
-	 * @param cullMode 
-	 * @return 
+	 * @brief Convert a cull mode to its corresponding Vulkan cull mode flags.
+	 * @param cullMode the cull mode to convert
+	 * @return the corresponding Vulkan cull mode flags
 	 */
 	static VkCullModeFlags GetCullingType(const CullMode cullMode)
 	{
@@ -327,9 +325,9 @@ namespace SceneryEditorX
 	}
 
 	/**
-	 * @brief 
-	 * @param color 
-	 * @return 
+	 * @brief Convert a color to its corresponding Vulkan attachment load operation.
+	 * @param color the color to convert
+	 * @return the corresponding Vulkan attachment load operation
 	 */
 	static VkAttachmentLoadOp GetColorLoadOp(const Color& color)
 	{
@@ -343,9 +341,9 @@ namespace SceneryEditorX
 	};
 
 	/**
-	 * @brief 
-	 * @param depth 
-	 * @return 
+	 * @brief Convert a depth value to its corresponding Vulkan attachment load operation.
+	 * @param depth the depth value to convert
+	 * @return the corresponding Vulkan attachment load operation
 	 */
 	static VkAttachmentLoadOp GetDepthLoadOp(const float depth)
 	{
@@ -359,9 +357,9 @@ namespace SceneryEditorX
 	};
 
 	/**
-	 * @brief 
-	 * @param format 
-	 * @return 
+	 * @brief Get the aspect mask for a given Vulkan format.
+	 * @param format the Vulkan format
+	 * @return the corresponding aspect mask
 	 */
 	static uint32_t GetAspectMask(const VkFormat format)
 	{
@@ -465,8 +463,6 @@ namespace SceneryEditorX
 
 #pragma endregion
 
-	// -------------------------------------------------------
-
 	CommandList::CommandList(Queue *queue, const CommandPool &cmdPool, const char *name) : InheritanceBundle<RefCounted, IResource>(ResourceType::CommandList)
 	{
 		m_Queue = queue;
@@ -518,7 +514,7 @@ namespace SceneryEditorX
 		const auto it = s_ImageLayouts.find(image);
 		if (it != s_ImageLayouts.end())
 		{
-			SEDX_CORE_ASSERT(mipIndex < MAX_MIP_COUNT);
+			SEDX_CORE_ASSERT(mipIndex < MAX_MIP_COUNT, "Mip index out of range");
 			return it->second[mipIndex];
 		}
 
@@ -945,51 +941,6 @@ namespace SceneryEditorX
 		{
 			buffer->Unmap();
 		}
-	}
-
-	void CommandList::SetIndexBuffer(const Buffer *indexBuffer)
-	{
-		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command List must be in Recording state to set index buffer.");
-		SEDX_CORE_ASSERT(indexBuffer != nullptr, "Index buffer must be valid");
-		SEDX_CORE_ASSERT(indexBuffer->Get() != nullptr, "Index buffer must have a valid buffer");
-		if (m_BufferID_Index == indexBuffer->GetObjectId())
-			return;
-
-		// TODO: Support 32-bit index buffers if needed. For now, we assume all index buffers are 16-bit, which is common for most meshes and saves memory bandwidth.
-		//bool is16Bit = indexBuffer->GetStride() == sizeof(uint16_t);
-
-		vkCmdBindIndexBuffer(
-			m_CmdBuffer,          // commandBuffer
-			indexBuffer->Get(),   // buffer
-			0,                    // offset
-			VK_INDEX_TYPE_UINT16  // indexType
-		);
-
-		m_BufferID_Index = indexBuffer->GetObjectId();
-	}
-
-	void CommandList::SetVertexBuffer(const Buffer *vertexBuffer, const Buffer *instance)
-	{
-		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command List must be in Recording state to set vertex buffer.");
-		SEDX_CORE_ASSERT(m_CmdBuffer != VK_NULL_HANDLE, "Command List has no active VkCommandBuffer");
-		SEDX_CORE_ASSERT(vertexBuffer != nullptr, "Vertex buffer must be valid");
-
-		const VkBuffer vertexBufferHandle = vertexBuffer->Get();
-		SEDX_CORE_ASSERT(vertexBufferHandle != VK_NULL_HANDLE, "Vertex buffer must have a valid Vulkan handle");
-
-		if (instance != nullptr)
-		{
-			const VkBuffer instanceBufferHandle = instance->Get();
-			SEDX_CORE_ASSERT(instanceBufferHandle != VK_NULL_HANDLE, "Instance buffer must have a valid Vulkan handle");
-
-			VkBuffer vertexBuffers[2] = { vertexBufferHandle, instanceBufferHandle };
-			VkDeviceSize offsets[2] = { 0, 0 };
-			vkCmdBindVertexBuffers(m_CmdBuffer, 0, 2, vertexBuffers, offsets);
-			return;
-		}
-
-		VkDeviceSize offset = 0;
-		vkCmdBindVertexBuffers(m_CmdBuffer, 0, 1, &vertexBufferHandle, &offset);
 	}
 
 	void CommandList::EndRenderPass()
@@ -1426,7 +1377,7 @@ namespace SceneryEditorX
 		// Transition to General layout so the compute shader can read/write the image as a UAV
 		InsertBarrier(img->Get(), img->GetImageSpec().format, 0, 0, 0, Layout::ImageLayout::General);
 
-		const uint32_t threadGroupSize = 8;
+		constexpr uint32_t threadGroupSize = 8;
 
 		// Scaled dimensions — round up to guarantee full coverage at sub-1.0 scales
 		const uint32_t scaledWidth  = static_cast<uint32_t>(ceil(img->GetWidth()  * resolutionScale));
@@ -1452,14 +1403,14 @@ namespace SceneryEditorX
 	{
 		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to set viewport");
 
-		VkViewport vkViewport;
-		vkViewport.x = viewport.x;
-		vkViewport.y = viewport.y;
-		vkViewport.width = viewport.width;
-		vkViewport.height = viewport.height;
-		vkViewport.minDepth = viewport.depth_min;
-		vkViewport.maxDepth = viewport.depth_max;
-		vkCmdSetViewport(m_CmdBuffer, 0, 1, &vkViewport);
+		VkViewport newViewport;
+		newViewport.x = viewport.x;
+		newViewport.y = viewport.y;
+		newViewport.width = viewport.width;
+		newViewport.height = viewport.height;
+		newViewport.minDepth = viewport.depth_min;
+		newViewport.maxDepth = viewport.depth_max;
+		vkCmdSetViewport(m_CmdBuffer, 0, 1, &newViewport);
 	}
 
 	void CommandList::SetScissor(const xMath::Rectangle &scissorRect) const
@@ -1485,12 +1436,10 @@ namespace SceneryEditorX
 
 	void CommandList::SetTexture(const uint32_t slot, ImageResource* img, const uint32_t mipIndex /*= all_mips*/, uint32_t mipRange /*= 0*/, const bool uav /*= false*/)
 	{
-		SEDX_CORE_ASSERT(m_State == CommandState::Recording);
+		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to set texture");
 
 		if (mipIndex != ALL_MIPS)
-		{
 			SEDX_CORE_ASSERT(mipRange != 0, "If a mip was specified, then mip_range can't be 0");
-		}
 
 		if (!m_DescriptorLayout_Current)
 		{
@@ -1503,12 +1452,12 @@ namespace SceneryEditorX
 			return;
 
 		// get some texture info
-		const uint32_t mip_count     = img->GetImageSpec().mipCount;
-		const bool mip_specified     = mipIndex != ALL_MIPS;
-		const uint32_t mip_start     = mip_specified ? mipIndex : 0;
-		Layout::ImageLayout current_layout = CommandList::GetImageLayout(img->Get(), mip_start);
+		const uint32_t mipCount     = img->GetImageSpec().mipCount;
+		const bool mipSpecified     = mipIndex != ALL_MIPS;
+		const uint32_t mipStart     = mipSpecified ? mipIndex : 0;
+		Layout::ImageLayout currentLayout = GetImageLayout(img->Get(), mipStart);
 
-		SEDX_CORE_ASSERT(current_layout != Layout::ImageLayout::MaxEnum, "Invalid layout");
+		SEDX_CORE_ASSERT(currentLayout != Layout::ImageLayout::MaxEnum, "Invalid layout");
 
 		// transition to appropriate layout (if needed)
 		{
@@ -1517,52 +1466,59 @@ namespace SceneryEditorX
 			{
 				SEDX_CORE_ASSERT((img->GetImageSpec().flags & ImageResourceFlags::UnorderedAccessView) != 0);
 
-				// according to section 13.1 of the Vulkan spec, storage textures have to be in a general layout.
-				// https://www.khronos.org/registry/vulkan/specs/1.1-extensions/html/vkspec.html#descriptorsets-storageimage
+				/**
+				 * According to section 13.1 of the Vulkan spec, storage textures have to be in a general layout.
+				 * https://www.khronos.org/registry/vulkan/specs/1.1-extensions/html/vkspec.html#descriptorsets-storageimage
+				 */
 				targetLayout = Layout::ImageLayout::General;
 			}
 			else
 			{
-				SEDX_CORE_ASSERT((img->GetImageSpec().flags & ImageResourceFlags::ShaderViews) != 0);
+				SEDX_CORE_ASSERT((img->GetImageSpec().flags & ImageResourceFlags::ShaderViews) != 0, "Image must have ShaderViews flag");
 				targetLayout = Layout::ImageLayout::ShaderRead;
 			}
 
 			// verify that an appropriate layout has been deduced
-			SEDX_CORE_ASSERT(targetLayout != Layout::ImageLayout::MaxEnum);
+			SEDX_CORE_ASSERT(targetLayout != Layout::ImageLayout::MaxEnum, "Invalid target layout");
 
 			// determine if a layout transition is needed
-			bool transition_required = current_layout != targetLayout;
+			bool transitionRequired = currentLayout != targetLayout;
 			{
 				bool rest_mips_have_same_layout = true;
-				for (uint32_t i = mip_start; i < mip_count; i++)
+				std::array<Layout::ImageLayout, MAX_MIP_COUNT> layouts = img->GetLayouts();
+				for (uint32_t i = mipStart; i < mipCount; i++)
 				{
-					if (targetLayout != CommandList::GetImageLayout(img->Get(), i))
+					if (targetLayout != GetImageLayout(img->Get(), i))
 					{
 						rest_mips_have_same_layout = false;
 						break;
 					}
 				}
 
-				transition_required = !rest_mips_have_same_layout ? true : transition_required;
+				transitionRequired = !rest_mips_have_same_layout ? true : transitionRequired;
 			}
 
 			// transition
-			if (transition_required)
+			if (transitionRequired)
 			{
 				img->SetLayout(targetLayout, this, mipIndex, mipRange);
 			}
 		}
 
-		// TODO: Bind img to descriptor slot when DescriptorSet exposes a SetTexture API.
-		// m_DescriptorLayout_Current->SetTexture(slot, img, mipIndex, mipRange);
+		/* TODO: Bind img to descriptor slot when DescriptorSet exposes a SetTexture API. */
+		// set (will only happen if it's not already set)
+		m_DescriptorLayout_Current->SetTexture(slot, img, mipIndex, mipRange);
+
+		/* TODO: detect if there are changes, otherwise don't bother binding */
+		DescriptorSet::SetDynamicBinding(true);
 	}
 
 	void CommandList::Copy(ImageResource *src, Swapchain *dst)
 	{
 		SEDX_CORE_ASSERT((src->GetFlags() & ImageResourceFlags::BlitClear) != 0, "The image resource needs the BlitClear flag");
-		SEDX_CORE_ASSERT(src->GetWidth() == dst->GetWidth());
-		SEDX_CORE_ASSERT(src->GetHeight() == dst->GetHeight());
-		SEDX_CORE_ASSERT(src->GetFormat() == dst->GetImageFormat());
+		SEDX_CORE_ASSERT(src->GetWidth() == dst->GetWidth(), "Source and destination textures must have the same width");
+		SEDX_CORE_ASSERT(src->GetHeight() == dst->GetHeight(), "Source and destination textures must have the same height");
+		SEDX_CORE_ASSERT(src->GetFormat() == dst->GetImageFormat(), "Source and destination textures must have the same format");
 
 		VkImageCopy copyRegion               = {};
 		copyRegion.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -1604,9 +1560,9 @@ namespace SceneryEditorX
 	{
 		SEDX_CORE_ASSERT((src->GetFlags() & ImageResourceFlags::BlitClear) != 0, "The texture needs the BlitClear flag");
 		SEDX_CORE_ASSERT((dst->GetFlags() & ImageResourceFlags::BlitClear) != 0, "The texture needs the BlitClear flag");
-		SEDX_CORE_ASSERT(src->GetWidth() == dst->GetWidth());
-		SEDX_CORE_ASSERT(src->GetHeight() == dst->GetHeight());
-		SEDX_CORE_ASSERT(src->GetFormat() == dst->GetFormat());
+		SEDX_CORE_ASSERT(src->GetWidth() == dst->GetWidth(), "Source and destination textures must have the same width");
+		SEDX_CORE_ASSERT(src->GetHeight() == dst->GetHeight(), "Source and destination textures must have the same height");
+		SEDX_CORE_ASSERT(src->GetFormat() == dst->GetFormat(), "Source and destination textures must have the same format");
 
 		if (blitMips)
 		{
@@ -1703,6 +1659,11 @@ namespace SceneryEditorX
 		{
 			BeginRenderPass();
 		}
+
+		if (DescriptorSet::IsDynamicBinding())
+		{
+			DescriptorSet::SetDynamicDescriptor(m_pso, m_CmdBuffer, m_Pipeline.GetLayout(), m_DescriptorLayout_Current);
+		}
 	}
 
 	void CommandList::BeginRenderPass()
@@ -1714,14 +1675,16 @@ namespace SceneryEditorX
 			return;
 
 		VkRenderingInfo renderInfo		= {};
-		renderInfo.sType			= VK_STRUCTURE_TYPE_RENDERING_INFO;
-		renderInfo.renderArea.offset = { 0, 0 };
-		renderInfo.renderArea.extent = { m_pso.GetWidth(), m_pso.GetHeight() };
+		renderInfo.sType				= VK_STRUCTURE_TYPE_RENDERING_INFO;
+		renderInfo.renderArea.offset = {.x = 0, .y = 0 };
+		renderInfo.renderArea.extent = {.width = m_pso.GetWidth(), .height = m_pso.GetHeight() };
 		renderInfo.layerCount           = 1;
 		renderInfo.colorAttachmentCount = 0;
 		renderInfo.pColorAttachments    = nullptr;
 		renderInfo.pDepthAttachment     = nullptr;
 		renderInfo.pStencilAttachment   = nullptr;
+		
+		// multiview: viewMask selects which array layers to render into simultaneously
 		if (m_pso.isMultiview)
 		{
 			renderInfo.viewMask = 0b11;
@@ -1751,7 +1714,7 @@ namespace SceneryEditorX
 				color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 				color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 
-				SEDX_CORE_ASSERT(color_attachment.imageView != VK_NULL_HANDLE);
+				SEDX_CORE_ASSERT(color_attachment.imageView != VK_NULL_HANDLE, "Invalid image view");
 
 				attachments_color[attachment_index++] = color_attachment;
 			}
@@ -1781,7 +1744,7 @@ namespace SceneryEditorX
 					color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 					color_attachment.clearValue.color = { m_pso.clearColor[i].r, m_pso.clearColor[i].g, m_pso.clearColor[i].b, m_pso.clearColor[i].a };
 
-					SEDX_CORE_ASSERT(color_attachment.imageView != VK_NULL_HANDLE);
+					SEDX_CORE_ASSERT(color_attachment.imageView != VK_NULL_HANDLE, "Invalid image view");
 
 					attachments_color[attachment_index++] = color_attachment;
 				}
@@ -1799,7 +1762,7 @@ namespace SceneryEditorX
 			{ 
 				SEDX_CORE_ASSERT(rt->GetWidth() == renderInfo.renderArea.extent.width, "The depth buffer doesn't match the output resolution");
 			}
-			SEDX_CORE_ASSERT(rt->IsDepthStencilFormat());
+			SEDX_CORE_ASSERT(rt->IsDepthStencilFormat(), "Invalid depth-stencil format");
 
 			// transition to the appropriate layout
 			Layout::ImageLayout layout = Layout::ImageLayout::Attachment;
@@ -1826,21 +1789,26 @@ namespace SceneryEditorX
 			}
 		}
 
-		/*
 		// variable rate shading
 		VkRenderingFragmentShadingRateAttachmentInfoKHR attachment_shading_rate = {};
-		if (m_pso.vrs_input_texture)
+		if (m_pso.vrsInputTexture)
 		{
-			m_pso.vrs_input_texture->SetLayout(Layout::ImageLayout::Shading_RateAttachment, this);
+			m_pso.vrsInputTexture->SetLayout(Layout::ImageLayout::ShadingRateAttachment, this);
 	
+			const Ref<Device> device = RenderContext::Get()->GetDevice();
+			const DeviceStatics stats = device->GetDeviceStatics();
+
 			attachment_shading_rate.sType                          = VK_STRUCTURE_TYPE_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_INFO_KHR;
-			attachment_shading_rate.imageView                      = static_cast<VkImageView>(m_pso.vrs_input_texture->GetRhiRtv());
-			attachment_shading_rate.imageLayout                    = GetImageLayout(m_pso.vrs_input_texture, 0);
-			attachment_shading_rate.shadingRateAttachmentTexelSize = { RHI_Device::PropertyGetMaxShadingRateTexelSizeX(), RHI_Device::PropertyGetMaxShadingRateTexelSizeY() };
+			attachment_shading_rate.imageView                      = static_cast<VkImageView>(m_pso.vrsInputTexture->GetRenderTargetView());
+			attachment_shading_rate.imageLayout                    = GetVkImageLayout(GetImageLayout(m_pso.vrsInputTexture, 0));
+			// Use DeviceStatics populated during device initialization for max texel sizes
+			attachment_shading_rate.shadingRateAttachmentTexelSize = {
+				.width  = stats.maxShadingRateTexelSizeX,
+				.height = stats.maxShadingRateTexelSizeY 
+			};
 	
 			renderInfo.pNext = &attachment_shading_rate;
 		}
-		*/
 	
 		// begin dynamic render pass
 		FlushBarriers();
@@ -1848,12 +1816,10 @@ namespace SceneryEditorX
 
 		// set dynamic states
 		{
-			/*
 			// variable rate shading
-			RHI_Device::SetVariableRateShading(this, m_pso.vrs_input_texture != nullptr);
-			*/
+			Device::SetVariableRateShading(this, m_pso.vrsInputTexture != nullptr);
 	
-			// set viewport
+			// Set viewport
 			Viewport viewport;
 			viewport.width  = static_cast<float>(m_pso.GetWidth());
 			viewport.height = static_cast<float>(m_pso.GetHeight());
@@ -1861,10 +1827,12 @@ namespace SceneryEditorX
 		}
 
 		// reset
+		m_Load_Depth_RenderTarget = false;
 		for (uint32_t i = 0; i < MAX_RENDER_TARGET_COUNT; i++)
 		{
 			m_Load_Color_RenderTargets[i] = false;
 		}
+
 		m_RenderPassActive = true;
 	}
 
@@ -2002,15 +1970,25 @@ namespace SceneryEditorX
 			&data);
 	}
 
-	void CommandList::SetBuffer(Renderer_BindingsUav /*slot*/, Buffer* /*buffer*/)
+	void CommandList::SetBuffer(const uint32_t slot, Buffer *buffer) const 
 	{
 		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to bind a buffer");
 
-		// TODO: Bind structured/storage buffer to the UAV slot in the active descriptor set.
-		SEDX_CORE_WARN_TAG("CommandList", "SetBuffer: stub — descriptor update not yet wired");
+		if (!m_DescriptorLayout_Current)
+		{
+			SEDX_CORE_WARN_TAG("CommandList","Descriptor layout not set, try setting buffer \"%s\" within a render pass", buffer->GetObjectName().c_str());
+			return;
+		}
+
+		m_DescriptorLayout_Current->SetBuffer(slot, buffer);
+
+		DescriptorSet::SetDynamicBinding(true);
+
+		/* TODO: Bind structured/storage buffer to the UAV slot in the active descriptor set. */
+		//SEDX_CORE_WARN_TAG("CommandList", "SetBuffer: stub — descriptor update not yet wired");
 	}
 
-	void CommandList::SetBufferVertex(Buffer* vertexBuffer)
+	void CommandList::SetVertexBuffer(Buffer *vertexBuffer)
 	{
 		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to set vertex buffer");
 		SEDX_CORE_ASSERT(vertexBuffer != nullptr, "Vertex buffer must be valid");
@@ -2019,13 +1997,78 @@ namespace SceneryEditorX
 		const VkDeviceSize offset = 0;
 		vkCmdBindVertexBuffers(m_CmdBuffer, 0, 1, &buf, &offset);
 	}
+	
+	void CommandList::SetVertexBuffer(const Buffer *vertexBuffer, const Buffer *instance)
+	{
+		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command List must be in Recording state to set vertex buffer.");
+		SEDX_CORE_ASSERT(m_CmdBuffer != VK_NULL_HANDLE, "Command List has no active VkCommandBuffer");
+		SEDX_CORE_ASSERT(vertexBuffer != nullptr, "Vertex buffer must be valid");
 
-	void CommandList::SetBufferIndex(Buffer* indexBuffer)
+		// the instance buffer is optional but always part of the pipeline therefore it can't be null
+		if (!instance)
+		{
+			instance = Renderer::GetBuffer(Renderer_Buffer::DummyInstance);
+		}
+
+		// prepare buffers and offsets arrays
+		VkBuffer vertexBuffers[2] = {
+	
+			(vertexBuffer->Get()),  // slot 0: vertex buffer
+			(instance->Get())		// slot 1: instance buffer
+		};
+		SEDX_CORE_ASSERT(vertexBuffers[0] != nullptr && vertexBuffers[1] != nullptr, "Vertex and instance buffers must be valid");
+
+		VkDeviceSize offsets[2] = { 0, 0 };
+
+		// check if vertex buffer id has changed to trigger binding
+		if (m_BufferID_Vertex != vertexBuffer->GetObjectId() || m_BufferID_Instance != instance->GetObjectId())
+		{
+			vkCmdBindVertexBuffers(
+				static_cast<VkCommandBuffer>(m_CmdBuffer),	// commandBuffer
+				0,                                          // firstBinding
+				2,                                          // bindingCount
+				vertexBuffers,                              // pBuffers
+				offsets                                     // pOffsets
+			);
+	
+			// track currently bound buffers
+			m_BufferID_Vertex   = vertexBuffer->GetObjectId();
+			m_BufferID_Instance = instance->GetObjectId();
+		}
+
+		/*
+		VkDeviceSize offset = 0;
+		vkCmdBindVertexBuffers(m_CmdBuffer, 0, 1, &vertexBufferHandle, &offset);
+		*/
+	}
+
+	void CommandList::SetIndexBuffer(Buffer *indexBuffer)
 	{
 		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to set index buffer");
 		SEDX_CORE_ASSERT(indexBuffer != nullptr, "Index buffer must be valid");
 
 		vkCmdBindIndexBuffer(m_CmdBuffer, indexBuffer->Get(), 0, VK_INDEX_TYPE_UINT32);
+	}
+	
+	void CommandList::SetIndexBuffer(const Buffer *indexBuffer)
+	{
+		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command List must be in Recording state to set index buffer.");
+		SEDX_CORE_ASSERT(indexBuffer != nullptr, "Index buffer must be valid");
+		SEDX_CORE_ASSERT(indexBuffer->Get() != nullptr, "Index buffer must have a valid buffer");
+		if (m_BufferID_Index == indexBuffer->GetObjectId())
+			return;
+
+		// TODO: Support 32-bit index buffers if needed. For now, we assume all index buffers are 16-bit, which is common for most meshes and saves memory bandwidth.
+		bool is16Bit = indexBuffer->GetStride() == sizeof(uint16_t);
+
+		vkCmdBindIndexBuffer(
+			m_CmdBuffer,          // commandBuffer
+			indexBuffer->Get(),   // buffer
+			0,                    // offset
+			is16Bit ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32 // indexType
+		);
+
+		m_BufferID_Index = indexBuffer->GetObjectId();
 	}
 
 	void CommandList::DrawIndexedIndirectCount(Buffer* drawArgs, uint64_t argsOffset, Buffer* countBuffer, uint64_t countOffset, uint32_t maxDrawCount)
@@ -2069,6 +2112,32 @@ namespace SceneryEditorX
 		}
 
 		InsertBarrier(img->Get(), img->GetImageSpec().format, 0, 0, 0, targetLayout);
+	}
+
+	void CommandList::InsertBarrier(VkImage* imagePtr, VkFormat format, uint32_t mipIndex, uint32_t mipRange, uint32_t arrayLength, Layout::ImageLayout layout)
+	{
+		if (imagePtr == nullptr || *imagePtr == VK_NULL_HANDLE)
+			return;
+	
+		InsertBarrier(*imagePtr, format, mipIndex, mipRange, arrayLength, layout);
+	}
+	
+	void CommandList::InsertBarrier(VkImage* imgPtr, Layout::ImageLayout layout, uint32_t mip, uint32_t mipRange)
+	{
+		if (imgPtr == nullptr || *imgPtr == VK_NULL_HANDLE)
+			return;
+	
+		InsertBarrier(*imgPtr, layout, mip, mipRange);
+	}
+
+	void CommandList::InsertBarrier(VkImage img, Layout::ImageLayout layout, uint32_t mip, uint32_t mipRange)
+	{
+		// Thin wrapper: call the detailed InsertBarrier variant with undefined format/arrayLength
+		if (img == VK_NULL_HANDLE)
+			return;
+	
+		// Use VK_FORMAT_UNDEFINED; the detailed implementation will default to color aspect if needed
+		InsertBarrier(img, VK_FORMAT_UNDEFINED, mip, mipRange, 0, layout);
 	}
 
 	void CommandList::Blit(ImageResource *src, Swapchain *dst)
@@ -2131,11 +2200,22 @@ namespace SceneryEditorX
 		InsertBarrier(dstImage, dst->GetImageFormat(), 0, 1, 1, Layout::ImageLayout::Present);
 	}
 
-	void CommandList::Blit(ImageResource *src, ImageResource *dst, bool /*keepAspect*/, float /*resolutionScale*/)
+	void CommandList::Blit(ImageResource *src, ImageResource *dst, const bool blitMips, const float sourceScaling)
 	{
 		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to blit");
-		SEDX_CORE_ASSERT(src != nullptr && dst != nullptr, "Source and destination images must be valid for blit");
 
+		SEDX_CORE_ASSERT(src && dst, "Source and destination images cannot be null");
+		SEDX_CORE_ASSERT((src->GetFlags() & ImageResourceFlags::BlitClear) != 0, "Blit requires the texture to be created with the RHI_Texture_ClearOrBlit flag");
+		SEDX_CORE_ASSERT((dst->GetFlags() & ImageResourceFlags::BlitClear) != 0, "Blit requires the texture to be created with the RHI_Texture_ClearOrBlit flag");
+		SEDX_CORE_ASSERT(src->GetChannelCount() == dst->GetChannelCount(), "Source and destination images must have the same number of channels");
+		SEDX_CORE_ASSERT(src->GetBitsPerChannel() == dst->GetBitsPerChannel() || (src->IsColorFormat() && dst->IsColorFormat()), "Source and destination bit depths must match or be convertible color formats");
+		SEDX_CORE_ASSERT(!src->IsDepthFormat() || !dst->IsDepthFormat() || src->GetFormat() == dst->GetFormat(), "Depth formats must be identical for blit");
+		if (blitMips)
+		{
+			SEDX_CORE_ASSERT(src->GetMipCount() == dst->GetMipCount(), "If the mips are blitted, then the mip count between the source and the destination textures must match");
+		}
+
+		/*
 		// vkCmdBlitImage and image layout transitions must run outside an active
 		// dynamic rendering instance.
 		EndRenderPass();
@@ -2145,37 +2225,78 @@ namespace SceneryEditorX
 		// can lead to validation mismatches on higher mips.
 		InsertBarrier(src->Get(), src->GetImageSpec().format, 0, 0, 0, Layout::ImageLayout::TransferSrc);
 		InsertBarrier(dst->Get(), dst->GetImageSpec().format, 0, 0, 0, Layout::ImageLayout::TransferDst);
+		*/
+		
+		// compute a blit region for each mip
+		std::array<VkOffset3D,  MAX_MIP_COUNT> blitOffsetsSrc = {};
+		std::array<VkOffset3D,  MAX_MIP_COUNT> blitOffsetsDst = {};
+		std::array<VkImageBlit, MAX_MIP_COUNT> blitRegions	  = {};
+		uint32_t blitRegionCount = blitMips ? src->GetMipCount() : 1;
+		for (uint32_t mipIndex = 0; mipIndex < blitRegionCount; mipIndex++)
+		{
+			VkOffset3D& srcBlitSize						= blitOffsetsSrc[mipIndex];
+			srcBlitSize.x								= static_cast<int32_t>(src->GetWidth()  * sourceScaling) >> mipIndex;
+			srcBlitSize.y								= static_cast<int32_t>(src->GetHeight() * sourceScaling) >> mipIndex;
+			srcBlitSize.z								= 1;
 
-		VkImageBlit region{};
-		region.srcSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-		region.srcSubresource.mipLevel       = 0;
-		region.srcSubresource.baseArrayLayer = 0;
-		region.srcSubresource.layerCount     = 1;
-		region.srcOffsets[0]                 = { 0, 0, 0 };
-		region.srcOffsets[1]                 = { static_cast<int32_t>(src->GetWidth()), static_cast<int32_t>(src->GetHeight()), 1 };
+			VkOffset3D& dstBlitSize						= blitOffsetsDst[mipIndex];
+			dstBlitSize.x								= dst->GetWidth()  >> mipIndex;
+			dstBlitSize.y								= dst->GetHeight() >> mipIndex;
+			dstBlitSize.z								= 1;
 
-		region.dstSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-		region.dstSubresource.mipLevel       = 0;
-		region.dstSubresource.baseArrayLayer = 0;
-		region.dstSubresource.layerCount     = 1;
-		region.dstOffsets[0]                 = { 0, 0, 0 };
-		region.dstOffsets[1]                 = { static_cast<int32_t>(dst->GetWidth()), static_cast<int32_t>(dst->GetHeight()), 1 };
+			VkImageBlit& blitRegion						= blitRegions[mipIndex];
+			blitRegion.srcSubresource.mipLevel			= mipIndex;
+			blitRegion.srcSubresource.baseArrayLayer	= 0;
+			blitRegion.srcSubresource.layerCount		= 1;
+			blitRegion.srcSubresource.aspectMask		= GetAspectMask(src->GetFormat());
+			blitRegion.srcOffsets[0]					= {.x = 0, .y = 0, .z = 0 };
+			blitRegion.srcOffsets[1]					= srcBlitSize;
+			blitRegion.dstSubresource.mipLevel			= mipIndex;
+			blitRegion.dstSubresource.baseArrayLayer	= 0;
+			blitRegion.dstSubresource.layerCount		= 1;
+			blitRegion.dstSubresource.aspectMask		= GetAspectMask(dst->GetFormat());
+			blitRegion.dstOffsets[0]					= {.x = 0, .y = 0, .z = 0 };
+			blitRegion.dstOffsets[1]					= dstBlitSize;
+		}
+
+		// save the initial layouts
+		std::array<Layout::ImageLayout, MAX_MIP_COUNT> initSrcLayout = src->GetLayouts();
+		std::array<Layout::ImageLayout, MAX_MIP_COUNT> initDstLayout = dst->GetLayouts();
+
+		// transition to blit appropriate layouts
+		src->SetLayout(Layout::ImageLayout::TransferSrc, this);
+		dst->SetLayout(Layout::ImageLayout::TransferDst, this);
+
+		VkFilter filter = (src->IsDepthFormat() || dst->IsDepthFormat() ||
+			(src->GetWidth() == dst->GetWidth() && src->GetHeight() == dst->GetHeight())) ? VK_FILTER_NEAREST  : VK_FILTER_LINEAR;
 
 		const Ref<Device> device = RenderContext::Get()->GetDevice();
-		vkCmdBlitImage(
-			m_CmdBuffer,
+		vkCmdBlitImage(m_CmdBuffer,
 			*src->Get(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
 			*dst->Get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-			1, &region,
-			VK_FILTER_LINEAR
-		);
+			blitRegionCount, &blitRegions[0], filter);
+
+		// transition to the initial layouts
+		if (blitMips)
+		{
+			for (uint32_t i = 0; i < src->GetMipCount(); i++)
+			{
+				src->SetLayout(initSrcLayout[i], this, i, 1);
+				dst->SetLayout(initDstLayout[i], this, i, 1);
+			}
+		}
+		else
+		{
+			src->SetLayout(initSrcLayout[0], this);
+			dst->SetLayout(initDstLayout[0], this);
+		}
 	}
 	
 	void CommandList::BlitToArrayLayer(ImageResource* src, ImageResource* dst, uint32_t dstLayer)
 	{
-		SEDX_CORE_ASSERT(src && dst);
-		SEDX_CORE_ASSERT((src->GetFlags() & ImageResourceFlags::BlitClear) != 0);
-		SEDX_CORE_ASSERT((dst->GetFlags() & ImageResourceFlags::BlitClear) != 0);
+		SEDX_CORE_ASSERT(src && dst, "Source and destination images must be valid for blit");
+		SEDX_CORE_ASSERT((src->GetFlags() & ImageResourceFlags::BlitClear) != 0, "Source image must have BlitClear flag");
+		SEDX_CORE_ASSERT((dst->GetFlags() & ImageResourceFlags::BlitClear) != 0, "Destination image must have BlitClear flag");
 
 		Layout::ImageLayout initialSrcLayout = GetImageLayout(src, 0);
 		Layout::ImageLayout initialDstLayout = GetImageLayout(dst, 0);

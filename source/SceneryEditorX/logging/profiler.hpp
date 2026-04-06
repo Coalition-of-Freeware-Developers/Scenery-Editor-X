@@ -2,7 +2,7 @@
  * -------------------------------------------------------
  * Scenery Editor X
  * -------------------------------------------------------
- * Copyright (c) 2026 Thomas Ray 
+ * Copyright (c) 2026 Thomas Ray
  * Copyright (c) 2026 Coalition of Freeware Developers
  * -------------------------------------------------------
  * Permission is hereby granted, free of charge, to any person obtaining a
@@ -66,13 +66,13 @@
 	#define SEDX_PROFILE_THREAD(name)			SetThreadName(name)
 	#define SEDX_PROFILE_ZONE(name, color) {					\
 		ZoneName(name, strlen(name));							\
-		ZoneScopedC(color);										
+		ZoneScopedC(color);
 	#define SEDX_PROFILE_ZONE_END() }
 
 #else
 	#define SEDX_PROFILE_FUNC(void)
 	#define SEDX_PROFILE_FUNC_COLOR(color)
-	#define SEDX_PROFILE_ZONE(name, color) { 
+	#define SEDX_PROFILE_ZONE(name, color) {
 	#define SEDX_PROFILE_ZONE_END() }
 	#define SEDX_PROFILE_THREAD(name)
 	#define SEDX_PROFILE_FRAME(name)

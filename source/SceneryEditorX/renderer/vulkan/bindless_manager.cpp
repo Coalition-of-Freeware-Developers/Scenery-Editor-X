@@ -30,10 +30,10 @@
  */
 #include "bindless_manager.h"
 #include "debug/graphics_debug.h"
-#include <SceneryEditorX/renderer/vulkan/shader/shader.h>
+#include <algorithm>
 #include <SceneryEditorX/renderer/renderer.h>
 #include <SceneryEditorX/renderer/vulkan/render_context.h>
-#include <algorithm>
+#include <SceneryEditorX/renderer/vulkan/shader/shader.h>
 
  // --------------------------------------------------------------
 
@@ -55,6 +55,17 @@ namespace SceneryEditorX
 		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, SHADER_REGISTER_SHIFT_T, 20, 1,                  "geometry_vertices"   }, // GeometryVertices
 		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, SHADER_REGISTER_SHIFT_T, 22, 1,                  "geometry_indices"    }, // GeometryIndices
 		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, SHADER_REGISTER_SHIFT_T, 23, 1,                  "instances"           }, // Instances
+	};
+
+	static std::array<VkDescriptorPoolSize, 7> s_PoolSizes =
+	{
+		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_SAMPLER,                    32 * MAX_DESCRIPTOR_SET_COUNT },
+		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,              MAX_ARRAY_SIZE + 32 * MAX_DESCRIPTOR_SET_COUNT },
+		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,              MAX_ARRAY_SIZE * MAX_DESCRIPTOR_SET_COUNT },
+		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,             32 * MAX_DESCRIPTOR_SET_COUNT },
+		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,     32 * MAX_DESCRIPTOR_SET_COUNT },
+		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,     32 * MAX_DESCRIPTOR_SET_COUNT },
+		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, 32 * MAX_DESCRIPTOR_SET_COUNT }
 	};
 
 	static_assert(std::size(CONFIGS) == static_cast<size_t>(BindlessResource::MaxEnum), "config table size mismatch");
@@ -189,7 +200,7 @@ namespace SceneryEditorX
 		return {};
 	}
 
-	void BindlessManager::GetDescriptorsFromPipelineState(SceneryEditorX::PipelineState& pipelineState, SceneryEditorX::Descriptor* outDescriptors, size_t& outCount)
+	void BindlessManager::GetDescriptorsFromPipelineState(PipelineState& pipelineState, SceneryEditorX::Descriptor* outDescriptors, size_t& outCount)
 	{
 		pipelineState.Prepare();
 		
@@ -342,20 +353,18 @@ namespace SceneryEditorX
 
 		const uint32_t index = static_cast<uint32_t>(type);
 		if (s_Sets[index] == VK_NULL_HANDLE)
-		{
 			return;
-		}
 
 		// max sampler count is small enough for the stack
-		constexpr uint32_t max_samplers = 16;
-		SEDX_CORE_ASSERT(count <= max_samplers);
-		VkDescriptorImageInfo image_infos[max_samplers] = {};
+		constexpr uint32_t maxSamplers = 16;
+		SEDX_CORE_ASSERT(count <= maxSamplers);
+		VkDescriptorImageInfo imageInfos[maxSamplers] = {};
 		for (uint32_t i = 0; i < count; ++i)
 		{
 			if (!samplers[i])
 				continue;
 
-			image_infos[i].sampler = samplers[i]->Get();
+			imageInfos[i].sampler = samplers[i]->Get();
 		}
 
 		VkWriteDescriptorSet write = {};
@@ -365,7 +374,7 @@ namespace SceneryEditorX
 		write.dstArrayElement = 0;
 		write.descriptorType  = VK_DESCRIPTOR_TYPE_SAMPLER;
 		write.descriptorCount = count;
-		write.pImageInfo      = image_infos;
+		write.pImageInfo      = imageInfos;
 
 		vkUpdateDescriptorSets(m_Device->GetLogicalDevice(), 1, &write, 0, nullptr);
 	}
@@ -384,9 +393,7 @@ namespace SceneryEditorX
 		const uint32_t index      = static_cast<uint32_t>(BindlessResource::MaterialTextures);
 		const ResourceConfig& cfg = CONFIGS[index];
 		if (s_Sets[index] == VK_NULL_HANDLE)
-		{
 			return;
-		}
 
 		thread_local std::vector<VkDescriptorImageInfo> imageInfos;
 		imageInfos.resize(cfg.count);
@@ -432,8 +439,7 @@ namespace SceneryEditorX
 		layout_binding.binding                      = binding;
 		layout_binding.descriptorType               = cfg.type;
 		layout_binding.descriptorCount              = cfg.count;
-		layout_binding.stageFlags                   = VK_SHADER_STAGE_VERTEX_BIT |
-													  VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT |
+		layout_binding.stageFlags                   = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT |
 													  VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT |
 													  VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT;
 

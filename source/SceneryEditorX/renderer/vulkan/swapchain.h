@@ -186,6 +186,12 @@ namespace SceneryEditorX
 		[[nodiscard]] uint32_t GetImageIndex() const { return m_ImageIndex; }
 
 		/**
+		 * @brief Retrieves the Vulkan semaphore that was signaled by the latest successful image acquisition.
+		 * @return The Vulkan semaphore handle used for acquire synchronization, or VK_NULL_HANDLE if unavailable.
+		 */
+		[[nodiscard]] VkSemaphore GetAcquiredVkSemaphore() const;
+
+		/**
 		 * @brief Retrieves the Vulkan surface handle.
 		 * @return the Vulkan surface handle.
 		 */
@@ -222,6 +228,7 @@ namespace SceneryEditorX
 		uint32_t m_Width = 0;
 		uint32_t m_Height = 0;
 		uint32_t m_SemaphoreIndex = 0;
+        uint32_t m_LastAcquiredSemaphoreIndex = 0;
 		VkPresentModeKHR m_PresentMode = VK_PRESENT_MODE_FIFO_KHR;
 
 		static Scope<FrameSync> s_FrameSync;

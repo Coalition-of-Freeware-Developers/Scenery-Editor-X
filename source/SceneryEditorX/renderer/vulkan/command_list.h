@@ -208,20 +208,20 @@ namespace SceneryEditorX
 		 * @brief Bind a vertex buffer for use in rendering.
 		 * @param vertexBuffer The vertex buffer to bind.
 		 */
-		void SetBufferVertex(Buffer* vertexBuffer);
+		void SetVertexBuffer(Buffer* vertexBuffer);
 
 		/**
 		 * @brief Bind an index buffer for use in rendering.
 		 * @param indexBuffer The index buffer to bind.
 		 */
-		void SetBufferIndex(Buffer* indexBuffer);
+		void SetIndexBuffer(Buffer* indexBuffer);
 
 		/**
 		 * @brief Bind a buffer to a specific slot for use in shaders.
 		 * @param slot The slot to bind the buffer to.
 		 * @param buffer The buffer to bind.
 		 */
-		void SetBuffer(Renderer_BindingsUav slot, Buffer* buffer);
+		void SetBuffer(const uint32_t slot, Buffer* buffer) const;
 
 		// -------------------------------------------------------
 
@@ -287,10 +287,10 @@ namespace SceneryEditorX
 		 * @brief Blit (compute-driven copy with optional resolution scaling)
 		 * @param src The source image resource.
 		 * @param dst The destination image resource.
-		 * @param keepAspect Whether to maintain the aspect ratio.
-		 * @param resolutionScale The scale factor for the resolution.
+		 * @param blitMips Whether to blit all mip levels.
+		 * @param sourceScaling The scale factor for the resolution.
 		 */
-		void Blit(ImageResource *src, ImageResource *dst, bool keepAspect, float resolutionScale = 1.0f);
+		void Blit(ImageResource *src, ImageResource *dst, const bool blitMips, const float sourceScaling = 1.0f);
 
 		/**
 		 * @brief Blit (compute-driven copy without resolution scaling)
@@ -511,6 +511,7 @@ namespace SceneryEditorX
 		PipelineState m_pso;
 		std::vector<PendingBarrierInfo> m_PendingBarriers;
 		std::array<bool, MAX_RENDER_TARGET_COUNT> m_Load_Color_RenderTargets = { false };
+	    bool m_Load_Depth_RenderTarget = false;
 
 	};  
 

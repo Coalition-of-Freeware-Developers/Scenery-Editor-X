@@ -32,7 +32,6 @@
 #include "descriptor.h"
 #include "render_data.h"
 
-
 // -------------------------------------------------------
 
 namespace SceneryEditorX

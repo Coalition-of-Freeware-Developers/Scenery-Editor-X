@@ -30,6 +30,7 @@
  */
 #pragma once
 #include <array>
+#include <colors.h>
 #include <limits>
 #include <string>
 #include <vma/vk_mem_alloc.h>
@@ -65,6 +66,23 @@ namespace SceneryEditorX
 	constexpr uint32_t MIP_LIST							= std::numeric_limits<uint32_t>::max();
 	constexpr uint32_t ALL_MIPS							= std::numeric_limits<uint32_t>::max();
 
+	/** Sentinel passed to pso.clear_depth to instruct the pipeline to LOAD existing depth rather than clear it. */
+	inline constexpr float RHI_DEPTH_LOAD				= -1.0f;
+	inline constexpr float DEPTH_LOAD					= RHI_DEPTH_LOAD;
+	inline constexpr float DEPTH_DONT_CARE				= std::numeric_limits<float>::max();
+
+	const Color COLOR_DONT_CARE							= Color(std::numeric_limits<float>::max(), 0.0f, 0.0f, 0.0f);
+	const Color COLOR_LOAD								= Color(std::numeric_limits<float>::infinity(), 0.0f, 0.0f, 0.0f);
+
+	inline constexpr uint32_t STENCIL_DONT_CARE			= std::numeric_limits<uint32_t>::max();
+	inline constexpr uint32_t STENCIL_LOAD				= std::numeric_limits<uint32_t>::infinity();
+
+	/** Maximum simultaneous colour render targets in a PipelineState. */
+	inline constexpr uint32_t MAX_RENDER_TARGET_COUNT	= 8;
+	inline constexpr uint32_t MAX_SHADER_STAGES			= 8;
+	inline constexpr uint32_t RENDERER_MAX_DRAW_CALLS	= 4096;
+	inline constexpr uint32_t MAX_MIP_COUNT				= 16;
+	inline constexpr uint32_t MAX_DESCRIPTOR_SET_COUNT	= 512;
 	static constexpr uint32_t MAX_FRAMES_IN_FLIGHT		= 2;
 	static constexpr uint32_t MAX_BUFFER_UPDATE_SIZE	= 65536; // vkCmdUpdateBuffer has a limit of 65536 bytes
 	static constexpr uint32_t MAX_DRAW_CALLS			= 20000; // Maximum number of draw calls per frame; used to size CPU-side staging arrays for draw data, etc.

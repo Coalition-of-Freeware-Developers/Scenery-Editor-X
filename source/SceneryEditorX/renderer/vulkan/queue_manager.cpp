@@ -271,12 +271,7 @@ namespace SceneryEditorX
 		m_GPUQueues.resize(kQueueTypeSlots);
 
 		// Initialize only valid allocatable queue types.
-		constexpr std::array<QueueType, 4> queueTypes = {
-			QueueType::Graphics,
-			QueueType::Compute,
-			QueueType::Transfer,
-			QueueType::Present,
-		};
+		constexpr std::array<QueueType, 4> queueTypes = {Graphics, Compute, Transfer, Present};
 		for (const QueueType type : queueTypes)
 		{
 		 const uint32_t i = static_cast<uint32_t>(type);
@@ -284,20 +279,15 @@ namespace SceneryEditorX
 	
 			switch (type)
 			{
-			case QueueType::Graphics:
-				queueName = "Graphics Queue";
+			case QueueType::Graphics: queueName = "Graphics Queue";
 				break;
-			case QueueType::Compute:
-				queueName = "Compute Queue";
+			case QueueType::Compute: queueName = "Compute Queue";
 				break;
-			case QueueType::Transfer:
-				queueName = "Transfer Queue";
+			case QueueType::Transfer: queueName = "Transfer Queue";
 				break;
-			case QueueType::Present:
-				queueName = "Present Queue";
+			case QueueType::Present: queueName = "Present Queue";
 				break;
-			default:
-				queueName = "Unknown Queue";
+			default: queueName = "Unknown Queue";
 				break;
 			}
 	
@@ -310,8 +300,8 @@ namespace SceneryEditorX
 		}
 
 		// Initialize the command pool for the graphics queue family
-		SEDX_CORE_ASSERT(m_FamilyIndices.graphics != (std::numeric_limits<uint32_t>::max)(),
-						 "Graphics queue family index is invalid; cannot create command pool");
+		SEDX_CORE_ASSERT(m_FamilyIndices.graphics != (std::numeric_limits<uint32_t>::max)(), "Graphics queue family index is invalid; cannot create command pool");
+
 		m_CmdPool = CommandPool(m_Device, m_FamilyIndices.graphics, CommandPoolType::Resettable);
 		SEDX_CORE_TRACE_TAG("QueueManager", "Command pool created for graphics queue family {}", m_FamilyIndices.graphics);
 
@@ -702,10 +692,22 @@ namespace SceneryEditorX
 	
 		// count deletions in the queue
 		uint32_t objectsToDelete = 0;
-		for (uint32_t i = 0; i < static_cast<uint32_t>(ResourceType::MaxEnum); i++)
+
+		// Acquire the same mutex used by AddDeletionQueue / ParseDeletionQueue
+		std::scoped_lock guard(s_MutexDeletionQueue);
+
+		for (uint32_t i = 0; i < static_cast<uint32_t>(ResourceType::MaxEnum); ++i)
 		{
-			objectsToDelete += static_cast<uint32_t>(s_DeletionQueue[static_cast<ResourceType>(i)].size());
-			SEDX_CORE_TRACE_TAG("QueueManager", "ResourceType {} has {} objects pending deletion", i, s_DeletionQueue[static_cast<ResourceType>(i)].size());
+			auto it = s_DeletionQueue.find(static_cast<ResourceType>(i));
+			if (it != s_DeletionQueue.end())
+			{
+			    objectsToDelete += static_cast<uint32_t>(it->second.size());
+			    SEDX_CORE_TRACE_TAG("QueueManager", "ResourceType {} has {} objects pending deletion", i, it->second.size());
+			}
+			else
+			{
+			    SEDX_CORE_TRACE_TAG("QueueManager", "ResourceType {} has 0 objects pending deletion", i);
+			}
 		}
 	
 		// check if the number of objects to delete has remained unchanged
@@ -740,7 +742,7 @@ CommandList* QueueManager::NextCommandList()
 	if (count == 0)
 	{
 		SEDX_CORE_TRACE_TAG("QueueManager", "No command lists available");
-	    return nullptr;
+		return nullptr;
 	}
 
 	// Advance index to the next candidate and search for an idle list.

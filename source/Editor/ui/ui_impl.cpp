@@ -311,8 +311,8 @@ namespace UI
 		bool gpu_timing = isMainWindow;
 		//cmdList->BeginTimeblock(name, true, Debugging::IsGpuTimingEnabled() && gpu_timing);
 		cmdList->SetPipelineState(pso);
-		cmdList->SetBufferVertex(vertexBuffer);
-		cmdList->SetBufferIndex(indexBuffer);
+		cmdList->SetVertexBuffer(vertexBuffer);
+		cmdList->SetIndexBuffer(indexBuffer);
 		cmdList->SetCullMode(CullMode::None);
 	
 		// render

@@ -447,7 +447,7 @@ namespace SceneryEditorX
 		xMath::Mat4 m_ViewProjection				= xMath::Mat4(1.0f);
 		xMath::Mat4 m_ViewProjectionNonReverseZ		= xMath::Mat4(1.0f);
 		xMath::Mat4 m_MatrixPrevious				= xMath::Mat4(1.0f);
-		xMath::Vec2 m_LastMousePosition				= xMath::Vec2::Zero;
+		xMath::Vec2 m_LastMousePosition				= xMath::Vec2::ZERO;
 		xMath::Vec3 m_MovementSpeed					= xMath::Vec3(0.0f);
 		xMath::Frustum m_Frustum;
 		

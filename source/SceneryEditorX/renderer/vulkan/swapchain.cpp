@@ -906,21 +906,25 @@ namespace SceneryEditorX
 		// Ensure swapchain is valid
 		SEDX_CORE_ASSERT(m_Swapchain != VK_NULL_HANDLE, "Swapchain is not valid for image acquisition");
 
+		SEDX_CORE_ASSERT(!m_AcquiredSemaphore.empty(), "Acquire semaphore list is empty");
+
 		// Try to acquire, with retry after swapchain recreation
 		for (uint32_t attempt = 0; attempt < 2; ++attempt)
 		{
-			// use per-image FrameSync objects indexed by the current semaphore_index
-			// this avoids reusing a semaphore that may still be in use by presentation
-			FrameSync *frameSync = m_AcquiredSemaphore[m_ImageIndex].Get();
+		   const uint32_t semaphoreIndex = m_SemaphoreIndex % static_cast<uint32_t>(m_AcquiredSemaphore.size());
+
+			// Use an acquire semaphore ring independent from swapchain image index.
+			// The image index is output from vkAcquireNextImageKHR and must not be used
+			// to select the semaphore before the acquire call.
+			FrameSync *frameSync = m_AcquiredSemaphore[semaphoreIndex].Get();
 			SEDX_CORE_ASSERT(frameSync != nullptr, "FrameSync for acquired semaphore is null");
 
 			// ensure the semaphore is free; wait for any command list that used this semaphore
 			if (CommandList* cmdList = frameSync->GetUserCmdList())
 			{
 				if (cmdList->GetState() == CommandState::Submitted)
-				{ 
 					cmdList->WaitForExecution();
-				}
+
 				SEDX_CORE_ASSERT(cmdList->GetState() == CommandState::Idle);
 			}
 			
@@ -931,6 +935,8 @@ namespace SceneryEditorX
 
 			if (r == VK_SUCCESS)
 			{
+			 m_LastAcquiredSemaphoreIndex = semaphoreIndex;
+				m_SemaphoreIndex = (semaphoreIndex + 1) % static_cast<uint32_t>(m_AcquiredSemaphore.size());
 				m_ImageAcquired = true;
 				return;
 			}
@@ -939,11 +945,24 @@ namespace SceneryEditorX
 			{
 				// Swapchain is out of date (e.g. window resized), recreate the swapchain and try acquiring again.
 				Recreate();
+			   continue;
 			}
 
 			SEDX_CORE_ERROR_TAG("Swapchain", "Failed to acquire swapchain image: {}", r);
 			return;
 		}
+	}
+
+	VkSemaphore Swapchain::GetAcquiredVkSemaphore() const
+	{
+	 if (m_LastAcquiredSemaphoreIndex >= m_AcquiredSemaphore.size())
+			return VK_NULL_HANDLE;
+
+		FrameSync * frameSync = m_AcquiredSemaphore[m_LastAcquiredSemaphoreIndex].Get();
+		if (!frameSync)
+			return VK_NULL_HANDLE;
+
+		return frameSync->GetVkSemaphore();
 	}
 
 	void Swapchain::Present(CommandList *cmdList)
@@ -952,7 +971,7 @@ namespace SceneryEditorX
 		if (!m_ImageAcquired)
 			return;
 
-	    // use per-image semaphore to avoid reuse conflicts - when this image is re-acquired,
+		// use per-image semaphore to avoid reuse conflicts - when this image is re-acquired,
 		// we know the previous presentation completed, so the semaphore is safe to signal again
 		FrameSync* rendering_complete_semaphore = m_CompleteSemaphore[m_ImageIndex].Get();
 		bool success = cmdList->GetQueue()->Present(this, m_ImageIndex, rendering_complete_semaphore);

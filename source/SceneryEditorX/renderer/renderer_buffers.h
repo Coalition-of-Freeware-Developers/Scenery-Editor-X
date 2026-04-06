@@ -102,9 +102,9 @@ namespace SceneryEditorX
 	{
 		xMath::Vec4 color = xMath::Vec4{0.0f, 0.0f, 0.0f, 0.0f};
 
-		xMath::Vec2 tiling_uv = xMath::Vec2::Zero;
-		xMath::Vec2 offset_uv = xMath::Vec2::Zero;
-		xMath::Vec2 invert_uv = xMath::Vec2::Zero;
+		xMath::Vec2 tiling_uv = xMath::Vec2::ZERO;
+		xMath::Vec2 offset_uv = xMath::Vec2::ZERO;
+		xMath::Vec2 invert_uv = xMath::Vec2::ZERO;
 		float roughness_mul = 0.0f;
 		float metallic_mul  = 0.0f;
 		float normal_mul    = 0.0f;

@@ -246,7 +246,7 @@ namespace SceneryEditorX
 	
 		if (minX > maxX)
 		{
-			return Rectangle::Zero;
+			return Rectangle::ZERO;
 		}
 	
 		return {minX, minY, maxX - minX, maxY - minY};
@@ -680,17 +680,17 @@ namespace SceneryEditorX
 		m_Projection = xMath::Mat4(0.0f);
 		
 		// X scale
-		m_Projection.rows[0][0] = 1.0f / (aspect * tan_half_fov);
+		m_Projection[0][0] = 1.0f / (aspect * tan_half_fov);
 		
 		// Y scale: Negated for Vulkan's Y-down clip space
-		m_Projection.rows[1][1] = -1.0f / tan_half_fov; 
+		m_Projection[1][1] = -1.0f / tan_half_fov; 
 		
 		// Z scale: Mapped to [0, 1] for Vulkan
-		m_Projection.rows[2][2] = far_z / (far_z - near_z);
-		m_Projection.rows[2][3] = 1.0f;
+		m_Projection[2][2] = far_z / (far_z - near_z);
+		m_Projection[2][3] = 1.0f;
 		
 		// Z translation
-		m_Projection.rows[3][2] = -(far_z * near_z) / (far_z - near_z);
+		m_Projection[3][2] = -(far_z * near_z) / (far_z - near_z);
 		m_ProjectionMatrix = m_Projection;
 		m_ViewProjection = m_Projection * m_View;
 	}

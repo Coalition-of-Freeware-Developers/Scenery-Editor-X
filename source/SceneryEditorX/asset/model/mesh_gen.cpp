@@ -276,7 +276,7 @@ namespace SceneryEditorX
 
 		Vec3 normal = Vec3(0, 1, 0);
 		Vec3 tangent = Vec3(1, 0, 0);
-		vertices->emplace_back(Vec3(0, radius, 0), Vec2::Zero, normal, tangent);
+		vertices->emplace_back(Vec3(0, radius, 0), Vec2::ZERO, normal, tangent);
 
 		const float phiStep   = xMath::PI / stacks;
 		const float thetaStep = 2.0f * xMath::PI / slices;

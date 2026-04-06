@@ -28,6 +28,7 @@
  * Created: 09/02/2026
  * -------------------------------------------------------
  */
+// ReSharper disable CppInconsistentNaming
 #include "device.h"
 #include "enums.h"
 #include "memory_allocator.h"
@@ -37,18 +38,21 @@
 #include <volk/volk.h>
 
 // -----------------------------------------------------------------
-// ReSharper disable CppInconsistentNaming
 
 namespace SceneryEditorX
 {
 	
-	#pragma region Static Properties
+#pragma region Static Properties
 
+/**
+	 * @struct DeviceFeatures
+	 * @brief Static handle to the Vulkan physical device selected for use by this Device instance.
+	 */
 	struct DeviceFeatures
 	{
 		VkPhysicalDeviceFeatures2 s_Features = {};
 		VkPhysicalDeviceRobustness2FeaturesEXT s_FeaturesRobustness = {};
-	    VkPhysicalDeviceExtendedDynamicStateFeaturesEXT s_FeaturesExtendedDynamicState = {};
+		VkPhysicalDeviceExtendedDynamicStateFeaturesEXT s_FeaturesExtendedDynamicState = {};
 		VkPhysicalDeviceShaderAtomicFloatFeaturesEXT s_FeaturesAtomicFloat = {};
 		VkPhysicalDeviceShaderAtomicFloat2FeaturesEXT s_FeaturesAtomicFloat2 = {};
 		VkPhysicalDeviceVulkan14Features s_Features_1_4 = {};
@@ -80,7 +84,7 @@ namespace SceneryEditorX
 			// VRS is conditionally included
 			if (s_IsShadingRateSupported)
 			{
-			    s_FeaturesVrs.pNext = nextInChain;
+				s_FeaturesVrs.pNext = nextInChain;
 				nextInChain = &s_FeaturesVrs;
 			}
 
@@ -164,13 +168,14 @@ namespace SceneryEditorX
 	};
 
 	uint32_t Device::m_PhysicalDeviceIndex = 0;						// Index of the currently selected physical device (GPU)
-	VkPhysicalDevice Device::m_PhysicalDevice = VK_NULL_HANDLE;
+	VkPhysicalDevice Device::m_PhysicalDevice = VK_NULL_HANDLE;		// Handle to the currently selected Vulkan physical device (GPU)
 	static std::vector<HWDeviceInfo> s_PhysicalDevice;				// Cache all GPU device info
 	static std::vector<VkPhysicalDevice> s_PhysicalDeviceHandles;	// Cache of Vulkan physical device handles corresponding to the GPU info list
 	static bool s_SubparDevice = false;								// Flag to indicate if device was selected with suboptimal features but will still run
 	bool Device::m_DeviceLost = false;
 
-	// -------------------------------------------------------
+	PFN_vkCmdSetFragmentShadingRateKHR	s_FragmentShadingRate = nullptr;
+	PFN_vkGetBufferDeviceAddress		s_BufferDeviceAddress = nullptr; 
 
 	/**
 	 * @brief Convert the internal DeviceType enum used by the engine to the corresponding Vulkan physical device type enum. 
@@ -270,7 +275,7 @@ namespace SceneryEditorX
 		feat.s_FeaturesAtomicFloat2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_2_FEATURES_EXT;
 		feat.s_FeaturesAtomicFloat2.pNext = &feat.s_FeaturesAtomicFloat;
 		feat.s_FeaturesVrs.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_FEATURES_KHR;
-	    feat.s_FeaturesVrs.pNext = &feat.s_FeaturesAtomicFloat2;
+		feat.s_FeaturesVrs.pNext = &feat.s_FeaturesAtomicFloat2;
 		feat.s_FeaturesRobustness.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT;
 		feat.s_FeaturesRobustness.pNext = &feat.s_FeaturesVrs;
 		feat.s_Features_1_2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
@@ -291,7 +296,7 @@ namespace SceneryEditorX
 		feat.s_Features.pNext = &feat.s_FeaturesRayTracingPipeline;
 
 		// Detect which features are supported
-	    VkPhysicalDeviceExtendedDynamicStateFeaturesEXT supportExtendedDynamicState = {};
+		VkPhysicalDeviceExtendedDynamicStateFeaturesEXT supportExtendedDynamicState = {};
 		supportExtendedDynamicState.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT;
 		VkPhysicalDeviceShaderAtomicFloatFeaturesEXT supportAtomicFloat = {};
 		supportAtomicFloat.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_FEATURES_EXT;
@@ -301,7 +306,7 @@ namespace SceneryEditorX
 		supportAtomicFloat2.pNext = &supportAtomicFloat;
 		VkPhysicalDeviceFragmentShadingRateFeaturesKHR supportVrs = {};
 		supportVrs.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_FEATURES_KHR;
-	    supportVrs.pNext = &supportAtomicFloat2;
+		supportVrs.pNext = &supportAtomicFloat2;
 		VkPhysicalDeviceRobustness2FeaturesEXT supportRobustness = {};
 		supportRobustness.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT;
 		supportRobustness.pNext = &supportVrs;
@@ -860,9 +865,7 @@ namespace SceneryEditorX
 		}
 	};
 
-	#pragma endregion
-
-	// -----------------------------------------------------------------
+#pragma endregion
 
 	/**
 	 * @brief Choose the best physical device based on feature support and memory, and set it as the active device.
@@ -949,23 +952,60 @@ namespace SceneryEditorX
 		m_PhysicalDevice = VK_NULL_HANDLE;
 	}
 
-	/**
-	 * @brief Get the number of physical devices available in the system
-	 * @return Number of physical devices detected during enumeration
-	 */
+	void Device::SetVariableRateShading(const CommandList *cmd, const bool enabled)
+	{
+		if (!GetDeviceStatics().isShadingRateSupported)
+			return;
+
+		// set the fragment shading rate state for the current pipeline
+		VkExtent2D fragment_size = {.width = 1, .height = 1 };
+		VkFragmentShadingRateCombinerOpKHR combinerOps[2];
+
+		// the combiners determine how the different shading rate values for the pipeline, primitives and attachment are combined
+		if (enabled)
+		{
+			// if shading rate from attachment is enabled, we set the combiner, so that the values from the attachment are used
+			// combiner for pipeline (a) and primitive (b) - Not used in this sample
+			combinerOps[0] = VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR;
+			// combiner for pipeline (a) and attachment (b), replace the pipeline default value (fragment_size) with the fragment sizes stored in the attachment
+			combinerOps[1] = VK_FRAGMENT_SHADING_RATE_COMBINER_OP_REPLACE_KHR;
+		}
+		else
+		{
+			// if shading rate from attachment is disabled, we keep the value set via the dynamic state
+			combinerOps[0] = VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR;
+			combinerOps[1] = VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR;
+		}
+
+	    s_FragmentShadingRate(static_cast<VkCommandBuffer>(cmd->GetCommandBuffer()), &fragment_size, combinerOps);
+	}
+
 	uint32_t Device::GetPhysicalDeviceCount() { return static_cast<uint32_t>(s_PhysicalDevice.size()); }
 
-	/**
-	 * @brief Retrieve the handle of a physical device by index
-	 * @param index Index of the physical device
-	 * @return Handle of the physical device, or 0 if index is out of range
-	 */
 	uintptr_t Device::GetPhysicalDeviceHandle(const uint32_t index) { return s_PhysicalDevice[index].guid; }
 
-	/**
-	 * @brief Get the specifications and capabilities of the currently selected physical device, including core limits and supported features.
-	 * @return DeviceStatics structure containing the specifications of the active physical device
-	 */
+	HWDeviceInfo Device::GetHWDeviceInfo(const VkPhysicalDevice device)
+	{
+		SEDX_CORE_ASSERT(device != VK_NULL_HANDLE, "Physical device is null");
+
+		// Find the index of the specified physical device handle in the cached handle list
+		auto itHandle = std::ranges::find(s_PhysicalDeviceHandles, device);
+		SEDX_CORE_ASSERT(itHandle != s_PhysicalDeviceHandles.end(), "Physical device handle not found in cache");
+
+		const size_t index = static_cast<size_t>(std::distance(s_PhysicalDeviceHandles.begin(), itHandle));
+		SEDX_CORE_ASSERT(index < s_PhysicalDevice.size(), "Physical device index out of bounds");
+
+		return s_PhysicalDevice[index];
+	}
+
+	const HWDeviceInfo Device::GetChosenHWDeviceInfo()
+	{
+		SEDX_CORE_ASSERT(m_PhysicalDevice != VK_NULL_HANDLE, "Physical device is null");
+
+		SEDX_CORE_ASSERT(m_PhysicalDeviceIndex < s_PhysicalDevice.size(), "Invalid physical device index");
+		return s_PhysicalDevice[m_PhysicalDeviceIndex];
+	}
+
 	DeviceStatics Device::GetDeviceStatics()
 	{
 		SEDX_CORE_ASSERT(m_PhysicalDevice != VK_NULL_HANDLE, "Physical device is null");
@@ -993,26 +1033,26 @@ namespace SceneryEditorX
 		const VkPhysicalDeviceLimits &limits = deviceProps.properties.limits;
 
 		// Populate core limits
-		statics.timestampPeriod = limits.timestampPeriod;
-		statics.minUniformBufferOffsetAlignment = limits.minUniformBufferOffsetAlignment;
-		statics.minStorageBufferOffsetAlignment = limits.minStorageBufferOffsetAlignment;
-		statics.optimalBufferCopyOffsetAlignment = limits.optimalBufferCopyOffsetAlignment;
-		statics.maxImageDimension1D = limits.maxImageDimension1D;
-		statics.maxImageDimension2D = limits.maxImageDimension2D;
-		statics.maxImageDimension3D = limits.maxImageDimension3D;
-		statics.maxImageDimensionCube = limits.maxImageDimensionCube;
-		statics.maxImageArrayLayers = limits.maxImageArrayLayers;
-		statics.maxPushConstantsSize = limits.maxPushConstantsSize;
+		statics.timestampPeriod						= limits.timestampPeriod;
+		statics.minUniformBufferOffsetAlignment		= limits.minUniformBufferOffsetAlignment;
+		statics.minStorageBufferOffsetAlignment		= limits.minStorageBufferOffsetAlignment;
+		statics.optimalBufferCopyOffsetAlignment	= limits.optimalBufferCopyOffsetAlignment;
+		statics.maxImageDimension1D					= limits.maxImageDimension1D;
+		statics.maxImageDimension2D					= limits.maxImageDimension2D;
+		statics.maxImageDimension3D					= limits.maxImageDimension3D;
+		statics.maxImageDimensionCube				= limits.maxImageDimensionCube;
+		statics.maxImageArrayLayers					= limits.maxImageArrayLayers;
+		statics.maxPushConstantsSize				= limits.maxPushConstantsSize;
 
 		const DeviceFeatures &features = s_PhysicalDevice[m_PhysicalDeviceIndex].s_SupportedFeatures;
 
 		// Populate ray tracing properties (if supported)
 		if (features.s_IsRayTracingSupported)
 		{
-			statics.shaderGroupHandleSize = rtPipelineProps.shaderGroupHandleSize;
-			statics.shaderGroupHandleAlignment = rtPipelineProps.shaderGroupHandleAlignment;
-			statics.shaderGroupBaseAlignment = rtPipelineProps.shaderGroupBaseAlignment;
-			statics.minAccelBufferOffsetAlignment = accelStructProps.minAccelerationStructureScratchOffsetAlignment;
+			statics.shaderGroupHandleSize			= rtPipelineProps.shaderGroupHandleSize;
+			statics.shaderGroupHandleAlignment		= rtPipelineProps.shaderGroupHandleAlignment;
+			statics.shaderGroupBaseAlignment		= rtPipelineProps.shaderGroupBaseAlignment;
+			statics.minAccelBufferOffsetAlignment	= accelStructProps.minAccelerationStructureScratchOffsetAlignment;
 		}
 
 		// Populate shading rate properties (if supported)
@@ -1023,11 +1063,11 @@ namespace SceneryEditorX
 		}
 
 		// Populate feature flags from cached data
-		statics.xessSupported = features.s_XessSupported;
-		statics.isShadingRateSupported = features.s_IsShadingRateSupported;
-		statics.isRayTracingSupported = features.s_IsRayTracingSupported;
-		statics.isBindlessSupported = features.s_IsBindlessSupported;
-		statics.wideLinesSupported = features.s_WideLines;
+		statics.xessSupported			= features.s_XessSupported;
+		statics.isShadingRateSupported	= features.s_IsShadingRateSupported;
+		statics.isRayTracingSupported	= features.s_IsRayTracingSupported;
+		statics.isBindlessSupported		= features.s_IsBindlessSupported;
+		statics.wideLinesSupported		= features.s_WideLines;
 
 		return statics;
 	}
@@ -1045,17 +1085,17 @@ namespace SceneryEditorX
 		{
 			// Fill safe defaults on failure
 			std::memset(&outDeviceInfo, 0, sizeof(outDeviceInfo));
-			outDeviceInfo.type = DeviceType::MaxEnum;
-			outDeviceInfo.vendorId = 0;
-			outDeviceInfo.memory = 0;
-			outDeviceInfo.guid = 0;
-			outDeviceInfo.data = nullptr;
-			outDeviceInfo.apiVersion[0] = '\0';
-			outDeviceInfo.driverVersion[0] = '\0';
-			outDeviceInfo.name[0] = '\0';
-			outDeviceInfo.vendorName[0] = '\0';
-			outDeviceInfo.surfaceCaps = {};
-			outDeviceInfo.s_SupportedFeatures = {};
+			outDeviceInfo.type					= DeviceType::MaxEnum;
+			outDeviceInfo.vendorId				= 0;
+			outDeviceInfo.memory				= 0;
+			outDeviceInfo.guid					= 0;
+			outDeviceInfo.data					= nullptr;
+			outDeviceInfo.apiVersion[0]			= '\0';
+			outDeviceInfo.driverVersion[0]		= '\0';
+			outDeviceInfo.name[0]				= '\0';
+			outDeviceInfo.vendorName[0]			= '\0';
+			outDeviceInfo.surfaceCaps			= {};
+			outDeviceInfo.s_SupportedFeatures	= {};
 			IsAmd(outDeviceInfo);
 			IsArm(outDeviceInfo);
 			IsIntel(outDeviceInfo);
@@ -1116,8 +1156,7 @@ namespace SceneryEditorX
 				(supportsRuntimeArray && requestedFeaturesExt.indexingFeatures.runtimeDescriptorArray == VK_TRUE) ? VK_TRUE : VK_FALSE;
 
 			features.s_IsBindlessSupported =
-				features.s_Features_1_2.descriptorBindingPartiallyBound == VK_TRUE &&
-				features.s_Features_1_2.runtimeDescriptorArray == VK_TRUE;
+				features.s_Features_1_2.descriptorBindingPartiallyBound == VK_TRUE && features.s_Features_1_2.runtimeDescriptorArray == VK_TRUE;
 
 			if (!features.s_IsBindlessSupported)
 			{
@@ -1131,7 +1170,7 @@ namespace SceneryEditorX
 			features.s_IsBindlessSupported = false;
 		}
 
-	    if (requestedFeaturesExt.enableFloat)
+		if (requestedFeaturesExt.enableFloat)
 		{
 		  const bool supportsAtomic = features.s_FeaturesAtomicFloat.shaderBufferFloat32Atomics == VK_TRUE;
 			const bool supportsAtomicAdd = features.s_FeaturesAtomicFloat.shaderBufferFloat32AtomicAdd == VK_TRUE;
@@ -1417,9 +1456,9 @@ namespace SceneryEditorX
 		SEDX_CORE_INFO("Name: {}",	  selectedDeviceInfo.name);
 		SEDX_CORE_INFO("Vendor: {}",  selectedDeviceInfo.vendorName);
 		SEDX_CORE_INFO("Type: {}",	  selectedDeviceInfo.type == DeviceType::Discrete ? "Discrete"
-						            : selectedDeviceInfo.type == DeviceType::Integrated ? "Integrated"
-						            : selectedDeviceInfo.type == DeviceType::External   ? "External"
-						            : selectedDeviceInfo.type == DeviceType::Virtual    ? "Virtual" : "Other");
+									: selectedDeviceInfo.type == DeviceType::Integrated ? "Integrated"
+									: selectedDeviceInfo.type == DeviceType::External   ? "External"
+									: selectedDeviceInfo.type == DeviceType::Virtual    ? "Virtual" : "Other");
 		SEDX_CORE_INFO("Memory: {} MB",		 selectedDeviceInfo.memory);
 		SEDX_CORE_INFO("Feature Score: {}",  selectedCandidate.featureScore);
 		SEDX_CORE_INFO("Driver Version: {}", selectedDeviceInfo.driverVersion);

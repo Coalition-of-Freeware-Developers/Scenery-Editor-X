@@ -241,7 +241,7 @@ namespace SceneryEditorX
 		float m_AreaHeight              = 1.0f;  // area light height in meters
 
 		uint32_t m_Index                 = 0;
-		BoundingBox m_BoundingBox		 = BoundingBox::Zero;
+		BoundingBox m_BoundingBox		 = BoundingBox::ZERO;
 
 		bool m_IsActive_PreviousFrame = false;
 

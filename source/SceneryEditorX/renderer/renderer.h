@@ -190,7 +190,7 @@ namespace SceneryEditorX
 		 * @param isTransparent Whether the mesh is transparent.
 		 * @return Index of the written draw data.
 		 */
-		static uint32_t WriteDrawData(const xMath::Matrix& transform, const xMath::Matrix &prevTransform = xMath::Matrix::Identity, uint32_t matIndex = 0, uint32_t isTransparent = 0);
+		static uint32_t WriteDrawData(const xMath::Matrix& transform, const xMath::Matrix &prevTransform = xMath::Matrix::IDENTITY, uint32_t matIndex = 0, uint32_t isTransparent = 0);
 
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		/// Render Context Management                                                                                     ///
@@ -330,6 +330,14 @@ namespace SceneryEditorX
 		/* @brief Returns the currently active camera, or nullptr if none has been set. */
 		static Camera* GetCamera();
 
+	    /**
+		 * @brief Get a structured buffer by type.
+		 * @param type The type of buffer to retrieve.
+		 * @return Pointer to the requested Buffer.
+		 */
+		static Buffer *GetBuffer(Renderer_Buffer type);
+
+
 		/**
 		 * @brief Update the camera uniform buffer object (UBO) for the current frame.
 		 * @param frameIndex Index of the current frame in flight (0 to MAX_FRAMES_IN_FLIGHT - 1) for double/triple buffering.
@@ -374,13 +382,6 @@ namespace SceneryEditorX
 		 * @param imageIndex Index of the swapchain image being rendered to (for resource binding)
 		 */
 		static void RecordRenderCommands(VkCommandBuffer cb, uint32_t imageIndex);
-
-		/**
-		 * @brief Get a structured buffer by type.
-		 * @param type The type of buffer to retrieve.
-		 * @return Pointer to the requested Buffer.
-		 */
-		static Buffer *GetBuffer(Renderer_Buffer type);
 
 		/**
 		 * @brief Get a shader by type.

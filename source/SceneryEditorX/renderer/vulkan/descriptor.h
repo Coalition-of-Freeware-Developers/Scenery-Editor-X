@@ -75,8 +75,18 @@ namespace SceneryEditorX
 	{
 	public:
 		Descriptor() = default;
+
+		/**
+		 * @brief Construct a new Descriptor object based on the provided specification.
+		 * @param spec The specification for the descriptor.
+		 */
 		Descriptor(const DescriptorSpec &spec);
+
+		/**
+		 * @brief Destroy the Descriptor object and release any associated resources.
+		 */
 		~Descriptor();
+
 		Descriptor(const Descriptor&);
 		Descriptor& operator=(const Descriptor&);
 		Descriptor(Descriptor&&) noexcept;
@@ -131,7 +141,11 @@ namespace SceneryEditorX
 		 * @return The VkDescriptorSetLayout handle.
 		 */
 		VkDescriptorSetLayout GetLayout() const { return m_Layout; }
-		
+
+		/**
+		 * @brief Check if the descriptor is a storage type.
+		 * @return True if the descriptor is a storage type, false otherwise.
+		 */
 		bool IsStorage() const { return m_Type == DescriptorType::TextureStorage; }
 
 		uint32_t GetSlot() const { return m_Slot; }

@@ -479,7 +479,7 @@ namespace SceneryEditorX
 
 	void Renderable::UpdateAabb()
 	{
-		const Matrix transform = (GetEntity() && GetEntity()->GetActive()) ? GetEntity()->GetMatrix() : Matrix::Identity;
+		const Matrix transform = (GetEntity() && GetEntity()->GetActive()) ? GetEntity()->GetMatrix() : Matrix::IDENTITY;
 		if (m_bounding_box_dirty || m_transform_previous != transform)
 		{
 			if (m_instances.empty()) // non-instanced
@@ -488,7 +488,7 @@ namespace SceneryEditorX
 			}
 			else // instanced
 			{
-				m_bounding_box = BoundingBox(Vec3::Infinity<float>, Vec3::InfinityNeg<float>);
+				m_bounding_box = BoundingBox(Vec3::VEC3_INFINITY<float>, Vec3::INFINITY_NEG<float>);
 				for (const Instance& instance : m_instances)
 				{
 					Matrix worldInstance = instance.GetMatrix() * transform;

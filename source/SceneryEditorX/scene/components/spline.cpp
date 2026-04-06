@@ -281,7 +281,7 @@ namespace SceneryEditorX
 
 			if (m_instance_random_scale_min != 1.0f || m_instance_random_scale_max != 1.0f)
 			{
-				const float scale = xMath::random<float>(m_instance_random_scale_min, m_instance_random_scale_max);
+				const float scale = xMath::Random<float>(m_instance_random_scale_min, m_instance_random_scale_max);
 				instance.SetScaleLocal(Vec3(scale, scale, scale));
 			}
 

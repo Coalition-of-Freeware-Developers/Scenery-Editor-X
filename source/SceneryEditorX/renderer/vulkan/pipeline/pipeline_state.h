@@ -30,10 +30,8 @@
  */
 #pragma once
 
-#include <array>
-#include <cstdint>
-#include <map>
 #include <SceneryEditorX/renderer/renderer_declarations.h>
+#include <SceneryEditorX/renderer/vulkan/render_data.h>
 
 // ---------------------------------------------------------
 
@@ -65,19 +63,48 @@ namespace SceneryEditorX
 	class PipelineState
 	{
 	public:
+
+		/* @brief Construct a new PipelineState object. */
 		PipelineState();
+
+		/* @brief Destroy the pipeline state. */
 		~PipelineState();
 
+		/* @brief Prepares the pipeline state for use. */
 		void Prepare();
+
+		/**
+		 * @brief Check if the pipeline state has clear values.
+		 * @return True if the pipeline state has clear values, false otherwise.
+		 */
 		[[nodiscard]] bool HasClearValues() const;
+
+		/**
+		 * @brief Check if the pipeline state is a graphics pipeline.
+		 * @return True if the pipeline state is a graphics pipeline, false otherwise.
+		 */
 		[[nodiscard]] bool IsGraphics() const;
+
+		/**
+		 * @brief Check if the pipeline state is a compute pipeline.
+		 * @return True if the pipeline state is a compute pipeline, false otherwise.
+		 */
 		[[nodiscard]] bool IsCompute() const;
+
+		/**
+		 * @brief Check if the pipeline state includes a tessellation shader stage.
+		 * @return True if the pipeline state includes a tessellation shader stage, false otherwise.
+		 */
 		[[nodiscard]] bool HasTessellation();
 
 		[[nodiscard]] uint32_t GetWidth() const  { return m_Width; }
 		[[nodiscard]] uint32_t GetHeight() const { return m_Height; }
 		[[nodiscard]] uint64_t GetHash() const   { return m_Hash; }
 
+		/**
+		 * @brief Get the current state of the pipeline.
+		 * @return The current pipeline state.
+		 */
 		static PipelineState GetState();
 
 		// Shader stages – indexed by Stage enum (vertex=0, geometry=1, tess_ctrl=2, tess_eval=3, fragment=4, compute=5)
@@ -107,7 +134,13 @@ namespace SceneryEditorX
 		const char* name = nullptr;
 
 	private:
+		/**
+		 * @brief Check if a specific shader stage is present in the pipeline state.
+		 * @param shaderStage The shader stage to check.
+		 * @return True if the shader stage is present, false otherwise.
+		 */
 		[[nodiscard]] bool HasShader(const Stage shaderStage) const;
+
 		uint32_t m_Width  = 0;
 		uint32_t m_Height = 0;
 		uint64_t m_Hash   = 0;

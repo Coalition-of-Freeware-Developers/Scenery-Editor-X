@@ -134,8 +134,8 @@ namespace SceneryEditorX
 		Mesh* m_mesh                          = nullptr;
 		uint32_t m_sub_mesh_index             = 0;
 		bool m_bounding_box_dirty             = true;
-		xMath::BoundingBox m_bounding_box_mesh = xMath::BoundingBox::Unit;
-		xMath::BoundingBox m_bounding_box      = xMath::BoundingBox::Unit;
+		xMath::BoundingBox m_bounding_box_mesh = xMath::BoundingBox::UNIT;
+		xMath::BoundingBox m_bounding_box      = xMath::BoundingBox::UNIT;
 
 		// material
 		bool m_material_default = false;
@@ -150,7 +150,7 @@ namespace SceneryEditorX
 		bool m_allow_blas_update = false;
 
 		// misc
-		xMath::Matrix m_transform_previous = xMath::Matrix::Identity;
+		xMath::Matrix m_transform_previous = xMath::Matrix::IDENTITY;
 		uint32_t m_flags = RenderableFlags::CastsShadows;
 
 		// deferred default material assignment (renderer may not be ready during load)

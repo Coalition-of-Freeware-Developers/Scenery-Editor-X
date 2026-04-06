@@ -399,6 +399,22 @@ namespace SceneryEditorX
 		cmdList->InsertBarrier(m_Image, m_Spec.format, mipIndex, mipRange, GetArrayLength(), newLayout);
 	}
 
+	Layout::ImageLayout ImageResource::GetLayout(const uint32_t mip) const
+	{
+		return m_Image ? CommandList::GetImageLayout(m_Image, mip) : Layout::ImageLayout::MaxEnum;
+	}
+
+	std::array<Layout::ImageLayout, MAX_MIP_COUNT> ImageResource::GetLayouts()
+	{
+		std::array<Layout::ImageLayout, MAX_MIP_COUNT> layouts;
+		for (uint32_t i = 0; i < MAX_MIP_COUNT; i++)
+		{
+			layouts[i] = GetLayout(i);
+		}
+
+		return layouts;
+	}
+
 	ImageResource::~ImageResource()
 	{
 		if (!m_Device.IsValid())
@@ -409,9 +425,8 @@ namespace SceneryEditorX
 		{
 			if (view != VK_NULL_HANDLE)
 			{
-			    QueueManager::AddDeletionQueue(ResourceType::ImageView, view);
+				QueueManager::AddDeletionQueue(ResourceType::ImageView, view);
 			}
-			//vkDestroyImageView(device, view, nullptr);
 		}
 		m_ImageViews.clear();
 

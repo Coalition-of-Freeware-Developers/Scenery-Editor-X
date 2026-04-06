@@ -11,6 +11,7 @@ bin-int/
 shader_tests/
 source/_archive/
 source/SceneryEditorX/reference/
+_temp_/
 
 # Repository specific directories
 docs/doxygen

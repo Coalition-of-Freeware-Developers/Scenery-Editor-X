@@ -29,24 +29,36 @@
  * -------------------------------------------------------
  */
 #include "descriptor_set.h"
-
 #include "bindless_manager.h"
 #include "descriptor.h"
-#include "render_context.h"
 #include "image_resource.h"
+#include "render_context.h"
 #include "debug/graphics_debug.h"
-
 #include <volk/volk.h>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
+
+	static bool s_BindDynamic = false;
+
+	/**
+	 * @brief combine two 64-bit hashes into one. This is a simple hash combiner and can be replaced with a more robust one if needed.
+	 * @param a The first hash value.
+	 * @param b The second hash value.
+	 * @return The combined hash value.
+	 */
 	static uint64_t HashCombine(const uint64_t a, const uint64_t b)
 	{
 		return a * 31 + b;
 	}
 
+	/**
+	 * @brief Convert a shader stage to a corresponding bitmask.
+	 * @param type The shader stage.
+	 * @return The bitmask representing the shader stage.
+	 */
 	static uint32_t ShaderTypeToMask(Stage type)
 	{
 		switch (type)
@@ -286,7 +298,7 @@ namespace SceneryEditorX
 
 		if (DescriptorBinding* binding = FindBinding(actualSlot))
 		{
-			binding->SetResource(static_cast<void*>(img));
+			binding->SetResource(img);
 			binding->SetLayout(layout);
 			binding->SetMip(mipIndex);
 			binding->SetMipRange(mipRange);
@@ -391,12 +403,10 @@ namespace SceneryEditorX
 
 	bool DescriptorSet::IsReferringToResource(void *resource) const
 	{
-		for (const auto &m_Binding : m_Bindings)
+		for (const auto &binding : m_Bindings)
 		{
-			if (m_Binding.GetResource() == resource)
-			{
+			if (binding.GetResource() == resource)
 				return true;
-			}
 		}
 
 		return false;
@@ -405,6 +415,7 @@ namespace SceneryEditorX
 	uint64_t DescriptorSet::ComputeBindingHash() const
 	{
 		uint64_t hash = m_LayoutHash;
+
 		for (const DescriptorBinding& binding : m_Bindings)
 		{
 			hash = HashCombine(hash, binding.GetHash());
@@ -412,6 +423,71 @@ namespace SceneryEditorX
 
 		return hash;
 	}
+
+	bool DescriptorSet::SetDynamicBinding(const bool state)
+	{
+		s_BindDynamic = state;
+		return s_BindDynamic;
+	}
+
+	bool DescriptorSet::IsDynamicBinding()
+	{
+		return s_BindDynamic;
+	}
+
+	void DescriptorSet::SetDynamicDescriptor(const PipelineState pso, CommandList *cmd, Pipeline pipelineLayout, Descriptor *layout)
+	{
+		std::array<void*, 1> resources =
+		{
+			GetOrCreateDescriptorSet()
+		};
+
+		// get dynamic offsets
+		std::array<uint32_t, 10> dynamic_offsets;
+		uint32_t dynamic_offset_count = 0;
+		layout->GetDynamicOffsets(&dynamic_offsets, &dynamic_offset_count);
+
+		VkPipelineBindPoint bind_point = VK_PIPELINE_BIND_POINT_COMPUTE;
+		bind_point = pso.IsGraphics() ? VK_PIPELINE_BIND_POINT_GRAPHICS : bind_point;
+
+		vkCmdBindDescriptorSets
+		(
+			cmd->GetCommandBuffer(),							  // commandBuffer
+			bind_point,                                           // pipelineBindPoint
+			pipelineLayout.GetLayout(),
+			0,                                                    // firstSet
+			static_cast<uint32_t>(resources.size()),              // descriptorSetCount
+			reinterpret_cast<VkDescriptorSet*>(resources.data()), // pDescriptorSets
+			dynamic_offset_count,                                 // dynamicOffsetCount
+			dynamic_offsets.data()                                // pDynamicOffsets
+		);
+
+		s_BindDynamic = false;
+	}
+
+	 void DescriptorSet::SetBindless(const PipelineState pso, void* resource, void* pipeline_layout)
+	 {
+		 std::array<void*, static_cast<size_t>(BindlessResource::MaxEnum)> resources;
+		 for (size_t i = 0; i < static_cast<size_t>(resources.size()); i++)
+		 {
+			 resources[i] = DescriptorSet::GetSet(static_cast<BindlessResource>(i));
+		 }
+
+		 VkPipelineBindPoint bind_point = VK_PIPELINE_BIND_POINT_COMPUTE;
+		 bind_point                     = pso.IsGraphics()   ? VK_PIPELINE_BIND_POINT_GRAPHICS        : bind_point;
+
+		 vkCmdBindDescriptorSets
+		 (
+			 static_cast<VkCommandBuffer>(resource),               // commandBuffer
+			 bind_point,                                           // pipelineBindPoint
+			 static_cast<VkPipelineLayout>(pipeline_layout),       // layout
+			 1,                                                    // firstSet - 0 is reserved for the old-school/dynamic/bind based descriptor sets
+			 static_cast<uint32_t>(resources.size()),              // descriptorSetCount
+			 reinterpret_cast<VkDescriptorSet*>(resources.data()), // pDescriptorSets
+			 0,                                                    // dynamicOffsetCount
+			 nullptr                                               // pDynamicOffsets
+		 );
+	 }
 
 	void DescriptorSet::Create()
 	{
@@ -423,14 +499,10 @@ namespace SceneryEditorX
 		for (const Descriptor& desc : m_Descriptors)
 		{
 			if (desc.GetType() == DescriptorType::PushConstantBuffer)
-			{
 				continue;
-			}
 
 			if (desc.IsArray() && desc.GetArrayLength() == MAX_ARRAY_SIZE)
-			{
 				continue;
-			}
 
 			filtered.push_back(desc);
 		}

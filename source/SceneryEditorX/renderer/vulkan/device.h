@@ -121,6 +121,19 @@ namespace SceneryEditorX
 		[[nodiscard]] static VkPhysicalDevice GetPhysicalDevice() { return m_PhysicalDevice; }
 
 		/**
+		 * @brief Get the hardware device information for a specific physical device
+		 * @param device Vulkan physical device handle
+		 * @return HWDeviceInfo structure containing the specifications of the specified device
+		 */
+		static HWDeviceInfo GetHWDeviceInfo(const VkPhysicalDevice device);
+
+		/**
+		 * @brief Get the hardware device information of the chosen physical device
+		 * @return HWDeviceInfo structure containing the specifications of the chosen device
+		 */
+		static const HWDeviceInfo GetChosenHWDeviceInfo();
+
+		/**
 		 * @brief Get the Vulkan logical device handle
 		 * @return VkDevice handle or VK_NULL_HANDLE if no device is available
 		 */
@@ -166,21 +179,37 @@ namespace SceneryEditorX
 		 */
 		static VkPhysicalDevice Choose();
 
+		/**
+		 * @brief Get the current state of the device loss flag.
+		 * @return the current state of the device loss flag, indicating whether the device is considered lost and unusable.
+		 * This flag is set to true when a device loss condition is detected, such as a GPU reset or driver crash, and can be used by the application to trigger appropriate recovery or cleanup actions.
+		 * Once set, this flag remains true until the application takes steps to recreate the device and reset the state.
+		 * @note Device loss is a critical condition that typically requires recreating the Vulkan device and associated resources. 
+		 */
 		static bool IsDeviceLost()  { return m_DeviceLost; }
+
+		/* @brief Set the device loss flag to true, indicating that the device is considered lost and unusable. */
 		static void SetDeviceLost() { m_DeviceLost = true; }
+	
+		/**
+		 * @brief 
+		 * @param cmd 
+		 * @param enabled 
+		 */
+		static void SetVariableRateShading(const CommandList *cmd, const bool enabled);
 
 	private:
-		std::string m_GPUName;
-		Ref<QueueManager> m_QueueManager;
-		MemoryAllocator m_MemAllocator;
-		QueueManager::QueueFamilyIndices m_FamilyIndices;
+		std::string m_GPUName;								// For logging and debugging purposes
+		Ref<QueueManager> m_QueueManager;					// Manages the Vulkan queues associated with this device
+		MemoryAllocator m_MemAllocator;						// Manages memory allocations for this device
+		QueueManager::QueueFamilyIndices m_FamilyIndices;	// Cached queue family indices for quick access during device creation and queue allocation
 
-		VkDevice m_LogicalDevice = VK_NULL_HANDLE;
-		static VkPhysicalDevice m_PhysicalDevice;
-		static uint32_t m_PhysicalDeviceIndex;
-		static bool m_DeviceLost;
-		GraphicsChecks::InstanceProperties m_InstanceProps;
-		HWDeviceInfo *m_HWDeviceInfo;
+		VkDevice m_LogicalDevice = VK_NULL_HANDLE;			// Handle to the Vulkan logical device created from the selected physical device
+		static VkPhysicalDevice m_PhysicalDevice;			// Static handle to the Vulkan physical device selected for use by this Device instance.
+		static uint32_t m_PhysicalDeviceIndex;				// Static index of the selected physical device among the available devices on the system.
+		static bool m_DeviceLost;							// Static flag indicating whether the device is considered lost and unusable.
+		GraphicsChecks::InstanceProperties m_InstanceProps; // Cached instance properties used during device selection and creation, such as requested extensions and features.
+		//HWDeviceInfo *m_HWDeviceInfo;						// Pointer to a structure containing hardware device information.
 
 		VkInstance m_Instance = VK_NULL_HANDLE;
 		VkSurfaceKHR m_WindowSurface = VK_NULL_HANDLE;

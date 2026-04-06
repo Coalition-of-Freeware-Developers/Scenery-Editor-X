@@ -373,7 +373,7 @@ namespace SceneryEditorX
 	 * This enum provides a type-safe way to identify and reference
 	 * the different UAV bindings used in the rendering system.
 	 */
-	enum class Renderer_BindingsUav
+	enum class Renderer_BindingsUav : uint32_t
 	{
 		tex           = 0,
 		tex2          = 1,
@@ -462,33 +462,6 @@ namespace SceneryEditorX
 		EnsureWriteThenWrite,  // Serialise two consecutive UAV writes
 		MaxEnum
 	};
-
-	// -------------------------------------------------------
-	// Stage alias for shader-type shorthand
-	// -------------------------------------------------------
-	// Stage is defined in vulkan/enums.h; ShaderType is an alias used in pass code.
-	// The unscoped alias below lets pass code write `Stage::Pixel` as a synonym for
-	// `Stage::Fragment` and index PipelineState::shaders with the Stage enum directly.
-	// -------------------------------------------------------
-
-#pragma region Constants
-	/** Sentinel passed to pso.clear_depth to instruct the pipeline to LOAD existing depth rather than clear it. */
-	inline constexpr float RHI_DEPTH_LOAD		= -1.0f;
-	inline constexpr float DEPTH_LOAD			= RHI_DEPTH_LOAD;
-	inline constexpr float DEPTH_DONT_CARE      = std::numeric_limits<float>::max();
-
-	const Color COLOR_DONT_CARE					= Color(std::numeric_limits<float>::max(), 0.0f, 0.0f, 0.0f);
-	const Color COLOR_LOAD						= Color(std::numeric_limits<float>::infinity(), 0.0f, 0.0f, 0.0f);
-
-	inline constexpr uint32_t STENCIL_DONT_CARE = std::numeric_limits<uint32_t>::max();
-	inline constexpr uint32_t STENCIL_LOAD      = std::numeric_limits<uint32_t>::infinity();
-
-	/** Maximum simultaneous colour render targets in a PipelineState. */
-	inline constexpr uint32_t MAX_RENDER_TARGET_COUNT  = 8;
-	inline constexpr uint32_t MAX_SHADER_STAGES        = 8;
-	inline constexpr uint32_t RENDERER_MAX_DRAW_CALLS  = 4096;
-	inline constexpr uint32_t MAX_MIP_COUNT            = 16;
-#pragma endregion
 
 	// -------------------------------------------------------
 	// Renderer_DrawCall: per-draw submission record
