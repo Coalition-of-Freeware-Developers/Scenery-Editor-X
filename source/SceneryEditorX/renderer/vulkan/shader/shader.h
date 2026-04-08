@@ -30,6 +30,7 @@
  */
 #pragma once
 #include "shader_stage.h"
+#include "SceneryEditorX/utils/inheritance.h"
 #include <SceneryEditorX/renderer/vulkan/descriptor.h>
 #include <SceneryEditorX/renderer/vulkan/enums.h>
 

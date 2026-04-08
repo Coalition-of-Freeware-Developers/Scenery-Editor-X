@@ -55,6 +55,7 @@ namespace SceneryEditorX
 		Camera,
 		Light,
 		Renderable,
+		Material,
 		Spline,
 		Terrain,
 		Volume,

@@ -380,7 +380,29 @@ namespace SceneryEditorX
 		m_Allocation = VK_NULL_HANDLE;
 		m_DeviceAddress = 0;
 	}
-	
-}
+
+	void Buffer::Update(CommandList *cmdList, void *dataCPU, const uint32_t size)
+	{
+		SEDX_CORE_ASSERT(cmdList, "Invalid command list");
+		SEDX_CORE_ASSERT(m_IsMappable, "Can't update unmapped buffer");
+		SEDX_CORE_ASSERT(dataCPU != nullptr, "Invalid CPU data");
+		SEDX_CORE_ASSERT(m_MappedData != nullptr, "Invalid mapped data on GPU");
+		SEDX_CORE_ASSERT(m_Offset + m_Stride <= m_ObjectSize, "Out of memory");
+
+		// advance offset
+		if (m_IsFirstUpdate)
+		{
+			m_IsFirstUpdate = false;
+		}
+		else
+		{
+			m_Offset += m_Stride;
+		}
+
+		// vkCmdUpdateBuffer and vkCmdPipelineBarrier
+		CommandList::UpdateBuffer(this, m_Offset, size != 0 ? size : m_Stride, dataCPU);
+	}
+
+} // namespace SceneryEditorX
 
 // -----------------------------------

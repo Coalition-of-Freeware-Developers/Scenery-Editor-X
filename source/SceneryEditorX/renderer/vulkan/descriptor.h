@@ -29,8 +29,7 @@
  * -------------------------------------------------------
  */
 #pragma once
-#include "device.h"
-#include <vector>
+#include "enums.h"
 
 // -------------------------------------------------------
 
@@ -52,8 +51,33 @@ namespace SceneryEditorX
 	};
 
 	/**
+	 * @brief Convert a DescriptorType to the corresponding VkDescriptorType.
+	 *
+	 * Returns VK_DESCRIPTOR_TYPE_MAX_ENUM for types that have no direct Vulkan counterpart
+	 * (e.g. PushConstantBuffer) — callers should filter those out before creating bindings.
+	 *
+	 * @param type The DescriptorType to convert.
+	 * @return The corresponding VkDescriptorType value.
+	 */
+	[[nodiscard]] inline VkDescriptorType ToVkDescriptorType(DescriptorType type)
+	{
+		switch (type)
+		{
+			case DescriptorType::Image:                return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+			case DescriptorType::TextureStorage:       return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+			case DescriptorType::ConstantBuffer:       return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+			case DescriptorType::StructuredBuffer:     return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
+			case DescriptorType::AccelerationStructure:return VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
+			default:                                   return VK_DESCRIPTOR_TYPE_MAX_ENUM;
+		}
+	}
+
+	/**
 	 * @struct DescriptorSpec
-	 * @brief Specification for a descriptor, including type, layout, and other properties.
+	 * @brief POD specification for a single shader binding (slot, type, stage mask, array info, name).
+	 *
+	 * DescriptorSpec is the authoritative description of a binding.  It carries no Vulkan
+	 * resource handles — use DescriptorLayout to create the corresponding VkDescriptorSetLayout.
 	 */
 	struct DescriptorSpec
 	{
@@ -69,110 +93,63 @@ namespace SceneryEditorX
 
 	/**
 	 * @class Descriptor
-	 * @brief A helper class for managing Vulkan descriptor sets, layouts, and pools.
+	 * @brief Spec-only description of a single shader binding.
+	 *
+	 * A Descriptor carries the slot, type, stage mask, and optional array info for one
+	 * binding.  It does NOT own any Vulkan resource handles.  Use DescriptorLayout to
+	 * create the VkDescriptorSetLayout, and DescriptorPoolManager to allocate sets.
 	 */
-	class Descriptor 
+	class Descriptor
 	{
 	public:
 		Descriptor() = default;
 
 		/**
-		 * @brief Construct a new Descriptor object based on the provided specification.
-		 * @param spec The specification for the descriptor.
+		 * @brief Construct a Descriptor from the provided specification.
+		 * @param spec The binding specification.
 		 */
-		Descriptor(const DescriptorSpec &spec);
+		explicit Descriptor(const DescriptorSpec& spec);
+
+		~Descriptor() = default;
+
+		Descriptor(const Descriptor&)            = default;
+		Descriptor& operator=(const Descriptor&) = default;
+		Descriptor(Descriptor&&) noexcept        = default;
+		Descriptor& operator=(Descriptor&&) noexcept = default;
 
 		/**
-		 * @brief Destroy the Descriptor object and release any associated resources.
+		 * @brief Check if the descriptor is a storage image type.
+		 * @return True if the descriptor type is TextureStorage.
 		 */
-		~Descriptor();
+		[[nodiscard]] bool IsStorage() const { return m_Type == DescriptorType::TextureStorage; }
 
-		Descriptor(const Descriptor&);
-		Descriptor& operator=(const Descriptor&);
-		Descriptor(Descriptor&&) noexcept;
-		Descriptor& operator=(Descriptor&&) noexcept;
+		[[nodiscard]] uint32_t       GetSlot()        const { return m_Slot; }
+		[[nodiscard]] uint32_t       GetStage()       const { return m_Stage; }
+		[[nodiscard]] uint32_t       GetStructSize()  const { return m_StructSize; }
+		[[nodiscard]] uint32_t       GetArrayLength() const { return m_ArrayLength; }
+		[[nodiscard]] DescriptorType GetType()        const { return m_Type; }
+		[[nodiscard]] bool           IsArray()        const { return m_AsArray; }
+		[[nodiscard]] const std::string& GetName()    const { return m_Name; }
 
 		/**
-		 * @brief Create a descriptor set layout with the specified number of bindings.
-		 * @param bindingCount The number of bindings in the descriptor set layout.
-		 * @return The VkDescriptorSetLayout handle.
+		 * @brief Merge stage flags from another descriptor for the same slot (used by shader reflection merging).
+		 * @param stage Additional stage flags to OR into this descriptor's stage mask.
 		 */
-		VkDescriptorSetLayout CreateLayout(uint32_t bindingCount) const;
-
-		/**
-		 * @brief Create a descriptor pool with the specified number of descriptors.
-		 * @param descriptorCount The number of descriptors in the pool.
-		 * @return The VkDescriptorPool handle.
-		 */
-		VkDescriptorPool CreatePool(uint32_t descriptorCount) const;
-
-		/**
-		 * @brief Allocate a descriptor set from the specified pool and layout, and update it with imageInfos.
-		 * @param pool The descriptor pool from which to allocate the descriptor set.
-		 * @param layout The descriptor set layout to use for the allocation.
-		 * @param imageInfos Vector of VkDescriptorImageInfo structs to write into the allocated descriptor set.
-		 * @return Returns VK_NULL_HANDLE on failure or the allocated VkDescriptorSet handle on success.
-		 */
-		VkDescriptorSet AllocateAndWrite(VkDescriptorPool pool, VkDescriptorSetLayout layout, const std::vector<::VkDescriptorImageInfo>& imageInfos) const;
-
-		/**
-		 * @brief Initialize the descriptor helper: create a layout for bindingCount combined image samplers and a pool sized for descriptorCount.
-		 * @param bindingCount The number of bindings in the descriptor set layout.
-		 * @param descriptorCount The number of descriptors in the descriptor pool.
-		 * @return Returns true on success, false on failure.
-		 */
-		bool Init(uint32_t bindingCount = 1, uint32_t descriptorCount = 1);
-
-		/**
-		 * @brief Allocate a descriptor set from the internally owned pool/layout and update it with imageInfos.
-		 * @param imageInfos Vector of VkDescriptorImageInfo structs to write into the allocated descriptor set.
-		 * @return Returns VK_NULL_HANDLE on failure or the allocated VkDescriptorSet handle on success.
-		 */
-		VkDescriptorSet AllocateAndWrite(const std::vector<::VkDescriptorImageInfo>& imageInfos) const;
-
-		/**
-		 * @brief Get the internally owned descriptor pool.
-		 * @return The VkDescriptorPool handle.
-		 */
-		VkDescriptorPool GetPool() const { return m_Pool; }
-
-		/**
-		 * @brief Get the internally owned descriptor set layout.
-		 * @return The VkDescriptorSetLayout handle.
-		 */
-		VkDescriptorSetLayout GetLayout() const { return m_Layout; }
-
-		/**
-		 * @brief Check if the descriptor is a storage type.
-		 * @return True if the descriptor is a storage type, false otherwise.
-		 */
-		bool IsStorage() const { return m_Type == DescriptorType::TextureStorage; }
-
-		uint32_t GetSlot() const { return m_Slot; }
-		uint32_t GetStage() const { return m_Stage; }
-		uint32_t GetStructSize() const { return m_StructSize; }
-		uint32_t GetArrayLength() const { return m_ArrayLength; }
-		DescriptorType GetType() const { return m_Type; }
-		bool IsArray() const { return m_AsArray; }
 		void SetStage(uint32_t stage) { m_Stage = stage; }
 
 	private:
-		Ref<Device> m_Device;
-		DescriptorSpec m_Spec;
+		DescriptorSpec      m_Spec;
 
-		uint32_t m_Slot					= 0;
-		uint32_t m_Stage				= 0;
-		uint32_t m_StructSize			= 0;
-		uint32_t m_ArrayLength			= 0;
-		DescriptorType m_Type			= DescriptorType::MaxEnum;
-		Layout::ImageLayout m_ImgLayout	= Layout::ImageLayout::MaxEnum;
-
-		VkDescriptorPool m_Pool			= VK_NULL_HANDLE;
-		VkDescriptorSetLayout m_Layout	= VK_NULL_HANDLE;
-		bool m_AsArray					= false;
-		std::string m_Name;
+		uint32_t            m_Slot        = 0;
+		uint32_t            m_Stage       = 0;
+		uint32_t            m_StructSize  = 0;
+		uint32_t            m_ArrayLength = 0;
+		DescriptorType      m_Type        = DescriptorType::MaxEnum;
+		Layout::ImageLayout m_ImgLayout   = Layout::ImageLayout::MaxEnum;
+		bool                m_AsArray     = false;
+		std::string         m_Name;
 	};
 
-}
+} // namespace SceneryEditorX
 
 // -------------------------------------------------------

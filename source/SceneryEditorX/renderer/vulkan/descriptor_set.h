@@ -31,6 +31,7 @@
 #pragma once
 #include "descriptor.h"
 #include "descriptor_binding.h"
+#include "SceneryEditorX/utils/inheritance.h"
 #include <unordered_map>
 #include <vector>
 #include <SceneryEditorX/core/identifiers/flag.h>
@@ -39,6 +40,9 @@
 
 namespace SceneryEditorX
 {
+	class PipelineState;
+	class ImageResource;
+	class Buffer;
 	class Device;
 
 	/**
@@ -150,12 +154,6 @@ namespace SceneryEditorX
 		VkDescriptorSetLayout GetLayout() const { return m_Layout; }
 
 		/**
-		 * @brief Get the Vulkan descriptor pool handle.
-		 * @return The VkDescriptorPool handle.
-		 */
-		VkDescriptorPool GetPool() const { return m_DescriptorPool; }
-
-		/**
 		 * @brief Get the Vulkan descriptor set handle.
 		 * @return The VkDescriptorSet handle.
 		 */
@@ -194,25 +192,12 @@ namespace SceneryEditorX
 
 		/**
 		 * @brief 
-		 * @param state 
-		 * @return 
-		 */
-		static bool SetDynamicBinding(bool state);
-
-		/**
-		 * @brief 
-		 * @return 
-		 */
-		static bool IsDynamicBinding();
-
-		/**
-		 * @brief 
 		 * @param pso 
-		 * @param cmd 
+		 * @param cmdBuffer 
 		 * @param pipelineLayout 
-		 * @param layout 
+		 * @param descriptorSet 
 		 */
-		static void SetDynamicDescriptor(const PipelineState pso, CommandList *cmd, Pipeline pipelineLayout, Descriptor *layout);
+		static void SetDynamicDescriptor(const PipelineState& pso, VkCommandBuffer cmdBuffer, VkPipelineLayout pipelineLayout, DescriptorSet* descriptorSet);
 
 		/**
 		 * @brief 
@@ -232,7 +217,6 @@ namespace SceneryEditorX
 		uint64_t m_LayoutHash = 0;
 
 		VkDescriptorSetLayout m_Layout = VK_NULL_HANDLE;
-		VkDescriptorPool m_DescriptorPool = VK_NULL_HANDLE;
 		VkDescriptorSet m_Set = VK_NULL_HANDLE;
 
 		// binding state (mutable)

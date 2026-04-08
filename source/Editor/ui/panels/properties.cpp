@@ -595,7 +595,7 @@ void Properties::OnTickVisible()
 
 			// re-fetch after ShowSpline since clearing a road mesh removes the render
 			Renderable* render = entity->GetComponent<Renderable>();
-			MaterialAsset* material = render ? render->GetMaterial() : nullptr;
+			MaterialAsset* material = render ? render->GetMaterialAsset() : nullptr;
 			ShowRender(render);
 			ShowMaterial(material);
 			ShowVolume(entity->GetComponent<Volume>());
@@ -910,7 +910,7 @@ void Properties::ShowRender(Renderable* renderable) const
 	{
 		//= REFLECT ========================================================================================================
 		std::string& name_mesh                 = const_cast<std::string&>(renderable->GetMeshName());
-		MaterialAsset* material                = renderable->GetMaterial();
+		MaterialAsset* material                = renderable->GetMaterialAsset();
 		uint32_t instance_count           = renderable->GetInstanceCount();
 		static std::string name_material_empty = "N/A";
 		std::string& name_material             = material ? const_cast<std::string&>(material->GetObjectName()) : name_material_empty;

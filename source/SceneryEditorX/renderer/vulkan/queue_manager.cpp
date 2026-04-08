@@ -701,12 +701,12 @@ namespace SceneryEditorX
 			auto it = s_DeletionQueue.find(static_cast<ResourceType>(i));
 			if (it != s_DeletionQueue.end())
 			{
-			    objectsToDelete += static_cast<uint32_t>(it->second.size());
-			    SEDX_CORE_TRACE_TAG("QueueManager", "ResourceType {} has {} objects pending deletion", i, it->second.size());
+				objectsToDelete += static_cast<uint32_t>(it->second.size());
+				SEDX_CORE_TRACE_TAG("QueueManager", "ResourceType {} has {} objects pending deletion", i, it->second.size());
 			}
 			else
 			{
-			    SEDX_CORE_TRACE_TAG("QueueManager", "ResourceType {} has 0 objects pending deletion", i);
+				SEDX_CORE_TRACE_TAG("QueueManager", "ResourceType {} has 0 objects pending deletion", i);
 			}
 		}
 	
@@ -736,67 +736,33 @@ namespace SceneryEditorX
 		return false;
 	}
 	
-CommandList* QueueManager::NextCommandList()
-{
-	const uint32_t count = static_cast<uint32_t>(m_CmdLists.size());
-	if (count == 0)
+	CommandList* QueueManager::NextCommandList()
 	{
-		SEDX_CORE_TRACE_TAG("QueueManager", "No command lists available");
-		return nullptr;
-	}
-
-	// Advance index to the next candidate and search for an idle list.
-	m_Index = (m_Index + 1) % count;
-
-	// Try each pre-allocated command list once; if one becomes Idle return it.
-	for (uint32_t attempt = 0; attempt < count; ++attempt)
-	{
-		const uint32_t idx = (m_Index + attempt) % count;
-		auto& cmdList = m_CmdLists[idx];
-
-		SEDX_CORE_ASSERT(cmdList, "CommandList at index {} is null, m_CmdLists was not initialized", idx);
-
-		// If recording, finish and submit it so we can reuse the slot.
+		// Advance index to the next candidate and search for an idle list.
+		m_Index = (m_Index + 1) % static_cast<uint32_t>(m_CmdLists.size());
+		auto& cmdList = m_CmdLists[m_Index];
+		if (m_CmdLists.empty())
+		{
+			SEDX_CORE_TRACE_TAG("QueueManager", "No command lists available");
+			return nullptr;
+		}
+		
+		// submit any pending work (toggling between fullscreen and windowed mode can leave work)
 		if (cmdList->GetState() == CommandState::Recording)
 		{
 			cmdList->Submit(0, false);
 		}
 
-		// If submitted, wait for GPU completion before reuse.
+		// with enough command lists available, there is no wait time
 		if (cmdList->GetState() == CommandState::Submitted)
 		{
 			cmdList->WaitForExecution();
 		}
 
-		if (cmdList->GetState() == CommandState::Idle)
-		{
-			// Found an idle list; update the rotation index and return it.
-			m_Index = idx;
-			return cmdList.Get();
-		}
+		SEDX_CORE_ASSERT(cmdList->GetState() == CommandState::Idle, "Command list should be idle after waiting for execution");
+
+		return cmdList.Get();
 	}
-
-	/**
-	 * No idle lists were available. This can happen during startup races or when
-	 * the GPU is still processing earlier work. As a defensive measure, wait for
-	 * all queues to become idle and then reuse the current slot.
-	 */
-	SEDX_CORE_WARN_TAG("QueueManager", "No idle command list found in pool; forcing WaitIdleAll and returning current slot");
-	QueueManager::WaitIdleAll();
-
-	auto& fallback = m_CmdLists[m_Index];
-	if (fallback->GetState() == CommandState::Submitted)
-	{
-		fallback->WaitForExecution();
-	}
-
-	if (fallback->GetState() != CommandState::Idle)
-	{
-		SEDX_CORE_WARN_TAG("QueueManager", "CommandList at index {} still not Idle after WaitIdleAll; returning it anyway", m_Index.load());
-	}
-
-	return fallback.Get();
-}
 
 }
 

@@ -329,11 +329,27 @@ namespace SceneryEditorX
 		bool IsColorFormat() const { return IsRenderTarget() && !IsDepthStencilFormat(); }
 
 		/**
+		 * @brief Returns true if the image resource is semi-transparent (has the Transparent flag set).
+		 * @return True if the image resource is semi-transparent, false otherwise.
+		 */
+		bool IsSemiTransparent() const { return m_Spec.flags & Transparent; }
+
+		/**
 		 * @brief Returns true if the specified format is a compressed format.
 		 * @param format The format to check.
 		 * @return True if the format is compressed, false otherwise.
 		 */
 		static bool IsCompressedFormat(VkFormat format);
+
+		/**
+		 * @brief Returns true if the image resource is a material texture.
+		 * @return True if the image resource is a material texture, false otherwise.
+		 */
+		bool IsMaterialTexture() const
+		{
+			return m_Spec.format == VkFormat::VK_FORMAT_R8G8B8A8_UNORM &&
+				   m_ChannelCount == 4 && m_BitsPerChannel == 8 && !(IsRenderTarget() || IsDepthStencilView());
+		}
 
 		/**
 		 * @brief Calculates the size of a mip level.
@@ -414,10 +430,23 @@ namespace SceneryEditorX
 		 */
 		VkImageView GetDepthStencilView_MultiView() const { return m_DepthStencilView_MultiView; }
 
+		/**
+		 * @brief Prepares the image resource for use on the GPU by creating the Vulkan image, 
+		 * allocating memory, and creating image views based on the specified properties and usage flags.
+		 */
+		void PrepareForGpu();
+
 	private:
+		/**
+		 * @brief Computes the memory usage of the image resource.
+		 */
+		void ComputeMemoryUsage();
+
 		Ref<Device> m_Device;
 		ImgResourceSpec m_Spec;
 
+		uint32_t m_Width            = 0;
+		uint32_t m_Height           = 0;
 		uint32_t m_Depth            = 0; // array length and depth are both m_depth (for simplicity), in case of 3D textures we only have one layer though
 		uint32_t m_MipCount			= 0;
 		uint32_t m_BitsPerChannel	= 0;

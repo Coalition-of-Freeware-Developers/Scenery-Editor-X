@@ -36,7 +36,8 @@
 
 namespace SceneryEditorX
 {
-	/**
+class CommandList;
+/**
 	 * @class Buffer
 	 * @brief Represents a Vulkan buffer resource, managing its lifecycle and memory allocation.
 	 */
@@ -177,6 +178,14 @@ namespace SceneryEditorX
 		 * @return aligned buffer size based on the stride and element count, ensuring proper alignment for GPU access 
 		 */
 		uint64_t GetObjectSize() const { return static_cast<uint64_t>(m_Stride) * static_cast<uint64_t>(m_ElementCount); }
+
+		/**
+		 * @brief Updates the buffer with new data, advancing the offset for dynamic updates.
+		 * @param cmdList The command list to use for the update.
+		 * @param dataCPU A pointer to the CPU data to upload.
+		 * @param size The size of the data to upload. If 0, the stride of the buffer is used.
+		 */
+		void Update(CommandList *cmdList, void* dataCPU, const uint32_t size = 0);
 
 		/**
 		 * @brief Gets the current offset of the buffer.

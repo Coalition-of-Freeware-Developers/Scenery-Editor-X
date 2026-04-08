@@ -80,10 +80,37 @@ namespace SceneryEditorX
 		 */
 		void Submit(const VkSubmitInfo2& submitInfo, VkFence fence = VK_NULL_HANDLE);
 
+		/**
+		 * @brief 
+		 * @return 
+		 */
 		static uint32_t AcquireNextImage();
+
+		/**
+		 * @brief 
+		 * @param cmdBuffer 
+		 */
 		static void SubmitSync(VkCommandBuffer cmdBuffer);
+
+		/**
+		 * @brief 
+		 * @param cmdBuffer 
+		 */
 		static void SubmitAsync(VkCommandBuffer cmdBuffer);
+
+		/**
+		 * @brief 
+		 * @param imageIdx 
+		 */
 		static void Present(uint32_t imageIdx);
+
+		/**
+		 * @brief 
+		 * @param swapchain 
+		 * @param imageIdx 
+		 * @param waitSemaphore 
+		 * @return 
+		 */
 		bool Present(Swapchain *swapchain, uint32_t imageIdx, FrameSync *waitSemaphore);
 
 		static void WaitIdle(const Queue& queue);

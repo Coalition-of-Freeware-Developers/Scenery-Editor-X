@@ -76,7 +76,8 @@ namespace SceneryEditorX
         AssetReloaded,             // Asset was hot-reloaded.
         AnimationGraphCompiled,    // Animation graph successfully compiled.
         ScreenshotCaptured,        // Screenshot captured and stored.
-        RendererOnShutdown         // Renderer is about to shutdown.
+        RendererOnShutdown,        // Renderer is about to shut down.
+        FirstFrameRendered         // First frame has been rendered.
     };
 
     /**

@@ -35,7 +35,7 @@
 namespace SceneryEditorX
 {
 
-/**
+	/**
 	 * @struct Standard
 	 * @brief A struct that holds standard color and temperature values for materials and lights. 
 	 * The RGB values are in the range [0, 1], and the alpha value is also in the range [0, 1] where 1 is fully opaque and 0 is fully transparent. 
@@ -45,29 +45,63 @@ namespace SceneryEditorX
 	struct Standard
 	{
 		Standard() = default;
+	    ~Standard() = default;
+
+		/**
+		 * @brief Copy constructor
+		 * @param value The Standard object to copy
+		 */
 		Standard(const Standard& value) = default;
+
+		/**
+		 * @brief Constructor that initializes the Standard object with a color temperature in Kelvin.
+		 * @param temperature_kelvin The color temperature in Kelvin.
+		 * @param a The alpha value, default is 1.0f.
+		 */
 		Standard(const float temperature_kelvin, const float a = 1.0f);
+
+		/**
+		 * @brief Constructor that initializes the Standard object with RGBA values.
+		 * @param r The red component of the color.
+		 * @param g The green component of the color.
+		 * @param b The blue component of the color.
+		 * @param a The alpha value, default is 1.0f.
+		 */
 		Standard(const float r, const float g, const float b, const float a = 1.0f);
-		~Standard() = default;
-	
+
+		/**
+		 * @brief Equality operator
+		 * @param rhs The Standard object to compare with
+		 * @return True if the objects are equal, false otherwise
+		 */
 		bool operator==(const Standard& rhs) const
 		{
 			return r == rhs.r && g == rhs.g && b == rhs.b && a == rhs.a;
 		}
-		
+
+		/**
+		 * @brief Inequality operator
+		 * @param rhs The Standard object to compare with
+		 * @return True if the objects are not equal, false otherwise
+		 */
 		bool operator!=(const Standard& rhs) const
 		{
 			return !(*this == rhs);
 		}
 		
-		float r = 0.0f;
-		float g = 0.0f;
-		float b = 0.0f;
-		float a = 0.0f;
+		float r = 0.0f; // Red component of the color, in the range [0, 1]
+		float g = 0.0f; // Green component of the color, in the range [0, 1]
+		float b = 0.0f; // Blue component of the color, in the range [0, 1]
+		float a = 0.0f; // Alpha component of the color, in the range [0, 1] where 1 is fully opaque and 0 is fully transparent
 
+		/**
+		 * @brief Returns a pointer to the underlying RGBA data.
+		 * @return A pointer to the RGBA data.
+		 */
 		[[nodiscard]] const float* Data() const { return &r; }
 
-		// materials
+#pragma region Custom Material Values
+
 		static const Standard MATERIAL_ALUMINUM;
 		static const Standard MATERIAL_BLOOD;
 		static const Standard MATERIAL_BONE;
@@ -120,8 +154,10 @@ namespace SceneryEditorX
 		static const Standard MATERIAL_VANADIUM;
 		static const Standard MATERIAL_WATER;
 		static const Standard MATERIAL_ZINC;
-	
-		// lights
+
+#pragma endregion
+#pragma region Custom Light Temperatures
+
 		static const Standard LIGHT_SKY_CLEAR;
 		static const Standard LIGHT_SKY_DAYLIGHT_OVERCAST;
 		static const Standard LIGHT_SKY_MOONLIGHT;
@@ -133,6 +169,9 @@ namespace SceneryEditorX
 		static const Standard LIGHT_KEROSENE_LAMP;
 		static const Standard LIGHT_LIGHT_BULB;
 		static const Standard LIGHT_PHOTO_FLASH;
+
+#pragma endregion
+
 	};
 
 }

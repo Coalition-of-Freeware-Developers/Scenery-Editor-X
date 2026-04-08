@@ -138,7 +138,7 @@ namespace SceneryEditorX
 		template <class T>
 		static Ref<T> GetByName(const std::string &name)
 		{
-				static_assert(std::is_base_of_v<SharedResource, T>, "Type must inherit from SharedResource (RefCounted + IResource)");
+			static_assert(std::is_base_of_v<IResource, T> && std::is_base_of_v<RefCounted, T>, "Type must inherit from both RefCounted and IResource");
 
 			IResource *raw = GetByName(name, IResource::TypeToEnum<T>());
 			return raw ? Ref<T>(static_cast<T *>(raw)) : nullptr;
@@ -160,7 +160,7 @@ namespace SceneryEditorX
 		template <class T>
 		static Ref<T> GetByPath(const std::string &path)
 		{
-			static_assert(std::is_base_of_v<SharedResource, T>, "Type must inherit from SharedResource (RefCounted + IResource)");
+			static_assert(std::is_base_of_v<IResource, T> && std::is_base_of_v<RefCounted, T>, "Type must inherit from both RefCounted and IResource");
 
 			for (const Ref<SharedResource> &resource : GetResources())
 			{
@@ -179,7 +179,7 @@ namespace SceneryEditorX
 		template <class T>
 		static Ref<T> Cache(const Ref<T> resource)
 		{
-			static_assert(std::is_base_of_v<SharedResource, T>, "Type must inherit from SharedResource (RefCounted + IResource)");
+			static_assert(std::is_base_of_v<IResource, T> && std::is_base_of_v<RefCounted, T>, "Type must inherit from both RefCounted and IResource");
 
 			if (!resource)
 				return nullptr;
@@ -211,7 +211,7 @@ namespace SceneryEditorX
 		template <class T>
 		static Ref<T> Load(const std::string &filePath, uint32_t flags = 0)
 		{
-			static_assert(std::is_base_of_v<SharedResource, T>, "Type must inherit from SharedResource (RefCounted + IResource)");
+			static_assert(std::is_base_of_v<IResource, T> && std::is_base_of_v<RefCounted, T>, "Type must inherit from both RefCounted and IResource");
 
 			if (!IO::FileSystem::Exists(filePath))
 			{
@@ -243,7 +243,7 @@ namespace SceneryEditorX
 		template <class T>
 		static void Remove(Ref<T> &resource)
 		{
-			static_assert(std::is_base_of_v<SharedResource, T>, "Type must inherit from SharedResource (RefCounted + IResource)");
+			static_assert(std::is_base_of_v<IResource, T> && std::is_base_of_v<RefCounted, T>, "Type must inherit from both RefCounted and IResource");
 
 			if (!resource)
 				return;

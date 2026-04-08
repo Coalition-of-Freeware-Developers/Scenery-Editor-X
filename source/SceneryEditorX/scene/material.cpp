@@ -30,6 +30,8 @@
  */
 #include "material.h"
 #include "SceneryEditorX/asset/manager/asset_manager.h"
+#include "SceneryEditorX/core/threading/thread_pool.h"
+
 #include <SceneryEditorX/renderer/renderer.h>
 #include <nlohmann/json.hpp>
 
@@ -70,16 +72,16 @@ namespace SceneryEditorX
 	/*
 	void MaterialAsset::Serialize(Serializer &ser)
 	{
-		/// TODO: Implement serialization
-		/// This would store material properties in a specific format
+		// TODO: Implement serialization
+		// This would store material properties in a specific format
 	}
 	*/
 
 	void MaterialAsset::Load(const std::string &path)
 	{
 		// Store the path
-		materialPath = path;
-		materialName = path.substr(path.find_last_of("/\\") + 1);
+		m_MaterialPath = path;
+		m_MaterialName = path.substr(path.find_last_of("/\\") + 1);
 		
 		// Default values
 		color = Vec4(1.0f, 1.0f, 1.0f, 1.0f);
@@ -107,7 +109,7 @@ namespace SceneryEditorX
 
 	bool MaterialAsset::IsLoaded() const
 	{
-		return !materialPath.empty();
+		return !m_MaterialPath.empty();
 	}
 
 	/*
@@ -121,29 +123,29 @@ namespace SceneryEditorX
 		metallicRoughnessMap = nullptr;
 	}*/
 
-	void MaterialAsset::SetName(const std::string &name) { materialName = name; }
-	const std::string &MaterialAsset::GetPath() const { return materialPath; }
-	const std::string &MaterialAsset::GetName() const { return materialName; }
+	void MaterialAsset::SetName(const std::string &name) { m_MaterialName = name; }
+	const std::string &MaterialAsset::GetPath() const { return m_MaterialPath; }
+	const std::string &MaterialAsset::GetName() const { return m_MaterialName; }
 
 	void MaterialAsset::OnDependencyUpdated(const AssetHandle &handle)
 	{
 		// TODO: Evaluate if this can be changed to an all "if" statement
-		if (handle == m_Maps.AlbedoMap)
+		if (handle == m_Maps.m_AlbedoMap)
 		{
 			// TODO: Add back when asset manager is implemented
 			//AssetManager::RemoveAsset(handle);
 			SetAlbedoMap(handle);
 		}
-		else if (handle == m_Maps.NormalMap)
+		else if (handle == m_Maps.m_NormalMap)
 		{
 			SetNormalMap(handle);
 		}
-		else if (handle == m_Maps.MetalnessMap)
+		else if (handle == m_Maps.m_MetalnessMap)
 		{
 			SetMetalnessMap(handle);
 
 		}
-		else if (handle == m_Maps.RoughnessMap)
+		else if (handle == m_Maps.m_RoughnessMap)
 		{
 			SetRoughnessMap(handle);
 		}
@@ -189,33 +191,85 @@ namespace SceneryEditorX
 		m_Material->Set(EMISSION_UNIFORM, value);
 	}
 
-	Ref<ImageResource> MaterialAsset::GetAlbedoMap()
+	uint32_t MaterialAsset::GetUsedSlotCount() const
+	{
+		// array to track highest used slot for each texture type
+		uint32_t max_used_slot[static_cast<size_t>(MaterialTextureType::MaxEnum)] = { 0 };
+	
+		// iterate through each texture type
+		for (size_t type = 0; type < static_cast<size_t>(MaterialTextureType::MaxEnum); type++)
+		{
+			// check each slot for this type
+			for (uint32_t slot = 0; slot < SLOTS_PER_TEXTURE; ++slot)
+			{
+				// calculate array index using the helper function
+				uint32_t index = (static_cast<uint32_t>(type) * SLOTS_PER_TEXTURE) + slot;
+				
+				// if this slot has a texture, update the max used slot for this type
+				if (m_Textures[index])
+				{
+					max_used_slot[type] = slot + 1; // +1 because we want count, not index
+				}
+			}
+		}
+	
+		// return the maximum used slot count across all texture types (minimum of 1)
+		return xMath::Max<uint32_t>(*std::ranges::max_element(std::begin(max_used_slot), std::end(max_used_slot)), 1);
+	}
+
+	Ref<ImageResource> MaterialAsset::GetAlbedoMap() const
 	{
 		return nullptr;
 	}
 
 	void MaterialAsset::SetAlbedoMap(AssetHandle handle)
 	{
-		m_Maps.AlbedoMap = handle;
+		m_Maps.m_AlbedoMap = handle;
 		if (handle == AssetHandle{})
 		{
 			ClearAlbedoMap();
 		}
 	}
 
-	void MaterialAsset::ClearAlbedoMap() const
+	void MaterialAsset::SetProperty(MaterialClass materialClass, const float value)
 	{
-		const_cast<MapAssets&>(m_Maps).AlbedoMap = AssetHandle{};
+		if (m_Properties[static_cast<uint32_t>(materialClass)] == value)
+			return;
+
+		if (materialClass == MaterialClass::ColorA)
+		{
+			// if an object switches from opaque to transparent or vice versa, make the world update so that the renderer
+			// goes through the entities and makes the ones that use this material, render in the correct mode.
+			float current_alpha = m_Properties[static_cast<uint32_t>(materialClass)];
+			if ((current_alpha != 1.0f && value == 1.0f) || (current_alpha == 1.0f && value != 1.0f))
+			{
+				CullMode cull_mode = value < 1.0f ? CullMode::None : CullMode::Back;
+				m_Properties[static_cast<uint32_t>(MaterialProperty::CullMode)] = static_cast<float>(cull_mode);
+			}
+
+			// transparent objects are typically see-through (low roughness) so use the alpha as the roughness multiplier.
+			m_Properties[static_cast<uint32_t>(MaterialClass::Roughness)] = value * 0.5f;
+		}
+
+		m_Properties[static_cast<uint32_t>(materialClass)] = value;
+
+		// save on change
+		SaveToFile(GetResourceFilePath());
 	}
 
-  Ref<ImageResource> MaterialAsset::GetNormalMap() const
+	void MaterialAsset::ClearAlbedoMap() const
 	{
-	 return nullptr;
+		const_cast<MapAssets&>(m_Maps).m_AlbedoMap = AssetHandle{};
+	}
+
+	Ref<ImageResource> MaterialAsset::GetNormalMap() const
+	{
+		return nullptr;
 	}
 
 	bool MaterialAsset::IsUsingNormalMap() const
 	{
-		return m_Maps.NormalMap != AssetHandle{};
+		return m_Maps.m_NormalMap != AssetHandle{};
 	}
 
 	void MaterialAsset::SetUseNormalMap(bool value) const
@@ -223,9 +277,58 @@ namespace SceneryEditorX
 		m_Material->Set(USE_NORMAL_MAP_UNIFORM, value);
 	}
 
+	void MaterialAsset::PrepareForGPU()
+	{
+		{
+			std::scoped_lock lock(m_Mutex);
+
+			// skip if already preparing or if no repack is needed for already-prepared materials
+			if (m_ResourceState == ResourceState::PreparingForGpu)
+				return;
+
+			bool isRepack = m_ResourceState == ResourceState::PreparedForGpu;
+			if (isRepack && !m_NeedsRepack)
+				return;
+
+			m_ResourceState = ResourceState::PreparingForGpu;
+			// pack textures (this happens synchronously to ensure data is ready)
+			for (uint8_t slot = 0; slot < GetUsedSlotCount(); slot++)
+			{
+				//texture_processing::pack_textures(this, slot);
+			}
+
+			m_NeedsRepack = false;
+		}
+
+		ThreadPool::Submit([this]()
+		{
+			{
+				std::scoped_lock lock(m_Mutex);
+
+				// prepare any textures that haven't been prepared yet
+				for (ImageResource* texture : m_Textures)
+				{
+					if (texture && texture->GetResourceState() == ResourceState::MaxEnum)
+					{
+						texture->PrepareForGpu();
+					}
+				}
+
+				m_ResourceState = ResourceState::PreparedForGpu;
+			}
+
+			// check if textures were set during preparation (async texture loading race condition)
+			// if so, trigger another preparation cycle to repack with the new textures
+			if (m_NeedsRepack)
+			{
+				PrepareForGPU();
+			}
+		});
+	}
+
 	void MaterialAsset::ClearNormalMap() const
 	{
-		const_cast<MapAssets&>(m_Maps).NormalMap = AssetHandle{};
+		const_cast<MapAssets&>(m_Maps).m_NormalMap = AssetHandle{};
 		SetUseNormalMap(false);
 	}
 
@@ -236,7 +339,7 @@ namespace SceneryEditorX
 
 	void MaterialAsset::SetMetalnessMap(const AssetHandle &handle)
 	{
-		m_Maps.MetalnessMap = handle;
+		m_Maps.m_MetalnessMap = handle;
 		if (handle == AssetHandle{})
 		{
 			ClearMetalnessMap();
@@ -245,7 +348,7 @@ namespace SceneryEditorX
 
 	void MaterialAsset::ClearMetalnessMap() const
 	{
-		const_cast<MapAssets&>(m_Maps).MetalnessMap = AssetHandle{};
+		const_cast<MapAssets&>(m_Maps).m_MetalnessMap = AssetHandle{};
 	}
 
 	Ref<ImageResource> MaterialAsset::GetRoughnessMap() const
@@ -255,7 +358,7 @@ namespace SceneryEditorX
 
 	void MaterialAsset::SetRoughnessMap(const AssetHandle &handle)
 	{
-		m_Maps.RoughnessMap = handle;
+		m_Maps.m_RoughnessMap = handle;
 		if (handle == AssetHandle{})
 		{
 			ClearRoughnessMap();
@@ -264,12 +367,12 @@ namespace SceneryEditorX
 
 	void MaterialAsset::ClearRoughnessMap() const
 	{
-		const_cast<MapAssets&>(m_Maps).RoughnessMap = AssetHandle{};
+		const_cast<MapAssets&>(m_Maps).m_RoughnessMap = AssetHandle{};
 	}
 
 	void MaterialAsset::SetNormalMap(const AssetHandle &handle)
 	{
-		m_Maps.NormalMap = handle;
+		m_Maps.m_NormalMap = handle;
 		SetUseNormalMap(handle != AssetHandle{});
 		if (handle == AssetHandle{})
 		{
@@ -287,8 +390,18 @@ namespace SceneryEditorX
 		m_Material->Set(TRANSPARENCY_UNIFORM, transparency);
 	}
 
+	bool MaterialAsset::IsAlphaTested() const
+	{
+		bool albedoMask = false;
+		if (ImageResource* texture = GetTexture(MaterialTextureType::Color))
+		{
+			albedoMask = texture->IsSemiTransparent();
+		}
 
-	ImageResource *MaterialAsset::GetTexture(MaterialTextureType materialTexture, uint32_t slot)
+		return HasTextureOfType(MaterialTextureType::AlphaMask) || albedoMask;
+	}
+
+	ImageResource *MaterialAsset::GetTexture(MaterialTextureType materialTexture, uint32_t slot) const
 	{
 		//return m_Material[(static_cast<uint32_t>(materialTexture) * SLOTS_PER_TEXTURE) + slot];
 		switch (materialTexture)

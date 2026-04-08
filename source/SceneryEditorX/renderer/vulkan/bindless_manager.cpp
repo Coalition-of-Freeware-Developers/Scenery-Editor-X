@@ -25,10 +25,11 @@
  * -------------------------------------------------------
  * bindless_manager.h
  * -------------------------------------------------------
- * Created: 01/04/2026
+ * Created: 06/04/2026
  * -------------------------------------------------------
  */
 #include "bindless_manager.h"
+#include "descriptor_pool_manager.h"
 #include "debug/graphics_debug.h"
 #include <algorithm>
 #include <SceneryEditorX/renderer/renderer.h>
@@ -107,40 +108,14 @@ namespace SceneryEditorX
 		const Ref<Device> device = RenderContext::Get()->GetLogicalDevice();
 		SEDX_CORE_ASSERT(device != nullptr, "BindlessManager requires a valid device to create descriptor pools");
 
-		std::array<uint32_t, VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT + 1> descriptorCounts = {};
-		for (const ResourceConfig& cfg : CONFIGS)
+		// Initialise the shared DescriptorPoolManager if it hasn't been done yet.
+		// The pool created here is also used by DescriptorSet for dynamic sets.
+		if (s_DescriptorPools.empty())
 		{
-			descriptorCounts[static_cast<size_t>(cfg.type)] += cfg.count;
+			DescriptorPoolManager::Init();
+			s_DescriptorPools.push_back(DescriptorPoolManager::Get().GetPool());
+			s_Allocated_DescriptorSets = 0;
 		}
-
-		std::vector<VkDescriptorPoolSize> poolSizes;
-		poolSizes.reserve(descriptorCounts.size());
-		for (uint32_t type = 0; type < descriptorCounts.size(); ++type)
-		{
-			if (descriptorCounts[type] == 0)
-			{
-				continue;
-			}
-
-			poolSizes.push_back(VkDescriptorPoolSize{
-				.type = static_cast<VkDescriptorType>(type),
-				.descriptorCount = descriptorCounts[type]
-			});
-		}
-
-		VkDescriptorPoolCreateInfo poolInfo{};
-		poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-		poolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT | VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
-		poolInfo.maxSets = static_cast<uint32_t>(BindlessResource::MaxEnum);
-		poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
-		poolInfo.pPoolSizes = poolSizes.data();
-
-		VkDescriptorPool pool = VK_NULL_HANDLE;
-		const VkResult result = vkCreateDescriptorPool(device->GetLogicalDevice(), &poolInfo, nullptr, &pool);
-		SEDX_CORE_ASSERT(result == VK_SUCCESS, "Failed to create bindless descriptor pool");
-
-		s_DescriptorPools.push_back(pool);
-		s_Allocated_DescriptorSets = 0;
 	}
 
 	void BindlessManager::Shutdown()
@@ -160,13 +135,9 @@ namespace SceneryEditorX
 
 		s_Sets.fill(VK_NULL_HANDLE);
 
-		for (VkDescriptorPool pool : s_DescriptorPools)
-		{
-			if (pool != VK_NULL_HANDLE)
-			{
-				vkDestroyDescriptorPool(device->GetLogicalDevice(), pool, nullptr);
-			}
-		}
+		// The shared pool is owned by DescriptorPoolManager; shut it down here so it is
+		// destroyed before the device is torn down.
+		DescriptorPoolManager::Shutdown();
 
 		s_DescriptorPools.clear();
 		s_Allocated_DescriptorSets = 0;
@@ -188,7 +159,7 @@ namespace SceneryEditorX
 		if (state.nextIndex >= cfg.count)
 		{
 			SEDX_CORE_ERROR_TAG("BindlessManager", "Bindless allocation overflow for '{}' (count={})", cfg.name, cfg.count);
-			return INVALID_VK_INDEX;
+			return INVALID_VK_INDEX; 
 		}
 
 		return state.nextIndex++;
@@ -310,13 +281,11 @@ namespace SceneryEditorX
 	
 	void BindlessManager::UpdateBuffer(BindlessResource type, const Buffer *buffer)
 	{
+		const Ref<Device> device = RenderContext::Get()->GetDevice();
 		if (!buffer)
 			return;
 
-		if (!m_Device)
-			m_Device = RenderContext::Get()->GetLogicalDevice();
-
-		if (!m_Device.IsValid())
+		if (!device.IsValid())
 			return;
 
 		const uint32_t index = static_cast<uint32_t>(type);
@@ -337,18 +306,16 @@ namespace SceneryEditorX
 		write.descriptorCount = 1;
 		write.pBufferInfo     = &buffer_info;
 
-		vkUpdateDescriptorSets(m_Device->GetLogicalDevice(), 1, &write, 0, nullptr);
+		vkUpdateDescriptorSets(device->GetLogicalDevice(), 1, &write, 0, nullptr);
 	}
 	
 	void BindlessManager::UpdateSamplers(BindlessResource type, const Ref<Sampler> *samplers, uint32_t count)
 	{
+		const Ref<Device> device = RenderContext::Get()->GetDevice();
 		if (samplers == nullptr || count == 0)
 			return;
 
-		if (!m_Device)
-			m_Device = RenderContext::Get()->GetLogicalDevice();
-
-		if (!m_Device.IsValid())
+		if (!device.IsValid())
 			return;
 
 		const uint32_t index = static_cast<uint32_t>(type);
@@ -376,18 +343,16 @@ namespace SceneryEditorX
 		write.descriptorCount = count;
 		write.pImageInfo      = imageInfos;
 
-		vkUpdateDescriptorSets(m_Device->GetLogicalDevice(), 1, &write, 0, nullptr);
+		vkUpdateDescriptorSets(device->GetLogicalDevice(), 1, &write, 0, nullptr);
 	}
 	
 	void BindlessManager::UpdateImages(const std::array<ImageResource *, MAX_ARRAY_SIZE> *imageArrays)
 	{
+		const Ref<Device> device = RenderContext::Get()->GetDevice();
 		if (!imageArrays)
 			return;
 
-		if (!m_Device)
-			m_Device = RenderContext::Get()->GetLogicalDevice();
-
-		if (!m_Device.IsValid())
+		if (!device.IsValid())
 			return;
 
 		const uint32_t index      = static_cast<uint32_t>(BindlessResource::MaterialTextures);
@@ -417,7 +382,7 @@ namespace SceneryEditorX
 		write.descriptorCount = cfg.count;
 		write.pImageInfo      = imageInfos.data();
 
-		vkUpdateDescriptorSets(m_Device->GetLogicalDevice(), 1, &write, 0, nullptr);
+		vkUpdateDescriptorSets(device->GetLogicalDevice(), 1, &write, 0, nullptr);
 	}
 	
 	void BindlessManager::CreateSetLayout(BindlessResource type)
@@ -475,7 +440,7 @@ namespace SceneryEditorX
 
 		VkDescriptorSetAllocateInfo alloc_info = {};
 		alloc_info.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-		alloc_info.descriptorPool     = s_DescriptorPools.front();
+		alloc_info.descriptorPool     = DescriptorPoolManager::Get().GetPool();
 		alloc_info.descriptorSetCount = 1;
 		alloc_info.pSetLayouts        = &s_Layouts[index];
 		alloc_info.pNext              = &count_info;
@@ -496,6 +461,11 @@ namespace SceneryEditorX
 	VkDescriptorSetLayout BindlessManager::GetLayoutForType(BindlessResource type)
 	{
 		return s_Layouts[static_cast<uint32_t>(type)];
+	}
+
+	VkDescriptorSet BindlessManager::GetSetForType(BindlessResource type)
+	{
+		return s_Sets[static_cast<uint32_t>(type)];
 	}
 
 	std::unordered_map<uint64_t, DescriptorSet>& BindlessManager::GetDescriptorSets()

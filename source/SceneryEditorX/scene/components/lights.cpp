@@ -372,7 +372,7 @@ namespace SceneryEditorX
 		m_Range = range;
 		UpdateMatrices();
 	}
-	
+
 	void Light::SetAreaWidth(float width)
 	{
 		width = xMath::Clamp(width, 0.01f, 100.0f);

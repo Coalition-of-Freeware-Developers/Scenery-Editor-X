@@ -49,9 +49,9 @@
 
 namespace SceneryEditorX
 {
-	// Static draw call array definitions
-	std::array<Renderer_DrawCall, RENDERER_MAX_DRAW_CALLS> Renderer::m_DrawCalls;
-	std::array<Renderer_DrawCall, RENDERER_MAX_DRAW_CALLS> Renderer::m_DrawCalls_Prepass;
+	// NOTE: Static member definitions are centralized in renderer_resources.cpp
+	// to avoid duplicate symbol definitions across translation units.
+
 
 	// Console variable stubs – replace with real CVar system when available
 	static CVar cvar_wireframe            { 0.0f };
@@ -500,13 +500,12 @@ namespace SceneryEditorX
 					if (!draw_call.isOccluder)
 						continue;
 
-				  Renderable *renderable = draw_call.renderable;
+				    Renderable *renderable = draw_call.renderable;
 					MaterialAsset* materialAsset = renderable->GetMaterial();
-					Material* material = materialAsset ? materialAsset->GetMaterial().Get() : nullptr;
-					if (!material)
+					if (!materialAsset)
 						continue;
 
-					CullMode cull_mode = static_cast<CullMode>(material->GetProperty(MaterialProperty::CullMode));
+					CullMode cull_mode = static_cast<CullMode>(materialAsset->GetProperty(MaterialProperty::CullMode));
 					cull_mode = (pso.rasterizerState->GetPolygonMode() == PolygonMode::Wireframe) ? CullMode::None : cull_mode;
 					cmdList->SetCullMode(cull_mode);
 
@@ -600,10 +599,8 @@ namespace SceneryEditorX
 				cmdList->SetCullMode(CullMode::Back);
 
 				cmdList->DrawIndexedIndirectCount(GetBuffer(Renderer_Buffer::IndirectDrawArgsOut),
-												  0,
-												  GetBuffer(Renderer_Buffer::IndirectDrawCount),
-												  0,
-												  m_Indirect_DrawCount);
+												  0, GetBuffer(Renderer_Buffer::IndirectDrawCount),
+												  0, m_Indirect_DrawCount);
 			}
 
 			// cpu-driven path for remaining draws (tessellated, instanced, alpha-tested)
@@ -619,28 +616,27 @@ namespace SceneryEditorX
 				pso.resolutionScale = true;
 				pso.clearDepth = RHI_DEPTH_LOAD; // load since indirect already wrote depth
 
-				bool pipeline_set = false;
+				bool pipelineSet = false;
 
 				for (uint32_t i = 0; i < m_DrawCalls_Prepass_Count; i++)
 				{
-					const Renderer_DrawCall &draw_call = m_DrawCalls_Prepass[i];
-					Renderable *renderable = draw_call.renderable;
+					const Renderer_DrawCall &drawCall = m_DrawCalls_Prepass[i];
+					Renderable *renderable = drawCall.renderable;
 					MaterialAsset* materialAsset = renderable->GetMaterial();
-					Material* material = materialAsset ? materialAsset->GetMaterial().Get() : nullptr;
-					if (!materialAsset || !material || materialAsset->IsTransparent() || !draw_call.cameraVisible)
+					if (!materialAsset || materialAsset->IsTransparent() || !drawCall.cameraVisible)
 						continue;
 
 					// skip indirect-path draws
-					if (!IsCpuDrivenDraw(draw_call, material))
+					if (!IsCpuDrivenDraw(drawCall, materialAsset))
 						continue;
 					{
-						bool is_alpha_tested = material->IsAlphaTested();
-						bool is_tessellated = material->GetProperty(MaterialProperty::Tessellation) > 0.0f;
-						Shader *ps = is_alpha_tested ? GetShader(Renderer_Shader::depth_prepass_alpha_test_frag) : nullptr;
-						Shader *hs = is_tessellated ? GetShader(Renderer_Shader::tessellation_h) : nullptr;
-						Shader *ds = is_tessellated ? GetShader(Renderer_Shader::tessellation_d) : nullptr;
+						bool isAlphaTested = materialAsset->IsAlphaTested();
+						bool isTessellated = materialAsset->GetProperty(MaterialProperty::Tessellation) > 0.0f;
+						Shader *ps = isAlphaTested ? GetShader(Renderer_Shader::depth_prepass_alpha_test_frag) : nullptr;
+						Shader *hs = isTessellated ? GetShader(Renderer_Shader::tessellation_h) : nullptr;
+						Shader *ds = isTessellated ? GetShader(Renderer_Shader::tessellation_d) : nullptr;
 
-						if (!pipeline_set || pso.shaders[static_cast<uint32_t>(Stage::Fragment)] != ps ||
+						if (!pipelineSet || pso.shaders[static_cast<uint32_t>(Stage::Fragment)] != ps ||
 							pso.shaders[static_cast<uint32_t>(Stage::TessellationControl)] != hs ||
 							pso.shaders[static_cast<uint32_t>(Stage::TessellationEvaluation)] != ds)
 						{
@@ -648,40 +644,39 @@ namespace SceneryEditorX
 							pso.shaders[static_cast<uint32_t>(Stage::TessellationControl)] = hs;
 							pso.shaders[static_cast<uint32_t>(Stage::TessellationEvaluation)] = ds;
 							cmdList->SetPipelineState(pso);
-							pipeline_set = true;
+							pipelineSet = true;
 						}
 					}
 
 					{
-						bool has_color_texture = material->HasTextureOfType(MaterialTextureType::Color);
-						m_Pcb_Pass_Cpu.drawIndex = draw_call.drawData_Index;
+						bool hasColorTexture = materialAsset->HasTextureOfType(MaterialTextureType::Color);
+						m_Pcb_Pass_Cpu.drawIndex = drawCall.drawData_Index;
 						m_Pcb_Pass_Cpu.isTransparent = 0;
-						m_Pcb_Pass_Cpu.materialIndex = material->GetIndex();
-						m_Pcb_Pass_Cpu.SetF3Value(0.0f, has_color_texture ? 1.0f : 0.0f, static_cast<float>(i));
+						m_Pcb_Pass_Cpu.materialIndex = materialAsset->GetIndex();
+						m_Pcb_Pass_Cpu.SetF3Value(0.0f, hasColorTexture ? 1.0f : 0.0f, static_cast<float>(i));
 						cmdList->PushConstants(m_Pcb_Pass_Cpu);
 					}
 
 					{
-						CullMode cull_mode = static_cast<CullMode>(material->GetProperty(MaterialProperty::CullMode));
-						cull_mode = (pso.rasterizerState->GetPolygonMode() == PolygonMode::Wireframe) ? CullMode::None
-																									  : cull_mode;
-						cmdList->SetCullMode(cull_mode);
+						CullMode cullMode = static_cast<CullMode>(materialAsset->GetProperty(MaterialProperty::CullMode));
+						cullMode = (pso.rasterizerState->GetPolygonMode() == PolygonMode::Wireframe) ? CullMode::None : cullMode;
+						cmdList->SetCullMode(cullMode);
 						cmdList->SetVertexBuffer(renderable->GetVertexBuffer(), renderable->GetInstanceBuffer());
 						cmdList->SetIndexBuffer(renderable->GetIndexBuffer());
 
-						cmdList->DrawIndexed(renderable->GetIndexCount(draw_call.lodIndex),
-											 renderable->GetIndexOffset(draw_call.lodIndex),
-											 renderable->GetVertexOffset(draw_call.lodIndex),
-											 draw_call.instanceIndex,
-											 draw_call.instanceCount);
+						cmdList->DrawIndexed(renderable->GetIndexCount(drawCall.lodIndex),
+											 renderable->GetIndexOffset(drawCall.lodIndex),
+											 renderable->GetVertexOffset(drawCall.lodIndex),
+											 drawCall.instanceIndex,
+											 drawCall.instanceCount);
 
 						pso.clearDepth = RHI_DEPTH_LOAD;
 					}
 				}
 			}
 
-			float resolution_scale = cvar_resolution_scale.GetValue();
-			cmdList->Blit(tex_depth, tex_depth_output, false, resolution_scale);
+			float resolutionScale = cvar_resolution_scale.GetValue();
+			cmdList->Blit(tex_depth, tex_depth_output, false, resolutionScale);
 
 			// early transitions
 			{
@@ -693,11 +688,11 @@ namespace SceneryEditorX
 
 	void Renderer::Pass_GBuffer(CommandList *cmdList, const bool isTransparentPass)
 	{
-		ImageResource *tex_color = GetRenderTarget(Renderer_RenderTarget::gbuffer_color);
-		ImageResource *tex_normal = GetRenderTarget(Renderer_RenderTarget::gbuffer_normal);
-		ImageResource *tex_material = GetRenderTarget(Renderer_RenderTarget::gbuffer_material);
-		ImageResource *tex_velocity = GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity);
-		ImageResource *tex_depth = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
+		ImageResource *texColor = GetRenderTarget(Renderer_RenderTarget::gbuffer_color);
+		ImageResource *texNormal = GetRenderTarget(Renderer_RenderTarget::gbuffer_normal);
+		ImageResource *texMaterial = GetRenderTarget(Renderer_RenderTarget::gbuffer_material);
+		ImageResource *texVelocity = GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity);
+		ImageResource *texDepth = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
 
 		{
 			if (!isTransparentPass && m_Indirect_DrawCount > 0)
@@ -707,23 +702,20 @@ namespace SceneryEditorX
 				pso.shaders[static_cast<uint32_t>(Stage::Vertex)] = GetShader(Renderer_Shader::gbuffer_indirect_vertex);
 				pso.shaders[static_cast<uint32_t>(Stage::Fragment)] = GetShader(Renderer_Shader::gbuffer_indirect_frag);
 				pso.blendState = GetBlendState(Renderer_BlendState::Off);
-				pso.rasterizerState = cvar_wireframe.GetValueAs<bool>()
-										  ? GetRasterizerState(Renderer_RasterizerState::Wireframe)
+				pso.rasterizerState = cvar_wireframe.GetValueAs<bool>() ? GetRasterizerState(Renderer_RasterizerState::Wireframe)
 										  : GetRasterizerState(Renderer_RasterizerState::Solid);
 				pso.depthStencil_State = GetDepthStencilState(Renderer_DepthStencilState::ReadGreaterEqual);
-				pso.vrsInputTexture = cvar_variable_rate_shading.GetValueAs<bool>()
-										  ? GetRenderTarget(Renderer_RenderTarget::shading_rate)
-										  : nullptr;
+				pso.vrsInputTexture = cvar_variable_rate_shading.GetValueAs<bool>() ? GetRenderTarget(Renderer_RenderTarget::shading_rate) : nullptr;
 				pso.resolutionScale = true;
-				pso.renderTarget_ColorTextures[0] = tex_color;
-				pso.renderTarget_ColorTextures[1] = tex_normal;
-				pso.renderTarget_ColorTextures[2] = tex_material;
-				pso.renderTarget_ColorTextures[3] = tex_velocity;
-				pso.renderTarget_DepthTexture = tex_depth;
-				pso.clearColor[0] = PipelineStateColor{0.0f, 0.0f, 0.0f, 0.0f};
-				pso.clearColor[1] = PipelineStateColor{0.0f, 0.0f, 0.0f, 0.0f};
-				pso.clearColor[2] = PipelineStateColor{0.0f, 0.0f, 0.0f, 0.0f};
-				pso.clearColor[3] = PipelineStateColor{0.0f, 0.0f, 0.0f, 0.0f};
+				pso.renderTarget_ColorTextures[0] = texColor;
+				pso.renderTarget_ColorTextures[1] = texNormal;
+				pso.renderTarget_ColorTextures[2] = texMaterial;
+				pso.renderTarget_ColorTextures[3] = texVelocity;
+				pso.renderTarget_DepthTexture = texDepth;
+				pso.clearColor[0] = PipelineStateColor{.r = 0.0f, .g = 0.0f, .b = 0.0f, .a = 0.0f};
+				pso.clearColor[1] = PipelineStateColor{.r = 0.0f, .g = 0.0f, .b = 0.0f, .a = 0.0f};
+				pso.clearColor[2] = PipelineStateColor{.r = 0.0f, .g = 0.0f, .b = 0.0f, .a = 0.0f};
+				pso.clearColor[3] = PipelineStateColor{.r = 0.0f, .g = 0.0f, .b = 0.0f, .a = 0.0f};
 				cmdList->SetPipelineState(pso);
 
 				cmdList->SetIndexBuffer(GeometryBuffer::GetIndexBuffer());
@@ -732,10 +724,8 @@ namespace SceneryEditorX
 				cmdList->SetCullMode(CullMode::Back);
 
 				cmdList->DrawIndexedIndirectCount(GetBuffer(Renderer_Buffer::IndirectDrawArgsOut),
-												  0,
-												  GetBuffer(Renderer_Buffer::IndirectDrawCount),
-												  0,
-												  m_Indirect_DrawCount);
+												  0, GetBuffer(Renderer_Buffer::IndirectDrawCount),
+												  0, m_Indirect_DrawCount);
 
 				// update previous transforms for motion vectors
 				for (uint32_t i = 0; i < m_DrawCall_Count; i++)
@@ -755,21 +745,17 @@ namespace SceneryEditorX
 				pso.shaders[static_cast<uint32_t>(Stage::Vertex)] = GetShader(Renderer_Shader::gbuffer_vertex);
 				pso.shaders[static_cast<uint32_t>(Stage::Fragment)] = GetShader(Renderer_Shader::gbuffer_frag);
 				pso.blendState = GetBlendState(Renderer_BlendState::Off);
-				pso.rasterizerState = cvar_wireframe.GetValueAs<bool>()
-										  ? GetRasterizerState(Renderer_RasterizerState::Wireframe)
+				pso.rasterizerState = cvar_wireframe.GetValueAs<bool>() ? GetRasterizerState(Renderer_RasterizerState::Wireframe)
 										  : GetRasterizerState(Renderer_RasterizerState::Solid);
-				pso.depthStencil_State = isTransparentPass
-											 ? GetDepthStencilState(Renderer_DepthStencilState::ReadWrite)
+				pso.depthStencil_State = isTransparentPass ? GetDepthStencilState(Renderer_DepthStencilState::ReadWrite)
 											 : GetDepthStencilState(Renderer_DepthStencilState::ReadGreaterEqual);
-				pso.vrsInputTexture = cvar_variable_rate_shading.GetValueAs<bool>()
-										  ? GetRenderTarget(Renderer_RenderTarget::shading_rate)
-										  : nullptr;
+				pso.vrsInputTexture = cvar_variable_rate_shading.GetValueAs<bool>() ? GetRenderTarget(Renderer_RenderTarget::shading_rate) : nullptr;
 				pso.resolutionScale = true;
-				pso.renderTarget_ColorTextures[0] = tex_color;
-				pso.renderTarget_ColorTextures[1] = tex_normal;
-				pso.renderTarget_ColorTextures[2] = tex_material;
-				pso.renderTarget_ColorTextures[3] = tex_velocity;
-				pso.renderTarget_DepthTexture = tex_depth;
+				pso.renderTarget_ColorTextures[0] = texColor;
+				pso.renderTarget_ColorTextures[1] = texNormal;
+				pso.renderTarget_ColorTextures[2] = texMaterial;
+				pso.renderTarget_ColorTextures[3] = texVelocity;
+				pso.renderTarget_DepthTexture = texDepth;
 				pso.clearColor[0] = RHI_COLOR_LOAD;
 				pso.clearColor[1] = RHI_COLOR_LOAD;
 				pso.clearColor[2] = RHI_COLOR_LOAD;
@@ -782,26 +768,25 @@ namespace SceneryEditorX
 					const Renderer_DrawCall &draw_call = m_DrawCalls[i];
 					Renderable *renderable = draw_call.renderable;
 					MaterialAsset* materialAsset = renderable->GetMaterial();
-					Material* material = materialAsset ? materialAsset->GetMaterial().Get() : nullptr;
-					if (!materialAsset || !material || !draw_call.cameraVisible)
+					if (!materialAsset || !draw_call.cameraVisible)
 						continue;
 
 					if (isTransparentPass)
 					{
-					 if (!materialAsset->IsTransparent())
+					    if (!materialAsset->IsTransparent())
 							continue;
 					}
 					else
 					{
-					  if (materialAsset->IsTransparent())
+					    if (materialAsset->IsTransparent())
 							continue;
 
-						if (!IsCpuDrivenDraw(draw_call, material))
+						if (!IsCpuDrivenDraw(draw_call, materialAsset))
 							continue;
 					}
 
 					{
-						bool is_tessellated = material->GetProperty(MaterialProperty::Tessellation) > 0.0f;
+						bool is_tessellated = materialAsset->GetProperty(MaterialProperty::Tessellation) > 0.0f;
 						Shader *tessControl = is_tessellated ? GetShader(Renderer_Shader::tessellation_h) : nullptr;
 						Shader *tessEval = is_tessellated ? GetShader(Renderer_Shader::tessellation_d) : nullptr;
 
@@ -820,17 +805,15 @@ namespace SceneryEditorX
 						Entity *entity = renderable->GetEntity();
 						m_Pcb_Pass_Cpu.drawIndex = draw_call.drawData_Index;
 						m_Pcb_Pass_Cpu.isTransparent = isTransparentPass ? 1 : 0;
-						m_Pcb_Pass_Cpu.materialIndex = material->GetIndex();
+						m_Pcb_Pass_Cpu.materialIndex = materialAsset->GetIndex();
 						cmdList->PushConstants(m_Pcb_Pass_Cpu);
 
 						entity->SetMatrixPrevious(entity->GetMatrix());
 					}
 
 					{
-						cmdList->SetCullMode(
-							cvar_wireframe.GetValueAs<bool>()
-								? CullMode::None
-								: static_cast<CullMode>(material->GetProperty(MaterialProperty::CullMode)));
+						cmdList->SetCullMode(cvar_wireframe.GetValueAs<bool>() ? CullMode::None :
+							static_cast<CullMode>(materialAsset->GetProperty(MaterialProperty::CullMode)));
 						cmdList->SetVertexBuffer(renderable->GetVertexBuffer(), renderable->GetInstanceBuffer());
 						cmdList->SetIndexBuffer(renderable->GetIndexBuffer());
 
@@ -846,11 +829,11 @@ namespace SceneryEditorX
 			}
 
 			// early transitions
-			tex_color->SetLayout(Layout::ImageLayout::General, cmdList, 0, 0);
-			tex_normal->SetLayout(Layout::ImageLayout::General, cmdList, 0, 0);
-			tex_material->SetLayout(Layout::ImageLayout::General, cmdList, 0, 0);
-			tex_velocity->SetLayout(Layout::ImageLayout::General, cmdList, 0, 0);
-			tex_depth->SetLayout(Layout::ImageLayout::ShaderRead, cmdList, 0, 0);
+			texColor->SetLayout(Layout::ImageLayout::General, cmdList, 0, 0);
+			texNormal->SetLayout(Layout::ImageLayout::General, cmdList, 0, 0);
+			texMaterial->SetLayout(Layout::ImageLayout::General, cmdList, 0, 0);
+			texVelocity->SetLayout(Layout::ImageLayout::General, cmdList, 0, 0);
+			texDepth->SetLayout(Layout::ImageLayout::ShaderRead, cmdList, 0, 0);
 		}
 	}
 
@@ -1249,8 +1232,7 @@ namespace SceneryEditorX
 				continue;
 
 			RasterizerState* rs = (light->GetLightType() == LightType::Directional)
-				? GetRasterizerState(Renderer_RasterizerState::Light_directional)
-				: GetRasterizerState(Renderer_RasterizerState::Light_point_spot);
+				? GetRasterizerState(Renderer_RasterizerState::Light_directional) : GetRasterizerState(Renderer_RasterizerState::Light_point_spot);
 
 			PipelineState pso;
 			pso.name = "shadow_map";
@@ -1259,7 +1241,7 @@ namespace SceneryEditorX
 			pso.rasterizerState               = rs;
 			pso.blendState                    = GetBlendState(Renderer_BlendState::Off);
 			pso.depthStencil_State            = GetDepthStencilState(Renderer_DepthStencilState::ReadWrite);
-			pso.renderTarget_DepthTexture    = texShadowAtlas;
+			pso.renderTarget_DepthTexture     = texShadowAtlas;
 			pso.clearDepth                    = 0.0f; // reverse-z: far = 0
 
 			cmdList->SetPipelineState(pso);
@@ -1270,16 +1252,22 @@ namespace SceneryEditorX
 				const Renderer_DrawCall& draw_call = m_DrawCalls_Prepass[i];
 				Renderable* renderable             = draw_call.renderable;
 				MaterialAsset* materialAsset = renderable->GetMaterial();
-				Material* material = materialAsset ? materialAsset->GetMaterial().Get() : nullptr;
-				if (!materialAsset || !material || materialAsset->IsTransparent() || !draw_call.cameraVisible)
+				if (!materialAsset || materialAsset->IsTransparent() || !draw_call.cameraVisible)
 					continue;
 
 				m_Pcb_Pass_Cpu.drawIndex     = draw_call.drawData_Index;
-				m_Pcb_Pass_Cpu.materialIndex = material->GetIndex();
+				m_Pcb_Pass_Cpu.materialIndex = materialAsset->GetIndex();
+				m_Pcb_Pass_Cpu.isTransparent = 0;
 				cmdList->PushConstants(m_Pcb_Pass_Cpu);
-
 				cmdList->SetVertexBuffer(renderable->GetVertexBuffer(), renderable->GetInstanceBuffer());
 				cmdList->SetIndexBuffer(renderable->GetIndexBuffer());
+
+				// compute lod index
+				bool closeToShadow      = renderable->GetDistanceSquared() < 100.0f * 100.0f; // anything within 100 meters of the shadow caster
+				uint32_t lodIndexBias   = light->GetLightType() == LightType::Directional ? 1 : 0; // bias for directional lights
+				uint32_t lodIndexShadow = xMath::Clamp(renderable->GetLodIndex() + lodIndexBias, 0u, renderable->GetLodCount() - 1); // lod index biased towards lower quality lod
+				uint32_t lodIndex       = closeToShadow ? draw_call.lodIndex : lodIndexShadow; // use normal lod if close to shadow caster, otherwise use light specific lod
+
 				cmdList->DrawIndexed(
 					renderable->GetIndexCount(draw_call.lodIndex),
 					renderable->GetIndexOffset(draw_call.lodIndex),
@@ -1321,7 +1309,9 @@ namespace SceneryEditorX
 
 			// Screen-space ambient occlusion (optional)
 			if (ImageResource* texSsao = GetRenderTarget(Renderer_RenderTarget::ssao))
-				cmdList->SetTexture(Renderer_BindingsSrv::ssao, texSsao);
+			{
+			    cmdList->SetTexture(Renderer_BindingsSrv::ssao, texSsao);
+			}
 
 			// Screen-space shadows
 			cmdList->SetTexture(Renderer_BindingsSrv::tex2, GetRenderTarget(Renderer_RenderTarget::sss));

@@ -96,6 +96,21 @@ namespace SceneryEditorX
 	bool               Renderer::m_Transparents_Present     = false;
 	bool               Renderer::m_Is_Hiz_Suppressed        = false;
 
+	// Additional static member definitions centralized here
+	std::array<Renderer_DrawCall, RENDERER_MAX_DRAW_CALLS> Renderer::m_DrawCalls;
+	std::array<Renderer_DrawCall, RENDERER_MAX_DRAW_CALLS> Renderer::m_DrawCalls_Prepass;
+	std::array<ShaderBuffer_IndirectDrawArgs, MAX_ARRAY_SIZE> Renderer::m_Indirect_DrawArgs;
+	std::array<ShaderBuffer_DrawData, MAX_ARRAY_SIZE> Renderer::m_Indirect_DrawData;
+
+	// Debug primitives and bindless arrays
+	std::vector<Vertex_PosCol> Renderer::m_Lines_Vertices;
+	std::vector<PersistentLine> Renderer::m_Persistent_Lines;
+	std::vector<std::tuple<ImageResource*, xMath::Vec3>> Renderer::m_Icons;
+
+	std::array<ImageResource*, MAX_ARRAY_SIZE> Renderer::m_Bindless_Textures;
+	std::array<ShaderBuffer_Light, MAX_ARRAY_SIZE> Renderer::m_Bindless_Lights;
+	std::array<ShaderBuffer_Aabb, MAX_ARRAY_SIZE> Renderer::m_Bindless_Aabbs;
+
 #pragma endregion
 
 	void Renderer::CreateRenderTargets(const bool createRender, const bool createOutput, const bool createDynamic)
@@ -813,22 +828,25 @@ namespace SceneryEditorX
 		return nullptr;
 	}
 
-	bool Renderer::IsCpuDrivenDraw(const Renderer_DrawCall& /*drawCall*/, const Material* /*material*/)
+	bool Renderer::IsCpuDrivenDraw(const Renderer_DrawCall& drawCall, const MaterialAsset* material)
 	{
-		// TODO: Return false for draws that have been batched into the GPU indirect path.
-		return true;
+		bool isTessellated = material->GetProperty(MaterialProperty::Tessellation) > 0.0f;
+		bool isInstanced = drawCall.instanceCount > 1;
+		bool isAlphaTested = material->IsAlphaTested();
+		bool isNonStandardCull = static_cast<CullMode>(material->GetProperty(MaterialProperty::CullMode)) != CullMode::Back;
+		return isTessellated || isInstanced || isAlphaTested || isNonStandardCull;
 	}
 
 	void Renderer::RotateFrameBuffers()
 	{
 		m_FrameResource_Index = (m_FrameResource_Index + 1) % DRAW_DATA_BUFFER_COUNT;
-		const FrameResource& fr = m_FrameResources[m_FrameResource_Index];
+		const IndirectFrameResource& fr = m_FrameResources[m_FrameResource_Index];
 
-		s_Buffers[static_cast<uint8_t>(Renderer_Buffer::IndirectDrawArgs)]    = fr.m_Indirect_DrawArgs;
-		s_Buffers[static_cast<uint8_t>(Renderer_Buffer::IndirectDrawData)]    = fr.m_Indirect_DrawData;
-		s_Buffers[static_cast<uint8_t>(Renderer_Buffer::IndirectDrawArgsOut)] = fr.m_Indirect_DrawArgs_Out;
-		s_Buffers[static_cast<uint8_t>(Renderer_Buffer::IndirectDrawDataOut)] = fr.m_Indirect_DrawData_Out;
-		s_Buffers[static_cast<uint8_t>(Renderer_Buffer::IndirectDrawCount)]   = fr.m_Indirect_DrawCount;
+		s_Buffers[static_cast<uint8_t>(Renderer_Buffer::IndirectDrawArgs)]    = fr.m_DrawArgs;
+		s_Buffers[static_cast<uint8_t>(Renderer_Buffer::IndirectDrawData)]    = fr.m_DrawData;
+		s_Buffers[static_cast<uint8_t>(Renderer_Buffer::IndirectDrawArgsOut)] = fr.m_DrawArgs_Out;
+		s_Buffers[static_cast<uint8_t>(Renderer_Buffer::IndirectDrawDataOut)] = fr.m_DrawData_Out;
+		s_Buffers[static_cast<uint8_t>(Renderer_Buffer::IndirectDrawCount)]   = fr.m_DrawCount;
 	}
 
 }

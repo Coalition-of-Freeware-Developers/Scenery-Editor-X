@@ -176,6 +176,12 @@ namespace SceneryEditorX
 		 */
 		static void SetWind(const Vec3& wind);
 
+		/**
+		 * @brief Updates the scene based on changes to an entity's components.
+		 * @return A flag indicating the changes that were applied.
+		 */
+		static Flag UpdateSceneChanges(ComponentType entity);
+
 	private:
 		static Ref<Camera> m_Camera;
 

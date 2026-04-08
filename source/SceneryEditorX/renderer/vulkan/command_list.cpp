@@ -574,11 +574,11 @@ namespace SceneryEditorX
 			std::mutex mutex;
 		};
 
-		static std::array<ImmediateState, static_cast<size_t>(QueueType::MaxEnum)> s_ImmediateStates;
+		static std::array<ImmediateState, static_cast<size_t>(QueueType::MaxEnum)> immediateStates;
 
 		if (Ref<Queue>* queueRef = queueManager->GetQueue(type); queueRef && *queueRef)
 		{
-			ImmediateState& state = s_ImmediateStates[static_cast<size_t>(type)];
+			ImmediateState& state = immediateStates[static_cast<size_t>(type)];
 			std::scoped_lock lock(state.mutex);
 
 			if (!state.pool)
@@ -589,7 +589,7 @@ namespace SceneryEditorX
 
 			if (!state.cmdList)
 			{
-				state.cmdList = CreateRef<CommandList>((*queueRef).Get(), *state.pool, "ImmediateCommandList");
+				state.cmdList = CreateRef<CommandList>(queueRef->Get(), *state.pool, "ImmediateCommandList");
 			}
 
 			if (state.cmdList->GetState() != CommandState::Idle)
@@ -1510,7 +1510,7 @@ namespace SceneryEditorX
 		m_DescriptorLayout_Current->SetTexture(slot, img, mipIndex, mipRange);
 
 		/* TODO: detect if there are changes, otherwise don't bother binding */
-		DescriptorSet::SetDynamicBinding(true);
+		m_NeedsDynamicBind = true;
 	}
 
 	void CommandList::Copy(ImageResource *src, Swapchain *dst)
@@ -1660,9 +1660,10 @@ namespace SceneryEditorX
 			BeginRenderPass();
 		}
 
-		if (DescriptorSet::IsDynamicBinding())
+		if (m_NeedsDynamicBind)
 		{
 			DescriptorSet::SetDynamicDescriptor(m_pso, m_CmdBuffer, m_Pipeline.GetLayout(), m_DescriptorLayout_Current);
+			m_NeedsDynamicBind = false;
 		}
 	}
 
@@ -1982,7 +1983,7 @@ namespace SceneryEditorX
 
 		m_DescriptorLayout_Current->SetBuffer(slot, buffer);
 
-		DescriptorSet::SetDynamicBinding(true);
+		m_NeedsDynamicBind = true;
 
 		/* TODO: Bind structured/storage buffer to the UAV slot in the active descriptor set. */
 		//SEDX_CORE_WARN_TAG("CommandList", "SetBuffer: stub — descriptor update not yet wired");

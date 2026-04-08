@@ -30,12 +30,15 @@
  */
 #include "scene.h"
 #include "entity.h"
+#include "material.h"
 #include "SceneryEditorX/core/time/date_time.h"
+#include "SceneryEditorX/renderer/vulkan/image_resource.h"
 #include "components/component_sets.h"
+#include "components/lights.h"
 #include "components/wind.h"
-
 #include <algorithm>
 #include <filesystem>
+#include <Editor/modules/scene_render.h>
 #include <SceneryEditorX/core/window/window.h>
 #include <SceneryEditorX/scene/camera.h>
 #include <entt/entity/fwd.hpp>
@@ -46,12 +49,138 @@ namespace SceneryEditorX
 {
 
 	Ref<Camera> Scene::m_Camera = nullptr;
-	Scope<Scene> s_ActiveScene = nullptr;
-	std::unordered_map<entt::entity, Scope<Entity>> s_EntityStorage;
-	std::vector<Entity*> s_EntityPointers;
-	std::string s_FilePath;
-	std::string s_SceneName; // cached to avoid per-frame allocation
-	std::string s_SceneDescription;
+	static Scope<Scene> s_ActiveScene = nullptr;
+	static std::unordered_map<entt::entity, Scope<Entity>> s_EntityStorage;
+	static std::vector<Entity*> s_EntityPointers;
+	static std::vector<Entity*> s_LightEntities;       // entities subset that contains only lights
+	static std::vector<Entity*> s_ActiveRenderableEntities;  // entities subset that contains only active renderables
+	static BoundingBox s_BoundingBox = BoundingBox::UNIT;
+	static std::string s_FilePath;
+	static std::string s_SceneName; // cached to avoid per-frame allocation
+	static std::string s_SceneDescription;
+	static std::mutex s_EntityAccess_Mutex;
+	static std::atomic<bool> s_Resolve = false;
+	static std::unordered_map<uint64_t, uint32_t> s_EntityStates; // stores: low 8 bits for flags, next 8 for component count, next 8 for cull mode, next 8 for light type
+	static std::unordered_map<uint64_t, size_t> s_MaterialStateHashes; // material change tracking - things that change the nature of the material for rendering
+	static std::unordered_map<uint64_t, size_t> s_LightStateHashes; // light change tracking - things that change the nature of the light for rendering
+
+	/**
+	 * @enum EntityChange
+	 * @brief Flags representing changes to an entity that affect rendering.
+	 */
+	enum class EntityChange : uint8_t
+	{
+		None       = 0,
+		Active     = 1 << 0,
+		Components = 1 << 1,
+		CullMode   = 1 << 2,
+		LightType  = 1 << 3
+	};
+
+	/**
+	 * @brief Marks an entity as changed, indicating that its state has been modified.
+	 * @param id The unique identifier of the entity.
+	 * @param change The type of change that occurred.
+	 */
+	static void MarkEntityChanged(uint64_t id, EntityChange change)
+	{
+		s_EntityStates[id] |= static_cast<uint32_t>(change);
+		s_Resolve = true;
+	}
+
+	/**
+	 * @brief Computes a hash value for a material asset based on its properties and associated textures.
+	 * @param material The material asset to hash.
+	 * @return The computed hash value.
+	 */
+	static size_t ComputeMaterialHash(MaterialAsset* material)
+	{
+		size_t hash = 17; // FNV-1a seed
+
+		// include resource state so async preparation completion triggers an update
+		hash = (hash * 31) ^ static_cast<size_t>(material->GetResourceState());
+
+		for (const auto* texture : material->GetTextures())
+		{
+			hash = (hash * 31) ^ reinterpret_cast<size_t>(texture);
+
+			// include texture's resource state so async texture preparation triggers an update
+			if (texture)
+			{
+				hash = (hash * 31) ^ static_cast<size_t>(texture->GetResourceState());
+			}
+		}
+		for (const float prop : material->GetProperties())
+		{
+			hash = (hash * 31) ^ std::hash<float>{}(prop);
+		}
+		return hash;
+	}
+
+	/**
+	 * @brief Computes a hash value for a light entity based on its properties and the associated entity's state.
+	 * @param light The light component to hash.
+	 * @param entity The entity associated with the light component.
+	 * @return The computed hash value.
+	 */
+	static size_t ComputeLightHash(Light* light, Entity* entity)
+	{
+		size_t hash = 17;
+
+		hash = (hash * 31) ^ std::hash<float>{}(light->GetLightColor().r);
+		hash = (hash * 31) ^ std::hash<float>{}(light->GetLightColor().g);
+		hash = (hash * 31) ^ std::hash<float>{}(light->GetLightColor().b);
+		hash = (hash * 31) ^ std::hash<float>{}(light->GetLightColor().a);
+		hash = (hash * 31) ^ std::hash<float>{}(light->GetIntensityWatt());
+		hash = (hash * 31) ^ std::hash<float>{}(light->GetRange());
+		hash = (hash * 31) ^ std::hash<float>{}(light->GetAngle());
+		hash = (hash * 31) ^ std::hash<float>{}(light->GetAreaWidth());
+		hash = (hash * 31) ^ std::hash<float>{}(light->GetAreaHeight());
+		hash = (hash * 31) ^ static_cast<size_t>(light->GetLightType());
+		hash = (hash * 31) ^ static_cast<size_t>(light->GetLightType());
+		hash = (hash * 31) ^ static_cast<size_t>(entity->GetActive());
+
+		const Vec3& pos = entity->GetPosition();
+		hash = (hash * 31) ^ std::hash<float>{}(pos.x);
+		hash = (hash * 31) ^ std::hash<float>{}(pos.y);
+		hash = (hash * 31) ^ std::hash<float>{}(pos.z);
+		const Vec3& fwd = entity->GetForward();
+		hash = (hash * 31) ^ std::hash<float>{}(fwd.x);
+		hash = (hash * 31) ^ std::hash<float>{}(fwd.y);
+		hash = (hash * 31) ^ std::hash<float>{}(fwd.z);
+
+		for (uint32_t i = 0; i < light->GetSliceCount(); i++)
+		{
+			const Matrix& vp       = light->GetViewProjectionMatrix(i);
+			const float* vp_data   = vp.Data();
+			for (uint32_t j = 0; j < 16; j++)
+			{
+				hash = (hash * 31) ^ std::hash<float>{}(vp_data[j]);
+			}
+		}
+
+		return hash;
+	}
+
+	/**
+	 * @brief Computes the bounding box for the scene based on the active entities.
+	 */
+	static void ComputeBoundingBox()
+	{
+		s_BoundingBox = BoundingBox::UNIT;
+
+		for (Entity* entity : s_EntityPointers)
+		{
+			if (entity->GetActive())
+			{
+				if (Render* renderable = &entity->GetComponent<Render>())
+				{
+					s_BoundingBox.Merge(renderable->GetBoundingBox());
+				}
+			}
+		}
+	}
+
 
 	Scene::Scene(std::string name, bool initialize) : m_Name(std::move(name))
 	{
@@ -145,9 +274,7 @@ namespace SceneryEditorX
 	Camera *Scene::GetCamera()
 	{
 		if (m_Camera)
-		{
 			return m_Camera.Get();
-		}
 
 		return nullptr;
 	}
@@ -295,6 +422,90 @@ namespace SceneryEditorX
 	void Scene::SetWind(const Vec3 &wind)
 	{
 		Wind::SetWind(wind);
+	}
+
+	Flag Scene::UpdateSceneChanges(const ComponentType entity)
+	{
+		SEDX_CORE_ASSERT(entity != ComponentType::MaxEnum, "Invalid ComponentType provided to UpdateSceneChanges");
+		std::scoped_lock lock(s_EntityAccess_Mutex);
+	
+		bool changed = false;
+		Flag dirty;
+	
+		switch (entity)
+		{
+			case ComponentType::Light:
+			{
+				for (Entity* ent : s_LightEntities)
+				{
+					if (Light* light = ent->GetComponent<Light>())
+					{
+						const uint64_t id = ent->GetObjectId();
+						size_t currentHash = ComputeLightHash(light, ent);
+						if (auto it = s_LightStateHashes.find(id); it == s_LightStateHashes.end())
+						{
+							s_LightStateHashes[id] = currentHash;
+							changed = true;
+						}
+						else if (it->second != currentHash)
+						{
+							it->second = currentHash;
+							changed = true;
+						}
+					}
+				}
+				break;
+			}
+	
+			case ComponentType::Material:
+			{
+				for (Entity* ent : s_EntityPointers)
+				{
+					if (Render* renderable = &ent->GetComponent<Render>())
+					{
+						if (MaterialAsset* material = renderable->GetMaterialAsset())
+						{
+							const uint64_t id = material->GetObjectId();
+							size_t currentHash = ComputeMaterialHash(material);
+							if (auto it = s_MaterialStateHashes.find(id); it == s_MaterialStateHashes.end())
+							{
+								// new material
+								s_MaterialStateHashes[id] = currentHash;
+								changed = true;
+							}
+							else if (it->second != currentHash)
+							{
+								// material changed
+								it->second = currentHash;
+								changed = true;
+							}
+						}
+					}
+				}
+				break;
+			}
+	
+			case ComponentType::Camera:
+			case ComponentType::Renderable:
+			case ComponentType::Spline:
+			case ComponentType::Terrain:
+			case ComponentType::Volume:
+			case ComponentType::Script:
+			case ComponentType::Plugin:
+			case ComponentType::Submesh:
+			case ComponentType::ParticleSystem:
+				SEDX_CORE_TRACE_TAG("Scene", "Scene component type not handled");
+				break;
+	
+			case ComponentType::MaxEnum:
+				SEDX_CORE_ERROR_TAG("Scene", "Invalid ComponentType provided to UpdateSceneChanges");
+				break;
+		}
+	
+		if (changed)
+			dirty.SetDirty();
+	
+		return dirty;
 	}
 
 	/*

@@ -25,7 +25,7 @@
  * -------------------------------------------------------
  * bindless_manager.h
  * -------------------------------------------------------
- * Created: 01/04/2026
+ * Created: 06/04/2026
  * -------------------------------------------------------
  */
 #pragma once
@@ -132,7 +132,7 @@ namespace SceneryEditorX
 		 * @param type The type of bindless resource to update.
 		 * @param buffer The buffer to update.
 		 */
-		void UpdateBuffer(BindlessResource type, const Buffer *buffer);
+		static void UpdateBuffer(BindlessResource type, const Buffer *buffer);
 
 		/**
 		 * @brief Retrieves the descriptors from the pipeline state.
@@ -148,13 +148,13 @@ namespace SceneryEditorX
 		 * @param samplers The array of samplers to update.
 		 * @param count The number of samplers in the array.
 		 */
-		void UpdateSamplers(BindlessResource type, const Ref<Sampler> *samplers, uint32_t count);
+		static void UpdateSamplers(BindlessResource type, const Ref<Sampler> *samplers, uint32_t count);
 
 		/**
 		 * @brief Updates the images for a given bindless resource type.
 		 * @param imageArrays The array of image resources to update.
 		 */
-		void UpdateImages(const std::array<ImageResource*, MAX_ARRAY_SIZE> *imageArrays);
+		static void UpdateImages(const std::array<ImageResource*, MAX_ARRAY_SIZE> *imageArrays);
 
 		/**
 		 * @brief Creates a descriptor set layout for a given bindless resource type.
@@ -187,6 +187,16 @@ namespace SceneryEditorX
 		 * @return The descriptor set.
 		 */
 		[[nodiscard]] VkDescriptorSet GetSet() const { return m_Set; }
+
+		/**
+		 * @brief Retrieves the raw VkDescriptorSet for a specific bindless resource type.
+		 *
+		 * Used by DescriptorSet::SetBindless to bind the per-type bindless sets to the command buffer.
+		 *
+		 * @param type The bindless resource type whose set to retrieve.
+		 * @return The VkDescriptorSet handle, or VK_NULL_HANDLE if not yet allocated.
+		 */
+		static VkDescriptorSet GetSetForType(BindlessResource type);
 
 		/**
 		 * @brief Retrieves the shared descriptor set cache used by all descriptor sets.

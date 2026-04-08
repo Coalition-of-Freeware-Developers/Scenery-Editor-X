@@ -1,4 +1,4 @@
-﻿/**
+/**
  * -------------------------------------------------------
  * Scenery Editor X
  * -------------------------------------------------------
@@ -30,6 +30,9 @@
  */
 #include "renderer.h"
 #include "renderer_buffers.h"
+#include "SceneryEditorX/scene/material.h"
+#include "vulkan/bindless_manager.h"
+#include "vulkan/descriptor_pool_manager.h"
 #include "vulkan/swapchain.h"
 #include "vulkan/uniform_buffer_set.h"
 #include "vulkan/debug/graphics_debug.h"
@@ -41,6 +44,7 @@
 #include <mutex>
 #include <sstream>
 #include <thread>
+#include <Editor/modules/scene_render.h>
 #include <Editor/ui/ui_impl.h>
 #include <SDL3/SDL.h>
 #include <SceneryEditorX/asset/model.h>
@@ -112,6 +116,8 @@ namespace SceneryEditorX
 
 	RendererProperties *Renderer::m_Data = nullptr;
 	static Ref<Swapchain> s_Swapchain = nullptr;
+	static uint64_t s_FrameNumber = 0;
+
 	std::atomic<bool> Renderer::m_ResourcesInitialized = false;
 	Scope<Model> Renderer::m_TestModel = nullptr;
 
@@ -126,7 +132,7 @@ namespace SceneryEditorX
 	uint32_t Renderer::m_ResourceIndex = 0;
 
 	// per-frame rotated buffers
-	std::array<Renderer::FrameResource, DRAW_DATA_BUFFER_COUNT> Renderer::m_FrameResources;
+	std::array<Renderer::IndirectFrameResource, DRAW_DATA_BUFFER_COUNT> Renderer::m_FrameResources;
 	uint32_t Renderer::m_FrameResource_Index = 0;
 
 	Scope<FrameSync> Renderer::m_FrameSync = nullptr;
@@ -181,6 +187,13 @@ namespace SceneryEditorX
 	const uint8_t SWAPCHAIN_BUFFER_COUNT = 2;
 	const uint32_t RESOLUTION_SHADOW_MIN = 128;
 	constexpr uint32_t RENDERER_RESOURCE_FRAME_LIFETIME = MAX_FRAMES_IN_FLIGHT;
+
+#pragma endregion
+
+#pragma region Light Resources
+
+	uint32_t Renderer::m_Count_ActiveLights = 0;
+	std::vector<ShadowSlice> Renderer::m_ShadowSlices;
 
 #pragma endregion
 
@@ -326,19 +339,24 @@ namespace SceneryEditorX
 
 		CreateFrameResources();
 		// Temporary debug trace: log sync vectors sizes after frame resources creation
-	   SEDX_CORE_TRACE_TAG("Renderer", "Trace: After CreateFrameResources sizes - fences={}, render={}",
+		SEDX_CORE_TRACE_TAG("Renderer", "Trace: After CreateFrameResources sizes - fences={}, render={}",
 			static_cast<uint32_t>(s_FenceHandles.size()), static_cast<uint32_t>(s_RenderSemaphoreHandles.size()));
 
 		// Structured draw-data buffer used by Renderer::WriteDrawData (including UI path).
 		// Allocate one large mapped buffer partitioned by frame resource index.
+		// ALL slots in GetStructuredBuffers() that are read each frame must be allocated here
+		// to avoid nullptr dereferences in UpdateMaterials, UpdateLights, UpdateBoundingBoxes, etc.
 		{
 			auto& structuredBuffers = GetStructuredBuffers();
-			const uint32_t drawDataBufferIndex = static_cast<uint32_t>(Renderer_Buffer::DrawData);
-			const uint32_t drawDataElementCount = RENDERER_MAX_DRAW_CALLS * RENDERER_RESOURCE_FRAME_LIFETIME;
 
+			// --- DrawData (large mapped ring buffer, one region per frame-in-flight) ---
+			const uint32_t drawDataBufferIndex  = static_cast<uint32_t>(Renderer_Buffer::DrawData);
+			const uint32_t drawDataElementCount = RENDERER_MAX_DRAW_CALLS * RENDERER_RESOURCE_FRAME_LIFETIME;
 			if (!structuredBuffers[drawDataBufferIndex])
 			{
-				structuredBuffers[drawDataBufferIndex] = CreateRef<Buffer>(sizeof(ShaderBuffer_DrawData), drawDataElementCount, nullptr, true, "draw_data_buffer");
+				structuredBuffers[drawDataBufferIndex] = CreateRef<Buffer>(
+					sizeof(ShaderBuffer_DrawData), drawDataElementCount, nullptr, true, "draw_data_buffer");
+				SEDX_CORE_ASSERT(structuredBuffers[drawDataBufferIndex], "Failed to create draw_data_buffer");
 			}
 
 			if (Buffer* drawDataBuffer = structuredBuffers[drawDataBufferIndex].Get())
@@ -350,6 +368,92 @@ namespace SceneryEditorX
 			{
 				SEDX_CORE_ERROR_TAG("Renderer", "Failed to create draw_data_buffer");
 			}
+
+			// --- MaterialParameters ---
+			const uint32_t materialIndex = static_cast<uint32_t>(Renderer_Buffer::MaterialParameters);
+			if (!structuredBuffers[materialIndex])
+			{
+				structuredBuffers[materialIndex] = CreateRef<Buffer>(
+					sizeof(ShaderBuffer_Material), MAX_ARRAY_SIZE, nullptr, true, "material_parameters");
+				SEDX_CORE_ASSERT(structuredBuffers[materialIndex], "Failed to create material_parameters buffer");
+				SEDX_CORE_TRACE_TAG("Renderer", "Created material_parameters buffer");
+			}
+
+			// --- LightParameters ---
+			const uint32_t lightIndex = static_cast<uint32_t>(Renderer_Buffer::LightParameters);
+			if (!structuredBuffers[lightIndex])
+			{
+				structuredBuffers[lightIndex] = CreateRef<Buffer>(
+					sizeof(ShaderBuffer_Light), MAX_ARRAY_SIZE, nullptr, true, "light_parameters");
+				SEDX_CORE_ASSERT(structuredBuffers[lightIndex], "Failed to create light_parameters buffer");
+				SEDX_CORE_TRACE_TAG("Renderer", "Created light_parameters buffer");
+			}
+
+			// --- AABBs (per-frame regions, prepass + indirect draw slots) ---
+			const uint32_t aabbIndex = static_cast<uint32_t>(Renderer_Buffer::AABBs);
+			if (!structuredBuffers[aabbIndex])
+			{
+				// Double the size to hold per-frame regions (m_FrameResource_Index * MAX_ARRAY_SIZE offset)
+				const uint32_t aabbElementCount = MAX_ARRAY_SIZE * DRAW_DATA_BUFFER_COUNT;
+				structuredBuffers[aabbIndex] = CreateRef<Buffer>(
+					sizeof(ShaderBuffer_Aabb), aabbElementCount, nullptr, true, "aabb_buffer");
+				SEDX_CORE_ASSERT(structuredBuffers[aabbIndex], "Failed to create aabb_buffer");
+				SEDX_CORE_TRACE_TAG("Renderer", "Created aabb_buffer");
+			}
+
+			// --- ConstantFrame (per-frame constants written by UpdateFrameConstantBuffer) ---
+			const uint32_t constantFrameIndex = static_cast<uint32_t>(Renderer_Buffer::ConstantFrame);
+			if (!structuredBuffers[constantFrameIndex])
+			{
+				// Use RENDERER_RESOURCE_FRAME_LIFETIME slots so offset rotation works correctly
+				structuredBuffers[constantFrameIndex] = CreateRef<Buffer>(
+					sizeof(ConstantBuffer_Frame), RENDERER_RESOURCE_FRAME_LIFETIME, nullptr, true, "constant_frame_buffer");
+				SEDX_CORE_ASSERT(structuredBuffers[constantFrameIndex], "Failed to create constant_frame_buffer");
+				SEDX_CORE_TRACE_TAG("Renderer", "Created constant_frame_buffer");
+			}
+
+			// --- IndirectDrawArgs ---
+			const uint32_t indirectArgsIndex = static_cast<uint32_t>(Renderer_Buffer::IndirectDrawArgs);
+			if (!structuredBuffers[indirectArgsIndex])
+			{
+				structuredBuffers[indirectArgsIndex] = CreateRef<Buffer>(
+					sizeof(ShaderBuffer_IndirectDrawArgs), MAX_ARRAY_SIZE, nullptr, true, "indirect_draw_args");
+				SEDX_CORE_ASSERT(structuredBuffers[indirectArgsIndex], "Failed to create indirect_draw_args buffer");
+				SEDX_CORE_TRACE_TAG("Renderer", "Created indirect_draw_args buffer");
+			}
+
+			// --- IndirectDrawData ---
+			const uint32_t indirectDataIndex = static_cast<uint32_t>(Renderer_Buffer::IndirectDrawData);
+			if (!structuredBuffers[indirectDataIndex])
+			{
+				structuredBuffers[indirectDataIndex] = CreateRef<Buffer>(
+					sizeof(ShaderBuffer_DrawData), MAX_ARRAY_SIZE, nullptr, true, "indirect_draw_data");
+				SEDX_CORE_ASSERT(structuredBuffers[indirectDataIndex], "Failed to create indirect_draw_data buffer");
+				SEDX_CORE_TRACE_TAG("Renderer", "Created indirect_draw_data buffer");
+			}
+
+			// --- IndirectDrawCount (single uint32_t, reset to zero each frame by cull shader) ---
+			const uint32_t indirectCountIndex = static_cast<uint32_t>(Renderer_Buffer::IndirectDrawCount);
+			if (!structuredBuffers[indirectCountIndex])
+			{
+				structuredBuffers[indirectCountIndex] = CreateRef<Buffer>(
+					sizeof(uint32_t), 1, nullptr, true, "indirect_draw_count");
+				SEDX_CORE_ASSERT(structuredBuffers[indirectCountIndex], "Failed to create indirect_draw_count buffer");
+				SEDX_CORE_TRACE_TAG("Renderer", "Created indirect_draw_count buffer");
+			}
+
+			// --- DummyInstance (identity instances for vertex-pulled draws with no instancing) ---
+			const uint32_t dummyInstanceIndex = static_cast<uint32_t>(Renderer_Buffer::DummyInstance);
+			if (!structuredBuffers[dummyInstanceIndex])
+			{
+				// Minimal buffer: one identity instance entry; real content written by passes
+				structuredBuffers[dummyInstanceIndex] = CreateRef<Buffer>(
+					sizeof(ShaderBuffer_DrawData), 1, nullptr, true, "dummy_instance_buffer");
+				SEDX_CORE_ASSERT(structuredBuffers[dummyInstanceIndex], "Failed to create dummy_instance_buffer");
+				SEDX_CORE_TRACE_TAG("Renderer", "Created dummy_instance_buffer");
+			}
+
+			SEDX_CORE_TRACE_TAG("Renderer", "All structured buffers initialized");
 		}
 
 		CreateRenderTargets(true, true, true);
@@ -368,7 +472,7 @@ namespace SceneryEditorX
 
 		// Provide pointers to the internal handle vectors so other subsystems can read them (null-safe)
 		RenderContext::Get()->s_Fences = s_FenceHandles.empty() ? nullptr : &s_FenceHandles;
-	   RenderContext::Get()->s_PresentSemaphores = nullptr;
+		RenderContext::Get()->s_PresentSemaphores = nullptr;
 		RenderContext::Get()->s_RenderSemaphores = s_RenderSemaphoreHandles.empty() ? nullptr : &s_RenderSemaphoreHandles;
 
 		m_ResourcesInitialized = true;
@@ -383,6 +487,10 @@ namespace SceneryEditorX
 
 		// Wait for all GPU work to complete
 		device->GetQueueManager()->WaitIdleAll();
+
+		// Destroy shared descriptor pool before other device resources are torn down.
+		// This ensures vkDestroyDescriptorPool is called while the logical device is still valid.
+		DescriptorPoolManager::Shutdown();
 
 		// Destroy basic forward pipeline resources
 		{
@@ -569,20 +677,24 @@ namespace SceneryEditorX
 
 #pragma region Compute Command List Setup
 
-		m_CmdList_Compute = nullptr;
-
+		/*
 		// Bootstrap mode currently runs the graphics-only path in ProduceFrame().
 		// Don't acquire/record compute command lists until the deferred compute passes
 		// (and their synchronization) are fully wired.
 		const bool needsComputeCommandList = true;
-		if (canRender && needsComputeCommandList)
-		{
+		*/
+		m_CmdList_Compute = nullptr;
+		if (canRender /*&& needsComputeCommandList*/)
+		{	
+			if (Ref<Queue> *queue = queueManager->GetQueue(QueueType::Compute); queue && *queue)
+			{
+				Queue::WaitIdle(*queue->Get());
+			}
+
 			m_CmdList_Compute = queueManager->NextCommandList();
 			SEDX_CORE_ASSERT(m_CmdList_Compute != nullptr, "Failed to acquire compute command list");
-			if (m_CmdList_Compute)
-			{
-				m_CmdList_Compute->Begin();
-			}
+
+			m_CmdList_Compute->Begin();
 		}
 
 #pragma endregion
@@ -605,76 +717,209 @@ namespace SceneryEditorX
 
 			UpdateDrawCalls(m_CmdList_Present);
 
-			// Wire the modern pass-based renderer into the active frame loop.
-			// This keeps the existing legacy path intact while enabling
-			// `Pass_Depth_Prepass()` and `Pass_Grid()` execution.
-			if (m_CmdList_Present && (m_CmdList_Compute || !needsComputeCommandList))
-			{
-				ImageResource* rtRender = GetRenderTarget(Renderer_RenderTarget::frame_render);
-				ImageResource* rtOutput = GetRenderTarget(Renderer_RenderTarget::frame_output);
-
-				const bool hasRtRender = rtRender && rtRender->Get() && *rtRender->Get() != VK_NULL_HANDLE;
-				const bool hasRtOutput = rtOutput && rtOutput->Get() && *rtOutput->Get() != VK_NULL_HANDLE;
-
-				if (hasRtRender && hasRtOutput)
-				{
-					ProduceFrame(m_CmdList_Present, m_CmdList_Compute);
-				}
-				else
-				{
-					static bool s_LoggedMissingPassTargets = false;
-					if (!s_LoggedMissingPassTargets)
-					{
-						SEDX_CORE_WARN_TAG("Renderer", "Pass-based renderer disabled: frame render targets are not GPU-initialized yet");
-						s_LoggedMissingPassTargets = true;
-					}
-				}
-			}
-
-			// Submit ImGui draw data to the GPU via the custom UI backend
-			if (ImGui::GetCurrentContext() && ImGui::GetDrawData())
-			{
-				UI::Render(ImGui::GetDrawData(), nullptr, false);
-			}
-
-#pragma region Resource Cleanup - Per-frame
-
+			// resource cleanup - frame-based retirement, no gpu stall required
 			if (QueueManager::NeedToParseDeletionQueue())
 			{
-				// QueueManager::WaitIdleAll();
 				QueueManager::ParseDeletionQueue();
 			}
 
-#pragma endregion
-#pragma region Constant Buffer Offset Resource Cleanup
-
+			// reset constant buffer offset periodically
 			{
 				m_ResourceIndex++;
 				if (m_ResourceIndex == RENDERER_RESOURCE_FRAME_LIFETIME)
 				{
 					m_ResourceIndex = 0;
-					if (Buffer* constantFrameBuffer = GetBuffer(Renderer_Buffer::ConstantFrame))
+					Buffer* constantFrameBuffer = GetBuffer(Renderer_Buffer::ConstantFrame);
+					if (constantFrameBuffer)
 					{
 						constantFrameBuffer->ResetOffset();
 					}
 					else
 					{
-						static bool s_LoggedMissingConstantFrameBuffer = false;
-						if (!s_LoggedMissingConstantFrameBuffer)
-						{
-							SEDX_CORE_WARN_TAG("Renderer", "Skipping ConstantFrame ResetOffset: buffer is null");
-							s_LoggedMissingConstantFrameBuffer = true;
-						}
+						SEDX_CORE_ERROR_TAG("Renderer", "ConstantFrame buffer is null — cannot reset offset");
 					}
 				}
 			}
 
-#pragma endregion
 #pragma region Bindless Resource Updates
 
-			/*
 			if (!isLoading)
 			{
+				bool initialize = GetFrameNumber() == 0;
+
+#pragma region Lights
+
+				if (initialize || Scene::UpdateSceneChanges(ComponentType::Light).IsDirty())
+				{
+					UpdateShadowAtlas();
+					UpdateLights(m_CmdList_Present);
+					BindlessManager::UpdateBuffer(BindlessResource::LightParameters, GetBuffer(Renderer_Buffer::LightParameters));
+				}
+
+#pragma endregion
+#pragma region Materials
+
+				if (initialize || Scene::UpdateSceneChanges(ComponentType::Material).IsDirty())
+				{
+					UpdateMaterials(m_CmdList_Present);
+					BindlessManager::UpdateBuffer(BindlessResource::MaterialTextures, GetBuffer(Renderer_Buffer::MaterialParameters));
+				}
+
+#pragma endregion
+#pragma region Samplers
+
+				if (m_BindlessSamplers_Dirty.IsDirty())
+				{
+					// Update bindless samplers: pass pointer to the sampler array and its count
+					auto &samplers = Renderer::GetSamplers();
+					BindlessManager::UpdateSamplers(BindlessResource::SamplersRegular, samplers.data(), static_cast<uint32_t>(samplers.size()));
+					m_BindlessSamplers_Dirty.Check();
+				}
+
+#pragma endregion
+#pragma region AABBs (always, they change with entity transforms)
+
+				{
+					UpdateBoundingBoxes(m_CmdList_Present);
+
+					static bool aabbs_descriptor_set = false;
+					if (!aabbs_descriptor_set)
+					{
+						BindlessManager::UpdateBuffer(BindlessResource::Aabbs, GetBuffer(Renderer_Buffer::AABBs));
+						aabbs_descriptor_set = true;
+					}
+				}
+
+#pragma endregion
+#pragma region Draw Data
+
+				{
+					if (m_DrawData_Count > 0)
+					{
+						Buffer *buffer = GetBuffer(Renderer_Buffer::DrawData);
+						uint32_t frame_byte_offset = m_FrameResource_Index * MAX_DRAW_CALLS *
+													 static_cast<uint32_t>(sizeof(ShaderBuffer_DrawData));
+						uint32_t upload_size = static_cast<uint32_t>(sizeof(ShaderBuffer_DrawData)) * m_DrawData_Count;
+						CommandList::UpdateBuffer(buffer, frame_byte_offset, upload_size, &m_DrawData_CPU[0]);
+					}
+
+					// the descriptor points to a single large buffer that holds all frames' draw data
+					// at different offsets, so it only needs to be set once; this eliminates the race
+					// where vkUpdateDescriptorSets (host-side, instantly visible under UPDATE_AFTER_BIND)
+					// would change the buffer pointer while the previous frame's phase 3 transparent pass
+					// was still reading from it on the gpu
+					static bool draw_data_descriptor_set = false;
+					if (!draw_data_descriptor_set)
+					{
+						BindlessManager::UpdateBuffer(BindlessResource::DrawData, GetBuffer(Renderer_Buffer::DrawData));
+						draw_data_descriptor_set = true;
+					}
+				}
+
+#pragma endregion
+#pragma region Geometry Buffers (vertex pulling via bindless structured buffers)
+
+				{
+					static Buffer *lastVertexBuffer = nullptr;
+					Buffer *currentVertex = GeometryBuffer::GetVertexBuffer();
+					if (currentVertex && currentVertex != lastVertexBuffer)
+					{
+						BindlessManager::UpdateBuffer(BindlessResource::GeometryVertices, currentVertex);
+						lastVertexBuffer = currentVertex;
+					}
+
+					static Buffer *lastIndexBuffer = nullptr;
+					Buffer *currentIndex = GeometryBuffer::GetIndexBuffer();
+					if (currentIndex && currentIndex != lastIndexBuffer)
+					{
+						BindlessManager::UpdateBuffer(BindlessResource::GeometryIndices, currentIndex);
+						lastIndexBuffer = currentIndex;
+					}
+				}
+
+#pragma endregion
+#pragma region Dummy Instance Buffer (vertex pulling identity instances)
+
+				{
+					static bool instances_descriptor_set = false;
+					if (!instances_descriptor_set)
+					{
+						BindlessManager::UpdateBuffer(BindlessResource::Instances, GetBuffer(Renderer_Buffer::DummyInstance));
+						instances_descriptor_set = true;
+					}
+				}
+
+#pragma endregion
+#pragma region Indirect Draw Buffers
+
+				if (m_Indirect_DrawCount > 0)
+				{
+					Buffer* args_buffer = GetBuffer(Renderer_Buffer::IndirectDrawArgs);
+					if (!args_buffer)
+					{
+						SEDX_CORE_ERROR_TAG("Renderer", "IndirectDrawArgs buffer is null — skipping indirect buffer upload");
+					}
+					else
+					{
+						args_buffer->ResetOffset();
+						args_buffer->Update(m_CmdList_Present, &m_Indirect_DrawArgs[0], args_buffer->GetStride() * m_Indirect_DrawCount);
+					}
+
+					Buffer* data_buffer = GetBuffer(Renderer_Buffer::IndirectDrawData);
+					if (!data_buffer)
+					{
+						SEDX_CORE_ERROR_TAG("Renderer", "IndirectDrawData buffer is null — skipping indirect buffer upload");
+					}
+					else
+					{
+						data_buffer->ResetOffset();
+						data_buffer->Update(m_CmdList_Present, &m_Indirect_DrawData[0], data_buffer->GetStride() * m_Indirect_DrawCount);
+					}
+
+					// reset count, the cull shader atomically increments it
+					uint32_t zero = 0;
+					Buffer* count_buffer = GetBuffer(Renderer_Buffer::IndirectDrawCount);
+					if (!count_buffer)
+					{
+						SEDX_CORE_ERROR_TAG("Renderer", "IndirectDrawCount buffer is null — skipping count reset");
+					}
+					else
+					{
+						count_buffer->ResetOffset();
+						count_buffer->Update(m_CmdList_Present, &zero, sizeof(uint32_t));
+					}
+				}
+#pragma endregion
+
+			}
+
+#pragma endregion
+				
+			UpdateFrameConstantBuffer(m_CmdList_Present);
+			UpdatePersistentLines();
+			AddLinesToBeRendered();
+
+			if (canRender)
+			{
+				BlitToBackBuffer(m_CmdList_Present, GetRenderTarget(Renderer_RenderTarget::frame_output));
+			}
+
+			SubmitAndPresent();
+
+			{
+				m_Lines_Vertices.clear();
+				m_Icons.clear();
+			}
+	
+			// only count frames that actually rendered
+			if (canRender)
+			{
+				s_FrameNumber++;
+				if (s_FrameNumber == 1)
+					FirstFrameRenderedEvent event(true);
+			}
+
+			/*
 				bool initialize = GetFrameNumber() == 0;
 
 				// lights
@@ -700,131 +945,47 @@ namespace SceneryEditorX
 				}
 
 				// aabbs (always, they change with entity transforms)
-				{
-					UpdateBoundingBoxes(m_CmdList_Present);
+				{}
+				*/
 
-					static bool aabbs_descriptor_set = false;
-					if (!aabbs_descriptor_set)
-					{
-						RHI_Device::UpdateBindlessAABBs(GetBuffer(Renderer_Buffer::AABBs));
-						aabbs_descriptor_set = true;
-					}
-				}
-
-				// draw data
-				{
-					if (m_DrawDataCount > 0)
-					{
-						Buffer *buffer = GetBuffer(Renderer_Buffer::DrawData);
-						uint32_t frame_byte_offset = m_FrameResource_Index * renderer_max_draw_calls *
-													 static_cast<uint32_t>(sizeof(Sb_DrawData));
-						uint32_t upload_size = static_cast<uint32_t>(sizeof(Sb_DrawData)) * m_DrawDataCount;
-						m_CmdList_Present->UpdateBuffer(buffer, frame_byte_offset, upload_size, &m_draw_data_cpu[0]);
-					}
-
-					// the descriptor points to a single large buffer that holds all frames' draw data
-					// at different offsets, so it only needs to be set once; this eliminates the race
-					// where vkUpdateDescriptorSets (host-side, instantly visible under UPDATE_AFTER_BIND)
-					// would change the buffer pointer while the previous frame's phase 3 transparent pass
-					// was still reading from it on the gpu
-					static bool draw_data_descriptor_set = false;
-					if (!draw_data_descriptor_set)
-					{
-						RHI_Device::UpdateBindlessDrawData(GetBuffer(Renderer_Buffer::DrawData));
-						draw_data_descriptor_set = true;
-					}
-				}
-
-				// geometry buffers (vertex pulling via bindless structured buffers)
-				{
-					static Buffer *last_vertex_buffer = nullptr;
-					Buffer *current_vertex = GeometryBuffer::GetVertexBuffer();
-					if (current_vertex && current_vertex != last_vertex_buffer)
-					{
-						RHI_Device::UpdateBindlessGeometryVertices(current_vertex);
-						last_vertex_buffer = current_vertex;
-					}
-
-					static Buffer *last_index_buffer = nullptr;
-					Buffer *current_index = GeometryBuffer::GetIndexBuffer();
-					if (current_index && current_index != last_index_buffer)
-					{
-						RHI_Device::UpdateBindlessGeometryIndices(current_index);
-						last_index_buffer = current_index;
-					}
-				}
-
-				// dummy instance buffer (vertex pulling identity instances)
-				{
-					static bool instances_descriptor_set = false;
-					if (!instances_descriptor_set)
-					{
-						Device::UpdateBindlessInstances(GetBuffer(Renderer_Buffer::DummyInstance));
-						instances_descriptor_set = true;
-					}
-				}
-
-				// indirect draw buffers
-				if (m_indirect_draw_count > 0)
-				{
-					Buffer *args_buffer = GetBuffer(Renderer_Buffer::IndirectDrawArgs);
-					args_buffer->ResetOffset();
-					args_buffer->Update(m_CmdList_Present, &m_indirect_draw_args[0],
-										args_buffer->GetStride() * m_indirect_draw_count);
-
-					Buffer *data_buffer = GetBuffer(Renderer_Buffer::IndirectDrawData);
-					data_buffer->ResetOffset();
-					data_buffer->Update(m_CmdList_Present, &m_indirect_draw_data[0],
-										data_buffer->GetStride() * m_indirect_draw_count);
-
-					// reset count, the cull shader atomically increments it
-					uint32_t zero = 0;
-					Buffer *count_buffer = GetBuffer(Renderer_Buffer::IndirectDrawCount);
-					count_buffer->ResetOffset();
-					count_buffer->Update(m_CmdList_Present, &zero, sizeof(uint32_t));
-				}
-			}*/
-#pragma endregion
-
-		}
-
-		const bool canRecordOnPresentCmd = m_CmdList_Present && m_CmdList_Present->GetState() == CommandState::Recording;
-		if (canRecordOnPresentCmd)
-		{
-			UpdateFrameConstantBuffer(m_CmdList_Present);
-		}
-		else
-		{
-			static bool s_WarnedNonRecordingPresentCmd = false;
-			if (!s_WarnedNonRecordingPresentCmd)
+			/*
+			// Wire the modern pass-based renderer into the active frame loop.
+			// This keeps the existing legacy path intact while enabling
+			// `Pass_Depth_Prepass()` and `Pass_Grid()` execution.
+			if (m_CmdList_Present && m_CmdList_Compute)
 			{
-				SEDX_CORE_WARN_TAG("Renderer", "Skipping frame-constant update: present command list is not in recording state");
-				s_WarnedNonRecordingPresentCmd = true;
+				ImageResource* rtRender = GetRenderTarget(Renderer_RenderTarget::frame_render);
+				ImageResource* rtOutput = GetRenderTarget(Renderer_RenderTarget::frame_output);
+
+				const bool hasRtRender = rtRender && rtRender->Get() && *rtRender->Get() != VK_NULL_HANDLE;
+				const bool hasRtOutput = rtOutput && rtOutput->Get() && *rtOutput->Get() != VK_NULL_HANDLE;
+
+				if (hasRtRender && hasRtOutput)
+				{
+					ProduceFrame(m_CmdList_Present, m_CmdList_Compute);
+				}
+				else
+				{
+					static bool s_LoggedMissingPassTargets = false;
+					if (!s_LoggedMissingPassTargets)
+					{
+						SEDX_CORE_WARN_TAG("Renderer", "Pass-based renderer disabled: frame render targets are not GPU-initialized yet");
+						s_LoggedMissingPassTargets = true;
+					}
+				}
 			}
-		}
-		//UpdatePersistentLines();
-		//AddLinesToBeRendered();
-		
-		if (canRender && canRecordOnPresentCmd)
-		{
-			BlitToBackBuffer(m_CmdList_Present, GetRenderTarget(Renderer_RenderTarget::frame_output));
-		}
+			*/
 
-		//m_lines_vertices.clear();
-		//m_icons.clear();
-
-		// Frame counters are advanced in SubmitAndPresent() to keep
-		// the frame lifecycle in one place: BeginFrame -> Tick -> EndFrame -> SubmitAndPresent.
-		if (canRender)
-		{
-			if (m_FrameNumber == 1)
+			/*
+			// Submit ImGui draw data to the GPU via the custom UI backend
+			if (ImGui::GetCurrentContext() && ImGui::GetDrawData())
 			{
-				//Event(EventType::AppTick);
+				UI::Render(ImGui::GetDrawData(), nullptr, false);
 			}
+			*/
+
 		}
 	}   
-
-#pragma endregion
 
 #pragma region Frame Rendering Methods
 
@@ -2390,7 +2551,7 @@ namespace SceneryEditorX
 			postBlit[0].subresourceRange.levelCount = 1;
 			postBlit[0].subresourceRange.layerCount = 1;
 
-		    // Transition swapchain image back to present for vkQueuePresentKHR.
+			// Transition swapchain image back to present for vkQueuePresentKHR.
 			postBlit[1].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
 			postBlit[1].srcStageMask = VK_PIPELINE_STAGE_2_BLIT_BIT;
 			postBlit[1].srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
@@ -2562,9 +2723,9 @@ namespace SceneryEditorX
 
 			// Static model placements — no rotation.
 			// Model transforms will be driven by the scene/ECS once wired up.
-			pSd->model[0] = Mat4(1.0f);
-			pSd->model[1] = Mat4::Translate(Vec3(-3.0f, 0.0f, 0.0f));
-			pSd->model[2] = Mat4::Translate(Vec3( 3.0f, 0.0f, 0.0f));
+			pSd->model[0]      = Mat4(1.0f);
+			pSd->model[1]      = Mat4::Translate(Vec3(-3.0f, 0.0f, 0.0f));
+			pSd->model[2]      = Mat4::Translate(Vec3( 3.0f, 0.0f, 0.0f));
 		}
 
 		if (m_BasicPipeline != VK_NULL_HANDLE && m_TestModel && m_BasicShaderDataAddresses[m_CurrentFrameIndex] != 0)
@@ -2699,6 +2860,104 @@ namespace SceneryEditorX
 		cmdList->SetTexture(Renderer_BindingsSrv::ssao, texSsao);
 	}
 
+	void Renderer::UpdateShadowAtlas()
+	{
+		const uint32_t resolutionAtlas = GetRenderTarget(Renderer_RenderTarget::shadow_atlas)->GetWidth();
+		constexpr uint32_t minSliceRes = 256;
+		constexpr uint32_t border = 8;
+
+		// collect slices
+		m_ShadowSlices.clear();
+		for (Entity* entity : Scene::GetEntities())
+		{
+			if (!entity)
+				continue;
+
+			Light* light = entity->GetComponent<Light>();
+			if (!light)
+				continue;
+
+			light->ClearAtlasRectangles();
+			if (light->GetIndex() == std::numeric_limits<uint32_t>::max())
+				continue;
+
+			for (uint32_t i = 0; i < light->GetSliceCount(); ++i)
+			{
+				m_ShadowSlices.emplace_back(light, i, 0, xMath::Rectangle::ZERO);
+			}
+		}
+
+		if (m_ShadowSlices.empty())
+			return;
+
+		// row-based packing: lays out uniform-sized slices left-to-right, wrapping to the next row.
+		// when rects is null it only tests whether the layout fits; when non-null it writes the rectangles.
+		auto pack_row = [&](uint32_t sliceRes, uint32_t numSlices, std::vector<ShadowSlice>* rects) -> bool
+		{
+			if (sliceRes > resolutionAtlas)
+				return false;
+
+			uint32_t x = 0, y = 0, rowH = 0;
+			for (uint32_t i = 0; i < numSlices; ++i)
+			{
+				uint32_t leftPad = (x == 0) ? 0 : border;
+				uint32_t placedX = x + leftPad;
+
+				if (placedX + sliceRes > resolutionAtlas)
+				{
+					y        += rowH + border;
+					x        = 0;
+					rowH     = 0;
+					placedX  = 0;
+				}
+
+				if (placedX + sliceRes > resolutionAtlas || y + sliceRes > resolutionAtlas)
+					return false;
+
+				if (rects)
+				{
+					(*rects)[i].res  = sliceRes;
+					(*rects)[i].rect = xMath::Rectangle(static_cast<float>(placedX), static_cast<float>(y), static_cast<float>(sliceRes), static_cast<float>(sliceRes));
+				}
+
+				x = placedX + sliceRes;
+				rowH = xMath::Max(rowH, sliceRes);
+			}
+			return true;
+		};
+
+		// binary search for max uniform slice resolution
+		uint32_t maxSliceRes = resolutionAtlas;
+		uint32_t numSlices    = static_cast<uint32_t>(m_ShadowSlices.size());
+		if (numSlices > 1)
+		{
+			uint32_t low  = minSliceRes;
+			uint32_t high = resolutionAtlas;
+			while (low < high)
+			{
+				uint32_t mid = (low + high + 1) / 2;
+				if (pack_row(mid, numSlices, nullptr))
+				{
+					low = mid;
+				}
+				else
+				{
+					high = mid - 1;
+				}
+			}
+			maxSliceRes = low;
+		}
+		maxSliceRes = xMath::Max(maxSliceRes, minSliceRes);
+
+		// assign rectangles
+		pack_row(maxSliceRes, numSlices, &m_ShadowSlices);
+
+		for (const auto& slice : m_ShadowSlices)
+		{
+			slice.light->SetAtlasRectangle(slice.slice_Index, slice.rect);
+		}
+	}
+
 	void Renderer::UpdateDrawCalls(CommandList *cmdList)
 	{
 		// TODO: Implement draw call collection and sorting when the scene and material systems are integrated
@@ -2809,8 +3068,7 @@ namespace SceneryEditorX
 			for (uint32_t i = 0; i < m_DrawCall_Count; i++)
 			{
 				const Renderer_DrawCall& dc = m_DrawCalls[i];
-				Renderable* renderable      = dc.renderable;
-				Material* material          = renderable->GetMaterial();
+				MaterialAsset* material = dc.renderable->GetMaterial();
 
 				if (!material || material->IsTransparent())
 					continue;
@@ -3031,7 +3289,7 @@ namespace SceneryEditorX
 	uint32_t Renderer::WriteDrawData(const xMath::Matrix &transform, const xMath::Matrix &prevTransform, uint32_t matIndex, uint32_t isTransparent)
 	{
 		// TODO: Write the transform matrix into the GPU draw-data structured buffer and return its index.
-	    if (m_DrawData_Count >= static_cast<uint32_t>(m_DrawData_CPU.size()))
+		if (m_DrawData_Count >= static_cast<uint32_t>(m_DrawData_CPU.size()))
 		{
 			static bool s_LoggedDrawDataOverflow = false;
 			if (!s_LoggedDrawDataOverflow)
@@ -3099,6 +3357,301 @@ namespace SceneryEditorX
 	GPUMemoryStats Renderer::GetGPUMemoryStats()
 	{
 		return MemoryAllocator::GetMemoryStats();
+	}
+
+	void Renderer::UpdateMaterials(CommandList *cmdList)
+	{
+		static std::array<ShaderBuffer_Material, MAX_ARRAY_SIZE> properties;
+		static std::unordered_set<uint64_t> uniqueMaterialIds;
+		uint32_t count = 0;
+	
+		auto update_material = [&count](MaterialAsset* material)
+		{
+			if (uniqueMaterialIds.contains(material->GetObjectId()))
+				return;
+	
+			uniqueMaterialIds.insert(material->GetObjectId());
+			{
+				SEDX_CORE_ASSERT(count < MAX_ARRAY_SIZE, "Exceeded maximum array size for material properties");
+
+				properties[count].local_width           = material->GetProperty(MaterialClass::SceneWidth);
+				properties[count].local_height          = material->GetProperty(MaterialClass::SceneHeight);
+				properties[count].color.x               = material->GetProperty(MaterialClass::ColorR);
+				properties[count].color.y               = material->GetProperty(MaterialClass::ColorG);
+				properties[count].color.z               = material->GetProperty(MaterialClass::ColorB);
+				properties[count].color.w               = material->GetProperty(MaterialClass::ColorA);
+				properties[count].tiling_uv.x           = material->GetProperty(MaterialClass::TextureTilingX);
+				properties[count].tiling_uv.y           = material->GetProperty(MaterialClass::TextureTilingY);
+				properties[count].offset_uv.x           = material->GetProperty(MaterialClass::TextureOffsetX);
+				properties[count].offset_uv.y           = material->GetProperty(MaterialClass::TextureOffsetY);
+				properties[count].invert_uv.x           = material->GetProperty(MaterialClass::TextureInvertX);
+				properties[count].invert_uv.y           = material->GetProperty(MaterialClass::TextureInvertY);
+				properties[count].roughness_mul         = material->GetProperty(MaterialClass::Roughness);
+				properties[count].metallic_mul          = material->GetProperty(MaterialClass::Metalness);
+				properties[count].normal_mul            = material->GetProperty(MaterialClass::Normal);
+				properties[count].height_mul            = material->GetProperty(MaterialClass::Height);
+				properties[count].anisotropic           = material->GetProperty(MaterialClass::Anisotropic);
+				properties[count].anisotropic_rotation  = material->GetProperty(MaterialClass::AnisotropicRotation);
+				properties[count].clearcoat             = material->GetProperty(MaterialClass::Clearcoat);
+				properties[count].clearcoat_roughness   = material->GetProperty(MaterialClass::Clearcoat_Roughness);
+				properties[count].sheen                 = material->GetProperty(MaterialClass::Sheen);
+				properties[count].subsurface_scattering = material->GetProperty(MaterialClass::SubsurfaceScattering);
+				properties[count].world_space_uv        = material->GetProperty(MaterialClass::WorldSpaceUv);
+
+				// flags
+				properties[count].flags  = material->HasTextureOfType(MaterialTextureType::Height)             ? (1U << 0)  : 0;
+				properties[count].flags |= material->HasTextureOfType(MaterialTextureType::Normal)             ? (1U << 1)  : 0;
+				properties[count].flags |= material->HasTextureOfType(MaterialTextureType::Color)              ? (1U << 2)  : 0;
+				properties[count].flags |= material->HasTextureOfType(MaterialTextureType::Roughness)          ? (1U << 3)  : 0;
+				properties[count].flags |= material->HasTextureOfType(MaterialTextureType::Metalness)          ? (1U << 4)  : 0;
+				properties[count].flags |= material->HasTextureOfType(MaterialTextureType::AlphaMask)          ? (1U << 5)  : 0;
+				properties[count].flags |= material->HasTextureOfType(MaterialTextureType::Emission)           ? (1U << 6)  : 0;
+				properties[count].flags |= material->HasTextureOfType(MaterialTextureType::Occlusion)          ? (1U << 7)  : 0;
+				properties[count].flags |= material->GetProperty(MaterialProperty::Terrain)                  ? (1U << 8)  : 0;
+				properties[count].flags |= material->GetProperty(MaterialProperty::WindAnimation)              ? (1U << 9)  : 0;
+				properties[count].flags |= material->GetProperty(MaterialProperty::ColorVariationFromInstance) ? (1U << 10) : 0;
+				properties[count].flags |= material->GetProperty(MaterialProperty::GrassBlades)               ? (1U << 11) : 0;
+				properties[count].flags |= material->GetProperty(MaterialProperty::Water)                    ? (1U << 13) : 0;
+				properties[count].flags |= material->GetProperty(MaterialProperty::Tessellation)               ? (1U << 14) : 0;
+				properties[count].flags |= material->GetProperty(MaterialProperty::EmissiveFromAlbedo)         ? (1U << 15) : 0;
+				// keep in sync with Surface struct in common_structs.hlsl
+			}
+	
+			// textures
+			{
+				for (uint32_t type = 0; type < static_cast<uint32_t>(MaterialTextureType::MaxEnum); type++)
+				{
+					for (uint32_t slot = 0; slot < MaterialAsset::SLOTS_PER_TEXTURE; slot++)
+					{
+						uint32_t bindlessIndex = count + (type * MaterialAsset::SLOTS_PER_TEXTURE) + slot;
+						m_Bindless_Textures[bindlessIndex] = material->GetTexture(static_cast<MaterialTextureType>(type), slot);
+					}
+				}
+			}
+	
+			material->SetIndex(count);
+
+			count += static_cast<uint32_t>(MaterialTextureType::MaxEnum) * MaterialAsset::SLOTS_PER_TEXTURE;
+		};
+	
+		auto update_entities = [update_material]()
+		{
+			for (Entity* entity : Scene::GetEntities())
+			{
+				if (!entity)
+					continue;
+
+				if (auto* renderable = entity->GetComponent<Renderable>())
+				{
+					if (MaterialAsset* material = renderable->GetMaterial())
+					{
+						update_material(material);
+					}
+				}
+			}
+		};
+	
+		// cpu
+		{
+			properties.fill(ShaderBuffer_Material{});
+			m_Bindless_Textures.fill(nullptr);
+			uniqueMaterialIds.clear();
+			update_entities();
+		}
+	
+		// GPU
+		{
+			Buffer* buffer = Renderer::GetBuffer(Renderer_Buffer::MaterialParameters);
+			if (!buffer)
+			{
+				SEDX_CORE_ERROR_TAG("Renderer", "UpdateMaterials: MaterialParameters buffer is null — skipping GPU upload");
+				return;
+			}
+			buffer->ResetOffset();
+			if (count > 0)
+			{
+				buffer->Update(cmdList, &properties[0], buffer->GetStride() * count);
+			}
+		}
+	}
+
+	void Renderer::UpdateLights(CommandList *cmdList)
+	{
+		const Entity* cameraEntity = Scene::GetCamera() ? Scene::GetCamera()->GetEntity() : nullptr;
+		const Vec3 cameraPos    = cameraEntity ? cameraEntity->GetPosition() : Vec3(0.0f, 0.0f, 0.0f);
+	
+		m_Bindless_Lights.fill(ShaderBuffer_Light());
+		
+		m_Count_ActiveLights = 0; 
+		Light* firstDirectional = nullptr;
+	
+		auto fill_light = [&](Light* lightComponent)
+		{
+			const uint32_t index = m_Count_ActiveLights++;
+			
+			lightComponent->SetIndex(index);
+			ShaderBuffer_Light& lightBufferEntry = m_Bindless_Lights[index];
+	
+			for (uint32_t i = 0; i < lightComponent->GetSliceCount(); i++)
+			{
+				lightBufferEntry.view_projection[i] = lightComponent->GetViewProjectionMatrix(i);
+			}
+	
+			lightBufferEntry.screen_space_shadows_slice_index  = lightComponent->GetScreenSpaceShadowsSliceIndex();
+			lightBufferEntry.intensity                         = lightComponent->GetIntensityWatt();
+			lightBufferEntry.range                             = lightComponent->GetRange();
+			lightBufferEntry.angle                             = lightComponent->GetAngle();
+			{ const Standard& lc = lightComponent->GetLightColor(); lightBufferEntry.color = xMath::Color(lc.r, lc.g, lc.b, lc.a); }
+			lightBufferEntry.position                          = lightComponent->GetEntity()->GetPosition();
+			lightBufferEntry.direction                         = lightComponent->GetEntity()->GetForward();
+			lightBufferEntry.area_width                        = lightComponent->GetAreaWidth();
+			lightBufferEntry.area_height                       = lightComponent->GetAreaHeight();
+			lightBufferEntry.flags                             = 0;
+			lightBufferEntry.flags                            |= lightComponent->GetLightType() == LightType::Directional ? (1 << 0) : 0;
+			lightBufferEntry.flags                            |= lightComponent->GetLightType() == LightType::Point       ? (1 << 1) : 0;
+			lightBufferEntry.flags                            |= lightComponent->GetLightType() == LightType::Spot        ? (1 << 2) : 0;
+			lightBufferEntry.flags                            |= lightComponent->GetFlag(LightFlags::Shadows)             ? (1 << 3) : 0;
+			lightBufferEntry.flags                            |= lightComponent->GetFlag(LightFlags::ShadowsScreenSpace)  ? (1 << 4) : 0;
+			lightBufferEntry.flags                            |= lightComponent->GetFlag(LightFlags::Volumetric)          ? (1 << 5) : 0;
+			lightBufferEntry.flags                            |= lightComponent->GetLightType() == LightType::Area        ? (1 << 6) : 0;
+	
+			for (uint32_t i = 0; i < 6; i++)
+			{
+				if (i < lightComponent->GetSliceCount())
+				{
+					lightBufferEntry.atlas_offsets[i]     = lightComponent->GetAtlasOffset(i);
+					lightBufferEntry.atlas_scales[i]      = lightComponent->GetAtlasScale(i);
+					const xMath::Rectangle& rect          = lightComponent->GetAtlasRectangle(i);
+					lightBufferEntry.atlas_texel_sizes[i] = Vec2(1.0f / rect.width, 1.0f / rect.height);
+				}
+				else
+				{
+					lightBufferEntry.atlas_offsets[i] = Vec2::ZERO;
+					lightBufferEntry.atlas_scales[i] = Vec2::ZERO;
+					lightBufferEntry.atlas_texel_sizes[i] = Vec2::ZERO;
+				}
+			}
+		};
+	
+		// directional light always goes in slot 0
+		for (Entity* entity : Scene::GetEntities())
+		{
+			if (!entity)
+				continue;
+
+			Light* lightComponent = entity->GetComponent<Light>();
+			if (!lightComponent)
+				continue;
+
+			if (lightComponent->GetLightType() == LightType::Directional)
+			{
+				firstDirectional = lightComponent;
+
+				// slot 0 is always the sun, even if disabled
+				fill_light(lightComponent);
+				if (!lightComponent->GetEntity()->GetActive())
+				{
+					m_Bindless_Lights[0].intensity = 0.0f;
+				}
+				break;
+			}
+		}
+	
+		// remaining lights
+		for (Entity* entity : Scene::GetEntities())
+		{
+			if (Light* lightComponent = entity->GetComponent<Light>())
+			{
+				if (lightComponent == firstDirectional)
+					continue;
+	
+				lightComponent->SetIndex(std::numeric_limits<uint32_t>::max());
+	
+				if (!lightComponent->GetEntity()->GetActive())
+					continue;
+	
+				if (lightComponent->GetIntensityWatt() <= 0.0f)
+					continue;
+	
+				if (Camera* camera = Scene::GetCamera())
+				{
+					if (!camera->IsInViewFrustum(lightComponent->GetBoundingBox()))
+						continue;
+				}
+	
+				fill_light(lightComponent);
+			}
+		}
+	
+		// gpu upload
+		Buffer* buffer = GetBuffer(Renderer_Buffer::LightParameters);
+		if (!buffer)
+		{
+			SEDX_CORE_ERROR_TAG("Renderer", "UpdateLights: LightParameters buffer is null — skipping GPU upload");
+			return;
+		}
+		buffer->ResetOffset();
+
+		if (m_Count_ActiveLights > 0)
+		{
+			buffer->Update(cmdList, &m_Bindless_Lights[0], buffer->GetStride() * m_Count_ActiveLights);
+		}
+	}
+
+	void Renderer::UpdateBoundingBoxes(CommandList *cmdList)
+	{
+		m_Bindless_Aabbs.fill(ShaderBuffer_Aabb());
+
+		// prepass aabbs (must match the indexing in indirect_cull.hlsl)
+		for (uint32_t i = 0; i < m_DrawCalls_Prepass_Count; i++)
+		{
+			const Renderer_DrawCall& drawCall = m_DrawCalls_Prepass[i];
+			Renderable* renderable = drawCall.renderable;
+			const BoundingBox& aabb = renderable->GetBoundingBox();
+			m_Bindless_Aabbs[i].min = aabb.GetMin();
+			m_Bindless_Aabbs[i].max = aabb.GetMax();
+			m_Bindless_Aabbs[i].is_occluder = drawCall.isOccluder;
+		}
+
+		// indirect draw aabbs (stored right after prepass aabbs)
+		{
+			uint32_t indirectIdx = 0;
+			for (uint32_t i = 0; i < m_DrawCall_Count && indirectIdx < m_Indirect_DrawCount; i++)
+			{
+				const Renderer_DrawCall& dc = m_DrawCalls[i];
+				MaterialAsset* material = dc.renderable->GetMaterial();
+
+				if (!material || material->IsTransparent())
+					continue;
+
+				if (IsCpuDrivenDraw(dc, material))
+					continue;
+
+				uint32_t aabbSlot = m_DrawCalls_Prepass_Count + indirectIdx;
+				if (aabbSlot < MAX_ARRAY_SIZE)
+				{
+					const BoundingBox& aabb       = dc.renderable->GetBoundingBox();
+					m_Bindless_Aabbs[aabbSlot].min = aabb.GetMin();
+					m_Bindless_Aabbs[aabbSlot].max = aabb.GetMax();
+				}
+				indirectIdx++;
+			}
+		}
+
+		// gpu upload to the current frame's region within the shared aabb buffer
+		uint32_t totalAabbCount = m_DrawCalls_Prepass_Count + m_Indirect_DrawCount;
+		if (totalAabbCount > 0)
+		{
+			Buffer* buffer = GetBuffer(Renderer_Buffer::AABBs);
+			if (!buffer)
+			{
+				SEDX_CORE_ERROR_TAG("Renderer", "UpdateBoundingBoxes: AABBs buffer is null — skipping GPU upload");
+				return;
+			}
+			uint32_t frameByteOffset = m_FrameResource_Index * MAX_ARRAY_SIZE * static_cast<uint32_t>(sizeof(ShaderBuffer_Aabb));
+			uint32_t uploadSize = static_cast<uint32_t>(sizeof(ShaderBuffer_Aabb)) * totalAabbCount;
+			CommandList::UpdateBuffer(buffer, frameByteOffset, uploadSize, &m_Bindless_Aabbs[0]);
+		}
 	}
 
 } // namespace SceneryEditorX

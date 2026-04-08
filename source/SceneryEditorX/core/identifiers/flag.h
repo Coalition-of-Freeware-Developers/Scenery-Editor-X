@@ -62,11 +62,11 @@ namespace SceneryEditorX
 		{
 			if (m_Flag)
 			{
-			    return !((m_Flag = !m_Flag));
+				return !((m_Flag = !m_Flag));
 			}
 
-		    return false;
-        }
+			return false;
+		}
 
 		/**
 		 * @brief Checks if the flag is currently in a dirty state.

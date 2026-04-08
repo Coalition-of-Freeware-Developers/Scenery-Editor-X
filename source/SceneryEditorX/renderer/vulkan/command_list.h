@@ -362,6 +362,13 @@ namespace SceneryEditorX
 		 */
 		void SetTexture(const Renderer_BindingsSrv slot, ImageResource* img,  const uint32_t mipIndex = ALL_MIPS, uint32_t mipRange = 0) { SetTexture(static_cast<uint32_t>(slot), img, mipIndex, mipRange, false); }
 
+		/**
+		 * @brief Bind a buffer to a specific UAV slot using the typed binding enum.
+		 * @param slot The Renderer_BindingsUav slot to bind the buffer to.
+		 * @param buffer The buffer to bind.
+		 */
+		void SetBuffer(const Renderer_BindingsUav slot, Buffer* buffer) const { SetBuffer(static_cast<uint32_t>(slot), buffer); }
+
 		// -------------------------------------------------------
 
 		/**
@@ -511,7 +518,8 @@ namespace SceneryEditorX
 		PipelineState m_pso;
 		std::vector<PendingBarrierInfo> m_PendingBarriers;
 		std::array<bool, MAX_RENDER_TARGET_COUNT> m_Load_Color_RenderTargets = { false };
-	    bool m_Load_Depth_RenderTarget = false;
+		bool m_Load_Depth_RenderTarget = false;
+		mutable bool m_NeedsDynamicBind = false;
 
 	};  
 

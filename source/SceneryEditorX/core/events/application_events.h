@@ -205,6 +205,27 @@ namespace SceneryEditorX
 		bool m_Success = false;
 	};
 
+	// -------------------------------------------------------------------
+
+	class FirstFrameRenderedEvent : public Event
+	{
+	public:
+		FirstFrameRenderedEvent(bool firstFrame) : m_IsFirstFrame(firstFrame) {}
+		EVENT_CLASS_TYPE(FirstFrameRendered)
+		EVENT_CLASS_CATEGORY(EventCategoryApplication)
+		
+		[[nodiscard]] std::string ToString() const override
+		{
+			std::stringstream ss;
+			ss << "FirstFrameRenderedEvent";
+			return ss.str();
+		}
+	private:
+		bool m_IsFirstFrame = false;
+	};
+
+
+
 }
 
 // -------------------------------------------------------------------

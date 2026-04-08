@@ -30,6 +30,7 @@
  */
 #include "render_context.h"
 #include "debug/graphics_debug.h"
+#include "descriptor_pool_manager.h"
 #include <SceneryEditorX/core/application/application_data.h>
 #include <SceneryEditorX/logging/asserts.h>
 #include <SceneryEditorX/utils/repeat_call_tracker.h>
@@ -296,6 +297,10 @@ namespace SceneryEditorX
 				SEDX_CORE_ERROR_TAG("RenderContext", "Failed to create valid Vulkan device!");
 				return;
 			}
+
+			// Initialize global descriptor pool manager now that the logical device exists.
+			// This must happen before any code attempts to allocate descriptor sets (e.g., asset loading).
+			DescriptorPoolManager::Init();
 
 			s_IsInitialized = true;
 		}

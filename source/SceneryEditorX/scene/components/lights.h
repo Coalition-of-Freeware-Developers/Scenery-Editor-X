@@ -157,6 +157,7 @@ namespace SceneryEditorX
 		// Range
 		void SetRange(float range);
 		auto GetRange() const { return m_Range; }
+		float GetDrawDistance() const { return m_DrawDistance; };
 
 		// Area Light Dimensions
 		void SetAreaWidth(float width);
@@ -237,8 +238,9 @@ namespace SceneryEditorX
 		float m_TemperatureKelvin        = 0.0f;
 		float m_Range                    = 32.0f;
 		float m_Angle_Rad                = ToRadians(30.0f);
-		float m_AreaWidth               = 1.0f;  // area light width in meters
-		float m_AreaHeight              = 1.0f;  // area light height in meters
+		float m_AreaWidth                = 1.0f;  // area light width in meters
+		float m_AreaHeight               = 1.0f;  // area light height in meters
+		float m_DrawDistance             = 512.0f; // max distance at which light will affect objects (meters)
 
 		uint32_t m_Index                 = 0;
 		BoundingBox m_BoundingBox		 = BoundingBox::ZERO;

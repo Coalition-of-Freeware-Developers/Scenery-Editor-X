@@ -59,6 +59,76 @@ namespace SceneryEditorX
 		}
 	}
 
+	static void DownsampleBilinear(const std::vector<std::byte>& input, std::vector<std::byte>& output, uint32_t width, uint32_t height)
+	{
+		constexpr uint32_t channels = 4; // RGBA32 - engine standard
+  
+		// calculate new dimensions (halving both width and height)
+		uint32_t newWidth  = width  >> 1;
+		uint32_t newHeight = height >> 1;
+		
+		// ensure minimum size
+		if (newWidth < 1) newWidth = 1;
+		if (newHeight < 1) newHeight = 1;
+		
+		 // perform bilinear downsampling
+		for (uint32_t y = 0; y < newHeight; y++)
+		{
+			for (uint32_t x = 0; x < newWidth; x++)
+			{
+				// calculate base indices for this 2x2 block
+				uint32_t srcIdx              = (y * 2 * width + x * 2) * channels;
+				uint32_t srcIdx_Right        = srcIdx + channels;                     // right pixel
+				uint32_t srcIdx_Bottom       = srcIdx + (width * channels);           // bottom pixel
+				uint32_t srcIdx_BottomRight = srcIdx + (width * channels) + channels; // bottom-right pixel
+				uint32_t dstIdx              = (y * newWidth + x) * channels;
+
+				// process all 4 channels (RGBA)
+				for (uint32_t c = 0; c < channels; c++)
+				{
+					uint32_t sum = std::to_integer<uint32_t>(input[srcIdx + c]);
+					uint32_t count = 1;
+		
+					// right pixel
+					if (x * 2 + 1 < width)
+					{
+						sum += std::to_integer<uint32_t>(input[srcIdx_Right + c]);
+						count++;
+					}
+		
+					// bottom pixel
+					if (y * 2 + 1 < height)
+					{
+						sum += std::to_integer<uint32_t>(input[srcIdx_Bottom + c]);
+						count++;
+					}
+		
+					// bottom-right pixel
+					if ((x * 2 + 1 < width) && (y * 2 + 1 < height))
+					{
+						sum += std::to_integer<uint32_t>(input[srcIdx_BottomRight + c]);
+						count++;
+					}
+		
+					// assign the averaged result to the output
+					output[dstIdx + c] = static_cast<std::byte>(sum / count);
+				}
+			}
+		}
+	}
+
+	static uint32_t ComputeCount(uint32_t width, uint32_t height)
+	{
+		uint32_t mipCount = 1; // base level counts
+		while (width > 1 || height > 1)
+		{
+			width  = xMath::Max(1u, width >> 1);
+			height = xMath::Max(1u, height >> 1);
+			mipCount++;
+		}
+		return mipCount;
+	}
+
 	ImageResource::ImageResource(const ImgResourceSpec &spec) : SharedResource(ResourceType::Image), m_Spec(spec)
 	{
 		m_Device = RenderContext::Get()->GetDevice();
@@ -383,8 +453,7 @@ namespace SceneryEditorX
 		{
 			// Use a short-lived immediate command list on the graphics queue so
 			// this transition is applied safely on the GPU.
-			CommandList *temp = CommandList::BeginImmediateExecution(QueueType::Graphics);
-			if (temp)
+			if (CommandList *temp = CommandList::BeginImmediateExecution(QueueType::Graphics))
 			{
 				temp->InsertBarrier(m_Image, m_Spec.format, mipIndex, mipRange, GetArrayLength(), newLayout);
 				CommandList::EndImmediateExecution(temp);
@@ -451,12 +520,12 @@ namespace SceneryEditorX
 		MipBytes &mip = m_Slices[index].mips.emplace_back();
 		m_Depth = static_cast<uint32_t>(m_Slices.size());
 		m_MipCount = static_cast<uint32_t>(m_Slices[index].mips.size());
-		uint32_t mip_index = static_cast<uint32_t>(m_Slices[index].mips.size()) - 1;
-		uint32_t width = xMath::Max(1u, m_Spec.width >> mip_index);
-		uint32_t height = xMath::Max(1u, m_Spec.height >> mip_index);
-		uint32_t depth = (m_Spec.type == ImageType::Type3D) ? (m_Depth >> mip_index) : 1;
-		size_t size_bytes = CalculateMipSize(width, height, depth, m_Spec.format, m_BitsPerChannel, m_ChannelCount);
-		mip.bytes.resize(size_bytes);
+		uint32_t mipIndex = static_cast<uint32_t>(m_Slices[index].mips.size()) - 1;
+		uint32_t width = xMath::Max(1u, m_Spec.width >> mipIndex);
+		uint32_t height = xMath::Max(1u, m_Spec.height >> mipIndex);
+		uint32_t depth = (m_Spec.type == ImageType::Type3D) ? (m_Depth >> mipIndex) : 1;
+		size_t sizeBytes = CalculateMipSize(width, height, depth, m_Spec.format, m_BitsPerChannel, m_ChannelCount);
+		mip.bytes.resize(sizeBytes);
 	}
 
 	bool ImageResource::IsDepthFormat() const
@@ -531,6 +600,95 @@ namespace SceneryEditorX
 			return nullptr;
 
 		return &m_Slices[arrayIndex];
+	}
+
+	void ImageResource::PrepareForGpu()
+	{
+		// atomically transition from idle to preparing so only one thread can enter
+		ResourceState expected = ResourceState::MaxEnum;
+		if (!m_ResourceState.compare_exchange_strong(expected, ResourceState::PreparingForGpu))
+			return;
+
+		// skip textures with invalid dimensions (failed to load)
+		if (m_Spec.width == 0 || m_Spec.height == 0)
+		{
+			SEDX_CORE_ERROR_TAG("ImageResource","Texture '%s' has invalid dimensions (%dx%d), skipping preparation", m_Spec.name ? m_Spec.name : m_ObjectName.c_str(), m_Spec.width, m_Spec.height);
+			m_ResourceState = ResourceState::MaxEnum;
+			return;
+		}
+
+		{
+			char marker[128];
+			snprintf(marker, sizeof(marker), "texture_prepare_gpu: %s", m_Spec.name ? m_Spec.name : m_ObjectName.c_str());
+		}
+
+		bool isNotCompressed   = !IsCompressedFormat(m_Spec.format); // the bistro world loads pre-compressed textures
+		bool isMaterialTexture = IsMaterialTexture() && !m_Slices.empty(); // render targets or textures which are written to in compute passes, don't need mip and compression
+
+		if (isNotCompressed && isMaterialTexture)
+		{
+			// generate mip chain for all slices
+			uint32_t mipCount = ComputeCount(m_Spec.width, m_Spec.height);
+			for (uint32_t sliceIndex = 0; sliceIndex < static_cast<uint32_t>(m_Slices.size()); sliceIndex++)
+			{
+				for (uint32_t mipIndex = 1; mipIndex < mipCount; mipIndex++)
+				{
+					AllocateMip(sliceIndex);
+
+					DownsampleBilinear(m_Slices[sliceIndex].mips[mipIndex - 1].bytes, // larger
+						m_Slices[sliceIndex].mips[mipIndex].bytes, // smaller
+						xMath::Max(1u, m_Spec.width  >> (mipIndex - 1)), // larger width
+						xMath::Max(1u, m_Spec.height >> (mipIndex - 1)) // larger height
+					);
+				}
+			}
+
+			// compress - format is chosen per-texture (bc3 for packed, bc1 for color, bc5 for normal, etc.)
+			bool compress       = m_Spec.flags & ImageResourceFlags::Compress;
+			bool notCompressed = !IsCompressedFormat(m_Spec.format);
+			if (compress && notCompressed)
+			{
+				VkFormat target = m_CompressionFormat != VK_FORMAT_MAX_ENUM ? m_CompressionFormat : VK_FORMAT_BC3_UNORM_BLOCK;
+
+				// TODO: integrate compression into the mip generation loop with AMD's Compressonator library.
+				//compressonator::compress(this);
+			}
+		}
+		
+		// upload to gpu
+		if (!Device::IsDeviceLost())
+		{
+			SEDX_CORE_ASSERT(CreateRef<ImageResource>(), "Failed to create image resource");
+		}
+
+		ComputeMemoryUsage();
+
+		if (m_Image)
+		{
+			m_ResourceState = ResourceState::PreparedForGpu;
+		}
+		else
+		{
+			m_ResourceState = ResourceState::MaxEnum;
+		}
+
+	}
+
+	void ImageResource::ComputeMemoryUsage()
+	{
+		m_ObjectSize = 0;
+
+		uint32_t arrayLength = (m_Spec.type == ImageType::Type3D) ? 1 : m_Spec.depth;
+		for (uint32_t arrayIndex = 0; arrayIndex < arrayLength; arrayIndex++)
+		{
+			for (uint32_t mipIndex = 0; mipIndex <m_Spec.mipCount; mipIndex++)
+			{
+				const uint32_t mipWidth  = xMath::Max(1u, m_Spec.width >> mipIndex);
+				const uint32_t mipHeight = xMath::Max(1u, m_Spec.height >> mipIndex);
+				const uint32_t mipDepth  = (m_Spec.type == ImageType::Type3D) ? xMath::Max(1u, m_Spec.depth >> mipIndex) : 1;
+				m_ObjectSize += CalculateMipSize(mipWidth, mipHeight, mipDepth, m_Spec.format, m_BitsPerChannel, m_ChannelCount);
+			}
+		}
 	}
 
 } // namespace SceneryEditorX

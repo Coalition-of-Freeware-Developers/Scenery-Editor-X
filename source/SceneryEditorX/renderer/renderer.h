@@ -30,7 +30,6 @@
  */
 #pragma once
 #include "renderer_buffers.h"
-#include "SceneryEditorX/core/identifiers/flag.h"
 #include "font/font.h"
 #include "vulkan/blend_states.h"
 #include "vulkan/command_list.h"
@@ -43,6 +42,7 @@
 #include "vulkan/sync/frame_sync.h"
 #include <array>
 #include <SceneryEditorX/asset/model.h>
+#include <SceneryEditorX/core/identifiers/flag.h>
 #include <SceneryEditorX/core/threading/render_thread.h>
 #include <SceneryEditorX/renderer/gpu_stats.h>
 
@@ -50,6 +50,7 @@
 
 namespace SceneryEditorX
 {
+	struct PersistentLine;
 	class MaterialAsset;
 	class Mesh;
 	enum class MeshType : uint8_t;
@@ -58,6 +59,18 @@ namespace SceneryEditorX
 	class Swapchain;
 	class ShaderManager;
 	class Camera;
+
+	/**
+	 * @struct ShadowSlice
+	 * @brief Represents a slice of a shadow map for a specific light source.
+	 */
+	struct ShadowSlice
+	{
+		Light* light;
+		uint32_t slice_Index;
+		uint32_t res;
+		xMath::Rectangle rect;
+	};
 
 	/**
 	 * @brief Static renderer class managing Vulkan rendering lifecycle.
@@ -330,13 +343,12 @@ namespace SceneryEditorX
 		/* @brief Returns the currently active camera, or nullptr if none has been set. */
 		static Camera* GetCamera();
 
-	    /**
+		/**
 		 * @brief Get a structured buffer by type.
 		 * @param type The type of buffer to retrieve.
 		 * @return Pointer to the requested Buffer.
 		 */
 		static Buffer *GetBuffer(Renderer_Buffer type);
-
 
 		/**
 		 * @brief Update the camera uniform buffer object (UBO) for the current frame.
@@ -346,6 +358,12 @@ namespace SceneryEditorX
 		 * @note The camera data should be updated before recording draw commands that use it.
 		 */
 		static void UpdateCameraUBO(uint32_t frameIndex);
+
+
+		/**
+		 * @brief Update the shadow atlas render target based on current shadow-casting lights and their required resolutions.
+		 */
+		static void UpdateShadowAtlas();
 
 		/**
 		 * @brief Returns a pointer to the standard texture for the given type.
@@ -509,12 +527,11 @@ namespace SceneryEditorX
 		 */
 		static DepthStencilState *GetDepthStencilState(Renderer_DepthStencilState type);
 
-
 		/**
 		 * @brief Returns true when the given draw call should be submitted via the CPU-driven path.
 		 * GPU-indirect draws are handled separately and should be skipped in CPU loops.
 		 */
-		static bool IsCpuDrivenDraw(const Renderer_DrawCall &drawCall, const class Material *material);
+		static bool IsCpuDrivenDraw(const Renderer_DrawCall &drawCall, const class MaterialAsset *material);
 
 		/**
 		 * @brief Rotates the per-frame buffers to avoid CPU-GPU race conditions without stalling.
@@ -539,7 +556,131 @@ namespace SceneryEditorX
 		 */
 		static void UpdateDrawCalls(CommandList *cmdList);
 
+		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+		/// Debug Primitives																							  ///
+		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+		/**
+		 * @brief Draw a line between two points with specified colors and duration.
+		 *
+		 * This function adds a line to the renderer's debug draw list. If duration_sec is greater than 0, 
+		 * the line will persist for that many seconds; otherwise, it will only be drawn for the current frame.
+		 * @param from Starting point of the line in world space.
+		 * @param to Ending point of the line in world space.
+		 * @param color_from Color at the starting point of the line.
+		 * @param color_to Color at the ending point of the line.
+		 * @param duration_sec Duration in seconds for which the line should persist. If 0 or less, the line will only be drawn for the current frame.
+		 */
+		static void DrawLine(const Vec3 &from, const Vec3 &to, const Color &color_from, const Color &color_to, float duration_sec);
+
+		/**
+		 * @brief 
+		 * @param from 
+		 * @param to 
+		 */
+		static void DrawLine(const Vec3 &from, const Vec3 &to);
+
+		/**
+		 * @brief 
+		 * @param from 
+		 * @param to 
+		 * @param color 
+		 * @param duration_sec 
+		 */
+		static void DrawLine(const Vec3 &from, const Vec3 &to, const Color &color, float duration_sec);
+
+		/**
+		 * @brief 
+		 * @param v0 
+		 * @param v1
+		 * @param v2
+		 * @param color color of the triangle (applied to all vertices) 
+		 * @param duration_sec time in seconds for which the triangle should persist; if 0 or less, it will only be drawn for the current frame 
+		 */
+		static void DrawTriangle(const Vec3 &v0, const Vec3 &v1, const Vec3 &v2, const Color &color, float duration_sec);
+
+		/**
+		 * @brief 
+		 * @param box 
+		 * @param color 
+		 * @param duration_sec 
+		 */
+		static void DrawBox(const BoundingBox &box, const Color &color, float duration_sec);
+
+		/**
+		 * @brief 
+		 * @param center 
+		 * @param axis 
+		 * @param radius 
+		 * @param segment_count 
+		 * @param color 
+		 * @param duration_sec 
+		 */
+		static void DrawCircle(const Vec3 &center, const Vec3 &axis, float radius, uint32_t segment_count, const Color &color, float duration_sec);
+
+		/**
+		 * @brief 
+		 * @param center 
+		 * @param radius 
+		 * @param segment_count 
+		 * @param color 
+		 * @param duration_sec 
+		 */
+		static void DrawSphere(const Vec3 &center, float radius, uint32_t segment_count, const Color &color, float duration_sec);
+
+		/**
+		 * @brief 
+		 * @param start 
+		 * @param end 
+		 * @param arrow_size 
+		 * @param color 
+		 * @param duration_sec 
+		 */
+		static void DrawDirectionalArrow(const Vec3 &start, const Vec3 &end, float arrow_size, const Color &color, float duration_sec);
+
+		/**
+		 * @brief 
+		 * @param plane 
+		 * @param color 
+		 * @param duration_sec 
+		 */
+		static void DrawPlane(const xMath::Plane &plane, const Color &color, float duration_sec);
+
+		/**
+		 * @brief 
+		 */
+		static void UpdatePersistentLines();
+
+		/**
+		 * @brief 
+		 */
+		static void AddLinesToBeRendered();
+
+		// line and icon rendering
+		static Ref<Buffer> m_Lines_VertexBuffer;
+		static std::vector<Vertex_PosCol> m_Lines_Vertices;
+		static std::vector<PersistentLine> m_Persistent_Lines;
+		static std::vector<std::tuple<ImageResource*, xMath::Vec3>> m_Icons;
+
 		// -------------------------------------------------------
+
+		/**
+		 * @brief 
+		 * @param cmdList 
+		 */
+		static void UpdateMaterials(CommandList* cmdList);
+
+		/**
+		 * @brief 
+		 * @param cmdList 
+		 */
+		static void UpdateLights(CommandList* cmdList);
+
+		/**
+		 * @brief 
+		 * @param cmdList 
+		 */
+		static void UpdateBoundingBoxes(CommandList* cmdList);
 
 		CommandList *m_CurrentCmdList; // Set at the beginning of each frame, used for resource updates and utility functions.
 		AssetManager *m_AssetManager;  // Set during Init, used for loading models, textures, etc.
@@ -627,17 +768,23 @@ namespace SceneryEditorX
 		static uint32_t m_SwapchainImageIndex;   // Current swapchain image
 		static bool m_FrameInProgress;           // True between BeginFrame and EndFrame
 
-		// per-frame gpu buffers, rotated so in-flight frames never race
-		struct FrameResource
+		/**
+		 * @struct IndirectFrameResource
+		 * @brief Holds per-frame GPU resources to avoid race conditions between in-flight frames.
+		 */
+		struct IndirectFrameResource
 		{
-			Ref<Buffer> m_Indirect_DrawArgs;
-			Ref<Buffer> m_Indirect_DrawData;
-			Ref<Buffer> m_Indirect_DrawArgs_Out;
-			Ref<Buffer> m_Indirect_DrawData_Out;
-			Ref<Buffer> m_Indirect_DrawCount;
+			Ref<Buffer> m_DrawArgs;
+			Ref<Buffer> m_DrawData;
+			Ref<Buffer> m_DrawArgs_Out;
+			Ref<Buffer> m_DrawData_Out;
+			Ref<Buffer> m_DrawCount;
 		};
-		static std::array<FrameResource, DRAW_DATA_BUFFER_COUNT> m_FrameResources;
+		static std::array<IndirectFrameResource, DRAW_DATA_BUFFER_COUNT> m_FrameResources;
 		static uint32_t m_FrameResource_Index;
+		static std::array<ShaderBuffer_IndirectDrawArgs, MAX_ARRAY_SIZE> m_Indirect_DrawArgs;
+		static std::array<ShaderBuffer_DrawData, MAX_ARRAY_SIZE> m_Indirect_DrawData;
+		static std::vector<ShadowSlice> m_ShadowSlices;
 
 		/* Basic forward-rendering pipeline (active until the full deferred pipeline is wired up) */
 		static VkPipeline m_BasicPipeline;
@@ -669,6 +816,8 @@ namespace SceneryEditorX
 		static std::array<VkBuffer, MAX_FRAMES_IN_FLIGHT> m_CameraUboBuffers;
 		static std::array<VmaAllocation, MAX_FRAMES_IN_FLIGHT> m_CameraUboAllocations;
 		static std::array<void*, MAX_FRAMES_IN_FLIGHT> m_CameraUboMapped;
+
+		static uint32_t m_Count_ActiveLights;
 
 		/* @brief Creates per-frame camera UBOs, descriptor pool and sets. */
 		static void CreateCameraResources();

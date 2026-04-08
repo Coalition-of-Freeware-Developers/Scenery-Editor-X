@@ -125,12 +125,14 @@ namespace SceneryEditorX
 			s_Features_1_4.pNext = nextInChain;
 			nextInChain = &s_Features_1_4;
 	
+			/*
 			// Mutable descriptor is conditionally included for XeSS
 			if (s_XessSupported)
 			{
 				s_FeaturesMutableDescriptor.pNext = nextInChain;
 				nextInChain = &s_FeaturesMutableDescriptor;
 			}
+			*/
 	
 			// Ray tracing features are conditionally included
 			if (s_IsRayTracingSupported)
