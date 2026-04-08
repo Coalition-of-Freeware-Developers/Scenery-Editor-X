@@ -89,14 +89,14 @@ namespace SceneryEditorX
 		 * @param set The descriptor set index.
 		 * @return The descriptor set layout.
 		 */
-		VkDescriptorSetLayout GetDescriptorSetLayout(uint32_t set) { return m_DescriptorSetLayouts[set]; }
+		VkDescriptorSetLayout GetDescriptorSetLayout(const uint32_t set) { return m_DescriptorSetLayouts[set]; }
 
 		/**
 		 * @brief Retrieves the shader inputs for the specified descriptor set.
 		 * @param set The descriptor set index.
 		 * @return A vector of shader inputs.
 		 */
-		const std::vector<ShaderInput> GetInputs(uint32_t set) { return m_Input[set]; }
+		const std::vector<ShaderInput> GetInputs(const uint32_t set) { return m_Input[set]; }
 
 		/**
 		 * @brief Retrieves the number of descriptor sets for the shader.

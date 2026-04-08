@@ -211,12 +211,24 @@ namespace SceneryEditorX
 		 * @brief Parse and process the deletion queue, destroying resources as needed.
 		 */
 		static void ParseDeletionQueue();
-	
+
 		/**
 		 * @brief Check if the deletion queue needs to be parsed.
 		 * @return True if the deletion queue needs to be parsed, false otherwise.
 		 */
 		static bool NeedToParseDeletionQueue();
+
+		/**
+		 * @brief Signal that the renderer has fully shut down and no further
+		 * resources will legitimately be enqueued for deletion.
+		 *
+		 * After this call any AddDeletionQueue invocation (e.g. from Ref<> destructors
+		 * running in the CRT static-dtor phase) is silently discarded, preventing a
+		 * use-after-free on the already-destroyed s_DeletionQueue map.
+		 * Must be called at the very end of Renderer::Shutdown(), after the final
+		 * ParseDeletionQueue() flush.
+		 */
+		static void NotifyShutdown();
 
 		/**
 		 * @brief Get the next available command list for the current queue index, cycling through the pre-allocated command lists.

@@ -41,12 +41,25 @@ namespace SceneryEditorX
 
 	Shader::~Shader()
 	{        
-		const Ref<Device> device = RenderContext::Get()->GetDevice();
-		SEDX_CORE_ASSERT(device.IsValid(), "Invalid device");
+		// Guard against being called during the CRT static-destructor phase after
+		// Renderer::Shutdown() has already torn down the RenderContext and the
+		// spdlog logging infrastructure.  In that situation RenderContext::Get()
+		// returns an invalid Ref, and calling any logging/assert macro would
+		// dereference the already-destroyed logger (crash at offset 0x50 in
+		// spdlog::logger::level_).  The VkDevice is already gone at that point,
+		// so Vulkan cleanup is moot — return silently instead of crashing.
+		const Ref<RenderContext> ctx = RenderContext::Get();
+		if (!ctx.IsValid())
+			return;
+
+		const Ref<Device> device = ctx->GetDevice();
+		if (!device.IsValid())
+			return;
 
 		for (VkDescriptorSetLayout layout : m_DescriptorSetLayouts)
 		{
-			vkDestroyDescriptorSetLayout(device->GetLogicalDevice(), layout, nullptr);
+			if (layout != VK_NULL_HANDLE)
+				vkDestroyDescriptorSetLayout(device->GetLogicalDevice(), layout, nullptr);
 		}
 		m_Stages.clear();
 	}

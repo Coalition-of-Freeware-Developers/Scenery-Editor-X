@@ -196,7 +196,7 @@ namespace SceneryEditorX::IO
 		}
 		catch (std::filesystem::filesystem_error &e)
 		{
-			SEDX_CORE_WARN("%s, %s", e.what(), path.c_str());
+			SEDX_CORE_WARN("{}, {}", e.what(), path.c_str());
 		}
 
 		return false;
@@ -640,7 +640,7 @@ namespace SceneryEditorX::IO
 		int result = _putenv_s(key.c_str(), value.c_str());
 		if (result != 0)
 		{
-			SEDX_CORE_ERROR_TAG("File Manager", "Failed to set environment variable: %s", key.c_str());
+			SEDX_CORE_ERROR_TAG("File Manager", "Failed to set environment variable: {}", key.c_str());
 			return false;
 		}
 		return true;
@@ -648,7 +648,7 @@ namespace SceneryEditorX::IO
 		// POSIX setenv
 		if (setenv(key.c_str(), value.c_str(), 1) != 0)
 		{
-			SEDX_CORE_ERROR_TAG("File Manager", "Failed to set environment variable: %s", key.c_str());
+			SEDX_CORE_ERROR_TAG("File Manager", "Failed to set environment variable: {}", key.c_str());
 			return false;
 		}
 		return true;
@@ -780,7 +780,7 @@ namespace SceneryEditorX::IO
 			}
 			catch (std::system_error &e)
 			{
-				SEDX_CORE_WARN("Failed to read a file path. %s", e.what());
+				SEDX_CORE_WARN("Failed to read a file path. {}", e.what());
 			}
 		}
 
@@ -799,13 +799,13 @@ namespace SceneryEditorX::IO
 		const uint64_t size = std::filesystem::file_size(path, ec);
 		if (ec)
 		{
-			SEDX_CORE_WARN("Failed to get file size: %s, %s", ec.message().c_str(), path.string().c_str());
+			SEDX_CORE_WARN("Failed to get file size: {}, {}", ec.message().c_str(), path.string().c_str());
 			return 0;
 		}
 
 		if (size > static_cast<uint64_t>(std::numeric_limits<uint32_t>::max()))
 		{
-			SEDX_CORE_WARN("File size truncated to uint32_t: %s (%llu bytes)", path.string().c_str(), (unsigned long long)size);
+			SEDX_CORE_WARN("File size truncated to uint32_t: {} (%llu bytes)", path.string().c_str(), (unsigned long long)size);
 			return std::numeric_limits<uint32_t>::max();
 		}
 
@@ -830,14 +830,14 @@ namespace SceneryEditorX::IO
 				}
 				catch (const std::filesystem::filesystem_error &e)
 				{
-					SEDX_CORE_WARN("Failed to inspect directory entry: %s", e.what());
+					SEDX_CORE_WARN("Failed to inspect directory entry: {}", e.what());
 					continue;
 				}
 			}
 		}
 		catch (const std::filesystem::filesystem_error &e)
 		{
-			SEDX_CORE_WARN("Failed to iterate directory '%s': %s", path.string().c_str(), e.what());
+			SEDX_CORE_WARN("Failed to iterate directory '{}': {}", path.string().c_str(), e.what());
 		}
 
 		return count;
@@ -862,7 +862,7 @@ namespace SceneryEditorX::IO
 		}
 		catch (std::filesystem::filesystem_error &e)
 		{
-			SEDX_CORE_ERROR_TAG("File Manager", "Failed to delete path: %s. Error: %s", path.c_str(), e.what());
+			SEDX_CORE_ERROR_TAG("File Manager", "Failed to delete path: {}. Error: {}", path.c_str(), e.what());
 		}
 
 		return false;
@@ -943,7 +943,7 @@ namespace SceneryEditorX::IO
 			Delete(path);
 		}
 
-		SEDX_CORE_INFO_TAG("File Manager", "Creating archive: %s", path.c_str());
+		SEDX_CORE_INFO_TAG("File Manager", "Creating archive: {}", path.c_str());
 
 		// build command arguments: 7z a archive.7z file1 file2 dir1 ...
 		std::vector<std::string> args = {seven_zip_exe, "a", path};
@@ -960,11 +960,11 @@ namespace SceneryEditorX::IO
 		// verify archive was created
 		if (!Exists(path))
 		{
-			SEDX_CORE_ERROR_TAG("File Manager", "Failed to create archive: %s", path.c_str());
+			SEDX_CORE_ERROR_TAG("File Manager", "Failed to create archive: {}", path.c_str());
 			return false;
 		}
 
-		SEDX_CORE_INFO_TAG("File Manager", "Archive created: %s", path.c_str());
+		SEDX_CORE_INFO_TAG("File Manager", "Archive created: {}", path.c_str());
 		return true;
 	}
 

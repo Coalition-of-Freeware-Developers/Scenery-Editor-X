@@ -168,6 +168,12 @@ namespace UI
 
 	void Shutdown()
 	{
+		// Release all GPU resources (Ref<Shader>, Ref<ImageResource>, etc.) while
+		// the VkDevice and logging system are still alive.  Without this call,
+		// g_VertexShader / g_FragmentShader are file-scope statics whose Ref<>
+		// destructors fire in the CRT static-dtor phase — after RenderContext and
+		// spdlog have already been destroyed — causing the 0x50 access violation.
+		DestroyResources();
 		ImGui::DestroyPlatformWindows();
 	}
 
@@ -193,7 +199,7 @@ namespace UI
 	{
 		if (!drawData || drawData->TotalVtxCount <= 0 || drawData->TotalIdxCount <= 0)
 			return;
-	
+
 		// skip the first two frames to let the renderer fully initialize.
 		// frame 0: pipeline layouts and descriptor sets are still being created.
 		// frame 1: bindless draw_data buffer descriptor may not have been written yet.

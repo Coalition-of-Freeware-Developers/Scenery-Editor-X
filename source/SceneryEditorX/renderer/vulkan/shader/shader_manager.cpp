@@ -121,7 +121,7 @@ namespace SceneryEditorX
 	
 	Ref<Shader> &ShaderManager::GetShader(const std::string &name)
 	{
-		SEDX_CORE_ASSERT(m_Shaders.contains(name), "Shader %s is not present", name.c_str());
+		SEDX_CORE_ASSERT(m_Shaders.contains(name), "Shader {} is not present", name.c_str());
 		return m_Shaders[name];
 	}
 	

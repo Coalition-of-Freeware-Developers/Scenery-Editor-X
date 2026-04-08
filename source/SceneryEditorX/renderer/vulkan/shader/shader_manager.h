@@ -47,7 +47,7 @@ namespace ShaderCompiler
 	 * @brief Represents the current state of shader compilation. 
 	 * This can be used to track the progress of shader compilation and handle any errors that may occur during the process. 
 	 */
-	enum class State
+	enum class State : uint8_t
 	{
 		Idle,
 		Compiling,
@@ -85,7 +85,6 @@ namespace SceneryEditorX
 	 * @brief Manages Vulkan shader modules and their corresponding stages.
 	 * This class provides a convenient way to handle multiple shader stages within a single object.
 	 * This allows Pipeline to accept a single object that may contain multiple stages (vertex, fragment, etc.).
-	 *
 	 */
 	class ShaderManager 
 	{
@@ -113,56 +112,54 @@ namespace SceneryEditorX
 		/* @brief Destroys the ShaderManager and releases all associated Vulkan shader modules. */
 		~ShaderManager();
 
-		
-
 		/**
-		 * @brief 
-		 * @param name 
-		 * @return  
+		 * @brief Creates a new shader with the specified name.
+		 * @param name name of the shader to create
+		 * @return A reference to the created shader.
 		 */
 		static Ref<Shader>& CreateShader(const std::string& name);
 
 		/**
-		 * @brief 
-		 * @param name 
-		 * @return 
+		 * @brief Retrieves a shader with the specified name.
+		 * @param name name of the shader to retrieve
+		 * @return A reference to the retrieved shader.
 		 */
 		static Ref<Shader>& GetShader(const std::string& name);
 
 		/**
-		 * @brief 
+		 * @brief Clears all shaders managed by the ShaderManager.
 		 */
 		static void Clear();
 
 		/**
-		 * @brief 
-		 * @return 
+		 * @brief Retrieves the compilation state of the shaders.
+		 * @return The current compilation state.
 		 */
 		size_t StageCount() const { return m_Stages.size(); }
 
 		/**
-		 * @brief 
-		 * @param i 
-		 * @return 
+		 * @brief Retrieves the shader stage at the specified index.
+		 * @param i The index of the shader stage to retrieve.
+		 * @return The shader stage flag at the specified index.
 		 */
-		VkShaderStageFlagBits StageAt(size_t i) const { return m_Stages[i]; }
+		VkShaderStageFlagBits StageAt(const size_t i) const { return m_Stages[i]; }
 
 		/**
-		 * @brief 
-		 * @param i 
-		 * @return 
+		 * @brief Retrieves the Vulkan shader module at the specified index.
+		 * @param i The index of the shader module to retrieve.
+		 * @return The Vulkan shader module at the specified index.
 		 */
-		VkShaderModule ModuleAt(size_t i) const { return m_Modules[i]; }
+		VkShaderModule ModuleAt(const size_t i) const { return m_Modules[i]; }
 
 		/**
-		 * @brief 
-		 * @return 
+		 * @brief Retrieves the compilation state of the shaders.
+		 * @return The current compilation state.
 		 */
 		ShaderCompiler::State GetCompilationState() const { return m_CompilationState; }
 
 		/**
-		 * @brief 
-		 * @return 
+		 * @brief Checks if the shaders have been successfully compiled.
+		 * @return True if the shaders are compiled successfully, false otherwise.
 		 */
 		bool IsCompiled() const { return m_CompilationState == ShaderCompiler::State::Succeeded; }
 

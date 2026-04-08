@@ -152,7 +152,7 @@ namespace SceneryEditorX
 		{
 			if (!SDL_InitSubSystem(SDL_INIT_AUDIO))
 			{
-				SEDX_CORE_ERROR_TAG("Window","Failed to initialise SDL audio subsystem: %s.", SDL_GetError());
+				SEDX_CORE_ERROR_TAG("Window","Failed to initialise SDL audio subsystem: {}.", SDL_GetError());
 			}
 		}
 
@@ -160,7 +160,7 @@ namespace SceneryEditorX
 		{
 			if (!SDL_InitSubSystem(SDL_INIT_VIDEO))
 			{
-				SEDX_CORE_ERROR_TAG("Window", "Failed to initialise SDL video subsystem: %s.", SDL_GetError());
+				SEDX_CORE_ERROR_TAG("Window", "Failed to initialise SDL video subsystem: {}.", SDL_GetError());
 			}
 		}
 
@@ -168,7 +168,7 @@ namespace SceneryEditorX
 		{
 			if (!SDL_InitSubSystem(SDL_INIT_GAMEPAD))
 			{
-				SEDX_CORE_ERROR_TAG("Window", "Failed to initialise SDL gamepad subsystem: %s.", SDL_GetError());
+				SEDX_CORE_ERROR_TAG("Window", "Failed to initialise SDL gamepad subsystem: {}.", SDL_GetError());
 			}
 		}
 	}
@@ -408,7 +408,7 @@ namespace SceneryEditorX
 		// set up hit test callback for custom title bar dragging and resizing
 		if (!SDL_SetWindowHitTest(s_Window, HitTestCallback, nullptr))
 		{
-			SEDX_CORE_WARN_TAG("Window","Failed to set window hit test callback: %s", SDL_GetError());
+			SEDX_CORE_WARN_TAG("Window","Failed to set window hit test callback: {}", SDL_GetError());
 		}
 
 		SDL_SetWindowPosition(s_Window, posX, posY);

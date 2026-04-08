@@ -172,12 +172,12 @@ namespace SceneryEditorX
 		for (Entity* entity : s_EntityPointers)
 		{
 			if (entity->GetActive())
-			{
-				if (Render* renderable = &entity->GetComponent<Render>())
 				{
-					s_BoundingBox.Merge(renderable->GetBoundingBox());
+					if (Renderable* renderable = entity->GetComponent<Renderable>())
+					{
+						s_BoundingBox.Merge(renderable->GetBoundingBox());
+					}
 				}
-			}
 		}
 	}
 
@@ -461,7 +461,7 @@ namespace SceneryEditorX
 			{
 				for (Entity* ent : s_EntityPointers)
 				{
-					if (Render* renderable = &ent->GetComponent<Render>())
+					if (Renderable* renderable = ent->GetComponent<Renderable>())
 					{
 						if (MaterialAsset* material = renderable->GetMaterialAsset())
 						{

@@ -289,6 +289,13 @@ namespace SceneryEditorX
 		 * @return Pointer to the current present command list, or nullptr if unavailable.
 		 */
 		static CommandList* GetCommandListPresent();
+
+		/**
+		 * @brief Returns nullptr — UI rendering is now performed inside RecordRenderCommands
+		 *        via SetExternalRecordingBuffer, so no separate frame command list is needed.
+		 * @deprecated Use GetCommandListPresent() with SetExternalRecordingBuffer instead.
+		 */
+		[[deprecated]] static CommandList* GetCommandListFrame();
 		
 		/**
 		 * @brief Create models and upload to GPU. 
@@ -754,6 +761,8 @@ namespace SceneryEditorX
 
 		static CommandList *m_CmdList_Compute;
 		static CommandList *m_CmdList_Present;
+		/// @brief Kept as nullptr — UI is now rendered via SetExternalRecordingBuffer inside RecordRenderCommands.
+		static CommandList *m_CmdList_Frame;
 		static Scope<AssetManager> s_AssetManager;
 		static uint32_t m_ResourceIndex;
 

@@ -37,8 +37,8 @@ namespace SceneryEditorX
 {
 	
 	#define MAXIMUM_NUMBER_OF_SETS_PER_STAGE 8
-	#define MAXIMUM_ARRAY_ELEMENTS 1024 * 16
-	#define MAX_BINDLESS 1024 * 4
+	#define MAXIMUM_ARRAY_ELEMENTS (1024 * 16)
+	#define MAX_BINDLESS (1024 * 4)
 	
 	// -------------------------------------------------------
 
@@ -74,6 +74,7 @@ namespace SceneryEditorX
 			case Stage::Fragment:						return VK_SHADER_STAGE_FRAGMENT_BIT;
 			case Stage::Compute:						return VK_SHADER_STAGE_COMPUTE_BIT;
 			case Stage::None:							SEDX_CORE_ASSERT(false, "Invalid shader stage: None"); break;
+			case Stage::MaxEnum:
 			default:
 				return VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM;
 		}

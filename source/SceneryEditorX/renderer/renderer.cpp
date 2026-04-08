@@ -128,6 +128,7 @@ namespace SceneryEditorX
 
 	CommandList *Renderer::m_CmdList_Compute = nullptr;
 	CommandList *Renderer::m_CmdList_Present = nullptr;
+	CommandList *Renderer::m_CmdList_Frame   = nullptr; // per-frame UI command list, submitted alongside swapchain CB
 	Scope<AssetManager> Renderer::s_AssetManager = nullptr;
 	uint32_t Renderer::m_ResourceIndex = 0;
 
@@ -617,6 +618,12 @@ namespace SceneryEditorX
 
 		m_ResourcesInitialized = false;
 		SEDX_CORE_TRACE_TAG("Renderer", "=== Renderer Shutdown Complete ===");
+
+		// Signal the deletion queue that no further resources will be legitimately
+		// enqueued.  Any AddDeletionQueue calls arriving after this point come from
+		// Ref<> destructors running in the CRT static-dtor phase and must be dropped
+		// to avoid a use-after-free on the already-destroyed s_DeletionQueue map.
+		QueueManager::NotifyShutdown();
 	}
 
 	void Renderer::Tick()
@@ -674,6 +681,10 @@ namespace SceneryEditorX
 		m_CmdList_Present = queueManager->NextCommandList();
 		SEDX_CORE_ASSERT(m_CmdList_Present != nullptr, "Failed to acquire present command list");
 		m_CmdList_Present->Begin();
+
+		// m_CmdList_Frame is no longer used — UI rendering happens inside RecordRenderCommands
+		// via SetExternalRecordingBuffer, so the swapchain dynamic render pass is already active.
+		m_CmdList_Frame = nullptr;
 
 #pragma region Compute Command List Setup
 
@@ -899,12 +910,21 @@ namespace SceneryEditorX
 			UpdatePersistentLines();
 			AddLinesToBeRendered();
 
+			/*
 			if (canRender)
 			{
 				BlitToBackBuffer(m_CmdList_Present, GetRenderTarget(Renderer_RenderTarget::frame_output));
 			}
 
 			SubmitAndPresent();
+			*/
+
+		    // NOTE: BlitToBackBuffer via m_CmdList_Present is intentionally removed here.
+			// m_CmdList_Present is used for resource updates (materials, lights, etc.) only;
+			// it is never submitted with a swapchain acquire semaphore, so any render commands
+			// recorded into it would be silently discarded. The blit-to-swapchain is handled
+			// inside RecordRenderCommands() which runs within the properly-submitted
+			// m_CommandBuffers[m_CurrentFrameIndex] command buffer.
 
 			{
 				m_Lines_Vertices.clear();
@@ -976,13 +996,8 @@ namespace SceneryEditorX
 			}
 			*/
 
-			/*
-			// Submit ImGui draw data to the GPU via the custom UI backend
-			if (ImGui::GetCurrentContext() && ImGui::GetDrawData())
-			{
-				UI::Render(ImGui::GetDrawData(), nullptr, false);
-			}
-			*/
+			// UI rendering is done inside RecordRenderCommands (inside the dynamic render pass),
+			// so no separate UI command list is needed here.
 
 		}
 	}   
@@ -1223,6 +1238,11 @@ namespace SceneryEditorX
 		SEDX_CORE_VERIFY(!IsLikelyUninitialized(fenceHandle), "Fence handle appears uninitialized: 0x{:x}", fenceHandle);
 		SEDX_CORE_VERIFY(!IsLikelyUninitialized(cbHandle), "Command buffer appears uninitialized: 0x{:x}", cbHandle);
 
+		// UI is now rendered inside RecordRenderCommands (in the same CB as scene geometry),
+		// so only the single swapchain CB needs to be submitted.
+		VkCommandBuffer frameCBs[1] = { cb };
+		uint32_t frameCBCount = 1;
+
 		SEDX_CORE_TRACE_TAG("Renderer", "Submitting command buffer for frame {}, waiting on present semaphore {}, signaling render semaphore {}",
 			m_FrameNumber,
 			static_cast<void *>(acquireSemaphore),
@@ -1243,8 +1263,8 @@ namespace SceneryEditorX
 		submitInfo.waitSemaphoreCount = 1;
 	   submitInfo.pWaitSemaphores = &acquireSemaphore;
 		submitInfo.pWaitDstStageMask = &waitStages;
-		submitInfo.commandBufferCount = 1;
-		submitInfo.pCommandBuffers = &cb;
+		submitInfo.commandBufferCount = frameCBCount;
+		submitInfo.pCommandBuffers = frameCBs;
 		submitInfo.signalSemaphoreCount = 1;
 		submitInfo.pSignalSemaphores = &s_RenderSemaphoreHandles[m_SwapchainImageIndex];
 
@@ -1270,9 +1290,28 @@ namespace SceneryEditorX
 		VkResult presentResult = vkQueuePresentKHR(graphicsQueue, &presentInfo);
 		if (presentResult == VK_ERROR_OUT_OF_DATE_KHR || presentResult == VK_SUBOPTIMAL_KHR)
 		{
-			// Swapchain needs recreation (e.g., window resize)
+			// Swapchain needs full teardown and rebuild on resize / out-of-date.
+			// We must: (1) drain all in-flight GPU work so no command buffers or
+			// semaphores are in use, (2) destroy frame resources that reference the
+			// old swapchain images, (3) recreate the swapchain, (4) rebuild frame
+			// resources sized to the new swapchain image count.
+			// Skipping any of these steps causes VK_ERROR_DEVICE_LOST.
+			SEDX_CORE_INFO_TAG("Renderer", "Swapchain out-of-date — recreating (present result: {})", static_cast<int>(presentResult));
+
+			if (device.IsValid() && device->GetQueueManager())
+			{
+				device->GetQueueManager()->WaitIdleAll();
+			}
+
+			DestroyFrameResources();
 			s_Swapchain->Recreate();
-			SEDX_CORE_TRACE_TAG("Renderer", "Swapchain recreated after present (result: {})", static_cast<int>(presentResult));
+			CreateFrameResources();
+
+			// Reset the current frame index so the new fences/semaphores are used
+			// from index 0 on the next frame.
+			m_CurrentFrameIndex = 0;
+
+			SEDX_CORE_INFO_TAG("Renderer", "Swapchain recreation complete");
 		}
 		else if (presentResult != VK_SUCCESS)
 		{
@@ -1965,6 +2004,11 @@ namespace SceneryEditorX
 		return m_CmdList_Present;
 	}
 
+	CommandList* Renderer::GetCommandListFrame()
+	{
+		return m_CmdList_Frame;
+	}
+
 	void Renderer::CreateModels()
 	{
 		SEDX_CORE_TRACE_TAG("Renderer", "Creating models and loading assets");
@@ -2046,6 +2090,8 @@ namespace SceneryEditorX
 	void Renderer::CreateShaders()
 	{
 		SEDX_CORE_TRACE_TAG("Renderer", "Creating shaders and initializing Slang shader compiler");
+
+#pragma region Slang Shader Compilation
 		// Initialize Slang shader compiler
 		Slang::ComPtr<slang::IGlobalSession> slangGlobalSession;
 		slang::createGlobalSession(slangGlobalSession.writeRef());
@@ -2058,9 +2104,7 @@ namespace SceneryEditorX
 		auto slangOptions{std::to_array<slang::CompilerOptionEntry>(
 			{{
 				.name = slang::CompilerOptionName::EmitSpirvDirectly,
-				.value = {
-					.kind = slang::CompilerOptionValueKind::Int, 
-					.intValue0 = 1}
+				.value = {.kind = slang::CompilerOptionValueKind::Int, .intValue0 = 1}
 			}}
 		)};
 
@@ -2073,10 +2117,14 @@ namespace SceneryEditorX
 		slangSessionDesc.compilerOptionEntries = slangOptions.data();
 		slangSessionDesc.compilerOptionEntryCount = static_cast<uint32_t>(slangOptions.size());
 
+#pragma endregion
+
 		// Load shader
 		Slang::ComPtr<slang::ISession> slangSession;
 		Slang::ComPtr<slang::IBlob> diagnosticsBlob; // Blob to capture any diagnostics from shader compilation
 		slangGlobalSession->createSession(slangSessionDesc, slangSession.writeRef());
+
+#pragma region Shader Module Loading
 		const std::filesystem::path shaderPath = ResolveResourcePath("resources/shaders/shader.slang");
 		const std::string shaderPathString = shaderPath.string();
 
@@ -2097,6 +2145,7 @@ namespace SceneryEditorX
 			return;
 		}
 
+#pragma region Grid Shader
 		Slang::ComPtr<ISlangBlob> gridSpirv;
 		{
 			const std::filesystem::path gridShaderPath = ResolveResourcePath("resources/shaders/grid.slang");
@@ -2129,6 +2178,9 @@ namespace SceneryEditorX
 			}
 		}
 
+#pragma endregion
+#pragma region Blit Shader
+
 		// Compile blit module and mark availability (actual compute path is still gated
 		// until CommandList pipeline/descriptor wiring is completed).
 		{
@@ -2155,6 +2207,8 @@ namespace SceneryEditorX
 				SetShaderAvailable(Renderer_Shader::blit_c);
 			}
 		}
+#pragma endregion
+#pragma endregion
 
 		Slang::ComPtr<ISlangBlob> spirv;
 		slangModule->getTargetCode(0, spirv.writeRef());
@@ -2431,7 +2485,7 @@ namespace SceneryEditorX
 
 			ImageImporter::SaveSdr(png_path, width, height, channel_count, bits_per_channel, mapped_data, is_hdr);
 
-			SEDX_CORE_INFO_TAG("Renderer", "Screenshots saved as '%s' and '%s'", exr_path.c_str(), png_path.c_str());
+			SEDX_CORE_INFO_TAG("Renderer", "Screenshots saved as '{}' and '{}'", exr_path.c_str(), png_path.c_str());
 		});
 		*/
 
@@ -2463,9 +2517,11 @@ namespace SceneryEditorX
 
 		// If pass-render output exists, present that texture to the swapchain first.
 		// This allows the pass-based pipeline (including editor grid) to appear in-window.
-		// NOTE: Disabled for now because this path may execute while another dynamic
-		// rendering instance is active, which violates Vulkan rules for image barriers/blits.
-		const bool useFrameOutputBlitPath = true;
+		// NOTE: Disabled — frame_output is never rendered into during bootstrap, so it is
+		// always in VK_IMAGE_LAYOUT_UNDEFINED. The barrier below that expects
+		// SHADER_READ_ONLY_OPTIMAL would trigger a validation error and produce a black frame.
+		// Re-enable this path once the pass-based renderer writes into frame_output each frame.
+		const bool useFrameOutputBlitPath = false;
 		if (ImageResource* frameOutput = GetRenderTarget(Renderer_RenderTarget::frame_output);
 			useFrameOutputBlitPath && frameOutput && frameOutput->Get() && *frameOutput->Get() != VK_NULL_HANDLE)
 		{
@@ -2808,10 +2864,24 @@ namespace SceneryEditorX
 			vkCmdBindIndexBuffer(cb, m_GridIndexBuffer, 0, VK_INDEX_TYPE_UINT32);
 			SEDX_CORE_TRACE_TAG("Renderer", "[Grid] vkCmdBindVertexBuffers + vkCmdBindIndexBuffer issued");
 			vkCmdDrawIndexed(cb, m_GridIndexCount, 1, 0, 0, 0);
-			SEDX_CORE_TRACE_TAG("Renderer", "[Grid] vkCmdDrawIndexed issued");
-		}
+				SEDX_CORE_TRACE_TAG("Renderer", "[Grid] vkCmdDrawIndexed issued");
+			}
 
-		vkCmdEndRendering(cb);
+			// Render ImGui UI inside the active dynamic render pass so all draw calls
+			// execute on the swapchain image with a valid pipeline and attachment binding.
+			// We redirect m_CmdList_Present's internal VkCommandBuffer to 'cb' (which has
+			// the render pass open) for the duration of the UI render, then restore it.
+			if (m_CmdList_Present && m_CmdList_Present->GetState() == CommandState::Recording)
+			{
+				if (ImGui::GetCurrentContext() && ImGui::GetDrawData())
+				{
+					m_CmdList_Present->SetExternalRecordingBuffer(cb, /*renderPassActive=*/true);
+					UI::Render(ImGui::GetDrawData(), nullptr, false);
+					m_CmdList_Present->RestoreCommandBuffer();
+				}
+			}
+
+			vkCmdEndRendering(cb);
 		SEDX_CORE_TRACE_TAG("Renderer", "Dynamic rendering ended");
 
 		// Ensure the swapchain image is transitioned to the present layout so
@@ -3443,7 +3513,7 @@ namespace SceneryEditorX
 
 				if (auto* renderable = entity->GetComponent<Renderable>())
 				{
-					if (MaterialAsset* material = renderable->GetMaterial())
+					if (MaterialAsset* material = renderable->GetMaterialAsset())
 					{
 						update_material(material);
 					}
@@ -3619,7 +3689,7 @@ namespace SceneryEditorX
 			for (uint32_t i = 0; i < m_DrawCall_Count && indirectIdx < m_Indirect_DrawCount; i++)
 			{
 				const Renderer_DrawCall& dc = m_DrawCalls[i];
-				MaterialAsset* material = dc.renderable->GetMaterial();
+				MaterialAsset* material = dc.renderable->GetMaterialAsset();
 
 				if (!material || material->IsTransparent())
 					continue;

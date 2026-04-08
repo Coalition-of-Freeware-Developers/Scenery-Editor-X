@@ -84,6 +84,37 @@ namespace SceneryEditorX
 		void Begin();
 
 		/**
+		 * @brief End recording without submitting to a queue.
+		 *
+		 * Use when the raw VkCommandBuffer will be included in an external VkSubmitInfo
+		 * (e.g. the renderer's swapchain submit in SubmitAndPresent).  Transitions the
+		 * internal state from Recording → Idle so that Begin() can be called next frame
+		 * without a WaitForExecution stall.
+		 */
+		void Seal();
+
+		/**
+		 * @brief Temporarily redirect this CommandList to record into an externally-owned
+		 *        VkCommandBuffer that is already in the recording state.
+		 *
+		 * The caller is responsible for the lifetime of @p externalCb.  The original
+		 * VkCommandBuffer is saved and restored by calling RestoreCommandBuffer().
+		 * This is used to inject UI draw calls into the renderer's swapchain command
+		 * buffer (which has an active dynamic render pass) without breaking the
+		 * CommandList abstraction.
+		 *
+		 * @param externalCb       An already-recording VkCommandBuffer to redirect draws into.
+		 * @param renderPassActive Whether a render pass is currently active on @p externalCb.
+		 */
+		void SetExternalRecordingBuffer(VkCommandBuffer externalCb, bool renderPassActive);
+
+		/**
+		 * @brief Restore the VkCommandBuffer that was replaced by SetExternalRecordingBuffer.
+		 *        Also restores the render-pass-active and state flags to their saved values.
+		 */
+		void RestoreCommandBuffer();
+
+		/**
 		 * @brief Submit the command list for execution.
 		 * @param semaphoreWait The semaphore to wait on before execution.
 		 * @param isImmediate Whether the submission is immediate.
@@ -509,6 +540,8 @@ namespace SceneryEditorX
 
 		Queue *m_Queue;
 		VkCommandBuffer m_CmdBuffer;
+		VkCommandBuffer m_SavedCmdBuffer        = VK_NULL_HANDLE;  // saved by SetExternalRecordingBuffer
+		bool            m_SavedRenderPassActive = false;            // saved by SetExternalRecordingBuffer
 		std::atomic<CommandState> m_State = CommandState::Idle;
 		VkCullModeFlags m_CullMode = VK_CULL_MODE_BACK_BIT;
 		bool m_RenderPassActive = false;

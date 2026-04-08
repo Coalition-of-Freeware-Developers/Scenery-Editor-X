@@ -100,7 +100,7 @@ namespace SceneryEditorX
 		std::ofstream outfile(file_path, std::ios::binary);
 		if (!outfile)
 		{
-			SEDX_CORE_ERROR_TAG("Mesh","Failed to open file for writing: %s", file_path.c_str());
+			SEDX_CORE_ERROR_TAG("Mesh","Failed to open file for writing: {}", file_path.c_str());
 			return;
 		}
 
@@ -124,7 +124,7 @@ namespace SceneryEditorX
 			const LodLevels& sub = m_sub_meshes[sub_idx];
 			uint32_t lod_count = static_cast<uint32_t>(sub.lods.size());
 			outfile.write(reinterpret_cast<const char*>(&lod_count), sizeof(uint32_t));
-			SEDX_CORE_INFO_TAG("Mesh","Mesh '%s' sub-mesh %u: saving %u LODs", m_ObjectName.c_str(), sub_idx, lod_count);
+			SEDX_CORE_INFO_TAG("Mesh","Mesh '{}' sub-mesh %u: saving %u LODs", m_ObjectName.c_str(), sub_idx, lod_count);
 
 			for (const auto& lod : sub.lods)
 			{

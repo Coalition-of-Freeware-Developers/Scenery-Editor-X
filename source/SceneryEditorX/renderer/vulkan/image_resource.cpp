@@ -612,14 +612,14 @@ namespace SceneryEditorX
 		// skip textures with invalid dimensions (failed to load)
 		if (m_Spec.width == 0 || m_Spec.height == 0)
 		{
-			SEDX_CORE_ERROR_TAG("ImageResource","Texture '%s' has invalid dimensions (%dx%d), skipping preparation", m_Spec.name ? m_Spec.name : m_ObjectName.c_str(), m_Spec.width, m_Spec.height);
+			SEDX_CORE_ERROR_TAG("ImageResource","Texture '{}' has invalid dimensions (%dx%d), skipping preparation", m_Spec.name ? m_Spec.name : m_ObjectName.c_str(), m_Spec.width, m_Spec.height);
 			m_ResourceState = ResourceState::MaxEnum;
 			return;
 		}
 
 		{
 			char marker[128];
-			snprintf(marker, sizeof(marker), "texture_prepare_gpu: %s", m_Spec.name ? m_Spec.name : m_ObjectName.c_str());
+			snprintf(marker, sizeof(marker), "texture_prepare_gpu: {}", m_Spec.name ? m_Spec.name : m_ObjectName.c_str());
 		}
 
 		bool isNotCompressed   = !IsCompressedFormat(m_Spec.format); // the bistro world loads pre-compressed textures

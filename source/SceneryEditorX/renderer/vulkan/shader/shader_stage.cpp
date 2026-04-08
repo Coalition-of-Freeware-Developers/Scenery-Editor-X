@@ -162,12 +162,12 @@ namespace SceneryEditorX
 	
 		if (std::filesystem::exists(cacheFilepath) && !shouldRecompile)
 		{
-			SEDX_CORE_TRACE_TAG("Shader", "Loading shader data from cache: %s", cacheFilepath.c_str());
+			SEDX_CORE_TRACE_TAG("Shader", "Loading shader data from cache: {}", cacheFilepath.c_str());
 			data = ReadCachedShaderData(cacheFilepath);
 		}
 		else
 		{
-			SEDX_CORE_TRACE_TAG("Shader", "Compiling shader: %s", cacheFilepath.c_str());
+			SEDX_CORE_TRACE_TAG("Shader", "Compiling shader: {}", cacheFilepath.c_str());
 			data = ShaderCompiler::CompileVulkanShader(stage, codeFilepath);
 			if (!data.empty())
 			{
@@ -179,9 +179,9 @@ namespace SceneryEditorX
 
 		if (data.empty())
 		{
-			SEDX_CORE_ERROR_TAG("Shader", "Failed to compile shader: %s", codeFilepath.c_str());
+			SEDX_CORE_ERROR_TAG("Shader", "Failed to compile shader: {}", codeFilepath.c_str());
 			// handle error: set m_ShaderModule = VK_NULL_HANDLE; or throw/return
-			SEDX_CORE_ASSERT(false, "Failed to compile shader: %s", codeFilepath.c_str());
+			SEDX_CORE_ASSERT(false, "Failed to compile shader: {}", codeFilepath.c_str());
 			return;
 		}
 

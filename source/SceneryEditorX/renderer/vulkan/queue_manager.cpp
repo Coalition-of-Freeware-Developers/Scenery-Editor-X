@@ -55,6 +55,12 @@ namespace SceneryEditorX
 	static std::mutex s_MutexAllocation;    // Mutex for thread-safe resource allocation
 	static std::mutex s_MutexDeletionQueue; // Mutex for thread-safe deletion queue access
 	static std::unordered_map<ResourceType, std::vector<DeletionQueueEntry>> s_DeletionQueue;
+
+	/// Set to true by NotifyShutdown() once Renderer::Shutdown() has completed its final
+	/// ParseDeletionQueue flush.  Any AddDeletionQueue call arriving after this point
+	/// (e.g. from Ref<ImageResource> destructors running during the CRT static-dtor phase)
+	/// is silently dropped rather than touching the already-destroyed map.
+	static std::atomic<bool> s_DeletionQueueDestroyed{false};
 	
 	// -------------------------------------------------------
 	
@@ -565,6 +571,12 @@ namespace SceneryEditorX
 
 	void QueueManager::AddDeletionQueue(ResourceType type, void *resource, VmaAllocation allocation)
 	{
+		if (s_DeletionQueueDestroyed.load(std::memory_order_acquire))
+		{
+			SEDX_CORE_WARN_TAG("QueueManager", "AddDeletionQueue called after shutdown — resource of type {} will be leaked (static destruction order issue)", static_cast<uint32_t>(type));
+			return;
+		}
+
 		if (!resource)
 		{
 			SEDX_CORE_WARN_TAG("QueueManager", "Attempted to add null resource to deletion queue");
@@ -684,7 +696,13 @@ namespace SceneryEditorX
 		s_DeletionQueue.clear();
 		device.Reset();
 	}
-	
+
+	void QueueManager::NotifyShutdown()
+	{
+		s_DeletionQueueDestroyed.store(true, std::memory_order_release);
+		SEDX_CORE_INFO_TAG("QueueManager", "Deletion queue marked as shut down; late AddDeletionQueue calls will be dropped");
+	}
+
 	bool QueueManager::NeedToParseDeletionQueue()
 	{
 		static uint32_t framesEquilibrium = 0;

@@ -2,7 +2,7 @@
  * -------------------------------------------------------
  * Scenery Editor X
  * -------------------------------------------------------
- * Copyright (c) 2026 Thomas Ray 
+ * Copyright (c) 2026 Thomas Ray
  * Copyright (c) 2026 Coalition of Freeware Developers
  * -------------------------------------------------------
  * Permission is hereby granted, free of charge, to any person obtaining a
@@ -32,7 +32,7 @@
 //#include <imgui/imgui_internal.h>
 //#include <SceneryEditorX/ui/ui.h>
 //#include <SceneryEditorX/ui/ui_manager.h>
-//#include <GraphicsEngine/vulkan/vk_util.h>
+//#include <GraphicsEngine/vulkan/util.h>
 //#include <SceneryEditorX/utils/math/math.h>
 
 // -------------------------------------------------------

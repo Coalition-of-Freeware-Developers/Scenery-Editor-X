@@ -52,17 +52,21 @@ namespace SceneryEditorX
 		 */
 		ShaderStage(Stage stage, const std::string& filepath);
 
-		/* @brief Destroys the ShaderStage object and releases its resources. */
+		/* 
+		 * @brief Destroys the ShaderStage object and releases its resources. 
+		 */
 		virtual ~ShaderStage() override;
 
-		/* @brief Recompiles the shader stage from its source file. */
+		/* 
+		 * @brief Recompile the shader stage from its source file. 
+		 */
 		void Recompile();
 
 		/**
 		 * @brief Gets the Vulkan shader module handle.
 		 * @return The Vulkan shader module handle.
 		 */
-		[[nodiscard]] inline VkShaderModule GetHandle() const { return m_ShaderModule; };
+		[[nodiscard]] inline VkShaderModule GetHandle() const { return m_ShaderModule; }
 
 		/**
 		 * @brief Gets the list of shader inputs for this stage.

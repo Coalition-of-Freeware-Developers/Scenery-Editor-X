@@ -681,6 +681,51 @@ namespace SceneryEditorX
 		}
 	}
 	
+	void CommandList::Seal()
+	{
+		// End recording without submitting.  Used when the caller (e.g. SubmitAndPresent)
+		// will include the raw VkCommandBuffer in its own VkSubmitInfo so that semaphore
+		// ownership stays with the renderer's swapchain submit path.
+		if (m_State != CommandState::Recording)
+			return;
+
+		EndRenderPass();
+		FlushBarriers();
+		SEDX_VK_RESULT_ASSERT(vkEndCommandBuffer(m_CmdBuffer), "Failed to end command buffer in Seal()");
+
+		// Mark Idle so Begin() does not stall on WaitForExecution next frame.
+		// The fence guaranteeing GPU completion is the renderer's per-frame fence in
+		// s_FenceHandles[m_CurrentFrameIndex], which is waited in BeginFrame().
+		m_State = CommandState::Idle;
+	}
+
+	void CommandList::SetExternalRecordingBuffer(VkCommandBuffer externalCb, bool renderPassActive)
+	{
+		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "CommandList must be Recording before SetExternalRecordingBuffer");
+		SEDX_CORE_ASSERT(m_SavedCmdBuffer == VK_NULL_HANDLE, "SetExternalRecordingBuffer called without matching RestoreCommandBuffer");
+		SEDX_CORE_ASSERT(externalCb != VK_NULL_HANDLE, "External command buffer must not be null");
+
+		m_SavedCmdBuffer        = m_CmdBuffer;
+		m_SavedRenderPassActive = m_RenderPassActive;
+		m_CmdBuffer             = externalCb;
+		m_RenderPassActive      = renderPassActive;
+	}
+
+	void CommandList::RestoreCommandBuffer()
+	{
+		SEDX_CORE_ASSERT(m_SavedCmdBuffer != VK_NULL_HANDLE, "RestoreCommandBuffer called without a prior SetExternalRecordingBuffer");
+
+		// Do NOT end the external render pass — the caller owns it.
+		// Flush any pending barriers that were accumulated during the UI pass
+		// onto the external CB before we switch back.
+		FlushBarriers();
+
+		m_CmdBuffer             = m_SavedCmdBuffer;
+		m_RenderPassActive      = m_SavedRenderPassActive;
+		m_SavedCmdBuffer        = VK_NULL_HANDLE;
+		m_SavedRenderPassActive = false;
+	}
+
 	void CommandList::Submit(FrameSync *semaphoreWait, const bool isImmediate, FrameSync *semaphoreSignal, FrameSync *semaphoreTimeline, uint64_t timelineValue)
 	{
 		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to submit.");
@@ -1443,7 +1488,7 @@ namespace SceneryEditorX
 
 		if (!m_DescriptorLayout_Current)
 		{
-			SEDX_CORE_WARN_TAG("CommandList","Descriptor layout not set, try setting texture \"%s\" within a render pass", img->GetObjectName().c_str());
+			SEDX_CORE_WARN_TAG("CommandList","Descriptor layout not set, try setting texture \"{}\" within a render pass", img->GetObjectName().c_str());
 			return;
 		}
 
@@ -1854,6 +1899,33 @@ namespace SceneryEditorX
 		}
 
 		ImageResource* colorTarget = pso.renderTarget_ColorTextures[0];
+
+		// If there is no explicit color target but a render pass is already active on
+		// the current command buffer (e.g. injected via SetExternalRecordingBuffer for
+		// UI rendering inside RecordRenderCommands), skip the EndRenderPass /
+		// vkCmdBeginRendering block and only build + bind the pipeline.
+		if (!colorTarget && m_RenderPassActive)
+		{
+			// Store the incoming PSO so PushConstants() and PreDraw() can reference it.
+			m_pso = pso;
+
+			// Build and bind the pipeline using the external render pass's format context.
+			{
+				PipelineState mutablePso = pso;
+				m_Pipeline = Pipeline(mutablePso, m_DescriptorLayout_Current);
+			}
+
+			if (m_Pipeline.Get() != VK_NULL_HANDLE)
+			{
+				vkCmdBindPipeline(m_CmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_Pipeline.Get());
+			}
+			else if (Ref<RenderContext> context = RenderContext::Get(); context && context->pipeline != VK_NULL_HANDLE)
+			{
+				vkCmdBindPipeline(m_CmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, context->pipeline);
+			}
+			return;
+		}
+
 		if (!colorTarget)
 			return;
 
@@ -1977,7 +2049,7 @@ namespace SceneryEditorX
 
 		if (!m_DescriptorLayout_Current)
 		{
-			SEDX_CORE_WARN_TAG("CommandList","Descriptor layout not set, try setting buffer \"%s\" within a render pass", buffer->GetObjectName().c_str());
+			SEDX_CORE_WARN_TAG("CommandList","Descriptor layout not set, try setting buffer \"{}\" within a render pass", buffer->GetObjectName().c_str());
 			return;
 		}
 

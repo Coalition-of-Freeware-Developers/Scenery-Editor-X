@@ -2,7 +2,7 @@
 
 ## Overview
 
-The `vk_enums.h` file provides a comprehensive collection of enumeration classes and constants that abstract Vulkan-specific enumerations into a more user-friendly format for the Scenery Editor X application. These enumerations serve as type-safe wrappers around Vulkan's native enum values while maintaining compatibility with the underlying Vulkan API.
+The `enums.h` file provides a comprehensive collection of enumeration classes and constants that abstract Vulkan-specific enumerations into a more user-friendly format for the Scenery Editor X application. These enumerations serve as type-safe wrappers around Vulkan's native enum values while maintaining compatibility with the underlying Vulkan API.
 
 ## Purpose and Design Philosophy
 

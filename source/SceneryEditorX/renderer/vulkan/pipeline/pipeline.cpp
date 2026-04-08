@@ -262,7 +262,10 @@ if (state.IsCompute())
 					{
 						dynamic_states.push_back(VK_DYNAMIC_STATE_SCISSOR);
 						dynamic_states.push_back(VK_DYNAMIC_STATE_CULL_MODE);
-						if (Device::GetDeviceStatics().isShadingRateSupported)
+						// Only add fragment shading rate dynamic state when the PSO actually uses a VRS
+						// input texture.  Adding it unconditionally causes validation errors on every
+						// draw call for pipelines (e.g. ImGui) that never call vkCmdSetFragmentShadingRateKHR.
+						if (Device::GetDeviceStatics().isShadingRateSupported && m_State.vrsInputTexture)
 						{ 
 							dynamic_states.push_back(VK_DYNAMIC_STATE_FRAGMENT_SHADING_RATE_KHR);
 						}
@@ -518,6 +521,14 @@ if (state.IsCompute())
 					if (m_State.renderTarget_Swapchain )
 					{
 						attachment_formats_color.push_back(m_State.renderTarget_Swapchain->GetImageFormat());
+						// If the PSO has no explicit depth texture but targets a swapchain, inherit
+						// the swapchain's depth format so the pipeline declaration matches the active
+						// dynamic render pass (which always has a depth attachment).
+						if (!m_State.renderTarget_DepthTexture)
+						{
+							attachment_format_depth   = m_State.renderTarget_Swapchain->GetDepthFormat();
+							attachment_format_stencil = VK_FORMAT_UNDEFINED; // stencil kept separate if needed
+						}
 					}
 					else // regular render target(s)
 					{

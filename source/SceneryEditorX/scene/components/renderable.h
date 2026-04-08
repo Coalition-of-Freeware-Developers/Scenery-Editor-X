@@ -94,7 +94,7 @@ namespace SceneryEditorX
 		void SetMaterial(const std::string& file_path);
 		void SetDefaultMaterial();
 		std::string GetMaterialName() const;
-		MaterialAsset* GetMaterial() const { return m_material; }
+		MaterialAsset* GetMaterialAsset() const { return m_material; }
 
 		// instancing
 		bool HasInstancing() const            { return !m_instances.empty(); }

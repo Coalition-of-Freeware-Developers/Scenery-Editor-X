@@ -32,15 +32,15 @@
 #include "gbuffer.h"
 #include "renderer.h"
 #include "renderer_declarations.h"
-#include "SceneryEditorX/scene/entity.h"
-#include "SceneryEditorX/scene/mesh.h"
 #include "font/font.h"
 #include "vulkan/enums.h"
 #include "vulkan/rasterizer.h"
 #include "vulkan/render_context.h"
 #include "vulkan/pipeline/pipeline_state.h"
 #include <SceneryEditorX/scene/camera.h>
+#include <SceneryEditorX/scene/entity.h>
 #include <SceneryEditorX/scene/material.h>
+#include <SceneryEditorX/scene/mesh.h>
 #include <SceneryEditorX/scene/scene.h>
 #include <SceneryEditorX/scene/components/lights.h>
 #include <SceneryEditorX/scene/components/renderable.h>
@@ -51,7 +51,6 @@ namespace SceneryEditorX
 {
 	// NOTE: Static member definitions are centralized in renderer_resources.cpp
 	// to avoid duplicate symbol definitions across translation units.
-
 
 	// Console variable stubs – replace with real CVar system when available
 	static CVar cvar_wireframe            { 0.0f };
@@ -501,7 +500,7 @@ namespace SceneryEditorX
 						continue;
 
 				    Renderable *renderable = draw_call.renderable;
-					MaterialAsset* materialAsset = renderable->GetMaterial();
+					MaterialAsset* materialAsset = renderable->GetMaterialAsset();
 					if (!materialAsset)
 						continue;
 
@@ -622,7 +621,7 @@ namespace SceneryEditorX
 				{
 					const Renderer_DrawCall &drawCall = m_DrawCalls_Prepass[i];
 					Renderable *renderable = drawCall.renderable;
-					MaterialAsset* materialAsset = renderable->GetMaterial();
+					MaterialAsset* materialAsset = renderable->GetMaterialAsset();
 					if (!materialAsset || materialAsset->IsTransparent() || !drawCall.cameraVisible)
 						continue;
 
@@ -731,7 +730,7 @@ namespace SceneryEditorX
 				for (uint32_t i = 0; i < m_DrawCall_Count; i++)
 				{
 					Renderer_DrawCall &draw_call = m_DrawCalls[i];
-					if (draw_call.renderable->GetMaterial() && !draw_call.renderable->GetMaterial()->IsTransparent())
+					if (draw_call.renderable->GetMaterialAsset() && !draw_call.renderable->GetMaterialAsset()->IsTransparent())
 					{
 						Entity *entity = draw_call.renderable->GetEntity();
 						entity->SetMatrixPrevious(entity->GetMatrix());
@@ -767,7 +766,7 @@ namespace SceneryEditorX
 				{
 					const Renderer_DrawCall &draw_call = m_DrawCalls[i];
 					Renderable *renderable = draw_call.renderable;
-					MaterialAsset* materialAsset = renderable->GetMaterial();
+					MaterialAsset* materialAsset = renderable->GetMaterialAsset();
 					if (!materialAsset || !draw_call.cameraVisible)
 						continue;
 
@@ -1251,7 +1250,7 @@ namespace SceneryEditorX
 			{
 				const Renderer_DrawCall& draw_call = m_DrawCalls_Prepass[i];
 				Renderable* renderable             = draw_call.renderable;
-				MaterialAsset* materialAsset = renderable->GetMaterial();
+				MaterialAsset* materialAsset = renderable->GetMaterialAsset();
 				if (!materialAsset || materialAsset->IsTransparent() || !draw_call.cameraVisible)
 					continue;
 

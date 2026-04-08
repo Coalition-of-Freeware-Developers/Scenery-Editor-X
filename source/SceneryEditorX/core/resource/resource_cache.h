@@ -186,7 +186,7 @@ namespace SceneryEditorX
 	
 			if (resource->GetResourceFilePath().empty())
 			{
-				SEDX_CORE_ERROR("Resource \"%s\" has an empty file path and cannot be cached.", resource->GetObjectName().c_str());
+				SEDX_CORE_ERROR("Resource \"{}\" has an empty file path and cannot be cached.", resource->GetObjectName().c_str());
 				return nullptr;
 			}
 	
@@ -215,7 +215,7 @@ namespace SceneryEditorX
 
 			if (!IO::FileSystem::Exists(filePath))
 			{
-				SEDX_CORE_ERROR("\"%s\" doesn't exist.", filePath.c_str());
+				SEDX_CORE_ERROR("\"{}\" doesn't exist.", filePath.c_str());
 				return nullptr;
 			}
 	

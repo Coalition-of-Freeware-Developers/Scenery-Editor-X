@@ -74,7 +74,7 @@ class MyClass
 {
 public:
     void PublicMethod();
-  
+
 private:
     int privateMember;
 };
@@ -116,8 +116,17 @@ class MyTemplate
 ```cpp
 // Control statements
 if (condition)
+{
+
+}
 while (condition)
+{
+
+}
 for (int i = 0; i < size; ++i)
+{
+
+}
 
 // Function calls
 functionCall(parameter);
@@ -138,21 +147,21 @@ int value = 42; // Trailing comment
 ```cpp
 switch (value)
 {
-case 1:
-{
-    doSomething();
-    break;
-}
-case 2:
-{
-    doSomethingElse();
-    break;
-}
-default:
-{
-    handleDefault();
-    break;
-}
+	case 1:
+	{
+	    doSomething();
+	    break;
+	}
+	case 2:
+	{
+	    doSomethingElse();
+	    break;
+	}
+	default:
+	{
+	    handleDefault();
+	    break;
+	}
 }
 ```
 
@@ -175,7 +184,7 @@ default:
 namespace MyNamespace
 {
     class MyClass
-          {
+    {
         // Class content not indented relative to namespace
     };
 } // namespace MyNamespace
@@ -190,16 +199,16 @@ All code must follow Doxygen documentation standards:
 ```cpp
 /**
  * @brief Brief description of the function
- * 
+ *
  * Detailed description of what the function does, including:
  * 1. Step-by-step process explanation
  * 2. Important implementation details
  * 3. Special requirements or considerations
- * 
+ *
  * @param paramName Description of the parameter
  * @param anotherParam Description of another parameter
  * @return Description of return value
- * 
+ *
  * @note Any important notes about usage
  * @warning Any warnings about potential issues
  */
@@ -210,11 +219,12 @@ ReturnType FunctionName(Type1 paramName, Type2 anotherParam);
 
 ```cpp
 /**
+ * @class MyClass
  * @brief Brief description of the class
- * 
+ *
  * Detailed description of the class purpose, responsibilities,
  * and usage patterns.
- * 
+ *
  * @note Usage notes
  * @warning Important warnings
  */
@@ -223,13 +233,14 @@ class MyClass
 public:
     /**
      * @brief Brief description of member function
+	 *
      * @param param Parameter description
      * @return Return value description
      */
     int MemberFunction(int param);
-  
+
 private:
-    int m_memberVariable; ///< Brief description of member variable
+    int m_memberVariable; // Brief description of member variable
 };
 ```
 

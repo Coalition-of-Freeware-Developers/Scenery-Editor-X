@@ -70,7 +70,7 @@ namespace SceneryEditorX
         // load
         if (!FontImporter::LoadFromFile(this, file_path))
         {
-            SEDX_CORE_ERROR_TAG("Font","Failed to load font \"%s\"", file_path.c_str());
+            SEDX_CORE_ERROR_TAG("Font","Failed to load font \"{}\"", file_path.c_str());
             return;
         }
 
@@ -81,7 +81,7 @@ namespace SceneryEditorX
             m_CharMax_Height = xMath::Max(charInfo.second.height, m_CharMax_Height);
         }
 
-        SEDX_CORE_INFO_TAG("Font","Loading \"%s\" took %d ms", IO::FileSystem::GetFileNameFromFilePath(file_path).c_str(), static_cast<int>(timer.ElapsedMillis()));
+        SEDX_CORE_INFO_TAG("Font","Loading \"{}\" took %d ms", IO::FileSystem::GetFileNameFromFilePath(file_path).c_str(), static_cast<int>(timer.ElapsedMillis()));
     }
 
     void Font::AddText(const char* text, const Vec2& positionScreenPercentage)

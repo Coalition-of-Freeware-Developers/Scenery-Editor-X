@@ -731,12 +731,12 @@ namespace SceneryEditorX
 		SEDX_CORE_ASSERT(standard_texture(Renderer_StandardTexture::White) != nullptr, "Failed to create white texture");
 	}
 
-	ImageResource *Renderer::GetStandardTexture(const Renderer_StandardTexture type)
+	ImageResource* Renderer::GetStandardTexture(const Renderer_StandardTexture type)
 	{
 		return s_StandardTextures[static_cast<uint8_t>(type)].Get();
 	}
 
-	Sampler *Renderer::GetSampler(const Renderer_Sampler type)
+	Sampler* Renderer::GetSampler(const Renderer_Sampler type)
 	{
 		return s_Samplers[static_cast<uint8_t>(type)].Get();
 	}
@@ -803,10 +803,8 @@ namespace SceneryEditorX
 		class StandardQuadMesh final : public Mesh
 		{
 		public:
-			[[nodiscard]] static Buffer * GetVertexBuffer()
-			{ return GeometryBuffer::GetVertexBuffer(); }
-			[[nodiscard]] static Buffer* GetIndexBuffer()
-			{ return GeometryBuffer::GetIndexBuffer(); }
+			[[nodiscard]] static Buffer* GetVertexBuffer() { return GeometryBuffer::GetVertexBuffer(); }
+			[[nodiscard]] static Buffer* GetIndexBuffer() { return GeometryBuffer::GetIndexBuffer(); }
 		};
 
 		static StandardQuadMesh s_QuadMesh;

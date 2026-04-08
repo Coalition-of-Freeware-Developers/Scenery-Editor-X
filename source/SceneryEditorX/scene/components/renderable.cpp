@@ -136,7 +136,7 @@ namespace SceneryEditorX
 				}
 				else
 				{
-					SP_LOG_WARNING("Renderable::Load - mesh '%s' not found in cache", mesh_name.c_str());
+					SP_LOG_WARNING("Renderable::Load - mesh '{}' not found in cache", mesh_name.c_str());
 				}
 			}
 		}

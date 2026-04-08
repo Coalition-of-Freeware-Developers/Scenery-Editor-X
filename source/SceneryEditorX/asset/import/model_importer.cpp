@@ -601,7 +601,7 @@ namespace SceneryEditorX
         else
         {
             ProgressTracker::GetProgress(ProgressType::ModelImporter).JobDone();
-            SEDX_CORE_ERROR_TAG("ModelImporter", "%s", importer.GetErrorString());
+            SEDX_CORE_ERROR_TAG("ModelImporter", "{}", importer.GetErrorString());
         }
 
         importer.FreeScene();
