@@ -28,6 +28,7 @@
  * Created: 07/03/2026
  * -------------------------------------------------------
  */
+module depth;
 import resources;
 
 float get_depth(const uint2 position)

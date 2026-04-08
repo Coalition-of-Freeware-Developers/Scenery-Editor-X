@@ -28,6 +28,7 @@
  * Created: 07/03/2026
  * -------------------------------------------------------
  */
+module position;
 import resources;
 import depth;
 

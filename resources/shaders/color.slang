@@ -28,6 +28,8 @@
  * Created: 06/03/2026
  * -------------------------------------------------------
  */
+module color;
+
 import resources;
 
 float get_gamma()

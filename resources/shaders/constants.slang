@@ -28,6 +28,7 @@
  * Created: 07/03/2026
  * -------------------------------------------------------
  */
+module constants;
 
 static const float PI = 3.14159265f;
 static const float PI2 = 6.28318530f;

@@ -28,6 +28,8 @@
  * Created: 06/03/2026
  * -------------------------------------------------------
  */
+module common;
+
 import resources;
 import color;
 import math;

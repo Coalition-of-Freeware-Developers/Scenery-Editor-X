@@ -28,6 +28,7 @@
  * Created: 07/03/2026
  * -------------------------------------------------------
  */
+module luminance;
 import constants;
 
 static const float3 srgb_color_space_coefficient = float3(0.299f, 0.587f, 0.114f);

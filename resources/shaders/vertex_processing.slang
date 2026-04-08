@@ -28,6 +28,8 @@
  * Created: 06/03/2026
  * -------------------------------------------------------
  */
+module vertex_processing;
+
 import common;
 import resources;
 import noise;

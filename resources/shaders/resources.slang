@@ -28,6 +28,7 @@
  * Created: 06/03/2026
  * -------------------------------------------------------
  */
+module resources;
 
 // a constant buffer that updates once per frame
 struct FrameBufferData

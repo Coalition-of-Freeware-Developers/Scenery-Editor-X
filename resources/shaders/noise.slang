@@ -28,6 +28,8 @@
  * Created: 07/03/2026
  * -------------------------------------------------------
  */
+module noise;
+
 import resources;
 import constants;
 

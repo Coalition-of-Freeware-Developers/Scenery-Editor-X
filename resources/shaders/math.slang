@@ -28,6 +28,7 @@
  * Created: 07/03/2026
  * -------------------------------------------------------
  */
+module math;
 import constants;
 
 float fast_sqrt(float x)
