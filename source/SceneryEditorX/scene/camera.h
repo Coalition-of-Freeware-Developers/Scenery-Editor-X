@@ -432,7 +432,7 @@ namespace SceneryEditorX
 
 		Viewport m_LastViewport;
 		float m_HorizontalFov_Rad     = 90.0f * xMath::DEG_TO_RAD;
-		float m_NearPlane             = 0.1f;
+		float m_NearPlane             = 0.01f;
 		float m_FarPlane              = 10'000.0f; // Max for 32-bit reverse-Z depth buffer.
 		CameraType m_ProjectionType   = CameraType::Perspective;
 

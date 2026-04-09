@@ -458,7 +458,7 @@ namespace SceneryEditorX
 	struct CameraComponent
 	{
 		float horizontalFov_Rad = 90.0f * xMath::DEG_TO_RAD;
-		float nearPlane			= 0.1f;
+		float nearPlane			= 0.01f;
 		float farPlane			= 10000.0f; // Reverse-Z friendly
 		
 		enum class ProjectionType { Perspective = 0, Orthographic = 1 };

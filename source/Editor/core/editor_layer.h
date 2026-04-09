@@ -30,12 +30,10 @@
  */
 #pragma once
 #include "child_window.h"
-
-
-#include <Editor/ui/ui_widget.h>
 #include <SceneryEditorX/core/events/key_events.h>
 #include <SceneryEditorX/core/events/mouse_events.h>
 #include <SceneryEditorX/core/layers/layer.h>
+#include <SceneryEditorX/renderer/ui/ui_widget.h>
 #include <SceneryEditorX/scene/camera.h>
 #include <SceneryEditorX/scene/scene.h>
 #include <SceneryEditorX/settings/user_settings.h>
@@ -196,7 +194,7 @@ namespace SceneryEditorX
 		float m_RequiredProjectVersion = 0.0f;
 		float m_AssetUpdatePerf = 0.0f;
 
-		/// Owns the imgui ini path string so io.IniFilename never dangles (C26815).
+		// Owns the imgui ini path string so io.IniFilename never dangles (C26815).
 		std::string m_IniFilePath;
 
 	#ifdef SEDX_PLATFORM_WINDOWS

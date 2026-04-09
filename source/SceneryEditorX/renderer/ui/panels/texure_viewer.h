@@ -23,50 +23,50 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  * -------------------------------------------------------
- * child_window.cpp
+ * texture_viewer.h
  * -------------------------------------------------------
- * Created: 20/03/2026
+ * Created: 17/03/2026
  * -------------------------------------------------------
  */
-#include "child_window.h"
-#include "editor_layer.h"
-#include <SceneryEditorX/core/window/window.h>
-#include <SceneryEditorX/renderer/ui/panels/scene_viewport.h>
-#include <SceneryEditorX/renderer/ui/source/imgui/imgui.h>
+#pragma once
+#include "SceneryEditorX/renderer/ui/ui_widget.h"
 
-// ---------------------------------------------------------
+// -------------------------------------------------------
 
-using namespace SceneryEditorX;
-
-Ref<EditorLayer> s_Editor = nullptr;
-static bool s_Visible = true;
-
-void UI::ChildWindow::CenterWindow()
+namespace SceneryEditorX
 {
-    Ref<EditorLayer> editor = s_Editor.Get();
-    const Vec2 center = editor->GetWidget<SceneViewport>()->GetCenter();
-
-    ImGui::SetNextWindowPos(ImVec2(center.x, center.y), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+	class EditorLayer;
+	class Editor;
+	
+	// when editing this, make sure that the bit shifts in common_buffer.hlsl are also updated
+	enum TextureViewOptions
+	{
+	    Visualise_Pack         = 1U << 0,
+	    Visualise_GammaCorrect = 1U << 1,
+	    Visualise_Boost        = 1U << 2,
+	    Visualise_Abs          = 1U << 3,
+	    Visualise_Channel_R    = 1U << 4,
+	    Visualise_Channel_G    = 1U << 5,
+	    Visualise_Channel_B    = 1U << 6,
+	    Visualise_Channel_A    = 1U << 7,
+	    Visualise_Sample_Point = 1U << 8,
+	};
+	
+	class TextureViewer : public Widget
+	{
+	public:
+	    TextureViewer(EditorLayer *editor);
+	
+	    void OnTick() override;
+	    void OnVisible() override;
+	    void OnTickVisible() override;
+	
+	    static uint32_t GetVisualisationFlags();
+	    static int GetMipLevel();
+	    static int GetArrayLevel();
+	    static uint64_t GetVisualisedTextureId();
+	};
+	
 }
 
-void UI::ChildWindow::Init(const std::string &name)
-{
-    if (!s_Visible)
-        return;
-
-    Ref<EditorLayer> editor = s_Editor.Get();
-    const Vec2 center = editor->GetWidget<SceneViewport>()->GetCenter();
-
-    ImGui::SetNextWindowPos(ImVec2(center.x, center.y), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-
-    if (ImGui::Begin(name.c_str(), &s_Visible, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize))
-    {
-        float contentWidth = 500.0f * Window::GetDpiScale();
-        ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + contentWidth);
-    }
-
-    ImGui::End();
-}
-
-// ---------------------------------------------------------
-
+// -------------------------------------------------------

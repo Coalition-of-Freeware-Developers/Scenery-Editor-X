@@ -245,6 +245,23 @@ namespace SceneryEditorX
 			s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::frame_output)]   = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, widthOutput, heightOutput, 1, mipCount, VK_FORMAT_R16G16B16A16_SFLOAT, UnorderedAccessView | ShaderViews | RenderTargetViews | BlitClear | PerMipViews | QueueShare, "frame_output"});
 			SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::frame_output)] != nullptr, "Failed to create frame_output render target");
 
+			// Transition frame_output to ShaderRead so that any descriptor set bound with
+			// VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL matches the actual image layout.
+			// The ImageResource constructor skips this transition for ShaderViews images
+			// (deferred by design), but frame_output is registered as a sampled descriptor
+			// by compute passes before the pass-based renderer writes into it — so the image
+			// must already be in a valid sampled layout or the validation layer fires
+			// VUID-vkCmdDraw-None-09600.
+			if (ImageResource* frameOutput = s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::frame_output)].Get())
+			{
+				if (CommandList* initCmd = CommandList::BeginImmediateExecution(QueueType::Graphics))
+				{
+					frameOutput->SetLayout(Layout::ImageLayout::ShaderRead, initCmd, ALL_MIPS, 0);
+					CommandList::EndImmediateExecution(initCmd);
+					SEDX_CORE_TRACE_TAG("RendererResources", "Transitioned frame_output to ShaderRead layout");
+				}
+			}
+
 			s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::frame_output_2)] = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, widthOutput, heightOutput, 1, 1, VK_FORMAT_R16G16B16A16_SFLOAT, UnorderedAccessView | ShaderViews | RenderTargetViews | BlitClear, "frame_output_2"});
 			SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::frame_output_2)] != nullptr, "Failed to create frame_output_2 render target");
 

@@ -23,49 +23,36 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  * -------------------------------------------------------
- * child_window.cpp
+ * file_dialog_item.cpp
  * -------------------------------------------------------
- * Created: 20/03/2026
+ * Created: 18/03/2026
  * -------------------------------------------------------
  */
-#include "child_window.h"
-#include "editor_layer.h"
-#include <SceneryEditorX/core/window/window.h>
-#include <SceneryEditorX/renderer/ui/panels/scene_viewport.h>
-#include <SceneryEditorX/renderer/ui/source/imgui/imgui.h>
+#include "file_dialog_item.h"
 
 // ---------------------------------------------------------
 
-using namespace SceneryEditorX;
-
-Ref<EditorLayer> s_Editor = nullptr;
-static bool s_Visible = true;
-
-void UI::ChildWindow::CenterWindow()
+namespace SceneryEditorX
 {
-    Ref<EditorLayer> editor = s_Editor.Get();
-    const Vec2 center = editor->GetWidget<SceneViewport>()->GetCenter();
 
-    ImGui::SetNextWindowPos(ImVec2(center.x, center.y), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-}
-
-void UI::ChildWindow::Init(const std::string &name)
-{
-    if (!s_Visible)
-        return;
-
-    Ref<EditorLayer> editor = s_Editor.Get();
-    const Vec2 center = editor->GetWidget<SceneViewport>()->GetCenter();
-
-    ImGui::SetNextWindowPos(ImVec2(center.x, center.y), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-
-    if (ImGui::Begin(name.c_str(), &s_Visible, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize))
+    FileDialogItem::FileDialogItem(const std::string &path, ImageResource *icon)
     {
-        float contentWidth = 500.0f * Window::GetDpiScale();
-        ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + contentWidth);
+        m_Path = path;
+        m_PathRelative = IO::FileSystem::GetRelativePath(path);
+        m_Icon = icon;
+        static uint32_t id = 0;
+        m_Id32 = SceneryEditorX::UUID32(id++);
+        m_IsDirectory = IO::FileSystem::IsDirectory(path);
+        m_Label = IO::FileSystem::GetFileNameFromFilePath(path);
     }
 
-    ImGui::End();
+    void FileDialogItem::Clicked()
+    {
+        const auto now = std::chrono::high_resolution_clock::now();
+        m_TimeSinceLastClick = now - m_LastClickTime;
+        m_LastClickTime = now;
+    }
+
 }
 
 // ---------------------------------------------------------

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * -------------------------------------------------------
  * Scenery Editor X
  * -------------------------------------------------------
@@ -23,50 +23,38 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  * -------------------------------------------------------
- * child_window.cpp
+ * layer_stack.cpp
  * -------------------------------------------------------
- * Created: 20/03/2026
+ * Created: 29/3/2025
  * -------------------------------------------------------
  */
-#include "child_window.h"
-#include "editor_layer.h"
-#include <SceneryEditorX/core/window/window.h>
-#include <SceneryEditorX/renderer/ui/panels/scene_viewport.h>
-#include <SceneryEditorX/renderer/ui/source/imgui/imgui.h>
+//#include <imgui/imgui.h>
+//#include <SceneryEditorX/ui/ui.h>
 
-// ---------------------------------------------------------
+// -------------------------------------------------------
 
-using namespace SceneryEditorX;
-
-Ref<EditorLayer> s_Editor = nullptr;
-static bool s_Visible = true;
-
-void UI::ChildWindow::CenterWindow()
+/*
+namespace UI
 {
-    Ref<EditorLayer> editor = s_Editor.Get();
-    const Vec2 center = editor->GetWidget<SceneViewport>()->GetCenter();
+	void UIManager::LayerStack()
+	{
+		ImGui::Begin("Layer Stack");
+		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2{4, 4});
+		ImGui::Separator();
+		ImGui::PopStyleVar();
+		ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_FramePadding;
+		ImGui::Columns(3, "TreeViewColumns", true);
+		ImGui::Text("Name");
+		ImGui::NextColumn();
+		ImGui::Text("Type");
+		ImGui::NextColumn();
+		ImGui::Text("Property");
+		ImGui::Spacing();
+		ImGui::End();
+	}
 
-    ImGui::SetNextWindowPos(ImVec2(center.x, center.y), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-}
+} // namespace UI
+*/
 
-void UI::ChildWindow::Init(const std::string &name)
-{
-    if (!s_Visible)
-        return;
-
-    Ref<EditorLayer> editor = s_Editor.Get();
-    const Vec2 center = editor->GetWidget<SceneViewport>()->GetCenter();
-
-    ImGui::SetNextWindowPos(ImVec2(center.x, center.y), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-
-    if (ImGui::Begin(name.c_str(), &s_Visible, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize))
-    {
-        float contentWidth = 500.0f * Window::GetDpiScale();
-        ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + contentWidth);
-    }
-
-    ImGui::End();
-}
-
-// ---------------------------------------------------------
+// -------------------------------------------------------
 

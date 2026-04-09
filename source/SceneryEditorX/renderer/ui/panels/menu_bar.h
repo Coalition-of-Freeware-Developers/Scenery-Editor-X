@@ -23,50 +23,46 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  * -------------------------------------------------------
- * child_window.cpp
+ * menu_bar.h
  * -------------------------------------------------------
- * Created: 20/03/2026
+ * Created: 18/03/2026
  * -------------------------------------------------------
  */
-#include "child_window.h"
-#include "editor_layer.h"
-#include <SceneryEditorX/core/window/window.h>
-#include <SceneryEditorX/renderer/ui/panels/scene_viewport.h>
-#include <SceneryEditorX/renderer/ui/source/imgui/imgui.h>
+#pragma once
 
-// ---------------------------------------------------------
+// -------------------------------------------------------
 
-using namespace SceneryEditorX;
+namespace SceneryEditorX 
+{ 
+	class EditorLayer; 
+	class UILayer;
 
-Ref<EditorLayer> s_Editor = nullptr;
-static bool s_Visible = true;
-
-void UI::ChildWindow::CenterWindow()
-{
-    Ref<EditorLayer> editor = s_Editor.Get();
-    const Vec2 center = editor->GetWidget<SceneViewport>()->GetCenter();
-
-    ImGui::SetNextWindowPos(ImVec2(center.x, center.y), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+	// -------------------------------------------------------
+	
+	class MenuBar
+	{
+	public:
+		static void Initialize(EditorLayer* editor);
+		// Convenience overload to allow UI layer to initialize the menu bar when
+		// refactoring moves the call site. This forwards to the EditorLayer-based
+		// initializer using a reinterpret_cast. The cast is kept explicit to
+		// document the mismatch in types and avoid accidental implicit conversions.
+		static void Initialize(UILayer* uiLayer)
+		{
+			Initialize(reinterpret_cast<EditorLayer*>(uiLayer));
+		}
+		static void Tick();
+		// Set the internal editor pointer used by menu bar windows
+		static void SetEditor(EditorLayer* editor);
+	
+		static void ShowWorldSaveDialog();
+		static void ShowWorldLoadDialog();
+	
+		static float GetPaddingX() { return 14.0f; }
+		static float GetPaddingY() { return 8.0f; }
+	private:
+		Ref<EditorLayer> m_Editor;
+	};
 }
 
-void UI::ChildWindow::Init(const std::string &name)
-{
-    if (!s_Visible)
-        return;
-
-    Ref<EditorLayer> editor = s_Editor.Get();
-    const Vec2 center = editor->GetWidget<SceneViewport>()->GetCenter();
-
-    ImGui::SetNextWindowPos(ImVec2(center.x, center.y), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-
-    if (ImGui::Begin(name.c_str(), &s_Visible, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize))
-    {
-        float contentWidth = 500.0f * Window::GetDpiScale();
-        ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + contentWidth);
-    }
-
-    ImGui::End();
-}
-
-// ---------------------------------------------------------
-
+// -------------------------------------------------------

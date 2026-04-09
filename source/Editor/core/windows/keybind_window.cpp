@@ -29,11 +29,10 @@
  * -------------------------------------------------------
  */
 #include "keybind_window.h"
-
 #include "Editor/core/editor_layer.h"
-#include "Editor/ui/panels/scene_viewport.h"
-#include "Editor/ui/source/imgui/imgui.h"
 #include <SceneryEditorX/core/window/window.h>
+#include <SceneryEditorX/renderer/ui/panels/scene_viewport.h>
+#include <SceneryEditorX/renderer/ui/source/imgui/imgui.h>
 
 // ---------------------------------------------------------
 
@@ -54,7 +53,7 @@ void KeybindWindow::Tick()
 	// center the window on first use, but let user move it freely afterward
 	// Convert the project's Vec2 center to ImGui's ImVec2 explicitly
 	{
-		Vec2 center = editor->GetWidget<SceneViewport>()->GetCenter();
+		Vec2 center = editor->GetWidget<SceneryEditorX::SceneViewport>()->GetCenter();
 		ImGui::SetNextWindowPos(ImVec2(center.x, center.y), ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.5f));
 	}
 

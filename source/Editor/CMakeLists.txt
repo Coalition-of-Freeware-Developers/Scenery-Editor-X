@@ -12,22 +12,6 @@ FILE(GLOB MODULES modules/*.cpp modules/*.h modules/*.hpp)
 FILE(GLOB PROJECT projects/*.cpp projects/*.h projects/*.hpp)
 FILE(GLOB SETTINGS settings/*.cpp settings/*.h settings/*.hpp)
 
-FILE(GLOB UI_ACTIONS ui/actions/*.cpp ui/actions/*.h ui/actions/*.hpp)
-FILE(GLOB UI_PANELS ui/panels/*.cpp ui/panels/*.h ui/panels/*.hpp)
-FILE(GLOB UI_RESOURCES ui/resources/*.cpp ui/resources/*.h ui/resources/*.hpp)
-FILE(GLOB UI_SOURCE LIST_DIRECTORIES false CONFIGURE_DEPENDS ui/source/*.cpp ui/source/*.h ui/source/*.hpp)
-FILE(GLOB UI_IMGUIZMO ui/source/imguizmo/*.cpp ui/source/imguizmo/*.h ui/source/imguizmo/*.hpp)
-FILE(GLOB UI_IMGUI LIST_DIRECTORIES false CONFIGURE_DEPENDS ui/source/imgui/*.cpp ui/source/imgui/*.h ui/source/imgui/*.hpp)
-FILE(GLOB UI_IMGUI_BACKENDS LIST_DIRECTORIES false CONFIGURE_DEPENDS ui/source/imgui/backends/*.cpp ui/source/imgui/backends/*.h ui/source/imgui/backends/*.hpp)
-FILE(GLOB UI_IMGUI_BACKENDS_VULKAN ui/source/imgui/backends/vulkan/*.cpp ui/source/imgui/backends/vulkan/*.h ui/source/imgui/backends/vulkan/*.hpp)
-FILE(GLOB UI_IMGUI_CPP ui/source/imgui/misc/cpp/*.cpp ui/source/imgui/misc/cpp/*.h ui/source/imgui/misc/cpp/*.hpp)
-FILE(GLOB UI_IMGUI_DEBUGGERS ui/source/imgui/misc/debuggers/*.cpp ui/source/imgui/misc/debuggers/*.h ui/source/imgui/misc/debuggers/*.hpp)
-FILE(GLOB UI_IMGUI_FONT ui/source/imgui/misc/font/*.cpp ui/source/imgui/misc/font/*.h ui/source/imgui/misc/font/*.hpp)
-FILE(GLOB UI_IMGUI_FREETYPE ui/source/imgui/misc/freetype/*.cpp ui/source/imgui/misc/freetype/*.h ui/source/imgui/misc/freetype/*.hpp)
-FILE(GLOB UI_IMGUI_SINGLE ui/source/imgui/misc/single_file/*.cpp ui/source/imgui/misc/single_file/*.h ui/source/imgui/misc/single_file/*.hpp)
-
-FILE(GLOB UI_FILES LIST_DIRECTORIES false CONFIGURE_DEPENDS "ui/*.cpp" "ui/*.h" "ui/*.hpp")
-
 SET (PROJECT_CONFIG_FILES
 	${CMAKE_SOURCE_DIR}/.clang-format
 	${CMAKE_SOURCE_DIR}/.editorconfig
@@ -43,25 +27,8 @@ ADD_EXECUTABLE(SceneryEditorX WIN32
 	${MODULES}
 	${PROJECT}
 	${SETTINGS}
-	${UI_ACTIONS}
-	${UI_PANELS}
-	${UI_RESOURCES}
-	${UI_SOURCE}
-	${UI_IMGUIZMO}
-	${UI_IMGUI}
-	${UI_IMGUI_CPP}
-	${UI_IMGUI_DEBUGGERS}
-	${UI_IMGUI_FONT}
-	${UI_IMGUI_FREETYPE}
-	${UI_IMGUI_SINGLE}
-	${UI_IMGUI_BACKENDS}
-	${UI_IMGUI_BACKENDS_VULKAN}
-	${ICON_FILES}
-	${FONT_FILES}
-	${PROJECT_CONFIG_FILES}
 
-	# --------------------------------
-	${UI_FILES}
+	${PROJECT_CONFIG_FILES}
 
 	# --------------------------------
 	${RESOURCE_FILE}
@@ -81,45 +48,6 @@ SOURCE_GROUP("Modules" FILES
 )
 SOURCE_GROUP("Projects" FILES
 	${PROJECT}
-)
-SOURCE_GROUP("UI" FILES
-	${UI_FILES}
-)
-SOURCE_GROUP("UI/Actions" FILES
-	${UI_ACTIONS}
-)
-SOURCE_GROUP("UI/Panels" FILES
-	${UI_PANELS}
-)
-SOURCE_GROUP("UI/Resources" FILES
-	${UI_RESOURCES}
-)
-SOURCE_GROUP("UI/Source/Imguizmo" FILES
-	${UI_IMGUIZMO}
-)
-SOURCE_GROUP("UI/Source/Imgui" FILES
-	${UI_IMGUI}
-)
-SOURCE_GROUP("UI/Source/Imgui/Backends" FILES
-	${UI_IMGUI_BACKENDS}
-)
-SOURCE_GROUP("UI/Source/Imgui/Backends/Vulkan" FILES
-	${UI_IMGUI_BACKENDS_VULKAN}
-)
-SOURCE_GROUP("UI/Source/Imgui/Misc/Cpp" FILES
-	${UI_IMGUI_CPP}
-)
-SOURCE_GROUP("UI/Source/Imgui/Misc/Debuggers" FILES
-	${UI_IMGUI_DEBUGGERS}
-)
-SOURCE_GROUP("UI/Source/Imgui/Misc/Font" FILES
-	${UI_IMGUI_FONT}
-)
-SOURCE_GROUP("UI/Source/Imgui/Misc/Freetype" FILES
-	${UI_IMGUI_FREETYPE}
-)
-SOURCE_GROUP("UI/Source/Imgui/Misc/Single File" FILES
-	${UI_IMGUI_SINGLE}
 )
 SOURCE_GROUP("Settings" FILES
 	${SETTINGS}

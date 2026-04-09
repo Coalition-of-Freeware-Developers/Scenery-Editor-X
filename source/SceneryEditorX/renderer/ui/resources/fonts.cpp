@@ -23,50 +23,65 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  * -------------------------------------------------------
- * child_window.cpp
+ * fonts.cpp
  * -------------------------------------------------------
- * Created: 20/03/2026
+ * Created: 23/03/2026
  * -------------------------------------------------------
  */
-#include "child_window.h"
-#include "editor_layer.h"
-#include <SceneryEditorX/core/window/window.h>
-#include <SceneryEditorX/renderer/ui/panels/scene_viewport.h>
+#include "fonts.h"
 #include <SceneryEditorX/renderer/ui/source/imgui/imgui.h>
 
-// ---------------------------------------------------------
+// -------------------------------------------------------
 
-using namespace SceneryEditorX;
-
-Ref<EditorLayer> s_Editor = nullptr;
-static bool s_Visible = true;
-
-void UI::ChildWindow::CenterWindow()
+namespace SceneryEditorX::UI
 {
-    Ref<EditorLayer> editor = s_Editor.Get();
-    const Vec2 center = editor->GetWidget<SceneViewport>()->GetCenter();
+	static std::unordered_map<std::string, ImFont*> s_Fonts;
 
-    ImGui::SetNextWindowPos(ImVec2(center.x, center.y), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+	// -------------------------------------------------------
+
+	void Fonts::Add(const FontConfiguration& config, bool isDefault)
+	{
+		if (s_Fonts.contains(config.FontName))
+		{
+			EDITOR_WARN_TAG("EditorUI", "Tried to add font with name '{0}' but that name is already taken!", config.FontName);
+			return;
+		}
+
+		ImFontConfig imguiFontConfig;
+		imguiFontConfig.MergeMode = config.MergeWithLast;
+		auto& io = ImGui::GetIO();
+		ImFont* font = io.Fonts->AddFontFromFileTTF(config.FilePath.data(), config.Size, &imguiFontConfig, config.GlyphRanges == nullptr ? io.Fonts->GetGlyphRangesDefault() : config.GlyphRanges);
+		SEDX_CORE_VERIFY(font, "Failed to load font file!");
+		s_Fonts[config.FontName] = font;
+
+		if (isDefault)
+			io.FontDefault = font;
+	}
+
+	ImFont* Fonts::Get(const std::string& fontName)
+	{
+		SEDX_CORE_VERIFY(s_Fonts.contains(fontName), "Failed to find font with that name!");
+		return s_Fonts.at(fontName);
+	}
+
+	void Fonts::PushFont(const std::string& fontName)
+	{
+		const auto& io = ImGui::GetIO();
+
+		if (!s_Fonts.contains(fontName))
+		{
+			ImGui::PushFont(io.FontDefault);
+			return;
+		}
+
+		ImGui::PushFont(s_Fonts.at(fontName));
+	}
+
+	void Fonts::PopFont()
+	{
+		ImGui::PopFont();
+	}
+
 }
 
-void UI::ChildWindow::Init(const std::string &name)
-{
-    if (!s_Visible)
-        return;
-
-    Ref<EditorLayer> editor = s_Editor.Get();
-    const Vec2 center = editor->GetWidget<SceneViewport>()->GetCenter();
-
-    ImGui::SetNextWindowPos(ImVec2(center.x, center.y), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-
-    if (ImGui::Begin(name.c_str(), &s_Visible, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize))
-    {
-        float contentWidth = 500.0f * Window::GetDpiScale();
-        ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + contentWidth);
-    }
-
-    ImGui::End();
-}
-
-// ---------------------------------------------------------
-
+// -------------------------------------------------------

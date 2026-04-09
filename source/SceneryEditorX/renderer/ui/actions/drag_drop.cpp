@@ -23,50 +23,44 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  * -------------------------------------------------------
- * child_window.cpp
+ * drag_drop.cpp
  * -------------------------------------------------------
- * Created: 20/03/2026
+ * Created: 18/03/2026
  * -------------------------------------------------------
  */
-#include "child_window.h"
-#include "editor_layer.h"
-#include <SceneryEditorX/core/window/window.h>
-#include <SceneryEditorX/renderer/ui/panels/scene_viewport.h>
+#include "drag_drop.h"
 #include <SceneryEditorX/renderer/ui/source/imgui/imgui.h>
+#include <SceneryEditorX/core/resource/asset_resource.h>
 
-// ---------------------------------------------------------
+// -------------------------------------------------------
 
-using namespace SceneryEditorX;
-
-Ref<EditorLayer> s_Editor = nullptr;
-static bool s_Visible = true;
-
-void UI::ChildWindow::CenterWindow()
+namespace SceneryEditorX
 {
-    Ref<EditorLayer> editor = s_Editor.Get();
-    const Vec2 center = editor->GetWidget<SceneViewport>()->GetCenter();
+	
+	DragDropPayload::DragDropPayload(const DragPayloadType type, const DataVariant data, const char *pathRelative)
+	    : type(type), data(data), m_RelativePath(pathRelative)
+	{
+	}
+	
+	void DragDropPayload::CreateDragDropPayload(const DragDropPayload &payload)
+	{
+	    ImGui::SetDragDropPayload(DragDropTypes[(int)payload.type].data(), &payload, sizeof(payload), ImGuiCond_Once);
+	}
+	
+	DragDropPayload *DragDropPayload::ReceiveDragDropPayload(DragPayloadType type)
+	{
+	    if (ImGui::BeginDragDropTarget())
+	    {
+	        if (const ImGuiPayload *payloadImgui = ImGui::AcceptDragDropPayload(DragDropTypes[(int)type].data()))
+	        {
+	            return static_cast<DragDropPayload *>(payloadImgui->Data);
+	        }
+	        ImGui::EndDragDropTarget();
+	    }
+	
+	    return nullptr;
+	}
+	
+} // namespace SceneryEditorX
 
-    ImGui::SetNextWindowPos(ImVec2(center.x, center.y), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-}
-
-void UI::ChildWindow::Init(const std::string &name)
-{
-    if (!s_Visible)
-        return;
-
-    Ref<EditorLayer> editor = s_Editor.Get();
-    const Vec2 center = editor->GetWidget<SceneViewport>()->GetCenter();
-
-    ImGui::SetNextWindowPos(ImVec2(center.x, center.y), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-
-    if (ImGui::Begin(name.c_str(), &s_Visible, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize))
-    {
-        float contentWidth = 500.0f * Window::GetDpiScale();
-        ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + contentWidth);
-    }
-
-    ImGui::End();
-}
-
-// ---------------------------------------------------------
-
+// -------------------------------------------------------

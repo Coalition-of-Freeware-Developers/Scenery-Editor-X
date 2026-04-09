@@ -23,50 +23,37 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  * -------------------------------------------------------
- * child_window.cpp
+ * colors.h
  * -------------------------------------------------------
- * Created: 20/03/2026
+ * Created: 28/3/2025
  * -------------------------------------------------------
  */
-#include "child_window.h"
-#include "editor_layer.h"
-#include <SceneryEditorX/core/window/window.h>
-#include <SceneryEditorX/renderer/ui/panels/scene_viewport.h>
+#pragma once
 #include <SceneryEditorX/renderer/ui/source/imgui/imgui.h>
 
-// ---------------------------------------------------------
+// -------------------------------------------------------
 
-using namespace SceneryEditorX;
+/* TODO: Add more colors and options here. */
+/* TODO: Connect with user customization and config file. */
 
-Ref<EditorLayer> s_Editor = nullptr;
-static bool s_Visible = true;
-
-void UI::ChildWindow::CenterWindow()
+namespace Colors::Theme
 {
-    Ref<EditorLayer> editor = s_Editor.Get();
-    const Vec2 center = editor->GetWidget<SceneViewport>()->GetCenter();
+	constexpr auto BACKGROUND			= IM_COL32(0, 0, 0, 255);
+	constexpr auto BACKGROUND_DARK		= IM_COL32(45, 45, 45, 255);
+	//constexpr auto backgroundPopup  = IM_COL32(55, 55, 55, 255);
+	constexpr auto GROUP_HEADER			= IM_COL32(0, 0, 0, 255);
+	constexpr auto HIGHLIGHT				= IM_COL32(39, 185, 242, 255);
+	constexpr auto TEXT					= IM_COL32(192, 192, 192, 255);
+	constexpr auto TEXT_BRIGHTER			= IM_COL32(210, 210, 210, 255);
+	constexpr auto TEXT_DARKER			= IM_COL32(128, 128, 128, 255);
+	constexpr auto TEXT_ERROR			= IM_COL32(230, 51, 51, 255);
+	constexpr auto TITLEBAR				= IM_COL32(0, 0, 0, 255);
+	constexpr auto ACCENT				= IM_COL32(236, 158, 36, 255);
+	constexpr auto SELECTION				= IM_COL32(237, 192, 119, 255);
+	constexpr auto SELECTION_MUTED		= IM_COL32(237, 201, 142, 23);
+	constexpr auto BACKGROUND_POPUP		= IM_COL32(50, 50, 50, 255);
+	constexpr auto PROPERTY_FIELD		= IM_COL32(15, 15, 15, 255);
 
-    ImGui::SetNextWindowPos(ImVec2(center.x, center.y), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
 }
 
-void UI::ChildWindow::Init(const std::string &name)
-{
-    if (!s_Visible)
-        return;
-
-    Ref<EditorLayer> editor = s_Editor.Get();
-    const Vec2 center = editor->GetWidget<SceneViewport>()->GetCenter();
-
-    ImGui::SetNextWindowPos(ImVec2(center.x, center.y), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-
-    if (ImGui::Begin(name.c_str(), &s_Visible, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize))
-    {
-        float contentWidth = 500.0f * Window::GetDpiScale();
-        ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + contentWidth);
-    }
-
-    ImGui::End();
-}
-
-// ---------------------------------------------------------
-
+// -------------------------------------------------------

@@ -31,9 +31,9 @@
 #pragma once
 #include "device.h"
 #include <vector>
-#include <Editor/ui/ui_impl.h>
 #include <SDL3/SDL_video.h>
 #include <SceneryEditorX/core/identifiers/flag.h>
+#include <SceneryEditorX/renderer/ui/ui_impl.h>
 #include <vma/vk_mem_alloc.h>
 
 // -------------------------------------------------------
@@ -228,7 +228,7 @@ namespace SceneryEditorX
 		uint32_t m_Width = 0;
 		uint32_t m_Height = 0;
 		uint32_t m_SemaphoreIndex = 0;
-        uint32_t m_LastAcquiredSemaphoreIndex = 0;
+		uint32_t m_LastAcquiredSemaphoreIndex = 0;
 		VkPresentModeKHR m_PresentMode = VK_PRESENT_MODE_FIFO_KHR;
 
 		static Scope<FrameSync> s_FrameSync;

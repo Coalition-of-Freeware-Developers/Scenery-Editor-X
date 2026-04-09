@@ -1,4 +1,4 @@
-/**
+﻿/**
  * -------------------------------------------------------
  * Scenery Editor X
  * -------------------------------------------------------
@@ -23,50 +23,45 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  * -------------------------------------------------------
- * child_window.cpp
+ * content_browser.cpp
  * -------------------------------------------------------
- * Created: 20/03/2026
+ * Created: 29/3/2025
  * -------------------------------------------------------
  */
-#include "child_window.h"
-#include "editor_layer.h"
-#include <SceneryEditorX/core/window/window.h>
-#include <SceneryEditorX/renderer/ui/panels/scene_viewport.h>
-#include <SceneryEditorX/renderer/ui/source/imgui/imgui.h>
+//#include <imgui/imgui.h>
+//#include <imgui/imgui_internal.h>
+//#include <SceneryEditorX/ui/ui.h>
 
-// ---------------------------------------------------------
+// -------------------------------------------------------
 
-using namespace SceneryEditorX;
-
-Ref<EditorLayer> s_Editor = nullptr;
-static bool s_Visible = true;
-
-void UI::ChildWindow::CenterWindow()
+/*
+namespace UI
 {
-    Ref<EditorLayer> editor = s_Editor.Get();
-    const Vec2 center = editor->GetWidget<SceneViewport>()->GetCenter();
+	void UIManager::AssetBrowser()
+	{
+		ImGui::Begin("Asset Browser",
+					 nullptr,
+					 ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize |
+						 ImGuiWindowFlags_NoCollapse);
+		constexpr ImGuiWindowFlags child_flags =
+			ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_AlwaysHorizontalScrollbar;
+		ImGui::SetScrollHereX(0.25f); // 0.0f:left, 0.5f:center, 1.0f:right
 
-    ImGui::SetNextWindowPos(ImVec2(center.x, center.y), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-}
+			ImGui::BeginChild("Library Items", ImVec2(0, 0), false, child_flags);
+			ImGuiTableFlags table_flags_for_sort_specs = ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_Borders;
+			if (ImGui::BeginTable("for_sort_specs_only", 2, table_flags_for_sort_specs, ImVec2(0.0f, ImGui::GetFrameHeight())))
+			{
+				//ImGui::TableSetupColumn("Index");
+				//ImGui::TableSetupColumn("Type");
+				//ImGui::TableHeadersRow();
+				if (ImGuiTableSortSpecs *sort_specs = ImGui::TableGetSortSpecs())
+					if (sort_specs->SpecsDirty) { }
+				ImGui::EndTable();
+			}
+			ImGui::Text(R"(Selected: %d/%d items)" /*, Selection.Size, Items.Size #1# );
+			ImGui::EndChild();
 
-void UI::ChildWindow::Init(const std::string &name)
-{
-    if (!s_Visible)
-        return;
-
-    Ref<EditorLayer> editor = s_Editor.Get();
-    const Vec2 center = editor->GetWidget<SceneViewport>()->GetCenter();
-
-    ImGui::SetNextWindowPos(ImVec2(center.x, center.y), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-
-    if (ImGui::Begin(name.c_str(), &s_Visible, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize))
-    {
-        float contentWidth = 500.0f * Window::GetDpiScale();
-        ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + contentWidth);
-    }
-
-    ImGui::End();
-}
-
-// ---------------------------------------------------------
-
+		ImGui::End();
+	}
+} // namespace UI
+*/

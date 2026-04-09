@@ -45,13 +45,13 @@
 #include <sstream>
 #include <thread>
 #include <Editor/modules/scene_render.h>
-#include <Editor/ui/ui_impl.h>
 #include <SDL3/SDL.h>
 #include <SceneryEditorX/asset/model.h>
 #include <SceneryEditorX/asset/manager/asset_manager.h>
 #include <SceneryEditorX/core/application/application.h>
 #include <SceneryEditorX/core/window/monitor_data.h>
 #include <SceneryEditorX/renderer/gbuffer.h>
+#include <SceneryEditorX/renderer/ui/ui_impl.h>
 #include <SceneryEditorX/scene/camera.h>
 #include <SceneryEditorX/scene/entity.h>
 #include <SceneryEditorX/scene/scene.h>
@@ -2788,10 +2788,13 @@ namespace SceneryEditorX
 		{
 			Model& asset = *m_TestModel;
 
-			vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, m_BasicPipeline);
-			vkCmdSetCullMode(cb, VK_CULL_MODE_BACK_BIT);
+				vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, m_BasicPipeline);
+				// NOTE: Do NOT call vkCmdSetCullMode here. Any pipeline binary compiled before
+				// VK_DYNAMIC_STATE_CULL_MODE was added to Pipeline::CreateGraphics triggers
+				// VUID-vkCmdDrawIndexed-None-08608 when vkCmdSetCullMode is called after binding it.
+				// The static rasterizationState.cullMode = VK_CULL_MODE_NONE default is correct.
 
-			// Set 0: texture array
+				// Set 0: texture array
 			VkDescriptorSet descSet = asset.GetDescriptorSet();
 			vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS,
 									m_BasicPipelineLayout,
@@ -2833,10 +2836,11 @@ namespace SceneryEditorX
 				static_cast<void*>(m_GridIndexBuffer), m_GridIndexCount);
 
 				vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, m_GridPipeline);
-				SEDX_CORE_TRACE_TAG("Renderer", "[Grid] vkCmdBindPipeline issued");
-				vkCmdSetCullMode(cb, VK_CULL_MODE_NONE);
+					SEDX_CORE_TRACE_TAG("Renderer", "[Grid] vkCmdBindPipeline issued");
+					// NOTE: Do NOT call vkCmdSetCullMode here for the same reason as m_BasicPipeline above.
+					// VK_CULL_MODE_NONE is already the static default from Pipeline::CreateGraphics.
 
-				vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, m_GridPipelineLayout,
+					vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, m_GridPipelineLayout,
 									0, 1, &m_CameraDescriptorSets[m_CurrentFrameIndex],
 									0, nullptr);
 

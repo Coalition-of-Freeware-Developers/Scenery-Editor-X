@@ -29,20 +29,13 @@
  * -------------------------------------------------------
  */
 #include "editor_layer.h"
-#include "Editor/ui/panels/asset_browser.h"
-#include "Editor/ui/panels/menu_bar.h"
-#include "Editor/ui/panels/render_options.h"
-#include "Editor/ui/panels/scene_viewport.h"
-#include "Editor/ui/panels/texure_viewer.h"
+#include "SceneryEditorX/renderer/ui/panels/asset_browser.h"
+#include "SceneryEditorX/renderer/ui/panels/menu_bar.h"
+#include "SceneryEditorX/renderer/ui/panels/render_options.h"
+#include "SceneryEditorX/renderer/ui/panels/scene_viewport.h"
+#include "SceneryEditorX/renderer/ui/panels/texure_viewer.h"
 #include <Editor/projects/project.h>
 #include <Editor/settings/editor_settings.h>
-#include <Editor/ui/ui_impl.h>
-#include <Editor/ui/actions/gizmos.h>
-#include <Editor/ui/panels/properties.h>
-#include <Editor/ui/source/imgui/imgui.h>
-#include <Editor/ui/source/imgui/imgui_internal.h>
-#include <Editor/ui/source/imgui/backends/imgui_impl_sdl3.h>
-#include <Editor/ui/source/imguizmo/ImGuizmo.h>
 #include <SceneryEditorX/core/application/application.h>
 #include <SceneryEditorX/core/input/input.h>
 #include <SceneryEditorX/core/resource/resource_cache.h>
@@ -50,6 +43,13 @@
 #include <SceneryEditorX/project/project.h>
 #include <SceneryEditorX/project/selection_manager.h>
 #include <SceneryEditorX/renderer/renderer.h>
+#include <SceneryEditorX/renderer/ui/ui_impl.h>
+#include <SceneryEditorX/renderer/ui/actions/gizmos.h>
+#include <SceneryEditorX/renderer/ui/panels/properties.h>
+#include <SceneryEditorX/renderer/ui/source/imgui/imgui.h>
+#include <SceneryEditorX/renderer/ui/source/imgui/imgui_internal.h>
+#include <SceneryEditorX/renderer/ui/source/imgui/backends/imgui_impl_sdl3.h>
+#include <SceneryEditorX/renderer/ui/source/imguizmo/ImGuizmo.h>
 #include <SceneryEditorX/renderer/vulkan/debug/render_doc.h>
 #include <SceneryEditorX/scene/entity.h>
 #include <SceneryEditorX/scene/scene.h>
@@ -244,7 +244,7 @@ namespace SceneryEditorX
 		ImGui::End();
 
 		// various windows that don't belong to a certain widget
-		for (UI::ChildWindow& window : m_ChildWindows)
+		for (::UI::ChildWindow & window : m_ChildWindows)
 		{
 			if (window.IsVisible())
 				window.Tick();

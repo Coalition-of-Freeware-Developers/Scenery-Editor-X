@@ -53,6 +53,23 @@ FILE(GLOB RENDERER_SHADER_FILES "renderer/vulkan/shader/*.h" "renderer/vulkan/sh
 FILE(GLOB RENDERER_SYNC_FILES "renderer/vulkan/sync/*.h" "renderer/vulkan/sync/*.hpp" "renderer/vulkan/sync/*.cpp")
 
 # --------------------------------
+FILE(GLOB UI_ACTIONS renderer/ui/actions/*.cpp renderer/ui/actions/*.h renderer/ui/actions/*.hpp)
+FILE(GLOB UI_PANELS renderer/ui/panels/*.cpp renderer/ui/panels/*.h renderer/ui/panels/*.hpp)
+FILE(GLOB UI_RESOURCES renderer/ui/resources/*.cpp renderer/ui/resources/*.h renderer/ui/resources/*.hpp)
+FILE(GLOB UI_SOURCE LIST_DIRECTORIES false CONFIGURE_DEPENDS renderer/ui/source/*.cpp renderer/ui/source/*.h renderer/ui/source/*.hpp)
+FILE(GLOB UI_IMGUIZMO renderer/ui/source/imguizmo/*.cpp renderer/ui/source/imguizmo/*.h renderer/ui/source/imguizmo/*.hpp)
+FILE(GLOB UI_IMGUI LIST_DIRECTORIES false CONFIGURE_DEPENDS renderer/ui/source/imgui/*.cpp renderer/ui/source/imgui/*.h renderer/ui/source/imgui/*.hpp)
+FILE(GLOB UI_IMGUI_BACKENDS LIST_DIRECTORIES false CONFIGURE_DEPENDS renderer/ui/source/imgui/backends/*.cpp renderer/ui/source/imgui/backends/*.h renderer/ui/source/imgui/backends/*.hpp)
+FILE(GLOB UI_IMGUI_BACKENDS_VULKAN renderer/ui/source/imgui/backends/vulkan/*.cpp renderer/ui/source/imgui/backends/vulkan/*.h renderer/ui/source/imgui/backends/vulkan/*.hpp)
+FILE(GLOB UI_IMGUI_CPP renderer/ui/source/imgui/misc/cpp/*.cpp renderer/ui/source/imgui/misc/cpp/*.h renderer/ui/source/imgui/misc/cpp/*.hpp)
+FILE(GLOB UI_IMGUI_DEBUGGERS renderer/ui/source/imgui/misc/debuggers/*.cpp renderer/ui/source/imgui/misc/debuggers/*.h renderer/ui/source/imgui/misc/debuggers/*.hpp)
+FILE(GLOB UI_IMGUI_FONT renderer/ui/source/imgui/misc/font/*.cpp renderer/ui/source/imgui/misc/font/*.h renderer/ui/source/imgui/misc/font/*.hpp)
+FILE(GLOB UI_IMGUI_FREETYPE renderer/ui/source/imgui/misc/freetype/*.cpp renderer/ui/source/imgui/misc/freetype/*.h renderer/ui/source/imgui/misc/freetype/*.hpp)
+FILE(GLOB UI_IMGUI_SINGLE renderer/ui/source/imgui/misc/single_file/*.cpp renderer/ui/source/imgui/misc/single_file/*.h renderer/ui/source/imgui/misc/single_file/*.hpp)
+
+FILE(GLOB UI_FILES LIST_DIRECTORIES false CONFIGURE_DEPENDS "renderer/ui/*.cpp" "renderer/ui/*.h" "renderer/ui/*.hpp")
+
+# --------------------------------
 
 FILE(GLOB RENDERER_KOSMICKRISP LIST_DIRECTORIES false CONFIGURE_DEPENDS "renderer/kosmickrisp/*.h" "renderer/kosmickrisp/*.hpp" "renderer/kosmickrisp/*.cpp")
 
@@ -151,14 +168,25 @@ ADD_LIBRARY(AppCore
 	${REFLECTION_FILES}
 	${SLANG_SHADERS}
 
-	# ${DEBUG_RENDERER_FILES}
+	# --------------------------------
 
-	# ${VULKAN_RENDER_PASS}
-	# ${VULKAN_SHADER_CODE}
-	# ${FONT_CODE}
-	# ${UI_ROOT}
-	# ${UI_PANELS}
-	# ${UI_ACTIONS}
+	${UI_FILES}
+	${UI_ACTIONS}
+	${UI_PANELS}
+	${UI_RESOURCES}
+	${UI_SOURCE}
+	${UI_IMGUIZMO}
+	${UI_IMGUI}
+	${UI_IMGUI_CPP}
+	${UI_IMGUI_DEBUGGERS}
+	${UI_IMGUI_FONT}
+	${UI_IMGUI_FREETYPE}
+	${UI_IMGUI_SINGLE}
+	${UI_IMGUI_BACKENDS}
+	${UI_IMGUI_BACKENDS_VULKAN}
+	${ICON_FILES}
+	${FONT_FILES}
+
 	${UTILS_ROOT}
 	${UTILS_REFLECTION}
 	${UTILS_CONVERSIONS}
@@ -318,11 +346,45 @@ SOURCE_GROUP("Settings" FILES
 SOURCE_GROUP("Serialization" FILES
 	${SERIALIZER_FILES}
 )
-#SOURCE_GROUP("UI" FILES
-#	${UI_ROOT}
-#)
-#SOURCE_GROUP("UI/Actions" FILES ${UI_ACTIONS})
-#SOURCE_GROUP("UI/Panels" FILES ${UI_PANELS})
+SOURCE_GROUP("UI" FILES
+	${UI_FILES}
+)
+SOURCE_GROUP("UI/Actions" FILES
+	${UI_ACTIONS}
+)
+SOURCE_GROUP("UI/Panels" FILES
+	${UI_PANELS}
+)
+SOURCE_GROUP("UI/Resources" FILES
+	${UI_RESOURCES}
+)
+SOURCE_GROUP("UI/Source/Imguizmo" FILES
+	${UI_IMGUIZMO}
+)
+SOURCE_GROUP("UI/Source/Imgui" FILES
+	${UI_IMGUI}
+)
+SOURCE_GROUP("UI/Source/Imgui/Backends" FILES
+	${UI_IMGUI_BACKENDS}
+)
+SOURCE_GROUP("UI/Source/Imgui/Backends/Vulkan" FILES
+	${UI_IMGUI_BACKENDS_VULKAN}
+)
+SOURCE_GROUP("UI/Source/Imgui/Misc/Cpp" FILES
+	${UI_IMGUI_CPP}
+)
+SOURCE_GROUP("UI/Source/Imgui/Misc/Debuggers" FILES
+	${UI_IMGUI_DEBUGGERS}
+)
+SOURCE_GROUP("UI/Source/Imgui/Misc/Font" FILES
+	${UI_IMGUI_FONT}
+)
+SOURCE_GROUP("UI/Source/Imgui/Misc/Freetype" FILES
+	${UI_IMGUI_FREETYPE}
+)
+SOURCE_GROUP("UI/Source/Imgui/Misc/Single File" FILES
+	${UI_IMGUI_SINGLE}
+)
 SOURCE_GROUP("Utilities" FILES
 	${UTILS_ROOT}
 )

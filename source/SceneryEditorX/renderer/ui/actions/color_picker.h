@@ -23,50 +23,55 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  * -------------------------------------------------------
- * child_window.cpp
+ * color_picker.h
  * -------------------------------------------------------
- * Created: 20/03/2026
+ * Created: 21/03/2026
  * -------------------------------------------------------
  */
-#include "child_window.h"
-#include "editor_layer.h"
-#include <SceneryEditorX/core/window/window.h>
-#include <SceneryEditorX/renderer/ui/panels/scene_viewport.h>
-#include <SceneryEditorX/renderer/ui/source/imgui/imgui.h>
+#pragma once
+#include <colors.h>
+#include <SceneryEditorX/asset/standards.h>
 
-// ---------------------------------------------------------
+// -------------------------------------------------------
 
-using namespace SceneryEditorX;
-
-Ref<EditorLayer> s_Editor = nullptr;
-static bool s_Visible = true;
-
-void UI::ChildWindow::CenterWindow()
+namespace SceneryEditorX
 {
-    Ref<EditorLayer> editor = s_Editor.Get();
-    const Vec2 center = editor->GetWidget<SceneViewport>()->GetCenter();
+	struct Standard;
 
-    ImGui::SetNextWindowPos(ImVec2(center.x, center.y), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+	/**
+	 * @class ButtonColorPicker
+	 * @brief 
+	 */
+	class ButtonColorPicker
+	{
+	public:
+		ButtonColorPicker(const std::string& window_title);
+		ButtonColorPicker() = default;
+	
+		void Update();
+	
+		void SetColor(const xMath::Color& color) { m_color = color; }
+		void SetColor(const SceneryEditorX::Standard& color) { m_StdColor = color; }
+		const xMath::Color& GetColor()     const { return m_color; }
+		const SceneryEditorX::Standard& GetStandardColor() const { return m_StdColor; }
+	
+	private:
+		bool m_is_visible          = false;
+		bool m_hdr                 = false;
+		bool m_alpha_half_preview  = false;
+		bool m_options_menu        = true;
+		bool m_show_wheel          = false;
+		bool m_show_preview        = false;
+		bool m_show_rgb            = true;
+		bool m_show_hsv            = false;
+		bool m_show_hex            = true;
+		xMath::Color m_color     = xMath::Color(0, 0, 0, 1);
+		SceneryEditorX::Standard m_StdColor;
+		uint32_t m_combo_box_index = 0;
+		std::string m_window_title;
+		std::string m_color_picker_label;
+	};
+
 }
 
-void UI::ChildWindow::Init(const std::string &name)
-{
-    if (!s_Visible)
-        return;
-
-    Ref<EditorLayer> editor = s_Editor.Get();
-    const Vec2 center = editor->GetWidget<SceneViewport>()->GetCenter();
-
-    ImGui::SetNextWindowPos(ImVec2(center.x, center.y), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-
-    if (ImGui::Begin(name.c_str(), &s_Visible, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize))
-    {
-        float contentWidth = 500.0f * Window::GetDpiScale();
-        ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + contentWidth);
-    }
-
-    ImGui::End();
-}
-
-// ---------------------------------------------------------
-
+// -------------------------------------------------------
