@@ -180,9 +180,11 @@ namespace ShaderCompiler
 	 * Without this option Slang normalises all entry points to "main", causing Vulkan
 	 * validation error VUID-VkPipelineShaderStageCreateInfo-pName-00707.
 	 *
+	 * @param shaderDir  Directory to add as a search path so `import` statements can resolve
+	 *                   sibling modules without requiring fully-qualified paths.
 	 * @return true on success, false if either session creation step fails.
 	 */
-	static bool CreateSlangSession(Slang::ComPtr<slang::IGlobalSession>& outGlobal, Slang::ComPtr<slang::ISession>& outSession)
+	static bool CreateSlangSession(Slang::ComPtr<slang::IGlobalSession>& outGlobal, Slang::ComPtr<slang::ISession>& outSession, const std::string& shaderDir = {})
 	{
 		if (SLANG_FAILED(slang::createGlobalSession(outGlobal.writeRef())))
 		{
@@ -206,12 +208,22 @@ namespace ShaderCompiler
 			}
 		});
 
+		// Build search paths: always include the shader source directory so that
+		// `import color;` inside common.slang resolves to the sibling color.slang.
+		std::vector<const char*> searchPaths;
+		if (!shaderDir.empty())
+		{
+		    searchPaths.push_back(shaderDir.c_str());
+		}
+
 		slang::SessionDesc desc{};
-		desc.targets                 = targets.data();
-		desc.targetCount             = static_cast<SlangInt>(targets.size());
-		desc.defaultMatrixLayoutMode = SLANG_MATRIX_LAYOUT_COLUMN_MAJOR;
-		desc.compilerOptionEntries   = options.data();
+		desc.targets                  = targets.data();
+		desc.targetCount              = static_cast<SlangInt>(targets.size());
+		desc.defaultMatrixLayoutMode  = SLANG_MATRIX_LAYOUT_COLUMN_MAJOR;
+		desc.compilerOptionEntries    = options.data();
 		desc.compilerOptionEntryCount = static_cast<uint32_t>(options.size());
+		desc.searchPaths              = searchPaths.empty() ? nullptr : searchPaths.data();
+		desc.searchPathCount          = static_cast<SlangInt>(searchPaths.size());
 
 		if (SLANG_FAILED(outGlobal->createSession(desc, outSession.writeRef())))
 		{
@@ -444,10 +456,18 @@ namespace ShaderCompiler
 
 		ShaderCompilationResult result;
 
+		// Derive the shader directory from the filepath so sibling module imports resolve correctly.
+		std::string shaderDir;
+		const std::filesystem::path fsPath(filepath);
+		if (fsPath.has_parent_path())
+		{
+		    shaderDir = fsPath.parent_path().string();
+		}
+
 		// 1. Create a Slang session shared for both compilation and reflection
 		Slang::ComPtr<slang::IGlobalSession> globalSession;
 		Slang::ComPtr<slang::ISession>       session;
-		if (!CreateSlangSession(globalSession, session))
+		if (!CreateSlangSession(globalSession, session, shaderDir))
 			return result;
 
 		// 2. Load module from .slang-module cache or compile from source

@@ -2105,12 +2105,23 @@ namespace SceneryEditorX
 			{{
 				.name = slang::CompilerOptionName::EmitSpirvDirectly,
 				.value = {.kind = slang::CompilerOptionValueKind::Int, .intValue0 = 1}
+			},
+			{
+				.name  = slang::CompilerOptionName::VulkanUseEntryPointName,
+				.value = {.kind = slang::CompilerOptionValueKind::Int, .intValue0 = 1}
 			}}
 		)};
+
+		// Resolve the shader directory so Slang can find sibling modules via `import`.
+		// Without a search path, `import color;` inside common.slang cannot resolve color.slang.
+		const std::string shaderDir = ResolveResourcePath("resources/shaders").string();
+		const char* slangSearchPaths[] = { shaderDir.c_str() };
 
 		slang::SessionDesc slangSessionDesc = {};
 		slangSessionDesc.targets = slangTargets.data();
 		slangSessionDesc.targetCount = static_cast<SlangInt>(slangTargets.size());
+		slangSessionDesc.searchPaths = slangSearchPaths;
+		slangSessionDesc.searchPathCount = 1;
 
 		// Keep row-major matrix layout to match existing CPU-side xMath uploads.
 		slangSessionDesc.defaultMatrixLayoutMode = SLANG_MATRIX_LAYOUT_ROW_MAJOR;

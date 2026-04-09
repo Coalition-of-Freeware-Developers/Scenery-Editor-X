@@ -29,6 +29,9 @@
  * -------------------------------------------------------
  */
 import common;
+import resources;
+import constants;
+import color;
 
 // ==============================================================================================
 // gran turismo 7 tone mapper implementation
@@ -434,9 +437,10 @@ void main_comp(uint3 thread_id: SV_DispatchThreadID)
     else
     {
         // sdr gamma correction (linear -> srgb)
-        color.rgb = linear_to_srgb(color.rgb);
+        color.rgb = linear_to_srgb(color.rgb, get_frame_hdr_enabled());
     }
 
     color.a = 1.0f;
     tex_uav[thread_id.xy] = color;
 }
+

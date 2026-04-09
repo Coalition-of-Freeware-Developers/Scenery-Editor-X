@@ -348,6 +348,7 @@ export cbuffer BufferFrame : register(b0) { FrameBufferData buffer_frame; };
 export bool is_taa_enabled() { return any(buffer_frame.taa_jitter_current); }
 export bool is_ray_traced_reflections_enabled() { return (buffer_frame.options & uint(1U << 0)) != 0; }
 export bool is_ssao_enabled() { return (buffer_frame.options & uint(1U << 1)) != 0; }
+export float get_frame_hdr_enabled() { return buffer_frame.hdr_enabled; }
 
 // per-draw data is stored in a static so both vertex and pixel shaders can access it
 // vertex shaders populate this from the appropriate buffer (draw_data or indirect_draw_data_out)

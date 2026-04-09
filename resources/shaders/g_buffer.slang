@@ -197,7 +197,7 @@ gbuffer main_frag(gbuffer_vertex vertex, bool is_front_face: SV_IsFrontFace)
     if (surface.has_texture_albedo())
     {
         albedo_sample = sample_texture(vertex, material_texture_index_albedo, surface, position_world);
-        albedo_sample.rgb = srgb_to_linear(albedo_sample.rgb);
+        albedo_sample.rgb = srgb_to_linear(albedo_sample.rgb, get_frame_hdr_enabled());
         albedo *= albedo_sample;
     }
 
