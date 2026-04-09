@@ -36,7 +36,7 @@ import resources;
 
 [shader("compute")]
 [numthreads(thread_x, thread_y, 1)]
-void main_cs(uint3 thread_id : SV_DispatchThreadID)
+void main_comp(uint3 thread_id : SV_DispatchThreadID)
 {
     // check if thread is within icon bounds
     float2 icon_size = pass_get_f2_value(); // width, height

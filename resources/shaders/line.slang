@@ -47,7 +47,7 @@ vertex main_vs(vertex input)
 }
 
 [shader("fragment")]
-float4 main_ps(vertex input) : SV_TARGET
+float4 main_frag(vertex input) : SV_TARGET
 {
     return input.color;
 }

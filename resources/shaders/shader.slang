@@ -59,9 +59,9 @@ VSOutput main(VSInput input, uniform ShaderData *shaderData, uint instanceIndex 
 		0.0, 1.0, 0.0, 0.0,
 		0.0, 0.0, 1.0, 0.0,
 		0.0, 0.0, 0.0, 1.0);
-    output.Normal = input.Normal;
+	output.Normal = input.Normal;
 	output.UV = input.UV;
-    // Stable diagnostic baseline: bypass camera/projection completely and render
+	// Stable diagnostic baseline: bypass camera/projection completely and render
 	// model directly in clip-space so geometry visibility is guaranteed.
 	float3 debugPos = input.Pos.xyz * 0.35;
 	output.Pos = float4(debugPos.xy, 0.0, 1.0);

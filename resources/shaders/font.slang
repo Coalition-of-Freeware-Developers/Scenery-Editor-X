@@ -23,25 +23,41 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  * -------------------------------------------------------
- * constants.slang
+ * font.slang
  * -------------------------------------------------------
- * Created: 07/03/2026
+ * Created: 08/04/2026
  * -------------------------------------------------------
  */
-module constants;
+import common;
 
-export static const float PI = 3.14159265f;
-export static const float PI2 = 6.28318530f;
-export static const float PI4 = 12.5663706f;
-export static const float INV_PI = 0.31830988f;
-export static const float PI_HALF = PI * 0.5f;
-export static const float FLT_MIN = 0.00000001f;
-export static const float FLT_MAX_16 = 32767.0f;
-export static const float FLT_MAX_16U = 65504.0f;
-export static const float RPC_9 = 0.11111111111f;
-export static const float RPC_16 = 0.0625f;
-export static const float RPC_32 = 0.03125f;
-export static const uint THREAD_GROUP_COUNT_X = 8;
-export static const uint THREAD_GROUP_COUNT_Y = 8;
-export static const uint THREAD_GROUP_COUNT = 64;
-export static const float DEG_TO_RAD = PI / 180.0f;
+struct vertex
+{
+    float4 position : SV_POSITION;
+    float2 uv : TEXCOORD;
+};
+
+[shader("vertex")]
+vertex main_vs(vertex input)
+{
+    input.position.w = 1.0f;
+    input.position = mul(input.position, buffer_frame.view_projection_orthographic);
+
+    return input;
+}
+
+[shader("fragment")]
+float4 main_frag(vertex input) : SV_TARGET
+{
+    float4 color = float4(0.0f, 0.0f, 0.0f, 1.0f);
+
+    // sample text from texture atlas
+    color.r = tex.Sample(samplers[sampler_bilinear_clamp], input.uv).r;
+    color.g = color.r;
+    color.b = color.r;
+    color.a = color.r;
+
+    // color it
+    color *= float4(pass_get_f4_value().rgb, 1.0f);
+
+    return color;
+}

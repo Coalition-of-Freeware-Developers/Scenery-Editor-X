@@ -70,7 +70,6 @@ struct GridVertex
     float2 uv       : TEXCOORD;
 };
 
-
 // based on the grid shader found in: https://github.com/deg3x/GraphicsPlayground
 
 // parameters

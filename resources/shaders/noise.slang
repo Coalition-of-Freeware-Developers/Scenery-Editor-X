@@ -34,7 +34,7 @@ import resources;
 import constants;
 
 // fast 1d hash
-float hash(float p)
+export float hash(float p)
 {
     // scale input, convert to uint for bit manipulation
     uint u = asuint(p * 3141592653.0f);
@@ -44,7 +44,7 @@ float hash(float p)
 }
 
 // fast 2d hash
-float hash(float2 p)
+export float hash(float2 p)
 {
     // scale each component, convert to uint2
     uint2 u = asuint(p * float2(141421356.0f, 2718281828.0f));
@@ -53,20 +53,20 @@ float hash(float2 p)
     return float((u.x ^ u.y) * 3141592653u) / 4294967295.0f;
 }
 
-float noise_perlin(float x)
+export float noise_perlin(float x)
 {
     float scale = 0.1f;
     return tex_perlin.SampleLevel(samplers[sampler_bilinear_wrap], float2(x * scale, 0.5f), 0).r * 2.0f - 1.0f;
 }
 
-float noise_perlin(float2 x)
+export float noise_perlin(float2 x)
 {
     float scale = 0.1f;
     return tex_perlin.SampleLevel(samplers[sampler_bilinear_wrap], x * scale, 0).r * 2.0f - 1.0f;
 }
 
 // spartan take on the interleaved gradient function from Jimenez 2014 http://goo.gl/eomGso
-float noise_interleaved_gradient(float2 screen_pos, bool temporal = true)
+export float noise_interleaved_gradient(float2 screen_pos, bool temporal = true)
 {
     // temporal factor
     float animate = saturate((float)is_taa_enabled() + (float)temporal);

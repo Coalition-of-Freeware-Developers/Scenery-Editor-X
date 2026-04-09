@@ -29,6 +29,7 @@
  * -------------------------------------------------------
  */
 module position;
+
 import resources;
 import depth;
 

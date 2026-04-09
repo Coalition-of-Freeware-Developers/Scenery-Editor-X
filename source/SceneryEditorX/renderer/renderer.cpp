@@ -919,7 +919,7 @@ namespace SceneryEditorX
 			SubmitAndPresent();
 			*/
 
-		    // NOTE: BlitToBackBuffer via m_CmdList_Present is intentionally removed here.
+			// NOTE: BlitToBackBuffer via m_CmdList_Present is intentionally removed here.
 			// m_CmdList_Present is used for resource updates (materials, lights, etc.) only;
 			// it is never submitted with a swapchain acquire semaphore, so any render commands
 			// recorded into it would be silently discarded. The blit-to-swapchain is handled
@@ -2035,7 +2035,7 @@ namespace SceneryEditorX
 		}
 		// DIAGNOSTIC: Log current working directory
 		std::filesystem::path cwd = std::filesystem::current_path();
-		SEDX_CORE_ERROR_TAG("Renderer", "Current working directory: {}", cwd.string());
+		SEDX_CORE_INFO_TAG("Renderer", "Current working directory: {}", cwd.string());
 
 		// DIAGNOSTIC: Check if model file exists
 		std::filesystem::path modelPath = ResolveResourcePath("resources/models/suzanne.obj");
@@ -2144,7 +2144,6 @@ namespace SceneryEditorX
 			}
 			return;
 		}
-
 #pragma region Grid Shader
 		Slang::ComPtr<ISlangBlob> gridSpirv;
 		{
@@ -2177,7 +2176,134 @@ namespace SceneryEditorX
 				}
 			}
 		}
-
+#pragma endregion
+#pragma region Common Shader Module
+		Slang::ComPtr<ISlangBlob> commonSpirv;
+		{
+			const std::filesystem::path commonShaderPath = ResolveResourcePath("resources/shaders/common.slang");
+			const std::string commonShaderPathString = commonShaderPath.string();
+			Slang::ComPtr<slang::IBlob> commonDiagnosticsBlob;
+			Slang::ComPtr<slang::IModule> commonModule{slangSession->loadModuleFromSource("common", commonShaderPathString.c_str(),
+												   commonDiagnosticsBlob, commonDiagnosticsBlob.writeRef())
+			};
+			if (!commonModule)
+			{
+				SEDX_CORE_ERROR_TAG("Renderer", "Failed to load common shader module from source: {}", commonShaderPathString);
+				if (commonDiagnosticsBlob)
+				{
+					const char* errorMessage = static_cast<const char*>(commonDiagnosticsBlob->getBufferPointer());
+					SEDX_CORE_ERROR_TAG("Renderer", "Common shader diagnostics: {}", errorMessage);
+				}
+			}
+		}
+#pragma endregion
+#pragma region Constant Shader Module
+		Slang::ComPtr<ISlangBlob> constantSpirv;
+		{
+			const std::filesystem::path constantsShaderPath = ResolveResourcePath("resources/shaders/constants.slang");
+			const std::string constantsShaderPathString = constantsShaderPath.string();
+			Slang::ComPtr<slang::IBlob> constantsDiagnosticsBlob;
+			Slang::ComPtr<slang::IModule> constantsModule{slangSession->loadModuleFromSource("constants", constantsShaderPathString.c_str(),
+												   constantsDiagnosticsBlob, constantsDiagnosticsBlob.writeRef())
+			};
+			if (!constantsModule)
+			{
+				SEDX_CORE_ERROR_TAG("Renderer", "Failed to load constants shader module from source: {}", constantsShaderPathString);
+				if (constantsDiagnosticsBlob)
+				{
+					const char* errorMessage = static_cast<const char*>(constantsDiagnosticsBlob->getBufferPointer());
+					SEDX_CORE_ERROR_TAG("Renderer", "Constants shader diagnostics: {}", errorMessage);
+				}
+			}
+		}
+#pragma endregion
+#pragma region Resources Shader Module
+		Slang::ComPtr<ISlangBlob> resourcesSpirv;
+		{
+			const std::filesystem::path resourcesShaderPath = ResolveResourcePath("resources/shaders/resources.slang");
+			const std::string resourcesShaderPathString = resourcesShaderPath.string();
+			Slang::ComPtr<slang::IBlob> resourcesDiagnosticsBlob;
+			Slang::ComPtr<slang::IModule> resourcesModule{slangSession->loadModuleFromSource("resources", resourcesShaderPathString.c_str(),
+												   resourcesDiagnosticsBlob, resourcesDiagnosticsBlob.writeRef())
+			};
+			if (!resourcesModule)
+			{
+				SEDX_CORE_ERROR_TAG("Renderer", "Failed to load resources shader module from source: {}", resourcesShaderPathString);
+				if (resourcesDiagnosticsBlob)
+				{
+					const char* errorMessage = static_cast<const char*>(resourcesDiagnosticsBlob->getBufferPointer());
+					SEDX_CORE_ERROR_TAG("Renderer", "Resources shader diagnostics: {}", errorMessage);
+				}
+			}
+		}
+#pragma endregion
+#pragma region Math Shader Module
+		Slang::ComPtr<ISlangBlob> mathSpirv;
+		{
+			const std::filesystem::path mathShaderPath = ResolveResourcePath("resources/shaders/math.slang");
+			const std::string mathShaderPathString = mathShaderPath.string();
+			Slang::ComPtr<slang::IBlob> mathDiagnosticsBlob;
+			Slang::ComPtr<slang::IModule> mathModule{slangSession->loadModuleFromSource("math", mathShaderPathString.c_str(),
+												   mathDiagnosticsBlob, mathDiagnosticsBlob.writeRef())
+			};
+			if (!mathModule)
+			{
+				SEDX_CORE_ERROR_TAG("Renderer", "Failed to load math shader module from source: {}", mathShaderPathString);
+				if (mathDiagnosticsBlob)
+				{
+					const char* errorMessage = static_cast<const char*>(mathDiagnosticsBlob->getBufferPointer());
+					SEDX_CORE_ERROR_TAG("Renderer", "Math shader diagnostics: {}", errorMessage);
+				}
+			}
+		}
+#pragma endregion
+#pragma region Color Shader Module
+		Slang::ComPtr<ISlangBlob> colorSpirv;
+		{
+			const std::filesystem::path colorShaderPath = ResolveResourcePath("resources/shaders/color.slang");
+			const std::string colorShaderPathString = colorShaderPath.string();
+			Slang::ComPtr<slang::IBlob> colorDiagnosticsBlob;
+			Slang::ComPtr<slang::IModule> colorModule{slangSession->loadModuleFromSource("color", colorShaderPathString.c_str(),
+												   colorDiagnosticsBlob, colorDiagnosticsBlob.writeRef())
+			};
+			if (!colorModule)
+			{
+				SEDX_CORE_ERROR_TAG("Renderer", "Failed to load color shader module from source: {}", colorShaderPathString);
+				if (colorDiagnosticsBlob)
+				{
+					const char* errorMessage = static_cast<const char*>(colorDiagnosticsBlob->getBufferPointer());
+					SEDX_CORE_ERROR_TAG("Renderer", "Color shader diagnostics: {}", errorMessage);
+				}
+			}
+		}
+#pragma region Output Shader Module
+		Slang::ComPtr<ISlangBlob> outputSpirv;
+		{
+			const std::filesystem::path outputShaderPath = ResolveResourcePath("resources/shaders/output.slang");
+			const std::string outputShaderPathString = outputShaderPath.string();
+			Slang::ComPtr<slang::IBlob> outputDiagnosticsBlob;
+			Slang::ComPtr<slang::IModule> outputModule{slangSession->loadModuleFromSource("output", outputShaderPathString.c_str(),
+												   outputDiagnosticsBlob, outputDiagnosticsBlob.writeRef())
+			};
+			if (!outputModule)
+			{
+				SEDX_CORE_ERROR_TAG("Renderer", "Failed to load output shader module from source: {}", outputShaderPathString);
+				if (outputDiagnosticsBlob)
+				{
+					const char* errorMessage = static_cast<const char*>(outputDiagnosticsBlob->getBufferPointer());
+					SEDX_CORE_ERROR_TAG("Renderer", "Output shader diagnostics: {}", errorMessage);
+				}
+			}
+			else
+			{
+				outputModule->getTargetCode(0, outputSpirv.writeRef());
+				if (outputSpirv && outputSpirv->getBufferSize() > 0)
+				{
+					SEDX_CORE_INFO_TAG("Renderer", "Output shader module compiled: {}", outputShaderPathString);
+					SetShaderAvailable(Renderer_Shader::output_c);
+				}
+			}
+		}
 #pragma endregion
 #pragma region Blit Shader
 

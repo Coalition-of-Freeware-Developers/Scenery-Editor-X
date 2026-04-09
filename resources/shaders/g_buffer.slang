@@ -148,7 +148,7 @@ void main_vs(Vertex_PosUvNorTan input, uint instance_id: SV_InstanceID)
 }
 
 [shader("fragment")]
-gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face: SV_IsFrontFace)
+gbuffer main_frag(gbuffer_vertex vertex, bool is_front_face: SV_IsFrontFace)
 {
     // restore material index from vertex output (works for both indirect and cpu-driven draws)
     pass_load_draw_data_from_vertex(vertex.material_index);

@@ -29,6 +29,7 @@
  * -------------------------------------------------------
  */
 module tesselation;
+
 import noise;
 import common;
 import position;
@@ -54,7 +55,7 @@ struct HsConstantDataOutput
 [outputcontrolpoints(MAX_POINTS)]
 [maxtessfactor(TESS_FACTOR)]
 [shader("vertex")]
-void main_hs(InputPatch<gbuffer_vertex, MAX_POINTS> input_patch, uint cp_id : SV_OutputControlPointID)
+void main_tcs(InputPatch<gbuffer_vertex, MAX_POINTS> input_patch, uint cp_id : SV_OutputControlPointID)
 {
     return input_patch[cp_id]; // pass through unchanged
 }
@@ -111,7 +112,7 @@ float barycentric(float a, float b, float c, float3 bary)
 
 [domain("tri")]
 [shader("vertex")]
-void main_ds(HsConstantDataOutput input, float3 bary_coords : SV_DomainLocation, const OutputPatch<gbuffer_vertex, 3> patch)
+void main_tes(HsConstantDataOutput input, float3 bary_coords : SV_DomainLocation, const OutputPatch<gbuffer_vertex, 3> patch)
 {
     gbuffer_vertex vertex;
 

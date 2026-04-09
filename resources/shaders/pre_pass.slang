@@ -55,7 +55,7 @@ void main_vs(Vertex_PosUvNorTan input, uint instance_id: SV_InstanceID)
 }
 
 [shader("fragment")]
-void main_ps(gbuffer_vertex vertex)
+void main_frag(gbuffer_vertex vertex)
 {
     pass_load_draw_data_from_vertex(vertex.material_index);
 

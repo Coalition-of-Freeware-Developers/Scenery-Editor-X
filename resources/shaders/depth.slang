@@ -29,19 +29,20 @@
  * -------------------------------------------------------
  */
 module depth;
+
 import resources;
 
-float get_depth(const uint2 position)
+export float get_depth(const uint2 position)
 {
     return tex_depth[position].r;
 }
 
-float get_depth(const float2 uv)
+export float get_depth(const float2 uv)
 {
     return tex_depth.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0).r;
 }
 
-float linearize_depth(const float z)
+export float linearize_depth(const float z)
 {
     float near = buffer_frame.camera_near;
     float far = buffer_frame.camera_far;
@@ -50,12 +51,12 @@ float linearize_depth(const float z)
     return 2.0f * far * near / (near + far - z_n * (near - far));
 }
 
-float get_linear_depth(const uint2 pos)
+export float get_linear_depth(const uint2 pos)
 {
     return linearize_depth(get_depth(pos));
 }
 
-float get_linear_depth(const float2 uv)
+export float get_linear_depth(const float2 uv)
 {
     return linearize_depth(get_depth(uv));
 }

@@ -381,7 +381,135 @@ namespace SceneryEditorX
 					shader->AddShaderStage(Stage::Compute, "resources/shaders/blit.slang");
 				}
 				break;
-			default:
+            case Renderer_Shader::tessellation_h:
+                break;
+            case Renderer_Shader::tessellation_d:
+                break;
+            case Renderer_Shader::gbuffer_vertex:
+                break;
+            case Renderer_Shader::gbuffer_frag:
+                break;
+            case Renderer_Shader::depth_prepass_vertex:
+                break;
+            case Renderer_Shader::depth_prepass_alpha_test_frag:
+                break;
+            case Renderer_Shader::depth_light_vertex:
+                break;
+            case Renderer_Shader::depth_light_alpha_color_frag:
+                break;
+            case Renderer_Shader::fxaa_comp:
+                break;
+            case Renderer_Shader::film_grain_comp:
+                break;
+            case Renderer_Shader::motion_blur_c:
+                break;
+            case Renderer_Shader::depth_of_field_c:
+                break;
+            case Renderer_Shader::chromatic_aberration_c:
+                break;
+            case Renderer_Shader::vhs_c:
+                break;
+            case Renderer_Shader::bloom_luminance_c:
+                break;
+            case Renderer_Shader::bloom_blend_frame_c:
+                break;
+            case Renderer_Shader::bloom_upsample_blend_mip_c:
+                break;
+            case Renderer_Shader::bloom_downsample_c:
+                break;
+            case Renderer_Shader::output_c:
+                break;
+            case Renderer_Shader::light_integration_brdf_specular_lut_c:
+                break;
+            case Renderer_Shader::light_integration_environment_filter_c:
+                break;
+            case Renderer_Shader::light_c:
+                break;
+            case Renderer_Shader::light_composition_c:
+                break;
+            case Renderer_Shader::light_image_based_c:
+                break;
+            case Renderer_Shader::line_vertex:
+                break;
+            case Renderer_Shader::line_frag:
+                break;
+            case Renderer_Shader::outline_vertex:
+                break;
+            case Renderer_Shader::outline_frag:
+                break;
+            case Renderer_Shader::outline_comp:
+                break;
+            case Renderer_Shader::font_vertex:
+                break;
+            case Renderer_Shader::font_frag:
+                break;
+            case Renderer_Shader::ssao_comp:
+                break;
+            case Renderer_Shader::sss_c_bend:
+                break;
+            case Renderer_Shader::skysphere_comp:
+                break;
+            case Renderer_Shader::skysphere_lut_comp:
+                break;
+            case Renderer_Shader::skysphere_transmittance_lut_c:
+                break;
+            case Renderer_Shader::skysphere_multiscatter_lut_c:
+                break;
+            case Renderer_Shader::blur_gaussian_c:
+                break;
+            case Renderer_Shader::blur_gaussian_bilaterial_c:
+                break;
+            case Renderer_Shader::variable_rate_shading_c:
+                break;
+            case Renderer_Shader::ffx_cas_c:
+                break;
+            case Renderer_Shader::ffx_spd_average_c:
+                break;
+            case Renderer_Shader::ffx_spd_min_c:
+                break;
+            case Renderer_Shader::ffx_spd_max_c:
+                break;
+            case Renderer_Shader::icon_c:
+                break;
+            case Renderer_Shader::dithering_c:
+                break;
+            case Renderer_Shader::transparency_reflection_refraction_c:
+                break;
+            case Renderer_Shader::auto_exposure_c:
+                break;
+            case Renderer_Shader::cloud_noise_shape_c:
+                break;
+            case Renderer_Shader::cloud_noise_detail_c:
+                break;
+            case Renderer_Shader::cloud_shadow_c:
+                break;
+            case Renderer_Shader::light_reflections_c:
+                break;
+            case Renderer_Shader::nrd_prepare_c:
+                break;
+            case Renderer_Shader::indirect_cull_c:
+                break;
+            case Renderer_Shader::gbuffer_indirect_vertex:
+                break;
+            case Renderer_Shader::gbuffer_indirect_frag:
+                break;
+            case Renderer_Shader::depth_prepass_indirect_vertex:
+                break;
+            case Renderer_Shader::particle_emit_c:
+                break;
+            case Renderer_Shader::particle_simulate_c:
+                break;
+            case Renderer_Shader::particle_render_c:
+                break;
+            case Renderer_Shader::texture_compress_bc1_c:
+                break;
+            case Renderer_Shader::texture_compress_bc3_c:
+                break;
+            case Renderer_Shader::texture_compress_bc5_c:
+                break;
+            case Renderer_Shader::MaxEnum:
+                break;
+            default:
 				break;
 		}
 	}

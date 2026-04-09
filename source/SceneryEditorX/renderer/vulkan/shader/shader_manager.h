@@ -56,21 +56,57 @@ namespace ShaderCompiler
 	};
 
 	/**
-	 * @brief Compiles a Vulkan shader from a file.
-	 * @param stage The shader stage to compile.
-	 * @param filepath The path to the shader file.
-	 * @param optimize Whether to optimize the shader during compilation.
-	 * @return A vector of uint32_t representing the compiled SPIR-V bytecode.
+	 * @struct ShaderCompilationResult
+	 * @brief Bundles the SPIR-V bytecode and reflected shader inputs produced by a single
+	 *        compile-and-reflect pass so both can be obtained in one Slang session without
+	 *        loading the module twice.
+	 */
+	struct ShaderCompilationResult
+	{
+		std::vector<uint32_t>                        spirv;   ///< Compiled SPIR-V words ready for vkCreateShaderModule.
+		std::vector<SceneryEditorX::ShaderInput>     inputs;  ///< Reflected descriptor bindings for this stage.
+	};
+
+	/**
+	 * @brief Compiles a Vulkan shader from a file and produces SPIR-V bytecode.
+	 *
+	 * The function checks for a cached `.slang-module` alongside the cached `.spv` file.
+	 * When the cache is fresh the front-end compilation step is skipped and the pre-built
+	 * Slang IR blob is used directly, making subsequent loads significantly faster.
+	 *
+	 * @param stage    The shader stage to compile.
+	 * @param filepath The path to the Slang source file.
+	 * @param optimize Whether to apply Slang/SPIR-V optimisation passes.
+	 * @return Compiled SPIR-V words, or an empty vector on failure.
 	 */
 	std::vector<uint32_t> CompileVulkanShader(SceneryEditorX::Stage stage, const std::string& filepath, bool optimize = false);
 
 	/**
-	 * @brief Reflects the input variables of a Vulkan shader.
-	 * @param stage The shader stage to reflect.
-	 * @param shaderBytecode The SPIR-V bytecode of the shader.
-	 * @return A vector of ShaderInput structures representing the input variables of the shader.
+	 * @brief Reflects the descriptor inputs of a Slang shader using the Slang native reflection API.
+	 *
+	 * Loads the Slang module from source (or from the `.slang-module` cache if up-to-date),
+	 * links the given entry point, and iterates the program layout to produce ShaderInput
+	 * descriptors without requiring a separate SPIRV-Cross pass.
+	 *
+	 * @param stage    The shader stage whose entry point should be reflected.
+	 * @param filepath The path to the Slang source file (used to locate the module).
+	 * @return A vector of ShaderInput structures representing the bindable resources.
 	 */
-	std::vector<SceneryEditorX::ShaderInput> Reflect(SceneryEditorX::Stage stage, const std::vector<uint32_t>& shaderBytecode);
+	std::vector<SceneryEditorX::ShaderInput> Reflect(SceneryEditorX::Stage stage, const std::string& filepath);
+
+	/**
+	 * @brief Compiles and reflects a Slang shader stage in a single Slang session.
+	 *
+	 * Combines the work of CompileVulkanShader and Reflect so the Slang module is only
+	 * loaded once.  The `.slang-module` cache is checked before invoking the front-end
+	 * compiler and is written on first compile for faster future loads.
+	 *
+	 * @param stage    The shader stage to compile and reflect.
+	 * @param filepath The path to the Slang source file.
+	 * @param optimize Whether to apply Slang/SPIR-V optimisation passes.
+	 * @return A ShaderCompilationResult containing SPIR-V words and reflected inputs.
+	 */
+	ShaderCompilationResult CompileAndReflect(SceneryEditorX::Stage stage, const std::string& filepath, bool optimize = false);
 
 }
 

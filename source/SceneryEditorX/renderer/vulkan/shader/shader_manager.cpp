@@ -31,11 +31,11 @@
 #include "shader_manager.h"
 #include <array>
 #include <filesystem>
+#include <fstream>
 #include <utility>
 #include <SceneryEditorX/renderer/vulkan/render_context.h>
 #include <slang/slang-com-ptr.h>
 #include <slang/slang.h>
-#include <spirv_cross/spirv_cross.hpp>
 
 // -------------------------------------------------------
 
@@ -43,6 +43,12 @@ namespace SceneryEditorX
 {
 	std::unordered_map<std::string, Ref<Shader>> ShaderManager::m_Shaders;
 
+/**
+	 * @brief Creates a Vulkan shader module from the given SPIR-V bytecode.
+	 * @param spirvCode Pointer to the SPIR-V bytecode.
+	 * @param codeSize Size of the SPIR-V bytecode in bytes.
+	 * @return The created Vulkan shader module.
+	 */
 	static VkShaderModule CreateShaderModule(const void* spirvCode, size_t codeSize)
 	{
 		const Ref<Device> device = RenderContext::Get()->GetDevice();
@@ -137,172 +143,395 @@ namespace SceneryEditorX
 
 namespace ShaderCompiler
 {
-	std::vector<uint32_t> CompileVulkanShader(SceneryEditorX::Stage stage, const std::string& filepath, bool optimize)
-	{
-	 (void)stage;
-		(void)optimize;
+	// -------------------------------------------------------
+	// Internal helpers
+	// -------------------------------------------------------
 
-		Slang::ComPtr<slang::IGlobalSession> globalSession;
-		if (SLANG_FAILED(slang::createGlobalSession(globalSession.writeRef())))
+	/**
+	 * @brief Returns the conventional Slang entry-point name for the given stage.
+	 * Slang shaders use named entry points (main_vs, main_frag, etc.) instead of "main".
+	 * Non-Slang files fall back to "main".
+	 */
+	static const char* GetEntryPointName(const SceneryEditorX::Stage stage, const std::string& filepath)
+	{
+		if (!filepath.ends_with(".slang"))
+			return "main";
+
+		switch (stage)
 		{
-		  SEDX_CORE_ERROR_TAG("Shader", "Failed to create Slang global session");
-			return std::vector<uint32_t>();
+			case SceneryEditorX::Stage::Vertex:                 return "main_vs";
+			case SceneryEditorX::Stage::Fragment:               return "main_frag";
+			case SceneryEditorX::Stage::Compute:                return "main_comp";
+			case SceneryEditorX::Stage::Geometry:               return "main_geo";
+			case SceneryEditorX::Stage::TessellationControl:    return "main_tcs";
+			case SceneryEditorX::Stage::TessellationEvaluation: return "main_tes";
+			default:                                            return "main";
+		}
+	}
+
+	/**
+	 * @brief Creates a configured Slang global session and per-compilation session targeting
+	 * SPIR-V 1.4 with direct emission, Vulkan column-major matrix layout, and preserved
+	 * entry point names in the emitted SPIR-V binary.
+	 *
+	 * `VulkanUseEntryPointName` instructs the SPIR-V backend to keep source-level entry point
+	 * names (e.g. "main_vs", "main_frag") as the `OpEntryPoint` name in the binary, which is
+	 * required because `VkPipelineShaderStageCreateInfo::pName` must match that name exactly.
+	 * Without this option Slang normalises all entry points to "main", causing Vulkan
+	 * validation error VUID-VkPipelineShaderStageCreateInfo-pName-00707.
+	 *
+	 * @return true on success, false if either session creation step fails.
+	 */
+	static bool CreateSlangSession(Slang::ComPtr<slang::IGlobalSession>& outGlobal, Slang::ComPtr<slang::ISession>& outSession)
+	{
+		if (SLANG_FAILED(slang::createGlobalSession(outGlobal.writeRef())))
+		{
+			SEDX_CORE_ERROR_TAG("Shader", "Failed to create Slang global session");
+			return false;
 		}
 
-		auto targets = std::to_array<slang::TargetDesc>({
-			{.format = SLANG_SPIRV, .profile = globalSession->findProfile("spirv_1_4")}
-		});
+		auto targets = std::to_array<slang::TargetDesc>({{
+			.format  = SLANG_SPIRV,
+			.profile = outGlobal->findProfile("spirv_1_4")
+		}});
 
 		auto options = std::to_array<slang::CompilerOptionEntry>({
-			{.name = slang::CompilerOptionName::EmitSpirvDirectly,
-			 .value = {.kind = slang::CompilerOptionValueKind::Int, .intValue0 = 1}}
+			{
+				.name  = slang::CompilerOptionName::EmitSpirvDirectly,
+				.value = {.kind = slang::CompilerOptionValueKind::Int, .intValue0 = 1}
+			},
+			{
+				.name  = slang::CompilerOptionName::VulkanUseEntryPointName,
+				.value = {.kind = slang::CompilerOptionValueKind::Int, .intValue0 = 1}
+			}
 		});
 
-		slang::SessionDesc sessionDesc{};
-		sessionDesc.targets = targets.data();
-		sessionDesc.targetCount = static_cast<SlangInt>(targets.size());
-		sessionDesc.defaultMatrixLayoutMode = SLANG_MATRIX_LAYOUT_COLUMN_MAJOR;
-		sessionDesc.compilerOptionEntries = options.data();
-		sessionDesc.compilerOptionEntryCount = static_cast<uint32_t>(options.size());
+		slang::SessionDesc desc{};
+		desc.targets                 = targets.data();
+		desc.targetCount             = static_cast<SlangInt>(targets.size());
+		desc.defaultMatrixLayoutMode = SLANG_MATRIX_LAYOUT_COLUMN_MAJOR;
+		desc.compilerOptionEntries   = options.data();
+		desc.compilerOptionEntryCount = static_cast<uint32_t>(options.size());
 
-		Slang::ComPtr<slang::ISession> session;
-		if (SLANG_FAILED(globalSession->createSession(sessionDesc, session.writeRef())))
+		if (SLANG_FAILED(outGlobal->createSession(desc, outSession.writeRef())))
 		{
-			SEDX_CORE_ERROR_TAG("Shader", "Failed to create Slang session");
-			return std::vector<uint32_t>();
+			SEDX_CORE_ERROR_TAG("Shader", "Failed to create Slang compilation session");
+			return false;
 		}
 
-		Slang::ComPtr<slang::IBlob> diagnosticsBlob;
-		const std::filesystem::path shaderPath(filepath);
-		const std::string moduleName = shaderPath.stem().string();
+		return true;
+	}
 
-		Slang::ComPtr<slang::IModule> module{session->loadModuleFromSource(moduleName.c_str(), filepath.c_str(), nullptr, diagnosticsBlob.writeRef())};
+	/**
+	 * @brief Returns the .slang-module cache path for a given shader source file.
+	 * Mirrors the .spv cache convention: cache/<shaderStem>.slang-module.
+	 * @param filepath Full or relative path to the .slang source file.
+	 */
+	static std::filesystem::path GetModuleCachePath(const std::string& filepath)
+	{
+		const std::string shaderStem = filepath.substr(0, filepath.rfind('.'));
+		return std::filesystem::path("cache") / (shaderStem + ".slang-module");
+	}
+
+	/**
+	 * @brief Loads a Slang module from the .slang-module cache when it is fresh, or falls
+	 * back to source compilation and writes a new cache entry for subsequent loads.
+	 *
+	 * The cache hit path uses the Slang C-API `slang_loadModuleFromIRBlob` which accepts raw
+	 * bytes, avoiding the need to create an ISlangBlob wrapper for the cached data.
+	 *
+	 * @param session  An already-created Slang session.
+	 * @param filepath Full or relative path to the .slang source file.
+	 * @return A valid IModule on success, or an empty ComPtr on failure.
+	 */
+	static Slang::ComPtr<slang::IModule> LoadOrCompileModule(slang::ISession* session, const std::string& filepath)
+	{
+		const std::filesystem::path srcPath(filepath);
+		const std::string            moduleName  = srcPath.stem().string();
+		const std::filesystem::path  moduleCache = GetModuleCachePath(filepath);
+
+		Slang::ComPtr<slang::IBlob> diagBlob;
+
+		// ---- Cache hit path -------------------------------------------------------
+		const bool srcExists   = std::filesystem::exists(filepath);
+		const bool cacheExists = std::filesystem::exists(moduleCache);
+
+		if (cacheExists && srcExists)
+		{
+			const auto cacheTime = std::filesystem::last_write_time(moduleCache);
+			const auto srcTime   = std::filesystem::last_write_time(filepath);
+
+			if (cacheTime >= srcTime)
+			{
+				std::ifstream cacheFile(moduleCache, std::ios::binary | std::ios::ate);
+				if (cacheFile.is_open())
+				{
+					const auto fileSize = static_cast<size_t>(cacheFile.tellg());
+					cacheFile.seekg(0);
+					std::vector<char> cacheData(fileSize);
+					cacheFile.read(cacheData.data(), static_cast<std::streamsize>(fileSize));
+
+					// Use the C-API overload that takes raw void*/size_t so we do not need
+					// to implement an ISlangBlob wrapper around the cached bytes.
+					Slang::ComPtr<slang::IModule> cachedModule(
+						slang_loadModuleFromIRBlob(session, moduleName.c_str(), filepath.c_str(),
+							cacheData.data(), fileSize, diagBlob.writeRef()));
+
+					if (cachedModule)
+					{
+						SEDX_CORE_TRACE_TAG("Shader", "Loaded .slang-module from cache: {}", moduleCache.string());
+						return cachedModule;
+					}
+
+					SEDX_CORE_WARN_TAG("Shader", "Corrupt or incompatible .slang-module cache for '{}'; recompiling", filepath);
+				}
+			}
+		}
+
+		// ---- Source compilation path ---------------------------------------------
+		Slang::ComPtr<slang::IModule> module(session->loadModuleFromSource(moduleName.c_str(), filepath.c_str(), nullptr, diagBlob.writeRef()));
+
 		if (!module)
 		{
-			if (diagnosticsBlob)
+			if (diagBlob)
 			{
-			   SEDX_CORE_ERROR_TAG("Shader", "Slang compilation failed: {}", static_cast<const char*>(diagnosticsBlob->getBufferPointer()));
+				SEDX_CORE_ERROR_TAG("Shader", "Slang compilation failed for '{}': {}", filepath, static_cast<const char*>(diagBlob->getBufferPointer()));
 			}
-			return std::vector<uint32_t>();
+			else
+			{
+				SEDX_CORE_ERROR_TAG("Shader", "Slang compilation failed for '{}' (no diagnostics available)", filepath);
+			}
+			return {};
 		}
 
-		Slang::ComPtr<ISlangBlob> spirv;
-		if (SLANG_FAILED(module->getTargetCode(0, spirv.writeRef())) || !spirv)
+		// Serialize the freshly compiled module to disk for the next invocation
+		Slang::ComPtr<slang::IBlob> serializedBlob;
+		if (SLANG_SUCCEEDED(module->serialize(serializedBlob.writeRef())) && serializedBlob)
 		{
-			SEDX_CORE_ERROR_TAG("Shader", "Failed to retrieve SPIR-V from Slang module: {}", filepath);
-			return std::vector<uint32_t>();
+			std::filesystem::create_directories(moduleCache.parent_path());
+			std::ofstream outFile(moduleCache, std::ios::binary);
+			if (outFile.is_open())
+			{
+				outFile.write(
+					static_cast<const char*>(serializedBlob->getBufferPointer()),
+					static_cast<std::streamsize>(serializedBlob->getBufferSize()));
+				SEDX_CORE_TRACE_TAG("Shader", "Cached .slang-module to: {}", moduleCache.string());
+			}
+			else
+			{
+				SEDX_CORE_WARN_TAG("Shader", "Could not write .slang-module cache to '{}'", moduleCache.string());
+			}
 		}
 
-		const size_t byteSize = spirv->getBufferSize();
-		if (byteSize == 0 || (byteSize % sizeof(uint32_t)) != 0)
-		{
-			SEDX_CORE_ERROR_TAG("Shader", "Invalid SPIR-V blob size from Slang for {}", filepath);
-			return std::vector<uint32_t>();
-		}
-
-		std::vector<uint32_t> byteCode(byteSize / sizeof(uint32_t));
-		std::memcpy(byteCode.data(), spirv->getBufferPointer(), byteSize);
-		return byteCode;
+		return module;
 	}
-	
-	std::vector<SceneryEditorX::ShaderInput> Reflect(SceneryEditorX::Stage stage, const std::vector<uint32_t>& shaderBytecode)
+
+	/**
+	 * @brief Inspects one Slang variable layout and appends a ShaderInput to outInputs if the
+	 * type maps to a recognised descriptor binding category.
+	 *
+	 * Handles:
+	 * - ConstantBuffer / ParameterBlock → UniformBuffer / UniformBufferSet
+	 * - ShaderStorageBuffer → StorageBuffer
+	 * - SamplerState        → Sampler
+	 * - Resource            → Texture / StorageImage / StorageBuffer / CombinedImageSampler
+	 *                         (distinguished by resource shape and access flags)
+	 * - Array wrapping of any of the above (element count 0 = unbounded/bindless)
+	 *
+	 * @param varLayout  Layout of the variable to inspect.
+	 * @param stage      Shader stage that owns this binding.
+	 * @param outInputs  Destination vector for collected ShaderInput entries.
+	 */
+	static void CollectInputsFromVar(
+		slang::VariableLayoutReflection*          varLayout,
+		SceneryEditorX::Stage                     stage,
+		std::vector<SceneryEditorX::ShaderInput>& outInputs)
 	{
+		if (!varLayout) return;
 
-		/*
-		std::vector<SceneryEditorX::ShaderInput> shaderInput;
-	
-		spirv_cross::Compiler compiler(shaderBytecode);
-		spirv_cross::ShaderResources resources = compiler.get_shader_resources();
-	
-		// Uniform buffers
-		for (const spirv_cross::Resource& uniformBuffer : resources.uniform_buffers)
-		{
-			SceneryEditorX::ShaderInput uniformBufferInput = {};
-			uniformBufferInput.stage = stage;
-			uniformBufferInput.debugName = uniformBuffer.name;
-			uniformBufferInput.set = compiler.get_decoration(uniformBuffer.id, spv::DecorationDescriptorSet);
-			uniformBufferInput.binding = compiler.get_decoration(uniformBuffer.id, spv::DecorationBinding);
-			uniformBufferInput.count = compiler.get_type(uniformBuffer.type_id).array[0] == 0 ? 1 : compiler.get_type(uniformBuffer.type_id).array[0];
-			uniformBufferInput.type = SceneryEditorX::ShaderInputType::UniformBuffer;
-	
-			shaderInput.push_back(uniformBufferInput);
-		}
-	
-		// Samplers
-		for (const spirv_cross::Resource& sampler : resources.sampled_images)
-		{
-			SceneryEditorX::ShaderInput sampleImageInput = {};
-			sampleImageInput.stage = stage;
-			sampleImageInput.debugName = sampler.name;
-			sampleImageInput.set = compiler.get_decoration(sampler.id, spv::DecorationDescriptorSet);
-			sampleImageInput.binding = compiler.get_decoration(sampler.id, spv::DecorationBinding);
-			sampleImageInput.count = compiler.get_type(sampler.type_id).array[0] == 0 ? 1 : compiler.get_type(sampler.type_id).array[0];
-			sampleImageInput.type = SceneryEditorX::ShaderInputType::CombinedImageSampler;
-	
-			shaderInput.push_back(sampleImageInput);
-		}
-	
-		for (const spirv_cross::Resource& texture : resources.separate_images)
-		{
-			const spirv_cross::SPIRType& spirType = compiler.get_type(texture.type_id);
-	
-			SceneryEditorX::ShaderInput sampleImageInput = {};
-			sampleImageInput.stage = stage;
-			sampleImageInput.debugName = texture.name;
-			sampleImageInput.set = compiler.get_decoration(texture.id, spv::DecorationDescriptorSet);
-			sampleImageInput.binding = compiler.get_decoration(texture.id, spv::DecorationBinding);
-			sampleImageInput.count = spirType.array.empty() ? 1 : spirType.array[0];
-			sampleImageInput.type = SceneryEditorX::ShaderInputType::Texture;
-	
-			shaderInput.push_back(sampleImageInput);
-		}
-	
-		for (const spirv_cross::Resource& sampler : resources.separate_samplers)
-		{
-			SceneryEditorX::ShaderInput sampleImageInput = {};
-			sampleImageInput.stage = stage;
-			sampleImageInput.debugName = sampler.name;
-			sampleImageInput.set = compiler.get_decoration(sampler.id, spv::DecorationDescriptorSet);
-			sampleImageInput.binding = compiler.get_decoration(sampler.id, spv::DecorationBinding);
-			sampleImageInput.count = compiler.get_type(sampler.type_id).array[0] == 0 ? 1 : compiler.get_type(sampler.type_id).array[0];
-			sampleImageInput.type = SceneryEditorX::ShaderInputType::Sampler;
-	
-			shaderInput.push_back(sampleImageInput);
-		}
-	
-		for (const spirv_cross::Resource& sampler : resources.storage_images)
-		{
-			SceneryEditorX::ShaderInput sampleImageInput = {};
-			sampleImageInput.stage = stage;
-			sampleImageInput.debugName = sampler.name;
-			sampleImageInput.set = compiler.get_decoration(sampler.id, spv::DecorationDescriptorSet);
-			sampleImageInput.binding = compiler.get_decoration(sampler.id, spv::DecorationBinding);
-			sampleImageInput.count = compiler.get_type(sampler.type_id).array[0] == 0 ? 1 : compiler.get_type(sampler.type_id).array[0];
-			sampleImageInput.type = SceneryEditorX::ShaderInputType::StorageImage;
-	
-			shaderInput.push_back(sampleImageInput);
-		}
-	
-		for (const spirv_cross::Resource& storageBuffer : resources.storage_buffers)
-		{
-			SceneryEditorX::ShaderInput storageBufferInput = {};
-			storageBufferInput.stage = stage;
-			storageBufferInput.debugName = storageBuffer.name;
-			storageBufferInput.set = compiler.get_decoration(storageBuffer.id, spv::DecorationDescriptorSet);
-			storageBufferInput.binding = compiler.get_decoration(storageBuffer.id, spv::DecorationBinding);
-			storageBufferInput.count = compiler.get_type(storageBuffer.type_id).array[0] == 0 ? 1 : compiler.get_type(storageBuffer.type_id).array[0];
-			storageBufferInput.type = SceneryEditorX::ShaderInputType::StorageBuffer;
-	
-			shaderInput.push_back(storageBufferInput);
-		}
-	
-		return shaderInput;
-		*/
+		slang::TypeLayoutReflection* typeLayout = varLayout->getTypeLayout();
+		if (!typeLayout) return;
 
-		(void)stage;
-		(void)shaderBytecode;
-		SEDX_CORE_WARN_TAG("Shader", "SPIR-V reflection disabled: SPIRV-Cross backend not linked.");
-		return {};
+		slang::TypeReflection* type = typeLayout->getType();
+		if (!type) return;
+
+		typedef slang::TypeReflection::Kind TK;
+		TK kind = type->getKind();
+
+		// Unwrap a single array dimension and record the element count.
+		// count == 0 signals an unbounded (bindless) array.
+		uint32_t arrayCount = 1u;
+		if (kind == TK::Array)
+		{
+			arrayCount  = static_cast<uint32_t>(type->getElementCount());
+			typeLayout  = typeLayout->getElementTypeLayout();
+			if (!typeLayout) return;
+			type = typeLayout->getType();
+			if (!type) return;
+			kind = type->getKind();
+		}
+
+		SceneryEditorX::ShaderInputType inputType{};
+		bool validBinding = true;
+
+		switch (kind)
+		{
+			case TK::ConstantBuffer: inputType = SceneryEditorX::ShaderInputType::UniformBuffer;
+				break;
+
+			case TK::ParameterBlock: inputType = SceneryEditorX::ShaderInputType::UniformBufferSet;
+				break;
+
+			case TK::ShaderStorageBuffer: inputType = SceneryEditorX::ShaderInputType::StorageBuffer;
+				break;
+
+			case TK::SamplerState: inputType = SceneryEditorX::ShaderInputType::Sampler;
+				break;
+
+			case TK::Resource:
+			{
+				const SlangResourceShape  shape      = type->getResourceShape();
+				const SlangResourceAccess access     = type->getResourceAccess();
+				const unsigned            baseShape  = shape & SLANG_RESOURCE_BASE_SHAPE_MASK;
+
+				if (baseShape == SLANG_STRUCTURED_BUFFER)
+				{
+					inputType = SceneryEditorX::ShaderInputType::StorageBuffer;
+				}
+				else if (shape & SLANG_TEXTURE_COMBINED_FLAG)
+				{
+					inputType = SceneryEditorX::ShaderInputType::CombinedImageSampler;
+				}
+				else if (baseShape >= SLANG_TEXTURE_1D && baseShape <= SLANG_TEXTURE_SUBPASS)
+				{
+					inputType = (access == SLANG_RESOURCE_ACCESS_READ_WRITE || access == SLANG_RESOURCE_ACCESS_WRITE)
+						? SceneryEditorX::ShaderInputType::StorageImage
+						: SceneryEditorX::ShaderInputType::Texture;
+				}
+				else
+				{
+					validBinding = false;
+				}
+				break;
+			}
+
+			default:
+				validBinding = false;
+				break;
+		}
+
+		if (!validBinding) return;
+
+		SceneryEditorX::ShaderInput input{};
+		input.debugName = varLayout->getName() ? varLayout->getName() : "";
+		input.stage     = stage;
+		input.set       = varLayout->getBindingSpace();
+		input.binding   = varLayout->getBindingIndex();
+		input.count     = arrayCount;
+		input.type      = inputType;
+
+		outInputs.push_back(input);
+	}
+
+	// -------------------------------------------------------
+	// Public API
+	// -------------------------------------------------------
+
+	ShaderCompilationResult CompileAndReflect(SceneryEditorX::Stage stage, const std::string& filepath, bool optimize)
+	{
+		// TODO: Implement optimization passes in the Slang compilation pipeline and set the 'optimize' flag accordingly.
+		(void)optimize;
+
+		ShaderCompilationResult result;
+
+		// 1. Create a Slang session shared for both compilation and reflection
+		Slang::ComPtr<slang::IGlobalSession> globalSession;
+		Slang::ComPtr<slang::ISession>       session;
+		if (!CreateSlangSession(globalSession, session))
+			return result;
+
+		// 2. Load module from .slang-module cache or compile from source
+		Slang::ComPtr<slang::IModule> module = LoadOrCompileModule(session, filepath);
+		if (!module)
+			return result;
+
+		// 3. Locate the entry point for this specific stage
+		const char* entryName = GetEntryPointName(stage, filepath);
+		Slang::ComPtr<slang::IEntryPoint> entryPoint;
+		module->findEntryPointByName(entryName, entryPoint.writeRef());
+
+		if (!entryPoint)
+		{
+			SEDX_CORE_ERROR_TAG("Shader", "Entry point '{}' not found in module '{}'", entryName, filepath);
+			return result;
+		}
+
+		// 4. Compose module + entry point, then link to resolve cross-module references
+		slang::IComponentType* components[] = { module.get(), entryPoint.get() };
+		Slang::ComPtr<slang::IComponentType> composed;
+		Slang::ComPtr<slang::IBlob>          diagBlob;
+		session->createCompositeComponentType(components, 2, composed.writeRef(), diagBlob.writeRef());
+
+		if (!composed)
+		{
+			SEDX_CORE_ERROR_TAG("Shader", "Failed to compose shader components for '{}'", filepath);
+			return result;
+		}
+
+		Slang::ComPtr<slang::IComponentType> linked;
+		composed->link(linked.writeRef(), diagBlob.writeRef());
+
+		if (!linked)
+		{
+			if (diagBlob)
+			{
+				SEDX_CORE_ERROR_TAG("Shader", "Shader link failed for '{}': {}",
+					filepath, static_cast<const char*>(diagBlob->getBufferPointer()));
+			}
+			return result;
+		}
+
+		// 5. Extract per-entry-point SPIR-V words
+		Slang::ComPtr<slang::IBlob> spirvBlob;
+		if (SLANG_SUCCEEDED(linked->getEntryPointCode(0, 0, spirvBlob.writeRef(), diagBlob.writeRef())) && spirvBlob)
+		{
+			const size_t byteSize = spirvBlob->getBufferSize();
+			if (byteSize > 0 && (byteSize % sizeof(uint32_t)) == 0)
+			{
+				result.spirv.resize(byteSize / sizeof(uint32_t));
+				std::memcpy(result.spirv.data(), spirvBlob->getBufferPointer(), byteSize);
+			}
+			else
+			{
+				SEDX_CORE_ERROR_TAG("Shader", "SPIR-V blob has invalid size ({} bytes) for '{}'", byteSize, filepath);
+			}
+		}
+		else if (diagBlob)
+		{
+			SEDX_CORE_ERROR_TAG("Shader", "SPIR-V code generation failed for '{}': {}",
+				filepath, static_cast<const char*>(diagBlob->getBufferPointer()));
+		}
+
+		// 6. Reflect global shader parameters from the linked program layout
+		slang::ProgramLayout* layout = linked->getLayout(0, diagBlob.writeRef());
+		if (layout)
+		{
+			const unsigned paramCount = layout->getParameterCount();
+			for (unsigned i = 0; i < paramCount; ++i)
+				CollectInputsFromVar(layout->getParameterByIndex(i), stage, result.inputs);
+		}
+
+		return result;
+	}
+
+	std::vector<uint32_t> CompileVulkanShader(SceneryEditorX::Stage stage, const std::string& filepath, bool optimize)
+	{
+		return CompileAndReflect(stage, filepath, optimize).spirv;
+	}
+
+	std::vector<SceneryEditorX::ShaderInput> Reflect(SceneryEditorX::Stage stage, const std::string& filepath)
+	{
+		return CompileAndReflect(stage, filepath).inputs;
 	}
 
 }
