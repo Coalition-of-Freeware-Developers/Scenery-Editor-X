@@ -23,29 +23,60 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  * -------------------------------------------------------
- * keybind_window.h
+ * editor_panel.h
  * -------------------------------------------------------
- * Created: 20/03/2026
+ * Created: 10/04/2026
  * -------------------------------------------------------
  */
 #pragma once
-#include <Editor/core/child_window.h>
+#include <SceneryEditorX/core/events/event_system.h>
+#include <SceneryEditorX/project/project.h>
+#include <SceneryEditorX/scene/scene.h>
 
-// ---------------------------------------------------------
+// -------------------------------------------------------
 
-/**
- * @class KeybindWindow
- * @brief 
- */
-class KeybindWindow : public SceneryEditorX::UI::ChildWindow
+namespace SceneryEditorX::UI
 {
-public:
-	KeybindWindow();
+	/**
+	 * @class EditorPanel
+	 * @brief Abstract base class for all editor panels.
+	 */
+	class EditorPanel : public RefCounted
+	{
+	public:
+		/**
+		 * @brief Destructor for the EditorPanel class.
+		 */
+		virtual ~EditorPanel() = default;
 
-	void Tick() override;
-	bool *ShowWindow() override;
-	bool IsVisible() override;
-};
+		/**
+		 * @brief Renders the UI for the panel.
+		 * @param isOpen A reference to a boolean indicating whether the panel is open.
+		 */
+		virtual void OnUIRender(bool& isOpen) = 0;
 
-// ---------------------------------------------------------
+		/**
+		 * @brief Handles an event.
+		 * @param e Event to handle.
+		 */
+		virtual void OnEvent(Event& e) {}
 
+		/**
+		 * @brief Called when the active project changes.
+		 * @param project The new active project.
+		 */
+		virtual void OnProjectChanged(const Ref<Project>& project) {}
+
+		/**
+		 * @brief Sets the scene context for the panel.
+		 * @param context scene context to set for the panel
+		 * @note This is called when the active scene changes, 
+		 * allowing panels to update their context accordingly.
+		 */
+		virtual void SetSceneContext(const Ref<Scene>& context) {}
+
+	};
+
+}
+
+// -------------------------------------------------------

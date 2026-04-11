@@ -30,6 +30,8 @@
  */
 #pragma once
 #include <vector>
+#include <vulkan/vulkan.h>
+#include <SceneryEditorX/utils/pointers.h>
 
 // -------------------------------------------------------
 
@@ -78,7 +80,7 @@ namespace SceneryEditorX
 		 * @brief Get the device this command pool was created with.
 		 * @return Reference to the owning Device. Safe to call during Device construction.
 		 */
-		[[nodiscard]] Ref<Device> GetDevice() const { return m_Device; }
+		[[nodiscard]] Ref<Device> GetDevice() const;
 	
 		void Destroy(); // Explicitly destroy the command pool before m_Device destruction
 	

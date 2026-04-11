@@ -29,6 +29,8 @@
  * -------------------------------------------------------
  */
 #include "ui_widget.h"
+
+#include "ui_layer.h"
 #include "Editor/core/editor_layer.h"
 #include "source/imgui/imgui_internal.h"
 #include <SceneryEditorX/core/window/monitor_data.h>
@@ -120,9 +122,9 @@ namespace SceneryEditorX
 			return;
 	
 		// Set the position to the viewport's center
-		if (EditorLayer* editorLayer = static_cast<EditorLayer*>(m_Editor))
+		if (UILayer* uiLayer = static_cast<UILayer*>(m_Editor))
 		{
-			if (Viewport* viewport = editorLayer->GetWidget<Viewport>())
+			if (Viewport* viewport = uiLayer->GetWidget<Viewport>())
 			{
 				if (ImGuiWindow* window = GetWindow())
 				{

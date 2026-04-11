@@ -29,6 +29,9 @@
  * -------------------------------------------------------
  */
 #pragma once
+#include "SceneryEditorX/utils/inheritance.h"
+
+
 #include <string>
 #include <SceneryEditorX/renderer/vulkan/device.h>
 #include <vma/vk_mem_alloc.h>

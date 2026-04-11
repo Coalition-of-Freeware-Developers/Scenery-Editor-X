@@ -67,16 +67,6 @@ namespace SceneryEditorX::UI
 	VkPipelineLayout      g_ImGuiPipelineLayout       = VK_NULL_HANDLE;
 	VkPipeline            g_ImGuiPipeline             = VK_NULL_HANDLE;
 
-	void InitializePlatformInterface()
-	{
-		ImGuiPlatformIO &platformIo = ImGui::GetPlatformIO();
-		platformIo.Renderer_CreateWindow = WindowCreate;
-		platformIo.Renderer_DestroyWindow = WindowDestroy;
-		platformIo.Renderer_SetWindowSize = WindowResize;
-		platformIo.Renderer_RenderWindow = WindowRender;
-		platformIo.Renderer_SwapBuffers = WindowPresent;
-	}
-
 	void DestroyResources()
 	{
 		const VkDevice device = RenderContext::Get()->GetDevice()->GetLogicalDevice();
@@ -188,194 +178,195 @@ namespace SceneryEditorX::UI
 			spec.flags = ShaderViews;
 			spec.name = "imgui_font_atlas";
 	
-				// upload texture to graphics system
-				g_FontAtlas = CreateRef<ImageResource>(spec, std::move(texture_data));
-				io.Fonts->TexID = reinterpret_cast<ImTextureID>(g_FontAtlas.Get());
-			}
+			// upload texture to graphics system
+			g_FontAtlas = CreateRef<ImageResource>(spec, std::move(texture_data));
+			io.Fonts->TexID = reinterpret_cast<ImTextureID>(g_FontAtlas.Get());
+		}
 
-			// Build dedicated Vulkan objects for the ImGui pipeline that match ui.slang:
-			//   push constants: { float2 scale; float2 translate; }  (16 bytes, both stages)
-			//   Set 0, Binding 0: Sampler2D font  (combined image sampler)
-			// These bypass the CommandList abstraction which cannot handle this descriptor layout.
+		// Build dedicated Vulkan objects for the ImGui pipeline that match ui.slang:
+		//   push constants: { float2 scale; float2 translate; }  (16 bytes, both stages)
+		//   Set 0, Binding 0: Sampler2D font  (combined image sampler)
+		// These bypass the CommandList abstraction which cannot handle this descriptor layout.
+		{
+			const VkDevice device = RenderContext::Get()->GetDevice()->GetLogicalDevice();
+			Swapchain *swapchain = Renderer::GetSwapChain();
+
+			// Linear sampler for the font atlas
 			{
-				const VkDevice device = RenderContext::Get()->GetDevice()->GetLogicalDevice();
-				Swapchain *swapchain = Renderer::GetSwapChain();
+				VkSamplerCreateInfo samplerCI{};
+				samplerCI.sType        = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+				samplerCI.magFilter    = VK_FILTER_LINEAR;
+				samplerCI.minFilter    = VK_FILTER_LINEAR;
+				samplerCI.mipmapMode   = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+				samplerCI.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+				samplerCI.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+				samplerCI.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+				samplerCI.maxAnisotropy = 1.0f;
+				samplerCI.minLod       = -1000.0f;
+				samplerCI.maxLod       = 1000.0f;
+				vkCreateSampler(device, &samplerCI, nullptr, &g_ImGuiFontSampler);
+			}
 
-				// Linear sampler for the font atlas
+			// Descriptor set layout: binding 0 = combined image sampler
+			{
+				VkDescriptorSetLayoutBinding binding{};
+				binding.binding            = 0;
+				binding.descriptorType     = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+				binding.descriptorCount    = 1;
+				binding.stageFlags         = VK_SHADER_STAGE_FRAGMENT_BIT;
+				binding.pImmutableSamplers = &g_ImGuiFontSampler;
+
+				VkDescriptorSetLayoutCreateInfo layoutCI{};
+				layoutCI.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+				layoutCI.bindingCount = 1;
+				layoutCI.pBindings    = &binding;
+				vkCreateDescriptorSetLayout(device, &layoutCI, nullptr, &g_ImGuiDescriptorSetLayout);
+			}
+
+			// Descriptor pool and font descriptor set
+			{
+				VkDescriptorPoolSize poolSize{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1 };
+				VkDescriptorPoolCreateInfo poolCI{};
+				poolCI.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+				poolCI.maxSets       = 1;
+				poolCI.poolSizeCount = 1;
+				poolCI.pPoolSizes    = &poolSize;
+				vkCreateDescriptorPool(device, &poolCI, nullptr, &g_ImGuiDescriptorPool);
+
+				VkDescriptorSetAllocateInfo allocInfo{};
+				allocInfo.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+				allocInfo.descriptorPool     = g_ImGuiDescriptorPool;
+				allocInfo.descriptorSetCount = 1;
+				allocInfo.pSetLayouts        = &g_ImGuiDescriptorSetLayout;
+				vkAllocateDescriptorSets(device, &allocInfo, &g_ImGuiFontDescriptorSet);
+			}
+
+			// Pipeline layout: one descriptor set + one push constant range (scale.xy + translate.xy)
+			{
+				VkPushConstantRange pcRange{};
+				pcRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+				pcRange.offset     = 0;
+				pcRange.size       = sizeof(float) * 4; // float2 scale + float2 translate
+
+				VkPipelineLayoutCreateInfo layoutCI{};
+				layoutCI.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+				layoutCI.setLayoutCount         = 1;
+				layoutCI.pSetLayouts            = &g_ImGuiDescriptorSetLayout;
+				layoutCI.pushConstantRangeCount = 1;
+				layoutCI.pPushConstantRanges    = &pcRange;
+				vkCreatePipelineLayout(device, &layoutCI, nullptr, &g_ImGuiPipelineLayout);
+			}
+
+			// Build the VkPipeline using the compiled ui.slang shader stages
+			{
+				Ref<ShaderStage> vsStage   = g_VertexShader   ? g_VertexShader->GetShaderStage(Stage::Vertex)   : nullptr;
+				Ref<ShaderStage> fragStage = g_FragmentShader ? g_FragmentShader->GetShaderStage(Stage::Fragment) : nullptr;
+
+				if (vsStage && fragStage)
 				{
-					VkSamplerCreateInfo samplerCI{};
-					samplerCI.sType        = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-					samplerCI.magFilter    = VK_FILTER_LINEAR;
-					samplerCI.minFilter    = VK_FILTER_LINEAR;
-					samplerCI.mipmapMode   = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-					samplerCI.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-					samplerCI.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-					samplerCI.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-					samplerCI.maxAnisotropy = 1.0f;
-					samplerCI.minLod       = -1000.0f;
-					samplerCI.maxLod       = 1000.0f;
-					vkCreateSampler(device, &samplerCI, nullptr, &g_ImGuiFontSampler);
-				}
+					VkPipelineShaderStageCreateInfo stages[2] = {
+						vsStage->GetStageCreateInfo(),
+						fragStage->GetStageCreateInfo()
+					};
 
-				// Descriptor set layout: binding 0 = combined image sampler
-				{
-					VkDescriptorSetLayoutBinding binding{};
-					binding.binding            = 0;
-					binding.descriptorType     = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-					binding.descriptorCount    = 1;
-					binding.stageFlags         = VK_SHADER_STAGE_FRAGMENT_BIT;
-					binding.pImmutableSamplers = &g_ImGuiFontSampler;
+					// Vertex input: matches ImDrawVert layout
+					// Binding 0: pos (float2) @ 0, uv (float2) @ 8, color (uint8 x4) @ 16
+					VkVertexInputBindingDescription vertBind{};
+					vertBind.binding   = 0;
+					vertBind.stride    = sizeof(ImDrawVert);
+					vertBind.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
-					VkDescriptorSetLayoutCreateInfo layoutCI{};
-					layoutCI.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-					layoutCI.bindingCount = 1;
-					layoutCI.pBindings    = &binding;
-					vkCreateDescriptorSetLayout(device, &layoutCI, nullptr, &g_ImGuiDescriptorSetLayout);
-				}
+					VkVertexInputAttributeDescription vertAttrs[3]{};
+					vertAttrs[0] = { 0, 0, VK_FORMAT_R32G32_SFLOAT,       static_cast<uint32_t>(offsetof(ImDrawVert, pos)) };
+					vertAttrs[1] = { 1, 0, VK_FORMAT_R32G32_SFLOAT,       static_cast<uint32_t>(offsetof(ImDrawVert, uv))  };
+					vertAttrs[2] = { 2, 0, VK_FORMAT_R8G8B8A8_UNORM,      static_cast<uint32_t>(offsetof(ImDrawVert, col)) };
 
-				// Descriptor pool and font descriptor set
-				{
-					VkDescriptorPoolSize poolSize{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1 };
-					VkDescriptorPoolCreateInfo poolCI{};
-					poolCI.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-					poolCI.maxSets       = 1;
-					poolCI.poolSizeCount = 1;
-					poolCI.pPoolSizes    = &poolSize;
-					vkCreateDescriptorPool(device, &poolCI, nullptr, &g_ImGuiDescriptorPool);
+					VkPipelineVertexInputStateCreateInfo vertexInput{};
+					vertexInput.sType                           = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+					vertexInput.vertexBindingDescriptionCount   = 1;
+					vertexInput.pVertexBindingDescriptions      = &vertBind;
+					vertexInput.vertexAttributeDescriptionCount = 3;
+					vertexInput.pVertexAttributeDescriptions    = vertAttrs;
 
-					VkDescriptorSetAllocateInfo allocInfo{};
-					allocInfo.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-					allocInfo.descriptorPool     = g_ImGuiDescriptorPool;
-					allocInfo.descriptorSetCount = 1;
-					allocInfo.pSetLayouts        = &g_ImGuiDescriptorSetLayout;
-					vkAllocateDescriptorSets(device, &allocInfo, &g_ImGuiFontDescriptorSet);
-				}
+					VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
+					inputAssembly.sType    = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+					inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 
-				// Pipeline layout: one descriptor set + one push constant range (scale.xy + translate.xy)
-				{
-					VkPushConstantRange pcRange{};
-					pcRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-					pcRange.offset     = 0;
-					pcRange.size       = sizeof(float) * 4; // float2 scale + float2 translate
+					VkPipelineViewportStateCreateInfo viewportState{};
+					viewportState.sType         = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+					viewportState.viewportCount = 1;
+					viewportState.scissorCount  = 1;
 
-					VkPipelineLayoutCreateInfo layoutCI{};
-					layoutCI.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-					layoutCI.setLayoutCount         = 1;
-					layoutCI.pSetLayouts            = &g_ImGuiDescriptorSetLayout;
-					layoutCI.pushConstantRangeCount = 1;
-					layoutCI.pPushConstantRanges    = &pcRange;
-					vkCreatePipelineLayout(device, &layoutCI, nullptr, &g_ImGuiPipelineLayout);
-				}
+					VkPipelineRasterizationStateCreateInfo rasterizer{};
+					rasterizer.sType       = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+					rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+					rasterizer.cullMode    = VK_CULL_MODE_NONE;
+					rasterizer.frontFace   = VK_FRONT_FACE_CLOCKWISE;
+					rasterizer.lineWidth   = 1.0f;
 
-				// Build the VkPipeline using the compiled ui.slang shader stages
-				{
-					Ref<ShaderStage> vsStage   = g_VertexShader   ? g_VertexShader->GetShaderStage(Stage::Vertex)   : nullptr;
-					Ref<ShaderStage> fragStage = g_FragmentShader ? g_FragmentShader->GetShaderStage(Stage::Fragment) : nullptr;
+					VkPipelineMultisampleStateCreateInfo msaa{};
+					msaa.sType                = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+					msaa.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
 
-					if (vsStage && fragStage)
-					{
-						VkPipelineShaderStageCreateInfo stages[2] = {
-							vsStage->GetStageCreateInfo(),
-							fragStage->GetStageCreateInfo()
-						};
+					VkPipelineColorBlendAttachmentState blendAttach{};
+					blendAttach.blendEnable         = VK_TRUE;
+					blendAttach.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+					blendAttach.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+					blendAttach.colorBlendOp        = VK_BLEND_OP_ADD;
+					blendAttach.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+					blendAttach.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+					blendAttach.alphaBlendOp        = VK_BLEND_OP_ADD;
+					blendAttach.colorWriteMask      = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+													  VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 
-						// Vertex input: matches ImDrawVert layout
-						// Binding 0: pos (float2) @ 0, uv (float2) @ 8, color (uint8 x4) @ 16
-						VkVertexInputBindingDescription vertBind{};
-						vertBind.binding   = 0;
-						vertBind.stride    = sizeof(ImDrawVert);
-						vertBind.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+					VkPipelineColorBlendStateCreateInfo colorBlend{};
+					colorBlend.sType           = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+					colorBlend.attachmentCount = 1;
+					colorBlend.pAttachments    = &blendAttach;
 
-						VkVertexInputAttributeDescription vertAttrs[3]{};
-						vertAttrs[0] = { 0, 0, VK_FORMAT_R32G32_SFLOAT,       static_cast<uint32_t>(offsetof(ImDrawVert, pos)) };
-						vertAttrs[1] = { 1, 0, VK_FORMAT_R32G32_SFLOAT,       static_cast<uint32_t>(offsetof(ImDrawVert, uv))  };
-						vertAttrs[2] = { 2, 0, VK_FORMAT_R8G8B8A8_UNORM,      static_cast<uint32_t>(offsetof(ImDrawVert, col)) };
+					VkPipelineDepthStencilStateCreateInfo depthStencil{};
+					depthStencil.sType            = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+					depthStencil.depthTestEnable  = VK_FALSE;
+					depthStencil.depthWriteEnable = VK_FALSE;
 
-						VkPipelineVertexInputStateCreateInfo vertexInput{};
-						vertexInput.sType                           = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-						vertexInput.vertexBindingDescriptionCount   = 1;
-						vertexInput.pVertexBindingDescriptions      = &vertBind;
-						vertexInput.vertexAttributeDescriptionCount = 3;
-						vertexInput.pVertexAttributeDescriptions    = vertAttrs;
+					VkDynamicState dynStates[] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+					VkPipelineDynamicStateCreateInfo dynState{};
+					dynState.sType             = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+					dynState.dynamicStateCount = 2;
+					dynState.pDynamicStates    = dynStates;
 
-						VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
-						inputAssembly.sType    = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-						inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+					// Dynamic rendering: match the active render pass formats
+					VkFormat colorFmt = swapchain ? swapchain->GetImageFormat() : VK_FORMAT_B8G8R8A8_SRGB;
+					VkFormat depthFmt = swapchain ? swapchain->GetDepthFormat() : VK_FORMAT_D24_UNORM_S8_UINT;
 
-						VkPipelineViewportStateCreateInfo viewportState{};
-						viewportState.sType         = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-						viewportState.viewportCount = 1;
-						viewportState.scissorCount  = 1;
+					VkPipelineRenderingCreateInfoKHR renderingCI{};
+					renderingCI.sType                   = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR;
+					renderingCI.colorAttachmentCount    = 1;
+					renderingCI.pColorAttachmentFormats = &colorFmt;
+					renderingCI.depthAttachmentFormat   = depthFmt;
 
-						VkPipelineRasterizationStateCreateInfo rasterizer{};
-						rasterizer.sType       = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-						rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
-						rasterizer.cullMode    = VK_CULL_MODE_NONE;
-						rasterizer.frontFace   = VK_FRONT_FACE_CLOCKWISE;
-						rasterizer.lineWidth   = 1.0f;
+					VkGraphicsPipelineCreateInfo pipelineCI{};
+					pipelineCI.sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+					pipelineCI.pNext               = &renderingCI;
+					pipelineCI.stageCount          = 2;
+					pipelineCI.pStages             = stages;
+					pipelineCI.pVertexInputState   = &vertexInput;
+					pipelineCI.pInputAssemblyState = &inputAssembly;
+					pipelineCI.pViewportState      = &viewportState;
+					pipelineCI.pRasterizationState = &rasterizer;
+					pipelineCI.pMultisampleState   = &msaa;
+					pipelineCI.pColorBlendState    = &colorBlend;
+					pipelineCI.pDepthStencilState  = &depthStencil;
+					pipelineCI.pDynamicState       = &dynState;
+					pipelineCI.layout              = g_ImGuiPipelineLayout;
 
-						VkPipelineMultisampleStateCreateInfo msaa{};
-						msaa.sType                = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-						msaa.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-
-						VkPipelineColorBlendAttachmentState blendAttach{};
-						blendAttach.blendEnable         = VK_TRUE;
-						blendAttach.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-						blendAttach.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-						blendAttach.colorBlendOp        = VK_BLEND_OP_ADD;
-						blendAttach.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-						blendAttach.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
-						blendAttach.alphaBlendOp        = VK_BLEND_OP_ADD;
-						blendAttach.colorWriteMask      = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
-														  VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-
-						VkPipelineColorBlendStateCreateInfo colorBlend{};
-						colorBlend.sType           = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-						colorBlend.attachmentCount = 1;
-						colorBlend.pAttachments    = &blendAttach;
-
-						VkPipelineDepthStencilStateCreateInfo depthStencil{};
-						depthStencil.sType            = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-						depthStencil.depthTestEnable  = VK_FALSE;
-						depthStencil.depthWriteEnable = VK_FALSE;
-
-						VkDynamicState dynStates[] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
-						VkPipelineDynamicStateCreateInfo dynState{};
-						dynState.sType             = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-						dynState.dynamicStateCount = 2;
-						dynState.pDynamicStates    = dynStates;
-
-						// Dynamic rendering: match the active render pass formats
-						VkFormat colorFmt = swapchain ? swapchain->GetImageFormat() : VK_FORMAT_B8G8R8A8_SRGB;
-						VkFormat depthFmt = swapchain ? swapchain->GetDepthFormat() : VK_FORMAT_D24_UNORM_S8_UINT;
-
-						VkPipelineRenderingCreateInfoKHR renderingCI{};
-						renderingCI.sType                   = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR;
-						renderingCI.colorAttachmentCount    = 1;
-						renderingCI.pColorAttachmentFormats = &colorFmt;
-						renderingCI.depthAttachmentFormat   = depthFmt;
-
-						VkGraphicsPipelineCreateInfo pipelineCI{};
-						pipelineCI.sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-						pipelineCI.pNext               = &renderingCI;
-						pipelineCI.stageCount          = 2;
-						pipelineCI.pStages             = stages;
-						pipelineCI.pVertexInputState   = &vertexInput;
-						pipelineCI.pInputAssemblyState = &inputAssembly;
-						pipelineCI.pViewportState      = &viewportState;
-						pipelineCI.pRasterizationState = &rasterizer;
-						pipelineCI.pMultisampleState   = &msaa;
-						pipelineCI.pColorBlendState    = &colorBlend;
-						pipelineCI.pDepthStencilState  = &depthStencil;
-						pipelineCI.pDynamicState       = &dynState;
-						pipelineCI.layout              = g_ImGuiPipelineLayout;
-
-						vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineCI, nullptr, &g_ImGuiPipeline);
-						SEDX_CORE_ASSERT(g_ImGuiPipeline != VK_NULL_HANDLE, "Failed to create ImGui Vulkan pipeline");
-					}
+					vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineCI, nullptr, &g_ImGuiPipeline);
+					SEDX_CORE_ASSERT(g_ImGuiPipeline != VK_NULL_HANDLE, "Failed to create ImGui Vulkan pipeline");
 				}
 			}
+		}
 	
+		/*
 		// setup back-end capabilities flags
 		ImGuiIO &io = ImGui::GetIO();
 		io.BackendFlags |= ImGuiBackendFlags_RendererHasViewports;
@@ -384,7 +375,7 @@ namespace SceneryEditorX::UI
 		if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
 		{
 			InitializePlatformInterface();
-		}
+		}*/
 	}
 
 	void Shutdown()
@@ -418,6 +409,7 @@ namespace SceneryEditorX::UI
 
 	void Render(ImDrawData *drawData, WindowData *windowData, const bool clear)
 	{
+		SEDX_CORE_ASSERT(!windowData, "Window data is null");
 		if (!drawData || drawData->TotalVtxCount <= 0 || drawData->TotalIdxCount <= 0)
 			return;
 
@@ -648,12 +640,12 @@ namespace SceneryEditorX::UI
 			cmdList->Submit(nullptr, true);
 		}
 	}
-
+	  
 	void WindowCreate(ImGuiViewport *viewport)
 	{
-		SEDX_CORE_ASSERT(viewport->PlatformHandle);
+		SEDX_CORE_ASSERT(viewport->PlatformHandle, "Viewport platform handle is null");
 	
-		// note: platformHandle is SDL_Window, PlatformHandleRaw is HWND
+		// NOTE: platformHandle is SDL_Window, PlatformHandleRaw is HWND
 		SDL_Window *sdl_window = SDL_GetWindowFromID(static_cast<uint32_t>(reinterpret_cast<uintptr_t>(viewport->PlatformHandle)));
 	
 		WindowData *window = new WindowData();

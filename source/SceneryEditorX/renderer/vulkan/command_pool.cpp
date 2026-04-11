@@ -29,6 +29,7 @@
  * -------------------------------------------------------
  */
 #include "command_pool.h"
+#include "device.h"
 #include "render_context.h"
 #include <utility>
 #include <vector>
@@ -148,6 +149,11 @@ namespace SceneryEditorX
 		return buffers;
 	}
 	
+	Ref<Device> CommandPool::GetDevice() const
+	{
+		return m_Device;
+	}
+
 	void CommandPool::Destroy()
 	{
 		if (m_Device.IsValid() && m_CmdPool != VK_NULL_HANDLE)

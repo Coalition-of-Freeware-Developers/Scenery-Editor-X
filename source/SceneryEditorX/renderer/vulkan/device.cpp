@@ -32,6 +32,7 @@
 #include "device.h"
 #include "enums.h"
 #include "memory_allocator.h"
+#include "queue_manager.h"
 #include "swapchain.h"
 #include <algorithm>
 #include <SceneryEditorX/core/window/window.h>
@@ -44,7 +45,7 @@ namespace SceneryEditorX
 	
 #pragma region Static Properties
 
-/**
+	/**
 	 * @struct DeviceFeatures
 	 * @brief Static handle to the Vulkan physical device selected for use by this Device instance.
 	 */
@@ -714,7 +715,7 @@ namespace SceneryEditorX
 	/**
 	 * @brief Calculate a feature score for a physical device
 	 * @param deviceInfo Hardware device information with detected features
-	 * @param requiredProps Required instance properties (features, extensions, etc.)
+	 * @param requiredProps Required instance properties (features, extensions, etc.) to evaluate against each device
 	 * @return Score value (higher is better), or -1 if required features are missing
 	 */
 	static int32_t ScoreDeviceFeatures(const HWDeviceInfo &deviceInfo, const GraphicsChecks::InstanceProperties &requiredProps)
@@ -979,7 +980,7 @@ namespace SceneryEditorX
 			combinerOps[1] = VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR;
 		}
 
-	    s_FragmentShadingRate(static_cast<VkCommandBuffer>(cmd->GetCommandBuffer()), &fragment_size, combinerOps);
+		s_FragmentShadingRate(static_cast<VkCommandBuffer>(cmd->GetCommandBuffer()), &fragment_size, combinerOps);
 	}
 
 	uint32_t Device::GetPhysicalDeviceCount() { return static_cast<uint32_t>(s_PhysicalDevice.size()); }
@@ -1066,7 +1067,7 @@ namespace SceneryEditorX
 
 		// Populate feature flags from cached data
 		statics.xessSupported			= features.s_XessSupported;
-		statics.isShadingRateSupported	= features.s_IsShadingRateSupported;
+	 statics.isShadingRateSupported	= features.s_IsShadingRateSupported;
 		statics.isRayTracingSupported	= features.s_IsRayTracingSupported;
 		statics.isBindlessSupported		= features.s_IsBindlessSupported;
 		statics.wideLinesSupported		= features.s_WideLines;

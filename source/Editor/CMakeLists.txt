@@ -9,6 +9,7 @@ MESSAGE(STATUS "Generating Scenery Editor X Project")
 FILE(GLOB CORE LIST_DIRECTORIES false CONFIGURE_DEPENDS core/*.cpp core/*.h core/*.hpp)
 FILE(GLOB CORE_CHILD_WINDOWS core/windows/*.cpp core/windows/*.h core/windows/*.hpp)
 FILE(GLOB MODULES modules/*.cpp modules/*.h modules/*.hpp)
+FILE(GLOB PANELS panels/*.cpp panels/*.h panels/*.hpp)
 FILE(GLOB PROJECT projects/*.cpp projects/*.h projects/*.hpp)
 FILE(GLOB SETTINGS settings/*.cpp settings/*.h settings/*.hpp)
 
@@ -25,6 +26,7 @@ ADD_EXECUTABLE(SceneryEditorX WIN32
 	${CORE}
 	${CORE_CHILD_WINDOWS}
 	${MODULES}
+	${PANELS}
 	${PROJECT}
 	${SETTINGS}
 
@@ -45,6 +47,9 @@ SOURCE_GROUP("Core/Windows" FILES
 )
 SOURCE_GROUP("Modules" FILES
 	${MODULES}
+)
+SOURCE_GROUP("UI Panels" FILES
+	${PANELS}
 )
 SOURCE_GROUP("Projects" FILES
 	${PROJECT}

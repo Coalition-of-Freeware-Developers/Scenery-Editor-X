@@ -28,7 +28,7 @@
  * Created: 17/03/2026
  * -------------------------------------------------------
  */
-#include "texure_viewer.h"
+#include "texture_viewer.h"
 #include "Editor/core/editor_layer.h"
 #include <algorithm>
 #include <SceneryEditorX/renderer/renderer.h>

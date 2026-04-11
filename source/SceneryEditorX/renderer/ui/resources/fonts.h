@@ -38,12 +38,12 @@ namespace  SceneryEditorX::UI
 
 	/**
 	 * @struct FontConfiguration
-	 * @brief 
+	 * @brief Configuration structure for defining font properties.
 	 */
 	struct FontConfiguration
 	{
 		std::string FontName;
-		std::string_view FilePath;
+		std::string FilePath;
 		float Size = 16.0f;
 		const ImWchar* GlyphRanges = nullptr;
 		bool MergeWithLast = false;
@@ -51,14 +51,35 @@ namespace  SceneryEditorX::UI
 	
 	/**
 	 * @class Fonts
-	 * @brief 
+	 * @brief Manages the font system for the UI, allowing for adding, retrieving, and switching between fonts.
 	 */
 	class Fonts
 	{
 	public:
+
+		/**
+		 * @brief Adds a new font configuration to the font system.
+		 * @param config The font configuration to add.
+		 * @param isDefault Whether this font should be set as the default font.
+		 */
 		static void Add(const FontConfiguration& config, bool isDefault = false);
+
+		/**
+		 * @brief Pushes a font onto the font stack, making it the current font for rendering.
+		 * @param fontName The name of the font to push.
+		 */
 		static void PushFont(const std::string& fontName);
+
+		/**
+		 * @brief Pops the current font from the font stack, reverting to the previous font.
+		 */
 		static void PopFont();
+
+		/**
+		 * @brief Retrieves a font by its name.
+		 * @param fontName The name of the font to retrieve.
+		 * @return A pointer to the requested font, or nullptr if not found.
+		 */
 		static ImFont* Get(const std::string& fontName);
 	};
 

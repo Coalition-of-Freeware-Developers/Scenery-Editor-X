@@ -25,7 +25,7 @@
  * -------------------------------------------------------
  * menu_bar.cpp
  * -------------------------------------------------------
- * Created: 29/3/2025
+ * Created: 29/03/2025
  * -------------------------------------------------------
  */
 #include "menu_bar.h"
@@ -34,8 +34,8 @@
 #include "properties.h"
 #include "render_options.h"
 #include "scene_viewport.h"
-#include "texure_viewer.h"
-#include "Editor/core/editor_layer.h"
+#include "texture_viewer.h"
+#include <Editor/core/editor_layer.h>
 #include <SceneryEditorX/core/resource/resource_cache.h>
 #include <SceneryEditorX/core/threading/thread_pool.h>
 #include <SceneryEditorX/core/window/window.h>
@@ -43,6 +43,8 @@
 #include <SceneryEditorX/renderer/ui/ui.h>
 #include <SceneryEditorX/renderer/vulkan/debug/graphics_debug.h>
 #include <SceneryEditorX/scene/scene.h>
+
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {

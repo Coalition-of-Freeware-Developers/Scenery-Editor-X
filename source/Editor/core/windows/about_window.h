@@ -37,7 +37,7 @@
  * @class AboutWindow
  * @brief 
  */
-class AboutWindow : public UI::ChildWindow
+class AboutWindow : public SceneryEditorX::UI::ChildWindow
 {
 public:
     AboutWindow();

@@ -42,6 +42,11 @@
 
 namespace SceneryEditorX
 {
+/**
+	 * @class EditorLayer
+	 * @brief Represents the main editor layer in the application, 
+	 * responsible for managing the editor's state, handling events, and rendering the UI.
+	 */
 	class EditorLayer : public Layer, public RefCounted
 	{
 	public:
@@ -84,25 +89,6 @@ namespace SceneryEditorX
 
 	    void AllowInputEvents(bool allowInput);
 
-		/**
-		 * @brief Retrieves a pointer to the first widget of type T in the editor's widget list. Returns nullptr if no such widget is found.
-		 * @tparam T The type of the widget to retrieve.
-		 * @return A pointer to the first widget of type T, or nullptr if no such widget is found.
-		 */
-		template<typename T>
-		T* GetWidget()
-		{
-			for (const auto& widget : m_Widgets)
-			{
-				if (T* widgetT = dynamic_cast<T*>(widget.Get()))
-				{
-					return widgetT;
-				}
-			}
-
-			return nullptr;
-		}
-
 	    inline static ImFont* fontNormal = nullptr;
 	    inline static ImFont* fontBold   = nullptr;
 
@@ -112,7 +98,6 @@ namespace SceneryEditorX
 		Ref<Scene> m_RuntimeScene;
 	    std::string m_SceneFilePath;
 
-		std::vector<Ref<Widget>> m_Widgets;
 	    std::vector<UI::ChildWindow> m_ChildWindows;
 		Vec2 m_ViewportBounds[2]       = {};
 		Vec2 m_SecondViewportBounds[2] = {};
@@ -193,9 +178,6 @@ namespace SceneryEditorX
 		float m_TimeSinceLastSave = 0.0f;
 		float m_RequiredProjectVersion = 0.0f;
 		float m_AssetUpdatePerf = 0.0f;
-
-		// Owns the imgui ini path string so io.IniFilename never dangles (C26815).
-		std::string m_IniFilePath;
 
 	#ifdef SEDX_PLATFORM_WINDOWS
 		typedef std::wstring WatcherString;

@@ -32,6 +32,8 @@
 #pragma once
 #include "memory_allocator.h"
 #include "queue_manager.h"
+#include <cstdint>
+#include <string>
 #include <SceneryEditorX/renderer/vulkan/debug/graphics_checks.h>
 #include <SceneryEditorX/utils/pointers.h>
 
@@ -39,7 +41,7 @@
 
 namespace SceneryEditorX
 {
-
+	class CommandList;
 	struct HWDeviceInfo;
 	class QueueManager;
 
@@ -149,7 +151,7 @@ namespace SceneryEditorX
 		 * @brief Get the QueueManager instance for this device
 		 * @return Reference to the QueueManager
 		 */
-		Ref<QueueManager> GetQueueManager() { return m_QueueManager; }
+		const Ref<QueueManager>& GetQueueManager() const { return m_QueueManager; }
 
 		/**
 		 * @brief Get the MemoryAllocator instance for this device

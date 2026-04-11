@@ -32,24 +32,56 @@
 
 // ---------------------------------------------------------
 
-namespace UI
+namespace SceneryEditorX::UI
 {
 
 	/**
 	 * @class ChildWindow
-	 * @brief 
+	 * @brief Base class for child windows in the UI.
+	 * Provides common functionality for managing child windows, such as centering and visibility. 
 	 */
 	class ChildWindow
 	{
 	public:
+		/**
+		 * @brief Constructs a child window with the given name.
+		 */
 		virtual ~ChildWindow() = default;
 
+		/**
+		 * @brief Initializes the child window with the given name.
+		 * @param name The name of the child window.
+		 */
 		static void Init(const std::string &name);
+
+		/**
+		 * @brief Centers the child window on the screen. 
+		 * @note: This should be called after the window is created and its size is known. 
+		 */
 		virtual void CenterWindow();
 
+		/**
+		 * @brief Called each frame to update the layer.
+		 * Implement layer logic that needs to execute each frame.
+		 */
 		virtual void Tick() = 0;
+
+		/**
+		 * @brief Child window visibility toggle. 
+		 * This can be used to show/hide the window based on user interaction or application state. 
+		 * @return True if the child window is visible, false otherwise.
+		 */
 		virtual bool IsVisible() = 0;
+
+		/**
+		 * @brief Shows the child window. 
+		 * This should set the visibility state to true and trigger any necessary updates to display the window.
+		 * @return True if the child window was successfully shown, false otherwise.
+		 */
 		virtual bool *ShowWindow() = 0;
+
+	private:
+		std::string m_DebugName; // The name of the layer.
 	};
 
 }

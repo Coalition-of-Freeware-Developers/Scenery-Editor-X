@@ -23,29 +23,52 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  * -------------------------------------------------------
- * keybind_window.h
+ * ui_renderer.h
  * -------------------------------------------------------
- * Created: 20/03/2026
+ * Created: 09/04/2026
  * -------------------------------------------------------
  */
 #pragma once
-#include <Editor/core/child_window.h>
+#include "source/imgui/imgui.h"
+#include <SceneryEditorX/renderer/vulkan/command_list.h>
 
-// ---------------------------------------------------------
+// -------------------------------------------------------
 
-/**
- * @class KeybindWindow
- * @brief 
- */
-class KeybindWindow : public SceneryEditorX::UI::ChildWindow
+namespace SceneryEditorX
 {
-public:
-	KeybindWindow();
 
-	void Tick() override;
-	bool *ShowWindow() override;
-	bool IsVisible() override;
-};
+	/**
+	 * @class UIRenderer
+	 * @brief Responsible for rendering ImGui draw data in the 
+	 * Scenery Editor X application Vulkan renderer.
+	 */
+	class UIRenderer
+	{
+	public:
+		UIRenderer() = default;
 
-// ---------------------------------------------------------
+		/**
+		 * @brief Initializes the UI renderer.
+		 */
+		void Init();
+		//bool UpdateFontTexture();
 
+	private:
+		/**
+		 * @brief Updates the geometry for the UI renderer.
+		 * @param drawData ImGui draw data to update the geometry with.
+		 * @return True if the geometry was successfully updated, false otherwise.
+		 */
+		bool UpdateGeometry(ImDrawData* drawData);
+
+		Ref<CommandList> m_CommandList; // Command list used for recording ImGui draw calls, managed externally to allow for synchronization with the main rendering loop.
+
+		std::vector<ImDrawVert> m_VertexBufferData; // Separate buffers to avoid reallocations when vertex/index counts differ.
+		std::vector<ImDrawIdx> m_IndexBufferData;	// Separate buffers to avoid reallocations when vertex/index counts differ.
+
+		uint64_t m_FrameCounter = 0; // Used for synchronization and resource management.
+	};
+	
+}
+
+// -------------------------------------------------------

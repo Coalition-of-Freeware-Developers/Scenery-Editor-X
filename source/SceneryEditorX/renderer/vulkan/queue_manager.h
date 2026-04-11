@@ -30,16 +30,15 @@
  */
 #pragma once
 #include "command_list.h"
+#include "command_pool.h"
 #include "queue.h"
 #include <limits>
 #include <vma/vk_mem_alloc.h>
-#include <SceneryEditorX/utils/pointers.h>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-	class CommandList;
 	class Device;
 	class Queue;
 	

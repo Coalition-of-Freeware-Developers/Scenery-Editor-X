@@ -54,7 +54,6 @@ FILE(GLOB RENDERER_SYNC_FILES "renderer/vulkan/sync/*.h" "renderer/vulkan/sync/*
 
 # --------------------------------
 FILE(GLOB UI_ACTIONS renderer/ui/actions/*.cpp renderer/ui/actions/*.h renderer/ui/actions/*.hpp)
-FILE(GLOB UI_PANELS renderer/ui/panels/*.cpp renderer/ui/panels/*.h renderer/ui/panels/*.hpp)
 FILE(GLOB UI_RESOURCES renderer/ui/resources/*.cpp renderer/ui/resources/*.h renderer/ui/resources/*.hpp)
 FILE(GLOB UI_SOURCE LIST_DIRECTORIES false CONFIGURE_DEPENDS renderer/ui/source/*.cpp renderer/ui/source/*.h renderer/ui/source/*.hpp)
 FILE(GLOB UI_IMGUIZMO renderer/ui/source/imguizmo/*.cpp renderer/ui/source/imguizmo/*.h renderer/ui/source/imguizmo/*.hpp)
@@ -172,7 +171,6 @@ ADD_LIBRARY(AppCore
 
 	${UI_FILES}
 	${UI_ACTIONS}
-	${UI_PANELS}
 	${UI_RESOURCES}
 	${UI_SOURCE}
 	${UI_IMGUIZMO}
@@ -351,9 +349,6 @@ SOURCE_GROUP("UI" FILES
 )
 SOURCE_GROUP("UI/Actions" FILES
 	${UI_ACTIONS}
-)
-SOURCE_GROUP("UI/Panels" FILES
-	${UI_PANELS}
 )
 SOURCE_GROUP("UI/Resources" FILES
 	${UI_RESOURCES}

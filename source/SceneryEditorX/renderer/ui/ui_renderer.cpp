@@ -23,29 +23,48 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  * -------------------------------------------------------
- * keybind_window.h
+ * ui_renderer.cpp
  * -------------------------------------------------------
- * Created: 20/03/2026
+ * Created: 09/04/2026
  * -------------------------------------------------------
  */
-#pragma once
-#include <Editor/core/child_window.h>
+#include "ui_renderer.h"
 
-// ---------------------------------------------------------
+// -------------------------------------------------------
 
-/**
- * @class KeybindWindow
- * @brief 
- */
-class KeybindWindow : public SceneryEditorX::UI::ChildWindow
+namespace SceneryEditorX
 {
-public:
-	KeybindWindow();
 
-	void Tick() override;
-	bool *ShowWindow() override;
-	bool IsVisible() override;
-};
+	void UIRenderer::Init()
+	{
+	}
 
-// ---------------------------------------------------------
+	/*
+	bool UIRenderer::UpdateFontTexture()
+	{
+		ImGuiIO& io = ImGui::GetIO();
+		io.BackendRendererName = "HazelImGuiRenderer";
+		io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;  // We can honor the ImDrawCmd::VtxOffset field, allowing for large meshes.
+		io.BackendFlags |= ImGuiBackendFlags_RendererHasViewports;  // We can create multi-viewports on the Renderer side (optional)
+		// If the font texture exists and is bound to ImGui, we're done.
+		// Note: ImGui_Renderer will reset io.Fonts->TexID when new fonts are added.
+		if (m_FontTexture && io.Fonts->TexID)
+			return true;
 
+		unsigned char* pixels;
+		int width, height;
+
+		io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
+		if (!pixels)
+			return false;
+	}
+	*/
+
+	bool UIRenderer::UpdateGeometry(ImDrawData *drawData)
+	{
+		return true;
+	}
+
+	} // namespace SceneryEditorX
+
+// -------------------------------------------------------

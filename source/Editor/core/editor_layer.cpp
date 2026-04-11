@@ -29,11 +29,12 @@
  * -------------------------------------------------------
  */
 #include "editor_layer.h"
-#include "SceneryEditorX/renderer/ui/panels/asset_browser.h"
-#include "SceneryEditorX/renderer/ui/panels/menu_bar.h"
-#include "SceneryEditorX/renderer/ui/panels/render_options.h"
-#include "SceneryEditorX/renderer/ui/panels/scene_viewport.h"
-#include "SceneryEditorX/renderer/ui/panels/texure_viewer.h"
+#include <Editor/panels/asset_browser.h>
+#include <Editor/panels/menu_bar.h>
+#include <Editor/panels/properties.h>
+#include <Editor/panels/render_options.h>
+#include <Editor/panels/scene_viewport.h>
+#include <Editor/panels/texture_viewer.h>
 #include <Editor/projects/project.h>
 #include <Editor/settings/editor_settings.h>
 #include <SceneryEditorX/core/application/application.h>
@@ -45,7 +46,6 @@
 #include <SceneryEditorX/renderer/renderer.h>
 #include <SceneryEditorX/renderer/ui/ui_impl.h>
 #include <SceneryEditorX/renderer/ui/actions/gizmos.h>
-#include <SceneryEditorX/renderer/ui/panels/properties.h>
 #include <SceneryEditorX/renderer/ui/source/imgui/imgui.h>
 #include <SceneryEditorX/renderer/ui/source/imgui/imgui_internal.h>
 #include <SceneryEditorX/renderer/ui/source/imgui/backends/imgui_impl_sdl3.h>
@@ -83,84 +83,7 @@ namespace SceneryEditorX
 	static float s_FontScale	= 1.0f;
 	static bool s_SceneOpen		= false;
 	static bool s_ProjectOpen	= false;
-		
-	static auto operator<(const ImVec2 &lhs, const ImVec2 &rhs)
-	{
-		return lhs.x < rhs.x && lhs.y < rhs.y;
-	}
 
-	static void BeginWindow()
-	{
-		// note: don't use ImGuiWindowFlags_MenuBar here since we use BeginMainMenuBar() separately
-		const auto windowFlags =
-			ImGuiWindowFlags_NoDocking             |
-			ImGuiWindowFlags_NoTitleBar            |
-			ImGuiWindowFlags_NoCollapse            |
-			ImGuiWindowFlags_NoResize              |
-			ImGuiWindowFlags_NoMove                |
-			ImGuiWindowFlags_NoBringToFrontOnFocus |
-			ImGuiWindowFlags_NoNavFocus;
-	
-		// set window position and size to the work area (excludes main menu bar)
-		const ImGuiViewport* viewport = ImGui::GetMainViewport();
-		ImGui::SetNextWindowPos(viewport->WorkPos);
-		ImGui::SetNextWindowSize(viewport->WorkSize);
-	
-		// draw window border for borderless window (use full viewport for border around entire window)
-		{
-			ImDrawList* drawList = ImGui::GetForegroundDrawList();
-			ImVec2 min = viewport->Pos;
-			ImVec2 max = ImVec2(viewport->Pos.x + viewport->Size.x, viewport->Pos.y + viewport->Size.y);
-			ImU32 borderColor = IM_COL32(40, 40, 42, 255);
-			drawList->AddRect(min, max, borderColor, 0.0f, 0, 1.0f);
-		}
-	
-		// set window style
-		ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding,   0.0f);
-		ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,    ImVec2(0.0f, 0.0f));
-	
-		// begin window
-		const char* name = "##main_window";
-		bool open = true;
-		ImGui::Begin(name, &open, windowFlags);
-		ImGui::PopStyleVar(3);
-	
-		// begin dock space
-		if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable)
-		{
-			// dock space
-			const auto window_id = ImGui::GetID(name);
-			if (!ImGui::DockBuilderGetNode(window_id))
-			{
-				// reset current docking state
-				ImGui::DockBuilderRemoveNode(window_id);
-				ImGui::DockBuilderAddNode(window_id, ImGuiDockNodeFlags_None);
-				ImGui::DockBuilderSetNodeSize(window_id, ImGui::GetMainViewport()->Size);
-	
-				// dockBuilderSplitNode(ImGuiID node_id, ImGuiDir split_dir, float size_ratio_for_node_at_dir, ImGuiID* out_id_dir, ImGuiID* out_id_other);
-				ImGuiID dock_main_id       = window_id;
-				ImGuiID dock_right_id      = ImGui::DockBuilderSplitNode(dock_main_id,  ImGuiDir_Right, 0.17f, nullptr, &dock_main_id);
-				ImGuiID dock_right_down_id = ImGui::DockBuilderSplitNode(dock_right_id, ImGuiDir_Down,  0.6f,  nullptr, &dock_right_id);
-				ImGuiID dock_down_id       = ImGui::DockBuilderSplitNode(dock_main_id,  ImGuiDir_Down,  0.22f, nullptr, &dock_main_id);
-				ImGuiID dock_down_right_id = ImGui::DockBuilderSplitNode(dock_down_id,  ImGuiDir_Right, 0.3f,  nullptr, &dock_down_id);
-	
-				// dock windows
-				ImGui::DockBuilderDockWindow("RenderOptions",      dock_right_id);
-				ImGui::DockBuilderDockWindow("Properties", dock_right_down_id);
-				ImGui::DockBuilderDockWindow("Console",    dock_down_id);
-				ImGui::DockBuilderDockWindow("Assets",     dock_down_right_id);
-				ImGui::DockBuilderDockWindow("Viewport",   dock_main_id);
-	
-				ImGui::DockBuilderFinish(dock_main_id);
-			}
-	
-			ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
-			ImGui::DockSpace(window_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode);
-			ImGui::PopStyleVar();
-		}
-	}
-	
 	// ---------------------------------------------------------
 
 	EditorLayer::EditorLayer(const Ref<UserPreferences> &userPreferences) : m_UserPreferences(userPreferences)
@@ -219,51 +142,13 @@ namespace SceneryEditorX
 
 	void EditorLayer::Tick()
 	{
-	   DeltaTime dt;
-
-		// Guard: if backend hasn't provided a DisplaySize yet (can happen early on),
-		// set a safe default from our window so ImGui::NewFrame() won't assert.
-		{
-			ImGuiIO &io = ImGui::GetIO();
-			if (io.DisplaySize.x < 0.0f || io.DisplaySize.y < 0.0f)
-				io.DisplaySize = ImVec2(static_cast<float>(Window::GetWidth()), static_cast<float>(Window::GetHeight()));
-		}
-		// Camera tick is driven by Renderer::Tick() to keep matrix updates aligned
-		// with the active render frame and avoid double-processing input.
-
-		ImGui_ImplSDL3_NewFrame();
-		ImGui::NewFrame();
-
-		BeginWindow();
-
-		for (Ref<Widget>& widget : m_Widgets)
-		{
-			widget->Tick();
-		}
-		MenuBar::Tick();
-		ImGui::End();
+		DeltaTime dt;
 
 		// various windows that don't belong to a certain widget
-		for (::UI::ChildWindow & window : m_ChildWindows)
+		for (UI::ChildWindow & window : m_ChildWindows)
 		{
 			if (window.IsVisible())
 				window.Tick();
-		}
-		
-		// Finalize the ImGui frame — this populates GetDrawData() for the render
-		// thread's Renderer::Tick() → UI::Render() call, and satisfies the
-		// internal FrameCountEnded == FrameCount invariant that
-		// UpdatePlatformWindows() asserts on.
-		// NOTE: BeginFrame()/EndFrame()/SubmitAndPresent() are owned exclusively
-		//       by WaitAndRender() on the render thread — do NOT call them here.
-		ImGui::Render();
-
-		// Multi-viewport: propagate draw data to secondary OS windows.
-		// Must come after ImGui::Render().
-		if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-		{
-			ImGui::UpdatePlatformWindows();
-			ImGui::RenderPlatformWindowsDefault();
 		}
 
 		if (const auto& project = Project::GetActive(); project && project->GetConfig().enableAutosave)
@@ -278,11 +163,14 @@ namespace SceneryEditorX
 	
 	void EditorLayer::InitEditor()
 	{
+		/*
 		EDITOR_TRACE_TAG("EDITOR", "Setting up ImGui docking layout");
 		ImGui::CreateContext();
+		*/
 
 		std::filesystem::path appdata = IO::FileSystem::GetPersistentStoragePath();
 
+		/*
 		// configure ImGui
 		ImGuiIO& io                      = ImGui::GetIO();
 		io.ConfigFlags                  |= ImGuiConfigFlags_NavEnableKeyboard;
@@ -290,22 +178,24 @@ namespace SceneryEditorX
 		io.ConfigFlags                  |= ImGuiConfigFlags_ViewportsEnable;
 		io.ConfigFlags                  |= ImGuiConfigFlags_NoMouseCursorChange; // cursor control is given to ImGui, but dynamically, from the engine
 		io.ConfigWindowsResizeFromEdges  = true;
-		// Store the ini path in a member so io.IniFilename points to a stable string (C26815).
-		m_IniFilePath  = (appdata / "editor.ini").string();
-		io.IniFilename = m_IniFilePath.c_str();
+		*/
 
+		/*
 		// font_bold configuration
 		ImFontConfig config; // config for bold font (mainly for use in headers)
 		config.GlyphOffset.y = -2.0f;
+		*/
 
+		/*
 		const std::string dir_fonts = ResourceCache::GetResourceDirectory(ResourceDirectory::Fonts);
 		fontNormal            = io.Fonts->AddFontFromFileTTF((dir_fonts + "opensans/OpenSans-Medium.ttf").c_str(), s_FontSize * Window::GetDpiScale());
 		fontBold              = io.Fonts->AddFontFromFileTTF((dir_fonts + "opensans/OpenSans-Bold.ttf").c_str(), s_FontSize * Window::GetDpiScale(), &config);
 		io.FontGlobalScale    = s_FontScale;
+		*/
 
 		// Ensure ImGui has a valid initial DisplaySize (some backends update this per-frame).
 		// Guard against cases where backend didn't set it yet by using the window size.
-		io.DisplaySize = ImVec2(static_cast<float>(Window::GetWidth()), static_cast<float>(Window::GetHeight()));
+		//io.DisplaySize = ImVec2(static_cast<float>(Window::GetWidth()), static_cast<float>(Window::GetHeight()));
 
 		/*
 		const std::filesystem::path fontDir = std::filesystem::path(ResourceCache::GetResourceDirectory(ResourceDirectory::Fonts));
@@ -336,6 +226,7 @@ namespace SceneryEditorX
 		io.FontGlobalScale = s_FontScale;
 		*/
 
+		/*
 		// initialize imgui backends only if backend not already set
 		if (io.BackendPlatformUserData == nullptr)
 		{
@@ -348,15 +239,16 @@ namespace SceneryEditorX
 		{
 			EDITOR_WARN_TAG("UILayer", "ImGui backend already initialized; skipping ImGui_ImplSDL3_InitForVulkan");
 		}
+		*/
 
 		UI::Initialize();
 
 		// create all imgui widgets
-		m_Widgets.emplace_back(CreateRef<RenderOptions>(this));
+		/*m_Widgets.emplace_back(CreateRef<RenderOptions>(this));
 		m_Widgets.emplace_back(CreateRef<TextureViewer>(this));
 		m_Widgets.emplace_back(CreateRef<SceneViewport>("viewport", this));
 		m_Widgets.emplace_back(CreateRef<AssetBrowser>(this));
-		m_Widgets.emplace_back(CreateRef<Properties>(this));
+		m_Widgets.emplace_back(CreateRef<Properties>(this));*/
 		MenuBar::Initialize(this);
 
 		//Project::Load();

@@ -30,42 +30,46 @@
  */
 #include "child_window.h"
 #include "editor_layer.h"
+#include <Editor/panels/scene_viewport.h>
 #include <SceneryEditorX/core/window/window.h>
-#include <SceneryEditorX/renderer/ui/panels/scene_viewport.h>
+#include <SceneryEditorX/renderer/ui/ui_layer.h>
 #include <SceneryEditorX/renderer/ui/source/imgui/imgui.h>
 
 // ---------------------------------------------------------
 
-using namespace SceneryEditorX;
-
-Ref<EditorLayer> s_Editor = nullptr;
-static bool s_Visible = true;
-
-void UI::ChildWindow::CenterWindow()
+namespace SceneryEditorX::UI
 {
-    Ref<EditorLayer> editor = s_Editor.Get();
-    const Vec2 center = editor->GetWidget<SceneViewport>()->GetCenter();
-
-    ImGui::SetNextWindowPos(ImVec2(center.x, center.y), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-}
-
-void UI::ChildWindow::Init(const std::string &name)
-{
-    if (!s_Visible)
-        return;
-
-    Ref<EditorLayer> editor = s_Editor.Get();
-    const Vec2 center = editor->GetWidget<SceneViewport>()->GetCenter();
-
-    ImGui::SetNextWindowPos(ImVec2(center.x, center.y), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-
-    if (ImGui::Begin(name.c_str(), &s_Visible, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize))
-    {
-        float contentWidth = 500.0f * Window::GetDpiScale();
-        ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + contentWidth);
-    }
-
-    ImGui::End();
+	
+	Ref<UILayer> s_EditorUI = nullptr;
+	static bool s_Visible = true;
+	
+	void ChildWindow::CenterWindow()
+	{
+	    Ref<UILayer> editor = s_EditorUI.Get();
+	    const Vec2 center = editor->GetWidget<SceneViewport>()->GetCenter();
+	
+	    ImGui::SetNextWindowPos(ImVec2(center.x, center.y), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+	}
+	
+	void ChildWindow::Init(const std::string &name)
+	{
+	    if (!s_Visible)
+	        return;
+	
+	    Ref<UILayer> editor = s_EditorUI.Get();
+	    const Vec2 center = editor->GetWidget<SceneViewport>()->GetCenter();
+	
+	    ImGui::SetNextWindowPos(ImVec2(center.x, center.y), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+	
+	    if (ImGui::Begin(name.c_str(), &s_Visible, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize))
+	    {
+	        float contentWidth = 500.0f * Window::GetDpiScale();
+	        ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + contentWidth);
+	    }
+	
+	    ImGui::End();
+	}
+	
 }
 
 // ---------------------------------------------------------
