@@ -1,5 +1,5 @@
 ﻿{
-  "version": 6,
+  "version": 10,
   "cmakeMinimumRequired": {
     "major": 3,
     "minor": 23,
@@ -7,6 +7,10 @@
   },
   "configurePresets": [
     {
+	  "$comment": [
+		"This preset serves as a base for all Windows configurations, defining common settings such as generator, toolchain file, and Vulkan SDK path.",
+		"Individual presets for MSVC and Clang inherit from this base preset to avoid duplication of common configuration."
+	  ],
       "name": "windows-base",
       "hidden": true,
       "generator": "Ninja Multi-Config",
@@ -24,18 +28,26 @@
       }
     },
     {
+	  "$comment": [
+		"This preset is intended for development builds on Windows using the MSVC compiler. It enables version incrementing to test the versioning system, which may be useful for tracking changes during development.",
+		"For faster iteration without version incrementing, use the QuickDebug-MSVC preset instead."
+	  ],
       "name": "Debug-MSVC",
       "displayName": "Windows Debug (MSVC)",
-      "description": "Debug build for Windows using MSVC compiler",
+      "description": "Debug build for Windows using MSVC compiler, with version increment for testing versioning system",
       "inherits": "windows-base",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "BUILD_TESTING": "ON",
         "CMAKE_C_COMPILER": "cl.exe",
-        "CMAKE_CXX_COMPILER": "cl.exe"
+        "CMAKE_CXX_COMPILER": "cl.exe",
+        "SEDX_ENABLE_VERSION_INCREMENT": "ON"
       }
     },
     {
+	  "$comment": [
+		"This preset is intended for fast debug builds on Windows using the MSVC compiler, without version incrementing for rapid iteration."
+	  ],
       "name": "QuickDebug-MSVC",
       "displayName": "Windows Quick Debug (MSVC)",
       "description": "Fast debug build without version increment for rapid iteration",
@@ -49,6 +61,10 @@
       }
     },
     {
+	  "$comment": [
+		"This preset is intended for release builds on Windows using the MSVC compiler.",
+		"It enables version incrementing to ensure that each release build has a unique version number, which can be important for distribution and tracking."
+	  ],
       "name": "Release-MSVC",
       "displayName": "Windows Release (MSVC)",
       "description": "Release build for Windows using MSVC compiler",
@@ -56,10 +72,16 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "CMAKE_C_COMPILER": "cl.exe",
-        "CMAKE_CXX_COMPILER": "cl.exe"
+        "CMAKE_CXX_COMPILER": "cl.exe",
+		"SEDX_ENABLE_VERSION_INCREMENT": "ON"
       }
     },
     {
+	  "$comment": [
+		"This preset is intended for development builds on Windows using the Clang compiler.",
+		"It enables version incrementing to test the versioning system, which may be useful for tracking changes during development.",
+		"For faster iteration without version incrementing, a similar QuickDebug-Clang preset could be added if needed."
+	  ],
       "name": "Debug-Clang",
       "displayName": "Windows Debug (Clang)",
       "description": "Debug build for Windows using Clang compiler",
@@ -81,6 +103,10 @@
       }
     },
     {
+	  "$comment": [
+		"This preset is intended for release builds on Windows using the Clang compiler.",
+		"It enables version incrementing to ensure that each release build has a unique version number, which can be important for distribution and tracking."
+	  ],
       "name": "Release-Clang",
       "displayName": "Windows Release (Clang)",
       "description": "Release build for Windows using Clang compiler",
@@ -102,6 +128,10 @@
       }
     },
     {
+	  "$comment": [
+		"This preset is intended for development builds on Linux.",
+		"It enables version incrementing to test the versioning system, which may be useful for tracking changes during development."
+	  ],
       "name": "linux-base",
       "hidden": true,
       "generator": "Ninja Multi-Config",
@@ -119,6 +149,11 @@
       }
     },
     {
+	  "$comment": [
+		"This preset is intended for development builds on Linux.",
+		"It enables version incrementing to test the versioning system, which may be useful for tracking changes during development.",
+		"For faster iteration without version incrementing, a similar QuickDebug-Linux preset could be added if needed."
+	  ],
       "name": "Linux-Debug",
       "displayName": "Linux Debug",
       "description": "Debug build for Linux",
@@ -129,6 +164,10 @@
       }
     },
     {
+	  "$comment": [
+		"This preset is intended for release builds on Linux.",
+		"It enables version incrementing to ensure that each release build has a unique version number, which can be important for distribution and tracking."
+	  ],
       "name": "Linux-Release",
       "displayName": "Linux Release",
       "description": "Release build for Linux",
@@ -138,6 +177,11 @@
       }
     },
     {
+	  "$comment": [
+		"This preset serves as a base for all macOS configurations, defining common settings such as generator, toolchain file, architecture, deployment target, and Vulkan SDK path.",
+		"Individual presets for Debug and Release configurations inherit from this base preset to avoid duplication of common configuration.",
+		"The preset is hidden and only applicable when the host system is Darwin (macOS)."
+	  ],
       "name": "mac-base",
       "hidden": true,
       "generator": "Ninja Multi-Config",
@@ -157,6 +201,11 @@
       }
     },
     {
+	  "$comment": [
+		"This preset is intended for development builds on macOS ARM64.",
+		"It enables version incrementing to test the versioning system, which may be useful for tracking changes during development.",
+		"For faster iteration without version incrementing, a similar QuickDebug-Mac preset could be added if needed."
+	  ],
       "name": "Mac-Debug",
       "displayName": "macOS Debug (ARM64)",
       "description": "Debug build for macOS ARM64",
@@ -167,6 +216,10 @@
       }
     },
     {
+	  "$comment": [
+		"This preset is intended for release builds on macOS ARM64.",
+		"It enables version incrementing to ensure that each release build has a unique version number, which can be important for distribution and tracking."
+	  ],
       "name": "Mac-Release",
       "displayName": "macOS Release (ARM64)",
       "description": "Release build for macOS ARM64",
