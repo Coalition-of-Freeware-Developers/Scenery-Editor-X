@@ -29,40 +29,52 @@
  * -------------------------------------------------------
  */
 #pragma once
-#include <SceneryEditorX/core/platform/settings/settings.h>
+#include <SceneryEditorX/settings/settings.h>
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
+/**
+	 * @struct EditorSettings
+	 * @brief Struct representing the editor settings.
+	 */
 	struct EditorSettings
 	{
-	    bool EnableGridSnapping = true;
-	    float TranslationSnapValue = 1.0f; /// Snap by 1 unit
-	    float RotationSnapValue = 15.0f;   /// Snap by 15 degrees
-	    float ScaleSnapValue = 0.1f;       /// Snap by 0.1 units
-	    bool ShowColliders = false;
-	    bool ShowLights = true;
-	    bool ShowGrid = true;
-	    bool EnableVSync = true;
-	    int MaxFPS = 144;
+		bool enableGridSnapping		= true;
+		float translationSnapValue	= 1.0f;		// Snap by 1 unit
+		float rotationSnapValue		= 15.0f;    // Snap by 15 degrees
+		float scaleSnapValue		= 0.1f;		// Snap by 0.1 units
+		bool showColliders			= false;
+		bool showLights				= true;
+		bool showGrid				= true;
+		bool enableVSync			= true;
+		int maxFps					= 144;
 
 		static EditorSettings &Get();
-	    /// Add more editor settings as needed
+		// Add more editor settings as needed
 	};
 
-    /// -------------------------------------------------------
+	// -------------------------------------------------------
 
+	/**
+	 * @class EditorSettingsSerializer
+	 * @brief Handles serialization and deserialization of editor settings.
+	 */
 	class EditorSettingsSerializer
-    {
-    public:
-        static void Init();
+	{
+	public:
+		/* @brief Initializes the editor settings serializer. */
+		static void Init();
 
-        static void LoadSettings();
-        static void SaveSettings();
-    };
+		/* @brief Loads editor settings from the configuration file. */
+		static void LoadSettings();
 
-    /// -------------------------------------------------------
+		/* @brief Saves editor settings to the configuration file. */
+		static void SaveSettings();
+	};
+
+	// -------------------------------------------------------
 
 	/**
 	 * @class EditorSettingsManager
@@ -72,74 +84,72 @@ namespace SceneryEditorX
 	 * gizmo options, and rendering preferences. Uses the ApplicationSettings
 	 * system for persistent storage in .cfg format.
 	 */
-	class EditorSettingsManager : public RefCounted
+	class EditorSettingsManager : public Settings
 	{
 	public:
-	    /**
-	     * @brief Constructs editor settings manager with default configuration file path.
-	     */
-	    EditorSettingsManager();
+		/* @brief Constructs editor settings manager with default configuration file path. */
+		EditorSettingsManager();
+
+		/**
+		 * @brief Constructs editor settings manager with custom configuration file path.
+		 * @param configPath Path to the editor settings configuration file
+		 */
+		explicit EditorSettingsManager(const std::filesystem::path &configPath);
+
+		/* @brief Destructor that automatically saves settings. */
+		virtual ~EditorSettingsManager();
+
+		// ----------------------------------------------------
+		// Settings Management
+		// ----------------------------------------------------
+
+		/**
+		 * @brief Gets the path to the editor settings configuration file.
+		 * @return Path to the editor settings configuration file
+		 */
+		static const std::filesystem::path &GetSettingsPath();
+
+		/**
+		 * @brief Gets the current editor settings.
+		 * @return Current EditorSettings struct
+		 */
+		[[nodiscard]] const EditorSettings &GetSettings() const { return m_Settings; }
+
+		/**
+		 * @brief Updates the editor settings.
+		 * @param settings New EditorSettings to apply
+		 */
+		static void SetSettings(const EditorSettings &settings);
+
+		// ----------------------------------------------------
+		// Persistence
+		// ----------------------------------------------------
 
 	    /**
-	     * @brief Constructs editor settings manager with custom configuration file path.
-	     * @param configPath Path to the editor settings configuration file
-	     */
-	    explicit EditorSettingsManager(std::filesystem::path configPath);
+		 * @brief Loads editor settings from the configuration file.
+		 * @return true if settings were successfully loaded, false otherwise
+		 */
+		bool ReadSettings() override;
 
 	    /**
-	     * @brief Destructor that automatically saves settings.
-	     */
-	    virtual ~EditorSettingsManager();
+		 * @brief Saves editor settings to the configuration file.
+		 * @return true if settings were successfully saved, false otherwise
+		 */
+		void WriteSettings() override;
 
-	    /// ----------------------------------------------------
-	    /// Settings Management
-	    /// ----------------------------------------------------
-
-	    /**
-	     * @brief Gets the current editor settings.
-	     * @return Current EditorSettings struct
-	     */
-	    [[nodiscard]] const EditorSettings &GetSettings() const
-	    {
-	        return m_Settings;
-	    }
-
-	    /**
-	     * @brief Updates the editor settings.
-	     * @param settings New EditorSettings to apply
-	     */
-	    void SetSettings(const EditorSettings &settings);
-
-	    /// ----------------------------------------------------
-	    /// Persistence
-	    /// ----------------------------------------------------
-
-	    /**
-	     * @brief Loads editor settings from the configuration file.
-	     * @return true if settings were successfully loaded, false otherwise
-	     */
-	    bool LoadSettings();
-
-	    /**
-	     * @brief Saves editor settings to the configuration file.
-	     * @return true if settings were successfully saved, false otherwise
-	     */
-	    bool SaveSettings();
-
-	    /**
-	     * @brief Gets the configuration file path.
-	     * @return
-	     */
-	    [[nodiscard]] const std::filesystem::path &GetConfigPath() const { return m_ConfigPath; }
+		/**
+		 * @brief Gets the configuration file path.
+		 * @return Configuration file path
+		 */
+		[[nodiscard]] const std::filesystem::path &GetConfigPath() const { return m_ConfigPath; }
 
 	private:
-		EditorSettings m_Settings; // Editor settings data
+		EditorSettings m_Settings;			// Editor settings data
 		std::filesystem::path m_ConfigPath; // Configuration management
-		Ref<ApplicationSettings> m_SettingsStorage;
-		/**
-		 * @brief Initializes the settings storage system.
-		 */
-        void InitializeSettingsStorage();
+		Ref<Settings> m_SettingsStorage;    // Persistent storage for settings
+
+		/* @brief Initializes the settings storage system. */
+		void InitializeSettingsStorage();
 	};
 
 }

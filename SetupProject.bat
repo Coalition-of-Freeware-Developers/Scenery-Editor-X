@@ -38,7 +38,7 @@ if errorlevel 2 (
 echo Checking if Build directory exists.
 echo -----------------------------------
 if exist "build" (
-    choice /m "Do you want to generate a fresh build by deleting the existing build folder?"
+    choice /m "Do you want to generate a fresh build by deleting the existing build files?"
     if errorlevel 2 (
         echo Keeping existing build directory.
         echo -----------------------------------
@@ -50,6 +50,21 @@ if exist "build" (
         echo -----------------------------------
         mkdir build
     )
+	if exist "lib" (
+		echo Deleting existing lib directory.
+		rmdir /s /q "lib"
+		echo -----------------------------------
+	)
+	if exist "bin" (
+		echo Deleting existing bin directory.
+		rmdir /s /q "bin"
+		echo -----------------------------------
+	)
+	if exist "pdb" (
+		echo Deleting existing pdb directory.
+		rmdir /s /q "pdb"
+		echo -----------------------------------
+	)
 ) else (
     echo Creating Build directory.
     echo -----------------------------------

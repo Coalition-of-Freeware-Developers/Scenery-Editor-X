@@ -1,4 +1,4 @@
-/**
+﻿/**
  * -------------------------------------------------------
  * Scenery Editor X
  * -------------------------------------------------------
@@ -29,51 +29,127 @@
  * -------------------------------------------------------
  */
 #pragma once
-#include "device.h"
-#include <vector>
+#include "enums.h"
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-	// Minimal descriptor helper for creating a texture descriptor set layout.
-	class Descriptor 
+	/**
+	 * @enum DescriptorType
+	 * @brief Defines the types of descriptors that can be used in the rendering system.
+	 */
+	enum class DescriptorType
 	{
-	public:
-		Descriptor();
-		~Descriptor();
-
-		VkDescriptorSetLayout CreateLayout(uint32_t bindingCount) const;
-		VkDescriptorPool CreatePool(uint32_t descriptorCount) const;
-		VkDescriptorSet AllocateAndWrite(VkDescriptorPool pool, VkDescriptorSetLayout layout, const std::vector<::VkDescriptorImageInfo>& imageInfos) const;
-
-		// Non-copyable
-		Descriptor(const Descriptor&) = delete;
-		Descriptor& operator=(const Descriptor&) = delete;
-
-		// Movable
-		Descriptor(Descriptor&&) noexcept;
-		Descriptor& operator=(Descriptor&&) noexcept;
-
-		// Initialize the descriptor helper: create a layout for bindingCount
-		// combined image samplers and a pool sized for descriptorCount.
-		// Returns true on success.
-		bool Init(uint32_t bindingCount = 1, uint32_t descriptorCount = 1);
-
-		// Allocate a descriptor set from the internally owned pool/layout and
-		// update it with imageInfos. Returns VK_NULL_HANDLE on failure.
-		VkDescriptorSet AllocateAndWrite(const std::vector<::VkDescriptorImageInfo>& imageInfos) const;
-
-		// Accessors
-		VkDescriptorPool GetPool() const { return m_Pool; }
-		VkDescriptorSetLayout GetLayout() const { return m_Layout; }
-
-	private:
-		Ref<Device> m_Device;
-		VkDescriptorPool m_Pool = VK_NULL_HANDLE;
-		VkDescriptorSetLayout m_Layout = VK_NULL_HANDLE;
+		Image,
+		TextureStorage,
+		PushConstantBuffer,
+		ConstantBuffer,
+		StructuredBuffer,
+		AccelerationStructure,
+		MaxEnum
 	};
 
-}
+	/**
+	 * @brief Convert a DescriptorType to the corresponding VkDescriptorType.
+	 *
+	 * Returns VK_DESCRIPTOR_TYPE_MAX_ENUM for types that have no direct Vulkan counterpart
+	 * (e.g. PushConstantBuffer) — callers should filter those out before creating bindings.
+	 *
+	 * @param type The DescriptorType to convert.
+	 * @return The corresponding VkDescriptorType value.
+	 */
+	[[nodiscard]] inline VkDescriptorType ToVkDescriptorType(DescriptorType type)
+	{
+		switch (type)
+		{
+			case DescriptorType::Image:                return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+			case DescriptorType::TextureStorage:       return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+			case DescriptorType::ConstantBuffer:       return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+			case DescriptorType::StructuredBuffer:     return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
+			case DescriptorType::AccelerationStructure:return VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
+			default:                                   return VK_DESCRIPTOR_TYPE_MAX_ENUM;
+		}
+	}
+
+	/**
+	 * @struct DescriptorSpec
+	 * @brief POD specification for a single shader binding (slot, type, stage mask, array info, name).
+	 *
+	 * DescriptorSpec is the authoritative description of a binding.  It carries no Vulkan
+	 * resource handles — use DescriptorLayout to create the corresponding VkDescriptorSetLayout.
+	 */
+	struct DescriptorSpec
+	{
+		std::string name;
+		DescriptorType type;
+		Layout::ImageLayout layout;
+		uint32_t slot;
+		uint32_t stage;
+		uint32_t structSize;
+		bool asArray;
+		uint32_t arrayLength;
+	};
+
+	/**
+	 * @class Descriptor
+	 * @brief Spec-only description of a single shader binding.
+	 *
+	 * A Descriptor carries the slot, type, stage mask, and optional array info for one
+	 * binding.  It does NOT own any Vulkan resource handles.  Use DescriptorLayout to
+	 * create the VkDescriptorSetLayout, and DescriptorPoolManager to allocate sets.
+	 */
+	class Descriptor
+	{
+	public:
+		Descriptor() = default;
+
+		/**
+		 * @brief Construct a Descriptor from the provided specification.
+		 * @param spec The binding specification.
+		 */
+		explicit Descriptor(const DescriptorSpec& spec);
+
+		~Descriptor() = default;
+
+		Descriptor(const Descriptor&)            = default;
+		Descriptor& operator=(const Descriptor&) = default;
+		Descriptor(Descriptor&&) noexcept        = default;
+		Descriptor& operator=(Descriptor&&) noexcept = default;
+
+		/**
+		 * @brief Check if the descriptor is a storage image type.
+		 * @return True if the descriptor type is TextureStorage.
+		 */
+		[[nodiscard]] bool IsStorage() const { return m_Type == DescriptorType::TextureStorage; }
+
+		[[nodiscard]] uint32_t       GetSlot()        const { return m_Slot; }
+		[[nodiscard]] uint32_t       GetStage()       const { return m_Stage; }
+		[[nodiscard]] uint32_t       GetStructSize()  const { return m_StructSize; }
+		[[nodiscard]] uint32_t       GetArrayLength() const { return m_ArrayLength; }
+		[[nodiscard]] DescriptorType GetType()        const { return m_Type; }
+		[[nodiscard]] bool           IsArray()        const { return m_AsArray; }
+		[[nodiscard]] const std::string& GetName()    const { return m_Name; }
+
+		/**
+		 * @brief Merge stage flags from another descriptor for the same slot (used by shader reflection merging).
+		 * @param stage Additional stage flags to OR into this descriptor's stage mask.
+		 */
+		void SetStage(uint32_t stage) { m_Stage = stage; }
+
+	private:
+		DescriptorSpec      m_Spec;
+
+		uint32_t            m_Slot        = 0;
+		uint32_t            m_Stage       = 0;
+		uint32_t            m_StructSize  = 0;
+		uint32_t            m_ArrayLength = 0;
+		DescriptorType      m_Type        = DescriptorType::MaxEnum;
+		Layout::ImageLayout m_ImgLayout   = Layout::ImageLayout::MaxEnum;
+		bool                m_AsArray     = false;
+		std::string         m_Name;
+	};
+
+} // namespace SceneryEditorX
 
 // -------------------------------------------------------

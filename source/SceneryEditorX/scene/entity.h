@@ -30,139 +30,647 @@
  */
 // ReSharper disable CppInconsistentNaming
 #pragma once
-//#include <entt/src/entt/entt.hpp>
-#include "components.h"
+#include "scene.h"
+#include <array>
+#include <concepts>
+#include <type_traits>
+#include <typeindex>
+#include <unordered_map>
+#include <SceneryEditorX/scene/components/component.h>
 #include <SceneryEditorX/utils/inheritance.h>
+#include <entt/src/entt/entt.hpp>
 
 // -------------------------------------------------------
 
-
 namespace SceneryEditorX
 {
-	class Scene;
 
 	class Entity : public SharedObject
 	{
 	public:
-		Entity();
-		//Entity(/*entt::entity handle,*/ Scene* scene) : /*m_EntityHandle(handle),*/ m_Scene(scene) {}
-		~Entity();
+		Entity() = default;
+		Entity(entt::entity handle, Scene* scene) : m_EntityHandle(handle), m_Scene(scene) {}
+		virtual ~Entity() = default;
 
 		void Start();
 		void Stop();
 		void Tick();
 
+		/**
+		 * @brief 
+		 * @return 
+		 */
 		bool GetActive();
-		void SetActive(const bool active);
 
+		/**
+		 * @brief 
+		 * @param active 
+		 */
+		virtual void SetActive(const bool active);
+
+		/**
+		 * @brief 
+		 * @return 
+		 */
 		[[nodiscard]] bool IsValid() const;
 
-		template<typename T, typename... Args>
-		T& AddComponent(Args&&... args);
+		/**
+		 * @brief 
+		 * @return  
+		 */
+		virtual xMath::Matrix GetMatrix() const { return xMath::Matrix{}; }
 
+		/**
+		 * @brief 
+		 */
+		virtual void SetMatrixPrevious(const xMath::Matrix& /*m*/) {}
+
+		/**
+		 * @brief 
+		 * @return 
+		 */
+		virtual xMath::Vec3 GetPosition() const;
+
+		/**
+		 * @brief 
+		 * @param vector3 
+		 * @return 
+		 */
+		virtual xMath::Vec3 SetPosition(xMath::Vec3 vector3);
+
+		/**
+		 * @brief Gets this entity's local-space position.
+		 * @return Local translation.
+		 */
+		virtual xMath::Vec3 GetPositionLocal() const;
+
+		/**
+		 * @brief Sets this entity's local-space position.
+		 * @param vector3 Local translation to apply.
+		 * @return Applied local translation.
+		 */
+		virtual xMath::Vec3 SetPositionLocal(xMath::Vec3 vector3);
+
+		/**
+		 * @brief 
+		 * @return 
+		 */
+		virtual xMath::Vec3 GetRotation() const;
+
+		/**
+		 * @brief 
+		 * @param vector3 
+		 * @return 
+		 */
+		virtual xMath::Vec3 SetRotation(xMath::Vec3 vector3);
+
+		/**
+		 * @brief Gets this entity's local-space euler rotation (radians).
+		 * @return Local rotation in radians.
+		 */
+		virtual xMath::Vec3 GetRotationLocal() const;
+
+		/**
+		 * @brief Sets this entity's local-space euler rotation (radians).
+		 * @param vector3 Local rotation in radians.
+		 * @return Applied local rotation in radians.
+		 */
+		virtual xMath::Vec3 SetRotationLocal(xMath::Vec3 vector3);
+
+		/**
+		 * @brief 
+		 * @return 
+		 */
+		virtual xMath::Vec3 GetScale() const;
+
+		/**
+		 * @brief 
+		 * @param vector3 
+		 * @return 
+		 */
+		virtual xMath::Vec3 SetScale(xMath::Vec3 vector3);
+
+		/**
+		 * @brief Gets this entity's local-space scale.
+		 * @return Local scale.
+		 */
+		virtual xMath::Vec3 GetScaleLocal() const;
+
+		/**
+		 * @brief Sets this entity's local-space scale.
+		 * @param vector3 Local scale to apply.
+		 * @return Applied local scale.
+		 */
+		virtual xMath::Vec3 SetScaleLocal(xMath::Vec3 vector3);
+
+		/**
+		 * @brief Gets this entity's local-space pivot point.
+		 * @return Local pivot point.
+		 */
+		virtual xMath::Vec3 GetPivotPoint() const;
+
+		/**
+		 * @brief Sets this entity's local-space pivot point.
+		 * @param vector3 Local pivot point to apply.
+		 */
+		virtual void SetPivotPoint(const Vec3& vector3);
+
+		/**
+		 * @brief 
+		 * @return 
+		 */
+		virtual Vec3 GetForward() const;
+
+		/**
+		 * @brief 
+		 * @return 
+		 */
+		virtual Vec3 GetUp() const;
+
+		/**
+		 * @brief 
+		 * @return 
+		 */
+		virtual Vec3 GetDown() const;
+
+		/**
+		 * @brief 
+		 * @return 
+		 */
+		virtual Vec3 GetLeft() const;
+
+		/**
+		 * @brief 
+		 * @return 
+		 */
+		virtual Vec3 GetRight() const;
+
+		/**
+		 * @brief 
+		 * @param Type 
+		 * @return 
+		 */
+		Component* GetComponentByType(ComponentType Type) const;
+
+		/**
+		 * @brief 
+		 * @param Type 
+		 * @return 
+		 */
+		Component* AddComponentByType(ComponentType Type);
+
+		/**
+		 * @brief 
+		 * @param Type 
+		 */
+		void RemoveComponentByType(ComponentType Type);
+
+		// Adds a component by ComponentType enum value
+		/**
+		 * @brief 
+		 * @param type 
+		 * @return 
+		 */
+		Component* AddComponent(ComponentType type);
+
+		// ---- Struct component access (non-Component subclasses) - returns T& ----
+
+		/**
+		 * @brief Returns a reference to a struct component of type T.
+		 * @tparam T A non-Component struct type (e.g. IDComponent, TagComponent).
+		 * @return Reference to the stored component.
+		 */
 		template<typename T>
-		T& GetComponent();
-
-		template<typename T>
-		const T& GetComponent() const;
-		
-        Component* GetComponentByType(ComponentType Type) const;
-        Component* AddComponentByType(ComponentType Type);
-        void RemoveComponentByType(ComponentType Type);
-
-        // adds a component of type T
-        template <class T>
-        T* AddComponent()
-        {
-            const ComponentType type = Component::TypeToEnum<T>();
-
-            // early exit if the component exists
-            if (T* component = GetComponent<T>())
-                return component;
-
-            // create a new component
-            std::shared_ptr<T> component = std::make_shared<T>(this);
-
-            // save new component
-            m_components[static_cast<uint32_t>(type)] = std::static_pointer_cast<Component>(component);
-
-            // initialize component
-            component->SetType(type);
-            component->Initialize();
-
-            return component.get();
-        }
-
-        // adds a component of ComponentType
-        Component* AddComponent(ComponentType type);
-
-		// returns a component of type T
-		template <class T>
-		T* GetComponent()
+		T &GetComponent() requires(!ComponentTypeResolver<T>::IS_REGISTERED)
 		{
-			const ComponentType component_type = Component::TypeToEnum<T>();
-			return static_cast<T*>(m_components[static_cast<uint32_t>(component_type)].get());
+			auto it = m_structComponents.find(std::type_index(typeid(T)));
+			SEDX_CORE_ASSERT(it != m_structComponents.end(), "Entity does not have component of this type");
+			return std::any_cast<T&>(it->second);
 		}
 
-		// removes a component
-		template <class T>
-		void RemoveComponent()
+		/**
+		 * @brief Returns a const reference to a struct component of type T.
+		 * @tparam T A non-Component struct type.
+		 * @return Const reference to the stored component.
+		 */
+		template<typename T>
+		const T &GetComponent() const requires(!ComponentTypeResolver<T>::IS_REGISTERED)
 		{
-			const ComponentType component_type = Component::TypeToEnum<T>();
-			m_components[static_cast<uint32_t>(component_type)] = nullptr;
-		}
-		// returns nullptr if entity does not have the requested component type
-		template<typename T>
-		T* TryGetComponent();
-
-		// returns nullptr if entity does not have the requested component type
-		template<typename T>
-		const T* TryGetComponent() const;
-
-		template<typename... T>
-		bool HasComponent();
-
-		template<typename... T>
-		[[nodiscard]] bool HasComponent() const;
-
-		template<typename...T>
-		bool HasAny();
-
-		template<typename...T>
-		[[nodiscard]] bool HasAny() const;
-
-		template<typename T>
-		void RemoveComponent();
-
-		template<typename T>
-		void RemoveComponentIfExists();
-
-		std::string& Name()
-		{
-			return HasComponent<TagComponent>() ? GetComponent<TagComponent>().tag : m_NoName;
+			auto it = m_structComponents.find(std::type_index(typeid(T)));
+			SEDX_CORE_ASSERT(it != m_structComponents.end(), "Entity does not have component of this type");
+			return std::any_cast<const T&>(it->second);
 		}
 
-		[[nodiscard]] const std::string& Name() const
+		// ---- Runtime component access (Component subclasses) - returns T* ----
+
+		/**
+		 * @brief Returns a pointer to a runtime component of type T, or nullptr if absent.
+		 * @tparam T A class derived from Component (e.g. CameraComponent, LightComponent).
+		 * @return Pointer to the component, or nullptr.
+		 */
+		template<typename T>
+		T *GetComponent() requires(ComponentTypeResolver<T>::IS_REGISTERED && std::derived_from<T, Component>)
 		{
-			return HasComponent<TagComponent>() ? GetComponent<TagComponent>().tag : m_NoName;
+			const ComponentType type = Component::TypeToEnum<T>();
+			return static_cast<T*>(m_components[static_cast<uint32_t>(type)].Get());
 		}
 
-		//operator uint32_t () const { return (uint32_t)m_EntityHandle; }
-		//operator entt::entity () const { return m_EntityHandle; }
-		operator bool () const;
-
-		bool operator==(const Entity& other) const
+		template<typename T>
+		T *GetComponent() requires(ComponentTypeResolver<T>::IS_REGISTERED && !std::derived_from<T, Component>)
 		{
-			return GetUUID() == other.GetUUID() && m_Scene == other.m_Scene;
+			return nullptr;
 		}
 
+		/**
+		 * @brief Returns a const pointer to a runtime component of type T, or nullptr if absent.
+		 * @tparam T A class derived from Component.
+		 * @return Const pointer to the component, or nullptr.
+		 */
+		template<typename T>
+		const T *GetComponent() const requires(ComponentTypeResolver<T>::IS_REGISTERED && std::derived_from<T, Component>)
+		{
+			const ComponentType type = Component::TypeToEnum<T>();
+			return static_cast<const T*>(m_components[static_cast<uint32_t>(type)].Get());
+		}
+
+		template<typename T>
+		const T *GetComponent() const requires(ComponentTypeResolver<T>::IS_REGISTERED && !std::derived_from<T, Component>)
+		{
+			return nullptr;
+		}
+
+		// ---- AddComponent ----
+
+		// TODO: Add full component cloning support, including for struct components. This will likely require a virtual Clone method on Component, and some way to clone struct components (e.g. via a registered clone function or by requiring them to be copyable).
+		/**
+		 * @brief Copies all components from this entity to a new entity in the same scene. Returns pointer to the new entity.
+		 * @tparam T 
+		 * @return 
+		 */
+		template<typename T>
+		Entity *Clone(T)
+		{
+			return nullptr;
+		}
+
+		// ---- Operators & Utilities ----
+
+		/**
+		 * @brief 
+		 */
+		operator bool() const
+		{
+			return m_EntityHandle != entt::null && m_Scene != nullptr;
+		}
+
+		/**
+		 * @brief 
+		 */
+		operator entt::entity() const
+		{
+			return m_EntityHandle;
+		}
+
+		/**
+		 * @brief 
+		 */
+		operator uint32_t() const
+		{
+			return (uint32_t)m_EntityHandle;
+		}
+
+		/**
+		 * @brief 
+		 * @param other 
+		 * @return 
+		 */
+		bool operator==(const Entity& other) const 
+		{ 
+			return m_EntityHandle == other.m_EntityHandle && m_Scene == other.m_Scene; 
+		}
+
+		/**
+		 * @brief 
+		 * @param other 
+		 * @return 
+		 */
 		bool operator!=(const Entity& other) const
 		{
 			return !(*this == other);
 		}
 
-		[[nodiscard]] Entity GetParent() const;
+		/**
+		 * @brief 
+		 * @return 
+		 */
+		UUID GetUUID()
+		{
+			return GetComponent<IDComponent>().pID;
+		}
 
+		/**
+		 * @brief 
+		 * @return 
+		 */
+		const std::string& Name()
+		{
+			return GetComponent<TagComponent>().pTag;
+		}
+
+		// ---- Hierarchy (Replaces Node) ----
+
+		/**
+		 * @brief 
+		 * @return 
+		 */
+		Entity GetParent() const
+		{
+			UUID parentId = GetComponent<RelationshipComponent>().pParentHandle;
+			return Scene::TryGetEntityWithUUID(parentId);
+		}
+
+		/**
+		 * @brief 
+		 * @param parent 
+		 */
+		void SetParent(Entity parent)
+		{
+			auto& relationship = GetComponent<RelationshipComponent>();
+			relationship.pParentHandle = parent.GetUUID();
+			parent.GetComponent<RelationshipComponent>().pChildren.push_back(GetUUID());
+		}
+
+	// -------------------------------------------------------
+
+		/**
+		 * @brief Constructs and stores a struct component of type T in place.
+		 * @tparam T A non-Component struct type.
+		 * @param args Constructor arguments forwarded to T.
+		 * @return Reference to the newly added component.
+		 */
+		template<typename T, typename... Args>
+		T &AddComponent(Args &&...args) requires(!ComponentTypeResolver<T>::IS_REGISTERED)
+		{
+			m_structComponents[std::type_index(typeid(T))] = T(std::forward<Args>(args)...);
+			return std::any_cast<T&>(m_structComponents[std::type_index(typeid(T))]);
+		}
+
+		/**
+		 * @brief Adds a runtime component of type T. Returns existing component if already present.
+		 * @tparam T A class derived from Component.
+		 * @return Pointer to the component.
+		 */
+		template<typename T>
+		T *AddComponent() requires(ComponentTypeResolver<T>::IS_REGISTERED && std::derived_from<T, Component>)
+		{
+			const ComponentType type = Component::TypeToEnum<T>();
+			if (T* existing = GetComponent<T>())
+			{
+				return existing;
+			}
+
+			auto component = CreateRef<T>(this);
+			m_components[static_cast<uint32_t>(type)] = component;
+			component->SetType(type);
+			component->Init();
+			return component.Get();
+		}
+
+		template<typename T>
+		T *AddComponent() requires(ComponentTypeResolver<T>::IS_REGISTERED && !std::derived_from<T, Component>)
+		{
+			return nullptr;
+		}
+
+		// ---- RemoveComponent ----
+
+		/**
+		 * @brief Removes a struct component of type T from this entity.
+		 * @tparam T A non-Component struct type.
+		 */
+		template<typename T>
+		void RemoveComponent() requires(!ComponentTypeResolver<T>::IS_REGISTERED)
+		{
+			m_structComponents.erase(std::type_index(typeid(T)));
+		}
+
+		/**
+		 * @brief Removes a runtime component of type T from this entity.
+		 * @tparam T A class derived from Component.
+		 */
+		template<typename T>
+		void RemoveComponent() requires(ComponentTypeResolver<T>::IS_REGISTERED && std::derived_from<T, Component>)
+		{
+			const ComponentType type = Component::TypeToEnum<T>();
+			m_components[static_cast<uint32_t>(type)] = nullptr;
+		}
+
+		template<typename T>
+		void RemoveComponent() requires(ComponentTypeResolver<T>::IS_REGISTERED && !std::derived_from<T, Component>)
+		{
+		}
+
+		// ---- TryGetComponent ----
+
+		/**
+		 * @brief Returns a pointer to a struct component of type T, or nullptr if not present.
+		 * @tparam T A non-Component struct type.
+		 */
+		template<typename T>
+		T *TryGetComponent() requires(!ComponentTypeResolver<T>::IS_REGISTERED)
+		{
+			auto it = m_structComponents.find(std::type_index(typeid(T)));
+			if (it == m_structComponents.end())
+				return nullptr;
+
+			return std::any_cast<T>(&it->second);
+		}
+
+		/**
+		 * @brief Returns a const pointer to a struct component of type T, or nullptr if not present.
+		 * @tparam T A non-Component struct type.
+		 */
+		template<typename T>
+		const T *TryGetComponent() const requires(!ComponentTypeResolver<T>::IS_REGISTERED)
+		{
+			auto it = m_structComponents.find(std::type_index(typeid(T)));
+			if (it == m_structComponents.end())
+				return nullptr;
+
+			return std::any_cast<T>(&it->second);
+		}
+
+		/**
+		 * @brief Returns a pointer to a runtime component of type T, or nullptr if not present.
+		 * @tparam T A class derived from Component.
+		 */
+		template<typename T>
+		T *TryGetComponent() requires(ComponentTypeResolver<T>::IS_REGISTERED && std::derived_from<T, Component>)
+		{
+			return GetComponent<T>();
+		}
+
+		template<typename T>
+		T *TryGetComponent() requires(ComponentTypeResolver<T>::IS_REGISTERED && !std::derived_from<T, Component>)
+		{
+			return nullptr;
+		}
+
+		/**
+		 * @brief Returns a const pointer to a runtime component of type T, or nullptr if not present.
+		 * @tparam T A class derived from Component.
+		 */
+		template<typename T>
+		const T *TryGetComponent() const requires(ComponentTypeResolver<T>::IS_REGISTERED && std::derived_from<T, Component>)
+		{
+			return GetComponent<T>();
+		}
+
+		template<typename T>
+		const T *TryGetComponent() const requires(ComponentTypeResolver<T>::IS_REGISTERED && !std::derived_from<T, Component>)
+		{
+			return nullptr;
+		}
+
+		// ---- HasComponent helpers ----
+
+		/**
+		 * @brief Returns true if the entity has a struct component of type T.
+		 */
+		template<typename T>
+		bool HasComponent() requires(!ComponentTypeResolver<T>::IS_REGISTERED)
+		{
+			return m_structComponents.find(std::type_index(typeid(T))) != m_structComponents.end();
+		}
+
+		/**
+		 * @brief Returns true if the entity has a runtime Component of type T.
+		 */
+		template<typename T>
+		bool HasComponent() requires(ComponentTypeResolver<T>::IS_REGISTERED && std::derived_from<T, Component>)
+		{
+			const ComponentType type = Component::TypeToEnum<T>();
+			return m_components[static_cast<uint32_t>(type)].Get() != nullptr;
+		}
+
+		template<typename T>
+		bool HasComponent() requires(ComponentTypeResolver<T>::IS_REGISTERED && !std::derived_from<T, Component>)
+		{
+			return false;
+		}
+
+		// ---- HasComponent / HasAny ----
+
+		template<typename T>
+		bool HasComponent()
+		{
+			return HasSingleComponent<T>();
+		}
+
+		template<typename T>
+		[[nodiscard]] bool HasComponent() const
+		{
+			return HasSingleComponent<T>();
+		}
+
+		/**
+		 * @brief Returns true if the entity has ALL of the specified component types.
+		 * @tparam T... One or more component types to check.
+		 */
+		template<typename... T>
+		requires (sizeof...(T) > 1)
+		bool HasComponent()
+		{
+			return (HasSingleComponent<T>() && ...);
+		}
+
+		/* @brief Returns true if the entity has ALL the specified component types (const version). */
+		template<typename... T>
+		requires (sizeof...(T) > 1)
+		[[nodiscard]] bool HasComponent() const
+		{
+			return (HasSingleComponent<T>() && ...);
+		}
+
+		/**
+		 * @brief Returns true if the entity has ANY of the specified component types.
+		 * @tparam T... One or more component types to check.
+		 */
+		template<typename... T>
+		bool HasAny()
+		{
+			return (HasSingleComponent<T>() || ...);
+		}
+
+		/**
+		 * @brief Returns true if the entity has ANY of the specified component types (const version).
+		 * @tparam T 
+		 * @return 
+		 */
+		template<typename... T>
+		[[nodiscard]] bool HasAny() const
+		{
+			return (HasSingleComponent<T>() || ...);
+		}
+
+		/**
+		 * @brief Removes component of type T if present; no-op if absent.
+		 * @tparam T The component type to remove.
+		 */
+		template<typename T>
+		void RemoveComponentIfExists()
+		{
+			if (HasSingleComponent<T>())
+			{
+				RemoveComponent<T>();
+			}
+		}
+
+		/*
+		std::string& Name()
+		{
+			return HasComponent<TagComponent>() ? GetComponent<TagComponent>().pTag : m_Name;
+		}
+		*/
+
+		/**
+		 * @brief 
+		 * @return 
+		 */
+		[[nodiscard]] const std::string& Name() const
+		{
+			auto it = m_structComponents.find(std::type_index(typeid(TagComponent)));
+			if (it == m_structComponents.end())
+			{
+				return m_Name;
+			}
+
+			return std::any_cast<const TagComponent&>(it->second).pTag;
+		}
+
+		//operator uint32_t () const { return (uint32_t)m_EntityHandle; }
+		//operator entt::entity () const { return m_EntityHandle; }
+		//operator bool () const;
+
+		/*
+		bool operator==(const Entity& other) const
+		{
+			return GetUUID() == other.GetUUID() && m_Scene == other.m_Scene;
+		}
+		*/
+
+		/*
+		bool operator!=(const Entity& other) const
+		{
+			return !(*this == other);
+		}
+		*/
+
+		/*
+		[[nodiscard]] Entity GetParent() const;
+		*/
+
+		/*
 		void SetParent(Entity parent)
 		{
 			Entity currentParent = GetParent();
@@ -189,12 +697,37 @@ namespace SceneryEditorX
 				}
 			}
 		}
+		*/
 
-		void SetParentUUID(UUID parent) { GetComponent<RelationshipComponent>().parentHandle = std::move(parent); }
-		[[nodiscard]] UUID GetParentUUID() const { return GetComponent<RelationshipComponent>().parentHandle; }
-		std::vector<UUID>& Children() { return GetComponent<RelationshipComponent>().children; }
-		[[nodiscard]] const std::vector<UUID>& Children() const { return GetComponent<RelationshipComponent>().children; }
+		/**
+		 * @brief 
+		 * @param parent 
+		 */
+		void SetParentUUID(UUID parent) { GetComponent<RelationshipComponent>().pParentHandle = std::move(parent); }
 
+		/**
+		 * @brief 
+		 * @return 
+		 */
+		[[nodiscard]] UUID GetParentUUID() const { return GetComponent<RelationshipComponent>().pParentHandle; }
+
+		/**
+		 * @brief 
+		 * @return 
+		 */
+		std::vector<UUID>& Children() { return GetComponent<RelationshipComponent>().pChildren; }
+
+		/**
+		 * @brief 
+		 * @return 
+		 */
+		[[nodiscard]] const std::vector<UUID>& Children() const { return GetComponent<RelationshipComponent>().pChildren; }
+
+		/**
+		 * @brief 
+		 * @param child 
+		 * @return 
+		 */
 		bool RemoveChild(Entity child)
 		{
 			UUID childId = child.GetUUID();
@@ -208,22 +741,84 @@ namespace SceneryEditorX
 			return false;
 		}
 
+		/**
+		 * @brief 
+		 * @param entity 
+		 * @return 
+		 */
 		[[nodiscard]] bool IsAncestorOf(Entity entity) const;
-		[[nodiscard]] bool IsDescendantOf(Entity entity) const { return entity.IsAncestorOf(*this); }
 
+		/**
+		 * @brief 
+		 * @param entity 
+		 * @return 
+		 */
+		[[nodiscard]] bool IsDescendantOf(const Entity &entity) const { return entity.IsAncestorOf(*this); }
+
+		/**
+		 * @brief 
+		 * @return 
+		 */
 		TransformComponent& Transform() { return GetComponent<TransformComponent>(); }
-		[[nodiscard]] const Mat4& Transform() const { return GetComponent<TransformComponent>().GetTransform(); }
 
-		[[nodiscard]] UUID GetUUID() const { return GetComponent<IDComponent>().id; }
+		/**
+		 * @brief 
+		 * @return 
+		 */
+		[[nodiscard]] const Mat4& Transform() const
+		{
+			return GetComponent<TransformComponent>().GetTransform();
+		}
+
+		/**
+		 * @brief 
+		 * @return 
+		 */
+		[[nodiscard]] UUID GetUUID() const
+		{
+			return GetComponent<IDComponent>().pID;
+		}
+
+		/**
+		 * @brief 
+		 * @return 
+		 */
 		[[nodiscard]] UUID GetSceneUUID() const;
 
+		/**
+		 * @brief 
+		 * @return 
+		 */
+		float GetTimeSinceLastTransform() const { return m_TimeSinceLastTransform; }
+
 	private:
-		Entity(const std::string& name);
+		entt::entity m_EntityHandle{entt::null}; // Handle used for registry lookups; entt::null if invalid
+		Scene *m_Scene = nullptr; // Non-owning pointer to the scene this entity belongs to; nullptr if invalid
+		float m_TimeSinceLastTransform = 0.0f; // Used for editor gizmo display and other transform-related time tracking (time in seconds)
+		std::string m_Name = "Unnamed";
 
-		//entt::entity m_EntityHandle{ entt::null };
-		Scene *m_Scene = nullptr;
+		// Struct/data components (non-Component subclasses from component_sets.h), keyed by type
+		std::unordered_map<std::type_index, std::any> m_structComponents;
 
-		inline static std::string m_NoName = "Unnamed";
+		// Runtime components (Component subclasses), indexed by ComponentType enum
+		std::array<Ref<Component>, static_cast<uint32_t>(ComponentType::MaxEnum)> m_components{};
+
+		/**
+		 * @brief Returns true if this entity has a single component of type T.
+		 * @tparam T A struct component or a Component subclass.
+		 */
+		template<typename T>
+		[[nodiscard]] bool HasSingleComponent() const
+		{
+			if constexpr (ComponentTypeResolver<T>::IS_REGISTERED)
+			{
+				return m_components[static_cast<uint32_t>(Component::TypeToEnum<T>())] != nullptr;
+			}
+			else
+			{
+				return m_structComponents.contains(std::type_index(typeid(T)));
+			}
+		}
 
 		friend class Prefab;
 		friend class Scene;

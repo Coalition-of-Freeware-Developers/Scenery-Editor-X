@@ -37,44 +37,44 @@
 namespace SceneryEditorX
 {
 	
-    /**
-     * @class Semaphore
-     * @brief Represents a Vulkan semaphore used for synchronization between GPU operations.
-     */
-    class Semaphore : public SyncObject, public SharedObject
-    {
-    public:
-        Semaphore();
-        /**
-         * @brief Constructs a Semaphore with an explicit synchronization type.
-         * Pass SyncType::SemaphoreTimeline to create a Vulkan timeline semaphore.
-         * @param type SyncType::Semaphore for binary, SyncType::SemaphoreTimeline for timeline.
-         */
-        explicit Semaphore(SyncType type);
-        virtual ~Semaphore() override;
+	/**
+	 * @class Semaphore
+	 * @brief Represents a Vulkan semaphore used for synchronization between GPU operations.
+	 */
+	class Semaphore : public SyncObject, public SharedObject
+	{
+	public:
+		Semaphore();
+		/**
+		 * @brief Constructs a Semaphore with an explicit synchronization type.
+		 * Pass SyncType::SemaphoreTimeline to create a Vulkan timeline semaphore.
+		 * @param type SyncType::Semaphore for binary, SyncType::SemaphoreTimeline for timeline.
+		 */
+		explicit Semaphore(SyncType type);
+		virtual ~Semaphore() override;
 
-        void CreateSyncObject() override;
-        /**
-         * @brief Creates the underlying VkSemaphore using an explicitly supplied device handle.
-         *
-         * Use this overload during early initialization (e.g. inside constructors that run before
-         * RenderContext::m_Device is assigned) to avoid the null-device crash that the no-arg
-         * overload would trigger via RenderContext::Get()->GetDevice().
-         * @param device Valid VkDevice handle.
-         */
-        void CreateSyncObject(VkDevice device);
-        void Wait(const uint64_t timeout) override;
-        static void Signal(const uint64_t value, const VkSemaphore &semaphore);
-        bool IsSignaled() override;
-        void Destroy() override;
+		void CreateSyncObject() override;
+		/**
+		 * @brief Creates the underlying VkSemaphore using an explicitly supplied device handle.
+		 *
+		 * Use this overload during early initialization (e.g. inside constructors that run before
+		 * RenderContext::m_Device is assigned) to avoid the null-device crash that the no-arg
+		 * overload would trigger via RenderContext::Get()->GetDevice().
+		 * @param device Valid VkDevice handle.
+		 */
+		void CreateSyncObject(VkDevice device);
+		void Wait(const uint64_t timeout) override;
+		static void Signal(const uint64_t value, const VkSemaphore &semaphore);
+		bool IsSignaled() override;
+		void Destroy() override;
 
-        static uint64_t GetValue(const VkSemaphore &semaphore);
-        [[nodiscard]] VkSemaphore GetSemaphore() const { return m_Semaphore; }
-    private:
+		static uint64_t GetValue(const VkSemaphore &semaphore);
+		[[nodiscard]] VkSemaphore GetSemaphore() const { return m_Semaphore; }
+	private:
 		uint64_t m_Value = 0;
-        SyncType m_Type = SyncType::Semaphore;
-        VkSemaphore m_Semaphore = VK_NULL_HANDLE;
-    };
+		SyncType m_Type = SyncType::Semaphore;
+		VkSemaphore m_Semaphore = VK_NULL_HANDLE;
+	};
 
 }
 

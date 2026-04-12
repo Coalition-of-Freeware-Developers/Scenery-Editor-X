@@ -50,7 +50,7 @@ namespace SceneryEditorX
 
 	Semaphore::~Semaphore()
 	{
-       Destroy();
+	   Destroy();
 	}
 
 	void Semaphore::CreateSyncObject()
@@ -100,61 +100,61 @@ namespace SceneryEditorX
 
 	void Semaphore::Wait(const uint64_t timeout)
 	{
-	    Ref<Device> device = RenderContext::Get()->GetDevice();
+		Ref<Device> device = RenderContext::Get()->GetDevice();
 
-	    VkSemaphoreWaitInfo waitInfo;
-        waitInfo.sType               = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO;
-        waitInfo.pNext               = nullptr;
-        waitInfo.flags               = 0;
-        waitInfo.semaphoreCount      = 1;
-        waitInfo.pSemaphores         = &m_Semaphore;
-        waitInfo.pValues             = &m_Value;
+		VkSemaphoreWaitInfo waitInfo;
+		waitInfo.sType               = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO;
+		waitInfo.pNext               = nullptr;
+		waitInfo.flags               = 0;
+		waitInfo.semaphoreCount      = 1;
+		waitInfo.pSemaphores         = &m_Semaphore;
+		waitInfo.pValues             = &m_Value;
 
-        VkResult result = vkWaitSemaphores(device->GetLogicalDevice(), &waitInfo, timeout);
-        if (result == VK_ERROR_DEVICE_LOST)
-        {
-            Device::SetDeviceLost();
-        }
-        SEDX_VK_RESULT_ASSERT(result, "Failed to wait for semaphore");
+		VkResult result = vkWaitSemaphores(device->GetLogicalDevice(), &waitInfo, timeout);
+		if (result == VK_ERROR_DEVICE_LOST)
+		{
+			Device::SetDeviceLost();
+		}
+		SEDX_VK_RESULT_ASSERT(result, "Failed to wait for semaphore");
 	}
 
-    void Semaphore::Signal(const uint64_t value, const VkSemaphore &semaphore)
-    {
-	    Ref<Device> device = RenderContext::Get()->GetDevice();
-
-	    VkSemaphoreSignalInfo signalInfo;
-        signalInfo.sType                 = VK_STRUCTURE_TYPE_SEMAPHORE_SIGNAL_INFO;
-        signalInfo.pNext                 = nullptr;
-        signalInfo.semaphore             = semaphore;
-        signalInfo.value                 = value;
-		
-        SEDX_VK_RESULT_ASSERT(vkSignalSemaphore(device->GetLogicalDevice(), &signalInfo), "Failed to signal semaphore");
-    }
-
-    bool Semaphore::IsSignaled()
+	void Semaphore::Signal(const uint64_t value, const VkSemaphore &semaphore)
 	{
-        return GetValue(m_Semaphore) == m_Value;
+		Ref<Device> device = RenderContext::Get()->GetDevice();
+
+		VkSemaphoreSignalInfo signalInfo;
+		signalInfo.sType                 = VK_STRUCTURE_TYPE_SEMAPHORE_SIGNAL_INFO;
+		signalInfo.pNext                 = nullptr;
+		signalInfo.semaphore             = semaphore;
+		signalInfo.value                 = value;
+		
+		SEDX_VK_RESULT_ASSERT(vkSignalSemaphore(device->GetLogicalDevice(), &signalInfo), "Failed to signal semaphore");
+	}
+
+	bool Semaphore::IsSignaled()
+	{
+		return GetValue(m_Semaphore) == m_Value;
 	}
 
 	void Semaphore::Destroy()
 	{
-       if (m_Semaphore == VK_NULL_HANDLE)
+	   if (m_Semaphore == VK_NULL_HANDLE)
 		{
 			return;
 		}
 
-	    QueueManager::AddDeletionQueue(ResourceType::Semaphore, m_Semaphore);
-        SEDX_CORE_TRACE_TAG("Semaphore", "Semaphore {} scheduled for destruction", m_ObjectName);
-       m_Semaphore = VK_NULL_HANDLE;
+		QueueManager::AddDeletionQueue(ResourceType::Semaphore, m_Semaphore);
+		SEDX_CORE_TRACE_TAG("Semaphore", "Semaphore {} scheduled for destruction", m_ObjectName);
+	   m_Semaphore = VK_NULL_HANDLE;
 	}
 
 	uint64_t Semaphore::GetValue(const VkSemaphore &semaphore)
 	{
-	    Ref<Device> device = RenderContext::Get()->GetDevice();
-	    uint64_t value = 0;
-	    SEDX_VK_RESULT_ASSERT(vkGetSemaphoreCounterValue(device->GetLogicalDevice(), semaphore, &value));
+		Ref<Device> device = RenderContext::Get()->GetDevice();
+		uint64_t value = 0;
+		SEDX_VK_RESULT_ASSERT(vkGetSemaphoreCounterValue(device->GetLogicalDevice(), semaphore, &value));
 
-	    return value;
+		return value;
 	}
 	
 } // namespace SceneryEditorX

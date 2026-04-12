@@ -210,16 +210,16 @@ using namespace xMath;
 namespace SceneryEditorX
 {
 
-    /**
-     * @brief Alias for unsigned 8-bit integer, providing a type named 'byte'.
-     *
-     * This type represents a byte of memory (8 bits) and is consistent with
-     * the standard uint8_t type. It can be used for operations that specifically
-     * deal with raw bytes of memory rather than character data or other numeric types.
-     *
-     * @note - Equivalent to uint8_t from <cstdint>
-     */
-    typedef uint8_t byte;
+	/**
+	 * @brief Alias for unsigned 8-bit integer, providing a type named 'byte'.
+	 *
+	 * This type represents a byte of memory (8 bits) and is consistent with
+	 * the standard uint8_t type. It can be used for operations that specifically
+	 * deal with raw bytes of memory rather than character data or other numeric types.
+	 *
+	 * @note - Equivalent to uint8_t from <cstdint>
+	 */
+	typedef uint8_t byte;
 
 } // namespace SceneryEditorX
 

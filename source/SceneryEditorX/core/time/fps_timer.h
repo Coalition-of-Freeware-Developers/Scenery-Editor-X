@@ -34,34 +34,102 @@
 
 namespace SceneryEditorX
 {
-    enum class FrameLimits
-    {
-        Unlocked		= BIT(0),
-        Fixed			= BIT(1),
-        FixedToMonitor	= BIT(2)
-    };
+	/**
+	 * @enum FrameLimits
+	 * @brief Enum class BitMask representing different frame limit types.
+	 */
+	enum class FrameLimits : uint8_t
+	{
+		Unlocked		= BIT(0),
+		Fixed			= BIT(1),
+		FixedToMonitor	= BIT(2)
+	};
 
-    // TODO: Investigate if making this an inheritance from the Timer classes is beneficial.
-    class FPSTimer
-    {
-    public:
+	/* TODO: Investigate if making this an inheritance from the Timer classes is beneficial. */
+
+	/**
+	 * @class FPSTimer
+	 * @brief Utility class for managing frame timing and FPS limits. Provides functions to initialize the timer,
+	 * update it each frame, and retrieve timing information such as current time, delta time, and smoothed delta time. 
+	 * Also handles FPS limit settings and VSync toggling. 
+	 */
+	class FPSTimer
+	{
+	public:
 		FPSTimer() = default;
 
-        static void Init();
+		/**
+		 * @brief Initialize the FPS timer. Should be called once at application startup to set initial timing values and FPS limit.
+		 */
+		static void Init();
+
+		/**
+		 * @brief Update the FPS timer. Should be called once per frame to update timing information.
+		 * @note If this is not the first tick, we calculate the delta time.
+		 */
 		static void PostTick();
 
-        static float GetFpsLimit();
-		static FrameLimits GetFpsLimitType();
-        static void OnVSyncToggled(const bool enabled);
-        static void SetFpsLimit(float fpsIn);
+		/**
+		 * @brief Get the current FPS limit.
+		 * @return The current FPS limit.
+		 */
+		static float GetFpsLimit();
 
-        static double GetTimeMs();
-        static double GetTimeSec();
-        static double GetDeltaTimeMs();
-        static double GetDeltaTimeSec();
-        static double GetDeltaTimeSmoothedMs();
-        static double GetDeltaTimeSmoothedSec();
-    };
+		/**
+		 * @brief Get the current FPS limit type.
+		 * @return The current FPS limit type.
+		 */
+		static FrameLimits GetFpsLimitType();
+
+		/**
+		 * @brief Toggle VSync on or off.
+		 * @param enabled True to enable VSync, false to disable.
+		 */
+		static void OnVSyncToggled(const bool enabled);
+
+		/**
+		 * @brief Set the FPS limit.
+		 * @param fpsIn The desired FPS limit.
+		 * @note The FPS limit takes the fpsIn value and clamps it to a minimum of 10 FPS to avoid unresponsiveness.
+		 */
+		static void SetFpsLimit(float fpsIn);
+
+		/**
+		 * @brief Get the current time in milliseconds.
+		 * @return The current time in milliseconds.
+		 */
+		static double GetTimeMs();
+
+		/**
+		 * @brief Get the current time in seconds.
+		 * @return The current time in seconds.
+		 */
+		static double GetTimeSec();
+
+		/**
+		 * @brief Get the delta time in milliseconds.
+		 * @return The delta time in milliseconds.
+		 */
+		static double GetDeltaTimeMs();
+
+		/**
+		 * @brief Get the delta time in seconds.
+		 * @return The delta time in seconds.
+		 */
+		static double GetDeltaTimeSec();
+
+		/**
+		 * @brief Get the smoothed delta time in milliseconds.
+		 * @return The smoothed delta time in milliseconds.
+		 */
+		static double GetDeltaTimeSmoothedMs();
+
+		/**
+		 * @brief Get the smoothed delta time in seconds.
+		 * @return The smoothed delta time in seconds.
+		 */
+		static double GetDeltaTimeSmoothedSec();
+	};
 
 }
 

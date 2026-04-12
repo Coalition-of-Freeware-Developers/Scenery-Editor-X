@@ -29,11 +29,28 @@
  * -------------------------------------------------------
  */
 #pragma once
+#include <SceneryEditorX/scene/mesh.h>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
+	
+	/**
+	 * @class GLTF_Mesh
+	 * @brief A class representing a GLTF mesh resource, inheriting from Mesh.
+	 */
+	class GLTF_Mesh : public Mesh
+	{
+	public:
+		virtual ~GLTF_Mesh() override;
+
+		void SaveToFile(const std::string &filePath) override;
+		void LoadFromFile(const std::string &filePath) override;
+
+	private:
+
+	};
 
 }
 

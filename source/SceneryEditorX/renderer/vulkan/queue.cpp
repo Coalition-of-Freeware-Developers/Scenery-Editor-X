@@ -40,19 +40,19 @@ namespace SceneryEditorX
 
 	VkSemaphore InitSemaphore(VkDevice device)
 	{
-	    VkSemaphoreCreateInfo CreateInfo = {
-	        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO, 
-	        .pNext = nullptr, 
-	        .flags = 0
-	    };
+		VkSemaphoreCreateInfo CreateInfo = {
+			.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO, 
+			.pNext = nullptr, 
+			.flags = 0
+		};
 	
-	    VkSemaphore semaphore;
-	    VkResult result = vkCreateSemaphore(device, &CreateInfo, nullptr, &semaphore);
-	    SEDX_VK_RESULT_ASSERT(result, "Semaphore creation failed");
-	    return semaphore;
+		VkSemaphore semaphore;
+		VkResult result = vkCreateSemaphore(device, &CreateInfo, nullptr, &semaphore);
+		SEDX_VK_RESULT_ASSERT(result, "Semaphore creation failed");
+		return semaphore;
 	}
 
-    // -------------------------------------------------------
+	// -------------------------------------------------------
 
 	std::array<Ref<Queue>, static_cast<uint32_t>(QueueType::Unknown)> Queue::regular = {};
 	void *Queue::graphics	= nullptr;
@@ -69,93 +69,93 @@ namespace SceneryEditorX
 	// Helper: find a physical device queue family index suitable for the requested GPUQueueType.
 	static uint32_t FindQueueFamily(VkPhysicalDevice physicalDevice, const QueueType type, VkSurfaceKHR surface)
 	{
-	    uint32_t queueFamilyCount = 0;
-	    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, nullptr);
+		uint32_t queueFamilyCount = 0;
+		vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, nullptr);
 	
-	    std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
-	    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, queueFamilies.data());
+		std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+		vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, queueFamilies.data());
 	
-	    // Prefer specialized queues (compute-only / transfer-only) where applicable.
-	    if (type == QueueType::Compute)
-	    {
-	        // Prefer a compute-only queue (no graphics bit).
-	        for (uint32_t i = 0; i < queueFamilies.size(); ++i)
-	        {
-	            if ((queueFamilies[i].queueFlags & VK_QUEUE_COMPUTE_BIT) &&
-	                (queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0)
-	            {
-	                return i;
-	            }
-	        }
-	        // Fallback: any compute-capable queue.
-	        for (uint32_t i = 0; i < queueFamilies.size(); ++i)
-	        {
-	            if (queueFamilies[i].queueFlags & VK_QUEUE_COMPUTE_BIT)
-	            {
-	                return i;
-	            }
-	        }
-	    }
-	    else if (type == QueueType::Transfer)
-	    {
-	        // Prefer a transfer-only queue (no graphics and no compute).
-	        for (uint32_t i = 0; i < queueFamilies.size(); ++i)
-	        {
-	            if ((queueFamilies[i].queueFlags & VK_QUEUE_TRANSFER_BIT) &&
-	                (queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0 &&
-	                (queueFamilies[i].queueFlags & VK_QUEUE_COMPUTE_BIT) == 0)
-	            {
-	                return i;
-	            }
-	        }
-	        // Fallback: any transfer-capable queue.
-	        for (uint32_t i = 0; i < queueFamilies.size(); ++i)
-	        {
-	            if (queueFamilies[i].queueFlags & VK_QUEUE_TRANSFER_BIT)
-	            {
-	                return i;
-	            }
-	        }
-	    }
-	    else // GRAPHICS or default
-	    {
-	        // Prefer a queue with graphics (and, if surface is provided, present support).
-	        if (surface != VK_NULL_HANDLE)
-	        {
-	            for (uint32_t i = 0; i < queueFamilies.size(); ++i)
-	            {
-	                VkBool32 presentSupport = VK_FALSE;
-	                vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, i, surface, &presentSupport);
-	                if ((queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) && presentSupport)
-	                    return i;
-	            }
-	        }
+		// Prefer specialized queues (compute-only / transfer-only) where applicable.
+		if (type == QueueType::Compute)
+		{
+			// Prefer a compute-only queue (no graphics bit).
+			for (uint32_t i = 0; i < queueFamilies.size(); ++i)
+			{
+				if ((queueFamilies[i].queueFlags & VK_QUEUE_COMPUTE_BIT) &&
+					(queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0)
+				{
+					return i;
+				}
+			}
+			// Fallback: any compute-capable queue.
+			for (uint32_t i = 0; i < queueFamilies.size(); ++i)
+			{
+				if (queueFamilies[i].queueFlags & VK_QUEUE_COMPUTE_BIT)
+				{
+					return i;
+				}
+			}
+		}
+		else if (type == QueueType::Transfer)
+		{
+			// Prefer a transfer-only queue (no graphics and no compute).
+			for (uint32_t i = 0; i < queueFamilies.size(); ++i)
+			{
+				if ((queueFamilies[i].queueFlags & VK_QUEUE_TRANSFER_BIT) &&
+					(queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0 &&
+					(queueFamilies[i].queueFlags & VK_QUEUE_COMPUTE_BIT) == 0)
+				{
+					return i;
+				}
+			}
+			// Fallback: any transfer-capable queue.
+			for (uint32_t i = 0; i < queueFamilies.size(); ++i)
+			{
+				if (queueFamilies[i].queueFlags & VK_QUEUE_TRANSFER_BIT)
+				{
+					return i;
+				}
+			}
+		}
+		else // GRAPHICS or default
+		{
+			// Prefer a queue with graphics (and, if surface is provided, present support).
+			if (surface != VK_NULL_HANDLE)
+			{
+				for (uint32_t i = 0; i < queueFamilies.size(); ++i)
+				{
+					VkBool32 presentSupport = VK_FALSE;
+					vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, i, surface, &presentSupport);
+					if ((queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) && presentSupport)
+						return i;
+				}
+			}
 	
-	        // Fallback: any graphics-capable queue.
-	        for (uint32_t i = 0; i < queueFamilies.size(); ++i)
-	        {
-	            if (queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)
-	            {
-	                return i;
-	            }
-	        }
-	    }
+			// Fallback: any graphics-capable queue.
+			for (uint32_t i = 0; i < queueFamilies.size(); ++i)
+			{
+				if (queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)
+				{
+					return i;
+				}
+			}
+		}
 	
-	    return INVALID_VK_INDEX;
+		return INVALID_VK_INDEX;
 	}
 	
-    // -------------------------------------------------------
+	// -------------------------------------------------------
 
-    Queue::Queue(const Ref<Device>& device, const QueueType type, const char *name) : name(name)
+	Queue::Queue(const Ref<Device>& device, const QueueType type, const char *name) : name(name)
 	{
 		m_Device = device;  // Use the passed device directly
 		m_Type = type;
 	}
 
-    Queue::~Queue()
-    {
-        m_Device.Reset();
-    }
+	Queue::~Queue()
+	{
+		m_Device.Reset();
+	}
 
 	// NOTE:
 	// Several public methods in Queue are declared static in the header.
@@ -163,18 +163,18 @@ namespace SceneryEditorX
 	// queues we use the static `Queue::regular` array which holds Ref<Queue> objects created by Device.
 	// The implementations below reference the appropriate Queue instance via Queue::GetQueue(...).
 
-    /**
+	/**
 	 * @brief Wait for the specified queue to become idle.
 	 * @param queue The Queue instance to wait on.
 	 */
 	void Queue::WaitIdle(const Queue &queue)
 	{
-        SEDX_CORE_ASSERT(queue.m_Device.IsValid(), "Invalid device in Queue::WaitIdle");
-        SEDX_CORE_ASSERT(queue.m_Queue.handle != VK_NULL_HANDLE, "Invalid queue handle in Queue::WaitIdle");
+		SEDX_CORE_ASSERT(queue.m_Device.IsValid(), "Invalid device in Queue::WaitIdle");
+		SEDX_CORE_ASSERT(queue.m_Queue.handle != VK_NULL_HANDLE, "Invalid queue handle in Queue::WaitIdle");
 
 		if (queue.m_Queue.handle != VK_NULL_HANDLE)
 		{
-		    vkQueueWaitIdle(queue.m_Queue.handle);
+			vkQueueWaitIdle(queue.m_Queue.handle);
 		}
 
 	}
@@ -198,20 +198,20 @@ namespace SceneryEditorX
 		CreateSemaphores();
 	}
 
-    /**
+	/**
 	 * @brief Destroy the queue and its associated resources, including semaphores. This should be called when the queue is no longer needed to free Vulkan resources.
 	 */
 	void Queue::Destroy()
 	{
 		SEDX_CORE_ASSERT(m_Device.IsValid(), "Invalid device in Queue::Destroy");
-        SEDX_CORE_ASSERT(m_RenderSemaphore != VK_NULL_HANDLE, "Invalid render semaphore in Queue::Destroy");
-        SEDX_CORE_ASSERT(m_PresentSemaphore != VK_NULL_HANDLE, "Invalid present semaphore in Queue::Destroy");
+		SEDX_CORE_ASSERT(m_RenderSemaphore != VK_NULL_HANDLE, "Invalid render semaphore in Queue::Destroy");
+		SEDX_CORE_ASSERT(m_PresentSemaphore != VK_NULL_HANDLE, "Invalid present semaphore in Queue::Destroy");
 
-	    vkDestroySemaphore(m_Device->GetLogicalDevice(), m_RenderSemaphore, nullptr);
-	    vkDestroySemaphore(m_Device->GetLogicalDevice(), m_PresentSemaphore, nullptr);
+		vkDestroySemaphore(m_Device->GetLogicalDevice(), m_RenderSemaphore, nullptr);
+		vkDestroySemaphore(m_Device->GetLogicalDevice(), m_PresentSemaphore, nullptr);
 
-        m_RenderSemaphore = VK_NULL_HANDLE;
-        m_PresentSemaphore = VK_NULL_HANDLE;
+		m_RenderSemaphore = VK_NULL_HANDLE;
+		m_PresentSemaphore = VK_NULL_HANDLE;
 	}
 
 	/**
@@ -248,56 +248,56 @@ namespace SceneryEditorX
 		return ImageIndex;
 	}
 	
-    // TODO: Replace the VkCommandBuffer parameter with a higher-level CommandList or CommandBuffer wrapper that manages command recording and submission more robustly. 
-    // This would allow for better error handling, resource management, and integration with the rest of the rendering system. 
-    // The current implementation assumes the caller is responsible for ensuring the command buffer is in a valid state for submission, 
-    // which can lead to issues if not handled carefully.
+	// TODO: Replace the VkCommandBuffer parameter with a higher-level CommandList or CommandBuffer wrapper that manages command recording and submission more robustly. 
+	// This would allow for better error handling, resource management, and integration with the rest of the rendering system. 
+	// The current implementation assumes the caller is responsible for ensuring the command buffer is in a valid state for submission, 
+	// which can lead to issues if not handled carefully.
 	void Queue::SubmitSync(VkCommandBuffer cmdBuffer)
 	{
-	    // Submit a command buffer synchronously on the Graphics queue
-	    Queue *q = Queue::GetQueue(QueueType::Graphics);
-	    SEDX_CORE_ASSERT(q != nullptr, "No Graphics queue available for Queue::SubmitSync.");
+		// Submit a command buffer synchronously on the Graphics queue
+		Queue *q = Queue::GetQueue(QueueType::Graphics);
+		SEDX_CORE_ASSERT(q != nullptr, "No Graphics queue available for Queue::SubmitSync.");
 	
-	    VkSubmitInfo SubmitInfo = {
-	        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-	        .pNext = nullptr,
-	        .waitSemaphoreCount = 0,
-	        .pWaitSemaphores = VK_NULL_HANDLE,
-	        .pWaitDstStageMask = VK_NULL_HANDLE,
-	        .commandBufferCount = 1,
-	        .pCommandBuffers = &cmdBuffer,
-	        .signalSemaphoreCount = 0,
-	        .pSignalSemaphores = VK_NULL_HANDLE,
-	    };
+		VkSubmitInfo SubmitInfo = {
+			.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+			.pNext = nullptr,
+			.waitSemaphoreCount = 0,
+			.pWaitSemaphores = VK_NULL_HANDLE,
+			.pWaitDstStageMask = VK_NULL_HANDLE,
+			.commandBufferCount = 1,
+			.pCommandBuffers = &cmdBuffer,
+			.signalSemaphoreCount = 0,
+			.pSignalSemaphores = VK_NULL_HANDLE,
+		};
 	
-	    VkResult result = vkQueueSubmit(q->m_Queue.handle, 1, &SubmitInfo, VK_NULL_HANDLE);
-	    SEDX_CORE_ASSERT(result == VK_SUCCESS, "Failed to submit queue.");
+		VkResult result = vkQueueSubmit(q->m_Queue.handle, 1, &SubmitInfo, VK_NULL_HANDLE);
+		SEDX_CORE_ASSERT(result == VK_SUCCESS, "Failed to submit queue.");
 	}
 	
 	void Queue::SubmitAsync(VkCommandBuffer cmdBuffer)
 	{
-	    // Submit asynchronously on the Graphics queue using the present/render semaphores of that queue instance
-	    Queue *q = Queue::GetQueue(QueueType::Graphics);
-	    SEDX_CORE_ASSERT(q != nullptr, "No graphics queue available for SubmitAsync.");
-        SEDX_CORE_ASSERT(q->m_PresentSemaphore != VK_NULL_HANDLE, "Invalid present semaphore in Queue::SubmitAsync.");
-	    SEDX_CORE_ASSERT(q->m_RenderSemaphore != VK_NULL_HANDLE, "Invalid render semaphore in Queue::SubmitAsync.");
+		// Submit asynchronously on the Graphics queue using the present/render semaphores of that queue instance
+		Queue *q = Queue::GetQueue(QueueType::Graphics);
+		SEDX_CORE_ASSERT(q != nullptr, "No graphics queue available for SubmitAsync.");
+		SEDX_CORE_ASSERT(q->m_PresentSemaphore != VK_NULL_HANDLE, "Invalid present semaphore in Queue::SubmitAsync.");
+		SEDX_CORE_ASSERT(q->m_RenderSemaphore != VK_NULL_HANDLE, "Invalid render semaphore in Queue::SubmitAsync.");
 	
-	    VkPipelineStageFlags waitFlags = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		VkPipelineStageFlags waitFlags = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 	
-	    VkSubmitInfo SubmitInfo = {
-	        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-	        .pNext = nullptr,
-	        .waitSemaphoreCount = 1,
-	        .pWaitSemaphores = &q->m_PresentSemaphore,
-	        .pWaitDstStageMask = &waitFlags,
-	        .commandBufferCount = 1,
-	        .pCommandBuffers = &cmdBuffer,
-	        .signalSemaphoreCount = 1,
-	        .pSignalSemaphores = &q->m_RenderSemaphore,
-	    };
+		VkSubmitInfo SubmitInfo = {
+			.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+			.pNext = nullptr,
+			.waitSemaphoreCount = 1,
+			.pWaitSemaphores = &q->m_PresentSemaphore,
+			.pWaitDstStageMask = &waitFlags,
+			.commandBufferCount = 1,
+			.pCommandBuffers = &cmdBuffer,
+			.signalSemaphoreCount = 1,
+			.pSignalSemaphores = &q->m_RenderSemaphore,
+		};
 	
-	    VkResult result = vkQueueSubmit(q->m_Queue.handle, 1, &SubmitInfo, VK_NULL_HANDLE);
-	    SEDX_CORE_ASSERT(result == VK_SUCCESS, "Failed to submit queue.");
+		VkResult result = vkQueueSubmit(q->m_Queue.handle, 1, &SubmitInfo, VK_NULL_HANDLE);
+		SEDX_CORE_ASSERT(result == VK_SUCCESS, "Failed to submit queue.");
 	}
 
 	/**
@@ -334,71 +334,99 @@ namespace SceneryEditorX
 		WaitIdle(*q);
 	}
 	
+	bool Queue::Present(Swapchain *swapchain, uint32_t imageIdx, FrameSync *waitSemaphore)
+	{
+		std::lock_guard<std::mutex> lock(m_Mutex);
+
+		// get semaphore vulkan resources
+		std::array<VkSemaphore, 1> waitSemaphores = { nullptr };
+		waitSemaphores[0] = static_cast<VkSemaphore>(waitSemaphore->GetVkSemaphore());
+
+		VkPresentInfoKHR present_info   = {};
+		present_info.sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+		present_info.waitSemaphoreCount = 1;
+		present_info.pWaitSemaphores    = waitSemaphores.data();
+		present_info.swapchainCount     = 1;
+		present_info.pSwapchains        = reinterpret_cast<VkSwapchainKHR*>(&swapchain);
+		present_info.pImageIndices      = &imageIdx;
+
+		VkResult result = vkQueuePresentKHR(static_cast<VkQueue>(GetQueueResource(m_Type)), &present_info);
+
+		// vk_error_out_of_date_khr and vk_suboptimal_khr are not errors, they indicate the swapchain needs recreation
+		if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
+		{
+			return false; // signal swapchain needs recreation
+		}
+
+		SEDX_VK_RESULT_ASSERT(result);
+		return true;
+	}
+
 	// -------------------------------------------------------
 	
 	uint32_t Queue::GetQueueIndex(const QueueType type)
 	{
-	    if (type == QueueType::Graphics)
-	        return indexGraphics;
+		if (type == QueueType::Graphics)
+			return indexGraphics;
 	
-	    if (type == QueueType::Transfer)
-	        return indexCopy;
+		if (type == QueueType::Transfer)
+			return indexCopy;
 	
-	    if (type == QueueType::Compute)
-	        return indexCompute;
+		if (type == QueueType::Compute)
+			return indexCompute;
 	
-	    return 0;
+		return 0;
 	}
 	
 	Queue *Queue::GetQueue(const QueueType type)
 	{
-	    if (type == QueueType::Graphics)
-	        return regular[static_cast<uint32_t>(QueueType::Graphics)].Get();
+		if (type == QueueType::Graphics)
+			return regular[static_cast<uint32_t>(QueueType::Graphics)].Get();
 	
-	    if (type == QueueType::Compute)
-	        return regular[static_cast<uint32_t>(QueueType::Compute)].Get();
+		if (type == QueueType::Compute)
+			return regular[static_cast<uint32_t>(QueueType::Compute)].Get();
 	
-	    if (type == QueueType::Transfer)
-	        return regular[static_cast<uint32_t>(QueueType::Transfer)].Get();
+		if (type == QueueType::Transfer)
+			return regular[static_cast<uint32_t>(QueueType::Transfer)].Get();
 	
-	    return nullptr;
+		return nullptr;
 	}
 	
 	void *Queue::GetQueueResource(const QueueType type)
 	{
-	    if (type == QueueType::Graphics)
-	        return graphics;
+		if (type == QueueType::Graphics)
+			return graphics;
 	
-	    if (type == QueueType::Transfer)
-	        return copy;
+		if (type == QueueType::Transfer)
+			return copy;
 	
-	    if (type == QueueType::Compute)
-	        return compute;
+		if (type == QueueType::Compute)
+			return compute;
 	
-	    return nullptr;
+		return nullptr;
 	}
 	
 	void Queue::QueueWaitAll(const bool /*flush*/)
 	{
-	    // Wait on all registered queues
-	    for (uint32_t i = 0; i < static_cast<uint32_t>(QueueType::Count); ++i)
-	    {
-	        if (Queue::regular[i])
-	        {
-                Queue::regular[i]->WaitIdle(*Queue::regular[i]);
-	        }
-	    }
+		// Wait on all registered queues
+		for (uint32_t i = 0; i < static_cast<uint32_t>(QueueType::Count); ++i)
+		{
+			if (Queue::regular[i])
+			{
+				Queue::regular[i]->WaitIdle(*Queue::regular[i]);
+			}
+		}
 	}
 	
 	// -------------------------------------------------------
 	
 	void Queue::AddDeletionQueue(const ResourceType resourceType, void *resource)
 	{
-	    if (!resource)
-	        return;
+		if (!resource)
+			return;
 	
-	    std::scoped_lock guard(Queue::mutexDeletionQueue);
-	    Queue::deletionQueue[resourceType].emplace_back(resource);
+		std::scoped_lock guard(Queue::mutexDeletionQueue);
+		Queue::deletionQueue[resourceType].emplace_back(resource);
 	}
 	
 	void Queue::ParseDeletionQueue()
@@ -466,44 +494,44 @@ namespace SceneryEditorX
 	
 	bool Queue::ParseDeletionQueueNeedsTo()
 	{
-	    static uint32_t framesEquilibrium = 0;
-	    static uint32_t objectsToDeletePrevious = 0;
+		static uint32_t framesEquilibrium = 0;
+		static uint32_t objectsToDeletePrevious = 0;
 	
-	    // Count deletions in the queue
-	    uint32_t objectsToDelete = 0;
-	    for (uint32_t i = 0; i < static_cast<uint32_t>(ResourceType::MaxEnum); i++)
-	    {
-	        objectsToDelete += static_cast<uint32_t>(Queue::deletionQueue[static_cast<ResourceType>(i)].size());
-	    }
+		// Count deletions in the queue
+		uint32_t objectsToDelete = 0;
+		for (uint32_t i = 0; i < static_cast<uint32_t>(ResourceType::MaxEnum); i++)
+		{
+			objectsToDelete += static_cast<uint32_t>(Queue::deletionQueue[static_cast<ResourceType>(i)].size());
+		}
 	
-	    // Check if the number of objects to delete has remained unchanged
-	    if (objectsToDelete > 0 && objectsToDelete == objectsToDeletePrevious)
-	    {
-	        framesEquilibrium++;
+		// Check if the number of objects to delete has remained unchanged
+		if (objectsToDelete > 0 && objectsToDelete == objectsToDeletePrevious)
+		{
+			framesEquilibrium++;
 	
-	        /*// If it’s been stable for frame_self life frames, reset counter and delete
-		            if (framesEquilibrium >= renderer_resource_frame_lifetime)
-		            {
-		                framesEquilibrium = 0;
-		                return true;
-		            }*/
-	    }
-	    else
-	    {
-	        // Reset counter if the count changed or if nothing is in the queue
-	        framesEquilibrium = 0;
-	    }
+			/*// If it’s been stable for frame_self life frames, reset counter and delete
+					if (framesEquilibrium >= renderer_resource_frame_lifetime)
+					{
+						framesEquilibrium = 0;
+						return true;
+					}*/
+		}
+		else
+		{
+			// Reset counter if the count changed or if nothing is in the queue
+			framesEquilibrium = 0;
+		}
 	
-	    // Tick the previous object count to the current count
-	    objectsToDeletePrevious = objectsToDelete;
+		// Tick the previous object count to the current count
+		objectsToDeletePrevious = objectsToDelete;
 	
-	    return false;
+		return false;
 	}
 	
 	void Queue::CreateSemaphores()
 	{
-        m_PresentSemaphore = InitSemaphore(m_Device->GetLogicalDevice());
-        m_RenderSemaphore = InitSemaphore(m_Device->GetLogicalDevice());
+		m_PresentSemaphore = InitSemaphore(m_Device->GetLogicalDevice());
+		m_RenderSemaphore = InitSemaphore(m_Device->GetLogicalDevice());
 	}
 	
 }

@@ -28,21 +28,56 @@
  * Created: 10/8/2025
  * -------------------------------------------------------
  */
+#include "Editor/settings/editor_settings.h"
 #include <filesystem>
-#include <Editor/settings/editor_settings.h>
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-    static std::filesystem::path s_EditorSettingsPath;
+	static std::filesystem::path s_EditorSettingsPath;
 
-    EditorSettings &EditorSettings::Get()
-    {
-        static EditorSettings s_Settings;
-        return s_Settings;
-    }
+	EditorSettings &EditorSettings::Get()
+	{
+		static EditorSettings s_Settings;
+		return s_Settings;
+	}
 
-}
+	EditorSettingsManager::EditorSettingsManager() : Settings(s_EditorSettingsPath)
+	{
+	}
 
-/// -------------------------------------------------------
+	EditorSettingsManager::EditorSettingsManager(const std::filesystem::path &configPath) : Settings(configPath)
+	{
+	}
+
+	EditorSettingsManager::~EditorSettingsManager()
+	{
+	}
+
+	const std::filesystem::path &EditorSettingsManager::GetSettingsPath()
+	{
+		return s_EditorSettingsPath; 
+	}
+
+	void EditorSettingsManager::SetSettings(const EditorSettings &settings)
+	{
+	}
+
+	bool EditorSettingsManager::ReadSettings()
+	{
+		return Settings::ReadSettings();
+	}
+
+	void EditorSettingsManager::WriteSettings()
+	{
+		Settings::WriteSettings();
+	}
+
+	void EditorSettingsManager::InitializeSettingsStorage()
+	{
+	}
+
+} // namespace SceneryEditorX
+
+// -------------------------------------------------------

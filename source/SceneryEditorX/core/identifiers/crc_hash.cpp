@@ -35,8 +35,8 @@
 namespace SceneryEditorX
 {
 
-    /*
-    Hash128 CalculateHash128(const void *data, size_t length)
+	/*
+	Hash128 CalculateHash128(const void *data, size_t length)
 	{
 		XXH128_hash_t hash = XXH3_128bits(data, length);
 		Hash128 out;
@@ -60,12 +60,12 @@ namespace SceneryEditorX
 		return CRC::Calculate(data, size, CRC::CRC_32());
 	}
 
-    uint32_t CalculateCRC(const void *data, size_t size, uint32_t crc)
+	uint32_t CalculateCRC(const void *data, size_t size, uint32_t crc)
 	{
 		return CRC::Calculate(data, size, CRC::CRC_32(), crc);
 	}
 
-    size_t GetCombinedHashes(const Array<size_t> &hashes)
+	size_t GetCombinedHashes(const Array<size_t> &hashes)
 	{
 		if (hashes.GetSize() == 0)
 			return 0;

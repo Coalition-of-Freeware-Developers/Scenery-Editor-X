@@ -37,30 +37,30 @@
 namespace SceneryEditorX
 {
 
-    // -------------------------------------------------------------------
+	// -------------------------------------------------------------------
 	
 	class KeyEvent : public Event
 	{
 	public:
-        [[nodiscard]] KeyCode GetKeyCode() const { return m_KeyCode; }
+		[[nodiscard]] KeyCode GetKeyCode() const { return m_KeyCode; }
 
 		EVENT_CLASS_CATEGORY(EventCategoryKeyboard | EventCategoryInput)
 	protected:
-        explicit KeyEvent(const KeyCode keycode) : m_KeyCode(keycode) {}
+		explicit KeyEvent(const KeyCode keycode) : m_KeyCode(keycode) {}
 
 		KeyCode m_KeyCode;
 	};
 
-    // -------------------------------------------------------------------
+	// -------------------------------------------------------------------
 
 	class KeyPressedEvent : public KeyEvent
 	{
 	public:
 		KeyPressedEvent(const KeyCode keycode, const int repeatCount) : KeyEvent(keycode), m_RepeatCount(repeatCount) {}
 
-        [[nodiscard]] int GetRepeatCount() const { return m_RepeatCount; }
+		[[nodiscard]] int GetRepeatCount() const { return m_RepeatCount; }
 
-        [[nodiscard]] virtual std::string ToString() const override
+		[[nodiscard]] virtual std::string ToString() const override
 		{
 			std::stringstream ss;
 			ss << "KeyPressedEvent: " << m_KeyCode << " (" << m_RepeatCount << " repeats)";
@@ -72,14 +72,14 @@ namespace SceneryEditorX
 		int m_RepeatCount;
 	};
 
-    // -------------------------------------------------------------------
+	// -------------------------------------------------------------------
 
 	class KeyReleasedEvent : public KeyEvent
 	{
 	public:
-        explicit KeyReleasedEvent(const KeyCode keycode) : KeyEvent(keycode) {}
+		explicit KeyReleasedEvent(const KeyCode keycode) : KeyEvent(keycode) {}
 
-        [[nodiscard]] virtual std::string ToString() const override
+		[[nodiscard]] virtual std::string ToString() const override
 		{
 			std::stringstream ss;
 			ss << "KeyReleasedEvent: " << m_KeyCode;
@@ -89,14 +89,14 @@ namespace SceneryEditorX
 		EVENT_CLASS_TYPE(KeyReleased)
 	};
 
-    // -------------------------------------------------------------------
+	// -------------------------------------------------------------------
 
 	class KeyTypedEvent : public KeyEvent
 	{
 	public:
-        explicit KeyTypedEvent(const KeyCode keycode) : KeyEvent(keycode) {}
+		explicit KeyTypedEvent(const KeyCode keycode) : KeyEvent(keycode) {}
 
-        [[nodiscard]] virtual std::string ToString() const override
+		[[nodiscard]] virtual std::string ToString() const override
 		{
 			std::stringstream ss;
 			ss << "KeyTypedEvent: " << m_KeyCode;

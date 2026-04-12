@@ -29,10 +29,12 @@
  * -------------------------------------------------------
  */
 #include "queue_manager.h"
+#include "bindless_manager.h"
 #include "device.h"
 #include "render_context.h"
 #include <algorithm>
 #include <string>
+#include <SceneryEditorX/logging/profiler.hpp>
 
 // -------------------------------------------------------
 
@@ -46,11 +48,17 @@ namespace SceneryEditorX
 	
 #pragma region Static Members
 
-    static constexpr uint32_t kQueueTypeSlots = static_cast<uint32_t>(QueueType::Present) + 1;
+	static constexpr uint32_t kQueueTypeSlots = static_cast<uint32_t>(QueueType::Present) + 1;
 	static std::array<Ref<Queue>, kQueueTypeSlots> s_Regular; // indexed by QueueType value
-    static std::mutex s_MutexAllocation;    // Mutex for thread-safe resource allocation
-    static std::mutex s_MutexDeletionQueue; // Mutex for thread-safe deletion queue access
-    static std::unordered_map<ResourceType, std::vector<DeletionQueueEntry>> s_DeletionQueue;
+	static std::mutex s_MutexAllocation;    // Mutex for thread-safe resource allocation
+	static std::mutex s_MutexDeletionQueue; // Mutex for thread-safe deletion queue access
+	static std::unordered_map<ResourceType, std::vector<DeletionQueueEntry>> s_DeletionQueue;
+
+	/// Set to true by NotifyShutdown() once Renderer::Shutdown() has completed its final
+	/// ParseDeletionQueue flush.  Any AddDeletionQueue call arriving after this point
+	/// (e.g. from Ref<ImageResource> destructors running during the CRT static-dtor phase)
+	/// is silently dropped rather than touching the already-destroyed map.
+	static std::atomic<bool> s_DeletionQueueDestroyed{false};
 	
 	// -------------------------------------------------------
 	
@@ -64,72 +72,72 @@ namespace SceneryEditorX
 	static bool GetQueueFamilyIndex(const VkQueueFlagBits flags, const std::vector<VkQueueFamilyProperties> &familyProp, uint32_t *index)
 	{
 	
-	    // Try to find a queue that only supports compute (dedicated)
-	    if (flags & VK_QUEUE_COMPUTE_BIT)
-	    {
-	        for (uint32_t i = 0; i < static_cast<uint32_t>(familyProp.size()); i++)
-	        {
-	            if ((familyProp[i].queueFlags & flags) && ((familyProp[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0))
-	            {
-	                *index = i;
-	                return true;
-	            }
-	        }
-	    }
+		// Try to find a queue that only supports compute (dedicated)
+		if (flags & VK_QUEUE_COMPUTE_BIT)
+		{
+			for (uint32_t i = 0; i < static_cast<uint32_t>(familyProp.size()); i++)
+			{
+				if ((familyProp[i].queueFlags & flags) && ((familyProp[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0))
+				{
+					*index = i;
+					return true;
+				}
+			}
+		}
 	
-	    // Try to find a queue that only supports copy (dedicated)
-	    if (flags & VK_QUEUE_TRANSFER_BIT)
-	    {
-	        for (uint32_t i = 0; i < static_cast<uint32_t>(familyProp.size()); i++)
-	        {
-	            if ((familyProp[i].queueFlags & flags) && ((familyProp[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0) &&
-	                ((familyProp[i].queueFlags & VK_QUEUE_COMPUTE_BIT) == 0))
-	            {
-	                *index = i;
-	                return true;
-	            }
-	        }
-	    }
+		// Try to find a queue that only supports copy (dedicated)
+		if (flags & VK_QUEUE_TRANSFER_BIT)
+		{
+			for (uint32_t i = 0; i < static_cast<uint32_t>(familyProp.size()); i++)
+			{
+				if ((familyProp[i].queueFlags & flags) && ((familyProp[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0) &&
+					((familyProp[i].queueFlags & VK_QUEUE_COMPUTE_BIT) == 0))
+				{
+					*index = i;
+					return true;
+				}
+			}
+		}
 	
-	    // Try to find a queue that supports Sparse Binding operations (dedicated)
-	    if (flags & VK_QUEUE_SPARSE_BINDING_BIT)
-	    {
-	        for (uint32_t i = 0; i < static_cast<uint32_t>(familyProp.size()); i++)
-	        {
-	            if ((familyProp[i].queueFlags & flags) && ((familyProp[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0) &&
-	                ((familyProp[i].queueFlags & VK_QUEUE_COMPUTE_BIT) == 0))
-	            {
-	                *index = i;
-	                return true;
-	            }
-	        }
-	    }
+		// Try to find a queue that supports Sparse Binding operations (dedicated)
+		if (flags & VK_QUEUE_SPARSE_BINDING_BIT)
+		{
+			for (uint32_t i = 0; i < static_cast<uint32_t>(familyProp.size()); i++)
+			{
+				if ((familyProp[i].queueFlags & flags) && ((familyProp[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0) &&
+					((familyProp[i].queueFlags & VK_QUEUE_COMPUTE_BIT) == 0))
+				{
+					*index = i;
+					return true;
+				}
+			}
+		}
 	
-	    // Try to find a queue that supports protected bit
-	    if (flags & VK_QUEUE_PROTECTED_BIT)
-	    {
-	        for (uint32_t i = 0; i < static_cast<uint32_t>(familyProp.size()); i++)
-	        {
-	            if ((familyProp[i].queueFlags & flags) && ((familyProp[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0) &&
-	                ((familyProp[i].queueFlags & VK_QUEUE_COMPUTE_BIT) == 0))
-	            {
-	                *index = i;
-	                return true;
-	            }
-	        }
-	    }
+		// Try to find a queue that supports protected bit
+		if (flags & VK_QUEUE_PROTECTED_BIT)
+		{
+			for (uint32_t i = 0; i < static_cast<uint32_t>(familyProp.size()); i++)
+			{
+				if ((familyProp[i].queueFlags & flags) && ((familyProp[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0) &&
+					((familyProp[i].queueFlags & VK_QUEUE_COMPUTE_BIT) == 0))
+				{
+					*index = i;
+					return true;
+				}
+			}
+		}
 	
-	    // For graphics, just find any queue that supports graphics
-	    for (uint32_t i = 0; i < static_cast<uint32_t>(familyProp.size()); i++)
-	    {
-	        if (familyProp[i].queueFlags & flags)
-	        {
-	            *index = i;
-	            return true;
-	        }
-	    }
+		// For graphics, just find any queue that supports graphics
+		for (uint32_t i = 0; i < static_cast<uint32_t>(familyProp.size()); i++)
+		{
+			if (familyProp[i].queueFlags & flags)
+			{
+				*index = i;
+				return true;
+			}
+		}
 	
-	    return false;
+		return false;
 	};
 	
 	/**
@@ -137,19 +145,19 @@ namespace SceneryEditorX
 	 * @param type The QueueType to convert
 	 * @return String representation of the queue type
 	 */
-    static constexpr const char *QueueToString(const QueueType type)
-    {
-        switch (type)
-        {
-        case QueueType::Graphics: return "Graphics";
-        case QueueType::Compute:  return "Compute";
-        case QueueType::Transfer: return "Transfer";
-        case QueueType::Present:  return "Present";
-        case QueueType::Unknown:  return "Unknown";
-        default:
-            return "Invalid";
-        }
-    }
+	static constexpr const char *QueueToString(const QueueType type)
+	{
+		switch (type)
+		{
+		case QueueType::Graphics: return "Graphics";
+		case QueueType::Compute:  return "Compute";
+		case QueueType::Transfer: return "Transfer";
+		case QueueType::Present:  return "Present";
+		case QueueType::Unknown:  return "Unknown";
+		default:
+			return "Invalid";
+		}
+	}
 
 #pragma endregion
 
@@ -157,11 +165,11 @@ namespace SceneryEditorX
 	
 	QueueManager::QueueFamilyIndices QueueManager::DetectQueueFamilies(const VkPhysicalDevice &physicalDevice)
 	{
-	    QueueFamilyIndices indices;
-	    if (!physicalDevice)
-	    {
-	        return indices;
-	    }
+		QueueFamilyIndices indices;
+		if (!physicalDevice)
+		{
+			return indices;
+		}
 
 		uint32_t queueFamilyCount = 0;
 		vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, nullptr);
@@ -170,53 +178,53 @@ namespace SceneryEditorX
 		vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, queueFamiliesProperties.data());
 
 		uint32_t index = 0;
-	    if (GetQueueFamilyIndex(VK_QUEUE_GRAPHICS_BIT, queueFamiliesProperties, &index))
-	    {
-	        indices.graphics = index;
-	    }
-	    else
-	    {
-	        SEDX_CORE_WARN_TAG("QueueManager", "Graphics queue not supported.");
-	    }
+		if (GetQueueFamilyIndex(VK_QUEUE_GRAPHICS_BIT, queueFamiliesProperties, &index))
+		{
+			indices.graphics = index;
+		}
+		else
+		{
+			SEDX_CORE_WARN_TAG("QueueManager", "Graphics queue not supported.");
+		}
 	
-	    if (GetQueueFamilyIndex(VK_QUEUE_COMPUTE_BIT, queueFamiliesProperties, &index))
-	    {
-	        indices.compute = index;
-	    }
-	    else
-	    {
-	        SEDX_CORE_WARN_TAG("QueueManager", "Compute queue not supported.");
-	    }
+		if (GetQueueFamilyIndex(VK_QUEUE_COMPUTE_BIT, queueFamiliesProperties, &index))
+		{
+			indices.compute = index;
+		}
+		else
+		{
+			SEDX_CORE_WARN_TAG("QueueManager", "Compute queue not supported.");
+		}
 	
-	    if (GetQueueFamilyIndex(VK_QUEUE_TRANSFER_BIT, queueFamiliesProperties, &index))
-	    {
-	        indices.transfer = index;
-	    }
-	    else
-	    {
-	        SEDX_CORE_WARN_TAG("QueueManager", "Transfer queue not supported.");
-	    }
+		if (GetQueueFamilyIndex(VK_QUEUE_TRANSFER_BIT, queueFamiliesProperties, &index))
+		{
+			indices.transfer = index;
+		}
+		else
+		{
+			SEDX_CORE_WARN_TAG("QueueManager", "Transfer queue not supported.");
+		}
 	
-	    // Present currently defaults to graphics until swapchain integration is finalized.
-	    indices.present = indices.graphics;
+		// Present currently defaults to graphics until swapchain integration is finalized.
+		indices.present = indices.graphics;
 	
-	    return indices;
+		return indices;
 	}
 	
 	void QueueManager::BuildQueueInfo(const QueueFamilyIndices &indices, std::vector<VkDeviceQueueCreateInfo> &queueInfo, std::vector<float> &priority)
 	{
-	    queueInfo.clear();
-	    priority.clear();
+		queueInfo.clear();
+		priority.clear();
 	
-	    const auto invalidIndex = (std::numeric_limits<uint32_t>::max)();
-	    const std::array<uint32_t, 3> requestedFamilies = {indices.graphics, indices.compute, indices.transfer};
-	    SEDX_CORE_TRACE_TAG("QueueManager", "Building Queue Create Infos for families \n"
-	                        " - Graphics: {} \n"
-	                        " - Compute: {} \n"
-	                        " - Transfer: {}",
-	                        indices.graphics, indices.compute, indices.transfer);
+		const auto invalidIndex = (std::numeric_limits<uint32_t>::max)();
+		const std::array<uint32_t, 3> requestedFamilies = {indices.graphics, indices.compute, indices.transfer};
+		SEDX_CORE_TRACE_TAG("QueueManager", "Building Queue Create Infos for families \n"
+							" - Graphics: {} \n"
+							" - Compute: {} \n"
+							" - Transfer: {}",
+							indices.graphics, indices.compute, indices.transfer);
 	
-        std::array<uint32_t, 3> uniqueFamilies = {};
+		std::array<uint32_t, 3> uniqueFamilies = {};
 		uint32_t uniqueFamilyCount = 0;
 
 		auto has_family = [&](uint32_t family) {
@@ -255,59 +263,49 @@ namespace SceneryEditorX
 	
 	QueueManager::QueueManager(const Ref<Device> &device, const QueueConfig &config) : m_Device(device), m_Config(config)
 	{
-	    SEDX_CORE_TRACE_TAG("QueueManager", "=== Initializing Queue Manager ===");
+		SEDX_CORE_TRACE_TAG("QueueManager", "=== Initializing Queue Manager ===");
 	
-	    SEDX_CORE_ASSERT(m_Device, "Device must be initialized before QueueManager");
+		SEDX_CORE_ASSERT(m_Device, "Device must be initialized before QueueManager");
 	
-	    m_FamilyIndices = DetectQueueFamilies(m_Device->GetPhysicalDevice());
-	    SEDX_CORE_TRACE_TAG("QueueManager", "Detected Queue Families - Graphics: {}, Compute: {}, Transfer: {}, Present: {}",
-	                       m_FamilyIndices.graphics, m_FamilyIndices.compute, m_FamilyIndices.transfer, m_FamilyIndices.present);
+		m_FamilyIndices = DetectQueueFamilies(m_Device->GetPhysicalDevice());
+		SEDX_CORE_TRACE_TAG("QueueManager", "Detected Queue Families - Graphics: {}, Compute: {}, Transfer: {}, Present: {}",
+						   m_FamilyIndices.graphics, m_FamilyIndices.compute, m_FamilyIndices.transfer, m_FamilyIndices.present);
 	
-       // Reserve slots indexed by QueueType numeric value.
+	   // Reserve slots indexed by QueueType numeric value.
 		m_GPUQueues.resize(kQueueTypeSlots);
 
 		// Initialize only valid allocatable queue types.
-		constexpr std::array<QueueType, 4> queueTypes = {
-			QueueType::Graphics,
-			QueueType::Compute,
-			QueueType::Transfer,
-			QueueType::Present,
-		};
+		constexpr std::array<QueueType, 4> queueTypes = {Graphics, Compute, Transfer, Present};
 		for (const QueueType type : queueTypes)
-	    {
-         const uint32_t i = static_cast<uint32_t>(type);
-	        const char *queueName = nullptr;
+		{
+		 const uint32_t i = static_cast<uint32_t>(type);
+			const char *queueName = nullptr;
 	
-	        switch (type)
-	        {
-	        case QueueType::Graphics:
-	            queueName = "Graphics Queue";
-	            break;
-	        case QueueType::Compute:
-	            queueName = "Compute Queue";
-	            break;
-	        case QueueType::Transfer:
-	            queueName = "Transfer Queue";
-	            break;
-	        case QueueType::Present:
-	            queueName = "Present Queue";
-	            break;
-	        default:
-	            queueName = "Unknown Queue";
-	            break;
-	        }
+			switch (type)
+			{
+			case QueueType::Graphics: queueName = "Graphics Queue";
+				break;
+			case QueueType::Compute: queueName = "Compute Queue";
+				break;
+			case QueueType::Transfer: queueName = "Transfer Queue";
+				break;
+			case QueueType::Present: queueName = "Present Queue";
+				break;
+			default: queueName = "Unknown Queue";
+				break;
+			}
 	
-	        // Create queue instance and store in m_GPUQueues and s_Regular
-	        AllocateQueue(type, m_Config.cmdListsPerQueue, queueName);
-	        SEDX_CORE_ASSERT(m_GPUQueues[i], "Failed to create Queue of type {}", QueueToString(static_cast<QueueType>(i)));
+			// Create queue instance and store in m_GPUQueues and s_Regular
+			AllocateQueue(type, m_Config.cmdListsPerQueue, queueName);
+			SEDX_CORE_ASSERT(m_GPUQueues[i], "Failed to create Queue of type {}", QueueToString(static_cast<QueueType>(i)));
 	
 	
 			SEDX_CORE_TRACE_TAG("QueueManager", "Created {} (family index: {})", queueName, QueueToString(static_cast<QueueType>(GetFamilyIndexByType(type))));
 		}
 
 		// Initialize the command pool for the graphics queue family
-		SEDX_CORE_ASSERT(m_FamilyIndices.graphics != (std::numeric_limits<uint32_t>::max)(),
-						 "Graphics queue family index is invalid; cannot create command pool");
+		SEDX_CORE_ASSERT(m_FamilyIndices.graphics != (std::numeric_limits<uint32_t>::max)(), "Graphics queue family index is invalid; cannot create command pool");
+
 		m_CmdPool = CommandPool(m_Device, m_FamilyIndices.graphics, CommandPoolType::Resettable);
 		SEDX_CORE_TRACE_TAG("QueueManager", "Command pool created for graphics queue family {}", m_FamilyIndices.graphics);
 
@@ -345,15 +343,15 @@ namespace SceneryEditorX
 	
 	void QueueManager::AllocateQueue(QueueType type, uint32_t preAllocCmdList, const char *name)
 	{
-	    //SEDX_PROFILE_SCOPE("QueueManager::AllocateQueue");
+		SEDX_PROFILE_FUNC("QueueManager::AllocateQueue");
 	
-	    // Validate queue type
-	    const uint32_t typeIndex = static_cast<uint32_t>(type);
-        if (typeIndex >= m_GPUQueues.size())
-	    {
-	        SEDX_CORE_ERROR_TAG("QueueManager", "Invalid queue type requested: {}", QueueToString(static_cast<QueueType>(typeIndex)));
-           return;
-	    }
+		// Validate queue type
+		const uint32_t typeIndex = static_cast<uint32_t>(type);
+		if (typeIndex >= m_GPUQueues.size())
+		{
+			SEDX_CORE_ERROR_TAG("QueueManager", "Invalid queue type requested: {}", QueueToString(static_cast<QueueType>(typeIndex)));
+		   return;
+		}
 	
 		// Thread-safe allocation
 		std::scoped_lock lock(s_MutexAllocation);
@@ -382,396 +380,405 @@ namespace SceneryEditorX
 	
 	void QueueManager::FreeQueue(Ref<Queue> queue)
 	{
-	    if (!queue)
-	    {
-	        SEDX_CORE_WARN_TAG("QueueManager", "Attempted to free null queue");
-	        return;
-	    }
+		if (!queue)
+		{
+			SEDX_CORE_WARN_TAG("QueueManager", "Attempted to free null queue");
+			return;
+		}
 	
-	    //SEDX_PROFILE_SCOPE("QueueManager::FreeQueue");
+		SEDX_PROFILE_FUNC("QueueManager::FreeQueue");
 	
-	    QueueType type = queue->GetType();
-	    const uint32_t typeIndex = static_cast<uint32_t>(type);
+		QueueType type = queue->GetType();
+		const uint32_t typeIndex = static_cast<uint32_t>(type);
 	
-	    // Validate queue type
-        if (typeIndex >= m_GPUQueues.size())
-	    {
-	        SEDX_CORE_ERROR_TAG("QueueManager", "Invalid queue type for free: {}", QueueToString(static_cast<QueueType>(typeIndex)));
-	        return;
-	    }
+		// Validate queue type
+		if (typeIndex >= m_GPUQueues.size())
+		{
+			SEDX_CORE_ERROR_TAG("QueueManager", "Invalid queue type for free: {}", QueueToString(static_cast<QueueType>(typeIndex)));
+			return;
+		}
 	
-	    SEDX_CORE_TRACE_TAG("QueueManager", "Freeing queue of type {}", QueueToString(static_cast<QueueType>(typeIndex)));
+		SEDX_CORE_TRACE_TAG("QueueManager", "Freeing queue of type {}", QueueToString(static_cast<QueueType>(typeIndex)));
 	
-	    // Thread-safe deallocation
-	    std::scoped_lock lock(s_MutexAllocation);
+		// Thread-safe deallocation
+		std::scoped_lock lock(s_MutexAllocation);
 	
-	    // Ensure queue is idle before freeing
-	    SEDX_CORE_TRACE_TAG("QueueManager", "Freeing queue of type {}...", QueueToString(static_cast<QueueType>(typeIndex)));
-        Queue::WaitIdle(*queue);
+		// Ensure queue is idle before freeing
+		SEDX_CORE_TRACE_TAG("QueueManager", "Freeing queue of type {}...", QueueToString(static_cast<QueueType>(typeIndex)));
+		Queue::WaitIdle(*queue);
 	
-	    // Clear from tracked queues
-	    if (m_GPUQueues[typeIndex] == queue)
-	    {
-	        m_GPUQueues[typeIndex].Reset();
-	        m_GPUQueues[typeIndex] = nullptr;
+		// Clear from tracked queues
+		if (m_GPUQueues[typeIndex] == queue)
+		{
+			m_GPUQueues[typeIndex].Reset();
+			m_GPUQueues[typeIndex] = nullptr;
 	
-	        s_Regular[typeIndex].Reset();
-	        s_Regular[typeIndex] = nullptr;
-	    }
+			s_Regular[typeIndex].Reset();
+			s_Regular[typeIndex] = nullptr;
+		}
 	
-	    // Queue object will be destroyed when last reference is released
-	    SEDX_CORE_TRACE_TAG("QueueManager", "Queue freed successfully");
+		// Queue object will be destroyed when last reference is released
+		SEDX_CORE_TRACE_TAG("QueueManager", "Queue freed successfully");
 	}
 	
 	void QueueManager::WaitIdleAll(const bool flush)
 	{
-	    //SEDX_PROFILE_SCOPE("QueueManager::WaitIdleAll");
-	    SEDX_CORE_TRACE_TAG("QueueManager", "Waiting for all GPU queues to become idle...");
+		SEDX_PROFILE_FUNC("QueueManager::WaitIdleAll");
+		SEDX_CORE_TRACE_TAG("QueueManager", "Waiting for all GPU queues to become idle...");
 	
-	    // Thread-safe iteration with proper synchronization
-	    std::scoped_lock lock(s_MutexAllocation);
+		// Thread-safe iteration with proper synchronization
+		std::scoped_lock lock(s_MutexAllocation);
 	
-	    // Iterate all GPU queues and wait for them to become idle
-	    uint32_t idleCount = 0;
-	    for (auto &queueRef : s_Regular)
-	    {
-	        if (queueRef)
-	        {
-	            // Flush pending work and wait for completion
-	            Queue::WaitIdle(*queueRef);
-	            idleCount++;
-	            SEDX_CORE_TRACE_TAG("QueueManager", "{} queue is now idle", QueueToString(queueRef->GetType()));
-	        }
-	    }
+		// Iterate all GPU queues and wait for them to become idle
+		uint32_t idleCount = 0;
+		for (auto &queueRef : s_Regular)
+		{
+			if (queueRef)
+			{
+				// Flush pending work and wait for completion
+				Queue::WaitIdle(*queueRef);
+				idleCount++;
+				SEDX_CORE_TRACE_TAG("QueueManager", "{} queue is now idle", QueueToString(queueRef->GetType()));
+			}
+		}
 	
-	    SEDX_CORE_TRACE_TAG("QueueManager", "{} queues are now idle", idleCount);
+		SEDX_CORE_TRACE_TAG("QueueManager", "{} queues are now idle", idleCount);
 	
-	    // After queues are idle it's safe to destroy thread-local command pools and
-	    // any Vulkan command pools owned by the CommandBuffer/CommandPool system.
-	    // This ensures no pending GPU work is using these resources.
+		// After queues are idle it's safe to destroy thread-local command pools and
+		// any Vulkan command pools owned by the CommandBuffer/CommandPool system.
+		// This ensures no pending GPU work is using these resources.
 	}
 
 	Ref<Queue> *QueueManager::GetQueue(QueueType type)
 	{
-	    const uint32_t idx = static_cast<uint32_t>(type);
-	    if (idx >= m_GPUQueues.size())
-	    {
-	        SEDX_CORE_WARN_TAG("QueueManager", "GetQueue called with out-of-range queue type {}", QueueToString(static_cast<QueueType>(idx)));
-	        return nullptr;
-	    }
+		const uint32_t idx = static_cast<uint32_t>(type);
+		if (idx >= m_GPUQueues.size())
+		{
+			SEDX_CORE_WARN_TAG("QueueManager", "GetQueue called with out-of-range queue type {}", QueueToString(static_cast<QueueType>(idx)));
+			return nullptr;
+		}
 	
-	    SEDX_CORE_TRACE_TAG("QueueManager", "Returning queue for type {}", QueueToString(static_cast<QueueType>(idx)));
-	    return &m_GPUQueues[idx];
+		SEDX_CORE_TRACE_TAG("QueueManager", "Returning queue for type {}", QueueToString(static_cast<QueueType>(idx)));
+		return &m_GPUQueues[idx];
 	}
 	
 	uint32_t QueueManager::GetFamilyIndex(const Ref<Queue> &queue)
 	{
-        if (!queue)
-        {
-            SEDX_CORE_WARN_TAG("QueueManager", "GetFamilyIndex called with null queue");
-            return (std::numeric_limits<uint32_t>::max)();
-        }
+		if (!queue)
+		{
+			SEDX_CORE_WARN_TAG("QueueManager", "GetFamilyIndex called with null queue");
+			return (std::numeric_limits<uint32_t>::max)();
+		}
 
-        Ref<Device> device = RenderContext::Get()->GetDevice();
-        if (!device)
-        {
-            SEDX_CORE_WARN_TAG("QueueManager", "Device not available");
-            return (std::numeric_limits<uint32_t>::max)();
-        }
+		Ref<Device> device = RenderContext::Get()->GetDevice();
+		if (!device)
+		{
+			SEDX_CORE_WARN_TAG("QueueManager", "Device not available");
+			return (std::numeric_limits<uint32_t>::max)();
+		}
 
-        if (Ref<QueueManager> manager = device->GetQueueManager())
-        {
-            SEDX_CORE_TRACE_TAG("QueueManager", "Getting family index for queue type {}", QueueToString(queue->GetType()));
-            return manager->GetFamilyIndexByType(queue->GetType());
-        }
+		if (Ref<QueueManager> manager = device->GetQueueManager())
+		{
+			SEDX_CORE_TRACE_TAG("QueueManager", "Getting family index for queue type {}", QueueToString(queue->GetType()));
+			return manager->GetFamilyIndexByType(queue->GetType());
+		}
 
-        SEDX_CORE_WARN_TAG("QueueManager", "GetFamilyIndex called for unallocated queue type {}", QueueToString(queue->GetType()));
-        return (std::numeric_limits<uint32_t>::max)();
+		SEDX_CORE_WARN_TAG("QueueManager", "GetFamilyIndex called for unallocated queue type {}", QueueToString(queue->GetType()));
+		return (std::numeric_limits<uint32_t>::max)();
 	}
 	
 	VkQueue QueueManager::GetQueueHandle(const Ref<Queue> &queue)
 	{
-	    if (queue)
-	    {
-	        SEDX_CORE_TRACE_TAG("QueueManager", "Getting VkQueue handle for queue type {}", QueueToString(queue->GetType()));
-	        return static_cast<VkQueue>(Queue::GetQueueResource(queue->GetType()));
-	    }
+		if (queue)
+		{
+			SEDX_CORE_TRACE_TAG("QueueManager", "Getting VkQueue handle for queue type {}", QueueToString(queue->GetType()));
+			return static_cast<VkQueue>(Queue::GetQueueResource(queue->GetType()));
+		}
 	
-	    SEDX_CORE_WARN_TAG("QueueManager", "GetQueueHandle called with null queue");
-	    return VK_NULL_HANDLE;
+		SEDX_CORE_WARN_TAG("QueueManager", "GetQueueHandle called with null queue");
+		return VK_NULL_HANDLE;
 	}
 	
 	const Ref<Queue> *QueueManager::GetQueue(QueueType type) const
 	{
-	    const uint32_t idx = static_cast<uint32_t>(type);
-	    if (idx >= m_GPUQueues.size())
-	    {
-            SEDX_CORE_WARN_TAG("QueueManager", "GetQueue called with out-of-range queue type {}",
-				QueueToString(static_cast<QueueType>(idx)));
-
-	        return nullptr;
-	    }
+		const uint32_t idx = static_cast<uint32_t>(type);
+		if (idx >= m_GPUQueues.size())
+		{
+			SEDX_CORE_WARN_TAG("QueueManager", "GetQueue called with out-of-range queue type {}", QueueToString(static_cast<QueueType>(idx)));
+			return nullptr;
+		}
 	
-	    SEDX_CORE_TRACE_TAG("QueueManager", "Returning queue for type {}", QueueToString(static_cast<QueueType>(idx)));
-	    return &m_GPUQueues[idx];
+		SEDX_CORE_TRACE_TAG("QueueManager", "Returning queue for type {}", QueueToString(static_cast<QueueType>(idx)));
+		return &m_GPUQueues[idx];
 	}
 	
 	VkQueue QueueManager::GetQueueHandleByType(QueueType type) const
 	{
-	    if (const Ref<Queue> *queueRef = GetQueue(type); queueRef && *queueRef)
-	    {
-            SEDX_CORE_TRACE_TAG("QueueManager", "Getting VkQueue handle for queue type {}", QueueToString(type));
-	        return static_cast<VkQueue>(Queue::GetQueueResource(type));
-	    }
+		if (const Ref<Queue> *queueRef = GetQueue(type); queueRef && *queueRef)
+		{
+			SEDX_CORE_TRACE_TAG("QueueManager", "Getting VkQueue handle for queue type {}", QueueToString(type));
+			return static_cast<VkQueue>(Queue::GetQueueResource(type));
+		}
 	
-	    SEDX_CORE_WARN_TAG("QueueManager", "GetQueueHandleByType called for unallocated queue type {}", QueueToString(type));
-	    return VK_NULL_HANDLE;
+		SEDX_CORE_WARN_TAG("QueueManager", "GetQueueHandleByType called for unallocated queue type {}", QueueToString(type));
+		return VK_NULL_HANDLE;
 	}
 	
 	uint32_t QueueManager::GetFamilyIndexByType(QueueType type) const
 	{
-	    if (const Ref<Queue> *queueRef = GetQueue(type); queueRef && *queueRef)
-	    {
-	        switch (type)
-	        {
-	        case QueueType::Graphics:
-	        {
-	            SEDX_CORE_TRACE_TAG("QueueManager", "Getting family index for Graphics queue");
-	            return m_FamilyIndices.graphics;
-	        }
-	        case QueueType::Compute:
-	        {
-	            SEDX_CORE_TRACE_TAG("QueueManager", "Getting family index for Compute queue");
-	            return m_FamilyIndices.compute;
-	        }
-	        case QueueType::Transfer:
-	        {
-	            SEDX_CORE_TRACE_TAG("QueueManager", "Getting family index for Transfer queue");
-	            return m_FamilyIndices.transfer;
-	        }
-	        case QueueType::Present:
-	        {
-	            SEDX_CORE_TRACE_TAG("QueueManager", "Getting family index for Present queue");
-	            return m_FamilyIndices.present;
-	        }
-	        default:
-	        {
-	            SEDX_CORE_WARN_TAG("QueueManager", "GetFamilyIndexByType called with unknown queue type {}", static_cast<uint32_t>(type));
-	            break;
-	        }
-	        }
-	    }
+		if (const Ref<Queue> *queueRef = GetQueue(type); queueRef && *queueRef)
+		{
+			switch (type)
+			{
+				case QueueType::Graphics:
+				{
+					SEDX_CORE_TRACE_TAG("QueueManager", "Getting family index for Graphics queue");
+					return m_FamilyIndices.graphics;
+				}
+				case QueueType::Compute:
+				{
+					SEDX_CORE_TRACE_TAG("QueueManager", "Getting family index for Compute queue");
+					return m_FamilyIndices.compute;
+				}
+				case QueueType::Transfer:
+				{
+					SEDX_CORE_TRACE_TAG("QueueManager", "Getting family index for Transfer queue");
+					return m_FamilyIndices.transfer;
+				}
+				case QueueType::Present:
+				{
+					SEDX_CORE_TRACE_TAG("QueueManager", "Getting family index for Present queue");
+					return m_FamilyIndices.present;
+				}
+				default:
+				{
+					SEDX_CORE_WARN_TAG("QueueManager", "GetFamilyIndexByType called with unknown queue type {}", static_cast<uint32_t>(type));
+					break;
+				}
+			}
+		}
 	
-	    SEDX_CORE_WARN_TAG("QueueManager", "GetFamilyIndexByType called for unallocated queue type {}", static_cast<uint32_t>(type));
-	    return (std::numeric_limits<uint32_t>::max)();
+		SEDX_CORE_WARN_TAG("QueueManager", "GetFamilyIndexByType called for unallocated queue type {}", static_cast<uint32_t>(type));
+		return (std::numeric_limits<uint32_t>::max)();
 	}
 	
 	void QueueManager::AddDeletionQueue(ResourceType type, void *resource)
-    {
+	{
 		AddDeletionQueue(type, resource, VK_NULL_HANDLE);
 	}
 
 	void QueueManager::AddDeletionQueue(ResourceType type, void *resource, VmaAllocation allocation)
 	{
-	    if (!resource)
-	    {
-	        SEDX_CORE_WARN_TAG("QueueManager", "Attempted to add null resource to deletion queue");
-	        return;
-	    }
+		if (s_DeletionQueueDestroyed.load(std::memory_order_acquire))
+		{
+			SEDX_CORE_WARN_TAG("QueueManager", "AddDeletionQueue called after shutdown — resource of type {} will be leaked (static destruction order issue)", static_cast<uint32_t>(type));
+			return;
+		}
+
+		if (!resource)
+		{
+			SEDX_CORE_WARN_TAG("QueueManager", "Attempted to add null resource to deletion queue");
+			return;
+		}
 	
-	    std::scoped_lock guard(s_MutexDeletionQueue);
-        s_DeletionQueue[type].emplace_back(DeletionQueueEntry{resource, allocation});
-	    SEDX_CORE_TRACE_TAG("QueueManager", "Added resource of type {} to deletion queue", static_cast<uint32_t>(type));
+		// For image resources, ensure an allocation is provided. If not, log and skip enqueueing
+		if (type == ResourceType::Image && allocation == VK_NULL_HANDLE)
+		{
+			SEDX_CORE_ERROR_TAG("QueueManager", "Attempted to enqueue Image for deletion without VMA allocation; skipping to avoid crash");
+			return;
+		}
+
+		std::scoped_lock guard(s_MutexDeletionQueue);
+		s_DeletionQueue[type].emplace_back(DeletionQueueEntry{resource, allocation});
+		SEDX_CORE_TRACE_TAG("QueueManager", "Added resource of type {} to deletion queue", static_cast<uint32_t>(type));
 	}
 	
 	void QueueManager::ParseDeletionQueue()
 	{
-	    Ref<Device> device = RenderContext::Get()->GetDevice();
-	    std::scoped_lock guard(s_MutexDeletionQueue);
+		Ref<Device> device = RenderContext::Get()->GetDevice();
+		std::scoped_lock guard(s_MutexDeletionQueue);
 	
-	    for (auto &it : s_DeletionQueue)
-	    {
-	        ResourceType type = it.first;
-            for (const auto &entry : it.second)
-	        {
-                void *resource = entry.resource;
-	            switch (type)
-	            {
-                case ResourceType::Image: Buffer::FreeImageBuffer(static_cast<VkImage>(resource), entry.allocation);
-	                break;
-	            case ResourceType::ImageView:
-	                vkDestroyImageView(device->GetDevice(), static_cast<VkImageView>(resource), nullptr);
-	                break;
-	            case ResourceType::Sampler:
-	                vkDestroySampler(device->GetDevice(), reinterpret_cast<VkSampler>(resource), nullptr);
-	                break;
-                case ResourceType::Buffer: Buffer::FreeBuffer(static_cast<VkBuffer>(resource), entry.allocation);
-	                break;
-	            case ResourceType::Shader:
-	                vkDestroyShaderModule(device->GetDevice(), static_cast<VkShaderModule>(resource), nullptr);
-	                break;
-	            case ResourceType::Semaphore:
-	                vkDestroySemaphore(device->GetDevice(), static_cast<VkSemaphore>(resource), nullptr);
-	                break;
-	            case ResourceType::Fence:
-	                vkDestroyFence(device->GetDevice(), static_cast<VkFence>(resource), nullptr);
-	                break;
-	            case ResourceType::DescriptorSetLayout:
-	                vkDestroyDescriptorSetLayout(device->GetDevice(), static_cast<VkDescriptorSetLayout>(resource), nullptr);
-	                break;
-	            case ResourceType::DescriptorPool:
-					vkDestroyDescriptorPool(device->GetDevice(), static_cast<VkDescriptorPool>(resource), nullptr);
-                    break;
-	            case ResourceType::QueryPool:
-	                vkDestroyQueryPool(device->GetDevice(), static_cast<VkQueryPool>(resource), nullptr);
-	                break;
-	            case ResourceType::Pipeline:
-	                vkDestroyPipeline(device->GetDevice(), static_cast<VkPipeline>(resource), nullptr);
-	                break;
-	            case ResourceType::PipelineLayout:
-	                vkDestroyPipelineLayout(device->GetDevice(), static_cast<VkPipelineLayout>(resource), nullptr);
-	                break;
-	            case ResourceType::UniformBuffer:
-                    break;
-	            case ResourceType::UniformBufferSet:
+		for (auto &it : s_DeletionQueue)
+		{
+			ResourceType type = it.first;
+			for (const auto &entry : it.second)
+			{
+				void *resource = entry.resource;
+				switch (type)
+				{
+				case ResourceType::Image: Buffer::FreeImageBuffer(static_cast<VkImage>(resource), entry.allocation);
 					break;
-	            case ResourceType::AccelerationStructure: /*functions::destroy_acceleration_structure(device->GetDevice(), static_cast<VkAccelerationStructureKHR>(resource), nullptr);*/
-	                break;
-	            default:
-	                SEDX_CORE_ASSERT(false, "Unknown resource");
-	                break;
-                case ResourceType::Unknown:
-                    break;
-                case ResourceType::PhysicalDevice:
-                    break;
-                case ResourceType::Device:
-                    break;
-                case ResourceType::Queue:
-                    break;
-                case ResourceType::CommandBuffer:
-                    break;
-                case ResourceType::DeviceMemory:
-                    break;
-                case ResourceType::Event:
-                    break;
-                case ResourceType::PipelineCache:
-                    break;
-                case ResourceType::RenderPass:
-                    break;
-                case ResourceType::DescriptorSet:
-                    break;
-                case ResourceType::CommandPool:
-                    break;
-                case ResourceType::DebugCallback:
-                    break;
-                case ResourceType::StorageBuffer:
-                    break;
-                case ResourceType::StorageBufferSet:
-                    break;
-                case ResourceType::Texture2D:
-                    break;
-                case ResourceType::TextureCube:
-                    break;
-                case ResourceType::Image2D:
-                    break;
-                case ResourceType::CommandList:
-                    break;
-                case ResourceType::MaxEnum:
-                    break;
-                }
+				case ResourceType::ImageView:
+					vkDestroyImageView(device->GetDevice(), static_cast<VkImageView>(resource), nullptr);
+					break;
+				case ResourceType::Sampler:
+					vkDestroySampler(device->GetDevice(), reinterpret_cast<VkSampler>(resource), nullptr);
+					break;
+				case ResourceType::Buffer: Buffer::FreeBuffer(static_cast<VkBuffer>(resource), entry.allocation);
+					break;
+				case ResourceType::Shader:
+					vkDestroyShaderModule(device->GetDevice(), static_cast<VkShaderModule>(resource), nullptr);
+					break;
+				case ResourceType::Semaphore:
+					vkDestroySemaphore(device->GetDevice(), static_cast<VkSemaphore>(resource), nullptr);
+					break;
+				case ResourceType::Fence:
+					vkDestroyFence(device->GetDevice(), static_cast<VkFence>(resource), nullptr);
+					break;
+				case ResourceType::DescriptorSetLayout:
+					vkDestroyDescriptorSetLayout(device->GetDevice(), static_cast<VkDescriptorSetLayout>(resource), nullptr);
+					break;
+				case ResourceType::DescriptorPool:
+					vkDestroyDescriptorPool(device->GetDevice(), static_cast<VkDescriptorPool>(resource), nullptr);
+					break;
+				case ResourceType::QueryPool:
+					vkDestroyQueryPool(device->GetDevice(), static_cast<VkQueryPool>(resource), nullptr);
+					break;
+				case ResourceType::Pipeline:
+					vkDestroyPipeline(device->GetDevice(), static_cast<VkPipeline>(resource), nullptr);
+					break;
+				case ResourceType::PipelineLayout:
+					vkDestroyPipelineLayout(device->GetDevice(), static_cast<VkPipelineLayout>(resource), nullptr);
+					break;
+				case ResourceType::UniformBuffer:
+				case ResourceType::UniformBufferSet:
+				case ResourceType::AccelerationStructure: /*functions::destroy_acceleration_structure(device->GetDevice(), static_cast<VkAccelerationStructureKHR>(resource), nullptr);*/
+				case ResourceType::PhysicalDevice:
+				case ResourceType::Device:
+				case ResourceType::Queue:
+				case ResourceType::CommandBuffer:
+				case ResourceType::DeviceMemory:
+				case ResourceType::Event:
+				case ResourceType::PipelineCache:
+				case ResourceType::RenderPass:
+				case ResourceType::DescriptorSet:
+				case ResourceType::CommandPool:
+				case ResourceType::DebugCallback:
+				case ResourceType::StorageBuffer:
+				case ResourceType::StorageBufferSet:
+				case ResourceType::Texture2D:
+				case ResourceType::TextureCube:
+				case ResourceType::Image2D:
+				case ResourceType::CommandList:
+				case ResourceType::Unknown:
+				default: SEDX_CORE_ASSERT(false, "Unknown resource");
+					break;
+
+				case ResourceType::MaxEnum:  SEDX_CORE_ERROR_TAG("QueueManager","Encountered resource type of MaxEnum");
+					break;
+				}
+
+				// delete descriptor sets which are now invalid (because they are referring to a deleted resource)
+				if (type == ResourceType::ImageView || type == ResourceType::Buffer)
+				{
+					for (auto it = BindlessManager::GetDescriptorSets().begin(); it != BindlessManager::GetDescriptorSets().end();)
+					{
+						if (it->second.IsReferringToResource(resource))
+						{
+							it = BindlessManager::GetDescriptorSets().erase(it);
+							// ideally the descriptor set pool is not oblivious to the fact that we don't use this set anymore
+							// maybe after a certain number of deletions we reset the entire pool to free memory
+						}
+						else
+						{
+							++it;
+						}
+					}
+				}
 	
-	            /*
-	            // delete descriptor sets which are now invalid (because they are referring to a deleted resource)
-	            if (type == ResourceType::ImageView || type == ResourceType::Buffer)
-	            {
-	                for (auto it = Descriptor::sets.begin(); it != Descriptor::sets.end();)
-	                {
-	                    if (it->second.IsReferingToResource(resource))
-	                    {
-	                        it = Descriptor::sets.erase(it);
-	                        // ideally the descriptor set pool is not oblivious to the fact that we don't use this set anymore
-	                        // maybe after a certain number of deletions we reset the entire pool to free memory
-	                    }
-	                    else
-	                    {
-	                        ++it;
-	                    }
-	                }
-	            }
-	            */
+				// samplers are bindless so they just update the set again
+			}
+		}
 	
-	            // samplers are bindless so they just update the set again
-	        }
-	    }
-	
-	    SEDX_CORE_TRACE_TAG("QueueManager", "Cleared deletion queue after parsing");
-	    s_DeletionQueue.clear();
-	    device.Reset();
+		SEDX_CORE_TRACE_TAG("QueueManager", "Cleared deletion queue after parsing");
+		s_DeletionQueue.clear();
+		device.Reset();
 	}
-	
+
+	void QueueManager::NotifyShutdown()
+	{
+		s_DeletionQueueDestroyed.store(true, std::memory_order_release);
+		SEDX_CORE_INFO_TAG("QueueManager", "Deletion queue marked as shut down; late AddDeletionQueue calls will be dropped");
+	}
+
 	bool QueueManager::NeedToParseDeletionQueue()
 	{
-	    static uint32_t framesEquilibrium = 0;
-	    static uint32_t objectsToDeletePrevious = 0;
+		static uint32_t framesEquilibrium = 0;
+		static uint32_t objectsToDeletePrevious = 0;
 	
-	    // count deletions in the queue
-	    uint32_t objectsToDelete = 0;
-	    for (uint32_t i = 0; i < static_cast<uint32_t>(ResourceType::MaxEnum); i++)
-	    {
-	        objectsToDelete += static_cast<uint32_t>(s_DeletionQueue[static_cast<ResourceType>(i)].size());
-	        SEDX_CORE_TRACE_TAG("QueueManager", "ResourceType {} has {} objects pending deletion", i, s_DeletionQueue[static_cast<ResourceType>(i)].size());
-	    }
+		// count deletions in the queue
+		uint32_t objectsToDelete = 0;
+
+		// Acquire the same mutex used by AddDeletionQueue / ParseDeletionQueue
+		std::scoped_lock guard(s_MutexDeletionQueue);
+
+		for (uint32_t i = 0; i < static_cast<uint32_t>(ResourceType::MaxEnum); ++i)
+		{
+			auto it = s_DeletionQueue.find(static_cast<ResourceType>(i));
+			if (it != s_DeletionQueue.end())
+			{
+				objectsToDelete += static_cast<uint32_t>(it->second.size());
+				SEDX_CORE_TRACE_TAG("QueueManager", "ResourceType {} has {} objects pending deletion", i, it->second.size());
+			}
+			else
+			{
+				SEDX_CORE_TRACE_TAG("QueueManager", "ResourceType {} has 0 objects pending deletion", i);
+			}
+		}
 	
-	    // check if the number of objects to delete has remained unchanged
-	    if (objectsToDelete > 0 && objectsToDelete == objectsToDeletePrevious)
-	    {
-	        framesEquilibrium++;
+		// check if the number of objects to delete has remained unchanged
+		if (objectsToDelete > 0 && objectsToDelete == objectsToDeletePrevious)
+		{
+			framesEquilibrium++;
 	
-	        // if it’s been stable for frame_self life frames, reset counter and delete
-	        if (framesEquilibrium >= 100) // Renderer resource frame lifetime
-	        {
-	            framesEquilibrium = 0;
-	            return true;
-	        }
+			// if it’s been stable for frame_self life frames, reset counter and delete
+			if (framesEquilibrium >= 100) // Renderer resource frame lifetime
+			{
+				framesEquilibrium = 0;
+				return true;
+			}
 	
-	        SEDX_CORE_TRACE_TAG("QueueManager", "Deletion queue stable for {} frames with {} objects pending deletion", framesEquilibrium, objectsToDelete);
-	    }
-	    else
-	    {
-	        SEDX_CORE_TRACE_TAG("QueueManager", "Deletion queue changed or empty at frame {} with {} objects pending deletion", framesEquilibrium, objectsToDelete);
-	        framesEquilibrium = 0; // Reset counter if the count changed or if nothing is in the queue
-	    }
+			SEDX_CORE_TRACE_TAG("QueueManager", "Deletion queue stable for {} frames with {} objects pending deletion", framesEquilibrium, objectsToDelete);
+		}
+		else
+		{
+			SEDX_CORE_TRACE_TAG("QueueManager", "Deletion queue changed or empty at frame {} with {} objects pending deletion", framesEquilibrium, objectsToDelete);
+			framesEquilibrium = 0; // Reset counter if the count changed or if nothing is in the queue
+		}
+
+		objectsToDeletePrevious = objectsToDelete; // Update the previous object count to the current count
+		SEDX_CORE_TRACE_TAG("QueueManager", "Updated previous deletion count to {}", objectsToDeletePrevious);
 	
-	    
-	    objectsToDeletePrevious = objectsToDelete; // Update the previous object count to the current count
-	    SEDX_CORE_TRACE_TAG("QueueManager", "Updated previous deletion count to {}", objectsToDeletePrevious);
-	
-	    return false;
+		return false;
 	}
 	
-    CommandList* QueueManager::NextCommandList()
-    {
-        m_Index = (m_Index + 1) % static_cast<uint32_t>(m_CmdLists.size());
-        auto& cmdList = m_CmdLists[m_Index];
+	CommandList* QueueManager::NextCommandList()
+	{
+		// Advance index to the next candidate and search for an idle list.
+		m_Index = (m_Index + 1) % static_cast<uint32_t>(m_CmdLists.size());
+		auto& cmdList = m_CmdLists[m_Index];
+		if (m_CmdLists.empty())
+		{
+			SEDX_CORE_TRACE_TAG("QueueManager", "No command lists available");
+			return nullptr;
+		}
+		
+		// submit any pending work (toggling between fullscreen and windowed mode can leave work)
+		if (cmdList->GetState() == CommandState::Recording)
+		{
+			cmdList->Submit(0, false);
+		}
 
-        SEDX_CORE_ASSERT(cmdList, "CommandList at index {} is null, m_CmdLists was not initialized", m_Index.load());
+		// with enough command lists available, there is no wait time
+		if (cmdList->GetState() == CommandState::Submitted)
+		{
+			cmdList->WaitForExecution();
+		}
 
-        // submit any pending work (toggling between fullscreen and windowed mode can leave work)
-        if (cmdList->GetState() == CommandState::Recording)
-        {
-            cmdList->Submit(0, false);
-        }
+		SEDX_CORE_ASSERT(cmdList->GetState() == CommandState::Idle, "Command list should be idle after waiting for execution");
 
-        // with enough command lists available, there is no wait time
-        if (cmdList->GetState() == CommandState::Submitted)
-        {
-            cmdList->WaitForExecution();
-        }
-
-        SEDX_CORE_ASSERT(cmdList->GetState() == CommandState::Idle);
-
-        return cmdList.Get();
-    }
+		return cmdList.Get();
+	}
 
 }
 

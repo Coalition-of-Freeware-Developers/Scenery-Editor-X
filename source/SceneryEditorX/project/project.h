@@ -31,7 +31,7 @@
 #pragma once
 #include "project_settings.h"
 #include <filesystem>
-#include <SceneryEditorX/asset/asset_manager.h>
+#include <SceneryEditorX/asset/manager/asset_manager.h>
 
 // -------------------------------------------------------
 
@@ -52,10 +52,11 @@ namespace SceneryEditorX
 
 		static void SetActive(Ref<Project> &project);
 
-		void CreateProject(std::string name, std::filesystem::path path);
+		static void CreateProject(std::string name, std::filesystem::path path);
 
-		void Load(const std::filesystem::path &inPath);
-		void Save(const std::filesystem::path &inPath);
+		static void Load(const std::filesystem::path &inPath);
+
+		static void Save(const std::filesystem::path &inPath);
 
 		static Ref<AssetManager> GetAssetManager() { return m_AssetManager; }
 

@@ -35,42 +35,46 @@
 
 namespace SceneryEditorX
 {
-    struct SamplerSpec
+	/**
+	 * @struct SamplerSpec
+	 * @brief 
+	 */
+	struct SamplerSpec
 	{
-	    VkFilter min                        = VK_FILTER_NEAREST;
-        VkFilter mag                        = VK_FILTER_NEAREST;
-        VkSamplerMipmapMode mipMap          = VK_SAMPLER_MIPMAP_MODE_NEAREST;
-        VkSamplerAddressMode addressMode    = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        VkCompareOp compareFunc             = VK_COMPARE_OP_ALWAYS;
-        float anisotropy                    = 0.0f;
-        bool compareEnabled                 = false;
-        float mipLodBias                    = 0.0f;
+		VkFilter min                        = VK_FILTER_NEAREST;
+		VkFilter mag                        = VK_FILTER_NEAREST;
+		VkSamplerMipmapMode mipMap          = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+		VkSamplerAddressMode addressMode    = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		VkCompareOp compareFunc             = VK_COMPARE_OP_ALWAYS;
+		float anisotropy                    = 0.0f;
+		bool compareEnabled                 = false;
+		float mipLodBias                    = 0.0f;
 	};
 
-    class Sampler : public SharedObject
+	/**
+	 * @class Sampler
+	 * @brief 
+	 */
+	class Sampler : public SharedObject
 	{
 	public:
 		Sampler(const SamplerSpec& spec);
-        virtual ~Sampler() override;
+		virtual ~Sampler() override;
 
-		Sampler(const Sampler&);
-		Sampler& operator=(const Sampler&);
-		Sampler(Sampler&&) noexcept;
-        Sampler &operator=(Sampler &&) noexcept;
-
+		VkSampler Get()								const { return m_Sampler; }
 		VkFilter GetFilterMin()						const { return m_Spec.min; }
-        VkFilter GetFilterMag()						const { return m_Spec.mag; }
-        VkSamplerMipmapMode GetFilterMipmap()		const { return m_Spec.mipMap; }
-        VkSamplerAddressMode GetAddressMode()		const { return m_Spec.addressMode; }
-        VkCompareOp GetComparisonFunction()			const { return m_Spec.compareFunc; }
-        bool GetAnisotropyEnabled()                 const { return m_Spec.anisotropy != 0; }
-        bool GetComparisonEnabled()                 const { return m_Spec.compareEnabled; }
-    protected:
-        VkSamplerAddressMode m_SamplerAddrMode = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		VkFilter GetFilterMag()						const { return m_Spec.mag; }
+		VkSamplerMipmapMode GetFilterMipmap()		const { return m_Spec.mipMap; }
+		VkSamplerAddressMode GetAddressMode()		const { return m_Spec.addressMode; }
+		VkCompareOp GetComparisonFunction()			const { return m_Spec.compareFunc; }
+		bool GetAnisotropyEnabled()                 const { return m_Spec.anisotropy != 0; }
+		bool GetComparisonEnabled()                 const { return m_Spec.compareEnabled; }
+	protected:
+		VkSamplerAddressMode m_SamplerAddrMode = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 
 	private:
-        SamplerSpec m_Spec;
-        VkSampler m_Sampler	= nullptr;
+		SamplerSpec m_Spec;
+		VkSampler m_Sampler	= nullptr;
 	};
 
 }

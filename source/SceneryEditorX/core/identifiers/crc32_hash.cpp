@@ -61,24 +61,24 @@
 /*
 std::array<uint32_t, 256> gen_crc32_table()
 {
-    constexpr int num_bytes = 256;
-    std::array<uint32_t, num_bytes> crc32_table{};
+	constexpr int num_bytes = 256;
+	std::array<uint32_t, num_bytes> crc32_table{};
 
-    for (int byte = 0; byte < num_bytes; ++byte)
+	for (int byte = 0; byte < num_bytes; ++byte)
 	{
-        constexpr int num_iterations = 8;
-        uint32_t crc = static_cast<uint32_t>(byte);
-        for (int i = 0; i < num_iterations; ++i)
+		constexpr int num_iterations = 8;
+		uint32_t crc = static_cast<uint32_t>(byte);
+		for (int i = 0; i < num_iterations; ++i)
 		{
-            constexpr uint32_t polynomial = 0xEDB88320;
-            const int mask = -((int)crc & 1);  // Create mask: -1 if LSB set, 0 otherwise
-            crc = (crc >> 1) ^ (polynomial & mask);  // Shift right and conditionally XOR
-        }
+			constexpr uint32_t polynomial = 0xEDB88320;
+			const int mask = -((int)crc & 1);  // Create mask: -1 if LSB set, 0 otherwise
+			crc = (crc >> 1) ^ (polynomial & mask);  // Shift right and conditionally XOR
+		}
 
-        crc32_table[byte] = crc;
-    }
+		crc32_table[byte] = crc;
+	}
 
-    return crc32_table;
+	return crc32_table;
 }
 */
 
@@ -98,77 +98,77 @@ std::array<uint32_t, 256> gen_crc32_table()
 namespace SceneryEditorX
 {
 
-    /**
-     * @brief Calculates the CRC32 hash value for a null-terminated C-style string.
-     *
-     * This function implements the CRC32 algorithm using the precomputed lookup table
-     * for efficient calculation. It processes the string character by character until
-     * the null terminator is encountered.
-     *
-     * The algorithm:
-     * 1. Initialize CRC to 0xFFFFFFFF (all bits set)
-     * 2. For each character in the string:
-     *    - XOR character with low 8 bits of CRC
-     *    - Use result as index into lookup table
-     *    - XOR table value with CRC shifted right by 8 bits
-     * 3. Return bitwise NOT of final CRC value
-     *
-     * @param str Null-terminated C-style string to hash
-     * @return uint32_t 32-bit CRC32 hash value
-     *
-     * @note - Uses IEEE 802.3 CRC32 polynomial (0xEDB88320) in reflected form
-     * @note - Final result is bitwise inverted as per CRC32 standard
-     *
-     * @warning Input string must be null-terminated to avoid undefined behavior
-     *
-     * @example
-     * @code
-     * const char* filename = "scene.edx";
-     * uint32_t fileHash = Hash::CRC32(filename);
-     * @endcode
-     */
+	/**
+	 * @brief Calculates the CRC32 hash value for a null-terminated C-style string.
+	 *
+	 * This function implements the CRC32 algorithm using the precomputed lookup table
+	 * for efficient calculation. It processes the string character by character until
+	 * the null terminator is encountered.
+	 *
+	 * The algorithm:
+	 * 1. Initialize CRC to 0xFFFFFFFF (all bits set)
+	 * 2. For each character in the string:
+	 *    - XOR character with low 8 bits of CRC
+	 *    - Use result as index into lookup table
+	 *    - XOR table value with CRC shifted right by 8 bits
+	 * 3. Return bitwise NOT of final CRC value
+	 *
+	 * @param str Null-terminated C-style string to hash
+	 * @return uint32_t 32-bit CRC32 hash value
+	 *
+	 * @note - Uses IEEE 802.3 CRC32 polynomial (0xEDB88320) in reflected form
+	 * @note - Final result is bitwise inverted as per CRC32 standard
+	 *
+	 * @warning Input string must be null-terminated to avoid undefined behavior
+	 *
+	 * @example
+	 * @code
+	 * const char* filename = "scene.edx";
+	 * uint32_t fileHash = Hash::CRC32(filename);
+	 * @endcode
+	 */
 
-    /*
-    uint32_t Hash::CRC32(const char* str)
-    {
-        auto crc = 0xFFFFFFFFu;  // Initialize to all bits set
+	/*
+	uint32_t Hash::CRC32(const char* str)
+	{
+		auto crc = 0xFFFFFFFFu;  // Initialize to all bits set
 
-        // Process string character by character until null terminator
-        for (auto i = 0u; const auto c = str[i]; ++i)
+		// Process string character by character until null terminator
+		for (auto i = 0u; const auto c = str[i]; ++i)
 		{
-            crc = crc32_table[(crc ^ c) & 0xFF] ^ (crc >> 8);
-        }
+			crc = crc32_table[(crc ^ c) & 0xFF] ^ (crc >> 8);
+		}
 
-        return ~crc;  // Return bitwise NOT of final CRC
-    }
-    */
+		return ~crc;  // Return bitwise NOT of final CRC
+	}
+	*/
 
-    /**
-     * @brief Calculates the CRC32 hash value for a std::string.
-     *
-     * This is a convenience wrapper around the C-style string CRC32 function.
-     * It automatically extracts the null-terminated C-string from the std::string
-     * and delegates to the primary CRC32 implementation.
-     *
-     * @param string Standard string object to hash
-     * @return uint32_t 32-bit CRC32 hash value
-     *
-     * @note - This function internally calls CRC32(string.c_str())
-     * @note - Inherits all properties and warnings from the C-string version
-     *
-     * @example
-     * @code
-     * std::string assetName = "building_texture";
-     * uint32_t nameHash = Hash::CRC32(assetName);
-     * @endcode
-     */
+	/**
+	 * @brief Calculates the CRC32 hash value for a std::string.
+	 *
+	 * This is a convenience wrapper around the C-style string CRC32 function.
+	 * It automatically extracts the null-terminated C-string from the std::string
+	 * and delegates to the primary CRC32 implementation.
+	 *
+	 * @param string Standard string object to hash
+	 * @return uint32_t 32-bit CRC32 hash value
+	 *
+	 * @note - This function internally calls CRC32(string.c_str())
+	 * @note - Inherits all properties and warnings from the C-string version
+	 *
+	 * @example
+	 * @code
+	 * std::string assetName = "building_texture";
+	 * uint32_t nameHash = Hash::CRC32(assetName);
+	 * @endcode
+	 */
 
-    /*
-    uint32_t Hash::CRC32(const std::string& string)
-    {
-        return CRC32(string.c_str());
-    } 
-    */
+	/*
+	uint32_t Hash::CRC32(const std::string& string)
+	{
+		return CRC32(string.c_str());
+	} 
+	*/
 
 }
 

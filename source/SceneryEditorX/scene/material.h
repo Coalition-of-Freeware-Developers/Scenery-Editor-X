@@ -1,4 +1,4 @@
-﻿/**
+/**
  * -------------------------------------------------------
  * Scenery Editor X
  * -------------------------------------------------------
@@ -37,26 +37,70 @@
 
 namespace SceneryEditorX
 {
+	class ImageResource;
+
 	/**
 	 * @enum MaterialProperty
 	 * @brief Material scalar property identifiers used by renderer passes.
 	 */
 	enum class MaterialProperty : uint8_t
 	{
-		Tessellation = 0,
-		CullMode     = 1,
-		MaxEnum		 = 255
+		Tessellation				= 0,
+		Terrain						= 1,
+		CullMode					= 2,
+		WindAnimation				= 3,
+		ColorVariationFromInstance	= 4,
+		GrassBlades					= 5,
+		Water                       = 6,
+		EmissiveFromAlbedo			= 7,
+		MaxEnum						= 255
 	};
 
 	/**
 	 * @enum MaterialTextureType
 	 * @brief Material texture slot identifiers used by renderer passes.
 	 */
-	enum class MaterialTextureType : uint8_t
+	enum class MaterialTextureType
 	{
-		Color   = 0,
-		Normal  = 1,
-		MaxEnum = 255
+		None		= 0,
+		Color		= BIT(0),
+		Normal		= BIT(1),
+		Greyscale	= BIT(2),
+		Height		= Greyscale | BIT(3),
+		Roughness	= Greyscale | BIT(4),
+		Metalness   = Greyscale | BIT(5),
+		AlphaMask	= Greyscale | BIT(6),
+		Emission	= Greyscale | BIT(7),
+		Occlusion   = Greyscale | BIT(8),
+		MaxEnum		= 255
+	};
+
+	/**
+	 * @enum MapBits
+	 * @brief Material map bit identifiers.
+	 */
+	enum class MapBits : uint8_t
+	{
+		Null				= 0,
+		Albedo				= BIT(0),
+		Color               = Albedo,
+		Normal				= BIT(1),
+		MRAO				= BIT(2), // Metalness in R, Roughness in G, Ambient Occlusion in B
+		Emission			= BIT(3),
+		Metalness			= BIT(4),
+		Roughness			= BIT(5),
+		AlphaMask			= BIT(6),
+		AmbientOcclusion	= BIT(7),
+		Specular			= BIT(8),
+		Glossiness          = BIT(9),
+		DetailMap			= BIT(10),
+		BentNormal			= BIT(11),
+		Height				= BIT(12),
+		Mask0				= BIT(13),
+		Mask1				= BIT(14),
+		Mask2				= BIT(15),
+		Mask3				= BIT(16),
+		MaxEnum				= 255
 	};
 
 	/**
@@ -72,6 +116,40 @@ namespace SceneryEditorX
 		DisableShadowCasting	= BIT(4)
 	};
 
+	/**
+	 * @struct MaterialClass
+	 * @brief Material class identifiers used for categorizing material properties and textures in renderer passes. 
+	 */
+	enum class MaterialClass : uint8_t
+	{
+		None = 0,
+		SceneWidth,
+		SceneHeight,
+		ColorR,
+		ColorG,
+		ColorB,
+		ColorA,
+		TextureTilingX,
+		TextureTilingY,
+		TextureOffsetX,
+		TextureOffsetY,
+		TextureInvertX,
+		TextureInvertY,
+		Roughness,
+		Metalness,
+		Normal,
+		Height,
+		Anisotropic,
+		AnisotropicRotation,
+		Clearcoat,
+		Clearcoat_Roughness,
+		Sheen,
+		SubsurfaceScattering,
+		WorldSpaceUv,
+		Custom,
+		MaxEnum
+	};
+
 	// -------------------------------------------------------
 
 	/**
@@ -81,6 +159,7 @@ namespace SceneryEditorX
 	class Material : public IResource, public Asset
 	{
 	public:
+
 		explicit Material(bool transparent = false);
 		explicit Material(Ref<Material> material);
 		virtual ~Material();
@@ -100,11 +179,8 @@ namespace SceneryEditorX
 		float& GetEmission();
 		void SetEmission(float value);
 
-		virtual bool  IsTransparent() const                               { return false; }
-		virtual bool  IsAlphaTested() const                               { return false; }
-		virtual float GetProperty(MaterialProperty /*prop*/) const        { return 0.0f;  }
-		virtual uint32_t GetIndex() const                                 { return 0;     }
-		virtual bool  HasTextureOfType(MaterialTextureType /*t*/) const   { return false; }
+		virtual bool IsTransparent() const { return false; }
+		virtual bool IsAlphaTested() const { return false; }
 
 		virtual void Invalidate() = 0;
 		virtual void OnShaderReloaded() = 0;
@@ -137,12 +213,10 @@ namespace SceneryEditorX
 		virtual Mat3& GetMatrix3(const std::string& name) = 0;
 		virtual Mat4& GetMatrix4(const std::string& name) = 0;
 
-		/*
-		virtual Ref<Texture2D> GetTexture2D(const std::string& name) = 0;
-		virtual Ref<TextureCube> GetTextureCube(const std::string& name) = 0;
-		virtual Ref<Texture2D> TryGetTexture2D(const std::string& name) = 0;
-		virtual Ref<TextureCube> TryGetTextureCube(const std::string& name) = 0;
-		*/
+		virtual Ref<ImageResource> GetTexture2D(const std::string& name) = 0;
+		virtual Ref<ImageResource> GetTextureCube(const std::string& name) = 0;
+		virtual Ref<ImageResource> TryGetTexture2D(const std::string& name) = 0;
+		virtual Ref<ImageResource> TryGetTextureCube(const std::string& name) = 0;
 
 #if 0
 		template<typename T>
@@ -191,13 +265,15 @@ namespace SceneryEditorX
 
 	// -------------------------------------------------------
 
-	class MaterialAsset : public Asset
+	class MaterialAsset : public IResource, public Asset
 	{
 	public:
-		MaterialAsset() : color(1.0f), emission(0.0f), metallic(0.0f), roughness(1.0f) {}
+		MaterialAsset() : IResource(ResourceType::Material), color(1.0f), emission(0.0f), metallic(0.0f), roughness(1.0f) {}
 		explicit MaterialAsset(const std::string & path);
 		virtual ~MaterialAsset() override;
 		//virtual void Serialize(Serializer &ser);
+
+		static constexpr uint32_t SLOTS_PER_TEXTURE = 4;
 
 		// -------------------------------------------------------
 
@@ -210,6 +286,7 @@ namespace SceneryEditorX
 		void OnDependencyUpdated(const AssetHandle &handle);
 		bool IsUsingNormalMap() const;
 		void SetUseNormalMap(bool value) const;
+		void PrepareForGPU();
 
 		// -------------------------------------------------------
 
@@ -228,6 +305,8 @@ namespace SceneryEditorX
 		void SetRoughnessMap(const AssetHandle &handle);
 		void SetTransparency(float transparency) const;
 		void SetEmission(float value) const;
+		void SetIndex(const uint32_t index) { m_Index = index; }
+		void SetProperty(MaterialClass materialClass, const float value);
 
 		void ClearAlbedoMap() const;
 		void ClearRoughnessMap() const;
@@ -236,16 +315,27 @@ namespace SceneryEditorX
 
 		// -------------------------------------------------------
 
-		/*
-		Ref<Texture2D> GetAlbedoMap();
-		Ref<Texture2D> GetRoughnessMap() const;
-		Ref<Texture2D> GetMetalnessMap() const;
-		Ref<Texture2D> GetNormalMap() const;
-		*/
+		virtual float GetProperty(MaterialClass /*prop*/) const { return 0.0f; }
+		virtual float GetProperty(MaterialProperty /*prop*/) const { return 0.0f; }
+		virtual uint32_t GetIndex() const { return 0; }
+		virtual bool  HasTextureOfType(MaterialTextureType /*t*/) const { return false; }
+		uint32_t GetUsedSlotCount() const;
+
+		// -------------------------------------------------------
+
+		Ref<ImageResource> GetAlbedoMap() const;
+		Ref<ImageResource> GetRoughnessMap() const;
+		Ref<ImageResource> GetMetalnessMap() const;
+		Ref<ImageResource> GetNormalMap() const;
 
 		Ref<Material> GetMaterial() const { return m_Material; }
 		void SetMaterial(const Ref<Material> &material) { m_Material = material; }
 		bool IsTransparent() const { return m_Transparent; }
+		bool IsAlphaTested() const;
+		ImageResource *GetTexture(MaterialTextureType materialTexture, uint32_t slot = 0) const;
+
+		const std::array<ImageResource*, static_cast<uint32_t>(MaterialTextureType::MaxEnum) * SLOTS_PER_TEXTURE>& GetTextures() const { return m_Textures; }
+		const std::array<float, static_cast<uint32_t>(MaterialClass::MaxEnum)>& GetProperties() const { return m_Properties; }
 
 		// -------------------------------------------------------
 
@@ -253,27 +343,36 @@ namespace SceneryEditorX
 		Vec3 emission = Vec3(0.0f);
 		float metallic = 0.0f;
 		float roughness = 1.0f;
-		/*
-		Ref<TextureAsset> aoMap;
-		Ref<TextureAsset> colorMap;
-		Ref<TextureAsset> normalMap;
-		Ref<TextureAsset> emissionMap;
-		Ref<TextureAsset> metallicRoughnessMap;
-		*/
+
+		//Ref<ImageResource> aoMap;
+		//Ref<ImageResource> colorMap;
+		//Ref<ImageResource> normalMap;
+		//Ref<ImageResource> emissionMap;
+		//Ref<ImageResource> metallicRoughnessMap;
 
 	private:
 		void SetDefaults() const;
-		std::string materialPath;
-		std::string materialName;
+		std::string m_MaterialPath;
+		std::string m_MaterialName;
 		Ref<Material> m_Material;
+		uint32_t m_Index = 0;		// index in material table, used for sorting and batching
+		std::mutex m_Mutex;			// protects m_Material and m_Textures
+		bool m_NeedsRepack = true;	// starts true so first PrepareForGpu() packs textures
 
+		/**
+		 * @struct MapAssets
+		 * @brief Holds the asset handles for the various texture maps used by a material.
+		 */
 		struct MapAssets
 		{
-			AssetHandle AlbedoMap;
-			AssetHandle NormalMap;
-			AssetHandle MetalnessMap;
-			AssetHandle RoughnessMap;
+			AssetHandle m_AlbedoMap;
+			AssetHandle m_NormalMap;
+			AssetHandle m_MetalnessMap;
+			AssetHandle m_RoughnessMap;
 		} m_Maps;
+
+		std::array<float, static_cast<uint32_t>(MaterialClass::MaxEnum)> m_Properties;
+		std::array<ImageResource*, static_cast<uint32_t>(MaterialTextureType::MaxEnum) * SLOTS_PER_TEXTURE> m_Textures;
 
 		bool m_Transparent = false;
 

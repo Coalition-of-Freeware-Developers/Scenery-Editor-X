@@ -75,7 +75,9 @@ namespace SceneryEditorX
         SelectionChanged,          // Editor selection changed.
         AssetReloaded,             // Asset was hot-reloaded.
         AnimationGraphCompiled,    // Animation graph successfully compiled.
-        ScreenshotCaptured         // Screenshot captured and stored.
+        ScreenshotCaptured,        // Screenshot captured and stored.
+        RendererOnShutdown,        // Renderer is about to shut down.
+        FirstFrameRendered         // First frame has been rendered.
     };
 
     /**
@@ -179,6 +181,17 @@ namespace SceneryEditorX
         {
             return GetCategoryFlags() & category;
         }
+
+        /**
+         * @brief Marks this event as handled or unhandled.
+         * @param handled New handled state.
+         */
+        void SetHandled(const bool handled = true) { m_Handled = handled; }
+
+        /**
+         * @brief Returns whether this event has already been handled.
+         */
+        [[nodiscard]] bool IsHandled() const { return m_Handled; }
     };
 
 
@@ -234,13 +247,17 @@ namespace SceneryEditorX
         template<typename T>
         bool Dispatch(EventFn<T> func)
         {
-            if (m_Event.GetEventType() == T::GetStaticType() && !m_Event.m_Handled)
+            if (m_Event.GetEventType() != T::GetStaticType())
             {
-                m_Event.m_Handled = func(*static_cast<T *>(&m_Event));
-                return true;
+              return false;
             }
 
-            return false;
+           if (!m_Event.IsHandled())
+            {
+                m_Event.SetHandled(func(*static_cast<T *>(&m_Event)));
+            }
+
+            return true;
         }
 
     private:

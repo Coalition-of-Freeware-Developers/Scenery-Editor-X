@@ -6,17 +6,12 @@ MESSAGE(STATUS "=================================================")
 MESSAGE(STATUS "Generating Scenery Editor X Project")
 
 # --------------------------------
-
-FILE(GLOB CORE core/*.cpp core/*.h core/*.hpp)
+FILE(GLOB CORE LIST_DIRECTORIES false CONFIGURE_DEPENDS core/*.cpp core/*.h core/*.hpp)
+FILE(GLOB CORE_CHILD_WINDOWS core/windows/*.cpp core/windows/*.h core/windows/*.hpp)
 FILE(GLOB MODULES modules/*.cpp modules/*.h modules/*.hpp)
+FILE(GLOB PANELS panels/*.cpp panels/*.h panels/*.hpp)
 FILE(GLOB PROJECT projects/*.cpp projects/*.h projects/*.hpp)
 FILE(GLOB SETTINGS settings/*.cpp settings/*.h settings/*.hpp)
-
-FILE(GLOB UI_ACTIONS ui/actions/*.cpp ui/actions/*.h ui/actions/*.hpp)
-FILE(GLOB UI_PANELS ui/panels/*.cpp ui/panels/*.h ui/panels/*.hpp)
-FILE(GLOB UI_RESOURCES ui/resources/*.cpp ui/resources/*.h ui/resources/*.hpp)
-
-SET(UI_FILES ${CMAKE_SOURCE_DIR}/source/Editor/ui)
 
 SET (PROJECT_CONFIG_FILES
 	${CMAKE_SOURCE_DIR}/.clang-format
@@ -29,22 +24,14 @@ SET (PROJECT_CONFIG_FILES
 ADD_EXECUTABLE(SceneryEditorX WIN32
 	entrypoint.cpp
 	${CORE}
+	${CORE_CHILD_WINDOWS}
 	${MODULES}
+	${PANELS}
 	${PROJECT}
 	${SETTINGS}
-	${UI_ACTIONS}
-	${UI_PANELS}
-	${UI_RESOURCES}
-	${ICON_FILES}
-	${FONT_FILES}
+
 	${PROJECT_CONFIG_FILES}
-	# --------------------------------
-	${UI_FILES}/ui.cpp
-	${UI_FILES}/ui.h
-	${UI_FILES}/ui_context.cpp
-	${UI_FILES}/ui_context.h
-	${UI_FILES}/ui_globals.cpp
-	${UI_FILES}/ui_manager.h
+
 	# --------------------------------
 	${RESOURCE_FILE}
 	SceneryEditorX.rc
@@ -55,28 +42,17 @@ ADD_EXECUTABLE(SceneryEditorX WIN32
 SOURCE_GROUP("Core" FILES
 	${CORE}
 )
+SOURCE_GROUP("Core/Windows" FILES
+	${CORE_CHILD_WINDOWS}
+)
 SOURCE_GROUP("Modules" FILES
 	${MODULES}
 )
+SOURCE_GROUP("UI Panels" FILES
+	${PANELS}
+)
 SOURCE_GROUP("Projects" FILES
 	${PROJECT}
-)
-SOURCE_GROUP("UI" FILES
-	${UI_FILES}/ui.cpp
-	${UI_FILES}/ui.h
-	${UI_FILES}/ui_context.cpp
-	${UI_FILES}/ui_context.h
-	${UI_FILES}/ui_globals.cpp
-	${UI_FILES}/ui_manager.h
-)
-SOURCE_GROUP("UI/Actions" FILES
-	${UI_ACTIONS}
-)
-SOURCE_GROUP("UI/Panels" FILES
-	${UI_PANELS}
-)
-SOURCE_GROUP("UI/Resources" FILES
-	${UI_RESOURCES}
 )
 SOURCE_GROUP("Settings" FILES
 	${SETTINGS}
@@ -99,15 +75,15 @@ TARGET_INCLUDE_DIRECTORIES(SceneryEditorX
 		${CMAKE_SOURCE_DIR}/dependency
 		${CMAKE_SOURCE_DIR}/dependency/xMath
 		${CMAKE_SOURCE_DIR}/dependency/entt/src
-		${CMAKE_SOURCE_DIR}/dependency/imgui
-		${CMAKE_SOURCE_DIR}/dependency/imgui/backends
-		${CMAKE_SOURCE_DIR}/dependency/imgui/misc
-		${CMAKE_SOURCE_DIR}/dependency/ImGuizmo
 		${CMAKE_SOURCE_DIR}/dependency/taskflow
 		${CMAKE_SOURCE_DIR}/dependency/ktx/include
 		${CMAKE_SOURCE_DIR}/dependency/ktx/other_include
+		$if(RENDERDOC_ENABLED)
+			${RENDERDOC_INCLUDE_DIRS}
+		$endif()
 		${PORTABLE_FILE_DIALOGS_INCLUDE_DIRS}
 		$ENV{VULKAN_SDK}/Include/
+		$ENV{VULKAN_SDK}/Include/vma
 		${Stb_INCLUDE_DIR}
 		${CURL_INCLUDE_DIRS}
 )
@@ -119,12 +95,10 @@ TARGET_LINK_LIBRARIES(SceneryEditorX
 		AppCore
 		nlohmann_json::nlohmann_json
 		spdlog::spdlog_header_only
-		GPUOpen::VulkanMemoryAllocator
 		CURL::libcurl
 		Vulkan::Vulkan
 		$<$<AND:$<CONFIG:Debug>,$<BOOL:${TRACY_ENABLE}>>:TracyClient>
 		ktx
-		imgui
 		libconfig
 		libconfig++
 		XPSceneryLib::XPSceneryLib
@@ -133,10 +107,18 @@ TARGET_LINK_LIBRARIES(SceneryEditorX
 		d3d12
 		Shell32.lib
 		xMath::xMath
+		Freetype::Freetype
 		edX
 )
 
 # --------------------------------
+
+IF(RENDERDOC_ENABLE)
+	TARGET_COMPILE_DEFINITIONS(SceneryEditorX
+		PRIVATE
+			RENDERDOC_ENABLED
+	)
+ENDIF()
 
 TARGET_COMPILE_DEFINITIONS(SceneryEditorX
 	PUBLIC
@@ -145,6 +127,7 @@ TARGET_COMPILE_DEFINITIONS(SceneryEditorX
 		$<$<CONFIG:Release>:SEDX_RELEASE>
 		SPDLOG_USE_STD_FORMAT
 		VK_USE_PLATFORM_WIN32_KHR
+		VK_USE_64_BIT_NON_DISPATCHABLE_HANDLES
 		CURL_STATICLIB
 )
 

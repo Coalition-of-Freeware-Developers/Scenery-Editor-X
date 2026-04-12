@@ -23,6 +23,7 @@ ENDIF()
 SET(CMAKE_CONFIGURATION_TYPES Debug Release CACHE STRING INTERNAL FORCE)
 SET(CMAKE_SUPPRESS_DEVELOPER_WARNINGS 1 CACHE INTERNAL "No dev warnings")
 SET(VCPKG_INSTALL_OPTIONS --no-print-usage)
+SET(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 SET_PROPERTY(GLOBAL PROPERTY USE_FOLDERS ON) # Remove when min is 3.26, see CMP0143
 SET_PROPERTY(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT SceneryEditorX)
 SET_PROPERTY(GLOBAL PROPERTY PREDEFINED_TARGETS_FOLDER "_CMakePredefinedTargets")
@@ -211,8 +212,8 @@ ENDFUNCTION()
 OPTION(SEDX_ENABLE_TESTS              	"Build test targets" OFF)
 OPTION(SEDX_ENABLE_DOXYGEN            	"Build Doxygen documentation" OFF)
 OPTION(SEDX_ENABLE_VERSION_INCREMENT 	"Enable automatic semantic versioning, increment on build" OFF)
-OPTION(SEDX_BUILD_IMGUI               	"Build Dear ImGui (bundled sources)" ON)
-OPTION(SEDX_WITH_IMGUI_DEMO           	"Compile ImGui demo window" ON)
+OPTION(SEDX_BUILD_IMGUI               	"Build Dear ImGui (bundled sources)" OFF)
+OPTION(SEDX_WITH_IMGUI_DEMO           	"Compile ImGui demo window" OFF)
 OPTION(SEDX_USE_SYSTEM_SDL           	"Prefer system-provided sdl3 package" OFF)
 OPTION(SEDX_USE_SYSTEM_JSON           	"Prefer system-provided nlohmann_json package" OFF)
 OPTION(SEDX_USE_SYSTEM_ENTT           	"Prefer system-provided EnTT package" OFF)
@@ -223,6 +224,7 @@ OPTION(SEDX_USE_FETCHCONTENT_XPLIB    	"Fetch X-PlaneSceneryLibrary via FetchCon
 #OPTION(SEDX_PROFILING_ENABLED 			"Enable profiling features (Tracy, etc.)" ON)
 OPTION(TRACY_ENABLE 					"Enable Tracy profiler" OFF)
 OPTION(SEDX_USE_FETCHCONTENT_TRACY    	"Fetch Tracy via FetchContent" ON)
+OPTION(RENDERDOC_ENABLE 				"Enable RenderDoc tooling integration for graphics debugging" ON)
 #OPTION(SEDX_ENABLE_MSDFGEN            	"Enable msdfgen usage" ON)
 
 SET(XMATH_BUILD_TESTS OFF CACHE BOOL "Build xMath tests" FORCE)
@@ -234,6 +236,31 @@ SET(XMATH_VENDOR_DEPS OFF CACHE BOOL "Vendor deps for xMath" FORCE)
 IF(SEDX_ENABLE_DOXYGEN)
 	INCLUDE(cmake/doxygen.cmake)
 ENDIF()
+
+# Prefer VMA headers from the Vulkan SDK to avoid ABI mismatches between
+# multiple copies (vcpkg vs SDK). If VULKAN_SDK environment variable is set
+# and the VMA include folder exists there, add it to the front of include
+# search paths for the main target and force consistent VMA call macros.
+if(DEFINED ENV{VULKAN_SDK})
+	set(_VULKAN_SDK_PATH $ENV{VULKAN_SDK})
+	set(_VMA_SDK_INCLUDE "${_VULKAN_SDK_PATH}/Include/vma")
+	if(EXISTS "${_VMA_SDK_INCLUDE}")
+		message(STATUS "Using VMA headers from Vulkan SDK: ${_VMA_SDK_INCLUDE}")
+		# Ensure SDK VMA headers are searched before other include paths
+		include_directories(BEFORE SYSTEM "${_VMA_SDK_INCLUDE}")
+
+		# Force consistent VMA call decoration across all translation units
+		# and avoid differing decorations from vcpkg or other copies.
+		add_compile_definitions(VMA_CALL_PRE= VMA_CALL_POST=)
+
+		# Also expose a variable so per-target configuration can reuse it if needed
+		set(VMA_SDK_INCLUDE_DIR "${_VMA_SDK_INCLUDE}" CACHE INTERNAL "VMA include directory from Vulkan SDK")
+	else()
+		message(STATUS "VMA include not found in VULKAN_SDK (${_VULKAN_SDK_PATH}), falling back to default include paths")
+	endif()
+else()
+	message(STATUS "VULKAN_SDK not defined in environment; using default include paths (vcpkg or system)")
+endif()
 
 # ###########################################
 # Tracy Profiler (optional)
@@ -250,6 +277,14 @@ IF(TRACY_ENABLE)
 			ENDIF()
 		ENDFOREACH()
 	ENDIF()
+ENDIF()
+
+# ###########################################
+# RenderDoc Tooling (optional)
+# ###########################################
+IF(RENDERDOC_ENABLE)
+	ADD_COMPILE_DEFINITIONS(RENDERDOC_TOOLING_ENABLED)
+	SET(RENDERDOC_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/dependency/renderdoc)
 ENDIF()
 
 ############################################
@@ -295,11 +330,11 @@ MESSAGE(STATUS "=================================================")
 # Packages and dependencies
 ############################################
 FIND_PACKAGE(Vulkan REQUIRED)
+FIND_PACKAGE(Freetype REQUIRED)
 FIND_PACKAGE(Stb REQUIRED)
 FIND_PACKAGE(spdlog CONFIG REQUIRED)
 FIND_PACKAGE(msdfgen CONFIG REQUIRED)
 FIND_PACKAGE(Doxygen QUIET)
-FIND_PACKAGE(VulkanMemoryAllocator CONFIG REQUIRED)
 FIND_PACKAGE(CURL CONFIG REQUIRED)
 FIND_LIBRARY(Slang_LIBRARY NAMES slang HINTS "$ENV{VULKAN_SDK}/lib" REQUIRED)
 FIND_PATH(PORTABLE_FILE_DIALOGS_INCLUDE_DIRS "portable-file-dialogs.h") # Portable File Dialogs header-only
@@ -549,29 +584,30 @@ ENDIF()
 ############################################
 # ImGui (system or bundled sources)
 ############################################
-IF(SEDX_BUILD_IMGUI)
-	ADD_LIBRARY(imgui
-		${CMAKE_SOURCE_DIR}/dependency/imgui/imgui.cpp
-		${CMAKE_SOURCE_DIR}/dependency/imgui/imgui_draw.cpp
-		${CMAKE_SOURCE_DIR}/dependency/imgui/imgui_widgets.cpp
-		${CMAKE_SOURCE_DIR}/dependency/imgui/imgui_tables.cpp
-		$<$<BOOL:${SEDX_WITH_IMGUI_DEMO}>:${CMAKE_SOURCE_DIR}/dependency/imgui/imgui_demo.cpp>
-		${CMAKE_SOURCE_DIR}/dependency/imgui/backends/imgui_impl_sdl3.cpp
-		${CMAKE_SOURCE_DIR}/dependency/imgui/backends/imgui_impl_vulkan.cpp
-	)
-	TARGET_INCLUDE_DIRECTORIES(imgui
-		PRIVATE
-			${CMAKE_SOURCE_DIR}/dependency/imgui
-			${CMAKE_SOURCE_DIR}/dependency/imgui/backends
-			${CMAKE_SOURCE_DIR}/dependency/imgui/misc
-	)
-	TARGET_LINK_LIBRARIES(imgui
-		PRIVATE
-			SDL3::SDL3
-			Vulkan::Vulkan
-			GPUOpen::VulkanMemoryAllocator
-	)
-ENDIF()
+
+#IF(SEDX_BUILD_IMGUI)
+#	ADD_LIBRARY(imgui
+#		${CMAKE_SOURCE_DIR}/dependency/imgui/imgui.cpp
+#		${CMAKE_SOURCE_DIR}/dependency/imgui/imgui_draw.cpp
+#		${CMAKE_SOURCE_DIR}/dependency/imgui/imgui_widgets.cpp
+#		${CMAKE_SOURCE_DIR}/dependency/imgui/imgui_tables.cpp
+#		$<$<BOOL:${SEDX_WITH_IMGUI_DEMO}>:${CMAKE_SOURCE_DIR}/dependency/imgui/imgui_demo.cpp>
+#		${CMAKE_SOURCE_DIR}/dependency/imgui/backends/imgui_impl_sdl3.cpp
+#		${CMAKE_SOURCE_DIR}/dependency/imgui/backends/imgui_impl_vulkan.cpp
+#	)
+#	TARGET_INCLUDE_DIRECTORIES(imgui
+#		PRIVATE
+#			${CMAKE_SOURCE_DIR}/dependency/imgui
+#			${CMAKE_SOURCE_DIR}/dependency/imgui/backends
+#			${CMAKE_SOURCE_DIR}/dependency/imgui/misc
+#	)
+#	TARGET_LINK_LIBRARIES(imgui
+#		PRIVATE
+#			SDL3::SDL3
+#			Vulkan::Vulkan
+#			GPUOpen::VulkanMemoryAllocator
+#	)
+#ENDIF()
 
 ############################################
 # AppCore
@@ -624,6 +660,11 @@ FOREACH(_sedx_dbg_target SceneryEditorX Launcher CrashHandler)
 	IF(TARGET ${_sedx_dbg_target})
 		# Only add --verbose when building Debug and SEDX_VERBOSE_LOGGING is true
 		SET_TARGET_PROPERTIES(${_sedx_dbg_target} PROPERTIES VS_DEBUGGER_COMMAND_ARGUMENTS "$<$<AND:$<CONFIG:Debug>,$<BOOL:${SEDX_VERBOSE_LOGGING}>>:--verbose>" )
+	ENDIF()
+
+	IF(TARGET ${_sedx_dbg_target})
+		# Also set the environment variable SEDX_LOG_LEVEL=trace for maximum logging verbosity when debugging
+		SET_TARGET_PROPERTIES(${_sedx_dbg_target} PROPERTIES VS_DEBUGGER_ENVIRONMENT "$<$<BOOL:${RENDERDOC_ENABLE}>:--renderdoc>")
 	ENDIF()
 ENDFOREACH()
 

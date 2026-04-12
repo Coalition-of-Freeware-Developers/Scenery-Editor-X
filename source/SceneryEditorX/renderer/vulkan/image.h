@@ -35,46 +35,77 @@
 
 namespace SceneryEditorX
 {
-    class Device;
+	class Device;
 
-    struct ImageSpec
+	/**
+	 * @struct ImageSpec
+	 * @brief Specifies the properties of an image, including dimensions, format, and usage flags.
+	 */
+	struct ImageSpec
 	{		
-        VkImageCreateFlags createFlags = 0;
+		VkImageCreateFlags createFlags = 0;
 		ImageType imageType = ImageType::Type2D;
-		VkFormat format = VK_FORMAT_UNDEFINED;
-		uint32_t width = 1;
-		uint32_t height = 1;
-		uint32_t mips = 1;
-		uint32_t layers = 1;
-		std::uint32_t mipLevels = 1;
-		std::uint32_t arrayLayers = 1;
+		VkFormat format	= VK_FORMAT_UNDEFINED;
+		uint32_t width	= 1;
+		uint32_t height	= 1;
+		uint32_t mips	= 1;
+		uint32_t layers	= 1;
+		std::uint32_t mipLevels		= 1;
+		std::uint32_t arrayLayers	= 1;
 		VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT;
 		VkImageTiling tiling = VK_IMAGE_TILING_OPTIMAL;
 		VkImageUsageFlags usageFlags = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 		VkImageLayout initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 				
-        VkMemoryPropertyFlags memProperties;
+		VkMemoryPropertyFlags memProperties;
 		const char *name = nullptr;
-    };
+	};
 
-    class Image : public SharedObject
+	/**
+	 * @class Image
+	 * @brief Represents a Vulkan image resource, encapsulating the VkImage handle and its associated properties. 
+	 * Provides functionality for creating and managing images based on specified parameters.
+	 */
+	class Image : public SharedObject
 	{
-    public:
-        Image() = default;
-        Image(const ImageSpec& spec);
-        virtual ~Image() override;
+	public:
+		Image() = default;
 
+		/**
+		 * @brief Constructor for the Image class, initializes an image resource based on the provided specifications.
+		 * @param spec The specifications for the image, including dimensions, format, usage flags, and memory properties.
+		 */
+		Image(const ImageSpec& spec);
+
+		/* @brief Destructor for the Image class, responsible for cleaning up. */
+		virtual ~Image() override;
+
+		/**
+		 * @brief Initializes the image with the specified specifications.
+		 * @param spec The specifications for the image.
+		 */
 		static void CreateImage(const ImageSpec &spec, VkImage &outImage, VkDeviceMemory &outMemory);
-		VkImage GetImage() const { return m_Image; }
-        void GetImageSpec(ImageSpec &outSpec) const { outSpec = m_Spec; }
 
-    private:
+		/**
+		 * @brief Gets the Vulkan image handle associated with this Image instance.
+		 * @return VkImage handle of the image resource, or VK_NULL_HANDLE if not initialized.
+		 */
+		VkImage GetImage() const { return m_Image; }
+
+		/**
+		 * @brief Retrieves the specifications of this image resource. 
+		 * @param outSpec Reference to an ImageSpec structure that will 
+		 * be populated with the specifications of this image. 
+		 */
+		void GetImageSpec(ImageSpec &outSpec) const { outSpec = m_Spec; }
+
+	private:
 		Ref<Device> m_Device;
-        ImageSpec m_Spec;
+		ImageSpec m_Spec;
 
 		std::vector<VkImageView> m_ImageViews;
 		VkImage m_Image = VK_NULL_HANDLE;
-        VkMemoryPropertyFlags m_MemProperties = 0;
+		VkMemoryPropertyFlags m_MemProperties = 0;
 	};
 }
 

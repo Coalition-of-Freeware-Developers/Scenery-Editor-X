@@ -35,6 +35,20 @@
 namespace SceneryEditorX
 {
 
-}
+	TGA_Bitmap::~TGA_Bitmap()
+	{
+	}
+
+	void TGA_Bitmap::SaveToFile(const std::string &filePath)
+	{
+	    Bitmap::SaveToFile(filePath);
+	}
+
+	void TGA_Bitmap::LoadFromFile(const std::string &filePath)
+	{
+	    Bitmap::LoadFromFile(filePath);
+	}
+
+} // namespace SceneryEditorX
 
 // -------------------------------------------------------

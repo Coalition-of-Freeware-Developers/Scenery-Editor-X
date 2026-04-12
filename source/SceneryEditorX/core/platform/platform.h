@@ -17,6 +17,10 @@
 
 namespace SceneryEditorX
 {
+	/**
+	 * @enum ExitCode
+	 * @brief Defines exit codes for the platform, indicating the reason for termination.
+	 */
 	enum class ExitCode
 	{
 		Success = 0,	  // App exited successfully
@@ -24,9 +28,17 @@ namespace SceneryEditorX
 		FatalError = 255  // App encountered an unexpected error
 	};
 
+	/**
+	 * @class Platform
+	 * @brief Abstracts the underlying platform and provides a common interface for application lifecycle management.
+	 */
 	class Platform
 	{
 	public:
+		/**
+		 * @brief Initializes the platform with the given context, setting up necessary resources and configurations.
+		 * @param context The platform context containing configuration and environment information.
+		 */
 		Platform(const PlatformContext &context);
 		virtual ~Platform() = default;
 
@@ -36,7 +48,7 @@ namespace SceneryEditorX
 		 * @brief Handles the main update and render loop
 		 * @return An exit code representing the outcome of the loop
 		 */
-		ExitCode MainLoop();
+		static ExitCode MainLoop();
 
 		/**
 		 * @brief Handles the update and render of a frame.
@@ -44,12 +56,12 @@ namespace SceneryEditorX
 		 * frame-looping mechanism, typically tied to platform screen refreshes.
 		 * @return An exit code representing the outcome of the loop
 		 */
-		ExitCode MainLoopFrame();
+		static ExitCode MainLoopFrame();
 
 		/**
 		 * @brief Runs the application for one frame
 		 */
-		void Update();
+		static void Update();
 
 		/**
 		 * @brief Terminates the platform and the application

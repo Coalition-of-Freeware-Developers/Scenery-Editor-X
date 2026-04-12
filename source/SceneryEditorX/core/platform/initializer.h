@@ -35,7 +35,15 @@
 
 namespace SceneryEditorX
 {
+	/**
+	 * @brief Initializes the core systems of the platform with the given context.
+	 * @param ctx The platform context containing configuration and environment information.
+	 */
 	void InitCore(const PlatformContext& ctx);
+
+	/**
+	 * @brief Shuts down the core systems of the platform, releasing any allocated resources.
+	 */
 	void Shutdown();
 }
 

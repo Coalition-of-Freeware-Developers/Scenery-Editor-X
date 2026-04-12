@@ -36,9 +36,12 @@
 
 namespace SceneryEditorX
 {
+	/**
+	 * @enum KeyCode
+	 * @brief Represents the key codes for keyboard input.
+	 */
 	typedef enum class KeyCode : uint16_t
 	{
-		// From glfw3.h
 		Space		= 32,
 		Apostrophe	= 39, /* ' */
 		Comma		= 44, /* , */
@@ -171,6 +174,10 @@ namespace SceneryEditorX
 		Menu			= 348
 	} Key;
 
+	/**
+	 * @enum KeyState
+	 * @brief Represents the state of a key.
+	 */
 	enum class KeyState
 	{
 		None = -1,
@@ -179,6 +186,10 @@ namespace SceneryEditorX
 		Released
 	};
 
+	/**
+	 * @enum CursorMode
+	 * @brief Represents the mode of the cursor.
+	 */
 	enum class CursorMode : uint8_t
 	{
 		Normal = 0,
@@ -186,6 +197,10 @@ namespace SceneryEditorX
 		Locked = 2
 	};
 
+	/**
+	 * @enum MouseButton
+	 * @brief Represents the mouse buttons.
+	 */
 	typedef enum class MouseButton : uint8_t
 	{
 		Button0 = 0,
@@ -200,12 +215,24 @@ namespace SceneryEditorX
 	} Button;
 
 
+	/**
+	 * @brief Overloads the stream insertion operator for KeyCode.
+	 * @param os The output stream.
+	 * @param keyCode The key code to be inserted into the stream.
+	 * @return The output stream.
+	 */
 	inline std::ostream& operator<<(std::ostream& os, KeyCode keyCode)
 	{
 		os << static_cast<int32_t>(keyCode);
 		return os;
 	}
 
+	/**
+	 * @brief Overloads the stream insertion operator for MouseButton.
+	 * @param os The output stream.
+	 * @param button The mouse button to be inserted into the stream.
+	 * @return The output stream.
+	 */
 	inline std::ostream& operator<<(std::ostream& os, MouseButton button)
 	{
 		os << static_cast<int32_t>(button);

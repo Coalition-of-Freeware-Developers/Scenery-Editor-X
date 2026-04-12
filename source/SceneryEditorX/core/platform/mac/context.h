@@ -38,11 +38,11 @@
 
 namespace SceneryEditorX
 {
-    class MacOSContext final : public PlatformContext
+	class MacOSContext final : public PlatformContext
 	{
 	public:
-        MacOSContext(int argc, char **argv);
-        ~MacOSContext() override = default;
+		MacOSContext(int argc, char **argv);
+		~MacOSContext() override = default;
 	};
 }
 

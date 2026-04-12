@@ -31,16 +31,14 @@
 // ReSharper disable CppInconsistentNaming
 #pragma once
 #include "camera.h"
+#include <unordered_map>
 #include <vector>
 #include <SceneryEditorX/core/identifiers/uuid.h>
-//#include <entt/src/entt/entt.hpp>
-//#include "entity.h"
+#include <entt/src/entt/entt.hpp>
 //#include "SceneryEditorX/asset/asset.h"
 //#include "SceneryEditorX/asset/asset_types.h"
-//#include "SceneryEditorX/renderer/texture.h"
 
 // -------------------------------------------------------
-
 
 namespace SceneryEditorX
 {
@@ -48,7 +46,10 @@ namespace SceneryEditorX
 	class Light;
 	class Camera;
 
-	// metadata structure for reading world info without fully loading
+	/**
+	 * @struct WorldMetadata
+	 * @brief Structure to hold metadata about a world without fully loading it.
+	 */
 	struct WorldMetadata
 	{
 		std::string file_path;
@@ -56,32 +57,149 @@ namespace SceneryEditorX
 		std::string description;
 	};
 
-	class Scene
+	/**
+	 * @class Scene
+	 * @brief Class representing a scene in the editor.
+	 */
+	class Scene : public RefCounted
 	{
 	public:
+		/**
+		 * @brief Constructs a new Scene object.
+		 * @param name The name of the scene.
+		 * @param initialize Whether to initialize the scene immediately.
+		 */
 		explicit Scene(std::string name = "UntitledProject", bool initialize = true);
 		static void Init();
 		static void Shutdown();
 		static void Tick();
 
-		static Camera* GetCamera();
-		static Light*  GetDirectionalLight() { return nullptr; }
-		static std::vector<Entity*> GetEntities() { return {}; }
+		static Camera *GetCamera();
+		static bool HasCameraEntity();
+		static Light *GetDirectionalLight() { return nullptr; }
+		static std::vector<Entity*> GetEntities();
 
+		/**
+		 * @brief Saves the current scene to a file.
+		 * @param filePath The path to the file where the scene will be saved.
+		 * @return True if the scene was successfully saved, false otherwise.
+		 */
 		static bool SaveToFile(std::string filePath);
+
+		/**
+		 * @brief Loads a scene from a file.
+		 * @param file_path The path to the file from which the scene will be loaded.
+		 * @return True if the scene was successfully loaded, false otherwise.
+		 */
 		static bool LoadFromFile(const std::string& file_path);
 
+		/**
+		 * @brief Creates a new entity in the scene.
+		 * @param name The name of the entity.
+		 * @return The created entity.
+		 */
+		static Entity CreateEntity(const std::string& name = "Empty Entity");
+
+		/**
+		 * @brief Creates a new entity in the scene with a specific UUID.
+		 * @param uuid The UUID of the entity.
+		 * @param name The name of the entity.
+		 * @return The created entity.
+		 */
+		static Entity CreateEntityWithUUID(const UUID &uuid, const std::string& name = "Empty Entity");
+
+		/**
+		 * @brief Retrieves an entity from the scene by its UUID.
+		 * @param uuid The UUID of the entity.
+		 * @return The entity with the specified UUID.
+		 */
+		static Entity GetEntity(const UUID &uuid);
+
+		/**
+		 * @brief Destroys an entity in the scene.
+		 * @param entity The entity to be destroyed.
+		 */
+		static void DestroyEntity(const Entity &entity);
+
+		/**
+		 * @brief Tries to retrieve an entity from the scene by its UUID.
+		 * @param uuid The UUID of the entity.
+		 * @return The entity with the specified UUID, or a null entity if not found.
+		 */
+		static Entity TryGetEntityWithUUID(const UUID &uuid);
+
+		/**
+		 * @brief Retrieves all entities with the specified components.
+		 * @tparam Components The components to filter by.
+		 * @return A view of all entities with the specified components.
+		 */
+		template<typename... Components>
+		auto GetAllEntitiesWith()
+		{
+			return m_Registry.view<Components...>();
+		}
+
+		/**
+		 * @brief Retrieves the current time of day in the scene.
+		 * @return The current time of day.
+		 */
+		static float GetTimeOfDay();
+
+
+		/**
+		 * @brief Sets the current time of day in the scene.
+		 * @param timeOfDay The time of day to set.
+		 */
+		static void SetTimeOfDay(float timeOfDay);
+
+		/**
+		 * @brief Retrieves the file path of the current scene.
+		 * @return The file path of the current scene.
+		 */
+		static std::string& GetFilePath();
+
+		/**
+		 * @brief Retrieves the name of the current scene.
+		 * @return The name of the current scene.
+		 */
+		static const std::string& GetName();
+
+		/**
+		 * @brief Retrieves the current wind vector in the scene.
+		 * @return The current wind vector.
+		 */
+		static const Vec3 &GetWind();
+
+		/**
+		 * @brief Sets the current wind vector in the scene.
+		 * @param wind The wind vector to set.
+		 */
+		static void SetWind(const Vec3& wind);
+
+		/**
+		 * @brief Updates the scene based on changes to an entity's components.
+		 * @return A flag indicating the changes that were applied.
+		 */
+		static Flag UpdateSceneChanges(ComponentType entity);
+
 	private:
+		static Ref<Camera> m_Camera;
+
 		UUID m_SceneID;
 		std::string m_Name;
 		std::string m_ScenePath;
 
-		bool m_IsLoaded = false;
-		bool m_IsEditorScene = false;
-		uint32_t m_ViewportTop = 0;
-		uint32_t m_ViewportLeft = 0;
-		uint32_t m_ViewportRight = 0;
-		uint32_t m_ViewportBottom = 0;
+		bool m_IsLoaded				= false;
+		bool m_IsEditorScene		= false;
+		uint32_t m_ViewportTop		= 0;
+		uint32_t m_ViewportLeft		= 0;
+		uint32_t m_ViewportRight	= 0;
+		uint32_t m_ViewportBottom	= 0;
+
+		entt::registry m_Registry; // <-- THE ACTUAL DATA STORAGE
+		std::unordered_map<UUID, entt::entity> m_EntityMap; // Fast lookup
+
+		friend class Entity; // Allows Entity handle to access m_Registry
 	};
 
 	/*

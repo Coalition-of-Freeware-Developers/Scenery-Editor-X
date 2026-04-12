@@ -35,6 +35,20 @@
 namespace SceneryEditorX
 {
 
-}
+	JPG_Bitmap::~JPG_Bitmap()
+	{
+	}
+
+	void JPG_Bitmap::SaveToFile(const std::string &filePath)
+	{
+	    Bitmap::SaveToFile(filePath);
+	}
+
+	void JPG_Bitmap::LoadFromFile(const std::string &filePath)
+	{
+	    Bitmap::LoadFromFile(filePath);
+	}
+
+} // namespace SceneryEditorX
 
 // -------------------------------------------------------

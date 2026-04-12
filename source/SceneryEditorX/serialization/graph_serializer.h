@@ -29,13 +29,13 @@
  * -------------------------------------------------------
  */
 #pragma once
-#include <functional>
-#include <imgui.h>
+/*#include <functional>
+#include <Editor/ui/source/imgui/imgui.h>
 #include <optional>
 #include <string_view>
 #include <vector>
 #include "asset_serializer.h"
-#include "SceneryEditorX/utils/reflection/type_values.h"
+#include "SceneryEditorX/utils/reflection/type_values.h"*/
 
 // -------------------------------------------------------
 

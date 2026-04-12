@@ -37,24 +37,54 @@
 namespace SceneryEditorX
 {
 
-    class ShaderStage : public RefCounted
+	/**
+	 * @class ShaderStage
+	 * @brief ShaderStage represents a single stage in the graphics pipeline, encapsulating a Vulkan shader module and its associated inputs.
+	 */
+	class ShaderStage : public RefCounted
 	{
 	public:
-		ShaderStage(Stage stage, const std::string& filepath);
+		/**
+		 * @brief Constructs a ShaderStage object.
+		 * @param stage the shader stage (e.g., vertex, fragment)
+		 * @param filepath the file path to the SPIR-V binary for this shader stage 
+		 */
+		ShaderStage(StageType stage, const std::string& filepath);
+
+		/* 
+		 * @brief Destroys the ShaderStage object and releases its resources. 
+		 */
 		virtual ~ShaderStage() override;
-	
+
+		/* 
+		 * @brief Recompile the shader stage from its source file. 
+		 */
 		void Recompile();
 
-        [[nodiscard]] inline VkShaderModule GetHandle() const { return m_ShaderModule; };
+		/**
+		 * @brief Gets the Vulkan shader module handle.
+		 * @return The Vulkan shader module handle.
+		 */
+		[[nodiscard]] inline VkShaderModule GetHandle() const { return m_ShaderModule; }
+
+		/**
+		 * @brief Gets the list of shader inputs for this stage.
+		 * @return A reference to the vector of shader inputs.
+		 */
 		const std::vector<ShaderInput>& GetInput() { return m_Input; }
-	
-		VkPipelineShaderStageCreateInfo const GetStageCreateInfo();
+
+		/**
+		 * @brief Gets the Vulkan pipeline shader stage create info.
+		 * @return The Vulkan pipeline shader stage create info.
+		 */
+		const VkPipelineShaderStageCreateInfo GetStageCreateInfo();
 	
 	private:
-		Stage m_Stage;
-		std::string m_Filepath;
-		VkShaderModule m_ShaderModule;
-		std::vector<ShaderInput> m_Input;
+		StageType m_Stage;					// The shader stage (e.g., vertex, fragment)
+		std::string m_Filepath;				// Path to the shader source file
+		std::string m_EntryPoint;			// Stage entry point name used for pipeline creation
+		VkShaderModule m_ShaderModule;		// Vulkan shader module handle
+		std::vector<ShaderInput> m_Input;	// List of shader inputs (uniforms, samplers, etc.)
 	};
 
 }

@@ -33,14 +33,14 @@
 ///			   COMPILER TYPE DETECTION			   ///
 //////////////////////////////////////////////////////
 #if defined(_MSC_VER)
-    #define SEDX_COMPILER_MSVC
+	#define SEDX_COMPILER_MSVC
 #elif defined(__clang__)
-    #define SEDX_COMPILER_CLANG
-    #pragma clang diagnostic ignored "-Wmissing-braces"
+	#define SEDX_COMPILER_CLANG
+	#pragma clang diagnostic ignored "-Wmissing-braces"
 #elif defined(__GNUC__)
-        #define SEDX_COMPILER_GCC
+		#define SEDX_COMPILER_GCC
 #else
-    #error  "Unknown Compiler! If you are using a compiler that is not listed here, please report it to the Scenery Editor X team."
+	#error  "Unknown Compiler! If you are using a compiler that is not listed here, please report it to the Scenery Editor X team."
 #endif
 //////////////////////////////////////////////////////
 #ifdef SEDX_COMPILER_MSVC
@@ -57,25 +57,25 @@
 ///           WINDOWS PLATFORM DETECTION		   ///
 //////////////////////////////////////////////////////
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(WINDOWS) || defined(WIN64) || defined(_MSC_VER)
-    #ifdef _WIN64
+	#ifdef _WIN64
 	/** Windows x64  **/
-        #define SEDX_PLATFORM_WINDOWS
-        #define SEDX_PLATFORM_NAME "Windowsx64"
+		#define SEDX_PLATFORM_WINDOWS
+		#define SEDX_PLATFORM_NAME "Windowsx64"
 		#include <Windows.h>
 		#ifndef VK_USE_PLATFORM_WIN32_KHR
-		    #define VK_USE_PLATFORM_WIN32_KHR
+			#define VK_USE_PLATFORM_WIN32_KHR
 		#endif
-        constexpr char dirSeparator = '\\';
-    #elif
+		constexpr char dirSeparator = '\\';
+	#elif
 	/** Windows x86 **/
-    #error "x86 Builds are not supported!"
-    #endif
+	#error "x86 Builds are not supported!"
+	#endif
 //////////////////////////////////////////////////////
 ///         APPLE/MAC PLATFORM DETECTION		   ///
 //////////////////////////////////////////////////////
 #elif defined(__APPLE__) || defined(__MACH__) || (defined(VK_USE_PLATFORM_IOS_MVK) || defined(VK_USE_PLATFORM_MACOS_MVK) || defined(VK_USE_PLATFORM_METAL_EXT))
-    #define SEDX_PLATFORM_APPLE
-    #define SEDX_PLATFORM_NAME "MacOS"
+	#define SEDX_PLATFORM_APPLE
+	#define SEDX_PLATFORM_NAME "MacOS"
 	#include <TargetConditionals.h>
 	/**
 	 * TARGET_OS_MAC exists on all the platforms
@@ -84,19 +84,19 @@
 	 * and not some other Apple platform
 	 */
 	#if TARGET_IPHONE_SIMULATOR == 1
-	    #error "IOS simulator is not supported!"
+		#error "IOS simulator is not supported!"
 	#elif TARGET_OS_IPHONE == 1
-	    #define SEDX_PLATFORM_IOS
-	    #error "IOS is not supported!"
-    #elif TARGET_OS_MAC == 1
-	    #define SEDX_PLATFORM_MACOS
+		#define SEDX_PLATFORM_IOS
+		#error "IOS is not supported!"
+	#elif TARGET_OS_MAC == 1
+		#define SEDX_PLATFORM_MACOS
 		#include <unistd.h>
 		#include <sys/types.h>
 		#include <pwd.h>
 		#define VK_USE_PLATFORM_METAL_EXT
 		#include <vulkan/vulkan.h>
-    #else
-	    #error "Unknown Apple platform!"
+	#else
+		#error "Unknown Apple platform!"
 	#endif
 //////////////////////////////////////////////////////
 ///			  ANDROID PLATFORM DETECTION		   ///
@@ -114,8 +114,8 @@
 ///			   LINUX PLATFORM DETECTION			   ///
 //////////////////////////////////////////////////////
 #elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__gnu_linux__)
-    #define SEDX_PLATFORM_LINUX
-    #define SEDX_PLATFORM_NAME "Linux"
+	#define SEDX_PLATFORM_LINUX
+	#define SEDX_PLATFORM_NAME "Linux"
 	#include <unistd.h>
 	#include <csignal>
 	#include <sys/types.h>
@@ -127,8 +127,8 @@
 	constexpr char dirSeparator = '/';
 #else
 	/* Unknown compiler/platform */
-    #define SEDX_PLATFORM_NAME "Unknown"
-    #error "Unknown platform!"
+	#define SEDX_PLATFORM_NAME "Unknown"
+	#error "Unknown platform!"
 #endif
 
 //////////////////////////////////////////////////////
@@ -137,19 +137,19 @@
 
 #if defined(_DEBUG) || defined(DEBUG)
 	#ifndef SEDX_DEBUG
-	    #define SEDX_DEBUG
+		#define SEDX_DEBUG
 	#endif
 	#define SEDX_BUILD_TYPE "Debug"
 	#define SEDX_DEBUGBREAK() __debugbreak()
 	#if defined(SEDX_PLATFORM_LINUX)
-	    #define SEDX_DEBUGBREAK() raise(SIGTRAP)
+		#define SEDX_DEBUGBREAK() raise(SIGTRAP)
 	#endif
 	#define APP_USE_VULKAN_DEBUG_REPORT
 #elif defined(_RELEASE) || defined(NDEBUG) || defined(RELEASE)
 	#ifndef SEDX_RELEASE
-	    #define SEDX_RELEASE
+		#define SEDX_RELEASE
 	#endif
-	    #define SEDX_BUILD_TYPE "Release"
+		#define SEDX_BUILD_TYPE "Release"
 #endif
 
 //////////////////////////////////////////////////////

@@ -30,7 +30,6 @@
  */
 #pragma once
 #include <SceneryEditorX/core/events/event_system.h>
-#include <SceneryEditorX/core/time/time.h>
 
 // -------------------------------------------------------
 
@@ -38,56 +37,62 @@ namespace SceneryEditorX
 {
 	/**
 	 * @class Layer
-	 * @brief Base "Module" class representing a logical section of the application.
+	 * @brief Base "Layer" class representing a logical section of the application.
 	 *
-	 * Layer are used to organize different functional components of the application
-	 * that can be attached, detached and updated independently. Each module can handle
+	 * Layers are used to organize different functional components of the application
+	 * that can be attached, detached and updated independently. Each layer can handle
 	 * its own rendering, events, and update logic.
 	 */
 	class Layer
 	{
 	public:
 		/**
-		 * @brief Construct a modular component that can be plugged into the application.
-		 * @param name The name of the module.
+		 * @brief Construct a layer component that can be plugged into the application.
+		 * @param name The name of the layer.
 		 */
-	    Layer(const std::string &name = "Layer");
+		Layer(std::string name = "Layer");
+
+		/* @brief Destroys the layer component. */
 		virtual ~Layer();
 
 		/**
-		 * @brief Called when the module is attached to the application.
-		 * Use this for initialization of module resources.
+		 * @brief Called when the layer is attached to the application.
+		 * Use this for initialization of layer resources.
 		 */
 		virtual void OnAttach() {}
 
 		/**
-		 * @brief Called when the module is detached from the application.
-		 * Use this for cleanup of module resources.
+		 * @brief Called when the layer is detached from the application.
+		 * Use this for cleanup of layer resources.
 		 */
 		virtual void OnDetach() {}
 
 		/**
-		 * @brief Called each frame to update the module.
-		 * Implement module logic that needs to execute each frame.
+		 * @brief Called each frame to update the layer.
+		 * Implement layer logic that needs to execute each frame.
 		 */
-		virtual void Tick(DeltaTime dt) {}
+		virtual void Tick() {}
 
 		/**
-		 * @brief Renders ImGui elements for this module.
+		 * @brief Renders ImGui elements for this layer.
 		 * Implement any ImGui rendering for debugging or UI components.
 		 */
-		virtual void OnUIRender() {}
+		virtual void OnRender() {}
 
 		/**
-		 * @brief Processes events for this module.
-		 * Handle input or application events specific to this module.
+		 * @brief Processes events for this layer.
+		 * Handle input or application events specific to this layer.
 		 */
 		virtual void OnEvent(Event &event) {}
 
-	    inline const std::string& GetName() const { return m_DebugName; }
+		/**
+		 * @brief Gets the name of the layer.
+		 * @return The name of the layer.
+		 */
+		inline const std::string& GetName() const { return m_DebugName; }
 
 	protected:
-        std::string m_DebugName; // The name of the module.
+		std::string m_DebugName; // The name of the layer.
 	};
 
 }

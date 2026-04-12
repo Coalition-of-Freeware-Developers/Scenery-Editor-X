@@ -38,87 +38,94 @@
 
 namespace SceneryEditorX
 {
-    /**
-     * @brief Convert a wide string to a standard string
-     * @param wstr The wide string to convert
-     * @return The converted standard UTF8 string
-     */
-    static std::string WstrToStr(const std::wstring &wstr)
+	/**
+	 * @brief Convert a wide string to a standard string
+	 * @param wstr The wide string to convert
+	 * @return The converted standard UTF8 string
+	 */
+	static std::string WstrToStr(const std::wstring &wstr)
 	{
-	    if (wstr.empty())
-	    {
-	        return {};
-	    }
+		if (wstr.empty())
+		{
+			return {};
+		}
 	
-	    auto wstrLen = static_cast<int>(wstr.size());
-	    auto strLen = WideCharToMultiByte(CP_UTF8, 0, wstr.data(), wstrLen, nullptr, 0, nullptr, nullptr);
+		auto wstrLen = static_cast<int>(wstr.size());
+		auto strLen = WideCharToMultiByte(CP_UTF8, 0, wstr.data(), wstrLen, nullptr, 0, nullptr, nullptr);
 	
-	    std::string str(strLen, 0);
-	    WideCharToMultiByte(CP_UTF8, 0, wstr.data(), wstrLen, str.data(), strLen, nullptr, nullptr);
+		std::string str(strLen, 0);
+		WideCharToMultiByte(CP_UTF8, 0, wstr.data(), wstrLen, str.data(), strLen, nullptr, nullptr);
 	
-	    return str;
+		return str;
 	}
 
-    static std::string GetTempDir()
-    {
-	    std::string tempPath = "temp/";
-	
-	    WCHAR tempBuffer[MAX_PATH];
-	    DWORD tempPathRet = GetTempPathW(MAX_PATH, tempBuffer);
-	    if (tempPathRet > MAX_PATH || tempPathRet == 0)
-	    {
-	        tempPath = "temp/";
-	    }
-	    else
-	    {
-	        tempPath = WstrToStr(std::wstring(tempBuffer)) + "/";
-	    }
-	
-	    return tempPath;
-	}
-
-    static std::vector<std::string> GetArgs()
+	/**
+	 * @brief Retrieves the path to the temporary directory for the current user.
+	 * @return The path to the temporary directory.
+	 */
+	static std::string GetTempDir()
 	{
-	    int argc;
-	    LPWSTR *argv = CommandLineToArgvW(GetCommandLineW(), &argc);
+		std::string tempPath = "temp/";
 	
-	    // Ignore the first argument containing the application full path
-	    std::vector<std::wstring> argStrings(argv + 1, argv + argc);
-	    std::vector<std::string> args;
-
-        args.reserve(argStrings.size());
-        for (auto &arg : argStrings)
-	    {
-	        args.push_back(WstrToStr(arg));
-	    }
+		WCHAR tempBuffer[MAX_PATH];
+		DWORD tempPathRet = GetTempPathW(MAX_PATH, tempBuffer);
+		if (tempPathRet > MAX_PATH || tempPathRet == 0)
+		{
+			tempPath = "temp/";
+		}
+		else
+		{
+			tempPath = WstrToStr(std::wstring(tempBuffer)) + "/";
+		}
 	
-	    return args;
+		return tempPath;
 	}
+
+	/**
+	 * @brief Retrieves the command line arguments for the application.
+	 * @return A vector of strings containing the command line arguments.
+	 */
+	static std::vector<std::string> GetArgs()
+	{
+		int argc;
+		LPWSTR *argv = CommandLineToArgvW(GetCommandLineW(), &argc);
 	
+		// Ignore the first argument containing the application full path
+		std::vector<std::wstring> argStrings(argv + 1, argv + argc);
+		std::vector<std::string> args;
+
+		args.reserve(argStrings.size());
+		for (auto &arg : argStrings)
+		{
+			args.push_back(WstrToStr(arg));
+		}
+	
+		return args;
+	}
 	
 	WindowsContext::WindowsContext(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, INT nCmdShow) : PlatformContext()
 	{
-	    m_WorkingDirectory = "";
-	    m_TempDirectory = GetTempDir();
-	    m_CommandLineArgs = GetArgs();
+		m_WorkingDirectory = "";
+		m_TempDirectory = GetTempDir();
+		m_CommandLineArgs = GetArgs();
 	
 	#ifdef SEDX_DEBUG
-	    // Attempt to attach to the parent process console if it exists
-	    if (!AttachConsole(ATTACH_PARENT_PROCESS))
-	    {
-	        // No parent console, allocate a new one for this process
-	        if (!AllocConsole())
-	        {
-	            throw std::runtime_error{"AllocConsole error"};
-	        }
-	    }
+		// Attempt to attach to the parent process console if it exists
+		if (!AttachConsole(ATTACH_PARENT_PROCESS))
+		{
+			// No parent console, allocate a new one for this process
+			if (!AllocConsole())
+			{
+				throw std::runtime_error{"AllocConsole error"};
+			}
+		}
 	#endif
 
-        FILE *fp = nullptr;
-        if (freopen_s(&fp, "conin$", "r", stdin) != 0)		SEDX_CORE_WARN_TAG("INIT", "Failed to redirect stdin to console");
-        if (freopen_s(&fp, "conout$", "w", stdout) != 0)	SEDX_CORE_WARN_TAG("INIT", "Failed to redirect stdout to console");
-        if (freopen_s(&fp, "conout$", "w", stderr) != 0)	SEDX_CORE_WARN_TAG("INIT", "Failed to redirect stderr to console");
-    }
+		FILE *fp = nullptr;
+		if (freopen_s(&fp, "conin$", "r", stdin) != 0)		SEDX_CORE_WARN_TAG("WindowsContext", "Failed to redirect stdin to console");
+		if (freopen_s(&fp, "conout$", "w", stdout) != 0)	SEDX_CORE_WARN_TAG("WindowsContext", "Failed to redirect stdout to console");
+		if (freopen_s(&fp, "conout$", "w", stderr) != 0)	SEDX_CORE_WARN_TAG("WindowsContext", "Failed to redirect stderr to console");
+	}
 	
 } // namespace SceneryEditorX
 

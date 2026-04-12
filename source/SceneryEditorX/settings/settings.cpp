@@ -1,0 +1,1048 @@
+﻿/**
+ * -------------------------------------------------------
+ * Scenery Editor X
+ * -------------------------------------------------------
+ * Copyright (c) 2026 Thomas Ray 
+ * Copyright (c) 2026 Coalition of Freeware Developers
+ * -------------------------------------------------------
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ * -------------------------------------------------------
+ * settings.cpp
+ * -------------------------------------------------------
+ * Created: 23/4/2025
+ * -------------------------------------------------------
+ */
+#include "settings.h"
+#include "steam_parser.h"
+#include <filesystem>
+#include <libconfig.h++>
+#include <SceneryEditorX/core/application/application_data.h>
+
+// -------------------------------------------------------
+
+namespace SceneryEditorX
+{
+	using namespace libconfig;
+
+	Config Settings::cfg{};
+	XPlaneStats Settings::xPlaneStats{};
+	AppData Settings::appStats{};
+	std::filesystem::path Settings::filePath{};
+	std::map<std::string, std::string> Settings::settings{};
+	bool Settings::configInitialized = false;
+
+	// -------------------------------------------------------
+
+	// Default section templates for use when creating config sections
+	static constexpr const char *APPLICATION_SECTION_TEMPLATE = R"(
+	# Application settings
+	version = "${APP_VERSION}";
+	no_titlebar = false;
+	)";
+
+	static constexpr const char *XPLANE_SECTION_TEMPLATE = R"(
+	# X-Plane settings
+	version = "X-Plane 12.06b1";
+	path = "";
+	bin_path = "";
+	resources_path = "";
+	is_steam = false;
+	)";
+
+	static constexpr const char *UI_SECTION_TEMPLATE = R"(
+	# User interface settings
+	theme = "dark";
+	font_size = 12;
+	language = "english";
+	)";
+
+	static constexpr const char *PROJECT_SECTION_TEMPLATE = R"(
+	# Project settings
+	auto_save = true;
+	auto_save_interval = 5; # minutes
+	backup_count = 3;
+	default_project_dir = "~\\Documents\\SceneryEditorX";
+	)";
+
+	// ----------------------------------------------------------
+
+	Settings::Settings(std::filesystem::path filepath)
+	{
+		filePath = std::move(filepath);
+
+		cfg.setOptions(Config::OptionAutoConvert | Config::OptionOpenBraceOnSeparateLine | Config::OptionFsync |
+					   Config::OptionAllowOverrides);
+		cfg.setTabWidth(2);
+
+		if (!Settings::ReadSettings())
+		{
+			// If we couldn't read existing settings, create a minimal configuration
+			InitMinConfig();
+			configInitialized = true;
+
+			/// Try to detect X-Plane installation
+			if (DetectXPlanePath())
+				SEDX_CORE_TRACE_TAG("Settings", "X-Plane 12 detected and paths configured");
+			else
+				SEDX_CORE_WARN_TAG("Settings", "X-Plane 12 installation not found");
+
+			// Save the initial configuration
+			Settings::WriteSettings();
+		}
+		else
+		{
+			// Validate X-Plane paths from loaded configuration
+			if (!ValidateXPlanePaths())
+			{
+				SEDX_CORE_WARN_TAG("Settings", "X-Plane paths in configuration are invalid, attempting detection");
+				if (DetectXPlanePath())
+				{
+					SEDX_CORE_TRACE_TAG("Settings", "X-Plane 12 detected and paths updated");
+					Settings::WriteSettings();
+				}
+			}
+		}
+	}
+
+	bool Settings::ReadSettings()
+	{
+		try
+		{
+			if (!std::filesystem::exists(filePath))
+			{
+				SEDX_CORE_TRACE_TAG("Settings", "Config file not found: {}", filePath.string());
+				return false;
+			}
+
+			cfg.readFile(filePath.string().c_str());
+			SEDX_CORE_TRACE_TAG("Settings", "Reading settings from: {}", filePath.string());
+
+			/*
+			try
+			{
+				if (const Setting &root = cfg.getRoot(); root.exists("application"))
+				{
+					const Setting &app = root["application"];
+					if (app.exists("version"))
+						app.lookup("version", appStats.version);
+				}
+
+			}
+			*/
+
+			// Load X-Plane stats
+			if (cfg.exists("x_plane"))
+			{
+				const Setting &xp = cfg.lookup("x_plane");
+
+				if (xp.exists("version"))
+				{
+					xPlaneStats.xPlaneVersion = static_cast<const char *>(xp["version"]);
+				}
+
+				if (xp.exists("path"))
+				{
+					xPlaneStats.xPlanePath = static_cast<const char *>(xp["path"]);
+				}
+
+				if (xp.exists("bin_path"))
+				{
+					xPlaneStats.xPlaneBinPath = static_cast<const char *>(xp["bin_path"]);
+				}
+
+				if (xp.exists("resources_path"))
+				{
+					xPlaneStats.xPlaneResourcesPath = static_cast<const char *>(xp["resources_path"]);
+				}
+
+				if (xp.exists("is_steam"))
+				{
+					xp.lookupValue("is_steam", xPlaneStats.isSteam);
+				}
+			}
+
+			// Load Application stats
+			if (cfg.exists("application"))
+			{
+				SEDX_CORE_TRACE_TAG("Settings", "Loading SceneryEditorX settings");
+				if (const Setting &app = cfg.lookup("application"); app.exists("no_titlebar"))
+					app.lookupValue("no_titlebar", appStats.noTitlebar);
+			}
+
+			// Populate the settings map for quick access
+			LoadSettingsToMap();
+			configInitialized = true;
+
+			return true;
+		}
+		catch (const FileIOException &fioex)
+		{
+			SEDX_CORE_ERROR_TAG("Settings", "Error trying to read application settings: {}", filePath.string());
+			return false;
+		}
+		catch (const ParseException &pex)
+		{
+			SEDX_CORE_ERROR_TAG("Settings", "Parse error at {}:{} - {}", pex.getFile(), pex.getLine(), pex.getError());
+			return false;
+		}
+		catch (const ConfigException &confex)
+		{
+			SEDX_CORE_ERROR_TAG("Settings", "Config error while reading file: {}", confex.what());
+			return false;
+		}
+	}
+
+	void Settings::WriteSettings()
+	{
+		try
+		{
+			// Ensure all required sections exist before writing.
+			EnsureRequiredSections();
+
+			// Update the config from our data structures.
+			UpdateConfigFromData();
+
+			// Write config to file.
+			cfg.writeFile(filePath.string().c_str());
+			SEDX_CORE_TRACE_TAG("Settings", "Settings successfully written to: {}", filePath.string());
+
+			// Update the settings map
+			LoadSettingsToMap();
+		}
+		catch (const FileIOException &fioex)
+		{
+			SEDX_CORE_ERROR_TAG("Settings", "Error writing settings to file: {}", filePath.string());
+		}
+		catch (const ConfigException &confex)
+		{
+			SEDX_CORE_ERROR_TAG("Settings", "Config error while writing file: {}", confex.what());
+		}
+	}
+
+	void Settings::SetOption(const std::string &key, const std::string &value)
+	{
+		settings[key] = value;
+
+		// Try to update the config directly
+		try
+		{
+			// Split the key by dots to navigate the config hierarchy
+			std::string section = key;
+			std::string name = key;
+			if (const size_t pos = key.find_last_of('.'); pos != std::string::npos)
+			{
+				section = key.substr(0, pos);
+				name = key.substr(pos + 1);
+
+				// Ensure the section exists
+				try
+				{
+					Setting &setting = cfg.lookup(section);
+					if (setting.exists(name))
+					{
+						setting.remove(name);
+					}
+
+					setting.add(name, Setting::TypeString) = value;
+				}
+				catch (const SettingNotFoundException &)
+				{
+					CreateSettingPath(key, value);
+				}
+			}
+			else
+			{
+				/// It's a root setting
+				if (cfg.getRoot().exists(key))
+				{
+					cfg.getRoot().remove(key);
+				}
+
+				cfg.getRoot().add(key, Setting::TypeString) = value;
+			}
+		}
+		catch (...)
+		{
+			// TODO: If direct update fails, we'll rely on UpdateConfigFromData() during WriteSettings()
+		}
+	}
+
+	void Settings::GetOption(const std::string &key, std::string &value)
+	{
+		if (const auto it = settings.find(key); it != settings.end())
+		{
+			value = it->second;
+		}
+	}
+
+	bool Settings::HasOption(const std::string &key)
+	{
+		return settings.contains(key);
+	}
+
+	void Settings::RemoveOption(const std::string &key)
+	{
+		settings.erase(key);
+
+		// Try to remove from the config directly.
+		try
+		{
+			// Split the key by dots to navigate the config hierarchy.
+			std::string section = key;
+			std::string name = key;
+
+			if (const size_t pos = key.find_last_of('.'); pos != std::string::npos)
+			{
+				section = key.substr(0, pos);
+				name = key.substr(pos + 1);
+
+				// Try to look up the setting
+				if (Setting &setting = cfg.lookup(section); setting.exists(name))
+				{
+					setting.remove(name);
+				}
+			}
+			else
+			{
+				// It's a root setting
+				if (cfg.getRoot().exists(key))
+				{
+					cfg.getRoot().remove(key);
+				}
+			}
+		}
+		catch (...)
+		{
+			// TODO: If direct removal fails, we'll rely on UpdateConfigFromData() during WriteSettings()
+		}
+	}
+
+	void Settings::AddIntOption(const std::string &path, const int value)
+	{
+		try
+		{
+			if (const size_t pos = path.find_last_of('.'); pos != std::string::npos)
+			{
+				const std::string section = path.substr(0, pos);
+				const std::string name = path.substr(pos + 1);
+
+				try
+				{
+					Setting &setting = cfg.lookup(section);
+					if (setting.exists(name))
+						setting.remove(name);
+					setting.add(name, Setting::TypeInt) = value;
+				}
+				catch (const SettingNotFoundException &)
+				{
+					CreateSettingPath(path, value);
+				}
+			}
+			else
+			{
+				if (cfg.getRoot().exists(path))
+					cfg.getRoot().remove(path);
+
+				cfg.getRoot().add(path, Setting::TypeInt) = value;
+			}
+
+			settings[path] = ToString(value); // Update settings map
+		}
+		catch (const SettingException &e)
+		{
+			SEDX_CORE_ERROR_TAG("Settings", "Error setting int option {}: {}", path, e.what());
+			CreateSettingPath(path, value);
+		}
+	}
+
+	void Settings::AddFloatOption(const std::string &path, const double value)
+	{
+		try
+		{
+			if (const size_t pos = path.find_last_of('.'); pos != std::string::npos)
+			{
+				const std::string section = path.substr(0, pos);
+				const std::string name = path.substr(pos + 1);
+
+				try
+				{
+					Setting &setting = cfg.lookup(section);
+					if (setting.exists(name))
+						setting.remove(name);
+					setting.add(name, Setting::TypeFloat) = value;
+				}
+				catch (const SettingNotFoundException &)
+				{
+					CreateSettingPath(path, value);
+				}
+			}
+			else
+			{
+				if (cfg.getRoot().exists(path))
+					cfg.getRoot().remove(path);
+				cfg.getRoot().add(path, Setting::TypeFloat) = value;
+			}
+
+			settings[path] = ToString(value); // Update settings map
+		}
+		catch (const SettingException &e)
+		{
+			SEDX_CORE_ERROR_TAG("Settings", "Error setting float option {}: {}", path, e.what());
+			CreateSettingPath(path, value);
+		}
+	}
+
+	void Settings::AddBoolOption(const std::string &path, const bool value)
+	{
+		try
+		{
+			if (const size_t pos = path.find_last_of('.'); pos != std::string::npos)
+			{
+				const std::string section = path.substr(0, pos);
+				const std::string name = path.substr(pos + 1);
+
+				try
+				{
+					Setting &setting = cfg.lookup(section);
+					if (setting.exists(name))
+						setting.remove(name);
+
+					setting.add(name, Setting::TypeBoolean) = value;
+				}
+				catch (const SettingNotFoundException &)
+				{
+					CreateSettingPath(path, value);
+				}
+			}
+			else
+			{
+				if (cfg.getRoot().exists(path))
+					cfg.getRoot().remove(path);
+
+				cfg.getRoot().add(path, Setting::TypeBoolean) = value;
+			}
+
+			settings[path] = value ? "true" : "false"; // Update settings map
+		}
+		catch (const SettingException &e)
+		{
+			SEDX_CORE_ERROR("Error setting bool option {}: {}", path, e.what());
+			CreateSettingPath(path, value);
+		}
+	}
+
+	void Settings::AddStringOption(const std::string &path, const std::string &value)
+	{
+		try
+		{
+			if (const size_t pos = path.find_last_of('.'); pos != std::string::npos)
+			{
+				const std::string section = path.substr(0, pos);
+				const std::string name = path.substr(pos + 1);
+
+				try
+				{
+					Setting &setting = cfg.lookup(section);
+					if (setting.exists(name))
+						setting.remove(name);
+
+					setting.add(name, Setting::TypeString) = value;
+				}
+				catch (const SettingNotFoundException &)
+				{
+					CreateSettingPath(path, value);
+				}
+			}
+			else
+			{
+				if (cfg.getRoot().exists(path))
+					cfg.getRoot().remove(path);
+
+				cfg.getRoot().add(path, Setting::TypeString) = value;
+			}
+
+			settings[path] = value; // Update settings map
+		}
+		catch (const SettingException &e)
+		{
+			SEDX_CORE_ERROR("Error setting string option {}: {}", path, e.what());
+			CreateSettingPath(path, value);
+		}
+	}
+
+	bool Settings::GetBoolOption(const std::string &path, const bool defaultValue)
+	{
+		try
+		{
+			if (bool value; cfg.lookupValue(path, value))
+				return value;
+		}
+		catch (...)
+		{
+			// TODO: Better handling instead of just a fallthrough to default
+		}
+		return defaultValue;
+	}
+
+	int Settings::GetIntOption(const std::string &path, const int defaultValue)
+	{
+		try
+		{
+			if (int value; cfg.lookupValue(path, value))
+				return value;
+		}
+		catch (...)
+		{
+			// TODO: Better handling instead of just a fallthrough to default
+		}
+		return defaultValue;
+	}
+
+	double Settings::GetFloatOption(const std::string &path, const double defaultValue)
+	{
+		try
+		{
+			if (double value; cfg.lookupValue(path, value))
+				return value;
+		}
+		catch (...)
+		{
+			// TODO: Better handling instead of just a fallthrough to default
+		}
+		return defaultValue;
+	}
+
+	std::string Settings::GetStringOption(const std::string &path, const std::string &defaultValue)
+	{
+		try
+		{
+			if (std::string value; cfg.lookupValue(path, value))
+				return value;
+		}
+		catch (...)
+		{
+			// TODO: Better handing instead of just a fallthrough to default
+		}
+		return defaultValue;
+	}
+
+	bool Settings::DetectXPlanePath()
+	{
+		// First try to find X-Plane through Steam
+		SEDX_CORE_TRACE_TAG("Settings", "Attempting to detect X-Plane 12 via Steam...");
+		if (const auto steamPath = SteamGameFinder::FindXPlane12())
+		{
+			SEDX_CORE_TRACE_TAG("Settings", "Found X-Plane 12 via Steam: {}", *steamPath);
+			xPlaneStats.isSteam = true;
+			return SetXPlanePath(*steamPath);
+		}
+
+		SEDX_CORE_TRACE_TAG("Settings", "X-Plane 12 not found via Steam, checking common installation paths...");
+		xPlaneStats.isSteam = false;
+
+		// If not found via Steam, try some common installation paths
+		std::vector<std::string> commonPaths;
+
+#ifdef SEDX_PLATFORM_WINDOWS
+		// Common Windows installation paths
+		// Add more potential drive letters
+		const std::vector<std::string> driveLetters = {"C:", "D:", "E:", "F:", "G:", "H:"};
+		const std::vector<std::string> pathPatterns = {"\\X-Plane 12",
+													   "\\Program Files\\X-Plane 12",
+													   "\\Program Files (x86)\\X-Plane 12",
+													   "\\Games\\X-Plane 12",
+													   "\\Flight Simulator\\X-Plane 12"};
+
+		/// Build combinations of drives and paths
+		for (const auto &drive : driveLetters)
+			for (const auto &pattern : pathPatterns)
+				commonPaths.push_back(drive + pattern);
+
+#elif defined(SEDX_PLATFORM_MACOS)
+		/// macOS paths
+		const char *homeDir = getenv("HOME");
+		if (homeDir)
+		{
+			commonPaths.push_back(std::string(homeDir) + "/X-Plane 12");
+			commonPaths.push_back(std::string(homeDir) + "/Applications/X-Plane 12");
+		}
+		commonPaths.push_back("/Applications/X-Plane 12");
+#elif defined(SEDX_PLATFORM_LINUX)
+		/// Linux paths
+		const char *homeDir = getenv("HOME");
+		if (homeDir)
+		{
+			commonPaths.push_back(std::string(homeDir) + "/X-Plane 12");
+			commonPaths.push_back(std::string(homeDir) + "/Games/X-Plane 12");
+		}
+		commonPaths.push_back("/opt/X-Plane 12");
+#endif
+
+		for (const auto &path : commonPaths)
+		{
+			SEDX_CORE_TRACE_TAG("Settings", "Checking potential X-Plane path: {}", path);
+			if (SteamGameFinder::ValidateXPlanePath(path))
+			{
+				SEDX_CORE_INFO_TAG("Settings", "Found X-Plane 12 at common path: {}", path);
+				return SetXPlanePath(path);
+			}
+		}
+
+		// Additional fallback: ask user to locate X-Plane directory
+		SEDX_CORE_WARN_TAG("Settings", "Could not automatically detect X-Plane 12 installation");
+		SEDX_CORE_INFO_TAG("Settings", "Please set the X-Plane 12 path manually in the settings menu");
+
+		// Initialize with empty path but don't report error
+		xPlaneStats.xPlanePath = "";
+		xPlaneStats.xPlaneBinPath = "";
+		xPlaneStats.xPlaneResourcesPath = "";
+		xPlaneStats.isSteam = false;
+		xPlaneStats.xPlaneVersion = "X-Plane 12";
+
+		// Return false to indicate the path wasn't found automatically
+		return false;
+	}
+
+	bool Settings::SetXPlanePath(const std::string &path)
+	{
+		if (path.empty())
+		{
+			SEDX_CORE_ERROR_TAG("Settings", "Cannot set X-Plane path: Empty path provided");
+			return false;
+		}
+
+		if (!SteamGameFinder::ValidateXPlanePath(path))
+		{
+			SEDX_CORE_ERROR_TAG("Settings", "Invalid X-Plane 12 path: {}", path);
+			return false;
+		}
+
+		// Set the main path
+		xPlaneStats.xPlanePath = path;
+
+		// Update derived paths
+		UpdateDerivedXPlanePaths();
+
+		// Update the config
+		try
+		{
+			if (!cfg.exists("x_plane"))
+			{
+				Setting &root = cfg.getRoot();
+				root.add("x_plane", Setting::TypeGroup);
+			}
+
+			Setting &xp = cfg.lookup("x_plane");
+
+			if (xp.exists("path"))
+				xp.remove("path");
+
+			xp.add("path", Setting::TypeString) = path;
+
+			if (xp.exists("bin_path"))
+				xp.remove("bin_path");
+
+			xp.add("bin_path", Setting::TypeString) = xPlaneStats.xPlaneBinPath;
+
+			if (xp.exists("resources_path"))
+				xp.remove("resources_path");
+
+			xp.add("resources_path", Setting::TypeString) = xPlaneStats.xPlaneResourcesPath;
+
+			if (xp.exists("is_steam"))
+				xp.remove("is_steam");
+
+			xp.add("is_steam", Setting::TypeBoolean) = xPlaneStats.isSteam;
+
+			/// Update settings map
+			settings["x_plane.path"] = path;
+			settings["x_plane.bin_path"] = xPlaneStats.xPlaneBinPath;
+			settings["x_plane.resources_path"] = xPlaneStats.xPlaneResourcesPath;
+			settings["x_plane.is_steam"] = xPlaneStats.isSteam ? "true" : "false";
+
+			SEDX_CORE_TRACE_TAG("Settings", "X-Plane 12 path set to: {}", path);
+			return true;
+		}
+		catch (const ConfigException &e)
+		{
+			SEDX_CORE_ERROR_TAG("Settings", "Error setting X-Plane path in config: {}", e.what());
+			return false;
+		}
+	}
+
+	std::string Settings::GetXPlanePath()
+	{
+		return xPlaneStats.xPlanePath;
+	}
+
+	bool Settings::ValidateXPlanePaths()
+	{
+		if (xPlaneStats.xPlanePath.empty())
+			return false;
+
+		return SteamGameFinder::ValidateXPlanePath(xPlaneStats.xPlanePath);
+	}
+
+	void Settings::UpdateDerivedXPlanePaths()
+	{
+		if (xPlaneStats.xPlanePath.empty())
+		{
+			SEDX_CORE_WARN_TAG("Settings", "Cannot update derived paths: X-Plane path is empty");
+			return;
+		}
+
+		const std::filesystem::path basePath = xPlaneStats.xPlanePath;
+
+		// Set bin path
+		xPlaneStats.xPlaneBinPath = (basePath / "bin").string();
+
+		// Set resources path
+		xPlaneStats.xPlaneResourcesPath = (basePath / "Resources").string();
+
+		// Check if this is a Steam installation by examining the path.
+		// The path typically contains "steamapps/common" for Steam installations
+		std::string pathStr = basePath.string();
+		std::ranges::transform(pathStr, pathStr.begin(), [](const unsigned char c) { return std::tolower(c); });
+
+		xPlaneStats.isSteam =
+			pathStr.find("steamapps") != std::string::npos ||
+			(pathStr.find("steam") != std::string::npos && pathStr.find("common") != std::string::npos);
+
+		SEDX_CORE_TRACE_TAG("Settings", "Updated derived paths - Bin: {}, Resources: {}, Steam: {}",
+							xPlaneStats.xPlaneBinPath,
+							xPlaneStats.xPlaneResourcesPath,
+							xPlaneStats.isSteam ? "true" : "false");
+	}
+
+	void Settings::InitMinConfig()
+	{
+		try
+		{
+			// Create a minimal configuration with empty sections
+			std::string minimalConfig = "# Scenery Editor X Configuration\n";
+
+			// Add application section with correct version
+			minimalConfig += "application: {";
+			std::string appSection = APPLICATION_SECTION_TEMPLATE;
+			if (const size_t versionPos = appSection.find("${APP_VERSION}"); versionPos != std::string::npos)
+				appSection.replace(versionPos, 13, AppData::versionString);
+
+			minimalConfig += appSection;
+			minimalConfig += "};\n";
+
+			// Add X-Plane section
+			minimalConfig += "x_plane: {";
+			minimalConfig += XPLANE_SECTION_TEMPLATE;
+			minimalConfig += "};\n";
+
+			// Add UI section
+			minimalConfig += "ui: {";
+			minimalConfig += UI_SECTION_TEMPLATE;
+			minimalConfig += "};\n";
+
+			// Add project section
+			minimalConfig += "project: {";
+			minimalConfig += PROJECT_SECTION_TEMPLATE;
+			minimalConfig += "};\n";
+
+			// Parse the minimal config
+			cfg.readString(minimalConfig.c_str());
+
+			// Load settings into the map
+			LoadSettingsToMap();
+
+			SEDX_CORE_TRACE_TAG("Settings", "Minimal configuration initialized");
+		}
+		catch (const ConfigException &e)
+		{
+			SEDX_CORE_WARN_TAG("Settings", "Error initializing minimal config: {}", e.what());
+		}
+	}
+
+	void Settings::UpdateConfigFromData()
+	{
+		// Update X-Plane data
+		try
+		{
+			Setting &xp = cfg.lookup("x_plane");
+
+			if (xp.exists("version"))
+				xp.remove("version");
+
+			xp.add("version", Setting::TypeString) = xPlaneStats.xPlaneVersion;
+
+			if (xp.exists("path"))
+				xp.remove("path");
+
+			xp.add("path", Setting::TypeString) = xPlaneStats.xPlanePath;
+
+			if (xp.exists("bin_path"))
+				xp.remove("bin_path");
+
+			xp.add("bin_path", Setting::TypeString) = xPlaneStats.xPlaneBinPath;
+
+			if (xp.exists("resources_path"))
+				xp.remove("resources_path");
+
+			xp.add("resources_path", Setting::TypeString) = xPlaneStats.xPlaneResourcesPath;
+
+			if (xp.exists("is_steam"))
+				xp.remove("is_steam");
+
+			xp.add("is_steam", Setting::TypeBoolean) = xPlaneStats.isSteam;
+		}
+		catch (const SettingNotFoundException &e)
+		{
+			SEDX_CORE_ERROR_TAG("Settings", "X-Plane section not found: {}", e.what());
+			EnsureRequiredSections();
+		}
+
+		// Update application data
+		try
+		{
+			Setting &app = cfg.lookup("application");
+
+			if (app.exists("no_titlebar"))
+				app.remove("no_titlebar");
+
+			app.add("no_titlebar", Setting::TypeBoolean) = appStats.noTitlebar;
+
+			if (app.exists("version"))
+				app.remove("version");
+			app.add("version", Setting::TypeString) = AppData::versionString;
+		}
+		catch (const SettingNotFoundException &e)
+		{
+			SEDX_CORE_WARN_TAG("Settings", "Application section not found: {}", e.what());
+			EnsureRequiredSections();
+		}
+	}
+
+	void Settings::LoadSettingsToMap()
+	{
+		settings.clear();
+
+		// Recursive function to traverse config settings
+		std::function<void(const Setting &, const std::string &)> traverseSettings;
+		traverseSettings = [&](const Setting &setting, const std::string &prefix) {
+			for (int i = 0; i < setting.getLength(); ++i)
+			{
+				const Setting &child = setting[i];
+				std::string name = prefix.empty() ? child.getName() : prefix + "." + child.getName();
+
+				if (child.isGroup())
+					traverseSettings(child, name);
+				else
+				{
+					// Store the value as string in our map
+					switch (child.getType())
+					{
+					case Setting::TypeInt:
+						settings[name] = std::to_string(static_cast<int>(child));
+						break;
+					case Setting::TypeInt64:
+						settings[name] = std::to_string(static_cast<long long>(child));
+						break;
+					case Setting::TypeFloat:
+						settings[name] = std::to_string(static_cast<double>(child));
+						break;
+					case Setting::TypeString:
+						settings[name] = static_cast<const char *>(child);
+						break;
+					case Setting::TypeBoolean:
+						settings[name] = static_cast<bool>(child) ? "true" : "false";
+						break;
+					case Setting::TypeNone:
+						break;
+					case Setting::TypeGroup:
+						break;
+					case Setting::TypeArray:
+						break;
+					case Setting::TypeList:
+						break;
+					default:
+						// For arrays, lists, and groups, we skip adding to settings map
+						break;
+					}
+				}
+			}
+		};
+
+		traverseSettings(cfg.getRoot(), "");
+	}
+
+	void Settings::EnsureRequiredSections()
+	{
+		// Ensure application section exists
+		if (!cfg.exists("application"))
+		{
+			Setting &root = cfg.getRoot();
+			root.add("application", Setting::TypeGroup);
+
+			Setting &app = cfg.lookup("application");
+			app.add("version", Setting::TypeString) = AppData::versionString;
+			app.add("no_titlebar", Setting::TypeBoolean) = appStats.noTitlebar;
+		}
+
+		// Ensure x_plane section exists
+		if (!cfg.exists("x_plane"))
+		{
+			Setting &root = cfg.getRoot();
+			root.add("x_plane", Setting::TypeGroup);
+			Setting &xp = cfg.lookup("x_plane");
+
+			xp.add("version", Setting::TypeString) = xPlaneStats.xPlaneVersion;
+			xp.add("path", Setting::TypeString) = xPlaneStats.xPlanePath;
+			xp.add("bin_path", Setting::TypeString) = xPlaneStats.xPlaneBinPath;
+			xp.add("resources_path", Setting::TypeString) = xPlaneStats.xPlaneResourcesPath;
+			xp.add("is_steam", Setting::TypeBoolean) = xPlaneStats.isSteam;
+		}
+
+		// Ensure ui section exists
+		if (!cfg.exists("ui"))
+		{
+			Setting &root = cfg.getRoot();
+			root.add("ui", Setting::TypeGroup);
+
+			// Only add default values if not already set
+			if (!HasOption("ui.theme"))
+			{
+				AddStringOption("ui.theme", "dark");
+			}
+			if (!HasOption("ui.font_size"))
+			{
+				AddIntOption("ui.font_size", 12);
+			}
+			if (!HasOption("ui.language"))
+			{
+				AddStringOption("ui.language", "english");
+			}
+		}
+
+		// Ensure project section exists
+		if (!cfg.exists("project"))
+		{
+			Setting &root = cfg.getRoot();
+			root.add("project", Setting::TypeGroup);
+
+			// Only add default values if not already set
+			if (!HasOption("project.auto_save"))
+			{
+				AddBoolOption("project.auto_save", true);
+			}
+			if (!HasOption("project.auto_save_interval"))
+			{
+				AddIntOption("project.auto_save_interval", 5);
+			}
+			if (!HasOption("project.backup_count"))
+			{
+				AddIntOption("project.backup_count", 3);
+			}
+			if (!HasOption("project.default_project_dir"))
+			{
+				// Set default project directory
+				std::string defaultDir = "~/Documents/SceneryEditorX";
+
+				// Replace ~ with actual home directory
+				if (defaultDir.starts_with("~"))
+				{
+					const char *homeDir = nullptr;
+#ifdef _WIN32
+					homeDir = getenv("USERPROFILE");
+#else
+					homeDir = getenv("HOME");
+#endif
+
+					if (homeDir)
+						defaultDir.replace(0, 1, homeDir);
+				}
+
+				AddStringOption("project.default_project_dir", defaultDir);
+			}
+		}
+	}
+
+	template <typename T>
+	void Settings::CreateSettingPath(const std::string &path, const T &value)
+	{
+		// Split the path by dots
+		std::vector<std::string> parts;
+		std::string temp = path;
+		size_t pos;
+		while ((pos = temp.find('.')) != std::string::npos)
+		{
+			parts.push_back(temp.substr(0, pos));
+			temp.erase(0, pos + 1);
+		}
+
+		parts.push_back(temp); // Add the last part (name)
+
+		// Build the path
+		Setting *current = &cfg.getRoot();
+		std::string currentPath;
+
+		for (size_t i = 0; i < parts.size() - 1; ++i)
+		{
+
+			if (!currentPath.empty())
+				currentPath += ".";
+
+			currentPath += parts[i];
+
+			try
+			{
+				current = &(current->lookup(parts[i]));
+			}
+			catch (const SettingNotFoundException &)
+			{
+				// Create the group if it doesn't exist
+				current = &(current->add(parts[i], Setting::TypeGroup));
+			}
+		}
+
+		// Add the final value
+		const std::string name = parts.back();
+		if (current->exists(name))
+			current->remove(name);
+
+		if constexpr (std::is_same_v<T, int>)
+		{
+			current->add(name, Setting::TypeInt) = value;
+			settings[path] = ToString(value);
+		}
+		else if constexpr (std::is_same_v<T, double>)
+		{
+			current->add(name, Setting::TypeFloat) = value;
+			settings[path] = ToString(value);
+		}
+		else if constexpr (std::is_same_v<T, bool>)
+		{
+			current->add(name, Setting::TypeBoolean) = value;
+			settings[path] = value ? "true" : "false";
+		}
+		else if constexpr (std::is_same_v<T, std::string>)
+		{
+			current->add(name, Setting::TypeString) = value;
+			settings[path] = value;
+		}
+	}
+
+}
+
+// -------------------------------------------------------

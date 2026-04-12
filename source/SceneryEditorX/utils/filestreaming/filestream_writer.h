@@ -29,18 +29,24 @@
  * -------------------------------------------------------
  */
 #pragma once
-#include "SceneryEditorX/core/memory/buffer.h"
+#include <SceneryEditorX/core/memory/buffer.h>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
+	/**
+	 * @class StreamWriter
+	 * @brief A base class for writing data to a stream.
+	 * This class provides an interface for writing data to various types of streams.
+	 * Derived classes must implement the pure virtual functions to handle specific stream types.
+	 */
 	class StreamWriter
 	{
 	public:
 		virtual ~StreamWriter() = default;
 
-        [[nodiscard]] virtual bool IsStreamGood() const = 0;
+		[[nodiscard]] virtual bool IsStreamGood() const = 0;
 		virtual uint64_t GetStreamPosition() = 0;
 		virtual void SetStreamPosition(uint64_t position) = 0;
 		virtual bool WriteData(const char* data, size_t size) = 0;
@@ -137,8 +143,6 @@ namespace SceneryEditorX
 		}
 
 	};
-
-    // -------------------------------------------------------
 
 	template<>
 	inline void StreamWriter::WriteArray(const std::vector<std::string>& array, bool writeSize)

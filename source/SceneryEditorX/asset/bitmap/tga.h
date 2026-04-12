@@ -29,11 +29,28 @@
  * -------------------------------------------------------
  */
 #pragma once
+#include "bitmap.h"
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
+
+	/**
+	 * @class TGA_Bitmap
+	 * @brief A class representing a TGA bitmap image resource, inheriting from Bitmap.
+	 */
+	class TGA_Bitmap : public Bitmap
+	{
+	public:
+		virtual ~TGA_Bitmap() override;
+
+		void SaveToFile(const std::string &filePath) override;
+		void LoadFromFile(const std::string &filePath) override;
+
+	private:
+
+	};
 
 }
 

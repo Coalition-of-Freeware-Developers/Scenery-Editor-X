@@ -35,20 +35,19 @@ ADD_EXECUTABLE(CrashHandler
 SET_TARGET_PROPERTIES(CrashHandler PROPERTIES OUTPUT_NAME "xService")
 
 # --------------------------------
-
 TARGET_INCLUDE_DIRECTORIES(CrashHandler
-    PRIVATE
-        ${CMAKE_SOURCE_DIR}/source
-		${CMAKE_SOURCE_DIR}/dependency
-        ${CMAKE_SOURCE_DIR}/dependency/imgui
-        ${CMAKE_SOURCE_DIR}/dependency/imgui/backends
-        ${CMAKE_SOURCE_DIR}/dependency/imgui/misc
-        ${CMAKE_SOURCE_DIR}/dependency/ImGuizmo
-        ${REGISTRY_KEYS}
-        ${PORTABLE_FILE_DIALOGS_INCLUDE_DIRS}
-        $ENV{VULKAN_SDK}/Include/
-        ${Stb_INCLUDE_DIR}
-        ${CURL_INCLUDE_DIRS}
+	PRIVATE
+	${CMAKE_SOURCE_DIR}/source
+	${CMAKE_SOURCE_DIR}/dependency
+	${REGISTRY_KEYS}
+	$if(RENDERDOC_ENABLED)
+		${RENDERDOC_INCLUDE_DIRS}
+	$endif()
+	${PORTABLE_FILE_DIALOGS_INCLUDE_DIRS}
+	$ENV{VULKAN_SDK}/Include/
+	$ENV{VULKAN_SDK}/Include/vma
+	${Stb_INCLUDE_DIR}
+	${CURL_INCLUDE_DIRS}
 )
 
 # --------------------------------
@@ -57,10 +56,8 @@ TARGET_LINK_LIBRARIES(CrashHandler
     PRIVATE
 		nlohmann_json
         spdlog::spdlog_header_only
-        GPUOpen::VulkanMemoryAllocator
         CURL::libcurl
         Vulkan::Vulkan
-		imgui
 		libconfig
 		libconfig++
     	SDL3::SDL3
@@ -68,7 +65,6 @@ TARGET_LINK_LIBRARIES(CrashHandler
         d3d12
         Shell32.lib
 		$<$<AND:$<CONFIG:Debug>,$<BOOL:${TRACY_ENABLE}>>:TracyClient>
-
 )
 
 # --------------------------------
@@ -77,10 +73,14 @@ TARGET_COMPILE_DEFINITIONS(CrashHandler
     PUBLIC
         EDITOR
         LAUNCHER
+		$if(RENDERDOC_ENABLED)
+			RENDERDOC_TOOLING_ENABLED
+		$endif()
         $<$<CONFIG:Debug>:SEDX_DEBUG>
         $<$<CONFIG:Release>:SEDX_RELEASE>
 		SPDLOG_USE_STD_FORMAT
         VK_USE_PLATFORM_WIN32_KHR
+		VK_USE_64_BIT_NON_DISPATCHABLE_HANDLES
         CURL_STATICLIB
 )
 

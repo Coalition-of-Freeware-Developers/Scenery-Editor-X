@@ -29,7 +29,9 @@
  * -------------------------------------------------------
  */
 #include "shader.h"
+#include "shader_manager.h"
 #include "shader_stage.h"
+#include <SceneryEditorX/renderer/vulkan/descriptor.h>
 #include <SceneryEditorX/renderer/vulkan/render_context.h>
 #include <volk/volk.h>
 
@@ -40,12 +42,25 @@ namespace SceneryEditorX
 
 	Shader::~Shader()
 	{        
-	    const Ref<Device> device = RenderContext::Get()->GetDevice();
-        SEDX_CORE_ASSERT(device.IsValid(), "Invalid device");
+		// Guard against being called during the CRT static-destructor phase after
+		// Renderer::Shutdown() has already torn down the RenderContext and the
+		// spdlog logging infrastructure.  In that situation RenderContext::Get()
+		// returns an invalid Ref, and calling any logging/assert macro would
+		// dereference the already-destroyed logger (crash at offset 0x50 in
+		// spdlog::logger::level_).  The VkDevice is already gone at that point,
+		// so Vulkan cleanup is moot — return silently instead of crashing.
+		const Ref<RenderContext> ctx = RenderContext::Get();
+		if (!ctx.IsValid())
+			return;
+
+		const Ref<Device> device = ctx->GetDevice();
+		if (!device.IsValid())
+			return;
 
 		for (VkDescriptorSetLayout layout : m_DescriptorSetLayouts)
 		{
-		    vkDestroyDescriptorSetLayout(device->GetLogicalDevice(), layout, nullptr);
+			if (layout != VK_NULL_HANDLE)
+				vkDestroyDescriptorSetLayout(device->GetLogicalDevice(), layout, nullptr);
 		}
 		m_Stages.clear();
 	}
@@ -55,11 +70,11 @@ namespace SceneryEditorX
 		std::map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>> bindings = GetDescriptorSetLayoutBindings();
 	
 		const Ref<Device> device = RenderContext::Get()->GetDevice();
-        SEDX_CORE_ASSERT(device.IsValid(), "Invalid device");
+		SEDX_CORE_ASSERT(device.IsValid(), "Invalid device");
 
 		for (VkDescriptorSetLayout layout : m_DescriptorSetLayouts)
 		{
-		    vkDestroyDescriptorSetLayout(device->GetLogicalDevice(), layout, nullptr);
+			vkDestroyDescriptorSetLayout(device->GetLogicalDevice(), layout, nullptr);
 		}
 		m_DescriptorSetLayouts.clear();
 	
@@ -70,7 +85,7 @@ namespace SceneryEditorX
 	
 			VkDescriptorSetLayoutCreateInfo createInfo = {};
 			createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-			createInfo.bindingCount = (uint32_t)descLayoutBindings.size();
+			createInfo.bindingCount = static_cast<uint32_t>(descLayoutBindings.size());
 			createInfo.pBindings = descLayoutBindings.data();
 			createInfo.pNext = nullptr;
 	
@@ -91,38 +106,37 @@ namespace SceneryEditorX
 			SEDX_VK_RESULT_ASSERT(vkCreateDescriptorSetLayout(device->GetLogicalDevice(), &createInfo, nullptr, &descLayout), "Unable to create descriptor set layout");
 		}
 	}
-	
-	void Shader::AddShaderStage(Stage stage, const std::string& filepath)
+
+	void Shader::RenderThread_reload(bool forceCompile)
+	{
+	}
+	void Shader::AddShaderStage(StageType stage, const std::string& filepath)
 	{
 		if (m_Stages.contains(stage))
-		{
-		    return;
-		}
-	
+			return;
+
 		m_Stages[stage] = CreateRef<ShaderStage>(stage, filepath);
 	
 		for (const ShaderInput& input : m_Stages[stage]->GetInput())
 		{
-		    m_Input[input.set].push_back(input);
+			m_Input[input.set].push_back(input);
 		}
 	}
 	
-	Ref<ShaderStage> Shader::GetShaderStage(const Stage stage)
+	Ref<ShaderStage> Shader::GetShaderStage(const StageType stage)
 	{
-		SEDX_CORE_ASSERT(m_Stages.contains(stage) == false, "Stage is not present");
-		return m_Stages[stage];
+		SEDX_CORE_ASSERT(m_Stages.contains(stage), "Stage is not present");
+		return m_Stages.at(stage);
 	}
 	
-	bool Shader::HasStage(const Stage stage)
+	bool Shader::HasStage(const StageType stage)
 	{
 		if (!m_Stages.contains(stage))
-		{
-		    return false;
-		}
+			return false;
 
 		return true;
 	}
-	
+
 	std::map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>> Shader::GetDescriptorSetLayoutBindings()
 	{
 		std::map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>> bindings;
@@ -142,7 +156,7 @@ namespace SceneryEditorX
 					continue;
 				}
 	
-				VkDescriptorSetLayoutBinding layoutBinding = {};
+				VkDescriptorSetLayoutBinding layoutBinding;
 				layoutBinding.binding = i.binding;
 				layoutBinding.descriptorType = GetInputType(i.type);
 	
@@ -153,7 +167,7 @@ namespace SceneryEditorX
 				}
 				else
 				{
-				    layoutBinding.descriptorCount = i.count;
+					layoutBinding.descriptorCount = i.count;
 				}
 	
 				layoutBinding.stageFlags = GetStage(i.stage);
@@ -163,13 +177,58 @@ namespace SceneryEditorX
 	
 			for (auto &layoutBinding : inputs | std::views::values)
 			{
-			    bindings[set].push_back(layoutBinding);
+				bindings[set].push_back(layoutBinding);
 			}
 		}
 	
 		return bindings;
 	}
 
-}
+	std::vector<Descriptor> Shader::GetDescriptors()
+	{
+		std::vector<Descriptor> result;
+		
+		for (auto& [set, inputs] : m_Input)
+		{
+			for (const ShaderInput& input : inputs)
+			{
+				DescriptorType descType = DescriptorType::MaxEnum;
+				switch (input.type)
+				{
+				case ShaderInputType::UniformBuffer:
+				case ShaderInputType::UniformBufferSet: descType = DescriptorType::ConstantBuffer;
+					break;
+				case ShaderInputType::StorageBuffer:
+				case ShaderInputType::StorageBufferSet: descType = DescriptorType::StructuredBuffer;
+					break;
+				case ShaderInputType::CombinedImageSampler:
+				case ShaderInputType::Texture: descType = DescriptorType::Image;
+					break;
+				case ShaderInputType::StorageImage: descType = DescriptorType::TextureStorage; 
+					break;
+				default:	
+					break;
+				}
+				
+				if (descType == DescriptorType::MaxEnum)
+					continue;
+				
+				DescriptorSpec spec{};
+				spec.name        = input.debugName;
+				spec.type        = descType;
+				spec.layout      = Layout::ImageLayout::MaxEnum;
+				spec.slot        = input.binding;
+				spec.stage       = static_cast<uint32_t>(GetStage(input.stage));
+				spec.structSize  = 0;
+				spec.asArray     = input.count > 1;
+				spec.arrayLength = input.count;
+				result.emplace_back(spec);
+			}
+		}
+		
+		return result;
+	}
+
+} // namespace SceneryEditorX
 
 // -------------------------------------------------------

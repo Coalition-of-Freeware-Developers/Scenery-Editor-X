@@ -39,231 +39,231 @@ namespace SceneryEditorX
 	static AllocationStats GlobalStats;
 	static bool InInit_ = false;
 
-    // -------------------------------------------------------
+	// -------------------------------------------------------
 
-    /**
-     * @brief Initializes the memory allocation tracking system
-     * 
-     * This function creates and initializes the core AllocatorData structure that
-     * tracks memory allocations throughout the application. The initialization
-     * uses AllocateRaw to avoid recursive allocation issues during setup.
-     * 
-     * It is designed to be safe when called multiple times - subsequent calls
-     * will return immediately if the allocator has already been initialized.
-     * 
-     * The function sets the InInit_ flag during initialization to prevent
-     * recursive initialization attempts.
-     */
+	/**
+	 * @brief Initializes the memory allocation tracking system
+	 * 
+	 * This function creates and initializes the core AllocatorData structure that
+	 * tracks memory allocations throughout the application. The initialization
+	 * uses AllocateRaw to avoid recursive allocation issues during setup.
+	 * 
+	 * It is designed to be safe when called multiple times - subsequent calls
+	 * will return immediately if the allocator has already been initialized.
+	 * 
+	 * The function sets the InInit_ flag during initialization to prevent
+	 * recursive initialization attempts.
+	 */
 	void Allocator::Init()
 	{
-	    if (Data_)
-            return;
+		if (Data_)
+			return;
 
-        InInit_ = true;
-	    AllocatorData *data = static_cast<AllocatorData *>(AllocateRaw(sizeof(AllocatorData)));
-	    new (data) AllocatorData();
-	    Data_ = data;
-	    InInit_ = false;
+		InInit_ = true;
+		AllocatorData *data = static_cast<AllocatorData *>(AllocateRaw(sizeof(AllocatorData)));
+		new (data) AllocatorData();
+		Data_ = data;
+		InInit_ = false;
 	}
 
-    /**
-     * @brief Allocates raw memory without tracking or statistics
-     * 
-     * This function performs a raw memory allocation using malloc without any tracking
-     * in the allocation system. It's primarily used during initialization of the allocator
-     * itself to avoid recursive allocation problems, and in other cases where memory
-     * tracking would cause issues.
-     * 
-     * @param size The number of bytes to allocate
-     * @return Pointer to the allocated memory block, or nullptr if allocation fails
-     */
-    void* Allocator::AllocateRaw(const size_t size) { return malloc(size); }
+	/**
+	 * @brief Allocates raw memory without tracking or statistics
+	 * 
+	 * This function performs a raw memory allocation using malloc without any tracking
+	 * in the allocation system. It's primarily used during initialization of the allocator
+	 * itself to avoid recursive allocation problems, and in other cases where memory
+	 * tracking would cause issues.
+	 * 
+	 * @param size The number of bytes to allocate
+	 * @return Pointer to the allocated memory block, or nullptr if allocation fails
+	 */
+	void* Allocator::AllocateRaw(const size_t size) { return malloc(size); }
 
-    /**
-     * @brief Allocates memory from the system and tracks it in the allocation system
-     * 
-     * This function allocates memory through the standard malloc call and registers
-     * the allocation in the tracking system. It updates global statistics to maintain
-     * a record of memory usage.
-     * 
-     * Special handling is provided for when:
-     * - The allocator is initializing (to avoid recursive initialization)
-     * - The tracking data hasn't been initialized yet
-     * 
-     * When profiling is enabled, the allocation is also reported to the Tracy profiler.
-     * 
-     * @param size The number of bytes to allocate
-     * @return Pointer to the allocated memory block
-     */
+	/**
+	 * @brief Allocates memory from the system and tracks it in the allocation system
+	 * 
+	 * This function allocates memory through the standard malloc call and registers
+	 * the allocation in the tracking system. It updates global statistics to maintain
+	 * a record of memory usage.
+	 * 
+	 * Special handling is provided for when:
+	 * - The allocator is initializing (to avoid recursive initialization)
+	 * - The tracking data hasn't been initialized yet
+	 * 
+	 * When profiling is enabled, the allocation is also reported to the Tracy profiler.
+	 * 
+	 * @param size The number of bytes to allocate
+	 * @return Pointer to the allocated memory block
+	 */
 	void* Allocator::Allocate(size_t size)
 	{
-	    if (InInit_)
-            return AllocateRaw(size);
+		if (InInit_)
+			return AllocateRaw(size);
 
-        if (!Data_)
-            Init();
+		if (!Data_)
+			Init();
 
-        void *memory = malloc(size);
-	    {
-	        std::scoped_lock lock(Data_->Mutex_);
-            Allocation &alloc = Data_->AllocationMap[memory];
-	        alloc.Memory = memory;
-	        alloc.Size = size;
+		void *memory = malloc(size);
+		{
+			std::scoped_lock lock(Data_->Mutex_);
+			Allocation &alloc = Data_->AllocationMap[memory];
+			alloc.Memory = memory;
+			alloc.Size = size;
 	
-	        GlobalStats.TotalAllocated += size;
-	    }
+			GlobalStats.TotalAllocated += size;
+		}
 	
 	#if SEDX_ENABLE_PROFILING
-	    TracyAlloc(memory, size);
+		TracyAlloc(memory, size);
 	#endif
 	
-	    return memory;
+		return memory;
 	}
 
-    /**
-     * @brief Allocates memory from the system with a specified category descriptor
-     * 
-     * This function allocates memory through the standard malloc call and registers
-     * the allocation in the tracking system with a specific category identifier.
-     * The category allows for more granular memory usage tracking, as statistics
-     * are maintained per category.
-     * 
-     * If the allocator is not yet initialized, it calls Init() to set up the
-     * tracking system before proceeding with the allocation.
-     * 
-     * The function updates both the global statistics and category-specific
-     * statistics to maintain a complete record of memory usage.
-     * 
-     * When profiling is enabled, the allocation is also reported to the Tracy profiler.
-     * 
-     * @param size The number of bytes to allocate
-     * @param desc Category descriptor string to identify this allocation type
-     * @return Pointer to the allocated memory block
-     */
+	/**
+	 * @brief Allocates memory from the system with a specified category descriptor
+	 * 
+	 * This function allocates memory through the standard malloc call and registers
+	 * the allocation in the tracking system with a specific category identifier.
+	 * The category allows for more granular memory usage tracking, as statistics
+	 * are maintained per category.
+	 * 
+	 * If the allocator is not yet initialized, it calls Init() to set up the
+	 * tracking system before proceeding with the allocation.
+	 * 
+	 * The function updates both the global statistics and category-specific
+	 * statistics to maintain a complete record of memory usage.
+	 * 
+	 * When profiling is enabled, the allocation is also reported to the Tracy profiler.
+	 * 
+	 * @param size The number of bytes to allocate
+	 * @param desc Category descriptor string to identify this allocation type
+	 * @return Pointer to the allocated memory block
+	 */
 	void *Allocator::Allocate(size_t size, const char *desc)
 	{
-	    if (!Data_)
-            Init();
+		if (!Data_)
+			Init();
 
-        void *memory = malloc(size);
-	    {
-	        std::scoped_lock lock(Data_->Mutex_);
-            auto &[Memory, Size, Category] = Data_->AllocationMap[memory];
-	        Memory = memory;
-	        Size = size;
-	        Category = desc;
+		void *memory = malloc(size);
+		{
+			std::scoped_lock lock(Data_->Mutex_);
+			auto &[Memory, Size, Category] = Data_->AllocationMap[memory];
+			Memory = memory;
+			Size = size;
+			Category = desc;
 	
-	        GlobalStats.TotalAllocated += size;
-	        if (desc)
-                Data_->AllocStatsMap[desc].TotalAllocated += size;
-        }
+			GlobalStats.TotalAllocated += size;
+			if (desc)
+				Data_->AllocStatsMap[desc].TotalAllocated += size;
+		}
 	
 	#if SEDX_ENABLE_PROFILING
-	    TracyAlloc(memory, size);
+		TracyAlloc(memory, size);
 	#endif
 	
-	    return memory;
+		return memory;
 	}
 
-    /**
-     * @brief Allocates memory from the system with file and line information for tracking
-     * 
-     * This function allocates memory through the standard malloc call and registers
-     * the allocation in the tracking system with file path and line number information.
-     * This variant is particularly useful for debugging memory leaks, as it allows
-     * allocations to be traced back to specific source code locations.
-     * 
-     * If the allocator is not yet initialized, it calls Init() to set up the
-     * tracking system before proceeding with the allocation.
-     * 
-     * The function uses the file path as a category identifier and updates both global
-     * and file-specific statistics to maintain a comprehensive record of memory usage.
-     * This helps identify which source files are responsible for memory allocations.
-     * 
-     * When profiling is enabled, the allocation is also reported to the Tracy profiler.
-     * 
-     * @param size The number of bytes to allocate
-     * @param file Source file path where the allocation is requested from
-     * @param line Line number in the source file where the allocation is requested
-     * @return Pointer to the allocated memory block
-     */
+	/**
+	 * @brief Allocates memory from the system with file and line information for tracking
+	 * 
+	 * This function allocates memory through the standard malloc call and registers
+	 * the allocation in the tracking system with file path and line number information.
+	 * This variant is particularly useful for debugging memory leaks, as it allows
+	 * allocations to be traced back to specific source code locations.
+	 * 
+	 * If the allocator is not yet initialized, it calls Init() to set up the
+	 * tracking system before proceeding with the allocation.
+	 * 
+	 * The function uses the file path as a category identifier and updates both global
+	 * and file-specific statistics to maintain a comprehensive record of memory usage.
+	 * This helps identify which source files are responsible for memory allocations.
+	 * 
+	 * When profiling is enabled, the allocation is also reported to the Tracy profiler.
+	 * 
+	 * @param size The number of bytes to allocate
+	 * @param file Source file path where the allocation is requested from
+	 * @param line Line number in the source file where the allocation is requested
+	 * @return Pointer to the allocated memory block
+	 */
 	void* Allocator::Allocate(size_t size, const char *file, int line)
 	{
-	    if (!Data_)
-            Init();
+		if (!Data_)
+			Init();
 
-        void *memory = malloc(size);
+		void *memory = malloc(size);
 	
-	    {
-	        std::scoped_lock lock(Data_->Mutex_);
-            auto &[Memory, Size, Category] = Data_->AllocationMap[memory];
-	        Memory = memory;
-	        Size = size;
-	        Category = file;
+		{
+			std::scoped_lock lock(Data_->Mutex_);
+			auto &[Memory, Size, Category] = Data_->AllocationMap[memory];
+			Memory = memory;
+			Size = size;
+			Category = file;
 	
-	        GlobalStats.TotalAllocated += size;
-	        Data_->AllocStatsMap[file].TotalAllocated += size;
-	    }
+			GlobalStats.TotalAllocated += size;
+			Data_->AllocStatsMap[file].TotalAllocated += size;
+		}
 	
 	#if SEDX_ENABLE_PROFILING
-	    TracyAlloc(memory, size);
+		TracyAlloc(memory, size);
 	#endif
 	
-	    return memory;
+		return memory;
 	}
 
-    /**
-     * @brief Deallocates memory and removes tracking information for the allocation
-     * 
-     * This function deallocates a previously allocated memory block and updates
-     * the tracking statistics accordingly. It is designed to be thread-safe with
-     * proper mutex locking around critical sections.
-     * 
-     * The function performs the following operations:
-     * 1. Returns immediately if the memory pointer is null
-     * 2. Locates the allocation entry in the tracking map
-     * 3. Updates global statistics and category-specific statistics if the allocation is found
-     * 4. Removes the allocation from the tracking map
-     * 5. Reports the deallocation to the Tracy profiler if profiling is enabled
-     * 6. Issues a fatal error in debug builds if the memory block was not found in tracking
-     * 7. Calls free() to release the memory back to the system
-     * 
-     * @param memory Pointer to the memory block to be deallocated
-     */
+	/**
+	 * @brief Deallocates memory and removes tracking information for the allocation
+	 * 
+	 * This function deallocates a previously allocated memory block and updates
+	 * the tracking statistics accordingly. It is designed to be thread-safe with
+	 * proper mutex locking around critical sections.
+	 * 
+	 * The function performs the following operations:
+	 * 1. Returns immediately if the memory pointer is null
+	 * 2. Locates the allocation entry in the tracking map
+	 * 3. Updates global statistics and category-specific statistics if the allocation is found
+	 * 4. Removes the allocation from the tracking map
+	 * 5. Reports the deallocation to the Tracy profiler if profiling is enabled
+	 * 6. Issues a fatal error in debug builds if the memory block was not found in tracking
+	 * 7. Calls free() to release the memory back to the system
+	 * 
+	 * @param memory Pointer to the memory block to be deallocated
+	 */
 	void Allocator::Free(void *memory)
 	{
-	    if (memory == nullptr)
-            return;
-        {
-	        bool found;
-	        {
-	            std::scoped_lock lock(Data_->Mutex_);
-                const auto allocMapIt = Data_->AllocationMap.find(memory);
-                found = allocMapIt != Data_->AllocationMap.end();
-	            if (found)
-	            {
-	                const Allocation &alloc = allocMapIt->second;
-	                GlobalStats.TotalFreed += alloc.Size;
-	                if (alloc.Category)
-                    {
-                        Data_->AllocStatsMap[alloc.Category].TotalFreed += alloc.Size;
-                    }
+		if (memory == nullptr)
+			return;
+		{
+			bool found;
+			{
+				std::scoped_lock lock(Data_->Mutex_);
+				const auto allocMapIt = Data_->AllocationMap.find(memory);
+				found = allocMapIt != Data_->AllocationMap.end();
+				if (found)
+				{
+					const Allocation &alloc = allocMapIt->second;
+					GlobalStats.TotalFreed += alloc.Size;
+					if (alloc.Category)
+					{
+						Data_->AllocStatsMap[alloc.Category].TotalFreed += alloc.Size;
+					}
 	
-	                Data_->AllocationMap.erase(memory);
-	            }
-	        }
+					Data_->AllocationMap.erase(memory);
+				}
+			}
 	
 	#if SEDX_ENABLE_PROFILING
-	        TracyFree(memory);
+			TracyFree(memory);
 	#endif
 	
 	#ifndef SEDX_DIST
-	        if (!found)
-                SEDX_CORE_FATAL_TAG("Memory", "Memory block {0} not present in alloc map", memory);
+			if (!found)
+				SEDX_CORE_FATAL_TAG("Memory", "Memory block {0} not present in alloc map", memory);
 #endif
-	    }
+		}
 	
-	    free(memory);
+		free(memory);
 	}
 
 	namespace Memory

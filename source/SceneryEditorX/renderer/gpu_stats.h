@@ -35,7 +35,7 @@
 
 namespace SceneryEditorX
 {
-    struct GPUMemoryStats
+	struct GPUMemoryStats
 	{
 		uint64_t used = 0;
 		uint64_t totalAvailable = 0;

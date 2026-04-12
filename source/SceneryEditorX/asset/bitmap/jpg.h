@@ -29,11 +29,29 @@
  * -------------------------------------------------------
  */
 #pragma once
+#include "bitmap.h"
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
+
+	/**
+	 * @class JPG_Bitmap
+	 * @brief A class representing a JPEG bitmap image resource, inheriting from Bitmap.
+	 */
+	class JPG_Bitmap : public Bitmap
+	{
+	public:
+		virtual ~JPG_Bitmap() override;
+
+		void SaveToFile(const std::string &filePath) override;
+		void LoadFromFile(const std::string &filePath) override;
+
+
+	private:
+
+	};
 
 }
 

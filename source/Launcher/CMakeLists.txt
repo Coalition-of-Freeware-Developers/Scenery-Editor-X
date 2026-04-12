@@ -58,14 +58,15 @@ TARGET_INCLUDE_DIRECTORIES(Launcher
         ${CMAKE_SOURCE_DIR}/source
 		${CMAKE_SOURCE_DIR}/dependency
 		${CMAKE_SOURCE_DIR}/dependency/xMath
-        ${CMAKE_SOURCE_DIR}/dependency/imgui
-        ${CMAKE_SOURCE_DIR}/dependency/imgui/backends
-        ${CMAKE_SOURCE_DIR}/dependency/imgui/misc
 		${CMAKE_SOURCE_DIR}/dependency/ktx/include
 		${CMAKE_SOURCE_DIR}/dependency/ktx/other_include
+		$if(RENDERDOC_ENABLED)
+			${RENDERDOC_INCLUDE_DIRS}
+		$endif()
         ${REGISTRY_KEYS}
         ${PORTABLE_FILE_DIALOGS_INCLUDE_DIRS}
         $ENV{VULKAN_SDK}/Include/
+		$ENV{VULKAN_SDK}/Include/vma
         ${Stb_INCLUDE_DIR}
         ${CURL_INCLUDE_DIRS}
 )
@@ -76,11 +77,9 @@ TARGET_LINK_LIBRARIES(Launcher
     PRIVATE
         nlohmann_json
         spdlog::spdlog_header_only
-        GPUOpen::VulkanMemoryAllocator
         CURL::libcurl
         Vulkan::Vulkan
 		ktx
-		imgui
 		AppCore
 		libconfig
 		libconfig++
@@ -95,6 +94,13 @@ TARGET_LINK_LIBRARIES(Launcher
 
 # --------------------------------
 
+IF(RENDERDOC_ENABLE)
+	TARGET_COMPILE_DEFINITIONS(Launcher
+		PRIVATE
+		RENDERDOC_ENABLED
+	)
+ENDIF()
+
 TARGET_COMPILE_DEFINITIONS(Launcher
     PUBLIC
         LAUNCHER
@@ -102,6 +108,7 @@ TARGET_COMPILE_DEFINITIONS(Launcher
         $<$<CONFIG:Release>:SEDX_RELEASE>
 		SPDLOG_USE_STD_FORMAT
         VK_USE_PLATFORM_WIN32_KHR
+		VK_USE_64_BIT_NON_DISPATCHABLE_HANDLES
         CURL_STATICLIB
 )
 

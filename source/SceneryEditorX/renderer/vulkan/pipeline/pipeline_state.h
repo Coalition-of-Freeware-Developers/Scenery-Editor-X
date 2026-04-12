@@ -29,53 +29,144 @@
  * -------------------------------------------------------
  */
 #pragma once
+
 #include <SceneryEditorX/renderer/renderer_declarations.h>
+#include <SceneryEditorX/renderer/vulkan/render_data.h>
+#include <xMath/includes/colors.h>
 
 // ---------------------------------------------------------
 
 namespace SceneryEditorX
 {
+	class Swapchain;
+	class Shader;
+	class ImageResource;
+	class RasterizerState;
+	class BlendState;
+	class DepthStencilState;
 
-    /* 
-     * Color sentinel – matches the Color type used by command lists.
-     * Using a raw float[4] here avoids pulling in <colors.h> from this header. 
-     */
-    struct PipelineStateColor { float r = 0, g = 0, b = 0, a = 0; };
+	/**
+	 * @brief matches xMath::Color used by command lists.
+	 */
+	struct PipelineStateColor 
+	{ 
+		float r = 0, g = 0, b = 0, a = 0;
 
-    // Opaque "load" sentinel colours (negative alpha = "load, don't clear").
-    inline const PipelineStateColor RHI_COLOR_LOAD{ 0.0f, 0.0f, 0.0f, -1.0f };
+		/**
+		 * @brief Create a PipelineStateColor from an xMath::Color.
+		 * @param color Source color.
+		 * @return PipelineStateColor with copied RGBA components.
+		 */
+		[[nodiscard]] static PipelineStateColor FromColor(const xMath::Color& color)
+		{
+		   PipelineStateColor out;
+			out.r = color.r;
+			out.g = color.g;
+			out.b = color.b;
+			out.a = color.a;
+			return out;
+		}
 
-    /**
-     * @struct PipelineState
-     * @brief High-level, API-agnostic descriptor for a graphics or compute pipeline.
-     *
-     * Passes build a PipelineState, then call CommandList::SetPipelineState() which
-     * resolves or creates the underlying VkPipeline and starts the render pass.
-     */
-    struct PipelineState
-    {
-        const char* name = nullptr;
+		/**
+		 * @brief Assign a Color to the PipelineStateColor.
+		 * @param color The Color to assign.
+		 * @return Reference to the updated PipelineStateColor.
+		 */
+		PipelineStateColor& operator=(const xMath::Color& color)
+		{
+			r = color.r;
+			g = color.g;
+			b = color.b;
+			a = color.a;
+			return *this;
+		}
 
-        // Shader stages – indexed by Stage enum (vertex=0, geometry=1, tess_ctrl=2, tess_eval=3, fragment=4, compute=5)
-        std::map<uint32_t, Shader*> shaders;
+		/**
+		 * @brief Convert to xMath::Color.
+		 * @return xMath::Color with matching RGBA components.
+		 */
+		[[nodiscard]] xMath::Color ToColor() const
+		{
+		  return {r, g, b, a};
+		}
 
-        // Pipeline state objects (nullptr = use defaults)
-        RasterizerState*   rasterizerState        = nullptr;
-        BlendState*        blendState             = nullptr;
-        DepthStencilState* depthStencil_State     = nullptr;
+	};
 
-        // Render targets
-        std::array<ImageResource*, MAX_RENDER_TARGET_COUNT> renderTarget_ColorTextures = {};
-        ImageResource*  renderTarget_DepthTexture = nullptr;
-        ImageResource*  vrsInputTexture           = nullptr;
+	// Opaque "load" sentinel colours (negative alpha = "load, don't clear").
+	inline constexpr PipelineStateColor RHI_COLOR_LOAD{.r = 0.0f, .g = 0.0f, .b = 0.0f, .a = -1.0f };
 
-        // Clear values (rhi_color_load.a < 0 = load; non-negative = clear to this colour)
-        std::array<PipelineStateColor, MAX_RENDER_TARGET_COUNT> clearColor = {};
-        float clearDepth = RHI_DEPTH_LOAD;
+	/**
+	 * @class PipelineState
+	 * @brief High-level, API-agnostic descriptor for a graphics or compute pipeline.
+	 *
+	 * Passes build a PipelineState, then call CommandList::SetPipelineState() which
+	 * resolves or creates the underlying VkPipeline and starts the render pass.
+	 */
+	class PipelineState
+	{
+	public:
+		/* @brief Construct a new PipelineState object. */
+		PipelineState();
 
-        // Misc flags
-        bool resolutionScale = false;
-    };
+		/* @brief Destroy the pipeline state. */
+		~PipelineState();
+
+		/* @brief Prepares the pipeline state for use. */
+		void Prepare();
+
+		[[nodiscard]] bool HasClearValues() const;
+		[[nodiscard]] bool IsGraphics() const;
+		[[nodiscard]] bool IsCompute() const;
+		[[nodiscard]] bool HasTessellation();
+
+		[[nodiscard]] uint32_t GetWidth() const  { return m_Width; }
+		[[nodiscard]] uint32_t GetHeight() const { return m_Height; }
+		[[nodiscard]] uint64_t GetHash() const   { return m_Hash; }
+
+		/**
+		 * @brief Get the current state of the pipeline.
+		 * @return The current pipeline state.
+		 */
+		static PipelineState GetState();
+
+		// Shader stages – indexed by StageType enum (vertex=0, geometry=1, tess_ctrl=2, tess_eval=3, fragment=4, compute=5)
+		std::array<Shader*, static_cast<uint32_t>(StageType::MaxEnum)> shaders;
+
+		// Pipeline state objects (nullptr = use defaults)
+		RasterizerState*    rasterizerState       = nullptr;
+		BlendState*         blendState            = nullptr;
+		DepthStencilState*  depthStencil_State    = nullptr;
+		VkPrimitiveTopology primitiveTopology	  = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+		bool isMultiview                          = false;
+
+		// Render targets
+		std::array<ImageResource*, MAX_RENDER_TARGET_COUNT> renderTarget_ColorTextures = {};
+		ImageResource*  renderTarget_DepthTexture = nullptr;
+		ImageResource*  vrsInputTexture           = nullptr;
+		Swapchain*		renderTarget_Swapchain    = nullptr;
+		uint32_t renderTarget_ArrayIndex          = 0;
+
+		// Clear values (color_load.a < 0 = load; non-negative = clear to this colour)
+		std::array<PipelineStateColor, MAX_RENDER_TARGET_COUNT> clearColor = {};
+		float clearDepth		= RHI_DEPTH_LOAD;
+		uint32_t clearStencil	= STENCIL_LOAD;
+
+		// Misc flags
+		bool resolutionScale = false;
+		const char* name = nullptr;
+
+	private:
+		/**
+		 * @brief Check if a specific shader stage is present in the pipeline state.
+		 * @param shaderStage The shader stage to check.
+		 * @return True if the shader stage is present, false otherwise.
+		 */
+		[[nodiscard]] bool HasShader(const StageType shaderStage) const;
+
+		uint32_t m_Width  = 0;
+		uint32_t m_Height = 0;
+		uint64_t m_Hash   = 0;
+	};
 }
 
 // ---------------------------------------------------------

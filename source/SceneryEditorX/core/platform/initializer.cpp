@@ -29,50 +29,79 @@
  * -------------------------------------------------------
  */
 #include "initializer.h"
-#include <resource.h>
-#include <SceneryEditorX/core/base.h>
 #include <SceneryEditorX/core/memory/memory.h>
 #include <SceneryEditorX/logging/logging.hpp>
+#include <SceneryEditorX/renderer/vulkan/debug/graphics_debug.h>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
+	/**
+	 * @brief Apply command line arguments to configure logging options before Log::Init() is called. This allows users to set the desired logging level via CLI.
+	 * @param args The command line arguments to parse for logging options.
+	 */
 	static void ApplyCliLoggingOptions(const std::vector<std::string>& args)
 	{
-	    // simple handling: --verbose or --verbose=<Level>
-	    for (const auto &arg : args)
-	    {
-	        if (arg == "--verbose")
-	        {
-	            Log::SetInitialLevel(Log::Level::Trace);
-	            return;
-	        }
-	        constexpr const char prefix[] = "--verbose=";
-	        if (arg.starts_with(prefix))
-	        {
-	            std::string val = arg.substr(sizeof(prefix)-1);
-	            Log::SetInitialLevel(Log::LevelFromString(val));
-	            return;
-	        }
-	    }
+		// simple handling: --verbose or --verbose=<Level>
+		for (const auto &arg : args)
+		{
+			if (arg == "--verbose")
+			{
+				Log::SetInitialLevel(Log::Level::Trace);
+				return;
+			}
+
+			constexpr const char logPrefix[] = "--verbose=";
+			if (arg.starts_with(logPrefix))
+			{
+				std::string val = arg.substr(sizeof(logPrefix)-1);
+				Log::SetInitialLevel(Log::LevelFromString(val));
+				return;
+			}
+
+			if (arg == "--renderdoc")
+			{
+				Debugging::SetRenderdocEnabled();
+				if (!Debugging::IsRenderdocEnabled())
+				{
+					SEDX_CORE_TRACE_TAG("Initializer","RenderDoc is not enabled");
+					return;
+				}
+				return;
+			}
+
+		    constexpr const char renderdocPrefix[] = "--renderdoc=";
+			if (arg.starts_with(renderdocPrefix))
+			{
+				std::string val = arg.substr(sizeof(renderdocPrefix)-1);
+				Debugging::SetRenderdocEnabled();
+				if (!Debugging::IsRenderdocEnabled())
+				{
+					SEDX_CORE_TRACE_TAG("Initializer","RenderDoc is not enabled");
+					return;
+				}
+				return;
+			}
+
+		}
 	}
 
-    void InitCore(const PlatformContext& ctx)
-    {
+	void InitCore(const PlatformContext& ctx)
+	{
 		Allocator::Init();
 
-	    // parse CLI and configure desired logging level BEFORE Log::Init()
-        ApplyCliLoggingOptions(ctx.GetCommandLineArgs());
+		// parse CLI and configure desired logging level BEFORE Log::Init()
+		ApplyCliLoggingOptions(ctx.GetCommandLineArgs());
 
 		Log::Init();
-        Log::LogHeader();
-    }
+		Log::LogHeader();
+	}
 
-    void Shutdown()
-    {
-        Log::ShutDown();
-    }
+	void Shutdown()
+	{
+		Log::ShutDown();
+	}
 
 }
 

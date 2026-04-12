@@ -35,7 +35,6 @@
 namespace SceneryEditorX
 {
 
-	/** MemoryStreamWriter */
 	MemoryStreamWriter::MemoryStreamWriter(Memory::Buffer & buffer, size_t size) : m_Buffer(buffer)
 	{
 		if (size > buffer.size)
@@ -44,7 +43,7 @@ namespace SceneryEditorX
 
 	MemoryStreamWriter::~MemoryStreamWriter() = default;
 
-    bool MemoryStreamWriter::WriteData(const char* data, size_t size)
+	bool MemoryStreamWriter::WriteData(const char* data, size_t size)
 	{
 		if (m_WritePos + size > m_Buffer.size)
 			return false;
@@ -53,13 +52,12 @@ namespace SceneryEditorX
 		return true;
 	}
 
-    // -------------------------------------------------------
+	// -------------------------------------------------------
 
-	/** MemoryStreamReader */
 	MemoryStreamReader::MemoryStreamReader(const Memory::Buffer & buffer) : m_Buffer(buffer) {}
 	MemoryStreamReader::~MemoryStreamReader() = default;
 
-    bool MemoryStreamReader::ReadData(char* destination, size_t size)
+	bool MemoryStreamReader::ReadData(char* destination, size_t size)
 	{
 		if (m_ReadPos + size > m_Buffer.size)
 			return false;

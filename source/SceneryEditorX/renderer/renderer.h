@@ -29,29 +29,48 @@
  * -------------------------------------------------------
  */
 #pragma once
-#include "renderer_declarations.h"
-#include "SceneryEditorX/asset/model.h"
+#include "renderer_buffers.h"
+#include "font/font.h"
+#include "vulkan/blend_states.h"
 #include "vulkan/command_list.h"
 #include "vulkan/command_pool.h"
 #include "vulkan/image_resource.h"
+#include "vulkan/push_constant_buffer.h"
 #include "vulkan/render_context.h"
 #include "vulkan/sampler.h"
 #include "vulkan/viewport.h"
 #include "vulkan/sync/frame_sync.h"
 #include <array>
+#include <SceneryEditorX/asset/model.h>
+#include <SceneryEditorX/core/identifiers/flag.h>
 #include <SceneryEditorX/core/threading/render_thread.h>
-#include <SceneryEditorX/core/window/window.h>
 #include <SceneryEditorX/renderer/gpu_stats.h>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
+	struct PersistentLine;
+	class MaterialAsset;
+	class Mesh;
+	enum class MeshType : uint8_t;
 	class AssetManager;
 	struct RendererProperties;
 	class Swapchain;
 	class ShaderManager;
 	class Camera;
+
+	/**
+	 * @struct ShadowSlice
+	 * @brief Represents a slice of a shadow map for a specific light source.
+	 */
+	struct ShadowSlice
+	{
+		Light* light;
+		uint32_t slice_Index;
+		uint32_t res;
+		xMath::Rectangle rect;
+	};
 
 	/**
 	 * @brief Static renderer class managing Vulkan rendering lifecycle.
@@ -165,9 +184,26 @@ namespace SceneryEditorX
 		/**
 		 * @brief Blit a texture to the back buffer.
 		 * @param cmdList Graphics command list for 3D rendering
-		 * @param texture Texture to blit
+		 * @param img Texture to blit
 		 */
-		static void BlitToBackBuffer(CommandList *cmdList, ImageResource *texture);
+		static void BlitToBackBuffer(CommandList *cmdList, ImageResource *img);
+
+		/**
+		 * @brief Get a render target by type.
+		 * @param type The type of render target to retrieve.
+		 * @return Pointer to the requested render target.
+		 */
+		static ImageResource *GetRenderTarget(Renderer_RenderTarget type);
+
+		/**
+		 * @brief Write draw data for a mesh instance.
+		 * @param transform The current transformation matrix of the mesh.
+		 * @param prevTransform The previous transformation matrix of the mesh (for motion blur, etc.).
+		 * @param matIndex The index of the material to use.
+		 * @param isTransparent Whether the mesh is transparent.
+		 * @return Index of the written draw data.
+		 */
+		static uint32_t WriteDrawData(const xMath::Matrix& transform, const xMath::Matrix &prevTransform = xMath::Matrix::IDENTITY, uint32_t matIndex = 0, uint32_t isTransparent = 0);
 
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		/// Render Context Management                                                                                     ///
@@ -190,6 +226,10 @@ namespace SceneryEditorX
 		 * @return Total frame count.
 		 */
 		static uint64_t GetFrameNumber();
+
+		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+		/// Render Thread Operations                                                                                      ///
+		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 		/**
 		 * @brief Function executed by the render thread.
@@ -243,9 +283,23 @@ namespace SceneryEditorX
 		 * @return VkCommandBuffer for recording draw commands.
 		 */
 		static VkCommandBuffer GetCurrentCommandBuffer();
+
+		/**
+		 * @brief Get the active graphics-present command list for the current frame.
+		 * @return Pointer to the current present command list, or nullptr if unavailable.
+		 */
+		static CommandList* GetCommandListPresent();
+
+		/**
+		 * @brief Returns nullptr — UI rendering is now performed inside RecordRenderCommands
+		 *        via SetExternalRecordingBuffer, so no separate frame command list is needed.
+		 * @deprecated Use GetCommandListPresent() with SetExternalRecordingBuffer instead.
+		 */
+		[[deprecated]] static CommandList* GetCommandListFrame();
 		
 		/**
-		 * @brief Create models and upload to GPU. This is separate from shader creation to allow for better error handling and resource management.
+		 * @brief Create models and upload to GPU. 
+		 * This is separate from shader creation to allow for better error handling and resource management.
 		 */
 		static void CreateModels();
 
@@ -256,7 +310,34 @@ namespace SceneryEditorX
 		/// Util Functions																								  ///
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-		/* @brief Retrieve current GPU memory usage statistics. */
+		/* @brief Capture a screenshot of the current frame and save it to disk. */
+		static void Screenshot();
+
+		/**
+		 * @brief Returns a pointer to the standard mesh for the given type.
+		 * Meshes are GPU-resident and available after CreateModels().
+		 *
+		 * @param type The type of standard mesh to retrieve.
+		 * @return Pointer to the requested standard mesh.
+		 */
+		static Mesh* GetStandardMesh(MeshType type);
+
+		/**
+		 * @brief Returns a pointer to the standard material for the given type.
+		 * @return Pointer to the requested standard material.
+		 */
+		static Ref<MaterialAsset>& GetStandardMaterial();
+		
+		/**
+		 * @brief Returns the pre-built Font object for the given preset.
+		 * @return Reference to the standard font
+		 */
+		static Ref<Font>& GetFont();
+
+		/* 
+		 * @brief Retrieve current GPU memory usage statistics. 
+		 * @return GPUMemoryStats struct containing current memory usage details.
+		 */
 		static GPUMemoryStats GetGPUMemoryStats();
 
 		/**
@@ -266,10 +347,37 @@ namespace SceneryEditorX
 		 */
 		static void SetCamera(Camera* camera);
 
-		/**
-		 * @brief Returns the currently active camera, or nullptr if none has been set.
-		 */
+		/* @brief Returns the currently active camera, or nullptr if none has been set. */
 		static Camera* GetCamera();
+
+		/**
+		 * @brief Get a structured buffer by type.
+		 * @param type The type of buffer to retrieve.
+		 * @return Pointer to the requested Buffer.
+		 */
+		static Buffer *GetBuffer(Renderer_Buffer type);
+
+		/**
+		 * @brief Update the camera uniform buffer object (UBO) for the current frame.
+		 * @param frameIndex Index of the current frame in flight (0 to MAX_FRAMES_IN_FLIGHT - 1) for double/triple buffering.
+		 * @note This should be called once per frame after setting the camera and before recording draw commands.
+		 * @note This is used to determine which UBO instance to update in a ring buffer setup. 
+		 * @note The camera data should be updated before recording draw commands that use it.
+		 */
+		static void UpdateCameraUBO(uint32_t frameIndex);
+
+
+		/**
+		 * @brief Update the shadow atlas render target based on current shadow-casting lights and their required resolutions.
+		 */
+		static void UpdateShadowAtlas();
+
+		/**
+		 * @brief Returns a pointer to the standard texture for the given type.
+		 * @param type The type of standard texture to retrieve.
+		 * @return Pointer to the requested standard texture.
+		 */
+		static ImageResource *GetStandardTexture(Renderer_StandardTexture type);
 
 	private:
 
@@ -281,18 +389,15 @@ namespace SceneryEditorX
 		 */
 		static void CreateRenderTargets(const bool createRender, const bool createOutput, const bool createDynamic);
 
-		/**
-		 * @brief Update optional render targets based on current renderer configuration.
-		 */
+		/* @brief Update optional render targets based on current renderer configuration. */
 		static void UpdateOptionalRenderTargets();
 
-		/**
-		 * @brief Create per-frame resources such as command buffers and synchronization objects.
-		 */
+		/* @brief Create per-frame resources such as command buffers and synchronization objects. */
 		static void CreateFrameResources();
 
-		/**
-		 * @brief Destroy per-frame resources such as command buffers and synchronization objects.
+		/* 
+		 * @brief Destroy per-frame resources such as command buffers and synchronization objects. 
+		 * @note This should be called during renderer shutdown and whenever the number of frames in flight changes (e.g., swapchain recreation).
 		 */
 		static void DestroyFrameResources();
 
@@ -302,20 +407,6 @@ namespace SceneryEditorX
 		 * @param imageIndex Index of the swapchain image being rendered to (for resource binding)
 		 */
 		static void RecordRenderCommands(VkCommandBuffer cb, uint32_t imageIndex);
-
-		/**
-		 * @brief Get a render target by type.
-		 * @param type The type of render target to retrieve.
-		 * @return Pointer to the requested render target.
-		 */
-		static ImageResource *GetRenderTarget(Renderer_RenderTarget type);
-
-		/**
-		 * @brief Get a structured buffer by type.
-		 * @param type The type of buffer to retrieve.
-		 * @return Pointer to the requested Buffer.
-		 */
-		static Buffer *GetBuffer(Renderer_Buffer type);
 
 		/**
 		 * @brief Get a shader by type.
@@ -339,6 +430,12 @@ namespace SceneryEditorX
 		 */
 		static void CreateSamplers();
 
+		/* @brief Creates standard materials used by the renderer. */
+		static void CreateStandardMaterials();
+
+		/* @brief Creates standard textures used by the renderer. */
+		static void CreateStandardTextures();
+
 		/**
 		 * @brief Get a sampler by type.
 		 * @param type The type of sampler to retrieve.
@@ -355,6 +452,11 @@ namespace SceneryEditorX
 		/// Render Passes                                                                                                 ///
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+		/**
+		 * @brief Record the render passes for the current frame.
+		 * @param graphicsPresent Command list for graphics and presentation operations.
+		 * @param compute Command list for compute operations (optional, may be nullptr).
+		 */
 		static void ProduceFrame(CommandList* graphicsPresent, CommandList* compute);
 
 		// One-shot LUT generation passes
@@ -420,35 +522,29 @@ namespace SceneryEditorX
 		 * @brief Returns the pre-built RasterizerState object for the given preset.
 		 * Objects are created once during renderer init and are never mutated.
 		 */
-		static RasterizerState* GetRasterizerState(Renderer_RasterizerState type);
+		static RasterizerState *GetRasterizerState(Renderer_RasterizerState type);
 
 		/**
 		 * @brief Returns the pre-built BlendState object for the given preset.
 		 */
-		static BlendState* GetBlendState(Renderer_BlendState type);
+		static BlendState *GetBlendState(Renderer_BlendState type);
 
 		/**
 		 * @brief Returns the pre-built DepthStencilState object for the given preset.
 		 */
-		static DepthStencilState* GetDepthStencilState(Renderer_DepthStencilState type);
-
-		/**
-		 * @brief Returns a pointer to the standard mesh for the given type.
-		 * Meshes are GPU-resident and available after CreateModels().
-		 */
-		static class Mesh* GetStandardMesh(MeshType type);
-
-		/**
-		 * @brief Writes per-draw transform and material data into the GPU draw-data buffer.
-		 * @return Index of the written draw-data slot (passed as push constant draw_index).
-		 */
-		static uint32_t WriteDrawData(const xMath::Matrix& transform);
+		static DepthStencilState *GetDepthStencilState(Renderer_DepthStencilState type);
 
 		/**
 		 * @brief Returns true when the given draw call should be submitted via the CPU-driven path.
 		 * GPU-indirect draws are handled separately and should be skipped in CPU loops.
 		 */
-		static bool IsCpuDrivenDraw(const struct Renderer_DrawCall& drawCall, const class Material* material);
+		static bool IsCpuDrivenDraw(const Renderer_DrawCall &drawCall, const class MaterialAsset *material);
+
+		/**
+		 * @brief Rotates the per-frame buffers to avoid CPU-GPU race conditions without stalling.
+		 * @note This allows the CPU to write to one buffer while the GPU reads from another, with a safe number of buffers in flight as a cushion.
+		 */
+		static void RotateFrameBuffers();
 
 		/**
 		 * @brief Binds the common per-frame textures (noise, depth, etc.) that every pass needs.
@@ -462,41 +558,169 @@ namespace SceneryEditorX
 		static void UpdateFrameConstantBuffer(CommandList *cmdList);
 
 		/**
-		 * @brief Writes per-draw transform and material data into the GPU draw-data buffer.
-		 * @param transform Current frame transform matrix
-		 * @param prevTransform Previous frame transform matrix
-		 * @param matIdx Material index
-		 * @param isTransparent Flag indicating if the draw call is transparent
-		 * @return Index of the written draw-data slot (passed as push constant draw_index).
+		 * @brief Updates the draw calls for the current frame.
+		 * @param cmdList The command list to record the draw calls into.
 		 */
-		static uint32_t WriteDrawData(const xMath::Matrix &transform, const xMath::Matrix &prevTransform, uint32_t matIdx, uint32_t isTransparent);
+		static void UpdateDrawCalls(CommandList *cmdList);
+
+		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+		/// Debug Primitives																							  ///
+		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+		/**
+		 * @brief Draw a line between two points with specified colors and duration.
+		 *
+		 * This function adds a line to the renderer's debug draw list. If duration_sec is greater than 0, 
+		 * the line will persist for that many seconds; otherwise, it will only be drawn for the current frame.
+		 * @param from Starting point of the line in world space.
+		 * @param to Ending point of the line in world space.
+		 * @param color_from Color at the starting point of the line.
+		 * @param color_to Color at the ending point of the line.
+		 * @param duration_sec Duration in seconds for which the line should persist. If 0 or less, the line will only be drawn for the current frame.
+		 */
+		static void DrawLine(const Vec3 &from, const Vec3 &to, const Color &color_from, const Color &color_to, float duration_sec);
+
+		/**
+		 * @brief 
+		 * @param from 
+		 * @param to 
+		 */
+		static void DrawLine(const Vec3 &from, const Vec3 &to);
+
+		/**
+		 * @brief 
+		 * @param from 
+		 * @param to 
+		 * @param color 
+		 * @param duration_sec 
+		 */
+		static void DrawLine(const Vec3 &from, const Vec3 &to, const Color &color, float duration_sec);
+
+		/**
+		 * @brief 
+		 * @param v0 
+		 * @param v1
+		 * @param v2
+		 * @param color color of the triangle (applied to all vertices) 
+		 * @param duration_sec time in seconds for which the triangle should persist; if 0 or less, it will only be drawn for the current frame 
+		 */
+		static void DrawTriangle(const Vec3 &v0, const Vec3 &v1, const Vec3 &v2, const Color &color, float duration_sec);
+
+		/**
+		 * @brief 
+		 * @param box 
+		 * @param color 
+		 * @param duration_sec 
+		 */
+		static void DrawBox(const BoundingBox &box, const Color &color, float duration_sec);
+
+		/**
+		 * @brief 
+		 * @param center 
+		 * @param axis 
+		 * @param radius 
+		 * @param segment_count 
+		 * @param color 
+		 * @param duration_sec 
+		 */
+		static void DrawCircle(const Vec3 &center, const Vec3 &axis, float radius, uint32_t segment_count, const Color &color, float duration_sec);
+
+		/**
+		 * @brief 
+		 * @param center 
+		 * @param radius 
+		 * @param segment_count 
+		 * @param color 
+		 * @param duration_sec 
+		 */
+		static void DrawSphere(const Vec3 &center, float radius, uint32_t segment_count, const Color &color, float duration_sec);
+
+		/**
+		 * @brief 
+		 * @param start 
+		 * @param end 
+		 * @param arrow_size 
+		 * @param color 
+		 * @param duration_sec 
+		 */
+		static void DrawDirectionalArrow(const Vec3 &start, const Vec3 &end, float arrow_size, const Color &color, float duration_sec);
+
+		/**
+		 * @brief 
+		 * @param plane 
+		 * @param color 
+		 * @param duration_sec 
+		 */
+		static void DrawPlane(const xMath::Plane &plane, const Color &color, float duration_sec);
+
+		/**
+		 * @brief 
+		 */
+		static void UpdatePersistentLines();
+
+		/**
+		 * @brief 
+		 */
+		static void AddLinesToBeRendered();
+
+		// line and icon rendering
+		static Ref<Buffer> m_Lines_VertexBuffer;
+		static std::vector<Vertex_PosCol> m_Lines_Vertices;
+		static std::vector<PersistentLine> m_Persistent_Lines;
+		static std::vector<std::tuple<ImageResource*, xMath::Vec3>> m_Icons;
+
+		// -------------------------------------------------------
 
 		/**
 		 * @brief 
 		 * @param cmdList 
 		 */
-		static void UpdateDrawCalls(CommandList *cmdList);
+		static void UpdateMaterials(CommandList* cmdList);
 
-		// -------------------------------------------------------
-		
-		CommandList *m_CurrentCmdList;
-		AssetManager *m_AssetManager;
+		/**
+		 * @brief 
+		 * @param cmdList 
+		 */
+		static void UpdateLights(CommandList* cmdList);
+
+		/**
+		 * @brief 
+		 * @param cmdList 
+		 */
+		static void UpdateBoundingBoxes(CommandList* cmdList);
+
+		CommandList *m_CurrentCmdList; // Set at the beginning of each frame, used for resource updates and utility functions.
+		AssetManager *m_AssetManager;  // Set during Init, used for loading models, textures, etc.
 
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		/// Static State																								  ///
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 		static RendererProperties *m_Data;
-		static std::atomic<bool> m_ResourcesInitialized;
-		static Scope<Model> m_TestModel;
+		static std::atomic<bool> m_ResourcesInitialized; // Flag to indicate when resources are ready for use, set to true at the end of Init()
+		static Scope<Model> m_TestModel; // Created during Init, used for test draws and as a fallback when model loading fails
 
 		// Bindless
-		static std::array<ImageResource*, MAX_ARRAY_SIZE> m_Bindless_Textures;
-		//static std::array<Sb_Light, MAX_ARRAY_SIZE> m_Bindless_Lights;
-		//static std::array<Sb_Aabb, MAX_ARRAY_SIZE> m_Bindless_Aabbs;
-		static bool m_BindlessSamplers_Dirty;
+		// bindless draw data
+		static std::array<ShaderBuffer_DrawData, RENDERER_MAX_DRAW_CALLS> m_DrawData_CPU; // Staging area for draw data written by the CPU; copied to GPU buffer each frame
+		static std::mutex m_MutexRenderables; // Mutex to protect access to m_DrawData_CPU and m_DrawData_Count during scene submission from multiple threads
+		static uint32_t m_DrawData_Count; // Number of draw data entries written for the current frame; used to determine how many to copy to GPU and how many draw calls to issue
 
-		// one-shot and feature-toggle state
+		// Array of pointers to all textures used by the renderer, indexed by material parameters; bound as a bindless array in shaders
+		static std::array<ImageResource*, MAX_ARRAY_SIZE> m_Bindless_Textures;
+
+		// Array of light data for all active lights in the scene, indexed by a per-light index; bound as a bindless array in shaders
+		static std::array<ShaderBuffer_Light, MAX_ARRAY_SIZE> m_Bindless_Lights; 
+
+		// Array of AABB data for all renderables, indexed by a per-renderable index; used for GPU-driven culling and other operations
+		static std::array<ShaderBuffer_Aabb, MAX_ARRAY_SIZE> m_Bindless_Aabbs;
+
+		static Flag m_BindlessSamplers_Dirty; // Flag to indicate when bindless samplers need to be updated in shaders, set whenever sampler states change (e.g., anisotropy level changes)
+
+		/**
+		 * @struct PassState
+		 * @brief Tracks one-shot initialization and feature-toggle state for various render passes and resources. 
+		 */
 		struct PassState
 		{
 			// one-shot initialization (run once, never again unless reset)
@@ -518,16 +742,13 @@ namespace SceneryEditorX
 
 			// vrs
 			ImageResource* m_VrsLastClearedTexture = nullptr;
-			void Reset()
-			{
-				*this = PassState();
-			}
+			void Reset() { *this = PassState(); }
 
 		};
-		static PassState m_PassState;
 
-		// Per-pass push constant staging buffer (written by passes, uploaded by PushConstants())
-		static PushConstantBuffer m_Pcb_Pass_Cpu;
+		static PassState m_PassState; // Tracks one-shot initialization and feature-toggle state for various render passes and resources; used to conditionally execute certain passes or initialization steps
+		static PushConstantBuffer_Pass m_Pcb_Pass_Cpu; // Per-pass push constant staging buffer (written by passes, uploaded by PushConstants())
+		static ConstantBuffer_Frame m_Cb_Frame_Cpu; // Staging area for per-frame constants written by the CPU; copied to GPU buffer each frame
 
 		// CPU-side draw call arrays (populated by scene submission, consumed by passes)
 		static std::array<Renderer_DrawCall, RENDERER_MAX_DRAW_CALLS> m_DrawCalls;
@@ -538,13 +759,10 @@ namespace SceneryEditorX
 		static bool     m_Transparents_Present;
 		static bool     m_Is_Hiz_Suppressed;
 
-		// CPU-Side draw data staging
-		//static std::array<Sb_DrawData, renderer_max_draw_calls> m_DrawData_CPU;
-		static uint32_t m_DrawDataCount;
-		static std::mutex m_MutexRenderables;
-
 		static CommandList *m_CmdList_Compute;
 		static CommandList *m_CmdList_Present;
+		/// @brief Kept as nullptr — UI is now rendered via SetExternalRecordingBuffer inside RecordRenderCommands.
+		static CommandList *m_CmdList_Frame;
 		static Scope<AssetManager> s_AssetManager;
 		static uint32_t m_ResourceIndex;
 
@@ -558,6 +776,24 @@ namespace SceneryEditorX
 		static uint64_t m_FrameNumber;           // Total frames rendered
 		static uint32_t m_SwapchainImageIndex;   // Current swapchain image
 		static bool m_FrameInProgress;           // True between BeginFrame and EndFrame
+
+		/**
+		 * @struct IndirectFrameResource
+		 * @brief Holds per-frame GPU resources to avoid race conditions between in-flight frames.
+		 */
+		struct IndirectFrameResource
+		{
+			Ref<Buffer> m_DrawArgs;
+			Ref<Buffer> m_DrawData;
+			Ref<Buffer> m_DrawArgs_Out;
+			Ref<Buffer> m_DrawData_Out;
+			Ref<Buffer> m_DrawCount;
+		};
+		static std::array<IndirectFrameResource, DRAW_DATA_BUFFER_COUNT> m_FrameResources;
+		static uint32_t m_FrameResource_Index;
+		static std::array<ShaderBuffer_IndirectDrawArgs, MAX_ARRAY_SIZE> m_Indirect_DrawArgs;
+		static std::array<ShaderBuffer_DrawData, MAX_ARRAY_SIZE> m_Indirect_DrawData;
+		static std::vector<ShadowSlice> m_ShadowSlices;
 
 		/* Basic forward-rendering pipeline (active until the full deferred pipeline is wired up) */
 		static VkPipeline m_BasicPipeline;
@@ -580,6 +816,7 @@ namespace SceneryEditorX
 
 		/* Active camera providing view / projection for every frame */
 		static Camera* m_Camera;
+		static xMath::Frustum m_Frustum;
 
 		/* Per-frame camera uniform buffers (host-visible, mapped), matching CameraShaderData */
 		static VkDescriptorSetLayout m_CameraDescriptorSetLayout;
@@ -589,7 +826,9 @@ namespace SceneryEditorX
 		static std::array<VmaAllocation, MAX_FRAMES_IN_FLIGHT> m_CameraUboAllocations;
 		static std::array<void*, MAX_FRAMES_IN_FLIGHT> m_CameraUboMapped;
 
-		/* @brief Creates per-frame camera UBOs, descriptor pool and sets. Called by CreateShaders. */
+		static uint32_t m_Count_ActiveLights;
+
+		/* @brief Creates per-frame camera UBOs, descriptor pool and sets. */
 		static void CreateCameraResources();
 	};
 

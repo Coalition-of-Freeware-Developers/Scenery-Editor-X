@@ -42,7 +42,7 @@ namespace SceneryEditorX
 	
 	Hash::~Hash()
 	{
-	    m_Hash = 0;
+		m_Hash = 0;
 	}
 	
 	Hash::Hash(const uint64_t value) : m_Hash(value)
@@ -50,107 +50,107 @@ namespace SceneryEditorX
 
 	}
 
-    Hash::Hash(const Hash &other)
-    {
-        m_Hash = other.m_Hash;
-    }
-
-    Hash &Hash::operator=(const Hash& other)
+	Hash::Hash(const Hash &other)
 	{
-	    if (this != &other)
-	    {
-	        m_Hash = other.m_Hash;
-	    }
-	    return *this;
+		m_Hash = other.m_Hash;
 	}
 
-    Hash::Hash(Hash &&other) noexcept : m_Hash(other.m_Hash)
+	Hash &Hash::operator=(const Hash& other)
 	{
-	    other.m_Hash = 0;
+		if (this != &other)
+		{
+			m_Hash = other.m_Hash;
+		}
+		return *this;
+	}
+
+	Hash::Hash(Hash &&other) noexcept : m_Hash(other.m_Hash)
+	{
+		other.m_Hash = 0;
 	}
 
 	Hash &Hash::operator=(Hash &&other) noexcept
 	{
-	    if (this != &other)
-	    {
-	        m_Hash = other.m_Hash;
-	        other.m_Hash = 0;
-	    }
-	    return *this;
+		if (this != &other)
+		{
+			m_Hash = other.m_Hash;
+			other.m_Hash = 0;
+		}
+		return *this;
 	}
 
 	bool Hash::operator==(const Hash &other) const
 	{
-	    return m_Hash == other.m_Hash;
+		return m_Hash == other.m_Hash;
 	}
 
 	bool Hash::operator!=(const Hash &other) const
 	{
-	    return m_Hash != other.m_Hash;
+		return m_Hash != other.m_Hash;
 	}
 
 	uint64_t Hash::GenerateFNV1A(std::string_view str)
 	{
-	    return GenerateFNV1A(str.data(), str.size());
+		return GenerateFNV1A(str.data(), str.size());
 	}
 
 	uint64_t Hash::GenerateFNV1A(const void *data, size_t size)
 	{
-	    uint64_t hash = FNV1A_OFFSET_BASIS;
-	    const uint8_t *bytes = static_cast<const uint8_t *>(data);
+		uint64_t hash = FNV1A_OFFSET_BASIS;
+		const uint8_t *bytes = static_cast<const uint8_t *>(data);
 	
-	    for (size_t i = 0; i < size; ++i)
-	    {
-	        hash ^= static_cast<uint64_t>(bytes[i]);
-	        hash *= FNV1A_PRIME;
-	    }
+		for (size_t i = 0; i < size; ++i)
+		{
+			hash ^= static_cast<uint64_t>(bytes[i]);
+			hash *= FNV1A_PRIME;
+		}
 	
-	    return hash;
+		return hash;
 	}
 
 	Hash Hash::CreateFNV1A(std::string_view str)
 	{
-	    return Hash(GenerateFNV1A(str));
+		return Hash(GenerateFNV1A(str));
 	}
 
 	Hash Hash::CreateFNV1A(const void *data, size_t size)
 	{
-	    return Hash(GenerateFNV1A(data, size));
+		return Hash(GenerateFNV1A(data, size));
 	}
 
 	uint64_t Hash::Combine(uint64_t a, uint64_t b)
 	{
-	    // Use multiplication-based combination for good distribution
-	    return a * 31 + b;
+		// Use multiplication-based combination for good distribution
+		return a * 31 + b;
 	}
 
 	uint64_t Hash::CombineXOR(uint64_t a, uint64_t b)
 	{
-	    // XOR-based combination with bit rotation for better mixing
-	    return a ^ RotateLeft(b, 17);
+		// XOR-based combination with bit rotation for better mixing
+		return a ^ RotateLeft(b, 17);
 	}
 
 	uint64_t Hash::RotateLeft(uint64_t hash, uint32_t bits)
 	{
-	    bits %= 64; // Ensure bits is in valid range
-	    return (hash << bits) | (hash >> (64 - bits));
+		bits %= 64; // Ensure bits is in valid range
+		return (hash << bits) | (hash >> (64 - bits));
 	}
 
 	uint64_t Hash::RotateRight(uint64_t hash, uint32_t bits)
 	{
-	    bits %= 64; // Ensure bits is in valid range
-	    return (hash >> bits) | (hash << (64 - bits));
+		bits %= 64; // Ensure bits is in valid range
+		return (hash >> bits) | (hash << (64 - bits));
 	}
 
 	uint64_t Hash::Mix(uint64_t hash)
 	{
-	    // MurmurHash3 finalizer - provides good avalanche properties
-	    hash ^= hash >> 33;
-	    hash *= 0xff51afd7ed558ccdULL;
-	    hash ^= hash >> 33;
-	    hash *= 0xc4ceb9fe1a85ec53ULL;
-	    hash ^= hash >> 33;
-	    return hash;
+		// MurmurHash3 finalizer - provides good avalanche properties
+		hash ^= hash >> 33;
+		hash *= 0xff51afd7ed558ccdULL;
+		hash ^= hash >> 33;
+		hash *= 0xc4ceb9fe1a85ec53ULL;
+		hash ^= hash >> 33;
+		return hash;
 	}
 
 } // namespace SceneryEditorX

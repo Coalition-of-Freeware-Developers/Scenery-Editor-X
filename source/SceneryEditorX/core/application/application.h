@@ -30,23 +30,29 @@
  */
 #pragma once
 #include "application_data.h"
-#include "SceneryEditorX/core/events/application_events.h"
-#include "SceneryEditorX/core/events/event_system.h"
-#include "SceneryEditorX/core/layers/layer_stack.h"
-#include "SceneryEditorX/core/platform/platform_context.h"
-#include "SceneryEditorX/core/platform/settings/settings.h"
-#include "SceneryEditorX/core/threading/render_thread.h"
-#include "SceneryEditorX/core/time/time.h"
-#include "SceneryEditorX/core/time/timer.h"
-#include "SceneryEditorX/core/window/window.h"
-#include "SceneryEditorX/ui/ui_layer.h"
-#include "SceneryEditorX/utils/pointers.h"
 #include <deque>
+#include <SceneryEditorX/core/events/application_events.h>
+#include <SceneryEditorX/core/events/event_system.h>
+#include <SceneryEditorX/core/layers/layer_stack.h>
+#include <SceneryEditorX/core/platform/platform_context.h>
+#include <SceneryEditorX/core/threading/render_thread.h>
+#include <SceneryEditorX/core/time/time.h>
+#include <SceneryEditorX/core/time/timer.h>
+#include <SceneryEditorX/core/window/window.h>
+#include <SceneryEditorX/settings/settings.h>
+#include <SceneryEditorX/utils/pointers.h>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
+	/**
+	 * @class Application
+	 * @brief The Application class is the core of the Scenery Editor X application. 
+	 * It manages the main application loop, event handling, layer management, and performance profiling. 
+	 * It serves as the central point of control for the application's lifecycle and provides access to global resources such as the window, 
+	 * settings, and performance profiler.
+	 */
 	class Application
 	{
 	public:
@@ -72,17 +78,19 @@ namespace SceneryEditorX
 
 		virtual void Run();
 		virtual void OnRender();
+		void RenderUI();
 		virtual void Tick();
 		virtual void Stop();
 
 		virtual void OnInit() {}
 		virtual void OnUpdate() {}
 		virtual void OnShutdown();
+		virtual void OnEvent(Event &event);
 
-		void PushLayer(Layer *module);
-		void PushOverlay(Layer *module);
-		void PopLayer(Layer *module);
-		void PopOverlay(Layer *module);
+		void PushLayer(Layer *layer);
+		void PushOverlay(Layer *layer);
+		void PopLayer(Layer *layer);
+		void PopOverlay(Layer *layer);
 
 		// -------------------------------------------------------
 
@@ -97,6 +105,7 @@ namespace SceneryEditorX
 		uint32_t GetCurrentFrameIndex() const { return m_CurrentFrameIndex; }
 		const AppData &GetAppData() const { return m_AppData; }
 		const PlatformContext* GetPlatformContext() const { return m_PlatformContext; }
+		LayerStack& GetLayerStack() { return m_LayerStack; }
 		PerformanceTimers m_PerformanceTimers;
 
 		// -------------------------------------------------------
@@ -110,15 +119,15 @@ namespace SceneryEditorX
 		// -------------------------------------------------------
 
 		// Settings accessors (single authoritative instance for the app lifetime)
-		ApplicationSettings& GetSettings() { return m_Settings; }
-		const ApplicationSettings& GetSettings() const { return m_Settings; }
+		Settings& GetSettings() { return m_Settings; }
+		const Settings& GetSettings() const { return m_Settings; }
 
 		// -------------------------------------------------------
 
 		void SetEventCallback(const EventCallbackFn& eventCallback) { m_EventCallbacks.push_back(eventCallback); }
 		void SyncEvents();
 		void ProcessEvents();
-		void OnEvent(Event &event);
+
 		static bool OnWindowResize(const WindowResizeEvent &e);
 		bool OnWindowMinimize(const WindowMinimizeEvent &e);
 		bool OnWindowClose(WindowCloseEvent &e);
@@ -147,7 +156,7 @@ namespace SceneryEditorX
 		void DispatchEvent(TEventArgs&&... args)
 		{
 	#ifndef SEDX_COMPILER_GCC
-			// TODO: GCC causes this to fail for AnimationGraphCompiledEvent for some reason. Investigate.
+			// TODO: GCC causes this to fail for some reason. Investigate.
 			static_assert(std::is_assignable_v<Event, TEvent>);
 	#endif
 
@@ -168,8 +177,8 @@ namespace SceneryEditorX
 
 		Scope<Window> m_Window;
 		AppData m_AppData;
-		LayerStack m_ModuleStage;
-		UI::UILayer *m_UILayer = nullptr;
+		//UILayer* m_UILayer;
+		LayerStack m_LayerStack;
 		DeltaTime m_DeltaTime;
 		DeltaTime m_FrameTime;
 		float m_LastFrameTime = 0.0f;
@@ -178,7 +187,7 @@ namespace SceneryEditorX
 		bool m_ShowStats = true;
 
 		const PlatformContext* m_PlatformContext = nullptr;
-		ApplicationSettings m_Settings = ApplicationSettings(std::filesystem::path("settings.cfg"));
+		Settings m_Settings = Settings(std::filesystem::path("settings.cfg"));
 		static Application *s_AppInstance;
 		PerformanceProfiler *m_Profiler = nullptr; // TODO: Should be null in Dist
 		std::unordered_map<const char *, PerformanceProfiler::PerFrameData> m_ProfilerPreviousFrameData;

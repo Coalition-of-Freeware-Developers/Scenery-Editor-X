@@ -55,7 +55,7 @@ namespace SceneryEditorX
 		inline static const std::vector<UUID>& GetSelections(UUID contextID) { return s_Contexts[contextID]; }
 
 	private:
-        inline static std::unordered_map<UUID, std::vector<UUID>> s_Contexts;
+		inline static std::unordered_map<UUID, std::vector<UUID>> s_Contexts;
 	};
 }
 */

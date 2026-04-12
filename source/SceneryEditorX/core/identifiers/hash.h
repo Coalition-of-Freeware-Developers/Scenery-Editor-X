@@ -49,34 +49,34 @@ namespace SceneryEditorX
 	class Hash
 	{
 	public:
-	    // FNV-1a constants for 64-bit hashing
+		// FNV-1a constants for 64-bit hashing
 		static constexpr uint64_t FNV1A_OFFSET_BASIS = 14695981039346656037ULL;
 		static constexpr uint64_t FNV1A_PRIME = 1099511628211ULL;
 
-        Hash();
-	    ~Hash();
+		Hash();
+		~Hash();
 		explicit Hash(uint64_t value);
 
-	    Hash(const Hash &other);					// Copyable
-        Hash &operator=(const Hash &);				// Copyable
-        Hash(Hash &&other) noexcept;                // Move constructor
-        Hash &operator=(Hash &&other) noexcept;     // Move assignment operator
+		Hash(const Hash &other);					// Copyable
+		Hash &operator=(const Hash &);				// Copyable
+		Hash(Hash &&other) noexcept;                // Move constructor
+		Hash &operator=(Hash &&other) noexcept;     // Move assignment operator
 
-	    /**
+		/**
 		 * @brief Equality comparison operator
 		 * @param other Hash to compare with
 		 * @return true if hashes are equal
 		 */
 		bool operator==(const Hash &other) const;
 
-	    /**
+		/**
 		 * @brief Inequality comparison operator
 		 * @param other Hash to compare with
 		 * @return true if hashes are not equal
 		 */
 		bool operator!=(const Hash &other) const;
 
-	    /**
+		/**
 		 * @brief Get the current hash value
 		 * @return 64-bit hash value
 		 */
@@ -100,7 +100,7 @@ namespace SceneryEditorX
 		 */
 		[[nodiscard]] bool IsFNV1AOffsetBasis() const { return m_Hash == FNV1A_OFFSET_BASIS; }
 
-	    /**
+		/**
 		 * @brief Reset hash to zero
 		 */
 		void Reset() { m_Hash = 0; }
@@ -194,7 +194,7 @@ namespace SceneryEditorX
 		static uint64_t Mix(uint64_t hash);
 
 	private:
-        uint64_t m_Hash = 0;
+		uint64_t m_Hash = 0;
 	};
 
 }

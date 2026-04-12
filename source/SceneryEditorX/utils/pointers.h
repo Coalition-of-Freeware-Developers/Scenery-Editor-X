@@ -237,8 +237,8 @@ namespace SceneryEditorX
 			 */
 			static ControlBlockRegistry &GetInstance()
 			{
-				static ControlBlockRegistry instance;
-				return instance;
+				static ControlBlockRegistry* instance = new ControlBlockRegistry();
+				return *instance;
 			}
 
 			/**

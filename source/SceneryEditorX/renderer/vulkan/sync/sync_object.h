@@ -36,18 +36,22 @@
 
 namespace SceneryEditorX
 {
-    class CommandList;
-    class RenderContext;
+	class CommandList;
+	class RenderContext;
 
-    class SyncObject
-    {
+	/**
+	 * @class SyncObject
+	 * @brief Abstract base class representing a synchronization object used for GPU-CPU and GPU-GPU synchronization in the rendering pipeline.
+	 */
+	class SyncObject
+	{
 	public:
-        virtual void CreateSyncObject() = 0;
-        virtual ~SyncObject() = default;
+		virtual void CreateSyncObject() = 0;
+		virtual ~SyncObject() = default;
 
 		virtual void Wait(const uint64_t timeout) { (void)timeout; }
-        virtual bool IsSignaled() { return false; }
-        virtual void Destroy() = 0;
+		virtual bool IsSignaled() { return false; }
+		virtual void Destroy() = 0;
 
 	protected:
 		SyncType m_Type = SyncType::MaxEnum;

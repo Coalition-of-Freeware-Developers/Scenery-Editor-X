@@ -28,12 +28,27 @@
  * Created: 14/7/2025
  * -------------------------------------------------------
  */
-
+#include <SceneryEditorX/core/time/timer.h>
+#include <chrono>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
+    // Provide assignment from float for PerFrameData (used by older code-paths)
+    std::unordered_map<const char *, PerformanceProfiler::PerFrameData>::mapped_type &
+    PerformanceProfiler::PerFrameData::operator=(float x)
+    {
+        time = x;
+        samples = 1;
+        return *this;
+    }
+
+    // Out-of-line implementation to avoid inline/ODR mismatches across TUs
+    float Timer::ElapsedMillis() const
+    {
+        return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - m_Start).count() * 0.001f;
+    }
 
 }
 

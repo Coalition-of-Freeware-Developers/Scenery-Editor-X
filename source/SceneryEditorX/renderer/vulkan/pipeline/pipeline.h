@@ -29,36 +29,92 @@
  * -------------------------------------------------------
  */
 #pragma once
+#include "pipeline_state.h"
 #include <vector>
-#include <SceneryEditorX/renderer/vulkan/shader/shader_manager.h>
 
 // --------------------------------------------------------------
 
 namespace SceneryEditorX
 {
-    // Pipeline helper: creates pipelines from an input descriptor struct to make
-	// constructing different kinds of pipelines (graphics/compute) easier.
-	class Pipeline 
-    {
+	class Device;
+	class DescriptorSet;
+	class ShaderManager;
+
+	/**
+	 * @class Pipeline
+	 * @brief A helper class for creating Vulkan pipelines from 
+	 * a single input descriptor struct, to simplify the process of constructing different kinds of pipelines (e.g., graphics, compute).
+	 */
+	class Pipeline : public SharedObject
+	{
 	public:
-	    Pipeline() = default;
-	    ~Pipeline() = default;
-	
-	    // Descriptor grouping inputs required for creating a graphics pipeline.
-	    struct GraphicsCreateInfo 
-	    {
-	        VkDevice device{ VK_NULL_HANDLE };
-	        VkPipelineLayout layout{ VK_NULL_HANDLE };
-	        const ShaderManager* shaderManager{ nullptr };
-	        VkVertexInputBindingDescription vertexBinding{};
-	        std::vector<VkVertexInputAttributeDescription> vertexAttributes{};
-	        VkFormat colorFormat{ VK_FORMAT_UNDEFINED };
-	        VkFormat depthFormat{ VK_FORMAT_UNDEFINED };
-	    };
-	
-	    // Create a graphics pipeline using a single grouped input structure.
-	    // Returns VK_NULL_HANDLE on failure.
-        static VkPipeline CreateGraphics(const GraphicsCreateInfo& info);
+		Pipeline() = default;
+
+		/**
+		 * @brief Construct and compile a Vulkan pipeline from a PipelineState.
+		 * @param state  The pipeline state object describing shaders, render targets, and fixed-function state.
+		 * @param layout Optional descriptor set layout for bindless resources and push-constant reflection.
+		 *               When nullptr a minimal push-constant-only VkPipelineLayout is created (bootstrap path).
+		 */
+		Pipeline(PipelineState &state, DescriptorSet *layout = nullptr);
+
+		/* @brief Destroy the Vulkan pipeline and release associated resources. */
+		virtual ~Pipeline() override;
+
+		Pipeline(Pipeline&& other) noexcept;
+		Pipeline& operator=(Pipeline&& other) noexcept;
+		Pipeline(const Pipeline&) = delete;
+		Pipeline& operator=(const Pipeline&) = delete;
+
+		// Descriptor grouping inputs required for creating a graphics pipeline.
+		struct GraphicsCreateInfo 
+		{
+			VkDevice device{ VK_NULL_HANDLE };
+			VkPipelineLayout layout{ VK_NULL_HANDLE };
+			const ShaderManager* shaderManager{ nullptr };
+			const char* vertexEntryPoint{ "main" };
+			const char* fragmentEntryPoint{ "main" };
+			VkVertexInputBindingDescription vertexBinding{};
+			std::vector<VkVertexInputAttributeDescription> vertexAttributes{};
+			VkFormat colorFormat{ VK_FORMAT_UNDEFINED };
+			VkFormat depthFormat{ VK_FORMAT_UNDEFINED };
+		};
+
+		/**
+		 * @brief Get the Vulkan pipeline cache.
+		 * @return The Vulkan pipeline cache handle.
+		 */
+		static VkPipelineCache GetPipelineCache();
+
+		/**
+		 * @brief Destroy the Vulkan pipeline cache and release associated resources.
+		 * @param device The Vulkan device associated with the pipeline cache.
+		 */
+		void Destroy(VkDevice device = VK_NULL_HANDLE);
+
+		PipelineState* GetState()				{ return &m_State; }
+		VkPipeline Get() const					{ return m_Pipeline; }
+		VkPipelineLayout GetLayout() const		{ return m_Layout; }
+		uint32_t GetPushConstantStages() const	{ return m_PushConstant_Stages; }
+		bool IsDestroyed() const { return m_Destroyed; }
+
+		// Create a graphics pipeline using a single grouped input structure.
+		// Returns VK_NULL_HANDLE on failure.
+		[[deprecated]] static VkPipeline CreateGraphics(const GraphicsCreateInfo& info);
+
+	private:
+		/* @brief Create the Vulkan pipeline cache. */
+		static void CreatePipelineCache();
+
+		/* @brief Save the Vulkan pipeline cache to disk. */
+		static void SavePipelineCache();
+
+		Ref<Device> m_Device;
+		VkPipeline m_Pipeline{ VK_NULL_HANDLE };
+		PipelineState m_State;
+		VkPipelineLayout m_Layout{ VK_NULL_HANDLE };
+		uint32_t m_PushConstant_Stages = 0;
+		bool m_Destroyed = false;
 	};
 
 }
