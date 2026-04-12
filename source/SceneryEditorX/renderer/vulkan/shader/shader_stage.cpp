@@ -40,28 +40,27 @@ namespace SceneryEditorX
 {
 
 	/**
-	 * @brief 
-	 * @param stage 
-	 * @param filepath 
-	 * @return 
+	 * @brief Determines the default entry point for a shader based on its stage and file extension. 
+	 * @param stage The shader stage.
+	 * @param filepath The path to the shader file.
+	 * @return The default entry point for the shader.
 	 */
-	static const char* GetDefaultEntryPoint(const Stage stage, const std::string& filepath)
+	static const char* GetDefaultEntryPoint(const StageType stage, const std::string& filepath)
 	{
-		const bool isSlangShader = filepath.ends_with(".slang");
-		if (!isSlangShader)
+		if (const bool isSlangShader = filepath.ends_with(".slang"); !isSlangShader)
 		{
 			return "main";
 		}
 
 		switch (stage)
 		{
-			case Stage::Vertex:					return "main_vs";
-			case Stage::Fragment:				return "main_frag";
-			case Stage::Compute:				return "main_comp";
-			case Stage::Geometry:				return "main_geo";
-			case Stage::TessellationControl:	return "main_tcs";
-			case Stage::TessellationEvaluation:	return "main_tes";
-			default:							return "main";
+			case StageType::Vertex:					return "main_vs";
+			case StageType::Fragment:				return "main_frag";
+			case StageType::Compute:				return "main_comp";
+			case StageType::Geometry:				return "main_geo";
+			case StageType::TessellationControl:	return "main_tcs";
+			case StageType::TessellationEvaluation:	return "main_tes";
+			default:								return "main";
 		}
 	}
 	
@@ -70,6 +69,11 @@ namespace SceneryEditorX
 	
 	// -------------------------------------------------------
 
+	/**
+	 * @brief Reads cached shader binary data from a file and returns it as a vector of uint32_t.
+	 * @param filepath The path to the cached shader file.
+	 * @return A vector of uint32_t containing the cached shader binary data.
+	 */
 	static std::vector<uint32_t> ReadCachedShaderData(const std::string& filepath)
 	{
 		FILE* f;
@@ -77,7 +81,7 @@ namespace SceneryEditorX
 	
 		if (!f)
 		{
-			std::cerr << "Fisierul " << filepath << " nu exista\n";
+			std::cerr << "File " << filepath << " does not exist\n";
 			assert(false);
 		}
 	
@@ -92,7 +96,13 @@ namespace SceneryEditorX
 	
 		return buffer;
 	}
-	
+
+	/**
+	 * @brief Writes shader binary data to a file at the specified path.
+	 * @param data Pointer to the shader binary data.
+	 * @param size Size of the shader binary data in bytes.
+	 * @param path The path to the file where the shader binary data will be written.
+	 */
 	static void WriteShaderBinary(void* data, uint32_t size, const std::string& path)
 	{
 		FILE* file;
@@ -107,7 +117,7 @@ namespace SceneryEditorX
 	
 	// -------------------------------------------------------
 
-	ShaderStage::ShaderStage(Stage stage, const std::string& filepath) : m_Stage(stage), m_Filepath(filepath)
+	ShaderStage::ShaderStage(StageType stage, const std::string& filepath) : m_Stage(stage), m_Filepath(filepath)
 	{
 	   m_EntryPoint = GetDefaultEntryPoint(stage, filepath);
 
@@ -168,7 +178,7 @@ namespace SceneryEditorX
 		else
 		{
 			SEDX_CORE_TRACE_TAG("Shader", "Compiling shader: {}", cacheFilepath.c_str());
-			data = ShaderCompiler::CompileVulkanShader(stage, codeFilepath);
+			data = ShaderCompiler::CompileShader(stage, codeFilepath);
 			if (!data.empty())
 			{
 				WriteShaderBinary(data.data(), static_cast<uint32_t>(data.size()), cacheFilepath);
@@ -204,11 +214,11 @@ namespace SceneryEditorX
 	void ShaderStage::Recompile()
 	{
 		const Ref<Device> device	= RenderContext::Get()->GetDevice();
-		std::vector<uint32_t> data	= ShaderCompiler::CompileVulkanShader(m_Stage, SOURCE_FILEPATH + m_Filepath);
+		std::vector<uint32_t> data	= ShaderCompiler::CompileShader(m_Stage, SOURCE_FILEPATH + m_Filepath);
 	
 		std::string shaderName		= std::string(m_Filepath.begin(), m_Filepath.begin() + m_Filepath.find_last_of('.'));
 		std::string cacheFilepath	= CACHE_FILEPATH + shaderName + ".spv";
-		WriteShaderBinary(data.data(), (uint32_t)data.size(), cacheFilepath);
+		WriteShaderBinary(data.data(), static_cast<uint32_t>(data.size()), cacheFilepath);
 	
 		m_Input = ShaderCompiler::Reflect(m_Stage, data);
 	
@@ -229,12 +239,11 @@ namespace SceneryEditorX
 		createInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 		createInfo.stage = GetStage(m_Stage);
 		createInfo.module = m_ShaderModule;
-	  createInfo.pName = m_EntryPoint.c_str();
+		createInfo.pName = m_EntryPoint.c_str();
 	
 		return createInfo;
 	}
 
-	
-}
+} // namespace SceneryEditorX
 
 // -------------------------------------------------------

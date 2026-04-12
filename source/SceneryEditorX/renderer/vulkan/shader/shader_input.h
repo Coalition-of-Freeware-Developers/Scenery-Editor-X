@@ -54,7 +54,7 @@ namespace SceneryEditorX
 		uint32_t count;
 		uint32_t index = 0;
 		uint32_t binding;
-		Stage stage;
+		StageType stage;
 		ShaderInputType type;
 	};
 
@@ -63,18 +63,18 @@ namespace SceneryEditorX
 	 * @param stage The Stage enum value to convert.
 	 * @return The corresponding VkShaderStageFlagBits value.
 	 */
-	inline VkShaderStageFlagBits GetStage(const Stage &stage)
+	inline VkShaderStageFlagBits GetStage(const StageType &stage)
 	{
 		switch (stage)
 		{
-			case Stage::Vertex:							return VK_SHADER_STAGE_VERTEX_BIT;
-			case Stage::Geometry:						return VK_SHADER_STAGE_GEOMETRY_BIT;
-			case Stage::TessellationControl:			return VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
-			case Stage::TessellationEvaluation:			return VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
-			case Stage::Fragment:						return VK_SHADER_STAGE_FRAGMENT_BIT;
-			case Stage::Compute:						return VK_SHADER_STAGE_COMPUTE_BIT;
-			case Stage::None:							SEDX_CORE_ASSERT(false, "Invalid shader stage: None"); break;
-			case Stage::MaxEnum:
+			case StageType::Vertex:							return VK_SHADER_STAGE_VERTEX_BIT;
+			case StageType::Geometry:						return VK_SHADER_STAGE_GEOMETRY_BIT;
+			case StageType::TessellationControl:			return VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+			case StageType::TessellationEvaluation:			return VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
+			case StageType::Fragment:						return VK_SHADER_STAGE_FRAGMENT_BIT;
+			case StageType::Compute:						return VK_SHADER_STAGE_COMPUTE_BIT;
+			case StageType::None:							SEDX_CORE_ASSERT(false, "Invalid shader stage: None"); break;
+			case StageType::MaxEnum:
 			default:
 				return VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM;
 		}
@@ -103,7 +103,6 @@ namespace SceneryEditorX
 
 		return VK_DESCRIPTOR_TYPE_MAX_ENUM;
 	}
-
 
 }
 

@@ -59,36 +59,39 @@ namespace SceneryEditorX
 	class BlendState : public SharedObject
 	{
 	public:
-		BlendState() = default;
+		/**
+		 * @brief Constructs a BlendState object with the specified blend state configuration.
+		 * @param spec The blend state configuration to use.
+		 */
 		BlendState(const BlendStateSpec &spec);
+		BlendState() = default;
 		~BlendState() = default;
 
-		[[nodiscard]] bool          IsBlendEnabled()				const { return m_BlendEnabled; }
-		[[nodiscard]] VkBlendFactor GetSrcColor()					const { return m_SrcColor; }
-		[[nodiscard]] VkBlendFactor GetDstColor()					const { return m_DstColor; }
-		[[nodiscard]] VkBlendOp     GetColorOp()					const { return m_ColorOp;  }
-		[[nodiscard]] VkBlendFactor GetSrcAlpha()					const { return m_SrcAlpha; }
-		[[nodiscard]] VkBlendFactor GetDstAlpha()					const { return m_DstAlpha; }
-		[[nodiscard]] VkBlendOp     GetAlphaOp()					const { return m_AlphaOp; }
+		[[nodiscard]] bool          IsBlendEnabled()				const { return m_Spec.blendEnabled; }
+		[[nodiscard]] VkBlendFactor GetSrcColor()					const { return m_Spec.srcBlend; }
+		[[nodiscard]] VkBlendFactor GetDstColor()					const { return m_Spec.dstBlend; }
+		[[nodiscard]] VkBlendOp     GetColorOp()					const { return m_Spec.blendOp;  }
+		[[nodiscard]] VkBlendFactor GetSrcAlpha()					const { return m_Spec.srcAlpha; }
+		[[nodiscard]] VkBlendFactor GetDstAlpha()					const { return m_Spec.dstAlpha; }
+		[[nodiscard]] VkBlendOp     GetAlphaOp()					const { return m_Spec.alphaOp; }
 		[[nodiscard]] VkCompareOp	GetDepthComparisonFunction()	const { return m_Depth_CompFunc; }
-		[[nodiscard]] float GetBlendFactor()                        const { return m_BlendFactor; }
+		[[nodiscard]] float GetBlendFactor()                        const { return m_Spec.blendFactor; }
 		[[nodiscard]] uint64_t GetHash()							const { return m_Hash; }
-	    [[nodiscard]] bool operator==(const BlendState& state)		const { return m_Hash == state.m_Hash; }
+		[[nodiscard]] bool operator==(const BlendState& state)		const { return m_Hash == state.m_Hash; }
 
 	private:
-		BlendStateSpec	m_Spec;
+		BlendStateSpec m_Spec; // Store the original spec for potential future use (e.g., hashing, debugging)
+		VkCompareOp m_Depth_CompFunc = VK_COMPARE_OP_NEVER;
+	    uint64_t m_Hash = 0;
 
-		bool            m_BlendEnabled			= false;
-		VkCompareOp		m_Depth_CompFunc		= VK_COMPARE_OP_NEVER;
+		/*bool            m_BlendEnabled			= false;
 		VkBlendFactor   m_SrcColor				= VK_BLEND_FACTOR_ONE;
 		VkBlendFactor   m_DstColor				= VK_BLEND_FACTOR_ZERO;
 		VkBlendOp       m_ColorOp				= VK_BLEND_OP_ADD;
 		VkBlendFactor   m_SrcAlpha				= VK_BLEND_FACTOR_ONE;
 		VkBlendFactor   m_DstAlpha				= VK_BLEND_FACTOR_ONE;
 		VkBlendOp       m_AlphaOp				= VK_BLEND_OP_ADD;
-	    float			m_BlendFactor           = 1.0f;
-
-		uint64_t m_Hash = 0;
+		float			m_BlendFactor           = 1.0f;*/
 	};
 
 }

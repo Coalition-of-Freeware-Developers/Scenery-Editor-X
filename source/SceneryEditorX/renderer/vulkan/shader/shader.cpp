@@ -29,6 +29,7 @@
  * -------------------------------------------------------
  */
 #include "shader.h"
+#include "shader_manager.h"
 #include "shader_stage.h"
 #include <SceneryEditorX/renderer/vulkan/descriptor.h>
 #include <SceneryEditorX/renderer/vulkan/render_context.h>
@@ -105,8 +106,11 @@ namespace SceneryEditorX
 			SEDX_VK_RESULT_ASSERT(vkCreateDescriptorSetLayout(device->GetLogicalDevice(), &createInfo, nullptr, &descLayout), "Unable to create descriptor set layout");
 		}
 	}
-	
-	void Shader::AddShaderStage(Stage stage, const std::string& filepath)
+
+	void Shader::RenderThread_reload(bool forceCompile)
+	{
+	}
+	void Shader::AddShaderStage(StageType stage, const std::string& filepath)
 	{
 		if (m_Stages.contains(stage))
 			return;
@@ -119,13 +123,13 @@ namespace SceneryEditorX
 		}
 	}
 	
-	Ref<ShaderStage> Shader::GetShaderStage(const Stage stage)
+	Ref<ShaderStage> Shader::GetShaderStage(const StageType stage)
 	{
 		SEDX_CORE_ASSERT(m_Stages.contains(stage), "Stage is not present");
 		return m_Stages.at(stage);
 	}
 	
-	bool Shader::HasStage(const Stage stage)
+	bool Shader::HasStage(const StageType stage)
 	{
 		if (!m_Stages.contains(stage))
 			return false;
@@ -224,7 +228,7 @@ namespace SceneryEditorX
 		
 		return result;
 	}
-	
-}
+
+} // namespace SceneryEditorX
 
 // -------------------------------------------------------

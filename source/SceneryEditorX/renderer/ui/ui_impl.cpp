@@ -144,10 +144,10 @@ namespace SceneryEditorX::UI
 				//bool async = false;
 	
 				g_VertexShader = CreateRef<Shader>();
-				g_VertexShader->AddShaderStage(Stage::Vertex, shaderPath);
+				g_VertexShader->AddShaderStage(StageType::Vertex, shaderPath);
 	
 				g_FragmentShader = CreateRef<Shader>();
-				g_FragmentShader->AddShaderStage(Stage::Fragment, shaderPath);
+				g_FragmentShader->AddShaderStage(StageType::Fragment, shaderPath);
 			}
 		}
 	
@@ -259,8 +259,8 @@ namespace SceneryEditorX::UI
 
 			// Build the VkPipeline using the compiled ui.slang shader stages
 			{
-				Ref<ShaderStage> vsStage   = g_VertexShader   ? g_VertexShader->GetShaderStage(Stage::Vertex)   : nullptr;
-				Ref<ShaderStage> fragStage = g_FragmentShader ? g_FragmentShader->GetShaderStage(Stage::Fragment) : nullptr;
+				Ref<ShaderStage> vsStage   = g_VertexShader   ? g_VertexShader->GetShaderStage(StageType::Vertex)   : nullptr;
+				Ref<ShaderStage> fragStage = g_FragmentShader ? g_FragmentShader->GetShaderStage(StageType::Fragment) : nullptr;
 
 				if (vsStage && fragStage)
 				{
@@ -416,62 +416,32 @@ namespace SceneryEditorX::UI
 		// skip the first two frames to let the renderer fully initialize.
 		// frame 0: pipeline layouts and descriptor sets are still being created.
 		// frame 1: bindless draw_data buffer descriptor may not have been written yet.
-		if (uint64_t frame = Renderer::GetFrameNumber(); frame < 2)
+		uint64_t frame = Renderer::GetFrameNumber();
+		if (frame < 2)
 			return;
 
-		// Once the font atlas ImageResource is ready on the GPU, write its image view into the
-		// dedicated ImGui descriptor set.  We do this lazily because the image upload may not
-		// be complete until after Initialize() returns.
-		static bool s_FontDescriptorWritten = false;
-		if (!s_FontDescriptorWritten && g_FontAtlas &&
-			g_FontAtlas->GetResourceState() == ResourceState::PreparedForGpu &&
-			g_ImGuiFontDescriptorSet != VK_NULL_HANDLE && g_ImGuiFontSampler != VK_NULL_HANDLE)
-		{
-			const VkDevice device = RenderContext::Get()->GetDevice()->GetLogicalDevice();
-			VkDescriptorImageInfo imageInfo{};
-			imageInfo.sampler     = g_ImGuiFontSampler;
-			imageInfo.imageView   = g_FontAtlas->GetImageView();
-			imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-			VkWriteDescriptorSet write{};
-			write.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			write.dstSet          = g_ImGuiFontDescriptorSet;
-			write.dstBinding      = 0;
-			write.descriptorCount = 1;
-			write.descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-			write.pImageInfo      = &imageInfo;
-			vkUpdateDescriptorSets(device, 1, &write, 0, nullptr);
-			s_FontDescriptorWritten = true;
-		}
-
-		if (!s_FontDescriptorWritten)
-			return; // font not ready yet
-	
 		// get resources
 		bool isMainWindow				= windowData == nullptr;
-		ViewportResources *resources	= isMainWindow ? &g_ViewportData : windowData->viewportResources.get();
-		Swapchain *swapchain			= isMainWindow ? Renderer::GetSwapChain() : windowData->swapchain.Get();
-		uint32_t bufferIndex			= resources->bufferIndex;
-		resources->bufferIndex			= (resources->bufferIndex + 1) % BUFFER_COUNT;
-		Buffer *vertexBuffer			= resources->vertexBuffers[bufferIndex].get();
-		Buffer *indexBuffer				= resources->indexBuffers[bufferIndex].get();
-		CommandList *cmdList			= Renderer::GetCommandListPresent();
-		(void)swapchain; // not needed for the direct-Vulkan render path
-	
+		ViewportResources* vpResources	= isMainWindow ? &g_ViewportData : windowData->viewportResources.get();
+		Swapchain* swapchain			= isMainWindow ? Renderer::GetSwapChain() : windowData->swapchain.Get();
+		uint32_t bufferIndex			= vpResources->bufferIndex;
+		vpResources->bufferIndex		= (vpResources->bufferIndex + 1) % BUFFER_COUNT;
+		Buffer* vertexBuffer			= vpResources->vertexBuffers[bufferIndex].get();
+		Buffer* indexBuffer				= vpResources->indexBuffers[bufferIndex].get();
+		CommandList* cmdList			= Renderer::GetCommandListPresent();
+
 		// if that's a child window, update it's swapchain and give it a command list
 		if (!isMainWindow)
 		{
 			swapchain->AcquireNextImage();
-	
 			Ref<Device> device = RenderContext::Get()->GetDevice();
+
 			auto queueManager = device ? device->GetQueueManager() : nullptr;
 			windowData->cmdList = queueManager ? queueManager->NextCommandList() : nullptr;
 			cmdList = windowData->cmdList;
-	
-			if (windowData->cmdList)
-			{
-				windowData->cmdList->Begin();
-			}
+
+			windowData->cmdList->Begin();
+			
 		}
 	
 		// when the engine splash screen is shown, the command list is not valid as the renderer is initializing
@@ -481,158 +451,150 @@ namespace SceneryEditorX::UI
 		// update vertex and index buffers
 		{
 			// grow vertex buffer as needed
-			if (!vertexBuffer || resources->vertexCounts[bufferIndex] < static_cast<uint32_t>(drawData->TotalVtxCount))
+			if (vertexBuffer->GetElementCount() < static_cast<uint32_t>(drawData->TotalVtxCount))
 			{
-				const uint32_t count = resources->vertexCounts[bufferIndex];
+				const uint32_t count = vertexBuffer->GetElementCount();
 				const uint32_t count_new = drawData->TotalVtxCount + 15000;
-				resources->vertexCounts[bufferIndex] = count_new;
-				resources->vertexBuffers[bufferIndex] =
-				CreateScope<Buffer>(sizeof(ImDrawVert), count_new, nullptr, true, "imgui_vertex_buffer");
-				vertexBuffer = resources->vertexBuffers[bufferIndex].get();
-	
+				vpResources->vertexBuffers[bufferIndex] = CreateScope<Buffer>(sizeof(ImDrawVert), count_new, nullptr, true, vertexBuffer->GetObjectName().c_str());
+
 				if (count != 0)
 				{
 					EDITOR_INFO_TAG("UI Implementation", "Vertex buffer has been re-allocated to fit {} vertices", count_new);
 				}
 			}
 	
-				// grow index buffer as needed
-				if (!indexBuffer || resources->indexCounts[bufferIndex] < static_cast<uint32_t>(drawData->TotalIdxCount))
-				{
-					const uint32_t count = resources->indexCounts[bufferIndex];
-					const uint32_t count_new = drawData->TotalIdxCount + 30000;
-					resources->indexCounts[bufferIndex] = count_new;
-					resources->indexBuffers[bufferIndex] =
-					CreateScope<Buffer>(sizeof(ImDrawIdx), count_new, nullptr, true, "imgui_index_buffer");
-					indexBuffer = resources->indexBuffers[bufferIndex].get();
-
-					if (count != 0)
-					{
-						EDITOR_INFO_TAG("UI Implementation", "Index buffer has been re-allocated to fit {} indices", count_new);
-					}
-				}
-
-				if (!vertexBuffer || !indexBuffer)
-					return;
-
-				if (!vertexBuffer->GetMappedData())
-				{
-					vertexBuffer->Map();
-				}
-
-				if (!indexBuffer->GetMappedData())
-				{
-					indexBuffer->Map();
-				}
-
-				// copy all imgui vertices into a single buffer
-				ImDrawVert *vtx_dst = static_cast<ImDrawVert *>(vertexBuffer->GetMappedData());
-				ImDrawIdx *idx_dst = static_cast<ImDrawIdx *>(indexBuffer->GetMappedData());
-				if (vtx_dst && idx_dst)
-				{
-					for (auto i = 0; i < drawData->CmdListsCount; i++)
-					{
-						const ImDrawList *imguiCmdList = drawData->CmdLists[i];
-
-						memcpy(vtx_dst, imguiCmdList->VtxBuffer.Data, imguiCmdList->VtxBuffer.Size * sizeof(ImDrawVert));
-						memcpy(idx_dst, imguiCmdList->IdxBuffer.Data, imguiCmdList->IdxBuffer.Size * sizeof(ImDrawIdx));
-
-						vtx_dst += imguiCmdList->VtxBuffer.Size;
-						idx_dst += imguiCmdList->IdxBuffer.Size;
-					}
-				}
-			}
-
-			// Bind the dedicated ImGui pipeline and descriptor set directly.
-			// This bypasses CommandList::SetPipelineState() which goes through the bootstrap /
-			// bindless path that is incompatible with ui.slang's simple descriptor layout.
+			// grow index buffer as needed
+			if (indexBuffer->GetElementCount() < static_cast<uint32_t>(drawData->TotalIdxCount))
 			{
-				VkCommandBuffer cb = cmdList->GetCommandBuffer();
-				SEDX_CORE_ASSERT(cb != VK_NULL_HANDLE, "ImGui: command buffer is null");
+				const uint32_t count = indexBuffer->GetElementCount();
+				const uint32_t count_new = drawData->TotalIdxCount + 30000;
+				vpResources->indexBuffers[bufferIndex] = CreateScope<Buffer>(sizeof(ImDrawIdx), count_new, nullptr, true, indexBuffer->GetObjectName().c_str());
 
-				if (g_ImGuiPipeline == VK_NULL_HANDLE || g_ImGuiPipelineLayout == VK_NULL_HANDLE)
+				if (count != 0)
 				{
-					SEDX_CORE_WARN_TAG("UI", "ImGui pipeline not ready, skipping render");
-					return;
-				}
-
-				vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, g_ImGuiPipeline);
-				vkCmdSetCullMode(cb, VK_CULL_MODE_NONE);
-
-				// Set viewport to cover the full display
-				{
-					VkViewport vp{};
-					vp.x        = drawData->DisplayPos.x;
-					vp.y        = drawData->DisplayPos.y;
-					vp.width    = drawData->DisplaySize.x;
-					vp.height   = drawData->DisplaySize.y;
-					vp.minDepth = 0.0f;
-					vp.maxDepth = 1.0f;
-					vkCmdSetViewport(cb, 0, 1, &vp);
-				}
-
-				// Bind the vertex and index buffers
-				{
-					VkBuffer vb = vertexBuffer->Get();
-					VkDeviceSize offset = 0;
-					vkCmdBindVertexBuffers(cb, 0, 1, &vb, &offset);
-					vkCmdBindIndexBuffer(cb, indexBuffer->Get(), 0, sizeof(ImDrawIdx) == 2 ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32);
-				}
-
-				// Push scale and translate as push constants (ui.slang: float2 scale, float2 translate)
-				{
-					float scale[2]     = { 2.0f / drawData->DisplaySize.x, 2.0f / drawData->DisplaySize.y };
-					float translate[2] = { -1.0f - drawData->DisplayPos.x * scale[0], -1.0f - drawData->DisplayPos.y * scale[1] };
-					vkCmdPushConstants(cb, g_ImGuiPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(float) * 2, scale);
-					vkCmdPushConstants(cb, g_ImGuiPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, sizeof(float) * 2, sizeof(float) * 2, translate);
-				}
-
-				// Render all ImGui draw commands
-				uint32_t global_vtx_offset = 0;
-				uint32_t global_idx_offset = 0;
-				for (uint32_t i = 0; std::cmp_less(i, drawData->CmdListsCount); i++)
-				{
-					ImDrawList *cmdListImgui = drawData->CmdLists[i];
-
-					for (uint32_t cmd_i = 0; std::cmp_less(cmd_i, cmdListImgui->CmdBuffer.Size); cmd_i++)
-					{
-						const ImDrawCmd *pcmd = &cmdListImgui->CmdBuffer[cmd_i];
-
-						if (pcmd->UserCallback != nullptr)
-						{
-							pcmd->UserCallback(cmdListImgui, pcmd);
-						}
-						else
-						{
-							// Bind the font descriptor set (or per-draw texture if provided)
-							VkDescriptorSet descSet = g_ImGuiFontDescriptorSet;
-							if (ImageResource *texture = reinterpret_cast<ImageResource *>(pcmd->GetTexID()))
-							{
-								// Per-draw textures are not yet supported via raw Vulkan path;
-								// fall back to the font atlas so at least text renders.
-								// TODO: allocate per-texture descriptor sets from a larger pool.
-							}
-							vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS,
-								g_ImGuiPipelineLayout, 0, 1, &descSet, 0, nullptr);
-
-							// Set scissor rectangle
-							VkRect2D scissor{};
-							scissor.offset.x      = static_cast<int32_t>(std::max(pcmd->ClipRect.x - drawData->DisplayPos.x, 0.0f));
-							scissor.offset.y      = static_cast<int32_t>(std::max(pcmd->ClipRect.y - drawData->DisplayPos.y, 0.0f));
-							scissor.extent.width  = static_cast<uint32_t>(pcmd->ClipRect.z - pcmd->ClipRect.x);
-							scissor.extent.height = static_cast<uint32_t>(pcmd->ClipRect.w - pcmd->ClipRect.y);
-							vkCmdSetScissor(cb, 0, 1, &scissor);
-
-							vkCmdDrawIndexed(cb, pcmd->ElemCount, 1,
-								pcmd->IdxOffset + global_idx_offset,
-								static_cast<int32_t>(pcmd->VtxOffset + global_vtx_offset), 0);
-						}
-					}
-
-					global_idx_offset += static_cast<uint32_t>(cmdListImgui->IdxBuffer.Size);
-					global_vtx_offset += static_cast<uint32_t>(cmdListImgui->VtxBuffer.Size);
+					EDITOR_INFO_TAG("UI Implementation", "Index buffer has been re-allocated to fit {} indices", count_new);
 				}
 			}
+
+			// copy all imgui vertices into a single buffer
+			ImDrawVert *vtx_dst = static_cast<ImDrawVert *>(vertexBuffer->GetMappedData());
+			ImDrawIdx *idx_dst = static_cast<ImDrawIdx *>(indexBuffer->GetMappedData());
+			if (vtx_dst && idx_dst)
+			{
+				for (auto i = 0; i < drawData->CmdListsCount; i++)
+				{
+					const ImDrawList *imguiCmdList = drawData->CmdLists[i];
+
+					memcpy(vtx_dst, imguiCmdList->VtxBuffer.Data, imguiCmdList->VtxBuffer.Size * sizeof(ImDrawVert));
+					memcpy(idx_dst, imguiCmdList->IdxBuffer.Data, imguiCmdList->IdxBuffer.Size * sizeof(ImDrawIdx));
+
+					vtx_dst += imguiCmdList->VtxBuffer.Size;
+					idx_dst += imguiCmdList->IdxBuffer.Size;
+				}
+			}
+		}
+
+		// set pipeline state
+		static PipelineState pso			= {};
+		pso.name							= "imgui";
+		pso.shaders[StageType::Vertex]		= g_VertexShader.Get();
+		pso.shaders[StageType::Fragment]	= g_FragmentShader.Get();
+		pso.rasterizerState                 = g_Rasterizer_State.Get();
+		pso.blendState                      = g_BlendState.Get();
+		pso.depthStencil_State              = g_DepthStencil_State.Get();
+		pso.renderTarget_Swapchain          = swapchain;
+		pso.clearColor[0]                   = clear ? Color::Black() : COLOR_DONT_CARE;
+
+		// Bind the dedicated ImGui pipeline and descriptor set directly.
+		// This bypasses CommandList::SetPipelineState() which goes through the bootstrap /
+		// bindless path that is incompatible with ui.slang's simple descriptor layout.
+		{
+			VkCommandBuffer cb = cmdList->GetCommandBuffer();
+			SEDX_CORE_ASSERT(cb != VK_NULL_HANDLE, "ImGui: command buffer is null");
+
+			if (g_ImGuiPipeline == VK_NULL_HANDLE || g_ImGuiPipelineLayout == VK_NULL_HANDLE)
+			{
+				SEDX_CORE_WARN_TAG("UI", "ImGui pipeline not ready, skipping render");
+				return;
+			}
+
+			vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, g_ImGuiPipeline);
+			vkCmdSetCullMode(cb, VK_CULL_MODE_NONE);
+
+			// Set viewport to cover the full display
+			{
+				VkViewport vp{};
+				vp.x        = drawData->DisplayPos.x;
+				vp.y        = drawData->DisplayPos.y;
+				vp.width    = drawData->DisplaySize.x;
+				vp.height   = drawData->DisplaySize.y;
+				vp.minDepth = 0.0f;
+				vp.maxDepth = 1.0f;
+				vkCmdSetViewport(cb, 0, 1, &vp);
+			}
+
+			// Bind the vertex and index buffers
+			{
+				VkBuffer vb = vertexBuffer->Get();
+				VkDeviceSize offset = 0;
+				vkCmdBindVertexBuffers(cb, 0, 1, &vb, &offset);
+				vkCmdBindIndexBuffer(cb, indexBuffer->Get(), 0, sizeof(ImDrawIdx) == 2 ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32);
+			}
+
+			// Push scale and translate as push constants (ui.slang: float2 scale, float2 translate)
+			{
+				float scale[2]     = { 2.0f / drawData->DisplaySize.x, 2.0f / drawData->DisplaySize.y };
+				float translate[2] = { -1.0f - drawData->DisplayPos.x * scale[0], -1.0f - drawData->DisplayPos.y * scale[1] };
+				vkCmdPushConstants(cb, g_ImGuiPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(float) * 2, scale);
+				vkCmdPushConstants(cb, g_ImGuiPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, sizeof(float) * 2, sizeof(float) * 2, translate);
+			}
+
+			// Render all ImGui draw commands
+			uint32_t global_vtx_offset = 0;
+			uint32_t global_idx_offset = 0;
+			for (uint32_t i = 0; std::cmp_less(i, drawData->CmdListsCount); i++)
+			{
+				ImDrawList *cmdListImgui = drawData->CmdLists[i];
+
+				for (uint32_t cmd_i = 0; std::cmp_less(cmd_i, cmdListImgui->CmdBuffer.Size); cmd_i++)
+				{
+					const ImDrawCmd *pcmd = &cmdListImgui->CmdBuffer[cmd_i];
+
+					if (pcmd->UserCallback != nullptr)
+					{
+						pcmd->UserCallback(cmdListImgui, pcmd);
+					}
+					else
+					{
+						// Bind the font descriptor set (or per-draw texture if provided)
+						VkDescriptorSet descSet = g_ImGuiFontDescriptorSet;
+						if (ImageResource *texture = reinterpret_cast<ImageResource *>(pcmd->GetTexID()))
+						{
+							// Per-draw textures are not yet supported via raw Vulkan path;
+							// fall back to the font atlas so at least text renders.
+							// TODO: allocate per-texture descriptor sets from a larger pool.
+						}
+						vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS,
+							g_ImGuiPipelineLayout, 0, 1, &descSet, 0, nullptr);
+
+						// Set scissor rectangle
+						VkRect2D scissor{};
+						scissor.offset.x      = static_cast<int32_t>(std::max(pcmd->ClipRect.x - drawData->DisplayPos.x, 0.0f));
+						scissor.offset.y      = static_cast<int32_t>(std::max(pcmd->ClipRect.y - drawData->DisplayPos.y, 0.0f));
+						scissor.extent.width  = static_cast<uint32_t>(pcmd->ClipRect.z - pcmd->ClipRect.x);
+						scissor.extent.height = static_cast<uint32_t>(pcmd->ClipRect.w - pcmd->ClipRect.y);
+						vkCmdSetScissor(cb, 0, 1, &scissor);
+
+						vkCmdDrawIndexed(cb, pcmd->ElemCount, 1,
+							pcmd->IdxOffset + global_idx_offset,
+							static_cast<int32_t>(pcmd->VtxOffset + global_vtx_offset), 0);
+					}
+				}
+
+				global_idx_offset += static_cast<uint32_t>(cmdListImgui->IdxBuffer.Size);
+				global_vtx_offset += static_cast<uint32_t>(cmdListImgui->VtxBuffer.Size);
+			}
+		}
 
 		// for child windows, submit and prepare for presentation
 		if (!isMainWindow)
@@ -660,6 +622,7 @@ namespace SceneryEditorX::UI
 	
 		window->viewportResources = CreateScope<ViewportResources>("imgui_child_window", window->swapchain.Get());
 		viewport->RendererUserData = window;
+		SEDX_CORE_TRACE_TAG("WindowCreate", "Created window called for {}", viewport->ID);
 	}
 
 	void WindowDestroy(ImGuiViewport *viewport)
@@ -673,31 +636,22 @@ namespace SceneryEditorX::UI
 
 	void WindowResize(ImGuiViewport *viewport, const ImVec2 size)
 	{
-		static_cast<WindowData *>(viewport->RendererUserData)->swapchain->Resize(static_cast<uint32_t>(size.x), static_cast<uint32_t>(size.y));
+		static_cast<WindowData*>(viewport->RendererUserData)->swapchain->Resize(static_cast<uint32_t>(size.x), static_cast<uint32_t>(size.y));
+		SEDX_CORE_TRACE_TAG("WindowResize", "Resized window called for {}", viewport->ID);
 	}
 
-	void WindowRender(ImGuiViewport *viewport, void *)
+	void WindowRender(ImGuiViewport *viewport, void*)
 	{
 		const bool clear = !(viewport->Flags & ImGuiViewportFlags_NoRendererClear);
 		Render(viewport->DrawData, static_cast<WindowData *>(viewport->RendererUserData), clear);
+		SEDX_CORE_TRACE_TAG("WindowRender", "Rendered window called for {}", viewport->ID);
 	}
 
-	void WindowPresent(ImGuiViewport *viewport, void *)
+	void WindowPresent(ImGuiViewport *viewport, void*)
 	{
 		WindowData *window = static_cast<WindowData*>(viewport->RendererUserData);
-		if (!window || !window->swapchain)
-			return;
-	
-		Ref<Device> device = RenderContext::Get()->GetDevice();
-		auto queueManager = device ? device->GetQueueManager() : nullptr;
-		if (!queueManager)
-			return;
-	
-		Ref<Queue> *graphicsQueue = queueManager->GetQueue(Graphics);
-		if (!graphicsQueue || !(*graphicsQueue))
-			return;
-	
-		window->swapchain->Present((*graphicsQueue)->GetQueue(), window->swapchain->GetImageIndex(), VK_NULL_HANDLE);
+		window->swapchain->Present(window->cmdList);
+		SEDX_CORE_TRACE_TAG("WindowPresent", "Presented window called for {}", viewport->ID);
 	}
 
 }

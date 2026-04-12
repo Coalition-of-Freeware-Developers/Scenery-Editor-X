@@ -54,7 +54,7 @@ class CommandList;
 		 * @param mappable Indicates whether the buffer should be mappable to CPU memory.
 		 * @param name The name of the buffer.
 		 */
-		Buffer(size_t stride, uint32_t elementCount, const void *data, bool mappable, const char *name);
+		Buffer(const size_t stride, const uint32_t elementCount, const void *data, bool mappable, const char *name);
 
 		/**
 		 * @brief Creates a Vulkan buffer with the specified parameters.

@@ -141,7 +141,7 @@ namespace SceneryEditorX
 	};
 
 	/**
-	 * @enum Stage
+	 * @enum StageType
 	 * @brief Enumeration of shader stages in Vulkan
 	 *
 	 * This enum provides a type-safe way to identify and reference
@@ -150,7 +150,7 @@ namespace SceneryEditorX
 	 * @note - The values in this enum are designed to be compatible with Vulkan's VkShaderStageFlagBits.
 	 * @see @enum VkShaderStageFlagBits
 	 */
-	enum class Stage : uint32_t
+	enum class StageType : uint32_t
 	{
 		Vertex,
 		Geometry,
@@ -159,6 +159,7 @@ namespace SceneryEditorX
 		Fragment,
 		Compute,
 		None,
+		Graphics,
 		All,
 		MaxEnum
 	};

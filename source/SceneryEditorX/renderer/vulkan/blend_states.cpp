@@ -40,27 +40,17 @@ namespace SceneryEditorX
 		return a * 31 + b;
 	}
 
-	BlendState::BlendState(const BlendStateSpec &spec)
+	BlendState::BlendState(const BlendStateSpec &spec) : m_Spec(spec)
 	{
-		// save
-		m_BlendEnabled      = spec.blendEnabled;
-		m_SrcColor			= spec.srcBlend;
-		m_DstColor			= spec.dstBlend;
-		m_ColorOp           = spec.blendOp;
-		m_SrcAlpha			= spec.srcAlpha;
-		m_DstAlpha			= spec.dstAlpha;
-		m_AlphaOp			= spec.alphaOp;
-		m_BlendFactor       = spec.blendFactor;
-
 		// hash
-		m_Hash = HashCombine(m_Hash, m_BlendEnabled);
-		m_Hash = HashCombine(m_Hash, static_cast<uint64_t>(m_SrcColor));
-		m_Hash = HashCombine(m_Hash, static_cast<uint64_t>(m_DstColor));
-		m_Hash = HashCombine(m_Hash, static_cast<uint64_t>(m_ColorOp));
-		m_Hash = HashCombine(m_Hash, static_cast<uint64_t>(m_SrcAlpha));
-		m_Hash = HashCombine(m_Hash, static_cast<uint64_t>(m_DstAlpha));
-		m_Hash = HashCombine(m_Hash, static_cast<uint64_t>(m_AlphaOp));
-		m_Hash = HashCombine(m_Hash, m_BlendFactor);
+		m_Hash = HashCombine(m_Hash, m_Spec.blendEnabled);
+		m_Hash = HashCombine(m_Hash, static_cast<uint64_t>(m_Spec.srcBlend));
+		m_Hash = HashCombine(m_Hash, static_cast<uint64_t>(m_Spec.dstBlend));
+		m_Hash = HashCombine(m_Hash, static_cast<uint64_t>(m_Spec.blendOp));
+		m_Hash = HashCombine(m_Hash, static_cast<uint64_t>(m_Spec.srcAlpha));
+		m_Hash = HashCombine(m_Hash, static_cast<uint64_t>(m_Spec.dstAlpha));
+		m_Hash = HashCombine(m_Hash, static_cast<uint64_t>(m_Spec.alphaOp));
+		m_Hash = HashCombine(m_Hash, m_Spec.blendFactor);
 	}
 
 }

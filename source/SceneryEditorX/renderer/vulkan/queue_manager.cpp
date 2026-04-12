@@ -29,14 +29,12 @@
  * -------------------------------------------------------
  */
 #include "queue_manager.h"
-
 #include "bindless_manager.h"
 #include "device.h"
 #include "render_context.h"
-#include "SceneryEditorX/logging/profiler.hpp"
-
 #include <algorithm>
 #include <string>
+#include <SceneryEditorX/logging/profiler.hpp>
 
 // -------------------------------------------------------
 

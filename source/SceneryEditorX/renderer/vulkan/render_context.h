@@ -41,7 +41,7 @@ namespace SceneryEditorX
 
 	/**
 	 * @class RenderContext
-	 * @brief 
+	 * @brief Encapsulates the Vulkan rendering context, including instance, device, queues, and swapchain management.
 	 */
 	class RenderContext : public RefCounted
 	{

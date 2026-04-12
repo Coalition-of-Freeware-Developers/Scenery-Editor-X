@@ -61,15 +61,15 @@ namespace SceneryEditorX
 	 * @param type The shader stage.
 	 * @return The bitmask representing the shader stage.
 	 */
-	static uint32_t ShaderTypeToMask(Stage type)
+	static uint32_t ShaderTypeToMask(StageType type)
 	{
 		switch (type)
 		{
-			case Stage::Vertex:                  return BIT(0);
-			case Stage::TessellationControl:     return BIT(1);
-			case Stage::TessellationEvaluation:  return BIT(2);
-			case Stage::Fragment:                return BIT(3);
-			case Stage::Compute:                 return BIT(4);
+			case StageType::Vertex:                  return BIT(0);
+			case StageType::TessellationControl:     return BIT(1);
+			case StageType::TessellationEvaluation:  return BIT(2);
+			case StageType::Fragment:                return BIT(3);
+			case StageType::Compute:                 return BIT(4);
 			default:                             return 0;
 		}
 	}
@@ -498,11 +498,11 @@ namespace SceneryEditorX
 			const Descriptor& desc = *filtered[i];
 			
 			VkShaderStageFlags stageFlags = 0;
-			if (desc.GetStage() & ShaderTypeToMask(Stage::Vertex))                 stageFlags |= VK_SHADER_STAGE_VERTEX_BIT;
-			if (desc.GetStage() & ShaderTypeToMask(Stage::TessellationControl))    stageFlags |= VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
-			if (desc.GetStage() & ShaderTypeToMask(Stage::TessellationEvaluation)) stageFlags |= VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
-			if (desc.GetStage() & ShaderTypeToMask(Stage::Fragment))               stageFlags |= VK_SHADER_STAGE_FRAGMENT_BIT;
-			if (desc.GetStage() & ShaderTypeToMask(Stage::Compute))                stageFlags |= VK_SHADER_STAGE_COMPUTE_BIT;
+			if (desc.GetStage() & ShaderTypeToMask(StageType::Vertex))                 stageFlags |= VK_SHADER_STAGE_VERTEX_BIT;
+			if (desc.GetStage() & ShaderTypeToMask(StageType::TessellationControl))    stageFlags |= VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+			if (desc.GetStage() & ShaderTypeToMask(StageType::TessellationEvaluation)) stageFlags |= VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
+			if (desc.GetStage() & ShaderTypeToMask(StageType::Fragment))               stageFlags |= VK_SHADER_STAGE_FRAGMENT_BIT;
+			if (desc.GetStage() & ShaderTypeToMask(StageType::Compute))                stageFlags |= VK_SHADER_STAGE_COMPUTE_BIT;
 			
 			auto& binding              = layoutBindings[i];
 			binding.binding            = desc.GetSlot();

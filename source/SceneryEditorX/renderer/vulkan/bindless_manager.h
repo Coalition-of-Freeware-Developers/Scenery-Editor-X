@@ -32,7 +32,6 @@
 #include "descriptor.h"
 #include "descriptor_set.h"
 #include "render_data.h"
-#include "pipeline/pipeline_state.h"
 #include <unordered_map>
 #include <vector>
 #include <SceneryEditorX/utils/inheritance.h>
@@ -92,7 +91,7 @@ namespace SceneryEditorX
 		struct ResourceConfig
 		{
 			VkDescriptorType type;   // VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, etc.
-			uint32_t registerShift;  // shader_register_shift_t or _s
+			uint32_t registerShift;  // SHADER_REGISTER_SHIFT_T or SHADER_REGISTER_SHIFT_S
 			uint32_t slot;           // hlsl register slot
 			uint32_t count;          // descriptor array count
 			const char *name;

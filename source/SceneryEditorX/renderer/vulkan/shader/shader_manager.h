@@ -30,50 +30,8 @@
  */
 #pragma once
 #include "shader.h"
+#include "shader_compiler.h"
 #include <vector>
-
-// -------------------------------------------------------
-
-/**
- * @namespace ShaderCompiler
- * @brief A simple manager for Vulkan shader modules. 
- * This is not intended to be a full-featured shader management system, 
- * but rather a minimal wrapper around Vulkan shader modules that allows us to compile and reflect shaders at runtime.
- */
-namespace ShaderCompiler
-{
-	/**
-	 * @enum State
-	 * @brief Represents the current state of shader compilation. 
-	 * This can be used to track the progress of shader compilation and handle any errors that may occur during the process. 
-	 */
-	enum class State : uint8_t
-	{
-		Idle,
-		Compiling,
-		Succeeded,
-		Failed
-	};
-
-	/**
-	 * @brief Compiles a Vulkan shader from a file.
-	 * @param stage The shader stage to compile.
-	 * @param filepath The path to the shader file.
-	 * @param optimize Whether to optimize the shader during compilation.
-	 * @return A vector of uint32_t representing the compiled SPIR-V bytecode.
-	 */
-	std::vector<uint32_t> CompileVulkanShader(SceneryEditorX::Stage stage, const std::string& filepath, bool optimize = false);
-
-	/**
-	 * @brief Reflects the input variables of a Vulkan shader.
-	 * @param stage The shader stage to reflect.
-	 * @param shaderBytecode The SPIR-V bytecode of the shader.
-	 * @return A vector of ShaderInput structures representing the input variables of the shader.
-	 */
-	std::vector<SceneryEditorX::ShaderInput> Reflect(SceneryEditorX::Stage stage, const std::vector<uint32_t>& shaderBytecode);
-
-}
-
 
 // -------------------------------------------------------
 
@@ -86,15 +44,15 @@ namespace SceneryEditorX
 	 * This class provides a convenient way to handle multiple shader stages within a single object.
 	 * This allows Pipeline to accept a single object that may contain multiple stages (vertex, fragment, etc.).
 	 */
-	class ShaderManager 
+	class ShaderManager : public RefCounted
 	{
 	public:
 		ShaderManager() = default;
 
-		/**
-		 * Convenience ctor: use the same SPIR-V blob for both vertex and fragment
-		 * stages (matches the original sample behavior).
-		 */
+		/* @brief Destroys the ShaderManager and releases all associated Vulkan shader modules. */
+		~ShaderManager();
+
+		static Ref<ShaderManager> Get();
 
 		/**
 		 * @brief Constructs a ShaderManager with a single SPIR-V blob for both vertex and fragment stages.
@@ -107,10 +65,7 @@ namespace SceneryEditorX
 		 * @brief Constructs a ShaderManager with multiple SPIR-V blobs for different shader stages.
 		 * @param stages A vector of pairs, each containing a shader stage flag and a pair of SPIR-V bytecode pointer and size.
 		 */
-		ShaderManager(const std::vector<std::pair<VkShaderStageFlagBits, std::pair<const void*, size_t>>>& stages);
-
-		/* @brief Destroys the ShaderManager and releases all associated Vulkan shader modules. */
-		~ShaderManager();
+		ShaderManager(const std::vector<std::pair<VkShaderStageFlagBits, std::pair<const void *, size_t>>> &stages);
 
 		/**
 		 * @brief Creates a new shader with the specified name.
@@ -120,11 +75,34 @@ namespace SceneryEditorX
 		static Ref<Shader>& CreateShader(const std::string& name);
 
 		/**
+		 * @brief Creates a new shader with the specified path and optional force compile flag.
+		 * @param name name of the shader to create
+		 * @param path Path to the shader file.
+		 * @param forceCompile Whether to force compilation of the shader.
+		 * @return A reference to the created shader.
+		 */
+		static Ref<Shader>& CreateShader(const std::string& name, const std::string &path, bool forceCompile);
+
+		/**
 		 * @brief Retrieves a shader with the specified name.
 		 * @param name name of the shader to retrieve
 		 * @return A reference to the retrieved shader.
 		 */
 		static Ref<Shader>& GetShader(const std::string& name);
+
+		/**
+		 * @brief Reloads a shader with the specified name and optional force compile flag.
+		 * @param shaderName Name of the shader to reload.
+		 * @param forceCompile Whether to force compilation of the shader.
+		 */
+		void ReloadShader(const Ref<Shader> &shaderName, bool forceCompile = false);
+
+		/**
+		 * @brief Reloads a shader on the render thread with the specified name and optional force compile flag.
+		 * @param shaderName Name of the shader to reload.
+		 * @param forceCompile Whether to force compilation of the shader.
+		 */
+		static void RenderThread_Reload(const Ref<Shader> &shaderName, bool forceCompile);
 
 		/**
 		 * @brief Clears all shaders managed by the ShaderManager.
@@ -135,39 +113,26 @@ namespace SceneryEditorX
 		 * @brief Retrieves the compilation state of the shaders.
 		 * @return The current compilation state.
 		 */
-		size_t StageCount() const { return m_Stages.size(); }
+		[[nodiscard]] size_t StageCount() const { return m_Stages.size(); }
 
 		/**
 		 * @brief Retrieves the shader stage at the specified index.
 		 * @param i The index of the shader stage to retrieve.
 		 * @return The shader stage flag at the specified index.
 		 */
-		VkShaderStageFlagBits StageAt(const size_t i) const { return m_Stages[i]; }
+		[[nodiscard]] VkShaderStageFlagBits StageAt(const size_t i) const { return m_Stages[i]; }
 
 		/**
 		 * @brief Retrieves the Vulkan shader module at the specified index.
 		 * @param i The index of the shader module to retrieve.
 		 * @return The Vulkan shader module at the specified index.
 		 */
-		VkShaderModule ModuleAt(const size_t i) const { return m_Modules[i]; }
-
-		/**
-		 * @brief Retrieves the compilation state of the shaders.
-		 * @return The current compilation state.
-		 */
-		ShaderCompiler::State GetCompilationState() const { return m_CompilationState; }
-
-		/**
-		 * @brief Checks if the shaders have been successfully compiled.
-		 * @return True if the shaders are compiled successfully, false otherwise.
-		 */
-		bool IsCompiled() const { return m_CompilationState == ShaderCompiler::State::Succeeded; }
+		[[nodiscard]] VkShaderModule ModuleAt(const size_t i) const { return m_Modules[i]; }
 
 	private:
-		std::vector<VkShaderModule> m_Modules{};							// Store the Vulkan shader modules for each stage
-		std::vector<VkShaderStageFlagBits> m_Stages{};						// Store the corresponding shader stage flags (e.g., VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_FRAGMENT_BIT)
-		static std::unordered_map<std::string, Ref<Shader>> m_Shaders;						 // Static map to manage shaders by name
-		std::atomic<ShaderCompiler::State> m_CompilationState = ShaderCompiler::State::Idle; // Track the compilation state of the shaders
+		std::vector<VkShaderModule> m_Modules{};		// Store the Vulkan shader modules for each stage
+		std::vector<VkShaderStageFlagBits> m_Stages{};	// Store the corresponding shader stage flags (e.g., VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_FRAGMENT_BIT)
+		static std::unordered_map<std::string, Ref<Shader>> m_Shaders;	// Static map to manage shaders by name
 	};
 
 

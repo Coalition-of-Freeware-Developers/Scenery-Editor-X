@@ -44,13 +44,12 @@ namespace SceneryEditorX
 	class ShaderStage : public RefCounted
 	{
 	public:
-
 		/**
 		 * @brief Constructs a ShaderStage object.
 		 * @param stage the shader stage (e.g., vertex, fragment)
 		 * @param filepath the file path to the SPIR-V binary for this shader stage 
 		 */
-		ShaderStage(Stage stage, const std::string& filepath);
+		ShaderStage(StageType stage, const std::string& filepath);
 
 		/* 
 		 * @brief Destroys the ShaderStage object and releases its resources. 
@@ -81,7 +80,7 @@ namespace SceneryEditorX
 		const VkPipelineShaderStageCreateInfo GetStageCreateInfo();
 	
 	private:
-		Stage m_Stage;						// The shader stage (e.g., vertex, fragment)
+		StageType m_Stage;					// The shader stage (e.g., vertex, fragment)
 		std::string m_Filepath;				// Path to the shader source file
 		std::string m_EntryPoint;			// Stage entry point name used for pipeline creation
 		VkShaderModule m_ShaderModule;		// Vulkan shader module handle

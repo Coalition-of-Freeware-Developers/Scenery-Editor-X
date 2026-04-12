@@ -60,52 +60,52 @@ namespace SceneryEditorX
         Type type = Type::ImageLayout;
 
         // scope control - defaults to auto for backwards compatibility
-        BarrierScope scope_src = BarrierScope::Auto;
-        BarrierScope scope_dst = BarrierScope::Auto;
+        BarrierScope scopeSrc = BarrierScope::Auto;
+        BarrierScope scopeDst = BarrierScope::Auto;
 
         // for image barriers
         ImageResource* img			= nullptr;
         void* image					= nullptr; // raw handle for swapchain images
         VkFormat format				= VkFormat::VK_FORMAT_MAX_ENUM;
-        uint32_t mip_index			= 0;
-        uint32_t mip_range			= 1;
-        uint32_t array_length		= 1;
+        uint32_t mipIndex			= 0;
+        uint32_t mipRange			= 1;
+        uint32_t arrayLength		= 1;
         Layout::ImageLayout layout  = Layout::ImageLayout::MaxEnum;
-        BarrierType sync_type  = BarrierType::EnsureWriteThenRead;
+        BarrierType syncType		= BarrierType::EnsureWriteThenRead;
 
         // for buffer barriers
-        Buffer* buffer = nullptr;
-        uint64_t offset    = 0;
-        uint64_t size      = 0; // 0 = whole buffer
+        Buffer* buffer		= nullptr;
+        uint64_t offset     = 0;
+        uint64_t size       = 0; // 0 = whole buffer
 
         /**
          * @brief raw image layout transition (for swapchain etc.)
-         * @param img 
-         * @param new_layout 
-         * @param mip 
-         * @param range 
-         * @return 
+         * @param img The image resource to transition
+         * @param newLayout The new layout to transition to
+         * @param mip The mip level to transition
+         * @param range The number of mip levels to transition
+         * @return Reference to the updated barrier
          */
-        static Barrier ImageLayout(ImageResource* img, Layout::ImageLayout new_layout, uint32_t mip = std::numeric_limits<uint32_t>::max(), uint32_t range = 0)
+        static Barrier ImageLayout(ImageResource* img, Layout::ImageLayout newLayout, uint32_t mip = std::numeric_limits<uint32_t>::max(), uint32_t range = 0)
         {
             Barrier b;
-            b.type      = Type::ImageLayout;
-            b.img   = img;
-            b.layout    = new_layout;
-            b.mip_index = mip;
-            b.mip_range = range;
+            b.type     = Type::ImageLayout;
+            b.img	   = img;
+            b.layout   = newLayout;
+            b.mipIndex = mip;
+            b.mipRange = range;
             return b;
         }
 
         /**
          * @brief raw image layout transition (for swapchain etc.)
-         * @param img 
-         * @param fmt 
-         * @param mip 
-         * @param range 
-         * @param arr_len 
-         * @param new_layout 
-         * @return 
+         * @param img The raw image handle
+         * @param fmt The format of the image
+         * @param mip The mip level to transition
+         * @param range The number of mip levels to transition
+         * @param arr_len The array length of the image
+         * @param new_layout The new layout to transition to
+         * @return Reference to the updated barrier
          */
         static Barrier ImageLayout(void* img, VkFormat fmt, uint32_t mip, uint32_t range, uint32_t arr_len, Layout::ImageLayout new_layout)
         {
@@ -113,34 +113,34 @@ namespace SceneryEditorX
             b.type         = Type::ImageLayout;
             b.image        = img;
             b.format       = fmt;
-            b.mip_index    = mip;
-            b.mip_range    = range;
-            b.array_length = arr_len;
+            b.mipIndex    = mip;
+            b.mipRange    = range;
+            b.arrayLength = arr_len;
             b.layout       = new_layout;
             return b;
         }
 
         /**
          * @brief texture sync barrier (no layout change)
-         * @param img 
-         * @param sync 
-         * @return 
+         * @param img The image resource to synchronize
+         * @param sync The type of synchronization to apply
+         * @return Reference to the updated barrier
          */
         static Barrier ImageSync(ImageResource* img, BarrierType sync)
         {
             Barrier b;
             b.type		= Type::ImageSync;
             b.img		= img;
-            b.sync_type = sync;
+            b.syncType = sync;
             return b;
         }
 
         /**
          * @brief buffer sync barrier
-         * @param buf 
-         * @param off 
-         * @param sz 
-         * @return 
+         * @param buf The buffer to synchronize
+         * @param off The offset within the buffer to start synchronization
+         * @param sz The size of the buffer region to synchronize
+         * @return Reference to the updated barrier
          */
         static Barrier BufferSync(Buffer* buf, uint64_t off = 0, uint64_t sz = 0)
         {
@@ -153,18 +153,18 @@ namespace SceneryEditorX
         }
 
         /**
-         * @brief 
-         * @param scope 
-         * @return 
+         * @brief Set the source scope for this barrier, which controls the pipeline stages and access flags that are used when the barrier is executed
+         * @param scope The scope to set for the source of the barrier
+         * @return Reference to the updated barrier
          */
-        Barrier& From(BarrierScope scope) { scope_src = scope; return *this; }
+        Barrier& From(BarrierScope scope) { scopeSrc = scope; return *this; }
 
         /**
-         * @brief 
-         * @param scope 
-         * @return 
+         * @brief Set the destination scope for this barrier, which controls the pipeline stages and access flags that are used when the barrier is executed
+         * @param scope The scope to set for the destination of the barrier
+         * @return Reference to the updated barrier
          */
-        Barrier& To(BarrierScope scope)   { scope_dst = scope; return *this; }
+        Barrier& To(BarrierScope scope)   { scopeDst = scope; return *this; }
     };
 
     /**

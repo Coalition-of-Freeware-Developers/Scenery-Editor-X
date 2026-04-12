@@ -37,7 +37,7 @@ namespace SceneryEditorX
 
 	/**
 	 * @struct DepthStencilSpec
-	 * @brief 
+	 * @brief A simple struct for describing depth/stencil state in a more compact form, which can be used to create DepthStencilState objects.
 	 */
 	struct DepthStencilSpec
 	{

@@ -29,6 +29,7 @@
  * -------------------------------------------------------
  */
 #pragma once
+#include "shader_compiler.h"
 #include "shader_stage.h"
 #include "SceneryEditorX/utils/inheritance.h"
 #include <SceneryEditorX/renderer/vulkan/descriptor.h>
@@ -45,6 +46,9 @@ namespace SceneryEditorX
 	class Shader : public SharedObject
 	{
 	public:
+		/* @brief Type definition for a callback function that is called when a shader is reloaded. */
+		typedef std::function<void()> ShaderReloadedCallback;
+
 		Shader() = default;
 		virtual ~Shader() override;
 
@@ -53,23 +57,25 @@ namespace SceneryEditorX
 		 * @param stage The shader stage to add.
 		 * @param filepath The file path to the SPIR-V binary.
 		 */
-		void AddShaderStage(Stage stage, const std::string& filepath);
+		void AddShaderStage(StageType stage, const std::string& filepath);
 
 		/**
 		 * @brief Retrieves the shader stage for the specified stage.
 		 * @param stage The shader stage to retrieve.
 		 * @return A reference to the shader stage.
 		 */
-		Ref<ShaderStage> GetShaderStage(Stage stage);
+		Ref<ShaderStage> GetShaderStage(StageType stage);
 
 		/**
 		 * @brief Checks if the shader has the specified stage.
 		 * @param stage The shader stage to check.
 		 * @return True if the shader has the stage, false otherwise.
 		 */
-		bool HasStage(Stage stage);
+		bool HasStage(StageType stage);
 
-		/* @brief Creates the descriptor set layouts for the shader. */
+		/* 
+		 * @brief Creates the descriptor set layouts for the shader. 
+		 */
 		void CreateDescriptorSetLayouts();
 
 		/**
@@ -111,16 +117,35 @@ namespace SceneryEditorX
 		std::vector<Descriptor> GetDescriptors();
 
 		/**
-		 * @brief Returns true if all shader stages have been compiled successfully.
-		 * @return True if the shader has at least one stage and all stages have valid modules.
+		 * @brief Computes a hash value for the shader based on its stages and inputs. This can be used for caching and quick comparisons.
+		 * @return A 64-bit hash value representing the shader's configuration.
 		 */
-		bool IsCompiled() const { return !m_Stages.empty(); }
+		uint64_t GetHash() const { return m_Hash; }
+
+		/**
+		 * @brief Retrieves the compilation state of the shader.
+		 * @return The current compilation state.
+		 */
+		ShaderCompiler::State GetCompilationState() const { return m_CompilationState; }
+
+		/**
+		 * @brief Checks if the shader has been successfully compiled.
+		 * @return True if the shader is compiled successfully, false otherwise.
+		 */
+		bool IsCompiled() const { return m_CompilationState == ShaderCompiler::State::Succeeded; }
 
 	private:
-		std::unordered_map<Stage, Ref<ShaderStage>> m_Stages;		// Map of shader stages by stage type
-		std::map<uint32_t, std::vector<ShaderInput>> m_Input;		// Map of shader inputs by descriptor set index
 		std::set<uint32_t> m_BindlessSets;							// Set of bindless descriptor sets
+		std::unordered_map<StageType, Ref<ShaderStage>> m_Stages;	// Map of shader stages by stage type
+		std::map<uint32_t, std::vector<ShaderInput>> m_Input;		// Map of shader inputs by descriptor set index
 		std::vector<VkDescriptorSetLayout> m_DescriptorSetLayouts;  // Vector of descriptor set layouts
+		std::string m_Filepath;										// File path for the shader (used for reloading)
+		const char* m_Name;											// Name for the shader (used for debugging and hashing)
+		StageType m_ShaderType	= StageType::MaxEnum;
+		StageType m_VertexType	= StageType::MaxEnum;
+		uint64_t m_Hash			= 0;                                // Cached hash value for the shader's configuration
+		std::atomic<ShaderCompiler::State> m_CompilationState = ShaderCompiler::State::Idle; // Track the compilation state of the shader
+
 	};
 
 }

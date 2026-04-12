@@ -29,40 +29,31 @@
  * -------------------------------------------------------
  */
 #include "pipeline_state.h"
-
-#include "SceneryEditorX/renderer/vulkan/shader/shader.h"
-
 #include <SceneryEditorX/renderer/vulkan/blend_states.h>
 #include <SceneryEditorX/renderer/vulkan/depth_stencil.h>
 #include <SceneryEditorX/renderer/vulkan/image_resource.h>
 #include <SceneryEditorX/renderer/vulkan/rasterizer.h>
 #include <SceneryEditorX/renderer/vulkan/swapchain.h>
+#include <SceneryEditorX/renderer/vulkan/shader/shader.h>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
 
-/**
-	 * @brief 
-	 * @param pso 
+	/**
+	 * @brief Validates the pipeline state object to ensure it is correctly configured for either graphics or compute pipelines.
+	 * @param pso The pipeline state object to validate. 
 	 */
 	static void Validate(PipelineState& pso)
 	{
-		// The shaders map is keyed by stage index (uint32_t). Use find so we don't insert default entries
-		auto has_shader_for_stage = [&](const Stage s) -> bool {
-			const uint32_t key = static_cast<uint32_t>(s);
-			auto it = pso.shaders.find(key);
-			return (it != pso.shaders.end() && it->second != nullptr && it->second->HasStage(s));
-		};
 
-		bool hasShaderCompute  = has_shader_for_stage(Stage::Compute);
-		bool hasShaderVertex   = has_shader_for_stage(Stage::Vertex);
-		bool hasShaderHull     = has_shader_for_stage(Stage::TessellationControl);
-		bool hasShaderDomain   = has_shader_for_stage(Stage::TessellationEvaluation);
-		bool hasShaderFragment = has_shader_for_stage(Stage::Fragment);
-
-		bool hasSomeShader = hasShaderCompute || hasShaderVertex || hasShaderHull || hasShaderDomain;
+		bool hasShaderCompute	= pso.shaders[StageType::Compute]					? pso.shaders[StageType::Compute]->IsCompiled()					: false;
+		bool hasShaderVertex	= pso.shaders[StageType::Vertex]					? pso.shaders[StageType::Vertex]->IsCompiled()					: false;
+		bool hasShaderHull		= pso.shaders[StageType::TessellationControl]		? pso.shaders[StageType::TessellationControl]->IsCompiled()		: false;
+		bool hasShaderDomain	= pso.shaders[StageType::TessellationEvaluation]	? pso.shaders[StageType::TessellationEvaluation]->IsCompiled()	: false;
+		bool hasShaderFragment	= pso.shaders[StageType::Fragment]					? pso.shaders[StageType::Fragment]->IsCompiled()				: false;
+		bool hasSomeShader		= hasShaderCompute || hasShaderVertex || hasShaderHull || hasShaderDomain;
 		SEDX_CORE_ASSERT(hasSomeShader, "There is no shader set, ensure that it compiled successfully and that it has been set");
 	
 		bool isGraphics = (hasShaderVertex || hasShaderHull || hasShaderDomain || hasShaderFragment) && !hasShaderCompute;
@@ -85,21 +76,25 @@ namespace SceneryEditorX
 		SEDX_CORE_ASSERT(pso.name != nullptr, "Name your pipeline state");
 	}
 
+	// TODO: Move this hashing logic to a more general utility class, and consider using a better hash combining function (e.g. boost::hash_combine or similar)
+
 	/**
-	 * @brief 
-	 * @param a 
-	 * @param b 
-	 * @return 
+	 * @brief Combines two hash values into a single hash value.
+	 * @param a The first hash value.
+	 * @param b The second hash value.
+	 * @return The combined hash value.
 	 */
 	static uint64_t HashCombine(const uint64_t a, const uint64_t b)
 	{
 		return a * 31 + b;
 	}
 
+	// TODO: Move this hashing logic to a more general utility class, and consider using a better hash combining function (e.g. boost::hash_combine or similar)
+
 	/**
-	 * @brief  
-	 * @param pso 
-	 * @return 
+	 * @brief Computes a hash value for the given pipeline state object.
+	 * @param pso The pipeline state object to compute the hash for.
+	 * @return The computed hash value.
 	 */
 	static uint64_t ComputeHash(PipelineState &pso)
 	{
@@ -128,14 +123,13 @@ namespace SceneryEditorX
 		}
 	
 		// shaders (map iteration)
-		for (const auto &kv : pso.shaders)
+		for (Shader* shader : pso.shaders)
 		{
-			Shader* shader = kv.second;
 			if (!shader)
 				continue;
 
 			// Use pointer address as a stable-enough identity for hashing here
-			hash = HashCombine(hash, reinterpret_cast<uintptr_t>(shader));
+			hash = HashCombine(hash, shader->GetHash());
 		}
 	
 		// render target
@@ -169,10 +163,10 @@ namespace SceneryEditorX
 	}
 	
 	/**
-	 * @brief 
-	 * @param pso 
-	 * @param width 
-	 * @param height  
+	 * @brief Retrieves the dimensions of the pipeline state object's render target.
+	 * @param pso The pipeline state object.
+	 * @param width Pointer to store the width of the render target.
+	 * @param height Pointer to store the height of the render target.
 	 */
 	static void GetDimensions(PipelineState &pso, uint32_t *width, uint32_t *height)
 	{
@@ -243,24 +237,24 @@ namespace SceneryEditorX
 
 	bool PipelineState::IsGraphics() const
 	{
-		return (HasShader(Stage::Vertex) ||
-				HasShader(Stage::TessellationControl) ||
-				HasShader(Stage::TessellationEvaluation) ||
-				HasShader(Stage::Fragment)) && !HasShader(Stage::Compute);
+		return (HasShader(StageType::Vertex) ||
+				HasShader(StageType::TessellationControl) ||
+				HasShader(StageType::TessellationEvaluation) ||
+				HasShader(StageType::Fragment)) && !HasShader(StageType::Compute);
 	}
 
 	bool PipelineState::IsCompute() const
 	{
-		return HasShader(Stage::Compute) &&
-			!HasShader(Stage::Vertex) &&
-			!HasShader(Stage::TessellationControl) &&
-			!HasShader(Stage::TessellationEvaluation) &&
-			!HasShader(Stage::Fragment);
+		return HasShader(StageType::Compute) &&
+			!HasShader(StageType::Vertex) &&
+			!HasShader(StageType::TessellationControl) &&
+			!HasShader(StageType::TessellationEvaluation) &&
+			!HasShader(StageType::Fragment);
 	}
 
 	bool PipelineState::HasTessellation()
 	{
-		return HasShader(Stage::TessellationControl) && HasShader(Stage::TessellationEvaluation);
+		return HasShader(StageType::TessellationControl) && HasShader(StageType::TessellationEvaluation);
 	}
 
 	PipelineState PipelineState::GetState()
@@ -268,11 +262,10 @@ namespace SceneryEditorX
 		return {};
 	}
 
-	bool PipelineState::HasShader(const Stage shaderStage) const
+	bool PipelineState::HasShader(const StageType shaderStage) const
 	{
 		const uint32_t key = static_cast<uint32_t>(shaderStage);
-		auto it = shaders.find(key);
-		return it != shaders.end() && it->second != nullptr;
+		return shaders[key] != nullptr;
 	}
 
 } // namespace SceneryEditorX

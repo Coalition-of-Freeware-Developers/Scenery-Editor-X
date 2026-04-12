@@ -51,8 +51,8 @@ namespace SceneryEditorX
 	// -------------------------------------------------------
 
 	/**
-	 * @brief  
-	 * @return 
+	 * @brief Query the Vulkan API version supported by the runtime. This can be used to determine if the required Vulkan version is available before attempting to create an instance or device.
+	 * @return The Vulkan API version supported by the runtime.
 	 */
 	static uint32_t GetVulkanAPIVersion()
 	{
@@ -317,9 +317,7 @@ namespace SceneryEditorX
 	Ref<RenderContext> RenderContext::Get()
 	{
 		if (!s_Instance)
-		{
 			s_Instance = CreateRef<RenderContext>();
-		}
 
 		return s_Instance;
 	}

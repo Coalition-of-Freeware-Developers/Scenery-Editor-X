@@ -65,15 +65,15 @@ namespace SceneryEditorX
 	 */
 	constexpr std::string_view PIPELINE_CACHE_PATH = "pipeline_cache.bin";
 
-	static uint32_t ShaderTypeToMask(Stage type)
+	static uint32_t ShaderTypeToMask(StageType type)
 	{
 		switch (type)
 		{
-			case Stage::Vertex:					return BIT(0);
-			case Stage::TessellationControl:    return BIT(1);
-			case Stage::TessellationEvaluation: return BIT(2);
-			case Stage::Fragment:				return BIT(3);
-			case Stage::Compute:				return BIT(4);
+			case StageType::Vertex:					return BIT(0);
+			case StageType::TessellationControl:    return BIT(1);
+			case StageType::TessellationEvaluation: return BIT(2);
+			case StageType::Fragment:				return BIT(3);
+			case StageType::Compute:				return BIT(4);
 			default:							return 0;
 		}
 	}
@@ -138,12 +138,12 @@ namespace SceneryEditorX
 
 		// shader stages
 		std::vector<VkPipelineShaderStageCreateInfo> shader_stages;
-		constexpr Stage k_StageOrder[] = {
-			Stage::Vertex, Stage::Geometry,
-			Stage::TessellationControl, Stage::TessellationEvaluation,
-			Stage::Fragment, Stage::Compute
+		constexpr StageType k_StageOrder[] = {
+			StageType::Vertex, StageType::Geometry,
+			StageType::TessellationControl, StageType::TessellationEvaluation,
+			StageType::Fragment, StageType::Compute
 		};
-		for (Stage s : k_StageOrder)
+		for (StageType s : k_StageOrder)
 		{
 			auto it = m_State.shaders.find(static_cast<uint32_t>(s));
 			if (it != m_State.shaders.end() && it->second)
@@ -182,11 +182,11 @@ namespace SceneryEditorX
 					
 					VkPushConstantRange push_constant_range  = {};
 					push_constant_range.size                 = descriptor.GetStructSize();
-					push_constant_range.stageFlags          |= (descriptor.GetStage()  & ShaderTypeToMask(Stage::Vertex))					? VK_SHADER_STAGE_VERTEX_BIT                  : 0;
-					push_constant_range.stageFlags          |= (descriptor.GetStage()  & ShaderTypeToMask(Stage::TessellationControl))		? VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT    : 0;
-					push_constant_range.stageFlags          |= (descriptor.GetStage()  & ShaderTypeToMask(Stage::TessellationEvaluation))	? VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT : 0;
-					push_constant_range.stageFlags          |= (descriptor.GetStage()  & ShaderTypeToMask(Stage::Fragment))					? VK_SHADER_STAGE_FRAGMENT_BIT                : 0;
-					push_constant_range.stageFlags          |= (descriptor.GetStage()  & ShaderTypeToMask(Stage::Compute))					? VK_SHADER_STAGE_COMPUTE_BIT                 : 0;
+					push_constant_range.stageFlags          |= (descriptor.GetStage()  & ShaderTypeToMask(StageType::Vertex))					? VK_SHADER_STAGE_VERTEX_BIT                  : 0;
+					push_constant_range.stageFlags          |= (descriptor.GetStage()  & ShaderTypeToMask(StageType::TessellationControl))		? VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT    : 0;
+					push_constant_range.stageFlags          |= (descriptor.GetStage()  & ShaderTypeToMask(StageType::TessellationEvaluation))	? VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT : 0;
+					push_constant_range.stageFlags          |= (descriptor.GetStage()  & ShaderTypeToMask(StageType::Fragment))					? VK_SHADER_STAGE_FRAGMENT_BIT                : 0;
+					push_constant_range.stageFlags          |= (descriptor.GetStage()  & ShaderTypeToMask(StageType::Compute))					? VK_SHADER_STAGE_COMPUTE_BIT                 : 0;
 
 
 					// store the stages for use in PushConstants calls
@@ -301,7 +301,7 @@ if (state.IsCompute())
 			std::vector<VkVertexInputAttributeDescription> vertex_attribute_descs;
 			Shader* shader_vertex = nullptr;
 			{
-				auto it = m_State.shaders.find(static_cast<uint32_t>(Stage::Vertex));
+				auto it = m_State.shaders.find(static_cast<uint32_t>(StageType::Vertex));
 				if (it != m_State.shaders.end())
 					shader_vertex = it->second;
 			}
@@ -310,7 +310,7 @@ if (state.IsCompute())
 			if (shader_vertex)
 			{
 				// determine vertex type from the stage's input attributes and build an InputLayout
-				Ref<ShaderStage> vertStage = shader_vertex->GetShaderStage(Stage::Vertex);
+				Ref<ShaderStage> vertStage = shader_vertex->GetShaderStage(StageType::Vertex);
 				if (vertStage)
 				{
 					const auto& inputs = vertStage->GetInput();

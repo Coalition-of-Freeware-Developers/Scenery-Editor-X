@@ -57,6 +57,8 @@ namespace SceneryEditorX
 		 *               When nullptr a minimal push-constant-only VkPipelineLayout is created (bootstrap path).
 		 */
 		Pipeline(PipelineState &state, DescriptorSet *layout = nullptr);
+
+		/* @brief Destroy the Vulkan pipeline and release associated resources. */
 		virtual ~Pipeline() override;
 
 		Pipeline(Pipeline&& other) noexcept;
@@ -78,12 +80,22 @@ namespace SceneryEditorX
 			VkFormat depthFormat{ VK_FORMAT_UNDEFINED };
 		};
 
+		/**
+		 * @brief Get the Vulkan pipeline cache.
+		 * @return The Vulkan pipeline cache handle.
+		 */
 		static VkPipelineCache GetPipelineCache();
-		PipelineState* GetState()			{ return &m_State; }
-		VkPipeline Get() const				{ return m_Pipeline; }
-		VkPipelineLayout GetLayout() const	{ return m_Layout; }
-		uint32_t GetPushConstantStages() const	{ return m_PushConstant_Stages; }
+
+		/**
+		 * @brief Destroy the Vulkan pipeline cache and release associated resources.
+		 * @param device The Vulkan device associated with the pipeline cache.
+		 */
 		void Destroy(VkDevice device = VK_NULL_HANDLE);
+
+		PipelineState* GetState()				{ return &m_State; }
+		VkPipeline Get() const					{ return m_Pipeline; }
+		VkPipelineLayout GetLayout() const		{ return m_Layout; }
+		uint32_t GetPushConstantStages() const	{ return m_PushConstant_Stages; }
 		bool IsDestroyed() const { return m_Destroyed; }
 
 		// Create a graphics pipeline using a single grouped input structure.
@@ -91,7 +103,10 @@ namespace SceneryEditorX
 		[[deprecated]] static VkPipeline CreateGraphics(const GraphicsCreateInfo& info);
 
 	private:
+		/* @brief Create the Vulkan pipeline cache. */
 		static void CreatePipelineCache();
+
+		/* @brief Save the Vulkan pipeline cache to disk. */
 		static void SavePipelineCache();
 
 		Ref<Device> m_Device;

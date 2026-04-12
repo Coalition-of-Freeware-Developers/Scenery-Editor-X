@@ -381,21 +381,21 @@ namespace SceneryEditorX
 		switch (type)
 		{
 			case Renderer_Shader::grid_vertex:
-				if (!shader->HasStage(Stage::Vertex))
+				if (!shader->HasStage(StageType::Vertex))
 				{
-					shader->AddShaderStage(Stage::Vertex, "resources/shaders/grid.slang");
+					shader->AddShaderStage(StageType::Vertex, "resources/shaders/grid.slang");
 				}
 				break;
 			case Renderer_Shader::grid_frag:
-				if (!shader->HasStage(Stage::Fragment))
+				if (!shader->HasStage(StageType::Fragment))
 				{
-					shader->AddShaderStage(Stage::Fragment, "resources/shaders/grid.slang");
+					shader->AddShaderStage(StageType::Fragment, "resources/shaders/grid.slang");
 				}
 				break;
 			case Renderer_Shader::blit_c:
-				if (!shader->HasStage(Stage::Compute))
+				if (!shader->HasStage(StageType::Compute))
 				{
-					shader->AddShaderStage(Stage::Compute, "resources/shaders/blit.slang");
+					shader->AddShaderStage(StageType::Compute, "resources/shaders/blit.slang");
 				}
 				break;
 			default:

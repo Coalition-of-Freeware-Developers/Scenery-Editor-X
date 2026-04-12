@@ -29,7 +29,6 @@
  * -------------------------------------------------------
  */
 #include "command_list.h"
-
 #include "bindless_manager.h"
 #include "buffer.h"
 #include "depth_stencil.h"
@@ -39,17 +38,15 @@
 #include "swapchain.h"
 #include "debug/graphics_debug.h"
 #include "pipeline/barrier_info.h"
-#include "pipeline/pipeline_state.h"
 #include "pipeline/pipeline.h"
-#include "shader/shader_stage.h"
-
-#include <SceneryEditorX/renderer/vulkan/push_constant_buffer.h>
+#include "pipeline/pipeline_state.h"
 #include <array>
 #include <chrono>
 #include <memory>
 #include <mutex>
 #include <unordered_map>
 #include <SceneryEditorX/renderer/renderer.h>
+#include <SceneryEditorX/renderer/vulkan/push_constant_buffer.h>
 #include <volk/volk.h>
 
 // -------------------------------------------------------
@@ -1207,7 +1204,7 @@ namespace SceneryEditorX
 				case Barrier::Type::ImageLayout:
 				{
 					// use pso-aware scope narrowing for the dst when auto and the target layout is general
-					BarrierScope effective_dst = pending.barrier.scope_dst;
+					BarrierScope effective_dst = pending.barrier.scopeDst;
 					if (effective_dst == BarrierScope::Auto && pending.layoutNew == Layout::ImageLayout::General)
 						effective_dst = psoScopeHint;
 
@@ -1242,11 +1239,11 @@ namespace SceneryEditorX
 				case Barrier::Type::ImageSync:
 				{
 					// resolve stage masks with pso-aware narrowing
-					VkPipelineStageFlags2 src_stages = (pending.barrier.scope_src != BarrierScope::Auto)
-						? ScopeToStages(pending.barrier.scope_src) : (VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT);
+					VkPipelineStageFlags2 src_stages = (pending.barrier.scopeSrc != BarrierScope::Auto)
+						? ScopeToStages(pending.barrier.scopeSrc) : (VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT);
 
-					VkPipelineStageFlags2 dst_stages = (pending.barrier.scope_dst != BarrierScope::Auto)
-						? ScopeToStages(pending.barrier.scope_dst) : ScopeToStages(psoScopeHint, pending.isDepth);
+					VkPipelineStageFlags2 dst_stages = (pending.barrier.scopeDst != BarrierScope::Auto)
+						? ScopeToStages(pending.barrier.scopeDst) : ScopeToStages(psoScopeHint, pending.isDepth);
 
 					if (pending.has_PerMipViews)
 					{
@@ -1270,7 +1267,7 @@ namespace SceneryEditorX
 							vk_barrier.subresourceRange.baseArrayLayer = 0;
 							vk_barrier.subresourceRange.layerCount     = pending.array_Length;
 
-							set_sync_access_masks(vk_barrier, layout, pending.barrier.sync_type);
+							set_sync_access_masks(vk_barrier, layout, pending.barrier.syncType);
 							image_barriers.push_back(vk_barrier);
 						}
 					}
@@ -1294,7 +1291,7 @@ namespace SceneryEditorX
 						vk_barrier.subresourceRange.baseArrayLayer = 0;
 						vk_barrier.subresourceRange.layerCount     = pending.array_Length;
 
-						set_sync_access_masks(vk_barrier, layout, pending.barrier.sync_type);
+						set_sync_access_masks(vk_barrier, layout, pending.barrier.syncType);
 						image_barriers.push_back(vk_barrier);
 					}
 					break;
@@ -1304,11 +1301,11 @@ namespace SceneryEditorX
 				{
 					VkBufferMemoryBarrier2 vk_barrier = {};
 					vk_barrier.sType                  = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;
-					vk_barrier.srcStageMask           = (pending.barrier.scope_src != BarrierScope::Auto)
-						? ScopeToStages(pending.barrier.scope_src) : VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+					vk_barrier.srcStageMask           = (pending.barrier.scopeSrc != BarrierScope::Auto)
+						? ScopeToStages(pending.barrier.scopeSrc) : VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
 					vk_barrier.srcAccessMask          = VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT;
-					vk_barrier.dstStageMask           = (pending.barrier.scope_dst != BarrierScope::Auto)
-						? ScopeToStages(pending.barrier.scope_dst) : ScopeToStages(psoScopeHint);
+					vk_barrier.dstStageMask           = (pending.barrier.scopeDst != BarrierScope::Auto)
+						? ScopeToStages(pending.barrier.scopeDst) : ScopeToStages(psoScopeHint);
 					vk_barrier.dstAccessMask          = VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT;
 					vk_barrier.srcQueueFamilyIndex    = VK_QUEUE_FAMILY_IGNORED;
 					vk_barrier.dstQueueFamilyIndex    = VK_QUEUE_FAMILY_IGNORED;
@@ -1887,7 +1884,7 @@ namespace SceneryEditorX
 		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to set pipeline state");
 
 		// Compute path is still TODO.
-		if (pso.shaders.contains(static_cast<uint32_t>(Stage::Compute)))
+		if (pso.shaders.contains(static_cast<uint32_t>(StageType::Compute)))
 		{
 			static bool warnedCompute = false;
 			if (!warnedCompute)

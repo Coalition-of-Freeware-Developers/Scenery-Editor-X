@@ -32,6 +32,7 @@
 
 #include <SceneryEditorX/renderer/renderer_declarations.h>
 #include <SceneryEditorX/renderer/vulkan/render_data.h>
+#include <xMath/includes/colors.h>
 
 // ---------------------------------------------------------
 
@@ -44,11 +45,52 @@ namespace SceneryEditorX
 	class BlendState;
 	class DepthStencilState;
 
-	/* 
-	 * Color sentinel – matches the Color type used by command lists.
-	 * Using a raw float[4] here avoids pulling in <colors.h> from this header. 
+	/**
+	 * @brief matches xMath::Color used by command lists.
 	 */
-	struct PipelineStateColor { float r = 0, g = 0, b = 0, a = 0; };
+	struct PipelineStateColor 
+	{ 
+		float r = 0, g = 0, b = 0, a = 0;
+
+		/**
+		 * @brief Create a PipelineStateColor from an xMath::Color.
+		 * @param color Source color.
+		 * @return PipelineStateColor with copied RGBA components.
+		 */
+		[[nodiscard]] static PipelineStateColor FromColor(const xMath::Color& color)
+		{
+		   PipelineStateColor out;
+			out.r = color.r;
+			out.g = color.g;
+			out.b = color.b;
+			out.a = color.a;
+			return out;
+		}
+
+		/**
+		 * @brief Assign a Color to the PipelineStateColor.
+		 * @param color The Color to assign.
+		 * @return Reference to the updated PipelineStateColor.
+		 */
+		PipelineStateColor& operator=(const xMath::Color& color)
+		{
+			r = color.r;
+			g = color.g;
+			b = color.b;
+			a = color.a;
+			return *this;
+		}
+
+		/**
+		 * @brief Convert to xMath::Color.
+		 * @return xMath::Color with matching RGBA components.
+		 */
+		[[nodiscard]] xMath::Color ToColor() const
+		{
+		  return {r, g, b, a};
+		}
+
+	};
 
 	// Opaque "load" sentinel colours (negative alpha = "load, don't clear").
 	inline constexpr PipelineStateColor RHI_COLOR_LOAD{.r = 0.0f, .g = 0.0f, .b = 0.0f, .a = -1.0f };
@@ -63,7 +105,6 @@ namespace SceneryEditorX
 	class PipelineState
 	{
 	public:
-
 		/* @brief Construct a new PipelineState object. */
 		PipelineState();
 
@@ -73,28 +114,9 @@ namespace SceneryEditorX
 		/* @brief Prepares the pipeline state for use. */
 		void Prepare();
 
-		/**
-		 * @brief Check if the pipeline state has clear values.
-		 * @return True if the pipeline state has clear values, false otherwise.
-		 */
 		[[nodiscard]] bool HasClearValues() const;
-
-		/**
-		 * @brief Check if the pipeline state is a graphics pipeline.
-		 * @return True if the pipeline state is a graphics pipeline, false otherwise.
-		 */
 		[[nodiscard]] bool IsGraphics() const;
-
-		/**
-		 * @brief Check if the pipeline state is a compute pipeline.
-		 * @return True if the pipeline state is a compute pipeline, false otherwise.
-		 */
 		[[nodiscard]] bool IsCompute() const;
-
-		/**
-		 * @brief Check if the pipeline state includes a tessellation shader stage.
-		 * @return True if the pipeline state includes a tessellation shader stage, false otherwise.
-		 */
 		[[nodiscard]] bool HasTessellation();
 
 		[[nodiscard]] uint32_t GetWidth() const  { return m_Width; }
@@ -107,8 +129,8 @@ namespace SceneryEditorX
 		 */
 		static PipelineState GetState();
 
-		// Shader stages – indexed by Stage enum (vertex=0, geometry=1, tess_ctrl=2, tess_eval=3, fragment=4, compute=5)
-		std::map<uint32_t, Shader*> shaders;
+		// Shader stages – indexed by StageType enum (vertex=0, geometry=1, tess_ctrl=2, tess_eval=3, fragment=4, compute=5)
+		std::array<Shader*, static_cast<uint32_t>(StageType::MaxEnum)> shaders;
 
 		// Pipeline state objects (nullptr = use defaults)
 		RasterizerState*    rasterizerState       = nullptr;
@@ -139,7 +161,7 @@ namespace SceneryEditorX
 		 * @param shaderStage The shader stage to check.
 		 * @return True if the shader stage is present, false otherwise.
 		 */
-		[[nodiscard]] bool HasShader(const Stage shaderStage) const;
+		[[nodiscard]] bool HasShader(const StageType shaderStage) const;
 
 		uint32_t m_Width  = 0;
 		uint32_t m_Height = 0;
