@@ -15,6 +15,22 @@ SET(CMAKE_CXX_STANDARD 20)
 SET(CMAKE_CXX_STANDARD_REQUIRED ON)
 SET(CMAKE_CXX_EXTENSIONS OFF)
 
+# Determine MSVC-like behavior: prefer SEDX_PREFERRED_COMPILER when available,
+# otherwise fall back to the built-in CMake `MSVC` variable.
+if(DEFINED SEDX_PREFERRED_COMPILER)
+    if(SEDX_PREFERRED_COMPILER STREQUAL "MSVC" OR SEDX_PREFERRED_COMPILER STREQUAL "CLANG_CL")
+        set(_SEDX_MSVCLIKE TRUE)
+    else()
+        set(_SEDX_MSVCLIKE FALSE)
+    endif()
+else()
+    if(MSVC)
+        set(_SEDX_MSVCLIKE TRUE)
+    else()
+        set(_SEDX_MSVCLIKE FALSE)
+    endif()
+endif()
+
 # Define the test executable
 ADD_EXECUTABLE(RefTests
     pointer_tests/RefTest.cpp
@@ -35,13 +51,13 @@ TARGET_LINK_LIBRARIES(RefTests PRIVATE
 # Disable engine logging in this target; profiling (Tracy) simply not defined here
 TARGET_COMPILE_DEFINITIONS(RefTests PRIVATE SEDX_NO_LOGGING ZoneScoped=)
 
-# Enable parallel compilation for MSVC
-IF(MSVC)
+# Enable parallel compilation for MSVC-like compilers
+IF(_SEDX_MSVCLIKE)
     TARGET_COMPILE_OPTIONS(RefTests PRIVATE /MP)
 ENDIF()
 
 # Enable warning level
-IF(MSVC)
+IF(_SEDX_MSVCLIKE)
     TARGET_COMPILE_OPTIONS(RefTests PRIVATE /W4)
 ELSE()
     TARGET_COMPILE_OPTIONS(RefTests PRIVATE -Wall -Wextra -Wpedantic)
@@ -86,7 +102,7 @@ IF(SEDX_ENABLE_VULKAN_SMOKE_TESTS)
         xMath
     )
 
-    IF(MSVC)
+    IF(_SEDX_MSVCLIKE)
         TARGET_COMPILE_OPTIONS(VulkanSmokeTests PRIVATE /MP /W4)
     ELSE()
         TARGET_COMPILE_OPTIONS(VulkanSmokeTests PRIVATE -Wall -Wextra -Wpedantic)
@@ -151,12 +167,12 @@ TARGET_LINK_LIBRARIES(MemoryAllocatorTests PRIVATE
 # No Tracy undef needed; not defined for this target
 
 # Enable parallel compilation for MSVC
-IF(MSVC)
-    TARGET_COMPILE_OPTIONS(MemoryAllocatorTests PRIVATE /MP)
-ENDIF()
+    IF(_SEDX_MSVCLIKE)
+        TARGET_COMPILE_OPTIONS(MemoryAllocatorTests PRIVATE /MP)
+    ENDIF()
 
 # Enable warning level
-IF(MSVC)
+IF(_SEDX_MSVCLIKE)
     TARGET_COMPILE_OPTIONS(MemoryAllocatorTests PRIVATE /W4)
 ELSE()
     TARGET_COMPILE_OPTIONS(MemoryAllocatorTests PRIVATE -Wall -Wextra -Wpedantic)
@@ -192,13 +208,13 @@ TARGET_LINK_LIBRARIES(SettingsTest PRIVATE
 # Disable engine logging; omit Tracy
 TARGET_COMPILE_DEFINITIONS(SettingsTest PRIVATE SEDX_NO_LOGGING ZoneScoped=)
 
-# Enable parallel compilation for MSVC
-IF(MSVC)
+# Enable parallel compilation for MSVC-like compilers
+IF(_SEDX_MSVCLIKE)
     TARGET_COMPILE_OPTIONS(SettingsTest PRIVATE /MP)
 ENDIF()
 
 # Enable warning level
-IF(MSVC)
+IF(_SEDX_MSVCLIKE)
     TARGET_COMPILE_OPTIONS(SettingsTest PRIVATE /W4)
 ELSE()
     TARGET_COMPILE_OPTIONS(SettingsTest PRIVATE -Wall -Wextra -Wpedantic)
@@ -232,7 +248,7 @@ TARGET_LINK_LIBRARIES(ConversionTests PRIVATE
     Catch2::Catch2WithMain
 )
 
-IF(MSVC)
+IF(_SEDX_MSVCLIKE)
     TARGET_COMPILE_OPTIONS(ConversionTests PRIVATE /MP /W4)
 ELSE()
     TARGET_COMPILE_OPTIONS(ConversionTests PRIVATE -Wall -Wextra -Wpedantic)
