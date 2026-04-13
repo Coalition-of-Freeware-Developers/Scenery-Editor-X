@@ -1,5 +1,8 @@
 ﻿CMAKE_MINIMUM_REQUIRED(VERSION 3.8...4.0)
 
+# Early platform / compiler detection (sets SEDX_PREFERRED_COMPILER, VCPKG_TARGET_TRIPLET, etc.)
+include("${CMAKE_SOURCE_DIR}/cmake/detect-platform-compiler.cmake")
+
 # Allow legacy FetchContent_Populate calls for compatibility with our embedding patch
 IF(POLICY CMP0169)
 	CMAKE_POLICY(SET CMP0169 OLD)
@@ -60,6 +63,9 @@ ENDIF()
 ############################################
 INCLUDE("${CMAKE_SOURCE_DIR}/cmake/assets.cmake")
 
+# Sanitize MSVC-only flags for non-MSVC builds (aggressive cleanup)
+include("${CMAKE_SOURCE_DIR}/cmake/sanitize-msvc-flags.cmake")
+
 ############################################
 # Global debug postfix configuration
 ############################################
@@ -96,9 +102,17 @@ ENDFUNCTION()
 # Helper to configure PDB output for targets
 ############################################
 FUNCTION(sedx_configure_pdb_output TARGET_NAME)
-	IF(NOT MSVC)
-		RETURN()
-	ENDIF()
+	# Only configure PDB output for MSVC-like compilers. Prefer the
+	# early-detection marker `SEDX_PREFERRED_COMPILER` when available.
+	if(DEFINED SEDX_PREFERRED_COMPILER)
+		if(NOT (SEDX_PREFERRED_COMPILER STREQUAL "MSVC" OR SEDX_PREFERRED_COMPILER STREQUAL "CLANG_CL"))
+			RETURN()
+		endif()
+	else()
+		IF(NOT MSVC)
+			RETURN()
+		ENDIF()
+	endif()
 
 	IF(TARGET ${TARGET_NAME})
 		GET_TARGET_PROPERTY(_aliased ${TARGET_NAME} ALIASED_TARGET)
@@ -341,9 +355,43 @@ FIND_PATH(PORTABLE_FILE_DIALOGS_INCLUDE_DIRS "portable-file-dialogs.h") # Portab
 
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DNOMINMAX -D_USE_MATH_DEFINES")
 
-IF(MSVC)
-	SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHsc")
-ENDIF()
+# Ensure MSVC-only flags do not leak into non-MSVC builds (cached values).
+# Use `SEDX_PREFERRED_COMPILER` when set by early detection; otherwise
+# fall back to the built-in `MSVC` CMake variable.
+if(DEFINED SEDX_PREFERRED_COMPILER)
+	if(SEDX_PREFERRED_COMPILER STREQUAL "MSVC" OR SEDX_PREFERRED_COMPILER STREQUAL "CLANG_CL")
+		# MSVC-like compilers: ensure exception model flag is present
+		SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHsc")
+	else()
+		# Non-MSVC: strip MSVC-only tokens from cached flags
+		if(DEFINED CMAKE_CXX_FLAGS)
+			string(REPLACE "/EHsc" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+			string(REPLACE "/Zc:preprocessor" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+			string(REPLACE "/GR" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+		endif()
+		if(DEFINED CMAKE_C_FLAGS)
+			string(REPLACE "/Zc:preprocessor" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+			string(REPLACE "/EHsc" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+			string(REPLACE "/GR" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+		endif()
+	endif()
+else()
+	IF(NOT MSVC)
+		if(DEFINED CMAKE_CXX_FLAGS)
+			string(REPLACE "/EHsc" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+			string(REPLACE "/Zc:preprocessor" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+			string(REPLACE "/GR" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+		endif()
+		if(DEFINED CMAKE_C_FLAGS)
+			string(REPLACE "/Zc:preprocessor" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+			string(REPLACE "/EHsc" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+			string(REPLACE "/GR" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+		endif()
+	else()
+		# For MSVC, ensure exception model flag is present
+		SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHsc")
+	endif()
+endif()
 
 ############################################
 # Add KTX library (bundled sources)
@@ -674,3 +722,98 @@ IF(TARGET SceneryEditorX)
 ENDIF()
 
 ############################################
+
+# Post-configuration sanitization: remove any MSVC-only compile options
+# that may have been added unguarded by subprojects. This runs at configure
+# time after all subdirectories have been processed.
+if(NOT MSVC)
+	message(STATUS "Sanitizing global and target compile options for non-MSVC build")
+
+	# Remove common MSVC-only tokens from CMAKE_C_FLAGS and CMAKE_CXX_FLAGS
+	if(DEFINED CMAKE_C_FLAGS)
+		string(REPLACE "/EHsc" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+		string(REPLACE "/Zc:preprocessor" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+		string(REPLACE "/GR" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+		set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}" CACHE STRING "" FORCE)
+	endif()
+	if(DEFINED CMAKE_CXX_FLAGS)
+		string(REPLACE "/EHsc" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+		string(REPLACE "/Zc:preprocessor" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+		string(REPLACE "/GR" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" CACHE STRING "" FORCE)
+	endif()
+
+	# Remove MSVC-only directory-level compile options if present
+	get_property(_dir_compile_opts DIRECTORY PROPERTY COMPILE_OPTIONS)
+	if(_dir_compile_opts)
+		set(_clean_dir_opts "")
+		foreach(_opt IN LISTS _dir_compile_opts)
+			set(_opt_clean "${_opt}")
+			string(REPLACE "/EHsc" "" _opt_clean "${_opt_clean}")
+			string(REPLACE "/Zc:preprocessor" "" _opt_clean "${_opt_clean}")
+			string(REPLACE "/GR" "" _opt_clean "${_opt_clean}")
+			string(STRIP "${_opt_clean}" _opt_clean)
+			if(NOT _opt_clean STREQUAL "")
+				list(APPEND _clean_dir_opts "${_opt_clean}")
+			endif()
+		endforeach()
+		set_property(DIRECTORY PROPERTY COMPILE_OPTIONS "${_clean_dir_opts}")
+	endif()
+
+	# Sanitize all existing targets' COMPILE_OPTIONS and remove MSVC-only tokens
+	get_property(_all_targets GLOBAL PROPERTY TARGETS)
+	foreach(_t IN LISTS _all_targets)
+		if(TARGET ${_t})
+			# COMPILE_OPTIONS may be attached as target property - clean embedded MSVC tokens
+			get_target_property(_opts ${_t} COMPILE_OPTIONS)
+			if(_opts)
+				set(_new_opts "")
+				foreach(_o IN LISTS _opts)
+					set(_o_clean "${_o}")
+					string(REPLACE "/EHsc" "" _o_clean "${_o_clean}")
+					string(REPLACE "/Zc:preprocessor" "" _o_clean "${_o_clean}")
+					string(REPLACE "/GR" "" _o_clean "${_o_clean}")
+					string(STRIP "${_o_clean}" _o_clean)
+					if(NOT _o_clean STREQUAL "")
+						list(APPEND _new_opts "${_o_clean}")
+					endif()
+				endforeach()
+				if(NOT _new_opts STREQUAL _opts)
+					set_target_properties(${_t} PROPERTIES COMPILE_OPTIONS "${_new_opts}")
+				endif()
+			endif()
+
+			# Also sanitize INTERFACE_COMPILE_OPTIONS on INTERFACE/IMPORTED targets
+			get_target_property(_iopts ${_t} INTERFACE_COMPILE_OPTIONS)
+			if(_iopts)
+				set(_new_iopts "")
+				foreach(_io IN LISTS _iopts)
+					set(_io_clean "${_io}")
+					string(REPLACE "/EHsc" "" _io_clean "${_io_clean}")
+					string(REPLACE "/Zc:preprocessor" "" _io_clean "${_io_clean}")
+					string(REPLACE "/GR" "" _io_clean "${_io_clean}")
+					string(STRIP "${_io_clean}" _io_clean)
+					if(NOT _io_clean STREQUAL "")
+						list(APPEND _new_iopts "${_io_clean}")
+					endif()
+				endforeach()
+				if(NOT _new_iopts STREQUAL _iopts)
+					set_target_properties(${_t} PROPERTIES INTERFACE_COMPILE_OPTIONS "${_new_iopts}")
+				endif()
+			endif()
+		endif()
+	endforeach()
+endif()
+
+	# Final sanitization pass after all subdirectories and external content.
+	# Prefer the SEDX_PREFERRED_COMPILER indication if available.
+	if(DEFINED SEDX_PREFERRED_COMPILER)
+		if(NOT (SEDX_PREFERRED_COMPILER STREQUAL "MSVC" OR SEDX_PREFERRED_COMPILER STREQUAL "CLANG_CL"))
+			include("${CMAKE_SOURCE_DIR}/cmake/sanitize-msvc-flags.cmake")
+		endif()
+	else()
+		if(NOT MSVC)
+			include("${CMAKE_SOURCE_DIR}/cmake/sanitize-msvc-flags.cmake")
+		endif()
+	endif()
+
