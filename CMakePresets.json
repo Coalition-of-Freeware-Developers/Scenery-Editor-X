@@ -7,136 +7,112 @@
   },
   "configurePresets": [
     {
-	  "$comment": [
-		"This preset serves as a base for all Windows configurations, defining common settings such as generator, toolchain file, and Vulkan SDK path.",
-		"Individual presets for MSVC and Clang inherit from this base preset to avoid duplication of common configuration."
-	  ],
-      "name": "windows-base",
+      "name": "default-base",
       "hidden": true,
+      "displayName": "Base - cross-platform (Ninja Multi-Config)",
+      "description": "Common default base for Ninja multi-config builds across platforms",
       "generator": "Ninja Multi-Config",
-      "binaryDir": "${sourceDir}/build/${presetName}",
+      "binaryDir": "${sourceDir}/build",
       "installDir": "${sourceDir}/bin/install/${presetName}",
       "cacheVariables": {
-        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/sedx-windows.cmake",
-        "VCPKG_TARGET_TRIPLET": "x64-windows",
-        "CMAKE_PREFIX_PATH": "$env{VULKAN_SDK}"
-      },
-      "condition": {
-        "type": "equals",
-        "lhs": "${hostSystemName}",
-        "rhs": "Windows"
-      }
-    },
-    {
-	  "$comment": [
-		"This preset is intended for development builds on Windows using the MSVC compiler. It enables version incrementing to test the versioning system, which may be useful for tracking changes during development.",
-		"For faster iteration without version incrementing, use the QuickDebug-MSVC preset instead."
-	  ],
-      "name": "Debug-MSVC",
-      "displayName": "Windows Debug (MSVC)",
-      "description": "Debug build for Windows using MSVC compiler, with version increment for testing versioning system",
-      "inherits": "windows-base",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
         "BUILD_TESTING": "ON",
-        "CMAKE_C_COMPILER": "cl.exe",
-        "CMAKE_CXX_COMPILER": "cl.exe",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
         "SEDX_ENABLE_VERSION_INCREMENT": "ON"
       }
     },
+
     {
-	  "$comment": [
-		"This preset is intended for fast debug builds on Windows using the MSVC compiler, without version incrementing for rapid iteration."
-	  ],
-      "name": "QuickDebug-MSVC",
-      "displayName": "Windows Quick Debug (MSVC)",
-      "description": "Fast debug build without version increment for rapid iteration",
-      "inherits": "windows-base",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "BUILD_TESTING": "ON",
-        "CMAKE_C_COMPILER": "cl.exe",
-        "CMAKE_CXX_COMPILER": "cl.exe",
-        "SEDX_ENABLE_VERSION_INCREMENT": "OFF"
-      }
-    },
-    {
-	  "$comment": [
-		"This preset is intended for release builds on Windows using the MSVC compiler.",
-		"It enables version incrementing to ensure that each release build has a unique version number, which can be important for distribution and tracking."
-	  ],
-      "name": "Release-MSVC",
-      "displayName": "Windows Release (MSVC)",
-      "description": "Release build for Windows using MSVC compiler",
-      "inherits": "windows-base",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_C_COMPILER": "cl.exe",
-        "CMAKE_CXX_COMPILER": "cl.exe",
-		"SEDX_ENABLE_VERSION_INCREMENT": "ON"
-      }
-    },
-    {
-	  "$comment": [
-		"This preset is intended for development builds on Windows using the Clang compiler.",
-		"It enables version incrementing to test the versioning system, which may be useful for tracking changes during development.",
-		"For faster iteration without version incrementing, a similar QuickDebug-Clang preset could be added if needed."
-	  ],
-      "name": "Debug-Clang",
-      "displayName": "Windows Debug (Clang)",
-      "description": "Debug build for Windows using Clang compiler",
-      "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/${presetName}",
-      "installDir": "${sourceDir}/bin/install/${presetName}",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_C_COMPILER": "clang-cl.exe",
-        "CMAKE_CXX_COMPILER": "clang-cl.exe",
-        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/sedx-windows.cmake",
-        "VCPKG_TARGET_TRIPLET": "x64-windows",
-        "CMAKE_PREFIX_PATH": "$env{VULKAN_SDK}"
-      },
-      "condition": {
-        "type": "equals",
-        "lhs": "${hostSystemName}",
-        "rhs": "Windows"
-      }
-    },
-    {
-	  "$comment": [
-		"This preset is intended for release builds on Windows using the Clang compiler.",
-		"It enables version incrementing to ensure that each release build has a unique version number, which can be important for distribution and tracking."
-	  ],
-      "name": "Release-Clang",
-      "displayName": "Windows Release (Clang)",
-      "description": "Release build for Windows using Clang compiler",
-      "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/${presetName}",
-      "installDir": "${sourceDir}/bin/install/${presetName}",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
-        "CMAKE_C_COMPILER": "clang-cl.exe",
-        "CMAKE_CXX_COMPILER": "clang-cl.exe",
-        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/sedx-windows.cmake",
-        "VCPKG_TARGET_TRIPLET": "x64-windows",
-        "CMAKE_PREFIX_PATH": "$env{VULKAN_SDK}"
-      },
-      "condition": {
-        "type": "equals",
-        "lhs": "${hostSystemName}",
-        "rhs": "Windows"
-      }
-    },
-    {
-	  "$comment": [
-		"This preset is intended for development builds on Linux.",
-		"It enables version incrementing to test the versioning system, which may be useful for tracking changes during development."
-	  ],
-      "name": "linux-base",
-      "hidden": true,
+      "name": "windows-ninja",
+      "displayName": "Windows - Ninja (MSVC or Clang via toolset)",
+      "inherits": "default-base",
       "generator": "Ninja Multi-Config",
-      "binaryDir": "${sourceDir}/build/${presetName}",
-      "installDir": "${sourceDir}/bin/install/${presetName}",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/sedx-windows.cmake",
+        "VCPKG_TARGET_TRIPLET": "x64-windows",
+        "CMAKE_PREFIX_PATH": "$env{VULKAN_SDK}"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+
+    {
+      "name": "windows-ninja-clang-cl",
+      "displayName": "Windows - Ninja (clang-cl)",
+      "inherits": "windows-ninja",
+      "cacheVariables": {
+        "SEDX_PREFERRED_COMPILER": "CLANG_CL",
+        "VCPKG_TARGET_TRIPLET": "x64-windows"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+
+    {
+      "name": "windows-ninja-gcc",
+      "displayName": "Windows - Ninja (GCC/MinGW)",
+      "inherits": "windows-ninja",
+      "cacheVariables": {
+        "SEDX_PREFERRED_COMPILER": "GCC",
+        "VCPKG_TARGET_TRIPLET": "x64-mingw"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+
+    {
+      "name": "windows-msvc-vs2022",
+      "displayName": "Windows - Visual Studio 2022 (native generator)",
+      "description": "Use this preset when developing inside Visual Studio 2022. If you use Visual Studio 2026 change generator accordingly.",
+      "generator": "Visual Studio 17 2022",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/sedx-windows.cmake",
+        "VCPKG_TARGET_TRIPLET": "x64-windows",
+        "CMAKE_MSVC_RUNTIME_LIBRARY": "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL",
+        "SEDX_ENABLE_VERSION_INCREMENT": "ON"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+
+    {
+      "name": "windows-msvc-vs2026",
+      "displayName": "Windows - Visual Studio 2026 (native generator)",
+      "description": "Preset for Visual Studio 2026. If your VS2026 generator has a different name, update the `generator` field accordingly.",
+      "generator": "Visual Studio 18 2026",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/sedx-windows.cmake",
+        "VCPKG_TARGET_TRIPLET": "x64-windows",
+        "CMAKE_MSVC_RUNTIME_LIBRARY": "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL",
+        "SEDX_ENABLE_VERSION_INCREMENT": "ON"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+
+    {
+      "name": "linux-ninja",
+      "displayName": "Linux - Ninja (gcc/clang)",
+      "inherits": "default-base",
+      "generator": "Ninja Multi-Config",
+      "binaryDir": "${sourceDir}/build",
       "cacheVariables": {
         "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/sedx-linux.cmake",
         "VCPKG_TARGET_TRIPLET": "x64-linux",
@@ -148,51 +124,48 @@
         "rhs": "Linux"
       }
     },
+
     {
-	  "$comment": [
-		"This preset is intended for development builds on Linux.",
-		"It enables version incrementing to test the versioning system, which may be useful for tracking changes during development.",
-		"For faster iteration without version incrementing, a similar QuickDebug-Linux preset could be added if needed."
-	  ],
-      "name": "Linux-Debug",
-      "displayName": "Linux Debug",
-      "description": "Debug build for Linux",
-      "inherits": "linux-base",
+      "name": "linux-ninja-gcc",
+      "displayName": "Linux - Ninja (GCC)",
+      "inherits": "linux-ninja",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "BUILD_TESTING": "ON"
+        "SEDX_PREFERRED_COMPILER": "GCC",
+        "VCPKG_TARGET_TRIPLET": "x64-linux"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
       }
     },
+
     {
-	  "$comment": [
-		"This preset is intended for release builds on Linux.",
-		"It enables version incrementing to ensure that each release build has a unique version number, which can be important for distribution and tracking."
-	  ],
-      "name": "Linux-Release",
-      "displayName": "Linux Release",
-      "description": "Release build for Linux",
-      "inherits": "linux-base",
+      "name": "linux-ninja-clang",
+      "displayName": "Linux - Ninja (Clang)",
+      "inherits": "linux-ninja",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release"
+        "SEDX_PREFERRED_COMPILER": "CLANG",
+        "VCPKG_TARGET_TRIPLET": "x64-linux"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
       }
     },
+
     {
-	  "$comment": [
-		"This preset serves as a base for all macOS configurations, defining common settings such as generator, toolchain file, architecture, deployment target, and Vulkan SDK path.",
-		"Individual presets for Debug and Release configurations inherit from this base preset to avoid duplication of common configuration.",
-		"The preset is hidden and only applicable when the host system is Darwin (macOS)."
-	  ],
-      "name": "mac-base",
-      "hidden": true,
+      "name": "mac-ninja",
+      "displayName": "macOS - Ninja (ARM64/Intel)",
+      "inherits": "default-base",
       "generator": "Ninja Multi-Config",
-      "binaryDir": "${sourceDir}/build/${presetName}",
-      "installDir": "${sourceDir}/bin/install/${presetName}",
+      "binaryDir": "${sourceDir}/build",
       "cacheVariables": {
         "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/sedx-mac.cmake",
-        "CMAKE_OSX_ARCHITECTURES": "arm64",
-        "CMAKE_OSX_DEPLOYMENT_TARGET": "13.0",
         "VCPKG_TARGET_TRIPLET": "arm64-osx",
-        "CMAKE_PREFIX_PATH": "$env{VULKAN_SDK}"
+        "CMAKE_PREFIX_PATH": "$env{VULKAN_SDK}",
+        "CMAKE_OSX_DEPLOYMENT_TARGET": "13.0"
       },
       "condition": {
         "type": "equals",
@@ -200,159 +173,193 @@
         "rhs": "Darwin"
       }
     },
+
     {
-	  "$comment": [
-		"This preset is intended for development builds on macOS ARM64.",
-		"It enables version incrementing to test the versioning system, which may be useful for tracking changes during development.",
-		"For faster iteration without version incrementing, a similar QuickDebug-Mac preset could be added if needed."
-	  ],
-      "name": "Mac-Debug",
-      "displayName": "macOS Debug (ARM64)",
-      "description": "Debug build for macOS ARM64",
-      "inherits": "mac-base",
+      "name": "mac-ninja-clang",
+      "displayName": "macOS - Ninja (Clang)",
+      "inherits": "mac-ninja",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "BUILD_TESTING": "ON"
+        "SEDX_PREFERRED_COMPILER": "CLANG",
+        "VCPKG_TARGET_TRIPLET": "arm64-osx",
+        "CMAKE_OSX_DEPLOYMENT_TARGET": "13.0"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
       }
     },
+
     {
-	  "$comment": [
-		"This preset is intended for release builds on macOS ARM64.",
-		"It enables version incrementing to ensure that each release build has a unique version number, which can be important for distribution and tracking."
-	  ],
-      "name": "Mac-Release",
-      "displayName": "macOS Release (ARM64)",
-      "description": "Release build for macOS ARM64",
-      "inherits": "mac-base",
+      "name": "windows-ninja-fastdebug",
+      "displayName": "Windows - Ninja (Fast Debug, no version increment)",
+      "inherits": "windows-ninja",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release"
+        "SEDX_ENABLE_VERSION_INCREMENT": "OFF",
+        "SEDX_FAST_CONFIG": "ON"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+
+    {
+      "name": "linux-ninja-fastdebug",
+      "displayName": "Linux - Ninja (Fast Debug, no version increment)",
+      "inherits": "linux-ninja",
+      "cacheVariables": {
+        "SEDX_ENABLE_VERSION_INCREMENT": "OFF",
+        "SEDX_FAST_CONFIG": "ON"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    },
+
+    {
+      "name": "mac-ninja-fastdebug",
+      "displayName": "macOS - Ninja (Fast Debug, no version increment)",
+      "inherits": "mac-ninja",
+      "cacheVariables": {
+        "SEDX_ENABLE_VERSION_INCREMENT": "OFF",
+        "SEDX_FAST_CONFIG": "ON"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      }
+    },
+
+    {
+      "name": "mac-xcode",
+      "displayName": "macOS - Xcode (native generator)",
+      "generator": "Xcode",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/sedx-mac.cmake",
+        "VCPKG_TARGET_TRIPLET": "arm64-osx",
+        "CMAKE_PREFIX_PATH": "$env{VULKAN_SDK}",
+        "CMAKE_OSX_DEPLOYMENT_TARGET": "13.0"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
       }
     }
   ],
+
   "buildPresets": [
     {
-      "name": "Debug-MSVC",
-      "configurePreset": "Debug-MSVC",
+      "name": "build-debug",
+      "displayName": "Build Debug (multi-config)",
+      "configurePreset": "windows-ninja",
       "configuration": "Debug",
       "verbose": false
     },
     {
-      "name": "QuickDebug-MSVC",
-      "configurePreset": "QuickDebug-MSVC",
-      "configuration": "Debug",
-      "verbose": false
-    },
-    {
-      "name": "Release-MSVC",
-      "configurePreset": "Release-MSVC",
+      "name": "build-release",
+      "displayName": "Build Release (multi-config)",
+      "configurePreset": "windows-ninja",
       "configuration": "Release",
       "verbose": false
     },
     {
-      "name": "Debug-Clang",
-      "configurePreset": "Debug-Clang",
+      "name": "build-windows-msvc",
+      "displayName": "Build Windows (MSVC, VS2022)",
+      "configurePreset": "windows-msvc-vs2022",
       "configuration": "Debug",
       "verbose": false
     },
     {
-      "name": "Release-Clang",
-      "configurePreset": "Release-Clang",
-      "configuration": "RelWithDebInfo",
-      "verbose": false
-    },
-    {
-      "name": "Linux-Debug",
-      "configurePreset": "Linux-Debug",
+      "name": "build-windows-clang-cl-debug",
+      "displayName": "Build Windows (clang-cl) Debug",
+      "configurePreset": "windows-ninja-clang-cl",
       "configuration": "Debug",
       "verbose": false
     },
     {
-      "name": "Linux-Release",
-      "configurePreset": "Linux-Release",
+      "name": "build-windows-gcc-debug",
+      "displayName": "Build Windows (GCC/MinGW) Debug",
+      "configurePreset": "windows-ninja-gcc",
+      "configuration": "Debug",
+      "verbose": false
+    },
+    {
+      "name": "build-linux-gcc-debug",
+      "displayName": "Build Linux (GCC) Debug",
+      "configurePreset": "linux-ninja-gcc",
+      "configuration": "Debug",
+      "verbose": false
+    },
+    {
+      "name": "build-linux-clang-debug",
+      "displayName": "Build Linux (Clang) Debug",
+      "configurePreset": "linux-ninja-clang",
+      "configuration": "Debug",
+      "verbose": false
+    },
+    {
+      "name": "build-linux-gcc-release",
+      "displayName": "Build Linux (GCC) Release",
+      "configurePreset": "linux-ninja-gcc",
       "configuration": "Release",
       "verbose": false
     },
     {
-      "name": "Mac-Debug",
-      "configurePreset": "Mac-Debug",
+      "name": "build-linux-clang-release",
+      "displayName": "Build Linux (Clang) Release",
+      "configurePreset": "linux-ninja-clang",
+      "configuration": "Release",
+      "verbose": false
+    },
+    {
+      "name": "build-macos-clang-debug",
+      "displayName": "Build macOS (Clang) Debug",
+      "configurePreset": "mac-ninja-clang",
       "configuration": "Debug",
       "verbose": false
     },
     {
-      "name": "Mac-Release",
-      "configurePreset": "Mac-Release",
-      "configuration": "Release",
+      "name": "build-fastdebug-windows",
+      "displayName": "Build Fast Debug (Windows, no version increment)",
+      "configurePreset": "windows-ninja-fastdebug",
+      "configuration": "Debug",
+      "verbose": false
+    },
+    {
+      "name": "build-fastdebug-linux",
+      "displayName": "Build Fast Debug (Linux, no version increment)",
+      "configurePreset": "linux-ninja-fastdebug",
+      "configuration": "Debug",
+      "verbose": false
+    },
+    {
+      "name": "build-fastdebug-macos",
+      "displayName": "Build Fast Debug (macOS, no version increment)",
+      "configurePreset": "mac-ninja-fastdebug",
+      "configuration": "Debug",
       "verbose": false
     }
   ],
+
   "testPresets": [
     {
-      "name": "Debug-MSVC",
-      "configurePreset": "Debug-MSVC",
+      "name": "ctest-debug",
+      "configurePreset": "default-base",
       "configuration": "Debug",
       "output": {
         "outputOnFailure": true
       }
     },
     {
-      "name": "QuickDebug-MSVC",
-      "configurePreset": "QuickDebug-MSVC",
-      "configuration": "Debug",
-      "output": {
-        "outputOnFailure": true
-      }
-    },
-    {
-      "name": "Release-MSVC",
-      "configurePreset": "Release-MSVC",
-      "configuration": "Release",
-      "output": {
-        "outputOnFailure": true
-      }
-    },
-    {
-      "name": "Debug-Clang",
-      "configurePreset": "Debug-Clang",
-      "configuration": "Debug",
-      "output": {
-        "outputOnFailure": true
-      }
-    },
-    {
-      "name": "Release-Clang",
-      "configurePreset": "Release-Clang",
-      "configuration": "RelWithDebInfo",
-      "output": {
-        "outputOnFailure": true
-      }
-    },
-    {
-      "name": "Linux-Debug",
-      "configurePreset": "Linux-Debug",
-      "configuration": "Debug",
-      "output": {
-        "outputOnFailure": true
-      }
-    },
-    {
-      "name": "Linux-Release",
-      "configurePreset": "Linux-Release",
-      "configuration": "Release",
-      "output": {
-        "outputOnFailure": true
-      }
-    },
-    {
-      "name": "Mac-Debug",
-      "configurePreset": "Mac-Debug",
-      "configuration": "Debug",
-      "output": {
-        "outputOnFailure": true
-      }
-    },
-    {
-      "name": "Mac-Release",
-      "configurePreset": "Mac-Release",
+      "name": "ctest-release",
+      "configurePreset": "default-base",
       "configuration": "Release",
       "output": {
         "outputOnFailure": true
