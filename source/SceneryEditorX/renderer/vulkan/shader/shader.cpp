@@ -29,6 +29,7 @@
  * -------------------------------------------------------
  */
 #include "shader.h"
+#include "shader_compiler.h"
 #include "shader_manager.h"
 #include "shader_stage.h"
 #include <SceneryEditorX/renderer/vulkan/descriptor.h>
@@ -40,15 +41,31 @@
 namespace SceneryEditorX
 {
 
-	Shader::Shader(const char *shaderName) : SharedObject(), m_Name(shaderName ? shaderName : "UnnamedShader")
+	Shader::Shader(const char *shaderName) : SharedObject(), m_Name(shaderName ? shaderName : "UnnamedShader"), m_CompilationState(ShaderCompiler::State::Idle)
 	{
 		SetObjectName(m_Name);
 	}
 
-	Shader::Shader(const char *shaderName, const std::string &path, bool forceCompile) : SharedObject(), m_Name(shaderName ? shaderName : "UnnamedShader")
+	Shader::Shader(const char *shaderName, const std::string &path, bool forceCompile) : SharedObject(), m_Name(shaderName ? shaderName : "UnnamedShader"), m_CompilationState(ShaderCompiler::State::Idle)
 	{
+		(void)forceCompile;
 		SetObjectName(m_Name);
 		m_Filepath = path;
+	}
+
+	ShaderCompiler::State Shader::GetCompilationState() const
+	{
+		return m_CompilationState.load();
+	}
+
+	bool Shader::IsCompiled() const
+	{
+		return m_CompilationState.load() == ShaderCompiler::State::Succeeded;
+	}
+
+	void Shader::SetCompilationState(ShaderCompiler::State state)
+	{
+		m_CompilationState.store(state);
 	}
 
 	Shader::~Shader()
@@ -123,34 +140,45 @@ namespace SceneryEditorX
 
 	void Shader::AddShaderStage(StageType stage, const std::string& filepath)
 	{
-		if (m_Stages.contains(stage))
-			return;
-
 		m_Stages[stage] = CreateRef<ShaderStage>(stage, filepath);
-	
-		for (const ShaderInput& input : m_Stages[stage]->GetInput())
-		{
-			m_Input[input.set].push_back(input);
-		}
+		SEDX_CORE_ASSERT(m_Stages[stage] != nullptr, "Failed to create shader stage for '{}'", filepath);
+
+		RebuildInputCache();
+		SetCompilationState(ShaderCompiler::State::Succeeded);
 	}
 	
-	Ref<ShaderStage> Shader::GetShaderStage(const StageType stage)
+	Ref<ShaderStage> Shader::GetShaderStage(const StageType stage) const
 	{
 		SEDX_CORE_ASSERT(m_Stages.contains(stage), "Stage is not present");
 		return m_Stages.at(stage);
 	}
 	
-	bool Shader::HasStage(const StageType stage)
+	bool Shader::HasStage(const StageType stage) const
 	{
-		if (!m_Stages.contains(stage))
-			return false;
+		return m_Stages.contains(stage);
+	}
 
-		return true;
+	void Shader::RebuildInputCache()
+	{
+		m_Input.clear();
+		m_BindlessSets.clear();
+
+		for (const auto& stageRef : m_Stages | std::views::values)
+		{
+			if (!stageRef)
+				continue;
+
+			for (const ShaderInput& input : stageRef->GetInput())
+			{
+				m_Input[input.set].push_back(input);
+			}
+		}
 	}
 
 	std::map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>> Shader::GetDescriptorSetLayoutBindings()
 	{
 		std::map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>> bindings;
+		m_BindlessSets.clear();
 	
 		for (auto& [set, input] : m_Input)
 		{

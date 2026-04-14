@@ -1,0 +1,10 @@
+# CODEOWNERS file
+# Learn more: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# These owners will be the default owners for everything in the repo
+* @The3dVehicleguy
+
+# You can also specify owners for specific paths
+# /src/frontend/ @frontend-team
+# /src/backend/ @backend-team
+# /docs/ @docs-team

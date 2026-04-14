@@ -30,6 +30,7 @@
  */
 #pragma once
 #include "shader.h"
+#include <mutex>
 #include <vector>
 #include <SceneryEditorX/renderer/vulkan/enums.h>
 #include <SceneryEditorX/renderer/vulkan/shader/shader_input.h>
@@ -100,7 +101,7 @@ namespace SceneryEditorX
 		 * @param shaderName Name of the shader to reload.
 		 * @param forceCompile Whether to force compilation of the shader.
 		 */
-		void ReloadShader(const Ref<Shader> &shaderName, bool forceCompile = false);
+		static void ReloadShader(const Ref<Shader> &shaderName, bool forceCompile = false);
 
 		/**
 		 * @brief Reloads a shader on the render thread with the specified name and optional force compile flag.
@@ -112,7 +113,14 @@ namespace SceneryEditorX
 		/**
 		 * @brief Clears all shaders managed by the ShaderManager.
 		 */
-		static void Clear();
+		static void ClearAll();
+
+		/**
+		 * @brief Clears a specific shader stage for the given shader.
+		 * @param shader The shader whose stage is to be cleared.
+		 * @param stage The stage to be cleared.
+		 */
+		static void ClearStage(const Ref<Shader> &shader, const StageType stage);
 
 		/**
 		 * @brief Retrieves the compilation state of the shaders.

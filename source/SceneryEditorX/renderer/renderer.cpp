@@ -509,7 +509,7 @@ namespace SceneryEditorX
 				vkDestroyPipelineLayout(dev, m_BasicPipelineLayout, nullptr);
 				m_BasicPipelineLayout = VK_NULL_HANDLE;
 			}
-			ShaderManager::Clear();
+			ShaderManager::ClearAll();
 			s_ShaderManager.reset();
 
 			if (m_GridPipeline != VK_NULL_HANDLE)

@@ -42,6 +42,7 @@
 namespace SceneryEditorX
 {
 	static Ref<ShaderManager> s_Instance = nullptr;
+	std::mutex ShaderManager::s_ShaderMutex;
 	std::unordered_map<std::string, Ref<Shader>> ShaderManager::m_Shaders;
 
 	static VkShaderModule CreateShaderModule(const void* spirvCode, size_t codeSize)
@@ -96,10 +97,7 @@ namespace SceneryEditorX
 
 	ShaderManager::ShaderManager()
 	{
-		if (!s_Instance)
-			s_Instance = CreateRef<ShaderManager>();
-
-	    SEDX_CORE_TRACE_TAG("ShaderManager", "Created ShaderManager");
+		SEDX_CORE_TRACE_TAG("ShaderManager", "Created ShaderManager");
 	}
 
 	ShaderManager::~ShaderManager()
@@ -128,6 +126,7 @@ namespace SceneryEditorX
 
 	Ref<Shader> &ShaderManager::CreateShader(const std::string &name)
 	{
+		std::scoped_lock lock(s_ShaderMutex);
 		if (m_Shaders.contains(name))
 			return m_Shaders[name];
 
@@ -137,26 +136,31 @@ namespace SceneryEditorX
 
 	Ref<Shader> &ShaderManager::CreateShader(const std::string& name, const std::string &path, bool forceCompile)
 	{
+		std::scoped_lock lock(s_ShaderMutex);
 		if (m_Shaders.contains(name))
 			return m_Shaders[name];
 
-		m_Shaders[name] = CreateRef<Shader>(name.c_str());
-
+		m_Shaders[name] = CreateRef<Shader>(name.c_str(), path, forceCompile);
 		return m_Shaders[name];
 	}
 
 	Ref<Shader> &ShaderManager::GetShader(const std::string &name)
 	{
+		std::scoped_lock lock(s_ShaderMutex);
 		SEDX_CORE_ASSERT(m_Shaders.contains(name), "Shader {} is not present", name.c_str());
 		return m_Shaders[name];
 	}
 
 	void ShaderManager::ReloadShader(const Ref<Shader> &shaderName, bool forceCompile)
 	{
-		Renderer::Submit([instance = Ref(this), shaderName, forceCompile]() mutable
+		SEDX_CORE_ASSERT(shaderName.IsValid(), "Invalid shader reference");
+		SEDX_CORE_WARN_TAG("ShaderManager", "Shader Reloading is not implemented yet");
+		/*
+		Renderer::Submit([shaderName, forceCompile]()
 		{
-			instance->RenderThread_Reload(shaderName, forceCompile);
+		    RenderThread_Reload(shaderName, forceCompile);
 		});
+		*/
 	}
 
 	void ShaderManager::RenderThread_Reload(const Ref<Shader> &shaderName, bool forceCompile)
@@ -180,14 +184,21 @@ namespace SceneryEditorX
 		// Individual ShaderStage::Recompile handles the stage compilation and module recreation.
 	}
 		
-	void ShaderManager::Clear()
+	void ShaderManager::ClearAll()
 	{
+		std::scoped_lock lock(s_ShaderMutex);
 		m_Shaders.clear();
+	}
+
+	void ShaderManager::ClearStage(const Ref<Shader> &shader, const StageType stage)
+	{
+
 	}
 
 	std::vector<uint32_t> ShaderManager::CompileToSpirv(const StageType stage, const std::string &filepath, const bool optimize)
 	{
-		// Optionally do cache lookups here...
+		/* TODO: Do cache lookups here... */
+
 		return ShaderCompiler::CompileShader(stage, filepath, optimize);
 	}
 

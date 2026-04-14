@@ -30,7 +30,6 @@
  */
 #pragma once
 #include "shader_input.h"
-#include "shader.h"
 #include <vector>
 #include <SceneryEditorX/renderer/vulkan/enums.h>
 

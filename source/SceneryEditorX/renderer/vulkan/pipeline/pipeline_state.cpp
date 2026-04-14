@@ -47,13 +47,18 @@ namespace SceneryEditorX
 	 */
 	static void Validate(PipelineState& pso)
 	{
+		const auto has_compiled_stage = [&](const StageType stage)
+		{
+		    Shader* shader = pso.shaders[static_cast<std::size_t>(stage)];
+		    return shader ? shader->IsCompiled() : false;
+		};
 
-		bool hasShaderCompute	= pso.shaders[StageType::Compute]					? pso.shaders[StageType::Compute]->IsCompiled()					: false;
-		bool hasShaderVertex	= pso.shaders[StageType::Vertex]					? pso.shaders[StageType::Vertex]->IsCompiled()					: false;
-		bool hasShaderHull		= pso.shaders[StageType::TessellationControl]		? pso.shaders[StageType::TessellationControl]->IsCompiled()		: false;
-		bool hasShaderDomain	= pso.shaders[StageType::TessellationEvaluation]	? pso.shaders[StageType::TessellationEvaluation]->IsCompiled()	: false;
-		bool hasShaderFragment	= pso.shaders[StageType::Fragment]					? pso.shaders[StageType::Fragment]->IsCompiled()				: false;
-		bool hasSomeShader		= hasShaderCompute || hasShaderVertex || hasShaderHull || hasShaderDomain;
+		bool hasShaderCompute	= has_compiled_stage(StageType::Compute);
+		bool hasShaderVertex	= has_compiled_stage(StageType::Vertex);
+		bool hasShaderHull		= has_compiled_stage(StageType::TessellationControl);
+		bool hasShaderDomain	= has_compiled_stage(StageType::TessellationEvaluation);
+		bool hasShaderFragment	= has_compiled_stage(StageType::Fragment);
+		bool hasSomeShader		= hasShaderCompute || hasShaderVertex || hasShaderHull || hasShaderDomain || hasShaderFragment;
 		SEDX_CORE_ASSERT(hasSomeShader, "There is no shader set, ensure that it compiled successfully and that it has been set");
 	
 		bool isGraphics = (hasShaderVertex || hasShaderHull || hasShaderDomain || hasShaderFragment) && !hasShaderCompute;
@@ -271,3 +276,4 @@ namespace SceneryEditorX
 } // namespace SceneryEditorX
 
 // -------------------------------------------------------
+

@@ -132,9 +132,11 @@ namespace SceneryEditorX
 				auto pFunc = (FuncT*)ptr;
 				(*pFunc)();
 
-				// NOTE: Instead of destroying we could try and enforce all items to be trivally destructible
-				// however some items like uniforms which contain std::strings still exist for now
-				// static_assert(std::is_trivially_destructible_v<FuncT>, "FuncT must be trivially destructible");
+				/**
+				 * NOTE: Instead of destroying we could try and enforce all items to be trivially destructible
+				 * however some items like uniforms which contain std::strings still exist for now
+				 * static_assert(std::is_trivially_destructible_v<FuncT>, "FuncT must be trivially destructible");
+				 */
 				pFunc->~FuncT();
 			};
 			auto storageBuffer = QueueManager::AllocateQueue(renderCmd, sizeof(func));
@@ -796,7 +798,7 @@ namespace SceneryEditorX
 		static std::vector<ShadowSlice> m_ShadowSlices;
 
 		/* Basic forward-rendering pipeline (active until the full deferred pipeline is wired up) */
-	    Scope<ShaderManager> m_ShaderManager;
+		Scope<ShaderManager> m_ShaderManager;
 		static VkPipeline m_BasicPipeline;
 		static VkPipelineLayout m_BasicPipelineLayout;
 		static std::array<VkBuffer,        MAX_FRAMES_IN_FLIGHT> m_BasicShaderDataBuffers;

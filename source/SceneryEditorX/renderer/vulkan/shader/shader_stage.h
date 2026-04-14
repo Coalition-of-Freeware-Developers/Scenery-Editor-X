@@ -71,19 +71,31 @@ namespace SceneryEditorX
 		 * @brief Gets the list of shader inputs for this stage.
 		 * @return A reference to the vector of shader inputs.
 		 */
-		const std::vector<ShaderInput>& GetInput() { return m_Input; }
+		const std::vector<ShaderInput>& GetInput() const { return m_Input; }
 
 		/**
 		 * @brief Gets the Vulkan pipeline shader stage create info.
 		 * @return The Vulkan pipeline shader stage create info.
 		 */
-		const VkPipelineShaderStageCreateInfo GetStageCreateInfo();
+		VkPipelineShaderStageCreateInfo GetStageCreateInfo() const;
 	
 	private:
+		/**
+		 * @brief Builds or rebuilds the Vulkan shader module for this stage by compiling the shader source file to SPIR-V and creating the shader module.
+		 * @param optimize Whether to optimize the shader during compilation. This may enable additional compiler optimizations for better performance at the cost of longer compilation times.
+		 * @return True if the shader module was successfully built or rebuilt, false otherwise.
+		 */
+		bool BuildOrRebuildModule(bool optimize = false);
+
+		/**
+		 * @brief Destroys the Vulkan shader module for this stage.
+		 */
+		void DestroyModule();
+
 		StageType m_Stage;					// The shader stage (e.g., vertex, fragment)
 		std::string m_Filepath;				// Path to the shader source file
 		std::string m_EntryPoint;			// Stage entry point name used for pipeline creation
-		VkShaderModule m_ShaderModule;		// Vulkan shader module handle
+	  VkShaderModule m_ShaderModule = VK_NULL_HANDLE;		// Vulkan shader module handle
 		std::vector<ShaderInput> m_Input;	// List of shader inputs (uniforms, samplers, etc.)
 	};
 

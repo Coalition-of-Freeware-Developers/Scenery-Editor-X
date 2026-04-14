@@ -370,35 +370,56 @@ namespace SceneryEditorX
 	void Renderer::SetShaderAvailable(const Renderer_Shader type)
 	{
 		const uint8_t index = static_cast<uint8_t>(type);
-		if (!s_Shaders[index])
-		{
-			s_Shaders[index] = CreateRef<Shader>();
-		}
-
-		Ref<Shader>& shader = s_Shaders[index];
-		SEDX_CORE_ASSERT(shader != nullptr, "Failed to allocate shader slot for type {}", static_cast<uint32_t>(type));
 
 		switch (type)
 		{
 			case Renderer_Shader::grid_vertex:
-				if (!shader->HasStage(StageType::Vertex))
-				{
-					shader->AddShaderStage(StageType::Vertex, "resources/shaders/grid.slang");
-				}
-				break;
 			case Renderer_Shader::grid_frag:
-				if (!shader->HasStage(StageType::Fragment))
+			{
+				constexpr uint8_t gridVertexIndex = static_cast<uint8_t>(Renderer_Shader::grid_vertex);
+				constexpr uint8_t gridFragIndex = static_cast<uint8_t>(Renderer_Shader::grid_frag);
+
+				Ref<Shader>& gridShader = s_Shaders[gridVertexIndex];
+				if (!gridShader)
 				{
-					shader->AddShaderStage(StageType::Fragment, "resources/shaders/grid.slang");
+					gridShader = CreateRef<Shader>("grid");
 				}
+
+				if (!gridShader->HasStage(StageType::Vertex))
+				{
+					gridShader->AddShaderStage(StageType::Vertex, "resources/shaders/grid.slang");
+				}
+
+				if (!gridShader->HasStage(StageType::Fragment))
+				{
+					gridShader->AddShaderStage(StageType::Fragment, "resources/shaders/grid.slang");
+				}
+
+				s_Shaders[gridVertexIndex] = gridShader;
+				s_Shaders[gridFragIndex] = gridShader;
+				SEDX_CORE_ASSERT(s_Shaders[gridVertexIndex] != nullptr, "Failed to allocate grid shader");
 				break;
+		   }
 			case Renderer_Shader::blit_c:
+			{
+				if (!s_Shaders[index])
+				{
+					s_Shaders[index] = CreateRef<Shader>("blit");
+				}
+
+				Ref<Shader>& shader = s_Shaders[index];
+				SEDX_CORE_ASSERT(shader != nullptr, "Failed to allocate shader slot for type {}", static_cast<uint32_t>(type));
 				if (!shader->HasStage(StageType::Compute))
 				{
 					shader->AddShaderStage(StageType::Compute, "resources/shaders/blit.slang");
 				}
 				break;
+			}
 			default:
+				if (!s_Shaders[index])
+				{
+					s_Shaders[index] = CreateRef<Shader>();
+				}
 				break;
 		}
 	}

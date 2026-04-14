@@ -380,11 +380,13 @@ namespace SceneryEditorX::UI
 
 	void Shutdown()
 	{
-		// Release all GPU resources (Ref<Shader>, Ref<ImageResource>, etc.) while
-		// the VkDevice and logging system are still alive.  Without this call,
-		// g_VertexShader / g_FragmentShader are file-scope statics whose Ref<>
-		// destructors fire in the CRT static-dtor phase — after RenderContext and
-		// spdlog have already been destroyed — causing the 0x50 access violation.
+		/**
+		 * Release all GPU resources (Ref<Shader>, Ref<ImageResource>, etc.) while
+		 * the VkDevice and logging system are still alive.  Without this call,
+		 * g_VertexShader / g_FragmentShader are file-scope statics whose Ref<>
+		 * destructors fire in the CRT static-dtor phase â€” after RenderContext and
+		 * spdlog have already been destroyed â€” causing the 0x50 access violation.
+		 */
 		DestroyResources();
 		ImGui::DestroyPlatformWindows();
 	}
@@ -497,8 +499,8 @@ namespace SceneryEditorX::UI
 		// set pipeline state
 		static PipelineState pso			= {};
 		pso.name							= "imgui";
-		pso.shaders[StageType::Vertex]		= g_VertexShader.Get();
-		pso.shaders[StageType::Fragment]	= g_FragmentShader.Get();
+		pso.shaders[static_cast<uint32_t>(StageType::Vertex)]	= g_VertexShader.Get();
+		pso.shaders[static_cast<uint32_t>(StageType::Fragment)]	= g_FragmentShader.Get();
 		pso.rasterizerState                 = g_Rasterizer_State.Get();
 		pso.blendState                      = g_BlendState.Get();
 		pso.depthStencil_State              = g_DepthStencil_State.Get();
