@@ -35,6 +35,7 @@
 #include <SceneryEditorX/core/input/input.h>
 #include <SceneryEditorX/renderer/renderer.h>
 #include <SceneryEditorX/renderer/ui/ui.h>
+#include <SceneryEditorX/renderer/ui/ui_layer.h>
 #include <SceneryEditorX/renderer/ui/ui_widget.h>
 #include <SceneryEditorX/renderer/ui/actions/drag_drop.h>
 #include <SceneryEditorX/renderer/ui/actions/gizmos.h>
@@ -51,7 +52,7 @@ namespace SceneryEditorX
     static uint32_t s_WidthPrevious = 0;
     static uint32_t s_HeightPrevious = 0;
 
-    SceneViewport::SceneViewport(const char *name, EditorLayer *editor) : Widget(editor), m_ViewportName(name)
+    SceneViewport::SceneViewport(const char *name, EditorLayer *editor) : m_ViewportName(name)
     {
         m_Title = name;
         m_InitialSize = Vec2(400, 250);
@@ -103,7 +104,7 @@ namespace SceneryEditorX
         // handle model drop
         if (auto payload = DragDropPayload::ReceiveDragDropPayload(DragPayloadType::Model))
         {
-            if (AssetBrowser *assetBrowser = m_Editor->GetWidget<AssetBrowser>())
+            if (AssetBrowser *assetBrowser = m_Editor->GetPanel<AssetBrowser>())
             {
                 assetBrowser->ShowMeshImportDialog(std::get<const char *>(payload->GetData()));
             }
@@ -221,6 +222,11 @@ namespace SceneryEditorX
     void SceneViewport::SetVisible(bool visible)
     {
         m_IsVisible = visible;
+    }
+
+    void SceneViewport::OnEvent(Event &e)
+    {
+        EditorPanel::OnEvent(e);
     }
 
     void SceneViewport::OnVisible()

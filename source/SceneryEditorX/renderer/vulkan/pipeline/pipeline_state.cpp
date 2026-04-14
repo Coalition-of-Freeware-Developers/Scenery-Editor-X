@@ -49,8 +49,8 @@ namespace SceneryEditorX
 	{
 		const auto has_compiled_stage = [&](const StageType stage)
 		{
-		    Shader* shader = pso.shaders[static_cast<std::size_t>(stage)];
-		    return shader ? shader->IsCompiled() : false;
+			Shader* shader = pso.shaders[static_cast<std::size_t>(stage)];
+			return shader ? shader->IsCompiled() : false;
 		};
 
 		bool hasShaderCompute	= has_compiled_stage(StageType::Compute);
@@ -206,9 +206,10 @@ namespace SceneryEditorX
 
 	PipelineState::PipelineState()
 	{
-		m_Hash = ComputeHash(*this);
-		clearColor.fill(RHI_COLOR_LOAD);
+		shaders.fill(nullptr); // ensure safe defaults
 		renderTarget_ColorTextures.fill(nullptr);
+		clearColor.fill(RHI_COLOR_LOAD);
+		m_Hash = ComputeHash(*this);
 	}
 	
 	PipelineState::~PipelineState()

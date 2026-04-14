@@ -28,19 +28,19 @@
  * Created: 5/9/2025
  * -------------------------------------------------------
  */
-#include "ui_widget.h"
-
-#include "ui_layer.h"
-#include "Editor/core/editor_layer.h"
-#include "source/imgui/imgui_internal.h"
-#include <SceneryEditorX/core/window/monitor_data.h>
-#include <SceneryEditorX/renderer/vulkan/viewport.h>
+//#include "ui_widget.h"
+//#include "ui_layer.h"
+//#include "Editor/core/editor_layer.h"
+//#include "source/imgui/imgui_internal.h"
+//#include <SceneryEditorX/core/window/monitor_data.h>
+//#include <SceneryEditorX/renderer/vulkan/viewport.h>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
 	
+	/*
 	Widget::Widget(Layer *editor)
 	{
 		m_Editor = editor;
@@ -148,6 +148,7 @@ namespace SceneryEditorX
 		// Convert ImVec2 to Vec2 explicitly
 		return {center.x, center.y};
 	}
+	*/
 
 }
 

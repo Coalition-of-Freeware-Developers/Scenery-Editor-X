@@ -30,13 +30,14 @@
  */
 #pragma once
 #include "file_dialog_item.h"
-#include <SceneryEditorX/renderer/ui/ui_widget.h>
 #include <SceneryEditorX/renderer/ui/actions/drag_drop.h>
+#include <SceneryEditorX/renderer/ui/source/imgui/imgui.h>
 
 // ---------------------------------------------------------
 
 namespace SceneryEditorX
 {
+    class Layer;
 
     class FileDialog
     {

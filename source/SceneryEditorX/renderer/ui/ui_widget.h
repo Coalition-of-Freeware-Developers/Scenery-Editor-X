@@ -29,28 +29,24 @@
  * -------------------------------------------------------
  */
 #pragma once
-#include "SceneryEditorX/core/layers/layer.h"
-#include "source/imgui/imgui.h"
-#include <cfloat>
-#include <SceneryEditorX/core/base.h>
-#include <SceneryEditorX/utils/pointers.h>
-#include <xMath/includes/vector.h>
-
-// -------------------------------------------------------
-
-struct ImGuiWindow;
-const float DEFAULT_PANEL_PROPERTY = -1.0f;
+//#include "SceneryEditorX/core/layers/layer.h"
+//#include "source/imgui/imgui.h"
+//#include <cfloat>
+//#include <SceneryEditorX/core/base.h>
+//#include <SceneryEditorX/utils/pointers.h>
+//#include <xMath/includes/vector.h>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
+	/*
 	class EditorLayer; // forward declaration to avoid include cycles
 
 	/**
 	 * @class Widget
 	 * @brief Base class for all UI widgets in the editor.
-	 */
+	 #1#
 	class Widget : public RefCounted
 	{
 	public:
@@ -59,26 +55,26 @@ namespace SceneryEditorX
 
 		void Tick();
 
-		/* @brief Called every frame, regardless of the widget's visibility. */
+		/* @brief Called every frame, regardless of the widget's visibility. #1#
 		virtual void OnTick() {}
 
-		/* @brief Called only when the widget is visible. */
+		/* @brief Called only when the widget is visible. #1#
 		virtual void OnTickVisible() {}
 
-		/* @brief Called when the window becomes visible. */
+		/* @brief Called when the window becomes visible. #1#
 		virtual void OnVisible() {}
 
-		/* @brief Called when the window becomes invisible. */
+		/* @brief Called when the window becomes invisible. #1#
 		virtual void OnInvisible() {}
 
-		/* @brief Called just before ImGui::Begin() is called for the widget's window. */
+		/* @brief Called just before ImGui::Begin() is called for the widget's window. #1#
 		virtual void OnPreBegin();
 
 		/**
 		 * @brief Assign or update the EditorLayer pointer for this widget.
 		 * Used when widgets are created by a UI layer before the EditorLayer
 		 * is available and need to be wired up later.
-		 */
+		 #1#
 		void SetEditor(Layer *editor) { m_Editor = editor; }
 
 		/**
@@ -86,7 +82,7 @@ namespace SceneryEditorX
 		 * @tparam T The type of the style variable.
 		 * @param idx The index of the style variable.
 		 * @param val The value of the style variable.
-		 */
+		 #1#
 		template <typename T>
 		void PushStyleVar(ImGuiStyleVar idx, T val)
 		{
@@ -99,7 +95,7 @@ namespace SceneryEditorX
 		/**
 		 * @brief Retrieves the center position of the widget.
 		 * @return The center position of the widget as a Vec2.
-		 */
+		 #1#
 		[[nodiscard]] Vec2 GetCenter() const;
 
 		[[nodiscard]] float GetHeight() const { return m_Height; }
@@ -136,6 +132,8 @@ namespace SceneryEditorX
 		friend class RenderContext;
 		uint8_t varPushCount = 0;
 	};
+	*/
+
 }
 
 // -------------------------------------------------------

@@ -29,7 +29,7 @@
  * -------------------------------------------------------
  */
 #pragma once
-#include "SceneryEditorX/renderer/ui/ui_widget.h"
+#include <SceneryEditorX/renderer/ui/editor_panel.h>
 
 // -------------------------------------------------------
 
@@ -52,7 +52,7 @@ namespace SceneryEditorX
 	    Visualise_Sample_Point = 1U << 8,
 	};
 	
-	class TextureViewer : public Widget
+	class TextureViewer : public UI::EditorPanel
 	{
 	public:
 	    TextureViewer(EditorLayer *editor);

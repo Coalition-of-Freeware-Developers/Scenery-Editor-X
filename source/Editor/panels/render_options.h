@@ -29,15 +29,14 @@
  * -------------------------------------------------------
  */
 #pragma once
-#include <SceneryEditorX/renderer/ui/ui_widget.h>
-
+#include <SceneryEditorX/renderer/ui/editor_panel.h>
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
 	class EditorLayer;
 
-	class RenderOptions : public Widget
+	class RenderOptions : public UI::EditorPanel
 	{
 	public:
 		RenderOptions(EditorLayer* editor);

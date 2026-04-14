@@ -29,7 +29,7 @@
  * -------------------------------------------------------
  */
 #pragma once
-#include <SceneryEditorX/renderer/ui/ui_widget.h>
+#include <SceneryEditorX/renderer/ui/editor_panel.h>
 
 // -------------------------------------------------------
 
@@ -56,7 +56,7 @@ namespace SceneryEditorX
 	 * The widget dynamically updates its contents based on the type of object being inspected, 
 	 * providing context-sensitive controls for each component type.
 	 */
-	class Properties : public Widget
+	class Properties : public UI::EditorPanel
 	{
 	public:
 		Properties(EditorLayer *editor);

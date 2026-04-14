@@ -39,35 +39,32 @@
 
 namespace SceneryEditorX::UI
 {
-	
-	Ref<UILayer> s_EditorUI = nullptr;
+
+	static UILayer s_EditorUI;
 	static bool s_Visible = true;
-	
-	void ChildWindow::CenterWindow()
-	{
-	    Ref<UILayer> editor = s_EditorUI.Get();
-	    const Vec2 center = editor->GetWidget<SceneViewport>()->GetCenter();
-	
-	    ImGui::SetNextWindowPos(ImVec2(center.x, center.y), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-	}
 	
 	void ChildWindow::Init(const std::string &name)
 	{
-	    if (!s_Visible)
-	        return;
+		if (!s_Visible)
+			return;
+
+		const Vec2 center = s_EditorUI.GetPanel<SceneViewport>()->GetCenter();
+
+		ImGui::SetNextWindowPos(ImVec2(center.x, center.y), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+
+		if (ImGui::Begin(name.c_str(), &s_Visible, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize))
+		{
+			float contentWidth = 500.0f * Window::GetDpiScale();
+			ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + contentWidth);
+		}
+
+		ImGui::End();
+	}
 	
-	    Ref<UILayer> editor = s_EditorUI.Get();
-	    const Vec2 center = editor->GetWidget<SceneViewport>()->GetCenter();
-	
-	    ImGui::SetNextWindowPos(ImVec2(center.x, center.y), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-	
-	    if (ImGui::Begin(name.c_str(), &s_Visible, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize))
-	    {
-	        float contentWidth = 500.0f * Window::GetDpiScale();
-	        ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + contentWidth);
-	    }
-	
-	    ImGui::End();
+	void ChildWindow::CenterWindow()
+	{
+		const Vec2 center = s_EditorUI.GetPanel<SceneViewport>()->GetCenter();
+		ImGui::SetNextWindowPos(ImVec2(center.x, center.y), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
 	}
 	
 }

@@ -130,7 +130,7 @@ namespace SceneryEditorX
 		static PipelineState GetState();
 
 		// Shader stages – indexed by StageType enum (vertex=0, geometry=1, tess_ctrl=2, tess_eval=3, fragment=4, compute=5)
-		std::array<Shader*, static_cast<uint32_t>(StageType::MaxEnum)> shaders;
+		std::array<Shader*, static_cast<uint32_t>(StageType::MaxEnum)> shaders = {};
 
 		// Pipeline state objects (nullptr = use defaults)
 		RasterizerState*    rasterizerState       = nullptr;

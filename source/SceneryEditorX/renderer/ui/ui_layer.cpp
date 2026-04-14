@@ -277,9 +277,9 @@ namespace SceneryEditorX
 	void UILayer::Tick()
 	{
 
-		for (Ref<Widget> &widget : m_Widgets)
+		for (Ref<UI::EditorPanel> &widget : m_UIPanels)
 		{
-			widget->Tick();
+			widget->OnTick();
 		}
 
 		MenuBar::Tick();

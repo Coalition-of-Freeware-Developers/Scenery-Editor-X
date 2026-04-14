@@ -45,6 +45,7 @@
 #include <SceneryEditorX/project/selection_manager.h>
 #include <SceneryEditorX/renderer/renderer.h>
 #include <SceneryEditorX/renderer/ui/ui_impl.h>
+#include <SceneryEditorX/renderer/ui/ui_renderer.h>
 #include <SceneryEditorX/renderer/ui/actions/gizmos.h>
 #include <SceneryEditorX/renderer/ui/source/imgui/imgui.h>
 #include <SceneryEditorX/renderer/ui/source/imgui/imgui_internal.h>
@@ -163,93 +164,22 @@ namespace SceneryEditorX
 	
 	void EditorLayer::InitEditor()
 	{
-		/*
-		EDITOR_TRACE_TAG("EDITOR", "Setting up ImGui docking layout");
-		ImGui::CreateContext();
-		*/
 
 		std::filesystem::path appdata = IO::FileSystem::GetPersistentStoragePath();
 
-		/*
-		// configure ImGui
-		ImGuiIO& io                      = ImGui::GetIO();
-		io.ConfigFlags                  |= ImGuiConfigFlags_NavEnableKeyboard;
-		io.ConfigFlags                  |= ImGuiConfigFlags_DockingEnable;
-		io.ConfigFlags                  |= ImGuiConfigFlags_ViewportsEnable;
-		io.ConfigFlags                  |= ImGuiConfigFlags_NoMouseCursorChange; // cursor control is given to ImGui, but dynamically, from the engine
-		io.ConfigWindowsResizeFromEdges  = true;
-		*/
+		//UI::Initialize();
 
-		/*
-		// font_bold configuration
-		ImFontConfig config; // config for bold font (mainly for use in headers)
-		config.GlyphOffset.y = -2.0f;
-		*/
-
-		/*
-		const std::string dir_fonts = ResourceCache::GetResourceDirectory(ResourceDirectory::Fonts);
-		fontNormal            = io.Fonts->AddFontFromFileTTF((dir_fonts + "opensans/OpenSans-Medium.ttf").c_str(), s_FontSize * Window::GetDpiScale());
-		fontBold              = io.Fonts->AddFontFromFileTTF((dir_fonts + "opensans/OpenSans-Bold.ttf").c_str(), s_FontSize * Window::GetDpiScale(), &config);
-		io.FontGlobalScale    = s_FontScale;
-		*/
-
-		// Ensure ImGui has a valid initial DisplaySize (some backends update this per-frame).
-		// Guard against cases where backend didn't set it yet by using the window size.
-		//io.DisplaySize = ImVec2(static_cast<float>(Window::GetWidth()), static_cast<float>(Window::GetHeight()));
-
-		/*
-		const std::filesystem::path fontDir = std::filesystem::path(ResourceCache::GetResourceDirectory(ResourceDirectory::Fonts));
-		const std::filesystem::path normalPath = fontDir / "opensans" / "OpenSans-Medium.ttf";
-		const std::filesystem::path boldPath = fontDir / "opensans" / "OpenSans-Bold.ttf";
-
-		if (!std::filesystem::exists(normalPath))
-		{
-			EDITOR_ERROR_TAG("Editor", "Font not found: %s", normalPath.string().c_str());
-			UILayer::fontNormal = io.Fonts->AddFontDefault();
-		}
-		else
-		{
-			UILayer::fontNormal = io.Fonts->AddFontFromFileTTF(normalPath.string().c_str(), s_FontSize * Window::GetDpiScale());
-		}
-
-
-		if (!std::filesystem::exists(boldPath))
-		{
-			EDITOR_WARN_TAG("Editor", "Bold font not found: %s", boldPath.string().c_str());
-			UILayer::fontBold = nullptr;
-		}
-		else
-		{
-			UILayer::fontBold = io.Fonts->AddFontFromFileTTF(boldPath.string().c_str(), s_FontSize * Window::GetDpiScale(), &config);
-		}
-
-		io.FontGlobalScale = s_FontScale;
-		*/
-
-		/*
-		// initialize imgui backends only if backend not already set
-		if (io.BackendPlatformUserData == nullptr)
-		{
-			// Use the actual SDL_Window* owned by our Window wrapper instead of the raw native handle.
-			SDL_Window* sdlWindow = Window::GetWindow();
-			SEDX_CORE_ASSERT(sdlWindow != nullptr, "SDL_Window is null when initializing ImGui SDL backend");
-			SEDX_CORE_ASSERT(ImGui_ImplSDL3_InitForVulkan(sdlWindow), "Failed to initialize ImGui's SDL backend");
-		}
-		else
-		{
-			EDITOR_WARN_TAG("UILayer", "ImGui backend already initialized; skipping ImGui_ImplSDL3_InitForVulkan");
-		}
-		*/
-
-		UI::Initialize();
-
+		m_PanelManager = CreateScope<PanelManager>();
+		m_UIRenderer = CreateRef<UIRenderer>();
+		Ref<SceneViewport> sceneRendererPanel = m_PanelManager->AddPanel<SceneViewport>(PanelCategory::Viewer, SCENE_RENDERER_PANEL_ID, "Scene Renderer", true);
+		Ref<RenderOptions> renderOptionsPanel = m_PanelManager->AddPanel<RenderOptions>(PanelCategory::Settings, "RendererOptionsPanel", "Render Options", true);
 		// create all imgui widgets
 		/*m_Widgets.emplace_back(CreateRef<RenderOptions>(this));
 		m_Widgets.emplace_back(CreateRef<TextureViewer>(this));
 		m_Widgets.emplace_back(CreateRef<SceneViewport>("viewport", this));
 		m_Widgets.emplace_back(CreateRef<AssetBrowser>(this));
 		m_Widgets.emplace_back(CreateRef<Properties>(this));*/
-		MenuBar::Initialize(this);
+		//MenuBar::Initialize(this);
 
 		//Project::Load();
 	}
@@ -279,7 +209,7 @@ namespace SceneryEditorX
 		}
 		if (UI::IsWindowFocused("Viewport") || UI::IsWindowFocused("Scene Hierarchy"))
 		{
-			if ((m_ViewportPanelMouseOver || m_ViewportPanel2MouseOver) && !Input::IsMouseButtonDown(MouseButton::Right) && m_CurrentScene != m_RuntimeScene)
+			if ((m_ViewportPanelMouseOver || m_ViewportPanel2MouseOver) && !Input::IsMouseButtonDown(MouseButton::Right) && m_CurrentScene != m_EditorScene)
 			{
 				switch (e.GetKeyCode())
 				{
@@ -394,8 +324,6 @@ namespace SceneryEditorX
 
 	bool EditorLayer::OnMouseButtonPressed(MouseButtonPressedEvent &e)
 	{
-		if (m_CurrentScene == m_RuntimeScene)
-			return false;
 
 		if (e.GetMouseButton() != MouseButton::Left)
 			return false;

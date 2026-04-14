@@ -66,7 +66,7 @@ namespace SceneryEditorX
 	 * @class PanelManager
 	 * @brief Manages all editor panels in the Scenery Editor X application.
 	 */
-	class PanelManager
+	class PanelManager : public RefCounted
 	{
 	public:
 		PanelManager() = default;
@@ -81,14 +81,14 @@ namespace SceneryEditorX
 		 * @param panelID the unique identifier of the panel to retrieve
 		 * @return A pointer to the PanelData associated with the given panelID, or nullptr if not found
 		 */
-	    PanelData* GetPanelData(uint64_t panelID);
+		PanelData* GetPanelData(uint64_t panelID);
 
 		/**
 		 * @brief Retrieves the PanelData associated with the given panelID.
 		 * @param panelID the unique identifier of the panel to retrieve
 		 * @return A pointer to the PanelData associated with the given panelID, or nullptr if not found
 		 */
-	    const PanelData* GetPanelData(uint64_t panelID) const;
+		const PanelData* GetPanelData(uint64_t panelID) const;
 
 		/**
 		 * @brief Removes the panel associated with the given string ID.
@@ -153,7 +153,7 @@ namespace SceneryEditorX
 		template<typename TPanel>
 		Ref<TPanel> AddPanel(PanelCategory category, const PanelData& panelData)
 		{
-			static_assert(std::is_base_of<UI::EditorPanel, TPanel>::value, "PanelManager::AddPanel requires TPanel to inherit from EditorPanel");
+			static_assert(std::is_base_of_v<UI::EditorPanel, TPanel>, "PanelManager::AddPanel requires TPanel to inherit from EditorPanel");
 
 			auto& panelMap = m_Panels[static_cast<size_t>(category)];
 
@@ -183,7 +183,7 @@ namespace SceneryEditorX
 		template<typename TPanel, typename... TArgs>
 		Ref<TPanel> AddPanel(PanelCategory category, const char* strID, bool isOpenByDefault, TArgs&&... args)
 		{
-			return AddPanel<TPanel>(category, PanelData{ strID, strID, Ref<TPanel>::Create(std::forward<TArgs>(args)...), isOpenByDefault });
+			return AddPanel<TPanel>(category, PanelData{ strID, strID, Ref<TPanel>::Ref(std::forward<TArgs>(args)...), isOpenByDefault });
 		}
 
 		/**
@@ -200,7 +200,7 @@ namespace SceneryEditorX
 		template<typename TPanel, typename... TArgs>
 		Ref<TPanel> AddPanel(PanelCategory category, const char* strID, const char* displayName, bool isOpenByDefault, TArgs&&... args)
 		{
-			return AddPanel<TPanel>(category, PanelData{ strID, displayName, Ref<TPanel>::Create(std::forward<TArgs>(args)...), isOpenByDefault });
+			return AddPanel<TPanel>(category, PanelData{ strID, displayName, Ref<TPanel>::Ref(std::forward<TArgs>(args)...), isOpenByDefault });
 		}
 
 		/**
@@ -212,7 +212,7 @@ namespace SceneryEditorX
 		template<typename TPanel>
 		Ref<TPanel> GetPanel(const char* strID)
 		{
-			static_assert(std::is_base_of<UI::EditorPanel, TPanel>::value, "PanelManager::AddPanel requires TPanel to inherit from EditorPanel");
+			static_assert(std::is_base_of_v<UI::EditorPanel, TPanel>, "PanelManager::AddPanel requires TPanel to inherit from EditorPanel");
 
 
 			uint64_t id = Hash::GenerateFNV1A(strID);

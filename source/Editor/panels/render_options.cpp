@@ -198,7 +198,7 @@ namespace SceneryEditorX
 		return 0;
 	}
 
-	RenderOptions::RenderOptions(EditorLayer * editor) : Widget(editor)
+	RenderOptions::RenderOptions(EditorLayer *editor) : UI::EditorPanel()
 	{
 		m_Title = "Renderer Options";
 		m_Visible = false;

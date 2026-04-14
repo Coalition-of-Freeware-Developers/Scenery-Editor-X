@@ -38,6 +38,7 @@
 #include <SceneryEditorX/core/resource/resource_cache.h>
 #include <SceneryEditorX/core/threading/thread_pool.h>
 #include <SceneryEditorX/renderer/ui/ui.h>
+#include <SceneryEditorX/renderer/ui/ui_layer.h>
 #include <SceneryEditorX/scene/material.h>
 #include <SceneryEditorX/scene/mesh.h>
 
@@ -56,137 +57,141 @@ namespace SceneryEditorX
 	
 	static void MeshImportDialogCheckbox(const MeshFlags option, const char* label, const char* tooltip = nullptr)
 	{
-	    bool enabled = s_MeshImportDialogFlags & static_cast<uint32_t>(option);
+		bool enabled = s_MeshImportDialogFlags & static_cast<uint32_t>(option);
 	
-	    if (ImGui::Checkbox(label, &enabled))
-	    {
-	        if (enabled)
-	        {
-	            s_MeshImportDialogFlags |= static_cast<uint32_t>(option);
-	        }
-	        else
-	        {
-	            s_MeshImportDialogFlags &= ~static_cast<uint32_t>(option);
-	        }
-	    }
+		if (ImGui::Checkbox(label, &enabled))
+		{
+			if (enabled)
+			{
+				s_MeshImportDialogFlags |= static_cast<uint32_t>(option);
+			}
+			else
+			{
+				s_MeshImportDialogFlags &= ~static_cast<uint32_t>(option);
+			}
+		}
 	
-	    if (tooltip != nullptr)
-	    {
-	        UI::Tooltip(tooltip);
-	    }
+		if (tooltip != nullptr)
+		{
+			UI::Tooltip(tooltip);
+		}
 	}
 	
-	static void MeshImportDialog(EditorLayer *editor)
+	static void MeshImportDialog(UILayer *editor)
 	{
-	    if (s_MeshImportDialog_IsVisible)
-	    {
-	        const Vec2 center = editor->GetWidget<SceneViewport>()->GetCenter();
-	        ImGui::SetNextWindowPos(ImVec2(center.x, center.y), ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.5f));
+		if (s_MeshImportDialog_IsVisible)
+		{
+			const Vec2 center = editor->GetPanel<SceneViewport>()->GetCenter();
+			ImGui::SetNextWindowPos(ImVec2(center.x, center.y), ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.5f));
 	
-	        // Begin
-	        if (ImGui::Begin("Mesh import options", &s_MeshImportDialog_IsVisible, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse))
-	        {
-	            MeshImportDialogCheckbox(MeshFlags::ImportRemoveRedundantData,
-	                "Remove redundant data",
-	                "Join identical vertices, remove redundant materials, duplicate meshes, zeroed normals and invalid UVs.");
+			// Begin
+			if (ImGui::Begin("Mesh import options", &s_MeshImportDialog_IsVisible, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse))
+			{
+				MeshImportDialogCheckbox(MeshFlags::ImportRemoveRedundantData,
+					"Remove redundant data",
+					"Join identical vertices, remove redundant materials, duplicate meshes, zeroed normals and invalid UVs.");
 	
-	            MeshImportDialogCheckbox(MeshFlags::PostProcessNormalizeScale,
-	                "Normalize scale",
-	                "Scale the mesh so that it's not bigger than a cubic unit."
-	            );
+				MeshImportDialogCheckbox(MeshFlags::PostProcessNormalizeScale,
+					"Normalize scale",
+					"Scale the mesh so that it's not bigger than a cubic unit."
+				);
 	
-	            MeshImportDialogCheckbox(MeshFlags::ImportCombineMeshes,
-	                "Combine meshes",
-	                "Join some meshes, remove some nodes and pre-transform vertices."
-	            );
+				MeshImportDialogCheckbox(MeshFlags::ImportCombineMeshes,
+					"Combine meshes",
+					"Join some meshes, remove some nodes and pre-transform vertices."
+				);
 	
-	            MeshImportDialogCheckbox(MeshFlags::ImportLights,
-	                "Import lights",
-	                "Some models might define lights, they can be imported as well."
-	            );
+				MeshImportDialogCheckbox(MeshFlags::ImportLights,
+					"Import lights",
+					"Some models might define lights, they can be imported as well."
+				);
 	
-	            MeshImportDialogCheckbox(MeshFlags::PostProcessOptimize,
-	                "Optimize",
-	                "Performs a variety of optimizations aimed at reduce cache misses, overdraw and so on..."
-	            );
+				MeshImportDialogCheckbox(MeshFlags::PostProcessOptimize,
+					"Optimize",
+					"Performs a variety of optimizations aimed at reduce cache misses, overdraw and so on..."
+				);
 	
-	            // Ok button
-	            if (UI::ButtonCenteredOnLine("Ok", 0.5f))
-	            {
-	                ThreadPool::Submit([]()
-	                {
-	                    ResourceCache::Load<Mesh>(s_MeshImportFilePath, s_MeshImportDialogFlags);
-	                });
+				// Ok button
+				if (UI::ButtonCenteredOnLine("Ok", 0.5f))
+				{
+					ThreadPool::Submit([]()
+					{
+						ResourceCache::Load<Mesh>(s_MeshImportFilePath, s_MeshImportDialogFlags);
+					});
 	
-	                s_MeshImportDialog_IsVisible = false;
-	            }
-	        }
+					s_MeshImportDialog_IsVisible = false;
+				}
+			}
 	
-	        ImGui::End();
-	    }
+			ImGui::End();
+		}
 	}
 	
 	// ---------------------------------------------------------
 	
-	AssetBrowser::AssetBrowser(EditorLayer *editor) : Widget(editor)
+	AssetBrowser::AssetBrowser(EditorLayer *editor) : UI::EditorPanel()
 	{
-	    m_Title           = "Assets";
-	    s_FileDialogView  = CreateScope<FileDialog>(false, FileDialog_Type_Browser,       FileDialog_Op_Load, FileDialog_Filter_All);
-	    s_FileDialogLoad  = CreateScope<FileDialog>(true,  FileDialog_Type_FileSelection, FileDialog_Op_Load, FileDialog_Filter_Model);
-	    m_Flags          |= ImGuiWindowFlags_NoScrollbar;
-	    m_Editor = editor;
+		m_Title           = "Assets";
+		s_FileDialogView  = CreateScope<FileDialog>(false, FileDialog_Type_Browser,       FileDialog_Op_Load, FileDialog_Filter_All);
+		s_FileDialogLoad  = CreateScope<FileDialog>(true,  FileDialog_Type_FileSelection, FileDialog_Op_Load, FileDialog_Filter_Model);
+		m_Flags          |= ImGuiWindowFlags_NoScrollbar;
+		m_Editor = editor;
 	
-	    // just clicked, not selected (double-clicked, end of dialog)
-	    s_FileDialogView->SetCallbackOnItemClicked([this](const std::string& str) { OnPathClicked(str); });
+		// just clicked, not selected (double-clicked, end of dialog)
+		s_FileDialogView->SetCallbackOnItemClicked([this](const std::string& str) { OnPathClicked(str); });
 	}
 	
 	void AssetBrowser::OnTickVisible()
 	{
-	    if (UI::Button("Import"))
-	    {
-	        s_ShowFileDialogLoad = true;
-	    }
+		if (UI::Button("Import"))
+		{
+			s_ShowFileDialogLoad = true;
+		}
 	
-	    ImGui::SameLine();
-	    
-	    // view
-	    s_FileDialogView->Show(&s_ShowFileDialogView, static_cast<Layer *>(m_Editor));
+		ImGui::SameLine();
+		
+		// view
+		s_FileDialogView->Show(&s_ShowFileDialogView, static_cast<Layer *>(m_Editor));
 	
-	    // show load file dialog, true if a selection is made
-	    if (s_FileDialogLoad->Show(&s_ShowFileDialogLoad, static_cast<EditorLayer *>(m_Editor), nullptr, &s_MeshImportFilePath))
-	    {
-	        s_ShowFileDialogLoad = false;
-	        ShowMeshImportDialog(s_MeshImportFilePath);
-	    }
+		// show load file dialog, true if a selection is made
+		if (s_FileDialogLoad->Show(&s_ShowFileDialogLoad, static_cast<EditorLayer *>(m_Editor), nullptr, &s_MeshImportFilePath))
+		{
+			s_ShowFileDialogLoad = false;
+			ShowMeshImportDialog(s_MeshImportFilePath);
+		}
 	
-	    MeshImportDialog(static_cast<EditorLayer *>(m_Editor));
+		MeshImportDialog(static_cast<UILayer *>(m_Editor));
 	}
 	
-	void AssetBrowser::ShowMeshImportDialog(const std::string& file_path)
+	void AssetBrowser::ShowMeshImportDialog(const std::string& filePath)
 	{
-	    if (IO::FileManager::IsModel(file_path))
-	    {
-	        s_MeshImportDialog_IsVisible = true;
-	        s_MeshImportDialogFlags      = Mesh::GetDefaultFlags();
-	        s_MeshImportFilePath         = file_path;
-	    }
+		if (IO::FileManager::IsModel(filePath))
+		{
+			s_MeshImportDialog_IsVisible = true;
+			s_MeshImportDialogFlags      = Mesh::GetDefaultFlags();
+			s_MeshImportFilePath         = filePath;
+		}
 	}
-	
+
+	void AssetBrowser::OnUIRender(bool &isOpen)
+	{
+	}
+
 	void AssetBrowser::OnPathClicked(const std::string& path)
 	{
-	    if (!IO::FileSystem::IsFile(path))
-	        return;
+		if (!IO::FileSystem::IsFile(path))
+			return;
 	
-	    /*if (std::filesystem::path(path).extension() == ".material")
-	    {
-	        auto materialAsset = CreateRef<MaterialAsset>();
-	        materialAsset->Load(path);
+		/*if (std::filesystem::path(path).extension() == ".material")
+		{
+			auto materialAsset = CreateRef<MaterialAsset>();
+			materialAsset->Load(path);
 	
-	        if (const auto material = materialAsset->GetMaterial(); material)
-	        {
-	            Properties::Inspect(material);
-	        }
-	    }*/
+			if (const auto material = materialAsset->GetMaterial(); material)
+			{
+				Properties::Inspect(material);
+			}
+		}*/
 	}
 
 }

@@ -33,6 +33,8 @@
 #include <SceneryEditorX/core/events/key_events.h>
 #include <SceneryEditorX/core/events/mouse_events.h>
 #include <SceneryEditorX/core/layers/layer.h>
+#include <SceneryEditorX/renderer/ui/panel_manager.h>
+#include <SceneryEditorX/renderer/ui/ui_renderer.h>
 #include <SceneryEditorX/renderer/ui/ui_widget.h>
 #include <SceneryEditorX/scene/camera.h>
 #include <SceneryEditorX/scene/scene.h>
@@ -42,7 +44,7 @@
 
 namespace SceneryEditorX
 {
-/**
+	/**
 	 * @class EditorLayer
 	 * @brief Represents the main editor layer in the application, 
 	 * responsible for managing the editor's state, handling events, and rendering the UI.
@@ -55,11 +57,11 @@ namespace SceneryEditorX
 
 		void OnAttach() override;
 		void OnDetach() override;
-	    void Tick() override;
+		void Tick() override;
 		void InitEditor();
 
 		void OnRender() override;
-	    void OnEvent(Event &event) override;
+		void OnEvent(Event &event) override;
 		bool OnKeyPressedEvent(KeyPressedEvent& e);
 		bool OnMouseButtonPressed(MouseButtonPressedEvent& e);
 		
@@ -84,21 +86,22 @@ namespace SceneryEditorX
 
 		static bool IsSceneOpen();
 		static bool IsProjectOpen();
-	    static void SetDarkThemeColors();
-	    static void SetDarkThemeV2Colors();
+		static void SetDarkThemeColors();
+		static void SetDarkThemeV2Colors();
 
-	    void AllowInputEvents(bool allowInput);
+		void AllowInputEvents(bool allowInput);
 
-	    inline static ImFont* fontNormal = nullptr;
-	    inline static ImFont* fontBold   = nullptr;
+		inline static ImFont* fontNormal = nullptr;
+		inline static ImFont* fontBold   = nullptr;
 
 	private:
 		Ref<Scene> m_EditorScene;
 		Ref<Scene> m_CurrentScene;
-		Ref<Scene> m_RuntimeScene;
-	    std::string m_SceneFilePath;
+		Ref<UIRenderer> m_UIRenderer;
+		Scope<PanelManager> m_PanelManager;
 
-	    std::vector<UI::ChildWindow> m_ChildWindows;
+		std::string m_SceneFilePath;
+		std::vector<UI::ChildWindow> m_ChildWindows;
 		Vec2 m_ViewportBounds[2]       = {};
 		Vec2 m_SecondViewportBounds[2] = {};
 		std::pair<float, float> GetMouseViewportSpace(bool primaryViewport);

@@ -30,9 +30,8 @@
  */
 // ReSharper disable CppInconsistentNaming
 #pragma once
+#include "editor_panel.h"
 #include "ui_renderer.h"
-#include "ui_widget.h"
-
 #include <SceneryEditorX/core/layers/layer.h>
 
 // -------------------------------------------------------
@@ -98,33 +97,30 @@ namespace SceneryEditorX
 		 */
 		void AllowInputEvents(bool allowEvents);
 
-	    /**
+		/**
 		 * @brief Retrieves a pointer to the first widget of type T in the editor's widget list. Returns nullptr if no such widget is found.
 		 * @tparam T The type of the widget to retrieve.
 		 * @return A pointer to the first widget of type T, or nullptr if no such widget is found.
 		 */
 		template<typename T>
-		T* GetWidget()
+		T* GetPanel()
 		{
-			for (const auto& widget : m_Widgets)
+			for (const auto& widget : m_UIPanels)
 			{
-				if (T* widgetT = dynamic_cast<T*>(widget.Get()))
-				{
-					return widgetT;
-				}
+				if (T* panel = dynamic_cast<T*>(widget.Get()))
+					return panel;
 			}
 
 			return nullptr;
 		}
 
 	private:
-		Scope<UIRenderer> m_UIRenderer; // Renderer responsible for drawing the UI elements.
-		ImFont *m_Font_Normal;          // Pointer to the normal font used in the UI.
-		ImFont *m_Font_Bold;            // Pointer to the bold font used in the UI.
-		float m_Time = 0.0f;            // Time accumulator for UI animations or updates.
-	    std::vector<Ref<Widget>> m_Widgets;
-
-		std::string m_IniFilePath;		// Owns the imgui ini path string so io.IniFilename never dangles (C26815).
+		Scope<UIRenderer> m_UIRenderer;					// Renderer responsible for drawing the UI elements.
+		ImFont *m_Font_Normal;							// Pointer to the normal font used in the UI.
+		ImFont *m_Font_Bold;							// Pointer to the bold font used in the UI.
+		float m_Time = 0.0f;							// Time accumulator for UI animations or updates.
+		std::vector<Ref<UI::EditorPanel>> m_UIPanels;	// List of editor panels managed by the UILayer.
+		std::string m_IniFilePath;						// Owns the imgui ini path string so io.IniFilename never dangles (C26815).
 
 	};
 	

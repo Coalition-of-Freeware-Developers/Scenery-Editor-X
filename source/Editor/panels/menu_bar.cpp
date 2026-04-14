@@ -41,6 +41,7 @@
 #include <SceneryEditorX/core/window/window.h>
 #include <SceneryEditorX/renderer/renderer.h>
 #include <SceneryEditorX/renderer/ui/ui.h>
+#include <SceneryEditorX/renderer/ui/ui_layer.h>
 #include <SceneryEditorX/renderer/vulkan/debug/graphics_debug.h>
 #include <SceneryEditorX/scene/scene.h>
 
@@ -54,21 +55,21 @@ namespace SceneryEditorX
 		bool show_file_dialog = false;
 		bool show_imgui_metrics_window = false;
 		bool show_imgui_style_window = false;
-		bool show_imgui_demo_widow = false;
-		EditorLayer *s_Editor = nullptr;
+		bool show_imgui_demo_window = false;
+		UILayer *s_Editor = nullptr;
 		std::string file_dialog_selection_path;
 		Scope<FileDialog> file_dialog;
 		
 		template <class T>
 		void MenuEntry()
 		{
-		    T *widget = s_Editor->GetWidget<T>();
+		    T *widget = s_Editor->GetPanel<T>();
 		
-		    // menu item with checkmark based on widget->GetVisible()
-		    if (ImGui::MenuItem(widget->GetTitle(), nullptr, widget->GetVisible()))
+		    // menu item with checkmark based on widget->IsVisible()
+		    if (ImGui::MenuItem(widget->GetTitle(), nullptr, widget->IsVisible()))
 		    {
 		        // toggle visibility
-		        widget->SetVisible(!widget->GetVisible());
+		        widget->SetVisible(!widget->IsVisible());
 		    }
 		}
 		
@@ -165,7 +166,7 @@ namespace SceneryEditorX
 			                    static_cast<int>(show_file_dialog),
 			                    static_cast<void *>(&file_dialog_selection_path));
 			
-			    if (file_dialog->Show(&show_file_dialog, s_Editor, nullptr, &file_dialog_selection_path))
+			    if (file_dialog->Show(&show_file_dialog, static_cast<UILayer *>(s_Editor), nullptr, &file_dialog_selection_path))
 			    {
 			        // load world
 			        if (file_dialog->GetOperation() == FileDialog_Op_Open || file_dialog->GetOperation() == FileDialog_Op_Load)
@@ -258,7 +259,7 @@ namespace SceneryEditorX
 			        {
 			            ImGui::MenuItem("Metrics", nullptr, &show_imgui_metrics_window);
 			            ImGui::MenuItem("Style", nullptr, &show_imgui_style_window);
-			            ImGui::MenuItem("Demo", nullptr, &show_imgui_demo_widow);
+			            ImGui::MenuItem("Demo", nullptr, &show_imgui_demo_window);
 			
 			            ImGui::EndMenu();
 			        }
@@ -302,11 +303,11 @@ namespace SceneryEditorX
 		namespace buttons_toolbar
 		{
 			float button_size = 19.0f;
-			std::unordered_map<ImageResource *, Widget *> widgets;
+			std::unordered_map<ImageResource *, UI::EditorPanel *> widgets;
 			
 			// a button that when pressed will call "on press" and derives it's color (active/inactive) based on "get_visibility".
-			void toolbar_button(ImageResource *icon_type, const char *tooltip_text, bool (*get_visibility)(Widget *),
-			                    void (*on_press)(Widget *), Widget *widget = nullptr, float cursor_pos_x = -1.0f)
+			void toolbar_button(ImageResource *icon_type, const char *tooltip_text, bool (*get_visibility)(UI::EditorPanel *),
+			                    void (*on_press)(UI::EditorPanel *), UI::EditorPanel *widget = nullptr, float cursor_pos_x = -1.0f)
 			{
 			    ImGui::SameLine();
 			    ImVec4 button_color = get_visibility(widget) ? ImGui::GetStyle().Colors[ImGuiCol_ButtonActive]
@@ -355,8 +356,8 @@ namespace SceneryEditorX
 			        // buttons from custom functionality
 			        {
 			            // screenshot button
-			            static auto screenshot_visible = [](Widget *) { return false; };
-			            static auto screenshot_press = [](Widget *) {
+			            static auto screenshot_visible = [](UI::EditorPanel *) { return false; };
+			            static auto screenshot_press = [](UI::EditorPanel *) {
 			                EDITOR_WARN_TAG("Menubar", "Screenshot functionality is currently disabled.");
 			                //Renderer::Screenshot();
 			            };
@@ -368,8 +369,8 @@ namespace SceneryEditorX
 			                           cursor_pos_x);
 			
 			            // renderdoc button
-			            static auto renderdoc_visible = [](Widget *) { return false; };
-			            static auto renderdoc_press = [](Widget *) {
+			            static auto renderdoc_visible = [](UI::EditorPanel *) { return false; };
+			            static auto renderdoc_press = [](UI::EditorPanel *) {
 			                if (Debugging::IsRenderdocEnabled())
 			                {
 			                    EDITOR_WARN_TAG("Menubar", "RenderDoc functionality is currently disabled.");
@@ -389,8 +390,8 @@ namespace SceneryEditorX
 			                           nullptr);
 			
 			            // world selection
-			            /*static auto world_visible = [](Widget*) { return ChildWindow::GetVisibilityWorlds(); };
-								static auto world_press   = [](Widget*) { ChildWindow::SetVisibilityWorlds(!ChildWindow::GetVisibilityWorlds()); };
+			            /*static auto world_visible = [](UI::EditorPanel*) { return ChildWindow::GetVisibilityWorlds(); };
+								static auto world_press   = [](UI::EditorPanel*) { ChildWindow::SetVisibilityWorlds(!ChildWindow::GetVisibilityWorlds()); };
 								toolbar_button(ResourceCache::GetIcon(IconType::Terrain), "World selection window",
 									world_visible,
 									world_press,
@@ -401,10 +402,10 @@ namespace SceneryEditorX
 			        // buttons from widgets
 			        for (auto &widget_it : widgets)
 			        {
-			            Widget *widget = widget_it.second;
+			            UI::EditorPanel *widget = widget_it.second;
 			            ImageResource *widget_icon = widget_it.first;
-			            static auto is_widget_visible = [](Widget *widget) { return widget->GetVisible(); };
-			            static auto set_widget_visible = [](Widget *widget) { widget->SetVisible(true); };
+			            static auto is_widget_visible = [](UI::EditorPanel *widget) { return widget->IsVisible(); };
+			            static auto set_widget_visible = [](UI::EditorPanel *widget) { widget->SetVisible(true); };
 			            toolbar_button(widget_icon, widget->GetTitle(), is_widget_visible, set_widget_visible, widget);
 			        }
 			    }
@@ -489,7 +490,7 @@ namespace SceneryEditorX
 
 	} // namespace
 	
-	void MenuBar::Initialize(EditorLayer *editor)
+	void MenuBar::Initialize(UILayer *editor)
 	{
 	    // store editor pointer for use by DrawFileDialog and other windows
 	    s_Editor = editor;
@@ -508,11 +509,11 @@ namespace SceneryEditorX
 	    //buttons_toolbar::widgets[ResourceCache::GetIcon(IconType::Profiler)]      = editor->GetWidget<Profiler>();
 	    //buttons_toolbar::widgets[ResourceCache::GetIcon(IconType::ResourceCache)] = editor->GetWidget<ResourceViewer>();
 	    //buttons_toolbar::widgets[ResourceCache::GetIcon(IconType::Shader)]        = editor->GetWidget<ShaderEditor>();
-	    buttons_toolbar::widgets[ResourceCache::GetIcon(IconType::Gear)] = editor->GetWidget<RenderOptions>();
-	    buttons_toolbar::widgets[ResourceCache::GetIcon(IconType::Texture)] = editor->GetWidget<TextureViewer>();
+	    buttons_toolbar::widgets[ResourceCache::GetIcon(IconType::Gear)] = editor->GetPanel<RenderOptions>();
+	    buttons_toolbar::widgets[ResourceCache::GetIcon(IconType::Texture)] = editor->GetPanel<TextureViewer>();
 	}
 	
-	void MenuBar::SetEditor(EditorLayer *editorPtr)
+	void MenuBar::SetEditor(UILayer *editorPtr)
 	{
 	    s_Editor = editorPtr;
 	    if (!editorPtr)
@@ -527,7 +528,7 @@ namespace SceneryEditorX
 	
 	void MenuBar::Tick()
 	{
-	#pragma region MenuBar
+#pragma region MenuBar
 	    {
 	        ImGuiStyle &style = ImGui::GetStyle();
 	        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(style.FramePadding.x, 8.0f));
@@ -626,9 +627,9 @@ namespace SceneryEditorX
 	            ImGui::ShowMetricsWindow();
 	        }
 	
-	        if (show_imgui_demo_widow)
+	        if (show_imgui_demo_window)
 	        {
-	            ImGui::ShowDemoWindow(&show_imgui_demo_widow);
+	            ImGui::ShowDemoWindow(&show_imgui_demo_window);
 	        }
 	
 	        //editor->GetWidget<Style>()->SetVisible(show_imgui_style_window);

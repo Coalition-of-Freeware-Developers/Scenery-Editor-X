@@ -536,7 +536,7 @@ namespace SceneryEditorX
 		}
 	}
 	
-	Properties::Properties(EditorLayer* editor) : Widget(editor)
+	Properties::Properties(EditorLayer* editor) : UI::EditorPanel()
 	{
 		m_Title         = "Properties";
 		m_InitialSize.x = 500;

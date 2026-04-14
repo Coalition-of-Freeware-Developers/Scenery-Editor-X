@@ -42,7 +42,7 @@ namespace SceneryEditorX
 	 * @brief Responsible for rendering ImGui draw data in the 
 	 * Scenery Editor X application Vulkan renderer.
 	 */
-	class UIRenderer
+	class UIRenderer : public RefCounted
 	{
 	public:
 		UIRenderer() = default;

@@ -53,6 +53,21 @@
 namespace SceneryEditorX
 {
 
+	// Helper to map VkShaderStageFlagBits to a small bitmask for duplicate detection
+	static uint32_t StageFlagToBit(VkShaderStageFlagBits stage)
+	{
+		switch (stage)
+		{
+		case VK_SHADER_STAGE_VERTEX_BIT: return 1u << 0;
+		case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT: return 1u << 1;
+		case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT: return 1u << 2;
+		case VK_SHADER_STAGE_GEOMETRY_BIT: return 1u << 3;
+		case VK_SHADER_STAGE_FRAGMENT_BIT: return 1u << 4;
+		case VK_SHADER_STAGE_COMPUTE_BIT: return 1u << 5;
+		default: return 0;
+		}
+	}
+
 	static VkPipelineCache s_PipelineCache = nullptr;
 
 	/**
@@ -789,8 +804,25 @@ if (state.IsCompute())
 		pipelineCI.pDepthStencilState = &depthStencilState;
 		pipelineCI.pColorBlendState = &colorBlendState;
 		pipelineCI.pDynamicState = &dynamicState;
-		pipelineCI.layout = info.layout;
-	
+
+		{
+			if (info.layout == VK_NULL_HANDLE)
+			{
+				SEDX_CORE_ERROR_TAG("Pipeline", "invalid pipeline layout (VK_NULL_HANDLE)");
+				return VK_NULL_HANDLE;
+			}
+			for (uint32_t i = 0; i < pipelineCI.stageCount; ++i)
+			{
+				if (pipelineCI.pStages[i].module == VK_NULL_HANDLE)
+				{
+					SEDX_CORE_ERROR_TAG("Pipeline", "invalid shader module at stage {}", i);
+					return VK_NULL_HANDLE;
+				}
+			}
+
+			pipelineCI.layout = info.layout;
+		}
+
 		VkPipeline pipeline = VK_NULL_HANDLE;
 		VkResult r = vkCreateGraphicsPipelines(info.device, VK_NULL_HANDLE, 1, &pipelineCI, nullptr, &pipeline);
 		if (r != VK_SUCCESS)

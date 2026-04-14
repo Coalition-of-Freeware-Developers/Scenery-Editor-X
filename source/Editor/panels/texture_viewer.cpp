@@ -62,7 +62,7 @@ namespace SceneryEditorX
 
 	// -------------------------------------------------------
 
-	TextureViewer::TextureViewer(EditorLayer *editor) : Widget(editor)
+	TextureViewer::TextureViewer(EditorLayer *editor) : UI::EditorPanel()
 	{
 		m_Title = "Texture Viewer";
 		m_Visible = false;

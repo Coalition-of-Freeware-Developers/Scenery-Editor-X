@@ -42,26 +42,46 @@ namespace SceneryEditorX
 	class MenuBar
 	{
 	public:
-		static void Initialize(EditorLayer* editor);
-		// Convenience overload to allow UI layer to initialize the menu bar when
-		// refactoring moves the call site. This forwards to the EditorLayer-based
-		// initializer using a reinterpret_cast. The cast is kept explicit to
-		// document the mismatch in types and avoid accidental implicit conversions.
-		static void Initialize(UILayer* uiLayer)
-		{
-			Initialize(reinterpret_cast<EditorLayer*>(uiLayer));
-		}
+		/**
+		 * @brief Initialize the menu bar with the given editor
+		 * @param editor The editor instance to associate with the menu bar
+		 */
+		static void Initialize(UILayer* editor);
+
+		/**
+		 * @brief Update the menu bar each frame
+		 */
 		static void Tick();
-		// Set the internal editor pointer used by menu bar windows
-		static void SetEditor(EditorLayer* editor);
+
+		/**
+		 * @brief Set the internal editor pointer used by menu bar windows
+		 * @param editor The editor instance to associate with the menu bar
+		 */
+		static void SetEditor(UILayer* editor);
 	
+		/**
+		 * @brief Show the world save dialog
+		 */
 		static void ShowWorldSaveDialog();
+
+		/**
+		 * @brief Show the world load dialog
+		 */
 		static void ShowWorldLoadDialog();
-	
+
+		/**
+		 * @brief Get the horizontal padding for the menu bar
+		 * @return The horizontal padding value
+		 */
 		static float GetPaddingX() { return 14.0f; }
+
+		/**
+		 * @brief Get the vertical padding for the menu bar
+		 * @return The vertical padding value
+		 */
 		static float GetPaddingY() { return 8.0f; }
 	private:
-		Ref<EditorLayer> m_Editor;
+		Ref<UILayer> m_Editor;
 	};
 }
 
