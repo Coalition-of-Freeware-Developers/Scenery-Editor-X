@@ -230,17 +230,17 @@ namespace SceneryEditorX
 				SEDX_CORE_ASSERT(pipelineState.shaders[static_cast<uint32_t>(StageType::Vertex)] && pipelineState.shaders[static_cast<uint32_t>(StageType::Vertex)]->IsCompiled());
 				merge_descriptors(pipelineState.shaders[static_cast<uint32_t>(StageType::Vertex)]->GetDescriptors());
 				
-				if (pipelineState.shaders.contains(static_cast<uint32_t>(StageType::Fragment)) && pipelineState.shaders[static_cast<uint32_t>(StageType::Fragment)])
+				if (pipelineState.shaders[static_cast<uint32_t>(StageType::Fragment)] && pipelineState.shaders[static_cast<uint32_t>(StageType::Fragment)]->IsCompiled())
 				{
 					merge_descriptors(pipelineState.shaders[static_cast<uint32_t>(StageType::Fragment)]->GetDescriptors());
 				}
 		
-				if (pipelineState.shaders.contains(static_cast<uint32_t>(StageType::TessellationControl)) && pipelineState.shaders[static_cast<uint32_t>(StageType::TessellationControl)])
+				if (pipelineState.shaders[static_cast<uint32_t>(StageType::TessellationControl)] && pipelineState.shaders[static_cast<uint32_t>(StageType::TessellationControl)]->IsCompiled())
 				{
 					merge_descriptors(pipelineState.shaders[static_cast<uint32_t>(StageType::TessellationControl)]->GetDescriptors());
 				}
 		
-				if (pipelineState.shaders.contains(static_cast<uint32_t>(StageType::TessellationEvaluation)) && pipelineState.shaders[static_cast<uint32_t>(StageType::TessellationEvaluation)])
+				if (pipelineState.shaders[static_cast<uint32_t>(StageType::TessellationEvaluation)] && pipelineState.shaders[static_cast<uint32_t>(StageType::TessellationEvaluation)]->IsCompiled())
 				{
 					merge_descriptors(pipelineState.shaders[static_cast<uint32_t>(StageType::TessellationEvaluation)]->GetDescriptors());
 				}

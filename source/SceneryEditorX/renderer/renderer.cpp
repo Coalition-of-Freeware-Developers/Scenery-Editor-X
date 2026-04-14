@@ -117,6 +117,7 @@ namespace SceneryEditorX
 	RendererProperties *Renderer::m_Data = nullptr;
 	static Ref<Swapchain> s_Swapchain = nullptr;
 	static uint64_t s_FrameNumber = 0;
+	static Scope<ShaderManager> s_ShaderManager = nullptr;
 
 	std::atomic<bool> Renderer::m_ResourcesInitialized = false;
 	Scope<Model> Renderer::m_TestModel = nullptr;
@@ -148,7 +149,6 @@ namespace SceneryEditorX
 	// Basic forward pipeline
 	VkPipeline Renderer::m_BasicPipeline = VK_NULL_HANDLE;
 	VkPipelineLayout Renderer::m_BasicPipelineLayout = VK_NULL_HANDLE;
-	Scope<ShaderManager> Renderer::m_BasicShaderManager = nullptr;
 	std::array<VkBuffer, MAX_FRAMES_IN_FLIGHT> Renderer::m_BasicShaderDataBuffers = {};
 	std::array<VmaAllocation, MAX_FRAMES_IN_FLIGHT> Renderer::m_BasicShaderDataAllocations = {};
 	std::array<void *, MAX_FRAMES_IN_FLIGHT> Renderer::m_BasicShaderDataMapped = {};
@@ -337,6 +337,9 @@ namespace SceneryEditorX
 		
 		s_AssetManager = CreateScope<AssetManager>();
 		SEDX_CORE_TRACE_TAG("Renderer", "Created AssetManager");
+		
+		s_ShaderManager = CreateScope<ShaderManager>();
+		SEDX_CORE_TRACE_TAG("Renderer", "Created ShaderManager");
 
 		CreateFrameResources();
 		// Temporary debug trace: log sync vectors sizes after frame resources creation
@@ -506,7 +509,8 @@ namespace SceneryEditorX
 				vkDestroyPipelineLayout(dev, m_BasicPipelineLayout, nullptr);
 				m_BasicPipelineLayout = VK_NULL_HANDLE;
 			}
-			m_BasicShaderManager.reset();
+			ShaderManager::Clear();
+			s_ShaderManager.reset();
 
 			if (m_GridPipeline != VK_NULL_HANDLE)
 			{
@@ -919,7 +923,7 @@ namespace SceneryEditorX
 			SubmitAndPresent();
 			*/
 
-		    // NOTE: BlitToBackBuffer via m_CmdList_Present is intentionally removed here.
+			// NOTE: BlitToBackBuffer via m_CmdList_Present is intentionally removed here.
 			// m_CmdList_Present is used for resource updates (materials, lights, etc.) only;
 			// it is never submitted with a swapchain acquire semaphore, so any render commands
 			// recorded into it would be silently discarded. The blit-to-swapchain is handled
@@ -2214,12 +2218,7 @@ namespace SceneryEditorX
 		slangModule->getTargetCode(0, spirv.writeRef());
 
 		// Persist shader modules as a static member so they outlive this function.
-		m_BasicShaderManager = CreateScope<ShaderManager>(spirv->getBufferPointer(), spirv->getBufferSize());
-		if (!m_BasicShaderManager || !m_BasicShaderManager->IsCompiled())
-		{
-			SEDX_CORE_ERROR_TAG("Renderer", "Shader compilation produced no modules");
-			return;
-		}
+		s_ShaderManager->CreateSingleBlob(spirv->getBufferPointer(), spirv->getBufferSize());
 
 		VkDevice device = RenderContext::Get()->GetDevice()->GetLogicalDevice();
 
@@ -2238,9 +2237,11 @@ namespace SceneryEditorX
 		SEDX_CORE_TRACE_TAG("Renderer", "Creating grid shader resources");
 		if (gridSpirv && gridSpirv->getBufferSize() > 0)
 		{
-			m_GridShaderManager = CreateScope<ShaderManager>(gridSpirv->getBufferPointer(), gridSpirv->getBufferSize());
 
-			if (m_GridShaderManager && m_GridShaderManager->IsCompiled())
+			s_ShaderManager->CreateShader("grid");
+			s_ShaderManager->CreateSingleBlob(gridSpirv->getBufferPointer(), gridSpirv->getBufferSize());
+
+			if (s_ShaderManager->GetShader("grid") && s_ShaderManager->GetShader("grid")->IsCompiled())
 			{
 
 				VkPipelineLayoutCreateInfo gridLayoutCI{};
@@ -2369,7 +2370,7 @@ namespace SceneryEditorX
 		Pipeline::GraphicsCreateInfo pipeCI{};
 		pipeCI.device           = device;
 		pipeCI.layout           = m_BasicPipelineLayout;
-		pipeCI.shaderManager    = m_BasicShaderManager.get();
+		pipeCI.shaderManager    = s_ShaderManager.get();
 		pipeCI.vertexBinding    = Model::GetVertexBindingDescription();
 		pipeCI.vertexAttributes = Model::GetVertexAttributeDescriptions();
 		pipeCI.colorFormat      = s_Swapchain->GetImageFormat();

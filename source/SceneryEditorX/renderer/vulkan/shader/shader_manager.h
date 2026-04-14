@@ -30,8 +30,9 @@
  */
 #pragma once
 #include "shader.h"
-#include "shader_compiler.h"
 #include <vector>
+#include <SceneryEditorX/renderer/vulkan/enums.h>
+#include <SceneryEditorX/renderer/vulkan/shader/shader_input.h>
 
 // -------------------------------------------------------
 
@@ -47,25 +48,29 @@ namespace SceneryEditorX
 	class ShaderManager : public RefCounted
 	{
 	public:
-		ShaderManager() = default;
+		ShaderManager();
 
 		/* @brief Destroys the ShaderManager and releases all associated Vulkan shader modules. */
 		~ShaderManager();
 
+		/**
+		 * @brief Retrieves the singleton instance of the ShaderManager.
+		 * @return A reference to the singleton ShaderManager instance.
+		 */
 		static Ref<ShaderManager> Get();
 
 		/**
-		 * @brief Constructs a ShaderManager with a single SPIR-V blob for both vertex and fragment stages.
+		 * @brief Constructs a single shader with a single SPIR-V blob for both vertex and fragment stages.
 		 * @param spirvCode Pointer to the SPIR-V bytecode.
 		 * @param codeSize Size of the SPIR-V bytecode in bytes.
 		 */
-		ShaderManager(const void* spirvCode, size_t codeSize);
+		void CreateSingleBlob(const void* spirvCode, size_t codeSize);
 
 		/**
-		 * @brief Constructs a ShaderManager with multiple SPIR-V blobs for different shader stages.
+		 * @brief Creates Vulkan shader modules with multiple SPIR-V blobs for different shader stages.
 		 * @param stages A vector of pairs, each containing a shader stage flag and a pair of SPIR-V bytecode pointer and size.
 		 */
-		ShaderManager(const std::vector<std::pair<VkShaderStageFlagBits, std::pair<const void *, size_t>>> &stages);
+		void CreateShaderBlobs(const std::vector<std::pair<VkShaderStageFlagBits, std::pair<const void *, size_t>>> &stages);
 
 		/**
 		 * @brief Creates a new shader with the specified name.
@@ -129,9 +134,27 @@ namespace SceneryEditorX
 		 */
 		[[nodiscard]] VkShaderModule ModuleAt(const size_t i) const { return m_Modules[i]; }
 
+		/**
+		 * @brief Compile a shader file to SPIR-V (delegates to ShaderCompiler)
+		 * @param stage 
+		 * @param filepath 
+		 * @param optimize 
+		 * @return 
+		 */
+		static std::vector<uint32_t> CompileToSpirv(StageType stage, const std::string& filepath, bool optimize = false);
+
+		/**
+		 * @brief Reflect shader inputs from SPIR-V (delegates to ShaderCompiler)
+		 * @param stage 
+		 * @param spirv 
+		 * @return 
+		 */
+		static std::vector<ShaderInput> ReflectInputs(StageType stage, const std::vector<uint32_t>& spirv);
+
 	private:
 		std::vector<VkShaderModule> m_Modules{};		// Store the Vulkan shader modules for each stage
 		std::vector<VkShaderStageFlagBits> m_Stages{};	// Store the corresponding shader stage flags (e.g., VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_FRAGMENT_BIT)
+		static std::mutex s_ShaderMutex; // protect m_Shaders and compile operations
 		static std::unordered_map<std::string, Ref<Shader>> m_Shaders;	// Static map to manage shaders by name
 	};
 

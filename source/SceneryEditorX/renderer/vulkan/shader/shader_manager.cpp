@@ -60,7 +60,7 @@ namespace SceneryEditorX
 		return module;
 	}
 
-	ShaderManager::ShaderManager(const void *spirvCode, size_t codeSize)
+	void ShaderManager::CreateSingleBlob(const void *spirvCode, size_t codeSize)
 	{
 		// Use the same module for vertex and fragment stages by default.
 		m_Stages.reserve(2);
@@ -70,12 +70,16 @@ namespace SceneryEditorX
 		m_Stages.push_back(VK_SHADER_STAGE_FRAGMENT_BIT);
 		m_Modules.push_back(CreateShaderModule(spirvCode, codeSize));
 
-	   // Mark as compiled only if all modules were created successfully
-	   const bool allValid = std::ranges::all_of(m_Modules, [](VkShaderModule m) { return m != VK_NULL_HANDLE; });
-	   m_CompilationState = allValid ? ShaderCompiler::State::Succeeded : ShaderCompiler::State::Failed;
+		// Mark as compiled only if all modules were created successfully
+		const bool allValid = std::ranges::all_of(m_Modules, [](VkShaderModule m) { return m != VK_NULL_HANDLE; });
+		/**
+		 * Note: compilation state is tracked per-Shader (SceneryEditorX::Shader). ShaderManager does not
+		 * own a m_CompilationState for individual shaders; per-shader state should be updated on creation
+		 * or reload via Shader instances. Leave this constructor responsibility to the owning Shader objects.
+		 */
 	}
 
-	ShaderManager::ShaderManager(const std::vector<std::pair<VkShaderStageFlagBits, std::pair<const void *, size_t>>> &stages)
+	void ShaderManager::CreateShaderBlobs(const std::vector<std::pair<VkShaderStageFlagBits, std::pair<const void *, size_t>>> &stages)
 	{
 		m_Stages.reserve(stages.size());
 		m_Modules.reserve(stages.size());
@@ -85,18 +89,24 @@ namespace SceneryEditorX
 			m_Modules.push_back(CreateShaderModule(s.second.first, s.second.second));
 		}
 
-	   // Mark as compiled only if all modules were created successfully
-	   const bool allValid = !m_Modules.empty() && std::ranges::all_of(m_Modules, [](VkShaderModule m) { return m != VK_NULL_HANDLE; });
-	   m_CompilationState = allValid ? ShaderCompiler::State::Succeeded : ShaderCompiler::State::Failed;
+		// Mark as compiled only if all modules were created successfully
+		// Note: Do NOT attempt to set a Shader-specific compilation state from here.
+		const bool allValid = !m_Modules.empty() && std::ranges::all_of(m_Modules, [](VkShaderModule m) { return m != VK_NULL_HANDLE; });
+	}
+
+	ShaderManager::ShaderManager()
+	{
+		if (!s_Instance)
+			s_Instance = CreateRef<ShaderManager>();
+
+	    SEDX_CORE_TRACE_TAG("ShaderManager", "Created ShaderManager");
 	}
 
 	ShaderManager::~ShaderManager()
 	{
 		const Ref<Device> device = RenderContext::Get()->GetDevice();
 		if (!device.IsValid())
-		{
 			return;
-		}
 
 		for (VkShaderModule module : m_Modules)
 		{
@@ -121,7 +131,7 @@ namespace SceneryEditorX
 		if (m_Shaders.contains(name))
 			return m_Shaders[name];
 
-		m_Shaders[name] = CreateRef<Shader>();
+		m_Shaders[name] = CreateRef<Shader>(name.c_str());
 		return m_Shaders[name];
 	}
 
@@ -129,6 +139,8 @@ namespace SceneryEditorX
 	{
 		if (m_Shaders.contains(name))
 			return m_Shaders[name];
+
+		m_Shaders[name] = CreateRef<Shader>(name.c_str());
 
 		return m_Shaders[name];
 	}
@@ -149,7 +161,7 @@ namespace SceneryEditorX
 
 	void ShaderManager::RenderThread_Reload(const Ref<Shader> &shaderName, bool forceCompile)
 	{
-	    SEDX_CORE_ASSERT(shaderName.IsValid(), "Invalid shader reference");
+		SEDX_CORE_ASSERT(shaderName.IsValid(), "Invalid shader reference");
 
 		// Iterate over all possible StageType enum values and recompile any stages present
 		for (int i = 0; i < static_cast<int>(StageType::MaxEnum); ++i)
@@ -171,6 +183,17 @@ namespace SceneryEditorX
 	void ShaderManager::Clear()
 	{
 		m_Shaders.clear();
+	}
+
+	std::vector<uint32_t> ShaderManager::CompileToSpirv(const StageType stage, const std::string &filepath, const bool optimize)
+	{
+		// Optionally do cache lookups here...
+		return ShaderCompiler::CompileShader(stage, filepath, optimize);
+	}
+
+	std::vector<ShaderInput> ShaderManager::ReflectInputs(const StageType stage, const std::vector<uint32_t> &spirv)
+	{
+		return ShaderCompiler::Reflect(stage, spirv);
 	}
 
 } // namespace SceneryEditorX

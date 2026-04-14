@@ -1,3 +1,9 @@
+---
+name: 'Scenery Editor X Development Guidelines'
+description: 'Guidelines and best practices for contributing to the Scenery Editor X codebase, including architectural patterns, C++ features to leverage, and coding standards.'
+applyTo: "**/*.cpp, **/*.h, **/*.hpp, **/*.cc, **/*.cxx, **/*.c"
+---
+
 # GitHub Copilot Instructions for Scenery Editor X Application
 
 This repository contains the C++ source code for Scenery Editor X, a sophisticated 3D scenery editor with a modular architecture for exporting and importing 3D models and related data for X-Plane 12 airports.
@@ -41,17 +47,87 @@ Scenery Editor X is a modern C++20/C++23 application built with:
 	- Tessellation control shaders must use `main_tesc` as the entry point.
 	- Tessellation evaluation shaders must use `main_tese` as the entry point.
 - Scenery Editor X does not require or need any Raytracing capabilities or support.
-- For grid.slang pipeline wiring, use shader entry points main_vs (vertex) and main_frag (fragment) as declared in the shader source.
+- For `grid.slang` pipeline wiring, use shader entry points `main_vs` (vertex) and `main_frag` (fragment) as declared in the shader source.
 - Prefer avoiding macro-based implementations for component type mapping; use explicit C++ constructs (traits/specializations/functions) instead.
 - For this repository, UI/editor changes should use the existing SceneryEditorX::Renderer framework and application framework (Editor, Event, UILayer, Viewport) rather than introducing a separate rendering stack.
-- xMath library Matrix uses row-major order by default.  This means that the memory layout of the matrix is such that the elements of each row are stored contiguously in memory.
-- When using xMath Matrix with Vulkan, which typically uses column-major order, you need to transpose the matrix before passing it to Vulkan shaders to ensure correct interpretation of the data.
+- xMath library `Matrix` uses row-major order by default.  This means that the memory layout of the matrix is such that the elements of each row are stored contiguously in memory.
+- When using xMath `Matrix` with Vulkan, which typically uses column-major order, you need to transpose the matrix before passing it to Vulkan shaders to ensure correct interpretation of the data.
 - If the macro/preprocessor definition of `XMATH_COORD_DEFINED` is defined, then the xMath library will use a left-handed coordinate system.  If it is not defined, then the xMath library will use a right-handed coordinate system.  This allows for flexibility in choosing the coordinate system that best fits the needs of the application or engine being developed.
 - When using xMath with Vulkan, you should ensure that the coordinate system used by xMath matches the coordinate system expected by Vulkan.  Vulkan uses a right-handed coordinate system by default, so if you want to use a left-handed coordinate system with xMath, you should define `XMATH_COORD_DEFINED` to ensure compatibility with Vulkan's expectations.
 - When using xMath with Vulkan, you must declare `MATRIX_ROW_MAJOR` or `MATRIX_COLUMN_MAJOR` before including the xMath headers to specify the memory layout of matrices.  By default, xMath uses row-major order, but Vulkan typically expects column-major order.  Declaring the appropriate macro will ensure that the matrix data is correctly interpreted when passed to Vulkan shaders.
 - Ensure that xMath `MATRIX_COLUMN_MAJOR` is declared.
 
+## C++ Best Practices & Guidelines
+- Use `constexpr` for compile-time constants and functions where possible
+- Prefer `inline` variables for header-only constants
+- Use `[[nodiscard]]` to indicate functions whose return values should not be ignored
+- Utilize `std::optional`, `std::variant`, and `std::expected` for safer error handling and return types
 
+### C++ Features to Leverage
+- Use `std::ranges` for more expressive and efficient range-based operations
+- Use `std::optional` for functions that may fail or return no value, instead of raw pointers or special return values
+- Use `std::variant` for functions that can return multiple types of results, instead of using inheritance or unions
+- Use `std::expected` for functions that can return either a value or an error, providing a more expressive way to handle errors without exceptions
+- Use `std::optional` for function parameters that are not required, instead of using default values or overloading
+- Use RVO (Return Value Optimization) and NRVO (Named Return Value Optimization) to avoid unnecessary copies when returning objects from functions
+	- RVO (Return Value Optimization): Usually applies to unnamed, temporary objects, such as return MyObject();. Since C++17, RVO is guaranteed by the standard, making it mandatory.
+	- NRVO (Named Return Value Optimization): Applies to named local variables, such as MyObject obj; return obj;. Unlike RVO, NRVO is not guaranteed by the standard, but it is implemented by most modern compilers (GCC, Clang, MSVC) when optimizations are enabled.
+	- Functionality: Both optimizations prevent unnecessary calls to copy or move constructors, reducing memory usage and CPU overhead.
+	- Limitations: NRVO may not apply if the function has complex control flows (e.g., returning different named objects in if-else branches).
+	- Verification: Tools like cargo-show-asm (for Rust, similar to C++), or looking at disassembly with objdump, can confirm if these optimizations are applied.
+- Use Structured Bindings for unpacking tuples and pairs, improving readability when working with multiple return values or structured data
+- Use Designated Initializers for aggregate types to improve readability and maintainability when initializing complex structures
+- Use `std::string_view` for read-only string parameters to avoid unnecessary string copying and improve performance
+- Use Ref qualified function parameters (e.g., `const Ref<T>&`) to avoid unnecessary reference counting overhead when passing smart pointers
+- Use `Scope<T>` for exclusive ownership semantics when only one owner is needed, instead of `Ref<T>`
+- Use RAII (Resource Acquisition Is Initialization) principles for resource management, ensuring that resources are properly released when they go out of scope
+- Use concepts and SFINAE for template metaprogramming to create more expressive and type-safe templates
+- Use Class Template Argument Deduction (CTAD) for cleaner syntax when creating instances of template classes without needing to specify template arguments explicitly
+- Use Argument-Dependent Lookup (ADL) to allow for more flexible function overloading and better integration with user-defined types
+- Use move semantics and forwarding to optimize performance when working with temporary objects and function arguments
+- Use lambda expressions for concise and flexible function objects, especially for callbacks and event handlers
+- Use Inherited Base Class Constructors to simplify constructor definitions in derived classes, allowing them to inherit constructors from their base class without needing to redefine them
+
+#### Fold Expressions
+Use Fold Expressions to provide a concise syntax to reduce a variadic template parameter pack over a binary operator There are four primary forms of fold expressions, determined by where the ellipsis `(...)` is placed and whether an initial value is provided:
+
+	1. Unary Right Fold: `(pack op ...)`, Expands to `(p<sub>1</sub> op (p<sub>2</sub> op (p<sub>3</sub> op ... p<sub>n</sub>)))`
+	2. Unary Left Fold: `(... op pack)`, Expands to `(((p<sub>1</sub> op p<sub>2</sub>) op p<sub>3</sub>) op ... p<sub>n</sub>)`
+	3. Binary Right Fold: `(pack op ... op init)`, Expands to `(p<sub>1</sub> op (p<sub>2</sub> op (... (p<sub>n</sub> op init))))`
+	4. Binary Left Fold: `(init op ... op pack)`, Expands to `((((init op p<sub>1</sub>) op p<sub>2</sub>) op ... p<sub>n</sub>))`
+		- `pack`: An expression that contains an unexpanded pack and does not contain an operator with precedence lower than cast at the top level (formally, a cast-expression).
+		- `op`: Any of the 32 valid C++ binary operators. **Note**: In a binary fold, both ops must be the same.
+		- `init`: An expression that does not contain an unexpanded pack and does not contain an operator with precedence lower than cast at the top level (formally, a cast-expression)
+	- (where N is the number of elements in the pack expansion)
+
+**Example**
+```
+template<typename... Args>
+bool all(Args... args) { return (... && args); }
+
+bool b = all(true, true, true, false);
+// within all(), the unary left fold expands as
+//  return ((true && true) && true) && false;
+// b is false
+```
+
+When a unary fold is used with a pack expansion of length zero, only the following operators are allowed:
+
+1) Logical AND (`&&`). The value for the empty pack is `true`.
+2) Logical OR (`||`). The value for the empty pack is `false`.
+3) The comma operator (`,`). The value for the empty pack is `void()`.
+
+**NOTE**
+If the expression used as init or as pack has an operator with precedence below cast at the top level, it must be parenthesized:
+
+```
+template<typename... Args>
+int sum(Args&&... args)
+{
+//  return (args + ... + 1 * 2);   // Error: operator with precedence below cast
+    return (args + ... + (1 * 2)); // OK
+}
+```
 
 ### Core Layer Implementation
 

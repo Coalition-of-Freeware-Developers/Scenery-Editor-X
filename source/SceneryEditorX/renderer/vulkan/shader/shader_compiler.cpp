@@ -87,6 +87,7 @@ namespace ShaderCompiler
 			{
 			   SEDX_CORE_ERROR_TAG("Shader", "Slang compilation failed: {}", static_cast<const char*>(diagnosticsBlob->getBufferPointer()));
 			}
+
 			return {};
 		}
 

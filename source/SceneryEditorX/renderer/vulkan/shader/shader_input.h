@@ -29,6 +29,7 @@
  * -------------------------------------------------------
  */
 #pragma once
+#include <string>
 #include <SceneryEditorX/renderer/vulkan/enums.h>
 
 // -------------------------------------------------------
@@ -50,12 +51,12 @@ namespace SceneryEditorX
 	{
 		std::string debugName;
 	
-		uint32_t set;
-		uint32_t count;
+		uint32_t set = 0;
+		uint32_t count = 0;
 		uint32_t index = 0;
-		uint32_t binding;
-		StageType stage;
-		ShaderInputType type;
+		uint32_t binding = 0;
+		StageType stage = StageType::None;
+		ShaderInputType type = ShaderInputType::MaxEnum;
 	};
 
 	/**

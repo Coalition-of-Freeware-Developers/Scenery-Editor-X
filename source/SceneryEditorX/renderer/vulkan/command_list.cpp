@@ -1884,7 +1884,7 @@ namespace SceneryEditorX
 		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to set pipeline state");
 
 		// Compute path is still TODO.
-		if (pso.shaders.contains(static_cast<uint32_t>(StageType::Compute)))
+		if (pso.shaders[static_cast<uint32_t>(StageType::Compute)])
 		{
 			static bool warnedCompute = false;
 			if (!warnedCompute)

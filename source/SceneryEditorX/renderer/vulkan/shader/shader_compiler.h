@@ -29,10 +29,13 @@
  * -------------------------------------------------------
  */
 #pragma once
+#include "shader_input.h"
 #include "shader.h"
-#include "SceneryEditorX/renderer/vulkan/enums.h"
-
 #include <vector>
+#include <SceneryEditorX/renderer/vulkan/enums.h>
+
+// Forward declare ShaderInput in case of odd include-order scenarios
+namespace SceneryEditorX { struct ShaderInput; }
 
 // -------------------------------------------------------
 

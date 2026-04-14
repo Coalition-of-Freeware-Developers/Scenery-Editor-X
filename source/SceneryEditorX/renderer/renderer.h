@@ -796,9 +796,9 @@ namespace SceneryEditorX
 		static std::vector<ShadowSlice> m_ShadowSlices;
 
 		/* Basic forward-rendering pipeline (active until the full deferred pipeline is wired up) */
+	    Scope<ShaderManager> m_ShaderManager;
 		static VkPipeline m_BasicPipeline;
 		static VkPipelineLayout m_BasicPipelineLayout;
-		static Scope<ShaderManager> m_BasicShaderManager;
 		static std::array<VkBuffer,        MAX_FRAMES_IN_FLIGHT> m_BasicShaderDataBuffers;
 		static std::array<VmaAllocation,   MAX_FRAMES_IN_FLIGHT> m_BasicShaderDataAllocations;
 		static std::array<void*,           MAX_FRAMES_IN_FLIGHT> m_BasicShaderDataMapped;

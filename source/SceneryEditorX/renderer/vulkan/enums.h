@@ -183,7 +183,8 @@ namespace SceneryEditorX
 		CombinedImageSampler,
 		Sampler,
 		Texture,
-		StorageImage
+		StorageImage,
+		MaxEnum
 	};
 
 	/**

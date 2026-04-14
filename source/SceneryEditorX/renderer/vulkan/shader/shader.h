@@ -34,6 +34,7 @@
 #include "SceneryEditorX/utils/inheritance.h"
 #include <SceneryEditorX/renderer/vulkan/descriptor.h>
 #include <SceneryEditorX/renderer/vulkan/enums.h>
+#include <SceneryEditorX/renderer/vulkan/shader/shader_input.h>
 
 // -------------------------------------------------------
 
@@ -49,7 +50,23 @@ namespace SceneryEditorX
 		/* @brief Type definition for a callback function that is called when a shader is reloaded. */
 		typedef std::function<void()> ShaderReloadedCallback;
 
-		Shader() = default;
+		/**
+		 * @brief Constructs a Shader object with an optional name for debugging and hashing purposes.
+		 * @param shaderName The name of the shader.
+		 */
+		Shader(const char* shaderName = nullptr);	
+
+	    /**
+		 * @brief Constructs a Shader object with an optional name for debugging and hashing purposes.
+		 * @param shaderName The name of the shader.
+		 * @param path The file path to the shader source or binary.
+		 * @param forceCompile Whether to force compilation of the shader.
+		 */
+		Shader(const char* shaderName = nullptr, const std::string &path = "", bool forceCompile = false);
+
+		/**
+		 * @brief Destroys the Shader object and releases its resources.
+		 */
 		virtual ~Shader() override;
 
 		/**
@@ -126,13 +143,19 @@ namespace SceneryEditorX
 		 * @brief Retrieves the compilation state of the shader.
 		 * @return The current compilation state.
 		 */
-		ShaderCompiler::State GetCompilationState() const { return m_CompilationState; }
+		ShaderCompiler::State GetCompilationState() const { return m_CompilationState.load(); }
 
 		/**
 		 * @brief Checks if the shader has been successfully compiled.
 		 * @return True if the shader is compiled successfully, false otherwise.
 		 */
-		bool IsCompiled() const { return m_CompilationState == ShaderCompiler::State::Succeeded; }
+		bool IsCompiled() const { return m_CompilationState.load() == ShaderCompiler::State::Succeeded; }
+
+		/**
+		 * @brief Sets the compilation state for this shader.
+		 * @param state The new compilation state.
+		 */
+		void SetCompilationState(ShaderCompiler::State state) { m_CompilationState.store(state); }
 
 	private:
 		std::set<uint32_t> m_BindlessSets;							// Set of bindless descriptor sets
@@ -140,7 +163,7 @@ namespace SceneryEditorX
 		std::map<uint32_t, std::vector<ShaderInput>> m_Input;		// Map of shader inputs by descriptor set index
 		std::vector<VkDescriptorSetLayout> m_DescriptorSetLayouts;  // Vector of descriptor set layouts
 		std::string m_Filepath;										// File path for the shader (used for reloading)
-		const char* m_Name;											// Name for the shader (used for debugging and hashing)
+		const char* m_Name;											// Name for the shader (used for debugging, hashing, and searching for shaders)
 		StageType m_ShaderType	= StageType::MaxEnum;
 		StageType m_VertexType	= StageType::MaxEnum;
 		uint64_t m_Hash			= 0;                                // Cached hash value for the shader's configuration

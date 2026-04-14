@@ -40,6 +40,17 @@
 namespace SceneryEditorX
 {
 
+	Shader::Shader(const char *shaderName) : SharedObject(), m_Name(shaderName ? shaderName : "UnnamedShader")
+	{
+		SetObjectName(m_Name);
+	}
+
+	Shader::Shader(const char *shaderName, const std::string &path, bool forceCompile) : SharedObject(), m_Name(shaderName ? shaderName : "UnnamedShader")
+	{
+		SetObjectName(m_Name);
+		m_Filepath = path;
+	}
+
 	Shader::~Shader()
 	{        
 		// Guard against being called during the CRT static-destructor phase after
@@ -62,6 +73,9 @@ namespace SceneryEditorX
 			if (layout != VK_NULL_HANDLE)
 				vkDestroyDescriptorSetLayout(device->GetLogicalDevice(), layout, nullptr);
 		}
+
+		m_Filepath = "";
+		m_Name = "";
 		m_Stages.clear();
 	}
 
@@ -107,9 +121,6 @@ namespace SceneryEditorX
 		}
 	}
 
-	void Shader::RenderThread_reload(bool forceCompile)
-	{
-	}
 	void Shader::AddShaderStage(StageType stage, const std::string& filepath)
 	{
 		if (m_Stages.contains(stage))
@@ -188,7 +199,7 @@ namespace SceneryEditorX
 	{
 		std::vector<Descriptor> result;
 		
-		for (auto& [set, inputs] : m_Input)
+		for (auto &inputs : m_Input | std::views::values)
 		{
 			for (const ShaderInput& input : inputs)
 			{

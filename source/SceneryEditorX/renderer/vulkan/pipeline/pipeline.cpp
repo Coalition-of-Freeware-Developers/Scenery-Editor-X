@@ -145,11 +145,10 @@ namespace SceneryEditorX
 		};
 		for (StageType s : k_StageOrder)
 		{
-			auto it = m_State.shaders.find(static_cast<uint32_t>(s));
-			if (it != m_State.shaders.end() && it->second)
+			auto it = m_State.shaders[static_cast<uint32_t>(s)];
+			if (it && it->IsCompiled())
 			{
-				Ref<ShaderStage> stageRef = it->second->GetShaderStage(s);
-				if (stageRef)
+				if (Ref<ShaderStage> stageRef = it->GetShaderStage(s))
 				{
 					shader_stages.push_back(stageRef->GetStageCreateInfo());
 				}
@@ -301,9 +300,9 @@ if (state.IsCompute())
 			std::vector<VkVertexInputAttributeDescription> vertex_attribute_descs;
 			Shader* shader_vertex = nullptr;
 			{
-				auto it = m_State.shaders.find(static_cast<uint32_t>(StageType::Vertex));
-				if (it != m_State.shaders.end())
-					shader_vertex = it->second;
+				auto it = m_State.shaders[static_cast<uint32_t>(StageType::Vertex)];
+				if (it && it->IsCompiled())
+					shader_vertex = it;
 			}
 			
 			Ref<InputLayout> vertexInputLayout;
@@ -703,7 +702,7 @@ if (state.IsCompute())
 			}
 			else
 			{
-			    sci.pName = (sci.stage == VK_SHADER_STAGE_COMPUTE_BIT) ? "main_cs" : "main";
+				sci.pName = (sci.stage == VK_SHADER_STAGE_COMPUTE_BIT) ? "main_cs" : "main";
 			}
 		
 			shaderStages.push_back(sci);
