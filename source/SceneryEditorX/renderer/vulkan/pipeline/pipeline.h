@@ -90,7 +90,7 @@ namespace SceneryEditorX
 		 * @brief Destroy the Vulkan pipeline cache and release associated resources.
 		 * @param device The Vulkan device associated with the pipeline cache.
 		 */
-		void Destroy(VkDevice device = VK_NULL_HANDLE);
+		void DestroyPipeline(VkDevice device = VK_NULL_HANDLE);
 
 		/**
 		 * @brief Get the current state of the pipeline.

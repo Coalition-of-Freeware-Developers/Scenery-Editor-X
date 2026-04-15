@@ -88,6 +88,7 @@ namespace SceneryEditorX
 		Ref<Shader> m_Shader;
 		Ref<CommandList> m_CommandList;
 		PipelineSpecification m_Spec;
+		VkPipeline m_Pipeline = VK_NULL_HANDLE;
 	};
 
 }

@@ -54,7 +54,6 @@ namespace SceneryEditorX
 #pragma region Resource Declarations
 
 	// Renderer resources
-	static std::array<Ref<Shader>,  static_cast<uint32_t>(Renderer_Shader::MaxEnum)>			 s_Shaders;
 	static std::array<Ref<Sampler>, static_cast<uint32_t>(Renderer_Sampler::MaxEnum)>			 s_Samplers;
 	static std::array<Ref<Buffer>,  static_cast<uint32_t>(Renderer_Buffer::MaxEnum)>			 s_Buffers;
 	static std::array<Ref<ImageResource>, static_cast<uint32_t>(Renderer_RenderTarget::MaxEnum)> s_RenderTargets;
@@ -360,68 +359,6 @@ namespace SceneryEditorX
 	ImageResource* Renderer::GetRenderTarget(const Renderer_RenderTarget type)
 	{
 		return s_RenderTargets[static_cast<uint8_t>(type)].Get();
-	}
-
-	Shader* Renderer::GetShader(const Renderer_Shader type)
-	{
-		return s_Shaders[static_cast<uint8_t>(type)].Get();
-	}
-
-	void Renderer::SetShaderAvailable(const Renderer_Shader type)
-	{
-		const uint8_t index = static_cast<uint8_t>(type);
-
-		switch (type)
-		{
-			case Renderer_Shader::grid_vertex:
-			case Renderer_Shader::grid_frag:
-			{
-				constexpr uint8_t gridVertexIndex = static_cast<uint8_t>(Renderer_Shader::grid_vertex);
-				constexpr uint8_t gridFragIndex = static_cast<uint8_t>(Renderer_Shader::grid_frag);
-
-				Ref<Shader>& gridShader = s_Shaders[gridVertexIndex];
-				if (!gridShader)
-				{
-					gridShader = CreateRef<Shader>("grid");
-				}
-
-				if (!gridShader->HasStage(StageType::Vertex))
-				{
-					gridShader->AddShaderStage(StageType::Vertex, "resources/shaders/grid.slang");
-				}
-
-				if (!gridShader->HasStage(StageType::Fragment))
-				{
-					gridShader->AddShaderStage(StageType::Fragment, "resources/shaders/grid.slang");
-				}
-
-				s_Shaders[gridVertexIndex] = gridShader;
-				s_Shaders[gridFragIndex] = gridShader;
-				SEDX_CORE_ASSERT(s_Shaders[gridVertexIndex] != nullptr, "Failed to allocate grid shader");
-				break;
-		   }
-			case Renderer_Shader::blit_c:
-			{
-				if (!s_Shaders[index])
-				{
-					s_Shaders[index] = CreateRef<Shader>("blit");
-				}
-
-				Ref<Shader>& shader = s_Shaders[index];
-				SEDX_CORE_ASSERT(shader != nullptr, "Failed to allocate shader slot for type {}", static_cast<uint32_t>(type));
-				if (!shader->HasStage(StageType::Compute))
-				{
-					shader->AddShaderStage(StageType::Compute, "resources/shaders/blit.slang");
-				}
-				break;
-			}
-			default:
-				if (!s_Shaders[index])
-				{
-					s_Shaders[index] = CreateRef<Shader>();
-				}
-				break;
-		}
 	}
 
 	/*
@@ -789,11 +726,6 @@ namespace SceneryEditorX
 	std::array<Ref<ImageResource>, static_cast<uint32_t>(Renderer_RenderTarget::MaxEnum)> &Renderer::GetRenderTargets()
 	{
 		return s_RenderTargets;
-	}
-
-	std::array<Ref<Shader>, static_cast<uint32_t>(Renderer_Shader::MaxEnum)> &Renderer::GetShaders()
-	{
-		return s_Shaders;
 	}
 
 	std::array<Ref<Buffer>, static_cast<uint32_t>(Renderer_Buffer::MaxEnum)> &Renderer::GetStructuredBuffers()

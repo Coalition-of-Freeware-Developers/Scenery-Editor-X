@@ -54,6 +54,8 @@ namespace SceneryEditorX
 		 */
 		PipelineCompute(PipelineSpecification computeSpec);
 
+        virtual ~PipelineCompute() override;
+
 		/**
 		 * @brief Create a compute pipeline with the given compute specification.
 		 * @param computeSpec The specification for the compute pipeline.
@@ -88,7 +90,7 @@ namespace SceneryEditorX
 	private:
 	    PipelineSpecification m_Spec;
 		Ref<CommandList> m_CommandList;
-
+	    VkPipeline m_Pipeline = VK_NULL_HANDLE;
 	};
 }
 

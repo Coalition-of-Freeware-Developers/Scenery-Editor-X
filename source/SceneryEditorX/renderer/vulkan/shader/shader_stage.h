@@ -95,7 +95,7 @@ namespace SceneryEditorX
 		StageType m_Stage;					// The shader stage (e.g., vertex, fragment)
 		std::string m_Filepath;				// Path to the shader source file
 		std::string m_EntryPoint;			// Stage entry point name used for pipeline creation
-	  VkShaderModule m_ShaderModule = VK_NULL_HANDLE;		// Vulkan shader module handle
+	    VkShaderModule m_ShaderModule = VK_NULL_HANDLE;		// Vulkan shader module handle
 		std::vector<ShaderInput> m_Input;	// List of shader inputs (uniforms, samplers, etc.)
 	};
 

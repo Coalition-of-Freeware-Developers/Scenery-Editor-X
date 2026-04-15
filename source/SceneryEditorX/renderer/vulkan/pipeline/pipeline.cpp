@@ -122,25 +122,37 @@ namespace SceneryEditorX
 		m_Device = device;
 		m_State = state;
 
-		// shader stages
-		std::vector<VkPipelineShaderStageCreateInfo> shader_stages;
-		constexpr StageType k_StageOrder[] = {StageType::Vertex,
-											  StageType::Geometry,
-											  StageType::TessellationControl,
-											  StageType::TessellationEvaluation,
-											  StageType::Fragment,
-											  StageType::Compute};
-		for (StageType s : k_StageOrder)
+#pragma region Shader Stages
+		Ref<ShaderManager> shaderManager = ShaderManager::Get();
+		std::array<Ref<Shader>, static_cast<uint32_t>(Renderer_Shader::MaxEnum)> shaders = shaderManager->GetShaders();
+
+		std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
+		for (const auto &shader : shaders)
 		{
-			auto it = m_State.shaders[static_cast<uint32_t>(s)];
-			if (it && it->IsCompiled())
-			{
-				if (Ref<ShaderStage> stageRef = it->GetShaderStage(s))
-				{
-					shader_stages.push_back(stageRef->GetStageCreateInfo());
-				}
-			}
+			if (shader->HasStage(StageType::Vertex))
+				shaderStages.push_back(shader->GetShaderStage(StageType::Vertex)->GetStageCreateInfo());
+			if (shader->HasStage(StageType::Fragment))
+				shaderStages.push_back(shader->GetShaderStage(StageType::Fragment)->GetStageCreateInfo());
+			if (shader->HasStage(StageType::TessellationControl))
+				shaderStages.push_back(shader->GetShaderStage(StageType::TessellationControl)->GetStageCreateInfo());
+			if (shader->HasStage(StageType::TessellationEvaluation))
+				shaderStages.push_back(shader->GetShaderStage(StageType::TessellationEvaluation)->GetStageCreateInfo());
+			if (shader->HasStage(StageType::Geometry))
+				shaderStages.push_back(shader->GetShaderStage(StageType::Geometry)->GetStageCreateInfo());
+			if (shader->HasStage(StageType::Compute))
+				shaderStages.push_back(shader->GetShaderStage(StageType::Compute)->GetStageCreateInfo());
+			if (shader->HasStage(StageType::All))
+				shaderStages.push_back(shader->GetShaderStage(StageType::All)->GetStageCreateInfo());
+			if (shader->HasStage(StageType::Graphics))
+				shaderStages.push_back(shader->GetShaderStage(StageType::Graphics)->GetStageCreateInfo());
+			if (shader->HasStage(StageType::None))
+				SEDX_CORE_WARN_TAG( "Pipeline", "Shader '{}' has 'None' stage, which is not a valid shader stage and will be ignored", shader->GetObjectName());
+			else
+				SEDX_CORE_ERROR_TAG( "Pipeline", "Shader '{}' has an unrecognized stage, which is not a valid shader stage", shader->GetObjectName());
 		}
+
+#pragma endregion
+#pragma region Layout and Push Constants
 
 		// layout: full bindless path when a DescriptorSet layout is provided, minimal bootstrap path otherwise
 		if (layout != nullptr)
@@ -216,8 +228,7 @@ namespace SceneryEditorX
 			// Bootstrap path: no bindless descriptor sets — minimal push-constant-only VkPipelineLayout.
 			// Used for passes that don't yet have a DescriptorSet layout wired (e.g. grid, text, bootstrap).
 			VkPushConstantRange pcRange{};
-			pcRange.stageFlags =
-				VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT;
+			pcRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT;
 			pcRange.offset = 0;
 			pcRange.size = static_cast<uint32_t>(sizeof(PushConstantBuffer_Pass));
 			m_PushConstant_Stages = pcRange.stageFlags;
@@ -236,12 +247,14 @@ namespace SceneryEditorX
 			Debugging::SetResourceName(m_Layout, ResourceType::PipelineLayout, state.name);
 		}
 
+#pragma endregion
+
 		if (state.IsCompute())
 		{
 			VkComputePipelineCreateInfo pipeline_info = {};
 			pipeline_info.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
 			pipeline_info.layout = m_Layout;
-			pipeline_info.stage = shader_stages[0];
+			pipeline_info.stage = shaderStages[0];
 
 			SEDX_VK_RESULT_ASSERT(vkCreateComputePipelines(m_Device->GetLogicalDevice(),
 														   static_cast<VkPipelineCache>(GetPipelineCache()),
@@ -347,83 +360,84 @@ namespace SceneryEditorX
 					vertexInputLayout->Create(vtype);
 				}
 			}
-			InputLayout *input_layout = vertexInputLayout.Get();
-			if (input_layout)
+
+			if (InputLayout *inputLayout = vertexInputLayout.Get())
 			{
-				const auto &attribute_descs = input_layout->GetAttributeDescriptions();
+				const auto &attributeDescs = inputLayout->GetAttributeDescriptions();
 
 				// vertex buffer (binding 0) - for per-vertex attributes like position, uv, color, normal, tangent
-				bool has_vertex_attributes = false;
-				bool is_geometry_pass_vertex = false;
-				for (const auto &desc : attribute_descs)
+				bool hasVertexAttributes = false;
+				bool isGeometryPassVertex = false;
+
+				for (const auto &desc : attributeDescs)
 				{
 					// check for per-vertex attributes
 					if (desc.name == "POSITION" || desc.name == "TEXCOORD" || desc.name == "COLOR" ||
 						desc.name == "NORMAL" || desc.name == "TANGENT")
 					{
-						has_vertex_attributes = true;
+						hasVertexAttributes = true;
 
 						// geometry pass vertices have normal or tangent
 						if (desc.name == "NORMAL" || desc.name == "TANGENT")
 						{
-							is_geometry_pass_vertex = true;
+							isGeometryPassVertex = true;
 						}
 					}
 				}
 
 				// add vertex buffer binding if there are per-vertex attributes
-				if (has_vertex_attributes)
+				if (hasVertexAttributes)
 				{
 					vertex_input_binding_descs.push_back({
-						0,                             // binding
-						input_layout->GetVertexSize(), // stride
-						VK_VERTEX_INPUT_RATE_VERTEX    // input rate
+						.binding = 0,
+						.stride = inputLayout->GetVertexSize(),
+						.inputRate = VK_VERTEX_INPUT_RATE_VERTEX
 					});
 
 					// add attribute descriptions for per-vertex attributes
-					for (const auto &desc : attribute_descs)
+					for (const auto &desc : attributeDescs)
 					{
 						if (desc.name == "POSITION" || desc.name == "TEXCOORD" || desc.name == "COLOR" ||
 							desc.name == "NORMAL" || desc.name == "TANGENT")
 						{
 							vertex_attribute_descs.push_back({
-								desc.location, // location
-								0,             // binding (vertex buffer)
-								desc.format,   // format
-								desc.offset    // offset
+								.location = desc.location,
+								.binding = 0, // (vertex buffer)
+								.format = desc.format,
+								.offset = desc.offset
 							});
 						}
 					}
 				}
 
 				// instance buffer (binding 1) - for instance transform (position, rotation, scale)
-				if (is_geometry_pass_vertex)
+				if (isGeometryPassVertex)
 				{
 					vertex_input_binding_descs.emplace_back(1,
 															static_cast<uint32_t>(sizeof(Instance)),
 															VK_VERTEX_INPUT_RATE_INSTANCE);
-					uint32_t start_index = static_cast<uint32_t>(vertex_attribute_descs.size());
-					vertex_attribute_descs.emplace_back(start_index++,
+					uint32_t startIndex = static_cast<uint32_t>(vertex_attribute_descs.size());
+					vertex_attribute_descs.emplace_back(startIndex++,
 														1,
 														VK_FORMAT_R16_SFLOAT,
 														static_cast<uint32_t>(offsetof(Instance, positionX)));
-					vertex_attribute_descs.emplace_back(start_index++,
+					vertex_attribute_descs.emplace_back(startIndex++,
 														1,
 														VK_FORMAT_R16_SFLOAT,
 														static_cast<uint32_t>(offsetof(Instance, positionY)));
-					vertex_attribute_descs.emplace_back(start_index++,
+					vertex_attribute_descs.emplace_back(startIndex++,
 														1,
 														VK_FORMAT_R16_SFLOAT,
 														static_cast<uint32_t>(offsetof(Instance, positionZ)));
-					vertex_attribute_descs.emplace_back(start_index++,
+					vertex_attribute_descs.emplace_back(startIndex++,
 														1,
 														VK_FORMAT_R16_UINT,
 														static_cast<uint32_t>(offsetof(Instance, normal_Oct)));
-					vertex_attribute_descs.emplace_back(start_index++,
+					vertex_attribute_descs.emplace_back(startIndex++,
 														1,
 														VK_FORMAT_R8_UINT,
 														static_cast<uint32_t>(offsetof(Instance, yaw_Packed)));
-					vertex_attribute_descs.emplace_back(start_index++,
+					vertex_attribute_descs.emplace_back(startIndex++,
 														1,
 														VK_FORMAT_R8_UINT,
 														static_cast<uint32_t>(offsetof(Instance, scale_Packed)));
@@ -433,8 +447,7 @@ namespace SceneryEditorX
 			VkPipelineVertexInputStateCreateInfo vertexInputState = {};
 			{
 				vertexInputState.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-				vertexInputState.vertexBindingDescriptionCount =
-					static_cast<uint32_t>(vertex_input_binding_descs.size());
+				vertexInputState.vertexBindingDescriptionCount = static_cast<uint32_t>(vertex_input_binding_descs.size());
 				vertexInputState.pVertexBindingDescriptions = vertex_input_binding_descs.data();
 				vertexInputState.vertexAttributeDescriptionCount = static_cast<uint32_t>(vertex_attribute_descs.size());
 				vertexInputState.pVertexAttributeDescriptions = vertex_attribute_descs.data();
@@ -444,8 +457,7 @@ namespace SceneryEditorX
 			VkPipelineInputAssemblyStateCreateInfo inputAssemblyState = {};
 			{
 				inputAssemblyState.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-				inputAssemblyState.topology =
-					m_State.HasTessellation() ? VK_PRIMITIVE_TOPOLOGY_PATCH_LIST : m_State.primitiveTopology;
+				inputAssemblyState.topology = m_State.HasTessellation() ? VK_PRIMITIVE_TOPOLOGY_PATCH_LIST : m_State.primitiveTopology;
 				inputAssemblyState.primitiveRestartEnable = VK_FALSE;
 			}
 
@@ -468,43 +480,42 @@ namespace SceneryEditorX
 				rasterizerState.cullMode = static_cast<uint32_t>(CullMode::Back);
 				rasterizerState.frontFace = VK_FRONT_FACE_CLOCKWISE;
 				rasterizerState.depthBiasEnable = m_State.rasterizerState->GetDepthBias() != 0.0f ? VK_TRUE : VK_FALSE;
-				rasterizerState.depthBiasConstantFactor =
-					floor(m_State.rasterizerState->GetDepthBias() * (float)(1 << 24));
+				rasterizerState.depthBiasConstantFactor = floor(m_State.rasterizerState->GetDepthBias() * (float)(1 << 24));
 				rasterizerState.depthBiasClamp = m_State.rasterizerState->GetDepthBiasClamp();
 				rasterizerState.depthBiasSlopeFactor = m_State.rasterizerState->GetDepthBiasSlope();
 			}
 
 			// multisampling
-			VkPipelineMultisampleStateCreateInfo multisample_state = {};
+			VkPipelineMultisampleStateCreateInfo multisampleState = {};
 			{
-				multisample_state.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-				multisample_state.sampleShadingEnable = VK_FALSE;
-				multisample_state.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+				multisampleState.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+				multisampleState.sampleShadingEnable = VK_FALSE;
+				multisampleState.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
 			}
 
 			// blend state
-			VkPipelineColorBlendStateCreateInfo color_blend_state = {};
-			std::vector<VkPipelineColorBlendAttachmentState> blend_state_attachments;
+			VkPipelineColorBlendStateCreateInfo colorBlendState = {};
+			std::vector<VkPipelineColorBlendAttachmentState> blendStateAttachments;
 			if (m_State.blendState)
 			{
 				// attachments
 				{
 					// same blend state for all
-					VkPipelineColorBlendAttachmentState blend_state_attachment = {};
-					blend_state_attachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+					VkPipelineColorBlendAttachmentState blendStateAttachment = {};
+					blendStateAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
 															VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-					blend_state_attachment.blendEnable = m_State.blendState->IsBlendEnabled() ? VK_TRUE : VK_FALSE;
-					blend_state_attachment.srcColorBlendFactor = m_State.blendState->GetSrcColor();
-					blend_state_attachment.dstColorBlendFactor = m_State.blendState->GetDstColor();
-					blend_state_attachment.colorBlendOp = m_State.blendState->GetColorOp();
-					blend_state_attachment.srcAlphaBlendFactor = m_State.blendState->GetSrcAlpha();
-					blend_state_attachment.dstAlphaBlendFactor = m_State.blendState->GetDstAlpha();
-					blend_state_attachment.alphaBlendOp = m_State.blendState->GetAlphaOp();
+					blendStateAttachment.blendEnable = m_State.blendState->IsBlendEnabled() ? VK_TRUE : VK_FALSE;
+					blendStateAttachment.srcColorBlendFactor = m_State.blendState->GetSrcColor();
+					blendStateAttachment.dstColorBlendFactor = m_State.blendState->GetDstColor();
+					blendStateAttachment.colorBlendOp = m_State.blendState->GetColorOp();
+					blendStateAttachment.srcAlphaBlendFactor = m_State.blendState->GetSrcAlpha();
+					blendStateAttachment.dstAlphaBlendFactor = m_State.blendState->GetDstAlpha();
+					blendStateAttachment.alphaBlendOp = m_State.blendState->GetAlphaOp();
 
 					// swapchain
 					if (m_State.renderTarget_Swapchain)
 					{
-						blend_state_attachments.push_back(blend_state_attachment);
+						blendStateAttachments.push_back(blendStateAttachment);
 					}
 
 					// render target(s)
@@ -512,64 +523,64 @@ namespace SceneryEditorX
 					{
 						if (m_State.renderTarget_ColorTextures[i] != nullptr)
 						{
-							blend_state_attachments.push_back(blend_state_attachment);
+							blendStateAttachments.push_back(blendStateAttachment);
 						}
 					}
 				}
 
-				color_blend_state.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-				color_blend_state.logicOpEnable = VK_FALSE;
-				color_blend_state.logicOp = VK_LOGIC_OP_COPY;
-				color_blend_state.attachmentCount = static_cast<uint32_t>(blend_state_attachments.size());
-				color_blend_state.pAttachments = blend_state_attachments.data();
-				color_blend_state.blendConstants[0] = m_State.blendState->GetBlendFactor();
-				color_blend_state.blendConstants[1] = m_State.blendState->GetBlendFactor();
-				color_blend_state.blendConstants[2] = m_State.blendState->GetBlendFactor();
-				color_blend_state.blendConstants[3] = m_State.blendState->GetBlendFactor();
+				colorBlendState.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+				colorBlendState.logicOpEnable = VK_FALSE;
+				colorBlendState.logicOp = VK_LOGIC_OP_COPY;
+				colorBlendState.attachmentCount = static_cast<uint32_t>(blendStateAttachments.size());
+				colorBlendState.pAttachments = blendStateAttachments.data();
+				colorBlendState.blendConstants[0] = m_State.blendState->GetBlendFactor();
+				colorBlendState.blendConstants[1] = m_State.blendState->GetBlendFactor();
+				colorBlendState.blendConstants[2] = m_State.blendState->GetBlendFactor();
+				colorBlendState.blendConstants[3] = m_State.blendState->GetBlendFactor();
 			}
 
 			// depth-stencil state
-			VkPipelineDepthStencilStateCreateInfo depth_stencil_state = {};
+			VkPipelineDepthStencilStateCreateInfo depthStencilState = {};
 			if (m_State.depthStencil_State)
 			{
-				depth_stencil_state.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-				depth_stencil_state.depthTestEnable = m_State.depthStencil_State->IsDepthTestEnabled();
-				depth_stencil_state.depthWriteEnable = m_State.depthStencil_State->IsDepthWriteEnabled();
-				depth_stencil_state.depthCompareOp = m_State.depthStencil_State->GetDepthCompareOp();
-				depth_stencil_state.stencilTestEnable = m_State.depthStencil_State->IsStencilTestEnabled();
-				depth_stencil_state.front.compareOp = m_State.depthStencil_State->GetStencilCompFunc();
-				depth_stencil_state.front.failOp = m_State.depthStencil_State->GetStencilFailOp();
-				depth_stencil_state.front.depthFailOp = m_State.depthStencil_State->GetStencilDepthFailOp();
-				depth_stencil_state.front.passOp = m_State.depthStencil_State->GetStencilPassOp();
-				depth_stencil_state.front.compareMask = m_State.depthStencil_State->GetStencilReadMask();
-				depth_stencil_state.front.writeMask = m_State.depthStencil_State->GetStencilWriteMask();
-				depth_stencil_state.front.reference = 1;
-				depth_stencil_state.back = depth_stencil_state.front;
-				depth_stencil_state.minDepthBounds = 1.0f; // functionality of DirectX with reverse-z
-				depth_stencil_state.maxDepthBounds = 0.0f; // functionality of DirectX with reverse-z
+				depthStencilState.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+				depthStencilState.depthTestEnable = m_State.depthStencil_State->IsDepthTestEnabled();
+				depthStencilState.depthWriteEnable = m_State.depthStencil_State->IsDepthWriteEnabled();
+				depthStencilState.depthCompareOp = m_State.depthStencil_State->GetDepthCompareOp();
+				depthStencilState.stencilTestEnable = m_State.depthStencil_State->IsStencilTestEnabled();
+				depthStencilState.front.compareOp = m_State.depthStencil_State->GetStencilCompFunc();
+				depthStencilState.front.failOp = m_State.depthStencil_State->GetStencilFailOp();
+				depthStencilState.front.depthFailOp = m_State.depthStencil_State->GetStencilDepthFailOp();
+				depthStencilState.front.passOp = m_State.depthStencil_State->GetStencilPassOp();
+				depthStencilState.front.compareMask = m_State.depthStencil_State->GetStencilReadMask();
+				depthStencilState.front.writeMask = m_State.depthStencil_State->GetStencilWriteMask();
+				depthStencilState.front.reference = 1;
+				depthStencilState.back = depthStencilState.front;
+				depthStencilState.minDepthBounds = 1.0f; // functionality of DirectX with reverse-z
+				depthStencilState.maxDepthBounds = 0.0f; // functionality of DirectX with reverse-z
 			}
 
 			// pipeline
 			{
 				// enable dynamic rendering - VK_KHR_dynamic_rendering
 				// this means no render passes and no frame buffer objects
-				VkPipelineRenderingCreateInfoKHR pipeline_rendering_create_info = {};
-				VkPipelineFragmentShadingRateStateCreateInfoKHR fragment_shading_rate_state = {};
-				std::vector<VkFormat> attachment_formats_color;
-				VkFormat attachment_format_depth = VK_FORMAT_UNDEFINED;
-				VkFormat attachment_format_stencil = VK_FORMAT_UNDEFINED;
+				VkPipelineRenderingCreateInfoKHR pipelineRenderingCreateInfo = {};
+				VkPipelineFragmentShadingRateStateCreateInfoKHR fragment_ShadingRateState = {};
+				std::vector<VkFormat> attachmentFormats_Color;
+				VkFormat attachmentFormat_Depth = VK_FORMAT_UNDEFINED;
+				VkFormat attachmentFormat_Stencil = VK_FORMAT_UNDEFINED;
 				{
 					// swapchain buffer as a render target
 					if (m_State.renderTarget_Swapchain)
 					{
-						attachment_formats_color.push_back(m_State.renderTarget_Swapchain->GetImageFormat());
+						attachmentFormats_Color.push_back(m_State.renderTarget_Swapchain->GetImageFormat());
 						// If the PSO has no explicit depth texture but targets a swapchain, inherit
-						// the swapchain's depth format so the pipeline declaration matches the active
+						// the swapchains depth format so the pipeline declaration matches the active
 						// dynamic render pass (which always has a depth attachment).
 						if (!m_State.renderTarget_DepthTexture)
 						{
-							attachment_format_depth = m_State.renderTarget_Swapchain->GetDepthFormat();
-							attachment_format_stencil = VK_FORMAT_UNDEFINED; // stencil kept separate if needed
+							attachmentFormat_Depth = m_State.renderTarget_Swapchain->GetDepthFormat();
+							attachmentFormat_Stencil = VK_FORMAT_UNDEFINED; // stencil kept separate if needed
 						}
 					}
 					else // regular render target(s)
@@ -580,61 +591,58 @@ namespace SceneryEditorX
 							if (texture == nullptr)
 								break;
 
-							attachment_formats_color.push_back(texture->GetFormat());
+							attachmentFormats_Color.push_back(texture->GetFormat());
 						}
 					}
 
 					// depth
 					if (m_State.renderTarget_DepthTexture)
 					{
-						ImageResource *tex_depth = m_State.renderTarget_DepthTexture;
-						attachment_format_depth = tex_depth->GetFormat();
-						attachment_format_stencil =
-							tex_depth->IsStencilFormat() ? attachment_format_depth : VK_FORMAT_UNDEFINED;
+						ImageResource *texDepth = m_State.renderTarget_DepthTexture;
+						attachmentFormat_Depth = texDepth->GetFormat();
+						attachmentFormat_Stencil =
+							texDepth->IsStencilFormat() ? attachmentFormat_Depth : VK_FORMAT_UNDEFINED;
 					}
 
 					// variable rate shading
 					if (m_State.vrsInputTexture)
 					{
-						fragment_shading_rate_state.sType =
-							VK_STRUCTURE_TYPE_PIPELINE_FRAGMENT_SHADING_RATE_STATE_CREATE_INFO_KHR;
-						fragment_shading_rate_state.combinerOps[0] = VK_FRAGMENT_SHADING_RATE_COMBINER_OP_MAX_KHR;
-						fragment_shading_rate_state.combinerOps[1] = VK_FRAGMENT_SHADING_RATE_COMBINER_OP_MAX_KHR;
-						fragment_shading_rate_state.fragmentSize = {.width = 1, .height = 1};
+						fragment_ShadingRateState.sType = VK_STRUCTURE_TYPE_PIPELINE_FRAGMENT_SHADING_RATE_STATE_CREATE_INFO_KHR;
+						fragment_ShadingRateState.combinerOps[0] = VK_FRAGMENT_SHADING_RATE_COMBINER_OP_MAX_KHR;
+						fragment_ShadingRateState.combinerOps[1] = VK_FRAGMENT_SHADING_RATE_COMBINER_OP_MAX_KHR;
+						fragment_ShadingRateState.fragmentSize = {.width = 1, .height = 1};
 
-						pipeline_rendering_create_info.pNext = &fragment_shading_rate_state;
+						pipelineRenderingCreateInfo.pNext = &fragment_ShadingRateState;
 					}
 
 					// put everything together
-					pipeline_rendering_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR;
-					pipeline_rendering_create_info.colorAttachmentCount =
-						static_cast<uint32_t>(attachment_formats_color.size());
-					pipeline_rendering_create_info.pColorAttachmentFormats = attachment_formats_color.data();
-					pipeline_rendering_create_info.depthAttachmentFormat = attachment_format_depth;
-					pipeline_rendering_create_info.stencilAttachmentFormat = attachment_format_stencil;
-					pipeline_rendering_create_info.viewMask = m_State.isMultiview ? 0b11 : 0;
+					pipelineRenderingCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR;
+					pipelineRenderingCreateInfo.colorAttachmentCount = static_cast<uint32_t>(attachmentFormats_Color.size());
+					pipelineRenderingCreateInfo.pColorAttachmentFormats = attachmentFormats_Color.data();
+					pipelineRenderingCreateInfo.depthAttachmentFormat = attachmentFormat_Depth;
+					pipelineRenderingCreateInfo.stencilAttachmentFormat = attachmentFormat_Stencil;
+					pipelineRenderingCreateInfo.viewMask = m_State.isMultiview ? 0b11 : 0;
 				}
 
 				// create
 				{
 					VkGraphicsPipelineCreateInfo pipelineInfo = {};
-					pipelineInfo.pNext = &pipeline_rendering_create_info;
+					pipelineInfo.pNext = &pipelineRenderingCreateInfo;
 					pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-					pipelineInfo.stageCount = static_cast<uint32_t>(shader_stages.size());
-					pipelineInfo.pStages = shader_stages.data();
+					pipelineInfo.stageCount = static_cast<uint32_t>(shaderStages.size());
+					pipelineInfo.pStages = shaderStages.data();
 					pipelineInfo.pVertexInputState = &vertexInputState;
 					pipelineInfo.pInputAssemblyState = &inputAssemblyState;
 					pipelineInfo.pTessellationState = &tessellationState;
 					pipelineInfo.pDynamicState = &dynamic_state;
 					pipelineInfo.pViewportState = &viewport_state;
 					pipelineInfo.pRasterizationState = &rasterizerState;
-					pipelineInfo.pMultisampleState = &multisample_state;
-					pipelineInfo.pColorBlendState = &color_blend_state;
-					pipelineInfo.pDepthStencilState = &depth_stencil_state;
+					pipelineInfo.pMultisampleState = &multisampleState;
+					pipelineInfo.pColorBlendState = &colorBlendState;
+					pipelineInfo.pDepthStencilState = &depthStencilState;
 					pipelineInfo.layout = m_Layout;
 					pipelineInfo.flags = m_State.vrsInputTexture
-											 ? VK_PIPELINE_CREATE_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR
-											 : 0;
+											 ? VK_PIPELINE_CREATE_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR : 0;
 
 					SEDX_VK_RESULT_ASSERT(vkCreateGraphicsPipelines(m_Device->GetLogicalDevice(),
 																	static_cast<VkPipelineCache>(GetPipelineCache()),
@@ -652,8 +660,6 @@ namespace SceneryEditorX
 
 	Pipeline::~Pipeline()
 	{
-		Destroy();
-
 		// pipeline cache - save to disk before destroying
 		SavePipelineCache();
 		if (s_PipelineCache && m_Device)
@@ -661,6 +667,8 @@ namespace SceneryEditorX
 			vkDestroyPipelineCache(m_Device->GetLogicalDevice(), s_PipelineCache, nullptr);
 			s_PipelineCache = nullptr;
 		}
+				
+		DestroyPipeline();
 	}
 
 	Pipeline::Pipeline(Pipeline &&other) noexcept : m_Device(std::move(other.m_Device)), m_Pipeline(std::exchange(other.m_Pipeline, VK_NULL_HANDLE)),
@@ -673,7 +681,7 @@ namespace SceneryEditorX
 	{
 		if (this != &other)
 		{
-			Destroy();
+			DestroyPipeline();
 			m_Device = std::move(other.m_Device);
 			m_Pipeline = std::exchange(other.m_Pipeline, VK_NULL_HANDLE);
 			m_State = other.m_State;
@@ -690,7 +698,7 @@ namespace SceneryEditorX
 		return s_PipelineCache;
 	}
 	
-	void Pipeline::Destroy(const VkDevice device)
+	void Pipeline::DestroyPipeline(const VkDevice device)
 	{
 		if (m_Destroyed)
 			return;
@@ -705,9 +713,7 @@ namespace SceneryEditorX
 			else if (Ref<RenderContext> ctx = RenderContext::Get())
 			{
 				if (Ref<Device> dev = ctx->GetDevice())
-				{
 					logicalDevice = dev->GetLogicalDevice();
-				}
 			}
 		}
 
@@ -727,6 +733,7 @@ namespace SceneryEditorX
 		}
 
 		m_Destroyed = true;
+	    SEDX_CORE_TRACE_TAG("Pipeline", "Pipeline destroyed");
 	}
 
 	VkPipeline Pipeline::CreateGraphics(const GraphicsCreateInfo &info)

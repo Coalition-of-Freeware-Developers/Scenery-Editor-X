@@ -29,6 +29,7 @@
  * -------------------------------------------------------
  */
 #include "pipeline_graphics.h"
+#include <SceneryEditorX/renderer/vulkan/render_context.h>
 
 // --------------------------------------------------------------
 
@@ -42,6 +43,12 @@ namespace SceneryEditorX
 
 	PipelineGraphics::~PipelineGraphics()
 	{
+		const Ref<Device> device = RenderContext::Get()->GetDevice();
+		QueueManager::AddDeletionQueue(ResourceType::Pipeline, m_Pipeline);
+
+
+		/*if (m_Pipeline)
+			QueueManager::AddDeletionQueue(ResourceType::Pipeline, m_Pipeline);*/
 	}
 
 	void PipelineGraphics::SetPushConstants(Buffer constants) const

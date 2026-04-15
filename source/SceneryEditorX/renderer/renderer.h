@@ -410,19 +410,6 @@ namespace SceneryEditorX
 		static void RecordRenderCommands(VkCommandBuffer cb, uint32_t imageIndex);
 
 		/**
-		 * @brief Get a shader by type.
-		 * @param type The type of shader to retrieve.
-		 * @return Pointer to the requested shader.
-		 */
-		static Shader* GetShader(Renderer_Shader type);
-
-		/**
-		 * @brief Marks a shader as available, creating it if it doesn't already exist.
-		 * @param type The type of shader to mark as available.
-		 */
-		static void SetShaderAvailable(Renderer_Shader type);
-
-		/**
 		 * @brief Creates all Vulkan samplers used by the renderer.
 		 *
 		 * Non-anisotropic samplers are created once on first call and guarded by Ref validity.
@@ -445,7 +432,6 @@ namespace SceneryEditorX
 		static Sampler* GetSampler(Renderer_Sampler type);
 
 		static std::array<Ref<ImageResource>, static_cast<uint32_t>(Renderer_RenderTarget::MaxEnum)>& GetRenderTargets();
-		static std::array<Ref<Shader>,  static_cast<uint32_t>(Renderer_Shader::MaxEnum)>& GetShaders();
 		static std::array<Ref<Buffer>,  static_cast<uint32_t>(Renderer_Buffer::MaxEnum)>& GetStructuredBuffers();
 		static std::array<Ref<Sampler>, static_cast<uint32_t>(Renderer_Sampler::MaxEnum)>& GetSamplers();
 

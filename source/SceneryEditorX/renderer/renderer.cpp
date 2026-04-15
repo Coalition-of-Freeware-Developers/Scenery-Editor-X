@@ -2176,8 +2176,8 @@ namespace SceneryEditorX
 				if (gridSpirv && gridSpirv->getBufferSize() > 0)
 				{
 					SEDX_CORE_INFO_TAG("Renderer", "Grid shader module compiled: {}", gridShaderPathString);
-					SetShaderAvailable(Renderer_Shader::grid_vertex);
-					SetShaderAvailable(Renderer_Shader::grid_frag);
+					ShaderManager::SetShaderAvailable(Renderer_Shader::grid_vertex);
+					ShaderManager::SetShaderAvailable(Renderer_Shader::grid_frag);
 				}
 			}
 		}
@@ -2208,7 +2208,7 @@ namespace SceneryEditorX
 			else
 			{
 				SEDX_CORE_INFO_TAG("Renderer", "Blit shader module compiled: {}", blitShaderPathString);
-				SetShaderAvailable(Renderer_Shader::blit_c);
+				ShaderManager::SetShaderAvailable(Renderer_Shader::blit_c);
 			}
 		}
 #pragma endregion

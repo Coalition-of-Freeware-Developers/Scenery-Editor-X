@@ -37,6 +37,8 @@
 #include "vulkan/rasterizer.h"
 #include "vulkan/render_context.h"
 #include "vulkan/pipeline/pipeline_state.h"
+#include "vulkan/shader/shader_manager.h"
+
 #include <SceneryEditorX/scene/camera.h>
 #include <SceneryEditorX/scene/entity.h>
 #include <SceneryEditorX/scene/material.h>
@@ -74,7 +76,7 @@ namespace SceneryEditorX
 		if (!hasRtRender || !hasRtOutput)
 			return;
 
-		const auto hasShader = [](const Renderer_Shader shader) { return GetShader(shader) != nullptr; };
+		const auto hasShader = [](const Renderer_Shader shader) { return ShaderManager::GetShader(shader) != nullptr; };
 
 		// Temporary bootstrap path while the full deferred shader table is still being wired.
 		// This avoids a hard early-return and allows at least camera/grid visibility during integration.
@@ -331,7 +333,7 @@ namespace SceneryEditorX
 		{
 			PipelineState pso;
 			pso.name = "lut_brdf_specular";
-			pso.shaders[static_cast<uint32_t>(StageType::Compute)] = GetShader(Renderer_Shader::light_integration_brdf_specular_lut_c);
+			pso.shaders[static_cast<uint32_t>(StageType::Compute)] = ShaderManager::GetShader(Renderer_Shader::light_integration_brdf_specular_lut_c);
 			cmdList->SetPipelineState(pso);
 
 			cmdList->SetTexture(Renderer_BindingsUav::tex, tex_lut_brdf_specular);
@@ -358,7 +360,7 @@ namespace SceneryEditorX
 			{
 				PipelineState pso;
 				pso.name = "lut_atmosphere_transmittance";
-				pso.shaders[static_cast<uint32_t>(StageType::Compute)] = GetShader(Renderer_Shader::skysphere_transmittance_lut_c);
+				pso.shaders[static_cast<uint32_t>(StageType::Compute)] = ShaderManager::GetShader(Renderer_Shader::skysphere_transmittance_lut_c);
 				cmdList->SetPipelineState(pso);
 
 				cmdList->SetTexture(Renderer_BindingsUav::tex, tex_lut_atmosphere_transmittance);
@@ -371,7 +373,7 @@ namespace SceneryEditorX
 			{
 				PipelineState pso;
 				pso.name = "lut_atmosphere_multiscatter";
-				pso.shaders[static_cast<uint32_t>(StageType::Compute)] = GetShader(Renderer_Shader::skysphere_multiscatter_lut_c);
+				pso.shaders[static_cast<uint32_t>(StageType::Compute)] = ShaderManager::GetShader(Renderer_Shader::skysphere_multiscatter_lut_c);
 				cmdList->SetPipelineState(pso);
 
 				cmdList->SetTexture(Renderer_BindingsSrv::tex, tex_lut_atmosphere_transmittance);
@@ -385,7 +387,7 @@ namespace SceneryEditorX
 			{
 				PipelineState pso;
 				pso.name = "lut_atmospheric_scattering";
-				pso.shaders[static_cast<uint32_t>(StageType::Compute)] = GetShader(Renderer_Shader::skysphere_lut_comp);
+				pso.shaders[static_cast<uint32_t>(StageType::Compute)] = ShaderManager::GetShader(Renderer_Shader::skysphere_lut_comp);
 				cmdList->SetPipelineState(pso);
 
 				cmdList->SetTexture(Renderer_BindingsUav::tex3d, tex_lut_atmosphere_scatter);
@@ -409,7 +411,7 @@ namespace SceneryEditorX
 		{
 			PipelineState pso;
 			pso.name = "skysphere_atmospheric_scattering";
-			pso.shaders[static_cast<uint32_t>(StageType::Compute)] = GetShader(Renderer_Shader::skysphere_comp);
+			pso.shaders[static_cast<uint32_t>(StageType::Compute)] = ShaderManager::GetShader(Renderer_Shader::skysphere_comp);
 			cmdList->SetPipelineState(pso);
 
 			cmdList->SetTexture(Renderer_BindingsUav::tex, tex_skysphere);
@@ -439,7 +441,7 @@ namespace SceneryEditorX
 
 			PipelineState pso;
 			pso.name = "skysphere_filter";
-			pso.shaders[static_cast<uint32_t>(StageType::Compute)] = GetShader(Renderer_Shader::light_integration_environment_filter_c);
+			pso.shaders[static_cast<uint32_t>(StageType::Compute)] = ShaderManager::GetShader(Renderer_Shader::light_integration_environment_filter_c);
 			cmdList->SetPipelineState(pso);
 			cmdList->SetTexture(Renderer_BindingsSrv::tex, tex_skysphere);
 
@@ -480,7 +482,7 @@ namespace SceneryEditorX
 		{
 			PipelineState pso;
 			pso.name = "occluders";
-			pso.shaders[static_cast<uint32_t>(StageType::Vertex)] = GetShader(Renderer_Shader::depth_prepass_vertex);
+			pso.shaders[static_cast<uint32_t>(StageType::Vertex)] = ShaderManager::GetShader(Renderer_Shader::depth_prepass_vertex);
 			pso.rasterizerState = GetRasterizerState(Renderer_RasterizerState::Solid);
 			pso.blendState = GetBlendState(Renderer_BlendState::Off);
 			pso.depthStencil_State = GetDepthStencilState(Renderer_DepthStencilState::ReadWrite);
@@ -536,7 +538,7 @@ namespace SceneryEditorX
 
 			PipelineState pso;
 			pso.name = "indirect_cull";
-			pso.shaders[static_cast<uint32_t>(StageType::Compute)] = GetShader(Renderer_Shader::indirect_cull_c);
+			pso.shaders[static_cast<uint32_t>(StageType::Compute)] = ShaderManager::GetShader(Renderer_Shader::indirect_cull_c);
 			cmdList->SetPipelineState(pso);
 
 			cmdList->SetTexture(Renderer_BindingsSrv::tex, tex_occluders_hiz);
@@ -584,7 +586,7 @@ namespace SceneryEditorX
 			{
 				PipelineState pso;
 				pso.name = "depth_prepass_indirect";
-				pso.shaders[static_cast<uint32_t>(StageType::Vertex)] = GetShader(Renderer_Shader::depth_prepass_indirect_vertex);
+				pso.shaders[static_cast<uint32_t>(StageType::Vertex)] = ShaderManager::GetShader(Renderer_Shader::depth_prepass_indirect_vertex);
 				pso.rasterizerState = rasterizer_state;
 				pso.blendState = GetBlendState(Renderer_BlendState::Off);
 				pso.depthStencil_State = GetDepthStencilState(Renderer_DepthStencilState::ReadWrite);
@@ -606,7 +608,7 @@ namespace SceneryEditorX
 			{
 				PipelineState pso;
 				pso.name = "depth_prepass";
-				pso.shaders[static_cast<uint32_t>(StageType::Vertex)] = GetShader(Renderer_Shader::depth_prepass_vertex);
+				pso.shaders[static_cast<uint32_t>(StageType::Vertex)] = ShaderManager::GetShader(Renderer_Shader::depth_prepass_vertex);
 				pso.rasterizerState = rasterizer_state;
 				pso.blendState = GetBlendState(Renderer_BlendState::Off);
 				pso.depthStencil_State = GetDepthStencilState(Renderer_DepthStencilState::ReadWrite);
@@ -631,9 +633,9 @@ namespace SceneryEditorX
 					{
 						bool isAlphaTested = materialAsset->IsAlphaTested();
 						bool isTessellated = materialAsset->GetProperty(MaterialProperty::Tessellation) > 0.0f;
-						Shader *ps = isAlphaTested ? GetShader(Renderer_Shader::depth_prepass_alpha_test_frag) : nullptr;
-						Shader *hs = isTessellated ? GetShader(Renderer_Shader::tessellation_h) : nullptr;
-						Shader *ds = isTessellated ? GetShader(Renderer_Shader::tessellation_d) : nullptr;
+						Shader *ps = isAlphaTested ? ShaderManager::GetShader(Renderer_Shader::depth_prepass_alpha_test_frag) : nullptr;
+						Shader *hs = isTessellated ? ShaderManager::GetShader(Renderer_Shader::tessellation_h) : nullptr;
+						Shader *ds = isTessellated ? ShaderManager::GetShader(Renderer_Shader::tessellation_d) : nullptr;
 
 						if (!pipelineSet || pso.shaders[static_cast<uint32_t>(StageType::Fragment)] != ps ||
 							pso.shaders[static_cast<uint32_t>(StageType::TessellationControl)] != hs ||
@@ -698,8 +700,8 @@ namespace SceneryEditorX
 			{
 				PipelineState pso;
 				pso.name = "g_buffer_indirect";
-				pso.shaders[static_cast<uint32_t>(StageType::Vertex)] = GetShader(Renderer_Shader::gbuffer_indirect_vertex);
-				pso.shaders[static_cast<uint32_t>(StageType::Fragment)] = GetShader(Renderer_Shader::gbuffer_indirect_frag);
+				pso.shaders[static_cast<uint32_t>(StageType::Vertex)] = ShaderManager::GetShader(Renderer_Shader::gbuffer_indirect_vertex);
+				pso.shaders[static_cast<uint32_t>(StageType::Fragment)] = ShaderManager::GetShader(Renderer_Shader::gbuffer_indirect_frag);
 				pso.blendState = GetBlendState(Renderer_BlendState::Off);
 				pso.rasterizerState = cvar_wireframe.GetValueAs<bool>() ? GetRasterizerState(Renderer_RasterizerState::Wireframe)
 										  : GetRasterizerState(Renderer_RasterizerState::Solid);
@@ -741,8 +743,8 @@ namespace SceneryEditorX
 			{
 				PipelineState pso;
 				pso.name = isTransparentPass ? "g_buffer_transparent" : "g_buffer_tessellated";
-				pso.shaders[static_cast<uint32_t>(StageType::Vertex)] = GetShader(Renderer_Shader::gbuffer_vertex);
-				pso.shaders[static_cast<uint32_t>(StageType::Fragment)] = GetShader(Renderer_Shader::gbuffer_frag);
+				pso.shaders[static_cast<uint32_t>(StageType::Vertex)] = ShaderManager::GetShader(Renderer_Shader::gbuffer_vertex);
+				pso.shaders[static_cast<uint32_t>(StageType::Fragment)] = ShaderManager::GetShader(Renderer_Shader::gbuffer_frag);
 				pso.blendState = GetBlendState(Renderer_BlendState::Off);
 				pso.rasterizerState = cvar_wireframe.GetValueAs<bool>() ? GetRasterizerState(Renderer_RasterizerState::Wireframe)
 										  : GetRasterizerState(Renderer_RasterizerState::Solid);
@@ -786,8 +788,8 @@ namespace SceneryEditorX
 
 					{
 						bool is_tessellated = materialAsset->GetProperty(MaterialProperty::Tessellation) > 0.0f;
-						Shader *tessControl = is_tessellated ? GetShader(Renderer_Shader::tessellation_h) : nullptr;
-						Shader *tessEval = is_tessellated ? GetShader(Renderer_Shader::tessellation_d) : nullptr;
+						Shader *tessControl = is_tessellated ? ShaderManager::GetShader(Renderer_Shader::tessellation_h) : nullptr;
+						Shader *tessEval = is_tessellated ? ShaderManager::GetShader(Renderer_Shader::tessellation_d) : nullptr;
 
 						if (!pipeline_set ||
 							pso.shaders[static_cast<uint32_t>(StageType::TessellationControl)] != tessControl ||
@@ -838,7 +840,7 @@ namespace SceneryEditorX
 
 	void Renderer::Pass_Output(CommandList *cmdList, ImageResource *in, ImageResource *out)
 	{
-		Shader *shader_c = GetShader(Renderer_Shader::output_c);
+		Shader *shader_c = ShaderManager::GetShader(Renderer_Shader::output_c);
 
 		PipelineState pso;
 		pso.name = "output";
@@ -857,7 +859,7 @@ namespace SceneryEditorX
 	void Renderer::Pass_Blit(CommandList *cmdList, ImageResource *in, ImageResource *out)
 	{
 		// compute blit: vulkan can't blit depth to float, amd uav requires float
-		Shader *shader_c = GetShader(Renderer_Shader::blit_c);
+		Shader *shader_c = ShaderManager::GetShader(Renderer_Shader::blit_c);
 
 		// Ensure explicit image layout transitions even if descriptor-layout binding
 		// is not yet fully wired for the compute pass.
@@ -881,8 +883,8 @@ namespace SceneryEditorX
 		if (!cvar_grid.GetValueAs<bool>())
 			return;
 
-		Shader *shader_vertex = GetShader(Renderer_Shader::grid_vertex);
-		Shader *shader_frag = GetShader(Renderer_Shader::grid_frag);
+		Shader *shader_vertex = ShaderManager::GetShader(Renderer_Shader::grid_vertex);
+		Shader *shader_frag = ShaderManager::GetShader(Renderer_Shader::grid_frag);
 		if (!shader_vertex || !shader_frag)
 			return;
 
@@ -932,7 +934,7 @@ namespace SceneryEditorX
 		{
 			PipelineState pso;
 			pso.name = name;
-			pso.shaders[static_cast<uint32_t>(StageType::Compute)] = GetShader(shaderEnum);
+			pso.shaders[static_cast<uint32_t>(StageType::Compute)] = ShaderManager::GetShader(shaderEnum);
 			cmdList->SetPipelineState(pso);
 
 			cmdList->SetTexture(Renderer_BindingsSrv::tex, in);
@@ -958,7 +960,7 @@ namespace SceneryEditorX
 
 		PipelineState pso;
 		pso.name = "screen_space_ambient_occlusion";
-		pso.shaders[static_cast<uint32_t>(StageType::Compute)] = GetShader(Renderer_Shader::ssao_comp);
+		pso.shaders[static_cast<uint32_t>(StageType::Compute)] = ShaderManager::GetShader(Renderer_Shader::ssao_comp);
 
 		{
 			cmdList->SetPipelineState(pso);
@@ -977,7 +979,7 @@ namespace SceneryEditorX
 
 			PipelineState pso;
 			pso.name = "screen_space_shadows";
-			pso.shaders[static_cast<uint32_t>(StageType::Compute)] = GetShader(Renderer_Shader::sss_c_bend);
+			pso.shaders[static_cast<uint32_t>(StageType::Compute)] = ShaderManager::GetShader(Renderer_Shader::sss_c_bend);
 			cmdList->SetPipelineState(pso);
 
 			cmdList->SetTexture(Renderer_BindingsSrv::tex, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
@@ -1065,7 +1067,7 @@ namespace SceneryEditorX
 		{
 			PipelineState pso;
 			pso.name = "cloud_noise_shape";
-			pso.shaders[static_cast<uint32_t>(StageType::Compute)] = GetShader(Renderer_Shader::cloud_noise_shape_c);
+			pso.shaders[static_cast<uint32_t>(StageType::Compute)] = ShaderManager::GetShader(Renderer_Shader::cloud_noise_shape_c);
 			cmdList->SetPipelineState(pso);
 
 			cmdList->SetTexture(Renderer_BindingsUav::tex3d, tex_shape);
@@ -1078,7 +1080,7 @@ namespace SceneryEditorX
 		{
 			PipelineState pso;
 			pso.name = "cloud_noise_detail";
-			pso.shaders[static_cast<uint32_t>(StageType::Compute)] = GetShader(Renderer_Shader::cloud_noise_detail_c);
+			pso.shaders[static_cast<uint32_t>(StageType::Compute)] = ShaderManager::GetShader(Renderer_Shader::cloud_noise_detail_c);
 			cmdList->SetPipelineState(pso);
 
 			cmdList->SetTexture(Renderer_BindingsUav::tex3d, tex_detail);
@@ -1114,7 +1116,7 @@ namespace SceneryEditorX
 		{
 			PipelineState pso;
 			pso.name = "variable_rate_shading";
-			pso.shaders[static_cast<uint32_t>(StageType::Compute)] = GetShader(Renderer_Shader::variable_rate_shading_c);
+			pso.shaders[static_cast<uint32_t>(StageType::Compute)] = ShaderManager::GetShader(Renderer_Shader::variable_rate_shading_c);
 			cmdList->SetPipelineState(pso);
 
 			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_depth,    GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
@@ -1150,7 +1152,7 @@ namespace SceneryEditorX
 		{
 			PipelineState pso;
 			pso.name = "spd_downscale";
-			pso.shaders[static_cast<uint32_t>(StageType::Compute)] = GetShader(spdShader);
+			pso.shaders[static_cast<uint32_t>(StageType::Compute)] = ShaderManager::GetShader(spdShader);
 			cmdList->SetPipelineState(pso);
 
 			// SPD reads mip-0 as SRV and writes mips 1..N as UAVs.
@@ -1197,7 +1199,7 @@ namespace SceneryEditorX
 		{
 			PipelineState pso;
 			pso.name = "cloud_shadow";
-			pso.shaders[static_cast<uint32_t>(StageType::Compute)] = GetShader(Renderer_Shader::cloud_shadow_c);
+			pso.shaders[static_cast<uint32_t>(StageType::Compute)] = ShaderManager::GetShader(Renderer_Shader::cloud_shadow_c);
 			cmdList->SetPipelineState(pso);
 
 			cmdList->SetTexture(Renderer_BindingsSrv::tex3d_cloud_shape, texCloudShape);
@@ -1235,8 +1237,8 @@ namespace SceneryEditorX
 
 			PipelineState pso;
 			pso.name = "shadow_map";
-			pso.shaders[static_cast<uint32_t>(StageType::Vertex)]    = GetShader(Renderer_Shader::depth_light_vertex);
-			pso.shaders[static_cast<uint32_t>(StageType::Fragment)]  = GetShader(Renderer_Shader::depth_light_alpha_color_frag);
+			pso.shaders[static_cast<uint32_t>(StageType::Vertex)]    = ShaderManager::GetShader(Renderer_Shader::depth_light_vertex);
+			pso.shaders[static_cast<uint32_t>(StageType::Fragment)]  = ShaderManager::GetShader(Renderer_Shader::depth_light_alpha_color_frag);
 			pso.rasterizerState               = rs;
 			pso.blendState                    = GetBlendState(Renderer_BlendState::Off);
 			pso.depthStencil_State            = GetDepthStencilState(Renderer_DepthStencilState::ReadWrite);
@@ -1294,7 +1296,7 @@ namespace SceneryEditorX
 		{
 			PipelineState pso;
 			pso.name = isTransparentPass ? "light_transparent" : "light";
-			pso.shaders[static_cast<uint32_t>(StageType::Compute)] = GetShader(Renderer_Shader::light_c);
+			pso.shaders[static_cast<uint32_t>(StageType::Compute)] = ShaderManager::GetShader(Renderer_Shader::light_c);
 			cmdList->SetPipelineState(pso);
 
 			// G-Buffer inputs
@@ -1340,7 +1342,7 @@ namespace SceneryEditorX
 		{
 			PipelineState pso;
 			pso.name = isTransparentPass ? "light_composition_transparent" : "light_composition";
-			pso.shaders[static_cast<uint32_t>(StageType::Compute)] = GetShader(Renderer_Shader::light_composition_c);
+			pso.shaders[static_cast<uint32_t>(StageType::Compute)] = ShaderManager::GetShader(Renderer_Shader::light_composition_c);
 			cmdList->SetPipelineState(pso);
 
 			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_albedo,   GetRenderTarget(Renderer_RenderTarget::gbuffer_color));
@@ -1373,7 +1375,7 @@ namespace SceneryEditorX
 		{
 			PipelineState pso;
 			pso.name = "light_image_based";
-			pso.shaders[static_cast<uint32_t>(StageType::Compute)] = GetShader(Renderer_Shader::light_image_based_c);
+			pso.shaders[static_cast<uint32_t>(StageType::Compute)] = ShaderManager::GetShader(Renderer_Shader::light_image_based_c);
 			cmdList->SetPipelineState(pso);
 
 			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_albedo,   GetRenderTarget(Renderer_RenderTarget::gbuffer_color));
@@ -1411,7 +1413,7 @@ namespace SceneryEditorX
 		{
 			PipelineState pso;
 			pso.name = "light_reflections";
-			pso.shaders[static_cast<uint32_t>(StageType::Compute)] = GetShader(Renderer_Shader::light_reflections_c);
+			pso.shaders[static_cast<uint32_t>(StageType::Compute)] = ShaderManager::GetShader(Renderer_Shader::light_reflections_c);
 			cmdList->SetPipelineState(pso);
 
 			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_normal,   GetRenderTarget(Renderer_RenderTarget::gbuffer_normal));
@@ -1442,7 +1444,7 @@ namespace SceneryEditorX
 		{
 			PipelineState pso;
 			pso.name = "particle_emit";
-			pso.shaders[static_cast<uint32_t>(StageType::Compute)] = GetShader(Renderer_Shader::particle_emit_c);
+			pso.shaders[static_cast<uint32_t>(StageType::Compute)] = ShaderManager::GetShader(Renderer_Shader::particle_emit_c);
 			cmdList->SetPipelineState(pso);
 
 			cmdList->SetBuffer(Renderer_BindingsUav::particle_buffer_a, GetBuffer(Renderer_Buffer::ParticleBufferA));
@@ -1457,7 +1459,7 @@ namespace SceneryEditorX
 		{
 			PipelineState pso;
 			pso.name = "particle_simulate";
-			pso.shaders[static_cast<uint32_t>(StageType::Compute)] = GetShader(Renderer_Shader::particle_simulate_c);
+			pso.shaders[static_cast<uint32_t>(StageType::Compute)] = ShaderManager::GetShader(Renderer_Shader::particle_simulate_c);
 			cmdList->SetPipelineState(pso);
 
 			cmdList->SetBuffer(Renderer_BindingsUav::particle_buffer_a, GetBuffer(Renderer_Buffer::ParticleBufferA));
@@ -1476,7 +1478,7 @@ namespace SceneryEditorX
 
 			PipelineState pso;
 			pso.name = "particle_render";
-			pso.shaders[static_cast<uint32_t>(StageType::Compute)] = GetShader(Renderer_Shader::particle_render_c);
+			pso.shaders[static_cast<uint32_t>(StageType::Compute)] = ShaderManager::GetShader(Renderer_Shader::particle_render_c);
 			cmdList->SetPipelineState(pso);
 
 			cmdList->SetBuffer(Renderer_BindingsUav::particle_buffer_b, GetBuffer(Renderer_Buffer::ParticleBufferB));
@@ -1502,7 +1504,7 @@ namespace SceneryEditorX
 		{
 			PipelineState pso;
 			pso.name = "transparency_reflection_refraction";
-			pso.shaders[static_cast<uint32_t>(StageType::Compute)] = GetShader(Renderer_Shader::transparency_reflection_refraction_c);
+			pso.shaders[static_cast<uint32_t>(StageType::Compute)] = ShaderManager::GetShader(Renderer_Shader::transparency_reflection_refraction_c);
 			cmdList->SetPipelineState(pso);
 
 			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_albedo,   GetRenderTarget(Renderer_RenderTarget::gbuffer_color));
@@ -1541,7 +1543,7 @@ namespace SceneryEditorX
 
 			PipelineState pso;
 			pso.name = "auto_exposure";
-			pso.shaders[static_cast<uint32_t>(StageType::Compute)] = GetShader(Renderer_Shader::auto_exposure_c);
+			pso.shaders[static_cast<uint32_t>(StageType::Compute)] = ShaderManager::GetShader(Renderer_Shader::auto_exposure_c);
 			cmdList->SetPipelineState(pso);
 
 			cmdList->SetTexture(Renderer_BindingsSrv::tex,  tex_output);
@@ -1576,7 +1578,7 @@ namespace SceneryEditorX
 			{
 				PipelineState pso;
 				pso.name = "bloom_luminance";
-				pso.shaders[static_cast<uint32_t>(StageType::Compute)] = GetShader(Renderer_Shader::bloom_luminance_c);
+				pso.shaders[static_cast<uint32_t>(StageType::Compute)] = ShaderManager::GetShader(Renderer_Shader::bloom_luminance_c);
 				cmdList->SetPipelineState(pso);
 
 				cmdList->SetTexture(Renderer_BindingsSrv::tex,  tex_output);
@@ -1592,7 +1594,7 @@ namespace SceneryEditorX
 			{
 				PipelineState pso;
 				pso.name = "bloom_upsample_blend";
-				pso.shaders[static_cast<uint32_t>(StageType::Compute)] = GetShader(Renderer_Shader::bloom_upsample_blend_mip_c);
+				pso.shaders[static_cast<uint32_t>(StageType::Compute)] = ShaderManager::GetShader(Renderer_Shader::bloom_upsample_blend_mip_c);
 				cmdList->SetPipelineState(pso);
 
 				cmdList->SetTexture(Renderer_BindingsSrv::tex, tex_bloom, mip,     1);
@@ -1606,7 +1608,7 @@ namespace SceneryEditorX
 			{
 				PipelineState pso;
 				pso.name = "bloom_blend_frame";
-				pso.shaders[static_cast<uint32_t>(StageType::Compute)] = GetShader(Renderer_Shader::bloom_blend_frame_c);
+				pso.shaders[static_cast<uint32_t>(StageType::Compute)] = ShaderManager::GetShader(Renderer_Shader::bloom_blend_frame_c);
 				cmdList->SetPipelineState(pso);
 
 				cmdList->SetTexture(Renderer_BindingsSrv::tex,  tex_bloom);
@@ -1632,7 +1634,7 @@ namespace SceneryEditorX
 			{
 				PipelineState pso;
 				pso.name = "outline_composite";
-				pso.shaders[static_cast<uint32_t>(StageType::Compute)] = GetShader(Renderer_Shader::outline_comp);
+				pso.shaders[static_cast<uint32_t>(StageType::Compute)] = ShaderManager::GetShader(Renderer_Shader::outline_comp);
 				cmdList->SetPipelineState(pso);
 
 				cmdList->SetTexture(Renderer_BindingsSrv::tex, tex_outline);
@@ -1645,7 +1647,7 @@ namespace SceneryEditorX
 		{
 			PipelineState pso;
 			pso.name = "dof";
-			pso.shaders[static_cast<uint32_t>(StageType::Compute)] = GetShader(Renderer_Shader::depth_of_field_c);
+			pso.shaders[static_cast<uint32_t>(StageType::Compute)] = ShaderManager::GetShader(Renderer_Shader::depth_of_field_c);
 			cmdList->SetPipelineState(pso);
 
 			cmdList->SetTexture(Renderer_BindingsSrv::tex,              tex_output);
@@ -1666,8 +1668,8 @@ namespace SceneryEditorX
 
 	void Renderer::Pass_Text(CommandList* cmdList, ImageResource* out)
 	{
-		Shader* shader_v = GetShader(Renderer_Shader::font_vertex);
-		Shader* shader_f = GetShader(Renderer_Shader::font_frag);
+		Shader* shader_v = ShaderManager::GetShader(Renderer_Shader::font_vertex);
+		Shader* shader_f = ShaderManager::GetShader(Renderer_Shader::font_frag);
 
 		if (!shader_v || !shader_f || !out)
 			return;

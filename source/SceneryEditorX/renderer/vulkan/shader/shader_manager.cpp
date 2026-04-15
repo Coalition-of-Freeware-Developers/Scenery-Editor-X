@@ -49,8 +49,9 @@ namespace SceneryEditorX
 	static Ref<ShaderManager> s_Instance = nullptr;
 	std::mutex ShaderManager::s_ShaderMutex;
 	std::unordered_map<std::string, Ref<Shader>> ShaderManager::m_Shaders;
+	static std::array<Ref<Shader>,  static_cast<uint32_t>(Renderer_Shader::MaxEnum)> s_Shaders;
 
-    /**
+	/**
 	 * @brief Helper function to create a Vulkan shader module from SPIR-V code
 	 * @param spirvCode Pointer to the SPIR-V code
 	 * @param codeSize Size of the SPIR-V code in bytes
@@ -235,6 +236,73 @@ namespace SceneryEditorX
 	void ShaderManager::ClearStage(const Ref<Shader> &shader, const StageType stage)
 	{
 
+	}
+	
+	Shader* ShaderManager::GetShader(const Renderer_Shader type)
+	{
+		return s_Shaders[static_cast<uint8_t>(type)].Get();
+	}
+
+	void ShaderManager::SetShaderAvailable(const Renderer_Shader type)
+	{
+		const uint8_t index = static_cast<uint8_t>(type);
+
+		switch (type)
+		{
+			case Renderer_Shader::grid_vertex:
+			case Renderer_Shader::grid_frag:
+			{
+				constexpr uint8_t gridVertexIndex = static_cast<uint8_t>(Renderer_Shader::grid_vertex);
+				constexpr uint8_t gridFragIndex = static_cast<uint8_t>(Renderer_Shader::grid_frag);
+
+				Ref<Shader>& gridShader = s_Shaders[gridVertexIndex];
+				if (!gridShader)
+				{
+					gridShader = CreateRef<Shader>("grid");
+				}
+
+				if (!gridShader->HasStage(StageType::Vertex))
+				{
+					gridShader->AddShaderStage(StageType::Vertex, "resources/shaders/grid.slang");
+				}
+
+				if (!gridShader->HasStage(StageType::Fragment))
+				{
+					gridShader->AddShaderStage(StageType::Fragment, "resources/shaders/grid.slang");
+				}
+
+				s_Shaders[gridVertexIndex] = gridShader;
+				s_Shaders[gridFragIndex] = gridShader;
+				SEDX_CORE_ASSERT(s_Shaders[gridVertexIndex] != nullptr, "Failed to allocate grid shader");
+				break;
+		    }
+		    case Renderer_Shader::blit_c:
+			{
+				if (!s_Shaders[index])
+				{
+					s_Shaders[index] = CreateRef<Shader>("blit");
+				}
+
+				Ref<Shader>& shader = s_Shaders[index];
+				SEDX_CORE_ASSERT(shader != nullptr, "Failed to allocate shader slot for type {}", static_cast<uint32_t>(type));
+				if (!shader->HasStage(StageType::Compute))
+				{
+					shader->AddShaderStage(StageType::Compute, "resources/shaders/blit.slang");
+				}
+				break;
+			}
+			default:
+				if (!s_Shaders[index])
+				{
+					s_Shaders[index] = CreateRef<Shader>();
+				}
+				break;
+		}
+	}
+
+	std::array<Ref<Shader>, static_cast<uint32_t>(Renderer_Shader::MaxEnum)> &ShaderManager::GetShaders()
+	{
+		return s_Shaders;
 	}
 
 	std::vector<uint32_t> ShaderManager::CompileToSpirv(const StageType stage, const std::string &filepath, const bool optimize)

@@ -30,6 +30,8 @@
  */
 #include "pipeline_compute.h"
 #include <SceneryEditorX/renderer/vulkan/command_list.h>
+#include <SceneryEditorX/renderer/vulkan/queue_manager.h>
+#include <SceneryEditorX/renderer/vulkan/render_context.h>
 
 // --------------------------------------------------------------
 
@@ -38,6 +40,13 @@ namespace SceneryEditorX
 
 	PipelineCompute::PipelineCompute(PipelineSpecification computeSpec) : m_Spec(std::move(computeSpec))
 	{
+
+	}
+
+	PipelineCompute::~PipelineCompute()
+	{
+		const Ref<Device> device = RenderContext::Get()->GetDevice();
+		QueueManager::AddDeletionQueue(ResourceType::Pipeline, m_Pipeline);
 
 	}
 

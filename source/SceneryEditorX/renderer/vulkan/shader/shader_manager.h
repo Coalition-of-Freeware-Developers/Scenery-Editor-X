@@ -32,6 +32,7 @@
 #include "shader.h"
 #include <mutex>
 #include <vector>
+#include <SceneryEditorX/renderer/renderer_declarations.h>
 #include <SceneryEditorX/renderer/vulkan/enums.h>
 #include <SceneryEditorX/renderer/vulkan/shader/shader_input.h>
 
@@ -123,6 +124,19 @@ namespace SceneryEditorX
 		static void ClearStage(const Ref<Shader> &shader, const StageType stage);
 
 		/**
+		 * @brief Get a shader by type.
+		 * @param type The type of shader to retrieve.
+		 * @return Pointer to the requested shader.
+		 */
+		static Shader *GetShader(Renderer_Shader type);
+
+		/**
+		 * @brief Marks a shader as available, creating it if it doesn't already exist.
+		 * @param type The type of shader to mark as available.
+		 */
+		static void SetShaderAvailable(Renderer_Shader type);
+
+		/**
 		 * @brief Retrieves the compilation state of the shaders.
 		 * @return The current compilation state.
 		 */
@@ -144,20 +158,26 @@ namespace SceneryEditorX
 
 		/**
 		 * @brief Compile a shader file to SPIR-V (delegates to ShaderCompiler)
-		 * @param stage 
-		 * @param filepath 
-		 * @param optimize 
-		 * @return 
+		 * @param stage The shader stage to compile.
+		 * @param filepath The path to the shader file.
+		 * @param optimize Whether to optimize the shader during compilation.
+		 * @return A vector of uint32_t representing the compiled SPIR-V bytecode.
 		 */
 		static std::vector<uint32_t> CompileToSpirv(StageType stage, const std::string& filepath, bool optimize = false);
 
 		/**
 		 * @brief Reflect shader inputs from SPIR-V (delegates to ShaderCompiler)
-		 * @param stage 
-		 * @param spirv 
-		 * @return 
+		 * @param stage The shader stage for which to reflect inputs.
+		 * @param spirv The SPIR-V bytecode from which to reflect shader inputs.
+		 * @return A vector of ShaderInput structures representing the reflected shader inputs. 
 		 */
 		static std::vector<ShaderInput> ReflectInputs(StageType stage, const std::vector<uint32_t>& spirv);
+
+		/**
+		 * @brief Get all shaders managed by the ShaderManager.
+		 * @return Reference to the array of shaders.
+		 */
+		static std::array<Ref<Shader>,  static_cast<uint32_t>(Renderer_Shader::MaxEnum)>& GetShaders();
 
 	private:
 		std::vector<VkShaderModule> m_Modules{};		// Store the Vulkan shader modules for each stage
