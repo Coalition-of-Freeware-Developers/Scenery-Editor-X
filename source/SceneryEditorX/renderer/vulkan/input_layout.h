@@ -29,8 +29,8 @@
  * -------------------------------------------------------
  */
 #pragma once
-#include "SceneryEditorX/utils/inheritance.h"
 #include "vertex.h"
+#include <SceneryEditorX/utils/inheritance.h>
 
 // -------------------------------------------------------
 

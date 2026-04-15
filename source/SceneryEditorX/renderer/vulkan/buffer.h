@@ -36,8 +36,9 @@
 
 namespace SceneryEditorX
 {
-class CommandList;
-/**
+	class CommandList;
+
+	/**
 	 * @class Buffer
 	 * @brief Represents a Vulkan buffer resource, managing its lifecycle and memory allocation.
 	 */

@@ -30,21 +30,32 @@
  */
 #include "shader_manager.h"
 #include "shader_compiler.h"
+#include <algorithm>
 #include <utility>
 #include <SceneryEditorX/renderer/renderer.h>
 #include <SceneryEditorX/renderer/vulkan/render_context.h>
 #include <slang/slang-com-ptr.h>
 #include <slang/slang.h>
 #include <spirv_cross/spirv_cross.hpp>
+#include <algorithm>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
+
+#pragma region ShaderManager Static Members
+
 	static Ref<ShaderManager> s_Instance = nullptr;
 	std::mutex ShaderManager::s_ShaderMutex;
 	std::unordered_map<std::string, Ref<Shader>> ShaderManager::m_Shaders;
 
+    /**
+	 * @brief Helper function to create a Vulkan shader module from SPIR-V code
+	 * @param spirvCode Pointer to the SPIR-V code
+	 * @param codeSize Size of the SPIR-V code in bytes
+	 * @return VkShaderModule handle to the created shader module
+	 */
 	static VkShaderModule CreateShaderModule(const void* spirvCode, size_t codeSize)
 	{
 		const Ref<Device> device = RenderContext::Get()->GetDevice();
@@ -61,18 +72,33 @@ namespace SceneryEditorX
 		return module;
 	}
 
+#pragma endregion
+
 	void ShaderManager::CreateSingleBlob(const void *spirvCode, size_t codeSize)
 	{
-		// Use the same module for vertex and fragment stages by default.
+		// Use the same SPIR-V blob for multiple stages. Avoid inserting duplicate stage flags.
 		m_Stages.reserve(2);
 		m_Modules.reserve(2);
-		m_Stages.push_back(VK_SHADER_STAGE_VERTEX_BIT);
-		m_Modules.push_back(CreateShaderModule(spirvCode, codeSize));
-		m_Stages.push_back(VK_SHADER_STAGE_FRAGMENT_BIT);
-		m_Modules.push_back(CreateShaderModule(spirvCode, codeSize));
 
-		// Mark as compiled only if all modules were created successfully
-		const bool allValid = std::ranges::all_of(m_Modules, [](VkShaderModule m) { return m != VK_NULL_HANDLE; });
+		auto push_if_absent = [&](VkShaderStageFlagBits stage)
+		{
+			if (std::ranges::find(m_Stages, stage) != m_Stages.end())
+				return; // already present, skip
+
+			VkShaderModule module = CreateShaderModule(spirvCode, codeSize);
+			if (module != VK_NULL_HANDLE)
+			{
+				m_Stages.push_back(stage);
+				m_Modules.push_back(module);
+			}
+			else
+			{
+				SEDX_CORE_WARN_TAG("ShaderManager", "Failed to create shader module for stage {}", static_cast<uint32_t>(stage));
+			}
+		};
+
+		push_if_absent(VK_SHADER_STAGE_VERTEX_BIT);
+		push_if_absent(VK_SHADER_STAGE_FRAGMENT_BIT);
 		/**
 		 * Note: compilation state is tracked per-Shader (SceneryEditorX::Shader). ShaderManager does not
 		 * own a m_CompilationState for individual shaders; per-shader state should be updated on creation
@@ -86,8 +112,24 @@ namespace SceneryEditorX
 		m_Modules.reserve(stages.size());
 		for (const auto &s : stages)
 		{
-			m_Stages.push_back(s.first);
-			m_Modules.push_back(CreateShaderModule(s.second.first, s.second.second));
+			VkShaderStageFlagBits stage = s.first;
+			// avoid duplicate stage entries
+			if (std::ranges::find(m_Stages, stage) != m_Stages.end())
+			{
+				SEDX_CORE_WARN_TAG("ShaderManager", "Duplicate shader stage requested, skipping: {}", static_cast<uint32_t>(stage));
+				continue;
+			}
+
+			VkShaderModule module = CreateShaderModule(s.second.first, s.second.second);
+			if (module != VK_NULL_HANDLE)
+			{
+				m_Stages.push_back(stage);
+				m_Modules.push_back(module);
+			}
+			else
+			{
+				SEDX_CORE_WARN_TAG("ShaderManager", "Failed to create shader module for stage {}", static_cast<uint32_t>(stage));
+			}
 		}
 
 		// Mark as compiled only if all modules were created successfully
@@ -158,7 +200,7 @@ namespace SceneryEditorX
 		/*
 		Renderer::Submit([shaderName, forceCompile]()
 		{
-		    RenderThread_Reload(shaderName, forceCompile);
+			RenderThread_Reload(shaderName, forceCompile);
 		});
 		*/
 	}

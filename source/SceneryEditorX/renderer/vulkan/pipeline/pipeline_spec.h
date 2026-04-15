@@ -29,28 +29,34 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include "SceneryEditorX/renderer/vulkan/shader/shader.h"
+#include <SceneryEditorX/renderer/vulkan/input_layout.h>
+#include <SceneryEditorX/renderer/vulkan/shader/shader.h>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
+	/**
+	 * @struct PipelineSpecification
+	 * @brief Specifies the configuration for a Vulkan pipeline.
+	 */
 	struct PipelineSpecification
 	{
-		Ref<Shader> Shader;
-		VertexBufferLayout Layout;
-		VertexBufferLayout InstanceLayout;
-		VertexBufferLayout BoneInfluenceLayout;
-		PrimitiveTopology Topology = PrimitiveTopology::Triangles;
-		DepthCompOp DepthOperator = DepthCompareOperator::GreaterOrEqual;
-		bool BackfaceCulling = true;
-		bool DepthTest = true;
-		bool DepthWrite = true;
-		bool Wireframe = false;
-		float LineWidth = 1.0f;
+		Ref<Shader> shader = nullptr;
+		InputLayout layout = {};
+		InputLayout instanceLayout = {};
+		InputLayout boneInfluenceLayout = {};
+		VkPrimitiveTopology topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+		VkCompareOp depthOperator = VK_COMPARE_OP_GREATER_OR_EQUAL;
+		bool backfaceCulling = true;
+		bool depthTest = true;
+		bool depthWrite = true;
+		bool wireframe = false;
+		float lineWidth = 1.0f;
 
-		std::string DebugName;
+		const char* debugName = "";
 	};
+
 }
 
 // -------------------------------------------------------

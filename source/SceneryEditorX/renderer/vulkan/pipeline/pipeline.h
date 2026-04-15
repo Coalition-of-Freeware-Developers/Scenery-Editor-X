@@ -71,7 +71,7 @@ namespace SceneryEditorX
 		{
 			VkDevice device{ VK_NULL_HANDLE };
 			VkPipelineLayout layout{ VK_NULL_HANDLE };
-			const ShaderManager* shaderManager{ nullptr };
+			Ref<ShaderManager> shaderManager{ nullptr };
 			const char* vertexEntryPoint{ "main" };
 			const char* fragmentEntryPoint{ "main" };
 			VkVertexInputBindingDescription vertexBinding{};
@@ -92,10 +92,34 @@ namespace SceneryEditorX
 		 */
 		void Destroy(VkDevice device = VK_NULL_HANDLE);
 
-		PipelineState* GetState()				{ return &m_State; }
-		VkPipeline Get() const					{ return m_Pipeline; }
-		VkPipelineLayout GetLayout() const		{ return m_Layout; }
-		uint32_t GetPushConstantStages() const	{ return m_PushConstant_Stages; }
+		/**
+		 * @brief Get the current state of the pipeline.
+		 * @return A pointer to the pipeline state object.
+		 */
+		PipelineState* GetState() { return &m_State; }
+
+		/**
+		 * @brief Get the Vulkan pipeline handle.
+		 * @return The Vulkan pipeline handle.
+		 */
+		VkPipeline Get() const { return m_Pipeline; }
+
+		/**
+		 * @brief Get the Vulkan pipeline layout.
+		 * @return The Vulkan pipeline layout handle.
+		 */
+		VkPipelineLayout GetLayout() const { return m_Layout; }
+
+		/**
+		 * @brief Get the stages that use push constants.
+		 * @return A bitmask representing the shader stages that use push constants.
+		 */
+		uint32_t GetPushConstantStages() const { return m_PushConstant_Stages; }
+
+		/**
+		 * @brief Check if the pipeline has been destroyed.
+		 * @return True if the pipeline has been destroyed, false otherwise.
+		 */
 		bool IsDestroyed() const { return m_Destroyed; }
 
 		// Create a graphics pipeline using a single grouped input structure.

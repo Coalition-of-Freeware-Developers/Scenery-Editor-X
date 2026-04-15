@@ -29,7 +29,6 @@
  * -------------------------------------------------------
  */
 #pragma once
-
 #include <SceneryEditorX/renderer/renderer_declarations.h>
 #include <SceneryEditorX/renderer/vulkan/render_data.h>
 #include <xMath/includes/colors.h>

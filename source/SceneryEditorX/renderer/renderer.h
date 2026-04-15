@@ -188,14 +188,14 @@ namespace SceneryEditorX
 		 * @param cmdList Graphics command list for 3D rendering
 		 * @param img Texture to blit
 		 */
-		static void BlitToBackBuffer(CommandList *cmdList, ImageResource *img);
+		static void BlitToBackBuffer(CommandList* cmdList, ImageResource* img);
 
 		/**
 		 * @brief Get a render target by type.
 		 * @param type The type of render target to retrieve.
 		 * @return Pointer to the requested render target.
 		 */
-		static ImageResource *GetRenderTarget(Renderer_RenderTarget type);
+		static ImageResource* GetRenderTarget(Renderer_RenderTarget type);
 
 		/**
 		 * @brief Write draw data for a mesh instance.
@@ -253,7 +253,7 @@ namespace SceneryEditorX
 		 * @brief Get the SwapChain instance managed by the Renderer.
 		 * @return Pointer to the active SwapChain, or nullptr if not initialized.
 		 */
-		static Swapchain *GetSwapChain();
+		static Swapchain* GetSwapChain();
 
 		/**
 		 * @brief Get the current swapchain image index.
@@ -368,7 +368,6 @@ namespace SceneryEditorX
 		 */
 		static void UpdateCameraUBO(uint32_t frameIndex);
 
-
 		/**
 		 * @brief Update the shadow atlas render target based on current shadow-casting lights and their required resolutions.
 		 */
@@ -379,7 +378,7 @@ namespace SceneryEditorX
 		 * @param type The type of standard texture to retrieve.
 		 * @return Pointer to the requested standard texture.
 		 */
-		static ImageResource *GetStandardTexture(Renderer_StandardTexture type);
+		static ImageResource* GetStandardTexture(Renderer_StandardTexture type);
 
 	private:
 
@@ -415,7 +414,7 @@ namespace SceneryEditorX
 		 * @param type The type of shader to retrieve.
 		 * @return Pointer to the requested shader.
 		 */
-		static Shader *GetShader(Renderer_Shader type);
+		static Shader* GetShader(Renderer_Shader type);
 
 		/**
 		 * @brief Marks a shader as available, creating it if it doesn't already exist.
@@ -443,7 +442,7 @@ namespace SceneryEditorX
 		 * @param type The type of sampler to retrieve.
 		 * @return Pointer to the requested sampler.
 		 */
-		static Sampler *GetSampler(Renderer_Sampler type);
+		static Sampler* GetSampler(Renderer_Sampler type);
 
 		static std::array<Ref<ImageResource>, static_cast<uint32_t>(Renderer_RenderTarget::MaxEnum)>& GetRenderTargets();
 		static std::array<Ref<Shader>,  static_cast<uint32_t>(Renderer_Shader::MaxEnum)>& GetShaders();

@@ -153,14 +153,14 @@ namespace SceneryEditorX
 	enum class StageType : uint32_t
 	{
 		Vertex,
-		Geometry,
 		TessellationControl,
 		TessellationEvaluation,
+	    Geometry,
 		Fragment,
 		Compute,
-		None,
-		Graphics,
+	    Graphics,
 		All,
+		None,
 		MaxEnum
 	};
 
@@ -316,6 +316,7 @@ namespace SceneryEditorX
 		Position2dUvColor8,
 		MaxEnum
 	};
+
 }
 
 // -----------------------------------------------------------------

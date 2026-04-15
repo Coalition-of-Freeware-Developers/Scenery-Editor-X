@@ -203,7 +203,6 @@ namespace SceneryEditorX
 		}
 	}
 
-
 	PipelineState::PipelineState()
 	{
 		shaders.fill(nullptr); // ensure safe defaults

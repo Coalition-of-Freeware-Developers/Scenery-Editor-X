@@ -23,53 +23,38 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  * -------------------------------------------------------
- * size_macro_utils.h
+ * pipeline_graphics.cpp
  * -------------------------------------------------------
- * Created: 25/9/2025
+ * Created: 14/04/2026
  * -------------------------------------------------------
  */
-#pragma once
-#include <cstdio>
+#include "pipeline_graphics.h"
 
-// -------------------------------------------------------
+// --------------------------------------------------------------
 
 namespace SceneryEditorX
 {
-
-	/**
-	 * @brief converts bytes into a human-readable string
-	 * @param bytes The number of bytes to convert
-	 * @param buf The buffer to store the resulting string
-	 * @param bufSize The size of the buffer
-	 * @return A pointer to the buffer containing the human-readable string
-	 */
-	inline const char* HumanSize(double bytes, char* buf, std::size_t bufSize)
+	
+	PipelineGraphics::PipelineGraphics(PipelineSpecification graphicsSpec) : m_Spec(std::move(graphicsSpec))
 	{
-		static const char* units[] = {"B", "KB", "MB", "GB", "TB", "PB"};
-		int unitIndex = 0;
-		while (bytes >= 1024.0 && unitIndex < 5)
-		{
-			bytes /= 1024.0;
-			++unitIndex;
-		}
-		std::snprintf(buf, bufSize, "%.2f %s", bytes, units[unitIndex]);
-		return buf;
+
 	}
 
-	/**
-	 * @brief Macro to convert a byte size into a human-readable string at runtime,
-	 * using a thread-local buffer to avoid issues with static buffers in multi-threaded contexts. 
-	 * The macro expands into a lambda that formats the byte size and returns a pointer to the thread-local buffer containing the result.
-	 * @param bytes The number of bytes to convert
-	 * @note Works safely across Windows (MSVC), Linux (GCC/Clang), and macOS (Clang).
-	 * @return A pointer to a thread-local buffer containing the human-readable string representation of the byte size.
-	 */
-	#define FILE_SIZE(bytes) \
-		([&]() { \
-			thread_local char __buf[64]; \
-			return human_size(static_cast<double>(bytes), __buf, sizeof(__buf)); \
-		}())
+	PipelineGraphics::~PipelineGraphics()
+	{
+	}
 
-}
+	void PipelineGraphics::SetPushConstants(Buffer constants) const
+	{
 
-// -------------------------------------------------------
+	}
+
+	bool PipelineGraphics::IsDynamicLineWidth() const
+	{
+		return m_Spec.topology == VkPrimitiveTopology::VK_PRIMITIVE_TOPOLOGY_LINE_LIST ||
+			   m_Spec.topology == VkPrimitiveTopology::VK_PRIMITIVE_TOPOLOGY_LINE_STRIP || m_Spec.wireframe;
+	}
+
+} // namespace SceneryEditorX
+
+// --------------------------------------------------------------
