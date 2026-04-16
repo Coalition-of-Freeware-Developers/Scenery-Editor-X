@@ -31,6 +31,8 @@
 // ReSharper disable CppConstValueFunctionReturnType
 #include "shader_stage.h"
 #include "shader_manager.h"
+#include "SceneryEditorX/core/application/application.h"
+
 #include <array>
 #include <fstream>
 #include <filesystem>
@@ -112,7 +114,9 @@ namespace SceneryEditorX
 
 	static std::filesystem::path GetCachePath(const StageType stage, const std::filesystem::path& sourcePath)
 	{
-		std::filesystem::path cacheRoot = std::filesystem::current_path() / "cache" / "shaders";
+		const auto &context = Application::Get().GetPlatformContext();
+		const auto &appDir = context->GetTempDirectory();
+		std::filesystem::path cacheRoot = appDir + "SceneryEditorX\\shader-cache";
 		const std::filesystem::path fileStem = sourcePath.stem();
 		const std::string cacheName = fileStem.string() + "." + StageSuffix(stage) + ".spv";
 		return cacheRoot / cacheName;
@@ -145,16 +149,12 @@ namespace SceneryEditorX
 	static bool WriteShaderBinary(const std::vector<uint32_t>& data, const std::filesystem::path& cachePath)
 	{
 		if (data.empty())
-		{
 			return false;
-		}
 
 		std::filesystem::create_directories(cachePath.parent_path());
 		std::ofstream output(cachePath, std::ios::binary | std::ios::trunc);
 		if (!output.is_open())
-		{
 			return false;
-		}
 
 		const std::streamsize byteCount = static_cast<std::streamsize>(data.size() * sizeof(uint32_t));
 		output.write(reinterpret_cast<const char*>(data.data()), byteCount);
@@ -254,9 +254,7 @@ namespace SceneryEditorX
 	void ShaderStage::DestroyModule()
 	{
 		if (m_ShaderModule == VK_NULL_HANDLE)
-		{
 			return;
-		}
 
 		const Ref<RenderContext> context = RenderContext::Get();
 		if (!context.IsValid())

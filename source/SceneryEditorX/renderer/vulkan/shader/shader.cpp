@@ -63,7 +63,7 @@ namespace SceneryEditorX
 		return m_CompilationState.load() == ShaderCompiler::State::Succeeded;
 	}
 
-	void Shader::SetCompilationState(ShaderCompiler::State state)
+	void Shader::SetCompilationState(const ShaderCompiler::State state)
 	{
 		m_CompilationState.store(state);
 	}

@@ -275,13 +275,11 @@ namespace SceneryEditorX
 				s_Shaders[gridFragIndex] = gridShader;
 				SEDX_CORE_ASSERT(s_Shaders[gridVertexIndex] != nullptr, "Failed to allocate grid shader");
 				break;
-		    }
-		    case Renderer_Shader::blit_c:
+			}
+			case Renderer_Shader::blit_c:
 			{
 				if (!s_Shaders[index])
-				{
 					s_Shaders[index] = CreateRef<Shader>("blit");
-				}
 
 				Ref<Shader>& shader = s_Shaders[index];
 				SEDX_CORE_ASSERT(shader != nullptr, "Failed to allocate shader slot for type {}", static_cast<uint32_t>(type));
@@ -293,9 +291,8 @@ namespace SceneryEditorX
 			}
 			default:
 				if (!s_Shaders[index])
-				{
 					s_Shaders[index] = CreateRef<Shader>();
-				}
+
 				break;
 		}
 	}
