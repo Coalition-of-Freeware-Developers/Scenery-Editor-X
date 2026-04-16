@@ -30,6 +30,7 @@
  */
 #include "renderer.h"
 #include "renderer_buffers.h"
+#include "SceneryEditorX/core/threading/thread_pool.h"
 #include "SceneryEditorX/scene/material.h"
 #include "vulkan/bindless_manager.h"
 #include "vulkan/descriptor_pool_manager.h"
@@ -299,7 +300,17 @@ namespace SceneryEditorX
 			SEDX_CORE_WARN_TAG("Swapchain", "Window is not visible yet; attempting swapchain setup anyway");
 		}
 
-		s_Swapchain = CreateRef<Swapchain>();
+		{
+			// Get window dimensions
+			uint32_t width = Window::GetWidth();
+			uint32_t height = Window::GetHeight();
+
+			SetOutputResolution(width, height, false);
+			SetRendererResolution(1920, 1080, false);
+			SetViewport(static_cast<float>(width), static_cast<float>(height));
+		}
+
+	    s_Swapchain = CreateRef<Swapchain>();
 		// Temporary debug logging: record when the global swapchain Ref is assigned
 		// This helps trace who/when mutates the global swapchain handle during init.
 		if (s_Swapchain)
@@ -322,29 +333,28 @@ namespace SceneryEditorX
 			SEDX_CORE_ERROR_TAG("Renderer", "Failed to get SDL window for surface creation");
 			return;
 		}
-
-		// Get window dimensions
-		uint32_t width = Window::GetWidth();
-		uint32_t height = Window::GetHeight();
-
-		SetOutputResolution(width, height, false);
-		SetRendererResolution(1920, 1080, false);
-		SetViewport(static_cast<float>(width), static_cast<float>(height));
-
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		/// Frame Resources                                                                                               ///
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		
 		s_AssetManager = CreateScope<AssetManager>();
-		SEDX_CORE_TRACE_TAG("Renderer", "Created AssetManager");
-		
 		s_ShaderManager = CreateScope<ShaderManager>();
-		SEDX_CORE_TRACE_TAG("Renderer", "Created ShaderManager");
 
 		CreateFrameResources();
 		// Temporary debug trace: log sync vectors sizes after frame resources creation
 		SEDX_CORE_TRACE_TAG("Renderer", "Trace: After CreateFrameResources sizes - fences={}, render={}",
 			static_cast<uint32_t>(s_FenceHandles.size()), static_cast<uint32_t>(s_RenderSemaphoreHandles.size()));
+
+		ThreadPool::Submit([]()
+		{
+			m_ResourcesInitialized = false;
+			CreateStandardMeshes();
+			CreateStandardTextures();
+			CreateStandardMaterials();
+			CreateFonts();
+			LoadShaders();
+			m_ResourcesInitialized = true;
+		});
 
 		// Structured draw-data buffer used by Renderer::WriteDrawData (including UI path).
 		// Allocate one large mapped buffer partitioned by frame resource index.
@@ -353,7 +363,9 @@ namespace SceneryEditorX
 		{
 			auto& structuredBuffers = GetStructuredBuffers();
 
-			// --- DrawData (large mapped ring buffer, one region per frame-in-flight) ---
+#pragma region DrawData Buffer
+
+			// large mapped ring buffer, one region per frame-in-flight
 			const uint32_t drawDataBufferIndex  = static_cast<uint32_t>(Renderer_Buffer::DrawData);
 			const uint32_t drawDataElementCount = RENDERER_MAX_DRAW_CALLS * RENDERER_RESOURCE_FRAME_LIFETIME;
 			if (!structuredBuffers[drawDataBufferIndex])
@@ -373,97 +385,116 @@ namespace SceneryEditorX
 				SEDX_CORE_ERROR_TAG("Renderer", "Failed to create draw_data_buffer");
 			}
 
-			// --- MaterialParameters ---
+#pragma endregion
+#pragma region MaterialParameters
+
 			const uint32_t materialIndex = static_cast<uint32_t>(Renderer_Buffer::MaterialParameters);
 			if (!structuredBuffers[materialIndex])
 			{
-				structuredBuffers[materialIndex] = CreateRef<Buffer>(
-					sizeof(ShaderBuffer_Material), MAX_ARRAY_SIZE, nullptr, true, "material_parameters");
+				structuredBuffers[materialIndex] = CreateRef<Buffer>(sizeof(ShaderBuffer_Material), MAX_ARRAY_SIZE, nullptr, true, "material_parameters");
 				SEDX_CORE_ASSERT(structuredBuffers[materialIndex], "Failed to create material_parameters buffer");
 				SEDX_CORE_TRACE_TAG("Renderer", "Created material_parameters buffer");
 			}
 
-			// --- LightParameters ---
+#pragma endregion
+#pragma region LightParameters
+
 			const uint32_t lightIndex = static_cast<uint32_t>(Renderer_Buffer::LightParameters);
 			if (!structuredBuffers[lightIndex])
 			{
-				structuredBuffers[lightIndex] = CreateRef<Buffer>(
-					sizeof(ShaderBuffer_Light), MAX_ARRAY_SIZE, nullptr, true, "light_parameters");
+				structuredBuffers[lightIndex] = CreateRef<Buffer>(sizeof(ShaderBuffer_Light), MAX_ARRAY_SIZE, nullptr, true, "light_parameters");
 				SEDX_CORE_ASSERT(structuredBuffers[lightIndex], "Failed to create light_parameters buffer");
 				SEDX_CORE_TRACE_TAG("Renderer", "Created light_parameters buffer");
 			}
 
-			// --- AABBs (per-frame regions, prepass + indirect draw slots) ---
+#pragma endregion
+#pragma region AABBs Object Boundery Boxes
+
+			// per-frame regions, prepass + indirect draw slots
 			const uint32_t aabbIndex = static_cast<uint32_t>(Renderer_Buffer::AABBs);
 			if (!structuredBuffers[aabbIndex])
 			{
 				// Double the size to hold per-frame regions (m_FrameResource_Index * MAX_ARRAY_SIZE offset)
 				const uint32_t aabbElementCount = MAX_ARRAY_SIZE * DRAW_DATA_BUFFER_COUNT;
-				structuredBuffers[aabbIndex] = CreateRef<Buffer>(
-					sizeof(ShaderBuffer_Aabb), aabbElementCount, nullptr, true, "aabb_buffer");
+				structuredBuffers[aabbIndex] = CreateRef<Buffer>(sizeof(ShaderBuffer_Aabb), aabbElementCount, nullptr, true, "aabb_buffer");
 				SEDX_CORE_ASSERT(structuredBuffers[aabbIndex], "Failed to create aabb_buffer");
 				SEDX_CORE_TRACE_TAG("Renderer", "Created aabb_buffer");
 			}
 
-			// --- ConstantFrame (per-frame constants written by UpdateFrameConstantBuffer) ---
+#pragma endregion
+#pragma region ConstantFrame
+
+			// per-frame constants written by UpdateFrameConstantBuffer
 			const uint32_t constantFrameIndex = static_cast<uint32_t>(Renderer_Buffer::ConstantFrame);
 			if (!structuredBuffers[constantFrameIndex])
 			{
 				// Use RENDERER_RESOURCE_FRAME_LIFETIME slots so offset rotation works correctly
-				structuredBuffers[constantFrameIndex] = CreateRef<Buffer>(
-					sizeof(ConstantBuffer_Frame), RENDERER_RESOURCE_FRAME_LIFETIME, nullptr, true, "constant_frame_buffer");
+				structuredBuffers[constantFrameIndex] = CreateRef<Buffer>(sizeof(ConstantBuffer_Frame), RENDERER_RESOURCE_FRAME_LIFETIME, nullptr, true, "constant_frame_buffer");
 				SEDX_CORE_ASSERT(structuredBuffers[constantFrameIndex], "Failed to create constant_frame_buffer");
 				SEDX_CORE_TRACE_TAG("Renderer", "Created constant_frame_buffer");
 			}
 
-			// --- IndirectDrawArgs ---
+#pragma endregion
+#pragma region IndirectDrawArgs
+
 			const uint32_t indirectArgsIndex = static_cast<uint32_t>(Renderer_Buffer::IndirectDrawArgs);
 			if (!structuredBuffers[indirectArgsIndex])
 			{
-				structuredBuffers[indirectArgsIndex] = CreateRef<Buffer>(
-					sizeof(ShaderBuffer_IndirectDrawArgs), MAX_ARRAY_SIZE, nullptr, true, "indirect_draw_args");
+				structuredBuffers[indirectArgsIndex] = CreateRef<Buffer>(sizeof(ShaderBuffer_IndirectDrawArgs), MAX_ARRAY_SIZE, nullptr, true, "indirect_draw_args");
 				SEDX_CORE_ASSERT(structuredBuffers[indirectArgsIndex], "Failed to create indirect_draw_args buffer");
 				SEDX_CORE_TRACE_TAG("Renderer", "Created indirect_draw_args buffer");
 			}
 
-			// --- IndirectDrawData ---
+#pragma endregion
+#pragma region IndirectDrawData
+
 			const uint32_t indirectDataIndex = static_cast<uint32_t>(Renderer_Buffer::IndirectDrawData);
 			if (!structuredBuffers[indirectDataIndex])
 			{
-				structuredBuffers[indirectDataIndex] = CreateRef<Buffer>(
-					sizeof(ShaderBuffer_DrawData), MAX_ARRAY_SIZE, nullptr, true, "indirect_draw_data");
+				structuredBuffers[indirectDataIndex] = CreateRef<Buffer>(sizeof(ShaderBuffer_DrawData), MAX_ARRAY_SIZE, nullptr, true, "indirect_draw_data");
 				SEDX_CORE_ASSERT(structuredBuffers[indirectDataIndex], "Failed to create indirect_draw_data buffer");
 				SEDX_CORE_TRACE_TAG("Renderer", "Created indirect_draw_data buffer");
 			}
 
-			// --- IndirectDrawCount (single uint32_t, reset to zero each frame by cull shader) ---
+#pragma endregion
+#pragma region IndirectDrawCount
+
+			// single uint32_t, reset to zero each frame by cull shader
 			const uint32_t indirectCountIndex = static_cast<uint32_t>(Renderer_Buffer::IndirectDrawCount);
 			if (!structuredBuffers[indirectCountIndex])
 			{
-				structuredBuffers[indirectCountIndex] = CreateRef<Buffer>(
-					sizeof(uint32_t), 1, nullptr, true, "indirect_draw_count");
+				structuredBuffers[indirectCountIndex] = CreateRef<Buffer>(sizeof(uint32_t), 1, nullptr, true, "indirect_draw_count");
 				SEDX_CORE_ASSERT(structuredBuffers[indirectCountIndex], "Failed to create indirect_draw_count buffer");
 				SEDX_CORE_TRACE_TAG("Renderer", "Created indirect_draw_count buffer");
 			}
 
-			// --- DummyInstance (identity instances for vertex-pulled draws with no instancing) ---
+#pragma endregion
+#pragma region DummyInstance
+
+			// identity instances for vertex-pulled draws with no instancing
 			const uint32_t dummyInstanceIndex = static_cast<uint32_t>(Renderer_Buffer::DummyInstance);
 			if (!structuredBuffers[dummyInstanceIndex])
 			{
 				// Minimal buffer: one identity instance entry; real content written by passes
-				structuredBuffers[dummyInstanceIndex] = CreateRef<Buffer>(
-					sizeof(ShaderBuffer_DrawData), 1, nullptr, true, "dummy_instance_buffer");
+				structuredBuffers[dummyInstanceIndex] = CreateRef<Buffer>(sizeof(ShaderBuffer_DrawData), 1, nullptr, true, "dummy_instance_buffer");
 				SEDX_CORE_ASSERT(structuredBuffers[dummyInstanceIndex], "Failed to create dummy_instance_buffer");
 				SEDX_CORE_TRACE_TAG("Renderer", "Created dummy_instance_buffer");
 			}
 
+#pragma endregion
+
 			SEDX_CORE_TRACE_TAG("Renderer", "All structured buffers initialized");
 		}
-
+		
+		CreateBuffers();
+		CreateDepthStencilStates();
+		CreateRasterizerStates();
+		CreateBlendStates();
 		CreateRenderTargets(true, true, true);
-		CreateModels();
+		CreateSamplers();
+		/*CreateModels();
 		GeometryBuffer::Initialize();
-		CreateShaders();
+		LoadShaders();*/
 
 		// Query surface capabilities
 		VkPhysicalDevice physicalDevice = RenderContext::Get()->GetDevice()->GetPhysicalDevice();
@@ -744,8 +775,7 @@ namespace SceneryEditorX
 				if (m_ResourceIndex == RENDERER_RESOURCE_FRAME_LIFETIME)
 				{
 					m_ResourceIndex = 0;
-					Buffer* constantFrameBuffer = GetBuffer(Renderer_Buffer::ConstantFrame);
-					if (constantFrameBuffer)
+					if (Buffer *constantFrameBuffer = GetBuffer(Renderer_Buffer::ConstantFrame))
 					{
 						constantFrameBuffer->ResetOffset();
 					}
@@ -914,21 +944,7 @@ namespace SceneryEditorX
 			UpdatePersistentLines();
 			AddLinesToBeRendered();
 
-			/*
-			if (canRender)
-			{
-				BlitToBackBuffer(m_CmdList_Present, GetRenderTarget(Renderer_RenderTarget::frame_output));
-			}
-
 			SubmitAndPresent();
-			*/
-
-			// NOTE: BlitToBackBuffer via m_CmdList_Present is intentionally removed here.
-			// m_CmdList_Present is used for resource updates (materials, lights, etc.) only;
-			// it is never submitted with a swapchain acquire semaphore, so any render commands
-			// recorded into it would be silently discarded. The blit-to-swapchain is handled
-			// inside RecordRenderCommands() which runs within the properly-submitted
-			// m_CommandBuffers[m_CurrentFrameIndex] command buffer.
 
 			{
 				m_Lines_Vertices.clear();
@@ -1005,6 +1021,8 @@ namespace SceneryEditorX
 
 		}
 	}   
+
+#pragma endregion
 
 #pragma region Frame Rendering Methods
 
@@ -1205,7 +1223,7 @@ namespace SceneryEditorX
 		VkPipelineStageFlags waitStages = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
 
 		// Extra lifetime / uninitialized pattern checks
-		auto IsLikelyUninitialized = [](uint64_t val) 
+		auto is_likely_uninitialized = [](uint64_t val) 
 		{
 			// Common MSVC uninitialized patterns: 0xCCCCCCCCCCCCCCCC, 0xCDCDCDCDCDCDCDCD
 			return val == 0xCCCCCCCCCCCCCCCCULL || val == 0xCDCDCDCDCDCDCDCDULL;
@@ -1214,9 +1232,8 @@ namespace SceneryEditorX
 		// Validate device and logical device
 		VkDevice vkDevice = VK_NULL_HANDLE;
 		if (device.IsValid())
-		{
 			vkDevice = device->GetDevice();
-		}
+
 		SEDX_CORE_VERIFY(vkDevice != VK_NULL_HANDLE, "Logical VkDevice is invalid before submit");
 
 		// Ensure indices and swapchain are valid before dereferencing handle arrays
@@ -1232,15 +1249,15 @@ namespace SceneryEditorX
 		SEDX_CORE_VERIFY(acquireSemaphore != VK_NULL_HANDLE, "Acquire semaphore invalid before submit");
 
 		// Detect obviously-uninitialized handles (do this after bounds checks)
-	   uint64_t presentSem = reinterpret_cast<uint64_t>(acquireSemaphore);
+		uint64_t presentSem = reinterpret_cast<uint64_t>(acquireSemaphore);
 		uint64_t renderSem = reinterpret_cast<uint64_t>(s_RenderSemaphoreHandles[m_SwapchainImageIndex]);
 		uint64_t fenceHandle = reinterpret_cast<uint64_t>(s_FenceHandles[m_CurrentFrameIndex]);
 		uint64_t cbHandle = reinterpret_cast<uint64_t>(cb);
 
-		SEDX_CORE_VERIFY(!IsLikelyUninitialized(presentSem), "Present semaphore appears uninitialized: 0x{:x}", presentSem);
-		SEDX_CORE_VERIFY(!IsLikelyUninitialized(renderSem), "Render semaphore appears uninitialized: 0x{:x}", renderSem);
-		SEDX_CORE_VERIFY(!IsLikelyUninitialized(fenceHandle), "Fence handle appears uninitialized: 0x{:x}", fenceHandle);
-		SEDX_CORE_VERIFY(!IsLikelyUninitialized(cbHandle), "Command buffer appears uninitialized: 0x{:x}", cbHandle);
+		SEDX_CORE_VERIFY(!is_likely_uninitialized(presentSem), "Present semaphore appears uninitialized: 0x{:x}", presentSem);
+		SEDX_CORE_VERIFY(!is_likely_uninitialized(renderSem), "Render semaphore appears uninitialized: 0x{:x}", renderSem);
+		SEDX_CORE_VERIFY(!is_likely_uninitialized(fenceHandle), "Fence handle appears uninitialized: 0x{:x}", fenceHandle);
+		SEDX_CORE_VERIFY(!is_likely_uninitialized(cbHandle), "Command buffer appears uninitialized: 0x{:x}", cbHandle);
 
 		// UI is now rendered inside RecordRenderCommands (in the same CB as scene geometry),
 		// so only the single swapchain CB needs to be submitted.
@@ -1253,7 +1270,7 @@ namespace SceneryEditorX
 			static_cast<void *>(s_RenderSemaphoreHandles[m_SwapchainImageIndex]));
 
 		// Defensive validation of synchronization primitives and handles before submit
-	  SEDX_CORE_VERIFY(acquireSemaphore != VK_NULL_HANDLE,
+		SEDX_CORE_VERIFY(acquireSemaphore != VK_NULL_HANDLE,
 						 "Acquire semaphore handle invalid for image {}", m_SwapchainImageIndex);
 		SEDX_CORE_VERIFY(s_RenderSemaphoreHandles[m_SwapchainImageIndex] != VK_NULL_HANDLE,
 						 "Render semaphore handle invalid for swapchain image {}", m_SwapchainImageIndex);
@@ -1265,7 +1282,7 @@ namespace SceneryEditorX
 		VkSubmitInfo submitInfo{};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 		submitInfo.waitSemaphoreCount = 1;
-	   submitInfo.pWaitSemaphores = &acquireSemaphore;
+		submitInfo.pWaitSemaphores = &acquireSemaphore;
 		submitInfo.pWaitDstStageMask = &waitStages;
 		submitInfo.commandBufferCount = frameCBCount;
 		submitInfo.pCommandBuffers = frameCBs;
@@ -1424,7 +1441,8 @@ namespace SceneryEditorX
 				s_RenderSemaphoreHandles.push_back(sem->GetSemaphore());
 				Debugging::SetResourceName(sem.Get()->GetSemaphore(), ResourceType::Semaphore, "RenderSemaphore");
 			}
-		   // Temporary trace: log first render semaphore handle if available
+
+			// Temporary trace: log first render semaphore handle if available
 			if (!s_RenderSemaphoreHandles.empty())
 			{
 				SEDX_CORE_TRACE_TAG("Renderer", "Trace: Render semaphores created: count = {}, first = 0x{:x}",
@@ -1434,7 +1452,7 @@ namespace SceneryEditorX
 	
 	
 		m_FrameSync = CreateScope<FrameSync>(SyncType::Fence); // keep a simple FrameSync in case other systems expect it
-	   SEDX_CORE_TRACE_TAG("Renderer", "Created frame sync objects (fences: {}, render semaphores: {})",
+		SEDX_CORE_TRACE_TAG("Renderer", "Created frame sync objects (fences: {}, render semaphores: {})",
 							static_cast<uint32_t>(s_FenceHandles.size()),
 							static_cast<uint32_t>(s_RenderSemaphoreHandles.size()));
 
@@ -2013,6 +2031,8 @@ namespace SceneryEditorX
 		return m_CmdList_Frame;
 	}
 
+#pragma endregion
+
 	void Renderer::CreateModels()
 	{
 		SEDX_CORE_TRACE_TAG("Renderer", "Creating models and loading assets");
@@ -2091,7 +2111,7 @@ namespace SceneryEditorX
 	 * avoid having it directly in the Renderer and allow other systems to access 
 	 * compiled shader blobs as needed without depending on the Renderer.
 	 */
-	void Renderer::CreateShaders()
+	void Renderer::LoadShaders()
 	{
 		SEDX_CORE_TRACE_TAG("Renderer", "Creating shaders and initializing Slang shader compiler");
 
@@ -2157,8 +2177,7 @@ namespace SceneryEditorX
 
 			Slang::ComPtr<slang::IBlob> gridDiagnosticsBlob;
 			Slang::ComPtr<slang::IModule> gridModule{
-				slangSession->loadModuleFromSource("grid", gridShaderPathString.c_str(),
-												   gridDiagnosticsBlob, gridDiagnosticsBlob.writeRef())
+				slangSession->loadModuleFromSource("grid", gridShaderPathString.c_str(), gridDiagnosticsBlob, gridDiagnosticsBlob.writeRef())
 			};
 
 			if (!gridModule)
@@ -2491,8 +2510,6 @@ namespace SceneryEditorX
 		*/
 
 	}
-
-#pragma endregion
 
 #pragma region Private Rendering Methods
 
@@ -3038,18 +3055,19 @@ namespace SceneryEditorX
 		// TODO: Implement draw call collection and sorting when the scene and material systems are integrated
 		(void)cmdList;
 
-		/*
 		m_DrawCall_Count          = 0;
 		m_DrawCalls_Prepass_Count = 0;
 		m_DrawData_Count           = 0;
 		m_Transparents_Present     = false;
 
-
+		/*
 		if (ProgressTracker::IsLoading())
 			return;
+			*/
 
 
 		// collect draw calls
+		/*
 		{
 			for (Entity* entity : Scene::GetEntities())
 			{
@@ -3113,8 +3131,10 @@ namespace SceneryEditorX
 				}
 			});
 		}
+		*/
 
 		// prepass: visible opaques, sorted by alpha test then distance
+		/*
 		{
 			for (uint32_t i = 0; i < m_DrawCall_Count; ++i)
 			{
@@ -3136,8 +3156,10 @@ namespace SceneryEditorX
 				return a.distance_squared < b.distance_squared;
 			});
 		}
+		*/
 
 		// indirect draw buffers (gpu-driven path)
+		/*
 		{
 			m_Indirect_DrawCount = 0;
 			for (uint32_t i = 0; i < m_DrawCall_Count; i++)
@@ -3173,8 +3195,10 @@ namespace SceneryEditorX
 				data.padding            = 0;
 			}
 		}
+		*/
 
 		// select occluders (top N by screen area, with temporal hysteresis)
+		/*
 		{
 			static std::unordered_set<Renderable*> previous_occluders;
 

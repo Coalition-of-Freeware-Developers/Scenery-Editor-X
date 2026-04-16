@@ -40,12 +40,11 @@ namespace SceneryEditorX
 	MeshGenerator::MeshGenerator(MeshType type)
 	{
 		this->m_Type = type;
-	  this->m_Vertices = new std::vector<MeshVertex>();
+	    this->m_Vertices = new std::vector<MeshVertex>();
 		this->m_Indices = new std::vector<MeshIndex>();
 		switch (type)
 		{
 			case MeshType::Cube:
-			case MeshType::Box:
 				GenerateCube(m_Vertices, m_Indices);
 				break;
 		  case MeshType::Quad:

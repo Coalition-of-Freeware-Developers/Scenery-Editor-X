@@ -79,19 +79,17 @@ namespace SceneryEditorX
 		[[nodiscard]] uint64_t GetHash()							const { return m_Hash; }
 		[[nodiscard]] bool operator==(const BlendState& state)		const { return m_Hash == state.m_Hash; }
 
+		/**
+		 * @brief Assignment operator for BlendState. Allows assigning from a Ref<BlendState> to another BlendState instance.
+		 * @param ref The reference to the BlendState to assign from.
+		 * @return A reference to the assigned BlendState.
+		 */
+		BlendState &operator=(const Ref<BlendState> & ref);
+
 	private:
 		BlendStateSpec m_Spec; // Store the original spec for potential future use (e.g., hashing, debugging)
 		VkCompareOp m_Depth_CompFunc = VK_COMPARE_OP_NEVER;
-	    uint64_t m_Hash = 0;
-
-		/*bool            m_BlendEnabled			= false;
-		VkBlendFactor   m_SrcColor				= VK_BLEND_FACTOR_ONE;
-		VkBlendFactor   m_DstColor				= VK_BLEND_FACTOR_ZERO;
-		VkBlendOp       m_ColorOp				= VK_BLEND_OP_ADD;
-		VkBlendFactor   m_SrcAlpha				= VK_BLEND_FACTOR_ONE;
-		VkBlendFactor   m_DstAlpha				= VK_BLEND_FACTOR_ONE;
-		VkBlendOp       m_AlphaOp				= VK_BLEND_OP_ADD;
-		float			m_BlendFactor           = 1.0f;*/
+		uint64_t m_Hash = 0;
 	};
 
 }

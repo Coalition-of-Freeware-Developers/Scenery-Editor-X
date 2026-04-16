@@ -45,8 +45,8 @@ namespace SceneryEditorX
 	struct RasterStateSpec
 	{
 		PolygonMode polygonMode       = PolygonMode::MaxEnum;
-		bool        depthBiasEnabled  = false;
 		bool		depthClipEnabled  = true;
+	    bool        depthBiasEnabled  = false;
 		float       depthBiasConstant = 0.0f;
 		float       depthBiasSlope    = 0.0f;
 		float		depthBiasClamp    = 0.0f;
@@ -73,7 +73,19 @@ namespace SceneryEditorX
 		[[nodiscard]] float		  GetLineWidth()         const { return m_LineWidth; }
 		[[nodiscard]] uint64_t	  GetHash()				 const { return m_Hash; }
 
+		/**
+		 * @brief Equality operator for RasterizerState. Compares the hash values of two RasterizerState instances to determine if they are equal.
+		 * @param state The RasterizerState instance to compare with.
+		 * @return True if the hash values are equal, false otherwise.
+		 */
 		bool operator==(const RasterizerState& state)	 const { return m_Hash == state.GetHash(); }
+
+		/**
+		 * @brief Assignment operator for RasterizerState. Allows assigning from a Ref<RasterizerState> to another RasterizerState instance.
+		 * @param ref The reference to the RasterizerState to assign from.
+		 * @return A reference to the assigned RasterizerState.
+		 */
+		RasterizerState &operator=(const Ref<RasterizerState> & ref);
 
 	private:
 		RasterStateSpec m_Spec;

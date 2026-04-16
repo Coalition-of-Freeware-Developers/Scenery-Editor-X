@@ -29,6 +29,9 @@
  * -------------------------------------------------------
  */
 #pragma once
+#include "SceneryEditorX/asset/model/mesh_gen.h"
+
+
 #include <SceneryEditorX/renderer/vulkan/vertex.h>
 #include <SceneryEditorX/utils/inheritance.h>
 
@@ -39,20 +42,6 @@ namespace SceneryEditorX
 	class Entity;
 	class CommandList;
 	class Buffer;
-
-	/**
-	 * @enum MeshType
-	 * @brief 
-	 */
-	enum class MeshType : uint8_t
-	{
-		Cube,
-		Quad,
-		Sphere,
-		Cylinder,
-		Cone,
-		MaxEnum
-	};
 
 	/**
 	 * @struct MeshLod

@@ -153,41 +153,93 @@ namespace SceneryEditorX
 
 	Vec3& MaterialAsset::GetAlbedoColor() const
 	{
+		if (!m_Material) // or if (m_Material.m_Ptr == nullptr) if accessible
+		{
+			SEDX_CORE_ERROR("MaterialAsset::GetAlbedoColor called with null underlying material");
+			static Vec3 dummy = Vec3(0.0f);
+			return dummy;
+		}
+
 		return m_Material->GetVector3(ALBEDO_COLOR_UNIFORM);
 	}
 
 	void MaterialAsset::SetAlbedoColor(const Vec3& color) const
 	{
+		if (!m_Material) // or if (m_Material.m_Ptr == nullptr) if accessible
+		{
+			SEDX_CORE_ERROR("MaterialAsset::SetAlbedoColor called with null underlying material");
+			return;
+		}
+
 		m_Material->Set(ALBEDO_COLOR_UNIFORM, color);
 	}
 
 	float& MaterialAsset::GetMetalness() const
 	{
+		if (!m_Material) // or if (m_Material.m_Ptr == nullptr) if accessible
+		{
+			SEDX_CORE_ERROR("MaterialAsset::GetMetalness called with null underlying material");
+			static float dummy = 0.0f;
+			return dummy;
+		}
+
 		return m_Material->GetFloat(METALNESS_UNIFORM);
 	}
 
 	void MaterialAsset::SetMetalness(float value) const
 	{
+		if (!m_Material) // or if (m_Material.m_Ptr == nullptr) if accessible
+		{
+			SEDX_CORE_ERROR("MaterialAsset::SetMetalness called with null underlying material");
+			return;
+		}
+
 		m_Material->Set(METALNESS_UNIFORM, value);
 	}
 
 	float& MaterialAsset::GetRoughness() const
 	{
+		if (!m_Material) // or if (m_Material.m_Ptr == nullptr) if accessible
+		{
+			SEDX_CORE_ERROR("MaterialAsset::GetRoughness called with null underlying material");
+			static float dummy = 0.0f;
+			return dummy;
+		}
+
 		return m_Material->GetFloat(ROUGHNESS_UNIFORM);
 	}
 
 	void MaterialAsset::SetRoughness(float value) const
 	{
+		if (!m_Material) // or if (m_Material.m_Ptr == nullptr) if accessible
+		{
+			SEDX_CORE_ERROR("MaterialAsset::SetRoughness called with null underlying material");
+			return;
+		}
+
 		m_Material->Set(ROUGHNESS_UNIFORM, value);
 	}
 
 	float& MaterialAsset::GetEmission() const
 	{
+		if (!m_Material) // or if (m_Material.m_Ptr == nullptr) if accessible
+		{
+			SEDX_CORE_ERROR("MaterialAsset::GetEmission called with null underlying material");
+			static float dummy = 0.0f;
+			return dummy;
+		}
+
 		return m_Material->GetFloat(EMISSION_UNIFORM);
 	}
 
 	void MaterialAsset::SetEmission(float value) const
 	{
+		if (!m_Material) // or if (m_Material.m_Ptr == nullptr) if accessible
+		{
+			SEDX_CORE_ERROR("MaterialAsset::SetEmission called with null underlying material");
+			return;
+		}
+
 		m_Material->Set(EMISSION_UNIFORM, value);
 	}
 
@@ -219,6 +271,9 @@ namespace SceneryEditorX
 
 	Ref<ImageResource> MaterialAsset::GetAlbedoMap() const
 	{
+	    SEDX_CORE_ERROR_TAG("Material", "GetAlbedoMap called with no underlying material");
+		SEDX_CORE_TRACE_TAG("Material", "GetAlbedoMap if not yet implemented");
+
 		return nullptr;
 	}
 
@@ -229,6 +284,8 @@ namespace SceneryEditorX
 		{
 			ClearAlbedoMap();
 		}
+
+		SEDX_CORE_ERROR_TAG("Material", "SetAlbedoMap called with null underlying material");
 	}
 
 	void MaterialAsset::SetProperty(MaterialClass materialClass, const float value)
@@ -264,16 +321,31 @@ namespace SceneryEditorX
 
 	Ref<ImageResource> MaterialAsset::GetNormalMap() const
 	{
+		SEDX_CORE_ERROR_TAG("Material", "GetNormalMap called with no underlying material");
+		SEDX_CORE_TRACE_TAG("Material", "GetNormalMap if not yet implemented");
 		return nullptr;
 	}
 
 	bool MaterialAsset::IsUsingNormalMap() const
 	{
+		if (!m_Material) // or if (m_Material.m_Ptr == nullptr) if accessible
+		{
+			SEDX_CORE_ERROR_TAG("Material", "IsUsingNormalMap called with no underlying material");
+		    SEDX_CORE_TRACE_TAG("Material", "IsUsingNormalMap if not yet implemented");
+			return false;
+		}
+
 		return m_Maps.m_NormalMap != AssetHandle{};
 	}
 
 	void MaterialAsset::SetUseNormalMap(bool value) const
 	{
+		if (!m_Material) // or if (m_Material.m_Ptr == nullptr) if accessible
+		{
+			SEDX_CORE_ERROR_TAG("Material", "SetUseNormalMap called with no underlying material");
+			return;
+		}
+
 		m_Material->Set(USE_NORMAL_MAP_UNIFORM, value);
 	}
 

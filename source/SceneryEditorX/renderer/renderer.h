@@ -265,15 +265,45 @@ namespace SceneryEditorX
 		/// Viewport & Image Management                                                                                   ///
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+		/**
+		 * @brief Get the current viewport settings.
+		 * @return Reference to the current Viewport.
+		 */
 		static const Viewport &GetViewport();
+
+		/**
+		 * @brief Set the current viewport settings.
+		 * @param width The width of the viewport.
+		 * @param height The height of the viewport.
+		 */
 		static void SetViewport(float width, float height);
 
-		// Resolution Render
+		/**
+		 * @brief Get the current renderer resolution.
+		 * @return Reference to the current renderer resolution.
+		 */
 		static const Vec2 &GetRendererResolution();
+
+		/**
+		 * @brief Set the renderer resolution.
+		 * @param width The width of the renderer resolution.
+		 * @param height The height of the renderer resolution.
+		 * @param recreateResources Whether to recreate resources after changing the resolution.
+		 */
 		static void SetRendererResolution(uint32_t width, uint32_t height, bool recreateResources = true);
 
-		// Resolution Output
+		/**
+		 * @brief Get the current output resolution.
+		 * @return Reference to the current output resolution.
+		 */
 		static const Vec2 &GetOutputResolution();
+
+		/**
+		 * @brief Set the output resolution.
+		 * @param width The width of the output resolution.
+		 * @param height The height of the output resolution.
+		 * @param recreateResources Whether to recreate resources after changing the resolution.
+		 */
 		static void SetOutputResolution(uint32_t width, uint32_t height, bool recreateResources = true);
 
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -305,14 +335,18 @@ namespace SceneryEditorX
 		 */
 		static void CreateModels();
 
-		/* @brief Create shader modules and pipelines. */
-		static void CreateShaders();
+		/* 
+		 * @brief Create shader modules and pipelines. 
+		 */
+		static void LoadShaders();
 
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		/// Util Functions																								  ///
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-		/* @brief Capture a screenshot of the current frame and save it to disk. */
+		/* 
+		 * @brief Capture a screenshot of the current frame and save it to disk. 
+		 */
 		static void Screenshot();
 
 		/**
@@ -349,7 +383,9 @@ namespace SceneryEditorX
 		 */
 		static void SetCamera(Camera* camera);
 
-		/* @brief Returns the currently active camera, or nullptr if none has been set. */
+		/* 
+		 * @brief Returns the currently active camera, or nullptr if none has been set. 
+		 */
 		static Camera* GetCamera();
 
 		/**
@@ -374,6 +410,21 @@ namespace SceneryEditorX
 		static void UpdateShadowAtlas();
 
 		/**
+		 * @brief Create depth-stencil states used for depth testing and stencil operations in the renderer.
+		 */
+		static void CreateDepthStencilStates();
+
+		/**
+		 * @brief Create rasterizer states used for configuring how polygons are rasterized in the renderer.
+		 */
+		static void CreateRasterizerStates();
+
+		/**
+		 * @brief Create blend states used for configuring how colors are blended in the renderer.
+		 */
+		static void CreateBlendStates();
+
+		/**
 		 * @brief Returns a pointer to the standard texture for the given type.
 		 * @param type The type of standard texture to retrieve.
 		 * @return Pointer to the requested standard texture.
@@ -390,10 +441,14 @@ namespace SceneryEditorX
 		 */
 		static void CreateRenderTargets(const bool createRender, const bool createOutput, const bool createDynamic);
 
-		/* @brief Update optional render targets based on current renderer configuration. */
+		/* 
+		 * @brief Update optional render targets based on current renderer configuration. 
+		 */
 		static void UpdateOptionalRenderTargets();
 
-		/* @brief Create per-frame resources such as command buffers and synchronization objects. */
+		/* 
+		 * @brief Create per-frame resources such as command buffers and synchronization objects. 
+		 */
 		static void CreateFrameResources();
 
 		/* 
@@ -418,11 +473,30 @@ namespace SceneryEditorX
 		 */
 		static void CreateSamplers();
 
-		/* @brief Creates standard materials used by the renderer. */
+		/**
+		 * @brief Creates standard meshes used by the renderer.
+		 */
+		static void CreateStandardMeshes();
+
+		/**
+		 * @brief Creates fonts used by the renderer.
+		 */
+		static void CreateFonts();
+
+		/* 
+		 * @brief Creates standard materials used by the renderer. 
+		 */
 		static void CreateStandardMaterials();
 
-		/* @brief Creates standard textures used by the renderer. */
+		/* 
+		 * @brief Creates standard textures used by the renderer. 
+		 */
 		static void CreateStandardTextures();
+
+		/**
+		 * @brief Creates structured buffers used for per-frame data and other purposes.
+		 */
+		static void CreateBuffers();
 
 		/**
 		 * @brief Get a sampler by type.
@@ -431,8 +505,22 @@ namespace SceneryEditorX
 		 */
 		static Sampler* GetSampler(Renderer_Sampler type);
 
+		/**
+		 * @brief Get a render target by type.
+		 * @return Reference to the array of render targets, indexed by Renderer_RenderTarget enum.
+		 */
 		static std::array<Ref<ImageResource>, static_cast<uint32_t>(Renderer_RenderTarget::MaxEnum)>& GetRenderTargets();
+
+		/**
+		 * @brief Get a structured buffer by type.
+		 * @return Reference to the array of structured buffers, indexed by Renderer_Buffer enum.
+		 */
 		static std::array<Ref<Buffer>,  static_cast<uint32_t>(Renderer_Buffer::MaxEnum)>& GetStructuredBuffers();
+
+		/**
+		 * @brief Get a sampler by type.
+		 * @return Reference to the array of samplers, indexed by Renderer_Sampler enum.
+		 */
 		static std::array<Ref<Sampler>, static_cast<uint32_t>(Renderer_Sampler::MaxEnum)>& GetSamplers();
 
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -446,48 +534,117 @@ namespace SceneryEditorX
 		 */
 		static void ProduceFrame(CommandList* graphicsPresent, CommandList* compute);
 
-		// One-shot LUT generation passes
+#pragma region LUT generation passes
+		/**
+		 * @brief Generate the BRDF specular lookup table.
+		 * @param cmdList Command list to record the pass into.
+		 */
 		static void Pass_Lut_BrdfSpecular(CommandList *cmdList);
+
+		/**
+		 * @brief Generate the atmospheric scattering lookup table.
+		 * @param cmdList Command list to record the pass into.
+		 */
 		static void Pass_Lut_AtmosphericScattering(CommandList *cmdList);
 
-		// One-shot noise generation passes
+#pragma endregion
+#pragma region Noise generation passes
+		/**
+		 * @brief Generate the cloud noise texture.
+		 * @param cmdList Command list to record the pass into.
+		 */
 		static void Pass_CloudNoise(CommandList *cmdList);
 
-		// Per-frame sky and atmosphere
+#pragma endregion
+#pragma region Per-frame Sky & Atmosphere
+
+		/**
+		 * @brief Render the skysphere for the current frame.
+		 * @param cmdList Command list to record the pass into.
+		 */
 		static void Pass_Skysphere(CommandList *cmdList);
+
+		/**
+		 * @brief Render the cloud shadows for the current frame.
+		 * @param cmdList Command list to record the pass into.
+		 */
 		static void Pass_CloudShadow(CommandList *cmdList);
 
-		// Variable-rate shading
+#pragma endregion
+#pragma region Variable - rate shading
+		/**
+		 * @brief Perform variable-rate shading for the current frame.
+		 * @param cmdList Command list to record the pass into.
+		 */
 		static void Pass_VariableRateShading(CommandList *cmdList);
 
-		// Geometry passes
+#pragma endregion
+#pragma region Geometry passes
+
+		/**
+		 * @brief Generate the hierarchical Z-buffer for the current frame.
+		 * @param cmdList Command list to record the pass into.
+		 */
 		static void Pass_HiZ(CommandList *cmdList);
+
+		/**
+		 * @brief Perform indirect culling for the current frame.
+		 * @param cmdList Command list to record the pass into.
+		 */
 		static void Pass_IndirectCull(CommandList *cmdList);
+
+		/**
+		 * @brief Perform the depth pre-pass for the current frame.
+		 * @param cmdList Command list to record the pass into.
+		 */
 		static void Pass_Depth_Prepass(CommandList *cmdList);
+
+		/**
+		 * @brief Render the G-buffer for the current frame.
+		 * @param cmdList Command list to record the pass into.
+		 * @param isTransparentPass Indicates whether this is a transparent pass.
+		 */
 		static void Pass_GBuffer(CommandList *cmdList, const bool isTransparentPass);
 
-		// Shadow passes
+#pragma endregion
+#pragma region Shadow passes
+
+		/**
+		 * @brief Render the shadow maps for the current frame.
+		 * @param cmdList Command list to record the pass into.
+		 */
 		static void Pass_ShadowMaps(CommandList *cmdList);
 
-		// Lighting passes
+#pragma endregion
+#pragma region Lighting passes
+
 		static void Pass_Light(CommandList *cmdList, const bool isTransparentPass);
 		static void Pass_Light_Composition(CommandList *cmdList, const bool isTransparentPass);
 		static void Pass_Light_ImageBased(CommandList *cmdList);
 		static void Pass_Light_Reflections(CommandList *cmdList);
 
-		// Particles
+#pragma endregion
+#pragma region Particle passes
+
 		static void Pass_Particles(CommandList *cmdList);
 
-		// Transparency
+#pragma endregion
+#pragma region Transparency
+
 		static void Pass_TransparencyReflectionRefraction(CommandList *cmdList);
 
-		// Upscale / Anti-aliasing
+#pragma endregion
+#pragma region Upscale / Anti-aliasing
+
 		static void Pass_AA_Upscale(CommandList *cmdList);
 
-		// Post-processing
+#pragma endregion
+#pragma region Post-processing
+
 		static void Pass_PostProcess(CommandList *cmdList);
 
-		// Output / utility
+#pragma endregion
+#pragma region Output / utility
 		static void Pass_Output(CommandList *cmdList, ImageResource *in, ImageResource *out);
 		static void Pass_Blit(CommandList *cmdList, ImageResource *in, ImageResource *out);
 		static void Pass_Downscale(CommandList *cmdList, ImageResource *img, Renderer_DownsampleFilter filter);
@@ -497,9 +654,13 @@ namespace SceneryEditorX
 		template <typename F = std::nullptr_t>
 		static void Pass_Compute(CommandList *cmdList, const char *name, Renderer_Shader shaderEnum, ImageResource *in, ImageResource *out, F setup);
 
-		// Screen-space effects (async-compute passes)
+#pragma endregion
+#pragma region Screen-space effects (async-compute passes)
+
 		static void Pass_ScreenSpaceAO(CommandList *cmdList);
 		static void Pass_ScreenSpaceShadows(CommandList *cmdList);
+
+#pragma endregion
 
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		/// Pipeline State Helpers                                                                                        ///
@@ -568,85 +729,85 @@ namespace SceneryEditorX
 		static void DrawLine(const Vec3 &from, const Vec3 &to, const Color &color_from, const Color &color_to, float duration_sec);
 
 		/**
-		 * @brief 
-		 * @param from 
-		 * @param to 
+		 * @brief Draw a line between two points with default color and duration.
+		 * @param from Starting point of the line in world space.
+		 * @param to Ending point of the line in world space.
 		 */
 		static void DrawLine(const Vec3 &from, const Vec3 &to);
 
 		/**
-		 * @brief 
-		 * @param from 
-		 * @param to 
-		 * @param color 
-		 * @param duration_sec 
+		 * @brief Draw a line between two points with a specified color and duration.
+		 * @param from Starting point of the line in world space.
+		 * @param to Ending point of the line in world space.
+		 * @param color Color of the line.
+		 * @param duration_sec Duration in seconds for which the line should persist. If 0 or less, the line will only be drawn for the current frame.
 		 */
 		static void DrawLine(const Vec3 &from, const Vec3 &to, const Color &color, float duration_sec);
 
 		/**
-		 * @brief 
-		 * @param v0 
-		 * @param v1
-		 * @param v2
-		 * @param color color of the triangle (applied to all vertices) 
-		 * @param duration_sec time in seconds for which the triangle should persist; if 0 or less, it will only be drawn for the current frame 
+		 * @brief Draw a triangle with specified vertices, color, and duration.
+		 * @param v0 First vertex of the triangle in world space.
+		 * @param v1 Second vertex of the triangle in world space.
+		 * @param v2 Third vertex of the triangle in world space.
+		 * @param color Color of the triangle (applied to all vertices).
+		 * @param duration_sec Duration in seconds for which the triangle should persist. If 0 or less, it will only be drawn for the current frame.
 		 */
 		static void DrawTriangle(const Vec3 &v0, const Vec3 &v1, const Vec3 &v2, const Color &color, float duration_sec);
 
 		/**
-		 * @brief 
-		 * @param box 
-		 * @param color 
-		 * @param duration_sec 
+		 * @brief Draw a box with specified bounding box, color, and duration.
+		 * @param box The bounding box to draw.
+		 * @param color Color of the box.
+		 * @param duration_sec Duration in seconds for which the box should persist. If 0 or less, it will only be drawn for the current frame.
 		 */
 		static void DrawBox(const BoundingBox &box, const Color &color, float duration_sec);
 
 		/**
-		 * @brief 
-		 * @param center 
-		 * @param axis 
-		 * @param radius 
-		 * @param segment_count 
-		 * @param color 
-		 * @param duration_sec 
+		 * @brief Draw a circle with specified center, axis, radius, segment count, color, and duration.
+		 * @param center Center of the circle in world space.
+		 * @param axis Normal vector of the circle's plane.
+		 * @param radius Radius of the circle.
+		 * @param segment_count Number of segments to approximate the circle.
+		 * @param color Color of the circle.
+		 * @param duration_sec Duration in seconds for which the circle should persist. If 0 or less, it will only be drawn for the current frame.
 		 */
 		static void DrawCircle(const Vec3 &center, const Vec3 &axis, float radius, uint32_t segment_count, const Color &color, float duration_sec);
 
 		/**
-		 * @brief 
-		 * @param center 
-		 * @param radius 
-		 * @param segment_count 
-		 * @param color 
-		 * @param duration_sec 
+		 * @brief Draw a sphere with specified center, radius, segment count, color, and duration.
+		 * @param center Center of the sphere in world space.
+		 * @param radius Radius of the sphere.
+		 * @param segment_count Number of segments to approximate the sphere.
+		 * @param color Color of the sphere.
+		 * @param duration_sec Duration in seconds for which the sphere should persist. If 0 or less, it will only be drawn for the current frame.
 		 */
 		static void DrawSphere(const Vec3 &center, float radius, uint32_t segment_count, const Color &color, float duration_sec);
 
 		/**
-		 * @brief 
-		 * @param start 
-		 * @param end 
-		 * @param arrow_size 
-		 * @param color 
-		 * @param duration_sec 
+		 * @brief Draw a directional arrow with specified start and end points, arrow size, color, and duration.
+		 * @param start Starting point of the arrow in world space.
+		 * @param end Ending point of the arrow in world space.
+		 * @param arrow_size Size of the arrowhead.
+		 * @param color Color of the arrow.
+		 * @param duration_sec Duration in seconds for which the arrow should persist. If 0 or less, it will only be drawn for the current frame.
 		 */
 		static void DrawDirectionalArrow(const Vec3 &start, const Vec3 &end, float arrow_size, const Color &color, float duration_sec);
 
 		/**
-		 * @brief 
-		 * @param plane 
-		 * @param color 
-		 * @param duration_sec 
+		 * @brief Draw a plane with specified plane equation, color, and duration.
+		 * @param plane The plane to draw.
+		 * @param color Color of the plane.
+		 * @param duration_sec Duration in seconds for which the plane should persist. If 0 or less, it will only be drawn for the current frame.
 		 */
 		static void DrawPlane(const xMath::Plane &plane, const Color &color, float duration_sec);
 
 		/**
-		 * @brief 
+		 * @brief Update the persistent lines, removing any that have expired.
 		 */
 		static void UpdatePersistentLines();
 
 		/**
-		 * @brief 
+		 * @brief Add lines to be rendered for the current frame.
 		 */
 		static void AddLinesToBeRendered();
 
@@ -659,20 +820,20 @@ namespace SceneryEditorX
 		// -------------------------------------------------------
 
 		/**
-		 * @brief 
-		 * @param cmdList 
+		 * @brief Update materials for the current frame.
+		 * @param cmdList Command list to record the update commands.
 		 */
 		static void UpdateMaterials(CommandList* cmdList);
 
 		/**
-		 * @brief 
-		 * @param cmdList 
+		 * @brief Update lights for the current frame.
+		 * @param cmdList Command list to record the update commands.
 		 */
 		static void UpdateLights(CommandList* cmdList);
 
 		/**
-		 * @brief 
-		 * @param cmdList 
+		 * @brief Update bounding boxes for the current frame.
+		 * @param cmdList Command list to record the update commands.
 		 */
 		static void UpdateBoundingBoxes(CommandList* cmdList);
 
@@ -748,7 +909,7 @@ namespace SceneryEditorX
 
 		static CommandList *m_CmdList_Compute;
 		static CommandList *m_CmdList_Present;
-		/// @brief Kept as nullptr — UI is now rendered via SetExternalRecordingBuffer inside RecordRenderCommands.
+		// @brief Kept as nullptr — UI is now rendered via SetExternalRecordingBuffer inside RecordRenderCommands.
 		static CommandList *m_CmdList_Frame;
 		static Scope<AssetManager> s_AssetManager;
 		static uint32_t m_ResourceIndex;
@@ -815,10 +976,11 @@ namespace SceneryEditorX
 
 		static uint32_t m_Count_ActiveLights;
 
-		/* @brief Creates per-frame camera UBOs, descriptor pool and sets. */
+		/* 
+		 * @brief Creates per-frame camera UBOs, descriptor pool and sets. 
+		 */
 		static void CreateCameraResources();
 	};
-
 
 }
 

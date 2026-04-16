@@ -114,7 +114,7 @@ namespace SceneryEditorX
         ~DescriptorPoolManager() = default;
 
     private:
-        void CreatePool();
+        VkDescriptorPool CreatePool();
 
         Ref<Device> m_Device;
         VkDescriptorPool m_Pool = VK_NULL_HANDLE;

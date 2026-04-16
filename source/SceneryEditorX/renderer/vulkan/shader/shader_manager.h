@@ -53,7 +53,7 @@ namespace SceneryEditorX
 		ShaderManager();
 
 		/* @brief Destroys the ShaderManager and releases all associated Vulkan shader modules. */
-		~ShaderManager();
+		virtual ~ShaderManager() override;
 
 		/**
 		 * @brief Retrieves the singleton instance of the ShaderManager.

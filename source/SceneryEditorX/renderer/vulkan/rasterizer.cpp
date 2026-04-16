@@ -62,6 +62,36 @@ namespace SceneryEditorX
 		m_Hash = HashCombine(m_Hash, static_cast<uint64_t>(hasher(m_LineWidth)));
 	}
 
+	RasterizerState &RasterizerState::operator=(const Ref<RasterizerState> &ref)
+	{
+		if (ref.Get() == this)
+			return *this;
+		if (ref)
+		{
+			m_Spec = ref->m_Spec;
+			m_PolygonMode = ref->m_PolygonMode;
+			m_DepthClipEnabled = ref->m_DepthClipEnabled;
+			m_DepthBiasEnabled = ref->m_DepthBiasEnabled;
+			m_DepthBiasClamp = ref->m_DepthBiasClamp;
+			m_DepthBiasSlope = ref->m_DepthBiasSlope;
+			m_LineWidth = ref->m_LineWidth;
+			m_Hash = ref->m_Hash;
+		}
+		else
+		{
+			// Reset to default values if the reference is null
+			m_Spec = RasterStateSpec();
+			m_PolygonMode = PolygonMode::Solid;
+			m_DepthClipEnabled = true;
+			m_DepthBiasEnabled = false;
+			m_DepthBiasClamp = 0.0f;
+			m_DepthBiasSlope = 0.0f;
+			m_LineWidth = 1.0f;
+			m_Hash = 0; // or some default hash value
+		}
+		return *this;
+	}
+
 } // namespace SceneryEditorX
 
 // -------------------------------------------------------

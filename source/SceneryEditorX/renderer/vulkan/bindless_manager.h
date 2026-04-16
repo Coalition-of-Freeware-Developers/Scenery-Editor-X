@@ -99,12 +99,12 @@ namespace SceneryEditorX
 
 		/* @brief Initializes the bindless manager, including creating descriptor pools and set layouts for all bindless resource types. */
 		static void Init();
+		
+		/* @brief Shuts down the bindless manager, releasing all resources. */
+		static void Shutdown();
 
 		/* @brief Adds the bindless resources to the descriptor pool. */
 		static void AddToDescriptorPool();
-
-		/* @brief Shuts down the bindless manager, releasing all resources. */
-		static void Shutdown();
 
 		/**
 		 * @brief Allocates a bindless resource of the specified type.

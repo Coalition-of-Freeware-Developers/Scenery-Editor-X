@@ -120,7 +120,7 @@ namespace SceneryEditorX
 		vkFreeDescriptorSets(m_Device->GetLogicalDevice(), m_Pool, 1, &set);
 	}
 
-	void DescriptorPoolManager::CreatePool()
+	VkDescriptorPool DescriptorPoolManager::CreatePool()
 	{
 		SEDX_CORE_ASSERT(m_Device.IsValid(), "DescriptorPoolManager::CreatePool() called with null device");
 
@@ -128,29 +128,29 @@ namespace SceneryEditorX
 		// Covers dynamic descriptor sets, per-object material sets, and fixed-count bindings.
 		constexpr uint32_t kSetCount = MAX_DESCRIPTOR_SET_COUNT;
 
-		const VkDescriptorPoolSize poolSizes[] =
+		static std::array<VkDescriptorPoolSize, 8> poolSizes =
 		{
-			{.type = VK_DESCRIPTOR_TYPE_SAMPLER,						.descriptorCount = 32  * kSetCount },
-			{.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,		.descriptorCount = kSetCount + MAX_ARRAY_SIZE },
-			{.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,				.descriptorCount = MAX_ARRAY_SIZE + 32 * kSetCount },
-			{.type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,				.descriptorCount = MAX_ARRAY_SIZE },
-			{.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,				.descriptorCount = 32  * kSetCount },
-			{.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,		.descriptorCount = 32  * kSetCount },
-			{.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,				.descriptorCount = 32  * kSetCount },
-			{.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,		.descriptorCount = 32  * kSetCount },
-			//{.type = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,	.descriptorCount = 32  * kSetCount },
+			VkDescriptorPoolSize{.type = VK_DESCRIPTOR_TYPE_SAMPLER,					.descriptorCount = 32  * kSetCount },
+			VkDescriptorPoolSize{.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,		.descriptorCount = kSetCount + MAX_ARRAY_SIZE },
+			VkDescriptorPoolSize{.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,				.descriptorCount = MAX_ARRAY_SIZE + 32 * kSetCount },
+			VkDescriptorPoolSize{.type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,				.descriptorCount = MAX_ARRAY_SIZE },
+			VkDescriptorPoolSize{.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,				.descriptorCount = 32  * kSetCount },
+			VkDescriptorPoolSize{.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,		.descriptorCount = 32  * kSetCount },
+			VkDescriptorPoolSize{.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,				.descriptorCount = 32  * kSetCount },
+			VkDescriptorPoolSize{.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,		.descriptorCount = 32  * kSetCount },
+			//VkDescriptorPoolSize{.type = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,	.descriptorCount = 32  * kSetCount },
 		};
 
 		VkDescriptorPoolCreateInfo poolInfo{};
 		poolInfo.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-		poolInfo.flags         = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT |
-								 VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT;
+		poolInfo.flags         = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT_EXT;
 		poolInfo.maxSets       = kSetCount;
 		poolInfo.poolSizeCount = static_cast<uint32_t>(std::size(poolSizes));
-		poolInfo.pPoolSizes    = poolSizes;
+		poolInfo.pPoolSizes    = poolSizes.data();
 
 		const VkResult result = vkCreateDescriptorPool(m_Device->GetLogicalDevice(), &poolInfo, nullptr, &m_Pool);
 		SEDX_CORE_ASSERT(result == VK_SUCCESS, "DescriptorPoolManager: failed to create shared descriptor pool");
+		return m_Pool;
 	}
 
 } // namespace SceneryEditorX

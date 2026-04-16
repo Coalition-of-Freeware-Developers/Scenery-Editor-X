@@ -53,6 +53,21 @@ namespace SceneryEditorX
 		m_Hash = HashCombine(m_Hash, m_Spec.blendFactor);
 	}
 
-}
+	BlendState &BlendState::operator=(const Ref<BlendState> &ref)
+	{
+		if (ref)
+		{
+			m_Spec = ref->m_Spec;
+			m_Hash = ref->m_Hash;
+		}
+		else
+		{
+			m_Spec = {};
+			m_Hash = 0;
+		}
+		return *this;
+	}
+
+} // namespace SceneryEditorX
 
 // -------------------------------------------------------

@@ -33,6 +33,9 @@
 #include "renderer.h"
 #include "renderer_buffers.h"
 #include "renderer_declarations.h"
+#include "SceneryEditorX/asset/asset_extensions.h"
+#include "SceneryEditorX/asset/model/mesh_gen.h"
+#include "SceneryEditorX/core/window/window.h"
 #include "font/font.h"
 #include "vulkan/buffer.h"
 #include "vulkan/depth_stencil.h"
@@ -60,6 +63,7 @@ namespace SceneryEditorX
 	Ref<Font>																					 s_StandardFont;
 	Ref<MaterialAsset>                                                                           s_StandardMaterial;
 	std::array<Ref<ImageResource>, static_cast<uint32_t>(Renderer_StandardTexture::MaxEnum)>	 s_StandardTextures;
+	static std::array<Ref<Mesh>, static_cast<uint8_t>(MeshType::MaxEnum)>                        s_StandardMeshes;
 
 	// Static state object instances (created once, never mutated after init)
 	static std::array<RasterizerState,   static_cast<uint8_t>(Renderer_RasterizerState::MaxEnum)> s_RasterizerStates  = {
@@ -103,12 +107,16 @@ namespace SceneryEditorX
 
 	// Debug primitives and bindless arrays
 	std::vector<Vertex_PosCol> Renderer::m_Lines_Vertices;
+	Ref<Buffer> Renderer::m_Lines_VertexBuffer;
 	std::vector<PersistentLine> Renderer::m_Persistent_Lines;
 	std::vector<std::tuple<ImageResource*, xMath::Vec3>> Renderer::m_Icons;
 
 	std::array<ImageResource*, MAX_ARRAY_SIZE> Renderer::m_Bindless_Textures;
 	std::array<ShaderBuffer_Light, MAX_ARRAY_SIZE> Renderer::m_Bindless_Lights;
 	std::array<ShaderBuffer_Aabb, MAX_ARRAY_SIZE> Renderer::m_Bindless_Aabbs;
+
+	template<typename E, typename A>
+	auto& At(A& arr, E e) { return arr[static_cast<size_t>(e)]; }
 
 #pragma endregion
 
@@ -593,10 +601,64 @@ namespace SceneryEditorX
 		SEDX_CORE_TRACE_TAG("Renderer", "Sampler setup complete");
 	}
 
+	void Renderer::CreateStandardMeshes()
+	{
+		typedef std::vector<Vertex_PosTexNorTan> VertexVec;
+		typedef std::vector<uint32_t> IndexVec;
+
+		struct MeshDef
+		{
+			MeshType type;
+			void (*generate)(VertexVec*, IndexVec*);
+			const char* name;
+		};
+
+		// wrappers to bind default arguments for functions with extra parameters
+		auto gen_sphere   = [](VertexVec* v, IndexVec* i) { MeshGenerator::GenerateSphere(v, i); };
+		auto gen_cylinder = [](VertexVec* v, IndexVec* i) { MeshGenerator::GenerateCylinder(v, i); };
+		auto gen_cone     = [](VertexVec* v, IndexVec* i) { MeshGenerator::GenerateCone(v, i); };
+
+		const MeshDef definedMeshType[] =
+		{
+			{.type = MeshType::Cube, .generate = MeshGenerator::GenerateCube, .name = "standard_cube" },
+			{.type = MeshType::Quad, .generate = MeshGenerator::GenerateQuad, .name = "standard_quad" },
+			{.type = MeshType::Sphere, .generate = +gen_sphere, .name = "standard_sphere" },
+			{.type = MeshType::Cylinder, .generate = gen_cylinder, .name = "standard_cylinder" },
+			{.type = MeshType::Cone, .generate = gen_cone, .name = "standard_cone" },
+		};
+
+		const std::string projectDirectory = ResourceCache::GetProjectDirectory();
+		for (const auto &[type, generate, name] : definedMeshType)
+		{
+			Ref<Mesh> mesh = CreateRef<Mesh>();
+			VertexVec vertices;
+			IndexVec indices;
+
+			generate(&vertices, &indices);
+			mesh->SetResourceFilePath(projectDirectory + name + ".edm" );
+			mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
+			mesh->AddGeometry(vertices, indices, false);
+			mesh->SetType(type);
+			mesh->CreateGpuBuffers();
+
+			s_StandardMeshes[static_cast<uint8_t>(type)] = mesh;
+		}
+
+		m_Lines_VertexBuffer = CreateRef<Buffer>();
+	}
+
+	void Renderer::CreateFonts()
+	{
+		const std::string dirFont = ResourceCache::GetResourceDirectory(ResourceDirectory::Fonts);
+
+		uint32_t size = static_cast<uint32_t>(10 * Window::GetDpiScale());
+		s_StandardFont = CreateRef<Font>(dirFont + "opensans/OpenSans-Medium.ttf", size, Color(0.9f, 0.9f, 0.9f, 1.0f));
+	}
+
 	void Renderer::CreateStandardMaterials()
 	{
-		const std::string data_dir = std::string(ResourceCache::GetResourceDirectory()) + "/";
-		IO::FileSystem::CreateDir(data_dir);
+		const std::string dataDir = std::string(ResourceCache::GetResourceDirectory());
+		IO::FileSystem::CreateDir(dataDir);
 
 		s_StandardMaterial = CreateRef<MaterialAsset>();
 		SEDX_CORE_ASSERT(s_StandardMaterial != nullptr, "Failed to create standard material");
@@ -610,7 +672,7 @@ namespace SceneryEditorX
 
 	void Renderer::CreateStandardTextures()
 	{
-	   const std::string dirTexture = ResourceCache::GetResourceDirectory(ResourceDirectory::Textures) + "/";
+	   const std::string dirTexture = ResourceCache::GetResourceDirectory(ResourceDirectory::Textures);
 
 		for (Ref<ImageResource>& texture : s_StandardTextures)
 		{
@@ -630,15 +692,16 @@ namespace SceneryEditorX
 		{
 			std::vector<MipBytes> mips = { MipBytes{ std::move(pixelBytes) } };
 			std::vector<Slice> slices  = { Slice{ std::move(mips) } };
-			Ref<ImageResource> texture = CreateRef<ImageResource>(ImgResourceSpec{
-				ImageType::Type2D,
-				width,
-				height,
-				1,
-				1,
-				format,
-				flags,
-				name
+			Ref<ImageResource> texture = CreateRef<ImageResource>(
+				ImgResourceSpec{
+					.type = ImageType::Type2D,
+					.width = width,
+					.height = height,
+					.depth = 1,
+					.mipCount = 1,
+					.format = format,
+					.flags = flags,
+					.name = name
 			}, std::move(slices));
 
 			if (texture)
@@ -704,6 +767,91 @@ namespace SceneryEditorX
 
 		SEDX_CORE_ASSERT(standard_texture(Renderer_StandardTexture::Black) != nullptr, "Failed to create black texture");
 		SEDX_CORE_ASSERT(standard_texture(Renderer_StandardTexture::White) != nullptr, "Failed to create white texture");
+	}
+
+	void Renderer::CreateBuffers()
+	{
+		uint32_t elementCount = DRAW_DATA_BUFFER_COUNT;
+
+		// initialization values
+		std::array<Instance, MAX_INSTANCE_COUNT> identity;
+		identity.fill(Instance::GetIdentity());
+
+		At(s_Buffers, Renderer_Buffer::ConstantFrame)      = CreateRef<Buffer>(sizeof(ConstantBuffer_Frame), elementCount, nullptr, true, "frame");
+		At(s_Buffers, Renderer_Buffer::MaterialParameters) = CreateRef<Buffer>(static_cast<uint32_t>(sizeof(ShaderBuffer_Material)), MAX_ARRAY_SIZE, nullptr, true, "materials");
+		At(s_Buffers, Renderer_Buffer::LightParameters)    = CreateRef<Buffer>(static_cast<uint32_t>(sizeof(ShaderBuffer_Light)), MAX_ARRAY_SIZE, nullptr, true, "lights");
+		At(s_Buffers, Renderer_Buffer::DummyInstance)      = CreateRef<Buffer>(sizeof(Instance), static_cast<uint32_t>(identity.size()), &identity, true, "dummy_instance_buffer");
+		At(s_Buffers, Renderer_Buffer::GeometryInfo)       = CreateRef<Buffer>(static_cast<uint32_t>(sizeof(ShaderBuffer_GeometryInfo)), MAX_ARRAY_SIZE, nullptr, true, "geometry_info");
+
+		// single draw data and aabb buffers large enough for all frames; each frame writes to its
+		// own offset region so the bindless descriptors never change, eliminating the race where
+		// vkUpdateDescriptorSets (host-side, instantly visible under UPDATE_AFTER_BIND) would
+		// change the buffer pointer while in-flight gpu commands were still reading from it
+		At(s_Buffers, Renderer_Buffer::DrawData) = CreateRef<Buffer>(static_cast<uint32_t>(sizeof(ShaderBuffer_DrawData)), MAX_DRAW_CALLS * DRAW_DATA_BUFFER_COUNT, nullptr, true, "draw_data");
+		At(s_Buffers, Renderer_Buffer::AABBs) = CreateRef<Buffer>(static_cast<uint32_t>(sizeof(ShaderBuffer_Aabb)), MAX_ARRAY_SIZE * DRAW_DATA_BUFFER_COUNT, nullptr, true, "aabbs");
+
+		// per-frame rotated buffers
+		uint32_t drawCountInit = 0;
+		for (uint32_t i = 0; i < DRAW_DATA_BUFFER_COUNT; i++)
+		{
+			IndirectFrameResource& fr = m_FrameResources[i];
+
+			fr.m_DrawArgs = CreateRef<Buffer>(static_cast<uint32_t>(sizeof(ShaderBuffer_IndirectDrawArgs)), MAX_ARRAY_SIZE, nullptr, true, (std::string("indirect_draw_args_") + std::to_string(i)).c_str());
+
+			fr.m_DrawData = CreateRef<Buffer>(static_cast<uint32_t>(sizeof(ShaderBuffer_DrawData)), MAX_ARRAY_SIZE, nullptr, true, (std::string("indirect_draw_data_") + std::to_string(i)).c_str());
+
+			fr.m_DrawArgs_Out = CreateRef<Buffer>(static_cast<uint32_t>(sizeof(ShaderBuffer_IndirectDrawArgs)), MAX_ARRAY_SIZE, nullptr, true, (std::string("indirect_draw_args_out_") + std::to_string(i)).c_str());
+
+			fr.m_DrawData_Out = CreateRef<Buffer>(static_cast<uint32_t>(sizeof(ShaderBuffer_DrawData)), MAX_ARRAY_SIZE, nullptr, true, (std::string("indirect_draw_data_out_") + std::to_string(i)).c_str());
+
+			fr.m_DrawCount = CreateRef<Buffer>(static_cast<uint32_t>(sizeof(uint32_t)), 1, &drawCountInit, true, (std::string("indirect_draw_count_") + std::to_string(i)).c_str());
+
+		}
+
+		// point the active buffer slots at frame 0
+		const IndirectFrameResource& fr = m_FrameResources[0];
+		At(s_Buffers, Renderer_Buffer::IndirectDrawArgs)    = fr.m_DrawArgs;
+		At(s_Buffers, Renderer_Buffer::IndirectDrawData)    = fr.m_DrawData;
+		At(s_Buffers, Renderer_Buffer::IndirectDrawArgsOut) = fr.m_DrawArgs_Out;
+		At(s_Buffers, Renderer_Buffer::IndirectDrawDataOut) = fr.m_DrawData_Out;
+		At(s_Buffers, Renderer_Buffer::IndirectDrawCount)   = fr.m_DrawCount;
+
+		// particle buffers
+		constexpr uint32_t particleMax = 100000;
+		uint32_t particleCounterInit[2] = { 0, 0 };
+		At(s_Buffers, Renderer_Buffer::ParticleBufferA) = CreateRef<Buffer>(static_cast<uint32_t>(sizeof(ShaderBuffer_Particle)), particleMax, nullptr, true, "particle_buffer_a");
+		At(s_Buffers, Renderer_Buffer::ParticleCounter) = CreateRef<Buffer>(static_cast<uint32_t>(sizeof(uint32_t)), 2, particleCounterInit, true, "particle_counter");
+		At(s_Buffers, Renderer_Buffer::ParticleEmitter) = CreateRef<Buffer>(static_cast<uint32_t>(sizeof(ShaderBuffer_EmitterParams)), 1, nullptr, true, "particle_emitter");
+	}
+
+	void Renderer::CreateDepthStencilStates()
+	{
+		// arguments: depth_test, depth_write, depth_function, stencil_test, stencil_write, stencil_function
+		At(s_DepthStencilStates, Renderer_DepthStencilState::Off)              = CreateRef<DepthStencilState>(DepthStencilSpec{false, false, VkCompareOp::VK_COMPARE_OP_NEVER});
+		At(s_DepthStencilStates, Renderer_DepthStencilState::ReadEqual)        = CreateRef<DepthStencilState>(DepthStencilSpec{true,  false, VkCompareOp::VK_COMPARE_OP_EQUAL});
+		At(s_DepthStencilStates, Renderer_DepthStencilState::ReadGreaterEqual) = CreateRef<DepthStencilState>(DepthStencilSpec{true,  false, VkCompareOp::VK_COMPARE_OP_GREATER_OR_EQUAL});
+		At(s_DepthStencilStates, Renderer_DepthStencilState::ReadWrite)        = CreateRef<DepthStencilState>(DepthStencilSpec{true,  true,  VkCompareOp::VK_COMPARE_OP_GREATER_OR_EQUAL});
+	}
+
+	void Renderer::CreateRasterizerStates()
+	{
+		// bias done in shader, hardware bias is uncontrollable across cascades
+		float bias              = 0.0f;
+		float bias_clamp        = 0.0f;
+		float bias_slope_scaled = 0.0f;
+		float line_width        = 3.0f;
+
+		At(s_RasterizerStates, Renderer_RasterizerState::Solid)             = CreateRef<RasterizerState>(RasterStateSpec{PolygonMode::Solid, true, false,0.0f, 0.0f, 0.0f, line_width});
+		At(s_RasterizerStates, Renderer_RasterizerState::Wireframe)         = CreateRef<RasterizerState>(RasterStateSpec{PolygonMode::Wireframe, true, false,0.0f, 0.0f, 0.0f, line_width});
+		At(s_RasterizerStates, Renderer_RasterizerState::Light_point_spot)  = CreateRef<RasterizerState>(RasterStateSpec{PolygonMode::Solid, true, true, bias, bias_clamp, bias_slope_scaled, line_width});
+		At(s_RasterizerStates, Renderer_RasterizerState::Light_directional) = CreateRef<RasterizerState>(RasterStateSpec{PolygonMode::Solid, false, true, bias * 0.5f, bias_clamp, bias_slope_scaled, line_width});
+	}
+
+	void Renderer::CreateBlendStates()
+	{
+		At(s_BlendStates, Renderer_BlendState::Off)      = CreateRef<BlendState>(BlendStateSpec{false});
+		At(s_BlendStates, Renderer_BlendState::Alpha)    = CreateRef<BlendState>(BlendStateSpec{true, VkBlendFactor::VK_BLEND_FACTOR_SRC_ALPHA, VkBlendFactor::VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, VkBlendOp::VK_BLEND_OP_ADD, VkBlendFactor::VK_BLEND_FACTOR_ONE, VkBlendFactor::VK_BLEND_FACTOR_ONE, VkBlendOp::VK_BLEND_OP_ADD, 0.0f});
+		At(s_BlendStates, Renderer_BlendState::Additive) = CreateRef<BlendState>(BlendStateSpec{true, VkBlendFactor::VK_BLEND_FACTOR_ONE, VkBlendFactor::VK_BLEND_FACTOR_ONE, VkBlendOp::VK_BLEND_OP_ADD, VkBlendFactor::VK_BLEND_FACTOR_ONE, VkBlendFactor::VK_BLEND_FACTOR_ONE, VkBlendOp::VK_BLEND_OP_ADD, 1.0f});
 	}
 
 	ImageResource* Renderer::GetStandardTexture(const Renderer_StandardTexture type)

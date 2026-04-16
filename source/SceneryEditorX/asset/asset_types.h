@@ -72,7 +72,7 @@ namespace SceneryEditorX
 	 * @param assetType the string representation of the asset type to convert (e.g., "Mesh", "Material").
 	 * @return the corresponding AssetType enum value, or AssetType::None if the string does not match any known asset type.
 	 */
-	inline AssetType AssetTypeFromString(std::string_view assetType)
+	inline AssetType AssetTypeFromString(const std::string_view assetType)
 	{
 		if (assetType == "None")                return AssetType::None;
 		if (assetType == "Scene")               return AssetType::Scene;
@@ -95,7 +95,7 @@ namespace SceneryEditorX
 	 * @param assetType the AssetType enum value to convert to a string.
 	 * @return the string representation of the given AssetType enum value.
 	 */
-	inline const char* AssetTypeToString(AssetType assetType)
+	inline const char* AssetTypeToString(const AssetType assetType)
 	{
 		switch (assetType)
 		{

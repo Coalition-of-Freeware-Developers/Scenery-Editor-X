@@ -91,9 +91,7 @@ namespace SceneryEditorX
 	void BindlessManager::Init()
 	{
 		if (!s_DescriptorPools.empty())
-		{
 			return;
-		}
 
 		AddToDescriptorPool();
 
@@ -391,9 +389,7 @@ namespace SceneryEditorX
 		SEDX_CORE_ASSERT(device != nullptr, "BindlessManager requires a valid device to create set layouts");
 
 		if (s_DescriptorPools.empty())
-		{
 			AddToDescriptorPool();
-		}
 
 		uint32_t index              = static_cast<uint32_t>(type);
 		const ResourceConfig& cfg   = CONFIGS[index];
@@ -408,13 +404,11 @@ namespace SceneryEditorX
 													  VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT |
 													  VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT;
 
-		VkDescriptorBindingFlags binding_flags = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT;
-		if (cfg.count > 1)
+		VkDescriptorBindingFlags binding_flags = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT;
+		/*if (cfg.count > 1)
 		{
 			binding_flags |= VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT;
-		}
-
-		binding_flags |= VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT;
+		}*/
 
 		VkDescriptorSetLayoutBindingFlagsCreateInfo binding_flags_info = {};
 		binding_flags_info.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;
@@ -428,8 +422,8 @@ namespace SceneryEditorX
 		layout_info.flags        = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT_EXT;
 		layout_info.pNext        = &binding_flags_info;
 
-		VkResult layoutResult = vkCreateDescriptorSetLayout(device->GetLogicalDevice(), &layout_info, nullptr, &s_Layouts[index]);
-		SEDX_CORE_ASSERT(layoutResult == VK_SUCCESS, "Failed to create bindless descriptor set layout");
+		SEDX_VK_RESULT_ASSERT(vkCreateDescriptorSetLayout(device->GetLogicalDevice(), &layout_info, nullptr, &s_Layouts[index]), "Failed to create bindless descriptor set layout");
+		//SEDX_CORE_ASSERT(layoutResult == VK_SUCCESS, "Failed to create bindless descriptor set layout");
 		Debugging::SetResourceName(s_Layouts[index], ResourceType::DescriptorSetLayout, cfg.name);
 
 		// set
@@ -444,9 +438,9 @@ namespace SceneryEditorX
 		alloc_info.descriptorSetCount = 1;
 		alloc_info.pSetLayouts        = &s_Layouts[index];
 		alloc_info.pNext              = &count_info;
-
-		VkResult allocResult = vkAllocateDescriptorSets(device->GetLogicalDevice(), &alloc_info, &s_Sets[index]);
-		SEDX_CORE_ASSERT(allocResult == VK_SUCCESS, "Failed to allocate bindless descriptor set");
+		
+		SEDX_VK_RESULT_ASSERT(vkAllocateDescriptorSets(device->GetLogicalDevice(), &alloc_info, &s_Sets[index]), "Failed to allocate bindless descriptor set");
+		//SEDX_CORE_ASSERT(allocResult == VK_SUCCESS, "Failed to allocate bindless descriptor set");
 		Debugging::SetResourceName(s_Sets[index], ResourceType::DescriptorSet, cfg.name);
 		++s_Allocated_DescriptorSets;
 			

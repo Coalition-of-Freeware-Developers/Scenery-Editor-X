@@ -372,7 +372,7 @@ namespace SceneryEditorX
 			// multi-scatter lut
 			{
 				PipelineState pso;
-				pso.name = "lut_atmosphere_multiscatter";
+				pso.name = "lut_atmosphere_multi_scatter";
 				pso.shaders[static_cast<uint32_t>(StageType::Compute)] = ShaderManager::GetShader(Renderer_Shader::skysphere_multiscatter_lut_c);
 				cmdList->SetPipelineState(pso);
 
@@ -403,7 +403,7 @@ namespace SceneryEditorX
 		ImageResource *tex_skysphere = GetRenderTarget(Renderer_RenderTarget::skysphere);
 		ImageResource *tex_lut_atmosphere_scatter = GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_scatter);
 		ImageResource *tex_lut_atmosphere_transmittance = GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_transmittance);
-		ImageResource *tex_lut_atmosphere_multiscatter = GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_multiscatter);
+		ImageResource *tex_lut_atmosphere_multi_scatter = GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_multiscatter);
 		ImageResource *tex_cloud_shape = GetRenderTarget(Renderer_RenderTarget::cloud_noise_shape);
 		ImageResource *tex_cloud_detail = GetRenderTarget(Renderer_RenderTarget::cloud_noise_detail);
 
@@ -416,7 +416,7 @@ namespace SceneryEditorX
 
 			cmdList->SetTexture(Renderer_BindingsUav::tex, tex_skysphere);
 			cmdList->SetTexture(Renderer_BindingsSrv::tex, tex_lut_atmosphere_transmittance);
-			cmdList->SetTexture(Renderer_BindingsSrv::tex2, tex_lut_atmosphere_multiscatter);
+			cmdList->SetTexture(Renderer_BindingsSrv::tex2, tex_lut_atmosphere_multi_scatter);
 			cmdList->SetTexture(Renderer_BindingsSrv::tex3d, tex_lut_atmosphere_scatter);
 
 			if (tex_cloud_shape)

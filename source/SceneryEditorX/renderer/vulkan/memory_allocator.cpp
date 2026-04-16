@@ -147,7 +147,7 @@ namespace SceneryEditorX
 		 */
 		if (!device.IsValid())
 		{
-			SEDX_CORE_WARN_TAG("MemoryAllocator", "Device singleton is not initialized before Tick().");
+			SEDX_CORE_WARN_TAG("MemoryAllocator", "Device singleton is not initialized before Tick()");
 			return;
 		}
 
@@ -212,7 +212,7 @@ namespace SceneryEditorX
 
 		{
 			s_AllocatorData->totalAllocatedBytes += allocInfo.size;
-			SEDX_CORE_TRACE_TAG("MemoryAllocator", "{0}: total allocated since start is {1}", m_ObjectName, Utils::BytesToString(s_AllocatorData->totalAllocatedBytes));
+			SEDX_CORE_TRACE_TAG("MemoryAllocator", "total allocated since start is {0}", Utils::BytesToString(s_AllocatorData->totalAllocatedBytes));
 		}
 
 	#if SEDX_GPU_TRACK_MEMORY_ALLOCATION
@@ -253,7 +253,7 @@ namespace SceneryEditorX
 
 		{
 			s_AllocatorData->totalAllocatedBytes += allocInfo.size;
-			SEDX_CORE_TRACE_TAG("MemoryAllocator", "{0}: total allocated since start is {1}", m_ObjectName, Utils::BytesToString(s_AllocatorData->totalAllocatedBytes));
+			SEDX_CORE_TRACE_TAG("MemoryAllocator", "total allocated since start is {0}", Utils::BytesToString(s_AllocatorData->totalAllocatedBytes));
 		}
 
 	//#if SEDX_GPU_TRACK_MEMORY_ALLOCATION
@@ -263,7 +263,7 @@ namespace SceneryEditorX
 		s_AllocatorData->memoryUsage += allocInfo.size;
 	//#endif
 
-		SEDX_CORE_TRACE_TAG("MemoryAllocator", "vmaCreateImage returning handle of image allocation {}", (void*)allocation);
+		SEDX_CORE_TRACE_TAG("MemoryAllocator", "vmaCreateImage returning handle of image allocation {}", static_cast<void *>(allocation));
 
 		return allocation;
 	}
@@ -296,15 +296,14 @@ namespace SceneryEditorX
 		vmaDestroyBuffer(s_AllocatorData->allocator, buffer, allocation);
 
 	//#if SEDX_GPU_TRACK_MEMORY_ALLOCATION
-		auto it = s_AllocationMap.find(allocation);
-		if (it != s_AllocationMap.end())
+		if (auto it = s_AllocationMap.find(allocation); it != s_AllocationMap.end())
 		{
 			s_AllocatorData->memoryUsage -= it->second.allocatedSize;
 			s_AllocationMap.erase(it);
 		}
 		else
 		{
-			SEDX_CORE_ERROR_TAG("MemoryAllocator", "Could not find GPU memory allocation: {}", (void*)allocation);
+			SEDX_CORE_ERROR_TAG("MemoryAllocator", "Could not find GPU memory allocation: {}", static_cast<void *>(allocation));
 		}
 	//#endif
 		SEDX_CORE_TRACE_TAG("MemoryAllocator", "Buffer destroyed");
@@ -317,15 +316,14 @@ namespace SceneryEditorX
 		vmaDestroyImage(s_AllocatorData->allocator, image, allocation);
 
 	//#if SEDX_GPU_TRACK_MEMORY_ALLOCATION
-		auto it = s_AllocationMap.find(allocation);
-		if (it != s_AllocationMap.end())
+		if (auto it = s_AllocationMap.find(allocation); it != s_AllocationMap.end())
 		{
 			s_AllocatorData->memoryUsage -= it->second.allocatedSize;
 			s_AllocationMap.erase(it);
 		}
 		else
 		{
-			SEDX_CORE_ERROR_TAG("MemoryAllocator", "Could not find GPU memory allocation: {}", (void*)allocation);
+			SEDX_CORE_ERROR_TAG("MemoryAllocator", "Could not find GPU memory allocation: {}", static_cast<void *>(allocation));
 		}
 	//#endif
 		SEDX_CORE_TRACE_TAG("MemoryAllocator", "Image destroyed");
@@ -336,7 +334,7 @@ namespace SceneryEditorX
 		std::scoped_lock lock(s_MutexAllocator);
 		auto it = s_AllocationMap.find(allocation);
 		SEDX_CORE_ASSERT(it != s_AllocationMap.end(), "Allocation not found in map");
-		SEDX_CORE_TRACE_TAG("MemoryAllocator", "GetAllocation called for allocation {0}; found: {1}", (void*)allocation, it != s_AllocationMap.end());
+		SEDX_CORE_TRACE_TAG("MemoryAllocator", "GetAllocation called for allocation {0}; found: {1}", static_cast<void *>(allocation), it != s_AllocationMap.end());
 		return it != s_AllocationMap.end() ? it->first : nullptr;
 	}
 
@@ -396,7 +394,7 @@ namespace SceneryEditorX
 	void MemoryAllocator::UnmapMemory(VmaAllocation allocation)
 	{
 		vmaUnmapMemory(s_AllocatorData->allocator, allocation);
-		SEDX_CORE_TRACE_TAG("MemoryAllocator", "Memory unmapped for allocation {0}", (void *)allocation);
+		SEDX_CORE_TRACE_TAG("MemoryAllocator", "Memory unmapped for allocation {0}", static_cast<void *>(allocation));
 	}
 
 	void MemoryAllocator::DumpStats()
@@ -431,7 +429,7 @@ namespace SceneryEditorX
 		}
 
 		GPUMemoryStats result;
-		for (const auto& [k, v] : s_AllocationMap)
+		for (const auto &v : s_AllocationMap | std::views::values)
 		{
 			if (v.type == AllocationType::Buffer)
 			{

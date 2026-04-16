@@ -44,12 +44,7 @@ namespace SceneryEditorX
 		bool depth_Test					 = true;
 		bool depth_Write				 = true;
 		VkCompareOp depth_CompFunc		 = VK_COMPARE_OP_LESS_OR_EQUAL;
-		bool stencil_Test				 = false;
-		bool stencil_Write				 = false;
-		VkCompareOp stencil_CompFunc	 = VK_COMPARE_OP_NEVER;
-		VkStencilOp stencil_FailOp		 = VK_STENCIL_OP_ZERO;
-		VkStencilOp stencil_DepthFail_Op = VK_STENCIL_OP_ZERO;
-		VkStencilOp stencil_PassOp		 = VK_STENCIL_OP_ZERO;
+
 	};
 
 	/**
@@ -78,6 +73,15 @@ namespace SceneryEditorX
 		VkCompareOp   GetDepthCompareOp()		const { return m_DepthCompareOp;   }
 		[[nodiscard]] uint64_t GetHash()		const { return m_Hash; }
 
+		/**
+		 * @brief Assignment operator for DepthStencilState. 
+		 * Copies the state from another DepthStencilState reference.
+		 *
+		 * @param ref The reference to the DepthStencilState to copy from.
+		 * @return A reference to this DepthStencilState.
+		 */
+		DepthStencilState &operator=(const Ref<DepthStencilState> & ref);
+
 	private:
 		DepthStencilSpec depthSpec;
 
@@ -93,6 +97,7 @@ namespace SceneryEditorX
 		uint8_t		m_StencilReadMask			= 1;
 		uint8_t		m_StencilWriteMask			= 1;
 		uint64_t	m_Hash						= 0;
+		const DepthStencilSpec &spec;
 	};
 
 }
