@@ -103,7 +103,9 @@ namespace SceneryEditorX
 	class ImageResource : public SharedResource
 	{
 	public:
-		/* @brief Default constructor for the ImageResource class. */
+		/* 
+		 * @brief Default constructor for the ImageResource class. 
+		 */
 		ImageResource();
 
 		/**
@@ -382,7 +384,7 @@ namespace SceneryEditorX
 		 * @brief Returns the number of mip levels for the image resource.
 		 * @return The number of mip levels.
 		 */
-		uint32_t GetMipCount() const { return m_MipCount; }
+		uint32_t GetMipCount() const { return m_Spec.mipCount; }
 
 		/**
 		 * @brief Returns the shader resource view for the image resource.
@@ -445,10 +447,7 @@ namespace SceneryEditorX
 		Ref<Device> m_Device;
 		ImgResourceSpec m_Spec;
 
-		uint32_t m_Width            = 0;
-		uint32_t m_Height           = 0;
 		uint32_t m_Depth            = 0; // array length and depth are both m_depth (for simplicity), in case of 3D textures we only have one layer though
-		uint32_t m_MipCount			= 0;
 		uint32_t m_BitsPerChannel	= 0;
 		uint32_t m_ChannelCount		= 0;
 		VkImage m_Image = VK_NULL_HANDLE;

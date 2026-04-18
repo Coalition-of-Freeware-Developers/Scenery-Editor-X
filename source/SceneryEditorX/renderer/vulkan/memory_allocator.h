@@ -49,8 +49,13 @@ namespace SceneryEditorX
 	{
 	public:
 		MemoryAllocator() = default;
+        ~MemoryAllocator();
+
+        /**
+		 * @brief Constructs a memory allocator with the given name.
+		 * @param name The name of the memory allocator.
+		 */
 		MemoryAllocator(const char* name);
-		~MemoryAllocator();
 
 		/**
 		 * @brief Initializes the memory allocator with the given device.
@@ -135,20 +140,20 @@ namespace SceneryEditorX
 		static VmaAllocation GetAllocation(VmaAllocation allocation);
 
 		/**
-		 * @brief 
-		 * @return 
+		 * @brief Retrieves the VMA allocator.
+		 * @return The VMA allocator.
 		 */
 		static VmaAllocator GetAllocator();
 
 		/**
-		 * @brief 
-		 * @return 
+		 * @brief Retrieves the total allocated memory.
+		 * @return The total allocated memory in bytes.
 		 */
 		static uint64_t GetAllocatedMemory();
 
 		/**
-		 * @brief 
-		 * @return 
+		 * @brief Retrieves the available memory.
+		 * @return The available memory in bytes.
 		 */
 		static uint64_t GetAvailableMemory();
 

@@ -50,9 +50,14 @@ namespace SceneryEditorX
 	class ShaderManager : public RefCounted
 	{
 	public:
+		/**
+		 * @brief Constructs a new ShaderManager.
+		 */
 		ShaderManager();
 
-		/* @brief Destroys the ShaderManager and releases all associated Vulkan shader modules. */
+		/**
+		 * @brief Destroys the ShaderManager and releases all associated Vulkan shader modules. 
+		 */
 		virtual ~ShaderManager() override;
 
 		/**
@@ -60,6 +65,11 @@ namespace SceneryEditorX
 		 * @return A reference to the singleton ShaderManager instance.
 		 */
 		static Ref<ShaderManager> Get();
+
+		/**
+		 * @brief Creates all shaders managed by the ShaderManager.
+		 */
+		static void CreateShaders();
 
 		/**
 		 * @brief Constructs a single shader with a single SPIR-V blob for both vertex and fragment stages.
@@ -135,6 +145,13 @@ namespace SceneryEditorX
 		 * @param type The type of shader to mark as available.
 		 */
 		static void SetShaderAvailable(Renderer_Shader type);
+
+		/**
+		 * @brief Checks if a shader of the specified type is available.
+		 * @param type The type of shader to check.
+		 * @return True if the shader is available, false otherwise.
+		 */
+		static bool IsShaderAvailable(Renderer_Shader type);
 
 		/**
 		 * @brief Retrieves the compilation state of the shaders.

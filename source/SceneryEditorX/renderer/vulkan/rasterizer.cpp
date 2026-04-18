@@ -41,54 +41,43 @@ namespace SceneryEditorX
 		return a * 31 + b;
 	}
 
-	RasterizerState::RasterizerState(const RasterStateSpec &spec)
+	RasterizerState::RasterizerState(const RasterStateSpec &spec) : spec(spec)
 	{
-		// save
-		m_PolygonMode           = spec.polygonMode;
-		m_DepthClipEnabled      = spec.depthClipEnabled;
-		m_DepthBiasEnabled      = spec.depthBiasEnabled;
-		m_DepthBiasClamp        = spec.depthBiasClamp;
-		m_DepthBiasSlope		= spec.depthBiasSlope;
-		m_LineWidth             = spec.lineWidth;
 
 		// hash
 		std::hash<float> hasher;
-		m_Hash = HashCombine(m_Hash, static_cast<uint64_t>(m_PolygonMode));
-		m_Hash = HashCombine(m_Hash, static_cast<uint64_t>(m_DepthClipEnabled));
-		m_Hash = HashCombine(m_Hash, static_cast<uint64_t>(m_LineWidth));
-		m_Hash = HashCombine(m_Hash, static_cast<uint64_t>(hasher(m_DepthBiasEnabled)));
-		m_Hash = HashCombine(m_Hash, static_cast<uint64_t>(hasher(m_DepthBiasClamp)));
-		m_Hash = HashCombine(m_Hash, static_cast<uint64_t>(hasher(m_DepthBiasSlope)));
-		m_Hash = HashCombine(m_Hash, static_cast<uint64_t>(hasher(m_LineWidth)));
+		m_Hash = HashCombine(m_Hash, static_cast<uint64_t>(m_Spec.polygonMode));
+		m_Hash = HashCombine(m_Hash, static_cast<uint64_t>(m_Spec.depthClipEnabled));
+		m_Hash = HashCombine(m_Hash, static_cast<uint64_t>(m_Spec.lineWidth));
+		m_Hash = HashCombine(m_Hash, static_cast<uint64_t>(hasher(m_Spec.depthBiasEnabled)));
+		m_Hash = HashCombine(m_Hash, static_cast<uint64_t>(hasher(m_Spec.depthBiasClamp)));
+		m_Hash = HashCombine(m_Hash, static_cast<uint64_t>(hasher(m_Spec.depthBiasSlope)));
+		m_Hash = HashCombine(m_Hash, static_cast<uint64_t>(hasher(m_Spec.lineWidth)));
+	}
+
+	RasterizerState::~RasterizerState()
+	{
+		m_Spec = {};
+		m_Hash = 0;
 	}
 
 	RasterizerState &RasterizerState::operator=(const Ref<RasterizerState> &ref)
 	{
 		if (ref.Get() == this)
 			return *this;
+
 		if (ref)
 		{
 			m_Spec = ref->m_Spec;
-			m_PolygonMode = ref->m_PolygonMode;
-			m_DepthClipEnabled = ref->m_DepthClipEnabled;
-			m_DepthBiasEnabled = ref->m_DepthBiasEnabled;
-			m_DepthBiasClamp = ref->m_DepthBiasClamp;
-			m_DepthBiasSlope = ref->m_DepthBiasSlope;
-			m_LineWidth = ref->m_LineWidth;
 			m_Hash = ref->m_Hash;
 		}
 		else
 		{
 			// Reset to default values if the reference is null
 			m_Spec = RasterStateSpec();
-			m_PolygonMode = PolygonMode::Solid;
-			m_DepthClipEnabled = true;
-			m_DepthBiasEnabled = false;
-			m_DepthBiasClamp = 0.0f;
-			m_DepthBiasSlope = 0.0f;
-			m_LineWidth = 1.0f;
 			m_Hash = 0; // or some default hash value
 		}
+
 		return *this;
 	}
 

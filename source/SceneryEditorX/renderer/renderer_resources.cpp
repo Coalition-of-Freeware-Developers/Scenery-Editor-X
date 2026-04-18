@@ -75,12 +75,12 @@ namespace SceneryEditorX
 
 	static std::array<BlendState, static_cast<uint8_t>(Renderer_BlendState::MaxEnum)> s_BlendStates = {
 		BlendState(BlendStateSpec{ false }), // Off
-		BlendState(BlendStateSpec{ true,  VK_BLEND_FACTOR_SRC_ALPHA, VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, VK_BLEND_OP_ADD,
-									VK_BLEND_FACTOR_ONE,      VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, VK_BLEND_OP_ADD, 0.0f }), // Alpha
-		BlendState(BlendStateSpec{ true,  VK_BLEND_FACTOR_ONE,       VK_BLEND_FACTOR_ONE,                VK_BLEND_OP_ADD,
-									VK_BLEND_FACTOR_ONE,      VK_BLEND_FACTOR_ONE,                VK_BLEND_OP_ADD, 0.0f }), // Additive
-		BlendState(BlendStateSpec{ true,  VK_BLEND_FACTOR_ONE,       VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, VK_BLEND_OP_ADD,
-									VK_BLEND_FACTOR_ONE,      VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, VK_BLEND_OP_ADD, 0.0f }), // Premultiplied
+		BlendState(BlendStateSpec{ true, VK_BLEND_FACTOR_SRC_ALPHA, VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, VK_BLEND_OP_ADD,
+									VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, VK_BLEND_OP_ADD, 0.0f }), // Alpha
+		BlendState(BlendStateSpec{ true, VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ONE, VK_BLEND_OP_ADD,
+									VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ONE, VK_BLEND_OP_ADD, 0.0f }), // Additive
+		BlendState(BlendStateSpec{ true,  VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, VK_BLEND_OP_ADD,
+									VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, VK_BLEND_OP_ADD, 0.0f }), // Premultiplied
 	};
 
 	static std::array<DepthStencilState, static_cast<uint8_t>(Renderer_DepthStencilState::MaxEnum)> s_DepthStencilStates = {
@@ -115,6 +115,14 @@ namespace SceneryEditorX
 	std::array<ShaderBuffer_Light, MAX_ARRAY_SIZE> Renderer::m_Bindless_Lights;
 	std::array<ShaderBuffer_Aabb, MAX_ARRAY_SIZE> Renderer::m_Bindless_Aabbs;
 
+	/**
+	 * @brief Helper function to access resources by enum type without needing to static_cast every time.
+	 * @tparam E An enum type that can be cast to size_t for indexing.
+	 * @tparam A The type of the array or container.
+	 * @param arr The array or container to access.
+	 * @param e The enum value used as the index.
+	 * @return A reference to the element at the specified index.
+	 */
 	template<typename E, typename A>
 	auto& At(A& arr, E e) { return arr[static_cast<size_t>(e)]; }
 
@@ -341,7 +349,7 @@ namespace SceneryEditorX
 		bool needSSAO = false; /* TODO: Have the option settable in user settings */
 		if (needSSAO && !s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::ssao)])
 		{
-			 s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::ssao)] = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, width, height, 1, 1, VK_FORMAT_R16G16B16A16_SFLOAT, flags | QueueShare, "ssao"});
+		    s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::ssao)] = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, width, height, 1, 1, VK_FORMAT_R16G16B16A16_SFLOAT, flags | QueueShare, "ssao"});
 			SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::ssao)] != nullptr, "Failed to create ssao render target");
 		}
 		else if (!needSSAO && s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::ssao)])
@@ -797,11 +805,9 @@ namespace SceneryEditorX
 			IndirectFrameResource& fr = m_FrameResources[i];
 
 			fr.m_DrawArgs = CreateRef<Buffer>(static_cast<uint32_t>(sizeof(ShaderBuffer_IndirectDrawArgs)), MAX_ARRAY_SIZE, nullptr, true, (std::string("indirect_draw_args_") + std::to_string(i)).c_str());
-
 			fr.m_DrawData = CreateRef<Buffer>(static_cast<uint32_t>(sizeof(ShaderBuffer_DrawData)), MAX_ARRAY_SIZE, nullptr, true, (std::string("indirect_draw_data_") + std::to_string(i)).c_str());
 
 			fr.m_DrawArgs_Out = CreateRef<Buffer>(static_cast<uint32_t>(sizeof(ShaderBuffer_IndirectDrawArgs)), MAX_ARRAY_SIZE, nullptr, true, (std::string("indirect_draw_args_out_") + std::to_string(i)).c_str());
-
 			fr.m_DrawData_Out = CreateRef<Buffer>(static_cast<uint32_t>(sizeof(ShaderBuffer_DrawData)), MAX_ARRAY_SIZE, nullptr, true, (std::string("indirect_draw_data_out_") + std::to_string(i)).c_str());
 
 			fr.m_DrawCount = CreateRef<Buffer>(static_cast<uint32_t>(sizeof(uint32_t)), 1, &drawCountInit, true, (std::string("indirect_draw_count_") + std::to_string(i)).c_str());
@@ -836,15 +842,15 @@ namespace SceneryEditorX
 	void Renderer::CreateRasterizerStates()
 	{
 		// bias done in shader, hardware bias is uncontrollable across cascades
-		float bias              = 0.0f;
-		float bias_clamp        = 0.0f;
-		float bias_slope_scaled = 0.0f;
-		float line_width        = 3.0f;
+		float bias            = 0.0f;
+		float biasClamp       = 0.0f;
+		float biasSlopeScaled = 0.0f;
+		float lineWidth       = 3.0f;
 
-		At(s_RasterizerStates, Renderer_RasterizerState::Solid)             = CreateRef<RasterizerState>(RasterStateSpec{PolygonMode::Solid, true, false,0.0f, 0.0f, 0.0f, line_width});
-		At(s_RasterizerStates, Renderer_RasterizerState::Wireframe)         = CreateRef<RasterizerState>(RasterStateSpec{PolygonMode::Wireframe, true, false,0.0f, 0.0f, 0.0f, line_width});
-		At(s_RasterizerStates, Renderer_RasterizerState::Light_point_spot)  = CreateRef<RasterizerState>(RasterStateSpec{PolygonMode::Solid, true, true, bias, bias_clamp, bias_slope_scaled, line_width});
-		At(s_RasterizerStates, Renderer_RasterizerState::Light_directional) = CreateRef<RasterizerState>(RasterStateSpec{PolygonMode::Solid, false, true, bias * 0.5f, bias_clamp, bias_slope_scaled, line_width});
+		At(s_RasterizerStates, Renderer_RasterizerState::Solid)             = CreateRef<RasterizerState>(RasterStateSpec{PolygonMode::Solid, true, false,0.0f, 0.0f, 0.0f, lineWidth});
+		At(s_RasterizerStates, Renderer_RasterizerState::Wireframe)         = CreateRef<RasterizerState>(RasterStateSpec{PolygonMode::Wireframe, true, false,0.0f, 0.0f, 0.0f, lineWidth});
+		At(s_RasterizerStates, Renderer_RasterizerState::Light_point_spot)  = CreateRef<RasterizerState>(RasterStateSpec{PolygonMode::Solid, true, true, bias, biasClamp, biasSlopeScaled, lineWidth});
+		At(s_RasterizerStates, Renderer_RasterizerState::Light_directional) = CreateRef<RasterizerState>(RasterStateSpec{PolygonMode::Solid, false, true, bias * 0.5f, biasClamp, biasSlopeScaled, lineWidth});
 	}
 
 	void Renderer::CreateBlendStates()
@@ -888,15 +894,13 @@ namespace SceneryEditorX
 
 	RasterizerState *Renderer::GetRasterizerState(const Renderer_RasterizerState type)
 	{
-		SEDX_CORE_ASSERT(static_cast<uint8_t>(type) < static_cast<uint8_t>(Renderer_RasterizerState::MaxEnum),
-						 "Renderer_RasterizerState out of range");
+		SEDX_CORE_ASSERT(static_cast<uint8_t>(type) < static_cast<uint8_t>(Renderer_RasterizerState::MaxEnum), "Renderer_RasterizerState out of range");
 		return &s_RasterizerStates[static_cast<uint8_t>(type)];
 	}
 
 	BlendState *Renderer::GetBlendState(const Renderer_BlendState type)
 	{
-		SEDX_CORE_ASSERT(static_cast<uint8_t>(type) < static_cast<uint8_t>(Renderer_BlendState::MaxEnum),
-						 "Renderer_BlendState out of range");
+		SEDX_CORE_ASSERT(static_cast<uint8_t>(type) < static_cast<uint8_t>(Renderer_BlendState::MaxEnum), "Renderer_BlendState out of range");
 		return &s_BlendStates[static_cast<uint8_t>(type)];
 	}
 
@@ -926,13 +930,11 @@ namespace SceneryEditorX
 		};
 
 		static StandardQuadMesh s_QuadMesh;
-		Buffer* vb = s_QuadMesh.GetVertexBuffer();
-		Buffer* ib = s_QuadMesh.GetIndexBuffer();
+		Buffer* vtxB = StandardQuadMesh::GetVertexBuffer();
+		Buffer* indxB = StandardQuadMesh::GetIndexBuffer();
 
-		if (vb && ib)
-		{
+		if (vtxB && indxB)
 			return &s_QuadMesh;
-		}
 
 		static bool warned = false;
 		if (!warned)

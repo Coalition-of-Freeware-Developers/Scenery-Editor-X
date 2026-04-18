@@ -31,7 +31,6 @@
 #include "descriptor_pool_manager.h"
 #include "queue_manager.h"
 #include "render_context.h"
-
 #include <SceneryEditorX/logging/logging.hpp>
 #include <volk/volk.h>
 

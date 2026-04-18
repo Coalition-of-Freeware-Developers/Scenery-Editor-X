@@ -46,12 +46,14 @@ namespace SceneryEditorX
 	{
 		PolygonMode polygonMode       = PolygonMode::MaxEnum;
 		bool		depthClipEnabled  = true;
-	    bool        depthBiasEnabled  = false;
+		bool        depthBiasEnabled  = false;
 		float       depthBiasConstant = 0.0f;
 		float       depthBiasSlope    = 0.0f;
 		float		depthBiasClamp    = 0.0f;
 		float		lineWidth         = 1.0f;
 	};
+
+	// TODO: Tie in with pipeline state and hashing system, to avoid redundant state objects and Vulkan pipeline creations.
 
 	/**
 	 * @class RasterizerState
@@ -62,15 +64,15 @@ namespace SceneryEditorX
 	public:
 		RasterizerState() = default;
 		RasterizerState(const RasterStateSpec &spec);
-		~RasterizerState() = default;
+		virtual ~RasterizerState() override;
 
-		[[nodiscard]] PolygonMode GetPolygonMode()       const { return m_PolygonMode; }
-		[[nodiscard]] bool        IsDepthBiasEnabled()   const { return m_DepthBiasEnabled; }
-		[[nodiscard]] bool		  IsDepthClipEnabled()   const { return m_DepthClipEnabled; }
-		[[nodiscard]] float       GetDepthBias()		 const { return m_DepthBias; }
-		[[nodiscard]] float       GetDepthBiasSlope()    const { return m_DepthBiasSlope; }
-		[[nodiscard]] float		  GetDepthBiasClamp()    const { return m_DepthBiasClamp; }
-		[[nodiscard]] float		  GetLineWidth()         const { return m_LineWidth; }
+		[[nodiscard]] PolygonMode GetPolygonMode()       const { return m_Spec.polygonMode; }
+		[[nodiscard]] bool        IsDepthBiasEnabled()   const { return m_Spec.depthBiasEnabled; }
+		[[nodiscard]] bool		  IsDepthClipEnabled()   const { return m_Spec.depthClipEnabled; }
+		[[nodiscard]] float       GetDepthBias()		 const { return m_Spec.depthBiasConstant; }
+		[[nodiscard]] float       GetDepthBiasSlope()    const { return m_Spec.depthBiasSlope; }
+		[[nodiscard]] float		  GetDepthBiasClamp()    const { return m_Spec.depthBiasClamp; }
+		[[nodiscard]] float		  GetLineWidth()         const { return m_Spec.lineWidth; }
 		[[nodiscard]] uint64_t	  GetHash()				 const { return m_Hash; }
 
 		/**
@@ -89,15 +91,8 @@ namespace SceneryEditorX
 
 	private:
 		RasterStateSpec m_Spec;
-
-		PolygonMode m_PolygonMode       = PolygonMode::Solid;
-		bool        m_DepthBiasEnabled  = false;
-		bool		m_DepthClipEnabled	= true;
-		float       m_DepthBias			= 0.0f;
-		float       m_DepthBiasSlope    = 0.0f;
-		float		m_DepthBiasClamp    = 0.0f;
-		float		m_LineWidth         = 1.0f;
-		uint64_t	m_Hash				= 0;
+		uint64_t m_Hash = 0;
+		const RasterStateSpec &spec;
 	};
 
 }

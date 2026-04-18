@@ -42,6 +42,14 @@ namespace SceneryEditorX
 	 */
 	struct VertexAttribute 
 	{
+		/**
+		 * @brief Constructs a VertexAttribute with the specified parameters.
+		 * @param name The name of the vertex attribute.
+		 * @param location The location of the vertex attribute.
+		 * @param binding The binding index of the vertex attribute.
+		 * @param format The format of the vertex attribute.
+		 * @param offset The offset of the vertex attribute within the vertex structure.
+		 */
 		VertexAttribute(const std::string& name, const uint32_t location, const uint32_t binding, const VkFormat format, const uint32_t offset)
 		{
 			this->name     = name;
@@ -51,11 +59,11 @@ namespace SceneryEditorX
 			this->offset   = offset;
 		}
 
-		std::string name;
-		uint32_t location;
-		uint32_t binding;
-		VkFormat format;
-		uint32_t offset;
+		std::string name;	// For informational purposes; not used in Vulkan pipeline creation but can be helpful for debugging and reflection.
+		uint32_t location;	// The location of the vertex attribute, used in shader input declarations (e.g., layout(location = 0) in GLSL).
+		uint32_t binding;	// The binding index of the vertex attribute, used in Vulkan pipeline creation to specify which vertex buffer binding this attribute comes from.
+		VkFormat format;	// The format of the vertex attribute, specified as a Vulkan format (e.g., VK_FORMAT_R32G32B32_SFLOAT for a vec3).
+		uint32_t offset;	// The byte offset of the vertex attribute within the vertex structure, used in Vulkan pipeline creation to specify where this attribute is located in the vertex data.
 	};
 
 	/**
@@ -68,6 +76,10 @@ namespace SceneryEditorX
 		InputLayout() = default;
 		~InputLayout();
 
+		/**
+		 * @brief Creates an input layout based on the specified vertex type, which determines the vertex attributes and their formats.
+		 * @param type The vertex type to create the input layout for.
+		 */
 		void Create(const VertexType type)
 		{
 			const uint32_t binding = 0;
@@ -132,11 +144,35 @@ namespace SceneryEditorX
 			}
 		}
 
-		VertexType GetVertexType()                                         const { return m_VertexType; }
-		const uint32_t GetVertexSize()                                     const { return m_VertexSize; }
-		const std::vector<VertexAttribute>& GetAttributeDescriptions()     const { return m_VertexAttributes; }
-		uint32_t GetAttributeCount()                                       const { return static_cast<uint32_t>(m_VertexAttributes.size()); }
+		/**
+		 * @brief Get the vertex type of the input layout.
+		 * @return The vertex type.
+		 */
+		VertexType GetVertexType() const { return m_VertexType; }
 
+		/**
+		 * @brief Get the size of the vertex in bytes.
+		 * @return The size of the vertex in bytes.
+		 */
+		const uint32_t GetVertexSize() const { return m_VertexSize; }
+
+		/**
+		 * @brief Get the vertex attribute descriptions.
+		 * @return The vertex attribute descriptions.
+		 */
+		const std::vector<VertexAttribute>& GetAttributeDescriptions() const { return m_VertexAttributes; }
+
+		/**
+		 * @brief Get the number of vertex attributes.
+		 * @return The number of vertex attributes.
+		 */
+		uint32_t GetAttributeCount() const { return static_cast<uint32_t>(m_VertexAttributes.size()); }
+
+		/**
+		 * @brief Compare two input layouts for equality.
+		 * @param rhs The input layout to compare with.
+		 * @return True if the input layouts are equal, false otherwise.
+		 */
 		bool operator==(const InputLayout& rhs) const { return m_VertexType == rhs.GetVertexType(); }
 
 	private:

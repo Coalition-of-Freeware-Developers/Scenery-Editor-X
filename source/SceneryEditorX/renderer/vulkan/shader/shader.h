@@ -41,7 +41,8 @@
 
 namespace SceneryEditorX
 {
-	/**
+enum class Renderer_Shader : uint8_t;
+/**
 	 * @class Shader
 	 * @brief Represents a Vulkan shader composed of multiple shader stages.
 	 */
@@ -55,7 +56,13 @@ namespace SceneryEditorX
 		 * @brief Constructs a Shader object with an optional name for debugging and hashing purposes.
 		 * @param shaderName The name of the shader.
 		 */
-		Shader(const char* shaderName = nullptr);	
+		Shader(const char* shaderName = nullptr);
+
+		/**
+		 * @brief Constructs a Shader object based on a predefined Renderer_Shader enum value.
+		 * @param shader The Renderer_Shader enum value.
+		 */
+		Shader(const Renderer_Shader shader);
 
 		/**
 		 * @brief Constructs a Shader object with an optional name for debugging and hashing purposes.

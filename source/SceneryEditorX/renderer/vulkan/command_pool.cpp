@@ -40,6 +40,11 @@
 namespace SceneryEditorX
 {
 
+	/**
+	 * @brief Convert CommandPoolType to corresponding VkCommandPoolCreateFlags.
+	 * @param pool The type of command pool.
+	 * @return The corresponding VkCommandPoolCreateFlags.
+	 */
 	static VkCommandPoolCreateFlags GetPoolFlags(CommandPoolType pool)
 	{
 		switch (pool)

@@ -108,7 +108,7 @@ namespace SceneryEditorX
 		 * @brief Construct a Descriptor from the provided specification.
 		 * @param spec The binding specification.
 		 */
-		explicit Descriptor(const DescriptorSpec& spec);
+	    Descriptor(const DescriptorSpec& spec);
 
 		~Descriptor() = default;
 
@@ -121,33 +121,24 @@ namespace SceneryEditorX
 		 * @brief Check if the descriptor is a storage image type.
 		 * @return True if the descriptor type is TextureStorage.
 		 */
-		[[nodiscard]] bool IsStorage() const { return m_Type == DescriptorType::TextureStorage; }
+		[[nodiscard]] bool IsStorage() const { return m_Spec.type == DescriptorType::TextureStorage; }
 
-		[[nodiscard]] uint32_t       GetSlot()        const { return m_Slot; }
-		[[nodiscard]] uint32_t       GetStage()       const { return m_Stage; }
-		[[nodiscard]] uint32_t       GetStructSize()  const { return m_StructSize; }
-		[[nodiscard]] uint32_t       GetArrayLength() const { return m_ArrayLength; }
-		[[nodiscard]] DescriptorType GetType()        const { return m_Type; }
-		[[nodiscard]] bool           IsArray()        const { return m_AsArray; }
-		[[nodiscard]] const std::string& GetName()    const { return m_Name; }
+		[[nodiscard]] uint32_t       GetSlot()        const { return m_Spec.slot; }
+		[[nodiscard]] uint32_t       GetStage()       const { return m_Spec.stage; }
+		[[nodiscard]] uint32_t       GetStructSize()  const { return m_Spec.structSize; }
+		[[nodiscard]] uint32_t       GetArrayLength() const { return m_Spec.arrayLength; }
+		[[nodiscard]] DescriptorType GetType()        const { return m_Spec.type; }
+		[[nodiscard]] bool           IsArray()        const { return m_Spec.asArray; }
+		[[nodiscard]] const std::string& GetName()    const { return m_Spec.name; }
 
 		/**
 		 * @brief Merge stage flags from another descriptor for the same slot (used by shader reflection merging).
 		 * @param stage Additional stage flags to OR into this descriptor's stage mask.
 		 */
-		void SetStage(uint32_t stage) { m_Stage = stage; }
+		void SetStage(const uint32_t stage) { m_Spec.stage = stage; }
 
 	private:
-		DescriptorSpec      m_Spec;
-
-		uint32_t            m_Slot        = 0;
-		uint32_t            m_Stage       = 0;
-		uint32_t            m_StructSize  = 0;
-		uint32_t            m_ArrayLength = 0;
-		DescriptorType      m_Type        = DescriptorType::MaxEnum;
-		Layout::ImageLayout m_ImgLayout   = Layout::ImageLayout::MaxEnum;
-		bool                m_AsArray     = false;
-		std::string         m_Name;
+		DescriptorSpec m_Spec;
 	};
 
 } // namespace SceneryEditorX

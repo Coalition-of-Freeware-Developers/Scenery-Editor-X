@@ -58,6 +58,7 @@ namespace SceneryEditorX
 	struct RendererProperties;
 	class Swapchain;
 	class ShaderManager;
+	class Pipeline;
 	class Camera;
 
 	/**
@@ -482,6 +483,11 @@ namespace SceneryEditorX
 		 * @brief Creates fonts used by the renderer.
 		 */
 		static void CreateFonts();
+
+		/**
+		 * @brief Registers and creates standard renderer shaders through ShaderManager.
+		 */
+		static void CreateStandardShaders();
 
 		/* 
 		 * @brief Creates standard materials used by the renderer. 
@@ -945,6 +951,8 @@ namespace SceneryEditorX
 
 		/* Basic forward-rendering pipeline (active until the full deferred pipeline is wired up) */
 		Scope<ShaderManager> m_ShaderManager;
+		static Scope<Pipeline> m_BasicPipelineObject;
+		static Scope<Pipeline> m_GridPipelineObject;
 		static VkPipeline m_BasicPipeline;
 		static VkPipelineLayout m_BasicPipelineLayout;
 		static std::array<VkBuffer,        MAX_FRAMES_IN_FLIGHT> m_BasicShaderDataBuffers;
@@ -955,7 +963,6 @@ namespace SceneryEditorX
 		/* Infinite grid bootstrap pipeline and geometry */
 		static VkPipeline m_GridPipeline;
 		static VkPipelineLayout m_GridPipelineLayout;
-		static Scope<ShaderManager> m_GridShaderManager;
 		static VkBuffer m_GridVertexBuffer;
 		static VmaAllocation m_GridVertexAllocation;
 		static VkBuffer m_GridIndexBuffer;

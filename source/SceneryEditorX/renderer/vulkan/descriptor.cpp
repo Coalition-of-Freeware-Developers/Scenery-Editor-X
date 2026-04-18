@@ -34,8 +34,7 @@
 
 namespace SceneryEditorX
 {
-	Descriptor::Descriptor(const DescriptorSpec& spec) : m_Spec(spec) , m_Slot(spec.slot), m_Stage(spec.stage), m_StructSize(spec.structSize),
-		m_ArrayLength(spec.arrayLength), m_Type(spec.type), m_ImgLayout(spec.layout), m_AsArray(spec.asArray), m_Name(spec.name)
+	Descriptor::Descriptor(const DescriptorSpec& spec) : m_Spec(spec)
 	{
 	}
 	

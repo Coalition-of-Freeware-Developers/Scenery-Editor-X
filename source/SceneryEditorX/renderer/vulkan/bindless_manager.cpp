@@ -58,6 +58,9 @@ namespace SceneryEditorX
 		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, SHADER_REGISTER_SHIFT_T, 23, 1,                  "instances"           }, // Instances
 	};
 
+	/**
+	 * @brief Descriptor pool sizes for the bindless manager.
+	 */
 	static std::array<VkDescriptorPoolSize, 7> s_PoolSizes =
 	{
 		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_SAMPLER,                    32 * MAX_DESCRIPTOR_SET_COUNT },

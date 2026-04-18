@@ -109,16 +109,24 @@ namespace SceneryEditorX
 	class ResourceCache
 	{
 	public:
-		/* @brief Initializes the resource cache. */
+		/** 
+		 * @brief Initializes the resource cache.
+		 */
 		static void Init();
 
-		/* @brief Shuts down the resource cache. */
+		/** 
+		 * @brief Shuts down the resource cache. 
+		 */
 		static void Shutdown();
 
-		/* @brief Loads the default resources into the cache. */
+		/**
+		 * @brief Loads the default resources into the cache. 
+		 */
 		static void LoadDefaultResources();
 
-		/* @brief Unloads the default resources from the cache. */
+		/**
+		 * @brief Unloads the default resources from the cache. 
+		 */
 		static void UnloadDefaultResources();
 
 		/**
@@ -149,7 +157,7 @@ namespace SceneryEditorX
 		 * @param type The type of the resources.
 		 * @return A vector of references to the requested resources.
 		 */
-		static std::vector<IResource *> GetByType(ResourceType type = ResourceType::MaxEnum);
+		static std::vector<IResource*> GetByType(ResourceType type = ResourceType::MaxEnum);
 
 		/**
 		 * @brief Retrieves a resource by its file path.

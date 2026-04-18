@@ -30,6 +30,8 @@
  */
 #include "shader_manager.h"
 #include "shader_compiler.h"
+#include "SceneryEditorX/core/resource/resource_cache.h"
+
 #include <algorithm>
 #include <utility>
 #include <SceneryEditorX/renderer/renderer.h>
@@ -167,6 +169,106 @@ namespace SceneryEditorX
 		return s_Instance;
 	}
 
+	void ShaderManager::CreateShaders()
+	{
+		const std::string sd = ResourceCache::GetResourceDirectory(ResourceDirectory::Shaders);
+
+		// debug
+		SetShaderAvailable(Renderer_Shader::line_vertex);
+		ShaderCompiler::CompileShader(Renderer_Shader::line_vertex,    StageType::Vertex,  sd + "line.hlsl",    true, VertexType::PositionColor);
+		ShaderCompiler::CompileShader(Renderer_Shader::line_frag,    StageType::Fragment,   sd + "line.hlsl");
+		ShaderCompiler::CompileShader(Renderer_Shader::grid_vertex,    StageType::Vertex,  sd + "grid.hlsl",    true, VertexType::PositionUvNormalTangent);
+		ShaderCompiler::CompileShader(Renderer_Shader::grid_frag,    StageType::Fragment,   sd + "grid.hlsl");
+		ShaderCompiler::CompileShader(Renderer_Shader::outline_vertex, StageType::Vertex,  sd + "outline.hlsl", true, VertexType::PositionUvNormalTangent);
+		ShaderCompiler::CompileShader(Renderer_Shader::outline_frag, StageType::Fragment,   sd + "outline.hlsl");
+		ShaderCompiler::CompileShader(Renderer_Shader::outline_comp, StageType::Compute, sd + "outline.hlsl");
+
+	    // depth
+		ShaderCompiler::CompileShader(Renderer_Shader::depth_prepass_vertex,           StageType::Vertex, sd + "depth_prepass.hlsl", true, VertexType::PositionUvNormalTangent);
+		ShaderCompiler::CompileShader(Renderer_Shader::depth_prepass_alpha_test_frag, StageType::Fragment,  sd + "depth_prepass.hlsl");
+		ShaderCompiler::CompileShader(Renderer_Shader::depth_light_vertex,             StageType::Vertex, sd + "depth_light.hlsl",  true, VertexType::PositionUvNormalTangent);
+		ShaderCompiler::CompileShader(Renderer_Shader::depth_light_alpha_color_frag, StageType::Fragment,  sd + "depth_light.hlsl");
+
+		// g-buffer
+		ShaderCompiler::CompileShader(Renderer_Shader::gbuffer_vertex, StageType::Vertex, sd + "g_buffer.hlsl", true, VertexType::PositionUvNormalTangent);
+		ShaderCompiler::CompileShader(Renderer_Shader::gbuffer_frag, StageType::Fragment,  sd + "g_buffer.hlsl");
+
+		// tessellation
+		ShaderCompiler::CompileShader(Renderer_Shader::tessellation_h, StageType::TessellationControl,   sd + "common_tessellation.hlsl");
+		ShaderCompiler::CompileShader(Renderer_Shader::tessellation_d, StageType::TessellationEvaluation, sd + "common_tessellation.hlsl");
+
+		// light
+		ShaderCompiler::CompileShader(Renderer_Shader::light_integration_brdf_specular_lut_c,  StageType::Compute, sd + "light_integration.hlsl", false, VertexType::MaxEnum, "BRDF_SPECULAR_LUT");
+		ShaderCompiler::CompileShader(Renderer_Shader::light_integration_environment_filter_c, StageType::Compute, sd + "light_integration.hlsl", true,  VertexType::MaxEnum, "ENVIRONMENT_FILTER");
+		ShaderCompiler::CompileShader(Renderer_Shader::light_c,                                StageType::Compute, sd + "light.hlsl");
+		ShaderCompiler::CompileShader(Renderer_Shader::light_composition_c,                    StageType::Compute, sd + "light_composition.hlsl");
+		ShaderCompiler::CompileShader(Renderer_Shader::light_image_based_c,                    StageType::Compute, sd + "light_image_based.hlsl");
+
+		// blur
+		ShaderCompiler::CompileShader(Renderer_Shader::blur_gaussian_c,            StageType::Compute, sd + "blur.hlsl");
+		ShaderCompiler::CompileShader(Renderer_Shader::blur_gaussian_bilaterial_c, StageType::Compute, sd + "blur.hlsl", true, VertexType::MaxEnum, "PASS_BLUR_GAUSSIAN_BILATERAL");
+
+		// bloom
+		ShaderCompiler::CompileShader(Renderer_Shader::bloom_luminance_c,          StageType::Compute, sd + "bloom.hlsl", true, VertexType::MaxEnum, "LUMINANCE");
+		ShaderCompiler::CompileShader(Renderer_Shader::bloom_downsample_c,         StageType::Compute, sd + "bloom.hlsl", true, VertexType::MaxEnum, "DOWNSAMPLE");
+		ShaderCompiler::CompileShader(Renderer_Shader::bloom_upsample_blend_mip_c, StageType::Compute, sd + "bloom.hlsl", true, VertexType::MaxEnum, "UPSAMPLE_BLEND_MIP");
+		ShaderCompiler::CompileShader(Renderer_Shader::bloom_blend_frame_c,        StageType::Compute, sd + "bloom.hlsl", true, VertexType::MaxEnum, "BLEND_FRAME");
+
+		// amd fidelityfx
+		ShaderCompiler::CompileShader(Renderer_Shader::ffx_cas_c,         StageType::Compute, sd + "amd_fidelity_fx/cas.hlsl");
+		ShaderCompiler::CompileShader(Renderer_Shader::ffx_spd_average_c, StageType::Compute, sd + "amd_fidelity_fx/spd.hlsl", false, VertexType::MaxEnum, "AVERAGE");
+		ShaderCompiler::CompileShader(Renderer_Shader::ffx_spd_min_c,     StageType::Compute, sd + "amd_fidelity_fx/spd.hlsl", false, VertexType::MaxEnum, "MIN");
+		ShaderCompiler::CompileShader(Renderer_Shader::ffx_spd_max_c,     StageType::Compute, sd + "amd_fidelity_fx/spd.hlsl", false, VertexType::MaxEnum, "MAX");
+
+		// sky
+		ShaderCompiler::CompileShader(Renderer_Shader::skysphere_comp,                    StageType::Compute, sd + "sky/skysphere.hlsl");
+		ShaderCompiler::CompileShader(Renderer_Shader::skysphere_lut_comp,                StageType::Compute, sd + "sky/skysphere.hlsl", true,  VertexType::MaxEnum, "LUT");
+		ShaderCompiler::CompileShader(Renderer_Shader::skysphere_transmittance_lut_c,  StageType::Compute, sd + "sky/skysphere.hlsl", false, VertexType::MaxEnum, "TRANSMITTANCE_LUT");
+		ShaderCompiler::CompileShader(Renderer_Shader::skysphere_multiscatter_lut_c,   StageType::Compute, sd + "sky/skysphere.hlsl", false, VertexType::MaxEnum, "MULTISCATTER_LUT");
+
+		// post-process
+		ShaderCompiler::CompileShader(Renderer_Shader::fxaa_comp,                 StageType::Compute, sd + "fxaa/fxaa.hlsl");
+		ShaderCompiler::CompileShader(Renderer_Shader::font_vertex,                 StageType::Vertex,  sd + "font.hlsl", true, VertexType::PositionUv);
+		ShaderCompiler::CompileShader(Renderer_Shader::font_frag,                 StageType::Fragment,   sd + "font.hlsl");
+		ShaderCompiler::CompileShader(Renderer_Shader::film_grain_comp,           StageType::Compute, sd + "film_grain.hlsl");
+		ShaderCompiler::CompileShader(Renderer_Shader::chromatic_aberration_c, StageType::Compute, sd + "chromatic_aberration.hlsl");
+		ShaderCompiler::CompileShader(Renderer_Shader::vhs_c,                  StageType::Compute, sd + "vhs.hlsl");
+		ShaderCompiler::CompileShader(Renderer_Shader::output_c,               StageType::Compute, sd + "output.hlsl");
+		ShaderCompiler::CompileShader(Renderer_Shader::motion_blur_c,          StageType::Compute, sd + "motion_blur.hlsl");
+		ShaderCompiler::CompileShader(Renderer_Shader::ssao_comp,                 StageType::Compute, sd + "ssao.hlsl");
+		ShaderCompiler::CompileShader(Renderer_Shader::sss_c_bend,             StageType::Compute, sd + "screen_space_shadows/bend_sss.hlsl");
+		ShaderCompiler::CompileShader(Renderer_Shader::depth_of_field_c,       StageType::Compute, sd + "depth_of_field.hlsl");
+		ShaderCompiler::CompileShader(Renderer_Shader::variable_rate_shading_c, StageType::Compute, sd + "variable_rate_shading.hlsl");
+		ShaderCompiler::CompileShader(Renderer_Shader::blit_c,                 StageType::Compute, sd + "blit.hlsl");
+
+		// indirect draw
+		ShaderCompiler::CompileShader(Renderer_Shader::indirect_cull_c,         StageType::Compute, sd + "indirect_cull.hlsl");
+		ShaderCompiler::CompileShader(Renderer_Shader::gbuffer_indirect_vertex,      StageType::Vertex,  sd + "g_buffer.hlsl",      true, VertexType::MaxEnum, "INDIRECT_DRAW");
+		ShaderCompiler::CompileShader(Renderer_Shader::gbuffer_indirect_frag,      StageType::Fragment,   sd + "g_buffer.hlsl",      true, VertexType::MaxEnum, "INDIRECT_DRAW");
+		ShaderCompiler::CompileShader(Renderer_Shader::depth_prepass_indirect_vertex, StageType::Vertex,  sd + "depth_prepass.hlsl", true, VertexType::MaxEnum, "INDIRECT_DRAW");
+
+		// misc
+		ShaderCompiler::CompileShader(Renderer_Shader::icon_c,                                  StageType::Compute, sd + "icon.hlsl");
+		ShaderCompiler::CompileShader(Renderer_Shader::dithering_c,                              StageType::Compute, sd + "dithering.hlsl");
+		ShaderCompiler::CompileShader(Renderer_Shader::transparency_reflection_refraction_c,     StageType::Compute, sd + "transparency_reflection_refraction.hlsl");
+		ShaderCompiler::CompileShader(Renderer_Shader::auto_exposure_c,                          StageType::Compute, sd + "auto_exposure.hlsl");
+
+		// volumetric clouds
+		ShaderCompiler::CompileShader(Renderer_Shader::cloud_noise_shape_c,  StageType::Compute, sd + "sky/cloud_noise.hlsl",  true, VertexType::MaxEnum, "SHAPE_NOISE");
+		ShaderCompiler::CompileShader(Renderer_Shader::cloud_noise_detail_c, StageType::Compute, sd + "sky/cloud_noise.hlsl",  true, VertexType::MaxEnum, "DETAIL_NOISE");
+		ShaderCompiler::CompileShader(Renderer_Shader::cloud_shadow_c,       StageType::Compute, sd + "sky/cloud_shadow.hlsl");
+
+		// gpu-driven particles
+		ShaderCompiler::CompileShader(Renderer_Shader::particle_emit_c,     StageType::Compute, sd + "particles.hlsl", true, VertexType::MaxEnum, "EMIT");
+		ShaderCompiler::CompileShader(Renderer_Shader::particle_simulate_c, StageType::Compute, sd + "particles.hlsl", true, VertexType::MaxEnum, "SIMULATE");
+		ShaderCompiler::CompileShader(Renderer_Shader::particle_render_c,   StageType::Compute, sd + "particles.hlsl", true, VertexType::MaxEnum, "RENDER");
+
+		// gpu texture compression (synchronous)
+		ShaderCompiler::CompileShader(Renderer_Shader::texture_compress_bc1_c, StageType::Compute, sd + "texture_compress_bc1.hlsl", false);
+		ShaderCompiler::CompileShader(Renderer_Shader::texture_compress_bc3_c, StageType::Compute, sd + "texture_compress_bc3.hlsl", false);
+		ShaderCompiler::CompileShader(Renderer_Shader::texture_compress_bc5_c, StageType::Compute, sd + "texture_compress_bc5.hlsl", false);
+	}
+
 	Ref<Shader> &ShaderManager::CreateShader(const std::string &name)
 	{
 		std::scoped_lock lock(s_ShaderMutex);
@@ -235,7 +337,7 @@ namespace SceneryEditorX
 
 	void ShaderManager::ClearStage(const Ref<Shader> &shader, const StageType stage)
 	{
-
+		// TODO: Implement stage clearing logic. This should remove the specified stage from the shader and destroy its associated Vulkan shader module.
 	}
 	
 	Shader* ShaderManager::GetShader(const Renderer_Shader type)
@@ -246,6 +348,19 @@ namespace SceneryEditorX
 	void ShaderManager::SetShaderAvailable(const Renderer_Shader type)
 	{
 		const uint8_t index = static_cast<uint8_t>(type);
+
+		for (size_t i = 0; i < s_Shaders.size(); ++i)
+		{
+		    if (!s_Shaders[index])
+				s_Shaders[index] = CreateRef<Shader>(type);
+
+		    Ref<Shader>& shader = s_Shaders[index];
+		    SEDX_CORE_ASSERT(shader != nullptr, "Failed to allocate shader slot for type {}", static_cast<uint32_t>(type));
+		    if (!shader->HasStage(StageType::Compute))
+		    {
+		        shader->AddShaderStage(StageType::Compute, "resources/shaders/blit.slang");
+		    }
+		}
 
 		switch (type)
 		{
@@ -295,6 +410,19 @@ namespace SceneryEditorX
 
 				break;
 		}
+	}
+
+	bool ShaderManager::IsShaderAvailable(Renderer_Shader type)
+	{
+		const uint8_t index = static_cast<uint8_t>(type);
+		if (index >= s_Shaders.size())
+		{
+			SEDX_CORE_WARN_TAG("ShaderManager", "Shader type {} is out of bounds", static_cast<uint32_t>(type));
+			return false;
+		}
+
+		const Ref<Shader>& shader = s_Shaders[index];
+		return shader != nullptr && shader->IsCompiled();
 	}
 
 	std::array<Ref<Shader>, static_cast<uint32_t>(Renderer_Shader::MaxEnum)> &ShaderManager::GetShaders()

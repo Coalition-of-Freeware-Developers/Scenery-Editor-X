@@ -31,10 +31,10 @@
 #pragma once
 #include "descriptor.h"
 #include "descriptor_binding.h"
-#include "SceneryEditorX/utils/inheritance.h"
 #include <unordered_map>
 #include <vector>
 #include <SceneryEditorX/core/identifiers/flag.h>
+#include <SceneryEditorX/utils/inheritance.h>
 
 // -----------------------------------------------------------------
 
@@ -191,25 +191,29 @@ namespace SceneryEditorX
 		uint64_t ComputeBindingHash() const;
 
 		/**
-		 * @brief 
-		 * @param pso 
-		 * @param cmdBuffer 
-		 * @param pipelineLayout 
-		 * @param descriptorSet 
+		 * @brief Set the dynamic descriptor for the given pipeline state and command buffer.
+		 * @param pso The pipeline state object.
+		 * @param cmdBuffer The Vulkan command buffer.
+		 * @param pipelineLayout The Vulkan pipeline layout.
+		 * @param descriptorSet The descriptor set to update.
 		 */
 		static void SetDynamicDescriptor(const PipelineState& pso, VkCommandBuffer cmdBuffer, VkPipelineLayout pipelineLayout, DescriptorSet* descriptorSet);
 
 		/**
-		 * @brief 
-		 * @param pso 
-		 * @param resource 
-		 * @param pipeline_layout 
+		 * @brief Set the bindless descriptor for the given pipeline state and resource.
+		 * @param pso The pipeline state object.
+		 * @param resource Pointer to the resource to bind.
+		 * @param pipeline_layout The Vulkan pipeline layout.
 		 */
 		void SetBindless(PipelineState pso, void *resource, void *pipeline_layout);
 
 	private:
-		Ref<Device> m_Device;
+		/**
+		 * @brief Create the descriptor set and allocate the necessary resources.
+		 */
 		void Create();
+
+		Ref<Device> m_Device;
 
 		// layout info (immutable after construction)
 		std::vector<Descriptor> m_Descriptors;

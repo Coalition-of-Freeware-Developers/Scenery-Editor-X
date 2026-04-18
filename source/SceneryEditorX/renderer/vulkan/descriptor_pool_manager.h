@@ -114,6 +114,10 @@ namespace SceneryEditorX
         ~DescriptorPoolManager() = default;
 
     private:
+        /**
+         * @brief Create the Vulkan descriptor pool with the desired sizes and flags.
+         * @return The created VkDescriptorPool handle.
+         */
         VkDescriptorPool CreatePool();
 
         Ref<Device> m_Device;

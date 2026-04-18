@@ -38,35 +38,37 @@
 namespace SceneryEditorX
 {
 	
-	Sampler::Sampler(const SamplerSpec& spec)
+	Sampler::Sampler(const SamplerSpec& spec) : spec(spec)
 	{
-		m_Spec = spec;
-		m_SamplerAddrMode = spec.addressMode;
-
-		Ref<Device> device = RenderContext::Get()->GetDevice();
-		VkSamplerCreateInfo samplerInfo = {};
-		samplerInfo.sType               = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-		samplerInfo.magFilter           = spec.mag;
-		samplerInfo.minFilter           = spec.min;
-		samplerInfo.mipmapMode          = spec.mipMap;
-		samplerInfo.addressModeU        = spec.addressMode;
-		samplerInfo.addressModeV        = spec.addressMode;
-		samplerInfo.addressModeW        = spec.addressMode;
-		samplerInfo.anisotropyEnable    = spec.anisotropy > std::numeric_limits<float>::epsilon();
-		samplerInfo.maxAnisotropy       = spec.anisotropy;
-		samplerInfo.compareEnable       = spec.compareEnabled ? VK_TRUE : VK_FALSE;
-		samplerInfo.compareOp           = spec.compareFunc;
-		samplerInfo.borderColor         = VK_BORDER_COLOR_INT_TRANSPARENT_BLACK;
-		samplerInfo.mipLodBias          = spec.mipLodBias;
-		samplerInfo.minLod              = 0.0f;
-		samplerInfo.maxLod              = FLT_MAX;
-
-		SEDX_VK_RESULT_ASSERT(vkCreateSampler(device->GetLogicalDevice(), &samplerInfo, nullptr, &m_Sampler), "Failed to create Vulkan sampler");
+	    m_SamplerAddrMode = spec.addressMode;
+	
+	    Ref<Device> device = RenderContext::Get()->GetDevice();
+	    VkSamplerCreateInfo samplerInfo = {};
+	    samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+	    samplerInfo.magFilter = spec.mag;
+	    samplerInfo.minFilter = spec.min;
+	    samplerInfo.mipmapMode = spec.mipMap;
+	    samplerInfo.addressModeU = spec.addressMode;
+	    samplerInfo.addressModeV = spec.addressMode;
+	    samplerInfo.addressModeW = spec.addressMode;
+	    samplerInfo.anisotropyEnable = spec.anisotropy > std::numeric_limits<float>::epsilon();
+	    samplerInfo.maxAnisotropy = spec.anisotropy;
+	    samplerInfo.compareEnable = spec.compareEnabled ? VK_TRUE : VK_FALSE;
+	    samplerInfo.compareOp = spec.compareFunc;
+	    samplerInfo.borderColor = VK_BORDER_COLOR_INT_TRANSPARENT_BLACK;
+	    samplerInfo.mipLodBias = spec.mipLodBias;
+	    samplerInfo.minLod = 0.0f;
+	    samplerInfo.maxLod = FLT_MAX;
+	
+	    SEDX_VK_RESULT_ASSERT(vkCreateSampler(device->GetLogicalDevice(), &samplerInfo, nullptr, &m_Sampler),
+	                          "Failed to create Vulkan sampler");
 	}
-
+	
 	Sampler::~Sampler()
 	{
-		QueueManager::AddDeletionQueue(ResourceType::Sampler, m_Sampler);
+		if (m_Sampler)
+		    QueueManager::AddDeletionQueue(ResourceType::Sampler, m_Sampler);
+
 		m_Spec = {};
 		m_Sampler = nullptr;
 	}

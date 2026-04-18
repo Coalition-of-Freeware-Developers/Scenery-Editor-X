@@ -65,7 +65,9 @@ namespace SceneryEditorX
 
 	ImageView::~ImageView()
 	{
-		QueueManager::AddDeletionQueue(ResourceType::ImageView, m_ImageView);
+		if (m_ImageView)
+		    QueueManager::AddDeletionQueue(ResourceType::ImageView, m_ImageView);
+
 		m_ImageView = VK_NULL_HANDLE;
 		m_Spec = {};
 	}

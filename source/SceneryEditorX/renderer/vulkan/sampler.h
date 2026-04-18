@@ -51,9 +51,11 @@ namespace SceneryEditorX
 		float mipLodBias                    = 0.0f;
 	};
 
+	// TODO: Tie in with bindless system and track sampler states in a global array, with dirty flags to update shader bindings when states change (e.g., anisotropy level changes)
+
 	/**
 	 * @class Sampler
-	 * @brief 
+	 * @brief A wrapper around a Vulkan sampler object, created from a SamplerSpec.
 	 */
 	class Sampler : public SharedObject
 	{
@@ -71,6 +73,7 @@ namespace SceneryEditorX
 		bool GetComparisonEnabled()                 const { return m_Spec.compareEnabled; }
 	protected:
 		VkSamplerAddressMode m_SamplerAddrMode = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		const SamplerSpec &spec;
 
 	private:
 		SamplerSpec m_Spec;

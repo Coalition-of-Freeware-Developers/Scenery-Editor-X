@@ -31,11 +31,10 @@
 // ReSharper disable CppConstValueFunctionReturnType
 #include "shader_stage.h"
 #include "shader_manager.h"
-#include "SceneryEditorX/core/application/application.h"
-
 #include <array>
-#include <fstream>
 #include <filesystem>
+#include <fstream>
+#include <SceneryEditorX/core/application/application.h>
 #include <SceneryEditorX/renderer/vulkan/render_context.h>
 #include <volk/volk.h>
 
@@ -69,6 +68,11 @@ namespace SceneryEditorX
 		}
 	}
 
+	/**
+	 * @brief Resolves the absolute path of a shader source file.
+	 * @param filepath The relative or absolute path to the shader file.
+	 * @return The resolved absolute path to the shader file.
+	 */
 	static std::filesystem::path ResolveSourcePath(const std::string& filepath)
 	{
 		const std::filesystem::path inputPath(filepath);
@@ -98,6 +102,11 @@ namespace SceneryEditorX
 		return candidates[0];
 	}
 
+	/**
+	 * @brief Returns the file suffix for a given shader stage.
+	 * @param stage The shader stage.
+	 * @return The file suffix for the shader stage.
+	 */
 	static std::string StageSuffix(const StageType stage)
 	{
 		switch (stage)
@@ -112,6 +121,12 @@ namespace SceneryEditorX
 		}
 	}
 
+	/**
+	 * @brief Returns the cache path for a given shader stage and source path.
+	 * @param stage The shader stage.
+	 * @param sourcePath The path to the shader source file.
+	 * @return The cache path for the shader stage.
+	 */
 	static std::filesystem::path GetCachePath(const StageType stage, const std::filesystem::path& sourcePath)
 	{
 		const auto &context = Application::Get().GetPlatformContext();
@@ -122,6 +137,11 @@ namespace SceneryEditorX
 		return cacheRoot / cacheName;
 	}
 
+	/**
+	 * @brief Reads the cached shader data from a file.
+	 * @param cachePath The path to the cached shader file.
+	 * @return A vector containing the cached shader data.
+	 */
 	static std::vector<uint32_t> ReadCachedShaderData(const std::filesystem::path& cachePath)
 	{
 		std::ifstream input(cachePath, std::ios::binary | std::ios::ate);
@@ -146,6 +166,12 @@ namespace SceneryEditorX
 		return result;
 	}
 
+	/**
+	 * @brief Writes the shader binary data to a cache file.
+	 * @param data The shader binary data to write.
+	 * @param cachePath The path to the cache file.
+	 * @return True if the shader binary was successfully written, false otherwise.
+	 */
 	static bool WriteShaderBinary(const std::vector<uint32_t>& data, const std::filesystem::path& cachePath)
 	{
 		if (data.empty())

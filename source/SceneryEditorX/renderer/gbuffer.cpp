@@ -49,10 +49,11 @@ namespace SceneryEditorX
 
 	}
 
+#pragma region Static Member Definitions
+
 	static Ref<Buffer> s_GeometryQuadVertexBuffer = nullptr;
 	static Ref<Buffer> s_GeometryQuadIndexBuffer  = nullptr;
-	
-	// static member definitions
+
 	std::vector<Vertex_PosTexNorTan> GeometryBuffer::m_Vertices;
 	std::vector<uint32_t> GeometryBuffer::m_Indices;
 	std::unique_ptr<Buffer> GeometryBuffer::m_VertexBuffer;
@@ -64,8 +65,8 @@ namespace SceneryEditorX
 	Flag GeometryBuffer::m_Dirty;
 	bool GeometryBuffer::m_WasRebuilt;
 	std::mutex GeometryBuffer::m_Mutex;
-
-
+	
+#pragma endregion
 
 	void GeometryBuffer::Initialize()
 	{
@@ -131,10 +132,10 @@ namespace SceneryEditorX
 	{
 		std::scoped_lock lock(m_Mutex);
 
-		uint32_t base_offset = static_cast<uint32_t>(m_Vertices.size());
+		uint32_t baseOffset = static_cast<uint32_t>(m_Vertices.size());
 		m_Vertices.insert(m_Vertices.end(), data, data + count);
 		m_Dirty.SetDirty();
-		return base_offset;
+		return baseOffset;
 	}
 
 	uint32_t GeometryBuffer::AppendIndices(const uint32_t *data, uint32_t count)

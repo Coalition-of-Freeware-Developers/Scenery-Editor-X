@@ -29,13 +29,12 @@
  * -------------------------------------------------------
  */
 #include "renderer.h"
-#include "SceneryEditorX/core/time/timer.h"
-#include "SceneryEditorX/core/time/fps_timer.h"
-#include "SceneryEditorX/scene/entity.h"
-#include "SceneryEditorX/scene/scene.h"
-#include "SceneryEditorX/scene/components/lights.h"
 #include <colors.h>
 #include <Editor/modules/scene_render.h>
+#include <SceneryEditorX/core/time/fps_timer.h>
+#include <SceneryEditorX/scene/entity.h>
+#include <SceneryEditorX/scene/scene.h>
+#include <SceneryEditorX/scene/components/lights.h>
 
 // -------------------------------------------------------
 

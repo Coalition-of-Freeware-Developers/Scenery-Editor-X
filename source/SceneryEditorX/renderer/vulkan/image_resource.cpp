@@ -59,6 +59,13 @@ namespace SceneryEditorX
 		}
 	}
 
+	/**
+	 * @brief Perform bilinear downsampling on the input image data to produce a smaller output image.
+	 * @param input The input image data.
+	 * @param output The output image data.
+	 * @param width The width of the input image.
+	 * @param height The height of the input image.
+	 */
 	static void DownsampleBilinear(const std::vector<std::byte>& input, std::vector<std::byte>& output, uint32_t width, uint32_t height)
 	{
 		constexpr uint32_t channels = 4; // RGBA32 - engine standard
@@ -117,6 +124,12 @@ namespace SceneryEditorX
 		}
 	}
 
+	/**
+	 * @brief Compute the number of mip levels for a given image size.
+	 * @param width The width of the image.
+	 * @param height The height of the image.
+	 * @return The number of mip levels.
+	 */
 	static uint32_t ComputeCount(uint32_t width, uint32_t height)
 	{
 		uint32_t mipCount = 1; // base level counts
@@ -135,41 +148,39 @@ namespace SceneryEditorX
 		SEDX_CORE_ASSERT(m_Device.IsValid(), "ImageResource requires a valid Device");
 
 		if (m_Spec.name)
-		{
 			m_ObjectName = m_Spec.name;
-		}
 
 		m_Depth = xMath::Max(1u, m_Spec.depth);
-		m_MipCount = xMath::Max(1u, m_Spec.mipCount);
+		m_Spec.mipCount = xMath::Max(1u, m_Spec.mipCount);
 
 		VkImageUsageFlags usage = 0;
 		if ((m_Spec.flags & ShaderViews) != 0)
 			usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
+
 		if ((m_Spec.flags & UnorderedAccessView) != 0)
 			usage |= VK_IMAGE_USAGE_STORAGE_BIT;
+
 		if ((m_Spec.flags & RenderTargetViews) != 0)
-		{
 			usage |=
 				IsDepthFormat() ? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT : VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-		}
+
 		if ((m_Spec.flags & BlitClear) != 0)
 			usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+
 		// Temporarily avoid adding fragment shading-rate attachment usage here.
 		// Device feature probing may report support while extension wiring is still incomplete,
 		// which triggers validation errors at vkCreateImage.
 		if (usage == 0)
-		{
 			usage = VK_IMAGE_USAGE_SAMPLED_BIT;
-		}
 
-		VkImageCreateInfo imageCI{};
+		VkImageCreateInfo imageCI = {};
 		imageCI.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 		imageCI.imageType = (m_Spec.type == ImageType::Type3D) ? VK_IMAGE_TYPE_3D : VK_IMAGE_TYPE_2D;
 		imageCI.format = m_Spec.format;
 		imageCI.extent.width = m_Spec.width;
 		imageCI.extent.height = m_Spec.height;
 		imageCI.extent.depth = (m_Spec.type == ImageType::Type3D) ? m_Depth : 1u;
-		imageCI.mipLevels = m_MipCount;
+		imageCI.mipLevels = m_Spec.mipCount;
 		imageCI.arrayLayers = (m_Spec.type == ImageType::Type3D) ? 1u : m_Depth;
 		imageCI.samples = VK_SAMPLE_COUNT_1_BIT;
 		imageCI.tiling = VK_IMAGE_TILING_OPTIMAL;
@@ -200,41 +211,33 @@ namespace SceneryEditorX
 			imageCI.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 		}
 
-		m_Allocation = m_Device->GetMemoryAllocator().AllocateImage(imageCI,
-																	VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
-																	m_Image,
-																	nullptr);
-		SEDX_CORE_ASSERT(m_Allocation != nullptr && m_Image != VK_NULL_HANDLE,
-						 "Failed to allocate VkImage for ImageResource");
+		m_Allocation = m_Device->GetMemoryAllocator().AllocateImage(imageCI, VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE, m_Image, nullptr);
+		SEDX_CORE_ASSERT(m_Allocation != nullptr && m_Image != VK_NULL_HANDLE, "Failed to allocate VkImage for ImageResource");
 
 		VkImageViewCreateInfo viewCI{};
 		viewCI.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 		viewCI.image = m_Image;
 		viewCI.format = m_Spec.format;
-		viewCI.viewType = (m_Spec.type == ImageType::Type3D)
-							  ? VK_IMAGE_VIEW_TYPE_3D
-							  : ((m_Depth > 1) ? VK_IMAGE_VIEW_TYPE_2D_ARRAY : VK_IMAGE_VIEW_TYPE_2D);
+		viewCI.viewType = (m_Spec.type == ImageType::Type3D) ? VK_IMAGE_VIEW_TYPE_3D : ((m_Depth > 1) ? VK_IMAGE_VIEW_TYPE_2D_ARRAY : VK_IMAGE_VIEW_TYPE_2D);
 		viewCI.subresourceRange.aspectMask = GetAspectMask(m_Spec.format);
 		viewCI.subresourceRange.baseMipLevel = 0;
-		viewCI.subresourceRange.levelCount = m_MipCount;
+		viewCI.subresourceRange.levelCount = m_Spec.mipCount;
 		viewCI.subresourceRange.baseArrayLayer = 0;
 		viewCI.subresourceRange.layerCount = (m_Spec.type == ImageType::Type3D) ? 1u : m_Depth;
 
 		VkImageView imageView = VK_NULL_HANDLE;
-		SEDX_VK_RESULT_ASSERT(vkCreateImageView(m_Device->GetLogicalDevice(), &viewCI, nullptr, &imageView),
-							  "Failed to create ImageResource image view");
+		SEDX_VK_RESULT_ASSERT(vkCreateImageView(m_Device->GetLogicalDevice(), &viewCI, nullptr, &imageView), "Failed to create ImageResource image view");
 		m_ImageViews.push_back(imageView);
 
-		if (HasPerMipViews() && m_MipCount > 1)
+		if (HasPerMipViews() && m_Spec.mipCount > 1)
 		{
-			for (uint32_t mip = 0; mip < m_MipCount; ++mip)
+			for (uint32_t mip = 0; mip < m_Spec.mipCount; ++mip)
 			{
 				VkImageViewCreateInfo mipViewCI = viewCI;
 				mipViewCI.subresourceRange.baseMipLevel = mip;
 				mipViewCI.subresourceRange.levelCount = 1;
 				VkImageView mipView = VK_NULL_HANDLE;
-				SEDX_VK_RESULT_ASSERT(vkCreateImageView(m_Device->GetLogicalDevice(), &mipViewCI, nullptr, &mipView),
-									  "Failed to create per-mip ImageResource view");
+				SEDX_VK_RESULT_ASSERT(vkCreateImageView(m_Device->GetLogicalDevice(), &mipViewCI, nullptr, &mipView), "Failed to create per-mip ImageResource view");
 				m_ImageViews.push_back(mipView);
 			}
 		}
@@ -276,13 +279,11 @@ namespace SceneryEditorX
 		SEDX_CORE_ASSERT(m_Device.IsValid(), "ImageResource requires a valid Device");
 
 		if (m_Spec.name)
-		{
 			m_ObjectName = m_Spec.name;
-		}
 
 		m_Depth = xMath::Max(1u, m_Spec.depth);
-		m_MipCount = xMath::Max(1u, m_Spec.mipCount);
-		m_Slices = std::move(data);
+		m_Spec.mipCount = xMath::Max(1u, m_Spec.mipCount);
+		m_Slices = data;
 		VkImageUsageFlags usage = 0;
 		if ((m_Spec.flags & ShaderViews) != 0)
 		{
@@ -296,8 +297,7 @@ namespace SceneryEditorX
 
 		if ((m_Spec.flags & RenderTargetViews) != 0)
 		{
-			usage |=
-				IsDepthFormat() ? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT : VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+			usage |= IsDepthFormat() ? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT : VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 		}
 
 		if ((m_Spec.flags & BlitClear) != 0)
@@ -309,9 +309,7 @@ namespace SceneryEditorX
 		// Device feature probing may report support while extension wiring is still incomplete,
 		// which triggers validation errors at vkCreateImage.
 		if (usage == 0)
-		{
 			usage = VK_IMAGE_USAGE_SAMPLED_BIT;
-		}
 
 		VkImageCreateInfo imageCI{};
 		imageCI.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -320,7 +318,7 @@ namespace SceneryEditorX
 		imageCI.extent.width = m_Spec.width;
 		imageCI.extent.height = m_Spec.height;
 		imageCI.extent.depth = (m_Spec.type == ImageType::Type3D) ? m_Depth : 1u;
-		imageCI.mipLevels = m_MipCount;
+		imageCI.mipLevels = m_Spec.mipCount;
 		imageCI.arrayLayers = (m_Spec.type == ImageType::Type3D) ? 1u : m_Depth;
 		imageCI.samples = VK_SAMPLE_COUNT_1_BIT;
 		imageCI.tiling = VK_IMAGE_TILING_OPTIMAL;
@@ -361,7 +359,7 @@ namespace SceneryEditorX
 		viewCI.viewType = (m_Spec.type == ImageType::Type3D) ? VK_IMAGE_VIEW_TYPE_3D : ((m_Depth > 1) ? VK_IMAGE_VIEW_TYPE_2D_ARRAY : VK_IMAGE_VIEW_TYPE_2D);
 		viewCI.subresourceRange.aspectMask = GetAspectMask(m_Spec.format);
 		viewCI.subresourceRange.baseMipLevel = 0;
-		viewCI.subresourceRange.levelCount = m_MipCount;
+		viewCI.subresourceRange.levelCount = m_Spec.mipCount;
 		viewCI.subresourceRange.baseArrayLayer = 0;
 		viewCI.subresourceRange.layerCount = (m_Spec.type == ImageType::Type3D) ? 1u : m_Depth;
 
@@ -370,9 +368,9 @@ namespace SceneryEditorX
 							  "Failed to create ImageResource image view");
 		m_ImageViews.push_back(imageView);
 
-		if (HasPerMipViews() && m_MipCount > 1)
+		if (HasPerMipViews() && m_Spec.mipCount > 1)
 		{
-			for (uint32_t mip = 0; mip < m_MipCount; ++mip)
+			for (uint32_t mip = 0; mip < m_Spec.mipCount; ++mip)
 			{
 				VkImageViewCreateInfo mipViewCI = viewCI;
 				mipViewCI.subresourceRange.baseMipLevel = mip;
@@ -426,22 +424,18 @@ namespace SceneryEditorX
 		const bool fullRangeRequested = (mipIndex == 0 && mipRange == 0);
 		const bool mip_specified = (mipIndex != ALL_MIPS) && !fullRangeRequested;
 		mipIndex = mip_specified ? mipIndex : 0;
-		mipRange = mip_specified ? mipRange : m_MipCount;
+		mipRange = mip_specified ? mipRange : m_Spec.mipCount;
 
 		if (mip_specified && mipRange == 0)
-		{
 			mipRange = 1;
-		}
 
-		if (m_MipCount == 0)
-		{
-			m_MipCount = 1;
-		}
+		if (m_Spec.mipCount == 0)
+			m_Spec.mipCount = 1;
 
 		if (mip_specified)
 		{
 			SEDX_CORE_ASSERT(HasPerMipViews());
-			SEDX_CORE_ASSERT(mipIndex + mipRange <= m_MipCount);
+			SEDX_CORE_ASSERT(mipIndex + mipRange <= m_Spec.mipCount);
 		}
 
 		// Defensive: callers sometimes pass a command list that is not in the
@@ -493,10 +487,9 @@ namespace SceneryEditorX
 		for (VkImageView view : m_ImageViews)
 		{
 			if (view != VK_NULL_HANDLE)
-			{
 				QueueManager::AddDeletionQueue(ResourceType::ImageView, view);
-			}
 		}
+
 		m_ImageViews.clear();
 
 		if (m_Image != VK_NULL_HANDLE)
@@ -519,7 +512,7 @@ namespace SceneryEditorX
 
 		MipBytes &mip = m_Slices[index].mips.emplace_back();
 		m_Depth = static_cast<uint32_t>(m_Slices.size());
-		m_MipCount = static_cast<uint32_t>(m_Slices[index].mips.size());
+		m_Spec.mipCount = static_cast<uint32_t>(m_Slices[index].mips.size());
 		uint32_t mipIndex = static_cast<uint32_t>(m_Slices[index].mips.size()) - 1;
 		uint32_t width = xMath::Max(1u, m_Spec.width >> mipIndex);
 		uint32_t height = xMath::Max(1u, m_Spec.height >> mipIndex);

@@ -905,15 +905,14 @@ namespace SceneryEditorX
 
 		// Ensure swapchain is valid
 		SEDX_CORE_ASSERT(m_Swapchain != VK_NULL_HANDLE, "Swapchain is not valid for image acquisition");
-
 		SEDX_CORE_ASSERT(!m_AcquiredSemaphore.empty(), "Acquire semaphore list is empty");
 
 		// Try to acquire, with retry after swapchain recreation
 		for (uint32_t attempt = 0; attempt < 2; ++attempt)
 		{
-		   const uint32_t semaphoreIndex = m_SemaphoreIndex % static_cast<uint32_t>(m_AcquiredSemaphore.size());
+			const uint32_t semaphoreIndex = m_SemaphoreIndex % static_cast<uint32_t>(m_AcquiredSemaphore.size());
 
-			// Use an acquire semaphore ring independent from swapchain image index.
+			// Use an acquire semaphore ring independent of swapchain image index.
 			// The image index is output from vkAcquireNextImageKHR and must not be used
 			// to select the semaphore before the acquire call.
 			FrameSync *frameSync = m_AcquiredSemaphore[semaphoreIndex].Get();
@@ -935,7 +934,7 @@ namespace SceneryEditorX
 
 			if (r == VK_SUCCESS)
 			{
-			 m_LastAcquiredSemaphoreIndex = semaphoreIndex;
+				m_LastAcquiredSemaphoreIndex = semaphoreIndex;
 				m_SemaphoreIndex = (semaphoreIndex + 1) % static_cast<uint32_t>(m_AcquiredSemaphore.size());
 				m_ImageAcquired = true;
 				return;
@@ -945,7 +944,7 @@ namespace SceneryEditorX
 			{
 				// Swapchain is out of date (e.g. window resized), recreate the swapchain and try acquiring again.
 				Recreate();
-			   continue;
+				continue;
 			}
 
 			SEDX_CORE_ERROR_TAG("Swapchain", "Failed to acquire swapchain image: {}", r);
@@ -955,10 +954,10 @@ namespace SceneryEditorX
 
 	VkSemaphore Swapchain::GetAcquiredVkSemaphore() const
 	{
-	 if (m_LastAcquiredSemaphoreIndex >= m_AcquiredSemaphore.size())
+		if (m_LastAcquiredSemaphoreIndex >= m_AcquiredSemaphore.size())
 			return VK_NULL_HANDLE;
 
-		FrameSync * frameSync = m_AcquiredSemaphore[m_LastAcquiredSemaphoreIndex].Get();
+		FrameSync *frameSync = m_AcquiredSemaphore[m_LastAcquiredSemaphoreIndex].Get();
 		if (!frameSync)
 			return VK_NULL_HANDLE;
 
@@ -981,9 +980,7 @@ namespace SceneryEditorX
 
 		// if present failed (swapchain out of date), mark for recreation
 		if (!success)
-		{
 			m_IsDirty.SetDirty();
-		}
 
 		// recreate the swapchain if needed - we do it here so that no semaphores are being destroyed while they are being waited for
 		if (m_IsDirty.IsDirty())
@@ -1026,7 +1023,6 @@ namespace SceneryEditorX
 		}
 
 		SEDX_VK_RESULT_ASSERT(result, "Failed to present swapchain image");
-
 		return result;
 	}
 

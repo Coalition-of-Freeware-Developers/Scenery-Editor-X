@@ -77,7 +77,9 @@ namespace SceneryEditorX
 		 */
 		Image(const ImageSpec& spec);
 
-		/* @brief Destructor for the Image class, responsible for cleaning up. */
+		/* 
+		 * @brief Destructor for the Image class, responsible for cleaning up. 
+		 */
 		virtual ~Image() override;
 
 		/**
@@ -100,8 +102,8 @@ namespace SceneryEditorX
 		void GetImageSpec(ImageSpec &outSpec) const { outSpec = m_Spec; }
 
 	private:
+	    ImageSpec m_Spec;
 		Ref<Device> m_Device;
-		ImageSpec m_Spec;
 
 		std::vector<VkImageView> m_ImageViews;
 		VkImage m_Image = VK_NULL_HANDLE;

@@ -62,7 +62,6 @@ namespace SceneryEditorX
 	class Window
 	{
 		// Forward declared private event types to avoid circular dependency with event_system.h
-
 		typedef std::function<void(Event &)> EventCallbackFn; // Type alias for event callback function that takes an Event reference and returns void
 		static EventCallbackFn s_EventCallback; // Global event callback function pointer
 

@@ -139,64 +139,54 @@ namespace SceneryEditorX
 
 	/**
 	 * @enum Renderer_Shader
-	 * @brief Enumeration of renderer shaders.
+	 * @brief Enumeration of renderer shader stages.
 	 *
 	 * This enum provides a type-safe way to identify and reference
-	 * the different shaders used in the rendering system.
+	 * the different shader stages used in the rendering system.
 	 */
 	enum class Renderer_Shader : uint8_t
 	{
-		tessellation_h,
-		tessellation_d,
-		gbuffer_vertex,
-		gbuffer_frag,
-		depth_prepass_vertex,
-		depth_prepass_alpha_test_frag,
-		depth_light_vertex,
-		depth_light_alpha_color_frag,
-		fxaa_comp,
+		tessellation,
+		gbuffer,
+		depth_prepass,
+		depth_light,
+		fxaa,
 		film_grain_comp,
-		motion_blur_c,
-		depth_of_field_c,
-		chromatic_aberration_c,
-		vhs_c,
-		bloom_luminance_c,
-		bloom_blend_frame_c,
+		motion_blur,
+		depth_of_field,
+		chromatic_aberration,
+		bloom_luminance,
+		bloom_blend_frame,
 		bloom_upsample_blend_mip_c,
 		bloom_downsample_c,
-		output_c,
+		output,
 		light_integration_brdf_specular_lut_c,
 		light_integration_environment_filter_c,
-		light_c,
-		light_composition_c,
+		light,
+		light_composition,
 		light_image_based_c,
-		line_vertex,
-		line_frag,
-		grid_vertex,
-		grid_frag,
-		outline_vertex,
-		outline_frag,
-		outline_comp,
-		font_vertex,
-		font_frag,
-		ssao_comp,
-		sss_c_bend,
-		skysphere_comp,
-		skysphere_lut_comp,
-		skysphere_transmittance_lut_c,
-		skysphere_multiscatter_lut_c,
-		blur_gaussian_c,
-		blur_gaussian_bilaterial_c,
-		variable_rate_shading_c,
-		ffx_cas_c,
-		ffx_spd_average_c,
-		ffx_spd_min_c,
-		ffx_spd_max_c,
-		blit_c,
-		icon_c,
-		dithering_c,
-		transparency_reflection_refraction_c,
-		auto_exposure_c,
+		line,
+		grid,
+		outline,
+		font,
+		ssao,
+		sss_bend,
+		skysphere,
+		skysphere_lut,
+		skysphere_transmittance_lut,
+		skysphere_multiscatter_lut,
+		blur_gaussian,
+		blur_gaussian_bilateral,
+		variable_rate_shading,
+		ffx_cas,
+		ffx_spd_average,
+		ffx_spd_min,
+		ffx_spd_max,
+		blit,
+		icon,
+		dithering,
+		transparency_reflection_refraction,
+		auto_exposure,
 		// volumetric clouds
 		cloud_noise_shape_c,
 		cloud_noise_detail_c,
@@ -206,9 +196,8 @@ namespace SceneryEditorX
 		nrd_prepare_c,
 		// gpu-driven indirect rendering
 		indirect_cull_c,
-		gbuffer_indirect_vertex,
-		gbuffer_indirect_frag,
-		depth_prepass_indirect_vertex,
+		gbuffer_indirect,
+		depth_prepass_indirect,
 		// gpu-driven particles
 		particle_emit_c,
 		particle_simulate_c,
@@ -219,6 +208,72 @@ namespace SceneryEditorX
 		texture_compress_bc5_c,
 		MaxEnum
 	};
+
+	/**
+	 * @brief Converts a Renderer_Shader enum value to its corresponding string representation.
+	 * @param stage The Renderer_Shader enum value.
+	 * @return The string representation of the Renderer_Shader enum value.
+	 */
+	inline const char *RendererShaderStageToString(const Renderer_Shader stage)
+	{
+		switch (stage)
+		{
+
+		case Renderer_Shader::fxaa: return "FXAA";
+		case Renderer_Shader::film_grain_comp: return "film_grain_comp";
+		case Renderer_Shader::motion_blur: return "motion_blur_c";
+		case Renderer_Shader::depth_of_field: return "depth_of_field_c";
+		case Renderer_Shader::chromatic_aberration: return "chromatic_aberration_c";
+		case Renderer_Shader::bloom_luminance: return "bloom_luminance_c";
+		case Renderer_Shader::bloom_blend_frame: return "bloom_blend_frame_c";
+		case Renderer_Shader::bloom_upsample_blend_mip_c: return "bloom_upsample_blend_mip_c";
+		case Renderer_Shader::bloom_downsample_c: return "bloom_downsample_c";
+		case Renderer_Shader::output: return "output_c";
+		case Renderer_Shader::light_integration_brdf_specular_lut_c: return "light_integration_brdf_specular_lut_c";
+		case Renderer_Shader::light_integration_environment_filter_c: return "light_integration_environment_filter_c";
+		case Renderer_Shader::light: return "light_c";
+		case Renderer_Shader::light_composition: return "light_composition_c";
+		case Renderer_Shader::light_image_based_c: return "light_image_based_c";
+		case Renderer_Shader::line: return "line";
+		case Renderer_Shader::grid: return "grid";
+		case Renderer_Shader::outline: return "outline";
+		case Renderer_Shader::font: return "font";
+		case Renderer_Shader::ssao: return "ssao";
+		case Renderer_Shader::sss_bend: return "sss_bend";
+		case Renderer_Shader::skysphere: return "skysphere";
+		case Renderer_Shader::skysphere_lut: return "skysphere_lut";
+		case Renderer_Shader::skysphere_transmittance_lut: return "skysphere_transmittance_lut";
+		case Renderer_Shader::skysphere_multiscatter_lut: return "skysphere_multiscatter_lut";
+		case Renderer_Shader::blur_gaussian: return "blur_gaussian";
+		case Renderer_Shader::blur_gaussian_bilateral: return "blur_gaussian_bilaterial";
+		case Renderer_Shader::variable_rate_shading: return "variable_rate_shading_c";
+		case Renderer_Shader::ffx_cas: return "ffx_cas_c";
+		case Renderer_Shader::ffx_spd_average: return "ffx_spd_average_c";
+		case Renderer_Shader::ffx_spd_min: return "ffx_spd_min_c";
+		case Renderer_Shader::ffx_spd_max: return "ffx_spd_max_c";
+		case Renderer_Shader::blit: return "blit";
+		case Renderer_Shader::icon: return "icon";
+		case Renderer_Shader::dithering: return "dithering_c";
+		case Renderer_Shader::transparency_reflection_refraction: return "transparency_reflection_refraction";
+		case Renderer_Shader::auto_exposure: return "auto_exposure_c";
+		case Renderer_Shader::cloud_noise_shape_c: return "cloud_noise_shape_c";
+		case Renderer_Shader::cloud_noise_detail_c: return "cloud_noise_detail_c";
+		case Renderer_Shader::cloud_shadow_c: return "cloud_shadow_c";
+		case Renderer_Shader::light_reflections_c: return "light_reflections_c";
+		case Renderer_Shader::nrd_prepare_c: return "nrd_prepare_c";
+		case Renderer_Shader::indirect_cull_c: return "indirect_cull_c";
+		case Renderer_Shader::gbuffer_indirect: return "gbuffer_indirect";
+		case Renderer_Shader::depth_prepass_indirect: return "depth_prepass_indirect";
+		case Renderer_Shader::particle_emit_c: return "particle_emit_c";
+		case Renderer_Shader::particle_simulate_c: return "particle_simulate_c";
+		case Renderer_Shader::particle_render_c: return "particle_render_c";
+		case Renderer_Shader::texture_compress_bc1_c: return "texture_compress_bc1";
+		case Renderer_Shader::texture_compress_bc3_c: return "texture_compress_bc3";
+		case Renderer_Shader::texture_compress_bc5_c: return "texture_compress_bc5";
+		case Renderer_Shader::MaxEnum: return "MaxEnum";
+		default: return "unknown";
+		}
+	}
 
 	/**
 	 * @enum Renderer_Sampler

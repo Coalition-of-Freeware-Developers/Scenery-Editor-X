@@ -29,8 +29,6 @@
  * -------------------------------------------------------
  */
 #pragma once
-#include <vector>
-#include <vulkan/vulkan.h>
 #include <SceneryEditorX/utils/pointers.h>
 
 // -------------------------------------------------------
@@ -60,10 +58,27 @@ namespace SceneryEditorX
 	{
 	public:
 		CommandPool() = default;
-		CommandPool(uint32_t queueFamilyIndex, CommandPoolType pool = CommandPoolType::MaxEnum); // creates a command pool by fetching the device from RenderContext (only valid after RenderContext is fully initialized).
-		CommandPool(const Ref<Device>& device, uint32_t queueFamilyIndex, CommandPoolType pool = CommandPoolType::MaxEnum); // creates a command pool using an explicitly supplied device (safe to use during Device construction).
+
+		/**
+		 * @brief Creates a command pool by fetching the device from RenderContext (only valid after RenderContext is fully initialized).
+		 * @param queueFamilyIndex The index of the queue family for which the command pool is created.
+		 * @param pool The type of command pool to create.
+		 */
+		CommandPool(uint32_t queueFamilyIndex, CommandPoolType pool = CommandPoolType::MaxEnum);
+
+		/**
+		 * @brief Creates a command pool using an explicitly supplied device (safe to use during Device construction).
+		 * @param device The device to use for creating the command pool.
+		 * @param queueFamilyIndex The index of the queue family for which the command pool is created.
+		 * @param pool The type of command pool to create.
+		 */
+		CommandPool(const Ref<Device>& device, uint32_t queueFamilyIndex, CommandPoolType pool = CommandPoolType::MaxEnum);
+
+		/**
+		 * @brief Destroys the command pool and releases all associated resources.
+		 */
 		~CommandPool();
-	
+
 		// Non-copyable
 		CommandPool(const CommandPool&) = delete;
 		CommandPool& operator=(const CommandPool&) = delete;
@@ -71,9 +86,18 @@ namespace SceneryEditorX
 		// Movable
 		CommandPool(CommandPool&& other) noexcept;
 		CommandPool& operator=(CommandPool&& other) noexcept;
-	
-		// Allocate `count` primary command buffers from the owned pool.
+
+		/**
+		 * @brief Allocate `count` primary command buffers from the owned pool.
+		 * @param count The number of command buffers to allocate.
+		 * @return A vector containing the allocated command buffers.
+		 */
 		std::vector<VkCommandBuffer> Allocate(uint32_t count) const;
+
+		/**
+		 * @brief Get the Vulkan command pool handle.
+		 * @return The Vulkan command pool handle.
+		 */
 		[[nodiscard]] VkCommandPool GetPool() const { return m_CmdPool; }
 
 		/**
@@ -82,7 +106,10 @@ namespace SceneryEditorX
 		 */
 		[[nodiscard]] Ref<Device> GetDevice() const;
 	
-		void Destroy(); // Explicitly destroy the command pool before m_Device destruction
+		/**
+		 * @brief Explicitly destroy the command pool before m_Device destruction.
+		 */
+		void Destroy();
 	
 	private:
 		Ref<Device> m_Device; // Store m_Device so we can destroy the pool in the destructor (RAII)

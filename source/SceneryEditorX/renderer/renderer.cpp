@@ -39,6 +39,7 @@
 #include "vulkan/debug/graphics_debug.h"
 #include "vulkan/debug/render_doc.h"
 #include "vulkan/pipeline/pipeline.h"
+#include "vulkan/pipeline/pipeline_spec.h"
 #include "vulkan/shader/shader_manager.h"
 #include <array>
 #include <cstddef>
@@ -102,6 +103,15 @@ namespace SceneryEditorX
 			{
 				screen_percentage += adjustment_factor * (gpu_time_target - gpu_time);
 			}
+
+	void Renderer::CreateStandardShaders()
+	{
+		ShaderManager::SetShaderAvailable(Renderer_Shader::grid_vertex);
+		ShaderManager::SetShaderAvailable(Renderer_Shader::grid_frag);
+		ShaderManager::SetShaderAvailable(Renderer_Shader::blit_c);
+		ShaderManager::SetShaderAvailable(Renderer_Shader::gbuffer_vertex);
+		ShaderManager::SetShaderAvailable(Renderer_Shader::gbuffer_frag);
+	}
 			else // gpu is over target, decrease resolution
 			{
 				screen_percentage -= adjustment_factor * (gpu_time - gpu_time_target);
@@ -114,6 +124,11 @@ namespace SceneryEditorX
 		}
 	}
 	*/
+
+	void Renderer::CreateStandardShaders()
+	{
+		ShaderManager::CreateShaders();
+	}
 
 	RendererProperties *Renderer::m_Data = nullptr;
 	static Ref<Swapchain> s_Swapchain = nullptr;
@@ -150,13 +165,14 @@ namespace SceneryEditorX
 	// Basic forward pipeline
 	VkPipeline Renderer::m_BasicPipeline = VK_NULL_HANDLE;
 	VkPipelineLayout Renderer::m_BasicPipelineLayout = VK_NULL_HANDLE;
+	Scope<Pipeline> Renderer::m_BasicPipelineObject = nullptr;
+	Scope<Pipeline> Renderer::m_GridPipelineObject = nullptr;
 	std::array<VkBuffer, MAX_FRAMES_IN_FLIGHT> Renderer::m_BasicShaderDataBuffers = {};
 	std::array<VmaAllocation, MAX_FRAMES_IN_FLIGHT> Renderer::m_BasicShaderDataAllocations = {};
 	std::array<void *, MAX_FRAMES_IN_FLIGHT> Renderer::m_BasicShaderDataMapped = {};
 	std::array<VkDeviceAddress, MAX_FRAMES_IN_FLIGHT> Renderer::m_BasicShaderDataAddresses = {};
 	VkPipeline Renderer::m_GridPipeline = VK_NULL_HANDLE;
 	VkPipelineLayout Renderer::m_GridPipelineLayout = VK_NULL_HANDLE;
-	Scope<ShaderManager> Renderer::m_GridShaderManager = nullptr;
 	VkBuffer Renderer::m_GridVertexBuffer = VK_NULL_HANDLE;
 	VmaAllocation Renderer::m_GridVertexAllocation = VK_NULL_HANDLE;
 	VkBuffer Renderer::m_GridIndexBuffer = VK_NULL_HANDLE;
@@ -310,7 +326,7 @@ namespace SceneryEditorX
 			SetViewport(static_cast<float>(width), static_cast<float>(height));
 		}
 
-	    s_Swapchain = CreateRef<Swapchain>();
+		s_Swapchain = CreateRef<Swapchain>();
 		// Temporary debug logging: record when the global swapchain Ref is assigned
 		// This helps trace who/when mutates the global swapchain handle during init.
 		if (s_Swapchain)
@@ -340,10 +356,15 @@ namespace SceneryEditorX
 		s_AssetManager = CreateScope<AssetManager>();
 		s_ShaderManager = CreateScope<ShaderManager>();
 
-		CreateFrameResources();
+		//CreateFrameResources();
+
+#pragma region Temporary Debug 
+
 		// Temporary debug trace: log sync vectors sizes after frame resources creation
 		SEDX_CORE_TRACE_TAG("Renderer", "Trace: After CreateFrameResources sizes - fences={}, render={}",
 			static_cast<uint32_t>(s_FenceHandles.size()), static_cast<uint32_t>(s_RenderSemaphoreHandles.size()));
+
+#pragma endregion
 
 		ThreadPool::Submit([]()
 		{
@@ -352,6 +373,7 @@ namespace SceneryEditorX
 			CreateStandardTextures();
 			CreateStandardMaterials();
 			CreateFonts();
+			CreateStandardShaders();
 			LoadShaders();
 			m_ResourcesInitialized = true;
 		});
@@ -530,30 +552,15 @@ namespace SceneryEditorX
 		// Destroy basic forward pipeline resources
 		{
 			VkDevice dev = device->GetLogicalDevice();
-			if (m_BasicPipeline != VK_NULL_HANDLE)
-			{
-				vkDestroyPipeline(dev, m_BasicPipeline, nullptr);
-				m_BasicPipeline = VK_NULL_HANDLE;
-			}
-			if (m_BasicPipelineLayout != VK_NULL_HANDLE)
-			{
-				vkDestroyPipelineLayout(dev, m_BasicPipelineLayout, nullptr);
-				m_BasicPipelineLayout = VK_NULL_HANDLE;
-			}
+			m_BasicPipelineObject.reset();
+			m_BasicPipeline = VK_NULL_HANDLE;
+			m_BasicPipelineLayout = VK_NULL_HANDLE;
 			ShaderManager::ClearAll();
 			s_ShaderManager.reset();
 
-			if (m_GridPipeline != VK_NULL_HANDLE)
-			{
-				vkDestroyPipeline(dev, m_GridPipeline, nullptr);
-				m_GridPipeline = VK_NULL_HANDLE;
-			}
-			if (m_GridPipelineLayout != VK_NULL_HANDLE)
-			{
-				vkDestroyPipelineLayout(dev, m_GridPipelineLayout, nullptr);
-				m_GridPipelineLayout = VK_NULL_HANDLE;
-			}
-			m_GridShaderManager.reset();
+			m_GridPipelineObject.reset();
+			m_GridPipeline = VK_NULL_HANDLE;
+			m_GridPipelineLayout = VK_NULL_HANDLE;
 
 			VmaAllocator vma = device->GetMemoryAllocator().GetAllocator();
 			if (m_GridVertexAllocation != VK_NULL_HANDLE)
@@ -678,9 +685,8 @@ namespace SceneryEditorX
 		if (m_Camera)
 		{
 			if (!Scene::HasCameraEntity())
-			{
 				m_Camera->Tick();
-			}
+
 			UpdateCameraUBO(m_CurrentFrameIndex); // Ensure UBO is ready before command recording
 			SEDX_CORE_TRACE_TAG("Renderer", "Camera pos = (X: {:.3f}, Y: {:.3f}, Z: {:.3f})",
 				m_Camera->GetEyePosition().x, m_Camera->GetEyePosition().y, m_Camera->GetEyePosition().z);
@@ -944,7 +950,7 @@ namespace SceneryEditorX
 			UpdatePersistentLines();
 			AddLinesToBeRendered();
 
-			SubmitAndPresent();
+			//SubmitAndPresent();
 
 			{
 				m_Lines_Vertices.clear();
@@ -1077,7 +1083,7 @@ namespace SceneryEditorX
 					}
 				}
 
-				// Destroy frame-sync resources before swapchain recreation and recreate afterwards
+				// Destroy frame-sync resources before swapchain recreation and recreate afterward
 				DestroyFrameResources();
 				s_Swapchain->Recreate();
 				CreateFrameResources();
@@ -1378,7 +1384,7 @@ namespace SceneryEditorX
 
 #pragma region Frame Resource Creation and Destruction
 
-	// This was the prior function for creating frame resources before Blit implementation.
+	// @Note: This was the prior function for creating frame resources before Blit implementation.
 	void Renderer::CreateFrameResources()
 	{
 		SEDX_CORE_TRACE_TAG("Renderer", "Creating frame resources for {} frames in flight", MAX_FRAMES_IN_FLIGHT);
@@ -1661,7 +1667,7 @@ namespace SceneryEditorX
 	{
 		SEDX_CORE_TRACE_TAG("Renderer", "Destroying frame resources");
 
-	 // Destroy semaphores and fences through wrapper Destroy() so they get scheduled for deletion properly.
+	    // Destroy semaphores and fences through wrapper Destroy() so they get scheduled for deletion properly.
 		{
 			std::scoped_lock lock(s_FrameSyncMutex);
 			for (auto &semRef : s_RenderSemaphoreRefs)
@@ -2516,11 +2522,68 @@ namespace SceneryEditorX
 	void Renderer::RecordRenderCommands(VkCommandBuffer cb, uint32_t imageIndex)
 	{
 		SEDX_CORE_TRACE_TAG("Renderer", "Recording render commands for image index {}", imageIndex);
+
+		// Diagnostic: mark entry and image index (temporary)
+		SEDX_CORE_TRACE_TAG("Renderer", "RecordRenderCommands entered (cb={}, imageIndex={})", static_cast<void*>(cb), imageIndex);
+
+		// Forced clear test (temporary) - clear the acquired swapchain image to magenta
+		// This helps determine whether the swapchain/present path is working.
+		if (cb != VK_NULL_HANDLE && s_Swapchain)
+		{
+			auto &images = s_Swapchain->GetImages();
+			if (imageIndex < images.size())
+			{
+				VkImage dstImage = images[imageIndex];
+				VkClearColorValue clearColor{};
+				clearColor.float32[0] = 1.0f; // R
+				clearColor.float32[1] = 0.0f; // G
+				clearColor.float32[2] = 1.0f; // B
+				clearColor.float32[3] = 1.0f; // A
+
+				VkImageMemoryBarrier barrierToClear{};
+				barrierToClear.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+				barrierToClear.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+				barrierToClear.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+				barrierToClear.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+				barrierToClear.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+				barrierToClear.image = dstImage;
+				barrierToClear.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+				barrierToClear.subresourceRange.baseMipLevel = 0;
+				barrierToClear.subresourceRange.levelCount = 1;
+				barrierToClear.subresourceRange.baseArrayLayer = 0;
+				barrierToClear.subresourceRange.layerCount = 1;
+				barrierToClear.srcAccessMask = 0;
+				barrierToClear.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+
+				vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
+					0, nullptr, 0, nullptr, 1, &barrierToClear);
+
+				VkImageSubresourceRange range{};
+				range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+				range.baseMipLevel = 0;
+				range.levelCount = 1;
+				range.baseArrayLayer = 0;
+				range.layerCount = 1;
+
+				vkCmdClearColorImage(cb, dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clearColor, 1, &range);
+
+				VkImageMemoryBarrier barrierToPresent = barrierToClear;
+				barrierToPresent.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+				barrierToPresent.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+				barrierToPresent.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+				barrierToPresent.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+
+				vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0,
+					0, nullptr, 0, nullptr, 1, &barrierToPresent);
+			}
+		}
+
 		if (!s_Swapchain)
 		{
 			SEDX_CORE_TRACE_TAG("Renderer", "Swapchain is null, cannot record render commands");
 			return;
 		}
+
 
 		auto &swapchainImages = s_Swapchain->GetImages();
 		auto &swapchainImageViews = s_Swapchain->GetImageViews();

@@ -66,7 +66,9 @@ namespace SceneryEditorX
 		 */
 		Buffer(VmaAllocator allocator, VkDeviceSize size, VkBufferUsageFlags usage, const VmaAllocationCreateInfo& allocInfo);
 
-		/* @brief Destroys the buffer and releases its resources. */
+		/* 
+		 * @brief Destroys the buffer and releases its resources. 
+		 */
 		virtual ~Buffer() override;
 
 		Buffer(const Buffer&) = delete;

@@ -62,12 +62,32 @@ namespace SceneryEditorX
 	class ImageView : public SharedObject
 	{
 	public:
+
+		/**
+		 * @brief Constructor for the ImageView class, creates a Vulkan image view based on the provided specifications. 
+		 * @param spec The specifications for the image view.
+		 */
 		ImageView(ImageViewSpec spec);
+
+		/**
+		 * @brief Destructor for the ImageView class, destroys the Vulkan image view.
+		 */
 		virtual ~ImageView() override;
 
+		/**
+		 * @brief Copy constructor is deleted to prevent copying of the ImageView.
+		 */
 		ImageView(const ImageView&) = delete;
+
+		/**
+		 * @brief Assignment operator is deleted to prevent copying of the ImageView.
+		 */
 		void operator=(const ImageView&)  = delete;
 
+		/**
+		 * @brief Get the Vulkan image view handle.
+		 * @return The Vulkan image view handle.
+		 */
 		VkImageView GetImageView() const { return m_ImageView; }
 
 	private:

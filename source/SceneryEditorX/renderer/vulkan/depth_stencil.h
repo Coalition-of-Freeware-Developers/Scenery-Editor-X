@@ -43,7 +43,7 @@ namespace SceneryEditorX
 	{
 		bool depth_Test					 = true;
 		bool depth_Write				 = true;
-		VkCompareOp depth_CompFunc		 = VK_COMPARE_OP_LESS_OR_EQUAL;
+		VkCompareOp depth_CompOp		 = VK_COMPARE_OP_LESS_OR_EQUAL;
 
 	};
 
@@ -58,8 +58,8 @@ namespace SceneryEditorX
 		DepthStencilState(const DepthStencilSpec &spec);
 		~DepthStencilState() = default;
 
-		bool          IsDepthTestEnabled()		const { return m_DepthTestEnable;  }
-		bool          IsDepthWriteEnabled()		const { return m_DepthWriteEnable; }
+		bool          IsDepthTestEnabled()		const { return m_Spec.depth_Test;  }
+		bool          IsDepthWriteEnabled()		const { return m_Spec.depth_Write; }
 		bool		  IsStencilTestEnabled()	const { return m_StencilTestEnabled; }
 		bool		  IsStencilWriteEnabled()	const { return m_StencilWriteEnabled; }
 		VkCompareOp	  GetStencilCompFunc()		const { return m_StencilCompFunc; }
@@ -70,7 +70,7 @@ namespace SceneryEditorX
 		uint8_t       GetStencilReadMask()		const { return m_StencilReadMask; }
 		uint8_t       GetStencilWriteMask()		const { return m_StencilWriteMask; }
 
-		VkCompareOp   GetDepthCompareOp()		const { return m_DepthCompareOp;   }
+		VkCompareOp   GetDepthCompareOp()		const { return m_Spec.depth_CompOp;   }
 		[[nodiscard]] uint64_t GetHash()		const { return m_Hash; }
 
 		/**
@@ -80,14 +80,11 @@ namespace SceneryEditorX
 		 * @param ref The reference to the DepthStencilState to copy from.
 		 * @return A reference to this DepthStencilState.
 		 */
-		DepthStencilState &operator=(const Ref<DepthStencilState> & ref);
+		DepthStencilState &operator=(const Ref<DepthStencilState> &ref);
 
 	private:
-		DepthStencilSpec depthSpec;
+		DepthStencilSpec m_Spec;
 
-		bool        m_DepthTestEnable			= false;
-		bool        m_DepthWriteEnable			= false;
-		VkCompareOp m_DepthCompareOp			= VK_COMPARE_OP_LESS;
 		bool		m_StencilTestEnabled        = false;
 		bool		m_StencilWriteEnabled       = false;
 		VkCompareOp m_StencilCompFunc			= VK_COMPARE_OP_NEVER;
@@ -97,7 +94,7 @@ namespace SceneryEditorX
 		uint8_t		m_StencilReadMask			= 1;
 		uint8_t		m_StencilWriteMask			= 1;
 		uint64_t	m_Hash						= 0;
-		const DepthStencilSpec &spec;
+
 	};
 
 }

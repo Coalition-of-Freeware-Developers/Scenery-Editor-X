@@ -92,7 +92,7 @@ namespace SceneryEditorX
 		{
 			VkDescriptorType type;   // VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, etc.
 			uint32_t registerShift;  // SHADER_REGISTER_SHIFT_T or SHADER_REGISTER_SHIFT_S
-			uint32_t slot;           // hlsl register slot
+			uint32_t slot;           // hlsl/slang register slot
 			uint32_t count;          // descriptor array count
 			const char *name;
 		};

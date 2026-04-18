@@ -41,21 +41,18 @@ namespace SceneryEditorX
 		return a * 31 + b;
 	}
 
-	DepthStencilState::DepthStencilState(const DepthStencilSpec &spec) : spec(spec)
+	DepthStencilState::DepthStencilState(const DepthStencilSpec &spec) : m_Spec(spec)
 	{
 		std::hash<bool> hasher;
-		m_Hash = HashCombine(m_Hash, static_cast<uint64_t>(hasher(m_DepthTestEnable)));
-		m_Hash = HashCombine(m_Hash, static_cast<uint64_t>(hasher(m_DepthWriteEnable)));
-		m_Hash = HashCombine(m_Hash, static_cast<uint64_t>(m_DepthCompareOp));
+		m_Hash = HashCombine(m_Hash, static_cast<uint64_t>(hasher(m_Spec.depth_Test)));
+		m_Hash = HashCombine(m_Hash, static_cast<uint64_t>(hasher(m_Spec.depth_Write)));
+		m_Hash = HashCombine(m_Hash, static_cast<uint64_t>(m_Spec.depth_CompOp));
 	}
 
 	DepthStencilState &DepthStencilState::operator=(const Ref<DepthStencilState> &ref)
 	{
 		if (this != ref.Get())
 		{
-			m_DepthTestEnable = ref->IsDepthTestEnabled();
-			m_DepthWriteEnable = ref->IsDepthWriteEnabled();
-			m_DepthCompareOp = ref->GetDepthCompareOp();
 			m_StencilTestEnabled = ref->IsStencilTestEnabled();
 			m_StencilWriteEnabled = ref->IsStencilWriteEnabled();
 			m_StencilCompFunc = ref->GetStencilCompFunc();

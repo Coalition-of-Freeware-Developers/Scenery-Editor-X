@@ -41,8 +41,16 @@
 namespace SceneryEditorX
 {
 
+	
+
 	Shader::Shader(const char *shaderName) : SharedObject(), m_Name(shaderName ? shaderName : "UnnamedShader"), m_CompilationState(ShaderCompiler::State::Idle)
 	{
+		SetObjectName(m_Name);
+	}
+
+	Shader::Shader(const Renderer_Shader shader) : SharedObject(), m_CompilationState(ShaderCompiler::State::Idle)
+	{
+	    m_Name = RendererShaderStageToString(shader);
 		SetObjectName(m_Name);
 	}
 
