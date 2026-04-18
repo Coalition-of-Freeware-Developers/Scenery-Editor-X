@@ -35,11 +35,75 @@
 #include <slang/slang-com-ptr.h>
 #include <slang/slang.h>
 #include <spirv_cross/spirv_cross.hpp>
+#include <array>
+#include <unordered_set>
 
 // --------------------------------------------------------------
 
 namespace ShaderCompiler
 {
+	static bool IsPrimarySharedLibraryModule(const std::string& moduleName)
+	{
+		static const std::unordered_set<std::string> SHARED_LIBRARY_PRIMARY_MODULES = {
+			"constants",
+			"resources",
+			"color",
+			"math",
+			"noise",
+			"depth",
+			"position",
+			"common",
+			"core",
+			"surface",
+			"lighting_lib",
+			"pipeline"
+		};
+
+		return SHARED_LIBRARY_PRIMARY_MODULES.contains(moduleName);
+	}
+
+	static bool IsEntryShaderFile(const std::string& moduleName)
+	{
+		static const std::unordered_set<std::string> ENTRY_SHADER_MODULES = {
+			"line",
+			"grid",
+			"outline",
+			"depth_prepass",
+			"depth_light",
+			"light",
+			"light_integration",
+			"light_composition",
+			"light_base",
+			"blur",
+			"bloom",
+			"skysphere",
+			"blit",
+			"gbuffer",
+			"font",
+			"icon",
+			"icons",
+			"output",
+			"indirect_cull",
+			"pre_pass",
+			"dof_lighting",
+			"lighting",
+			"shadow_mapping",
+			"ssao",
+			"terrain",
+			"ui",
+			"fog",
+			"fxaa",
+			"dof",
+			"cloud_noise",
+			"cloud_shadows",
+			"camera",
+			"brdf",
+			"shader"
+		};
+
+		return ENTRY_SHADER_MODULES.contains(moduleName);
+	}
+
 	/**
 	 * @brief Creates a Slang compilation session configured for Vulkan SPIR-V output.
 	 * @param outGlobalSession Receives the global Slang session.
@@ -90,6 +154,12 @@ namespace ShaderCompiler
 	{
 		const std::filesystem::path shaderPath(filepath);
 		const std::string moduleName = shaderPath.stem().string();
+
+		if (!IsPrimarySharedLibraryModule(moduleName) && !IsEntryShaderFile(moduleName))
+		{
+			SEDX_CORE_ERROR_TAG("ShaderCompiler", "Refusing to compile non-primary/non-entry Slang file '{}'. Compile module primaries or entry shaders only.", filepath);
+			return nullptr;
+		}
 
 		Slang::ComPtr<slang::IModule> module{session->loadModuleFromSource(moduleName.c_str(), filepath.c_str(), nullptr, outDiagnostics.writeRef())};
 		if (!module)

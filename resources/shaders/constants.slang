@@ -45,3 +45,4 @@ static const uint THREAD_GROUP_COUNT_X = 8;
 static const uint THREAD_GROUP_COUNT_Y = 8;
 static const uint THREAD_GROUP_COUNT = 64;
 static const float DEG_TO_RAD = PI / 180.0f;
+

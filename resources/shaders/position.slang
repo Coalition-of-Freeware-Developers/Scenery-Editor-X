@@ -28,6 +28,8 @@
  * Created: 07/03/2026
  * -------------------------------------------------------
  */
+implementing core;
+
 import resources;
 import depth;
 
@@ -60,3 +62,4 @@ float3 get_position_view_space(float2 uv)
 {
     return mul(float4(get_position(get_depth(uv), uv / buffer_frame.resolution_scale), 1.0f), buffer_frame.view).xyz;
 }
+

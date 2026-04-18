@@ -28,6 +28,8 @@
  * Created: 18/04/2026
  * -------------------------------------------------------
  */
+implementing surface;
+
 import common;
 
 // A 4x4 box filter

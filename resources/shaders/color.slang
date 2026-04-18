@@ -51,3 +51,4 @@ float3 linear_to_srgb(float3 color)
     float3 is_high = step(0.00313066844250063, color);
     return lerp(srgb_low, srgb_high, is_high);
 }
+

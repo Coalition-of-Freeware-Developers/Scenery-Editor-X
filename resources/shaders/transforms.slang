@@ -28,6 +28,8 @@
  * Created: 07/03/2026
  * -------------------------------------------------------
  */
+implementing core;
+
 import resources;
 
 float3 world_to_view(float3 x, bool is_position = true)
@@ -84,3 +86,4 @@ float2 uv_to_ndc(float2 uv)
 {
     return float2(uv.x * 2.0f - 1.0f, 1.0f - uv.y * 2.0f); // flip y for dx style
 }
+

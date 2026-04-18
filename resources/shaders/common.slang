@@ -295,3 +295,4 @@ float get_alpha_threshold(float3 position_world)
     return saturate(lerp(ALPHA_THRESHOLD_DEFAULT, 0.0f, distance_factor));
 }
 
+

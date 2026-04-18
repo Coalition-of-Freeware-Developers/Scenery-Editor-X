@@ -33,7 +33,7 @@ import noise;
 static const float sea_level  = 0.0f;
 static const float snow_level = 400.0f;
 
-static float get_snow_blend_factor(float3 position_world, float3 normal_world)
+float get_snow_blend_factor(float3 position_world, float3 normal_world)
 {
     const float snow_blend_speed = 0.06f; // transition sharpness
     const float noise_scale      = 0.2f;  // noise frequency for terrain/vegetation
@@ -71,3 +71,4 @@ static float get_snow_blend_factor(float3 position_world, float3 normal_world)
 
     return snow_blend_factor;
 }
+

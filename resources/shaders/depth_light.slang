@@ -28,9 +28,9 @@
  * Created: 18/04/2026
  * -------------------------------------------------------
  */
+import pipeline;
 import common;
 import resources;
-import position;
 import vertex_processing;
 
 [shader("vertex")]

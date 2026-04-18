@@ -198,6 +198,10 @@ namespace SceneryEditorX
 			{"position", {.debugName = "position", .filepath = "resources/shaders/position.slang", .required = true}},
 			{"constants", {.debugName = "constants", .filepath = "resources/shaders/constants.slang", .required = true}},
 			{"common", {.debugName = "common", .filepath = "resources/shaders/common.slang", .required = true}},
+			{"core", {.debugName = "core", .filepath = "resources/shaders/core.slang", .required = false}},
+			{"surface", {.debugName = "surface", .filepath = "resources/shaders/surface.slang", .required = false}},
+			{"lighting_lib", {.debugName = "lighting_lib", .filepath = "resources/shaders/lighting_lib.slang", .required = false}},
+			{"pipeline", {.debugName = "pipeline", .filepath = "resources/shaders/pipeline.slang", .required = false}},
 		};
 
 		return SLANG_MODULE_REGISTRATIONS;
@@ -207,15 +211,42 @@ namespace SceneryEditorX
 	{
 		SEDX_CORE_INFO_TAG("ShaderManager", "Compiling registered Slang import modules");
 
+		// Compile in dependency-safe order.
+		// NOTE: map iteration is non-deterministic; explicit ordering avoids fragile startup behavior.
+		static constexpr std::array<std::string_view, 12> MODULE_COMPILE_ORDER = {
+			"constants",
+			"resources",
+			"color",
+			"math",
+			"noise",
+			"depth",
+			"position",
+			"common",
+			"core",
+			"surface",
+			"lighting_lib",
+			"pipeline"
+		};
+
 		const auto& modules = GetSlangModuleRegistrationMap();
-		for (const auto& [moduleName, registration] : modules)
+
+		for (const std::string_view moduleNameView : MODULE_COMPILE_ORDER)
 		{
+			const std::string moduleName{moduleNameView};
+			const auto it = modules.find(moduleName);
+			SEDX_CORE_ASSERT(it != modules.end(), "Missing Slang module registration for '{}'", moduleName);
+
 			const bool success = CreateSlangModule(moduleName);
-			if (!success && registration.required)
+			if (!success && it->second.required)
 			{
 				SEDX_CORE_ASSERT(false, "Required Slang module failed to compile: {}", moduleName);
 			}
 		}
+
+		// Validate that every registered module has an explicit compile-order entry.
+		SEDX_CORE_ASSERT(modules.size() == MODULE_COMPILE_ORDER.size(),
+			"Slang module registration count ({}) differs from compile order count ({}). Keep them in sync.",
+			modules.size(), MODULE_COMPILE_ORDER.size());
 	}
 
 	bool ShaderManager::CreateSlangModule(const std::string& moduleName)

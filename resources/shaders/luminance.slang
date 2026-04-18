@@ -28,6 +28,8 @@
  * Created: 07/03/2026
  * -------------------------------------------------------
  */
+implementing core;
+
 import constants;
 
 static const float3 srgb_color_space_coefficient = float3(0.299f, 0.587f, 0.114f);
@@ -41,4 +43,5 @@ float luminance(float4 color)
 {
     return max(dot(color.rgb, srgb_color_space_coefficient), FLT_MIN);
 }
+
 

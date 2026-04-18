@@ -28,8 +28,8 @@
  * Created: 06/03/2026
  * -------------------------------------------------------
  */
+import pipeline;
 import common;
-import position;
 import resources;
 import vertex_processing;
 import tesselation;

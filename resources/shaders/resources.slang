@@ -397,3 +397,4 @@ static const uint sampler_anisotropic_wrap = 7;
 #define GET_TEXTURE(index_texture) material_textures[pass_get_material_index() + index_texture]
 MaterialParameters GetMaterial() { return material_parameters[pass_get_material_index()]; }
 #define GET_SAMPLER(index_sampler) samplers[index_sampler]
+

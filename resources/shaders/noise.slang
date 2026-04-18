@@ -28,6 +28,8 @@
  * Created: 07/03/2026
  * -------------------------------------------------------
  */
+implementing core;
+
 import resources;
 import constants;
 
@@ -76,3 +78,4 @@ float noise_interleaved_gradient(float2 screen_pos, bool temporal = true)
     float3 magic = float3(0.06711056f, 0.00583715f, 52.9829189f);
     return frac(magic.z * frac(dot(screen_pos, magic.xy)));
 }
+
