@@ -39,6 +39,7 @@
 #include <SceneryEditorX/core/window/window.h>
 #include <SceneryEditorX/renderer/renderer.h>
 #include <SceneryEditorX/renderer/ui/ui.h>
+#include <SceneryEditorX/renderer/vulkan/shader/shader_manager.h>
 
 // -------------------------------------------------------
 
@@ -432,6 +433,24 @@ namespace SceneryEditorX
 							FPSTimer::SetFpsLimit(fps_target);
 						}
 						OptionCheckBox("Show performance metrics", "r.performance_metrics");
+					}
+
+					if (OptionHeader("Shader Modules"))
+					{
+						OptionFirstColumn();
+						ImGui::Text("common.slang");
+						OptionSecondColumn();
+						ImGui::TextUnformatted(ShaderManager::IsSlangModuleAvailable("common") ? "Available" : "Missing");
+
+						OptionFirstColumn();
+						ImGui::Text("resources.slang");
+						OptionSecondColumn();
+						ImGui::TextUnformatted(ShaderManager::IsSlangModuleAvailable("resources") ? "Available" : "Missing");
+
+						OptionFirstColumn();
+						ImGui::Text("constants.slang");
+						OptionSecondColumn();
+						ImGui::TextUnformatted(ShaderManager::IsSlangModuleAvailable("constants") ? "Available" : "Missing");
 					}
 
 					if (OptionHeader("Debug Visuals"))

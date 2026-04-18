@@ -38,7 +38,6 @@
 #include <slang/slang-com-ptr.h>
 #include <slang/slang.h>
 #include <spirv_cross/spirv_cross.hpp>
-#include <algorithm>
 #include <array>
 
 // -------------------------------------------------------
@@ -52,6 +51,7 @@ namespace SceneryEditorX
 	std::mutex ShaderManager::s_ShaderMutex;
 	std::unordered_map<std::string, Ref<Shader>> ShaderManager::m_Shaders;
 	static std::array<Ref<Shader>,  static_cast<uint32_t>(Renderer_Shader::MaxEnum)> s_Shaders;
+	static std::unordered_map<std::string, bool> s_SlangModules;
 
 	/**
 	 * @brief Helper function to create a Vulkan shader module from SPIR-V code
@@ -102,6 +102,7 @@ namespace SceneryEditorX
 
 		push_if_absent(VK_SHADER_STAGE_VERTEX_BIT);
 		push_if_absent(VK_SHADER_STAGE_FRAGMENT_BIT);
+
 		/**
 		 * Note: compilation state is tracked per-Shader (SceneryEditorX::Shader). ShaderManager does not
 		 * own a m_CompilationState for individual shaders; per-shader state should be updated on creation
@@ -158,6 +159,7 @@ namespace SceneryEditorX
 				vkDestroyShaderModule(device->GetLogicalDevice(), module, nullptr);
 			}
 		}
+
 		m_Modules.clear();
 	}
 
@@ -172,6 +174,8 @@ namespace SceneryEditorX
 	void ShaderManager::CreateShaders()
 	{
 		SEDX_CORE_INFO_TAG("ShaderManager", "Creating startup shader registrations");
+		CreateSlangModules();
+
 		const auto& registrations = GetShaderRegistrationMap();
 		for (const auto& [shaderType, registration] : registrations)
 		{
@@ -180,14 +184,73 @@ namespace SceneryEditorX
 		}
 
 		// Initialize known alias slots to shared owners as part of startup.
-		SetShaderAvailable(Renderer_Shader::grid);
+		//SetShaderAvailable(Renderer_Shader::grid);
+	}
+
+	const std::unordered_map<std::string, ShaderManager::SlangModuleRegistration>& ShaderManager::GetSlangModuleRegistrationMap()
+	{
+		static const std::unordered_map<std::string, SlangModuleRegistration> SLANG_MODULE_REGISTRATIONS = {
+			{"resources", {.debugName = "resources", .filepath = "resources/shaders/resources.slang", .required = true}},
+			{"color", {.debugName = "color", .filepath = "resources/shaders/color.slang", .required = true}},
+			{"math", {.debugName = "math", .filepath = "resources/shaders/math.slang", .required = true}},
+			{"noise", {.debugName = "noise", .filepath = "resources/shaders/noise.slang", .required = true}},
+			{"depth", {.debugName = "depth", .filepath = "resources/shaders/depth.slang", .required = true}},
+			{"position", {.debugName = "position", .filepath = "resources/shaders/position.slang", .required = true}},
+			{"constants", {.debugName = "constants", .filepath = "resources/shaders/constants.slang", .required = true}},
+			{"common", {.debugName = "common", .filepath = "resources/shaders/common.slang", .required = true}},
+		};
+
+		return SLANG_MODULE_REGISTRATIONS;
+	}
+
+	void ShaderManager::CreateSlangModules()
+	{
+		SEDX_CORE_INFO_TAG("ShaderManager", "Compiling registered Slang import modules");
+
+		const auto& modules = GetSlangModuleRegistrationMap();
+		for (const auto& [moduleName, registration] : modules)
+		{
+			const bool success = CreateSlangModule(moduleName);
+			if (!success && registration.required)
+			{
+				SEDX_CORE_ASSERT(false, "Required Slang module failed to compile: {}", moduleName);
+			}
+		}
+	}
+
+	bool ShaderManager::CreateSlangModule(const std::string& moduleName)
+	{
+		std::scoped_lock lock(s_ShaderMutex);
+
+		const auto& modules = GetSlangModuleRegistrationMap();
+		const auto it = modules.find(moduleName);
+		if (it == modules.end())
+		{
+			SEDX_CORE_WARN_TAG("ShaderManager", "No Slang module registration found for '{}'", moduleName);
+			return false;
+		}
+
+		const SlangModuleRegistration& registration = it->second;
+		SEDX_CORE_ASSERT(!registration.filepath.empty(), "Slang module filepath cannot be empty for '{}'", moduleName);
+
+		const bool success = ShaderCompiler::CompileSlangModule(registration.filepath);
+		s_SlangModules[moduleName] = success;
+
+		if (!success)
+		{
+			SEDX_CORE_ERROR_TAG("ShaderManager", "Failed to compile Slang module '{}' ({})", moduleName, registration.filepath);
+			return false;
+		}
+
+		SEDX_CORE_INFO_TAG("ShaderManager", "Slang module '{}' is available", moduleName);
+		return true;
 	}
 
 	const std::unordered_map<Renderer_Shader, ShaderManager::ShaderRegistration>& ShaderManager::GetShaderRegistrationMap()
 	{
 		static const std::unordered_map<Renderer_Shader, ShaderRegistration> SHADER_REGISTRATIONS = {
-		    {
-		        Renderer_Shader::line,
+			{
+				Renderer_Shader::line,
 				{
 					.id = Renderer_Shader::line,
 					.debugName = "line",
@@ -357,7 +420,7 @@ namespace SceneryEditorX
 					}
 				}
 			},
-		    {
+			{
 				Renderer_Shader::bloom_blend_frame,
 				{
 					.id = Renderer_Shader::bloom_blend_frame,
@@ -379,7 +442,7 @@ namespace SceneryEditorX
 					}
 				}
 			},
-		    {
+			{
 				Renderer_Shader::skysphere_lut,
 				{
 					.id = Renderer_Shader::skysphere_lut,
@@ -390,7 +453,7 @@ namespace SceneryEditorX
 					}
 				}
 			},
-		    {
+			{
 				Renderer_Shader::skysphere_transmittance_lut,
 				{
 					.id = Renderer_Shader::skysphere_transmittance_lut,
@@ -459,7 +522,7 @@ namespace SceneryEditorX
 					}
 				}
 			},
-		    {
+			{
 				Renderer_Shader::output,
 				{
 					.id = Renderer_Shader::output,
@@ -493,7 +556,7 @@ namespace SceneryEditorX
 					}
 				}
 			},
-		    {
+			{
 				Renderer_Shader::depth_prepass_indirect,
 				{
 					.id = Renderer_Shader::depth_prepass_indirect,
@@ -535,8 +598,7 @@ namespace SceneryEditorX
 			return &it->second;
 		}
 
-		Renderer_Shader owner = type;
-		if (TryGetSharedOwner(type, owner))
+		if (Renderer_Shader owner = type; TryGetSharedOwner(type, owner))
 		{
 			if (const auto ownerIt = registrations.find(owner); ownerIt != registrations.end())
 				return &ownerIt->second;
@@ -654,6 +716,7 @@ namespace SceneryEditorX
 	{
 		std::scoped_lock lock(s_ShaderMutex);
 		m_Shaders.clear();
+		s_SlangModules.clear();
 	}
 
 	void ShaderManager::ClearShaderStage(const Ref<Shader> &shader, const StageType stage)
@@ -674,8 +737,7 @@ namespace SceneryEditorX
 		{
 			ApplyRegistration(*registration);
 
-			Renderer_Shader owner = type;
-			if (TryGetSharedOwner(type, owner))
+			if (Renderer_Shader owner = type; TryGetSharedOwner(type, owner))
 			{
 				const uint32_t index = static_cast<uint32_t>(type);
 				const uint32_t ownerIndex = static_cast<uint32_t>(owner);
@@ -700,6 +762,17 @@ namespace SceneryEditorX
 
 		const Ref<Shader>& shader = s_Shaders[index];
 		return shader != nullptr && shader->IsCompiled();
+	}
+
+	bool ShaderManager::IsSlangModuleAvailable(const std::string& moduleName)
+	{
+		std::scoped_lock lock(s_ShaderMutex);
+
+		const auto it = s_SlangModules.find(moduleName);
+		if (it == s_SlangModules.end())
+			return false;
+
+		return it->second;
 	}
 
 	std::array<Ref<Shader>, static_cast<uint32_t>(Renderer_Shader::MaxEnum)> &ShaderManager::GetShaders()

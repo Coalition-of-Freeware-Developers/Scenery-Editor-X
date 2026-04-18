@@ -74,6 +74,17 @@ namespace SceneryEditorX
 		};
 
 		/**
+		 * @struct SlangModuleRegistration
+		 * @brief Data-driven registration for Slang import modules (no pipeline stage entry points).
+		 */
+		struct SlangModuleRegistration
+		{
+			const char* debugName = nullptr;
+			std::string filepath{};
+			bool required = true;
+		};
+
+		/**
 		 * @brief Constructs a new ShaderManager.
 		 */
 		ShaderManager();
@@ -93,6 +104,18 @@ namespace SceneryEditorX
 		 * @brief Creates all shaders managed by the ShaderManager.
 		 */
 		static void CreateShaders();
+
+		/**
+		 * @brief Compiles and validates all registered Slang import modules.
+		 */
+		static void CreateSlangModules();
+
+		/**
+		 * @brief Compiles one Slang import module by logical module name.
+		 * @param moduleName Logical module name (e.g. "common").
+		 * @return True on success, false on failure.
+		 */
+		static bool CreateSlangModule(const std::string& moduleName);
 
 		/**
 		 * @brief Constructs a single shader with a single SPIR-V blob for both vertex and fragment stages.
@@ -177,6 +200,13 @@ namespace SceneryEditorX
 		static bool IsShaderAvailable(Renderer_Shader type);
 
 		/**
+		 * @brief Checks if a registered Slang import module is available.
+		 * @param moduleName Logical Slang module name.
+		 * @return True if the module has compiled successfully and is available, false otherwise.
+		 */
+		static bool IsSlangModuleAvailable(const std::string& moduleName);
+
+		/**
 		 * @brief Retrieves the compilation state of the shaders.
 		 * @return The current compilation state.
 		 */
@@ -243,6 +273,12 @@ namespace SceneryEditorX
 		 * @return Reference to the shader registration map.
 		 */
 		static const std::unordered_map<Renderer_Shader, ShaderRegistration>& GetShaderRegistrationMap();
+
+		/**
+		 * @brief Maps a Slang module logical name to module registration metadata.
+		 * @return Reference to Slang module registration map.
+		 */
+		static const std::unordered_map<std::string, SlangModuleRegistration>& GetSlangModuleRegistrationMap();
 
 		/**
 		 * @brief Returns true if this renderer shader should share one Shader object with another enum entry.

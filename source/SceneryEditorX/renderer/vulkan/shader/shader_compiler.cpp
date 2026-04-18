@@ -40,21 +40,22 @@
 
 namespace ShaderCompiler
 {
-
-	std::vector<uint32_t> CompileShader(SceneryEditorX::StageType stage, const std::string& filepath, bool optimize)
+	/**
+	 * @brief Creates a Slang compilation session configured for Vulkan SPIR-V output.
+	 * @param outGlobalSession Receives the global Slang session.
+	 * @param outSession Receives the per-compilation Slang session.
+	 * @return True when the session is created successfully, false otherwise.
+	 */
+	static bool CreateSlangSession(Slang::ComPtr<slang::IGlobalSession>& outGlobalSession, Slang::ComPtr<slang::ISession>& outSession)
 	{
-	    (void)stage;
-		(void)optimize;
-
-		Slang::ComPtr<slang::IGlobalSession> globalSession;
-		if (SLANG_FAILED(slang::createGlobalSession(globalSession.writeRef())))
+		if (SLANG_FAILED(slang::createGlobalSession(outGlobalSession.writeRef())))
 		{
-		    SEDX_CORE_ERROR_TAG("Shader", "Failed to create Slang global session");
-			return {};
+			SEDX_CORE_ERROR_TAG("ShaderCompiler", "Failed to create Slang compiler global session");
+			return false;
 		}
 
 		auto targets = std::to_array<slang::TargetDesc>({
-			{.format = SLANG_SPIRV, .profile = globalSession->findProfile("spirv_1_4")}
+			{.format = SLANG_SPIRV, .profile = outGlobalSession->findProfile("spirv_1_4")}
 		});
 
 		auto options = std::to_array<slang::CompilerOptionEntry>({
@@ -69,45 +70,99 @@ namespace ShaderCompiler
 		sessionDesc.compilerOptionEntries = options.data();
 		sessionDesc.compilerOptionEntryCount = static_cast<uint32_t>(options.size());
 
-		Slang::ComPtr<slang::ISession> session;
-		if (SLANG_FAILED(globalSession->createSession(sessionDesc, session.writeRef())))
+		if (SLANG_FAILED(outGlobalSession->createSession(sessionDesc, outSession.writeRef())))
 		{
-			SEDX_CORE_ERROR_TAG("Shader", "Failed to create Slang session");
-			return {};
+			SEDX_CORE_ERROR_TAG("ShaderCompiler", "Failed to create Slang session");
+			return false;
 		}
 
-		Slang::ComPtr<slang::IBlob> diagnosticsBlob;
+		return true;
+	}
+
+	/**
+	 * @brief Loads a Slang module from source and reports diagnostics on failure.
+	 * @param session The active Slang session.
+	 * @param filepath Source file path.
+	 * @param outDiagnostics Receives diagnostic output blob.
+	 * @return Loaded module pointer or nullptr on failure.
+	 */
+	static Slang::ComPtr<slang::IModule> LoadSlangModule(const Slang::ComPtr<slang::ISession>& session, const std::string& filepath, Slang::ComPtr<slang::IBlob>& outDiagnostics)
+	{
 		const std::filesystem::path shaderPath(filepath);
 		const std::string moduleName = shaderPath.stem().string();
 
-		Slang::ComPtr<slang::IModule> module{session->loadModuleFromSource(moduleName.c_str(), filepath.c_str(), nullptr, diagnosticsBlob.writeRef())};
+		Slang::ComPtr<slang::IModule> module{session->loadModuleFromSource(moduleName.c_str(), filepath.c_str(), nullptr, outDiagnostics.writeRef())};
 		if (!module)
 		{
-			if (diagnosticsBlob)
+			if (outDiagnostics)
 			{
-			   SEDX_CORE_ERROR_TAG("Shader", "Slang compilation failed: {}", static_cast<const char*>(diagnosticsBlob->getBufferPointer()));
+				SEDX_CORE_ERROR_TAG("ShaderCompiler", "Slang compilation failed: {}", static_cast<const char*>(outDiagnostics->getBufferPointer()));
 			}
-
-			return {};
+			else
+			{
+				SEDX_CORE_ERROR_TAG("ShaderCompiler", "Slang compilation failed for '{}'", filepath);
+			}
 		}
+
+		return module;
+	}
+
+	std::vector<uint32_t> CompileShader(SceneryEditorX::StageType stage, const std::string& filepath, bool optimize)
+	{
+		(void)stage;
+		(void)optimize;
+
+		Slang::ComPtr<slang::IGlobalSession> globalSession;
+		Slang::ComPtr<slang::ISession> session;
+
+		if (!CreateSlangSession(globalSession, session))
+			return {};
+
+		Slang::ComPtr<slang::IBlob> diagnosticsBlob;
+		Slang::ComPtr<slang::IModule> module = LoadSlangModule(session, filepath, diagnosticsBlob);
+		if (!module)
+			return {};
 
 		Slang::ComPtr<ISlangBlob> spirv;
 		if (SLANG_FAILED(module->getTargetCode(0, spirv.writeRef())) || !spirv)
 		{
-			SEDX_CORE_ERROR_TAG("Shader", "Failed to retrieve SPIR-V from Slang module: {}", filepath);
+			SEDX_CORE_ERROR_TAG("ShaderCompiler", "Failed to retrieve SPIR-V from Slang module: {}", filepath);
 			return {};
 		}
 
 		const size_t byteSize = spirv->getBufferSize();
 		if (byteSize == 0 || (byteSize % sizeof(uint32_t)) != 0)
 		{
-			SEDX_CORE_ERROR_TAG("Shader", "Invalid SPIR-V blob size from Slang for {}", filepath);
+			SEDX_CORE_ERROR_TAG("ShaderCompiler", "Invalid SPIR-V blob size from Slang for {}", filepath);
 			return {};
 		}
 
 		std::vector<uint32_t> byteCode(byteSize / sizeof(uint32_t));
 		std::memcpy(byteCode.data(), spirv->getBufferPointer(), byteSize);
 		return byteCode;
+	}
+
+	bool CompileSlangModule(const std::string& filepath)
+	{
+		Slang::ComPtr<slang::IGlobalSession> globalSession;
+		Slang::ComPtr<slang::ISession> session;
+
+		if (!CreateSlangSession(globalSession, session))
+			return false;
+
+		Slang::ComPtr<slang::IBlob> diagnosticsBlob;
+		Slang::ComPtr<slang::IModule> module = LoadSlangModule(session, filepath, diagnosticsBlob);
+
+		if (!module)
+			return false;
+
+		if (diagnosticsBlob && diagnosticsBlob->getBufferSize() > 0)
+		{
+			SEDX_CORE_INFO_TAG("ShaderCompiler", "Slang module compile diagnostics for '{}': {}", filepath, static_cast<const char*>(diagnosticsBlob->getBufferPointer()));
+		}
+
+		SEDX_CORE_INFO_TAG("ShaderCompiler", "Slang module compiled successfully: {}", filepath);
+		return true;
 	}
 	
 	std::vector<SceneryEditorX::ShaderInput> Reflect(SceneryEditorX::StageType stage, const std::vector<uint32_t>& shaderBytecode)

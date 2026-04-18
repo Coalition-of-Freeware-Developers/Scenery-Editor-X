@@ -69,6 +69,13 @@ namespace ShaderCompiler
 	std::vector<uint32_t> CompileShader(SceneryEditorX::StageType stage, const std::string& filepath, bool optimize = false);
 
 	/**
+	 * @brief Compiles a Slang module used only for imports/utility code.
+	 * @param filepath The path to the Slang module source file.
+	 * @return True if the module is valid and compiles successfully, false otherwise.
+	 */
+	bool CompileSlangModule(const std::string& filepath);
+
+	/**
 	 * @brief Reflects the input variables of a Vulkan shader.
 	 * @param stage The shader stage to reflect.
 	 * @param shaderBytecode The SPIR-V bytecode of the shader.

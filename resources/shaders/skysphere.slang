@@ -680,8 +680,8 @@ cloud_result cloud_compute(float3 view_dir, float3 sun_dir, float sun_int, float
 // compute shaders
 
 #if defined(TRANSMITTANCE_LUT)
-[numthreads(8, 8, 1)]
 [shader("compute")]
+[numthreads(8, 8, 1)]
 void main_comp(uint3 tid : SV_DispatchThreadID)
 {
     float2 res;
@@ -700,8 +700,8 @@ void main_comp(uint3 tid : SV_DispatchThreadID)
 }
 
 #elif defined(MULTISCATTER_LUT)
-[numthreads(8, 8, 1)]
 [shader("compute")]
+[numthreads(8, 8, 1)]
 void main_comp(uint3 tid : SV_DispatchThreadID)
 {
     float2 res;
@@ -716,8 +716,8 @@ void main_comp(uint3 tid : SV_DispatchThreadID)
 }
 
 #elif defined(LUT)
-[numthreads(8, 8, 8)]
 [shader("compute")]
+[numthreads(8, 8, 8)]
 void main_comp(uint3 tid : SV_DispatchThreadID)
 {
     uint3 dims;
@@ -734,8 +734,8 @@ void main_comp(uint3 tid : SV_DispatchThreadID)
 }
 
 #else
-[numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 [shader("compute")]
+[numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_comp(uint3 tid : SV_DispatchThreadID)
 {
     float2 res;

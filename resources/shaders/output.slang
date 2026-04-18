@@ -12,8 +12,6 @@ Created: 29/8/2025
 */
 import common;
 
-// ---------------------------------------------------------------
-
 float3 aces(float3 color)
 {
     //  Baking Lab
@@ -101,8 +99,8 @@ float3 aces_nautilus(float3 c)
     return clamp((c * (a * c + b)) / (c * (y * c + d) + e), 0.0, 1.0);
 }
 
-[numthreads(8, 8, 1)]
 [shader("compute")]
+[numthreads(8, 8, 1)]
 void main_comp(uint3 thread_id : SV_DispatchThreadID)
 {
     // get input data

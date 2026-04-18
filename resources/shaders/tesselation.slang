@@ -32,6 +32,7 @@ import noise;
 import common;
 import position;
 import resources;
+import vertex_processing;
 
 #define MAX_POINTS 3
 #define TESS_FACTOR 64
@@ -54,7 +55,7 @@ struct HsConstantDataOutput
 [maxtessfactor(TESS_FACTOR)]
 
 [shader("vertex")]
-void main_tesc(InputPatch<gbuffer_vertex, MAX_POINTS> input_patch, uint cp_id : SV_OutputControlPointID)
+gbuffer_vertex main_tesc(InputPatch<gbuffer_vertex, MAX_POINTS> input_patch, uint cp_id : SV_OutputControlPointID)
 {
     return input_patch[cp_id]; // pass through unchanged
 }
@@ -110,7 +111,7 @@ float barycentric(float a, float b, float c, float3 bary)
 
 [domain("tri")]
 [shader("vertex")]
-void main_ds(HsConstantDataOutput input, float3 bary_coords : SV_DomainLocation, const OutputPatch<gbuffer_vertex, 3> patch)
+gbuffer_vertex main_ds(HsConstantDataOutput input, float3 bary_coords : SV_DomainLocation, const OutputPatch<gbuffer_vertex, 3> patch)
 {
     gbuffer_vertex vertex;
 
@@ -130,11 +131,11 @@ void main_ds(HsConstantDataOutput input, float3 bary_coords : SV_DomainLocation,
     float3 position_previous = get_position(vertex.position_previous.z / clip_previous_w, vertex.position_previous.xy / clip_previous_w);
 
     // fade based on real distance
-    float distance_from_cam = fast_length(position - buffer_frame.camera_position);
+    float distance_from_cam = length(position - buffer_frame.camera_position);
     float fade_factor       = saturate((TESS_DISTANCE - distance_from_cam) / 4.0f);
 
     MaterialParameters material = GetMaterial();
-    Surface surface; surface.flags = material.flags;
+    const uint material_flags = material.flags;
     bool tessellated =
         input.edges[0] > 1.0f ||
         input.edges[1] > 1.0f ||
@@ -144,16 +145,16 @@ void main_ds(HsConstantDataOutput input, float3 bary_coords : SV_DomainLocation,
     if (tessellated && fade_factor > 0.0f)
     {
         // height displacement
-        if (surface.has_texture_height())
+        if ((material_flags & uint(1U << 0)) != 0)
         {
-            float height       = GET_TEXTURE(material_texture_index_packed).SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), vertex.uv_misc.xy, 0.0f).a * 0.04f;
+            float height       = material_textures[pass_get_material_index() + material_texture_index_packed].SampleLevel(samplers[sampler_bilinear_wrap], vertex.uv_misc.xy, 0.0f).a * 0.04f;
             float3 disp        = vertex.normal * height * material.height * fade_factor;
             position          += disp;
             position_previous += disp;
         }
 
         // terrain noise
-        if (surface.is_terrain())
+        if ((material_flags & uint(1U << 8)) != 0)
         {
             float height       = noise_perlin(position.xz * 8.0f) * 0.1f;
             float3 disp        = vertex.normal * height * fade_factor;
