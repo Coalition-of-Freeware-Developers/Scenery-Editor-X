@@ -138,7 +138,7 @@ float2 get_front_back_horizons(float samplingDirection, float3 deltaPos, float3 
 
 [shader("compute")]
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
-void main_cs(uint3 thread_id: SV_DispatchThreadID)
+void main_comp(uint3 thread_id: SV_DispatchThreadID)
 {
     float2 resolution_out;
     tex_uav.GetDimensions(resolution_out.x, resolution_out.y);

@@ -31,7 +31,7 @@
 import noise;
 import common;
 import position;
-import resources;	
+import resources;
 
 #define MAX_POINTS 3
 #define TESS_FACTOR 64
@@ -52,8 +52,9 @@ struct HsConstantDataOutput
 [patchconstantfunc("patch_constant_function")]
 [outputcontrolpoints(MAX_POINTS)]
 [maxtessfactor(TESS_FACTOR)]
+
 [shader("vertex")]
-void main_hs(InputPatch<gbuffer_vertex, MAX_POINTS> input_patch, uint cp_id : SV_OutputControlPointID)
+void main_tesc(InputPatch<gbuffer_vertex, MAX_POINTS> input_patch, uint cp_id : SV_OutputControlPointID)
 {
     return input_patch[cp_id]; // pass through unchanged
 }
@@ -86,8 +87,7 @@ HsConstantDataOutput patch_constant_function(InputPatch<gbuffer_vertex, MAX_POIN
     return output;
 }
 
-// domain shader
-
+// tesselation evaluation shader
 float4 barycentric(float4 a, float4 b, float4 c, float3 bary)
 {
     return a * bary.x + b * bary.y + c * bary.z;

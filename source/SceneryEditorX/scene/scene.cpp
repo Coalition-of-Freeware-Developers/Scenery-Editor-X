@@ -31,8 +31,10 @@
 #include "scene.h"
 #include "entity.h"
 #include "material.h"
+#include "components/renderable.h"
 #include "SceneryEditorX/core/time/date_time.h"
 #include "SceneryEditorX/renderer/vulkan/image_resource.h"
+#include "SceneryEditorX/renderer/renderer.h"
 #include "components/component_sets.h"
 #include "components/lights.h"
 #include "components/wind.h"
@@ -220,8 +222,29 @@ namespace SceneryEditorX
 			cameraComponent.useJitter = true;
 		}
 
-		Tick();
+		const auto renderableView = s_ActiveScene->m_Registry.view<TransformComponent, Renderable>();
+		const bool hasRenderableEntity = renderableView.begin() != renderableView.end();
 
+		if (!hasRenderableEntity)
+		{
+			if (Entity bootstrapEntity = s_ActiveScene->CreateEntity("DefaultSceneMesh"))
+			{
+				if (Renderable* renderable = bootstrapEntity.AddComponent<Renderable>())
+				{
+					renderable->SetMesh(MeshType::Cube);
+					renderable->SetDefaultMaterial();
+
+					if (bootstrapEntity.HasComponent<TransformComponent>())
+					{
+						auto& transform = bootstrapEntity.GetComponent<TransformComponent>();
+						transform.translation = Vec3(0.0f, 0.0f, 0.0f);
+						transform.scale = Vec3(1.0f, 1.0f, 1.0f);
+					}
+				}
+			}
+		}
+
+		Tick();
 	}
 
 	void Scene::Shutdown()

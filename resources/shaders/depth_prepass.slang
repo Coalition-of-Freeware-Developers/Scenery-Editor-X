@@ -23,31 +23,45 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  * -------------------------------------------------------
- * line.slang
+ * depth_prepass.slang
  * -------------------------------------------------------
- * Created: 06/03/2026
+ * Created: 18/04/2026
  * -------------------------------------------------------
  */
 import common;
-import resources;
+import tesselation;
 
-struct vertex
-{
-    float4 position : SV_POSITION;
-    float4 color : COLOR0;
-};
-
+#ifdef INDIRECT_DRAW
 [shader("vertex")]
-vertex main_vs(vertex input)
+gbuffer_vertex main_vs(uint vertex_id : SV_VertexID, uint instance_id : SV_InstanceID, [[vk::builtin("DrawIndex")]] uint draw_id : DRAW_INDEX, uint view_id : SV_ViewID)
 {
-    input.position.w = 1.0f;
-    input.position = mul(input.position, buffer_frame.view_projection_unjittered);
+    _draw = indirect_draw_data_out[draw_id];
+    Vertex_PosUvNorTan input = pull_vertex(vertex_id);
+#else
+[shader("vertex")]
+gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID, uint view_id : SV_ViewID)
+{
+    _draw = draw_data[buffer_pass.draw_index];
+#endif
 
-    return input;
+    float3 position_world          = 0.0f;
+    float3 position_world_previous = 0.0f;
+    gbuffer_vertex vertex          = transform_to_world_space(input, instance_id, _draw.transform, position_world, position_world_previous);
+    vertex.material_index          = _draw.material_index;
+    return transform_to_clip_space(vertex, position_world, position_world_previous, view_id);
 }
 
 [shader("fragment")]
-float4 main_frag(vertex input) : SV_TARGET
+void main_frag(gbuffer_vertex vertex)
 {
-    return input.color;
+    pass_load_draw_data_from_vertex(vertex.material_index);
+
+    // distance based alpha threshold
+    const bool has_albedo       = pass_get_f3_value().y == 1.0f;
+    const float2 screen_uv      = vertex.position.xy / (buffer_frame.resolution_render * buffer_frame.resolution_scale);
+    const float3 position_world = get_position(vertex.position.z, screen_uv);
+    const float alpha_threshold = get_alpha_threshold(position_world);
+
+    if (has_albedo && GET_TEXTURE(material_texture_index_albedo).Sample(samplers[sampler_anisotropic_wrap], vertex.uv_misc.xy).a <= alpha_threshold)
+        discard;
 }

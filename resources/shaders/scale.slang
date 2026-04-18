@@ -23,26 +23,23 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  * -------------------------------------------------------
- * blit.slang
+ * scale.slang
  * -------------------------------------------------------
- * Created: 06/03/2026
+ * Created: 18/04/2026
  * -------------------------------------------------------
  */
+import common;
 
-// Reimpliment when slang shader compiler class has been implimented to support module imports.
-/* import common;
-import resources;
-import constants;
- */
-static const uint THREAD_GROUP_COUNT_X = 8;
-static const uint THREAD_GROUP_COUNT_Y = 8;
-static const uint THREAD_GROUP_COUNT = 64;
-[[vk::image_format("unknown")]] RWTexture2D<float4> tex_uav : register(u0);
-Texture2D tex : register(t7);
-
-[shader("compute")]
-[numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
-void main_comp(uint3 thread_id: SV_DispatchThreadID)
+// A 4x4 box filter
+float4 Box_Filter(float2 uv, Texture2D tex, float2 texel_size)
 {
-    tex_uav[thread_id.xy] = tex.Load(int3(thread_id.xy, 0));
+    float4 offset = texel_size.xyxy * float4(-1.0f, -1.0f, 1.0f, 1.0f);
+
+    float4 samples =
+    tex.SampleLevel(sampler_bilinear_clamp, uv + offset.xy, 0) +
+    tex.SampleLevel(sampler_bilinear_clamp, uv + offset.zy, 0) +
+    tex.SampleLevel(sampler_bilinear_clamp, uv + offset.xw, 0) +
+    tex.SampleLevel(sampler_bilinear_clamp, uv + offset.zw, 0);
+
+    return samples / 4.0f;
 }

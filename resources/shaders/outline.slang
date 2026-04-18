@@ -23,26 +23,43 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  * -------------------------------------------------------
- * blit.slang
+ * outline.slang
  * -------------------------------------------------------
- * Created: 06/03/2026
+ * Created: 18/04/2026
  * -------------------------------------------------------
  */
+import common;
 
-// Reimpliment when slang shader compiler class has been implimented to support module imports.
-/* import common;
-import resources;
-import constants;
- */
-static const uint THREAD_GROUP_COUNT_X = 8;
-static const uint THREAD_GROUP_COUNT_Y = 8;
-static const uint THREAD_GROUP_COUNT = 64;
-[[vk::image_format("unknown")]] RWTexture2D<float4> tex_uav : register(u0);
-Texture2D tex : register(t7);
-
-[shader("compute")]
-[numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
-void main_comp(uint3 thread_id: SV_DispatchThreadID)
+struct vertex
 {
-    tex_uav[thread_id.xy] = tex.Load(int3(thread_id.xy, 0));
+    float4 position : SV_POSITION;
+    float2 uv       : TEXCOORD0;
+};
+
+[shader("vertex")]
+vertex main_vs(vertex input)
+{
+    input.position.w = 1.0f;
+    input.position   = mul(input.position, draw_data[buffer_pass.draw_index].transform);
+    input.position   = mul(input.position, buffer_frame.view_projection_unjittered);
+
+    return input;
+}
+
+[shader("fragment")]
+float4 main_frag(vertex input) : SV_Target
+{
+    // just a color
+    return pass_get_f4_value();
+}
+
+[numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
+[shader("compute")]
+void main_comp(uint3 thread_id : SV_DispatchThreadID)
+{
+    float4 silhouette = tex[thread_id.xy];
+    float3 color      = silhouette.rgb;
+    float alpha       = silhouette.a;
+
+    tex_uav[thread_id.xy] += float4(color * (1.0f - alpha), 0.0f);
 }

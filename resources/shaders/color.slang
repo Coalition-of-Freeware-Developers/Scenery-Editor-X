@@ -33,7 +33,7 @@ import resources;
 float get_gamma()
 {
     float gamma = 2.2f; // around 2.2 for SDR
-    return buffer_frame.hdr_enabled ? 2.4f : gamma;
+    return (buffer_frame.hdr_enabled != 0.0f) ? 2.4f : gamma;
 }
 
 float3 srgb_to_linear(float3 color)

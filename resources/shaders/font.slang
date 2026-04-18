@@ -23,26 +23,39 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  * -------------------------------------------------------
- * blit.slang
+ * font.slang
  * -------------------------------------------------------
- * Created: 06/03/2026
+ * Created: 18/04/2026
  * -------------------------------------------------------
  */
+import common;
 
-// Reimpliment when slang shader compiler class has been implimented to support module imports.
-/* import common;
-import resources;
-import constants;
- */
-static const uint THREAD_GROUP_COUNT_X = 8;
-static const uint THREAD_GROUP_COUNT_Y = 8;
-static const uint THREAD_GROUP_COUNT = 64;
-[[vk::image_format("unknown")]] RWTexture2D<float4> tex_uav : register(u0);
-Texture2D tex : register(t7);
-
-[shader("compute")]
-[numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
-void main_comp(uint3 thread_id: SV_DispatchThreadID)
+struct vertex
 {
-    tex_uav[thread_id.xy] = tex.Load(int3(thread_id.xy, 0));
+    float4 position : SV_POSITION;
+    float2 uv       : TEXCOORD;
+};
+
+vertex main_vs(vertex input)
+{
+    input.position.w = 1.0f;
+    input.position  = mul(input.position, buffer_frame.view_projection_orthographic);
+
+    return input;
+}
+
+float4 main_ps(vertex input) : SV_TARGET
+{
+    float4 color = float4(0.0f, 0.0f, 0.0f, 1.0f);
+
+    // sample text from texture atlas
+    color.r = tex.Sample(samplers[sampler_bilinear_clamp], input.uv).r;
+    color.g = color.r;
+    color.b = color.r;
+    color.a = color.r;
+
+    // color it
+    color *= float4(pass_get_f4_value().rgb, 1.0f);
+
+    return color;
 }

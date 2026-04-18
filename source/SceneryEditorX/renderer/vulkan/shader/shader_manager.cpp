@@ -31,7 +31,6 @@
 #include "shader_manager.h"
 #include "shader_compiler.h"
 #include "SceneryEditorX/core/resource/resource_cache.h"
-
 #include <algorithm>
 #include <utility>
 #include <SceneryEditorX/renderer/renderer.h>
@@ -40,6 +39,7 @@
 #include <slang/slang.h>
 #include <spirv_cross/spirv_cross.hpp>
 #include <algorithm>
+#include <array>
 
 // -------------------------------------------------------
 
@@ -171,102 +171,423 @@ namespace SceneryEditorX
 
 	void ShaderManager::CreateShaders()
 	{
-		const std::string sd = ResourceCache::GetResourceDirectory(ResourceDirectory::Shaders);
+		SEDX_CORE_INFO_TAG("ShaderManager", "Creating startup shader registrations");
+		const auto& registrations = GetShaderRegistrationMap();
+		for (const auto& [shaderType, registration] : registrations)
+		{
+			SEDX_CORE_ASSERT(registration.id == shaderType, "Shader registration key/id mismatch");
+			SetShaderAvailable(shaderType);
+		}
 
-		// debug
-		SetShaderAvailable(Renderer_Shader::line_vertex);
-		ShaderCompiler::CompileShader(Renderer_Shader::line_vertex,    StageType::Vertex,  sd + "line.hlsl",    true, VertexType::PositionColor);
-		ShaderCompiler::CompileShader(Renderer_Shader::line_frag,    StageType::Fragment,   sd + "line.hlsl");
-		ShaderCompiler::CompileShader(Renderer_Shader::grid_vertex,    StageType::Vertex,  sd + "grid.hlsl",    true, VertexType::PositionUvNormalTangent);
-		ShaderCompiler::CompileShader(Renderer_Shader::grid_frag,    StageType::Fragment,   sd + "grid.hlsl");
-		ShaderCompiler::CompileShader(Renderer_Shader::outline_vertex, StageType::Vertex,  sd + "outline.hlsl", true, VertexType::PositionUvNormalTangent);
-		ShaderCompiler::CompileShader(Renderer_Shader::outline_frag, StageType::Fragment,   sd + "outline.hlsl");
-		ShaderCompiler::CompileShader(Renderer_Shader::outline_comp, StageType::Compute, sd + "outline.hlsl");
+		// Initialize known alias slots to shared owners as part of startup.
+		SetShaderAvailable(Renderer_Shader::grid);
+	}
 
-	    // depth
-		ShaderCompiler::CompileShader(Renderer_Shader::depth_prepass_vertex,           StageType::Vertex, sd + "depth_prepass.hlsl", true, VertexType::PositionUvNormalTangent);
-		ShaderCompiler::CompileShader(Renderer_Shader::depth_prepass_alpha_test_frag, StageType::Fragment,  sd + "depth_prepass.hlsl");
-		ShaderCompiler::CompileShader(Renderer_Shader::depth_light_vertex,             StageType::Vertex, sd + "depth_light.hlsl",  true, VertexType::PositionUvNormalTangent);
-		ShaderCompiler::CompileShader(Renderer_Shader::depth_light_alpha_color_frag, StageType::Fragment,  sd + "depth_light.hlsl");
+	const std::unordered_map<Renderer_Shader, ShaderManager::ShaderRegistration>& ShaderManager::GetShaderRegistrationMap()
+	{
+		static const std::unordered_map<Renderer_Shader, ShaderRegistration> SHADER_REGISTRATIONS = {
+		    {
+		        Renderer_Shader::line,
+				{
+					.id = Renderer_Shader::line,
+					.debugName = "line",
+					.asyncCompile = true,
+					.stages = {
+						{StageType::Vertex, "resources/shaders/line.slang", VertexType::PositionColor},
+						{StageType::Fragment, "resources/shaders/line.slang"}
+					}
+				}
+			},
+			{
+				Renderer_Shader::grid,
+				{
+					.id = Renderer_Shader::grid,
+					.debugName = "grid",
+					.asyncCompile = true,
+					.stages = {
+						{StageType::Vertex, "resources/shaders/grid.slang", VertexType::PositionUvNormalTangent},
+						{StageType::Fragment, "resources/shaders/grid.slang"}
+					}
+				}
+			},
+			{
+				Renderer_Shader::outline,
+				{
+					.id = Renderer_Shader::outline,
+					.debugName = "outline",
+					.asyncCompile = true,
+					.stages = {
+						{StageType::Vertex, "resources/shaders/outline.slang", VertexType::PositionUvNormalTangent},
+						{StageType::Fragment, "resources/shaders/outline.slang"},
+						{StageType::Compute, "resources/shaders/outline.slang"}
+					}
+				}
+			},
+			{
+				Renderer_Shader::depth_prepass,
+				{
+					.id = Renderer_Shader::depth_prepass,
+					.debugName = "depth_prepass",
+					.asyncCompile = true,
+					.stages = {
+						{StageType::Vertex, "resources/shaders/depth_prepass.slang", VertexType::PositionUvNormalTangent},
+						{StageType::Fragment, "resources/shaders/depth_prepass.slang"}
+					}
+				}
+			},
+			{
+				Renderer_Shader::depth_light,
+				{
+					.id = Renderer_Shader::depth_light,
+					.debugName = "depth_light",
+					.asyncCompile = true,
+					.stages = {
+						{StageType::Vertex, "resources/shaders/depth_light.slang", VertexType::PositionUvNormalTangent},
+						{StageType::Fragment, "resources/shaders/depth_light.slang"}
+					}
+				}
+			},
+			{
+				Renderer_Shader::light,
+				{
+					.id = Renderer_Shader::light,
+					.debugName = "light",
+					.asyncCompile = false,
+					.stages = {
+						{StageType::Compute, "resources/shaders/light.slang"}
+					}
+				}
+			},
+			{
+				Renderer_Shader::light_integration_brdf_specular_lut_c,
+				{
+					.id = Renderer_Shader::light_integration_brdf_specular_lut_c,
+					.debugName = "light_integration_brdf_specular_lut",
+					.asyncCompile = false,
+					.stages = {
+						{StageType::Compute, "resources/shaders/light_integration.slang", VertexType::MaxEnum}
+					}
+				}
+			},
+			{
+				Renderer_Shader::light_integration_environment_filter_c,
+				{
+					.id = Renderer_Shader::light_integration_environment_filter_c,
+					.debugName = "light_integration_environment_filter",
+					.asyncCompile = true,
+					.stages = {
+						{StageType::Compute, "resources/shaders/light_integration.slang", VertexType::MaxEnum}
+					}
+				}
+			},
+			{
+				Renderer_Shader::light_composition,
+				{
+					.id = Renderer_Shader::light_composition,
+					.debugName = "light_composition",
+					.asyncCompile = false,
+					.stages = {
+						{StageType::Compute, "resources/shaders/light_composition.slang"}
+					}
+				}
+			},
+			{
+				Renderer_Shader::light_image_based_c,
+				{
+					.id = Renderer_Shader::light_image_based_c,
+					.debugName = "light_image_based_c",
+					.asyncCompile = false,
+					.stages = {
+						{StageType::Compute, "resources/shaders/light_base.slang"}
+					}
+				}
+			},
+			{
+				Renderer_Shader::blur_gaussian,
+				{
+					.id = Renderer_Shader::blur_gaussian,
+					.debugName = "blur_gaussian",
+					.asyncCompile = false,
+					.stages = {
+						{StageType::Compute, "resources/shaders/blur.slang"}
+					}
+				}
+			},
+			{
+				Renderer_Shader::blur_gaussian_bilateral,
+				{
+					.id = Renderer_Shader::blur_gaussian_bilateral,
+					.debugName = "blur_gaussian_bilateral",
+					.asyncCompile = true,
+					.stages = {
+						{StageType::Compute, "resources/shaders/blur.slang"}
+					}
+				}
+			},
+			{
+				Renderer_Shader::bloom_luminance,
+				{
+					.id = Renderer_Shader::bloom_luminance,
+					.debugName = "bloom_luminance",
+					.asyncCompile = true,
+					.stages = {
+						{StageType::Compute, "resources/shaders/bloom.slang", VertexType::MaxEnum}
+					}
+				}
+			},
+			{
+				Renderer_Shader::bloom_downsample_c,
+				{
+					.id = Renderer_Shader::bloom_downsample_c,
+					.debugName = "bloom_downsample_c",
+					.asyncCompile = true,
+					.stages = {
+						{StageType::Compute, "resources/shaders/bloom.slang", VertexType::MaxEnum}
+					}
+				}
+			},
+			{
+				Renderer_Shader::bloom_upsample_blend_mip_c,
+				{
+					.id = Renderer_Shader::bloom_upsample_blend_mip_c,
+					.debugName = "bloom_upsample_blend_mip_c",
+					.asyncCompile = true,
+					.stages = {
+						{StageType::Compute, "resources/shaders/bloom.slang", VertexType::MaxEnum}
+					}
+				}
+			},
+		    {
+				Renderer_Shader::bloom_blend_frame,
+				{
+					.id = Renderer_Shader::bloom_blend_frame,
+					.debugName = "bloom_blend_frame",
+					.asyncCompile = true,
+					.stages = {
+						{StageType::Compute, "resources/shaders/bloom.slang", VertexType::MaxEnum}
+					}
+				}
+			},
+			{
+				Renderer_Shader::skysphere,
+				{
+					.id = Renderer_Shader::skysphere,
+					.debugName = "skysphere",
+					.asyncCompile = true,
+					.stages = {
+						{StageType::Compute, "resources/shaders/skysphere.slang"}
+					}
+				}
+			},
+		    {
+				Renderer_Shader::skysphere_lut,
+				{
+					.id = Renderer_Shader::skysphere_lut,
+					.debugName = "skysphere_lut",
+					.asyncCompile = true,
+					.stages = {
+						{StageType::Compute, "resources/shaders/skysphere.slang"}
+					}
+				}
+			},
+		    {
+				Renderer_Shader::skysphere_transmittance_lut,
+				{
+					.id = Renderer_Shader::skysphere_transmittance_lut,
+					.debugName = "skysphere_transmittance_lut",
+					.asyncCompile = false,
+					.stages = {
+						{StageType::Compute, "resources/shaders/skysphere.slang"}
+					}
+				}
+			},
+			{
+				Renderer_Shader::skysphere_multiscatter_lut,
+				{
+					.id = Renderer_Shader::skysphere_multiscatter_lut,
+					.debugName = "skysphere_multiscatter_lut",
+					.asyncCompile = false,
+					.stages = {
+						{StageType::Compute, "resources/shaders/skysphere.slang"}
+					}
+				}
+			},
+			{
+				Renderer_Shader::blit,
+				{
+					.id = Renderer_Shader::blit,
+					.debugName = "blit",
+					.asyncCompile = false,
+					.stages = {
+						{StageType::Compute, "resources/shaders/blit.slang"}
+					}
+				}
+			},
+			{
+				Renderer_Shader::gbuffer,
+				{
+					.id = Renderer_Shader::gbuffer,
+					.debugName = "g_buffer",
+					.asyncCompile = false,
+					.stages = {
+						{StageType::Vertex, "resources/shaders/gbuffer.slang", VertexType::PositionUvNormalTangent},
+						{StageType::Fragment, "resources/shaders/gbuffer.slang"}
+					}
+				}
+			},
+			{
+				Renderer_Shader::font,
+				{
+					.id = Renderer_Shader::font,
+					.debugName = "font",
+					.asyncCompile = true,
+					.stages = {
+						{StageType::Vertex, "resources/shaders/font.slang"},
+						{StageType::Fragment, "resources/shaders/font.slang"}
+					}
+				}
+			},
+			{
+				Renderer_Shader::icon,
+				{
+					.id = Renderer_Shader::icon,
+					.debugName = "icon",
+					.asyncCompile = true,
+					.stages = {
+						{StageType::Vertex, "resources/shaders/icon.slang"},
+						{StageType::Fragment, "resources/shaders/icon.slang"}
+					}
+				}
+			},
+		    {
+				Renderer_Shader::output,
+				{
+					.id = Renderer_Shader::output,
+					.debugName = "output",
+					.asyncCompile = true,
+					.stages = {
+						{StageType::Compute, "resources/shaders/output.slang"}
+					}
+				}
+			},
+			{
+				Renderer_Shader::indirect_cull_c,
+				{
+					.id = Renderer_Shader::indirect_cull_c,
+					.debugName = "indirect_cull_c",
+					.asyncCompile = true,
+					.stages = {
+						{StageType::Compute, "resources/shaders/indirect_cull.slang"}
+					}
+				}
+			},
+			{
+				Renderer_Shader::gbuffer_indirect,
+				{
+					.id = Renderer_Shader::gbuffer_indirect,
+					.debugName = "gbuffer_indirect",
+					.asyncCompile = true,
+					.stages = {
+						{StageType::Vertex, "resources/shaders/gbuffer.slang", VertexType::MaxEnum},
+						{StageType::Fragment, "resources/shaders/gbuffer.slang", VertexType::MaxEnum}
+					}
+				}
+			},
+		    {
+				Renderer_Shader::depth_prepass_indirect,
+				{
+					.id = Renderer_Shader::depth_prepass_indirect,
+					.debugName = "depth_prepass_indirect",
+					.asyncCompile = true,
+					.stages = {
+						{StageType::Vertex, "resources/shaders/depth_prepass.slang", VertexType::MaxEnum}
+					}
+				}
+			},
+		};
 
-		// g-buffer
-		ShaderCompiler::CompileShader(Renderer_Shader::gbuffer_vertex, StageType::Vertex, sd + "g_buffer.hlsl", true, VertexType::PositionUvNormalTangent);
-		ShaderCompiler::CompileShader(Renderer_Shader::gbuffer_frag, StageType::Fragment,  sd + "g_buffer.hlsl");
+		return SHADER_REGISTRATIONS;
+	}
 
-		// tessellation
-		ShaderCompiler::CompileShader(Renderer_Shader::tessellation_h, StageType::TessellationControl,   sd + "common_tessellation.hlsl");
-		ShaderCompiler::CompileShader(Renderer_Shader::tessellation_d, StageType::TessellationEvaluation, sd + "common_tessellation.hlsl");
+	bool ShaderManager::TryGetSharedOwner(const Renderer_Shader type, Renderer_Shader& outOwnerType)
+	{
+		if (type == Renderer_Shader::grid)
+		{
+			outOwnerType = Renderer_Shader::grid;
+			return true;
+		}
 
-		// light
-		ShaderCompiler::CompileShader(Renderer_Shader::light_integration_brdf_specular_lut_c,  StageType::Compute, sd + "light_integration.hlsl", false, VertexType::MaxEnum, "BRDF_SPECULAR_LUT");
-		ShaderCompiler::CompileShader(Renderer_Shader::light_integration_environment_filter_c, StageType::Compute, sd + "light_integration.hlsl", true,  VertexType::MaxEnum, "ENVIRONMENT_FILTER");
-		ShaderCompiler::CompileShader(Renderer_Shader::light_c,                                StageType::Compute, sd + "light.hlsl");
-		ShaderCompiler::CompileShader(Renderer_Shader::light_composition_c,                    StageType::Compute, sd + "light_composition.hlsl");
-		ShaderCompiler::CompileShader(Renderer_Shader::light_image_based_c,                    StageType::Compute, sd + "light_image_based.hlsl");
+		if (type == Renderer_Shader::gbuffer)
+		{
+			outOwnerType = Renderer_Shader::gbuffer;
+			return true;
+		}
 
-		// blur
-		ShaderCompiler::CompileShader(Renderer_Shader::blur_gaussian_c,            StageType::Compute, sd + "blur.hlsl");
-		ShaderCompiler::CompileShader(Renderer_Shader::blur_gaussian_bilaterial_c, StageType::Compute, sd + "blur.hlsl", true, VertexType::MaxEnum, "PASS_BLUR_GAUSSIAN_BILATERAL");
+		outOwnerType = type;
+		return false;
+	}
 
-		// bloom
-		ShaderCompiler::CompileShader(Renderer_Shader::bloom_luminance_c,          StageType::Compute, sd + "bloom.hlsl", true, VertexType::MaxEnum, "LUMINANCE");
-		ShaderCompiler::CompileShader(Renderer_Shader::bloom_downsample_c,         StageType::Compute, sd + "bloom.hlsl", true, VertexType::MaxEnum, "DOWNSAMPLE");
-		ShaderCompiler::CompileShader(Renderer_Shader::bloom_upsample_blend_mip_c, StageType::Compute, sd + "bloom.hlsl", true, VertexType::MaxEnum, "UPSAMPLE_BLEND_MIP");
-		ShaderCompiler::CompileShader(Renderer_Shader::bloom_blend_frame_c,        StageType::Compute, sd + "bloom.hlsl", true, VertexType::MaxEnum, "BLEND_FRAME");
+	const ShaderManager::ShaderRegistration* ShaderManager::FindRegistration(const Renderer_Shader type)
+	{
+		auto& registrations = GetShaderRegistrationMap();
+		if (const auto it = registrations.find(type); it != registrations.end())
+		{
+			return &it->second;
+		}
 
-		// amd fidelityfx
-		ShaderCompiler::CompileShader(Renderer_Shader::ffx_cas_c,         StageType::Compute, sd + "amd_fidelity_fx/cas.hlsl");
-		ShaderCompiler::CompileShader(Renderer_Shader::ffx_spd_average_c, StageType::Compute, sd + "amd_fidelity_fx/spd.hlsl", false, VertexType::MaxEnum, "AVERAGE");
-		ShaderCompiler::CompileShader(Renderer_Shader::ffx_spd_min_c,     StageType::Compute, sd + "amd_fidelity_fx/spd.hlsl", false, VertexType::MaxEnum, "MIN");
-		ShaderCompiler::CompileShader(Renderer_Shader::ffx_spd_max_c,     StageType::Compute, sd + "amd_fidelity_fx/spd.hlsl", false, VertexType::MaxEnum, "MAX");
+		Renderer_Shader owner = type;
+		if (TryGetSharedOwner(type, owner))
+		{
+			if (const auto ownerIt = registrations.find(owner); ownerIt != registrations.end())
+				return &ownerIt->second;
+		}
 
-		// sky
-		ShaderCompiler::CompileShader(Renderer_Shader::skysphere_comp,                    StageType::Compute, sd + "sky/skysphere.hlsl");
-		ShaderCompiler::CompileShader(Renderer_Shader::skysphere_lut_comp,                StageType::Compute, sd + "sky/skysphere.hlsl", true,  VertexType::MaxEnum, "LUT");
-		ShaderCompiler::CompileShader(Renderer_Shader::skysphere_transmittance_lut_c,  StageType::Compute, sd + "sky/skysphere.hlsl", false, VertexType::MaxEnum, "TRANSMITTANCE_LUT");
-		ShaderCompiler::CompileShader(Renderer_Shader::skysphere_multiscatter_lut_c,   StageType::Compute, sd + "sky/skysphere.hlsl", false, VertexType::MaxEnum, "MULTISCATTER_LUT");
+		return nullptr;
+	}
 
-		// post-process
-		ShaderCompiler::CompileShader(Renderer_Shader::fxaa_comp,                 StageType::Compute, sd + "fxaa/fxaa.hlsl");
-		ShaderCompiler::CompileShader(Renderer_Shader::font_vertex,                 StageType::Vertex,  sd + "font.hlsl", true, VertexType::PositionUv);
-		ShaderCompiler::CompileShader(Renderer_Shader::font_frag,                 StageType::Fragment,   sd + "font.hlsl");
-		ShaderCompiler::CompileShader(Renderer_Shader::film_grain_comp,           StageType::Compute, sd + "film_grain.hlsl");
-		ShaderCompiler::CompileShader(Renderer_Shader::chromatic_aberration_c, StageType::Compute, sd + "chromatic_aberration.hlsl");
-		ShaderCompiler::CompileShader(Renderer_Shader::vhs_c,                  StageType::Compute, sd + "vhs.hlsl");
-		ShaderCompiler::CompileShader(Renderer_Shader::output_c,               StageType::Compute, sd + "output.hlsl");
-		ShaderCompiler::CompileShader(Renderer_Shader::motion_blur_c,          StageType::Compute, sd + "motion_blur.hlsl");
-		ShaderCompiler::CompileShader(Renderer_Shader::ssao_comp,                 StageType::Compute, sd + "ssao.hlsl");
-		ShaderCompiler::CompileShader(Renderer_Shader::sss_c_bend,             StageType::Compute, sd + "screen_space_shadows/bend_sss.hlsl");
-		ShaderCompiler::CompileShader(Renderer_Shader::depth_of_field_c,       StageType::Compute, sd + "depth_of_field.hlsl");
-		ShaderCompiler::CompileShader(Renderer_Shader::variable_rate_shading_c, StageType::Compute, sd + "variable_rate_shading.hlsl");
-		ShaderCompiler::CompileShader(Renderer_Shader::blit_c,                 StageType::Compute, sd + "blit.hlsl");
+	void ShaderManager::ApplyRegistration(const ShaderRegistration& registration)
+	{
+		const uint32_t ownerIndex = static_cast<uint32_t>(registration.id);
+		SEDX_CORE_ASSERT(ownerIndex < s_Shaders.size(), "Shader registration index out of bounds: {}", ownerIndex);
 
-		// indirect draw
-		ShaderCompiler::CompileShader(Renderer_Shader::indirect_cull_c,         StageType::Compute, sd + "indirect_cull.hlsl");
-		ShaderCompiler::CompileShader(Renderer_Shader::gbuffer_indirect_vertex,      StageType::Vertex,  sd + "g_buffer.hlsl",      true, VertexType::MaxEnum, "INDIRECT_DRAW");
-		ShaderCompiler::CompileShader(Renderer_Shader::gbuffer_indirect_frag,      StageType::Fragment,   sd + "g_buffer.hlsl",      true, VertexType::MaxEnum, "INDIRECT_DRAW");
-		ShaderCompiler::CompileShader(Renderer_Shader::depth_prepass_indirect_vertex, StageType::Vertex,  sd + "depth_prepass.hlsl", true, VertexType::MaxEnum, "INDIRECT_DRAW");
+		Ref<Shader>& shader = s_Shaders[ownerIndex];
+		if (!shader)
+		{
+			if (registration.debugName)
+			{
+				shader = CreateRef<Shader>(registration.debugName);
+			}
+			else
+			{
+				shader = CreateRef<Shader>(registration.id);
+			}
+		}
 
-		// misc
-		ShaderCompiler::CompileShader(Renderer_Shader::icon_c,                                  StageType::Compute, sd + "icon.hlsl");
-		ShaderCompiler::CompileShader(Renderer_Shader::dithering_c,                              StageType::Compute, sd + "dithering.hlsl");
-		ShaderCompiler::CompileShader(Renderer_Shader::transparency_reflection_refraction_c,     StageType::Compute, sd + "transparency_reflection_refraction.hlsl");
-		ShaderCompiler::CompileShader(Renderer_Shader::auto_exposure_c,                          StageType::Compute, sd + "auto_exposure.hlsl");
+		SEDX_CORE_ASSERT(shader != nullptr, "Failed to allocate shader slot for type {}", static_cast<uint32_t>(registration.id));
 
-		// volumetric clouds
-		ShaderCompiler::CompileShader(Renderer_Shader::cloud_noise_shape_c,  StageType::Compute, sd + "sky/cloud_noise.hlsl",  true, VertexType::MaxEnum, "SHAPE_NOISE");
-		ShaderCompiler::CompileShader(Renderer_Shader::cloud_noise_detail_c, StageType::Compute, sd + "sky/cloud_noise.hlsl",  true, VertexType::MaxEnum, "DETAIL_NOISE");
-		ShaderCompiler::CompileShader(Renderer_Shader::cloud_shadow_c,       StageType::Compute, sd + "sky/cloud_shadow.hlsl");
+		auto apply_stages = [&shader, &registration]()
+		{
+			for (const ShaderStageDescriptor& stageInfo : registration.stages)
+			{
+				SEDX_CORE_ASSERT(!stageInfo.filepath.empty(), "Shader stage filepath cannot be empty");
+				if (!shader->HasStage(stageInfo.stage))
+				{
+					shader->AddShaderStage(stageInfo.stage, stageInfo.filepath, stageInfo.vertexType);
+				}
+			}
+		};
 
-		// gpu-driven particles
-		ShaderCompiler::CompileShader(Renderer_Shader::particle_emit_c,     StageType::Compute, sd + "particles.hlsl", true, VertexType::MaxEnum, "EMIT");
-		ShaderCompiler::CompileShader(Renderer_Shader::particle_simulate_c, StageType::Compute, sd + "particles.hlsl", true, VertexType::MaxEnum, "SIMULATE");
-		ShaderCompiler::CompileShader(Renderer_Shader::particle_render_c,   StageType::Compute, sd + "particles.hlsl", true, VertexType::MaxEnum, "RENDER");
-
-		// gpu texture compression (synchronous)
-		ShaderCompiler::CompileShader(Renderer_Shader::texture_compress_bc1_c, StageType::Compute, sd + "texture_compress_bc1.hlsl", false);
-		ShaderCompiler::CompileShader(Renderer_Shader::texture_compress_bc3_c, StageType::Compute, sd + "texture_compress_bc3.hlsl", false);
-		ShaderCompiler::CompileShader(Renderer_Shader::texture_compress_bc5_c, StageType::Compute, sd + "texture_compress_bc5.hlsl", false);
+		if (registration.asyncCompile)
+		{
+			Renderer::Submit([apply_stages]() mutable
+			{
+				apply_stages();
+			});
+		}
+		else
+		{
+			apply_stages();
+		}
 	}
 
 	Ref<Shader> &ShaderManager::CreateShader(const std::string &name)
@@ -335,7 +656,7 @@ namespace SceneryEditorX
 		m_Shaders.clear();
 	}
 
-	void ShaderManager::ClearStage(const Ref<Shader> &shader, const StageType stage)
+	void ShaderManager::ClearShaderStage(const Ref<Shader> &shader, const StageType stage)
 	{
 		// TODO: Implement stage clearing logic. This should remove the specified stage from the shader and destroy its associated Vulkan shader module.
 	}
@@ -347,69 +668,25 @@ namespace SceneryEditorX
 
 	void ShaderManager::SetShaderAvailable(const Renderer_Shader type)
 	{
-		const uint8_t index = static_cast<uint8_t>(type);
+		std::scoped_lock lock(s_ShaderMutex);
 
-		for (size_t i = 0; i < s_Shaders.size(); ++i)
+		if (const ShaderRegistration* registration = FindRegistration(type))
 		{
-		    if (!s_Shaders[index])
-				s_Shaders[index] = CreateRef<Shader>(type);
+			ApplyRegistration(*registration);
 
-		    Ref<Shader>& shader = s_Shaders[index];
-		    SEDX_CORE_ASSERT(shader != nullptr, "Failed to allocate shader slot for type {}", static_cast<uint32_t>(type));
-		    if (!shader->HasStage(StageType::Compute))
-		    {
-		        shader->AddShaderStage(StageType::Compute, "resources/shaders/blit.slang");
-		    }
+			Renderer_Shader owner = type;
+			if (TryGetSharedOwner(type, owner))
+			{
+				const uint32_t index = static_cast<uint32_t>(type);
+				const uint32_t ownerIndex = static_cast<uint32_t>(owner);
+				SEDX_CORE_ASSERT(index < s_Shaders.size() && ownerIndex < s_Shaders.size(), "Shared shader alias index out of bounds");
+				s_Shaders[index] = s_Shaders[ownerIndex];
+			}
+
+			return;
 		}
 
-		switch (type)
-		{
-			case Renderer_Shader::grid_vertex:
-			case Renderer_Shader::grid_frag:
-			{
-				constexpr uint8_t gridVertexIndex = static_cast<uint8_t>(Renderer_Shader::grid_vertex);
-				constexpr uint8_t gridFragIndex = static_cast<uint8_t>(Renderer_Shader::grid_frag);
-
-				Ref<Shader>& gridShader = s_Shaders[gridVertexIndex];
-				if (!gridShader)
-				{
-					gridShader = CreateRef<Shader>("grid");
-				}
-
-				if (!gridShader->HasStage(StageType::Vertex))
-				{
-					gridShader->AddShaderStage(StageType::Vertex, "resources/shaders/grid.slang");
-				}
-
-				if (!gridShader->HasStage(StageType::Fragment))
-				{
-					gridShader->AddShaderStage(StageType::Fragment, "resources/shaders/grid.slang");
-				}
-
-				s_Shaders[gridVertexIndex] = gridShader;
-				s_Shaders[gridFragIndex] = gridShader;
-				SEDX_CORE_ASSERT(s_Shaders[gridVertexIndex] != nullptr, "Failed to allocate grid shader");
-				break;
-			}
-			case Renderer_Shader::blit_c:
-			{
-				if (!s_Shaders[index])
-					s_Shaders[index] = CreateRef<Shader>("blit");
-
-				Ref<Shader>& shader = s_Shaders[index];
-				SEDX_CORE_ASSERT(shader != nullptr, "Failed to allocate shader slot for type {}", static_cast<uint32_t>(type));
-				if (!shader->HasStage(StageType::Compute))
-				{
-					shader->AddShaderStage(StageType::Compute, "resources/shaders/blit.slang");
-				}
-				break;
-			}
-			default:
-				if (!s_Shaders[index])
-					s_Shaders[index] = CreateRef<Shader>();
-
-				break;
-		}
+		SEDX_CORE_WARN_TAG("ShaderManager", "No shader registration found for enum {}", static_cast<uint32_t>(type));
 	}
 
 	bool ShaderManager::IsShaderAvailable(Renderer_Shader type)

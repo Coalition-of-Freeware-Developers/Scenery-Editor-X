@@ -75,57 +75,6 @@ namespace SceneryEditorX
 		if (!hasRtRender || !hasRtOutput)
 			return;
 
-		const auto hasShader = [](const Renderer_Shader shader) { return ShaderManager::GetShader(shader) != nullptr; };
-
-		// Temporary bootstrap path while the full deferred shader table is still being wired.
-		// This avoids a hard early-return and allows at least camera/grid visibility during integration.
-		const bool deferredReady = false; // Force bootstrap path during integration.
-
-		if (!deferredReady)
-		{
-			// Diagnostic clear so we can verify pass output is actually presented.
-			graphicsPresent->ClearTexture(rt_render, Color(0.8f, 0.1f, 0.1f, 1.0f));
-
-			const bool hasGridShaders = hasShader(Renderer_Shader::grid) && hasShader(Renderer_Shader::grid_frag);
-			const bool hasBlitShader = false; // Temporarily disabled until CommandList pipeline binding is fully wired.
-			static bool s_LoggedBootstrapState = false;
-			if (!s_LoggedBootstrapState)
-			{
-				SEDX_CORE_WARN_TAG("Renderer", "Bootstrap state: grid shaders={}, blit shader={}", hasGridShaders, hasBlitShader);
-				s_LoggedBootstrapState = true;
-			}
-
-			// Safety gate: graphics PSO binding is wired via SetPipelineState — enable grid pass.
-			const bool enableBootstrapGridPass = true;
-			if (enableBootstrapGridPass && Scene::GetCamera() && hasGridShaders)
-			{
-				ImageResource *depthTarget = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
-				rt_render->SetLayout(Layout::ImageLayout::Attachment, graphicsPresent, ALL_MIPS, 0);
-				depthTarget->SetLayout(Layout::ImageLayout::DepthStencilAttachment, graphicsPresent, 0, 0);
-				
-				Pass_Grid(graphicsPresent, rt_render);
-
-				depthTarget->SetLayout(Layout::ImageLayout::ShaderRead, graphicsPresent, 0, 0);
-				rt_render->SetLayout(Layout::ImageLayout::ShaderRead, graphicsPresent, ALL_MIPS, 0);
-			}
-
-			if (hasBlitShader)
-			{
-				Pass_Blit(graphicsPresent, rt_render, rt_output);
-			}
-			else
-			{
-				graphicsPresent->Blit(rt_render, rt_output, false);
-			}
-
-			Pass_Text(graphicsPresent, rt_output);
-			rt_output->SetLayout(Layout::ImageLayout::ShaderRead, graphicsPresent, 0, 0);
-
-			// Keep command list recording open here.
-			// Final frame orchestration owns submission/presentation ordering.
-			return;
-		}
-
 		// brdf lut (once)
 		if (!m_PassState.m_BRDF_LutProduced)
 		{
@@ -323,6 +272,10 @@ namespace SceneryEditorX
 			->SetLayout(Layout::ImageLayout::Attachment, graphicsPresent, 0, 0);
 		GetRenderTarget(Renderer_RenderTarget::gbuffer_depth)
 			->SetLayout(Layout::ImageLayout::Attachment, graphicsPresent, 0, 0);
+
+		// Submission and synchronization are owned by the caller (for example,
+		// Renderer::OnRender) so the full frame lifecycle can be coordinated with
+		// the appropriate fence/semaphore primitives.
 	}
 
 	void Renderer::Pass_Lut_BrdfSpecular(CommandList *cmdList)
@@ -481,7 +434,7 @@ namespace SceneryEditorX
 		{
 			PipelineState pso;
 			pso.name = "occluders";
-			pso.shaders[static_cast<uint32_t>(StageType::Vertex)] = ShaderManager::GetShader(Renderer_Shader::depth_prepass_vertex);
+			pso.shaders[static_cast<uint32_t>(StageType::Vertex)] = ShaderManager::GetShader(Renderer_Shader::depth_prepass);
 			pso.rasterizerState = GetRasterizerState(Renderer_RasterizerState::Solid);
 			pso.blendState = GetBlendState(Renderer_BlendState::Off);
 			pso.depthStencil_State = GetDepthStencilState(Renderer_DepthStencilState::ReadWrite);
@@ -607,7 +560,7 @@ namespace SceneryEditorX
 			{
 				PipelineState pso;
 				pso.name = "depth_prepass";
-				pso.shaders[static_cast<uint32_t>(StageType::Vertex)] = ShaderManager::GetShader(Renderer_Shader::depth_prepass_vertex);
+				pso.shaders[static_cast<uint32_t>(StageType::Vertex)] = ShaderManager::GetShader(Renderer_Shader::depth_prepass);
 				pso.rasterizerState = rasterizer_state;
 				pso.blendState = GetBlendState(Renderer_BlendState::Off);
 				pso.depthStencil_State = GetDepthStencilState(Renderer_DepthStencilState::ReadWrite);
@@ -632,9 +585,9 @@ namespace SceneryEditorX
 					{
 						bool isAlphaTested = materialAsset->IsAlphaTested();
 						bool isTessellated = materialAsset->GetProperty(MaterialProperty::Tessellation) > 0.0f;
-						Shader *ps = isAlphaTested ? ShaderManager::GetShader(Renderer_Shader::depth_prepass_alpha_test_frag) : nullptr;
-						Shader *hs = isTessellated ? ShaderManager::GetShader(Renderer_Shader::tessellation_h) : nullptr;
-						Shader *ds = isTessellated ? ShaderManager::GetShader(Renderer_Shader::tessellation_d) : nullptr;
+						Shader *ps = isAlphaTested ? ShaderManager::GetShader(Renderer_Shader::depth_prepass) : nullptr;
+						Shader *hs = isTessellated ? ShaderManager::GetShader(Renderer_Shader::tessellation) : nullptr;
+						Shader *ds = isTessellated ? ShaderManager::GetShader(Renderer_Shader::tessellation) : nullptr;
 
 						if (!pipelineSet || pso.shaders[static_cast<uint32_t>(StageType::Fragment)] != ps ||
 							pso.shaders[static_cast<uint32_t>(StageType::TessellationControl)] != hs ||
@@ -699,7 +652,7 @@ namespace SceneryEditorX
 			{
 				PipelineState pso;
 				pso.name = "g_buffer_indirect";
-				pso.shaders[static_cast<uint32_t>(StageType::Vertex)] = ShaderManager::GetShader(Renderer_Shader::gbuffer_indirect_vertex);
+				pso.shaders[static_cast<uint32_t>(StageType::Vertex)] = ShaderManager::GetShader(Renderer_Shader::gbuffer_indirect);
 				pso.shaders[static_cast<uint32_t>(StageType::Fragment)] = ShaderManager::GetShader(Renderer_Shader::gbuffer_indirect);
 				pso.blendState = GetBlendState(Renderer_BlendState::Off);
 				pso.rasterizerState = cvar_wireframe.GetValueAs<bool>() ? GetRasterizerState(Renderer_RasterizerState::Wireframe)
@@ -742,8 +695,8 @@ namespace SceneryEditorX
 			{
 				PipelineState pso;
 				pso.name = isTransparentPass ? "g_buffer_transparent" : "g_buffer_tessellated";
-				pso.shaders[static_cast<uint32_t>(StageType::Vertex)] = ShaderManager::GetShader(Renderer_Shader::gbuffer_vertex);
-				pso.shaders[static_cast<uint32_t>(StageType::Fragment)] = ShaderManager::GetShader(Renderer_Shader::gbuffer_frag);
+				pso.shaders[static_cast<uint32_t>(StageType::Vertex)] = ShaderManager::GetShader(Renderer_Shader::gbuffer);
+				pso.shaders[static_cast<uint32_t>(StageType::Fragment)] = ShaderManager::GetShader(Renderer_Shader::gbuffer);
 				pso.blendState = GetBlendState(Renderer_BlendState::Off);
 				pso.rasterizerState = cvar_wireframe.GetValueAs<bool>() ? GetRasterizerState(Renderer_RasterizerState::Wireframe)
 										  : GetRasterizerState(Renderer_RasterizerState::Solid);
@@ -787,8 +740,8 @@ namespace SceneryEditorX
 
 					{
 						bool is_tessellated = materialAsset->GetProperty(MaterialProperty::Tessellation) > 0.0f;
-						Shader *tessControl = is_tessellated ? ShaderManager::GetShader(Renderer_Shader::tessellation_h) : nullptr;
-						Shader *tessEval = is_tessellated ? ShaderManager::GetShader(Renderer_Shader::tessellation_d) : nullptr;
+						Shader *tessControl = is_tessellated ? ShaderManager::GetShader(Renderer_Shader::tessellation) : nullptr;
+						Shader *tessEval = is_tessellated ? ShaderManager::GetShader(Renderer_Shader::tessellation) : nullptr;
 
 						if (!pipeline_set ||
 							pso.shaders[static_cast<uint32_t>(StageType::TessellationControl)] != tessControl ||
@@ -883,7 +836,7 @@ namespace SceneryEditorX
 			return;
 
 		Shader *shader_vertex = ShaderManager::GetShader(Renderer_Shader::grid);
-		Shader *shader_frag = ShaderManager::GetShader(Renderer_Shader::grid_frag);
+		Shader *shader_frag = ShaderManager::GetShader(Renderer_Shader::grid);
 		if (!shader_vertex || !shader_frag)
 			return;
 
@@ -1236,8 +1189,8 @@ namespace SceneryEditorX
 
 			PipelineState pso;
 			pso.name = "shadow_map";
-			pso.shaders[static_cast<uint32_t>(StageType::Vertex)]    = ShaderManager::GetShader(Renderer_Shader::depth_light_vertex);
-			pso.shaders[static_cast<uint32_t>(StageType::Fragment)]  = ShaderManager::GetShader(Renderer_Shader::depth_light_alpha_color_frag);
+			pso.shaders[static_cast<uint32_t>(StageType::Vertex)]    = ShaderManager::GetShader(Renderer_Shader::depth_light);
+			pso.shaders[static_cast<uint32_t>(StageType::Fragment)]  = ShaderManager::GetShader(Renderer_Shader::depth_light);
 			pso.rasterizerState               = rs;
 			pso.blendState                    = GetBlendState(Renderer_BlendState::Off);
 			pso.depthStencil_State            = GetDepthStencilState(Renderer_DepthStencilState::ReadWrite);
@@ -1633,7 +1586,7 @@ namespace SceneryEditorX
 			{
 				PipelineState pso;
 				pso.name = "outline_composite";
-				pso.shaders[static_cast<uint32_t>(StageType::Compute)] = ShaderManager::GetShader(Renderer_Shader::outline_comp);
+				pso.shaders[static_cast<uint32_t>(StageType::Compute)] = ShaderManager::GetShader(Renderer_Shader::outline);
 				cmdList->SetPipelineState(pso);
 
 				cmdList->SetTexture(Renderer_BindingsSrv::tex, tex_outline);
@@ -1668,7 +1621,7 @@ namespace SceneryEditorX
 	void Renderer::Pass_Text(CommandList* cmdList, ImageResource* out)
 	{
 		Shader* shader_v = ShaderManager::GetShader(Renderer_Shader::font);
-		Shader* shader_f = ShaderManager::GetShader(Renderer_Shader::font_frag);
+		Shader* shader_f = ShaderManager::GetShader(Renderer_Shader::font);
 
 		if (!shader_v || !shader_f || !out)
 			return;

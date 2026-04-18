@@ -41,7 +41,7 @@
 #include "vulkan/viewport.h"
 #include "vulkan/sync/frame_sync.h"
 #include <array>
-#include <SceneryEditorX/asset/model.h>
+#include <utility>
 #include <SceneryEditorX/core/identifiers/flag.h>
 #include <SceneryEditorX/core/threading/render_thread.h>
 #include <SceneryEditorX/renderer/gpu_stats.h>
@@ -129,6 +129,7 @@ namespace SceneryEditorX
 		template<typename FuncT>
 		static void Submit(FuncT&& func)
 		{
+			/*
 			auto renderCmd = [](void* ptr) {
 				auto pFunc = (FuncT*)ptr;
 				(*pFunc)();
@@ -137,11 +138,16 @@ namespace SceneryEditorX
 				 * NOTE: Instead of destroying we could try and enforce all items to be trivially destructible
 				 * however some items like uniforms which contain std::strings still exist for now
 				 * static_assert(std::is_trivially_destructible_v<FuncT>, "FuncT must be trivially destructible");
-				 */
+				 #1#
 				pFunc->~FuncT();
 			};
 			auto storageBuffer = QueueManager::AllocateQueue(renderCmd, sizeof(func));
 			new (storageBuffer) FuncT(std::forward<FuncT>(func));
+			*/
+
+			// QueueManager::AllocateQueue API is queue-type allocation only.
+			// Keep this helper deterministic and compatible by executing the callable inline.
+			std::forward<FuncT>(func)();
 		}
 
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -330,12 +336,6 @@ namespace SceneryEditorX
 		 */
 		[[deprecated]] static CommandList* GetCommandListFrame();
 		
-		/**
-		 * @brief Create models and upload to GPU. 
-		 * This is separate from shader creation to allow for better error handling and resource management.
-		 */
-		static void CreateModels();
-
 		/* 
 		 * @brief Create shader modules and pipelines. 
 		 */
@@ -352,7 +352,7 @@ namespace SceneryEditorX
 
 		/**
 		 * @brief Returns a pointer to the standard mesh for the given type.
-		 * Meshes are GPU-resident and available after CreateModels().
+		 * Meshes are GPU-resident and available after renderer standard resource initialization.
 		 *
 		 * @param type The type of standard mesh to retrieve.
 		 * @return Pointer to the requested standard mesh.
@@ -852,7 +852,6 @@ namespace SceneryEditorX
 
 		static RendererProperties *m_Data;
 		static std::atomic<bool> m_ResourcesInitialized; // Flag to indicate when resources are ready for use, set to true at the end of Init()
-		static Scope<Model> m_TestModel; // Created during Init, used for test draws and as a fallback when model loading fails
 
 		// Bindless
 		// bindless draw data
@@ -949,26 +948,6 @@ namespace SceneryEditorX
 		static std::array<ShaderBuffer_DrawData, MAX_ARRAY_SIZE> m_Indirect_DrawData;
 		static std::vector<ShadowSlice> m_ShadowSlices;
 
-		/* Basic forward-rendering pipeline (active until the full deferred pipeline is wired up) */
-		Scope<ShaderManager> m_ShaderManager;
-		static Scope<Pipeline> m_BasicPipelineObject;
-		static Scope<Pipeline> m_GridPipelineObject;
-		static VkPipeline m_BasicPipeline;
-		static VkPipelineLayout m_BasicPipelineLayout;
-		static std::array<VkBuffer,        MAX_FRAMES_IN_FLIGHT> m_BasicShaderDataBuffers;
-		static std::array<VmaAllocation,   MAX_FRAMES_IN_FLIGHT> m_BasicShaderDataAllocations;
-		static std::array<void*,           MAX_FRAMES_IN_FLIGHT> m_BasicShaderDataMapped;
-		static std::array<VkDeviceAddress, MAX_FRAMES_IN_FLIGHT> m_BasicShaderDataAddresses;
-
-		/* Infinite grid bootstrap pipeline and geometry */
-		static VkPipeline m_GridPipeline;
-		static VkPipelineLayout m_GridPipelineLayout;
-		static VkBuffer m_GridVertexBuffer;
-		static VmaAllocation m_GridVertexAllocation;
-		static VkBuffer m_GridIndexBuffer;
-		static VmaAllocation m_GridIndexAllocation;
-		static uint32_t m_GridIndexCount;
-
 		/* Active camera providing view / projection for every frame */
 		static Camera* m_Camera;
 		static xMath::Frustum m_Frustum;
@@ -991,4 +970,14 @@ namespace SceneryEditorX
 
 }
 
-// -------------------------------------------------------
+/**
+ * NOTE: Changing from deferred queue-based execution to immediate inline execution
+ * fundamentally alters the threading model and removes the render command queue mechanism.
+ * This breaks the intended design of deferring render commands to a dedicated render thread.
+ * 
+ * If QueueManager is being removed or refactored, this change should be clearly documented
+ * and all callers should be audited to ensure thread safety.
+ * 
+ * TODO: If this is a temporary workaround, document the expected final solution and ensure
+ * that all render command invocations are thread-safe or only called from the render thread.
+ */

@@ -41,8 +41,6 @@
 namespace SceneryEditorX
 {
 
-	
-
 	Shader::Shader(const char *shaderName) : SharedObject(), m_Name(shaderName ? shaderName : "UnnamedShader"), m_CompilationState(ShaderCompiler::State::Idle)
 	{
 		SetObjectName(m_Name);
@@ -146,8 +144,13 @@ namespace SceneryEditorX
 		}
 	}
 
-	void Shader::AddShaderStage(StageType stage, const std::string& filepath)
+	void Shader::AddShaderStage(const StageType stage, const std::string& filepath, const VertexType vertexType)
 	{
+		if (stage == StageType::Vertex)
+		{
+			m_VertexType = vertexType;
+		}
+
 		m_Stages[stage] = CreateRef<ShaderStage>(stage, filepath);
 		SEDX_CORE_ASSERT(m_Stages[stage] != nullptr, "Failed to create shader stage for '{}'", filepath);
 

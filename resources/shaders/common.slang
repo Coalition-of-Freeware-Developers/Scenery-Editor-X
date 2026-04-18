@@ -105,8 +105,8 @@ float3 reconstruct_normal_z(float2 normal)
 float3 get_normal(uint2 pos)
 {
     // load returns 0 for any value accessed out of bounds, so clamp.
-    pos.x = clamp(pos.x, 0, buffer_frame.resolution_render.x);
-    pos.y = clamp(pos.y, 0, buffer_frame.resolution_render.y);
+    pos.x = clamp(pos.x, 0u, (uint)buffer_frame.resolution_render.x);
+    pos.y = clamp(pos.y, 0u, (uint)buffer_frame.resolution_render.y);
 
     return tex_normal[pos].xyz;
 }

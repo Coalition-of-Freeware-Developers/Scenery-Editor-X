@@ -51,6 +51,29 @@ namespace SceneryEditorX
 	{
 	public:
 		/**
+		 * @struct ShaderStageDescriptor
+		 * @brief Describes one stage to register for a renderer shader slot.
+		 */
+		struct ShaderStageDescriptor
+		{
+			StageType stage = StageType::MaxEnum;
+			std::string filepath{};
+			VertexType vertexType = VertexType::MaxEnum;
+		};
+
+		/**
+		 * @struct ShaderRegistration
+		 * @brief Data-driven shader registration record used by SetShaderAvailable.
+		 */
+		struct ShaderRegistration
+		{
+			Renderer_Shader id = Renderer_Shader::MaxEnum;
+			const char* debugName = nullptr;
+			bool asyncCompile = false;
+			std::vector<ShaderStageDescriptor> stages{};
+		};
+
+		/**
 		 * @brief Constructs a new ShaderManager.
 		 */
 		ShaderManager();
@@ -131,7 +154,7 @@ namespace SceneryEditorX
 		 * @param shader The shader whose stage is to be cleared.
 		 * @param stage The stage to be cleared.
 		 */
-		static void ClearStage(const Ref<Shader> &shader, const StageType stage);
+		static void ClearShaderStage(const Ref<Shader> &shader, const StageType stage);
 
 		/**
 		 * @brief Get a shader by type.
@@ -197,6 +220,38 @@ namespace SceneryEditorX
 		static std::array<Ref<Shader>,  static_cast<uint32_t>(Renderer_Shader::MaxEnum)>& GetShaders();
 
 	private:
+		/**
+		 * @brief Returns the shader registration metadata for all known startup shaders.
+		 */
+		static const std::vector<ShaderRegistration>& GetShaderRegistrations();
+
+		/**
+		 * @brief Finds a shader registration by renderer shader enum.
+		 * @param type The shader enum to find the registration for.
+		 * @return Pointer to the shader registration, or nullptr if not found.
+		 */
+		static const ShaderRegistration* FindRegistration(Renderer_Shader type);
+
+		/**
+		 * @brief Applies one shader registration into s_Shaders.
+		 * @param registration The shader registration to apply.
+		 */
+		static void ApplyRegistration(const ShaderRegistration& registration);
+
+		/**
+		 * @brief Maps a renderer shader enum to its registration record.
+		 * @return Reference to the shader registration map.
+		 */
+		static const std::unordered_map<Renderer_Shader, ShaderRegistration>& GetShaderRegistrationMap();
+
+		/**
+		 * @brief Returns true if this renderer shader should share one Shader object with another enum entry.
+		 * @param type Enum slot being requested.
+		 * @param outOwnerType Canonical enum slot owning the Shader object.
+		 * @return True if the requested slot should share a Shader with another slot, false if it should have its own Shader.
+		 */
+		static bool TryGetSharedOwner(Renderer_Shader type, Renderer_Shader& outOwnerType);
+
 		std::vector<VkShaderModule> m_Modules{};		// Store the Vulkan shader modules for each stage
 		std::vector<VkShaderStageFlagBits> m_Stages{};	// Store the corresponding shader stage flags (e.g., VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_FRAGMENT_BIT)
 		static std::mutex s_ShaderMutex; // protect m_Shaders and compile operations

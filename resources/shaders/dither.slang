@@ -23,26 +23,50 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  * -------------------------------------------------------
- * blit.slang
+ * dither.slang
  * -------------------------------------------------------
- * Created: 06/03/2026
+ * Created: 18/04/2026
  * -------------------------------------------------------
  */
+import common;
 
-// Reimpliment when slang shader compiler class has been implimented to support module imports.
-/* import common;
-import resources;
-import constants;
- */
-static const uint THREAD_GROUP_COUNT_X = 8;
-static const uint THREAD_GROUP_COUNT_Y = 8;
-static const uint THREAD_GROUP_COUNT = 64;
-[[vk::image_format("unknown")]] RWTexture2D<float4> tex_uav : register(u0);
-Texture2D tex : register(t7);
+// dithering settings
+static const float g_dither_strength = 0.1f;
+static const int g_dither_mode       = 0; // 0 = additive, 1 = multiplicative
 
-[shader("compute")]
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
-void main_comp(uint3 thread_id: SV_DispatchThreadID)
+[shader("compute")]
+void main_comp(uint3 thread_id : SV_DispatchThreadID)
 {
-    tex_uav[thread_id.xy] = tex.Load(int3(thread_id.xy, 0));
+    // get output resolution
+    float2 resolution;
+    tex_uav.GetDimensions(resolution.x, resolution.y);
+
+    // compute coordinates
+    const int2 coord = thread_id.xy;
+    const float2 uv = (coord + 0.5f) / resolution;
+
+    // read input color (16-bit buffer, assumed post-tone mapping/pq encoding)
+    float4 color = tex[coord];
+
+    // sample blue noise (tile the texture)
+    float2 blue_noise_size;
+    tex2.GetDimensions(blue_noise_size.x, blue_noise_size.y);
+    int2 noise_coord = coord % blue_noise_size;
+    float pattern    = tex2[noise_coord].r; // [0,1]
+
+    // apply dithering
+    if (g_dither_mode == 0) // additive
+    {
+        color.rgb += pattern * g_dither_strength * color.rgb; // scale with color to preserve intensity
+    }
+    else // multiplicative
+    {
+        color.rgb *= lerp(1.0f, pattern, g_dither_strength);
+    }
+
+    // ensure no negative values
+    color.rgb = max(0.0f, color.rgb);
+
+    tex_uav[coord] = color;
 }
