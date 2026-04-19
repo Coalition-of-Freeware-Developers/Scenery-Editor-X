@@ -56,6 +56,7 @@ namespace SceneryEditorX
 		VkPhysicalDeviceExtendedDynamicStateFeaturesEXT s_FeaturesExtendedDynamicState = {};
 		VkPhysicalDeviceShaderAtomicFloatFeaturesEXT s_FeaturesAtomicFloat = {};
 		VkPhysicalDeviceShaderAtomicFloat2FeaturesEXT s_FeaturesAtomicFloat2 = {};
+		VkPhysicalDeviceShaderDrawParametersFeatures s_FeaturesDrawParameters = {};
 		VkPhysicalDeviceVulkan14Features s_Features_1_4 = {};
 		VkPhysicalDeviceVulkan13Features s_Features_1_3 = {};
 		VkPhysicalDeviceVulkan12Features s_Features_1_2 = {};
@@ -110,6 +111,12 @@ namespace SceneryEditorX
 				nextInChain = &s_FeaturesAtomicFloat;
 			}
 	
+			if (s_FeaturesDrawParameters.shaderDrawParameters == VK_TRUE)
+			{
+				s_FeaturesDrawParameters.pNext = nextInChain;
+				nextInChain = &s_FeaturesDrawParameters;
+			}
+
 			// Robustness links to VRS if supported, otherwise nullptr
 			s_FeaturesRobustness.pNext = nextInChain;
 			nextInChain = &s_FeaturesRobustness;
@@ -297,6 +304,8 @@ namespace SceneryEditorX
 		feat.s_FeaturesRayTracingPipeline.pNext = &feat.s_FeaturesRayQuery;
 		feat.s_Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
 		feat.s_Features.pNext = &feat.s_FeaturesRayTracingPipeline;
+		feat.s_FeaturesDrawParameters.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETERS_FEATURES;
+		feat.s_FeaturesDrawParameters.pNext = &feat.s_Features;
 
 		// Detect which features are supported
 		VkPhysicalDeviceExtendedDynamicStateFeaturesEXT supportExtendedDynamicState = {};
@@ -334,9 +343,12 @@ namespace SceneryEditorX
 		VkPhysicalDeviceRayTracingPipelineFeaturesKHR supportRayTracingPipeline = {};
 		supportRayTracingPipeline.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR;
 		supportRayTracingPipeline.pNext = &supportRayQuery;
+		VkPhysicalDeviceShaderDrawParametersFeatures supportDrawParameters = {};
+		supportDrawParameters.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETERS_FEATURES;
+		supportDrawParameters.pNext = &supportRayTracingPipeline;
 		VkPhysicalDeviceFeatures2 support = {};
 		support.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-		support.pNext = &supportRayTracingPipeline;
+		support.pNext = &supportDrawParameters;
 
 		vkGetPhysicalDeviceFeatures2(physicalDevice, &support);
 
@@ -525,6 +537,12 @@ namespace SceneryEditorX
 				// Geometry
 				SEDX_CORE_ASSERT(support.features.geometryShader == VK_TRUE);
 				feat.s_Features.features.geometryShader = VK_TRUE;
+			}
+
+			{
+				// Shader Draw Parameters
+				SEDX_CORE_ASSERT(supportDrawParameters.shaderDrawParameters == VK_TRUE);
+				feat.s_FeaturesDrawParameters.shaderDrawParameters = VK_TRUE;
 			}
 		}
 
@@ -749,6 +767,7 @@ namespace SceneryEditorX
 		if (features.s_Features.features.samplerAnisotropy != VK_TRUE ||
 			features.s_Features.features.fillModeNonSolid != VK_TRUE ||
 			features.s_Features.features.geometryShader != VK_TRUE ||
+			features.s_FeaturesDrawParameters.shaderDrawParameters != VK_TRUE ||
 			features.s_Features.features.tessellationShader != VK_TRUE)
 		{
 			SEDX_CORE_WARN_TAG("Device", "Device '{}' missing critical core features", deviceInfo.name);
@@ -818,6 +837,12 @@ namespace SceneryEditorX
 		{
 			score += 8;
 			SEDX_CORE_TRACE_TAG("Device", "Device '{}': Push descriptors supported (+8)", deviceInfo.name);
+		}
+
+		if (features.s_FeaturesDrawParameters.shaderDrawParameters == VK_TRUE)
+		{
+			score += 5;
+			SEDX_CORE_TRACE_TAG("Device", "Device '{}': Shader Draw Parameters supported (+5)", deviceInfo.name);
 		}
 
 		SEDX_CORE_TRACE_TAG("Device", "Device '{}' scored: {} points", deviceInfo.name, score);
@@ -1032,6 +1057,10 @@ namespace SceneryEditorX
 		deviceProps.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
 		deviceProps.pNext = &shadingRateProps;
 
+		VkPhysicalDeviceShaderDrawParametersFeatures drawParams{};
+		drawParams.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETERS_FEATURES;
+		drawParams.pNext = &deviceProps;
+
 		vkGetPhysicalDeviceProperties2(m_PhysicalDevice, &deviceProps);
 		const VkPhysicalDeviceLimits &limits = deviceProps.properties.limits;
 
@@ -1067,10 +1096,12 @@ namespace SceneryEditorX
 
 		// Populate feature flags from cached data
 		statics.xessSupported			= features.s_XessSupported;
-	 statics.isShadingRateSupported	= features.s_IsShadingRateSupported;
+		statics.isShadingRateSupported	= features.s_IsShadingRateSupported;
 		statics.isRayTracingSupported	= features.s_IsRayTracingSupported;
 		statics.isBindlessSupported		= features.s_IsBindlessSupported;
 		statics.wideLinesSupported		= features.s_WideLines;
+
+		statics.shaderDrawParameters	= drawParams.shaderDrawParameters;
 
 		return statics;
 	}
@@ -1206,6 +1237,20 @@ namespace SceneryEditorX
 				features.s_FeaturesAtomicFloat2.shaderBufferFloat32AtomicMinMax != VK_TRUE)
 			{
 				SEDX_CORE_WARN_TAG("Device", "Requested shaderBufferFloat32AtomicMinMax is not supported by the selected GPU");
+			}
+		}
+
+		if (requestedFeaturesExt.enableDrawParameters)
+		{
+			const bool supportsDrawParameters = features.s_FeaturesDrawParameters.shaderDrawParameters == VK_TRUE;
+			features.s_FeaturesDrawParameters.shaderDrawParameters =
+				(supportsDrawParameters && requestedFeaturesExt.drawParametersFeatures.shaderDrawParameters == VK_TRUE)
+					? VK_TRUE
+					: VK_FALSE;
+			if (requestedFeaturesExt.drawParametersFeatures.shaderDrawParameters == VK_TRUE &&
+				features.s_FeaturesDrawParameters.shaderDrawParameters != VK_TRUE)
+			{
+				SEDX_CORE_WARN_TAG("Device", "Requested Shader Draw Parameters feature is not supported by the selected GPU");
 			}
 		}
 

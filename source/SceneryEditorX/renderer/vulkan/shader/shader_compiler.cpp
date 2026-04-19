@@ -30,18 +30,23 @@
  */
 // ReSharper disable CppReinterpretCastFromVoidPtr
 #include "shader_compiler.h"
+#include <array>
+#include <unordered_set>
 #include <SceneryEditorX/logging/asserts.h>
 #include <SceneryEditorX/renderer/vulkan/render_context.h>
 #include <slang/slang-com-ptr.h>
 #include <slang/slang.h>
 #include <spirv_cross/spirv_cross.hpp>
-#include <array>
-#include <unordered_set>
 
 // --------------------------------------------------------------
 
 namespace ShaderCompiler
 {
+	/**
+	 * @brief Checks if a module is a primary shared library module.
+	 * @param moduleName The name of the module to check.
+	 * @return True if the module is a primary shared library module, false otherwise.
+	 */
 	static bool IsPrimarySharedLibraryModule(const std::string& moduleName)
 	{
 		static const std::unordered_set<std::string> SHARED_LIBRARY_PRIMARY_MODULES = {
@@ -62,6 +67,11 @@ namespace ShaderCompiler
 		return SHARED_LIBRARY_PRIMARY_MODULES.contains(moduleName);
 	}
 
+	/**
+	 * @brief Checks if a module is an entry shader file.
+	 * @param moduleName The name of the module to check.
+	 * @return True if the module is an entry shader file, false otherwise.
+	 */
 	static bool IsEntryShaderFile(const std::string& moduleName)
 	{
 		static const std::unordered_set<std::string> ENTRY_SHADER_MODULES = {
@@ -114,7 +124,7 @@ namespace ShaderCompiler
 	{
 		if (SLANG_FAILED(slang::createGlobalSession(outGlobalSession.writeRef())))
 		{
-			SEDX_CORE_ERROR_TAG("ShaderCompiler", "Failed to create Slang compiler global session");
+			SEDX_CORE_FATAL_TAG("ShaderCompiler", "Failed to create Slang compiler global session");
 			return false;
 		}
 
@@ -136,7 +146,7 @@ namespace ShaderCompiler
 
 		if (SLANG_FAILED(outGlobalSession->createSession(sessionDesc, outSession.writeRef())))
 		{
-			SEDX_CORE_ERROR_TAG("ShaderCompiler", "Failed to create Slang session");
+			SEDX_CORE_FATAL_TAG("ShaderCompiler", "Failed to create Slang session");
 			return false;
 		}
 

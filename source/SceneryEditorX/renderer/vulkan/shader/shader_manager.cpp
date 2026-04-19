@@ -30,15 +30,15 @@
  */
 #include "shader_manager.h"
 #include "shader_compiler.h"
-#include "SceneryEditorX/core/resource/resource_cache.h"
 #include <algorithm>
+#include <array>
 #include <utility>
+#include <SceneryEditorX/core/resource/resource_cache.h>
 #include <SceneryEditorX/renderer/renderer.h>
 #include <SceneryEditorX/renderer/vulkan/render_context.h>
 #include <slang/slang-com-ptr.h>
 #include <slang/slang.h>
 #include <spirv_cross/spirv_cross.hpp>
-#include <array>
 
 // -------------------------------------------------------
 
@@ -132,7 +132,7 @@ namespace SceneryEditorX
 			}
 			else
 			{
-				SEDX_CORE_WARN_TAG("ShaderManager", "Failed to create shader module for stage {}", static_cast<uint32_t>(stage));
+				SEDX_CORE_FATAL_TAG("ShaderManager", "Failed to create shader module for stage {}", static_cast<uint32_t>(stage));
 			}
 		}
 
@@ -269,7 +269,7 @@ namespace SceneryEditorX
 
 		if (!success)
 		{
-			SEDX_CORE_ERROR_TAG("ShaderManager", "Failed to compile Slang module '{}' ({})", moduleName, registration.filepath);
+			SEDX_CORE_FATAL_TAG("ShaderManager", "Failed to compile Slang module '{}' ({})", moduleName, registration.filepath);
 			return false;
 		}
 
@@ -605,6 +605,7 @@ namespace SceneryEditorX
 
 	bool ShaderManager::TryGetSharedOwner(const Renderer_Shader type, Renderer_Shader& outOwnerType)
 	{
+		// TODO: This is a temporary hardcoded mapping for known shared shader slots. Replace with a list for loop for the other shared slots added.
 		if (type == Renderer_Shader::grid)
 		{
 			outOwnerType = Renderer_Shader::grid;

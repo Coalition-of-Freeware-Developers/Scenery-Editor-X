@@ -84,6 +84,7 @@ namespace SceneryEditorX
 		bool isRayTracingSupported	= false;
 		bool isBindlessSupported	= false;
 		bool wideLinesSupported		= false;
+		bool shaderDrawParameters	= false;
 	};
 
 	// -----------------------------------------------------------------
