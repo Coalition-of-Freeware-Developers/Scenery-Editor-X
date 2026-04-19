@@ -76,14 +76,14 @@ namespace SceneryEditorX
 	{
 		switch (type)
 		{
-			case StageType::Vertex:					return BIT(0);
-			case StageType::TessellationControl:    return BIT(1);
-			case StageType::TessellationEvaluation: return BIT(2);
-			case StageType::Geometry:				return BIT(3);
-			case StageType::Fragment:				return BIT(4);
-			case StageType::Compute:				return BIT(5);
-			case StageType::Graphics:				return BIT(5) - 1u;
-			case StageType::All:					return BIT(31) - 1u;
+			case StageType::Vertex:					return VK_SHADER_STAGE_VERTEX_BIT;
+			case StageType::TessellationControl:    return VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+			case StageType::TessellationEvaluation: return VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
+			case StageType::Geometry:				return VK_SHADER_STAGE_GEOMETRY_BIT;
+			case StageType::Fragment:				return VK_SHADER_STAGE_FRAGMENT_BIT;
+			case StageType::Compute:				return VK_SHADER_STAGE_COMPUTE_BIT;
+			case StageType::Graphics:				return VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT | VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT | VK_SHADER_STAGE_GEOMETRY_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+			case StageType::All:					return VK_SHADER_STAGE_ALL;
 			case StageType::None:
 				SEDX_CORE_WARN_TAG("Pipeline","Shader StageType 'None' is not a valid shader stage for masking");
 				break;
@@ -125,30 +125,50 @@ namespace SceneryEditorX
 #pragma region Shader Stages
 		Ref<ShaderManager> shaderManager = ShaderManager::Get();
 		std::array<Ref<Shader>, static_cast<uint32_t>(Renderer_Shader::MaxEnum)> shaders = shaderManager->GetShaders();
+		(void)shaders;
 
 		std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
-		for (const auto &shader : shaders)
+		if (state.IsCompute())
 		{
-			if (shader->HasStage(StageType::Vertex))
-				shaderStages.push_back(shader->GetShaderStage(StageType::Vertex)->GetStageCreateInfo());
-			if (shader->HasStage(StageType::Fragment))
-				shaderStages.push_back(shader->GetShaderStage(StageType::Fragment)->GetStageCreateInfo());
-			if (shader->HasStage(StageType::TessellationControl))
-				shaderStages.push_back(shader->GetShaderStage(StageType::TessellationControl)->GetStageCreateInfo());
-			if (shader->HasStage(StageType::TessellationEvaluation))
-				shaderStages.push_back(shader->GetShaderStage(StageType::TessellationEvaluation)->GetStageCreateInfo());
-			if (shader->HasStage(StageType::Geometry))
-				shaderStages.push_back(shader->GetShaderStage(StageType::Geometry)->GetStageCreateInfo());
-			if (shader->HasStage(StageType::Compute))
-				shaderStages.push_back(shader->GetShaderStage(StageType::Compute)->GetStageCreateInfo());
-			if (shader->HasStage(StageType::All))
-				shaderStages.push_back(shader->GetShaderStage(StageType::All)->GetStageCreateInfo());
-			if (shader->HasStage(StageType::Graphics))
-				shaderStages.push_back(shader->GetShaderStage(StageType::Graphics)->GetStageCreateInfo());
-			if (shader->HasStage(StageType::None))
-				SEDX_CORE_WARN_TAG( "Pipeline", "Shader '{}' has 'None' stage, which is not a valid shader stage and will be ignored", shader->GetObjectName());
-			else
-				SEDX_CORE_ERROR_TAG( "Pipeline", "Shader '{}' has an unrecognized stage, which is not a valid shader stage", shader->GetObjectName());
+			if (Shader* computeShader = state.shaders[static_cast<uint32_t>(StageType::Compute)])
+			{
+				if (computeShader->IsCompiled() && computeShader->HasStage(StageType::Compute))
+				{
+					shaderStages.push_back(computeShader->GetShaderStage(StageType::Compute)->GetStageCreateInfo());
+				}
+			}
+		}
+		else if (state.IsGraphics())
+		{
+			if (Shader* vertexShader = state.shaders[static_cast<uint32_t>(StageType::Vertex)])
+			{
+				if (vertexShader->IsCompiled() && vertexShader->HasStage(StageType::Vertex))
+					shaderStages.push_back(vertexShader->GetShaderStage(StageType::Vertex)->GetStageCreateInfo());
+			}
+
+			if (Shader* tessControlShader = state.shaders[static_cast<uint32_t>(StageType::TessellationControl)])
+			{
+				if (tessControlShader->IsCompiled() && tessControlShader->HasStage(StageType::TessellationControl))
+					shaderStages.push_back(tessControlShader->GetShaderStage(StageType::TessellationControl)->GetStageCreateInfo());
+			}
+
+			if (Shader* tessEvalShader = state.shaders[static_cast<uint32_t>(StageType::TessellationEvaluation)])
+			{
+				if (tessEvalShader->IsCompiled() && tessEvalShader->HasStage(StageType::TessellationEvaluation))
+					shaderStages.push_back(tessEvalShader->GetShaderStage(StageType::TessellationEvaluation)->GetStageCreateInfo());
+			}
+
+			if (Shader* geometryShader = state.shaders[static_cast<uint32_t>(StageType::Geometry)])
+			{
+				if (geometryShader->IsCompiled() && geometryShader->HasStage(StageType::Geometry))
+					shaderStages.push_back(geometryShader->GetShaderStage(StageType::Geometry)->GetStageCreateInfo());
+			}
+
+			if (Shader* fragmentShader = state.shaders[static_cast<uint32_t>(StageType::Fragment)])
+			{
+				if (fragmentShader->IsCompiled() && fragmentShader->HasStage(StageType::Fragment))
+					shaderStages.push_back(fragmentShader->GetShaderStage(StageType::Fragment)->GetStageCreateInfo());
+			}
 		}
 
 #pragma endregion
@@ -157,16 +177,27 @@ namespace SceneryEditorX
 		// layout: full bindless path when a DescriptorSet layout is provided, minimal bootstrap path otherwise
 		if (layout != nullptr)
 		{
-			// build descriptor set layouts array - must match order of appearance in common_resources.slang
-			std::array<VkDescriptorSetLayout, static_cast<size_t>(BindlessResource::MaxEnum) + 1> layouts;
+			// Ensure bindless descriptor set layouts exist before wiring pipeline set layouts.
+			BindlessManager::Init();
+
+			// build descriptor set layouts array - include only valid layouts to satisfy
+			// VUID-VkPipelineLayoutCreateInfo-graphicsPipelineLibrary-06753.
+			std::array<VkDescriptorSetLayout, static_cast<size_t>(BindlessResource::MaxEnum) + 1> layouts{};
+			uint32_t setLayoutCount = 0;
 			{
-				layouts[0] = layout->GetLayout();
+				layouts[setLayoutCount++] = layout->GetLayout();
 				SEDX_CORE_ASSERT(layouts[0] != VK_NULL_HANDLE);
 
 				for (size_t i = 0; i < static_cast<size_t>(BindlessResource::MaxEnum); i++)
 				{
-					layouts[i + 1] = BindlessManager::GetLayoutForType(static_cast<BindlessResource>(i));
-					SEDX_CORE_ASSERT(layouts[i + 1] != VK_NULL_HANDLE);
+					const VkDescriptorSetLayout bindlessLayout = BindlessManager::GetLayoutForType(static_cast<BindlessResource>(i));
+					if (bindlessLayout == VK_NULL_HANDLE)
+					{
+						SEDX_CORE_WARN_TAG("Pipeline", "Bindless layout {} unavailable while creating pipeline '{}'; skipping set slot", i, state.name ? state.name : "<unnamed>");
+						continue;
+					}
+
+					layouts[setLayoutCount++] = bindlessLayout;
 				}
 			}
 
@@ -197,7 +228,7 @@ namespace SceneryEditorX
 			VkPipelineLayoutCreateInfo layoutInfo = {};
 			layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 			layoutInfo.pushConstantRangeCount = 0;
-			layoutInfo.setLayoutCount = static_cast<uint32_t>(layouts.size());
+			layoutInfo.setLayoutCount = setLayoutCount;
 			layoutInfo.pSetLayouts = layouts.data();
 			layoutInfo.pushConstantRangeCount = static_cast<uint32_t>(pushConstRanges.size());
 			layoutInfo.pPushConstantRanges = pushConstRanges.data();
@@ -234,10 +265,49 @@ namespace SceneryEditorX
 
 		if (state.IsCompute())
 		{
+			if (layout == nullptr)
+			{
+				SEDX_CORE_ERROR_TAG("Pipeline", "Compute pipeline '{}' requires a valid descriptor layout (set 0); refusing vkCreateComputePipelines to avoid VUID-VkComputePipelineCreateInfo-layout-07988", state.name ? state.name : "<unnamed>");
+				return;
+			}
+
+			VkPipelineShaderStageCreateInfo computeStage{};
+			bool hasComputeStage = false;
+
+			// Compute pipelines must use a compute stage from the current PSO, not the global shader list.
+			if (Shader* computeShader = state.shaders[static_cast<uint32_t>(StageType::Compute)])
+			{
+				if (computeShader->HasStage(StageType::Compute))
+				{
+					computeStage = computeShader->GetShaderStage(StageType::Compute)->GetStageCreateInfo();
+					hasComputeStage = true;
+				}
+			}
+
+			// Fallback: if a compute stage ended up in the aggregated list, pick that one explicitly.
+			if (!hasComputeStage)
+			{
+				for (const VkPipelineShaderStageCreateInfo& stage : shaderStages)
+				{
+					if (stage.stage == VK_SHADER_STAGE_COMPUTE_BIT)
+					{
+						computeStage = stage;
+						hasComputeStage = true;
+						break;
+					}
+				}
+			}
+
+			if (!hasComputeStage)
+			{
+				SEDX_CORE_ERROR_TAG("Pipeline", "Compute PSO '{}' has no compute shader stage", state.name ? state.name : "<unnamed>");
+				return;
+			}
+
 			VkComputePipelineCreateInfo pipelineInfo = {};
 			pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
 			pipelineInfo.layout = m_Layout;
-			pipelineInfo.stage = shaderStages[0];
+			pipelineInfo.stage = computeStage;
 
 			SEDX_VK_RESULT_ASSERT(vkCreateComputePipelines(m_Device->GetLogicalDevice(),
 				static_cast<VkPipelineCache>(GetPipelineCache()),1, &pipelineInfo, nullptr, reinterpret_cast<VkPipeline *>(&m_Pipeline)));
@@ -638,7 +708,10 @@ namespace SceneryEditorX
 #pragma endregion
 		}
 
-		SEDX_CORE_ASSERT(m_Pipeline != nullptr);
+		if (m_Pipeline == VK_NULL_HANDLE)
+		{
+			SEDX_CORE_WARN_TAG("Pipeline", "Pipeline '{}' was not created (state: graphics={}, compute={})", state.name ? state.name : "<unnamed>", state.IsGraphics(), state.IsCompute());
+		}
 	}
 
 	Pipeline::~Pipeline()

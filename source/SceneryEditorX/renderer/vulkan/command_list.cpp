@@ -1427,6 +1427,13 @@ namespace SceneryEditorX
 			return;
 		}
 
+		if (!m_ComputePushConstantsSet)
+		{
+			PushConstantBuffer_Pass defaultComputePushConstants{};
+			PushConstants(defaultComputePushConstants);
+			m_ComputePushConstantsSet = true;
+		}
+
 		PreDraw();
 		vkCmdDispatch(m_CmdBuffer, x, y, z);
 	}
@@ -1716,6 +1723,35 @@ namespace SceneryEditorX
 		vkCmdCopyBuffer(m_CmdBuffer, src->Get(), dst->Get(), 1, &region);
 	}
 
+	bool CommandList::EnsureDescriptorLayoutFromPipelineState(PipelineState &pso)
+	{
+		if (m_DescriptorLayout_Current)
+			return true;
+
+		if (!pso.IsGraphics() && !pso.IsCompute())
+			return false;
+
+		BindlessManager bindlessManager;
+		std::array<Descriptor, 256> descriptors = {};
+		size_t descriptorCount = 0;
+		bindlessManager.GetDescriptorsFromPipelineState(pso, descriptors.data(), descriptorCount);
+
+		const char* descriptorSetName = pso.name ? pso.name : "CommandListDescriptorSet";
+		m_DescriptorLayout_Owned = CreateScope<DescriptorSet>(descriptors.data(), descriptorCount, descriptorSetName);
+		m_DescriptorLayout_Current = m_DescriptorLayout_Owned.get();
+
+		if (!m_DescriptorLayout_Current || m_DescriptorLayout_Current->GetLayout() == VK_NULL_HANDLE)
+		{
+			SEDX_CORE_ERROR_TAG("CommandList", "Failed to create descriptor layout from reflected PSO descriptors for '{}'", descriptorSetName);
+			m_DescriptorLayout_Current = nullptr;
+			m_DescriptorLayout_Owned.reset();
+			return false;
+		}
+
+		m_NeedsDynamicBind = true;
+		return true;
+	}
+
 	void CommandList::PreDraw()
 	{
 		FlushBarriers();
@@ -1728,6 +1764,7 @@ namespace SceneryEditorX
 		if (m_NeedsDynamicBind)
 		{
 			DescriptorSet::SetDynamicDescriptor(m_pso, m_CmdBuffer, m_Pipeline.GetLayout(), m_DescriptorLayout_Current);
+			m_DescriptorLayout_Current->SetBindless(m_pso, m_CmdBuffer, m_Pipeline.GetLayout());
 			m_NeedsDynamicBind = false;
 		}
 	}
@@ -1906,6 +1943,9 @@ namespace SceneryEditorX
 	{
 		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to set pipeline state");
 
+		EnsureDescriptorLayoutFromPipelineState(pso);
+		m_ComputePushConstantsSet = false;
+
 		if (pso.shaders[static_cast<uint32_t>(StageType::Compute)])
 		{
 			// Compute pipelines must not be bound inside an active graphics render pass.
@@ -2066,22 +2106,29 @@ namespace SceneryEditorX
 
 		// Derive the stage flags from the compiled pipeline's push-constant reflection;
 		// default to VS|FS if reflection data is absent (covers the grid shader case).
+		const uint32_t defaultGraphicsStages = static_cast<uint32_t>(VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+		const uint32_t defaultComputeStages = static_cast<uint32_t>(VK_SHADER_STAGE_COMPUTE_BIT);
 		const uint32_t stages = m_Pipeline.GetPushConstantStages() != 0
 			? m_Pipeline.GetPushConstantStages()
-			: static_cast<uint32_t>(VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT);
+			: (m_pso.IsCompute() ? defaultComputeStages : defaultGraphicsStages);
 
-		vkCmdPushConstants(
-			m_CmdBuffer,
-			layout,
-			stages,
-			0,
-			static_cast<uint32_t>(sizeof(PushConstantBuffer_Pass)),
-			&data);
+		vkCmdPushConstants(m_CmdBuffer, layout, stages, 0, static_cast<uint32_t>(sizeof(PushConstantBuffer_Pass)), &data);
+
+		if (m_pso.IsCompute())
+		{
+			m_ComputePushConstantsSet = true;
+		}
 	}
 
 	void CommandList::SetBuffer(const uint32_t slot, Buffer *buffer) const 
 	{
 		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to bind a buffer");
+
+		if (!buffer)
+		{
+			SEDX_CORE_WARN_TAG("CommandList", "SetBuffer called with a null buffer for slot {}", slot);
+			return;
+		}
 
 		if (!m_DescriptorLayout_Current)
 		{

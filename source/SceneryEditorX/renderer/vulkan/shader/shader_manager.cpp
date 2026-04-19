@@ -30,8 +30,12 @@
  */
 #include "shader_manager.h"
 #include "shader_compiler.h"
+#include "SceneryEditorX/core/application/application.h"
+
 #include <algorithm>
 #include <array>
+#include <filesystem>
+#include <fstream>
 #include <utility>
 #include <SceneryEditorX/core/resource/resource_cache.h>
 #include <SceneryEditorX/renderer/renderer.h>
@@ -45,6 +49,141 @@
 namespace SceneryEditorX
 {
 
+#pragma region Shader Cache Static Functions
+	/**
+	 * @brief Checks whether CLI requested forced shader recompilation.
+	 * @return True when --recompile-shaders is present.
+	 */
+	static bool IsCliShaderRecompileRequested()
+	{
+		const auto& context = Application::Get().GetPlatformContext();
+		if (!context)
+			return false;
+	
+		const auto& args = context->GetCommandLineArgs();
+		return std::ranges::any_of(args, [](const std::string& arg)
+		{
+			return arg == "--recompile-shaders";
+		});
+	}
+
+	/**
+	 * @brief Resolves the absolute path of a shader source file.
+	 * @param filepath The input file path, which can be absolute or relative.
+	 * @return The resolved absolute path to the shader source file. 
+	 * @note If the file cannot be found, returns the first candidate path (cwd + input) for error reporting purposes.
+	 */
+	static std::filesystem::path ResolveSourcePath(const std::string& filepath)
+	{
+		const std::filesystem::path inputPath(filepath);
+		if (inputPath.is_absolute())
+			return inputPath;
+	
+		const std::filesystem::path cwd = std::filesystem::current_path();
+		const std::array<std::filesystem::path, 6> candidates = {
+			cwd / inputPath,
+			cwd / "resources" / "shaders" / inputPath,
+			cwd / ".." / inputPath,
+			cwd / ".." / "resources" / "shaders" / inputPath,
+			cwd / ".." / ".." / inputPath,
+			cwd / ".." / ".." / "resources" / "shaders" / inputPath
+		};
+	
+		for (const auto& candidate : candidates)
+		{
+			if (std::filesystem::exists(candidate))
+				return std::filesystem::weakly_canonical(candidate);
+		}
+	
+		return candidates[0];
+	}
+
+	/**
+	 * @brief Returns file suffix for one shader stage.
+	 * @param stage The shader stage.
+	 * @return The file suffix for the shader stage.
+	 */
+	static std::string StageSuffix(const StageType stage)
+	{
+		switch (stage)
+		{
+			case StageType::Vertex:                  return "vert";
+			case StageType::Fragment:                return "frag";
+			case StageType::Compute:                 return "comp";
+			case StageType::Geometry:                return "geom";
+			case StageType::TessellationControl:     return "tesc";
+			case StageType::TessellationEvaluation:  return "tese";
+			default:                                 return "unknown";
+		}
+	}
+	
+	/**
+	 * @brief Returns cache path for one stage/source pair.
+	 * @param stage The shader stage (e.g. vertex, fragment).
+	 * @param sourcePath The absolute path to the shader source file.
+	 * @return The cache path for the shader stage.
+	 */
+	static std::filesystem::path GetCachePath(const StageType stage, const std::filesystem::path& sourcePath)
+	{
+		const auto& context = Application::Get().GetPlatformContext();
+		const std::filesystem::path appDir = context->GetTempDirectory();
+		const std::filesystem::path cacheRoot = appDir / "SceneryEditorX" / "shader-cache";
+		const std::filesystem::path fileStem = sourcePath.stem();
+		const std::string cacheName = fileStem.string() + "." + StageSuffix(stage) + ".spv";
+		return cacheRoot / cacheName;
+	}
+	
+	/**
+	 * @brief Returns true when a cached SPIR-V blob exists and is still up-to-date for one stage.
+	 * @param stageDescriptor The descriptor for the shader stage to check.
+	 * @return True if the cache is ready to be loaded, false if it needs to be compiled or is invalid.
+	 */
+	static bool IsShaderStageCacheReady(const ShaderManager::ShaderStageDescriptor& stageDescriptor)
+	{
+		if (stageDescriptor.stage == StageType::MaxEnum || stageDescriptor.filepath.empty())
+			return false;
+	
+		const std::filesystem::path sourcePath = ResolveSourcePath(stageDescriptor.filepath);
+		if (!std::filesystem::exists(sourcePath))
+			return false;
+	
+		const std::filesystem::path cachePath = GetCachePath(stageDescriptor.stage, sourcePath);
+		if (!std::filesystem::exists(cachePath))
+			return false;
+	
+		const auto sourceWrite = std::filesystem::last_write_time(sourcePath);
+		const auto cacheWrite = std::filesystem::last_write_time(cachePath);
+		if (sourceWrite > cacheWrite)
+			return false;
+	
+		std::ifstream cacheInput(cachePath, std::ios::binary | std::ios::ate);
+		if (!cacheInput.is_open())
+			return false;
+	
+		const std::streamsize size = cacheInput.tellg();
+		return size > 0 && (size % static_cast<std::streamsize>(sizeof(uint32_t))) == 0;
+	}
+	
+	/**
+	 * @brief Returns true only when all registered shader stages already have valid cache files.
+	 * @param registrations The map of shader registrations to check.
+	 * @return True if all registered shader stages have valid cache files, false otherwise.
+	 */
+	static bool AreAllRegisteredShaderStageCachesReady(const std::unordered_map<Renderer_Shader, ShaderManager::ShaderRegistration>& registrations)
+	{
+		for (const auto &registration : registrations | std::views::values)
+		{
+			for (const ShaderManager::ShaderStageDescriptor& stageDescriptor : registration.stages)
+			{
+				if (!IsShaderStageCacheReady(stageDescriptor))
+					return false;
+			}
+		}
+	
+		return true;
+	}
+
+#pragma endregion
 #pragma region ShaderManager Static Members
 
 	static Ref<ShaderManager> s_Instance = nullptr;
@@ -174,9 +313,19 @@ namespace SceneryEditorX
 	void ShaderManager::CreateShaders()
 	{
 		SEDX_CORE_INFO_TAG("ShaderManager", "Creating startup shader registrations");
-		CreateSlangModules();
-
 		const auto& registrations = GetShaderRegistrationMap();
+		const bool forceRecompileFromCli = IsCliShaderRecompileRequested();
+		const bool shaderCachesReady = !forceRecompileFromCli && AreAllRegisteredShaderStageCachesReady(registrations);
+
+		if (!shaderCachesReady)
+		{
+			CreateSlangModules();
+		}
+		else
+		{
+			SEDX_CORE_INFO_TAG("ShaderManager", "All startup shader stage caches are valid. Skipping Slang module compilation.");
+		}
+
 		for (const auto& [shaderType, registration] : registrations)
 		{
 			SEDX_CORE_ASSERT(registration.id == shaderType, "Shader registration key/id mismatch");
@@ -818,9 +967,9 @@ namespace SceneryEditorX
 		return ShaderCompiler::CompileShader(stage, filepath, optimize);
 	}
 
-	std::vector<ShaderInput> ShaderManager::ReflectInputs(const StageType stage, const std::vector<uint32_t> &spirv)
+	std::vector<ShaderInput> ShaderManager::ReflectInputs(const StageType stage, const std::string& filepath)
 	{
-		return ShaderCompiler::Reflect(stage, spirv);
+		return ShaderCompiler::Reflect(stage, filepath);
 	}
 
 } // namespace SceneryEditorX

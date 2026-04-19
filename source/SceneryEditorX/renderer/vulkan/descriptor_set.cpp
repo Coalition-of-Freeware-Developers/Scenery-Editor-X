@@ -65,11 +65,11 @@ namespace SceneryEditorX
 	{
 		switch (type)
 		{
-			case StageType::Vertex:                  return BIT(0);
-			case StageType::TessellationControl:     return BIT(1);
-			case StageType::TessellationEvaluation:  return BIT(2);
-			case StageType::Fragment:                return BIT(3);
-			case StageType::Compute:                 return BIT(4);
+			case StageType::Vertex:                  return VK_SHADER_STAGE_VERTEX_BIT;
+			case StageType::TessellationControl:     return VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+			case StageType::TessellationEvaluation:  return VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
+			case StageType::Fragment:                return VK_SHADER_STAGE_FRAGMENT_BIT;
+			case StageType::Compute:                 return VK_SHADER_STAGE_COMPUTE_BIT;
 			default:                             return 0;
 		}
 	}
@@ -140,7 +140,26 @@ namespace SceneryEditorX
 		{
 			m_Descriptors.push_back(descriptors[i]);
 			m_Bindings.emplace_back();
-			m_SlotToIndex[descriptors[i].GetSlot()] = i;
+			const uint32_t slot = descriptors[i].GetSlot();
+			if (!m_SlotToIndex.contains(slot))
+			{
+				m_SlotToIndex[slot] = i;
+			}
+			else
+			{
+				const size_t existingIndex = m_SlotToIndex[slot];
+				const DescriptorType existingType = m_Descriptors[existingIndex].GetType();
+				const DescriptorType newType = descriptors[i].GetType();
+				const bool preferNew =
+					(newType == DescriptorType::TextureStorage && existingType != DescriptorType::TextureStorage) ||
+					(newType == DescriptorType::StructuredBuffer && existingType == DescriptorType::Image) ||
+					(newType == DescriptorType::ConstantBuffer && existingType == DescriptorType::Image);
+
+				if (preferNew)
+				{
+					m_SlotToIndex[slot] = i;
+				}
+			}
 		}
 		
 		for (const Descriptor& descriptor : m_Descriptors)
@@ -150,6 +169,7 @@ namespace SceneryEditorX
 		}
 	
 	    m_Device = RenderContext::Get()->GetDevice();
+		Create();
 	}
 	
 	// -----------------------------------------------------------------------
@@ -166,7 +186,11 @@ namespace SceneryEditorX
 		{
 			m_Descriptors.push_back(combined[i].GetDescriptor());
 			m_Bindings.push_back(combined[i].GetBinding());
-			m_SlotToIndex[combined[i].GetDescriptor().GetSlot()] = i;
+			const uint32_t slot = combined[i].GetDescriptor().GetSlot();
+			if (!m_SlotToIndex.contains(slot))
+			{
+				m_SlotToIndex[slot] = i;
+			}
 		}
 		
 		for (const Descriptor& d : m_Descriptors)

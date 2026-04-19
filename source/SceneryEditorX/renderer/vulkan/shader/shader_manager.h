@@ -236,12 +236,12 @@ namespace SceneryEditorX
 		static std::vector<uint32_t> CompileToSpirv(StageType stage, const std::string& filepath, bool optimize = false);
 
 		/**
-		 * @brief Reflect shader inputs from SPIR-V (delegates to ShaderCompiler)
+		 * @brief Reflect shader inputs directly from Slang source (delegates to ShaderCompiler)
 		 * @param stage The shader stage for which to reflect inputs.
-		 * @param spirv The SPIR-V bytecode from which to reflect shader inputs.
+		 * @param filepath The Slang shader source filepath.
 		 * @return A vector of ShaderInput structures representing the reflected shader inputs. 
 		 */
-		static std::vector<ShaderInput> ReflectInputs(StageType stage, const std::vector<uint32_t>& spirv);
+		static std::vector<ShaderInput> ReflectInputs(StageType stage, const std::string& filepath);
 
 		/**
 		 * @brief Get all shaders managed by the ShaderManager.

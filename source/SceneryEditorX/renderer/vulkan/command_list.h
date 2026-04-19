@@ -521,7 +521,27 @@ namespace SceneryEditorX
 		[[nodiscard]] FrameSync* GetTimelineSemaphore() const { return m_RenderingCompleteTimeline.Get(); }
 
 	private:
+		/**
+		 * @brief Ensure a descriptor layout exists for the provided PSO.
+		 *
+		 * Builds a DescriptorSet layout from reflected shader descriptors via
+		 * BindlessManager::GetDescriptorsFromPipelineState when none is currently bound.
+		 *
+		 * @param pso Pipeline state to reflect descriptors from.
+		 * @return True if a descriptor layout is available after the call.
+		 */
+		bool EnsureDescriptorLayoutFromPipelineState(PipelineState& pso);
+
+		/**
+		 * @brief Prepare the command list for drawing by flushing barriers and ensuring a render pass is active if needed.
+		 * This is called at the beginning of Draw/DrawIndexed/Dispatch to ensure the command list is in the correct state for rendering.
+		 */
 		void PreDraw();
+
+		/**
+		 * @brief Begin a render pass if one is not already active.
+		 * This is called by PreDraw() to ensure a render pass is active before drawing.
+		 */
 		void BeginRenderPass();
 
 		// Per-submission sync objects:
@@ -545,6 +565,7 @@ namespace SceneryEditorX
 		std::atomic<CommandState> m_State = CommandState::Idle;
 		VkCullModeFlags m_CullMode = VK_CULL_MODE_BACK_BIT;
 		bool m_RenderPassActive = false;
+		Scope<DescriptorSet> m_DescriptorLayout_Owned;
 		DescriptorSet* m_DescriptorLayout_Current = nullptr;
 
 		Pipeline m_Pipeline;
@@ -552,6 +573,7 @@ namespace SceneryEditorX
 		std::vector<PendingBarrierInfo> m_PendingBarriers;
 		std::array<bool, MAX_RENDER_TARGET_COUNT> m_Load_Color_RenderTargets = { false };
 		bool m_Load_Depth_RenderTarget = false;
+		bool m_ComputePushConstantsSet = false;
 		mutable bool m_NeedsDynamicBind = false;
 
 	};  

@@ -31,6 +31,7 @@
 #include "settings.h"
 #include "steam_parser.h"
 #include <filesystem>
+#include <functional>
 #include <libconfig.h++>
 #include <SceneryEditorX/core/application/application_data.h>
 
@@ -149,7 +150,7 @@ namespace SceneryEditorX
 			// Load X-Plane stats
 			if (cfg.exists("x_plane"))
 			{
-				const Setting &xp = cfg.lookup("x_plane");
+				const Setting &xp = cfg.getRoot()["x_plane"];
 
 				if (xp.exists("version"))
 				{
@@ -181,7 +182,7 @@ namespace SceneryEditorX
 			if (cfg.exists("application"))
 			{
 				SEDX_CORE_TRACE_TAG("Settings", "Loading SceneryEditorX settings");
-				if (const Setting &app = cfg.lookup("application"); app.exists("no_titlebar"))
+				if (const Setting &app = cfg.getRoot()["application"]; app.exists("no_titlebar"))
 					app.lookupValue("no_titlebar", appStats.noTitlebar);
 			}
 
@@ -239,47 +240,35 @@ namespace SceneryEditorX
 	{
 		settings[key] = value;
 
-		// Try to update the config directly
-		try
+		// Try to update the config directly without using exception-control-flow
+		if (const size_t pos = key.find_last_of('.'); pos != std::string::npos)
 		{
-			// Split the key by dots to navigate the config hierarchy
-			std::string section = key;
-			std::string name = key;
-			if (const size_t pos = key.find_last_of('.'); pos != std::string::npos)
+			const std::string section = key.substr(0, pos);
+			const std::string name = key.substr(pos + 1);
+
+			if (!cfg.exists(section))
 			{
-				section = key.substr(0, pos);
-				name = key.substr(pos + 1);
-
-				// Ensure the section exists
-				try
-				{
-					Setting &setting = cfg.lookup(section);
-					if (setting.exists(name))
-					{
-						setting.remove(name);
-					}
-
-					setting.add(name, Setting::TypeString) = value;
-				}
-				catch (const SettingNotFoundException &)
-				{
-					CreateSettingPath(key, value);
-				}
+				CreateSettingPath(key, value);
+				return;
 			}
-			else
+
+			Setting &setting = cfg.getRoot()[section];
+			if (setting.exists(name))
 			{
-				/// It's a root setting
-				if (cfg.getRoot().exists(key))
-				{
-					cfg.getRoot().remove(key);
-				}
-
-				cfg.getRoot().add(key, Setting::TypeString) = value;
+				setting.remove(name);
 			}
+
+			setting.add(name, Setting::TypeString) = value;
 		}
-		catch (...)
+		else
 		{
-			// TODO: If direct update fails, we'll rely on UpdateConfigFromData() during WriteSettings()
+			// It's a root setting
+			if (cfg.getRoot().exists(key))
+			{
+				cfg.getRoot().remove(key);
+			}
+
+			cfg.getRoot().add(key, Setting::TypeString) = value;
 		}
 	}
 
@@ -300,36 +289,27 @@ namespace SceneryEditorX
 	{
 		settings.erase(key);
 
-		// Try to remove from the config directly.
-		try
+		// Try to remove from the config directly without throwing when the section is missing.
+		if (const size_t pos = key.find_last_of('.'); pos != std::string::npos)
 		{
-			// Split the key by dots to navigate the config hierarchy.
-			std::string section = key;
-			std::string name = key;
+			const std::string section = key.substr(0, pos);
+			const std::string name = key.substr(pos + 1);
 
-			if (const size_t pos = key.find_last_of('.'); pos != std::string::npos)
+			if (cfg.exists(section))
 			{
-				section = key.substr(0, pos);
-				name = key.substr(pos + 1);
-
-				// Try to look up the setting
-				if (Setting &setting = cfg.lookup(section); setting.exists(name))
+				if (Setting &setting = cfg.getRoot()[section]; setting.exists(name))
 				{
 					setting.remove(name);
 				}
 			}
-			else
-			{
-				// It's a root setting
-				if (cfg.getRoot().exists(key))
-				{
-					cfg.getRoot().remove(key);
-				}
-			}
 		}
-		catch (...)
+		else
 		{
-			// TODO: If direct removal fails, we'll rely on UpdateConfigFromData() during WriteSettings()
+			// It's a root setting
+			if (cfg.getRoot().exists(key))
+			{
+				cfg.getRoot().remove(key);
+			}
 		}
 	}
 
@@ -342,17 +322,17 @@ namespace SceneryEditorX
 				const std::string section = path.substr(0, pos);
 				const std::string name = path.substr(pos + 1);
 
-				try
-				{
-					Setting &setting = cfg.lookup(section);
-					if (setting.exists(name))
-						setting.remove(name);
-					setting.add(name, Setting::TypeInt) = value;
-				}
-				catch (const SettingNotFoundException &)
+				if (!cfg.exists(section))
 				{
 					CreateSettingPath(path, value);
+					settings[path] = ToString(value);
+					return;
 				}
+
+				Setting &setting = cfg.getRoot()[section];
+				if (setting.exists(name))
+					setting.remove(name);
+				setting.add(name, Setting::TypeInt) = value;
 			}
 			else
 			{
@@ -380,17 +360,17 @@ namespace SceneryEditorX
 				const std::string section = path.substr(0, pos);
 				const std::string name = path.substr(pos + 1);
 
-				try
-				{
-					Setting &setting = cfg.lookup(section);
-					if (setting.exists(name))
-						setting.remove(name);
-					setting.add(name, Setting::TypeFloat) = value;
-				}
-				catch (const SettingNotFoundException &)
+				if (!cfg.exists(section))
 				{
 					CreateSettingPath(path, value);
+					settings[path] = ToString(value);
+					return;
 				}
+
+				Setting &setting = cfg.getRoot()[section];
+				if (setting.exists(name))
+					setting.remove(name);
+				setting.add(name, Setting::TypeFloat) = value;
 			}
 			else
 			{
@@ -417,18 +397,18 @@ namespace SceneryEditorX
 				const std::string section = path.substr(0, pos);
 				const std::string name = path.substr(pos + 1);
 
-				try
-				{
-					Setting &setting = cfg.lookup(section);
-					if (setting.exists(name))
-						setting.remove(name);
-
-					setting.add(name, Setting::TypeBoolean) = value;
-				}
-				catch (const SettingNotFoundException &)
+				if (!cfg.exists(section))
 				{
 					CreateSettingPath(path, value);
+					settings[path] = value ? "true" : "false";
+					return;
 				}
+
+				Setting &setting = cfg.getRoot()[section];
+				if (setting.exists(name))
+					setting.remove(name);
+
+				setting.add(name, Setting::TypeBoolean) = value;
 			}
 			else
 			{
@@ -456,18 +436,18 @@ namespace SceneryEditorX
 				const std::string section = path.substr(0, pos);
 				const std::string name = path.substr(pos + 1);
 
-				try
-				{
-					Setting &setting = cfg.lookup(section);
-					if (setting.exists(name))
-						setting.remove(name);
-
-					setting.add(name, Setting::TypeString) = value;
-				}
-				catch (const SettingNotFoundException &)
+				if (!cfg.exists(section))
 				{
 					CreateSettingPath(path, value);
+					settings[path] = value;
+					return;
 				}
+
+				Setting &setting = cfg.getRoot()[section];
+				if (setting.exists(name))
+					setting.remove(name);
+
+				setting.add(name, Setting::TypeString) = value;
 			}
 			else
 			{
@@ -488,57 +468,29 @@ namespace SceneryEditorX
 
 	bool Settings::GetBoolOption(const std::string &path, const bool defaultValue)
 	{
-		try
-		{
-			if (bool value; cfg.lookupValue(path, value))
-				return value;
-		}
-		catch (...)
-		{
-			// TODO: Better handling instead of just a fallthrough to default
-		}
+		if (bool value; cfg.lookupValue(path, value))
+			return value;
 		return defaultValue;
 	}
 
 	int Settings::GetIntOption(const std::string &path, const int defaultValue)
 	{
-		try
-		{
-			if (int value; cfg.lookupValue(path, value))
-				return value;
-		}
-		catch (...)
-		{
-			// TODO: Better handling instead of just a fallthrough to default
-		}
+		if (int value; cfg.lookupValue(path, value))
+			return value;
 		return defaultValue;
 	}
 
 	double Settings::GetFloatOption(const std::string &path, const double defaultValue)
 	{
-		try
-		{
-			if (double value; cfg.lookupValue(path, value))
-				return value;
-		}
-		catch (...)
-		{
-			// TODO: Better handling instead of just a fallthrough to default
-		}
+		if (double value; cfg.lookupValue(path, value))
+			return value;
 		return defaultValue;
 	}
 
 	std::string Settings::GetStringOption(const std::string &path, const std::string &defaultValue)
 	{
-		try
-		{
-			if (std::string value; cfg.lookupValue(path, value))
-				return value;
-		}
-		catch (...)
-		{
-			// TODO: Better handing instead of just a fallthrough to default
-		}
+		if (std::string value; cfg.lookupValue(path, value))
+			return value;
 		return defaultValue;
 	}
 
@@ -648,7 +600,7 @@ namespace SceneryEditorX
 				root.add("x_plane", Setting::TypeGroup);
 			}
 
-			Setting &xp = cfg.lookup("x_plane");
+			Setting &xp = cfg.getRoot()["x_plane"];
 
 			if (xp.exists("path"))
 				xp.remove("path");
@@ -778,9 +730,9 @@ namespace SceneryEditorX
 	void Settings::UpdateConfigFromData()
 	{
 		// Update X-Plane data
-		try
+		if (cfg.exists("x_plane"))
 		{
-			Setting &xp = cfg.lookup("x_plane");
+			Setting &xp = cfg.getRoot()["x_plane"];
 
 			if (xp.exists("version"))
 				xp.remove("version");
@@ -807,16 +759,16 @@ namespace SceneryEditorX
 
 			xp.add("is_steam", Setting::TypeBoolean) = xPlaneStats.isSteam;
 		}
-		catch (const SettingNotFoundException &e)
+		else
 		{
-			SEDX_CORE_ERROR_TAG("Settings", "X-Plane section not found: {}", e.what());
+			SEDX_CORE_WARN_TAG("Settings", "X-Plane section missing while updating settings; ensuring required sections");
 			EnsureRequiredSections();
 		}
 
 		// Update application data
-		try
+		if (cfg.exists("application"))
 		{
-			Setting &app = cfg.lookup("application");
+			Setting &app = cfg.getRoot()["application"];
 
 			if (app.exists("no_titlebar"))
 				app.remove("no_titlebar");
@@ -827,9 +779,9 @@ namespace SceneryEditorX
 				app.remove("version");
 			app.add("version", Setting::TypeString) = AppData::versionString;
 		}
-		catch (const SettingNotFoundException &e)
+		else
 		{
-			SEDX_CORE_WARN_TAG("Settings", "Application section not found: {}", e.what());
+			SEDX_CORE_WARN_TAG("Settings", "Application section missing while updating settings; ensuring required sections");
 			EnsureRequiredSections();
 		}
 	}
@@ -889,13 +841,20 @@ namespace SceneryEditorX
 
 	void Settings::EnsureRequiredSections()
 	{
+		auto ensureSection = [&](const char* sectionName) -> Setting&
+		{
+			if (!cfg.exists(sectionName))
+			{
+				cfg.getRoot().add(sectionName, Setting::TypeGroup);
+			}
+
+			return cfg.getRoot()[sectionName];
+		};
+
 		// Ensure application section exists
 		if (!cfg.exists("application"))
 		{
-			Setting &root = cfg.getRoot();
-			root.add("application", Setting::TypeGroup);
-
-			Setting &app = cfg.lookup("application");
+			Setting &app = ensureSection("application");
 			app.add("version", Setting::TypeString) = AppData::versionString;
 			app.add("no_titlebar", Setting::TypeBoolean) = appStats.noTitlebar;
 		}
@@ -903,9 +862,7 @@ namespace SceneryEditorX
 		// Ensure x_plane section exists
 		if (!cfg.exists("x_plane"))
 		{
-			Setting &root = cfg.getRoot();
-			root.add("x_plane", Setting::TypeGroup);
-			Setting &xp = cfg.lookup("x_plane");
+			Setting &xp = ensureSection("x_plane");
 
 			xp.add("version", Setting::TypeString) = xPlaneStats.xPlaneVersion;
 			xp.add("path", Setting::TypeString) = xPlaneStats.xPlanePath;
@@ -917,8 +874,7 @@ namespace SceneryEditorX
 		// Ensure ui section exists
 		if (!cfg.exists("ui"))
 		{
-			Setting &root = cfg.getRoot();
-			root.add("ui", Setting::TypeGroup);
+			ensureSection("ui");
 
 			// Only add default values if not already set
 			if (!HasOption("ui.theme"))
@@ -938,8 +894,7 @@ namespace SceneryEditorX
 		// Ensure project section exists
 		if (!cfg.exists("project"))
 		{
-			Setting &root = cfg.getRoot();
-			root.add("project", Setting::TypeGroup);
+			ensureSection("project");
 
 			// Only add default values if not already set
 			if (!HasOption("project.auto_save"))
@@ -1005,11 +960,11 @@ namespace SceneryEditorX
 
 			currentPath += parts[i];
 
-			try
+			if (current->exists(parts[i]))
 			{
-				current = &(current->lookup(parts[i]));
+				current = &((*current)[parts[i]]);
 			}
-			catch (const SettingNotFoundException &)
+			else
 			{
 				// Create the group if it doesn't exist
 				current = &(current->add(parts[i], Setting::TypeGroup));

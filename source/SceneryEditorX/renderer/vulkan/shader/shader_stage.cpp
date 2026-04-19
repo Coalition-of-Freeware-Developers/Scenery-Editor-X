@@ -56,16 +56,12 @@ namespace SceneryEditorX
 			return "main";
 		}
 
-		switch (stage)
-		{
-			case StageType::Vertex:					return "main_vs";
-			case StageType::Fragment:				return "main_frag";
-			case StageType::Compute:				return "main_comp";
-			case StageType::Geometry:				return "main_geo";
-			case StageType::TessellationControl:	return "main_tesc";
-			case StageType::TessellationEvaluation:	return "main_tese";
-			default:								return "main";
-		}
+		// Slang modules compiled through module->getTargetCode() currently emit SPIR-V
+		// entry points as "main" for all stages in this code path. Vulkan pipeline
+		// creation requires pName to match OpEntryPoint exactly, so keep the runtime
+		// stage entry-point name aligned with the emitted SPIR-V symbol.
+		(void)stage;
+		return "main";
 	}
 
 	/**
@@ -130,11 +126,28 @@ namespace SceneryEditorX
 	static std::filesystem::path GetCachePath(const StageType stage, const std::filesystem::path& sourcePath)
 	{
 		const auto &context = Application::Get().GetPlatformContext();
-		const auto &appDir = context->GetTempDirectory();
-		std::filesystem::path cacheRoot = appDir + "SceneryEditorX\\shader-cache";
+		const std::filesystem::path appDir = context->GetTempDirectory();
+		const std::filesystem::path cacheRoot = appDir / "SceneryEditorX" / "shader-cache";
 		const std::filesystem::path fileStem = sourcePath.stem();
 		const std::string cacheName = fileStem.string() + "." + StageSuffix(stage) + ".spv";
 		return cacheRoot / cacheName;
+	}
+
+	/**
+	 * @brief Checks whether CLI requested forced shader recompilation.
+	 * @return True when --recompile-shaders is present.
+	 */
+	static bool IsCliShaderRecompileRequested()
+	{
+		const auto &context = Application::Get().GetPlatformContext();
+		if (!context)
+			return false;
+
+		const auto &args = context->GetCommandLineArgs();
+		return std::ranges::any_of(args, [](const std::string &arg)
+		{
+			return arg == "--recompile-shaders";
+		});
 	}
 
 	/**
@@ -203,11 +216,11 @@ namespace SceneryEditorX
 	
 	void ShaderStage::Recompile()
 	{
-		const bool rebuilt = BuildOrRebuildModule();
+		const bool rebuilt = BuildOrRebuildModule(false, true);
 		SEDX_CORE_ASSERT(rebuilt, "Failed to recompile shader stage '{}'", m_Filepath);
 	}
 
-	bool ShaderStage::BuildOrRebuildModule(bool optimize)
+	bool ShaderStage::BuildOrRebuildModule(bool optimize, bool forceCompile)
 	{
 		const Ref<RenderContext> context = RenderContext::Get();
 		if (!context.IsValid())
@@ -227,9 +240,15 @@ namespace SceneryEditorX
 		const std::filesystem::path cachePath = GetCachePath(m_Stage, sourcePath);
 
 		std::vector<uint32_t> data;
-		bool shouldCompile = true;
+		const bool cliForceRecompile = IsCliShaderRecompileRequested();
+		bool shouldCompile = forceCompile || cliForceRecompile;
 
-		if (std::filesystem::exists(cachePath) && std::filesystem::exists(sourcePath))
+		if (cliForceRecompile)
+		{
+			SEDX_CORE_TRACE_TAG("Shader", "CLI flag '--recompile-shaders' enabled. Forcing stage '{}' compile for '{}'", StageSuffix(m_Stage), sourcePath.string());
+		}
+
+		if (!shouldCompile && std::filesystem::exists(cachePath) && std::filesystem::exists(sourcePath))
 		{
 			const auto sourceWrite = std::filesystem::last_write_time(sourcePath);
 			const auto cacheWrite = std::filesystem::last_write_time(cachePath);
@@ -240,6 +259,10 @@ namespace SceneryEditorX
 		{
 			data = ReadCachedShaderData(cachePath);
 			shouldCompile = data.empty();
+			if (!shouldCompile)
+			{
+				SEDX_CORE_TRACE_TAG("Shader", "Loaded cached stage '{}' from '{}'", StageSuffix(m_Stage), cachePath.string());
+			}
 		}
 
 		if (shouldCompile)
@@ -258,7 +281,7 @@ namespace SceneryEditorX
 			return false;
 		}
 
-		m_Input = ShaderCompiler::Reflect(m_Stage, data);
+		m_Input = ShaderCompiler::Reflect(m_Stage, sourcePath.string());
 
 		VkShaderModuleCreateInfo createInfo{};
 		createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;

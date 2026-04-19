@@ -538,7 +538,7 @@ namespace SceneryEditorX
 			    cfg.getRoot().add("paths", Setting::TypeGroup);
 			}
 
-			Setting &paths = cfg.lookup("paths");
+			Setting &paths = cfg.getRoot()["paths"];
 
 			// Remove existing setting if it exists
 			if (paths.exists("xplane12"))

@@ -35,8 +35,45 @@
 
 static std::filesystem::path s_ProjectSolutionPath = "";
 static std::vector<std::string> s_ClArguments;
+static std::string s_TempDirectory;
 static uint32_t s_ClArg_Flags = 0;
+static bool s_CacheClearedByCli = false;
 static auto operator<(const ImVec2 &lhs, const ImVec2 &rhs) { return lhs.x < rhs.x && lhs.y < rhs.y; }
+
+/**
+ * @brief Clears temporary cache files under the platform temp directory.
+ */
+static void ClearTempCache()
+{
+	if (s_CacheClearedByCli)
+		return;
+
+	if (s_TempDirectory.empty())
+	{
+		EDITOR_WARN_TAG("Editor", "Cannot clear cache: temp directory is empty");
+		return;
+	}
+
+	const std::filesystem::path tempRoot = std::filesystem::path(s_TempDirectory) / "SceneryEditorX";
+	std::error_code ec;
+
+	if (!std::filesystem::exists(tempRoot, ec))
+	{
+		EDITOR_INFO_TAG("Editor", "--clear-cache requested, but no temp cache folder found at '{}'", tempRoot.string());
+		s_CacheClearedByCli = true;
+		return;
+	}
+
+	const uintmax_t removed = std::filesystem::remove_all(tempRoot, ec);
+	if (ec)
+	{
+		EDITOR_ERROR_TAG("Editor", "Failed to clear temp cache '{}' ({}): {}", tempRoot.string(), ec.value(), ec.message());
+		return;
+	}
+
+	EDITOR_INFO_TAG("Editor", "Cleared temp cache folder '{}' (removed {} entries)", tempRoot.string(), removed);
+	s_CacheClearedByCli = true;
+}
 
 /**
  * @brief Check if a specific command line argument is present.
@@ -91,6 +128,17 @@ static void ProcessClArgs()
 	// Iterate and parse key=value style args
 	for (const auto &arg : s_ClArguments)
 	{
+		if (arg == "--clear-cache")
+		{
+			EDITOR_INFO_TAG("Editor", "Clearing temporary cache due to CLI argument: {}", arg);
+			ClearTempCache();
+		}
+
+		if (arg == "--recompile-shaders")
+		{
+			EDITOR_INFO_TAG("Editor", "Shader cache bypass requested via CLI argument: {}", arg);
+		}
+
 		// --headless or -no-ui : run without showing UI (example usage, implement the mode as needed)
 		if (arg == "--headless" || arg == "-no-ui")
 		{
@@ -141,6 +189,7 @@ public:
 	: Application(context), m_UserPreferences(userPreferences)
 	{
 		s_ClArguments = context.GetCommandLineArgs();
+		s_TempDirectory = context.GetTempDirectory();
 		ProcessClArgs(); // Process command line arguments to set internal flags before initialization
 		EDITOR_INFO_TAG("Editor", "=== Initializing Editor with PlatformContext and UserPreferences ===");
 		EDITOR_INFO_TAG("Editor", "Working Directory: {}", context.GetWorkingDirectory());
@@ -198,6 +247,7 @@ private:
 SceneryEditorX::Application* SceneryEditorX::CreateApplication(const PlatformContext& context)
 {
 	s_ClArguments = context.GetCommandLineArgs();
+	s_TempDirectory = context.GetTempDirectory();
 	ProcessClArgs(); // Process command line arguments to set internal flags before initialization
 
 	// Return a new instance of the editor application using PlatformContext

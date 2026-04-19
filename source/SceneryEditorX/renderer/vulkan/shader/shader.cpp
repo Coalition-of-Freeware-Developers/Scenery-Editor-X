@@ -32,7 +32,10 @@
 #include "shader_compiler.h"
 #include "shader_manager.h"
 #include "shader_stage.h"
+#include <unordered_map>
+#include <SceneryEditorX/renderer/vulkan/bindless_manager.h>
 #include <SceneryEditorX/renderer/vulkan/descriptor.h>
+#include <SceneryEditorX/renderer/vulkan/push_constant_buffer.h>
 #include <SceneryEditorX/renderer/vulkan/render_context.h>
 #include <volk/volk.h>
 
@@ -237,45 +240,132 @@ namespace SceneryEditorX
 	std::vector<Descriptor> Shader::GetDescriptors()
 	{
 		std::vector<Descriptor> result;
-		
-		for (auto &inputs : m_Input | std::views::values)
+
+		// Dynamic descriptor set creation is for set 0 only. Bindless sets (space1+)
+		// are provided by BindlessManager and bound separately.
+		std::unordered_map<uint32_t, Descriptor> byBinding;
+
+		auto rankType = [](const DescriptorType type)
 		{
+			switch (type)
+			{
+				case DescriptorType::TextureStorage:    return 4u;
+				case DescriptorType::StructuredBuffer:  return 3u;
+				case DescriptorType::ConstantBuffer:    return 2u;
+				case DescriptorType::Image:             return 1u;
+				default:                                return 0u;
+			}
+		};
+
+		for (auto& [set, inputs] : m_Input)
+		{
+			if (set != 0)
+				continue;
+
 			for (const ShaderInput& input : inputs)
 			{
 				DescriptorType descType = DescriptorType::MaxEnum;
 				switch (input.type)
 				{
-				case ShaderInputType::UniformBuffer:
-				case ShaderInputType::UniformBufferSet: descType = DescriptorType::ConstantBuffer;
-					break;
-				case ShaderInputType::StorageBuffer:
-				case ShaderInputType::StorageBufferSet: descType = DescriptorType::StructuredBuffer;
-					break;
-				case ShaderInputType::CombinedImageSampler:
-				case ShaderInputType::Texture: descType = DescriptorType::Image;
-					break;
-				case ShaderInputType::StorageImage: descType = DescriptorType::TextureStorage; 
-					break;
-				default:	
-					break;
+					case ShaderInputType::UniformBuffer:
+					case ShaderInputType::UniformBufferSet:
+						descType = DescriptorType::ConstantBuffer;
+						break;
+					case ShaderInputType::StorageBuffer:
+					case ShaderInputType::StorageBufferSet:
+						descType = DescriptorType::StructuredBuffer;
+						break;
+					case ShaderInputType::CombinedImageSampler:
+					case ShaderInputType::Texture:
+						descType = DescriptorType::Image;
+						break;
+					case ShaderInputType::StorageImage:
+						descType = DescriptorType::TextureStorage;
+						break;
+					default:
+						break;
 				}
-				
+
 				if (descType == DescriptorType::MaxEnum)
 					continue;
-				
+
 				DescriptorSpec spec{};
 				spec.name        = input.debugName;
 				spec.type        = descType;
 				spec.layout      = Layout::ImageLayout::MaxEnum;
-				spec.slot        = input.binding;
+				switch (descType)
+				{
+					case DescriptorType::ConstantBuffer:
+						spec.slot = input.binding + SHADER_REGISTER_SHIFT_B;
+						break;
+					case DescriptorType::StructuredBuffer:
+					case DescriptorType::TextureStorage:
+						spec.slot = input.binding + SHADER_REGISTER_SHIFT_U;
+						break;
+					case DescriptorType::Image:
+						spec.slot = input.binding + SHADER_REGISTER_SHIFT_T;
+						break;
+					default:
+						spec.slot = input.binding;
+						break;
+				}
 				spec.stage       = static_cast<uint32_t>(GetStage(input.stage));
 				spec.structSize  = 0;
 				spec.asArray     = input.count > 1;
 				spec.arrayLength = input.count;
-				result.emplace_back(spec);
+
+				const auto it = byBinding.find(input.binding);
+				if (it == byBinding.end())
+				{
+					byBinding.emplace(input.binding, Descriptor(spec));
+					continue;
+				}
+
+				// Merge stage flags for shared binding and prefer write-capable descriptor
+				// types when reflection reports mixed candidates for the same binding.
+				const uint32_t mergedStage = it->second.GetStage() | spec.stage;
+				Descriptor merged = it->second;
+				if (rankType(spec.type) > rankType(merged.GetType()))
+				{
+					merged = Descriptor(spec);
+				}
+				merged.SetStage(mergedStage);
+				it->second = merged;
 			}
 		}
-		
+
+		result.reserve(byBinding.size());
+		for (auto& descriptor : byBinding | std::views::values)
+		{
+			result.push_back(descriptor);
+		}
+
+		// Push constants are declared in shared resources.slang for both graphics and
+		// compute paths. Add a synthetic descriptor so Pipeline can create a matching
+		// VkPushConstantRange even when reflection does not emit one explicitly.
+		uint32_t pushStages = 0;
+		for (const auto& [stageType, stageRef] : m_Stages)
+		{
+			if (!stageRef)
+				continue;
+
+			pushStages |= static_cast<uint32_t>(GetStage(stageType));
+		}
+
+		if (pushStages != 0)
+		{
+			DescriptorSpec pushSpec{};
+			pushSpec.name        = "buffer_pass";
+			pushSpec.type        = DescriptorType::PushConstantBuffer;
+			pushSpec.layout      = Layout::ImageLayout::MaxEnum;
+			pushSpec.slot        = 0;
+			pushSpec.stage       = pushStages;
+			pushSpec.structSize  = static_cast<uint32_t>(sizeof(PushConstantBuffer_Pass));
+			pushSpec.asArray     = false;
+			pushSpec.arrayLength = 1;
+			result.emplace_back(pushSpec);
+		}
+
 		return result;
 	}
 

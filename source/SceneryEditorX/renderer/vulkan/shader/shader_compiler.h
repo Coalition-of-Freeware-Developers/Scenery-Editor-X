@@ -76,12 +76,12 @@ namespace ShaderCompiler
 	bool CompileSlangModule(const std::string& filepath);
 
 	/**
-	 * @brief Reflects the input variables of a Vulkan shader.
+	 * @brief Reflects descriptor inputs directly from Slang reflection data.
 	 * @param stage The shader stage to reflect.
-	 * @param shaderBytecode The SPIR-V bytecode of the shader.
-	 * @return A vector of ShaderInput structures representing the input variables of the shader.
+	 * @param filepath The path to the Slang shader module source file.
+	 * @return A vector of ShaderInput structures representing descriptor bindings for the stage.
 	 */
-	std::vector<SceneryEditorX::ShaderInput> Reflect(SceneryEditorX::StageType stage, const std::vector<uint32_t>& shaderBytecode);
+	std::vector<SceneryEditorX::ShaderInput> Reflect(SceneryEditorX::StageType stage, const std::string& filepath);
 
 }
 

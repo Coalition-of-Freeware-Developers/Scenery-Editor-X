@@ -83,9 +83,10 @@ namespace SceneryEditorX
 		/**
 		 * @brief Builds or rebuilds the Vulkan shader module for this stage by compiling the shader source file to SPIR-V and creating the shader module.
 		 * @param optimize Whether to optimize the shader during compilation. This may enable additional compiler optimizations for better performance at the cost of longer compilation times.
+		 * @param forceCompile When true, bypasses cache checks and forces recompilation.
 		 * @return True if the shader module was successfully built or rebuilt, false otherwise.
 		 */
-		bool BuildOrRebuildModule(bool optimize = false);
+		bool BuildOrRebuildModule(bool optimize = false, bool forceCompile = false);
 
 		/**
 		 * @brief Destroys the Vulkan shader module for this stage.
