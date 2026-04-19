@@ -29,11 +29,12 @@
  * -------------------------------------------------------
  */
 import noise;
+import resources;
 
-static const float sea_level  = 0.0f;
-static const float snow_level = 400.0f;
+public static const float sea_level  = 0.0f;
+public static const float snow_level = 400.0f;
 
-float get_snow_blend_factor(float3 position_world, float3 normal_world)
+public float get_snow_blend_factor(float3 position_world, float3 normal_world)
 {
     const float snow_blend_speed = 0.06f; // transition sharpness
     const float noise_scale      = 0.2f;  // noise frequency for terrain/vegetation
@@ -60,7 +61,7 @@ float get_snow_blend_factor(float3 position_world, float3 normal_world)
     snow_blend_factor        *= slope_factor_final;
 
     // modulate based on wind direction
-    float3 wind         = buffer_frame.wind;
+    float3 wind         = get_wind_vector();
     float wind_strength = length(wind);
     if (wind_strength > 0.0f)
     {
@@ -71,4 +72,5 @@ float get_snow_blend_factor(float3 position_world, float3 normal_world)
 
     return snow_blend_factor;
 }
+
 

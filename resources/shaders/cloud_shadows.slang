@@ -77,8 +77,8 @@ float sample_density(float3 pos, float coverage, float bottom, float top)
     return saturate(density - dot(detail.rgb, float3(0.625, 0.25, 0.125)) * (1.0 - density) * 0.35);
 }
 
-[numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 [shader("compute")]
+[numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_comp(uint3 tid : SV_DispatchThreadID)
 {
     float2 dims;
@@ -87,10 +87,10 @@ void main_comp(uint3 tid : SV_DispatchThreadID)
         return;
 
     float3 light_dir = -light_parameters[0].direction;
-    float coverage = buffer_frame.cloud_coverage;
+    float coverage = get_cloud_coverage();
 
     // early out
-    if (coverage <= 0.0 || buffer_frame.cloud_shadows <= 0.0 || light_dir.y <= 0.0)
+    if (coverage <= 0.0 || get_cloud_shadows_strength() <= 0.0 || light_dir.y <= 0.0)
     {
         tex_uav[tid.xy] = 1.0;
         return;
@@ -101,7 +101,7 @@ void main_comp(uint3 tid : SV_DispatchThreadID)
     float texel_size = shadow_map_size / dims.x;
 
     // snap center to texel grid for stability
-    float2 snapped_center = floor(buffer_frame.camera_position.xz / texel_size) * texel_size;
+    float2 snapped_center = floor(get_camera_position().xz / texel_size) * texel_size;
 
     // convert uv to world position
     float2 uv = (float2(tid.xy) + 0.5) / dims;
@@ -126,7 +126,7 @@ void main_comp(uint3 tid : SV_DispatchThreadID)
     }
 
     // beer-lambert with soft contrast
-    float shadow = exp(-optical_depth * buffer_frame.cloud_shadows * 2.5);
+    float shadow = exp(-optical_depth * get_cloud_shadows_strength() * 2.5);
     shadow = shadow * shadow * (3.0 - 2.0 * shadow);
     tex_uav[tid.xy] = shadow;
 }

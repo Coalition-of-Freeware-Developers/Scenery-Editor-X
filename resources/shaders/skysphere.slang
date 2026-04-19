@@ -11,6 +11,10 @@ Created: 18/04/2026
 -------------------------------------------------------
 */
 import common;
+import constants;
+import resources;
+import noise;
+import structs;
 
 
 // constants - atmosphere
@@ -47,21 +51,21 @@ float safe_sqrt(float x) { return sqrt(max(0.0, x)); }
 
 float2 ray_sphere_intersect(float3 origin, float3 direction, float3 center, float radius)
 {
-    float3 oc = origin - center;
-    float b = dot(direction, oc);
-    float c = dot(oc, oc) - radius * radius;
-    float discriminant = b * b - c;
+	float3 oc = origin - center;
+	float b = dot(direction, oc);
+	float c = dot(oc, oc) - radius * radius;
+	float discriminant = b * b - c;
 
-    if (discriminant < 0.0)
-        return float2(-1.0, -1.0);
+	if (discriminant < 0.0)
+		return float2(-1.0, -1.0);
 
-    float d = sqrt(discriminant);
-    return float2(-b - d, -b + d);
+	float d = sqrt(discriminant);
+	return float2(-b - d, -b + d);
 }
 
 float get_height(float3 position)
 {
-    return length(position - earth_center) - earth_radius;
+	return length(position - earth_center) - earth_radius;
 }
 
 // density functions
@@ -71,344 +75,344 @@ float get_ozone_density(float height)    { return max(0.0, 1.0 - abs(height - oz
 
 float3 get_extinction(float height)
 {
-    return rayleigh_scatter * get_rayleigh_density(height) +
-           mie_extinction * get_mie_density(height) +
-           ozone_absorption * get_ozone_density(height);
+	return rayleigh_scatter * get_rayleigh_density(height) +
+		   mie_extinction * get_mie_density(height) +
+		   ozone_absorption * get_ozone_density(height);
 }
 
 float3 get_scattering(float height)
 {
-    return rayleigh_scatter * get_rayleigh_density(height) + mie_scatter * get_mie_density(height);
+	return rayleigh_scatter * get_rayleigh_density(height) + mie_scatter * get_mie_density(height);
 }
 
 // phase functions
 float rayleigh_phase(float cos_theta)
 {
-    return (3.0 / (16.0 * PI)) * (1.0 + cos_theta * cos_theta);
+	return (3.0 / (16.0 * PI)) * (1.0 + cos_theta * cos_theta);
 }
 
 float henyey_greenstein_phase(float cos_theta, float g)
 {
-    float g2 = g * g;
-    return (1.0 - g2) / (4.0 * PI * pow(max(1.0 + g2 - 2.0 * g * cos_theta, 0.0001), 1.5));
+	float g2 = g * g;
+	return (1.0 - g2) / (4.0 * PI * pow(max(1.0 + g2 - 2.0 * g * cos_theta, 0.0001), 1.5));
 }
 
 float cornette_shanks_phase(float cos_theta, float g)
 {
-    float g2 = g * g;
-    float num = 3.0 * (1.0 - g2) * (1.0 + cos_theta * cos_theta);
-    float denom = (8.0 * PI) * (2.0 + g2) * pow(1.0 + g2 - 2.0 * g * cos_theta, 1.5);
-    return num / max(denom, 0.0001);
+	float g2 = g * g;
+	float num = 3.0 * (1.0 - g2) * (1.0 + cos_theta * cos_theta);
+	float denom = (8.0 * PI) * (2.0 + g2) * pow(1.0 + g2 - 2.0 * g * cos_theta, 1.5);
+	return num / max(denom, 0.0001);
 }
 
 // transmittance lut uv mapping with horizon emphasis
 float2 transmittance_lut_params_to_uv(float height, float cos_zenith)
 {
-    float h = safe_sqrt((height - earth_radius) / (atmosphere_radius - earth_radius));
-    float rho = safe_sqrt(max(0.0, height * height - earth_radius * earth_radius));
-    float cos_horizon = -rho / height;
+	float h = safe_sqrt((height - earth_radius) / (atmosphere_radius - earth_radius));
+	float rho = safe_sqrt(max(0.0, height * height - earth_radius * earth_radius));
+	float cos_horizon = -rho / height;
 
-    float x_mu;
-    if (cos_zenith > cos_horizon)
-        x_mu = 0.5 + 0.5 * (cos_zenith - cos_horizon) / (1.0 - cos_horizon);
-    else
-        x_mu = 0.5 * (cos_zenith + 1.0) / (cos_horizon + 1.0);
+	float x_mu;
+	if (cos_zenith > cos_horizon)
+		x_mu = 0.5 + 0.5 * (cos_zenith - cos_horizon) / (1.0 - cos_horizon);
+	else
+		x_mu = 0.5 * (cos_zenith + 1.0) / (cos_horizon + 1.0);
 
-    return float2(saturate(x_mu), h);
+	return float2(saturate(x_mu), h);
 }
 
 void transmittance_uv_to_params(float2 uv, out float height, out float cos_zenith)
 {
-    float h = uv.y * uv.y;
-    height = earth_radius + h * (atmosphere_radius - earth_radius);
+	float h = uv.y * uv.y;
+	height = earth_radius + h * (atmosphere_radius - earth_radius);
 
-    float rho = safe_sqrt(max(0.0, height * height - earth_radius * earth_radius));
-    float cos_horizon = -rho / height;
+	float rho = safe_sqrt(max(0.0, height * height - earth_radius * earth_radius));
+	float cos_horizon = -rho / height;
 
-    if (uv.x > 0.5)
-    {
-        float t = (uv.x - 0.5) * 2.0;
-        cos_zenith = cos_horizon + t * (1.0 - cos_horizon);
-    }
-    else
-    {
-        float t = uv.x * 2.0;
-        cos_zenith = t * (cos_horizon + 1.0) - 1.0;
-    }
+	if (uv.x > 0.5)
+	{
+		float t = (uv.x - 0.5) * 2.0;
+		cos_zenith = cos_horizon + t * (1.0 - cos_horizon);
+	}
+	else
+	{
+		float t = uv.x * 2.0;
+		cos_zenith = t * (cos_horizon + 1.0) - 1.0;
+	}
 }
 
 // compute optical depth from position to atmosphere top
 float3 compute_transmittance_to_top(float3 position, float3 direction)
 {
-    float2 intersect = ray_sphere_intersect(position, direction, earth_center, atmosphere_radius);
-    float t_max = intersect.y;
-    if (t_max < 0.0)
-        return float3(1.0, 1.0, 1.0);
+	float2 intersect = ray_sphere_intersect(position, direction, earth_center, atmosphere_radius);
+	float t_max = intersect.y;
+	if (t_max < 0.0)
+		return float3(1.0, 1.0, 1.0);
 
-    float2 ground_hit = ray_sphere_intersect(position, direction, earth_center, earth_radius);
-    if (ground_hit.x > 0.0)
-        t_max = ground_hit.x;
+	float2 ground_hit = ray_sphere_intersect(position, direction, earth_center, earth_radius);
+	if (ground_hit.x > 0.0)
+		t_max = ground_hit.x;
 
-    // trapezoidal integration
-    float dt = t_max / transmittance_samples;
-    float3 optical_depth = float3(0.0, 0.0, 0.0);
-    float3 prev_ext = get_extinction(get_height(position));
+	// trapezoidal integration
+	float dt = t_max / transmittance_samples;
+	float3 optical_depth = float3(0.0, 0.0, 0.0);
+	float3 prev_ext = get_extinction(get_height(position));
 
-    for (int i = 1; i <= transmittance_samples; i++)
-    {
-        float3 sample_pos = position + direction * i * dt;
-        float height = get_height(sample_pos);
-        if (height < 0.0) break;
+	for (int i = 1; i <= transmittance_samples; i++)
+	{
+		float3 sample_pos = position + direction * i * dt;
+		float height = get_height(sample_pos);
+		if (height < 0.0) break;
 
-        float3 curr_ext = get_extinction(height);
-        optical_depth += (prev_ext + curr_ext) * 0.5 * dt;
-        prev_ext = curr_ext;
-    }
+		float3 curr_ext = get_extinction(height);
+		optical_depth += (prev_ext + curr_ext) * 0.5 * dt;
+		prev_ext = curr_ext;
+	}
 
-    return exp(-optical_depth);
+	return exp(-optical_depth);
 }
 
 // multi-scatter lut - infinite bounce approximation
 float3 compute_multiscatter(float height, float cos_sun_zenith, Texture2D transmittance_lut, SamplerState samp)
 {
-    float3 position = earth_center + float3(0.0, earth_radius + height, 0.0);
-    float3 sun_dir = float3(safe_sqrt(1.0 - cos_sun_zenith * cos_sun_zenith), cos_sun_zenith, 0.0);
+	float3 position = earth_center + float3(0.0, earth_radius + height, 0.0);
+	float3 sun_dir = float3(safe_sqrt(1.0 - cos_sun_zenith * cos_sun_zenith), cos_sun_zenith, 0.0);
 
-    float3 luminance_sum = float3(0.0, 0.0, 0.0);
-    float3 f_ms_sum = float3(0.0, 0.0, 0.0);
+	float3 luminance_sum = float3(0.0, 0.0, 0.0);
+	float3 f_ms_sum = float3(0.0, 0.0, 0.0);
 
-    const int sqrt_samples = 8;
-    for (int i = 0; i < sqrt_samples; i++)
-    {
-        for (int j = 0; j < sqrt_samples; j++)
-        {
-            float u = (i + 0.5) / sqrt_samples;
-            float v = (j + 0.5) / sqrt_samples;
+	const int sqrt_samples = 8;
+	for (int i = 0; i < sqrt_samples; i++)
+	{
+		for (int j = 0; j < sqrt_samples; j++)
+		{
+			float u = (i + 0.5) / sqrt_samples;
+			float v = (j + 0.5) / sqrt_samples;
 
-            float cos_theta = u * 2.0 - 1.0;
-            float sin_theta = safe_sqrt(1.0 - cos_theta * cos_theta);
-            float phi = v * PI2;
-            float3 ray_dir = float3(sin_theta * cos(phi), cos_theta, sin_theta * sin(phi));
+			float cos_theta = u * 2.0 - 1.0;
+			float sin_theta = safe_sqrt(1.0 - cos_theta * cos_theta);
+			float phi = v * PI2;
+			float3 ray_dir = float3(sin_theta * cos(phi), cos_theta, sin_theta * sin(phi));
 
-            float2 atmo_hit = ray_sphere_intersect(position, ray_dir, earth_center, atmosphere_radius);
-            float t_max = atmo_hit.y;
+			float2 atmo_hit = ray_sphere_intersect(position, ray_dir, earth_center, atmosphere_radius);
+			float t_max = atmo_hit.y;
 
-            float2 ground_hit = ray_sphere_intersect(position, ray_dir, earth_center, earth_radius);
-            bool hits_ground = ground_hit.x > 0.0;
-            if (hits_ground) t_max = ground_hit.x;
+			float2 ground_hit = ray_sphere_intersect(position, ray_dir, earth_center, earth_radius);
+			bool hits_ground = ground_hit.x > 0.0;
+			if (hits_ground) t_max = ground_hit.x;
 
-            float dt = t_max / multiscatter_samples;
-            float3 trans = float3(1.0, 1.0, 1.0);
-            float3 scatter_integral = float3(0.0, 0.0, 0.0);
+			float dt = t_max / multiscatter_samples;
+			float3 trans = float3(1.0, 1.0, 1.0);
+			float3 scatter_integral = float3(0.0, 0.0, 0.0);
 
-            for (int k = 0; k < multiscatter_samples; k++)
-            {
-                float3 sample_pos = position + ray_dir * (k + 0.5) * dt;
-                float sample_h = get_height(sample_pos);
+			for (int k = 0; k < multiscatter_samples; k++)
+			{
+				float3 sample_pos = position + ray_dir * (k + 0.5) * dt;
+				float sample_h = get_height(sample_pos);
 
-                float3 scatter = get_scattering(sample_h);
-                float3 extinct = get_extinction(sample_h);
+				float3 scatter = get_scattering(sample_h);
+				float3 extinct = get_extinction(sample_h);
 
-                float cos_sun = dot(normalize(sample_pos - earth_center), sun_dir);
-                float2 sun_uv = transmittance_lut_params_to_uv(sample_h + earth_radius, cos_sun);
-                float3 trans_sun = transmittance_lut.SampleLevel(samp, sun_uv, 0).rgb;
+				float cos_sun = dot(normalize(sample_pos - earth_center), sun_dir);
+				float2 sun_uv = transmittance_lut_params_to_uv(sample_h + earth_radius, cos_sun);
+				float3 trans_sun = transmittance_lut.SampleLevel(samp, sun_uv, 0).rgb;
 
-                float3 scatter_no_phase = scatter * trans_sun;
-                float3 s_int = (scatter_no_phase - scatter_no_phase * exp(-extinct * dt)) / max(extinct, 0.0001);
+				float3 scatter_no_phase = scatter * trans_sun;
+				float3 s_int = (scatter_no_phase - scatter_no_phase * exp(-extinct * dt)) / max(extinct, 0.0001);
 
-                scatter_integral += s_int * trans;
-                trans *= exp(-extinct * dt);
-            }
+				scatter_integral += s_int * trans;
+				trans *= exp(-extinct * dt);
+			}
 
-            // ground contribution
-            if (hits_ground)
-            {
-                float3 ground_pos = position + ray_dir * t_max;
-                float3 ground_n = normalize(ground_pos - earth_center);
-                float ndotl = saturate(dot(ground_n, sun_dir));
+			// ground contribution
+			if (hits_ground)
+			{
+				float3 ground_pos = position + ray_dir * t_max;
+				float3 ground_n = normalize(ground_pos - earth_center);
+				float ndotl = saturate(dot(ground_n, sun_dir));
 
-                float2 sun_uv = transmittance_lut_params_to_uv(earth_radius, dot(ground_n, sun_dir));
-                float3 trans_sun = transmittance_lut.SampleLevel(samp, sun_uv, 0).rgb;
+				float2 sun_uv = transmittance_lut_params_to_uv(earth_radius, dot(ground_n, sun_dir));
+				float3 trans_sun = transmittance_lut.SampleLevel(samp, sun_uv, 0).rgb;
 
-                luminance_sum += trans * trans_sun * ndotl * ground_albedo / PI;
-            }
+				luminance_sum += trans * trans_sun * ndotl * ground_albedo / PI;
+			}
 
-            float phase = 1.0 / (4.0 * PI);
-            luminance_sum += scatter_integral * phase;
-            f_ms_sum += scatter_integral * phase;
-        }
-    }
+			float phase = 1.0 / (4.0 * PI);
+			luminance_sum += scatter_integral * phase;
+			f_ms_sum += scatter_integral * phase;
+		}
+	}
 
-    float sphere_samples = sqrt_samples * sqrt_samples;
-    luminance_sum *= 4.0 * PI / sphere_samples;
-    f_ms_sum *= 4.0 * PI / sphere_samples;
+	float sphere_samples = sqrt_samples * sqrt_samples;
+	luminance_sum *= 4.0 * PI / sphere_samples;
+	f_ms_sum *= 4.0 * PI / sphere_samples;
 
-    // infinite series approximation
-    return luminance_sum / max(float3(1.0, 1.0, 1.0) - f_ms_sum, 0.001);
+	// infinite series approximation
+	return luminance_sum / max(float3(1.0, 1.0, 1.0) - f_ms_sum, 0.001);
 }
 
 // main sky color computation
 float3 compute_sky_luminance(
-    float3 position, float3 view_dir, float3 sun_dir,
-    Texture2D transmittance_lut, Texture2D multiscatter_lut,
-    SamplerState samp, float jitter = 0.5)
+	float3 position, float3 view_dir, float3 sun_dir,
+	Texture2D transmittance_lut, Texture2D multiscatter_lut,
+	SamplerState samp, float jitter = 0.5)
 {
-    float2 atmo_hit = ray_sphere_intersect(position, view_dir, earth_center, atmosphere_radius);
-    if (atmo_hit.y < 0.0) return float3(0.0, 0.0, 0.0);
+	float2 atmo_hit = ray_sphere_intersect(position, view_dir, earth_center, atmosphere_radius);
+	if (atmo_hit.y < 0.0) return float3(0.0, 0.0, 0.0);
 
-    float t_min = max(0.0, atmo_hit.x);
-    float t_max = atmo_hit.y;
+	float t_min = max(0.0, atmo_hit.x);
+	float t_max = atmo_hit.y;
 
-    float2 ground_hit = ray_sphere_intersect(position, view_dir, earth_center, earth_radius);
-    if (ground_hit.x > 0.0) t_max = min(t_max, ground_hit.x);
+	float2 ground_hit = ray_sphere_intersect(position, view_dir, earth_center, earth_radius);
+	if (ground_hit.x > 0.0) t_max = min(t_max, ground_hit.x);
 
-    float cos_theta = dot(view_dir, sun_dir);
-    float phase_r = rayleigh_phase(cos_theta);
-    float phase_m = cornette_shanks_phase(cos_theta, mie_g);
+	float cos_theta = dot(view_dir, sun_dir);
+	float phase_r = rayleigh_phase(cos_theta);
+	float phase_m = cornette_shanks_phase(cos_theta, mie_g);
 
-    float3 luminance = float3(0.0, 0.0, 0.0);
-    float3 trans = float3(1.0, 1.0, 1.0);
-    float dt = (t_max - t_min) / scattering_samples;
+	float3 luminance = float3(0.0, 0.0, 0.0);
+	float3 trans = float3(1.0, 1.0, 1.0);
+	float dt = (t_max - t_min) / scattering_samples;
 
-    for (int i = 0; i < scattering_samples; i++)
-    {
-        float3 sample_pos = position + view_dir * (t_min + (i + jitter) * dt);
-        float height = get_height(sample_pos);
+	for (int i = 0; i < scattering_samples; i++)
+	{
+		float3 sample_pos = position + view_dir * (t_min + (i + jitter) * dt);
+		float height = get_height(sample_pos);
 
-        if (height < 0.0 || height > atmosphere_radius - earth_radius)
-            continue;
+		if (height < 0.0 || height > atmosphere_radius - earth_radius)
+			continue;
 
-        float3 extinction = get_extinction(height);
-        float rayleigh_d = get_rayleigh_density(height);
-        float mie_d = get_mie_density(height);
+		float3 extinction = get_extinction(height);
+		float rayleigh_d = get_rayleigh_density(height);
+		float mie_d = get_mie_density(height);
 
-        float3 up = normalize(sample_pos - earth_center);
-        float cos_sun = dot(up, sun_dir);
+		float3 up = normalize(sample_pos - earth_center);
+		float cos_sun = dot(up, sun_dir);
 
-        // allow slightly below-horizon angles for proper twilight colors
-        // the transmittance lut uv mapping handles negative cos_zenith values
-        float2 sun_uv = transmittance_lut_params_to_uv(height + earth_radius, cos_sun);
-        float3 trans_sun = transmittance_lut.SampleLevel(samp, sun_uv, 0).rgb;
+		// allow slightly below-horizon angles for proper twilight colors
+		// the transmittance lut uv mapping handles negative cos_zenith values
+		float2 sun_uv = transmittance_lut_params_to_uv(height + earth_radius, cos_sun);
+		float3 trans_sun = transmittance_lut.SampleLevel(samp, sun_uv, 0).rgb;
 
-        // smooth fade for sun visibility near horizon (keeps illumination gradual)
-        float sun_visible = smoothstep(-0.1, 0.05, cos_sun);
-        trans_sun *= sun_visible;
+		// smooth fade for sun visibility near horizon (keeps illumination gradual)
+		float sun_visible = smoothstep(-0.1, 0.05, cos_sun);
+		trans_sun *= sun_visible;
 
-        // single + multi scatter
-        float3 scatter_r = rayleigh_scatter * rayleigh_d * phase_r;
-        float3 scatter_m = mie_scatter * mie_d * phase_m;
-        float3 scattering = (scatter_r + scatter_m) * trans_sun;
+		// single + multi scatter
+		float3 scatter_r = rayleigh_scatter * rayleigh_d * phase_r;
+		float3 scatter_m = mie_scatter * mie_d * phase_m;
+		float3 scattering = (scatter_r + scatter_m) * trans_sun;
 
-        float2 ms_uv = float2(max(cos_sun, 0.0) * 0.5 + 0.5, saturate(height / (atmosphere_radius - earth_radius)));
-        float3 ms = multiscatter_lut.SampleLevel(samp, ms_uv, 0).rgb * sun_visible;
-        float3 ms_scatter = (rayleigh_scatter * rayleigh_d + mie_scatter * mie_d) * ms;
+		float2 ms_uv = float2(max(cos_sun, 0.0) * 0.5 + 0.5, saturate(height / (atmosphere_radius - earth_radius)));
+		float3 ms = multiscatter_lut.SampleLevel(samp, ms_uv, 0).rgb * sun_visible;
+		float3 ms_scatter = (rayleigh_scatter * rayleigh_d + mie_scatter * mie_d) * ms;
 
-        float3 total = scattering + ms_scatter;
-        float3 scatter_int = total * (1.0 - exp(-extinction * dt)) / max(extinction, 1e-6);
+		float3 total = scattering + ms_scatter;
+		float3 scatter_int = total * (1.0 - exp(-extinction * dt)) / max(extinction, 1e-6);
 
-        luminance += scatter_int * trans;
-        trans *= exp(-extinction * dt);
+		luminance += scatter_int * trans;
+		trans *= exp(-extinction * dt);
 
-        if (all(trans < 1e-6)) break;
-    }
+		if (all(trans < 1e-6)) break;
+	}
 
-    return luminance * sun_illuminance;
+	return luminance * sun_illuminance;
 }
 
 // sun disc with limb darkening
 float3 compute_sun_disc(float3 view_dir, float3 sun_dir, float3 transmittance)
 {
-    float cos_angle = dot(view_dir, sun_dir);
-    float edge_softness = sun_angular_radius * 0.5;
-    float sun_edge = smoothstep(cos(sun_angular_radius + edge_softness),
-                                cos(max(0.0, sun_angular_radius - edge_softness)), cos_angle);
+	float cos_angle = dot(view_dir, sun_dir);
+	float edge_softness = sun_angular_radius * 0.5;
+	float sun_edge = smoothstep(cos(sun_angular_radius + edge_softness),
+								cos(max(0.0, sun_angular_radius - edge_softness)), cos_angle);
 
-    float angle_approx = safe_sqrt(2.0 * max(0.0, 1.0 - cos_angle));
-    float r = saturate(angle_approx / sun_angular_radius);
-    float mu = safe_sqrt(1.0 - r * r);
-    float limb = 0.3 + 0.93 * mu - 0.23 * mu * mu;
+	float angle_approx = safe_sqrt(2.0 * max(0.0, 1.0 - cos_angle));
+	float r = saturate(angle_approx / sun_angular_radius);
+	float mu = safe_sqrt(1.0 - r * r);
+	float limb = 0.3 + 0.93 * mu - 0.23 * mu * mu;
 
-    return sun_illuminance * transmittance * sun_edge * limb * 1000.0;
+	return sun_illuminance * transmittance * sun_edge * limb * 1000.0;
 }
 
 // stars
 struct stars
 {
-    static float3 blackbody(float temp)
-    {
-        float3 color = float3(1.0, 1.0, 1.0);
-        temp = clamp(temp, 3000.0, 15000.0);
+	static float3 blackbody(float temp)
+	{
+		float3 color = float3(1.0, 1.0, 1.0);
+		temp = clamp(temp, 3000.0, 15000.0);
 
-        if (temp < 6600.0)
-        {
-            color.g = 0.39008 * log(temp * 0.01) - 0.63184;
-            color.b = 0.54321 * log(temp * 0.001 - 0.6) - 1.19625;
-        }
-        else
-        {
-            color.r = 1.29294 * pow(temp * 0.001 - 6.0, -0.1332);
-            color.g = 1.29294 * pow(temp * 0.001 - 6.0, -0.1332);
-            color.b = 1.12989 * pow(temp * 0.001 - 6.0, -0.0755);
-        }
-        return saturate(color);
-    }
+		if (temp < 6600.0)
+		{
+			color.g = 0.39008 * log(temp * 0.01) - 0.63184;
+			color.b = 0.54321 * log(temp * 0.001 - 0.6) - 1.19625;
+		}
+		else
+		{
+			color.r = 1.29294 * pow(temp * 0.001 - 6.0, -0.1332);
+			color.g = 1.29294 * pow(temp * 0.001 - 6.0, -0.1332);
+			color.b = 1.12989 * pow(temp * 0.001 - 6.0, -0.0755);
+		}
+		return saturate(color);
+	}
 
-    static float2 hash22(float2 p)
-    {
-        float3 p3 = frac(float3(p.xyx) * float3(0.1031, 0.103, 0.0973));
-        p3 += dot(p3, p3.yzx + 33.33);
-        return frac((p3.xx + p3.yz) * p3.zy);
-    }
+	static float2 hash22(float2 p)
+	{
+		float3 p3 = frac(float3(p.xyx) * float3(0.1031, 0.103, 0.0973));
+		p3 += dot(p3, p3.yzx + 33.33);
+		return frac((p3.xx + p3.yz) * p3.zy);
+	}
 
-    static float3 compute_color(float2 uv, float3 sun_dir)
-    {
-        float night = saturate(-dot(sun_dir, up_direction) * 5.0);
-        if (night < 0.01) return float3(0.0, 0.0, 0.0);
+	static float3 compute_color(float2 uv, float3 sun_dir)
+	{
+		float night = saturate(-dot(sun_dir, up_direction) * 5.0);
+		if (night < 0.01) return float3(0.0, 0.0, 0.0);
 
-        float3 color = float3(0.0, 0.0, 0.0);
-        float2 star_uv = uv * 400.0;
-        float2 cell = floor(star_uv);
+		float3 color = float3(0.0, 0.0, 0.0);
+		float2 star_uv = uv * 400.0;
+		float2 cell = floor(star_uv);
 
-        for (int y = -1; y <= 1; y++)
-        {
-            for (int x = -1; x <= 1; x++)
-            {
-                float2 cell_center = cell + float2(x, y) + 0.5;
-                float2 hash = hash22(cell_center);
+		for (int y = -1; y <= 1; y++)
+		{
+			for (int x = -1; x <= 1; x++)
+			{
+				float2 cell_center = cell + float2(x, y) + 0.5;
+				float2 hash = hash22(cell_center);
 
-                if (hash.x > 0.97)
-                {
-                    float2 star_pos = cell_center + (hash - 0.5) * 0.5;
-                    float dist = length(star_uv - star_pos);
-                    float brightness = exp(-dist * dist / 0.0016) * (hash.x - 0.97) * 30.0;
-                    color += blackbody(lerp(4000.0, 12000.0, hash.y)) * brightness * night;
-                }
-            }
-        }
-        return color;
-    }
+				if (hash.x > 0.97)
+				{
+					float2 star_pos = cell_center + (hash - 0.5) * 0.5;
+					float dist = length(star_uv - star_pos);
+					float brightness = exp(-dist * dist / 0.0016) * (hash.x - 0.97) * 30.0;
+					color += blackbody(lerp(4000.0, 12000.0, hash.y)) * brightness * night;
+				}
+			}
+		}
+		return color;
+	}
 };
 
 // moon
 float3 compute_moon(float3 view_dir, float3 sun_dir)
 {
-    float3 moon_dir = -sun_dir;
-    float moon_elev = dot(moon_dir, up_direction);
-    if (moon_elev < 0.0) return float3(0.0, 0.0, 0.0);
+	float3 moon_dir = -sun_dir;
+	float moon_elev = dot(moon_dir, up_direction);
+	if (moon_elev < 0.0) return float3(0.0, 0.0, 0.0);
 
-    float cos_angle = dot(view_dir, moon_dir);
-    float moon_radius = 0.015;
-    float edge_softness = moon_radius * 0.1;
+	float cos_angle = dot(view_dir, moon_dir);
+	float moon_radius = 0.015;
+	float edge_softness = moon_radius * 0.1;
 
-    float moon_disc = smoothstep(cos(moon_radius + edge_softness),
-                                  cos(moon_radius - edge_softness), cos_angle);
+	float moon_disc = smoothstep(cos(moon_radius + edge_softness),
+								  cos(moon_radius - edge_softness), cos_angle);
 
-    float angle_approx = safe_sqrt(2.0 * max(0.0, 1.0 - cos_angle));
-    float r = saturate(angle_approx / moon_radius);
-    float limb = 0.7 + 0.3 * safe_sqrt(1.0 - r * r);
+	float angle_approx = safe_sqrt(2.0 * max(0.0, 1.0 - cos_angle));
+	float r = saturate(angle_approx / moon_radius);
+	float limb = 0.7 + 0.3 * safe_sqrt(1.0 - r * r);
 
-    float night = saturate(-dot(sun_dir, up_direction) * 3.0);
-    return float3(0.8, 0.85, 0.95) * 0.02 * moon_disc * limb * night;
+	float night = saturate(-dot(sun_dir, up_direction) * 3.0);
+	return float3(0.8, 0.85, 0.95) * 0.02 * moon_disc * limb * night;
 }
 
 // volumetric clouds - only for main sky pass
@@ -429,250 +433,250 @@ struct cloud_result { float3 color; float alpha; float3 transmittance; float3 in
 // helper functions
 float cloud_hash21(float2 p, float s)
 {
-    float3 p3 = frac(float3(p.xyx) * 0.1031 + s * 0.1);
-    p3 += dot(p3, p3.yzx + 33.33);
-    return frac((p3.x + p3.y) * p3.z);
+	float3 p3 = frac(float3(p.xyx) * 0.1031 + s * 0.1);
+	p3 += dot(p3, p3.yzx + 33.33);
+	return frac((p3.x + p3.y) * p3.z);
 }
 
 float cloud_smooth_noise(float2 p, float s)
 {
-    float2 i = floor(p), f = frac(p);
-    float2 u = f * f * (3.0 - 2.0 * f);
-    return lerp(lerp(cloud_hash21(i, s), cloud_hash21(i + float2(1, 0), s), u.x),
-                lerp(cloud_hash21(i + float2(0, 1), s), cloud_hash21(i + float2(1, 1), s), u.x), u.y);
+	float2 i = floor(p), f = frac(p);
+	float2 u = f * f * (3.0 - 2.0 * f);
+	return lerp(lerp(cloud_hash21(i, s), cloud_hash21(i + float2(1, 0), s), u.x),
+				lerp(cloud_hash21(i + float2(0, 1), s), cloud_hash21(i + float2(1, 1), s), u.x), u.y);
 }
 
 void cloud_get_bounds(float3 pos, out float bottom, out float top)
 {
-    float2 coord = pos.xz * 0.00005;
-    bottom = lerp(1200.0, 2200.0, cloud_smooth_noise(coord, cloud_seed));
-    top = max(lerp(3500.0, 4500.0, cloud_smooth_noise(coord * 1.7 + 100.0, cloud_seed * 2.3)), bottom + 1500.0);
+	float2 coord = pos.xz * 0.00005;
+	bottom = lerp(1200.0, 2200.0, cloud_smooth_noise(coord, cloud_seed));
+	top = max(lerp(3500.0, 4500.0, cloud_smooth_noise(coord * 1.7 + 100.0, cloud_seed * 2.3)), bottom + 1500.0);
 }
 
 float3 cloud_domain_warp(float3 p)
 {
-    float sp = cloud_seed * 0.31415926;
-    return p + float3(sin(p.z * 0.00008 + p.y * 0.00007 + sp) * 2000.0,
-                      sin(p.x * 0.00007 + p.z * 0.00008 + sp) * 500.0,
-                      sin(p.y * 0.00006 + p.x * 0.00009 + sp) * 2000.0);
+	float sp = cloud_seed * 0.31415926;
+	return p + float3(sin(p.z * 0.00008 + p.y * 0.00007 + sp) * 2000.0,
+					  sin(p.x * 0.00007 + p.z * 0.00008 + sp) * 500.0,
+					  sin(p.y * 0.00006 + p.x * 0.00009 + sp) * 2000.0);
 }
 
 float cloud_hg_phase(float cos_theta, float g)
 {
-    float g2 = g * g;
-    return (1.0 - g2) / (4.0 * PI * pow(max(1.0 + g2 - 2.0 * g * cos_theta, 0.0001), 1.5));
+	float g2 = g * g;
+	return (1.0 - g2) / (4.0 * PI * pow(max(1.0 + g2 - 2.0 * g * cos_theta, 0.0001), 1.5));
 }
 
 float cloud_sample_density(float3 pos, float coverage, float ctype, float time)
 {
-    float bottom, top;
-    cloud_get_bounds(pos, bottom, top);
-    if (pos.y < bottom || pos.y > top) return 0.0;
+	float bottom, top;
+	cloud_get_bounds(pos, bottom, top);
+	if (pos.y < bottom || pos.y > top) return 0.0;
 
-    float h = (pos.y - bottom) / (top - bottom);
+	float h = (pos.y - bottom) / (top - bottom);
 
-    // wind animation
-    float3 wind = buffer_frame.wind;
-    float wspeed = length(wind) * cloud_wind_speed;
-    float3 anim_pos = pos + (wspeed > 0.001 ? normalize(wind) : float3(1, 0, 0)) * time * wspeed;
+	// wind animation
+	float3 wind = get_wind_vector();
+	float wspeed = length(wind) * cloud_wind_speed;
+	float3 anim_pos = pos + (wspeed > 0.001 ? normalize(wind) : float3(1, 0, 0)) * time * wspeed;
 
-    // transform and warp
-    float3 seed_pos = anim_pos + float3(cloud_seed * 50000.0, cloud_seed * 30000.0, cloud_seed * 70000.0);
-    float3 warped = cloud_domain_warp(seed_pos);
+	// transform and warp
+	float3 seed_pos = anim_pos + float3(cloud_seed * 50000.0, cloud_seed * 30000.0, cloud_seed * 70000.0);
+	float3 warped = cloud_domain_warp(seed_pos);
 
-    // distance-based lod
-    float dist = length(pos.xz);
-    float dist_fade = 1.0 - smoothstep(30000.0, 50000.0, dist);
-    float detail_lod = 1.0 - smoothstep(18000.0, 35000.0, dist);
+	// distance-based lod
+	float dist = length(pos.xz);
+	float dist_fade = 1.0 - smoothstep(30000.0, 50000.0, dist);
+	float detail_lod = 1.0 - smoothstep(18000.0, 35000.0, dist);
 
-    // shape noise with height gradient
-    float4 shape = tex3d_cloud_shape.SampleLevel(GET_SAMPLER(sampler_anisotropic_wrap), warped * cloud_scale, 0);
-    float noise = dot(shape.rgb, float3(0.625, 0.25, 0.125));
-    noise *= smoothstep(0.0, 0.1, h) * smoothstep(0.4 + ctype * 0.6, 0.2 + ctype * 0.3, h);
+	// shape noise with height gradient
+	float4 shape = tex3d_cloud_shape.SampleLevel(samplers[sampler_anisotropic_wrap], warped * cloud_scale, 0);
+	float noise = dot(shape.rgb, float3(0.625, 0.25, 0.125));
+	noise *= smoothstep(0.0, 0.1, h) * smoothstep(0.4 + ctype * 0.6, 0.2 + ctype * 0.3, h);
 
-    float density = saturate((noise - (1.0 - coverage)) / max(coverage, 0.0001)) * dist_fade;
-    if (density < 0.01) return 0.0;
+	float density = saturate((noise - (1.0 - coverage)) / max(coverage, 0.0001)) * dist_fade;
+	if (density < 0.01) return 0.0;
 
-    // detail erosion
-    float detail_amount = lerp(0.15, 0.4, detail_lod);
-    if (detail_amount > 0.01)
-    {
-        float3 detail_uvw = cloud_domain_warp(seed_pos * 1.1) * detail_scale;
-        detail_uvw.y += time * 0.01;
-        float4 detail = tex3d_cloud_detail.SampleLevel(GET_SAMPLER(sampler_anisotropic_wrap), detail_uvw, 0);
-        density = saturate(density - dot(detail.rgb, float3(0.625, 0.25, 0.125)) * (1.0 - density) * detail_amount);
-    }
-    return density;
+	// detail erosion
+	float detail_amount = lerp(0.15, 0.4, detail_lod);
+	if (detail_amount > 0.01)
+	{
+		float3 detail_uvw = cloud_domain_warp(seed_pos * 1.1) * detail_scale;
+		detail_uvw.y += time * 0.01;
+		float4 detail = tex3d_cloud_detail.SampleLevel(samplers[sampler_anisotropic_wrap], detail_uvw, 0);
+		density = saturate(density - dot(detail.rgb, float3(0.625, 0.25, 0.125)) * (1.0 - density) * detail_amount);
+	}
+	return density;
 }
 
 struct cloud_light_result { float attenuation; float ao; };
 
 cloud_light_result cloud_light_march(float3 pos, float3 light_dir, float3 view_dir, float coverage, float ctype, float time)
 {
-    cloud_light_result r = { 1.0, 1.0 };
+	cloud_light_result r = { 1.0, 1.0 };
 
-    float bottom, top;
-    cloud_get_bounds(pos, bottom, top);
-    float thickness = top - bottom;
+	float bottom, top;
+	cloud_get_bounds(pos, bottom, top);
+	float thickness = top - bottom;
 
-    float dist = min((top - pos.y) / max(light_dir.y, 0.01), thickness);
-    float step_size = dist / float(light_steps);
-    float optical = 0.0;
+	float dist = min((top - pos.y) / max(light_dir.y, 0.01), thickness);
+	float step_size = dist / float(light_steps);
+	float optical = 0.0;
 
-    // simplified ao - single upward sample
-    float3 up_p = pos + float3(0, 1, 0) * (top - pos.y) * 0.5;
-    float up_optical = (up_p.y <= top) ? cloud_sample_density(up_p, coverage, ctype, time) * (top - pos.y) : 0.0;
+	// simplified ao - single upward sample
+	float3 up_p = pos + float3(0, 1, 0) * (top - pos.y) * 0.5;
+	float up_optical = (up_p.y <= top) ? cloud_sample_density(up_p, coverage, ctype, time) * (top - pos.y) : 0.0;
 
-    [loop] for (int i = 0; i < light_steps && optical < 3.0; i++)
-    {
-        float3 p = pos + light_dir * step_size * (float(i) + 0.5);
-        if (p.y > top) break;
-        optical += cloud_sample_density(p, coverage, ctype, time) * step_size;
-    }
+	[loop] for (int i = 0; i < light_steps && optical < 3.0; i++)
+	{
+		float3 p = pos + light_dir * step_size * (float(i) + 0.5);
+		if (p.y > top) break;
+		optical += cloud_sample_density(p, coverage, ctype, time) * step_size;
+	}
 
-    // beer-powder multi-scatter
-    float beer = exp(-optical * cloud_absorption * 2.0);
-    float backlit = saturate(dot(light_dir, -view_dir) * 0.5 + 0.5);
-    float powder = pow(1.0 - exp(-optical * cloud_absorption * 2.5), 2.0) * backlit;
-    float multi = exp(-optical * cloud_absorption * 0.4) * (0.5 + 0.2 * backlit);
+	// beer-powder multi-scatter
+	float beer = exp(-optical * cloud_absorption * 2.0);
+	float backlit = saturate(dot(light_dir, -view_dir) * 0.5 + 0.5);
+	float powder = pow(1.0 - exp(-optical * cloud_absorption * 2.5), 2.0) * backlit;
+	float multi = exp(-optical * cloud_absorption * 0.4) * (0.5 + 0.2 * backlit);
 
-    r.attenuation = saturate(beer + powder * multi * 0.25 + multi * 0.08);
-    r.ao = exp(-up_optical * cloud_absorption * 0.6);
-    return r;
+	r.attenuation = saturate(beer + powder * multi * 0.25 + multi * 0.08);
+	r.ao = exp(-up_optical * cloud_absorption * 0.6);
+	return r;
 }
 
 float3 cloud_get_sun_color(float3 sun_dir, float altitude, Texture2D trans_lut, SamplerState samp)
 {
-    return sun_illuminance * trans_lut.SampleLevel(samp, transmittance_lut_params_to_uv(earth_radius + altitude, sun_dir.y), 0).rgb;
+	return sun_illuminance * trans_lut.SampleLevel(samp, transmittance_lut_params_to_uv(earth_radius + altitude, sun_dir.y), 0).rgb;
 }
 
 float3 cloud_get_ambient(float3 sun_dir, Texture2D ms_lut, SamplerState samp)
 {
-    float3 ms = ms_lut.SampleLevel(samp, float2(sun_dir.y * 0.5 + 0.5, 0.02), 0).rgb;
-    float3 sky = ms * sun_illuminance * 2.0;
-    return sky + float3(0.3, 0.25, 0.2) * sky * 0.1;
+	float3 ms = ms_lut.SampleLevel(samp, float2(sun_dir.y * 0.5 + 0.5, 0.02), 0).rgb;
+	float3 sky = ms * sun_illuminance * 2.0;
+	return sky + float3(0.3, 0.25, 0.2) * sky * 0.1;
 }
 
 float3 cloud_get_ground_bounce(float3 sun_dir, float h, Texture2D trans_lut, SamplerState samp)
 {
-    float sun_vis = saturate(sun_dir.y * 2.0 + 0.5);
-    float3 ground_trans = trans_lut.SampleLevel(samp, transmittance_lut_params_to_uv(earth_radius, max(sun_dir.y, 0.0)), 0).rgb;
-    return ground_albedo * sun_illuminance * ground_trans * sun_vis * (1.0 - smoothstep(0.0, 0.5, h)) * 0.25;
+	float sun_vis = saturate(sun_dir.y * 2.0 + 0.5);
+	float3 ground_trans = trans_lut.SampleLevel(samp, transmittance_lut_params_to_uv(earth_radius, max(sun_dir.y, 0.0)), 0).rgb;
+	return ground_albedo * sun_illuminance * ground_trans * sun_vis * (1.0 - smoothstep(0.0, 0.5, h)) * 0.25;
 }
 
 void cloud_aerial_perspective(float3 view_dir, float dist, float3 sun_dir, Texture2D trans_lut, SamplerState samp,
-                              out float3 inscatter, out float3 trans)
+							  out float3 inscatter, out float3 trans)
 {
-    float h = max(100.0, dist * 0.5 * view_dir.y);
-    float cos_theta = dot(view_dir, sun_dir);
+	float h = max(100.0, dist * 0.5 * view_dir.y);
+	float cos_theta = dot(view_dir, sun_dir);
 
-    float3 ext = get_extinction(h);
-    float rd = get_rayleigh_density(h);
-    float md = get_mie_density(h);
-    float3 ts = trans_lut.SampleLevel(samp, transmittance_lut_params_to_uv(h + earth_radius, max(sun_dir.y, 0.0)), 0).rgb;
+	float3 ext = get_extinction(h);
+	float rd = get_rayleigh_density(h);
+	float md = get_mie_density(h);
+	float3 ts = trans_lut.SampleLevel(samp, transmittance_lut_params_to_uv(h + earth_radius, max(sun_dir.y, 0.0)), 0).rgb;
 
-    float3 scatter = (rayleigh_scatter * rd * rayleigh_phase(cos_theta) +
-                      mie_scatter * md * cornette_shanks_phase(cos_theta, mie_g)) * ts;
+	float3 scatter = (rayleigh_scatter * rd * rayleigh_phase(cos_theta) +
+					  mie_scatter * md * cornette_shanks_phase(cos_theta, mie_g)) * ts;
 
-    trans = exp(-ext * dist * 0.001);
-    inscatter = scatter * (1.0 - trans) / max(ext, 1e-6) * sun_illuminance;
+	trans = exp(-ext * dist * 0.001);
+	inscatter = scatter * (1.0 - trans) / max(ext, 1e-6) * sun_illuminance;
 }
 
 cloud_result cloud_compute(float3 view_dir, float3 sun_dir, float sun_int, float day_night, float time, float2 uv,
-                           Texture2D trans_lut, Texture2D ms_lut, SamplerState samp)
+						   Texture2D trans_lut, Texture2D ms_lut, SamplerState samp)
 {
-    cloud_result r = (cloud_result)0;
-    r.transmittance = float3(1, 1, 1);
+	cloud_result r = (cloud_result)0;
+	r.transmittance = float3(1, 1, 1);
 
-    float coverage = buffer_frame.cloud_coverage;
-    if (coverage <= 0.0) return r;
+	float coverage = get_cloud_coverage();
+	if (coverage <= 0.0) return r;
 
-    float horizon_fade = smoothstep(-0.05, 0.15, view_dir.y);
-    if (horizon_fade <= 0.0) return r;
+	float horizon_fade = smoothstep(-0.05, 0.15, view_dir.y);
+	if (horizon_fade <= 0.0) return r;
 
-    // cloud type: low coverage = wispy, high = billowy
-    float ctype = saturate(lerp(0.3, 0.85, coverage));
+	// cloud type: low coverage = wispy, high = billowy
+	float ctype = saturate(lerp(0.3, 0.85, coverage));
 
-    // ray setup
-    float3 cam = float3(0, 100, 0);
-    float dir_y = max(view_dir.y, 0.001);
-    float t_enter = (cloud_base_bottom - cam.y) / dir_y;
-    float t_exit = (cloud_base_top - cam.y) / dir_y;
-    if (t_exit <= t_enter || t_enter < 0.0) return r;
+	// ray setup
+	float3 cam = float3(0, 100, 0);
+	float dir_y = max(view_dir.y, 0.001);
+	float t_enter = (cloud_base_bottom - cam.y) / dir_y;
+	float t_exit = (cloud_base_top - cam.y) / dir_y;
+	if (t_exit <= t_enter || t_enter < 0.0) return r;
 
-    float ray_len = t_exit - t_enter;
-    float avg_dist = (t_enter + t_exit) * 0.5;
-    float avg_alt = (cloud_base_bottom + cloud_base_top) * 0.5;
+	float ray_len = t_exit - t_enter;
+	float avg_dist = (t_enter + t_exit) * 0.5;
+	float avg_alt = (cloud_base_bottom + cloud_base_top) * 0.5;
 
-    // atmospheric effects
-    cloud_aerial_perspective(view_dir, avg_dist, sun_dir, trans_lut, samp, r.inscatter, r.transmittance);
-    r.inscatter *= day_night;
+	// atmospheric effects
+	cloud_aerial_perspective(view_dir, avg_dist, sun_dir, trans_lut, samp, r.inscatter, r.transmittance);
+	r.inscatter *= day_night;
 
-    float3 sun_color = cloud_get_sun_color(sun_dir, avg_alt, trans_lut, samp);
-    float3 ambient = cloud_get_ambient(sun_dir, ms_lut, samp);
+	float3 sun_color = cloud_get_sun_color(sun_dir, avg_alt, trans_lut, samp);
+	float3 ambient = cloud_get_ambient(sun_dir, ms_lut, samp);
 
-    // adaptive stepping
-    float dist_lod = 1.0 - smoothstep(8000.0, 30000.0, t_enter);
-    int num_steps = int(clamp(float(cloud_steps) * ray_len / 3000.0 * (0.75 + dist_lod * 0.25), 64.0, 128.0));
-    float step_size = ray_len / float(num_steps);
+	// adaptive stepping
+	float dist_lod = 1.0 - smoothstep(8000.0, 30000.0, t_enter);
+	int num_steps = int(clamp(float(cloud_steps) * ray_len / 3000.0 * (0.75 + dist_lod * 0.25), 64.0, 128.0));
+	float step_size = ray_len / float(num_steps);
 
-    // temporal jitter
-    float jitter = frac(noise_interleaved_gradient(uv * buffer_frame.resolution_render, true) +
-                        frac(float(buffer_frame.frame) * 0.618033988749));
-    float t = t_enter + step_size * jitter;
+	// temporal jitter
+	float jitter = frac(noise_interleaved_gradient(uv * get_resolution_render(), true) +
+						frac(float(get_frame_index()) * 0.618033988749));
+	float t = t_enter + step_size * jitter;
 
-    // phase functions
-    float cos_ang = dot(view_dir, sun_dir);
-    float phase = lerp(cloud_hg_phase(cos_ang, -0.3), cloud_hg_phase(cos_ang, 0.8), 0.5);
-    float silver_phase = cloud_hg_phase(cos_ang, 0.95);
-    float backlit = saturate(cos_ang);
+	// phase functions
+	float cos_ang = dot(view_dir, sun_dir);
+	float phase = lerp(cloud_hg_phase(cos_ang, -0.3), cloud_hg_phase(cos_ang, 0.8), 0.5);
+	float silver_phase = cloud_hg_phase(cos_ang, 0.95);
+	float backlit = saturate(cos_ang);
 
-    float trans = 1.0;
-    float3 energy = float3(0, 0, 0);
-    float prev_d = 0.0;
+	float trans = 1.0;
+	float3 energy = float3(0, 0, 0);
+	float prev_d = 0.0;
 
-    static const float3 cloud_color = float3(0.7, 0.7, 0.7);
-    static const float cloud_darkness = 0.5;
+	static const float3 cloud_color = float3(0.7, 0.7, 0.7);
+	static const float cloud_darkness = 0.5;
 
-    [loop] for (int i = 0; i < num_steps && trans > 0.01; i++)
-    {
-        float3 pos = cam + view_dir * t;
-        float d = cloud_sample_density(pos, coverage, ctype, time);
+	[loop] for (int i = 0; i < num_steps && trans > 0.01; i++)
+	{
+		float3 pos = cam + view_dir * t;
+		float d = cloud_sample_density(pos, coverage, ctype, time);
 
-        if (d > 0.01)
-        {
-            cloud_light_result lm = cloud_light_march(pos, sun_dir, view_dir, coverage, ctype, time);
+		if (d > 0.01)
+		{
+			cloud_light_result lm = cloud_light_march(pos, sun_dir, view_dir, coverage, ctype, time);
 
-            float bottom, top;
-            cloud_get_bounds(pos, bottom, top);
-            float h = saturate((pos.y - bottom) / (top - bottom));
+			float bottom, top;
+			cloud_get_bounds(pos, bottom, top);
+			float h = saturate((pos.y - bottom) / (top - bottom));
 
-            // lighting
-            float3 direct = sun_color * sun_int;
-            float3 light_col = lerp(direct, cloud_color * sun_int, cloud_darkness);
-            float3 rad = light_col * lm.attenuation * phase;
+			// lighting
+			float3 direct = sun_color * sun_int;
+			float3 light_col = lerp(direct, cloud_color * sun_int, cloud_darkness);
+			float3 rad = light_col * lm.attenuation * phase;
 
-            // silver lining
-            float edge = saturate(abs(d - prev_d) * 10.0) * (1.0 - saturate(d * 2.0));
-            rad += light_col * edge * backlit * silver_phase * lm.attenuation * 0.4 * day_night;
+			// silver lining
+			float edge = saturate(abs(d - prev_d) * 10.0) * (1.0 - saturate(d * 2.0));
+			rad += light_col * edge * backlit * silver_phase * lm.attenuation * 0.4 * day_night;
 
-            // ambient + ground bounce
-            rad += ambient * lerp(0.4, 0.8, h) * lm.ao * 0.2 * day_night;
-            rad += cloud_get_ground_bounce(sun_dir, h, trans_lut, samp) * (0.3 + lm.ao * 0.3) * 0.5 * day_night;
+			// ambient + ground bounce
+			rad += ambient * lerp(0.4, 0.8, h) * lm.ao * 0.2 * day_night;
+			rad += cloud_get_ground_bounce(sun_dir, h, trans_lut, samp) * (0.3 + lm.ao * 0.3) * 0.5 * day_night;
 
-            float ext = d * step_size * cloud_absorption;
-            energy += trans * (1.0 - exp(-ext)) * rad;
-            trans *= exp(-ext);
-        }
+			float ext = d * step_size * cloud_absorption;
+			energy += trans * (1.0 - exp(-ext)) * rad;
+			trans *= exp(-ext);
+		}
 
-        prev_d = d;
-        t += step_size;
-        if (t > t_exit) break;
-    }
+		prev_d = d;
+		t += step_size;
+		if (t > t_exit) break;
+	}
 
-    r.color = energy * horizon_fade;
-    r.alpha = (1.0 - trans) * horizon_fade;
-    return r;
+	r.color = energy * horizon_fade;
+	r.alpha = (1.0 - trans) * horizon_fade;
+	return r;
 }
 
 #endif
@@ -684,19 +688,19 @@ cloud_result cloud_compute(float3 view_dir, float3 sun_dir, float sun_int, float
 [numthreads(8, 8, 1)]
 void main_comp(uint3 tid : SV_DispatchThreadID)
 {
-    float2 res;
-    tex_uav.GetDimensions(res.x, res.y);
-    if (any(tid.xy >= uint2(res))) return;
+	float2 res;
+	tex_uav.GetDimensions(res.x, res.y);
+	if (any(tid.xy >= uint2(res))) return;
 
-    float2 uv = (tid.xy + 0.5) / res;
-    float height, cos_zenith;
-    transmittance_uv_to_params(uv, height, cos_zenith);
+	float2 uv = (tid.xy + 0.5) / res;
+	float height, cos_zenith;
+	transmittance_uv_to_params(uv, height, cos_zenith);
 
-    float3 pos = earth_center + float3(0.0, height, 0.0);
-    float sin_z = safe_sqrt(1.0 - cos_zenith * cos_zenith);
-    float3 dir = float3(sin_z, cos_zenith, 0.0);
+	float3 pos = earth_center + float3(0.0, height, 0.0);
+	float sin_z = safe_sqrt(1.0 - cos_zenith * cos_zenith);
+	float3 dir = float3(sin_z, cos_zenith, 0.0);
 
-    tex_uav[tid.xy] = float4(compute_transmittance_to_top(pos, dir), 1.0);
+	tex_uav[tid.xy] = float4(compute_transmittance_to_top(pos, dir), 1.0);
 }
 
 #elif defined(MULTISCATTER_LUT)
@@ -704,15 +708,15 @@ void main_comp(uint3 tid : SV_DispatchThreadID)
 [numthreads(8, 8, 1)]
 void main_comp(uint3 tid : SV_DispatchThreadID)
 {
-    float2 res;
-    tex_uav.GetDimensions(res.x, res.y);
-    if (any(tid.xy >= uint2(res))) return;
+	float2 res;
+	tex_uav.GetDimensions(res.x, res.y);
+	if (any(tid.xy >= uint2(res))) return;
 
-    float2 uv = (tid.xy + 0.5) / res;
-    float cos_sun = uv.x * 2.0 - 1.0;
-    float height = uv.y * (atmosphere_radius - earth_radius);
+	float2 uv = (tid.xy + 0.5) / res;
+	float cos_sun = uv.x * 2.0 - 1.0;
+	float height = uv.y * (atmosphere_radius - earth_radius);
 
-    tex_uav[tid.xy] = float4(compute_multiscatter(height, cos_sun, tex, GET_SAMPLER(sampler_bilinear_clamp)), 1.0);
+	tex_uav[tid.xy] = float4(compute_multiscatter(height, cos_sun, tex, samplers[sampler_bilinear_clamp]), 1.0);
 }
 
 #elif defined(LUT)
@@ -720,17 +724,17 @@ void main_comp(uint3 tid : SV_DispatchThreadID)
 [numthreads(8, 8, 8)]
 void main_comp(uint3 tid : SV_DispatchThreadID)
 {
-    uint3 dims;
-    tex3d_uav.GetDimensions(dims.x, dims.y, dims.z);
-    if (any(tid >= dims)) return;
+	uint3 dims;
+	tex3d_uav.GetDimensions(dims.x, dims.y, dims.z);
+	if (any(tid >= dims)) return;
 
-    float height = float(tid.y) / (dims.y - 1) * (atmosphere_radius - earth_radius);
-    float cos_zenith = float(tid.x) / (dims.x - 1) * 2.0 - 1.0;
+	float height = float(tid.y) / (dims.y - 1) * (atmosphere_radius - earth_radius);
+	float cos_zenith = float(tid.x) / (dims.x - 1) * 2.0 - 1.0;
 
-    float3 pos = earth_center + float3(0.0, earth_radius + height, 0.0);
-    float sin_z = safe_sqrt(1.0 - cos_zenith * cos_zenith);
+	float3 pos = earth_center + float3(0.0, earth_radius + height, 0.0);
+	float sin_z = safe_sqrt(1.0 - cos_zenith * cos_zenith);
 
-    tex3d_uav[tid] = float4(compute_transmittance_to_top(pos, float3(sin_z, cos_zenith, 0.0)), 1.0);
+	tex3d_uav[tid] = float4(compute_transmittance_to_top(pos, float3(sin_z, cos_zenith, 0.0)), 1.0);
 }
 
 #else
@@ -738,213 +742,215 @@ void main_comp(uint3 tid : SV_DispatchThreadID)
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_comp(uint3 tid : SV_DispatchThreadID)
 {
-    float2 res;
-    tex_uav.GetDimensions(res.x, res.y);
-    if (any(tid.xy >= uint2(res))) return;
+	float2 res;
+	tex_uav.GetDimensions(res.x, res.y);
+	if (any(tid.xy >= uint2(res))) return;
 
-    float2 uv = (float2(tid.xy) + 0.5) / res;
+	float2 uv = (float2(tid.xy) + 0.5) / res;
 
-    // equirectangular to direction
-    float phi = uv.x * PI2 + PI;
-    float theta = (0.5 - uv.y) * PI;
-    float cos_t = cos(theta);
-    float3 view_dir = normalize(float3(cos(phi) * cos_t, sin(theta), sin(phi) * cos_t));
-    float3 orig_view = view_dir;
+	// equirectangular to direction
+	float phi = uv.x * PI2 + PI;
+	float theta = (0.5 - uv.y) * PI;
+	float cos_t = cos(theta);
+	float3 view_dir = normalize(float3(cos(phi) * cos_t, sin(theta), sin(phi) * cos_t));
+	float3 orig_view = view_dir;
 
-    // mirror below horizon for ibl
-    bool below_horizon = view_dir.y < 0.0;
-    if (below_horizon) view_dir.y = -view_dir.y;
+	// mirror below horizon for ibl
+	bool below_horizon = view_dir.y < 0.0;
+	if (below_horizon) view_dir.y = -view_dir.y;
 
-    // sun direction from light
-    Light light;
-    Surface surface;
-    light.Build(0, surface);
-    float3 sun_dir = normalize(-light.forward);
-    float sun_elev = dot(sun_dir, up_direction);
+	// sun direction from light
+	Light light;
+	Surface surface = (Surface)0;
+	light.Build(0, surface);
+	float3 sun_dir = normalize(-light.forward);
+	float sun_elev = dot(sun_dir, up_direction);
 
-    // day/night factor
-    float day_factor = 1.0 / (1.0 + exp(-sun_elev * 20.0));
+	// day/night factor
+	float day_factor = 1.0 / (1.0 + exp(-sun_elev * 20.0));
 
-    // camera in atmosphere
-    float3 cam_pos = buffer_frame.camera_position;
-    float cam_h = get_height(cam_pos);
-    if (cam_h < 0.0)
-        cam_pos = earth_center + normalize(cam_pos - earth_center) * (earth_radius + 1.0);
-    else if (cam_h > atmosphere_radius - earth_radius)
-        cam_pos = earth_center + normalize(cam_pos - earth_center) * (atmosphere_radius - 1.0);
+	// camera in atmosphere
+	float3 cam_pos = get_camera_position();
+	float cam_h = get_height(cam_pos);
+	if (cam_h < 0.0)
+	{
+		cam_pos = earth_center + normalize(cam_pos - earth_center) * (earth_radius + 1.0);
+	}
+	else if (cam_h > atmosphere_radius - earth_radius)
+	{
+		cam_pos = earth_center + normalize(cam_pos - earth_center) * (atmosphere_radius - 1.0);
+	}
 
-    // sky luminance
-    float3 luminance = compute_sky_luminance(cam_pos, view_dir, sun_dir, tex, tex2,
-                                              GET_SAMPLER(sampler_bilinear_clamp), 0.5);
+	// sky luminance
+	float3 luminance = compute_sky_luminance(cam_pos, view_dir, sun_dir, tex, tex2, samplers[sampler_bilinear_clamp], 0.5);
 
-    // celestial bodies
-    float3 sun_col = float3(0, 0, 0);
-    float3 star_col = float3(0, 0, 0);
-    float3 moon_col = float3(0, 0, 0);
+	// celestial bodies
+	float3 sun_col = float3(0, 0, 0);
+	float3 star_col = float3(0, 0, 0);
+	float3 moon_col = float3(0, 0, 0);
 
-    if (below_horizon)
-    {
-        luminance *= 0.3;
-    }
-    else
-    {
-        if (sun_elev > -0.02)
-        {
-            float3 cam_up = normalize(cam_pos - earth_center);
-            float2 sun_uv = transmittance_lut_params_to_uv(length(cam_pos - earth_center), max(dot(cam_up, sun_dir), 0.0));
-            float3 sun_trans = tex.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), sun_uv, 0).rgb;
-            sun_col = compute_sun_disc(orig_view, sun_dir, sun_trans) * smoothstep(-0.02, 0.02, sun_elev);
-        }
-        star_col = stars::compute_color(uv, sun_dir);
-        moon_col = compute_moon(orig_view, sun_dir);
-    }
+	if (below_horizon)
+	{
+		luminance *= 0.3;
+	}
+	else
+	{
+		if (sun_elev > -0.02)
+		{
+			float3 cam_up = normalize(cam_pos - earth_center);
+			float2 sun_uv = transmittance_lut_params_to_uv(length(cam_pos - earth_center), max(dot(cam_up, sun_dir), 0.0));
+			float3 sun_trans = tex.SampleLevel(samplers[sampler_bilinear_clamp], sun_uv, 0).rgb;
+			sun_col = compute_sun_disc(orig_view, sun_dir, sun_trans) * smoothstep(-0.02, 0.02, sun_elev);
+		}
+		star_col = stars::compute_color(uv, sun_dir);
+		moon_col = compute_moon(orig_view, sun_dir);
+	}
 
-    // intensity scaling
-    float intensity = lerp(0.5, 1.5, saturate(light.intensity / 100000.0));
-    luminance *= day_factor;
+	// intensity scaling
+	float intensity = lerp(0.5, 1.5, saturate(light.intensity / 100000.0));
+	luminance *= day_factor;
 
-    float night_factor = 1.0 - day_factor;
-    float3 night_ambient = float3(0.001, 0.002, 0.004) * night_factor;
+	float night_factor = 1.0 - day_factor;
+	float3 night_ambient = float3(0.001, 0.002, 0.004) * night_factor;
 
-    // clouds with checkerboard temporal distribution
-    // only compute clouds for half the pixels per frame, interpolate the rest
-    cloud_result clouds_sun = (cloud_result)0;
-    clouds_sun.transmittance = float3(1, 1, 1);
-    cloud_result clouds_moon = (cloud_result)0;
-    clouds_moon.transmittance = float3(1, 1, 1);
+	// clouds with checkerboard temporal distribution
+	// only compute clouds for half the pixels per frame, interpolate the rest
+	cloud_result clouds_sun = (cloud_result)0;
+	clouds_sun.transmittance = float3(1, 1, 1);
+	cloud_result clouds_moon = (cloud_result)0;
+	clouds_moon.transmittance = float3(1, 1, 1);
 
-    // checkerboard pattern: compute clouds on alternating pixels each frame
-    uint2 pixel = tid.xy;
-    uint frame_parity = buffer_frame.frame & 1;
-    bool compute_clouds = ((pixel.x + pixel.y + frame_parity) & 1) == 0;
+	// checkerboard pattern: compute clouds on alternating pixels each frame
+	uint2 pixel = tid.xy;
+	uint frame_parity = get_frame_index() & 1;
+	bool compute_clouds = ((pixel.x + pixel.y + frame_parity) & 1) == 0;
 
-    if (!below_horizon && buffer_frame.cloud_coverage > 0.0 && compute_clouds)
-    {
-        float3 moon_dir = -sun_dir;
-        float moon_elev = dot(moon_dir, up_direction);
-        float time_val = (float)buffer_frame.time * 0.001f;
+	if (!below_horizon && get_cloud_coverage() > 0.0 && compute_clouds)
+	{
+		float3 moon_dir = -sun_dir;
+		float moon_elev = dot(moon_dir, up_direction);
+		float time_val = (float)get_time_seconds() * 0.001f;
 
-        if (sun_elev > -0.15)
-        {
-            // sun intensity drops to zero when sun is below horizon
-            float day_night_factor = saturate(sun_elev * 5.0 + 1.0);
-            float sun_int = light.intensity * day_night_factor;
-            clouds_sun = cloud_compute(orig_view, sun_dir, sun_int, day_night_factor, time_val, uv,
-                                       tex, tex2, GET_SAMPLER(sampler_bilinear_clamp));
-            clouds_sun.color *= day_night_factor;
-            clouds_sun.alpha *= day_night_factor;
-        }
+		if (sun_elev > -0.15)
+		{
+			// sun intensity drops to zero when sun is below horizon
+			float day_night_factor = saturate(sun_elev * 5.0 + 1.0);
+			float sun_int = light.intensity * day_night_factor;
+			clouds_sun = cloud_compute(orig_view, sun_dir, sun_int, day_night_factor, time_val, uv,
+									   tex, tex2, samplers[sampler_bilinear_clamp]);
+			clouds_sun.color *= day_night_factor;
+			clouds_sun.alpha *= day_night_factor;
+		}
 
-        if (moon_elev > 0.0 && sun_elev < 0.1)
-        {
-            // moonlight: 3% of sun intensity
-            float day_night_factor = 0.03;
-            clouds_moon = cloud_compute(orig_view, moon_dir, light.intensity * day_night_factor, day_night_factor, time_val, uv,
-                                        tex, tex2, GET_SAMPLER(sampler_bilinear_clamp));
-            float fade = saturate((0.1 - sun_elev) * 5.0) * saturate(moon_elev * 3.0);
-            clouds_moon.color *= fade;
-            clouds_moon.alpha *= fade;
-        }
-    }
+		if (moon_elev > 0.0 && sun_elev < 0.1)
+		{
+			// moonlight: 3% of sun intensity
+			float day_night_factor = 0.03;
+			clouds_moon = cloud_compute(orig_view, moon_dir, light.intensity * day_night_factor, day_night_factor, time_val, uv,
+										tex, tex2, samplers[sampler_bilinear_clamp]);
+			float fade = saturate((0.1 - sun_elev) * 5.0) * saturate(moon_elev * 3.0);
+			clouds_moon.color *= fade;
+			clouds_moon.alpha *= fade;
+		}
+	}
 
-    // combine clouds
-    float cloud_alpha = max(clouds_sun.alpha, clouds_moon.alpha);
-    float3 cloud_color = clouds_sun.color + clouds_moon.color;
-    float3 cloud_trans = clouds_sun.transmittance * clouds_moon.transmittance;
-    float3 cloud_inscatter = clouds_sun.inscatter + clouds_moon.inscatter;
+	// combine clouds
+	float cloud_alpha = max(clouds_sun.alpha, clouds_moon.alpha);
+	float3 cloud_color = clouds_sun.color + clouds_moon.color;
+	float3 cloud_trans = clouds_sun.transmittance * clouds_moon.transmittance;
+	float3 cloud_inscatter = clouds_sun.inscatter + clouds_moon.inscatter;
 
-    // final composition
-    float3 final_color;
+	// final composition
+	float3 final_color;
 
-    // for checkerboard-skipped pixels: don't add sun/moon - let temporal blend handle it
-    // this prevents sun from appearing in front of clouds on skipped pixels
-    bool has_clouds_coverage = buffer_frame.cloud_coverage > 0.0 && !below_horizon;
-    bool should_add_celestials = compute_clouds || !has_clouds_coverage;
+	// for checkerboard-skipped pixels: don't add sun/moon - let temporal blend handle it
+	// this prevents sun from appearing in front of clouds on skipped pixels
+	bool has_clouds_coverage = get_cloud_coverage() > 0.0 && !below_horizon;
+	bool should_add_celestials = compute_clouds || !has_clouds_coverage;
 
-    if (cloud_alpha > 0.0)
-    {
-        // sun/moon/stars should be BEHIND clouds - occlude based on cloud density
-        float celestial_occ = smoothstep(0.02, 0.15, cloud_alpha);
+	if (cloud_alpha > 0.0)
+	{
+		// sun/moon/stars should be BEHIND clouds - occlude based on cloud density
+		float celestial_occ = smoothstep(0.02, 0.15, cloud_alpha);
 
-        float3 sky_behind = (luminance + night_ambient) * intensity;
-        float3 sky_through = sky_behind * cloud_trans;
+		float3 sky_behind = (luminance + night_ambient) * intensity;
+		float3 sky_through = sky_behind * cloud_trans;
 
-        // clouds in front of sky
-        final_color = sky_through * (1.0 - cloud_alpha) + cloud_color +
-                      cloud_inscatter * (1.0 - cloud_alpha * 0.5);
+		// clouds in front of sky
+		final_color = sky_through * (1.0 - cloud_alpha) + cloud_color + cloud_inscatter * (1.0 - cloud_alpha * 0.5);
 
-        // celestial bodies behind clouds - strongly attenuated
-        float3 celestials = (sun_col + star_col + moon_col) * cloud_trans * cloud_trans;
-        final_color += celestials * (1.0 - celestial_occ) * intensity;
-    }
-    else if (should_add_celestials)
-    {
-        // no clouds computed AND (we computed this frame OR no cloud coverage at all)
-        final_color = (luminance + night_ambient + sun_col + star_col + moon_col) * intensity;
-    }
-    else
-    {
-        // checkerboard-skipped pixel with cloud coverage - DON'T add sun, use sky only
-        // temporal blend will bring in the properly occluded result from neighboring frames
-        final_color = (luminance + night_ambient) * intensity;
-    }
+		// celestial bodies behind clouds - strongly attenuated
+		float3 celestials = (sun_col + star_col + moon_col) * cloud_trans * cloud_trans;
+		final_color += celestials * (1.0 - celestial_occ) * intensity;
+	}
+	else if (should_add_celestials)
+	{
+		// no clouds computed AND (we computed this frame OR no cloud coverage at all)
+		final_color = (luminance + night_ambient + sun_col + star_col + moon_col) * intensity;
+	}
+	else
+	{
+		// checkerboard-skipped pixel with cloud coverage - DON'T add sun, use sky only
+		// temporal blend will bring in the properly occluded result from neighboring frames
+		final_color = (luminance + night_ambient) * intensity;
+	}
 
-    final_color = min(final_color, 100.0);
+	final_color = min(final_color, 100.0);
 
-    // temporal accumulation with checkerboard reconstruction
-    float4 prev = tex_uav[tid.xy];
-    float3 blended = final_color;
+	// temporal accumulation with checkerboard reconstruction
+	float4 prev = tex_uav[tid.xy];
+	float3 blended = final_color;
 
-    // helper to wrap x coordinate for equirectangular seamless sampling
-    uint wrap_x = uint(res.x);
+	// helper to wrap x coordinate for equirectangular seamless sampling
+	uint wrap_x = uint(res.x);
 
-    if (!compute_clouds && has_clouds_coverage && prev.a > 0.5)
-    {
-        // checkerboard reconstruction: blend neighboring computed pixels with temporal history
-        // properly wrap x coordinate for seamless equirectangular texture
-        bool at_y_edge = tid.y < 2 || tid.y >= uint(res.y) - 2;
+	if (!compute_clouds && has_clouds_coverage && prev.a > 0.5)
+	{
+		// checkerboard reconstruction: blend neighboring computed pixels with temporal history
+		// properly wrap x coordinate for seamless equirectangular texture
+		bool at_y_edge = tid.y < 2 || tid.y >= uint(res.y) - 2;
 
-        if (!at_y_edge)
-        {
-            // read 4 diagonal neighbors with proper x wrapping for equirectangular seam
-            uint x_left  = (tid.x == 0) ? (wrap_x - 1) : (tid.x - 1);
-            uint x_right = (tid.x >= wrap_x - 1) ? 0 : (tid.x + 1);
+		if (!at_y_edge)
+		{
+			// read 4 diagonal neighbors with proper x wrapping for equirectangular seam
+			uint x_left  = (tid.x == 0) ? (wrap_x - 1) : (tid.x - 1);
+			uint x_right = (tid.x >= wrap_x - 1) ? 0 : (tid.x + 1);
 
-            float3 n0 = tex_uav[uint2(x_left,  tid.y - 1)].rgb;
-            float3 n1 = tex_uav[uint2(x_right, tid.y - 1)].rgb;
-            float3 n2 = tex_uav[uint2(x_left,  tid.y + 1)].rgb;
-            float3 n3 = tex_uav[uint2(x_right, tid.y + 1)].rgb;
+			float3 n0 = tex_uav[uint2(x_left,  tid.y - 1)].rgb;
+			float3 n1 = tex_uav[uint2(x_right, tid.y - 1)].rgb;
+			float3 n2 = tex_uav[uint2(x_left,  tid.y + 1)].rgb;
+			float3 n3 = tex_uav[uint2(x_right, tid.y + 1)].rgb;
 
-            // use box filter of neighbors for spatial reconstruction
-            float3 spatial = (n0 + n1 + n2 + n3) * 0.25;
+			// use box filter of neighbors for spatial reconstruction
+			float3 spatial = (n0 + n1 + n2 + n3) * 0.25;
 
-            // blend spatial reconstruction with temporal history for stability
-            blended = lerp(prev.rgb, spatial, 0.4);
-        }
-        else
-        {
-            // at y edges (poles), fall back to temporal-only with faster blend
-            blended = lerp(prev.rgb, final_color, 0.25);
-        }
-    }
-    else if (cloud_alpha > 0.0 && prev.a > 0.5)
-    {
-        // computed pixel with clouds - temporal blend with variance-aware weight
-        float blend = 0.2;
+			// blend spatial reconstruction with temporal history for stability
+			blended = lerp(prev.rgb, spatial, 0.4);
+		}
+		else
+		{
+			// at y edges (poles), fall back to temporal-only with faster blend
+			blended = lerp(prev.rgb, final_color, 0.25);
+		}
+	}
+	else if (cloud_alpha > 0.0 && prev.a > 0.5)
+	{
+		// computed pixel with clouds - temporal blend with variance-aware weight
+		float blend = 0.2;
 
-        // increase blend when colors differ significantly (reduces ghosting during movement)
-        float color_diff = dot(abs(final_color - prev.rgb), float3(0.299, 0.587, 0.114));
-        blend = lerp(blend, 0.4, saturate(color_diff * 3.0));
+		// increase blend when colors differ significantly (reduces ghosting during movement)
+		float color_diff = dot(abs(final_color - prev.rgb), float3(0.299, 0.587, 0.114));
+		blend = lerp(blend, 0.4, saturate(color_diff * 3.0));
 
-        blended = lerp(prev.rgb, final_color, blend);
-    }
-    else if (prev.a > 0.5)
-    {
-        // no clouds this frame but have history - blend slowly for smooth transitions
-        blended = lerp(prev.rgb, final_color, 0.25);
-    }
+		blended = lerp(prev.rgb, final_color, blend);
+	}
+	else if (prev.a > 0.5)
+	{
+		// no clouds this frame but have history - blend slowly for smooth transitions
+		blended = lerp(prev.rgb, final_color, 0.25);
+	}
 
-    tex_uav[tid.xy] = float4(blended, 1.0);
+	tex_uav[tid.xy] = float4(blended, 1.0);
 }
 #endif
 

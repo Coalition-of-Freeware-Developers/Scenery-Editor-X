@@ -36,22 +36,22 @@ import constants;
 /*------------------------------------------------------------------------------
     SATURATE
 ------------------------------------------------------------------------------*/
-float saturate_16(float x) { return clamp(x, 0.0f, FLT_MAX_16U); }
-float2 saturate_16(float2 x) { return clamp(x, 0.0f, FLT_MAX_16U); }
-float3 saturate_16(float3 x) { return clamp(x, 0.0f, FLT_MAX_16U); }
-float4 saturate_16(float4 x) { return clamp(x, 0.0f, FLT_MAX_16U); }
+public float saturate_16(float x) { return clamp(x, 0.0f, FLT_MAX_16U); }
+public float2 saturate_16(float2 x) { return clamp(x, 0.0f, FLT_MAX_16U); }
+public float3 saturate_16(float3 x) { return clamp(x, 0.0f, FLT_MAX_16U); }
+public float4 saturate_16(float4 x) { return clamp(x, 0.0f, FLT_MAX_16U); }
 
 /*------------------------------------------------------------------------------
     VALIDATE (used because AMD SSSR is full of issues)
 ------------------------------------------------------------------------------*/
-float validate_output(float value)
+public float validate_output(float value)
 {
     value = saturate_16(value);
     float is_nan_mask = isnan(value) ? 1.0f : 0.0f;
     return lerp(value, 1.0f, is_nan_mask);
 }
 
-float2 validate_output(float2 value)
+public float2 validate_output(float2 value)
 {
     return float2
     (
@@ -60,7 +60,7 @@ float2 validate_output(float2 value)
     );
 }
 
-float3 validate_output(float3 value)
+public float3 validate_output(float3 value)
 {
     return float3
     (
@@ -70,7 +70,7 @@ float3 validate_output(float3 value)
     );
 }
 
-float4 validate_output(float4 value)
+public float4 validate_output(float4 value)
 {
     return float4
     (
@@ -84,49 +84,52 @@ float4 validate_output(float4 value)
 /*------------------------------------------------------------------------------
     PACK/UNPACK
 ------------------------------------------------------------------------------*/
-float3 unpack(float3 value) { return value * 2.0f - 1.0f; }
-float3 pack(float3 value) { return value * 0.5f + 0.5f; }
-float2 unpack(float2 value) { return value * 2.0f - 1.0f; }
-float2 pack(float2 value) { return value * 0.5f + 0.5f; }
-float unpack(float value) { return value * 2.0f - 1.0f; }
-float pack(float value) { return value * 0.5f + 0.5f; }
+public float3 unpack(float3 value) { return value * 2.0f - 1.0f; }
+public float3 pack(float3 value) { return value * 0.5f + 0.5f; }
+public float2 unpack(float2 value) { return value * 2.0f - 1.0f; }
+public float2 pack(float2 value) { return value * 0.5f + 0.5f; }
+public float unpack(float value) { return value * 2.0f - 1.0f; }
+public float pack(float value) { return value * 0.5f + 0.5f; }
 
 
 /*------------------------------------------------------------------------------
     NORMAL
 ------------------------------------------------------------------------------*/
 // reconstruct normal z, x and y components have to be in a -1 to 1 range.
-float3 reconstruct_normal_z(float2 normal)
+public float3 reconstruct_normal_z(float2 normal)
 {
     float z = sqrt(saturate(1.0f - dot(normal, normal)));
     return float3(normal, z);
 }
 
-float3 get_normal(uint2 pos)
+public float3 get_normal(uint2 pos)
 {
     // load returns 0 for any value accessed out of bounds, so clamp.
-    pos.x = clamp(pos.x, 0u, (uint)buffer_frame.resolution_render.x);
-    pos.y = clamp(pos.y, 0u, (uint)buffer_frame.resolution_render.y);
+    float2 resolution_render = get_resolution_render();
+    pos.x = clamp(pos.x, 0u, (uint)resolution_render.x);
+    pos.y = clamp(pos.y, 0u, (uint)resolution_render.y);
 
     return tex_normal[pos].xyz;
 }
 
-float3 get_normal(float2 uv)
+public float3 get_normal(float2 uv)
 {
     return tex_normal.SampleLevel(samplers[sampler_point_clamp], uv, 0).xyz;
 }
 
-float3 get_normal_view_space(uint2 pos)
+public float3 get_normal_view_space(uint2 pos)
 {
-    return normalize(mul(float4(get_normal(pos), 0.0f), buffer_frame.view).xyz);
+    float4 normal_vs = mul(float4(get_normal(pos), 0.0f), get_view_matrix());
+    return normalize(normal_vs.xyz);
 }
 
-float3 get_normal_view_space(float2 uv)
+public float3 get_normal_view_space(float2 uv)
 {
-    return normalize(mul(float4(get_normal(uv), 0.0f), buffer_frame.view).xyz);
+    float4 normal_vs = mul(float4(get_normal(uv), 0.0f), get_view_matrix());
+    return normalize(normal_vs.xyz);
 }
 
-float3x3 make_tangent_to_world_matrix(float3 n, float3 t)
+public float3x3 make_tangent_to_world_matrix(float3 n, float3 t)
 {
     // re-orthogonalize T with respect to N
     t = normalize(t - dot(t, n) * n);
@@ -136,7 +139,7 @@ float3x3 make_tangent_to_world_matrix(float3 n, float3 t)
     return float3x3(t, b, n);
 }
 
-float3x3 make_world_to_tangent_matrix(float3 n, float3 t)
+public float3x3 make_world_to_tangent_matrix(float3 n, float3 t)
 {
     return transpose(make_tangent_to_world_matrix(n, t));
 }
@@ -144,12 +147,12 @@ float3x3 make_world_to_tangent_matrix(float3 n, float3 t)
 /*------------------------------------------------------------------------------
     VELOCITY
 ------------------------------------------------------------------------------*/
-float2 get_velocity_uv(uint2 pos)
+public float2 get_velocity_uv(uint2 pos)
 {
     return tex_velocity[pos].xy;
 }
 
-float2 get_velocity_uv(float2 uv)
+public float2 get_velocity_uv(float2 uv)
 {
     return tex_velocity.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0).xy;
 }
@@ -157,7 +160,7 @@ float2 get_velocity_uv(float2 uv)
 /*------------------------------------------------------------------------------
     DIRECTION UV
 ------------------------------------------------------------------------------*/
-float2 direction_sphere_uv(float3 direction)
+public float2 direction_sphere_uv(float3 direction)
 {
     float u = 0.5f + atan2(direction.z, direction.x) / PI2;
     float v = 0.5f - asin(direction.y) / PI;
@@ -169,14 +172,14 @@ float2 direction_sphere_uv(float3 direction)
     OCCLUSION/SHADOWING
 ------------------------------------------------------------------------------*/
 // The Technical Art of Uncharted 4 - http://advances.realtimerendering.com/other/2016/naughty_dog/index.html
-float microw_shadowing_nt(float n_dot_l, float ao)
+public float microw_shadowing_nt(float n_dot_l, float ao)
 {
     float aperture = 2.0f * ao * ao;
     return saturate(abs(n_dot_l) + aperture - 1.0f);
 }
 
 // Chan 2018, "Material Advances in Call of Duty: WWII"
-float microw_shadowing_cod(float n_dot_l, float visibility)
+public float microw_shadowing_cod(float n_dot_l, float visibility)
 {
     float aperture = rsqrt(1.0 - visibility);
     float microShadow = saturate(n_dot_l * aperture);
@@ -186,16 +189,16 @@ float microw_shadowing_cod(float n_dot_l, float visibility)
 /*------------------------------------------------------------------------------
     MISC
 ------------------------------------------------------------------------------*/
-bool is_valid_uv(float2 value) { return (value.x >= 0.0f && value.x <= 1.0f) && (value.y >= 0.0f && value.y <= 1.0f); }
+public bool is_valid_uv(float2 value) { return (value.x >= 0.0f && value.x <= 1.0f) && (value.y >= 0.0f && value.y <= 1.0f); }
 
-float screen_fade(float2 uv)
+public float screen_fade(float2 uv)
 {
     float2 fade = max(0.0f, 12.0f * abs(uv - 0.5f) - 5.0f);
     return saturate(1.0f - dot(fade, fade));
 }
 
 // find good arbitrary axis vectors to represent U and V axes of a plane, given just the normal. ported from UnMath.h
-void find_best_axis_vectors(float3 In, out float3 Axis1, out float3 Axis2)
+public void find_best_axis_vectors(float3 In, out float3 Axis1, out float3 Axis2)
 {
     const float3 N = abs(In);
 
@@ -281,18 +284,19 @@ static const float3 hemisphere_samples[64] =
         float3(-0.44272, -0.67928, 0.1865)
     };
 
-float get_alpha_threshold(float3 position_world)
+public float get_alpha_threshold(float3 position_world)
 {
     static const float ALPHA_THRESHOLD_DEFAULT = 0.6f;
     static const float ALPHA_MAX_DISTANCE = 700.0f;
     static const float ALPHA_MAX_DISTANCE_SQ = ALPHA_MAX_DISTANCE * ALPHA_MAX_DISTANCE;
 
     // beyond max distance, no alpha testing (threshold = 0)
-    float3 offset = position_world - buffer_frame.camera_position;
+    float3 offset = position_world - get_camera_position();
     float pixel_distance_sq = dot(offset, offset);
     float distance_factor = step(ALPHA_MAX_DISTANCE_SQ, pixel_distance_sq);
 
     return saturate(lerp(ALPHA_THRESHOLD_DEFAULT, 0.0f, distance_factor));
 }
+
 
 

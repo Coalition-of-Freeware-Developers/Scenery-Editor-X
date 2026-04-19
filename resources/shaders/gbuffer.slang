@@ -73,12 +73,17 @@ static float2 rotate_uv(float2 uv, float angle)
     return float2(centered.x * cos_a - centered.y * sin_a, centered.x * sin_a + centered.y * cos_a) + 0.5f;
 }
 
+static float4 sample_material_texture(uint texture_index, float2 uv)
+{
+    return material_textures[pass_get_material_index() + texture_index].Sample(samplers[sampler_anisotropic_wrap], uv);
+}
+
 static float4 sample_reduce_tiling(uint texture_index, float2 uv, float3 world_pos)
 {
     int2 tile_coords = int2(floor(world_pos.x), floor(world_pos.z));
     float angle = floor(hash(tile_coords) * 4.0f) * PI_HALF;
     float2 final_uv = frac(float2(tile_coords) + rotate_uv(frac(uv), angle));
-    return GET_TEXTURE(texture_index).Sample(GET_SAMPLER(sampler_anisotropic_wrap), final_uv);
+    return sample_material_texture(texture_index, final_uv);
 }
 
 static float4 sample_texture(gbuffer_vertex vertex, uint texture_index, Surface surface, float3 world_pos)
@@ -99,7 +104,7 @@ static float4 sample_texture(gbuffer_vertex vertex, uint texture_index, Surface 
     }
     else
     {
-        color = GET_TEXTURE(texture_index).Sample(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv_misc.xy);
+        color = sample_material_texture(texture_index, vertex.uv_misc.xy);
     }
 
     return color;
@@ -170,16 +175,16 @@ gbuffer main_frag(gbuffer_vertex vertex, bool is_front_face: SV_IsFrontFace)
     float emission = 0.0f;
 
     // velocity computation
-    float2 position_ndc = uv_to_ndc(vertex.position.xy / (buffer_frame.resolution_render * buffer_frame.resolution_scale));
+    float2 position_ndc = uv_to_ndc(vertex.position.xy / (get_resolution_render() * get_resolution_scale()));
     float2 position_ndc_previous = vertex.position_previous.xy / vertex.position_previous.w;
     float2 position_ndc_jittered = position_ndc;
-    position_ndc -= buffer_frame.taa_jitter_current;
-    position_ndc_previous -= buffer_frame.taa_jitter_previous;
+    position_ndc -= get_taa_jitter_current();
+    position_ndc_previous -= get_taa_jitter_previous();
     float2 velocity = position_ndc - position_ndc_previous;
 
     // world position and distance
     float3 position_world = get_position(vertex.position.z, ndc_to_uv(position_ndc_jittered));
-    float3 camera_to_pixel = position_world - buffer_frame.camera_position;
+    float3 camera_to_pixel = position_world - get_camera_position();
     float distance = fast_sqrt(dot(camera_to_pixel, camera_to_pixel));
 
     // world space uv transformation
@@ -236,7 +241,7 @@ gbuffer main_frag(gbuffer_vertex vertex, bool is_front_face: SV_IsFrontFace)
     // emission
     if (surface.has_texture_emissive())
     {
-        float3 emissive = GET_TEXTURE(material_texture_index_emission).Sample(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv_misc.xy).rgb;
+        float3 emissive = sample_material_texture(material_texture_index_emission, vertex.uv_misc.xy).rgb;
         albedo.rgb += emissive;
         emission = luminance(emissive);
     }
@@ -257,7 +262,7 @@ gbuffer main_frag(gbuffer_vertex vertex, bool is_front_face: SV_IsFrontFace)
         {
             static const float2 direction = float2(1.0f, 0.5f);
             static const float speed = 0.5f;
-            float time = (float)buffer_frame.time;
+            float time = (float)get_time_seconds();
             float2 uv_offset = direction * time * speed;
             float2 noise_uv = vertex.uv_misc.xy + uv_offset;
             float noise = noise_perlin(noise_uv);

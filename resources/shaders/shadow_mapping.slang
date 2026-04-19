@@ -30,6 +30,10 @@
  */
 
 import common;
+import constants;
+import noise;
+import structs;
+import transforms;
 
 // shadow mapping constants
 static const uint  g_shadow_sample_count            = 4;

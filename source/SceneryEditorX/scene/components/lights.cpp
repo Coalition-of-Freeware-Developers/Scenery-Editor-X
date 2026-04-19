@@ -91,10 +91,10 @@ namespace SceneryEditorX
 	}
 
 	/**
-	 * @brief 
-	 * @param temperatureKelvin 
-	 * @param a 
-	 * @return 
+	 * @brief Converts a color temperature in Kelvin to an RGB color.
+	 * @param temperatureKelvin The color temperature in Kelvin.
+	 * @param a The alpha value.
+	 * @return The RGB color corresponding to the specified temperature.
 	 */
 	static float LightColor(const float temperatureKelvin, const float a /*= 1.0f*/)
 	{
@@ -110,9 +110,9 @@ namespace SceneryEditorX
 	const float CASCADE_FAR_MAX_EXTENT = FLT_MAX;
 
 	/**
-	 * @brief 
-	 * @param type 
-	 * @return 
+	 * @brief Gets a sensible default range for a light based on its type.
+	 * @param type The type of the light.
+	 * @return The default range for the specified light type.
 	 */
 	static float GetSensibleRange(const LightType type)
 	{
@@ -137,9 +137,9 @@ namespace SceneryEditorX
 	}
 
 	/**
-	 * @brief 
-	 * @param type 
-	 * @return 
+	 * @brief Gets a sensible default color for a light based on its type.
+	 * @param type The type of the light.
+	 * @return The default color for the specified light type.
 	 */
 	static Standard GetSensibleColor(const LightType type)
 	{
@@ -271,27 +271,49 @@ namespace SceneryEditorX
 		m_Color = rgb;
 
 		if (rgb == Standard::LIGHT_SKY_CLEAR)
+		{
 			m_TemperatureKelvin = 15000.0f;
+		}
 		else if (rgb == Standard::LIGHT_SKY_DAYLIGHT_OVERCAST)
+		{
 			m_TemperatureKelvin = 6500.0f;
+		}
 		else if (rgb == Standard::LIGHT_SKY_MOONLIGHT)
+		{
 			m_TemperatureKelvin = 4000.0f;
+		}
 		else if (rgb == Standard::LIGHT_SKY_SUNRISE)
+		{
 			m_TemperatureKelvin = 2000.0f;
+		}
 		else if (rgb == Standard::LIGHT_CANDLE_FLAME)
+		{
 			m_TemperatureKelvin = 1850.0f;
+		}
 		else if (rgb == Standard::LIGHT_DIRECT_SUNLIGHT)
+		{
 			m_TemperatureKelvin = 5778.0f;
+		}
 		else if (rgb == Standard::LIGHT_DIGITAL_DISPLAY)
+		{
 			m_TemperatureKelvin = 6500.0f;
+		}
 		else if (rgb == Standard::LIGHT_FLUORESCENT_TUBE_LIGHT)
+		{
 			m_TemperatureKelvin = 5000.0f;
+		}
 		else if (rgb == Standard::LIGHT_KEROSENE_LAMP)
+		{
 			m_TemperatureKelvin = 1850.0f;
+		}
 		else if (rgb == Standard::LIGHT_LIGHT_BULB)
+		{
 			m_TemperatureKelvin = 2700.0f;
+		}
 		else if (rgb == Standard::LIGHT_PHOTO_FLASH)
+		{
 			m_TemperatureKelvin = 5500.0f;
+		}
 	}
 	
 	void Light::SetIntensity(float lumens_lux)
@@ -354,13 +376,11 @@ namespace SceneryEditorX
 			// no solid angle conversion needed
 			return radiant_flux;
 		}
-		else
-		{
-			// point/spot: input is lumens (lm) -> flux (watts)
-			// we need radiant intensity (watts/sr)
-			// divide by 4pi to distribute flux over the sphere
-			return radiant_flux / (4.0f * 3.14159265359f);
-		}
+
+		// point/spot: input is lumens (lm) -> flux (watts)
+		// we need radiant intensity (watts/sr)
+		// divide by 4pi to distribute flux over the sphere
+		return radiant_flux / (4.0f * 3.14159265359f);
 	}
 	
 	void Light::SetRange(float range)

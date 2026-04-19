@@ -29,9 +29,8 @@
  * -------------------------------------------------------
  */
 #include "material.h"
-#include "SceneryEditorX/asset/manager/asset_manager.h"
-#include "SceneryEditorX/core/threading/thread_pool.h"
-
+#include <SceneryEditorX/asset/manager/asset_manager.h>
+#include <SceneryEditorX/core/threading/thread_pool.h>
 #include <SceneryEditorX/renderer/renderer.h>
 #include <nlohmann/json.hpp>
 
@@ -277,7 +276,7 @@ namespace SceneryEditorX
 		return nullptr;
 	}
 
-	void MaterialAsset::SetAlbedoMap(AssetHandle handle)
+	void MaterialAsset::SetAlbedoMap(const AssetHandle &handle)
 	{
 		m_Maps.m_AlbedoMap = handle;
 		if (handle == AssetHandle{})

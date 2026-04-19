@@ -28,6 +28,8 @@
  * Created: 18/04/2026
  * -------------------------------------------------------
  */
+import constants;
+import resources;
 import common;
 
 // helper: get luminance
@@ -131,8 +133,8 @@ float3 upsample_filter(Texture2D<float4> src, float2 uv, float2 texel_size)
 }
 
 #if LUMINANCE
-[numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 [shader("compute")]
+[numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_comp(uint3 thread_id : SV_DispatchThreadID)
 {
     float2 resolution_out;
@@ -154,8 +156,8 @@ void main_comp(uint3 thread_id : SV_DispatchThreadID)
 #endif
 
 #if DOWNSAMPLE
-[numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 [shader("compute")]
+[numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_comp(uint3 thread_id : SV_DispatchThreadID)
 {
     float2 resolution_out;
@@ -176,8 +178,8 @@ void main_comp(uint3 thread_id : SV_DispatchThreadID)
 #endif
 
 #if UPSAMPLE_BLEND_MIP
-[numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 [shader("compute")]
+[numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_comp(uint3 thread_id : SV_DispatchThreadID)
 {
     float2 resolution_out;
@@ -203,8 +205,8 @@ void main_comp(uint3 thread_id : SV_DispatchThreadID)
 #endif
 
 #if BLEND_FRAME
-[numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 [shader("compute")]
+[numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_comp(uint3 thread_id : SV_DispatchThreadID)
 {
     float2 resolution_out;
@@ -219,6 +221,20 @@ void main_comp(uint3 thread_id : SV_DispatchThreadID)
     float3 result                    = color_frame.rgb + (color_bloom.rgb * INTENSITY_CORRECTION * bloom_intensity);
 
     tex_uav[thread_id.xy] = float4(result, color_frame.a);
+}
+#endif
+
+#if !LUMINANCE && !DOWNSAMPLE && !UPSAMPLE_BLEND_MIP && !BLEND_FRAME
+[shader("compute")]
+[numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
+void main_comp(uint3 thread_id : SV_DispatchThreadID)
+{
+    float2 resolution_out;
+    tex_uav.GetDimensions(resolution_out.x, resolution_out.y);
+    if (any(int2(thread_id.xy) >= resolution_out))
+        return;
+
+    tex_uav[thread_id.xy] = tex[thread_id.xy];
 }
 #endif
 

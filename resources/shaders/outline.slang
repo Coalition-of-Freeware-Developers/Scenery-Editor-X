@@ -29,32 +29,41 @@
  * -------------------------------------------------------
  */
 import common;
+import resources;
+import constants;
 
-struct vertex
+struct vertex_in
+{
+    float3 position : POSITION;
+    float2 uv       : TEXCOORD0;
+};
+
+struct vertex_out
 {
     float4 position : SV_POSITION;
     float2 uv       : TEXCOORD0;
 };
 
 [shader("vertex")]
-vertex main_vs(vertex input)
+vertex_out main_vs(vertex_in input)
 {
-    input.position.w = 1.0f;
-    input.position   = mul(input.position, draw_data[buffer_pass.draw_index].transform);
-    input.position   = mul(input.position, buffer_frame.view_projection_unjittered);
+    vertex_out output;
+    output.position = mul(float4(input.position, 1.0f), draw_data[buffer_pass.draw_index].transform);
+    output.position = mul(output.position, get_view_projection_unjittered_matrix());
+    output.uv = input.uv;
 
-    return input;
+    return output;
 }
 
 [shader("fragment")]
-float4 main_frag(vertex input) : SV_Target
+float4 main_frag(vertex_out input) : SV_Target
 {
     // just a color
     return pass_get_f4_value();
 }
 
-[numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 [shader("compute")]
+[numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_comp(uint3 thread_id : SV_DispatchThreadID)
 {
     float4 silhouette = tex[thread_id.xy];

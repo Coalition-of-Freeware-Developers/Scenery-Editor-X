@@ -31,18 +31,18 @@
 module math;
 import constants;
 
-float fast_sqrt(float x)
+public float fast_sqrt(float x)
 {
     return (float)(asfloat(0x1fbd1df5 + (asint(x) >> 1)));
 }
 
-float fast_length(float3 v)
+public float fast_length(float3 v)
 {
     float length_squared = dot(v, v);
     return fast_sqrt(length_squared);
 }
 
-float fast_sin(float x)
+public float fast_sin(float x)
 {
     const float B = 4 / PI;
     const float C = -4 / PI2;
@@ -54,15 +54,16 @@ float fast_sin(float x)
     return y;
 }
 
-float fast_cos(float x)
+public float fast_cos(float x)
 {
     return abs(abs(x) / PI2 % 4 - 2) - 1;
 }
 
-float fast_acos(float in_x)
+public float fast_acos(float in_x)
 {
     float x = abs(in_x);
     float res = -0.156583f * x + PI_HALF;
     res *= fast_sqrt(1.0f - x);
     return (in_x >= 0) ? res : PI - res;
 }
+

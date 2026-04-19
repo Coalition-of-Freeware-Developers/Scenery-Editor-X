@@ -297,7 +297,7 @@ namespace SceneryEditorX
 		float &GetEmission() const;
 
 		void SetAlbedoColor(const Vec3 &color) const;
-		void SetAlbedoMap(AssetHandle handle);
+		void SetAlbedoMap(const AssetHandle &handle);
 		void SetNormalMap(const AssetHandle &handle);
 		void SetMetalness(float value) const;
 		void SetMetalnessMap(const AssetHandle &handle);

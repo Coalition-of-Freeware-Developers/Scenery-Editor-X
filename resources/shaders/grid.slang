@@ -56,6 +56,10 @@ struct PassBufferData
     float4 values[3];
 };
 
+// Accessors are module-local for this standalone shader; do not rely on resources.slang here.
+float3 get_camera_position() { return buffer_frame.camera_position; }
+matrix get_view_projection_matrix() { return buffer_frame.view_projection; }
+
 // buffers
 [[vk::push_constant]]
 PassBufferData buffer_pass;
@@ -104,11 +108,11 @@ PixelInput main_vs(GridVertex input)
 
     // Snap the grid tile origin to the camera's XZ position rounded to the bold-line frequency
     // so the grid always stays centred under the camera as it moves.
-    float2 camera_anchor = floor(buffer_frame.camera_position.xz / frequency_bold) * frequency_bold;
+    float2 camera_anchor = floor(get_camera_position().xz / frequency_bold) * frequency_bold;
     output.position_world.x += camera_anchor.x;
     output.position_world.z += camera_anchor.y;
 
-    output.position = mul(output.position_world, buffer_frame.view_projection);
+    output.position = mul(output.position_world, get_view_projection_matrix());
 
     return output;
 }
@@ -155,7 +159,7 @@ float4 main_frag(PixelInput input) : SV_TARGET
     color_output = lerp(color_output, color_axis_x, align_axis_x);
 
     // camera distance test
-    float camera_dist = length(buffer_frame.camera_position.xz - world_pos.xz);
+    float camera_dist = length(get_camera_position().xz - world_pos.xz);
     float alpha_dist = 1.0 - smoothstep(0.0, max_camera_dist, camera_dist);
 
     float alpha = min(alpha_dist, alpha_grid);

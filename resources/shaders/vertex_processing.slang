@@ -40,7 +40,7 @@ typedef half min16float;
 // Minimal surface helper used by this module.
 // The full material/surface classification can be reintroduced once
 // dedicated surface module types are available in this Slang pipeline.
-struct Surface
+struct VertexSurface
 {
     uint flags;
 
@@ -59,9 +59,9 @@ struct Vertex_PosUvNorTan
     float2 uv : TEXCOORD;
     float3 normal : NORMAL;
     float3 tangent : TANGENT;
-    min16float instance_position_x : INSTANCE_POSITION_X;
-    min16float instance_position_y : INSTANCE_POSITION_Y;
-    min16float instance_position_z : INSTANCE_POSITION_Z;
+    float instance_position_x : INSTANCE_POSITION_X;
+    float instance_position_y : INSTANCE_POSITION_Y;
+    float instance_position_z : INSTANCE_POSITION_Z;
     uint instance_normal_oct : INSTANCE_NORMAL_OCT;
     uint instance_yaw : INSTANCE_YAW;
     uint instance_scale : INSTANCE_SCALE;
@@ -98,7 +98,7 @@ struct gbuffer_vertex
     nointerpolation uint material_index : TEXCOORD3; // for indirect draws, material index passed from vs
 };
 
-float4x4 compose_instance_transform(min16float instance_position_x, min16float instance_position_y, min16float instance_position_z, uint instance_normal_oct, uint instance_yaw, uint instance_scale)
+float4x4 compose_instance_transform(float instance_position_x, float instance_position_y, float instance_position_z, uint instance_normal_oct, uint instance_yaw, uint instance_scale)
 {
     // compose position
     float3 instance_position = float3(instance_position_x, instance_position_y, instance_position_z);
@@ -194,10 +194,10 @@ float3x3 rotation_matrix(float3 axis, float angle)
 
 struct vertex_processing
 {
-    static void process_world_space(Surface surface, inout float3 position_world, inout gbuffer_vertex vertex, float3 position_local, float4x4 transform, uint instance_id, float time_offset)
+    static void process_world_space(VertexSurface surface, inout float3 position_world, inout gbuffer_vertex vertex, float3 position_local, float4x4 transform, uint instance_id, float time_offset)
     {
-        float time = (float)buffer_frame.time + time_offset;
-        float3 wind = buffer_frame.wind;
+        float time = (float)get_time_seconds() + time_offset;
+        float3 wind = get_wind_vector();
         float base_wind_magnitude = length(wind);
         float3 base_wind_dir = normalize(wind + float3(1e-6f, 0.0f, 1e-6f));
         float3 instance_up = normalize(transform[1].xyz);
@@ -209,7 +209,7 @@ struct vertex_processing
             const float camera_bias_strength = 0.7f; // 0 = no bias, 1 = full billboard
 
             // get camera direction in horizontal plane
-            float3 to_camera = buffer_frame.camera_position - position_world;
+            float3 to_camera = get_camera_position() - position_world;
             float3 to_camera_xz = normalize(float3(to_camera.x, 0.0f, to_camera.z));
 
             // blade normal is the z-axis of the transform (perpendicular to blade surface)
@@ -368,7 +368,7 @@ struct vertex_processing
 gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_id, matrix transform, inout float3 position_world, inout float3 position_world_previous)
 {
     MaterialParameters material = GetMaterial();
-    Surface surface;
+    VertexSurface surface;
     surface.flags = material.flags;
 
     gbuffer_vertex vertex;
@@ -411,7 +411,7 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     float3 saved_tangent = vertex.tangent;
 
     // compute previous position (this will incorrectly modify vertex.normal/tangent, but we'll restore them)
-    vertex_processing::process_world_space(surface, position_previous, vertex, input.position.xyz, transform_previous, instance_id, -buffer_frame.delta_time);
+    vertex_processing::process_world_space(surface, position_previous, vertex, input.position.xyz, transform_previous, instance_id, -get_delta_time_seconds());
 
     // restore the correct normals from the current frame
     vertex.normal = saved_normal;
@@ -424,8 +424,8 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
 
 gbuffer_vertex transform_to_clip_space(gbuffer_vertex vertex, float3 position, float3 position_previous)
 {
-    vertex.position = mul(float4(position, 1.0f), buffer_frame.view_projection);
-    vertex.position_previous = mul(float4(position_previous, 1.0f), buffer_frame.view_projection_previous);
+    vertex.position = mul(float4(position, 1.0f), get_view_projection_matrix());
+    vertex.position_previous = mul(float4(position_previous, 1.0f), get_view_projection_previous_matrix());
 
     return vertex;
 }

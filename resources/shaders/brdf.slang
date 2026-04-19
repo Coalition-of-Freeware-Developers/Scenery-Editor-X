@@ -31,6 +31,7 @@
 import common;
 import math;
 import constants;
+import structs;
 
 /*------------------------------------------------------------------------------
     FRESNEL

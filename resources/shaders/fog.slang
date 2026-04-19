@@ -29,11 +29,16 @@
  * -------------------------------------------------------
  */
 import common;
+import resources;
+import constants;
+import noise;
+import structs;
+import transforms;
 
 // Atmospheric fog using exponential height-based falloff model
 float get_fog_atmospheric(const float camera_to_pixel_length, const float pixel_height_world)
 {
-    float camera_height = buffer_frame.camera_position.y;
+    float camera_height = get_camera_position().y;
     float density       = pass_get_f3_value().y * 0.0001f;
     float scale_height  = 50.0f; // Lower = denser near ground, higher = more uniform
     float b             = 1.0f / scale_height;
@@ -74,7 +79,7 @@ float visible(float3 position, Light light, uint2 pixel_pos)
 {
     bool is_visible = false;
     float dot_result = dot(light.forward, light.to_pixel);
-    uint slice_index = light.is_point() * step(0.0f, -dot_result);
+    uint slice_index = light.is_point() ? ((dot_result <= 0.0f) ? 1u : 0u) : 0u;
 
     if (light.is_point())
     {
@@ -168,7 +173,7 @@ float3 compute_volumetric_fog(Surface surface, Light light, uint2 pixel_pos)
 {
     const float  fog_density     = pass_get_f3_value().y * 0.03f;
     const float  total_distance  = surface.camera_to_pixel_length;
-    const float3 ray_origin      = buffer_frame.camera_position;
+    const float3 ray_origin      = get_camera_position();
     const float3 ray_direction   = normalize(surface.camera_to_pixel);
 
     if (total_distance < 0.1f)

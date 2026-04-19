@@ -30,272 +30,272 @@
  */
 
 // a constant buffer that updates once per frame
-struct FrameBufferData
+public struct FrameBufferData
 {
-    matrix view;
-    matrix view_inverted;
-    matrix view_previous;
-    matrix projection;
-    matrix projection_inverted;
-    matrix projection_previous;
-    matrix view_projection;
-    matrix view_projection_inverted;
-    matrix view_projection_orthographic;
-    matrix view_projection_unjittered;
-    matrix view_projection_previous;
-    matrix view_projection_previous_unjittered;
+    public matrix view;
+    public matrix view_inverted;
+    public matrix view_previous;
+    public matrix projection;
+    public matrix projection_inverted;
+    public matrix projection_previous;
+    public matrix view_projection;
+    public matrix view_projection_inverted;
+    public matrix view_projection_orthographic;
+    public matrix view_projection_unjittered;
+    public matrix view_projection_previous;
+    public matrix view_projection_previous_unjittered;
 
-    float2 resolution_render;
-    float2 resolution_output;
+    public float2 resolution_render;
+    public float2 resolution_output;
 
-    float2 taa_jitter_current;
-    float2 taa_jitter_previous;
+    public float2 taa_jitter_current;
+    public float2 taa_jitter_previous;
 
-    float camera_aperture;
-    float delta_time;
-    uint frame;
-    uint options;
+    public float camera_aperture;
+    public float delta_time;
+    public uint frame;
+    public uint options;
 
-    float3 camera_position;
-    float camera_near;
+    public float3 camera_position;
+    public float camera_near;
 
-    float3 camera_forward;
-    float camera_far;
+    public float3 camera_forward;
+    public float camera_far;
 
-    float camera_last_movement_time;
-    float hdr_enabled;
-    float hdr_max_nits;
-    float padding;
+    public float camera_last_movement_time;
+    public float hdr_enabled;
+    public float hdr_max_nits;
+    public float padding;
 
-    float3 camera_position_previous;
-    float resolution_scale;
+    public float3 camera_position_previous;
+    public float resolution_scale;
 
-    double time;
-    float camera_fov;
-    float padding2;
+    public double time;
+    public float camera_fov;
+    public float padding2;
 
-    float3 wind;
-    float gamma;
+    public float3 wind;
+    public float gamma;
 
-    float3 camera_right;
-    float camera_exposure;
+    public float3 camera_right;
+    public float camera_exposure;
 
     // clouds
-    float cloud_coverage;
-    float cloud_shadows;
-    float padding3;
-    float padding4;
+    public float cloud_coverage;
+    public float cloud_shadows;
+    public float padding3;
+    public float padding4;
 };
 
 // push constant buffer - carries per-draw and per-pass data
 // draw_index indexes into the bindless draw data buffer for transforms and material info
 // material_index and is_transparent are pass-level state for compute shaders
 // values[] carries generic per-pass parameters (3 x float4)
-struct PassBufferData
+public struct PassBufferData
 {
-    uint draw_index;
-    uint material_index;
-    uint is_transparent;
-    uint padding;
-    float4 values[3];
+    public uint draw_index;
+    public uint material_index;
+    public uint is_transparent;
+    public uint padding;
+    public float4 values[3];
 };
 
 // struct which forms the bindless material parameters array
-struct MaterialParameters
+public struct MaterialParameters
 {
-    float4 color;
+    public float4 color;
 
-    float2 tiling;
-    float2 offset;
-    float2 invert_uv;
+    public float2 tiling;
+    public float2 offset;
+    public float2 invert_uv;
 
-    float roughness;
-    float metallness;
-    float normal;
-    float height;
+    public float roughness;
+    public float metallness;
+    public float normal;
+    public float height;
 
-    uint flags;
-    float local_width;
-    float padding;
-    float subsurface_scattering;
+    public uint flags;
+    public float local_width;
+    public float padding;
+    public float subsurface_scattering;
 
-    float sheen;
-    float local_height;
-    float world_space_uv;
-    float padding2;
+    public float sheen;
+    public float local_height;
+    public float world_space_uv;
+    public float padding2;
 
-    float anisotropic;
-    float anisotropic_rotation;
-    float clearcoat;
-    float clearcoat_roughness;
+    public float anisotropic;
+    public float anisotropic_rotation;
+    public float clearcoat;
+    public float clearcoat_roughness;
 
-    bool has_texture_albedo() { return (flags & (1 << 2)) != 0; }
-    bool has_texture_normal() { return (flags & (1 << 1)) != 0; }
-    bool has_texture_occlusion() { return (flags & (1 << 7)) != 0; }
-    bool has_texture_roughness() { return (flags & (1 << 3)) != 0; }
-    bool has_texture_metalness() { return (flags & (1 << 4)) != 0; }
-    bool has_texture_emissive() { return (flags & (1 << 6)) != 0; }
-    bool emissive_from_albedo() { return (flags & (1 << 15)) != 0; }
+    public bool has_texture_albedo() { return (flags & (1 << 2)) != 0; }
+    public bool has_texture_normal() { return (flags & (1 << 1)) != 0; }
+    public bool has_texture_occlusion() { return (flags & (1 << 7)) != 0; }
+    public bool has_texture_roughness() { return (flags & (1 << 3)) != 0; }
+    public bool has_texture_metalness() { return (flags & (1 << 4)) != 0; }
+    public bool has_texture_emissive() { return (flags & (1 << 6)) != 0; }
+    public bool emissive_from_albedo() { return (flags & (1 << 15)) != 0; }
 };
 
 // struct which forms the bindless light parameters array
-struct LightParameters
+public struct LightParameters
 {
-    float4 color;
-    float3 position;
-    float intensity;
-    float3 direction;
-    float range;
-    float angle;
-    uint flags;
-    uint screen_space_shadow_slice_index;
-    float area_width;  // area light width in meters
-    float area_height; // area light height in meters
-    matrix transform[6];
-    float2 atlas_offsets[6];
-    float2 atlas_scales[6];
-    float2 atlas_texel_sizes[6];
+    public float4 color;
+    public float3 position;
+    public float intensity;
+    public float3 direction;
+    public float range;
+    public float angle;
+    public uint flags;
+    public uint screen_space_shadow_slice_index;
+    public float area_width;  // area light width in meters
+    public float area_height; // area light height in meters
+    public matrix transform[6];
+    public float2 atlas_offsets[6];
+    public float2 atlas_scales[6];
+    public float2 atlas_texel_sizes[6];
 };
 
-struct aabb
+public struct aabb
 {
-    float3 min;
-    float is_occluder;
-    float3 max;
-    float padding2;
+    public float3 min;
+    public float is_occluder;
+    public float3 max;
+    public float padding2;
 };
 
 // g-buffer
-[[vk::binding(0)]] Texture2D tex_albedo : register(t0);
-[[vk::binding(1)]] Texture2D tex_normal : register(t1);
-[[vk::binding(2)]] Texture2D tex_material : register(t2);
-[[vk::binding(3)]] Texture2D tex_velocity : register(t3);
-[[vk::binding(4)]] Texture2D tex_depth : register(t4);
+public [[vk::binding(0)]] Texture2D tex_albedo : register(t0);
+public [[vk::binding(1)]] Texture2D tex_normal : register(t1);
+public [[vk::binding(2)]] Texture2D tex_material : register(t2);
+public [[vk::binding(3)]] Texture2D tex_velocity : register(t3);
+public [[vk::binding(4)]] Texture2D tex_depth : register(t4);
 
 // other
-[[vk::binding(6)]] Texture2D tex_ssao : register(t6);
+public [[vk::binding(6)]] Texture2D tex_ssao : register(t6);
 
 // misc
-[[vk::binding(7)]] Texture2D tex : register(t7);
-[[vk::binding(8)]] Texture2D tex2 : register(t8);
-[[vk::binding(9)]] Texture2D tex3 : register(t9);
-[[vk::binding(10)]] Texture2D tex4 : register(t10);
-[[vk::binding(11)]] Texture2D tex5 : register(t11);
-[[vk::binding(12)]] Texture2D tex6 : register(t12);
-[[vk::binding(13)]] Texture3D tex3d : register(t13);
+public [[vk::binding(7)]] Texture2D tex : register(t7);
+public [[vk::binding(8)]] Texture2D tex2 : register(t8);
+public [[vk::binding(9)]] Texture2D tex3 : register(t9);
+public [[vk::binding(10)]] Texture2D tex4 : register(t10);
+public [[vk::binding(11)]] Texture2D tex5 : register(t11);
+public [[vk::binding(12)]] Texture2D tex6 : register(t12);
+public [[vk::binding(13)]] Texture3D tex3d : register(t13);
 
 // noise
-[[vk::binding(14)]] Texture2D tex_perlin : register(t14);
+public [[vk::binding(14)]] Texture2D tex_perlin : register(t14);
 
 // volumetric cloud 3D noise textures
-[[vk::binding(20)]] Texture3D tex3d_cloud_shape : register(t20);  // 128^3 Perlin-Worley + Worley FBM
-[[vk::binding(21)]] Texture3D tex3d_cloud_detail : register(t21); // 32^3 high-frequency detail
+public [[vk::binding(20)]] Texture3D tex3d_cloud_shape : register(t20);  // 128^3 Perlin-Worley + Worley FBM
+public [[vk::binding(21)]] Texture3D tex3d_cloud_detail : register(t21); // 32^3 high-frequency detail
 // restir reservoir textures (shared across path tracing, temporal, and spatial passes)
-[[vk::binding(22)]] Texture2D<float4> tex_reservoir_prev0 : register(t22);
-[[vk::binding(23)]] Texture2D<float4> tex_reservoir_prev1 : register(t23);
-[[vk::binding(24)]] Texture2D<float4> tex_reservoir_prev2 : register(t24);
-[[vk::binding(25)]] Texture2D<float4> tex_reservoir_prev3 : register(t25);
-[[vk::binding(26)]] Texture2D<float4> tex_reservoir_prev4 : register(t26);
+public [[vk::binding(22)]] Texture2D<float4> tex_reservoir_prev0 : register(t22);
+public [[vk::binding(23)]] Texture2D<float4> tex_reservoir_prev1 : register(t23);
+public [[vk::binding(24)]] Texture2D<float4> tex_reservoir_prev2 : register(t24);
+public [[vk::binding(25)]] Texture2D<float4> tex_reservoir_prev3 : register(t25);
+public [[vk::binding(26)]] Texture2D<float4> tex_reservoir_prev4 : register(t26);
 
 // per-blas-instance offsets into the global geometry buffer (indexed by InstanceIndex() in rt shaders)
-struct GeometryInfo
+public struct GeometryInfo
 {
-    uint vertex_offset;
-    uint index_offset;
+    public uint vertex_offset;
+    public uint index_offset;
 };
 
 // geometry info buffer for ray tracing (per-blas-instance offsets)
-[[vk::binding(20)]] RWStructuredBuffer<GeometryInfo> geometry_infos : register(u20);
+public [[vk::binding(20)]] RWStructuredBuffer<GeometryInfo> geometry_infos : register(u20);
 
 // restir reservoir uav bindings
-[[vk::binding(21)]] RWTexture2D<float4> tex_reservoir0 : register(u21);
-[[vk::binding(22)]] RWTexture2D<float4> tex_reservoir1 : register(u22);
-[[vk::binding(23)]] RWTexture2D<float4> tex_reservoir2 : register(u23);
-[[vk::binding(24)]] RWTexture2D<float4> tex_reservoir3 : register(u24);
-[[vk::binding(25)]] RWTexture2D<float4> tex_reservoir4 : register(u25);
+public [[vk::binding(21)]] RWTexture2D<float4> tex_reservoir0 : register(u21);
+public [[vk::binding(22)]] RWTexture2D<float4> tex_reservoir1 : register(u22);
+public [[vk::binding(23)]] RWTexture2D<float4> tex_reservoir2 : register(u23);
+public [[vk::binding(24)]] RWTexture2D<float4> tex_reservoir3 : register(u24);
+public [[vk::binding(25)]] RWTexture2D<float4> tex_reservoir4 : register(u25);
 
 // bindless arrays
-Texture2D material_textures[] : register(t15, space1);
-StructuredBuffer<MaterialParameters> material_parameters : register(t16, space2);
-StructuredBuffer<LightParameters> light_parameters : register(t17, space3);
-StructuredBuffer<aabb> aabbs : register(t18, space4);
-SamplerComparisonState samplers_comparison[] : register(s0, space6);
-SamplerState samplers[] : register(s1, space7);
+public Texture2D material_textures[] : register(t15, space1);
+public StructuredBuffer<MaterialParameters> material_parameters : register(t16, space2);
+public StructuredBuffer<LightParameters> light_parameters : register(t17, space3);
+public StructuredBuffer<aabb> aabbs : register(t18, space4);
+public SamplerComparisonState samplers_comparison[] : register(s0, space6);
+public SamplerState samplers[] : register(s1, space7);
 
 // storage textures/buffers (image_format unknown allows flexible format binding)
-[[vk::binding(0)]] [[vk::image_format("unknown")]] RWTexture2D<float4> tex_uav : register(u0);
-[[vk::binding(1)]] [[vk::image_format("unknown")]] RWTexture2D<float4> tex_uav2 : register(u1);
-[[vk::binding(2)]] [[vk::image_format("unknown")]] RWTexture2D<float4> tex_uav3 : register(u2);
-[[vk::binding(3)]] [[vk::image_format("unknown")]] RWTexture2D<float4> tex_uav4 : register(u3);
-[[vk::binding(4)]] [[vk::image_format("unknown")]] RWTexture3D<float4> tex3d_uav : register(u4);
-[[vk::binding(5)]] [[vk::image_format("unknown")]] RWTexture2DArray<float4> tex_uav_sss : register(u5);
-[[vk::binding(6)]] RWStructuredBuffer<uint> visibility : register(u6);                        // unused, kept for descriptor layout stability
-[[vk::binding(7)]] globallycoherent RWStructuredBuffer<uint> g_atomic_counter : register(u7); // used by FidelityFX SPD
-[[vk::binding(8)]] [[vk::image_format("unknown")]] globallycoherent RWTexture2D<float4> tex_uav_mips[12] : register(u8); // used by FidelityFX SPD
+public [[vk::binding(0)]] [[vk::image_format("unknown")]] RWTexture2D<float4> tex_uav : register(u0);
+public [[vk::binding(1)]] [[vk::image_format("unknown")]] RWTexture2D<float4> tex_uav2 : register(u1);
+public [[vk::binding(2)]] [[vk::image_format("unknown")]] RWTexture2D<float4> tex_uav3 : register(u2);
+public [[vk::binding(3)]] [[vk::image_format("unknown")]] RWTexture2D<float4> tex_uav4 : register(u3);
+public [[vk::binding(4)]] [[vk::image_format("unknown")]] RWTexture3D<float4> tex3d_uav : register(u4);
+public [[vk::binding(5)]] [[vk::image_format("unknown")]] RWTexture2DArray<float4> tex_uav_sss : register(u5);
+public [[vk::binding(6)]] RWStructuredBuffer<uint> visibility : register(u6);                        // unused, kept for descriptor layout stability
+public [[vk::binding(7)]] globallycoherent RWStructuredBuffer<uint> g_atomic_counter : register(u7); // used by FidelityFX SPD
+public [[vk::binding(8)]] [[vk::image_format("unknown")]] globallycoherent RWTexture2D<float4> tex_uav_mips[12] : register(u8); // used by FidelityFX SPD
 // nrd denoiser output bindings
-[[vk::binding(26)]] [[vk::image_format("r16f")]] RWTexture2D<float> tex_uav_nrd_viewz : register(u26);
-[[vk::binding(27)]] [[vk::image_format("unknown")]] RWTexture2D<float4> tex_uav_nrd_normal_roughness : register(u27);
-[[vk::binding(28)]] [[vk::image_format("rgba16f")]] RWTexture2D<float4> tex_uav_nrd_diff_radiance : register(u28);
-[[vk::binding(29)]] [[vk::image_format("rgba16f")]] RWTexture2D<float4> tex_uav_nrd_spec_radiance : register(u29);
+public [[vk::binding(26)]] [[vk::image_format("r16f")]] RWTexture2D<float> tex_uav_nrd_viewz : register(u26);
+public [[vk::binding(27)]] [[vk::image_format("unknown")]] RWTexture2D<float4> tex_uav_nrd_normal_roughness : register(u27);
+public [[vk::binding(28)]] [[vk::image_format("rgba16f")]] RWTexture2D<float4> tex_uav_nrd_diff_radiance : register(u28);
+public [[vk::binding(29)]] [[vk::image_format("rgba16f")]] RWTexture2D<float4> tex_uav_nrd_spec_radiance : register(u29);
 
 // integer format textures (vrs, etc)
-[[vk::binding(30)]] RWTexture2D<uint> tex_uav_uint : register(u30);
+public [[vk::binding(30)]] RWTexture2D<uint> tex_uav_uint : register(u30);
 
 // gpu-driven indirect drawing
-struct IndirectDrawArgs
+public struct IndirectDrawArgs
 {
-    uint index_count;
-    uint instance_count;
-    uint first_index;
-    int vertex_offset;
-    uint first_instance;
+    public uint index_count;
+    public uint instance_count;
+    public uint first_index;
+    public int vertex_offset;
+    public uint first_instance;
 };
 
-struct DrawData
+public struct DrawData
 {
-    matrix transform;
-    matrix transform_previous;
-    uint material_index;
-    uint is_transparent;
-    uint aabb_index;
-    uint padding;
+    public matrix transform;
+    public matrix transform_previous;
+    public uint material_index;
+    public uint is_transparent;
+    public uint aabb_index;
+    public uint padding;
 };
 
 // bindless draw data - per-draw transforms, material indices, etc.
-[[vk::binding(19)]] StructuredBuffer<DrawData> draw_data : register(t19, space5);
+public [[vk::binding(19)]] StructuredBuffer<DrawData> draw_data : register(t19, space5);
 
 // vertex pulling - global geometry buffer exposed as a structured buffer
-struct PulledVertex
+public struct PulledVertex
 {
-    float3 position;
-    float2 uv;
-    float3 normal;
-    float3 tangent;
+    public float3 position;
+    public float2 uv;
+    public float3 normal;
+    public float3 tangent;
 };
 
 // vertex pulling - instance buffer exposed as packed uint data (10 bytes per instance)
-struct PackedInstance
+public struct PackedInstance
 {
-    uint pos_xy;     // position_x (half16) | position_y (half16)
-    uint pos_z_norm; // position_z (half16) | normal_oct (uint16)
-    uint yaw_scale;  // yaw_packed (uint8) | scale_packed (uint8) | padding (uint16)
+    public uint pos_xy;     // position_x (half16) | position_y (half16)
+    public uint pos_z_norm; // position_z (half16) | normal_oct (uint16)
+    public uint yaw_scale;  // yaw_packed (uint8) | scale_packed (uint8) | padding (uint16)
 };
 
-StructuredBuffer<PulledVertex> geometry_vertices : register(t20, space8);
-StructuredBuffer<uint> geometry_indices : register(t22, space9);
-StructuredBuffer<PackedInstance> geometry_instances : register(t23, space10);
+public StructuredBuffer<PulledVertex> geometry_vertices : register(t20, space8);
+public StructuredBuffer<uint> geometry_indices : register(t22, space9);
+public StructuredBuffer<PackedInstance> geometry_instances : register(t23, space10);
 
 // gpu-driven indirect drawing uav bindings
 // input: populated by cpu, read by the cull compute shader
-RWStructuredBuffer<IndirectDrawArgs> indirect_draw_args : register(u31);
-RWStructuredBuffer<DrawData> indirect_draw_data : register(u32);
+public RWStructuredBuffer<IndirectDrawArgs> indirect_draw_args : register(u31);
+public RWStructuredBuffer<DrawData> indirect_draw_data : register(u32);
 // output: written by the cull compute shader, read by vertex shaders
-RWStructuredBuffer<IndirectDrawArgs> indirect_draw_args_out : register(u33);
-RWStructuredBuffer<DrawData> indirect_draw_data_out : register(u34);
-RWStructuredBuffer<uint> indirect_draw_count : register(u35);
+public RWStructuredBuffer<IndirectDrawArgs> indirect_draw_args_out : register(u33);
+public RWStructuredBuffer<DrawData> indirect_draw_data_out : register(u34);
+public RWStructuredBuffer<uint> indirect_draw_count : register(u35);
 
 // gpu-driven particle system
-struct Particle
+public struct Particle
 {
     float3 position;
     float lifetime; // remaining
@@ -306,7 +306,7 @@ struct Particle
     float3 padding;
 };
 
-struct EmitterParams
+public struct EmitterParams
 {
     float3 position;
     float emission_rate;
@@ -337,64 +337,90 @@ RWStructuredBuffer<uint2> tex_compress_out_bc1 : register(u42); // bc1 (8 bytes 
 
 // buffers
 [[vk::push_constant]]
-PassBufferData buffer_pass;
-cbuffer BufferFrame : register(b0) { FrameBufferData buffer_frame; };
+public PassBufferData buffer_pass;
+public cbuffer BufferFrame : register(b0) { FrameBufferData buffer_frame; };
 
 // easy access to buffer_frame members
-bool is_taa_enabled() { return any(buffer_frame.taa_jitter_current); }
-bool is_ray_traced_reflections_enabled() { return (buffer_frame.options & uint(1U << 0)) != 0; }
-bool is_ssao_enabled() { return (buffer_frame.options & uint(1U << 1)) != 0; }
+public bool is_hdr_enabled() { return buffer_frame.hdr_enabled != 0.0f; }
+public uint get_frame_index() { return buffer_frame.frame; }
+public float get_camera_near_plane() { return buffer_frame.camera_near; }
+public float get_camera_far_plane() { return buffer_frame.camera_far; }
+public float2 get_resolution_render() { return buffer_frame.resolution_render; }
+public float get_resolution_scale() { return buffer_frame.resolution_scale; }
+public float3 get_camera_position() { return buffer_frame.camera_position; }
+public float3 get_camera_forward() { return buffer_frame.camera_forward; }
+public float3 get_wind_vector() { return buffer_frame.wind; }
+public float get_cloud_coverage() { return buffer_frame.cloud_coverage; }
+public float get_cloud_shadows_strength() { return buffer_frame.cloud_shadows; }
+public float get_hdr_max_nits() { return buffer_frame.hdr_max_nits; }
+public float get_camera_exposure() { return buffer_frame.camera_exposure; }
+public double get_time_seconds() { return buffer_frame.time; }
+public float get_delta_time_seconds() { return buffer_frame.delta_time; }
+public matrix get_view_matrix() { return buffer_frame.view; }
+public matrix get_view_inverted_matrix() { return buffer_frame.view_inverted; }
+public matrix get_projection_matrix() { return buffer_frame.projection; }
+public matrix get_view_projection_matrix() { return buffer_frame.view_projection; }
+public matrix get_view_projection_ortho_matrix() { return buffer_frame.view_projection_orthographic; }
+public matrix get_view_projection_unjittered_matrix() { return buffer_frame.view_projection_unjittered; }
+public matrix get_view_projection_previous_matrix() { return buffer_frame.view_projection_previous; }
+public matrix get_view_projection_inverted() { return buffer_frame.view_projection_inverted; }
+public float2 get_taa_jitter_current() { return buffer_frame.taa_jitter_current; }
+public float2 get_taa_jitter_previous() { return buffer_frame.taa_jitter_previous; }
+public bool is_taa_enabled() { return any(buffer_frame.taa_jitter_current); }
+public bool is_ray_traced_reflections_enabled() { return (buffer_frame.options & uint(1U << 0)) != 0; }
+public bool is_ssao_enabled() { return (buffer_frame.options & uint(1U << 1)) != 0; }
 
 // per-draw data is stored in a static so both vertex and pixel shaders can access it
 // vertex shaders populate this from the appropriate buffer (draw_data or indirect_draw_data_out)
-static DrawData _draw;
+public static DrawData _draw;
 
 // per-draw accessors - read from the static draw data populated by the vertex shader entry point
-matrix pass_get_transform() { return _draw.transform; }
-matrix pass_get_transform_previous() { return _draw.transform_previous; }
-uint pass_get_material_index() { return _draw.material_index; }
+public matrix pass_get_transform() { return _draw.transform; }
+public matrix pass_get_transform_previous() { return _draw.transform_previous; }
+public uint pass_get_material_index() { return _draw.material_index; }
 
 // pass-level state - read from push constant (works in both raster and compute shaders)
-bool pass_is_transparent() { return buffer_pass.is_transparent != 0; }
-bool pass_is_opaque() { return buffer_pass.is_transparent == 0; }
+public bool pass_is_transparent() { return buffer_pass.is_transparent != 0; }
+public bool pass_is_opaque() { return buffer_pass.is_transparent == 0; }
 
 // generic pass parameter accessors - read from push constant values[]
 // values[0].xyz = f3_value, values[0].w = f2_value.x
 // values[1].xyz = f3_value2, values[1].w = f2_value.y
 // values[2]     = f4_value
-float3 pass_get_f3_value() { return buffer_pass.values[0].xyz; }
-float3 pass_get_f3_value2() { return buffer_pass.values[1].xyz; }
-float4 pass_get_f4_value() { return buffer_pass.values[2]; }
-float2 pass_get_f2_value() { return float2(buffer_pass.values[0].w, buffer_pass.values[1].w); }
+public float3 pass_get_f3_value() { return buffer_pass.values[0].xyz; }
+public float3 pass_get_f3_value2() { return buffer_pass.values[1].xyz; }
+public float4 pass_get_f4_value() { return buffer_pass.values[2]; }
+public float2 pass_get_f2_value() { return float2(buffer_pass.values[0].w, buffer_pass.values[1].w); }
 
 // helper to populate _draw from the appropriate source
-void pass_load_draw_data_from_buffer() { _draw = draw_data[buffer_pass.draw_index]; }
-void pass_load_draw_data_from_vertex(uint mi) { _draw.material_index = mi; } // pixel shader: restore material_index from vertex output
+public void pass_load_draw_data_from_buffer() { _draw = draw_data[buffer_pass.draw_index]; }
+public void pass_load_draw_data_from_vertex(uint mi) { _draw.material_index = mi; } // pixel shader: restore material_index from vertex output
 
 // bindless array indices
-static const uint material_texture_slots_per_type = 4;
-static const uint material_texture_index_albedo = 0 * material_texture_slots_per_type;
-static const uint material_texture_index_roughness = 1 * material_texture_slots_per_type;
-static const uint material_texture_index_metalness = 2 * material_texture_slots_per_type;
-static const uint material_texture_index_normal = 3 * material_texture_slots_per_type;
-static const uint material_texture_index_occlusion = 4 * material_texture_slots_per_type;
-static const uint material_texture_index_emission = 5 * material_texture_slots_per_type;
-static const uint material_texture_index_height = 6 * material_texture_slots_per_type;
-static const uint material_texture_index_mask = 7 * material_texture_slots_per_type;
-static const uint material_texture_index_packed = 8 * material_texture_slots_per_type;
+public static const uint material_texture_slots_per_type = 4;
+public static const uint material_texture_index_albedo = 0 * material_texture_slots_per_type;
+public static const uint material_texture_index_roughness = 1 * material_texture_slots_per_type;
+public static const uint material_texture_index_metalness = 2 * material_texture_slots_per_type;
+public static const uint material_texture_index_normal = 3 * material_texture_slots_per_type;
+public static const uint material_texture_index_occlusion = 4 * material_texture_slots_per_type;
+public static const uint material_texture_index_emission = 5 * material_texture_slots_per_type;
+public static const uint material_texture_index_height = 6 * material_texture_slots_per_type;
+public static const uint material_texture_index_mask = 7 * material_texture_slots_per_type;
+public static const uint material_texture_index_packed = 8 * material_texture_slots_per_type;
 
-static const uint sampler_compare_depth = 0;
-static const uint sampler_point_clamp = 0;
-static const uint sampler_point_clamp_border = 1;
-static const uint sampler_point_wrap = 2;
-static const uint sampler_bilinear_clamp = 3;
-static const uint sampler_bilinear_clamp_border = 4;
-static const uint sampler_bilinear_wrap = 5;
-static const uint sampler_trilinear_clamp = 6;
-static const uint sampler_anisotropic_wrap = 7;
+public static const uint sampler_compare_depth = 0;
+public static const uint sampler_point_clamp = 0;
+public static const uint sampler_point_clamp_border = 1;
+public static const uint sampler_point_wrap = 2;
+public static const uint sampler_bilinear_clamp = 3;
+public static const uint sampler_bilinear_clamp_border = 4;
+public static const uint sampler_bilinear_wrap = 5;
+public static const uint sampler_trilinear_clamp = 6;
+public static const uint sampler_anisotropic_wrap = 7;
 
 // bindless array access
 #define GET_TEXTURE(index_texture) material_textures[pass_get_material_index() + index_texture]
-MaterialParameters GetMaterial() { return material_parameters[pass_get_material_index()]; }
+public MaterialParameters GetMaterial() { return material_parameters[pass_get_material_index()]; }
 #define GET_SAMPLER(index_sampler) samplers[index_sampler]
+
 

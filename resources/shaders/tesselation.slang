@@ -54,7 +54,7 @@ struct HsConstantDataOutput
 [outputcontrolpoints(MAX_POINTS)]
 [maxtessfactor(TESS_FACTOR)]
 
-[shader("vertex")]
+[shader("hull")]
 gbuffer_vertex main_tesc(InputPatch<gbuffer_vertex, MAX_POINTS> input_patch, uint cp_id : SV_OutputControlPointID)
 {
     return input_patch[cp_id]; // pass through unchanged
@@ -76,7 +76,7 @@ HsConstantDataOutput patch_constant_function(InputPatch<gbuffer_vertex, MAX_POIN
         avg_pos          += get_position(depth, screen_uv);
     }
     avg_pos                /= 3.0f;
-    float3 to_camera        = avg_pos - buffer_frame.camera_position;
+    float3 to_camera        = avg_pos - get_camera_position();
     float distance_squared  = dot(to_camera, to_camera);
     float tess_factor       = (distance_squared <= TESS_DISTANCE_SQUARED) ? TESS_FACTOR : 1.0f;
 
@@ -110,8 +110,8 @@ float barycentric(float a, float b, float c, float3 bary)
 }
 
 [domain("tri")]
-[shader("vertex")]
-gbuffer_vertex main_ds(HsConstantDataOutput input, float3 bary_coords : SV_DomainLocation, const OutputPatch<gbuffer_vertex, 3> patch)
+[shader("domain")]
+gbuffer_vertex main_tese(HsConstantDataOutput input, float3 bary_coords : SV_DomainLocation, const OutputPatch<gbuffer_vertex, 3> patch)
 {
     gbuffer_vertex vertex;
 
@@ -131,7 +131,7 @@ gbuffer_vertex main_ds(HsConstantDataOutput input, float3 bary_coords : SV_Domai
     float3 position_previous = get_position(vertex.position_previous.z / clip_previous_w, vertex.position_previous.xy / clip_previous_w);
 
     // fade based on real distance
-    float distance_from_cam = length(position - buffer_frame.camera_position);
+    float distance_from_cam = length(position - get_camera_position());
     float fade_factor       = saturate((TESS_DISTANCE - distance_from_cam) / 4.0f);
 
     MaterialParameters material = GetMaterial();
@@ -164,8 +164,8 @@ gbuffer_vertex main_ds(HsConstantDataOutput input, float3 bary_coords : SV_Domai
     }
 
     // write final clip space
-    vertex.position          = mul(float4(position, 1.0f), buffer_frame.view_projection);
-    vertex.position_previous = mul(float4(position_previous, 1.0f), buffer_frame.view_projection_previous);
+    vertex.position          = mul(float4(position, 1.0f), get_view_projection_matrix());
+    vertex.position_previous = mul(float4(position_previous, 1.0f), get_view_projection_previous_matrix());
 
     return vertex;
 }

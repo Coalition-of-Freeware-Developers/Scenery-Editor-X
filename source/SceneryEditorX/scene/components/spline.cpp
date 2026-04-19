@@ -43,8 +43,8 @@ namespace SceneryEditorX
 {
 	namespace
 	{
-		constexpr const char* kControlPointPrefix = "spline_point_";
-		constexpr const char* kInstancePrefix = "spline_instance_";
+		constexpr const char* K_CONTROL_POINT_PREFIX = "spline_point_";
+		constexpr const char* K_INSTANCE_PREFIX = "spline_instance_";
 
 		[[nodiscard]] bool StartsWith(const std::string& value, const std::string_view prefix)
 		{
@@ -146,15 +146,13 @@ namespace SceneryEditorX
 	uint32_t Spline::GetControlPointCount() const
 	{
 		if (!m_EntityPtr)
-		{
 			return 0;
-		}
 
 		uint32_t count = 0;
 		for (const UUID& childId : m_EntityPtr->Children())
 		{
 			Entity child = Scene::TryGetEntityWithUUID(childId);
-			if (child && StartsWith(child.Name(), kControlPointPrefix))
+			if (child && StartsWith(child.Name(), K_CONTROL_POINT_PREFIX))
 			{
 				++count;
 			}
@@ -166,16 +164,12 @@ namespace SceneryEditorX
 	void Spline::AddControlPoint(const Vec3& local_position)
 	{
 		if (!m_EntityPtr)
-		{
 			return;
-		}
 
 		const uint32_t index = GetControlPointCount();
-		Entity point = Scene::CreateEntity(std::string(kControlPointPrefix) + std::to_string(index));
+		Entity point = Scene::CreateEntity(std::string(K_CONTROL_POINT_PREFIX) + std::to_string(index));
 		if (!point)
-		{
 			return;
-		}
 
 		point.SetParent(*m_EntityPtr);
 		point.SetPositionLocal(local_position);
@@ -184,15 +178,13 @@ namespace SceneryEditorX
 	void Spline::RemoveLastControlPoint()
 	{
 		if (!m_EntityPtr)
-		{
 			return;
-		}
 
 		UUID lastControlPoint{};
 		for (const UUID& childId : m_EntityPtr->Children())
 		{
 			Entity child = Scene::TryGetEntityWithUUID(childId);
-			if (child && StartsWith(child.Name(), kControlPointPrefix))
+			if (child && StartsWith(child.Name(), K_CONTROL_POINT_PREFIX))
 			{
 				lastControlPoint = child.GetUUID();
 			}
@@ -227,9 +219,7 @@ namespace SceneryEditorX
 	void Spline::SpawnInstances()
 	{
 		if (!m_EntityPtr)
-		{
 			return;
-		}
 
 		ClearInstances();
 
@@ -259,15 +249,11 @@ namespace SceneryEditorX
 			previous = current;
 
 			if (walkedDistance < nextSpawnDistance)
-			{
 				continue;
-			}
 
-			Entity instance = Scene::CreateEntity(std::string(kInstancePrefix) + std::to_string(spawned));
+			Entity instance = Scene::CreateEntity(std::string(K_INSTANCE_PREFIX) + std::to_string(spawned));
 			if (!instance)
-			{
 				continue;
-			}
 
 			instance.SetParent(*m_EntityPtr);
 			instance.SetPositionLocal(current);
@@ -293,15 +279,13 @@ namespace SceneryEditorX
 	void Spline::ClearInstances()
 	{
 		if (!m_EntityPtr)
-		{
 			return;
-		}
 
 		std::vector<UUID> toDestroy;
 		for (const UUID& childId : m_EntityPtr->Children())
 		{
 			Entity child = Scene::TryGetEntityWithUUID(childId);
-			if (child && StartsWith(child.Name(), kInstancePrefix))
+			if (child && StartsWith(child.Name(), K_INSTANCE_PREFIX))
 			{
 				toDestroy.push_back(child.GetUUID());
 			}
@@ -320,14 +304,12 @@ namespace SceneryEditorX
 	{
 		std::vector<Vec3> points;
 		if (!m_EntityPtr)
-		{
 			return points;
-		}
 
 		for (const UUID& childId : m_EntityPtr->Children())
 		{
 			Entity child = Scene::TryGetEntityWithUUID(childId);
-			if (child && StartsWith(child.Name(), kControlPointPrefix))
+			if (child && StartsWith(child.Name(), K_CONTROL_POINT_PREFIX))
 			{
 				points.push_back(child.GetPosition());
 			}
@@ -340,14 +322,12 @@ namespace SceneryEditorX
 	{
 		std::vector<Vec3> points;
 		if (!m_EntityPtr)
-		{
 			return points;
-		}
 
 		for (const UUID& childId : m_EntityPtr->Children())
 		{
 			Entity child = Scene::TryGetEntityWithUUID(childId);
-			if (child && StartsWith(child.Name(), kControlPointPrefix))
+			if (child && StartsWith(child.Name(), K_CONTROL_POINT_PREFIX))
 			{
 				points.push_back(child.GetPositionLocal());
 			}

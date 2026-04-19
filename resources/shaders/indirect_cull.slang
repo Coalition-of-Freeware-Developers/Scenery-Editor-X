@@ -29,6 +29,8 @@
  * -------------------------------------------------------
  */
 import common;
+import resources;
+import transforms;
 
 // gpu-driven frustum and occlusion culling with draw compaction
 // reads per-draw data and aabbs, tests visibility, and compacts
@@ -68,7 +70,7 @@ void main_comp(uint3 dispatch_thread_id : SV_DispatchThreadID)
     bool any_front      = false;
     for (int i = 0; i < 8; ++i)
     {
-        float4 clip = mul(float4(corners_world[i], 1.0), buffer_frame.view_projection);
+        float4 clip = mul(float4(corners_world[i], 1.0), get_view_projection_matrix());
         if (clip.w <= 0.0f)
         {
             any_behind = true;
@@ -135,15 +137,15 @@ void main_comp(uint3 dispatch_thread_id : SV_DispatchThreadID)
             box_uvs.zw = saturate(box_uvs.zw + mip_texel);
 
             // 5-tap hi-z depth sampling
-            float4 scaled_uvs = box_uvs * buffer_frame.resolution_scale;
+            float4 scaled_uvs = box_uvs * get_resolution_scale();
             float2 center_uv  = (scaled_uvs.xy + scaled_uvs.zw) * 0.5f;
             float4 depth = float4(
-                tex.SampleLevel(GET_SAMPLER(sampler_point_clamp), scaled_uvs.xy, mip).r,
-                tex.SampleLevel(GET_SAMPLER(sampler_point_clamp), scaled_uvs.zy, mip).r,
-                tex.SampleLevel(GET_SAMPLER(sampler_point_clamp), scaled_uvs.xw, mip).r,
-                tex.SampleLevel(GET_SAMPLER(sampler_point_clamp), scaled_uvs.zw, mip).r
+                tex.SampleLevel(samplers[sampler_point_clamp], scaled_uvs.xy, mip).r,
+                tex.SampleLevel(samplers[sampler_point_clamp], scaled_uvs.zy, mip).r,
+                tex.SampleLevel(samplers[sampler_point_clamp], scaled_uvs.xw, mip).r,
+                tex.SampleLevel(samplers[sampler_point_clamp], scaled_uvs.zw, mip).r
             );
-            float depth_center = tex.SampleLevel(GET_SAMPLER(sampler_point_clamp), center_uv, mip).r;
+            float depth_center = tex.SampleLevel(samplers[sampler_point_clamp], center_uv, mip).r;
 
             // find farthest depth (reverse z)
             float furthest_z = min(min(min(min(depth.x, depth.y), depth.z), depth.w), depth_center);

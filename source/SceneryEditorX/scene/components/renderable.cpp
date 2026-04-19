@@ -294,7 +294,7 @@ namespace SceneryEditorX
 
 	void Renderable::SetMaterial(const Ref<MaterialAsset>& material)
 	{
-		SEDX_CORE_ASSERT(material != nullptr);
+		SEDX_CORE_ASSERT(material != nullptr, "Material is null");
 
 		m_material_default = false;
 

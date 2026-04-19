@@ -42,8 +42,8 @@ float get_depth(const float2 uv)
 
 float linearize_depth(const float z)
 {
-    float near = buffer_frame.camera_near;
-    float far = buffer_frame.camera_far;
+    float near = get_camera_near_plane();
+    float far = get_camera_far_plane();
     float z_b = z;
     float z_n = 2.0f * z_b - 1.0f;
     return 2.0f * far * near / (near + far - z_n * (near - far));

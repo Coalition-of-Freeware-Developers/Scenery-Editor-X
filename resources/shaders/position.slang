@@ -28,38 +28,37 @@
  * Created: 07/03/2026
  * -------------------------------------------------------
  */
-implementing core;
-
 import resources;
 import depth;
 
-float3 get_position(float z, float2 uv)
+public float3 get_position(float z, float2 uv)
 {
     float x = uv.x * 2.0f - 1.0f;
     float y = (1.0f - uv.y) * 2.0f - 1.0f;
     float4 pos_clip = float4(x, y, z, 1.0f);
-    float4 pos_world = mul(pos_clip, buffer_frame.view_projection_inverted);
+    float4 pos_world = mul(pos_clip, get_view_projection_inverted());
     return pos_world.xyz / pos_world.w;
 }
 
-float3 get_position(float2 uv)
+public float3 get_position(float2 uv)
 {
-    return get_position(get_depth(uv), uv / buffer_frame.resolution_scale);
+    return get_position(get_depth(uv), uv / get_resolution_scale());
 }
 
-float3 get_position(uint2 pos)
+public float3 get_position(uint2 pos)
 {
-    const float2 uv = (pos + 0.5f) / (buffer_frame.resolution_render * buffer_frame.resolution_scale);
+    const float2 uv = (pos + 0.5f) / (get_resolution_render() * get_resolution_scale());
     return get_position(get_depth(pos), uv);
 }
 
-float3 get_position_view_space(uint2 pos)
+public float3 get_position_view_space(uint2 pos)
 {
-    return mul(float4(get_position(pos), 1.0f), buffer_frame.view).xyz;
+    return mul(float4(get_position(pos), 1.0f), get_view_matrix()).xyz;
 }
 
-float3 get_position_view_space(float2 uv)
+public float3 get_position_view_space(float2 uv)
 {
-    return mul(float4(get_position(get_depth(uv), uv / buffer_frame.resolution_scale), 1.0f), buffer_frame.view).xyz;
+    return mul(float4(get_position(get_depth(uv), uv / get_resolution_scale()), 1.0f), get_view_matrix()).xyz;
 }
+
 

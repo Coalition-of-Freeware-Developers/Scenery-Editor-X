@@ -28,7 +28,10 @@
  * Created: 18/04/2026
  * -------------------------------------------------------
  */
+import constants;
+import resources;
 import common;
+import depth;
 
 float compute_gaussian_weight(int sample_distance, const float sigma2)
 {

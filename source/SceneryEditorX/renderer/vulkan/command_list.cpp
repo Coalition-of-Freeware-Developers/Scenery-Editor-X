@@ -1404,6 +1404,29 @@ namespace SceneryEditorX
 	void CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z /*= 1*/)
 	{
 		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to dispatch compute work");
+
+		if (!m_pso.IsCompute())
+		{
+			static bool warnedMissingComputePso = false;
+			if (!warnedMissingComputePso)
+			{
+				SEDX_CORE_WARN_TAG("CommandList", "Dispatch skipped: active pipeline state is not compute");
+				warnedMissingComputePso = true;
+			}
+			return;
+		}
+
+		if (m_Pipeline.Get() == VK_NULL_HANDLE)
+		{
+			static bool warnedMissingComputePipeline = false;
+			if (!warnedMissingComputePipeline)
+			{
+				SEDX_CORE_WARN_TAG("CommandList", "Dispatch skipped: no compute pipeline is currently bound");
+				warnedMissingComputePipeline = true;
+			}
+			return;
+		}
+
 		PreDraw();
 		vkCmdDispatch(m_CmdBuffer, x, y, z);
 	}
@@ -1883,14 +1906,30 @@ namespace SceneryEditorX
 	{
 		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to set pipeline state");
 
-		// Compute path is still TODO.
 		if (pso.shaders[static_cast<uint32_t>(StageType::Compute)])
 		{
-			static bool warnedCompute = false;
-			if (!warnedCompute)
+			// Compute pipelines must not be bound inside an active graphics render pass.
+			EndRenderPass();
+
+			m_pso = pso;
+
 			{
-				SEDX_CORE_WARN_TAG("CommandList", "SetPipelineState: compute pipeline binding not yet wired");
-				warnedCompute = true;
+				PipelineState mutablePso = pso;
+				m_Pipeline = Pipeline(mutablePso, m_DescriptorLayout_Current);
+			}
+
+			if (m_Pipeline.Get() != VK_NULL_HANDLE)
+			{
+				vkCmdBindPipeline(m_CmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_Pipeline.Get());
+			}
+			else
+			{
+				static bool warnedComputePipelineCreate = false;
+				if (!warnedComputePipelineCreate)
+				{
+					SEDX_CORE_WARN_TAG("CommandList", "SetPipelineState: failed to build compute pipeline");
+					warnedComputePipelineCreate = true;
+				}
 			}
 			return;
 		}
@@ -2029,7 +2068,7 @@ namespace SceneryEditorX
 		// default to VS|FS if reflection data is absent (covers the grid shader case).
 		const uint32_t stages = m_Pipeline.GetPushConstantStages() != 0
 			? m_Pipeline.GetPushConstantStages()
-			: static_cast<uint32_t>(VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+			: static_cast<uint32_t>(VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT);
 
 		vkCmdPushConstants(
 			m_CmdBuffer,

@@ -11,6 +11,8 @@ Created: 29/8/2025
 -------------------------------------------------------
 */
 import common;
+import resources;
+import color;
 
 float3 aces(float3 color)
 {
@@ -113,7 +115,7 @@ void main_comp(uint3 thread_id : SV_DispatchThreadID)
     float4 pix       = tex.Load(int3(coords.x, coords.y, 0));
 
     // apply exposure
-    pix.rgb *= buffer_frame.camera_exposure;
+    pix.rgb *= get_camera_exposure();
 
     // best used for sdr only
     switch (tone_mapping)
@@ -134,14 +136,14 @@ void main_comp(uint3 thread_id : SV_DispatchThreadID)
             break;
     }
 
-    if (buffer_frame.hdr_enabled == 0.0f) // sdr
+    if (!is_hdr_enabled()) // sdr
     {
         pix.rgb  = linear_to_srgb(pix.rgb);
     }
     else // hdr
     {
         // scale to max display nits (use hdr_max_nits; hdr_white_point not present)
-        float peak_scale = buffer_frame.hdr_max_nits;
+        float peak_scale = get_hdr_max_nits();
         float3 clamped   = pix.rgb / peak_scale;
         clamped          = clamped / (1.0f + clamped);
         pix.rgb          = clamped * peak_scale;

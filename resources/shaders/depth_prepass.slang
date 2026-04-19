@@ -29,7 +29,9 @@
  * -------------------------------------------------------
  */
 import common;
-import tesselation;
+import resources;
+import position;
+import vertex_processing;
 
 #ifdef INDIRECT_DRAW
 [shader("vertex")]
@@ -48,7 +50,7 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceI
     float3 position_world_previous = 0.0f;
     gbuffer_vertex vertex          = transform_to_world_space(input, instance_id, _draw.transform, position_world, position_world_previous);
     vertex.material_index          = _draw.material_index;
-    return transform_to_clip_space(vertex, position_world, position_world_previous, view_id);
+    return transform_to_clip_space(vertex, position_world, position_world_previous);
 }
 
 [shader("fragment")]
@@ -58,10 +60,10 @@ void main_frag(gbuffer_vertex vertex)
 
     // distance based alpha threshold
     const bool has_albedo       = pass_get_f3_value().y == 1.0f;
-    const float2 screen_uv      = vertex.position.xy / (buffer_frame.resolution_render * buffer_frame.resolution_scale);
+    const float2 screen_uv      = vertex.position.xy / (get_resolution_render() * get_resolution_scale());
     const float3 position_world = get_position(vertex.position.z, screen_uv);
     const float alpha_threshold = get_alpha_threshold(position_world);
 
-    if (has_albedo && GET_TEXTURE(material_texture_index_albedo).Sample(samplers[sampler_anisotropic_wrap], vertex.uv_misc.xy).a <= alpha_threshold)
+    if (has_albedo && material_textures[pass_get_material_index() + material_texture_index_albedo].Sample(samplers[sampler_anisotropic_wrap], vertex.uv_misc.xy).a <= alpha_threshold)
         discard;
 }

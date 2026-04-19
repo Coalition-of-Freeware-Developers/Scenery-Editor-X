@@ -29,22 +29,32 @@
  * -------------------------------------------------------
  */
 import common;
+import resources;
 
-struct vertex
+struct vertex_in
 {
-    float4 position : SV_POSITION;
-    float2 uv       : TEXCOORD;
+    float2 position : POSITION;
+    float2 uv       : TEXCOORD0;
 };
 
-vertex main_vs(vertex input)
+struct vertex_out
 {
-    input.position.w = 1.0f;
-    input.position  = mul(input.position, buffer_frame.view_projection_orthographic);
+    float4 position : SV_POSITION;
+    float2 uv       : TEXCOORD0;
+};
 
-    return input;
+[shader("vertex")]
+vertex_out main_vs(vertex_in input)
+{
+    vertex_out output;
+    output.position = mul(float4(input.position, 0.0f, 1.0f), get_view_projection_ortho_matrix());
+    output.uv       = input.uv;
+
+    return output;
 }
 
-float4 main_ps(vertex input) : SV_TARGET
+[shader("fragment")]
+float4 main_frag(vertex_out input) : SV_TARGET
 {
     float4 color = float4(0.0f, 0.0f, 0.0f, 1.0f);
 

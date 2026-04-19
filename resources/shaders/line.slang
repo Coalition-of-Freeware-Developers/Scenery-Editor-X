@@ -31,23 +31,30 @@
 import common;
 import resources;
 
-struct vertex
+struct vertex_in
+{
+    float3 position : POSITION;
+    float4 color : COLOR0;
+};
+
+struct vertex_out
 {
     float4 position : SV_POSITION;
     float4 color : COLOR0;
 };
 
 [shader("vertex")]
-vertex main_vs(vertex input)
+vertex_out main_vs(vertex_in input)
 {
-    input.position.w = 1.0f;
-    input.position = mul(input.position, buffer_frame.view_projection_unjittered);
+    vertex_out output;
+    output.position = mul(float4(input.position, 1.0f), get_view_projection_unjittered_matrix());
+    output.color = input.color;
 
-    return input;
+    return output;
 }
 
 [shader("fragment")]
-float4 main_frag(vertex input) : SV_TARGET
+float4 main_frag(vertex_out input) : SV_TARGET
 {
     return input.color;
 }

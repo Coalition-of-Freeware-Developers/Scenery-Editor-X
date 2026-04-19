@@ -548,8 +548,7 @@ namespace SceneryEditorX
 					.debugName = "icon",
 					.asyncCompile = true,
 					.stages = {
-						{StageType::Vertex, "resources/shaders/icon.slang"},
-						{StageType::Fragment, "resources/shaders/icon.slang"}
+						{StageType::Compute, "resources/shaders/icons.slang"}
 					}
 				}
 			},

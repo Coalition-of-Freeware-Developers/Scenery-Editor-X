@@ -61,25 +61,26 @@ struct Surface
     float3 diffuse_energy;
 
     // easy access to certain properties
-    bool has_texture_height() { return flags & uint(1U << 0); }
-    bool has_texture_normal() { return flags & uint(1U << 1); }
-    bool has_texture_albedo() { return flags & uint(1U << 2); }
-    bool has_texture_roughness() { return flags & uint(1U << 3); }
-    bool has_texture_metalness() { return flags & uint(1U << 4); }
-    bool has_texture_alpha_mask() { return flags & uint(1U << 5); }
-    bool has_texture_emissive() { return flags & uint(1U << 6); }
-    bool has_texture_occlusion() { return flags & uint(1U << 7); }
-    bool is_terrain() { return flags & uint(1U << 8); }
-    bool has_wind_animation() { return flags & uint(1U << 9); }
-    bool color_variation_from_instance() { return flags & uint(1U << 10); }
-    bool is_grass_blade() { return flags & uint(1U << 11); }
-    bool is_flower() { return flags & uint(1U << 12); }
-    bool is_water() { return flags & uint(1U << 13); }
-    bool is_tessellated() { return flags & uint(1U << 14); }
+    bool has_texture_height() { return (flags & uint(1U << 0)) != 0; }
+    bool has_texture_normal() { return (flags & uint(1U << 1)) != 0; }
+    bool has_texture_albedo() { return (flags & uint(1U << 2)) != 0; }
+    bool has_texture_roughness() { return (flags & uint(1U << 3)) != 0; }
+    bool has_texture_metalness() { return (flags & uint(1U << 4)) != 0; }
+    bool has_texture_alpha_mask() { return (flags & uint(1U << 5)) != 0; }
+    bool has_texture_emissive() { return (flags & uint(1U << 6)) != 0; }
+    bool has_texture_occlusion() { return (flags & uint(1U << 7)) != 0; }
+    bool is_terrain() { return (flags & uint(1U << 8)) != 0; }
+    bool has_wind_animation() { return (flags & uint(1U << 9)) != 0; }
+    bool color_variation_from_instance() { return (flags & uint(1U << 10)) != 0; }
+    bool is_grass_blade() { return (flags & uint(1U << 11)) != 0; }
+    bool is_flower() { return (flags & uint(1U << 12)) != 0; }
+    bool is_water() { return (flags & uint(1U << 13)) != 0; }
+    bool is_tessellated() { return (flags & uint(1U << 14)) != 0; }
     bool is_sky() { return alpha == 0.0f; }
     bool is_opaque() { return alpha == 1.0f; }
     bool is_transparent() { return alpha > 0.0f && alpha < 1.0f; }
 
+    [mutating]
     void Build(uint2 position_screen, float2 resolution_out, bool use_albedo, bool replace_color_with_one)
     {
         // initialize properties
@@ -91,7 +92,7 @@ struct Surface
         float4 sample_normal = tex_normal.SampleLevel(samplers[sampler_point_clamp], uv, 0);
         float4 sample_material = tex_material.SampleLevel(samplers[sampler_point_clamp], uv, 0);
         float sample_depth = tex_depth.SampleLevel(samplers[sampler_point_clamp], uv, 0).r;
-        MaterialParameters material = material_parameters[sample_normal.a];
+        MaterialParameters material = material_parameters[(uint)sample_normal.a];
 
         // initialize properties
         depth = sample_depth;
@@ -130,8 +131,8 @@ struct Surface
             occlusion = 1.0f;
         }
 
-        position = get_position(depth, uv / buffer_frame.resolution_scale);
-        camera_to_pixel = position - buffer_frame.camera_position.xyz;
+        position = get_position(depth, uv / get_resolution_scale());
+        camera_to_pixel = position - get_camera_position();
         camera_to_pixel_length = length(camera_to_pixel);
         camera_to_pixel = normalize(camera_to_pixel);
     }
@@ -162,13 +163,13 @@ struct Light
     float2 atlas_scale[6];
     float2 atlas_texel_size[6];
 
-    bool is_directional() { return flags & uint(1U << 0); }
-    bool is_point() { return flags & uint(1U << 1); }
-    bool is_spot() { return flags & uint(1U << 2); }
-    bool is_area() { return flags & uint(1U << 6); }
-    bool has_shadows() { return flags & uint(1U << 3); }
-    bool has_shadows_screen_space() { return flags & uint(1U << 4); }
-    bool is_volumetric() { return flags & uint(1U << 5); }
+    bool is_directional() { return (flags & uint(1U << 0)) != 0; }
+    bool is_point() { return (flags & uint(1U << 1)) != 0; }
+    bool is_spot() { return (flags & uint(1U << 2)) != 0; }
+    bool is_area() { return (flags & uint(1U << 6)) != 0; }
+    bool has_shadows() { return (flags & uint(1U << 3)) != 0; }
+    bool has_shadows_screen_space() { return (flags & uint(1U << 4)) != 0; }
+    bool is_volumetric() { return (flags & uint(1U << 5)) != 0; }
 
     float compute_attenuation_distance(const float3 surface_position)
     {
@@ -314,6 +315,19 @@ struct Light
         return attenuation;
     }
 
+    float compute_area_roughness_modification(float roughness_alpha, float distance)
+    {
+        if (!is_area())
+            return roughness_alpha;
+
+        float effective_distance = max(distance, 0.001f);
+        float light_extent = max(max(area_width, area_height), 0.001f);
+        float angular_extent = saturate(light_extent / effective_distance);
+
+        float added_variance = angular_extent * angular_extent;
+        return saturate(roughness_alpha + added_variance);
+    }
+
     float compute_attenuation_volumetric(const float3 vol_position)
     {
         float atten = 1.0f;
@@ -398,6 +412,7 @@ struct Light
         return tex2.SampleLevel(samplers[sampler_bilinear_clamp_border], atlas_uv, 0).r;
     }
 
+    [mutating]
     void Build(uint index, Surface surface)
     {
         LightParameters light = light_parameters[index];
@@ -454,6 +469,7 @@ struct AngularInfo
     float n_dot_h;
     float n_dot_l;
 
+    [mutating]
     void Build(Light light, Surface surface)
     {
         n = normalize(surface.normal);           // outward direction of surface point

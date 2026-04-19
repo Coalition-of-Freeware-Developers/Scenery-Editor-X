@@ -155,8 +155,9 @@ void main_comp(uint3 thread_id: SV_DispatchThreadID)
     // spatial and temporal offsets
     const float noise_gradient_temporal = noise_interleaved_gradient(pos);
     const float offset_spatial = 0.25 * (float)((pos.y - pos.x) & 3);
-    const float offset_temporal = g_offsets[buffer_frame.frame % 4];
-    const float offset_rotation_temporal = g_rotations[buffer_frame.frame % 6];
+    const uint frame_index = get_frame_index();
+    const float offset_temporal = g_offsets[frame_index % 4];
+    const float offset_rotation_temporal = g_rotations[frame_index % 6];
     const float ray_offset = frac(offset_spatial + offset_temporal) + (hash(origin_uv) * 2.0f - 1.0f) * 0.25f;
     const float2 texel_size = 1.0f / resolution_out;
     const float3 view_vec = normalize(-origin_position);

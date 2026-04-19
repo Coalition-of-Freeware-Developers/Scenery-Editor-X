@@ -29,6 +29,9 @@
  * -------------------------------------------------------
  */
 import common;
+import resources;
+import constants;
+import structs;
 import brdf;
 import shadow_mapping;
 import fog;
@@ -38,7 +41,7 @@ import fog;
 float sample_cloud_shadow(float3 world_pos)
 {
     // skip if cloud shadows are disabled
-    if (buffer_frame.cloud_shadows <= 0.0 || buffer_frame.cloud_coverage <= 0.0)
+    if (get_cloud_shadows_strength() <= 0.0 || get_cloud_coverage() <= 0.0)
         return 1.0;
 
     // cloud shadow map covers 10km x 10km area
@@ -50,7 +53,7 @@ float sample_cloud_shadow(float3 world_pos)
     float texel_size = shadow_map_size / shadow_dims.x;
 
     // snap center to texel grid (must match cloud_shadow.hlsl)
-    float2 snapped_center = floor(buffer_frame.camera_position.xz / texel_size) * texel_size;
+    float2 snapped_center = floor(get_camera_position().xz / texel_size) * texel_size;
 
     float2 relative_pos = world_pos.xz - snapped_center;
     float2 uv = relative_pos / shadow_map_size + 0.5;
@@ -60,20 +63,7 @@ float sample_cloud_shadow(float3 world_pos)
         return 1.0;
 
     // sample cloud shadow (tex3 is the cloud shadow map)
-    float shadow = tex3.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), uv, 0).r;
-
-    return shadow;
-}
-
-// ray traced shadow sampling
-// tex4 is bound as the ray traced shadow texture in Pass_Light
-float sample_ray_traced_shadow(float2 uv)
-{
-    if (!is_ray_traced_shadows_enabled())
-        return 1.0;
-
-    // sample ray traced shadow (tex4 is the ray traced shadow texture)
-    float shadow = tex4.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), uv, 0).r;
+    float shadow = tex3.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0).r;
 
     return shadow;
 }
@@ -131,8 +121,8 @@ float3 subsurface_scattering(Surface surface, Light light, AngularInfo angular_i
     return light_radiance * sss_term * thickness_modulation * sss_strength * sss_color;
 }
 
-[numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 [shader("compute")]
+[numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_comp(uint3 thread_id : SV_DispatchThreadID)
 {
     // get resolution and build surface data
@@ -156,7 +146,7 @@ void main_comp(uint3 thread_id : SV_DispatchThreadID)
     float3 light_precomputed = surface.alpha * surface.occlusion;
 
     // loop over all lights and accumulate contributions
-    uint light_count = pass_get_f3_value().x;
+    uint light_count = (uint)max(pass_get_f3_value().x, 0.0);
     for (uint i = 0; i < light_count; i++)
     {
         Light light;
@@ -171,17 +161,8 @@ void main_comp(uint3 thread_id : SV_DispatchThreadID)
 
         if (!surface.is_sky())
         {
-            // compute shadow term
-            // for directional lights: ray traced shadows are mutually exclusive with rasterized/screen-space shadows
-            bool use_ray_traced_shadow = light.is_directional() && light.has_shadows() && is_ray_traced_shadows_enabled();
 
-            if (use_ray_traced_shadow)
-            {
-                // ray traced shadows for directional light
-                L_shadow = sample_ray_traced_shadow(surface.uv);
-                light.radiance *= L_shadow;
-            }
-            else if (light.has_shadows())
+            if (light.has_shadows())
             {
                 // rasterized shadow mapping
                 L_shadow = compute_shadow(surface, light);

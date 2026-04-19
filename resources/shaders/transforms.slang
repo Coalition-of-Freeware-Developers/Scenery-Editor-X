@@ -28,62 +28,61 @@
  * Created: 07/03/2026
  * -------------------------------------------------------
  */
-implementing core;
-
 import resources;
 
-float3 world_to_view(float3 x, bool is_position = true)
+public float3 world_to_view(float3 x, bool is_position = true)
 {
-    return mul(float4(x, (float)is_position), buffer_frame.view).xyz;
+    return mul(float4(x, (float)is_position), get_view_matrix()).xyz;
 }
 
-float3 world_to_ndc(float3 x, bool is_position = true)
+public float3 world_to_ndc(float3 x, bool is_position = true)
 {
-    float4 ndc = mul(float4(x, (float)is_position), buffer_frame.view_projection);
+    float4 ndc = mul(float4(x, (float)is_position), get_view_projection_matrix());
     return ndc.xyz / ndc.w;
 }
 
-float3 world_to_ndc(float3 x, float4x4 transform) // shadow mapping
+public float3 world_to_ndc(float3 x, float4x4 transform) // shadow mapping
 {
     float4 ndc = mul(float4(x, 1.0f), transform);
     return ndc.xyz / ndc.w;
 }
 
-float3 view_to_ndc(float3 x, bool is_position = true)
+public float3 view_to_ndc(float3 x, bool is_position = true)
 {
-    float4 ndc = mul(float4(x, (float)is_position), buffer_frame.projection);
+    float4 ndc = mul(float4(x, (float)is_position), get_projection_matrix());
     return ndc.xyz / ndc.w;
 }
 
-float2 world_to_uv(float3 x, bool is_position = true)
+public float2 world_to_uv(float3 x, bool is_position = true)
 {
-    float4 uv = mul(float4(x, (float)is_position), buffer_frame.view_projection);
+    float4 uv = mul(float4(x, (float)is_position), get_view_projection_matrix());
     return (uv.xy / uv.w) * float2(0.5f, -0.5f) + 0.5f;
 }
 
-float3 view_to_world(float3 x, bool is_position = true)
+public float3 view_to_world(float3 x, bool is_position = true)
 {
-    return mul(float4(x, (float)is_position), buffer_frame.view_inverted).xyz;
+    return mul(float4(x, (float)is_position), get_view_inverted_matrix()).xyz;
 }
 
-float2 view_to_uv(float3 x, bool is_position = true)
+public float2 view_to_uv(float3 x, bool is_position = true)
 {
-    float4 uv = mul(float4(x, (float)is_position), buffer_frame.projection);
+    float4 uv = mul(float4(x, (float)is_position), get_projection_matrix());
     return (uv.xy / uv.w) * float2(0.5f, -0.5f) + 0.5f;
 }
 
-float2 ndc_to_uv(float2 x)
+public float2 ndc_to_uv(float2 x)
 {
     return x * float2(0.5f, -0.5f) + 0.5f;
 }
 
-float2 ndc_to_uv(float3 x)
+public float2 ndc_to_uv(float3 x)
 {
     return x.xy * float2(0.5f, -0.5f) + 0.5f;
 }
 
-float2 uv_to_ndc(float2 uv)
+public float2 uv_to_ndc(float2 uv)
 {
     return float2(uv.x * 2.0f - 1.0f, 1.0f - uv.y * 2.0f); // flip y for dx style
 }
+
 
