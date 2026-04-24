@@ -45,7 +45,7 @@ namespace SceneryEditorX
 	 * @brief Validates the pipeline state object to ensure it is correctly configured for either graphics or compute pipelines.
 	 * @param pso The pipeline state object to validate. 
 	 */
-	static void Validate(PipelineState& pso)
+	static bool Validate(PipelineState& pso)
 	{
 		const auto has_compiled_stage = [&](const StageType stage)
 		{
@@ -59,26 +59,51 @@ namespace SceneryEditorX
 		bool hasShaderDomain	= has_compiled_stage(StageType::TessellationEvaluation);
 		bool hasShaderFragment	= has_compiled_stage(StageType::Fragment);
 		bool hasSomeShader		= hasShaderCompute || hasShaderVertex || hasShaderHull || hasShaderDomain || hasShaderFragment;
-		SEDX_CORE_ASSERT(hasSomeShader, "There is no shader set, ensure that it compiled successfully and that it has been set");
+		if (!hasSomeShader)
+		{
+			SEDX_CORE_ERROR_TAG("PipelineState", "Invalid PSO '{}': no compiled shader stages are available", pso.name ? pso.name : "<unnamed>");
+			return false;
+		}
 	
 		bool isGraphics = (hasShaderVertex || hasShaderHull || hasShaderDomain || hasShaderFragment) && !hasShaderCompute;
 		bool isCompute  = hasShaderCompute && !hasShaderVertex && !hasShaderHull && !hasShaderDomain;
-		SEDX_CORE_ASSERT(isGraphics || isCompute, "Invalid pipeline state type, must be graphics or compute");
+		if (!isGraphics && !isCompute)
+		{
+			SEDX_CORE_ERROR_TAG("PipelineState", "Invalid PSO '{}': mixed/unsupported stage combination (must be pure graphics or pure compute)", pso.name ? pso.name : "<unnamed>");
+			return false;
+		}
 	
 		if (isGraphics)
 		{
 			bool hasRenderTarget   = pso.renderTarget_ColorTextures[0] || pso.renderTarget_DepthTexture; // ensure at least one render target
 			bool hasBackbuffer     = pso.renderTarget_Swapchain; // check that both the swapchain and the color render target are active
 			bool hasGraphicsStates = pso.rasterizerState && pso.blendState && pso.depthStencil_State;
-			SEDX_CORE_ASSERT(hasGraphicsStates,                 "Graphics states are missing");
-			SEDX_CORE_ASSERT(hasRenderTarget || hasBackbuffer,  "A render target is missing");
-			SEDX_CORE_ASSERT(pso.blendState,                    "You need to define a blend state");
-			SEDX_CORE_ASSERT(pso.depthStencil_State,            "You need to define a depth-stencil state");
-			SEDX_CORE_ASSERT(pso.rasterizerState,               "You need to define a rasterizer state");
-			SEDX_CORE_ASSERT(pso.GetWidth() != 0 && pso.GetHeight() != 0);
+			if (!hasGraphicsStates)
+			{
+				SEDX_CORE_ERROR_TAG("PipelineState", "Invalid graphics PSO '{}': rasterizer/blend/depth-stencil state is incomplete", pso.name ? pso.name : "<unnamed>");
+				return false;
+			}
+
+			if (!(hasRenderTarget || hasBackbuffer))
+			{
+				SEDX_CORE_ERROR_TAG("PipelineState", "Invalid graphics PSO '{}': no render target/swapchain target is set", pso.name ? pso.name : "<unnamed>");
+				return false;
+			}
+
+			if (pso.GetWidth() == 0 || pso.GetHeight() == 0)
+			{
+				SEDX_CORE_ERROR_TAG("PipelineState", "Invalid graphics PSO '{}': render dimensions are zero", pso.name ? pso.name : "<unnamed>");
+				return false;
+			}
 		}
 	
-		SEDX_CORE_ASSERT(pso.name != nullptr, "Name your pipeline state");
+		if (pso.name == nullptr)
+		{
+			SEDX_CORE_ERROR_TAG("PipelineState", "Invalid PSO: name is null");
+			return false;
+		}
+
+		return true;
 	}
 
 	// TODO: Move this hashing logic to a more general utility class, and consider using a better hash combining function (e.g. boost::hash_combine or similar)
@@ -104,6 +129,10 @@ namespace SceneryEditorX
 	static uint64_t ComputeHash(PipelineState &pso)
 	{
 		uint64_t hash = 0;
+
+		// Include pipeline class first so compute/graphics PSOs cannot alias.
+		hash = HashCombine(hash, pso.IsCompute() ? 0xC0u : 0x00u);
+		hash = HashCombine(hash, pso.IsGraphics() ? 0x90u : 0x00u);
 	
 		hash = HashCombine(hash, static_cast<uint64_t>(pso.primitiveTopology));
 	
@@ -127,14 +156,19 @@ namespace SceneryEditorX
 			hash = HashCombine(hash, pso.depthStencil_State->GetHash());
 		}
 	
-		// shaders (map iteration)
-		for (Shader* shader : pso.shaders)
+		// shaders (stage-aware). Stage index is part of the hash so VS/FS/CS cannot alias.
+		for (size_t stageIndex = 0; stageIndex < pso.shaders.size(); ++stageIndex)
 		{
-			if (!shader)
-				continue;
+			hash = HashCombine(hash, static_cast<uint64_t>(stageIndex));
 
-			// Use pointer address as a stable-enough identity for hashing here
-			hash = HashCombine(hash, shader->GetHash());
+			if (Shader* shader = pso.shaders[stageIndex])
+			{
+				hash = HashCombine(hash, shader->GetHash());
+			}
+			else
+			{
+				hash = HashCombine(hash, 0ull);
+			}
 		}
 	
 		// render target
@@ -219,7 +253,7 @@ namespace SceneryEditorX
 	{
 		m_Hash = ComputeHash(*this);
 		GetDimensions(*this, &m_Width, &m_Height);
-		Validate(*this);
+		(void)Validate(*this);
 	}
 
 	bool PipelineState::HasClearValues() const

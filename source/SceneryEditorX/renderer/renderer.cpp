@@ -30,8 +30,7 @@
  */
 #include "renderer.h"
 #include "renderer_buffers.h"
-#include "SceneryEditorX/core/threading/thread_pool.h"
-#include "SceneryEditorX/scene/material.h"
+#include <SceneryEditorX/scene/material.h>
 #include "vulkan/bindless_manager.h"
 #include "vulkan/descriptor_pool_manager.h"
 #include "vulkan/swapchain.h"
@@ -114,6 +113,14 @@ void dynamic_resolution()
 		ConsoleRegistry::Get().SetValueFromString("r.resolution_scale", std::to_string(screen_percentage));
 	}
 }
+
+			// ProduceFrame currently records into a QueueManager command list that is not
+			// submitted by SubmitAndPresent(). Seal it so the list returns to Idle and can
+			// be reused next frame, preventing command-list pool starvation.
+			if (m_CmdList_Present && m_CmdList_Present->GetState() == CommandState::Recording)
+			{
+				m_CmdList_Present->Seal();
+			}
 */
 
 	void Renderer::CreateStandardShaders()
@@ -327,7 +334,7 @@ void dynamic_resolution()
 		
 		s_AssetManager = CreateScope<AssetManager>();
 
-		//CreateFrameResources();
+		CreateFrameResources();
 
 #pragma region Temporary Debug 
 
@@ -337,8 +344,13 @@ void dynamic_resolution()
 
 #pragma endregion
 
+		/*
 		ThreadPool::Submit([]()
 		{
+		*/
+
+			// Bootstrap path: initialize critical resources synchronously so first frames
+			// always have quad mesh + essential shaders available.
 			m_ResourcesInitialized = false;
 			CreateStandardMeshes();
 			CreateStandardTextures();
@@ -347,7 +359,10 @@ void dynamic_resolution()
 			CreateStandardShaders();
 			LoadShaders();
 			m_ResourcesInitialized = true;
+
+		/*
 		});
+		*/
 
 		// Structured draw-data buffer used by Renderer::WriteDrawData (including UI path).
 		// Allocate one large mapped buffer partitioned by frame resource index.
@@ -652,7 +667,11 @@ void dynamic_resolution()
 		}
 
 		m_CmdList_Present = queueManager->NextCommandList();
-		SEDX_CORE_ASSERT(m_CmdList_Present != nullptr, "Failed to acquire present command list");
+		if (!m_CmdList_Present)
+		{
+			SEDX_CORE_ERROR_TAG("Renderer", "Failed to acquire present command list");
+			return;
+		}
 		m_CmdList_Present->Begin();
 
 		// m_CmdList_Frame is no longer used — UI rendering happens inside RecordRenderCommands
@@ -667,8 +686,12 @@ void dynamic_resolution()
 		// (and their synchronization) are fully wired.
 		const bool needsComputeCommandList = true;
 		*/
+		// Keep compute command-list acquisition disabled while running the minimal
+		// bootstrap path. Acquiring a second list every frame without submitting it
+		// can starve QueueManager::NextCommandList() and trigger "no healthy list".
+		const bool needsComputeCommandList = false;
 		m_CmdList_Compute = nullptr;
-		if (canRender /*&& needsComputeCommandList*/)
+		if (canRender && needsComputeCommandList)
 		{	
 			if (Ref<Queue> *queue = queueManager->GetQueue(QueueType::Compute); queue && *queue)
 			{
@@ -676,9 +699,14 @@ void dynamic_resolution()
 			}
 
 			m_CmdList_Compute = queueManager->NextCommandList();
-			SEDX_CORE_ASSERT(m_CmdList_Compute != nullptr, "Failed to acquire compute command list");
-
-			m_CmdList_Compute->Begin();
+			if (!m_CmdList_Compute)
+			{
+				SEDX_CORE_WARN_TAG("Renderer", "Failed to acquire compute command list; continuing without compute list this frame");
+			}
+			else
+			{
+				m_CmdList_Compute->Begin();
+			}
 		}
 
 #pragma endregion
@@ -745,7 +773,8 @@ void dynamic_resolution()
 				if (initialize || Scene::UpdateSceneChanges(ComponentType::Material).IsDirty())
 				{
 					UpdateMaterials(m_CmdList_Present);
-					BindlessManager::UpdateBuffer(BindlessResource::MaterialTextures, GetBuffer(Renderer_Buffer::MaterialParameters));
+					BindlessManager::UpdateImages(&m_Bindless_Textures);
+					BindlessManager::UpdateBuffer(BindlessResource::MaterialParameters, GetBuffer(Renderer_Buffer::MaterialParameters));
 				}
 
 #pragma endregion
@@ -926,7 +955,7 @@ void dynamic_resolution()
 				{}
 				*/
 
-			/*
+
 			// Wire the modern pass-based renderer into the active frame loop.
 			// This keeps the existing legacy path intact while enabling
 			// `Pass_Depth_Prepass()` and `Pass_Grid()` execution.
@@ -952,8 +981,8 @@ void dynamic_resolution()
 					}
 				}
 			}
-			*/
 
+			/*
 			if (m_CmdList_Present)
 			{
 				ImageResource* rtRender = GetRenderTarget(Renderer_RenderTarget::frame_render);
@@ -979,6 +1008,7 @@ void dynamic_resolution()
 
 			// UI rendering is done inside RecordRenderCommands (inside the dynamic render pass),
 			// so no separate UI command list is needed here.
+			*/
 
 		}
 	}   
@@ -1089,18 +1119,22 @@ void dynamic_resolution()
 		SEDX_CORE_TRACE_TAG("Renderer", "Acquired swapchain image index: {}", m_SwapchainImageIndex);
 
 		// Begin command buffer recording
-		if (VkCommandBuffer cb = m_CommandBuffers[m_CurrentFrameIndex]; cb != VK_NULL_HANDLE)
+		VkCommandBuffer cb = m_CommandBuffers[m_CurrentFrameIndex];
+		if (cb == VK_NULL_HANDLE)
 		{
-			vkResetCommandBuffer(cb, 0);
-			SEDX_CORE_TRACE_TAG("Renderer", "Command buffer reset for frame {}", m_CurrentFrameIndex);
-
-			VkCommandBufferBeginInfo beginInfo{};
-			beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-			beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-			VkResult result = vkBeginCommandBuffer(cb, &beginInfo);
-			SEDX_VK_RESULT_ASSERT(result, "vkBeginCommandBuffer failed");
+			SEDX_CORE_ERROR_TAG("Renderer", "No command buffer allocated for frame index {}", m_CurrentFrameIndex);
+			return false;
 		}
+
+		vkResetCommandBuffer(cb, 0);
+		SEDX_CORE_TRACE_TAG("Renderer", "Command buffer reset for frame {}", m_CurrentFrameIndex);
+
+		VkCommandBufferBeginInfo beginInfo{};
+		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+		VkResult result = vkBeginCommandBuffer(cb, &beginInfo);
+		SEDX_VK_RESULT_ASSERT(result, "vkBeginCommandBuffer failed");
 
 		SEDX_CORE_TRACE_TAG("Renderer", "Command buffer recording begun for frame {}", m_CurrentFrameIndex);
 		m_FrameInProgress = true;
@@ -2097,7 +2131,7 @@ void dynamic_resolution()
 		swapchainToTransfer.subresourceRange.baseMipLevel = 0;
 		swapchainToTransfer.subresourceRange.levelCount = 1;
 		swapchainToTransfer.subresourceRange.baseArrayLayer = 0;
-	 swapchainToTransfer.subresourceRange.layerCount = 1;
+		swapchainToTransfer.subresourceRange.layerCount = 1;
 
 		VkDependencyInfo toTransferInfo{};
 		toTransferInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
@@ -2107,14 +2141,20 @@ void dynamic_resolution()
 
 		if (hasFrameOutput)
 		{
+			const Layout::ImageLayout trackedFrameOutputLayout = frameOutput->GetLayout(0);
+			const VkImageLayout oldFrameOutputLayout = (trackedFrameOutputLayout == Layout::ImageLayout::General)
+				? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			const VkAccessFlags2 oldFrameOutputAccess = (trackedFrameOutputLayout == Layout::ImageLayout::General)
+				? (VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT) : VK_ACCESS_2_SHADER_READ_BIT;
+
 			VkImageMemoryBarrier2 toBlit[2]{};
 
 			toBlit[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
 			toBlit[0].srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
-			toBlit[0].srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT | VK_ACCESS_2_SHADER_READ_BIT;
+			toBlit[0].srcAccessMask = oldFrameOutputAccess;
 			toBlit[0].dstStageMask = VK_PIPELINE_STAGE_2_BLIT_BIT;
 			toBlit[0].dstAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT;
-			toBlit[0].oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			toBlit[0].oldLayout = oldFrameOutputLayout;
 			toBlit[0].newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 			toBlit[0].image = *frameOutput->Get();
 			toBlit[0].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -2156,9 +2196,7 @@ void dynamic_resolution()
 				.z = 1
 			};
 
-			vkCmdBlitImage(
-				cb,
-				*frameOutput->Get(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+			vkCmdBlitImage(cb, *frameOutput->Get(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
 				swapchainImages[imageIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 				1, &blit, VK_FILTER_LINEAR);
 
@@ -2257,11 +2295,31 @@ void dynamic_resolution()
 
 		if (m_CmdList_Present && m_CmdList_Present->GetState() == CommandState::Recording)
 		{
-			if (ImGui::GetCurrentContext() && ImGui::GetDrawData())
+			//if (ImGui::GetCurrentContext() && ImGui::GetDrawData())
+			// Temporarily disable swapchain-space UI draw injection while bring-up is in progress.
+			// The current validation error (VUID-vkCmdDraw-None-09600) indicates a sampled image
+			// layout mismatch during draw submit; this isolates the core frame path.
+			constexpr bool kEnableUiOverlay = false;
+			if (kEnableUiOverlay && ImGui::GetCurrentContext() && ImGui::GetDrawData())
 			{
 				m_CmdList_Present->SetExternalRecordingBuffer(cb, true);
+				if (ImageResource* frameOutputForUi = GetRenderTarget(Renderer_RenderTarget::frame_output))
+				{
+					frameOutputForUi->SetLayout(Layout::ImageLayout::ShaderRead, m_CmdList_Present, 0, 0);
+				}
+
 				UI::Render(ImGui::GetDrawData(), nullptr, false);
 				m_CmdList_Present->RestoreCommandBuffer();
+			}
+
+			if (ImageResource* frameOutputAfterUi = GetRenderTarget(Renderer_RenderTarget::frame_output))
+			{
+				frameOutputAfterUi->SetLayout(Layout::ImageLayout::ShaderRead, m_CmdList_Present, 0, 0);
+			}
+
+			if (UI::g_FontAtlas)
+			{
+				UI::g_FontAtlas->SetLayout(Layout::ImageLayout::ShaderRead, m_CmdList_Present, 0, 0);
 			}
 		}
 
@@ -2644,7 +2702,7 @@ void dynamic_resolution()
 
 		(void)cmdList;
 
-		/*
+/*
 		// matrices
 		{
 			if (Camera *camera = Scene::GetCamera())
@@ -2668,12 +2726,12 @@ void dynamic_resolution()
 			{ 
 				// near = 0 for ortho (avoids NaN in [3,2] element)
 				Matrix projection_ortho              = Matrix::CreateOrthographicLH(s_Viewport.width, s_Viewport.height, 0.0f, s_FarPlane);
-				m_Cb_Frame_Cpu.view_projection_ortho = Matrix::CreateLookAtLH(Vec3(0, 0, -s_NearPlane), Vec3::Forward, Vec3::Up) * projection_ortho;
+				m_Cb_Frame_Cpu.view_projection_ortho = Matrix::CreateLookAtLH(Vec3(0, 0, -s_NearPlane), Vec3::FORWARD, Vec3::UP) * projection_ortho;
 				s_OrthoProjection_Dirty.Check();
 			}
 		}
 
-		/*
+
 		// taa jitter
 		Renderer_AntiAliasing_Upsampling upsampling_mode = cvar_antialiasing_upsampling.GetValueAs<Renderer_AntiAliasing_Upsampling>();
 		{
@@ -2689,10 +2747,9 @@ void dynamic_resolution()
 			}
 			else
 			{
-				s_JitterOffset = Vec2::Zero;
+				s_JitterOffset = Vec2::ZERO;
 			}
 		}
-		#1#
 
 		m_Cb_Frame_Cpu.view_projection_previous = m_Cb_Frame_Cpu.view_projection;
 		m_Cb_Frame_Cpu.view_projection          = m_Cb_Frame_Cpu.view * m_Cb_Frame_Cpu.projection;
@@ -2731,8 +2788,7 @@ void dynamic_resolution()
 		m_Cb_Frame_Cpu.SetBit(cvar_ssao.GetValueAs<bool>(),                   1 << 1);
 		m_Cb_Frame_Cpu.SetBit(cvar_restir_pt.GetValueAs<bool>(),              1 << 3);
 
-		GetBuffer(Renderer_Buffer::ConstantFrame)->Update(cmdList, &m_Cb_Frame_Cpu);
-		*/
+		GetBuffer(Renderer_Buffer::ConstantFrame)->Update(cmdList, &m_Cb_Frame_Cpu);*/
 
 	}
 

@@ -32,6 +32,7 @@
 #include "shader_compiler.h"
 #include <array>
 #include <cstring>
+#include <optional>
 #include <unordered_map>
 #include <unordered_set>
 #include <SceneryEditorX/logging/asserts.h>
@@ -100,13 +101,17 @@ namespace ShaderCompiler
 			"lighting",
 			"shadow_mapping",
 			"ssao",
+			"sss_blend",
 			"terrain",
 			"ui",
 			"fog",
 			"fxaa",
 			"dof",
+			"auto_exposure",
+			"dither",
 			"cloud_noise",
 			"cloud_shadows",
+			"light_reflections",
 			"camera",
 			"brdf",
 			"shader"
@@ -269,7 +274,7 @@ namespace ShaderCompiler
 	 */
 	static SceneryEditorX::ShaderInputType ToShaderInputType(const slang::ParameterCategory category, const slang::BindingType bindingType)
 	{
-		auto mapByBindingType = [](const slang::BindingType type, const bool unorderedAccess) -> SceneryEditorX::ShaderInputType
+		auto map_by_binding_type = [](const slang::BindingType type, const bool unorderedAccess) -> SceneryEditorX::ShaderInputType
 		{
 			switch (type)
 			{
@@ -280,9 +285,13 @@ namespace ShaderCompiler
 					return SceneryEditorX::ShaderInputType::Sampler;
 
 				case slang::BindingType::Texture:
-				case slang::BindingType::MutableTexture:
 				case slang::BindingType::InputRenderTarget:
 					return unorderedAccess ? SceneryEditorX::ShaderInputType::StorageImage : SceneryEditorX::ShaderInputType::Texture;
+
+				// MutableTexture is writable and should always map to a storage image,
+				// even if Slang reports a non-UnorderedAccess category for this range.
+				case slang::BindingType::MutableTexture:
+					return SceneryEditorX::ShaderInputType::StorageImage;
 
 				case slang::BindingType::ConstantBuffer:
 					return SceneryEditorX::ShaderInputType::UniformBuffer;
@@ -301,10 +310,20 @@ namespace ShaderCompiler
 		switch (category)
 		{
 			case slang::ParameterCategory::ConstantBuffer:
-				return SceneryEditorX::ShaderInputType::UniformBuffer;
+				// Slang can report ConstantBuffer category for descriptor-table members.
+				// Only treat true cbuffer bindings as UniformBuffer; classify everything
+				// else by binding type to avoid set-0 type mismatches in Vulkan layouts.
+				if (bindingType == slang::BindingType::ConstantBuffer)
+					return SceneryEditorX::ShaderInputType::UniformBuffer;
+
+				return map_by_binding_type(
+					bindingType,
+					bindingType == slang::BindingType::MutableTexture ||
+					bindingType == slang::BindingType::MutableTypedBuffer ||
+					bindingType == slang::BindingType::MutableRawBuffer);
 
 			case slang::ParameterCategory::UnorderedAccess:
-				return mapByBindingType(bindingType, true);
+				return map_by_binding_type(bindingType, true);
 
 			case slang::ParameterCategory::SamplerState:
 				return SceneryEditorX::ShaderInputType::Sampler;
@@ -315,7 +334,7 @@ namespace ShaderCompiler
 			case slang::ParameterCategory::ShaderResource:
 			case slang::ParameterCategory::DescriptorTableSlot:
 			default:
-				return mapByBindingType(bindingType, false);
+				return map_by_binding_type(bindingType, false);
 		}
 	}
 
@@ -336,15 +355,55 @@ namespace ShaderCompiler
 	}
 
 	/**
+	 * @brief Converts a reflected shader input type to readable text for diagnostics.
+	 * @param type Shader input type.
+	 * @return Readable string representing the shader input type for diagnostics.
+	 */
+	static const char* ShaderInputTypeToString(const SceneryEditorX::ShaderInputType type)
+	{
+		switch (type)
+		{
+			case SceneryEditorX::ShaderInputType::Texture:               return "Texture";
+			case SceneryEditorX::ShaderInputType::Sampler:               return "Sampler";
+			case SceneryEditorX::ShaderInputType::StorageImage:          return "StorageImage";
+			case SceneryEditorX::ShaderInputType::StorageBuffer:         return "StorageBuffer";
+			case SceneryEditorX::ShaderInputType::UniformBuffer:         return "UniformBuffer";
+			case SceneryEditorX::ShaderInputType::StorageBufferSet:      return "StorageBufferSet";
+			case SceneryEditorX::ShaderInputType::UniformBufferSet:      return "UniformBufferSet";
+			case SceneryEditorX::ShaderInputType::CombinedImageSampler:  return "CombinedImageSampler";
+			case SceneryEditorX::ShaderInputType::PushConstant:          return "PushConstant";
+			default:                                                     return "Unknown";
+		}
+	}
+
+	/**
+	 * @brief Provides Vulkan descriptor type text expected by the reflected shader input type.
+	 * @param type Shader input type.
+	 * @return Vulkan descriptor type as string for diagnostics.
+	 */
+	static const char* ShaderInputTypeToVkDescriptorString(const SceneryEditorX::ShaderInputType type)
+	{
+		switch (type)
+		{
+			case SceneryEditorX::ShaderInputType::Texture:
+			case SceneryEditorX::ShaderInputType::CombinedImageSampler:  return "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER";
+			case SceneryEditorX::ShaderInputType::Sampler:               return "VK_DESCRIPTOR_TYPE_SAMPLER";
+			case SceneryEditorX::ShaderInputType::StorageImage:          return "VK_DESCRIPTOR_TYPE_STORAGE_IMAGE";
+			case SceneryEditorX::ShaderInputType::StorageBuffer:
+			case SceneryEditorX::ShaderInputType::StorageBufferSet:      return "VK_DESCRIPTOR_TYPE_STORAGE_BUFFER";
+			case SceneryEditorX::ShaderInputType::UniformBuffer:
+			case SceneryEditorX::ShaderInputType::UniformBufferSet:      return "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER";
+			default:                                                     return "VK_DESCRIPTOR_TYPE_MAX_ENUM";
+		}
+	}
+
+	/**
 	 * @brief Adds reflected descriptor ranges from a type layout into shader inputs.
 	 * @param typeLayout Slang type layout to inspect.
 	 * @param stage Shader stage associated with reflection.
 	 * @param outInputs Destination shader input array.
 	 */
-	static void AppendDescriptorRanges(
-		slang::TypeLayoutReflection* typeLayout,
-		const SceneryEditorX::StageType stage,
-		std::vector<SceneryEditorX::ShaderInput>& outInputs)
+	static void AppendDescriptorRanges(slang::TypeLayoutReflection* typeLayout, const SceneryEditorX::StageType stage, std::vector<SceneryEditorX::ShaderInput>& outInputs)
 	{
 		if (!typeLayout)
 			return;
@@ -356,6 +415,7 @@ namespace ShaderCompiler
 		for (SlangInt setIndex = 0; setIndex < setCount; ++setIndex)
 		{
 			std::unordered_map<SlangInt, std::string> descriptorRangeNames;
+			SlangInt descriptorRangeBase = std::numeric_limits<SlangInt>::max();
 			const SlangInt bindingRangeCount = typeLayout->getBindingRangeCount();
 			for (SlangInt bindingRangeIndex = 0; bindingRangeIndex < bindingRangeCount; ++bindingRangeIndex)
 			{
@@ -364,19 +424,107 @@ namespace ShaderCompiler
 
 				const SlangInt firstRangeIndex = typeLayout->getBindingRangeFirstDescriptorRangeIndex(bindingRangeIndex);
 				const SlangInt rangeSpan = typeLayout->getBindingRangeDescriptorRangeCount(bindingRangeIndex);
-				const std::string baseName = {};
+
+				descriptorRangeBase = std::min(descriptorRangeBase, firstRangeIndex);
+
+				std::string baseName;
+				if (slang::VariableReflection* leafVariable = typeLayout->getBindingRangeLeafVariable(bindingRangeIndex))
+				{
+					if (const char* leafName = leafVariable->getName(); leafName && leafName[0] != '\0')
+						baseName = leafName;
+				}
 
 				for (SlangInt localRangeIndex = 0; localRangeIndex < rangeSpan; ++localRangeIndex)
 				{
+					const SlangInt descriptorRangeIndex = firstRangeIndex + localRangeIndex;
+
 					if (!baseName.empty())
-						descriptorRangeNames[firstRangeIndex + localRangeIndex] = baseName;
+					{
+						descriptorRangeNames[descriptorRangeIndex] = baseName;
+					}
 				}
 			}
 
-			const SlangInt setSpaceOffset = typeLayout->getDescriptorSetSpaceOffset(setIndex);
-			const uint32_t descriptorSet = (setSpaceOffset < 0 || setSpaceOffset == static_cast<SlangInt>(SLANG_UNKNOWN_SIZE))
-				? static_cast<uint32_t>(setIndex)
-				: static_cast<uint32_t>(setSpaceOffset);
+			if (descriptorRangeBase != std::numeric_limits<SlangInt>::max())
+			{
+				std::unordered_map<SlangInt, std::string> normalizedRangeNames;
+				normalizedRangeNames.reserve(descriptorRangeNames.size());
+				for (const auto& [rangeIndex, rangeName] : descriptorRangeNames)
+				{
+					normalizedRangeNames[rangeIndex - descriptorRangeBase] = rangeName;
+				}
+
+				for (const auto& [rangeIndex, rangeName] : normalizedRangeNames)
+				{
+					descriptorRangeNames.emplace(rangeIndex, rangeName);
+				}
+			}
+
+			// In Slang, descriptor-set spaces map to Vulkan set indices.
+			// `setIndex` is the local descriptor-set index and may be 0 for every
+			// space, so we must include the reflected space offset to avoid
+			// collapsing all resources into set 0.
+			const SlangInt descriptorSetSpace = typeLayout->getDescriptorSetSpaceOffset(setIndex);
+			const uint32_t descriptorSet = (descriptorSetSpace >= 0 && descriptorSetSpace != static_cast<SlangInt>(SLANG_UNKNOWN_SIZE))
+				? static_cast<uint32_t>(descriptorSetSpace) : static_cast<uint32_t>(setIndex);
+
+			auto get_known_set0_binding_override = [](const std::string& name) -> std::optional<uint32_t>
+			{
+				if (name == "BufferFrame") return 200u;
+
+				if (name == "tex_uav") return 100u;
+				if (name == "tex_uav2") return 101u;
+				if (name == "tex_uav3") return 102u;
+				if (name == "tex_uav4") return 103u;
+				if (name == "tex3d_uav") return 104u;
+				if (name == "tex_uav_sss") return 105u;
+				if (name == "tex_uav_mips") return 108u;
+				if (name == "tex_uav_uint") return 130u;
+
+				if (name == "indirect_draw_args") return 131u;
+				if (name == "indirect_draw_data") return 132u;
+				if (name == "indirect_draw_args_out") return 133u;
+				if (name == "indirect_draw_data_out") return 134u;
+				if (name == "indirect_draw_count") return 135u;
+				if (name == "particle_buffer_a") return 136u;
+				if (name == "particle_counter") return 138u;
+				if (name == "particle_emitter") return 139u;
+				if (name == "tex_compress_in") return 140u;
+				if (name == "tex_compress_out") return 141u;
+				if (name == "tex_compress_out_bc1") return 142u;
+				if (name == "visibility") return 143u;
+				if (name == "g_atomic_counter") return 144u;
+
+				return std::nullopt;
+			};
+
+			auto get_known_set0_type_override = [](const std::string& name) -> std::optional<SceneryEditorX::ShaderInputType>
+			{
+				if (name == "BufferFrame")
+					return SceneryEditorX::ShaderInputType::UniformBuffer;
+
+				if (name.rfind("tex_uav", 0) == 0)
+					return SceneryEditorX::ShaderInputType::StorageImage;
+
+				if (name == "indirect_draw_args"
+					|| name == "indirect_draw_data"
+					|| name == "indirect_draw_args_out"
+					|| name == "indirect_draw_data_out"
+					|| name == "indirect_draw_count"
+					|| name == "particle_buffer_a"
+					|| name == "particle_counter"
+					|| name == "particle_emitter"
+					|| name == "tex_compress_in"
+					|| name == "tex_compress_out"
+					|| name == "tex_compress_out_bc1"
+					|| name == "visibility"
+					|| name == "g_atomic_counter")
+				{
+					return SceneryEditorX::ShaderInputType::StorageBuffer;
+				}
+
+				return std::nullopt;
+			};
 
 			const SlangInt rangeCount = typeLayout->getDescriptorSetDescriptorRangeCount(setIndex);
 			for (SlangInt rangeIndex = 0; rangeIndex < rangeCount; ++rangeIndex)
@@ -385,18 +533,56 @@ namespace ShaderCompiler
 				if (bindingOffset < 0 || bindingOffset == static_cast<SlangInt>(SLANG_UNKNOWN_SIZE))
 					continue;
 
-				const uint32_t binding = static_cast<uint32_t>(bindingOffset);
+				uint32_t binding = static_cast<uint32_t>(bindingOffset);
 				const slang::BindingType bindingType = typeLayout->getDescriptorSetDescriptorRangeType(setIndex, rangeIndex);
 				const slang::ParameterCategory category = typeLayout->getDescriptorSetDescriptorRangeCategory(setIndex, rangeIndex);
-				const SceneryEditorX::ShaderInputType inputType = ToShaderInputType(category, bindingType);
+				SceneryEditorX::ShaderInputType inputType = ToShaderInputType(category, bindingType);
 				if (inputType == SceneryEditorX::ShaderInputType::MaxEnum)
 					continue;
 
-				const uint64_t dedupeKey = (static_cast<uint64_t>(descriptorSet) << 32ull)
-					| (static_cast<uint64_t>(binding) << 8ull)
-					| static_cast<uint64_t>(inputType);
+				std::string debugName;
+				if (const auto nameIt = descriptorRangeNames.find(rangeIndex); nameIt != descriptorRangeNames.end())
+				{
+					debugName = nameIt->second;
+				}
+				if (debugName.empty())
+				{
+					debugName = "set" + std::to_string(descriptorSet) + "_binding" + std::to_string(binding);
+				}
+
+				if (descriptorSet == 0)
+				{
+					if (const std::optional<uint32_t> knownBinding = get_known_set0_binding_override(debugName); knownBinding.has_value())
+					{
+						binding = *knownBinding;
+					}
+
+					if (const std::optional<SceneryEditorX::ShaderInputType> knownType = get_known_set0_type_override(debugName); knownType.has_value())
+					{
+						inputType = *knownType;
+					}
+				}
+
+				const uint64_t dedupeKey = (static_cast<uint64_t>(descriptorSet) << 32ull) | (static_cast<uint64_t>(binding) << 8ull) | static_cast<uint64_t>(inputType);
 				if (!dedupe.insert(dedupeKey).second)
 					continue;
+
+				if (descriptorSet == 0)
+				{
+					const uint64_t sampledVsStorageKey = (static_cast<uint64_t>(descriptorSet) << 32ull) | (static_cast<uint64_t>(binding) << 8ull);
+					const uint64_t sampledTypeKey = sampledVsStorageKey | static_cast<uint64_t>(SceneryEditorX::ShaderInputType::Texture);
+					const uint64_t combinedTypeKey = sampledVsStorageKey | static_cast<uint64_t>(SceneryEditorX::ShaderInputType::CombinedImageSampler);
+					if (inputType == SceneryEditorX::ShaderInputType::StorageImage)
+					{
+						dedupe.erase(sampledTypeKey);
+						dedupe.erase(combinedTypeKey);
+					}
+					else if (inputType == SceneryEditorX::ShaderInputType::StorageBuffer)
+					{
+						const uint64_t uniformTypeKey = sampledVsStorageKey | static_cast<uint64_t>(SceneryEditorX::ShaderInputType::UniformBuffer);
+						dedupe.erase(uniformTypeKey);
+					}
+				}
 
 				bool alreadyPresent = false;
 				for (const auto& existing : outInputs)
@@ -407,6 +593,7 @@ namespace ShaderCompiler
 						break;
 					}
 				}
+
 				if (alreadyPresent)
 					continue;
 
@@ -416,10 +603,32 @@ namespace ShaderCompiler
 				input.binding = binding;
 				input.count = ConvertDescriptorCount(typeLayout->getDescriptorSetDescriptorRangeDescriptorCount(setIndex, rangeIndex));
 				input.type = inputType;
-				if (const auto nameIt = descriptorRangeNames.find(rangeIndex); nameIt != descriptorRangeNames.end())
-					input.debugName = nameIt->second;
-				if (input.debugName.empty())
-					input.debugName = "set" + std::to_string(descriptorSet) + "_binding" + std::to_string(binding);
+				input.debugName = debugName;
+
+				// Explicitly enforce known set-0 resource contracts used across compute/graphics passes.
+				if (descriptorSet == 0)
+				{
+					if (input.debugName == "BufferFrame" && input.type != SceneryEditorX::ShaderInputType::UniformBuffer)
+					{
+						SEDX_CORE_WARN_TAG("ShaderCompiler", "Reflection override: '{}' set={} binding={} {} -> UniformBuffer", input.debugName, descriptorSet, binding, ShaderInputTypeToString(input.type));
+						input.type = SceneryEditorX::ShaderInputType::UniformBuffer;
+					}
+
+					if (input.debugName.rfind("tex_uav", 0) == 0 && input.type != SceneryEditorX::ShaderInputType::StorageImage)
+					{
+						SEDX_CORE_WARN_TAG("ShaderCompiler", "Reflection override: '{}' set={} binding={} {} -> StorageImage", input.debugName, descriptorSet, binding, ShaderInputTypeToString(input.type));
+						input.type = SceneryEditorX::ShaderInputType::StorageImage;
+					}
+
+					if (const std::optional<SceneryEditorX::ShaderInputType> knownType = get_known_set0_type_override(input.debugName); knownType.has_value() && input.type != *knownType)
+					{
+						input.type = *knownType;
+					}
+				}
+
+				SEDX_CORE_TRACE_TAG("ShaderCompiler", "Reflect descriptor: stage={} set={} binding={} name='{}' reflected={} -> {}",
+					static_cast<uint32_t>(stage), descriptorSet, binding, input.debugName,
+					ShaderInputTypeToString(input.type), ShaderInputTypeToVkDescriptorString(input.type));
 				outInputs.push_back(input);
 			}
 		}
@@ -427,7 +636,6 @@ namespace ShaderCompiler
 
 	std::vector<uint32_t> CompileShader(SceneryEditorX::StageType stage, const std::string& filepath, bool optimize)
 	{
-		(void)stage;
 		(void)optimize;
 
 		Slang::ComPtr<slang::IGlobalSession> globalSession;
@@ -446,10 +654,43 @@ namespace ShaderCompiler
 			SEDX_CORE_INFO_TAG("ShaderCompiler", "Slang shader compile diagnostics for '{}': {}", filepath, static_cast<const char*>(diagnosticsBlob->getBufferPointer()));
 		}
 
-		Slang::ComPtr<ISlangBlob> spirv;
-		if (SLANG_FAILED(module->getTargetCode(0, spirv.writeRef())) || !spirv)
+		Slang::ComPtr<slang::IEntryPoint> entryPoint;
+		if (!FindStageEntryPoint(module, stage, entryPoint))
+			return {};
+
+		slang::IComponentType* componentTypes[] = { module.get(), entryPoint.get() };
+		Slang::ComPtr<slang::IComponentType> composedProgram;
+		if (SLANG_FAILED(session->createCompositeComponentType(componentTypes, 2, composedProgram.writeRef(), diagnosticsBlob.writeRef())) || !composedProgram)
 		{
-			SEDX_CORE_ERROR_TAG("ShaderCompiler", "Failed to retrieve SPIR-V from Slang module: {}", filepath);
+			if (diagnosticsBlob && diagnosticsBlob->getBufferSize() > 0)
+			{
+				SEDX_CORE_ERROR_TAG("ShaderCompiler", "Failed to compose Slang program '{}': {}", filepath, static_cast<const char*>(diagnosticsBlob->getBufferPointer()));
+			}
+			else
+			{
+				SEDX_CORE_ERROR_TAG("ShaderCompiler", "Failed to compose Slang program '{}'", filepath);
+			}
+			return {};
+		}
+
+		Slang::ComPtr<slang::IComponentType> linkedProgram;
+		if (SLANG_FAILED(composedProgram->link(linkedProgram.writeRef(), diagnosticsBlob.writeRef())) || !linkedProgram)
+		{
+			if (diagnosticsBlob && diagnosticsBlob->getBufferSize() > 0)
+			{
+				SEDX_CORE_ERROR_TAG("ShaderCompiler", "Failed to link Slang program '{}': {}", filepath, static_cast<const char*>(diagnosticsBlob->getBufferPointer()));
+			}
+			else
+			{
+				SEDX_CORE_ERROR_TAG("ShaderCompiler", "Failed to link Slang program '{}'", filepath);
+			}
+			return {};
+		}
+
+		Slang::ComPtr<ISlangBlob> spirv;
+		if (SLANG_FAILED(linkedProgram->getTargetCode(0, spirv.writeRef())) || !spirv)
+		{
+			SEDX_CORE_ERROR_TAG("ShaderCompiler", "Failed to retrieve SPIR-V from Slang program: {}", filepath);
 			return {};
 		}
 

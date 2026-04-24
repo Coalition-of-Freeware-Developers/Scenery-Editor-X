@@ -309,6 +309,9 @@ namespace SceneryEditorX
 		m_CmdPool = CommandPool(m_Device, m_FamilyIndices.graphics, CommandPoolType::Resettable);
 		SEDX_CORE_TRACE_TAG("QueueManager", "Command pool created for graphics queue family {}", m_FamilyIndices.graphics);
 
+		const uint32_t cmdListCount = std::max(1u, m_Config.cmdListsPerQueue);
+		m_CmdLists.resize(cmdListCount);
+
 		// Populate m_CmdLists - this is what NextCommandList() cycles through
 		Ref<Queue>* graphicsQueue = GetQueue(QueueType::Graphics);
 		SEDX_CORE_ASSERT(graphicsQueue && *graphicsQueue, "Graphics queue must be valid before creating command lists");
@@ -642,7 +645,7 @@ namespace SceneryEditorX
 					break;
 				case ResourceType::UniformBuffer:
 				case ResourceType::UniformBufferSet:
-				case ResourceType::AccelerationStructure: /*functions::destroy_acceleration_structure(device->GetDevice(), static_cast<VkAccelerationStructureKHR>(resource), nullptr);*/
+				//case ResourceType::AccelerationStructure: /*functions::destroy_acceleration_structure(device->GetDevice(), static_cast<VkAccelerationStructureKHR>(resource), nullptr);*/
 				case ResourceType::PhysicalDevice:
 				case ResourceType::Device:
 				case ResourceType::Queue:
@@ -754,30 +757,45 @@ namespace SceneryEditorX
 	
 	CommandList* QueueManager::NextCommandList()
 	{
-		// Advance index to the next candidate and search for an idle list.
-		m_Index = (m_Index + 1) % static_cast<uint32_t>(m_CmdLists.size());
-		auto& cmdList = m_CmdLists[m_Index];
 		if (m_CmdLists.empty())
 		{
 			SEDX_CORE_TRACE_TAG("QueueManager", "No command lists available");
 			return nullptr;
 		}
-		
-		// submit any pending work (toggling between fullscreen and windowed mode can leave work)
-		if (cmdList->GetState() == CommandState::Recording)
+
+		// Probe all command lists and return the first healthy idle one.
+		// Never auto-submit a Recording list here; that can accidentally submit sticky-invalid work.
+		const uint32_t listCount = static_cast<uint32_t>(m_CmdLists.size());
+		for (uint32_t probe = 0; probe < listCount; ++probe)
 		{
-			cmdList->Submit(0, false);
+			m_Index = (m_Index + 1) % listCount;
+			auto& cmdList = m_CmdLists[m_Index];
+
+			if (!cmdList)
+				continue;
+
+			if (cmdList->IsStickyInvalid())
+			{
+				if (!cmdList->RecoverIfIdle())
+				{
+					SEDX_CORE_WARN_TAG("QueueManager", "Skipping sticky-invalid command list '{}'; waiting for healthy list", cmdList->GetObjectName());
+					continue;
+				}
+			}
+
+			if (cmdList->GetState() == CommandState::Submitted)
+			{
+				cmdList->WaitForExecution();
+			}
+
+			if (cmdList->GetState() == CommandState::Idle)
+			{
+				return cmdList.Get();
+			}
 		}
 
-		// with enough command lists available, there is no wait time
-		if (cmdList->GetState() == CommandState::Submitted)
-		{
-			cmdList->WaitForExecution();
-		}
-
-		SEDX_CORE_ASSERT(cmdList->GetState() == CommandState::Idle, "Command list should be idle after waiting for execution");
-
-		return cmdList.Get();
+		SEDX_CORE_ERROR_TAG("QueueManager", "No reusable healthy command list is available (all lists are recording/submitted or sticky-invalid)");
+		return nullptr;
 	}
 
 }

@@ -157,14 +157,14 @@ namespace SceneryEditorX
 		chromatic_aberration,
 		bloom_luminance,
 		bloom_blend_frame,
-		bloom_upsample_blend_mip_c,
-		bloom_downsample_c,
+		bloom_upsample_blend_mip,
+		bloom_downsample,
 		output,
-		light_integration_brdf_specular_lut_c,
-		light_integration_environment_filter_c,
+		light_integration_brdf_specular_lut,
+		light_integration_environment_filter,
 		light,
 		light_composition,
-		light_image_based_c,
+		light_image_based,
 		line,
 		grid,
 		outline,
@@ -188,24 +188,22 @@ namespace SceneryEditorX
 		transparency_reflection_refraction,
 		auto_exposure,
 		// volumetric clouds
-		cloud_noise_shape_c,
-		cloud_noise_detail_c,
-		cloud_shadow_c,
-		light_reflections_c,
-		// nrd denoiser
-		nrd_prepare_c,
+		cloud_noise_shape,
+		cloud_noise_detail,
+		cloud_shadow,
+		light_reflections,
 		// gpu-driven indirect rendering
-		indirect_cull_c,
+		indirect_cull,
 		gbuffer_indirect,
 		depth_prepass_indirect,
 		// gpu-driven particles
-		particle_emit_c,
-		particle_simulate_c,
-		particle_render_c,
+		particle_emit,
+		particle_simulate,
+		particle_render,
 		// gpu texture compression
-		texture_compress_bc1_c,
-		texture_compress_bc3_c,
-		texture_compress_bc5_c,
+		texture_compress_bc1,
+		texture_compress_bc3,
+		texture_compress_bc5,
 		MaxEnum
 	};
 
@@ -221,19 +219,19 @@ namespace SceneryEditorX
 
 		case Renderer_Shader::fxaa: return "FXAA";
 		case Renderer_Shader::film_grain_comp: return "film_grain_comp";
-		case Renderer_Shader::motion_blur: return "motion_blur_c";
-		case Renderer_Shader::depth_of_field: return "depth_of_field_c";
-		case Renderer_Shader::chromatic_aberration: return "chromatic_aberration_c";
-		case Renderer_Shader::bloom_luminance: return "bloom_luminance_c";
-		case Renderer_Shader::bloom_blend_frame: return "bloom_blend_frame_c";
-		case Renderer_Shader::bloom_upsample_blend_mip_c: return "bloom_upsample_blend_mip_c";
-		case Renderer_Shader::bloom_downsample_c: return "bloom_downsample_c";
-		case Renderer_Shader::output: return "output_c";
-		case Renderer_Shader::light_integration_brdf_specular_lut_c: return "light_integration_brdf_specular_lut_c";
-		case Renderer_Shader::light_integration_environment_filter_c: return "light_integration_environment_filter_c";
-		case Renderer_Shader::light: return "light_c";
-		case Renderer_Shader::light_composition: return "light_composition_c";
-		case Renderer_Shader::light_image_based_c: return "light_image_based_c";
+		case Renderer_Shader::motion_blur: return "motion_blur";
+		case Renderer_Shader::depth_of_field: return "depth_of_field";
+		case Renderer_Shader::chromatic_aberration: return "chromatic_aberration";
+		case Renderer_Shader::bloom_luminance: return "bloom_luminance";
+		case Renderer_Shader::bloom_blend_frame: return "bloom_blend_frame";
+		case Renderer_Shader::bloom_upsample_blend_mip: return "bloom_upsample_blend_mip";
+		case Renderer_Shader::bloom_downsample: return "bloom_downsample";
+		case Renderer_Shader::output: return "output";
+		case Renderer_Shader::light_integration_brdf_specular_lut: return "light_integration_brdf_specular_lut";
+		case Renderer_Shader::light_integration_environment_filter: return "light_integration_environment_filter";
+		case Renderer_Shader::light: return "light";
+		case Renderer_Shader::light_composition: return "light_composition";
+		case Renderer_Shader::light_image_based: return "light_image_based";
 		case Renderer_Shader::line: return "line";
 		case Renderer_Shader::grid: return "grid";
 		case Renderer_Shader::outline: return "outline";
@@ -245,31 +243,30 @@ namespace SceneryEditorX
 		case Renderer_Shader::skysphere_transmittance_lut: return "skysphere_transmittance_lut";
 		case Renderer_Shader::skysphere_multiscatter_lut: return "skysphere_multiscatter_lut";
 		case Renderer_Shader::blur_gaussian: return "blur_gaussian";
-		case Renderer_Shader::blur_gaussian_bilateral: return "blur_gaussian_bilaterial";
-		case Renderer_Shader::variable_rate_shading: return "variable_rate_shading_c";
-		case Renderer_Shader::ffx_cas: return "ffx_cas_c";
-		case Renderer_Shader::ffx_spd_average: return "ffx_spd_average_c";
-		case Renderer_Shader::ffx_spd_min: return "ffx_spd_min_c";
-		case Renderer_Shader::ffx_spd_max: return "ffx_spd_max_c";
+		case Renderer_Shader::blur_gaussian_bilateral: return "blur_gaussian_bilateral";
+		case Renderer_Shader::variable_rate_shading: return "variable_rate_shading";
+		case Renderer_Shader::ffx_cas: return "ffx_cas";
+		case Renderer_Shader::ffx_spd_average: return "ffx_spd_average";
+		case Renderer_Shader::ffx_spd_min: return "ffx_spd_min";
+		case Renderer_Shader::ffx_spd_max: return "ffx_spd_max";
 		case Renderer_Shader::blit: return "blit";
 		case Renderer_Shader::icon: return "icon";
-		case Renderer_Shader::dithering: return "dithering_c";
+		case Renderer_Shader::dithering: return "dithering";
 		case Renderer_Shader::transparency_reflection_refraction: return "transparency_reflection_refraction";
-		case Renderer_Shader::auto_exposure: return "auto_exposure_c";
-		case Renderer_Shader::cloud_noise_shape_c: return "cloud_noise_shape_c";
-		case Renderer_Shader::cloud_noise_detail_c: return "cloud_noise_detail_c";
-		case Renderer_Shader::cloud_shadow_c: return "cloud_shadow_c";
-		case Renderer_Shader::light_reflections_c: return "light_reflections_c";
-		case Renderer_Shader::nrd_prepare_c: return "nrd_prepare_c";
-		case Renderer_Shader::indirect_cull_c: return "indirect_cull_c";
+		case Renderer_Shader::auto_exposure: return "auto_exposure";
+		case Renderer_Shader::cloud_noise_shape: return "cloud_noise_shape";
+		case Renderer_Shader::cloud_noise_detail: return "cloud_noise_detail";
+		case Renderer_Shader::cloud_shadow: return "cloud_shadow";
+		case Renderer_Shader::light_reflections: return "light_reflections";
+		case Renderer_Shader::indirect_cull: return "indirect_cull";
 		case Renderer_Shader::gbuffer_indirect: return "gbuffer_indirect";
 		case Renderer_Shader::depth_prepass_indirect: return "depth_prepass_indirect";
-		case Renderer_Shader::particle_emit_c: return "particle_emit_c";
-		case Renderer_Shader::particle_simulate_c: return "particle_simulate_c";
-		case Renderer_Shader::particle_render_c: return "particle_render_c";
-		case Renderer_Shader::texture_compress_bc1_c: return "texture_compress_bc1";
-		case Renderer_Shader::texture_compress_bc3_c: return "texture_compress_bc3";
-		case Renderer_Shader::texture_compress_bc5_c: return "texture_compress_bc5";
+		case Renderer_Shader::particle_emit: return "particle_emit";
+		case Renderer_Shader::particle_simulate: return "particle_simulate";
+		case Renderer_Shader::particle_render: return "particle_render";
+		case Renderer_Shader::texture_compress_bc1: return "texture_compress_bc1";
+		case Renderer_Shader::texture_compress_bc3: return "texture_compress_bc3";
+		case Renderer_Shader::texture_compress_bc5: return "texture_compress_bc5";
 		case Renderer_Shader::MaxEnum: return "MaxEnum";
 		default: return "unknown";
 		}
@@ -318,6 +315,7 @@ namespace SceneryEditorX
 		IndirectDrawArgsOut,
 		IndirectDrawCount,
 		DrawData, // bindless per-draw data (transforms, material index, etc.)
+
 		// gpu-driven particles
 		ParticleBufferA,
 		ParticleBufferB,
@@ -403,6 +401,7 @@ namespace SceneryEditorX
 
 		// noise
 		tex_perlin = 13,
+
 		// bindless
 		bindless_material_textures   = 14,
 		bindless_material_parameters = 15,
@@ -413,6 +412,7 @@ namespace SceneryEditorX
 		// volumetric clouds 3D noise
 		tex3d_cloud_shape  = 19,
 		tex3d_cloud_detail = 20,
+
 		// restir reservoir srv bindings (for temporal/spatial read)
 		reservoir_prev0    = 21,
 		reservoir_prev1    = 22,
@@ -438,30 +438,30 @@ namespace SceneryEditorX
 		tex_sss       = 5,
 		sb_spd        = 7,
 		tex_spd       = 8,
+
 		// restir reservoir uav bindings
 		reservoir0    = 20,
 		reservoir1    = 21,
 		reservoir2    = 22,
 		reservoir3    = 23,
 		reservoir4    = 24,
-		// nrd output bindings
-		nrd_viewz              = 25,
-		nrd_normal_roughness   = 26,
-		nrd_diff_radiance      = 27,
-		nrd_spec_radiance      = 28,
+
 		// integer format textures (vrs, etc)
 		tex_uint               = 29,
+
 		// gpu-driven indirect drawing
 		indirect_draw_args     = 30,
 		indirect_draw_data     = 31,
 		indirect_draw_args_out = 32,
 		indirect_draw_data_out = 33,
 		indirect_draw_count    = 34,
+
 		// gpu-driven particles
 		particle_buffer_a      = 35,
 		particle_buffer_b      = 36,
 		particle_counter       = 37,
 		particle_emitter       = 38,
+
 		// gpu texture compression
 		compress_input         = 39,
 		compress_output        = 40,

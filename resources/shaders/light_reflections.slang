@@ -29,6 +29,9 @@
  * -------------------------------------------------------
  */
 import common;
+import resources;
+import constants;
+import transforms;
 import brdf;
 import shadow_mapping;
 

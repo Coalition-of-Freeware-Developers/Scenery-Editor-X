@@ -97,7 +97,7 @@ namespace SceneryEditorX
 		metallicRoughnessMap = nullptr;
 		*/
 		
-		SEDX_CORE_TRACE("Material initialized with default values: {}", path);
+		SEDX_CORE_TRACE_TAG("MaterialAsset", "Material initialized with default values: {}", path);
 	}
 
 	void MaterialAsset::Unload()
@@ -154,7 +154,7 @@ namespace SceneryEditorX
 	{
 		if (!m_Material) // or if (m_Material.m_Ptr == nullptr) if accessible
 		{
-			SEDX_CORE_ERROR("MaterialAsset::GetAlbedoColor called with null underlying material");
+			SEDX_CORE_ERROR_TAG("MaterialAsset", "GetAlbedoColor called with null underlying material");
 			static Vec3 dummy = Vec3(0.0f);
 			return dummy;
 		}
@@ -166,7 +166,7 @@ namespace SceneryEditorX
 	{
 		if (!m_Material) // or if (m_Material.m_Ptr == nullptr) if accessible
 		{
-			SEDX_CORE_ERROR("MaterialAsset::SetAlbedoColor called with null underlying material");
+			SEDX_CORE_ERROR_TAG("MaterialAsset", "SetAlbedoColor called with null underlying material");
 			return;
 		}
 
@@ -177,7 +177,7 @@ namespace SceneryEditorX
 	{
 		if (!m_Material) // or if (m_Material.m_Ptr == nullptr) if accessible
 		{
-			SEDX_CORE_ERROR("MaterialAsset::GetMetalness called with null underlying material");
+			SEDX_CORE_ERROR_TAG("MaterialAsset", "GetMetalness called with null underlying material");
 			static float dummy = 0.0f;
 			return dummy;
 		}
@@ -189,7 +189,7 @@ namespace SceneryEditorX
 	{
 		if (!m_Material) // or if (m_Material.m_Ptr == nullptr) if accessible
 		{
-			SEDX_CORE_ERROR("MaterialAsset::SetMetalness called with null underlying material");
+			SEDX_CORE_ERROR_TAG("MaterialAsset", "SetMetalness called with null underlying material");
 			return;
 		}
 
@@ -200,7 +200,7 @@ namespace SceneryEditorX
 	{
 		if (!m_Material) // or if (m_Material.m_Ptr == nullptr) if accessible
 		{
-			SEDX_CORE_ERROR("MaterialAsset::GetRoughness called with null underlying material");
+			SEDX_CORE_ERROR_TAG("MaterialAsset", "GetRoughness called with null underlying material");
 			static float dummy = 0.0f;
 			return dummy;
 		}
@@ -212,7 +212,7 @@ namespace SceneryEditorX
 	{
 		if (!m_Material) // or if (m_Material.m_Ptr == nullptr) if accessible
 		{
-			SEDX_CORE_ERROR("MaterialAsset::SetRoughness called with null underlying material");
+			SEDX_CORE_ERROR_TAG("MaterialAsset", "SetRoughness called with null underlying material");
 			return;
 		}
 
@@ -223,7 +223,7 @@ namespace SceneryEditorX
 	{
 		if (!m_Material) // or if (m_Material.m_Ptr == nullptr) if accessible
 		{
-			SEDX_CORE_ERROR("MaterialAsset::GetEmission called with null underlying material");
+			SEDX_CORE_ERROR_TAG("MaterialAsset", "GetEmission called with null underlying material");
 			static float dummy = 0.0f;
 			return dummy;
 		}
@@ -235,7 +235,7 @@ namespace SceneryEditorX
 	{
 		if (!m_Material) // or if (m_Material.m_Ptr == nullptr) if accessible
 		{
-			SEDX_CORE_ERROR("MaterialAsset::SetEmission called with null underlying material");
+			SEDX_CORE_ERROR_TAG("MaterialAsset", "SetEmission called with null underlying material");
 			return;
 		}
 
@@ -270,8 +270,8 @@ namespace SceneryEditorX
 
 	Ref<ImageResource> MaterialAsset::GetAlbedoMap() const
 	{
-	    SEDX_CORE_ERROR_TAG("Material", "GetAlbedoMap called with no underlying material");
-		SEDX_CORE_TRACE_TAG("Material", "GetAlbedoMap if not yet implemented");
+	    SEDX_CORE_ERROR_TAG("MaterialAsset", "GetAlbedoMap called with no underlying material");
+		SEDX_CORE_TRACE_TAG("MaterialAsset", "GetAlbedoMap if not yet implemented");
 
 		return nullptr;
 	}
@@ -284,7 +284,7 @@ namespace SceneryEditorX
 			ClearAlbedoMap();
 		}
 
-		SEDX_CORE_ERROR_TAG("Material", "SetAlbedoMap called with null underlying material");
+		SEDX_CORE_ERROR_TAG("MaterialAsset", "SetAlbedoMap called with null underlying material");
 	}
 
 	void MaterialAsset::SetProperty(MaterialClass materialClass, const float value)
@@ -320,8 +320,8 @@ namespace SceneryEditorX
 
 	Ref<ImageResource> MaterialAsset::GetNormalMap() const
 	{
-		SEDX_CORE_ERROR_TAG("Material", "GetNormalMap called with no underlying material");
-		SEDX_CORE_TRACE_TAG("Material", "GetNormalMap if not yet implemented");
+		SEDX_CORE_ERROR_TAG("MaterialAsset", "GetNormalMap called with no underlying material");
+		SEDX_CORE_TRACE_TAG("MaterialAsset", "GetNormalMap if not yet implemented");
 		return nullptr;
 	}
 
@@ -329,8 +329,8 @@ namespace SceneryEditorX
 	{
 		if (!m_Material) // or if (m_Material.m_Ptr == nullptr) if accessible
 		{
-			SEDX_CORE_ERROR_TAG("Material", "IsUsingNormalMap called with no underlying material");
-		    SEDX_CORE_TRACE_TAG("Material", "IsUsingNormalMap if not yet implemented");
+			SEDX_CORE_ERROR_TAG("MaterialAsset", "IsUsingNormalMap called with no underlying material");
+		    SEDX_CORE_TRACE_TAG("MaterialAsset", "IsUsingNormalMap if not yet implemented");
 			return false;
 		}
 
@@ -341,7 +341,7 @@ namespace SceneryEditorX
 	{
 		if (!m_Material) // or if (m_Material.m_Ptr == nullptr) if accessible
 		{
-			SEDX_CORE_ERROR_TAG("Material", "SetUseNormalMap called with no underlying material");
+			SEDX_CORE_ERROR_TAG("MaterialAsset", "SetUseNormalMap called with no underlying material");
 			return;
 		}
 
@@ -350,6 +350,7 @@ namespace SceneryEditorX
 
 	void MaterialAsset::PrepareForGPU()
 	{
+
 		{
 			std::scoped_lock lock(m_Mutex);
 

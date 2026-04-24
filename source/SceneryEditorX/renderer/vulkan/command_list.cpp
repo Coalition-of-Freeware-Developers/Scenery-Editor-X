@@ -40,8 +40,10 @@
 #include "pipeline/barrier_info.h"
 #include "pipeline/pipeline.h"
 #include "pipeline/pipeline_state.h"
+#include "shader/shader.h"
 #include <array>
 #include <chrono>
+#include <limits>
 #include <memory>
 #include <mutex>
 #include <unordered_map>
@@ -53,6 +55,23 @@
 
 namespace SceneryEditorX
 {
+	static void InsertTransferWriteAfterWriteBarrier(VkCommandBuffer cmd)
+	{
+		VkMemoryBarrier2 barrier{};
+		barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2;
+		barrier.srcStageMask = VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT;
+		barrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+		barrier.dstStageMask = VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT;
+		barrier.dstAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+
+		VkDependencyInfo depInfo{};
+		depInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+		depInfo.memoryBarrierCount = 1;
+		depInfo.pMemoryBarriers = &barrier;
+
+		vkCmdPipelineBarrier2(cmd, &depInfo);
+	}
+
 	namespace
 	{
 		/**
@@ -67,9 +86,20 @@ namespace SceneryEditorX
 		};
 	}
 
-	// Per-image layout tracking: key = &VkImage (stable address), value = per-mip current layouts.
+	/**
+	 * @struct ImageLayoutState
+	 * @brief Tracks per-subresource layout state for one VkImage.
+	 */
+	struct ImageLayoutState
+	{
+		std::array<Layout::ImageLayout, MAX_MIP_COUNT> mipLayouts{};
+		bool initialized = false;
+	};
+
+	// Per-image layout tracking: key = VkImage handle, value = per-mip current layouts.
 	// Protected by s_ImageLayoutsMutex for safe concurrent reads from multiple threads.
-	static std::unordered_map<VkImage, std::array<Layout::ImageLayout, MAX_MIP_COUNT>> s_ImageLayouts;	static std::mutex s_ImageLayoutsMutex;
+	static std::unordered_map<VkImage, ImageLayoutState> s_ImageLayouts;
+	static std::mutex s_ImageLayoutsMutex;
 	static std::array<ImmediateExecutionState, static_cast<size_t>(QueueType::MaxEnum)> s_ImmediateStates;
 	//std::unordered_map<void*, std::array<Layout::ImageLayout, MAX_MIP_COUNT>> image_Layouts;
 
@@ -89,11 +119,11 @@ namespace SceneryEditorX
 		auto it = s_ImageLayouts.find(image);
 		if (it == s_ImageLayouts.end())
 		{
-			return Layout::ImageLayout::MaxEnum;
+			return Layout::ImageLayout::Undefined;
 		}
 
 		SEDX_CORE_ASSERT(mipIndex < MAX_MIP_COUNT, "Mip index out of range");
-		return it->second[mipIndex];
+		return it->second.mipLayouts[mipIndex];
 	}
 
 	/**
@@ -113,17 +143,44 @@ namespace SceneryEditorX
 		auto it = s_ImageLayouts.find(image);
 		if (it == s_ImageLayouts.end())
 		{
-			std::array<Layout::ImageLayout, MAX_MIP_COUNT> layouts;
-			layouts.fill(Layout::ImageLayout::MaxEnum);
-			s_ImageLayouts[image] = layouts;
+			ImageLayoutState state{};
+			state.mipLayouts.fill(Layout::ImageLayout::Undefined);
+			state.initialized = true;
+			s_ImageLayouts[image] = state;
 			it = s_ImageLayouts.find(image);
+		}
+		else if (!it->second.initialized)
+		{
+			it->second.mipLayouts.fill(Layout::ImageLayout::Undefined);
+			it->second.initialized = true;
 		}
 
 		uint32_t mip_end = xMath::Min(mip_index + mip_range, MAX_MIP_COUNT);
 		for (uint32_t i = mip_index; i < mip_end; ++i)
 		{
-			it->second[i] = layout;
+			it->second.mipLayouts[i] = layout;
 		}
+	}
+
+	bool CommandList::RecoverIfIdle()
+	{
+		if (!m_StickyInvalidState)
+			return true;
+
+		if (m_State == CommandState::Submitted)
+		{
+			WaitForExecution();
+		}
+
+		if (m_State != CommandState::Idle)
+		{
+			return false;
+		}
+
+		m_StickyInvalidState = false;
+		m_PendingBarriers.clear();
+		m_RenderPassActive = false;
+		return true;
 	}
 
 	/**
@@ -512,7 +569,7 @@ namespace SceneryEditorX
 		if (it != s_ImageLayouts.end())
 		{
 			SEDX_CORE_ASSERT(mipIndex < MAX_MIP_COUNT, "Mip index out of range");
-			return it->second[mipIndex];
+			return it->second.mipLayouts[mipIndex];
 		}
 
 		return Layout::ImageLayout::Undefined;
@@ -536,20 +593,12 @@ namespace SceneryEditorX
 	void CommandList::RemoveLayout(void *image)
 	{
 		std::scoped_lock lock(s_ImageLayoutsMutex);
-		// callers may pass either a VkImage value, a VkImage* (pointer to handle), or an ImageResource*
+		// callers may pass either a VkImage value encoded as void* or a pointer-like value.
+		// Do not dereference unknown pointers here.
 		if (image == nullptr)
 			return;
 
-		// If the caller passed a VkImage* (pointer to handle), dereference to get the VkImage value
-		if (VkImage* imgPtr = reinterpret_cast<VkImage*>(image))
-		{
-			// reinterpret_cast is used because some call sites pass &vector[index] or ImageResource::Get()
-			VkImage img = *imgPtr;
-			s_ImageLayouts.erase(img);
-			return;
-		}
-
-		// Fallback: try to treat the pointer itself as a VkImage (covers cases where callers passed the handle directly)
+		// Treat the incoming value as an opaque image handle and erase directly.
 		s_ImageLayouts.erase(static_cast<VkImage>(image));
 	}
 
@@ -621,6 +670,8 @@ namespace SceneryEditorX
 	
 	void CommandList::Begin()
 	{
+		m_StickyInvalidState = false;
+
 		// Dedicated command list lifecycle: if the list is still pending from a previous
 		// submit, wait for completion before re-recording.
 		if (m_State == CommandState::Submitted)
@@ -628,7 +679,11 @@ namespace SceneryEditorX
 			WaitForExecution();
 		}
 
-		SEDX_CORE_ASSERT(m_State == CommandState::Idle, "Command list must be in idle state to begin recording.");
+		if (m_State != CommandState::Idle)
+		{
+			SEDX_CORE_ERROR_TAG("CommandList", "Begin aborted for '{}' because command list is not idle (state={})", m_ObjectName.c_str(), static_cast<int>(m_State.load()));
+			return;
+		}
 
 		// ONE_TIME_SUBMIT hints to the driver that this recording will be submitted exactly once
 		// before being reset, allowing internal optimizations on tiling/mobile GPU architectures.
@@ -725,7 +780,34 @@ namespace SceneryEditorX
 
 	void CommandList::Submit(FrameSync *semaphoreWait, const bool isImmediate, FrameSync *semaphoreSignal, FrameSync *semaphoreTimeline, uint64_t timelineValue)
 	{
-		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to submit.");
+		if (m_State != CommandState::Recording)
+		{
+			SEDX_CORE_ERROR_TAG("CommandList", "Submit aborted for '{}' because command list is not recording (state={})", m_ObjectName.c_str(), static_cast<int>(m_State.load()));
+			return;
+		}
+
+		if (m_RenderingCompleteTimeline == nullptr)
+		{
+			SEDX_CORE_ERROR_TAG("CommandList", "Submit aborted for '{}' because timeline semaphore is null", m_ObjectName.c_str());
+			return;
+		}
+
+		if (m_StickyInvalidState)
+		{
+			SEDX_CORE_ERROR_TAG("CommandList", "Submit aborted for '{}' because command list is sticky-invalid", m_ObjectName.c_str());
+
+			EndRenderPass();
+			m_PendingBarriers.clear();
+
+			if (m_CmdBuffer != VK_NULL_HANDLE)
+			{
+				const VkResult resetResult = vkResetCommandBuffer(m_CmdBuffer, 0);
+				SEDX_VK_RESULT_ASSERT(resetResult, "Failed to reset sticky-invalid command buffer");
+			}
+
+			m_State = CommandState::Idle;
+			return;
+		}
 
 		// End recording: close any open render pass, then seal the command buffer.
 		EndRenderPass();
@@ -737,7 +819,6 @@ namespace SceneryEditorX
 		// -------------------------------------------------------
 		std::vector<VkSemaphoreSubmitInfo> waitInfos;
 
-		
 		// Binary wait — e.g. swapchain image-acquired semaphore
 		if (semaphoreWait && semaphoreWait->GetVkSemaphore() != VK_NULL_HANDLE)
 		{
@@ -760,7 +841,6 @@ namespace SceneryEditorX
 			waitInfos.push_back(info);
 		}
 		
-
 		// -------------------------------------------------------
 		// Build signal semaphore list
 		// -------------------------------------------------------
@@ -768,11 +848,37 @@ namespace SceneryEditorX
 
 		// Always signal this command list's timeline semaphore with an explicitly tracked
 		// strictly increasing value.
-		const uint64_t nextTimelineValue = m_NextTimelineSignalValue++;
+		const VkSemaphore timelineSemaphore = m_RenderingCompleteTimeline->GetVkSemaphore();
+		SEDX_CORE_ASSERT(timelineSemaphore != VK_NULL_HANDLE, "Timeline semaphore handle is invalid");
+
+		uint64_t currentTimelineValue = 0;
+		if (Ref<Device> device = RenderContext::Get()->GetDevice(); device && device->GetLogicalDevice() != VK_NULL_HANDLE)
+		{
+			SEDX_VK_RESULT_ASSERT(vkGetSemaphoreCounterValue(device->GetLogicalDevice(), timelineSemaphore, &currentTimelineValue),
+				"Failed to query command list timeline semaphore counter");
+		}
+
+		if (currentTimelineValue == std::numeric_limits<uint64_t>::max())
+		{
+			SEDX_CORE_ERROR_TAG("CommandList", "Submit aborted for '{}' because timeline semaphore counter is UINT64_MAX (device/queue likely invalid)", m_ObjectName.c_str());
+
+			EndRenderPass();
+			m_PendingBarriers.clear();
+			if (m_CmdBuffer != VK_NULL_HANDLE)
+			{
+				const VkResult resetResult = vkResetCommandBuffer(m_CmdBuffer, 0);
+				SEDX_VK_RESULT_ASSERT(resetResult, "Failed to reset command buffer after invalid timeline semaphore state");
+			}
+			m_State = CommandState::Idle;
+			return;
+		}
+
+		const uint64_t nextTimelineValue = xMath::Max(m_NextTimelineSignalValue, currentTimelineValue + 1ull);
+		m_NextTimelineSignalValue = nextTimelineValue + 1;
 		{
 			VkSemaphoreSubmitInfo info{};
 			info.sType     = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-			info.semaphore = m_RenderingCompleteTimeline->GetVkSemaphore();
+			info.semaphore = timelineSemaphore;
 			info.value     = nextTimelineValue;
 			info.stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
 			signalInfos.push_back(info);
@@ -851,9 +957,7 @@ namespace SceneryEditorX
 		if (semaphore == VK_NULL_HANDLE || waitValue == 0)
 			return;
 
-		const auto startTime = logWaitTime ? std::chrono::high_resolution_clock::now()
-										   : std::chrono::high_resolution_clock::time_point{};
-
+		const auto startTime = logWaitTime ? std::chrono::high_resolution_clock::now() : std::chrono::high_resolution_clock::time_point{};
 		const Ref<Device> device = RenderContext::Get()->GetDevice();
 
 		VkSemaphoreWaitInfo waitInfo{};
@@ -862,8 +966,7 @@ namespace SceneryEditorX
 		waitInfo.pSemaphores    = &semaphore;
 		waitInfo.pValues        = &waitValue;
 
-		SEDX_VK_RESULT_ASSERT(vkWaitSemaphores(device->GetLogicalDevice(), &waitInfo, UINT64_MAX),
-							   "Failed to wait for command list execution via timeline semaphore");
+		SEDX_VK_RESULT_ASSERT(vkWaitSemaphores(device->GetLogicalDevice(), &waitInfo, UINT64_MAX), "Failed to wait for command list execution via timeline semaphore");
 
 		if (logWaitTime)
 		{
@@ -877,11 +980,18 @@ namespace SceneryEditorX
 
 	void CommandList::ClearDepth(VkImage img, float clearDepth)
 	{
+		if (m_StickyInvalidState)
+			return;
+
 		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command List must be in Recording state to clear texture.");
 		SEDX_CORE_ASSERT(img != VK_NULL_HANDLE, "Must have a valid image.");
 
 		// Transition image to transfer dst layout
 		InsertBarrier(img, Layout::ImageLayout::TransferDst);
+		if (GetImageLayout(img, 0) == Layout::ImageLayout::TransferDst)
+		{
+			InsertTransferWriteAfterWriteBarrier(m_CmdBuffer);
+		}
 
 		// Define the range of the image to clear (full image)
 		VkImageSubresourceRange range{};
@@ -902,11 +1012,18 @@ namespace SceneryEditorX
 
 	void CommandList::ClearStencil(VkImage img, uint32_t clearStencil)
 	{
+		if (m_StickyInvalidState)
+			return;
+
 		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command List must be in Recording state to clear texture.");
 		SEDX_CORE_ASSERT(img != VK_NULL_HANDLE, "Must have a valid image.");
 
 		// Transition image to transfer dst layout
 		InsertBarrier(img, Layout::ImageLayout::TransferDst);
+		if (GetImageLayout(img, 0) == Layout::ImageLayout::TransferDst)
+		{
+			InsertTransferWriteAfterWriteBarrier(m_CmdBuffer);
+		}
 
 		VkImageSubresourceRange range{};
 		range.aspectMask = VK_IMAGE_ASPECT_STENCIL_BIT;
@@ -926,11 +1043,18 @@ namespace SceneryEditorX
 
 	void CommandList::ClearTexture(VkImage img, const Color &color)
 	{
+		if (m_StickyInvalidState)
+			return;
+
 		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command List must be in Recording state to clear texture.");
 		SEDX_CORE_ASSERT(img != VK_NULL_HANDLE, "Must have a valid image.");
 
 		// Transition image to transfer dst layout
 		InsertBarrier(img, Layout::ImageLayout::TransferDst);
+		if (GetImageLayout(img, 0) == Layout::ImageLayout::TransferDst)
+		{
+			InsertTransferWriteAfterWriteBarrier(m_CmdBuffer);
+		}
 
 		// Define the range of the image to clear (full image)
 		VkImageSubresourceRange range;
@@ -996,14 +1120,26 @@ namespace SceneryEditorX
 
 	void CommandList::InsertBarrier(VkImage image, VkFormat format, uint32_t mipIndex, uint32_t mipRange, uint32_t arrayLength, Layout::ImageLayout layout)
 	{
+		if (m_StickyInvalidState)
+		{
+			SEDX_CORE_WARN_TAG("CommandList", "InsertBarrier skipped for '{}' because command list is marked sticky-invalid", m_ObjectName.c_str());
+			return;
+		}
+
 		SEDX_CORE_ASSERT(image != VK_NULL_HANDLE, "Image handle must be valid for barrier insertion");
+		if (layout == Layout::ImageLayout::Undefined)
+		{
+			SEDX_CORE_WARN_TAG("CommandList", "InsertBarrier called with Undefined new layout for image barrier; skipping invalid transition");
+			return;
+		}
 		// Keep assert for debug, but defensively handle invalid state at runtime to avoid
 		// crashing inside the GPU driver when running release builds or when asserts
 		// are disabled.
 		if (m_CmdBuffer == VK_NULL_HANDLE || m_State != CommandState::Recording)
 		{
-			SEDX_CORE_WARN_TAG("CommandList", "InsertBarrier called on invalid CommandList '{}' (state={}, cmdBuf=0x{:p}) - using immediate fallback",
-				m_ObjectName.c_str(), static_cast<int>(m_State.load()), (void*)m_CmdBuffer);
+			m_StickyInvalidState = true;
+			SEDX_CORE_WARN_TAG("CommandList", "InsertBarrier called on invalid CommandList '{}' \n"
+				"(state={}, cmdBuf=0x{:p}) - using immediate fallback", m_ObjectName.c_str(), static_cast<int>(m_State.load()), (void*)m_CmdBuffer);
 
 			// Defensive behavior: in some startup/race conditions a command list may
 			// still be in Submitted state when callers attempt to insert image
@@ -1043,12 +1179,23 @@ namespace SceneryEditorX
 			EndRenderPass();
 
 		const uint32_t baseMip = (mipIndex == ALL_MIPS) ? 0 : mipIndex;
-		const uint32_t levelCount = (mipIndex == ALL_MIPS || mipRange == 0) ? VK_REMAINING_MIP_LEVELS : mipRange;
+		const uint32_t trackedLevelCount = (mipIndex == ALL_MIPS || mipRange == 0)
+			? (MAX_MIP_COUNT - baseMip)
+			: xMath::Min(mipRange, MAX_MIP_COUNT - baseMip);
+		const uint32_t levelCount = (trackedLevelCount == (MAX_MIP_COUNT - baseMip)) ? VK_REMAINING_MIP_LEVELS : trackedLevelCount;
 		const uint32_t layerCount = (arrayLength == 0) ? VK_REMAINING_ARRAY_LAYERS : arrayLength;
 		const Layout::ImageLayout currentLayout = GetImageLayout(image, baseMip);
 
 		if (currentLayout == layout)
 			return;
+
+		// Avoid legal-but-invalid-in-practice transitions that validation flags and which
+		// can poison later layout tracking (UNDEFINED -> read-only).
+		if (currentLayout == Layout::ImageLayout::Undefined && layout == Layout::ImageLayout::ShaderRead)
+		{
+			SEDX_CORE_WARN_TAG("CommandList", "InsertBarrier requested Undefined -> ShaderRead transition; promoting to General first to establish a valid writable layout history");
+			layout = Layout::ImageLayout::General;
+		}
 
 		const BarrierAccessInfo srcInfo = GetLayoutAccessInfo(currentLayout);
 		const BarrierAccessInfo dstInfo = GetLayoutAccessInfo(layout);
@@ -1066,7 +1213,10 @@ namespace SceneryEditorX
 		barrier.srcAccessMask       = srcInfo.accessMask;
 		barrier.dstStageMask        = dstInfo.stageFlags;
 		barrier.dstAccessMask       = dstInfo.accessMask;
-		barrier.oldLayout           = GetVkImageLayout(currentLayout);
+		// First transition for a subresource must use UNDEFINED as oldLayout.
+		barrier.oldLayout           = (currentLayout == Layout::ImageLayout::MaxEnum)
+			? VK_IMAGE_LAYOUT_UNDEFINED
+			: GetVkImageLayout(currentLayout);
 		barrier.newLayout           = GetVkImageLayout(layout);
 		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
@@ -1085,23 +1235,27 @@ namespace SceneryEditorX
 			auto it = s_ImageLayouts.find(image);
 			if (it == s_ImageLayouts.end())
 			{
-				std::array<Layout::ImageLayout, MAX_MIP_COUNT> layouts;
-				layouts.fill(Layout::ImageLayout::MaxEnum);
-				s_ImageLayouts[image] = layouts;
+				ImageLayoutState state{};
+				state.mipLayouts.fill(Layout::ImageLayout::Undefined);
+				state.initialized = true;
+				s_ImageLayouts[image] = state;
 				it = s_ImageLayouts.find(image);
 			}
 
-			const uint32_t trackedLevels = (levelCount == VK_REMAINING_MIP_LEVELS) ? (MAX_MIP_COUNT - baseMip) : xMath::Min(levelCount, MAX_MIP_COUNT - baseMip);
-			for (uint32_t i = 0; i < trackedLevels; ++i)
+			for (uint32_t i = 0; i < trackedLevelCount; ++i)
 			{
-				it->second[baseMip + i] = layout;
+				it->second.mipLayouts[baseMip + i] = layout;
 			}
 	   }
 	}
 
 	void CommandList::InsertBarrier(Buffer *buffer)
 	{
-		SEDX_CORE_ASSERT(buffer != nullptr && buffer->Get() != VK_NULL_HANDLE, "Buffer must be valid for barrier insertion");
+		if (buffer == nullptr || buffer->Get() == VK_NULL_HANDLE)
+		{
+			SEDX_CORE_WARN_TAG("CommandList", "InsertBarrier(Buffer) skipped due to invalid buffer");
+			return;
+		}
 		if (m_State != CommandState::Recording)
 		{
 			SEDX_CORE_WARN_TAG("CommandList", "InsertBarrier(Buffer) called while '{}' is not recording (state={}), skipping", m_ObjectName.c_str(), static_cast<int>(m_State.load()));
@@ -1328,18 +1482,24 @@ namespace SceneryEditorX
 			{
 				if (pending.barrier.type == Barrier::Type::ImageLayout)
 				{
-					// Track the top-level layout_new across all mips for simplicity
+					// Track only the mip range affected by this barrier.
 					auto it = s_ImageLayouts.find(pending.image);
 					if (it == s_ImageLayouts.end())
 					{
-						std::array<Layout::ImageLayout, MAX_MIP_COUNT> layouts;
-						layouts.fill(Layout::ImageLayout::MaxEnum);
-						s_ImageLayouts[pending.image] = layouts;
+						ImageLayoutState state{};
+						state.mipLayouts.fill(Layout::ImageLayout::Undefined);
+						state.initialized = true;
+						s_ImageLayouts[pending.image] = state;
 						it = s_ImageLayouts.find(pending.image);
 					}
-					for (uint32_t i = 0; i < MAX_MIP_COUNT; ++i)
+
+					const uint32_t baseMip = pending.mip_Index;
+					const uint32_t trackedLevels = (pending.mip_Range == 0)
+						? (MAX_MIP_COUNT - baseMip)
+						: xMath::Min(pending.mip_Range, MAX_MIP_COUNT - baseMip);
+					for (uint32_t i = 0; i < trackedLevels; ++i)
 					{
-						it->second[i] = pending.layoutNew;
+						it->second.mipLayouts[baseMip + i] = pending.layoutNew;
 					}
 				}
 			}
@@ -1403,6 +1563,17 @@ namespace SceneryEditorX
 
 	void CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z /*= 1*/)
 	{
+		if (m_StickyInvalidState)
+		{
+			static bool warnedStickyInvalidDispatch = false;
+			if (!warnedStickyInvalidDispatch)
+			{
+				SEDX_CORE_WARN_TAG("CommandList", "Dispatch skipped for '{}' because command list is sticky-invalid", m_ObjectName.c_str());
+				warnedStickyInvalidDispatch = true;
+			}
+			return;
+		}
+
 		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to dispatch compute work");
 
 		if (!m_pso.IsCompute())
@@ -1427,6 +1598,17 @@ namespace SceneryEditorX
 			return;
 		}
 
+		if (m_Pipeline.GetLayout() == VK_NULL_HANDLE)
+		{
+			static bool warnedMissingComputeLayout = false;
+			if (!warnedMissingComputeLayout)
+			{
+				SEDX_CORE_WARN_TAG("CommandList", "Dispatch skipped: compute pipeline layout is invalid");
+				warnedMissingComputeLayout = true;
+			}
+			return;
+		}
+
 		if (!m_ComputePushConstantsSet)
 		{
 			PushConstantBuffer_Pass defaultComputePushConstants{};
@@ -1435,11 +1617,33 @@ namespace SceneryEditorX
 		}
 
 		PreDraw();
+
+		if (m_Pipeline.Get() == VK_NULL_HANDLE || m_Pipeline.GetLayout() == VK_NULL_HANDLE)
+		{
+			static bool warnedInvalidAfterPreDraw = false;
+			if (!warnedInvalidAfterPreDraw)
+			{
+				SEDX_CORE_WARN_TAG("CommandList", "Dispatch skipped: pipeline became invalid before vkCmdDispatch");
+				warnedInvalidAfterPreDraw = true;
+			}
+			return;
+		}
+
+		if (m_CmdBuffer == VK_NULL_HANDLE)
+		{
+			m_StickyInvalidState = true;
+			SEDX_CORE_WARN_TAG("CommandList", "Dispatch skipped: '{}' has null command buffer", m_ObjectName.c_str());
+			return;
+		}
+
 		vkCmdDispatch(m_CmdBuffer, x, y, z);
 	}
 
 	void CommandList::Dispatch(ImageResource *img, float resolutionScale)
 	{
+		if (m_StickyInvalidState)
+			return;
+
 		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to dispatch compute work");
 		SEDX_CORE_ASSERT(img != nullptr, "ImageResource must be valid for compute dispatch");
 
@@ -1466,8 +1670,10 @@ namespace SceneryEditorX
 		// synchronize writes to the texture
 		if (GetImageLayout(img->Get(), 0) == Layout::ImageLayout::General)
 		{
-			// Transition to ShaderRead so subsequent graphics/compute passes can sample the result
-			InsertBarrier(img->Get(), img->GetImageSpec().format, 0, 0, 0, Layout::ImageLayout::ShaderRead);
+			// Keep the image in General after compute dispatch.
+			// Some passes chain multiple UAV writes before sampling; forcing ShaderRead here
+			// can produce oldLayout mismatches when a later pass transitions from General.
+			InsertBarrier(img, BarrierType::EnsureWriteThenWrite);
 		}
 	}
 
@@ -1508,15 +1714,84 @@ namespace SceneryEditorX
 
 	void CommandList::SetTexture(const uint32_t slot, ImageResource* img, const uint32_t mipIndex /*= all_mips*/, uint32_t mipRange /*= 0*/, const bool uav /*= false*/)
 	{
-		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to set texture");
+		if (m_State != CommandState::Recording)
+		{
+			SEDX_CORE_ERROR_TAG("CommandList", "SetTexture aborted for '{}' because command list is not recording (state={})", m_ObjectName.c_str(), static_cast<int>(m_State.load()));
+			return;
+		}
 
 		if (mipIndex != ALL_MIPS)
 			SEDX_CORE_ASSERT(mipRange != 0, "If a mip was specified, then mip_range can't be 0");
 
 		if (!m_DescriptorLayout_Current)
 		{
-			SEDX_CORE_WARN_TAG("CommandList","Descriptor layout not set, try setting texture \"{}\" within a render pass", img->GetObjectName().c_str());
+			SEDX_CORE_WARN_TAG("CommandList","Descriptor layout not set, try setting texture \"{}\" within a render pass", img ? img->GetObjectName().c_str() : "<null>");
 			return;
+		}
+
+		const DescriptorBinding* expectedBinding = nullptr;
+		const Descriptor* expectedDescriptor = nullptr;
+		auto resolveDescriptorBySlot = [&](const uint32_t candidateSlot) -> const Descriptor*
+		{
+			const auto& descriptors = m_DescriptorLayout_Current->GetDescriptors();
+			for (const Descriptor& descriptor : descriptors)
+			{
+				if (descriptor.GetSlot() == candidateSlot)
+					return &descriptor;
+			}
+			return nullptr;
+		};
+
+		auto tryResolveTextureSlot = [&](const uint32_t candidateSlot) -> bool
+		{
+			const DescriptorBinding* binding = m_DescriptorLayout_Current->FindBinding(candidateSlot);
+			const Descriptor* descriptor = resolveDescriptorBySlot(candidateSlot);
+			if (!binding || !descriptor)
+				return false;
+
+			if (uav && descriptor->GetType() != DescriptorType::TextureStorage)
+				return false;
+			if (!uav && descriptor->GetType() != DescriptorType::Image)
+				return false;
+
+			expectedBinding = binding;
+			expectedDescriptor = descriptor;
+			return true;
+		};
+
+		if (!tryResolveTextureSlot(slot))
+		{
+			const uint32_t shiftedSlot = slot + (uav ? SHADER_REGISTER_SHIFT_U : SHADER_REGISTER_SHIFT_T);
+			tryResolveTextureSlot(shiftedSlot);
+		}
+		if (!expectedBinding)
+		{
+			SEDX_CORE_ERROR_TAG("CommandList", "SetTexture failed: no descriptor binding found for slot {} (uav={}) in PSO '{}'",
+				slot,
+				uav,
+				m_pso.name ? m_pso.name : "<unnamed>");
+			return;
+		}
+
+		if (expectedDescriptor)
+		{
+			if (uav && expectedDescriptor->GetType() != DescriptorType::TextureStorage)
+			{
+				SEDX_CORE_ERROR_TAG("CommandList", "SetTexture rejected: slot {} in PSO '{}' expects non-UAV descriptor type {}",
+					slot,
+					m_pso.name ? m_pso.name : "<unnamed>",
+					static_cast<uint32_t>(expectedDescriptor->GetType()));
+				return;
+			}
+
+			if (!uav && expectedDescriptor->GetType() != DescriptorType::Image)
+			{
+				SEDX_CORE_ERROR_TAG("CommandList", "SetTexture rejected: slot {} in PSO '{}' expects descriptor type {} instead of sampled image",
+					slot,
+					m_pso.name ? m_pso.name : "<unnamed>",
+					static_cast<uint32_t>(expectedDescriptor->GetType()));
+				return;
+			}
 		}
 
 		// if the texture is null, or it's still loading, ignore it
@@ -1587,6 +1862,9 @@ namespace SceneryEditorX
 
 	void CommandList::Copy(ImageResource *src, Swapchain *dst)
 	{
+		if (m_StickyInvalidState)
+			return;
+
 		SEDX_CORE_ASSERT((src->GetFlags() & ImageResourceFlags::BlitClear) != 0, "The image resource needs the BlitClear flag");
 		SEDX_CORE_ASSERT(src->GetWidth() == dst->GetWidth(), "Source and destination textures must have the same width");
 		SEDX_CORE_ASSERT(src->GetHeight() == dst->GetHeight(), "Source and destination textures must have the same height");
@@ -1616,6 +1894,7 @@ namespace SceneryEditorX
 		// to a local VkImage and use the value overload of InsertBarrier.
 		VkImage dstImage = dst->GetImages()[imgIndex];
 		InsertBarrier(dstImage, dst->GetImageFormat(), 0, 1, 1, Layout::ImageLayout::TransferDst);
+		InsertTransferWriteAfterWriteBarrier(m_CmdBuffer);
 
 		// blit
 		vkCmdCopyImage(m_CmdBuffer,
@@ -1630,6 +1909,9 @@ namespace SceneryEditorX
 
 	void CommandList::Copy(ImageResource *src, ImageResource *dst, const bool blitMips)
 	{
+		if (m_StickyInvalidState)
+			return;
+
 		SEDX_CORE_ASSERT((src->GetFlags() & ImageResourceFlags::BlitClear) != 0, "The texture needs the BlitClear flag");
 		SEDX_CORE_ASSERT((dst->GetFlags() & ImageResourceFlags::BlitClear) != 0, "The texture needs the BlitClear flag");
 		SEDX_CORE_ASSERT(src->GetWidth() == dst->GetWidth(), "Source and destination textures must have the same width");
@@ -1679,6 +1961,7 @@ namespace SceneryEditorX
 		// transition to blit appropriate layouts
 		src->SetLayout(Layout::ImageLayout::TransferSrc, this);
 		dst->SetLayout(Layout::ImageLayout::TransferDst, this);
+		InsertTransferWriteAfterWriteBarrier(m_CmdBuffer);
 
 		vkCmdCopyImage(m_CmdBuffer,
 			static_cast<VkImage>(*src->Get()), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
@@ -1725,16 +2008,61 @@ namespace SceneryEditorX
 
 	bool CommandList::EnsureDescriptorLayoutFromPipelineState(PipelineState &pso)
 	{
-		if (m_DescriptorLayout_Current)
+		// Ensure the hash reflects the current shader/render-target state before any cache checks.
+		pso.Prepare();
+
+		const auto has_compiled_stage = [&](const StageType stage) -> bool
+		{
+			Shader* shader = pso.shaders[static_cast<std::size_t>(stage)];
+			return shader ? shader->IsCompiled() : false;
+		};
+
+		const bool hasCompute = has_compiled_stage(StageType::Compute);
+		const bool hasGraphics =
+			has_compiled_stage(StageType::Vertex) ||
+			has_compiled_stage(StageType::TessellationControl) ||
+			has_compiled_stage(StageType::TessellationEvaluation) ||
+			has_compiled_stage(StageType::Fragment);
+
+		if ((!hasCompute && !hasGraphics) || (hasCompute && hasGraphics))
+		{
+			m_StickyInvalidState = true;
+			SEDX_CORE_ERROR_TAG("CommandList", "Descriptor layout build aborted for PSO '{}': invalid compiled stage combination (compute={}, graphics={})",
+				pso.name ? pso.name : "<unnamed>", hasCompute, hasGraphics);
+			m_DescriptorLayout_Current = nullptr;
+			m_DescriptorLayout_Owned.reset();
+			m_DescriptorLayout_PSOHash = 0;
+			return false;
+		}
+
+		const uint64_t psoHash = pso.GetHash();
+		if (m_DescriptorLayout_Current && m_DescriptorLayout_PSOHash == psoHash)
 			return true;
 
 		if (!pso.IsGraphics() && !pso.IsCompute())
 			return false;
 
+		// Ensure descriptor layouts never leak across fundamentally different PSO kinds
+		// when hashes collide or are incompletely updated in bootstrap paths.
+		if (m_DescriptorLayout_Current)
+		{
+			m_DescriptorLayout_Current = nullptr;
+			m_DescriptorLayout_Owned.reset();
+			m_DescriptorLayout_PSOHash = 0;
+		}
+
 		BindlessManager bindlessManager;
 		std::array<Descriptor, 256> descriptors = {};
 		size_t descriptorCount = 0;
-		bindlessManager.GetDescriptorsFromPipelineState(pso, descriptors.data(), descriptorCount);
+		if (!bindlessManager.GetDescriptorsFromPipelineState(pso, descriptors.data(), descriptorCount))
+		{
+			m_StickyInvalidState = true;
+			SEDX_CORE_ERROR_TAG("CommandList", "Descriptor reflection merge failed for PSO '{}' due to binding type conflict", pso.name ? pso.name : "<unnamed>");
+			m_DescriptorLayout_Current = nullptr;
+			m_DescriptorLayout_Owned.reset();
+			m_DescriptorLayout_PSOHash = 0;
+			return false;
+		}
 
 		const char* descriptorSetName = pso.name ? pso.name : "CommandListDescriptorSet";
 		m_DescriptorLayout_Owned = CreateScope<DescriptorSet>(descriptors.data(), descriptorCount, descriptorSetName);
@@ -1745,9 +2073,11 @@ namespace SceneryEditorX
 			SEDX_CORE_ERROR_TAG("CommandList", "Failed to create descriptor layout from reflected PSO descriptors for '{}'", descriptorSetName);
 			m_DescriptorLayout_Current = nullptr;
 			m_DescriptorLayout_Owned.reset();
+			m_DescriptorLayout_PSOHash = 0;
 			return false;
 		}
 
+		m_DescriptorLayout_PSOHash = psoHash;
 		m_NeedsDynamicBind = true;
 		return true;
 	}
@@ -1763,6 +2093,18 @@ namespace SceneryEditorX
 
 		if (m_NeedsDynamicBind)
 		{
+			if (m_Pipeline.Get() == VK_NULL_HANDLE || m_Pipeline.GetLayout() == VK_NULL_HANDLE || m_DescriptorLayout_Current == nullptr)
+			{
+				static bool warnedMissingDynamicBindState = false;
+				if (!warnedMissingDynamicBindState)
+				{
+					SEDX_CORE_WARN_TAG("CommandList", "PreDraw skipped descriptor binding due to invalid pipeline/layout state");
+					warnedMissingDynamicBindState = true;
+				}
+
+				return;
+			}
+
 			DescriptorSet::SetDynamicDescriptor(m_pso, m_CmdBuffer, m_Pipeline.GetLayout(), m_DescriptorLayout_Current);
 			m_DescriptorLayout_Current->SetBindless(m_pso, m_CmdBuffer, m_Pipeline.GetLayout());
 			m_NeedsDynamicBind = false;
@@ -1838,8 +2180,7 @@ namespace SceneryEditorX
 					VkRenderingAttachmentInfo color_attachment{};
 					color_attachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
 					color_attachment.imageView = m_pso.isMultiview && rt->GetRenderTargetView_MultiView()
-						? static_cast<VkImageView>(rt->GetRenderTargetView_MultiView())
-						: static_cast<VkImageView>(rt->GetRenderTargetView(m_pso.renderTarget_ArrayIndex));
+						? static_cast<VkImageView>(rt->GetRenderTargetView_MultiView()) : static_cast<VkImageView>(rt->GetRenderTargetView(m_pso.renderTarget_ArrayIndex));
 					color_attachment.imageLayout = GetVkImageLayout(GetImageLayout(rt, 0));
 					// convert PipelineStateColor to Color for GetColorLoadOp
 					Color clearCol{ m_pso.clearColor[i].r, m_pso.clearColor[i].g, m_pso.clearColor[i].b, m_pso.clearColor[i].a };
@@ -1852,6 +2193,7 @@ namespace SceneryEditorX
 					attachments_color[attachment_index++] = color_attachment;
 				}
 			}
+
 			renderInfo.colorAttachmentCount = attachment_index;
 			renderInfo.pColorAttachments    = attachments_color.data();
 		}
@@ -1865,6 +2207,7 @@ namespace SceneryEditorX
 			{ 
 				SEDX_CORE_ASSERT(rt->GetWidth() == renderInfo.renderArea.extent.width, "The depth buffer doesn't match the output resolution");
 			}
+
 			SEDX_CORE_ASSERT(rt->IsDepthStencilFormat(), "Invalid depth-stencil format");
 
 			// transition to the appropriate layout
@@ -1873,8 +2216,7 @@ namespace SceneryEditorX
 
 			attachment_depth_stencil.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
 			attachment_depth_stencil.imageView = m_pso.isMultiview && rt->GetDepthStencilView_MultiView()
-				? static_cast<VkImageView>(rt->GetDepthStencilView_MultiView())
-				: static_cast<VkImageView>(rt->GetDepthStencilView(m_pso.renderTarget_ArrayIndex));
+				? static_cast<VkImageView>(rt->GetDepthStencilView_MultiView()) : static_cast<VkImageView>(rt->GetDepthStencilView(m_pso.renderTarget_ArrayIndex));
 			attachment_depth_stencil.imageLayout = GetVkImageLayout(GetImageLayout(rt, 0));
 			// depth load op derived from the pso clearDepth sentinel
 			attachment_depth_stencil.loadOp = GetDepthLoadOp(m_pso.clearDepth);
@@ -1904,6 +2246,7 @@ namespace SceneryEditorX
 			attachment_shading_rate.sType                          = VK_STRUCTURE_TYPE_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_INFO_KHR;
 			attachment_shading_rate.imageView                      = static_cast<VkImageView>(m_pso.vrsInputTexture->GetRenderTargetView());
 			attachment_shading_rate.imageLayout                    = GetVkImageLayout(GetImageLayout(m_pso.vrsInputTexture, 0));
+
 			// Use DeviceStatics populated during device initialization for max texel sizes
 			attachment_shading_rate.shadingRateAttachmentTexelSize = {
 				.width  = stats.maxShadingRateTexelSizeX,
@@ -1941,9 +2284,70 @@ namespace SceneryEditorX
 
 	void CommandList::SetPipelineState(PipelineState& pso)
 	{
-		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to set pipeline state");
+		if (pso.name && std::strcmp(pso.name, "grid") == 0)
+		{
+			if (Shader* vertexShader = pso.shaders[static_cast<uint32_t>(StageType::Vertex)])
+			{
+				const std::vector<Descriptor> descriptors = vertexShader->GetDescriptors();
+				bool hasBufferFrame200 = false;
+				bool hasBufferFrame0 = false;
+				for (const Descriptor& descriptor : descriptors)
+				{
+					if (descriptor.GetName() != "BufferFrame")
+						continue;
 
-		EnsureDescriptorLayoutFromPipelineState(pso);
+					if (descriptor.GetSlot() == 200)
+						hasBufferFrame200 = true;
+					if (descriptor.GetSlot() == 0)
+						hasBufferFrame0 = true;
+				}
+
+				if (hasBufferFrame0 && !hasBufferFrame200)
+				{
+					SEDX_CORE_WARN_TAG("CommandList", "Grid shader reflection still reports BufferFrame at binding 0. Pipeline creation is expected to fail until shader cache is refreshed to binding 200.");
+				}
+			}
+		}
+
+		if (m_State != CommandState::Recording)
+		{
+			SEDX_CORE_ERROR_TAG("CommandList", "SetPipelineState aborted for '{}' because command list is not recording (state={})", m_ObjectName.c_str(), static_cast<int>(m_State.load()));
+			return;
+		}
+
+		if (m_StickyInvalidState)
+		{
+			static bool warnedStickyInvalidPipelineState = false;
+			if (!warnedStickyInvalidPipelineState)
+			{
+				SEDX_CORE_WARN_TAG("CommandList", "SetPipelineState skipped for '{}' because command list is sticky-invalid (must Begin() a fresh list)", m_ObjectName.c_str());
+				warnedStickyInvalidPipelineState = true;
+			}
+
+			m_Pipeline = Pipeline();
+			m_NeedsDynamicBind = false;
+			m_ComputePushConstantsSet = false;
+			m_pso = PipelineState{};
+			return;
+		}
+
+		if (!EnsureDescriptorLayoutFromPipelineState(pso))
+		{
+			m_StickyInvalidState = true;
+			static bool warnedDescriptorLayoutBuildFailed = false;
+			if (!warnedDescriptorLayoutBuildFailed)
+			{
+				SEDX_CORE_WARN_TAG("CommandList", "SetPipelineState skipped: failed to build descriptor layout for PSO '{}'", pso.name ? pso.name : "<unnamed>");
+				warnedDescriptorLayoutBuildFailed = true;
+			}
+
+			m_Pipeline = Pipeline();
+			m_NeedsDynamicBind = false;
+			m_ComputePushConstantsSet = false;
+			m_pso = PipelineState{};
+			return;
+		}
+
 		m_ComputePushConstantsSet = false;
 
 		if (pso.shaders[static_cast<uint32_t>(StageType::Compute)])
@@ -1958,18 +2362,23 @@ namespace SceneryEditorX
 				m_Pipeline = Pipeline(mutablePso, m_DescriptorLayout_Current);
 			}
 
-			if (m_Pipeline.Get() != VK_NULL_HANDLE)
+			if (m_Pipeline.Get() != VK_NULL_HANDLE && m_Pipeline.GetLayout() != VK_NULL_HANDLE)
 			{
 				vkCmdBindPipeline(m_CmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_Pipeline.Get());
+				m_NeedsDynamicBind = true;
 			}
 			else
 			{
+				m_StickyInvalidState = true;
 				static bool warnedComputePipelineCreate = false;
 				if (!warnedComputePipelineCreate)
 				{
-					SEDX_CORE_WARN_TAG("CommandList", "SetPipelineState: failed to build compute pipeline");
+					SEDX_CORE_WARN_TAG("CommandList", "SetPipelineState: failed to build compute pipeline/layout");
 					warnedComputePipelineCreate = true;
 				}
+
+				m_NeedsDynamicBind = false;
+				m_pso = PipelineState{};
 			}
 			return;
 		}
@@ -2109,8 +2518,7 @@ namespace SceneryEditorX
 		const uint32_t defaultGraphicsStages = static_cast<uint32_t>(VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
 		const uint32_t defaultComputeStages = static_cast<uint32_t>(VK_SHADER_STAGE_COMPUTE_BIT);
 		const uint32_t stages = m_Pipeline.GetPushConstantStages() != 0
-			? m_Pipeline.GetPushConstantStages()
-			: (m_pso.IsCompute() ? defaultComputeStages : defaultGraphicsStages);
+			? m_Pipeline.GetPushConstantStages() : (m_pso.IsCompute() ? defaultComputeStages : defaultGraphicsStages);
 
 		vkCmdPushConstants(m_CmdBuffer, layout, stages, 0, static_cast<uint32_t>(sizeof(PushConstantBuffer_Pass)), &data);
 
@@ -2133,6 +2541,58 @@ namespace SceneryEditorX
 		if (!m_DescriptorLayout_Current)
 		{
 			SEDX_CORE_WARN_TAG("CommandList","Descriptor layout not set, try setting buffer \"{}\" within a render pass", buffer->GetObjectName().c_str());
+			return;
+		}
+
+		const DescriptorBinding* expectedBinding = nullptr;
+		const Descriptor* expectedDescriptor = nullptr;
+		auto resolveDescriptorBySlot = [&](const uint32_t candidateSlot) -> const Descriptor*
+		{
+			const auto& descriptors = m_DescriptorLayout_Current->GetDescriptors();
+			for (const Descriptor& descriptor : descriptors)
+			{
+				if (descriptor.GetSlot() == candidateSlot)
+					return &descriptor;
+			}
+			return nullptr;
+		};
+
+		auto try_resolve_buffer_slot = [&](const uint32_t candidateSlot) -> bool
+		{
+			const DescriptorBinding* binding = m_DescriptorLayout_Current->FindBinding(candidateSlot);
+			const Descriptor* descriptor = resolveDescriptorBySlot(candidateSlot);
+			if (!binding || !descriptor)
+				return false;
+
+			if (descriptor->GetType() != DescriptorType::StructuredBuffer)
+				return false;
+
+			expectedBinding = binding;
+			expectedDescriptor = descriptor;
+			return true;
+		};
+
+		if (!try_resolve_buffer_slot(slot))
+		{
+			try_resolve_buffer_slot(slot + SHADER_REGISTER_SHIFT_U);
+		}
+		if (!expectedBinding)
+		{
+			SEDX_CORE_ERROR_TAG("CommandList", "SetBuffer failed: no descriptor binding found for slot {} in PSO '{}'", slot, m_pso.name ? m_pso.name : "<unnamed>");
+			return;
+		}
+
+		if (expectedDescriptor && expectedDescriptor->GetType() != DescriptorType::StructuredBuffer)
+		{
+			SEDX_CORE_ERROR_TAG("CommandList", "SetBuffer rejected for slot {} in PSO '{}': descriptor type {} is not StructuredBuffer",
+				slot, m_pso.name ? m_pso.name : "<unnamed>", static_cast<uint32_t>(expectedDescriptor->GetType()));
+			return;
+		}
+
+		if ((buffer->GetUsageFlags() & VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) == 0)
+		{
+			SEDX_CORE_ERROR_TAG("CommandList", "SetBuffer rejected for slot {} in PSO '{}': buffer '{}' missing VK_BUFFER_USAGE_STORAGE_BUFFER_BIT (usage=0x{:X})",
+				slot, m_pso.name ? m_pso.name : "<unnamed>", buffer->GetObjectName().c_str(), static_cast<uint32_t>(buffer->GetUsageFlags()));
 			return;
 		}
 
@@ -2231,15 +2691,22 @@ namespace SceneryEditorX
 	{
 		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state for indirect draw");
 		SEDX_CORE_ASSERT(drawArgs != nullptr && countBuffer != nullptr, "Indirect draw buffers must be valid");
+		if (m_StickyInvalidState)
+			return;
+
+		if (!m_pso.IsGraphics() || m_Pipeline.Get() == VK_NULL_HANDLE || m_Pipeline.GetLayout() == VK_NULL_HANDLE)
+		{
+			m_StickyInvalidState = true;
+			SEDX_CORE_WARN_TAG("CommandList", "DrawIndexedIndirectCount skipped: invalid graphics pipeline state for '{}'", m_ObjectName.c_str());
+			return;
+		}
 
 		PreDraw();
+		if (m_StickyInvalidState)
+			return;
 
-		vkCmdDrawIndexedIndirectCount(
-			m_CmdBuffer,
-			drawArgs->Get(), argsOffset,
-			countBuffer->Get(), countOffset,
-			maxDrawCount,
-			sizeof(VkDrawIndexedIndirectCommand)
+		vkCmdDrawIndexedIndirectCount(m_CmdBuffer, drawArgs->Get(), argsOffset,
+			countBuffer->Get(), countOffset, maxDrawCount, sizeof(VkDrawIndexedIndirectCommand)
 		);
 	}
 
@@ -2298,9 +2765,25 @@ namespace SceneryEditorX
 
 	void CommandList::Blit(ImageResource *src, Swapchain *dst)
 	{
+		if (m_State != CommandState::Recording)
+		{
+			SEDX_CORE_ERROR_TAG("CommandList", "Blit aborted for '{}' because command list is not recording (state={})", m_ObjectName.c_str(), static_cast<int>(m_State.load()));
+			return;
+		}
+
+		SEDX_CORE_ASSERT(src != nullptr && dst != nullptr, "Blit requires valid source image and destination swapchain");
+		if (!src || !dst)
+			return;
+
 		SEDX_CORE_ASSERT((src->GetFlags() & ImageResourceFlags::BlitClear) != 0, "The image resource needs the BlitClear flag");
 		SEDX_CORE_ASSERT(src->GetWidth() <= dst->GetWidth() && src->GetHeight() <= dst->GetHeight(),
 			"The source image dimension(s) are larger than the those of the destination image");
+		SEDX_CORE_ASSERT(src->IsColorFormat(), "CommandList::Blit(ImageResource, Swapchain) requires a color source image format");
+		if (!src->IsColorFormat())
+		{
+			SEDX_CORE_ERROR_TAG("CommandList", "Blit rejected: source '{}' is not color-formatted (format={})", src->GetObjectName().c_str(), static_cast<uint32_t>(src->GetFormat()));
+			return;
+		}
 
 		VkOffset3D srcBlitSize = {};
 		srcBlitSize.x          = src->GetWidth();
@@ -2316,7 +2799,7 @@ namespace SceneryEditorX
 		blit_region.srcSubresource.mipLevel       = 0;
 		blit_region.srcSubresource.baseArrayLayer = 0;
 		blit_region.srcSubresource.layerCount     = 1;
-		blit_region.srcSubresource.aspectMask     = GetAspectMaskFromFormat(src->GetFormat());
+		blit_region.srcSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
 		blit_region.srcOffsets[0]                 = {0, 0, 0 };
 		blit_region.srcOffsets[1]                 = srcBlitSize;
 		blit_region.dstSubresource.mipLevel       = 0;
@@ -2358,6 +2841,9 @@ namespace SceneryEditorX
 
 	void CommandList::Blit(ImageResource *src, ImageResource *dst, const bool blitMips, const float sourceScaling)
 	{
+		if (m_StickyInvalidState)
+			return;
+
 		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to blit");
 
 		SEDX_CORE_ASSERT(src && dst, "Source and destination images cannot be null");
@@ -2450,6 +2936,9 @@ namespace SceneryEditorX
 	
 	void CommandList::BlitToArrayLayer(ImageResource* src, ImageResource* dst, uint32_t dstLayer)
 	{
+		if (m_StickyInvalidState)
+			return;
+
 		SEDX_CORE_ASSERT(src && dst, "Source and destination images must be valid for blit");
 		SEDX_CORE_ASSERT((src->GetFlags() & ImageResourceFlags::BlitClear) != 0, "Source image must have BlitClear flag");
 		SEDX_CORE_ASSERT((dst->GetFlags() & ImageResourceFlags::BlitClear) != 0, "Destination image must have BlitClear flag");

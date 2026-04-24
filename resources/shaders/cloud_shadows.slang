@@ -15,6 +15,8 @@ Created: 18/04/2026
 // note: shadows are static (no wind animation) for stability
 
 import common;
+import resources;
+import constants;
 
 static const float cloud_scale  = 0.00003;
 static const float detail_scale = 0.0003;
@@ -63,7 +65,7 @@ float sample_density(float3 pos, float coverage, float bottom, float top)
     float3 warped = domain_warp(seed_pos);
 
     // shape noise with height gradient
-    float4 shape = tex3d_cloud_shape.SampleLevel(GET_SAMPLER(sampler_anisotropic_wrap), warped * cloud_scale, 0);
+    float4 shape = tex3d_cloud_shape.SampleLevel(samplers[sampler_anisotropic_wrap], warped * cloud_scale, 0);
     float noise = dot(shape.rgb, float3(0.625, 0.25, 0.125));
     noise *= smoothstep(0.0, 0.1, h) * smoothstep(0.4 + ctype * 0.6, 0.2 + ctype * 0.3, h);
 
@@ -72,7 +74,7 @@ float sample_density(float3 pos, float coverage, float bottom, float top)
         return 0.0;
 
     // detail erosion
-    float4 detail = tex3d_cloud_detail.SampleLevel(GET_SAMPLER(sampler_anisotropic_wrap),
+    float4 detail = tex3d_cloud_detail.SampleLevel(samplers[sampler_anisotropic_wrap],
                                                     domain_warp(seed_pos * 1.1) * detail_scale, 0);
     return saturate(density - dot(detail.rgb, float3(0.625, 0.25, 0.125)) * (1.0 - density) * 0.35);
 }

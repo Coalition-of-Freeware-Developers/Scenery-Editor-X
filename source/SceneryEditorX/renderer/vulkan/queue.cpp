@@ -479,9 +479,11 @@ namespace SceneryEditorX
 				case ResourceType::PipelineLayout:
 					vkDestroyPipelineLayout(vkDevice, static_cast<VkPipelineLayout>(resource), nullptr);
 					break;
+				/*
 				case ResourceType::AccelerationStructure:
 					vkDestroyAccelerationStructureKHR(vkDevice, static_cast<VkAccelerationStructureKHR>(resource), nullptr);
 					break;
+				*/
 				default:
 					SEDX_CORE_ASSERT(false, "Unknown resource");
 					break;

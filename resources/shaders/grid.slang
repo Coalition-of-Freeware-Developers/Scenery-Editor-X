@@ -63,7 +63,8 @@ matrix get_view_projection_matrix() { return buffer_frame.view_projection; }
 // buffers
 [[vk::push_constant]]
 PassBufferData buffer_pass;
-cbuffer BufferFrame : register(b0) { FrameBufferData buffer_frame; };
+// Keep BufferFrame binding aligned with engine descriptor reflection contract for set 0.
+cbuffer BufferFrame : register(b200) { FrameBufferData buffer_frame; };
 
 // Minimal vertex input for the grid pass.
 // Matches the QuadVertex layout (Vec3 position + Vec2 uv) produced by GeometryBuffer.

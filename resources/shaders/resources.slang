@@ -188,31 +188,8 @@ public [[vk::binding(13)]] Texture3D tex3d : register(t13);
 public [[vk::binding(14)]] Texture2D tex_perlin : register(t14);
 
 // volumetric cloud 3D noise textures
-public [[vk::binding(20)]] Texture3D tex3d_cloud_shape : register(t20);  // 128^3 Perlin-Worley + Worley FBM
-public [[vk::binding(21)]] Texture3D tex3d_cloud_detail : register(t21); // 32^3 high-frequency detail
-// restir reservoir textures (shared across path tracing, temporal, and spatial passes)
-public [[vk::binding(22)]] Texture2D<float4> tex_reservoir_prev0 : register(t22);
-public [[vk::binding(23)]] Texture2D<float4> tex_reservoir_prev1 : register(t23);
-public [[vk::binding(24)]] Texture2D<float4> tex_reservoir_prev2 : register(t24);
-public [[vk::binding(25)]] Texture2D<float4> tex_reservoir_prev3 : register(t25);
-public [[vk::binding(26)]] Texture2D<float4> tex_reservoir_prev4 : register(t26);
-
-// per-blas-instance offsets into the global geometry buffer (indexed by InstanceIndex() in rt shaders)
-public struct GeometryInfo
-{
-    public uint vertex_offset;
-    public uint index_offset;
-};
-
-// geometry info buffer for ray tracing (per-blas-instance offsets)
-public [[vk::binding(20)]] RWStructuredBuffer<GeometryInfo> geometry_infos : register(u20);
-
-// restir reservoir uav bindings
-public [[vk::binding(21)]] RWTexture2D<float4> tex_reservoir0 : register(u21);
-public [[vk::binding(22)]] RWTexture2D<float4> tex_reservoir1 : register(u22);
-public [[vk::binding(23)]] RWTexture2D<float4> tex_reservoir2 : register(u23);
-public [[vk::binding(24)]] RWTexture2D<float4> tex_reservoir3 : register(u24);
-public [[vk::binding(25)]] RWTexture2D<float4> tex_reservoir4 : register(u25);
+public [[vk::binding(52)]] Texture3D tex3d_cloud_shape : register(t52);  // 128^3 Perlin-Worley + Worley FBM
+public [[vk::binding(53)]] Texture3D tex3d_cloud_detail : register(t53); // 32^3 high-frequency detail
 
 // bindless arrays
 public Texture2D material_textures[] : register(t15, space1);
@@ -223,23 +200,18 @@ public SamplerComparisonState samplers_comparison[] : register(s0, space6);
 public SamplerState samplers[] : register(s1, space7);
 
 // storage textures/buffers (image_format unknown allows flexible format binding)
-public [[vk::binding(0)]] [[vk::image_format("unknown")]] RWTexture2D<float4> tex_uav : register(u0);
-public [[vk::binding(1)]] [[vk::image_format("unknown")]] RWTexture2D<float4> tex_uav2 : register(u1);
-public [[vk::binding(2)]] [[vk::image_format("unknown")]] RWTexture2D<float4> tex_uav3 : register(u2);
-public [[vk::binding(3)]] [[vk::image_format("unknown")]] RWTexture2D<float4> tex_uav4 : register(u3);
-public [[vk::binding(4)]] [[vk::image_format("unknown")]] RWTexture3D<float4> tex3d_uav : register(u4);
-public [[vk::binding(5)]] [[vk::image_format("unknown")]] RWTexture2DArray<float4> tex_uav_sss : register(u5);
-public [[vk::binding(6)]] RWStructuredBuffer<uint> visibility : register(u6);                        // unused, kept for descriptor layout stability
-public [[vk::binding(7)]] globallycoherent RWStructuredBuffer<uint> g_atomic_counter : register(u7); // used by FidelityFX SPD
-public [[vk::binding(8)]] [[vk::image_format("unknown")]] globallycoherent RWTexture2D<float4> tex_uav_mips[12] : register(u8); // used by FidelityFX SPD
-// nrd denoiser output bindings
-public [[vk::binding(26)]] [[vk::image_format("r16f")]] RWTexture2D<float> tex_uav_nrd_viewz : register(u26);
-public [[vk::binding(27)]] [[vk::image_format("unknown")]] RWTexture2D<float4> tex_uav_nrd_normal_roughness : register(u27);
-public [[vk::binding(28)]] [[vk::image_format("rgba16f")]] RWTexture2D<float4> tex_uav_nrd_diff_radiance : register(u28);
-public [[vk::binding(29)]] [[vk::image_format("rgba16f")]] RWTexture2D<float4> tex_uav_nrd_spec_radiance : register(u29);
+public [[vk::binding(100)]] [[vk::image_format("unknown")]] RWTexture2D<float4> tex_uav : register(u100);
+public [[vk::binding(101)]] [[vk::image_format("unknown")]] RWTexture2D<float4> tex_uav2 : register(u101);
+public [[vk::binding(102)]] [[vk::image_format("unknown")]] RWTexture2D<float4> tex_uav3 : register(u102);
+public [[vk::binding(103)]] [[vk::image_format("unknown")]] RWTexture2D<float4> tex_uav4 : register(u103);
+public [[vk::binding(104)]] [[vk::image_format("unknown")]] RWTexture3D<float4> tex3d_uav : register(u104);
+public [[vk::binding(105)]] [[vk::image_format("unknown")]] RWTexture2DArray<float4> tex_uav_sss : register(u105);
+public [[vk::binding(143)]] RWStructuredBuffer<uint> visibility : register(u143);                        // unused, kept for descriptor layout stability
+public [[vk::binding(144)]] globallycoherent RWStructuredBuffer<uint> g_atomic_counter : register(u144); // used by FidelityFX SPD
+public [[vk::binding(108)]] [[vk::image_format("unknown")]] globallycoherent RWTexture2D<float4> tex_uav_mips[12] : register(u108); // used by FidelityFX SPD
 
 // integer format textures (vrs, etc)
-public [[vk::binding(30)]] RWTexture2D<uint> tex_uav_uint : register(u30);
+public [[vk::binding(130)]] RWTexture2D<uint> tex_uav_uint : register(u130);
 
 // gpu-driven indirect drawing
 public struct IndirectDrawArgs
@@ -287,12 +259,12 @@ public StructuredBuffer<PackedInstance> geometry_instances : register(t23, space
 
 // gpu-driven indirect drawing uav bindings
 // input: populated by cpu, read by the cull compute shader
-public RWStructuredBuffer<IndirectDrawArgs> indirect_draw_args : register(u31);
-public RWStructuredBuffer<DrawData> indirect_draw_data : register(u32);
+public RWStructuredBuffer<IndirectDrawArgs> indirect_draw_args : register(u131);
+public RWStructuredBuffer<DrawData> indirect_draw_data : register(u132);
 // output: written by the cull compute shader, read by vertex shaders
-public RWStructuredBuffer<IndirectDrawArgs> indirect_draw_args_out : register(u33);
-public RWStructuredBuffer<DrawData> indirect_draw_data_out : register(u34);
-public RWStructuredBuffer<uint> indirect_draw_count : register(u35);
+public RWStructuredBuffer<IndirectDrawArgs> indirect_draw_args_out : register(u133);
+public RWStructuredBuffer<DrawData> indirect_draw_data_out : register(u134);
+public RWStructuredBuffer<uint> indirect_draw_count : register(u135);
 
 // gpu-driven particle system
 public struct Particle
@@ -326,19 +298,19 @@ public struct EmitterParams
     float padding2;
 };
 
-RWStructuredBuffer<Particle> particle_buffer_a : register(u36);
-RWStructuredBuffer<uint> particle_counter : register(u38);
-RWStructuredBuffer<EmitterParams> particle_emitter : register(u39);
+RWStructuredBuffer<Particle> particle_buffer_a : register(u136);
+RWStructuredBuffer<uint> particle_counter : register(u138);
+RWStructuredBuffer<EmitterParams> particle_emitter : register(u139);
 
 // gpu texture compression
-RWStructuredBuffer<uint> tex_compress_in : register(u40);
-RWStructuredBuffer<uint4> tex_compress_out : register(u41);     // bc3, bc5 (16 bytes per block)
-RWStructuredBuffer<uint2> tex_compress_out_bc1 : register(u42); // bc1 (8 bytes per block)
+RWStructuredBuffer<uint> tex_compress_in : register(u140);
+RWStructuredBuffer<uint4> tex_compress_out : register(u141);     // bc3, bc5 (16 bytes per block)
+RWStructuredBuffer<uint2> tex_compress_out_bc1 : register(u142); // bc1 (8 bytes per block)
 
 // buffers
 [[vk::push_constant]]
 public PassBufferData buffer_pass;
-public cbuffer BufferFrame : register(b0) { FrameBufferData buffer_frame; };
+public cbuffer BufferFrame : register(b200) { FrameBufferData buffer_frame; };
 
 // easy access to buffer_frame members
 public bool is_hdr_enabled() { return buffer_frame.hdr_enabled != 0.0f; }

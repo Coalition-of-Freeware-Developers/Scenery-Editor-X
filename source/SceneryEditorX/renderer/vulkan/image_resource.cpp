@@ -242,33 +242,10 @@ namespace SceneryEditorX
 			}
 		}
 
-		// Initialize the image to a deterministic first-use layout so descriptor-backed
-		// passes don't sample from VK_IMAGE_LAYOUT_UNDEFINED on frame 0.
-		Layout::ImageLayout initialLayout = Layout::ImageLayout::Undefined;
-		if ((m_Spec.flags & ShaderViews) != 0)
-		{
-			/* Defer pure shader-read initial transitions to first real use; transitioning
-			from UNDEFINED directly to read-only at creation time produces noisy validation
-			messages and is unnecessary for correctness. */
-			initialLayout = Layout::ImageLayout::Undefined;
-		}
-		else if ((m_Spec.flags & UnorderedAccessView) != 0)
-		{
-			initialLayout = Layout::ImageLayout::General;
-		}
-		else if ((m_Spec.flags & RenderTargetViews) != 0)
-		{
-			initialLayout = IsDepthFormat() ? Layout::ImageLayout::DepthAttachment : Layout::ImageLayout::Attachment;
-		}
-
-		if (initialLayout != Layout::ImageLayout::Undefined)
-		{
-			if (CommandList *initCmd = CommandList::BeginImmediateExecution(QueueType::Graphics))
-			{
-				SetLayout(initialLayout, initCmd, ALL_MIPS, 0);
-				CommandList::EndImmediateExecution(initCmd);
-			}
-		}
+		// First-use policy: keep newly-created images in UNDEFINED. We transition at the
+		// first real use site (UAV write -> GENERAL, SRV read -> SHADER_READ_ONLY_OPTIMAL,
+		// attachment use -> ATTACHMENT/DEPTH_ATTACHMENT). This avoids speculative startup
+		// transitions and keeps layout tracking aligned with actual usage.
 
 		m_ResourceState = ResourceState::PreparedForGpu;
 	}
@@ -382,33 +359,10 @@ namespace SceneryEditorX
 			}
 		}
 
-		// Initialize the image to a deterministic first-use layout so descriptor-backed
-		// passes don't sample from VK_IMAGE_LAYOUT_UNDEFINED on frame 0.
-		Layout::ImageLayout initialLayout = Layout::ImageLayout::Undefined;
-		if ((m_Spec.flags & ShaderViews) != 0)
-		{
-			/* Defer pure shader-read initial transitions to first real use; transitioning
-			from UNDEFINED directly to read-only at creation time produces noisy validation
-			messages and is unnecessary for correctness. */
-			initialLayout = Layout::ImageLayout::Undefined;
-		}
-		else if ((m_Spec.flags & UnorderedAccessView) != 0)
-		{
-			initialLayout = Layout::ImageLayout::General;
-		}
-		else if ((m_Spec.flags & RenderTargetViews) != 0)
-		{
-			initialLayout = IsDepthFormat() ? Layout::ImageLayout::DepthAttachment : Layout::ImageLayout::Attachment;
-		}
-
-		if (initialLayout != Layout::ImageLayout::Undefined)
-		{
-			if (CommandList *initCmd = CommandList::BeginImmediateExecution(QueueType::Graphics))
-			{
-				SetLayout(initialLayout, initCmd, ALL_MIPS, 0);
-				CommandList::EndImmediateExecution(initCmd);
-			}
-		}
+		// First-use policy: keep newly-created images in UNDEFINED. We transition at the
+		// first real use site (UAV write -> GENERAL, SRV read -> SHADER_READ_ONLY_OPTIMAL,
+		// attachment use -> ATTACHMENT/DEPTH_ATTACHMENT). This avoids speculative startup
+		// transitions and keeps layout tracking aligned with actual usage.
 
 		m_ResourceState = ResourceState::PreparedForGpu;
 	}

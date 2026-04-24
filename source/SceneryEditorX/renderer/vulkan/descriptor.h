@@ -42,11 +42,12 @@ namespace SceneryEditorX
 	enum class DescriptorType
 	{
 		Image,
+		Sampler,
 		TextureStorage,
 		PushConstantBuffer,
 		ConstantBuffer,
 		StructuredBuffer,
-		AccelerationStructure,
+		//AccelerationStructure,
 		MaxEnum
 	};
 
@@ -66,8 +67,8 @@ namespace SceneryEditorX
 			case DescriptorType::Image:                return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 			case DescriptorType::TextureStorage:       return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
 			case DescriptorType::ConstantBuffer:       return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-			case DescriptorType::StructuredBuffer:     return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
-			case DescriptorType::AccelerationStructure:return VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
+			case DescriptorType::StructuredBuffer:     return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+			//case DescriptorType::AccelerationStructure:return VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
 			default:                                   return VK_DESCRIPTOR_TYPE_MAX_ENUM;
 		}
 	}

@@ -125,7 +125,7 @@ namespace SceneryEditorX
 		DescriptorSet,
 		CommandPool,
 		DebugCallback,
-		AccelerationStructure,
+		//AccelerationStructure,
 		Mesh,
 		Material,
 		Font,
@@ -184,6 +184,7 @@ namespace SceneryEditorX
 		Sampler,
 		Texture,
 		StorageImage,
+		PushConstant,
 		MaxEnum
 	};
 

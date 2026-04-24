@@ -29,6 +29,8 @@
  * -------------------------------------------------------
  */
 import common;
+import resources;
+import color;
 
 [shader("compute")]
 [numthreads(1, 1, 1)]

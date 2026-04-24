@@ -29,6 +29,8 @@
  * -------------------------------------------------------
  */
 import common;
+import resources;
+import constants;
 
 // dithering settings
 static const float g_dither_strength = 0.1f;

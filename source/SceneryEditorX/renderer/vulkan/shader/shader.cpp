@@ -33,7 +33,6 @@
 #include "shader_manager.h"
 #include "shader_stage.h"
 #include <unordered_map>
-#include <SceneryEditorX/renderer/vulkan/bindless_manager.h>
 #include <SceneryEditorX/renderer/vulkan/descriptor.h>
 #include <SceneryEditorX/renderer/vulkan/push_constant_buffer.h>
 #include <SceneryEditorX/renderer/vulkan/render_context.h>
@@ -43,6 +42,74 @@
 
 namespace SceneryEditorX
 {
+	/**
+	 * @brief Converts ShaderInputType to text for diagnostics.
+	 * @param type The ShaderInputType to convert.
+	 * @return A string representing the shader input type.
+	 */
+	static const char* ShaderInputTypeToString(const ShaderInputType type)
+	{
+		switch (type)
+		{
+			case ShaderInputType::Texture:               return "Texture";
+			case ShaderInputType::Sampler:               return "Sampler";
+			case ShaderInputType::StorageImage:          return "StorageImage";
+			case ShaderInputType::StorageBuffer:         return "StorageBuffer";
+			case ShaderInputType::UniformBuffer:         return "UniformBuffer";
+			case ShaderInputType::StorageBufferSet:      return "StorageBufferSet";
+			case ShaderInputType::UniformBufferSet:      return "UniformBufferSet";
+			case ShaderInputType::CombinedImageSampler:  return "CombinedImageSampler";
+			case ShaderInputType::PushConstant:          return "PushConstant";
+			default:                                     return "Unknown";
+		}
+	}
+
+	/**
+	 * @brief Returns true when reflection emitted a synthetic fallback name such as set0_binding7.
+	 * @param name The reflection name to check.
+	 * @return True if the name matches the synthetic pattern, false otherwise.
+	 */
+	static bool IsSyntheticReflectionName(const std::string& name)
+	{
+		return name.rfind("set", 0) == 0 && name.find("_binding") != std::string::npos;
+	}
+
+	/**
+	 * @brief Converts DescriptorType to text for diagnostics.
+	 * @param type The DescriptorType to convert.
+	 * @return A string representing the descriptor type.
+	 */
+	static const char* DescriptorTypeToString(const DescriptorType type)
+	{
+		switch (type)
+		{
+			case DescriptorType::Sampler:             return "Sampler";
+			case DescriptorType::Image:               return "Image";
+			case DescriptorType::TextureStorage:      return "TextureStorage";
+			case DescriptorType::ConstantBuffer:      return "ConstantBuffer";
+			case DescriptorType::StructuredBuffer:    return "StructuredBuffer";
+			case DescriptorType::PushConstantBuffer:  return "PushConstantBuffer";
+			default:                                  return "Unknown";
+		}
+	}
+
+	/**
+	 * @brief Converts DescriptorType to Vulkan descriptor type text for diagnostics.
+	 * @param type The DescriptorType to convert.
+	 * @return A string representing the corresponding Vulkan descriptor type.
+	 */
+	static const char* DescriptorTypeToVkString(const DescriptorType type)
+	{
+		switch (type)
+		{
+			case DescriptorType::Sampler:             return "VK_DESCRIPTOR_TYPE_SAMPLER";
+			case DescriptorType::Image:               return "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER";
+			case DescriptorType::TextureStorage:      return "VK_DESCRIPTOR_TYPE_STORAGE_IMAGE";
+			case DescriptorType::ConstantBuffer:      return "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER";
+			case DescriptorType::StructuredBuffer:    return "VK_DESCRIPTOR_TYPE_STORAGE_BUFFER";
+			default:                                  return "VK_DESCRIPTOR_TYPE_MAX_ENUM";
+		}
+	}
 
 	Shader::Shader(const char *shaderName) : SharedObject(), m_Name(shaderName ? shaderName : "UnnamedShader"), m_CompilationState(ShaderCompiler::State::Idle)
 	{
@@ -149,13 +216,28 @@ namespace SceneryEditorX
 
 	void Shader::AddShaderStage(const StageType stage, const std::string& filepath, const VertexType vertexType)
 	{
+		SetCompilationState(ShaderCompiler::State::Compiling);
+
 		if (stage == StageType::Vertex)
 		{
 			m_VertexType = vertexType;
 		}
 
 		m_Stages[stage] = CreateRef<ShaderStage>(stage, filepath);
-		SEDX_CORE_ASSERT(m_Stages[stage] != nullptr, "Failed to create shader stage for '{}'", filepath);
+		if (m_Stages[stage] == nullptr)
+		{
+			SetCompilationState(ShaderCompiler::State::Failed);
+			SEDX_CORE_ERROR_TAG("Shader", "Failed to create shader stage for '{}'", filepath);
+			return;
+		}
+
+		if (m_Stages[stage]->GetHandle() == VK_NULL_HANDLE)
+		{
+			m_Stages.erase(stage);
+			SetCompilationState(ShaderCompiler::State::Failed);
+			SEDX_CORE_ERROR_TAG("Shader", "Shader stage '{}' produced null VkShaderModule for '{}'", static_cast<uint32_t>(stage), filepath);
+			return;
+		}
 
 		RebuildInputCache();
 		SetCompilationState(ShaderCompiler::State::Succeeded);
@@ -243,18 +325,42 @@ namespace SceneryEditorX
 
 		// Dynamic descriptor set creation is for set 0 only. Bindless sets (space1+)
 		// are provided by BindlessManager and bound separately.
-		std::unordered_map<uint32_t, Descriptor> byBinding;
+		std::unordered_map<uint64_t, DescriptorSpec> bySetBindingAndType;
+		std::unordered_map<uint64_t, DescriptorType> firstTypePerSetBinding;
 
-		auto rankType = [](const DescriptorType type)
+		auto remap_known_set0_binding = [](const std::string& name, const uint32_t reflectedBinding) -> uint32_t
 		{
-			switch (type)
-			{
-				case DescriptorType::TextureStorage:    return 4u;
-				case DescriptorType::StructuredBuffer:  return 3u;
-				case DescriptorType::ConstantBuffer:    return 2u;
-				case DescriptorType::Image:             return 1u;
-				default:                                return 0u;
-			}
+			// Keep shader-side set-0 ABI stable even when reflection emits synthetic names/slots.
+			if (name == "BufferFrame") return 200u;
+
+			if (name == "tex_uav") return 100u;
+			if (name == "tex_uav2") return 101u;
+			if (name == "tex_uav3") return 102u;
+			if (name == "tex_uav4") return 103u;
+			if (name == "tex3d_uav") return 104u;
+			if (name == "tex_uav_sss") return 105u;
+			if (name == "tex_uav_mips") return 108u;
+			if (name == "tex_uav_uint") return 130u;
+
+			if (name == "indirect_draw_args") return 131u;
+			if (name == "indirect_draw_data") return 132u;
+			if (name == "indirect_draw_args_out") return 133u;
+			if (name == "indirect_draw_data_out") return 134u;
+			if (name == "indirect_draw_count") return 135u;
+
+			if (name == "particle_buffer_a") return 136u;
+			if (name == "particle_buffer_b") return 137u;
+			if (name == "particle_counter") return 138u;
+			if (name == "particle_emitter") return 139u;
+
+			if (name == "tex_compress_in") return 140u;
+			if (name == "tex_compress_out") return 141u;
+			if (name == "tex_compress_out_bc1") return 142u;
+
+			if (name == "visibility") return 143u;
+			if (name == "g_atomic_counter") return 144u;
+
+			return reflectedBinding;
 		};
 
 		for (auto& [set, inputs] : m_Input)
@@ -289,82 +395,121 @@ namespace SceneryEditorX
 				if (descType == DescriptorType::MaxEnum)
 					continue;
 
+				if (input.debugName == "BufferFrame")
+				{
+					descType = DescriptorType::ConstantBuffer;
+				}
+				else if (input.debugName.rfind("tex_uav", 0) == 0)
+				{
+					descType = DescriptorType::TextureStorage;
+				}
+
 				DescriptorSpec spec{};
 				spec.name        = input.debugName;
 				spec.type        = descType;
 				spec.layout      = Layout::ImageLayout::MaxEnum;
-				switch (descType)
-				{
-					case DescriptorType::ConstantBuffer:
-						spec.slot = input.binding + SHADER_REGISTER_SHIFT_B;
-						break;
-					case DescriptorType::StructuredBuffer:
-					case DescriptorType::TextureStorage:
-						spec.slot = input.binding + SHADER_REGISTER_SHIFT_U;
-						break;
-					case DescriptorType::Image:
-						spec.slot = input.binding + SHADER_REGISTER_SHIFT_T;
-						break;
-					default:
-						spec.slot = input.binding;
-						break;
-				}
+				spec.slot        = remap_known_set0_binding(input.debugName, input.binding);
 				spec.stage       = static_cast<uint32_t>(GetStage(input.stage));
 				spec.structSize  = 0;
 				spec.asArray     = input.count > 1;
 				spec.arrayLength = input.count;
 
-				const auto it = byBinding.find(input.binding);
-				if (it == byBinding.end())
+				if (m_Name == "grid" && spec.name == "BufferFrame" && spec.slot == 200)
 				{
-					byBinding.emplace(input.binding, Descriptor(spec));
+					// Compatibility bridge: some cached/legacy SPIR-V variants still expose
+					// BufferFrame at set 0 binding 0. Emit both binding 200 and binding 0
+					// for grid only so pipeline layout creation remains valid while caches converge.
+					DescriptorSpec legacySpec = spec;
+					legacySpec.slot = 0;
+
+					const uint64_t legacyMergeKey = (static_cast<uint64_t>(set) << 32ull) | static_cast<uint64_t>(legacySpec.slot);
+					const uint64_t legacyMergeKeyWithType = (legacyMergeKey << 8ull) | static_cast<uint64_t>(legacySpec.type);
+
+					auto legacyTypeIt = firstTypePerSetBinding.find(legacyMergeKey);
+					if (legacyTypeIt == firstTypePerSetBinding.end())
+					{
+						firstTypePerSetBinding.emplace(legacyMergeKey, legacySpec.type);
+					}
+					else if (legacyTypeIt->second != legacySpec.type)
+					{
+						SEDX_CORE_ERROR_TAG("Shader", "Descriptor reflection type conflict: shader='{}' set={} binding={} existingType='{}' incomingType='{}' (preserving conflict for hard fail)",
+							m_Name,
+							set,
+							legacySpec.slot,
+							DescriptorTypeToString(legacyTypeIt->second),
+							DescriptorTypeToString(legacySpec.type));
+					}
+
+					const auto legacyIt = bySetBindingAndType.find(legacyMergeKeyWithType);
+					if (legacyIt == bySetBindingAndType.end())
+					{
+						bySetBindingAndType.emplace(legacyMergeKeyWithType, legacySpec);
+					}
+					else
+					{
+						DescriptorSpec& existingLegacy = legacyIt->second;
+						existingLegacy.stage |= legacySpec.stage;
+						existingLegacy.asArray = existingLegacy.asArray || legacySpec.asArray;
+						existingLegacy.arrayLength = std::max(existingLegacy.arrayLength, legacySpec.arrayLength);
+					}
+				}
+
+				const uint64_t mergeKey = (static_cast<uint64_t>(set) << 32ull) | static_cast<uint64_t>(spec.slot);
+				const uint64_t mergeKeyWithType = (mergeKey << 8ull) | static_cast<uint64_t>(spec.type);
+
+				auto firstTypeIt = firstTypePerSetBinding.find(mergeKey);
+				if (firstTypeIt == firstTypePerSetBinding.end())
+				{
+					firstTypePerSetBinding.emplace(mergeKey, spec.type);
+				}
+				else if (firstTypeIt->second != spec.type)
+				{
+					SEDX_CORE_ERROR_TAG("Shader", "Descriptor reflection type conflict: shader='{}' set={} binding={} existingType='{}' incomingType='{}' (preserving conflict for hard fail)",
+						m_Name,
+						set,
+						spec.slot,
+						DescriptorTypeToString(firstTypeIt->second),
+						DescriptorTypeToString(spec.type));
+				}
+
+				const auto it = bySetBindingAndType.find(mergeKeyWithType);
+				if (it == bySetBindingAndType.end())
+				{
+					SEDX_CORE_TRACE_TAG("Shader", "Descriptor map: shader='{}' stage={} set={} binding={} name='{}' reflected={} -> {} ({})",
+						m_Name,
+						static_cast<uint32_t>(input.stage),
+						set,
+						spec.slot,
+						spec.name,
+						ShaderInputTypeToString(input.type),
+						DescriptorTypeToString(spec.type),
+						DescriptorTypeToVkString(spec.type));
+					bySetBindingAndType.emplace(mergeKeyWithType, spec);
 					continue;
 				}
 
-				// Merge stage flags for shared binding and prefer write-capable descriptor
-				// types when reflection reports mixed candidates for the same binding.
-				const uint32_t mergedStage = it->second.GetStage() | spec.stage;
-				Descriptor merged = it->second;
-				if (rankType(spec.type) > rankType(merged.GetType()))
+				DescriptorSpec& existing = it->second;
+				existing.stage |= spec.stage;
+				existing.asArray = existing.asArray || spec.asArray;
+				existing.arrayLength = std::max(existing.arrayLength, spec.arrayLength);
+
+				if (IsSyntheticReflectionName(existing.name) && !IsSyntheticReflectionName(spec.name))
 				{
-					merged = Descriptor(spec);
+					existing.name = spec.name;
 				}
-				merged.SetStage(mergedStage);
-				it->second = merged;
 			}
 		}
 
-		result.reserve(byBinding.size());
-		for (auto& descriptor : byBinding | std::views::values)
+		result.reserve(bySetBindingAndType.size());
+		for (const DescriptorSpec& spec : bySetBindingAndType | std::views::values)
 		{
-			result.push_back(descriptor);
+			result.emplace_back(spec);
 		}
 
-		// Push constants are declared in shared resources.slang for both graphics and
-		// compute paths. Add a synthetic descriptor so Pipeline can create a matching
-		// VkPushConstantRange even when reflection does not emit one explicitly.
-		uint32_t pushStages = 0;
-		for (const auto& [stageType, stageRef] : m_Stages)
+		std::ranges::sort(result, [](const Descriptor& lhs, const Descriptor& rhs)
 		{
-			if (!stageRef)
-				continue;
-
-			pushStages |= static_cast<uint32_t>(GetStage(stageType));
-		}
-
-		if (pushStages != 0)
-		{
-			DescriptorSpec pushSpec{};
-			pushSpec.name        = "buffer_pass";
-			pushSpec.type        = DescriptorType::PushConstantBuffer;
-			pushSpec.layout      = Layout::ImageLayout::MaxEnum;
-			pushSpec.slot        = 0;
-			pushSpec.stage       = pushStages;
-			pushSpec.structSize  = static_cast<uint32_t>(sizeof(PushConstantBuffer_Pass));
-			pushSpec.asArray     = false;
-			pushSpec.arrayLength = 1;
-			result.emplace_back(pushSpec);
-		}
+			return lhs.GetSlot() < rhs.GetSlot();
+		});
 
 		return result;
 	}

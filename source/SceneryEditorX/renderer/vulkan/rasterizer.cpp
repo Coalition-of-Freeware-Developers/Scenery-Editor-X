@@ -41,8 +41,9 @@ namespace SceneryEditorX
 		return a * 31 + b;
 	}
 
-	RasterizerState::RasterizerState(const RasterStateSpec &spec) : spec(spec)
+	RasterizerState::RasterizerState(const RasterStateSpec &spec)
 	{
+		m_Spec = spec;
 
 		// hash
 		std::hash<float> hasher;

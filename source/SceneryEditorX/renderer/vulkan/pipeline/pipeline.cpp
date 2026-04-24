@@ -45,7 +45,9 @@
 #include <SceneryEditorX/renderer/vulkan/shader/shader_input.h>
 #include <SceneryEditorX/renderer/vulkan/shader/shader_manager.h>
 #include <SceneryEditorX/renderer/vulkan/shader/shader_stage.h>
+#include <SceneryEditorX/renderer/vulkan/queue_manager.h>
 #include <SceneryEditorX/utils/size_macro_utils.h>
+#include <cstring>
 #include <volk/volk.h>
 
 // -------------------------------------------------------
@@ -121,6 +123,7 @@ namespace SceneryEditorX
 		const Ref<Device> device = RenderContext::Get()->GetDevice();
 		m_Device = device;
 		m_State = state;
+		m_PushConstant_Stages = 0;
 
 #pragma region Shader Stages
 		Ref<ShaderManager> shaderManager = ShaderManager::Get();
@@ -201,27 +204,40 @@ namespace SceneryEditorX
 				}
 			}
 
-			// push constant buffers
+			// push constant ranges are derived from actual active shader stages in this PSO
+			// to guarantee layout stage coverage matches pipeline stages.
 			std::vector<VkPushConstantRange> pushConstRanges;
-			for (const Descriptor &descriptor : layout->GetDescriptors())
+			VkShaderStageFlags activeStages = 0;
+			if (state.IsCompute())
 			{
-				if (descriptor.GetType() == DescriptorType::PushConstantBuffer)
-				{
-					SEDX_CORE_ASSERT(descriptor.GetStructSize() <= m_Device->GetDeviceStatics().maxPushConstantsSize);
+				activeStages |= VK_SHADER_STAGE_COMPUTE_BIT;
+			}
+			else if (state.IsGraphics())
+			{
+				if (state.shaders[static_cast<uint32_t>(StageType::Vertex)] != nullptr)
+					activeStages |= VK_SHADER_STAGE_VERTEX_BIT;
+				if (state.shaders[static_cast<uint32_t>(StageType::TessellationControl)] != nullptr)
+					activeStages |= VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+				if (state.shaders[static_cast<uint32_t>(StageType::TessellationEvaluation)] != nullptr)
+					activeStages |= VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
+				if (state.shaders[static_cast<uint32_t>(StageType::Geometry)] != nullptr)
+					activeStages |= VK_SHADER_STAGE_GEOMETRY_BIT;
+				if (state.shaders[static_cast<uint32_t>(StageType::Fragment)] != nullptr)
+					activeStages |= VK_SHADER_STAGE_FRAGMENT_BIT;
+			}
 
-					VkPushConstantRange push_constant_range = {};
-					push_constant_range.size = descriptor.GetStructSize();
-					push_constant_range.stageFlags |= (descriptor.GetStage() & ShaderTypeToMask(StageType::Vertex)) ? VK_SHADER_STAGE_VERTEX_BIT : 0;
-					push_constant_range.stageFlags |= (descriptor.GetStage() & ShaderTypeToMask(StageType::TessellationControl)) ? VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT : 0;
-					push_constant_range.stageFlags |= (descriptor.GetStage() & ShaderTypeToMask(StageType::TessellationEvaluation)) ? VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT : 0;
-					push_constant_range.stageFlags |= (descriptor.GetStage() & ShaderTypeToMask(StageType::Fragment)) ? VK_SHADER_STAGE_FRAGMENT_BIT : 0;
-					push_constant_range.stageFlags |= (descriptor.GetStage() & ShaderTypeToMask(StageType::Compute)) ? VK_SHADER_STAGE_COMPUTE_BIT : 0;
-					
-					// store the stages for use in PushConstants calls
-					m_PushConstant_Stages |= push_constant_range.stageFlags;
+			if (activeStages != 0)
+			{
+				SEDX_CORE_ASSERT(static_cast<uint32_t>(sizeof(PushConstantBuffer_Pass)) <= m_Device->GetDeviceStatics().maxPushConstantsSize,
+					"PushConstantBuffer_Pass exceeds device push constant size limit");
 
-					pushConstRanges.emplace_back(push_constant_range);
-				}
+				VkPushConstantRange pushConstantRange{};
+				pushConstantRange.offset = 0;
+				pushConstantRange.size = static_cast<uint32_t>(sizeof(PushConstantBuffer_Pass));
+				pushConstantRange.stageFlags = activeStages;
+				pushConstRanges.emplace_back(pushConstantRange);
+
+				m_PushConstant_Stages = activeStages;
 			}
 
 			// pipeline layout
@@ -244,10 +260,32 @@ namespace SceneryEditorX
 			// Bootstrap path: no bindless descriptor sets — minimal push-constant-only VkPipelineLayout.
 			// Used for passes that don't yet have a DescriptorSet layout wired (e.g. grid, text, bootstrap).
 			VkPushConstantRange pcRange{};
-			pcRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT;
+			VkShaderStageFlags activeStages = 0;
+			if (state.IsCompute())
+			{
+				activeStages |= VK_SHADER_STAGE_COMPUTE_BIT;
+			}
+			else if (state.IsGraphics())
+			{
+				if (state.shaders[static_cast<uint32_t>(StageType::Vertex)] != nullptr)
+					activeStages |= VK_SHADER_STAGE_VERTEX_BIT;
+				if (state.shaders[static_cast<uint32_t>(StageType::TessellationControl)] != nullptr)
+					activeStages |= VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+				if (state.shaders[static_cast<uint32_t>(StageType::TessellationEvaluation)] != nullptr)
+					activeStages |= VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
+				if (state.shaders[static_cast<uint32_t>(StageType::Geometry)] != nullptr)
+					activeStages |= VK_SHADER_STAGE_GEOMETRY_BIT;
+				if (state.shaders[static_cast<uint32_t>(StageType::Fragment)] != nullptr)
+					activeStages |= VK_SHADER_STAGE_FRAGMENT_BIT;
+			}
+
+			if (activeStages == 0)
+				activeStages = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+
+			pcRange.stageFlags = activeStages;
 			pcRange.offset = 0;
 			pcRange.size = static_cast<uint32_t>(sizeof(PushConstantBuffer_Pass));
-			m_PushConstant_Stages = pcRange.stageFlags;
+			m_PushConstant_Stages = activeStages;
 
 			VkPipelineLayoutCreateInfo bootstrapLayoutCI{};
 			bootstrapLayoutCI.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -304,13 +342,40 @@ namespace SceneryEditorX
 				return;
 			}
 
+			if (computeStage.module == VK_NULL_HANDLE)
+			{
+				SEDX_CORE_ERROR_TAG("Pipeline", "Compute PSO '{}' has null VkShaderModule for its compute stage; refusing vkCreateComputePipelines", state.name ? state.name : "<unnamed>");
+				return;
+			}
+
+			if (computeStage.pName == nullptr || computeStage.pName[0] == '\0')
+			{
+				SEDX_CORE_ERROR_TAG("Pipeline", "Compute PSO '{}' has invalid entry point name for compute stage; refusing vkCreateComputePipelines", state.name ? state.name : "<unnamed>");
+				return;
+			}
+
 			VkComputePipelineCreateInfo pipelineInfo = {};
 			pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
 			pipelineInfo.layout = m_Layout;
 			pipelineInfo.stage = computeStage;
 
-			SEDX_VK_RESULT_ASSERT(vkCreateComputePipelines(m_Device->GetLogicalDevice(),
-				static_cast<VkPipelineCache>(GetPipelineCache()),1, &pipelineInfo, nullptr, reinterpret_cast<VkPipeline *>(&m_Pipeline)));
+			VkResult createResult = vkCreateComputePipelines(m_Device->GetLogicalDevice(), static_cast<VkPipelineCache>(GetPipelineCache()),
+				1, &pipelineInfo, nullptr, reinterpret_cast<VkPipeline*>(&m_Pipeline));
+
+			// Handle mixed cache/content cases where SPIR-V entrypoint symbols differ from
+			// current Slang source naming conventions (e.g. cached .spv exposing "main").
+			if (createResult != VK_SUCCESS && computeStage.pName && std::strcmp(computeStage.pName, "main") != 0)
+			{
+				SEDX_CORE_WARN_TAG("Pipeline", "Compute pipeline '{}' entry point '{}' failed; retrying with fallback entry point 'main'",
+					state.name ? state.name : "<unnamed>", computeStage.pName);
+
+				const char* fallbackEntryPoint = "main";
+				pipelineInfo.stage.pName = fallbackEntryPoint;
+				createResult = vkCreateComputePipelines(m_Device->GetLogicalDevice(), static_cast<VkPipelineCache>(GetPipelineCache()),
+					1, &pipelineInfo, nullptr, reinterpret_cast<VkPipeline*>(&m_Pipeline));
+			}
+
+			SEDX_VK_RESULT_ASSERT(createResult);
 
 			Debugging::SetResourceName(static_cast<void *>(m_Pipeline), ResourceType::Pipeline, state.name);
 		}
@@ -520,7 +585,24 @@ namespace SceneryEditorX
 				rasterizerState.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
 				rasterizerState.depthClampEnable = !m_State.rasterizerState->IsDepthClipEnabled();
 				rasterizerState.rasterizerDiscardEnable = VK_FALSE;
-				rasterizerState.polygonMode = static_cast<VkPolygonMode>(m_State.rasterizerState->GetPolygonMode());
+				switch (m_State.rasterizerState->GetPolygonMode())
+				{
+					case PolygonMode::Solid:
+						rasterizerState.polygonMode = VK_POLYGON_MODE_FILL;
+						break;
+					case PolygonMode::Wireframe:
+						rasterizerState.polygonMode = VK_POLYGON_MODE_LINE;
+						break;
+					case PolygonMode::Point:
+						rasterizerState.polygonMode = VK_POLYGON_MODE_POINT;
+						break;
+					default:
+						SEDX_CORE_WARN_TAG("Pipeline", "Invalid PolygonMode '{}' for pipeline '{}'; defaulting to VK_POLYGON_MODE_FILL",
+							static_cast<uint32_t>(m_State.rasterizerState->GetPolygonMode()),
+							state.name ? state.name : "<unnamed>");
+						rasterizerState.polygonMode = VK_POLYGON_MODE_FILL;
+						break;
+				}
 				rasterizerState.lineWidth = m_State.rasterizerState->GetLineWidth();
 				rasterizerState.cullMode = static_cast<uint32_t>(CullMode::Back);
 				rasterizerState.frontFace = VK_FRONT_FACE_CLOCKWISE;
@@ -695,12 +777,45 @@ namespace SceneryEditorX
 					pipelineInfo.layout = m_Layout;
 					pipelineInfo.flags = m_State.vrsInputTexture ? VK_PIPELINE_CREATE_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR : 0;
 
-					SEDX_VK_RESULT_ASSERT(vkCreateGraphicsPipelines(m_Device->GetLogicalDevice(),
-																	static_cast<VkPipelineCache>(GetPipelineCache()),
-																	1,
-																	&pipelineInfo,
-																	nullptr,
-																	reinterpret_cast<VkPipeline *>(&m_Pipeline)));
+					VkResult createResult = vkCreateGraphicsPipelines(
+						m_Device->GetLogicalDevice(),
+						static_cast<VkPipelineCache>(GetPipelineCache()),
+						1,
+						&pipelineInfo,
+						nullptr,
+						reinterpret_cast<VkPipeline*>(&m_Pipeline));
+
+					if (createResult != VK_SUCCESS)
+					{
+						std::vector<VkPipelineShaderStageCreateInfo> fallbackStages = shaderStages;
+						bool hasNonMainEntryPoint = false;
+						for (auto& stageCI : fallbackStages)
+						{
+							if (!stageCI.pName || std::strcmp(stageCI.pName, "main") == 0)
+								continue;
+
+							hasNonMainEntryPoint = true;
+							stageCI.pName = "main";
+						}
+
+						if (hasNonMainEntryPoint)
+						{
+							SEDX_CORE_WARN_TAG("Pipeline", "Graphics pipeline '{}' entry point mismatch; retrying all shader stages with fallback entry point 'main'",
+								state.name ? state.name : "<unnamed>");
+
+							pipelineInfo.pStages = fallbackStages.data();
+							createResult = vkCreateGraphicsPipelines(
+								m_Device->GetLogicalDevice(),
+								static_cast<VkPipelineCache>(GetPipelineCache()),
+								1,
+								&pipelineInfo,
+								nullptr,
+								reinterpret_cast<VkPipeline*>(&m_Pipeline));
+						}
+					}
+
+					SEDX_VK_RESULT_ASSERT(createResult);
+
 					Debugging::SetResourceName(m_Pipeline, ResourceType::Pipeline, state.name);
 				}
 #pragma endregion
@@ -711,7 +826,15 @@ namespace SceneryEditorX
 		if (m_Pipeline == VK_NULL_HANDLE)
 		{
 			SEDX_CORE_WARN_TAG("Pipeline", "Pipeline '{}' was not created (state: graphics={}, compute={})", state.name ? state.name : "<unnamed>", state.IsGraphics(), state.IsCompute());
+
+			// Prevent QueueManager deferred deletion from later destroying a VK_NULL_HANDLE-backed
+			// or already-invalid pipeline state while command buffers may still reference previous
+			// pipelines. Mark this object as already destroyed so its destructor is a no-op.
+			m_Destroyed = true;
+			return;
 		}
+
+		m_Destroyed = false;
 	}
 
 	Pipeline::~Pipeline()
@@ -777,13 +900,13 @@ namespace SceneryEditorX
 		{
 			if (m_Pipeline != VK_NULL_HANDLE)
 			{
-				vkDestroyPipeline(logicalDevice, m_Pipeline, nullptr);
+				QueueManager::AddDeletionQueue(ResourceType::Pipeline, m_Pipeline);
 				m_Pipeline = VK_NULL_HANDLE;
 			}
 
 			if (m_Layout != VK_NULL_HANDLE)
 			{
-				vkDestroyPipelineLayout(logicalDevice, m_Layout, nullptr);
+				QueueManager::AddDeletionQueue(ResourceType::PipelineLayout, m_Layout);
 				m_Layout = VK_NULL_HANDLE;
 			}
 		}

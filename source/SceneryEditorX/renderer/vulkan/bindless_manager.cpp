@@ -46,30 +46,32 @@ namespace SceneryEditorX
 	// lookup table indexed by BindlessResource
 	static const BindlessManager::ResourceConfig CONFIGS[] =
 	{
-		{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,  SHADER_REGISTER_SHIFT_T, 15, MAX_ARRAY_SIZE,		"material_textures"   }, // MaterialTextures
-		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, SHADER_REGISTER_SHIFT_T, 16, 1,                  "material_parameters" }, // MaterialParameters
-		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, SHADER_REGISTER_SHIFT_T, 17, 1,                  "light_parameters"    }, // LightParameters
-		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, SHADER_REGISTER_SHIFT_T, 18, 1,                  "aabbs"               }, // Aabbs
-		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, SHADER_REGISTER_SHIFT_T, 19, 1,                  "draw_data"           }, // DrawData
-		{ VK_DESCRIPTOR_TYPE_SAMPLER,        SHADER_REGISTER_SHIFT_S, 0,  1,                  "samplers_comparison" }, // SamplersComparison
-		{ VK_DESCRIPTOR_TYPE_SAMPLER,        SHADER_REGISTER_SHIFT_S, 1,  8,                  "samplers_regular"    }, // SamplersRegular
-		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, SHADER_REGISTER_SHIFT_T, 20, 1,                  "geometry_vertices"   }, // GeometryVertices
-		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, SHADER_REGISTER_SHIFT_T, 22, 1,                  "geometry_indices"    }, // GeometryIndices
-		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, SHADER_REGISTER_SHIFT_T, 23, 1,                  "instances"           }, // Instances
+		// Bindless descriptor sets are already separated by space/set index; binding
+		// numbers must match the SPIR-V binding in that set directly.
+		{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,  0, 15, MAX_ARRAY_SIZE,		"material_textures"   }, // MaterialTextures (space1, t15)
+		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 0, 16, 1,                  "material_parameters" }, // MaterialParameters (space2, t16)
+		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 0, 17, 1,                  "light_parameters"    }, // LightParameters (space3, t17)
+		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 0, 18, 1,                  "aabbs"               }, // Aabbs (space4, t18)
+		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 0, 19, 1,                  "draw_data"           }, // DrawData (space5, t19)
+		{ VK_DESCRIPTOR_TYPE_SAMPLER,        0, 0,  1,                  "samplers_comparison" }, // SamplersComparison (space6, s0)
+		{ VK_DESCRIPTOR_TYPE_SAMPLER,        0, 1,  8,                  "samplers_regular"    }, // SamplersRegular (space7, s1)
+		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 0, 20, 1,                  "geometry_vertices"   }, // GeometryVertices (space8, t20)
+		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 0, 22, 1,                  "geometry_indices"    }, // GeometryIndices (space9, t22)
+		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 0, 23, 1,                  "instances"           }, // Instances (space10, t23)
 	};
 
 	/**
 	 * @brief Descriptor pool sizes for the bindless manager.
 	 */
-	static std::array<VkDescriptorPoolSize, 7> s_PoolSizes =
+	static std::array<VkDescriptorPoolSize, 6> s_PoolSizes =
 	{
 		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_SAMPLER,                    32 * MAX_DESCRIPTOR_SET_COUNT },
 		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,              MAX_ARRAY_SIZE + 32 * MAX_DESCRIPTOR_SET_COUNT },
 		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,              MAX_ARRAY_SIZE * MAX_DESCRIPTOR_SET_COUNT },
 		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,             32 * MAX_DESCRIPTOR_SET_COUNT },
 		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,     32 * MAX_DESCRIPTOR_SET_COUNT },
-		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,     32 * MAX_DESCRIPTOR_SET_COUNT },
-		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, 32 * MAX_DESCRIPTOR_SET_COUNT }
+		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,     32 * MAX_DESCRIPTOR_SET_COUNT }
+		/*VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, 32 * MAX_DESCRIPTOR_SET_COUNT }*/
 	};
 
 	static_assert(std::size(CONFIGS) == static_cast<size_t>(BindlessResource::MaxEnum), "config table size mismatch");
@@ -172,7 +174,7 @@ namespace SceneryEditorX
 		return {};
 	}
 
-	void BindlessManager::GetDescriptorsFromPipelineState(PipelineState& pipelineState, SceneryEditorX::Descriptor* outDescriptors, size_t& outCount)
+	bool BindlessManager::GetDescriptorsFromPipelineState(PipelineState& pipelineState, SceneryEditorX::Descriptor* outDescriptors, size_t& outCount)
 	{
 		pipelineState.Prepare();
 		
@@ -197,53 +199,174 @@ namespace SceneryEditorX
 		{
 			static_size = 0;
 		
-			auto merge_descriptors = [&](const std::vector<Descriptor>& src)
-			{
-				for (const auto& d : src)
-				{
-					bool merged = false;
-
-					for (size_t i = 0; i < static_size; ++i)
-					{
-						if (static_buffer[i].GetSlot() == d.GetSlot())
-						{
-							static_buffer[i].SetStage(static_buffer[i].GetStage() | d.GetStage());
-							merged = true;
-							break;
-						}
-					}
-		
-					if (!merged)
-					{
-						SEDX_CORE_ASSERT(static_size < 256);
-						static_buffer[static_size++] = d;
-					}
-				}
-			};
-		
 			if (pipelineState.IsCompute())
 			{
 				SEDX_CORE_ASSERT(pipelineState.shaders[static_cast<uint32_t>(StageType::Compute)] && pipelineState.shaders[static_cast<uint32_t>(StageType::Compute)]->IsCompiled());
-				merge_descriptors(pipelineState.shaders[static_cast<uint32_t>(StageType::Compute)]->GetDescriptors());
+				const std::vector<Descriptor> descriptors = pipelineState.shaders[static_cast<uint32_t>(StageType::Compute)]->GetDescriptors();
+				for (const Descriptor& descriptor : descriptors)
+				{
+					bool merged = false;
+					for (size_t i = 0; i < static_size; ++i)
+					{
+						if (static_buffer[i].GetSlot() != descriptor.GetSlot())
+							continue;
+
+						if (static_buffer[i].GetType() != descriptor.GetType())
+						{
+							SEDX_CORE_ERROR_TAG("BindlessManager", "Descriptor reflection conflict in compute PSO: slot={} existingType={} incomingType={} (hard fail)",
+								descriptor.GetSlot(),
+								static_cast<uint32_t>(static_buffer[i].GetType()),
+								static_cast<uint32_t>(descriptor.GetType()));
+							outCount = 0;
+							return false;
+						}
+
+						static_buffer[i].SetStage(static_buffer[i].GetStage() | descriptor.GetStage());
+						merged = true;
+						break;
+					}
+
+					if (!merged)
+					{
+						SEDX_CORE_ASSERT(static_size < 256);
+						static_buffer[static_size++] = descriptor;
+					}
+				}
 			}
 			else if (pipelineState.IsGraphics())
 			{
 				SEDX_CORE_ASSERT(pipelineState.shaders[static_cast<uint32_t>(StageType::Vertex)] && pipelineState.shaders[static_cast<uint32_t>(StageType::Vertex)]->IsCompiled());
-				merge_descriptors(pipelineState.shaders[static_cast<uint32_t>(StageType::Vertex)]->GetDescriptors());
+				const std::vector<Descriptor> vertexDescriptors = pipelineState.shaders[static_cast<uint32_t>(StageType::Vertex)]->GetDescriptors();
+				for (const Descriptor& descriptor : vertexDescriptors)
+				{
+					bool merged = false;
+					for (size_t i = 0; i < static_size; ++i)
+					{
+						if (static_buffer[i].GetSlot() != descriptor.GetSlot())
+							continue;
+
+						if (static_buffer[i].GetType() != descriptor.GetType())
+						{
+							SEDX_CORE_ERROR_TAG("BindlessManager", "Descriptor reflection conflict in graphics PSO (VS): slot={} existingType={} incomingType={} (hard fail)",
+								descriptor.GetSlot(),
+								static_cast<uint32_t>(static_buffer[i].GetType()),
+								static_cast<uint32_t>(descriptor.GetType()));
+							outCount = 0;
+							return false;
+						}
+
+						static_buffer[i].SetStage(static_buffer[i].GetStage() | descriptor.GetStage());
+						merged = true;
+						break;
+					}
+
+					if (!merged)
+					{
+						SEDX_CORE_ASSERT(static_size < 256);
+						static_buffer[static_size++] = descriptor;
+					}
+				}
 				
 				if (pipelineState.shaders[static_cast<uint32_t>(StageType::Fragment)] && pipelineState.shaders[static_cast<uint32_t>(StageType::Fragment)]->IsCompiled())
 				{
-					merge_descriptors(pipelineState.shaders[static_cast<uint32_t>(StageType::Fragment)]->GetDescriptors());
+					const std::vector<Descriptor> fragmentDescriptors = pipelineState.shaders[static_cast<uint32_t>(StageType::Fragment)]->GetDescriptors();
+					for (const Descriptor& descriptor : fragmentDescriptors)
+					{
+						bool merged = false;
+						for (size_t i = 0; i < static_size; ++i)
+						{
+							if (static_buffer[i].GetSlot() != descriptor.GetSlot())
+								continue;
+
+							if (static_buffer[i].GetType() != descriptor.GetType())
+							{
+								SEDX_CORE_ERROR_TAG("BindlessManager", "Descriptor reflection conflict in graphics PSO (FS): slot={} existingType={} incomingType={} (hard fail)",
+									descriptor.GetSlot(),
+									static_cast<uint32_t>(static_buffer[i].GetType()),
+									static_cast<uint32_t>(descriptor.GetType()));
+								outCount = 0;
+								return false;
+							}
+
+							static_buffer[i].SetStage(static_buffer[i].GetStage() | descriptor.GetStage());
+							merged = true;
+							break;
+						}
+
+						if (!merged)
+						{
+							SEDX_CORE_ASSERT(static_size < 256);
+							static_buffer[static_size++] = descriptor;
+						}
+					}
 				}
 		
 				if (pipelineState.shaders[static_cast<uint32_t>(StageType::TessellationControl)] && pipelineState.shaders[static_cast<uint32_t>(StageType::TessellationControl)]->IsCompiled())
 				{
-					merge_descriptors(pipelineState.shaders[static_cast<uint32_t>(StageType::TessellationControl)]->GetDescriptors());
+					const std::vector<Descriptor> tessControlDescriptors = pipelineState.shaders[static_cast<uint32_t>(StageType::TessellationControl)]->GetDescriptors();
+					for (const Descriptor& descriptor : tessControlDescriptors)
+					{
+						bool merged = false;
+						for (size_t i = 0; i < static_size; ++i)
+						{
+							if (static_buffer[i].GetSlot() != descriptor.GetSlot())
+								continue;
+
+							if (static_buffer[i].GetType() != descriptor.GetType())
+							{
+								SEDX_CORE_ERROR_TAG("BindlessManager", "Descriptor reflection conflict in graphics PSO (TCS): slot={} existingType={} incomingType={} (hard fail)",
+									descriptor.GetSlot(),
+									static_cast<uint32_t>(static_buffer[i].GetType()),
+									static_cast<uint32_t>(descriptor.GetType()));
+								outCount = 0;
+								return false;
+							}
+
+							static_buffer[i].SetStage(static_buffer[i].GetStage() | descriptor.GetStage());
+							merged = true;
+							break;
+						}
+
+						if (!merged)
+						{
+							SEDX_CORE_ASSERT(static_size < 256);
+							static_buffer[static_size++] = descriptor;
+						}
+					}
 				}
 		
 				if (pipelineState.shaders[static_cast<uint32_t>(StageType::TessellationEvaluation)] && pipelineState.shaders[static_cast<uint32_t>(StageType::TessellationEvaluation)]->IsCompiled())
 				{
-					merge_descriptors(pipelineState.shaders[static_cast<uint32_t>(StageType::TessellationEvaluation)]->GetDescriptors());
+					const std::vector<Descriptor> tessEvalDescriptors = pipelineState.shaders[static_cast<uint32_t>(StageType::TessellationEvaluation)]->GetDescriptors();
+					for (const Descriptor& descriptor : tessEvalDescriptors)
+					{
+						bool merged = false;
+						for (size_t i = 0; i < static_size; ++i)
+						{
+							if (static_buffer[i].GetSlot() != descriptor.GetSlot())
+								continue;
+
+							if (static_buffer[i].GetType() != descriptor.GetType())
+							{
+								SEDX_CORE_ERROR_TAG("BindlessManager", "Descriptor reflection conflict in graphics PSO (TES): slot={} existingType={} incomingType={} (hard fail)",
+									descriptor.GetSlot(),
+									static_cast<uint32_t>(static_buffer[i].GetType()),
+									static_cast<uint32_t>(descriptor.GetType()));
+								outCount = 0;
+								return false;
+							}
+
+							static_buffer[i].SetStage(static_buffer[i].GetStage() | descriptor.GetStage());
+							merged = true;
+							break;
+						}
+
+						if (!merged)
+						{
+							SEDX_CORE_ASSERT(static_size < 256);
+							static_buffer[static_size++] = descriptor;
+						}
+					}
 				}
 			}
 		
@@ -263,6 +386,8 @@ namespace SceneryEditorX
 		{
 			outDescriptors[i] = static_buffer[i];
 		}
+
+		return true;
 	}
 
 	void BindlessManager::Free(BindlessResource type, uint32_t index)
@@ -290,6 +415,47 @@ namespace SceneryEditorX
 			return;
 
 		const uint32_t index = static_cast<uint32_t>(type);
+		const ResourceConfig& cfg = CONFIGS[index];
+		SEDX_CORE_ASSERT(cfg.type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+			"BindlessManager::UpdateBuffer called for non-storage-buffer bindless type '{}' (VkDescriptorType={})",
+			cfg.name,
+			static_cast<uint32_t>(cfg.type));
+
+		const auto isStorageBufferType = [&](const BindlessResource resourceType) constexpr
+		{
+			switch (resourceType)
+			{
+				case BindlessResource::MaterialParameters:
+				case BindlessResource::LightParameters:
+				case BindlessResource::Aabbs:
+				case BindlessResource::DrawData:
+					return true;
+				case BindlessResource::GeometryVertices:
+				case BindlessResource::GeometryIndices:
+				case BindlessResource::Instances:
+				case BindlessResource::MaterialTextures:
+				case BindlessResource::SamplersComparison:
+				case BindlessResource::SamplersRegular:
+				case BindlessResource::MaxEnum:
+				default:
+					return false;
+			}
+		};
+
+		if (!isStorageBufferType(type))
+		{
+			SEDX_CORE_WARN_TAG("BindlessManager", "UpdateBuffer ignored for non-storage bindless resource type '{}'", cfg.name);
+			return;
+		}
+		SEDX_CORE_ASSERT(buffer->Get() != VK_NULL_HANDLE, "BindlessManager::UpdateBuffer received invalid VkBuffer for bindless type '{}'", cfg.name);
+		SEDX_CORE_ASSERT(buffer->GetObjectSize() > 0, "BindlessManager::UpdateBuffer received zero-sized buffer for bindless type '{}'", cfg.name);
+		if ((buffer->GetUsageFlags() & VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) == 0)
+		{
+			SEDX_CORE_ERROR_TAG("BindlessManager", "UpdateBuffer rejected for '{}': buffer '{}' missing VK_BUFFER_USAGE_STORAGE_BUFFER_BIT (usage=0x{:X})",
+				cfg.name, buffer->GetObjectName().c_str(), static_cast<uint32_t>(buffer->GetUsageFlags()));
+			return;
+		}
+
 		if (s_Sets[index] == VK_NULL_HANDLE)
 			return;
 
@@ -396,7 +562,7 @@ namespace SceneryEditorX
 
 		uint32_t index              = static_cast<uint32_t>(type);
 		const ResourceConfig& cfg   = CONFIGS[index];
-		uint32_t binding            = cfg.registerShift + cfg.slot;
+		uint32_t binding            = cfg.slot;
 
 		// layout
 		VkDescriptorSetLayoutBinding layout_binding = {};
@@ -452,7 +618,7 @@ namespace SceneryEditorX
 	uint32_t BindlessManager::GetBinding(BindlessResource type)
 	{
 		const ResourceConfig& cfg = CONFIGS[static_cast<uint32_t>(type)];
-		return cfg.registerShift + cfg.slot;
+		return cfg.slot;
 	}
 
 	VkDescriptorSetLayout BindlessManager::GetLayoutForType(BindlessResource type)

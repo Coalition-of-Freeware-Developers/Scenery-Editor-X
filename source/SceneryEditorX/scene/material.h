@@ -63,15 +63,15 @@ namespace SceneryEditorX
 	enum class MaterialTextureType
 	{
 		None		= 0,
-		Color		= BIT(0),
-		Normal		= BIT(1),
-		Greyscale	= BIT(2),
-		Height		= Greyscale | BIT(3),
-		Roughness	= Greyscale | BIT(4),
-		Metalness   = Greyscale | BIT(5),
-		AlphaMask	= Greyscale | BIT(6),
-		Emission	= Greyscale | BIT(7),
-		Occlusion   = Greyscale | BIT(8),
+		Color		= 1,
+		Normal		= 2,
+		Greyscale	= 3,
+		Height		= 4,
+		Roughness	= 5,
+		Metalness   = 6,
+		AlphaMask	= 7,
+		Emission	= 8,
+		Occlusion   = 9,
 		MaxEnum		= 255
 	};
 
@@ -82,24 +82,24 @@ namespace SceneryEditorX
 	enum class MapBits : uint8_t
 	{
 		Null				= 0,
-		Albedo				= BIT(0),
+		Albedo				= 1,
 		Color               = Albedo,
-		Normal				= BIT(1),
-		MRAO				= BIT(2), // Metalness in R, Roughness in G, Ambient Occlusion in B
-		Emission			= BIT(3),
-		Metalness			= BIT(4),
-		Roughness			= BIT(5),
-		AlphaMask			= BIT(6),
-		AmbientOcclusion	= BIT(7),
-		Specular			= BIT(8),
-		Glossiness          = BIT(9),
-		DetailMap			= BIT(10),
-		BentNormal			= BIT(11),
-		Height				= BIT(12),
-		Mask0				= BIT(13),
-		Mask1				= BIT(14),
-		Mask2				= BIT(15),
-		Mask3				= BIT(16),
+		Normal				= 2,
+		MRAO				= 3, // Metalness in R, Roughness in G, Ambient Occlusion in B
+		Emission			= 4,
+		Metalness			= 5,
+		Roughness			= 6,
+		AlphaMask			= 7,
+		AmbientOcclusion	= 8,
+		Specular			= 9,
+		Glossiness          = 10,
+		DetailMap			= 11,
+		BentNormal			= 12,
+		Height				= 13,
+		Mask0				= 14,
+		Mask1				= 15,
+		Mask2				= 16,
+		Mask3				= 17,
 		MaxEnum				= 255
 	};
 
@@ -109,11 +109,11 @@ namespace SceneryEditorX
 	 */
 	enum class MaterialFlag  // NOLINT(performance-enum-size)
 	{
-		None					= BIT(0),
-		DepthTest				= BIT(1),
-		Blend					= BIT(2),
-		TwoSided				= BIT(3),
-		DisableShadowCasting	= BIT(4)
+		None					= 0,
+		DepthTest				= 1,
+		Blend					= 2,
+		TwoSided				= 3,
+		DisableShadowCasting	= 4
 	};
 
 	/**

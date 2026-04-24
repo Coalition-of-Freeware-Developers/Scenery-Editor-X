@@ -58,7 +58,14 @@ namespace SceneryEditorX
 		VkBufferCreateInfo bufferCI{};
 		bufferCI.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 		bufferCI.size = totalSize;
-		bufferCI.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+		bufferCI.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT
+			| VK_BUFFER_USAGE_TRANSFER_DST_BIT
+			| VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
+			| VK_BUFFER_USAGE_INDEX_BUFFER_BIT
+			| VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
+			| VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+			| VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
+		m_Usage = bufferCI.usage;
 		bufferCI.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	
 		VmaAllocationCreateInfo allocCI{};
@@ -111,6 +118,7 @@ namespace SceneryEditorX
 		bufferCI.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 		bufferCI.size = size;
 		bufferCI.usage = usage;
+		m_Usage = usage;
 		bufferCI.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	
 		const VkResult result = MemoryAllocator::CreateBuffer(bufferCI, allocInfo, m_Buffer, m_Allocation);

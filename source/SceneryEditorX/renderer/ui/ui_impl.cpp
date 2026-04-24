@@ -180,6 +180,12 @@ namespace SceneryEditorX::UI
 	
 			// upload texture to graphics system
 			g_FontAtlas = CreateRef<ImageResource>(spec, std::move(texture_data));
+			if (g_FontAtlas)
+			{
+				// The descriptor set below declares SHADER_READ_ONLY_OPTIMAL for the atlas.
+				// Ensure the actual image layout matches before any vkCmdDraw that samples it.
+				g_FontAtlas->SetLayout(Layout::ImageLayout::ShaderRead, nullptr, 0, 0);
+			}
 			io.Fonts->TexID = reinterpret_cast<ImTextureID>(g_FontAtlas.Get());
 		}
 
@@ -448,7 +454,13 @@ namespace SceneryEditorX::UI
 	
 		// when the engine splash screen is shown, the command list is not valid as the renderer is initializing
 		if (!cmdList || cmdList->GetState() != CommandState::Recording)
+		{
+			if (!isMainWindow && cmdList && cmdList->GetState() == CommandState::Recording)
+			{
+				cmdList->Seal();
+			}
 			return;
+		}
 	
 		// update vertex and index buffers
 		{
@@ -517,6 +529,10 @@ namespace SceneryEditorX::UI
 			if (g_ImGuiPipeline == VK_NULL_HANDLE || g_ImGuiPipelineLayout == VK_NULL_HANDLE)
 			{
 				SEDX_CORE_WARN_TAG("UI", "ImGui pipeline not ready, skipping render");
+				if (!isMainWindow && cmdList->GetState() == CommandState::Recording)
+				{
+					cmdList->Seal();
+				}
 				return;
 			}
 

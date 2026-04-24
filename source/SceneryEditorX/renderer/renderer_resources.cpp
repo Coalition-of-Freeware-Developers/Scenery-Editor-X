@@ -824,6 +824,7 @@ namespace SceneryEditorX
 		constexpr uint32_t particleMax = 100000;
 		uint32_t particleCounterInit[2] = { 0, 0 };
 		At(s_Buffers, Renderer_Buffer::ParticleBufferA) = CreateRef<Buffer>(static_cast<uint32_t>(sizeof(ShaderBuffer_Particle)), particleMax, nullptr, true, "particle_buffer_a");
+		At(s_Buffers, Renderer_Buffer::ParticleBufferB) = CreateRef<Buffer>(static_cast<uint32_t>(sizeof(ShaderBuffer_Particle)), particleMax, nullptr, true, "particle_buffer_b");
 		At(s_Buffers, Renderer_Buffer::ParticleCounter) = CreateRef<Buffer>(static_cast<uint32_t>(sizeof(uint32_t)), 2, particleCounterInit, true, "particle_counter");
 		At(s_Buffers, Renderer_Buffer::ParticleEmitter) = CreateRef<Buffer>(static_cast<uint32_t>(sizeof(ShaderBuffer_EmitterParams)), 1, nullptr, true, "particle_emitter");
 	}

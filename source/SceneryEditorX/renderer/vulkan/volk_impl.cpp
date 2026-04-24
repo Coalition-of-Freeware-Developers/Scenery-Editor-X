@@ -32,8 +32,8 @@
  *
  * volk is a meta-loader for Vulkan that replaces the need to
  * link against the Vulkan loader at build time. It loads all
- * Vulkan function pointers at runtime, including extension
- * functions like vkDestroyAccelerationStructureKHR.
+  * Vulkan function pointers at runtime, including extension
+ * functions used by this renderer.
  *
  * VOLK_IMPLEMENTATION must be defined in exactly ONE translation
  * unit in the entire project. This file serves that purpose.

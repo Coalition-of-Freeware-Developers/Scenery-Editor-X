@@ -92,7 +92,6 @@ namespace SceneryEditorX
 	private:
 		RasterStateSpec m_Spec;
 		uint64_t m_Hash = 0;
-		const RasterStateSpec &spec;
 	};
 
 }

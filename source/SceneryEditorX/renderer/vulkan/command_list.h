@@ -358,10 +358,22 @@ namespace SceneryEditorX
 		static void ShutdownImmediateExecution();
 
 		/**
-		 * @brief 
-		 * @return 
+		 * @brief Get the current state of the command list.
+		 * @return The current state of the command list.
 		 */
 		const CommandState GetState() const { return m_State.load(); }
+
+		/**
+		 * @brief Set whether the command list is in a "sticky invalid" state, which prevents it from being reused until explicitly cleared. 
+		 * @return True if the command list is in a sticky invalid state, false otherwise.
+		 */
+		[[nodiscard]] bool IsStickyInvalid() const { return m_StickyInvalidState; }
+
+		/**
+		 * @brief Clears sticky-invalid state when the command list is idle so it can be reused.
+		 * @return True if the sticky state was cleared.
+		 */
+		bool RecoverIfIdle();
 		
 		// -------------------------------------------------------
 
@@ -451,46 +463,46 @@ namespace SceneryEditorX
 		// -------------------------------------------------------
 
 		/**
-		 * @brief 
-		 * @param viewport 
+		 * @brief Set the viewport for rendering. 
+		 * @param viewport The viewport to set.
 		 */
 		void SetViewport(const Viewport& viewport) const;
 
 		/**
-		 * @brief 
-		 * @param scissorRect 
+		 * @brief Set the scissor rectangle for rendering.
+		 * @param scissorRect The scissor rectangle to set.
 		 */
 		void SetScissor(const xMath::Rectangle &scissorRect) const;
 
 		/**
-		 * @brief 
-		 * @param cullMode 
+		 * @brief Set the cull mode for rendering.
+		 * @param cullMode The cull mode to set.
 		 */
 		void SetCullMode(const CullMode cullMode);
 
 		/**
-		 * @brief 
-		 * @return 
+		 * @brief Get the queue associated with this command list.
+		 * @return The queue associated with this command list.
 		 */
 		Ref<Queue> GetQueue() const { return m_Queue; }
 
 		/**
-		 * @brief 
-		 * @param src 
-		 * @param dst 
+		 * @brief Copy data from an image resource to a swapchain.
+		 * @param src The source image resource.
+		 * @param dst The destination swapchain.
 		 */
 		void Copy(ImageResource* src, Swapchain* dst);
 
 		/**
-		 * @brief 
-		 * @param src 
-		 * @param dst 
+		 * @brief Copy data from one image resource to another.
+		 * @param src The source image resource.
+		 * @param dst The destination image resource.
+		 * @param blitMips Whether to blit mipmaps during the copy.
 		 */
 		void Copy(ImageResource* src, ImageResource* dst, const bool blitMips);
 
 		/**
 		 * @brief Copy data from a raw pointer to a buffer.
-		 *
 		 * @param src The source data pointer.
 		 * @param dst The destination buffer.
 		 * @param size The size of the data to copy.
@@ -499,7 +511,6 @@ namespace SceneryEditorX
 
 		/**
 		 * @brief Copy data from one buffer to another.
-		 *
 		 * @param src The source buffer.
 		 * @param dst The destination buffer.
 		 * @param size The size of the data to copy.
@@ -565,8 +576,10 @@ namespace SceneryEditorX
 		std::atomic<CommandState> m_State = CommandState::Idle;
 		VkCullModeFlags m_CullMode = VK_CULL_MODE_BACK_BIT;
 		bool m_RenderPassActive = false;
+		bool m_StickyInvalidState = false;
 		Scope<DescriptorSet> m_DescriptorLayout_Owned;
 		DescriptorSet* m_DescriptorLayout_Current = nullptr;
+		uint64_t m_DescriptorLayout_PSOHash = 0;
 
 		Pipeline m_Pipeline;
 		PipelineState m_pso;

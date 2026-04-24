@@ -83,6 +83,12 @@ namespace SceneryEditorX
 		[[nodiscard]] VkBuffer Get() const { return m_Buffer; }
 
 		/**
+		 * @brief Gets the Vulkan usage flags used when creating this buffer.
+		 * @return The VkBufferUsageFlags used at buffer creation time.
+		 */
+		[[nodiscard]] VkBufferUsageFlags GetUsageFlags() const { return m_Usage; }
+
+		/**
 		 * @brief Gets the VMA allocation associated with the buffer.
 		 * @return The VMA allocation handle.
 		 */
@@ -217,6 +223,7 @@ namespace SceneryEditorX
 		VmaAllocator m_Allocator{VK_NULL_HANDLE};	// VMA allocator handle
 		void* m_MappedData{ nullptr };				// Pointer to the mapped data
 		VkDeviceAddress m_DeviceAddress{ 0 };		// Device address of the buffer
+		VkBufferUsageFlags m_Usage{ 0 };			// Vulkan usage flags used during buffer creation
 		uint32_t m_StrideUnaligned		= 0;		// Original stride before alignment, used for calculating buffer size and element count
 		uint32_t m_Stride				= 0;		// Aligned stride of each element in the buffer, ensuring proper alignment for GPU access
 		uint32_t m_ElementCount			= 0;		// Number of elements in the buffer, calculated based on the total buffer size and the aligned stride

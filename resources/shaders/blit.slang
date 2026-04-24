@@ -29,20 +29,18 @@
  * -------------------------------------------------------
  */
 
-// Reimpliment when slang shader compiler class has been implimented to support module imports.
-/* import common;
+import common;
 import resources;
 import constants;
- */
-static const uint THREAD_GROUP_COUNT_X = 8;
-static const uint THREAD_GROUP_COUNT_Y = 8;
-static const uint THREAD_GROUP_COUNT = 64;
-[[vk::image_format("unknown")]] RWTexture2D<float4> tex_uav : register(u0);
-Texture2D tex : register(t7);
 
 [shader("compute")]
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_comp(uint3 thread_id: SV_DispatchThreadID)
 {
+    float2 resolution_out;
+    tex_uav.GetDimensions(resolution_out.x, resolution_out.y);
+    if (any(thread_id.xy >= uint2(resolution_out)))
+        return;
+
     tex_uav[thread_id.xy] = tex.Load(int3(thread_id.xy, 0));
 }

@@ -35,6 +35,7 @@ import position;
 import noise;
 import resources;
 import transforms;
+import structs;
 
 // constants
 static const float g_ao_radius = 1.5f;

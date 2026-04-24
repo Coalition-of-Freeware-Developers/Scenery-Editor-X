@@ -29,6 +29,7 @@
  * -------------------------------------------------------
  */
 import common;
+import surface;
 
 static const uint  g_sss_max_steps                     = 32;     // Max ray steps, affects quality and performance.
 static const float g_sss_ray_max_distance              = 0.5f;   // Max shadow length, longer shadows are less accurate.

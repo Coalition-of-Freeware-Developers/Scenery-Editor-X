@@ -253,7 +253,7 @@ namespace SceneryEditorX
 		/**
 		 * @brief Returns the shader registration metadata for all known startup shaders.
 		 */
-		static const std::vector<ShaderRegistration>& GetShaderRegistrations();
+		[[deprecated]] static const std::vector<ShaderRegistration>& GetShaderRegistrations();
 
 		/**
 		 * @brief Finds a shader registration by renderer shader enum.

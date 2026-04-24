@@ -81,7 +81,7 @@ namespace SceneryEditorX
 		 */
 		struct QueueConfig
 		{
-			uint32_t cmdListsPerQueue = 2; // Number of reusable command lists per queue
+			uint32_t cmdListsPerQueue = 8; // Number of reusable command lists per queue
 			bool serializeByType = false;  // Whether to serialize access to queues by type
 		};
 
@@ -240,7 +240,7 @@ namespace SceneryEditorX
 		Ref<Device> m_Device = nullptr;
 		QueueConfig m_Config;
 		CommandPool m_CmdPool;  // Declared before m_CmdLists so the pool outlives the command lists during destruction.
-		std::array<Ref<CommandList>, 2> m_CmdLists = { nullptr }; // Pre-allocated command lists for reuse, indexed by m_Index
+		std::vector<Ref<CommandList>> m_CmdLists; // Pre-allocated command lists for reuse, sized by QueueConfig::cmdListsPerQueue
 		QueueFamilyIndices m_FamilyIndices;
 		std::atomic<uint32_t> m_Index = 0;
 		std::vector<Ref<Queue>> m_GPUQueues; // Available GPU queues indexed by QueueType

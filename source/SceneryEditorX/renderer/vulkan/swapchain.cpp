@@ -30,7 +30,9 @@
  */
 #include "swapchain.h"
 #include "render_context.h"
+#include <chrono>
 #include <tlhelp32.h>
+#include <thread>
 #include <utility>
 #include <vector>
 #include <SDL3/SDL_vulkan.h>
@@ -907,8 +909,11 @@ namespace SceneryEditorX
 		SEDX_CORE_ASSERT(m_Swapchain != VK_NULL_HANDLE, "Swapchain is not valid for image acquisition");
 		SEDX_CORE_ASSERT(!m_AcquiredSemaphore.empty(), "Acquire semaphore list is empty");
 
-		// Try to acquire, with retry after swapchain recreation
-		for (uint32_t attempt = 0; attempt < 2; ++attempt)
+		// Try to acquire, with retry after swapchain recreation.
+		// A very short timeout (e.g. 100ms) can cause transient frame starvation under
+		// debugger stalls or compositor jitter and lead to repeated black frames.
+		constexpr uint32_t kMaxAttempts = 8;
+		for (uint32_t attempt = 0; attempt < kMaxAttempts; ++attempt)
 		{
 			const uint32_t semaphoreIndex = m_SemaphoreIndex % static_cast<uint32_t>(m_AcquiredSemaphore.size());
 
@@ -929,8 +934,10 @@ namespace SceneryEditorX
 			
 			VkSemaphore vkSemaphore = frameSync->GetVkSemaphore();
 
-			VkResult r = vkAcquireNextImageKHR(m_Device->GetLogicalDevice(), m_Swapchain, 100000000 /*100ms timeout*/, vkSemaphore, VK_NULL_HANDLE, &m_ImageIndex);
-			SEDX_VK_RESULT_ASSERT(r, "Failed to acquire next swapchain image")
+			// Use a finite timeout to satisfy WSI forward-progress rules (VUID 07783)
+			// and avoid validation spam on platforms that cannot guarantee forward progress.
+			constexpr uint64_t ACQUIRE_TIMEOUT_NS = 100000000; // 100ms
+			VkResult r = vkAcquireNextImageKHR(m_Device->GetLogicalDevice(), m_Swapchain, ACQUIRE_TIMEOUT_NS, vkSemaphore, VK_NULL_HANDLE, &m_ImageIndex);
 
 			if (r == VK_SUCCESS)
 			{
@@ -947,6 +954,19 @@ namespace SceneryEditorX
 				continue;
 			}
 
+			if (r == VK_TIMEOUT || r == VK_NOT_READY)
+			{
+				if (attempt + 1 < kMaxAttempts)
+				{
+					std::this_thread::sleep_for(std::chrono::milliseconds(1));
+					continue;
+				}
+
+				SEDX_CORE_WARN_TAG("Swapchain", "Swapchain image acquire timed out after {} attempts (last result: {}).", kMaxAttempts, r);
+				continue;
+			}
+
+			SEDX_VK_RESULT_ASSERT(r, "Failed to acquire next swapchain image")
 			SEDX_CORE_ERROR_TAG("Swapchain", "Failed to acquire swapchain image: {}", r);
 			return;
 		}

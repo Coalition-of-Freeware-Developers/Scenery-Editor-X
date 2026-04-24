@@ -138,8 +138,9 @@ namespace SceneryEditorX
 		 * @param pipelineState The pipeline state to retrieve descriptors from.
 		 * @param outDescriptors The array to store the retrieved descriptors.
 		 * @param outCount The number of descriptors retrieved.
+		 * @return True when descriptor reflection/merge succeeded, false when a hard conflict was detected.
 		 */
-		void GetDescriptorsFromPipelineState(PipelineState& pipelineState, Descriptor* outDescriptors, size_t& outCount);
+		bool GetDescriptorsFromPipelineState(PipelineState& pipelineState, Descriptor* outDescriptors, size_t& outCount);
 
 		/**
 		 * @brief Updates the samplers for a given bindless resource type.

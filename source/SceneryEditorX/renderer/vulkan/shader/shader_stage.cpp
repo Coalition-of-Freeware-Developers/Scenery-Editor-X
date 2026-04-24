@@ -32,6 +32,7 @@
 #include "shader_stage.h"
 #include "shader_manager.h"
 #include <array>
+#include <cctype>
 #include <filesystem>
 #include <fstream>
 #include <SceneryEditorX/core/application/application.h>
@@ -51,17 +52,42 @@ namespace SceneryEditorX
 	 */
 	static const char* GetDefaultEntryPoint(const StageType stage, const std::string& filepath)
 	{
+		(void)stage;
 		if (const bool isSlangShader = filepath.ends_with(".slang"); !isSlangShader)
 		{
 			return "main";
 		}
 
-		// Slang modules compiled through module->getTargetCode() currently emit SPIR-V
-		// entry points as "main" for all stages in this code path. Vulkan pipeline
-		// creation requires pName to match OpEntryPoint exactly, so keep the runtime
-		// stage entry-point name aligned with the emitted SPIR-V symbol.
-		(void)stage;
+		// For Slang source stages, keep explicit stage entry-point names so the
+		// generated SPIR-V and Vulkan stage binding stay aligned.
+		/*
+		switch (stage)
+		{
+			case StageType::Vertex:                 return "main_vs";
+			case StageType::Fragment:               return "main_frag";
+			case StageType::Compute:                return "main_comp";
+			case StageType::TessellationControl:    return "main_tesc";
+			case StageType::TessellationEvaluation: return "main_tese";
+			default:                                return "main";
+		}
+		*/
+
+		// Slang compilation resolves the source entry point per stage during
+		// CompileShader(), but generated SPIR-V modules expose a Vulkan entry name
+		// of "main". Keep runtime pipeline binding deterministic on "main".
 		return "main";
+	}
+
+	static std::string MakeEntryPointCacheToken(const std::string& entryPoint)
+	{
+		std::string token = entryPoint;
+		for (char& c : token)
+		{
+			if (!std::isalnum(static_cast<unsigned char>(c)))
+				c = '_';
+		}
+
+		return token.empty() ? std::string{"main"} : token;
 	}
 
 	/**
@@ -123,13 +149,13 @@ namespace SceneryEditorX
 	 * @param sourcePath The path to the shader source file.
 	 * @return The cache path for the shader stage.
 	 */
-	static std::filesystem::path GetCachePath(const StageType stage, const std::filesystem::path& sourcePath)
+	static std::filesystem::path GetCachePath(const StageType stage, const std::filesystem::path& sourcePath, const std::string& entryPoint)
 	{
 		const auto &context = Application::Get().GetPlatformContext();
 		const std::filesystem::path appDir = context->GetTempDirectory();
 		const std::filesystem::path cacheRoot = appDir / "SceneryEditorX" / "shader-cache";
 		const std::filesystem::path fileStem = sourcePath.stem();
-		const std::string cacheName = fileStem.string() + "." + StageSuffix(stage) + ".spv";
+		const std::string cacheName = fileStem.string() + "." + StageSuffix(stage) + "." + MakeEntryPointCacheToken(entryPoint) + ".spv";
 		return cacheRoot / cacheName;
 	}
 
@@ -206,7 +232,10 @@ namespace SceneryEditorX
 	{
 		m_EntryPoint = GetDefaultEntryPoint(stage, filepath);
 		const bool built = BuildOrRebuildModule();
-		SEDX_CORE_ASSERT(built, "Failed to build shader stage module for '{}'", filepath);
+		if (!built)
+		{
+			SEDX_CORE_ERROR_TAG("Shader", "Failed to build shader stage module for '{}'", filepath);
+		}
 	}
 	
 	ShaderStage::~ShaderStage()
@@ -217,7 +246,10 @@ namespace SceneryEditorX
 	void ShaderStage::Recompile()
 	{
 		const bool rebuilt = BuildOrRebuildModule(false, true);
-		SEDX_CORE_ASSERT(rebuilt, "Failed to recompile shader stage '{}'", m_Filepath);
+		if (!rebuilt)
+		{
+			SEDX_CORE_ERROR_TAG("Shader", "Failed to recompile shader stage '{}'", m_Filepath);
+		}
 	}
 
 	bool ShaderStage::BuildOrRebuildModule(bool optimize, bool forceCompile)
@@ -237,7 +269,7 @@ namespace SceneryEditorX
 		}
 
 		const std::filesystem::path sourcePath = ResolveSourcePath(m_Filepath);
-		const std::filesystem::path cachePath = GetCachePath(m_Stage, sourcePath);
+		const std::filesystem::path cachePath = GetCachePath(m_Stage, sourcePath, m_EntryPoint);
 
 		std::vector<uint32_t> data;
 		const bool cliForceRecompile = IsCliShaderRecompileRequested();

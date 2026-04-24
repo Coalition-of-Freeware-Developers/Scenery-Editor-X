@@ -68,6 +68,7 @@ namespace SceneryEditorX
 			case StageType::Vertex:                  return VK_SHADER_STAGE_VERTEX_BIT;
 			case StageType::TessellationControl:     return VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
 			case StageType::TessellationEvaluation:  return VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
+			case StageType::Geometry:                return VK_SHADER_STAGE_GEOMETRY_BIT;
 			case StageType::Fragment:                return VK_SHADER_STAGE_FRAGMENT_BIT;
 			case StageType::Compute:                 return VK_SHADER_STAGE_COMPUTE_BIT;
 			default:                             return 0;
@@ -135,30 +136,36 @@ namespace SceneryEditorX
 		m_ObjectName = name ? name : "";
 		m_Descriptors.reserve(count);
 		m_Bindings.reserve(count);
+		bool hasSlotTypeConflict = false;
 		
 		for (size_t i = 0; i < count; ++i)
 		{
-			m_Descriptors.push_back(descriptors[i]);
-			m_Bindings.emplace_back();
 			const uint32_t slot = descriptors[i].GetSlot();
-			if (!m_SlotToIndex.contains(slot))
+			if (auto it = m_SlotToIndex.find(slot); it == m_SlotToIndex.end())
 			{
-				m_SlotToIndex[slot] = i;
+				const size_t newIndex = m_Descriptors.size();
+				m_Descriptors.push_back(descriptors[i]);
+				m_Bindings.emplace_back();
+				m_SlotToIndex[slot] = newIndex;
 			}
 			else
 			{
-				const size_t existingIndex = m_SlotToIndex[slot];
+				const size_t existingIndex = it->second;
 				const DescriptorType existingType = m_Descriptors[existingIndex].GetType();
 				const DescriptorType newType = descriptors[i].GetType();
-				const bool preferNew =
-					(newType == DescriptorType::TextureStorage && existingType != DescriptorType::TextureStorage) ||
-					(newType == DescriptorType::StructuredBuffer && existingType == DescriptorType::Image) ||
-					(newType == DescriptorType::ConstantBuffer && existingType == DescriptorType::Image);
 
-				if (preferNew)
+				if (existingType != newType)
 				{
-					m_SlotToIndex[slot] = i;
+					hasSlotTypeConflict = true;
+					SEDX_CORE_ERROR_TAG("DescriptorSet", "Descriptor slot/type conflict while creating '{}': slot={} existingType={} incomingType={} (hard fail)",
+						m_ObjectName.c_str(),
+						slot,
+						static_cast<uint32_t>(existingType),
+						static_cast<uint32_t>(newType));
+					continue;
 				}
+
+				m_Descriptors[existingIndex].SetStage(m_Descriptors[existingIndex].GetStage() | descriptors[i].GetStage());
 			}
 		}
 		
@@ -166,9 +173,13 @@ namespace SceneryEditorX
 		{
 		    m_LayoutHash = HashCombine(m_LayoutHash, static_cast<uint64_t>(descriptor.GetSlot()));
 		    m_LayoutHash = HashCombine(m_LayoutHash, static_cast<uint64_t>(descriptor.GetStage()));
+			m_LayoutHash = HashCombine(m_LayoutHash, static_cast<uint64_t>(descriptor.GetType()));
+			m_LayoutHash = HashCombine(m_LayoutHash, static_cast<uint64_t>(descriptor.IsArray() ? descriptor.GetArrayLength() : 1));
 		}
 	
 	    m_Device = RenderContext::Get()->GetDevice();
+		if (hasSlotTypeConflict)
+			return;
 		Create();
 	}
 	
@@ -181,15 +192,34 @@ namespace SceneryEditorX
 		m_ObjectName = name ? name : "";
 		m_Descriptors.reserve(combined.size());
 		m_Bindings.reserve(combined.size());
+		bool hasSlotTypeConflict = false;
 		
 		for (size_t i = 0; i < combined.size(); ++i)
 		{
-			m_Descriptors.push_back(combined[i].GetDescriptor());
-			m_Bindings.push_back(combined[i].GetBinding());
-			const uint32_t slot = combined[i].GetDescriptor().GetSlot();
-			if (!m_SlotToIndex.contains(slot))
+			const Descriptor& incomingDescriptor = combined[i].GetDescriptor();
+			const uint32_t slot = incomingDescriptor.GetSlot();
+			if (auto it = m_SlotToIndex.find(slot); it == m_SlotToIndex.end())
 			{
-				m_SlotToIndex[slot] = i;
+				const size_t newIndex = m_Descriptors.size();
+				m_Descriptors.push_back(incomingDescriptor);
+				m_Bindings.push_back(combined[i].GetBinding());
+				m_SlotToIndex[slot] = newIndex;
+			}
+			else
+			{
+				const size_t existingIndex = it->second;
+				if (m_Descriptors[existingIndex].GetType() != incomingDescriptor.GetType())
+				{
+					hasSlotTypeConflict = true;
+					SEDX_CORE_ERROR_TAG("DescriptorSet", "Descriptor slot/type conflict while creating '{}': slot={} existingType={} incomingType={} (hard fail)",
+						m_ObjectName.c_str(),
+						slot,
+						static_cast<uint32_t>(m_Descriptors[existingIndex].GetType()),
+						static_cast<uint32_t>(incomingDescriptor.GetType()));
+					continue;
+				}
+
+				m_Descriptors[existingIndex].SetStage(m_Descriptors[existingIndex].GetStage() | incomingDescriptor.GetStage());
 			}
 		}
 		
@@ -197,9 +227,13 @@ namespace SceneryEditorX
 		{
 		    m_LayoutHash = HashCombine(m_LayoutHash, static_cast<uint64_t>(d.GetSlot()));
 		    m_LayoutHash = HashCombine(m_LayoutHash, static_cast<uint64_t>(d.GetStage()));
+			m_LayoutHash = HashCombine(m_LayoutHash, static_cast<uint64_t>(d.GetType()));
+			m_LayoutHash = HashCombine(m_LayoutHash, static_cast<uint64_t>(d.IsArray() ? d.GetArrayLength() : 1));
 		}
 		
 		m_Device = RenderContext::Get()->GetDevice();
+		if (hasSlotTypeConflict)
+			return;
 		Create();
 	}
 	
@@ -260,8 +294,15 @@ namespace SceneryEditorX
 	
 	void DescriptorSet::SetConstantBuffer(uint32_t slot, Buffer* constantBuffer)
 	{
-		uint32_t actualSlot = slot + SHADER_REGISTER_SHIFT_B;
-		if (DescriptorBinding* binding = FindBinding(actualSlot))
+		uint32_t actualSlot = slot;
+		DescriptorBinding* binding = FindBinding(actualSlot);
+		if (!binding)
+		{
+			actualSlot = slot + SHADER_REGISTER_SHIFT_B; // legacy fallback
+			binding = FindBinding(actualSlot);
+		}
+
+		if (binding)
 		{
 		    const Descriptor& descriptor = m_Descriptors[m_SlotToIndex[actualSlot]];
 		
@@ -278,14 +319,32 @@ namespace SceneryEditorX
 	
 	void DescriptorSet::SetBuffer(uint32_t slot, Buffer* buffer)
 	{
-		uint32_t actualSlot = slot + SHADER_REGISTER_SHIFT_U;
-		if (DescriptorBinding* binding = FindBinding(actualSlot))
+		auto matches_structured_buffer = [&](const uint32_t candidateSlot) -> bool
 		{
-			binding->SetResource(static_cast<void*>(buffer));
-			binding->SetRange(static_cast<int64_t>(buffer->GetObjectSize()));
-			binding->SetDynamicOffset(buffer->GetOffset());
-			m_Dirty.SetDirty();
+			auto slotIt = m_SlotToIndex.find(candidateSlot);
+			if (slotIt == m_SlotToIndex.end())
+				return false;
+
+			const size_t descriptorIndex = slotIt->second;
+			return descriptorIndex < m_Descriptors.size() && m_Descriptors[descriptorIndex].GetType() == DescriptorType::StructuredBuffer;
+		};
+
+		uint32_t actualSlot = slot;
+		if (!matches_structured_buffer(actualSlot))
+		{
+			actualSlot = slot + SHADER_REGISTER_SHIFT_U;
+			if (!matches_structured_buffer(actualSlot))
+				return;
 		}
+
+		DescriptorBinding* binding = FindBinding(actualSlot);
+		if (!binding)
+			return;
+
+		binding->SetResource(static_cast<void*>(buffer));
+		binding->SetRange(static_cast<int64_t>(buffer->GetObjectSize()));
+		binding->SetDynamicOffset(buffer->GetOffset());
+		m_Dirty.SetDirty();
 	}
 	
 	void DescriptorSet::SetTexture(uint32_t slot, ImageResource* img, uint32_t mipIndex, uint32_t mipRange, uint32_t layer)
@@ -295,18 +354,39 @@ namespace SceneryEditorX
 	
 	    SEDX_CORE_ASSERT(layout == Layout::ImageLayout::General || layout == Layout::ImageLayout::ShaderRead);
 	
-		uint32_t shift      = isStorage ? SHADER_REGISTER_SHIFT_U : SHADER_REGISTER_SHIFT_T;
-		uint32_t actualSlot = slot + shift;
-	
-		if (DescriptorBinding* binding = FindBinding(actualSlot))
+		auto matches_texture_type = [&](const uint32_t candidateSlot) -> bool
 		{
-			binding->SetResource(img);
-			binding->SetLayout(layout);
-			binding->SetMip(mipIndex);
-			binding->SetMipRange(mipRange);
-			binding->SetArrayLayer(layer);
-			m_Dirty.SetDirty();
+			auto slotIt = m_SlotToIndex.find(candidateSlot);
+			if (slotIt == m_SlotToIndex.end())
+				return false;
+
+			const size_t descriptorIndex = slotIt->second;
+			if (descriptorIndex >= m_Descriptors.size())
+				return false;
+
+			const DescriptorType type = m_Descriptors[descriptorIndex].GetType();
+			return isStorage ? (type == DescriptorType::TextureStorage) : (type == DescriptorType::Image);
+		};
+
+		const uint32_t shift = isStorage ? SHADER_REGISTER_SHIFT_U : SHADER_REGISTER_SHIFT_T;
+		uint32_t actualSlot = slot;
+		if (!matches_texture_type(actualSlot))
+		{
+			actualSlot = slot + shift;
+			if (!matches_texture_type(actualSlot))
+				return;
 		}
+
+		DescriptorBinding* binding = FindBinding(actualSlot);
+		if (!binding)
+			return;
+
+		binding->SetResource(img);
+		binding->SetLayout(layout);
+		binding->SetMip(mipIndex);
+		binding->SetMipRange(mipRange);
+		binding->SetArrayLayer(layer);
+		m_Dirty.SetDirty();
 
 	}
 	
@@ -316,7 +396,7 @@ namespace SceneryEditorX
 		for (size_t i = 0; i < m_Descriptors.size(); ++i)
 		{
 			const Descriptor& descriptor = m_Descriptors[i];
-			if (descriptor.GetType() == DescriptorType::StructuredBuffer || descriptor.GetType() == DescriptorType::ConstantBuffer)
+			if (descriptor.GetType() == DescriptorType::ConstantBuffer)
 			{
 			    (*offsets)[(*count)++] = m_Bindings[i].GetDynamicOffset();
 			}
@@ -525,8 +605,10 @@ namespace SceneryEditorX
 			if (desc.GetStage() & ShaderTypeToMask(StageType::Vertex))                 stageFlags |= VK_SHADER_STAGE_VERTEX_BIT;
 			if (desc.GetStage() & ShaderTypeToMask(StageType::TessellationControl))    stageFlags |= VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
 			if (desc.GetStage() & ShaderTypeToMask(StageType::TessellationEvaluation)) stageFlags |= VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
+			if (desc.GetStage() & ShaderTypeToMask(StageType::Geometry))               stageFlags |= VK_SHADER_STAGE_GEOMETRY_BIT;
 			if (desc.GetStage() & ShaderTypeToMask(StageType::Fragment))               stageFlags |= VK_SHADER_STAGE_FRAGMENT_BIT;
 			if (desc.GetStage() & ShaderTypeToMask(StageType::Compute))                stageFlags |= VK_SHADER_STAGE_COMPUTE_BIT;
+			SEDX_CORE_ASSERT(stageFlags != 0, "DescriptorSet::Create: descriptor slot {} has zero stage flags", desc.GetSlot());
 			
 			auto& binding              = layoutBindings[i];
 			binding.binding            = desc.GetSlot();

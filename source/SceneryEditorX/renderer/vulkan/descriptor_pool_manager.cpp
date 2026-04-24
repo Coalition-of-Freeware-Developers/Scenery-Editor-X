@@ -44,6 +44,13 @@ namespace SceneryEditorX
 	{
 		const Ref<Device> device = RenderContext::Get()->GetDevice();
 		SEDX_CORE_ASSERT(device.IsValid(), "DescriptorPoolManager::Init requires a valid device");
+
+		if (s_Instance.m_Pool != VK_NULL_HANDLE)
+		{
+			SEDX_CORE_WARN_TAG("DescriptorPoolManager", "Init called while shared descriptor pool already exists, reusing existing pool");
+			return;
+		}
+
 		s_Instance.m_Device = device;
 		s_Instance.CreatePool();
 		SEDX_CORE_INFO_TAG("DescriptorPoolManager", "Shared descriptor pool created");
@@ -142,7 +149,7 @@ namespace SceneryEditorX
 
 		VkDescriptorPoolCreateInfo poolInfo{};
 		poolInfo.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-		poolInfo.flags         = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT_EXT;
+		poolInfo.flags         = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT_EXT | VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
 		poolInfo.maxSets       = kSetCount;
 		poolInfo.poolSizeCount = static_cast<uint32_t>(std::size(poolSizes));
 		poolInfo.pPoolSizes    = poolSizes.data();

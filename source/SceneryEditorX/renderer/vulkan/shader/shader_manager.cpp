@@ -68,6 +68,25 @@ namespace SceneryEditorX
 	}
 
 	/**
+	 * @brief Returns true when startup should only compile the minimal bootstrap shader set.
+	 * Enabled by default to stabilize renderer bring-up; disable with --full-shaders.
+	 */
+	static bool IsMinimalShaderBootstrapEnabled()
+	{
+		const auto& context = Application::Get().GetPlatformContext();
+		if (!context)
+			return true;
+
+		const auto& args = context->GetCommandLineArgs();
+		const bool forceFullShaders = std::ranges::any_of(args, [](const std::string& arg)
+		{
+			return arg == "--full-shaders";
+		});
+
+		return !forceFullShaders;
+	}
+
+	/**
 	 * @brief Resolves the absolute path of a shader source file.
 	 * @param filepath The input file path, which can be absolute or relative.
 	 * @return The resolved absolute path to the shader source file. 
@@ -316,6 +335,7 @@ namespace SceneryEditorX
 		const auto& registrations = GetShaderRegistrationMap();
 		const bool forceRecompileFromCli = IsCliShaderRecompileRequested();
 		const bool shaderCachesReady = !forceRecompileFromCli && AreAllRegisteredShaderStageCachesReady(registrations);
+		const bool minimalBootstrap = IsMinimalShaderBootstrapEnabled();
 
 		if (!shaderCachesReady)
 		{
@@ -326,10 +346,40 @@ namespace SceneryEditorX
 			SEDX_CORE_INFO_TAG("ShaderManager", "All startup shader stage caches are valid. Skipping Slang module compilation.");
 		}
 
-		for (const auto& [shaderType, registration] : registrations)
+		if (minimalBootstrap)
 		{
-			SEDX_CORE_ASSERT(registration.id == shaderType, "Shader registration key/id mismatch");
-			SetShaderAvailable(shaderType);
+			SEDX_CORE_WARN_TAG("ShaderManager", "Minimal shader bootstrap enabled (use --full-shaders to compile all registrations)");
+
+			const std::array<Renderer_Shader, 18> minimalShaders = {
+				Renderer_Shader::grid,
+				Renderer_Shader::depth_prepass,
+				Renderer_Shader::gbuffer,
+				Renderer_Shader::font,
+				Renderer_Shader::blit,
+				Renderer_Shader::light,
+				Renderer_Shader::light_composition,
+				Renderer_Shader::light_image_based,
+				Renderer_Shader::light_integration_brdf_specular_lut,
+				Renderer_Shader::light_integration_environment_filter,
+				Renderer_Shader::skysphere,
+				Renderer_Shader::skysphere_lut,
+				Renderer_Shader::skysphere_transmittance_lut,
+				Renderer_Shader::skysphere_multiscatter_lut,
+				Renderer_Shader::line
+			};
+
+			for (Renderer_Shader shaderType : minimalShaders)
+			{
+				SetShaderAvailable(shaderType);
+			}
+		}
+		else
+		{
+			for (const auto& [shaderType, registration] : registrations)
+			{
+				SEDX_CORE_ASSERT(registration.id == shaderType, "Shader registration key/id mismatch");
+				SetShaderAvailable(shaderType);
+			}
 		}
 
 		// Initialize known alias slots to shared owners as part of startup.
@@ -502,9 +552,9 @@ namespace SceneryEditorX
 				}
 			},
 			{
-				Renderer_Shader::light_integration_brdf_specular_lut_c,
+				Renderer_Shader::light_integration_brdf_specular_lut,
 				{
-					.id = Renderer_Shader::light_integration_brdf_specular_lut_c,
+					.id = Renderer_Shader::light_integration_brdf_specular_lut,
 					.debugName = "light_integration_brdf_specular_lut",
 					.asyncCompile = false,
 					.stages = {
@@ -513,9 +563,9 @@ namespace SceneryEditorX
 				}
 			},
 			{
-				Renderer_Shader::light_integration_environment_filter_c,
+				Renderer_Shader::light_integration_environment_filter,
 				{
-					.id = Renderer_Shader::light_integration_environment_filter_c,
+					.id = Renderer_Shader::light_integration_environment_filter,
 					.debugName = "light_integration_environment_filter",
 					.asyncCompile = true,
 					.stages = {
@@ -535,10 +585,10 @@ namespace SceneryEditorX
 				}
 			},
 			{
-				Renderer_Shader::light_image_based_c,
+				Renderer_Shader::light_image_based,
 				{
-					.id = Renderer_Shader::light_image_based_c,
-					.debugName = "light_image_based_c",
+					.id = Renderer_Shader::light_image_based,
+					.debugName = "light_image_based",
 					.asyncCompile = false,
 					.stages = {
 						{StageType::Compute, "resources/shaders/light_base.slang"}
@@ -568,6 +618,31 @@ namespace SceneryEditorX
 				}
 			},
 			{
+				Renderer_Shader::ssao,
+				{
+					.id = Renderer_Shader::ssao,
+					.debugName = "ssao",
+					.asyncCompile = true,
+					.stages = {
+						{StageType::Compute, "resources/shaders/ssao.slang"}
+					}
+				}
+			},
+			/*
+			{
+				Renderer_Shader::sss_bend,
+				{
+					.id = Renderer_Shader::sss_bend,
+					.debugName = "sss_bend",
+					.asyncCompile = true,
+					.stages = {
+						{StageType::Compute, "resources/shaders/sss_blend.slang"}
+					}
+				}
+			},
+			*/
+			// Renderer_Shader::sss_bend intentionally not registered while sss_blend.slang is disabled.
+			{
 				Renderer_Shader::bloom_luminance,
 				{
 					.id = Renderer_Shader::bloom_luminance,
@@ -579,10 +654,10 @@ namespace SceneryEditorX
 				}
 			},
 			{
-				Renderer_Shader::bloom_downsample_c,
+				Renderer_Shader::bloom_downsample,
 				{
-					.id = Renderer_Shader::bloom_downsample_c,
-					.debugName = "bloom_downsample_c",
+					.id = Renderer_Shader::bloom_downsample,
+					.debugName = "bloom_downsample",
 					.asyncCompile = true,
 					.stages = {
 						{StageType::Compute, "resources/shaders/bloom.slang", VertexType::MaxEnum}
@@ -590,10 +665,10 @@ namespace SceneryEditorX
 				}
 			},
 			{
-				Renderer_Shader::bloom_upsample_blend_mip_c,
+				Renderer_Shader::bloom_upsample_blend_mip,
 				{
-					.id = Renderer_Shader::bloom_upsample_blend_mip_c,
-					.debugName = "bloom_upsample_blend_mip_c",
+					.id = Renderer_Shader::bloom_upsample_blend_mip,
+					.debugName = "bloom_upsample_blend_mip",
 					.asyncCompile = true,
 					.stages = {
 						{StageType::Compute, "resources/shaders/bloom.slang", VertexType::MaxEnum}
@@ -656,6 +731,39 @@ namespace SceneryEditorX
 				}
 			},
 			{
+				Renderer_Shader::ffx_spd_average,
+				{
+					.id = Renderer_Shader::ffx_spd_average,
+					.debugName = "ffx_spd_average",
+					.asyncCompile = true,
+					.stages = {
+						{StageType::Compute, "resources/shaders/scale.slang", VertexType::MaxEnum}
+					}
+				}
+			},
+			{
+				Renderer_Shader::ffx_spd_min,
+				{
+					.id = Renderer_Shader::ffx_spd_min,
+					.debugName = "ffx_spd_min",
+					.asyncCompile = true,
+					.stages = {
+						{StageType::Compute, "resources/shaders/scale.slang", VertexType::MaxEnum}
+					}
+				}
+			},
+			{
+				Renderer_Shader::ffx_spd_max,
+				{
+					.id = Renderer_Shader::ffx_spd_max,
+					.debugName = "ffx_spd_max",
+					.asyncCompile = true,
+					.stages = {
+						{StageType::Compute, "resources/shaders/scale.slang", VertexType::MaxEnum}
+					}
+				}
+			},
+			{
 				Renderer_Shader::blit,
 				{
 					.id = Renderer_Shader::blit,
@@ -663,6 +771,28 @@ namespace SceneryEditorX
 					.asyncCompile = false,
 					.stages = {
 						{StageType::Compute, "resources/shaders/blit.slang"}
+					}
+				}
+			},
+			{
+				Renderer_Shader::cloud_noise_shape,
+				{
+					.id = Renderer_Shader::cloud_noise_shape,
+					.debugName = "cloud_noise_shape",
+					.asyncCompile = true,
+					.stages = {
+						{StageType::Compute, "resources/shaders/cloud_noise.slang"}
+					}
+				}
+			},
+			{
+				Renderer_Shader::cloud_noise_detail,
+				{
+					.id = Renderer_Shader::cloud_noise_detail,
+					.debugName = "cloud_noise_detail",
+					.asyncCompile = true,
+					.stages = {
+						{StageType::Compute, "resources/shaders/cloud_noise.slang"}
 					}
 				}
 			},
@@ -713,10 +843,54 @@ namespace SceneryEditorX
 				}
 			},
 			{
-				Renderer_Shader::indirect_cull_c,
+				Renderer_Shader::auto_exposure,
 				{
-					.id = Renderer_Shader::indirect_cull_c,
-					.debugName = "indirect_cull_c",
+					.id = Renderer_Shader::auto_exposure,
+					.debugName = "auto_exposure",
+					.asyncCompile = true,
+					.stages = {
+						{StageType::Compute, "resources/shaders/auto_exposure.slang"}
+					}
+				}
+			},
+			{
+				Renderer_Shader::dithering,
+				{
+					.id = Renderer_Shader::dithering,
+					.debugName = "dithering",
+					.asyncCompile = true,
+					.stages = {
+						{StageType::Compute, "resources/shaders/dither.slang"}
+					}
+				}
+			},
+			{
+				Renderer_Shader::cloud_shadow,
+				{
+					.id = Renderer_Shader::cloud_shadow,
+					.debugName = "cloud_shadow",
+					.asyncCompile = true,
+					.stages = {
+						{StageType::Compute, "resources/shaders/cloud_shadows.slang"}
+					}
+				}
+			},
+			{
+				Renderer_Shader::light_reflections,
+				{
+					.id = Renderer_Shader::light_reflections,
+					.debugName = "light_reflections",
+					.asyncCompile = true,
+					.stages = {
+						{StageType::Compute, "resources/shaders/light_reflections.slang"}
+					}
+				}
+			},
+			{
+				Renderer_Shader::indirect_cull,
+				{
+					.id = Renderer_Shader::indirect_cull,
+					.debugName = "indirect_cull",
 					.asyncCompile = true,
 					.stages = {
 						{StageType::Compute, "resources/shaders/indirect_cull.slang"}
