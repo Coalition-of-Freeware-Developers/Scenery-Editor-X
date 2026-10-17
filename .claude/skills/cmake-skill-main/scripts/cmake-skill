@@ -1,0 +1,431 @@
+#!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.12"
+# dependencies = [
+#     "jinja2",
+# ]
+# ///
+# -*- coding: utf-8 -*-
+"""
+cmake-skill: Agent-Native CMake automation pipeline.
+Handles configuration, building, testing, linting, and formatting.
+"""
+
+import argparse
+import json
+import multiprocessing
+import os
+import re
+import shutil
+import subprocess
+import sys
+from dataclasses import asdict, dataclass
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+try:
+    from jinja2 import Template
+except ImportError:
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "jinja2", "-q"])
+    from jinja2 import Template
+
+
+@dataclass
+class Diagnostic:
+    """Represents a diagnostic entry from CMake, the compiler, or linter."""
+
+    file: Optional[str]
+    line: Optional[int]
+    column: Optional[int]
+    severity: str
+    message: str
+    check: str = "cmake-build"
+    call_stack: List[str] = None
+
+
+# --- Reporting Template (Dashboard Style) ---
+MARKDOWN_TEMPLATE = """
+# Project Build Dashboard ({{ timestamp }})
+
+| Phase | Status | Last Run |
+|---|---|---|
+| Format | {{ results.format.status_icon }} | {{ results.format.last_run or 'N/A' }} |
+| Lint | {{ results.lint.status_icon }} | {{ results.lint.last_run or 'N/A' }} |
+| Configure | {{ results.configure.status_icon }} | {{ results.configure.last_run or 'N/A' }} |
+| Build | {{ results.build.status_icon }} | {{ results.build.last_run or 'N/A' }} |
+| Test | {{ results.test.status_icon }} | {{ results.test.last_run or 'N/A' }} |
+
+{% for phase, data in results.items() if data.errors %}
+### ❌ {{ phase|capitalize }} Errors
+{% for e in data.errors -%}
+#### {{ e.severity|capitalize }} in `{{ e.file or 'N/A' }}`:{{ e.line or '' }} {% if e.check != 'cmake-build' %}({{ e.check }}){% endif %}
+```
+{{ e.message }}
+```
+{% if e.call_stack %}
+**Call Stack:**
+{% for s in e.call_stack -%}
+- {{ s }}
+{% endfor %}
+{% endif %}
+
+{% endfor %}
+{% endfor %}
+
+---
+*Detailed reports available in build dir's `cmake_reports` folder.*
+"""
+
+
+def run_cmd(cmd: List[str], cwd: Path) -> subprocess.CompletedProcess:
+    """Helper to run shell commands with full environment."""
+    return subprocess.run(
+        cmd, cwd=str(cwd), capture_output=True, text=True, env=os.environ, check=False
+    )
+
+
+def parse_cmake_errors(stderr: str) -> List[Diagnostic]:
+    """Parses CMake configuration errors using a robust state-machine."""
+    diagnostics = []
+    lines = stderr.splitlines()
+    header_re = re.compile(r"^CMake (Error|Warning) at (.*?):(\d+)(?: \((.*?)\))?:")
+
+    current_diag = None
+    in_call_stack = False
+
+    for line in lines:
+        header_match = header_re.match(line)
+        if header_match:
+            if current_diag:
+                diagnostics.append(current_diag)
+            current_diag = Diagnostic(
+                file=header_match.group(2),
+                line=int(header_match.group(3)),
+                column=0,
+                severity=header_match.group(1).lower(),
+                message=line,
+                call_stack=[],
+            )
+            in_call_stack = False
+            continue
+
+        if current_diag:
+            if line.startswith("Call Stack (most recent call first):"):
+                in_call_stack = True
+                continue
+            if in_call_stack:
+                if line.startswith("  "):
+                    current_diag.call_stack.append(line.strip())
+                else:
+                    in_call_stack = False
+                    diagnostics.append(current_diag)
+                    current_diag = None
+            elif line.startswith("  "):
+                current_diag.message += "\n" + line
+            else:
+                diagnostics.append(current_diag)
+                current_diag = None
+
+    if current_diag:
+        diagnostics.append(current_diag)
+
+    if not diagnostics and stderr.strip():
+        diagnostics.append(Diagnostic(None, None, None, "error", stderr.strip()))
+    return diagnostics
+
+
+def parse_compiler_json(output: str) -> List[Diagnostic]:
+    """Parses GCC/Clang JSON diagnostics."""
+    diags = []
+    try:
+        data = json.loads(output)
+        items = data if isinstance(data, list) else data.get("diagnostics", [])
+        for item in items:
+            for loc in item.get("locations", []):
+                caret = loc.get("caret", {})
+                diags.append(
+                    Diagnostic(
+                        file=caret.get("file"),
+                        line=caret.get("line"),
+                        column=caret.get("column"),
+                        severity=item.get("kind", "error"),
+                        message=item.get("message", ""),
+                        check=item.get("option", "compiler"),
+                    )
+                )
+    except Exception:
+        pass
+    return diags
+
+
+def parse_lint_output(output: str) -> List[Diagnostic]:
+    """Parses cmake-lint output."""
+    diags = []
+    # Pattern: file:line: [check] message
+    pattern = re.compile(
+        r"^(?P<file>.*?):(?P<line>\d+):\s+\[(?P<check>.*?)\]\s+(?P<message>.*)$"
+    )
+    for line in output.splitlines():
+        if m := pattern.match(line):
+            diags.append(
+                Diagnostic(
+                    file=m.group("file"),
+                    line=int(m.group("line")),
+                    column=0,
+                    severity="warning",
+                    message=m.group("message"),
+                    check=m.group("check"),
+                )
+            )
+    return diags
+
+
+def get_git_cmake_files(root: Path) -> List[str]:
+    """Find all CMake files tracked by Git."""
+    try:
+        out = subprocess.check_output(
+            ["git", "ls-files"], cwd=str(root), text=True, stderr=subprocess.DEVNULL
+        )
+        return [
+            line
+            for line in out.splitlines()
+            if line.endswith(".cmake") or line.endswith("CMakeLists.txt")
+        ]
+    except Exception:
+        return []
+
+
+def perform_format_check(root: Path) -> Dict[str, Any]:
+    """Check formatting of CMake files."""
+    files = get_git_cmake_files(root)
+    if not files:
+        return {"success": True, "errors": []}
+
+    # cmake-format --check returns non-zero if formatting is needed
+    cmd = ["cmake-format", "--check"] + files
+    res = run_cmd(cmd, root)
+    success = res.returncode == 0
+    errors = []
+    if not success:
+        errors = [
+            asdict(
+                Diagnostic(
+                    None, None, None, "warning", "Formatting issues found in CMake files."
+                )
+            )
+        ]
+    return {"success": success, "errors": errors}
+
+
+def perform_lint(root: Path) -> Dict[str, Any]:
+    """Run cmake-lint on all tracked CMake files."""
+    files = get_git_cmake_files(root)
+    if not files:
+        return {"success": True, "errors": []}
+
+    cmd = ["cmake-lint"] + files
+    res = run_cmd(cmd, root)
+    errors = parse_lint_output(res.stdout + res.stderr)
+    return {"success": len(errors) == 0, "errors": [asdict(e) for e in errors]}
+
+
+def perform_configure(root: Path, build_dir: Path, preset: str) -> Dict[str, Any]:
+    """Run the CMake configuration phase."""
+    cmd = [
+        "cmake",
+        "-S",
+        str(root),
+        "-B",
+        str(build_dir),
+        f"--preset={preset}",
+        "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON",
+    ]
+    res = run_cmd(cmd, root)
+    success = res.returncode == 0
+    return {
+        "success": success,
+        "errors": [asdict(d) for d in parse_cmake_errors(res.stderr)] if not success else [],
+    }
+
+
+def perform_build(
+    root: Path, build_dir: Path, jobs: int, targets: List[str]
+) -> Dict[str, Any]:
+    """Run the CMake build phase."""
+    cmd = ["cmake", "--build", str(build_dir), "--parallel", str(jobs)]
+    for t in targets:
+        cmd.extend(["--target", t])
+    res = run_cmd(cmd, root)
+    success = res.returncode == 0
+    errors = []
+    if not success:
+        combined = res.stderr + res.stdout
+        errors = [asdict(d) for d in parse_compiler_json(combined)]
+        if not errors:
+            errors = [asdict(Diagnostic(None, None, None, "error", combined))]
+    return {"success": success, "errors": errors}
+
+
+def perform_test(root: Path, build_dir: Path, preset: str, jobs: int) -> Dict[str, Any]:
+    """Run the CTest phase."""
+    cmd = [
+        "ctest",
+        "--test-dir",
+        str(build_dir),
+        "--preset",
+        preset,
+        "-j",
+        str(jobs),
+        "--output-on-failure",
+    ]
+    res = run_cmd(cmd, root)
+    success = res.returncode == 0
+    errors = []
+    if not success:
+        errors = [asdict(Diagnostic("CTest", None, None, "error", res.stdout + res.stderr))]
+    return {"success": success, "errors": errors}
+
+
+def main() -> int:
+    """Main dashboard execution flow."""
+    ap = argparse.ArgumentParser(description="Agent-Native CMake Specialist")
+    ap.add_argument(
+        "action",
+        choices=["configure", "build", "test", "lint", "format", "list", "pipeline"],
+    )
+    ap.add_argument("--project-root", default=".")
+    ap.add_argument("--preset", help="CMake preset name")
+    ap.add_argument("--target", action="append", default=[])
+    ap.add_argument("--clean", action="store_true")
+    ap.add_argument("--jobs", "-j", type=int, default=multiprocessing.cpu_count())
+    ap.add_argument("--output-dir", default="cmake_reports")
+    args = ap.parse_args()
+
+    root = Path(args.project_root).resolve()
+    os.chdir(str(root))
+
+    presets_file = root / "CMakePresets.json"
+    if args.action == "list":
+        data = json.loads(presets_file.read_text()) if presets_file.exists() else {}
+        print(json.dumps(data.get("configurePresets", []), indent=2))
+        return 0
+
+    preset = args.preset
+    if not preset and presets_file.exists():
+        preset = (
+            json.loads(presets_file.read_text())
+            .get("configurePresets", [{}])[0]
+            .get("name")
+        )
+
+    if not preset and args.action not in ["lint", "format"]:
+        print(json.dumps({"error": "No preset found"}, indent=2))
+        return 1
+
+    # Preset fallback chain (common naming patterns)
+    FALLBACK_PRESETS = [
+        "linux-release", "rel", "release",
+        "linux-debug", "debug", "dbg",
+        "dev", "develop", "development",
+        "doc", "docs", "default",
+    ]
+    active_preset = preset
+    preset_candidates = [preset] + [p for p in FALLBACK_PRESETS if p != preset]
+
+    build_dir = root / "build" / (preset or "default")
+    if args.clean and build_dir.exists():
+        shutil.rmtree(build_dir)
+    build_dir.mkdir(parents=True, exist_ok=True)
+    report_dir = build_dir / args.output_dir
+    report_dir.mkdir(exist_ok=True)
+    report_json_path = report_dir / "cmake_report.json"
+
+    # Load existing state
+    if report_json_path.exists() and not args.clean:
+        try:
+            all_results = json.loads(report_json_path.read_text())
+        except Exception:
+            all_results = {}
+    else:
+        all_results = {}
+
+    phases = ["format", "lint", "configure", "build", "test"]
+    for p in phases:
+        if p not in all_results:
+            all_results[p] = {
+                "success": None,
+                "errors": [],
+                "status_icon": "⚪️ PENDING",
+                "last_run": None,
+            }
+
+    steps = phases if args.action == "pipeline" else [args.action]
+    overall_success, current_ts = True, datetime.now().isoformat()
+
+    for step in steps:
+        if step == "format":
+            res = perform_format_check(root)
+        elif step == "lint":
+            res = perform_lint(root)
+        elif step == "configure":
+            # Preset auto-fallback: try candidates until one succeeds
+            res = None
+            for candidate in preset_candidates:
+                candidate_build_dir = root / "build" / candidate
+                candidate_build_dir.mkdir(parents=True, exist_ok=True)
+                test_res = perform_configure(root, candidate_build_dir, candidate)
+                if test_res["success"]:
+                    res = test_res
+                    active_preset = candidate
+                    build_dir = candidate_build_dir
+                    break
+                else:
+                    res = test_res  # Keep last failure for reporting
+            if res is None:
+                res = {"success": False, "errors": [{"severity": "error", "message": "All presets failed"}]}
+        elif step == "build":
+            res = perform_build(root, build_dir, args.jobs, args.target)
+        else:
+            res = perform_test(root, build_dir, active_preset, args.jobs)
+
+        res["last_run"] = current_ts
+        res["status_icon"] = "✅ SUCCESS" if res["success"] else "❌ FAILED"
+        all_results[step] = res
+        if not res["success"]:
+            overall_success = False
+            break
+
+    # Save and Render
+    report_json_path.write_text(json.dumps(all_results, indent=2, ensure_ascii=False))
+    rep_md = Template(MARKDOWN_TEMPLATE).render(
+        timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S"), results=all_results
+    )
+    (report_dir / "cmake_report.md").write_text(rep_md)
+
+    summary = {
+        "quick_ref": {
+            "success": overall_success,
+            "steps": {k: v["status_icon"] for k, v in all_results.items()},
+        },
+        "artifacts": {"machine_report": str(report_json_path.resolve())},
+    }
+
+    # Write manifest for cross-skill discovery (relative paths for portability)
+    manifest = {
+        "preset": active_preset or "default",
+        "report_dir": str(report_dir.relative_to(root)),
+        "json_report": str(report_json_path.relative_to(root)),
+        "md_report": str((report_dir / "cmake_report.md").relative_to(root)),
+        "timestamp": datetime.now().isoformat(),
+    }
+    (root / ".cmake-skill-manifest.json").write_text(json.dumps(manifest, indent=2, ensure_ascii=False))
+
+    print(json.dumps(summary, ensure_ascii=False))
+    return 0 if overall_success else 1
+
+
+if __name__ == "__main__":
+    import sys
+
+    raise SystemExit(main())

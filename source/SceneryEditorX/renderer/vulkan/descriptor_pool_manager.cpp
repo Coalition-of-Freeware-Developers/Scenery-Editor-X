@@ -67,6 +67,11 @@ namespace SceneryEditorX
 		s_Instance.m_Device = nullptr;
 	}
 
+	bool DescriptorPoolManager::IsInitialized()
+	{
+		return s_Instance.m_Pool != VK_NULL_HANDLE;
+	}
+
 	DescriptorPoolManager& DescriptorPoolManager::Get()
 	{
 		SEDX_CORE_ASSERT(s_Instance.m_Pool != VK_NULL_HANDLE, "DescriptorPoolManager::Get() called before Init()");

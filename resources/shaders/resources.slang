@@ -192,12 +192,12 @@ public [[vk::binding(52)]] Texture3D tex3d_cloud_shape : register(t52);  // 128^
 public [[vk::binding(53)]] Texture3D tex3d_cloud_detail : register(t53); // 32^3 high-frequency detail
 
 // bindless arrays
-public Texture2D material_textures[] : register(t15, space1);
-public StructuredBuffer<MaterialParameters> material_parameters : register(t16, space2);
-public StructuredBuffer<LightParameters> light_parameters : register(t17, space3);
-public StructuredBuffer<aabb> aabbs : register(t18, space4);
-public SamplerComparisonState samplers_comparison[] : register(s0, space6);
-public SamplerState samplers[] : register(s1, space7);
+public [[vk::binding(15, 1)]] Texture2D material_textures[] : register(t15, space1);
+public [[vk::binding(16, 2)]] StructuredBuffer<MaterialParameters> material_parameters : register(t16, space2);
+public [[vk::binding(17, 3)]] StructuredBuffer<LightParameters> light_parameters : register(t17, space3);
+public [[vk::binding(18, 4)]] StructuredBuffer<aabb> aabbs : register(t18, space4);
+public [[vk::binding(0, 6)]] SamplerComparisonState samplers_comparison[] : register(s0, space6);
+public [[vk::binding(1, 7)]] SamplerState samplers[] : register(s1, space7);
 
 // storage textures/buffers (image_format unknown allows flexible format binding)
 public [[vk::binding(100)]] [[vk::image_format("unknown")]] RWTexture2D<float4> tex_uav : register(u100);
@@ -234,7 +234,8 @@ public struct DrawData
 };
 
 // bindless draw data - per-draw transforms, material indices, etc.
-public [[vk::binding(19)]] StructuredBuffer<DrawData> draw_data : register(t19, space5);
+// set 5 is the BindlessResource::DrawData set bound by BindlessManager (a bare vk::binding(19) would put it in set 0)
+public [[vk::binding(19, 5)]] StructuredBuffer<DrawData> draw_data : register(t19, space5);
 
 // vertex pulling - global geometry buffer exposed as a structured buffer
 public struct PulledVertex
@@ -253,18 +254,18 @@ public struct PackedInstance
     public uint yaw_scale;  // yaw_packed (uint8) | scale_packed (uint8) | padding (uint16)
 };
 
-public StructuredBuffer<PulledVertex> geometry_vertices : register(t20, space8);
-public StructuredBuffer<uint> geometry_indices : register(t22, space9);
-public StructuredBuffer<PackedInstance> geometry_instances : register(t23, space10);
+public [[vk::binding(20, 8)]] StructuredBuffer<PulledVertex> geometry_vertices : register(t20, space8);
+public [[vk::binding(22, 9)]] StructuredBuffer<uint> geometry_indices : register(t22, space9);
+public [[vk::binding(23, 10)]] StructuredBuffer<PackedInstance> geometry_instances : register(t23, space10);
 
 // gpu-driven indirect drawing uav bindings
 // input: populated by cpu, read by the cull compute shader
-public RWStructuredBuffer<IndirectDrawArgs> indirect_draw_args : register(u131);
-public RWStructuredBuffer<DrawData> indirect_draw_data : register(u132);
+public [[vk::binding(131)]] RWStructuredBuffer<IndirectDrawArgs> indirect_draw_args : register(u131);
+public [[vk::binding(132)]] RWStructuredBuffer<DrawData> indirect_draw_data : register(u132);
 // output: written by the cull compute shader, read by vertex shaders
-public RWStructuredBuffer<IndirectDrawArgs> indirect_draw_args_out : register(u133);
-public RWStructuredBuffer<DrawData> indirect_draw_data_out : register(u134);
-public RWStructuredBuffer<uint> indirect_draw_count : register(u135);
+public [[vk::binding(133)]] RWStructuredBuffer<IndirectDrawArgs> indirect_draw_args_out : register(u133);
+public [[vk::binding(134)]] RWStructuredBuffer<DrawData> indirect_draw_data_out : register(u134);
+public [[vk::binding(135)]] RWStructuredBuffer<uint> indirect_draw_count : register(u135);
 
 // gpu-driven particle system
 public struct Particle
@@ -298,19 +299,19 @@ public struct EmitterParams
     float padding2;
 };
 
-RWStructuredBuffer<Particle> particle_buffer_a : register(u136);
-RWStructuredBuffer<uint> particle_counter : register(u138);
-RWStructuredBuffer<EmitterParams> particle_emitter : register(u139);
+[[vk::binding(136)]] RWStructuredBuffer<Particle> particle_buffer_a : register(u136);
+[[vk::binding(138)]] RWStructuredBuffer<uint> particle_counter : register(u138);
+[[vk::binding(139)]] RWStructuredBuffer<EmitterParams> particle_emitter : register(u139);
 
 // gpu texture compression
-RWStructuredBuffer<uint> tex_compress_in : register(u140);
-RWStructuredBuffer<uint4> tex_compress_out : register(u141);     // bc3, bc5 (16 bytes per block)
-RWStructuredBuffer<uint2> tex_compress_out_bc1 : register(u142); // bc1 (8 bytes per block)
+[[vk::binding(140)]] RWStructuredBuffer<uint> tex_compress_in : register(u140);
+[[vk::binding(141)]] RWStructuredBuffer<uint4> tex_compress_out : register(u141);     // bc3, bc5 (16 bytes per block)
+[[vk::binding(142)]] RWStructuredBuffer<uint2> tex_compress_out_bc1 : register(u142); // bc1 (8 bytes per block)
 
 // buffers
 [[vk::push_constant]]
 public PassBufferData buffer_pass;
-public cbuffer BufferFrame : register(b200) { FrameBufferData buffer_frame; };
+public [[vk::binding(200)]] cbuffer BufferFrame : register(b200) { FrameBufferData buffer_frame; };
 
 // easy access to buffer_frame members
 public bool is_hdr_enabled() { return buffer_frame.hdr_enabled != 0.0f; }

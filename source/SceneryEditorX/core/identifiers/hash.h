@@ -49,10 +49,6 @@ namespace SceneryEditorX
 	class Hash
 	{
 	public:
-		// FNV-1a constants for 64-bit hashing
-		static constexpr uint64_t FNV1A_OFFSET_BASIS = 14695981039346656037ULL;
-		static constexpr uint64_t FNV1A_PRIME = 1099511628211ULL;
-
 		Hash();
 		~Hash();
 		explicit Hash(uint64_t value);
@@ -62,18 +58,7 @@ namespace SceneryEditorX
 		Hash(Hash &&other) noexcept;                // Move constructor
 		Hash &operator=(Hash &&other) noexcept;     // Move assignment operator
 
-		/**
-		 * @brief Equality comparison operator
-		 * @param other Hash to compare with
-		 * @return true if hashes are equal
-		 */
 		bool operator==(const Hash &other) const;
-
-		/**
-		 * @brief Inequality comparison operator
-		 * @param other Hash to compare with
-		 * @return true if hashes are not equal
-		 */
 		bool operator!=(const Hash &other) const;
 
 		/**
@@ -92,13 +77,13 @@ namespace SceneryEditorX
 		 * @brief Check if hash equals the FNV-1a prime constant
 		 * @return true if hash equals FNV-1a prime
 		 */
-		[[nodiscard]] bool IsFNV1APrime() const { return m_Hash == FNV1A_PRIME; }
+		[[nodiscard]] bool IsFNV1APrime() const;
 
 		/**
 		 * @brief Check if hash equals the FNV-1a offset basis constant
 		 * @return true if hash equals FNV-1a offset basis
 		 */
-		[[nodiscard]] bool IsFNV1AOffsetBasis() const { return m_Hash == FNV1A_OFFSET_BASIS; }
+		[[nodiscard]] bool IsFNV1AOffsetBasis() const;
 
 		/**
 		 * @brief Reset hash to zero
@@ -176,7 +161,7 @@ namespace SceneryEditorX
 		 * @param bits Number of bits to rotate (0-63)
 		 * @return Rotated hash value
 		 */
-		static uint64_t RotateLeft(uint64_t hash, uint32_t bits);
+		static uint64_t ShiftLeft(uint64_t hash, uint32_t bits);
 
 		/**
 		 * @brief Rotate hash value right by specified bits
@@ -184,7 +169,7 @@ namespace SceneryEditorX
 		 * @param bits Number of bits to rotate (0-63)
 		 * @return Rotated hash value
 		 */
-		static uint64_t RotateRight(uint64_t hash, uint32_t bits);
+		static uint64_t ShiftRight(uint64_t hash, uint32_t bits);
 
 		/**
 		 * @brief Mix hash value with additional data (useful for hash finalization)
@@ -192,6 +177,22 @@ namespace SceneryEditorX
 		 * @return Mixed hash value
 		 */
 		static uint64_t Mix(uint64_t hash);
+
+		/**
+		 * @brief Combine two hash values using a specific algorithm
+		 * @param seed First hash value
+		 * @param value Second hash value
+		 * @return Combined hash value
+		 */
+		static size_t HashCombine(size_t seed, size_t value) noexcept;
+
+		/**
+		 * @brief Generate hash from byte array
+		 * @param data Pointer to data buffer
+		 * @param size Size of data in bytes
+		 * @return Hash value
+		 */
+		static size_t HashBytes(const void* data, size_t size) noexcept;
 
 	private:
 		uint64_t m_Hash = 0;

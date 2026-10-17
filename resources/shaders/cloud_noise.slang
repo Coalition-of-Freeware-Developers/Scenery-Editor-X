@@ -31,6 +31,7 @@
 
 // 3D noise generation for volumetric clouds (Horizon Zero Dawn / GPU Pro 7 techniques)
 import common;
+import resources;
 
 // hash functions
 float3 hash33(float3 p)

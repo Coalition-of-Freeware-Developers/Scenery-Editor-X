@@ -127,6 +127,11 @@ namespace SceneryEditorX
 		if (!device.IsValid())
 			return;
 
+		// Release cached descriptor sets while the shared pool (and the loggers) still exist; left alone they
+		// would be destroyed in the CRT static-destructor phase.
+		s_DescriptorSets.clear();
+		s_DescriptorCache.clear();
+
 		for (VkDescriptorSetLayout& layout : s_Layouts)
 		{
 			if (layout != VK_NULL_HANDLE)
@@ -199,175 +204,64 @@ namespace SceneryEditorX
 		{
 			static_size = 0;
 		
-			if (pipelineState.IsCompute())
+			// Merge each stage's own bindings: same (binding, type) ORs the stage masks, a type mismatch on one
+			// binding can never form a valid VkDescriptorSetLayout and fails the PSO.
+			bool conflict = false;
+			const auto merge_stage = [&](const StageType stage)
 			{
-				SEDX_CORE_ASSERT(pipelineState.shaders[static_cast<uint32_t>(StageType::Compute)] && pipelineState.shaders[static_cast<uint32_t>(StageType::Compute)]->IsCompiled());
-				const std::vector<Descriptor> descriptors = pipelineState.shaders[static_cast<uint32_t>(StageType::Compute)]->GetDescriptors();
-				for (const Descriptor& descriptor : descriptors)
+				const Shader* shader = pipelineState.shaders[static_cast<uint32_t>(stage)];
+				if (conflict || !shader || !shader->IsCompiled())
+					return;
+
+				for (const Descriptor& descriptor : shader->GetDescriptors(stage))
 				{
-					bool merged = false;
+					Descriptor* existing = nullptr;
 					for (size_t i = 0; i < static_size; ++i)
 					{
-						if (static_buffer[i].GetSlot() != descriptor.GetSlot())
-							continue;
-
-						if (static_buffer[i].GetType() != descriptor.GetType())
+						if (static_buffer[i].GetSlot() == descriptor.GetSlot())
 						{
-							SEDX_CORE_ERROR_TAG("BindlessManager", "Descriptor reflection conflict in compute PSO: slot={} existingType={} incomingType={} (hard fail)",
-								descriptor.GetSlot(),
-								static_cast<uint32_t>(static_buffer[i].GetType()),
-								static_cast<uint32_t>(descriptor.GetType()));
-							outCount = 0;
-							return false;
+							existing = &static_buffer[i];
+							break;
 						}
-
-						static_buffer[i].SetStage(static_buffer[i].GetStage() | descriptor.GetStage());
-						merged = true;
-						break;
 					}
 
-					if (!merged)
+					if (!existing)
 					{
 						SEDX_CORE_ASSERT(static_size < 256);
 						static_buffer[static_size++] = descriptor;
+						continue;
 					}
+
+					if (existing->GetType() != descriptor.GetType())
+					{
+						SEDX_CORE_ERROR_TAG("BindlessManager", "Descriptor conflict in PSO '{}': binding {} is '{}' (type {}) in one stage and '{}' (type {}) in another",
+							pipelineState.name ? pipelineState.name : "<unnamed>", descriptor.GetSlot(),
+							existing->GetName(), static_cast<uint32_t>(existing->GetType()),
+							descriptor.GetName(), static_cast<uint32_t>(descriptor.GetType()));
+						conflict = true;
+						return;
+					}
+
+					existing->SetStage(existing->GetStage() | descriptor.GetStage());
 				}
+			};
+
+			if (pipelineState.IsCompute())
+			{
+				SEDX_CORE_ASSERT(pipelineState.shaders[static_cast<uint32_t>(StageType::Compute)] && pipelineState.shaders[static_cast<uint32_t>(StageType::Compute)]->IsCompiled());
+				merge_stage(StageType::Compute);
 			}
 			else if (pipelineState.IsGraphics())
 			{
 				SEDX_CORE_ASSERT(pipelineState.shaders[static_cast<uint32_t>(StageType::Vertex)] && pipelineState.shaders[static_cast<uint32_t>(StageType::Vertex)]->IsCompiled());
-				const std::vector<Descriptor> vertexDescriptors = pipelineState.shaders[static_cast<uint32_t>(StageType::Vertex)]->GetDescriptors();
-				for (const Descriptor& descriptor : vertexDescriptors)
-				{
-					bool merged = false;
-					for (size_t i = 0; i < static_size; ++i)
-					{
-						if (static_buffer[i].GetSlot() != descriptor.GetSlot())
-							continue;
+				for (const StageType stage : {StageType::Vertex, StageType::TessellationControl, StageType::TessellationEvaluation, StageType::Geometry, StageType::Fragment})
+					merge_stage(stage);
+			}
 
-						if (static_buffer[i].GetType() != descriptor.GetType())
-						{
-							SEDX_CORE_ERROR_TAG("BindlessManager", "Descriptor reflection conflict in graphics PSO (VS): slot={} existingType={} incomingType={} (hard fail)",
-								descriptor.GetSlot(),
-								static_cast<uint32_t>(static_buffer[i].GetType()),
-								static_cast<uint32_t>(descriptor.GetType()));
-							outCount = 0;
-							return false;
-						}
-
-						static_buffer[i].SetStage(static_buffer[i].GetStage() | descriptor.GetStage());
-						merged = true;
-						break;
-					}
-
-					if (!merged)
-					{
-						SEDX_CORE_ASSERT(static_size < 256);
-						static_buffer[static_size++] = descriptor;
-					}
-				}
-				
-				if (pipelineState.shaders[static_cast<uint32_t>(StageType::Fragment)] && pipelineState.shaders[static_cast<uint32_t>(StageType::Fragment)]->IsCompiled())
-				{
-					const std::vector<Descriptor> fragmentDescriptors = pipelineState.shaders[static_cast<uint32_t>(StageType::Fragment)]->GetDescriptors();
-					for (const Descriptor& descriptor : fragmentDescriptors)
-					{
-						bool merged = false;
-						for (size_t i = 0; i < static_size; ++i)
-						{
-							if (static_buffer[i].GetSlot() != descriptor.GetSlot())
-								continue;
-
-							if (static_buffer[i].GetType() != descriptor.GetType())
-							{
-								SEDX_CORE_ERROR_TAG("BindlessManager", "Descriptor reflection conflict in graphics PSO (FS): slot={} existingType={} incomingType={} (hard fail)",
-									descriptor.GetSlot(),
-									static_cast<uint32_t>(static_buffer[i].GetType()),
-									static_cast<uint32_t>(descriptor.GetType()));
-								outCount = 0;
-								return false;
-							}
-
-							static_buffer[i].SetStage(static_buffer[i].GetStage() | descriptor.GetStage());
-							merged = true;
-							break;
-						}
-
-						if (!merged)
-						{
-							SEDX_CORE_ASSERT(static_size < 256);
-							static_buffer[static_size++] = descriptor;
-						}
-					}
-				}
-		
-				if (pipelineState.shaders[static_cast<uint32_t>(StageType::TessellationControl)] && pipelineState.shaders[static_cast<uint32_t>(StageType::TessellationControl)]->IsCompiled())
-				{
-					const std::vector<Descriptor> tessControlDescriptors = pipelineState.shaders[static_cast<uint32_t>(StageType::TessellationControl)]->GetDescriptors();
-					for (const Descriptor& descriptor : tessControlDescriptors)
-					{
-						bool merged = false;
-						for (size_t i = 0; i < static_size; ++i)
-						{
-							if (static_buffer[i].GetSlot() != descriptor.GetSlot())
-								continue;
-
-							if (static_buffer[i].GetType() != descriptor.GetType())
-							{
-								SEDX_CORE_ERROR_TAG("BindlessManager", "Descriptor reflection conflict in graphics PSO (TCS): slot={} existingType={} incomingType={} (hard fail)",
-									descriptor.GetSlot(),
-									static_cast<uint32_t>(static_buffer[i].GetType()),
-									static_cast<uint32_t>(descriptor.GetType()));
-								outCount = 0;
-								return false;
-							}
-
-							static_buffer[i].SetStage(static_buffer[i].GetStage() | descriptor.GetStage());
-							merged = true;
-							break;
-						}
-
-						if (!merged)
-						{
-							SEDX_CORE_ASSERT(static_size < 256);
-							static_buffer[static_size++] = descriptor;
-						}
-					}
-				}
-		
-				if (pipelineState.shaders[static_cast<uint32_t>(StageType::TessellationEvaluation)] && pipelineState.shaders[static_cast<uint32_t>(StageType::TessellationEvaluation)]->IsCompiled())
-				{
-					const std::vector<Descriptor> tessEvalDescriptors = pipelineState.shaders[static_cast<uint32_t>(StageType::TessellationEvaluation)]->GetDescriptors();
-					for (const Descriptor& descriptor : tessEvalDescriptors)
-					{
-						bool merged = false;
-						for (size_t i = 0; i < static_size; ++i)
-						{
-							if (static_buffer[i].GetSlot() != descriptor.GetSlot())
-								continue;
-
-							if (static_buffer[i].GetType() != descriptor.GetType())
-							{
-								SEDX_CORE_ERROR_TAG("BindlessManager", "Descriptor reflection conflict in graphics PSO (TES): slot={} existingType={} incomingType={} (hard fail)",
-									descriptor.GetSlot(),
-									static_cast<uint32_t>(static_buffer[i].GetType()),
-									static_cast<uint32_t>(descriptor.GetType()));
-								outCount = 0;
-								return false;
-							}
-
-							static_buffer[i].SetStage(static_buffer[i].GetStage() | descriptor.GetStage());
-							merged = true;
-							break;
-						}
-
-						if (!merged)
-						{
-							SEDX_CORE_ASSERT(static_size < 256);
-							static_buffer[static_size++] = descriptor;
-						}
-					}
-				}
+			if (conflict)
+			{
+				outCount = 0;
+				return false;
 			}
 		
 			// sort by slot

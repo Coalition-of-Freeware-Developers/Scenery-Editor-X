@@ -427,9 +427,13 @@ namespace SceneryEditorX
 	void Log::PrintMessage(Log::Type type, Log::Level level, const std::string_view format, Args &&...args)
 #endif
 	{
+		// Loggers are reset by Log::ShutDown(); objects destroyed later (statics, late Ref releases) must not crash here.
+		auto logger = (type == Type::Core) ? GetCoreLogger() : GetEditorLogger();
+		if (!logger)
+			return;
+
 		if (auto &detail = m_EnabledTags[""]; detail.enabled && detail.levelFilter <= level)
 		{
-			auto logger = (type == Type::Core) ? GetCoreLogger() : GetEditorLogger();
 			switch (level)
 			{
 			case Level::Trace:
@@ -456,10 +460,12 @@ namespace SceneryEditorX
 	template <typename... Args>
 	void Log::PrintMessageTag(Log::Type type, Log::Level level, std::string_view tag, const std::format_string<Args...> format, Args &&...args)
 	{
+		auto logger = (type == Type::Core) ? GetCoreLogger() : GetEditorLogger();
+		if (!logger)
+			return;
+
 		if (auto &detail = m_EnabledTags[std::string(tag)]; detail.enabled && detail.levelFilter <= level)
 		{
-			auto logger = (type == Type::Core) ? GetCoreLogger() : GetEditorLogger();
-			if (!logger) return;
 			std::string formatted = std::format(format, std::forward<Args>(args)...);
 			switch (level)
 			{
@@ -486,9 +492,12 @@ namespace SceneryEditorX
 
 	inline void Log::PrintMessageTag(Log::Type type, Log::Level level, std::string_view tag, std::string_view message)
 	{
+		auto logger = (type == Type::Core) ? GetCoreLogger() : GetEditorLogger();
+		if (!logger)
+			return;
+
 		if (auto &detail = m_EnabledTags[std::string(tag.data(), tag.size())]; detail.enabled && detail.levelFilter <= level)
 		{
-			auto logger = (type == Type::Core) ? GetCoreLogger() : GetEditorLogger();
 			switch (level)
 			{
 			case Level::Trace:
@@ -517,7 +526,8 @@ namespace SceneryEditorX
 	{
 		auto logger = (type == Type::Core) ? GetCoreLogger() : (type == Type::Editor) ? GetEditorLogger() : GetLauncherLogger();
 		auto formatted = std::format(message, std::forward<Args>(args)...);
-		logger->error("{}: {}", prefix, formatted);
+		if (logger)
+			logger->error("{}: {}", prefix, formatted);
 	#ifdef SEDX_ASSERT_MESSAGE_BOX
 		MessageBoxA(nullptr, formatted.c_str(), "Scenery Editor X | Assert", MB_OK | MB_ICONERROR);
 	#endif
@@ -529,7 +539,8 @@ namespace SceneryEditorX
 	inline void Log::PrintAssertMessage(Log::Type type, std::string_view prefix)
 	{
 		auto logger = (type == Type::Core) ? GetCoreLogger() : (type == Type::Editor) ? GetEditorLogger() : GetLauncherLogger();
-		logger->error("{}", prefix);
+		if (logger)
+			logger->error("{}", prefix);
 	#ifdef SEDX_ASSERT_MESSAGE_BOX
 		MessageBoxA(nullptr, "- No message -", "Scenery Editor X | Assert", MB_OK | MB_ICONERROR);
 	#endif

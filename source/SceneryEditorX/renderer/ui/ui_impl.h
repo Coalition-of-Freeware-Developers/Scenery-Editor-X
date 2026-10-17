@@ -110,8 +110,7 @@ namespace SceneryEditorX::UI
 	extern Ref<DepthStencilState> g_DepthStencil_State;
 	extern Ref<RasterizerState>   g_Rasterizer_State;
 	extern Ref<BlendState>        g_BlendState;
-	extern Ref<Shader>            g_VertexShader;
-	extern Ref<Shader>            g_FragmentShader;
+	extern Ref<Shader>            g_UIShader;		// ui.slang: vertex + fragment stages
 
 	/**
 	 * @brief Raw Vulkan objects owned by the ImGui backend.

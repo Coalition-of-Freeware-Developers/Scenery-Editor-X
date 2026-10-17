@@ -42,9 +42,6 @@
 #include <SceneryEditorX/renderer/vulkan/swapchain.h>
 #include <SceneryEditorX/renderer/vulkan/debug/graphics_debug.h>
 #include <SceneryEditorX/renderer/vulkan/shader/shader.h>
-#include <SceneryEditorX/renderer/vulkan/shader/shader_input.h>
-#include <SceneryEditorX/renderer/vulkan/shader/shader_manager.h>
-#include <SceneryEditorX/renderer/vulkan/shader/shader_stage.h>
 #include <SceneryEditorX/renderer/vulkan/queue_manager.h>
 #include <SceneryEditorX/utils/size_macro_utils.h>
 #include <cstring>
@@ -95,27 +92,6 @@ namespace SceneryEditorX
 		}
 	}
 
-	/**
-	 * @brief Helper to map VkShaderStageFlagBits to a small bitmask for duplicate detection
-	 * @param stage The Vulkan shader stage flag bit to convert
-	 * @return A bitmask representing the shader stage
-	 */
-	static uint32_t StageFlagToBit(const VkShaderStageFlagBits stage)
-	{
-		switch (stage)
-		{
-			case VK_SHADER_STAGE_VERTEX_BIT:					return 1u << 0;
-			case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT:		return 1u << 1;
-			case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT:	return 1u << 2;
-			case VK_SHADER_STAGE_GEOMETRY_BIT:					return 1u << 3;
-			case VK_SHADER_STAGE_FRAGMENT_BIT:					return 1u << 4;
-			case VK_SHADER_STAGE_COMPUTE_BIT:					return 1u << 5;
-			default: 
-				return 0;
-		}
-
-	}
-
 #pragma endregion
 
 	Pipeline::Pipeline(PipelineState &state, DescriptorSet *layout)
@@ -126,52 +102,24 @@ namespace SceneryEditorX
 		m_PushConstant_Stages = 0;
 
 #pragma region Shader Stages
-		Ref<ShaderManager> shaderManager = ShaderManager::Get();
-		std::array<Ref<Shader>, static_cast<uint32_t>(Renderer_Shader::MaxEnum)> shaders = shaderManager->GetShaders();
-		(void)shaders;
 
+		// Each PSO slot points at a Shader program; take the matching stage's module from it.
 		std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
+		const auto append_stage = [&state, &shaderStages](const StageType stage)
+		{
+			const Shader* shader = state.shaders[static_cast<uint32_t>(stage)];
+			if (shader && shader->IsCompiled() && shader->HasStage(stage))
+				shaderStages.push_back(shader->GetStageCreateInfo(stage));
+		};
+
 		if (state.IsCompute())
 		{
-			if (Shader* computeShader = state.shaders[static_cast<uint32_t>(StageType::Compute)])
-			{
-				if (computeShader->IsCompiled() && computeShader->HasStage(StageType::Compute))
-				{
-					shaderStages.push_back(computeShader->GetShaderStage(StageType::Compute)->GetStageCreateInfo());
-				}
-			}
+			append_stage(StageType::Compute);
 		}
 		else if (state.IsGraphics())
 		{
-			if (Shader* vertexShader = state.shaders[static_cast<uint32_t>(StageType::Vertex)])
-			{
-				if (vertexShader->IsCompiled() && vertexShader->HasStage(StageType::Vertex))
-					shaderStages.push_back(vertexShader->GetShaderStage(StageType::Vertex)->GetStageCreateInfo());
-			}
-
-			if (Shader* tessControlShader = state.shaders[static_cast<uint32_t>(StageType::TessellationControl)])
-			{
-				if (tessControlShader->IsCompiled() && tessControlShader->HasStage(StageType::TessellationControl))
-					shaderStages.push_back(tessControlShader->GetShaderStage(StageType::TessellationControl)->GetStageCreateInfo());
-			}
-
-			if (Shader* tessEvalShader = state.shaders[static_cast<uint32_t>(StageType::TessellationEvaluation)])
-			{
-				if (tessEvalShader->IsCompiled() && tessEvalShader->HasStage(StageType::TessellationEvaluation))
-					shaderStages.push_back(tessEvalShader->GetShaderStage(StageType::TessellationEvaluation)->GetStageCreateInfo());
-			}
-
-			if (Shader* geometryShader = state.shaders[static_cast<uint32_t>(StageType::Geometry)])
-			{
-				if (geometryShader->IsCompiled() && geometryShader->HasStage(StageType::Geometry))
-					shaderStages.push_back(geometryShader->GetShaderStage(StageType::Geometry)->GetStageCreateInfo());
-			}
-
-			if (Shader* fragmentShader = state.shaders[static_cast<uint32_t>(StageType::Fragment)])
-			{
-				if (fragmentShader->IsCompiled() && fragmentShader->HasStage(StageType::Fragment))
-					shaderStages.push_back(fragmentShader->GetShaderStage(StageType::Fragment)->GetStageCreateInfo());
-			}
+			for (const StageType stage : {StageType::Vertex, StageType::TessellationControl, StageType::TessellationEvaluation, StageType::Geometry, StageType::Fragment})
+				append_stage(stage);
 		}
 
 #pragma endregion
@@ -313,11 +261,11 @@ namespace SceneryEditorX
 			bool hasComputeStage = false;
 
 			// Compute pipelines must use a compute stage from the current PSO, not the global shader list.
-			if (Shader* computeShader = state.shaders[static_cast<uint32_t>(StageType::Compute)])
+			if (const Shader* computeShader = state.shaders[static_cast<uint32_t>(StageType::Compute)])
 			{
 				if (computeShader->HasStage(StageType::Compute))
 				{
-					computeStage = computeShader->GetShaderStage(StageType::Compute)->GetStageCreateInfo();
+					computeStage = computeShader->GetStageCreateInfo(StageType::Compute);
 					hasComputeStage = true;
 				}
 			}
@@ -446,37 +394,13 @@ namespace SceneryEditorX
 					shaderVertex = it;
 			}
 
+			// The vertex layout comes from the shader registration or, failing that, from the vertex-stage
+			// input semantics. MaxEnum means the shader pulls its vertices from buffers (no vertex input state).
 			Ref<InputLayout> vertexInputLayout;
-			if (shaderVertex)
+			if (shaderVertex && shaderVertex->GetVertexType() != VertexType::MaxEnum)
 			{
-				// determine vertex type from the stage's input attributes and build an InputLayout
-				if (Ref<ShaderStage> vertStage = shaderVertex->GetShaderStage(StageType::Vertex))
-				{
-					const auto &inputs = vertStage->GetInput();
-					bool hasNorTan = false, hasColor = false, hasTex = false, has2D = false;
-					for (const ShaderInput &inp : inputs)
-					{
-						if (inp.debugName == "NORMAL" || inp.debugName == "TANGENT")
-							hasNorTan = true;
-						if (inp.debugName == "COLOR")
-							hasColor = true;
-						if (inp.debugName == "TEXCOORD")
-							hasTex = true;
-					}
-					VertexType vtype = VertexType::MaxEnum;
-					if (hasNorTan)
-						vtype = VertexType::PositionUvNormalTangent;
-					else if (hasColor)
-						vtype = VertexType::PositionColor;
-					else if (hasTex && has2D)
-						vtype = VertexType::Position2dUvColor8;
-					else if (hasTex)
-						vtype = VertexType::PositionUv;
-					else
-						vtype = VertexType::Position;
-					vertexInputLayout = CreateRef<InputLayout>();
-					vertexInputLayout->Create(vtype);
-				}
+				vertexInputLayout = CreateRef<InputLayout>();
+				vertexInputLayout->Create(shaderVertex->GetVertexType());
 			}
 
 			if (InputLayout *inputLayout = vertexInputLayout.Get())
@@ -913,174 +837,6 @@ namespace SceneryEditorX
 
 		m_Destroyed = true;
 		SEDX_CORE_TRACE_TAG("Pipeline", "Pipeline destroyed");
-	}
-
-	VkPipeline Pipeline::CreateGraphics(const GraphicsCreateInfo &info)
-	{
-		if (!info.shaderManager || info.device == VK_NULL_HANDLE)
-			return VK_NULL_HANDLE;
-
-		const ShaderManager &shaderManager = *info.shaderManager;
-
-		// Shader stages (use provided shader manager)
-		std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
-		shaderStages.reserve(shaderManager.StageCount());
-
-		for (size_t i = 0; i < shaderManager.StageCount(); ++i)
-		{
-			VkPipelineShaderStageCreateInfo sci{};
-			sci.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-			sci.stage = shaderManager.StageAt(i);
-			sci.module = shaderManager.ModuleAt(i);
-
-			if (sci.stage == VK_SHADER_STAGE_VERTEX_BIT)
-			{
-				sci.pName = info.vertexEntryPoint ? info.vertexEntryPoint : "main";
-			}
-			else if (sci.stage == VK_SHADER_STAGE_FRAGMENT_BIT)
-			{
-				sci.pName = info.fragmentEntryPoint ? info.fragmentEntryPoint : "main";
-			}
-			else
-			{
-				sci.pName = (sci.stage == VK_SHADER_STAGE_COMPUTE_BIT) ? "main_comp" : "main";
-			}
-
-			shaderStages.push_back(sci);
-		}
-
-		// Vertex input
-		VkPipelineVertexInputStateCreateInfo vertexInputState{};
-		vertexInputState.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-		vertexInputState.vertexBindingDescriptionCount = 1;
-		vertexInputState.pVertexBindingDescriptions = &info.vertexBinding;
-		vertexInputState.vertexAttributeDescriptionCount = static_cast<uint32_t>(info.vertexAttributes.size());
-		vertexInputState.pVertexAttributeDescriptions = info.vertexAttributes.data();
-
-		// Input assembly
-		VkPipelineInputAssemblyStateCreateInfo inputAssemblyState{};
-		inputAssemblyState.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-		inputAssemblyState.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-
-		// Dynamic states (viewport + scissor)
-		std::vector<VkDynamicState> dynamicStates = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR, VK_DYNAMIC_STATE_CULL_MODE};
-
-		VkPipelineDynamicStateCreateInfo dynamicState{};
-		dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-		dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
-		dynamicState.pDynamicStates = dynamicStates.data();
-
-		// Rasterization
-		VkPipelineRasterizationStateCreateInfo rasterizationState{};
-		rasterizationState.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-		rasterizationState.polygonMode = VK_POLYGON_MODE_FILL;
-		// Temporary debug-friendly rasterization defaults:
-		// disable culling so winding/order mismatches cannot make the entire frame black.
-		rasterizationState.cullMode = VK_CULL_MODE_NONE;
-		rasterizationState.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-		rasterizationState.lineWidth = 1.0f;
-
-		// Multisample
-		VkPipelineMultisampleStateCreateInfo multisampleState{};
-		multisampleState.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-		multisampleState.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-
-		// Depth/stencil
-		VkPipelineDepthStencilStateCreateInfo depthStencilState{};
-		depthStencilState.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-		depthStencilState.depthTestEnable = VK_TRUE;
-		depthStencilState.depthWriteEnable = VK_TRUE;
-		depthStencilState.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
-
-		// Color blend
-		VkPipelineColorBlendAttachmentState blendAttachment{};
-		blendAttachment.colorWriteMask = 0xF;
-		VkPipelineColorBlendStateCreateInfo colorBlendState{};
-		colorBlendState.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-		colorBlendState.attachmentCount = 1;
-		colorBlendState.pAttachments = &blendAttachment;
-
-		// Rendering info (dynamic rendering)
-		VkPipelineRenderingCreateInfo renderingCI{};
-		renderingCI.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
-		renderingCI.colorAttachmentCount = 1;
-		renderingCI.pColorAttachmentFormats = &info.colorFormat;
-		renderingCI.depthAttachmentFormat = info.depthFormat;
-
-		// Viewport state (no static viewport because we use dynamic state)
-		VkPipelineViewportStateCreateInfo viewportState{};
-		viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-		viewportState.viewportCount = 1;
-		viewportState.scissorCount = 1;
-
-		VkGraphicsPipelineCreateInfo pipelineCI{};
-		pipelineCI.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-		pipelineCI.pNext = &renderingCI;
-		pipelineCI.stageCount = static_cast<uint32_t>(shaderStages.size());
-		pipelineCI.pStages = shaderStages.data();
-		pipelineCI.pVertexInputState = &vertexInputState;
-		pipelineCI.pInputAssemblyState = &inputAssemblyState;
-		pipelineCI.pViewportState = &viewportState;
-		pipelineCI.pRasterizationState = &rasterizationState;
-		pipelineCI.pMultisampleState = &multisampleState;
-		pipelineCI.pDepthStencilState = &depthStencilState;
-		pipelineCI.pColorBlendState = &colorBlendState;
-		pipelineCI.pDynamicState = &dynamicState;
-
-		{
-			if (info.layout == VK_NULL_HANDLE)
-			{
-				SEDX_CORE_ERROR_TAG("Pipeline", "invalid pipeline layout (VK_NULL_HANDLE)");
-				return VK_NULL_HANDLE;
-			}
-
-			// Validate shader stages: non-null modules and no duplicate stage flags
-			uint32_t seenStageMask = 0;
-			for (uint32_t i = 0; i < pipelineCI.stageCount; ++i)
-			{
-				const VkPipelineShaderStageCreateInfo &s = pipelineCI.pStages[i];
-				if (s.module == VK_NULL_HANDLE)
-				{
-					SEDX_CORE_ERROR_TAG("Pipeline",
-										"invalid shader module at stage index {} (stage flag: {})",
-										i,
-										static_cast<uint32_t>(s.stage));
-					return VK_NULL_HANDLE;
-				}
-
-				uint32_t bit = StageFlagToBit(s.stage);
-				if (bit == 0)
-				{
-					SEDX_CORE_ERROR_TAG("Pipeline",
-										"unsupported or unknown shader stage flag at index {}: {}",
-										i,
-										static_cast<uint32_t>(s.stage));
-					return VK_NULL_HANDLE;
-				}
-
-				if (seenStageMask & bit)
-				{
-					SEDX_CORE_ERROR_TAG("Pipeline",
-										"duplicate shader stage detected at index {} (stage flag: {})",
-										i,
-										static_cast<uint32_t>(s.stage));
-					return VK_NULL_HANDLE;
-				}
-				seenStageMask |= bit;
-			}
-
-			pipelineCI.layout = info.layout;
-		}
-
-		VkPipeline pipeline = VK_NULL_HANDLE;
-		VkResult r = vkCreateGraphicsPipelines(info.device, VK_NULL_HANDLE, 1, &pipelineCI, nullptr, &pipeline);
-		if (r != VK_SUCCESS)
-		{
-			SEDX_CORE_ERROR_TAG("Pipeline", "vkCreateGraphicsPipelines failed: {}", r);
-			return VK_NULL_HANDLE;
-		}
-
-		return pipeline;
 	}
 
 	void Pipeline::CreatePipelineCache()

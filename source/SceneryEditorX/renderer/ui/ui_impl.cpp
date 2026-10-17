@@ -43,7 +43,7 @@
 #include <SceneryEditorX/renderer/vulkan/swapchain.h>
 #include <SceneryEditorX/renderer/vulkan/debug/graphics_debug.h>
 #include <SceneryEditorX/renderer/vulkan/shader/shader.h>
-#include <SceneryEditorX/renderer/vulkan/shader/shader_stage.h>
+#include <SceneryEditorX/renderer/vulkan/shader/slang_compiler.h>
 
 // -------------------------------------------------------
 
@@ -54,8 +54,7 @@ namespace SceneryEditorX::UI
 	Ref<DepthStencilState> g_DepthStencil_State;
 	Ref<RasterizerState> g_Rasterizer_State;
 	Ref<BlendState> g_BlendState;
-	Ref<Shader> g_VertexShader;
-	Ref<Shader> g_FragmentShader;
+	Ref<Shader> g_UIShader;
 
 	// Raw Vulkan objects for the ImGui pipeline that matches ui.slang:
 	//   push constants: { float2 scale; float2 translate; }  (16 bytes)
@@ -104,8 +103,7 @@ namespace SceneryEditorX::UI
 		g_DepthStencil_State = nullptr;
 		g_Rasterizer_State = nullptr;
 		g_BlendState = nullptr;
-		g_VertexShader = nullptr;
-		g_FragmentShader = nullptr;
+		g_UIShader = nullptr;
 
 		for (auto &ptr : g_ViewportData.indexBuffers)
 		{
@@ -139,15 +137,13 @@ namespace SceneryEditorX::UI
 	
 			// compile shaders
 			{
-				const std::string shaderPath = ResourceCache::GetResourceDirectory(ResourceDirectory::Shaders) + "/ui.slang";
-	
-				//bool async = false;
-	
-				g_VertexShader = CreateRef<Shader>();
-				g_VertexShader->AddShaderStage(StageType::Vertex, shaderPath);
-	
-				g_FragmentShader = CreateRef<Shader>();
-				g_FragmentShader->AddShaderStage(StageType::Fragment, shaderPath);
+				ShaderCompileOptions options;
+				options.name       = "ui";
+				options.sourcePath = ResourceCache::GetResourceDirectory(ResourceDirectory::Shaders) + "/ui.slang";
+				options.stages     = { ShaderType::Vertex, ShaderType::Fragment };
+				options.vertexType = VertexType::Position2dUvColor8; // ImDrawVert: float2 pos, float2 uv, rgba8 color
+
+				g_UIShader = SlangCompiler::Compile(options);
 			}
 		}
 	
@@ -265,14 +261,11 @@ namespace SceneryEditorX::UI
 
 			// Build the VkPipeline using the compiled ui.slang shader stages
 			{
-				Ref<ShaderStage> vsStage   = g_VertexShader   ? g_VertexShader->GetShaderStage(StageType::Vertex)   : nullptr;
-				Ref<ShaderStage> fragStage = g_FragmentShader ? g_FragmentShader->GetShaderStage(StageType::Fragment) : nullptr;
-
-				if (vsStage && fragStage)
+				if (g_UIShader && g_UIShader->HasStage(ShaderType::Vertex) && g_UIShader->HasStage(ShaderType::Fragment))
 				{
 					VkPipelineShaderStageCreateInfo stages[2] = {
-						vsStage->GetStageCreateInfo(),
-						fragStage->GetStageCreateInfo()
+						g_UIShader->GetStageCreateInfo(ShaderType::Vertex),
+						g_UIShader->GetStageCreateInfo(ShaderType::Fragment)
 					};
 
 					// Vertex input: matches ImDrawVert layout
@@ -389,7 +382,7 @@ namespace SceneryEditorX::UI
 		/**
 		 * Release all GPU resources (Ref<Shader>, Ref<ImageResource>, etc.) while
 		 * the VkDevice and logging system are still alive.  Without this call,
-		 * g_VertexShader / g_FragmentShader are file-scope statics whose Ref<>
+		 * g_UIShader is a file-scope static whose Ref<>
 		 * destructors fire in the CRT static-dtor phase â€” after RenderContext and
 		 * spdlog have already been destroyed â€” causing the 0x50 access violation.
 		 */
@@ -511,8 +504,8 @@ namespace SceneryEditorX::UI
 		// set pipeline state
 		static PipelineState pso			= {};
 		pso.name							= "imgui";
-		pso.shaders[static_cast<uint32_t>(StageType::Vertex)]	= g_VertexShader.Get();
-		pso.shaders[static_cast<uint32_t>(StageType::Fragment)]	= g_FragmentShader.Get();
+		pso.shaders[static_cast<uint32_t>(StageType::Vertex)]	= g_UIShader.Get();
+		pso.shaders[static_cast<uint32_t>(StageType::Fragment)]	= g_UIShader.Get();
 		pso.rasterizerState                 = g_Rasterizer_State.Get();
 		pso.blendState                      = g_BlendState.Get();
 		pso.depthStencil_State              = g_DepthStencil_State.Get();

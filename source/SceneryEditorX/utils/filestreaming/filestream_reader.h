@@ -61,13 +61,11 @@ namespace SceneryEditorX
 			SEDX_CORE_ASSERT(success);
 		}
 
-		/*
 		template<typename T>
 		void ReadObject(T& obj)
 		{
 			T::Deserialize(this, obj);
 		}
-		*/
 
 		template<typename Key, typename Value>
 		void ReadMap(std::map<Key, Value>& map, uint32_t size = 0)

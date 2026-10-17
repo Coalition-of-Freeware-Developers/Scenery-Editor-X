@@ -1,0 +1,21 @@
+flowchart TD
+  A[Begin Command Buffer] --> B[Acquire Swapchain Image]
+  B --> C[Transition swapchain -> COLOR_ATTACHMENT_OPTIMAL]
+  C --> D[Begin Main Render (vkCmdBeginRendering)]
+  D --> E{Issue Draws / Submit Draw Calls}
+  E --> F1[Branch: G-Buffer Pass (offscreen)]
+  E --> F2[Branch: Shadow Map Pass (offscreen)]
+  E --> F3[Branch: SSAO / Motion Vectors (offscreen)]
+  F1 --> G1[End G-Buffer Pass]
+  F2 --> G2[End Shadow Pass]
+  F3 --> G3[End SSAO Pass]
+  G1 --> H1[Barrier: G-Buffer write -> SHADER_READ_ONLY_OPTIMAL]
+  G2 --> H2[Barrier: Shadow write -> SHADER_READ_ONLY_OPTIMAL]
+  G3 --> H3[Barrier: SSAO write -> SHADER_READ_ONLY_OPTIMAL]
+  H1 --> I[Lighting / Composite Pass (samples offscreen)]
+  H2 --> I
+  H3 --> I
+  I --> J[Optional Post-process Passes]
+  J --> K[Transition final image -> PRESENT_SRC_KHR]
+  K --> L[End Command Buffer / vkQueueSubmit]
+  L --> M[vkQueuePresentKHR]

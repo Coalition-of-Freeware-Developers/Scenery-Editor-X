@@ -530,9 +530,12 @@ void dynamic_resolution()
 		// Wait for all GPU work to complete
 		device->GetQueueManager()->WaitIdleAll();
 
-		// Destroy shared descriptor pool before other device resources are torn down.
-		// This ensures vkDestroyDescriptorPool is called while the logical device is still valid.
-		DescriptorPoolManager::Shutdown();
+		// Release the immediate-execution command lists/pools now, while the device and loggers are alive.
+		CommandList::ShutdownImmediateExecution();
+
+		// Release bindless/cached descriptor sets and layouts, then the shared descriptor pool, while the
+		// logical device is still valid (BindlessManager::Shutdown ends with DescriptorPoolManager::Shutdown).
+		BindlessManager::Shutdown();
 
 		// Destroy camera resources
 		{
@@ -579,6 +582,21 @@ void dynamic_resolution()
 				}
 			}
 			SEDX_CORE_TRACE_TAG("Renderer", "Structured buffers destroyed");
+		}
+
+		// Per-frame indirect-draw buffers live in a static array; release them while the allocator is
+		// alive instead of in the CRT static-destructor phase.
+		for (IndirectFrameResource& frameResource : m_FrameResources)
+		{
+			for (Ref<Buffer>* buffer : { &frameResource.m_DrawArgs, &frameResource.m_DrawData, &frameResource.m_DrawArgs_Out,
+										 &frameResource.m_DrawData_Out, &frameResource.m_DrawCount })
+			{
+				if (*buffer)
+				{
+					(*buffer)->Destroy();
+					buffer->Reset();
+				}
+			}
 		}
 
 		// Destroy frame resources
@@ -1091,29 +1109,34 @@ void dynamic_resolution()
 		}
 
 		// Wait for the fence of the current frame-in-flight BEFORE acquiring the image
-		if (!s_FenceHandles.empty())
+		const bool hasFrameFence = m_CurrentFrameIndex < s_FenceHandles.size() && s_FenceHandles[m_CurrentFrameIndex] != VK_NULL_HANDLE;
+		if (hasFrameFence)
 		{
 			SEDX_CORE_TRACE_TAG("Renderer", "Waiting for fence of frame {} (fence handle: {})", m_CurrentFrameIndex,
 				static_cast<void *>(s_FenceHandles[m_CurrentFrameIndex]));
-			if (m_CurrentFrameIndex < s_FenceHandles.size() && s_FenceHandles[m_CurrentFrameIndex] != VK_NULL_HANDLE)
-			{
-				VkDevice device = RenderContext::Get()->GetDevice()->GetLogicalDevice();
-				vkWaitForFences(device, 1, &s_FenceHandles[m_CurrentFrameIndex], VK_TRUE, UINT64_MAX);
-				vkResetFences(device, 1, &s_FenceHandles[m_CurrentFrameIndex]);
-				SEDX_CORE_TRACE_TAG("Renderer", "Fence wait and reset complete for frame {}", m_CurrentFrameIndex);
-			}
+			VkDevice device = RenderContext::Get()->GetDevice()->GetLogicalDevice();
+			vkWaitForFences(device, 1, &s_FenceHandles[m_CurrentFrameIndex], VK_TRUE, UINT64_MAX);
 		}
 
 		// Acquire image through the swapchain flow.
 		s_Swapchain->AcquireNextImage();
 		if (!s_Swapchain->IsImageAcquired())
-			return false;
+			return false; // Fence left signaled: nothing will be submitted for this frame
 
 		m_SwapchainImageIndex = s_Swapchain->GetImageIndex();
 		if (m_SwapchainImageIndex >= s_Swapchain->GetImages().size())
 		{
 			SEDX_CORE_WARN_TAG("Renderer", "Swapchain AcquireNextImage returned invalid index: {}", m_SwapchainImageIndex);
 			return false;
+		}
+
+		// Reset only once this frame is certain to submit; resetting before a failed acquire would leave
+		// the fence unsignaled forever and the next wait on it would hang the render thread.
+		if (hasFrameFence)
+		{
+			VkDevice device = RenderContext::Get()->GetDevice()->GetLogicalDevice();
+			vkResetFences(device, 1, &s_FenceHandles[m_CurrentFrameIndex]);
+			SEDX_CORE_TRACE_TAG("Renderer", "Fence wait and reset complete for frame {}", m_CurrentFrameIndex);
 		}
 
 		SEDX_CORE_TRACE_TAG("Renderer", "Acquired swapchain image index: {}", m_SwapchainImageIndex);
@@ -1149,6 +1172,20 @@ void dynamic_resolution()
 		{
 			SEDX_CORE_WARN_TAG("Renderer", "EndFrame called but no frame in progress");
 			return;
+		}
+
+		// The render passes were recorded into m_CmdList_Present, which is submitted ahead of the frame
+		// command buffer. End its work with frame_output in a known shader-read layout so the blit recorded
+		// below (which takes its old layout from the tracker) matches what the GPU will actually see.
+		if (m_CmdList_Present && m_CmdList_Present->GetState() == CommandState::Recording)
+		{
+			m_CmdList_Present->EndRenderPass();
+
+			ImageResource* frameOutput = GetRenderTarget(Renderer_RenderTarget::frame_output);
+			if (frameOutput && frameOutput->Get() && *frameOutput->Get() != VK_NULL_HANDLE)
+				frameOutput->SetLayout(Layout::ImageLayout::ShaderRead, m_CmdList_Present, 0, 0);
+
+			m_CmdList_Present->FlushBarriers();
 		}
 
 		VkCommandBuffer cb = m_CommandBuffers[m_CurrentFrameIndex];
@@ -1254,10 +1291,17 @@ void dynamic_resolution()
 		SEDX_CORE_VERIFY(!is_likely_uninitialized(fenceHandle), "Fence handle appears uninitialized: 0x{:x}", fenceHandle);
 		SEDX_CORE_VERIFY(!is_likely_uninitialized(cbHandle), "Command buffer appears uninitialized: 0x{:x}", cbHandle);
 
-		// UI is now rendered inside RecordRenderCommands (in the same CB as scene geometry),
-		// so only the single swapchain CB needs to be submitted.
-		VkCommandBuffer frameCBs[1] = { cb };
-		uint32_t frameCBCount = 1;
+		// Submit the render-pass list (uploads + scene passes recorded in Tick) ahead of the swapchain CB
+		// that blits frame_output and draws the UI. Submission order keeps the blit after the passes; the
+		// per-frame fence covers both, which is what lets Seal() hand the list back to the pool as Idle.
+		VkCommandBuffer frameCBs[2] = {};
+		uint32_t frameCBCount = 0;
+		if (m_CmdList_Present && m_CmdList_Present->GetState() == CommandState::Recording)
+		{
+			m_CmdList_Present->Seal();
+			frameCBs[frameCBCount++] = m_CmdList_Present->GetCommandBuffer();
+		}
+		frameCBs[frameCBCount++] = cb;
 
 		SEDX_CORE_TRACE_TAG("Renderer", "Submitting command buffer for frame {}, waiting on present semaphore {}, signaling render semaphore {}",
 			m_FrameNumber,

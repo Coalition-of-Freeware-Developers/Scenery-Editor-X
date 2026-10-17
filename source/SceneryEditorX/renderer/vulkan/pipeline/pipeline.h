@@ -39,7 +39,6 @@ namespace SceneryEditorX
 {
 	class Device;
 	class DescriptorSet;
-	class ShaderManager;
 
 	/**
 	 * @class Pipeline
@@ -66,20 +65,6 @@ namespace SceneryEditorX
 		Pipeline& operator=(Pipeline&& other) noexcept;
 		Pipeline(const Pipeline&) = delete;
 		Pipeline& operator=(const Pipeline&) = delete;
-
-		// Descriptor grouping inputs required for creating a graphics pipeline.
-		struct GraphicsCreateInfo 
-		{
-			VkDevice device{ VK_NULL_HANDLE };
-			VkPipelineLayout layout{ VK_NULL_HANDLE };
-			Ref<ShaderManager> shaderManager{ nullptr };
-			const char* vertexEntryPoint{ "main" };
-			const char* fragmentEntryPoint{ "main" };
-			VkVertexInputBindingDescription vertexBinding{};
-			std::vector<VkVertexInputAttributeDescription> vertexAttributes{};
-			VkFormat colorFormat{ VK_FORMAT_UNDEFINED };
-			VkFormat depthFormat{ VK_FORMAT_UNDEFINED };
-		};
 
 		/**
 		 * @brief Get the Vulkan pipeline cache.
@@ -122,10 +107,6 @@ namespace SceneryEditorX
 		 * @return True if the pipeline has been destroyed, false otherwise.
 		 */
 		bool IsDestroyed() const { return m_Destroyed; }
-
-		// Create a graphics pipeline using a single grouped input structure.
-		// Returns VK_NULL_HANDLE on failure.
-		[[deprecated]] static VkPipeline CreateGraphics(const GraphicsCreateInfo& info);
 
 	private:
 		/* @brief Create the Vulkan pipeline cache. */

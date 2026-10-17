@@ -77,7 +77,7 @@ namespace SceneryEditorX
 
 		if (m_Instance != VK_NULL_HANDLE)
 		{
-		 Debugging::Shutdown(m_Instance);
+			Debugging::Shutdown(m_Instance);
 			vkDestroyInstance(m_Instance, nullptr);
 			m_Instance = VK_NULL_HANDLE;
 		}

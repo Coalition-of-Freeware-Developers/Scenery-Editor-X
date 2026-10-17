@@ -613,24 +613,18 @@ namespace SceneryEditorX
 		Ref<QueueManager> queueManager = device->GetQueueManager();
 		SEDX_CORE_ASSERT(queueManager.IsValid(), "QueueManager must be valid for immediate execution");
 
-		struct ImmediateState
-		{
-			std::unique_ptr<CommandPool> pool;
-			Ref<CommandList> cmdList;
-			std::mutex mutex;
-		};
-
-		static std::array<ImmediateState, static_cast<size_t>(QueueType::MaxEnum)> immediateStates;
-
+		// Use the file-level state so ShutdownImmediateExecution() can release these lists during
+		// Renderer::Shutdown; a function-local static would only die in the CRT static-destructor phase,
+		// after the device and loggers are gone (crash in ~CommandList -> Pipeline::DestroyPipeline logging).
 		if (Ref<Queue>* queueRef = queueManager->GetQueue(type); queueRef && *queueRef)
 		{
-			ImmediateState& state = immediateStates[static_cast<size_t>(type)];
+			ImmediateExecutionState& state = s_ImmediateStates[static_cast<size_t>(type)];
 			std::scoped_lock lock(state.mutex);
 
 			if (!state.pool)
 			{
 				const uint32_t family = queueManager->GetFamilyIndexByType(type);
-				state.pool = std::make_unique<CommandPool>(device, family, CommandPoolType::Resettable);
+				state.pool = CreateScope<CommandPool>(device, family, CommandPoolType::Resettable);
 			}
 
 			if (!state.cmdList)
@@ -1852,9 +1846,9 @@ namespace SceneryEditorX
 			}
 		}
 
-		/* TODO: Bind img to descriptor slot when DescriptorSet exposes a SetTexture API. */
-		// set (will only happen if it's not already set)
-		m_DescriptorLayout_Current->SetTexture(slot, img, mipIndex, mipRange);
+		// set (will only happen if it's not already set); write to the binding that was actually resolved,
+		// which differs from `slot` when the register-shifted fallback matched.
+		m_DescriptorLayout_Current->SetTexture(expectedDescriptor ? expectedDescriptor->GetSlot() : slot, img, mipIndex, mipRange);
 
 		/* TODO: detect if there are changes, otherwise don't bother binding */
 		m_NeedsDynamicBind = true;
@@ -2284,31 +2278,6 @@ namespace SceneryEditorX
 
 	void CommandList::SetPipelineState(PipelineState& pso)
 	{
-		if (pso.name && std::strcmp(pso.name, "grid") == 0)
-		{
-			if (Shader* vertexShader = pso.shaders[static_cast<uint32_t>(StageType::Vertex)])
-			{
-				const std::vector<Descriptor> descriptors = vertexShader->GetDescriptors();
-				bool hasBufferFrame200 = false;
-				bool hasBufferFrame0 = false;
-				for (const Descriptor& descriptor : descriptors)
-				{
-					if (descriptor.GetName() != "BufferFrame")
-						continue;
-
-					if (descriptor.GetSlot() == 200)
-						hasBufferFrame200 = true;
-					if (descriptor.GetSlot() == 0)
-						hasBufferFrame0 = true;
-				}
-
-				if (hasBufferFrame0 && !hasBufferFrame200)
-				{
-					SEDX_CORE_WARN_TAG("CommandList", "Grid shader reflection still reports BufferFrame at binding 0. Pipeline creation is expected to fail until shader cache is refreshed to binding 200.");
-				}
-			}
-		}
-
 		if (m_State != CommandState::Recording)
 		{
 			SEDX_CORE_ERROR_TAG("CommandList", "SetPipelineState aborted for '{}' because command list is not recording (state={})", m_ObjectName.c_str(), static_cast<int>(m_State.load()));
@@ -2596,12 +2565,10 @@ namespace SceneryEditorX
 			return;
 		}
 
-		m_DescriptorLayout_Current->SetBuffer(slot, buffer);
+		// Write to the resolved binding (the UAV-shifted fallback may have matched instead of `slot`).
+		m_DescriptorLayout_Current->SetBuffer(expectedDescriptor->GetSlot(), buffer);
 
 		m_NeedsDynamicBind = true;
-
-		/* TODO: Bind structured/storage buffer to the UAV slot in the active descriptor set. */
-		//SEDX_CORE_WARN_TAG("CommandList", "SetBuffer: stub — descriptor update not yet wired");
 	}
 
 	void CommandList::SetVertexBuffer(Buffer *vertexBuffer)

@@ -469,11 +469,10 @@ namespace SceneryEditorX
 	{
 		if (!m_Destroyed)
 		{
-			if (m_Set != VK_NULL_HANDLE && m_Device.IsValid())
-			{
+			// Once the shared pool is destroyed its sets are already freed; only return the set while it lives.
+			if (m_Set != VK_NULL_HANDLE && m_Device.IsValid() && DescriptorPoolManager::IsInitialized())
 				DescriptorPoolManager::Get().Free(m_Set);
-				m_Set = VK_NULL_HANDLE;
-			}
+			m_Set = VK_NULL_HANDLE;
 			
 			if (m_Layout != VK_NULL_HANDLE)
 			{

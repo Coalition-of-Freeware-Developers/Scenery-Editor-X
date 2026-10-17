@@ -939,17 +939,23 @@ namespace SceneryEditorX
 			constexpr uint64_t ACQUIRE_TIMEOUT_NS = 100000000; // 100ms
 			VkResult r = vkAcquireNextImageKHR(m_Device->GetLogicalDevice(), m_Swapchain, ACQUIRE_TIMEOUT_NS, vkSemaphore, VK_NULL_HANDLE, &m_ImageIndex);
 
-			if (r == VK_SUCCESS)
+			if (r == VK_SUCCESS || r == VK_SUBOPTIMAL_KHR)
 			{
+				// SUBOPTIMAL still acquired the image and will signal the semaphore, so it must be consumed
+				// this frame. Recreating here and acquiring again would leave that semaphore signaled and
+				// trip "semaphore must not be currently signaled" on its next use; recreate after present instead.
+				if (r == VK_SUBOPTIMAL_KHR)
+					m_IsDirty.SetDirty();
+
 				m_LastAcquiredSemaphoreIndex = semaphoreIndex;
 				m_SemaphoreIndex = (semaphoreIndex + 1) % static_cast<uint32_t>(m_AcquiredSemaphore.size());
 				m_ImageAcquired = true;
 				return;
 			}
 
-			if (r == VK_ERROR_OUT_OF_DATE_KHR || r == VK_SUBOPTIMAL_KHR)
+			if (r == VK_ERROR_OUT_OF_DATE_KHR)
 			{
-				// Swapchain is out of date (e.g. window resized), recreate the swapchain and try acquiring again.
+				// Nothing was acquired (the semaphore stays unsignaled): recreate the swapchain and try again.
 				Recreate();
 				continue;
 			}

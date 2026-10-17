@@ -25,276 +25,58 @@
  * -------------------------------------------------------
  * shader_manager.h
  * -------------------------------------------------------
- * Created: 09/02/2026
+ * Created: 03/07/2026
  * -------------------------------------------------------
  */
 #pragma once
-#include "shader.h"
-#include <mutex>
-#include <vector>
-#include <SceneryEditorX/renderer/renderer_declarations.h>
-#include <SceneryEditorX/renderer/vulkan/enums.h>
-#include <SceneryEditorX/renderer/vulkan/shader/shader_input.h>
+#include "shader_library.h"
+#include <string_view>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
+	enum class Renderer_Shader : uint8_t;
 
 	/**
 	 * @class ShaderManager
-	 * @brief Manages Vulkan shader modules and their corresponding stages.
-	 * This class provides a convenient way to handle multiple shader stages within a single object.
-	 * This allows Pipeline to accept a single object that may contain multiple stages (vertex, fragment, etc.).
+	 * @brief Process-wide access point for the active shader library, plus the renderer's built-in
+	 * programs addressed by Renderer_Shader.
 	 */
-	class ShaderManager : public RefCounted
+	class ShaderManager
 	{
 	public:
-		/**
-		 * @struct ShaderStageDescriptor
-		 * @brief Describes one stage to register for a renderer shader slot.
-		 */
-		struct ShaderStageDescriptor
-		{
-			StageType stage = StageType::MaxEnum;
-			std::string filepath{};
-			VertexType vertexType = VertexType::MaxEnum;
-		};
+		[[nodiscard]] static ShaderLibrary& Get();
+		[[nodiscard]] static const ShaderLibrary& GetConst() { return Get(); }
+
+		/** @brief Forward hot-reload polling to the active shader library. */
+		static void PollHotReload() noexcept { Get().PollHotReload(); }
 
 		/**
-		 * @struct ShaderRegistration
-		 * @brief Data-driven shader registration record used by SetShaderAvailable.
-		 */
-		struct ShaderRegistration
-		{
-			Renderer_Shader id = Renderer_Shader::MaxEnum;
-			const char* debugName = nullptr;
-			bool asyncCompile = false;
-			std::vector<ShaderStageDescriptor> stages{};
-		};
-
-		/**
-		 * @struct SlangModuleRegistration
-		 * @brief Data-driven registration for Slang import modules (no pipeline stage entry points).
-		 */
-		struct SlangModuleRegistration
-		{
-			const char* debugName = nullptr;
-			std::string filepath{};
-			bool required = true;
-		};
-
-		/**
-		 * @brief Constructs a new ShaderManager.
-		 */
-		ShaderManager();
-
-		/**
-		 * @brief Destroys the ShaderManager and releases all associated Vulkan shader modules. 
-		 */
-		virtual ~ShaderManager() override;
-
-		/**
-		 * @brief Retrieves the singleton instance of the ShaderManager.
-		 * @return A reference to the singleton ShaderManager instance.
-		 */
-		static Ref<ShaderManager> Get();
-
-		/**
-		 * @brief Creates all shaders managed by the ShaderManager.
+		 * @brief Compiles (or loads from cache) the renderer's built-in programs and adds them to the library.
+		 * Only the bootstrap set is built unless "--full-shaders" is on the command line. Safe to call repeatedly:
+		 * programs that already exist are skipped.
 		 */
 		static void CreateShaders();
 
-		/**
-		 * @brief Compiles and validates all registered Slang import modules.
-		 */
-		static void CreateSlangModules();
-
-		/**
-		 * @brief Compiles one Slang import module by logical module name.
-		 * @param moduleName Logical module name (e.g. "common").
-		 * @return True on success, false on failure.
-		 */
-		static bool CreateSlangModule(const std::string& moduleName);
-
-		/**
-		 * @brief Constructs a single shader with a single SPIR-V blob for both vertex and fragment stages.
-		 * @param spirvCode Pointer to the SPIR-V bytecode.
-		 * @param codeSize Size of the SPIR-V bytecode in bytes.
-		 */
-		void CreateSingleBlob(const void* spirvCode, size_t codeSize);
-
-		/**
-		 * @brief Creates Vulkan shader modules with multiple SPIR-V blobs for different shader stages.
-		 * @param stages A vector of pairs, each containing a shader stage flag and a pair of SPIR-V bytecode pointer and size.
-		 */
-		void CreateShaderBlobs(const std::vector<std::pair<VkShaderStageFlagBits, std::pair<const void *, size_t>>> &stages);
-
-		/**
-		 * @brief Creates a new shader with the specified name.
-		 * @param name name of the shader to create
-		 * @return A reference to the created shader.
-		 */
-		static Ref<Shader>& CreateShader(const std::string& name);
-
-		/**
-		 * @brief Creates a new shader with the specified path and optional force compile flag.
-		 * @param name name of the shader to create
-		 * @param path Path to the shader file.
-		 * @param forceCompile Whether to force compilation of the shader.
-		 * @return A reference to the created shader.
-		 */
-		static Ref<Shader>& CreateShader(const std::string& name, const std::string &path, bool forceCompile);
-
-		/**
-		 * @brief Retrieves a shader with the specified name.
-		 * @param name name of the shader to retrieve
-		 * @return A reference to the retrieved shader.
-		 */
-		static Ref<Shader>& GetShader(const std::string& name);
-
-		/**
-		 * @brief Reloads a shader with the specified name and optional force compile flag.
-		 * @param shaderName Name of the shader to reload.
-		 * @param forceCompile Whether to force compilation of the shader.
-		 */
-		static void ReloadShader(const Ref<Shader> &shaderName, bool forceCompile = false);
-
-		/**
-		 * @brief Reloads a shader on the render thread with the specified name and optional force compile flag.
-		 * @param shaderName Name of the shader to reload.
-		 * @param forceCompile Whether to force compilation of the shader.
-		 */
-		static void RenderThread_Reload(const Ref<Shader> &shaderName, bool forceCompile);
-
-		/**
-		 * @brief Clears all shaders managed by the ShaderManager.
-		 */
+		/** @brief Releases every shader and the Slang compiler session. */
 		static void ClearAll();
 
-		/**
-		 * @brief Clears a specific shader stage for the given shader.
-		 * @param shader The shader whose stage is to be cleared.
-		 * @param stage The stage to be cleared.
-		 */
-		static void ClearShaderStage(const Ref<Shader> &shader, const StageType stage);
+		/** @brief Built-in program for a Renderer_Shader slot, or nullptr when it is not registered or failed to compile. */
+		[[nodiscard]] static Shader* GetShader(Renderer_Shader type);
+
+		/** @brief True when the slot's program exists and compiled successfully. */
+		[[nodiscard]] static bool IsShaderAvailable(Renderer_Shader type);
 
 		/**
-		 * @brief Get a shader by type.
-		 * @param type The type of shader to retrieve.
-		 * @return Pointer to the requested shader.
+		 * @brief True when a Slang module (e.g. "common", "resources") was imported by at least one successfully built program.
 		 */
-		static Shader *GetShader(Renderer_Shader type);
-
-		/**
-		 * @brief Marks a shader as available, creating it if it doesn't already exist.
-		 * @param type The type of shader to mark as available.
-		 */
-		static void SetShaderAvailable(Renderer_Shader type);
-
-		/**
-		 * @brief Checks if a shader of the specified type is available.
-		 * @param type The type of shader to check.
-		 * @return True if the shader is available, false otherwise.
-		 */
-		static bool IsShaderAvailable(Renderer_Shader type);
-
-		/**
-		 * @brief Checks if a registered Slang import module is available.
-		 * @param moduleName Logical Slang module name.
-		 * @return True if the module has compiled successfully and is available, false otherwise.
-		 */
-		static bool IsSlangModuleAvailable(const std::string& moduleName);
-
-		/**
-		 * @brief Retrieves the compilation state of the shaders.
-		 * @return The current compilation state.
-		 */
-		[[nodiscard]] size_t StageCount() const { return m_Stages.size(); }
-
-		/**
-		 * @brief Retrieves the shader stage at the specified index.
-		 * @param i The index of the shader stage to retrieve.
-		 * @return The shader stage flag at the specified index.
-		 */
-		[[nodiscard]] VkShaderStageFlagBits StageAt(const size_t i) const { return m_Stages[i]; }
-
-		/**
-		 * @brief Retrieves the Vulkan shader module at the specified index.
-		 * @param i The index of the shader module to retrieve.
-		 * @return The Vulkan shader module at the specified index.
-		 */
-		[[nodiscard]] VkShaderModule ModuleAt(const size_t i) const { return m_Modules[i]; }
-
-		/**
-		 * @brief Compile a shader file to SPIR-V (delegates to ShaderCompiler)
-		 * @param stage The shader stage to compile.
-		 * @param filepath The path to the shader file.
-		 * @param optimize Whether to optimize the shader during compilation.
-		 * @return A vector of uint32_t representing the compiled SPIR-V bytecode.
-		 */
-		static std::vector<uint32_t> CompileToSpirv(StageType stage, const std::string& filepath, bool optimize = false);
-
-		/**
-		 * @brief Reflect shader inputs directly from Slang source (delegates to ShaderCompiler)
-		 * @param stage The shader stage for which to reflect inputs.
-		 * @param filepath The Slang shader source filepath.
-		 * @return A vector of ShaderInput structures representing the reflected shader inputs. 
-		 */
-		static std::vector<ShaderInput> ReflectInputs(StageType stage, const std::string& filepath);
-
-		/**
-		 * @brief Get all shaders managed by the ShaderManager.
-		 * @return Reference to the array of shaders.
-		 */
-		static std::array<Ref<Shader>,  static_cast<uint32_t>(Renderer_Shader::MaxEnum)>& GetShaders();
+		[[nodiscard]] static bool IsSlangModuleAvailable(std::string_view moduleName);
 
 	private:
-		/**
-		 * @brief Returns the shader registration metadata for all known startup shaders.
-		 */
-		[[deprecated]] static const std::vector<ShaderRegistration>& GetShaderRegistrations();
-
-		/**
-		 * @brief Finds a shader registration by renderer shader enum.
-		 * @param type The shader enum to find the registration for.
-		 * @return Pointer to the shader registration, or nullptr if not found.
-		 */
-		static const ShaderRegistration* FindRegistration(Renderer_Shader type);
-
-		/**
-		 * @brief Applies one shader registration into s_Shaders.
-		 * @param registration The shader registration to apply.
-		 */
-		static void ApplyRegistration(const ShaderRegistration& registration);
-
-		/**
-		 * @brief Maps a renderer shader enum to its registration record.
-		 * @return Reference to the shader registration map.
-		 */
-		static const std::unordered_map<Renderer_Shader, ShaderRegistration>& GetShaderRegistrationMap();
-
-		/**
-		 * @brief Maps a Slang module logical name to module registration metadata.
-		 * @return Reference to Slang module registration map.
-		 */
-		static const std::unordered_map<std::string, SlangModuleRegistration>& GetSlangModuleRegistrationMap();
-
-		/**
-		 * @brief Returns true if this renderer shader should share one Shader object with another enum entry.
-		 * @param type Enum slot being requested.
-		 * @param outOwnerType Canonical enum slot owning the Shader object.
-		 * @return True if the requested slot should share a Shader with another slot, false if it should have its own Shader.
-		 */
-		static bool TryGetSharedOwner(Renderer_Shader type, Renderer_Shader& outOwnerType);
-
-		std::vector<VkShaderModule> m_Modules{};		// Store the Vulkan shader modules for each stage
-		std::vector<VkShaderStageFlagBits> m_Stages{};	// Store the corresponding shader stage flags (e.g., VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_FRAGMENT_BIT)
-		static std::mutex s_ShaderMutex; // protect m_Shaders and compile operations
-		static std::unordered_map<std::string, Ref<Shader>> m_Shaders;	// Static map to manage shaders by name
+		static Ref<ShaderLibrary> s_Library;
 	};
 
-
-}
+}  // namespace SceneryEditorX 
 
 // -------------------------------------------------------

@@ -36,87 +36,67 @@
 
 namespace SceneryEditorX
 {
-	Hash::Hash() : m_Hash(0)
-	{
-	}
-	
-	Hash::~Hash()
-	{
-		m_Hash = 0;
-	}
-	
-	Hash::Hash(const uint64_t value) : m_Hash(value)
-	{
 
-	}
+	// FNV-1a constants for 64-bit hashing
+	static constexpr uint64_t FNV1A_OFFSET_BASIS = 14695981039346656037ULL;
+	static constexpr uint64_t FNV1A_PRIME = 1099511628211ULL;
 
-	Hash::Hash(const Hash &other)
-	{
-		m_Hash = other.m_Hash;
-	}
+	Hash::Hash() : m_Hash(0) {}
 
-	Hash &Hash::operator=(const Hash& other)
+	Hash::~Hash() { m_Hash = 0; }
+
+	Hash::Hash(const uint64_t value) : m_Hash(value) {}
+
+	Hash::Hash(const Hash &other) { m_Hash = other.m_Hash; }
+
+	Hash &Hash::operator=(const Hash &other)
 	{
-		if (this != &other)
-		{
-			m_Hash = other.m_Hash;
-		}
+		if (this != &other) 
+			m_Hash = other.m_Hash; 
+
 		return *this;
 	}
 
-	Hash::Hash(Hash &&other) noexcept : m_Hash(other.m_Hash)
-	{
-		other.m_Hash = 0;
-	}
+	Hash::Hash(Hash &&other) noexcept : m_Hash(other.m_Hash) { other.m_Hash = 0; }
 
 	Hash &Hash::operator=(Hash &&other) noexcept
 	{
 		if (this != &other)
 		{
-			m_Hash = other.m_Hash;
+			m_Hash       = other.m_Hash;
 			other.m_Hash = 0;
 		}
+
 		return *this;
 	}
 
-	bool Hash::operator==(const Hash &other) const
-	{
-		return m_Hash == other.m_Hash;
-	}
+	bool Hash::operator==(const Hash &other) const { return m_Hash == other.m_Hash; }
 
-	bool Hash::operator!=(const Hash &other) const
-	{
-		return m_Hash != other.m_Hash;
-	}
+	bool Hash::operator!=(const Hash &other) const { return m_Hash != other.m_Hash; }
 
-	uint64_t Hash::GenerateFNV1A(std::string_view str)
-	{
-		return GenerateFNV1A(str.data(), str.size());
-	}
+	bool Hash::IsFNV1APrime() const { return m_Hash == FNV1A_PRIME; }
+
+	bool Hash::IsFNV1AOffsetBasis() const { return m_Hash == FNV1A_OFFSET_BASIS; }
 
 	uint64_t Hash::GenerateFNV1A(const void *data, size_t size)
 	{
-		uint64_t hash = FNV1A_OFFSET_BASIS;
+		uint64_t hash        = FNV1A_OFFSET_BASIS;
 		const uint8_t *bytes = static_cast<const uint8_t *>(data);
-	
+
 		for (size_t i = 0; i < size; ++i)
 		{
 			hash ^= static_cast<uint64_t>(bytes[i]);
 			hash *= FNV1A_PRIME;
 		}
-	
+
 		return hash;
 	}
+	
+	uint64_t Hash::GenerateFNV1A(std::string_view str) { return GenerateFNV1A(str.data(), str.size()); }
 
-	Hash Hash::CreateFNV1A(std::string_view str)
-	{
-		return Hash(GenerateFNV1A(str));
-	}
+	Hash Hash::CreateFNV1A(std::string_view str) { return Hash(GenerateFNV1A(str)); }
 
-	Hash Hash::CreateFNV1A(const void *data, size_t size)
-	{
-		return Hash(GenerateFNV1A(data, size));
-	}
+	Hash Hash::CreateFNV1A(const void *data, size_t size) { return Hash(GenerateFNV1A(data, size)); }
 
 	uint64_t Hash::Combine(uint64_t a, uint64_t b)
 	{
@@ -127,18 +107,18 @@ namespace SceneryEditorX
 	uint64_t Hash::CombineXOR(uint64_t a, uint64_t b)
 	{
 		// XOR-based combination with bit rotation for better mixing
-		return a ^ RotateLeft(b, 17);
+		return a ^ ShiftLeft(b, 17);
 	}
 
-	uint64_t Hash::RotateLeft(uint64_t hash, uint32_t bits)
+	uint64_t Hash::ShiftLeft(uint64_t hash, uint32_t bits)
 	{
-		bits %= 64; // Ensure bits is in valid range
+		bits %= 64;  // Ensure bits is in valid range
 		return (hash << bits) | (hash >> (64 - bits));
 	}
 
-	uint64_t Hash::RotateRight(uint64_t hash, uint32_t bits)
+	uint64_t Hash::ShiftRight(uint64_t hash, uint32_t bits)
 	{
-		bits %= 64; // Ensure bits is in valid range
+		bits %= 64;  // Ensure bits is in valid range
 		return (hash >> bits) | (hash << (64 - bits));
 	}
 
@@ -150,6 +130,24 @@ namespace SceneryEditorX
 		hash ^= hash >> 33;
 		hash *= 0xc4ceb9fe1a85ec53ULL;
 		hash ^= hash >> 33;
+		return hash;
+	}
+
+	size_t Hash::HashCombine(size_t seed, size_t value) noexcept
+	{ 
+		return seed ^ (value + 0x9e3779b9ULL + (seed << 6) + (seed >> 2));
+	}
+
+	size_t Hash::HashBytes(const void* data, size_t size) noexcept
+	{ 
+		const auto* bytes = static_cast<const uint8_t*>(data);
+		size_t hash = 1469598103934665603ULL;
+		for (size_t i = 0; i < size; ++i)
+		{
+			hash ^= bytes[i];
+			hash *= 1099511628211ULL;
+		}
+
 		return hash;
 	}
 

@@ -77,7 +77,7 @@ void main_comp(uint3 thread_id : SV_DispatchThreadID)
     {
         float3 ray_dir   = position; // direction stored in position for misses
         float2 sky_uv    = direction_sphere_uv(ray_dir);
-        float3 sky_color = tex4.SampleLevel(GET_SAMPLER(sampler_trilinear_clamp), sky_uv, 0).rgb;
+        float3 sky_color = tex4.SampleLevel(samplers[sampler_trilinear_clamp], sky_uv, 0).rgb;
         tex_uav[thread_id.xy] = float4(sky_color, 1.0f);
         return;
     }
@@ -89,7 +89,7 @@ void main_comp(uint3 thread_id : SV_DispatchThreadID)
     float3 F0              = lerp(0.04f, albedo, metallic);
 
     // compute view direction from camera to hit point
-    float3 camera_to_pixel        = position - buffer_frame.camera_position.xyz;
+    float3 camera_to_pixel        = position - get_camera_position();
     float  camera_to_pixel_length = length(camera_to_pixel);
     camera_to_pixel               = normalize(camera_to_pixel);
 
@@ -177,7 +177,7 @@ void main_comp(uint3 thread_id : SV_DispatchThreadID)
             {
                 // simple shadow comparison (no soft shadows for reflections)
                 float2 atlas_uv = light_params.atlas_offsets[0] + uv * light_params.atlas_scales[0];
-                float depth_sample = tex5.SampleLevel(GET_SAMPLER(sampler_point_clamp), atlas_uv, 0).r;
+                float depth_sample = tex5.SampleLevel(samplers[sampler_point_clamp], atlas_uv, 0).r;
                 shadow = (ndc.z < depth_sample) ? 1.0f : 0.0f;
             }
         }
@@ -215,7 +215,7 @@ void main_comp(uint3 thread_id : SV_DispatchThreadID)
     float mip_count   = pass_get_f3_value().y;
     float mip_level   = roughness * roughness * (mip_count - 1.0f);
     float2 sky_uv     = direction_sphere_uv(normal);
-    float3 ibl_sample = tex4.SampleLevel(GET_SAMPLER(sampler_trilinear_clamp), sky_uv, mip_level).rgb;
+    float3 ibl_sample = tex4.SampleLevel(samplers[sampler_trilinear_clamp], sky_uv, mip_level).rgb;
 
     // compute fresnel for ibl
     float3 v      = normalize(-camera_to_pixel);

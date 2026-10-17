@@ -78,6 +78,12 @@ namespace SceneryEditorX
         static void Shutdown();
 
         /**
+         * @brief True between Init() and Shutdown(). After Shutdown() every set from the pool is already freed,
+         * so late-destroyed DescriptorSets must not call Free().
+         */
+        [[nodiscard]] static bool IsInitialized();
+
+        /**
          * @brief Return the singleton instance.
          * @note Init() must have been called before the first call to Get().
          */
