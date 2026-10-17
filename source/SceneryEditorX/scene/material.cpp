@@ -47,7 +47,26 @@ namespace SceneryEditorX
 
 	MaterialAsset::MaterialAsset(const std::string &path) : IResource(ResourceType::Material)
 	{
+		InitializeRenderProperties();
 		MaterialAsset::Load(path);
+	}
+
+	void MaterialAsset::InitializeRenderProperties()
+	{
+		m_Properties.fill(0.0f);
+		m_Properties[static_cast<uint32_t>(MaterialClass::ColorR)]         = color.x;
+		m_Properties[static_cast<uint32_t>(MaterialClass::ColorG)]         = color.y;
+		m_Properties[static_cast<uint32_t>(MaterialClass::ColorB)]         = color.z;
+		m_Properties[static_cast<uint32_t>(MaterialClass::ColorA)]         = color.w;
+		m_Properties[static_cast<uint32_t>(MaterialClass::TextureTilingX)] = 1.0f;
+		m_Properties[static_cast<uint32_t>(MaterialClass::TextureTilingY)] = 1.0f;
+		m_Properties[static_cast<uint32_t>(MaterialClass::Roughness)]      = roughness;
+		m_Properties[static_cast<uint32_t>(MaterialClass::Metalness)]      = metallic;
+
+		m_RenderSettings.fill(0.0f);
+		m_RenderSettings[static_cast<uint32_t>(MaterialProperty::CullMode)] = static_cast<float>(CullMode::Back);
+
+		m_Textures.fill(nullptr);
 	}
 
 	MaterialAsset::~MaterialAsset()
@@ -164,13 +183,13 @@ namespace SceneryEditorX
 
 	void MaterialAsset::SetAlbedoColor(const Vec3& color) const
 	{
-		if (!m_Material) // or if (m_Material.m_Ptr == nullptr) if accessible
-		{
-			SEDX_CORE_ERROR_TAG("MaterialAsset", "SetAlbedoColor called with null underlying material");
-			return;
-		}
+		// the renderer reads the property table, which is valid with or without a shader material behind the asset
+		m_Properties[static_cast<uint32_t>(MaterialClass::ColorR)] = color.x;
+		m_Properties[static_cast<uint32_t>(MaterialClass::ColorG)] = color.y;
+		m_Properties[static_cast<uint32_t>(MaterialClass::ColorB)] = color.z;
 
-		m_Material->Set(ALBEDO_COLOR_UNIFORM, color);
+		if (m_Material)
+			m_Material->Set(ALBEDO_COLOR_UNIFORM, color);
 	}
 
 	float& MaterialAsset::GetMetalness() const
@@ -187,13 +206,11 @@ namespace SceneryEditorX
 
 	void MaterialAsset::SetMetalness(float value) const
 	{
-		if (!m_Material) // or if (m_Material.m_Ptr == nullptr) if accessible
-		{
-			SEDX_CORE_ERROR_TAG("MaterialAsset", "SetMetalness called with null underlying material");
-			return;
-		}
+		// the renderer reads the property table, which is valid with or without a shader material behind the asset
+		m_Properties[static_cast<uint32_t>(MaterialClass::Metalness)] = value;
 
-		m_Material->Set(METALNESS_UNIFORM, value);
+		if (m_Material)
+			m_Material->Set(METALNESS_UNIFORM, value);
 	}
 
 	float& MaterialAsset::GetRoughness() const
@@ -210,13 +227,11 @@ namespace SceneryEditorX
 
 	void MaterialAsset::SetRoughness(float value) const
 	{
-		if (!m_Material) // or if (m_Material.m_Ptr == nullptr) if accessible
-		{
-			SEDX_CORE_ERROR_TAG("MaterialAsset", "SetRoughness called with null underlying material");
-			return;
-		}
+		// the renderer reads the property table, which is valid with or without a shader material behind the asset
+		m_Properties[static_cast<uint32_t>(MaterialClass::Roughness)] = value;
 
-		m_Material->Set(ROUGHNESS_UNIFORM, value);
+		if (m_Material)
+			m_Material->Set(ROUGHNESS_UNIFORM, value);
 	}
 
 	float& MaterialAsset::GetEmission() const
@@ -233,13 +248,9 @@ namespace SceneryEditorX
 
 	void MaterialAsset::SetEmission(float value) const
 	{
-		if (!m_Material) // or if (m_Material.m_Ptr == nullptr) if accessible
-		{
-			SEDX_CORE_ERROR_TAG("MaterialAsset", "SetEmission called with null underlying material");
-			return;
-		}
-
-		m_Material->Set(EMISSION_UNIFORM, value);
+		// emission has no slot in the renderer's property table; only a shader material stores it
+		if (m_Material)
+			m_Material->Set(EMISSION_UNIFORM, value);
 	}
 
 	uint32_t MaterialAsset::GetUsedSlotCount() const
@@ -300,7 +311,7 @@ namespace SceneryEditorX
 			if ((current_alpha != 1.0f && value == 1.0f) || (current_alpha == 1.0f && value != 1.0f))
 			{
 				CullMode cull_mode = value < 1.0f ? CullMode::None : CullMode::Back;
-				m_Properties[static_cast<uint32_t>(MaterialProperty::CullMode)] = static_cast<float>(cull_mode);
+				SetProperty(MaterialProperty::CullMode, static_cast<float>(cull_mode));
 			}
 
 			// transparent objects are typically see-through (low roughness) so use the alpha as the roughness multiplier.
@@ -475,15 +486,9 @@ namespace SceneryEditorX
 
 	ImageResource *MaterialAsset::GetTexture(MaterialTextureType materialTexture, uint32_t slot) const
 	{
-		//return m_Material[(static_cast<uint32_t>(materialTexture) * SLOTS_PER_TEXTURE) + slot];
-		switch (materialTexture)
-		{
-			case MaterialTextureType::Color: return GetAlbedoMap().Get();
-			case MaterialTextureType::Normal: return GetNormalMap().Get();
-			default:
-				SEDX_CORE_ERROR("Unsupported material texture type: {}", static_cast<uint32_t>(materialTexture));
-				return nullptr;
-		}
+		// texture maps are not resolved from the asset manager yet, so every slot is empty until one is assigned
+		const size_t index = (static_cast<size_t>(materialTexture) * SLOTS_PER_TEXTURE) + slot;
+		return (slot < SLOTS_PER_TEXTURE && index < m_Textures.size()) ? m_Textures[index] : nullptr;
 	}
 
 	void MaterialAsset::SetDefaults() const

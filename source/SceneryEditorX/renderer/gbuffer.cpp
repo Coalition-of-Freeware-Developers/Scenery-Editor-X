@@ -205,7 +205,7 @@ namespace SceneryEditorX
 			m_IndexCount_Committed  = indexCount;
 			m_WasRebuilt = true;
 
-			SEDX_CORE_INFO_TAG("GBuffer","Global geometry buffer built: %u vertices (%.2f MB), %u indices (%.2f MB), capacity: %u vertices, %u indices",
+			SEDX_CORE_INFO_TAG("GBuffer","Global geometry buffer built: {} vertices ({:.2f} MB), {} indices ({:.2f} MB), capacity: {} vertices, {} indices",
 				vertexCount, (vertexCount * sizeof(Vertex_PosTexNorTan)) / (1024.0f * 1024.0f),
 				indexCount, (indexCount * sizeof(uint32_t)) / (1024.0f * 1024.0f),
 				m_Vertex_Capacity, m_Index_Capacity);
@@ -233,7 +233,7 @@ namespace SceneryEditorX
 			m_VertexCount_Committed = vertexCount;
 			m_IndexCount_Committed  = indexCount;
 
-			SEDX_CORE_INFO_TAG("GBuffer","Global geometry buffer updated: +%u vertices, +%u indices (sub-region upload, no rebuild)", newVertices, newIndices);
+			SEDX_CORE_INFO_TAG("GBuffer","Global geometry buffer updated: +{} vertices, +{} indices (sub-region upload, no rebuild)", newVertices, newIndices);
 		}
 
 		m_Dirty.Check();

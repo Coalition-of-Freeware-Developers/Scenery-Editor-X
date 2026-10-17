@@ -459,6 +459,14 @@ namespace SceneryEditorX
 				}
 			}
 		}
+
+		// append to the global geometry buffer (uploaded by GeometryBuffer::BuildIfDirty); lod offsets stay
+		// relative to this mesh and the global offsets locate the mesh inside the shared buffers
+		if (!m_vertices.empty() && !m_indices.empty())
+		{
+			m_global_vertex_offset = GeometryBuffer::AppendVertices(m_vertices.data(), static_cast<uint32_t>(m_vertices.size()));
+			m_global_index_offset  = GeometryBuffer::AppendIndices(m_indices.data(), static_cast<uint32_t>(m_indices.size()));
+		}
 	}
 
 	void Mesh::BuildAccelerationStructure(CommandList* cmd_list, bool allow_update)

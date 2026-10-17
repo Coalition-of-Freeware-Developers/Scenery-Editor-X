@@ -30,6 +30,7 @@
  */
 #include "descriptor_set.h"
 #include "bindless_manager.h"
+#include "buffer.h"
 #include "descriptor.h"
 #include "descriptor_layout.h"
 #include "descriptor_pool_manager.h"
@@ -37,6 +38,7 @@
 #include "queue_manager.h"
 #include "render_context.h"
 #include "debug/graphics_debug.h"
+#include <algorithm>
 #include <unordered_set>
 #include <volk/volk.h>
 
@@ -74,7 +76,52 @@ namespace SceneryEditorX
 			default:                             return 0;
 		}
 	}
-	
+
+	/**
+	 * @brief Picks the image view a binding refers to: a single mip, a single array layer or the whole resource.
+	 * @param img The bound image.
+	 * @param binding The binding (mip / layer selection).
+	 * @param element Offset from the first selected mip, for descriptor arrays that expose consecutive mips.
+	 * @return The view, or VK_NULL_HANDLE if the image has no matching view.
+	 */
+	static VkImageView SelectImageView(const ImageResource* img, const DescriptorBinding& binding, const bool isStorage, const uint32_t element = 0)
+	{
+		// storage image views address a single mip, so an "all mips" storage binding resolves to mip 0
+		const uint32_t firstMip = binding.GetMip() != ALL_MIPS ? binding.GetMip() : (isStorage ? 0u : ALL_MIPS);
+		if (firstMip != ALL_MIPS && img->HasPerMipViews())
+		{
+			const uint32_t mip = firstMip + element;
+			return mip < img->GetMipCount() ? img->GetShaderView_Mip(mip) : VK_NULL_HANDLE;
+		}
+
+		if (binding.GetArrayLayer() != ALL_MIPS)
+			return img->GetShaderView_Layer(binding.GetArrayLayer());
+
+		return img->GetShaderResourceView();
+	}
+
+	/**
+	 * @brief Returns the Vulkan handle a binding writes into the set (image view or buffer), or 0 when unbound.
+	 */
+	static uint64_t ResolveDescriptorHandle(const Descriptor& descriptor, const DescriptorBinding& binding)
+	{
+		if (!binding.IsBound())
+			return 0;
+
+		switch (descriptor.GetType())
+		{
+			case DescriptorType::Image:
+			case DescriptorType::TextureStorage:
+				return reinterpret_cast<uint64_t>(SelectImageView(static_cast<const ImageResource*>(binding.GetResource()), binding,
+					descriptor.GetType() == DescriptorType::TextureStorage));
+			case DescriptorType::ConstantBuffer:
+			case DescriptorType::StructuredBuffer:
+				return reinterpret_cast<uint64_t>(static_cast<const Buffer*>(binding.GetResource())->Get());
+			default:
+				return 0;
+		}
+	}
+
 	// -----------------------------------------------------------------------
 	// DescriptorSet — texture array constructor
 	// -----------------------------------------------------------------------
@@ -230,11 +277,12 @@ namespace SceneryEditorX
 			m_LayoutHash = HashCombine(m_LayoutHash, static_cast<uint64_t>(d.GetType()));
 			m_LayoutHash = HashCombine(m_LayoutHash, static_cast<uint64_t>(d.IsArray() ? d.GetArrayLength() : 1));
 		}
-		
+
 		m_Device = RenderContext::Get()->GetDevice();
 		if (hasSlotTypeConflict)
 			return;
 		Create();
+		Write();
 	}
 	
 	// -----------------------------------------------------------------------
@@ -250,6 +298,7 @@ namespace SceneryEditorX
 		m_Destroyed     = other.m_Destroyed;
 		m_Descriptors   = std::move(other.m_Descriptors);
 		m_Bindings      = std::move(other.m_Bindings);
+		m_WrittenHandles = std::move(other.m_WrittenHandles);
 		m_SlotToIndex   = std::move(other.m_SlotToIndex);
 		m_LayoutHash    = other.m_LayoutHash;
 		m_BindingHash   = other.m_BindingHash;
@@ -276,6 +325,7 @@ namespace SceneryEditorX
 		m_Destroyed     = other.m_Destroyed;
 		m_Descriptors   = std::move(other.m_Descriptors);
 		m_Bindings      = std::move(other.m_Bindings);
+		m_WrittenHandles = std::move(other.m_WrittenHandles);
 		m_SlotToIndex   = std::move(other.m_SlotToIndex);
 		m_LayoutHash    = other.m_LayoutHash;
 		m_BindingHash   = other.m_BindingHash;
@@ -311,8 +361,9 @@ namespace SceneryEditorX
 			binding->SetResource(static_cast<void*>(constantBuffer));
 			binding->SetRange(static_cast<int64_t>(constantBuffer->GetStride()));
 			binding->SetDynamicOffset(constantBuffer->GetOffset());
-			
-			SEDX_CORE_ASSERT(constantBuffer->GetStrideUnaligned() == descriptor.GetStructSize(), "Size mismatch between CPU and GPU side constant buffer");
+
+			// Reflection does not report struct sizes yet (0), so only compare when one is known.
+			SEDX_CORE_ASSERT(descriptor.GetStructSize() == 0 || constantBuffer->GetStrideUnaligned() == descriptor.GetStructSize(), "Size mismatch between CPU and GPU side constant buffer");
 			SEDX_CORE_ASSERT(binding->GetDynamicOffset() % binding->GetRange() == 0, "Incorrect dynamic offset");
 			
 			m_Dirty.SetDirty();
@@ -351,11 +402,22 @@ namespace SceneryEditorX
 	
 	void DescriptorSet::SetTexture(uint32_t slot, ImageResource* img, uint32_t mipIndex, uint32_t mipRange, uint32_t layer)
 	{
-	    bool isStorage = img->IsUnorderedAccessView();
-	    Layout::ImageLayout layout = isStorage ? Layout::ImageLayout::General : Layout::ImageLayout::ShaderRead;
-	
-	    SEDX_CORE_ASSERT(layout == Layout::ImageLayout::General || layout == Layout::ImageLayout::ShaderRead);
-	
+		// Resolve the binding against the image's capabilities: a UAV-capable image prefers a storage slot,
+		// but can also be bound to a sampled slot. The layout follows the descriptor type that matched.
+		bool isStorage = img->IsUnorderedAccessView();
+		{
+			const auto slotIt = m_SlotToIndex.find(slot);
+			if (slotIt != m_SlotToIndex.end() && slotIt->second < m_Descriptors.size())
+			{
+				const DescriptorType type = m_Descriptors[slotIt->second].GetType();
+				if (type == DescriptorType::Image)
+					isStorage = false;
+				else if (type == DescriptorType::TextureStorage)
+					isStorage = true;
+			}
+		}
+		Layout::ImageLayout layout = isStorage ? Layout::ImageLayout::General : Layout::ImageLayout::ShaderRead;
+
 		auto matches_texture_type = [&](const uint32_t candidateSlot) -> bool
 		{
 			auto slotIt = m_SlotToIndex.find(candidateSlot);
@@ -496,14 +558,22 @@ namespace SceneryEditorX
 			return true;
 		}
 
-		return false;
+		// The deletion queue reports the raw Vulkan handle (image view / buffer) that is being destroyed.
+		const uint64_t handle = reinterpret_cast<uint64_t>(resource);
+		return std::ranges::find(m_WrittenHandles, handle) != m_WrittenHandles.end();
 	}
-	
+
 	uint64_t DescriptorSet::ComputeBindingHash() const
 	{
 		uint64_t hash = m_LayoutHash;
-		for (const DescriptorBinding& binding : m_Bindings)
-		hash = HashCombine(hash, binding.GetHash());
+		for (size_t i = 0; i < m_Bindings.size(); ++i)
+		{
+			hash = HashCombine(hash, m_Bindings[i].GetHash());
+
+			// Include the Vulkan handle: a resource recreated at the same address (e.g. render targets on resize)
+			// must not reuse a cached set that still points at the old, pending-deletion views.
+			hash = HashCombine(hash, ResolveDescriptorHandle(m_Descriptors[i], m_Bindings[i]));
+		}
 		return hash;
 	}
 	
@@ -637,6 +707,117 @@ namespace SceneryEditorX
 		// Allocate a VkDescriptorSet from the shared pool immediately
 		m_Set = DescriptorPoolManager::Get().Allocate(m_Layout);
 		SEDX_CORE_ASSERT(m_Set != VK_NULL_HANDLE, "DescriptorSet::Create: failed to allocate VkDescriptorSet");
+	}
+
+	// -----------------------------------------------------------------------
+	// DescriptorSet::Write — resource writes for a cached binding set
+	// -----------------------------------------------------------------------
+
+	void DescriptorSet::Write()
+	{
+		m_WrittenHandles.clear();
+		if (m_Set == VK_NULL_HANDLE || !m_Device.IsValid())
+			return;
+
+		// Reserve up front: the writes keep pointers into these arrays.
+		size_t imageInfoCount  = 0;
+		size_t bufferInfoCount = 0;
+		for (const Descriptor& descriptor : m_Descriptors)
+		{
+			const DescriptorType type = descriptor.GetType();
+			if (type == DescriptorType::Image || type == DescriptorType::TextureStorage)
+				imageInfoCount += descriptor.IsArray() ? std::max(1u, descriptor.GetArrayLength()) : 1u;
+			else if (type == DescriptorType::ConstantBuffer || type == DescriptorType::StructuredBuffer)
+				++bufferInfoCount;
+		}
+
+		std::vector<VkDescriptorImageInfo> imageInfos;
+		std::vector<VkDescriptorBufferInfo> bufferInfos;
+		std::vector<VkWriteDescriptorSet> writes;
+		imageInfos.reserve(imageInfoCount);
+		bufferInfos.reserve(bufferInfoCount);
+		writes.reserve(m_Descriptors.size());
+
+		for (size_t i = 0; i < m_Descriptors.size(); ++i)
+		{
+			const Descriptor& descriptor = m_Descriptors[i];
+			const DescriptorBinding& binding = m_Bindings[i];
+
+			// Unbound slots stay unwritten (the layout is partially bound); bindless arrays live in their own sets.
+			if (!binding.IsBound() || (descriptor.IsArray() && descriptor.GetArrayLength() == MAX_ARRAY_SIZE))
+				continue;
+
+			const DescriptorType type = descriptor.GetType();
+
+			VkWriteDescriptorSet write{};
+			write.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			write.dstSet          = m_Set;
+			write.dstBinding      = descriptor.GetSlot();
+			write.dstArrayElement = 0;
+			write.descriptorType  = ToVkDescriptorType(type);
+
+			switch (type)
+			{
+				case DescriptorType::Image:
+				case DescriptorType::TextureStorage:
+				{
+					const auto* img = static_cast<const ImageResource*>(binding.GetResource());
+					const bool isStorage = type == DescriptorType::TextureStorage;
+					const VkImageLayout layout = isStorage ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+					// A descriptor array bound to a single image exposes consecutive mips (e.g. FidelityFX SPD).
+					const uint32_t elementCount = (descriptor.IsArray() && binding.GetMip() != ALL_MIPS)
+						? std::min(std::max(1u, descriptor.GetArrayLength()), std::max(1u, binding.GetMipRange())) : 1u;
+
+					const size_t first = imageInfos.size();
+					for (uint32_t element = 0; element < elementCount; ++element)
+					{
+						const VkImageView view = SelectImageView(img, binding, isStorage, element);
+						if (view == VK_NULL_HANDLE)
+							break;
+
+						imageInfos.push_back(VkDescriptorImageInfo{ .sampler = VK_NULL_HANDLE, .imageView = view, .imageLayout = layout });
+						m_WrittenHandles.push_back(reinterpret_cast<uint64_t>(view));
+					}
+
+					const uint32_t written = static_cast<uint32_t>(imageInfos.size() - first);
+					if (written == 0)
+						continue;
+
+					write.descriptorCount = written;
+					write.pImageInfo      = imageInfos.data() + first;
+					break;
+				}
+
+				case DescriptorType::ConstantBuffer:
+				case DescriptorType::StructuredBuffer:
+				{
+					const auto* buffer = static_cast<const Buffer*>(binding.GetResource());
+					if (buffer->Get() == VK_NULL_HANDLE)
+						continue;
+
+					// A dynamic uniform buffer exposes one element (the dynamic offset picks it); storage buffers expose all of it.
+					VkDescriptorBufferInfo info{};
+					info.buffer = buffer->Get();
+					info.offset = 0;
+					info.range  = type == DescriptorType::ConstantBuffer ? static_cast<VkDeviceSize>(binding.GetRange()) : VK_WHOLE_SIZE;
+					bufferInfos.push_back(info);
+					m_WrittenHandles.push_back(reinterpret_cast<uint64_t>(buffer->Get()));
+
+					write.descriptorCount = 1;
+					write.pBufferInfo     = &bufferInfos.back();
+					break;
+				}
+
+				default:
+					continue;
+			}
+
+			writes.push_back(write);
+		}
+
+		if (!writes.empty())
+			vkUpdateDescriptorSets(m_Device->GetLogicalDevice(), static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
 	}
 	
 } // namespace SceneryEditorX

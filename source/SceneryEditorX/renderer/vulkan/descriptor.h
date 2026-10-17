@@ -64,7 +64,7 @@ namespace SceneryEditorX
 	{
 		switch (type)
 		{
-			case DescriptorType::Image:                return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+			case DescriptorType::Image:                return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE; // Slang/HLSL textures are separate from their samplers
 			case DescriptorType::TextureStorage:       return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
 			case DescriptorType::ConstantBuffer:       return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
 			case DescriptorType::StructuredBuffer:     return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;

@@ -29,49 +29,13 @@
  * -------------------------------------------------------
  */
 
-// Per-frame constant buffer — must exactly mirror CameraShaderData in camera.h:
-//   Mat4 view, projection, viewProjection, inverseViewProjection  (4 x 64 bytes = 256 bytes)
-//   Vec3 positionWorld + float padding                             (16 bytes)
-// Total: 272 bytes  (bound at set 0, binding 0 as VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
-struct FrameBufferData
-{
-    matrix view;
-    matrix projection;
-    matrix view_projection;
-    matrix view_projection_inverted;
-    float3 camera_position;
-    float  padding;
-};
+import resources;
 
-// push constant buffer - carries per-draw and per-pass data
-// draw_index indexes into the bindless draw data buffer for transforms and material info
-// material_index and is_transparent are pass-level state for compute shaders
-// values[] carries generic per-pass parameters (3 x float4)
-struct PassBufferData
-{
-    uint draw_index;
-    uint material_index;
-    uint is_transparent;
-    uint padding;
-    float4 values[3];
-};
-
-// Accessors are module-local for this standalone shader; do not rely on resources.slang here.
-float3 get_camera_position() { return buffer_frame.camera_position; }
-matrix get_view_projection_matrix() { return buffer_frame.view_projection; }
-
-// buffers
-[[vk::push_constant]]
-PassBufferData buffer_pass;
-// Keep BufferFrame binding aligned with engine descriptor reflection contract for set 0.
-[[vk::binding(200)]] cbuffer BufferFrame : register(b200) { FrameBufferData buffer_frame; };
-
-// Minimal vertex input for the grid pass.
-// Matches the QuadVertex layout (Vec3 position + Vec2 uv) produced by GeometryBuffer.
-// Normal and tangent are not needed by the grid vertex shader.
+// The grid is drawn with the renderer's standard quad mesh (MeshType::Quad from the global geometry buffer):
+// a unit quad on the XZ ground plane (y = 0) spanning [-0.5, 0.5]. Only position and uv are read here.
 struct GridVertex
 {
-    float4 position : POSITION;
+    float3 position : POSITION;
     float2 uv       : TEXCOORD;
 };
 
@@ -99,13 +63,10 @@ PixelInput main_vs(GridVertex input)
 {
     PixelInput output;
 
-    // buffer_pass.values[0].x carries the grid half-extent set by Pass_Grid.
-    // The quad lives in the XY plane (z = 0); we remap it to the XZ ground plane:
-    //   world.x = input.x * scale
-    //   world.y = 0          (ground level)
-    //   world.z = input.y * scale
-    float scale = buffer_pass.values[0].x;
-    output.position_world = float4(input.position.x * scale, 0.0f, input.position.y * scale, 1.0f);
+    // buffer_pass.values[0].x carries the grid half-extent set by Pass_Grid; the quad spans [-0.5, 0.5],
+    // so it is scaled by twice that to cover [-extent, extent] on the ground plane (y = 0).
+    float scale = buffer_pass.values[0].x * 2.0f;
+    output.position_world = float4(input.position.x * scale, 0.0f, input.position.z * scale, 1.0f);
 
     // Snap the grid tile origin to the camera's XZ position rounded to the bold-line frequency
     // so the grid always stays centred under the camera as it moves.

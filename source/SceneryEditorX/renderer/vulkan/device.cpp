@@ -1017,7 +1017,12 @@ namespace SceneryEditorX
 			combinerOps[1] = VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR;
 		}
 
-		s_FragmentShadingRate(static_cast<VkCommandBuffer>(cmd->GetCommandBuffer()), &fragment_size, combinerOps);
+		// volk loads the entry point only when VK_KHR_fragment_shading_rate was enabled on the device
+		const PFN_vkCmdSetFragmentShadingRateKHR setFragmentShadingRate = s_FragmentShadingRate ? s_FragmentShadingRate : vkCmdSetFragmentShadingRateKHR;
+		if (!setFragmentShadingRate)
+			return;
+
+		setFragmentShadingRate(static_cast<VkCommandBuffer>(cmd->GetCommandBuffer()), &fragment_size, combinerOps);
 	}
 
 	uint32_t Device::GetPhysicalDeviceCount() { return static_cast<uint32_t>(s_PhysicalDevice.size()); }

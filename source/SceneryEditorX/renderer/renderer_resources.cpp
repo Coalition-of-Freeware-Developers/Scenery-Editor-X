@@ -92,6 +92,7 @@ namespace SceneryEditorX
 
 	// Static members defined here (declared in renderer.h)
 	PushConstantBuffer_Pass Renderer::m_Pcb_Pass_Cpu;
+	ConstantBuffer_Frame    Renderer::m_Cb_Frame_Cpu = {};
 	uint32_t           Renderer::m_DrawCall_Count           = 0;
 	Flag               Renderer::m_BindlessSamplers_Dirty;
 	uint32_t           Renderer::m_DrawCalls_Prepass_Count  = 0;
@@ -855,7 +856,8 @@ namespace SceneryEditorX
 	void Renderer::CreateBlendStates()
 	{
 		At(s_BlendStates, Renderer_BlendState::Off)      = CreateRef<BlendState>(BlendStateSpec{false});
-		At(s_BlendStates, Renderer_BlendState::Alpha)    = CreateRef<BlendState>(BlendStateSpec{true, VkBlendFactor::VK_BLEND_FACTOR_SRC_ALPHA, VkBlendFactor::VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, VkBlendOp::VK_BLEND_OP_ADD, VkBlendFactor::VK_BLEND_FACTOR_ONE, VkBlendFactor::VK_BLEND_FACTOR_ONE, VkBlendOp::VK_BLEND_OP_ADD, 0.0f});
+		// alpha uses "over" as well, so blending onto an opaque target keeps alpha at 1
+		At(s_BlendStates, Renderer_BlendState::Alpha)    = CreateRef<BlendState>(BlendStateSpec{true, VkBlendFactor::VK_BLEND_FACTOR_SRC_ALPHA, VkBlendFactor::VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, VkBlendOp::VK_BLEND_OP_ADD, VkBlendFactor::VK_BLEND_FACTOR_ONE, VkBlendFactor::VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, VkBlendOp::VK_BLEND_OP_ADD, 0.0f});
 		At(s_BlendStates, Renderer_BlendState::Additive) = CreateRef<BlendState>(BlendStateSpec{true, VkBlendFactor::VK_BLEND_FACTOR_ONE, VkBlendFactor::VK_BLEND_FACTOR_ONE, VkBlendOp::VK_BLEND_OP_ADD, VkBlendFactor::VK_BLEND_FACTOR_ONE, VkBlendFactor::VK_BLEND_FACTOR_ONE, VkBlendOp::VK_BLEND_OP_ADD, 1.0f});
 	}
 
@@ -932,30 +934,18 @@ namespace SceneryEditorX
 		return &s_DepthStencilStates[static_cast<uint8_t>(type)];
 	}
 
-	Mesh *Renderer::GetStandardMesh(const MeshType /*type*/)
+	Mesh *Renderer::GetStandardMesh(const MeshType type)
 	{
-		class StandardQuadMesh final : public Mesh
+		// Created by CreateStandardMeshes() during Init(); their geometry lives in the global GeometryBuffer,
+		// whose GPU buffers are (re)built by GeometryBuffer::BuildIfDirty() at the start of each frame.
+		const auto index = static_cast<uint8_t>(type);
+		if (index >= s_StandardMeshes.size() || !s_StandardMeshes[index])
 		{
-		public:
-			[[nodiscard]] static Buffer* GetVertexBuffer() { return GeometryBuffer::GetVertexBuffer(); }
-			[[nodiscard]] static Buffer* GetIndexBuffer() { return GeometryBuffer::GetIndexBuffer(); }
-		};
-
-		static StandardQuadMesh s_QuadMesh;
-		Buffer* vtxB = StandardQuadMesh::GetVertexBuffer();
-		Buffer* indxB = StandardQuadMesh::GetIndexBuffer();
-
-		if (vtxB && indxB)
-			return &s_QuadMesh;
-
-		static bool warned = false;
-		if (!warned)
-		{
-			SEDX_CORE_WARN_TAG("Renderer", "GetStandardMesh: quad mesh unavailable (geometry buffer not ready)");
-			warned = true;
+			SEDX_CORE_WARN_TAG("Renderer", "GetStandardMesh: no standard mesh of type {} (CreateStandardMeshes not run?)", static_cast<uint32_t>(index));
+			return nullptr;
 		}
 
-		return nullptr;
+		return s_StandardMeshes[index].Get();
 	}
 
 	bool Renderer::IsCpuDrivenDraw(const Renderer_DrawCall& drawCall, const MaterialAsset* material)

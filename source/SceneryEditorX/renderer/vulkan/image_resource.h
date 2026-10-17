@@ -444,6 +444,13 @@ namespace SceneryEditorX
 		 */
 		void ComputeMemoryUsage();
 
+		/**
+		 * @brief Creates the image's views and fills the typed view handles (SRV, per-mip SRVs, per-layer SRVs,
+		 * render-target / depth-stencil views) the descriptor and render-pass code reads.
+		 * @param viewCI View description covering every mip and layer of m_Image.
+		 */
+		void CreateViews(const VkImageViewCreateInfo& viewCI);
+
 		Ref<Device> m_Device;
 		ImgResourceSpec m_Spec;
 
@@ -451,7 +458,8 @@ namespace SceneryEditorX
 		uint32_t m_BitsPerChannel	= 0;
 		uint32_t m_ChannelCount		= 0;
 		VkImage m_Image = VK_NULL_HANDLE;
-		std::vector<VkImageView> m_ImageViews;
+		std::vector<VkImageView> m_ImageViews;       // [0] = every mip and layer, then one per mip when PerMipViews is set
+		std::vector<VkImageView> m_SubresourceViews; // per-layer and attachment views not covered by m_ImageViews
 		std::vector<Slice> m_Slices;
 		VmaAllocation m_Allocation = nullptr;
 		VkDeviceMemory m_DeviceMemory = nullptr;

@@ -85,6 +85,9 @@ public struct FrameBufferData
     public float cloud_shadows;
     public float padding3;
     public float padding4;
+
+    // pads the struct to 1024 bytes (dynamic uniform offset alignment); mirrors ConstantBuffer_Frame
+    public float4 padding_alignment[5];
 };
 
 // push constant buffer - carries per-draw and per-pass data

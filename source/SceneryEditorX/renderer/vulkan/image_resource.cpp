@@ -225,22 +225,7 @@ namespace SceneryEditorX
 		viewCI.subresourceRange.baseArrayLayer = 0;
 		viewCI.subresourceRange.layerCount = (m_Spec.type == ImageType::Type3D) ? 1u : m_Depth;
 
-		VkImageView imageView = VK_NULL_HANDLE;
-		SEDX_VK_RESULT_ASSERT(vkCreateImageView(m_Device->GetLogicalDevice(), &viewCI, nullptr, &imageView), "Failed to create ImageResource image view");
-		m_ImageViews.push_back(imageView);
-
-		if (HasPerMipViews() && m_Spec.mipCount > 1)
-		{
-			for (uint32_t mip = 0; mip < m_Spec.mipCount; ++mip)
-			{
-				VkImageViewCreateInfo mipViewCI = viewCI;
-				mipViewCI.subresourceRange.baseMipLevel = mip;
-				mipViewCI.subresourceRange.levelCount = 1;
-				VkImageView mipView = VK_NULL_HANDLE;
-				SEDX_VK_RESULT_ASSERT(vkCreateImageView(m_Device->GetLogicalDevice(), &mipViewCI, nullptr, &mipView), "Failed to create per-mip ImageResource view");
-				m_ImageViews.push_back(mipView);
-			}
-		}
+		CreateViews(viewCI);
 
 		// First-use policy: keep newly-created images in UNDEFINED. We transition at the
 		// first real use site (UAV write -> GENERAL, SRV read -> SHADER_READ_ONLY_OPTIMAL,
@@ -340,24 +325,7 @@ namespace SceneryEditorX
 		viewCI.subresourceRange.baseArrayLayer = 0;
 		viewCI.subresourceRange.layerCount = (m_Spec.type == ImageType::Type3D) ? 1u : m_Depth;
 
-		VkImageView imageView = VK_NULL_HANDLE;
-		SEDX_VK_RESULT_ASSERT(vkCreateImageView(m_Device->GetLogicalDevice(), &viewCI, nullptr, &imageView),
-							  "Failed to create ImageResource image view");
-		m_ImageViews.push_back(imageView);
-
-		if (HasPerMipViews() && m_Spec.mipCount > 1)
-		{
-			for (uint32_t mip = 0; mip < m_Spec.mipCount; ++mip)
-			{
-				VkImageViewCreateInfo mipViewCI = viewCI;
-				mipViewCI.subresourceRange.baseMipLevel = mip;
-				mipViewCI.subresourceRange.levelCount = 1;
-				VkImageView mipView = VK_NULL_HANDLE;
-				SEDX_VK_RESULT_ASSERT(vkCreateImageView(m_Device->GetLogicalDevice(), &mipViewCI, nullptr, &mipView),
-									  "Failed to create per-mip ImageResource view");
-				m_ImageViews.push_back(mipView);
-			}
-		}
+		CreateViews(viewCI);
 
 		// First-use policy: keep newly-created images in UNDEFINED. We transition at the
 		// first real use site (UAV write -> GENERAL, SRV read -> SHADER_READ_ONLY_OPTIMAL,
@@ -369,6 +337,80 @@ namespace SceneryEditorX
 
 	ImageResource::ImageResource() : SharedResource(ResourceType::Image)
 	{
+	}
+
+	void ImageResource::CreateViews(const VkImageViewCreateInfo& viewCI)
+	{
+		const VkDevice device = m_Device->GetLogicalDevice();
+		const auto create_view = [device](const VkImageViewCreateInfo& createInfo)
+		{
+			VkImageView view = VK_NULL_HANDLE;
+			SEDX_VK_RESULT_ASSERT(vkCreateImageView(device, &createInfo, nullptr, &view), "Failed to create ImageResource image view");
+			return view;
+		};
+
+		const uint32_t layerCount = viewCI.subresourceRange.layerCount;
+		const bool isArray        = m_Spec.type != ImageType::Type3D && layerCount > 1;
+
+		// srv: every mip and layer
+		VkImageView fullView = create_view(viewCI);
+		m_ImageViews.push_back(fullView);
+		m_ShaderResourceView = fullView;
+
+		// one srv per mip
+		if (HasPerMipViews() && m_Spec.mipCount > 1)
+		{
+			for (uint32_t mip = 0; mip < m_Spec.mipCount && mip < MAX_MIP_COUNT; ++mip)
+			{
+				VkImageViewCreateInfo mipViewCI = viewCI;
+				mipViewCI.subresourceRange.baseMipLevel = mip;
+				mipViewCI.subresourceRange.levelCount   = 1;
+				VkImageView mipView = create_view(mipViewCI);
+				m_ImageViews.push_back(mipView);
+				m_ShaderResourceView_mips[mip] = mipView;
+			}
+		}
+		else
+		{
+			m_ShaderResourceView_mips[0] = fullView;
+		}
+
+		// one srv per layer of an array texture
+		if (isArray)
+		{
+			for (uint32_t layer = 0; layer < layerCount && layer < MAX_RENDER_TARGET_COUNT; ++layer)
+			{
+				VkImageViewCreateInfo layerViewCI = viewCI;
+				layerViewCI.viewType                        = VK_IMAGE_VIEW_TYPE_2D;
+				layerViewCI.subresourceRange.baseArrayLayer = layer;
+				layerViewCI.subresourceRange.layerCount     = 1;
+				m_ShaderResourceView_Layers[layer] = create_view(layerViewCI);
+				m_SubresourceViews.push_back(m_ShaderResourceView_Layers[layer]);
+			}
+		}
+
+		// attachments address a single mip of a single layer
+		if ((m_Spec.flags & RenderTargetViews) != 0 && m_Spec.type != ImageType::Type3D)
+		{
+			auto& attachmentViews = IsDepthFormat() ? m_DepthStencilView : m_RenderTargetView;
+			for (uint32_t layer = 0; layer < layerCount && layer < MAX_RENDER_TARGET_COUNT; ++layer)
+			{
+				if (!isArray && m_Spec.mipCount == 1)
+				{
+					attachmentViews[layer] = fullView;
+					continue;
+				}
+
+				VkImageViewCreateInfo attachmentViewCI = viewCI;
+				attachmentViewCI.viewType                        = VK_IMAGE_VIEW_TYPE_2D;
+				attachmentViewCI.subresourceRange.baseMipLevel   = 0;
+				attachmentViewCI.subresourceRange.levelCount     = 1;
+				attachmentViewCI.subresourceRange.baseArrayLayer = layer;
+				attachmentViewCI.subresourceRange.layerCount     = 1;
+				attachmentViews[layer] = create_view(attachmentViewCI);
+				m_SubresourceViews.push_back(attachmentViews[layer]);
+			}
+		}
 	}
 
 	void ImageResource::SetLayout(const Layout::ImageLayout newLayout, CommandList *cmdList, uint32_t mipIndex /*= all_mips*/, uint32_t mipRange /*= 0*/)
@@ -444,7 +486,19 @@ namespace SceneryEditorX
 				QueueManager::AddDeletionQueue(ResourceType::ImageView, view);
 		}
 
+		for (VkImageView view : m_SubresourceViews)
+		{
+			if (view != VK_NULL_HANDLE)
+				QueueManager::AddDeletionQueue(ResourceType::ImageView, view);
+		}
+
 		m_ImageViews.clear();
+		m_SubresourceViews.clear();
+		m_ShaderResourceView = VK_NULL_HANDLE;
+		m_ShaderResourceView_mips.fill(VK_NULL_HANDLE);
+		m_ShaderResourceView_Layers.fill(VK_NULL_HANDLE);
+		m_RenderTargetView.fill(VK_NULL_HANDLE);
+		m_DepthStencilView.fill(VK_NULL_HANDLE);
 
 		if (m_Image != VK_NULL_HANDLE)
 		{

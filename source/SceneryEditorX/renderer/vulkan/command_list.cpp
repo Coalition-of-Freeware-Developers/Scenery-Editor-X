@@ -390,7 +390,8 @@ namespace SceneryEditorX
 		if (color == COLOR_DONT_CARE)
 			return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 
-		if (color == COLOR_LOAD)
+		// PipelineState marks "load" with RHI_COLOR_LOAD (alpha -1, also its default); COLOR_LOAD is the legacy sentinel
+		if (color == COLOR_LOAD || color == Color(RHI_COLOR_LOAD.r, RHI_COLOR_LOAD.g, RHI_COLOR_LOAD.b, RHI_COLOR_LOAD.a))
 			return VK_ATTACHMENT_LOAD_OP_LOAD;
 
 		return VK_ATTACHMENT_LOAD_OP_CLEAR;
@@ -690,6 +691,11 @@ namespace SceneryEditorX
 
 		m_State            = CommandState::Recording;
 		m_RenderPassActive = false;
+
+		// Vertex/index buffer bindings don't survive a new recording, so forget the cached ids.
+		m_BufferID_Vertex   = 0;
+		m_BufferID_Instance = 0;
+		m_BufferID_Index    = 0;
 
 		// Debugging aid: set a name so we can identify command buffers in tools
 		// and log when Begin is called for non-idle lists.
@@ -1677,11 +1683,13 @@ namespace SceneryEditorX
 	{
 		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to set viewport");
 
+		// The shaders use D3D-style clip space (+y up, uv.y = 0 at the top), so flip the viewport
+		// (negative height, core since Vulkan 1.1) to put +y at the top of the framebuffer.
 		VkViewport newViewport;
 		newViewport.x = viewport.x;
-		newViewport.y = viewport.y;
+		newViewport.y = viewport.y + viewport.height;
 		newViewport.width = viewport.width;
-		newViewport.height = viewport.height;
+		newViewport.height = -viewport.height;
 		newViewport.minDepth = viewport.depth_min;
 		newViewport.maxDepth = viewport.depth_max;
 		vkCmdSetViewport(m_CmdBuffer, 0, 1, &newViewport);
@@ -2182,8 +2190,9 @@ namespace SceneryEditorX
 
 			SEDX_CORE_ASSERT(rt->IsDepthStencilFormat(), "Invalid depth-stencil format");
 
-			// transition to the appropriate layout
-			Layout::ImageLayout layout = Layout::ImageLayout::Attachment;
+			// transition to the appropriate layout (the depth-specific layout carries the early/late fragment test
+			// stages and depth access masks in its barrier)
+			Layout::ImageLayout layout = Layout::ImageLayout::DepthStencilAttachment;
 			rt->SetLayout(layout, this);
 
 			attachment_depth_stencil.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
@@ -2234,14 +2243,20 @@ namespace SceneryEditorX
 
 		// set dynamic states
 		{
-			// variable rate shading
-			Device::SetVariableRateShading(this, m_pso.vrsInputTexture != nullptr);
+			// variable rate shading: pipelines only declare the shading-rate dynamic state when they use a VRS attachment
+			if (m_pso.vrsInputTexture)
+				Device::SetVariableRateShading(this, true);
 	
-			// Set viewport
+			// Set viewport and scissor to the render area
 			Viewport viewport;
 			viewport.width  = static_cast<float>(m_pso.GetWidth());
 			viewport.height = static_cast<float>(m_pso.GetHeight());
 			SetViewport(viewport);
+
+			xMath::Rectangle scissorRect{};
+			scissorRect.width  = viewport.width;
+			scissorRect.height = viewport.height;
+			SetScissor(scissorRect);
 		}
 
 		// reset
@@ -2297,6 +2312,12 @@ namespace SceneryEditorX
 
 		m_ComputePushConstantsSet = false;
 
+		// Every built-in shader reads the per-frame constants (resources.slang: [[vk::binding(200)]] cbuffer BufferFrame).
+		// Rebound on every PSO change so the dynamic offset follows this frame's slot in the ring buffer.
+		constexpr uint32_t frameConstantBufferBinding = 200;
+		if (Buffer* frameConstants = Renderer::GetBuffer(Renderer_Buffer::ConstantFrame))
+			m_DescriptorLayout_Current->SetConstantBuffer(frameConstantBufferBinding, frameConstants);
+
 		if (pso.shaders[static_cast<uint32_t>(StageType::Compute)])
 		{
 			// Compute pipelines must not be bound inside an active graphics render pass.
@@ -2327,12 +2348,13 @@ namespace SceneryEditorX
 		}
 
 		ImageResource* colorTarget = pso.renderTarget_ColorTextures[0];
+		const bool hasOwnTargets = colorTarget || pso.renderTarget_DepthTexture || pso.renderTarget_Swapchain;
 
-		// If there is no explicit color target but a render pass is already active on
+		// If the PSO has no render targets of its own but a render pass is already active on
 		// the current command buffer (e.g. injected via SetExternalRecordingBuffer for
 		// UI rendering inside RecordRenderCommands), skip the EndRenderPass /
 		// vkCmdBeginRendering block and only build + bind the pipeline.
-		if (!colorTarget && m_RenderPassActive)
+		if (!hasOwnTargets && m_RenderPassActive)
 		{
 			// Store the incoming PSO so PushConstants() and PreDraw() can reference it.
 			m_pso = pso;
@@ -2351,38 +2373,12 @@ namespace SceneryEditorX
 			return;
 		}
 
-		if (!colorTarget)
+		if (!hasOwnTargets)
 			return;
 
-		// Layout transitions are emitted via vkCmdPipelineBarrier2, which must be
-		// outside an active dynamic rendering instance unless special features are enabled.
-		// Close the current render pass before transitioning attachments.
+		// Close the previous pass: attachment layout transitions are emitted via vkCmdPipelineBarrier2,
+		// which must happen outside an active dynamic rendering instance.
 		EndRenderPass();
-
-		// Transition the color attachment to VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL.
-		colorTarget->SetLayout(Layout::ImageLayout::Attachment, this, ALL_MIPS, 0);
-		VkRenderingAttachmentInfo colorAttachment{ VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
-		colorAttachment.imageView   = colorTarget->GetImageView();
-		colorAttachment.imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
-		colorAttachment.loadOp      = VK_ATTACHMENT_LOAD_OP_LOAD;
-		colorAttachment.storeOp     = VK_ATTACHMENT_STORE_OP_STORE;
-
-		VkRenderingAttachmentInfo depthAttachment{ VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
-		if (ImageResource* depthTarget = pso.renderTarget_DepthTexture)
-		{
-			// Depth attachments must use DepthStencilAttachment layout, not the generic
-			// Attachment (color) layout.  The barrier for DepthStencilAttachment carries
-			// EARLY/LATE_FRAGMENT_TESTS stages and DEPTH_STENCIL_ATTACHMENT_READ|WRITE
-			// access masks, which eliminates the READ_AFTER_WRITE hazard on the depth
-			// attachment reported by validation (VE-5).
-			depthTarget->SetLayout(Layout::ImageLayout::DepthStencilAttachment, this, ALL_MIPS, 0);
-			depthAttachment.imageView   = depthTarget->GetImageView();
-			depthAttachment.imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
-			depthAttachment.loadOp      = VK_ATTACHMENT_LOAD_OP_LOAD;
-			depthAttachment.storeOp     = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-			depthAttachment.clearValue.depthStencil.depth   = pso.clearDepth;
-			depthAttachment.clearValue.depthStencil.stencil = pso.clearStencil;
-		}
 
 		// Store the incoming PSO so PushConstants() and PreDraw() can reference it.
 		m_pso = pso;
@@ -2390,38 +2386,38 @@ namespace SceneryEditorX
 		// Bind the format-correct VkPipeline for the PSO; the PipelineCache compiles it against
 		// the PSO's cached descriptor layout on first use.
 		m_Pipeline = PipelineCache::GetPipeline(pso);
-
-		VkRenderingInfo renderingInfo{ VK_STRUCTURE_TYPE_RENDERING_INFO };
-		renderingInfo.renderArea.offset    = { 0, 0 };
-		renderingInfo.renderArea.extent    = { colorTarget->GetWidth(), colorTarget->GetHeight() };
-		renderingInfo.layerCount           = 1;
-		renderingInfo.colorAttachmentCount = 1;
-		renderingInfo.pColorAttachments    = &colorAttachment;
-		renderingInfo.pDepthAttachment     = (depthAttachment.imageView != VK_NULL_HANDLE) ? &depthAttachment : nullptr;
-		vkCmdBeginRendering(m_CmdBuffer, &renderingInfo);
-		m_RenderPassActive = true;
-
-		// After vkCmdBeginRendering the driver has implicitly transitioned the attachments.
-		// Stamp the tracked layouts to match the physical GPU state so that post-render
-		// barriers (e.g. the TransferSrc barrier in Blit) use correct srcStageMask /
-		// srcAccessMask and do not produce WRITE_AFTER_WRITE validation errors.
-		SetLayout(*colorTarget->Get(), 0, MAX_MIP_COUNT, Layout::ImageLayout::Attachment);
-		if (pso.renderTarget_DepthTexture)
+		if (GetPipelineHandle() == VK_NULL_HANDLE || GetPipelineLayoutHandle() == VK_NULL_HANDLE)
 		{
-			SetLayout(*pso.renderTarget_DepthTexture->Get(), 0, MAX_MIP_COUNT, Layout::ImageLayout::DepthStencilAttachment);
+			m_StickyInvalidState = true;
+			static bool warnedGraphicsPipelineCreate = false;
+			if (!warnedGraphicsPipelineCreate)
+			{
+				SEDX_CORE_WARN_TAG("CommandList", "SetPipelineState: failed to build graphics pipeline/layout for PSO '{}'", pso.name ? pso.name : "<unnamed>");
+				warnedGraphicsPipelineCreate = true;
+			}
+
+			m_NeedsDynamicBind = false;
+			m_pso = PipelineState{};
+			return;
 		}
 
-		if (GetPipelineHandle() != VK_NULL_HANDLE)
-		{
-			vkCmdBindPipeline(m_CmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, GetPipelineHandle());
-		}
-		else
-		{
-			// Fallback to the bootstrap pipeline from the render context while the
-			// descriptor layout / format-correct pipeline is being wired up.
-			if (Ref<RenderContext> context = RenderContext::Get(); context && context->pipeline != VK_NULL_HANDLE)
-				vkCmdBindPipeline(m_CmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, context->pipeline);
-		}
+		vkCmdBindPipeline(m_CmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, GetPipelineHandle());
+		m_NeedsDynamicBind = true;
+
+		// The dynamic render pass is begun lazily by PreDraw() -> BeginRenderPass(), which attaches every color
+		// target and the depth target with the PSO's load/clear operations.
+	}
+
+	void CommandList::ClearPipelineStateRenderTargets(PipelineState& pso)
+	{
+		SetPipelineState(pso);
+		if (m_StickyInvalidState || !m_pso.IsGraphics())
+			return;
+
+		// The render pass begins with the PSO's load ops, so an empty pass applies its clears.
+		FlushBarriers();
+		BeginRenderPass();
+		EndRenderPass();
 	}
 
 	void CommandList::PushConstants(const PushConstantBuffer_Pass& data)

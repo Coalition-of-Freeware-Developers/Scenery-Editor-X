@@ -207,9 +207,10 @@ namespace SceneryEditorX
 			Entity cameraEntity = s_ActiveScene->CreateEntity("MainCamera");
 			const entt::entity cameraHandle = static_cast<entt::entity>(cameraEntity);
 
+			// +Y is up (Camera::ProcessInput); start above the ground plane with a three-quarter view of the origin
 			auto& transform = s_ActiveScene->m_Registry.get<TransformComponent>(cameraHandle);
-			constexpr Vec3 kInitialCameraTarget = Vec3(0.0f, 0.0f, 0.0f);
-			transform.translation = Vec3(0.0f, -5.0f, -5.0f);
+			constexpr Vec3 kInitialCameraTarget = Vec3(0.0f, 0.5f, 0.0f);
+			transform.translation = Vec3(2.5f, 2.5f, -3.5f);
 			const Vec3 direction = Normalize(kInitialCameraTarget - transform.translation);
 			transform.SetRotationEuler(Vec3(std::asin(direction.y), std::atan2(direction.x, direction.z), 0.0f));
 
@@ -222,24 +223,29 @@ namespace SceneryEditorX
 			cameraComponent.useJitter = true;
 		}
 
-		const auto renderableView = s_ActiveScene->m_Registry.view<TransformComponent, Renderable>();
-		const bool hasRenderableEntity = renderableView.begin() != renderableView.end();
+		// Runtime components (Renderable, Light, ...) live on the Entity objects the scene stores, not in the registry.
+		const bool hasRenderableEntity = std::ranges::any_of(s_EntityPointers, [](Entity* entity)
+		{
+			return entity && entity->GetComponent<Renderable>() != nullptr;
+		});
 
 		if (!hasRenderableEntity)
 		{
-			if (Entity bootstrapEntity = s_ActiveScene->CreateEntity("DefaultSceneMesh"))
+			if (const Entity bootstrapHandle = s_ActiveScene->CreateEntity("DefaultSceneMesh"))
 			{
-				if (Renderable* renderable = bootstrapEntity.AddComponent<Renderable>())
+				// CreateEntity returns a handle copy; attach runtime components to the stored entity so the renderer
+				// (which walks GetEntities()) sees them and the component's entity pointer stays valid.
+				Entity* bootstrapEntity = s_EntityStorage.at(static_cast<entt::entity>(bootstrapHandle)).get();
+
+				// unit cube resting on the ground plane
+				auto& transform = bootstrapEntity->GetComponent<TransformComponent>();
+				transform.translation = Vec3(0.0f, 0.5f, 0.0f);
+				transform.scale = Vec3(1.0f, 1.0f, 1.0f);
+
+				if (Renderable* renderable = bootstrapEntity->AddComponent<Renderable>())
 				{
 					renderable->SetMesh(MeshType::Cube);
 					renderable->SetDefaultMaterial();
-
-					if (bootstrapEntity.HasComponent<TransformComponent>())
-					{
-						auto& transform = bootstrapEntity.GetComponent<TransformComponent>();
-						transform.translation = Vec3(0.0f, 0.0f, 0.0f);
-						transform.scale = Vec3(1.0f, 1.0f, 1.0f);
-					}
 				}
 			}
 		}

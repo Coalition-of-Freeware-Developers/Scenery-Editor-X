@@ -504,7 +504,8 @@ namespace SceneryEditorX
 	{
 		if (Camera* camera = Scene::GetCamera())
 		{
-			Vec3 cameraPosition = camera->GetEntity()->GetPosition();
+			// the scene camera is not an entity component, so it has no entity to ask for a position
+			Vec3 cameraPosition = camera->GetEyePosition();
 
 			const BoundingBox& boundingBox = GetBoundingBox();
 
@@ -553,7 +554,7 @@ namespace SceneryEditorX
 		}
 
 		const BoundingBox& box        = GetBoundingBox();
-		const Vec3 cameraPosition = camera->GetEntity()->GetPosition();
+		const Vec3 cameraPosition = camera->GetEyePosition();
 
 		// camera inside bounding box = maximum detail
 		if (box.Contains(cameraPosition))

@@ -214,7 +214,15 @@ namespace SceneryEditorX
 		 */
 		void Create();
 
+		/**
+		 * @brief Write every bound resource into m_Set (unbound slots stay unwritten; the layout is partially bound).
+		 */
+		void Write();
+
 		Ref<Device> m_Device;
+
+		// Vulkan handles (VkImageView / VkBuffer) written into m_Set, so the deletion queue can find sets referring to them
+		std::vector<uint64_t> m_WrittenHandles;
 
 		// layout info (immutable after construction)
 		std::vector<Descriptor> m_Descriptors;

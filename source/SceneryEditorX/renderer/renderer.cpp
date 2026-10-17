@@ -57,6 +57,10 @@
 #include <SceneryEditorX/scene/camera.h>
 #include <SceneryEditorX/scene/entity.h>
 #include <SceneryEditorX/scene/scene.h>
+#include <SceneryEditorX/scene/components/component_sets.h>
+#include <SceneryEditorX/scene/components/renderable.h>
+#include <algorithm>
+#include <chrono>
 #include <slang/slang-com-ptr.h>
 #include <slang/slang.h>
 #include <volk/volk.h>
@@ -208,6 +212,173 @@ void dynamic_resolution()
 #pragma endregion
 
 #pragma endregion
+
+	namespace
+	{
+		/**
+		 * @struct GpuMatrix
+		 * @brief 4x4 column-vector matrix (clip = M * position) stored row-major: element (r, c) at m[r * 4 + c].
+		 *
+		 * This is the memory layout the shaders expect: Slang reads it with its column-major layout, so the
+		 * shaders' mul(v, M) applies M exactly as written here. Kept apart from xMath::Mat4, whose member layout
+		 * depends on whether XMATH_MATRIX_IS_ROW_MAJOR is defined before mat4.h is included.
+		 */
+		struct GpuMatrix
+		{
+			std::array<float, 16> m{};
+
+			float& operator()(const int row, const int column) { return m[row * 4 + column]; }
+			float operator()(const int row, const int column) const { return m[row * 4 + column]; }
+
+			static GpuMatrix Rows(const std::array<float, 16>& rows)
+			{
+				GpuMatrix result;
+				result.m = rows;
+				return result;
+			}
+
+			GpuMatrix operator*(const GpuMatrix& rhs) const
+			{
+				GpuMatrix result;
+				for (int row = 0; row < 4; ++row)
+				{
+					for (int column = 0; column < 4; ++column)
+					{
+						float sum = 0.0f;
+						for (int k = 0; k < 4; ++k)
+							sum += (*this)(row, k) * rhs(k, column);
+						result(row, column) = sum;
+					}
+				}
+				return result;
+			}
+
+			/* @brief General inverse by cofactor expansion; returns identity for a singular matrix. */
+			GpuMatrix Inverse() const
+			{
+				const std::array<float, 16>& a = m;
+				std::array<float, 16> inv{};
+				inv[0]  =  a[5] * a[10] * a[15] - a[5] * a[11] * a[14] - a[9] * a[6] * a[15] + a[9] * a[7] * a[14] + a[13] * a[6] * a[11] - a[13] * a[7] * a[10];
+				inv[4]  = -a[4] * a[10] * a[15] + a[4] * a[11] * a[14] + a[8] * a[6] * a[15] - a[8] * a[7] * a[14] - a[12] * a[6] * a[11] + a[12] * a[7] * a[10];
+				inv[8]  =  a[4] * a[9]  * a[15] - a[4] * a[11] * a[13] - a[8] * a[5] * a[15] + a[8] * a[7] * a[13] + a[12] * a[5] * a[11] - a[12] * a[7] * a[9];
+				inv[12] = -a[4] * a[9]  * a[14] + a[4] * a[10] * a[13] + a[8] * a[5] * a[14] - a[8] * a[6] * a[13] - a[12] * a[5] * a[10] + a[12] * a[6] * a[9];
+				inv[1]  = -a[1] * a[10] * a[15] + a[1] * a[11] * a[14] + a[9] * a[2] * a[15] - a[9] * a[3] * a[14] - a[13] * a[2] * a[11] + a[13] * a[3] * a[10];
+				inv[5]  =  a[0] * a[10] * a[15] - a[0] * a[11] * a[14] - a[8] * a[2] * a[15] + a[8] * a[3] * a[14] + a[12] * a[2] * a[11] - a[12] * a[3] * a[10];
+				inv[9]  = -a[0] * a[9]  * a[15] + a[0] * a[11] * a[13] + a[8] * a[1] * a[15] - a[8] * a[3] * a[13] - a[12] * a[1] * a[11] + a[12] * a[3] * a[9];
+				inv[13] =  a[0] * a[9]  * a[14] - a[0] * a[10] * a[13] - a[8] * a[1] * a[14] + a[8] * a[2] * a[13] + a[12] * a[1] * a[10] - a[12] * a[2] * a[9];
+				inv[2]  =  a[1] * a[6]  * a[15] - a[1] * a[7]  * a[14] - a[5] * a[2] * a[15] + a[5] * a[3] * a[14] + a[13] * a[2] * a[7]  - a[13] * a[3] * a[6];
+				inv[6]  = -a[0] * a[6]  * a[15] + a[0] * a[7]  * a[14] + a[4] * a[2] * a[15] - a[4] * a[3] * a[14] - a[12] * a[2] * a[7]  + a[12] * a[3] * a[6];
+				inv[10] =  a[0] * a[5]  * a[15] - a[0] * a[7]  * a[13] - a[4] * a[1] * a[15] + a[4] * a[3] * a[13] + a[12] * a[1] * a[7]  - a[12] * a[3] * a[5];
+				inv[14] = -a[0] * a[5]  * a[14] + a[0] * a[6]  * a[13] + a[4] * a[1] * a[14] - a[4] * a[2] * a[13] - a[12] * a[1] * a[6]  + a[12] * a[2] * a[5];
+				inv[3]  = -a[1] * a[6]  * a[11] + a[1] * a[7]  * a[10] + a[5] * a[2] * a[11] - a[5] * a[3] * a[10] - a[9]  * a[2] * a[7]  + a[9]  * a[3] * a[6];
+				inv[7]  =  a[0] * a[6]  * a[11] - a[0] * a[7]  * a[10] - a[4] * a[2] * a[11] + a[4] * a[3] * a[10] + a[8]  * a[2] * a[7]  - a[8]  * a[3] * a[6];
+				inv[11] = -a[0] * a[5]  * a[11] + a[0] * a[7]  * a[9]  + a[4] * a[1] * a[11] - a[4] * a[3] * a[9]  - a[8]  * a[1] * a[7]  + a[8]  * a[3] * a[5];
+				inv[15] =  a[0] * a[5]  * a[10] - a[0] * a[6]  * a[9]  - a[4] * a[1] * a[10] + a[4] * a[2] * a[9]  + a[8]  * a[1] * a[6]  - a[8]  * a[2] * a[5];
+
+				const float determinant = a[0] * inv[0] + a[1] * inv[4] + a[2] * inv[8] + a[3] * inv[12];
+				if (std::abs(determinant) < 1e-20f)
+					return Rows({ 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 });
+
+				const float inverseDeterminant = 1.0f / determinant;
+				for (float& value : inv)
+					value *= inverseDeterminant;
+
+				return Rows(inv);
+			}
+		};
+
+		/* @brief Writes a GpuMatrix into a constant-buffer matrix slot byte for byte. */
+		void StoreGpuMatrix(xMath::Matrix& destination, const GpuMatrix& source)
+		{
+			static_assert(sizeof(xMath::Matrix) == sizeof(source.m), "xMath::Matrix must be 16 floats");
+			std::memcpy(&destination, source.m.data(), sizeof(source.m));
+		}
+
+		/**
+		 * @struct SceneCameraView
+		 * @brief The active scene's primary camera expressed in the renderer's GPU conventions.
+		 */
+		struct SceneCameraView
+		{
+			GpuMatrix view;
+			GpuMatrix projection;
+			xMath::Vec3 position;
+			xMath::Vec3 forward;
+			xMath::Vec3 right;
+			float nearPlane     = 0.1f;
+			float farPlane      = 10000.0f;
+			float fovHorizontal = 0.0f;
+		};
+
+		/**
+		 * @brief Builds the view and projection of the active scene's primary camera entity.
+		 *
+		 * The view follows the camera controller (Camera::ProcessInput): right-handed, +Y up, forward taken from
+		 * the transform's pitch (x) and yaw (y). The projection is reverse-Z (near -> 1, far -> 0) with D3D-style
+		 * clip space (+Y up), which CommandList::SetViewport maps to Vulkan by flipping the viewport.
+		 * @param aspect Width / height of the render target.
+		 * @param out Receives the camera view.
+		 * @return False when the scene has no camera entity.
+		 */
+		bool BuildSceneCameraView(const float aspect, SceneCameraView& out)
+		{
+			Scene* scene = Scene::GetActive();
+			if (!scene)
+				return false;
+
+			auto cameras = scene->GetRegistry().view<TransformComponent, CameraComponent>();
+			entt::entity selected = entt::null;
+			for (const entt::entity entity : cameras)
+			{
+				if (selected == entt::null)
+					selected = entity;
+
+				if (cameras.get<CameraComponent>(entity).isPrimary)
+				{
+					selected = entity;
+					break;
+				}
+			}
+
+			if (selected == entt::null)
+				return false;
+
+			const TransformComponent& transform = cameras.get<TransformComponent>(selected);
+			const CameraComponent& camera       = cameras.get<CameraComponent>(selected);
+
+			const xMath::Vec3 euler   = transform.GetRotationEuler();
+			const float cosPitch      = std::cos(euler.x);
+			const xMath::Vec3 forward = xMath::Normalize(xMath::Vec3(cosPitch * std::sin(euler.y), std::sin(euler.x), cosPitch * std::cos(euler.y)));
+			const xMath::Vec3 right   = xMath::Normalize(xMath::Cross(forward, xMath::Vec3(0.0f, 1.0f, 0.0f)));
+			const xMath::Vec3 up      = xMath::Cross(right, forward);
+			const xMath::Vec3 eye     = transform.translation;
+
+			// the camera looks down its local -Z
+			out.view = GpuMatrix::Rows({
+				right.x,    right.y,    right.z,   -xMath::Dot(right, eye),
+				up.x,       up.y,       up.z,      -xMath::Dot(up, eye),
+				-forward.x, -forward.y, -forward.z, xMath::Dot(forward, eye),
+				0.0f,       0.0f,       0.0f,       1.0f });
+
+			const float nearPlane = std::max(camera.nearPlane, 0.001f);
+			const float farPlane  = std::max(camera.farPlane, nearPlane + 1.0f);
+			const float xScale    = 1.0f / std::tan(camera.horizontalFov_Rad * 0.5f);
+			const float yScale    = xScale * aspect;
+			out.projection = GpuMatrix::Rows({
+				xScale, 0.0f,   0.0f,                                0.0f,
+				0.0f,   yScale, 0.0f,                                0.0f,
+				0.0f,   0.0f,   nearPlane / (farPlane - nearPlane),  (farPlane * nearPlane) / (farPlane - nearPlane),
+				0.0f,   0.0f,   -1.0f,                               0.0f });
+
+			out.position      = eye;
+			out.forward       = forward;
+			out.right         = right;
+			out.nearPlane     = nearPlane;
+			out.farPlane      = farPlane;
+			out.fovHorizontal = camera.horizontalFov_Rad;
+			return true;
+		}
+	}
 
 	static std::filesystem::path ResolveResourcePath(const std::filesystem::path& relativePath)
 	{
@@ -502,6 +673,11 @@ void dynamic_resolution()
 		CreateRenderTargets(true, true, true);
 		CreateSamplers();
 		GeometryBuffer::Initialize();
+
+		// Create the bindless descriptor sets now: Tick() writes them (draw data, samplers, aabbs, ...) before the
+		// first pipeline is built, and those one-time writes are dropped while the sets don't exist yet.
+		BindlessManager::Init();
+
 		LoadShaders();
 
 		// Query surface capabilities
@@ -807,9 +983,13 @@ void dynamic_resolution()
 
 				if (m_BindlessSamplers_Dirty.IsDirty())
 				{
-					// Update bindless samplers: pass pointer to the sampler array and its count
+					// resources.slang: samplers_comparison (set 6) holds Compare_depth, samplers (set 7) the
+					// regular ones in Renderer_Sampler order after it (sampler_point_clamp = 0 ... anisotropic = 7)
 					auto &samplers = Renderer::GetSamplers();
-					BindlessManager::UpdateSamplers(BindlessResource::SamplersRegular, samplers.data(), static_cast<uint32_t>(samplers.size()));
+					constexpr uint32_t comparisonIndex = static_cast<uint32_t>(Renderer_Sampler::Compare_depth);
+					static_assert(comparisonIndex == 0, "the regular samplers must follow the comparison sampler");
+					BindlessManager::UpdateSamplers(BindlessResource::SamplersComparison, &samplers[comparisonIndex], 1);
+					BindlessManager::UpdateSamplers(BindlessResource::SamplersRegular, samplers.data() + 1, static_cast<uint32_t>(samplers.size()) - 1);
 					m_BindlessSamplers_Dirty.Check();
 				}
 
@@ -2507,212 +2687,83 @@ void dynamic_resolution()
 
 	void Renderer::UpdateDrawCalls(CommandList *cmdList)
 	{
-		// TODO: Implement draw call collection and sorting when the scene and material systems are integrated
 		(void)cmdList;
 
 		m_DrawCall_Count          = 0;
 		m_DrawCalls_Prepass_Count = 0;
-		m_DrawData_Count           = 0;
-		m_Transparents_Present     = false;
+		m_Transparents_Present    = false;
 
-		/*
-		if (ProgressTracker::IsLoading())
-			return;
-		
-
+		// The GPU-driven (indirect) path needs the indirect_cull pass, which the bootstrap frame graph doesn't run
+		// yet, so every draw goes through the CPU-driven depth prepass / g-buffer passes for now.
+		m_Indirect_DrawCount = 0;
 
 		// collect draw calls
+		for (Entity* entity : Scene::GetEntities())
 		{
-			for (Entity* entity : Scene::GetEntities())
+			if (!entity || !entity->GetActive())
+				continue;
+
+			Renderable* renderable = entity->GetComponent<Renderable>();
+			if (!renderable || renderable->GetLodCount() == 0)
+				continue;
+
+			MaterialAsset* material = renderable->GetMaterialAsset();
+			if (!material)
+				continue;
+
+			if (m_DrawCall_Count >= static_cast<uint32_t>(m_DrawCalls.size()))
 			{
-				if (!entity->GetActive())
-					continue;
-
-				if (Renderable* renderable = entity->GetComponent<Renderable>())
+				static bool s_LoggedDrawCallOverflow = false;
+				if (!s_LoggedDrawCallOverflow)
 				{
-					Material* material = renderable->GetMaterial();
-					if (!material)
-						continue;
-
-					if (material->IsTransparent())
-					{
-						m_Transparents_Present = true;
-					}
-
-					uint32_t draw_data_index = WriteDrawData(
-						entity->GetMatrix(),
-						entity->GetMatrixPrevious(),
-						material->GetIndex(),
-						material->IsTransparent() ? 1 : 0
-					);
-
-					Renderer_DrawCall& draw_call = m_DrawCalls[m_DrawCall_Count++];
-					draw_call.renderable         = renderable;
-					draw_call.distance_squared   = renderable->GetDistanceSquared();
-					draw_call.lodIndex          = renderable->GetLodIndex();
-					draw_call.isOccluder        = false;
-					draw_call.cameraVisible     = renderable->IsVisible();
-					draw_call.instanceIndex     = 0;
-					draw_call.instanceCount     = renderable->GetInstanceCount();
-					draw_call.drawData_Index    = draw_data_index;
+					SEDX_CORE_WARN_TAG("Renderer", "UpdateDrawCalls: draw call capacity reached ({})", static_cast<uint32_t>(m_DrawCalls.size()));
+					s_LoggedDrawCallOverflow = true;
 				}
+				break;
 			}
 
-			// sort: opaque before transparent, then material, then distance
-			std::sort(m_DrawCalls.begin(), m_DrawCalls.begin() + m_DrawCall_Count, [](const Renderer_DrawCall& a, const Renderer_DrawCall& b)
-			{
-				bool a_transparent = a.renderable->GetMaterial()->IsTransparent();
-				bool b_transparent = b.renderable->GetMaterial()->IsTransparent();
-				if (a_transparent != b_transparent)
-				{
-					return !a_transparent;
-				}
+			const bool isTransparent = material->IsTransparent();
+			m_Transparents_Present  |= isTransparent;
 
-				uint64_t a_material_id = a.renderable->GetMaterial()->GetObjectId();
-				uint64_t b_material_id = b.renderable->GetMaterial()->GetObjectId();
-				if (a_material_id != b_material_id)
-				{
-					return a_material_id < b_material_id;
-				}
+			const uint32_t drawDataIndex = WriteDrawData(entity->GetMatrix(), entity->GetMatrixPrevious(), material->GetIndex(), isTransparent ? 1 : 0);
 
-				if (!a_transparent)
-				{
-					return a.distance_squared < b.distance_squared;
-				}
-				else
-				{
-					return a.distance_squared > b.distance_squared;
-				}
-			});
+			Renderer_DrawCall& drawCall = m_DrawCalls[m_DrawCall_Count++];
+			drawCall.renderable         = renderable;
+			drawCall.lodIndex           = std::min(renderable->GetLodIndex(), renderable->GetLodCount() - 1);
+			drawCall.isOccluder         = false;
+			// Frustum culling is skipped until the CPU camera (Camera) and the GPU camera above agree on conventions.
+			drawCall.cameraVisible      = true;
+			drawCall.instanceIndex      = 0;
+			drawCall.instanceCount      = renderable->GetInstanceCount();
+			drawCall.drawData_Index     = drawDataIndex;
 		}
-		*/
 
-		// prepass: visible opaques, sorted by alpha test then distance
-		/*
+		// sort: opaque before transparent, then by material to minimize state changes
+		std::sort(m_DrawCalls.begin(), m_DrawCalls.begin() + m_DrawCall_Count, [](const Renderer_DrawCall& a, const Renderer_DrawCall& b)
 		{
-			for (uint32_t i = 0; i < m_DrawCall_Count; ++i)
-			{
-				const Renderer_DrawCall& dc = m_DrawCalls[i];
-				if (!dc.renderable->GetMaterial()->IsTransparent() && dc.cameraVisible)
-				{
-					m_DrawCalls_Prepass[m_DrawCalls_Prepass_Count++] = dc;
-				}
-			}
+			const bool aTransparent = a.renderable->GetMaterialAsset()->IsTransparent();
+			const bool bTransparent = b.renderable->GetMaterialAsset()->IsTransparent();
+			if (aTransparent != bTransparent)
+				return !aTransparent;
 
-			std::sort(m_DrawCalls_Prepass.begin(), m_DrawCalls_Prepass.begin() + m_DrawCalls_Prepass_Count, [](const Renderer_DrawCall& a, const Renderer_DrawCall& b)
-			{
-				bool a_alpha = a.renderable->GetMaterial()->IsAlphaTested();
-				bool b_alpha = b.renderable->GetMaterial()->IsAlphaTested();
-				if (a_alpha != b_alpha)
-				{
-					return !a_alpha;
-				}
-				return a.distance_squared < b.distance_squared;
-			});
-		}
-		*/
+			return a.renderable->GetMaterialAsset()->GetObjectId() < b.renderable->GetMaterialAsset()->GetObjectId();
+		});
 
-		// indirect draw buffers (gpu-driven path)
-		/*
+		// prepass: visible opaques, non-alpha-tested first
+		for (uint32_t i = 0; i < m_DrawCall_Count; ++i)
 		{
-			m_Indirect_DrawCount = 0;
-			for (uint32_t i = 0; i < m_DrawCall_Count; i++)
+			const Renderer_DrawCall& drawCall = m_DrawCalls[i];
+			if (!drawCall.renderable->GetMaterialAsset()->IsTransparent() && drawCall.cameraVisible)
 			{
-				const Renderer_DrawCall& dc = m_DrawCalls[i];
-				MaterialAsset* material = dc.renderable->GetMaterial();
-
-				if (!material || material->IsTransparent())
-					continue;
-
-				if (IsCpuDrivenDraw(dc, material))
-					continue;
-
-				uint32_t idx = m_Indirect_DrawCount++;
-				if (idx >= MAX_ARRAY_SIZE)
-					break;
-
-				ShaderBuffer_IndirectDrawArgs& args = m_Indirect_DrawArgs[idx];
-				args.index_count          = renderable->GetIndexCount(dc.lodIndex);
-				args.instance_count       = dc.instanceCount;
-				args.first_index          = renderable->GetIndexOffset(dc.lodIndex);
-				args.vertex_offset        = static_cast<int32_t>(renderable->GetVertexOffset(dc.lodIndex));
-				args.first_instance       = dc.instanceIndex;
-
-				// per-draw data (aabb_index includes the frame offset into the shared aabb buffer)
-				uint32_t aabb_frame_offset = m_Frame_Resource_Index * MAX_ARRAY_SIZE;
-				ShaderBuffer_DrawData& data = m_Indirect_DrawData[idx];
-				Entity* entity          = renderable->GetEntity();
-				data.transform          = entity->GetMatrix();
-				data.transform_previous = entity->GetMatrixPrevious();
-				data.material_index     = material->GetIndex();
-				data.is_transparent     = 0;
-				data.aabb_index         = aabb_frame_offset + m_DrawCalls_Prepass_Count + idx;
-				data.padding            = 0;
+				m_DrawCalls_Prepass[m_DrawCalls_Prepass_Count++] = drawCall;
 			}
 		}
-		*/
 
-		// select occluders (top N by screen area, with temporal hysteresis)
-		/*
+		std::stable_sort(m_DrawCalls_Prepass.begin(), m_DrawCalls_Prepass.begin() + m_DrawCalls_Prepass_Count, [](const Renderer_DrawCall& a, const Renderer_DrawCall& b)
 		{
-			static std::unordered_set<Renderable*> previous_occluders;
-
-			auto compute_screen_space_area = [&](const BoundingBox& aabb_world) -> float
-			{
-				float area = 0.0f;
-				if (Camera* camera = Scene::GetCamera())
-				{
-					xMath::Rectangle rect_screen = camera->WorldToScreenCoordinates(aabb_world);
-					area = xMath::Clamp(rect_screen.width * rect_screen.height, 0.0f, std::numeric_limits<float>::max());
-				}
-				return area;
-			};
-
-			struct DrawCallArea
-			{
-				uint32_t index;
-				float area;
-			};
-			static std::vector<DrawCallArea> areas;
-			areas.clear();
-			areas.reserve(m_DrawCalls_Prepass_Count);
-
-			for (uint32_t i = 0; i < m_DrawCalls_Prepass_Count; i++)
-			{
-				Renderer_DrawCall& draw_call = m_DrawCalls_Prepass[i];
-				Renderable* renderable = draw_call.renderable;
-				Material* material = renderable->GetMaterial();
-
-				if (!material || material->IsTransparent() || renderable->HasInstancing() || !draw_call.cameraVisible)
-					continue;
-
-				float screen_area = compute_screen_space_area(renderable->GetBoundingBox());
-
-				// temporal hysteresis: bonus for previous occluders
-				if (previous_occluders.contains(renderable))
-				{
-					screen_area *= 1.5f;
-				}
-
-				areas.push_back({.index = i, .area = screen_area });
-			}
-
-			std::ranges::sort(areas.begin(), areas.end(), [](const DrawCallArea& a, const DrawCallArea& b)
-			{
-				return a.area > b.area;
-			});
-
-			const uint32_t max_occluders = 64;
-			uint32_t occluder_count = xMath::Min(max_occluders, static_cast<uint32_t>(areas.size()));
-
-			previous_occluders.clear();
-			for (uint32_t i = 0; i < occluder_count; i++)
-			{
-				m_DrawCalls_Prepass[areas[i].index].isOccluder = true;
-				previous_occluders.insert(m_DrawCalls_Prepass[areas[i].index].renderable);
-			}
-		}*/
-	} 
+			return !a.renderable->GetMaterialAsset()->IsAlphaTested() && b.renderable->GetMaterialAsset()->IsAlphaTested();
+		});
+	}
 
 	void Renderer::UpdateCameraUBO(uint32_t frameIndex)
 	{
@@ -2744,98 +2795,88 @@ void dynamic_resolution()
 
 	void Renderer::UpdateFrameConstantBuffer(CommandList *cmdList)
 	{
-		/* TODO: This function is currently unused, but will be the basis for per-frame shader data updates once the scene and material systems are integrated. */
+		Buffer* frameBuffer = GetBuffer(Renderer_Buffer::ConstantFrame);
+		if (!cmdList || !frameBuffer)
+			return;
 
-		(void)cmdList;
+		ConstantBuffer_Frame& frame = m_Cb_Frame_Cpu;
 
-/*
-		// matrices
+		// time
+		using Clock = std::chrono::steady_clock;
+		static const Clock::time_point s_StartTime = Clock::now();
+		static Clock::time_point s_LastTime        = s_StartTime;
+		const Clock::time_point now                = Clock::now();
+		const double timeSeconds                   = std::chrono::duration<double>(now - s_StartTime).count();
+		const float deltaSeconds                   = static_cast<float>(std::chrono::duration<double>(now - s_LastTime).count());
+		s_LastTime                                 = now;
+
+		// camera
+		static bool s_HasPreviousFrame = false;
+		const xMath::Vec2 resolutionRender = GetRendererResolution();
+		const float aspect = resolutionRender.y > 0.0f ? resolutionRender.x / resolutionRender.y : 1.0f;
+
+		SceneCameraView camera;
+		if (BuildSceneCameraView(aspect, camera))
 		{
-			if (Camera *camera = Scene::GetCamera())
-			{
-				if (s_NearPlane != camera->GetNearPlane() || s_FarPlane != camera->GetFarPlane())
-				{
-					s_NearPlane                    = camera->GetNearPlane();
-					s_FarPlane                     = camera->GetFarPlane();
-					s_OrthoProjection_Dirty.SetDirty();
-				}
+			const GpuMatrix viewProjection = camera.projection * camera.view;
 
-				m_Cb_Frame_Cpu.view_previous       = m_Cb_Frame_Cpu.view;
-				m_Cb_Frame_Cpu.view                = camera->GetViewMatrix();
-				m_Cb_Frame_Cpu.view_inv            = Matrix::Invert(m_Cb_Frame_Cpu.view);
-				m_Cb_Frame_Cpu.projection_previous = m_Cb_Frame_Cpu.projection;
-				m_Cb_Frame_Cpu.projection          = camera->GetProjectionMatrix();
-				m_Cb_Frame_Cpu.projection_inv      = Matrix::Invert(m_Cb_Frame_Cpu.projection);
-			}
+			StoreGpuMatrix(frame.view, camera.view);
+			StoreGpuMatrix(frame.view_inv, camera.view.Inverse());
+			StoreGpuMatrix(frame.projection, camera.projection);
+			StoreGpuMatrix(frame.projection_inv, camera.projection.Inverse());
+			StoreGpuMatrix(frame.view_projection, viewProjection);
+			StoreGpuMatrix(frame.view_projection_inv, viewProjection.Inverse());
+			frame.view_projection_unjittered = frame.view_projection; // no TAA jitter in the bootstrap path
 
-			if (s_OrthoProjection_Dirty.IsDirty())
-			{ 
-				// near = 0 for ortho (avoids NaN in [3,2] element)
-				Matrix projection_ortho              = Matrix::CreateOrthographicLH(s_Viewport.width, s_Viewport.height, 0.0f, s_FarPlane);
-				m_Cb_Frame_Cpu.view_projection_ortho = Matrix::CreateLookAtLH(Vec3(0, 0, -s_NearPlane), Vec3::FORWARD, Vec3::UP) * projection_ortho;
-				s_OrthoProjection_Dirty.Check();
-			}
+			if (xMath::Length2(frame.camera_position - camera.position) != 0.0f)
+				frame.camera_last_movement_time = static_cast<float>(timeSeconds);
+
+			frame.camera_position = camera.position;
+			frame.camera_forward  = camera.forward;
+			frame.camera_right    = camera.right;
+			frame.camera_near     = camera.nearPlane;
+			frame.camera_far      = camera.farPlane;
+			frame.camera_fov      = camera.fovHorizontal;
 		}
 
-
-		// taa jitter
-		Renderer_AntiAliasing_Upsampling upsampling_mode = cvar_antialiasing_upsampling.GetValueAs<Renderer_AntiAliasing_Upsampling>();
+		// the first frame has no history, so it is its own previous frame (no motion)
+		if (!s_HasPreviousFrame)
 		{
-			if (upsampling_mode == Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr)
-			{
-				VendorTechnology::FSR3_GenerateJitterSample(&s_JitterOffset.x, &s_JitterOffset.y);
-				m_Cb_Frame_Cpu.projection *= Matrix::CreateTranslation(Vec3(s_JitterOffset.x, s_JitterOffset.y, 0.0f));
-			}
-			else if (upsampling_mode == Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess)
-			{
-				VendorTechnology::XeSS_GenerateJitterSample(&s_JitterOffset.x, &s_JitterOffset.y);
-				m_Cb_Frame_Cpu.projection *= Matrix::CreateTranslation(Vec3(s_JitterOffset.x, s_JitterOffset.y, 0.0f));
-			}
-			else
-			{
-				s_JitterOffset = Vec2::ZERO;
-			}
+			frame.view_previous                       = frame.view;
+			frame.projection_previous                 = frame.projection;
+			frame.view_projection_previous            = frame.view_projection;
+			frame.view_projection_previous_unjittered = frame.view_projection_unjittered;
+			frame.camera_position_previous            = frame.camera_position;
+			s_HasPreviousFrame                        = true;
 		}
 
-		m_Cb_Frame_Cpu.view_projection_previous = m_Cb_Frame_Cpu.view_projection;
-		m_Cb_Frame_Cpu.view_projection          = m_Cb_Frame_Cpu.view * m_Cb_Frame_Cpu.projection;
-		m_Cb_Frame_Cpu.view_projection_inv      = Matrix::Invert(m_Cb_Frame_Cpu.view_projection);
-		if (Camera* camera = Scene::GetCamera())
-		{
-			m_Cb_Frame_Cpu.view_projection_previous_unjittered = m_Cb_Frame_Cpu.view_projection_unjittered;
-			m_Cb_Frame_Cpu.view_projection_unjittered          = m_Cb_Frame_Cpu.view * camera->GetProjectionMatrix();
-			m_Cb_Frame_Cpu.camera_near                         = camera->GetNearPlane();
-			m_Cb_Frame_Cpu.camera_far                          = camera->GetFarPlane();
-			m_Cb_Frame_Cpu.camera_position_previous            = m_Cb_Frame_Cpu.camera_position;
-			m_Cb_Frame_Cpu.camera_position                     = camera->GetEntity()->GetPosition();
-			m_Cb_Frame_Cpu.camera_forward                      = camera->GetEntity()->GetForward();
-			m_Cb_Frame_Cpu.camera_right                        = camera->GetEntity()->GetRight();
-			m_Cb_Frame_Cpu.camera_fov                          = camera->GetFovHorizontalDeg() * DEG_TO_RAD;
-			m_Cb_Frame_Cpu.camera_aperture                     = camera->GetAperture();
-			m_Cb_Frame_Cpu.camera_last_movement_time           = Length2((m_Cb_Frame_Cpu.camera_position - m_Cb_Frame_Cpu.camera_position_previous)) != 0.0f
-				? static_cast<float>(Timer::GetTimeSec()) : m_Cb_Frame_Cpu.camera_last_movement_time;
-		}
-		m_Cb_Frame_Cpu.resolution_output   = m_resolution_output;
-		m_Cb_Frame_Cpu.resolution_render   = m_resolution_render;
-		m_Cb_Frame_Cpu.taa_jitter_previous = m_Cb_Frame_Cpu.taa_jitter_current;
-		m_Cb_Frame_Cpu.taa_jitter_current  = s_JitterOffset;
-		m_Cb_Frame_Cpu.time                = Timer::GetTimeSec();
-		m_Cb_Frame_Cpu.delta_time          = static_cast<float>(DeltaTime::GetSeconds());
-		m_Cb_Frame_Cpu.frame               = static_cast<uint32_t>(m_FrameNumber);
-		m_Cb_Frame_Cpu.resolution_scale    = cvar_resolution_scale.GetValue();
-		m_Cb_Frame_Cpu.hdr_enabled         = cvar_hdr.GetValueAs<bool>() ? 1.0f : 0.0f;
-		m_Cb_Frame_Cpu.hdr_max_nits        = Monitor::GetLuminanceMax();
-		m_Cb_Frame_Cpu.gamma               = cvar_gamma.GetValue();
-		m_Cb_Frame_Cpu.camera_exposure     = Scene::GetCamera() ? Scene::GetCamera()->GetExposure() : 1.0f;
+		frame.view_projection_ortho = xMath::Matrix::IDENTITY;
+		frame.resolution_render     = resolutionRender;
+		frame.resolution_output     = GetOutputResolution();
+		frame.taa_jitter_previous   = frame.taa_jitter_current;
+		frame.taa_jitter_current    = xMath::Vec2(0.0f, 0.0f);
+		frame.camera_aperture       = 2.8f;
+		frame.time                  = timeSeconds;
+		frame.delta_time            = deltaSeconds;
+		frame.frame                 = static_cast<uint32_t>(m_FrameNumber);
+		frame.options               = 0; // no ray-traced reflections, no SSAO in the bootstrap path
+		frame.resolution_scale      = 1.0f;
+		frame.hdr_enabled           = 0.0f;
+		frame.hdr_max_nits          = 1000.0f;
+		frame.gamma                 = 2.2f;
+		frame.camera_exposure       = 1.0f;
+		frame.wind                  = Scene::GetWind();
+		frame.cloud_coverage        = 0.0f;
+		frame.cloud_shadows         = 0.0f;
 
-		m_Cb_Frame_Cpu.cloud_coverage = cvar_cloud_coverage.GetValue();
-		m_Cb_Frame_Cpu.cloud_shadows  = cvar_cloud_shadows.GetValue();
-		// feature bits (must match common_resources.hlsl)
-		m_Cb_Frame_Cpu.SetBit(cvar_ssao.GetValueAs<bool>(),                   1 << 1);
-		m_Cb_Frame_Cpu.SetBit(cvar_restir_pt.GetValueAs<bool>(),              1 << 3);
+		frameBuffer->Update(cmdList, &frame);
 
-		GetBuffer(Renderer_Buffer::ConstantFrame)->Update(cmdList, &m_Cb_Frame_Cpu);*/
-
+		// becomes the "previous" state for the next frame
+		frame.view_previous                       = frame.view;
+		frame.projection_previous                 = frame.projection;
+		frame.view_projection_previous            = frame.view_projection;
+		frame.view_projection_previous_unjittered = frame.view_projection_unjittered;
+		frame.camera_position_previous            = frame.camera_position;
 	}
 
 	uint32_t Renderer::WriteDrawData(const xMath::Matrix &transform, const xMath::Matrix &prevTransform, uint32_t matIndex, uint32_t isTransparent)
@@ -2856,9 +2897,11 @@ void dynamic_resolution()
 		SEDX_CORE_ASSERT(m_DrawData_Count < RENDERER_MAX_DRAW_CALLS);
 		uint32_t index = m_DrawData_Count++;
 
+		// Entity matrices are row-vector (translation in the last row); the shaders want the column-vector form
+		// stored row-major (see GpuMatrix), which is the transpose in xMath::Matrix's row-major storage.
 		ShaderBuffer_DrawData& entry    = m_DrawData_CPU[index];
-		entry.transform					= transform;
-		entry.transform_previous		= prevTransform;
+		entry.transform					= transform.Transposed();
+		entry.transform_previous		= prevTransform.Transposed();
 		entry.material_index			= matIndex;
 		entry.is_transparent			= isTransparent;
 		entry.aabb_index				= 0;
@@ -2969,21 +3012,28 @@ void dynamic_resolution()
 				// keep in sync with Surface struct in common_structs.slang
 			}
 	
-			// textures
+			// textures, in the order of the material_texture_index_* slots in resources.slang
+			// (albedo, roughness, metalness, normal, occlusion, emission, height, mask, packed)
+			static constexpr std::array<MaterialTextureType, 9> shaderTextureSlots =
 			{
-				for (uint32_t type = 0; type < static_cast<uint32_t>(MaterialTextureType::MaxEnum); type++)
+				MaterialTextureType::Color, MaterialTextureType::Roughness, MaterialTextureType::Metalness,
+				MaterialTextureType::Normal, MaterialTextureType::Occlusion, MaterialTextureType::Emission,
+				MaterialTextureType::Height, MaterialTextureType::AlphaMask, MaterialTextureType::None // packed occlusion/roughness/metalness
+			};
+			{
+				for (uint32_t type = 0; type < static_cast<uint32_t>(shaderTextureSlots.size()); type++)
 				{
 					for (uint32_t slot = 0; slot < MaterialAsset::SLOTS_PER_TEXTURE; slot++)
 					{
 						uint32_t bindlessIndex = count + (type * MaterialAsset::SLOTS_PER_TEXTURE) + slot;
-						m_Bindless_Textures[bindlessIndex] = material->GetTexture(static_cast<MaterialTextureType>(type), slot);
+						m_Bindless_Textures[bindlessIndex] = material->GetTexture(shaderTextureSlots[type], slot);
 					}
 				}
 			}
 	
 			material->SetIndex(count);
-
-			count += static_cast<uint32_t>(MaterialTextureType::MaxEnum) * MaterialAsset::SLOTS_PER_TEXTURE;
+	
+			count += static_cast<uint32_t>(shaderTextureSlots.size()) * MaterialAsset::SLOTS_PER_TEXTURE;
 		};
 	
 		auto update_entities = [update_material]()

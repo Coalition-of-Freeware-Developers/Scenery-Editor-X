@@ -395,7 +395,7 @@ namespace SceneryEditorX
 		SEDX_CORE_ASSERT(m_IsMappable, "Can't update unmapped buffer");
 		SEDX_CORE_ASSERT(dataCPU != nullptr, "Invalid CPU data");
 		SEDX_CORE_ASSERT(m_MappedData != nullptr, "Invalid mapped data on GPU");
-		SEDX_CORE_ASSERT(m_Offset + m_Stride <= m_ObjectSize, "Out of memory");
+		SEDX_CORE_ASSERT(m_Offset + m_Stride <= GetObjectSize(), "Out of memory");
 
 		// advance offset
 		if (m_IsFirstUpdate)

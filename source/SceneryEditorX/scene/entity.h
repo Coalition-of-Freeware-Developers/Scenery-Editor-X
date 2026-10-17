@@ -78,12 +78,22 @@ namespace SceneryEditorX
 		 * @brief 
 		 * @return  
 		 */
-		virtual xMath::Matrix GetMatrix() const { return xMath::Matrix{}; }
+		virtual xMath::Matrix GetMatrix() const; // world transform (registry TransformComponent + parent chain), row-vector
 
 		/**
 		 * @brief 
 		 */
-		virtual void SetMatrixPrevious(const xMath::Matrix& /*m*/) {}
+		virtual void SetMatrixPrevious(const xMath::Matrix& m)
+		{
+			m_MatrixPrevious    = m;
+			m_HasMatrixPrevious = true;
+		}
+
+		/**
+		 * @brief World transform the renderer used for this entity last frame (motion vectors).
+		 * @return The stored previous matrix, or the current one before the first frame was rendered.
+		 */
+		virtual xMath::Matrix GetMatrixPrevious() const { return m_HasMatrixPrevious ? m_MatrixPrevious : GetMatrix(); }
 
 		/**
 		 * @brief 
@@ -243,6 +253,12 @@ namespace SceneryEditorX
 		template<typename T>
 		T &GetComponent() requires(!ComponentTypeResolver<T>::IS_REGISTERED)
 		{
+			if (entt::registry* registry = GetRegistry())
+			{
+				SEDX_CORE_ASSERT(registry->all_of<T>(m_EntityHandle), "Entity does not have component of this type");
+				return registry->get<T>(m_EntityHandle);
+			}
+
 			auto it = m_structComponents.find(std::type_index(typeid(T)));
 			SEDX_CORE_ASSERT(it != m_structComponents.end(), "Entity does not have component of this type");
 			return std::any_cast<T&>(it->second);
@@ -256,6 +272,12 @@ namespace SceneryEditorX
 		template<typename T>
 		const T &GetComponent() const requires(!ComponentTypeResolver<T>::IS_REGISTERED)
 		{
+			if (const entt::registry* registry = GetRegistry())
+			{
+				SEDX_CORE_ASSERT(registry->all_of<T>(m_EntityHandle), "Entity does not have component of this type");
+				return registry->get<T>(m_EntityHandle);
+			}
+
 			auto it = m_structComponents.find(std::type_index(typeid(T)));
 			SEDX_CORE_ASSERT(it != m_structComponents.end(), "Entity does not have component of this type");
 			return std::any_cast<const T&>(it->second);
@@ -411,6 +433,9 @@ namespace SceneryEditorX
 		template<typename T, typename... Args>
 		T &AddComponent(Args &&...args) requires(!ComponentTypeResolver<T>::IS_REGISTERED)
 		{
+			if (entt::registry* registry = GetRegistry())
+				return registry->emplace_or_replace<T>(m_EntityHandle, std::forward<Args>(args)...);
+
 			m_structComponents[std::type_index(typeid(T))] = T(std::forward<Args>(args)...);
 			return std::any_cast<T&>(m_structComponents[std::type_index(typeid(T))]);
 		}
@@ -451,6 +476,12 @@ namespace SceneryEditorX
 		template<typename T>
 		void RemoveComponent() requires(!ComponentTypeResolver<T>::IS_REGISTERED)
 		{
+			if (entt::registry* registry = GetRegistry())
+			{
+				registry->remove<T>(m_EntityHandle);
+				return;
+			}
+
 			m_structComponents.erase(std::type_index(typeid(T)));
 		}
 
@@ -479,6 +510,9 @@ namespace SceneryEditorX
 		template<typename T>
 		T *TryGetComponent() requires(!ComponentTypeResolver<T>::IS_REGISTERED)
 		{
+			if (entt::registry* registry = GetRegistry())
+				return registry->try_get<T>(m_EntityHandle);
+
 			auto it = m_structComponents.find(std::type_index(typeid(T)));
 			if (it == m_structComponents.end())
 				return nullptr;
@@ -493,6 +527,9 @@ namespace SceneryEditorX
 		template<typename T>
 		const T *TryGetComponent() const requires(!ComponentTypeResolver<T>::IS_REGISTERED)
 		{
+			if (const entt::registry* registry = GetRegistry())
+				return registry->try_get<T>(m_EntityHandle);
+
 			auto it = m_structComponents.find(std::type_index(typeid(T)));
 			if (it == m_structComponents.end())
 				return nullptr;
@@ -540,7 +577,7 @@ namespace SceneryEditorX
 		template<typename T>
 		bool HasComponent() requires(!ComponentTypeResolver<T>::IS_REGISTERED)
 		{
-			return m_structComponents.find(std::type_index(typeid(T))) != m_structComponents.end();
+			return HasSingleComponent<T>();
 		}
 
 		/**
@@ -639,13 +676,8 @@ namespace SceneryEditorX
 		 */
 		[[nodiscard]] const std::string& Name() const
 		{
-			auto it = m_structComponents.find(std::type_index(typeid(TagComponent)));
-			if (it == m_structComponents.end())
-			{
-				return m_Name;
-			}
-
-			return std::any_cast<const TagComponent&>(it->second).pTag;
+			const TagComponent* tag = TryGetComponent<TagComponent>();
+			return tag ? tag->pTag : m_Name;
 		}
 
 		//operator uint32_t () const { return (uint32_t)m_EntityHandle; }
@@ -797,6 +829,24 @@ namespace SceneryEditorX
 		float m_TimeSinceLastTransform = 0.0f; // Used for editor gizmo display and other transform-related time tracking (time in seconds)
 		std::string m_Name = "Unnamed";
 
+		// world transform the renderer used last frame (motion vectors)
+		xMath::Matrix m_MatrixPrevious = xMath::Matrix::IDENTITY;
+		bool m_HasMatrixPrevious       = false;
+
+		/**
+		 * @brief The registry holding this entity's struct components (ID, tag, transform, ...).
+		 * Entities created by a Scene keep their struct components in the scene's registry; an entity without a
+		 * (live) scene handle falls back to its own m_structComponents store.
+		 * @return The scene registry, or nullptr when the entity is not bound to a live scene entity.
+		 */
+		[[nodiscard]] entt::registry* GetRegistry() const
+		{
+			if (!m_Scene || m_EntityHandle == entt::null || !m_Scene->m_Registry.valid(m_EntityHandle))
+				return nullptr;
+
+			return &m_Scene->m_Registry;
+		}
+
 		// Struct/data components (non-Component subclasses from component_sets.h), keyed by type
 		std::unordered_map<std::type_index, std::any> m_structComponents;
 
@@ -816,6 +866,9 @@ namespace SceneryEditorX
 			}
 			else
 			{
+				if (const entt::registry* registry = GetRegistry())
+					return registry->all_of<T>(m_EntityHandle);
+
 				return m_structComponents.contains(std::type_index(typeid(T)));
 			}
 		}

@@ -387,31 +387,33 @@ namespace SceneryEditorX
 		gbuffer_velocity = 3,
 		gbuffer_depth    = 4,
 
+		// values are the vk::binding numbers declared in resources/shaders/resources.slang
+
 		// other
-		ssao = 5,
-	
+		ssao = 6,
+
 		// misc
-		tex   = 6,
-		tex2  = 7,
-		tex3  = 8,
-		tex4  = 9,
-		tex5  = 10,
-		tex6  = 11,
-		tex3d = 12,
+		tex   = 7,
+		tex2  = 8,
+		tex3  = 9,
+		tex4  = 10,
+		tex5  = 11,
+		tex6  = 12,
+		tex3d = 13,
 
 		// noise
-		tex_perlin = 13,
+		tex_perlin = 14,
 
-		// bindless
-		bindless_material_textures   = 14,
-		bindless_material_parameters = 15,
-		bindless_light_parameters    = 16,
-		bindless_aabbs               = 17,
-		bindless_draw_data           = 18,
-		
+		// bindless (bound through BindlessManager sets, listed for reference)
+		bindless_material_textures   = 15,
+		bindless_material_parameters = 16,
+		bindless_light_parameters    = 17,
+		bindless_aabbs               = 18,
+		bindless_draw_data           = 19,
+
 		// volumetric clouds 3D noise
-		tex3d_cloud_shape  = 19,
-		tex3d_cloud_detail = 20,
+		tex3d_cloud_shape  = 52,
+		tex3d_cloud_detail = 53,
 
 		// restir reservoir srv bindings (for temporal/spatial read)
 		reservoir_prev0    = 21,
@@ -436,7 +438,7 @@ namespace SceneryEditorX
 		tex4          = 3,
 		tex3d         = 4,
 		tex_sss       = 5,
-		sb_spd        = 7,
+		sb_spd        = 44,
 		tex_spd       = 8,
 
 		// restir reservoir uav bindings
@@ -447,25 +449,25 @@ namespace SceneryEditorX
 		reservoir4    = 24,
 
 		// integer format textures (vrs, etc)
-		tex_uint               = 29,
+		tex_uint               = 30,
 
 		// gpu-driven indirect drawing
-		indirect_draw_args     = 30,
-		indirect_draw_data     = 31,
-		indirect_draw_args_out = 32,
-		indirect_draw_data_out = 33,
-		indirect_draw_count    = 34,
+		indirect_draw_args     = 31,
+		indirect_draw_data     = 32,
+		indirect_draw_args_out = 33,
+		indirect_draw_data_out = 34,
+		indirect_draw_count    = 35,
 
 		// gpu-driven particles
-		particle_buffer_a      = 35,
-		particle_buffer_b      = 36,
-		particle_counter       = 37,
-		particle_emitter       = 38,
+		particle_buffer_a      = 36,
+		particle_buffer_b      = 37,
+		particle_counter       = 38,
+		particle_emitter       = 39,
 
 		// gpu texture compression
-		compress_input         = 39,
-		compress_output        = 40,
-		compress_output_bc1    = 41,
+		compress_input         = 40,
+		compress_output        = 41,
+		compress_output_bc1    = 42,
 	};
 
 	// -------------------------------------------------------

@@ -611,9 +611,17 @@ namespace SceneryEditorX
 			return;
 
 		Ref<Device> device = RenderContext::Get()->GetDevice();
-		std::scoped_lock guard(s_MutexDeletionQueue);
+
+		// Take the pending entries and release the lock before destroying anything: erasing a cached descriptor
+		// set below releases its layout, which enqueues the VkDescriptorSetLayout again via AddDeletionQueue.
+		// Entries enqueued while this runs stay in s_DeletionQueue for the next parse.
+		std::unordered_map<ResourceType, std::vector<DeletionQueueEntry>> pending;
+		{
+			std::scoped_lock guard(s_MutexDeletionQueue);
+			pending.swap(s_DeletionQueue);
+		}
 	
-		for (auto &it : s_DeletionQueue)
+		for (auto &it : pending)
 		{
 			ResourceType type = it.first;
 			for (const auto &entry : it.second)
@@ -706,7 +714,6 @@ namespace SceneryEditorX
 		}
 	
 		SEDX_CORE_TRACE_TAG("QueueManager", "Cleared deletion queue after parsing");
-		s_DeletionQueue.clear();
 		device.Reset();
 	}
 

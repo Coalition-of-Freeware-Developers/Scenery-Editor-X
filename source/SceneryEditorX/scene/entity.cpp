@@ -75,6 +75,56 @@ namespace SceneryEditorX
 		(void)active;
 	}
 
+	xMath::Matrix Entity::GetMatrix() const
+	{
+		const TransformComponent* transform = TryGetComponent<TransformComponent>();
+		if (!transform)
+			return xMath::Matrix::IDENTITY;
+
+		// Built from the transform's fields rather than TransformComponent::GetTransform(): xMath::Mat4's member
+		// layout depends on include order (XMATH_MATRIX_IS_ROW_MAJOR), xMath::Matrix's does not.
+		// Row-vector form (p' = p * M): rows hold the scaled rotation axes, the last row the translation.
+		xMath::Quat q = transform->GetRotation();
+		const float lengthSquared = q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w;
+		if (lengthSquared > 1e-12f)
+		{
+			const float inverseLength = 1.0f / std::sqrt(lengthSquared);
+			q.x *= inverseLength;
+			q.y *= inverseLength;
+			q.z *= inverseLength;
+			q.w *= inverseLength;
+		}
+		else
+		{
+			q.x = q.y = q.z = 0.0f;
+			q.w = 1.0f;
+		}
+
+		const xMath::Vec3& t = transform->translation;
+		const xMath::Vec3& s = transform->scale;
+		const float xx = q.x * q.x, yy = q.y * q.y, zz = q.z * q.z;
+		const float xy = q.x * q.y, xz = q.x * q.z, yz = q.y * q.z;
+		const float wx = q.w * q.x, wy = q.w * q.y, wz = q.w * q.z;
+
+		xMath::Matrix local = xMath::Matrix::IDENTITY;
+		local.m00 = (1.0f - 2.0f * (yy + zz)) * s.x; local.m01 = 2.0f * (xy + wz) * s.x;          local.m02 = 2.0f * (xz - wy) * s.x;          local.m03 = 0.0f;
+		local.m10 = 2.0f * (xy - wz) * s.y;          local.m11 = (1.0f - 2.0f * (xx + zz)) * s.y; local.m12 = 2.0f * (yz + wx) * s.y;          local.m13 = 0.0f;
+		local.m20 = 2.0f * (xz + wy) * s.z;          local.m21 = 2.0f * (yz - wx) * s.z;          local.m22 = (1.0f - 2.0f * (xx + yy)) * s.z; local.m23 = 0.0f;
+		local.m30 = t.x;                             local.m31 = t.y;                             local.m32 = t.z;                             local.m33 = 1.0f;
+
+		// row-vector composition: local first, then the parent's world transform
+		constexpr uint32_t maxDepth = 64; // guards against relationship cycles
+		const Entity parent = GetParent();
+		static thread_local uint32_t s_Depth = 0;
+		if (!parent || s_Depth >= maxDepth)
+			return local;
+
+		++s_Depth;
+		const xMath::Matrix world = local * parent.GetMatrix();
+		--s_Depth;
+		return world;
+	}
+
 	xMath::Vec3 Entity::GetPosition() const
 	{
 		const xMath::Vec3 localPosition = GetPositionLocal();

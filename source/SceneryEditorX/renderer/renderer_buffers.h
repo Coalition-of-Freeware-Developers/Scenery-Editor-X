@@ -97,6 +97,10 @@ namespace SceneryEditorX
 		float padding3;
 		float padding4;
 
+		// pads the struct to 1024 bytes so every element of the per-frame ring buffer starts on a
+		// minUniformBufferOffsetAlignment boundary (dynamic offsets); mirrored in resources.slang
+		xMath::Vec4 padding_alignment[5];
+
 		/**
 		 * @brief Sets or clears a specific bit in the options field
 		 * @param set Whether to set (true) or clear (false) the bit
@@ -138,6 +142,8 @@ namespace SceneryEditorX
 		float anisotropic_rotation;
 		float clearcoat;
 		float clearcoat_roughness;
+
+		float padding3[2] = {}; // std430 rounds the struct (float4 aligned) up to 112 bytes
 	};
 
 	/**
@@ -156,6 +162,7 @@ namespace SceneryEditorX
 		uint32_t screen_space_shadows_slice_index;
 		float area_width;  // area light width in meters
 		float area_height; // area light height in meters
+		float padding_matrices[3] = {}; // std430 aligns the matrix array to 16 bytes
 		xMath::Matrix view_projection[6];
 		xMath::Vec2 atlas_offsets[6];
 		xMath::Vec2 atlas_scales[6];
@@ -266,6 +273,12 @@ namespace SceneryEditorX
 		float padding1         = 0.0f;
 		float padding2         = 0.0f;
 	};
+
+	// sizes the shaders see (resources.slang: cbuffer std140, structured buffers std430)
+	static_assert(sizeof(ConstantBuffer_Frame) == 1024, "ConstantBuffer_Frame must match FrameBufferData in resources.slang");
+	static_assert(sizeof(ShaderBuffer_Material) == 112, "ShaderBuffer_Material must match MaterialParameters in resources.slang");
+	static_assert(sizeof(ShaderBuffer_Light) == 608, "ShaderBuffer_Light must match LightParameters in resources.slang");
+	static_assert(sizeof(ShaderBuffer_DrawData) == 144, "ShaderBuffer_DrawData must match DrawData in resources.slang");
 
 }
 

@@ -169,9 +169,9 @@ namespace SceneryEditorX
 				Pass_Light_Composition(graphicsPresent, false);
 				if (graphicsPresent->IsStickyInvalid())
 					return;
-				Pass_Light_ImageBased(graphicsPresent);
-				if (graphicsPresent->IsStickyInvalid())
-					return;
+
+				// Pass_Light_ImageBased samples the skysphere, which this path doesn't render yet;
+				// light composition supplies a placeholder sky and ambient term instead.
 
 				ImageResource *depthTarget = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
 				depthTarget->SetLayout(Layout::ImageLayout::DepthStencilAttachment, graphicsPresent, 0, 0);
@@ -709,9 +709,13 @@ namespace SceneryEditorX
 				pso.vrsInputTexture = cvar_variable_rate_shading.GetValueAs<bool>() ? GetRenderTarget(Renderer_RenderTarget::shading_rate) : nullptr;
 				pso.renderTarget_DepthTexture = tex_depth;
 				pso.resolutionScale = true;
-				pso.clearDepth = RHI_DEPTH_LOAD; // load since indirect already wrote depth
+
+				// load when the indirect path already wrote depth, otherwise this path owns the clear (reverse-z: 0 = far)
+				const bool indirectActive = m_Indirect_DrawCount > 0;
+				pso.clearDepth = indirectActive ? RHI_DEPTH_LOAD : 0.0f;
 
 				bool pipelineSet = false;
+				bool drew = false;
 
 				for (uint32_t i = 0; i < m_DrawCalls_Prepass_Count; i++)
 				{
@@ -721,8 +725,8 @@ namespace SceneryEditorX
 					if (!materialAsset || materialAsset->IsTransparent() || !drawCall.cameraVisible)
 						continue;
 
-					// skip indirect-path draws
-					if (!IsCpuDrivenDraw(drawCall, materialAsset))
+					// skip draws the indirect path already covered
+					if (indirectActive && !IsCpuDrivenDraw(drawCall, materialAsset))
 						continue;
 					{
 						bool isAlphaTested = materialAsset->IsAlphaTested();
@@ -760,13 +764,23 @@ namespace SceneryEditorX
 						cmdList->SetIndexBuffer(renderable->GetIndexBuffer());
 
 						cmdList->DrawIndexed(renderable->GetIndexCount(drawCall.lodIndex),
+											 drawCall.instanceCount,
 											 renderable->GetIndexOffset(drawCall.lodIndex),
 											 renderable->GetVertexOffset(drawCall.lodIndex),
-											 drawCall.instanceIndex,
-											 drawCall.instanceCount);
+											 drawCall.instanceIndex);
 
 						pso.clearDepth = RHI_DEPTH_LOAD;
+						drew = true;
 					}
+				}
+
+				// nothing was drawn, but depth must still be cleared for the passes that read it
+				if (!drew && !indirectActive)
+				{
+					pso.shaders[static_cast<uint32_t>(StageType::Fragment)] = nullptr;
+					pso.shaders[static_cast<uint32_t>(StageType::TessellationControl)] = nullptr;
+					pso.shaders[static_cast<uint32_t>(StageType::TessellationEvaluation)] = nullptr;
+					cmdList->ClearPipelineStateRenderTargets(pso);
 				}
 			}
 
@@ -851,10 +865,13 @@ namespace SceneryEditorX
 				pso.renderTarget_ColorTextures[2] = texMaterial;
 				pso.renderTarget_ColorTextures[3] = texVelocity;
 				pso.renderTarget_DepthTexture = texDepth;
-				pso.clearColor[0] = RHI_COLOR_LOAD;
-				pso.clearColor[1] = RHI_COLOR_LOAD;
-				pso.clearColor[2] = RHI_COLOR_LOAD;
-				pso.clearColor[3] = RHI_COLOR_LOAD;
+				// load when the indirect path already cleared and wrote the g-buffer, otherwise clear on the first draw
+				const bool indirectActive = !isTransparentPass && m_Indirect_DrawCount > 0;
+				const PipelineStateColor clearOrLoad = (isTransparentPass || indirectActive) ? RHI_COLOR_LOAD : PipelineStateColor{.r = 0.0f, .g = 0.0f, .b = 0.0f, .a = 0.0f};
+				pso.clearColor[0] = clearOrLoad;
+				pso.clearColor[1] = clearOrLoad;
+				pso.clearColor[2] = clearOrLoad;
+				pso.clearColor[3] = clearOrLoad;
 
 				bool pipeline_set = false;
 
@@ -876,7 +893,8 @@ namespace SceneryEditorX
 					    if (materialAsset->IsTransparent())
 							continue;
 
-						if (!IsCpuDrivenDraw(draw_call, materialAsset))
+						// skip draws the indirect path already covered
+						if (indirectActive && !IsCpuDrivenDraw(draw_call, materialAsset))
 							continue;
 					}
 
@@ -913,12 +931,15 @@ namespace SceneryEditorX
 						cmdList->SetIndexBuffer(renderable->GetIndexBuffer());
 
 						cmdList->DrawIndexed(renderable->GetIndexCount(draw_call.lodIndex),
+											 draw_call.instanceCount,
 											 renderable->GetIndexOffset(draw_call.lodIndex),
 											 renderable->GetVertexOffset(draw_call.lodIndex),
-											 draw_call.instanceIndex,
-											 draw_call.instanceCount);
+											 draw_call.instanceIndex);
 
+						// later pipeline changes in this pass must keep what was drawn
 						pso.clearDepth = RHI_DEPTH_LOAD;
+						for (PipelineStateColor& clearColor : pso.clearColor)
+							clearColor = RHI_COLOR_LOAD;
 					}
 				}
 			}
@@ -1481,8 +1502,11 @@ namespace SceneryEditorX
 			// Outputs
 			cmdList->SetTexture(Renderer_BindingsUav::tex,  texDiffuse);
 			cmdList->SetTexture(Renderer_BindingsUav::tex2, texSpecular);
+			cmdList->SetTexture(Renderer_BindingsUav::tex3, GetRenderTarget(Renderer_RenderTarget::light_volumetric));
 
+			// light.slang loops over pass_get_f3_value().x lights
 			m_Pcb_Pass_Cpu.isTransparent = isTransparentPass ? 1u : 0u;
+			m_Pcb_Pass_Cpu.SetF3Value(static_cast<float>(m_Count_ActiveLights), 0.0f, 0.0f);
 			cmdList->PushConstants(m_Pcb_Pass_Cpu);
 
 			cmdList->Dispatch(texDiffuse);
@@ -1510,13 +1534,19 @@ namespace SceneryEditorX
 			cmdList->SetPipelineState(pso);
 
 			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_albedo,   GetRenderTarget(Renderer_RenderTarget::gbuffer_color));
+			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_normal,   GetRenderTarget(Renderer_RenderTarget::gbuffer_normal));
 			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_material, GetRenderTarget(Renderer_RenderTarget::gbuffer_material));
 			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_depth,    GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
 			cmdList->SetTexture(Renderer_BindingsSrv::tex,              texDiffuse);
 			cmdList->SetTexture(Renderer_BindingsSrv::tex2,             texSpecular);
 			cmdList->SetTexture(Renderer_BindingsUav::tex,              texFrameRender);
 
+			// Until the scene has lights of its own, light_composition.slang lights it with a placeholder sun + sky.
+			static const xMath::Vec3 fallbackSunDirection = xMath::Normalize(xMath::Vec3(0.35f, 0.85f, -0.4f));
+			const bool useFallbackLighting = m_Count_ActiveLights == 0;
 			m_Pcb_Pass_Cpu.isTransparent = isTransparentPass ? 1u : 0u;
+			m_Pcb_Pass_Cpu.SetF3Value(fallbackSunDirection.x, fallbackSunDirection.y, fallbackSunDirection.z);
+			m_Pcb_Pass_Cpu.SetF2Value(useFallbackLighting ? 1.0f : 0.0f, 0.0f);
 			cmdList->PushConstants(m_Pcb_Pass_Cpu);
 
 			cmdList->Dispatch(texFrameRender);

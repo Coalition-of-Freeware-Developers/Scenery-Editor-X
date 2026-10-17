@@ -529,7 +529,9 @@ namespace SceneryEditorX
 				}
 				rasterizerState.lineWidth = m_State.rasterizerState->GetLineWidth();
 				rasterizerState.cullMode = static_cast<uint32_t>(CullMode::Back);
-				rasterizerState.frontFace = VK_FRONT_FACE_CLOCKWISE;
+				// The world is right-handed and +Y up (as X-Plane's OBJ geometry), so outward faces wind counter-clockwise
+				// as seen on screen; with the flipped viewport (CommandList::SetViewport) that is Vulkan's CCW too.
+				rasterizerState.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 				rasterizerState.depthBiasEnable = m_State.rasterizerState->GetDepthBias() != 0.0f ? VK_TRUE : VK_FALSE;
 				rasterizerState.depthBiasConstantFactor = floor(m_State.rasterizerState->GetDepthBias() * (float)(1 << 24));
 				rasterizerState.depthBiasClamp = m_State.rasterizerState->GetDepthBiasClamp();

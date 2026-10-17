@@ -169,6 +169,13 @@ namespace SceneryEditorX
 		void SetPipelineState(PipelineState& pso);
 
 		/**
+		 * @brief Apply the clear values of a graphics PSO's render targets without drawing anything.
+		 * Binds the PSO, then begins and ends its render pass so the attachment clear load ops run.
+		 * @param pso Graphics pipeline state whose color/depth clear values should be applied.
+		 */
+		void ClearPipelineStateRenderTargets(PipelineState& pso);
+
+		/**
 		 * @brief Push constants to the pipeline.
 		 * @param data The push constant data to set.
 		 */

@@ -268,7 +268,7 @@ namespace SceneryEditorX
 	class MaterialAsset : public IResource, public Asset
 	{
 	public:
-		MaterialAsset() : IResource(ResourceType::Material), color(1.0f), emission(0.0f), metallic(0.0f), roughness(1.0f) {}
+		MaterialAsset() : IResource(ResourceType::Material), color(1.0f), emission(0.0f), metallic(0.0f), roughness(1.0f) { InitializeRenderProperties(); }
 		explicit MaterialAsset(const std::string & path);
 		virtual ~MaterialAsset() override;
 		//virtual void Serialize(Serializer &ser);
@@ -315,10 +315,20 @@ namespace SceneryEditorX
 
 		// -------------------------------------------------------
 
-		virtual float GetProperty(MaterialClass /*prop*/) const { return 0.0f; }
-		virtual float GetProperty(MaterialProperty /*prop*/) const { return 0.0f; }
-		virtual uint32_t GetIndex() const { return 0; }
-		virtual bool  HasTextureOfType(MaterialTextureType /*t*/) const { return false; }
+		// Renderer-facing values (packed into the bindless material parameters by Renderer::UpdateMaterials)
+		virtual float GetProperty(MaterialClass prop) const { return m_Properties[static_cast<uint32_t>(prop)]; }
+		virtual float GetProperty(MaterialProperty prop) const
+		{
+			const uint32_t index = static_cast<uint32_t>(prop);
+			return index < m_RenderSettings.size() ? m_RenderSettings[index] : 0.0f;
+		}
+		void SetProperty(MaterialProperty prop, const float value)
+		{
+			if (const uint32_t index = static_cast<uint32_t>(prop); index < m_RenderSettings.size())
+				m_RenderSettings[index] = value;
+		}
+		virtual uint32_t GetIndex() const { return m_Index; }
+		virtual bool  HasTextureOfType(MaterialTextureType t) const { return GetTexture(t) != nullptr; }
 		uint32_t GetUsedSlotCount() const;
 
 		// -------------------------------------------------------
@@ -352,6 +362,10 @@ namespace SceneryEditorX
 
 	private:
 		void SetDefaults() const;
+
+		/* @brief Resets the renderer-facing property table, render settings and texture slots to an opaque white surface. */
+		void InitializeRenderProperties();
+
 		std::string m_MaterialPath;
 		std::string m_MaterialName;
 		Ref<Material> m_Material;
@@ -371,8 +385,11 @@ namespace SceneryEditorX
 			AssetHandle m_RoughnessMap;
 		} m_Maps;
 
-		std::array<float, static_cast<uint32_t>(MaterialClass::MaxEnum)> m_Properties;
-		std::array<ImageResource*, static_cast<uint32_t>(MaterialTextureType::MaxEnum) * SLOTS_PER_TEXTURE> m_Textures;
+		// mutable: the scalar setters are const (they forward to the underlying Material), but must keep the table current
+		mutable std::array<float, static_cast<uint32_t>(MaterialClass::MaxEnum)> m_Properties{};
+		// MaterialProperty values (tessellation, cull mode, ...); kept apart because their indices overlap MaterialClass
+		std::array<float, static_cast<uint32_t>(MaterialProperty::EmissiveFromAlbedo) + 1> m_RenderSettings{};
+		std::array<ImageResource*, static_cast<uint32_t>(MaterialTextureType::MaxEnum) * SLOTS_PER_TEXTURE> m_Textures{};
 
 		bool m_Transparent = false;
 
