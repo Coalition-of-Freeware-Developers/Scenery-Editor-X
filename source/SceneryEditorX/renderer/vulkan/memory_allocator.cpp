@@ -98,10 +98,8 @@ namespace SceneryEditorX
 
 	MemoryAllocator::~MemoryAllocator()
 	{
-		SEDX_CORE_ASSERT(s_AllocatorData != nullptr, "Allocator data is null");
-		SEDX_CORE_ASSERT(s_AllocationMap.empty(), "There are still allocations");
-		vmaDestroyAllocator(s_AllocatorData->allocator);
-		s_AllocatorData = nullptr;
+		// The VMA allocator is process-wide and owned by Init()/Shutdown(): Device::Destroy() shuts it down
+		// before vkDestroyDevice, and this (a Device member) only runs after that.
 		m_Device.Reset();
 		SEDX_CORE_TRACE_TAG("MemoryAllocator","Allocation {0}: destroyed", m_ObjectName);
 	}
@@ -181,10 +179,24 @@ namespace SceneryEditorX
 
 	void MemoryAllocator::Shutdown()
 	{
+		if (!s_AllocatorData)
+			return;
+
+		// vmaDestroyAllocator asserts (aborting Debug builds) while allocations are still alive; report them instead.
+		VmaTotalStatistics stats{};
+		vmaCalculateStatistics(s_AllocatorData->allocator, &stats);
+		if (const uint32_t liveAllocations = stats.total.statistics.allocationCount; liveAllocations > 0)
+		{
+			SEDX_CORE_ERROR_TAG("MemoryAllocator", "{} GPU allocations ({}) are still alive at shutdown; keeping the VMA allocator",
+				liveAllocations, Utils::BytesToString(stats.total.statistics.allocationBytes));
+			return;
+		}
+
 		vmaDestroyAllocator(s_AllocatorData->allocator);
 
 		delete s_AllocatorData;
 		s_AllocatorData = nullptr;
+		s_AllocationMap.clear();
 		SEDX_CORE_TRACE_TAG("MemoryAllocator", "VMA allocator destroyed");
 	}
 

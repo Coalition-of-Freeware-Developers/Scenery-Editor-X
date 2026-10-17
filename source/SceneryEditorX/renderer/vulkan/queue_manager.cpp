@@ -340,6 +340,14 @@ namespace SceneryEditorX
 		}
 		m_CmdPool.Destroy();
 
+		// Each queue owns two semaphores; destroy them while the device is alive (the Queue objects
+		// themselves may outlive this manager).
+		for (Ref<Queue> &queue : m_GPUQueues)
+		{
+			if (queue)
+				queue->Destroy();
+		}
+
 		m_Device.Reset();
 		m_Device = nullptr;
 	}
@@ -598,6 +606,10 @@ namespace SceneryEditorX
 	
 	void QueueManager::ParseDeletionQueue()
 	{
+		// Closed by NotifyShutdown(); the queue map may already be gone in the CRT static-dtor phase.
+		if (s_DeletionQueueDestroyed.load(std::memory_order_acquire))
+			return;
+
 		Ref<Device> device = RenderContext::Get()->GetDevice();
 		std::scoped_lock guard(s_MutexDeletionQueue);
 	

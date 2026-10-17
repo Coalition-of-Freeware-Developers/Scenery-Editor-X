@@ -225,8 +225,8 @@ namespace SceneryEditorX
 		 * After this call any AddDeletionQueue invocation (e.g. from Ref<> destructors
 		 * running in the CRT static-dtor phase) is silently discarded, preventing a
 		 * use-after-free on the already-destroyed s_DeletionQueue map.
-		 * Must be called at the very end of Renderer::Shutdown(), after the final
-		 * ParseDeletionQueue() flush.
+		 * Called by Device::Destroy() right after the final ParseDeletionQueue() flush,
+		 * before vkDestroyDevice.
 		 */
 		static void NotifyShutdown();
 

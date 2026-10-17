@@ -314,6 +314,28 @@ namespace SceneryEditorX
 		}
 	}
 
+	void RenderContext::Shutdown()
+	{
+		if (!s_Instance)
+			return;
+
+		// The device must be gone before the instance: otherwise the validation layer is left holding device
+		// state whose teardown at DLL unload touches instance state vkDestroyInstance already freed.
+		// The local Ref keeps the Device alive while Destroy() releases the other Refs to it.
+		if (const Ref<Device> device = s_Instance->m_Device)
+			device->Destroy();
+
+		if (s_Instance->m_Instance != VK_NULL_HANDLE)
+		{
+			Debugging::Shutdown(s_Instance->m_Instance);
+			vkDestroyInstance(s_Instance->m_Instance, nullptr);
+			s_Instance->m_Instance = VK_NULL_HANDLE;
+		}
+
+		s_IsInitialized = false;
+		SEDX_CORE_INFO_TAG("RenderContext", "Vulkan device and instance destroyed");
+	}
+
 	Ref<RenderContext> RenderContext::Get()
 	{
 		if (!s_Instance)

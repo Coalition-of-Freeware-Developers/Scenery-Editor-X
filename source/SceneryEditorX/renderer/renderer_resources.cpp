@@ -859,6 +859,19 @@ namespace SceneryEditorX
 		At(s_BlendStates, Renderer_BlendState::Additive) = CreateRef<BlendState>(BlendStateSpec{true, VkBlendFactor::VK_BLEND_FACTOR_ONE, VkBlendFactor::VK_BLEND_FACTOR_ONE, VkBlendOp::VK_BLEND_OP_ADD, VkBlendFactor::VK_BLEND_FACTOR_ONE, VkBlendFactor::VK_BLEND_FACTOR_ONE, VkBlendOp::VK_BLEND_OP_ADD, 1.0f});
 	}
 
+	void Renderer::DestroyResources()
+	{
+		// Their destructors defer through the deletion queue, which Device::Destroy() flushes.
+		for (Ref<ImageResource>& renderTarget : s_RenderTargets)
+			renderTarget.Reset();
+
+		for (Ref<ImageResource>& texture : s_StandardTextures)
+			texture.Reset();
+
+		for (Ref<Sampler>& sampler : s_Samplers)
+			sampler.Reset();
+	}
+
 	ImageResource* Renderer::GetStandardTexture(const Renderer_StandardTexture type)
 	{
 		return s_StandardTextures[static_cast<uint8_t>(type)].Get();

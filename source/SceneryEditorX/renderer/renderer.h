@@ -459,6 +459,13 @@ namespace SceneryEditorX
 		static void DestroyFrameResources();
 
 		/**
+		 * @brief Release the render targets, standard textures and samplers held in the renderer's static arrays.
+		 * @note Called from Shutdown(): left to the static arrays, they would only be released in the CRT
+		 * static-destructor phase, after the device is gone.
+		 */
+		static void DestroyResources();
+
+		/**
 		 * @brief Record draw commands for the current frame using the provided command lists.
 		 * @param cb Command buffer to record into (retrieved via GetCurrentCommandBuffer())
 		 * @param imageIndex Index of the swapchain image being rendered to (for resource binding)

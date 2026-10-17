@@ -606,6 +606,7 @@ void dynamic_resolution()
 
 		// Destroy frame resources
 		GeometryBuffer::Shutdown();
+		DestroyResources();
 		DestroyFrameResources();
 		if (s_AssetManager)
 		{
@@ -631,11 +632,9 @@ void dynamic_resolution()
 		m_ResourcesInitialized = false;
 		SEDX_CORE_TRACE_TAG("Renderer", "=== Renderer Shutdown Complete ===");
 
-		// Signal the deletion queue that no further resources will be legitimately
-		// enqueued.  Any AddDeletionQueue calls arriving after this point come from
-		// Ref<> destructors running in the CRT static-dtor phase and must be dropped
-		// to avoid a use-after-free on the already-destroyed s_DeletionQueue map.
-		QueueManager::NotifyShutdown();
+		// Everything released above is still in the deferred deletion queue. RenderContext::Shutdown()
+		// (via Device::Destroy) flushes it while the device is alive and then closes it with
+		// QueueManager::NotifyShutdown(), so CRT static-dtor phase enqueues are dropped.
 	}
 
 	void Renderer::Tick()

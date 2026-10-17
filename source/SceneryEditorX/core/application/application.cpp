@@ -230,6 +230,9 @@ namespace SceneryEditorX
 		// Shutdown systems that may hold/consume resources
 		Renderer::Shutdown();
 		ThreadPool::Shutdown();
+
+		// Destroy the Vulkan device and instance while logging is still up (Log shuts down after this).
+		RenderContext::Shutdown();
 	}
 
 	void Application::Tick()

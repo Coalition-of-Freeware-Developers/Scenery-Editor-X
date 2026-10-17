@@ -55,6 +55,16 @@ namespace SceneryEditorX
 		RenderContext &operator=(RenderContext &&) noexcept;
 
 		static void Init();
+
+		/**
+		 * @brief Destroy the Vulkan device, then the debug messenger and the instance, in that order.
+		 *
+		 * Call once at the end of application shutdown, after Renderer::Shutdown(), while logging is still up.
+		 * The context object itself stays alive with null handles so late RenderContext::Get() calls do not
+		 * create a new one.
+		 */
+		static void Shutdown();
+
 		static Ref<RenderContext> Get();
 		static bool IsInitialized();
 		static VkInstance GetInstance();

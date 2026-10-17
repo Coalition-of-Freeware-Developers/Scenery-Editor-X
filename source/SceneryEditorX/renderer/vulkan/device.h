@@ -102,6 +102,16 @@ namespace SceneryEditorX
 		Device(VkInstance instance, GraphicsChecks::InstanceProperties gpuProps = GraphicsChecks::GetDefaultInstanceProperties());
 		virtual ~Device() override;
 
+		/**
+		 * @brief Destroy the logical device and everything it still owns, ahead of instance destruction.
+		 *
+		 * Releases the QueueManager (which holds a Ref back to this Device, so neither ever reaches a zero
+		 * count on its own), flushes and closes the deferred deletion queue, destroys the memory allocator
+		 * and finally calls vkDestroyDevice. Calling it again is a no-op; the destructor calls it as well.
+		 * The caller must hold a Ref to this Device for the duration of the call.
+		 */
+		void Destroy();
+
 		[[nodiscard]] VkInstance GetInstance() const { return m_Instance; }
 		[[nodiscard]] VkSurfaceKHR GetWindowSurface() const { return m_WindowSurface; }
 		[[nodiscard]] const VkPhysicalDeviceLimits& GetDeviceLimits() const { return m_PhysDeviceProp.properties.limits; }

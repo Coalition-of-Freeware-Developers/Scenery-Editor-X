@@ -203,15 +203,22 @@ namespace SceneryEditorX
 	 */
 	void Queue::Destroy()
 	{
-		SEDX_CORE_ASSERT(m_Device.IsValid(), "Invalid device in Queue::Destroy");
-		SEDX_CORE_ASSERT(m_RenderSemaphore != VK_NULL_HANDLE, "Invalid render semaphore in Queue::Destroy");
-		SEDX_CORE_ASSERT(m_PresentSemaphore != VK_NULL_HANDLE, "Invalid present semaphore in Queue::Destroy");
+		// Idempotent: QueueManager destroys its queues before the device, and a second call is a no-op.
+		const VkDevice device = m_Device.IsValid() ? m_Device->GetLogicalDevice() : VK_NULL_HANDLE;
+		if (device == VK_NULL_HANDLE)
+			return;
 
-		vkDestroySemaphore(m_Device->GetLogicalDevice(), m_RenderSemaphore, nullptr);
-		vkDestroySemaphore(m_Device->GetLogicalDevice(), m_PresentSemaphore, nullptr);
+		if (m_RenderSemaphore != VK_NULL_HANDLE)
+		{
+			vkDestroySemaphore(device, m_RenderSemaphore, nullptr);
+			m_RenderSemaphore = VK_NULL_HANDLE;
+		}
 
-		m_RenderSemaphore = VK_NULL_HANDLE;
-		m_PresentSemaphore = VK_NULL_HANDLE;
+		if (m_PresentSemaphore != VK_NULL_HANDLE)
+		{
+			vkDestroySemaphore(device, m_PresentSemaphore, nullptr);
+			m_PresentSemaphore = VK_NULL_HANDLE;
+		}
 	}
 
 	/**

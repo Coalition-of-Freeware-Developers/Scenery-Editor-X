@@ -953,31 +953,38 @@ namespace SceneryEditorX
 	{
 		SEDX_CORE_TRACE_TAG("Device", "Device destructor called");
 
-		if (m_PhysicalDevice != VK_NULL_HANDLE)
-		{
-			m_PhysicalDevice = VK_NULL_HANDLE;
-		}
-
-		if (m_LogicalDevice != VK_NULL_HANDLE)
-		{
-			vkDestroyDevice(m_LogicalDevice, nullptr);
-			m_LogicalDevice = VK_NULL_HANDLE;
-			SEDX_CORE_TRACE_TAG("Device", "Logical device destroyed");
-		}
+		Destroy();
 
 		/*if (m_WindowSurface != VK_NULL_HANDLE)
 		{
 			vkDestroySurfaceKHR(m_Instance, m_WindowSurface, nullptr);
 			m_WindowSurface = VK_NULL_HANDLE;
 		}*/
-		// QueueManager cleanup is automatic via smart pointers
-		if (m_QueueManager)
-		{
-			m_QueueManager.Reset();
-		}
 
-		m_LogicalDevice = VK_NULL_HANDLE;
 		m_PhysicalDevice = VK_NULL_HANDLE;
+	}
+
+	void Device::Destroy()
+	{
+		if (m_LogicalDevice == VK_NULL_HANDLE)
+			return;
+
+		vkDeviceWaitIdle(m_LogicalDevice);
+
+		// The QueueManager and its queues hold a Ref back to this Device; release it explicitly so its
+		// command lists, command pool and sync objects are destroyed while the device is still alive.
+		m_QueueManager.Reset();
+
+		// Destroy everything still waiting in the deferred deletion queue, then stop accepting entries:
+		// nothing queued after this point could be destroyed once the device is gone.
+		QueueManager::ParseDeletionQueue();
+		QueueManager::NotifyShutdown();
+
+		MemoryAllocator::Shutdown();
+
+		vkDestroyDevice(m_LogicalDevice, nullptr);
+		m_LogicalDevice = VK_NULL_HANDLE;
+		SEDX_CORE_TRACE_TAG("Device", "Logical device destroyed");
 	}
 
 	void Device::SetVariableRateShading(const CommandList *cmd, const bool enabled)
