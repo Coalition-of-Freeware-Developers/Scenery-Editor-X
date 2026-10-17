@@ -38,6 +38,7 @@
 #include "vulkan/debug/graphics_debug.h"
 #include "vulkan/debug/render_doc.h"
 #include "vulkan/pipeline/pipeline.h"
+#include "vulkan/pipeline/pipeline_cache.h"
 #include "vulkan/pipeline/pipeline_spec.h"
 #include "vulkan/shader/shader_manager.h"
 #include <array>
@@ -533,6 +534,10 @@ void dynamic_resolution()
 		// Release the immediate-execution command lists/pools now, while the device and loggers are alive.
 		CommandList::ShutdownImmediateExecution();
 
+		// Release cached pipelines and descriptor-set layouts while the device, the shared descriptor pool
+		// and the deletion queue are alive; command lists still pointing at them keep only empty objects.
+		PipelineCache::Clear();
+
 		// Release bindless/cached descriptor sets and layouts, then the shared descriptor pool, while the
 		// logical device is still valid (BindlessManager::Shutdown ends with DescriptorPoolManager::Shutdown).
 		BindlessManager::Shutdown();
@@ -746,6 +751,9 @@ void dynamic_resolution()
 			RotateFrameBuffers();
 
 			UpdateDrawCalls(m_CmdList_Present);
+
+			// retire cached pipelines that stopped being used (e.g. built for render targets replaced on resize)
+			PipelineCache::Tick();
 
 			// resource cleanup - frame-based retirement, no gpu stall required
 			if (QueueManager::NeedToParseDeletionQueue())

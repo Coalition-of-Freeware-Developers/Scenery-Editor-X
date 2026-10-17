@@ -108,9 +108,9 @@ namespace SceneryEditorX
 		layoutCI.bindingCount = 1;
 		layoutCI.pBindings    = &binding;
 		
-		Ref<DescriptorLayout> descLayout = DescriptorLayout::Create(layoutCI, "DescriptorSet-TextureArray");
-		SEDX_CORE_ASSERT(descLayout && descLayout->IsValid(), "DescriptorSet: failed to create texture-array layout");
-		m_Layout = descLayout->GetLayout();
+		m_LayoutObject = DescriptorLayout::Create(layoutCI, "DescriptorSet-TextureArray");
+		SEDX_CORE_ASSERT(m_LayoutObject && m_LayoutObject->IsValid(), "DescriptorSet: failed to create texture-array layout");
+		m_Layout = m_LayoutObject->GetLayout();
 		
 		// Allocate from the shared pool with variable count
 		m_Set = DescriptorPoolManager::Get().Allocate(m_Layout, count);
@@ -244,6 +244,7 @@ namespace SceneryEditorX
 	DescriptorSet::DescriptorSet(DescriptorSet&& other) noexcept
 	{
 		m_Device        = other.m_Device;
+		m_LayoutObject  = std::move(other.m_LayoutObject);
 		m_Layout        = other.m_Layout;
 		m_Set           = other.m_Set;
 		m_Destroyed     = other.m_Destroyed;
@@ -269,6 +270,7 @@ namespace SceneryEditorX
 	    Destroy();
 	
 		m_Device        = other.m_Device;
+		m_LayoutObject  = std::move(other.m_LayoutObject);
 		m_Layout        = other.m_Layout;
 		m_Set           = other.m_Set;
 		m_Destroyed     = other.m_Destroyed;
@@ -474,11 +476,9 @@ namespace SceneryEditorX
 				DescriptorPoolManager::Get().Free(m_Set);
 			m_Set = VK_NULL_HANDLE;
 			
-			if (m_Layout != VK_NULL_HANDLE)
-			{
-				QueueManager::AddDeletionQueue(ResourceType::DescriptorSetLayout, m_Layout);
-				m_Layout = VK_NULL_HANDLE;
-			}
+			// The layout is owned by m_LayoutObject; releasing it queues the VkDescriptorSetLayout for deletion exactly once.
+			m_LayoutObject.Reset();
+			m_Layout = VK_NULL_HANDLE;
 		
 		    m_Destroyed = true;
 		}
@@ -576,9 +576,9 @@ namespace SceneryEditorX
 			createInfo.bindingCount = 0;
 			createInfo.pBindings    = nullptr;
 			
-			Ref<DescriptorLayout> emptyLayout = DescriptorLayout::Create(createInfo, m_ObjectName.c_str());
-			SEDX_CORE_ASSERT(emptyLayout && emptyLayout->IsValid(), "DescriptorSet: failed to create empty layout");
-			m_Layout = emptyLayout->GetLayout();
+			m_LayoutObject = DescriptorLayout::Create(createInfo, m_ObjectName.c_str());
+			SEDX_CORE_ASSERT(m_LayoutObject && m_LayoutObject->IsValid(), "DescriptorSet: failed to create empty layout");
+			m_Layout = m_LayoutObject->GetLayout();
 			return;
 		}
 		
@@ -630,9 +630,9 @@ namespace SceneryEditorX
 		createInfo.bindingCount = static_cast<uint32_t>(filtered.size());
 		createInfo.pBindings    = layoutBindings.data();
 		
-		Ref<DescriptorLayout> descLayout = DescriptorLayout::Create(createInfo, m_ObjectName.c_str());
-		SEDX_CORE_ASSERT(descLayout && descLayout->IsValid(), "DescriptorSet::Create: failed to create VkDescriptorSetLayout");
-		m_Layout = descLayout->GetLayout();
+		m_LayoutObject = DescriptorLayout::Create(createInfo, m_ObjectName.c_str());
+		SEDX_CORE_ASSERT(m_LayoutObject && m_LayoutObject->IsValid(), "DescriptorSet::Create: failed to create VkDescriptorSetLayout");
+		m_Layout = m_LayoutObject->GetLayout();
 		
 		// Allocate a VkDescriptorSet from the shared pool immediately
 		m_Set = DescriptorPoolManager::Get().Allocate(m_Layout);

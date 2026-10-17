@@ -31,6 +31,7 @@
 #pragma once
 #include "descriptor.h"
 #include "descriptor_binding.h"
+#include "descriptor_layout.h"
 #include <unordered_map>
 #include <vector>
 #include <SceneryEditorX/core/identifiers/flag.h>
@@ -220,6 +221,7 @@ namespace SceneryEditorX
 		std::unordered_map<uint32_t, size_t> m_SlotToIndex; // slot -> index in m_Descriptors
 		uint64_t m_LayoutHash = 0;
 
+		Ref<DescriptorLayout> m_LayoutObject; // owns m_Layout; releasing it queues the layout for deletion
 		VkDescriptorSetLayout m_Layout = VK_NULL_HANDLE;
 		VkDescriptorSet m_Set = VK_NULL_HANDLE;
 

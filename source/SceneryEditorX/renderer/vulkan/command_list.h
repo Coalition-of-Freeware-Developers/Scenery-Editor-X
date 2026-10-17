@@ -533,15 +533,21 @@ namespace SceneryEditorX
 
 	private:
 		/**
-		 * @brief Ensure a descriptor layout exists for the provided PSO.
+		 * @brief Ensure a descriptor layout is bound for the provided PSO.
 		 *
-		 * Builds a DescriptorSet layout from reflected shader descriptors via
-		 * BindlessManager::GetDescriptorsFromPipelineState when none is currently bound.
+		 * Fetches the PSO's DescriptorSet layout from the PipelineCache (built there from the reflected
+		 * shader descriptors on first use) when the PSO differs from the one last bound on this list.
 		 *
 		 * @param pso Pipeline state to reflect descriptors from.
 		 * @return True if a descriptor layout is available after the call.
 		 */
 		bool EnsureDescriptorLayoutFromPipelineState(PipelineState& pso);
+
+		/* @brief Handle of the bound cached pipeline, or VK_NULL_HANDLE when none is bound. */
+		[[nodiscard]] VkPipeline GetPipelineHandle() const { return m_Pipeline ? m_Pipeline->Get() : VK_NULL_HANDLE; }
+
+		/* @brief Layout of the bound cached pipeline, or VK_NULL_HANDLE when none is bound. */
+		[[nodiscard]] VkPipelineLayout GetPipelineLayoutHandle() const { return m_Pipeline ? m_Pipeline->GetLayout() : VK_NULL_HANDLE; }
 
 		/**
 		 * @brief Prepare the command list for drawing by flushing barriers and ensuring a render pass is active if needed.
@@ -577,11 +583,11 @@ namespace SceneryEditorX
 		VkCullModeFlags m_CullMode = VK_CULL_MODE_BACK_BIT;
 		bool m_RenderPassActive = false;
 		bool m_StickyInvalidState = false;
-		Scope<DescriptorSet> m_DescriptorLayout_Owned;
-		DescriptorSet* m_DescriptorLayout_Current = nullptr;
+		// Shared with the PipelineCache, which owns the Vulkan objects; these Refs only pin the C++ objects.
+		Ref<DescriptorSet> m_DescriptorLayout_Current;
 		uint64_t m_DescriptorLayout_PSOHash = 0;
 
-		Pipeline m_Pipeline;
+		Ref<Pipeline> m_Pipeline;
 		PipelineState m_pso;
 		std::vector<PendingBarrierInfo> m_PendingBarriers;
 		std::array<bool, MAX_RENDER_TARGET_COUNT> m_Load_Color_RenderTargets = { false };

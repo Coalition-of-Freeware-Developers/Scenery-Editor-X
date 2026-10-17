@@ -23,7 +23,6 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  * -------------------------------------------------------
-<<<<<<<< HEAD:source/SceneryEditorX/renderer/vulkan/pipeline/pipeline_graphics.cpp
  * pipeline_graphics.cpp
  * -------------------------------------------------------
  * Created: 14/04/2026
@@ -66,50 +65,3 @@ namespace SceneryEditorX
 } // namespace SceneryEditorX
 
 // --------------------------------------------------------------
-========
- * ui_renderer.cpp
- * -------------------------------------------------------
- * Created: 09/04/2026
- * -------------------------------------------------------
- */
-#include "ui_renderer.h"
-
-// -------------------------------------------------------
-
-namespace SceneryEditorX
-{
-
-	void UIRenderer::Init()
-	{
-	}
-
-	/*
-	bool UIRenderer::UpdateFontTexture()
-	{
-		ImGuiIO& io = ImGui::GetIO();
-		io.BackendRendererName = "HazelImGuiRenderer";
-		io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;  // We can honor the ImDrawCmd::VtxOffset field, allowing for large meshes.
-		io.BackendFlags |= ImGuiBackendFlags_RendererHasViewports;  // We can create multi-viewports on the Renderer side (optional)
-		// If the font texture exists and is bound to ImGui, we're done.
-		// Note: ImGui_Renderer will reset io.Fonts->TexID when new fonts are added.
-		if (m_FontTexture && io.Fonts->TexID)
-			return true;
-
-		unsigned char* pixels;
-		int width, height;
-
-		io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
-		if (!pixels)
-			return false;
-	}
-	*/
-
-	bool UIRenderer::UpdateGeometry(ImDrawData *drawData)
-	{
-		return true;
-	}
-
-	} // namespace SceneryEditorX
-
-// -------------------------------------------------------
->>>>>>>> e8126a5968df90e6d0729cf1257081d7862db7d6:source/SceneryEditorX/renderer/ui/ui_renderer.cpp

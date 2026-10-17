@@ -32,6 +32,7 @@
 #include "bindless_manager.h"
 #include "buffer.h"
 #include "depth_stencil.h"
+#include "descriptor_set.h"
 #include "image_resource.h"
 #include "rasterizer.h"
 #include "render_context.h"
@@ -39,6 +40,7 @@
 #include "debug/graphics_debug.h"
 #include "pipeline/barrier_info.h"
 #include "pipeline/pipeline.h"
+#include "pipeline/pipeline_cache.h"
 #include "pipeline/pipeline_state.h"
 #include "shader/shader.h"
 #include <array>
@@ -1581,7 +1583,7 @@ namespace SceneryEditorX
 			return;
 		}
 
-		if (m_Pipeline.Get() == VK_NULL_HANDLE)
+		if (GetPipelineHandle() == VK_NULL_HANDLE)
 		{
 			static bool warnedMissingComputePipeline = false;
 			if (!warnedMissingComputePipeline)
@@ -1592,7 +1594,7 @@ namespace SceneryEditorX
 			return;
 		}
 
-		if (m_Pipeline.GetLayout() == VK_NULL_HANDLE)
+		if (GetPipelineLayoutHandle() == VK_NULL_HANDLE)
 		{
 			static bool warnedMissingComputeLayout = false;
 			if (!warnedMissingComputeLayout)
@@ -1612,7 +1614,7 @@ namespace SceneryEditorX
 
 		PreDraw();
 
-		if (m_Pipeline.Get() == VK_NULL_HANDLE || m_Pipeline.GetLayout() == VK_NULL_HANDLE)
+		if (GetPipelineHandle() == VK_NULL_HANDLE || GetPipelineLayoutHandle() == VK_NULL_HANDLE)
 		{
 			static bool warnedInvalidAfterPreDraw = false;
 			if (!warnedInvalidAfterPreDraw)
@@ -2024,7 +2026,6 @@ namespace SceneryEditorX
 			SEDX_CORE_ERROR_TAG("CommandList", "Descriptor layout build aborted for PSO '{}': invalid compiled stage combination (compute={}, graphics={})",
 				pso.name ? pso.name : "<unnamed>", hasCompute, hasGraphics);
 			m_DescriptorLayout_Current = nullptr;
-			m_DescriptorLayout_Owned.reset();
 			m_DescriptorLayout_PSOHash = 0;
 			return false;
 		}
@@ -2036,41 +2037,18 @@ namespace SceneryEditorX
 		if (!pso.IsGraphics() && !pso.IsCompute())
 			return false;
 
-		// Ensure descriptor layouts never leak across fundamentally different PSO kinds
-		// when hashes collide or are incompletely updated in bootstrap paths.
-		if (m_DescriptorLayout_Current)
-		{
-			m_DescriptorLayout_Current = nullptr;
-			m_DescriptorLayout_Owned.reset();
-			m_DescriptorLayout_PSOHash = 0;
-		}
-
-		BindlessManager bindlessManager;
-		std::array<Descriptor, 256> descriptors = {};
-		size_t descriptorCount = 0;
-		if (!bindlessManager.GetDescriptorsFromPipelineState(pso, descriptors.data(), descriptorCount))
+		// The cache logs why a layout could not be built (binding type conflict or layout creation failure).
+		m_DescriptorLayout_Current = PipelineCache::GetDescriptorLayout(pso);
+		if (!m_DescriptorLayout_Current)
 		{
 			m_StickyInvalidState = true;
-			SEDX_CORE_ERROR_TAG("CommandList", "Descriptor reflection merge failed for PSO '{}' due to binding type conflict", pso.name ? pso.name : "<unnamed>");
-			m_DescriptorLayout_Current = nullptr;
-			m_DescriptorLayout_Owned.reset();
 			m_DescriptorLayout_PSOHash = 0;
 			return false;
 		}
 
-		const char* descriptorSetName = pso.name ? pso.name : "CommandListDescriptorSet";
-		m_DescriptorLayout_Owned = CreateScope<DescriptorSet>(descriptors.data(), descriptorCount, descriptorSetName);
-		m_DescriptorLayout_Current = m_DescriptorLayout_Owned.get();
-
-		if (!m_DescriptorLayout_Current || m_DescriptorLayout_Current->GetLayout() == VK_NULL_HANDLE)
-		{
-			SEDX_CORE_ERROR_TAG("CommandList", "Failed to create descriptor layout from reflected PSO descriptors for '{}'", descriptorSetName);
-			m_DescriptorLayout_Current = nullptr;
-			m_DescriptorLayout_Owned.reset();
-			m_DescriptorLayout_PSOHash = 0;
-			return false;
-		}
-
+		// The cached layout is shared between command lists, so start from empty bindings,
+		// as the per-list layout it replaces did.
+		m_DescriptorLayout_Current->ClearBindings();
 		m_DescriptorLayout_PSOHash = psoHash;
 		m_NeedsDynamicBind = true;
 		return true;
@@ -2087,7 +2065,7 @@ namespace SceneryEditorX
 
 		if (m_NeedsDynamicBind)
 		{
-			if (m_Pipeline.Get() == VK_NULL_HANDLE || m_Pipeline.GetLayout() == VK_NULL_HANDLE || m_DescriptorLayout_Current == nullptr)
+			if (GetPipelineHandle() == VK_NULL_HANDLE || GetPipelineLayoutHandle() == VK_NULL_HANDLE || !m_DescriptorLayout_Current)
 			{
 				static bool warnedMissingDynamicBindState = false;
 				if (!warnedMissingDynamicBindState)
@@ -2099,8 +2077,8 @@ namespace SceneryEditorX
 				return;
 			}
 
-			DescriptorSet::SetDynamicDescriptor(m_pso, m_CmdBuffer, m_Pipeline.GetLayout(), m_DescriptorLayout_Current);
-			m_DescriptorLayout_Current->SetBindless(m_pso, m_CmdBuffer, m_Pipeline.GetLayout());
+			DescriptorSet::SetDynamicDescriptor(m_pso, m_CmdBuffer, GetPipelineLayoutHandle(), m_DescriptorLayout_Current.Get());
+			m_DescriptorLayout_Current->SetBindless(m_pso, m_CmdBuffer, GetPipelineLayoutHandle());
 			m_NeedsDynamicBind = false;
 		}
 	}
@@ -2293,7 +2271,7 @@ namespace SceneryEditorX
 				warnedStickyInvalidPipelineState = true;
 			}
 
-			m_Pipeline = Pipeline();
+			m_Pipeline = nullptr;
 			m_NeedsDynamicBind = false;
 			m_ComputePushConstantsSet = false;
 			m_pso = PipelineState{};
@@ -2310,7 +2288,7 @@ namespace SceneryEditorX
 				warnedDescriptorLayoutBuildFailed = true;
 			}
 
-			m_Pipeline = Pipeline();
+			m_Pipeline = nullptr;
 			m_NeedsDynamicBind = false;
 			m_ComputePushConstantsSet = false;
 			m_pso = PipelineState{};
@@ -2325,15 +2303,11 @@ namespace SceneryEditorX
 			EndRenderPass();
 
 			m_pso = pso;
+			m_Pipeline = PipelineCache::GetPipeline(pso);
 
+			if (GetPipelineHandle() != VK_NULL_HANDLE && GetPipelineLayoutHandle() != VK_NULL_HANDLE)
 			{
-				PipelineState mutablePso = pso;
-				m_Pipeline = Pipeline(mutablePso, m_DescriptorLayout_Current);
-			}
-
-			if (m_Pipeline.Get() != VK_NULL_HANDLE && m_Pipeline.GetLayout() != VK_NULL_HANDLE)
-			{
-				vkCmdBindPipeline(m_CmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_Pipeline.Get());
+				vkCmdBindPipeline(m_CmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, GetPipelineHandle());
 				m_NeedsDynamicBind = true;
 			}
 			else
@@ -2363,15 +2337,12 @@ namespace SceneryEditorX
 			// Store the incoming PSO so PushConstants() and PreDraw() can reference it.
 			m_pso = pso;
 
-			// Build and bind the pipeline using the external render pass's format context.
-			{
-				PipelineState mutablePso = pso;
-				m_Pipeline = Pipeline(mutablePso, m_DescriptorLayout_Current);
-			}
+			// Bind the cached pipeline built for the external render pass's format context.
+			m_Pipeline = PipelineCache::GetPipeline(pso);
 
-			if (m_Pipeline.Get() != VK_NULL_HANDLE)
+			if (GetPipelineHandle() != VK_NULL_HANDLE)
 			{
-				vkCmdBindPipeline(m_CmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_Pipeline.Get());
+				vkCmdBindPipeline(m_CmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, GetPipelineHandle());
 			}
 			else if (Ref<RenderContext> context = RenderContext::Get(); context && context->pipeline != VK_NULL_HANDLE)
 			{
@@ -2416,14 +2387,9 @@ namespace SceneryEditorX
 		// Store the incoming PSO so PushConstants() and PreDraw() can reference it.
 		m_pso = pso;
 
-		// Build a format-correct VkPipeline from the PSO.
-		// Pipeline() handles both the full bindless path (when m_DescriptorLayout_Current is set)
-		// and the minimal bootstrap path (layout = nullptr), centralising all Vulkan pipeline
-		// creation in the Pipeline class.
-		{
-			PipelineState mutablePso = pso;
-			m_Pipeline = Pipeline(mutablePso, m_DescriptorLayout_Current);
-		}
+		// Bind the format-correct VkPipeline for the PSO; the PipelineCache compiles it against
+		// the PSO's cached descriptor layout on first use.
+		m_Pipeline = PipelineCache::GetPipeline(pso);
 
 		VkRenderingInfo renderingInfo{ VK_STRUCTURE_TYPE_RENDERING_INFO };
 		renderingInfo.renderArea.offset    = { 0, 0 };
@@ -2445,9 +2411,9 @@ namespace SceneryEditorX
 			SetLayout(*pso.renderTarget_DepthTexture->Get(), 0, MAX_MIP_COUNT, Layout::ImageLayout::DepthStencilAttachment);
 		}
 
-		if (m_Pipeline.Get() != VK_NULL_HANDLE)
+		if (GetPipelineHandle() != VK_NULL_HANDLE)
 		{
-			vkCmdBindPipeline(m_CmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_Pipeline.Get());
+			vkCmdBindPipeline(m_CmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, GetPipelineHandle());
 		}
 		else
 		{
@@ -2464,7 +2430,7 @@ namespace SceneryEditorX
 
 		// Prefer the layout from the PSO-driven pipeline built in SetPipelineState();
 		// fall back to the bootstrap layout stored in the render context.
-		VkPipelineLayout layout = m_Pipeline.GetLayout();
+		VkPipelineLayout layout = GetPipelineLayoutHandle();
 		if (layout == VK_NULL_HANDLE)
 		{
 			if (Ref<RenderContext> context = RenderContext::Get())
@@ -2486,8 +2452,9 @@ namespace SceneryEditorX
 		// default to VS|FS if reflection data is absent (covers the grid shader case).
 		const uint32_t defaultGraphicsStages = static_cast<uint32_t>(VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
 		const uint32_t defaultComputeStages = static_cast<uint32_t>(VK_SHADER_STAGE_COMPUTE_BIT);
-		const uint32_t stages = m_Pipeline.GetPushConstantStages() != 0
-			? m_Pipeline.GetPushConstantStages() : (m_pso.IsCompute() ? defaultComputeStages : defaultGraphicsStages);
+		const uint32_t pipelineStages = m_Pipeline ? m_Pipeline->GetPushConstantStages() : 0;
+		const uint32_t stages = pipelineStages != 0
+			? pipelineStages : (m_pso.IsCompute() ? defaultComputeStages : defaultGraphicsStages);
 
 		vkCmdPushConstants(m_CmdBuffer, layout, stages, 0, static_cast<uint32_t>(sizeof(PushConstantBuffer_Pass)), &data);
 
@@ -2661,7 +2628,7 @@ namespace SceneryEditorX
 		if (m_StickyInvalidState)
 			return;
 
-		if (!m_pso.IsGraphics() || m_Pipeline.Get() == VK_NULL_HANDLE || m_Pipeline.GetLayout() == VK_NULL_HANDLE)
+		if (!m_pso.IsGraphics() || GetPipelineHandle() == VK_NULL_HANDLE || GetPipelineLayoutHandle() == VK_NULL_HANDLE)
 		{
 			m_StickyInvalidState = true;
 			SEDX_CORE_WARN_TAG("CommandList", "DrawIndexedIndirectCount skipped: invalid graphics pipeline state for '{}'", m_ObjectName.c_str());
