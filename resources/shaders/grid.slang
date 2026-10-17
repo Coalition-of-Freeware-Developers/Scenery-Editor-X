@@ -72,7 +72,6 @@ PassBufferData buffer_pass;
 struct GridVertex
 {
     float4 position : POSITION;
-    float4 position : POSITION;
     float2 uv       : TEXCOORD;
 };
 
@@ -120,7 +119,6 @@ PixelInput main_vs(GridVertex input)
 }
 
 [shader("fragment")]
-float4 main_frag(PixelInput input) : SV_TARGET
 float4 main_frag(PixelInput input) : SV_TARGET
 {
     float3 world_pos = input.position_world.xyz;
