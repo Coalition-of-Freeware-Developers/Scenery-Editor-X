@@ -32,6 +32,8 @@
 #include <Editor/core/editor_camera.h>
 #include <Editor/core/editor_theme.h>
 #include <Editor/core/editor_ui.h>
+#include <Editor/core/editor_xplane.h>
+#include <SceneryEditorX/scene/scene.h>
 #include <SceneryEditorX/renderer/renderer.h>
 #include <SceneryEditorX/renderer/font/font_awesome.h>
 #include <SceneryEditorX/renderer/ui/ui_impl.h>
@@ -55,6 +57,46 @@ namespace SceneryEditorX
 	SceneViewport::SceneViewport(EditorContext *context) : m_Context(context)
 	{
 		m_Title = "VIEWPORT";
+	}
+
+	bool SceneViewport::PickGround(const float u, const float v, const float aspect, float out[3])
+	{
+		// Same camera the renderer draws through: the primary camera entity (pitch in x, yaw in y, as Camera::ProcessInput).
+		Scene *scene = Scene::GetActive();
+		if (!scene || aspect <= 0.0f)
+			return false;
+
+		auto view = scene->GetRegistry().view<TransformComponent, CameraComponent>();
+		for (const entt::entity handle : view)
+		{
+			const CameraComponent &camera = view.get<CameraComponent>(handle);
+			if (!camera.isPrimary)
+				continue;
+
+			const TransformComponent &transform = view.get<TransformComponent>(handle);
+			const Vec3 euler = transform.GetRotationEuler();
+			const float cosPitch = std::cos(euler.x);
+			const Vec3 forward(cosPitch * std::sin(euler.y), std::sin(euler.x), cosPitch * std::cos(euler.y));
+			const Vec3 right = xMath::Normalize(xMath::Cross(forward, Vec3(0.0f, 1.0f, 0.0f)));
+			const Vec3 up = xMath::Cross(right, forward);
+
+			const float tanX = std::tan(camera.horizontalFov_Rad * 0.5f);
+			const float tanY = tanX / aspect;
+			const float ndcX = u * 2.0f - 1.0f;
+			const float ndcY = 1.0f - v * 2.0f;
+			const Vec3 direction = xMath::Normalize(forward + right * (ndcX * tanX) + up * (ndcY * tanY));
+
+			const Vec3 &origin = transform.translation;
+			if (direction.y >= -1e-4f)
+				return false; // looking at or above the horizon
+
+			const float t = -origin.y / direction.y;
+			out[0] = origin.x + direction.x * t;
+			out[1] = 0.0f;
+			out[2] = origin.z + direction.z * t;
+			return true;
+		}
+		return false;
 	}
 
 	void SceneViewport::OnUIRender(bool &isOpen)
@@ -91,6 +133,19 @@ namespace SceneryEditorX
 				ImGui::InvisibleButton("##ViewportCanvas", imageSize, ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight | ImGuiButtonFlags_MouseButtonMiddle);
 				hovered = ImGui::IsItemHovered();
 				dragging = ImGui::IsItemActive();
+
+				// X-Plane library objects dropped on the image land on the ground plane under the cursor.
+				if (ImGui::BeginDragDropTarget())
+				{
+					if (const ImGuiPayload *payload = ImGui::AcceptDragDropPayload(EditorXPlane::ASSET_PAYLOAD))
+					{
+						float ground[3] = { 0.0f, 0.0f, 0.0f };
+						const ImVec2 mouse = ImGui::GetMousePos();
+						const bool hit = PickGround((mouse.x - imageMin.x) / imageSize.x, (mouse.y - imageMin.y) / imageSize.y, imageSize.x / imageSize.y, ground);
+						EditorXPlane::PlaceLibraryAsset(static_cast<const char *>(payload->Data), m_Context, hit ? ground : nullptr);
+					}
+					ImGui::EndDragDropTarget();
+				}
 
 				ImDrawList *drawList = ImGui::GetWindowDrawList();
 				const ImVec2 imageMax(imageMin.x + imageSize.x, imageMin.y + imageSize.y);

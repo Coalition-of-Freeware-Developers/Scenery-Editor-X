@@ -401,6 +401,29 @@ namespace SceneryEditorX
 		if (!s_ActiveScene->m_Registry.valid(entityHandle))
 			return;
 
+		// Children go with their parent (an X-Plane object is a root with animation-group and mesh children).
+		// Copy the list: destroying a child edits it, and entt may move components while entities are destroyed.
+		if (const RelationshipComponent *relationship = s_ActiveScene->m_Registry.try_get<RelationshipComponent>(entityHandle))
+		{
+			const std::vector<UUID> children = relationship->pChildren;
+			for (const UUID &child : children)
+			{
+				if (const Entity childEntity = TryGetEntityWithUUID(child); childEntity && static_cast<entt::entity>(childEntity) != entityHandle)
+					DestroyEntity(childEntity);
+			}
+		}
+
+		// Unlink from the parent's child list.
+		if (const RelationshipComponent *relationship = s_ActiveScene->m_Registry.try_get<RelationshipComponent>(entityHandle))
+		{
+			const IDComponent *ownId = s_ActiveScene->m_Registry.try_get<IDComponent>(entityHandle);
+			if (const Entity parent = TryGetEntityWithUUID(relationship->pParentHandle); parent && ownId)
+			{
+				if (RelationshipComponent *parentRelationship = s_ActiveScene->m_Registry.try_get<RelationshipComponent>(static_cast<entt::entity>(parent)))
+					std::erase(parentRelationship->pChildren, ownId->pID);
+			}
+		}
+
 		// The ID lives in the registry; Entity::GetUUID() reads the handle's own (empty) component store.
 		if (const IDComponent *id = s_ActiveScene->m_Registry.try_get<IDComponent>(entityHandle))
 			s_ActiveScene->m_EntityMap.erase(id->pID);
@@ -429,6 +452,15 @@ namespace SceneryEditorX
 		}
 
 		return {};
+	}
+
+	Entity *Scene::GetStoredEntity(const Entity &entity)
+	{
+		if (!s_ActiveScene || !entity)
+			return nullptr;
+
+		const auto it = s_EntityStorage.find(static_cast<entt::entity>(entity));
+		return it != s_EntityStorage.end() ? it->second.get() : nullptr;
 	}
 
 	float Scene::GetTimeOfDay()

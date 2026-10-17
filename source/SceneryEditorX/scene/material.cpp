@@ -491,6 +491,20 @@ namespace SceneryEditorX
 		return (slot < SLOTS_PER_TEXTURE && index < m_Textures.size()) ? m_Textures[index] : nullptr;
 	}
 
+	void MaterialAsset::SetTexture(const MaterialTextureType materialTexture, ImageResource *texture, const uint32_t slot)
+	{
+		const size_t index = (static_cast<size_t>(materialTexture) * SLOTS_PER_TEXTURE) + slot;
+		if (slot >= SLOTS_PER_TEXTURE || index >= m_Textures.size())
+		{
+			SEDX_CORE_ERROR_TAG("MaterialAsset", "SetTexture: slot {} of texture type {} is out of range", slot, static_cast<uint32_t>(materialTexture));
+			return;
+		}
+
+		std::scoped_lock lock(m_Mutex);
+		m_Textures[index] = texture;
+		m_NeedsRepack = true;
+	}
+
 	void MaterialAsset::SetDefaults() const
 	{
 		if (m_Transparent)

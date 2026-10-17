@@ -298,6 +298,15 @@ namespace SceneryEditorX
 		}
 		
 		SEDX_CORE_TRACE_TAG("MemoryAllocator", "Allocating buffer size = {0}", Utils::BytesToString(bufferCI.size));
+
+		// Track it like AllocateBuffer does: DestroyBuffer always looks the allocation up (staging buffers
+		// created here were logged as "Could not find GPU memory allocation" on every release).
+		VmaAllocationInfo info{};
+		vmaGetAllocationInfo(s_AllocatorData->allocator, outAllocation, &info);
+		auto &allocTrack = s_AllocationMap[outAllocation];
+		allocTrack.allocatedSize = info.size;
+		allocTrack.type = AllocationType::Buffer;
+		s_AllocatorData->memoryUsage += info.size;
 		return VK_SUCCESS;
 	}
 

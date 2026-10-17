@@ -87,6 +87,7 @@ FILE(GLOB SERIALIZER_FILES "serialization/*.h" "serialization/*.cpp" "serializat
 FILE(GLOB SETTINGS_FILES "settings/*.h" "settings/*.hpp" "settings/*.cpp")
 FILE(GLOB SCENE_FILES "scene/*.cpp" "scene/*.h" "scene/*.hpp")
 FILE(GLOB FILESYSTEM_FILES "filesystem/*.h" "filesystem/*.hpp" "filesystem/*.cpp")
+FILE(GLOB XPLANE_FILES CONFIGURE_DEPENDS "xplane/*.h" "xplane/*.hpp" "xplane/*.cpp")
 LIST(REMOVE_ITEM ASSET_IMPORT_FILES
 	${CMAKE_CURRENT_SOURCE_DIR}/asset/import/texture_importer.cpp
 )
@@ -163,6 +164,7 @@ ADD_LIBRARY(AppCore
 	${PROJECT_CONFIG_FILES}
 	${SERIALIZER_FILES}
 	${FILESYSTEM_FILES}
+	${XPLANE_FILES}
 	${SCENE_FILES}
 	${REFLECTION_FILES}
 	${SLANG_SHADERS}
@@ -337,6 +339,9 @@ SOURCE_GROUP("Scene/Components" FILES
 )
 SOURCE_GROUP("Scene/Camera" FILES
 	${SCENE_CAMERA}
+)
+SOURCE_GROUP("XPlane" FILES
+	${XPLANE_FILES}
 )
 SOURCE_GROUP("Settings" FILES
 	${SETTINGS_FILES}

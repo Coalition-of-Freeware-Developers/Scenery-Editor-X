@@ -29,6 +29,7 @@
  * -------------------------------------------------------
  */
 #include "gbuffer.h"
+#include <SceneryEditorX/renderer/vulkan/queue_manager.h>
 #include <SceneryEditorX/renderer/vulkan/render_context.h>
 
 // -------------------------------------------------------
@@ -179,7 +180,12 @@ namespace SceneryEditorX
 
 		if (needsFullRebuild)
 		{
-			// destroy existing gpu buffers before creating new ones
+			// destroy existing gpu buffers before creating new ones. Buffers are freed immediately (no deletion queue)
+			// while frames in flight still read them through the bindless geometry descriptors, so drain the GPU first.
+			// Capacity grows geometrically, so this only happens when a load outgrows the headroom.
+			if (m_VertexBuffer || m_IndexBuffer)
+				QueueManager::WaitIdleAll();
+
 			m_VertexBuffer = nullptr;
 			m_IndexBuffer  = nullptr;
 

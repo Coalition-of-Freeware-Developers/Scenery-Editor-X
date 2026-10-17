@@ -135,6 +135,14 @@ namespace SceneryEditorX
 		static Entity TryGetEntityWithUUID(const UUID &uuid);
 
 		/**
+		 * @brief The scene-owned Entity object behind a handle: the one runtime components (Renderable, ...) and the
+		 * active flag live on, and the one the renderer walks.
+		 * @param entity A handle returned by CreateEntity() / TryGetEntityWithUUID().
+		 * @return The stored entity, or nullptr when the handle isn't part of the active scene.
+		 */
+		static Entity *GetStoredEntity(const Entity &entity);
+
+		/**
 		 * @brief Retrieves all entities with the specified components.
 		 * @tparam Components The components to filter by.
 		 * @return A view of all entities with the specified components.

@@ -445,6 +445,12 @@ namespace SceneryEditorX
 		void ComputeMemoryUsage();
 
 		/**
+		 * @brief Copies the CPU-side mips (m_Slices) into the image through a staging buffer and leaves every mip
+		 * in SHADER_READ_ONLY_OPTIMAL. Runs on the graphics queue and waits for completion.
+		 */
+		void UploadSlices();
+
+		/**
 		 * @brief Creates the image's views and fills the typed view handles (SRV, per-mip SRVs, per-layer SRVs,
 		 * render-target / depth-stencil views) the descriptor and render-pass code reads.
 		 * @param viewCI View description covering every mip and layer of m_Image.

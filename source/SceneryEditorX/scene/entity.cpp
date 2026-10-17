@@ -67,12 +67,12 @@ namespace SceneryEditorX
 
 	bool Entity::GetActive()
 	{
-		return true;
+		return m_Active;
 	}
 
 	void Entity::SetActive(const bool active)
 	{
-		(void)active;
+		m_Active = active;
 	}
 
 	xMath::Matrix Entity::GetMatrix() const

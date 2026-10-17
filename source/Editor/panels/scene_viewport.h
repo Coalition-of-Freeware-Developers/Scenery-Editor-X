@@ -66,6 +66,15 @@ namespace SceneryEditorX
 		void DrawOverlay(Camera *camera, const ImVec2 &imageMin) const;
 		void UpdateRenderSize(uint32_t width, uint32_t height);
 
+		/**
+		 * @brief Intersects the camera ray through a viewport point with the ground plane (y = 0).
+		 * @param u, v Point in the image, 0..1 from the top-left.
+		 * @param aspect Image width / height.
+		 * @param out Receives the world-space hit.
+		 * @return False when the ray doesn't reach the ground.
+		 */
+		static bool PickGround(float u, float v, float aspect, float out[3]);
+
 		EditorContext *m_Context = nullptr;
 		std::array<Vec2, 2> m_ViewportBounds = {};
 

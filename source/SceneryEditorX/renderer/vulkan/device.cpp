@@ -398,6 +398,12 @@ namespace SceneryEditorX
 				SEDX_CORE_ASSERT(support.features.samplerAnisotropy == VK_TRUE);
 				feat.s_Features.features.samplerAnisotropy = VK_TRUE;
 
+				// Block-compressed textures: X-Plane art ships as DXT1/DXT3/DXT5 (BC1-3) and BC4/5/7 DDS files
+				if (support.features.textureCompressionBC == VK_TRUE)
+					feat.s_Features.features.textureCompressionBC = VK_TRUE;
+				else
+					SEDX_CORE_WARN_TAG("Device", "textureCompressionBC is not supported: DDS textures will be replaced by placeholders");
+
 				// Line and point rendering
 				SEDX_CORE_ASSERT(support.features.fillModeNonSolid == VK_TRUE);
 				feat.s_Features.features.fillModeNonSolid = VK_TRUE;

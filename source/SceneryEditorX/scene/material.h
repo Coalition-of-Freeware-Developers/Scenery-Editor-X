@@ -344,6 +344,15 @@ namespace SceneryEditorX
 		bool IsAlphaTested() const;
 		ImageResource *GetTexture(MaterialTextureType materialTexture, uint32_t slot = 0) const;
 
+		/**
+		 * @brief Assigns a texture slot. The material does not own the image: the caller keeps it alive while
+		 * the material is in use (the renderer packs the raw pointer into the bindless texture table).
+		 * @param materialTexture Slot type (Color, Normal, Emission, ...; None is the packed occlusion/roughness/metalness map).
+		 * @param texture The image, or nullptr to clear the slot.
+		 * @param slot Layer within the type (terrain materials use several).
+		 */
+		void SetTexture(MaterialTextureType materialTexture, ImageResource *texture, uint32_t slot = 0);
+
 		const std::array<ImageResource*, static_cast<uint32_t>(MaterialTextureType::MaxEnum) * SLOTS_PER_TEXTURE>& GetTextures() const { return m_Textures; }
 		const std::array<float, static_cast<uint32_t>(MaterialClass::MaxEnum)>& GetProperties() const { return m_Properties; }
 
