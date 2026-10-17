@@ -2,7 +2,7 @@
  * -------------------------------------------------------
  * Scenery Editor X
  * -------------------------------------------------------
- * Copyright (c) 2026 Thomas Ray 
+ * Copyright (c) 2026 Thomas Ray
  * Copyright (c) 2026 Coalition of Freeware Developers
  * -------------------------------------------------------
  * Permission is hereby granted, free of charge, to any person obtaining a
@@ -28,6 +28,7 @@
  * Created: 16/3/2025
  * -------------------------------------------------------
  */
+#include "editor_layer.h"
 #include "editor_layer.h"
 #include <SceneryEditorX/core/platform/entrypoint.h>
 
@@ -185,7 +186,7 @@ class Editor : public SceneryEditorX::Application
 public:
 	explicit Editor(const SceneryEditorX::PlatformContext& context) : Application(context) {}
 
-	Editor(const SceneryEditorX::PlatformContext &context, const SceneryEditorX::Ref<SceneryEditorX::UserPreferences> &userPreferences) 
+	Editor(const SceneryEditorX::PlatformContext &context, const SceneryEditorX::Ref<SceneryEditorX::UserPreferences> &userPreferences)
 	: Application(context), m_UserPreferences(userPreferences)
 	{
 		s_ClArguments = context.GetCommandLineArgs();
@@ -228,7 +229,46 @@ public:
 		{
 			EDITOR_WARN_TAG("Editor", "Main window is not visible after creation.");
 		}
-		
+
+		PushLayer(new SceneryEditorX::EditorLayer(m_UserPreferences));
+
+		const auto end = std::chrono::high_resolution_clock::now();
+		auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+		EDITOR_INFO_TAG("Editor", "Editor initialization complete ({} ms)", duration);
+	}
+	virtual void OnInit() override
+	{
+		const auto start = std::chrono::high_resolution_clock::now();
+		std::filesystem::path appdata = SceneryEditorX::IO::FileSystem::GetPersistentStoragePath();
+
+		// Persistent Storage
+		{
+			m_PersistentStoragePath = appdata;
+
+			if (!SceneryEditorX::IO::FileSystem::Exists(m_PersistentStoragePath))
+				SceneryEditorX::IO::FileSystem::CreateDir(m_PersistentStoragePath);
+		}
+
+	    if (!m_UserPreferences)
+		{
+			EDITOR_INFO_TAG("Main", "User Preferences not initialized. Creating default preferences and continuing initialization.");
+			m_UserPreferences = SceneryEditorX::CreateRef<SceneryEditorX::UserPreferences>();
+		}
+
+		m_UserPreferences->LoadPreferences();
+
+		if (m_UserPreferences->GetRecentProjects().empty() && !m_ProjectPath.empty())
+		{
+		    m_UserPreferences->SetStartupProject(m_ProjectPath);
+			m_ProjectPath = m_UserPreferences->GetStartupProject();
+			m_UserPreferences->LoadPreferences();
+		}
+
+		if (!SceneryEditorX::Window::IsVisible())
+		{
+			EDITOR_WARN_TAG("Editor", "Main window is not visible after creation.");
+		}
+
 		PushLayer(new SceneryEditorX::EditorLayer(m_UserPreferences));
 
 		const auto end = std::chrono::high_resolution_clock::now();
@@ -241,9 +281,15 @@ private:
 	std::filesystem::path m_PersistentStoragePath;
 	SceneryEditorX::Ref<SceneryEditorX::UserPreferences> m_UserPreferences;
 };
+private:
+	std::string m_ProjectPath;
+	std::filesystem::path m_PersistentStoragePath;
+	SceneryEditorX::Ref<SceneryEditorX::UserPreferences> m_UserPreferences;
+};
 
 // -------------------------------------------------------
 
+SceneryEditorX::Application* SceneryEditorX::CreateApplication(const PlatformContext& context)
 SceneryEditorX::Application* SceneryEditorX::CreateApplication(const PlatformContext& context)
 {
 	s_ClArguments = context.GetCommandLineArgs();

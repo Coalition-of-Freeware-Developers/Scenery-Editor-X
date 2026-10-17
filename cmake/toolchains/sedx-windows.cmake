@@ -45,23 +45,45 @@ ELSE()
 ENDIF()
 
 ## Ensure conforming preprocessor for both C and C++ when using MSVC
-ADD_COMPILE_OPTIONS(
-    $<$<COMPILE_LANG_AND_ID:C,MSVC>:/Zc:preprocessor>
-    $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/Zc:preprocessor>
-)
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DVK_USE_PLATFORM_WIN32_KHR")
+# Only enable MSVC-specific flags when MSVC is the chosen compiler
+if(NOT DEFINED SEDX_PREFERRED_COMPILER)
+    set(SEDX_PREFERRED_COMPILER "MSVC" CACHE STRING "Preferred compiler (fallback)" FORCE)
+endif()
+
+if(SEDX_PREFERRED_COMPILER STREQUAL "MSVC")
+    ADD_COMPILE_OPTIONS(
+        $<$<COMPILE_LANG_AND_ID:C,MSVC>:/Zc:preprocessor>
+        $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/Zc:preprocessor>
+    )
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DVK_USE_PLATFORM_WIN32_KHR")
+elseif(SEDX_PREFERRED_COMPILER STREQUAL "CLANG")
+    # clang/clang-cl: avoid injecting MSVC-only switch tokens; provide conservative defaults
+    # clang-cl accepts many MSVC switches, but prefer portable flags for clang mode
+    add_compile_options(-DVK_USE_PLATFORM_WIN32_KHR)
+    if(NOT DEFINED SEDX_DEFAULT_CXX_FLAGS)
+        set(SEDX_DEFAULT_CXX_FLAGS "-std=gnu++17" CACHE STRING "Default CXX flags for Clang (windows)" FORCE)
+    endif()
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SEDX_DEFAULT_CXX_FLAGS}")
+else()
+    # GCC or other toolchains on Windows (MinGW etc.)
+    add_compile_options(-DVK_USE_PLATFORM_WIN32_KHR)
+    if(NOT DEFINED SEDX_DEFAULT_CXX_FLAGS)
+        set(SEDX_DEFAULT_CXX_FLAGS "-std=gnu++17" CACHE STRING "Default CXX flags for GCC (windows)" FORCE)
+    endif()
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SEDX_DEFAULT_CXX_FLAGS}")
+endif()
 
 # Target Windows 10 SDK if available
 IF(NOT DEFINED CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION)
     SET(CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION "10.0" CACHE STRING "" FORCE)
 ENDIF()
 
-IF(MSVC)
-    # Runtime and linking settings
+if(SEDX_PREFERRED_COMPILER STREQUAL "MSVC" OR SEDX_PREFERRED_COMPILER STREQUAL "CLANG_CL")
+    # Runtime and linking settings for MSVC-like compilers
     SET(CMAKE_CXX_SCAN_FOR_MODULES OFF)
     SET(CMAKE_INCREMENTAL_LINKING ON)
 
-    # Common warning level and exceptions
+    # Common warning level and exceptions (applied for MSVC/clang-cl via generator expressions)
     ADD_COMPILE_OPTIONS(
         $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/W4>
         $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/EHsc>
@@ -76,7 +98,7 @@ IF(MSVC)
         NOMINMAX
         VK_USE_PLATFORM_WIN32_KHR
     )
-ENDIF()
+endif()
 
 # Vulkan validation layer settings: try to copy a default config if present
 IF(DEFINED ENV{VULKAN_SDK})

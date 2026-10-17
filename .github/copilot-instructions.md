@@ -29,6 +29,10 @@ Scenery Editor X is a modern C++20/C++23 application built with:
 - **Platform Support:** Windows (primary), macOS, and Linux with Vulkan 1.4, and KosmicKrisp.
 - **Build System:** CMake 3.8+ with vcpkg for some dependency management
 - **Code Quality:** Readable, maintainable, and well-structured following DRY principles
+- **Documentation:** Comprehensive inline comments and Doxygen-style documentation for public APIs
+- **Testing:** Unit tests for core systems and components using Catch2
+- **Version Control:** Git with feature branches, pull requests, and code reviews
+- **C++ RAII Principles:** Use RAII for resource management and avoid manual memory management where possible
 
 ### Core Architectural Patterns
 
@@ -503,6 +507,112 @@ Scenery Editor X provides a sophisticated logging framework with tagged categori
 ## Tagged Logging System
 
 **Use tagged logging for better categorization and debugging:**
+
+- Core system logs should use `SEDX_CORE_*` macros without tags for general information.
+- For more organized logs, use `SEDX_CORE_*_TAG()` macros to categorize messages by subsystem (e.g., "RENDER", "ASSET", "VULKAN").
+
+#### Core System Logging (Engine/Framework code)
+
+- `SEDX_CORE_INFO("General application information");` - Use for general information about application state and operations
+- `SEDX_CORE_WARN("Non-critical warning occurred");` - Use for general information about application state and operations
+- `SEDX_CORE_ERROR("Critical error that needs attention");` - Use for general information about application state and operations
+
+#### Tagged Logging (Preferred for organized log output)
+
+- `SEDX_CORE_INFO_TAG("Layer", "Layer '{}' initialized successfully", layerName);` - Use for logging layer initialization
+- `SEDX_CORE_ERROR_TAG("VULKAN", "Vulkan API error: {} (code: {})", errorMsg, errorCode);` - Use for logging Vulkan API errors
+- `SEDX_CORE_WARN_TAG("MEMORY", "High memory usage detected: {:.2f} MB", memUsageMB);` - Use for logging memory warnings
+- `SEDX_CORE_INFO_TAG("ASSET", "Loaded texture: {} ({}x{})", texName, width, height);` - Use for logging asset loading
+- `SEDX_CORE_DEBUG_TAG("RENDER", "Rendering frame {} with {} draw calls", frameNum, drawCalls);` - Use for logging rendering debug information
+
+#### Application/Editor Logging (Application-specific code)
+
+- `EDITOR_TRACE("Trace message for editor operations");` - Use for detailed tracing of editor operations
+- `EDITOR_INFO("Editor-specific information");` - Use for general information related to editor operations
+- `EDITOR_WARN("Panel '{}' failed to initialize", panelName);` - Use for logging warnings related to editor operations
+- `EDITOR_ERROR("Failed to save project file: {}", filename);` - Use for logging errors related to editor operations
+- `EDITOR_FATAL("Fatal error in editor: {}", errorMsg);` - Use for logging critical errors that may lead to crashes in editor operations
+
+#### Range and Bounds Checking Asserts
+
+- `SEDX_ASSERT_IN_RANGE(value, min, max, "Value {} is out of range ({} - {})", value, min, max);` - Use for validating that a value falls within a specified range, with formatted error messages in case of failure
+- `SEDX_CORE_ASSERT_IN_RANGE(value, min, max, "Value {} is out of range ({} - {})", value, min, max);` - Use for validating that a value falls within a specified range, with formatted error messages in case of failure
+- `SEDX_ASSERT_INDEX_IN_BOUNDS(index, size, "Index {} out of bounds (size: {})", index, size);` - Use for validating that a value falls within a specified range, with formatted error messages in case of failure
+- `SEDX_CORE_ASSERT_INDEX_IN_BOUNDS(index, size, "Index {} out of bounds (size: {})", index, size);` - Use for validating that a value falls within a specified range, with formatted error messages in case of failure
+
+#### Comparison Asserts
+
+- `SEDX_ASSERT_EQUAL(expected, actual, "Expected {} but got {}", expected, actual);` - Use for validating that two values are equal, with formatted error messages in case of failure
+- `SEDX_CORE_ASSERT_EQUAL(expected, actual, "Expected {} but got {}", expected, actual);` - Use for validating that two values are equal in core/engine code, with formatted error messages in case of failure
+- `SEDX_ASSERT_NOT_EQUAL(unexpected, actual, "Did not expect {} but got {}", unexpected, actual);` - Use for validating that two values are not equal, with formatted error messages in case of failure
+- `SEDX_CORE_ASSERT_NOT_EQUAL(unexpected, actual, "Did not expect {} but got {}", unexpected, actual);` - Use for validating that two values are not equal in core/engine code, with formatted error messages in case of failure
+
+#### Static Assertions - Type Traits
+
+- `SEDX_TRIVIAL_STATIC_ASSERT(T, "Type must be trivially copyable");` - Use for validating that a type is trivially copyable, which can be important for performance and memory management in graphics programming
+- `SEDX_TRIVIAL_DESTRUCTIBLE_ASSERT(T, "Type must be trivially destructible");` - Use for validating that a type has a trivial destructor, which can allow for optimizations in memory management and object lifetime handling
+- `SEDX_STD_LAYOUT_ASSERT(T, "Type must have standard layout");` - Use for validating that a type has a standard layout, which is important for interoperability with C APIs and certain memory layouts
+- `SEDX_POD_ASSERT(T, "Type must be a POD type");` - Use for validating that a type is a Plain Old Data (POD) type, which can be important for serialization, memory copying, and performance optimizations
+- `SEDX_DEFAULT_CONSTRUCTIBLE_ASSERT(T, "Type must be default constructible");` - Use for validating that a type can be default constructed, which is important for certain container types and algorithms that require default initialization
+- `SEDX_COPY_CONSTRUCTIBLE_ASSERT(T, "Type must be copy constructible");` - Use for validating that a type can be copy constructed, which is important for value semantics and certain container types
+- `SEDX_MOVE_CONSTRUCTIBLE_ASSERT(T, "Type must be move constructible");` - Use for validating that a type can be move constructed, which is important for performance optimizations and certain container types
+- `SEDX_NOTHROW_MOVE_CONSTRUCTIBLE_ASSERT(T, "Type must be nothrow move constructible");` - Use for validating that a type can be move constructed without throwing exceptions, which can allow for certain optimizations in container implementations
+- `SEDX_ENUM_ASSERT(T, "Type must be an enum");` - Use for validating that a type is an enumeration type, which can be important for certain template specializations and type traits
+- `SEDX_SCOPED_ENUM_ASSERT(T, "Type must be a scoped enum");` - Use for validating that a type is a scoped enumeration (enum class), which can provide better type safety and scoping for enumerations
+- `SEDX_POLYMORPHIC_ASSERT(T, "Type must be polymorphic");` - Use for validating that a type is polymorphic (has virtual functions), which can be important for certain dynamic behaviors and type traits
+- `SEDX_ABSTRACT_ASSERT(T, "Type must be abstract");` - Use for validating that a type is abstract (has at least one pure virtual function), which can be important for defining interfaces and base classes
+- `SEDX_FINAL_ASSERT(T, "Type must be final");` - Use for validating that a type is final (cannot be inherited from), which can be important for certain design patterns and optimizations
+
+#### Vulkan Validation Assertions
+
+- `SEDX_VK_RESULT_ASSERT(result, "Vulkan operation failed: {}", VulkanResultToString(result));` - Use for validating Vulkan API calls and translating error codes to readable messages
+
+#### Static Assertions - Size and Alignment
+
+- `SEDX_SIZE_ASSERT(T, expectedSize, "Type size must be {} bytes", expectedSize);` - Use for validating that a type has an exact size in bytes
+- `SEDX_MAX_SIZE_ASSERT(T, maxSize, "Type size must be less than or equal to {} bytes", maxSize);` - Use for validating that a type does not exceed a maximum size in bytes
+- `SEDX_MIN_SIZE_ASSERT(T, minSize, "Type size must be greater than or equal to {} bytes", minSize);` - Use for validating that a type meets a minimum size requirement in bytes
+- `SEDX_ALIGNMENT_ASSERT(T, expectedAlignment, "Type alignment must be {} bytes", expectedAlignment);` - Use for validating that a type has an exact alignment requirement in bytes
+- `SEDX_MIN_ALIGNMENT_ASSERT(T, minAlignment, "Type alignment must be at least {} bytes", minAlignment);` - Use for validating that a type meets a minimum alignment requirement in bytes
+- `SEDX_SAME_SIZE_ASSERT(T1, T2, "Types must be the same size");` - Use for validating that two types have the same size in bytes
+- `SEDX_POWER_OF_2_SIZE_ASSERT(T, "Type size must be a power of 2");` - Use for validating that a type's size is a power of 2, which can be important for GPU buffer layouts and alignment requirements
+
+#### Static Assertions - Type Relationships
+
+- `SEDX_DERIVED_FROM_ASSERT(Derived, Base, "Type must be derived from {}", typeid(Base).name());` - Use for validating inheritance relationships between types
+- `SEDX_SAME_TYPE_ASSERT(T1, T2, "Types must be the same");` - Use for validating that two types are exactly the same
+- `SEDX_CONVERTIBLE_TO_ASSERT(From, To, "Type {} must be convertible to {}", typeid(From).name(), typeid(To).name());` - Use for validating that one type can be implicitly converted to another
+
+#### Static Assertions - Numeric Properties
+
+
+- `SEDX_INTEGRAL_ASSERT(T, "Type must be an integral type");` - Use for validating that a type is an integral type
+- `SEDX_FLOATING_POINT_ASSERT(T, "Type must be a floating-point type");` - Use for validating that a type is a floating-point type
+- `SEDX_ARITHMETIC_ASSERT(T, "Type must be an arithmetic type");` - Use for validating that a type is either an integral or floating-point type
+- `SEDX_SIGNED_ASSERT(T, "Type must be a signed type");` - Use for validating that a type is a signed type
+- `SEDX_UNSIGNED_ASSERT(T, "Type must be an unsigned type");` - Use for validating that a type is an unsigned type
+
+#### Static Assertions - Container and Pointer Properties
+
+- `SEDX_POINTER_ASSERT(T, "Type must be a pointer");` - Use for validating that a type is a pointer type
+- `SEDX_NOT_POINTER_ASSERT(T, "Type must not be a pointer");` - Use for validating that a type is not a pointer type
+- `SEDX_REFERENCE_ASSERT(T, "Type must be a reference");` - Use for validating that a type is a reference type
+- `SEDX_ARRAY_ASSERT(T, "Type must be an array");` - Use for validating that a type is an array type
+- `SEDX_CLASS_ASSERT(T, "Type must be a class or struct");` - Use for validating that a type is a class or struct type
+- `SEDX_EMPTY_ASSERT(T, "Type must be an empty class or struct");` - Use for validating that a type is an empty class or struct type (no non-static data members)
+
+#### Combined Validation Macros
+
+- `SEDX_VERTEX_STRUCT_ASSERT(T, "Type must be a valid vertex struct with position, normal, and UV attributes");` - Use these combined macros for common validation patterns in graphics programming, such as vertex structures, GPU buffer layouts, and flags enums.
+- `SEDX_GPU_BUFFER_STRUCT_ASSERT(T, alignment, "Type must be a valid GPU buffer struct with standard layout and appropriate size");` - Use these combined macros for common validation patterns in graphics programming, such as vertex structures, GPU buffer layouts, and flags enums.
+- `SEDX_FLAGS_ENUM_ASSERT(T, "Type must be a valid flags enum with bitwise operators defined");` - Use these combined macros for common validation patterns in graphics programming, such as vertex structures, GPU buffer layouts, and flags enums.
+
+#### Compile-Time Constant Validation
+
+- `SEDX_CONSTEXPR_ASSERT(expr, "Compile-time assertion failed: {}", #expr);` - Use for validating constant expressions at compile time
+- `SEDX_POSITIVE_CONSTANT_ASSERT(expr, "Compile-time assertion failed: {} must be positive", #expr);` - Use for validating that a compile-time constant is positive
+- `SEDX_NON_NEGATIVE_CONSTANT_ASSERT(expr, "Compile-time assertion failed: {} must be non-negative", #expr);` - Use for validating that a compile-time constant is zero or positive
+- `SEDX_POWER_OF_2_CONSTANT_ASSERT(expr, "Compile-time assertion failed: {} must be a power of 2", #expr);`	- Use for validating that a compile-time constant is a power of 2
 
 - Core system logs should use `SEDX_CORE_*` macros without tags for general information.
 - For more organized logs, use `SEDX_CORE_*_TAG()` macros to categorize messages by subsystem (e.g., "RENDER", "ASSET", "VULKAN").
