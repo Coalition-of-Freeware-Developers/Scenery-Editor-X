@@ -227,9 +227,9 @@ namespace SceneryEditorX
 		VkInstance m_Instance = VK_NULL_HANDLE;
 		VkSurfaceKHR m_WindowSurface = VK_NULL_HANDLE;
 
-		VkPhysicalDeviceFeatures2 m_PhysDeviceFeat;
-		VkPhysicalDeviceProperties2 m_PhysDeviceProp;
-		VkPhysicalDeviceMemoryProperties2 m_PhysDeviceMemProp;
+		VkPhysicalDeviceFeatures2 m_PhysDeviceFeat{};
+		VkPhysicalDeviceProperties2 m_PhysDeviceProp{};
+		VkPhysicalDeviceMemoryProperties2 m_PhysDeviceMemProp{};
 	};
 
 }

@@ -33,6 +33,7 @@
 #include "scene.h"
 #include "components/component_sets.h"
 #include <algorithm>
+#include <atomic>
 #include <cmath>
 #include <limits>
 #include <string>
@@ -44,6 +45,9 @@
 
 namespace SceneryEditorX
 {
+	// Written by the UI on the main thread, read by Camera::Tick() on the render thread.
+	static std::atomic<bool> s_InputEnabled = true;
+
 	Camera::Camera() { m_CameraFlag.SetDirty(); }
 
 	CameraShaderData Camera::GetShaderData() const
@@ -64,6 +68,9 @@ namespace SceneryEditorX
 		
 		return data;
 	}
+
+	void Camera::SetInputEnabled(const bool enabled) { s_InputEnabled.store(enabled, std::memory_order_relaxed); }
+	bool Camera::IsInputEnabled() { return s_InputEnabled.load(std::memory_order_relaxed); }
 
 	void Camera::Init()
 	{
@@ -488,7 +495,10 @@ namespace SceneryEditorX
 		const auto [mouseX, mouseY] = Input::GetMousePosition();
 		const Vec2 currentMouse(mouseX, mouseY);
 		const Vec2 delta = currentMouse - m_LastMousePosition;
-		m_LastMousePosition = currentMouse;
+		m_LastMousePosition = currentMouse; // keep tracking while disabled so re-enabling doesn't jump
+
+		if (!s_InputEnabled.load(std::memory_order_relaxed))
+			return;
 
 		const bool leftMouseDown  = Input::IsMouseButtonDown(MouseButton::Left);
 		const bool rightMouseDown = Input::IsMouseButtonDown(MouseButton::Right);
@@ -554,9 +564,13 @@ namespace SceneryEditorX
 				action = "zoom_out";
 			}
 
+			// Mouse wheel: dolly toward / away from the orbit center, proportional to the current distance
 			if (scrollDelta != 0.0f)
 			{
-				SEDX_CORE_TRACE_TAG("CameraInput", "MouseScroll detected (delta={:.3f}) in ORBIT mode (no scroll-zoom binding in Camera::ProcessCameraInput yet)", scrollDelta);
+				m_Zoom = std::max(0.1f, m_Zoom * (1.0f - scrollDelta * 0.1f));
+				m_CameraFlag.SetDirty();
+				cameraChanged = true;
+				action = "zoom_scroll";
 			}
 		}
 		else if (mode == FLY || mode == FREE)

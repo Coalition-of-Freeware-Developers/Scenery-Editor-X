@@ -2,7 +2,7 @@
  * -------------------------------------------------------
  * Scenery Editor X
  * -------------------------------------------------------
- * Copyright (c) 2026 Thomas Ray 
+ * Copyright (c) 2026 Thomas Ray
  * Copyright (c) 2026 Coalition of Freeware Developers
  * -------------------------------------------------------
  * Permission is hereby granted, free of charge, to any person obtaining a
@@ -29,221 +29,53 @@
  * -------------------------------------------------------
  */
 #pragma once
-#include <SceneryEditorX/core/events/key_events.h>
-#include <SceneryEditorX/core/events/mouse_events.h>
-#include <SceneryEditorX/core/time/time.h>
+#include <array>
+#include <Editor/core/editor_context.h>
 #include <SceneryEditorX/renderer/ui/editor_panel.h>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-	class UILayer;
-	class EditorLayer;
+	class Camera;
 
 	/**
 	 * @class SceneViewport
-	 * @brief Represents a viewport in the scene editor.
+	 * @brief The central 3D viewport: shows the renderer's frame output and owns camera navigation.
+	 *
+	 * - Resizes the renderer (render + output resolution) to the panel once its size has settled,
+	 *   so dragging a dock splitter doesn't recreate render targets every frame.
+	 * - Enables camera input only while the image is hovered or a drag that started on it is active.
+	 * - Toolbar row (camera mode, projection, reset) and an info overlay, after Substance's viewport header.
 	 */
 	class SceneViewport : public UI::EditorPanel
 	{
 	public:
-		/**
-		 * @brief 
-		 * @param name 
-		 * @param editor 
-		 */
-		SceneViewport(const char* name, EditorLayer *editor);
+		explicit SceneViewport(EditorContext *context);
 
-		/**
-		 * @brief 
-		 */
-		void OnTickVisible() override;
+		void OnUIRender(bool &isOpen) override;
 
-		/**
-		 * @brief 
-		 */
-		void OnVisible() override;
+		/* @brief Screen-space bounds (min, max) of the rendered image, as of the last frame it was drawn. */
+		[[nodiscard]] std::array<Vec2, 2> GetViewportBounds() const { return m_ViewportBounds; }
 
-		/**
-		 * @brief 
-		 */
-		void OnInvisible() override;
+		/* @brief Size in pixels the renderer was last resized to. */
+		[[nodiscard]] Vec2 GetRenderSize() const { return { static_cast<float>(m_AppliedWidth), static_cast<float>(m_AppliedHeight) }; }
 
-		/**
-		 * @brief 
-		 */
-		void OnPreBegin() override;
-
-		/**
-		 * @brief 
-		 * @return 
-		 */
-		const std::string &GetName() const;
-
-		/**
-		 * @brief 
-		 * @return 
-		 */
-		bool IsViewportVisible() const;
-
-		/**
-		 * @brief 
-		 * @return 
-		 */
-		bool IsMainViewport() const;
-
-		/**
-		 * @brief 
-		 * @return 
-		 */
-		std::array<Vec2, 2> GetViewportBounds() const;
-	
-		/**
-		 * @brief 
-		 * @param isMain 
-		 */
-		void SetMainViewport(bool isMain);
-
-		/**
-		 * @brief 
-		 * @param visible 
-		 */
-		void SetVisible(bool visible);
-
-		/**
-		 * @brief 
-		 * @param dt 
-		 */
-		void Tick(DeltaTime dt);
-
-		/**
-		 * @brief 
-		 * @param e 
-		 */
-		void OnEvent(Event &e);
-
-		/**
-		 * @brief 
-		 */
-		void ResetCamera();
-
-		/**
-		 * @brief 
-		 * @return 
-		 */
-		bool *GetIsVisibleMemory();
-
-		/**
-		 * @brief 
-		 * @return 
-		 */
-		Vec2 GetViewportSize();
-	
 	private:
-		/**
-		 * @brief 
-		 */
-		void UI_DrawGizmos();
+		void DrawToolbar(Camera *camera);
+		void DrawOverlay(Camera *camera, const ImVec2 &imageMin) const;
+		void UpdateRenderSize(uint32_t width, uint32_t height);
 
-		/**
-		 * @brief 
-		 */
-		void UI_GizmosToolbar();
-
-		/**
-		 * @brief 
-		 */
-		void UI_CentralToolbar();
-
-		/**
-		 * @brief 
-		 */
-		void UI_ViewportSettings();
-
-		/**
-		 * @brief 
-		 */
-		void UI_HandleAssetDrop();
-
-		/**
-		 * @brief 
-		 * @param e 
-		 * @return 
-		 */
-		bool OnKeyPressedEvent(KeyPressedEvent &e);
-
-		/**
-		 * @brief 
-		 * @param e 
-		 * @return 
-		 */
-		bool OnMouseButtonPressed(MouseButtonPressedEvent &e);
-
-		/**
-		 * @brief 
-		 * @param primaryViewport 
-		 * @return 
-		 */
-		std::pair<float, float> GetMouseViewportSpace(bool primaryViewport) const;
-
-		/**
-		 * @brief 
-		 * @param mx 
-		 * @param my 
-		 * @return 
-		 */
-		std::pair<xMath::Vec3, xMath::Vec3> CastRay(float mx, float my) const;
-	
-		UILayer *m_Editor = nullptr;
-		const char* m_ViewportName = "Viewport";
+		EditorContext *m_Context = nullptr;
 		std::array<Vec2, 2> m_ViewportBounds = {};
-	
-		/**
-		 * Main means the last active viewport.
-		 * If you click on any viewport, and it is focus this viewport will be main.
-		 */
-		bool m_IsMainViewport = false;
-		bool m_IsVisible = false;
-		bool m_IsMouseOver = false;
-		bool m_IsFocused = false;
-		bool m_ShowIcons = true;
-		bool m_ShowGizmos = true;
-		bool m_ShowBoundingBoxSelectedMeshOnly = true;
-		bool m_ShowBoundingBoxSubmeshes = false;
-		bool m_ShowGizmosInPlayMode = false;
-		bool m_DrawOnTopBoundingBoxes = true;
-		bool m_ShowBoundingBoxes = false;
-		float m_LineWidth = 2.0f;
 
-		/**
-		 * @enum SelectionMode
-		 * @brief Defines the selection mode for the viewport.
-		 */
-		enum class SelectionMode : uint8_t
-		{
-			Entity = 0,
-			SubMesh = 1
-		};
+		uint32_t m_PendingWidth		= 0;
+		uint32_t m_PendingHeight	= 0;
+		uint32_t m_StableFrames		= 0;
+		uint32_t m_AppliedWidth		= 0;
+		uint32_t m_AppliedHeight	= 0;
+	};
 
-		// TODO: this should probably be moved to editor preferences, and not be a per viewport setting
-		SelectionMode m_SelectionMode = SelectionMode::Entity;
-
-		/**
-		 * @enum TransformationTarget
-		 * @brief Defines the transformation target for the viewport.
-		 */
-		enum class TransformationTarget : uint8_t
-		{
-			MedianPoint,
-			IndividualOrigins
-		};
-	
-		// TODO: this should probably be moved to editor preferences, and not be a per viewport setting
-		TransformationTarget m_MultiTransformTarget = TransformationTarget::MedianPoint;
-	
-	}; 
-	
 }
 
 // -------------------------------------------------------

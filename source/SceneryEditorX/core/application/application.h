@@ -46,6 +46,8 @@
 
 namespace SceneryEditorX
 {
+	class UILayer;
+
 	/**
 	 * @class Application
 	 * @brief The Application class is the core of the Scenery Editor X application. 
@@ -106,6 +108,7 @@ namespace SceneryEditorX
 		const AppData &GetAppData() const { return m_AppData; }
 		const PlatformContext* GetPlatformContext() const { return m_PlatformContext; }
 		LayerStack& GetLayerStack() { return m_LayerStack; }
+		UILayer* GetUILayer() const { return m_UILayer; }
 		PerformanceTimers m_PerformanceTimers;
 
 		// -------------------------------------------------------
@@ -177,7 +180,7 @@ namespace SceneryEditorX
 
 		Scope<Window> m_Window;
 		AppData m_AppData;
-		//UILayer* m_UILayer;
+		UILayer* m_UILayer = nullptr;	// Owned by m_LayerStack (pushed as an overlay)
 		LayerStack m_LayerStack;
 		DeltaTime m_DeltaTime;
 		DeltaTime m_FrameTime;

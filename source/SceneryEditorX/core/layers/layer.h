@@ -74,10 +74,15 @@ namespace SceneryEditorX
 		virtual void Tick() {}
 
 		/**
-		 * @brief Renders ImGui elements for this layer.
-		 * Implement any ImGui rendering for debugging or UI components.
+		 * @brief Called once per frame for non-UI render work.
 		 */
 		virtual void OnRender() {}
+
+		/**
+		 * @brief Submits this layer's ImGui widgets.
+		 * Called between the UI layer's NewFrame and Render, so ImGui calls are only valid in here.
+		 */
+		virtual void OnUIRender() {}
 
 		/**
 		 * @brief Processes events for this layer.

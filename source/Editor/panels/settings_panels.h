@@ -2,7 +2,7 @@
  * -------------------------------------------------------
  * Scenery Editor X
  * -------------------------------------------------------
- * Copyright (c) 2026 Thomas Ray 
+ * Copyright (c) 2026 Thomas Ray
  * Copyright (c) 2026 Coalition of Freeware Developers
  * -------------------------------------------------------
  * Permission is hereby granted, free of charge, to any person obtaining a
@@ -23,57 +23,56 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  * -------------------------------------------------------
- * shader_compiler.h
+ * settings_panels.h
  * -------------------------------------------------------
- * Created: 11/04/2026
+ * Created: 17/10/2026
  * -------------------------------------------------------
  */
 #pragma once
-#include "shader.h"
-#include "SceneryEditorX/renderer/vulkan/enums.h"
-
-#include <vector>
+#include <SceneryEditorX/renderer/ui/editor_panel.h>
 
 // -------------------------------------------------------
 
-/**
- * @namespace ShaderCompiler
- * @brief A simple manager for Vulkan shader modules. 
- * This is not intended to be a full-featured shader management system, 
- * but rather a minimal wrapper around Vulkan shader modules that allows us to compile and reflect shaders at runtime.
- */
-namespace ShaderCompiler
+namespace SceneryEditorX
 {
 	/**
-	 * @enum State
-	 * @brief Represents the current state of shader compilation. 
-	 * This can be used to track the progress of shader compilation and handle any errors that may occur during the process. 
+	 * The three tabbed panels in the lower-right dock (Substance's "Texture Set Settings / List / Shader Settings").
+	 * Every control is bound to live engine state; nothing here is a placeholder.
 	 */
-	enum class State : uint8_t
-	{
-		Idle,
-		Compiling,
-		Succeeded,
-		Failed
-	};
-	
-	/**
-	 * @brief Compiles a Vulkan shader from a file.
-	 * @param stage The shader stage to compile.
-	 * @param filepath The path to the shader file.
-	 * @param optimize Whether to optimize the shader during compilation.
-	 * @return A vector of uint32_t representing the compiled SPIR-V bytecode.
-	 */
-	std::vector<uint32_t> CompileShader(SceneryEditorX::StageType stage, const std::string& filepath, bool optimize = false);
 
 	/**
-	 * @brief Reflects the input variables of a Vulkan shader.
-	 * @param stage The shader stage to reflect.
-	 * @param shaderBytecode The SPIR-V bytecode of the shader.
-	 * @return A vector of ShaderInput structures representing the input variables of the shader.
+	 * @class SceneSettingsPanel
+	 * @brief "SCENE SETTINGS": active scene info plus the environment state X-Plane lighting depends on (time of day, wind).
 	 */
-	std::vector<SceneryEditorX::ShaderInput> Reflect(SceneryEditorX::StageType stage, const std::vector<uint32_t>& shaderBytecode);
+	class SceneSettingsPanel : public UI::EditorPanel
+	{
+	public:
+		SceneSettingsPanel();
+		void OnUIRender(bool &isOpen) override;
+	};
+
+	/**
+	 * @class CameraSettingsPanel
+	 * @brief "CAMERA": navigation mode, projection, lens and exposure of the viewport camera.
+	 */
+	class CameraSettingsPanel : public UI::EditorPanel
+	{
+	public:
+		CameraSettingsPanel();
+		void OnUIRender(bool &isOpen) override;
+	};
+
+	/**
+	 * @class RendererStatsPanel
+	 * @brief "RENDERER": frame timing, resolutions, swapchain and GPU memory, and UI backend status.
+	 */
+	class RendererStatsPanel : public UI::EditorPanel
+	{
+	public:
+		RendererStatsPanel();
+		void OnUIRender(bool &isOpen) override;
+	};
 
 }
 
-// --------------------------------------------------------------
+// -------------------------------------------------------

@@ -2,7 +2,7 @@
  * -------------------------------------------------------
  * Scenery Editor X
  * -------------------------------------------------------
- * Copyright (c) 2026 Thomas Ray 
+ * Copyright (c) 2026 Thomas Ray
  * Copyright (c) 2026 Coalition of Freeware Developers
  * -------------------------------------------------------
  * Permission is hereby granted, free of charge, to any person obtaining a
@@ -40,12 +40,19 @@ namespace SceneryEditorX
 {
 	/**
 	 * @class UILayer
-	 * @brief A layer responsible for managing the ImGui user interface rendering and input handling.
+	 * @brief Owns the Dear ImGui context and its SDL3 platform / Vulkan renderer backends.
+	 *
+	 * The Application pushes this layer as an overlay and wraps every layer's OnUIRender() between
+	 * BeginRendering() and EndRendering(). Docking and multi-viewport (floating panels outside the main
+	 * window) are enabled. Themes are applied by the client layer after this layer attaches.
 	 */
 	class UILayer : public Layer
 	{
 	public:
-		UILayer() = default;
+		/**
+		 * @param enableViewports Allow panels to be dragged out of the main window into their own OS windows.
+		 */
+		explicit UILayer(bool enableViewports = true);
 
 		/**
 		 * @brief Creates a new instance of the UILayer.
@@ -55,47 +62,35 @@ namespace SceneryEditorX
 
 		/**
 		 * @brief Gets the UIRenderer instance associated with this UILayer.
-		 * @return A pointer to the UIRenderer instance.
+		 * @return A pointer to the UIRenderer instance (unused by the Vulkan backend, kept for older panels).
 		 */
 		UIRenderer *Get();
 
-		/**
-		 * @brief Destroys the UILayer instance.
-		 */
-		virtual ~UILayer() = default;
+		virtual ~UILayer() override = default;
 
-		/**
-		 * @brief Called when the UILayer is attached to the application. 
-		 * Use this for initialization of UI resources.
-		 */
+		/* @brief Creates the ImGui context, loads the fonts and initializes the SDL3 and Vulkan backends. */
 		virtual void OnAttach() override;
 
-		/**
-		 * @brief Called when the UILayer is attached to the application.
-		 */
+		/* @brief Shuts the backends down and destroys the ImGui context. */
 		virtual void OnDetach() override;
 
-		/**
-		 * @brief Called each frame to update the UILayer. 
-		 * Implement UI logic that needs to execute each frame.
-		 */
+		/* @brief Ticks the panels registered directly with this layer. */
 		void Tick() override;
 
-		/**
-		 * @brief Begins the UI rendering process.
-		 */
+		/* @brief Starts a new ImGui frame. Must be paired with EndRendering(). */
 		void BeginRendering();
 
-		/**
-		 * @brief Ends the UI rendering process.
-		 */
+		/* @brief Finalizes the ImGui frame for the render thread and renders secondary platform windows. */
 		void EndRendering();
 
 		/**
-		 * @brief Allows or disallows input events for the UI layer.
+		 * @brief Allows or blocks keyboard/mouse input from reaching ImGui (e.g. while a modal engine tool owns input).
 		 * @param allowEvents True to allow input events, false to disallow.
 		 */
 		void AllowInputEvents(bool allowEvents);
+
+		/* @brief True between a successful OnAttach() and OnDetach(). */
+		[[nodiscard]] bool IsInitialized() const { return m_Initialized; }
 
 		/**
 		 * @brief Retrieves a pointer to the first widget of type T in the editor's widget list. Returns nullptr if no such widget is found.
@@ -115,15 +110,17 @@ namespace SceneryEditorX
 		}
 
 	private:
-		Scope<UIRenderer> m_UIRenderer;					// Renderer responsible for drawing the UI elements.
-		ImFont *m_Font_Normal;							// Pointer to the normal font used in the UI.
-		ImFont *m_Font_Bold;							// Pointer to the bold font used in the UI.
-		float m_Time = 0.0f;							// Time accumulator for UI animations or updates.
+		/* @brief Loads the default UI fonts; FontAwesome is merged into the default font for inline icons. */
+		void LoadFonts();
+
+		Scope<UIRenderer> m_UIRenderer;					// Legacy hook for older panels; rendering goes through UI::RenderMainViewport().
 		std::vector<Ref<UI::EditorPanel>> m_UIPanels;	// List of editor panels managed by the UILayer.
 		std::string m_IniFilePath;						// Owns the imgui ini path string so io.IniFilename never dangles (C26815).
-
+		bool m_EnableViewports = true;
+		bool m_AllowInput = true;
+		bool m_Initialized = false;
 	};
-	
+
 }
 
 // -------------------------------------------------------

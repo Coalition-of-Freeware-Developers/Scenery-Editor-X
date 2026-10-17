@@ -2,7 +2,7 @@
  * -------------------------------------------------------
  * Scenery Editor X
  * -------------------------------------------------------
- * Copyright (c) 2026 Thomas Ray 
+ * Copyright (c) 2026 Thomas Ray
  * Copyright (c) 2026 Coalition of Freeware Developers
  * -------------------------------------------------------
  * Permission is hereby granted, free of charge, to any person obtaining a
@@ -30,6 +30,8 @@
  */
 #pragma once
 #include "child_window.h"
+#include "editor_context.h"
+#include <memory>
 #include <SceneryEditorX/core/events/key_events.h>
 #include <SceneryEditorX/core/events/mouse_events.h>
 #include <SceneryEditorX/core/layers/layer.h>
@@ -44,150 +46,66 @@
 
 namespace SceneryEditorX
 {
+	class EditorLogSink;
+
 	/**
 	 * @class EditorLayer
-	 * @brief Represents the main editor layer in the application, 
-	 * responsible for managing the editor's state, handling events, and rendering the UI.
+	 * @brief The editor shell: menu bar, tool strips, status bar and the docked panel layout.
+	 *
+	 * The layout follows Adobe Substance 3D Painter: tool strip on the far left, PROPERTIES on the left,
+	 * the VIEWPORT in the middle with the ASSETS shelf (and CONSOLE) under it, OUTLINER top-right with the
+	 * SCENE SETTINGS / CAMERA / RENDERER tabs under it, a panel toggle strip on the far right and a status
+	 * bar along the bottom. Window > Reset Layout rebuilds that arrangement.
+	 *
+	 * Panels are registered with the PanelManager in RegisterPanels(); add new editor features there.
 	 */
 	class EditorLayer : public Layer, public RefCounted
 	{
 	public:
-		EditorLayer(const Ref<UserPreferences>& userPreferences);
+		explicit EditorLayer(const Ref<UserPreferences> &userPreferences);
 		virtual ~EditorLayer() override;
 
 		void OnAttach() override;
 		void OnDetach() override;
-		void Tick() override;
-		void InitEditor();
-
-		void OnRender() override;
+		void OnUIRender() override;
 		void OnEvent(Event &event) override;
-		bool OnKeyPressedEvent(KeyPressedEvent& e);
-		bool OnMouseButtonPressed(MouseButtonPressedEvent& e);
-		
-		//static bool HasArgument(const std::string &argument);
 
-		Ref<EditorLayer> Get() { return {this}; }
-
-		void OpenProject();
-		void OpenProject(const std::filesystem::path &filepath);
-		void CreateProject(const std::filesystem::path &projectPath);
-		void EmptyProject();
-		void UpdateCurrentProject();
-		static void SaveProject();
-		static void CloseProject(bool unloadProject = true);
-
-		void NewScene(const std::string &name = "UntitledAirport");
-		bool OpenScene();
-		bool OpenScene(const std::filesystem::path &filepath, bool checkAutoSave = true);
-		void SaveScene();
-		void SaveSceneAuto();
-		void SaveSceneAs();
-
-		static bool IsSceneOpen();
-		static bool IsProjectOpen();
-		static void SetDarkThemeColors();
-		static void SetDarkThemeV2Colors();
-
-		void AllowInputEvents(bool allowInput);
-
+		/* @brief Fonts kept for older panels that push them directly (set once the UI fonts are loaded). */
 		inline static ImFont* fontNormal = nullptr;
 		inline static ImFont* fontBold   = nullptr;
 
 	private:
-		Ref<Scene> m_EditorScene;
-		Ref<Scene> m_CurrentScene;
-		Ref<UIRenderer> m_UIRenderer;
-		Scope<PanelManager> m_PanelManager;
+		void RegisterPanels();
+		void AttachLogSink();
+		void DetachLogSink();
 
-		std::string m_SceneFilePath;
-		std::vector<UI::ChildWindow> m_ChildWindows;
-		Vec2 m_ViewportBounds[2]       = {};
-		Vec2 m_SecondViewportBounds[2] = {};
-		std::pair<float, float> GetMouseViewportSpace(bool primaryViewport);
+		void DrawMenuBar();
+		void DrawStatusBar();
+		void DrawToolStrip();
+		void DrawPanelStrip();
+		void DrawDockSpace();
+		void DrawAboutPopup();
+		void DrawDebugWindows();
+		void HandleShortcuts();
 
-		float GetSnapValue();
-		float UI_DrawTitlebar();
+		void BuildDefaultLayout(ImGuiID dockspaceId);
+		void DeleteSelectedEntity();
+		void UpdateWindowTitle() const;
+		bool OnKeyPressed(KeyPressedEvent &event);
 
-		void UI_DrawMenubar();
-		void UI_HandleManualWindowResize();
-		bool UI_TitleBarHitTest(int x, int y) const;
-		static void UpdateWindowTitle(const std::string &sceneName);
+		/* @brief Menu checkbox / strip toggle for a registered panel's open state. */
+		PanelData *FindPanel(const char *panelId) const;
 
-		// Popups
-		void UI_ShowNewProjectPopup();
-		void UI_ShowLoadAutoSavePopup();
-		void UI_ShowCreateAssetsFromMeshSourcePopup();
-		void UI_ShowInvalidAssetMetadataPopup();
-		void UI_ShowNoMeshPopup();
-		void UI_ShowNoSkeletonPopup();
-		void UI_ShowNoAnimationPopup();
-		void UI_ShowNewScenePopup();
-		void UI_ShowWelcomePopup();
-		void UI_ShowAboutPopup();
-		void UI_StatisticsPanel();
-		void UI_BuildAssetPackDialog();
-
-		// Viewports
-		Ref<Viewport> GetMainViewport();
-		void SetMainViewport(const std::string &viewportName);
-		
-		bool m_ViewportPanelMouseOver		= false;
-		bool m_ViewportPanelFocused			= false;
-		bool m_AllowViewportCameraEvents	= false;
-		bool m_ViewportPanel2MouseOver		= false;
-		bool m_ViewportPanel2Focused		= false;
-		bool m_ShowSecondViewport			= false;
-
-		void AddEntity(Entity entity);
-		void DeleteEntity(Entity entity);
-		void BuildProjectData();
-		void BuildShaderPack();
-		void BuildSoundBank();
-		void BuildAssetPack();
-		void BuildAll();
-
-		Camera m_Camera;
 		Ref<UserPreferences> m_UserPreferences;
+		Scope<PanelManager> m_PanelManager;
+		EditorContext m_Context;
+		std::shared_ptr<EditorLogSink> m_LogSink;
 
-		uint32_t m_TitleBarTargetColor   = 0;
-		uint32_t m_TitleBarActiveColor   = 0;
-		uint32_t m_TitleBarPreviousColor = 0;
-
-		int m_GizmoType = -1; // -1 = no gizmo
-
-		// ImGui Tools
-		bool m_ShowMetricsTool = false;
-		bool m_ShowStackTool = false;
+		bool m_ShowAbout = false;
+		bool m_ShowMetrics = false;
 		bool m_ShowStyleEditor = false;
-		bool m_ProjectUpdateNeeded = false;
-		bool m_ShowProjectUpdatedPopup = false;
-		bool m_GizmoWorldOrientation = true;
-		bool m_TitleBarHovered = false;
-		bool m_AnimateTitleBarColor = true;
-		bool m_ShowStatisticsPanel = false;
-
-		struct LoadAutoSavePopupData
-		{
-			std::string m_FilePath;
-			std::string m_FilePathAuto;
-		} m_LoadAutoSavePopupData;
-
-		/* 
-		 * Time (in seconds) since scene was last saved.
-		 * Counts up only when scene is in Edit mode.
-		 * If exceeds 300s then scene is automatically saved
-		 */
-		float m_TimeSinceLastSave = 0.0f;
-		float m_RequiredProjectVersion = 0.0f;
-		float m_AssetUpdatePerf = 0.0f;
-
-	#ifdef SEDX_PLATFORM_WINDOWS
-		typedef std::wstring WatcherString;
-	#else
-		typedef std::string WatcherString;
-	#endif
-		//std::unique_ptr<filewatch::FileWatch<WatcherString>> m_ScriptFileWatcher = nullptr;
+		bool m_ShowDemo = false;
+		int m_FocusViewportFrames = 0;	// Frames left to focus the viewport after (re)building the layout
 	};
 }
 

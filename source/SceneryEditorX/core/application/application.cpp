@@ -29,8 +29,8 @@
  * -------------------------------------------------------
  */
 #include "application.h"
-#include <Editor/core/editor_layer.h>
 #include <SceneryEditorX/core/input/input.h>
+#include <SceneryEditorX/core/platform/windows/crash_diagnostics.h>
 #include <SceneryEditorX/core/resource/resource_cache.h>
 #include <SceneryEditorX/core/threading/thread_pool.h>
 #include <SceneryEditorX/core/time/fps_timer.h>
@@ -38,6 +38,7 @@
 #include <SceneryEditorX/logging/profiler.hpp>
 #include <SceneryEditorX/project/project.h>
 #include <SceneryEditorX/renderer/renderer.h>
+#include <SceneryEditorX/renderer/ui/ui_layer.h>
 #include <SceneryEditorX/renderer/vulkan/swapchain.h>
 #include <SceneryEditorX/scene/scene.h>
 
@@ -105,8 +106,12 @@ namespace SceneryEditorX
 
 		ResourceCache::Init();
 
-		/*m_UILayer = new UILayer;
-		PushOverlay(m_UILayer);*/
+		// The UI layer needs the renderer's swapchain and the resource directories (fonts), so it attaches last.
+		if (appData.enableUI)
+		{
+			m_UILayer = new UILayer(appData.enableUIViewports);
+			PushOverlay(m_UILayer);
+		}
 
 		FPSTimer::Init();
 		ThreadPool::Init();
@@ -119,6 +124,7 @@ namespace SceneryEditorX
 
 	Application::Application(const PlatformContext& context) : m_PlatformContext(&context), m_RenderThread(ThreadingPolicy::MultiThreaded)
 	{
+		Diagnostics::InstallCrashHandlers();
 		s_AppInstance = this;
 		s_MainThreadID = std::this_thread::get_id();
 
@@ -175,6 +181,7 @@ namespace SceneryEditorX
 
 	Application::Application(const PlatformContext& context, const AppData& appData) : m_PlatformContext(&context), m_RenderThread(appData.coreThreadingPolicy)
 	{
+		Diagnostics::InstallCrashHandlers();
 		s_AppInstance = this;
 		s_MainThreadID = std::this_thread::get_id();
 
@@ -207,20 +214,20 @@ namespace SceneryEditorX
 
 	Application::~Application()
 	{
-		EditorLayer::SaveProject();
-
 		m_Window->SetEventCallback([](Event&) {});
 
 		// Stop producing new work first
 		m_RenderThread.Terminate();
 
-		// Detach and destroy layers in reverse order (dependencies unwind correctly)
+		// Detach and destroy layers in reverse order (dependencies unwind correctly). The UI layer is an
+		// overlay, so it goes first: client layers must not touch ImGui in OnDetach().
 		for (size_t i = m_LayerStack.Size(); i > 0; --i)
 		{
 			Layer* layer = m_LayerStack[i - 1];
 			layer->OnDetach();
 			delete layer;
 		}
+		m_UILayer = nullptr;
 
 		// Release shared resource owners/caches
 		ResourceCache::UnloadDefaultResources();
@@ -310,14 +317,20 @@ namespace SceneryEditorX
 	{
 		//SEDX_PROFILE_FUNC();
 		//SEDX_SCOPE_PERF("Application::RenderUI");
-		SEDX_CORE_TRACE_TAG("Application", "Rendering UI");
-
-		//m_UILayer->Begin();
-
-		for (int i = 0; i < m_LayerStack.Size(); i++)
+		for (size_t i = 0; i < m_LayerStack.Size(); i++)
 		{
 			m_LayerStack[i]->OnRender();
 		}
+
+		if (!m_UILayer || !m_UILayer->IsInitialized())
+			return;
+
+		m_UILayer->BeginRendering();
+		for (size_t i = 0; i < m_LayerStack.Size(); i++)
+		{
+			m_LayerStack[i]->OnUIRender();
+		}
+		m_UILayer->EndRendering();
 	}
 
 	void Application::OnShutdown()

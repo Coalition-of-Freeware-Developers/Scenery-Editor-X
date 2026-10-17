@@ -302,6 +302,11 @@ namespace SceneryEditorX
 		return nullptr;
 	}
 
+	Scene *Scene::GetActive()
+	{
+		return s_ActiveScene.get();
+	}
+
 	bool Scene::HasCameraEntity()
 	{
 		if (!s_ActiveScene)
@@ -386,9 +391,13 @@ namespace SceneryEditorX
 		if (!s_ActiveScene || !entity)
 			return;
 
-		const UUID entityId = entity.GetUUID();
 		const entt::entity entityHandle = static_cast<entt::entity>(entity);
-		s_ActiveScene->m_EntityMap.erase(entityId);
+		if (!s_ActiveScene->m_Registry.valid(entityHandle))
+			return;
+
+		// The ID lives in the registry; Entity::GetUUID() reads the handle's own (empty) component store.
+		if (const IDComponent *id = s_ActiveScene->m_Registry.try_get<IDComponent>(entityHandle))
+			s_ActiveScene->m_EntityMap.erase(id->pID);
 
 		if (const auto storageIt = s_EntityStorage.find(entityHandle); storageIt != s_EntityStorage.end())
 		{

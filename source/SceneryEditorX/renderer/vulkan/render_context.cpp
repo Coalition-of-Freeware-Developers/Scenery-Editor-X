@@ -223,6 +223,45 @@ namespace SceneryEditorX
 				VK_EXT_MUTABLE_DESCRIPTOR_TYPE_EXTENSION_NAME,
 			};
 
+			// Drop requested instance extensions that neither the loader nor an enabled layer provides, instead of
+			// failing instance creation. Capture layers (RenderDoc) don't pass every extension through, notably
+			// VK_EXT_layer_settings from the validation layer.
+			{
+				std::vector<VkExtensionProperties> available;
+				const auto appendExtensions = [&available](const char *layerName)
+				{
+					uint32_t count = 0;
+					if (vkEnumerateInstanceExtensionProperties(layerName, &count, nullptr) != VK_SUCCESS || count == 0)
+						return;
+					const size_t offset = available.size();
+					available.resize(offset + count);
+					vkEnumerateInstanceExtensionProperties(layerName, &count, available.data() + offset);
+					available.resize(offset + count);
+				};
+
+				appendExtensions(nullptr);
+				for (const char *layer : instanceLayers)
+					appendExtensions(layer);
+
+				const auto isAvailable = [&available](const char *name)
+				{
+					return std::ranges::any_of(available, [name](const VkExtensionProperties &p) { return std::strcmp(p.extensionName, name) == 0; });
+				};
+
+				std::erase_if(instanceExtensions, [&isAvailable](const char *name)
+				{
+					if (isAvailable(name))
+						return false;
+					SEDX_CORE_WARN_TAG("RenderContext", "Instance extension '{}' is not available; continuing without it", name);
+					return true;
+				});
+
+		#ifdef VK_EXT_LAYER_SETTINGS_EXTENSION_NAME
+				if (createInfo.pNext == &layerSettings.createInfo && !isAvailable(VK_EXT_LAYER_SETTINGS_EXTENSION_NAME))
+					createInfo.pNext = nullptr;
+		#endif
+			}
+
 			createInfo.enabledExtensionCount = static_cast<uint32_t>(instanceExtensions.size());
 			createInfo.ppEnabledExtensionNames = instanceExtensions.data();
 			createInfo.enabledLayerCount = static_cast<uint32_t>(instanceLayers.size());

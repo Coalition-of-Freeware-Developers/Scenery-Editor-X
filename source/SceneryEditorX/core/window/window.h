@@ -212,6 +212,15 @@ namespace SceneryEditorX
 		 */
 		static void SetEventCallback(const EventCallbackFn &callback);
 
+		/* @brief Callback that sees every raw SDL event before the engine translates it (e.g. the ImGui platform backend). */
+		typedef std::function<void(const SDL_Event &)> NativeEventHookFn;
+
+		/**
+		 * @brief Installs a hook that receives every raw SDL event, including those for secondary (ImGui viewport) windows.
+		 * @param hook The hook to install, or nullptr to remove it.
+		 */
+		static void SetNativeEventHook(const NativeEventHookFn &hook);
+
 		/* @brief Maximizes the window. */
 		static void Maximize();
 

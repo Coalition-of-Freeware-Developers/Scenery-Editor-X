@@ -78,13 +78,14 @@ namespace SceneryEditorX
 	{
 		SEDX_CORE_ASSERT(strID != nullptr, "Invalid panel ID");
 
-		uint64_t id = Hash::GenerateFNV1A(strID);
+		uint64_t id = Hash::GenerateFNV1A(std::string_view(strID));
 		for (auto& panelMap : m_Panels)
 		{
 			if (!panelMap.contains(id))
 				continue;
 
 			panelMap.erase(id);
+			std::erase(m_Order, id);
 			return;
 		}
 
@@ -93,25 +94,17 @@ namespace SceneryEditorX
 	
 	void PanelManager::OnUIRender()
 	{
-		for (auto& panelMap : m_Panels)
+		// Registration order keeps ImGui's submission order stable, so tabs docked together keep their order.
+		for (const uint64_t id : m_Order)
 		{
-			for (auto &panelData : panelMap | std::views::values)
-			{
-				bool closedThisFrame = false;
+			PanelData *panelData = GetPanelData(id);
+			if (!panelData || !panelData->IsOpen)
+				continue;
 
-				if (panelData.IsOpen)
-				{
-					SEDX_CORE_TRACE_TAG("PanelManager", "Rendering panel: {}", panelData.Name);
-					panelData.Panel->OnUIRender(panelData.IsOpen);
-					closedThisFrame = !panelData.IsOpen;
-				}
+			panelData->Panel->OnUIRender(panelData->IsOpen);
 
-				if (closedThisFrame)
-				{
-					SEDX_CORE_TRACE_TAG("PanelManager", "Panel closed this frame");
-					Serialize();
-				}
-			}
+			if (!panelData->IsOpen)
+				Serialize();
 		}
 	}
 	
@@ -205,8 +198,9 @@ namespace SceneryEditorX
 
 			for (const auto &panelNode : data["Panels"])
 			{
+				// Quiet lookup: layouts saved by older builds can name panels that no longer exist.
 				uint64_t id = panelNode.value("ID", 0ULL);
-				PanelData* panelData = GetPanelData(id);
+				PanelData* panelData = const_cast<PanelData*>(std::as_const(*this).GetPanelData(id));
 				SEDX_CORE_TRACE_TAG("PanelManager", "Deserializing panel: {}", panelData ? panelData->Name : "Unknown");
 
 				if (panelData == nullptr)

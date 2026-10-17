@@ -5,6 +5,7 @@
 //  [X] Renderer: User texture binding. Use 'SDL_GPUTexture*' as texture identifier. Read the FAQ about ImTextureID/ImTextureRef! **IMPORTANT** Before 2025/08/08, ImTextureID was a reference to a SDL_GPUTextureSamplerBinding struct.
 //  [X] Renderer: Large meshes support (64k+ vertices) even with 16-bit indices (ImGuiBackendFlags_RendererHasVtxOffset).
 //  [X] Renderer: Texture updates support for dynamic font atlas (ImGuiBackendFlags_RendererHasTextures).
+//  [X] Renderer: Expose selected render state for draw callbacks to use. Access with ImGui_ImplSDLGPU3_GetRenderState().
 //  [X] Renderer: Multi-viewport support (multiple windows). Enable with 'io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable'.
 
 // The aim of imgui_impl_sdlgpu3.h/.cpp is to be usable in your engine without any modification.
@@ -58,9 +59,7 @@ IMGUI_IMPL_API void     ImGui_ImplSDLGPU3_UpdateTexture(ImTextureData* tex);
 struct ImGui_ImplSDLGPU3_RenderState
 {
     SDL_GPUDevice*      Device;
-    SDL_GPUSampler*     SamplerLinear;      // Bilinear filtering sampler
-    SDL_GPUSampler*     SamplerNearest;     // Nearest/point filtering sampler
-    SDL_GPUSampler*     SamplerCurrent;     // Current sampler (may be changed by callback)
 };
+IMGUI_IMPL_API ImGui_ImplSDLGPU3_RenderState* ImGui_ImplSDLGPU3_GetRenderState();
 
 #endif // #ifndef IMGUI_DISABLE

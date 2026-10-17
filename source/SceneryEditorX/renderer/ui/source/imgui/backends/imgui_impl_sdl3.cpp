@@ -24,6 +24,7 @@
 // CHANGELOG
 // (minor and older changes stripped away, please see git history for details)
 //  2026-XX-XX: Platform: Added support for multiple windows via the ImGuiPlatformIO interface.
+//  2026-03-25: [Docking] Use SDL_HAS_EVENT_DISPLAY_USABLE_BOUNDS_CHANGED (SDL 3.4.0+) when available to avoid refreshing monitor work area every frame on Windows. (#8415)
 //  2026-03-09: [Docking] Fixed an issue dated 2025/04/09 (1.92 WIP) where a refactor+merge caused ImGuiBackendFlags_HasMouseHoveredViewport to never be set, causing foreign windows to be ignored when deciding of hovered viewport. (#9284)
 //  2026-02-13: Inputs: systems other than X11 are back to starting mouse capture on mouse down (reverts 2025-02-26 change). Only X11 requires waiting for a drag by default (not ideal, but a better default for X11 users). Added ImGui_ImplSDL3_SetMouseCaptureMode() for X11 debugger users. (#3650, #6410, #9235)
 //  2026-01-15: Changed GetClipboardText() handler to return nullptr on error aka clipboard contents is not text. Consistent with other backends. (#9168)
@@ -105,6 +106,7 @@
 #else
 #define SDL_HAS_CAPTURE_AND_GLOBAL_MOUSE    0
 #endif
+#define SDL_HAS_EVENT_DISPLAY_USABLE_BOUNDS_CHANGED     SDL_VERSION_ATLEAST(3,4,0)
 
 // FIXME-LEGACY: remove when SDL 3.1.3 preview is released.
 #ifndef SDLK_APOSTROPHE
@@ -122,8 +124,9 @@ struct ImGui_ImplSDL3_Data
     SDL_Renderer*           Renderer;
     Uint64                  Time;
     char*                   ClipboardTextData;
-    char                    BackendPlatformName[48];
-    bool                    UseVulkan;
+    char                    BackendPlatformName[64];
+    bool                    IsWayland;
+    bool                    IsVulkan;
     bool                    WantUpdateMonitors;
 
     // IME handling
@@ -475,6 +478,9 @@ bool ImGui_ImplSDL3_ProcessEvent(const SDL_Event* event)
         case SDL_EVENT_DISPLAY_REMOVED:
         case SDL_EVENT_DISPLAY_MOVED:
         case SDL_EVENT_DISPLAY_CONTENT_SCALE_CHANGED:
+#if SDL_HAS_EVENT_DISPLAY_USABLE_BOUNDS_CHANGED
+        case SDL_EVENT_DISPLAY_USABLE_BOUNDS_CHANGED:
+#endif
         {
             bd->WantUpdateMonitors = true;
             return true;
@@ -555,11 +561,13 @@ static bool ImGui_ImplSDL3_Init(SDL_Window* window, SDL_Renderer* renderer, void
     //SDL_SetHint(SDL_HINT_EVENT_LOGGING, "2");
 
     const int ver_linked = SDL_GetVersion();
+    const char* sdl_video_driver = SDL_GetCurrentVideoDriver();
 
     // Setup backend capabilities flags
     ImGui_ImplSDL3_Data* bd = IM_NEW(ImGui_ImplSDL3_Data)();
-    snprintf(bd->BackendPlatformName, sizeof(bd->BackendPlatformName), "imgui_impl_sdl3 (%d.%d.%d; %d.%d.%d)",
-        SDL_MAJOR_VERSION, SDL_MINOR_VERSION, SDL_MICRO_VERSION, SDL_VERSIONNUM_MAJOR(ver_linked), SDL_VERSIONNUM_MINOR(ver_linked), SDL_VERSIONNUM_MICRO(ver_linked));
+    snprintf(bd->BackendPlatformName, sizeof(bd->BackendPlatformName), "imgui_impl_sdl3 (%d.%d.%d; %d.%d.%d) (%s)",
+        SDL_MAJOR_VERSION, SDL_MINOR_VERSION, SDL_MICRO_VERSION, SDL_VERSIONNUM_MAJOR(ver_linked), SDL_VERSIONNUM_MINOR(ver_linked), SDL_VERSIONNUM_MICRO(ver_linked),
+        sdl_video_driver);
     io.BackendPlatformUserData = (void*)bd;
     io.BackendPlatformName = bd->BackendPlatformName;
     io.BackendFlags |= ImGuiBackendFlags_HasMouseCursors;           // We can honor GetMouseCursor() values (optional)
@@ -570,16 +578,16 @@ static bool ImGui_ImplSDL3_Init(SDL_Window* window, SDL_Renderer* renderer, void
     bd->Window = window;
     bd->WindowID = SDL_GetWindowID(window);
     bd->Renderer = renderer;
+    bd->IsWayland = strcmp(sdl_video_driver, "wayland") == 0;
 
     // Check and store if we are on a SDL backend that supports SDL_GetGlobalMouseState() and SDL_CaptureMouse()
     // ("wayland" and "rpi" don't support it, but we chose to use a white-list instead of a black-list)
     bd->MouseCanUseGlobalState = false;
     bd->MouseCaptureMode = ImGui_ImplSDL3_MouseCaptureMode_Disabled;
 #if SDL_HAS_CAPTURE_AND_GLOBAL_MOUSE
-    const char* sdl_backend = SDL_GetCurrentVideoDriver();
     const char* capture_and_global_state_whitelist[] = { "windows", "cocoa", "x11", "DIVE", "VMAN" };
     for (const char* item : capture_and_global_state_whitelist)
-        if (strncmp(sdl_backend, item, strlen(item)) == 0)
+        if (strncmp(sdl_video_driver, item, strlen(item)) == 0)
         {
             bd->MouseCanUseGlobalState = true;
             bd->MouseCaptureMode = (strcmp(item, "x11") == 0) ? ImGui_ImplSDL3_MouseCaptureMode_EnabledAfterDrag : ImGui_ImplSDL3_MouseCaptureMode_Enabled;
@@ -662,7 +670,7 @@ bool ImGui_ImplSDL3_InitForVulkan(SDL_Window* window)
     if (!ImGui_ImplSDL3_Init(window, nullptr, nullptr))
         return false;
     ImGui_ImplSDL3_Data* bd = ImGui_ImplSDL3_GetBackendData();
-    bd->UseVulkan = true;
+    bd->IsVulkan = true;
     return true;
 }
 
@@ -780,8 +788,8 @@ static void ImGui_ImplSDL3_UpdateMouseData()
             if (!(io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable))
             {
                 SDL_GetWindowPosition(focused_window, &window_x, &window_y);
-                mouse_x -= window_x;
-                mouse_y -= window_y;
+                mouse_x -= (float)window_x;
+                mouse_y -= (float)window_y;
             }
             io.AddMousePosEvent(mouse_x, mouse_y);
         }
@@ -997,7 +1005,7 @@ void ImGui_ImplSDL3_NewFrame()
     ImGui_ImplSDL3_GetWindowSizeAndFramebufferScale(bd->Window, &io.DisplaySize, &io.DisplayFramebufferScale);
 
     // Update monitors
-#ifdef WIN32
+#if defined(WIN32) && !SDL_HAS_EVENT_DISPLAY_USABLE_BOUNDS_CHANGED
     bd->WantUpdateMonitors = true; // Keep polling under Windows to handle changes of work area when resizing task-bar (#8415)
 #endif
     if (bd->WantUpdateMonitors)
@@ -1009,7 +1017,7 @@ void ImGui_ImplSDL3_NewFrame()
     Uint64 current_time = SDL_GetPerformanceCounter();
     if (current_time <= bd->Time)
         current_time = bd->Time + 1;
-    io.DeltaTime = bd->Time > 0 ? (float)((double)(current_time - bd->Time) / frequency) : (float)(1.0f / 60.0f);
+    io.DeltaTime = bd->Time > 0 ? (float)((double)(current_time - bd->Time) / (double)frequency) : (float)(1.0f / 60.0f);
     bd->Time = current_time;
 
     if (bd->MousePendingLeaveFrame && bd->MousePendingLeaveFrame >= ImGui::GetFrameCount() && bd->MouseButtonsDown == 0)
@@ -1086,7 +1094,7 @@ static void ImGui_ImplSDL3_CreateWindow(ImGuiViewport* viewport)
 
     SDL_WindowFlags sdl_flags = 0;
     sdl_flags |= SDL_WINDOW_HIDDEN;
-    sdl_flags |= use_opengl ? SDL_WINDOW_OPENGL : (bd->UseVulkan ? SDL_WINDOW_VULKAN : 0);
+    sdl_flags |= use_opengl ? SDL_WINDOW_OPENGL : (bd->IsVulkan ? SDL_WINDOW_VULKAN : 0);
     sdl_flags |= SDL_GetWindowFlags(bd->Window) & SDL_WINDOW_HIGH_PIXEL_DENSITY;
     sdl_flags |= (viewport->Flags & ImGuiViewportFlags_NoDecoration) ? SDL_WINDOW_BORDERLESS : 0;
     sdl_flags |= (viewport->Flags & ImGuiViewportFlags_NoDecoration) ? 0 : SDL_WINDOW_RESIZABLE;

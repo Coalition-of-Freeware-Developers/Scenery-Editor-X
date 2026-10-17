@@ -473,6 +473,8 @@ ENDIF()
 TARGET_COMPILE_DEFINITIONS(AppCore
 	PUBLIC
 		APPCORE
+		# Engine-side Dear ImGui configuration (IM_ASSERT routing); keeps the vendored imconfig.h untouched
+		"IMGUI_USER_CONFIG=\"SceneryEditorX/renderer/ui/imgui_config.h\""
 		$<$<CONFIG:Debug>:SEDX_DEBUG>
 		$<$<CONFIG:Release>:SEDX_RELEASE>
 		SPDLOG_USE_STD_FORMAT

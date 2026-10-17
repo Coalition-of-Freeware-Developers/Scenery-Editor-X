@@ -2,7 +2,7 @@
  * -------------------------------------------------------
  * Scenery Editor X
  * -------------------------------------------------------
- * Copyright (c) 2026 Thomas Ray 
+ * Copyright (c) 2026 Thomas Ray
  * Copyright (c) 2026 Coalition of Freeware Developers
  * -------------------------------------------------------
  * Permission is hereby granted, free of charge, to any person obtaining a
@@ -29,224 +29,205 @@
  * -------------------------------------------------------
  */
 #include "scene_viewport.h"
-#include "asset_browser.h"
-#include "properties.h"
-#include "Editor/core/editor_layer.h"
-#include <SceneryEditorX/core/input/input.h>
+#include <Editor/core/editor_camera.h>
+#include <Editor/core/editor_theme.h>
+#include <Editor/core/editor_ui.h>
 #include <SceneryEditorX/renderer/renderer.h>
-#include <SceneryEditorX/renderer/ui/ui.h>
-#include <SceneryEditorX/renderer/ui/ui_layer.h>
-#include <SceneryEditorX/renderer/ui/ui_widget.h>
-#include <SceneryEditorX/renderer/ui/actions/drag_drop.h>
-#include <SceneryEditorX/renderer/ui/actions/gizmos.h>
-#include <SceneryEditorX/scene/entity.h>
-#include <SceneryEditorX/scene/scene.h>
-#include <SceneryEditorX/settings/settings.h>
+#include <SceneryEditorX/renderer/font/font_awesome.h>
+#include <SceneryEditorX/renderer/ui/ui_impl.h>
+#include <SceneryEditorX/scene/camera.h>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
+	namespace
+	{
+		/* Frames the panel size must stay unchanged before render targets are recreated at the new size. */
+		constexpr uint32_t RESIZE_SETTLE_FRAMES = 6;
 
-    static bool s_FirstFrame = true;
-    static uint32_t s_WidthPrevious = 0;
-    static uint32_t s_HeightPrevious = 0;
+		/* Below this the renderer refuses to render (see Renderer::BeginFrame). */
+		constexpr uint32_t MIN_RENDER_SIZE = 64;
 
-    SceneViewport::SceneViewport(const char *name, EditorLayer *editor) : m_ViewportName(name)
-    {
-        m_Title = name;
-        m_InitialSize = Vec2(400, 250);
-        m_Flags |= ImGuiWindowFlags_NoScrollbar;
-        m_Padding = Vec2(2.0f);
-    }
+		constexpr float TOOLBAR_HEIGHT = 30.0f;
+	}
 
-    void SceneViewport::OnTickVisible()
-    {
-        // get viewport size
-        uint32_t width = static_cast<uint32_t>(ImGui::GetContentRegionAvail().x);
-        uint32_t height = static_cast<uint32_t>(ImGui::GetContentRegionAvail().y);
+	SceneViewport::SceneViewport(EditorContext *context) : m_Context(context)
+	{
+		m_Title = "VIEWPORT";
+	}
 
-        // update engine's viewport
-        static bool resolutionSet = false;
-        if (!s_FirstFrame) // during the first frame the viewport is not yet initialized (it's size will be something weird)
-        {
-            if (s_WidthPrevious != width || s_HeightPrevious != height)
-            {
-                if (width > 0 && height > 0)
-                {
-                    Renderer::SetViewport(static_cast<float>(width), static_cast<float>(height));
+	void SceneViewport::OnUIRender(bool &isOpen)
+	{
+		// The viewport fills its dock node edge to edge; its tab bar only shows if other panels get docked into it.
+		ImGuiWindowClass windowClass;
+		windowClass.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_AutoHideTabBar;
+		ImGui::SetNextWindowClass(&windowClass);
 
-                    if (!resolutionSet)
-                    {
-                        // only set the render and output resolutions once
-                        // they are expensive operations, and we don't want to do it frequently
-                        Renderer::SetOutputResolution(width, height);
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+		const bool visible = EditorUI::BeginPanel("VIEWPORT###Viewport", &isOpen, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+		ImGui::PopStyleVar();
 
-                        resolutionSet = true;
-                    }
+		bool hovered = false;
+		bool dragging = false;
 
-                    s_WidthPrevious = width;
-                    s_HeightPrevious = height;
-                }
-            }
-        }
-        s_FirstFrame = false;
+		if (visible)
+		{
+			Camera *camera = EditorCamera::Get();
+			DrawToolbar(camera);
 
-        // let the input system know about the position of this viewport within the editor
-        // this will allow the system to properly calculate a relative mouse position
-        ImVec2 offset = ImGui::GetCursorPos();
-        offset.y += 34; // TODO: this is probably the tab bar height, find a way to get it properly
+			const ImVec2 imageMin = ImGui::GetCursorScreenPos();
+			const ImVec2 imageSize = ImGui::GetContentRegionAvail();
+			const uint32_t width  = static_cast<uint32_t>(std::max(imageSize.x, 0.0f));
+			const uint32_t height = static_cast<uint32_t>(std::max(imageSize.y, 0.0f));
+			UpdateRenderSize(width, height);
 
-        // draw the image after a potential resolution change call has been made
-        UI::Image(Renderer::GetRenderTarget(Renderer_RenderTarget::frame_output),
-                  ImVec2(static_cast<float>(width), static_cast<float>(height)));
+			m_ViewportBounds[0] = Vec2(imageMin.x, imageMin.y);
+			m_ViewportBounds[1] = Vec2(imageMin.x + imageSize.x, imageMin.y + imageSize.y);
 
-        // handle model drop
-        if (auto payload = DragDropPayload::ReceiveDragDropPayload(DragPayloadType::Model))
-        {
-            if (AssetBrowser *assetBrowser = m_Editor->GetPanel<AssetBrowser>())
-            {
-                assetBrowser->ShowMeshImportDialog(std::get<const char *>(payload->GetData()));
-            }
-        }
+			if (imageSize.x > 0.0f && imageSize.y > 0.0f)
+			{
+				// The whole image is one button so a drag that starts here keeps camera control after leaving it.
+				ImGui::InvisibleButton("##ViewportCanvas", imageSize, ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight | ImGuiButtonFlags_MouseButtonMiddle);
+				hovered = ImGui::IsItemHovered();
+				dragging = ImGui::IsItemActive();
 
-        // handle prefab drop
-        if (auto payload = DragDropPayload::ReceiveDragDropPayload(DragPayloadType::Prefab))
-        {
-            if (const char *filePath = std::get<const char *>(payload->GetData()))
-            {
-                Entity entity = Scene::CreateEntity();
-                std::string name = std::filesystem::path(filePath).stem().string();
-                entity.SetObjectName(name);
-            }
-        }
+				ImDrawList *drawList = ImGui::GetWindowDrawList();
+				const ImVec2 imageMax(imageMin.x + imageSize.x, imageMin.y + imageSize.y);
+				const ImTextureID texture = UI::GetTextureID(Renderer::GetRenderTarget(Renderer_RenderTarget::frame_output));
+				if (texture != ImTextureID_Invalid)
+				{
+					// Opaque backdrop: ImGui alpha-blends images, and pixels the renderer leaves transparent must
+					// show as black (what the renderer produced), not as the panel colour behind the viewport.
+					drawList->AddRectFilled(imageMin, imageMax, IM_COL32(0, 0, 0, 255));
+					drawList->AddImage(texture, imageMin, imageMax);
+				}
+				else
+				{
+					drawList->AddRectFilled(imageMin, imageMax, EditorTheme::ToU32(EditorTheme::Palette::Viewport));
+					constexpr const char *message = "Waiting for the renderer output...";
+					const ImVec2 textSize = ImGui::CalcTextSize(message);
+					drawList->AddText(ImVec2(imageMin.x + (imageSize.x - textSize.x) * 0.5f, imageMin.y + (imageSize.y - textSize.y) * 0.5f),
+						EditorTheme::ToU32(EditorTheme::Palette::TextDisabled), message);
+				}
 
-        Camera *camera = Scene::GetCamera();
+				DrawOverlay(camera, imageMin);
+			}
+		}
+		EditorUI::EndPanel();
 
-        // double-click to focus on entity
-        if (camera && ImGui::IsMouseDoubleClicked(0) && ImGui::IsItemHovered() && Gizmo::AllowObjectSelection())
-        {
-            Properties::Inspect(camera->GetSelectedEntity());
-            if (camera->GetSelectedEntity())
-            {
-                camera->SetViewTarget(camera->eye, camera->GetSelectedEntity()->GetPosition());
-            }
-        }
-        // mouse picking (with multi-select via Ctrl handled in Pick())
-        else if (camera && ImGui::IsMouseClicked(0) && ImGui::IsItemHovered() && Gizmo::AllowObjectSelection())
-        {
-            camera->GetSelectedEntity();
+		if (m_Context)
+		{
+			m_Context->viewportHovered = hovered;
+			m_Context->viewportFocused = visible && ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
+		}
 
-            // when ctrl is held, Pick() already handled multi-selection via ToggleSelection(),
-            // so we only update the properties panel without overwriting the camera's selection
-            if (Input::IsKeyPressed(KeyCode::LeftControl) ||
-                Input::IsKeyPressed(KeyCode::RightControl))
-            {
-                Properties::Inspect(camera->GetSelectedEntity());
-            }
-            else
-            {
-                Properties::Inspect(camera->GetSelectedEntity());
-            }
-        }
+		// Camera input: while the image is hovered (wheel, keyboard fly) or a drag that started on it continues.
+		const bool typing = ImGui::GetIO().WantTextInput;
+		Camera::SetInputEnabled(isOpen && (dragging || (hovered && !typing)));
+	}
 
-        // Ctrl+D to duplicate selected entities
-        if (camera && ImGui::IsWindowFocused() &&
-            Input::IsKeyPressed(KeyCode::LeftControl) &&
-            Input::IsKeyDown(KeyCode::D))
-        {
-            const std::vector<Entity *> &selectedEntities = camera->GetSelectedEntities();
-            if (!selectedEntities.empty())
-            {
-                // clone all selected entities
-                std::vector<Entity *> clonedEntities;
-                for (Entity *entity : selectedEntities)
-                {
-                    if (entity)
-                    {
-                        if (Entity *cloned = entity->Clone(this))
-                        {
-                            clonedEntities.push_back(cloned);
-                        }
-                    }
-                }
+	void SceneViewport::DrawToolbar(Camera *camera)
+	{
+		using namespace EditorTheme;
+		const float dpi = ImGui::GetStyle().FontScaleDpi;
+		const float height = TOOLBAR_HEIGHT * dpi;
 
-                // select the cloned entities instead
-                if (!clonedEntities.empty())
-                {
-                    camera->ClearSelection();
-                    for (Entity *cloned : clonedEntities)
-                    {
-                        camera->GetSelectedEntities().push_back(cloned);
-                    }
+		ImGui::PushStyleColor(ImGuiCol_ChildBg, ToStyle(Palette::PanelHeader));
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(6.0f * dpi, 3.0f * dpi));
+		ImGui::BeginChild("##ViewportToolbar", ImVec2(0.0f, height), ImGuiChildFlags_AlwaysUseWindowPadding, ImGuiWindowFlags_NoScrollbar);
+		ImGui::PopStyleVar();
 
-                    Properties::Inspect(clonedEntities[0]);
-                }
-            }
-        }
+		const float buttonSize = height - 6.0f * dpi;
+		const float rightEdge = ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x;
+		const bool hasCamera = camera != nullptr;
 
-        // entity transform gizmo (will only show if entities have been picked)
-        if (Gizmo::AllowObjectSelection())
-        {
-            if (camera) // skip if no camera
-            {
-                const std::vector<Entity *> &selectedEntities = camera->GetSelectedEntities();
-                if (!selectedEntities.empty()) // skip if no entities are selected
-                {
-                    // use the first selected entity for direction check
-                    if (Entity *primarySelected = selectedEntities[0])
-                    {
-                        Entity *cameraEntity = camera->GetEntity();
-                        Vec3 dirToEntity = primarySelected->GetPosition() - cameraEntity->GetPosition();
-                        Normalize(dirToEntity);
-                        if (Dot(dirToEntity, cameraEntity->GetForward()) >= 0.0f) // skip when the camera is facing away
-                        {
-                            Gizmo::Tick();
-                        }
-                    }
-                }
-            }
-        }
+		ImGui::BeginDisabled(!hasCamera);
 
-        // check if the engine wants cursor control
-        if (camera)
-        {
-            ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
-        }
-        else
-        {
-            ImGui::GetIO().ConfigFlags &= ~ImGuiConfigFlags_NoMouseCursorChange;
-        }
-    }
+		// Left: navigation mode and projection, as toggle buttons.
+		if (EditorUI::StripButton(SEDX_ICON_REFRESH, "Orbit navigation\nLMB orbit, RMB pan, wheel zoom", EditorCamera::IsMode(ORBIT), buttonSize))
+			EditorCamera::SetMode(ORBIT);
+		ImGui::SameLine(0.0f, 2.0f * dpi);
+		if (EditorUI::StripButton(SEDX_ICON_VIDEO_CAMERA, "Fly navigation\nRMB look, WASD move, Q/E down/up", EditorCamera::IsMode(FLY), buttonSize))
+			EditorCamera::SetMode(FLY);
 
-    void SceneViewport::SetVisible(bool visible)
-    {
-        m_IsVisible = visible;
-    }
+		ImGui::SameLine(0.0f, 10.0f * dpi);
+		if (EditorUI::StripButton(SEDX_ICON_CUBE, "Perspective projection", EditorCamera::IsProjection(CameraType::Perspective), buttonSize))
+			EditorCamera::SetProjection(CameraType::Perspective);
+		ImGui::SameLine(0.0f, 2.0f * dpi);
+		if (EditorUI::StripButton(SEDX_ICON_TH_LARGE, "Orthographic projection", EditorCamera::IsProjection(CameraType::Orthographic), buttonSize))
+			EditorCamera::SetProjection(CameraType::Orthographic);
 
-    void SceneViewport::OnEvent(Event &e)
-    {
-        EditorPanel::OnEvent(e);
-    }
+		// Right: reset view.
+		ImGui::SameLine(rightEdge - buttonSize);
+		if (EditorUI::StripButton(SEDX_ICON_CROSSHAIRS, "Reset camera to the startup view", false, buttonSize))
+			EditorCamera::Reset();
 
-    void SceneViewport::OnVisible()
-    {
-        m_IsVisible = true;
-    }
+		ImGui::EndDisabled();
 
-    void SceneViewport::OnInvisible()
-    {
-        m_IsVisible = false;
-    }
+		ImGui::EndChild();
+		ImGui::PopStyleColor();
+	}
 
-    void SceneViewport::OnPreBegin()
-    {
-        const ImVec2 min = ImGui::GetCursorScreenPos();
-        const ImVec2 avail = ImGui::GetContentRegionAvail();
+	void SceneViewport::DrawOverlay(Camera *camera, const ImVec2 &imageMin) const
+	{
+		using namespace EditorTheme;
+		const float dpi = ImGui::GetStyle().FontScaleDpi;
 
-        m_ViewportBounds[0] = Vec2(min.x, min.y);
-        m_ViewportBounds[1] = Vec2(min.x + avail.x, min.y + avail.y);
-    }
+		char text[128];
+		if (camera)
+		{
+			snprintf(text, sizeof(text), "%s  |  %s  |  %u x %u", EditorCamera::GetModeName(),
+				EditorCamera::IsProjection(CameraType::Orthographic) ? "Orthographic" : "Perspective", m_AppliedWidth, m_AppliedHeight);
+		}
+		else
+		{
+			snprintf(text, sizeof(text), "No camera  |  %u x %u", m_AppliedWidth, m_AppliedHeight);
+		}
+
+		const ImVec2 padding(8.0f * dpi, 4.0f * dpi);
+		const ImVec2 textSize = ImGui::CalcTextSize(text);
+		const ImVec2 boxMin(imageMin.x + 8.0f * dpi, imageMin.y + 8.0f * dpi);
+		const ImVec2 boxMax(boxMin.x + textSize.x + padding.x * 2.0f, boxMin.y + textSize.y + padding.y * 2.0f);
+
+		ImDrawList *drawList = ImGui::GetWindowDrawList();
+		drawList->AddRectFilled(boxMin, boxMax, ToU32(ImVec4(Palette::Separator.x, Palette::Separator.y, Palette::Separator.z, 0.75f)), 2.0f * dpi);
+		drawList->AddText(ImVec2(boxMin.x + padding.x, boxMin.y + padding.y), ToU32(Palette::TextLabel), text);
+	}
+
+	void SceneViewport::UpdateRenderSize(const uint32_t width, const uint32_t height)
+	{
+		if (width != m_PendingWidth || height != m_PendingHeight)
+		{
+			m_PendingWidth = width;
+			m_PendingHeight = height;
+			m_StableFrames = 0;
+			return;
+		}
+
+		if (m_StableFrames < RESIZE_SETTLE_FRAMES)
+		{
+			++m_StableFrames;
+			return;
+		}
+
+		if (width == m_AppliedWidth && height == m_AppliedHeight)
+			return;
+
+		if (width < MIN_RENDER_SIZE || height < MIN_RENDER_SIZE)
+			return;
+
+		// Safe from the UI: the render thread is idle while the main thread builds the frame.
+		// SetRendererResolution waits for the GPU before recreating, which also covers the output targets.
+		Renderer::SetViewport(static_cast<float>(width), static_cast<float>(height));
+		Renderer::SetRendererResolution(width, height);
+		Renderer::SetOutputResolution(width, height);
+
+		m_AppliedWidth = width;
+		m_AppliedHeight = height;
+		EDITOR_INFO_TAG("Viewport", "Render resolution set to {} x {}", width, height);
+	}
+
 }
 
 // -------------------------------------------------------

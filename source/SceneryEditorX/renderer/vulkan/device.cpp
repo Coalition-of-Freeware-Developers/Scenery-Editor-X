@@ -917,6 +917,11 @@ namespace SceneryEditorX
 		m_PhysDeviceProp = deviceProps;
 		m_GPUName = m_PhysDeviceProp.properties.deviceName;
 
+		// Memory heaps/types: GetDeviceMemoryProperties() feeds the allocator's budget queries.
+		m_PhysDeviceMemProp = {};
+		m_PhysDeviceMemProp.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2;
+		vkGetPhysicalDeviceMemoryProperties2(m_PhysicalDevice, &m_PhysDeviceMemProp);
+
 		// Check subpar device status
 		if (s_SubparDevice)
 		{

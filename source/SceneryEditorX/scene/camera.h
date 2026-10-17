@@ -389,6 +389,22 @@ namespace SceneryEditorX
 		/* @brief Clears the currently selected entity for the camera. */
 		void ClearSelection();
 
+		/**
+		 * @brief Enables or disables mouse/keyboard camera navigation.
+		 * The editor enables it only while the viewport panel is hovered or a viewport drag is in progress,
+		 * so typing in a panel or dragging a slider does not move the camera.
+		 */
+		static void SetInputEnabled(bool enabled);
+
+		/* @brief True when the camera reacts to mouse and keyboard input. */
+		static bool IsInputEnabled();
+
+		/* @brief Orbit-mode distance between the eye and the orbit center. */
+		[[nodiscard]] float GetOrbitDistance() const { return m_Zoom; }
+
+		/* @brief Sets the orbit-mode distance between the eye and the orbit center. */
+		void SetOrbitDistance(const float distance) { m_Zoom = std::max(0.1f, distance); m_CameraFlag.SetDirty(); }
+
 		float GetExposure() const
 		{
 			// computed ev (using squared aperture for photometric accuracy)

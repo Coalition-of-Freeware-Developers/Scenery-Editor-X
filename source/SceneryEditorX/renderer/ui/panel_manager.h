@@ -158,7 +158,7 @@ namespace SceneryEditorX
 			auto& panelMap = m_Panels[static_cast<size_t>(category)];
 
 			// Generate a 64-bit FNV-1a hash for the panel ID
-			uint64_t id = Hash::GenerateFNV1A(panelData.ID);
+			uint64_t id = Hash::GenerateFNV1A(std::string_view(panelData.ID));
 			if (panelMap.contains(id))
 			{
 				SEDX_CORE_ERROR_TAG("PanelManager", "A panel with the id '{0}' has already been added.", panelData.ID);
@@ -166,6 +166,7 @@ namespace SceneryEditorX
 			}
 
 			panelMap[id] = panelData;
+			m_Order.push_back(id);
 			return panelMap[id].Panel.As<TPanel>();
 		}
 
@@ -183,7 +184,7 @@ namespace SceneryEditorX
 		template<typename TPanel, typename... TArgs>
 		Ref<TPanel> AddPanel(PanelCategory category, const char* strID, bool isOpenByDefault, TArgs&&... args)
 		{
-			return AddPanel<TPanel>(category, PanelData{ strID, strID, Ref<TPanel>::Ref(std::forward<TArgs>(args)...), isOpenByDefault });
+			return AddPanel<TPanel>(category, PanelData{ strID, strID, CreateRef<TPanel>(std::forward<TArgs>(args)...), isOpenByDefault });
 		}
 
 		/**
@@ -200,7 +201,7 @@ namespace SceneryEditorX
 		template<typename TPanel, typename... TArgs>
 		Ref<TPanel> AddPanel(PanelCategory category, const char* strID, const char* displayName, bool isOpenByDefault, TArgs&&... args)
 		{
-			return AddPanel<TPanel>(category, PanelData{ strID, displayName, Ref<TPanel>::Ref(std::forward<TArgs>(args)...), isOpenByDefault });
+			return AddPanel<TPanel>(category, PanelData{ strID, displayName, CreateRef<TPanel>(std::forward<TArgs>(args)...), isOpenByDefault });
 		}
 
 		/**
@@ -215,7 +216,7 @@ namespace SceneryEditorX
 			static_assert(std::is_base_of_v<UI::EditorPanel, TPanel>, "PanelManager::AddPanel requires TPanel to inherit from EditorPanel");
 
 
-			uint64_t id = Hash::GenerateFNV1A(strID);
+			uint64_t id = Hash::GenerateFNV1A(std::string_view(strID));
 
 			for (const auto& panelMap : m_Panels)
 			{
@@ -232,6 +233,7 @@ namespace SceneryEditorX
 	private:
 		// Panels are stored in separate maps based on their category for efficient retrieval and organization.
 		std::array<std::unordered_map<uint64_t, PanelData>, (size_t)PanelCategory::_COUNT> m_Panels;
+		std::vector<uint64_t> m_Order; // Registration order: panels are drawn (and first docked) in this order
 	};
 
 }

@@ -29,6 +29,7 @@
  * -------------------------------------------------------
  */
 #include "ui.h"
+#include "ui_impl.h"
 #include "actions/drag_drop.h"
 #include <SceneryEditorX/core/application/application.h>
 #include <SceneryEditorX/core/resource/resource_cache.h>
@@ -154,11 +155,11 @@ namespace SceneryEditorX
 			bool result = ImGui::ImageButton
 			(
 				"",                                     // str_id
-				reinterpret_cast<ImTextureID>(texture), // user_texture_id
-				ImVec2(size.x, size.y),                                   // size
-				ImVec2(0, 0),                      // uv0
-				ImVec2(1, 1),                      // uv1
-				ImColor(0, 0, 0, 0),          // bg_col
+				GetTextureID(texture),                  // user_texture_id
+				ImVec2(size.x, size.y),                 // size
+				ImVec2(0, 0),                           // uv0
+				ImVec2(1, 1),                           // uv1
+				ImColor(0, 0, 0, 0),                    // bg_col
 				tint                                    // tint_col
 			);
 			ImGui::PopID();
@@ -179,7 +180,7 @@ namespace SceneryEditorX
 			}
 	
 			ImGui::Image(
-				reinterpret_cast<ImTextureID>(texture),
+				GetTextureID(texture),
 				ImVec2(size.x, size.y),
 				ImVec2(0, 0),
 				ImVec2(1, 1),
@@ -196,7 +197,7 @@ namespace SceneryEditorX
 		void Image(ImageResource* texture, const ImVec2& size, const ImVec4& tint, const ImColor& border)
 		{
 			ImGui::Image(
-				reinterpret_cast<ImTextureID>(texture),
+				GetTextureID(texture),
 				size,
 				ImVec2(0, 0),
 				ImVec2(1, 1),
@@ -208,7 +209,7 @@ namespace SceneryEditorX
 		void Image(const IconType icon, const float size)
 		{
 			ImGui::Image(
-				reinterpret_cast<ImTextureID>(ResourceCache::GetIcon(icon)),
+				GetTextureID(ResourceCache::GetIcon(icon)),
 				ImVec2(size, size),
 				ImVec2(0, 0),
 				ImVec2(1, 1),
@@ -220,7 +221,7 @@ namespace SceneryEditorX
 		void Image(const IconType icon, const float size,const ImVec4 tint)
 		{
 			ImGui::Image(
-				reinterpret_cast<ImTextureID>(ResourceCache::GetIcon(icon)),
+				GetTextureID(ResourceCache::GetIcon(icon)),
 				ImVec2(size, size),
 				ImVec2(0, 0),
 				ImVec2(1, 1),

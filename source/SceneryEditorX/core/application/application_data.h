@@ -74,6 +74,8 @@ namespace SceneryEditorX
 		bool resizable = true;
 		bool decorated = true;
 		bool splashScreen = false;
+		bool enableUI = true;			// Create the Dear ImGui layer (docking + multi-viewport)
+		bool enableUIViewports = true;	// Allow UI panels to float in their own OS windows
 		std::string workingDirectory;
 		std::filesystem::path iconPath;
 	};

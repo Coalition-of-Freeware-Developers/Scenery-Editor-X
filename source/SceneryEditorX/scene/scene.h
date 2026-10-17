@@ -76,6 +76,12 @@ namespace SceneryEditorX
 
 		static Camera *GetCamera();
 		static bool HasCameraEntity();
+
+		/* @brief The active scene, or nullptr before Init() / after Shutdown(). */
+		static Scene *GetActive();
+
+		/* @brief The ECS registry holding this scene's components (IDComponent, TagComponent, TransformComponent, ...). */
+		entt::registry &GetRegistry() { return m_Registry; }
 		static Light *GetDirectionalLight() { return nullptr; }
 		static std::vector<Entity*> GetEntities();
 

@@ -1,8 +1,8 @@
 ﻿/**
  * -------------------------------------------------------
- * Scenery EditorLayer X
+ * Scenery Editor X
  * -------------------------------------------------------
- * Copyright (c) 2026 Thomas Ray 
+ * Copyright (c) 2026 Thomas Ray
  * Copyright (c) 2026 Coalition of Freeware Developers
  * -------------------------------------------------------
  * Permission is hereby granted, free of charge, to any person obtaining a
@@ -29,65 +29,69 @@
  * -------------------------------------------------------
  */
 #include "editor_layer.h"
-#include <Editor/panels/asset_browser.h>
-#include <Editor/panels/menu_bar.h>
-#include <Editor/panels/properties.h>
-#include <Editor/panels/render_options.h>
+#include "editor_camera.h"
+#include "editor_scene.h"
+#include "editor_theme.h"
+#include "editor_ui.h"
+#include <Editor/panels/asset_shelf_panel.h>
+#include <Editor/panels/console_panel.h>
+#include <Editor/panels/outliner_panel.h>
+#include <Editor/panels/properties_panel.h>
 #include <Editor/panels/scene_viewport.h>
-#include <Editor/panels/texture_viewer.h>
-#include <Editor/projects/project.h>
-#include <Editor/settings/editor_settings.h>
+#include <Editor/panels/settings_panels.h>
 #include <SceneryEditorX/core/application/application.h>
 #include <SceneryEditorX/core/input/input.h>
 #include <SceneryEditorX/core/resource/resource_cache.h>
+#include <SceneryEditorX/core/time/fps_timer.h>
 #include <SceneryEditorX/core/window/window.h>
-#include <SceneryEditorX/project/project.h>
-#include <SceneryEditorX/project/selection_manager.h>
+#include <SceneryEditorX/logging/logging.hpp>
 #include <SceneryEditorX/renderer/renderer.h>
-#include <SceneryEditorX/renderer/ui/ui_impl.h>
-#include <SceneryEditorX/renderer/ui/ui_renderer.h>
-#include <SceneryEditorX/renderer/ui/actions/gizmos.h>
-#include <SceneryEditorX/renderer/ui/source/imgui/imgui.h>
+#include <SceneryEditorX/renderer/font/font_awesome.h>
+#include <SceneryEditorX/renderer/ui/resources/fonts.h>
 #include <SceneryEditorX/renderer/ui/source/imgui/imgui_internal.h>
-#include <SceneryEditorX/renderer/ui/source/imgui/backends/imgui_impl_sdl3.h>
-#include <SceneryEditorX/renderer/ui/source/imguizmo/ImGuizmo.h>
 #include <SceneryEditorX/renderer/vulkan/debug/render_doc.h>
 #include <SceneryEditorX/scene/entity.h>
-#include <SceneryEditorX/scene/scene.h>
 
 // ---------------------------------------------------------
 
 namespace SceneryEditorX
 {
+	namespace
+	{
+		/**
+		 * Panel registry: PanelManager id, ImGui window name ("LABEL###Id") and strip icon.
+		 * The window names must match what each panel passes to EditorUI::BeginPanel().
+		 */
+		struct PanelInfo
+		{
+			const char *id;
+			const char *window;
+			const char *icon;
+		};
 
-	#define MAX_PROJECT_NAME_LENGTH 255
-	#define MAX_PROJECT_FILEPATH_LENGTH 512
-	
+		constexpr PanelInfo PANEL_VIEWPORT			= { "Viewport",			"VIEWPORT###Viewport",				SEDX_ICON_DESKTOP };
+		constexpr PanelInfo PANEL_PROPERTIES		= { "Properties",		"PROPERTIES###Properties",			SEDX_ICON_SLIDERS };
+		constexpr PanelInfo PANEL_OUTLINER			= { "Outliner",			"OUTLINER###Outliner",				SEDX_ICON_LIST };
+		constexpr PanelInfo PANEL_ASSETS			= { "Assets",			"ASSETS###Assets",					SEDX_ICON_FOLDER_OPEN };
+		constexpr PanelInfo PANEL_CONSOLE			= { "Console",			"CONSOLE###Console",				SEDX_ICON_TERMINAL };
+		constexpr PanelInfo PANEL_SCENE_SETTINGS	= { "SceneSettings",	"SCENE SETTINGS###SceneSettings",	SEDX_ICON_GLOBE };
+		constexpr PanelInfo PANEL_CAMERA			= { "CameraSettings",	"CAMERA###CameraSettings",			SEDX_ICON_CAMERA };
+		constexpr PanelInfo PANEL_RENDERER			= { "RendererStats",	"RENDERER###RendererStats",			SEDX_ICON_TACHOMETER };
+
+		constexpr PanelInfo s_StripPanels[] =
+		{
+			PANEL_PROPERTIES, PANEL_OUTLINER, PANEL_ASSETS, PANEL_CONSOLE, PANEL_SCENE_SETTINGS, PANEL_CAMERA, PANEL_RENDERER, PANEL_VIEWPORT
+		};
+
+		/* Bump when the default layout changes so existing users get the new arrangement once. */
+		constexpr const char *DOCKSPACE_NAME = "SEDX_EditorDockspace_v2";
+
+		constexpr ImGuiWindowFlags SIDE_BAR_FLAGS = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoSavedSettings;
+	}
+
 	// ---------------------------------------------------------
 
-	static char* s_ProjectNameBuffer			= new char[MAX_PROJECT_NAME_LENGTH];
-	static char* s_OpenProjectFilePathBuffer	= new char[MAX_PROJECT_FILEPATH_LENGTH];
-	static char* s_NewProjectFilePathBuffer		= new char[MAX_PROJECT_FILEPATH_LENGTH];
-
-	#define SCENE_HIERARCHY_PANEL_ID		"SceneHierarchyPanel"
-	#define ECS_DEBUG_PANEL_ID				"ECSDebugPanel"
-	#define CONSOLE_PANEL_ID				"EditorConsolePanel"
-	#define CONTENT_BROWSER_PANEL_ID		"ContentBrowserPanel"
-	#define PROJECT_SETTINGS_PANEL_ID		"ProjectSettingsPanel"
-	#define ASSET_MANAGER_PANEL_ID			"AssetManagerPanel"
-	#define MATERIALS_PANEL_ID				"MaterialsPanel"
-	#define APPLICATION_SETTINGS_PANEL_ID	"ApplicationSettingsPanel"
-	#define SCRIPT_ENGINE_DEBUG_PANEL_ID	"ScriptEngineDebugPanel"
-	#define SCENE_RENDERER_PANEL_ID			"SceneRendererPanel"
-
-	static float s_FontSize		= 18.0f;
-	static float s_FontScale	= 1.0f;
-	static bool s_SceneOpen		= false;
-	static bool s_ProjectOpen	= false;
-
-	// ---------------------------------------------------------
-
-	EditorLayer::EditorLayer(const Ref<UserPreferences> &userPreferences) : m_UserPreferences(userPreferences)
+	EditorLayer::EditorLayer(const Ref<UserPreferences> &userPreferences) : Layer("EditorLayer"), m_UserPreferences(userPreferences)
 	{
 		// Validate recent projects list and remove entries whose paths no longer exist.
 		if (m_UserPreferences)
@@ -110,582 +114,486 @@ namespace SceneryEditorX
 		}
 	}
 
-	EditorLayer::~EditorLayer()
-	{
-
-	}
+	EditorLayer::~EditorLayer() = default;
 
 	void EditorLayer::OnAttach()
 	{
-		memset(s_ProjectNameBuffer, 0, MAX_PROJECT_NAME_LENGTH);
-		memset(s_OpenProjectFilePathBuffer, 0, MAX_PROJECT_FILEPATH_LENGTH);
-		memset(s_NewProjectFilePathBuffer, 0, MAX_PROJECT_FILEPATH_LENGTH);
+		AttachLogSink();
+		RegisterPanels();
+		EditorCamera::CaptureHome();
+		UpdateWindowTitle();
 
-		m_Camera.Init();
-		Renderer::SetCamera(&m_Camera);
-		EDITOR_INFO_TAG("EditorLayer", "Camera initialized and registered with renderer");
+		if (!ImGui::GetCurrentContext())
+		{
+			EDITOR_ERROR_TAG("EditorLayer", "No ImGui context: the UI layer failed to initialize, the editor UI is disabled");
+			return;
+		}
 
-		// Initialize ImGui / editor UI layout
-		InitEditor();
+		EditorTheme::Apply(Window::GetDpiScale());
+
+		const ImGuiIO &io = ImGui::GetIO();
+		fontNormal = io.FontDefault;
+		fontBold = io.Fonts->Fonts.Size > 1 ? UI::Fonts::Get("Bold") : io.FontDefault;
+
+		EDITOR_INFO_TAG("EditorLayer", "Editor shell ready");
 	}
 
 	void EditorLayer::OnDetach()
 	{
-		CloseProject(false);
-		Renderer::SetCamera(nullptr);
-		if (ImGui::GetCurrentContext())
+		// The UI layer (an overlay) detaches first, so ImGui is already gone here: no ImGui calls.
+		Camera::SetInputEnabled(true);
+		m_PanelManager.reset();
+		DetachLogSink();
+	}
+
+	void EditorLayer::RegisterPanels()
+	{
+		m_PanelManager = CreateScope<PanelManager>();
+
+		const std::filesystem::path resources = ResourceCache::GetResourceDirectory();
+
+		m_PanelManager->AddPanel<SceneViewport>(PanelCategory::Viewer, PANEL_VIEWPORT.id, "Viewport", true, &m_Context);
+		m_PanelManager->AddPanel<PropertiesPanel>(PanelCategory::Editor, PANEL_PROPERTIES.id, "Properties", true, &m_Context);
+		m_PanelManager->AddPanel<OutlinerPanel>(PanelCategory::Editor, PANEL_OUTLINER.id, "Outliner", true, &m_Context);
+		m_PanelManager->AddPanel<AssetShelfPanel>(PanelCategory::Editor, PANEL_ASSETS.id, "Assets", true, resources);
+		m_PanelManager->AddPanel<ConsolePanel>(PanelCategory::Editor, PANEL_CONSOLE.id, "Console", true, m_LogSink);
+		m_PanelManager->AddPanel<SceneSettingsPanel>(PanelCategory::Settings, PANEL_SCENE_SETTINGS.id, "Scene Settings", true);
+		m_PanelManager->AddPanel<CameraSettingsPanel>(PanelCategory::Settings, PANEL_CAMERA.id, "Camera", true);
+		m_PanelManager->AddPanel<RendererStatsPanel>(PanelCategory::Settings, PANEL_RENDERER.id, "Renderer", true);
+
+		// Restore which panels were open last session.
+		m_PanelManager->Deserialize();
+	}
+
+	void EditorLayer::AttachLogSink()
+	{
+		m_LogSink = std::make_shared<EditorLogSink>();
+		m_LogSink->set_level(spdlog::level::info);
+
+		for (const std::shared_ptr<spdlog::logger> *logger : { &Log::GetCoreLogger(), &Log::GetEditorLogger(), &Log::GetEditorConsoleLogger() })
 		{
-			UI::Shutdown();
-			ImGui_ImplSDL3_Shutdown();
-			ImGui::DestroyContext();
+			if (*logger)
+				(*logger)->sinks().push_back(m_LogSink);
 		}
 	}
 
-	void EditorLayer::Tick()
+	void EditorLayer::DetachLogSink()
 	{
-		DeltaTime dt;
+		if (!m_LogSink)
+			return;
 
-		// various windows that don't belong to a certain widget
-		for (UI::ChildWindow & window : m_ChildWindows)
+		for (const std::shared_ptr<spdlog::logger> *logger : { &Log::GetCoreLogger(), &Log::GetEditorLogger(), &Log::GetEditorConsoleLogger() })
 		{
-			if (window.IsVisible())
-				window.Tick();
+			if (*logger)
+				std::erase((*logger)->sinks(), m_LogSink);
 		}
 
-		if (const auto& project = Project::GetActive(); project && project->GetConfig().enableAutosave)
+		m_LogSink.reset();
+	}
+
+	// ---------------------------------------------------------
+
+	void EditorLayer::OnUIRender()
+	{
+		HandleShortcuts();
+
+		// Order matters: each side bar shrinks the viewport work area the dockspace then fills.
+		DrawMenuBar();
+		DrawStatusBar();
+		DrawToolStrip();
+		DrawPanelStrip();
+		DrawDockSpace();
+
+		if (m_PanelManager)
+			m_PanelManager->OnUIRender();
+
+		// After a layout build: open on Substance's default tabs (the asset shelf and the first settings tab) and
+		// give focus to the viewport. Newly docked windows otherwise select themselves as they get submitted.
+		if (m_FocusViewportFrames > 0)
 		{
-			m_TimeSinceLastSave += dt.GetSeconds();
-			if (m_TimeSinceLastSave > project->GetConfig().autosaveInterval)
+			for (const PanelInfo &info : { PANEL_ASSETS, PANEL_SCENE_SETTINGS })
 			{
-				SaveSceneAuto();
+				ImGuiWindow *window = ImGui::FindWindowByName(info.window);
+				if (window && window->DockNode && window->DockNode->TabBar)
+					window->DockNode->TabBar->NextSelectedTabId = window->TabId;
+			}
+
+			ImGui::SetWindowFocus(PANEL_VIEWPORT.window);
+			--m_FocusViewportFrames;
+		}
+
+		DrawAboutPopup();
+		DrawDebugWindows();
+	}
+
+	void EditorLayer::DrawMenuBar()
+	{
+		if (!ImGui::BeginMainMenuBar())
+			return;
+
+		if (ImGui::BeginMenu("File"))
+		{
+			ImGui::MenuItem("New Scene", nullptr, false, false);
+			ImGui::MenuItem("Open Project...", "Ctrl+O", false, false);
+			ImGui::MenuItem("Save Scene", "Ctrl+S", false, false);
+			ImGui::Separator();
+			if (ImGui::MenuItem("Exit", "Alt+F4"))
+				Application::Get().Stop();
+			ImGui::EndMenu();
+		}
+
+		if (ImGui::BeginMenu("Edit"))
+		{
+			ImGui::MenuItem("Undo", "Ctrl+Z", false, false);
+			ImGui::MenuItem("Redo", "Ctrl+Y", false, false);
+			ImGui::Separator();
+			if (ImGui::MenuItem("Delete", "Del", false, m_Context.selectedEntity != 0))
+				DeleteSelectedEntity();
+			if (ImGui::MenuItem("Deselect", "Esc", false, m_Context.selectedEntity != 0))
+				m_Context.selectedEntity = 0;
+			ImGui::EndMenu();
+		}
+
+		if (ImGui::BeginMenu("Scene"))
+		{
+			if (ImGui::MenuItem("Add Empty Entity"))
+			{
+				if (const uint64_t created = EditorScene::CreateEmpty("Empty Entity"); created != 0)
+					m_Context.selectedEntity = created;
+			}
+			ImGui::EndMenu();
+		}
+
+		if (ImGui::BeginMenu("Window"))
+		{
+			for (const PanelInfo &info : s_StripPanels)
+			{
+				if (PanelData *panel = FindPanel(info.id))
+					ImGui::MenuItem(EditorUI::IconLabel(info.icon, panel->Name).c_str(), nullptr, &panel->IsOpen);
+			}
+
+			ImGui::Separator();
+			if (ImGui::MenuItem("Reset Layout"))
+				m_Context.requestLayoutReset = true;
+
+			ImGui::Separator();
+			if (ImGui::BeginMenu("Dear ImGui"))
+			{
+				ImGui::MenuItem("Metrics / Debugger", nullptr, &m_ShowMetrics);
+				ImGui::MenuItem("Style Editor", nullptr, &m_ShowStyleEditor);
+				ImGui::MenuItem("Demo Window", nullptr, &m_ShowDemo);
+				ImGui::EndMenu();
+			}
+			ImGui::EndMenu();
+		}
+
+		if (ImGui::BeginMenu("Viewport"))
+		{
+			const bool hasCamera = EditorCamera::Get() != nullptr;
+			if (ImGui::MenuItem("Orbit Navigation", nullptr, EditorCamera::IsMode(ORBIT), hasCamera))
+				EditorCamera::SetMode(ORBIT);
+			if (ImGui::MenuItem("Fly Navigation", nullptr, EditorCamera::IsMode(FLY), hasCamera))
+				EditorCamera::SetMode(FLY);
+			ImGui::Separator();
+			if (ImGui::MenuItem("Perspective", nullptr, EditorCamera::IsProjection(CameraType::Perspective), hasCamera))
+				EditorCamera::SetProjection(CameraType::Perspective);
+			if (ImGui::MenuItem("Orthographic", nullptr, EditorCamera::IsProjection(CameraType::Orthographic), hasCamera))
+				EditorCamera::SetProjection(CameraType::Orthographic);
+			ImGui::Separator();
+			if (ImGui::MenuItem("Reset Camera", "Home", false, hasCamera))
+				EditorCamera::Reset();
+			ImGui::EndMenu();
+		}
+
+		if (ImGui::BeginMenu("Help"))
+		{
+			if (ImGui::MenuItem("About Scenery Editor X"))
+				m_ShowAbout = true;
+			ImGui::EndMenu();
+		}
+
+		ImGui::EndMainMenuBar();
+	}
+
+	void EditorLayer::DrawStatusBar()
+	{
+		using namespace EditorTheme;
+		const float dpi = ImGui::GetStyle().FontScaleDpi;
+
+		ImGui::PushStyleColor(ImGuiCol_WindowBg, ToStyle(Palette::MenuBar));
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10.0f * dpi, 3.0f * dpi));
+		const bool open = ImGui::BeginViewportSideBar("##StatusBar", ImGui::GetMainViewport(), ImGuiDir_Down, StatusBarHeight * dpi, SIDE_BAR_FLAGS);
+		ImGui::PopStyleVar();
+		ImGui::PopStyleColor();
+
+		if (open)
+		{
+			// Left: latest warning / error, like Substance's red status line. Click opens the console.
+			LogEntry problem;
+			if (m_LogSink && m_LogSink->GetLatestProblem(problem))
+			{
+				const ImVec4 color = ToStyle(problem.level >= spdlog::level::err ? Palette::Error : Palette::Warning);
+				ImGui::PushStyleColor(ImGuiCol_Text, color);
+				ImGui::Text("[%s] %s", problem.source.c_str(), problem.message.c_str());
+				ImGui::PopStyleColor();
+				if (ImGui::IsItemClicked())
+				{
+					if (PanelData *console = FindPanel(PANEL_CONSOLE.id))
+						console->IsOpen = true;
+					ImGui::SetWindowFocus(PANEL_CONSOLE.window);
+				}
+				EditorUI::ItemTooltip("Latest warning or error. Click to open the console.");
+			}
+			else
+			{
+				ImGui::TextDisabled("Ready");
+			}
+
+			// Right: frame time, GPU memory, version
+			// GPU memory walks every allocation; twice a second is plenty for a status readout.
+			static GPUMemoryStats s_Memory;
+			static double s_MemoryQueriedAt = -1.0;
+			if (const double now = ImGui::GetTime(); s_MemoryQueriedAt < 0.0 || now - s_MemoryQueriedAt > 0.5)
+			{
+				s_Memory = Renderer::GetGPUMemoryStats();
+				s_MemoryQueriedAt = now;
+			}
+
+			const double frameMs = FPSTimer::GetDeltaTimeSmoothedMs();
+			const GPUMemoryStats &memory = s_Memory;
+			char stats[160];
+			snprintf(stats, sizeof(stats), "%.0f fps  |  %.2f ms  |  GPU %.0f MiB  |  Version: %s (Vulkan)",
+				frameMs > 0.0 ? 1000.0 / frameMs : 0.0, frameMs, static_cast<double>(memory.used) / (1024.0 * 1024.0), SEDX_VERSION_STRING);
+
+			const float statsWidth = ImGui::CalcTextSize(stats).x;
+			ImGui::SameLine(std::max(ImGui::GetCursorPosX(), ImGui::GetWindowWidth() - statsWidth - 10.0f * dpi));
+			ImGui::TextDisabled("%s", stats);
+		}
+		ImGui::End();
+	}
+
+	void EditorLayer::DrawToolStrip()
+	{
+		using namespace EditorTheme;
+		const float dpi = ImGui::GetStyle().FontScaleDpi;
+		const float width = ToolStripWidth * dpi;
+		const float padding = 4.0f * dpi;
+
+		ImGui::PushStyleColor(ImGuiCol_WindowBg, ToStyle(Palette::ToolStrip));
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(padding, 8.0f * dpi));
+		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(padding, 4.0f * dpi));
+		const bool open = ImGui::BeginViewportSideBar("##ToolStrip", ImGui::GetMainViewport(), ImGuiDir_Left, width, SIDE_BAR_FLAGS);
+		ImGui::PopStyleVar(2);
+		ImGui::PopStyleColor();
+
+		if (open)
+		{
+			const float buttonSize = width - padding * 2.0f;
+			ImGui::BeginDisabled(EditorCamera::Get() == nullptr);
+
+			if (EditorUI::StripButton(SEDX_ICON_REFRESH, "Orbit navigation\nLMB orbit, RMB pan, wheel zoom", EditorCamera::IsMode(ORBIT), buttonSize))
+				EditorCamera::SetMode(ORBIT);
+			if (EditorUI::StripButton(SEDX_ICON_VIDEO_CAMERA, "Fly navigation\nRMB look, WASD move, Q/E down/up", EditorCamera::IsMode(FLY), buttonSize))
+				EditorCamera::SetMode(FLY);
+
+			ImGui::Separator();
+
+			if (EditorUI::StripButton(SEDX_ICON_CUBE, "Perspective projection", EditorCamera::IsProjection(CameraType::Perspective), buttonSize))
+				EditorCamera::SetProjection(CameraType::Perspective);
+			if (EditorUI::StripButton(SEDX_ICON_TH_LARGE, "Orthographic projection", EditorCamera::IsProjection(CameraType::Orthographic), buttonSize))
+				EditorCamera::SetProjection(CameraType::Orthographic);
+
+			ImGui::Separator();
+
+			if (EditorUI::StripButton(SEDX_ICON_CROSSHAIRS, "Reset camera (Home)", false, buttonSize))
+				EditorCamera::Reset();
+
+			ImGui::EndDisabled();
+		}
+		ImGui::End();
+	}
+
+	void EditorLayer::DrawPanelStrip()
+	{
+		using namespace EditorTheme;
+		const float dpi = ImGui::GetStyle().FontScaleDpi;
+		const float width = ToolStripWidth * dpi;
+		const float padding = 4.0f * dpi;
+
+		ImGui::PushStyleColor(ImGuiCol_WindowBg, ToStyle(Palette::ToolStrip));
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(padding, 8.0f * dpi));
+		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(padding, 4.0f * dpi));
+		const bool open = ImGui::BeginViewportSideBar("##PanelStrip", ImGui::GetMainViewport(), ImGuiDir_Right, width, SIDE_BAR_FLAGS);
+		ImGui::PopStyleVar(2);
+		ImGui::PopStyleColor();
+
+		if (open)
+		{
+			const float buttonSize = width - padding * 2.0f;
+			for (const PanelInfo &info : s_StripPanels)
+			{
+				PanelData *panel = FindPanel(info.id);
+				if (!panel)
+					continue;
+
+				ImGui::PushID(info.id);
+				if (EditorUI::StripButton(info.icon, panel->Name, panel->IsOpen, buttonSize, EditorUI::StripStyle::Tinted))
+				{
+					panel->IsOpen = !panel->IsOpen;
+					m_PanelManager->Serialize();
+				}
+				ImGui::PopID();
 			}
 		}
+		ImGui::End();
 	}
-	
-	void EditorLayer::InitEditor()
+
+	void EditorLayer::DrawDockSpace()
 	{
+		const ImGuiID dockspaceId = ImHashStr(DOCKSPACE_NAME);
 
-		std::filesystem::path appdata = IO::FileSystem::GetPersistentStoragePath();
+		if (m_Context.requestLayoutReset || ImGui::DockBuilderGetNode(dockspaceId) == nullptr)
+		{
+			BuildDefaultLayout(dockspaceId);
+			m_Context.requestLayoutReset = false;
+		}
 
-		//UI::Initialize();
-
-		m_PanelManager = CreateScope<PanelManager>();
-		m_UIRenderer = CreateRef<UIRenderer>();
-		Ref<SceneViewport> sceneRendererPanel = m_PanelManager->AddPanel<SceneViewport>(PanelCategory::Viewer, SCENE_RENDERER_PANEL_ID, "Scene Renderer", true);
-		Ref<RenderOptions> renderOptionsPanel = m_PanelManager->AddPanel<RenderOptions>(PanelCategory::Settings, "RendererOptionsPanel", "Render Options", true);
-		// create all imgui widgets
-		/*m_Widgets.emplace_back(CreateRef<RenderOptions>(this));
-		m_Widgets.emplace_back(CreateRef<TextureViewer>(this));
-		m_Widgets.emplace_back(CreateRef<SceneViewport>("viewport", this));
-		m_Widgets.emplace_back(CreateRef<AssetBrowser>(this));
-		m_Widgets.emplace_back(CreateRef<Properties>(this));*/
-		//MenuBar::Initialize(this);
-
-		//Project::Load();
+		ImGui::DockSpaceOverViewport(dockspaceId, ImGui::GetMainViewport(), ImGuiDockNodeFlags_None);
 	}
 
-	void EditorLayer::OnRender()
+	void EditorLayer::BuildDefaultLayout(const ImGuiID dockspaceId)
 	{
-		// UI frame creation and rendering are now performed exclusively in EditorLayer::Tick()
-		// to ensure a single ImGui NewFrame()/Render() call per application frame.
-		// Keep OnRender() empty for non-UI rendering or future use.
-		if (!ImGui::GetCurrentContext())
-			return;
+		m_FocusViewportFrames = 2;
+
+		// Every panel comes back for a reset, including ones the user had closed.
+		for (const PanelInfo &info : s_StripPanels)
+		{
+			if (PanelData *panel = FindPanel(info.id))
+				panel->IsOpen = true;
+		}
+
+		const ImGuiViewport *viewport = ImGui::GetMainViewport();
+		ImGui::DockBuilderRemoveNode(dockspaceId);
+		ImGui::DockBuilderAddNode(dockspaceId, ImGuiDockNodeFlags_DockSpace);
+		ImGui::DockBuilderSetNodeSize(dockspaceId, viewport->WorkSize);
+
+		//  +------------+--------------------------+------------------+
+		//  |            |                          | OUTLINER         |
+		//  | PROPERTIES |        VIEWPORT          +------------------+
+		//  |            |                          | SCENE SETTINGS / |
+		//  |            +--------------------------+ CAMERA /         |
+		//  |            | ASSETS / CONSOLE         | RENDERER         |
+		//  +------------+--------------------------+------------------+
+		ImGuiID center = dockspaceId;
+		const ImGuiID left = ImGui::DockBuilderSplitNode(center, ImGuiDir_Left, 0.18f, nullptr, &center);
+		ImGuiID rightTop = ImGui::DockBuilderSplitNode(center, ImGuiDir_Right, 0.24f, nullptr, &center);
+		const ImGuiID rightBottom = ImGui::DockBuilderSplitNode(rightTop, ImGuiDir_Down, 0.72f, nullptr, &rightTop);
+		const ImGuiID bottom = ImGui::DockBuilderSplitNode(center, ImGuiDir_Down, 0.28f, nullptr, &center);
+
+		ImGui::DockBuilderDockWindow(PANEL_PROPERTIES.window, left);
+		ImGui::DockBuilderDockWindow(PANEL_OUTLINER.window, rightTop);
+		ImGui::DockBuilderDockWindow(PANEL_SCENE_SETTINGS.window, rightBottom);
+		ImGui::DockBuilderDockWindow(PANEL_CAMERA.window, rightBottom);
+		ImGui::DockBuilderDockWindow(PANEL_RENDERER.window, rightBottom);
+		ImGui::DockBuilderDockWindow(PANEL_ASSETS.window, bottom);
+		ImGui::DockBuilderDockWindow(PANEL_CONSOLE.window, bottom);
+		ImGui::DockBuilderDockWindow(PANEL_VIEWPORT.window, center);
+		ImGui::DockBuilderFinish(dockspaceId);
 	}
+
+	void EditorLayer::DrawAboutPopup()
+	{
+		if (m_ShowAbout)
+		{
+			ImGui::OpenPopup("About Scenery Editor X");
+			m_ShowAbout = false;
+		}
+
+		ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+		if (ImGui::BeginPopupModal("About Scenery Editor X", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+		{
+			UI::Fonts::PushFont("Bold");
+			ImGui::TextUnformatted("Scenery Editor X");
+			UI::Fonts::PopFont();
+			ImGui::TextDisabled("Version %s (%s, Vulkan)", SEDX_VERSION_STRING, Application::GetConfigurationName());
+			ImGui::Spacing();
+			ImGui::TextUnformatted("Scenery authoring for X-Plane 12.");
+			ImGui::TextUnformatted("Coalition of Freeware Developers. MIT licensed.");
+			ImGui::Spacing();
+			ImGui::TextDisabled("Dear ImGui %s (docking)", IMGUI_VERSION);
+			ImGui::Spacing();
+			if (ImGui::Button("Close", ImVec2(120.0f * ImGui::GetStyle().FontScaleDpi, 0.0f)) || ImGui::IsKeyPressed(ImGuiKey_Escape))
+				ImGui::CloseCurrentPopup();
+			ImGui::EndPopup();
+		}
+	}
+
+	void EditorLayer::DrawDebugWindows()
+	{
+		if (m_ShowMetrics)
+			ImGui::ShowMetricsWindow(&m_ShowMetrics);
+
+		if (m_ShowStyleEditor)
+		{
+			if (ImGui::Begin("Dear ImGui Style Editor", &m_ShowStyleEditor))
+				ImGui::ShowStyleEditor();
+			ImGui::End();
+		}
+
+		if (m_ShowDemo)
+			ImGui::ShowDemoWindow(&m_ShowDemo);
+	}
+
+	void EditorLayer::HandleShortcuts()
+	{
+		// Global routes lose to whatever has focus, so typing in a text field never triggers these.
+		if (ImGui::Shortcut(ImGuiKey_Delete, ImGuiInputFlags_RouteGlobal) && m_Context.selectedEntity != 0)
+			DeleteSelectedEntity();
+
+		if (ImGui::Shortcut(ImGuiKey_Escape, ImGuiInputFlags_RouteGlobal))
+			m_Context.selectedEntity = 0;
+
+		if (ImGui::Shortcut(ImGuiKey_Home, ImGuiInputFlags_RouteGlobal))
+			EditorCamera::Reset();
+	}
+
+	void EditorLayer::DeleteSelectedEntity()
+	{
+		EditorScene::Destroy(m_Context.selectedEntity);
+		m_Context.selectedEntity = 0;
+	}
+
+	PanelData *EditorLayer::FindPanel(const char *panelId) const
+	{
+		return m_PanelManager ? m_PanelManager->GetPanelData(Hash::GenerateFNV1A(std::string_view(panelId))) : nullptr;
+	}
+
+	// ---------------------------------------------------------
 
 	void EditorLayer::OnEvent(Event &event)
 	{
-		Layer::OnEvent(event);
+		EventDispatcher dispatcher(event);
+		dispatcher.Dispatch<KeyPressedEvent>([this](KeyPressedEvent &e) { return OnKeyPressed(e); });
 	}
 
-	bool EditorLayer::OnKeyPressedEvent(KeyPressedEvent &e)
+	bool EditorLayer::OnKeyPressed(KeyPressedEvent &event)
 	{
-		// Global editor keybindings that should work regardless of focused UI
-		if (e.GetKeyCode() == KeyCode::F12 && Input::IsKeyDown(SEDX_KEY_LEFT_CONTROL))
+		// Ctrl+F12: RenderDoc frame capture (works regardless of UI focus)
+		if (event.GetKeyCode() == KeyCode::F12 && Input::IsKeyDown(SEDX_KEY_LEFT_CONTROL))
 		{
-			SEDX_CORE_INFO_TAG("Editor", "RenderDoc frame capture requested via F12 keybind");
+			EDITOR_INFO_TAG("Editor", "RenderDoc frame capture requested via Ctrl+F12");
 			RenderDoc::FrameCapture();
 			return true;
 		}
-		if (UI::IsWindowFocused("Viewport") || UI::IsWindowFocused("Scene Hierarchy"))
-		{
-			if ((m_ViewportPanelMouseOver || m_ViewportPanel2MouseOver) && !Input::IsMouseButtonDown(MouseButton::Right) && m_CurrentScene != m_EditorScene)
-			{
-				switch (e.GetKeyCode())
-				{
-					case KeyCode::Q:
-						m_GizmoType = -1;
-						break;
-					case KeyCode::W:
-						m_GizmoType = ImGuizmo::OPERATION::TRANSLATE;
-						break;
-					case KeyCode::E:
-						m_GizmoType = ImGuizmo::OPERATION::ROTATE;
-						break;
-					case KeyCode::S:
-						m_GizmoType = ImGuizmo::OPERATION::SCALE;
-						break;
-					case KeyCode::F:
-					{
-						if (SelectionManager::GetSelectionCount(SelectionContext::Scene) == 0)
-							break;
-
-						// TODO: Maybe compute average location to focus on? Or maybe cycle through all the selected entities?
-						UUID selectedEntityID = SelectionManager::GetSelections(SelectionContext::Scene).front();
-						Entity selectedEntity = m_CurrentScene->TryGetEntityWithUUID(selectedEntityID);
-
-						// TODO: Impliment some way to focus on a selected entity.
-						//m_Camera.Focus(m_CurrentScene->GetWorldSpaceTransform(selectedEntity).Translation);
-						break;
-					}
-				}
-
-			}
-
-			switch (e.GetKeyCode())
-			{
-				case KeyCode::Escape:
-					SelectionManager::DeselectAll();
-					break;
-				case KeyCode::Delete:
-				{
-					auto selectedEntities = SelectionManager::GetSelections(SelectionContext::Scene);
-					for (auto entityID : selectedEntities)
-					{
-						// Can only delete entities that are not child of (dynamic) mesh
-						auto entity = m_CurrentScene->TryGetEntityWithUUID(entityID);
-						if(!entity.HasComponent<MeshTagComponent>())
-						{
-							DeleteEntity(entity);
-						}
-					}
-					break;
-				}
-			}
-		}
-
-		if (Input::IsKeyDown(SEDX_KEY_LEFT_CONTROL) && !Input::IsMouseButtonDown(MouseButton::Right))
-		{
-			switch (e.GetKeyCode())
-			{
-				case KeyCode::D:
-				{
-					auto selectedEntities = SelectionManager::GetSelections(SelectionContext::Scene);
-					for (const auto& entityID : selectedEntities)
-					{
-						Entity entity = m_CurrentScene->TryGetEntityWithUUID(entityID);
-
-						// If the entity is a prefab, but pointing to an invalid prefab handle
-						if (entity.HasComponent<PrefabComponent>())
-						{
-							auto prefabID = entity.GetComponent<PrefabComponent>().prefabId;
-							if (!AssetManager::IsAssetHandleValid(prefabID))
-							{
-
-								break;
-							}
-						}
-
-						/*
-						Entity duplicate = m_CurrentScene->DuplicateEntity(entity);
-						SelectionManager::Deselect(SelectionContext::Scene, entity.GetUUID());
-						SelectionManager::Select(SelectionContext::Scene, duplicate.GetUUID());*/
-					}
-					break;
-				}
-				case KeyCode::G:
-					// Toggle grid
-					// TODO: this should probably be moved to a viewport renderer option and toggle the grid rendering in the viewport renderer
-					break;
-				case KeyCode::O:
-					OpenProject();
-					break;
-				case KeyCode::S:
-					SaveScene();
-					break;
-			}
-
-			if (Input::IsKeyDown(SEDX_KEY_LEFT_SHIFT) && Input::IsKeyDown(SEDX_KEY_LEFT_CONTROL))
-			{
-				switch (e.GetKeyCode())
-				{
-					case KeyCode::S:
-						SaveSceneAs();
-						break;
-					case KeyCode::A:
-						//SelectAllInScene();
-						break;
-				}
-			}
-		}
 
 		return false;
 	}
 
-	bool EditorLayer::OnMouseButtonPressed(MouseButtonPressedEvent &e)
+	void EditorLayer::UpdateWindowTitle() const
 	{
-
-		if (e.GetMouseButton() != MouseButton::Left)
-			return false;
-
-		if (!m_ViewportPanelMouseOver && !m_ViewportPanel2MouseOver)
-			return false;
-
-		if (Input::IsKeyDown(KeyCode::LeftAlt) || Input::IsMouseButtonDown(MouseButton::Right))
-			return false;
-
-		if (ImGuizmo::IsOver())
-			return false;
-
-		ImGui::ClearActiveID();
-
-		//std::vector<SelectionData> selectionData;
-
-		auto [mouseX, mouseY] = GetMouseViewportSpace(m_ViewportPanelMouseOver);
-		if (mouseX > -1.0f && mouseX < 1.0f && mouseY > -1.0f && mouseY < 1.0f)
-		{
-			/*
-			const auto& camera = m_ViewportPanelMouseOver ? m_Camera : m_SecondEditorCamera;
-			auto [origin, direction] = CastRay(camera, mouseX, mouseY);
-
-			auto meshEntities = m_CurrentScene->GetAllEntitiesWith<Submesh>();
-			for (auto e : meshEntities)
-			{
-				Entity entity = { e, m_CurrentScene.Get() };
-				auto& mc = entity.GetComponent<Submesh>();
-				if (auto mesh = AssetManager::GetAsset(mc->); mesh)
-				{
-
-					if (auto meshSource = AssetManager::GetAsset(mesh); meshSource)
-					{
-						auto& submeshes = meshSource->GetSubmeshes();
-						auto& submesh = submeshes[mc.SubmeshIndex];
-						
-						Ray ray = {
-							glm::inverse(transform) * glm::vec4(origin, 1.0f),
-							glm::inverse(glm::mat3(transform)) * direction
-						};
-
-						float t;
-						bool intersects = ray.IntersectsAABB(submesh.BoundingBox, t);
-						if (intersects)
-						{
-							const auto& triangleCache = meshSource->GetTriangleCache(mc.SubmeshIndex);
-							for (const auto& triangle : triangleCache)
-							{
-								if (ray.IntersectsTriangle(triangle.V0.Position, triangle.V1.Position, triangle.V2.Position, t))
-								{
-									selectionData.push_back({ entity, &submesh, t });
-									break;
-								}
-							}
-						}
-					}						
-
-				}
-			}
-
-			auto staticMeshEntities = m_CurrentScene->GetAllEntitiesWith<MeshComponent>();
-			for (auto e : staticMeshEntities)
-			{
-				Entity entity = { e, m_CurrentScene.Get() };
-				auto& smc = entity.GetComponent<MeshComponent>();
-				if (auto staticMesh = AssetManager::GetAsset(smc.mesh); staticMesh)
-				{
-					/*
-					if (auto meshSource = AssetManager::GetAsset(staticMesh->pHandle); meshSource)
-					{
-						auto& submeshes = meshSource->GetSubmeshes();
-						for (uint32_t i = 0; i < submeshes.size(); i++)
-						{
-							auto& submesh = submeshes[i];
-							glm::mat4 transform = m_CurrentScene->GetWorldSpaceTransformMatrix(entity);
-							Ray ray = {
-								glm::inverse(transform * submesh.Transform) * glm::vec4(origin, 1.0f),
-								glm::inverse(glm::mat3(transform * submesh.Transform)) * direction
-							};
-
-							float t;
-							bool intersects = ray.IntersectsAABB(submesh.BoundingBox, t);
-							if (intersects)
-							{
-								const auto& triangleCache = meshSource->GetTriangleCache(i);
-								for (const auto& triangle : triangleCache)
-								{
-									if (ray.IntersectsTriangle(triangle.V0.Position, triangle.V1.Position, triangle.V2.Position, t))
-									{
-										selectionData.push_back({ entity, &submesh, t });
-										break;
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-			
-			std::sort(selectionData.begin(), selectionData.end(), [](auto& a, auto& b) { return a.Distance < b.Distance; });
-
-			bool ctrlDown  = Input::IsKeyDown(KeyCode::LeftControl) || Input::IsKeyDown(KeyCode::RightControl);
-			bool shiftDown = Input::IsKeyDown(KeyCode::LeftShift)   || Input::IsKeyDown(KeyCode::RightShift);
-			if (!ctrlDown)
-			{
-				SelectionManager::DeselectAll();
-			}
-
-			if (!selectionData.empty())
-			{
-				Entity entity = selectionData.front().Entity;
-				if (shiftDown)
-				{
-					while (entity.GetParent())
-					{
-						entity = entity.GetParent();
-					}
-				}
-				if (SelectionManager::IsSelected(SelectionContext::Scene, entity.GetUUID()) && ctrlDown)
-				{
-					SelectionManager::Deselect(SelectionContext::Scene, entity.GetUUID());
-				}
-				else
-				{
-					SelectionManager::Select(SelectionContext::Scene, entity.GetUUID());
-				}
-			}*/
-		}
-		
-		return false;
-	}
-
-	std::pair<float, float> EditorLayer::GetMouseViewportSpace(bool primaryViewport)
-	{
-		auto [mx, my] = ImGui::GetMousePos();
-		const auto& viewportBounds = primaryViewport ? m_ViewportBounds : m_SecondViewportBounds;
-		mx -= viewportBounds[0].x;
-		my -= viewportBounds[0].y;
-		auto viewportWidth = viewportBounds[1].x - viewportBounds[0].x;
-		auto viewportHeight = viewportBounds[1].y - viewportBounds[0].y;
-
-		return { (mx / viewportWidth) * 2.0f - 1.0f, ((my / viewportHeight) * 2.0f - 1.0f) * -1.0f };
-	}
-
-	float EditorLayer::GetSnapValue()
-	{
-		if (!EditorSettings::Get().enableGridSnapping)
-			return 0.0f;
-
-		const auto& settings = EditorSettings::Get();
-		switch (m_GizmoType)
-		{
-			case ImGuizmo::TRANSLATE: return settings.translationSnapValue;
-			case ImGuizmo::ROTATE:    return settings.rotationSnapValue;
-			case ImGuizmo::SCALE:     return settings.scaleSnapValue;
-			default:                  return 0.0f;
-		}
-	}
-
-	float EditorLayer::UI_DrawTitlebar()
-	{
-		return 0.0f;
-	}
-
-	void EditorLayer::UI_DrawMenubar()
-	{
-	}
-
-	void EditorLayer::UI_HandleManualWindowResize()
-	{
-	}
-
-	bool EditorLayer::UI_TitleBarHitTest(int x, int y) const
-	{
-		return m_TitleBarHovered;
-	}
-
-	void EditorLayer::UpdateWindowTitle(const std::string &sceneName)
-	{
-		const std::string title = std::format("{0} ({1}) - Scenery Editor X {2}", sceneName, Project::GetActive()->GetConfig().name, SEDX_VERSION);
-		Application::Get().GetWindow().SetTitle(title);
-		EDITOR_TRACE_TAG("Editor", "Window title updated to: {}", title);
-	}
-
-	void EditorLayer::UI_ShowNewProjectPopup()
-	{
-	}
-
-	void EditorLayer::UI_ShowLoadAutoSavePopup()
-	{
-	}
-
-	void EditorLayer::UI_ShowCreateAssetsFromMeshSourcePopup()
-	{
-	}
-
-	void EditorLayer::UI_ShowInvalidAssetMetadataPopup()
-	{
-	}
-
-	void EditorLayer::UI_ShowNoMeshPopup()
-	{
-	}
-
-	void EditorLayer::UI_ShowNoSkeletonPopup()
-	{
-	}
-
-	void EditorLayer::UI_ShowNoAnimationPopup()
-	{
-	}
-
-	void EditorLayer::UI_ShowNewScenePopup()
-	{
-	}
-
-	void EditorLayer::UI_ShowWelcomePopup()
-	{
-	}
-
-	void EditorLayer::UI_ShowAboutPopup()
-	{
-	}
-
-	void EditorLayer::UI_StatisticsPanel()
-	{
-	}
-
-	void EditorLayer::UI_BuildAssetPackDialog()
-	{
-	}
-
-	Ref<Viewport> EditorLayer::GetMainViewport()
-	{
-		return {};
-	}
-
-	void EditorLayer::SetMainViewport(const std::string &viewportName)
-	{
-	}
-
-	void EditorLayer::AddEntity(Entity entity)
-	{
-	}
-
-	void EditorLayer::DeleteEntity(Entity entity)
-	{
-	}
-
-	void EditorLayer::BuildProjectData()
-	{
-	}
-
-	void EditorLayer::BuildShaderPack()
-	{
-	}
-
-	void EditorLayer::BuildSoundBank()
-	{
-	}
-
-	void EditorLayer::BuildAssetPack()
-	{
-	}
-
-	void EditorLayer::BuildAll()
-	{
-	}
-
-	void EditorLayer::OpenProject()
-	{
-	}
-
-	void EditorLayer::OpenProject(const std::filesystem::path &filepath)
-	{
-	}
-
-	void EditorLayer::CreateProject(const std::filesystem::path &projectPath)
-	{
-	}
-
-	void EditorLayer::EmptyProject()
-	{
-		if (Project::GetActive())
-			CloseProject();
-
-		Ref<Project> project = CreateRef<Project>();
-		Project::SetActive(project);
-
-		//m_PanelManager->OnProjectChanged(project);
-		NewScene();
-
-		//SelectionManager::DeselectAll();
-
-		memset(s_ProjectNameBuffer, 0, MAX_PROJECT_NAME_LENGTH);
-		memset(s_OpenProjectFilePathBuffer, 0, MAX_PROJECT_FILEPATH_LENGTH);
-		memset(s_NewProjectFilePathBuffer, 0, MAX_PROJECT_FILEPATH_LENGTH);
-	}
-
-	void EditorLayer::UpdateCurrentProject()
-	{
-	}
-
-	void EditorLayer::SaveProject()
-	{
-	}
-
-	void EditorLayer::CloseProject(bool unloadProject)
-	{
-		s_ProjectOpen = false;
-	}
-
-	void EditorLayer::NewScene(const std::string &name)
-	{
-		//SelectionManager::DeselectAll();
-
-		//ScriptEngine::SetSceneContext(nullptr, nullptr);
-		m_EditorScene = CreateRef<Scene>(name, true);
-		//m_PanelManager->SetSceneContext(m_EditorScene);
-		//AssetEditorPanel::SetSceneContext(m_EditorScene);
-		UpdateWindowTitle(name);
-		m_SceneFilePath = std::string();
-
-		m_Camera = Camera();
-		m_CurrentScene = m_EditorScene;
-		s_SceneOpen = true;
-	}
-
-	bool EditorLayer::OpenScene()
-	{
-		return false;
-	}
-
-	bool EditorLayer::OpenScene(const std::filesystem::path &filepath, const bool checkAutoSave)
-	{
-		return false;
-	}
-
-	void EditorLayer::SaveScene()
-	{
-
-	}
-
-	void EditorLayer::SaveSceneAuto()
-	{
-
-	}
-
-	void EditorLayer::SaveSceneAs()
-	{
-
-	}
-
-	bool EditorLayer::IsSceneOpen()
-	{
-		return s_SceneOpen;
-	}
-
-	bool EditorLayer::IsProjectOpen()
-	{
-		return s_ProjectOpen;
+		const std::string &sceneName = Scene::GetName();
+		const std::string title = std::format("{} - Scenery Editor X {}", sceneName.empty() ? "Untitled Scene" : sceneName, SEDX_VERSION_STRING);
+		Window::SetTitle(title);
 	}
 
 }

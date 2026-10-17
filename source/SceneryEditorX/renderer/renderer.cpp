@@ -2166,14 +2166,19 @@ void dynamic_resolution()
 			return;
 		}
 
+		// With the editor UI up, frame_output is shown inside the viewport panel (sampled in SHADER_READ_ONLY_OPTIMAL,
+		// where EndFrame left it), so the swapchain only gets cleared and the UI drawn on top. Without a UI the
+		// scene is blitted to the whole back buffer.
+		const bool drawUI = UI::IsBackendInitialized() && ImGui::GetCurrentContext() && ImGui::GetDrawData();
+
 		ImageResource* frameOutput = GetRenderTarget(Renderer_RenderTarget::frame_output);
-		const bool hasFrameOutput = frameOutput && frameOutput->Get() && *frameOutput->Get() != VK_NULL_HANDLE;
+		const bool hasFrameOutput = !drawUI && frameOutput && frameOutput->Get() && *frameOutput->Get() != VK_NULL_HANDLE;
 
 		VkImageMemoryBarrier2 swapchainToTransfer{};
 		swapchainToTransfer.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
 		swapchainToTransfer.srcStageMask = VK_PIPELINE_STAGE_2_NONE;
 		swapchainToTransfer.srcAccessMask = 0;
-		swapchainToTransfer.dstStageMask = VK_PIPELINE_STAGE_2_BLIT_BIT;
+		swapchainToTransfer.dstStageMask = VK_PIPELINE_STAGE_2_BLIT_BIT | VK_PIPELINE_STAGE_2_CLEAR_BIT;
 		swapchainToTransfer.dstAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
 		swapchainToTransfer.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 		swapchainToTransfer.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
@@ -2184,11 +2189,16 @@ void dynamic_resolution()
 		swapchainToTransfer.subresourceRange.baseArrayLayer = 0;
 		swapchainToTransfer.subresourceRange.layerCount = 1;
 
-		VkDependencyInfo toTransferInfo{};
-		toTransferInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
-		toTransferInfo.imageMemoryBarrierCount = 1;
-		toTransferInfo.pImageMemoryBarriers = &swapchainToTransfer;
-		vkCmdPipelineBarrier2(cb, &toTransferInfo);
+		// With the UI drawing the whole back buffer, the swapchain image goes straight to attachment layout
+		// below and the pass's CLEAR load op replaces the transfer clear.
+		if (!drawUI)
+		{
+			VkDependencyInfo toTransferInfo{};
+			toTransferInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+			toTransferInfo.imageMemoryBarrierCount = 1;
+			toTransferInfo.pImageMemoryBarriers = &swapchainToTransfer;
+			vkCmdPipelineBarrier2(cb, &toTransferInfo);
+		}
 
 		if (hasFrameOutput)
 		{
@@ -2272,7 +2282,7 @@ void dynamic_resolution()
 			restoreFrameOutputInfo.pImageMemoryBarriers = &restoreFrameOutput;
 			vkCmdPipelineBarrier2(cb, &restoreFrameOutputInfo);
 		}
-		else
+		else if (!drawUI)
 		{
 			VkClearColorValue clearColor{};
 			clearColor.float32[0] = 0.0f;
@@ -2292,11 +2302,21 @@ void dynamic_resolution()
 
 		VkImageMemoryBarrier2 swapchainToAttachment{};
 		swapchainToAttachment.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
-		swapchainToAttachment.srcStageMask = VK_PIPELINE_STAGE_2_BLIT_BIT;
-		swapchainToAttachment.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+		if (drawUI)
+		{
+			// Contents are discarded; the acquire semaphore wait covers prior presentation reads.
+			swapchainToAttachment.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+			swapchainToAttachment.srcAccessMask = VK_ACCESS_2_NONE;
+			swapchainToAttachment.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		}
+		else
+		{
+			swapchainToAttachment.srcStageMask = VK_PIPELINE_STAGE_2_BLIT_BIT | VK_PIPELINE_STAGE_2_CLEAR_BIT;
+			swapchainToAttachment.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+			swapchainToAttachment.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		}
 		swapchainToAttachment.dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
 		swapchainToAttachment.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT;
-		swapchainToAttachment.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 		swapchainToAttachment.newLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
 		swapchainToAttachment.image = swapchainImages[imageIndex];
 		swapchainToAttachment.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -2344,34 +2364,9 @@ void dynamic_resolution()
 		scissor.extent = {.width = extent.width, .height = extent.height};
 		vkCmdSetScissor(cb, 0, 1, &scissor);
 
-		if (m_CmdList_Present && m_CmdList_Present->GetState() == CommandState::Recording)
+		if (drawUI)
 		{
-			//if (ImGui::GetCurrentContext() && ImGui::GetDrawData())
-			// Temporarily disable swapchain-space UI draw injection while bring-up is in progress.
-			// The current validation error (VUID-vkCmdDraw-None-09600) indicates a sampled image
-			// layout mismatch during draw submit; this isolates the core frame path.
-			constexpr bool kEnableUiOverlay = false;
-			if (kEnableUiOverlay && ImGui::GetCurrentContext() && ImGui::GetDrawData())
-			{
-				m_CmdList_Present->SetExternalRecordingBuffer(cb, true);
-				if (ImageResource* frameOutputForUi = GetRenderTarget(Renderer_RenderTarget::frame_output))
-				{
-					frameOutputForUi->SetLayout(Layout::ImageLayout::ShaderRead, m_CmdList_Present, 0, 0);
-				}
-
-				UI::Render(ImGui::GetDrawData(), nullptr, false);
-				m_CmdList_Present->RestoreCommandBuffer();
-			}
-
-			if (ImageResource* frameOutputAfterUi = GetRenderTarget(Renderer_RenderTarget::frame_output))
-			{
-				frameOutputAfterUi->SetLayout(Layout::ImageLayout::ShaderRead, m_CmdList_Present, 0, 0);
-			}
-
-			if (UI::g_FontAtlas)
-			{
-				UI::g_FontAtlas->SetLayout(Layout::ImageLayout::ShaderRead, m_CmdList_Present, 0, 0);
-			}
+			UI::RenderMainViewport(cb);
 		}
 
 		vkCmdEndRendering(cb);

@@ -43,6 +43,7 @@ namespace SceneryEditorX
 {
 	// Static member definitions
 	Window::EventCallbackFn Window::s_EventCallback = nullptr;
+	static Window::NativeEventHookFn s_NativeEventHook = nullptr;
 	Window Window::m_Window;
 	SDL_Window *s_Window = nullptr;
 	SDL_DisplayID *s_Displays = nullptr;
@@ -188,6 +189,11 @@ namespace SceneryEditorX
 
 	void Window::HandleEvent(const SDL_Event &event)
 	{
+		// Window events from secondary (ImGui multi-viewport) windows belong to the UI backend only.
+		// Letting them through would close the app or resize the main swapchain when a floating panel does.
+		if (event.type >= SDL_EVENT_WINDOW_FIRST && event.type <= SDL_EVENT_WINDOW_LAST && s_Window && event.window.windowID != SDL_GetWindowID(s_Window))
+			return;
+
 		switch (event.type)
 		{
 		case SDL_EVENT_QUIT:
@@ -349,11 +355,9 @@ namespace SceneryEditorX
 		}
 		case SDL_EVENT_DROP_FILE:
 		{
+			// SDL3 owns event.drop.data and frees it itself; freeing it here would be a double free.
 			if (event.drop.data)
-			{
 				pathsDrop.emplace_back(event.drop.data);
-				SDL_free(const_cast<char *>(event.drop.data));
-			}
 			break;
 		}
 		default:
@@ -405,8 +409,9 @@ namespace SceneryEditorX
 			return;
 		}
 
-		// set up hit test callback for custom title bar dragging and resizing
-		if (!SDL_SetWindowHitTest(s_Window, HitTestCallback, nullptr))
+		// Custom title bar dragging/resizing only applies to borderless windows. On a decorated window the
+		// resize margins would steal clicks from the UI along the client-area edges.
+		if (borderless && !SDL_SetWindowHitTest(s_Window, HitTestCallback, nullptr))
 		{
 			SEDX_CORE_WARN_TAG("Window","Failed to set window hit test callback: {}", SDL_GetError());
 		}
@@ -597,9 +602,14 @@ namespace SceneryEditorX
 		SDL_Event event;
 		while (SDL_PollEvent(&event))
 		{
+			if (s_NativeEventHook)
+				s_NativeEventHook(event);
+
 			HandleEvent(event);
 		}
 	}
+
+	void Window::SetNativeEventHook(const NativeEventHookFn &hook) { s_NativeEventHook = hook; }
 	
 	void Window::UpdateFramebufferSize()
 	{
