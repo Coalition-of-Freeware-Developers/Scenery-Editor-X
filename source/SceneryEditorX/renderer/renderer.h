@@ -525,11 +525,6 @@ namespace SceneryEditorX
 		 */
 		static void CreateFonts();
 
-		/**
-		 * @brief Registers and creates standard renderer shaders through ShaderManager.
-		 */
-		static void CreateStandardShaders();
-
 		/* 
 		 * @brief Creates standard materials used by the renderer. 
 		 */

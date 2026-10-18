@@ -128,11 +128,6 @@ void dynamic_resolution()
 			}
 */
 
-	void Renderer::CreateStandardShaders()
-	{
-		ShaderManager::CreateShaders();
-	}
-
 	RendererProperties *Renderer::m_Data = nullptr;
 	static Ref<Swapchain> s_Swapchain = nullptr;
 	static uint64_t s_FrameNumber = 0;
@@ -529,7 +524,6 @@ void dynamic_resolution()
 			CreateStandardTextures();
 			CreateStandardMaterials();
 			CreateFonts();
-			CreateStandardShaders();
 			LoadShaders();
 			m_ResourcesInitialized = true;
 
@@ -537,136 +531,8 @@ void dynamic_resolution()
 		});
 		*/
 
-		// Structured draw-data buffer used by Renderer::WriteDrawData (including UI path).
-		// Allocate one large mapped buffer partitioned by frame resource index.
-		// ALL slots in GetStructuredBuffers() that are read each frame must be allocated here
-		// to avoid nullptr dereferences in UpdateMaterials, UpdateLights, UpdateBoundingBoxes, etc.
-		{
-			auto& structuredBuffers = GetStructuredBuffers();
-
-#pragma region DrawData Buffer
-
-			// large mapped ring buffer, one region per frame-in-flight
-			const uint32_t drawDataBufferIndex  = static_cast<uint32_t>(Renderer_Buffer::DrawData);
-			const uint32_t drawDataElementCount = RENDERER_MAX_DRAW_CALLS * RENDERER_RESOURCE_FRAME_LIFETIME;
-			if (!structuredBuffers[drawDataBufferIndex])
-			{
-				structuredBuffers[drawDataBufferIndex] = CreateRef<Buffer>(
-					sizeof(ShaderBuffer_DrawData), drawDataElementCount, nullptr, true, "draw_data_buffer");
-				SEDX_CORE_ASSERT(structuredBuffers[drawDataBufferIndex], "Failed to create draw_data_buffer");
-			}
-
-			if (Buffer* drawDataBuffer = structuredBuffers[drawDataBufferIndex].Get())
-			{
-				drawDataBuffer->Map();
-				SEDX_CORE_ASSERT(drawDataBuffer->GetMappedData() != nullptr, "Failed to map draw_data_buffer");
-			}
-			else
-			{
-				SEDX_CORE_ERROR_TAG("Renderer", "Failed to create draw_data_buffer");
-			}
-
-#pragma endregion
-#pragma region MaterialParameters
-
-			const uint32_t materialIndex = static_cast<uint32_t>(Renderer_Buffer::MaterialParameters);
-			if (!structuredBuffers[materialIndex])
-			{
-				structuredBuffers[materialIndex] = CreateRef<Buffer>(sizeof(ShaderBuffer_Material), MAX_ARRAY_SIZE, nullptr, true, "material_parameters");
-				SEDX_CORE_ASSERT(structuredBuffers[materialIndex], "Failed to create material_parameters buffer");
-				SEDX_CORE_TRACE_TAG("Renderer", "Created material_parameters buffer");
-			}
-
-#pragma endregion
-#pragma region LightParameters
-
-			const uint32_t lightIndex = static_cast<uint32_t>(Renderer_Buffer::LightParameters);
-			if (!structuredBuffers[lightIndex])
-			{
-				structuredBuffers[lightIndex] = CreateRef<Buffer>(sizeof(ShaderBuffer_Light), MAX_ARRAY_SIZE, nullptr, true, "light_parameters");
-				SEDX_CORE_ASSERT(structuredBuffers[lightIndex], "Failed to create light_parameters buffer");
-				SEDX_CORE_TRACE_TAG("Renderer", "Created light_parameters buffer");
-			}
-
-#pragma endregion
-#pragma region AABBs Object Boundery Boxes
-
-			// per-frame regions, prepass + indirect draw slots
-			const uint32_t aabbIndex = static_cast<uint32_t>(Renderer_Buffer::AABBs);
-			if (!structuredBuffers[aabbIndex])
-			{
-				// Double the size to hold per-frame regions (m_FrameResource_Index * MAX_ARRAY_SIZE offset)
-				const uint32_t aabbElementCount = MAX_ARRAY_SIZE * DRAW_DATA_BUFFER_COUNT;
-				structuredBuffers[aabbIndex] = CreateRef<Buffer>(sizeof(ShaderBuffer_Aabb), aabbElementCount, nullptr, true, "aabb_buffer");
-				SEDX_CORE_ASSERT(structuredBuffers[aabbIndex], "Failed to create aabb_buffer");
-				SEDX_CORE_TRACE_TAG("Renderer", "Created aabb_buffer");
-			}
-
-#pragma endregion
-#pragma region ConstantFrame
-
-			// per-frame constants written by UpdateFrameConstantBuffer
-			const uint32_t constantFrameIndex = static_cast<uint32_t>(Renderer_Buffer::ConstantFrame);
-			if (!structuredBuffers[constantFrameIndex])
-			{
-				// Use RENDERER_RESOURCE_FRAME_LIFETIME slots so offset rotation works correctly
-				structuredBuffers[constantFrameIndex] = CreateRef<Buffer>(sizeof(ConstantBuffer_Frame), RENDERER_RESOURCE_FRAME_LIFETIME, nullptr, true, "constant_frame_buffer");
-				SEDX_CORE_ASSERT(structuredBuffers[constantFrameIndex], "Failed to create constant_frame_buffer");
-				SEDX_CORE_TRACE_TAG("Renderer", "Created constant_frame_buffer");
-			}
-
-#pragma endregion
-#pragma region IndirectDrawArgs
-
-			const uint32_t indirectArgsIndex = static_cast<uint32_t>(Renderer_Buffer::IndirectDrawArgs);
-			if (!structuredBuffers[indirectArgsIndex])
-			{
-				structuredBuffers[indirectArgsIndex] = CreateRef<Buffer>(sizeof(ShaderBuffer_IndirectDrawArgs), MAX_ARRAY_SIZE, nullptr, true, "indirect_draw_args");
-				SEDX_CORE_ASSERT(structuredBuffers[indirectArgsIndex], "Failed to create indirect_draw_args buffer");
-				SEDX_CORE_TRACE_TAG("Renderer", "Created indirect_draw_args buffer");
-			}
-
-#pragma endregion
-#pragma region IndirectDrawData
-
-			const uint32_t indirectDataIndex = static_cast<uint32_t>(Renderer_Buffer::IndirectDrawData);
-			if (!structuredBuffers[indirectDataIndex])
-			{
-				structuredBuffers[indirectDataIndex] = CreateRef<Buffer>(sizeof(ShaderBuffer_DrawData), MAX_ARRAY_SIZE, nullptr, true, "indirect_draw_data");
-				SEDX_CORE_ASSERT(structuredBuffers[indirectDataIndex], "Failed to create indirect_draw_data buffer");
-				SEDX_CORE_TRACE_TAG("Renderer", "Created indirect_draw_data buffer");
-			}
-
-#pragma endregion
-#pragma region IndirectDrawCount
-
-			// single uint32_t, reset to zero each frame by cull shader
-			const uint32_t indirectCountIndex = static_cast<uint32_t>(Renderer_Buffer::IndirectDrawCount);
-			if (!structuredBuffers[indirectCountIndex])
-			{
-				structuredBuffers[indirectCountIndex] = CreateRef<Buffer>(sizeof(uint32_t), 1, nullptr, true, "indirect_draw_count");
-				SEDX_CORE_ASSERT(structuredBuffers[indirectCountIndex], "Failed to create indirect_draw_count buffer");
-				SEDX_CORE_TRACE_TAG("Renderer", "Created indirect_draw_count buffer");
-			}
-
-#pragma endregion
-#pragma region DummyInstance
-
-			// identity instances for vertex-pulled draws with no instancing
-			const uint32_t dummyInstanceIndex = static_cast<uint32_t>(Renderer_Buffer::DummyInstance);
-			if (!structuredBuffers[dummyInstanceIndex])
-			{
-				// Minimal buffer: one identity instance entry; real content written by passes
-				structuredBuffers[dummyInstanceIndex] = CreateRef<Buffer>(sizeof(ShaderBuffer_DrawData), 1, nullptr, true, "dummy_instance_buffer");
-				SEDX_CORE_ASSERT(structuredBuffers[dummyInstanceIndex], "Failed to create dummy_instance_buffer");
-				SEDX_CORE_TRACE_TAG("Renderer", "Created dummy_instance_buffer");
-			}
-
-#pragma endregion
-
-			SEDX_CORE_TRACE_TAG("Renderer", "All structured buffers initialized");
-		}
-		
+		// Allocates every GetStructuredBuffers() slot read each frame (UpdateMaterials, UpdateLights,
+		// UpdateBoundingBoxes, WriteDrawData, ...) plus the per-frame indirect buffers, exactly once.
 		CreateBuffers();
 		CreateDepthStencilStates();
 		CreateRasterizerStates();
@@ -678,8 +544,6 @@ void dynamic_resolution()
 		// Create the bindless descriptor sets now: Tick() writes them (draw data, samplers, aabbs, ...) before the
 		// first pipeline is built, and those one-time writes are dropped while the sets don't exist yet.
 		BindlessManager::Init();
-
-		LoadShaders();
 
 		// Query surface capabilities
 		VkPhysicalDevice physicalDevice = RenderContext::Get()->GetDevice()->GetPhysicalDevice();
