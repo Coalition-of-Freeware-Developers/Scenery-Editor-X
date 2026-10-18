@@ -145,6 +145,10 @@ void dynamic_resolution()
 	Scope<AssetManager> Renderer::s_AssetManager = nullptr;
 	uint32_t Renderer::m_ResourceIndex = 0;
 
+	// First draw-data slot of the region this frame's draws were written to (WriteDrawData), so the bulk upload
+	// lands on the same entries the shaders index instead of a region another frame in flight is reading.
+	static uint32_t s_DrawDataRegionStart = 0;
+
 	// per-frame rotated buffers
 	std::array<Renderer::IndirectFrameResource, DRAW_DATA_BUFFER_COUNT> Renderer::m_FrameResources;
 	uint32_t Renderer::m_FrameResource_Index = 0;
@@ -879,8 +883,7 @@ void dynamic_resolution()
 					if (m_DrawData_Count > 0)
 					{
 						Buffer *buffer = GetBuffer(Renderer_Buffer::DrawData);
-						uint32_t frame_byte_offset = m_FrameResource_Index * MAX_DRAW_CALLS *
-													 static_cast<uint32_t>(sizeof(ShaderBuffer_DrawData));
+						uint32_t frame_byte_offset = s_DrawDataRegionStart * static_cast<uint32_t>(sizeof(ShaderBuffer_DrawData));
 						uint32_t upload_size = static_cast<uint32_t>(sizeof(ShaderBuffer_DrawData)) * m_DrawData_Count;
 						CommandList::UpdateBuffer(buffer, frame_byte_offset, upload_size, &m_DrawData_CPU[0]);
 					}
@@ -2761,6 +2764,7 @@ void dynamic_resolution()
 
 		SEDX_CORE_ASSERT(m_DrawData_Count < RENDERER_MAX_DRAW_CALLS);
 		uint32_t index = m_DrawData_Count++;
+		s_DrawDataRegionStart = m_ResourceIndex * RENDERER_MAX_DRAW_CALLS;
 
 		// Entity matrices are row-vector (translation in the last row); the shaders want the column-vector form
 		// stored row-major (see GpuMatrix), which is the transpose in xMath::Matrix's row-major storage.

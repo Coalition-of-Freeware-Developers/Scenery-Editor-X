@@ -139,6 +139,7 @@ namespace SceneryEditorX::XPlane
 			VkFormat format = VK_FORMAT_UNDEFINED;	// Block-compressed format, or R8G8B8A8 after conversion
 			uint32_t blockBytes = 0;				// 0 for uncompressed RGBA8
 			std::vector<MipBytes> mips;
+			bool flipped = true;					// Rows reordered to X-Plane's bottom-left origin (false: BC7, left as stored)
 		};
 
 		/* @brief Bit position and width of a channel mask (uncompressed DDS). */
@@ -163,6 +164,111 @@ namespace SceneryEditorX::XPlane
 			const uint32_t value = (pixel & mask) >> shift;
 			const uint32_t maxValue = (1u << bits) - 1u;
 			return static_cast<uint8_t>((value * 255u + maxValue / 2) / maxValue);
+		}
+
+		/* @brief Reverses the first `rows` 2-bit index rows of a BC1-style colour block (4 index bytes, one per row). */
+		void FlipColorIndices(uint8_t *indices, const uint32_t rows)
+		{
+			for (uint32_t r = 0; r < rows / 2; ++r)
+				std::swap(indices[r], indices[rows - 1 - r]);
+		}
+
+		/* @brief Reverses the first `rows` 3-bit index rows of a BC3/BC4 alpha block (6 index bytes, 12 bits per row). */
+		void FlipAlphaIndices(uint8_t *indices, const uint32_t rows)
+		{
+			uint64_t bits = 0;
+			for (int i = 0; i < 6; ++i)
+				bits |= static_cast<uint64_t>(indices[i]) << (8 * i);
+			uint64_t row[4];
+			for (int r = 0; r < 4; ++r)
+				row[r] = (bits >> (12 * r)) & 0xFFFu;
+			for (uint32_t r = 0; r < rows / 2; ++r)
+				std::swap(row[r], row[rows - 1 - r]);
+			bits = 0;
+			for (int r = 0; r < 4; ++r)
+				bits |= row[r] << (12 * r);
+			for (int i = 0; i < 6; ++i)
+				indices[i] = static_cast<uint8_t>((bits >> (8 * i)) & 0xFFu);
+		}
+
+		/**
+		 * @brief Flips one block-compressed mip vertically without decoding it: block rows swap end for end and each
+		 * block's pixel rows reverse (only the rows the mip uses, for mips under 4 pixels tall). Like WorldEditor's
+		 * BCx_y_flip. BC7 can't be flipped this way.
+		 * @return False for formats it can't flip.
+		 */
+		bool FlipBlocks(std::vector<std::byte> &data, const uint32_t width, const uint32_t height, const VkFormat format, const uint32_t blockBytes)
+		{
+			if (format == VK_FORMAT_BC7_UNORM_BLOCK)
+				return false;
+			auto *bytes = reinterpret_cast<uint8_t *>(data.data());
+			const uint32_t blocksX = std::max(1u, (width + 3) / 4);
+			const uint32_t blocksY = std::max(1u, (height + 3) / 4);
+			const size_t lineBytes = static_cast<size_t>(blocksX) * blockBytes;
+			if (data.size() < lineBytes * blocksY)
+				return false;
+
+			std::vector<uint8_t> line(lineBytes);
+			for (uint32_t y = 0; y < blocksY / 2; ++y)
+			{
+				uint8_t *a = bytes + y * lineBytes;
+				uint8_t *b = bytes + (blocksY - 1 - y) * lineBytes;
+				std::memcpy(line.data(), a, lineBytes);
+				std::memcpy(a, b, lineBytes);
+				std::memcpy(b, line.data(), lineBytes);
+			}
+
+			const uint32_t rows = std::min(4u, height);
+			for (size_t i = 0; i < static_cast<size_t>(blocksX) * blocksY; ++i)
+			{
+				uint8_t *block = bytes + i * blockBytes;
+				switch (format)
+				{
+					case VK_FORMAT_BC1_RGBA_UNORM_BLOCK:
+						FlipColorIndices(block + 4, rows);
+						break;
+					case VK_FORMAT_BC2_UNORM_BLOCK:
+						// 4-bit explicit alpha: two bytes per row
+						for (uint32_t r = 0; r < rows / 2; ++r)
+						{
+							std::swap(block[r * 2], block[(rows - 1 - r) * 2]);
+							std::swap(block[r * 2 + 1], block[(rows - 1 - r) * 2 + 1]);
+						}
+						FlipColorIndices(block + 12, rows);
+						break;
+					case VK_FORMAT_BC3_UNORM_BLOCK:
+						FlipAlphaIndices(block + 2, rows);
+						FlipColorIndices(block + 12, rows);
+						break;
+					case VK_FORMAT_BC4_UNORM_BLOCK:
+						FlipAlphaIndices(block + 2, rows);
+						break;
+					case VK_FORMAT_BC5_UNORM_BLOCK:
+						FlipAlphaIndices(block + 2, rows);
+						FlipAlphaIndices(block + 10, rows);
+						break;
+					default:
+						return false;
+				}
+			}
+			return true;
+		}
+
+		/* @brief Flips an RGBA8 mip vertically. */
+		void FlipRows(std::vector<std::byte> &data, const uint32_t width, const uint32_t height)
+		{
+			const size_t rowBytes = static_cast<size_t>(width) * 4;
+			if (data.size() < rowBytes * height)
+				return;
+			std::vector<std::byte> row(rowBytes);
+			for (uint32_t y = 0; y < height / 2; ++y)
+			{
+				std::byte *a = data.data() + y * rowBytes;
+				std::byte *b = data.data() + (height - 1 - y) * rowBytes;
+				std::memcpy(row.data(), a, rowBytes);
+				std::memcpy(a, b, rowBytes);
+				std::memcpy(b, row.data(), rowBytes);
+			}
 		}
 
 		bool ParseDds(const std::vector<uint8_t> &file, DdsImage &out, std::string &error)
@@ -303,6 +409,21 @@ namespace SceneryEditorX::XPlane
 			{
 				error = "DDS has no complete mip level";
 				return false;
+			}
+
+			// DDS stores the top row first; X-Plane textures have their origin at the bottom left (t = 0 is the bottom
+			// row), so X-Plane and WorldEditor flip every DDS on load. Do the same, losslessly, so it matches the PNGs.
+			for (size_t mip = 0; mip < out.mips.size(); ++mip)
+			{
+				const uint32_t w = std::max(1u, out.width >> mip);
+				const uint32_t h = std::max(1u, out.height >> mip);
+				if (out.blockBytes > 0)
+				{
+					if (!FlipBlocks(out.mips[mip].bytes, w, h, out.format, out.blockBytes))
+						out.flipped = false;
+				}
+				else
+					FlipRows(out.mips[mip].bytes, w, h);
 			}
 			return true;
 		}
@@ -600,6 +721,9 @@ namespace SceneryEditorX::XPlane
 				result.error = "The GPU can't sample block-compressed textures";
 			else
 			{
+				if (!dds.flipped)
+					SEDX_CORE_WARN_TAG(LOG_TAG, "'{}' is BC7, which can't be flipped to X-Plane's texture orientation: it draws upside down", path.string());
+
 				result.fromDds = true;
 				result.width = dds.width;
 				result.height = dds.height;

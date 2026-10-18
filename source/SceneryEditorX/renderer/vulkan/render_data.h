@@ -87,7 +87,7 @@ namespace SceneryEditorX
 	/** Maximum simultaneous colour render targets in a PipelineState. */
 	inline constexpr uint32_t MAX_RENDER_TARGET_COUNT	= 8;
 	inline constexpr uint32_t MAX_SHADER_STAGES			= 8;
-	inline constexpr uint32_t RENDERER_MAX_DRAW_CALLS	= 4096;
+	inline constexpr uint32_t RENDERER_MAX_DRAW_CALLS	= 16384;	// An airport with its scenery objects runs to ~10k draws; matches MAX_ARRAY_SIZE (AABBs)
 	inline constexpr uint32_t MAX_MIP_COUNT				= 16;
 	inline constexpr uint32_t MAX_DESCRIPTOR_SET_COUNT	= 512;
 	static constexpr uint32_t MAX_FRAMES_IN_FLIGHT		= 2;
