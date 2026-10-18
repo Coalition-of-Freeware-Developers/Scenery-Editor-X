@@ -32,6 +32,8 @@
 #include "editor_context.h"
 #include "editor_scene.h"
 #include "editor_ui.h"
+#include <array>
+#include <cstdlib>
 #include <portable-file-dialogs.h>
 #include <SceneryEditorX/core/application/application.h>
 #include <SceneryEditorX/core/platform/platform_context.h>
@@ -70,6 +72,8 @@ namespace SceneryEditorX::EditorAirports
 
 			std::string startupAirport;			// --xp-airport <id>, opened once the index is ready
 			bool startupDone = false;
+			std::array<float, 5> startupCamera{};	// --xp-airport-camera x,y,z,yaw,pitch: view from the center after opening it
+			bool hasStartupCamera = false;
 			int startupSceneryId = 0;			// --xp-gateway <scenery id>: install and open a Gateway submission at startup
 			fs::path startupPackageRoot;		// --xp-package-root <folder>: where that pack goes (Custom Scenery when empty)
 			bool startupInstallDone = false;
@@ -278,6 +282,18 @@ namespace SceneryEditorX::EditorAirports
 			{
 				if (args[i] == "--xp-airport")
 					state.startupAirport = args[++i];
+				else if (args[i] == "--xp-airport-camera")
+				{
+					// "x,y,z,yaw,pitch": meters from the airport's center (+X east, +Y up, +Z south) and degrees
+					const char *text = args[++i].c_str();
+					char *end = nullptr;
+					for (float &value : state.startupCamera)
+					{
+						value = std::strtof(text, &end);
+						text = *end == ',' ? end + 1 : end;
+					}
+					state.hasStartupCamera = true;
+				}
 				else if (args[i] == "--xp-gateway")
 					state.startupSceneryId = std::atoi(args[++i].c_str());
 				else if (args[i] == "--xp-package-root")
@@ -311,7 +327,13 @@ namespace SceneryEditorX::EditorAirports
 			state.startupDone = true;
 			const std::shared_ptr<const AirportIndex> index = AirportManager::GetIndex();
 			if (const AirportEntry *entry = index->FindBest(state.startupAirport))
-				OpenEntryNow(*index, *entry, context);
+			{
+				if (OpenEntryNow(*index, *entry, context) && state.hasStartupCamera)
+				{
+					const std::array<float, 5> &view = state.startupCamera;
+					SceneAirports::LookFrom(view[0], view[1], view[2], view[3], view[4]);
+				}
+			}
 			else
 				EDITOR_ERROR_TAG(LOG_TAG, "--xp-airport: no airport '{}' in the indexed scenery", state.startupAirport);
 		}

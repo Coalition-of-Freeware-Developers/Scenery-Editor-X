@@ -86,6 +86,22 @@ namespace SceneryEditorX
 			return shader;
 		}
 
+		/**
+		 * @brief Draws one GPU-scene bucket's commands with the bound pipeline: the early pass's and / or, when this frame
+		 * culls in two phases, the late pass's (GpuScene::GetLateCommandOffset() further on).
+		 */
+		void DrawGpuSceneBucket(CommandList *cmdList, const GpuScene::Bucket &bucket, const bool early, const bool late)
+		{
+			constexpr uint64_t stride = sizeof(VkDrawIndexedIndirectCommand);
+			if (early)
+				cmdList->DrawIndexedIndirect(GpuScene::GetCommandBuffer(), static_cast<uint64_t>(bucket.firstCommand) * stride, bucket.commandCount);
+			if (late && GpuScene::IsOcclusionActive())
+			{
+				const uint64_t first = static_cast<uint64_t>(GpuScene::GetLateCommandOffset()) + bucket.firstCommand;
+				cmdList->DrawIndexedIndirect(GpuScene::GetCommandBuffer(), first * stride, bucket.commandCount);
+			}
+		}
+
 		/* @brief Direction towards the placeholder sun light composition and the forward pass use without a directional light. */
 		const xMath::Vec3 &GetFallbackSunDirection()
 		{
@@ -655,6 +671,25 @@ namespace SceneryEditorX
 		Pass_Downscale(cmdList, tex_occluders_hiz, Renderer_DownsampleFilter::Min);
 	}
 
+	void Renderer::Pass_GpuScene_Occlusion(CommandList *cmdList)
+	{
+		// Between the GPU scene's two culling phases in the depth prepass: a hi-z pyramid of the depth drawn so far
+		// (the instances visible last frame and the CPU draws), then the late cull against it. The hi-z target is shared
+		// with Pass_HiZ, which rebuilds it from scratch before its own use.
+		ImageResource *tex_depth = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
+		ImageResource *tex_hiz = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_occluders_hiz);
+
+		Pass_Blit(cmdList, tex_depth, tex_hiz);
+		Pass_Downscale(cmdList, tex_hiz, Renderer_DownsampleFilter::Min);
+
+		// the cull samples every level through one view: all of them shader-readable (per mip, the chain left them
+		// in different layouts and a whole-image transition assumes one)
+		for (uint32_t mip = 0; mip < tex_hiz->GetMipCount(); ++mip)
+			tex_hiz->SetLayout(Layout::ImageLayout::ShaderRead, cmdList, mip, 1);
+
+		GpuScene::CullLate(cmdList, tex_hiz);
+	}
+
 	void Renderer::Pass_IndirectCull(CommandList *cmdList)
 	{
 		if (m_Indirect_DrawCount == 0)
@@ -731,9 +766,10 @@ namespace SceneryEditorX
 												  0, m_Indirect_DrawCount);
 			}
 
-			// GPU scene: one instanced indirect draw per bucket (gpu_cull.slang chose the instances and their LODs)
+			// GPU scene: one instanced indirect draw per bucket (gpu_cull.slang chose the instances and their LODs). With
+			// occlusion culling these are the early pass's draws; the late pass's follow the CPU draws (below).
 			bool depthWritten = m_Indirect_DrawCount > 0;
-			if (GpuScene::HasDraws())
+			const auto drawGpuScene = [&](const bool late)
 			{
 				PipelineState pso;
 				pso.name = "depth_prepass_gpu";
@@ -756,10 +792,12 @@ namespace SceneryEditorX
 					cmdList->SetPipelineState(pso);
 					cmdList->SetIndexBuffer(GeometryBuffer::GetIndexBuffer());
 					cmdList->SetCullMode(is_wireframe ? CullMode::None : bucket.cullMode);
-					cmdList->DrawIndexedIndirect(GpuScene::GetCommandBuffer(), static_cast<uint64_t>(bucket.firstCommand) * sizeof(VkDrawIndexedIndirectCommand), bucket.commandCount);
+					DrawGpuSceneBucket(cmdList, bucket, !late, late);
 					depthWritten = true;
 				}
-			}
+			};
+			if (GpuScene::HasDraws())
+				drawGpuScene(false);
 
 			// cpu-driven path for remaining draws (tessellated, instanced, alpha-tested)
 			{
@@ -845,6 +883,14 @@ namespace SceneryEditorX
 					pso.shaders[static_cast<uint32_t>(StageType::TessellationEvaluation)] = nullptr;
 					cmdList->ClearPipelineStateRenderTargets(pso);
 				}
+			}
+
+			// GPU scene, late pass (two-phase occlusion culling): what the early pass held back, culled against a Hi-Z
+			// of the depth drawn so far
+			if (GpuScene::HasDraws() && GpuScene::IsOcclusionActive())
+			{
+				Pass_GpuScene_Occlusion(cmdList);
+				drawGpuScene(true);
 			}
 
 			float resolutionScale = cvar_resolution_scale.GetValue();
@@ -945,7 +991,7 @@ namespace SceneryEditorX
 					cmdList->SetPipelineState(pso);
 					cmdList->SetIndexBuffer(GeometryBuffer::GetIndexBuffer());
 					cmdList->SetCullMode(cvar_wireframe.GetValueAs<bool>() ? CullMode::None : bucket.cullMode);
-					cmdList->DrawIndexedIndirect(GpuScene::GetCommandBuffer(), static_cast<uint64_t>(bucket.firstCommand) * sizeof(VkDrawIndexedIndirectCommand), bucket.commandCount);
+					DrawGpuSceneBucket(cmdList, bucket, true, true); // both culling phases' draws
 					gpuDrew = true;
 				}
 			}
@@ -1625,6 +1671,31 @@ namespace SceneryEditorX
 	{
 		if (!img || img->GetImageSpec().mipCount <= 1)
 			return;
+
+		// The SPD shaders aren't ported yet (scale.slang has no entry point): a min chain (hi-z) is reduced one level
+		// per dispatch instead, each reading the level above through its own view
+		if (filter == Renderer_DownsampleFilter::Min && !ShaderManager::IsShaderAvailable(Renderer_Shader::ffx_spd_min))
+		{
+			PipelineState pso;
+			pso.name = "downsample_min";
+			Shader *shader = GetValidComputeShader(Renderer_Shader::downsample_min, pso.name);
+			if (!shader)
+				return;
+			pso.shaders[static_cast<uint32_t>(StageType::Compute)] = shader;
+			cmdList->SetPipelineState(pso);
+
+			for (uint32_t mip = 1; mip < img->GetImageSpec().mipCount; mip++)
+			{
+				// binding the level above moves it to ShaderRead: the barrier after the previous dispatch's writes
+				cmdList->SetTexture(Renderer_BindingsSrv::tex, img, mip - 1, 1);
+				cmdList->SetTexture(Renderer_BindingsUav::tex, img, mip, 1);
+
+				const uint32_t width = xMath::Max(img->GetWidth() >> mip, 1u);
+				const uint32_t height = xMath::Max(img->GetHeight() >> mip, 1u);
+				cmdList->Dispatch((width + 7) / 8, (height + 7) / 8, 1);
+			}
+			return;
+		}
 
 		Renderer_Shader spdShader;
 		switch (filter)

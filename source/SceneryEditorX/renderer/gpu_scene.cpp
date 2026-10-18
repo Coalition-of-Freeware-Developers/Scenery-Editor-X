@@ -29,10 +29,12 @@
  * -------------------------------------------------------
  */
 #include "gpu_scene.h"
+#include "renderer.h"
 #include "renderer_declarations.h"
 #include "vulkan/bindless_manager.h"
 #include "vulkan/buffer.h"
 #include "vulkan/command_list.h"
+#include "vulkan/image_resource.h"
 #include "vulkan/memory_allocator.h"
 #include "vulkan/push_constant_buffer.h"
 #include "vulkan/queue_manager.h"
@@ -95,6 +97,9 @@ namespace SceneryEditorX
 			uint32_t firstInstance;	// Where this command's visible instances start
 		};
 		static_assert(sizeof(DrawCommand) == sizeof(VkDrawIndexedIndirectCommand), "DrawCommand must be a VkDrawIndexedIndirectCommand");
+
+		/* @brief The record after the late commands whose instanceCount counts occluded instances (gpu_occluded_counter_command). */
+		constexpr uint32_t OccludedCounterCommand(const uint32_t lateOffset) { return 2u * lateOffset; }
 
 		constexpr uint32_t NO_BATCH = UINT32_MAX;
 		/* @brief Frames an instance keeps being checked every frame after its transform last changed. */
@@ -169,6 +174,7 @@ namespace SceneryEditorX
 			Ref<Buffer> readback;
 			uint32_t readbackCapacity = 0;	// Commands
 			uint32_t readbackCommands = 0;	// Commands copied by the last use, 0 = nothing to read
+			uint32_t readbackLateOffset = 0;// The late offset of the layout they were copied with
 		};
 
 		struct State
@@ -194,8 +200,9 @@ namespace SceneryEditorX
 			std::vector<uint32_t> dirtySlots;
 
 			std::vector<GpuBatch> gpuBatches;
-			std::vector<DrawCommand> commandTemplates;	// instanceCount = 0
-			uint32_t visibleSlots = 0;
+			std::vector<DrawCommand> commandTemplates;	// instanceCount = 0: early commands, late commands, occluded counter
+			uint32_t lateOffset = 0;					// Early commands = late commands = commands per phase
+			uint32_t visibleSlots = 0;					// Both phases' visible lists
 			std::array<GpuScene::Bucket, GpuScene::BUCKET_COUNT> buckets{};
 			bool hasDraws = false;
 			bool uploadLayout = false;
@@ -203,14 +210,16 @@ namespace SceneryEditorX
 			uint32_t roundRobinCursor = 0;
 
 			// GPU buffers (device local) and their element capacities
-			Ref<Buffer> instanceBuffer, batchBuffer, commandBuffer, templateBuffer, visibleBuffer;
-			uint32_t instanceCapacity = 0, batchCapacity = 0, commandCapacity = 0, visibleCapacity = 0;
+			Ref<Buffer> instanceBuffer, batchBuffer, commandBuffer, templateBuffer, visibleBuffer, visibilityBuffer;
+			uint32_t instanceCapacity = 0, batchCapacity = 0, commandCapacity = 0, visibleCapacity = 0, visibilityCapacity = 0;
 
 			std::unordered_map<const CommandList *, FrameSlot> frameSlots;
 
 			float minPixelSize = 1.0f;
 			float lodScale = 1.0f;
 			bool frustumCulling = true;
+			bool occlusionCulling = true;
+			bool occlusionActive = false;				// This frame culls in two phases
 
 			GpuScene::Stats stats;
 
@@ -583,7 +592,22 @@ namespace SceneryEditorX
 				bucket.commandCount = static_cast<uint32_t>(s.commandTemplates.size()) - bucket.firstCommand;
 			}
 
-			s.visibleSlots = region;
+			// The late pass's commands (two-phase occlusion culling): the same draws with their visible lists in the
+			// second half of the visible-instance buffer, then the occluded-instance counter (never drawn)
+			s.lateOffset = static_cast<uint32_t>(s.commandTemplates.size());
+			if (s.lateOffset > 0)
+			{
+				for (uint32_t i = 0; i < s.lateOffset; ++i)
+				{
+					DrawCommand late = s.commandTemplates[i];
+					late.firstInstance += region;
+					s.commandTemplates.push_back(late);
+				}
+				s.commandTemplates.push_back(DrawCommand{});
+				SEDX_CORE_ASSERT(s.commandTemplates.size() == OccludedCounterCommand(s.lateOffset) + 1u);
+			}
+
+			s.visibleSlots = region * 2u;
 			s.layoutDirty = false;
 			s.uploadLayout = true;
 		}
@@ -647,25 +671,81 @@ namespace SceneryEditorX
 			vkCmdPipelineBarrier2(cmdList->GetCommandBuffer(), &dependency);
 		}
 
-		/* @brief Sums the instance counts the cull pass wrote the last time this command list ran. */
+		/* @brief Sums the instance counts the cull passes wrote the last time this command list ran. */
 		void ReadBack(State &s, FrameSlot &slot)
 		{
-			if (slot.readbackCommands == 0 || !slot.readback)
+			const uint32_t lateOffset = slot.readbackLateOffset;
+			if (slot.readbackCommands == 0 || slot.readbackCommands <= OccludedCounterCommand(lateOffset) || !slot.readback)
 				return;
 
 			const auto *commands = static_cast<const DrawCommand *>(slot.readback->GetMappedData() ? slot.readback->GetMappedData() : slot.readback->Map());
 			if (!commands)
 				return;
 
-			uint32_t visible = 0, drawn = 0;
-			for (uint32_t i = 0; i < slot.readbackCommands; ++i)
+			uint32_t early = 0, late = 0, drawn = 0;
+			for (uint32_t i = 0; i < lateOffset; ++i)
 			{
-				visible += commands[i].instanceCount;
-				drawn += commands[i].instanceCount > 0 ? 1u : 0u;
+				early += commands[i].instanceCount;
+				late += commands[lateOffset + i].instanceCount;
+				drawn += commands[i].instanceCount + commands[lateOffset + i].instanceCount > 0 ? 1u : 0u;
 			}
-			s.stats.visibleInstances = visible;
+			s.stats.visibleInstances = early + late;
+			s.stats.earlyInstances = early;
+			s.stats.lateInstances = late;
+			s.stats.occludedInstances = commands[OccludedCounterCommand(lateOffset)].instanceCount;
 			s.stats.drawnCommands = drawn;
 			slot.readbackCommands = 0;
+		}
+
+		/* @brief Copies this frame's cull results (every command) to the command list's readback buffer for the stats. */
+		void RecordReadBack(State &s, CommandList *cmdList)
+		{
+			FrameSlot &frame = s.frameSlots[cmdList];
+			const uint32_t commandCount = static_cast<uint32_t>(s.commandTemplates.size());
+			if (!frame.readback || frame.readbackCapacity < commandCount)
+			{
+				if (frame.readback)
+					frame.readback->Destroy();
+				frame.readbackCapacity = commandCount + commandCount / 2 + 16;
+
+				// host-cached: the CPU reads it back (the mappable Buffer constructor gives write-combined memory)
+				VmaAllocationCreateInfo allocInfo{};
+				allocInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_HOST;
+				allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
+				frame.readback = CreateRef<Buffer>(MemoryAllocator::GetAllocator(), static_cast<VkDeviceSize>(frame.readbackCapacity) * sizeof(DrawCommand),
+					VK_BUFFER_USAGE_TRANSFER_DST_BIT, allocInfo);
+			}
+			if (frame.readback && frame.readback->Get())
+			{
+				const VkBufferCopy copy{ 0, 0, static_cast<VkDeviceSize>(commandCount) * sizeof(DrawCommand) };
+				vkCmdCopyBuffer(cmdList->GetCommandBuffer(), s.commandBuffer->Get(), frame.readback->Get(), 1, &copy);
+				frame.readbackCommands = commandCount;
+				frame.readbackLateOffset = s.lateOffset;
+			}
+		}
+
+		/* @brief Pushes the cull constants shared by both passes (see gpu_cull.slang) and dispatches one thread per instance. */
+		void DispatchCull(State &s, CommandList *cmdList)
+		{
+			PushConstantBuffer_Pass constants{};
+			constants.drawIndex = static_cast<uint32_t>(s.proxies.size());
+			constants.SetF4Value(s.minPixelSize, s.lodScale, s.frustumCulling ? 1.0f : 0.0f, 0.0f);
+			constants.SetF3Value(static_cast<float>(s.lateOffset), s.occlusionActive ? 1.0f : 0.0f, 0.0f);
+			cmdList->PushConstants(constants);
+			cmdList->Dispatch((constants.drawIndex + 63u) / 64u, 1, 1);
+		}
+
+		/* @brief Whether the two-phase cull can run this frame: its shaders and the Hi-Z target exist. */
+		bool CanCullOcclusion()
+		{
+			if (!ShaderManager::IsShaderAvailable(Renderer_Shader::gpu_cull_late) || !ShaderManager::IsShaderAvailable(Renderer_Shader::downsample_min) ||
+				!ShaderManager::IsShaderAvailable(Renderer_Shader::blit))
+				return false;
+
+			ImageResource *hiz = Renderer::GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_occluders_hiz);
+			const ImageResource *depth = Renderer::GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
+			return hiz && depth && hiz->Get() && *hiz->Get() != VK_NULL_HANDLE && hiz->GetMipCount() > 1 &&
+				   hiz->GetResourceState() == ResourceState::PreparedForGpu;
 		}
 	}
 
@@ -679,6 +759,26 @@ namespace SceneryEditorX
 	bool GpuScene::IsEnabled()
 	{
 		return S().enabled;
+	}
+
+	void GpuScene::SetOcclusionCulling(const bool enabled)
+	{
+		S().occlusionCulling = enabled;
+	}
+
+	bool GpuScene::IsOcclusionCullingEnabled()
+	{
+		return S().occlusionCulling;
+	}
+
+	bool GpuScene::IsOcclusionActive()
+	{
+		return S().occlusionActive;
+	}
+
+	uint32_t GpuScene::GetLateCommandOffset()
+	{
+		return S().lateOffset;
 	}
 
 	bool GpuScene::IsGpuDriven(const Renderable *renderable)
@@ -735,7 +835,9 @@ namespace SceneryEditorX
 	{
 		SEDX_PERF_SCOPE("Render: GpuScene update");
 		State &s = S();
+		const bool wasOcclusionActive = s.occlusionActive;
 		s.hasDraws = false;
+		s.occlusionActive = false;
 		s.stats.uploadedInstances = 0;
 		s.drawable = s.enabled && ShaderManager::IsShaderAvailable(Renderer_Shader::gpu_cull) &&
 					 ShaderManager::IsShaderAvailable(Renderer_Shader::depth_prepass_gpu) && ShaderManager::IsShaderAvailable(Renderer_Shader::gbuffer_gpu);
@@ -790,7 +892,7 @@ namespace SceneryEditorX
 
 		s.stats.instances = s.liveProxies;
 		s.stats.batches = static_cast<uint32_t>(std::ranges::count_if(s.batches, [](const Batch &batch) { return batch.instances > 0; }));
-		s.stats.commands = static_cast<uint32_t>(s.commandTemplates.size());
+		s.stats.commands = s.lateOffset;
 
 		// GPU buffers (growing one invalidates its contents: everything is written again)
 		const uint32_t instanceCount = static_cast<uint32_t>(s.proxies.size());
@@ -817,7 +919,13 @@ namespace SceneryEditorX
 		if (layoutBuffersRecreated)
 			s.uploadLayout = true;
 
-		if (!s.instanceBuffer || !s.batchBuffer || !s.commandBuffer || !s.templateBuffer || !s.visibleBuffer)
+		// Last frame's visibility per instance (occlusion culling). Starts as all visible: the first two-phase frame
+		// draws everything in view early, and a slot that changes hands only costs a frame of early drawing.
+		const bool occlusion = s.occlusionCulling && CanCullOcclusion();
+		bool resetVisibility = EnsureBuffer(s.visibilityBuffer, s.visibilityCapacity, std::max(instanceCount, 1u), sizeof(uint32_t), "gpu_scene_visibility", BindlessResource::GpuVisibility);
+		resetVisibility |= occlusion && !wasOcclusionActive;
+
+		if (!s.instanceBuffer || !s.batchBuffer || !s.commandBuffer || !s.templateBuffer || !s.visibleBuffer || !s.visibilityBuffer)
 			return;
 
 		// What this frame uploads, staged in the command list's own buffer
@@ -890,9 +998,12 @@ namespace SceneryEditorX
 			vkCmdCopyBuffer(cb, frame.staging->Get(), s.batchBuffer->Get(), 1, &batchCopy);
 		if (commandCopy.size > 0)
 			vkCmdCopyBuffer(cb, frame.staging->Get(), s.templateBuffer->Get(), 1, &commandCopy);
+		if (resetVisibility)
+			vkCmdFillBuffer(cb, s.visibilityBuffer->Get(), 0, VK_WHOLE_SIZE, 1u);
 		s.uploadLayout = false;
 
-		s.hasDraws = !s.commandTemplates.empty();
+		s.hasDraws = s.lateOffset > 0;
+		s.occlusionActive = s.hasDraws && occlusion;
 	}
 
 	void GpuScene::Cull(CommandList *cmdList)
@@ -919,46 +1030,49 @@ namespace SceneryEditorX
 		pso.name = "gpu_cull";
 		pso.shaders[static_cast<uint32_t>(StageType::Compute)] = ShaderManager::GetShader(Renderer_Shader::gpu_cull);
 		cmdList->SetPipelineState(pso);
-
-		PushConstantBuffer_Pass constants{};
-		constants.drawIndex = static_cast<uint32_t>(s.proxies.size());
-		constants.SetF4Value(s.minPixelSize, s.lodScale, s.frustumCulling ? 1.0f : 0.0f, 0.0f);
-		cmdList->PushConstants(constants);
-		cmdList->Dispatch((constants.drawIndex + 63u) / 64u, 1, 1);
+		DispatchCull(s, cmdList);
 
 		// the draws read the commands (indirect) and the visible lists (vertex shader); the readback copies the counts
 		BufferBarrier(cmdList, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT,
 			VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT | VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_2_TRANSFER_BIT,
 			VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT | VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_TRANSFER_READ_BIT);
 
-		// cull results for the stats, read when this command list comes around again
-		FrameSlot &frame = s.frameSlots[cmdList];
-		const uint32_t commandCount = static_cast<uint32_t>(s.commandTemplates.size());
-		if (!frame.readback || frame.readbackCapacity < commandCount)
-		{
-			if (frame.readback)
-				frame.readback->Destroy();
-			frame.readbackCapacity = commandCount + commandCount / 2 + 16;
+		// cull results for the stats, read when this command list comes around again (after the late pass when it runs)
+		if (!s.occlusionActive)
+			RecordReadBack(s, cmdList);
+	}
 
-			// host-cached: the CPU reads it back (the mappable Buffer constructor gives write-combined memory)
-			VmaAllocationCreateInfo allocInfo{};
-			allocInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_HOST;
-			allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
-			frame.readback = CreateRef<Buffer>(MemoryAllocator::GetAllocator(), static_cast<VkDeviceSize>(frame.readbackCapacity) * sizeof(DrawCommand),
-				VK_BUFFER_USAGE_TRANSFER_DST_BIT, allocInfo);
-		}
-		if (frame.readback && frame.readback->Get())
-		{
-			const VkBufferCopy copy{ 0, 0, static_cast<VkDeviceSize>(commandCount) * sizeof(DrawCommand) };
-			vkCmdCopyBuffer(cb, s.commandBuffer->Get(), frame.readback->Get(), 1, &copy);
-			frame.readbackCommands = commandCount;
-		}
+	void GpuScene::CullLate(CommandList *cmdList, ImageResource *hiz)
+	{
+		State &s = S();
+		if (!s.occlusionActive || !s.hasDraws || !cmdList || !hiz)
+			return;
+
+		SEDX_PERF_SCOPE("Render: GpuScene late cull (record)");
+		cmdList->EndRenderPass();
+
+		// the early pass read the visibility this pass rewrites (its command writes were made visible to the draws)
+		BufferBarrier(cmdList, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT,
+			VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT);
+
+		PipelineState pso;
+		pso.name = "gpu_cull_late";
+		pso.shaders[static_cast<uint32_t>(StageType::Compute)] = ShaderManager::GetShader(Renderer_Shader::gpu_cull_late);
+		cmdList->SetPipelineState(pso);
+		cmdList->SetTexture(Renderer_BindingsSrv::tex, hiz);
+		DispatchCull(s, cmdList);
+
+		// the late draws read their commands and visible lists; the readback copies every command's count
+		BufferBarrier(cmdList, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT,
+			VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT | VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+			VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT | VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_TRANSFER_READ_BIT);
+		RecordReadBack(s, cmdList);
 	}
 
 	void GpuScene::Shutdown()
 	{
 		State &s = S();
-		for (Ref<Buffer> *buffer : { &s.instanceBuffer, &s.batchBuffer, &s.commandBuffer, &s.templateBuffer, &s.visibleBuffer })
+		for (Ref<Buffer> *buffer : { &s.instanceBuffer, &s.batchBuffer, &s.commandBuffer, &s.templateBuffer, &s.visibleBuffer, &s.visibilityBuffer })
 		{
 			if (*buffer)
 			{
@@ -987,11 +1101,13 @@ namespace SceneryEditorX
 		s.commandTemplates.clear();
 		s.buckets = {};
 		s.liveProxies = 0;
+		s.lateOffset = 0;
 		s.visibleSlots = 0;
-		s.instanceCapacity = s.batchCapacity = s.commandCapacity = s.visibleCapacity = 0;
+		s.instanceCapacity = s.batchCapacity = s.commandCapacity = s.visibleCapacity = s.visibilityCapacity = 0;
 		s.syncedStructureVersion = 0;
 		s.layoutDirty = true;
 		s.hasDraws = false;
+		s.occlusionActive = false;
 		s.stats = {};
 	}
 

@@ -616,26 +616,26 @@ namespace SceneryEditorX::XPlane
 		if (!asset || asset->trees.empty())
 			return;
 
+		// Density 0..255 in the low byte; fill mode in the high byte: 0 fills the polygon, 1 lines its windings (open
+		// chains), 2 puts one tree on each point. Only an area is a closed shape: filling or closing a chain or a set of
+		// scattered trees would plant rows of trees across whatever lies between them (runways, aprons).
+		const float density = static_cast<float>(placement.parameter % 256) / 255.0f;
+		const int fillMode = placement.parameter / 256;
+		const bool area = fillMode != 1 && fillMode != 2;
+
 		std::vector<std::vector<Point2>> rings;
 		for (const std::vector<DsfPoint> &winding : placement.windings)
 		{
 			rings.emplace_back();
-			FlattenWinding(winding, true, false, rings.back(), options);
+			FlattenWinding(winding, area, false, rings.back(), options);
 		}
-		if (rings.empty() || rings[0].size() < 3)
+		if (rings.empty() || rings[0].empty() || (area && rings[0].size() < 3))
 			return;
 		if (!PolygonInArea(options, rings))
 		{
 			++out.culled;
 			return;
 		}
-
-		// Density 0..255 in the low byte; fill mode in the high byte (0 area, 1 perimeter line, 2 points)
-		const float density = static_cast<float>(placement.parameter % 256) / 255.0f;
-		const int fillMode = placement.parameter / 256;
-		const Bounds2 bounds = GetBounds(rings[0]);
-		if (!bounds.valid)
-			return;
 
 		// Weighted tree choice
 		float totalPercent = 0.0f;
@@ -717,21 +717,40 @@ namespace SceneryEditorX::XPlane
 			++trees;
 		};
 
-		if (fillMode == 1)
+		if (fillMode == 2)
 		{
-			// Trees along the outline
+			// Single trees, one on each point
+			for (const std::vector<Point2> &ring : rings)
+			{
+				for (const Point2 &point : ring)
+				{
+					if (trees >= options.forestTreeLimit)
+						break;
+					addTree(point);
+				}
+			}
+		}
+		else if (fillMode == 1)
+		{
+			// Rows of trees along each chain
 			std::vector<Point2> points;
 			std::vector<double> headings;
-			ResamplePath(rings[0], true, spacingX * std::max(0.2f, 1.0f - density * 0.8f), 0.0, points, headings);
-			for (const Point2 &point : points)
+			for (const std::vector<Point2> &ring : rings)
 			{
-				if (trees >= options.forestTreeLimit)
-					break;
-				addTree(point);
+				ResamplePath(ring, false, spacingX * std::max(0.2f, 1.0f - density * 0.8f), 0.0, points, headings);
+				for (const Point2 &point : points)
+				{
+					if (trees >= options.forestTreeLimit)
+						break;
+					addTree(point);
+				}
 			}
 		}
 		else
 		{
+			const Bounds2 bounds = GetBounds(rings[0]);
+			if (!bounds.valid)
+				return;
 			for (double gz = bounds.minZ; gz <= bounds.maxZ && trees < options.forestTreeLimit; gz += spacingY)
 			{
 				for (double gx = bounds.minX; gx <= bounds.maxX && trees < options.forestTreeLimit; gx += spacingX)

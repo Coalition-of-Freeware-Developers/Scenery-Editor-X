@@ -853,6 +853,82 @@ TEST_CASE("UV mapped draped polygons keep each point's UV whatever the triangula
 	}
 }
 
+TEST_CASE("Forest fill modes: line forests are open chains, point forests single trees", "[overlay]")
+{
+	TempDir temp;
+	temp.Write("forests/trees.for", FOR_TEXT);
+	const fs::path package = temp.path;
+	const AssetResolver resolver = [&](const std::string_view path) -> fs::path
+	{
+		const fs::path local = package / fs::path(std::string(path));
+		return fs::exists(local) ? local : fs::path();
+	};
+	const GeoProjection projection(45.6, -122.6);
+	OverlayBuilder builder(resolver, projection);
+
+	// An L (x east, z south): two 300 m legs. Closing it, or filling the triangle it spans, would plant trees across
+	// the middle, as on the runways of an airport ringed by tree lines and single trees.
+	const std::vector<Point2> chain = { { 0.0, 0.0 }, { 300.0, 0.0 }, { 300.0, 300.0 } };
+	std::vector<DsfPoint> winding;
+	for (const Point2 &corner : chain)
+	{
+		DsfPoint p;
+		p.planes = 2;
+		projection.ToGeo(corner, p.v[1], p.v[0]);
+		winding.push_back(p);
+	}
+	const auto distanceToChain = [&chain](const double x, const double z)
+	{
+		double nearest = 1e30;
+		for (size_t i = 0; i + 1 < chain.size(); ++i)
+		{
+			const Point2 &a = chain[i], &b = chain[i + 1];
+			const double dx = b.x - a.x, dz = b.z - a.z;
+			const double t = std::clamp(((x - a.x) * dx + (z - a.z) * dz) / (dx * dx + dz * dz), 0.0, 1.0);
+			nearest = std::min(nearest, std::hypot(x - (a.x + dx * t), z - (a.z + dz * t)));
+		}
+		return nearest;
+	};
+
+	DsfFile dsf;
+	dsf.polygonDefinitions = { "forests/trees.for" };
+	DsfPolygonPlacement line;
+	line.definition = 0;
+	line.parameter = 256 + 255;	// Line, full density
+	line.windings = { winding };
+	dsf.polygons.push_back(line);
+	DsfPolygonPlacement points;
+	points.definition = 0;
+	points.parameter = 512 + 255;	// Points
+	points.windings = { winding };
+	dsf.polygons.push_back(points);
+
+	OverlayBuild out;
+	builder.Build(dsf, OverlayBuilder::Options{}, out);
+	REQUIRE(out.meshes.size() == 2);
+
+	// Trees stand within a crown (at most 1.5 widths of a 24 m tall, 12 m wide tree) of their trunk
+	constexpr double crown = 20.0;
+
+	// The line: rows of trees along both legs, none near the diagonal (its midpoint is 106 m from the legs)
+	const OverlayMesh &lineMesh = out.meshes[0];
+	CHECK(lineMesh.kind == OverlayKind::Forest);
+	CHECK(lineMesh.vertices.size() >= 4 * 2 * 20);
+	for (const OverlayVertex &vertex : lineMesh.vertices)
+		CHECK(distanceToChain(vertex.x, vertex.z) < crown);
+
+	// The points: one tree (two quads) on each, nothing in between
+	const OverlayMesh &pointMesh = out.meshes[1];
+	CHECK(pointMesh.vertices.size() == 3 * 2 * 4);
+	for (const OverlayVertex &vertex : pointMesh.vertices)
+	{
+		double nearest = 1e30;
+		for (const Point2 &corner : chain)
+			nearest = std::min(nearest, std::hypot(vertex.x - corner.x, vertex.z - corner.z));
+		CHECK(nearest < crown);
+	}
+}
+
 TEST_CASE("Tiled pavement atlases cover SCALE meters per tile", "[overlay]")
 {
 	PolygonAsset pol;

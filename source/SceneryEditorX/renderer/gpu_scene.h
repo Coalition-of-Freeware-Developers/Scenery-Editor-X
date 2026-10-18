@@ -40,12 +40,13 @@ namespace SceneryEditorX
 {
 	class Buffer;
 	class CommandList;
+	class ImageResource;
 	class Renderable;
 
 	/**
 	 * @class GpuScene
-	 * @brief GPU-driven geometry for the deferred passes: GPU frustum / small-feature culling, mesh LOD selection
-	 * and instancing.
+	 * @brief GPU-driven geometry for the deferred passes: GPU frustum / small-feature / occlusion culling, mesh LOD
+	 * selection and instancing.
 	 *
 	 * Every Renderable the depth prepass and the g-buffer draw is an instance in a persistent GPU buffer (world
 	 * matrix and world bounds), written only when it changes. Instances that share geometry (the mesh range) and
@@ -53,6 +54,12 @@ namespace SceneryEditorX
 	 * (gpu_cull.slang) tests every instance against the view frustum and a minimum projected size, picks its LOD and
 	 * appends it to that draw's visible list. The geometry passes then issue one vkCmdDrawIndexedIndirect per
 	 * pipeline bucket (cull mode x alpha test) instead of a CPU draw call per entity.
+	 *
+	 * Occlusion culling is two-phase, so nothing pops in when the camera moves: the early pass (Cull) only lets
+	 * through the instances that were visible last frame; the depth prepass draws them and the renderer builds a
+	 * min-depth Hi-Z pyramid of that depth; the late pass (CullLate) tests every instance against it, records this
+	 * frame's visibility and lets through the visible ones the early pass held back. Both geometry passes draw both
+	 * phases' commands (the early ones, then the late ones at GetLateCommandOffset()).
 	 *
 	 * Render thread (Renderer::Tick and the passes). Entity, renderable and material changes arrive through
 	 * Scene::GetStructureVersion() and OnMaterialsChanged(). Transforms of instances that moved recently are checked
@@ -77,6 +84,9 @@ namespace SceneryEditorX
 			uint32_t batches = 0;			// Distinct geometry + material pairs in use
 			uint32_t commands = 0;			// Indirect draw commands (a batch has one per mesh LOD)
 			uint32_t visibleInstances = 0;	// Survived culling (read back from a recent frame)
+			uint32_t earlyInstances = 0;	// Of those, drawn by the early pass (all of them without occlusion culling)
+			uint32_t lateInstances = 0;		// Drawn by the late pass: visible now but not last frame
+			uint32_t occludedInstances = 0;	// In view but hidden behind what the early pass drew (read back)
 			uint32_t drawnCommands = 0;		// Commands with at least one visible instance (read back)
 			uint32_t uploadedInstances = 0;	// Instances written to the GPU this frame
 			uint32_t validatedTransforms = 0; // World matrices re-read this frame
@@ -88,14 +98,34 @@ namespace SceneryEditorX
 		static void SetEnabled(bool enabled);
 		[[nodiscard]] static bool IsEnabled();
 
+		/* @brief Two-phase Hi-Z occlusion culling (on by default). Off: every instance in view is drawn (for comparison). */
+		static void SetOcclusionCulling(bool enabled);
+		[[nodiscard]] static bool IsOcclusionCullingEnabled();
+
 		/**
 		 * @brief Brings the instances, batches and draw commands up to date and records their uploads.
 		 * Call once per frame before anything is drawn or bound in cmdList (it may reallocate bindless buffers).
 		 */
 		static void Update(CommandList *cmdList);
 
-		/* @brief Records the per-frame command reset and the cull dispatch. Call after Update(), outside a render pass. */
+		/**
+		 * @brief Records the per-frame command reset and the early cull dispatch. Call after Update(), outside a render
+		 * pass. With occlusion culling active, the instances that weren't visible last frame wait for CullLate().
+		 */
 		static void Cull(CommandList *cmdList);
+
+		/**
+		 * @brief Late cull: tests every instance against hiz and lets the newly visible ones through to the late commands.
+		 * Must run once per frame when IsOcclusionActive(), after the early commands were drawn into the depth.
+		 * @param hiz Reverse-Z min-depth pyramid of the depth drawn so far, every mip in ShaderRead layout.
+		 */
+		static void CullLate(CommandList *cmdList, ImageResource *hiz);
+
+		/* @brief This frame culls in two phases: the depth prepass builds the Hi-Z, calls CullLate() and draws the late commands. */
+		[[nodiscard]] static bool IsOcclusionActive();
+
+		/* @brief The late commands follow the early ones: a bucket's late commands start at its firstCommand plus this. */
+		[[nodiscard]] static uint32_t GetLateCommandOffset();
 
 		/* @brief True when this frame has GPU-scene draws (Update() ran and there are instances). */
 		[[nodiscard]] static bool HasDraws();

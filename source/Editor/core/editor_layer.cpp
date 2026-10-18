@@ -681,6 +681,10 @@ namespace SceneryEditorX
 				Perf::SetEnabled(true); // frame timings in the log every two seconds
 			else if (args[i] == "--no-gpu-scene")
 				GpuScene::SetEnabled(false); // one CPU draw call per renderable (comparison / debugging)
+			else if (args[i] == "--no-gpu-occlusion")
+				GpuScene::SetOcclusionCulling(false); // GPU scene without Hi-Z occlusion culling (comparison)
+			else if (args[i] == "--lock-camera")
+				Camera::SetInputLocked(true); // the startup view stays put (captures, A/B measurements)
 			else if (i + 1 >= args.size())
 				break;
 			else if (args[i] == "--xp-object")

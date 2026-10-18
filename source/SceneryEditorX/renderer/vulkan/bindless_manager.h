@@ -75,6 +75,7 @@ namespace SceneryEditorX
 		GpuBatches,			// GPU scene: per-batch draw ranges and material
 		GpuCommands,		// GPU scene: instanced indirect draw commands (written by the cull pass)
 		GpuVisibleInstances,// GPU scene: visible instance indices per draw (written by the cull pass)
+		GpuVisibility,		// GPU scene: per-instance visibility from the last frame (two-phase occlusion culling)
 		MaxEnum
 	};
 

@@ -176,6 +176,15 @@ namespace SceneryEditorX::XPlane
 		/* @brief Moves the camera to see one element. */
 		static void FrameEntity(uint64_t entityId);
 
+		/**
+		 * @brief Puts the camera at an offset from the airport's center (on the ground plane) looking along a heading,
+		 * for repeatable views such as a ground-level one (--xp-airport-camera).
+		 * @param x, y, z Meters from the center (+X east, +Y up, +Z south).
+		 * @param yawDegrees Heading of the view, the convention Frame() uses (0 looks along +Z).
+		 * @param pitchDegrees Above (> 0) or below the horizon.
+		 */
+		static void LookFrom(float x, float y, float z, float yawDegrees, float pitchDegrees);
+
 		/* @brief The projection the loaded airport was built with (datum at the origin). */
 		static const GeoProjection &GetProjection();
 

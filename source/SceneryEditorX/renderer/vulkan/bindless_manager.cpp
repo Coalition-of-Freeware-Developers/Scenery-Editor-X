@@ -62,6 +62,7 @@ namespace SceneryEditorX
 		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 0, 25, 1,                  "gpu_batches"         }, // GpuBatches (space12, t25)
 		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 0, 26, 1,                  "gpu_commands"        }, // GpuCommands (space13, u26)
 		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 0, 27, 1,                  "gpu_visible_instances" }, // GpuVisibleInstances (space14, t27/u27)
+		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 0, 28, 1,                  "gpu_visibility"      }, // GpuVisibility (space15, u28)
 	};
 
 	/**

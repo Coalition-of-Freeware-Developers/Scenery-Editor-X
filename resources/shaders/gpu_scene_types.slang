@@ -62,6 +62,11 @@ public struct GpuBatch
     public uint flags;
 };
 
+// Two-phase occlusion culling (gpu_cull.slang): the late pass's draw commands follow the early pass's (late command =
+// early command + late offset, its visible list in the second half of the visible-instance buffer), then one record
+// whose instance_count counts the instances the late pass found occluded (never drawn).
+public uint gpu_occluded_counter_command(uint late_offset) { return 2u * late_offset; }
+
 public static const uint GPU_MAX_LODS = 4;
 
 // Screen-height fraction an object's bounding sphere must cover to use each mesh LOD (Renderable::UpdateLodIndices)

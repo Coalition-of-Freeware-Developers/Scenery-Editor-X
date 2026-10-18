@@ -636,6 +636,13 @@ namespace SceneryEditorX
 		static void Pass_IndirectCull(CommandList *cmdList);
 
 		/**
+		 * @brief GPU-scene occlusion culling between the depth prepass's two phases: builds a min-depth hi-z pyramid of the
+		 * depth drawn so far and runs GpuScene::CullLate() against it.
+		 * @param cmdList Command list to record the pass into.
+		 */
+		static void Pass_GpuScene_Occlusion(CommandList *cmdList);
+
+		/**
 		 * @brief Perform the depth pre-pass for the current frame.
 		 * @param cmdList Command list to record the pass into.
 		 */

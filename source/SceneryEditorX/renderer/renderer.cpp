@@ -1048,6 +1048,8 @@ void dynamic_resolution()
 					Perf::SetCounter("gpu instances", stats.instances);
 					Perf::SetCounter("gpu enabled", stats.enabledInstances);
 					Perf::SetCounter("gpu visible", stats.visibleInstances);
+					Perf::SetCounter("gpu visible late", stats.lateInstances);
+					Perf::SetCounter("gpu occluded", stats.occludedInstances);
 					Perf::SetCounter("gpu batches", stats.batches);
 					Perf::SetCounter("gpu commands drawn", stats.drawnCommands);
 					Perf::SetCounter("gpu uploads", stats.uploadedInstances);

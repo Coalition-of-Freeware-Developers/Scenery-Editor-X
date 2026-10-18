@@ -1454,8 +1454,14 @@ namespace SceneryEditorX::XPlane
 			loaded.textures.clear();
 		}
 
-		/* @brief Three-quarter view from the south-east that fits a sphere; the sphere's center becomes the orbit pivot. */
-		void FrameSphere(const Vec3 &center, const float radius, const float pitchDegrees)
+		/* @brief View direction for a yaw and pitch in radians (yaw 0 looks along +Z). */
+		Vec3 ViewForward(const float yaw, const float pitch)
+		{
+			return Vec3(std::cos(pitch) * std::sin(yaw), std::sin(pitch), std::cos(pitch) * std::cos(yaw));
+		}
+
+		/* @brief Points the primary camera from eye towards target (yaw / pitch in radians: the same direction). */
+		void PlaceCamera(const Vec3 &eye, const Vec3 &target, const float yaw, const float pitch)
 		{
 			entt::registry *registry = GetRegistry();
 			if (!registry)
@@ -1466,15 +1472,9 @@ namespace SceneryEditorX::XPlane
 				if (!view.get<CameraComponent>(handle).isPrimary)
 					continue;
 
-				const float yaw = -35.0f * kDegToRad;
-				const float pitch = pitchDegrees * kDegToRad;
-				const Vec3 forward(std::cos(pitch) * std::sin(yaw), std::sin(pitch), std::cos(pitch) * std::cos(yaw));
-				const float distance = std::max(radius, 5.0f) / std::sin(30.0f * kDegToRad) * 1.1f;
-				const Vec3 eye = center - forward * distance;
-
 				TransformComponent &transform = view.get<TransformComponent>(handle);
 				if (Camera *camera = Scene::GetCamera())
-					camera->LookAt(transform, eye, center);
+					camera->LookAt(transform, eye, target);
 				else
 				{
 					transform.translation = eye;
@@ -1482,6 +1482,16 @@ namespace SceneryEditorX::XPlane
 				}
 				break;
 			}
+		}
+
+		/* @brief Three-quarter view from the south-east that fits a sphere; the sphere's center becomes the orbit pivot. */
+		void FrameSphere(const Vec3 &center, const float radius, const float pitchDegrees)
+		{
+			const float yaw = -35.0f * kDegToRad;
+			const float pitch = pitchDegrees * kDegToRad;
+			const Vec3 forward = ViewForward(yaw, pitch);
+			const float distance = std::max(radius, 5.0f) / std::sin(30.0f * kDegToRad) * 1.1f;
+			PlaceCamera(center - forward * distance, center, yaw, pitch);
 		}
 
 		Vec3 RootOffset(const Loaded &loaded)
@@ -1789,6 +1799,17 @@ namespace SceneryEditorX::XPlane
 		const Point2 center = component->bounds.GetCenter();
 		const Vec3 offset = RootOffset(*s_Loaded);
 		FrameSphere(Vec3(static_cast<float>(center.x), 0.0f, static_cast<float>(center.z)) + offset, std::max(3.0f, static_cast<float>(component->bounds.GetRadius())), -35.0f);
+	}
+
+	void SceneAirports::LookFrom(const float x, const float y, const float z, const float yawDegrees, const float pitchDegrees)
+	{
+		if (!IsLoaded() || !s_Loaded->bounds.valid)
+			return;
+		const Point2 center = s_Loaded->bounds.GetCenter();
+		const Vec3 eye = Vec3(static_cast<float>(center.x), 0.0f, static_cast<float>(center.z)) + RootOffset(*s_Loaded) + Vec3(x, y, z);
+		const float yaw = yawDegrees * kDegToRad;
+		const float pitch = pitchDegrees * kDegToRad;
+		PlaceCamera(eye, eye + ViewForward(yaw, pitch) * 100.0f, yaw, pitch);
 	}
 
 	const GeoProjection &SceneAirports::GetProjection()

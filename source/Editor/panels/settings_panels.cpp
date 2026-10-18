@@ -271,9 +271,23 @@ namespace SceneryEditorX
 				if (changed)
 					GpuScene::SetCullingOptions(minPixels, lodScale, frustum);
 
+				EditorUI::PropertyLabel("Occlusion culling");
+				bool occlusion = GpuScene::IsOcclusionCullingEnabled();
+				if (ImGui::Checkbox("##GpuSceneOcclusion", &occlusion))
+					GpuScene::SetOcclusionCulling(occlusion);
+				EditorUI::ItemTooltip("Skips objects hidden behind nearer ones (two-phase Hi-Z test against this frame's depth)");
+
 				const GpuScene::Stats &stats = GpuScene::GetStats();
 				ValueText("Instances", "%u (%u active)", stats.instances, stats.enabledInstances);
-				ValueText("Visible", "%u", stats.visibleInstances);
+				if (GpuScene::IsOcclusionActive())
+				{
+					ValueText("Visible", "%u (%u newly visible)", stats.visibleInstances, stats.lateInstances);
+					ValueText("Occluded", "%u", stats.occludedInstances);
+				}
+				else
+				{
+					ValueText("Visible", "%u", stats.visibleInstances);
+				}
 				ValueText("Batches", "%u", stats.batches);
 				ValueText("Draw commands", "%u of %u drawing", stats.drawnCommands, stats.commands);
 				ValueText("Uploads", "%u instances, %u transforms checked", stats.uploadedInstances, stats.validatedTransforms);

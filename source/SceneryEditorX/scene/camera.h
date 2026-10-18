@@ -400,6 +400,12 @@ namespace SceneryEditorX
 		static bool IsInputEnabled();
 
 		/**
+		 * @brief Locked: mouse and keyboard never move the camera, whatever SetInputEnabled() says (--lock-camera, for
+		 * repeatable captures and measurements while other windows get the input).
+		 */
+		static void SetInputLocked(bool locked);
+
+		/**
 		 * @brief Places the camera at eye looking at target and makes target the orbit pivot, so orbiting, dollying and
 		 * panning carry on from there. Writes the camera entity's transform too (the scene reads input from it).
 		 */

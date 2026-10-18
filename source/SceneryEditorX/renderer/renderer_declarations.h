@@ -209,8 +209,10 @@ namespace SceneryEditorX
 		light_billboard,
 		// GPU scene (GpuScene): culling + LOD compute, instanced indirect geometry passes
 		gpu_cull,
+		gpu_cull_late,			// two-phase occlusion culling: the instances not drawn early, against the Hi-Z
 		depth_prepass_gpu,
 		gbuffer_gpu,
+		downsample_min,			// one level of a min mip chain (Hi-Z), until the FidelityFX SPD shaders are ported
 		MaxEnum
 	};
 
@@ -277,8 +279,10 @@ namespace SceneryEditorX
 		case Renderer_Shader::forward_transparent: return "forward_transparent";
 		case Renderer_Shader::light_billboard: return "light_billboard";
 		case Renderer_Shader::gpu_cull: return "gpu_cull";
+		case Renderer_Shader::gpu_cull_late: return "gpu_cull_late";
 		case Renderer_Shader::depth_prepass_gpu: return "depth_prepass_gpu";
 		case Renderer_Shader::gbuffer_gpu: return "gbuffer_gpu";
+		case Renderer_Shader::downsample_min: return "downsample_min";
 		case Renderer_Shader::MaxEnum: return "MaxEnum";
 		default: return "unknown";
 		}

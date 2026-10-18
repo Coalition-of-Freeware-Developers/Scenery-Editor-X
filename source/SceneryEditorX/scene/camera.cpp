@@ -47,6 +47,7 @@ namespace SceneryEditorX
 {
 	// Written by the UI on the main thread, read by Camera::Tick() on the render thread.
 	static std::atomic<bool> s_InputEnabled = true;
+	static std::atomic<bool> s_InputLocked = false;	// --lock-camera: SetInputEnabled() can't turn input on
 
 	Camera::Camera() { m_CameraFlag.SetDirty(); }
 
@@ -69,7 +70,13 @@ namespace SceneryEditorX
 		return data;
 	}
 
-	void Camera::SetInputEnabled(const bool enabled) { s_InputEnabled.store(enabled, std::memory_order_relaxed); }
+	void Camera::SetInputEnabled(const bool enabled) { s_InputEnabled.store(enabled && !s_InputLocked.load(std::memory_order_relaxed), std::memory_order_relaxed); }
+	void Camera::SetInputLocked(const bool locked)
+	{
+		s_InputLocked.store(locked, std::memory_order_relaxed);
+		if (locked)
+			s_InputEnabled.store(false, std::memory_order_relaxed);
+	}
 	bool Camera::IsInputEnabled() { return s_InputEnabled.load(std::memory_order_relaxed); }
 
 	void Camera::Init()
