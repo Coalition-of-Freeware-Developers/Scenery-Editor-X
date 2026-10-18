@@ -866,6 +866,12 @@ namespace SceneryEditorX
 		 */
 		static void AddLinesToBeRendered();
 
+	public:
+		/* @brief Light gizmos and renderable bounding boxes as debug lines (off: costly for big scenes). */
+		static void SetDebugGizmos(bool enabled);
+
+	private:
+
 		// line and icon rendering
 		static Ref<Buffer> m_Lines_VertexBuffer;
 		static std::vector<Vertex_PosCol> m_Lines_Vertices;

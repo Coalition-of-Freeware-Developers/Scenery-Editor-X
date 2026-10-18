@@ -33,8 +33,14 @@
 #include <filesystem>
 #include <string>
 #include <vector>
+#include <entt/entity/fwd.hpp>
 
 // -------------------------------------------------------
+
+namespace SceneryEditorX
+{
+	class Entity;
+}
 
 namespace SceneryEditorX::XPlane
 {
@@ -69,6 +75,27 @@ namespace SceneryEditorX::XPlane
 		std::vector<uint64_t> batchEntities;	// UUID per ObjectAsset batch
 		std::vector<uint64_t> spillEntities;	// UUID per spill light (Light component)
 		std::vector<SpillSource> spillSources;	// Parallel to spillEntities
+
+		// The scene-owned entities behind the UUIDs above, resolved again only after an entity was destroyed
+		// (Scene::GetDestroyVersion): looking them up by UUID every frame was most of Tick()'s cost. Null when gone.
+		Entity *rootStored = nullptr;
+		std::vector<entt::entity> nodeHandles;	// Parallel to nodeEntities
+		std::vector<Entity *> nodeStored;		// Parallel to nodeEntities
+		std::vector<Entity *> batchStored;		// Parallel to batchEntities
+		std::vector<Entity *> spillStored;		// Parallel to spillEntities
+		uint64_t resolvedDestroyVersion = 0;
+		bool spillsDark = false;				// Lights are off and every spill entity is switched off
+
+		// What makes the placement's batch states change, worked out when its tree is built. A placement with
+		// neither is evaluated once per change of visible / lodOverride and otherwise skipped by Tick().
+		bool dynamicState = true;				// Animation groups or hide / show rules: evaluated every frame
+		bool usesDistance = true;				// LODs (batches or lights): re-evaluated when the camera moves
+		uint64_t evaluatedStamp = 0;			// SceneObjects' camera stamp it was last evaluated at
+		bool evaluatedVisible = false;			// visible / lodOverride it was last evaluated with
+		int evaluatedLodOverride = 0;
+
+
+		bool logPlacement = true;				// Log placing and building it (off for the thousands an airport places)
 
 		bool visible = true;
 		bool animate = true;					// Off: groups hold their last pose

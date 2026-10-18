@@ -35,6 +35,7 @@
 #include <Editor/core/editor_xplane.h>
 #include <SceneryEditorX/renderer/font/font_awesome.h>
 #include <SceneryEditorX/renderer/ui/source/imgui/misc/cpp/imgui_stdlib.h>
+#include <SceneryEditorX/renderer/gpu_scene.h>
 #include <SceneryEditorX/scene/components/renderable.h>
 #include <SceneryEditorX/xplane/xp_scene.h>
 #include <Editor/core/editor_airports.h>
@@ -798,16 +799,24 @@ namespace SceneryEditorX
 					if (EditorUI::SectionHeader("TRANSFORM") && EditorUI::BeginPropertyGrid("##Transform"))
 					{
 						EditorUI::PropertyLabel("Position");
-						DragVec3("##Position", transform->translation, 0.05f);
+						bool moved = DragVec3("##Position", transform->translation, 0.05f);
 
 						// Stored in radians, edited in degrees.
 						EditorUI::PropertyLabel("Rotation");
 						Vec3 degrees = transform->GetRotationEuler() * xMath::RAD_TO_DEG;
 						if (DragVec3("##Rotation", degrees, 0.5f, "%.1f"))
+						{
 							transform->SetRotationEuler(degrees * xMath::DEG_TO_RAD);
+							moved = true;
+						}
 
 						EditorUI::PropertyLabel("Scale");
-						DragVec3("##Scale", transform->scale, 0.01f);
+						moved |= DragVec3("##Scale", transform->scale, 0.01f);
+
+						// the GPU scene re-reads the subtree's world matrices this frame instead of within its round robin
+						if (moved)
+							GpuScene::MarkTransformDirty(handle);
+
 
 						EditorUI::EndPropertyGrid();
 					}

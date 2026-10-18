@@ -32,13 +32,23 @@ import common;
 import resources;
 import position;
 import vertex_processing;
+#ifdef GPU_SCENE
+import gpu_scene;
+#endif
 
-#ifdef INDIRECT_DRAW
+#if defined(GPU_SCENE)
+// instanced indirect draws of the GPU scene (gpu_cull.slang picked the instances), vertices pulled from the global buffer
 [shader("vertex")]
-gbuffer_vertex main_vs(uint vertex_id : SV_VertexID, uint instance_id : SV_InstanceID, [[vk::builtin("DrawIndex")]] uint draw_id : DRAW_INDEX, uint view_id : SV_ViewID)
+gbuffer_vertex main_vs(uint vertex_id : SV_VertexID, uint base_vertex : SV_StartVertexLocation, uint draw_instance : SV_InstanceID, uint base_instance : SV_StartInstanceLocation)
+{
+    const uint instance_id = gpu_scene_load_draw(draw_instance, base_instance);
+    Vertex_PosUvNorTan input = pull_vertex(vertex_id + base_vertex);
+#elif defined(INDIRECT_DRAW)
+[shader("vertex")]
+gbuffer_vertex main_vs(uint vertex_id : SV_VertexID, uint base_vertex : SV_StartVertexLocation, uint instance_id : SV_InstanceID, [[vk::builtin("DrawIndex")]] uint draw_id : DRAW_INDEX, uint view_id : SV_ViewID)
 {
     _draw = indirect_draw_data_out[draw_id];
-    Vertex_PosUvNorTan input = pull_vertex(vertex_id);
+    Vertex_PosUvNorTan input = pull_vertex(vertex_id + base_vertex);
 #else
 [shader("vertex")]
 gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID, uint view_id : SV_ViewID)
@@ -60,7 +70,7 @@ void main_frag(gbuffer_vertex vertex)
 
     // distance based alpha threshold, unless the material sets its own cutoff (texels below it are drawn by
     // the forward transparent pass, which must split the surface at the same alpha at every distance)
-    const bool has_albedo       = pass_get_f3_value().y == 1.0f;
+    const bool has_albedo       = GetMaterial().has_texture_albedo(); // also right for GPU-scene draws (no per-draw constants)
     const float2 screen_uv      = vertex.position.xy / (get_resolution_render() * get_resolution_scale());
     const float3 position_world = get_position(vertex.position.z, screen_uv);
     const float material_cutoff = GetMaterial().alpha_cutoff;

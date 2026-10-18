@@ -81,6 +81,9 @@ namespace SceneryEditorX
 		 */
 		virtual xMath::Matrix GetMatrix() const; // world transform (registry TransformComponent + parent chain), row-vector
 
+		/* @brief The local transform of a TransformComponent as a row-vector matrix (what GetMatrix() composes). */
+		static xMath::Matrix ComposeLocalMatrix(const TransformComponent &transform);
+
 		/**
 		 * @brief 
 		 */
@@ -421,6 +424,7 @@ namespace SceneryEditorX
 			auto& relationship = GetComponent<RelationshipComponent>();
 			relationship.pParentHandle = parent.GetUUID();
 			parent.GetComponent<RelationshipComponent>().pChildren.push_back(GetUUID());
+			Scene::MarkStructureChanged();
 		}
 
 	// -------------------------------------------------------
@@ -459,6 +463,7 @@ namespace SceneryEditorX
 			m_components[static_cast<uint32_t>(type)] = component;
 			component->SetType(type);
 			component->Init();
+			Scene::MarkStructureChanged(); // cached renderable / light lists
 			return component.Get();
 		}
 
@@ -495,6 +500,7 @@ namespace SceneryEditorX
 		{
 			const ComponentType type = Component::TypeToEnum<T>();
 			m_components[static_cast<uint32_t>(type)] = nullptr;
+			Scene::MarkStructureChanged();
 		}
 
 		template<typename T>
@@ -736,7 +742,11 @@ namespace SceneryEditorX
 		 * @brief 
 		 * @param parent 
 		 */
-		void SetParentUUID(UUID parent) { GetComponent<RelationshipComponent>().pParentHandle = std::move(parent); }
+		void SetParentUUID(UUID parent)
+		{
+			GetComponent<RelationshipComponent>().pParentHandle = std::move(parent);
+			Scene::MarkStructureChanged();
+		}
 
 		/**
 		 * @brief 

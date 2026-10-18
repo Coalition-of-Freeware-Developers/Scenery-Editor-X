@@ -41,6 +41,10 @@ import transforms;
 import structs;
 import color;
 import terrain;
+#ifdef GPU_SCENE
+import gpu_scene;
+#endif
+
 
 struct gbuffer
 {
@@ -136,12 +140,19 @@ float3 compute_flower_color(float height_percent, uint instance_id)
     return lerp(flower_base, tip, smoothstep(0.2f, 1.0f, height_percent));
 }
 
+#if defined(GPU_SCENE)
+// instanced indirect draws of the GPU scene (gpu_cull.slang picked the instances), vertices pulled from the global buffer
 [shader("vertex")]
-#ifdef INDIRECT_DRAW
-gbuffer_vertex main_vs(uint vertex_id: SV_VertexID, uint instance_id: SV_InstanceID, [[vk::builtin("DrawIndex")]] uint draw_id: DRAW_INDEX)
+gbuffer_vertex main_vs(uint vertex_id: SV_VertexID, uint base_vertex: SV_StartVertexLocation, uint draw_instance: SV_InstanceID, uint base_instance: SV_StartInstanceLocation)
+{
+    const uint instance_id = gpu_scene_load_draw(draw_instance, base_instance);
+    Vertex_PosUvNorTan input = pull_vertex(vertex_id + base_vertex);
+#elif defined(INDIRECT_DRAW)
+[shader("vertex")]
+gbuffer_vertex main_vs(uint vertex_id: SV_VertexID, uint base_vertex: SV_StartVertexLocation, uint instance_id: SV_InstanceID, [[vk::builtin("DrawIndex")]] uint draw_id: DRAW_INDEX)
 {
     _draw = indirect_draw_data_out[draw_id];
-    Vertex_PosUvNorTan input = pull_vertex(vertex_id);
+    Vertex_PosUvNorTan input = pull_vertex(vertex_id + base_vertex);
 #else
 [shader("vertex")]
 gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id: SV_InstanceID)

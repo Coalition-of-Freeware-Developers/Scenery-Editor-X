@@ -44,6 +44,7 @@ namespace SceneryEditorX
 {
 	class Entity;
 	class Light;
+	class MaterialAsset;
 	class Camera;
 
 	/**
@@ -83,7 +84,29 @@ namespace SceneryEditorX
 		/* @brief The ECS registry holding this scene's components (IDComponent, TagComponent, TransformComponent, ...). */
 		entt::registry &GetRegistry() { return m_Registry; }
 		static Light *GetDirectionalLight() { return nullptr; }
-		static std::vector<Entity*> GetEntities();
+
+		/* @brief Every scene-owned entity, in creation order. Don't create or destroy entities while iterating it. */
+		static const std::vector<Entity*> &GetEntities();
+
+		/**
+		 * @brief The stored entities that carry a Renderable / a Light. Cached: rebuilt when the structure version
+		 * (GetStructureVersion) has moved, so per-frame passes don't walk every entity.
+		 */
+		static const std::vector<Entity*> &GetRenderableEntities();
+		static const std::vector<Entity*> &GetLightEntities();
+
+		/* @brief The distinct materials of GetRenderableEntities() (cached the same way). */
+		static const std::vector<MaterialAsset*> &GetRenderableMaterials();
+
+		/**
+		 * @brief Bumped when entities are created or destroyed, runtime components are added or removed, or a
+		 * renderable's mesh / material changes. Caches of entity pointers rebuild when it moves.
+		 */
+		static uint64_t GetStructureVersion();
+		static void MarkStructureChanged();
+
+		/* @brief Bumped only when an entity is destroyed: caches of Entity pointers revalidate when it moves. */
+		static uint64_t GetDestroyVersion();
 
 		/**
 		 * @brief Saves the current scene to a file.
@@ -135,12 +158,20 @@ namespace SceneryEditorX
 		static Entity TryGetEntityWithUUID(const UUID &uuid);
 
 		/**
+		 * @brief Like TryGetEntityWithUUID() without building an Entity handle object (each one costs heap
+		 * allocations): for per-frame lookups.
+		 * @return The registry handle, or entt::null when no live entity has the UUID.
+		 */
+		static entt::entity TryGetEntityHandle(const UUID &uuid);
+
+		/**
 		 * @brief The scene-owned Entity object behind a handle: the one runtime components (Renderable, ...) and the
 		 * active flag live on, and the one the renderer walks.
 		 * @param entity A handle returned by CreateEntity() / TryGetEntityWithUUID().
 		 * @return The stored entity, or nullptr when the handle isn't part of the active scene.
 		 */
 		static Entity *GetStoredEntity(const Entity &entity);
+		static Entity *GetStoredEntity(entt::entity handle);
 
 		/**
 		 * @brief Retrieves all entities with the specified components.

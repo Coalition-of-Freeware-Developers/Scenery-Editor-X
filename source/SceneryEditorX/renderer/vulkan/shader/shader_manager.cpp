@@ -74,6 +74,10 @@ namespace SceneryEditorX
 				{ Renderer_Shader::gbuffer,                "gbuffer",                "gbuffer.slang",       {VS, FS}, {}, VertexType::PositionUvNormalTangent, true },
 				{ Renderer_Shader::gbuffer_indirect,       "gbuffer_indirect",       "gbuffer.slang",       {VS, FS}, {{"INDIRECT_DRAW"}} },
 				{ Renderer_Shader::indirect_cull,          "indirect_cull",          "indirect_cull.slang", {CS} },
+				// GPU scene: culling / LOD compute and the instanced indirect variants (vertices pulled, no vertex input)
+				{ Renderer_Shader::gpu_cull,               "gpu_cull",               "gpu_cull.slang",      {CS},     {},                 VertexType::MaxEnum, true },
+				{ Renderer_Shader::depth_prepass_gpu,      "depth_prepass_gpu",      "depth_prepass.slang", {VS, FS}, {{"GPU_SCENE"}},    VertexType::MaxEnum, true },
+				{ Renderer_Shader::gbuffer_gpu,            "gbuffer_gpu",            "gbuffer.slang",       {VS, FS}, {{"GPU_SCENE"}},    VertexType::MaxEnum, true },
 
 				// editor overlays
 				{ Renderer_Shader::grid,    "grid",    "grid.slang",    {VS, FS},     {}, VertexType::PositionUvNormalTangent, true },

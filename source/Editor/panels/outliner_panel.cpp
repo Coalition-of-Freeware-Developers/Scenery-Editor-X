@@ -29,9 +29,11 @@
  * -------------------------------------------------------
  */
 #include "outliner_panel.h"
+#include <algorithm>
 #include <Editor/core/editor_scene.h>
 #include <Editor/core/editor_ui.h>
 #include <SceneryEditorX/renderer/font/font_awesome.h>
+#include <SceneryEditorX/renderer/ui/source/imgui/imgui_internal.h>
 #include <SceneryEditorX/scene/components/renderable.h>
 #include <SceneryEditorX/xplane/xp_airport_scene.h>
 #include <SceneryEditorX/xplane/xp_scene.h>
@@ -80,6 +82,52 @@ namespace SceneryEditorX
 		m_Title = "OUTLINER";
 	}
 
+	void OutlinerPanel::RefreshLists()
+	{
+		const uint64_t version = Scene::GetStructureVersion();
+		const bool structureChanged = version != m_ListVersion;
+		if (structureChanged)
+		{
+			m_Roots.clear();
+			for (Entity *entity : Scene::GetEntities())
+			{
+				if (!entity || !*entity)
+					continue;
+
+				// Roots only; children are drawn under their parent.
+				const entt::entity handle = static_cast<entt::entity>(*entity);
+				const RelationshipComponent *relationship = EditorScene::TryGet<RelationshipComponent>(handle);
+				if (relationship && EditorScene::FindHandle(static_cast<uint64_t>(relationship->pParentHandle)) != entt::null)
+					continue;
+				m_Roots.push_back(handle);
+			}
+			m_ListVersion = version;
+		}
+
+		if (!m_Filter.IsActive())
+		{
+			m_Matches.clear();
+			m_MatchFilter.clear();
+			return;
+		}
+
+		if (!structureChanged && m_MatchFilter == m_Filter.InputBuf)
+			return;
+
+		// Searching flattens the tree so matches nested inside objects show up.
+		m_Matches.clear();
+		for (Entity *entity : Scene::GetEntities())
+		{
+			if (!entity || !*entity)
+				continue;
+
+			const entt::entity handle = static_cast<entt::entity>(*entity);
+			if (m_Filter.PassFilter(EditorScene::GetName(handle)))
+				m_Matches.push_back(handle);
+		}
+		m_MatchFilter = m_Filter.InputBuf;
+	}
+
 	void OutlinerPanel::OnUIRender(bool &isOpen)
 	{
 		if (EditorUI::BeginPanel("OUTLINER###Outliner", &isOpen))
@@ -106,12 +154,56 @@ namespace SceneryEditorX
 			uint64_t pendingDelete = 0;
 			if (ImGui::BeginChild("##OutlinerList"))
 			{
-				Scene *scene = Scene::GetActive();
+				RefreshLists();
 
-				// One row: a tree node when the entity has children (X-Plane objects, groups), a leaf otherwise.
+				// Rows: a tree node when the entity has children (X-Plane objects, groups), a leaf otherwise. Rows outside
+				// the view are not submitted (a group can hold thousands of objects): a run of them becomes one Dummy of
+				// their height. Open trees are always drawn so the rows below them stay in place.
+				const auto draw_rows = [&](const auto &drawEntity, const size_t count, const auto &handleAt, const bool asTree)
+				{
+					const float itemSpacing = ImGui::GetStyle().ItemSpacing.y;
+					float rowAdvance = 0.0f; // height of one closed row, measured from the first one drawn
+					uint32_t skipped = 0;
+					const auto flush = [&]()
+					{
+						if (skipped == 0)
+							return;
+						ImGui::Dummy(ImVec2(0.0f, std::max(0.0f, static_cast<float>(skipped) * rowAdvance - itemSpacing)));
+						skipped = 0;
+					};
+
+					for (size_t i = 0; i < count; ++i)
+					{
+						const entt::entity handle = handleAt(i);
+						if (handle == entt::null)
+							continue;
+
+						const uint64_t id = EditorScene::GetID(handle);
+						const bool open = asTree && ImGui::TreeNodeGetOpen(ImGui::GetID(reinterpret_cast<void *>(static_cast<uintptr_t>(id))));
+						if (rowAdvance > 0.0f && !open)
+						{
+							const ImVec2 cursor = ImGui::GetCursorScreenPos();
+							const float top = cursor.y + static_cast<float>(skipped) * rowAdvance;
+							if (!ImGui::IsRectVisible(ImVec2(cursor.x, top), ImVec2(cursor.x + 1.0f, top + rowAdvance)))
+							{
+								++skipped;
+								continue;
+							}
+						}
+
+						flush();
+						const float before = ImGui::GetCursorPosY();
+						drawEntity(drawEntity, handle, asTree);
+						if (!open)
+							rowAdvance = ImGui::GetCursorPosY() - before;
+					}
+					flush();
+				};
+
+				// One row and, when it is open, its children.
 				const auto draw_entity = [&](const auto &self, const entt::entity handle, const bool asTree) -> void
 				{
-					Entity *entity = scene ? Scene::GetStoredEntity(Entity(handle, scene)) : nullptr;
+					Entity *entity = Scene::GetStoredEntity(handle);
 					const uint64_t id = EditorScene::GetID(handle);
 					if (!entity || id == 0)
 						return;
@@ -153,38 +245,15 @@ namespace SceneryEditorX
 
 					if (open && !children.empty())
 					{
-						for (const UUID &child : children)
-						{
-							const entt::entity childHandle = EditorScene::FindHandle(static_cast<uint64_t>(child));
-							if (childHandle != entt::null)
-								self(self, childHandle, true);
-						}
+						draw_rows(self, children.size(), [&children](const size_t i) { return EditorScene::FindHandle(static_cast<uint64_t>(children[i])); }, true);
 						ImGui::TreePop();
 					}
 				};
 
-				const bool filtering = m_Filter.IsActive();
-				for (Entity *entity : Scene::GetEntities())
-				{
-					if (!entity || !*entity)
-						continue;
-
-					const entt::entity handle = static_cast<entt::entity>(*entity);
-					if (filtering)
-					{
-						// Searching flattens the tree so matches nested inside objects show up.
-						if (m_Filter.PassFilter(EditorScene::GetName(handle)))
-							draw_entity(draw_entity, handle, false);
-						continue;
-					}
-
-					// Roots only; children are drawn under their parent.
-					const RelationshipComponent *relationship = EditorScene::TryGet<RelationshipComponent>(handle);
-					if (relationship && EditorScene::FindHandle(static_cast<uint64_t>(relationship->pParentHandle)) != entt::null)
-						continue;
-
-					draw_entity(draw_entity, handle, true);
-				}
+				if (m_Filter.IsActive())
+					draw_rows(draw_entity, m_Matches.size(), [this](const size_t i) { return m_Matches[i]; }, false);
+				else
+					draw_rows(draw_entity, m_Roots.size(), [this](const size_t i) { return m_Roots[i]; }, true);
 
 				// Clicking empty space clears the selection.
 				if (m_Context && ImGui::IsWindowHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGui::IsAnyItemHovered())

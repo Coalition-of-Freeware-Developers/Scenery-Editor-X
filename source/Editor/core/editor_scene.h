@@ -82,19 +82,13 @@ namespace SceneryEditorX::EditorScene
 		if (id == 0)
 			return entt::null;
 
-		const Entity entity = Scene::TryGetEntityWithUUID(UUID(id));
-		return entity ? static_cast<entt::entity>(entity) : entt::null;
+		return Scene::TryGetEntityHandle(UUID(id));
 	}
 
 	/* @brief The scene-owned Entity object for a handle (where runtime components such as Renderable live). */
 	inline Entity *FindEntity(const entt::entity handle)
 	{
-		for (Entity *entity : Scene::GetEntities())
-		{
-			if (entity && static_cast<entt::entity>(*entity) == handle)
-				return entity;
-		}
-		return nullptr;
+		return Scene::GetStoredEntity(handle);
 	}
 
 	/* @brief Display name of an entity (its TagComponent, or "Entity"). */

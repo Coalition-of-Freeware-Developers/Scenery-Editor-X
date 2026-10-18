@@ -43,6 +43,7 @@
 #include <memory>
 #include <set>
 #include <SceneryEditorX/logging/logging.hpp>
+#include <SceneryEditorX/renderer/gpu_scene.h>
 #include <SceneryEditorX/renderer/vulkan/enums.h>
 #include <SceneryEditorX/scene/camera.h>
 #include <SceneryEditorX/scene/components/component_sets.h>
@@ -1118,6 +1119,7 @@ namespace SceneryEditorX::XPlane
 			const UUID childId = registry.get<IDComponent>(child).pID;
 			registry.get<RelationshipComponent>(child).pParentHandle = parentId;
 			registry.get<RelationshipComponent>(parent).pChildren.push_back(childId);
+			Scene::MarkStructureChanged(); // hierarchy caches (outliner roots, ...)
 		}
 
 		Ref<MaterialAsset> MakeMaterial(const Paint paint)
@@ -1690,6 +1692,7 @@ namespace SceneryEditorX::XPlane
 			TransformComponent &transform = registry->get<TransformComponent>(handle);
 			transform.translation = Vec3(static_cast<float>(origin.x), 0.0f, static_cast<float>(origin.z));
 			transform.SetRotationEuler(Vec3(0.0f, -static_cast<float>(heading) * kDegToRad, 0.0f));
+			GpuScene::MarkTransformDirty(handle);
 
 			const double size = std::max(3.0, component->bounds.GetRadius());
 			component->bounds = Bounds2();

@@ -58,6 +58,10 @@ namespace SceneryEditorX
 		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 0, 20, 1,                  "geometry_vertices"   }, // GeometryVertices (space8, t20)
 		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 0, 22, 1,                  "geometry_indices"    }, // GeometryIndices (space9, t22)
 		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 0, 23, 1,                  "instances"           }, // Instances (space10, t23)
+		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 0, 24, 1,                  "gpu_instances"       }, // GpuInstances (space11, t24)
+		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 0, 25, 1,                  "gpu_batches"         }, // GpuBatches (space12, t25)
+		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 0, 26, 1,                  "gpu_commands"        }, // GpuCommands (space13, u26)
+		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 0, 27, 1,                  "gpu_visible_instances" }, // GpuVisibleInstances (space14, t27/u27)
 	};
 
 	/**
@@ -316,28 +320,8 @@ namespace SceneryEditorX
 			cfg.name,
 			static_cast<uint32_t>(cfg.type));
 
-		const auto isStorageBufferType = [&](const BindlessResource resourceType) constexpr
-		{
-			switch (resourceType)
-			{
-				case BindlessResource::MaterialParameters:
-				case BindlessResource::LightParameters:
-				case BindlessResource::Aabbs:
-				case BindlessResource::DrawData:
-					return true;
-				case BindlessResource::GeometryVertices:
-				case BindlessResource::GeometryIndices:
-				case BindlessResource::Instances:
-				case BindlessResource::MaterialTextures:
-				case BindlessResource::SamplersComparison:
-				case BindlessResource::SamplersRegular:
-				case BindlessResource::MaxEnum:
-				default:
-					return false;
-			}
-		};
-
-		if (!isStorageBufferType(type))
+		// The geometry and instance sets are storage buffers too (vertex pulling); excluding them left them unbound.
+		if (cfg.type != VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
 		{
 			SEDX_CORE_WARN_TAG("BindlessManager", "UpdateBuffer ignored for non-storage bindless resource type '{}'", cfg.name);
 			return;

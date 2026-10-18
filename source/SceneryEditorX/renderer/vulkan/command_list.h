@@ -451,6 +451,15 @@ namespace SceneryEditorX
 		void DrawIndexedIndirectCount(Buffer* drawArgs, uint64_t argsOffset, Buffer* countBuffer, uint64_t countOffset, uint32_t maxDrawCount);
 
 		/**
+		 * @brief Draws drawCount consecutive VkDrawIndexedIndirectCommand records (multi-draw indirect).
+		 * Commands whose instanceCount is 0 draw nothing, so GPU culling can skip draws without compacting them.
+		 * @param drawArgs The buffer containing the draw arguments.
+		 * @param argsOffset Byte offset of the first command.
+		 * @param drawCount Number of commands.
+		 */
+		void DrawIndexedIndirect(Buffer* drawArgs, uint64_t argsOffset, uint32_t drawCount);
+
+		/**
 		 * @brief Dispatch a compute shader with the given workgroup dimensions.
 		 *
 		 * @param x The number of workgroups to dispatch in the X dimension.

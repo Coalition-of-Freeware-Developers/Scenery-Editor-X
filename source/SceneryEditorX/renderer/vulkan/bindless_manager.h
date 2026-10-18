@@ -71,6 +71,10 @@ namespace SceneryEditorX
 		GeometryVertices,
 		GeometryIndices,
 		Instances,
+		GpuInstances,		// GPU scene (gpu_scene.slang): per-instance transforms and bounds
+		GpuBatches,			// GPU scene: per-batch draw ranges and material
+		GpuCommands,		// GPU scene: instanced indirect draw commands (written by the cull pass)
+		GpuVisibleInstances,// GPU scene: visible instance indices per draw (written by the cull pass)
 		MaxEnum
 	};
 

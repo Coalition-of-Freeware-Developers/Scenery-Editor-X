@@ -30,6 +30,7 @@
  */
 #include "bend_sss_cpu.h"
 #include "gbuffer.h"
+#include "gpu_scene.h"
 #include "renderer.h"
 #include "renderer_declarations.h"
 #include "font/font.h"
@@ -166,6 +167,7 @@ namespace SceneryEditorX
 				if (graphicsPresent->IsStickyInvalid())
 					return;
 
+				GpuScene::Cull(graphicsPresent);
 				Pass_Depth_Prepass(graphicsPresent);
 				if (graphicsPresent->IsStickyInvalid())
 					return;
@@ -305,6 +307,7 @@ namespace SceneryEditorX
 				bool isTransparent = false;
 				Pass_HiZ(graphicsPresent);
 				Pass_IndirectCull(graphicsPresent);
+				GpuScene::Cull(graphicsPresent);
 				Pass_Depth_Prepass(graphicsPresent);
 				Pass_GBuffer(graphicsPresent, isTransparent);
 			}
@@ -728,6 +731,36 @@ namespace SceneryEditorX
 												  0, m_Indirect_DrawCount);
 			}
 
+			// GPU scene: one instanced indirect draw per bucket (gpu_cull.slang chose the instances and their LODs)
+			bool depthWritten = m_Indirect_DrawCount > 0;
+			if (GpuScene::HasDraws())
+			{
+				PipelineState pso;
+				pso.name = "depth_prepass_gpu";
+				pso.shaders[static_cast<uint32_t>(StageType::Vertex)] = ShaderManager::GetShader(Renderer_Shader::depth_prepass_gpu);
+				pso.rasterizerState = rasterizer_state;
+				pso.blendState = GetBlendState(Renderer_BlendState::Off);
+				pso.depthStencil_State = GetDepthStencilState(Renderer_DepthStencilState::ReadWrite);
+				pso.vrsInputTexture = cvar_variable_rate_shading.GetValueAs<bool>() ? GetRenderTarget(Renderer_RenderTarget::shading_rate) : nullptr;
+				pso.renderTarget_DepthTexture = tex_depth;
+				pso.resolutionScale = true;
+
+				for (const GpuScene::Bucket &bucket : GpuScene::GetBuckets())
+				{
+					if (bucket.commandCount == 0)
+						continue;
+
+					// alpha-tested buckets discard cut-out texels, the rest need no fragment shader
+					pso.shaders[static_cast<uint32_t>(StageType::Fragment)] = bucket.alphaTested ? ShaderManager::GetShader(Renderer_Shader::depth_prepass_gpu) : nullptr;
+					pso.clearDepth = depthWritten ? RHI_DEPTH_LOAD : 0.0f;
+					cmdList->SetPipelineState(pso);
+					cmdList->SetIndexBuffer(GeometryBuffer::GetIndexBuffer());
+					cmdList->SetCullMode(is_wireframe ? CullMode::None : bucket.cullMode);
+					cmdList->DrawIndexedIndirect(GpuScene::GetCommandBuffer(), static_cast<uint64_t>(bucket.firstCommand) * sizeof(VkDrawIndexedIndirectCommand), bucket.commandCount);
+					depthWritten = true;
+				}
+			}
+
 			// cpu-driven path for remaining draws (tessellated, instanced, alpha-tested)
 			{
 				PipelineState pso;
@@ -740,9 +773,9 @@ namespace SceneryEditorX
 				pso.renderTarget_DepthTexture = tex_depth;
 				pso.resolutionScale = true;
 
-				// load when the indirect path already wrote depth, otherwise this path owns the clear (reverse-z: 0 = far)
+				// load when an indirect path already wrote depth, otherwise this path owns the clear (reverse-z: 0 = far)
 				const bool indirectActive = m_Indirect_DrawCount > 0;
-				pso.clearDepth = indirectActive ? RHI_DEPTH_LOAD : 0.0f;
+				pso.clearDepth = depthWritten ? RHI_DEPTH_LOAD : 0.0f;
 
 				bool pipelineSet = false;
 				bool drew = false;
@@ -805,7 +838,7 @@ namespace SceneryEditorX
 				}
 
 				// nothing was drawn, but depth must still be cleared for the passes that read it
-				if (!drew && !indirectActive)
+				if (!drew && !depthWritten)
 				{
 					pso.shaders[static_cast<uint32_t>(StageType::Fragment)] = nullptr;
 					pso.shaders[static_cast<uint32_t>(StageType::TessellationControl)] = nullptr;
@@ -878,6 +911,45 @@ namespace SceneryEditorX
 				}
 			}
 
+			// GPU scene (opaque pass): one instanced indirect draw per bucket, clearing the targets with the first
+			bool gpuDrew = false;
+			if (!isTransparentPass && GpuScene::HasDraws())
+			{
+				PipelineState pso;
+				pso.name = "g_buffer_gpu";
+				pso.shaders[static_cast<uint32_t>(StageType::Vertex)] = ShaderManager::GetShader(Renderer_Shader::gbuffer_gpu);
+				pso.shaders[static_cast<uint32_t>(StageType::Fragment)] = ShaderManager::GetShader(Renderer_Shader::gbuffer_gpu);
+				pso.blendState = GetBlendState(Renderer_BlendState::Off);
+				pso.rasterizerState = cvar_wireframe.GetValueAs<bool>() ? GetRasterizerState(Renderer_RasterizerState::Wireframe)
+										  : GetRasterizerState(Renderer_RasterizerState::Solid);
+				pso.depthStencil_State = GetDepthStencilState(Renderer_DepthStencilState::ReadGreaterEqual);
+				pso.vrsInputTexture = cvar_variable_rate_shading.GetValueAs<bool>() ? GetRenderTarget(Renderer_RenderTarget::shading_rate) : nullptr;
+				pso.resolutionScale = true;
+				pso.renderTarget_ColorTextures[0] = texColor;
+				pso.renderTarget_ColorTextures[1] = texNormal;
+				pso.renderTarget_ColorTextures[2] = texMaterial;
+				pso.renderTarget_ColorTextures[3] = texVelocity;
+				pso.renderTarget_DepthTexture = texDepth;
+
+				const bool indirectWrote = m_Indirect_DrawCount > 0;
+				for (const GpuScene::Bucket &bucket : GpuScene::GetBuckets())
+				{
+					if (bucket.commandCount == 0)
+						continue;
+
+					const PipelineStateColor clearOrLoad = (indirectWrote || gpuDrew) ? RHI_COLOR_LOAD : PipelineStateColor{.r = 0.0f, .g = 0.0f, .b = 0.0f, .a = 0.0f};
+					for (PipelineStateColor &clearColor : pso.clearColor)
+						clearColor = clearOrLoad;
+					pso.clearDepth = RHI_DEPTH_LOAD;
+
+					cmdList->SetPipelineState(pso);
+					cmdList->SetIndexBuffer(GeometryBuffer::GetIndexBuffer());
+					cmdList->SetCullMode(cvar_wireframe.GetValueAs<bool>() ? CullMode::None : bucket.cullMode);
+					cmdList->DrawIndexedIndirect(GpuScene::GetCommandBuffer(), static_cast<uint64_t>(bucket.firstCommand) * sizeof(VkDrawIndexedIndirectCommand), bucket.commandCount);
+					gpuDrew = true;
+				}
+			}
+
 			{
 				PipelineState pso;
 				pso.name = isTransparentPass ? "g_buffer_transparent" : "g_buffer_tessellated";
@@ -895,9 +967,9 @@ namespace SceneryEditorX
 				pso.renderTarget_ColorTextures[2] = texMaterial;
 				pso.renderTarget_ColorTextures[3] = texVelocity;
 				pso.renderTarget_DepthTexture = texDepth;
-				// load when the indirect path already cleared and wrote the g-buffer, otherwise clear on the first draw
+				// load when an indirect path already cleared and wrote the g-buffer, otherwise clear on the first draw
 				const bool indirectActive = !isTransparentPass && m_Indirect_DrawCount > 0;
-				const PipelineStateColor clearOrLoad = (isTransparentPass || indirectActive) ? RHI_COLOR_LOAD : PipelineStateColor{.r = 0.0f, .g = 0.0f, .b = 0.0f, .a = 0.0f};
+				const PipelineStateColor clearOrLoad = (isTransparentPass || indirectActive || gpuDrew) ? RHI_COLOR_LOAD : PipelineStateColor{.r = 0.0f, .g = 0.0f, .b = 0.0f, .a = 0.0f};
 				pso.clearColor[0] = clearOrLoad;
 				pso.clearColor[1] = clearOrLoad;
 				pso.clearColor[2] = clearOrLoad;
@@ -920,7 +992,7 @@ namespace SceneryEditorX
 					}
 					else
 					{
-					    if (materialAsset->IsTransparent())
+					    if (materialAsset->IsTransparent() || draw_call.gpuDriven)
 							continue;
 
 						// skip draws the indirect path already covered

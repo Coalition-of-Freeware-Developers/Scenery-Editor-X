@@ -46,11 +46,13 @@
 #include <algorithm>
 #include <cstdlib>
 #include <SceneryEditorX/core/application/application.h>
+#include <SceneryEditorX/core/frame_profiler.h>
 #include <SceneryEditorX/core/input/input.h>
 #include <SceneryEditorX/core/resource/resource_cache.h>
 #include <SceneryEditorX/core/time/fps_timer.h>
 #include <SceneryEditorX/core/window/window.h>
 #include <SceneryEditorX/logging/logging.hpp>
+#include <SceneryEditorX/renderer/gpu_scene.h>
 #include <SceneryEditorX/renderer/renderer.h>
 #include <SceneryEditorX/renderer/font/font_awesome.h>
 #include <SceneryEditorX/renderer/ui/resources/fonts.h>
@@ -219,10 +221,16 @@ namespace SceneryEditorX
 	{
 		// X-Plane objects: dataref clock, animation, LODs and night lighting, before the panels read the scene.
 		PlaceStartupObjects();
-		XPlane::SceneObjects::Tick(ImGui::GetIO().DeltaTime);
+		{
+			SEDX_PERF_SCOPE("Main: SceneObjects::Tick");
+			XPlane::SceneObjects::Tick(ImGui::GetIO().DeltaTime);
+		}
 
 		// Airports: the startup airport, scene rebuilds after edits, finished Gateway downloads
-		EditorAirports::Tick(&m_Context);
+		{
+			SEDX_PERF_SCOPE("Main: EditorAirports::Tick");
+			EditorAirports::Tick(&m_Context);
+		}
 
 		HandleShortcuts();
 
@@ -234,7 +242,10 @@ namespace SceneryEditorX
 		DrawDockSpace();
 
 		if (m_PanelManager)
+		{
+			SEDX_PERF_SCOPE("Main: panels");
 			m_PanelManager->OnUIRender();
+		}
 
 		// After a layout build: open on Substance's default tabs (the X-Plane library browser and the first settings tab) and
 		// give focus to the viewport. Newly docked windows otherwise select themselves as they get submitted.
@@ -666,6 +677,10 @@ namespace SceneryEditorX
 		{
 			if (args[i] == "--xp-lights-on")
 				environment.forceLightsOn = true; // lights and LIT textures in daylight
+			else if (args[i] == "--perf-log")
+				Perf::SetEnabled(true); // frame timings in the log every two seconds
+			else if (args[i] == "--no-gpu-scene")
+				GpuScene::SetEnabled(false); // one CPU draw call per renderable (comparison / debugging)
 			else if (i + 1 >= args.size())
 				break;
 			else if (args[i] == "--xp-object")

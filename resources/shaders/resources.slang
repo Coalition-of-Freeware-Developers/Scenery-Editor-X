@@ -240,14 +240,9 @@ public struct DrawData
 // set 5 is the BindlessResource::DrawData set bound by BindlessManager (a bare vk::binding(19) would put it in set 0)
 public [[vk::binding(19, 5)]] StructuredBuffer<DrawData> draw_data : register(t19, space5);
 
-// vertex pulling - global geometry buffer exposed as a structured buffer
-public struct PulledVertex
-{
-    public float3 position;
-    public float2 uv;
-    public float3 normal;
-    public float3 tangent;
-};
+// vertex pulling - the global geometry buffer as raw floats: Vertex_PosTexNorTan is 11 tightly packed floats
+// (position, uv, normal, tangent; 44 bytes), which a std430 struct of float3s (64-byte stride) can't express
+public static const uint PULLED_VERTEX_FLOATS = 11;
 
 // vertex pulling - instance buffer exposed as packed uint data (10 bytes per instance)
 public struct PackedInstance
@@ -257,7 +252,7 @@ public struct PackedInstance
     public uint yaw_scale;  // yaw_packed (uint8) | scale_packed (uint8) | padding (uint16)
 };
 
-public [[vk::binding(20, 8)]] StructuredBuffer<PulledVertex> geometry_vertices : register(t20, space8);
+public [[vk::binding(20, 8)]] StructuredBuffer<float> geometry_vertices : register(t20, space8);
 public [[vk::binding(22, 9)]] StructuredBuffer<uint> geometry_indices : register(t22, space9);
 public [[vk::binding(23, 10)]] StructuredBuffer<PackedInstance> geometry_instances : register(t23, space10);
 

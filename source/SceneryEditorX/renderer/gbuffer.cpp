@@ -76,6 +76,7 @@ namespace SceneryEditorX
 	uint32_t GeometryBuffer::m_Index_Capacity         = 0;
 	Flag GeometryBuffer::m_Dirty;
 	bool GeometryBuffer::m_WasRebuilt;
+	uint64_t GeometryBuffer::m_Generation = 0;
 	std::mutex GeometryBuffer::m_Mutex;
 	
 #pragma endregion
@@ -237,6 +238,8 @@ namespace SceneryEditorX
 			m_VertexCount_Committed = vertexCount;
 			m_IndexCount_Committed  = indexCount;
 			m_WasRebuilt = true;
+			++m_Generation;
+
 
 			SEDX_CORE_INFO_TAG("GBuffer","Global geometry buffer built: {} vertices ({:.2f} MB), {} indices ({:.2f} MB), capacity: {} vertices, {} indices",
 				vertexCount, (vertexCount * sizeof(Vertex_PosTexNorTan)) / (1024.0f * 1024.0f),
@@ -277,6 +280,11 @@ namespace SceneryEditorX
 		bool result = m_WasRebuilt;
 		m_WasRebuilt = false;
 		return result;
+	}
+
+	uint64_t GeometryBuffer::GetGeneration()
+	{
+		return m_Generation;
 	}
 
 	Buffer *GeometryBuffer::GetIndexBuffer() { return m_IndexBuffer.get(); }

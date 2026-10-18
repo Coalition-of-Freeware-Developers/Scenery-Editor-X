@@ -51,8 +51,10 @@
 #include <SceneryEditorX/asset/model.h>
 #include <SceneryEditorX/asset/manager/asset_manager.h>
 #include <SceneryEditorX/core/application/application.h>
+#include <SceneryEditorX/core/frame_profiler.h>
 #include <SceneryEditorX/core/window/monitor_data.h>
 #include <SceneryEditorX/renderer/gbuffer.h>
+#include <SceneryEditorX/renderer/gpu_scene.h>
 #include <SceneryEditorX/renderer/ui/ui_impl.h>
 #include <SceneryEditorX/scene/camera.h>
 #include <SceneryEditorX/scene/entity.h>
@@ -378,6 +380,56 @@ void dynamic_resolution()
 			out.fovHorizontal = camera.horizontalFov_Rad;
 			return true;
 		}
+
+		/**
+		 * @struct ViewFrustum
+		 * @brief The clip planes of a GpuMatrix view-projection (clip = M * p, reverse-Z with 0 <= z <= w), for CPU
+		 * culling in the same conventions as gpu_cull.slang. Planes are combinations of M's rows, unnormalized.
+		 */
+		struct ViewFrustum
+		{
+			std::array<std::array<float, 4>, 6> planes{};
+
+			ViewFrustum() = default;
+
+			explicit ViewFrustum(const GpuMatrix &m)
+			{
+				const auto plane = [&m](const int row, const float sign)
+				{
+					return std::array<float, 4>{ m(3, 0) + sign * m(row, 0), m(3, 1) + sign * m(row, 1), m(3, 2) + sign * m(row, 2), m(3, 3) + sign * m(row, 3) };
+				};
+				planes = { plane(0, 1.0f), plane(0, -1.0f), plane(1, 1.0f), plane(1, -1.0f), plane(2, -1.0f),
+						   std::array<float, 4>{ m(2, 0), m(2, 1), m(2, 2), m(2, 3) } };
+			}
+
+			/* @brief Whether a local box, placed by a row-vector world matrix, can be inside the frustum. */
+			[[nodiscard]] bool IntersectsBox(const xMath::BoundingBox &local, const xMath::Matrix &world) const
+			{
+				const xMath::Vec3 lo = local.GetMin();
+				const xMath::Vec3 hi = local.GetMax();
+				const float c[3] = { (lo.x + hi.x) * 0.5f, (lo.y + hi.y) * 0.5f, (lo.z + hi.z) * 0.5f };
+				const float e[3] = { (hi.x - lo.x) * 0.5f, (hi.y - lo.y) * 0.5f, (hi.z - lo.z) * 0.5f };
+
+				// world center and half extents (row-vector: p' = p * M; the absolute 3x3 bounds the rotated box)
+				const float center[3] = {
+					c[0] * world.m00 + c[1] * world.m10 + c[2] * world.m20 + world.m30,
+					c[0] * world.m01 + c[1] * world.m11 + c[2] * world.m21 + world.m31,
+					c[0] * world.m02 + c[1] * world.m12 + c[2] * world.m22 + world.m32 };
+				const float extent[3] = {
+					e[0] * std::abs(world.m00) + e[1] * std::abs(world.m10) + e[2] * std::abs(world.m20),
+					e[0] * std::abs(world.m01) + e[1] * std::abs(world.m11) + e[2] * std::abs(world.m21),
+					e[0] * std::abs(world.m02) + e[1] * std::abs(world.m12) + e[2] * std::abs(world.m22) };
+
+				for (const std::array<float, 4> &p : planes)
+				{
+					const float distance = p[0] * center[0] + p[1] * center[1] + p[2] * center[2] + p[3];
+					const float radius = std::abs(p[0]) * extent[0] + std::abs(p[1]) * extent[1] + std::abs(p[2]) * extent[2];
+					if (distance + radius < 0.0f)
+						return false;
+				}
+				return true;
+			}
+		};
 	}
 
 	static std::filesystem::path ResolveResourcePath(const std::filesystem::path& relativePath)
@@ -650,6 +702,7 @@ void dynamic_resolution()
 		}
 
 		// Destroy frame resources
+		GpuScene::Shutdown();
 		GeometryBuffer::Shutdown();
 		DestroyResources();
 		DestroyFrameResources();
@@ -684,6 +737,8 @@ void dynamic_resolution()
 
 	void Renderer::Tick()
 	{
+		SEDX_PERF_SCOPE("Render: Tick (CPU)");
+
 		// Let Scene drive ECS camera entities before renderer reads camera data.
 		Scene::Tick();
 
@@ -794,7 +849,12 @@ void dynamic_resolution()
 			// this allows the CPU to write to one buffer while the GPU reads from another, with a safe number of buffers in flight as a cushion
 			RotateFrameBuffers();
 
-			UpdateDrawCalls(m_CmdList_Present);
+			{
+				SEDX_PERF_SCOPE("Render: UpdateDrawCalls");
+				UpdateDrawCalls(m_CmdList_Present);
+				Perf::SetCounter("entities", static_cast<double>(Scene::GetEntities().size()));
+				Perf::SetCounter("cpu draw calls", static_cast<double>(m_DrawCall_Count));
+			}
 
 			// retire cached pipelines that stopped being used (e.g. built for render targets replaced on resize)
 			PipelineCache::Tick();
@@ -830,21 +890,29 @@ void dynamic_resolution()
 
 #pragma region Lights
 
-				if (initialize || Scene::UpdateSceneChanges(ComponentType::Light).IsDirty())
 				{
-					UpdateShadowAtlas();
-					UpdateLights(m_CmdList_Present);
-					BindlessManager::UpdateBuffer(BindlessResource::LightParameters, GetBuffer(Renderer_Buffer::LightParameters));
+					SEDX_PERF_SCOPE("Render: Lights");
+					if (initialize || Scene::UpdateSceneChanges(ComponentType::Light).IsDirty())
+					{
+						SEDX_PERF_SCOPE("Render: Lights changed (upload)");
+						UpdateShadowAtlas();
+						UpdateLights(m_CmdList_Present);
+						BindlessManager::UpdateBuffer(BindlessResource::LightParameters, GetBuffer(Renderer_Buffer::LightParameters));
+					}
 				}
 
 #pragma endregion
 #pragma region Materials
 
-				if (initialize || Scene::UpdateSceneChanges(ComponentType::Material).IsDirty())
 				{
-					UpdateMaterials(m_CmdList_Present);
-					BindlessManager::UpdateImages(&m_Bindless_Textures, m_Bindless_TextureCount);
-					BindlessManager::UpdateBuffer(BindlessResource::MaterialParameters, GetBuffer(Renderer_Buffer::MaterialParameters));
+					SEDX_PERF_SCOPE("Render: Materials");
+					if (initialize || Scene::UpdateSceneChanges(ComponentType::Material).IsDirty())
+					{
+						UpdateMaterials(m_CmdList_Present);
+						BindlessManager::UpdateImages(&m_Bindless_Textures, m_Bindless_TextureCount);
+						BindlessManager::UpdateBuffer(BindlessResource::MaterialParameters, GetBuffer(Renderer_Buffer::MaterialParameters));
+						GpuScene::OnMaterialsChanged(); // material slots were reassigned
+					}
 				}
 
 #pragma endregion
@@ -866,6 +934,7 @@ void dynamic_resolution()
 #pragma region AABBs (always, they change with entity transforms)
 
 				{
+					SEDX_PERF_SCOPE("Render: AABBs");
 					UpdateBoundingBoxes(m_CmdList_Present);
 
 					static bool aabbs_descriptor_set = false;
@@ -905,20 +974,15 @@ void dynamic_resolution()
 #pragma region Geometry Buffers (vertex pulling via bindless structured buffers)
 
 				{
-					static Buffer *lastVertexBuffer = nullptr;
+					// by generation: a reallocated buffer can land at the address of the one it replaced
+					static uint64_t boundGeneration = 0;
 					Buffer *currentVertex = GeometryBuffer::GetVertexBuffer();
-					if (currentVertex && currentVertex != lastVertexBuffer)
+					Buffer *currentIndex = GeometryBuffer::GetIndexBuffer();
+					if (currentVertex && currentIndex && GeometryBuffer::GetGeneration() != boundGeneration)
 					{
 						BindlessManager::UpdateBuffer(BindlessResource::GeometryVertices, currentVertex);
-						lastVertexBuffer = currentVertex;
-					}
-
-					static Buffer *lastIndexBuffer = nullptr;
-					Buffer *currentIndex = GeometryBuffer::GetIndexBuffer();
-					if (currentIndex && currentIndex != lastIndexBuffer)
-					{
 						BindlessManager::UpdateBuffer(BindlessResource::GeometryIndices, currentIndex);
-						lastIndexBuffer = currentIndex;
+						boundGeneration = GeometryBuffer::GetGeneration();
 					}
 				}
 
@@ -975,14 +1039,32 @@ void dynamic_resolution()
 					}
 				}
 #pragma endregion
+#pragma region GPU scene
+
+				// Instances, batches and draw commands; before anything binds this frame (it may grow bindless buffers)
+				GpuScene::Update(m_CmdList_Present);
+				{
+					const GpuScene::Stats &stats = GpuScene::GetStats();
+					Perf::SetCounter("gpu instances", stats.instances);
+					Perf::SetCounter("gpu enabled", stats.enabledInstances);
+					Perf::SetCounter("gpu visible", stats.visibleInstances);
+					Perf::SetCounter("gpu batches", stats.batches);
+					Perf::SetCounter("gpu commands drawn", stats.drawnCommands);
+					Perf::SetCounter("gpu uploads", stats.uploadedInstances);
+				}
+
+#pragma endregion
 
 			}
 
 #pragma endregion
 				
 			UpdateFrameConstantBuffer(m_CmdList_Present);
-			UpdatePersistentLines();
-			AddLinesToBeRendered();
+			{
+				SEDX_PERF_SCOPE("Render: Debug lines");
+				UpdatePersistentLines();
+				AddLinesToBeRendered();
+			}
 
 			//SubmitAndPresent();
 
@@ -1042,6 +1124,7 @@ void dynamic_resolution()
 
 				if (hasRtRender && hasRtOutput)
 				{
+					SEDX_PERF_SCOPE("Render: Record passes");
 					ProduceFrame(m_CmdList_Present, m_CmdList_Compute);
 				}
 				else
@@ -1862,11 +1945,19 @@ void dynamic_resolution()
 
 		Timer workTimer; // Measure the time spent doing rendering work this frame (between kick and completion)
 
-		if (BeginFrame())
+		bool begun = false;
+		{
+			SEDX_PERF_SCOPE("Render: BeginFrame (GPU wait)");
+			begun = BeginFrame();
+		}
+		if (begun)
 		{
 			Tick();
-			EndFrame();
-			SubmitAndPresent();
+			{
+				SEDX_PERF_SCOPE("Render: EndFrame+Present");
+				EndFrame();
+				SubmitAndPresent();
+			}
 		}
 		
 		// Rendering has completed, set state to idle
@@ -2463,7 +2554,7 @@ void dynamic_resolution()
 
 		// collect slices
 		m_ShadowSlices.clear();
-		for (Entity* entity : Scene::GetEntities())
+		for (Entity* entity : Scene::GetLightEntities())
 		{
 			if (!entity)
 				continue;
@@ -2561,12 +2652,24 @@ void dynamic_resolution()
 		m_DrawCalls_Prepass_Count = 0;
 		m_Transparents_Present    = false;
 
-		// The GPU-driven (indirect) path needs the indirect_cull pass, which the bootstrap frame graph doesn't run
-		// yet, so every draw goes through the CPU-driven depth prepass / g-buffer passes for now.
+		// The per-draw indirect path (indirect_cull) stays off: GpuScene draws the deferred geometry instead.
 		m_Indirect_DrawCount = 0;
 
-		// collect draw calls
-		for (Entity* entity : Scene::GetEntities())
+		// The camera frustum in the GPU conventions (the scene Camera's own projection is GL-style)
+		ViewFrustum frustum;
+		bool hasFrustum = false;
+		{
+			const xMath::Vec2 resolution = GetRendererResolution();
+			SceneCameraView camera;
+			if (BuildSceneCameraView(resolution.y > 0.0f ? resolution.x / resolution.y : 1.0f, camera))
+			{
+				frustum = ViewFrustum(camera.projection * camera.view);
+				hasFrustum = true;
+			}
+		}
+
+		// collect draw calls: renderables the GPU scene doesn't draw, plus the blended part of the ones it does
+		for (Entity* entity : Scene::GetRenderableEntities())
 		{
 			if (!entity || !entity->GetActive())
 				continue;
@@ -2577,6 +2680,10 @@ void dynamic_resolution()
 
 			MaterialAsset* material = renderable->GetMaterialAsset();
 			if (!material)
+				continue;
+
+			const bool gpuDriven = GpuScene::IsGpuDriven(renderable);
+			if (gpuDriven && material->GetProperty(MaterialProperty::BlendMode) <= 0.0f)
 				continue;
 
 			if (m_DrawCall_Count >= static_cast<uint32_t>(m_DrawCalls.size()))
@@ -2590,17 +2697,22 @@ void dynamic_resolution()
 				break;
 			}
 
+			// frustum culling on the world bounds (the renderable's own box is only updated when its mesh is set)
+			const xMath::Matrix world = entity->GetMatrix();
+			if (hasFrustum && !renderable->HasInstancing() && !frustum.IntersectsBox(renderable->GetBoundingBoxMesh(), world))
+				continue;
+
 			const bool isTransparent = material->IsTransparent();
 			m_Transparents_Present  |= isTransparent;
 
-			const uint32_t drawDataIndex = WriteDrawData(entity->GetMatrix(), entity->GetMatrixPrevious(), material->GetIndex(), isTransparent ? 1 : 0);
+			const uint32_t drawDataIndex = WriteDrawData(world, entity->GetMatrixPrevious(), material->GetIndex(), isTransparent ? 1 : 0);
 
 			Renderer_DrawCall& drawCall = m_DrawCalls[m_DrawCall_Count++];
 			drawCall.renderable         = renderable;
 			drawCall.lodIndex           = std::min(renderable->GetLodIndex(), renderable->GetLodCount() - 1);
 			drawCall.isOccluder         = false;
-			// Frustum culling is skipped until the CPU camera (Camera) and the GPU camera above agree on conventions.
 			drawCall.cameraVisible      = true;
+			drawCall.gpuDriven          = gpuDriven;
 			drawCall.instanceIndex      = 0;
 			drawCall.instanceCount      = renderable->GetInstanceCount();
 			drawCall.drawData_Index     = drawDataIndex;
@@ -2614,14 +2726,14 @@ void dynamic_resolution()
 			if (aTransparent != bTransparent)
 				return !aTransparent;
 
-			return a.renderable->GetMaterialAsset()->GetObjectId() < b.renderable->GetMaterialAsset()->GetObjectId();
+			return a.renderable->GetMaterialAsset() < b.renderable->GetMaterialAsset();
 		});
 
-		// prepass: visible opaques, non-alpha-tested first
+		// prepass: visible opaques the CPU draws, non-alpha-tested first
 		for (uint32_t i = 0; i < m_DrawCall_Count; ++i)
 		{
 			const Renderer_DrawCall& drawCall = m_DrawCalls[i];
-			if (!drawCall.renderable->GetMaterialAsset()->IsTransparent() && drawCall.cameraVisible)
+			if (!drawCall.gpuDriven && !drawCall.renderable->GetMaterialAsset()->IsTransparent() && drawCall.cameraVisible)
 			{
 				m_DrawCalls_Prepass[m_DrawCalls_Prepass_Count++] = drawCall;
 			}
@@ -2826,18 +2938,18 @@ void dynamic_resolution()
 	void Renderer::UpdateMaterials(CommandList *cmdList)
 	{
 		static std::array<ShaderBuffer_Material, MAX_MATERIAL_TEXTURES> properties;
-		static std::unordered_set<uint64_t> uniqueMaterialIds;
+		static std::unordered_set<const MaterialAsset*> uniqueMaterials;
 		static bool reportedFull = false;
+		static uint32_t previousCount = 0; // slots written last time (the tables hold MAX_MATERIAL_TEXTURES entries)
 		uint32_t count = 0;
 		uint32_t dropped = 0;
 		constexpr uint32_t slotsPerMaterial = 9 * MaterialAsset::SLOTS_PER_TEXTURE;
 
 		auto update_material = [&count, &dropped](MaterialAsset* material)
 		{
-			if (uniqueMaterialIds.contains(material->GetObjectId()))
+			// keyed by pointer: object ids come from a clock and can repeat for materials made back to back
+			if (!uniqueMaterials.insert(material).second)
 				return;
-
-			uniqueMaterialIds.insert(material->GetObjectId());
 
 			// A full table draws the rest with the first material instead of writing past the arrays
 			if (count + slotsPerMaterial > MAX_MATERIAL_TEXTURES)
@@ -2920,28 +3032,18 @@ void dynamic_resolution()
 	
 		auto update_entities = [update_material]()
 		{
-			for (Entity* entity : Scene::GetEntities())
-			{
-				if (!entity)
-					continue;
-
-				if (auto* renderable = entity->GetComponent<Renderable>())
-				{
-					if (MaterialAsset* material = renderable->GetMaterialAsset())
-					{
-						update_material(material);
-					}
-				}
-			}
+			for (MaterialAsset* material : Scene::GetRenderableMaterials())
+				update_material(material);
 		};
 	
 		// cpu
 		{
-			properties.fill(ShaderBuffer_Material{});
-			m_Bindless_Textures.fill(nullptr);
-			uniqueMaterialIds.clear();
+			std::fill_n(properties.begin(), previousCount, ShaderBuffer_Material{});
+			std::fill_n(m_Bindless_Textures.begin(), previousCount, nullptr);
+			uniqueMaterials.clear();
 			update_entities();
 			m_Bindless_TextureCount = count;
+			previousCount = count;
 			if (dropped > 0 && !reportedFull)
 			{
 				SEDX_CORE_ERROR_TAG("Renderer", "UpdateMaterials: the material table is full ({} materials); {} more draw with the first material",
@@ -2973,9 +3075,9 @@ void dynamic_resolution()
 		const Entity* cameraEntity = Scene::GetCamera() ? Scene::GetCamera()->GetEntity() : nullptr;
 		const Vec3 cameraPos    = cameraEntity ? cameraEntity->GetPosition() : Vec3(0.0f, 0.0f, 0.0f);
 	
-		m_Bindless_Lights.fill(ShaderBuffer_Light());
-		
-		m_Count_ActiveLights = 0; 
+		// Only the slots written below are uploaded; clearing all MAX_ARRAY_SIZE entries was 8 MB per update.
+		const uint32_t previousLightCount = m_Count_ActiveLights;
+		m_Count_ActiveLights = 0;  
 		Light* firstDirectional = nullptr;
 	
 		static bool reportedFullLights = false;
@@ -2993,6 +3095,8 @@ void dynamic_resolution()
 
 			lightComponent->SetIndex(index);
 			ShaderBuffer_Light& lightBufferEntry = m_Bindless_Lights[index];
+			lightBufferEntry = ShaderBuffer_Light();
+
 	
 			for (uint32_t i = 0; i < lightComponent->GetSliceCount(); i++)
 			{
@@ -3044,7 +3148,8 @@ void dynamic_resolution()
 		};
 	
 		// directional light always goes in slot 0
-		for (Entity* entity : Scene::GetEntities())
+		const std::vector<Entity*> &lightEntities = Scene::GetLightEntities();
+		for (Entity* entity : lightEntities)
 		{
 			if (!entity)
 				continue;
@@ -3067,7 +3172,7 @@ void dynamic_resolution()
 		}
 	
 		// remaining lights
-		for (Entity* entity : Scene::GetEntities())
+		for (Entity* entity : lightEntities)
 		{
 			if (Light* lightComponent = entity->GetComponent<Light>())
 			{
@@ -3092,6 +3197,11 @@ void dynamic_resolution()
 		}
 
 		m_Has_DirectionalLight = firstDirectional != nullptr;
+
+		// slots that held lights last time and are unused now
+		for (uint32_t i = m_Count_ActiveLights; i < previousLightCount && i < static_cast<uint32_t>(m_Bindless_Lights.size()); ++i)
+			m_Bindless_Lights[i] = ShaderBuffer_Light();
+
 	
 		// gpu upload
 		Buffer* buffer = GetBuffer(Renderer_Buffer::LightParameters);
