@@ -41,6 +41,7 @@
 #include <SceneryEditorX/scene/components/lights.h>
 #include <SceneryEditorX/scene/components/renderable.h>
 #include <SceneryEditorX/scene/entity.h>
+#include <SceneryEditorX/scene/camera.h>
 #include <SceneryEditorX/scene/scene.h>
 
 // -------------------------------------------------------
@@ -767,8 +768,13 @@ namespace SceneryEditorX::XPlane
 			const float distance = radius / std::sin(30.0f * kDegToRad) * 1.15f;
 
 			TransformComponent &transform = view.get<TransformComponent>(handle);
-			transform.translation = center - forward * distance;
-			transform.SetRotationEuler(Vec3(pitch, yaw, 0.0f));
+			if (Camera *camera = Scene::GetCamera())
+				camera->LookAt(transform, center - forward * distance, center);	// The object becomes the orbit pivot
+			else
+			{
+				transform.translation = center - forward * distance;
+				transform.SetRotationEuler(Vec3(pitch, yaw, 0.0f));
+			}
 			break;
 		}
 	}

@@ -292,7 +292,13 @@ namespace SceneryEditorX
 						ImGui::Text("%zu", airport.GetElementCount());
 						EditorUI::PropertyLabel("Scene");
 						const SceneAirports::Stats stats = SceneAirports::GetStats();
-						ImGui::Text("%u entities, %u triangles (%.0f ms)", stats.entities, stats.triangles, stats.buildMilliseconds);
+						ImGui::Text("%u entities, %u triangles, %u objects (%.0f ms)", stats.entities, stats.triangles, stats.objects, stats.buildMilliseconds);
+						if (stats.warnings > 0)
+						{
+							ImGui::SameLine();
+							ImGui::TextDisabled("%u asset warnings", stats.warnings);
+							EditorUI::ItemTooltip("Library or scenery pack art that couldn't be found or read; the log names each one");
+						}
 						break;
 					}
 					case AirportElementKind::Group:
@@ -593,7 +599,7 @@ namespace SceneryEditorX
 			EditorUI::ItemTooltip("Move the camera to look at it");
 
 			// Rows that can go
-			const bool deletable = kind != AirportElementKind::Airport && kind != AirportElementKind::Group && kind != AirportElementKind::TaxiRoutes && kind != AirportElementKind::TaxiNodes;
+			const bool deletable = kind != AirportElementKind::Airport && kind != AirportElementKind::Group && kind != AirportElementKind::TaxiRoutes && kind != AirportElementKind::TaxiNodes && !SceneAirports::IsOverlayKind(kind);
 			if (deletable)
 			{
 				ImGui::SameLine();

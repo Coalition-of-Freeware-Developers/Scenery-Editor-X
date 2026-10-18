@@ -267,6 +267,7 @@ MESSAGE(STATUS "Generating X-Plane Format Unit Tests")
 ADD_EXECUTABLE(XPlaneFormatTests
     ${CMAKE_CURRENT_SOURCE_DIR}/xplane_tests/XPlaneFormatTests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/xplane_tests/AirportTests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/xplane_tests/OverlayTests.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_obj8.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_library.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_lights.cpp
@@ -274,6 +275,9 @@ ADD_EXECUTABLE(XPlaneFormatTests
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_apt_geometry.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_airport_index.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_gateway_types.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_dsf.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_assets.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_overlay.cpp
 )
 
 TARGET_INCLUDE_DIRECTORIES(XPlaneFormatTests PRIVATE

@@ -61,6 +61,14 @@ namespace SceneryEditorX::XPlane
 		TruckParking,
 		TruckDestination,
 		Jetway,
+
+		// The scenery pack's DSF overlay around the airport (one entity per asset, merged across placements)
+		DrapedPolygon,		// .pol (and .agp ground tiles)
+		LineString,			// .lin
+		Forest,				// .for
+		Facade,				// .fac
+		SceneryObject,		// Group of the placed OBJ8s (DSF objects, .str strings, facade attachments)
+		AirportLight,		// Group of the apt.dat light strings' library light objects
 		Count
 	};
 
@@ -70,7 +78,8 @@ namespace SceneryEditorX::XPlane
 	 * @struct AirportElementComponent
 	 * @brief Registry component on every entity SceneAirports creates: which apt.dat row the entity draws.
 	 * `index` is the position in the matching AptAirport vector; `subIndex` tells a feature's painted lines (0) from
-	 * its light strings (1).
+	 * its light strings (1). For overlay kinds `index` is the first DSF placement merged into the entity and `subIndex`
+	 * how many there are.
 	 */
 	struct AirportElementComponent
 	{
@@ -84,13 +93,16 @@ namespace SceneryEditorX::XPlane
 
 	/**
 	 * @class SceneAirports
-	 * @brief Draws an airport document in the active scene: flat geometry in X-Plane's local frame (meters, +X east,
+	 * @brief Draws an airport document in the active scene: geometry in X-Plane's local frame (meters, +X east,
 	 * -Z north) around the airport datum, one entity per element under group entities under one root. Main thread
 	 * only; one airport is loaded at a time.
 	 *
-	 * Pavement is triangulated from the bezier outlines (later rows draw underneath, like X-Plane layers them),
-	 * runways and helipads are rectangles, painted lines and light strings are ribbons, and point features (startup
-	 * locations, signs, windsocks, ...) are small markers pointing along their heading.
+	 * Pavement is triangulated from the bezier outlines (later rows draw underneath, like X-Plane layers them) and,
+	 * like runways and painted lines, textured with the X-Plane library's art for its surface / line code when the
+	 * library is available (flat colors otherwise); light strings become the library's light objects. Point features
+	 * (startup locations, signs, windsocks, ...) are small markers pointing along their heading. The scenery pack's
+	 * DSF overlay around the airport is drawn too: draped polygons, lines, forests and facades as textured meshes,
+	 * objects and object strings through the OBJ8 loader.
 	 */
 	class SceneAirports
 	{
@@ -100,6 +112,9 @@ namespace SceneryEditorX::XPlane
 			uint32_t entities = 0;
 			uint32_t triangles = 0;
 			uint32_t parts = 0;
+			uint32_t objects = 0;			// OBJ8 placements (DSF objects, strings, light fixtures)
+			uint32_t overlayMeshes = 0;		// DSF polygon placements drawn (before merging per asset)
+			uint32_t warnings = 0;			// Assets that couldn't be found or read (see the log)
 			double buildMilliseconds = 0.0;
 		};
 
@@ -120,6 +135,9 @@ namespace SceneryEditorX::XPlane
 
 		/* @brief True for kinds drawn as a marker placed by the entity transform (UpdatePlacements() moves them). */
 		static bool IsPlacedKind(AirportElementKind kind);
+
+		/* @brief True for the DSF overlay kinds (not apt.dat rows: nothing to edit or delete in the document). */
+		static bool IsOverlayKind(AirportElementKind kind);
 
 		/* @brief Removes the loaded airport from the scene. */
 		static void Unload();

@@ -29,13 +29,22 @@
  * -------------------------------------------------------
  */
 #include "xp_airport_scene.h"
+#include "xp_dsf.h"
+#include "xp_library_manager.h"
+#include "xp_overlay.h"
+#include "xp_scene.h"
+#include "xp_texture_loader.h"
 #include <algorithm>
 #include <array>
 #include <chrono>
 #include <cmath>
+#include <cstdio>
+#include <map>
 #include <memory>
+#include <set>
 #include <SceneryEditorX/logging/logging.hpp>
 #include <SceneryEditorX/renderer/vulkan/enums.h>
+#include <SceneryEditorX/scene/camera.h>
 #include <SceneryEditorX/scene/components/component_sets.h>
 #include <SceneryEditorX/scene/components/renderable.h>
 #include <SceneryEditorX/scene/entity.h>
@@ -49,10 +58,12 @@ namespace SceneryEditorX::XPlane
 {
 	namespace
 	{
+		namespace fs = std::filesystem;
+
 		constexpr const char *LOG_TAG = "XPlaneAirport";
 		constexpr float kDegToRad = 3.14159265358979323846f / 180.0f;
 
-		/* @brief The flat colors the airport is drawn with. */
+		/* @brief The flat colors the airport is drawn with when no library texture applies. */
 		enum class Paint : uint8_t
 		{
 			Asphalt,
@@ -125,21 +136,51 @@ namespace SceneryEditorX::XPlane
 			{ "Viewpoint",			0.95f, 0.95f, 0.95f, 1.0f, 0.60f }
 		};
 
-		// Heights above the ground plane, so stacked flat geometry doesn't fight for the same pixels
+		/**
+		 * Heights above the ground plane, so stacked flat geometry doesn't fight for the same pixels. From the bottom:
+		 * boundary, DSF polygons in the terrain / beaches / shoulders groups, apt.dat pavement (first row on top),
+		 * DSF "taxiways", runways, DSF "runways", painted lines, DSF "markings" and the higher groups, taxi routes,
+		 * markers. Reverse-Z depth keeps millimeters apart out to a few kilometers.
+		 */
 		constexpr float HEIGHT_BOUNDARY = 0.00f;
-		constexpr float HEIGHT_PAVEMENT = 0.02f;
+		constexpr float HEIGHT_PAVEMENT = 0.03f;
 		constexpr float HEIGHT_RUNWAY_ABOVE_PAVEMENT = 0.02f;
 		constexpr float HEIGHT_HELIPAD_EXTRA = 0.01f;
 		constexpr float HEIGHT_LINES_EXTRA = 0.03f;
 		constexpr float HEIGHT_LIGHTS_EXTRA = 0.04f;
-		constexpr float HEIGHT_TAXI_EXTRA = 0.05f;
-		constexpr float HEIGHT_MARKERS_EXTRA = 0.08f;
+		constexpr float HEIGHT_TAXI_EXTRA = 0.13f;
+		constexpr float HEIGHT_MARKERS_EXTRA = 0.16f;
 
-		constexpr double LINE_WIDTH = 0.6;		// Painted lines, meters
-		constexpr double LIGHT_WIDTH = 0.35;	// Light strings
+		constexpr double LINE_WIDTH = 0.6;		// Painted lines without a library texture, meters
+		constexpr double LIGHT_WIDTH = 0.35;	// Light strings drawn as ribbons (no library)
 		constexpr double BOUNDARY_WIDTH = 1.5;
 		constexpr double TAXI_WIDTH = 0.5;
 		constexpr double BEZIER_SEGMENT = 2.0;	// Longest straight piece of a curve, meters
+
+		constexpr double OVERLAY_MARGIN_OWN_PACK = 8000.0;		// Meters around the airport kept from the pack's own DSF tile
+		constexpr double OVERLAY_MARGIN_SHARED_TILE = 1500.0;	// ... from a tile shared with other airports (Global Airports)
+		constexpr double OVERLAY_MAX_OBJECTS = 12000;			// DSF object placements per airport
+		constexpr float BLEND_SPLIT_ALPHA = 0.9f;				// Alpha at or above this stays in the deferred passes of a blended material
+
+		/* @brief Height of a DSF draped polygon's LAYER_GROUP within the stack above. */
+		float OverlayLayerHeight(const float pavementTop, const float runwayHeight, const std::string_view group, const int offset)
+		{
+			const float nudge = 0.0008f * static_cast<float>(std::clamp(offset, -5, 5));
+			switch (GetLayerGroupOrder(group))
+			{
+				case 0:		return 0.008f + nudge;									// terrain
+				case 1:		return 0.014f + nudge;									// beaches
+				case 2:		return 0.020f + nudge;									// shoulders
+				case 3:		return pavementTop + 0.005f + nudge;					// taxiways: over the apt.dat pavement
+				case 4:		return runwayHeight + 0.005f + nudge;					// runways
+				case 5:		return runwayHeight + HEIGHT_LINES_EXTRA + 0.005f + nudge;	// markings: over the apt.dat lines
+				case 6:		return runwayHeight + 0.050f + nudge;					// airports
+				case 7:		return runwayHeight + 0.065f + nudge;					// roads
+				case 8:		return runwayHeight + 0.080f + nudge;					// objects
+				case 9:		return runwayHeight + 0.095f + nudge;					// light_objects
+				default:	return runwayHeight + 0.110f + nudge;					// cars
+			}
+		}
 
 		/* @brief One entity's worth of geometry. */
 		struct Part
@@ -149,6 +190,15 @@ namespace SceneryEditorX::XPlane
 			uint32_t subIndex = 0;
 			std::string name;
 			Paint paint = Paint::Asphalt;
+
+			// Library / DSF art: the material comes from the texture and flags instead of the paint
+			bool textured = false;
+			fs::path texture;						// Empty: drawn with color
+			float color[4] = { 0.6f, 0.6f, 0.6f, 1.0f };
+			bool cutout = false;
+			float cutoff = 0.5f;
+			bool blended = false;
+
 			std::vector<Vertex_PosTexNorTan> vertices;
 			std::vector<uint32_t> indices;
 			Bounds2 bounds;					// Airport-space footprint (for placed parts: around the origin)
@@ -165,6 +215,13 @@ namespace SceneryEditorX::XPlane
 			GeoProjection projection;
 			std::vector<Part> parts;
 			Bounds2 bounds;
+			float pavementTop = HEIGHT_PAVEMENT;
+			float runwayHeight = HEIGHT_PAVEMENT + HEIGHT_RUNWAY_ABOVE_PAVEMENT;
+			std::vector<OverlayObject> objects;		// OBJ8 placements: DSF objects, strings, facade attachments, apt.dat light strings
+			std::vector<std::string> warnings;
+			uint32_t overlayMeshes = 0;
+			uint32_t overlayCulled = 0;
+			uint32_t overlayUnsupported = 0;
 		};
 
 		// -------------------------------------------------------
@@ -295,6 +352,35 @@ namespace SceneryEditorX::XPlane
 			part.bounds.Add(Point2{ origin.x + size, origin.z + size });
 		}
 
+		/* @brief Copies an overlay mesh's material (texture and flags) onto a part. */
+		void ApplyOverlayMaterial(Part &part, const OverlayMesh &mesh)
+		{
+			part.textured = true;
+			part.texture = mesh.texture;
+			std::copy(std::begin(mesh.color), std::end(mesh.color), std::begin(part.color));
+			part.cutout = mesh.cutout;
+			part.cutoff = mesh.cutoff;
+			part.blended = mesh.blended;
+		}
+
+		/* @brief Appends an overlay mesh's textured geometry (positions, UVs and normals as built). */
+		void AppendOverlayMesh(Part &part, const OverlayMesh &mesh)
+		{
+			const uint32_t base = static_cast<uint32_t>(part.vertices.size());
+			part.vertices.reserve(part.vertices.size() + mesh.vertices.size());
+			for (const OverlayVertex &vertex : mesh.vertices)
+			{
+				const Vec3 normal(vertex.nx, vertex.ny, vertex.nz);
+				// A tangent perpendicular to the normal: east for ground, along the ground for walls
+				const Vec3 tangent = std::abs(vertex.ny) > 0.9f ? Vec3(1.0f, 0.0f, 0.0f) : xMath::Normalize(xMath::Cross(Vec3(0.0f, 1.0f, 0.0f), normal));
+				part.vertices.push_back(Vertex_PosTexNorTan(Vec3(vertex.x, vertex.y, vertex.z), Vec2(vertex.u, vertex.v), normal, tangent));
+			}
+			part.indices.reserve(part.indices.size() + mesh.indices.size());
+			for (const uint32_t index : mesh.indices)
+				part.indices.push_back(base + index);
+			part.bounds.Add(mesh.bounds);
+		}
+
 		/* @brief Where a point feature sits and points, in airport space. False when kind / index name no such feature. */
 		bool GetPlacement(const AptAirport &airport, const GeoProjection &projection, const AirportElementKind kind, const uint32_t index, Point2 &origin, double &heading)
 		{
@@ -356,11 +442,9 @@ namespace SceneryEditorX::XPlane
 			}
 		}
 
-		/* @brief Appends a ribbon along a chain, split where the style changes so each piece gets its own color. */
+		/* @brief Appends a colored ribbon along a chain, colored by its dominant style (the fallback without library art). */
 		void EmitChainRibbons(std::vector<Part> &parts, const Part &prototype, const AptNodeChain &chain, const GeoProjection &projection, const bool lights, const float y)
 		{
-			// Style per node: lines and lights are chosen per segment by the node the segment starts at. Rather than
-			// splitting the bezier flattening by node, the chain is flattened once and colored by its dominant style.
 			int dominant = 0;
 			std::array<int, 256> votes{};
 			for (const AptNode &node : chain.nodes)
@@ -397,7 +481,74 @@ namespace SceneryEditorX::XPlane
 
 		// -------------------------------------------------------
 
-		void BuildAirport(const AptAirport &airport, Build &out)
+		/**
+		 * @brief Finds the files behind asset paths: library virtual paths through the X-Plane library index, anything
+		 * else relative to the scenery pack. A path ending in "_" is a prefix ("lib/airport/lines/4_"): the first
+		 * library export starting with it is taken, which is how apt.dat line and light codes find their art.
+		 */
+		AssetResolver MakeResolver(const fs::path &package)
+		{
+			return [package](const std::string_view path) -> fs::path
+			{
+				const std::string key(path);
+				if (key.empty())
+					return {};
+				std::error_code ec;
+
+				if (key.back() == '_')
+				{
+					const std::shared_ptr<const LibraryIndex> index = LibraryManager::GetIndex();
+					if (!index)
+						return {};
+					const std::vector<LibraryAsset> &assets = index->GetAssets();
+					auto it = std::lower_bound(assets.begin(), assets.end(), key, [](const LibraryAsset &asset, const std::string &k) { return asset.virtualPath < k; });
+					for (; it != assets.end() && it->virtualPath.starts_with(key); ++it)
+					{
+						if (fs::path file = index->Resolve(it->virtualPath); !file.empty())
+							return file;
+					}
+					return {};
+				}
+
+				if (key.starts_with("lib/"))
+				{
+					if (fs::path file = LibraryManager::Resolve(key); !file.empty())
+						return file;
+				}
+
+				const fs::path direct(key);
+				if (direct.is_absolute())
+					return fs::exists(direct, ec) ? direct : fs::path();
+				if (!package.empty())
+				{
+					const fs::path local = (package / direct).lexically_normal();
+					if (fs::exists(local, ec))
+						return local;
+				}
+				return {};
+			};
+		}
+
+		OverlayBuilder::Options MakeOverlayOptions(const Build &build, const double margin)
+		{
+			OverlayBuilder::Options options;
+			options.area = build.bounds;
+			options.areaMargin = margin;
+			options.maxObjects = OVERLAY_MAX_OBJECTS;
+			options.bezierSegment = BEZIER_SEGMENT;
+			const float pavementTop = build.pavementTop, runwayHeight = build.runwayHeight;
+			options.layerHeight = [pavementTop, runwayHeight](const std::string_view group, const int offset) { return OverlayLayerHeight(pavementTop, runwayHeight, group, offset); };
+			return options;
+		}
+
+		// -------------------------------------------------------
+
+		/**
+		 * @brief Builds the apt.dat geometry. With a library available, pavement, runways and painted lines use the
+		 * library's .pol / .lin art (the same WorldEditor shows) and light strings become the library's light objects;
+		 * without one everything is drawn in flat colors.
+		 */
+		void BuildAirport(const AptAirport &airport, Build &out, OverlayBuilder *overlay)
 		{
 			double datumLat = 0.0, datumLon = 0.0;
 			if (!airport.GetDatum(datumLat, datumLon))
@@ -421,55 +572,124 @@ namespace SceneryEditorX::XPlane
 
 			// Pavement: first in the file draws on top, so later polygons sit lower.
 			const size_t pavementCount = airport.pavements.size();
-			const float pavementStep = pavementCount > 1 ? std::min(0.003f, 0.5f / static_cast<float>(pavementCount)) : 0.0f;
+			const float pavementStep = pavementCount > 1 ? std::min(0.003f, 0.3f / static_cast<float>(pavementCount)) : 0.0f;
 			const float pavementTop = HEIGHT_PAVEMENT + pavementStep * static_cast<float>(pavementCount);
+			const float runwayHeight = pavementTop + HEIGHT_RUNWAY_ABOVE_PAVEMENT;
+			const float lineHeight = runwayHeight + HEIGHT_LINES_EXTRA;
+			out.pavementTop = pavementTop;
+			out.runwayHeight = runwayHeight;
+			std::vector<float> pavementHeights(pavementCount);
+			for (size_t i = 0; i < pavementCount; ++i)
+				pavementHeights[i] = pavementTop - pavementStep * static_cast<float>(i + 1);
+
+			// Library art for the apt.dat rows, keyed by what it draws
+			OverlayBuild surfaces;
+			std::map<std::pair<int, uint32_t>, std::vector<const OverlayMesh *>> textured;
+			bool lightsAsObjects = false;
+			if (overlay)
+			{
+				OverlayBuilder::Options options = MakeOverlayOptions(out, 0.0);
+				options.area = Bounds2();	// Everything of the airport
+				overlay->BuildAirportSurfaces(airport, pavementHeights, runwayHeight, lineHeight, options, surfaces);
+				for (const OverlayMesh &mesh : surfaces.meshes)
+					textured[{ static_cast<int>(mesh.kind), mesh.placement }].push_back(&mesh);
+				lightsAsObjects = !surfaces.objects.empty() || overlay->GetString(OverlayBuilder::GetLightStringLibraryPath(101), nullptr, surfaces) != nullptr;
+				for (OverlayObject &object : surfaces.objects)
+					out.objects.push_back(std::move(object));
+				out.warnings.insert(out.warnings.end(), surfaces.warnings.begin(), surfaces.warnings.end());
+			}
+			const auto texturedMeshes = [&textured](const OverlayKind kind, const uint32_t index) -> const std::vector<const OverlayMesh *> *
+			{
+				const auto it = textured.find({ static_cast<int>(kind), index });
+				return it != textured.end() ? &it->second : nullptr;
+			};
+
 			for (size_t i = 0; i < pavementCount; ++i)
 			{
 				const AptPavement &pavement = airport.pavements[i];
-				std::vector<std::vector<Point2>> rings;
-				for (const AptNodeChain &ring : pavement.rings)
-				{
-					if (!ring.closed || ring.nodes.size() < 3)
-						continue;
-					rings.emplace_back();
-					FlattenChain(ring, projection, rings.back(), BEZIER_SEGMENT);
-					if (rings.back().size() < 3)
-						rings.pop_back();
-				}
-
 				Part &part = start_part(AirportElementKind::Pavement, static_cast<uint32_t>(i), Describe("Pavement", i, pavement.description), SurfacePaint(pavement.surface, false));
-				std::vector<Point2> points;
-				std::vector<uint32_t> indices;
-				if (!rings.empty() && TriangulatePolygon(rings, points, indices))
-					EmitTriangles(part, points, indices, pavementTop - pavementStep * static_cast<float>(i + 1));
-				else if (!rings.empty())
+
+				if (const auto *meshes = texturedMeshes(OverlayKind::Pavement, static_cast<uint32_t>(i)))
 				{
-					// Degenerate outline: keep its footprint so the entity can still be framed and selected.
-					for (const Point2 &point : rings[0])
-						part.bounds.Add(point);
+					ApplyOverlayMaterial(part, *meshes->front());
+					for (const OverlayMesh *mesh : *meshes)
+						AppendOverlayMesh(part, *mesh);
+				}
+				else
+				{
+					std::vector<std::vector<Point2>> rings;
+					for (const AptNodeChain &ring : pavement.rings)
+					{
+						if (!ring.closed || ring.nodes.size() < 3)
+							continue;
+						rings.emplace_back();
+						FlattenChain(ring, projection, rings.back(), BEZIER_SEGMENT);
+						if (rings.back().size() < 3)
+							rings.pop_back();
+					}
+					std::vector<Point2> points;
+					std::vector<uint32_t> indices;
+					if (!rings.empty() && TriangulatePolygon(rings, points, indices))
+						EmitTriangles(part, points, indices, pavementHeights[i]);
+					else if (!rings.empty())
+					{
+						// Degenerate outline: keep its footprint so the entity can still be framed and selected.
+						for (const Point2 &point : rings[0])
+							part.bounds.Add(point);
+					}
 				}
 
-				// Lines painted along the pavement edges
-				for (const AptNodeChain &ring : pavement.rings)
+				// Lines painted along the pavement edges, and their lights
+				const std::string partName = part.name;
+				if (const auto *lines = texturedMeshes(OverlayKind::PavementLine, static_cast<uint32_t>(i)))
 				{
-					Part prototype;
-					prototype.kind = AirportElementKind::Pavement;
-					prototype.index = static_cast<uint32_t>(i);
-					prototype.name = part.name + " edge";
-					EmitChainRibbons(parts, prototype, ring, projection, false, pavementTop + HEIGHT_RUNWAY_ABOVE_PAVEMENT + HEIGHT_LINES_EXTRA);
-					prototype.name = part.name + " edge lights";
-					EmitChainRibbons(parts, prototype, ring, projection, true, pavementTop + HEIGHT_RUNWAY_ABOVE_PAVEMENT + HEIGHT_LIGHTS_EXTRA);
+					for (const OverlayMesh *mesh : *lines)
+					{
+						Part &edge = start_part(AirportElementKind::Pavement, static_cast<uint32_t>(i), partName + " edge: " + mesh->name.substr(mesh->name.find(": ") == std::string::npos ? 0 : mesh->name.find(": ") + 2), Paint::YellowLine);
+						ApplyOverlayMaterial(edge, *mesh);
+						AppendOverlayMesh(edge, *mesh);
+					}
+				}
+				else
+				{
+					for (const AptNodeChain &ring : pavement.rings)
+					{
+						Part prototype;
+						prototype.kind = AirportElementKind::Pavement;
+						prototype.index = static_cast<uint32_t>(i);
+						prototype.name = partName + " edge";
+						EmitChainRibbons(parts, prototype, ring, projection, false, lineHeight);
+					}
+				}
+				if (!lightsAsObjects)
+				{
+					for (const AptNodeChain &ring : pavement.rings)
+					{
+						Part prototype;
+						prototype.kind = AirportElementKind::Pavement;
+						prototype.index = static_cast<uint32_t>(i);
+						prototype.name = partName + " edge lights";
+						EmitChainRibbons(parts, prototype, ring, projection, true, runwayHeight + HEIGHT_LIGHTS_EXTRA);
+					}
 				}
 			}
 
-			const float runwayHeight = pavementTop + HEIGHT_RUNWAY_ABOVE_PAVEMENT;
 			for (size_t i = 0; i < airport.runways.size(); ++i)
 			{
 				const AptRunway &runway = airport.runways[i];
 				Part &part = start_part(AirportElementKind::Runway, static_cast<uint32_t>(i), "Runway " + runway.GetName(), SurfacePaint(runway.surface, true));
-				Point2 corners[4];
-				GetRunwayCorners(runway, projection, corners, false);
-				EmitQuad(part, corners, runwayHeight);
+				if (const auto *meshes = texturedMeshes(OverlayKind::Runway, static_cast<uint32_t>(i)))
+				{
+					ApplyOverlayMaterial(part, *meshes->front());
+					for (const OverlayMesh *mesh : *meshes)
+						AppendOverlayMesh(part, *mesh);
+				}
+				else
+				{
+					Point2 corners[4];
+					GetRunwayCorners(runway, projection, corners, false);
+					EmitQuad(part, corners, runwayHeight);
+				}
 
 				// Blast pads, a shade lower so the runway proper reads on top
 				if (runway.ends[0].blastPad > 0.0f || runway.ends[1].blastPad > 0.0f)
@@ -495,9 +715,18 @@ namespace SceneryEditorX::XPlane
 			{
 				const AptHelipad &helipad = airport.helipads[i];
 				Part &part = start_part(AirportElementKind::Helipad, static_cast<uint32_t>(i), "Helipad " + helipad.designator, SurfacePaint(helipad.surface, true));
-				Point2 corners[4];
-				GetHelipadCorners(helipad, projection, corners);
-				EmitQuad(part, corners, runwayHeight + HEIGHT_HELIPAD_EXTRA);
+				if (const auto *meshes = texturedMeshes(OverlayKind::Helipad, static_cast<uint32_t>(i)))
+				{
+					ApplyOverlayMaterial(part, *meshes->front());
+					for (const OverlayMesh *mesh : *meshes)
+						AppendOverlayMesh(part, *mesh);
+				}
+				else
+				{
+					Point2 corners[4];
+					GetHelipadCorners(helipad, projection, corners);
+					EmitQuad(part, corners, runwayHeight + HEIGHT_HELIPAD_EXTRA);
+				}
 			}
 
 			for (size_t i = 0; i < airport.linearFeatures.size(); ++i)
@@ -508,16 +737,33 @@ namespace SceneryEditorX::XPlane
 				prototype.index = static_cast<uint32_t>(i);
 				prototype.name = Describe("Line", i, feature.description);
 				const size_t before = parts.size();
-				for (const AptNodeChain &chain : feature.chains)
+
+				if (const auto *lines = texturedMeshes(OverlayKind::PaintedLine, static_cast<uint32_t>(i)))
 				{
-					EmitChainRibbons(parts, prototype, chain, projection, false, runwayHeight + HEIGHT_LINES_EXTRA);
-					Part lightsPrototype = prototype;
-					lightsPrototype.name += " lights";
-					EmitChainRibbons(parts, lightsPrototype, chain, projection, true, runwayHeight + HEIGHT_LIGHTS_EXTRA);
+					for (const OverlayMesh *mesh : *lines)
+					{
+						Part &part = start_part(AirportElementKind::LinearFeature, static_cast<uint32_t>(i), mesh->name, Paint::YellowLine);
+						ApplyOverlayMaterial(part, *mesh);
+						AppendOverlayMesh(part, *mesh);
+					}
+				}
+				else
+				{
+					for (const AptNodeChain &chain : feature.chains)
+						EmitChainRibbons(parts, prototype, chain, projection, false, lineHeight);
+				}
+				if (!lightsAsObjects)
+				{
+					for (const AptNodeChain &chain : feature.chains)
+					{
+						Part lightsPrototype = prototype;
+						lightsPrototype.name += " lights";
+						EmitChainRibbons(parts, lightsPrototype, chain, projection, true, runwayHeight + HEIGHT_LIGHTS_EXTRA);
+					}
 				}
 				if (parts.size() == before)
 				{
-					// A feature with no style at all: keep an empty, framable entity for it.
+					// A feature with no drawn style (lights only as objects, or no style at all): keep a framable entity for it.
 					Part &part = start_part(AirportElementKind::LinearFeature, static_cast<uint32_t>(i), prototype.name, Paint::YellowLine);
 					for (const AptNodeChain &chain : feature.chains)
 					{
@@ -683,6 +929,102 @@ namespace SceneryEditorX::XPlane
 				out.bounds.Add(part.bounds);
 		}
 
+		/**
+		 * @brief Adds the scenery pack's DSF overlay around the airport: draped polygons, lines, forests and facades as
+		 * textured parts (merged per asset), objects and object strings as placements for the OBJ8 loader.
+		 */
+		void BuildOverlay(const AirportDocument &document, Build &out, OverlayBuilder &overlay)
+		{
+			const fs::path &package = document.GetPackageFolder();
+			if (package.empty() || !out.bounds.valid)
+				return;
+
+			// Tiles under the airport (with a little slack for airports on a tile edge)
+			double south = 0.0, west = 0.0, north = 0.0, east = 0.0;
+			if (!document.airport.GetBounds(south, west, north, east))
+			{
+				if (!document.airport.GetDatum(south, west))
+					return;
+				north = south;
+				east = west;
+			}
+			constexpr double slack = 0.02;
+			std::set<std::pair<int, int>> tiles;
+			for (int lat = static_cast<int>(std::floor(south - slack)); lat <= static_cast<int>(std::floor(north + slack)); ++lat)
+			{
+				for (int lon = static_cast<int>(std::floor(west - slack)); lon <= static_cast<int>(std::floor(east + slack)); ++lon)
+					tiles.insert({ lat, lon });
+			}
+
+			// A tile of a shared pack (Global Airports) holds every airport of a 1x1 degree cell: keep what's near this one
+			const bool shared = IsProtectedPackage(package, LibraryManager::GetInstallPath());
+			const OverlayBuilder::Options options = MakeOverlayOptions(out, shared ? OVERLAY_MARGIN_SHARED_TILE : OVERLAY_MARGIN_OWN_PACK);
+
+			OverlayBuild overlayBuild;
+			for (const auto &[lat, lon] : tiles)
+			{
+				const fs::path tile = GetDsfTilePath(package, lat + 0.5, lon + 0.5);
+				std::error_code ec;
+				if (!fs::exists(tile, ec))
+					continue;
+
+				const auto start = std::chrono::steady_clock::now();
+				DsfFile dsf;
+				std::string error;
+				if (!LoadDsf(tile, dsf, &error))
+				{
+					out.warnings.push_back("DSF " + tile.filename().string() + ": " + error);
+					continue;
+				}
+				const size_t meshesBefore = overlayBuild.meshes.size(), objectsBefore = overlayBuild.objects.size();
+				overlay.Build(dsf, options, overlayBuild);
+				SEDX_CORE_INFO_TAG(LOG_TAG, "{}: {} objects, {} polygons in the tile; kept {} meshes and {} objects near the airport in {:.0f} ms", tile.filename().string(),
+					dsf.objects.size(), dsf.polygons.size(), overlayBuild.meshes.size() - meshesBefore, overlayBuild.objects.size() - objectsBefore,
+					std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count());
+			}
+
+			// Meshes of the same asset share an entity: one draw per texture, and the outliner stays readable
+			std::map<std::string, size_t> merged;
+			for (const OverlayMesh &mesh : overlayBuild.meshes)
+			{
+				AirportElementKind kind = AirportElementKind::DrapedPolygon;
+				switch (mesh.kind)
+				{
+					case OverlayKind::Line:		kind = AirportElementKind::LineString; break;
+					case OverlayKind::Forest:	kind = AirportElementKind::Forest; break;
+					case OverlayKind::Facade:	kind = AirportElementKind::Facade; break;
+					default:					break;
+				}
+				const std::string key = std::to_string(static_cast<int>(kind)) + "|" + mesh.resource + "|" + mesh.texture.generic_string() + "|" + (mesh.cutout ? "c" : "") + (mesh.blended ? "b" : "") + (mesh.name.ends_with(" roof") ? "r" : "");
+				auto it = merged.find(key);
+				if (it == merged.end())
+				{
+					Part &part = out.parts.emplace_back();
+					part.kind = kind;
+					part.index = mesh.placement;
+					part.subIndex = 0;
+					part.name = mesh.name;
+					ApplyOverlayMaterial(part, mesh);
+					it = merged.emplace(key, out.parts.size() - 1).first;
+				}
+				Part &part = out.parts[it->second];
+				AppendOverlayMesh(part, mesh);
+				++part.subIndex;	// Placements merged into the part
+			}
+			for (const auto &[key, index] : merged)
+			{
+				Part &part = out.parts[index];
+				if (part.subIndex > 1)
+					part.name += " (x" + std::to_string(part.subIndex) + ")";
+			}
+
+			out.objects.insert(out.objects.end(), std::make_move_iterator(overlayBuild.objects.begin()), std::make_move_iterator(overlayBuild.objects.end()));
+			out.warnings.insert(out.warnings.end(), overlayBuild.warnings.begin(), overlayBuild.warnings.end());
+			out.overlayMeshes += static_cast<uint32_t>(overlayBuild.meshes.size());
+			out.overlayCulled += overlayBuild.culled;
+			out.overlayUnsupported += overlayBuild.unsupported;
+		}
+
 		// -------------------------------------------------------
 
 		const char *GroupName(const AirportElementKind kind)
@@ -707,17 +1049,32 @@ namespace SceneryEditorX::XPlane
 				case AirportElementKind::TruckParking:
 				case AirportElementKind::TruckDestination:	return "Ground service";
 				case AirportElementKind::Jetway:			return "Jetways";
+				case AirportElementKind::DrapedPolygon:		return "Draped polygons";
+				case AirportElementKind::LineString:		return "Line strings";
+				case AirportElementKind::Forest:			return "Forests";
+				case AirportElementKind::Facade:			return "Facades";
+				case AirportElementKind::SceneryObject:		return "Objects";
+				case AirportElementKind::AirportLight:		return "Airport lights";
 				default:									return "Other";
 			}
 		}
+
+		struct TextureEntry
+		{
+			Ref<ImageResource> image;
+			TextureInfo info;
+		};
 
 		struct Loaded
 		{
 			uint64_t root = 0;
 			std::array<uint64_t, static_cast<size_t>(AirportElementKind::Count)> groups{};
 			std::vector<uint64_t> entities;			// Every part entity
+			std::vector<std::pair<uint64_t, AirportElementKind>> objectRoots;	// Placed OBJ8 roots and the group kind they're under
 			Ref<Mesh> mesh;
 			std::array<Ref<MaterialAsset>, static_cast<size_t>(Paint::Count)> materials;
+			std::map<std::string, Ref<MaterialAsset>> overlayMaterials;		// By texture + flags
+			std::map<std::string, TextureEntry> textures;					// By file
 			GeoProjection projection;
 			Bounds2 bounds;
 			uint64_t revision = 0;
@@ -780,7 +1137,159 @@ namespace SceneryEditorX::XPlane
 			return material;
 		}
 
-		/* @brief Builds the groups and part entities under the root. */
+		/* @brief The material for library / DSF art: its texture (loaded once per file) with the asset's alpha treatment. */
+		Ref<MaterialAsset> GetOverlayMaterial(Loaded &loaded, const Part &part)
+		{
+			ImageResource *image = nullptr;
+			bool hasAlpha = false;
+			std::string key;
+			if (!part.texture.empty())
+			{
+				key = part.texture.generic_string();
+				auto it = loaded.textures.find(key);
+				if (it == loaded.textures.end())
+				{
+					TextureEntry entry;
+					const fs::path file = TextureLoader::ResolveTexturePath(part.texture.parent_path(), part.texture.filename().string());
+					if (!file.empty())
+						entry.image = TextureLoader::Load(file, TextureUsage::Albedo, &entry.info);
+					if (!entry.image)
+						SEDX_CORE_WARN_TAG(LOG_TAG, "Texture not found or unreadable: {}{}", key, entry.info.error.empty() ? std::string() : " (" + entry.info.error + ")");
+					it = loaded.textures.emplace(key, std::move(entry)).first;
+				}
+				image = it->second.image.Get();
+				hasAlpha = it->second.info.hasAlpha;
+			}
+			if (!image)
+			{
+				char color[64];
+				std::snprintf(color, sizeof(color), "color:%.3f,%.3f,%.3f,%.3f", part.color[0], part.color[1], part.color[2], part.color[3]);
+				key = color;
+			}
+
+			const bool cutout = image && hasAlpha && part.cutout;
+			const bool blended = image && hasAlpha && part.blended && !cutout;
+			if (cutout)
+				key += "|cut" + std::to_string(part.cutoff);
+			if (blended)
+				key += "|blend";
+
+			auto it = loaded.overlayMaterials.find(key);
+			if (it != loaded.overlayMaterials.end())
+				return it->second;
+
+			Ref<MaterialAsset> material = CreateRef<MaterialAsset>();
+			material->SetName(image ? "Airport " + part.texture.filename().string() : "Airport overlay color");
+			const float tone = image ? 1.0f : 1.0f;
+			material->SetProperty(MaterialClass::ColorR, image ? tone : part.color[0]);
+			material->SetProperty(MaterialClass::ColorG, image ? tone : part.color[1]);
+			material->SetProperty(MaterialClass::ColorB, image ? tone : part.color[2]);
+			material->SetProperty(MaterialClass::ColorA, image ? 1.0f : part.color[3]);
+			material->SetProperty(MaterialClass::TextureTilingX, 1.0f);
+			material->SetProperty(MaterialClass::TextureTilingY, 1.0f);
+			material->SetProperty(MaterialClass::Roughness, 0.9f);
+			material->SetProperty(MaterialClass::Metalness, 0.0f);
+			material->SetProperty(MaterialClass::Normal, 0.0f);
+			material->SetProperty(MaterialProperty::CullMode, static_cast<float>(CullMode::None));
+			// Like the OBJ8 materials: cutouts alpha-test at the asset's ratio; blended art keeps its opaque texels in the
+			// deferred passes and blends the rest in the transparent pass.
+			material->SetProperty(MaterialProperty::AlphaCutoff, blended ? BLEND_SPLIT_ALPHA : (cutout ? std::clamp(part.cutoff, 0.001f, 1.0f) : 0.0f));
+			material->SetProperty(MaterialProperty::BlendMode, blended ? 1.0f : 0.0f);
+			if (image)
+				material->SetTexture(MaterialTextureType::Color, image);
+			loaded.overlayMaterials.emplace(key, material);
+			return material;
+		}
+
+		/* @brief The group entity for a kind (kinds sharing a group name share the entity), created under the root when missing. */
+		entt::entity EnsureGroup(Loaded &loaded, entt::registry &registry, const entt::entity rootHandle, const AirportElementKind kind)
+		{
+			const size_t kindIndex = static_cast<size_t>(kind);
+			if (loaded.groups[kindIndex] != 0)
+			{
+				if (const entt::entity handle = FindHandle(registry, loaded.groups[kindIndex]); handle != entt::null)
+					return handle;
+				loaded.groups[kindIndex] = 0;
+			}
+
+			const char *groupName = GroupName(kind);
+			for (size_t k = 0; k < loaded.groups.size(); ++k)
+			{
+				if (loaded.groups[k] != 0 && std::string_view(GroupName(static_cast<AirportElementKind>(k))) == groupName)
+				{
+					if (const entt::entity handle = FindHandle(registry, loaded.groups[k]); handle != entt::null)
+					{
+						loaded.groups[kindIndex] = loaded.groups[k];
+						return handle;
+					}
+				}
+			}
+
+			const Entity group = Scene::CreateEntity(groupName);
+			const entt::entity groupHandle = static_cast<entt::entity>(group);
+			if (!registry.valid(groupHandle))
+				return entt::null;
+			AirportElementComponent &component = registry.emplace<AirportElementComponent>(groupHandle);
+			component.kind = AirportElementKind::Group;
+			component.index = static_cast<uint32_t>(kindIndex);
+			component.airportRoot = loaded.root;
+			Attach(registry, groupHandle, rootHandle);
+			loaded.groups[kindIndex] = GetId(registry, groupHandle);
+			++loaded.stats.entities;
+			return groupHandle;
+		}
+
+		/* @brief Places the OBJ8s (DSF objects, strings, facade attachments, light strings) under their groups. */
+		void PlaceObjects(Loaded &loaded, entt::registry &registry, const entt::entity rootHandle, const Build &build)
+		{
+			if (build.objects.empty())
+				return;
+			const auto start = std::chrono::steady_clock::now();
+			uint32_t placed = 0, failed = 0;
+			std::string firstError;
+			for (const OverlayObject &object : build.objects)
+			{
+				const AirportElementKind kind = object.source == OverlayObject::Source::AirportLights ? AirportElementKind::AirportLight : AirportElementKind::SceneryObject;
+				const entt::entity groupHandle = EnsureGroup(loaded, registry, rootHandle, kind);
+				if (groupHandle == entt::null)
+					break;
+
+				SceneObjects::PlaceOptions options;
+				options.position[0] = static_cast<float>(object.x);
+				options.position[1] = static_cast<float>(object.y);
+				options.position[2] = static_cast<float>(object.z);
+				options.headingDegrees = object.heading;
+				options.virtualPath = object.resource.starts_with("lib/") ? object.resource : std::string();
+				options.name = object.name;
+				options.frameCamera = false;
+				std::string error;
+				const uint64_t id = SceneObjects::Place(object.file, options, &error);
+				const entt::entity handle = FindHandle(registry, id);
+				if (handle == entt::null)
+				{
+					++failed;
+					if (firstError.empty())
+						firstError = error;
+					continue;
+				}
+				Attach(registry, handle, groupHandle);
+				if (!loaded.kindVisible[static_cast<size_t>(kind)])
+				{
+					if (Entity *stored = Scene::GetStoredEntity(Entity(handle, Scene::GetActive())))
+						stored->SetActive(false);
+				}
+				loaded.objectRoots.emplace_back(id, kind);
+				++placed;
+			}
+			loaded.stats.objects += placed;
+			loaded.stats.entities += placed;
+			SEDX_CORE_INFO_TAG(LOG_TAG, "Placed {} objects ({} light fixtures) in {:.0f} ms{}", placed,
+				std::count_if(loaded.objectRoots.begin(), loaded.objectRoots.end(), [](const auto &entry) { return entry.second == AirportElementKind::AirportLight; }),
+				std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count(),
+				failed ? "; " + std::to_string(failed) + " could not be placed: " + firstError : std::string());
+		}
+
+		/* @brief Builds the groups and part entities under the root, then places the objects. */
 		void BuildEntities(Loaded &loaded, const AirportDocument &document)
 		{
 			entt::registry *registry = GetRegistry();
@@ -790,12 +1299,23 @@ namespace SceneryEditorX::XPlane
 
 			const auto start = std::chrono::steady_clock::now();
 			Build build;
-			BuildAirport(document.airport, build);
+			double datumLat = 0.0, datumLon = 0.0;
+			std::unique_ptr<OverlayBuilder> overlay;
+			if (document.airport.GetDatum(datumLat, datumLon))
+				overlay = std::make_unique<OverlayBuilder>(MakeResolver(document.GetPackageFolder()), GeoProjection(datumLat, datumLon));
+			BuildAirport(document.airport, build, overlay.get());
+			if (overlay)
+				BuildOverlay(document, build, *overlay);
 			loaded.projection = build.projection;
 			loaded.bounds = build.bounds;
 			loaded.groups.fill(0);
 			loaded.entities.clear();
+			loaded.objectRoots.clear();
+			loaded.overlayMaterials.clear();
+			loaded.textures.clear();
 			loaded.stats = {};
+			loaded.stats.overlayMeshes = build.overlayMeshes;
+			loaded.stats.warnings = static_cast<uint32_t>(build.warnings.size());
 
 			// One mesh, a sub-mesh per part
 			loaded.mesh.Reset();
@@ -817,42 +1337,9 @@ namespace SceneryEditorX::XPlane
 			if (anyGeometry)
 				loaded.mesh->CreateGpuBuffers();
 
-			// Groups, in kind order, only for kinds that have parts
+			// Groups, in part order, only for kinds that have parts
 			for (const Part &part : build.parts)
-			{
-				const size_t kindIndex = static_cast<size_t>(part.kind);
-				if (loaded.groups[kindIndex] != 0)
-					continue;
-
-				// Kinds sharing a group name share the entity
-				const char *groupName = GroupName(part.kind);
-				uint64_t existing = 0;
-				for (size_t k = 0; k < loaded.groups.size(); ++k)
-				{
-					if (loaded.groups[k] != 0 && std::string_view(GroupName(static_cast<AirportElementKind>(k))) == groupName)
-					{
-						existing = loaded.groups[k];
-						break;
-					}
-				}
-				if (existing != 0)
-				{
-					loaded.groups[kindIndex] = existing;
-					continue;
-				}
-
-				const Entity group = Scene::CreateEntity(groupName);
-				const entt::entity groupHandle = static_cast<entt::entity>(group);
-				if (!registry->valid(groupHandle))
-					continue;
-				AirportElementComponent &component = registry->emplace<AirportElementComponent>(groupHandle);
-				component.kind = AirportElementKind::Group;
-				component.index = static_cast<uint32_t>(kindIndex);
-				component.airportRoot = loaded.root;
-				Attach(*registry, groupHandle, rootHandle);
-				loaded.groups[kindIndex] = GetId(*registry, groupHandle);
-				++loaded.stats.entities;
-			}
+				EnsureGroup(loaded, *registry, rootHandle, part.kind);
 
 			for (const Part &part : build.parts)
 			{
@@ -886,12 +1373,19 @@ namespace SceneryEditorX::XPlane
 					{
 						if (Renderable *renderable = stored->AddComponent<Renderable>())
 						{
-							Ref<MaterialAsset> &material = loaded.materials[static_cast<size_t>(part.paint)];
-							if (!material)
-								material = MakeMaterial(part.paint);
+							Ref<MaterialAsset> material;
+							if (part.textured)
+								material = GetOverlayMaterial(loaded, part);
+							else
+							{
+								Ref<MaterialAsset> &paintMaterial = loaded.materials[static_cast<size_t>(part.paint)];
+								if (!paintMaterial)
+									paintMaterial = MakeMaterial(part.paint);
+								material = paintMaterial;
+							}
 							renderable->SetMesh(loaded.mesh.Get(), part.subMesh);
 							renderable->SetMaterial(material);
-							renderable->SetFlag(CastsShadows, false);
+							renderable->SetFlag(CastsShadows, part.kind == AirportElementKind::Facade || part.kind == AirportElementKind::Forest);
 						}
 						if (!loaded.kindVisible[static_cast<size_t>(part.kind)])
 							stored->SetActive(false);
@@ -902,11 +1396,20 @@ namespace SceneryEditorX::XPlane
 				++loaded.stats.parts;
 			}
 
+			PlaceObjects(loaded, *registry, rootHandle, build);
+
 			loaded.revision = document.GetRevision();
 			loaded.geometryRevision = document.GetGeometryRevision();
 			loaded.stats.buildMilliseconds = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
-			SEDX_CORE_INFO_TAG(LOG_TAG, "{} {}: {} parts, {} triangles, {} entities in {:.0f} ms", document.airport.id, document.airport.name, loaded.stats.parts,
-				loaded.stats.triangles, loaded.stats.entities, loaded.stats.buildMilliseconds);
+			SEDX_CORE_INFO_TAG(LOG_TAG, "{} {}: {} parts ({} overlay meshes merged in), {} triangles, {} objects, {} entities, {} textures in {:.0f} ms", document.airport.id, document.airport.name,
+				loaded.stats.parts, build.overlayMeshes, loaded.stats.triangles, loaded.stats.objects, loaded.stats.entities, loaded.textures.size(), loaded.stats.buildMilliseconds);
+			if (build.overlayCulled || build.overlayUnsupported)
+				SEDX_CORE_INFO_TAG(LOG_TAG, "Overlay: {} placements outside the airport skipped, {} of unsupported kinds (roads, autogen blocks)", build.overlayCulled, build.overlayUnsupported);
+			constexpr size_t maxWarnings = 25;
+			for (size_t i = 0; i < build.warnings.size() && i < maxWarnings; ++i)
+				SEDX_CORE_WARN_TAG(LOG_TAG, "{}", build.warnings[i]);
+			if (build.warnings.size() > maxWarnings)
+				SEDX_CORE_WARN_TAG(LOG_TAG, "... and {} more asset warnings", build.warnings.size() - maxWarnings);
 		}
 
 		void DestroyChildren(Loaded &loaded)
@@ -918,7 +1421,7 @@ namespace SceneryEditorX::XPlane
 			if (rootHandle == entt::null)
 				return;
 
-			// Groups take their parts with them.
+			// Groups take their parts and objects with them.
 			const std::vector<UUID> children = registry->get<RelationshipComponent>(rootHandle).pChildren;
 			for (const UUID &child : children)
 			{
@@ -927,10 +1430,13 @@ namespace SceneryEditorX::XPlane
 			}
 			loaded.groups.fill(0);
 			loaded.entities.clear();
+			loaded.objectRoots.clear();
 			loaded.mesh.Reset();
+			loaded.overlayMaterials.clear();
+			loaded.textures.clear();
 		}
 
-		/* @brief Three-quarter view from the south-east that fits a sphere. */
+		/* @brief Three-quarter view from the south-east that fits a sphere; the sphere's center becomes the orbit pivot. */
 		void FrameSphere(const Vec3 &center, const float radius, const float pitchDegrees)
 		{
 			entt::registry *registry = GetRegistry();
@@ -946,10 +1452,16 @@ namespace SceneryEditorX::XPlane
 				const float pitch = pitchDegrees * kDegToRad;
 				const Vec3 forward(std::cos(pitch) * std::sin(yaw), std::sin(pitch), std::cos(pitch) * std::cos(yaw));
 				const float distance = std::max(radius, 5.0f) / std::sin(30.0f * kDegToRad) * 1.1f;
+				const Vec3 eye = center - forward * distance;
 
 				TransformComponent &transform = view.get<TransformComponent>(handle);
-				transform.translation = center - forward * distance;
-				transform.SetRotationEuler(Vec3(pitch, yaw, 0.0f));
+				if (Camera *camera = Scene::GetCamera())
+					camera->LookAt(transform, eye, center);
+				else
+				{
+					transform.translation = eye;
+					transform.SetRotationEuler(Vec3(pitch, yaw, 0.0f));
+				}
 				break;
 			}
 		}
@@ -990,7 +1502,29 @@ namespace SceneryEditorX::XPlane
 			case AirportElementKind::TruckParking:		return "Truck parking";
 			case AirportElementKind::TruckDestination:	return "Truck destination";
 			case AirportElementKind::Jetway:			return "Jetway";
+			case AirportElementKind::DrapedPolygon:		return "Draped polygon";
+			case AirportElementKind::LineString:		return "Line string";
+			case AirportElementKind::Forest:			return "Forest";
+			case AirportElementKind::Facade:			return "Facade";
+			case AirportElementKind::SceneryObject:		return "Object";
+			case AirportElementKind::AirportLight:		return "Airport light";
 			default:									return "Unknown";
+		}
+	}
+
+	bool SceneAirports::IsOverlayKind(const AirportElementKind kind)
+	{
+		switch (kind)
+		{
+			case AirportElementKind::DrapedPolygon:
+			case AirportElementKind::LineString:
+			case AirportElementKind::Forest:
+			case AirportElementKind::Facade:
+			case AirportElementKind::SceneryObject:
+			case AirportElementKind::AirportLight:
+				return true;
+			default:
+				return false;
 		}
 	}
 
@@ -1188,6 +1722,16 @@ namespace SceneryEditorX::XPlane
 				continue;
 			const AirportElementComponent *component = registry->try_get<AirportElementComponent>(handle);
 			if (!component || component->kind != kind)
+				continue;
+			if (Entity *stored = Scene::GetStoredEntity(Entity(handle, Scene::GetActive())))
+				stored->SetActive(visible);
+		}
+		for (const auto &[id, objectKind] : s_Loaded->objectRoots)
+		{
+			if (objectKind != kind)
+				continue;
+			const entt::entity handle = FindHandle(*registry, id);
+			if (handle == entt::null)
 				continue;
 			if (Entity *stored = Scene::GetStoredEntity(Entity(handle, Scene::GetActive())))
 				stored->SetActive(visible);

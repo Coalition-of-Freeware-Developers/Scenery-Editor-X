@@ -31,10 +31,11 @@ The dependency-light, cross-platform Catch2 unit suites that only need `source/`
   (`SceneryEditorX/utils/pointers.h`). Builds and runs.
 - **`XPlaneFormatTests`** (`source/Tests/xplane_tests`) — OBJ8 parsing/animation evaluation, the
   `library.txt` / `scenery_packs.ini` parsers + library index, the `lights.txt` light catalog, and the
-  apt.dat 12.00 parser/writer, airport geometry, airport index and Scenery Gateway JSON records
+  apt.dat 12.00 parser/writer, airport geometry, airport index, Scenery Gateway JSON records, the DSF
+  reader, the .pol/.lin/.str/.for/.fac/.agp asset parsers and the overlay geometry builder
   (`SceneryEditorX/xplane/xp_obj8.*`, `xp_library.*`, `xp_lights.*`, `xp_apt.*`, `xp_apt_geometry.*`,
-  `xp_airport_index.*`, `xp_gateway_types.*`). Standard library plus the header-only `dependency/json`
-  submodule, fully green.
+  `xp_airport_index.*`, `xp_gateway_types.*`, `xp_dsf.*`, `xp_assets.*`, `xp_overlay.*`). Standard library
+  plus the header-only `dependency/json` submodule, fully green.
 
 The other suites are **not** Linux-buildable as written: `SettingsTest` links Windows libs
 (`dxgi`, `d3d12`, `Shell32.lib`); `MemoryAllocatorTests` links `vulkan-1` and needs the Vulkan
@@ -90,11 +91,12 @@ g++ -std=c++20 -O2 -pthread -DSEDX_NO_LOGGING -DZoneScoped= $INCS \
 
 # 4. XPlaneFormatTests (fully green)
 g++ -std=c++20 -O2 -pthread $INCS source/Tests/xplane_tests/XPlaneFormatTests.cpp \
-    source/Tests/xplane_tests/AirportTests.cpp \
+    source/Tests/xplane_tests/AirportTests.cpp source/Tests/xplane_tests/OverlayTests.cpp \
     source/SceneryEditorX/xplane/xp_obj8.cpp source/SceneryEditorX/xplane/xp_library.cpp \
     source/SceneryEditorX/xplane/xp_lights.cpp source/SceneryEditorX/xplane/xp_apt.cpp \
     source/SceneryEditorX/xplane/xp_apt_geometry.cpp source/SceneryEditorX/xplane/xp_airport_index.cpp \
-    source/SceneryEditorX/xplane/xp_gateway_types.cpp $LIBS \
+    source/SceneryEditorX/xplane/xp_gateway_types.cpp source/SceneryEditorX/xplane/xp_dsf.cpp \
+    source/SceneryEditorX/xplane/xp_assets.cpp source/SceneryEditorX/xplane/xp_overlay.cpp $LIBS \
     -o build_linux_tests/XPlaneFormatTests
 ./build_linux_tests/XPlaneFormatTests
 ```
