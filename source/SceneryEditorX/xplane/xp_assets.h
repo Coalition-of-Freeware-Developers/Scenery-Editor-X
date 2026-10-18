@@ -71,7 +71,9 @@ namespace SceneryEditorX::XPlane
 		int layerOffset = 0;
 		std::string surface;				// SURFACE asphalt / concrete / ... (physics only)
 		std::string decal;
-		bool tiled = false;					// TEXTURE_TILE / RUNWAY_TILE present (drawn as a plain texture here)
+		bool tiled = false;					// TEXTURE_TILE / RUNWAY_TILE present
+		int tilesX = 1;						// The texture is an atlas of tilesX x tilesY variants, each covering SCALE
+		int tilesY = 1;						// meters (drawn in atlas order here; X-Plane picks them at random)
 	};
 
 	bool ParsePolygonAsset(std::string_view text, PolygonAsset &out, std::string *error = nullptr);

@@ -183,7 +183,15 @@ namespace SceneryEditorX::XPlane
 			else if (key == "DECAL_LIB" && tokens.size() >= 2)
 				out.decal = std::string(RestOfLine(line, 1));
 			else if (key == "TEXTURE_TILE" || key == "RUNWAY_TILE")
+			{
+				// TEXTURE_TILE <x tiles> <y tiles> <x pixels> <y pixels> [map]
 				out.tiled = true;
+				if (tokens.size() >= 3)
+				{
+					out.tilesX = std::clamp(ParseInt(tokens[1], 1), 1, 64);
+					out.tilesY = std::clamp(ParseInt(tokens[2], 1), 1, 64);
+				}
+			}
 		});
 
 		if (out.texture.empty())

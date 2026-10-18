@@ -510,7 +510,9 @@ namespace SceneryEditorX::XPlane
 					return {};
 				}
 
-				if (key.starts_with("lib/"))
+				// Any virtual path can be a library export, not just "lib/...": third-party libraries export their own
+				// roots (ZDP_Library/..., MisterX_Library/...). Like X-Plane, an export wins over a file in the pack.
+				if (!fs::path(key).is_absolute())
 				{
 					if (fs::path file = LibraryManager::Resolve(key); !file.empty())
 						return file;
@@ -1079,6 +1081,7 @@ namespace SceneryEditorX::XPlane
 			Bounds2 bounds;
 			uint64_t revision = 0;
 			uint64_t geometryRevision = 0;
+			uint64_t libraryGeneration = 0;
 			SceneAirports::Stats stats;
 			std::array<bool, static_cast<size_t>(AirportElementKind::Count)> kindVisible;
 
@@ -1298,6 +1301,7 @@ namespace SceneryEditorX::XPlane
 				return;
 
 			const auto start = std::chrono::steady_clock::now();
+			loaded.libraryGeneration = LibraryManager::GetGeneration();
 			Build build;
 			double datumLat = 0.0, datumLon = 0.0;
 			std::unique_ptr<OverlayBuilder> overlay;
@@ -1367,7 +1371,19 @@ namespace SceneryEditorX::XPlane
 					transform.SetRotationEuler(Vec3(0.0f, -static_cast<float>(part.heading) * kDegToRad, 0.0f));
 				}
 
-				if (!part.indices.empty())
+				// DSF art whose texture is missing (packs ship broken references) isn't drawn, like in X-Plane, rather
+				// than covering the ground in flat gray. The entity stays so it can be found and framed.
+				bool drawable = !part.indices.empty();
+				Ref<MaterialAsset> overlayMaterial;
+				if (drawable && part.textured)
+				{
+					overlayMaterial = GetOverlayMaterial(loaded, part);
+					const bool textureOnly = part.kind == AirportElementKind::DrapedPolygon || part.kind == AirportElementKind::LineString || part.kind == AirportElementKind::Forest;
+					if (textureOnly && !overlayMaterial->GetTexture(MaterialTextureType::Color))
+						drawable = false;
+				}
+
+				if (drawable)
 				{
 					if (Entity *stored = Scene::GetStoredEntity(entity))
 					{
@@ -1375,7 +1391,7 @@ namespace SceneryEditorX::XPlane
 						{
 							Ref<MaterialAsset> material;
 							if (part.textured)
-								material = GetOverlayMaterial(loaded, part);
+								material = overlayMaterial;
 							else
 							{
 								Ref<MaterialAsset> &paintMaterial = loaded.materials[static_cast<size_t>(part.paint)];
@@ -1624,6 +1640,11 @@ namespace SceneryEditorX::XPlane
 	uint64_t SceneAirports::GetBuiltGeometryRevision()
 	{
 		return IsLoaded() ? s_Loaded->geometryRevision : 0;
+	}
+
+	uint64_t SceneAirports::GetBuiltLibraryGeneration()
+	{
+		return IsLoaded() ? s_Loaded->libraryGeneration : 0;
 	}
 
 	bool SceneAirports::IsPlacedKind(const AirportElementKind kind)

@@ -808,6 +808,60 @@ TEST_CASE("Overlay builder turns DSF placements into meshes and object placement
 	CHECK(resolverCalls == callsBefore);	// Object lookups are remembered too
 }
 
+TEST_CASE("UV mapped draped polygons keep each point's UV whatever the triangulation does", "[overlay]")
+{
+	TempDir temp;
+	temp.Write("ortho/tile.pol", "A\n850\nDRAPED_POLYGON\n\nTEXTURE_NOWRAP tile.dds\nSCALE 25 25\nLAYER_GROUP beaches -1\n");
+	const fs::path package = temp.path;
+	const AssetResolver resolver = [&](const std::string_view path) -> fs::path
+	{
+		const fs::path local = package / fs::path(std::string(path));
+		return fs::exists(local) ? local : fs::path();
+	};
+	const GeoProjection projection(45.6, -122.6);
+	OverlayBuilder builder(resolver, projection);
+
+	// A clockwise (seen from above) 5-point outline with s = east / 100 + 0.5, t = north / 100 + 0.5
+	const std::vector<Point2> corners = { { -50.0, 50.0 }, { 50.0, 50.0 }, { 50.0, -50.0 }, { 0.0, -20.0 }, { -50.0, -50.0 } };
+	DsfFile dsf;
+	dsf.polygonDefinitions = { "ortho/tile.pol" };
+	DsfPolygonPlacement ortho;
+	ortho.definition = 0;
+	ortho.parameter = 65535;
+	ortho.planes = 4;
+	ortho.windings.emplace_back();
+	for (const Point2 &corner : corners)
+	{
+		DsfPoint p;
+		p.planes = 4;
+		projection.ToGeo(corner, p.v[1], p.v[0]);
+		p.v[2] = corner.x / 100.0 + 0.5;
+		p.v[3] = -corner.z / 100.0 + 0.5;
+		ortho.windings.back().push_back(p);
+	}
+	dsf.polygons.push_back(ortho);
+
+	OverlayBuild out;
+	builder.Build(dsf, OverlayBuilder::Options{}, out);
+	REQUIRE(out.meshes.size() == 1);
+	const OverlayMesh &mesh = out.meshes[0];
+	REQUIRE(mesh.indices.size() == 9);
+	for (const OverlayVertex &vertex : mesh.vertices)
+	{
+		CHECK(vertex.u == Catch::Approx(vertex.x / 100.0 + 0.5).margin(1e-4));
+		CHECK(vertex.v == Catch::Approx(-vertex.z / 100.0 + 0.5).margin(1e-4));
+	}
+}
+
+TEST_CASE("Tiled pavement atlases cover SCALE meters per tile", "[overlay]")
+{
+	PolygonAsset pol;
+	REQUIRE(ParsePolygonAsset("A\n850\nDRAPED_POLYGON\n\nTEXTURE a.png\nRUNWAY_TILE 4 8 256 512 ../maps/noise.png\nSCALE 22 44\n", pol));
+	CHECK(pol.tiled);
+	CHECK(pol.tilesX == 4);
+	CHECK(pol.tilesY == 8);
+}
+
 TEST_CASE("Overlay builder library mappings", "[overlay]")
 {
 	CHECK(OverlayBuilder::GetSurfaceLibraryPolygon(1) == "lib/airport/ground/pavement/asphalt/strips.pol");

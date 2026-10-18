@@ -122,6 +122,27 @@ namespace SceneryEditorX::XPlane
 			return projection.ToLocal(point.v[1], point.v[0]);
 		}
 
+		/**
+		 * @brief The UV given with the input point at a triangulated point. Triangulation may reorder points, reverse
+		 * a ring's winding or duplicate points to bridge holes, so UVs are matched by position, never by index.
+		 */
+		std::pair<double, double> UvAt(const Point2 &point, const std::vector<Point2> &source, const std::vector<std::pair<double, double>> &uvs)
+		{
+			size_t best = 0;
+			double bestDistance = 1e300;
+			for (size_t i = 0; i < source.size() && i < uvs.size(); ++i)
+			{
+				const double dx = source[i].x - point.x, dz = source[i].z - point.z;
+				const double distance = dx * dx + dz * dz;
+				if (distance < bestDistance)
+				{
+					bestDistance = distance;
+					best = i;
+				}
+			}
+			return best < uvs.size() ? uvs[best] : std::pair<double, double>(0.0, 0.0);
+		}
+
 		std::string BaseName(const std::string &path)
 		{
 			const size_t slash = path.find_last_of("/\\");
@@ -518,20 +539,23 @@ namespace SceneryEditorX::XPlane
 
 		if (uvMapped && !bezier)
 		{
-			// Orthophoto: the UVs come with the points; triangulate and carry them over by vertex
+			// Orthophoto: the UVs come with the points; triangulate, then give each vertex the UV of its input point
 			std::vector<Point2> points;
 			std::vector<uint32_t> indices;
 			if (!TriangulatePolygon(rings, points, indices))
 				return;
+			std::vector<Point2> source;
 			std::vector<std::pair<double, double>> uvs;
-			for (const auto &ring : ringUvs)
-				uvs.insert(uvs.end(), ring.begin(), ring.end());
-			const uint32_t base = static_cast<uint32_t>(mesh.vertices.size());
-			for (size_t i = 0; i < points.size(); ++i)
+			for (size_t r = 0; r < rings.size(); ++r)
 			{
-				const double u = i < uvs.size() ? uvs[i].first : 0.0;
-				const double v = i < uvs.size() ? uvs[i].second : 0.0;
-				AddVertex(mesh, points[i].x, y, points[i].z, u, v);
+				source.insert(source.end(), rings[r].begin(), rings[r].end());
+				uvs.insert(uvs.end(), ringUvs[r].begin(), ringUvs[r].end());
+			}
+			const uint32_t base = static_cast<uint32_t>(mesh.vertices.size());
+			for (const Point2 &point : points)
+			{
+				const auto [u, v] = UvAt(point, source, uvs);
+				AddVertex(mesh, point.x, y, point.z, u, v);
 			}
 			for (const uint32_t idx : indices)
 				mesh.indices.push_back(base + idx);
@@ -544,7 +568,7 @@ namespace SceneryEditorX::XPlane
 				heading = 0.0;
 			else if (heading >= 360.0)
 				heading = (1.0 / 128.0) * static_cast<int>(heading / 360.0) + std::fmod(heading, 360.0);
-			AppendTexturedPolygon(mesh, rings, y, asset->scaleS, asset->scaleT, heading);
+			AppendTexturedPolygon(mesh, rings, y, asset->scaleS * static_cast<float>(asset->tilesX), asset->scaleT * static_cast<float>(asset->tilesY), heading);
 		}
 
 		if (!mesh.indices.empty())
@@ -838,8 +862,11 @@ namespace SceneryEditorX::XPlane
 			if (ring.size() >= 3 && TriangulatePolygon({ ring }, points, indices))
 			{
 				const uint32_t base = static_cast<uint32_t>(mesh.vertices.size());
-				for (size_t i = 0; i < points.size(); ++i)
-					AddVertex(mesh, points[i].x, y, points[i].z, i < uvs.size() ? uvs[i].first : 0.0, i < uvs.size() ? uvs[i].second : 0.0);
+				for (const Point2 &point : points)
+				{
+					const auto [u, v] = UvAt(point, ring, uvs);
+					AddVertex(mesh, point.x, y, point.z, u, v);
+				}
 				for (const uint32_t idx : indices)
 					mesh.indices.push_back(base + idx);
 				out.meshes.push_back(std::move(mesh));
@@ -1376,7 +1403,7 @@ namespace SceneryEditorX::XPlane
 			if (rings.empty())
 				continue;
 			const float y = i < pavementHeights.size() ? pavementHeights[i] : runwayHeight - 0.02f;
-			AppendTexturedPolygon(mesh, rings, y, asset->scaleS, asset->scaleT, pavement.textureHeading);
+			AppendTexturedPolygon(mesh, rings, y, asset->scaleS * static_cast<float>(asset->tilesX), asset->scaleT * static_cast<float>(asset->tilesY), pavement.textureHeading);
 			if (!mesh.indices.empty())
 				out.meshes.push_back(std::move(mesh));
 		}
@@ -1393,7 +1420,7 @@ namespace SceneryEditorX::XPlane
 				continue;
 			Point2 corners[4];
 			GetRunwayCorners(runway, m_Projection, corners, false);
-			AppendTexturedPolygon(mesh, { { corners[0], corners[1], corners[2], corners[3] } }, runwayHeight, asset->scaleS, asset->scaleT, runway.GetHeading());
+			AppendTexturedPolygon(mesh, { { corners[0], corners[1], corners[2], corners[3] } }, runwayHeight, asset->scaleS * static_cast<float>(asset->tilesX), asset->scaleT * static_cast<float>(asset->tilesY), runway.GetHeading());
 			if (!mesh.indices.empty())
 				out.meshes.push_back(std::move(mesh));
 		}
@@ -1410,7 +1437,7 @@ namespace SceneryEditorX::XPlane
 				continue;
 			Point2 corners[4];
 			GetHelipadCorners(helipad, m_Projection, corners);
-			AppendTexturedPolygon(mesh, { { corners[0], corners[1], corners[2], corners[3] } }, runwayHeight + 0.01f, asset->scaleS, asset->scaleT, helipad.heading);
+			AppendTexturedPolygon(mesh, { { corners[0], corners[1], corners[2], corners[3] } }, runwayHeight + 0.01f, asset->scaleS * static_cast<float>(asset->tilesX), asset->scaleT * static_cast<float>(asset->tilesY), helipad.heading);
 			if (!mesh.indices.empty())
 				out.meshes.push_back(std::move(mesh));
 		}

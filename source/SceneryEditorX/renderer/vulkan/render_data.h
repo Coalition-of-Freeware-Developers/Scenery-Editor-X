@@ -63,6 +63,13 @@ namespace SceneryEditorX
 	constexpr uint8_t  MAX_CONSTANT_BUFFER_COUNT		= 8;
 	constexpr uint32_t MAX_ARRAY_SIZE					= 16384;
 
+	/**
+	 * Slots in the bindless material texture array (and the material parameter buffer, which is indexed the same way).
+	 * Every material takes 36 slots (9 texture types x 4), so this holds ~1800 distinct materials: enough for an airport
+	 * with hundreds of different X-Plane objects. Kept apart from MAX_ARRAY_SIZE, which also sizes the storage image pools.
+	 */
+	constexpr uint32_t MAX_MATERIAL_TEXTURES			= 65536;
+
 	constexpr uint32_t MIP_LIST							= std::numeric_limits<uint32_t>::max();
 	constexpr uint32_t ALL_MIPS							= std::numeric_limits<uint32_t>::max();
 

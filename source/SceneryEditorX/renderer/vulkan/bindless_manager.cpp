@@ -48,7 +48,7 @@ namespace SceneryEditorX
 	{
 		// Bindless descriptor sets are already separated by space/set index; binding
 		// numbers must match the SPIR-V binding in that set directly.
-		{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,  0, 15, MAX_ARRAY_SIZE,		"material_textures"   }, // MaterialTextures (space1, t15)
+		{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,  0, 15, MAX_MATERIAL_TEXTURES,	"material_textures"   }, // MaterialTextures (space1, t15)
 		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 0, 16, 1,                  "material_parameters" }, // MaterialParameters (space2, t16)
 		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 0, 17, 1,                  "light_parameters"    }, // LightParameters (space3, t17)
 		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 0, 18, 1,                  "aabbs"               }, // Aabbs (space4, t18)
@@ -66,7 +66,7 @@ namespace SceneryEditorX
 	static std::array<VkDescriptorPoolSize, 6> s_PoolSizes =
 	{
 		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_SAMPLER,                    32 * MAX_DESCRIPTOR_SET_COUNT },
-		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,              MAX_ARRAY_SIZE + 32 * MAX_DESCRIPTOR_SET_COUNT },
+		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,              MAX_MATERIAL_TEXTURES + 32 * MAX_DESCRIPTOR_SET_COUNT },
 		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,              MAX_ARRAY_SIZE * MAX_DESCRIPTOR_SET_COUNT },
 		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,             32 * MAX_DESCRIPTOR_SET_COUNT },
 		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,     32 * MAX_DESCRIPTOR_SET_COUNT },
@@ -408,7 +408,7 @@ namespace SceneryEditorX
 		vkUpdateDescriptorSets(device->GetLogicalDevice(), 1, &write, 0, nullptr);
 	}
 	
-	void BindlessManager::UpdateImages(const std::array<ImageResource *, MAX_ARRAY_SIZE> *imageArrays)
+	void BindlessManager::UpdateImages(const std::array<ImageResource *, MAX_MATERIAL_TEXTURES> *imageArrays, const uint32_t count)
 	{
 		const Ref<Device> device = RenderContext::Get()->GetDevice();
 		if (!imageArrays)
@@ -422,12 +422,14 @@ namespace SceneryEditorX
 		if (s_Sets[index] == VK_NULL_HANDLE)
 			return;
 
+		// At least one slot, so an empty scene still writes a valid descriptor
+		const uint32_t written = std::clamp(count, 1u, cfg.count);
 		thread_local std::vector<VkDescriptorImageInfo> imageInfos;
-		imageInfos.resize(cfg.count);
+		imageInfos.resize(written);
 
 		void* fallback = Renderer::GetStandardTexture(Renderer_StandardTexture::Checkerboard)->GetShaderResourceView();
 
-		for (uint32_t i = 0; i < cfg.count; ++i)
+		for (uint32_t i = 0; i < written; ++i)
 		{
 			ImageResource* img			= (*imageArrays)[i];
 			void* srv					= (img && img->GetShaderResourceView()) ? img->GetShaderResourceView() : fallback;
@@ -441,7 +443,7 @@ namespace SceneryEditorX
 		write.dstBinding      = GetBinding(BindlessResource::MaterialTextures);
 		write.dstArrayElement = 0;
 		write.descriptorType  = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-		write.descriptorCount = cfg.count;
+		write.descriptorCount = written;
 		write.pImageInfo      = imageInfos.data();
 
 		vkUpdateDescriptorSets(device->GetLogicalDevice(), 1, &write, 0, nullptr);

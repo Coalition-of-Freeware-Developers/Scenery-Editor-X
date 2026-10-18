@@ -301,8 +301,12 @@ namespace SceneryEditorX::EditorAirports
 	{
 		State &state = GetState();
 
-		// Airport asked for on the command line, once the index knows it
-		if (!state.startupDone && !state.startupAirport.empty() && AirportManager::GetGeneration() > 0)
+		// Library art (pavement textures, lines, lights, lib/ objects) resolves through the library index: until the
+		// first scan has published one, an airport would load bare and need a second build.
+		const bool libraryReady = LibraryManager::GetGeneration() > 0 || LibraryManager::GetScanState() == ScanState::Failed || LibraryManager::GetInstallPath().empty();
+
+		// Airport asked for on the command line, once the airport and library indexes are ready
+		if (!state.startupDone && !state.startupAirport.empty() && AirportManager::GetGeneration() > 0 && libraryReady)
 		{
 			state.startupDone = true;
 			const std::shared_ptr<const AirportIndex> index = AirportManager::GetIndex();
@@ -339,6 +343,17 @@ namespace SceneryEditorX::EditorAirports
 				}
 				else if (SceneAirports::GetBuiltRevision() != state.document->GetRevision())
 					SceneAirports::UpdatePlacements(*state.document);
+
+				// A newer library index (first scan finished after the airport opened, a rescan, a library added):
+				// rebuild once so the art that couldn't be found before is drawn.
+				if (libraryReady && LibraryManager::GetScanState() != ScanState::Scanning && SceneAirports::GetBuiltLibraryGeneration() != LibraryManager::GetGeneration())
+				{
+					EDITOR_INFO_TAG(LOG_TAG, "The X-Plane library index changed: rebuilding {}", state.document->GetTitle());
+					const bool rootSelected = context && context->selectedEntity == SceneAirports::GetRootId();
+					SceneAirports::Rebuild(*state.document);
+					if (rootSelected)
+						context->selectedEntity = SceneAirports::GetRootId();
+				}
 			}
 			if (state.validationRevision != state.document->GetRevision())
 			{

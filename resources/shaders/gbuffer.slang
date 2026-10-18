@@ -208,6 +208,16 @@ gbuffer main_frag(gbuffer_vertex vertex, bool is_front_face: SV_IsFrontFace)
         albedo_sample = sample_texture(vertex, material_texture_index_albedo, surface, position_world);
         albedo_sample.rgb = srgb_to_linear(albedo_sample.rgb);
         albedo *= albedo_sample;
+
+        // Cut-out texels: the depth prepass discards them, but this pass only tests depth (greater-equal, no write),
+        // so a cut-out texel with nothing nearer behind it would still be written solid (a decal over pavement, a
+        // leaf against the sky). Apply the prepass's test here too.
+        if (pass_is_opaque())
+        {
+            const float alpha_threshold = material.alpha_cutoff > 0.0f ? material.alpha_cutoff : get_alpha_threshold(position_world);
+            if (material.alpha_cutoff > 0.0f ? albedo_sample.a < alpha_threshold : albedo_sample.a <= alpha_threshold)
+                discard;
+        }
     }
 
     // vegetation coloring

@@ -839,7 +839,7 @@ void dynamic_resolution()
 				if (initialize || Scene::UpdateSceneChanges(ComponentType::Material).IsDirty())
 				{
 					UpdateMaterials(m_CmdList_Present);
-					BindlessManager::UpdateImages(&m_Bindless_Textures);
+					BindlessManager::UpdateImages(&m_Bindless_Textures, m_Bindless_TextureCount);
 					BindlessManager::UpdateBuffer(BindlessResource::MaterialParameters, GetBuffer(Renderer_Buffer::MaterialParameters));
 				}
 
@@ -2821,18 +2821,28 @@ void dynamic_resolution()
 
 	void Renderer::UpdateMaterials(CommandList *cmdList)
 	{
-		static std::array<ShaderBuffer_Material, MAX_ARRAY_SIZE> properties;
+		static std::array<ShaderBuffer_Material, MAX_MATERIAL_TEXTURES> properties;
 		static std::unordered_set<uint64_t> uniqueMaterialIds;
+		static bool reportedFull = false;
 		uint32_t count = 0;
-	
-		auto update_material = [&count](MaterialAsset* material)
+		uint32_t dropped = 0;
+		constexpr uint32_t slotsPerMaterial = 9 * MaterialAsset::SLOTS_PER_TEXTURE;
+
+		auto update_material = [&count, &dropped](MaterialAsset* material)
 		{
 			if (uniqueMaterialIds.contains(material->GetObjectId()))
 				return;
-	
+
 			uniqueMaterialIds.insert(material->GetObjectId());
+
+			// A full table draws the rest with the first material instead of writing past the arrays
+			if (count + slotsPerMaterial > MAX_MATERIAL_TEXTURES)
 			{
-				SEDX_CORE_ASSERT(count < MAX_ARRAY_SIZE, "Exceeded maximum array size for material properties");
+				material->SetIndex(0);
+				++dropped;
+				return;
+			}
+			{
 
 				properties[count].local_width           = material->GetProperty(MaterialClass::SceneWidth);
 				properties[count].local_height          = material->GetProperty(MaterialClass::SceneHeight);
@@ -2927,8 +2937,17 @@ void dynamic_resolution()
 			m_Bindless_Textures.fill(nullptr);
 			uniqueMaterialIds.clear();
 			update_entities();
+			m_Bindless_TextureCount = count;
+			if (dropped > 0 && !reportedFull)
+			{
+				SEDX_CORE_ERROR_TAG("Renderer", "UpdateMaterials: the material table is full ({} materials); {} more draw with the first material",
+					count / slotsPerMaterial, dropped);
+				reportedFull = true;
+			}
+			else if (dropped == 0)
+				reportedFull = false;
 		}
-	
+
 		// GPU
 		{
 			Buffer* buffer = Renderer::GetBuffer(Renderer_Buffer::MaterialParameters);
@@ -2955,10 +2974,19 @@ void dynamic_resolution()
 		m_Count_ActiveLights = 0; 
 		Light* firstDirectional = nullptr;
 	
+		static bool reportedFullLights = false;
 		auto fill_light = [&](Light* lightComponent)
 		{
+			if (m_Count_ActiveLights >= MAX_ARRAY_SIZE)
+			{
+				// Beyond the light table: leave the light out rather than write past it
+				if (!reportedFullLights)
+					SEDX_CORE_ERROR_TAG("Renderer", "UpdateLights: more than {} lights; the rest are not drawn", MAX_ARRAY_SIZE);
+				reportedFullLights = true;
+				return;
+			}
 			const uint32_t index = m_Count_ActiveLights++;
-			
+
 			lightComponent->SetIndex(index);
 			ShaderBuffer_Light& lightBufferEntry = m_Bindless_Lights[index];
 	

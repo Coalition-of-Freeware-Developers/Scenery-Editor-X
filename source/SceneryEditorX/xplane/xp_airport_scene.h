@@ -152,6 +152,12 @@ namespace SceneryEditorX::XPlane
 		static uint64_t GetBuiltGeometryRevision();
 
 		/**
+		 * @brief LibraryManager::GetGeneration() when the scene was built. Library art (pavement textures, painted
+		 * lines, light objects, lib/ objects of the DSF) resolves through that index, so a newer one means a rebuild.
+		 */
+		static uint64_t GetBuiltLibraryGeneration();
+
+		/**
 		 * @brief The airport element an entity stands for (the entity itself or, for the root's descendants, itself).
 		 * @return The component, or nullptr when the entity isn't part of the loaded airport.
 		 */

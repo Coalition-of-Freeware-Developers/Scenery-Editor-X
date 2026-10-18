@@ -34,6 +34,7 @@
 #include <array>
 #include <cmath>
 #include <unordered_map>
+#include <unordered_set>
 #include <SceneryEditorX/asset/standards.h>
 #include <SceneryEditorX/logging/logging.hpp>
 #include <SceneryEditorX/renderer/renderer.h>
@@ -509,7 +510,10 @@ namespace SceneryEditorX::XPlane
 			for (const entt::entity handle : failed)
 			{
 				const XPlaneObjectComponent &object = registry.get<XPlaneObjectComponent>(handle);
-				SEDX_CORE_ERROR_TAG(LOG_TAG, "Could not load '{}': {}", object.asset->GetPath().string(), object.asset->GetError());
+				// Once per file: a scenery pack places the same broken (or deliberately empty) object thousands of times
+				static std::unordered_set<std::string> reported;
+				if (reported.insert(object.asset->GetPath().string()).second)
+					SEDX_CORE_ERROR_TAG(LOG_TAG, "Could not load '{}': {}", object.asset->GetPath().string(), object.asset->GetError());
 
 				const uint64_t rootId = GetId(registry, handle);
 				if (rootId == s_FrameWhenLoaded)

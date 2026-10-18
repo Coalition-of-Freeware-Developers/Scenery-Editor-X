@@ -909,7 +909,8 @@ namespace SceneryEditorX
 		static uint32_t m_DrawData_Count; // Number of draw data entries written for the current frame; used to determine how many to copy to GPU and how many draw calls to issue
 
 		// Array of pointers to all textures used by the renderer, indexed by material parameters; bound as a bindless array in shaders
-		static std::array<ImageResource*, MAX_ARRAY_SIZE> m_Bindless_Textures;
+		static std::array<ImageResource*, MAX_MATERIAL_TEXTURES> m_Bindless_Textures;
+		static uint32_t m_Bindless_TextureCount; // Slots of m_Bindless_Textures in use (written to the descriptor set)
 
 		// Array of light data for all active lights in the scene, indexed by a per-light index; bound as a bindless array in shaders
 		static std::array<ShaderBuffer_Light, MAX_ARRAY_SIZE> m_Bindless_Lights; 
