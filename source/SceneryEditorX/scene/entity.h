@@ -57,14 +57,15 @@ namespace SceneryEditorX
 		void Tick();
 
 		/**
-		 * @brief 
-		 * @return 
+		 * @brief Whether the entity takes part in the frame (the renderer skips inactive entities).
+		 * @note The flag lives on the scene-owned Entity object (Scene::GetEntities()), not on handle copies.
+		 * @return True unless SetActive(false) was called on this object.
 		 */
 		bool GetActive();
 
 		/**
-		 * @brief 
-		 * @param active 
+		 * @brief Enables or disables the entity (for example animation hide / show and LOD switching).
+		 * @param active New state.
 		 */
 		virtual void SetActive(const bool active);
 
@@ -832,6 +833,8 @@ namespace SceneryEditorX
 		// world transform the renderer used last frame (motion vectors)
 		xMath::Matrix m_MatrixPrevious = xMath::Matrix::IDENTITY;
 		bool m_HasMatrixPrevious       = false;
+
+		bool m_Active = true; // SetActive(); read by the renderer when collecting draw calls
 
 		/**
 		 * @brief The registry holding this entity's struct components (ID, tag, transform, ...).

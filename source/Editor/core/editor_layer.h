@@ -90,6 +90,8 @@ namespace SceneryEditorX
 
 		void BuildDefaultLayout(ImGuiID dockspaceId);
 		void DeleteSelectedEntity();
+		void ReadStartupObjects();
+		void PlaceStartupObjects();
 		void UpdateWindowTitle() const;
 		bool OnKeyPressed(KeyPressedEvent &event);
 
@@ -106,6 +108,13 @@ namespace SceneryEditorX
 		bool m_ShowStyleEditor = false;
 		bool m_ShowDemo = false;
 		int m_FocusViewportFrames = 0;	// Frames left to focus the viewport after (re)building the layout
+
+		// X-Plane objects requested on the command line (--xp-object <file.obj>, --xp-asset <virtual path>);
+		// --xp-time <hours> and --xp-lights-on set the dataref environment (night lighting), --xp-position x,y,z moves them
+		std::vector<std::string> m_StartupObjectFiles;
+		std::vector<std::string> m_StartupAssets;
+		bool m_HasStartupPosition = false;			// --xp-position x,y,z: where the startup objects go (default: origin)
+		float m_StartupPosition[3] = { 0.0f, 0.0f, 0.0f };
 	};
 }
 

@@ -142,14 +142,15 @@ namespace SceneryEditorX
 		hash = (hash * 31) ^ static_cast<size_t>(light->GetLightType());
 		hash = (hash * 31) ^ static_cast<size_t>(entity->GetActive());
 
-		const Vec3& pos = entity->GetPosition();
-		hash = (hash * 31) ^ std::hash<float>{}(pos.x);
-		hash = (hash * 31) ^ std::hash<float>{}(pos.y);
-		hash = (hash * 31) ^ std::hash<float>{}(pos.z);
-		const Vec3& fwd = entity->GetForward();
-		hash = (hash * 31) ^ std::hash<float>{}(fwd.x);
-		hash = (hash * 31) ^ std::hash<float>{}(fwd.y);
-		hash = (hash * 31) ^ std::hash<float>{}(fwd.z);
+		// world position and forward axis (row-vector world matrix: row 3 translation, row 2 local +Z), so lights
+		// that move with an animated parent are noticed too
+		const xMath::Matrix world = entity->GetMatrix();
+		hash = (hash * 31) ^ std::hash<float>{}(world.m30);
+		hash = (hash * 31) ^ std::hash<float>{}(world.m31);
+		hash = (hash * 31) ^ std::hash<float>{}(world.m32);
+		hash = (hash * 31) ^ std::hash<float>{}(world.m20);
+		hash = (hash * 31) ^ std::hash<float>{}(world.m21);
+		hash = (hash * 31) ^ std::hash<float>{}(world.m22);
 
 		for (uint32_t i = 0; i < light->GetSliceCount(); i++)
 		{
@@ -401,6 +402,29 @@ namespace SceneryEditorX
 		if (!s_ActiveScene->m_Registry.valid(entityHandle))
 			return;
 
+		// Children go with their parent (an X-Plane object is a root with animation-group and mesh children).
+		// Copy the list: destroying a child edits it, and entt may move components while entities are destroyed.
+		if (const RelationshipComponent *relationship = s_ActiveScene->m_Registry.try_get<RelationshipComponent>(entityHandle))
+		{
+			const std::vector<UUID> children = relationship->pChildren;
+			for (const UUID &child : children)
+			{
+				if (const Entity childEntity = TryGetEntityWithUUID(child); childEntity && static_cast<entt::entity>(childEntity) != entityHandle)
+					DestroyEntity(childEntity);
+			}
+		}
+
+		// Unlink from the parent's child list.
+		if (const RelationshipComponent *relationship = s_ActiveScene->m_Registry.try_get<RelationshipComponent>(entityHandle))
+		{
+			const IDComponent *ownId = s_ActiveScene->m_Registry.try_get<IDComponent>(entityHandle);
+			if (const Entity parent = TryGetEntityWithUUID(relationship->pParentHandle); parent && ownId)
+			{
+				if (RelationshipComponent *parentRelationship = s_ActiveScene->m_Registry.try_get<RelationshipComponent>(static_cast<entt::entity>(parent)))
+					std::erase(parentRelationship->pChildren, ownId->pID);
+			}
+		}
+
 		// The ID lives in the registry; Entity::GetUUID() reads the handle's own (empty) component store.
 		if (const IDComponent *id = s_ActiveScene->m_Registry.try_get<IDComponent>(entityHandle))
 			s_ActiveScene->m_EntityMap.erase(id->pID);
@@ -429,6 +453,15 @@ namespace SceneryEditorX
 		}
 
 		return {};
+	}
+
+	Entity *Scene::GetStoredEntity(const Entity &entity)
+	{
+		if (!s_ActiveScene || !entity)
+			return nullptr;
+
+		const auto it = s_EntityStorage.find(static_cast<entt::entity>(entity));
+		return it != s_EntityStorage.end() ? it->second.get() : nullptr;
 	}
 
 	float Scene::GetTimeOfDay()
@@ -474,10 +507,13 @@ namespace SceneryEditorX
 		{
 			case ComponentType::Light:
 			{
-				for (Entity* ent : s_LightEntities)
+				// Light components live on the stored entities (s_LightEntities is never filled), so walk them all.
+				size_t lightCount = 0;
+				for (Entity* ent : s_EntityPointers)
 				{
-					if (Light* light = ent->GetComponent<Light>())
+					if (Light* light = ent ? ent->GetComponent<Light>() : nullptr)
 					{
+						++lightCount;
 						const uint64_t id = ent->GetObjectId();
 						size_t currentHash = ComputeLightHash(light, ent);
 						if (auto it = s_LightStateHashes.find(id); it == s_LightStateHashes.end())
@@ -491,6 +527,19 @@ namespace SceneryEditorX
 							changed = true;
 						}
 					}
+				}
+
+				// a light went away: forget the hashes of entities that no longer carry one
+				if (s_LightStateHashes.size() > lightCount)
+				{
+					std::erase_if(s_LightStateHashes, [](const auto &entry)
+					{
+						return !std::ranges::any_of(s_EntityPointers, [&entry](Entity *ent)
+						{
+							return ent && ent->GetObjectId() == entry.first && ent->GetComponent<Light>() != nullptr;
+						});
+					});
+					changed = true;
 				}
 				break;
 			}

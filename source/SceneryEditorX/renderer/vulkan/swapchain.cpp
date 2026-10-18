@@ -839,7 +839,7 @@ namespace SceneryEditorX
 		VmaAllocationCreateInfo allocCI{};
 		allocCI.flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
 		allocCI.usage = VMA_MEMORY_USAGE_AUTO;
-		SEDX_VK_RESULT_ASSERT(vmaCreateImage(MemoryAllocator::GetAllocator(), &depthImageCI, &allocCI, &newDepthImage, &newDepthAlloc, nullptr), "Failed to create depth image")
+		SEDX_VK_RESULT_ASSERT(MemoryAllocator::CreateImage(depthImageCI, allocCI, newDepthImage, newDepthAlloc), "Failed to create depth image")
 
 		VkImageViewCreateInfo depthViewCI{};
 		depthViewCI.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;

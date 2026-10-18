@@ -859,6 +859,8 @@ namespace SceneryEditorX
 		// alpha uses "over" as well, so blending onto an opaque target keeps alpha at 1
 		At(s_BlendStates, Renderer_BlendState::Alpha)    = CreateRef<BlendState>(BlendStateSpec{true, VkBlendFactor::VK_BLEND_FACTOR_SRC_ALPHA, VkBlendFactor::VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, VkBlendOp::VK_BLEND_OP_ADD, VkBlendFactor::VK_BLEND_FACTOR_ONE, VkBlendFactor::VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, VkBlendOp::VK_BLEND_OP_ADD, 0.0f});
 		At(s_BlendStates, Renderer_BlendState::Additive) = CreateRef<BlendState>(BlendStateSpec{true, VkBlendFactor::VK_BLEND_FACTOR_ONE, VkBlendFactor::VK_BLEND_FACTOR_ONE, VkBlendOp::VK_BLEND_OP_ADD, VkBlendFactor::VK_BLEND_FACTOR_ONE, VkBlendFactor::VK_BLEND_FACTOR_ONE, VkBlendOp::VK_BLEND_OP_ADD, 1.0f});
+		// premultiplied "over": the shader has already scaled color by alpha (and may add unfaded reflections)
+		At(s_BlendStates, Renderer_BlendState::Premultiplied) = CreateRef<BlendState>(BlendStateSpec{true, VkBlendFactor::VK_BLEND_FACTOR_ONE, VkBlendFactor::VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, VkBlendOp::VK_BLEND_OP_ADD, VkBlendFactor::VK_BLEND_FACTOR_ONE, VkBlendFactor::VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, VkBlendOp::VK_BLEND_OP_ADD, 0.0f});
 	}
 
 	void Renderer::DestroyResources()
@@ -872,6 +874,8 @@ namespace SceneryEditorX
 
 		for (Ref<Sampler>& sampler : s_Samplers)
 			sampler.Reset();
+
+		DestroyForwardResources();
 	}
 
 	ImageResource* Renderer::GetStandardTexture(const Renderer_StandardTexture type)

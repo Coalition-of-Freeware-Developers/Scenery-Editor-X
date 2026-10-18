@@ -14,24 +14,9 @@ import common;
 import resources;
 import constants;
 import position;
+import fallback_lighting;
 
-// Placeholder sky and sun used while the scene has no lights of its own (bootstrap renderer).
-// Pass_Light_Composition pushes:
-//   f3_value  (values[0].xyz) - unit direction towards the fallback sun
-//   f2_value.x (values[0].w)  - 1 when the fallback lighting is active (no scene lights), else 0
-static const float3 sky_zenith    = float3(0.20f, 0.40f, 0.75f);
-static const float3 sky_horizon   = float3(0.62f, 0.74f, 0.88f);
-static const float3 ground_color  = float3(0.30f, 0.29f, 0.27f);
-static const float3 sun_color     = float3(1.00f, 0.96f, 0.90f) * 2.5f;
-static const float ambient_amount = 0.35f;
-
-float3 sky_color(float3 direction)
-{
-    float up = direction.y;
-    float3 sky    = lerp(sky_horizon, sky_zenith, pow(saturate(up), 0.5f));
-    float3 ground = lerp(sky_horizon, ground_color, saturate(-up * 6.0f));
-    return up >= 0.0f ? sky : ground;
-}
+// The placeholder sky and sun (fallback_lighting.slang) light the scene while it has no directional light of its own.
 
 [shader("compute")]
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
@@ -53,7 +38,7 @@ void main_comp(uint3 thread_id : SV_DispatchThreadID)
 			return;
 
 		float3 view_direction = normalize(get_position(0.5f, uv) - get_camera_position());
-		tex_uav[thread_id.xy] = validate_output(float4(sky_color(view_direction), 1.0f));
+		tex_uav[thread_id.xy] = validate_output(float4(fallback_sky_color(view_direction), 1.0f));
 		return;
 	}
 
@@ -71,14 +56,17 @@ void main_comp(uint3 thread_id : SV_DispatchThreadID)
 	float3 specular_term = light_specular.rgb;
 	float3 result        = diffuse_term + specular_term;
 
-	if (pass_get_f2_value().x > 0.0f)
+	if (fallback_lighting_active())
 	{
 		float3 n       = normalize(gbuffer_normal.xyz);
-		float3 l       = normalize(pass_get_f3_value());
-		float n_dot_l  = saturate(dot(n, l));
-		float3 ambient = lerp(ground_color, sky_zenith, n.y * 0.5f + 0.5f) * ambient_amount;
-		result += gbuffer_albedo.rgb * (1.0f - metallic) * (sun_color * n_dot_l * INV_PI + ambient) * occlusion;
+		float n_dot_l  = saturate(dot(n, fallback_sun_direction()));
+		float3 ambient = fallback_ambient(n);
+		result += gbuffer_albedo.rgb * (1.0f - metallic) * (fallback_sun_color() * n_dot_l * INV_PI + ambient) * occlusion;
 	}
+
+	// gbuffer.slang adds emissive texels (LIT textures) to albedo and stores their luminance in material.b: let them
+	// glow without light, otherwise lit windows would go dark with the sun
+	result += gbuffer_albedo.rgb * saturate(gbuffer_mat.b * 2.0f);
 
 	tex_uav[thread_id.xy] = validate_output(float4(result, 1.0f));
 }

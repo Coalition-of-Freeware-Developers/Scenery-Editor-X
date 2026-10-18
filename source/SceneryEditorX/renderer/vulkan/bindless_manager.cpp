@@ -111,11 +111,12 @@ namespace SceneryEditorX
 		const Ref<Device> device = RenderContext::Get()->GetLogicalDevice();
 		SEDX_CORE_ASSERT(device != nullptr, "BindlessManager requires a valid device to create descriptor pools");
 
-		// Initialise the shared DescriptorPoolManager if it hasn't been done yet.
-		// The pool created here is also used by DescriptorSet for dynamic sets.
+		// Initialise the shared DescriptorPoolManager if it hasn't been done yet (RenderContext::Init normally
+		// creates it with the device). The pool is also used by DescriptorSet for dynamic sets.
 		if (s_DescriptorPools.empty())
 		{
-			DescriptorPoolManager::Init();
+			if (!DescriptorPoolManager::IsInitialized())
+				DescriptorPoolManager::Init();
 			s_DescriptorPools.push_back(DescriptorPoolManager::Get().GetPool());
 			s_Allocated_DescriptorSets = 0;
 		}

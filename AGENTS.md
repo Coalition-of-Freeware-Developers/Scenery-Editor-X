@@ -29,6 +29,10 @@ The dependency-light, cross-platform Catch2 unit suites that only need `source/`
   (`SceneryEditorX/utils/conversions/...`). Header-only, fully green.
 - **`RefTests`** (`source/Tests/pointer_tests`) — the `Ref`/`WeakRef` smart-pointer system
   (`SceneryEditorX/utils/pointers.h`). Builds and runs.
+- **`XPlaneFormatTests`** (`source/Tests/xplane_tests`) — OBJ8 parsing/animation evaluation and the
+  `library.txt` / `scenery_packs.ini` parsers + library index and the `lights.txt` light catalog
+  (`SceneryEditorX/xplane/xp_obj8.*`, `xp_library.*`, `xp_lights.*`).
+  Standard library only, fully green.
 
 The other suites are **not** Linux-buildable as written: `SettingsTest` links Windows libs
 (`dxgi`, `d3d12`, `Shell32.lib`); `MemoryAllocatorTests` links `vulkan-1` and needs the Vulkan
@@ -81,6 +85,13 @@ g++ -std=c++20 -O2 -pthread -DSEDX_NO_LOGGING -DZoneScoped= $INCS \
     source/Tests/pointer_tests/RefThreadSafetyTest.cpp $LIBS \
     -o build_linux_tests/RefTests
 ./build_linux_tests/RefTests "~[performance]~[stress]~[thread]~[race]~[safety]~[Threading]"
+
+# 4. XPlaneFormatTests (fully green)
+g++ -std=c++20 -O2 -pthread $INCS source/Tests/xplane_tests/XPlaneFormatTests.cpp \
+    source/SceneryEditorX/xplane/xp_obj8.cpp source/SceneryEditorX/xplane/xp_library.cpp \
+    source/SceneryEditorX/xplane/xp_lights.cpp $LIBS \
+    -o build_linux_tests/XPlaneFormatTests
+./build_linux_tests/XPlaneFormatTests
 ```
 
 `build_linux_tests/` and `dependency/Catch2/build-linux/` are throwaway build output — do not commit them.

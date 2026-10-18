@@ -58,12 +58,15 @@ void main_frag(gbuffer_vertex vertex)
 {
     pass_load_draw_data_from_vertex(vertex.material_index);
 
-    // distance based alpha threshold
+    // distance based alpha threshold, unless the material sets its own cutoff (texels below it are drawn by
+    // the forward transparent pass, which must split the surface at the same alpha at every distance)
     const bool has_albedo       = pass_get_f3_value().y == 1.0f;
     const float2 screen_uv      = vertex.position.xy / (get_resolution_render() * get_resolution_scale());
     const float3 position_world = get_position(vertex.position.z, screen_uv);
-    const float alpha_threshold = get_alpha_threshold(position_world);
+    const float material_cutoff = GetMaterial().alpha_cutoff;
+    const float alpha_threshold = material_cutoff > 0.0f ? material_cutoff : get_alpha_threshold(position_world);
+    const float alpha = has_albedo ? material_textures[pass_get_material_index() + material_texture_index_albedo].Sample(samplers[sampler_anisotropic_wrap], vertex.uv_misc.xy).a : 1.0f;
 
-    if (has_albedo && material_textures[pass_get_material_index() + material_texture_index_albedo].Sample(samplers[sampler_anisotropic_wrap], vertex.uv_misc.xy).a <= alpha_threshold)
+    if (material_cutoff > 0.0f ? alpha < alpha_threshold : (has_albedo && alpha <= alpha_threshold))
         discard;
 }

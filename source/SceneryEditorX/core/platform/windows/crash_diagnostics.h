@@ -37,7 +37,8 @@ namespace SceneryEditorX::Diagnostics
 	/**
 	 * @brief Installs in-process handlers that write the reason and a symbolized call stack to the engine log
 	 * (flushed) when the process is about to die: abort(), std::terminate (uncaught C++ exceptions), CRT
-	 * assertion/error reports and unhandled SEH exceptions (access violations, ...).
+	 * assertion/error reports and unhandled SEH exceptions (access violations, ...). Crashes after Log::ShutDown()
+	 * (static destructors) are appended to SceneryEditorX.log directly and sent to OutputDebugString.
 	 *
 	 * Complements the out-of-process CrashHandler service: this needs no setup and puts the cause in
 	 * SceneryEditorX.log, where it is otherwise lost with the debug console. Safe to call more than once.

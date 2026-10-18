@@ -282,8 +282,11 @@ namespace SceneryEditorX
 	{
 		if (!buffer)
 			return;
-	
-		delete static_cast<Buffer *>(buffer);
+
+		// Destroy explicitly: the destructor treats a still-alive buffer as a leak and warns.
+		auto *staging = static_cast<Buffer *>(buffer);
+		staging->Destroy();
+		delete staging;
 	}
 
 	void Buffer::UploadSubRegion(const void *data, uint64_t offsetBytes, uint64_t sizeBytes)

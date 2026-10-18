@@ -33,12 +33,16 @@
 #include "editor_scene.h"
 #include "editor_theme.h"
 #include "editor_ui.h"
+#include "editor_xplane.h"
 #include <Editor/panels/asset_shelf_panel.h>
 #include <Editor/panels/console_panel.h>
 #include <Editor/panels/outliner_panel.h>
 #include <Editor/panels/properties_panel.h>
 #include <Editor/panels/scene_viewport.h>
 #include <Editor/panels/settings_panels.h>
+#include <Editor/panels/xplane_library_panel.h>
+#include <algorithm>
+#include <cstdlib>
 #include <SceneryEditorX/core/application/application.h>
 #include <SceneryEditorX/core/input/input.h>
 #include <SceneryEditorX/core/resource/resource_cache.h>
@@ -51,6 +55,9 @@
 #include <SceneryEditorX/renderer/ui/source/imgui/imgui_internal.h>
 #include <SceneryEditorX/renderer/vulkan/debug/render_doc.h>
 #include <SceneryEditorX/scene/entity.h>
+#include <SceneryEditorX/xplane/xp_datarefs.h>
+#include <SceneryEditorX/xplane/xp_library_manager.h>
+#include <SceneryEditorX/xplane/xp_scene.h>
 
 // ---------------------------------------------------------
 
@@ -77,14 +84,15 @@ namespace SceneryEditorX
 		constexpr PanelInfo PANEL_SCENE_SETTINGS	= { "SceneSettings",	"SCENE SETTINGS###SceneSettings",	SEDX_ICON_GLOBE };
 		constexpr PanelInfo PANEL_CAMERA			= { "CameraSettings",	"CAMERA###CameraSettings",			SEDX_ICON_CAMERA };
 		constexpr PanelInfo PANEL_RENDERER			= { "RendererStats",	"RENDERER###RendererStats",			SEDX_ICON_TACHOMETER };
+		constexpr PanelInfo PANEL_XPLANE			= { "XPlaneLibrary",	"X-PLANE LIBRARY###XPlaneLibrary",	SEDX_ICON_PLANE };
 
 		constexpr PanelInfo s_StripPanels[] =
 		{
-			PANEL_PROPERTIES, PANEL_OUTLINER, PANEL_ASSETS, PANEL_CONSOLE, PANEL_SCENE_SETTINGS, PANEL_CAMERA, PANEL_RENDERER, PANEL_VIEWPORT
+			PANEL_PROPERTIES, PANEL_OUTLINER, PANEL_XPLANE, PANEL_ASSETS, PANEL_CONSOLE, PANEL_SCENE_SETTINGS, PANEL_CAMERA, PANEL_RENDERER, PANEL_VIEWPORT
 		};
 
 		/* Bump when the default layout changes so existing users get the new arrangement once. */
-		constexpr const char *DOCKSPACE_NAME = "SEDX_EditorDockspace_v2";
+		constexpr const char *DOCKSPACE_NAME = "SEDX_EditorDockspace_v3";
 
 		constexpr ImGuiWindowFlags SIDE_BAR_FLAGS = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoSavedSettings;
 	}
@@ -119,6 +127,10 @@ namespace SceneryEditorX
 	void EditorLayer::OnAttach()
 	{
 		AttachLogSink();
+
+		// X-Plane folder + library index (the first scan runs in the background)
+		XPlane::LibraryManager::Init();
+		ReadStartupObjects();
 		RegisterPanels();
 		EditorCamera::CaptureHome();
 		UpdateWindowTitle();
@@ -143,6 +155,8 @@ namespace SceneryEditorX
 		// The UI layer (an overlay) detaches first, so ImGui is already gone here: no ImGui calls.
 		Camera::SetInputEnabled(true);
 		m_PanelManager.reset();
+		XPlane::SceneObjects::Shutdown();
+		XPlane::LibraryManager::Shutdown();
 		DetachLogSink();
 	}
 
@@ -157,6 +171,7 @@ namespace SceneryEditorX
 		m_PanelManager->AddPanel<OutlinerPanel>(PanelCategory::Editor, PANEL_OUTLINER.id, "Outliner", true, &m_Context);
 		m_PanelManager->AddPanel<AssetShelfPanel>(PanelCategory::Editor, PANEL_ASSETS.id, "Assets", true, resources);
 		m_PanelManager->AddPanel<ConsolePanel>(PanelCategory::Editor, PANEL_CONSOLE.id, "Console", true, m_LogSink);
+		m_PanelManager->AddPanel<XPlaneLibraryPanel>(PanelCategory::Editor, PANEL_XPLANE.id, "X-Plane Library", true, &m_Context);
 		m_PanelManager->AddPanel<SceneSettingsPanel>(PanelCategory::Settings, PANEL_SCENE_SETTINGS.id, "Scene Settings", true);
 		m_PanelManager->AddPanel<CameraSettingsPanel>(PanelCategory::Settings, PANEL_CAMERA.id, "Camera", true);
 		m_PanelManager->AddPanel<RendererStatsPanel>(PanelCategory::Settings, PANEL_RENDERER.id, "Renderer", true);
@@ -195,6 +210,10 @@ namespace SceneryEditorX
 
 	void EditorLayer::OnUIRender()
 	{
+		// X-Plane objects: dataref clock, animation, LODs and night lighting, before the panels read the scene.
+		PlaceStartupObjects();
+		XPlane::SceneObjects::Tick(ImGui::GetIO().DeltaTime);
+
 		HandleShortcuts();
 
 		// Order matters: each side bar shrinks the viewport work area the dockspace then fills.
@@ -207,11 +226,11 @@ namespace SceneryEditorX
 		if (m_PanelManager)
 			m_PanelManager->OnUIRender();
 
-		// After a layout build: open on Substance's default tabs (the asset shelf and the first settings tab) and
+		// After a layout build: open on Substance's default tabs (the X-Plane library browser and the first settings tab) and
 		// give focus to the viewport. Newly docked windows otherwise select themselves as they get submitted.
 		if (m_FocusViewportFrames > 0)
 		{
-			for (const PanelInfo &info : { PANEL_ASSETS, PANEL_SCENE_SETTINGS })
+			for (const PanelInfo &info : { PANEL_XPLANE, PANEL_SCENE_SETTINGS })
 			{
 				ImGuiWindow *window = ImGui::FindWindowByName(info.window);
 				if (window && window->DockNode && window->DockNode->TabBar)
@@ -261,6 +280,34 @@ namespace SceneryEditorX
 				if (const uint64_t created = EditorScene::CreateEmpty("Empty Entity"); created != 0)
 					m_Context.selectedEntity = created;
 			}
+			ImGui::EndMenu();
+		}
+
+		if (ImGui::BeginMenu("X-Plane"))
+		{
+			if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_CUBE, "Import Object (.obj)...").c_str()))
+				EditorXPlane::ImportObjFile(&m_Context);
+
+			ImGui::Separator();
+			if (PanelData *panel = FindPanel(PANEL_XPLANE.id))
+			{
+				if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_BOOK, "Library Browser").c_str(), nullptr, panel->IsOpen))
+				{
+					panel->IsOpen = true;
+					ImGui::SetWindowFocus(PANEL_XPLANE.window);
+				}
+			}
+			if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_FOLDER_OPEN, "Set X-Plane 12 Folder...").c_str()))
+				EditorXPlane::BrowseForInstall();
+			if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_PLUS, "Track Library Folder...").c_str()))
+				EditorXPlane::BrowseForTrackedFolder();
+			if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_REFRESH, "Rescan Libraries").c_str(), nullptr, false,
+				XPlane::LibraryManager::GetScanState() != XPlane::ScanState::Scanning))
+				XPlane::LibraryManager::Rescan();
+
+			ImGui::Separator();
+			const XPlane::InstallInfo &install = XPlane::LibraryManager::GetInstallInfo();
+			ImGui::TextDisabled("%s", install.IsValid() ? install.root.string().c_str() : install.GetProblem().c_str());
 			ImGui::EndMenu();
 		}
 
@@ -348,6 +395,10 @@ namespace SceneryEditorX
 			{
 				ImGui::TextDisabled("Ready");
 			}
+
+			// X-Plane objects loading in the background
+			ImGui::SameLine(0.0f, 20.0f * dpi);
+			EditorXPlane::DrawObjectLoadProgress(260.0f * dpi);
 
 			// Right: frame time, GPU memory, version
 			// GPU memory walks every allocation; twice a second is plenty for a status readout.
@@ -497,6 +548,7 @@ namespace SceneryEditorX
 		ImGui::DockBuilderDockWindow(PANEL_RENDERER.window, rightBottom);
 		ImGui::DockBuilderDockWindow(PANEL_ASSETS.window, bottom);
 		ImGui::DockBuilderDockWindow(PANEL_CONSOLE.window, bottom);
+		ImGui::DockBuilderDockWindow(PANEL_XPLANE.window, bottom);
 		ImGui::DockBuilderDockWindow(PANEL_VIEWPORT.window, center);
 		ImGui::DockBuilderFinish(dockspaceId);
 	}
@@ -555,6 +607,63 @@ namespace SceneryEditorX
 
 		if (ImGui::Shortcut(ImGuiKey_Home, ImGuiInputFlags_RouteGlobal))
 			EditorCamera::Reset();
+	}
+
+	void EditorLayer::ReadStartupObjects()
+	{
+		const PlatformContext *platform = Application::Get().GetPlatformContext();
+		if (!platform)
+			return;
+
+		const std::vector<std::string> &args = platform->GetCommandLineArgs();
+		XPlane::DatarefEnvironment &environment = XPlane::Datarefs::GetEnvironment();
+		for (size_t i = 0; i < args.size(); ++i)
+		{
+			if (args[i] == "--xp-lights-on")
+				environment.forceLightsOn = true; // lights and LIT textures in daylight
+			else if (i + 1 >= args.size())
+				break;
+			else if (args[i] == "--xp-object")
+				m_StartupObjectFiles.push_back(args[++i]);
+			else if (args[i] == "--xp-asset")
+				m_StartupAssets.push_back(args[++i]);
+			else if (args[i] == "--xp-time")
+				environment.localTimeHours = std::clamp(std::strtof(args[++i].c_str(), nullptr), 0.0f, 24.0f); // local time in hours
+			else if (args[i] == "--xp-position")
+			{
+				// "x,y,z" in meters (+X east, +Y up, +Z south)
+				const char *text = args[++i].c_str();
+				char *end = nullptr;
+				for (float &value : m_StartupPosition)
+				{
+					value = std::strtof(text, &end);
+					text = *end == ',' ? end + 1 : end;
+				}
+				m_HasStartupPosition = true;
+			}
+		}
+	}
+
+	void EditorLayer::PlaceStartupObjects()
+	{
+		// Files load right away; library paths wait for the first library scan.
+		const float *position = m_HasStartupPosition ? m_StartupPosition : nullptr;
+		const auto frame = [position](const uint64_t root)
+		{
+			if (root != 0 && position)
+				XPlane::SceneObjects::FrameObject(root); // placing at a position skips the framing
+		};
+
+		for (const std::string &file : m_StartupObjectFiles)
+			frame(EditorXPlane::PlaceObjFile(file, std::string(), &m_Context, position));
+		m_StartupObjectFiles.clear();
+
+		if (!m_StartupAssets.empty() && XPlane::LibraryManager::GetGeneration() > 0)
+		{
+			for (const std::string &asset : m_StartupAssets)
+				frame(EditorXPlane::PlaceLibraryAsset(asset, &m_Context, position));
+			m_StartupAssets.clear();
+		}
 	}
 
 	void EditorLayer::DeleteSelectedEntity()

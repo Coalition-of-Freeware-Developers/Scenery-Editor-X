@@ -29,6 +29,7 @@
  * -------------------------------------------------------
  */
 #include "crash_diagnostics.h"
+#include <SceneryEditorX/filesystem/file_system.h>
 #include <SceneryEditorX/logging/logging.hpp>
 
 #ifdef SEDX_PLATFORM_WINDOWS
@@ -36,8 +37,12 @@
 	#include <DbgHelp.h>
 	#include <crtdbg.h>
 	#include <csignal>
+	#include <cstdio>
+	#include <cstring>
 	#include <exception>
+	#include <format>
 	#include <mutex>
+	#include <share.h>
 	#pragma comment(lib, "dbghelp.lib")
 #endif
 
@@ -51,6 +56,10 @@ namespace SceneryEditorX::Diagnostics
 		std::mutex s_ReportMutex;
 		bool s_Installed = false;
 
+		/* SceneryEditorX.log, for crashes after Log::ShutDown() (static destructors). A plain array: it must outlive them. */
+		wchar_t s_FallbackLogPath[MAX_PATH] = {};
+		FILE *s_FallbackLog = nullptr;
+
 		void FlushLogs()
 		{
 			for (const std::shared_ptr<spdlog::logger> *logger : { &Log::GetCoreLogger(), &Log::GetEditorLogger(), &Log::GetEditorConsoleLogger() })
@@ -60,51 +69,131 @@ namespace SceneryEditorX::Diagnostics
 			}
 		}
 
-		/* Logs the calling thread's stack, resolving symbols and source lines from the PDBs when available. */
-		void LogStack(const unsigned long framesToSkip)
+		/* Writes one report line: through the engine log while it is up, otherwise appended to the log file directly. */
+		template <typename... Args>
+		void Emit(const std::format_string<Args...> format, Args &&...args)
 		{
-			const HANDLE process = GetCurrentProcess();
+			if (Log::GetCoreLogger())
+			{
+				SEDX_CORE_FATAL_TAG("Crash", "{}", std::format(format, std::forward<Args>(args)...));
+				return;
+			}
+
+			SYSTEMTIME time{};
+			GetLocalTime(&time);
+			const std::string line = std::format("[{:02}:{:02}:{:02}] [critical] Core: [Crash] {}\n", time.wHour, time.wMinute, time.wSecond,
+				std::format(format, std::forward<Args>(args)...));
+
+			OutputDebugStringA(line.c_str());
+			if (!s_FallbackLog && s_FallbackLogPath[0] != L'\0')
+				s_FallbackLog = _wfsopen(s_FallbackLogPath, L"ab", _SH_DENYNO);
+			if (s_FallbackLog)
+				std::fputs(line.c_str(), s_FallbackLog);
+		}
+
+		bool SymbolsReady()
+		{
 			static const bool s_SymbolsReady = []
 			{
 				SymSetOptions(SYMOPT_LOAD_LINES | SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS);
 				return SymInitialize(GetCurrentProcess(), nullptr, TRUE) == TRUE;
 			}();
+			return s_SymbolsReady;
+		}
 
-			void *frames[64];
-			const USHORT frameCount = CaptureStackBackTrace(framesToSkip + 1, static_cast<DWORD>(std::size(frames)), frames, nullptr);
-
+		/* Logs one frame as symbol + source line, or module + offset when there are no symbols for it. */
+		void LogFrame(const unsigned index, const DWORD64 address)
+		{
+			const HANDLE process = GetCurrentProcess();
 			alignas(SYMBOL_INFO) char symbolBuffer[sizeof(SYMBOL_INFO) + MAX_SYM_NAME];
 			auto *symbol = reinterpret_cast<SYMBOL_INFO *>(symbolBuffer);
 
-			for (USHORT i = 0; i < frameCount; ++i)
+			const char *name = "?";
+			if (SymbolsReady())
 			{
-				const DWORD64 address = reinterpret_cast<DWORD64>(frames[i]);
-				const char *name = "?";
-				if (s_SymbolsReady)
-				{
-					symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
-					symbol->MaxNameLen = MAX_SYM_NAME;
-					DWORD64 displacement = 0;
-					if (SymFromAddr(process, address, &displacement, symbol))
-						name = symbol->Name;
-				}
+				symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
+				symbol->MaxNameLen = MAX_SYM_NAME;
+				DWORD64 displacement = 0;
+				if (SymFromAddr(process, address, &displacement, symbol))
+					name = symbol->Name;
+			}
 
-				IMAGEHLP_LINE64 line{};
-				line.SizeOfStruct = sizeof(line);
-				DWORD lineDisplacement = 0;
-				if (s_SymbolsReady && SymGetLineFromAddr64(process, address, &lineDisplacement, &line))
-					SEDX_CORE_FATAL_TAG("Crash", "  #{:02} {} ({}:{})", i, name, line.FileName, line.LineNumber);
-				else
-					SEDX_CORE_FATAL_TAG("Crash", "  #{:02} {} (0x{:x})", i, name, address);
+			IMAGEHLP_LINE64 line{};
+			line.SizeOfStruct = sizeof(line);
+			DWORD lineDisplacement = 0;
+			if (SymbolsReady() && SymGetLineFromAddr64(process, address, &lineDisplacement, &line))
+			{
+				Emit("  #{:02} {} ({}:{})", index, name, line.FileName, line.LineNumber);
+				return;
+			}
+
+			HMODULE module = nullptr;
+			char modulePath[MAX_PATH] = {};
+			if (GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+					reinterpret_cast<LPCSTR>(address), &module) && GetModuleFileNameA(module, modulePath, MAX_PATH))
+			{
+				const char *moduleName = std::strrchr(modulePath, '\\');
+				Emit("  #{:02} {} ({}+0x{:x})", index, name, moduleName ? moduleName + 1 : modulePath, address - reinterpret_cast<DWORD64>(module));
+			}
+			else
+			{
+				Emit("  #{:02} {} (0x{:x}, not in a loaded module)", index, name, address);
 			}
 		}
 
-		void Report(const char *reason, const unsigned long framesToSkip)
+		/* Logs the calling thread's stack, resolving symbols and source lines from the PDBs when available. */
+		void LogStack(const unsigned long framesToSkip)
+		{
+			void *frames[64];
+			const USHORT frameCount = CaptureStackBackTrace(framesToSkip + 1, static_cast<DWORD>(std::size(frames)), frames, nullptr);
+			for (USHORT i = 0; i < frameCount; ++i)
+				LogFrame(i, reinterpret_cast<DWORD64>(frames[i]));
+		}
+
+		/*
+		 * Logs the stack of a faulting thread from its exception context. Unlike CaptureStackBackTrace from inside the
+		 * filter, this starts at the faulting instruction and walks through frames without unwind data (code in a module
+		 * that was already unloaded, JIT code), so the callers of a bad call still show up.
+		 */
+		void LogStack(const CONTEXT &faultContext)
+		{
+	#if defined(_M_X64)
+			const HANDLE process = GetCurrentProcess();
+			SymbolsReady();
+
+			CONTEXT context = faultContext;
+			STACKFRAME64 frame{};
+			frame.AddrPC.Offset = context.Rip;
+			frame.AddrPC.Mode = AddrModeFlat;
+			frame.AddrFrame.Offset = context.Rbp;
+			frame.AddrFrame.Mode = AddrModeFlat;
+			frame.AddrStack.Offset = context.Rsp;
+			frame.AddrStack.Mode = AddrModeFlat;
+
+			for (unsigned i = 0; i < 64; ++i)
+			{
+				if (!StackWalk64(IMAGE_FILE_MACHINE_AMD64, process, GetCurrentThread(), &frame, &context, nullptr,
+						SymFunctionTableAccess64, SymGetModuleBase64, nullptr) || frame.AddrPC.Offset == 0)
+					break;
+				LogFrame(i, frame.AddrPC.Offset);
+			}
+	#else
+			(void)faultContext;
+			LogStack(2);
+	#endif
+		}
+
+		void Report(const char *reason, const unsigned long framesToSkip, const CONTEXT *faultContext = nullptr)
 		{
 			std::lock_guard lock(s_ReportMutex);
-			SEDX_CORE_FATAL_TAG("Crash", "{} (thread {})", reason, GetCurrentThreadId());
-			LogStack(framesToSkip + 1);
+			Emit("{} (thread {})", reason, GetCurrentThreadId());
+			if (faultContext)
+				LogStack(*faultContext);
+			else
+				LogStack(framesToSkip + 1);
 			FlushLogs();
+			if (s_FallbackLog)
+				std::fflush(s_FallbackLog);
 		}
 
 		void OnAbortSignal(int)
@@ -155,7 +244,7 @@ namespace SceneryEditorX::Diagnostics
 			snprintf(reason, sizeof(reason), "Unhandled exception 0x%08lX at %p",
 				info && info->ExceptionRecord ? info->ExceptionRecord->ExceptionCode : 0ul,
 				info && info->ExceptionRecord ? info->ExceptionRecord->ExceptionAddress : nullptr);
-			Report(reason, 0);
+			Report(reason, 0, info ? info->ContextRecord : nullptr);
 			return EXCEPTION_CONTINUE_SEARCH;
 		}
 	}
@@ -166,6 +255,10 @@ namespace SceneryEditorX::Diagnostics
 			return;
 
 		s_Installed = true;
+		const std::wstring logPath = (IO::FileSystem::GetAppDataRoaming() / "logs" / "SceneryEditorX.log").wstring();
+		if (logPath.size() < std::size(s_FallbackLogPath))
+			wcscpy_s(s_FallbackLogPath, logPath.c_str());
+
 		std::signal(SIGABRT, OnAbortSignal);
 		std::set_terminate(OnTerminate);
 		_CrtSetReportHook2(_CRT_RPTHOOK_INSTALL, OnCrtReport);

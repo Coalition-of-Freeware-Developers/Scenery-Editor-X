@@ -298,6 +298,41 @@ namespace SceneryEditorX
 		}
 		
 		SEDX_CORE_TRACE_TAG("MemoryAllocator", "Allocating buffer size = {0}", Utils::BytesToString(bufferCI.size));
+
+		// Track it like AllocateBuffer does: DestroyBuffer always looks the allocation up (staging buffers
+		// created here were logged as "Could not find GPU memory allocation" on every release).
+		VmaAllocationInfo info{};
+		vmaGetAllocationInfo(s_AllocatorData->allocator, outAllocation, &info);
+		auto &allocTrack = s_AllocationMap[outAllocation];
+		allocTrack.allocatedSize = info.size;
+		allocTrack.type = AllocationType::Buffer;
+		s_AllocatorData->memoryUsage += info.size;
+		return VK_SUCCESS;
+	}
+
+	VkResult MemoryAllocator::CreateImage(const VkImageCreateInfo& imageCI, const VmaAllocationCreateInfo& allocInfo,
+										  VkImage& outImage, VmaAllocation& outAllocation)
+	{
+		SEDX_CORE_ASSERT(s_AllocatorData && s_AllocatorData->allocator, "VMA allocator is not initialized");
+
+		outImage = VK_NULL_HANDLE;
+		outAllocation = VK_NULL_HANDLE;
+
+		const VkResult result = vmaCreateImage(s_AllocatorData->allocator, &imageCI, &allocInfo, &outImage, &outAllocation, nullptr);
+		if (result != VK_SUCCESS)
+		{
+			SEDX_CORE_ERROR_TAG("MemoryAllocator", "vmaCreateImage failed ({}x{}x{}, format={}, result={})", imageCI.extent.width,
+								imageCI.extent.height, imageCI.extent.depth, static_cast<int32_t>(imageCI.format), static_cast<int32_t>(result));
+			return result;
+		}
+
+		// Tracked like CreateBuffer: images released through the deletion queue end in DestroyImage, which looks them up.
+		VmaAllocationInfo info{};
+		vmaGetAllocationInfo(s_AllocatorData->allocator, outAllocation, &info);
+		auto &allocTrack = s_AllocationMap[outAllocation];
+		allocTrack.allocatedSize = info.size;
+		allocTrack.type = AllocationType::Image;
+		s_AllocatorData->memoryUsage += info.size;
 		return VK_SUCCESS;
 	}
 

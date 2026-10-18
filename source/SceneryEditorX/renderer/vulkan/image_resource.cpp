@@ -29,6 +29,7 @@
  * -------------------------------------------------------
  */
 #include "image_resource.h"
+#include "buffer.h"
 #include "command_list.h"
 #include "render_context.h"
 
@@ -245,7 +246,6 @@ namespace SceneryEditorX
 
 		m_Depth = xMath::Max(1u, m_Spec.depth);
 		m_Spec.mipCount = xMath::Max(1u, m_Spec.mipCount);
-		m_Slices = data;
 		VkImageUsageFlags usage = 0;
 		if ((m_Spec.flags & ShaderViews) != 0)
 		{
@@ -265,6 +265,12 @@ namespace SceneryEditorX
 		if ((m_Spec.flags & BlitClear) != 0)
 		{
 			usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+		}
+
+		// initial pixel data is copied in from a staging buffer
+		if (!m_Slices.empty())
+		{
+			usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 		}
 
 		// Temporarily avoid adding fragment shading-rate attachment usage here.
@@ -327,6 +333,9 @@ namespace SceneryEditorX
 
 		CreateViews(viewCI);
 
+		// copy the initial mips into the image and leave it ready for sampling
+		UploadSlices();
+
 		// First-use policy: keep newly-created images in UNDEFINED. We transition at the
 		// first real use site (UAV write -> GENERAL, SRV read -> SHADER_READ_ONLY_OPTIMAL,
 		// attachment use -> ATTACHMENT/DEPTH_ATTACHMENT). This avoids speculative startup
@@ -337,6 +346,82 @@ namespace SceneryEditorX
 
 	ImageResource::ImageResource() : SharedResource(ResourceType::Image)
 	{
+	}
+
+	void ImageResource::UploadSlices()
+	{
+		if (m_Slices.empty() || m_Image == VK_NULL_HANDLE || Device::IsDeviceLost())
+			return;
+
+		// one copy region per provided (layer, mip); offsets stay 16-byte aligned for block-compressed formats
+		const bool is3D            = m_Spec.type == ImageType::Type3D;
+		const uint32_t layerCount  = is3D ? 1u : m_Depth;
+		const uint32_t sliceCount  = xMath::Min(static_cast<uint32_t>(m_Slices.size()), layerCount);
+		std::vector<VkBufferImageCopy> regions;
+		std::vector<const MipBytes*> sources;
+		VkDeviceSize totalSize = 0;
+
+		for (uint32_t layer = 0; layer < sliceCount; ++layer)
+		{
+			const std::vector<MipBytes>& mips = m_Slices[layer].mips;
+			const uint32_t mipCount = xMath::Min(static_cast<uint32_t>(mips.size()), m_Spec.mipCount);
+			for (uint32_t mip = 0; mip < mipCount; ++mip)
+			{
+				if (mips[mip].bytes.empty())
+					continue;
+
+				VkBufferImageCopy region{};
+				region.bufferOffset                    = totalSize;
+				region.imageSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+				region.imageSubresource.mipLevel       = mip;
+				region.imageSubresource.baseArrayLayer = layer;
+				region.imageSubresource.layerCount     = 1;
+				region.imageExtent.width               = xMath::Max(1u, m_Spec.width >> mip);
+				region.imageExtent.height              = xMath::Max(1u, m_Spec.height >> mip);
+				region.imageExtent.depth               = is3D ? xMath::Max(1u, m_Depth >> mip) : 1u;
+				regions.push_back(region);
+				sources.push_back(&mips[mip]);
+
+				totalSize += (mips[mip].bytes.size() + 15) & ~static_cast<VkDeviceSize>(15);
+			}
+		}
+
+		if (regions.empty())
+			return;
+
+		auto* staging = static_cast<Buffer*>(Buffer::AcquireStagingBuffer(totalSize));
+		if (!staging)
+		{
+			SEDX_CORE_ERROR_TAG("ImageResource", "Failed to allocate a {} byte staging buffer for '{}'", totalSize, m_ObjectName);
+			return;
+		}
+
+		auto* mapped = static_cast<uint8_t*>(staging->Map());
+		if (!mapped)
+		{
+			SEDX_CORE_ERROR_TAG("ImageResource", "Failed to map the staging buffer for '{}'", m_ObjectName);
+			Buffer::ReleaseStagingBuffer(staging);
+			return;
+		}
+
+		for (size_t i = 0; i < regions.size(); ++i)
+			std::memcpy(mapped + regions[i].bufferOffset, sources[i]->bytes.data(), sources[i]->bytes.size());
+		staging->Unmap();
+
+		if (CommandList* cmdList = CommandList::BeginImmediateExecution(QueueType::Graphics))
+		{
+			cmdList->InsertBarrier(m_Image, m_Spec.format, ALL_MIPS, 0, GetArrayLength(), Layout::ImageLayout::TransferDst);
+			vkCmdCopyBufferToImage(cmdList->GetCommandBuffer(), staging->Get(), m_Image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+				static_cast<uint32_t>(regions.size()), regions.data());
+			cmdList->InsertBarrier(m_Image, m_Spec.format, ALL_MIPS, 0, GetArrayLength(), Layout::ImageLayout::ShaderRead);
+			CommandList::EndImmediateExecution(cmdList);
+		}
+		else
+		{
+			SEDX_CORE_ERROR_TAG("ImageResource", "No immediate command list available to upload '{}'", m_ObjectName);
+		}
+
+		Buffer::ReleaseStagingBuffer(staging);
 	}
 
 	void ImageResource::CreateViews(const VkImageViewCreateInfo& viewCI)
@@ -537,9 +622,20 @@ namespace SceneryEditorX
 
 	bool ImageResource::IsCompressedFormat(const VkFormat format)
 	{
-		return format == VK_FORMAT_BC1_RGBA_UNORM_BLOCK || format == VK_FORMAT_BC3_UNORM_BLOCK ||
-			   format == VK_FORMAT_BC5_UNORM_BLOCK || format == VK_FORMAT_BC7_UNORM_BLOCK ||
-			   format == VK_FORMAT_ASTC_4x4_UNORM_BLOCK;
+		switch (format)
+		{
+			case VK_FORMAT_BC1_RGB_UNORM_BLOCK:
+			case VK_FORMAT_BC1_RGBA_UNORM_BLOCK:
+			case VK_FORMAT_BC2_UNORM_BLOCK:
+			case VK_FORMAT_BC3_UNORM_BLOCK:
+			case VK_FORMAT_BC4_UNORM_BLOCK:
+			case VK_FORMAT_BC5_UNORM_BLOCK:
+			case VK_FORMAT_BC7_UNORM_BLOCK:
+			case VK_FORMAT_ASTC_4x4_UNORM_BLOCK:
+				return true;
+			default:
+				return false;
+		}
 	}
 
 	size_t ImageResource::CalculateMipSize(uint32_t width, uint32_t height, uint32_t depth, VkFormat format, uint32_t bitsPerChannel, uint32_t channelCount)
@@ -555,9 +651,12 @@ namespace SceneryEditorX
 			uint32_t blockHeight = 4; // default block height for BC formats
 			switch (format)
 			{
+			case VK_FORMAT_BC1_RGB_UNORM_BLOCK:
 			case VK_FORMAT_BC1_RGBA_UNORM_BLOCK:
+			case VK_FORMAT_BC4_UNORM_BLOCK:
 				blockSize = 8;
 				break;
+			case VK_FORMAT_BC2_UNORM_BLOCK:
 			case VK_FORMAT_BC3_UNORM_BLOCK:
 			case VK_FORMAT_BC5_UNORM_BLOCK:
 			case VK_FORMAT_BC7_UNORM_BLOCK:

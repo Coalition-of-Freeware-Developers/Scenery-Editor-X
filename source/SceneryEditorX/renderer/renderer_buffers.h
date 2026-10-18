@@ -130,13 +130,13 @@ namespace SceneryEditorX
 
 		uint32_t flags    = 0;
 		float local_width = 0.0f;
-		float padding;
+		float alpha_cutoff = 0.0f;	// MaterialProperty::AlphaCutoff
 		float subsurface_scattering;
 
 		float sheen;
 		float local_height   = 0.0f;
 		float world_space_uv = 0.0f;
-		float padding2;
+		float blend_mode     = 0.0f; // MaterialProperty::BlendMode
 
 		float anisotropic;
 		float anisotropic_rotation;
@@ -152,7 +152,7 @@ namespace SceneryEditorX
 	 */
 	struct ShaderBuffer_Light
 	{
-		xMath::Color color;
+		xMath::Vec4 color; // rgba in memory order (xMath::Color stores its components reversed, a b g r)
 		xMath::Vec3 position;
 		float intensity;
 		xMath::Vec3 direction;

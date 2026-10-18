@@ -36,8 +36,11 @@
 #include "vulkan/enums.h"
 #include "vulkan/rasterizer.h"
 #include "vulkan/render_context.h"
+#include "vulkan/vertex.h"
 #include "vulkan/pipeline/pipeline_state.h"
 #include "vulkan/shader/shader_manager.h"
+#include <algorithm>
+#include <mutex>
 #include <SceneryEditorX/scene/camera.h>
 #include <SceneryEditorX/scene/entity.h>
 #include <SceneryEditorX/scene/material.h>
@@ -81,6 +84,24 @@ namespace SceneryEditorX
 
 			return shader;
 		}
+
+		/* @brief Direction towards the placeholder sun light composition and the forward pass use without a directional light. */
+		const xMath::Vec3 &GetFallbackSunDirection()
+		{
+			static const xMath::Vec3 direction = xMath::Normalize(xMath::Vec3(0.35f, 0.85f, -0.4f));
+			return direction;
+		}
+
+		float s_FallbackDaylight = 1.0f;
+
+		// Light billboards (Renderer::SetLightBillboards) and the vertex buffers they stream through. Each frame
+		// writes the next buffer of the ring, so a frame still in flight keeps reading its own.
+		constexpr uint32_t BILLBOARD_BUFFER_COUNT = 4;
+		std::mutex s_LightBillboardMutex;
+		std::vector<Renderer_LightBillboardBatch> s_LightBillboards;
+		std::array<Ref<Buffer>, BILLBOARD_BUFFER_COUNT> s_BillboardBuffers;
+		std::array<uint32_t, BILLBOARD_BUFFER_COUNT> s_BillboardBufferCapacity = {};
+		uint32_t s_BillboardBufferIndex = 0;
 	}
 
 	// NOTE: Static member definitions are centralized in renderer_resources.cpp
@@ -173,9 +194,16 @@ namespace SceneryEditorX
 				// Pass_Light_ImageBased samples the skysphere, which this path doesn't render yet;
 				// light composition supplies a placeholder sky and ambient term instead.
 
+				// Forward passes depth-test against the opaque depth: grid, then blended surfaces over it, then lights.
 				ImageResource *depthTarget = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
 				depthTarget->SetLayout(Layout::ImageLayout::DepthStencilAttachment, graphicsPresent, 0, 0);
 				Pass_Grid(graphicsPresent, rt_render);
+				if (graphicsPresent->IsStickyInvalid())
+					return;
+				Pass_Forward_Transparent(graphicsPresent, rt_render);
+				if (graphicsPresent->IsStickyInvalid())
+					return;
+				Pass_Light_Billboards(graphicsPresent, rt_render);
 				if (graphicsPresent->IsStickyInvalid())
 					return;
 				depthTarget->SetLayout(Layout::ImageLayout::ShaderRead, graphicsPresent, 0, 0);
@@ -387,6 +415,8 @@ namespace SceneryEditorX
 				ImageResource *depthTarget = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
 				depthTarget->SetLayout(Layout::ImageLayout::DepthStencilAttachment, graphicsPresent, 0, 0);
 				Pass_Grid(graphicsPresent, GetRenderTarget(Renderer_RenderTarget::frame_render));
+				Pass_Forward_Transparent(graphicsPresent, GetRenderTarget(Renderer_RenderTarget::frame_render));
+				Pass_Light_Billboards(graphicsPresent, GetRenderTarget(Renderer_RenderTarget::frame_render));
 				depthTarget->SetLayout(Layout::ImageLayout::ShaderRead, graphicsPresent, 0, 0);
 			}
 			Pass_AA_Upscale(graphicsPresent);
@@ -1072,6 +1102,217 @@ namespace SceneryEditorX
 		cmdList->DrawIndexed(6, 1, quad->GetGlobalIndexOffset(), quad->GetGlobalVertexOffset());
 	}
 
+	// -------------------------------------------------------
+	// Forward passes over the composed frame
+	// -------------------------------------------------------
+
+	void Renderer::SetLightBillboards(std::vector<Renderer_LightBillboardBatch> batches)
+	{
+		std::scoped_lock lock(s_LightBillboardMutex);
+		s_LightBillboards = std::move(batches);
+	}
+
+	void Renderer::SetFallbackDaylight(const float daylight)
+	{
+		s_FallbackDaylight = std::clamp(daylight, 0.0f, 1.0f);
+	}
+
+	float Renderer::GetFallbackDaylight()
+	{
+		return s_FallbackDaylight;
+	}
+
+	void Renderer::DestroyForwardResources()
+	{
+		{
+			std::scoped_lock lock(s_LightBillboardMutex);
+			s_LightBillboards.clear();
+		}
+
+		for (Ref<Buffer> &buffer : s_BillboardBuffers)
+			buffer.Reset();
+		s_BillboardBufferCapacity.fill(0);
+	}
+
+	void Renderer::Pass_Forward_Transparent(CommandList *cmdList, ImageResource *out)
+	{
+		if (!cmdList || cmdList->IsStickyInvalid() || !out)
+			return;
+
+		// Blended draws back to front; equal distances keep creation order (an X-Plane object's file order).
+		struct ForwardDraw
+		{
+			uint32_t drawCall;
+			float distanceSquared;
+			uint64_t order;
+		};
+		static std::vector<ForwardDraw> draws;
+		draws.clear();
+
+		const xMath::Vec3 camera = m_Cb_Frame_Cpu.camera_position;
+		for (uint32_t i = 0; i < m_DrawCall_Count; i++)
+		{
+			const Renderer_DrawCall &drawCall = m_DrawCalls[i];
+			MaterialAsset *materialAsset = drawCall.renderable->GetMaterialAsset();
+			if (!materialAsset || !drawCall.cameraVisible || materialAsset->GetProperty(MaterialProperty::BlendMode) <= 0.0f)
+				continue;
+
+			// sub-mesh bounds center in world space (row-vector world matrix)
+			Entity *entity = drawCall.renderable->GetEntity();
+			const xMath::Matrix world = entity->GetMatrix();
+			const xMath::Vec3 c = drawCall.renderable->GetBoundingBoxMesh().GetCenter();
+			const xMath::Vec3 center(c.x * world.m00 + c.y * world.m10 + c.z * world.m20 + world.m30,
+									 c.x * world.m01 + c.y * world.m11 + c.z * world.m21 + world.m31,
+									 c.x * world.m02 + c.y * world.m12 + c.z * world.m22 + world.m32);
+			const xMath::Vec3 d = center - camera;
+			draws.push_back({ i, d.x * d.x + d.y * d.y + d.z * d.z, entity->GetObjectId() });
+		}
+
+		if (draws.empty())
+			return;
+
+		std::ranges::sort(draws, [](const ForwardDraw &a, const ForwardDraw &b)
+		{
+			return a.distanceSquared != b.distanceSquared ? a.distanceSquared > b.distanceSquared : a.order < b.order;
+		});
+
+		Shader *shader = ShaderManager::GetShader(Renderer_Shader::forward_transparent);
+		if (!shader || !shader->IsCompiled())
+			return;
+
+		PipelineState pso;
+		pso.name = "forward_transparent";
+		pso.shaders[static_cast<uint32_t>(StageType::Vertex)] = shader;
+		pso.shaders[static_cast<uint32_t>(StageType::Fragment)] = shader;
+		pso.rasterizerState = cvar_wireframe.GetValueAs<bool>() ? GetRasterizerState(Renderer_RasterizerState::Wireframe)
+								  : GetRasterizerState(Renderer_RasterizerState::Solid);
+		pso.blendState = GetBlendState(Renderer_BlendState::Premultiplied);
+		pso.depthStencil_State = GetDepthStencilState(Renderer_DepthStencilState::ReadGreaterEqual); // test, don't write
+		pso.renderTarget_ColorTextures[0] = out;
+		pso.renderTarget_DepthTexture = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
+		pso.clearColor[0] = RHI_COLOR_LOAD;
+		cmdList->SetPipelineState(pso);
+		if (cmdList->IsStickyInvalid())
+			return;
+
+		const xMath::Vec3 &sun = GetFallbackSunDirection();
+		for (const ForwardDraw &draw : draws)
+		{
+			const Renderer_DrawCall &drawCall = m_DrawCalls[draw.drawCall];
+			Renderable *renderable = drawCall.renderable;
+			MaterialAsset *materialAsset = renderable->GetMaterialAsset();
+
+			m_Pcb_Pass_Cpu.drawIndex = drawCall.drawData_Index;
+			m_Pcb_Pass_Cpu.isTransparent = 1;
+			m_Pcb_Pass_Cpu.materialIndex = materialAsset->GetIndex();
+			m_Pcb_Pass_Cpu.SetF3Value(sun.x, sun.y, sun.z);
+			m_Pcb_Pass_Cpu.SetF2Value(m_Has_DirectionalLight ? 0.0f : 1.0f, s_FallbackDaylight);
+			cmdList->PushConstants(m_Pcb_Pass_Cpu);
+
+			cmdList->SetCullMode(cvar_wireframe.GetValueAs<bool>() ? CullMode::None :
+				static_cast<CullMode>(materialAsset->GetProperty(MaterialProperty::CullMode)));
+			cmdList->SetVertexBuffer(renderable->GetVertexBuffer(), renderable->GetInstanceBuffer());
+			cmdList->SetIndexBuffer(renderable->GetIndexBuffer());
+			cmdList->DrawIndexed(renderable->GetIndexCount(drawCall.lodIndex),
+								 drawCall.instanceCount,
+								 renderable->GetIndexOffset(drawCall.lodIndex),
+								 renderable->GetVertexOffset(drawCall.lodIndex),
+								 drawCall.instanceIndex);
+		}
+	}
+
+	void Renderer::Pass_Light_Billboards(CommandList *cmdList, ImageResource *out)
+	{
+		if (!cmdList || cmdList->IsStickyInvalid() || !out)
+			return;
+
+		// Two triangles per sprite (see light_billboard.slang for the vertex encoding), one range per texture.
+		struct Range
+		{
+			Ref<ImageResource> texture;
+			uint32_t first;
+			uint32_t count;
+		};
+		static std::vector<Range> ranges;
+		static std::vector<Vertex_PosTexNorTan> vertices;
+		ranges.clear();
+		vertices.clear();
+		{
+			std::scoped_lock lock(s_LightBillboardMutex);
+			for (const Renderer_LightBillboardBatch &batch : s_LightBillboards)
+			{
+				if (!batch.texture || batch.billboards.empty())
+					continue;
+
+				const uint32_t first = static_cast<uint32_t>(vertices.size());
+				for (const Renderer_LightBillboard &billboard : batch.billboards)
+				{
+					const float mode = billboard.tintLuminance ? 1.0f : (billboard.useAlpha ? 2.0f : 0.0f);
+					const float cornerX[4] = { -1.0f, 1.0f, 1.0f, -1.0f };
+					const float cornerY[4] = { -1.0f, -1.0f, 1.0f, 1.0f };
+					const float s[4] = { billboard.uv[0], billboard.uv[2], billboard.uv[2], billboard.uv[0] };
+					const float t[4] = { billboard.uv[1], billboard.uv[1], billboard.uv[3], billboard.uv[3] };
+					for (const int k : { 0, 1, 2, 0, 2, 3 })
+					{
+						Vertex_PosTexNorTan &vertex = vertices.emplace_back();
+						std::copy_n(billboard.position, 3, vertex.pos);
+						vertex.tex[0] = s[k];
+						vertex.tex[1] = t[k];
+						std::copy_n(billboard.color, 3, vertex.nor);
+						vertex.tan[0] = cornerX[k] * (1.0f + 2.0f * mode);
+						vertex.tan[1] = cornerY[k];
+						vertex.tan[2] = billboard.radius;
+					}
+				}
+				ranges.push_back({ batch.texture, first, static_cast<uint32_t>(vertices.size()) - first });
+			}
+		}
+
+		if (vertices.empty())
+			return;
+
+		Shader *shader = ShaderManager::GetShader(Renderer_Shader::light_billboard);
+		if (!shader || !shader->IsCompiled())
+			return;
+
+		const uint32_t vertexCount = static_cast<uint32_t>(vertices.size());
+		s_BillboardBufferIndex = (s_BillboardBufferIndex + 1) % BILLBOARD_BUFFER_COUNT;
+		Ref<Buffer> &buffer = s_BillboardBuffers[s_BillboardBufferIndex];
+		uint32_t &capacity = s_BillboardBufferCapacity[s_BillboardBufferIndex];
+		if (!buffer || capacity < vertexCount)
+		{
+			capacity = std::max(vertexCount + vertexCount / 2, 6u * 256u);
+			buffer = CreateRef<Buffer>(sizeof(Vertex_PosTexNorTan), capacity, nullptr, true, "light_billboards");
+		}
+		if (!buffer || !buffer->Get())
+			return;
+		cmdList->UpdateBuffer(buffer.Get(), 0, static_cast<uint64_t>(sizeof(Vertex_PosTexNorTan)) * vertexCount, vertices.data());
+
+		PipelineState pso;
+		pso.name = "light_billboards";
+		pso.shaders[static_cast<uint32_t>(StageType::Vertex)] = shader;
+		pso.shaders[static_cast<uint32_t>(StageType::Fragment)] = shader;
+		pso.rasterizerState = GetRasterizerState(Renderer_RasterizerState::Solid);
+		pso.blendState = GetBlendState(Renderer_BlendState::Additive);
+		pso.depthStencil_State = GetDepthStencilState(Renderer_DepthStencilState::ReadGreaterEqual);
+		pso.renderTarget_ColorTextures[0] = out;
+		pso.renderTarget_DepthTexture = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
+		pso.clearColor[0] = RHI_COLOR_LOAD;
+		cmdList->SetPipelineState(pso);
+		if (cmdList->IsStickyInvalid())
+			return;
+
+		cmdList->PushConstants(m_Pcb_Pass_Cpu);
+		cmdList->SetCullMode(CullMode::None);
+		cmdList->SetVertexBuffer(buffer.Get(), nullptr);
+		for (const Range &range : ranges)
+		{
+			cmdList->SetTexture(Renderer_BindingsSrv::tex, range.texture.Get());
+			cmdList->Draw(range.count, range.first);
+		}
+		ranges.clear(); // the batches own the textures; don't keep them alive from here
+	}
+
 	template <typename F>
 	void Renderer::Pass_Compute(CommandList *cmdList, const char *name, Renderer_Shader shaderEnum, ImageResource *in, ImageResource *out, F setup)
 	{
@@ -1541,12 +1782,12 @@ namespace SceneryEditorX
 			cmdList->SetTexture(Renderer_BindingsSrv::tex2,             texSpecular);
 			cmdList->SetTexture(Renderer_BindingsUav::tex,              texFrameRender);
 
-			// Until the scene has lights of its own, light_composition.slang lights it with a placeholder sun + sky.
-			static const xMath::Vec3 fallbackSunDirection = xMath::Normalize(xMath::Vec3(0.35f, 0.85f, -0.4f));
-			const bool useFallbackLighting = m_Count_ActiveLights == 0;
+			// Until the scene has a directional light of its own, light_composition.slang lights it with a placeholder
+			// sun + sky (fallback_lighting.slang) dimmed by the daylight setting; point and spot lights add on top.
+			const xMath::Vec3 &fallbackSunDirection = GetFallbackSunDirection();
 			m_Pcb_Pass_Cpu.isTransparent = isTransparentPass ? 1u : 0u;
 			m_Pcb_Pass_Cpu.SetF3Value(fallbackSunDirection.x, fallbackSunDirection.y, fallbackSunDirection.z);
-			m_Pcb_Pass_Cpu.SetF2Value(useFallbackLighting ? 1.0f : 0.0f, 0.0f);
+			m_Pcb_Pass_Cpu.SetF2Value(m_Has_DirectionalLight ? 0.0f : 1.0f, s_FallbackDaylight);
 			cmdList->PushConstants(m_Pcb_Pass_Cpu);
 
 			cmdList->Dispatch(texFrameRender);

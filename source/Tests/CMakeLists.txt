@@ -257,3 +257,34 @@ ENDIF()
 INCLUDE(Catch)
 catch_discover_tests(ConversionTests)
 
+# --------------------------------
+# X-Plane Format Tests (OBJ8, library.txt, scenery_packs.ini; standard library only)
+# --------------------------------
+
+MESSAGE(STATUS "=================================================")
+MESSAGE(STATUS "Generating X-Plane Format Unit Tests")
+
+ADD_EXECUTABLE(XPlaneFormatTests
+    ${CMAKE_CURRENT_SOURCE_DIR}/xplane_tests/XPlaneFormatTests.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_obj8.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_library.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_lights.cpp
+)
+
+TARGET_INCLUDE_DIRECTORIES(XPlaneFormatTests PRIVATE
+    ${CMAKE_SOURCE_DIR}/source
+)
+
+TARGET_LINK_LIBRARIES(XPlaneFormatTests PRIVATE
+    Catch2::Catch2WithMain
+)
+
+IF(_SEDX_MSVCLIKE)
+    TARGET_COMPILE_OPTIONS(XPlaneFormatTests PRIVATE /MP /W4)
+ELSE()
+    TARGET_COMPILE_OPTIONS(XPlaneFormatTests PRIVATE -Wall -Wextra -Wpedantic)
+ENDIF()
+
+INCLUDE(Catch)
+catch_discover_tests(XPlaneFormatTests)
+
