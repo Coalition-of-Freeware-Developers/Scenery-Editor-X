@@ -559,25 +559,32 @@ namespace SceneryEditorX::XPlane
 
 	Ref<ImageResource> TextureLoader::Load(const std::filesystem::path &path, const TextureUsage usage, TextureInfo *info)
 	{
+		DecodedTexture texture = Decode(path, usage);
+		return Upload(texture, info);
+	}
+
+	DecodedTexture TextureLoader::Decode(const std::filesystem::path &path, const TextureUsage usage)
+	{
+		DecodedTexture out;
 		if (path.empty())
 		{
-			if (info)
-				info->error = "No texture file";
-			return nullptr;
+			out.info.error = "No texture file";
+			return out;
 		}
 
-		const std::string key = CacheKey(path, "");
+		out.cacheKey = CacheKey(path, "");
 		{
 			std::scoped_lock lock(s_Mutex);
-			if (const auto it = s_Cache.find(key); it != s_Cache.end())
+			if (const auto it = s_Cache.find(out.cacheKey); it != s_Cache.end())
 			{
-				if (info)
-					*info = it->second.info;
-				return it->second.image;
+				out.info = it->second.info;
+				out.cached = true;
+				out.valid = it->second.image != nullptr;
+				return out;
 			}
 		}
 
-		TextureInfo result;
+		TextureInfo &result = out.info;
 		result.path = path;
 		std::vector<MipBytes> mips;
 
@@ -623,42 +630,85 @@ namespace SceneryEditorX::XPlane
 		if (mips.empty())
 		{
 			SEDX_CORE_WARN_TAG(LOG_TAG, "Failed to load texture '{}': {}", path.string(), result.error);
-			if (info)
-				*info = result;
-			return nullptr;
+			return out;
 		}
 
 		result.mipCount = static_cast<uint32_t>(mips.size());
-		const uint64_t bytes = EstimateBytes(mips);
-		const bool transparent = usage == TextureUsage::Albedo && result.hasAlpha;
-		Ref<ImageResource> image = CreateImage("xp:" + path.filename().string(), result.width, result.height, result.format, std::move(mips), transparent);
-		if (image)
-			image->SetResourceFilePath(path.string());
+		out.mips = std::move(mips);
+		out.name = "xp:" + path.filename().string();
+		out.filePath = path;
+		out.transparent = usage == TextureUsage::Albedo && result.hasAlpha;
+		out.valid = true;
+		return out;
+	}
 
-		SEDX_CORE_TRACE_TAG(LOG_TAG, "Loaded '{}' ({}x{}, {} mips, {}{})", path.string(), result.width, result.height, result.mipCount,
-			result.fromDds ? "DDS" : "RGBA8", result.hasAlpha ? ", alpha" : "");
+	Ref<ImageResource> TextureLoader::Upload(DecodedTexture &texture, TextureInfo *info)
+	{
+		if (info)
+			*info = texture.info;
+		if (texture.cacheKey.empty())
+			return nullptr;
 
 		{
 			std::scoped_lock lock(s_Mutex);
-			s_Cache[key] = CacheEntry{ image, result, bytes };
+			if (const auto it = s_Cache.find(texture.cacheKey); it != s_Cache.end())
+			{
+				if (info)
+					*info = it->second.info;
+				return it->second.image;
+			}
+
+			if (texture.mips.empty())
+			{
+				if (texture.cacheFailure)
+					s_Cache[texture.cacheKey] = CacheEntry{};
+				return nullptr;
+			}
 		}
 
-		if (info)
-			*info = result;
+		const TextureInfo &result = texture.info;
+		const uint64_t bytes = EstimateBytes(texture.mips);
+		Ref<ImageResource> image = CreateImage(texture.name, result.width, result.height, result.format, std::move(texture.mips), texture.transparent);
+		texture.mips.clear();
+		if (image && !texture.filePath.empty())
+			image->SetResourceFilePath(texture.filePath.string());
+
+		if (!texture.filePath.empty())
+		{
+			SEDX_CORE_TRACE_TAG(LOG_TAG, "Loaded '{}' ({}x{}, {} mips, {}{})", texture.filePath.string(), result.width, result.height, result.mipCount,
+				result.fromDds ? "DDS" : "RGBA8", result.hasAlpha ? ", alpha" : "");
+		}
+
+		{
+			std::scoped_lock lock(s_Mutex);
+			s_Cache[texture.cacheKey] = CacheEntry{ image, result, bytes };
+		}
 		return image;
 	}
 
-	Ref<ImageResource> TextureLoader::LoadPackedMaterial(const std::filesystem::path &normalMapPath, const bool normalMetalness, float specular)
+	Ref<ImageResource> TextureLoader::LoadPackedMaterial(const std::filesystem::path &normalMapPath, const bool normalMetalness, const float specular)
 	{
+		DecodedTexture texture = DecodePackedMaterial(normalMapPath, normalMetalness, specular);
+		return Upload(texture);
+	}
+
+	DecodedTexture TextureLoader::DecodePackedMaterial(const std::filesystem::path &normalMapPath, const bool normalMetalness, float specular)
+	{
+		DecodedTexture out;
 		if (normalMapPath.empty())
-			return nullptr;
+			return out;
 
 		specular = std::clamp(specular, 0.0f, 1.0f);
-		const std::string key = CacheKey(normalMapPath, "|orm|" + std::to_string(normalMetalness) + "|" + std::to_string(static_cast<int>(specular * 1000.0f)));
+		out.cacheKey = CacheKey(normalMapPath, "|orm|" + std::to_string(normalMetalness) + "|" + std::to_string(static_cast<int>(specular * 1000.0f)));
 		{
 			std::scoped_lock lock(s_Mutex);
-			if (const auto it = s_Cache.find(key); it != s_Cache.end())
-				return it->second.image;
+			if (const auto it = s_Cache.find(out.cacheKey); it != s_Cache.end())
+			{
+				out.info = it->second.info;
+				out.cached = true;
+				out.valid = it->second.image != nullptr;
+				return out;
+			}
 		}
 
 		CpuImage normal;
@@ -667,9 +717,8 @@ namespace SceneryEditorX::XPlane
 		{
 			// Block-compressed normal maps keep the material's flat roughness / metalness.
 			SEDX_CORE_TRACE_TAG(LOG_TAG, "No packed material for '{}': {}", normalMapPath.string(), error);
-			std::scoped_lock lock(s_Mutex);
-			s_Cache[key] = CacheEntry{};
-			return nullptr;
+			out.cacheFailure = true;
+			return out;
 		}
 
 		// R = occlusion (none), G = roughness = 1 - gloss * specular, B = metalness (NORMAL_METALNESS only)
@@ -685,20 +734,14 @@ namespace SceneryEditorX::XPlane
 			packed[i * 4 + 3] = 255;
 		}
 
-		std::vector<MipBytes> mips = BuildMipChain(packed.data(), normal.width, normal.height);
-		const uint64_t bytes = EstimateBytes(mips);
-		Ref<ImageResource> image = CreateImage("xp:" + normalMapPath.stem().string() + "_orm", normal.width, normal.height, VK_FORMAT_R8G8B8A8_UNORM, std::move(mips), false);
-
-		TextureInfo info;
-		info.path = normalMapPath;
-		info.width = normal.width;
-		info.height = normal.height;
-		info.format = VK_FORMAT_R8G8B8A8_UNORM;
-		{
-			std::scoped_lock lock(s_Mutex);
-			s_Cache[key] = CacheEntry{ image, info, bytes };
-		}
-		return image;
+		out.mips = BuildMipChain(packed.data(), normal.width, normal.height);
+		out.name = "xp:" + normalMapPath.stem().string() + "_orm";
+		out.info.path = normalMapPath;
+		out.info.width = normal.width;
+		out.info.height = normal.height;
+		out.info.format = VK_FORMAT_R8G8B8A8_UNORM;
+		out.valid = true;
+		return out;
 	}
 
 	void TextureLoader::ClearCache()

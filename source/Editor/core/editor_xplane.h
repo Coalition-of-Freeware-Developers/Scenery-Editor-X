@@ -69,7 +69,8 @@ namespace SceneryEditorX::EditorXPlane
 	 * @param virtualPath "lib/..." path.
 	 * @param context Receives the new selection (optional).
 	 * @param position World position (x, y, z); nullptr places at the origin and frames the camera on the object.
-	 * @return The root entity UUID, or 0 when the asset can't be placed.
+	 * @return The root entity UUID (filled in once the object has loaded in the background), or 0 when the asset can't
+	 * be placed.
 	 */
 	uint64_t PlaceLibraryAsset(const std::string &virtualPath, EditorContext *context, const float *position = nullptr);
 
@@ -79,7 +80,8 @@ namespace SceneryEditorX::EditorXPlane
 	 * @param virtualPath Library path to remember with the placement (may be empty).
 	 * @param context Receives the new selection (optional).
 	 * @param position World position (x, y, z); nullptr places at the origin and frames the camera on the object.
-	 * @return The root entity UUID, or 0 on failure (the reason is logged).
+	 * @return The root entity UUID, or 0 on failure (the reason is logged). Returns at once: the object loads in the
+	 * background and its meshes appear under the root when it is ready (a file that fails to load is logged and removed).
 	 */
 	uint64_t PlaceObjFile(const std::filesystem::path &file, const std::string &virtualPath, EditorContext *context, const float *position = nullptr);
 
@@ -92,6 +94,14 @@ namespace SceneryEditorX::EditorXPlane
 
 	/* @brief Sim clock and environment controls (play / pause, speed, time of day, wind, lights). */
 	void DrawSimulationControls();
+
+	/**
+	 * @brief Progress bar for objects loading in the background ("Loading 2 / 5: name.obj"), the queue in its tooltip.
+	 * Draws nothing while no object is loading.
+	 * @param width Bar width; 0 for the default item width, negative to fill the line minus that much.
+	 * @return True when the bar was drawn.
+	 */
+	bool DrawObjectLoadProgress(float width = 0.0f);
 
 }
 

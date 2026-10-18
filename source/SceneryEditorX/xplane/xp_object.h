@@ -33,6 +33,7 @@
 #include "xp_obj8.h"
 #include "xp_texture_loader.h"
 #include <filesystem>
+#include <memory>
 #include <vector>
 #include <SceneryEditorX/scene/material.h>
 #include <SceneryEditorX/scene/mesh.h>
@@ -86,23 +87,81 @@ namespace SceneryEditorX::XPlane
 		TextureInfo drapedInfo;
 	};
 
+	/* @brief Where an object file is in its load. */
+	enum class ObjectLoadState : uint8_t
+	{
+		NotLoaded,		// Never requested (or it failed and left the cache)
+		Queued,			// Waiting for a worker thread
+		Decoding,		// On a worker: parsing the OBJ, decoding textures, building vertices
+		Uploading,		// On the main thread: uploading textures and geometry, creating materials
+		Ready,
+		Failed
+	};
+
+	/* @brief Display name of a load state ("Queued", "Decoding", ...). */
+	const char *GetObjectLoadStateName(ObjectLoadState state);
+
+	/* @brief An object load in flight, for progress displays. */
+	struct ObjectLoadProgress
+	{
+		std::filesystem::path path;
+		ObjectLoadState state = ObjectLoadState::Queued;
+		float seconds = 0.0f;			// Since it was requested
+	};
+
+	/* @brief The background object loads, in request order, and how far the current burst of requests got. */
+	struct ObjectLoadQueue
+	{
+		std::vector<ObjectLoadProgress> loads;
+		uint32_t finished = 0;			// Loads finished since the queue was last empty
+		uint32_t requested = 0;			// Loads requested since the queue was last empty
+	};
+
+	struct ObjectLoadJob;
+
 	/**
 	 * @class ObjectAsset
 	 * @brief An OBJ8 file turned into GPU resources: one mesh (a sub-mesh per batch), its materials and textures.
-	 * Shared by every placement of the file; build and upload happen on the main thread.
+	 * Shared by every placement of the file (one asset per file, cached by path).
+	 *
+	 * Loads run in the background: Request() returns at once with an empty asset and queues the CPU work (OBJ parsing,
+	 * texture decoding and mip chains, vertex and tangent building) on the thread pool, a few loads at a time, in
+	 * request order; Update() then uploads the result on the main thread, a few milliseconds per frame, and the asset
+	 * becomes IsReady(). Only the main thread touches assets; the getters below describe the object once it is ready
+	 * (they are empty before).
 	 */
 	class ObjectAsset : public RefCounted
 	{
 	public:
 		/**
-		 * @brief Loads an OBJ8 file (or returns the cached asset for it).
+		 * @brief Starts loading an OBJ8 file in the background, or returns the asset cached or already in flight for it
+		 * (two placements of one file share one load). Never blocks.
+		 * @param path Absolute path to the .obj file.
+		 * @return The asset; check IsReady() / HasFailed().
+		 */
+		static Ref<ObjectAsset> Request(const std::filesystem::path &path);
+
+		/**
+		 * @brief Loads an OBJ8 file and waits for it (or returns the cached asset for it). Blocks the main thread.
 		 * @param path Absolute path to the .obj file.
 		 * @param error Receives the reason on failure (optional).
 		 * @return The asset, or nullptr when the file can't be parsed.
 		 */
 		static Ref<ObjectAsset> Load(const std::filesystem::path &path, std::string *error = nullptr);
 
-		/* @brief Every object loaded this session. */
+		/**
+		 * @brief Finishes background loads whose CPU half is done: uploads their textures and geometry and creates their
+		 * materials, within a small per-frame time budget (at least one step a frame). Main thread, once per frame.
+		 */
+		static void Update();
+
+		/* @brief The loads in flight, for progress displays. */
+		static ObjectLoadQueue GetLoadQueue();
+
+		/* @brief Load state of a file (NotLoaded when it was never requested). */
+		static ObjectLoadState GetLoadState(const std::filesystem::path &path);
+
+		/* @brief Every object loaded this session (ready ones only). */
 		static std::vector<Ref<ObjectAsset>> GetLoaded();
 
 		/**
@@ -117,16 +176,22 @@ namespace SceneryEditorX::XPlane
 
 		/**
 		 * @brief X-Plane's lights.txt, loaded on first use from the X-Plane install (or, without one, from the
-		 * install an OBJ lives in). Empty when neither has it.
+		 * install an OBJ lives in). Empty when neither has it. Thread-safe (workers resolve lights with it); the
+		 * catalog itself never changes, another lights.txt replaces it.
 		 * @param objectPath An OBJ to search upwards from when no install is configured (optional).
 		 */
-		static const LightCatalog &GetLightCatalog(const std::filesystem::path &objectPath = {});
+		static std::shared_ptr<const LightCatalog> GetLightCatalog(const std::filesystem::path &objectPath = {});
 
-		/* @brief The lights.txt billboard texture (nullptr when missing); info receives its size. */
+		/* @brief The lights.txt billboard texture (nullptr when missing); info receives its size. Main thread. */
 		static Ref<ImageResource> GetLightTexture(TextureInfo *info = nullptr);
 
 		ObjectAsset() = default;
 		~ObjectAsset() override;
+
+		[[nodiscard]] ObjectLoadState GetState() const;
+		[[nodiscard]] bool IsReady() const { return m_State == ObjectLoadState::Ready; }
+		[[nodiscard]] bool HasFailed() const { return m_State == ObjectLoadState::Failed; }
+		[[nodiscard]] const std::string &GetError() const { return m_Error; }
 
 		[[nodiscard]] const std::filesystem::path &GetPath() const { return m_Path; }
 		[[nodiscard]] const Obj8Data &GetData() const { return m_Data; }
@@ -145,16 +210,20 @@ namespace SceneryEditorX::XPlane
 		[[nodiscard]] const float *GetBoundsMin() const { return m_BoundsMin; }
 		[[nodiscard]] const float *GetBoundsMax() const { return m_BoundsMax; }
 
+		/* @brief Time the load worked: on the worker plus uploading on the main thread (not the time it queued). */
 		[[nodiscard]] float GetLoadMilliseconds() const { return m_LoadMilliseconds; }
 
 	private:
-		bool Build(const std::filesystem::path &path, std::string *error);
-		void LoadTextures();
-		void ResolveLights();
+		bool FinishStep();
+		void FinishGeometry();
+		void Fail();
 		uint32_t GetOrCreateMaterial(const Obj8DrawState &state);
 		void ApplyLit(bool visible);
 
 		std::filesystem::path m_Path;
+		ObjectLoadState m_State = ObjectLoadState::NotLoaded;
+		std::string m_Error;
+		std::shared_ptr<ObjectLoadJob> m_Job;	// The load in flight (shared with its worker)
 		Obj8Data m_Data;
 		Ref<Mesh> m_Mesh;					// Null for objects that only carry lights
 		std::vector<ObjectBatch> m_Batches;

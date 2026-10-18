@@ -83,6 +83,19 @@ namespace SceneryEditorX
 			if (!object || !object->asset || !EditorUI::SectionHeader("X-PLANE OBJECT"))
 				return;
 
+			if (!object->loaded)
+			{
+				// Loading in the background: meshes, animation and lights appear below the root when it is ready.
+				ImGui::PushStyleColor(ImGuiCol_Text, EditorTheme::ToStyle(EditorTheme::Palette::Warning));
+				ImGui::TextWrapped("%s %s %s...", SEDX_ICON_HOURGLASS_HALF, XPlane::GetObjectLoadStateName(object->asset->GetState()),
+					object->asset->GetPath().filename().string().c_str());
+				ImGui::PopStyleColor();
+				EditorUI::ItemTooltip(object->asset->GetPath().string().c_str());
+				if (!object->virtualPath.empty())
+					ImGui::TextDisabled("%s", object->virtualPath.c_str());
+				return;
+			}
+
 			const XPlane::ObjectAsset &asset = *object->asset;
 			const XPlane::Obj8Data &data = asset.GetData();
 			const XPlane::ObjectTextures &textures = asset.GetTextures();

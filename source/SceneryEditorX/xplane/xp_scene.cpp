@@ -63,6 +63,9 @@ namespace SceneryEditorX::XPlane
 		/* @brief Lights dimmer than this (after direction, flashing and night) are not drawn. */
 		constexpr float MIN_LIGHT_BRIGHTNESS = 0.002f;
 
+		/* @brief Placement to frame once its asset has loaded (the latest FrameObject() request wins), or 0. */
+		uint64_t s_FrameWhenLoaded = 0;
+
 		entt::registry *GetRegistry()
 		{
 			Scene *scene = Scene::GetActive();
@@ -351,6 +354,169 @@ namespace SceneryEditorX::XPlane
 				frame.spills.push_back({ stored, component, lumens, dx * dx + dy * dy + dz * dz, &object });
 			}
 		}
+
+		/**
+		 * @brief Builds the entity tree of a placement whose asset is ready: an entity per animation group, a Renderable
+		 * per batch and a Light per spill, below the placement's root.
+		 */
+		void BuildObject(entt::registry &registry, const entt::entity rootHandle)
+		{
+			const XPlaneObjectComponent *object = registry.try_get<XPlaneObjectComponent>(rootHandle);
+			if (!object || object->loaded || !object->asset || !object->asset->IsReady())
+				return;
+
+			const Ref<ObjectAsset> asset = object->asset;
+			const Obj8Data &data = asset->GetData();
+			std::vector<uint64_t> nodeEntities;
+			std::vector<uint64_t> batchEntities;
+			std::vector<uint64_t> spillEntities;
+			std::vector<XPlaneObjectComponent::SpillSource> spillSources;
+
+			// Animation groups (parents always precede children in Obj8Data::nodes)
+			std::vector<entt::entity> nodeHandles(data.nodes.size(), entt::null);
+			for (size_t i = 0; i < data.nodes.size(); ++i)
+			{
+				const Obj8AnimNode &node = data.nodes[i];
+				std::string name = "Anim " + std::to_string(i);
+				if (!node.ops.empty() && node.ops.front().dataref.IsSet())
+					name += " (" + ShortDatarefName(node.ops.front().dataref) + ")";
+				else if (!node.ops.empty())
+					name += node.ops.front().type == Obj8AnimOp::Type::Rotate ? " (rotate)" : " (translate)";
+
+				const Entity entity = Scene::CreateEntity(name);
+				nodeHandles[i] = static_cast<entt::entity>(entity);
+				const entt::entity parent = node.parent >= 0 ? nodeHandles[static_cast<size_t>(node.parent)] : rootHandle;
+				Attach(registry, nodeHandles[i], parent);
+				nodeEntities.push_back(GetId(registry, nodeHandles[i]));
+			}
+
+			// Batches: one Renderable each
+			const std::vector<ObjectBatch> &batches = asset->GetBatches();
+			for (size_t i = 0; i < batches.size(); ++i)
+			{
+				const ObjectBatch &batch = batches[i];
+				std::string name = "Mesh " + std::to_string(i);
+				if (batch.lod >= 0)
+				{
+					const Obj8Lod &lod = data.lods[static_cast<size_t>(batch.lod)];
+					name += " [LOD " + std::to_string(static_cast<int>(lod.nearDistance)) + "-" + std::to_string(static_cast<int>(lod.farDistance)) + "m]";
+				}
+				if (batch.draped)
+					name += " (draped)";
+
+				const Entity entity = Scene::CreateEntity(name);
+				const entt::entity handle = static_cast<entt::entity>(entity);
+				const entt::entity parent = batch.node >= 0 ? nodeHandles[static_cast<size_t>(batch.node)] : rootHandle;
+				Attach(registry, handle, parent);
+				batchEntities.push_back(GetId(registry, handle));
+
+				if (Entity *stored = Scene::GetStoredEntity(entity))
+				{
+					if (Renderable *renderable = stored->AddComponent<Renderable>())
+					{
+						renderable->SetMesh(asset->GetMesh(), batch.subMesh);
+						renderable->SetMaterial(Ref<MaterialAsset>(asset->GetMaterial(batch.material)));
+						renderable->SetFlag(CastsShadows, batch.castShadow);
+					}
+				}
+			}
+
+			// Spill lights: a Light component per spill, under the light's animation group so it moves with it. Tick()
+			// switches them on at night and dims them (flashing, nearest-first budget).
+			const std::vector<ObjectLight> &lights = asset->GetLights();
+			for (uint32_t i = 0; i < static_cast<uint32_t>(lights.size()); ++i)
+			{
+				const ObjectLight &light = lights[i];
+				const Obj8Light &source = data.lights[light.source];
+				for (uint32_t s = 0; s < static_cast<uint32_t>(light.resolved.spills.size()); ++s)
+				{
+					const LightSpillSpec &spill = light.resolved.spills[s];
+					const std::string label = source.name.empty() ? "custom" : source.name;
+					const Entity entity = Scene::CreateEntity("Spill " + std::to_string(i) + " (" + label + ")");
+					const entt::entity handle = static_cast<entt::entity>(entity);
+					const entt::entity parent = light.node >= 0 ? nodeHandles[static_cast<size_t>(light.node)] : rootHandle;
+					Attach(registry, handle, parent);
+
+					TransformComponent &transform = registry.get<TransformComponent>(handle);
+					transform.translation = Vec3(light.position[0], light.position[1], light.position[2]);
+					transform.SetRotation(RotationFromForward(spill.direction));
+
+					if (Entity *stored = Scene::GetStoredEntity(entity))
+					{
+						if (Light *lightComponent = stored->AddComponent<Light>())
+						{
+							// type first: it resets color and range to that type's defaults
+							lightComponent->SetLightType(spill.IsSpot() ? LightType::Spot : LightType::Point);
+							lightComponent->SetFlag(LightFlags::Shadows, false); // also clears screen-space shadows and volumetrics
+							lightComponent->SetRange(spill.GetRange());
+							if (spill.IsSpot())
+								lightComponent->SetAngle(std::acos(std::clamp(spill.width, -1.0f, 1.0f)));
+
+							const float peak = std::max(MaxComponent(spill.color), 1e-3f);
+							lightComponent->SetLightColor(Standard(std::max(spill.color[0], 0.0f) / peak, std::max(spill.color[1], 0.0f) / peak,
+								std::max(spill.color[2], 0.0f) / peak, 1.0f));
+							lightComponent->SetIntensity(0.0f);
+						}
+						stored->SetActive(false);
+					}
+
+					spillEntities.push_back(GetId(registry, handle));
+					spillSources.push_back({ i, s });
+				}
+			}
+
+			// Expose the object's datarefs as editor controls.
+			for (const Obj8DatarefUsage &usage : data.datarefs)
+				Datarefs::Register(usage);
+
+			// Entities were created above: look the component up again.
+			XPlaneObjectComponent &component = registry.get<XPlaneObjectComponent>(rootHandle);
+			component.nodeEntities = std::move(nodeEntities);
+			component.batchEntities = std::move(batchEntities);
+			component.spillEntities = std::move(spillEntities);
+			component.spillSources = std::move(spillSources);
+			component.loaded = true;
+
+			const TagComponent *tag = registry.try_get<TagComponent>(rootHandle);
+			SEDX_CORE_INFO_TAG(LOG_TAG, "Placed '{}' ({} batches, {} animation groups, {} lights){}", tag ? tag->pTag : asset->GetPath().filename().string(),
+				batches.size(), data.nodes.size(), lights.size(), component.virtualPath.empty() ? std::string() : " as " + component.virtualPath);
+		}
+
+		/* @brief Builds the placements whose asset has arrived and removes the ones whose asset failed to load. */
+		void BuildLoadedObjects(entt::registry &registry)
+		{
+			std::vector<entt::entity> ready;
+			std::vector<entt::entity> failed;
+			for (const entt::entity handle : registry.view<XPlaneObjectComponent>())
+			{
+				const XPlaneObjectComponent &object = registry.get<XPlaneObjectComponent>(handle);
+				if (object.loaded || !object.asset)
+					continue;
+				if (object.asset->IsReady())
+					ready.push_back(handle);
+				else if (object.asset->HasFailed())
+					failed.push_back(handle);
+			}
+
+			for (const entt::entity handle : ready)
+			{
+				BuildObject(registry, handle);
+				if (const uint64_t rootId = GetId(registry, handle); rootId != 0 && rootId == s_FrameWhenLoaded)
+					SceneObjects::FrameObject(rootId);
+			}
+
+			for (const entt::entity handle : failed)
+			{
+				const XPlaneObjectComponent &object = registry.get<XPlaneObjectComponent>(handle);
+				SEDX_CORE_ERROR_TAG(LOG_TAG, "Could not load '{}': {}", object.asset->GetPath().string(), object.asset->GetError());
+
+				const uint64_t rootId = GetId(registry, handle);
+				if (rootId == s_FrameWhenLoaded)
+					s_FrameWhenLoaded = 0;
+				if (const Entity entity = Scene::TryGetEntityWithUUID(UUID(rootId)))
+					Scene::DestroyEntity(entity);
+			}
+		}
 	}
 
 	// -------------------------------------------------------
@@ -365,11 +531,8 @@ namespace SceneryEditorX::XPlane
 			return 0;
 		}
 
-		Ref<ObjectAsset> asset = ObjectAsset::Load(file, error);
-		if (!asset)
-			return 0;
-
-		const Obj8Data &data = asset->GetData();
+		// Never waits: the asset may still be loading (and is shared with earlier placements of the file).
+		const Ref<ObjectAsset> asset = ObjectAsset::Request(file);
 		const std::string rootName = !options.name.empty() ? options.name : file.filename().string();
 
 		// Root: the placement transform
@@ -392,111 +555,19 @@ namespace SceneryEditorX::XPlane
 		XPlaneObjectComponent component;
 		component.asset = asset;
 		component.virtualPath = options.virtualPath;
-
-		// Animation groups (parents always precede children in Obj8Data::nodes)
-		std::vector<entt::entity> nodeHandles(data.nodes.size(), entt::null);
-		for (size_t i = 0; i < data.nodes.size(); ++i)
-		{
-			const Obj8AnimNode &node = data.nodes[i];
-			std::string name = "Anim " + std::to_string(i);
-			if (!node.ops.empty() && node.ops.front().dataref.IsSet())
-				name += " (" + ShortDatarefName(node.ops.front().dataref) + ")";
-			else if (!node.ops.empty())
-				name += node.ops.front().type == Obj8AnimOp::Type::Rotate ? " (rotate)" : " (translate)";
-
-			const Entity entity = Scene::CreateEntity(name);
-			nodeHandles[i] = static_cast<entt::entity>(entity);
-			const entt::entity parent = node.parent >= 0 ? nodeHandles[static_cast<size_t>(node.parent)] : rootHandle;
-			Attach(*registry, nodeHandles[i], parent);
-			component.nodeEntities.push_back(GetId(*registry, nodeHandles[i]));
-		}
-
-		// Batches: one Renderable each
-		const std::vector<ObjectBatch> &batches = asset->GetBatches();
-		for (size_t i = 0; i < batches.size(); ++i)
-		{
-			const ObjectBatch &batch = batches[i];
-			std::string name = "Mesh " + std::to_string(i);
-			if (batch.lod >= 0)
-			{
-				const Obj8Lod &lod = data.lods[static_cast<size_t>(batch.lod)];
-				name += " [LOD " + std::to_string(static_cast<int>(lod.nearDistance)) + "-" + std::to_string(static_cast<int>(lod.farDistance)) + "m]";
-			}
-			if (batch.draped)
-				name += " (draped)";
-
-			const Entity entity = Scene::CreateEntity(name);
-			const entt::entity handle = static_cast<entt::entity>(entity);
-			const entt::entity parent = batch.node >= 0 ? nodeHandles[static_cast<size_t>(batch.node)] : rootHandle;
-			Attach(*registry, handle, parent);
-			component.batchEntities.push_back(GetId(*registry, handle));
-
-			if (Entity *stored = Scene::GetStoredEntity(entity))
-			{
-				if (Renderable *renderable = stored->AddComponent<Renderable>())
-				{
-					renderable->SetMesh(asset->GetMesh(), batch.subMesh);
-					renderable->SetMaterial(Ref<MaterialAsset>(asset->GetMaterial(batch.material)));
-					renderable->SetFlag(CastsShadows, batch.castShadow);
-				}
-			}
-		}
-
-		// Spill lights: a Light component per spill, under the light's animation group so it moves with it. Tick()
-		// switches them on at night and dims them (flashing, nearest-first budget).
-		const std::vector<ObjectLight> &lights = asset->GetLights();
-		for (uint32_t i = 0; i < static_cast<uint32_t>(lights.size()); ++i)
-		{
-			const ObjectLight &light = lights[i];
-			const Obj8Light &source = data.lights[light.source];
-			for (uint32_t s = 0; s < static_cast<uint32_t>(light.resolved.spills.size()); ++s)
-			{
-				const LightSpillSpec &spill = light.resolved.spills[s];
-				const std::string label = source.name.empty() ? "custom" : source.name;
-				const Entity entity = Scene::CreateEntity("Spill " + std::to_string(i) + " (" + label + ")");
-				const entt::entity handle = static_cast<entt::entity>(entity);
-				const entt::entity parent = light.node >= 0 ? nodeHandles[static_cast<size_t>(light.node)] : rootHandle;
-				Attach(*registry, handle, parent);
-
-				TransformComponent &transform = registry->get<TransformComponent>(handle);
-				transform.translation = Vec3(light.position[0], light.position[1], light.position[2]);
-				transform.SetRotation(RotationFromForward(spill.direction));
-
-				if (Entity *stored = Scene::GetStoredEntity(entity))
-				{
-					if (Light *lightComponent = stored->AddComponent<Light>())
-					{
-						// type first: it resets color and range to that type's defaults
-						lightComponent->SetLightType(spill.IsSpot() ? LightType::Spot : LightType::Point);
-						lightComponent->SetFlag(LightFlags::Shadows, false); // also clears screen-space shadows and volumetrics
-						lightComponent->SetRange(spill.GetRange());
-						if (spill.IsSpot())
-							lightComponent->SetAngle(std::acos(std::clamp(spill.width, -1.0f, 1.0f)));
-
-						const float peak = std::max(MaxComponent(spill.color), 1e-3f);
-						lightComponent->SetLightColor(Standard(std::max(spill.color[0], 0.0f) / peak, std::max(spill.color[1], 0.0f) / peak,
-							std::max(spill.color[2], 0.0f) / peak, 1.0f));
-						lightComponent->SetIntensity(0.0f);
-					}
-					stored->SetActive(false);
-				}
-
-				component.spillEntities.push_back(GetId(*registry, handle));
-				component.spillSources.push_back({ i, s });
-			}
-		}
-
-		// Expose the object's datarefs as editor controls.
-		for (const Obj8DatarefUsage &usage : data.datarefs)
-			Datarefs::Register(usage);
-
 		registry->emplace_or_replace<XPlaneObjectComponent>(rootHandle, std::move(component));
 		const uint64_t rootId = GetId(*registry, rootHandle);
 
-		SEDX_CORE_INFO_TAG(LOG_TAG, "Placed '{}' ({} batches, {} animation groups, {} lights){}", rootName, batches.size(), data.nodes.size(),
-			lights.size(), options.virtualPath.empty() ? std::string() : " as " + options.virtualPath);
+		if (asset->IsReady())
+		{
+			BuildObject(*registry, rootHandle);
+			Tick(0.0);
+		}
+		else
+		{
+			SEDX_CORE_INFO_TAG(LOG_TAG, "Placing '{}'{} while it loads", rootName, options.virtualPath.empty() ? std::string() : " (" + options.virtualPath + ")");
+		}
 
-		Tick(0.0);
 		if (options.frameCamera)
 			FrameObject(rootId);
 		return rootId;
@@ -504,13 +575,18 @@ namespace SceneryEditorX::XPlane
 
 	void SceneObjects::Tick(const double deltaSeconds)
 	{
+		// Background loads: upload what the workers finished, then fill in the placements that were waiting for it.
+		ObjectAsset::Update();
+		entt::registry *registry = GetRegistry();
+		if (registry)
+			BuildLoadedObjects(*registry);
+
 		Datarefs::Tick(deltaSeconds);
 		ObjectAsset::SetLitTexturesVisible(Datarefs::GetNightFactor() > 0.5f);
 
 		// The placeholder sun and sky follow the emulated time of day.
 		Renderer::SetFallbackDaylight(Datarefs::GetDaylight());
 
-		entt::registry *registry = GetRegistry();
 		if (!registry)
 		{
 			Renderer::SetLightBillboards({});
@@ -540,8 +616,8 @@ namespace SceneryEditorX::XPlane
 		for (const entt::entity rootHandle : view)
 		{
 			XPlaneObjectComponent &object = view.get<XPlaneObjectComponent>(rootHandle);
-			if (!object.asset)
-				continue;
+			if (!object.asset || !object.loaded)
+				continue; // still loading
 
 			const Obj8Data &data = object.asset->GetData();
 
@@ -654,6 +730,14 @@ namespace SceneryEditorX::XPlane
 		if (!object || !object->asset || rootHandle == entt::null)
 			return;
 
+		// The bounds come with the asset: a placement still loading is framed when it arrives.
+		if (!object->loaded)
+		{
+			s_FrameWhenLoaded = rootId;
+			return;
+		}
+		s_FrameWhenLoaded = 0; // a newer request wins over one still waiting
+
 		// Bounds center in world space (placement translation + heading only; the object is not scaled)
 		const float *bmin = object->asset->GetBoundsMin();
 		const float *bmax = object->asset->GetBoundsMax();
@@ -704,6 +788,7 @@ namespace SceneryEditorX::XPlane
 			}
 		}
 
+		s_FrameWhenLoaded = 0;
 		Renderer::SetLightBillboards({}); // the batches hold the light textures
 		ObjectAsset::ClearCache();
 		TextureLoader::ClearCache();
@@ -713,6 +798,21 @@ namespace SceneryEditorX::XPlane
 	{
 		entt::registry *registry = GetRegistry();
 		return registry ? registry->view<XPlaneObjectComponent>().size() : 0;
+	}
+
+	size_t SceneObjects::GetLoadingObjectCount()
+	{
+		entt::registry *registry = GetRegistry();
+		if (!registry)
+			return 0;
+
+		size_t count = 0;
+		for (const entt::entity handle : registry->view<XPlaneObjectComponent>())
+		{
+			if (!registry->get<XPlaneObjectComponent>(handle).loaded)
+				++count;
+		}
+		return count;
 	}
 
 }

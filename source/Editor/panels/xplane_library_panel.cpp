@@ -37,6 +37,7 @@
 #include <SceneryEditorX/renderer/ui/resources/fonts.h>
 #include <SceneryEditorX/renderer/ui/source/imgui/misc/cpp/imgui_stdlib.h>
 #include <SceneryEditorX/xplane/xp_library_manager.h>
+#include <SceneryEditorX/xplane/xp_object.h>
 
 // -------------------------------------------------------
 
@@ -297,6 +298,9 @@ namespace SceneryEditorX
 		ImGui::SameLine();
 		ImGui::TextDisabled("%zu / %zu", m_Filtered.size(), index.GetAssets().size());
 
+		// Objects placed from here load in the background.
+		EditorXPlane::DrawObjectLoadProgress(-FLT_MIN);
+
 		if (index.GetAssets().empty())
 		{
 			EditorUI::EmptyState(LibraryManager::GetInstallInfo().IsValid() ? "No library assets yet (scanning, or no tracked libraries)."
@@ -398,6 +402,8 @@ namespace SceneryEditorX
 		ImGui::EndDisabled();
 		if (asset.type != XPlane::AssetType::Object)
 			EditorUI::ItemTooltip("Only objects (.obj) can be placed for now");
+		else
+			EditorUI::ItemTooltip("Places the object right away; it appears when it has loaded in the background");
 
 		ImGui::SameLine();
 		if (ImGui::Button(EditorUI::IconLabel(SEDX_ICON_LINK, "Copy path").c_str()))
@@ -409,6 +415,15 @@ namespace SceneryEditorX
 		if (ImGui::Button(EditorUI::IconLabel(SEDX_ICON_FOLDER_OPEN_O, "Show file").c_str()) && resolved)
 			IO::FileSystem::OpenExternally(resolved->realPath.parent_path());
 		ImGui::EndDisabled();
+
+		if (canPlace)
+		{
+			const XPlane::ObjectLoadState state = XPlane::ObjectAsset::GetLoadState(resolved->realPath);
+			if (state == XPlane::ObjectLoadState::Queued || state == XPlane::ObjectLoadState::Decoding || state == XPlane::ObjectLoadState::Uploading)
+				ImGui::TextColored(Color(EditorTheme::Palette::Warning), "%s %s...", SEDX_ICON_HOURGLASS_HALF, XPlane::GetObjectLoadStateName(state));
+			else if (state == XPlane::ObjectLoadState::Ready)
+				ImGui::TextDisabled("%s Loaded", SEDX_ICON_CHECK);
+		}
 
 		// Where it comes from
 		ImGui::SeparatorText("Exported by");

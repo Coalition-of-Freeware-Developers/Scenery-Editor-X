@@ -49,6 +49,9 @@ namespace SceneryEditorX::XPlane
 	 * Lights follow their animation group the same way: each spill is a leaf entity with a Light component, and
 	 * billboards are evaluated every frame from the group's world transform and handed to the renderer. Both only
 	 * show at night (or with DatarefEnvironment::forceLightsOn).
+	 *
+	 * Assets load in the background, so a fresh placement is only the root (a placeholder) until its asset is ready;
+	 * SceneObjects::Tick() then builds the tree under it.
 	 */
 	struct XPlaneObjectComponent
 	{
@@ -59,8 +62,9 @@ namespace SceneryEditorX::XPlane
 			uint32_t spill = 0;
 		};
 
-		Ref<ObjectAsset> asset;
+		Ref<ObjectAsset> asset;					// May still be loading (see loaded)
 		std::string virtualPath;				// Library path when placed from a library ("lib/airport/...")
+		bool loaded = false;					// The asset arrived and the entity tree below the root is built
 		std::vector<uint64_t> nodeEntities;		// UUID per Obj8Data::nodes entry
 		std::vector<uint64_t> batchEntities;	// UUID per ObjectAsset batch
 		std::vector<uint64_t> spillEntities;	// UUID per spill light (Light component)
@@ -81,7 +85,7 @@ namespace SceneryEditorX::XPlane
 	/**
 	 * @class SceneObjects
 	 * @brief Places X-Plane objects in the active scene and drives their animation, LODs and lighting.
-	 * Main thread only (GPU uploads use the immediate queue).
+	 * Main thread only. Objects load in the background (ObjectAsset::Request()); placing never waits for them.
 	 */
 	class SceneObjects
 	{
@@ -92,20 +96,23 @@ namespace SceneryEditorX::XPlane
 			float headingDegrees = 0.0f;	// Clockwise from north (-Z), like DSF placements
 			std::string virtualPath;		// Shown in the UI and kept with the placement
 			std::string name;				// Entity name; the file name when empty
-			bool frameCamera = true;		// Move the camera so the object fills the view
+			bool frameCamera = true;		// Move the camera so the object fills the view (once it has loaded)
 		};
 
 		/**
-		 * @brief Loads an OBJ8 file and places it in the active scene.
+		 * @brief Places an OBJ8 file in the active scene without waiting for it to load.
+		 * The root entity exists at once (placement transform, name); the meshes, animation groups and lights appear
+		 * below it when the asset is ready. A file that fails to load logs the reason and its root is removed.
 		 * @param file The .obj file.
 		 * @param options Placement.
 		 * @param error Receives the reason on failure (optional).
-		 * @return The root entity's UUID, or 0 on failure.
+		 * @return The root entity's UUID, or 0 when nothing could be placed (no active scene).
 		 */
 		static uint64_t Place(const std::filesystem::path &file, const PlaceOptions &options, std::string *error = nullptr);
 
 		/**
-		 * @brief Advances the dataref clock and applies animation, LOD selection, hide / show rules and night lighting
+		 * @brief Finishes background loads (ObjectAsset::Update()) and builds the placements waiting for them, then
+		 * advances the dataref clock and applies animation, LOD selection, hide / show rules and night lighting
 		 * (LIT textures, light billboards, spill lights, the renderer's daylight) to every placed object.
 		 * Call once per frame before the renderer collects draw calls.
 		 */
@@ -119,11 +126,14 @@ namespace SceneryEditorX::XPlane
 		 */
 		static XPlaneObjectComponent *FindObject(uint64_t entityId, uint64_t *rootId = nullptr);
 
-		/* @brief Moves the camera so a placed object fills the view. */
+		/* @brief Moves the camera so a placed object fills the view (when it has loaded; the latest request wins). */
 		static void FrameObject(uint64_t rootId);
 
 		/* @brief Number of placed objects in the active scene. */
 		static size_t GetObjectCount();
+
+		/* @brief Number of placed objects still waiting for their asset. */
+		static size_t GetLoadingObjectCount();
 
 		/**
 		 * @brief Removes every placed object and releases the object and texture caches. Call during shutdown, after the

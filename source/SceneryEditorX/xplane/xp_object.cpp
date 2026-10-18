@@ -30,10 +30,15 @@
  */
 #include "xp_object.h"
 #include "xp_library_manager.h"
+#include <atomic>
 #include <chrono>
 #include <cmath>
+#include <deque>
+#include <future>
+#include <mutex>
 #include <unordered_map>
 #include <unordered_set>
+#include <SceneryEditorX/core/threading/thread_pool.h>
 #include <SceneryEditorX/logging/logging.hpp>
 #include <SceneryEditorX/renderer/vulkan/enums.h>
 
@@ -41,6 +46,50 @@
 
 namespace SceneryEditorX::XPlane
 {
+	/**
+	 * @struct ObjectLoadJob
+	 * @brief The CPU half of an object load: built on a worker thread, then uploaded step by step on the main thread.
+	 */
+	struct ObjectLoadJob
+	{
+		struct Batch
+		{
+			ObjectBatch batch;						// subMesh and material are filled in on the main thread
+			Obj8DrawState state;					// Picks the material
+			std::vector<Vertex_PosTexNorTan> vertices;
+			std::vector<uint32_t> indices;
+		};
+
+		std::filesystem::path path;
+		std::chrono::steady_clock::time_point requested;
+		bool submitted = false;						// Main thread: handed to the thread pool (or run)
+		std::future<void> done;						// The worker task (ObjectAsset::Load() waits on it)
+		std::atomic<ObjectLoadState> state{ ObjectLoadState::Queued };
+
+		// Written by the worker; the main thread reads them once state is Uploading or Failed.
+		Obj8Data data;
+		std::vector<Batch> batches;
+		std::vector<ObjectLight> lights;
+		DecodedTexture albedo;
+		DecodedTexture normal;
+		DecodedTexture lit;
+		DecodedTexture drapedAlbedo;
+		DecodedTexture drapedNormal;
+		DecodedTexture packed;
+		float boundsMin[3] = { 0.0f, 0.0f, 0.0f };
+		float boundsMax[3] = { 0.0f, 0.0f, 0.0f };
+		std::string error;
+		float cpuMilliseconds = 0.0f;
+
+		// Main thread: how far the upload got
+		uint32_t step = 0;
+		float uploadMilliseconds = 0.0f;
+		uint32_t uploadFrames = 0;					// Frames the upload was spread over
+		float longestFrameMilliseconds = 0.0f;		// Most upload time spent in one of them
+		float frameMilliseconds = 0.0f;
+		uint64_t lastFrame = ~0ull;
+	};
+
 	namespace
 	{
 		constexpr const char *LOG_TAG = "XPlaneObject";
@@ -57,14 +106,52 @@ namespace SceneryEditorX::XPlane
 		 */
 		constexpr float BLEND_SPLIT_ALPHA = 0.9f;
 
-		std::unordered_map<std::string, Ref<ObjectAsset>> s_Cache;
+		/* @brief Main-thread time per frame for finishing loads (uploads); one step always runs, so loads progress. */
+		constexpr float UPLOAD_BUDGET_MS = 4.0f;
+
+		/*
+		 * Loads decoding at once. More would take every core from the main and render threads and keep that many
+		 * decoded mip chains in memory; the rest wait their turn in request order.
+		 */
+		constexpr uint32_t MAX_CONCURRENT_LOADS = 4;
+
+		/* @brief Upload steps of a decoded load: the textures one by one, then geometry and materials. */
+		enum UploadStep : uint32_t
+		{
+			UploadAlbedo,
+			UploadNormal,
+			UploadLit,
+			UploadDrapedAlbedo,
+			UploadDrapedNormal,
+			UploadPacked,
+			UploadGeometry
+		};
+
+		std::unordered_map<std::string, Ref<ObjectAsset>> s_Cache;	// Ready and in-flight assets
+		std::vector<Ref<ObjectAsset>> s_Pending;					// In flight, in request order
+		std::deque<std::shared_ptr<ObjectLoadJob>> s_Waiting;		// Requested, not handed to the thread pool yet
+		std::vector<std::shared_ptr<ObjectLoadJob>> s_Running;		// Handed to the thread pool, not decoded yet
+		uint32_t s_LoadsRequested = 0;								// Since s_Pending was last empty
+		uint32_t s_LoadsFinished = 0;
+		uint64_t s_UpdateFrame = 0;									// Counts ObjectAsset::Update() calls (upload statistics)
 		bool s_LitVisible = false;
 
-		LightCatalog s_LightCatalog;
-		std::filesystem::path s_LightCatalogInstall;	// Install the catalog was looked up in ("" = not looked up yet)
+		// Workers resolve lights, so the catalog is shared under a lock and replaced, never modified.
+		std::mutex s_LightMutex;
+		std::shared_ptr<const LightCatalog> s_LightCatalog = std::make_shared<LightCatalog>();
+		std::filesystem::path s_LightCatalogInstall;		// Install the catalog was looked up in ("" = not looked up yet)
+		uint64_t s_LightCatalogGeneration = 0;				// Bumped when a lights.txt replaces the catalog
+
+		// Main thread only
+		constexpr uint64_t NO_LIGHT_TEXTURE = ~0ull;
 		Ref<ImageResource> s_LightTexture;
 		TextureInfo s_LightTextureInfo;
-		bool s_LightTextureLoaded = false;
+		uint64_t s_LightTextureGeneration = NO_LIGHT_TEXTURE;	// Catalog generation the texture was loaded for
+
+		float MillisecondsSince(const std::chrono::steady_clock::time_point start)
+		{
+			return std::chrono::duration<float, std::milli>(std::chrono::steady_clock::now() - start).count();
+		}
 
 		/* @brief lights.txt inside an X-Plane install, or an empty path. */
 		std::filesystem::path FindLightsTxt(const std::filesystem::path &installRoot)
@@ -149,22 +236,418 @@ namespace SceneryEditorX::XPlane
 					vertices[v].tan[c] = length > 1e-8f ? t[c] / length : (c == 0 ? 1.0f : 0.0f);
 			}
 		}
+
+		// -------------------------------------------------------
+		// Worker side: no GPU work and no ObjectAsset access
+		// -------------------------------------------------------
+
+		/* @brief Reads and decodes one of the OBJ's textures; a reference to a missing file warns. */
+		DecodedTexture DecodeTexture(const std::filesystem::path &folder, const std::string &reference, const TextureUsage usage)
+		{
+			DecodedTexture texture;
+			if (reference.empty())
+				return texture;
+
+			const std::filesystem::path file = TextureLoader::ResolveTexturePath(folder, reference);
+			if (file.empty())
+			{
+				texture.info.error = "File not found";
+				SEDX_CORE_WARN_TAG(LOG_TAG, "Texture '{}' not found next to '{}'", reference, folder.string());
+				return texture;
+			}
+			return TextureLoader::Decode(file, usage);
+		}
+
+		/* @brief Resolves the OBJ's lights against lights.txt (unknown names are left out). */
+		void ResolveLights(ObjectLoadJob &job)
+		{
+			const Obj8Data &data = job.data;
+			if (data.lights.empty())
+				return;
+
+			const std::shared_ptr<const LightCatalog> catalog = ObjectAsset::GetLightCatalog(job.path);
+			const std::string fileName = job.path.filename().string();
+			std::unordered_set<std::string> reported;
+
+			for (uint32_t i = 0; i < static_cast<uint32_t>(data.lights.size()); ++i)
+			{
+				const Obj8Light &source = data.lights[i];
+				const bool needsCatalog = source.kind == Obj8Light::Kind::Named || source.kind == Obj8Light::Kind::Param;
+				if (needsCatalog && !catalog->IsLoaded())
+				{
+					if (reported.insert("").second)
+						SEDX_CORE_WARN_TAG(LOG_TAG, "{}: lights.txt not found (set the X-Plane folder); named lights are skipped", fileName);
+					continue;
+				}
+
+				ObjectLight light;
+				std::string warning;
+				if (!catalog->Resolve(source, light.resolved, &warning))
+				{
+					if (reported.insert(source.name).second)
+						SEDX_CORE_WARN_TAG(LOG_TAG, "{}: {}", fileName, warning);
+					continue;
+				}
+
+				if (light.resolved.billboards.empty() && light.resolved.spills.empty())
+					continue; // v8 ground halos only
+
+				light.source = i;
+				light.node = source.node;
+				light.lod = source.lod;
+				light.visibility = source.visibility;
+				std::copy_n(source.position, 3, light.position);
+				job.lights.push_back(std::move(light));
+			}
+		}
+
+		/* @brief Parses the OBJ, decodes its textures, resolves its lights and builds the vertices of every batch. */
+		bool BuildObjectData(ObjectLoadJob &job)
+		{
+			const std::filesystem::path &path = job.path;
+			Obj8Data &data = job.data;
+
+			std::string parseError;
+			if (!LoadObj8(path, data, &parseError))
+			{
+				SEDX_CORE_ERROR_TAG(LOG_TAG, "Failed to load '{}': {}", path.string(), parseError);
+				job.error = parseError;
+				return false;
+			}
+
+			for (const std::string &warning : data.warnings)
+				SEDX_CORE_WARN_TAG(LOG_TAG, "{}: {}", path.filename().string(), warning);
+
+			if (data.batches.empty() && data.lights.empty())
+			{
+				const std::string message = "The object has no triangles or lights to draw";
+				SEDX_CORE_WARN_TAG(LOG_TAG, "{}: {}", path.string(), message);
+				job.error = message;
+				return false;
+			}
+
+			// Textures (uploaded later, on the main thread)
+			const std::filesystem::path folder = path.parent_path();
+			job.albedo = DecodeTexture(folder, data.texture, TextureUsage::Albedo);
+			job.normal = DecodeTexture(folder, data.textureNormal, TextureUsage::Normal);
+			job.lit = DecodeTexture(folder, data.textureLit, TextureUsage::Lit);
+			job.drapedAlbedo = DecodeTexture(folder, data.textureDraped, TextureUsage::Albedo);
+			job.drapedNormal = DecodeTexture(folder, data.textureDrapedNormal, TextureUsage::Normal);
+
+			// With a normal map the specular level defaults to 1 (standard shading); without one surfaces are matte.
+			if (job.normal.valid && !job.normal.info.path.empty())
+			{
+				const float specular = data.hasGlobalSpecular ? data.globalSpecular : 1.0f;
+				job.packed = TextureLoader::DecodePackedMaterial(job.normal.info.path, data.normalMetalness, specular);
+			}
+
+			ResolveLights(job);
+
+			std::vector<int32_t> remap(data.vertices.size(), -1);
+			std::vector<uint32_t> touched;
+			bool firstVertex = true;
+
+			for (const Obj8Batch &batch : data.batches)
+			{
+				std::vector<Vertex_PosTexNorTan> vertices;
+				std::vector<uint32_t> indices;
+				indices.reserve(batch.GetIndexCount());
+
+				for (const Obj8Batch::Range &range : batch.ranges)
+				{
+					for (uint32_t i = range.offset; i + 2 < range.offset + range.count; i += 3)
+					{
+						uint32_t triangle[3] = { data.indices[i], data.indices[i + 1], data.indices[i + 2] };
+						if constexpr (REVERSE_WINDING)
+							std::swap(triangle[1], triangle[2]);
+
+						for (const uint32_t source : triangle)
+						{
+							if (remap[source] < 0)
+							{
+								const Obj8Vertex &v = data.vertices[source];
+								Vertex_PosTexNorTan out;
+								for (int c = 0; c < 3; ++c)
+								{
+									out.pos[c] = v.position[c];
+									out.nor[c] = v.normal[c];
+
+									job.boundsMin[c] = firstVertex ? v.position[c] : std::min(job.boundsMin[c], v.position[c]);
+									job.boundsMax[c] = firstVertex ? v.position[c] : std::max(job.boundsMax[c], v.position[c]);
+								}
+								firstVertex = false;
+
+								const float length = std::sqrt(out.nor[0] * out.nor[0] + out.nor[1] * out.nor[1] + out.nor[2] * out.nor[2]);
+								if (length > 1e-8f)
+								{
+									for (float &component : out.nor)
+										component /= length;
+								}
+								else
+								{
+									out.nor[0] = 0.0f;
+									out.nor[1] = 1.0f;
+									out.nor[2] = 0.0f;
+								}
+
+								// (s, t) stay as written: textures are stored with row 0 at t = 0 (see xp_texture_loader.h)
+								out.tex[0] = v.uv[0];
+								out.tex[1] = v.uv[1];
+
+								remap[source] = static_cast<int32_t>(vertices.size());
+								vertices.push_back(out);
+								touched.push_back(source);
+							}
+							indices.push_back(static_cast<uint32_t>(remap[source]));
+						}
+					}
+				}
+
+				for (const uint32_t source : touched)
+					remap[source] = -1;
+				touched.clear();
+
+				if (indices.empty())
+					continue;
+
+				ComputeTangents(vertices, indices);
+
+				ObjectLoadJob::Batch out;
+				out.batch.node = batch.node;
+				out.batch.lod = batch.lod;
+				out.batch.visibility = batch.visibility;
+				out.batch.triangleCount = static_cast<uint32_t>(indices.size() / 3);
+				out.batch.castShadow = batch.state.castShadow && !data.globalNoShadow;
+				out.batch.draped = batch.state.draped;
+				out.state = batch.state;
+				out.vertices = std::move(vertices);
+				out.indices = std::move(indices);
+				job.batches.push_back(std::move(out));
+			}
+
+			if (job.batches.empty() && job.lights.empty())
+			{
+				job.error = "The object has no triangles or lights to draw";
+				return false;
+			}
+
+			// Static light positions count towards the bounds (framing light-only fixtures).
+			for (const ObjectLight &light : job.lights)
+			{
+				for (int c = 0; c < 3; ++c)
+				{
+					job.boundsMin[c] = firstVertex ? light.position[c] : std::min(job.boundsMin[c], light.position[c]);
+					job.boundsMax[c] = firstVertex ? light.position[c] : std::max(job.boundsMax[c], light.position[c]);
+				}
+				firstVertex = false;
+			}
+			return true;
+		}
+
+		/* @brief Thread pool task: runs the CPU half of a load and hands it to the main thread through the job's state. */
+		void RunLoadJob(ObjectLoadJob &job)
+		{
+			job.state.store(ObjectLoadState::Decoding, std::memory_order_relaxed);
+			const auto start = std::chrono::steady_clock::now();
+
+			bool built = false;
+			try
+			{
+				built = BuildObjectData(job);
+			}
+			catch (const std::exception &e)
+			{
+				job.error = e.what();
+				SEDX_CORE_ERROR_TAG(LOG_TAG, "Failed to load '{}': {}", job.path.string(), job.error);
+			}
+			catch (...)
+			{
+				job.error = "Unexpected error while loading";
+				SEDX_CORE_ERROR_TAG(LOG_TAG, "Failed to load '{}': {}", job.path.string(), job.error);
+			}
+
+			job.cpuMilliseconds = MillisecondsSince(start);
+			job.state.store(built ? ObjectLoadState::Uploading : ObjectLoadState::Failed, std::memory_order_release);
+		}
+
+		/* @brief Hands waiting loads to the thread pool while fewer than MAX_CONCURRENT_LOADS are decoding. */
+		void SubmitWaitingLoads()
+		{
+			std::erase_if(s_Running, [](const std::shared_ptr<ObjectLoadJob> &job)
+			{
+				const ObjectLoadState state = job->state.load(std::memory_order_acquire);
+				return state != ObjectLoadState::Queued && state != ObjectLoadState::Decoding;
+			});
+
+			// Leave a core for the main thread on small machines.
+			const uint32_t threads = ThreadPool::GetThreadCount();
+			const uint32_t limit = std::clamp(threads > 1 ? threads - 1 : 1u, 1u, MAX_CONCURRENT_LOADS);
+			while (!s_Waiting.empty() && s_Running.size() < limit)
+			{
+				std::shared_ptr<ObjectLoadJob> job = std::move(s_Waiting.front());
+				s_Waiting.pop_front();
+				job->submitted = true;
+
+				if (threads == 0)
+				{
+					RunLoadJob(*job); // no thread pool (tools, tests): load in place
+					continue;
+				}
+
+				// The task keeps the job alive: an asset dropped meanwhile (ClearCache) just discards the result.
+				job->done = ThreadPool::Submit([job] { RunLoadJob(*job); });
+				s_Running.push_back(std::move(job));
+			}
+		}
 	}
 
 	// -------------------------------------------------------
 
-	Ref<ObjectAsset> ObjectAsset::Load(const std::filesystem::path &path, std::string *error)
+	const char *GetObjectLoadStateName(const ObjectLoadState state)
+	{
+		switch (state)
+		{
+			case ObjectLoadState::NotLoaded:	return "Not loaded";
+			case ObjectLoadState::Queued:		return "Queued";
+			case ObjectLoadState::Decoding:		return "Decoding";
+			case ObjectLoadState::Uploading:	return "Uploading";
+			case ObjectLoadState::Ready:		return "Ready";
+			case ObjectLoadState::Failed:		return "Failed";
+		}
+		return "?";
+	}
+
+	// -------------------------------------------------------
+
+	Ref<ObjectAsset> ObjectAsset::Request(const std::filesystem::path &path)
 	{
 		const std::string key = CacheKey(path);
 		if (const auto it = s_Cache.find(key); it != s_Cache.end())
-			return it->second;
+			return it->second; // ready, or in flight for an earlier placement
 
 		Ref<ObjectAsset> asset = CreateRef<ObjectAsset>();
-		if (!asset->Build(path, error))
-			return nullptr;
+		asset->m_Path = path;
+		asset->m_State = ObjectLoadState::Queued;
+
+		const std::shared_ptr<ObjectLoadJob> job = std::make_shared<ObjectLoadJob>();
+		job->path = path;
+		job->requested = std::chrono::steady_clock::now();
+		asset->m_Job = job;
 
 		s_Cache.emplace(key, asset);
+		s_Pending.push_back(asset);
+		s_Waiting.push_back(job);
+		++s_LoadsRequested;
+
+		SubmitWaitingLoads();
 		return asset;
+	}
+
+	Ref<ObjectAsset> ObjectAsset::Load(const std::filesystem::path &path, std::string *error)
+	{
+		const Ref<ObjectAsset> asset = Request(path);
+		if (asset->m_Job)
+		{
+			ObjectLoadJob &job = *asset->m_Job;
+			if (!job.submitted)
+			{
+				// Still waiting for a free slot: decode it here instead of waiting behind the others.
+				std::erase_if(s_Waiting, [&job](const std::shared_ptr<ObjectLoadJob> &waiting) { return waiting.get() == &job; });
+				job.submitted = true;
+				RunLoadJob(job);
+			}
+			else if (job.done.valid())
+			{
+				job.done.wait();
+			}
+
+			const ObjectLoadState state = job.state.load(std::memory_order_acquire);
+			if (state == ObjectLoadState::Uploading)
+			{
+				while (!asset->FinishStep())
+				{
+				}
+			}
+			else
+			{
+				if (state != ObjectLoadState::Failed && job.error.empty())
+					job.error = "The load was cancelled";
+				asset->Fail();
+			}
+
+			++s_LoadsFinished;
+			std::erase_if(s_Pending, [&asset](const Ref<ObjectAsset> &pending) { return pending.Get() == asset.Get(); });
+			if (s_Pending.empty())
+				s_LoadsRequested = s_LoadsFinished = 0;
+		}
+
+		if (asset->HasFailed())
+		{
+			if (error)
+				*error = asset->GetError();
+			return nullptr;
+		}
+		return asset;
+	}
+
+	void ObjectAsset::Update()
+	{
+		if (s_Pending.empty())
+			return;
+
+		SubmitWaitingLoads();
+		++s_UpdateFrame;
+
+		const auto start = std::chrono::steady_clock::now();
+		bool worked = false;
+		for (size_t i = 0; i < s_Pending.size();)
+		{
+			const Ref<ObjectAsset> asset = s_Pending[i]; // keeps the asset alive while Fail() drops it from the cache
+			const ObjectLoadState state = asset->m_Job->state.load(std::memory_order_acquire);
+			if (state == ObjectLoadState::Failed)
+			{
+				asset->Fail();
+			}
+			else if (state == ObjectLoadState::Uploading)
+			{
+				bool finished = false;
+				while (!finished && (!worked || MillisecondsSince(start) < UPLOAD_BUDGET_MS))
+				{
+					finished = asset->FinishStep();
+					worked = true;
+				}
+				if (!finished)
+					break; // out of time: carry on next frame
+			}
+			else
+			{
+				++i; // still on a worker; later requests may finish first
+				continue;
+			}
+
+			++s_LoadsFinished;
+			s_Pending.erase(s_Pending.begin() + static_cast<std::ptrdiff_t>(i));
+		}
+
+		if (s_Pending.empty())
+			s_LoadsRequested = s_LoadsFinished = 0;
+	}
+
+	ObjectLoadQueue ObjectAsset::GetLoadQueue()
+	{
+		ObjectLoadQueue queue;
+		queue.requested = s_LoadsRequested;
+		queue.finished = s_LoadsFinished;
+		queue.loads.reserve(s_Pending.size());
+		for (const Ref<ObjectAsset> &asset : s_Pending)
+			queue.loads.push_back({ asset->m_Path, asset->GetState(), MillisecondsSince(asset->m_Job->requested) / 1000.0f });
+		return queue;
+	}
+
+	ObjectLoadState ObjectAsset::GetLoadState(const std::filesystem::path &path)
+	{
+		const auto it = s_Cache.find(CacheKey(path));
+		return it != s_Cache.end() ? it->second->GetState() : ObjectLoadState::NotLoaded;
 	}
 
 	std::vector<Ref<ObjectAsset>> ObjectAsset::GetLoaded()
@@ -172,41 +655,61 @@ namespace SceneryEditorX::XPlane
 		std::vector<Ref<ObjectAsset>> assets;
 		assets.reserve(s_Cache.size());
 		for (const auto &[key, asset] : s_Cache)
-			assets.push_back(asset);
+		{
+			if (asset->IsReady())
+				assets.push_back(asset);
+		}
 		return assets;
 	}
 
 	void ObjectAsset::ClearCache()
 	{
+		// Loads still on a worker keep their job until they finish; nothing picks the results up any more.
+		s_Waiting.clear();
+		s_Running.clear();
+		s_Pending.clear();
+		s_LoadsRequested = s_LoadsFinished = 0;
 		s_Cache.clear();
 		s_LightTexture.Reset();
 		s_LightTextureInfo = TextureInfo{};
-		s_LightTextureLoaded = false;
+		s_LightTextureGeneration = NO_LIGHT_TEXTURE;
 	}
 
-	const LightCatalog &ObjectAsset::GetLightCatalog(const std::filesystem::path &objectPath)
+	std::shared_ptr<const LightCatalog> ObjectAsset::GetLightCatalog(const std::filesystem::path &objectPath)
 	{
 		// The configured install wins; otherwise the install the object was loaded from (--xp-object).
 		std::filesystem::path install = LibraryManager::GetInstallPath();
 		if (FindLightsTxt(install).empty() && !objectPath.empty())
 			install = FindInstallAbove(objectPath);
 
-		if (install.empty() || install == s_LightCatalogInstall)
-			return s_LightCatalog;
+		{
+			std::scoped_lock lock(s_LightMutex);
+			if (install.empty() || install == s_LightCatalogInstall)
+				return s_LightCatalog;
+		}
 
 		const std::filesystem::path file = FindLightsTxt(install);
 		if (file.empty())
+		{
+			std::scoped_lock lock(s_LightMutex);
 			return s_LightCatalog;
+		}
+
+		// Parsed outside the lock: the main thread reads the catalog every night frame.
+		const std::shared_ptr<LightCatalog> catalog = std::make_shared<LightCatalog>();
+		std::string error;
+		const bool loaded = catalog->Load(file, &error);
+
+		std::scoped_lock lock(s_LightMutex);
+		if (install == s_LightCatalogInstall)
+			return s_LightCatalog; // another worker loaded it meanwhile
 
 		s_LightCatalogInstall = install;
-		LightCatalog catalog;
-		std::string error;
-		if (catalog.Load(file, &error))
+		if (loaded)
 		{
-			s_LightCatalog = std::move(catalog);
-			s_LightTexture.Reset();
-			s_LightTextureLoaded = false;
-			SEDX_CORE_INFO_TAG(LOG_TAG, "Loaded {} light definitions from '{}'", s_LightCatalog.GetLightCount(), file.string());
+			s_LightCatalog = catalog;
+			++s_LightCatalogGeneration;
+			SEDX_CORE_INFO_TAG(LOG_TAG, "Loaded {} light definitions from '{}'", s_LightCatalog->GetLightCount(), file.string());
 		}
 		else
 		{
@@ -217,14 +720,25 @@ namespace SceneryEditorX::XPlane
 
 	Ref<ImageResource> ObjectAsset::GetLightTexture(TextureInfo *info)
 	{
-		if (!s_LightTextureLoaded && s_LightCatalog.IsLoaded())
+		std::shared_ptr<const LightCatalog> catalog;
+		uint64_t generation = 0;
 		{
-			s_LightTextureLoaded = true;
-			const std::filesystem::path file = TextureLoader::ResolveTexturePath(s_LightCatalog.GetPath().parent_path(), s_LightCatalog.GetTexture());
+			std::scoped_lock lock(s_LightMutex);
+			catalog = s_LightCatalog;
+			generation = s_LightCatalogGeneration;
+		}
+
+		// Once per catalog: another lights.txt brings its own texture.
+		if (generation != s_LightTextureGeneration && catalog->IsLoaded())
+		{
+			s_LightTextureGeneration = generation;
+			s_LightTexture.Reset();
+			s_LightTextureInfo = TextureInfo{};
+			const std::filesystem::path file = TextureLoader::ResolveTexturePath(catalog->GetPath().parent_path(), catalog->GetTexture());
 			if (!file.empty())
 				s_LightTexture = TextureLoader::Load(file, TextureUsage::Lit, &s_LightTextureInfo);
 			if (!s_LightTexture)
-				SEDX_CORE_WARN_TAG(LOG_TAG, "Light texture '{}' not found next to '{}'", s_LightCatalog.GetTexture(), s_LightCatalog.GetPath().string());
+				SEDX_CORE_WARN_TAG(LOG_TAG, "Light texture '{}' not found next to '{}'", catalog->GetTexture(), catalog->GetPath().string());
 		}
 
 		if (info)
@@ -255,7 +769,7 @@ namespace SceneryEditorX::XPlane
 
 		s_LitVisible = visible;
 		for (const auto &[key, asset] : s_Cache)
-			asset->ApplyLit(visible);
+			asset->ApplyLit(visible); // loads in flight have no materials yet; they apply it when they finish
 	}
 
 	bool ObjectAsset::AreLitTexturesVisible()
@@ -265,237 +779,124 @@ namespace SceneryEditorX::XPlane
 
 	ObjectAsset::~ObjectAsset() = default;
 
+	ObjectLoadState ObjectAsset::GetState() const
+	{
+		return m_Job ? m_Job->state.load(std::memory_order_acquire) : m_State;
+	}
+
+	// -------------------------------------------------------
+	// Main-thread side: ImageResource creation uploads through the immediate queue, which isn't thread-safe
 	// -------------------------------------------------------
 
-	bool ObjectAsset::Build(const std::filesystem::path &path, std::string *error)
+	bool ObjectAsset::FinishStep()
 	{
+		ObjectLoadJob &job = *m_Job;
 		const auto start = std::chrono::steady_clock::now();
-		m_Path = path;
 
-		std::string parseError;
-		if (!LoadObj8(path, m_Data, &parseError))
+		switch (job.step++)
 		{
-			SEDX_CORE_ERROR_TAG(LOG_TAG, "Failed to load '{}': {}", path.string(), parseError);
-			if (error)
-				*error = parseError;
-			return false;
-		}
-
-		for (const std::string &warning : m_Data.warnings)
-			SEDX_CORE_WARN_TAG(LOG_TAG, "{}: {}", path.filename().string(), warning);
-
-		if (m_Data.batches.empty() && m_Data.lights.empty())
-		{
-			const std::string message = "The object has no triangles or lights to draw";
-			SEDX_CORE_WARN_TAG(LOG_TAG, "{}: {}", path.string(), message);
-			if (error)
-				*error = message;
-			return false;
-		}
-
-		LoadTextures();
-		ResolveLights();
-
-		// Light fixtures (lib/airport/lights/...) often carry lights only: no mesh then.
-		if (!m_Data.batches.empty())
-		{
-			m_Mesh = CreateRef<Mesh>();
-			m_Mesh->SetFlags(0); // keep X-Plane's units and geometry: no normalization, optimization or generated LODs
-			m_Mesh->SetResourceName(path.filename().string());
-			m_Mesh->SetResourceFilePath(path.string());
-		}
-
-		std::vector<int32_t> remap(m_Data.vertices.size(), -1);
-		std::vector<uint32_t> touched;
-		bool firstVertex = true;
-
-		for (const Obj8Batch &batch : m_Data.batches)
-		{
-			std::vector<Vertex_PosTexNorTan> vertices;
-			std::vector<uint32_t> indices;
-			indices.reserve(batch.GetIndexCount());
-
-			for (const Obj8Batch::Range &range : batch.ranges)
+			case UploadAlbedo:
+				m_Textures.albedo = TextureLoader::Upload(job.albedo, &m_Textures.albedoInfo);
+				break;
+			case UploadNormal:
+				m_Textures.normal = TextureLoader::Upload(job.normal, &m_Textures.normalInfo);
+				break;
+			case UploadLit:
+				m_Textures.lit = TextureLoader::Upload(job.lit, &m_Textures.litInfo);
+				break;
+			case UploadDrapedAlbedo:
+				m_Textures.drapedAlbedo = TextureLoader::Upload(job.drapedAlbedo, &m_Textures.drapedInfo);
+				break;
+			case UploadDrapedNormal:
 			{
-				for (uint32_t i = range.offset; i + 2 < range.offset + range.count; i += 3)
-				{
-					uint32_t triangle[3] = { m_Data.indices[i], m_Data.indices[i + 1], m_Data.indices[i + 2] };
-					if constexpr (REVERSE_WINDING)
-						std::swap(triangle[1], triangle[2]);
-
-					for (const uint32_t source : triangle)
-					{
-						if (remap[source] < 0)
-						{
-							const Obj8Vertex &v = m_Data.vertices[source];
-							Vertex_PosTexNorTan out;
-							for (int c = 0; c < 3; ++c)
-							{
-								out.pos[c] = v.position[c];
-								out.nor[c] = v.normal[c];
-
-								m_BoundsMin[c] = firstVertex ? v.position[c] : std::min(m_BoundsMin[c], v.position[c]);
-								m_BoundsMax[c] = firstVertex ? v.position[c] : std::max(m_BoundsMax[c], v.position[c]);
-							}
-							firstVertex = false;
-
-							const float length = std::sqrt(out.nor[0] * out.nor[0] + out.nor[1] * out.nor[1] + out.nor[2] * out.nor[2]);
-							if (length > 1e-8f)
-							{
-								for (float &component : out.nor)
-									component /= length;
-							}
-							else
-							{
-								out.nor[0] = 0.0f;
-								out.nor[1] = 1.0f;
-								out.nor[2] = 0.0f;
-							}
-
-							// (s, t) stay as written: textures are stored with row 0 at t = 0 (see xp_texture_loader.h)
-							out.tex[0] = v.uv[0];
-							out.tex[1] = v.uv[1];
-
-							remap[source] = static_cast<int32_t>(vertices.size());
-							vertices.push_back(out);
-							touched.push_back(source);
-						}
-						indices.push_back(static_cast<uint32_t>(remap[source]));
-					}
-				}
+				TextureInfo drapedNormalInfo;
+				m_Textures.drapedNormal = TextureLoader::Upload(job.drapedNormal, &drapedNormalInfo);
+				break;
 			}
-
-			for (const uint32_t source : touched)
-				remap[source] = -1;
-			touched.clear();
-
-			if (indices.empty())
-				continue;
-
-			ComputeTangents(vertices, indices);
-
-			ObjectBatch out;
-			out.node = batch.node;
-			out.lod = batch.lod;
-			out.material = GetOrCreateMaterial(batch.state);
-			out.visibility = batch.visibility;
-			out.triangleCount = static_cast<uint32_t>(indices.size() / 3);
-			out.castShadow = batch.state.castShadow && !m_Data.globalNoShadow;
-			out.draped = batch.state.draped;
-			m_Mesh->AddGeometry(vertices, indices, false, &out.subMesh);
-			m_Batches.push_back(std::move(out));
+			case UploadPacked:
+				if (m_Textures.normal)
+					m_Textures.packed = TextureLoader::Upload(job.packed);
+				break;
+			default:
+				FinishGeometry();
+				break;
 		}
 
-		if (m_Batches.empty() && m_Lights.empty())
+		const float elapsed = MillisecondsSince(start);
+		job.uploadMilliseconds += elapsed;
+		if (job.lastFrame != s_UpdateFrame)
 		{
-			if (error)
-				*error = "The object has no triangles or lights to draw";
+			job.lastFrame = s_UpdateFrame;
+			job.frameMilliseconds = 0.0f;
+			++job.uploadFrames;
+		}
+		job.frameMilliseconds += elapsed;
+		job.longestFrameMilliseconds = std::max(job.longestFrameMilliseconds, job.frameMilliseconds);
+
+		if (m_State != ObjectLoadState::Ready)
 			return false;
-		}
 
-		// Static light positions count towards the bounds (framing light-only fixtures).
-		for (const ObjectLight &light : m_Lights)
-		{
-			for (int c = 0; c < 3; ++c)
-			{
-				m_BoundsMin[c] = firstVertex ? light.position[c] : std::min(m_BoundsMin[c], light.position[c]);
-				m_BoundsMax[c] = firstVertex ? light.position[c] : std::max(m_BoundsMax[c], light.position[c]);
-			}
-			firstVertex = false;
-		}
+		m_LoadMilliseconds = job.cpuMilliseconds + job.uploadMilliseconds;
+		SEDX_CORE_INFO_TAG(LOG_TAG, "Loaded '{}': {} triangles, {} batches, {} materials, {} animation groups, {} LODs, {} lights ({} billboards, {} spill) "
+			"({:.1f} ms on a worker, {:.1f} ms uploading over {} frames (longest {:.1f} ms), {:.0f} ms after the request)",
+			m_Path.filename().string(), m_Data.GetTriangleCount(), m_Batches.size(), m_Materials.size(), m_Data.nodes.size(), m_Data.lods.size(),
+			m_Lights.size(), GetBillboardCount(), GetSpillCount(), job.cpuMilliseconds, job.uploadMilliseconds, job.uploadFrames,
+			job.longestFrameMilliseconds, MillisecondsSince(job.requested));
 
-		// Appends the geometry to the renderer's global vertex / index buffers (uploaded at the start of the next frame).
-		if (m_Batches.empty())
-			m_Mesh.Reset();
-		else
-			m_Mesh->CreateGpuBuffers();
-		ApplyLit(s_LitVisible);
-
-		m_LoadMilliseconds = std::chrono::duration<float, std::milli>(std::chrono::steady_clock::now() - start).count();
-		SEDX_CORE_INFO_TAG(LOG_TAG, "Loaded '{}': {} triangles, {} batches, {} materials, {} animation groups, {} LODs, {} lights ({} billboards, {} spill) ({:.1f} ms)",
-			path.filename().string(), m_Data.GetTriangleCount(), m_Batches.size(), m_Materials.size(), m_Data.nodes.size(),
-			m_Data.lods.size(), m_Lights.size(), GetBillboardCount(), GetSpillCount(), m_LoadMilliseconds);
+		m_Job.reset();
 		return true;
 	}
 
-	void ObjectAsset::LoadTextures()
+	void ObjectAsset::FinishGeometry()
 	{
-		const std::filesystem::path folder = m_Path.parent_path();
+		ObjectLoadJob &job = *m_Job;
+		m_Data = std::move(job.data);
+		m_Lights = std::move(job.lights);
+		std::copy_n(job.boundsMin, 3, m_BoundsMin);
+		std::copy_n(job.boundsMax, 3, m_BoundsMax);
 
-		const auto load = [&folder](const std::string &reference, const TextureUsage usage, TextureInfo &info) -> Ref<ImageResource>
+		// Custom billboards are cut from the object's own texture; without one there is nothing to show.
+		if (!m_Textures.albedo)
 		{
-			if (reference.empty())
-				return nullptr;
-
-			const std::filesystem::path file = TextureLoader::ResolveTexturePath(folder, reference);
-			if (file.empty())
-			{
-				info.error = "File not found";
-				SEDX_CORE_WARN_TAG(LOG_TAG, "Texture '{}' not found next to '{}'", reference, folder.string());
-				return nullptr;
-			}
-			return TextureLoader::Load(file, usage, &info);
-		};
-
-		m_Textures.albedo = load(m_Data.texture, TextureUsage::Albedo, m_Textures.albedoInfo);
-		m_Textures.normal = load(m_Data.textureNormal, TextureUsage::Normal, m_Textures.normalInfo);
-		m_Textures.lit = load(m_Data.textureLit, TextureUsage::Lit, m_Textures.litInfo);
-
-		TextureInfo drapedNormalInfo;
-		m_Textures.drapedAlbedo = load(m_Data.textureDraped, TextureUsage::Albedo, m_Textures.drapedInfo);
-		m_Textures.drapedNormal = load(m_Data.textureDrapedNormal, TextureUsage::Normal, drapedNormalInfo);
-
-		// With a normal map the specular level defaults to 1 (standard shading); without one surfaces are matte.
-		if (m_Textures.normal && !m_Textures.normalInfo.path.empty())
-		{
-			const float specular = m_Data.hasGlobalSpecular ? m_Data.globalSpecular : 1.0f;
-			m_Textures.packed = TextureLoader::LoadPackedMaterial(m_Textures.normalInfo.path, m_Data.normalMetalness, specular);
+			for (ObjectLight &light : m_Lights)
+				std::erase_if(light.resolved.billboards, [](const LightBillboardSpec &billboard) { return billboard.customTexture; });
 		}
+
+		// Light fixtures (lib/airport/lights/...) often carry lights only: no mesh then.
+		if (!job.batches.empty())
+		{
+			m_Mesh = CreateRef<Mesh>();
+			m_Mesh->SetFlags(0); // keep X-Plane's units and geometry: no normalization, optimization or generated LODs
+			m_Mesh->SetResourceName(m_Path.filename().string());
+			m_Mesh->SetResourceFilePath(m_Path.string());
+		}
+
+		for (ObjectLoadJob::Batch &batch : job.batches)
+		{
+			ObjectBatch out = std::move(batch.batch);
+			out.material = GetOrCreateMaterial(batch.state);
+			m_Mesh->AddGeometry(batch.vertices, batch.indices, false, &out.subMesh);
+			m_Batches.push_back(std::move(out));
+		}
+		job.batches.clear();
+
+		// Appends the geometry to the renderer's global vertex / index buffers (uploaded at the start of the next frame).
+		if (m_Mesh)
+			m_Mesh->CreateGpuBuffers();
+		ApplyLit(s_LitVisible);
+
+		m_State = ObjectLoadState::Ready;
 	}
 
-	void ObjectAsset::ResolveLights()
+	void ObjectAsset::Fail()
 	{
-		m_Lights.clear();
-		if (m_Data.lights.empty())
-			return;
+		m_Error = m_Job && !m_Job->error.empty() ? m_Job->error : "Unknown error";
+		m_State = ObjectLoadState::Failed;
+		m_Job.reset();
 
-		const LightCatalog &catalog = GetLightCatalog(m_Path);
-		std::unordered_set<std::string> reported;
-
-		for (uint32_t i = 0; i < static_cast<uint32_t>(m_Data.lights.size()); ++i)
-		{
-			const Obj8Light &source = m_Data.lights[i];
-			const bool needsCatalog = source.kind == Obj8Light::Kind::Named || source.kind == Obj8Light::Kind::Param;
-			if (needsCatalog && !catalog.IsLoaded())
-			{
-				if (reported.insert("").second)
-					SEDX_CORE_WARN_TAG(LOG_TAG, "{}: lights.txt not found (set the X-Plane folder); named lights are skipped", m_Path.filename().string());
-				continue;
-			}
-
-			ObjectLight light;
-			std::string warning;
-			if (!catalog.Resolve(source, light.resolved, &warning))
-			{
-				if (reported.insert(source.name).second)
-					SEDX_CORE_WARN_TAG(LOG_TAG, "{}: {}", m_Path.filename().string(), warning);
-				continue;
-			}
-
-			if (light.resolved.billboards.empty() && light.resolved.spills.empty())
-				continue; // v8 ground halos only
-
-			// Custom billboards are cut from the object's own texture; without one there is nothing to show.
-			if (!m_Textures.albedo)
-				std::erase_if(light.resolved.billboards, [](const LightBillboardSpec &billboard) { return billboard.customTexture; });
-
-			light.source = i;
-			light.node = source.node;
-			light.lod = source.lod;
-			light.visibility = source.visibility;
-			std::copy_n(source.position, 3, light.position);
-			m_Lights.push_back(std::move(light));
-		}
+		// Out of the cache, so placing the file again tries again.
+		if (const auto it = s_Cache.find(CacheKey(m_Path)); it != s_Cache.end() && it->second.Get() == this)
+			s_Cache.erase(it);
 	}
 
 	uint32_t ObjectAsset::GetOrCreateMaterial(const Obj8DrawState &state)

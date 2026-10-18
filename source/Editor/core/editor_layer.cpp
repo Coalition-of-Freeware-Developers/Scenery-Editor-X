@@ -396,6 +396,10 @@ namespace SceneryEditorX
 				ImGui::TextDisabled("Ready");
 			}
 
+			// X-Plane objects loading in the background
+			ImGui::SameLine(0.0f, 20.0f * dpi);
+			EditorXPlane::DrawObjectLoadProgress(260.0f * dpi);
+
 			// Right: frame time, GPU memory, version
 			// GPU memory walks every allocation; twice a second is plenty for a status readout.
 			static GPUMemoryStats s_Memory;

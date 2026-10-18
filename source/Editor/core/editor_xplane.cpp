@@ -37,6 +37,7 @@
 #include <SceneryEditorX/renderer/font/font_awesome.h>
 #include <SceneryEditorX/xplane/xp_datarefs.h>
 #include <SceneryEditorX/xplane/xp_library_manager.h>
+#include <SceneryEditorX/xplane/xp_object.h>
 #include <SceneryEditorX/xplane/xp_scene.h>
 
 // -------------------------------------------------------
@@ -114,11 +115,12 @@ namespace SceneryEditorX::EditorXPlane
 			options.name = slash == std::string::npos ? virtualPath : virtualPath.substr(slash + 1);
 		}
 
+		// Returns at once; a load that fails in the background is logged then.
 		std::string error;
 		const uint64_t root = XPlane::SceneObjects::Place(file, options, &error);
 		if (root == 0)
 		{
-			EDITOR_ERROR_TAG("X-Plane", "Could not load '{}': {}", file.string(), error);
+			EDITOR_ERROR_TAG("X-Plane", "Could not place '{}': {}", file.string(), error);
 			return 0;
 		}
 
@@ -262,6 +264,41 @@ namespace SceneryEditorX::EditorXPlane
 
 			EditorUI::EndPropertyGrid();
 		}
+	}
+
+	bool DrawObjectLoadProgress(const float width)
+	{
+		using namespace XPlane;
+		const ObjectLoadQueue queue = ObjectAsset::GetLoadQueue();
+		if (queue.loads.empty())
+			return false;
+
+		// Name the load being worked on: the first one past the queue (workers pick them up in order).
+		const ObjectLoadProgress *current = &queue.loads.front();
+		for (const ObjectLoadProgress &load : queue.loads)
+		{
+			if (load.state != ObjectLoadState::Queued)
+			{
+				current = &load;
+				break;
+			}
+		}
+
+		const uint32_t total = std::max(queue.requested, queue.finished + static_cast<uint32_t>(queue.loads.size()));
+		char overlay[256];
+		snprintf(overlay, sizeof(overlay), "%s Loading %u / %u: %s", SEDX_ICON_HOURGLASS_HALF, std::min(queue.finished + 1, total), total,
+			current->path.filename().string().c_str());
+		ImGui::ProgressBar(total > 0 ? static_cast<float>(queue.finished) / static_cast<float>(total) : 0.0f, ImVec2(width, 0.0f), overlay);
+
+		if (ImGui::BeginItemTooltip())
+		{
+			ImGui::TextUnformatted("Objects loading in the background");
+			ImGui::Separator();
+			for (const ObjectLoadProgress &load : queue.loads)
+				ImGui::Text("%s  -  %s (%.1f s)", load.path.filename().string().c_str(), GetObjectLoadStateName(load.state), load.seconds);
+			ImGui::EndTooltip();
+		}
+		return true;
 	}
 
 }
