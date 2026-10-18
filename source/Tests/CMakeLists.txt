@@ -268,6 +268,7 @@ ADD_EXECUTABLE(XPlaneFormatTests
     ${CMAKE_CURRENT_SOURCE_DIR}/xplane_tests/XPlaneFormatTests.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_obj8.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_library.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_lights.cpp
 )
 
 TARGET_INCLUDE_DIRECTORIES(XPlaneFormatTests PRIVATE

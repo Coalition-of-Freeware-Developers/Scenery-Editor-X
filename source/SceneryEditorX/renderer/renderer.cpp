@@ -195,6 +195,7 @@ void dynamic_resolution()
 #pragma region Light Resources
 
 	uint32_t Renderer::m_Count_ActiveLights = 0;
+	bool Renderer::m_Has_DirectionalLight = false;
 	std::vector<ShadowSlice> Renderer::m_ShadowSlices;
 
 #pragma endregion
@@ -3010,6 +3011,9 @@ void dynamic_resolution()
 				properties[count].flags |= material->GetProperty(MaterialProperty::Tessellation)               ? (1U << 14) : 0;
 				properties[count].flags |= material->GetProperty(MaterialProperty::EmissiveFromAlbedo)         ? (1U << 15) : 0;
 				// keep in sync with Surface struct in common_structs.slang
+
+				properties[count].alpha_cutoff = material->GetProperty(MaterialProperty::AlphaCutoff);
+				properties[count].blend_mode   = material->GetProperty(MaterialProperty::BlendMode);
 			}
 	
 			// textures, in the order of the material_texture_index_* slots in resources.slang
@@ -3105,10 +3109,15 @@ void dynamic_resolution()
 			lightBufferEntry.angle                             = lightComponent->GetAngle();
 			{
 				const Standard& lc = lightComponent->GetLightColor();
-				lightBufferEntry.color = xMath::Color(lc.r, lc.g, lc.b, lc.a);
+				lightBufferEntry.color = xMath::Vec4(lc.r, lc.g, lc.b, lc.a);
 			}
-			lightBufferEntry.position                          = lightComponent->GetEntity()->GetPosition();
-			lightBufferEntry.direction                         = lightComponent->GetEntity()->GetForward();
+			// World space from the entity's world matrix (row-vector: row 2 is local +Z, row 3 the translation);
+			// Entity::GetPosition / GetForward don't apply parent rotations, which lights in animated groups have.
+			{
+				const xMath::Matrix world = lightComponent->GetEntity()->GetMatrix();
+				lightBufferEntry.position  = Vec3(world.m30, world.m31, world.m32);
+				lightBufferEntry.direction = xMath::Normalize(Vec3(world.m20, world.m21, world.m22));
+			}
 			lightBufferEntry.area_width                        = lightComponent->GetAreaWidth();
 			lightBufferEntry.area_height                       = lightComponent->GetAreaHeight();
 			lightBufferEntry.flags                             = 0;
@@ -3176,16 +3185,17 @@ void dynamic_resolution()
 	
 				if (lightComponent->GetIntensityWatt() <= 0.0f)
 					continue;
-	
-				if (Camera* camera = Scene::GetCamera())
-				{
-					if (!camera->IsInViewFrustum(lightComponent->GetBoundingBox()))
-						continue;
-				}
-	
+
+				// Frustum culling is skipped until the CPU camera (Camera) and the GPU camera agree on conventions
+				// (same as UpdateDrawCalls); the light's bounding box also ignores parent rotations.
+				if (m_Count_ActiveLights >= static_cast<uint32_t>(m_Bindless_Lights.size()))
+					break;
+
 				fill_light(lightComponent);
 			}
 		}
+
+		m_Has_DirectionalLight = firstDirectional != nullptr;
 	
 		// gpu upload
 		Buffer* buffer = GetBuffer(Renderer_Buffer::LightParameters);

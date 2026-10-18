@@ -204,6 +204,9 @@ namespace SceneryEditorX
 		texture_compress_bc1,
 		texture_compress_bc3,
 		texture_compress_bc5,
+		// forward passes drawn over the composed frame
+		forward_transparent,
+		light_billboard,
 		MaxEnum
 	};
 
@@ -267,6 +270,8 @@ namespace SceneryEditorX
 		case Renderer_Shader::texture_compress_bc1: return "texture_compress_bc1";
 		case Renderer_Shader::texture_compress_bc3: return "texture_compress_bc3";
 		case Renderer_Shader::texture_compress_bc5: return "texture_compress_bc5";
+		case Renderer_Shader::forward_transparent: return "forward_transparent";
+		case Renderer_Shader::light_billboard: return "light_billboard";
 		case Renderer_Shader::MaxEnum: return "MaxEnum";
 		default: return "unknown";
 		}

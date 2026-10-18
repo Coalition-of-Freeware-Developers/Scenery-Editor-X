@@ -45,13 +45,26 @@ namespace SceneryEditorX::XPlane
 	 * A placed OBJ is a small entity tree: the root carries the placement transform, every animation group is a
 	 * child entity whose transform is re-evaluated from datarefs each frame, and every batch is a leaf entity with
 	 * a Renderable. Batches are switched on and off for LODs and ANIM_hide / ANIM_show.
+	 *
+	 * Lights follow their animation group the same way: each spill is a leaf entity with a Light component, and
+	 * billboards are evaluated every frame from the group's world transform and handed to the renderer. Both only
+	 * show at night (or with DatarefEnvironment::forceLightsOn).
 	 */
 	struct XPlaneObjectComponent
 	{
+		/* @brief Which ObjectAsset light (and which of its spills) a spill entity draws. */
+		struct SpillSource
+		{
+			uint32_t light = 0;
+			uint32_t spill = 0;
+		};
+
 		Ref<ObjectAsset> asset;
 		std::string virtualPath;				// Library path when placed from a library ("lib/airport/...")
 		std::vector<uint64_t> nodeEntities;		// UUID per Obj8Data::nodes entry
 		std::vector<uint64_t> batchEntities;	// UUID per ObjectAsset batch
+		std::vector<uint64_t> spillEntities;	// UUID per spill light (Light component)
+		std::vector<SpillSource> spillSources;	// Parallel to spillEntities
 
 		bool visible = true;
 		bool animate = true;					// Off: groups hold their last pose
@@ -61,6 +74,8 @@ namespace SceneryEditorX::XPlane
 		float cameraDistance = 0.0f;
 		uint32_t visibleBatches = 0;
 		uint32_t visibleTriangles = 0;
+		uint32_t visibleBillboards = 0;
+		uint32_t litSpills = 0;
 	};
 
 	/**
@@ -91,7 +106,8 @@ namespace SceneryEditorX::XPlane
 
 		/**
 		 * @brief Advances the dataref clock and applies animation, LOD selection, hide / show rules and night lighting
-		 * to every placed object. Call once per frame before the renderer collects draw calls.
+		 * (LIT textures, light billboards, spill lights, the renderer's daylight) to every placed object.
+		 * Call once per frame before the renderer collects draw calls.
 		 */
 		static void Tick(double deltaSeconds);
 

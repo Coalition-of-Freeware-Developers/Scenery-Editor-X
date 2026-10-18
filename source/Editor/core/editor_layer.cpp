@@ -41,6 +41,8 @@
 #include <Editor/panels/scene_viewport.h>
 #include <Editor/panels/settings_panels.h>
 #include <Editor/panels/xplane_library_panel.h>
+#include <algorithm>
+#include <cstdlib>
 #include <SceneryEditorX/core/application/application.h>
 #include <SceneryEditorX/core/input/input.h>
 #include <SceneryEditorX/core/resource/resource_cache.h>
@@ -53,6 +55,7 @@
 #include <SceneryEditorX/renderer/ui/source/imgui/imgui_internal.h>
 #include <SceneryEditorX/renderer/vulkan/debug/render_doc.h>
 #include <SceneryEditorX/scene/entity.h>
+#include <SceneryEditorX/xplane/xp_datarefs.h>
 #include <SceneryEditorX/xplane/xp_library_manager.h>
 #include <SceneryEditorX/xplane/xp_scene.h>
 
@@ -609,26 +612,52 @@ namespace SceneryEditorX
 			return;
 
 		const std::vector<std::string> &args = platform->GetCommandLineArgs();
-		for (size_t i = 0; i + 1 < args.size(); ++i)
+		XPlane::DatarefEnvironment &environment = XPlane::Datarefs::GetEnvironment();
+		for (size_t i = 0; i < args.size(); ++i)
 		{
-			if (args[i] == "--xp-object")
+			if (args[i] == "--xp-lights-on")
+				environment.forceLightsOn = true; // lights and LIT textures in daylight
+			else if (i + 1 >= args.size())
+				break;
+			else if (args[i] == "--xp-object")
 				m_StartupObjectFiles.push_back(args[++i]);
 			else if (args[i] == "--xp-asset")
 				m_StartupAssets.push_back(args[++i]);
+			else if (args[i] == "--xp-time")
+				environment.localTimeHours = std::clamp(std::strtof(args[++i].c_str(), nullptr), 0.0f, 24.0f); // local time in hours
+			else if (args[i] == "--xp-position")
+			{
+				// "x,y,z" in meters (+X east, +Y up, +Z south)
+				const char *text = args[++i].c_str();
+				char *end = nullptr;
+				for (float &value : m_StartupPosition)
+				{
+					value = std::strtof(text, &end);
+					text = *end == ',' ? end + 1 : end;
+				}
+				m_HasStartupPosition = true;
+			}
 		}
 	}
 
 	void EditorLayer::PlaceStartupObjects()
 	{
 		// Files load right away; library paths wait for the first library scan.
+		const float *position = m_HasStartupPosition ? m_StartupPosition : nullptr;
+		const auto frame = [position](const uint64_t root)
+		{
+			if (root != 0 && position)
+				XPlane::SceneObjects::FrameObject(root); // placing at a position skips the framing
+		};
+
 		for (const std::string &file : m_StartupObjectFiles)
-			EditorXPlane::PlaceObjFile(file, std::string(), &m_Context);
+			frame(EditorXPlane::PlaceObjFile(file, std::string(), &m_Context, position));
 		m_StartupObjectFiles.clear();
 
 		if (!m_StartupAssets.empty() && XPlane::LibraryManager::GetGeneration() > 0)
 		{
 			for (const std::string &asset : m_StartupAssets)
-				EditorXPlane::PlaceLibraryAsset(asset, &m_Context);
+				frame(EditorXPlane::PlaceLibraryAsset(asset, &m_Context, position));
 			m_StartupAssets.clear();
 		}
 	}

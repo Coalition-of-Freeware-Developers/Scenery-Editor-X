@@ -82,6 +82,10 @@ namespace SceneryEditorX
 				{ Renderer_Shader::font,    "font",    "font.slang",    {VS, FS},     {}, VertexType::PositionUv, true },
 				{ Renderer_Shader::icon,    "icon",    "icons.slang",   {CS} },
 
+				// forward passes over the composed frame (blended surfaces, light billboards)
+				{ Renderer_Shader::forward_transparent, "forward_transparent", "forward_transparent.slang", {VS, FS}, {}, VertexType::PositionUvNormalTangent, true },
+				{ Renderer_Shader::light_billboard,     "light_billboard",     "light_billboard.slang",     {VS, FS}, {}, VertexType::PositionUvNormalTangent, true },
+
 				// lighting
 				{ Renderer_Shader::light,                                "light",                                "light.slang",             {CS}, {}, VertexType::MaxEnum, true },
 				{ Renderer_Shader::light_composition,                    "light_composition",                    "light_composition.slang", {CS}, {}, VertexType::MaxEnum, true },

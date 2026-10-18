@@ -74,6 +74,27 @@ namespace SceneryEditorX
 	};
 
 	/**
+	 * @struct Renderer_LightBillboard
+	 * @brief A camera-facing light sprite, added onto the composed frame by Pass_Light_Billboards.
+	 */
+	struct Renderer_LightBillboard
+	{
+		float position[3] = { 0.0f, 0.0f, 0.0f };	// World-space center
+		float radius = 0.0f;						// World-space half size
+		float color[3] = { 1.0f, 1.0f, 1.0f };		// Linear HDR tint, brightness included
+		float uv[4] = { 0.0f, 0.0f, 1.0f, 1.0f };	// s0 t0 s1 t1 (t = 0 is the texture's first row)
+		bool tintLuminance = false;					// Tint the texel's brightness instead of its color
+		bool useAlpha = false;						// Weight by the texel's alpha (sprites cut from a color texture)
+	};
+
+	/* @brief Light billboards sharing one texture. The batch keeps the texture alive while it is drawn. */
+	struct Renderer_LightBillboardBatch
+	{
+		Ref<ImageResource> texture;
+		std::vector<Renderer_LightBillboard> billboards;
+	};
+
+	/**
 	 * @brief Static renderer class managing Vulkan rendering lifecycle.
 	 * 
 	 * The Renderer integrates with the Application main loop, providing:
@@ -432,6 +453,19 @@ namespace SceneryEditorX
 		 */
 		static ImageResource* GetStandardTexture(Renderer_StandardTexture type);
 
+		/**
+		 * @brief Replaces the light billboards drawn from the next frame on (Pass_Light_Billboards).
+		 * @param batches Sprites grouped by texture; an empty list stops drawing them.
+		 */
+		static void SetLightBillboards(std::vector<Renderer_LightBillboardBatch> batches);
+
+		/**
+		 * @brief How much daylight the placeholder sun and sky give while the scene has no directional light of its own
+		 * (1 = full day, 0 = night). Light composition and the forward transparent pass both use it.
+		 */
+		static void SetFallbackDaylight(float daylight);
+		static float GetFallbackDaylight();
+
 	private:
 
 		/**
@@ -663,6 +697,19 @@ namespace SceneryEditorX
 		static void Pass_Downscale(CommandList *cmdList, ImageResource *img, Renderer_DownsampleFilter filter);
 		static void Pass_Grid(CommandList *cmdList, ImageResource *out);
 		static void Pass_Text(CommandList *cmdList, ImageResource *out);
+
+		/**
+		 * @brief Draws alpha-blended materials (MaterialProperty::BlendMode) back to front over the composed frame.
+		 * Texels at or above the material's alpha cutoff were already drawn by the deferred passes.
+		 * Expects the g-buffer depth in DepthStencilAttachment layout (tested, not written).
+		 */
+		static void Pass_Forward_Transparent(CommandList *cmdList, ImageResource *out);
+
+		/* @brief Adds the light billboards (SetLightBillboards) onto the frame, depth tested against the g-buffer. */
+		static void Pass_Light_Billboards(CommandList *cmdList, ImageResource *out);
+
+		/* @brief Releases the forward passes' streaming buffers and billboard textures (renderer shutdown). */
+		static void DestroyForwardResources();
 
 		template <typename F = std::nullptr_t>
 		static void Pass_Compute(CommandList *cmdList, const char *name, Renderer_Shader shaderEnum, ImageResource *in, ImageResource *out, F setup);
@@ -968,6 +1015,7 @@ namespace SceneryEditorX
 		static std::array<void*, MAX_FRAMES_IN_FLIGHT> m_CameraUboMapped;
 
 		static uint32_t m_Count_ActiveLights;
+		static bool m_Has_DirectionalLight; // false: light composition supplies a placeholder sun and sky
 
 		/* 
 		 * @brief Creates per-frame camera UBOs, descriptor pool and sets. 

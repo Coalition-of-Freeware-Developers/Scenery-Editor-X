@@ -119,13 +119,13 @@ public struct MaterialParameters
 
     public uint flags;
     public float local_width;
-    public float padding;
+    public float alpha_cutoff; // alpha below this is cut out of the deferred passes, 0 = get_alpha_threshold()
     public float subsurface_scattering;
 
     public float sheen;
     public float local_height;
     public float world_space_uv;
-    public float padding2;
+    public float blend_mode; // 0 opaque / alpha tested, 1 alpha blended, 2 glass (forward_transparent.slang)
 
     public float anisotropic;
     public float anisotropic_rotation;

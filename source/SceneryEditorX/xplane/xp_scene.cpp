@@ -30,9 +30,15 @@
  */
 #include "xp_scene.h"
 #include "xp_datarefs.h"
+#include <algorithm>
+#include <array>
 #include <cmath>
+#include <unordered_map>
+#include <SceneryEditorX/asset/standards.h>
 #include <SceneryEditorX/logging/logging.hpp>
+#include <SceneryEditorX/renderer/renderer.h>
 #include <SceneryEditorX/scene/components/component_sets.h>
+#include <SceneryEditorX/scene/components/lights.h>
 #include <SceneryEditorX/scene/components/renderable.h>
 #include <SceneryEditorX/scene/entity.h>
 #include <SceneryEditorX/scene/scene.h>
@@ -45,6 +51,17 @@ namespace SceneryEditorX::XPlane
 	{
 		constexpr const char *LOG_TAG = "XPlaneScene";
 		constexpr float kDegToRad = 3.14159265358979323846f / 180.0f;
+
+		/* @brief Spill lights that light the scene at once, nearest first (the light pass loops over every light per pixel). */
+		constexpr uint32_t MAX_SPILL_LIGHTS = 48;
+		/*
+		 * Radiant intensity (W/sr) a spill gets per candela^0.75. The bootstrap renderer has no exposure, so intensities
+		 * are compressed: a 15 cd taxiway light still pools on the ground while a 400 000 cd apron flood doesn't burn out.
+		 */
+		constexpr float SPILL_GAIN = 0.25f;
+		constexpr float LUMENS_PER_WATT_STERADIAN = 683.0f * 4.0f * 3.14159265358979323846f; // inverse of Light::GetIntensityWatt()
+		/* @brief Lights dimmer than this (after direction, flashing and night) are not drawn. */
+		constexpr float MIN_LIGHT_BRIGHTNESS = 0.002f;
 
 		entt::registry *GetRegistry()
 		{
@@ -118,6 +135,221 @@ namespace SceneryEditorX::XPlane
 			if (data.HasAdditiveLods())
 				return distance < range.farDistance; // every LOD starts at 0; nearer ones add detail
 			return distance >= range.nearDistance && distance < range.farDistance;
+		}
+
+		/* @brief p * M for a row-vector world matrix (rows hold the scaled axes, the last row the translation). */
+		void TransformPoint(const xMath::Matrix &m, const float p[3], float out[3])
+		{
+			out[0] = p[0] * m.m00 + p[1] * m.m10 + p[2] * m.m20 + m.m30;
+			out[1] = p[0] * m.m01 + p[1] * m.m11 + p[2] * m.m21 + m.m31;
+			out[2] = p[0] * m.m02 + p[1] * m.m12 + p[2] * m.m22 + m.m32;
+		}
+
+		void TransformDirection(const xMath::Matrix &m, const float d[3], float out[3])
+		{
+			out[0] = d[0] * m.m00 + d[1] * m.m10 + d[2] * m.m20;
+			out[1] = d[0] * m.m01 + d[1] * m.m11 + d[2] * m.m21;
+			out[2] = d[0] * m.m02 + d[1] * m.m12 + d[2] * m.m22;
+		}
+
+		/* @brief Rotation taking +Z (a Light's forward) onto a direction; identity for a zero direction. */
+		Quat RotationFromForward(const float direction[3])
+		{
+			const float length = std::sqrt(direction[0] * direction[0] + direction[1] * direction[1] + direction[2] * direction[2]);
+			if (length < 1e-6f)
+				return Quat(1.0f, 0.0f, 0.0f, 0.0f);
+
+			const float d[3] = { direction[0] / length, direction[1] / length, direction[2] / length };
+			if (d[2] < -0.9999f)
+				return Quat(0.0f, 0.0f, 1.0f, 0.0f); // half turn about +Y
+
+			// q = normalize(cross(z, d), 1 + dot(z, d))
+			const float x = -d[1], y = d[0], z = 0.0f, w = 1.0f + d[2];
+			const float n = std::sqrt(x * x + y * y + z * z + w * w);
+			return Quat(w / n, x / n, y / n, z / n);
+		}
+
+		float MaxComponent(const float color[4])
+		{
+			return std::max(color[0], std::max(color[1], color[2]));
+		}
+
+		/* @brief Peak radiant intensity (W/sr) of a spill, before night, flashing and its alpha dimmer. */
+		float SpillRadiantIntensity(const LightSpillSpec &spill)
+		{
+			const float range = spill.GetRange();
+			const float candela = spill.IsPhotometric() ? spill.intensity : 2.0f * range * range; // legacy: reach in meters
+			return SPILL_GAIN * std::pow(std::max(candela, 0.0f), 0.75f);
+		}
+
+		/* @brief A spill light that could be lit this frame. */
+		struct SpillCandidate
+		{
+			Entity *entity = nullptr;
+			Light *light = nullptr;
+			float lumens = 0.0f;
+			float distanceSquared = 0.0f;
+			XPlaneObjectComponent *object = nullptr;
+		};
+
+		/* @brief Everything one frame of light evaluation gathers over the placed objects. */
+		struct LightFrame
+		{
+			Vec3 camera = Vec3(0.0f, 0.0f, 0.0f);
+			bool hasCamera = false;
+			float night = 0.0f;					// Datarefs::GetNightFactor(): lights only show at night or when forced on
+			double time = 0.0;					// Sim clock (flashing)
+			DatarefReader reader;
+			Ref<ImageResource> atlas;			// lights.txt texture
+			float atlasInset[2] = { 0.0f, 0.0f };	// Half a texel: cells sit edge to edge
+			Renderer_LightBillboardBatch atlasBatch;
+			std::vector<Renderer_LightBillboardBatch> customBatches; // LIGHT_CUSTOM, one per object texture
+			std::unordered_map<ImageResource *, size_t> customBatchIndex;
+			std::vector<SpillCandidate> spills;
+		};
+
+		/* @brief Spreads sequenced lights (rabbits, wig-wags) by where they sit in the object. */
+		float LightPhaseSeed(const ObjectLight &light)
+		{
+			return light.position[0] * 0.013f - light.position[2] * 0.004f;
+		}
+
+		/**
+		 * @brief Evaluates one placed object's lights: billboards go into the frame's batches, spill becomes candidates
+		 * for the nearest-first budget. Lights follow their animation group's world transform, LOD and hide / show rules.
+		 */
+		void CollectObjectLights(entt::registry &registry, const entt::entity rootHandle, XPlaneObjectComponent &object, LightFrame &frame)
+		{
+			object.visibleBillboards = 0;
+			object.litSpills = 0;
+
+			const ObjectAsset &asset = *object.asset;
+			const Obj8Data &data = asset.GetData();
+			const std::vector<ObjectLight> &lights = asset.GetLights();
+			if (lights.empty())
+				return;
+
+			// World transforms of the root and of every animation group
+			Entity *root = Scene::GetStoredEntity(Entity(rootHandle, Scene::GetActive()));
+			if (!root)
+				return;
+			const xMath::Matrix rootWorld = root->GetMatrix();
+			std::vector<xMath::Matrix> nodeWorld(data.nodes.size(), rootWorld);
+			for (size_t i = 0; i < object.nodeEntities.size() && i < nodeWorld.size(); ++i)
+			{
+				const entt::entity handle = FindHandle(registry, object.nodeEntities[i]);
+				if (Entity *stored = handle != entt::null ? Scene::GetStoredEntity(Entity(handle, Scene::GetActive())) : nullptr)
+					nodeWorld[i] = stored->GetMatrix();
+			}
+
+			const bool lightsOn = object.visible && frame.night > 0.0f && frame.hasCamera;
+			std::vector<uint8_t> lightVisible(lights.size(), 0);
+			std::vector<std::array<float, 3>> lightWorld(lights.size());
+
+			for (size_t i = 0; i < lights.size(); ++i)
+			{
+				const ObjectLight &light = lights[i];
+				const xMath::Matrix &world = light.node >= 0 && static_cast<size_t>(light.node) < nodeWorld.size() ? nodeWorld[static_cast<size_t>(light.node)] : rootWorld;
+				TransformPoint(world, light.position, lightWorld[i].data());
+
+				lightVisible[i] = lightsOn && IsLodVisible(data, light.lod, object.cameraDistance, object.lodOverride) &&
+								  EvaluateVisibility(data, light.visibility, frame.reader);
+				if (!lightVisible[i])
+					continue;
+
+				const float *position = lightWorld[i].data();
+				float toCamera[3] = { frame.camera.x - position[0], frame.camera.y - position[1], frame.camera.z - position[2] };
+				const float distance = std::sqrt(toCamera[0] * toCamera[0] + toCamera[1] * toCamera[1] + toCamera[2] * toCamera[2]);
+				for (float &c : toCamera)
+					c = distance > 1e-4f ? c / distance : 0.0f;
+
+				for (const LightBillboardSpec &spec : light.resolved.billboards)
+				{
+					float direction[3];
+					TransformDirection(world, spec.direction, direction);
+
+					const float brightness = frame.night * std::max(spec.color[3], 0.0f) * EvaluateBillboardDirectionality(spec, direction, toCamera) *
+											 EvaluateFlash(spec.frequency, spec.phase, spec.amplitude, frame.time) *
+											 EvaluateProcessor(spec.processor, frame.time, LightPhaseSeed(light));
+					if (brightness < MIN_LIGHT_BRIGHTNESS)
+						continue;
+
+					// Software lights may pass directions through the color slots: draw those white.
+					float tint[3] = { std::max(spec.color[0], 0.0f), std::max(spec.color[1], 0.0f), std::max(spec.color[2], 0.0f) };
+					if (tint[0] + tint[1] + tint[2] <= 0.0f)
+						tint[0] = tint[1] = tint[2] = 1.0f;
+
+					// VASI / PAPI: white above the glide slope, red below it
+					if (spec.processor == LightProcessor::Vasi && std::asin(std::clamp(toCamera[1], -1.0f, 1.0f)) < 3.0f * kDegToRad)
+					{
+						tint[0] = 1.0f;
+						tint[1] = 0.06f;
+						tint[2] = 0.03f;
+					}
+
+					Renderer_LightBillboard billboard;
+					std::copy_n(position, 3, billboard.position);
+					billboard.radius = GetBillboardRadius(spec, distance);
+					for (int c = 0; c < 3; ++c)
+						billboard.color[c] = tint[c] * brightness;
+
+					if (spec.customTexture)
+					{
+						ImageResource *texture = asset.GetTextures().albedo.Get();
+						std::copy_n(spec.uv, 4, billboard.uv);
+						billboard.useAlpha = true;
+
+						auto [it, inserted] = frame.customBatchIndex.try_emplace(texture, frame.customBatches.size());
+						if (inserted)
+							frame.customBatches.push_back({ asset.GetTextures().albedo, {} });
+						frame.customBatches[it->second].billboards.push_back(billboard);
+					}
+					else
+					{
+						if (!frame.atlas)
+							continue;
+						billboard.uv[0] = spec.uv[0] + frame.atlasInset[0];
+						billboard.uv[1] = spec.uv[1] + frame.atlasInset[1];
+						billboard.uv[2] = spec.uv[2] - frame.atlasInset[0];
+						billboard.uv[3] = spec.uv[3] - frame.atlasInset[1];
+						billboard.tintLuminance = spec.IsPhotometric(); // X-Plane 12 tints one white sprite with the light's color
+						frame.atlasBatch.billboards.push_back(billboard);
+					}
+					++object.visibleBillboards;
+				}
+			}
+
+			// Spill entities: dimmed here, switched on by the nearest-first budget in Tick()
+			for (size_t k = 0; k < object.spillEntities.size() && k < object.spillSources.size(); ++k)
+			{
+				const entt::entity handle = FindHandle(registry, object.spillEntities[k]);
+				Entity *stored = handle != entt::null ? Scene::GetStoredEntity(Entity(handle, Scene::GetActive())) : nullptr;
+				Light *component = stored ? stored->GetComponent<Light>() : nullptr;
+				if (!component)
+					continue;
+
+				const XPlaneObjectComponent::SpillSource source = object.spillSources[k];
+				float lumens = 0.0f;
+				if (source.light < lights.size() && lightVisible[source.light] && source.spill < lights[source.light].resolved.spills.size())
+				{
+					const ObjectLight &light = lights[source.light];
+					const LightSpillSpec &spill = light.resolved.spills[source.spill];
+					const float brightness = frame.night * std::max(spill.color[3], 0.0f) * EvaluateFlash(spill.frequency, spill.phase, spill.amplitude, frame.time) *
+											 EvaluateProcessor(spill.processor, frame.time, LightPhaseSeed(light));
+					lumens = SpillRadiantIntensity(spill) * MaxComponent(spill.color) * brightness * LUMENS_PER_WATT_STERADIAN;
+				}
+
+				if (lumens <= 0.0f)
+				{
+					if (stored->GetActive())
+						stored->SetActive(false);
+					continue;
+				}
+
+				const float *position = lightWorld[source.light].data();
+				const float dx = position[0] - frame.camera.x, dy = position[1] - frame.camera.y, dz = position[2] - frame.camera.z;
+				frame.spills.push_back({ stored, component, lumens, dx * dx + dy * dy + dz * dz, &object });
+			}
 		}
 	}
 
@@ -210,6 +442,50 @@ namespace SceneryEditorX::XPlane
 			}
 		}
 
+		// Spill lights: a Light component per spill, under the light's animation group so it moves with it. Tick()
+		// switches them on at night and dims them (flashing, nearest-first budget).
+		const std::vector<ObjectLight> &lights = asset->GetLights();
+		for (uint32_t i = 0; i < static_cast<uint32_t>(lights.size()); ++i)
+		{
+			const ObjectLight &light = lights[i];
+			const Obj8Light &source = data.lights[light.source];
+			for (uint32_t s = 0; s < static_cast<uint32_t>(light.resolved.spills.size()); ++s)
+			{
+				const LightSpillSpec &spill = light.resolved.spills[s];
+				const std::string label = source.name.empty() ? "custom" : source.name;
+				const Entity entity = Scene::CreateEntity("Spill " + std::to_string(i) + " (" + label + ")");
+				const entt::entity handle = static_cast<entt::entity>(entity);
+				const entt::entity parent = light.node >= 0 ? nodeHandles[static_cast<size_t>(light.node)] : rootHandle;
+				Attach(*registry, handle, parent);
+
+				TransformComponent &transform = registry->get<TransformComponent>(handle);
+				transform.translation = Vec3(light.position[0], light.position[1], light.position[2]);
+				transform.SetRotation(RotationFromForward(spill.direction));
+
+				if (Entity *stored = Scene::GetStoredEntity(entity))
+				{
+					if (Light *lightComponent = stored->AddComponent<Light>())
+					{
+						// type first: it resets color and range to that type's defaults
+						lightComponent->SetLightType(spill.IsSpot() ? LightType::Spot : LightType::Point);
+						lightComponent->SetFlag(LightFlags::Shadows, false); // also clears screen-space shadows and volumetrics
+						lightComponent->SetRange(spill.GetRange());
+						if (spill.IsSpot())
+							lightComponent->SetAngle(std::acos(std::clamp(spill.width, -1.0f, 1.0f)));
+
+						const float peak = std::max(MaxComponent(spill.color), 1e-3f);
+						lightComponent->SetLightColor(Standard(std::max(spill.color[0], 0.0f) / peak, std::max(spill.color[1], 0.0f) / peak,
+							std::max(spill.color[2], 0.0f) / peak, 1.0f));
+						lightComponent->SetIntensity(0.0f);
+					}
+					stored->SetActive(false);
+				}
+
+				component.spillEntities.push_back(GetId(*registry, handle));
+				component.spillSources.push_back({ i, s });
+			}
+		}
+
 		// Expose the object's datarefs as editor controls.
 		for (const Obj8DatarefUsage &usage : data.datarefs)
 			Datarefs::Register(usage);
@@ -217,8 +493,8 @@ namespace SceneryEditorX::XPlane
 		registry->emplace_or_replace<XPlaneObjectComponent>(rootHandle, std::move(component));
 		const uint64_t rootId = GetId(*registry, rootHandle);
 
-		SEDX_CORE_INFO_TAG(LOG_TAG, "Placed '{}' ({} batches, {} animation groups){}", rootName, batches.size(), data.nodes.size(),
-			options.virtualPath.empty() ? std::string() : " as " + options.virtualPath);
+		SEDX_CORE_INFO_TAG(LOG_TAG, "Placed '{}' ({} batches, {} animation groups, {} lights){}", rootName, batches.size(), data.nodes.size(),
+			lights.size(), options.virtualPath.empty() ? std::string() : " as " + options.virtualPath);
 
 		Tick(0.0);
 		if (options.frameCamera)
@@ -231,13 +507,34 @@ namespace SceneryEditorX::XPlane
 		Datarefs::Tick(deltaSeconds);
 		ObjectAsset::SetLitTexturesVisible(Datarefs::GetNightFactor() > 0.5f);
 
+		// The placeholder sun and sky follow the emulated time of day.
+		Renderer::SetFallbackDaylight(Datarefs::GetDaylight());
+
 		entt::registry *registry = GetRegistry();
 		if (!registry)
+		{
+			Renderer::SetLightBillboards({});
 			return;
+		}
 
 		Vec3 cameraPosition(0.0f, 0.0f, 0.0f);
 		const bool hasCamera = GetCameraPosition(*registry, cameraPosition);
 		const DatarefReader reader = Datarefs::GetReader();
+
+		LightFrame lights;
+		lights.camera = cameraPosition;
+		lights.hasCamera = hasCamera;
+		lights.night = Datarefs::GetNightFactor();
+		lights.time = Datarefs::GetSimTime();
+		lights.reader = reader;
+		if (lights.night > 0.0f)
+		{
+			TextureInfo atlasInfo;
+			lights.atlas = ObjectAsset::GetLightTexture(&atlasInfo);
+			lights.atlasBatch.texture = lights.atlas;
+			lights.atlasInset[0] = atlasInfo.width > 0 ? 0.5f / static_cast<float>(atlasInfo.width) : 0.0f;
+			lights.atlasInset[1] = atlasInfo.height > 0 ? 0.5f / static_cast<float>(atlasInfo.height) : 0.0f;
+		}
 
 		auto view = registry->view<XPlaneObjectComponent>();
 		for (const entt::entity rootHandle : view)
@@ -298,7 +595,33 @@ namespace SceneryEditorX::XPlane
 					object.visibleTriangles += batch.triangleCount;
 				}
 			}
+
+			// Lights: billboards and spill candidates
+			CollectObjectLights(*registry, rootHandle, object, lights);
 		}
+
+		// Spill: only the nearest lights light the scene
+		std::ranges::sort(lights.spills, [](const SpillCandidate &a, const SpillCandidate &b) { return a.distanceSquared < b.distanceSquared; });
+		for (size_t i = 0; i < lights.spills.size(); ++i)
+		{
+			SpillCandidate &candidate = lights.spills[i];
+			const bool lit = i < MAX_SPILL_LIGHTS;
+			if (lit)
+			{
+				candidate.light->SetIntensity(candidate.lumens);
+				++candidate.object->litSpills;
+			}
+			if (candidate.entity->GetActive() != lit)
+				candidate.entity->SetActive(lit);
+		}
+
+		// Billboards: everything drawn this frame, by texture
+		std::vector<Renderer_LightBillboardBatch> billboardBatches;
+		if (!lights.atlasBatch.billboards.empty())
+			billboardBatches.push_back(std::move(lights.atlasBatch));
+		for (Renderer_LightBillboardBatch &batch : lights.customBatches)
+			billboardBatches.push_back(std::move(batch));
+		Renderer::SetLightBillboards(std::move(billboardBatches));
 	}
 
 	XPlaneObjectComponent *SceneObjects::FindObject(const uint64_t entityId, uint64_t *rootId)
@@ -381,6 +704,7 @@ namespace SceneryEditorX::XPlane
 			}
 		}
 
+		Renderer::SetLightBillboards({}); // the batches hold the light textures
 		ObjectAsset::ClearCache();
 		TextureLoader::ClearCache();
 	}

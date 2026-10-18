@@ -75,7 +75,7 @@ namespace SceneryEditorX::XPlane
 		float localTimeHours = 12.0f;	// 0..24
 		float windDirectionDeg = 270.0f;	// Direction the wind blows FROM, true degrees
 		float windSpeedKnots = 8.0f;
-		bool forceLightsOn = false;		// Show LIT textures in daylight
+		bool forceLightsOn = false;		// Show LIT textures and lights in daylight
 	};
 
 	/**
@@ -120,6 +120,9 @@ namespace SceneryEditorX::XPlane
 
 		/* @brief 0 in daylight, 1 at night (from the local time); 1 when lights are forced on. */
 		static float GetNightFactor();
+
+		/* @brief How much sunlight there is (1 by day, 0 at night) from the local time, whatever forceLightsOn says. */
+		static float GetDaylight();
 
 		/* @brief True when the given dataref is computed from the environment rather than a control. */
 		static bool IsBuiltin(std::string_view name);

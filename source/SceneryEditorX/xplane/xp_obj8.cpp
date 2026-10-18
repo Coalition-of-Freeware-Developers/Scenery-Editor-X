@@ -878,8 +878,13 @@ namespace SceneryEditorX::XPlane
 						light.position[i] = ParseFloat(t[2 + i]);
 					for (size_t i = 5; i < t.size(); ++i)
 					{
+						// X-Plane 12 writes photometric intensities with a unit ("150cd"); the value keeps its slot.
+						std::string_view word = t[i];
+						if (word.size() > 2 && word.ends_with("cd"))
+							word.remove_suffix(2);
+
 						float value = 0.0f;
-						if (TryParseFloat(t[i], value))
+						if (TryParseFloat(word, value))
 							light.params.push_back(value);
 						else
 							light.extraArgs.emplace_back(t[i]);

@@ -29,9 +29,11 @@
  * -------------------------------------------------------
  */
 #include "xp_object.h"
+#include "xp_library_manager.h"
 #include <chrono>
 #include <cmath>
 #include <unordered_map>
+#include <unordered_set>
 #include <SceneryEditorX/logging/logging.hpp>
 #include <SceneryEditorX/renderer/vulkan/enums.h>
 
@@ -49,8 +51,42 @@ namespace SceneryEditorX::XPlane
 		 */
 		constexpr bool REVERSE_WINDING = true;
 
+		/*
+		 * ATTR_blend surfaces are split at this alpha: texels at or above it go through the deferred passes (and keep
+		 * writing depth, so an object still sorts against itself), the rest are blended by the forward transparent pass.
+		 */
+		constexpr float BLEND_SPLIT_ALPHA = 0.9f;
+
 		std::unordered_map<std::string, Ref<ObjectAsset>> s_Cache;
 		bool s_LitVisible = false;
+
+		LightCatalog s_LightCatalog;
+		std::filesystem::path s_LightCatalogInstall;	// Install the catalog was looked up in ("" = not looked up yet)
+		Ref<ImageResource> s_LightTexture;
+		TextureInfo s_LightTextureInfo;
+		bool s_LightTextureLoaded = false;
+
+		/* @brief lights.txt inside an X-Plane install, or an empty path. */
+		std::filesystem::path FindLightsTxt(const std::filesystem::path &installRoot)
+		{
+			if (installRoot.empty())
+				return {};
+
+			std::error_code ec;
+			const std::filesystem::path file = installRoot / "Resources" / "bitmaps" / "world" / "lites" / "lights.txt";
+			return std::filesystem::exists(file, ec) ? file : std::filesystem::path();
+		}
+
+		/* @brief The X-Plane install an OBJ lives in (a parent folder with Resources/bitmaps/world/lites), or empty. */
+		std::filesystem::path FindInstallAbove(const std::filesystem::path &objectPath)
+		{
+			for (std::filesystem::path folder = objectPath.parent_path(); !folder.empty() && folder != folder.root_path(); folder = folder.parent_path())
+			{
+				if (!FindLightsTxt(folder).empty())
+					return folder;
+			}
+			return {};
+		}
 
 		std::string CacheKey(const std::filesystem::path &path)
 		{
@@ -143,6 +179,73 @@ namespace SceneryEditorX::XPlane
 	void ObjectAsset::ClearCache()
 	{
 		s_Cache.clear();
+		s_LightTexture.Reset();
+		s_LightTextureInfo = TextureInfo{};
+		s_LightTextureLoaded = false;
+	}
+
+	const LightCatalog &ObjectAsset::GetLightCatalog(const std::filesystem::path &objectPath)
+	{
+		// The configured install wins; otherwise the install the object was loaded from (--xp-object).
+		std::filesystem::path install = LibraryManager::GetInstallPath();
+		if (FindLightsTxt(install).empty() && !objectPath.empty())
+			install = FindInstallAbove(objectPath);
+
+		if (install.empty() || install == s_LightCatalogInstall)
+			return s_LightCatalog;
+
+		const std::filesystem::path file = FindLightsTxt(install);
+		if (file.empty())
+			return s_LightCatalog;
+
+		s_LightCatalogInstall = install;
+		LightCatalog catalog;
+		std::string error;
+		if (catalog.Load(file, &error))
+		{
+			s_LightCatalog = std::move(catalog);
+			s_LightTexture.Reset();
+			s_LightTextureLoaded = false;
+			SEDX_CORE_INFO_TAG(LOG_TAG, "Loaded {} light definitions from '{}'", s_LightCatalog.GetLightCount(), file.string());
+		}
+		else
+		{
+			SEDX_CORE_WARN_TAG(LOG_TAG, "Failed to load '{}': {}", file.string(), error);
+		}
+		return s_LightCatalog;
+	}
+
+	Ref<ImageResource> ObjectAsset::GetLightTexture(TextureInfo *info)
+	{
+		if (!s_LightTextureLoaded && s_LightCatalog.IsLoaded())
+		{
+			s_LightTextureLoaded = true;
+			const std::filesystem::path file = TextureLoader::ResolveTexturePath(s_LightCatalog.GetPath().parent_path(), s_LightCatalog.GetTexture());
+			if (!file.empty())
+				s_LightTexture = TextureLoader::Load(file, TextureUsage::Lit, &s_LightTextureInfo);
+			if (!s_LightTexture)
+				SEDX_CORE_WARN_TAG(LOG_TAG, "Light texture '{}' not found next to '{}'", s_LightCatalog.GetTexture(), s_LightCatalog.GetPath().string());
+		}
+
+		if (info)
+			*info = s_LightTextureInfo;
+		return s_LightTexture;
+	}
+
+	uint32_t ObjectAsset::GetBillboardCount() const
+	{
+		uint32_t count = 0;
+		for (const ObjectLight &light : m_Lights)
+			count += static_cast<uint32_t>(light.resolved.billboards.size());
+		return count;
+	}
+
+	uint32_t ObjectAsset::GetSpillCount() const
+	{
+		uint32_t count = 0;
+		for (const ObjectLight &light : m_Lights)
+			count += static_cast<uint32_t>(light.resolved.spills.size());
+		return count;
 	}
 
 	void ObjectAsset::SetLitTexturesVisible(const bool visible)
@@ -181,9 +284,9 @@ namespace SceneryEditorX::XPlane
 		for (const std::string &warning : m_Data.warnings)
 			SEDX_CORE_WARN_TAG(LOG_TAG, "{}: {}", path.filename().string(), warning);
 
-		if (m_Data.batches.empty())
+		if (m_Data.batches.empty() && m_Data.lights.empty())
 		{
-			const std::string message = "The object has no triangles to draw";
+			const std::string message = "The object has no triangles or lights to draw";
 			SEDX_CORE_WARN_TAG(LOG_TAG, "{}: {}", path.string(), message);
 			if (error)
 				*error = message;
@@ -191,11 +294,16 @@ namespace SceneryEditorX::XPlane
 		}
 
 		LoadTextures();
+		ResolveLights();
 
-		m_Mesh = CreateRef<Mesh>();
-		m_Mesh->SetFlags(0); // keep X-Plane's units and geometry: no normalization, optimization or generated LODs
-		m_Mesh->SetResourceName(path.filename().string());
-		m_Mesh->SetResourceFilePath(path.string());
+		// Light fixtures (lib/airport/lights/...) often carry lights only: no mesh then.
+		if (!m_Data.batches.empty())
+		{
+			m_Mesh = CreateRef<Mesh>();
+			m_Mesh->SetFlags(0); // keep X-Plane's units and geometry: no normalization, optimization or generated LODs
+			m_Mesh->SetResourceName(path.filename().string());
+			m_Mesh->SetResourceFilePath(path.string());
+		}
 
 		std::vector<int32_t> remap(m_Data.vertices.size(), -1);
 		std::vector<uint32_t> touched;
@@ -278,21 +386,35 @@ namespace SceneryEditorX::XPlane
 			m_Batches.push_back(std::move(out));
 		}
 
-		if (m_Batches.empty())
+		if (m_Batches.empty() && m_Lights.empty())
 		{
 			if (error)
-				*error = "The object has no triangles to draw";
+				*error = "The object has no triangles or lights to draw";
 			return false;
 		}
 
+		// Static light positions count towards the bounds (framing light-only fixtures).
+		for (const ObjectLight &light : m_Lights)
+		{
+			for (int c = 0; c < 3; ++c)
+			{
+				m_BoundsMin[c] = firstVertex ? light.position[c] : std::min(m_BoundsMin[c], light.position[c]);
+				m_BoundsMax[c] = firstVertex ? light.position[c] : std::max(m_BoundsMax[c], light.position[c]);
+			}
+			firstVertex = false;
+		}
+
 		// Appends the geometry to the renderer's global vertex / index buffers (uploaded at the start of the next frame).
-		m_Mesh->CreateGpuBuffers();
+		if (m_Batches.empty())
+			m_Mesh.Reset();
+		else
+			m_Mesh->CreateGpuBuffers();
 		ApplyLit(s_LitVisible);
 
 		m_LoadMilliseconds = std::chrono::duration<float, std::milli>(std::chrono::steady_clock::now() - start).count();
-		SEDX_CORE_INFO_TAG(LOG_TAG, "Loaded '{}': {} triangles, {} batches, {} materials, {} animation groups, {} LODs ({:.1f} ms)",
+		SEDX_CORE_INFO_TAG(LOG_TAG, "Loaded '{}': {} triangles, {} batches, {} materials, {} animation groups, {} LODs, {} lights ({} billboards, {} spill) ({:.1f} ms)",
 			path.filename().string(), m_Data.GetTriangleCount(), m_Batches.size(), m_Materials.size(), m_Data.nodes.size(),
-			m_Data.lods.size(), m_LoadMilliseconds);
+			m_Data.lods.size(), m_Lights.size(), GetBillboardCount(), GetSpillCount(), m_LoadMilliseconds);
 		return true;
 	}
 
@@ -331,12 +453,67 @@ namespace SceneryEditorX::XPlane
 		}
 	}
 
+	void ObjectAsset::ResolveLights()
+	{
+		m_Lights.clear();
+		if (m_Data.lights.empty())
+			return;
+
+		const LightCatalog &catalog = GetLightCatalog(m_Path);
+		std::unordered_set<std::string> reported;
+
+		for (uint32_t i = 0; i < static_cast<uint32_t>(m_Data.lights.size()); ++i)
+		{
+			const Obj8Light &source = m_Data.lights[i];
+			const bool needsCatalog = source.kind == Obj8Light::Kind::Named || source.kind == Obj8Light::Kind::Param;
+			if (needsCatalog && !catalog.IsLoaded())
+			{
+				if (reported.insert("").second)
+					SEDX_CORE_WARN_TAG(LOG_TAG, "{}: lights.txt not found (set the X-Plane folder); named lights are skipped", m_Path.filename().string());
+				continue;
+			}
+
+			ObjectLight light;
+			std::string warning;
+			if (!catalog.Resolve(source, light.resolved, &warning))
+			{
+				if (reported.insert(source.name).second)
+					SEDX_CORE_WARN_TAG(LOG_TAG, "{}: {}", m_Path.filename().string(), warning);
+				continue;
+			}
+
+			if (light.resolved.billboards.empty() && light.resolved.spills.empty())
+				continue; // v8 ground halos only
+
+			// Custom billboards are cut from the object's own texture; without one there is nothing to show.
+			if (!m_Textures.albedo)
+				std::erase_if(light.resolved.billboards, [](const LightBillboardSpec &billboard) { return billboard.customTexture; });
+
+			light.source = i;
+			light.node = source.node;
+			light.lod = source.lod;
+			light.visibility = source.visibility;
+			std::copy_n(source.position, 3, light.position);
+			m_Lights.push_back(std::move(light));
+		}
+	}
+
 	uint32_t ObjectAsset::GetOrCreateMaterial(const Obj8DrawState &state)
 	{
+		const bool useDraped = state.draped && m_Textures.drapedAlbedo;
+		const TextureInfo &albedoInfo = useDraped ? m_Textures.drapedInfo : m_Textures.albedoInfo;
+
+		// ATTR_blend (the default) blends translucent texels; ATTR_no_blend cuts them out at its ratio, and
+		// GLOBAL_no_blend does so for the whole object whatever the attributes say.
+		const bool blendState = state.blend && !m_Data.hasGlobalNoBlend;
+		const bool blended = blendState && albedoInfo.hasAlpha;
+		const float noBlendRatio = m_Data.hasGlobalNoBlend ? m_Data.globalNoBlend : state.alphaCutoff;
+		const float alphaCutoff = blended ? BLEND_SPLIT_ALPHA : (blendState ? 0.0f : std::clamp(noBlendRatio, 0.001f, 1.0f));
+
 		// Only the parts of the draw state the renderer can express split materials.
 		const auto same_material = [](const Obj8DrawState &a, const Obj8DrawState &b)
 		{
-			return a.cull == b.cull && a.draped == b.draped && a.blend == b.blend;
+			return a.cull == b.cull && a.draped == b.draped && a.blend == b.blend && (a.blend || a.alphaCutoff == b.alphaCutoff);
 		};
 
 		for (uint32_t i = 0; i < static_cast<uint32_t>(m_MaterialStates.size()); ++i)
@@ -345,7 +522,6 @@ namespace SceneryEditorX::XPlane
 				return i;
 		}
 
-		const bool useDraped = state.draped && m_Textures.drapedAlbedo;
 		ImageResource *albedo = useDraped ? m_Textures.drapedAlbedo.Get() : m_Textures.albedo.Get();
 		ImageResource *normal = useDraped ? m_Textures.drapedNormal.Get() : m_Textures.normal.Get();
 		ImageResource *packed = useDraped ? nullptr : m_Textures.packed.Get();
@@ -377,6 +553,11 @@ namespace SceneryEditorX::XPlane
 
 		material->SetProperty(MaterialClass::Normal, normal ? 1.0f : 0.0f);
 		material->SetProperty(MaterialProperty::CullMode, static_cast<float>(state.cull ? CullMode::Back : CullMode::None));
+
+		// Blended surfaces are split: the deferred passes keep texels at or above the cutoff, the forward transparent
+		// pass blends the rest. BLEND_GLASS keeps reflections at full strength where the glass is clear.
+		material->SetProperty(MaterialProperty::AlphaCutoff, alphaCutoff);
+		material->SetProperty(MaterialProperty::BlendMode, blended ? (m_Data.blendGlass ? 2.0f : 1.0f) : 0.0f);
 
 		material->SetTexture(MaterialTextureType::Color, albedo);
 		material->SetTexture(MaterialTextureType::Normal, normal);

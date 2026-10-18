@@ -284,6 +284,13 @@ namespace SceneryEditorX::XPlane
 		return std::clamp((3.0f - SunPitchDegrees()) / 9.0f, 0.0f, 1.0f);
 	}
 
+	float Datarefs::GetDaylight()
+	{
+		// Full daylight once the sun is 8 degrees up, dark once it is 6 degrees below the horizon (civil dusk).
+		const float t = std::clamp((SunPitchDegrees() + 6.0f) / 14.0f, 0.0f, 1.0f);
+		return t * t * (3.0f - 2.0f * t);
+	}
+
 	bool Datarefs::IsBuiltin(const std::string_view name)
 	{
 		float value = 0.0f;

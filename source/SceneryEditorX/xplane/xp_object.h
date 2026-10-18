@@ -29,6 +29,7 @@
  * -------------------------------------------------------
  */
 #pragma once
+#include "xp_lights.h"
 #include "xp_obj8.h"
 #include "xp_texture_loader.h"
 #include <filesystem>
@@ -54,6 +55,20 @@ namespace SceneryEditorX::XPlane
 		uint32_t triangleCount = 0;
 		bool castShadow = true;
 		bool draped = false;
+	};
+
+	/**
+	 * @struct ObjectLight
+	 * @brief An OBJ light resolved against lights.txt: where it sits and what it draws (billboards, spill).
+	 */
+	struct ObjectLight
+	{
+		uint32_t source = 0;				// Obj8Data::lights index
+		int node = -1;						// Animation group, -1 when static
+		int lod = -1;
+		std::vector<uint32_t> visibility;	// Obj8Data::visibility rules, in order
+		float position[3] = { 0.0f, 0.0f, 0.0f };
+		ResolvedLight resolved;
 	};
 
 	/* @brief The textures an OBJ resolved, with what the loader learned about them. */
@@ -100,6 +115,16 @@ namespace SceneryEditorX::XPlane
 		static void SetLitTexturesVisible(bool visible);
 		static bool AreLitTexturesVisible();
 
+		/**
+		 * @brief X-Plane's lights.txt, loaded on first use from the X-Plane install (or, without one, from the
+		 * install an OBJ lives in). Empty when neither has it.
+		 * @param objectPath An OBJ to search upwards from when no install is configured (optional).
+		 */
+		static const LightCatalog &GetLightCatalog(const std::filesystem::path &objectPath = {});
+
+		/* @brief The lights.txt billboard texture (nullptr when missing); info receives its size. */
+		static Ref<ImageResource> GetLightTexture(TextureInfo *info = nullptr);
+
 		ObjectAsset() = default;
 		~ObjectAsset() override;
 
@@ -111,7 +136,12 @@ namespace SceneryEditorX::XPlane
 		[[nodiscard]] MaterialAsset *GetMaterial(const uint32_t index) const { return index < m_Materials.size() ? m_Materials[index].Get() : nullptr; }
 		[[nodiscard]] const ObjectTextures &GetTextures() const { return m_Textures; }
 
-		/* @brief Static (unanimated) bounds of all geometry, in object space. */
+		/* @brief Lights resolved against lights.txt (unknown names are left out). */
+		[[nodiscard]] const std::vector<ObjectLight> &GetLights() const { return m_Lights; }
+		[[nodiscard]] uint32_t GetBillboardCount() const;
+		[[nodiscard]] uint32_t GetSpillCount() const;
+
+		/* @brief Static (unanimated) bounds of all geometry and lights, in object space. */
 		[[nodiscard]] const float *GetBoundsMin() const { return m_BoundsMin; }
 		[[nodiscard]] const float *GetBoundsMax() const { return m_BoundsMax; }
 
@@ -120,13 +150,15 @@ namespace SceneryEditorX::XPlane
 	private:
 		bool Build(const std::filesystem::path &path, std::string *error);
 		void LoadTextures();
+		void ResolveLights();
 		uint32_t GetOrCreateMaterial(const Obj8DrawState &state);
 		void ApplyLit(bool visible);
 
 		std::filesystem::path m_Path;
 		Obj8Data m_Data;
-		Ref<Mesh> m_Mesh;
+		Ref<Mesh> m_Mesh;					// Null for objects that only carry lights
 		std::vector<ObjectBatch> m_Batches;
+		std::vector<ObjectLight> m_Lights;
 		std::vector<Ref<MaterialAsset>> m_Materials;
 		std::vector<Obj8DrawState> m_MaterialStates;	// State each material was made for
 		ObjectTextures m_Textures;

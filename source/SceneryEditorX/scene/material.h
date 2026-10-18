@@ -53,6 +53,8 @@ namespace SceneryEditorX
 		GrassBlades					= 5,
 		Water                       = 6,
 		EmissiveFromAlbedo			= 7,
+		AlphaCutoff					= 8,	// Alpha below this is cut out of the deferred passes (0 = the renderer's default)
+		BlendMode					= 9,	// 0 opaque / alpha tested, 1 alpha blended, 2 glass (reflections not faded by alpha)
 		MaxEnum						= 255
 	};
 
@@ -397,7 +399,7 @@ namespace SceneryEditorX
 		// mutable: the scalar setters are const (they forward to the underlying Material), but must keep the table current
 		mutable std::array<float, static_cast<uint32_t>(MaterialClass::MaxEnum)> m_Properties{};
 		// MaterialProperty values (tessellation, cull mode, ...); kept apart because their indices overlap MaterialClass
-		std::array<float, static_cast<uint32_t>(MaterialProperty::EmissiveFromAlbedo) + 1> m_RenderSettings{};
+		std::array<float, static_cast<uint32_t>(MaterialProperty::BlendMode) + 1> m_RenderSettings{};
 		std::array<ImageResource*, static_cast<uint32_t>(MaterialTextureType::MaxEnum) * SLOTS_PER_TEXTURE> m_Textures{};
 
 		bool m_Transparent = false;

@@ -110,6 +110,14 @@ namespace SceneryEditorX
 				EditorUI::PropertyLabel("Geometry");
 				ImGui::Text("%u triangles, %zu batches, %u materials", data.GetTriangleCount(), asset.GetBatches().size(), asset.GetMaterialCount());
 
+				if (!data.lights.empty())
+				{
+					EditorUI::PropertyLabel("Lights");
+					ImGui::Text("%zu of %zu resolved: %u billboards, %u spill", asset.GetLights().size(), data.lights.size(), asset.GetBillboardCount(),
+						asset.GetSpillCount());
+					EditorUI::ItemTooltip("Named lights come from X-Plane's lights.txt; they show at night or with \"Force lights on\"");
+				}
+
 				EditorUI::PropertyLabel("Visible");
 				ImGui::Checkbox("##Visible", &object->visible);
 
@@ -148,6 +156,8 @@ namespace SceneryEditorX
 
 				EditorUI::PropertyLabel("In view");
 				ImGui::Text("%.0f m away, %u / %zu batches", object->cameraDistance, object->visibleBatches, asset.GetBatches().size());
+				if (!asset.GetLights().empty())
+					ImGui::Text("%u billboards, %u spill lit", object->visibleBillboards, object->litSpills);
 
 				TextureRow("Texture", data.texture, textures.albedoInfo, textures.albedo.Get() != nullptr);
 				TextureRow("Normal map", data.textureNormal, textures.normalInfo, textures.normal.Get() != nullptr);
