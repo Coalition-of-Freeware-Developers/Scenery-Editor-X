@@ -48,6 +48,17 @@ namespace SceneryEditorX
 			xMath::Vec2 uv;
 		};
 
+		/** @brief Frees a buffer's GPU memory now (~Buffer would too, but logs it as a leak) and drops the owner. */
+		template <typename Owner>
+		void ReleaseBuffer(Owner &buffer)
+		{
+			if (buffer)
+			{
+				buffer->Destroy();
+				buffer = nullptr;
+			}
+		}
+
 	}
 
 #pragma region Static Member Definitions
@@ -124,8 +135,24 @@ namespace SceneryEditorX
 
 	void GeometryBuffer::Shutdown()
 	{
-		s_GeometryQuadVertexBuffer.Reset();
-		s_GeometryQuadIndexBuffer.Reset();
+		std::scoped_lock lock(m_Mutex);
+
+		// All of these are statics: release them here, while the allocator and device are alive (the renderer has
+		// waited for the GPU). Left to the CRT static-destructor phase, ~Buffer calls into the unloaded driver.
+		ReleaseBuffer(s_GeometryQuadVertexBuffer);
+		ReleaseBuffer(s_GeometryQuadIndexBuffer);
+		ReleaseBuffer(m_VertexBuffer);
+		ReleaseBuffer(m_IndexBuffer);
+
+		// Start a re-init from an empty global geometry buffer.
+		std::vector<Vertex_PosTexNorTan>().swap(m_Vertices);
+		std::vector<uint32_t>().swap(m_Indices);
+		m_VertexCount_Committed = 0;
+		m_IndexCount_Committed  = 0;
+		m_Vertex_Capacity       = 0;
+		m_Index_Capacity        = 0;
+		m_WasRebuilt            = false;
+
 		SEDX_CORE_TRACE_TAG("RendererResources", "Shutting down GeometryBuffer/G-Buffer");
 	}
 
@@ -186,8 +213,8 @@ namespace SceneryEditorX
 			if (m_VertexBuffer || m_IndexBuffer)
 				QueueManager::WaitIdleAll();
 
-			m_VertexBuffer = nullptr;
-			m_IndexBuffer  = nullptr;
+			ReleaseBuffer(m_VertexBuffer);
+			ReleaseBuffer(m_IndexBuffer);
 
 			// allocate with headroom so late-arriving meshes don't trigger another rebuild
 			m_Vertex_Capacity = static_cast<uint32_t>(vertexCount * GROWTH_FACTOR);

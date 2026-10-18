@@ -119,6 +119,17 @@ namespace SceneryEditorX
 								 VmaAllocation& outAllocation, VmaAllocationInfo* outAllocationInfo = nullptr);
 
 		/**
+		 * @brief Creates an image using the Vulkan Memory Allocator (VMA), tracked so DestroyImage() can release it.
+		 * @param imageCI The Vulkan image creation info.
+		 * @param allocInfo The VMA allocation creation info.
+		 * @param outImage The output Vulkan image handle.
+		 * @param outAllocation The output VMA allocation handle.
+		 * @return The result of the image creation.
+		 */
+		static VkResult CreateImage(const VkImageCreateInfo& imageCI, const VmaAllocationCreateInfo& allocInfo, VkImage& outImage,
+								VmaAllocation& outAllocation);
+
+		/**
 		 * @brief Destroys a buffer and frees its associated memory.
 		 * @param buffer The Vulkan buffer to destroy.
 		 * @param allocation The VMA allocation associated with the buffer.
