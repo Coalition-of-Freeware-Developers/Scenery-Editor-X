@@ -258,7 +258,7 @@ INCLUDE(Catch)
 catch_discover_tests(ConversionTests)
 
 # --------------------------------
-# X-Plane Format Tests (OBJ8, library.txt, scenery_packs.ini; standard library only)
+# X-Plane Format Tests (OBJ8, library.txt, scenery_packs.ini, apt.dat, airport index; standard library only)
 # --------------------------------
 
 MESSAGE(STATUS "=================================================")
@@ -266,9 +266,14 @@ MESSAGE(STATUS "Generating X-Plane Format Unit Tests")
 
 ADD_EXECUTABLE(XPlaneFormatTests
     ${CMAKE_CURRENT_SOURCE_DIR}/xplane_tests/XPlaneFormatTests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/xplane_tests/AirportTests.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_obj8.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_library.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_lights.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_apt.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_apt_geometry.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_airport_index.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_gateway_types.cpp
 )
 
 TARGET_INCLUDE_DIRECTORIES(XPlaneFormatTests PRIVATE
@@ -277,6 +282,7 @@ TARGET_INCLUDE_DIRECTORIES(XPlaneFormatTests PRIVATE
 
 TARGET_LINK_LIBRARIES(XPlaneFormatTests PRIVATE
     Catch2::Catch2WithMain
+    nlohmann_json::nlohmann_json
 )
 
 IF(_SEDX_MSVCLIKE)

@@ -33,6 +33,7 @@
 #include <Editor/core/editor_ui.h>
 #include <SceneryEditorX/renderer/font/font_awesome.h>
 #include <SceneryEditorX/scene/components/renderable.h>
+#include <SceneryEditorX/xplane/xp_airport_scene.h>
 #include <SceneryEditorX/xplane/xp_scene.h>
 
 // -------------------------------------------------------
@@ -46,6 +47,24 @@ namespace SceneryEditorX
 			const entt::entity handle = static_cast<entt::entity>(entity);
 			if (EditorScene::Has<XPlane::XPlaneObjectComponent>(handle))
 				return SEDX_ICON_PLANE;
+			if (const XPlane::AirportElementComponent *element = EditorScene::TryGet<XPlane::AirportElementComponent>(handle))
+			{
+				switch (element->kind)
+				{
+					case XPlane::AirportElementKind::Airport:	return SEDX_ICON_GLOBE;
+					case XPlane::AirportElementKind::Group:		return SEDX_ICON_FOLDER_OPEN;
+					case XPlane::AirportElementKind::Runway:
+					case XPlane::AirportElementKind::WaterRunway:
+					case XPlane::AirportElementKind::Helipad:	return SEDX_ICON_PLANE;
+					case XPlane::AirportElementKind::LinearFeature:
+					case XPlane::AirportElementKind::TaxiRoutes:	return SEDX_ICON_ROAD;
+					case XPlane::AirportElementKind::Pavement:
+					case XPlane::AirportElementKind::Boundary:	return SEDX_ICON_MAP_O;
+					case XPlane::AirportElementKind::Beacon:
+					case XPlane::AirportElementKind::LightFixture:	return SEDX_ICON_LIGHTBULB_O;
+					default:									return SEDX_ICON_MAP_MARKER;
+				}
+			}
 			if (EditorScene::Has<CameraComponent>(handle))
 				return SEDX_ICON_VIDEO_CAMERA;
 			if (EditorScene::Has<DirectionalLightComponent>(handle) || EditorScene::Has<PointLightComponent>(handle) || EditorScene::Has<SpotLightComponent>(handle))
@@ -126,6 +145,8 @@ namespace SceneryEditorX
 							pendingDelete = id;
 						if (EditorScene::Has<XPlane::XPlaneObjectComponent>(handle) && ImGui::MenuItem("Frame"))
 							XPlane::SceneObjects::FrameObject(id);
+						if (EditorScene::Has<XPlane::AirportElementComponent>(handle) && ImGui::MenuItem("Frame"))
+							XPlane::SceneAirports::FrameEntity(id);
 						ImGui::EndPopup();
 					}
 					ImGui::PopID();

@@ -29,11 +29,13 @@
  * -------------------------------------------------------
  */
 #include "editor_layer.h"
+#include "editor_airports.h"
 #include "editor_camera.h"
 #include "editor_scene.h"
 #include "editor_theme.h"
 #include "editor_ui.h"
 #include "editor_xplane.h"
+#include <Editor/panels/airport_panel.h>
 #include <Editor/panels/asset_shelf_panel.h>
 #include <Editor/panels/console_panel.h>
 #include <Editor/panels/outliner_panel.h>
@@ -55,6 +57,7 @@
 #include <SceneryEditorX/renderer/ui/source/imgui/imgui_internal.h>
 #include <SceneryEditorX/renderer/vulkan/debug/render_doc.h>
 #include <SceneryEditorX/scene/entity.h>
+#include <SceneryEditorX/xplane/xp_airport_manager.h>
 #include <SceneryEditorX/xplane/xp_datarefs.h>
 #include <SceneryEditorX/xplane/xp_library_manager.h>
 #include <SceneryEditorX/xplane/xp_scene.h>
@@ -85,14 +88,15 @@ namespace SceneryEditorX
 		constexpr PanelInfo PANEL_CAMERA			= { "CameraSettings",	"CAMERA###CameraSettings",			SEDX_ICON_CAMERA };
 		constexpr PanelInfo PANEL_RENDERER			= { "RendererStats",	"RENDERER###RendererStats",			SEDX_ICON_TACHOMETER };
 		constexpr PanelInfo PANEL_XPLANE			= { "XPlaneLibrary",	"X-PLANE LIBRARY###XPlaneLibrary",	SEDX_ICON_PLANE };
+		constexpr PanelInfo PANEL_AIRPORTS			= { "Airports",			"AIRPORTS###Airports",				SEDX_ICON_GLOBE };
 
 		constexpr PanelInfo s_StripPanels[] =
 		{
-			PANEL_PROPERTIES, PANEL_OUTLINER, PANEL_XPLANE, PANEL_ASSETS, PANEL_CONSOLE, PANEL_SCENE_SETTINGS, PANEL_CAMERA, PANEL_RENDERER, PANEL_VIEWPORT
+			PANEL_PROPERTIES, PANEL_OUTLINER, PANEL_AIRPORTS, PANEL_XPLANE, PANEL_ASSETS, PANEL_CONSOLE, PANEL_SCENE_SETTINGS, PANEL_CAMERA, PANEL_RENDERER, PANEL_VIEWPORT
 		};
 
 		/* Bump when the default layout changes so existing users get the new arrangement once. */
-		constexpr const char *DOCKSPACE_NAME = "SEDX_EditorDockspace_v3";
+		constexpr const char *DOCKSPACE_NAME = "SEDX_EditorDockspace_v4";
 
 		constexpr ImGuiWindowFlags SIDE_BAR_FLAGS = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoSavedSettings;
 	}
@@ -128,8 +132,9 @@ namespace SceneryEditorX
 	{
 		AttachLogSink();
 
-		// X-Plane folder + library index (the first scan runs in the background)
+		// X-Plane folder + library index (the first scan runs in the background), then the airport index and the Gateway client
 		XPlane::LibraryManager::Init();
+		EditorAirports::Init();
 		ReadStartupObjects();
 		RegisterPanels();
 		EditorCamera::CaptureHome();
@@ -155,6 +160,7 @@ namespace SceneryEditorX
 		// The UI layer (an overlay) detaches first, so ImGui is already gone here: no ImGui calls.
 		Camera::SetInputEnabled(true);
 		m_PanelManager.reset();
+		EditorAirports::Shutdown();
 		XPlane::SceneObjects::Shutdown();
 		XPlane::LibraryManager::Shutdown();
 		DetachLogSink();
@@ -172,6 +178,7 @@ namespace SceneryEditorX
 		m_PanelManager->AddPanel<AssetShelfPanel>(PanelCategory::Editor, PANEL_ASSETS.id, "Assets", true, resources);
 		m_PanelManager->AddPanel<ConsolePanel>(PanelCategory::Editor, PANEL_CONSOLE.id, "Console", true, m_LogSink);
 		m_PanelManager->AddPanel<XPlaneLibraryPanel>(PanelCategory::Editor, PANEL_XPLANE.id, "X-Plane Library", true, &m_Context);
+		m_PanelManager->AddPanel<AirportPanel>(PanelCategory::Editor, PANEL_AIRPORTS.id, "Airports", true, &m_Context);
 		m_PanelManager->AddPanel<SceneSettingsPanel>(PanelCategory::Settings, PANEL_SCENE_SETTINGS.id, "Scene Settings", true);
 		m_PanelManager->AddPanel<CameraSettingsPanel>(PanelCategory::Settings, PANEL_CAMERA.id, "Camera", true);
 		m_PanelManager->AddPanel<RendererStatsPanel>(PanelCategory::Settings, PANEL_RENDERER.id, "Renderer", true);
@@ -214,6 +221,9 @@ namespace SceneryEditorX
 		PlaceStartupObjects();
 		XPlane::SceneObjects::Tick(ImGui::GetIO().DeltaTime);
 
+		// Airports: the startup airport, scene rebuilds after edits, finished Gateway downloads
+		EditorAirports::Tick(&m_Context);
+
 		HandleShortcuts();
 
 		// Order matters: each side bar shrinks the viewport work area the dockspace then fills.
@@ -243,6 +253,7 @@ namespace SceneryEditorX
 
 		DrawAboutPopup();
 		DrawDebugWindows();
+		EditorAirports::DrawModals(&m_Context);
 	}
 
 	void EditorLayer::DrawMenuBar()
@@ -287,6 +298,33 @@ namespace SceneryEditorX
 		{
 			if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_CUBE, "Import Object (.obj)...").c_str()))
 				EditorXPlane::ImportObjFile(&m_Context);
+
+			ImGui::Separator();
+			if (PanelData *panel = FindPanel(PANEL_AIRPORTS.id))
+			{
+				if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_GLOBE, "Airports").c_str(), nullptr, panel->IsOpen))
+				{
+					panel->IsOpen = true;
+					ImGui::SetWindowFocus(PANEL_AIRPORTS.window);
+				}
+			}
+			if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_FOLDER_OPEN, "Open Airport (apt.dat)...").c_str()))
+				EditorAirports::BrowseForAirport(&m_Context);
+			{
+				const XPlane::AirportDocument *document = EditorAirports::GetDocument();
+				const bool open = document != nullptr;
+				if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_FLOPPY_O, "Save Airport").c_str(), "Ctrl+S", false, open && document->IsDirty()))
+					EditorAirports::SaveAirport();
+				if (ImGui::MenuItem("Save Airport As...", "Ctrl+Shift+S", false, open))
+					EditorAirports::SaveAirportAs();
+				if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_CROSSHAIRS, "Frame Airport").c_str(), nullptr, false, open))
+					EditorAirports::FrameAirport();
+				if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_TIMES, "Close Airport").c_str(), nullptr, false, open))
+					EditorAirports::CloseAirport(&m_Context);
+			}
+			if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_REFRESH, "Rescan Airports").c_str(), nullptr, false,
+				XPlane::AirportManager::GetScanState() != XPlane::ScanState::Scanning))
+				XPlane::AirportManager::Rescan();
 
 			ImGui::Separator();
 			if (PanelData *panel = FindPanel(PANEL_XPLANE.id))
@@ -549,6 +587,7 @@ namespace SceneryEditorX
 		ImGui::DockBuilderDockWindow(PANEL_ASSETS.window, bottom);
 		ImGui::DockBuilderDockWindow(PANEL_CONSOLE.window, bottom);
 		ImGui::DockBuilderDockWindow(PANEL_XPLANE.window, bottom);
+		ImGui::DockBuilderDockWindow(PANEL_AIRPORTS.window, bottom);
 		ImGui::DockBuilderDockWindow(PANEL_VIEWPORT.window, center);
 		ImGui::DockBuilderFinish(dockspaceId);
 	}
@@ -607,6 +646,12 @@ namespace SceneryEditorX
 
 		if (ImGui::Shortcut(ImGuiKey_Home, ImGuiInputFlags_RouteGlobal))
 			EditorCamera::Reset();
+
+		// The open airport
+		if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_S, ImGuiInputFlags_RouteGlobal) && EditorAirports::GetDocument())
+			EditorAirports::SaveAirport();
+		if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_S, ImGuiInputFlags_RouteGlobal) && EditorAirports::GetDocument())
+			EditorAirports::SaveAirportAs();
 	}
 
 	void EditorLayer::ReadStartupObjects()

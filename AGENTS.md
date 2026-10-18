@@ -29,10 +29,12 @@ The dependency-light, cross-platform Catch2 unit suites that only need `source/`
   (`SceneryEditorX/utils/conversions/...`). Header-only, fully green.
 - **`RefTests`** (`source/Tests/pointer_tests`) — the `Ref`/`WeakRef` smart-pointer system
   (`SceneryEditorX/utils/pointers.h`). Builds and runs.
-- **`XPlaneFormatTests`** (`source/Tests/xplane_tests`) — OBJ8 parsing/animation evaluation and the
-  `library.txt` / `scenery_packs.ini` parsers + library index and the `lights.txt` light catalog
-  (`SceneryEditorX/xplane/xp_obj8.*`, `xp_library.*`, `xp_lights.*`).
-  Standard library only, fully green.
+- **`XPlaneFormatTests`** (`source/Tests/xplane_tests`) — OBJ8 parsing/animation evaluation, the
+  `library.txt` / `scenery_packs.ini` parsers + library index, the `lights.txt` light catalog, and the
+  apt.dat 12.00 parser/writer, airport geometry, airport index and Scenery Gateway JSON records
+  (`SceneryEditorX/xplane/xp_obj8.*`, `xp_library.*`, `xp_lights.*`, `xp_apt.*`, `xp_apt_geometry.*`,
+  `xp_airport_index.*`, `xp_gateway_types.*`). Standard library plus the header-only `dependency/json`
+  submodule, fully green.
 
 The other suites are **not** Linux-buildable as written: `SettingsTest` links Windows libs
 (`dxgi`, `d3d12`, `Shell32.lib`); `MemoryAllocatorTests` links `vulkan-1` and needs the Vulkan
@@ -69,7 +71,7 @@ cmake -S $C2 -B $C2/build-linux -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ 
 cmake --build $C2/build-linux -j"$(nproc)"
 
 mkdir -p build_linux_tests
-INCS="-I$C2/src -I$C2/build-linux/generated-includes -Isource"
+INCS="-I$C2/src -I$C2/build-linux/generated-includes -Isource -Idependency/json/include"
 LIBS="$C2/build-linux/src/libCatch2Main.a $C2/build-linux/src/libCatch2.a"
 
 # 2. ConversionTests (fully green)
@@ -88,8 +90,11 @@ g++ -std=c++20 -O2 -pthread -DSEDX_NO_LOGGING -DZoneScoped= $INCS \
 
 # 4. XPlaneFormatTests (fully green)
 g++ -std=c++20 -O2 -pthread $INCS source/Tests/xplane_tests/XPlaneFormatTests.cpp \
+    source/Tests/xplane_tests/AirportTests.cpp \
     source/SceneryEditorX/xplane/xp_obj8.cpp source/SceneryEditorX/xplane/xp_library.cpp \
-    source/SceneryEditorX/xplane/xp_lights.cpp $LIBS \
+    source/SceneryEditorX/xplane/xp_lights.cpp source/SceneryEditorX/xplane/xp_apt.cpp \
+    source/SceneryEditorX/xplane/xp_apt_geometry.cpp source/SceneryEditorX/xplane/xp_airport_index.cpp \
+    source/SceneryEditorX/xplane/xp_gateway_types.cpp $LIBS \
     -o build_linux_tests/XPlaneFormatTests
 ./build_linux_tests/XPlaneFormatTests
 ```

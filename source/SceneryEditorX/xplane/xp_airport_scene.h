@@ -1,0 +1,166 @@
+/**
+ * -------------------------------------------------------
+ * Scenery Editor X
+ * -------------------------------------------------------
+ * Copyright (c) 2026 Thomas Ray
+ * Copyright (c) 2026 Coalition of Freeware Developers
+ * -------------------------------------------------------
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ * -------------------------------------------------------
+ * xp_airport_scene.h
+ * -------------------------------------------------------
+ * Created: 18/10/2026
+ * -------------------------------------------------------
+ */
+#pragma once
+#include "xp_airport_document.h"
+#include "xp_apt_geometry.h"
+#include <cstdint>
+#include <string>
+
+// -------------------------------------------------------
+
+namespace SceneryEditorX::XPlane
+{
+	/* @brief What an airport entity stands for. */
+	enum class AirportElementKind : uint8_t
+	{
+		Airport,			// The root entity
+		Group,				// A folder entity ("Runways", "Pavement", ...)
+		Runway,
+		WaterRunway,
+		Helipad,
+		Pavement,
+		LinearFeature,
+		Boundary,
+		Viewpoint,
+		Beacon,
+		Windsock,
+		Sign,
+		LightFixture,
+		Startup,
+		LegacyStartup,
+		TaxiRoutes,			// Every taxi edge, as one entity
+		TaxiNodes,			// Every taxi node, as one entity
+		TruckParking,
+		TruckDestination,
+		Jetway,
+		Count
+	};
+
+	const char *GetAirportElementKindName(AirportElementKind kind);
+
+	/**
+	 * @struct AirportElementComponent
+	 * @brief Registry component on every entity SceneAirports creates: which apt.dat row the entity draws.
+	 * `index` is the position in the matching AptAirport vector; `subIndex` tells a feature's painted lines (0) from
+	 * its light strings (1).
+	 */
+	struct AirportElementComponent
+	{
+		AirportElementKind kind = AirportElementKind::Airport;
+		uint32_t index = 0;
+		uint32_t subIndex = 0;
+		uint64_t airportRoot = 0;		// UUID of the airport's root entity
+		uint32_t triangles = 0;
+		Bounds2 bounds;					// Local-space footprint, for framing
+	};
+
+	/**
+	 * @class SceneAirports
+	 * @brief Draws an airport document in the active scene: flat geometry in X-Plane's local frame (meters, +X east,
+	 * -Z north) around the airport datum, one entity per element under group entities under one root. Main thread
+	 * only; one airport is loaded at a time.
+	 *
+	 * Pavement is triangulated from the bezier outlines (later rows draw underneath, like X-Plane layers them),
+	 * runways and helipads are rectangles, painted lines and light strings are ribbons, and point features (startup
+	 * locations, signs, windsocks, ...) are small markers pointing along their heading.
+	 */
+	class SceneAirports
+	{
+	public:
+		struct Stats
+		{
+			uint32_t entities = 0;
+			uint32_t triangles = 0;
+			uint32_t parts = 0;
+			double buildMilliseconds = 0.0;
+		};
+
+		/**
+		 * @brief Replaces the loaded airport (if any) with the document's and frames the camera on it.
+		 * @return The root entity's UUID, or 0 when there is no active scene.
+		 */
+		static uint64_t Load(const AirportDocument &document, bool frameCamera = true);
+
+		/* @brief Rebuilds the geometry after edits, keeping the root entity (and its selection) in place. */
+		static void Rebuild(const AirportDocument &document);
+
+		/**
+		 * @brief Moves the point features (startup locations, signs, windsocks, ...) to where the document now puts
+		 * them, without rebuilding meshes. Enough for position / heading edits; anything else needs Rebuild().
+		 */
+		static void UpdatePlacements(const AirportDocument &document);
+
+		/* @brief True for kinds drawn as a marker placed by the entity transform (UpdatePlacements() moves them). */
+		static bool IsPlacedKind(AirportElementKind kind);
+
+		/* @brief Removes the loaded airport from the scene. */
+		static void Unload();
+
+		static bool IsLoaded();
+		static uint64_t GetRootId();
+
+		/* @brief The document revision the scene reflects (UpdatePlacements / Rebuild when the document moved past it). */
+		static uint64_t GetBuiltRevision();
+
+		/* @brief The document geometry revision the meshes were built from (Rebuild when it changed). */
+		static uint64_t GetBuiltGeometryRevision();
+
+		/**
+		 * @brief The airport element an entity stands for (the entity itself or, for the root's descendants, itself).
+		 * @return The component, or nullptr when the entity isn't part of the loaded airport.
+		 */
+		static const AirportElementComponent *FindElement(uint64_t entityId);
+
+		/* @brief Entity drawing an element, or 0. */
+		static uint64_t FindEntity(AirportElementKind kind, uint32_t index, uint32_t subIndex = 0);
+
+		/* @brief Shows or hides every entity of a kind (taxi routes clutter a 3D view, for instance). */
+		static void SetKindVisible(AirportElementKind kind, bool visible);
+		static bool IsKindVisible(AirportElementKind kind);
+
+		/* @brief Moves the camera to see the whole airport. */
+		static void Frame();
+
+		/* @brief Moves the camera to see one element. */
+		static void FrameEntity(uint64_t entityId);
+
+		/* @brief The projection the loaded airport was built with (datum at the origin). */
+		static const GeoProjection &GetProjection();
+
+		static Stats GetStats();
+
+		/* @brief Unloads and releases GPU resources. Call before the renderer shuts down. */
+		static void Shutdown();
+	};
+
+}
+
+// -------------------------------------------------------
