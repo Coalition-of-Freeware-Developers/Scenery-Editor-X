@@ -842,6 +842,141 @@ namespace SceneryEditorX::XPlane
 	}
 
 	// -------------------------------------------------------
+	// .net
+
+	const RoadNetworkAsset::RoadType *RoadNetworkAsset::FindRoadType(const int subtype) const
+	{
+		const auto byId = [this](const int id) -> const RoadType *
+		{
+			for (const RoadType &type : roadTypes)
+				if (type.id == id)
+					return &type;
+			return nullptr;
+		};
+		for (const VirtualType &type : virtualTypes)
+		{
+			if (type.id == subtype && type.roadType != 0)
+				if (const RoadType *road = byId(type.roadType))
+					return road;
+		}
+		return byId(subtype);
+	}
+
+	std::string RoadNetworkAsset::GetSubtypeName(const int subtype) const
+	{
+		for (const VirtualType &type : virtualTypes)
+			if (type.id == subtype && !type.description.empty())
+				return type.description;
+		return "Road type " + std::to_string(subtype);
+	}
+
+	bool ParseRoadNetworkAsset(const std::string_view text, RoadNetworkAsset &out, std::string *error)
+	{
+		out = RoadNetworkAsset();
+		AssetHeader header;
+		size_t start = 0;
+		if (!CheckHeader(text, "ROADS", header, start, error))
+			return false;
+
+		// Rows apply to the road type above them; "#VROAD name" comments label the virtual type that follows
+		size_t road = std::string::npos;
+		size_t virtualType = std::string::npos;
+		float center = 0.0f;
+		float scale = 1.0f;
+		std::string description;
+
+		LineReader reader(text.substr(std::min(start, text.size())));
+		std::string_view line;
+		std::vector<std::string_view> tokens;
+		while (reader.Next(line))
+		{
+			Tokenize(line, tokens);
+			if (tokens.empty())
+				continue;
+			const std::string_view key = tokens[0];
+			if (key == "#VROAD")
+			{
+				// "#VROAD hwy_6/city/wet (17.250000)": the name, without the width in brackets
+				std::string_view name = Trim(RestOfLine(line, 1));
+				if (const size_t bracket = name.find(" ("); bracket != std::string_view::npos)
+					name = Trim(name.substr(0, bracket));
+				description = std::string(name);
+				continue;
+			}
+			if (key.front() == '#')
+				continue;
+
+			if (key == "TEXTURE" && tokens.size() >= 3)
+				out.textures.push_back(CleanPath(RestOfLine(line, 2)));
+			else if ((key == "ROAD_DRAPED" || key == "ROAD_GRADED") && tokens.size() >= 3)
+			{
+				RoadNetworkAsset::VirtualType type;
+				type.id = ParseInt(tokens[2], 0);
+				type.description = std::move(description);
+				description.clear();
+				virtualType = out.virtualTypes.size();
+				out.virtualTypes.push_back(std::move(type));
+			}
+			else if ((key == "ROAD_DRAPE_CHOICE" || key == "ROAD_GRADE_CHOICE") && tokens.size() >= 3 && virtualType != std::string::npos)
+			{
+				int &choice = out.virtualTypes[virtualType].roadType;
+				if (choice == 0)
+					choice = ParseInt(tokens[2], 0);
+			}
+			else if (key == "ROAD_TYPE" && tokens.size() >= 5)
+			{
+				RoadNetworkAsset::RoadType type;
+				type.id = ParseInt(tokens[1], 0);
+				type.width = ParseFloat(tokens[2], 0.0f);
+				type.length = ParseFloat(tokens[3], 100.0f);
+				type.texture = ParseInt(tokens[4], 0);
+				if (tokens.size() >= 8)
+					for (int c = 0; c < 3; ++c)
+						type.color[c] = ParseFloat(tokens[5 + c], 0.6f);
+				road = out.roadTypes.size();
+				out.roadTypes.push_back(std::move(type));
+				center = 0.0f;
+				scale = 1.0f;
+				virtualType = std::string::npos;
+			}
+			else if (key == "ROAD_CENTER" && tokens.size() >= 2)
+				center = ParseFloat(tokens[1], 0.0f);
+			else if (key == "SCALE" && tokens.size() >= 2)
+				scale = std::max(1e-6f, ParseFloat(tokens[1], 1.0f));
+			else if ((key == "SEGMENT_DRAPED" || key == "SEGMENT_GRADED") && road != std::string::npos)
+			{
+				// SEGMENT_DRAPED tex lod_lo lod_hi t_scale left s_left right s_right [surface]
+				// SEGMENT_GRADED tex lod_lo lod_hi t_scale left h_left s_left right h_right s_right [surface]
+				const bool graded = key == "SEGMENT_GRADED";
+				if (tokens.size() < (graded ? 11u : 9u))
+					continue;
+				if (ParseFloat(tokens[2], 0.0f) > 0.0f)
+					continue;	// A far level of detail: the near one is drawn
+				const size_t l = 5, r = graded ? 8 : 7;
+				if (graded && (ParseFloat(tokens[l + 1], 0.0f) != 0.0f || ParseFloat(tokens[r + 1], 0.0f) != 0.0f))
+					continue;	// Raised or sloped (curbs, walls): not a flat strip
+				RoadNetworkAsset::Strip strip;
+				strip.texture = ParseInt(tokens[1], 0);
+				strip.left = ParseFloat(tokens[l], 0.0f) - center;
+				strip.right = ParseFloat(tokens[r], 0.0f) - center;
+				strip.sLeft = ParseFloat(tokens[graded ? l + 2 : l + 1], 0.0f) / scale;
+				strip.sRight = ParseFloat(tokens[graded ? r + 2 : r + 1], 0.0f) / scale;
+				if (strip.right != strip.left)
+					out.roadTypes[road].strips.push_back(strip);
+			}
+		}
+
+		if (out.roadTypes.empty())
+			return Fail(error, "The network has no ROAD_TYPE");
+		return true;
+	}
+
+	bool LoadRoadNetworkAsset(const std::filesystem::path &path, RoadNetworkAsset &out, std::string *error)
+	{
+		return LoadAsset(path, out, error, &ParseRoadNetworkAsset);
+	}
+
+	// -------------------------------------------------------
 
 	int GetLayerGroupOrder(const std::string_view group)
 	{

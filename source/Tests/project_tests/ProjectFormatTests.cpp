@@ -348,7 +348,7 @@ namespace
 		group.children.push_back(nested);
 
 		SceneryItem raw = MakeItem(ItemKind::Raw, "Road");
-		raw.raw = { R"(<object class="WED_RoadNode" id="900" parent_id="4"><children/><hierarchy name="Road" locked="0" hidden="0"/><point latitude="44.6" longitude="-123.9"/></object>)" };
+		raw.raw = { R"(<object class="WED_TerPlacement" id="900" parent_id="4"><children/><hierarchy name="Road" locked="0" hidden="0"/><point latitude="44.6" longitude="-123.9"/></object>)" };
 
 		project.items.push_back(airportItem);
 		project.items.push_back(group);
@@ -1147,12 +1147,12 @@ TEST_CASE("WED export reports what WorldEditor can't hold", "[project][wed]")
 	CHECK(a.jetways.empty());
 	// Raw WorldEditor data comes back under its item
 	CHECK(read.CountItems(ItemKind::Raw) == 1);
-	CHECK_THAT(xml, ContainsSubstring("class=\"WED_RoadNode\""));
+	CHECK_THAT(xml, ContainsSubstring("class=\"WED_TerPlacement\""));
 }
 
 TEST_CASE("WED split beziers and raw objects survive the round trip", "[project][wed]")
 {
-	// A taxiway whose second node is split (different handles each side) and a road network WED keeps but SEDX doesn't model
+	// A taxiway whose second node is split (different handles each side), a hidden windsock and a small road network
 	const char *wed = R"XML(<?xml version="1.0" encoding="UTF-8"?>
 <doc>
   <objects>
@@ -1196,14 +1196,17 @@ TEST_CASE("WED split beziers and raw objects survive the round trip", "[project]
 	CHECK(nodes[3].lineType == 30);								// "Red Line": X-Plane 12's library line
 	CHECK(nodes[3].lightType == 102);
 	CHECK(nodes[1].latitude == nodes[3].latitude);				// All three at the split node
-	CHECK(project.CountItems(ItemKind::Raw) == 4);				// Hidden windsock + 2 road nodes + road edge
+	CHECK(project.CountItems(ItemKind::Raw) == 1);				// The hidden windsock
+	CHECK(project.CountItems(ItemKind::RoadNode) == 2);
+	CHECK(project.CountItems(ItemKind::Road) == 1);
 	CHECK(project.wedPreferences.size() == 2);
 
 	const std::string xml = WriteWed(project);
 	SceneryProject again;
 	REQUIRE(ParseWed(xml, again, nullptr, &error));
 	CHECK(Canonical(again.airports) == Canonical(project.airports));
-	CHECK(again.CountItems(ItemKind::Raw) == 4);
+	CHECK(again.CountItems(ItemKind::Raw) == 1);
+	CHECK(again.CountItems(ItemKind::Road) == 1);
 	CHECK_THAT(xml, ContainsSubstring("<item value=\"175\"/>"));
 
 	// The road edge still points at the road nodes (ids were renumbered)
@@ -2227,4 +2230,207 @@ TEST_CASE("Project DSF draws through the overlay builder", "[project][dsf][overl
 	const size_t lampCount = std::ranges::count_if(build.objects, [](const XPlane::OverlayObject &object) { return object.source == XPlane::OverlayObject::Source::String; });
 	CHECK(lampCount >= 15);
 	CHECK(lampCount <= 17);
+}
+
+// -------------------------------------------------------
+// Road networks
+
+namespace
+{
+	/* Three road nodes and two roads meeting at the middle one: a straight road with a shape point, then a curve. */
+	SceneryProject MakeRoadProject()
+	{
+		SceneryProject project = MakeNewProject("Roads");
+		SceneryItem group = MakeItem(ItemKind::Group, "Roads");
+		SceneryItem a = MakeItem(ItemKind::RoadNode, "West");
+		a.latitude = 45.5850;
+		a.longitude = -122.6050;
+		SceneryItem b = MakeItem(ItemKind::RoadNode, "Middle");
+		b.latitude = 45.5860;
+		b.longitude = -122.6030;
+		SceneryItem c = MakeItem(ItemKind::RoadNode, "East");
+		c.latitude = 45.5862;
+		c.longitude = -122.6010;
+
+		SceneryItem straight = MakeItem(ItemKind::Road, "Access road", "lib/g10/roads.net");
+		straight.roadSubtype = 100;
+		straight.startNode = a.id;
+		straight.endNode = b.id;
+		straight.rings = { { Node(a.latitude, a.longitude), Node(45.5855, -122.6040), Node(b.latitude, b.longitude) } };
+
+		SceneryItem curve = MakeItem(ItemKind::Road, "Bridge", "lib/g10/roads.net");
+		curve.roadSubtype = 101;
+		curve.startNode = b.id;
+		curve.endNode = c.id;
+		curve.startLayer = 1;
+		curve.endLayer = 1;
+		GeoNode start = Node(b.latitude, b.longitude);
+		start.hiLatitude = 0.0004;			// Out of the middle node, north-east
+		start.hiLongitude = 0.0003;
+		GeoNode end = Node(c.latitude, c.longitude);
+		end.loLatitude = 0.0003;			// Into the east node from the north
+		end.loLongitude = -0.0001;
+		curve.rings = { { start, end } };
+
+		group.children = { a, straight, b, curve, c };
+		project.items.push_back(group);
+		return project;
+	}
+
+	const SceneryItem *FindNamed(const SceneryProject &project, const std::string &name)
+	{
+		const SceneryItem *found = nullptr;
+		project.ForEachItem([&](const SceneryItem &item, int)
+		{
+			if (item.name != name)
+				return true;
+			found = &item;
+			return false;
+		});
+		return found;
+	}
+
+	/* The roads of two projects match: same names, ends at nodes of the same names, same shape and attributes. */
+	void RequireSameRoads(const SceneryProject &a, const SceneryProject &b)
+	{
+		for (const char *name : { "Access road", "Bridge" })
+		{
+			INFO(name);
+			const SceneryItem *x = FindNamed(a, name);
+			const SceneryItem *y = FindNamed(b, name);
+			REQUIRE(x);
+			REQUIRE(y);
+			CHECK(y->kind == ItemKind::Road);
+			CHECK(y->resource == x->resource);
+			CHECK(y->roadSubtype == x->roadSubtype);
+			CHECK(y->startLayer == x->startLayer);
+			CHECK(y->endLayer == x->endLayer);
+			const SceneryItem *xs = a.FindItem(x->startNode), *ys = b.FindItem(y->startNode);
+			const SceneryItem *xe = a.FindItem(x->endNode), *ye = b.FindItem(y->endNode);
+			REQUIRE((xs && ys && xe && ye));
+			CHECK(ys->name == xs->name);
+			CHECK(ye->name == xe->name);
+			REQUIRE(y->rings.size() == 1);
+			REQUIRE(y->rings[0].size() == x->rings[0].size());
+			for (size_t i = 0; i < x->rings[0].size(); ++i)
+			{
+				const GeoNode &p = x->rings[0][i], &q = y->rings[0][i];
+				CHECK(q.latitude == Catch::Approx(p.latitude).margin(1e-9));
+				CHECK(q.longitude == Catch::Approx(p.longitude).margin(1e-9));
+				if (i + 1 < x->rings[0].size())
+				{
+					CHECK(q.hiLatitude == Catch::Approx(p.hiLatitude).margin(1e-9));
+					CHECK(q.hiLongitude == Catch::Approx(p.hiLongitude).margin(1e-9));
+				}
+				if (i > 0)
+				{
+					CHECK(q.loLatitude == Catch::Approx(p.loLatitude).margin(1e-9));
+					CHECK(q.loLongitude == Catch::Approx(p.loLongitude).margin(1e-9));
+				}
+			}
+		}
+	}
+}
+
+TEST_CASE("Roads round trip through .edX, .sex and WorldEditor", "[project][roads]")
+{
+	const SceneryProject project = MakeRoadProject();
+	CHECK(ValidateProject(project).empty());
+
+	SceneryProject edx;
+	REQUIRE(ParseEdx(WriteEdx(project), edx));
+	CHECK(WriteEdx(edx) == WriteEdx(project));
+	CHECK_THAT(WriteEdx(project), ContainsSubstring("\"road-type\": 101"));
+
+	const std::string bytes = WriteSex(project);
+	SceneryProject sex;
+	REQUIRE(ParseSex(bytes.data(), bytes.size(), sex));
+	CHECK(WriteEdx(sex) == WriteEdx(project));
+
+	// WorldEditor: nodes are WED_RoadNode, roads WED_RoadEdge with the nodes as sources and their shape points as children
+	std::vector<std::string> warnings;
+	const std::string xml = WriteWed(project, &warnings);
+	CHECK(warnings.empty());
+	CHECK_THAT(xml, ContainsSubstring("class=\"WED_RoadEdge\""));
+	CHECK_THAT(xml, ContainsSubstring("class=\"WED_RoadNode\""));
+	CHECK_THAT(xml, ContainsSubstring("sub_type=\"101\""));
+	CHECK_THAT(xml, ContainsSubstring("<sources>"));
+	SceneryProject wed;
+	REQUIRE(ParseWed(xml, wed, &warnings));
+	for (const std::string &warning : warnings)
+		UNSCOPED_INFO(warning);
+	CHECK(warnings.empty());
+	RequireSameRoads(project, wed);
+	CHECK(ValidateProject(wed).empty());
+	CHECK(WriteWed(wed) == xml);
+}
+
+TEST_CASE("Roads keep their ends on their nodes", "[project][roads]")
+{
+	SceneryProject project = MakeRoadProject();
+	SceneryItem *middle = project.FindItem(FindNamed(project, "Middle")->id);
+	REQUIRE(middle);
+	CHECK(FindRoadsAt(project, middle->id).size() == 2);
+
+	// A node moved: both roads that meet there follow it, keeping their handles
+	middle->latitude += 0.0001;
+	const std::vector<std::string> problems = ValidateProject(project);
+	CHECK(problems.size() == 2);
+	const std::vector<std::string> moved = SnapRoadEnds(project);
+	CHECK(moved.size() == 2);
+	CHECK(ValidateProject(project).empty());
+	const SceneryItem *bridge = FindNamed(project, "Bridge");
+	CHECK(bridge->rings[0].front().latitude == middle->latitude);
+	CHECK(bridge->rings[0].front().hiLatitude == 0.0004);
+	CHECK(SnapRoadEnds(project).empty());
+
+	// A road naming a node that isn't there is reported
+	SceneryItem *access = project.FindItem(FindNamed(project, "Access road")->id);
+	access->endNode = "missing";
+	bool reported = false;
+	for (const std::string &problem : ValidateProject(project))
+		reported |= problem.find("missing road node") != std::string::npos;
+	CHECK(reported);
+}
+
+TEST_CASE("Project roads become DSF network segments", "[project][roads][dsf]")
+{
+	const SceneryProject project = MakeRoadProject();
+	const DsfConversion conversion = BuildProjectDsf(project);
+	CHECK(conversion.warnings.empty());
+	REQUIRE(conversion.dsf.networkDefinitions == std::vector<std::string>{ "lib/g10/roads.net" });
+	REQUIRE(conversion.dsf.roads.size() == 2);
+	REQUIRE(conversion.roadItems.size() == 2);
+
+	const XPlane::DsfRoadSegment &straight = conversion.dsf.roads[0];
+	const XPlane::DsfRoadSegment &curve = conversion.dsf.roads[1];
+	CHECK(straight.subtype == 100);
+	CHECK(curve.subtype == 101);
+	CHECK(curve.startLevel == 1);
+	// The roads meet at one junction id
+	CHECK(straight.endJunction == curve.startJunction);
+	CHECK(straight.startJunction != curve.endJunction);
+	CHECK(straight.startJunction >= 1);
+	// Straight: three vertices; curved: vertex, two control points, vertex (the handles as absolute points)
+	REQUIRE(straight.points.size() == 3);
+	CHECK(std::ranges::none_of(straight.points, [](const XPlane::DsfRoadPoint &point) { return point.control; }));
+	REQUIRE(curve.points.size() == 4);
+	CHECK((!curve.points[0].control && curve.points[1].control && curve.points[2].control && !curve.points[3].control));
+	CHECK(curve.points[1].latitude == Catch::Approx(45.5860 + 0.0004));
+	CHECK(curve.points[2].longitude == Catch::Approx(-122.6010 - 0.0001));
+
+	// The tile it writes reads back with the same segments
+	std::vector<uint8_t> bytes;
+	std::string error;
+	REQUIRE(XPlane::WriteDsf(conversion.dsf, bytes, &error));
+	XPlane::DsfFile read;
+	REQUIRE(XPlane::ReadDsf(bytes.data(), bytes.size(), read, &error));
+	REQUIRE(read.roads.size() == 2);
+	CHECK(read.roads[0].endJunction == read.roads[1].startJunction);
+	CHECK(read.roads[1].points.size() == 4);
+
+	// The fingerprint follows road edits
+	SceneryProject moved = project;
+	moved.FindItem(FindNamed(moved, "Bridge")->id)->rings[0][1].loLatitude = 0.0002;
+	CHECK(GetDsfFingerprint(BuildProjectDsf(moved).dsf) != GetDsfFingerprint(conversion.dsf));
 }

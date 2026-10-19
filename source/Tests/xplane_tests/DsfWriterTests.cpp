@@ -402,3 +402,91 @@ TEST_CASE("SplitDsfByTile gives each 1x1 degree tile its own DSF", "[dsf][tiles]
 	CHECK(edgeTiles[0].west == -123.0);
 	CHECK(edgeTiles[0].south == 45.0);
 }
+
+// -------------------------------------------------------
+// Road networks
+
+namespace
+{
+	DsfRoadSegment Road(const uint32_t from, const uint32_t to, std::vector<DsfRoadPoint> points, const uint32_t subtype = 100)
+	{
+		DsfRoadSegment road;
+		road.definition = 0;
+		road.subtype = subtype;
+		road.startJunction = from;
+		road.endJunction = to;
+		road.points = std::move(points);
+		return road;
+	}
+}
+
+TEST_CASE("WriteDsf writes road networks that read back as segments", "[dsf][write][roads]")
+{
+	DsfFile written = MakeOverlay();
+	written.networkDefinitions = { "lib/g10/roads.net" };
+	// A straight segment into a junction shared by a curved one (cubic: two control points), then a raised one
+	written.roads.push_back(Road(1, 2, { { -122.6050, 45.5850 }, { -122.6040, 45.5855 }, { -122.6030, 45.5860 } }));
+	written.roads.push_back(Road(2, 3, { { -122.6030, 45.5860 }, { -122.6025, 45.5868, true }, { -122.6015, 45.5870, true }, { -122.6010, 45.5862 } }, 101));
+	DsfRoadSegment bridge = Road(3, 4, { { -122.6010, 45.5862 }, { -122.6000, 45.5850 } }, 101);
+	bridge.startLevel = 1;
+	bridge.endLevel = 2;
+	bridge.filter = 0;
+	written.roads.push_back(bridge);
+
+	std::vector<uint8_t> bytes;
+	std::string error;
+	REQUIRE(WriteDsf(written, bytes, &error));
+	DsfFile read;
+	REQUIRE(ReadDsf(bytes.data(), bytes.size(), read, &error));
+	CHECK(read.networkDefinitions == written.networkDefinitions);
+	CHECK(read.objects.size() == written.objects.size());
+	CHECK(read.polygons.size() == written.polygons.size());
+
+	// 32-bit pools: positions far below a millimeter; ids, levels and control flags exact
+	const double coordinate = 0.001 / METERS_PER_DEGREE;
+	REQUIRE(read.roads.size() == written.roads.size());
+	for (size_t r = 0; r < read.roads.size(); ++r)
+	{
+		INFO("road " << r);
+		const DsfRoadSegment &a = read.roads[r];
+		const DsfRoadSegment &b = written.roads[r];
+		CHECK(a.definition == b.definition);
+		CHECK(a.subtype == b.subtype);
+		CHECK(a.startJunction == b.startJunction);
+		CHECK(a.endJunction == b.endJunction);
+		CHECK(a.startLevel == b.startLevel);
+		CHECK(a.endLevel == b.endLevel);
+		CHECK(a.filter == b.filter);
+		REQUIRE(a.points.size() == b.points.size());
+		for (size_t p = 0; p < a.points.size(); ++p)
+		{
+			CHECK(a.points[p].longitude == Approx(b.points[p].longitude).margin(coordinate));
+			CHECK(a.points[p].latitude == Approx(b.points[p].latitude).margin(coordinate));
+			CHECK(a.points[p].control == b.points[p].control);
+		}
+	}
+
+	// Segments that can't be written are refused with a reason
+	DsfFile bad = written;
+	bad.roads[0].endJunction = 0;
+	CHECK_FALSE(WriteDsf(bad, bytes, &error));
+	CHECK(error.find("junction") != std::string::npos);
+	bad = written;
+	bad.roads[1].points.back().control = true;
+	CHECK_FALSE(WriteDsf(bad, bytes, &error));
+	bad = written;
+	bad.roads[0].subtype = 300;
+	CHECK_FALSE(WriteDsf(bad, bytes, &error));
+
+	// A tile split keeps the roads with their network definition
+	written.roads.push_back(Road(5, 6, { { -121.9000, 45.5000 }, { -121.8900, 45.5000 } }));
+	const std::vector<DsfFile> tiles = SplitDsfByTile(written);
+	size_t roads = 0;
+	for (const DsfFile &tile : tiles)
+	{
+		roads += tile.roads.size();
+		if (!tile.roads.empty())
+			CHECK(tile.networkDefinitions == std::vector<std::string>{ "lib/g10/roads.net" });
+	}
+	CHECK(roads == written.roads.size());
+}

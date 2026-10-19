@@ -34,6 +34,7 @@
 #include <chrono>
 #include <cmath>
 #include <ctime>
+#include <map>
 #include <random>
 #include <set>
 #include <unordered_set>
@@ -82,6 +83,7 @@ namespace SceneryEditorX::ProjectFile
 				case ItemKind::String:
 				case ItemKind::Autogen:
 				case ItemKind::ExclusionZone:
+				case ItemKind::Road:
 					return 2;
 				case ItemKind::Forest:
 					return 1;
@@ -189,6 +191,8 @@ namespace SceneryEditorX::ProjectFile
 			case ItemKind::ExclusionZone:		return "exclusion-zone";
 			case ItemKind::ExclusionPolygon:	return "exclusion-polygon";
 			case ItemKind::Raw:					return "wed-raw";
+			case ItemKind::RoadNode:			return "road-node";
+			case ItemKind::Road:				return "road";
 		}
 		return "object";
 	}
@@ -205,6 +209,7 @@ namespace SceneryEditorX::ProjectFile
 			case ItemKind::Forest:
 			case ItemKind::Facade:
 			case ItemKind::Autogen:
+			case ItemKind::Road:
 				return true;
 			default:
 				return false;
@@ -544,6 +549,43 @@ namespace SceneryEditorX::ProjectFile
 				problems.push_back(label + " excludes nothing");
 			if (item.kind == ItemKind::Airport && !project.FindAirport(item.airportId))
 				problems.push_back(label + " names the missing airport '" + item.airportId + "'");
+			if (item.kind == ItemKind::RoadNode && (!ValidLatitude(item.latitude) || !ValidLongitude(item.longitude)))
+				problems.push_back(label + " has an invalid position");
+			if (item.kind == ItemKind::Road && (item.roadSubtype < 0 || item.roadSubtype > 255))
+				problems.push_back(label + " has road type " + std::to_string(item.roadSubtype) + " (DSF road types are 0..255)");
+			return true;
+		});
+
+		// Roads run between road nodes, and their ends sit on them
+		std::map<std::string, const SceneryItem *, std::less<>> roadNodes;
+		project.ForEachItem([&roadNodes](const SceneryItem &item, int)
+		{
+			if (item.kind == ItemKind::RoadNode)
+				roadNodes[item.id] = &item;
+			return true;
+		});
+		project.ForEachItem([&](const SceneryItem &item, int)
+		{
+			if (item.kind != ItemKind::Road)
+				return true;
+			const std::string label = "road '" + (item.name.empty() ? item.id : item.name) + "'";
+			for (const bool start : { true, false })
+			{
+				const std::string &id = start ? item.startNode : item.endNode;
+				const auto it = roadNodes.find(id);
+				if (it == roadNodes.end())
+				{
+					problems.push_back(label + (start ? " starts" : " ends") + " at the missing road node '" + id + "'");
+					continue;
+				}
+				if (item.rings.empty() || item.rings[0].empty())
+					continue;
+				const GeoNode &end = start ? item.rings[0].front() : item.rings[0].back();
+				if (std::abs(end.latitude - it->second->latitude) > 1e-7 || std::abs(end.longitude - it->second->longitude) > 1e-7)
+					problems.push_back(label + (start ? "'s start" : "'s end") + " isn't at its road node");
+			}
+			if (!item.startNode.empty() && item.startNode == item.endNode && !item.rings.empty() && item.rings[0].size() < 3)
+				problems.push_back(label + " starts and ends at one node with nothing between");
 			return true;
 		});
 
@@ -631,6 +673,62 @@ namespace SceneryEditorX::ProjectFile
 			return true;
 		});
 		return { resources.begin(), resources.end() };
+	}
+
+	// -------------------------------------------------------
+	// Road networks
+
+	std::vector<std::pair<SceneryItem *, bool>> FindRoadsAt(SceneryProject &project, const std::string_view nodeId)
+	{
+		std::vector<std::pair<SceneryItem *, bool>> roads;
+		if (nodeId.empty())
+			return roads;
+		project.ForEachItem([&](SceneryItem &item, int)
+		{
+			if (item.kind != ItemKind::Road)
+				return true;
+			if (item.startNode == nodeId)
+				roads.emplace_back(&item, true);
+			if (item.endNode == nodeId)
+				roads.emplace_back(&item, false);
+			return true;
+		});
+		return roads;
+	}
+
+	std::vector<std::string> SnapRoadEnds(SceneryProject &project)
+	{
+		std::map<std::string, std::pair<double, double>, std::less<>> nodes;
+		project.ForEachItem([&nodes](const SceneryItem &item, int)
+		{
+			if (item.kind == ItemKind::RoadNode)
+				nodes[item.id] = { item.latitude, item.longitude };
+			return true;
+		});
+
+		std::vector<std::string> moved;
+		project.ForEachItem([&](SceneryItem &item, int)
+		{
+			if (item.kind != ItemKind::Road || item.rings.empty() || item.rings[0].size() < 2)
+				return true;
+			bool changed = false;
+			for (const bool start : { true, false })
+			{
+				const auto it = nodes.find(start ? item.startNode : item.endNode);
+				if (it == nodes.end())
+					continue;
+				GeoNode &end = start ? item.rings[0].front() : item.rings[0].back();
+				if (end.latitude == it->second.first && end.longitude == it->second.second)
+					continue;
+				end.latitude = it->second.first;	// Handles are offsets: they travel with the node
+				end.longitude = it->second.second;
+				changed = true;
+			}
+			if (changed)
+				moved.push_back(item.id);
+			return true;
+		});
+		return moved;
 	}
 }
 

@@ -379,7 +379,7 @@ namespace SceneryEditorX::EditorProjects
 			state.sceneryFingerprint = fingerprint;
 
 			XPlane::OverlayBuild build;
-			if (!conversion.dsf.polygons.empty() || !conversion.dsf.objects.empty())
+			if (!conversion.dsf.polygons.empty() || !conversion.dsf.objects.empty() || !conversion.dsf.roads.empty())
 			{
 				XPlane::OverlayBuilder builder([](const std::string_view path) { return ResolveResource(std::string(path)); }, state.projection);
 				XPlane::OverlayBuilder::Options options;
@@ -408,8 +408,10 @@ namespace SceneryEditorX::EditorProjects
 			};
 			for (const XPlane::OverlayMesh &mesh : build.meshes)
 			{
-				// .agp ground tiles come from object placements, everything else from polygons
-				if (XPlane::OverlayScene::Group *entry = group(mesh.kind == XPlane::OverlayKind::Autogen ? conversion.objectItems : conversion.polygonItems, mesh.placement))
+				// .agp ground tiles come from object placements, roads from road segments, everything else from polygons
+				const std::vector<std::string> &items = mesh.kind == XPlane::OverlayKind::Autogen ? conversion.objectItems :
+					mesh.kind == XPlane::OverlayKind::Road ? conversion.roadItems : conversion.polygonItems;
+				if (XPlane::OverlayScene::Group *entry = group(items, mesh.placement))
 					entry->meshes.push_back(&mesh);
 			}
 			for (const XPlane::OverlayObject &object : build.objects)
@@ -1375,6 +1377,24 @@ namespace SceneryEditorX::EditorProjects
 	const XPlane::GeoProjection &GetProjection()
 	{
 		return GetState().projection;
+	}
+
+	const XPlane::RoadNetworkAsset *GetRoadNetwork(const std::string &resource)
+	{
+		// Parsed once per resource (a failed load is remembered too, so a missing network isn't searched every frame)
+		static std::unordered_map<std::string, std::optional<XPlane::RoadNetworkAsset>> networks;
+		const auto [it, added] = networks.try_emplace(resource);
+		if (added)
+		{
+			XPlane::RoadNetworkAsset asset;
+			std::string error;
+			const fs::path file = ResolveResource(resource);
+			if (!file.empty() && XPlane::LoadRoadNetworkAsset(file, asset, &error))
+				it->second = std::move(asset);
+			else
+				WarnOnce("network:" + resource, file.empty() ? "Road network not found: " + resource : error);
+		}
+		return it->second ? &*it->second : nullptr;
 	}
 
 	void NotifySceneEdited()

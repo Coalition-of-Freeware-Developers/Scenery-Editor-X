@@ -87,12 +87,29 @@ namespace SceneryEditorX::XPlane
 		int32_t filter = -1;			// Airport filter: index among the sim/filter/aptid properties, -1 for none
 	};
 
-	/* @brief A road / rail / power line chain (NETWORK_CHAIN). Recorded for completeness; not drawn yet. */
-	struct DsfNetworkChain
+	/* @brief A point of a road segment: a vertex the road runs through, or a bezier control point of the curve between vertices. */
+	struct DsfRoadPoint
+	{
+		double longitude = 0.0;
+		double latitude = 0.0;
+		bool control = false;			// Between two vertices: none = straight, one = quadratic, two = cubic curve
+	};
+
+	/**
+	 * @brief A road, railway or power line segment between two junctions (network chains, decoded). Segments meet
+	 * where they share a junction id. In the file each point is lon, lat, then the junction's level (or for shape
+	 * points 0 = vertex, 1 = bezier control point), then the junction id (0 for shape points), in 32-bit pools.
+	 */
+	struct DsfRoadSegment
 	{
 		uint32_t definition = 0;		// Index into DsfFile::networkDefinitions
-		uint8_t subtype = 0;
-		std::vector<DsfPoint> points;	// lon, lat, elevation, junction id, [bezier control...]
+		uint32_t subtype = 0;			// Road type of the .net (0..255)
+		uint32_t startJunction = 0;		// 1 and up
+		uint32_t endJunction = 0;
+		int startLevel = 0;				// 0 on the ground, 1 and up raised (bridges, overpasses)
+		int endLevel = 0;
+		std::vector<DsfRoadPoint> points;	// Start junction ... end junction, at least two vertices
+		int32_t filter = -1;			// Airport filter: index among the sim/filter/aptid properties, -1 for none
 	};
 
 	struct DsfFile
@@ -106,7 +123,7 @@ namespace SceneryEditorX::XPlane
 
 		std::vector<DsfObjectPlacement> objects;
 		std::vector<DsfPolygonPlacement> polygons;
-		std::vector<DsfNetworkChain> networks;
+		std::vector<DsfRoadSegment> roads;
 		uint32_t terrainPatchCount = 0;
 		uint32_t terrainTriangleCount = 0;
 
@@ -136,8 +153,8 @@ namespace SceneryEditorX::XPlane
 
 	/**
 	 * @brief Encodes a DSF tile the way X-Plane reads it: the properties as given (sim/west ... sim/north must be among
-	 * them), the object and polygon definitions, 16-bit point pools, the command stream and the MD5 footer. Overlay
-	 * content only: objects and polygons are written; terrain, networks and rasters aren't.
+	 * them), the object, polygon and network definitions, 16-bit point pools (32-bit for road segments), the command
+	 * stream and the MD5 footer. Overlay content only: objects, polygons and roads are written; terrain and rasters aren't.
 	 *
 	 * Points are quantized per pool. Pools are kept to DSF_POOL_SPAN degrees where the content allows, so positions
 	 * land within a few centimeters (a polygon larger than that gets a pool of its own size); planes that hold only

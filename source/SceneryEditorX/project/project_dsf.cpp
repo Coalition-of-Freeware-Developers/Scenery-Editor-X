@@ -46,6 +46,8 @@ namespace SceneryEditorX::ProjectFile
 		using XPlane::DsfObjectPlacement;
 		using XPlane::DsfPoint;
 		using XPlane::DsfPolygonPlacement;
+		using XPlane::DsfRoadPoint;
+		using XPlane::DsfRoadSegment;
 
 		using Winding = std::vector<DsfPoint>;
 
@@ -394,8 +396,66 @@ namespace SceneryEditorX::ProjectFile
 					case ItemKind::Autogen:				ConvertAutogen(item); break;
 					case ItemKind::ExclusionZone:
 					case ItemKind::ExclusionPolygon:	ConvertExclusion(item); break;
+					case ItemKind::Road:				ConvertRoad(item); break;
 					default:							break;
 				}
+			}
+
+			uint32_t Junction(const std::string &node)
+			{
+				const auto [it, added] = m_Junctions.emplace(node, static_cast<uint32_t>(m_Junctions.size() + 1));
+				return it->second;
+			}
+
+			/**
+			 * @brief A road segment from its start node to its end node. Every curved stretch becomes a cubic: the
+			 * handle out of one node and into the next as two control points (a missing one is set a hair along the
+			 * curve, as WorldEditor does: X-Plane wants a direction at both ends).
+			 */
+			void ConvertRoad(const SceneryItem &item)
+			{
+				if (!CheckResource(item, { ".net" }))
+					return;
+				if (item.rings.empty() || item.rings[0].size() < 2)
+				{
+					Warn(item, "needs at least 2 nodes");
+					return;
+				}
+				if (item.roadSubtype < 0 || item.roadSubtype > 255)
+				{
+					Warn(item, "road type " + std::to_string(item.roadSubtype) + " is outside 0..255");
+					return;
+				}
+				const GeoRing &chain = item.rings[0];
+				DsfRoadSegment road;
+				road.definition = Definition(m_Result.dsf.networkDefinitions, m_NetworkIndex, item.resource);
+				road.subtype = static_cast<uint32_t>(item.roadSubtype);
+				road.startJunction = Junction(item.startNode.empty() ? item.id + "/start" : item.startNode);
+				road.endJunction = Junction(item.endNode.empty() ? item.id + "/end" : item.endNode);
+				road.startLevel = item.startLayer;
+				road.endLevel = item.endLayer;
+				for (size_t i = 0; i < chain.size(); ++i)
+				{
+					const GeoNode &node = chain[i];
+					road.points.push_back({ node.longitude, node.latitude, false });
+					Include(node.latitude, node.longitude);
+					if (i + 1 == chain.size())
+						break;
+					const GeoNode &next = chain[i + 1];
+					const bool out = node.HasHi(), in = next.HasLo();
+					if (!out && !in)
+						continue;
+					DsfRoadPoint c1{ node.longitude + node.hiLongitude, node.latitude + node.hiLatitude, true };
+					DsfRoadPoint c2{ next.longitude + next.loLongitude, next.latitude + next.loLatitude, true };
+					if (!out)
+						c1 = { node.longitude + (c2.longitude - node.longitude) * 0.01, node.latitude + (c2.latitude - node.latitude) * 0.01, true };
+					if (!in)
+						c2 = { next.longitude + (c1.longitude - next.longitude) * 0.01, next.latitude + (c1.latitude - next.latitude) * 0.01, true };
+					road.points.push_back(c1);
+					road.points.push_back(c2);
+				}
+				m_Result.dsf.roads.push_back(std::move(road));
+				m_Result.roadItems.push_back(item.id);
 			}
 
 			void ConvertObject(const SceneryItem &item)
@@ -647,6 +707,8 @@ namespace SceneryEditorX::ProjectFile
 			DsfConversion m_Result;
 			std::map<std::string, uint32_t> m_PolygonIndex;
 			std::map<std::string, uint32_t> m_ObjectIndex;
+			std::map<std::string, uint32_t> m_NetworkIndex;
+			std::map<std::string, uint32_t> m_Junctions;		// Road node id -> DSF junction id (1 and up)
 			bool m_HasBounds = false;
 			double m_West = 0.0, m_South = 0.0, m_East = 0.0, m_North = 0.0;
 		};
@@ -717,6 +779,26 @@ namespace SceneryEditorX::ProjectFile
 					for (uint8_t plane = 0; plane < point.planes && plane < point.v.size(); ++plane)
 						hash.Add(point.v[plane]);
 				}
+			}
+		}
+		hash.Add(dsf.networkDefinitions.size());
+		for (const std::string &definition : dsf.networkDefinitions)
+			hash.Add(definition);
+		hash.Add(dsf.roads.size());
+		for (const XPlane::DsfRoadSegment &road : dsf.roads)
+		{
+			hash.Add(road.definition);
+			hash.Add(road.subtype);
+			hash.Add(road.startJunction);
+			hash.Add(road.endJunction);
+			hash.Add(road.startLevel);
+			hash.Add(road.endLevel);
+			hash.Add(road.points.size());
+			for (const XPlane::DsfRoadPoint &point : road.points)
+			{
+				hash.Add(point.longitude);
+				hash.Add(point.latitude);
+				hash.Add(point.control);
 			}
 		}
 		hash.Add(dsf.properties.size());

@@ -107,6 +107,18 @@ namespace SceneryEditorX::EditorSelection
 			return 0;
 		}
 
+		/* @brief Whether a target is still there: its entity resolves, or it's a project item still in the open project
+		 * (some draw nothing of their own, a road junction say). */
+		bool IsAlive(Target &target)
+		{
+			if (ResolveCached(target) != 0)
+				return true;
+			if (target.type != TargetType::ProjectItem)
+				return false;
+			ProjectFile::ProjectDocument *document = EditorProjects::GetDocument();
+			return document && document->FindItem(target.itemId) != nullptr;
+		}
+
 		void Changed(State &state)
 		{
 			++state.revision;
@@ -244,7 +256,7 @@ namespace SceneryEditorX::EditorSelection
 		const size_t before = state.targets.size();
 		const Target *active = state.targets.empty() ? nullptr : &state.targets[std::min(state.active, state.targets.size() - 1)];
 		const Target activeCopy = active ? *active : Target();
-		std::erase_if(state.targets, [](Target &target) { return ResolveCached(target) == 0; });
+		std::erase_if(state.targets, [](Target &target) { return !IsAlive(target); });
 		if (state.targets.size() != before)
 		{
 			const auto it = std::ranges::find_if(state.targets, [&activeCopy](const Target &target) { return target.SameAs(activeCopy); });
@@ -322,7 +334,7 @@ namespace SceneryEditorX::EditorSelection
 			}
 		}
 
-		std::erase_if(state.targets, [](Target &target) { return ResolveCached(target) == 0; });
+		std::erase_if(state.targets, [](Target &target) { return !IsAlive(target); });
 		Changed(state);
 		Publish(state, context);
 	}

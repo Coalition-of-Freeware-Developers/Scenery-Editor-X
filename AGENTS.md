@@ -33,7 +33,9 @@ The dependency-light, cross-platform Catch2 unit suites that only need `source/`
   `library.txt` / `scenery_packs.ini` parsers + library index, the `lights.txt` light catalog, and the
   apt.dat 12.00 parser/writer, airport geometry, airport index, Scenery Gateway JSON records, the DSF
   reader and writer (`DsfWriterTests.cpp`: 16-bit pool quantization, MD5 footer, airport filters, per-tile
-  split), the .pol/.lin/.str/.for/.fac/.agp asset parsers and the overlay geometry builder
+  split, road networks as 32-bit pools of junction-to-junction segments), the .pol/.lin/.str/.for/.fac/.agp
+  and .net (road types, virtual types, draped strips) asset parsers and the overlay geometry builder (roads
+  drawn as their road type's strips)
   (`SceneryEditorX/xplane/xp_obj8.*`, `xp_library.*`, `xp_lights.*`, `xp_apt.*`, `xp_apt_geometry.*`,
   `xp_airport_index.*`, `xp_gateway_types.*`, `xp_dsf.*`, `xp_assets.*`, `xp_overlay.*`, plus `filesystem/vfs.*`,
   which every reader goes through for case-insensitive lookups and atomic writes). Standard library
@@ -43,7 +45,9 @@ The dependency-light, cross-platform Catch2 unit suites that only need `source/`
   (checksums, damage / truncation / CRLF detection, fuzzing, the encode cache), the XML DOM, WorldEditor
   `earth.wed.xml` import/export (`docs/XCoder/earth.wed.xml`), atomic writes, the project cache (snapshots,
   recovery, backups), `ProjectDocument` open/edit/save/close, the project -> DSF conversion the editor draws
-  through the overlay builder, and the viewport node editor's bezier core (`SplineEditTests.cpp`:
+  through the overlay builder, road networks (road node and road items through .edX / .sex / WED_RoadNode +
+  WED_RoadEdge, junctions kept on their nodes, DSF segments with shared junction ids), and the viewport node
+  editor's bezier core (`SplineEditTests.cpp`:
   `project/spline_edit.*` round trips apt.dat chains and project rings bit for bit, de Casteljau inserts, handles,
   deletes, smoothing, transforms, node types (corner / smooth / symmetric / free), bending a segment through a point,
   uniform cubic B-spline control polygons stored as bezier nodes and recovered from them, extending / closing /

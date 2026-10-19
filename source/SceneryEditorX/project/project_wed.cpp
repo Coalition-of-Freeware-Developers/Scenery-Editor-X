@@ -473,7 +473,7 @@ namespace SceneryEditorX::ProjectFile
 			static const std::set<std::string> classes =
 			{
 				"WED_ObjPlacement", "WED_PolygonPlacement", "WED_DrapedOrthophoto", "WED_LinePlacement", "WED_StringPlacement", "WED_ForestPlacement",
-				"WED_FacadePlacement", "WED_AutogenPlacement", "WED_ExclusionZone", "WED_ExclusionPoly"
+				"WED_FacadePlacement", "WED_AutogenPlacement", "WED_ExclusionZone", "WED_ExclusionPoly", "WED_RoadNode", "WED_RoadEdge"
 			};
 			return classes.contains(cls);
 		}
@@ -534,6 +534,7 @@ namespace SceneryEditorX::ProjectFile
 				}
 
 				ConvertChildren(*world, m_Project.items);
+				ResolveRoads();
 
 				if (const XmlElement *prefs = doc.FindChild("prefs"))
 				{
@@ -733,10 +734,75 @@ namespace SceneryEditorX::ProjectFile
 				return fallback;
 			}
 
+			// Roads -------------------------------------------------------
+
+			/* @brief Roads name their end nodes by WorldEditor id: once everything is read, by item id, ends on the nodes. */
+			void ResolveRoads()
+			{
+				std::vector<std::string> unresolved;
+				m_Project.ForEachItem([&](SceneryItem &item, int)
+				{
+					if (item.kind != ItemKind::Road)
+						return true;
+					const auto it = m_PendingRoads.find(item.id);
+					const auto start = it != m_PendingRoads.end() ? m_RoadNodes.find(it->second.first) : m_RoadNodes.end();
+					const auto end = it != m_PendingRoads.end() ? m_RoadNodes.find(it->second.second) : m_RoadNodes.end();
+					if (start == m_RoadNodes.end() || end == m_RoadNodes.end())
+					{
+						unresolved.push_back(item.id);
+						return true;
+					}
+					item.startNode = start->second;
+					item.endNode = end->second;
+					return true;
+				});
+				for (const std::string &id : unresolved)
+				{
+					Warn("A road whose ends aren't road nodes of the document was skipped");
+					size_t index = 0;
+					if (std::vector<SceneryItem> *list = m_Project.FindParentList(id, &index))
+						list->erase(list->begin() + static_cast<std::ptrdiff_t>(index));
+				}
+				SnapRoadEnds(m_Project);
+			}
+
 			void ConvertOverlay(const WedObject &object, SceneryItem &item)
 			{
 				const std::string &cls = object.cls;
-				if (cls == "WED_ObjPlacement")
+				if (cls == "WED_RoadNode")
+				{
+					Begin(object, item, ItemKind::RoadNode);
+					const XmlElement *point = Sub(object, "point");
+					item.latitude = Attr(point, "latitude");
+					item.longitude = Attr(point, "longitude");
+					m_RoadNodes[object.id] = item.id;
+				}
+				else if (cls == "WED_RoadEdge")
+				{
+					Begin(object, item, ItemKind::Road);
+					const XmlElement *road = Sub(object, "road_edge");
+					item.resource = AttrText(road, "resource");
+					item.roadSubtype = AttrInt(road, "sub_type", 1);
+					item.startLayer = AttrInt(road, "layer");
+					item.endLayer = AttrInt(road, "end_layer");
+
+					// Start node, shape points, end node: the edge's own handles lead out of the start and into the end
+					// (offsets, like the shape points'); the ends' positions come from the nodes once they are known
+					const XmlElement *edge = Sub(object, "edge");
+					GeoNode start, end;
+					start.hiLatitude = Attr(edge, "ctrl_latitude_lo");
+					start.hiLongitude = Attr(edge, "ctrl_longitude_lo");
+					end.loLatitude = Attr(edge, "ctrl_latitude_hi");
+					end.loLongitude = Attr(edge, "ctrl_longitude_hi");
+					GeoRing ring = { start };
+					for (const GeoNode &shape : ReadChain(object))
+						ring.push_back(shape);
+					ring.push_back(end);
+					item.rings = { std::move(ring) };
+					if (object.sources.size() == 2)
+						m_PendingRoads[item.id] = { object.sources[0], object.sources[1] };
+				}
+				else if (cls == "WED_ObjPlacement")
 				{
 					Begin(object, item, ItemKind::Object);
 					const XmlElement *point = Sub(object, "point");
@@ -1359,6 +1425,8 @@ namespace SceneryEditorX::ProjectFile
 			const LineNames &m_Lines;
 			std::unordered_map<int, WedObject> m_Objects;
 			std::map<std::string, size_t> m_Repeats;
+			std::unordered_map<int, std::string> m_RoadNodes;					// WED_RoadNode id -> item id
+			std::map<std::string, std::pair<int, int>> m_PendingRoads;			// Road item id -> its source node ids
 		};
 
 		// -------------------------------------------------------
@@ -1380,6 +1448,24 @@ namespace SceneryEditorX::ProjectFile
 				ReserveRawIds(m_Project.items);
 				for (const SceneryItem &item : m_Project.items)
 					ExportItem(item, world);
+				for (const PendingRoad &road : m_PendingRoads)
+				{
+					const auto start = m_RoadNodeIds.find(road.start);
+					const auto end = m_RoadNodeIds.find(road.end);
+					if (start == m_RoadNodeIds.end() || end == m_RoadNodeIds.end())
+					{
+						Warn("A road whose end nodes aren't in the project was written without them");
+						continue;
+					}
+					// WED keeps both directions: the edge's sources, and each node's viewers (the edges using it)
+					Get(road.edge).sources = { start->second, end->second };
+					for (const int node : { start->second, end->second })
+					{
+						std::vector<int> &viewers = Get(node).viewers;
+						if (std::ranges::find(viewers, road.edge) == viewers.end())
+							viewers.push_back(road.edge);
+					}
+				}
 
 				XmlElement &keyList = Element(keys, "keys");
 				if (m_FirstAirport != 0)
@@ -1721,6 +1807,31 @@ namespace SceneryEditorX::ProjectFile
 					case ItemKind::Raw:
 						ExportRaw(item, parent);
 						break;
+					case ItemKind::RoadNode:
+					{
+						const int id = Add("WED_RoadNode", parent, item, "Road Node");
+						Point(id, item.latitude, item.longitude);
+						m_RoadNodeIds[item.id] = id;
+						break;
+					}
+					case ItemKind::Road:
+					{
+						// The ends are the road nodes (sources); their handles are the edge's own, the shape points its children
+						const int id = Add("WED_RoadEdge", parent, item, "Road");
+						const GeoRing &ring = FirstRing(item);
+						const GeoNode start = ring.empty() ? GeoNode{} : ring.front();
+						const GeoNode end = ring.size() < 2 ? GeoNode{} : ring.back();
+						Element(id, "edge")
+							.Set("ctrl_latitude_lo", FormatDouble(start.hiLatitude, 9)).Set("ctrl_longitude_lo", FormatDouble(start.hiLongitude, 9))
+							.Set("ctrl_latitude_hi", FormatDouble(end.loLatitude, 9)).Set("ctrl_longitude_hi", FormatDouble(end.loLongitude, 9));
+						Element(id, "road_edge")
+							.Set("layer", FormatInt(item.startLayer)).Set("end_layer", FormatInt(item.endLayer))
+							.Set("sub_type", FormatInt(item.roadSubtype)).Set("resource", item.resource);
+						for (size_t i = 1; i + 1 < ring.size(); ++i)
+							BezierPoint(Add("WED_SimpleBezierBoundaryNode", id, "Shape Point"), ring[i]);
+						m_PendingRoads.push_back({ id, item.startNode, item.endNode });
+						break;
+					}
 				}
 			}
 
@@ -2237,6 +2348,15 @@ namespace SceneryEditorX::ProjectFile
 			std::unordered_map<int, int> m_RawIds;		// Original WED id of kept raw objects -> new id
 			int m_FirstAirport = 0;
 			std::map<std::string, size_t> m_Repeats;
+			std::map<std::string, int> m_RoadNodeIds;	// Road node item id -> WED_RoadNode id
+
+			struct PendingRoad
+			{
+				int edge = 0;
+				std::string start;
+				std::string end;
+			};
+			std::vector<PendingRoad> m_PendingRoads;	// Edges get their sources once every node has an id
 		};
 	}
 

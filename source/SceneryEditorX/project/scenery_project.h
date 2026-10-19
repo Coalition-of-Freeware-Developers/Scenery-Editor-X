@@ -138,7 +138,9 @@ namespace SceneryEditorX::ProjectFile
 		Autogen,			// .ags / .agb autogen string or block
 		ExclusionZone,		// Rectangle (two corner nodes) excluding default scenery
 		ExclusionPolygon,	// Polygon excluding default scenery
-		Raw					// WorldEditor objects this format doesn't model, kept verbatim for the round trip
+		Raw,				// WorldEditor objects this format doesn't model, kept verbatim for the round trip
+		RoadNode,			// A junction of a road network (WED_RoadNode): where roads start, end and meet
+		Road				// A .net road / railway / power line between two road nodes, along a bezier chain (WED_RoadEdge)
 	};
 
 	const char *GetItemKindName(ItemKind kind);
@@ -236,6 +238,13 @@ namespace SceneryEditorX::ProjectFile
 
 		std::string airportId;				// Airport: ProjectAirport::airport.id
 		std::vector<std::string> raw;		// Raw: the WorldEditor <object> elements of the subtree, verbatim
+
+		// Roads (rings[0] runs from the start node's position to the end node's; RoadNode items use latitude / longitude)
+		int roadSubtype = 1;				// Road type of the .net (its virtual types: "hwy_6/city/wet"...), 0..255
+		std::string startNode;				// Ids of the RoadNode items the road starts and ends at
+		std::string endNode;
+		int startLayer = 0;					// Height level at each end: 0 on the ground, 1 and 2 raised (bridges)
+		int endLayer = 0;
 
 		PropertyList properties;			// "other-properties"
 		std::vector<SceneryItem> children;	// Group and Airport
@@ -338,6 +347,19 @@ namespace SceneryEditorX::ProjectFile
 
 	/* @brief Library virtual paths and pack-relative files the items use, sorted and unique. */
 	std::vector<std::string> CollectResources(const SceneryProject &project);
+
+	// -------------------------------------------------------
+	// Road networks
+
+	/* @brief The roads that start or end at a road node (by id), with whether it is their start. */
+	std::vector<std::pair<SceneryItem *, bool>> FindRoadsAt(SceneryProject &project, std::string_view nodeId);
+
+	/**
+	 * @brief Puts each road's first and last node on the road nodes it names (their positions win), keeping the
+	 * handles' offsets. A road whose ends already sit there is left alone.
+	 * @return Ids of the roads that moved.
+	 */
+	std::vector<std::string> SnapRoadEnds(SceneryProject &project);
 }
 
 // -------------------------------------------------------

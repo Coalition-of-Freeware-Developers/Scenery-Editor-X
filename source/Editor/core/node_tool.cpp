@@ -40,6 +40,8 @@
 #include <cmath>
 #include <cstdio>
 #include <cstring>
+#include <functional>
+#include <map>
 #include <set>
 #include <SceneryEditorX/renderer/ui/source/imguizmo/ImGuizmo.h>
 
@@ -103,6 +105,9 @@ namespace SceneryEditorX::NodeTool
 			bool straight = false;		// No handles (runway ends, exclusion zones)
 			bool pointsOnly = false;	// Nodes without edges (a forest of single trees)
 			bool closable = false;		// Lines and strings: can open and close
+			bool road = false;			// A road: its ends are junctions (road nodes) shared with other roads
+			bool junction = false;		// A road node: one point the roads meeting at it follow
+			bool reversed = false;		// Reversed since the last commit: a road's start and end swap too
 
 			// Per frame
 			std::vector<std::vector<Sample>> samples;
@@ -244,7 +249,8 @@ namespace SceneryEditorX::NodeTool
 				case ItemKind::Line:
 				case ItemKind::String:			return item.closed;
 				case ItemKind::Forest:			return item.fill == ProjectFile::ForestFill::Area;
-				case ItemKind::ExclusionZone:	return false;
+				case ItemKind::ExclusionZone:
+				case ItemKind::Road:			return false;
 				default:						return true;
 			}
 		}
@@ -309,11 +315,28 @@ namespace SceneryEditorX::NodeTool
 			{
 				ProjectFile::ProjectDocument *document = EditorProjects::GetDocument();
 				const ProjectFile::SceneryItem *item = document ? document->FindItem(target.itemId) : nullptr;
+				using ProjectFile::ItemKind;
+				if (item && !item->locked && item->kind == ItemKind::RoadNode)
+				{
+					// A junction: one point; the roads meeting there follow it when it is written
+					session.source = Source::ProjectItem;
+					session.projection = EditorProjects::GetProjection();
+					session.straight = true;
+					session.pointsOnly = true;
+					session.junction = true;
+					Chain chain;
+					chain.closed = false;
+					Node &node = chain.nodes.emplace_back();
+					node.position = session.projection.ToLocal(item->latitude, item->longitude);
+					node.sourcePosition = { node.position, item->latitude, item->longitude, true };
+					session.shape.chains.push_back(std::move(chain));
+					return session;
+				}
 				if (!item || item->locked || !ProjectFile::HasNodes(item->kind) || item->rings.empty())
 					return std::nullopt;
-				using ProjectFile::ItemKind;
 				session.source = Source::ProjectItem;
 				session.projection = EditorProjects::GetProjection();
+				session.road = item->kind == ItemKind::Road;
 				session.shape = FromGeoRings(item->rings, IsClosed(*item), session.projection);
 				session.straight = item->kind == ItemKind::ExclusionZone;
 				session.pointsOnly = item->kind == ItemKind::Forest && item->fill == ProjectFile::ForestFill::Points;
@@ -622,6 +645,73 @@ namespace SceneryEditorX::NodeTool
 			}
 		}
 
+		/**
+		 * @brief Roads share their ends at road nodes: a junction that moved (a road node dragged, or a road's end)
+		 * takes the node and every road meeting there along. The items it changes join the change set (one undo step).
+		 */
+		void FollowJunctions(ProjectFile::ProjectDocument &document, EditChanges::ChangeSet &changes)
+		{
+			using ProjectFile::ItemKind;
+			using ProjectFile::GeoNode;
+			std::map<std::string, std::pair<double, double>> moved;
+			for (const EditChanges::ItemChange &change : changes.items)
+			{
+				const ProjectFile::SceneryItem &before = change.before;
+				const ProjectFile::SceneryItem &after = change.after;
+				if (after.kind == ItemKind::RoadNode)
+				{
+					if (after.latitude != before.latitude || after.longitude != before.longitude)
+						moved[after.id] = { after.latitude, after.longitude };
+					continue;
+				}
+				if (after.kind != ItemKind::Road || after.rings.empty() || before.rings.empty() || after.rings[0].empty() || before.rings[0].empty())
+					continue;
+				for (const bool start : { true, false })
+				{
+					const GeoNode &now = start ? after.rings[0].front() : after.rings[0].back();
+					const GeoNode &was = start ? before.rings[0].front() : before.rings[0].back();
+					const std::string &node = start ? after.startNode : after.endNode;
+					if (!node.empty() && (now.latitude != was.latitude || now.longitude != was.longitude))
+						moved[node] = { now.latitude, now.longitude };
+				}
+			}
+
+			const auto record = [&changes](const ProjectFile::SceneryItem &item, const ProjectFile::SceneryItem &before)
+			{
+				for (EditChanges::ItemChange &change : changes.items)
+				{
+					if (change.after.id == item.id)
+					{
+						change.after = item;
+						return;
+					}
+				}
+				changes.items.push_back({ before, item });
+			};
+			for (const auto &[id, position] : moved)
+			{
+				if (ProjectFile::SceneryItem *node = document.FindItem(id); node && (node->latitude != position.first || node->longitude != position.second))
+				{
+					const ProjectFile::SceneryItem before = *node;
+					node->latitude = position.first;
+					node->longitude = position.second;
+					record(*node, before);
+				}
+				for (const auto &[road, start] : ProjectFile::FindRoadsAt(document.GetProject(), id))
+				{
+					if (road->rings.empty() || road->rings[0].empty())
+						continue;
+					GeoNode &end = start ? road->rings[0].front() : road->rings[0].back();
+					if (end.latitude == position.first && end.longitude == position.second)
+						continue;
+					const ProjectFile::SceneryItem before = *road;
+					end.latitude = position.first;	// Its handle is an offset: it travels along
+					end.longitude = position.second;
+					record(*road, before);
+				}
+			}
+		}
+
 		/* @brief Writes the sessions that changed back into their rows / items as one undo step. */
 		void Commit(State &s, const std::string &label, const std::vector<uint32_t> &sessions)
 		{
@@ -679,7 +769,21 @@ namespace SceneryEditorX::NodeTool
 						if (!item)
 							break;
 						ProjectFile::SceneryItem before = *item;
-						item->rings = ToGeoRings(session.shape, session.projection);
+						if (session.junction)
+						{
+							if (session.shape.chains.empty() || session.shape.chains[0].nodes.empty())
+								break;
+							const Node &node = session.shape.chains[0].nodes[0];
+							if (!node.sourcePosition.valid || node.position.x != node.sourcePosition.local.x || node.position.z != node.sourcePosition.local.z)
+								session.projection.ToGeo(node.position, item->latitude, item->longitude);
+						}
+						else
+							item->rings = ToGeoRings(session.shape, session.projection);
+						if (session.road && session.reversed)
+						{
+							std::swap(item->startNode, item->endNode);
+							std::swap(item->startLayer, item->endLayer);
+						}
 						if (session.closable && !session.shape.chains.empty())
 							item->closed = session.shape.chains[0].closed;
 						changes.items.push_back({ std::move(before), *item });
@@ -688,6 +792,8 @@ namespace SceneryEditorX::NodeTool
 				}
 			}
 
+			if (project)
+				FollowJunctions(*project, changes);
 			if (changes.IsEmpty())
 				return;
 			EditChanges::Publish(changes);
@@ -848,6 +954,20 @@ namespace SceneryEditorX::NodeTool
 			uint32_t other = 0;		// The chain's other end
 		};
 
+		/* @brief Whether a road's start (or end) junction is shared with other roads. */
+		bool JoinsOtherRoads(const Session &session, const bool start)
+		{
+			ProjectFile::ProjectDocument *document = EditorProjects::GetDocument();
+			const ProjectFile::SceneryItem *item = document ? document->FindItem(session.target.itemId) : nullptr;
+			if (!item)
+				return false;
+			const std::string &node = start ? item->startNode : item->endNode;
+			for (const auto &[road, atStart] : ProjectFile::FindRoadsAt(document->GetProject(), node))
+				if (road->id != item->id)
+					return true;
+			return false;
+		}
+
 		std::optional<LineEnd> SelectedEnd(const State &s)
 		{
 			if (s.selected.size() != 1)
@@ -862,6 +982,8 @@ namespace SceneryEditorX::NodeTool
 				return std::nullopt;
 			if (session.source == Source::AirportShape && session.target.kind != AirportElementKind::LinearFeature)
 				return std::nullopt;
+			if (session.road && JoinsOtherRoads(session, key.ref.node == 0))
+				return std::nullopt;	// Extending would pull the other roads' ends along
 			LineEnd end;
 			end.session = key.session;
 			end.chain = key.ref.chain;
@@ -1220,6 +1342,81 @@ namespace SceneryEditorX::NodeTool
 			return &s.sessions[index];
 		}
 
+		/* @brief Changes a project item's fields as one undo step. */
+		void EditItem(const std::string &itemId, const std::string &label, const std::function<void(ProjectFile::SceneryItem &)> &edit)
+		{
+			ProjectFile::ProjectDocument *project = EditorProjects::GetDocument();
+			ProjectFile::SceneryItem *item = project ? project->FindItem(itemId) : nullptr;
+			if (!item)
+				return;
+			EditChanges::ChangeSet changes = EditChanges::Begin();
+			ProjectFile::SceneryItem before = *item;
+			edit(*item);
+			changes.items.push_back({ std::move(before), *item });
+			EditChanges::Publish(changes);
+			EditChanges::Record(label, std::move(changes));
+		}
+
+		/* @brief A road's network, road type (named from its .net) and end levels; a road node's roads. Inside the property grid. */
+		void DrawRoadProperties(const std::string &itemId, const bool junction)
+		{
+			ProjectFile::ProjectDocument *project = EditorProjects::GetDocument();
+			const ProjectFile::SceneryItem *found = project ? project->FindItem(itemId) : nullptr;
+			if (!found)
+				return;
+			const ProjectFile::SceneryItem item = *found;	// A copy: an edit below replaces the document's
+			if (junction)
+			{
+				EditorUI::PropertyLabel("Roads here");
+				ImGui::Text("%zu", ProjectFile::FindRoadsAt(project->GetProject(), item.id).size());
+				EditorUI::ItemTooltip("Roads that start or end at this node: they follow it when it moves");
+				return;
+			}
+
+			EditorUI::PropertyLabel("Network");
+			ImGui::TextUnformatted(item.resource.c_str());
+			const XPlane::RoadNetworkAsset *network = EditorProjects::GetRoadNetwork(item.resource);
+
+			EditorUI::PropertyLabel("Road type");
+			ImGui::SetNextItemWidth(-FLT_MIN);
+			const std::string current = network ? network->GetSubtypeName(item.roadSubtype) + " (" + std::to_string(item.roadSubtype) + ")" : std::to_string(item.roadSubtype);
+			if (network && !network->virtualTypes.empty())
+			{
+				if (ImGui::BeginCombo("##RoadType", current.c_str(), ImGuiComboFlags_HeightLarge))
+				{
+					for (const XPlane::RoadNetworkAsset::VirtualType &type : network->virtualTypes)
+					{
+						if (type.id < 0 || type.id > 255)
+							continue;	// DSF road types are one byte
+						const std::string label = (type.description.empty() ? "Type" : type.description) + " (" + std::to_string(type.id) + ")";
+						if (ImGui::Selectable(label.c_str(), type.id == item.roadSubtype) && type.id != item.roadSubtype)
+							EditItem(item.id, "Change road type", [&type](ProjectFile::SceneryItem &road) { road.roadSubtype = type.id; });
+					}
+					ImGui::EndCombo();
+				}
+			}
+			else
+			{
+				int subtype = item.roadSubtype;
+				if (ImGui::InputInt("##RoadType", &subtype, 1, 10, ImGuiInputTextFlags_EnterReturnsTrue) && subtype >= 0 && subtype <= 255 && subtype != item.roadSubtype)
+					EditItem(item.id, "Change road type", [subtype](ProjectFile::SceneryItem &road) { road.roadSubtype = subtype; });
+			}
+			EditorUI::ItemTooltip(network ? "The network's road types (its virtual types): the DSF subtype X-Plane draws the road with"
+										  : "DSF road subtype 0..255 (the network couldn't be read for names)");
+
+			EditorUI::PropertyLabel("Levels");
+			int levels[2] = { item.startLayer, item.endLayer };
+			ImGui::SetNextItemWidth(-FLT_MIN);
+			if (ImGui::InputInt2("##Levels", levels, ImGuiInputTextFlags_EnterReturnsTrue))
+			{
+				levels[0] = std::clamp(levels[0], 0, 2);
+				levels[1] = std::clamp(levels[1], 0, 2);
+				if (levels[0] != item.startLayer || levels[1] != item.endLayer)
+					EditItem(item.id, "Change road levels", [levels](ProjectFile::SceneryItem &road) { road.startLayer = levels[0]; road.endLayer = levels[1]; });
+			}
+			EditorUI::ItemTooltip("Height level at the start and end: 0 on the ground, 1 and 2 raised (bridges and overpasses)");
+		}
+
 		/* @brief Starts / ends a gesture for a value dragged or typed in the PROPERTIES panel (call after its widget). */
 		void TrackProperty(State &s, const char *label)
 		{
@@ -1450,6 +1647,8 @@ namespace SceneryEditorX::NodeTool
 		const bool splineActive = IsBSplineActive();
 		bool closed = false;
 		const bool closable = CanToggleClosed(&closed);
+		const bool road = session.road;
+		const bool junction = session.junction;
 
 		if (!EditorUI::BeginPropertyGrid("##Nodes"))
 			return;
@@ -1610,6 +1809,9 @@ namespace SceneryEditorX::NodeTool
 			}
 		}
 
+		if (road || junction)
+			DrawRoadProperties(target.itemId, junction);
+
 		if (closable)
 		{
 			EditorUI::PropertyLabel("Closed");
@@ -1746,14 +1948,26 @@ namespace SceneryEditorX::NodeTool
 		StartGesture(s);
 		const std::vector<uint32_t> sessions = SessionsWithSelection(s);
 		size_t removed = 0;
+		bool keptRoadEnds = false;
 		for (const uint32_t i : sessions)
 		{
-			removed += DeleteNodes(s.sessions[i].shape, SelectedIn(s, i));
-			s.sessions[i].resample = true;
+			Session &session = s.sessions[i];
+			if (session.junction)
+				continue;	// A road node goes with the item (Select tool, Del)
+			std::vector<NodeRef> refs = SelectedIn(s, i);
+			if (session.road)
+			{
+				// A road's ends are its junctions: they stay (another road may end there too)
+				const size_t before = refs.size();
+				std::erase_if(refs, [&session](const NodeRef &ref) { return ref.node == 0 || ref.node + 1 == session.shape.chains[ref.chain].nodes.size(); });
+				keptRoadEnds |= refs.size() != before;
+			}
+			removed += DeleteNodes(session.shape, refs);
+			session.resample = true;
 		}
 		if (removed == 0)
 		{
-			SetNotice(s, "Shapes keep at least their minimum nodes (3 for a ring, 2 for a line)");
+			SetNotice(s, keptRoadEnds ? "A road's end nodes are its junctions: move them, or delete the road" : "Shapes keep at least their minimum nodes (3 for a ring, 2 for a line)");
 			return false;
 		}
 		s.selected.clear();
@@ -1846,9 +2060,12 @@ namespace SceneryEditorX::NodeTool
 			for (const uint32_t c : chains)
 				ReverseChain(s.sessions[i].shape.chains[c]);
 			s.sessions[i].resample = true;
+			s.sessions[i].reversed = !s.sessions[i].reversed;
 		}
 		s.selected.clear();
 		Commit(s, "Reverse direction", sessions);
+		for (Session &session : s.sessions)
+			session.reversed = false;
 		return true;
 	}
 

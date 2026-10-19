@@ -287,6 +287,58 @@ namespace SceneryEditorX::XPlane
 	bool ParseAutogenPointAsset(std::string_view text, AutogenPointAsset &out, std::string *error = nullptr);
 	bool LoadAutogenPointAsset(const std::filesystem::path &path, AutogenPointAsset &out, std::string *error = nullptr);
 
+	/**
+	 * @brief .net: the road, railway and power line types of a network ("A 800 ROADS"). Read far enough to draw a
+	 * road the way WorldEditor previews it: the flat strips of its road type, each a band of texture across the road.
+	 * Junction meshes, graded (raised) parts, objects, wires and traffic aren't read.
+	 *
+	 * A DSF names a road by subtype. In X-Plane 10 and later networks the subtype is a virtual type (ROAD_DRAPED,
+	 * labeled by a "#VROAD name" comment) that picks a road type by terrain grade; older networks use road type
+	 * numbers directly.
+	 */
+	struct RoadNetworkAsset
+	{
+		/* @brief A flat band of texture across the road: lateral meters from the center line, right of travel positive. */
+		struct Strip
+		{
+			int texture = 0;				// Index into textures
+			float left = 0.0f;
+			float right = 0.0f;
+			float sLeft = 0.0f;				// Texture s at either edge (0..1)
+			float sRight = 1.0f;
+		};
+
+		struct RoadType
+		{
+			int id = 0;
+			float width = 0.0f;				// Meters
+			float length = 100.0f;			// Meters per texture repeat along the road
+			int texture = 0;
+			float color[3] = { 0.6f, 0.6f, 0.6f };	// Map color (drawn when the type has no strips)
+			std::vector<Strip> strips;
+		};
+
+		struct VirtualType
+		{
+			int id = 0;
+			std::string description;		// "hwy_6/city/wet", empty when the file names none
+			int roadType = 0;				// The first road type its drape choices name (what a preview draws)
+		};
+
+		std::vector<std::string> textures;	// TEXTURE rows in order, relative to the .net
+		std::vector<RoadType> roadTypes;
+		std::vector<VirtualType> virtualTypes;
+
+		/* @brief The road type a DSF subtype draws as: its virtual type's choice, else the road type of that number. Null when neither exists. */
+		[[nodiscard]] const RoadType *FindRoadType(int subtype) const;
+
+		/* @brief A label for a subtype: the virtual type's description, else "Road type N". */
+		[[nodiscard]] std::string GetSubtypeName(int subtype) const;
+	};
+
+	bool ParseRoadNetworkAsset(std::string_view text, RoadNetworkAsset &out, std::string *error = nullptr);
+	bool LoadRoadNetworkAsset(const std::filesystem::path &path, RoadNetworkAsset &out, std::string *error = nullptr);
+
 	/* @brief Draw order of LAYER_GROUP names, low (terrain) to high (cars). Unknown names count as "objects". */
 	int GetLayerGroupOrder(std::string_view group);
 }

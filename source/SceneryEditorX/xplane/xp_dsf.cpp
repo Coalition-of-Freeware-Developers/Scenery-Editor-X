@@ -37,6 +37,7 @@
 #include <fstream>
 #include <limits>
 #include <map>
+#include <optional>
 
 // -------------------------------------------------------
 
@@ -511,6 +512,54 @@ namespace SceneryEditorX::XPlane
 			out.objects.push_back(placement);
 		};
 
+		// A network chain: junctions (id plane non-zero) split it into segments; shape points between them are vertices,
+		// or bezier control points (4 planes: the level plane 1; 7 planes: the point's own control lon / lat)
+		const auto addChain = [&](const Pool &p, const std::vector<uint32_t> &indices)
+		{
+			std::optional<DsfRoadSegment> segment;
+			for (size_t i = 0; i < indices.size(); ++i)
+			{
+				if (indices[i] >= p.count)
+					continue;
+				const DsfPoint point = PointOf(p, indices[i]);
+				const uint32_t junction = point.planes >= 4 ? static_cast<uint32_t>(std::max(0.0, std::round(point.v[3]))) : 0u;
+				const int level = point.planes >= 3 ? static_cast<int>(std::lround(point.v[2])) : 0;
+				const DsfRoadPoint vertex{ point.v[0], point.v[1], false };
+				if (junction != 0)
+				{
+					if (segment)
+					{
+						segment->points.push_back(vertex);
+						segment->endJunction = junction;
+						segment->endLevel = level;
+						out.roads.push_back(std::move(*segment));
+						segment.reset();
+					}
+					if (i + 1 < indices.size())
+					{
+						segment.emplace();
+						segment->definition = currentDefinition;
+						segment->subtype = roadSubtype;
+						segment->startJunction = junction;
+						segment->startLevel = level;
+						segment->filter = currentFilter;
+						segment->points.push_back(vertex);
+					}
+					continue;
+				}
+				if (!segment)
+					continue;	// Shape points before the first junction: not part of a segment
+				if (point.planes >= 7)
+				{
+					segment->points.push_back(vertex);
+					if (point.v[4] != point.v[0] || point.v[5] != point.v[1])
+						segment->points.push_back({ point.v[4], point.v[5], true });
+				}
+				else
+					segment->points.push_back({ point.v[0], point.v[1], point.planes >= 3 && point.v[2] >= 0.5 });
+			}
+		};
+
 		const auto beginPolygon = [&](const uint16_t parameter, const uint8_t planes)
 		{
 			DsfPolygonPlacement polygon;
@@ -592,34 +641,23 @@ namespace SceneryEditorX::XPlane
 				case CMD_NETWORK_CHAIN32:
 				{
 					const uint32_t count = commands.U8();
-					const Pool *p = pool32At(currentPool);
-					DsfNetworkChain chain;
-					chain.definition = currentDefinition;
-					chain.subtype = roadSubtype;
+					std::vector<uint32_t> indices;
+					indices.reserve(count);
 					for (uint32_t i = 0; i < count; ++i)
-					{
-						const uint32_t index = command == CMD_NETWORK_CHAIN ? junctionOffset + commands.U16() : commands.U32();
-						if (p)
-							chain.points.push_back(PointOf(*p, index));
-					}
-					if (p && !chain.points.empty())
-						out.networks.push_back(std::move(chain));
+						indices.push_back(command == CMD_NETWORK_CHAIN ? junctionOffset + commands.U16() : commands.U32());
+					if (const Pool *p = pool32At(currentPool))
+						addChain(*p, indices);
 					break;
 				}
 				case CMD_NETWORK_CHAIN_RANGE:
 				{
 					const uint32_t first = junctionOffset + commands.U16();
 					const uint32_t last = junctionOffset + commands.U16();
+					std::vector<uint32_t> indices;
+					for (uint32_t index = first; index < last; ++index)
+						indices.push_back(index);
 					if (const Pool *p = pool32At(currentPool))
-					{
-						DsfNetworkChain chain;
-						chain.definition = currentDefinition;
-						chain.subtype = roadSubtype;
-						for (uint32_t index = first; index < last; ++index)
-							chain.points.push_back(PointOf(*p, index));
-						if (!chain.points.empty())
-							out.networks.push_back(std::move(chain));
-					}
+						addChain(*p, indices);
 					break;
 				}
 
@@ -878,6 +916,15 @@ namespace SceneryEditorX::XPlane
 		{
 			const double raw = std::round((value - static_cast<double>(scale.offset)) / static_cast<double>(scale.scale) * 65535.0);
 			return static_cast<uint16_t>(std::clamp(raw, 0.0, 65535.0));
+		}
+
+		/* @brief 32-bit pools: scale 0 stores whole numbers as they are (junction ids, levels, control flags). */
+		uint32_t QuantizePlane32(const double value, const PlaneScale &scale)
+		{
+			if (scale.scale == 0.0f)
+				return static_cast<uint32_t>(std::clamp(std::round(value), 0.0, 4294967295.0));
+			const double raw = std::round((value - static_cast<double>(scale.offset)) / static_cast<double>(scale.scale) * 4294967295.0);
+			return static_cast<uint32_t>(std::clamp(raw, 0.0, 4294967295.0));
 		}
 
 		/* @brief A 16-bit point pool being filled: one plane count, one kind of content (objects or polygons). */
@@ -1171,6 +1218,64 @@ namespace SceneryEditorX::XPlane
 			}
 		}
 
+		// Road segments: one 32-bit pool of lon, lat, level (or for shape points the control flag), junction id; each
+		// segment a contiguous range from its start junction to its end junction
+		std::vector<DsfPoint> roadPoints;
+		int32_t currentSubtype = -1;
+		uint32_t junctionOffset = std::numeric_limits<uint32_t>::max();
+		for (size_t r = 0; r < dsf.roads.size(); ++r)
+		{
+			const DsfRoadSegment &road = dsf.roads[r];
+			const std::string what = "Road " + std::to_string(r);
+			if (road.definition >= dsf.networkDefinitions.size())
+				return Fail(error, what + " uses network definition " + std::to_string(road.definition) + ", which the DSF doesn't define");
+			if (road.subtype > 255)
+				return Fail(error, what + " has subtype " + std::to_string(road.subtype) + "; a DSF road subtype is 0 to 255");
+			if (road.points.size() < 2 || road.points.front().control || road.points.back().control)
+				return Fail(error, what + " needs a vertex at each end");
+			if (road.points.size() > 65535)
+				return Fail(error, what + " has " + std::to_string(road.points.size()) + " points; a DSF network chain holds at most 65535");
+			if (road.startJunction == 0 || road.endJunction == 0)
+				return Fail(error, what + " has no junction id at an end (ids start at 1)");
+
+			const uint32_t first = static_cast<uint32_t>(roadPoints.size());
+			for (size_t i = 0; i < road.points.size(); ++i)
+			{
+				const DsfRoadPoint &source = road.points[i];
+				DsfPoint point;
+				point.planes = 4;
+				point.v[0] = source.longitude;
+				point.v[1] = source.latitude;
+				if (i == 0 || i + 1 == road.points.size())
+				{
+					point.v[2] = std::max(0, i == 0 ? road.startLevel : road.endLevel);
+					point.v[3] = i == 0 ? road.startJunction : road.endJunction;
+				}
+				else
+					point.v[2] = source.control ? 1.0 : 0.0;
+				roadPoints.push_back(point);
+			}
+
+			selectPool(0);	// The pool index selects the 32-bit pool for network commands
+			selectDefinition(road.definition);
+			selectFilter(road.filter);
+			if (static_cast<int32_t>(road.subtype) != currentSubtype)
+			{
+				commands.U8(CMD_SET_ROAD_SUBTYPE8);
+				commands.U8(static_cast<uint8_t>(road.subtype));
+				currentSubtype = static_cast<int32_t>(road.subtype);
+			}
+			if (first != junctionOffset)
+			{
+				commands.U8(CMD_JUNCTION_OFFSET_SELECT);
+				commands.U32(first);
+				junctionOffset = first;
+			}
+			commands.U8(CMD_NETWORK_CHAIN_RANGE);
+			commands.U16(0);
+			commands.U16(static_cast<uint16_t>(road.points.size()));
+		}
+
 		const std::vector<PoolBuild> &pools = planner.GetPools();
 		if (pools.size() > 65535)
 			return Fail(error, "The DSF needs more than 65535 point pools");
@@ -1236,6 +1341,43 @@ namespace SceneryEditorX::XPlane
 			}
 			file.EndAtom(scalAtom);
 		}
+		if (!roadPoints.empty())
+		{
+			constexpr uint8_t planes = 4;
+			std::array<PlaneScale, planes> scales{};
+			for (uint8_t plane = 0; plane < planes; ++plane)
+			{
+				double minimum = std::numeric_limits<double>::max(), maximum = std::numeric_limits<double>::lowest();
+				bool whole = true;
+				for (const DsfPoint &point : roadPoints)
+				{
+					minimum = std::min(minimum, point.v[plane]);
+					maximum = std::max(maximum, point.v[plane]);
+					whole = whole && point.v[plane] >= 0.0 && point.v[plane] == std::floor(point.v[plane]);
+				}
+				// Lon / lat scaled to their range; ids, levels and flags stored as whole numbers (scale 0)
+				scales[plane] = plane >= 2 && whole ? PlaneScale{ 0.0f, 0.0f } : ChoosePlaneScale(minimum, maximum, false);
+			}
+
+			const size_t poolAtom = file.BeginAtom(ATOM_PO32);
+			file.U32(static_cast<uint32_t>(roadPoints.size()));
+			file.U8(planes);
+			for (uint8_t plane = 0; plane < planes; ++plane)
+			{
+				file.U8(ENCODE_RAW);
+				for (const DsfPoint &point : roadPoints)
+					file.U32(QuantizePlane32(point.v[plane], scales[plane]));
+			}
+			file.EndAtom(poolAtom);
+
+			const size_t scalAtom = file.BeginAtom(ATOM_SC32);
+			for (const PlaneScale &scale : scales)
+			{
+				file.F32(scale.scale);
+				file.F32(scale.offset);
+			}
+			file.EndAtom(scalAtom);
+		}
 		file.EndAtom(geod);
 
 		const size_t cmds = file.BeginAtom(ATOM_CMDS);
@@ -1256,6 +1398,7 @@ namespace SceneryEditorX::XPlane
 			DsfFile file;
 			std::map<uint32_t, uint32_t> objectDefinitions;
 			std::map<uint32_t, uint32_t> polygonDefinitions;
+			std::map<uint32_t, uint32_t> networkDefinitions;
 		};
 		std::map<TileKey, Tile> tiles;
 		const auto tileOf = [](const double latitude, const double longitude)
@@ -1299,6 +1442,25 @@ namespace SceneryEditorX::XPlane
 			DsfPolygonPlacement copy = polygon;
 			copy.definition = remap(tile.polygonDefinitions, tile.file.polygonDefinitions, dsf.polygonDefinitions, polygon.definition);
 			tile.file.polygons.push_back(std::move(copy));
+		}
+
+		// Road segments go to the tile of their start junction (junction ids stay as they are: unique in each tile too)
+		for (const DsfRoadSegment &road : dsf.roads)
+		{
+			if (road.points.empty())
+				continue;
+			const DsfRoadPoint &anchor = road.points.front();
+			const TileKey key = tileOf(anchor.latitude, anchor.longitude);
+			const bool crosses = std::ranges::any_of(road.points, [&](const DsfRoadPoint &point) { return tileOf(point.latitude, point.longitude) != key; });
+			if (crosses && warnings)
+			{
+				const std::string name = road.definition < dsf.networkDefinitions.size() ? dsf.networkDefinitions[road.definition] : std::string("a road");
+				warnings->push_back(name + " segment crosses a tile edge; it is written to tile " + GetDsfTileName(anchor.latitude, anchor.longitude) + " whole");
+			}
+			Tile &tile = tiles[key];
+			DsfRoadSegment copy = road;
+			copy.definition = remap(tile.networkDefinitions, tile.file.networkDefinitions, dsf.networkDefinitions, road.definition);
+			tile.file.roads.push_back(std::move(copy));
 		}
 
 		// Exclusions go to every tile they touch (a tile may hold nothing but exclusions)

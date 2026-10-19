@@ -1078,6 +1078,7 @@ namespace SceneryEditorX::XPlane
 					case OverlayKind::Line:		kind = AirportElementKind::LineString; break;
 					case OverlayKind::Forest:	kind = AirportElementKind::Forest; break;
 					case OverlayKind::Facade:	kind = AirportElementKind::Facade; break;
+					case OverlayKind::Road:		kind = AirportElementKind::Road; break;
 					default:					break;
 				}
 				const std::string key = std::to_string(static_cast<int>(kind)) + "|" + mesh.resource + "|" + mesh.texture.generic_string() + "|" + (mesh.cutout ? "c" : "") + (mesh.blended ? "b" : "") + (mesh.name.ends_with(" roof") ? "r" : "");
@@ -1138,6 +1139,7 @@ namespace SceneryEditorX::XPlane
 				case AirportElementKind::LineString:		return "Line strings";
 				case AirportElementKind::Forest:			return "Forests";
 				case AirportElementKind::Facade:			return "Facades";
+				case AirportElementKind::Road:				return "Roads";
 				case AirportElementKind::SceneryObject:		return "Objects";
 				case AirportElementKind::AirportLight:		return "Airport lights";
 				default:									return "Other";
@@ -1469,7 +1471,8 @@ namespace SceneryEditorX::XPlane
 				if (drawable && part.textured)
 				{
 					overlayMaterial = GetOverlayMaterial(loaded, part);
-					const bool textureOnly = part.kind == AirportElementKind::DrapedPolygon || part.kind == AirportElementKind::LineString || part.kind == AirportElementKind::Forest;
+					const bool textureOnly = part.kind == AirportElementKind::DrapedPolygon || part.kind == AirportElementKind::LineString || part.kind == AirportElementKind::Forest ||
+						part.kind == AirportElementKind::Road;
 					if (textureOnly && !overlayMaterial->GetTexture(MaterialTextureType::Color))
 						drawable = false;
 				}
@@ -1612,6 +1615,7 @@ namespace SceneryEditorX::XPlane
 				case AirportElementKind::LineString:
 				case AirportElementKind::Forest:
 				case AirportElementKind::Facade:
+				case AirportElementKind::Road:
 				case AirportElementKind::SceneryObject:
 				case AirportElementKind::Count:
 					return false;
@@ -1837,6 +1841,7 @@ namespace SceneryEditorX::XPlane
 			case AirportElementKind::LineString:		return "Line string";
 			case AirportElementKind::Forest:			return "Forest";
 			case AirportElementKind::Facade:			return "Facade";
+			case AirportElementKind::Road:				return "Road";
 			case AirportElementKind::SceneryObject:		return "Object";
 			case AirportElementKind::AirportLight:		return "Airport light";
 			default:									return "Unknown";
@@ -1851,6 +1856,7 @@ namespace SceneryEditorX::XPlane
 			case AirportElementKind::LineString:
 			case AirportElementKind::Forest:
 			case AirportElementKind::Facade:
+			case AirportElementKind::Road:
 			case AirportElementKind::SceneryObject:
 			case AirportElementKind::AirportLight:
 				return true;

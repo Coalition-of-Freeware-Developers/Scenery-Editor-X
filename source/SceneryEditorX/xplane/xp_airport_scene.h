@@ -69,6 +69,7 @@ namespace SceneryEditorX::XPlane
 		LineString,			// .lin
 		Forest,				// .for
 		Facade,				// .fac
+		Road,				// .net road segments
 		SceneryObject,		// Group of the placed OBJ8s (DSF objects, .str strings, facade attachments)
 		AirportLight,		// Group of the apt.dat light strings' library light objects
 		Count

@@ -503,6 +503,8 @@ namespace SceneryEditorX::ProjectFile
 				conversion.dsf.objects[i].filter = filterOf(conversion.objectItems[i]);
 			for (size_t i = 0; i < conversion.dsf.polygons.size() && i < conversion.polygonItems.size(); ++i)
 				conversion.dsf.polygons[i].filter = filterOf(conversion.polygonItems[i]);
+			for (size_t i = 0; i < conversion.dsf.roads.size() && i < conversion.roadItems.size(); ++i)
+				conversion.dsf.roads[i].filter = filterOf(conversion.roadItems[i]);
 
 			// WorldEditor's header: bounds (set per tile), planet, creation agent, overlay, airport filters, then exclusions
 			std::vector<std::pair<std::string, std::string>> properties = {

@@ -85,6 +85,12 @@ namespace SceneryEditorX::ToolsSelfTest
 			BSplineUndoCheck,
 			LineClose,
 			LineCloseUndo,
+			RoadsCreate,
+			RoadsDrawn,
+			RoadsJunction,
+			RoadsJunctionUndo,
+			RoadsEnd,
+			RoadsEndUndo,
 			Delete,
 			DeleteUndo,
 			Box,
@@ -123,6 +129,9 @@ namespace SceneryEditorX::ToolsSelfTest
 			std::string lineId;					// A project line (.lin) or string
 			std::optional<ProjectFile::SceneryItem> lineBefore;
 
+			std::vector<std::string> roadItems;	// Road nodes West, Middle, East, then the roads West-Middle, Middle-East
+			std::vector<ProjectFile::SceneryItem> roadsBefore;
+			bool roadMoved = false;	// The junction drag made an undo step (undone next)
 			bool hadRecovery = false;			// The project had unsaved work from an earlier session when the test started
 			bool showcase = false;				// --tools-selftest-showcase
 			std::optional<Target> showcaseOther;	// The bezier shape shown beside the B-spline pavement
@@ -724,6 +733,203 @@ namespace SceneryEditorX::ToolsSelfTest
 				Check(item && SameItem(*item, *s.lineBefore), "undo puts the line back as it was");
 				EditorTools::SetTool(EditorTools::Tool::Select);
 				s.wait = 4;
+				s.step = Step::RoadsCreate;
+				break;
+			}
+
+			case Step::RoadsCreate:
+			{
+				// Three road nodes and two roads meeting at the middle one (a straight with a shape point, then a curve),
+				// beside the tested pavement, on X-Plane's own road network
+				ProjectFile::ProjectDocument *document = EditorProjects::GetDocument();
+				if (!document)
+				{
+					EDITOR_INFO_TAG(LOG_TAG, "No project: skipping the road tests");
+					s.step = Step::Delete;
+					break;
+				}
+				double latitude = 0.0, longitude = 0.0;
+				XPlane::AirportDocument *airport = EditorAirports::GetDocument();
+				if (airport && s.pavement != ~0u)
+				{
+					const XPlane::AptNodeChain &ring = airport->airport.pavements[s.pavement].rings[0];
+					for (const XPlane::AptNode &node : ring.nodes)
+					{
+						latitude += node.latitude / static_cast<double>(ring.nodes.size());
+						longitude += node.longitude / static_cast<double>(ring.nodes.size());
+					}
+				}
+				else
+					projectProjection.ToGeo({ 0.0, 0.0 }, latitude, longitude);
+				const auto at = [&](const double east, const double north)
+				{
+					return std::pair{ latitude + north / projectProjection.GetMetersPerDegreeLatitude(), longitude + east / projectProjection.GetMetersPerDegreeLongitude() };
+				};
+
+				// A local road type of the network (the first one named "local...", else the first it can draw)
+				const std::string resource = "lib/g10/roads.net";
+				int subtype = 1;
+				const XPlane::RoadNetworkAsset *network = EditorProjects::GetRoadNetwork(resource);
+				if (network)
+				{
+					bool found = false;
+					for (const XPlane::RoadNetworkAsset::VirtualType &type : network->virtualTypes)
+					{
+						if (type.id <= 0 || type.id > 255 || !network->FindRoadType(type.id))
+							continue;
+						if (!found || type.description.find("local") != std::string::npos)
+						{
+							subtype = type.id;
+							found = true;
+							if (type.description.find("local") != std::string::npos)
+								break;
+						}
+					}
+				}
+				Check(network != nullptr, "X-Plane's road network " + resource + " loads (road type " + std::to_string(subtype) + ")");
+
+				std::vector<ProjectFile::SceneryItem> items;
+				const char *names[] = { "SelfTest West", "SelfTest Middle", "SelfTest East" };
+				const std::pair<double, double> places[] = { at(-60.0, -60.0), at(0.0, -60.0), at(50.0, -20.0) };
+				for (int i = 0; i < 3; ++i)
+				{
+					ProjectFile::SceneryItem node;
+					node.kind = ProjectFile::ItemKind::RoadNode;
+					node.id = ProjectFile::MakeItemId();
+					node.name = names[i];
+					node.latitude = places[i].first;
+					node.longitude = places[i].second;
+					items.push_back(node);
+				}
+				const auto geo = [](const std::pair<double, double> &place)
+				{
+					ProjectFile::GeoNode node;
+					node.latitude = place.first;
+					node.longitude = place.second;
+					return node;
+				};
+				ProjectFile::SceneryItem straight;
+				straight.kind = ProjectFile::ItemKind::Road;
+				straight.id = ProjectFile::MakeItemId();
+				straight.name = "SelfTest straight road";
+				straight.resource = resource;
+				straight.roadSubtype = subtype;
+				straight.startNode = items[0].id;
+				straight.endNode = items[1].id;
+				straight.rings = { { geo(places[0]), geo(at(-30.0, -62.0)), geo(places[1]) } };
+				ProjectFile::SceneryItem curve = straight;
+				curve.id = ProjectFile::MakeItemId();
+				curve.name = "SelfTest curved road";
+				curve.startNode = items[1].id;
+				curve.endNode = items[2].id;
+				ProjectFile::GeoNode start = geo(places[1]), end = geo(places[2]);
+				start.hiLongitude = 30.0 / projectProjection.GetMetersPerDegreeLongitude();	// Leaves east, arrives from the south
+				end.loLatitude = -25.0 / projectProjection.GetMetersPerDegreeLatitude();
+				curve.rings = { { start, end } };
+				items.push_back(straight);
+				items.push_back(curve);
+
+				s.roadItems.clear();
+				bool inserted = true;
+				for (const ProjectFile::SceneryItem &item : items)
+				{
+					inserted &= EditorProjects::InsertItem(item, std::string(), document->GetProject().items.size());
+					s.roadItems.push_back(item.id);
+				}
+				bool valid = true;
+				for (const std::string &problem : ProjectFile::ValidateProject(document->GetProject()))
+					valid &= problem.find("SelfTest") == std::string::npos;
+				Check(inserted && valid, "add 3 road nodes and 2 roads to the project (they validate)");
+				s.wait = 150;	// The project scenery rebuilds when what it draws changes
+				s.step = Step::RoadsDrawn;
+				break;
+			}
+
+			case Step::RoadsDrawn:
+			{
+				Check(EditorProjects::GetPlacedEntity(s.roadItems[3]) != 0 && EditorProjects::GetPlacedEntity(s.roadItems[4]) != 0, "both roads are drawn (an entity each)");
+				EditorTools::SetTool(EditorTools::Tool::Nodes);
+				EditorSelection::Select(context, Target::ForItem(s.roadItems[1]));
+				s.wait = 2;
+				s.step = Step::RoadsJunction;
+				break;
+			}
+
+			case Step::RoadsJunction:
+			{
+				// The middle node moved 10 m north: both roads' ends there follow it, keeping their handles
+				s.roadsBefore.clear();
+				for (const std::string &id : s.roadItems)
+					if (const ProjectFile::SceneryItem *item = FindItem(id))
+						s.roadsBefore.push_back(*item);
+				NodeTool::SelectAllNodes();
+				const bool moved = NodeTool::TranslateSelectedNodes(0.0, 10.0);
+				s.roadMoved = moved;
+				const ProjectFile::SceneryItem *middle = FindItem(s.roadItems[1]);
+				const ProjectFile::SceneryItem *straight = FindItem(s.roadItems[3]);
+				const ProjectFile::SceneryItem *curve = FindItem(s.roadItems[4]);
+				const double north = 10.0 / projectProjection.GetMetersPerDegreeLatitude();
+				const bool follows = s.roadsBefore.size() == 5 && middle && straight && curve && std::abs(middle->latitude - s.roadsBefore[1].latitude - north) < 1e-9 &&
+					straight->rings[0].back().latitude == middle->latitude && curve->rings[0].front().latitude == middle->latitude &&
+					curve->rings[0].front().hiLongitude == s.roadsBefore[4].rings[0].front().hiLongitude;
+				Check(moved && follows, "drag a junction 10 m north: both roads meeting there follow, handles kept");
+				s.wait = 4;
+				s.step = Step::RoadsJunctionUndo;
+				break;
+			}
+
+			case Step::RoadsJunctionUndo:
+			{
+				if (s.roadMoved)
+					EditorHistory::Undo();
+				bool back = s.roadsBefore.size() == 5;
+				for (size_t i = 0; i < s.roadItems.size() && i < s.roadsBefore.size(); ++i)
+				{
+					const ProjectFile::SceneryItem *item = FindItem(s.roadItems[i]);
+					back &= item && SameItem(*item, s.roadsBefore[i]);
+				}
+				Check(back, "one undo puts the junction and both roads back");
+				EditorSelection::Select(context, Target::ForItem(s.roadItems[3]));
+				s.wait = 2;
+				s.step = Step::RoadsEnd;
+				break;
+			}
+
+			case Step::RoadsEnd:
+			{
+				// The straight road's end dragged 5 m east: its junction and the curve starting there follow; its ends can't be deleted
+				const ProjectFile::SceneryItem *road = FindItem(s.roadItems[3]);
+				const uint32_t last = road ? static_cast<uint32_t>(road->rings[0].size() - 1) : 0;
+				const bool moved = road && NodeTool::SelectNode(0, 0, last, false) && NodeTool::TranslateSelectedNodes(5.0, 0.0);
+				const ProjectFile::SceneryItem *middle = FindItem(s.roadItems[1]);
+				const ProjectFile::SceneryItem *curve = FindItem(s.roadItems[4]);
+				const double east = 5.0 / projectProjection.GetMetersPerDegreeLongitude();
+				Check(moved && middle && curve && s.roadsBefore.size() == 5 && std::abs(middle->longitude - s.roadsBefore[1].longitude - east) < 1e-9 &&
+					curve->rings[0].front().longitude == middle->longitude, "drag a road's end node: its junction and the other road there follow");
+
+				NodeTool::SelectAllNodes();
+				const size_t before = FindItem(s.roadItems[3])->rings[0].size();
+				NodeTool::DeleteSelectedNodes();
+				const ProjectFile::SceneryItem *after = FindItem(s.roadItems[3]);
+				Check(after && after->rings[0].size() == 2 && before == 3, "deleting every node of a road keeps its two ends (its junctions)");
+				s.wait = 4;
+				s.step = Step::RoadsEndUndo;
+				break;
+			}
+
+			case Step::RoadsEndUndo:
+			{
+				EditorHistory::Undo();	// The delete
+				EditorHistory::Undo();	// The move
+				bool back = s.roadsBefore.size() == 5;
+				for (size_t i = 0; i < s.roadItems.size() && i < s.roadsBefore.size(); ++i)
+				{
+					const ProjectFile::SceneryItem *item = FindItem(s.roadItems[i]);
+					back &= item && SameItem(*item, s.roadsBefore[i]);
+				}
+				Check(back, "undo puts the roads and their junction back bit for bit");
+				EditorTools::SetTool(EditorTools::Tool::Select);
+				s.wait = 4;
 				s.step = Step::Delete;
 				break;
 			}
@@ -834,11 +1040,13 @@ namespace SceneryEditorX::ToolsSelfTest
 				for (uint32_t i = 0; i < apt.pavements.size(); ++i)
 					if (i != s.pavement)
 						consider(AirportElementKind::Pavement, i, apt.pavements[i].rings);
+				if (s.roadItems.size() == 5 && FindItem(s.roadItems[3]))
+					s.showcaseOther = Target::ForItem(s.roadItems[3]);	// The road the road tests made, drawn from roads.net
 
 				const Target pavement = Target::ForElement(AirportElementKind::Pavement, s.pavement);
 				s.showcaseRows.clear();
 				for (const std::optional<Target> &target : { std::optional<Target>(pavement), s.showcaseOther })
-					if (target)
+					if (target && target->type == EditorSelection::TargetType::AirportElement)
 						s.showcaseRows.emplace_back(*target, AirportEdit::Capture(apt, target->kind, target->index));
 				EditorTools::SetTool(EditorTools::Tool::Nodes);
 				EditorSelection::Select(context, pavement);
@@ -910,6 +1118,11 @@ namespace SceneryEditorX::ToolsSelfTest
 
 			case Step::Cleanup:
 			{
+				// The road tests' items go (the project is reopened from its file just after anyway, when it can be)
+				for (auto it = s.roadItems.rbegin(); it != s.roadItems.rend(); ++it)
+					if (FindItem(*it))
+						EditorProjects::RemoveItem(*it, context);
+				s.roadItems.clear();
 				// Every edit above was undone, but the project still counts as edited: open it again from its file so
 				// the run leaves no recovery data behind (unless unsaved work from an earlier session is waiting)
 				s.step = Step::Done;

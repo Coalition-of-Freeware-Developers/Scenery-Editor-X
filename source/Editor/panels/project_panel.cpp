@@ -31,6 +31,7 @@
 #include "project_panel.h"
 #include <portable-file-dialogs.h>
 #include <Editor/core/editor_project.h>
+#include <Editor/core/editor_selection.h>
 #include <Editor/core/project_dialogs.h>
 #include <Editor/core/editor_theme.h>
 #include <Editor/core/editor_ui.h>
@@ -72,6 +73,8 @@ namespace SceneryEditorX
 				case ItemKind::ExclusionZone:
 				case ItemKind::ExclusionPolygon:	return SEDX_ICON_BAN;
 				case ItemKind::Raw:					return SEDX_ICON_CODE;
+				case ItemKind::RoadNode:			return SEDX_ICON_DOT_CIRCLE_O;
+				case ItemKind::Road:				return SEDX_ICON_ROAD;
 			}
 			return SEDX_ICON_CUBE;
 		}
@@ -289,6 +292,8 @@ namespace SceneryEditorX
 				m_Context->selectedEntity = entity;
 			else if (item.kind == ItemKind::Airport)
 				EditorProjects::ShowAirport(item.airportId, m_Context);
+			else if (item.kind == ItemKind::RoadNode)
+				EditorSelection::Select(m_Context, EditorSelection::Target::ForItem(item.id));	// A junction draws nothing: select the item itself (the Nodes tool moves it)
 		}
 		if (ImGui::IsItemHovered() && !item.resource.empty())
 			EditorUI::ItemTooltip(item.resource.c_str());

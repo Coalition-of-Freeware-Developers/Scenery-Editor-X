@@ -244,6 +244,7 @@ namespace SceneryEditorX::XPlane
 			case OverlayKind::Helipad:			return "Helipad";
 			case OverlayKind::PaintedLine:		return "Painted line";
 			case OverlayKind::PavementLine:		return "Pavement edge line";
+			case OverlayKind::Road:				return "Road";
 		}
 		return "Overlay";
 	}
@@ -306,6 +307,51 @@ namespace SceneryEditorX::XPlane
 		}
 		for (const uint32_t index : indices)
 			mesh.indices.push_back(base + index);
+	}
+
+	void AppendOffsetRibbon(OverlayMesh &mesh, const std::vector<Point2> &path, const float y, float left, float right, float sLeft, float sRight, const float scaleT)
+	{
+		const size_t count = path.size();
+		if (count < 2 || left == right)
+			return;
+		if (left > right)
+		{
+			std::swap(left, right);
+			std::swap(sLeft, sRight);
+		}
+		const auto direction = [&](const size_t from, const size_t to) -> Point2
+		{
+			const double dx = path[to].x - path[from].x, dz = path[to].z - path[from].z;
+			const double length = std::hypot(dx, dz);
+			return length > 1e-9 ? Point2{ dx / length, dz / length } : Point2{ 1.0, 0.0 };
+		};
+
+		const double invT = scaleT > 0.001f ? 1.0 / scaleT : 1.0;
+		const uint32_t base = static_cast<uint32_t>(mesh.vertices.size());
+		double distance = 0.0;
+		for (size_t i = 0; i < count; ++i)
+		{
+			if (i > 0)
+				distance += std::hypot(path[i].x - path[i - 1].x, path[i].z - path[i - 1].z);
+			const Point2 in = i > 0 ? direction(i - 1, i) : direction(0, 1);
+			const Point2 out = i + 1 < count ? direction(i, i + 1) : direction(count - 2, count - 1);
+			Point2 miter{ in.x + out.x, in.z + out.z };
+			const double miterLength = std::hypot(miter.x, miter.z);
+			miter = miterLength < 1e-6 ? in : Point2{ miter.x / miterLength, miter.z / miterLength };
+
+			// Right of travel (+X east with -Z north: heading east, right is +Z), stretched at corners (clamped)
+			const Point2 normal{ -miter.z, miter.x };
+			const double scale = 1.0 / std::clamp(std::abs(normal.x * -in.z + normal.z * in.x), 0.35, 1.0);
+			const double v = distance * invT;
+			AddVertex(mesh, path[i].x + normal.x * right * scale, y, path[i].z + normal.z * right * scale, sRight, v);
+			AddVertex(mesh, path[i].x + normal.x * left * scale, y, path[i].z + normal.z * left * scale, sLeft, v);
+		}
+		for (size_t i = 0; i + 1 < count; ++i)
+		{
+			const uint32_t a = base + static_cast<uint32_t>(i * 2);
+			const uint32_t b = a + 2;
+			mesh.indices.insert(mesh.indices.end(), { a, b, a + 1, a + 1, b, b + 1 });
+		}
 	}
 
 	void ResamplePath(const std::vector<Point2> &path, const bool closed, const double spacing, const double startOffset, std::vector<Point2> &outPoints, std::vector<double> &outHeadings)
@@ -412,6 +458,51 @@ namespace SceneryEditorX::XPlane
 	const ForestAsset *OverlayBuilder::GetForest(const std::string_view path, fs::path *file, OverlayBuild &out) { return GetCached(m_Forests, path, file, out, &LoadForestAsset, "Forest"); }
 	const FacadeAsset *OverlayBuilder::GetFacade(const std::string_view path, fs::path *file, OverlayBuild &out) { return GetCached(m_Facades, path, file, out, &LoadFacadeAsset, "Facade"); }
 	const AutogenPointAsset *OverlayBuilder::GetAutogen(const std::string_view path, fs::path *file, OverlayBuild &out) { return GetCached(m_Autogens, path, file, out, &LoadAutogenPointAsset, "Autogen point"); }
+	const RoadNetworkAsset *OverlayBuilder::GetRoadNetwork(const std::string_view path, fs::path *file, OverlayBuild &out) { return GetCached(m_Roads, path, file, out, &LoadRoadNetworkAsset, "Road network"); }
+
+	void OverlayBuilder::FlattenRoad(const DsfRoadSegment &segment, std::vector<Point2> &out, const Options &options) const
+	{
+		out.clear();
+		const double step = std::max(0.25, options.bezierSegment);
+		Point2 from;
+		std::vector<Point2> controls;
+		bool started = false;
+		for (const DsfRoadPoint &point : segment.points)
+		{
+			const Point2 local = m_Projection.ToLocal(point.latitude, point.longitude);
+			if (point.control)
+			{
+				controls.push_back(local);
+				continue;
+			}
+			if (!started)
+			{
+				out.push_back(local);
+				from = local;
+				started = true;
+				controls.clear();
+				continue;
+			}
+
+			// One control point: quadratic; two (or more: the first and last count): cubic
+			if (!controls.empty())
+			{
+				const Point2 c1 = controls.size() == 1 ? Point2{ from.x + (controls[0].x - from.x) * 2.0 / 3.0, from.z + (controls[0].z - from.z) * 2.0 / 3.0 } : controls.front();
+				const Point2 c2 = controls.size() == 1 ? Point2{ local.x + (controls[0].x - local.x) * 2.0 / 3.0, local.z + (controls[0].z - local.z) * 2.0 / 3.0 } : controls.back();
+				const double estimate = std::hypot(c1.x - from.x, c1.z - from.z) + std::hypot(c2.x - c1.x, c2.z - c1.z) + std::hypot(local.x - c2.x, local.z - c2.z);
+				const int steps = std::clamp(static_cast<int>(std::ceil(estimate / step)), 2, 256);
+				for (int i = 1; i < steps; ++i)
+				{
+					const double t = static_cast<double>(i) / steps, u = 1.0 - t;
+					const double b0 = u * u * u, b1 = 3.0 * u * u * t, b2 = 3.0 * u * t * t, b3 = t * t * t;
+					out.push_back({ b0 * from.x + b1 * c1.x + b2 * c2.x + b3 * local.x, b0 * from.z + b1 * c1.z + b2 * c2.z + b3 * local.z });
+				}
+			}
+			out.push_back(local);
+			from = local;
+			controls.clear();
+		}
+	}
 
 	bool OverlayBuilder::InArea(const Options &options, const Point2 &point) const
 	{
@@ -554,7 +645,77 @@ namespace SceneryEditorX::XPlane
 				++out.unsupported;	// .ags / .agb autogen blocks and anything newer
 		}
 
-		out.unsupported += static_cast<uint32_t>(dsf.networks.size());
+		for (uint32_t i = 0; i < dsf.roads.size() && options.drawRoads; ++i)
+		{
+			const DsfRoadSegment &segment = dsf.roads[i];
+			if (segment.definition >= dsf.networkDefinitions.size() || segment.points.size() < 2)
+				continue;
+			std::string resource = dsf.networkDefinitions[segment.definition];
+			std::replace(resource.begin(), resource.end(), '\\', '/');
+			BuildRoad(segment, i, resource, options, out);
+		}
+	}
+
+	void OverlayBuilder::BuildRoad(const DsfRoadSegment &segment, const uint32_t index, const std::string &resource, const Options &options, OverlayBuild &out)
+	{
+		std::vector<Point2> path;
+		FlattenRoad(segment, path, options);
+		if (path.size() < 2)
+			return;
+		if (!PolygonInArea(options, { path }))
+		{
+			++out.culled;
+			return;
+		}
+
+		// The road type the subtype draws as: its flat strips, one mesh per texture; a type without strips (older
+		// networks) as a band of its width in its map color
+		fs::path file;
+		const RoadNetworkAsset *network = GetRoadNetwork(resource, &file, out);
+		const RoadNetworkAsset::RoadType *type = network ? network->FindRoadType(static_cast<int>(segment.subtype)) : nullptr;
+		if (network && !type)
+			Warn(out, resource + " has no road type " + std::to_string(segment.subtype) + ": drawn as a plain band");
+		const float y = Height(options, "roads", 0);
+
+		const auto makeMesh = [&]()
+		{
+			OverlayMesh mesh;
+			mesh.kind = OverlayKind::Road;
+			mesh.resource = resource;
+			mesh.name = network && type ? network->GetSubtypeName(static_cast<int>(segment.subtype)) : BaseName(resource);
+			mesh.placement = index;
+			return mesh;
+		};
+
+		if (type && !type->strips.empty())
+		{
+			std::map<int, OverlayMesh> byTexture;
+			for (const RoadNetworkAsset::Strip &strip : type->strips)
+			{
+				auto [it, added] = byTexture.try_emplace(strip.texture, makeMesh());
+				OverlayMesh &mesh = it->second;
+				if (added && strip.texture >= 0 && static_cast<size_t>(strip.texture) < network->textures.size())
+				{
+					mesh.texture = TexturePath(file, network->textures[static_cast<size_t>(strip.texture)]);
+					mesh.cutout = true;
+					mesh.cutoff = 0.3f;
+				}
+				AppendOffsetRibbon(mesh, path, y, strip.left, strip.right, strip.sLeft, strip.sRight, type->length);
+			}
+			for (auto &[texture, mesh] : byTexture)
+				if (!mesh.indices.empty())
+					out.meshes.push_back(std::move(mesh));
+			return;
+		}
+
+		OverlayMesh mesh = makeMesh();
+		const float half = 0.5f * (type && type->width > 0.0f ? type->width : 8.0f);
+		if (type)
+			for (int c = 0; c < 3; ++c)
+				mesh.color[c] = type->color[c];
+		AppendOffsetRibbon(mesh, path, y, -half, half, 0.0f, 1.0f, 100.0f);
+		if (!mesh.indices.empty())
+			out.meshes.push_back(std::move(mesh));
 	}
 
 	// -------------------------------------------------------

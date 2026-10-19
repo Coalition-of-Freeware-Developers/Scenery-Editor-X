@@ -195,6 +195,18 @@ namespace SceneryEditorX::ProjectFile
 			case ItemKind::Raw:
 				a.Field("xml", v.raw);
 				break;
+			case ItemKind::RoadNode:
+				a.Field("latitude", v.latitude);
+				a.Field("longitude", v.longitude);
+				break;
+			case ItemKind::Road:
+				a.Field("road-type", v.roadSubtype);
+				a.Field("start-node", v.startNode);
+				a.Field("end-node", v.endNode);
+				a.FieldIf("start-layer", v.startLayer, 0);
+				a.FieldIf("end-layer", v.endLayer, 0);
+				a.Chain("nodes", v.rings);
+				break;
 		}
 
 		a.Properties("other-properties", v.properties);

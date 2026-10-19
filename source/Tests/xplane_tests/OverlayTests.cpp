@@ -333,7 +333,7 @@ TEST_CASE("DSF reader decodes a synthetic overlay tile", "[dsf]")
 		CHECK(dsf.polygons[1].windings[0].size() == 4);
 		CHECK(dsf.polygons[2].windings.size() == 2);
 		CHECK(dsf.polygons[2].windings[1].size() == 3);
-		CHECK(dsf.networks.empty());
+		CHECK(dsf.roads.empty());
 	}
 }
 
@@ -1067,4 +1067,164 @@ TEST_CASE("Overlay builder textures apt.dat surfaces through the library", "[ove
 	for (const std::string &warning : out.warnings)
 		unknownWarnings += warning.find("lines/99_") != std::string::npos;
 	CHECK(unknownWarnings == 1);
+}
+
+// -------------------------------------------------------
+// Road networks
+
+namespace
+{
+	/* A small X-Plane 10+ network: two textures, a road type with a draped and a flat graded strip (plus a raised curb and
+	   a far LOD that aren't drawn), a virtual type choosing it, and an old style type without strips. */
+	const char *ROADS_NET = R"(A
+800
+ROADS
+
+TEXTURE 1 textures/cores.png
+TEXTURE 0 textures/plugs.png
+
+#VROAD local/city/dry (12.000000)
+ROAD_DRAPED 2 42 0.080 -1
+ROAD_DRAPE_CHOICE 0.0 0
+ROAD_DRAPE_CHOICE 8.0 5001
+
+ROAD_TYPE 5001 12.0000 64.0000 0 0.75 0.75 0.75
+ROAD_CENTER 6.000000
+SCALE 1024
+SEGMENT_DRAPED 0 0.000000 8000.000000 1.000000 1.000000 256.000000 11.000000 512.000000 asphalt
+SEGMENT_DRAPED 0 8000.000000 20000.000000 1.000000 0.000000 0.000000 12.000000 1024.000000 asphalt
+SEGMENT_GRADED 1 0.000000 8000.000000 1.000000 0.000000 0.000000 0.000000 1.000000 0.000000 128.000000 concrete
+SEGMENT_GRADED 1 0.000000 8000.000000 1.000000 11.000000 0.000000 0.000000 12.000000 0.200000 64.000000
+ROAD_TYPE 7 20.0000 30.0000 0 0.2 0.4 0.6
+)";
+}
+
+TEST_CASE("Road network asset", "[assets][roads]")
+{
+	RoadNetworkAsset net;
+	std::string error;
+	REQUIRE(ParseRoadNetworkAsset(ROADS_NET, net, &error));
+	REQUIRE(net.textures == std::vector<std::string>{ "textures/cores.png", "textures/plugs.png" });
+	REQUIRE(net.virtualTypes.size() == 1);
+	CHECK(net.virtualTypes[0].id == 42);
+	CHECK(net.virtualTypes[0].description == "local/city/dry");
+	CHECK(net.virtualTypes[0].roadType == 5001);
+
+	// Subtype 42 draws as road type 5001: its near draped strip and its flat graded strip (lateral meters from the
+	// center, s in texture widths); the far LOD and the raised curb are left out
+	const RoadNetworkAsset::RoadType *type = net.FindRoadType(42);
+	REQUIRE(type);
+	CHECK(type->id == 5001);
+	CHECK(type->width == Catch::Approx(12.0f));
+	CHECK(type->length == Catch::Approx(64.0f));
+	REQUIRE(type->strips.size() == 2);
+	CHECK(type->strips[0].texture == 0);
+	CHECK(type->strips[0].left == Catch::Approx(-5.0f));
+	CHECK(type->strips[0].right == Catch::Approx(5.0f));
+	CHECK(type->strips[0].sLeft == Catch::Approx(0.25f));
+	CHECK(type->strips[0].sRight == Catch::Approx(0.5f));
+	CHECK(type->strips[1].texture == 1);
+	CHECK(type->strips[1].left == Catch::Approx(-6.0f));
+	CHECK(type->strips[1].right == Catch::Approx(-5.0f));
+	CHECK(net.GetSubtypeName(42) == "local/city/dry");
+
+	// Old style: the subtype is the road type number
+	const RoadNetworkAsset::RoadType *old = net.FindRoadType(7);
+	REQUIRE(old);
+	CHECK(old->strips.empty());
+	CHECK(old->color[2] == Catch::Approx(0.6f));
+	CHECK(net.GetSubtypeName(7) == "Road type 7");
+	CHECK(net.FindRoadType(99) == nullptr);
+
+	CHECK_FALSE(ParseRoadNetworkAsset("A\n800\nROADS\n", net, &error));
+	CHECK_FALSE(ParseRoadNetworkAsset("A\n800\nLINE_PAINT\n", net, &error));
+}
+
+TEST_CASE("Overlay builder draws road segments as their road type's strips", "[overlay][roads]")
+{
+	TempDir temp;
+	temp.Write("roads/roads.net", ROADS_NET);
+	const fs::path package = temp.path;
+	const AssetResolver resolver = [&](const std::string_view path) -> fs::path
+	{
+		const fs::path local = package / fs::path(std::string(path));
+		return fs::exists(local) ? local : fs::path();
+	};
+	const GeoProjection projection(45.6, -122.6);
+	OverlayBuilder builder(resolver, projection);
+
+	// A 100 m road east, then a curve north-east (cubic: two control points), and an old style road
+	const auto point = [&](const double x, const double z, const bool control = false)
+	{
+		DsfRoadPoint p;
+		projection.ToGeo({ x, z }, p.latitude, p.longitude);
+		p.control = control;
+		return p;
+	};
+	DsfFile dsf;
+	dsf.networkDefinitions = { "roads/roads.net" };
+	DsfRoadSegment straight;
+	straight.subtype = 42;
+	straight.startJunction = 1;
+	straight.endJunction = 2;
+	straight.points = { point(0.0, 0.0), point(100.0, 0.0) };
+	DsfRoadSegment curve = straight;
+	curve.startJunction = 2;
+	curve.endJunction = 3;
+	curve.points = { point(100.0, 0.0), point(140.0, 0.0, true), point(160.0, -20.0, true), point(160.0, -60.0) };
+	DsfRoadSegment old = straight;
+	old.subtype = 7;
+	old.points = { point(0.0, 50.0), point(50.0, 50.0) };
+	dsf.roads = { straight, curve, old };
+
+	OverlayBuild out;
+	builder.Build(dsf, OverlayBuilder::Options{}, out);
+	for (const std::string &warning : out.warnings)
+		UNSCOPED_INFO(warning);
+	CHECK(out.unsupported == 0);
+
+	// Two meshes per strip road (one per texture), one plain band for the old style type
+	std::vector<const OverlayMesh *> roads[3];
+	for (const OverlayMesh &mesh : out.meshes)
+	{
+		REQUIRE(mesh.kind == OverlayKind::Road);
+		REQUIRE(mesh.placement < 3);
+		roads[mesh.placement].push_back(&mesh);
+	}
+	REQUIRE(roads[0].size() == 2);
+	REQUIRE(roads[1].size() == 2);
+	REQUIRE(roads[2].size() == 1);
+	CHECK(roads[0][0]->name == "local/city/dry");
+	CHECK(roads[0][0]->texture.filename() == "cores.png");
+	CHECK(roads[0][0]->texture.parent_path().filename() == "textures");
+	CHECK(roads[2][0]->texture.empty());
+	CHECK(roads[2][0]->color[2] == Catch::Approx(0.6f));
+
+	// The straight road's draped strip: 10 m wide around the path, right of travel (south, +Z) at s 0.5, along at 1 / 64 per meter
+	const OverlayMesh &core = *roads[0][0];
+	REQUIRE(core.vertices.size() == 4);
+	CHECK(core.indices.size() == 6);
+	CHECK(core.vertices[0].z == Catch::Approx(5.0f));
+	CHECK(core.vertices[0].u == Catch::Approx(0.5f));
+	CHECK(core.vertices[1].z == Catch::Approx(-5.0f));
+	CHECK(core.vertices[1].u == Catch::Approx(0.25f));
+	CHECK(core.vertices[2].x == Catch::Approx(100.0f).margin(1e-3));
+	CHECK(core.vertices[2].v == Catch::Approx(100.0f / 64.0f).margin(1e-3));
+
+	// The curve is flattened: more than its two vertices, ending heading north at (160, -60)
+	std::vector<Point2> path;
+	builder.FlattenRoad(curve, path, OverlayBuilder::Options{});
+	REQUIRE(path.size() > 4);
+	CHECK(path.front().x == Catch::Approx(100.0).margin(1e-6));
+	CHECK(path.back().x == Catch::Approx(160.0).margin(1e-6));
+	CHECK(path.back().z == Catch::Approx(-60.0).margin(1e-6));
+	const Point2 &beforeEnd = path[path.size() - 2];
+	CHECK(std::abs(beforeEnd.x - 160.0) < 0.05 * std::abs(beforeEnd.z + 60.0));	// Arriving heading north (second order off it)
+
+	// Unknown road types and missing networks are reported, not fatal
+	dsf.roads[0].subtype = 99;
+	dsf.networkDefinitions = { "roads/missing.net" };
+	OverlayBuild missing;
+	builder.Build(dsf, OverlayBuilder::Options{}, missing);
+	CHECK_FALSE(missing.warnings.empty());
 }

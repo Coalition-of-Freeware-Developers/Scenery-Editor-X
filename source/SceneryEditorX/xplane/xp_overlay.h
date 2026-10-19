@@ -64,7 +64,8 @@ namespace SceneryEditorX::XPlane
 		Runway,			// apt.dat runway with a library texture (placement = runway index)
 		Helipad,		// apt.dat helipad with a library texture (placement = helipad index)
 		PaintedLine,	// apt.dat linear feature with a library .lin (placement = feature index)
-		PavementLine	// apt.dat pavement edge line with a library .lin (placement = pavement index)
+		PavementLine,	// apt.dat pavement edge line with a library .lin (placement = pavement index)
+		Road			// .net road segment (placement = index into DsfFile::roads)
 	};
 
 	const char *GetOverlayKindName(OverlayKind kind);
@@ -145,6 +146,7 @@ namespace SceneryEditorX::XPlane
 			bool drawFacades = true;
 			bool drawLines = true;
 			bool drawPolygons = true;
+			bool drawRoads = true;
 			bool placeObjects = true;
 			bool placeStrings = true;
 			uint32_t forestTreeLimit = 40000;	// Trees per forest polygon
@@ -185,6 +187,10 @@ namespace SceneryEditorX::XPlane
 		const ForestAsset *GetForest(std::string_view path, std::filesystem::path *file, OverlayBuild &out);
 		const FacadeAsset *GetFacade(std::string_view path, std::filesystem::path *file, OverlayBuild &out);
 		const AutogenPointAsset *GetAutogen(std::string_view path, std::filesystem::path *file, OverlayBuild &out);
+		const RoadNetworkAsset *GetRoadNetwork(std::string_view path, std::filesystem::path *file, OverlayBuild &out);
+
+		/* @brief A road segment's path in local meters: its curves (one control point: quadratic, two: cubic) flattened. */
+		void FlattenRoad(const DsfRoadSegment &segment, std::vector<Point2> &out, const Options &options) const;
 
 		/* @brief Library .pol WorldEditor pairs with an apt.dat surface code ("lib/airport/ground/pavement/asphalt/strips.pol"), empty when the family has none. */
 		static std::string GetSurfaceLibraryPolygon(int surface);
@@ -226,6 +232,7 @@ namespace SceneryEditorX::XPlane
 		void BuildFacade(const DsfPolygonPlacement &placement, uint32_t index, const std::string &resource, const Options &options, OverlayBuild &out);
 		void BuildString(const DsfPolygonPlacement &placement, uint32_t index, const std::string &resource, const Options &options, OverlayBuild &out);
 		void BuildAutogen(const DsfObjectPlacement &placement, uint32_t index, const std::string &resource, const Options &options, OverlayBuild &out);
+		void BuildRoad(const DsfRoadSegment &segment, uint32_t index, const std::string &resource, const Options &options, OverlayBuild &out);
 
 		AssetResolver m_Resolver;
 		GeoProjection m_Projection;
@@ -235,6 +242,7 @@ namespace SceneryEditorX::XPlane
 		std::map<std::string, Cached<ForestAsset>> m_Forests;
 		std::map<std::string, Cached<FacadeAsset>> m_Facades;
 		std::map<std::string, Cached<AutogenPointAsset>> m_Autogens;
+		std::map<std::string, Cached<RoadNetworkAsset>> m_Roads;
 		std::map<std::string, bool> m_Warned;
 		std::map<std::string, std::filesystem::path> m_Resolved;
 		uint32_t m_Seed = 12345;
@@ -248,6 +256,12 @@ namespace SceneryEditorX::XPlane
 
 	/* @brief Appends a textured ribbon along a path: u spans [s1, s2] across, v runs along the path (meters / scaleT). */
 	void AppendTexturedRibbon(OverlayMesh &mesh, const std::vector<Point2> &path, bool closed, float y, float width, float s1, float s2, float scaleT, bool mirror);
+
+	/**
+	 * @brief Appends a textured band along an open path between two lateral offsets (meters, right of travel positive):
+	 * u runs from sLeft to sRight across, v along the path (meters / scaleT). Corners are mitered.
+	 */
+	void AppendOffsetRibbon(OverlayMesh &mesh, const std::vector<Point2> &path, float y, float left, float right, float sLeft, float sRight, float scaleT);
 
 	/* @brief Resamples a polyline (open or closed) at a spacing: positions and headings (degrees) along it. */
 	void ResamplePath(const std::vector<Point2> &path, bool closed, double spacing, double startOffset, std::vector<Point2> &outPoints, std::vector<double> &outHeadings);

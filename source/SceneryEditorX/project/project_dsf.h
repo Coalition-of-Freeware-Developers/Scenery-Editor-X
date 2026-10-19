@@ -54,6 +54,8 @@ namespace SceneryEditorX::ProjectFile
 	 *  - Autogen      EncodeAutogenParameter / 2; .ags outlines are split into spawning and non-spawning chains
 	 *  - Object       .agp autogen points always, .obj objects on request (the editor places those itself)
 	 *  - Exclusions   sim/exclude_* properties ("west/south/east/north", polygons add ";lon/lat,lon/lat,...")
+	 *  - Road         a network segment (DsfRoadSegment): the road nodes become junction ids 1, 2...; curves become two
+	 *                 control points between vertices (cubic), as WorldEditor exports roads
 	 *
 	 * Curves: a node's bezier handles are offsets from it in degrees (lo back toward the previous node, hi toward the
 	 * next); a DSF point carries the absolute control point leading out of it, the incoming one being its mirror. A node
@@ -73,6 +75,7 @@ namespace SceneryEditorX::ProjectFile
 		XPlane::DsfFile dsf;
 		std::vector<std::string> objectItems;		// Item id of each dsf.objects entry
 		std::vector<std::string> polygonItems;		// Item id of each dsf.polygons entry
+		std::vector<std::string> roadItems;			// Item id of each dsf.roads entry
 		std::vector<std::string> exclusionItems;	// Items that added sim/exclude_* properties
 		std::vector<std::string> warnings;			// Items left out (too few nodes, a resource of the wrong kind)
 		uint32_t hidden = 0;						// Items left out because they (or a container above them) are hidden

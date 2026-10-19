@@ -34,6 +34,7 @@
 #include <SceneryEditorX/project/project_document.h>
 #include <SceneryEditorX/settings/user_settings.h>
 #include <SceneryEditorX/xplane/xp_apt_geometry.h>
+#include <SceneryEditorX/xplane/xp_assets.h>
 
 // -------------------------------------------------------
 
@@ -162,6 +163,9 @@ namespace SceneryEditorX::EditorProjects
 
 	/* @brief The local frame the project is drawn in (+X east, -Z north, meters): where item coordinates land in the scene. */
 	const XPlane::GeoProjection &GetProjection();
+
+	/* @brief A road network (.net) a road item names, parsed once (null when it can't be found or read). */
+	const XPlane::RoadNetworkAsset *GetRoadNetwork(const std::string &resource);
 
 	/* @brief Brings scene edits (objects moved, turned or deleted) into the project now instead of at the next periodic sync. */
 	void NotifySceneEdited();

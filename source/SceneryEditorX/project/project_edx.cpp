@@ -75,7 +75,8 @@ namespace SceneryEditorX::ProjectFile
 				{ ItemKind::Group, "group" }, { ItemKind::Airport, "airport" }, { ItemKind::Object, "object" }, { ItemKind::Polygon, "polygon" },
 				{ ItemKind::Orthophoto, "orthophoto" }, { ItemKind::Line, "line" }, { ItemKind::String, "string" }, { ItemKind::Forest, "forest" },
 				{ ItemKind::Facade, "facade" }, { ItemKind::Autogen, "autogen" }, { ItemKind::ExclusionZone, "exclusion-zone" },
-				{ ItemKind::ExclusionPolygon, "exclusion-polygon" }, { ItemKind::Raw, "wed-raw" }
+				{ ItemKind::ExclusionPolygon, "exclusion-polygon" }, { ItemKind::Raw, "wed-raw" }, { ItemKind::RoadNode, "road-node" },
+				{ ItemKind::Road, "road" }
 			};
 		};
 
