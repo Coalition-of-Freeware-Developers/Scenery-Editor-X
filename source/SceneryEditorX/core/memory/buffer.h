@@ -1,25 +1,42 @@
 ﻿/**
-* -------------------------------------------------------
-* Scenery Editor X
-* -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray
-* Copyright (c) 2025 Coalition of Freeware Developers
-* -------------------------------------------------------
-* buffer.h
-* -------------------------------------------------------
-* Created: 12/7/2025
-* -------------------------------------------------------
-*/
+ * -------------------------------------------------------
+ * Scenery Editor X
+ * -------------------------------------------------------
+ * Copyright (c) 2026 Thomas Ray 
+ * Copyright (c) 2026 Coalition of Freeware Developers
+ * -------------------------------------------------------
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ * -------------------------------------------------------
+ * buffer.h
+ * -------------------------------------------------------
+ * Created: 12/7/2025
+ * -------------------------------------------------------
+ */
 #pragma once
-#include <cstdint>
 #include "memory.h"
-
+#include <cstdint>
 #ifndef SEDX_BYTE_DEFINED
-#define SEDX_BYTE_DEFINED
-using byte = unsigned char;
+	#define SEDX_BYTE_DEFINED
+	typedef unsigned char byte;
 #endif
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX::Memory
 {
@@ -29,7 +46,7 @@ namespace SceneryEditorX::Memory
 		uint64_t size = 0;
 
 		Buffer() = default;
-        explicit Buffer(const void* data, const uint64_t size = 0) : data(const_cast<void *>(data)), size(size) { }
+	    Buffer(const void *data, uint64_t size = 0) : data((void*)data), size(size) {}
 
 		static Buffer Copy(const Buffer& other)
 		{
@@ -39,7 +56,7 @@ namespace SceneryEditorX::Memory
 			return buffer;
 		}
 
-		static Buffer Copy(const void* data, const uint64_t size)
+		static Buffer Copy(const void* data, uint64_t size)
 		{
 			Buffer buffer;
 			buffer.Allocate(size);
@@ -47,70 +64,70 @@ namespace SceneryEditorX::Memory
 			return buffer;
 		}
 
-		void Allocate(const uint64_t fsize)
+		void Allocate(uint64_t fsize)
 		{
-			delete[] static_cast<::byte *>(data);
+			delete[] (byte*)(data);
 			data = nullptr;
 			size = fsize;
 
 			if (fsize == 0)
 				return;
 
-			data = hnew byte[fsize];
+			data = new byte[fsize];
 		}
 
 		void Release()
 		{
-			delete[] static_cast<byte *>(data);
+            delete[] (byte *)(data);
 			data = nullptr;
 			size = 0;
 		}
 
-		void ZeroInitialize() const
+		void ZeroInitialize()
         {
 			if (data)
 				memset(data, 0, size);
 		}
 
 		template<typename T>
-		T& Read(const uint64_t offset = 0)
+		T& Read(uint64_t offset = 0)
 		{
-			return *(T*)(static_cast<byte *>(data) + offset);
+            return *(T *)((byte *)(data) + offset);
 		}
 
 		template<typename T>
-		const T& Read(const uint64_t offset = 0) const
+		const T& Read(uint64_t offset = 0) const
 		{
-			return *(T*)(static_cast<byte *>(data) + offset);
+            return *(T *)((byte *)(data) + offset);
 		}
 
-        [[nodiscard]] byte* ReadBytes(const uint64_t fsize, const uint64_t offset) const
+        [[nodiscard]] byte* ReadBytes(uint64_t fsize, uint64_t offset) const
 		{
 			SEDX_CORE_ASSERT(offset + fsize <= size, "Buffer overflow!");
-			byte* buffer = hnew byte[fsize];
-			memcpy(buffer, static_cast<byte *>(data) + offset, fsize);
+			byte* buffer = new byte[fsize];
+            memcpy(buffer, (byte *)(data) + offset, fsize);
 			return buffer;
 		}
 
-		void Write(const void* fdata, const uint64_t fsize, const uint64_t offset = 0) const
+		void Write(const void* fdata, uint64_t fsize, uint64_t offset = 0)
         {
 			SEDX_CORE_ASSERT(offset + fsize <= size, "Buffer overflow!");
-			memcpy(static_cast<byte *>(data) + offset, fdata, fsize);
+            memcpy((byte *)(data) + offset, fdata, fsize);
 		}
 
-        explicit operator bool() const
+	    operator bool() const
 		{
-			return static_cast<bool>(data);
+			return (bool)data;
 		}
 
-		byte& operator[](const int index)
+		byte& operator[](int index)
 		{
-			return static_cast<byte *>(data)[index];
+            return ((byte *)data)[index];
 		}
 
-		byte operator[](const int index) const
+		byte operator[](int index) const
 		{
-			return static_cast<byte *>(data)[index];
+            return ((byte *)data)[index];
 		}
 
 		template<typename T>
@@ -119,16 +136,19 @@ namespace SceneryEditorX::Memory
 			return (T*)data;
 		}
 
-        [[nodiscard]] uint64_t GetSize() const { return size; }
+        [[nodiscard]] inline uint64_t GetSize() const { return size; }
 	};
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	struct BufferSafe : Buffer
 	{
-		~BufferSafe();
+		~BufferSafe()
+        {
+            Release();
+        }
 
-        static BufferSafe Copy(const void* fdata, const uint64_t fsize)
+        static BufferSafe Copy(const void* fdata, uint64_t fsize)
 		{
 			BufferSafe buffer;
 			buffer.Allocate(fsize);
@@ -137,10 +157,8 @@ namespace SceneryEditorX::Memory
 		}
 	};
 
-    /// -------------------------------------------------------
-
-    inline BufferSafe::~BufferSafe() { Release(); }
+    // -------------------------------------------------------
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

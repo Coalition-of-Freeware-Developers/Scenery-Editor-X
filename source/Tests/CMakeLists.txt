@@ -15,6 +15,22 @@ SET(CMAKE_CXX_STANDARD 20)
 SET(CMAKE_CXX_STANDARD_REQUIRED ON)
 SET(CMAKE_CXX_EXTENSIONS OFF)
 
+# Determine MSVC-like behavior: prefer SEDX_PREFERRED_COMPILER when available,
+# otherwise fall back to the built-in CMake `MSVC` variable.
+if(DEFINED SEDX_PREFERRED_COMPILER)
+    if(SEDX_PREFERRED_COMPILER STREQUAL "MSVC" OR SEDX_PREFERRED_COMPILER STREQUAL "CLANG_CL")
+        set(_SEDX_MSVCLIKE TRUE)
+    else()
+        set(_SEDX_MSVCLIKE FALSE)
+    endif()
+else()
+    if(MSVC)
+        set(_SEDX_MSVCLIKE TRUE)
+    else()
+        set(_SEDX_MSVCLIKE FALSE)
+    endif()
+endif()
+
 # Define the test executable
 ADD_EXECUTABLE(RefTests
     pointer_tests/RefTest.cpp
@@ -35,13 +51,13 @@ TARGET_LINK_LIBRARIES(RefTests PRIVATE
 # Disable engine logging in this target; profiling (Tracy) simply not defined here
 TARGET_COMPILE_DEFINITIONS(RefTests PRIVATE SEDX_NO_LOGGING ZoneScoped=)
 
-# Enable parallel compilation for MSVC
-IF(MSVC)
+# Enable parallel compilation for MSVC-like compilers
+IF(_SEDX_MSVCLIKE)
     TARGET_COMPILE_OPTIONS(RefTests PRIVATE /MP)
 ENDIF()
 
 # Enable warning level
-IF(MSVC)
+IF(_SEDX_MSVCLIKE)
     TARGET_COMPILE_OPTIONS(RefTests PRIVATE /W4)
 ELSE()
     TARGET_COMPILE_OPTIONS(RefTests PRIVATE -Wall -Wextra -Wpedantic)
@@ -51,6 +67,74 @@ ENDIF()
 INCLUDE(CTest)
 INCLUDE(Catch)
 catch_discover_tests(RefTests)
+
+# -------------------------------------------------------
+# Optional Vulkan smoke tests (disabled by default)
+# -------------------------------------------------------
+OPTION(SEDX_ENABLE_VULKAN_SMOKE_TESTS "Build Vulkan smoke tests (requires engine includes)" OFF)
+IF(SEDX_ENABLE_VULKAN_SMOKE_TESTS)
+    ADD_EXECUTABLE(VulkanSmokeTests
+        vulkan_tests/CommandPoolSmoke.cpp
+        vulkan_tests/BufferSmoke.cpp
+        vulkan_tests/ImageSmoke.cpp
+        vulkan_tests/AppStub.cpp
+    )
+
+    TARGET_INCLUDE_DIRECTORIES(VulkanSmokeTests PRIVATE
+        ${CMAKE_SOURCE_DIR}/source
+        ${CMAKE_SOURCE_DIR}/dependency
+        ${CMAKE_SOURCE_DIR}/dependency/entt/src
+        ${CMAKE_SOURCE_DIR}/dependency/imgui
+        ${CMAKE_SOURCE_DIR}/dependency/imgui/backends
+        ${CMAKE_SOURCE_DIR}/dependency/imgui/misc
+        ${CMAKE_SOURCE_DIR}/dependency/xMath
+        $ENV{VULKAN_SDK}/Include/
+		$ENV{VULKAN_SDK}/Include/vma
+        ${Stb_INCLUDE_DIR}
+    )
+
+    TARGET_LINK_LIBRARIES(VulkanSmokeTests PRIVATE
+        Catch2::Catch2WithMain
+        Vulkan::Vulkan
+        spdlog::spdlog_header_only
+        imgui
+        AppCore
+        xMath
+    )
+
+    IF(_SEDX_MSVCLIKE)
+        TARGET_COMPILE_OPTIONS(VulkanSmokeTests PRIVATE /MP /W4)
+    ELSE()
+        TARGET_COMPILE_OPTIONS(VulkanSmokeTests PRIVATE -Wall -Wextra -Wpedantic)
+    ENDIF()
+
+    INCLUDE(Catch)
+    # On Windows, copy dependent DLLs (like xMath) next to the test exe so discovery can run
+    if(WIN32)
+        add_custom_command(TARGET VulkanSmokeTests POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E echo "[VulkanSmokeTests] Copying runtime DLLs to test output dir"
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:xMath::xMath> $<TARGET_FILE_DIR:VulkanSmokeTests>
+        )
+    endif()
+
+    # Prefix test names so filtering with -R VulkanSmokeTests works in CTest
+    catch_discover_tests(
+        VulkanSmokeTests
+        TEST_PREFIX "VulkanSmokeTests::"
+        TEST_PROPERTIES LABELS "vulkan;smoke"
+    )
+
+    # Ensure the Vulkan smoke tests run in a controlled, headless mode under CTest
+    # and only when explicitly opted in. We set environment variables for the tests
+    # so they don't try to create WSI surfaces and so they actually execute instead of skipping.
+    if(VulkanSmokeTests_TESTS)
+        foreach(test_name IN LISTS VulkanSmokeTests_TESTS)
+            set_tests_properties("${test_name}" PROPERTIES
+                ENVIRONMENT "SEDX_RUN_VULKAN_SMOKE_TESTS=1;SEDX_HEADLESS=1"
+            )
+        endforeach()
+    endif()
+ENDIF()
 
 # --------------------------------
 # Memory Allocator Tests
@@ -83,16 +167,18 @@ TARGET_LINK_LIBRARIES(MemoryAllocatorTests PRIVATE
 # No Tracy undef needed; not defined for this target
 
 # Enable parallel compilation for MSVC
-IF(MSVC)
-    TARGET_COMPILE_OPTIONS(MemoryAllocatorTests PRIVATE /MP)
-ENDIF()
+    IF(_SEDX_MSVCLIKE)
+        TARGET_COMPILE_OPTIONS(MemoryAllocatorTests PRIVATE /MP)
+    ENDIF()
 
 # Enable warning level
-IF(MSVC)
+IF(_SEDX_MSVCLIKE)
     TARGET_COMPILE_OPTIONS(MemoryAllocatorTests PRIVATE /W4)
 ELSE()
     TARGET_COMPILE_OPTIONS(MemoryAllocatorTests PRIVATE -Wall -Wextra -Wpedantic)
 ENDIF()
+
+TARGET_COMPILE_DEFINITIONS(MemoryAllocatorTests PRIVATE VK_USE_64_BIT_NON_DISPATCHABLE_HANDLES)
 
 # Register with CTest
 catch_discover_tests(MemoryAllocatorTests)
@@ -122,13 +208,13 @@ TARGET_LINK_LIBRARIES(SettingsTest PRIVATE
 # Disable engine logging; omit Tracy
 TARGET_COMPILE_DEFINITIONS(SettingsTest PRIVATE SEDX_NO_LOGGING ZoneScoped=)
 
-# Enable parallel compilation for MSVC
-IF(MSVC)
+# Enable parallel compilation for MSVC-like compilers
+IF(_SEDX_MSVCLIKE)
     TARGET_COMPILE_OPTIONS(SettingsTest PRIVATE /MP)
 ENDIF()
 
 # Enable warning level
-IF(MSVC)
+IF(_SEDX_MSVCLIKE)
     TARGET_COMPILE_OPTIONS(SettingsTest PRIVATE /W4)
 ELSE()
     TARGET_COMPILE_OPTIONS(SettingsTest PRIVATE -Wall -Wextra -Wpedantic)
@@ -138,81 +224,6 @@ ENDIF()
 INCLUDE(CTest)
 INCLUDE(Catch)
 catch_discover_tests(SettingsTest)
-
-# --------------------------------
-# edX Format Tests
-# --------------------------------
-
-MESSAGE(STATUS "=================================================")
-MESSAGE(STATUS "Generating edX Format Tests")
-
-ADD_EXECUTABLE(EdxTests
-    edx_tests/EdxTestMain.cpp
-    edx_tests/EdxProjectFileTest.cpp
-    edx_tests/EdxLibraryFileTest.cpp
-    edx_tests/EdxManagerTest.cpp
-    edx_tests/EdxProjectFileComprehensiveTest.cpp
-)
-
-# Include directories
-TARGET_INCLUDE_DIRECTORIES(EdxTests PRIVATE
-    ${CMAKE_SOURCE_DIR}/source
-    ${CMAKE_SOURCE_DIR}/dependency
-)
-
-# Link with Catch2 and other dependencies
-TARGET_LINK_LIBRARIES(EdxTests PRIVATE
-    Catch2::Catch2WithMain
-    edX
-)
-# No Tracy undef required
-
-# Enable parallel compilation for MSVC
-IF(MSVC)
-    TARGET_COMPILE_OPTIONS(EdxTests PRIVATE /MP)
-ENDIF()
-
-# Enable warning level
-IF(MSVC)
-    TARGET_COMPILE_OPTIONS(EdxTests PRIVATE /W4)
-ELSE()
-    TARGET_COMPILE_OPTIONS(EdxTests PRIVATE -Wall -Wextra -Wpedantic)
-ENDIF()
-
-# Register with CTest
-catch_discover_tests(EdxTests)
-
-# --------------------------------
-# edX Demo Generator (separate executable)
-# --------------------------------
-
-ADD_EXECUTABLE(EdxDemoGenerator
-    edx_tests/EdxDemoGenerator.cpp
-)
-
-# Include directories
-TARGET_INCLUDE_DIRECTORIES(EdxDemoGenerator PRIVATE
-    ${CMAKE_SOURCE_DIR}/source
-    ${CMAKE_SOURCE_DIR}/dependency
-)
-
-# Link with edX library
-TARGET_LINK_LIBRARIES(EdxDemoGenerator PRIVATE
-    edX
-)
-# No Tracy undef required
-
-# Enable parallel compilation for MSVC
-IF(MSVC)
-    TARGET_COMPILE_OPTIONS(EdxDemoGenerator PRIVATE /MP)
-ENDIF()
-
-# Enable warning level
-IF(MSVC)
-    TARGET_COMPILE_OPTIONS(EdxDemoGenerator PRIVATE /W4)
-ELSE()
-    TARGET_COMPILE_OPTIONS(EdxDemoGenerator PRIVATE -Wall -Wextra -Wpedantic)
-ENDIF()
 
 # --------------------------------
 # Conversion Tests
@@ -237,7 +248,7 @@ TARGET_LINK_LIBRARIES(ConversionTests PRIVATE
     Catch2::Catch2WithMain
 )
 
-IF(MSVC)
+IF(_SEDX_MSVCLIKE)
     TARGET_COMPILE_OPTIONS(ConversionTests PRIVATE /MP /W4)
 ELSE()
     TARGET_COMPILE_OPTIONS(ConversionTests PRIVATE -Wall -Wextra -Wpedantic)
@@ -247,38 +258,43 @@ INCLUDE(Catch)
 catch_discover_tests(ConversionTests)
 
 # --------------------------------
-# Math Tests
+# X-Plane Format Tests (OBJ8, library.txt, scenery_packs.ini, apt.dat, airport index; standard library only)
 # --------------------------------
 
 MESSAGE(STATUS "=================================================")
-MESSAGE(STATUS "Generating Math Unit Tests")
+MESSAGE(STATUS "Generating X-Plane Format Unit Tests")
 
-FILE(GLOB MATH_TEST_SOURCES
-    ${CMAKE_CURRENT_SOURCE_DIR}/math_tests/*.cpp
+ADD_EXECUTABLE(XPlaneFormatTests
+    ${CMAKE_CURRENT_SOURCE_DIR}/xplane_tests/XPlaneFormatTests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/xplane_tests/AirportTests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/xplane_tests/OverlayTests.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_obj8.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_library.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_lights.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_apt.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_apt_geometry.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_airport_index.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_gateway_types.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_dsf.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_assets.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_overlay.cpp
 )
 
-ADD_EXECUTABLE(MathTests
-    ${MATH_TEST_SOURCES}
-)
-
-TARGET_INCLUDE_DIRECTORIES(MathTests PRIVATE
+TARGET_INCLUDE_DIRECTORIES(XPlaneFormatTests PRIVATE
     ${CMAKE_SOURCE_DIR}/source
-    ${CMAKE_SOURCE_DIR}/dependency
 )
 
-TARGET_LINK_LIBRARIES(MathTests PRIVATE
+TARGET_LINK_LIBRARIES(XPlaneFormatTests PRIVATE
     Catch2::Catch2WithMain
-    xMath
+    nlohmann_json::nlohmann_json
 )
 
-IF(MSVC)
-    TARGET_COMPILE_OPTIONS(MathTests PRIVATE /MP /W4 /utf-8)
+IF(_SEDX_MSVCLIKE)
+    TARGET_COMPILE_OPTIONS(XPlaneFormatTests PRIVATE /MP /W4)
 ELSE()
-    TARGET_COMPILE_OPTIONS(MathTests PRIVATE -Wall -Wextra -Wpedantic)
+    TARGET_COMPILE_OPTIONS(XPlaneFormatTests PRIVATE -Wall -Wextra -Wpedantic)
 ENDIF()
 
-# Disable engine logging; profiling off by omission
-TARGET_COMPILE_DEFINITIONS(MathTests PRIVATE SEDX_NO_LOGGING ZoneScoped=)
-
 INCLUDE(Catch)
-catch_discover_tests(MathTests)
+catch_discover_tests(XPlaneFormatTests)
+

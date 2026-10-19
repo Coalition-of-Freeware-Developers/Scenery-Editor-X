@@ -18,7 +18,7 @@ This file provides GitHub Copilot with specific instructions for working with th
 The serialization system integrates with:
 - `reflection/type_descriptors.h` - Reflection system integration via `SERIALIZABLE` macro
 - `utils/types.h` - Type utilities and custom UUID/Identifier types
-- `renderer/vulkan/vk_buffers.h` - Vulkan buffer serialization support
+- `renderer/vulkan/buffers.h` - Vulkan buffer serialization support
 
 ## Code Generation Patterns
 

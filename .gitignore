@@ -13,7 +13,10 @@ docs/doxygen
 docs/other-docs
 docs/dependency manuals
 /.idea
-RenderDoc/
+# RenderDoc captures. Anchored to the root so dependency/renderdoc (the RenderDoc API headers) stays tracked;
+# Windows matches ignore rules case-insensitively.
+/RenderDoc/
+*.rdc
 
 # User-specific files
 *.rsuser
@@ -28,7 +31,9 @@ CMake_Gen.log
 *.userprefs
 
 # Build results
-[Dd]ebug/
+# Anchored so source folders named debug (source/SceneryEditorX/renderer/vulkan/debug) stay tracked;
+# CMake builds land in build/ and bin/, which are ignored above.
+/[Dd]ebug/
 [Dd]ebugPublic/
 [Rr]elease/
 [Rr]eleases/
@@ -197,3 +202,11 @@ _pkginfo.txt
 .vscode/settings.json
 
 *.sln
+example files
+settings.cfg
+_temp_
+editor.ini
+lib/*
+
+# Throwaway output of the standalone (g++) test builds described in AGENTS.md
+/build_linux_tests/

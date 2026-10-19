@@ -1,0 +1,74 @@
+/**
+ * -------------------------------------------------------
+ * Scenery Editor X
+ * -------------------------------------------------------
+ * Copyright (c) 2026 Thomas Ray
+ * Copyright (c) 2026 Coalition of Freeware Developers
+ * -------------------------------------------------------
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ * -------------------------------------------------------
+ * outline.slang
+ * -------------------------------------------------------
+ * Created: 18/04/2026
+ * -------------------------------------------------------
+ */
+import common;
+import resources;
+import constants;
+
+struct vertex_in
+{
+    float3 position : POSITION;
+    float2 uv       : TEXCOORD0;
+};
+
+struct vertex_out
+{
+    float4 position : SV_POSITION;
+    float2 uv       : TEXCOORD0;
+};
+
+[shader("vertex")]
+vertex_out main_vs(vertex_in input)
+{
+    vertex_out output;
+    output.position = mul(float4(input.position, 1.0f), draw_data[buffer_pass.draw_index].transform);
+    output.position = mul(output.position, get_view_projection_unjittered_matrix());
+    output.uv = input.uv;
+
+    return output;
+}
+
+[shader("fragment")]
+float4 main_frag(vertex_out input) : SV_Target
+{
+    // just a color
+    return pass_get_f4_value();
+}
+
+[shader("compute")]
+[numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
+void main_comp(uint3 thread_id : SV_DispatchThreadID)
+{
+    float4 silhouette = tex[thread_id.xy];
+    float3 color      = silhouette.rgb;
+    float alpha       = silhouette.a;
+
+    tex_uav[thread_id.xy] += float4(color * (1.0f - alpha), 0.0f);
+}

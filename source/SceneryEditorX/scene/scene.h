@@ -1,28 +1,259 @@
 ﻿/**
-* -------------------------------------------------------
-* Scenery Editor X
-* -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
-* Copyright (c) 2025 Coalition of Freeware Developers
-* -------------------------------------------------------
-* scene.h
-* -------------------------------------------------------
-* Created: 11/4/2025
-* -------------------------------------------------------
-*/
+ * -------------------------------------------------------
+ * Scenery Editor X
+ * -------------------------------------------------------
+ * Copyright (c) 2026 Thomas Ray 
+ * Copyright (c) 2026 Coalition of Freeware Developers
+ * -------------------------------------------------------
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ * -------------------------------------------------------
+ * scene.h
+ * -------------------------------------------------------
+ * Created: 11/4/2025
+ * -------------------------------------------------------
+ */
+// ReSharper disable CppInconsistentNaming
 #pragma once
-#include <entt/src/entt/entt.hpp>
 #include "camera.h"
-#include "entity.h"
-#include "SceneryEditorX/asset/asset.h"
-#include "SceneryEditorX/asset/asset_types.h"
-#include "SceneryEditorX/renderer/texture.h"
+#include <unordered_map>
+#include <vector>
+#include <SceneryEditorX/core/identifiers/uuid.h>
+#include <entt/src/entt/entt.hpp>
+//#include "SceneryEditorX/asset/asset.h"
+//#include "SceneryEditorX/asset/asset_types.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
+	class Entity;
+	struct EntityRuntime;
+	class Light;
+	class MaterialAsset;
+	class Camera;
 
+	/**
+	 * @struct WorldMetadata
+	 * @brief Structure to hold metadata about a world without fully loading it.
+	 */
+	struct WorldMetadata
+	{
+		std::string file_path;
+		std::string name;
+		std::string description;
+	};
+
+	/**
+	 * @class Scene
+	 * @brief Class representing a scene in the editor.
+	 */
+	class Scene : public RefCounted
+	{
+	public:
+		/**
+		 * @brief Constructs a new Scene object.
+		 * @param name The name of the scene.
+		 * @param initialize Whether to initialize the scene immediately.
+		 */
+		explicit Scene(std::string name = "UntitledProject", bool initialize = true);
+		static void Init();
+		static void Shutdown();
+		static void Tick();
+
+		static Camera *GetCamera();
+		static bool HasCameraEntity();
+
+		/* @brief The active scene, or nullptr before Init() / after Shutdown(). */
+		static Scene *GetActive();
+
+		/* @brief The ECS registry holding this scene's components (IDComponent, TagComponent, TransformComponent, ...). */
+		entt::registry &GetRegistry() { return m_Registry; }
+		static Light *GetDirectionalLight() { return nullptr; }
+
+		/* @brief Every scene-owned entity, in creation order. Don't create or destroy entities while iterating it. */
+		static const std::vector<Entity*> &GetEntities();
+
+		/**
+		 * @brief The stored entities that carry a Renderable / a Light. Cached: rebuilt when the structure version
+		 * (GetStructureVersion) has moved, so per-frame passes don't walk every entity.
+		 */
+		static const std::vector<Entity*> &GetRenderableEntities();
+		static const std::vector<Entity*> &GetLightEntities();
+
+		/* @brief The distinct materials of GetRenderableEntities() (cached the same way). */
+		static const std::vector<MaterialAsset*> &GetRenderableMaterials();
+
+		/**
+		 * @brief Bumped when entities are created or destroyed, runtime components are added or removed, or a
+		 * renderable's mesh / material changes. Caches of entity pointers rebuild when it moves.
+		 */
+		static uint64_t GetStructureVersion();
+		static void MarkStructureChanged();
+
+		/* @brief Bumped only when an entity is destroyed: caches of Entity pointers revalidate when it moves. */
+		static uint64_t GetDestroyVersion();
+
+		/**
+		 * @brief Saves the current scene to a file.
+		 * @param filePath The path to the file where the scene will be saved.
+		 * @return True if the scene was successfully saved, false otherwise.
+		 */
+		static bool SaveToFile(std::string filePath);
+
+		/**
+		 * @brief Loads a scene from a file.
+		 * @param file_path The path to the file from which the scene will be loaded.
+		 * @return True if the scene was successfully loaded, false otherwise.
+		 */
+		static bool LoadFromFile(const std::string& file_path);
+
+		/**
+		 * @brief Creates a new entity in the scene.
+		 * @param name The name of the entity.
+		 * @return The created entity.
+		 */
+		static Entity CreateEntity(const std::string& name = "Empty Entity");
+
+		/**
+		 * @brief Creates a new entity in the scene with a specific UUID.
+		 * @param uuid The UUID of the entity.
+		 * @param name The name of the entity.
+		 * @return The created entity.
+		 */
+		static Entity CreateEntityWithUUID(const UUID &uuid, const std::string& name = "Empty Entity");
+
+		/**
+		 * @brief Retrieves an entity from the scene by its UUID.
+		 * @param uuid The UUID of the entity.
+		 * @return The entity with the specified UUID.
+		 */
+		static Entity GetEntity(const UUID &uuid);
+
+		/**
+		 * @brief Destroys an entity in the scene.
+		 * @param entity The entity to be destroyed.
+		 */
+		static void DestroyEntity(const Entity &entity);
+
+		/**
+		 * @brief Tries to retrieve an entity from the scene by its UUID.
+		 * @param uuid The UUID of the entity.
+		 * @return The entity with the specified UUID, or a null entity if not found.
+		 */
+		static Entity TryGetEntityWithUUID(const UUID &uuid);
+
+		/**
+		 * @brief Like TryGetEntityWithUUID(), returning only the registry handle.
+		 * @return The registry handle, or entt::null when no live entity has the UUID.
+		 */
+		static entt::entity TryGetEntityHandle(const UUID &uuid);
+
+		/**
+		 * @brief The entity's stored handle (the one in its EntityRuntime record): a fixed address until the entity is
+		 * destroyed, the owner runtime components (Renderable, ...) point to and what GetEntities() lists.
+		 * @param entity A handle returned by CreateEntity() / TryGetEntityWithUUID().
+		 * @return The stored entity, or nullptr when the handle isn't part of the active scene.
+		 */
+		static Entity *GetStoredEntity(const Entity &entity);
+		static Entity *GetStoredEntity(entt::entity handle);
+
+		/**
+		 * @brief Retrieves all entities with the specified components.
+		 * @tparam Components The components to filter by.
+		 * @return A view of all entities with the specified components.
+		 */
+		template<typename... Components>
+		auto GetAllEntitiesWith()
+		{
+			return m_Registry.view<Components...>();
+		}
+
+		/**
+		 * @brief Retrieves the current time of day in the scene.
+		 * @return The current time of day.
+		 */
+		static float GetTimeOfDay();
+
+
+		/**
+		 * @brief Sets the current time of day in the scene.
+		 * @param timeOfDay The time of day to set.
+		 */
+		static void SetTimeOfDay(float timeOfDay);
+
+		/**
+		 * @brief Retrieves the file path of the current scene.
+		 * @return The file path of the current scene.
+		 */
+		static std::string& GetFilePath();
+
+		/**
+		 * @brief Retrieves the name of the current scene.
+		 * @return The name of the current scene.
+		 */
+		static const std::string& GetName();
+
+		/**
+		 * @brief Retrieves the current wind vector in the scene.
+		 * @return The current wind vector.
+		 */
+		static const Vec3 &GetWind();
+
+		/**
+		 * @brief Sets the current wind vector in the scene.
+		 * @param wind The wind vector to set.
+		 */
+		static void SetWind(const Vec3& wind);
+
+		/**
+		 * @brief Updates the scene based on changes to an entity's components.
+		 * @return A flag indicating the changes that were applied.
+		 */
+		static Flag UpdateSceneChanges(ComponentType entity);
+
+	private:
+		/**
+		 * @brief The runtime record of a live entity of the active scene, by registry handle (an index lookup).
+		 * @return The record, or nullptr for entt::null, another scene or a destroyed entity (the version differs).
+		 */
+		static EntityRuntime *FindRuntime(entt::entity handle, const Scene *scene);
+
+		static Ref<Camera> m_Camera;
+
+		UUID m_SceneID;
+		std::string m_Name;
+		std::string m_ScenePath;
+
+		bool m_IsLoaded				= false;
+		bool m_IsEditorScene		= false;
+		uint32_t m_ViewportTop		= 0;
+		uint32_t m_ViewportLeft		= 0;
+		uint32_t m_ViewportRight	= 0;
+		uint32_t m_ViewportBottom	= 0;
+
+		entt::registry m_Registry; // <-- THE ACTUAL DATA STORAGE
+		std::unordered_map<UUID, entt::entity> m_EntityMap; // Fast lookup
+
+		friend class Entity; // Allows Entity handle to access m_Registry
+	};
+
+	/*
 	class Environment : public Asset
 	{
 	public:
@@ -36,12 +267,14 @@ namespace SceneryEditorX
 		virtual ObjectType GetAssetType() const override { return GetStaticType(); }
 
 	};
+	*/
 
-    class Scene : public Asset
-    {
-    public:
-        explicit Scene(const std::string &name = "UntitledProject", bool isEditorScene = false, bool initialize = true);
-        virtual ~Scene() override;
+	/*
+	class Scene : public Asset
+	{
+	public:
+		explicit Scene(const std::string &name = "UntitledProject", bool isEditorScene = false, bool initialize = true);
+		virtual ~Scene() override;
 
 		//virtual void Serialize(Serializer &s) override;
 		virtual void Load(const std::string& path) override;
@@ -50,30 +283,30 @@ namespace SceneryEditorX
 		const std::string& GetPath() const { return scenePath; }
 		const std::string& GetName() const { return m_Name; }
 		virtual void SetName(const std::string& name) override;
-        void Add(const Ref<CameraNode> & ref);
+		void Add(const Ref<CameraNode> & ref);
 		UUID GetUUID() const { return m_SceneID; }
-        static Ref<Scene> CreateEmpty();
-        static Ref<Scene> GetScene(UUID uuid);
+		static Ref<Scene> CreateEmpty();
+		static Ref<Scene> GetScene(UUID uuid);
 
-        float GetTimeScale() const { return m_TimeScale; }
+		float GetTimeScale() const { return m_TimeScale; }
 		void SetTimeScale(float timeScale) { m_TimeScale = timeScale; }
-        static AssetType GetStaticType() { return AssetType::Scene; }
-        virtual ObjectType GetAssetType() const override { return static_cast<ObjectType>(GetStaticType()); }
+		static AssetType GetStaticType() { return AssetType::Scene; }
+		virtual ObjectType GetAssetType() const override { return static_cast<ObjectType>(GetStaticType()); }
 
-        uint32_t GetViewportWidth() const { return m_ViewportRight - m_ViewportLeft; }
+		uint32_t GetViewportWidth() const { return m_ViewportRight - m_ViewportLeft; }
 		uint32_t GetViewportHeight() const { return m_ViewportBottom - m_ViewportTop; }
 		
 		//const EntityMap& GetEntityMap() const { return m_EntityIDMap; }
 		std::pair<std::unordered_set<AssetHandle>, std::unordered_set<AssetHandle>> GetAssetList(); // returns assetList, missingAssetList
 
-        template<typename... Components>
+		template<typename... Components>
 		auto GetAllEntitiesWith()
 		{
 			return m_Registry.view<Components...>();
 		}
 
-        /// return entity with id as specified. entity is expected to exist (runtime error if it doesn't)
-        Entity GetEntityWithUUID(UUID id) const;
+		/// return entity with id as specified. entity is expected to exist (runtime error if it doesn't)
+		Entity GetEntityWithUUID(UUID id) const;
 		
 		/// return entity with id as specified, or empty entity if it cannot be found - caller must check
 		Entity TryGetEntityWithUUID(UUID id) const;
@@ -90,15 +323,15 @@ namespace SceneryEditorX
 		Entity TryGetDescendantEntityWithComponent(Entity entity) const
 		{
 			if (entity.TryGetComponent<T>())
-                return entity;
+				return entity;
 
-            for (const auto childId : entity.Children())
+			for (const auto childId : entity.Children())
 			{
-                if (Entity child = TryGetEntityWithUUID(childId))
+				if (Entity child = TryGetEntityWithUUID(childId))
 				{
-                    if (Entity descendant = TryGetDescendantEntityWithComponent<T>(child))
-                        return descendant;
-                }
+					if (Entity descendant = TryGetDescendantEntityWithComponent<T>(child))
+						return descendant;
+				}
 			}
 
 			return {};
@@ -116,24 +349,24 @@ namespace SceneryEditorX
 
 		void CopyTo(Ref<Scene>& target);
 
-        /**
-         * @brief Copies a component from the source entity to the destination entity if it exists.
-         *
-         * @tparam TComponent 
-         * @param dst 
-         * @param dstRegistry 
-         * @param src 
-         *
-         * @note - Used to have ".has<>" but has been replaced in Entt 4.0 with ".all_of<>()"
-         */
-        template<typename TComponent>
+		/**
+		 * @brief Copies a component from the source entity to the destination entity if it exists.
+		 *
+		 * @tparam TComponent 
+		 * @param dst 
+		 * @param dstRegistry 
+		 * @param src 
+		 *
+		 * @note - Used to have ".has<>" but has been replaced in Entt 4.0 with ".all_of<>()"
+		 #1#
+		template<typename TComponent>
 		void CopyComponentIfExists(entt::entity dst, entt::registry& dstRegistry, entt::entity src)
 		{
-            if (m_Registry.all_of<TComponent>(src))
-            {
-                auto &srcComponent = m_Registry.get<TComponent>(src);
-                dstRegistry.emplace_or_replace<TComponent>(dst, srcComponent);
-            }
+			if (m_Registry.all_of<TComponent>(src))
+			{
+				auto &srcComponent = m_Registry.get<TComponent>(src);
+				dstRegistry.emplace_or_replace<TComponent>(dst, srcComponent);
+			}
 		}
 
 		template<typename TComponent>
@@ -158,158 +391,159 @@ namespace SceneryEditorX
 		float zoomSpeed = 1.0f;
 		float rotationSpeed = 0.3f;
 		bool autoOrbit = false;
-        Ref<CameraNode> mainCamera;
-    private:
-        UUID m_SceneID;
-        std::size_t m_LastSerializeHash = 0; /// used by auto-save to determine if scene has changed
-        entt::entity m_SceneEntity = entt::null;
-        entt::registry m_Registry;
-        std::string scenePath;
+		Ref<CameraNode> mainCamera;
+	private:
+		UUID m_SceneID;
+		std::size_t m_LastSerializeHash = 0; /// used by auto-save to determine if scene has changed
+		entt::entity m_SceneEntity = entt::null;
+		entt::registry m_Registry;
+		std::string scenePath;
 
-        std::function<void(AssetHandle)> m_OnSceneTransitionCallback;
-        //std::function<void(Entity)> m_OnEntityDestroyedCallback;
-        bool isLoaded = false;
-        std::string m_Name;
-        bool m_IsEditorScene = false;
-        uint32_t m_ViewportTop = 0;
-        uint32_t m_ViewportLeft = 0;
-        uint32_t m_ViewportRight = 0;
-        uint32_t m_ViewportBottom = 0;
+		std::function<void(AssetHandle)> m_OnSceneTransitionCallback;
+		//std::function<void(Entity)> m_OnEntityDestroyedCallback;
+		bool isLoaded = false;
+		std::string m_Name;
+		bool m_IsEditorScene = false;
+		uint32_t m_ViewportTop = 0;
+		uint32_t m_ViewportLeft = 0;
+		uint32_t m_ViewportRight = 0;
+		uint32_t m_ViewportBottom = 0;
 
-        //EntityMap m_EntityIDMap;
-        //DirectionalLight m_Light;
-        float m_LightMultiplier = 0.3f;
-        //LightEnvironment m_LightEnvironment;
+		//EntityMap m_EntityIDMap;
+		DirectionalLightComponent m_Light;
+		float m_LightMultiplier = 0.3f;
+		SkyLightComponent m_LightEnvironment;
 
-        Ref<Environment> m_Environment;
-        float m_EnvironmentIntensity = 0.0f;
+		Ref<Environment> m_Environment;
+		float m_EnvironmentIntensity = 0.0f;
 
-        std::vector<std::function<void()>> m_PostUpdateQueue;
+		std::vector<std::function<void()>> m_PostUpdateQueue;
 
-        float m_SkyboxLod = 1.0f;
-        bool m_IsPlaying = false;
-        bool m_ShouldSimulate = false;
-        float m_TimeScale = 1.0f;
+		float m_SkyboxLod = 1.0f;
+		bool m_IsPlaying = false;
+		bool m_ShouldSimulate = false;
+		float m_TimeScale = 1.0f;
 
 
-        friend class Entity;
-        friend class Prefab;
-        friend class SceneRenderer;
-        //friend class SceneSerializer;
-        //friend class PrefabSerializer;
-        friend class SceneHierarchyPanel;
-        friend class ECSDebugPanel;
-    };
+		friend class Entity;
+		friend class Prefab;
+		friend class SceneRenderer;
+		//friend class SceneSerializer;
+		//friend class PrefabSerializer;
+		friend class SceneHierarchyPanel;
+		friend class ECSDebugPanel;
+	};
 
-    /*
-    struct Serializer;
+	/*
+	struct Serializer;
 	class EditorConfig;
 	
-	/// -------------------------------------------------------
+	// -------------------------------------------------------
 	
 	class SceneAsset : public Asset
 	{
 	public:
-        SceneAsset();
-        virtual void Serialize(Serializer &s) override;
-	    virtual void Load(const std::string &path) override;
-	    virtual void Unload() override;
-        bool IsLoaded() const;
-        const std::string &GetPath() const;
-        const std::string &GetName() const;
-	    virtual void SetName(const std::string &name) override;
+		SceneAsset();
+		virtual void Serialize(Serializer &s) override;
+		virtual void Load(const std::string &path) override;
+		virtual void Unload() override;
+		bool IsLoaded() const;
+		const std::string &GetPath() const;
+		const std::string &GetName() const;
+		virtual void SetName(const std::string &name) override;
 
-        std::vector<Ref<Node>> nodes;
-        Vec3 ambientLightColor = Vec3(1);
-        float ambientLight = 0.01f;
-        int aoSamples = 4;
-        int lightSamples = 2;
-        float aoMin = 0.0001f;
-        float aoMax = 1.0000f;
-        float exposure = 2.0f;
-        //ShadowType shadowType = ShadowType::ShadowRayTraced;
-        uint32_t shadowResolution = 1024;
+		std::vector<Ref<Node>> nodes;
+		Vec3 ambientLightColor = Vec3(1);
+		float ambientLight = 0.01f;
+		int aoSamples = 4;
+		int lightSamples = 2;
+		float aoMin = 0.0001f;
+		float aoMax = 1.0000f;
+		float exposure = 2.0f;
+		//ShadowType shadowType = ShadowType::ShadowRayTraced;
+		uint32_t shadowResolution = 1024;
 
-        float camSpeed = 0.01f;
-        float zoomSpeed = 1.0f;
-        float rotationSpeed = 0.3f;
-        bool autoOrbit = false;
-        Ref<CameraNode> mainCamera;
+		float camSpeed = 0.01f;
+		float zoomSpeed = 1.0f;
+		float rotationSpeed = 0.3f;
+		bool autoOrbit = false;
+		Ref<CameraNode> mainCamera;
 
-        template <typename T>
-        Ref<T> Add()
-        {
-            Ref<T> node = std::make_shared<T>();
-            nodes.push_back(node);
-            return node;
-        }
+		template <typename T>
+		Ref<T> Add()
+		{
+			Ref<T> node = std::make_shared<T>();
+			nodes.push_back(node);
+			return node;
+		}
 
-        void Add(const Ref<Node> &node)
-        {
-            nodes.push_back(node);
-        }
+		void Add(const Ref<Node> &node)
+		{
+			nodes.push_back(node);
+		}
 
-        void DeleteRecursive(const Ref<Node> &node);
+		void DeleteRecursive(const Ref<Node> &node);
 
 		template<typename T>
 		Ref<T> GetAsset(uint32_t id)
-	    {
-		    // todo: search recursively
-		    for (auto& node : nodes)
+		{
+			// TODO: Search recursively
+			for (auto& node : nodes)
 			{
-		        if (node->uuid == id)
+				if (node->uuid == id)
 				{
-		            return std::dynamic_pointer_cast<T>(node);
-		        }
-		    }
-		    return {};
+					return std::dynamic_pointer_cast<T>(node);
+				}
+			}
+			return {};
 		}
 
 		template<typename T>
 		void GetAll(ObjectType type, std::vector<Ref<T>>& all)
-	    {
-		    for (auto& node : nodes)
+		{
+			for (auto& node : nodes)
 			{
-		        if (node->type == type)
+				if (node->type == type)
 				{
-		            all.emplace_back(std::dynamic_pointer_cast<T>(node));
-		        }
-		        node->GetAll(type, all);
-		    }
+					all.emplace_back(std::dynamic_pointer_cast<T>(node));
+				}
+				node->GetAll(type, all);
+			}
 		}
 
 		template<typename T>
 		std::vector<Ref<T>> GetAll(ObjectType type)
-	    {
-		    std::vector<Ref<T>> all;
-		    for (auto& node : nodes)
+		{
+			std::vector<Ref<T>> all;
+			for (auto& node : nodes)
 			{
-		        if (node->type == type)
+				if (node->type == type)
 				{
-		            all.emplace_back(std::dynamic_pointer_cast<T>(node));
-		        }
-		        node->GetAll(type, all);
-		    }
-		    return all;
+					all.emplace_back(std::dynamic_pointer_cast<T>(node));
+				}
+				node->GetAll(type, all);
+			}
+			return all;
 		}
 
 		void UpdateParents()
-	    {
-		    for (auto& node : nodes)
+		{
+			for (auto& node : nodes)
 			{
-		        node->parent = {};
-		        Node::UpdateChildrenParent(node);
-		    }
+				node->parent = {};
+				Node::UpdateChildrenParent(node);
+			}
 		}
 
-    private:
-        friend class AssetManager;
-        std::string scenePath;
-        std::string sceneName;
-        bool isLoaded = false;
+	private:
+		friend class AssetManager;
+		std::string scenePath;
+		std::string sceneName;
+		bool isLoaded = false;
 	};
-	*/
+*/
 	
 }
 
-/// ---------------------------------------------------------
+
+// ---------------------------------------------------------

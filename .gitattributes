@@ -47,6 +47,7 @@
 *.dds   binary
 *.tiff  binary
 *.psd   binary
+*.ico   binary
 
 ###############################################################################
 # Behavior for 3d model files

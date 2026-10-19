@@ -1,22 +1,40 @@
 ﻿/**
-* -------------------------------------------------------
-* Scenery Editor X
-* -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
-* Copyright (c) 2025 Coalition of Freeware Developers
-* -------------------------------------------------------
-* serializer_impl.h
-* -------------------------------------------------------
-* Created: 9/7/2025
-* -------------------------------------------------------
-*/
+ * -------------------------------------------------------
+ * Scenery Editor X
+ * -------------------------------------------------------
+ * Copyright (c) 2026 Thomas Ray 
+ * Copyright (c) 2026 Coalition of Freeware Developers
+ * -------------------------------------------------------
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ * -------------------------------------------------------
+ * serializer_impl.h
+ * -------------------------------------------------------
+ * Created: 9/7/2025
+ * -------------------------------------------------------
+ */
 #pragma once
 #include "serializer_reader.h"
 #include "serializer_writer.h"
 #include "SceneryEditorX/core/identifiers/identifier.h"
 #include "SceneryEditorX/utils/reflection/type_descriptors.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 	
 	/**
 	 *  Non-intrusive Binary / Memory Serialization Interface.
@@ -89,9 +107,9 @@ namespace SceneryEditorX::Serialization
 		    return true;
 		}
 		
-		/// ----------------------------------------------------------------------------
+		// ----------------------------------------------------------------------------
 		/// Serialization specialization More default specializations can be added...
-		/// ----------------------------------------------------------------------------
+		// ----------------------------------------------------------------------------
 		
 		template <>
 		SEDX_EXPLICIT_STATIC inline bool SerializeImpl(SerializeWriter *writer, const UUID &v)
@@ -114,7 +132,7 @@ namespace SceneryEditorX::Serialization
 		    return true;
 		}
 		
-		/// ----------------------------------------------------------------------------
+		// ----------------------------------------------------------------------------
 
 		template <typename T>
 		SEDX_EXPLICIT_STATIC bool SerializeVec(SerializeWriter *writer, const std::vector<T> &vec)
@@ -128,7 +146,7 @@ namespace SceneryEditorX::Serialization
 		    return true;
 		}
 		
-		/// ----------------------------------------------------------------------------
+		// ----------------------------------------------------------------------------
 
 		template <typename T>
 		SEDX_EXPLICIT_STATIC bool SerializeByType(SerializeWriter *writer, const T &v)
@@ -148,7 +166,7 @@ namespace SceneryEditorX::Serialization
 	    return (Impl::SerializeByType(writer, vs) && ...);
 	}
 
-	/// -----------------------------------------------------------------------------
+	// -----------------------------------------------------------------------------
 
     /// Deserialization
 	template <typename... Ts>
@@ -167,9 +185,9 @@ namespace SceneryEditorX::Serialization
 	    return true;
 	}
 	
-	/// ----------------------------------------------------------------------------
+	// ----------------------------------------------------------------------------
     /// Deserialization specialization More default specializations can be added...
-	/// ----------------------------------------------------------------------------
+	// ----------------------------------------------------------------------------
 	
 	template <>
     SEDX_EXPLICIT_STATIC inline bool DeserializeImpl(SerializeReader *reader, UUID &v)
@@ -194,7 +212,7 @@ namespace SceneryEditorX::Serialization
 	    return true;
 	}
 	
-	/// ----------------------------------------------------------------------------
+	// ----------------------------------------------------------------------------
 
 	template <typename T>
     SEDX_EXPLICIT_STATIC bool DeserializeVec(SerializeReader *reader, std::vector<T> &vec)
@@ -211,7 +229,7 @@ namespace SceneryEditorX::Serialization
 	    return true;
 	}
 	
-	/// ----------------------------------------------------------------------------
+	// ----------------------------------------------------------------------------
 
 	template <typename T>
     SEDX_EXPLICIT_STATIC bool DeserializeByType(SerializeReader *reader, T &v)
@@ -231,9 +249,9 @@ namespace SceneryEditorX::Serialization
 	    return (Impl::DeserializeByType(reader, vs) && ...);
 	}
 
-    /// -----------------------------------------------------------------------------
+    // -----------------------------------------------------------------------------
     */
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

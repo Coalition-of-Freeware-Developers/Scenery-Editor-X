@@ -1,0 +1,75 @@
+graph TD
+    %% Define styles
+    %% Theme: dark background with high-contrast class colors
+    classDef main fill:#0b0f13,stroke:#2b2f33,stroke-width:2px,color:#ffffff;
+    classDef offscreen fill:#1e3a8a,stroke:#12233a,stroke-width:1px,color:#ffffff;
+    classDef barrier fill:#f59e0b,stroke:#7a5a03,stroke-width:1px,stroke-dasharray:5 5,color:#000000;
+    classDef sync fill:#ef4444,stroke:#7a1f1f,stroke-width:2px,color:#ffffff;
+    classDef submit fill:#0284c7,stroke:#014a6b,stroke-width:1px,color:#ffffff;
+    classDef text fill:#161616,stroke:#333,stroke-width:1px;
+
+    %% Main Application Flow Start
+    Start["<b>Frame Start</b><br>App logic, input"] --> AcquireImage[Acquire Next Swapchain Image]
+    AcquireImage --> BeginCmdBuffer["Begin Command Buffer<br>Reset Bindless Descriptor Sets"]
+
+    %% INITIAL SETUP PASSE(S) - Example: Shadow Map
+    BeginCmdBuffer --> PrepareShadows{{"<b>[Optional Setup Pass]</b><br>Prepare Shadow Map attachments"}}
+    PrepareShadows -- Yes --> ShadowRenderLoop
+    PrepareShadows -- No --> GBufferSetup
+
+    subgraph ShadowRenderLoop ["Shadow Map Render Pass (Offscreen)"]
+        direction TB
+        ShadowLayoutIn["Transition Shadow Map Image<br>UNDEFINED -> DEPTH_ATTACHMENT_OPTIMAL<br>Barrier 2: EARLY_FRAGMENT_TESTS_BIT"]
+        ShadowLayoutIn --> CmdBeginShadow["vkCmdBeginRendering<br>Depth Attachment = Shadow Map"]
+        CmdBeginShadow --> DrawShadow["Draw Geometry<br>(Write Depth Only)"]
+        DrawShadow --> CmdEndShadow[vkCmdEndRendering]
+        CmdEndShadow --> ShadowLayoutOut["Transition Shadow Map Image<br>DEPTH_ATTACHMENT_OPTIMAL -> SHADER_READ_ONLY_OPTIMAL<br>Barrier 2: LATE_FRAGMENT_TESTS_BIT"]
+    end
+    ShadowLayoutOut --> GBufferSetup
+
+    %% BRANCHING POINT - Offscreen Deferred Rendering (Geometry Pass)
+    GBufferSetup["<b>GEOMETRY PASS (Offscreen)</b><br>Setup G-Buffer Attachments<br>(Albedo, Normal, Position, Depth)"] --> TransitionGBufferIn["Transition G-Buffer Images<br>UNDEFINED -> COLOR_ATTACHMENT_OPTIMAL/DEPTH_STENCIL_ATTACHMENT_OPTIMAL<br>Barrier 2: COLOR_ATTACHMENT_OUTPUT_BIT/EARLY_FRAGMENT_TESTS_BIT"]
+    TransitionGBufferIn --> CmdBeginGBuffer["vkCmdBeginRendering<br>Attachments = G-Buffer Images"]
+
+    CmdBeginGBuffer --> GBufferDrawBranch{{"<b>vkCmdDraw / vkCmdDrawIndexed</b><br>(Branched per object/material type)"}}
+
+    %% BRANCHING: Multiple Offscreen Rendering Operations (Conceptual Branching)
+    subgraph OffscreenBranch1 ["Geometry Draw Operations (Concurrent conceptual logic)"]
+        direction LR
+        GBufferDrawBranch -->|Opaque| DrawOpaque["Draw Opaque Objects<br>Index into Bindless Material<br>Write to G-Buffer"]
+        GBufferDrawBranch -->|Masked| DrawMasked["Draw Masked Objects<br>Index into Bindless Material<br>Write to G-Buffer"]
+    end
+
+    DrawOpaque --> CmdEndGBuffer[vkCmdEndRendering]
+    DrawMasked --> CmdEndGBuffer
+
+    %% IMAGE AND MEMORY BARRIERS (Read-After-Write Sync)
+    CmdEndGBuffer --> BarrierGBuffer["<b><br>IMAGE MEMORY BARRIERS (vkCmdPipelineBarrier2)</b><br>Transition G-Buffer Images<br>(COLOR_ATTACHMENT_OPTIMAL -> SHADER_READ_ONLY_OPTIMAL)<br>Sync: COLOR_ATTACHMENT_OUTPUT_BIT -> FRAGMENT_SHADER_BIT<br><br>Transition Swapchain Image<br>(UNDEFINED -> COLOR_ATTACHMENT_OPTIMAL)<br>Sync: TOP_OF_PIPE_BIT -> COLOR_ATTACHMENT_OUTPUT_BIT"]
+
+    %% MERGING/BLENDING POINT - Lighting & Post-Processing (Compositing Pass)
+    BarrierGBuffer --> LightingPassSetup["<b>COMPOSITING & BLENDING PASS</b><br>Setup Final Composite Image Attachment"]
+    LightingPassSetup --> TransitionCompositeIn["Transition Composite Image<br>UNDEFINED -> COLOR_ATTACHMENT_OPTIMAL<br>Barrier 2: COLOR_ATTACHMENT_OUTPUT_BIT"]
+    TransitionCompositeIn --> CmdBeginLighting["vkCmdBeginRendering<br>Attachment = Final Composite Image"]
+
+    subgraph LightingSubpass ["Lighting & Composition (Reading Offscreen Data)"]
+        direction TB
+        CmdBeginLighting --> FullscreenQuad[Draw Fullscreen Quad/Triangle]
+        FullscreenQuad --> LightingShader["<b>Lighting Shader</b><br>1. Bindless Index to sample G-Buffer<br>2. (Optional) Sample Shadow Map<br>3. Calculate Lighting/Blending<br>4. Write to Composite Image"]
+    end
+
+    LightingShader --> CmdEndLighting[vkCmdEndRendering]
+
+    %% FINAL SYNCHRONIZATION AND PRESENTATION
+    CmdEndLighting --> FinalBarriers["<b><br>FINAL SYNC & TRANSFER (vkCmdPipelineBarrier2 / vkCmdBlitImage2)</b><br>Transition Composite Image<br>(COLOR_ATTACHMENT_OPTIMAL -> TRANSFER_SRC_OPTIMAL)<br>Sync: COLOR_ATTACHMENT_OUTPUT_BIT -> TRANSFER_BIT<br><br>vkCmdBlitImage2 (Composite Image -> Swapchain Image)<br><br>Transition Swapchain Image<br>(COLOR_ATTACHMENT_OPTIMAL -> PRESENT_SRC_KHR)<br>Sync: TRANSFER_BIT -> BOTTOM_OF_PIPE_BIT"]
+
+    FinalBarriers --> EndCmdBuffer[End Command Buffer]
+    EndCmdBuffer --> QueueSubmit["Queue Submit (CmdBuffer)<br>Wait Semaphore: Image Available<br>Signal Semaphore: Render Finished"]
+    QueueSubmit --> PresentImage["Queue Present (Swapchain Image)<br>Wait Semaphore: Render Finished"]
+    PresentImage --> End["<b>Frame End</b>"]
+
+    %% Apply CSS classes
+    class Start,End main;
+    class ShadowRenderLoop,ShadowLayoutIn,CmdBeginShadow,DrawShadow,CmdEndShadow,ShadowLayoutOut,GBufferSetup,TransitionGBufferIn,CmdBeginGBuffer,GBufferDrawBranch,DrawOpaque,DrawMasked,CmdEndGBuffer,LightingPassSetup,TransitionCompositeIn,CmdBeginLighting,FullscreenQuad,LightingShader,CmdEndLighting,LightingSubpass offscreen;
+    class BarrierGBuffer,FinalBarriers barrier;
+    class AcquireImage,QueueSubmit,PresentImage sync;
+    class BeginCmdBuffer,EndCmdBuffer submit;

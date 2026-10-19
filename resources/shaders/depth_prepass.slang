@@ -1,0 +1,82 @@
+/**
+ * -------------------------------------------------------
+ * Scenery Editor X
+ * -------------------------------------------------------
+ * Copyright (c) 2026 Thomas Ray
+ * Copyright (c) 2026 Coalition of Freeware Developers
+ * -------------------------------------------------------
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ * -------------------------------------------------------
+ * depth_prepass.slang
+ * -------------------------------------------------------
+ * Created: 18/04/2026
+ * -------------------------------------------------------
+ */
+import common;
+import resources;
+import position;
+import vertex_processing;
+#ifdef GPU_SCENE
+import gpu_scene;
+#endif
+
+#if defined(GPU_SCENE)
+// instanced indirect draws of the GPU scene (gpu_cull.slang picked the instances), vertices pulled from the global buffer
+[shader("vertex")]
+gbuffer_vertex main_vs(uint vertex_id : SV_VertexID, uint base_vertex : SV_StartVertexLocation, uint draw_instance : SV_InstanceID, uint base_instance : SV_StartInstanceLocation)
+{
+    const uint instance_id = gpu_scene_load_draw(draw_instance, base_instance);
+    Vertex_PosUvNorTan input = pull_vertex(vertex_id + base_vertex);
+#elif defined(INDIRECT_DRAW)
+[shader("vertex")]
+gbuffer_vertex main_vs(uint vertex_id : SV_VertexID, uint base_vertex : SV_StartVertexLocation, uint instance_id : SV_InstanceID, [[vk::builtin("DrawIndex")]] uint draw_id : DRAW_INDEX, uint view_id : SV_ViewID)
+{
+    _draw = indirect_draw_data_out[draw_id];
+    Vertex_PosUvNorTan input = pull_vertex(vertex_id + base_vertex);
+#else
+[shader("vertex")]
+gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID, uint view_id : SV_ViewID)
+{
+    _draw = draw_data[buffer_pass.draw_index];
+#endif
+
+    float3 position_world          = 0.0f;
+    float3 position_world_previous = 0.0f;
+    gbuffer_vertex vertex          = transform_to_world_space(input, instance_id, _draw.transform, position_world, position_world_previous);
+    vertex.material_index          = _draw.material_index;
+    return transform_to_clip_space(vertex, position_world, position_world_previous);
+}
+
+[shader("fragment")]
+void main_frag(gbuffer_vertex vertex)
+{
+    pass_load_draw_data_from_vertex(vertex.material_index);
+
+    // distance based alpha threshold, unless the material sets its own cutoff (texels below it are drawn by
+    // the forward transparent pass, which must split the surface at the same alpha at every distance)
+    const bool has_albedo       = GetMaterial().has_texture_albedo(); // also right for GPU-scene draws (no per-draw constants)
+    const float2 screen_uv      = vertex.position.xy / (get_resolution_render() * get_resolution_scale());
+    const float3 position_world = get_position(vertex.position.z, screen_uv);
+    const float material_cutoff = GetMaterial().alpha_cutoff;
+    const float alpha_threshold = material_cutoff > 0.0f ? material_cutoff : get_alpha_threshold(position_world);
+    const float alpha = has_albedo ? material_textures[pass_get_material_index() + material_texture_index_albedo].Sample(samplers[sampler_anisotropic_wrap], vertex.uv_misc.xy).a : 1.0f;
+
+    if (material_cutoff > 0.0f ? alpha < alpha_threshold : (has_albedo && alpha <= alpha_threshold))
+        discard;
+}

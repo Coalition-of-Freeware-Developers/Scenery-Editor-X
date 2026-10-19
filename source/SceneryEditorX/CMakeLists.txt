@@ -6,47 +6,99 @@ MESSAGE(STATUS "=================================================")
 MESSAGE(STATUS "Generating Application Core")
 
 # --------------------------------
-FILE(GLOB ASSET_ANIMATION_FILES asset/animation/*.h asset/animation/*.hpp asset/animation/*.cpp)
-FILE(GLOB ASSET_IMPORTER_FILES asset/importers/*.h asset/importers/*.hpp asset/importers/*.cpp)
-FILE(GLOB ASSET_EXPORTER_FILES asset/exporters/*.h asset/exporters/*.hpp asset/exporters/*.cpp)
-FILE(GLOB ASSET_MANAGER_FILES asset/managers/*.h asset/managers/*.hpp asset/managers/*.cpp)
-FILE(GLOB ASSET_MATERIAL_FILES asset/material/*.h asset/material/*.hpp asset/material/*.cpp)
-FILE(GLOB ASSET_MESH_FILES asset/mesh/*.h asset/mesh/*.hpp asset/mesh/*.cpp)
-FILE(GLOB ASSET_REGISTRY_FILES asset/registry/*.h asset/registry/*.hpp asset/registry/*.cpp)
+FILE(GLOB ASSET_ANIMATION_FILES "asset/animation/*.h" "asset/animation/*.hpp" "asset/animation/*.cpp")
+FILE(GLOB ASSET_IMPORTER_FILES "asset/importers/*.h" "asset/importers/*.hpp" "asset/importers/*.cpp")
+FILE(GLOB ASSET_EXPORTER_FILES "asset/exporters/*.h" "asset/exporters/*.hpp" "asset/exporters/*.cpp")
+FILE(GLOB ASSET_MANAGER_FILES "asset/managers/*.h" "asset/managers/*.hpp" "asset/managers/*.cpp")
+FILE(GLOB ASSET_MATERIAL_FILES "asset/material/*.h" "asset/material/*.hpp" "asset/material/*.cpp")
+FILE(GLOB ASSET_MESH_FILES "asset/mesh/*.h" "asset/mesh/*.hpp" "asset/mesh/*.cpp")
+FILE(GLOB ASSET_REGISTRY_FILES "asset/registry/*.h" "asset/registry/*.hpp" "asset/registry/*.cpp")
+FILE(GLOB ASSET_DIR LIST_DIRECTORIES false CONFIGURE_DEPENDS "asset/*.h" "asset/*.hpp" "asset/*.cpp")
+FILE(GLOB ASSET_BITMAP_FILES "asset/bitmap/*.h" "asset/bitmap/*.hpp" "asset/bitmap/*.cpp")
+FILE(GLOB ASSET_MODEL_FILES "asset/model/*.h" "asset/model/*.hpp" "asset/model/*.cpp")
+FILE(GLOB ASSET_IMPORT_FILES "asset/import/*.h" "asset/import/*.hpp" "asset/import/*.cpp")
+FILE(GLOB ASSET_EXPORT_FILES "asset/export/*.h" "asset/export/*.hpp" "asset/export/*.cpp")
+FILE(GLOB ASSET_MANAGER_FILES "asset/manager/*.h" "asset/manager/*.hpp" "asset/manager/*.cpp")
+FILE(GLOB ASSET_SYSTEM_FILES "asset/system/*.h" "asset/system/*.hpp" "asset/system/*.cpp")
 
-FILE(GLOB CORE_APP core/application/*.h core/application/*.hpp core/application/*.cpp)
-FILE(GLOB CORE_EVENTS core/events/*.h core/events/*.hpp core/events/*.cpp)
-FILE(GLOB CORE_IDENTIFIERS core/identifiers/*.h core/identifiers/*.hpp core/identifiers/*.cpp)
-FILE(GLOB CORE_INPUT core/input/*.h core/input/*.hpp core/input/*.cpp)
-FILE(GLOB CORE_MEMORY core/memory/*.h core/memory/*.hpp core/memory/*.cpp)
-FILE(GLOB CORE_MODULES core/modules/*.h core/modules/*.hpp core/modules/*.cpp)
-FILE(GLOB CORE_THREADING core/threading/*.h core/threading/*.hpp core/threading/*.cpp)
-FILE(GLOB CORE_TIME core/time/*.h core/time/*.hpp core/time/*.cpp)
-FILE(GLOB CORE_WINDOW core/window/*.h core/window/*.hpp core/window/*.cpp)
+FILE(GLOB CORE_BASE_ROOT LIST_DIRECTORIES false CONFIGURE_DEPENDS "core/*.h" "core/*.hpp" "core/*.cpp")
+FILE(GLOB CORE_APP "core/application/*.h" "core/application/*.hpp" "core/application/*.cpp")
+FILE(GLOB CORE_EVENTS "core/events/*.h" "core/events/*.hpp" "core/events/*.cpp")
+FILE(GLOB CORE_IDENTIFIERS "core/identifiers/*.h" "core/identifiers/*.hpp" "core/identifiers/*.cpp")
+FILE(GLOB CORE_INPUT "core/input/*.h" "core/input/*.hpp" "core/input/*.cpp")
+FILE(GLOB CORE_MEMORY "core/memory/*.h" "core/memory/*.hpp" "core/memory/*.cpp")
+FILE(GLOB CORE_LAYERS "core/layers/*.h" "core/layers/*.hpp" "core/layers/*.cpp")
+FILE(GLOB CORE_THREADING "core/threading/*.h" "core/threading/*.hpp" "core/threading/*.cpp")
+FILE(GLOB CORE_TIME "core/time/*.h" "core/time/*.hpp" "core/time/*.cpp")
+FILE(GLOB CORE_RESOURCE "core/resource/*.cpp" "core/resource/*.h")
+FILE(GLOB CORE_WINDOW "core/window/*.h" "core/window/*.hpp" "core/window/*.cpp")
+FILE(GLOB CORE_PLATFORM_ROOT LIST_DIRECTORIES false CONFIGURE_DEPENDS "core/platform/*.h" "core/platform/*.hpp" "core/platform/*.cpp")
+FILE(GLOB CORE_PLATFORM_CONFIG_FILES "core/platform/config/*.h" "core/platform/config/*.hpp" "core/platform/config/*.cpp")
+FILE(GLOB CORE_PLATFORM_FILESYSTEM "core/platform/filesystem/*.h" "core/platform/filesystem/*.hpp" "core/platform/filesystem/*.cpp")
+FILE(GLOB CORE_WINDOWS_PLATFORM "core/platform/windows/*.h" "core/platform/windows/*.hpp" "core/platform/windows/*.cpp")
+FILE(GLOB CORE_MAC_PLATFORM "core/platform/mac/*.h" "core/platform/mac/*.hpp" "core/platform/mac/*.cpp")
+FILE(GLOB CORE_LINUX_PLATFORM "core/platform/linux/*.h" "core/platform/linux/*.hpp" "core/platform/linux/*.cpp")
 
-FILE(GLOB PLATFORM_CONFIGFILES platform/config/*.h platform/config/*.hpp platform/config/*.cpp)
-FILE(GLOB PLATFORM_FILESYSTEM platform/filesystem/*.h platform/filesystem/*.hpp platform/filesystem/*.cpp)
-FILE(GLOB PLATFORM_SETTINGS platform/settings/*.h platform/settings/*.hpp platform/settings/*.cpp)
+# --------------------------------
 
-FILE(GLOB LOGGER logging/*.cpp logging/*.h logging/*.hpp)
-FILE(GLOB PROJECT project/*.cpp project/*.h project/*.hpp)
-FILE(GLOB REFLECTION_FILES utils/reflection/*.cpp utils/reflection/*.h utils/reflection/*.hpp)
-FILE(GLOB SCENE scene/*.cpp scene/*.h scene/*.hpp)
-FILE(GLOB SHADER_FILES shaders/*.glsl shaders/*.frag shaders/*.vert shaders/*.comp shaders/*.geom shaders/*.tesc shaders/*.tese)
-FILE(GLOB SERIALIZER_FILES serialization/*.h serialization/*.cpp serialization/*.hpp)
-FILE(GLOB SCENE_FILES scene/*.cpp scene/*.h scene/*.hpp)
+FILE(GLOB RENDERER_FILES LIST_DIRECTORIES false CONFIGURE_DEPENDS "renderer/*.h" "renderer/*.hpp" "renderer/*.cpp")
+FILE(GLOB RENDERER_FONT_FILES "renderer/font/*.h" "renderer/font/*.hpp" "renderer/font/*.cpp")
 
-FILE(GLOB UTILS_REFLECTION utils/reflection/*.cpp utils/reflection/*.h utils/reflection/*.hpp)
-FILE(GLOB UTILS_CONVERSIONS utils/conversions/*.cpp utils/conversions/*.h utils/conversions/*.hpp)
-FILE(GLOB UTILS_FILESTREAM utils/filestreaming/*.cpp utils/filestreaming/*.h utils/filestreaming/*.hpp)
+# --------------------------------
 
-FILE(GLOB VULKAN_BUFFERS renderer/buffers/*.h renderer/buffers/*.cpp)
-FILE(GLOB VULKAN_FILES renderer/vulkan/*.cpp renderer/vulkan/*.h renderer/vulkan/*.hpp)
-FILE(GLOB VULKAN_SHADER_CODE renderer/shaders/*.cpp renderer/shaders/*.h renderer/shaders/*.hpp)
+FILE(GLOB RENDERER_VULKAN LIST_DIRECTORIES false CONFIGURE_DEPENDS "renderer/vulkan/*.h" "renderer/vulkan/*.hpp" "renderer/vulkan/*.cpp")
+FILE(GLOB RENDERER_DEBUG_FILES "renderer/vulkan/debug/*.h" "renderer/vulkan/debug/*.hpp" "renderer/vulkan/debug/*.cpp")
+FILE(GLOB RENDERER_PIPELINE_FILES "renderer/vulkan/pipeline/*.h" "renderer/vulkan/pipeline/*.hpp" "renderer/vulkan/pipeline/*.cpp")
+FILE(GLOB RENDERER_SHADER_FILES "renderer/vulkan/shader/*.h" "renderer/vulkan/shader/*.hpp" "renderer/vulkan/shader/*.cpp")
+FILE(GLOB RENDERER_SYNC_FILES "renderer/vulkan/sync/*.h" "renderer/vulkan/sync/*.hpp" "renderer/vulkan/sync/*.cpp")
 
-FILE(GLOB UI_ACTIONS ui/actions/*.cpp ui/actions/*.h ui/actions/*.hpp)
-FILE(GLOB UI_PANELS ui/panels/*.cpp ui/panels/*.h ui/panels/*.hpp)
-FILE(GLOB FONT_CODE renderer/fonts/*.h renderer/fonts/*.hpp renderer/fonts/*.cpp)
+# --------------------------------
+FILE(GLOB UI_ACTIONS renderer/ui/actions/*.cpp renderer/ui/actions/*.h renderer/ui/actions/*.hpp)
+FILE(GLOB UI_RESOURCES renderer/ui/resources/*.cpp renderer/ui/resources/*.h renderer/ui/resources/*.hpp)
+FILE(GLOB UI_SOURCE LIST_DIRECTORIES false CONFIGURE_DEPENDS renderer/ui/source/*.cpp renderer/ui/source/*.h renderer/ui/source/*.hpp)
+FILE(GLOB UI_IMGUIZMO renderer/ui/source/imguizmo/*.cpp renderer/ui/source/imguizmo/*.h renderer/ui/source/imguizmo/*.hpp)
+FILE(GLOB UI_IMGUI LIST_DIRECTORIES false CONFIGURE_DEPENDS renderer/ui/source/imgui/*.cpp renderer/ui/source/imgui/*.h renderer/ui/source/imgui/*.hpp)
+FILE(GLOB UI_IMGUI_BACKENDS LIST_DIRECTORIES false CONFIGURE_DEPENDS renderer/ui/source/imgui/backends/*.cpp renderer/ui/source/imgui/backends/*.h renderer/ui/source/imgui/backends/*.hpp)
+FILE(GLOB UI_IMGUI_BACKENDS_VULKAN renderer/ui/source/imgui/backends/vulkan/*.cpp renderer/ui/source/imgui/backends/vulkan/*.h renderer/ui/source/imgui/backends/vulkan/*.hpp)
+FILE(GLOB UI_IMGUI_CPP renderer/ui/source/imgui/misc/cpp/*.cpp renderer/ui/source/imgui/misc/cpp/*.h renderer/ui/source/imgui/misc/cpp/*.hpp)
+FILE(GLOB UI_IMGUI_DEBUGGERS renderer/ui/source/imgui/misc/debuggers/*.cpp renderer/ui/source/imgui/misc/debuggers/*.h renderer/ui/source/imgui/misc/debuggers/*.hpp)
+FILE(GLOB UI_IMGUI_FONT renderer/ui/source/imgui/misc/font/*.cpp renderer/ui/source/imgui/misc/font/*.h renderer/ui/source/imgui/misc/font/*.hpp)
+FILE(GLOB UI_IMGUI_FREETYPE renderer/ui/source/imgui/misc/freetype/*.cpp renderer/ui/source/imgui/misc/freetype/*.h renderer/ui/source/imgui/misc/freetype/*.hpp)
+FILE(GLOB UI_IMGUI_SINGLE renderer/ui/source/imgui/misc/single_file/*.cpp renderer/ui/source/imgui/misc/single_file/*.h renderer/ui/source/imgui/misc/single_file/*.hpp)
+
+FILE(GLOB UI_FILES LIST_DIRECTORIES false CONFIGURE_DEPENDS "renderer/ui/*.cpp" "renderer/ui/*.h" "renderer/ui/*.hpp")
+
+# --------------------------------
+
+FILE(GLOB RENDERER_KOSMICKRISP LIST_DIRECTORIES false CONFIGURE_DEPENDS "renderer/kosmickrisp/*.h" "renderer/kosmickrisp/*.hpp" "renderer/kosmickrisp/*.cpp")
+
+# TODO: Add file groups for the renderer files, such as render passes, shaders, etc.
+
+# --------------------------------
+
+FILE(GLOB LOGGER "logging/*.cpp" "logging/*.h" "logging/*.hpp")
+FILE(GLOB PROJECT "project/*.cpp" "project/*.h" "project/*.hpp")
+FILE(GLOB REFLECTION_FILES "utils/reflection/*.cpp" "utils/reflection/*.h" "utils/reflection/*.hpp")
+FILE(GLOB SCENE LIST_DIRECTORIES false CONFIGURE_DEPENDS "scene/*.cpp" "scene/*.h" "scene/*.hpp")
+FILE(GLOB SCENE_COMPONENTS "scene/components/*.cpp" "scene/components/*.h" "scene/components/*.hpp")
+FILE(GLOB SLANG_SHADERS LIST_DIRECTORIES false CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/resources/shaders/*.slang")
+FILE(GLOB SHADER_FILES "shaders/*.slang" "shaders/*.glsl" "shaders/*.frag" "shaders/*.vert" "shaders/*.comp" "shaders/*.geom" "shaders/*.tesc" "shaders/*.tese")
+FILE(GLOB SERIALIZER_FILES "serialization/*.h" "serialization/*.cpp" "serialization/*.hpp")
+FILE(GLOB SETTINGS_FILES "settings/*.h" "settings/*.hpp" "settings/*.cpp")
+FILE(GLOB SCENE_FILES "scene/*.cpp" "scene/*.h" "scene/*.hpp")
+FILE(GLOB FILESYSTEM_FILES "filesystem/*.h" "filesystem/*.hpp" "filesystem/*.cpp")
+FILE(GLOB XPLANE_FILES CONFIGURE_DEPENDS "xplane/*.h" "xplane/*.hpp" "xplane/*.cpp")
+LIST(REMOVE_ITEM ASSET_IMPORT_FILES
+	${CMAKE_CURRENT_SOURCE_DIR}/asset/import/texture_importer.cpp
+)
+
+FILE(GLOB UTILS_ROOT LIST_DIRECTORIES false CONFIGURE_DEPENDS "utils/*.cpp" "utils/*.h" "utils/*.hpp")
+FILE(GLOB UTILS_REFLECTION "utils/reflection/*.cpp" "utils/reflection/*.h" "utils/reflection/*.hpp")
+FILE(GLOB UTILS_CONVERSIONS "utils/conversions/*.cpp" "utils/conversions/*.h" "utils/conversions/*.hpp")
+FILE(GLOB UTILS_FILESTREAM "utils/filestreaming/*.cpp" "utils/filestreaming/*.h" "utils/filestreaming/*.hpp")
+
+# FILE(GLOB VULKAN_RENDER_PASS "renderer/render_pass/*.cpp" "renderer/render_pass/*.h" "renderer/render_pass/*.hpp")
+# FILE(GLOB VULKAN_SHADER_CODE "renderer/shaders/*.cpp" "renderer/shaders/*.h" "renderer/shaders/*.hpp")
 
 SET (PROJECT_CONFIG_FILES
 	${CMAKE_SOURCE_DIR}/.clang-format
@@ -59,7 +111,6 @@ FIND_PROGRAM(GLSLANG_VALIDATOR "glslangValidator" HINTS $ENV{VULKAN_SDK}/bin REQ
 SET_PROPERTY(TARGET glslang::validator PROPERTY IMPORTED_LOCATION "${GLSLANG_VALIDATOR}")
 
 # --------------------------------
-
 ADD_LIBRARY(AppCore
 	${ASSET_ANIMATION_FILES}
 	${ASSET_IMPORTER_FILES}
@@ -68,156 +119,117 @@ ADD_LIBRARY(AppCore
 	${ASSET_MANAGER_FILES}
 	${ASSET_MESH_FILES}
 	${ASSET_REGISTRY_FILES}
+	${ASSET_DIR}
+	${ASSET_BITMAP_FILES}
+	${ASSET_MODEL_FILES}
+	${ASSET_IMPORT_FILES}
+	${ASSET_EXPORT_FILES}
+	${ASSET_MANAGER_FILES}
+	${ASSET_SYSTEM_FILES}
+
 	${CORE_APP}
 	${CORE_EVENTS}
 	${CORE_IDENTIFIERS}
 	${CORE_INPUT}
 	${CORE_MEMORY}
-	${CORE_MODULES}
+	${CORE_LAYERS}
+	${CORE_RESOURCE}
 	${CORE_THREADING}
 	${CORE_TIME}
 	${CORE_WINDOW}
+
 	${LOGGER}
 	${PROJECT}
-	${PLATFORM_CONFIGFILES}
-	${PLATFORM_FILESYSTEM}
-	${PLATFORM_SETTINGS}
+	${SETTINGS_FILES}
+
+	${CORE_BASE_ROOT}
+	${CORE_PLATFORM_ROOT}
+	${CORE_PLATFORM_CONFIG_FILES}
+	${CORE_PLATFORM_FILESYSTEM}
+	${CORE_WINDOWS_PLATFORM}
+	${CORE_MAC_PLATFORM}
+	${CORE_LINUX_PLATFORM}
+
+	${RENDERER_FILES}
+	${RENDERER_VULKAN}
+	${RENDERER_DEBUG_FILES}
+	${RENDERER_PIPELINE_FILES}
+	${RENDERER_SHADER_FILES}
+	${RENDERER_SYNC_FILES}
+	${RENDERER_FONT_FILES}
+	${RENDERER_KOSMICKRISP}
+
 	${SCENE}
+	${SCENE_COMPONENTS}
 	${PROJECT_CONFIG_FILES}
 	${SERIALIZER_FILES}
+	${FILESYSTEM_FILES}
+	${XPLANE_FILES}
 	${SCENE_FILES}
 	${REFLECTION_FILES}
-	${SHADER_FILES}
-	${VULKAN_FILES}
-	${VULKAN_BUFFERS}
-	${VULKAN_SHADER_CODE}
-	${FONT_CODE}
-	${UI_PANELS}
+	${SLANG_SHADERS}
+
+	# --------------------------------
+
+	${UI_FILES}
 	${UI_ACTIONS}
+	${UI_RESOURCES}
+	${UI_SOURCE}
+	${UI_IMGUIZMO}
+	${UI_IMGUI}
+	${UI_IMGUI_CPP}
+	${UI_IMGUI_DEBUGGERS}
+	${UI_IMGUI_FONT}
+	${UI_IMGUI_FREETYPE}
+	${UI_IMGUI_SINGLE}
+	${UI_IMGUI_BACKENDS}
+	${UI_IMGUI_BACKENDS_VULKAN}
+	${ICON_FILES}
+	${FONT_FILES}
+
+	${UTILS_ROOT}
 	${UTILS_REFLECTION}
 	${UTILS_CONVERSIONS}
 	${UTILS_FILESTREAM}
-    # --------------------------------
-	asset/asset.cpp
-	asset/asset.h
-	asset/asset_extensions.h
-	asset/asset_metadata.h
-	asset/asset_pack_header.h
-	asset/asset_types.h
-	asset/ecs.cpp
-	asset/ecs.h
-	asset/mesh_file.h
-	asset/object.cpp
-	asset/object.h
+
 	# --------------------------------
-	${CMAKE_SOURCE_DIR}/source/SceneryEditorX/EntryPoint.h
-	core/base.hpp
-	core/initializer.cpp
-	core/initializer.h
-	core/version.h
-	# --------------------------------
-	renderer/debug_renderer.cpp
-	renderer/debug_renderer.h
-	renderer/2d_renderer.cpp
-	renderer/2d_renderer.h
-	renderer/camera.cpp
-	renderer/camera.h
-	renderer/command_queue.cpp
-	renderer/command_queue.h
-	renderer/compute_pass.cpp
-	renderer/compute_pass.h
-	renderer/dds.h
-	renderer/image_data.cpp
-	renderer/image_data.h
-	renderer/primitives.cpp
-	renderer/primitives.h
-	renderer/render_config.h
-	renderer/render_context.cpp
-	renderer/render_context.h
-	renderer/renderer.cpp
-	renderer/renderer.h
-	renderer/scene_renderer.cpp
-	renderer/scene_renderer.h
-	renderer/stb_image_impl.cpp
-	renderer/texture.cpp
-	renderer/texture.h
-	renderer/xp_pbr.cpp
-	renderer/xp_pbr.h
-	renderer/xp_texture.cpp
-	renderer/xp_texture.h
-	# --------------------------------
-	ui/colors.h
-	ui/fonts.h
-	ui/styles.cpp
-	ui/ui.cpp
-	ui/ui.h
-	ui/ui_context.cpp
-	ui/ui_context.h
-	ui/ui_fonts.cpp
-	ui/ui_fonts.h
-	ui/ui_globals.cpp
-	ui/ui_icons.h
-	ui/ui_manager.cpp
-	ui/ui_manager.h
-	ui/ui_renderer.cpp
-	ui/ui_renderer.h
-	ui/ui_utils.cpp
-	ui/ui_utils.h
-    # --------------------------------
-	utils/container_utils.h
-	utils/delegations.h
-	utils/formatter.h
-	utils/pointers.h
-	utils/static_states.h
-	utils/string_utils.cpp
-	utils/string_utils.h
-	utils/system_detection.h
-    # --------------------------------
-    resource.h
+	${RESOURCE_FILE}
 	cpp.hint
 )
 
 # --------------------------------
 SOURCE_GROUP("Asset" FILES
-	asset/asset.cpp
-	asset/asset.h
-	asset/asset_extensions.h
-	asset/asset_metadata.h
-	asset/asset_pack_header.h
-	asset/asset_types.h
-	asset/ecs.cpp
-	asset/ecs.h
-	asset/mesh_file.h
-	asset/object.cpp
-	asset/object.h
+	${ASSET_DIR}
 )
 SOURCE_GROUP("Asset/Animation" FILES
 	${ASSET_ANIMATION_FILES}
 )
+SOURCE_GROUP("Asset/Bitmap" FILES
+	${ASSET_BITMAP_FILES}
+)
 SOURCE_GROUP("Asset/Importers" FILES
-	${ASSET_IMPORTER_FILES}
+	${ASSET_IMPORT_FILES}
 )
 SOURCE_GROUP("Asset/Exporters" FILES
-	${ASSET_EXPORTER_FILES}
+	${ASSET_EXPORT_FILES}
 )
 SOURCE_GROUP("Asset/Material" FILES
 	${ASSET_MATERIAL_FILES}
 )
-SOURCE_GROUP("Asset/Managers" FILES
+SOURCE_GROUP("Asset/Asset Manager" FILES
 	${ASSET_MANAGER_FILES}
 )
-SOURCE_GROUP("Asset/Mesh" FILES
-	${ASSET_MESH_FILES}
+SOURCE_GROUP("Asset/Asset System" FILES
+	${ASSET_SYSTEM_FILES}
+)
+SOURCE_GROUP("Asset/Model" FILES
+	${ASSET_MODEL_FILES}
 )
 SOURCE_GROUP("Asset/Registry" FILES
 	${ASSET_REGISTRY_FILES}
 )
 SOURCE_GROUP("Core" FILES
-	${CMAKE_SOURCE_DIR}/source/SceneryEditorX/EntryPoint.h
-	core/base.hpp
-	core/initializer.cpp
-	core/initializer.h
-	core/version.h
+	${CORE_BASE_ROOT}
 )
 SOURCE_GROUP("Core/Application" FILES
 	${CORE_APP}
@@ -237,8 +249,8 @@ SOURCE_GROUP("Core/Logging" FILES
 SOURCE_GROUP("Core/Memory" FILES
 	${CORE_MEMORY}
 )
-SOURCE_GROUP("Core/Modules" FILES
-	${CORE_MODULES}
+SOURCE_GROUP("Core/Layers" FILES
+	${CORE_LAYERS}
 )
 SOURCE_GROUP("Core/Threading" FILES
 	${CORE_THREADING}
@@ -249,30 +261,132 @@ SOURCE_GROUP("Core/Time" FILES
 SOURCE_GROUP("Core/Window" FILES
 	${CORE_WINDOW}
 )
-SOURCE_GROUP("Platform/Config" FILES
-	${PLATFORM_CONFIGFILES}
+SOURCE_GROUP("Core/Resource" FILES
+	${CORE_RESOURCE}
 )
-SOURCE_GROUP("Platform/Files" FILES
-	${PLATFORM_FILESYSTEM}
+SOURCE_GROUP("Core/Platform" FILES
+	${CORE_PLATFORM_ROOT}
 )
-SOURCE_GROUP("Platform/Settings" FILES
-	${PLATFORM_SETTINGS}
+SOURCE_GROUP("Core/Platform/Config" FILES
+	${CORE_PLATFORM_CONFIG_FILES}
+)
+SOURCE_GROUP("Core/Platform/Files" FILES
+	${CORE_PLATFORM_FILESYSTEM}
+)
+SOURCE_GROUP("Core/Platform/Windows" FILES
+	${CORE_WINDOWS_PLATFORM}
+)
+SOURCE_GROUP("Core/Platform/Mac" FILES
+	${CORE_MAC_PLATFORM}
+)
+SOURCE_GROUP("Core/Platform/Linux" FILES
+	${CORE_LINUX_PLATFORM}
+)
+SOURCE_GROUP("File Management" FILES
+	${FILESYSTEM_FILES}
+)
+SOURCE_GROUP("Project" FILES
+	${PROJECT}
+)
+SOURCE_GROUP("Renderer" FILES
+	${RENDERER_FILES}
+)
+SOURCE_GROUP("Renderer/Fonts" FILES
+	${RENDERER_FONT_FILES}
+)
+SOURCE_GROUP("Renderer/Kosmickrisp" FILES
+	${RENDERER_KOSMICKRISP}
+)
+SOURCE_GROUP("Renderer/Shaders" FILES
+	${VULKAN_SHADER_CODE}
+)
+SOURCE_GROUP("Renderer/Vulkan" FILES
+	${RENDERER_VULKAN}
+	${VULKAN_FILES}
+)
+SOURCE_GROUP("Renderer/Vulkan/Asset" FILES
+	${RENDERER_ASSET_FILES}
+)
+SOURCE_GROUP("Renderer/Vulkan/Debug" FILES
+	${RENDERER_DEBUG_FILES}
+)
+SOURCE_GROUP("Renderer/Vulkan/Pipeline" FILES
+	${RENDERER_PIPELINE_FILES}
+)
+SOURCE_GROUP("Renderer/Vulkan/Shader" FILES
+	${RENDERER_SHADER_FILES}
+)
+SOURCE_GROUP("Renderer/Vulkan/Synchronization" FILES
+	${RENDERER_SYNC_FILES}
+)
+SOURCE_GROUP("Resources" FILES
+	${RESOURCE_FILE}
+	cpp.hint
+)
+SOURCE_GROUP("Resources/Fonts" FILES
+	${FONT_FILES}
+)
+SOURCE_GROUP("Resources/Icons" FILES
+	${ICON_FILES}
+)
+SOURCE_GROUP("Resources/Shaders" FILES ${SLANG_SHADERS})
+SOURCE_GROUP("Scene" FILES
+	${SCENE}
+	${SCENE_FILES}
+)
+SOURCE_GROUP("Scene/Components" FILES
+	${SCENE_COMPONENTS}
+)
+SOURCE_GROUP("Scene/Camera" FILES
+	${SCENE_CAMERA}
+)
+SOURCE_GROUP("XPlane" FILES
+	${XPLANE_FILES}
+)
+SOURCE_GROUP("Settings" FILES
+	${SETTINGS_FILES}
 )
 SOURCE_GROUP("Serialization" FILES
 	${SERIALIZER_FILES}
 )
-SOURCE_GROUP("Renderer/Vulkan/Buffers" FILES
-	${VULKAN_BUFFERS}
+SOURCE_GROUP("UI" FILES
+	${UI_FILES}
+)
+SOURCE_GROUP("UI/Actions" FILES
+	${UI_ACTIONS}
+)
+SOURCE_GROUP("UI/Resources" FILES
+	${UI_RESOURCES}
+)
+SOURCE_GROUP("UI/Source/Imguizmo" FILES
+	${UI_IMGUIZMO}
+)
+SOURCE_GROUP("UI/Source/Imgui" FILES
+	${UI_IMGUI}
+)
+SOURCE_GROUP("UI/Source/Imgui/Backends" FILES
+	${UI_IMGUI_BACKENDS}
+)
+SOURCE_GROUP("UI/Source/Imgui/Backends/Vulkan" FILES
+	${UI_IMGUI_BACKENDS_VULKAN}
+)
+SOURCE_GROUP("UI/Source/Imgui/Misc/Cpp" FILES
+	${UI_IMGUI_CPP}
+)
+SOURCE_GROUP("UI/Source/Imgui/Misc/Debuggers" FILES
+	${UI_IMGUI_DEBUGGERS}
+)
+SOURCE_GROUP("UI/Source/Imgui/Misc/Font" FILES
+	${UI_IMGUI_FONT}
+)
+SOURCE_GROUP("UI/Source/Imgui/Misc/Freetype" FILES
+	${UI_IMGUI_FREETYPE}
+)
+SOURCE_GROUP("UI/Source/Imgui/Misc/Single File" FILES
+	${UI_IMGUI_SINGLE}
 )
 SOURCE_GROUP("Utilities" FILES
-	utils/container_utils.h
-	utils/delegations.h
-	utils/formatter.h
-	utils/pointers.h
-	utils/static_states.h
-	utils/string_utils.cpp
-	utils/string_utils.h
-	utils/system_detection.h
+	${UTILS_ROOT}
 )
 SOURCE_GROUP("Utilities/File Streaming" FILES
 	${UTILS_FILESTREAM}
@@ -283,172 +397,97 @@ SOURCE_GROUP("Utilities/Reflection" FILES
 SOURCE_GROUP("Utilities/Conversions" FILES
 	${UTILS_CONVERSIONS}
 )
-SOURCE_GROUP("Steam" FILES
-	platform/steam_parser.cpp
-	platform/steam_parser.h
-)
-SOURCE_GROUP("Project" FILES
-	${PROJECT}
-)
-SOURCE_GROUP("Renderer" FILES
-	renderer/debug_renderer.cpp
-	renderer/debug_renderer.h
-	renderer/2d_renderer.cpp
-	renderer/2d_renderer.h
-	renderer/camera.cpp
-	renderer/camera.h
-	renderer/command_queue.cpp
-	renderer/command_queue.h
-	renderer/compute_pass.cpp
-	renderer/compute_pass.h
-	renderer/dds.h
-	renderer/image_data.cpp
-	renderer/image_data.h
-	renderer/primitives.cpp
-	renderer/primitives.h
-	renderer/renderer.cpp
-	renderer/renderer.h
-	renderer/render_context.cpp
-	renderer/render_context.h
-	renderer/render_config.h
-	renderer/scene_renderer.cpp
-	renderer/scene_renderer.h
-	renderer/stb_image_impl.cpp
-	renderer/texture.cpp
-	renderer/texture.h
-	renderer/xp_pbr.cpp
-	renderer/xp_pbr.h
-	renderer/xp_texture.cpp
-	renderer/xp_texture.h
-)
-SOURCE_GROUP("Renderer/Vulkan" FILES
-	${VULKAN_FILES}
-)
-SOURCE_GROUP("Renderer/Fonts" FILES
-	${FONT_CODE}
-)
-SOURCE_GROUP("Scene" FILES
-	${SCENE}
-	${SCENE_FILES}
-)
-SOURCE_GROUP("Renderer/Shaders" FILES
-	${VULKAN_SHADER_CODE}
-)
-SOURCE_GROUP("Utilities" FILES
-	utils/container_utils.h
-	utils/conversions.cpp
-	utils/conversions.h
-	utils/formatter.h
-	utils/static_states.h
-	utils/platform_states.h
-	utils/string.cpp
-	utils/string.h
-	utils/string_utils.h
-)
-SOURCE_GROUP("Utilities/Reflection" FILES
-	${REFLECTION_FILES}
-)
-SOURCE_GROUP("UI" FILES
-	ui/colors.h
-	ui/fonts.h
-	ui/styles.cpp
-	ui/ui.cpp
-	ui/ui.h
-	ui/ui_context.cpp
-	ui/ui_context.h
-	ui/ui_fonts.cpp
-	ui/ui_fonts.h
-	ui/ui_globals.cpp
-	ui/ui_icons.h
-	ui/ui_manager.cpp
-	ui/ui_manager.h
-	ui/ui_renderer.cpp
-	ui/ui_renderer.h
-	ui/ui_utils.cpp
-	ui/ui_utils.h
-)
-SOURCE_GROUP("UI/Panels" FILES
-	${UI_PANELS}
-)
-SOURCE_GROUP("UI/Actions" FILES
-	${UI_ACTIONS}
-)
-SOURCE_GROUP("Resources" FILES
-    resource.h
-	cpp.hint
-)
-SOURCE_GROUP("Resources/Shaders" FILES
-	${SHADER_FILES}
-)
-SOURCE_GROUP("Resources/Icons" FILES
-    ${ICON_FILES}
-)
-SOURCE_GROUP("Resources/Fonts" FILES
-    ${FONT_FILES}
-)
+SOURCE_GROUP("Utilities/Reflection" FILES ${REFLECTION_FILES})
 
 # --------------------------------
 # SHADERS
 # --------------------------------
+# TODO: Needs to be updated to use the SLang compiler instead of glslang.
+
 IF(WIN32)
-    cmake_path(SET GLSL_VALIDATOR "$ENV{VULKAN_SDK}/Bin/glslangValidator.exe")
+	cmake_path(SET GLSL_VALIDATOR "$ENV{VULKAN_SDK}/Bin/glslangValidator.exe")
 ELSE()
-    cmake_path(SET GLSL_VALIDATOR "$ENV{VULKAN_SDK}/bin/glslangValidator")
+	cmake_path(SET GLSL_VALIDATOR "$ENV{VULKAN_SDK}/bin/glslangValidator")
 ENDIF()
 MESSAGE("GLSL VALIDATOR ${GLSL_VALIDATOR}")
 ADD_COMPILE_DEFINITIONS(GLSL_VALIDATOR="${GLSL_VALIDATOR}")
+TARGET_COMPILE_FEATURES(AppCore PRIVATE cxx_std_20)
 
 # --------------------------------
-
 TARGET_INCLUDE_DIRECTORIES(AppCore
-    PRIVATE
-        ${CMAKE_SOURCE_DIR}/source
-		${CMAKE_SOURCE_DIR}/source/Math/includes
-		${CMAKE_SOURCE_DIR}/dependency
-		${CMAKE_SOURCE_DIR}/dependency/entt/src
-        ${CMAKE_SOURCE_DIR}/dependency/imgui
-        ${CMAKE_SOURCE_DIR}/dependency/imgui/backends
-        ${CMAKE_SOURCE_DIR}/dependency/imgui/misc
-        ${CMAKE_SOURCE_DIR}/dependency/ImGuizmo
-        ${REGISTRY_KEYS}
-        ${PORTABLE_FILE_DIALOGS_INCLUDE_DIRS}
-        $ENV{VULKAN_SDK}/Include/
-        ${Stb_INCLUDE_DIR}
-        ${CURL_INCLUDE_DIRS}
+	PRIVATE
+	${CMAKE_SOURCE_DIR}/source
+	${CMAKE_SOURCE_DIR}/dependency
+	${CMAKE_SOURCE_DIR}/dependency/freeimage
+	${CMAKE_SOURCE_DIR}/dependency/freeimage/FreeImage
+	${CMAKE_SOURCE_DIR}/dependency/freetype
+	${CMAKE_SOURCE_DIR}/dependency/xMath
+	${CMAKE_SOURCE_DIR}/dependency/entt/src
+	${CMAKE_SOURCE_DIR}/dependency/imgui
+	${CMAKE_SOURCE_DIR}/dependency/tracy/public
+	${CMAKE_SOURCE_DIR}/dependency/imgui/backends
+	${CMAKE_SOURCE_DIR}/dependency/imgui/misc
+	${CMAKE_SOURCE_DIR}/dependency/ImGuizmo
+	${CMAKE_SOURCE_DIR}/dependency/taskflow
+	${CMAKE_SOURCE_DIR}/dependency/tinyobj
+	${CMAKE_SOURCE_DIR}/dependency/ktx/include
+	${CMAKE_SOURCE_DIR}/dependency/ktx/other_include
+	$if(RENDERDOC_ENABLED)
+		${RENDERDOC_INCLUDE_DIRS}
+	$endif()
+	${REGISTRY_KEYS}
+	${PORTABLE_FILE_DIALOGS_INCLUDE_DIRS}
+	$ENV{VULKAN_SDK}/Include/
+	$ENV{VULKAN_SDK}/Include/vma
+	${Stb_INCLUDE_DIR}
+	${CURL_INCLUDE_DIRS}
 )
 
 # --------------------------------
 
 TARGET_LINK_LIBRARIES(AppCore
-    PRIVATE
+	PRIVATE
 		nlohmann_json::nlohmann_json
-        spdlog::spdlog_header_only
-        GPUOpen::VulkanMemoryAllocator
-        CURL::libcurl
-        Vulkan::Vulkan
-		imgui
+		spdlog::spdlog_header_only
+		CURL::libcurl
+		ZLIB::ZLIB
+		Vulkan::Vulkan
 		libconfig
 		libconfig++
-		X-PlaneSceneryLibrary
-        glfw
-        dxgi
-        d3d12
-        Shell32.lib
-		xMath
+		XPSceneryLib::XPSceneryLib
+		SDL3::SDL3
+		dxgi
+		d3d12
+		ktx
+		${Slang_LIBRARY}
+		Shell32.lib
+		xMath::xMath
+	    Freetype::Freetype
+		$<$<AND:$<CONFIG:Debug>,$<BOOL:${TRACY_ENABLE}>>:TracyClient>
+		msdfgen::msdfgen
 )
 
 # --------------------------------
 
+IF(RENDERDOC_ENABLE)
+	TARGET_COMPILE_DEFINITIONS(AppCore
+		PRIVATE
+		RENDERDOC_ENABLED
+	)
+ENDIF()
+
 TARGET_COMPILE_DEFINITIONS(AppCore
-    PUBLIC
-        APPCORE
-        $<$<CONFIG:Debug>:SEDX_DEBUG>
-        $<$<CONFIG:Release>:SEDX_RELEASE>
+	PUBLIC
+		APPCORE
+		# Engine-side Dear ImGui configuration (IM_ASSERT routing); keeps the vendored imconfig.h untouched
+		"IMGUI_USER_CONFIG=\"SceneryEditorX/renderer/ui/imgui_config.h\""
+		$<$<CONFIG:Debug>:SEDX_DEBUG>
+		$<$<CONFIG:Release>:SEDX_RELEASE>
 		SPDLOG_USE_STD_FORMAT
-        VK_USE_PLATFORM_WIN32_KHR
-        GLFW_INCLUDE_VULKAN
-        GLFW_EXPOSE_NATIVE_WIN32
-        CURL_STATICLIB
+		VK_NO_PROTOTYPES
+		VK_USE_PLATFORM_WIN32_KHR
+		VK_USE_64_BIT_NON_DISPATCHABLE_HANDLES
+		CURL_STATICLIB
 )
 
 # --------------------------------

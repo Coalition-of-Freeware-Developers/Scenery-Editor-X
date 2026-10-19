@@ -1,0 +1,38 @@
+# Ignore content built with CMake
+build/
+/.vscode
+/.vs
+Build/
+out/
+bin/
+.vs/
+bin/
+bin-int/
+shader_tests/
+source/_archive/
+source/SceneryEditorX/reference/
+_temp_/
+
+# Repository specific directories
+docs/doxygen
+docs/other-docs
+docs/dependency manuals
+/.idea
+RenderDoc/
+
+
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/

@@ -12,8 +12,8 @@
 */
 #include <catch2/catch_test_macros.hpp>
 #include <SceneryEditorX/core/application/application_data.h>
-#include <SceneryEditorX/renderer/render_context.h>
-#include <SceneryEditorX/renderer/vulkan/vk_allocator.h>
+#include <SceneryEditorX/renderer/vulkan/render_context.h>
+#include <SceneryEditorX/renderer/vulkan/memory_allocator.h>
 #include <SceneryEditorX/utils/pointers.h>
 #include <thread>
 #include <vector>
@@ -38,7 +38,7 @@ namespace SceneryEditorX
                 cleanup();
             }
 
-            [[nodiscard]] Ref<VulkanDevice> GetDevice() const { return device; }
+            [[nodiscard]] Ref<Device> GetDevice() const { return device; }
             [[nodiscard]] Ref<MemoryAllocator> GetAllocator() const { return allocator; }
 
         private:
@@ -52,7 +52,7 @@ namespace SceneryEditorX
                     renderContext->Init();
 
                     /// Get the device
-                    device = renderContext->GetLogicDevice();
+                    device = renderContext->GetDevice();
 
                     /// Create memory allocator
                     allocator = CreateRef<MemoryAllocator>("TestAllocator");
@@ -77,7 +77,7 @@ namespace SceneryEditorX
             }
 
             Ref<RenderContext> renderContext;
-            Ref<VulkanDevice> device;
+            Ref<Device> device;
             Ref<MemoryAllocator> allocator;
         };
 
@@ -161,7 +161,7 @@ namespace SceneryEditorX
 
             static std::shared_ptr<VulkanTestEnvironment> environment;
             Ref<MemoryAllocator> allocator;
-            Ref<VulkanDevice> device;
+            Ref<Device> device;
             std::vector<MockAllocationTracker> allocationTrackers;
         };
 
@@ -208,7 +208,7 @@ namespace SceneryEditorX
 
                 /// Get stats to verify allocation
                 auto stats = allocator->GetStats();
-                REQUIRE(stats.allocationCount >= 1);
+                REQUIRE(stats.m_allocationCount >= 1);
                 REQUIRE(stats.usedBytes >= 1024);
 
                 /// Free the buffer
@@ -252,7 +252,7 @@ namespace SceneryEditorX
 
                 /// Get stats
                 auto stats = allocator->GetStats();
-                REQUIRE(stats.allocationCount >= sizes.size());
+                REQUIRE(stats.m_allocationCount >= sizes.size());
 
                 /// Free buffers in reverse order
                 for (auto it = buffers.rbegin(); it != buffers.rend(); ++it)
@@ -430,8 +430,8 @@ namespace SceneryEditorX
                 /// Check that stats have reasonable values
                 REQUIRE(stats.totalBytes >= 0);
                 REQUIRE(stats.usedBytes >= 0);
-                REQUIRE(stats.fragmentationRatio >= 0.0f);
-                REQUIRE(stats.fragmentationRatio <= 1.0f);
+                REQUIRE(stats.fragRatio >= 0.0f);
+                REQUIRE(stats.fragRatio <= 1.0f);
             }
 
             SECTION("Statistics after allocations")
@@ -459,7 +459,7 @@ namespace SceneryEditorX
                 auto updatedStats = allocator->GetStats();
 
                 /// Verify allocation count increased
-                REQUIRE(updatedStats.allocationCount >= initialStats.allocationCount + numBuffers);
+                REQUIRE(updatedStats.m_allocationCount >= initialStats.m_allocationCount + numBuffers);
 
                 /// Verify used bytes increased
                 REQUIRE(updatedStats.usedBytes >= initialStats.usedBytes + (bufferSize * numBuffers));
@@ -474,8 +474,8 @@ namespace SceneryEditorX
                 auto budget = allocator->GetMemoryBudget();
 
                 /// Check budget values
-                REQUIRE(budget.totalBytes > 0);
-                REQUIRE(budget.usedBytes >= 0);
+                REQUIRE(budget.m_totalBytes > 0);
+                REQUIRE(budget.m_usedBytes >= 0);
                 REQUIRE(budget.usagePercentage >= 0.0f);
                 REQUIRE(budget.usagePercentage <= 1.0f);
 
@@ -501,7 +501,7 @@ namespace SceneryEditorX
 
                 /// The current allocation should still be accounted for
                 auto stats = allocator->GetStats();
-                REQUIRE(stats.allocationCount >= 1);
+                REQUIRE(stats.m_allocationCount >= 1);
                 REQUIRE(stats.usedBytes >= bufferInfo.size);
             }
 
@@ -528,7 +528,7 @@ namespace SceneryEditorX
             SECTION("Speed optimized strategy")
             {
                 /// Set speed optimized strategy
-                REQUIRE_NOTHROW(allocator->SetAllocationStrategy(MemoryAllocator::AllocationStrategy::SpeedOptimized));
+                REQUIRE_NOTHROW(allocator->SetAllocationStrategy(MemoryAllocator::AllocationStrategy::SPEED_OPTIMIZED));
 
                 auto& tracker = trackAllocation();
 
@@ -545,7 +545,7 @@ namespace SceneryEditorX
             SECTION("Memory optimized strategy")
             {
                 /// Set memory optimized strategy
-                REQUIRE_NOTHROW(allocator->SetAllocationStrategy(MemoryAllocator::AllocationStrategy::MemoryOptimized));
+                REQUIRE_NOTHROW(allocator->SetAllocationStrategy(MemoryAllocator::AllocationStrategy::MEMORY_OPTIMIZED));
 
                 auto& tracker = trackAllocation();
 

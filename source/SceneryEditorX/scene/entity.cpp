@@ -1,61 +1,451 @@
 ﻿/**
-* -------------------------------------------------------
-* Scenery Editor X
-* -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
-* Copyright (c) 2025 Coalition of Freeware Developers
-* -------------------------------------------------------
-* entity.cpp
-* -------------------------------------------------------
-* Created: 11/8/2025
-* -------------------------------------------------------
-*/
+ * -------------------------------------------------------
+ * Scenery Editor X
+ * -------------------------------------------------------
+ * Copyright (c) 2026 Thomas Ray 
+ * Copyright (c) 2026 Coalition of Freeware Developers
+ * -------------------------------------------------------
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ * -------------------------------------------------------
+ * entity.cpp
+ * -------------------------------------------------------
+ * Created: 11/8/2025
+ * -------------------------------------------------------
+ */
 #include "entity.h"
 #include "scene.h"
+#include "components/component_sets.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-    UUID Entity::GetSceneUUID() const
+	namespace
 	{
-		return m_Scene->m_SceneID;
+		xMath::Vec3 DivideSafe(const xMath::Vec3& lhs, const xMath::Vec3& rhs)
+		{
+			xMath::Vec3 out = lhs;
+			out.x = rhs.x != 0.0f ? lhs.x / rhs.x : lhs.x;
+			out.y = rhs.y != 0.0f ? lhs.y / rhs.y : lhs.y;
+			out.z = rhs.z != 0.0f ? lhs.z / rhs.z : lhs.z;
+			return out;
+		}
+
+		xMath::Vec3 Multiply(const xMath::Vec3& lhs, const xMath::Vec3& rhs)
+		{
+			return xMath::Vec3(lhs.x * rhs.x, lhs.y * rhs.y, lhs.z * rhs.z);
+		}
 	}
 
+	void Entity::Start()
+	{
+	}
+
+	void Entity::Stop()
+	{
+	}
+
+	void Entity::Tick()
+	{
+	}
+
+	xMath::Matrix Entity::ComposeLocalMatrix(const TransformComponent &transformComponent)
+	{
+		const TransformComponent *transform = &transformComponent;
+
+		// Built from the transform's fields rather than TransformComponent::GetTransform(): xMath::Mat4's member
+		// layout depends on include order (XMATH_MATRIX_IS_ROW_MAJOR), xMath::Matrix's does not.
+		// Row-vector form (p' = p * M): rows hold the scaled rotation axes, the last row the translation.
+		xMath::Quat q = transform->GetRotation();
+		const float lengthSquared = q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w;
+		if (lengthSquared > 1e-12f)
+		{
+			const float inverseLength = 1.0f / std::sqrt(lengthSquared);
+			q.x *= inverseLength;
+			q.y *= inverseLength;
+			q.z *= inverseLength;
+			q.w *= inverseLength;
+		}
+		else
+		{
+			q.x = q.y = q.z = 0.0f;
+			q.w = 1.0f;
+		}
+
+		const xMath::Vec3& t = transform->translation;
+		const xMath::Vec3& s = transform->scale;
+		const float xx = q.x * q.x, yy = q.y * q.y, zz = q.z * q.z;
+		const float xy = q.x * q.y, xz = q.x * q.z, yz = q.y * q.z;
+		const float wx = q.w * q.x, wy = q.w * q.y, wz = q.w * q.z;
+
+		xMath::Matrix local = xMath::Matrix::IDENTITY;
+		local.m00 = (1.0f - 2.0f * (yy + zz)) * s.x; local.m01 = 2.0f * (xy + wz) * s.x;          local.m02 = 2.0f * (xz - wy) * s.x;          local.m03 = 0.0f;
+		local.m10 = 2.0f * (xy - wz) * s.y;          local.m11 = (1.0f - 2.0f * (xx + zz)) * s.y; local.m12 = 2.0f * (yz + wx) * s.y;          local.m13 = 0.0f;
+		local.m20 = 2.0f * (xz + wy) * s.z;          local.m21 = 2.0f * (yz - wx) * s.z;          local.m22 = (1.0f - 2.0f * (xx + yy)) * s.z; local.m23 = 0.0f;
+		local.m30 = t.x;                             local.m31 = t.y;                             local.m32 = t.z;                             local.m33 = 1.0f;
+		return local;
+	}
+
+	xMath::Matrix Entity::GetMatrix() const
+	{
+		const entt::registry *registry = GetRegistry();
+		const TransformComponent* transform = registry ? registry->try_get<TransformComponent>(m_EntityHandle) : nullptr;
+		if (!transform)
+			return xMath::Matrix::IDENTITY;
+
+		// row-vector composition: local first, then each parent's local transform up the chain
+		xMath::Matrix world = ComposeLocalMatrix(*transform);
+		constexpr uint32_t maxDepth = 64; // guards against relationship cycles
+
+		// Walk the parents by registry handle: this runs for every drawn entity every frame.
+		entt::entity handle = m_EntityHandle;
+		for (uint32_t depth = 0; depth < maxDepth; ++depth)
+		{
+			const RelationshipComponent *relationship = registry->try_get<RelationshipComponent>(handle);
+			if (!relationship || static_cast<uint64_t>(relationship->pParentHandle) == 0)
+				break;
+
+			const auto it = m_Scene->m_EntityMap.find(relationship->pParentHandle);
+			if (it == m_Scene->m_EntityMap.end() || !registry->valid(it->second))
+				break;
+
+			const TransformComponent *parentTransform = registry->try_get<TransformComponent>(it->second);
+			if (!parentTransform)
+				break;
+
+			world = world * ComposeLocalMatrix(*parentTransform);
+			handle = it->second;
+		}
+		return world;
+	}
+
+	xMath::Vec3 Entity::GetPosition() const
+	{
+		const xMath::Vec3 localPosition = GetPositionLocal();
+		const Entity parent = GetParent();
+		if (!parent)
+		{
+			return localPosition;
+		}
+
+		return parent.GetPosition() + localPosition;
+	}
+
+	xMath::Vec3 Entity::SetPosition(xMath::Vec3 vector3)
+	{
+		const Entity parent = GetParent();
+		if (!parent)
+		{
+			return SetPositionLocal(vector3);
+		}
+
+		return SetPositionLocal(vector3 - parent.GetPosition());
+	}
+
+	xMath::Vec3 Entity::GetRotation() const
+	{
+		const xMath::Vec3 localRotation = GetRotationLocal();
+		const Entity parent = GetParent();
+		if (!parent)
+		{
+			return localRotation;
+		}
+
+		return parent.GetRotation() + localRotation;
+	}
+
+	xMath::Vec3 Entity::SetRotation(xMath::Vec3 vector3)
+	{
+		const Entity parent = GetParent();
+		if (!parent)
+		{
+			return SetRotationLocal(vector3);
+		}
+
+		return SetRotationLocal(vector3 - parent.GetRotation());
+	}
+
+	xMath::Vec3 Entity::GetScale() const
+	{
+		const xMath::Vec3 localScale = GetScaleLocal();
+		const Entity parent = GetParent();
+		if (!parent)
+		{
+			return localScale;
+		}
+
+		return Multiply(parent.GetScale(), localScale);
+	}
+
+	xMath::Vec3 Entity::SetScale(xMath::Vec3 vector3)
+	{
+		const Entity parent = GetParent();
+		if (!parent)
+		{
+			return SetScaleLocal(vector3);
+		}
+
+		return SetScaleLocal(DivideSafe(vector3, parent.GetScale()));
+	}
+
+	xMath::Vec3 Entity::GetPositionLocal() const
+	{
+		if (!HasComponent<TransformComponent>())
+		{
+			return xMath::Vec3(0.0f, 0.0f, 0.0f);
+		}
+
+		return GetComponent<TransformComponent>().translation;
+	}
+
+	xMath::Vec3 Entity::SetPositionLocal(xMath::Vec3 vector3)
+	{
+		if (!HasComponent<TransformComponent>())
+		{
+			return vector3;
+		}
+
+		auto& transform = GetComponent<TransformComponent>();
+		transform.translation = vector3;
+		return transform.translation;
+	}
+
+	xMath::Vec3 Entity::GetRotationLocal() const
+	{
+		if (!HasComponent<TransformComponent>())
+		{
+			return xMath::Vec3(0.0f, 0.0f, 0.0f);
+		}
+
+		return GetComponent<TransformComponent>().GetRotationEuler();
+	}
+
+	xMath::Vec3 Entity::SetRotationLocal(xMath::Vec3 vector3)
+	{
+		if (!HasComponent<TransformComponent>())
+		{
+			return vector3;
+		}
+
+		auto& transform = GetComponent<TransformComponent>();
+		transform.SetRotationEuler(vector3);
+		return transform.GetRotationEuler();
+	}
+
+	xMath::Vec3 Entity::GetScaleLocal() const
+	{
+		if (!HasComponent<TransformComponent>())
+		{
+			return xMath::Vec3(1.0f, 1.0f, 1.0f);
+		}
+
+		return GetComponent<TransformComponent>().scale;
+	}
+
+	xMath::Vec3 Entity::SetScaleLocal(xMath::Vec3 vector3)
+	{
+		if (!HasComponent<TransformComponent>())
+		{
+			return vector3;
+		}
+
+		auto& transform = GetComponent<TransformComponent>();
+		transform.scale = vector3;
+		return transform.scale;
+	}
+
+	xMath::Vec3 Entity::GetPivotPoint() const
+	{
+		if (!HasComponent<TransformComponent>())
+		{
+			return xMath::Vec3(0.0f, 0.0f, 0.0f);
+		}
+
+		return GetComponent<TransformComponent>().pivot;
+	}
+
+	void Entity::SetPivotPoint(const xMath::Vec3& vector3)
+	{
+		if (!HasComponent<TransformComponent>())
+		{
+			return;
+		}
+
+		auto& transform = GetComponent<TransformComponent>();
+		transform.pivot = vector3;
+	}
+
+	Vec3 Entity::GetForward() const
+	{
+		if (!HasComponent<TransformComponent>())
+		{
+			return {0.0f, 0.0f, 1.0f};
+		}
+
+		const auto& transform = GetComponent<TransformComponent>();
+		return xMath::Normalize(transform.GetRotation() * xMath::Vec3(0.0f, 0.0f, 1.0f));
+	}
+
+	Vec3 Entity::GetUp() const
+	{
+		if (!HasComponent<TransformComponent>())
+		{
+			return {0.0f, 1.0f, 0.0f};
+		}
+
+		const auto& transform = GetComponent<TransformComponent>();
+		return xMath::Normalize(transform.GetRotation() * xMath::Vec3(0.0f, 1.0f, 0.0f));
+	}
+
+	Vec3 Entity::GetDown() const
+	{
+		if (!HasComponent<TransformComponent>())
+		{
+			return {0.0f, -1.0f, 0.0f};
+		}
+
+		const auto& transform = GetComponent<TransformComponent>();
+		return xMath::Normalize(transform.GetRotation() * xMath::Vec3(0.0f, -1.0f, 0.0f));
+	}
+
+	Vec3 Entity::GetLeft() const
+	{
+		if (!HasComponent<TransformComponent>())
+		{
+			return {-1.0f, 0.0f, 0.0f};
+		}
+
+		const auto& transform = GetComponent<TransformComponent>();
+		return xMath::Normalize(transform.GetRotation() * xMath::Vec3(-1.0f, 0.0f, 0.0f));
+	}
+
+	Vec3 Entity::GetRight() const
+	{
+		if (!HasComponent<TransformComponent>())
+		{
+			return {1.0f, 0.0f, 0.0f};
+		}
+
+		const auto& transform = GetComponent<TransformComponent>();
+		return xMath::Normalize(transform.GetRotation() * xMath::Vec3(1.0f, 0.0f, 0.0f));
+	}
+
+	Component* Entity::AddComponentByType(const ComponentType type)
+	{
+		EntityRuntime *runtime = GetRuntime();
+		const uint32_t index = static_cast<uint32_t>(type);
+		if (!runtime || index >= runtime->components.size())
+			return nullptr;
+
+		if (!runtime->components[index])
+			AttachComponent(type, CreateRef<Component>(&runtime->entity));
+
+		return runtime->components[index].Get();
+	}
+
+	void Entity::RemoveComponentByType(const ComponentType type)
+	{
+		EntityRuntime *runtime = GetRuntime();
+		const uint32_t index = static_cast<uint32_t>(type);
+		if (runtime && index < runtime->components.size() && runtime->components[index])
+		{
+			runtime->components[index] = nullptr;
+			Scene::MarkStructureChanged(); // cached renderable / light lists
+		}
+	}
+
+	void Entity::AttachComponent(const ComponentType type, const Ref<Component> &component)
+	{
+		EntityRuntime *runtime = GetRuntime();
+		const uint32_t index = static_cast<uint32_t>(type);
+		if (!runtime || index >= runtime->components.size() || !component)
+			return;
+
+		runtime->components[index] = component;
+		component->SetType(type);
+		component->Init();
+		Scene::MarkStructureChanged(); // cached renderable / light lists
+	}
+
+	Component* Entity::AddComponent(const ComponentType type)
+	{
+		return AddComponentByType(type);
+	}
+
+	/*
 	Entity Entity::GetParent() const
 	{
 		return m_Scene->TryGetEntityWithUUID(GetParentUUID());
 	}
+	*/
 
 	bool Entity::IsAncestorOf(Entity entity) const
 	{
-		const auto& children = Children();
-
+		const auto &children = Children();
+	
 		if (children.empty())
+		{
 			return false;
-
-		for (UUID child : children)
+		}
+	
+		for (const UUID &child : children)
 		{
 			if (child == entity.GetUUID())
+			{
 				return true;
+			}
 		}
-
+	
+		/*
 		for (UUID child : children)
 		{
 			if (m_Scene->GetEntityWithUUID(child).IsAncestorOf(entity))
+			{
 				return true;
+			}
 		}
-
+		*/
+	
 		return false;
 	}
 
-	bool Entity::IsValid() const
-    {
-        return (m_EntityHandle != entt::null) && m_Scene && m_Scene->m_Registry.valid(m_EntityHandle);
-    }
+	//UUID Entity::GetSceneUUID() const { return m_Scene->m_SceneID; }
 
-	Entity::operator bool() const { return IsValid(); }
+	/*
+	bool Entity::IsValid() const
+	{
+		return (m_EntityHandle != entt::null) && m_Scene && m_Scene->m_Registry.valid(m_EntityHandle);
+	}
+	*/
+
+	bool Entity::IsValid() const
+	{
+		return (m_EntityHandle != entt::null) && m_Scene && m_Scene->m_Registry.valid(m_EntityHandle);
+	}
+
+	UUID Entity::GetSceneUUID() const
+	{
+		return m_Scene ? m_Scene->m_SceneID : UUID();
+	}
+
+	//Entity::operator bool() const { return IsValid(); }
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

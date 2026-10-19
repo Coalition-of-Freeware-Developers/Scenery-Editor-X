@@ -479,7 +479,7 @@ The assert system integrates with the logging framework:
 Example log output:
 
 ```
-[2025-07-10 14:32:15.123] [core] [error] Assertion Failed (vk_buffer.cpp:45) Buffer size must be greater than zero
+[2025-07-10 14:32:15.123] [core] [error] Assertion Failed (buffer.cpp:45) Buffer size must be greater than zero
 [2025-07-10 14:32:15.124] [editor] [error] Verify Failed (scene_panel.cpp:123) Object ID 42 does not exist in scene
 ```
 
