@@ -36,6 +36,7 @@
 #include "editor_scene.h"
 #include "editor_selection.h"
 #include "editor_tools.h"
+#include "project_dialogs.h"
 #include "tools_selftest.h"
 #include "editor_theme.h"
 #include "editor_ui.h"
@@ -836,6 +837,10 @@ namespace SceneryEditorX
 			EditorProjects::NewProject(&m_Context);
 		if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_O, ImGuiInputFlags_RouteGlobal))
 			EditorProjects::BrowseOpen(&m_Context);
+		if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_E, ImGuiInputFlags_RouteGlobal))
+			ProjectDialogs::OpenExport();
+		if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_E, ImGuiInputFlags_RouteGlobal))
+			ProjectDialogs::QuickExport();
 		if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_S, ImGuiInputFlags_RouteGlobal))
 		{
 			if (EditorProjects::GetDocument())

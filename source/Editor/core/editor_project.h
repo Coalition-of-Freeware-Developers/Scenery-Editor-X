@@ -74,14 +74,23 @@ namespace SceneryEditorX::EditorProjects
 	/* @brief "Name *" for the window title, empty without a project. */
 	std::string GetTitle();
 
-	/* @brief Asks where to create a project file and opens the new project. */
+	/* @brief Asks about unsaved changes, then shows the New Airport Project form (ICAO, name, location...); the pack is created and opened from there. */
 	void NewProject(EditorContext *context);
+
+	/* @brief Asks where to create an empty project file (library projects, imports) and opens it. */
+	void NewEmptyProject(EditorContext *context);
 
 	/* @brief Asks for a project file (.edX, .sex, earth.wed.xml) and opens it. */
 	void BrowseOpen(EditorContext *context);
 
-	/* @brief Opens a project file (asks about unsaved changes first). */
-	bool Open(const std::filesystem::path &path, EditorContext *context);
+	/**
+	 * @brief Opens a project file (asks about unsaved changes first).
+	 * @param discardUnsaved The user was asked already (the New Airport Project form): unsaved changes are dropped.
+	 */
+	bool Open(const std::filesystem::path &path, EditorContext *context, bool discardUnsaved = false);
+
+	/* @brief Opens a project once the X-Plane library index is ready (like --project). */
+	void OpenWhenReady(const std::filesystem::path &path);
 
 	/* @brief Saves the project (Save As for one without a file). */
 	bool Save();

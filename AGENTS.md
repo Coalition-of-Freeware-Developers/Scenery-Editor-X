@@ -32,7 +32,8 @@ The dependency-light, cross-platform Catch2 unit suites that only need `source/`
 - **`XPlaneFormatTests`** (`source/Tests/xplane_tests`) — OBJ8 parsing/animation evaluation, the
   `library.txt` / `scenery_packs.ini` parsers + library index, the `lights.txt` light catalog, and the
   apt.dat 12.00 parser/writer, airport geometry, airport index, Scenery Gateway JSON records, the DSF
-  reader, the .pol/.lin/.str/.for/.fac/.agp asset parsers and the overlay geometry builder
+  reader and writer (`DsfWriterTests.cpp`: 16-bit pool quantization, MD5 footer, airport filters, per-tile
+  split), the .pol/.lin/.str/.for/.fac/.agp asset parsers and the overlay geometry builder
   (`SceneryEditorX/xplane/xp_obj8.*`, `xp_library.*`, `xp_lights.*`, `xp_apt.*`, `xp_apt_geometry.*`,
   `xp_airport_index.*`, `xp_gateway_types.*`, `xp_dsf.*`, `xp_assets.*`, `xp_overlay.*`). Standard library
   plus the header-only `dependency/json` submodule, fully green.
@@ -43,8 +44,12 @@ The dependency-light, cross-platform Catch2 unit suites that only need `source/`
   recovery, backups), `ProjectDocument` open/edit/save/close, the project -> DSF conversion the editor draws
   through the overlay builder, and the viewport node editor's bezier core (`SplineEditTests.cpp`:
   `project/spline_edit.*` round trips apt.dat chains and project rings bit for bit, de Casteljau inserts, handles,
-  deletes, smoothing, transforms) (`SceneryEditorX/project/*` plus `xplane/xp_apt.*`, `xp_library.*`,
-  `xp_apt_geometry.*`, `xp_dsf.*`, `xp_assets.*`, `xp_overlay.*`). Standard library plus `dependency/json`, fully green. Its
+  deletes, smoothing, transforms), the cross-platform VFS (`VfsTests.cpp`: `filesystem/vfs.*` mounts, virtual
+  paths, portable names, case-insensitive lookups, atomic writes, platform folders; the twin-spelling case only
+  runs on a case-sensitive disk) and scenery packs (`SceneryPackTests.cpp`: `project/scenery_pack.*` new airport
+  projects, coordinate parsing, export to apt.dat + DSF tiles + copied art) (`SceneryEditorX/project/*` plus
+  `filesystem/vfs.*`, `xplane/xp_apt.*`, `xp_library.*`, `xp_apt_geometry.*`, `xp_airport_document.*`,
+  `xp_airport_index.*`, `xp_dsf.*`, `xp_assets.*`, `xp_overlay.*`). Standard library plus `dependency/json`, fully green. Its
   `[performance]` case times a 22k-item project; exclude it with `"~[performance]"` for quick runs.
 
 The other suites are **not** Linux-buildable as written: `SettingsTest` links Windows libs
@@ -102,6 +107,7 @@ g++ -std=c++20 -O2 -pthread -DSEDX_NO_LOGGING -DZoneScoped= $INCS \
 # 4. XPlaneFormatTests (fully green)
 g++ -std=c++20 -O2 -pthread $INCS source/Tests/xplane_tests/XPlaneFormatTests.cpp \
     source/Tests/xplane_tests/AirportTests.cpp source/Tests/xplane_tests/OverlayTests.cpp \
+    source/Tests/xplane_tests/DsfWriterTests.cpp \
     source/SceneryEditorX/xplane/xp_obj8.cpp source/SceneryEditorX/xplane/xp_library.cpp \
     source/SceneryEditorX/xplane/xp_lights.cpp source/SceneryEditorX/xplane/xp_apt.cpp \
     source/SceneryEditorX/xplane/xp_apt_geometry.cpp source/SceneryEditorX/xplane/xp_airport_index.cpp \
@@ -113,6 +119,9 @@ g++ -std=c++20 -O2 -pthread $INCS source/Tests/xplane_tests/XPlaneFormatTests.cp
 # 5. ProjectFormatTests (fully green)
 g++ -std=c++20 -O2 -pthread $INCS source/Tests/project_tests/ProjectFormatTests.cpp \
     source/Tests/project_tests/SplineEditTests.cpp source/SceneryEditorX/project/spline_edit.cpp \
+    source/Tests/project_tests/VfsTests.cpp source/Tests/project_tests/SceneryPackTests.cpp \
+    source/SceneryEditorX/filesystem/vfs.cpp source/SceneryEditorX/project/scenery_pack.cpp \
+    source/SceneryEditorX/xplane/xp_airport_document.cpp source/SceneryEditorX/xplane/xp_airport_index.cpp \
     source/SceneryEditorX/project/scenery_project.cpp source/SceneryEditorX/project/project_edx.cpp \
     source/SceneryEditorX/project/project_sex.cpp source/SceneryEditorX/project/project_wed.cpp \
     source/SceneryEditorX/project/xml_document.cpp source/SceneryEditorX/project/project_io.cpp \

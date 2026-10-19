@@ -30,6 +30,7 @@
  */
 #include "project_io.h"
 #include "project_edx.h"
+#include <SceneryEditorX/filesystem/vfs.h>
 #include <algorithm>
 #include <fstream>
 #include <functional>
@@ -108,98 +109,12 @@ namespace SceneryEditorX::ProjectFile
 
 	bool ReadFileBytes(const fs::path &path, std::string &bytes, std::string *error)
 	{
-		std::ifstream file(path, std::ios::binary | std::ios::ate);
-		if (!file)
-		{
-			if (error)
-				*error = "Could not open " + PathText(path);
-			return false;
-		}
-		const std::streamsize size = file.tellg();
-		if (size < 0)
-		{
-			if (error)
-				*error = "Could not read " + PathText(path);
-			return false;
-		}
-		bytes.resize(static_cast<size_t>(size));
-		file.seekg(0, std::ios::beg);
-		if (size > 0 && !file.read(bytes.data(), size))
-		{
-			if (error)
-				*error = "Could not read " + PathText(path);
-			return false;
-		}
-		return true;
+		return VFS::ReadFile(path, bytes, error);
 	}
 
 	bool WriteFileAtomic(const fs::path &path, const std::string_view bytes, std::string *error)
 	{
-		const auto fail = [error](const std::string &message)
-		{
-			if (error)
-				*error = message;
-			return false;
-		};
-
-		std::error_code ec;
-		if (fs::is_directory(path, ec))
-			return fail("Could not write " + PathText(path) + ": a folder of that name is in the way");
-		if (path.has_parent_path())
-		{
-			fs::create_directories(path.parent_path(), ec);
-			if (ec)
-				return fail("Could not create " + PathText(path.parent_path()) + ": " + ec.message());
-		}
-
-		fs::path temporary = path;
-		temporary += ".tmp-" + MakeItemId();
-		{
-			std::ofstream file(temporary, std::ios::binary | std::ios::trunc);
-			if (!file)
-				return fail("Could not write " + PathText(temporary));
-			file.write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
-			file.flush();
-			if (!file)
-			{
-				file.close();
-				fs::remove(temporary, ec);
-				return fail("Writing " + PathText(path) + " failed (disk full?)");
-			}
-		}
-
-		// Check what landed on disk before it replaces anything
-		if (fs::file_size(temporary, ec) != bytes.size() || ec)
-		{
-			fs::remove(temporary, ec);
-			return fail("Writing " + PathText(path) + " failed (the file came out short)");
-		}
-
-		fs::rename(temporary, path, ec);
-		if (ec && fs::is_regular_file(path))
-		{
-			// Some runtimes won't rename over an existing file: move the old one aside first, put it back on failure.
-			fs::path aside = path;
-			aside += ".old-" + MakeItemId();
-			std::error_code moveError;
-			fs::rename(path, aside, moveError);
-			if (!moveError)
-			{
-				ec.clear();
-				fs::rename(temporary, path, ec);
-				if (ec)
-					fs::rename(aside, path, moveError);
-				else
-					fs::remove(aside, moveError);
-			}
-		}
-		if (ec)
-		{
-			std::error_code removeError;
-			fs::remove(temporary, removeError);
-			return fail("Could not replace " + PathText(path) + ": " + ec.message());
-		}
-		return true;
+		return VFS::WriteFileAtomic(path, bytes, error);
 	}
 
 	bool ParseProject(const std::string_view bytes, const ProjectFormat format, SceneryProject &out, std::vector<std::string> *warnings, std::string *error,

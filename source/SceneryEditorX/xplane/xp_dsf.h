@@ -74,6 +74,7 @@ namespace SceneryEditorX::XPlane
 		double heading = 0.0;			// True degrees
 		double elevation = 0.0;
 		Mode mode = Mode::Draped;
+		int32_t filter = -1;			// Airport filter: index among the sim/filter/aptid properties, -1 for none
 	};
 
 	/* @brief One POLYGON / NESTED_POLYGON command: a facade, forest, line, string, draped polygon or autogen block. */
@@ -83,6 +84,7 @@ namespace SceneryEditorX::XPlane
 		uint16_t parameter = 0;			// Meaning depends on the asset: facade height, forest density, line closed, string spacing, pol heading / 65535 for UV mapped
 		uint8_t planes = 2;				// Per point: 2 lon/lat, 3 + wall type, 4 + bezier control, 5..8 with UVs
 		std::vector<std::vector<DsfPoint>> windings;	// windings[0] outline, the rest holes
+		int32_t filter = -1;			// Airport filter: index among the sim/filter/aptid properties, -1 for none
 	};
 
 	/* @brief A road / rail / power line chain (NETWORK_CHAIN). Recorded for completeness; not drawn yet. */
@@ -131,6 +133,33 @@ namespace SceneryEditorX::XPlane
 
 	/* @brief True when the file starts with the 7-zip signature X-Plane uses for compressed tiles. */
 	bool IsDsfCompressed(const std::filesystem::path &path);
+
+	/**
+	 * @brief Encodes a DSF tile the way X-Plane reads it: the properties as given (sim/west ... sim/north must be among
+	 * them), the object and polygon definitions, 16-bit point pools, the command stream and the MD5 footer. Overlay
+	 * content only: objects and polygons are written; terrain, networks and rasters aren't.
+	 *
+	 * Points are quantized per pool. Pools are kept to DSF_POOL_SPAN degrees where the content allows, so positions
+	 * land within a few centimeters (a polygon larger than that gets a pool of its own size); planes that hold only
+	 * whole numbers from 0 to 65535 (wall types, whole headings, whole elevations) round trip exactly. Objects with an
+	 * elevation are written MSL or AGL (the AGL comment), the rest draped.
+	 * @return False (with the reason) when a polygon has more than 65535 points or 255 windings.
+	 */
+	bool WriteDsf(const DsfFile &dsf, std::vector<uint8_t> &out, std::string *error = nullptr);
+
+	/* @brief Degrees a point pool spans at most (unless one polygon is larger): 0.02 degrees keeps points within ~3 cm. */
+	inline constexpr double DSF_POOL_SPAN = 0.02;
+
+	/**
+	 * @brief Splits a DSF covering several 1x1 degree tiles into one DSF per tile, sorted south-west first: objects go
+	 * to the tile under them, polygons to the tile of their first point (a warning names any reaching into another
+	 * tile), exclusions (sim/exclude_*) to every tile they overlap. Definitions are renumbered per tile, the bounds
+	 * properties set per tile; every other property is copied.
+	 */
+	std::vector<DsfFile> SplitDsfByTile(const DsfFile &dsf, std::vector<std::string> *warnings = nullptr);
+
+	/* @brief MD5 digest (RFC 1321) of some bytes, as a DSF footer carries it. */
+	std::array<uint8_t, 16> Md5(const uint8_t *data, size_t size);
 
 	/* @brief "+44-124" style tile name for a coordinate (the 1x1 degree tile containing it). */
 	std::string GetDsfTileName(double latitude, double longitude);

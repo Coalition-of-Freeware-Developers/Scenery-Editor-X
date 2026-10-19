@@ -31,6 +31,7 @@
 #include "project_panel.h"
 #include <portable-file-dialogs.h>
 #include <Editor/core/editor_project.h>
+#include <Editor/core/project_dialogs.h>
 #include <Editor/core/editor_theme.h>
 #include <Editor/core/editor_ui.h>
 #include <SceneryEditorX/logging/logging.hpp>
@@ -111,7 +112,7 @@ namespace SceneryEditorX
 			DrawToolbar();
 			ProjectDocument *document = EditorProjects::GetDocument();
 			if (!document)
-				EditorUI::EmptyState("No project open.\nFile > New Project, or open a .edX / .sex project or a WorldEditor earth.wed.xml.");
+				EditorUI::EmptyState("No project open.\nFile > New Airport Project (Ctrl+N), or open a .edX / .sex project or a WorldEditor earth.wed.xml.");
 			else if (ImGui::BeginChild("##ProjectBody"))
 			{
 				SceneryProject &project = document->GetProject();
@@ -142,6 +143,7 @@ namespace SceneryEditorX
 		ProjectDocument *document = EditorProjects::GetDocument();
 		if (ImGui::Button(EditorUI::IconLabel(SEDX_ICON_FILE, "New").c_str()))
 			EditorProjects::NewProject(m_Context);
+		EditorUI::ItemTooltip("New airport project (Ctrl+N): ICAO, name, country and reference point");
 		ImGui::SameLine();
 		if (ImGui::Button(EditorUI::IconLabel(SEDX_ICON_FOLDER_OPEN, "Open").c_str()))
 			EditorProjects::BrowseOpen(m_Context);
@@ -153,6 +155,10 @@ namespace SceneryEditorX
 		ImGui::SameLine();
 		if (ImGui::Button("Save As..."))
 			EditorProjects::SaveAs();
+		ImGui::SameLine();
+		if (ImGui::Button(EditorUI::IconLabel(SEDX_ICON_UPLOAD, "Export").c_str()))
+			ProjectDialogs::OpenExport();
+		EditorUI::ItemTooltip("Export the X-Plane scenery pack (Ctrl+E): apt.dat, DSF tiles and the pack's own art");
 		ImGui::SameLine();
 		if (ImGui::Button(EditorUI::IconLabel(SEDX_ICON_TIMES, "Close").c_str()))
 			EditorProjects::Close(m_Context);

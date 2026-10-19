@@ -268,6 +268,7 @@ ADD_EXECUTABLE(XPlaneFormatTests
     ${CMAKE_CURRENT_SOURCE_DIR}/xplane_tests/XPlaneFormatTests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/xplane_tests/AirportTests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/xplane_tests/OverlayTests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/xplane_tests/DsfWriterTests.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_obj8.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_library.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_lights.cpp
@@ -299,7 +300,8 @@ INCLUDE(Catch)
 catch_discover_tests(XPlaneFormatTests)
 
 # --------------------------------
-# Project File Tests (.edX JSON, .sex binary, WorldEditor earth.wed.xml, cache, document and DSF conversion; standard library only)
+# Project File Tests (.edX JSON, .sex binary, WorldEditor earth.wed.xml, cache, document, DSF conversion, the VFS and
+# scenery pack creation / export; standard library only)
 # --------------------------------
 
 MESSAGE(STATUS "=================================================")
@@ -308,6 +310,9 @@ MESSAGE(STATUS "Generating Project File Unit Tests")
 ADD_EXECUTABLE(ProjectFormatTests
     ${CMAKE_CURRENT_SOURCE_DIR}/project_tests/ProjectFormatTests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/project_tests/SplineEditTests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/project_tests/VfsTests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/project_tests/SceneryPackTests.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/filesystem/vfs.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/project/spline_edit.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/project/scenery_project.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/project/project_edx.cpp
@@ -318,6 +323,9 @@ ADD_EXECUTABLE(ProjectFormatTests
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/project/project_cache.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/project/project_document.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/project/project_dsf.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/project/scenery_pack.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_airport_document.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_airport_index.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_apt.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_library.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_apt_geometry.cpp

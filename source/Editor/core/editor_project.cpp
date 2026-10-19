@@ -33,6 +33,7 @@
 #include "editor_context.h"
 #include "editor_scene.h"
 #include "editor_ui.h"
+#include "project_dialogs.h"
 #include <cmath>
 #include <ctime>
 #include <optional>
@@ -78,6 +79,7 @@ namespace SceneryEditorX::EditorProjects
 			Close,
 			Open,
 			New,
+			NewEmpty,
 			ImportWed,
 			Quit
 		};
@@ -730,6 +732,13 @@ namespace SceneryEditorX::EditorProjects
 
 		void NewNow(EditorContext *context)
 		{
+			(void)context;
+			if (CheckOwnAirport())
+				ProjectDialogs::OpenNewProject();
+		}
+
+		void NewEmptyNow(EditorContext *context)
+		{
 			State &state = GetState();
 			if (!CheckOwnAirport())
 				return;
@@ -794,6 +803,7 @@ namespace SceneryEditorX::EditorProjects
 				case Pending::Close:		CloseNow(context); break;
 				case Pending::Open:			OpenNow(state.pendingPath, context); break;
 				case Pending::New:			NewNow(context); break;
+				case Pending::NewEmpty:		NewEmptyNow(context); break;
 				case Pending::ImportWed:	ImportWedNow(context); break;
 				case Pending::Quit:			CloseNow(context); Application::Get().Stop(); break;
 				case Pending::None:			break;
@@ -841,6 +851,7 @@ namespace SceneryEditorX::EditorProjects
 					state.autosaveSeconds = std::max(1.0, std::atof(args[++i].c_str()));	// Seconds between autosaves (verification runs)
 			}
 		}
+		ProjectDialogs::Init();
 	}
 
 	void Shutdown()
@@ -873,6 +884,7 @@ namespace SceneryEditorX::EditorProjects
 	{
 		State &state = GetState();
 		const double now = ImGui::GetTime();
+		ProjectDialogs::Tick(context);
 
 		// Project asked for on the command line, once the library index can resolve its objects
 		if (!state.startupDone && !state.startupProject.empty() && LibraryReady())
@@ -954,6 +966,12 @@ namespace SceneryEditorX::EditorProjects
 			NewNow(context);
 	}
 
+	void NewEmptyProject(EditorContext *context)
+	{
+		if (ConfirmDiscard(Pending::NewEmpty))
+			NewEmptyNow(context);
+	}
+
 	void BrowseOpen(EditorContext *context)
 	{
 		const std::vector<std::string> files = pfd::open_file("Open a project", ToUtf8(DefaultFolder()),
@@ -963,15 +981,24 @@ namespace SceneryEditorX::EditorProjects
 			Open(FromUtf8(files.front()), context);
 	}
 
-	bool Open(const fs::path &path, EditorContext *context)
+	bool Open(const fs::path &path, EditorContext *context, const bool discardUnsaved)
 	{
 		State &state = GetState();
+		if (discardUnsaved)
+			return OpenNow(path, context);
 		if (!ConfirmDiscard(Pending::Open))
 		{
 			state.pendingPath = path;
 			return false;
 		}
 		return OpenNow(path, context);
+	}
+
+	void OpenWhenReady(const fs::path &path)
+	{
+		State &state = GetState();
+		state.startupProject = path;
+		state.startupDone = false;
 	}
 
 	bool Save()
@@ -1362,8 +1389,11 @@ namespace SceneryEditorX::EditorProjects
 		State &state = GetState();
 		const bool open = state.document.IsOpen();
 
-		if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_FILE, "New Project...").c_str(), "Ctrl+N"))
+		if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_PLANE, "New Airport Project...").c_str(), "Ctrl+N"))
 			NewProject(context);
+		EditorUI::ItemTooltip("A new scenery pack for an airport: ICAO, name, country and reference point, created in Custom Scenery or a folder you choose");
+		if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_FILE, "New Empty Project...").c_str()))
+			NewEmptyProject(context);
 		if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_FOLDER_OPEN, "Open Project...").c_str(), "Ctrl+O"))
 			BrowseOpen(context);
 		if (ImGui::BeginMenu("Open Recent", state.preferences && !state.preferences->GetRecentProjects().empty()))
@@ -1387,6 +1417,12 @@ namespace SceneryEditorX::EditorProjects
 		if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_TIMES, "Close Project").c_str(), nullptr, false, open))
 			Close(context);
 		ImGui::Separator();
+		if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_UPLOAD, "Export Scenery Pack...").c_str(), "Ctrl+E", false, open))
+			ProjectDialogs::OpenExport();
+		EditorUI::ItemTooltip("Write the project as an X-Plane scenery pack: Earth nav data/apt.dat, the DSF tiles and the pack's own art");
+		if (ImGui::MenuItem("Export Again", "Ctrl+Shift+E", false, open))
+			ProjectDialogs::QuickExport();
+		ImGui::Separator();
 		if (ImGui::BeginMenu("Import"))
 		{
 			if (ImGui::MenuItem("WorldEditor Project (earth.wed.xml)..."))
@@ -1399,6 +1435,8 @@ namespace SceneryEditorX::EditorProjects
 		}
 		if (ImGui::BeginMenu("Export", open))
 		{
+			if (ImGui::MenuItem("X-Plane Scenery Pack...", "Ctrl+E"))
+				ProjectDialogs::OpenExport();
 			if (ImGui::MenuItem("WorldEditor Project (earth.wed.xml)..."))
 				ExportWed();
 			if (ImGui::MenuItem("Airports (apt.dat)...", nullptr, false, !state.document.GetProject().airports.empty()))
@@ -1421,6 +1459,7 @@ namespace SceneryEditorX::EditorProjects
 
 	void DrawModals(EditorContext *context)
 	{
+		ProjectDialogs::Draw(context);
 		State &state = GetState();
 		if (state.openUnsaved)
 		{
