@@ -72,6 +72,9 @@ namespace SceneryEditorX::XPlane
 		 */
 		void MarkDirty(bool geometryChanged = true);
 
+		/* @brief Clears the dirty flag after the airport was saved somewhere else (into a project file). */
+		void ClearDirty() { m_Dirty = false; }
+
 		/* @brief "KSEA  Seattle Tacoma Intl" plus "*" when dirty: the title for the UI. */
 		[[nodiscard]] std::string GetTitle() const;
 

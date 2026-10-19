@@ -73,7 +73,7 @@ namespace SceneryEditorX
 		{"SDL",					TagDetails{.enabled = true,.levelFilter = Level::Error}},
 		{"Memory",				TagDetails{.enabled = true,.levelFilter = Level::Error}},
 		{"Mesh",				    TagDetails{.enabled = true,.levelFilter = Level::Warn}},
-		{"Project",				TagDetails{.enabled = true,.levelFilter = Level::Warn}},
+		{"Project",				TagDetails{.enabled = true,.levelFilter = Level::Info}},
 		{"Renderer",				TagDetails{.enabled = true,.levelFilter = Level::Info}},
 		{"Scene",					TagDetails{.enabled = true,.levelFilter = Level::Info}},
 		{"Scripting",				TagDetails{.enabled = true,.levelFilter = Level::Warn}},

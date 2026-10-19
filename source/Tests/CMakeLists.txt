@@ -298,3 +298,41 @@ ENDIF()
 INCLUDE(Catch)
 catch_discover_tests(XPlaneFormatTests)
 
+# --------------------------------
+# Project File Tests (.edX JSON, .sex binary, WorldEditor earth.wed.xml, cache and document; standard library only)
+# --------------------------------
+
+MESSAGE(STATUS "=================================================")
+MESSAGE(STATUS "Generating Project File Unit Tests")
+
+ADD_EXECUTABLE(ProjectFormatTests
+    ${CMAKE_CURRENT_SOURCE_DIR}/project_tests/ProjectFormatTests.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/project/scenery_project.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/project/project_edx.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/project/project_sex.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/project/project_wed.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/project/xml_document.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/project/project_io.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/project/project_cache.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/project/project_document.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_apt.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_library.cpp
+)
+
+TARGET_INCLUDE_DIRECTORIES(ProjectFormatTests PRIVATE
+    ${CMAKE_SOURCE_DIR}/source
+)
+
+TARGET_LINK_LIBRARIES(ProjectFormatTests PRIVATE
+    Catch2::Catch2WithMain
+    nlohmann_json::nlohmann_json
+)
+
+IF(_SEDX_MSVCLIKE)
+    TARGET_COMPILE_OPTIONS(ProjectFormatTests PRIVATE /MP /W4 /bigobj)
+ELSE()
+    TARGET_COMPILE_OPTIONS(ProjectFormatTests PRIVATE -Wall -Wextra -Wpedantic)
+ENDIF()
+
+catch_discover_tests(ProjectFormatTests)
+

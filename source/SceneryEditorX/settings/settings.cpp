@@ -252,7 +252,7 @@ namespace SceneryEditorX
 				return;
 			}
 
-			Setting &setting = cfg.getRoot()[section];
+			Setting &setting = cfg.lookup(section);
 			if (setting.exists(name))
 			{
 				setting.remove(name);
@@ -297,7 +297,7 @@ namespace SceneryEditorX
 
 			if (cfg.exists(section))
 			{
-				if (Setting &setting = cfg.getRoot()[section]; setting.exists(name))
+				if (Setting &setting = cfg.lookup(section); setting.exists(name))
 				{
 					setting.remove(name);
 				}
@@ -329,7 +329,7 @@ namespace SceneryEditorX
 					return;
 				}
 
-				Setting &setting = cfg.getRoot()[section];
+				Setting &setting = cfg.lookup(section);
 				if (setting.exists(name))
 					setting.remove(name);
 				setting.add(name, Setting::TypeInt) = value;
@@ -367,7 +367,7 @@ namespace SceneryEditorX
 					return;
 				}
 
-				Setting &setting = cfg.getRoot()[section];
+				Setting &setting = cfg.lookup(section);
 				if (setting.exists(name))
 					setting.remove(name);
 				setting.add(name, Setting::TypeFloat) = value;
@@ -404,7 +404,7 @@ namespace SceneryEditorX
 					return;
 				}
 
-				Setting &setting = cfg.getRoot()[section];
+				Setting &setting = cfg.lookup(section);
 				if (setting.exists(name))
 					setting.remove(name);
 
@@ -443,7 +443,7 @@ namespace SceneryEditorX
 					return;
 				}
 
-				Setting &setting = cfg.getRoot()[section];
+				Setting &setting = cfg.lookup(section);
 				if (setting.exists(name))
 					setting.remove(name);
 

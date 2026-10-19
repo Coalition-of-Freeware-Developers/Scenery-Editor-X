@@ -36,6 +36,13 @@ The dependency-light, cross-platform Catch2 unit suites that only need `source/`
   (`SceneryEditorX/xplane/xp_obj8.*`, `xp_library.*`, `xp_lights.*`, `xp_apt.*`, `xp_apt_geometry.*`,
   `xp_airport_index.*`, `xp_gateway_types.*`, `xp_dsf.*`, `xp_assets.*`, `xp_overlay.*`). Standard library
   plus the header-only `dependency/json` submodule, fully green.
+- **`ProjectFormatTests`** (`source/Tests/project_tests`) — the project file formats: the `.edX` JSON
+  reader/writer (determinism, git-friendly layout, the documented legacy layout), the `.sex` binary format
+  (checksums, damage / truncation / CRLF detection, fuzzing, the encode cache), the XML DOM, WorldEditor
+  `earth.wed.xml` import/export (`docs/XCoder/earth.wed.xml`), atomic writes, the project cache (snapshots,
+  recovery, backups) and `ProjectDocument` open/edit/save/close (`SceneryEditorX/project/*` plus
+  `xplane/xp_apt.*`, `xp_library.*`). Standard library plus `dependency/json`, fully green. Its
+  `[performance]` case times a 22k-item project; exclude it with `"~[performance]"` for quick runs.
 
 The other suites are **not** Linux-buildable as written: `SettingsTest` links Windows libs
 (`dxgi`, `d3d12`, `Shell32.lib`); `MemoryAllocatorTests` links `vulkan-1` and needs the Vulkan
@@ -99,6 +106,16 @@ g++ -std=c++20 -O2 -pthread $INCS source/Tests/xplane_tests/XPlaneFormatTests.cp
     source/SceneryEditorX/xplane/xp_assets.cpp source/SceneryEditorX/xplane/xp_overlay.cpp $LIBS \
     -o build_linux_tests/XPlaneFormatTests
 ./build_linux_tests/XPlaneFormatTests
+
+# 5. ProjectFormatTests (fully green)
+g++ -std=c++20 -O2 -pthread $INCS source/Tests/project_tests/ProjectFormatTests.cpp \
+    source/SceneryEditorX/project/scenery_project.cpp source/SceneryEditorX/project/project_edx.cpp \
+    source/SceneryEditorX/project/project_sex.cpp source/SceneryEditorX/project/project_wed.cpp \
+    source/SceneryEditorX/project/xml_document.cpp source/SceneryEditorX/project/project_io.cpp \
+    source/SceneryEditorX/project/project_cache.cpp source/SceneryEditorX/project/project_document.cpp \
+    source/SceneryEditorX/xplane/xp_apt.cpp source/SceneryEditorX/xplane/xp_library.cpp $LIBS \
+    -o build_linux_tests/ProjectFormatTests
+./build_linux_tests/ProjectFormatTests "~[performance]"
 ```
 
 `build_linux_tests/` and `dependency/Catch2/build-linux/` are throwaway build output — do not commit them.

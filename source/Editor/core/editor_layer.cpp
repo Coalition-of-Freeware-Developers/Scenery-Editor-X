@@ -30,6 +30,7 @@
  */
 #include "editor_layer.h"
 #include "editor_airports.h"
+#include "editor_project.h"
 #include "editor_camera.h"
 #include "editor_scene.h"
 #include "editor_theme.h"
@@ -39,6 +40,7 @@
 #include <Editor/panels/asset_shelf_panel.h>
 #include <Editor/panels/console_panel.h>
 #include <Editor/panels/outliner_panel.h>
+#include <Editor/panels/project_panel.h>
 #include <Editor/panels/properties_panel.h>
 #include <Editor/panels/scene_viewport.h>
 #include <Editor/panels/settings_panels.h>
@@ -96,14 +98,15 @@ namespace SceneryEditorX
 		constexpr PanelInfo PANEL_RENDERER			= { "RendererStats",	"RENDERER###RendererStats",			SEDX_ICON_TACHOMETER };
 		constexpr PanelInfo PANEL_XPLANE			= { "XPlaneLibrary",	"X-PLANE LIBRARY###XPlaneLibrary",	SEDX_ICON_PLANE };
 		constexpr PanelInfo PANEL_AIRPORTS			= { "Airports",			"AIRPORTS###Airports",				SEDX_ICON_GLOBE };
+		constexpr PanelInfo PANEL_PROJECT			= { "Project",			"PROJECT###Project",				SEDX_ICON_FILE_TEXT };
 
 		constexpr PanelInfo s_StripPanels[] =
 		{
-			PANEL_PROPERTIES, PANEL_OUTLINER, PANEL_AIRPORTS, PANEL_XPLANE, PANEL_ASSETS, PANEL_CONSOLE, PANEL_SCENE_SETTINGS, PANEL_CAMERA, PANEL_RENDERER, PANEL_VIEWPORT
+			PANEL_PROPERTIES, PANEL_OUTLINER, PANEL_PROJECT, PANEL_AIRPORTS, PANEL_XPLANE, PANEL_ASSETS, PANEL_CONSOLE, PANEL_SCENE_SETTINGS, PANEL_CAMERA, PANEL_RENDERER, PANEL_VIEWPORT
 		};
 
 		/* Bump when the default layout changes so existing users get the new arrangement once. */
-		constexpr const char *DOCKSPACE_NAME = "SEDX_EditorDockspace_v4";
+		constexpr const char *DOCKSPACE_NAME = "SEDX_EditorDockspace_v5";
 
 		constexpr ImGuiWindowFlags SIDE_BAR_FLAGS = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoSavedSettings;
 
@@ -249,6 +252,7 @@ namespace SceneryEditorX
 		// X-Plane folder + library index (the first scan runs in the background), then the airport index and the Gateway client
 		XPlane::LibraryManager::Init();
 		EditorAirports::Init();
+		EditorProjects::Init(m_UserPreferences);
 		ReadStartupObjects();
 		RegisterPanels();
 		EditorCamera::CaptureHome();
@@ -274,6 +278,7 @@ namespace SceneryEditorX
 		// The UI layer (an overlay) detaches first, so ImGui is already gone here: no ImGui calls.
 		Camera::SetInputEnabled(true);
 		m_PanelManager.reset();
+		EditorProjects::Shutdown();	// Keeps unsaved project work as recovery data while the scene still exists
 		EditorAirports::Shutdown();
 		XPlane::SceneObjects::Shutdown();
 		XPlane::LibraryManager::Shutdown();
@@ -293,6 +298,7 @@ namespace SceneryEditorX
 		m_PanelManager->AddPanel<ConsolePanel>(PanelCategory::Editor, PANEL_CONSOLE.id, "Console", true, m_LogSink);
 		m_PanelManager->AddPanel<XPlaneLibraryPanel>(PanelCategory::Editor, PANEL_XPLANE.id, "X-Plane Library", true, &m_Context);
 		m_PanelManager->AddPanel<AirportPanel>(PanelCategory::Editor, PANEL_AIRPORTS.id, "Airports", true, &m_Context);
+		m_PanelManager->AddPanel<ProjectPanel>(PanelCategory::Editor, PANEL_PROJECT.id, "Project", true, &m_Context);
 		m_PanelManager->AddPanel<SceneSettingsPanel>(PanelCategory::Settings, PANEL_SCENE_SETTINGS.id, "Scene Settings", true);
 		m_PanelManager->AddPanel<CameraSettingsPanel>(PanelCategory::Settings, PANEL_CAMERA.id, "Camera", true);
 		m_PanelManager->AddPanel<RendererStatsPanel>(PanelCategory::Settings, PANEL_RENDERER.id, "Renderer", true);
@@ -358,6 +364,12 @@ namespace SceneryEditorX
 			EditorAirports::Tick(&m_Context);
 		}
 
+		// Project: the startup project, scene edits flowing into it, autosave, the window title
+		{
+			SEDX_PERF_SCOPE("Main: EditorProjects::Tick");
+			EditorProjects::Tick(&m_Context);
+		}
+
 		HandleShortcuts();
 
 		// Order matters: each side bar shrinks the viewport work area the dockspace then fills.
@@ -391,6 +403,7 @@ namespace SceneryEditorX
 		DrawAboutPopup();
 		DrawDebugWindows();
 		EditorAirports::DrawModals(&m_Context);
+		EditorProjects::DrawModals(&m_Context);
 	}
 
 	void EditorLayer::DrawMenuBar()
@@ -400,12 +413,7 @@ namespace SceneryEditorX
 
 		if (ImGui::BeginMenu("File"))
 		{
-			ImGui::MenuItem("New Scene", nullptr, false, false);
-			ImGui::MenuItem("Open Project...", "Ctrl+O", false, false);
-			ImGui::MenuItem("Save Scene", "Ctrl+S", false, false);
-			ImGui::Separator();
-			if (ImGui::MenuItem("Exit", "Alt+F4"))
-				Application::Get().Stop();
+			EditorProjects::DrawFileMenu(&m_Context);
 			ImGui::EndMenu();
 		}
 
@@ -704,7 +712,7 @@ namespace SceneryEditorX
 		ImGui::DockBuilderSetNodeSize(dockspaceId, viewport->WorkSize);
 
 		//  +------------+--------------------------+------------------+
-		//  |            |                          | OUTLINER         |
+		//  |            |                          | OUTLINER/PROJECT |
 		//  | PROPERTIES |        VIEWPORT          +------------------+
 		//  |            |                          | SCENE SETTINGS / |
 		//  |            +--------------------------+ CAMERA /         |
@@ -718,6 +726,7 @@ namespace SceneryEditorX
 
 		ImGui::DockBuilderDockWindow(PANEL_PROPERTIES.window, left);
 		ImGui::DockBuilderDockWindow(PANEL_OUTLINER.window, rightTop);
+		ImGui::DockBuilderDockWindow(PANEL_PROJECT.window, rightTop);
 		ImGui::DockBuilderDockWindow(PANEL_SCENE_SETTINGS.window, rightBottom);
 		ImGui::DockBuilderDockWindow(PANEL_CAMERA.window, rightBottom);
 		ImGui::DockBuilderDockWindow(PANEL_RENDERER.window, rightBottom);
@@ -784,11 +793,25 @@ namespace SceneryEditorX
 		if (ImGui::Shortcut(ImGuiKey_Home, ImGuiInputFlags_RouteGlobal))
 			EditorCamera::Reset();
 
-		// The open airport
-		if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_S, ImGuiInputFlags_RouteGlobal) && EditorAirports::GetDocument())
-			EditorAirports::SaveAirport();
-		if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_S, ImGuiInputFlags_RouteGlobal) && EditorAirports::GetDocument())
-			EditorAirports::SaveAirportAs();
+		// The open project (which saves its airport too), else the open airport
+		if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_N, ImGuiInputFlags_RouteGlobal))
+			EditorProjects::NewProject(&m_Context);
+		if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_O, ImGuiInputFlags_RouteGlobal))
+			EditorProjects::BrowseOpen(&m_Context);
+		if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_S, ImGuiInputFlags_RouteGlobal))
+		{
+			if (EditorProjects::GetDocument())
+				EditorProjects::Save();
+			else if (EditorAirports::GetDocument())
+				EditorAirports::SaveAirport();
+		}
+		if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_S, ImGuiInputFlags_RouteGlobal))
+		{
+			if (EditorProjects::GetDocument())
+				EditorProjects::SaveAs();
+			else if (EditorAirports::GetDocument())
+				EditorAirports::SaveAirportAs();
+		}
 	}
 
 	void EditorLayer::ReadStartupObjects()

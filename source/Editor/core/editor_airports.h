@@ -31,6 +31,7 @@
 #pragma once
 #include <cstdint>
 #include <filesystem>
+#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
@@ -93,7 +94,20 @@ namespace SceneryEditorX::EditorAirports
 	bool CreateAirport(const std::string &id, const std::string &name, double latitude, double longitude, XPlane::AirportType type, int elevationFt,
 		const std::filesystem::path &packageRoot, const std::string &packageName, EditorContext *context);
 
-	/* @brief Saves the open airport into its pack. False (with a logged reason) for read-only sources. */
+	/**
+	 * @brief Opens an airport that belongs to the open project (no apt.dat of its own): edits stay in the document
+	 * until the project saves it, and Save Airport saves the project through the handler set below. Replaces the open
+	 * airport without asking (the project flow asked already).
+	 */
+	bool OpenProjectAirport(const XPlane::AptAirport &airport, EditorContext *context, bool frame = true);
+
+	/* @brief True when the open airport belongs to the project (opened with OpenProjectAirport). */
+	bool IsProjectAirport();
+
+	/* @brief What saving a project-owned airport does (the project's save). Null clears it. */
+	void SetProjectSaveHandler(std::function<bool()> handler);
+
+	/* @brief Saves the open airport into its pack (or, for a project airport, saves the project). False (with a logged reason) for read-only sources. */
 	bool SaveAirport();
 
 	/* @brief Saves the open airport into a pack folder chosen in a folder picker (created when needed). */

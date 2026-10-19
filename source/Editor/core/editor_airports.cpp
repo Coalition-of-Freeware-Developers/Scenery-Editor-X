@@ -67,6 +67,8 @@ namespace SceneryEditorX::EditorAirports
 		struct State
 		{
 			std::unique_ptr<AirportDocument> document;
+			bool projectOwned = false;			// The open airport belongs to the open project (OpenProjectAirport)
+			std::function<bool()> projectSave;	// Saves the project (set by EditorProjects)
 			std::vector<std::string> validation;
 			uint64_t validationRevision = ~0ull;
 
@@ -122,6 +124,7 @@ namespace SceneryEditorX::EditorAirports
 		{
 			State &state = GetState();
 			state.document = std::move(document);
+			state.projectOwned = false;
 			LoadIntoScene(context, true);
 			EDITOR_INFO_TAG(LOG_TAG, "Opened {} from {}{}", state.document->GetTitle(), state.document->GetPackageName(), state.document->IsReadOnly() ? " (read-only)" : "");
 		}
@@ -473,11 +476,37 @@ namespace SceneryEditorX::EditorAirports
 		return true;
 	}
 
+	bool OpenProjectAirport(const AptAirport &airport, EditorContext *context, const bool frame)
+	{
+		State &state = GetState();
+		if (state.document)
+			CloseAirport(context, true);
+		state.document = std::make_unique<AirportDocument>();
+		state.document->airport = airport;
+		state.projectOwned = true;
+		LoadIntoScene(context, frame);
+		EDITOR_INFO_TAG(LOG_TAG, "Opened project airport {}", state.document->GetTitle());
+		return true;
+	}
+
+	bool IsProjectAirport()
+	{
+		const State &state = GetState();
+		return state.document && state.projectOwned;
+	}
+
+	void SetProjectSaveHandler(std::function<bool()> handler)
+	{
+		GetState().projectSave = std::move(handler);
+	}
+
 	bool SaveAirport()
 	{
 		State &state = GetState();
 		if (!state.document)
 			return false;
+		if (state.projectOwned && state.projectSave)
+			return state.projectSave();
 		if (state.document->IsReadOnly() || !state.document->HasFile())
 			return SaveAirportAs();
 
@@ -552,6 +581,7 @@ namespace SceneryEditorX::EditorAirports
 			context->selectedEntity = 0;
 		EDITOR_INFO_TAG(LOG_TAG, "Closed {}", state.document->airport.id);
 		state.document.reset();
+		state.projectOwned = false;
 		state.validation.clear();
 		return true;
 	}
