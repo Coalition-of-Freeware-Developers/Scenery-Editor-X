@@ -29,6 +29,7 @@
  * -------------------------------------------------------
  */
 #include "xp_dsf.h"
+#include <SceneryEditorX/filesystem/vfs.h>
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -765,20 +766,12 @@ namespace SceneryEditorX::XPlane
 
 	bool LoadDsf(const std::filesystem::path &path, DsfFile &out, std::string *error)
 	{
-		std::ifstream file(path, std::ios::binary | std::ios::ate);
-		if (!file)
-			return Fail(error, "Could not open " + path.string());
-		const std::streamsize size = file.tellg();
-		if (size < 0)
-			return Fail(error, "Could not read " + path.string());
-		std::vector<uint8_t> bytes(static_cast<size_t>(size));
-		file.seekg(0);
-		if (size > 0 && !file.read(reinterpret_cast<char *>(bytes.data()), size))
-			return Fail(error, "Could not read " + path.string());
-
+		std::string bytes;
 		std::string readError;
-		if (!ReadDsf(bytes.data(), bytes.size(), out, &readError))
-			return Fail(error, path.filename().string() + ": " + readError);
+		if (!VFS::ReadFile(path, bytes, &readError))
+			return Fail(error, readError);
+		if (!ReadDsf(reinterpret_cast<const uint8_t *>(bytes.data()), bytes.size(), out, &readError))
+			return Fail(error, VFS::ToUtf8(path.filename()) + ": " + readError);
 		return true;
 	}
 

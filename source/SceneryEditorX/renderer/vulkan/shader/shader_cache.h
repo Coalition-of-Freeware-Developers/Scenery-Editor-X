@@ -65,7 +65,7 @@ namespace SceneryEditorX
 		[[nodiscard]] static std::filesystem::path ResolveSpirvPath(std::string_view sourcePath);
 		[[nodiscard]] static bool TryLoadSpirv(const std::filesystem::path& spirvPath, std::vector<uint32_t>& outSpirv);
 
-		/** @brief Directory holding cached program files (<temp>/SceneryEditorX/shader-cache). */
+		/** @brief Directory holding cached program files (the VFS cache folder's "shaders": %LOCALAPPDATA%/SceneryEditorX/cache/shaders on Windows). */
 		[[nodiscard]] static std::filesystem::path GetProgramCacheDirectory();
 
 		/**

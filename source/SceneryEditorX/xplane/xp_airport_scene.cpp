@@ -44,6 +44,7 @@
 #include <memory>
 #include <set>
 #include <unordered_set>
+#include <SceneryEditorX/filesystem/vfs.h>
 #include <SceneryEditorX/logging/logging.hpp>
 #include <SceneryEditorX/renderer/gpu_scene.h>
 #include <SceneryEditorX/renderer/vulkan/enums.h>
@@ -528,12 +529,11 @@ namespace SceneryEditorX::XPlane
 
 				const fs::path direct(key);
 				if (direct.is_absolute())
-					return fs::exists(direct, ec) ? direct : fs::path();
+					return VFS::FindCaseInsensitive(direct).value_or(fs::path());
 				if (!package.empty())
 				{
-					const fs::path local = (package / direct).lexically_normal();
-					if (fs::exists(local, ec))
-						return local;
+					if (std::optional<fs::path> local = VFS::FindCaseInsensitive((package / direct).lexically_normal()))
+						return *local;
 				}
 				return {};
 			};
@@ -1048,10 +1048,10 @@ namespace SceneryEditorX::XPlane
 			OverlayBuild overlayBuild;
 			for (const auto &[lat, lon] : tiles)
 			{
-				const fs::path tile = GetDsfTilePath(package, lat + 0.5, lon + 0.5);
-				std::error_code ec;
-				if (!fs::exists(tile, ec))
+				const std::optional<fs::path> found = VFS::FindCaseInsensitive(GetDsfTilePath(package, lat + 0.5, lon + 0.5));
+				if (!found)
 					continue;
+				const fs::path &tile = *found;
 
 				const auto start = std::chrono::steady_clock::now();
 				DsfFile dsf;

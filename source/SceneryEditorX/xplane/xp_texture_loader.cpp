@@ -608,21 +608,21 @@ namespace SceneryEditorX::XPlane
 			return {};
 
 		const std::filesystem::path named = (baseFolder / ToNativeRelativePath(reference)).lexically_normal();
-		std::error_code ec;
 
+		// Each candidate as the disk spells it (a pack made on Windows names "Hangar.PNG" for "hangar.png")
 		std::filesystem::path dds = named;
 		dds.replace_extension(".dds");
-		if (std::filesystem::exists(dds, ec))
-			return dds;
+		if (const std::optional<std::filesystem::path> found = VFS::FindCaseInsensitive(dds))
+			return *found;
 
-		if (std::filesystem::exists(named, ec))
-			return named;
+		if (const std::optional<std::filesystem::path> found = VFS::FindCaseInsensitive(named))
+			return *found;
 
 		// Some packs reference .dds while shipping .png (and vice versa).
 		std::filesystem::path png = named;
 		png.replace_extension(".png");
-		if (std::filesystem::exists(png, ec))
-			return png;
+		if (const std::optional<std::filesystem::path> found = VFS::FindCaseInsensitive(png))
+			return *found;
 
 		return {};
 	}

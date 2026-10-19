@@ -66,8 +66,11 @@ namespace SceneryEditorX::VFS
 	inline constexpr const char *MOUNT_PROJECT = "project";		// The open project's folder (its scenery pack)
 	inline constexpr const char *MOUNT_XPLANE = "xplane";		// The X-Plane 12 install (read-only)
 	inline constexpr const char *MOUNT_SCENERY = "scenery";		// X-Plane's Custom Scenery folder (writable)
-	inline constexpr const char *MOUNT_USER = "user";			// The editor's settings folder
-	inline constexpr const char *MOUNT_CACHE = "cache";			// The editor's cache folder
+	inline constexpr const char *MOUNT_USER = "user";			// The editor's settings (AppLocation::Settings)
+	inline constexpr const char *MOUNT_DATA = "data";			// Machine-local data worth keeping (AppLocation::Data)
+	inline constexpr const char *MOUNT_CACHE = "cache";			// Rebuildable caches (AppLocation::Cache)
+	inline constexpr const char *MOUNT_LOGS = "logs";			// Log files (AppLocation::Logs)
+	inline constexpr const char *MOUNT_TEMP = "temp";			// Scratch files (AppLocation::Temp)
 
 	// -------------------------------------------------------
 	// Paths and names
@@ -110,6 +113,12 @@ namespace SceneryEditorX::VFS
 	/* @brief True when @p path is @p folder or inside it (compared lexically after making both absolute and normal). */
 	bool IsInside(const std::filesystem::path &path, const std::filesystem::path &folder);
 
+	/**
+	 * @brief A key two spellings of one path share: normal, '/' separators, no trailing slash, lower-case (ASCII) on
+	 * the platforms whose file systems ignore case (Windows, macOS). For sets and maps of folders.
+	 */
+	std::string PathKey(const std::filesystem::path &path);
+
 	// -------------------------------------------------------
 	// Physical file operations (everything the mounts do goes through these)
 
@@ -119,7 +128,16 @@ namespace SceneryEditorX::VFS
 	 */
 	std::optional<std::filesystem::path> FindCaseInsensitive(const std::filesystem::path &path);
 
-	/* @brief Reads a whole file. */
+	/* @brief The path as the disk spells it when a case-insensitive match exists, else the path unchanged. */
+	std::filesystem::path ResolveCase(const std::filesystem::path &path);
+
+	/* @brief True when the path (matched case-insensitively) is a regular file. */
+	bool IsFile(const std::filesystem::path &path);
+
+	/* @brief True when the path (matched case-insensitively) is a folder. */
+	bool IsDirectory(const std::filesystem::path &path);
+
+	/* @brief Reads a whole file; a path that only differs in case from the file on disk is found too. */
 	bool ReadFile(const std::filesystem::path &path, std::string &bytes, std::string *error = nullptr);
 
 	/**
@@ -132,8 +150,8 @@ namespace SceneryEditorX::VFS
 	/* @brief Creates a folder and its parents (fine when it exists). */
 	bool CreateFolders(const std::filesystem::path &path, std::string *error = nullptr);
 
-	/* @brief Copies a file (folders created as needed). Without @p overwrite an existing target fails. */
-	bool CopyFile(const std::filesystem::path &from, const std::filesystem::path &to, bool overwrite, std::string *error = nullptr);
+	/* @brief Copies a file (folders created as needed). Without @p overwrite an existing target fails. (Not "CopyFile": windows.h makes that a macro.) */
+	bool CopyRegularFile(const std::filesystem::path &from, const std::filesystem::path &to, bool overwrite, std::string *error = nullptr);
 
 	// -------------------------------------------------------
 	// Platform folders
@@ -153,6 +171,71 @@ namespace SceneryEditorX::VFS
 
 	/* @brief The editor's own subfolder of a per-user folder ("<Config>/SceneryEditorX"). Not created. */
 	std::filesystem::path GetAppFolder(Folder folder, std::string_view appName = "SceneryEditorX");
+
+	// -------------------------------------------------------
+	// Where the editor keeps its own files
+
+	class FileSystem;
+
+	/**
+	 * @brief Kinds of files the editor keeps for itself, each where the platform expects it:
+	 *
+	 *   Settings  preferences that may roam with the user   %APPDATA%\<app>               ~/Library/Application Support/<app>   $XDG_CONFIG_HOME/<app>
+	 *   Data      machine-local data worth keeping          %LOCALAPPDATA%\<app>          ~/Library/Application Support/<app>   $XDG_DATA_HOME/<app>
+	 *             (crash recovery, autosaves)
+	 *   Cache     rebuildable: indexes, downloads,          %LOCALAPPDATA%\<app>\cache    ~/Library/Caches/<app>                $XDG_CACHE_HOME/<app>
+	 *             compiled shaders (safe to delete)
+	 *   Logs      log files                                 <Settings>\logs
+	 *   Temp      scratch files                             <temp>\<app>
+	 */
+	enum class AppLocation : uint8_t
+	{
+		Settings,
+		Data,
+		Cache,
+		Logs,
+		Temp
+	};
+
+	struct AppLayout
+	{
+		std::filesystem::path settings;
+		std::filesystem::path data;
+		std::filesystem::path cache;
+		std::filesystem::path logs;
+		std::filesystem::path temp;
+
+		[[nodiscard]] const std::filesystem::path &Get(AppLocation location) const;
+	};
+
+	/* @brief The platform's layout for an app's folders (nothing is created). Missing platform folders fall back to the working folder. */
+	AppLayout MakeAppLayout(std::string_view appName = "SceneryEditorX");
+
+	/* @brief The process-wide layout (MakeAppLayout() until SetAppLayout replaces it). Thread safe. */
+	AppLayout GetAppLayout();
+	void SetAppLayout(const AppLayout &layout);
+
+	/* @brief A folder of the process-wide layout. */
+	std::filesystem::path GetAppLocation(AppLocation location);
+
+	/* @brief Creates a layout's folders and mounts them: user, data, cache, logs, temp. */
+	bool MountAppLayout(FileSystem &vfs, const AppLayout &layout, std::string *error = nullptr);
+
+	/* @brief A file or folder an older version kept somewhere else. */
+	struct LegacyMove
+	{
+		std::filesystem::path from;
+		std::filesystem::path to;
+	};
+
+	/**
+	 * @brief Moves what older versions left in their old places: a file moves when there is none at the target; a
+	 * folder's contents merge into the target the same way, and the old folder goes once it's empty. Nothing at a
+	 * target is overwritten (what's in the way stays in the old place, and the report says so). Moves between
+	 * volumes copy, then delete. Sources that don't exist, or are the target already, are skipped.
+	 * @return One line per move that did something, for the log.
+	 */
+	std::vector<std::string> MoveLegacyFiles(const std::vector<LegacyMove> &moves);
 
 	// -------------------------------------------------------
 	// X-Plane

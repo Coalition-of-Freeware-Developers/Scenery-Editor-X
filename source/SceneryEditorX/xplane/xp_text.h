@@ -37,6 +37,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <SceneryEditorX/filesystem/vfs.h>
 
 // -------------------------------------------------------
 
@@ -184,20 +185,13 @@ namespace SceneryEditorX::XPlane
 		return result;
 	}
 
-	/* @brief Reads a whole file into memory. Returns false when it can't be opened. */
+	/**
+	 * @brief Reads a whole file into memory. Returns false when it can't be opened. A path spelled in another case than
+	 * the file on disk is found too (VFS::ReadFile), the way X-Plane reads packs made on Windows on any platform.
+	 */
 	inline bool ReadTextFile(const std::filesystem::path &path, std::string &text)
 	{
-		std::ifstream file(path, std::ios::binary | std::ios::ate);
-		if (!file)
-			return false;
-
-		const std::streamsize size = file.tellg();
-		if (size < 0)
-			return false;
-
-		text.resize(static_cast<size_t>(size));
-		file.seekg(0, std::ios::beg);
-		return size == 0 || static_cast<bool>(file.read(text.data(), size));
+		return VFS::ReadFile(path, text);
 	}
 
 	/**

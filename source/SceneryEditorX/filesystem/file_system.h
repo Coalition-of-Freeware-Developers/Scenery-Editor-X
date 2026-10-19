@@ -346,8 +346,18 @@ namespace SceneryEditorX::IO
 		static std::wstring StringToWstring(const std::string &str);
 
 		/**
-		 * @brief Gets the path to the persistent storage directory.
-		 * @return The path to the persistent storage directory.
+		 * @brief Sets up where the editor keeps its own files (VFS::MakeAppLayout): settings, data, caches, logs and
+		 * temp files each where the platform expects them. Creates the folders, mounts them in the VFS (user:/, data:/,
+		 * cache:/, logs:/, temp:/) and moves what older versions kept elsewhere: the airport index, Gateway downloads and
+		 * compiled shaders into the cache folder, crash recovery data into the data folder. Runs once; later calls
+		 * return the first call's report. Call it before anything reads or writes those files.
+		 * @return What was moved, one line each.
+		 */
+		static const std::vector<std::string> &InitAppLocations();
+
+		/**
+		 * @brief The settings folder (VFS AppLocation::Settings): %APPDATA%\SceneryEditorX, ~/Library/Application
+		 * Support/SceneryEditorX, $XDG_CONFIG_HOME/SceneryEditorX.
 		 */
 		static std::filesystem::path GetPersistentStoragePath();
 

@@ -147,7 +147,11 @@ namespace SceneryEditorX::VFS
 				complete = true;
 				return path;
 			}
-
+#if defined(_WIN32)
+			// NTFS ignores case: what exists() can't find has no other spelling either (and listing folders for every
+			// missing file a library exports cost the library scan ~0.7 s)
+			return path;
+#else
 			fs::path current = path.root_path();
 			bool matching = true;
 			for (const fs::path &component : path.relative_path())
@@ -181,6 +185,7 @@ namespace SceneryEditorX::VFS
 			}
 			complete = matching && fs::exists(current, ec);
 			return current;
+#endif
 		}
 
 		/* @brief Folders first, then names (case-insensitively, then exactly). */
@@ -385,6 +390,18 @@ namespace SceneryEditorX::VFS
 		return true;
 	}
 
+	std::string PathKey(const fs::path &path)
+	{
+		const std::u8string text = path.lexically_normal().generic_u8string();
+		std::string key(text.begin(), text.end());
+		while (key.size() > 1 && key.back() == '/')
+			key.pop_back();
+#if defined(_WIN32) || defined(__APPLE__)
+		key = ToLowerAscii(key);
+#endif
+		return key;
+	}
+
 	// -------------------------------------------------------
 	// Physical file operations
 
@@ -397,9 +414,41 @@ namespace SceneryEditorX::VFS
 		return match;
 	}
 
+	fs::path ResolveCase(const fs::path &path)
+	{
+		bool complete = false;
+		fs::path match = MatchExistingCase(path, complete);
+		return complete ? match : path;
+	}
+
+	bool IsFile(const fs::path &path)
+	{
+		std::error_code ec;
+		if (fs::is_regular_file(path, ec))
+			return true;
+		const std::optional<fs::path> found = FindCaseInsensitive(path);
+		return found && fs::is_regular_file(*found, ec);
+	}
+
+	bool IsDirectory(const fs::path &path)
+	{
+		std::error_code ec;
+		if (fs::is_directory(path, ec))
+			return true;
+		const std::optional<fs::path> found = FindCaseInsensitive(path);
+		return found && fs::is_directory(*found, ec);
+	}
+
 	bool ReadFile(const fs::path &path, std::string &bytes, std::string *error)
 	{
 		std::ifstream file(path, std::ios::binary | std::ios::ate);
+		if (!file)
+		{
+			// Spelled in another case than the disk has it (a pack made on Windows, read on Linux)
+			const std::optional<fs::path> found = FindCaseInsensitive(path);
+			if (found && *found != path)
+				file.open(*found, std::ios::binary | std::ios::ate);
+		}
 		if (!file)
 			return Fail(error, "Could not open " + ToUtf8(path));
 		const std::streamsize size = file.tellg();
@@ -483,7 +532,7 @@ namespace SceneryEditorX::VFS
 		return true;
 	}
 
-	bool CopyFile(const fs::path &from, const fs::path &to, const bool overwrite, std::string *error)
+	bool CopyRegularFile(const fs::path &from, const fs::path &to, const bool overwrite, std::string *error)
 	{
 		std::error_code ec;
 		if (!fs::is_regular_file(from, ec))
@@ -563,6 +612,186 @@ namespace SceneryEditorX::VFS
 	{
 		const fs::path base = GetFolder(folder);
 		return base.empty() ? fs::path() : base / FromUtf8(appName);
+	}
+
+	// -------------------------------------------------------
+	// Where the editor keeps its own files
+
+	namespace
+	{
+		std::shared_mutex g_LayoutMutex;
+		std::optional<AppLayout> g_Layout;
+
+		/* @brief Moves one file or folder that isn't at the target yet (rename, else copy + delete across volumes). */
+		bool MoveWhole(const fs::path &from, const fs::path &to, std::string &failure)
+		{
+			std::error_code ec;
+			if (to.has_parent_path() && !CreateFolders(to.parent_path(), &failure))
+				return false;
+			fs::rename(from, to, ec);
+			if (!ec)
+				return true;
+
+			// Another volume (Temp on D:, the profile on C:): copy, then delete the original
+			std::error_code copyError;
+			if (fs::is_directory(from, copyError))
+				fs::copy(from, to, fs::copy_options::recursive, copyError);
+			else
+				fs::copy_file(from, to, copyError);
+			if (copyError)
+			{
+				std::error_code cleanup;
+				fs::remove_all(to, cleanup);
+				failure = ToUtf8(from) + " couldn't be moved: " + copyError.message();
+				return false;
+			}
+			fs::remove_all(from, ec);
+			return true;
+		}
+
+		struct MoveCount
+		{
+			size_t moved = 0;
+			size_t kept = 0;	// Left in the old place: something was at the target already
+			std::vector<std::string> failures;
+		};
+
+		/* @brief Merges a file or folder into the target, never overwriting; old folders go once they're empty. */
+		void MergeInto(const fs::path &from, const fs::path &to, MoveCount &count)
+		{
+			std::error_code ec;
+			if (!fs::exists(to, ec))
+			{
+				std::string failure;
+				if (MoveWhole(from, to, failure))
+					++count.moved;
+				else
+					count.failures.push_back(failure);
+				return;
+			}
+			if (fs::is_directory(from, ec) && fs::is_directory(to, ec))
+			{
+				std::vector<fs::path> children;
+				for (fs::directory_iterator it(from, fs::directory_options::skip_permission_denied, ec), end; !ec && it != end; it.increment(ec))
+					children.push_back(it->path());
+				for (const fs::path &child : children)
+					MergeInto(child, to / child.filename(), count);
+				if (fs::is_empty(from, ec))
+					fs::remove(from, ec);
+				return;
+			}
+			++count.kept;
+		}
+	}
+
+	const fs::path &AppLayout::Get(const AppLocation location) const
+	{
+		switch (location)
+		{
+			case AppLocation::Settings:	return settings;
+			case AppLocation::Data:		return data;
+			case AppLocation::Cache:	return cache;
+			case AppLocation::Logs:		return logs;
+			case AppLocation::Temp:		return temp;
+		}
+		return settings;
+	}
+
+	AppLayout MakeAppLayout(const std::string_view appName)
+	{
+		std::error_code ec;
+		const fs::path fallback = fs::current_path(ec) / FromUtf8(appName);
+		const auto folder = [&](const Folder kind)
+		{
+			fs::path path = GetAppFolder(kind, appName);
+			return path.empty() ? fallback : path;
+		};
+
+		AppLayout layout;
+		layout.settings = folder(Folder::Config);
+		layout.data = folder(Folder::Data);
+#if defined(_WIN32)
+		layout.cache = folder(Folder::Cache) / "cache";	// %LOCALAPPDATA% holds both data and caches: caches get their own folder
+#else
+		layout.cache = folder(Folder::Cache);			// ~/Library/Caches, $XDG_CACHE_HOME: a cache folder already
+#endif
+		layout.logs = layout.settings / "logs";
+		layout.temp = folder(Folder::Temp);
+		return layout;
+	}
+
+	AppLayout GetAppLayout()
+	{
+		{
+			std::shared_lock lock(g_LayoutMutex);
+			if (g_Layout)
+				return *g_Layout;
+		}
+		std::unique_lock lock(g_LayoutMutex);
+		if (!g_Layout)
+			g_Layout = MakeAppLayout();
+		return *g_Layout;
+	}
+
+	void SetAppLayout(const AppLayout &layout)
+	{
+		std::unique_lock lock(g_LayoutMutex);
+		g_Layout = layout;
+	}
+
+	fs::path GetAppLocation(const AppLocation location)
+	{
+		return GetAppLayout().Get(location);
+	}
+
+	bool MountAppLayout(FileSystem &vfs, const AppLayout &layout, std::string *error)
+	{
+		const std::pair<const char *, const fs::path *> mounts[] = {
+			{ MOUNT_USER, &layout.settings }, { MOUNT_DATA, &layout.data }, { MOUNT_CACHE, &layout.cache },
+			{ MOUNT_LOGS, &layout.logs }, { MOUNT_TEMP, &layout.temp } };
+		bool ok = true;
+		for (const auto &[name, root] : mounts)
+		{
+			std::string reason;
+			if (!CreateFolders(*root, &reason) || !vfs.Mount(name, *root, false, &reason))
+			{
+				ok = false;
+				if (error)
+					*error = reason;
+			}
+		}
+		return ok;
+	}
+
+	std::vector<std::string> MoveLegacyFiles(const std::vector<LegacyMove> &moves)
+	{
+		std::vector<std::string> report;
+		for (const LegacyMove &move : moves)
+		{
+			std::error_code ec;
+			if (move.from.empty() || move.to.empty() || !fs::exists(move.from, ec))
+				continue;
+			if (fs::exists(move.to, ec) && fs::equivalent(move.from, move.to, ec))
+				continue;	// The same place on this platform (macOS keeps settings and data together)
+			if (IsInside(move.to, move.from))
+			{
+				report.push_back("Not moving " + ToUtf8(move.from) + " into itself (" + ToUtf8(move.to) + ")");
+				continue;
+			}
+
+			MoveCount count;
+			MergeInto(move.from, move.to, count);
+			const std::string kept = std::to_string(count.kept) + (count.kept == 1 ? " item" : " items");
+			if (count.moved > 0 && count.kept == 0)
+				report.push_back("Moved " + ToUtf8(move.from) + " to " + ToUtf8(move.to));
+			else if (count.moved > 0)
+				report.push_back("Moved " + ToUtf8(move.from) + " to " + ToUtf8(move.to) + " (" + kept + " already there stayed in the old place)");
+			else if (count.kept > 0)
+				report.push_back("Left " + ToUtf8(move.from) + " in place: " + kept + " already at " + ToUtf8(move.to));
+			for (std::string &failure : count.failures)
+				report.push_back(std::move(failure));
+		}
+		return report;
 	}
 
 	// -------------------------------------------------------
@@ -846,7 +1075,7 @@ namespace SceneryEditorX::VFS
 
 		std::error_code ec;
 		if (!fs::is_directory(*source, ec))
-			return CopyFile(*source, *target, overwrite, error);
+			return CopyRegularFile(*source, *target, overwrite, error);
 
 		// A folder: its whole tree
 		if (!VFS::CreateFolders(*target, error))
@@ -860,7 +1089,7 @@ namespace SceneryEditorX::VFS
 				if (!VFS::CreateFolders(destination, error))
 					return false;
 			}
-			else if (!CopyFile(it->path(), destination, overwrite, error))
+			else if (!CopyRegularFile(it->path(), destination, overwrite, error))
 				return false;
 		}
 		if (ec)

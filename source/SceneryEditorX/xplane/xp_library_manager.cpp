@@ -59,41 +59,11 @@ namespace SceneryEditorX::XPlane
 		constexpr const char *LOG_TAG = "XPlaneLibrary";
 		constexpr const char *SETTINGS_FILE = "xplane_library.json";
 
-		/* @brief Comparable key for a folder (normalized, lower-case on case-insensitive file systems, no trailing slash). */
-		std::string PathKey(const fs::path &path)
-		{
-			std::string key = path.lexically_normal().generic_string();
-			while (key.size() > 1 && key.back() == '/')
-				key.pop_back();
-#ifdef _WIN32
-			key = ToLower(key);
-#endif
-			return key;
-		}
-
-		/* @brief UTF-8 text for a path (JSON settings are UTF-8). */
-		std::string ToUtf8(const fs::path &path)
-		{
-			const std::u8string text = path.u8string();
-			return { reinterpret_cast<const char *>(text.data()), text.size() };
-		}
-
-		fs::path FromUtf8(const std::string &text)
-		{
-			return fs::path(std::u8string(reinterpret_cast<const char8_t *>(text.data()), text.size()));
-		}
-
-		bool IsDirectory(const fs::path &path)
-		{
-			std::error_code ec;
-			return fs::is_directory(path, ec);
-		}
-
-		bool IsFile(const fs::path &path)
-		{
-			std::error_code ec;
-			return fs::is_regular_file(path, ec);
-		}
+		using VFS::FromUtf8;
+		using VFS::IsDirectory;
+		using VFS::IsFile;
+		using VFS::PathKey;
+		using VFS::ToUtf8;
 
 #ifdef _WIN32
 		/* @brief Target of a Windows shortcut (.lnk); X-Plane follows shortcuts placed in Custom Scenery. */
@@ -227,15 +197,9 @@ namespace SceneryEditorX::XPlane
 				json["packages"][key] = tracked;
 			json["checkFiles"] = settings.checkFiles;
 
-			std::error_code ec;
-			fs::create_directories(GetSettingsPath().parent_path(), ec);
-			std::ofstream file(GetSettingsPath(), std::ios::binary | std::ios::trunc);
-			if (!file)
-			{
-				SEDX_CORE_WARN_TAG(LOG_TAG, "Could not write {}", GetSettingsPath().string());
-				return;
-			}
-			file << json.dump(2);
+			std::string error;
+			if (!VFS::WriteFileAtomic(GetSettingsPath(), json.dump(2), &error))
+				SEDX_CORE_WARN_TAG(LOG_TAG, "Could not save the library settings: {}", error);
 		}
 
 		// -------------------------------------------------------
@@ -277,7 +241,7 @@ namespace SceneryEditorX::XPlane
 			if (!install.IsValid())
 				return packages;
 
-			const fs::path customScenery = install.root / "Custom Scenery";
+			const fs::path customScenery = VFS::GetCustomSceneryFolder(install.root);
 
 			std::vector<SceneryPackEntry> entries;
 			if (std::string ini; ReadTextFile(customScenery / "scenery_packs.ini", ini))
@@ -314,14 +278,14 @@ namespace SceneryEditorX::XPlane
 				add(entry.path, entry.isGlobalAirports ? PackageSource::GlobalScenery : PackageSource::CustomScenery, entry.enabled,
 					entry.isGlobalAirports ? std::string("Global Airports") : std::string());
 
-			for (const fs::directory_entry &entry : fs::directory_iterator(install.root / "Global Scenery", fs::directory_options::skip_permission_denied, ec))
+			for (const fs::directory_entry &entry : fs::directory_iterator(VFS::ResolveCase(install.root / "Global Scenery"), fs::directory_options::skip_permission_denied, ec))
 			{
 				if (entry.is_directory(ec))
 					add(entry.path(), PackageSource::GlobalScenery, true);
 			}
 
 			std::vector<fs::path> defaults;
-			for (const fs::directory_entry &entry : fs::directory_iterator(install.root / "Resources" / "default scenery", fs::directory_options::skip_permission_denied, ec))
+			for (const fs::directory_entry &entry : fs::directory_iterator(VFS::ResolveCase(install.root / "Resources" / "default scenery"), fs::directory_options::skip_permission_denied, ec))
 			{
 				if (entry.is_directory(ec))
 					defaults.push_back(entry.path());
@@ -462,17 +426,7 @@ namespace SceneryEditorX::XPlane
 		std::vector<fs::path> candidates;
 
 		// X-Plane records every install it has run from.
-		fs::path recordFile;
-#if defined(_WIN32)
-		if (const char *localAppData = std::getenv("LOCALAPPDATA"))
-			recordFile = fs::path(localAppData) / "x-plane_install_12.txt";
-#elif defined(__APPLE__)
-		if (const char *home = std::getenv("HOME"))
-			recordFile = fs::path(home) / "Library" / "Preferences" / "x-plane_install_12.txt";
-#else
-		if (const char *home = std::getenv("HOME"))
-			recordFile = fs::path(home) / ".x-plane" / "x-plane_install_12.txt";
-#endif
+		const fs::path recordFile = VFS::GetXPlaneInstallList(12);
 		if (std::string text; !recordFile.empty() && ReadTextFile(recordFile, text))
 		{
 			LineReader reader(text);

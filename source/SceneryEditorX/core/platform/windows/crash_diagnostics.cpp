@@ -30,6 +30,7 @@
  */
 #include "crash_diagnostics.h"
 #include <SceneryEditorX/filesystem/file_system.h>
+#include <SceneryEditorX/filesystem/vfs.h>
 #include <SceneryEditorX/logging/logging.hpp>
 
 #ifdef SEDX_PLATFORM_WINDOWS
@@ -504,7 +505,7 @@ namespace SceneryEditorX::Diagnostics
 			return;
 
 		s_Installed = true;
-		const std::filesystem::path logFolder = IO::FileSystem::GetAppDataRoaming() / "logs";
+		const std::filesystem::path logFolder = VFS::GetAppLocation(VFS::AppLocation::Logs);
 		const std::wstring logPath = (logFolder / "SceneryEditorX.log").wstring();
 		if (logPath.size() < std::size(s_FallbackLogPath))
 			wcscpy_s(s_FallbackLogPath, logPath.c_str());

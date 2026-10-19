@@ -60,11 +60,7 @@ namespace SceneryEditorX::ProjectFile
 			return text.size() >= suffix.size() && text.compare(text.size() - suffix.size(), suffix.size(), suffix) == 0;
 		}
 
-		std::string PathText(const fs::path &path)
-		{
-			const std::u8string text = path.u8string();
-			return std::string(text.begin(), text.end());
-		}
+		using VFS::ToUtf8;
 	}
 
 	const char *GetProjectFormatName(const ProjectFormat format)
@@ -81,7 +77,7 @@ namespace SceneryEditorX::ProjectFile
 
 	ProjectFormat GetFormatForPath(const fs::path &path)
 	{
-		const std::string name = ToLowerAscii(PathText(path.filename()));
+		const std::string name = ToLowerAscii(ToUtf8(path.filename()));
 		if (EndsWith(name, ".edx"))
 			return ProjectFormat::Edx;
 		if (EndsWith(name, ".sex"))
@@ -146,7 +142,7 @@ namespace SceneryEditorX::ProjectFile
 		if (detected == ProjectFormat::Unknown)
 			detected = named;
 		else if (named != ProjectFormat::Unknown && named != detected && warnings)
-			warnings->push_back(PathText(path.filename()) + " holds a " + GetProjectFormatName(detected) + "; it was read as one");
+			warnings->push_back(ToUtf8(path.filename()) + " holds a " + GetProjectFormatName(detected) + "; it was read as one");
 		if (format)
 			*format = detected;
 
@@ -154,19 +150,19 @@ namespace SceneryEditorX::ProjectFile
 		if (!ParseProject(bytes, detected, out, warnings, &reason, options))
 		{
 			if (error)
-				*error = PathText(path.filename()) + ": " + reason;
+				*error = ToUtf8(path.filename()) + ": " + reason;
 			return false;
 		}
 
 		if (detected == ProjectFormat::Wed)
 		{
 			// earth.wed.xml carries no name: the pack folder is it
-			const std::string pack = PathText(fs::absolute(path).parent_path().filename());
+			const std::string pack = ToUtf8(fs::absolute(path).parent_path().filename());
 			out.info.name = pack.empty() ? "WorldEditor Project" : pack;
 			out.info.packageName = out.info.name;
 		}
 		else if (out.info.name.empty())
-			out.info.name = PathText(path.stem());
+			out.info.name = ToUtf8(path.stem());
 		return true;
 	}
 
@@ -190,7 +186,7 @@ namespace SceneryEditorX::ProjectFile
 		if (format == ProjectFormat::Unknown)
 		{
 			if (error)
-				*error = "Pick a project format: " + PathText(path.filename()) + " isn't .edX, .sex or earth.wed.xml";
+				*error = "Pick a project format: " + ToUtf8(path.filename()) + " isn't .edX, .sex or earth.wed.xml";
 			return false;
 		}
 		return WriteFileAtomic(path, SerializeProject(project, format, warnings, options), error);

@@ -251,6 +251,40 @@ TEST_CASE("Lookups forgive the case Windows-made packs get wrong", "[vfs][case]"
 	}
 }
 
+TEST_CASE("Path keys and case-forgiving checks", "[vfs][case]")
+{
+	CHECK(VFS::PathKey("a/b/../c/") == VFS::PathKey("a/c"));
+	CHECK(VFS::PathKey("a/./b") == VFS::PathKey("a/b"));
+#if defined(_WIN32)
+	CHECK(VFS::PathKey("a\\b") == VFS::PathKey("a/b"));		// '\' only separates on Windows
+#endif
+#if defined(_WIN32) || defined(__APPLE__)
+	CHECK(VFS::PathKey("C:/X-Plane 12/Custom Scenery") == VFS::PathKey("c:/x-plane 12/custom scenery"));
+#else
+	CHECK(VFS::PathKey("/X-Plane 12/Custom Scenery") != VFS::PathKey("/x-plane 12/custom scenery"));
+#endif
+
+	Scratch scratch;
+	Touch(scratch.path / "Custom Scenery" / "Pack" / "Library.txt", "A\n800\nLIBRARY\n");
+	CHECK(VFS::IsFile(scratch.path / "custom scenery" / "pack" / "library.txt"));
+	CHECK(VFS::IsDirectory(scratch.path / "CUSTOM SCENERY" / "PACK"));
+	CHECK_FALSE(VFS::IsFile(scratch.path / "custom scenery" / "pack"));
+	CHECK_FALSE(VFS::IsDirectory(scratch.path / "custom scenery" / "pack" / "library.txt"));
+	CHECK_FALSE(VFS::IsFile(scratch.path / "custom scenery" / "missing.txt"));
+
+	std::string text;
+	REQUIRE(VFS::ReadFile(scratch.path / "CUSTOM SCENERY" / "pack" / "LIBRARY.TXT", text));
+	CHECK(text == "A\n800\nLIBRARY\n");
+	CHECK_FALSE(VFS::ReadFile(scratch.path / "custom scenery" / "missing.txt", text));
+
+	// ResolveCase gives the disk's spelling where it matters and leaves missing paths alone
+	const fs::path resolved = VFS::ResolveCase(scratch.path / "custom scenery" / "pack");
+	CHECK(fs::is_directory(resolved));
+	CHECK(fs::equivalent(resolved, scratch.path / "Custom Scenery" / "Pack"));
+	const fs::path missing = scratch.path / "custom scenery" / "nope";
+	CHECK(VFS::ResolveCase(missing) == missing);
+}
+
 TEST_CASE("Platform folders and X-Plane installs are found the platform's way", "[vfs][platform]")
 {
 	const fs::path home = VFS::GetFolder(VFS::Folder::Home);
@@ -277,6 +311,107 @@ TEST_CASE("Platform folders and X-Plane installs are found the platform's way", 
 	// Whatever this machine has installed must be real X-Plane folders
 	for (const fs::path &install : VFS::FindXPlaneInstalls(12))
 		CHECK(VFS::IsXPlaneFolder(install));
+}
+
+TEST_CASE("The app layout puts each kind of file where the platform expects it", "[vfs][layout]")
+{
+	const VFS::AppLayout layout = VFS::MakeAppLayout("SedxLayoutTest");
+	for (const VFS::AppLocation location : { VFS::AppLocation::Settings, VFS::AppLocation::Data, VFS::AppLocation::Cache, VFS::AppLocation::Logs, VFS::AppLocation::Temp })
+	{
+		CHECK(layout.Get(location).is_absolute());
+		CHECK_FALSE(layout.Get(location).empty());
+	}
+	CHECK(layout.settings.filename() == "SedxLayoutTest");
+	CHECK(VFS::IsInside(layout.logs, layout.settings));
+	CHECK(VFS::IsInside(layout.temp, VFS::GetFolder(VFS::Folder::Temp)));
+	CHECK_FALSE(VFS::IsInside(layout.cache, layout.settings));		// Caches never sit in the (roaming) settings
+#if defined(_WIN32)
+	CHECK(layout.cache == layout.data / "cache");					// %LOCALAPPDATA%\<app>\cache
+	CHECK_FALSE(VFS::IsInside(layout.data, layout.settings));		// Local, not Roaming
+#elif defined(__APPLE__)
+	CHECK(layout.cache.parent_path().filename() == "Caches");		// ~/Library/Caches/<app>
+#endif
+
+	// The process-wide layout can be replaced (tests, portable installs)
+	const VFS::AppLayout original = VFS::GetAppLayout();
+	VFS::AppLayout custom = layout;
+	custom.cache = layout.temp / "custom-cache";
+	VFS::SetAppLayout(custom);
+	CHECK(VFS::GetAppLocation(VFS::AppLocation::Cache) == custom.cache);
+	VFS::SetAppLayout(original);
+	CHECK(VFS::GetAppLocation(VFS::AppLocation::Cache) == original.cache);
+}
+
+TEST_CASE("Legacy files move once, merging without overwriting anything", "[vfs][layout]")
+{
+	Scratch scratch;
+	const fs::path roaming = scratch.path / "Roaming" / "SceneryEditorX";
+	const fs::path local = scratch.path / "Local" / "SceneryEditorX";
+
+	// What an older version left behind
+	Touch(roaming / "airport_index.bin", "index");
+	Touch(roaming / "gateway" / "airports.json", "airports");
+	Touch(roaming / "gateway" / "scenery" / "100460.json", "5S4");
+	Touch(roaming / "project-cache" / "abc" / "snapshot.sex", "old snapshot");
+	Touch(roaming / "project-cache" / "abc" / "recovery.sex", "recovery");
+	Touch(roaming / "user_preferences.cfg", "settings stay");
+
+	// The new version already wrote part of the project cache
+	Touch(local / "project-cache" / "abc" / "snapshot.sex", "new snapshot");
+
+	const std::vector<std::string> report = VFS::MoveLegacyFiles({
+		{ roaming / "airport_index.bin", local / "cache" / "airport_index.bin" },
+		{ roaming / "gateway", local / "cache" / "gateway" },
+		{ roaming / "project-cache", local / "project-cache" },
+		{ roaming / "never-existed", local / "cache" / "never" },
+		{ local / "cache", local / "cache" / "inside" } });
+
+	// Moved whole
+	CHECK(fs::exists(local / "cache" / "airport_index.bin"));
+	CHECK_FALSE(fs::exists(roaming / "airport_index.bin"));
+	CHECK(fs::exists(local / "cache" / "gateway" / "scenery" / "100460.json"));
+	CHECK_FALSE(fs::exists(roaming / "gateway"));
+
+	// Merged: the missing file moved, the one already there was kept (and the old copy stays put)
+	std::string text;
+	REQUIRE(VFS::ReadFile(local / "project-cache" / "abc" / "snapshot.sex", text));
+	CHECK(text == "new snapshot");
+	REQUIRE(VFS::ReadFile(local / "project-cache" / "abc" / "recovery.sex", text));
+	CHECK(text == "recovery");
+	REQUIRE(VFS::ReadFile(roaming / "project-cache" / "abc" / "snapshot.sex", text));
+	CHECK(text == "old snapshot");
+	CHECK_FALSE(fs::exists(roaming / "project-cache" / "abc" / "recovery.sex"));
+
+	// Settings weren't touched; the report names what happened
+	CHECK(fs::exists(roaming / "user_preferences.cfg"));
+	REQUIRE(report.size() == 4);
+	CHECK(report[0].starts_with("Moved "));
+	CHECK(report[1].starts_with("Moved "));
+	CHECK(report[2].find("1 item already there stayed in the old place") != std::string::npos);
+	CHECK(report[3].starts_with("Not moving "));
+
+	// A second run has nothing left to move except what's in the way
+	const std::vector<std::string> again = VFS::MoveLegacyFiles({ { roaming / "project-cache", local / "project-cache" } });
+	REQUIRE(again.size() == 1);
+	CHECK(again[0].starts_with("Left "));
+
+	// Mounting creates and maps every folder
+	VFS::AppLayout layout;
+	layout.settings = roaming;
+	layout.data = local;
+	layout.cache = local / "cache";
+	layout.logs = roaming / "logs";
+	layout.temp = scratch.path / "Temp" / "SceneryEditorX";
+	VFS::FileSystem vfs;
+	std::string error;
+	REQUIRE(VFS::MountAppLayout(vfs, layout, &error));
+	CHECK(fs::is_directory(layout.logs));
+	CHECK(fs::is_directory(layout.temp));
+	CHECK(vfs.Exists("cache:/airport_index.bin"));
+	CHECK(vfs.Exists("data:/project-cache/abc/recovery.sex"));
+	CHECK(vfs.Exists("user:/user_preferences.cfg"));
+	REQUIRE(vfs.Write("logs:/SceneryEditorX.log", "line\n", &error));
+	CHECK(fs::exists(layout.logs / "SceneryEditorX.log"));
 }
 
 TEST_CASE("UTF-8 survives the trip through paths", "[vfs][paths]")

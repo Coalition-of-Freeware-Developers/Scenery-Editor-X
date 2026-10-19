@@ -34,6 +34,7 @@
 #include <cmath>
 #include <cstring>
 #include <fstream>
+#include <sstream>
 
 // -------------------------------------------------------
 
@@ -45,26 +46,12 @@ namespace SceneryEditorX::XPlane
 		constexpr uint32_t CACHE_VERSION = 1;
 		constexpr size_t SCAN_CHUNK = 4u << 20;	// 4 MB reads
 
-		std::string PathUtf8(const std::filesystem::path &path)
-		{
-			const std::u8string text = path.u8string();
-			return { reinterpret_cast<const char *>(text.data()), text.size() };
-		}
-
-		std::filesystem::path PathFromUtf8(const std::string &text)
-		{
-			return std::filesystem::path(std::u8string(reinterpret_cast<const char8_t *>(text.data()), text.size()));
-		}
+		using VFS::FromUtf8;
+		using VFS::ToUtf8;
 
 		bool SameFile(const std::filesystem::path &a, const std::filesystem::path &b)
 		{
-			std::string ka = a.lexically_normal().generic_string();
-			std::string kb = b.lexically_normal().generic_string();
-#ifdef _WIN32
-			ka = ToLower(ka);
-			kb = ToLower(kb);
-#endif
-			return ka == kb;
+			return VFS::PathKey(a) == VFS::PathKey(b);
 		}
 
 		void StatFile(AirportSource &source)
@@ -216,7 +203,7 @@ namespace SceneryEditorX::XPlane
 
 		// -------------------------------------------------------
 
-		void WriteString(std::ofstream &out, const std::string &text)
+		void WriteString(std::ostream &out, const std::string &text)
 		{
 			const uint32_t size = static_cast<uint32_t>(text.size());
 			out.write(reinterpret_cast<const char *>(&size), sizeof(size));
@@ -224,7 +211,7 @@ namespace SceneryEditorX::XPlane
 		}
 
 		template<typename T>
-		void WriteValue(std::ofstream &out, const T &value)
+		void WriteValue(std::ostream &out, const T &value)
 		{
 			out.write(reinterpret_cast<const char *>(&value), sizeof(T));
 		}
@@ -668,19 +655,14 @@ namespace SceneryEditorX::XPlane
 
 	bool AirportIndex::SaveCache(const std::filesystem::path &path) const
 	{
-		std::error_code ec;
-		std::filesystem::create_directories(path.parent_path(), ec);
-		std::ofstream out(path, std::ios::binary | std::ios::trunc);
-		if (!out)
-			return false;
-
+		std::ostringstream out(std::ios::binary);
 		out.write(CACHE_MAGIC, sizeof(CACHE_MAGIC));
 		WriteValue(out, CACHE_VERSION);
 		WriteValue(out, static_cast<uint32_t>(m_Sources.size()));
 		for (const AirportSource &source : m_Sources)
 		{
-			WriteString(out, PathUtf8(source.aptDat));
-			WriteString(out, PathUtf8(source.package));
+			WriteString(out, ToUtf8(source.aptDat));
+			WriteString(out, ToUtf8(source.package));
 			WriteString(out, source.packageName);
 			WriteValue(out, static_cast<uint8_t>(source.source));
 			WriteValue(out, static_cast<uint8_t>(source.enabledInSim ? 1 : 0));
@@ -716,7 +698,7 @@ namespace SceneryEditorX::XPlane
 			WriteValue(out, entry.waterRunwayCount);
 			WriteValue(out, entry.helipadCount);
 		}
-		return static_cast<bool>(out);
+		return out && VFS::WriteFileAtomic(path, out.view());
 	}
 
 	bool AirportIndex::LoadCache(const std::filesystem::path &path)
@@ -750,8 +732,8 @@ namespace SceneryEditorX::XPlane
 				m_Sources.clear();
 				return false;
 			}
-			source.aptDat = PathFromUtf8(aptDat);
-			source.package = PathFromUtf8(package);
+			source.aptDat = FromUtf8(aptDat);
+			source.package = FromUtf8(package);
 			source.source = static_cast<PackageSource>(kind);
 			source.enabledInSim = enabled != 0;
 			source.priority = priority;

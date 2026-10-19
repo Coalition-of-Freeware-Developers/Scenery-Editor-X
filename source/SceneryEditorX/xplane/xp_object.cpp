@@ -41,6 +41,7 @@
 #include <SceneryEditorX/core/threading/thread_pool.h>
 #include <SceneryEditorX/logging/logging.hpp>
 #include <SceneryEditorX/renderer/vulkan/enums.h>
+#include <SceneryEditorX/filesystem/vfs.h>
 
 // -------------------------------------------------------
 
@@ -159,9 +160,8 @@ namespace SceneryEditorX::XPlane
 			if (installRoot.empty())
 				return {};
 
-			std::error_code ec;
-			const std::filesystem::path file = installRoot / "Resources" / "bitmaps" / "world" / "lites" / "lights.txt";
-			return std::filesystem::exists(file, ec) ? file : std::filesystem::path();
+			const std::optional<std::filesystem::path> file = VFS::FindCaseInsensitive(installRoot / "Resources" / "bitmaps" / "world" / "lites" / "lights.txt");
+			return file ? *file : std::filesystem::path();
 		}
 
 		/* @brief The X-Plane install an OBJ lives in (a parent folder with Resources/bitmaps/world/lites), or empty. */

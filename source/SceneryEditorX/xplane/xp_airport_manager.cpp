@@ -52,39 +52,11 @@ namespace SceneryEditorX::XPlane
 		constexpr const char *SETTINGS_FILE = "xplane_airports.json";
 		constexpr const char *CACHE_FILE = "airport_index.bin";
 
-		std::string PathKey(const fs::path &path)
-		{
-			std::string key = path.lexically_normal().generic_string();
-			while (key.size() > 1 && key.back() == '/')
-				key.pop_back();
-#ifdef _WIN32
-			key = ToLower(key);
-#endif
-			return key;
-		}
-
-		std::string ToUtf8(const fs::path &path)
-		{
-			const std::u8string text = path.u8string();
-			return { reinterpret_cast<const char *>(text.data()), text.size() };
-		}
-
-		fs::path FromUtf8(const std::string &text)
-		{
-			return fs::path(std::u8string(reinterpret_cast<const char8_t *>(text.data()), text.size()));
-		}
-
-		bool IsFile(const fs::path &path)
-		{
-			std::error_code ec;
-			return fs::is_regular_file(path, ec);
-		}
-
-		bool IsDirectory(const fs::path &path)
-		{
-			std::error_code ec;
-			return fs::is_directory(path, ec);
-		}
+		using VFS::FromUtf8;
+		using VFS::IsDirectory;
+		using VFS::IsFile;
+		using VFS::PathKey;
+		using VFS::ToUtf8;
 
 		fs::path AptDatOf(const fs::path &package)
 		{
@@ -129,7 +101,7 @@ namespace SceneryEditorX::XPlane
 		}
 
 		fs::path GetSettingsPath() { return IO::FileSystem::GetPersistentStoragePath() / SETTINGS_FILE; }
-		fs::path GetCachePath() { return IO::FileSystem::GetPersistentStoragePath() / CACHE_FILE; }
+		fs::path GetCachePath() { return VFS::GetAppLocation(VFS::AppLocation::Cache) / CACHE_FILE; }	// Rebuilt when missing
 
 		void LoadSettings(std::vector<fs::path> &tracked)
 		{
@@ -162,15 +134,9 @@ namespace SceneryEditorX::XPlane
 			for (const fs::path &folder : tracked)
 				json["trackedPackages"].push_back(ToUtf8(folder));
 
-			std::error_code ec;
-			fs::create_directories(GetSettingsPath().parent_path(), ec);
-			std::ofstream file(GetSettingsPath(), std::ios::binary | std::ios::trunc);
-			if (!file)
-			{
-				SEDX_CORE_WARN_TAG(LOG_TAG, "Could not write {}", GetSettingsPath().string());
-				return;
-			}
-			file << json.dump(2);
+			std::string error;
+			if (!VFS::WriteFileAtomic(GetSettingsPath(), json.dump(2), &error))
+				SEDX_CORE_WARN_TAG(LOG_TAG, "Could not save the airport settings: {}", error);
 		}
 
 		/**
@@ -205,7 +171,7 @@ namespace SceneryEditorX::XPlane
 			if (!install.IsValid())
 				return sources;
 
-			const fs::path customScenery = install.root / "Custom Scenery";
+			const fs::path customScenery = VFS::GetCustomSceneryFolder(install.root);
 			std::vector<SceneryPackEntry> entries;
 			if (std::string ini; ReadTextFile(customScenery / "scenery_packs.ini", ini))
 			{

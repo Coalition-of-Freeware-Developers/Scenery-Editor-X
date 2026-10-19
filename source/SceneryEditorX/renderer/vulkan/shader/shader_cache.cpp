@@ -35,6 +35,7 @@
 #include <cstring>
 #include <fstream>
 #include <SceneryEditorX/core/application/application.h>
+#include <SceneryEditorX/filesystem/vfs.h>
 #include <SceneryEditorX/utils/filestreaming/file_streaming.h>
 
 // -------------------------------------------------------
@@ -105,18 +106,8 @@ namespace SceneryEditorX
 
 	std::filesystem::path ShaderCache::GetProgramCacheDirectory()
 	{
-		std::filesystem::path tempRoot;
-		if (const PlatformContext* context = Application::Get().GetPlatformContext(); context && !context->GetTempDirectory().empty())
-		{
-			tempRoot = context->GetTempDirectory();
-		}
-		else
-		{
-			std::error_code ec;
-			tempRoot = std::filesystem::temp_directory_path(ec);
-		}
-
-		return tempRoot / "SceneryEditorX" / "shader-cache";
+		// The cache folder, not temp: Windows' Storage Sense empties temp folders and every shader would compile again
+		return VFS::GetAppLocation(VFS::AppLocation::Cache) / "shaders";
 	}
 
 	bool ShaderCache::TryLoadProgram(const std::filesystem::path& cacheFile, CachedShaderProgram& outProgram)

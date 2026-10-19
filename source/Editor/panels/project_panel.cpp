@@ -34,6 +34,7 @@
 #include <Editor/core/project_dialogs.h>
 #include <Editor/core/editor_theme.h>
 #include <Editor/core/editor_ui.h>
+#include <SceneryEditorX/filesystem/vfs.h>
 #include <SceneryEditorX/logging/logging.hpp>
 #include <SceneryEditorX/renderer/font/font_awesome.h>
 #include <SceneryEditorX/renderer/ui/source/imgui/misc/cpp/imgui_stdlib.h>
@@ -86,11 +87,7 @@ namespace SceneryEditorX
 			ImGui::PopID();
 		}
 
-		std::string ToUtf8(const fs::path &path)
-		{
-			const std::u8string text = path.u8string();
-			return std::string(text.begin(), text.end());
-		}
+		using VFS::ToUtf8;
 
 		const char *ExportKindName(const XPlane::ExportKind kind)
 		{

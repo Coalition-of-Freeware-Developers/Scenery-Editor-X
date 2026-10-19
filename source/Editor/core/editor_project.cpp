@@ -44,6 +44,7 @@
 #include <SceneryEditorX/core/platform/platform_context.h>
 #include <SceneryEditorX/core/window/window.h>
 #include <SceneryEditorX/filesystem/file_system.h>
+#include <SceneryEditorX/filesystem/vfs.h>
 #include <SceneryEditorX/logging/logging.hpp>
 #include <SceneryEditorX/project/project_dsf.h>
 #include <SceneryEditorX/renderer/font/font_awesome.h>
@@ -133,16 +134,8 @@ namespace SceneryEditorX::EditorProjects
 
 		// Paths ----------------------------------------------------------
 
-		fs::path FromUtf8(const std::string &text)
-		{
-			return fs::path(std::u8string(text.begin(), text.end()));
-		}
-
-		std::string ToUtf8(const fs::path &path)
-		{
-			const std::u8string text = path.u8string();
-			return std::string(text.begin(), text.end());
-		}
+		using VFS::FromUtf8;
+		using VFS::ToUtf8;
 
 		fs::path ProjectFolder()
 		{
@@ -156,10 +149,10 @@ namespace SceneryEditorX::EditorProjects
 		{
 			if (const fs::path folder = ProjectFolder(); !folder.empty())
 				return folder;
-			if (const char *profile = std::getenv("USERPROFILE"))
-				return fs::path(profile) / "Documents";
-			if (const char *home = std::getenv("HOME"))
-				return fs::path(home);
+			if (fs::path documents = VFS::GetFolder(VFS::Folder::Documents); !documents.empty())
+				return documents;
+			if (fs::path home = VFS::GetFolder(VFS::Folder::Home); !home.empty())
+				return home;
 			return fs::current_path();
 		}
 
@@ -835,7 +828,8 @@ namespace SceneryEditorX::EditorProjects
 	{
 		State &state = GetState();
 		state.preferences = preferences;
-		state.cache = std::make_unique<ProjectCache>(IO::FileSystem::GetPersistentStoragePath() / "project-cache");
+		// Recovery data stays on this machine but isn't rebuildable: the data folder, not the cache
+		state.cache = std::make_unique<ProjectCache>(VFS::GetAppLocation(VFS::AppLocation::Data) / "project-cache");
 		state.document.SetCache(state.cache.get());
 		state.document.SetEditorVersion(SEDX_VERSION_STRING);
 		EditorAirports::SetProjectSaveHandler([] { return Save(); });

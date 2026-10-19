@@ -35,6 +35,8 @@
 #include <SceneryEditorX/core/resource/resource_cache.h>
 #include <SceneryEditorX/core/threading/thread_pool.h>
 #include <SceneryEditorX/core/time/fps_timer.h>
+#include <SceneryEditorX/filesystem/file_system.h>
+#include <SceneryEditorX/filesystem/vfs.h>
 #include <SceneryEditorX/logging/logging.hpp>
 #include <SceneryEditorX/logging/profiler.hpp>
 #include <SceneryEditorX/project/project.h>
@@ -123,6 +125,21 @@ namespace SceneryEditorX
 
 	// -------------------------------------------------------
 
+	void Application::SetUpAppLocations()
+	{
+		// Settings, data, caches, logs and temp files where the platform expects them (moving older versions' files once)
+		for (const std::string &line : IO::FileSystem::InitAppLocations())
+			SEDX_CORE_INFO_TAG("Files", "{}", line);
+		const VFS::AppLayout layout = VFS::GetAppLayout();
+		SEDX_CORE_INFO_TAG("Files", "Settings {} | data {} | cache {} | logs {}", VFS::ToUtf8(layout.settings), VFS::ToUtf8(layout.data),
+			VFS::ToUtf8(layout.cache), VFS::ToUtf8(layout.logs));
+
+		// Working folders: exchanges and autosaves stay on this machine, plugins travel with the settings
+		for (const char *name : { "autosave", "downloads", "export", "import" })
+			VFS::CreateFolders(layout.data / name);
+		VFS::CreateFolders(layout.settings / "plugins");
+	}
+
 	Application::Application(const PlatformContext& context) : m_PlatformContext(&context), m_RenderThread(ThreadingPolicy::MultiThreaded)
 	{
 		Diagnostics::InstallCrashHandlers();
@@ -147,35 +164,7 @@ namespace SceneryEditorX
 			specification.workingDirectory = context.GetWorkingDirectory();
 		}
 
-		{
-			auto appDir = IO::FileSystem::GetAppDataLocal();
-			if (!appDir.empty())
-			{
-				IO::FileSystem::CreateDir(appDir / "autosave");
-				IO::FileSystem::CreateDir(appDir / "downloads");
-				IO::FileSystem::CreateDir(appDir / "export");
-				IO::FileSystem::CreateDir(appDir / "import");
-			}
-		}
-
-		{
-			auto appDir = IO::FileSystem::GetAppDataRoaming();
-			if (!appDir.empty())
-			{
-				IO::FileSystem::CreateDir(appDir / "logs");
-				IO::FileSystem::CreateDir(appDir / "plugins");
-			}
-		}
-
-		{
-			const auto &appDir = context.GetTempDirectory();
-			if (!appDir.empty())
-			{
-				IO::FileSystem::CreateDir(appDir + "SceneryEditorX");
-				IO::FileSystem::CreateDir(appDir + "SceneryEditorX\\cache");
-				IO::FileSystem::CreateDir(appDir + "SceneryEditorX\\shader-cache");
-			}
-		}
+		SetUpAppLocations();
 
 		InitializeApplication(specification);
 	}
@@ -201,6 +190,8 @@ namespace SceneryEditorX
 		SEDX_CORE_TRACE("  Working Directory: {}", context.GetWorkingDirectory());
 		SEDX_CORE_TRACE("  Temp Directory: {}", context.GetTempDirectory());
 		SEDX_CORE_TRACE("  Command Line Args: {}", context.GetCommandLineArgs().size());
+
+		SetUpAppLocations();
 
 		AppData specification = appData;
 

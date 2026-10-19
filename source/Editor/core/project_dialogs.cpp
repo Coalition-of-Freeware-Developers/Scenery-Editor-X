@@ -611,12 +611,7 @@ namespace SceneryEditorX::ProjectDialogs
 
 	void Init()
 	{
-		VFS::FileSystem &vfs = VFS::Get();
-		if (const fs::path config = VFS::GetAppFolder(VFS::Folder::Config); !config.empty())
-			vfs.Mount(VFS::MOUNT_USER, config);
-		if (const fs::path cache = VFS::GetAppFolder(VFS::Folder::Cache); !cache.empty())
-			vfs.Mount(VFS::MOUNT_CACHE, cache / "cache");
-		S().form.location = DefaultLocation();
+		S().form.location = DefaultLocation();	// user:/, data:/, cache:/... were mounted at startup (InitAppLocations)
 
 		const PlatformContext *platform = Application::Get().GetPlatformContext();
 		if (!platform)

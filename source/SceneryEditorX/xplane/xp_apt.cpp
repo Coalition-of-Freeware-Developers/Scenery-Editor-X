@@ -1590,44 +1590,8 @@ namespace SceneryEditorX::XPlane
 
 	bool SaveAptDat(const std::filesystem::path &path, const AptFile &file, std::string *error)
 	{
-		std::error_code ec;
-		std::filesystem::create_directories(path.parent_path(), ec);
-
-		// Write next to the target, then replace it, so a failure can't leave a half-written apt.dat behind.
-		const std::filesystem::path temp = path.string() + ".tmp";
-		{
-			std::ofstream stream(temp, std::ios::binary | std::ios::trunc);
-			if (!stream)
-			{
-				if (error)
-					*error = "Could not write " + temp.string();
-				return false;
-			}
-			const std::string text = WriteAptDat(file);
-			stream.write(text.data(), static_cast<std::streamsize>(text.size()));
-			if (!stream)
-			{
-				if (error)
-					*error = "Write failed for " + temp.string();
-				return false;
-			}
-		}
-
-		std::filesystem::rename(temp, path, ec);
-		if (ec)
-		{
-			// Some file systems refuse to rename over an existing file; fall back to copy + remove.
-			std::filesystem::copy_file(temp, path, std::filesystem::copy_options::overwrite_existing, ec);
-			std::error_code ignored;
-			std::filesystem::remove(temp, ignored);
-			if (ec)
-			{
-				if (error)
-					*error = "Could not replace " + path.string() + ": " + ec.message();
-				return false;
-			}
-		}
-		return true;
+		// Written beside the target and renamed over it: a failure never leaves a half-written apt.dat
+		return VFS::WriteFileAtomic(path, WriteAptDat(file), error);
 	}
 
 	// -------------------------------------------------------

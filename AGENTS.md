@@ -35,7 +35,8 @@ The dependency-light, cross-platform Catch2 unit suites that only need `source/`
   reader and writer (`DsfWriterTests.cpp`: 16-bit pool quantization, MD5 footer, airport filters, per-tile
   split), the .pol/.lin/.str/.for/.fac/.agp asset parsers and the overlay geometry builder
   (`SceneryEditorX/xplane/xp_obj8.*`, `xp_library.*`, `xp_lights.*`, `xp_apt.*`, `xp_apt_geometry.*`,
-  `xp_airport_index.*`, `xp_gateway_types.*`, `xp_dsf.*`, `xp_assets.*`, `xp_overlay.*`). Standard library
+  `xp_airport_index.*`, `xp_gateway_types.*`, `xp_dsf.*`, `xp_assets.*`, `xp_overlay.*`, plus `filesystem/vfs.*`,
+  which every reader goes through for case-insensitive lookups and atomic writes). Standard library
   plus the header-only `dependency/json` submodule, fully green.
 - **`ProjectFormatTests`** (`source/Tests/project_tests`) — the project file formats: the `.edX` JSON
   reader/writer (determinism, git-friendly layout, the documented legacy layout), the `.sex` binary format
@@ -58,6 +59,12 @@ SDK; `VulkanSmokeTests` (opt-in via `SEDX_ENABLE_VULKAN_SMOKE_TESTS`) needs the 
 
 ### Key gotchas
 
+- **Where the editor keeps its own files** (`VFS::MakeAppLayout`, mounted as `user:/ data:/ cache:/ logs:/ temp:/`,
+  set up by `IO::FileSystem::InitAppLocations()` at startup): settings in `%APPDATA%\SceneryEditorX` (logs in its
+  `logs\`), recovery data in `%LOCALAPPDATA%\SceneryEditorX\project-cache`, rebuildable caches (airport index,
+  Gateway downloads, compiled shaders) in `%LOCALAPPDATA%\SceneryEditorX\cache`. macOS uses `~/Library/Application
+  Support` and `~/Library/Caches`, Linux the XDG folders. Startup moves files older builds kept elsewhere once
+  (never overwriting) and logs each move under the `Files` tag. Deleting the cache folder is always safe.
 - **Submodules use SSH URLs** (`git@github.com:` in `.gitmodules`) and ship uninitialized.
   Fetch over HTTPS. The startup update script initializes only `dependency/json` and
   `dependency/Catch2` (all the Linux test build needs). Heavier submodules (`vcpkg`, `SDL`,
@@ -107,7 +114,7 @@ g++ -std=c++20 -O2 -pthread -DSEDX_NO_LOGGING -DZoneScoped= $INCS \
 # 4. XPlaneFormatTests (fully green)
 g++ -std=c++20 -O2 -pthread $INCS source/Tests/xplane_tests/XPlaneFormatTests.cpp \
     source/Tests/xplane_tests/AirportTests.cpp source/Tests/xplane_tests/OverlayTests.cpp \
-    source/Tests/xplane_tests/DsfWriterTests.cpp \
+    source/Tests/xplane_tests/DsfWriterTests.cpp source/SceneryEditorX/filesystem/vfs.cpp \
     source/SceneryEditorX/xplane/xp_obj8.cpp source/SceneryEditorX/xplane/xp_library.cpp \
     source/SceneryEditorX/xplane/xp_lights.cpp source/SceneryEditorX/xplane/xp_apt.cpp \
     source/SceneryEditorX/xplane/xp_apt_geometry.cpp source/SceneryEditorX/xplane/xp_airport_index.cpp \

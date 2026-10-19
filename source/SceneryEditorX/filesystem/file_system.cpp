@@ -29,7 +29,8 @@
  * -------------------------------------------------------
  */
 #include "file_system.h"
-#include <codecvt>
+#include "vfs.h"
+#include <mutex>
 #include <SDL3/SDL_misc.h>
 #include <SDL3/SDL_process.h>
 #include <SDL3/SDL_stdinc.h>
@@ -313,26 +314,34 @@ namespace SceneryEditorX::IO
 
 	bool FileSystem::ShowFileInExplorer(const std::filesystem::path &path)
 	{
-		const auto absolutePath = std::filesystem::canonical(path);
-		if (!Exists(absolutePath))
+		std::error_code ec;
+		const auto absolutePath = std::filesystem::canonical(path, ec);
+		if (ec || !Exists(absolutePath))
 			return false;
 
 #ifdef SEDX_PLATFORM_WINDOWS
 		std::string cmd = std::format("explorer.exe /select,\"{0}\"", absolutePath.string());
-#elif defined(SEDX_PLATFORM_LINUX)
-		std::string cmd = std::format("xdg-open \"{0}\"", dirname(absolutePath.string().data()));
+#elif defined(SEDX_PLATFORM_MACOS)
+		std::string cmd = std::format("open -R \"{0}\"", absolutePath.string());
+#else
+		std::string cmd = std::format("xdg-open \"{0}\"", absolutePath.parent_path().string());
 #endif
-		system(cmd.c_str());
+#ifdef SEDX_PLATFORM_WINDOWS
+		system(cmd.c_str());	// explorer.exe exits with 1 even when it worked
 		return true;
+#else
+		return system(cmd.c_str()) == 0;
+#endif
 	}
 
 	bool FileSystem::OpenDirectoryInExplorer(const std::filesystem::path &path)
 	{
-#ifdef SEDX_PLATFORM_WINDOWS
-		auto absolutePath = std::filesystem::canonical(path);
-		if (!Exists(absolutePath))
+		std::error_code ec;
+		const auto absolutePath = std::filesystem::canonical(path, ec);
+		if (ec || !Exists(absolutePath))
 			return false;
 
+#ifdef SEDX_PLATFORM_WINDOWS
 		ShellExecute(nullptr,
 					 L"explore",
 					 reinterpret_cast<LPCWSTR>(absolutePath.wstring().c_str()),
@@ -340,8 +349,10 @@ namespace SceneryEditorX::IO
 					 nullptr,
 					 SW_SHOWNORMAL);
 		return true;
-#elif defined(SEDX_PLATFORM_LINUX)
-		return ShowFileInExplorer(path);
+#elif defined(SEDX_PLATFORM_MACOS)
+		return system(std::format("open \"{}\"", absolutePath.string()).c_str()) == 0;
+#else
+		return system(std::format("xdg-open \"{}\"", absolutePath.string()).c_str()) == 0;
 #endif
 	}
 
@@ -364,11 +375,11 @@ namespace SceneryEditorX::IO
 											  SW_SHOWNORMAL);
 
 		return reinterpret_cast<intptr_t>(result) > 32;
-#elif defined(SEDX_PLATFORM_LINUX)
+#elif defined(SEDX_PLATFORM_MACOS)
+		return system(std::format("open \"{}\"", absolutePath.string()).c_str()) == 0;
+#else
 		std::string command = std::format("xdg-open \"{}\"", absolutePath.string());
 		return system(command.c_str()) == 0;
-#else
-		return false;
 #endif
 	}
 
@@ -527,63 +538,55 @@ namespace SceneryEditorX::IO
 
 	std::wstring FileSystem::StringToWstring(const std::string &str)
 	{
-		std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
-		return converter.from_bytes(str);
+		return VFS::FromUtf8(str).wstring();	// UTF-8 in, the platform's wide encoding out (no deprecated <codecvt>)
+	}
+
+	const std::vector<std::string> &FileSystem::InitAppLocations()
+	{
+		static std::once_flag once;
+		static std::vector<std::string> report;
+		std::call_once(once, []
+		{
+			const VFS::AppLayout layout = VFS::MakeAppLayout();
+			VFS::SetAppLayout(layout);
+
+			// Where earlier versions kept what now has its own place: caches out of the (roaming) settings folder and
+			// the temp folder, recovery data next to the other machine-local data. Nothing at a target is overwritten.
+			report = VFS::MoveLegacyFiles({
+				{ layout.settings / "airport_index.bin", layout.cache / "airport_index.bin" },
+				{ layout.settings / "gateway", layout.cache / "gateway" },
+				{ layout.temp / "shader-cache", layout.cache / "shaders" },
+				{ layout.settings / "project-cache", layout.data / "project-cache" } });
+
+			// The temp "cache" folder startup used to create (nothing ever used it)
+			std::error_code ec;
+			if (std::filesystem::is_directory(layout.temp / "cache", ec) && std::filesystem::is_empty(layout.temp / "cache", ec))
+				std::filesystem::remove(layout.temp / "cache", ec);
+
+			std::string error;
+			if (!VFS::MountAppLayout(VFS::Get(), layout, &error))
+				report.push_back("Could not set up the editor's folders: " + error);
+		});
+		return report;
 	}
 
 	std::filesystem::path FileSystem::GetPersistentStoragePath()
 	{
-		// Provide a sensible default persistent storage path depending on platform
-#ifdef SEDX_PLATFORM_WINDOWS
-		if (const char *p = std::getenv("APPDATA"))
-		{
-			return std::filesystem::path(p) / "SceneryEditorX";
-		}
-		if (const char *p = std::getenv("USERPROFILE"))
-		{
-			return std::filesystem::path(p) / "AppData" / "Roaming" / "SceneryEditorX";
-		}
-#else
-		if (const char *p = std::getenv("XDG_CONFIG_HOME"))
-		{
-			return std::filesystem::path(p) / "SceneryEditorX";
-		}
-		if (const char *p = std::getenv("HOME"))
-		{
-			return std::filesystem::path(p) / ".config" / "SceneryEditorX";
-		}
-#endif
-		// Fallback to current working directory
-		return std::filesystem::current_path() / "SceneryEditorX";
+		return VFS::GetAppLocation(VFS::AppLocation::Settings);
 	}
 
 	std::filesystem::path FileSystem::GetAppDataRoaming()
 	{
-		// Prefer USERPROFILE-derived path when available
-		if (auto appDataPath = GetUserProfileDir())
-		{
-			std::filesystem::path p = *appDataPath / "AppData" / "Roaming" / "SceneryEditorX";
-			std::error_code ec;
-			std::filesystem::create_directories(p, ec); // best-effort ensure folder exists
-			return p;
-		}
-
-		return GetPersistentStoragePath();
-
+		const std::filesystem::path folder = VFS::GetAppLocation(VFS::AppLocation::Settings);
+		VFS::CreateFolders(folder);		// best effort
+		return folder;
 	}
 
 	std::filesystem::path FileSystem::GetAppDataLocal()
 	{
-		// Prefer USERPROFILE-derived path when available
-		if (auto appDataPath = GetUserProfileDir())
-		{
-			std::filesystem::path p = *appDataPath / "AppData" / "Local" / "SceneryEditorX";
-			std::error_code ec;
-			std::filesystem::create_directories(p, ec); // best-effort ensure folder exists
-			return p;
-		}
-
-		return GetPersistentStoragePath();
+		const std::filesystem::path folder = VFS::GetAppLocation(VFS::AppLocation::Data);
+		VFS::CreateFolders(folder);		// best effort
+		return folder;
 	}
 
 	std::filesystem::path FileSystem::GetProgramFilesPath()
@@ -845,12 +848,10 @@ namespace SceneryEditorX::IO
 
 	std::optional<std::filesystem::path> FileSystem::GetUserProfileDir()
 	{
-		if (const char *p = std::getenv("USERPROFILE"))
-		{
-			return std::filesystem::path(p);
-		}
-
-		return std::nullopt;
+		std::filesystem::path home = VFS::GetFolder(VFS::Folder::Home);
+		if (home.empty())
+			return std::nullopt;
+		return home;
 	}
 
 	bool FileSystem::Delete(const std::string &path)
@@ -996,16 +997,9 @@ namespace SceneryEditorX::IO
 
 	void FileSystem::GetAppData()
 	{
-		if (const char *appDataPath = getenv("APPDATA"))
-		{
-			std::string appDataDir(appDataPath);
-			appDataDir += "\\SceneryEditorX";
-			std::filesystem::create_directories(appDataDir);
-		}
-		else
-		{
-			SEDX_CORE_ERROR_TAG("File Manager", "Failed to get APPDATA environment variable");
-		}
+		std::string error;
+		if (!VFS::CreateFolders(GetPersistentStoragePath(), &error))
+			SEDX_CORE_ERROR_TAG("File Manager", "Could not create the settings folder: {}", error);
 	}
 
 }

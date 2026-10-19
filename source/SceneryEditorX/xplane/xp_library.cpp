@@ -30,6 +30,7 @@
  */
 #include "xp_library.h"
 #include "xp_text.h"
+#include <SceneryEditorX/filesystem/vfs.h>
 #include <algorithm>
 #include <cmath>
 #include <system_error>
@@ -474,7 +475,7 @@ namespace SceneryEditorX::XPlane
 		m_MissingFileCount = 0;
 
 		std::unordered_map<std::string, LibraryAsset> assets;
-		std::unordered_map<std::string, bool> existsCache;
+		std::unordered_map<std::string, std::optional<std::filesystem::path>> existsCache;	// Export file -> as the disk spells it
 		std::unordered_set<std::string> regionNames;
 
 		for (uint32_t packageIndex = 0; packageIndex < static_cast<uint32_t>(m_Packages.size()); ++packageIndex)
@@ -522,13 +523,12 @@ namespace SceneryEditorX::XPlane
 				if (options.checkFilesExist)
 				{
 					const std::string key = provider.realPath.string();
-					auto [it, inserted] = existsCache.try_emplace(key, false);
+					auto [it, inserted] = existsCache.try_emplace(key);
 					if (inserted)
-					{
-						std::error_code ec;
-						it->second = std::filesystem::exists(provider.realPath, ec);
-					}
-					provider.fileExists = it->second;
+						it->second = VFS::FindCaseInsensitive(provider.realPath);
+					provider.fileExists = it->second.has_value();
+					if (it->second)
+						provider.realPath = *it->second;
 				}
 
 				++package.exportCount;
@@ -595,7 +595,7 @@ namespace SceneryEditorX::XPlane
 	{
 		const LibraryAsset *asset = Find(virtualPath);
 		const AssetProvider *provider = asset ? asset->GetResolved() : nullptr;
-		return provider ? provider->realPath : std::filesystem::path();
+		return provider ? VFS::ResolveCase(provider->realPath) : std::filesystem::path();
 	}
 
 }
