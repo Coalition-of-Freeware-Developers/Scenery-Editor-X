@@ -33,6 +33,7 @@
 #include "xp_apt_geometry.h"
 #include <cstdint>
 #include <string>
+#include <string_view>
 
 // -------------------------------------------------------
 
@@ -187,6 +188,14 @@ namespace SceneryEditorX::XPlane
 
 		/* @brief The projection the loaded airport was built with (datum at the origin). */
 		static const GeoProjection &GetProjection();
+
+		/**
+		 * @brief Height above the ground for draped art of a LAYER_GROUP (name, offset), slotted between the loaded
+		 * airport's own layers (pavement, runways, painted lines) the way its pack's DSF art is; usable as
+		 * OverlayBuilder::Options::layerHeight for other overlays drawn with the airport. Without an airport, the
+		 * heights an airport without pavement would use.
+		 */
+		static float GetOverlayLayerHeight(std::string_view group, int offset);
 
 		static Stats GetStats();
 

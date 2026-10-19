@@ -299,7 +299,7 @@ INCLUDE(Catch)
 catch_discover_tests(XPlaneFormatTests)
 
 # --------------------------------
-# Project File Tests (.edX JSON, .sex binary, WorldEditor earth.wed.xml, cache and document; standard library only)
+# Project File Tests (.edX JSON, .sex binary, WorldEditor earth.wed.xml, cache, document and DSF conversion; standard library only)
 # --------------------------------
 
 MESSAGE(STATUS "=================================================")
@@ -315,8 +315,13 @@ ADD_EXECUTABLE(ProjectFormatTests
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/project/project_io.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/project/project_cache.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/project/project_document.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/project/project_dsf.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_apt.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_library.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_apt_geometry.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_dsf.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_assets.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_overlay.cpp
 )
 
 TARGET_INCLUDE_DIRECTORIES(ProjectFormatTests PRIVATE

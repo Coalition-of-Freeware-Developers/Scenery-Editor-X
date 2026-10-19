@@ -144,6 +144,9 @@ namespace SceneryEditorX::ProjectFile
 		[[nodiscard]] uint64_t GetRevision() const { return m_Revision; }
 		[[nodiscard]] uint64_t GetStructureRevision() const { return m_Structure; }
 
+		/* @brief Revision of the last edit to the scene hierarchy (Section::Items); what the scene draws of the items is current while it stays. */
+		[[nodiscard]] uint64_t GetItemsRevision() const { return m_ItemsRevision; }
+
 		/* @brief "MySceneryProject *" when there are unsaved changes. */
 		[[nodiscard]] std::string GetTitle() const;
 

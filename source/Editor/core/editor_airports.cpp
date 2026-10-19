@@ -75,7 +75,7 @@ namespace SceneryEditorX::EditorAirports
 			std::string startupAirport;			// --xp-airport <id>, opened once the index is ready
 			bool startupDone = false;
 			std::array<float, 5> startupCamera{};	// --xp-airport-camera x,y,z,yaw,pitch: view from the center after opening it
-			bool hasStartupCamera = false;
+			bool hasStartupCamera = false;			// Until used by the first airport opened (--xp-airport, or a --project's)
 			int startupSceneryId = 0;			// --xp-gateway <scenery id>: install and open a Gateway submission at startup
 			fs::path startupPackageRoot;		// --xp-package-root <folder>: where that pack goes (Custom Scenery when empty)
 			bool startupInstallDone = false;
@@ -335,6 +335,7 @@ namespace SceneryEditorX::EditorAirports
 				{
 					const std::array<float, 5> &view = state.startupCamera;
 					SceneAirports::LookFrom(view[0], view[1], view[2], view[3], view[4]);
+					state.hasStartupCamera = false;
 				}
 			}
 			else
@@ -485,6 +486,12 @@ namespace SceneryEditorX::EditorAirports
 		state.document->airport = airport;
 		state.projectOwned = true;
 		LoadIntoScene(context, frame);
+		if (state.hasStartupCamera)
+		{
+			const std::array<float, 5> &view = state.startupCamera;
+			SceneAirports::LookFrom(view[0], view[1], view[2], view[3], view[4]);
+			state.hasStartupCamera = false;
+		}
 		EDITOR_INFO_TAG(LOG_TAG, "Opened project airport {}", state.document->GetTitle());
 		return true;
 	}

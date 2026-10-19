@@ -44,9 +44,12 @@
 #include <SceneryEditorX/core/window/window.h>
 #include <SceneryEditorX/filesystem/file_system.h>
 #include <SceneryEditorX/logging/logging.hpp>
+#include <SceneryEditorX/project/project_dsf.h>
 #include <SceneryEditorX/renderer/font/font_awesome.h>
 #include <SceneryEditorX/xplane/xp_airport_scene.h>
 #include <SceneryEditorX/xplane/xp_library_manager.h>
+#include <SceneryEditorX/xplane/xp_overlay.h>
+#include <SceneryEditorX/xplane/xp_overlay_scene.h>
 #include <SceneryEditorX/xplane/xp_scene.h>
 #include <SceneryEditorX/xplane/xp_text.h>
 
@@ -93,6 +96,12 @@ namespace SceneryEditorX::EditorProjects
 			double datumElevation = 0.0;						// Meters, for MSL elevations
 			std::string airportId;								// Project airport open in the airport editor
 			std::set<std::string> warned;						// Resources already reported as missing / unsupported
+
+			// The other placed items (polygons, lines, strings, forests, facades, autogen) as a DSF through the overlay builder
+			XPlane::OverlayScene scenery;
+			uint64_t sceneryRevision = ~0ull;					// Items revision it was built from
+			uint64_t sceneryLibrary = 0;						// Library index generation its assets were resolved with
+			uint64_t sceneryFingerprint = 0;					// GetDsfFingerprint of what it draws
 
 			double lastSync = 0.0;
 			double lastAutosave = 0.0;
@@ -287,9 +296,12 @@ namespace SceneryEditorX::EditorProjects
 		bool PlaceObject(const SceneryItem &item)
 		{
 			State &state = GetState();
-			if (XPlane::GetAssetType(item.resource) != XPlane::AssetType::Object)
+			const XPlane::AssetType type = XPlane::GetAssetType(item.resource);
+			if (type == XPlane::AssetType::AutogenPoint)
+				return false;	// Drawn with the rest of the project's scenery (UpdateScenery)
+			if (type != XPlane::AssetType::Object)
 			{
-				WarnOnce("type:" + item.resource, "'" + item.resource + "' stays in the project but isn't drawn yet (only .obj objects are placed in the scene)");
+				WarnOnce("type:" + item.resource, "'" + item.resource + "' stays in the project but isn't drawn (objects place .obj and .agp files)");
 				return false;
 			}
 			const fs::path file = ResolveResource(item.resource);
@@ -338,9 +350,100 @@ namespace SceneryEditorX::EditorProjects
 			}
 		}
 
+		/* @brief Takes the project's scenery out of the scene (and the selection, when it was part of it). */
+		void ClearScenery(EditorContext *context)
+		{
+			State &state = GetState();
+			if (context && context->selectedEntity != 0 && state.scenery.Contains(context->selectedEntity))
+				context->selectedEntity = 0;
+			state.scenery.Clear();
+			state.sceneryRevision = ~0ull;
+			state.sceneryFingerprint = 0;
+		}
+
+		/**
+		 * @brief Draws the items that aren't objects (draped polygons and orthophotos, lines, strings, forests, facades,
+		 * .agp autogen) the way the airport scene draws a pack's DSF: the visible items become an in-memory DSF tile
+		 * (ProjectFile::BuildProjectDsf) that the overlay builder turns into meshes and string / facade objects, one
+		 * entity per item. Rebuilt only when what the DSF draws changed (or force: a new frame, a newer library index).
+		 */
+		void UpdateScenery(EditorContext *context, const bool force)
+		{
+			State &state = GetState();
+			ProjectDocument &document = state.document;
+			state.sceneryRevision = document.GetItemsRevision();
+			state.sceneryLibrary = XPlane::LibraryManager::GetGeneration();
+
+			const DsfConversion conversion = BuildProjectDsf(document.GetProject());
+			const uint64_t fingerprint = GetDsfFingerprint(conversion.dsf);
+			if (!force && fingerprint == state.sceneryFingerprint)
+				return;
+			for (const std::string &warning : conversion.warnings)
+				WarnOnce("dsf:" + warning, warning + " (not drawn)");
+
+			state.sceneryFingerprint = fingerprint;
+
+			XPlane::OverlayBuild build;
+			if (!conversion.dsf.polygons.empty() || !conversion.dsf.objects.empty())
+			{
+				XPlane::OverlayBuilder builder([](const std::string_view path) { return ResolveResource(std::string(path)); }, state.projection);
+				XPlane::OverlayBuilder::Options options;
+				options.layerHeight = [](const std::string_view group, const int offset) { return XPlane::SceneAirports::GetOverlayLayerHeight(group, offset); };
+				builder.Build(conversion.dsf, options, build);
+				for (const std::string &warning : build.warnings)
+					WarnOnce("overlay:" + warning, warning);
+			}
+
+			// One entity per item: its meshes and the objects its strings, facades and autogen place
+			std::vector<XPlane::OverlayScene::Group> groups;
+			std::unordered_map<std::string, size_t> groupOf;
+			const auto group = [&](const std::vector<std::string> &items, const uint32_t placement) -> XPlane::OverlayScene::Group *
+			{
+				if (placement >= items.size())
+					return nullptr;
+				const auto [it, added] = groupOf.emplace(items[placement], groups.size());
+				if (added)
+				{
+					XPlane::OverlayScene::Group &entry = groups.emplace_back();
+					entry.key = items[placement];
+					const SceneryItem *item = document.FindItem(entry.key);
+					entry.name = !item ? entry.key : !item->name.empty() ? item->name : GetItemKindName(item->kind);
+				}
+				return &groups[it->second];
+			};
+			for (const XPlane::OverlayMesh &mesh : build.meshes)
+			{
+				// .agp ground tiles come from object placements, everything else from polygons
+				if (XPlane::OverlayScene::Group *entry = group(mesh.kind == XPlane::OverlayKind::Autogen ? conversion.objectItems : conversion.polygonItems, mesh.placement))
+					entry->meshes.push_back(&mesh);
+			}
+			for (const XPlane::OverlayObject &object : build.objects)
+			{
+				const bool fromObject = object.source == XPlane::OverlayObject::Source::Dsf || object.source == XPlane::OverlayObject::Source::Autogen;
+				if (XPlane::OverlayScene::Group *entry = group(fromObject ? conversion.objectItems : conversion.polygonItems, object.placement))
+					entry->objects.push_back(&object);
+			}
+
+			// The item entities are replaced (the root stays, so selecting it survives), or all of it goes when nothing is left to draw
+			if (context && context->selectedEntity != 0 && state.scenery.Contains(context->selectedEntity) && (groups.empty() || context->selectedEntity != state.scenery.GetRootId()))
+				context->selectedEntity = 0;
+			if (groups.empty())
+			{
+				state.scenery.Clear();
+				return;
+			}
+			state.scenery.Build("Project scenery", groups);
+
+			const XPlane::OverlayScene::Stats &stats = state.scenery.GetStats();
+			EDITOR_INFO_TAG(LOG_TAG, "Project scenery: {} items drawn ({} meshes, {} triangles, {} objects){}{}", stats.groups, stats.parts, stats.triangles, stats.objects,
+				conversion.hidden ? ", " + std::to_string(conversion.hidden) + " hidden items left out" : std::string(),
+				build.unsupported ? ", " + std::to_string(build.unsupported) + " autogen strings / blocks not drawn yet" : std::string());
+		}
+
 		void UnloadScene(EditorContext *context, const bool closeAirport)
 		{
 			State &state = GetState();
+			ClearScenery(context);
 			for (const auto &[id, root] : state.placed)
 			{
 				if (context && context->selectedEntity == root)
@@ -378,6 +481,7 @@ namespace SceneryEditorX::EditorProjects
 			state.datumElevation = project.datum.valid ? project.datum.elevation : !project.airports.empty() ? project.airports.front().airport.elevationFt * 0.3048 : 0.0;
 
 			PlaceItems(project.items, false);
+			UpdateScenery(context, true);
 			state.lastSync = ImGui::GetTime();
 		}
 
@@ -796,6 +900,11 @@ namespace SceneryEditorX::EditorProjects
 				SyncFromScene();
 			}
 
+			// Item edits (PROJECT panel, scene sync) and a newer library index redraw the project's scenery
+			const bool libraryChanged = state.sceneryLibrary != XPlane::LibraryManager::GetGeneration();
+			if (libraryChanged || state.sceneryRevision != state.document.GetItemsRevision())
+				UpdateScenery(context, libraryChanged);
+
 			if (now - state.lastAutosave >= state.autosaveSeconds)
 			{
 				state.lastAutosave = now;
@@ -1077,7 +1186,7 @@ namespace SceneryEditorX::EditorProjects
 	{
 		const State &state = GetState();
 		const auto it = state.placed.find(itemId);
-		return it != state.placed.end() ? it->second : 0;
+		return it != state.placed.end() ? it->second : state.scenery.FindEntity(itemId);
 	}
 
 	std::string FindItemForEntity(const uint64_t entityId)
@@ -1090,7 +1199,7 @@ namespace SceneryEditorX::EditorProjects
 			if (placedRoot == root)
 				return id;
 		}
-		return {};
+		return state.scenery.FindKey(entityId);
 	}
 
 	bool RemoveItem(const std::string &itemId, EditorContext *context)
