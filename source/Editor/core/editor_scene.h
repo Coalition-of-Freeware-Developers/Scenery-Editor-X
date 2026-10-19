@@ -42,9 +42,9 @@ namespace SceneryEditorX::EditorScene
 	 * Editor access to the active scene's entities.
 	 *
 	 * Struct components (IDComponent, TagComponent, TransformComponent, CameraComponent, ...) live in the scene's
-	 * entt registry; Entity's own struct-component store is not populated by Scene::CreateEntity, so editor code
-	 * reads and writes those through the registry. Runtime components (Renderable, ...) stay on the Entity objects
-	 * owned by the scene (Scene::GetEntities()). Entities are addressed by their UUID value (0 = none).
+	 * entt registry. Runtime components (Renderable, ...) live in each entity's scene-owned EntityRuntime record,
+	 * reachable from any Entity handle; FindEntity returns the record's stored handle (Scene::GetEntities() lists
+	 * those). Entities are addressed by their UUID value (0 = none).
 	 */
 
 	/* @brief The active scene's registry, or nullptr when no scene is loaded. */

@@ -33,24 +33,36 @@
 #include "scene.h"
 #include <array>
 #include <concepts>
+#include <string>
 #include <type_traits>
-#include <typeindex>
-#include <unordered_map>
 #include <SceneryEditorX/scene/components/component.h>
-#include <SceneryEditorX/utils/inheritance.h>
 #include <entt/src/entt/entt.hpp>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
+	struct EntityRuntime;
 
-	class Entity : public SharedObject
+	/**
+	 * @class Entity
+	 * @brief A handle to a scene entity: its registry handle, its scene and (when known) its runtime record.
+	 *
+	 * Trivially copyable and allocation-free, so build and pass it by value. Struct components (IDComponent,
+	 * TagComponent, TransformComponent, ...) live in the scene registry. Runtime components (Renderable, Light, ...),
+	 * the active flag and the previous world matrix live in the entity's EntityRuntime, which the scene owns; every
+	 * handle to the entity reaches the same record, so a copy sees and changes the same state.
+	 *
+	 * Handles the scene hands out (CreateEntity, TryGetEntityWithUUID, GetParent, ...) carry the record's address;
+	 * one built from a bare registry handle (Entity(handle, scene)) looks the record up on each runtime-component
+	 * access. Scene::GetStoredEntity() / GetEntities() return the record's own handle: its address stays put until
+	 * the entity is destroyed, which is why runtime components keep it as their owner.
+	 */
+	class Entity
 	{
 	public:
 		Entity() = default;
 		Entity(entt::entity handle, Scene* scene) : m_EntityHandle(handle), m_Scene(scene) {}
-		virtual ~Entity() = default;
 
 		void Start();
 		void Stop();
@@ -58,16 +70,15 @@ namespace SceneryEditorX
 
 		/**
 		 * @brief Whether the entity takes part in the frame (the renderer skips inactive entities).
-		 * @note The flag lives on the scene-owned Entity object (Scene::GetEntities()), not on handle copies.
-		 * @return True unless SetActive(false) was called on this object.
+		 * @return The flag SetActive() set on any handle to this entity; false when it isn't a live scene entity.
 		 */
-		bool GetActive();
+		[[nodiscard]] bool GetActive() const;
 
 		/**
 		 * @brief Enables or disables the entity (for example animation hide / show and LOD switching).
 		 * @param active New state.
 		 */
-		virtual void SetActive(const bool active);
+		void SetActive(bool active);
 
 		/**
 		 * @brief 
@@ -79,152 +90,148 @@ namespace SceneryEditorX
 		 * @brief 
 		 * @return  
 		 */
-		virtual xMath::Matrix GetMatrix() const; // world transform (registry TransformComponent + parent chain), row-vector
+		[[nodiscard]] xMath::Matrix GetMatrix() const; // world transform (registry TransformComponent + parent chain), row-vector
 
 		/* @brief The local transform of a TransformComponent as a row-vector matrix (what GetMatrix() composes). */
 		static xMath::Matrix ComposeLocalMatrix(const TransformComponent &transform);
 
 		/**
-		 * @brief 
+		 * @brief Stores the world transform the renderer used for this entity this frame (motion vectors).
 		 */
-		virtual void SetMatrixPrevious(const xMath::Matrix& m)
-		{
-			m_MatrixPrevious    = m;
-			m_HasMatrixPrevious = true;
-		}
+		void SetMatrixPrevious(const xMath::Matrix& m);
 
 		/**
 		 * @brief World transform the renderer used for this entity last frame (motion vectors).
 		 * @return The stored previous matrix, or the current one before the first frame was rendered.
 		 */
-		virtual xMath::Matrix GetMatrixPrevious() const { return m_HasMatrixPrevious ? m_MatrixPrevious : GetMatrix(); }
+		[[nodiscard]] xMath::Matrix GetMatrixPrevious() const;
 
 		/**
 		 * @brief 
 		 * @return 
 		 */
-		virtual xMath::Vec3 GetPosition() const;
+		[[nodiscard]] xMath::Vec3 GetPosition() const;
 
 		/**
 		 * @brief 
 		 * @param vector3 
 		 * @return 
 		 */
-		virtual xMath::Vec3 SetPosition(xMath::Vec3 vector3);
+		xMath::Vec3 SetPosition(xMath::Vec3 vector3);
 
 		/**
 		 * @brief Gets this entity's local-space position.
 		 * @return Local translation.
 		 */
-		virtual xMath::Vec3 GetPositionLocal() const;
+		[[nodiscard]] xMath::Vec3 GetPositionLocal() const;
 
 		/**
 		 * @brief Sets this entity's local-space position.
 		 * @param vector3 Local translation to apply.
 		 * @return Applied local translation.
 		 */
-		virtual xMath::Vec3 SetPositionLocal(xMath::Vec3 vector3);
+		xMath::Vec3 SetPositionLocal(xMath::Vec3 vector3);
 
 		/**
 		 * @brief 
 		 * @return 
 		 */
-		virtual xMath::Vec3 GetRotation() const;
+		[[nodiscard]] xMath::Vec3 GetRotation() const;
 
 		/**
 		 * @brief 
 		 * @param vector3 
 		 * @return 
 		 */
-		virtual xMath::Vec3 SetRotation(xMath::Vec3 vector3);
+		xMath::Vec3 SetRotation(xMath::Vec3 vector3);
 
 		/**
 		 * @brief Gets this entity's local-space euler rotation (radians).
 		 * @return Local rotation in radians.
 		 */
-		virtual xMath::Vec3 GetRotationLocal() const;
+		[[nodiscard]] xMath::Vec3 GetRotationLocal() const;
 
 		/**
 		 * @brief Sets this entity's local-space euler rotation (radians).
 		 * @param vector3 Local rotation in radians.
 		 * @return Applied local rotation in radians.
 		 */
-		virtual xMath::Vec3 SetRotationLocal(xMath::Vec3 vector3);
+		xMath::Vec3 SetRotationLocal(xMath::Vec3 vector3);
 
 		/**
 		 * @brief 
 		 * @return 
 		 */
-		virtual xMath::Vec3 GetScale() const;
+		[[nodiscard]] xMath::Vec3 GetScale() const;
 
 		/**
 		 * @brief 
 		 * @param vector3 
 		 * @return 
 		 */
-		virtual xMath::Vec3 SetScale(xMath::Vec3 vector3);
+		xMath::Vec3 SetScale(xMath::Vec3 vector3);
 
 		/**
 		 * @brief Gets this entity's local-space scale.
 		 * @return Local scale.
 		 */
-		virtual xMath::Vec3 GetScaleLocal() const;
+		[[nodiscard]] xMath::Vec3 GetScaleLocal() const;
 
 		/**
 		 * @brief Sets this entity's local-space scale.
 		 * @param vector3 Local scale to apply.
 		 * @return Applied local scale.
 		 */
-		virtual xMath::Vec3 SetScaleLocal(xMath::Vec3 vector3);
+		xMath::Vec3 SetScaleLocal(xMath::Vec3 vector3);
 
 		/**
 		 * @brief Gets this entity's local-space pivot point.
 		 * @return Local pivot point.
 		 */
-		virtual xMath::Vec3 GetPivotPoint() const;
+		[[nodiscard]] xMath::Vec3 GetPivotPoint() const;
 
 		/**
 		 * @brief Sets this entity's local-space pivot point.
 		 * @param vector3 Local pivot point to apply.
 		 */
-		virtual void SetPivotPoint(const Vec3& vector3);
+		void SetPivotPoint(const Vec3& vector3);
 
 		/**
 		 * @brief 
 		 * @return 
 		 */
-		virtual Vec3 GetForward() const;
+		[[nodiscard]] Vec3 GetForward() const;
 
 		/**
 		 * @brief 
 		 * @return 
 		 */
-		virtual Vec3 GetUp() const;
+		[[nodiscard]] Vec3 GetUp() const;
 
 		/**
 		 * @brief 
 		 * @return 
 		 */
-		virtual Vec3 GetDown() const;
+		[[nodiscard]] Vec3 GetDown() const;
 
 		/**
 		 * @brief 
 		 * @return 
 		 */
-		virtual Vec3 GetLeft() const;
+		[[nodiscard]] Vec3 GetLeft() const;
 
 		/**
 		 * @brief 
 		 * @return 
 		 */
-		virtual Vec3 GetRight() const;
+		[[nodiscard]] Vec3 GetRight() const;
 
 		/**
-		 * @brief 
-		 * @param Type 
-		 * @return 
+		 * @brief The runtime component of a type, or nullptr.
+		 * @param Type The component type.
+		 * @return The component in the entity's runtime record, or nullptr (also when the entity isn't live).
 		 */
-		Component* GetComponentByType(ComponentType Type) const;
+		[[nodiscard]] Component* GetComponentByType(ComponentType Type) const;
 
 		/**
 		 * @brief 
@@ -257,15 +264,9 @@ namespace SceneryEditorX
 		template<typename T>
 		T &GetComponent() requires(!ComponentTypeResolver<T>::IS_REGISTERED)
 		{
-			if (entt::registry* registry = GetRegistry())
-			{
-				SEDX_CORE_ASSERT(registry->all_of<T>(m_EntityHandle), "Entity does not have component of this type");
-				return registry->get<T>(m_EntityHandle);
-			}
-
-			auto it = m_structComponents.find(std::type_index(typeid(T)));
-			SEDX_CORE_ASSERT(it != m_structComponents.end(), "Entity does not have component of this type");
-			return std::any_cast<T&>(it->second);
+			entt::registry* registry = GetRegistry();
+			SEDX_CORE_ASSERT(registry && registry->all_of<T>(m_EntityHandle), "Entity does not have component of this type");
+			return registry->get<T>(m_EntityHandle);
 		}
 
 		/**
@@ -276,15 +277,9 @@ namespace SceneryEditorX
 		template<typename T>
 		const T &GetComponent() const requires(!ComponentTypeResolver<T>::IS_REGISTERED)
 		{
-			if (const entt::registry* registry = GetRegistry())
-			{
-				SEDX_CORE_ASSERT(registry->all_of<T>(m_EntityHandle), "Entity does not have component of this type");
-				return registry->get<T>(m_EntityHandle);
-			}
-
-			auto it = m_structComponents.find(std::type_index(typeid(T)));
-			SEDX_CORE_ASSERT(it != m_structComponents.end(), "Entity does not have component of this type");
-			return std::any_cast<const T&>(it->second);
+			const entt::registry* registry = GetRegistry();
+			SEDX_CORE_ASSERT(registry && registry->all_of<T>(m_EntityHandle), "Entity does not have component of this type");
+			return registry->get<T>(m_EntityHandle);
 		}
 
 		// ---- Runtime component access (Component subclasses) - returns T* ----
@@ -297,8 +292,7 @@ namespace SceneryEditorX
 		template<typename T>
 		T *GetComponent() requires(ComponentTypeResolver<T>::IS_REGISTERED && std::derived_from<T, Component>)
 		{
-			const ComponentType type = Component::TypeToEnum<T>();
-			return static_cast<T*>(m_components[static_cast<uint32_t>(type)].Get());
+			return static_cast<T*>(GetComponentByType(Component::TypeToEnum<T>()));
 		}
 
 		template<typename T>
@@ -315,8 +309,7 @@ namespace SceneryEditorX
 		template<typename T>
 		const T *GetComponent() const requires(ComponentTypeResolver<T>::IS_REGISTERED && std::derived_from<T, Component>)
 		{
-			const ComponentType type = Component::TypeToEnum<T>();
-			return static_cast<const T*>(m_components[static_cast<uint32_t>(type)].Get());
+			return static_cast<const T*>(GetComponentByType(Component::TypeToEnum<T>()));
 		}
 
 		template<typename T>
@@ -385,33 +378,18 @@ namespace SceneryEditorX
 			return !(*this == other);
 		}
 
-		/**
-		 * @brief 
-		 * @return 
-		 */
-		UUID GetUUID()
-		{
-			return GetComponent<IDComponent>().pID;
-		}
-
-		/**
-		 * @brief 
-		 * @return 
-		 */
-		const std::string& Name()
-		{
-			return GetComponent<TagComponent>().pTag;
-		}
-
 		// ---- Hierarchy (Replaces Node) ----
 
 		/**
 		 * @brief 
 		 * @return 
 		 */
-		Entity GetParent() const
+		[[nodiscard]] Entity GetParent() const
 		{
-			UUID parentId = GetComponent<RelationshipComponent>().pParentHandle;
+			const UUID parentId = GetComponent<RelationshipComponent>().pParentHandle;
+			if (static_cast<uint64_t>(parentId) == 0)
+				return {};
+
 			return Scene::TryGetEntityWithUUID(parentId);
 		}
 
@@ -438,33 +416,33 @@ namespace SceneryEditorX
 		template<typename T, typename... Args>
 		T &AddComponent(Args &&...args) requires(!ComponentTypeResolver<T>::IS_REGISTERED)
 		{
-			if (entt::registry* registry = GetRegistry())
-				return registry->emplace_or_replace<T>(m_EntityHandle, std::forward<Args>(args)...);
-
-			m_structComponents[std::type_index(typeid(T))] = T(std::forward<Args>(args)...);
-			return std::any_cast<T&>(m_structComponents[std::type_index(typeid(T))]);
+			entt::registry* registry = GetRegistry();
+			SEDX_CORE_ASSERT(registry, "AddComponent on an entity that isn't part of a scene");
+			return registry->emplace_or_replace<T>(m_EntityHandle, std::forward<Args>(args)...);
 		}
 
 		/**
 		 * @brief Adds a runtime component of type T. Returns existing component if already present.
 		 * @tparam T A class derived from Component.
-		 * @return Pointer to the component.
+		 * @return Pointer to the component, or nullptr when the entity isn't a live scene entity.
 		 */
 		template<typename T>
 		T *AddComponent() requires(ComponentTypeResolver<T>::IS_REGISTERED && std::derived_from<T, Component>)
 		{
-			const ComponentType type = Component::TypeToEnum<T>();
 			if (T* existing = GetComponent<T>())
 			{
 				return existing;
 			}
 
-			auto component = CreateRef<T>(this);
-			m_components[static_cast<uint32_t>(type)] = component;
-			component->SetType(type);
-			component->Init();
-			Scene::MarkStructureChanged(); // cached renderable / light lists
-			return component.Get();
+			// The component's owner is the entity's stored handle, which outlives this (possibly temporary) one.
+			Entity *stored = GetStored();
+			if (!stored)
+				return nullptr;
+
+			auto component = CreateRef<T>(stored);
+			T *added = component.Get();
+			AttachComponent(Component::TypeToEnum<T>(), component);
+			return added;
 		}
 
 		template<typename T>
@@ -483,12 +461,7 @@ namespace SceneryEditorX
 		void RemoveComponent() requires(!ComponentTypeResolver<T>::IS_REGISTERED)
 		{
 			if (entt::registry* registry = GetRegistry())
-			{
 				registry->remove<T>(m_EntityHandle);
-				return;
-			}
-
-			m_structComponents.erase(std::type_index(typeid(T)));
 		}
 
 		/**
@@ -498,9 +471,7 @@ namespace SceneryEditorX
 		template<typename T>
 		void RemoveComponent() requires(ComponentTypeResolver<T>::IS_REGISTERED && std::derived_from<T, Component>)
 		{
-			const ComponentType type = Component::TypeToEnum<T>();
-			m_components[static_cast<uint32_t>(type)] = nullptr;
-			Scene::MarkStructureChanged();
+			RemoveComponentByType(Component::TypeToEnum<T>());
 		}
 
 		template<typename T>
@@ -517,14 +488,8 @@ namespace SceneryEditorX
 		template<typename T>
 		T *TryGetComponent() requires(!ComponentTypeResolver<T>::IS_REGISTERED)
 		{
-			if (entt::registry* registry = GetRegistry())
-				return registry->try_get<T>(m_EntityHandle);
-
-			auto it = m_structComponents.find(std::type_index(typeid(T)));
-			if (it == m_structComponents.end())
-				return nullptr;
-
-			return std::any_cast<T>(&it->second);
+			entt::registry* registry = GetRegistry();
+			return registry ? registry->try_get<T>(m_EntityHandle) : nullptr;
 		}
 
 		/**
@@ -534,14 +499,8 @@ namespace SceneryEditorX
 		template<typename T>
 		const T *TryGetComponent() const requires(!ComponentTypeResolver<T>::IS_REGISTERED)
 		{
-			if (const entt::registry* registry = GetRegistry())
-				return registry->try_get<T>(m_EntityHandle);
-
-			auto it = m_structComponents.find(std::type_index(typeid(T)));
-			if (it == m_structComponents.end())
-				return nullptr;
-
-			return std::any_cast<T>(&it->second);
+			const entt::registry* registry = GetRegistry();
+			return registry ? registry->try_get<T>(m_EntityHandle) : nullptr;
 		}
 
 		/**
@@ -593,8 +552,7 @@ namespace SceneryEditorX
 		template<typename T>
 		bool HasComponent() requires(ComponentTypeResolver<T>::IS_REGISTERED && std::derived_from<T, Component>)
 		{
-			const ComponentType type = Component::TypeToEnum<T>();
-			return m_components[static_cast<uint32_t>(type)].Get() != nullptr;
+			return GetComponentByType(Component::TypeToEnum<T>()) != nullptr;
 		}
 
 		template<typename T>
@@ -670,21 +628,15 @@ namespace SceneryEditorX
 			}
 		}
 
-		/*
-		std::string& Name()
-		{
-			return HasComponent<TagComponent>() ? GetComponent<TagComponent>().pTag : m_Name;
-		}
-		*/
-
 		/**
-		 * @brief 
-		 * @return 
+		 * @brief The entity's name (its TagComponent).
+		 * @return The tag, or "Unnamed" when the entity has none.
 		 */
 		[[nodiscard]] const std::string& Name() const
 		{
+			static const std::string s_Unnamed = "Unnamed";
 			const TagComponent* tag = TryGetComponent<TagComponent>();
-			return tag ? tag->pTag : m_Name;
+			return tag ? tag->pTag : s_Unnamed;
 		}
 
 		//operator uint32_t () const { return (uint32_t)m_EntityHandle; }
@@ -832,24 +784,15 @@ namespace SceneryEditorX
 		 * @brief 
 		 * @return 
 		 */
-		float GetTimeSinceLastTransform() const { return m_TimeSinceLastTransform; }
+		[[nodiscard]] float GetTimeSinceLastTransform() const;
 
 	private:
 		entt::entity m_EntityHandle{entt::null}; // Handle used for registry lookups; entt::null if invalid
 		Scene *m_Scene = nullptr; // Non-owning pointer to the scene this entity belongs to; nullptr if invalid
-		float m_TimeSinceLastTransform = 0.0f; // Used for editor gizmo display and other transform-related time tracking (time in seconds)
-		std::string m_Name = "Unnamed";
-
-		// world transform the renderer used last frame (motion vectors)
-		xMath::Matrix m_MatrixPrevious = xMath::Matrix::IDENTITY;
-		bool m_HasMatrixPrevious       = false;
-
-		bool m_Active = true; // SetActive(); read by the renderer when collecting draw calls
+		EntityRuntime *m_Runtime = nullptr; // The entity's runtime record when this handle came from the scene (see GetRuntime)
 
 		/**
 		 * @brief The registry holding this entity's struct components (ID, tag, transform, ...).
-		 * Entities created by a Scene keep their struct components in the scene's registry; an entity without a
-		 * (live) scene handle falls back to its own m_structComponents store.
 		 * @return The scene registry, or nullptr when the entity is not bound to a live scene entity.
 		 */
 		[[nodiscard]] entt::registry* GetRegistry() const
@@ -860,11 +803,18 @@ namespace SceneryEditorX
 			return &m_Scene->m_Registry;
 		}
 
-		// Struct/data components (non-Component subclasses from component_sets.h), keyed by type
-		std::unordered_map<std::type_index, std::any> m_structComponents;
+		/**
+		 * @brief The entity's runtime record: the one this handle carries unless that entity was destroyed (the scene
+		 * clears a destroyed record's handle and recycles the record), else the scene's lookup by handle.
+		 * @return The record, or nullptr when the handle isn't a live entity of the active scene.
+		 */
+		[[nodiscard]] EntityRuntime* GetRuntime() const;
 
-		// Runtime components (Component subclasses), indexed by ComponentType enum
-		std::array<Ref<Component>, static_cast<uint32_t>(ComponentType::MaxEnum)> m_components{};
+		/* @brief The stored handle in the runtime record (owner of runtime components), or nullptr. */
+		[[nodiscard]] Entity* GetStored() const;
+
+		/* @brief Stores a new runtime component in the record, then sets its type, calls Init() and marks the scene structure changed. */
+		void AttachComponent(ComponentType type, const Ref<Component> &component);
 
 		/**
 		 * @brief Returns true if this entity has a single component of type T.
@@ -875,22 +825,101 @@ namespace SceneryEditorX
 		{
 			if constexpr (ComponentTypeResolver<T>::IS_REGISTERED)
 			{
-				return m_components[static_cast<uint32_t>(Component::TypeToEnum<T>())] != nullptr;
+				return GetComponentByType(Component::TypeToEnum<T>()) != nullptr;
 			}
 			else
 			{
-				if (const entt::registry* registry = GetRegistry())
-					return registry->all_of<T>(m_EntityHandle);
-
-				return m_structComponents.contains(std::type_index(typeid(T)));
+				const entt::registry* registry = GetRegistry();
+				return registry && registry->all_of<T>(m_EntityHandle);
 			}
 		}
 
+		friend struct EntityRuntime;
 		friend class Prefab;
 		friend class Scene;
 		friend class SceneSerializer;
 		friend class ScriptEngine;
 	};
+
+	/**
+	 * @struct EntityRuntime
+	 * @brief The scene-owned, per-entity state that doesn't live in the registry: runtime components, the active
+	 * flag and the previous world matrix. One per live entity at a fixed address (Scene pools them); `entity` is the
+	 * entity's stored handle, the one Scene::GetStoredEntity() / GetEntities() and Component::GetEntity() return.
+	 */
+	struct EntityRuntime
+	{
+		Entity entity;
+
+		// Runtime components (Component subclasses), indexed by ComponentType enum
+		std::array<Ref<Component>, static_cast<uint32_t>(ComponentType::MaxEnum)> components{};
+
+		// world transform the renderer used last frame (motion vectors)
+		xMath::Matrix matrixPrevious = xMath::Matrix::IDENTITY;
+		bool hasMatrixPrevious = false;
+
+		bool active = true; // SetActive(); read by the renderer when collecting draw calls
+		float timeSinceLastTransform = 0.0f; // Used for editor gizmo display and other transform-related time tracking (time in seconds)
+	};
+
+	static_assert(std::is_trivially_copyable_v<Entity>, "Entity is a handle: copying it must stay a plain copy");
+
+	inline EntityRuntime *Entity::GetRuntime() const
+	{
+		if (m_Runtime && m_Runtime->entity.m_EntityHandle == m_EntityHandle && m_EntityHandle != entt::null)
+			return m_Runtime;
+
+		return Scene::FindRuntime(m_EntityHandle, m_Scene);
+	}
+
+	inline Entity *Entity::GetStored() const
+	{
+		EntityRuntime *runtime = GetRuntime();
+		return runtime ? &runtime->entity : nullptr;
+	}
+
+	inline Component *Entity::GetComponentByType(const ComponentType type) const
+	{
+		const uint32_t index = static_cast<uint32_t>(type);
+		const EntityRuntime *runtime = GetRuntime();
+		if (!runtime || index >= runtime->components.size())
+			return nullptr;
+
+		return runtime->components[index].Get();
+	}
+
+	inline bool Entity::GetActive() const
+	{
+		const EntityRuntime *runtime = GetRuntime();
+		return runtime && runtime->active;
+	}
+
+	inline void Entity::SetActive(const bool active)
+	{
+		if (EntityRuntime *runtime = GetRuntime())
+			runtime->active = active;
+	}
+
+	inline void Entity::SetMatrixPrevious(const xMath::Matrix &m)
+	{
+		if (EntityRuntime *runtime = GetRuntime())
+		{
+			runtime->matrixPrevious    = m;
+			runtime->hasMatrixPrevious = true;
+		}
+	}
+
+	inline xMath::Matrix Entity::GetMatrixPrevious() const
+	{
+		const EntityRuntime *runtime = GetRuntime();
+		return runtime && runtime->hasMatrixPrevious ? runtime->matrixPrevious : GetMatrix();
+	}
+
+	inline float Entity::GetTimeSinceLastTransform() const
+	{
+		const EntityRuntime *runtime = GetRuntime();
+		return runtime ? runtime->timeSinceLastTransform : 0.0f;
+	}
 
 }
 

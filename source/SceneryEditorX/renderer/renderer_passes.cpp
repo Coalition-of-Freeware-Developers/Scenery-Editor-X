@@ -1292,7 +1292,7 @@ namespace SceneryEditorX
 									 c.x * world.m01 + c.y * world.m11 + c.z * world.m21 + world.m31,
 									 c.x * world.m02 + c.y * world.m12 + c.z * world.m22 + world.m32);
 			const xMath::Vec3 d = center - camera;
-			draws.push_back({ i, d.x * d.x + d.y * d.y + d.z * d.z, entity->GetObjectId() });
+			draws.push_back({ i, d.x * d.x + d.y * d.y + d.z * d.z, static_cast<uint64_t>(entt::to_integral(static_cast<entt::entity>(*entity))) });
 		}
 
 		if (draws.empty())

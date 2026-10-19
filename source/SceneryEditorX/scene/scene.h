@@ -43,6 +43,7 @@
 namespace SceneryEditorX
 {
 	class Entity;
+	struct EntityRuntime;
 	class Light;
 	class MaterialAsset;
 	class Camera;
@@ -158,15 +159,14 @@ namespace SceneryEditorX
 		static Entity TryGetEntityWithUUID(const UUID &uuid);
 
 		/**
-		 * @brief Like TryGetEntityWithUUID() without building an Entity handle object (each one costs heap
-		 * allocations): for per-frame lookups.
+		 * @brief Like TryGetEntityWithUUID(), returning only the registry handle.
 		 * @return The registry handle, or entt::null when no live entity has the UUID.
 		 */
 		static entt::entity TryGetEntityHandle(const UUID &uuid);
 
 		/**
-		 * @brief The scene-owned Entity object behind a handle: the one runtime components (Renderable, ...) and the
-		 * active flag live on, and the one the renderer walks.
+		 * @brief The entity's stored handle (the one in its EntityRuntime record): a fixed address until the entity is
+		 * destroyed, the owner runtime components (Renderable, ...) point to and what GetEntities() lists.
 		 * @param entity A handle returned by CreateEntity() / TryGetEntityWithUUID().
 		 * @return The stored entity, or nullptr when the handle isn't part of the active scene.
 		 */
@@ -228,6 +228,12 @@ namespace SceneryEditorX
 		static Flag UpdateSceneChanges(ComponentType entity);
 
 	private:
+		/**
+		 * @brief The runtime record of a live entity of the active scene, by registry handle (an index lookup).
+		 * @return The record, or nullptr for entt::null, another scene or a destroyed entity (the version differs).
+		 */
+		static EntityRuntime *FindRuntime(entt::entity handle, const Scene *scene);
+
 		static Ref<Camera> m_Camera;
 
 		UUID m_SceneID;

@@ -158,6 +158,7 @@ namespace SceneryEditorX
 		{
 			const Renderable *renderable = nullptr;
 			Entity *entity = nullptr;
+			entt::entity handle = entt::null; // the entity's registry handle: stored entities are recycled (Scene)
 			uint32_t batch = NO_BATCH;
 			uint64_t seenGeneration = 0;
 			uint32_t dynamicFrames = 0;	// > 0: checked every frame (counts down while the transform holds still)
@@ -373,6 +374,7 @@ namespace SceneryEditorX
 			proxy = Proxy{};
 			proxy.renderable = &renderable;
 			proxy.entity = entity;
+			proxy.handle = static_cast<entt::entity>(*entity);
 			proxy.live = true;
 			proxy.enabled = entity->GetActive();
 			proxy.batch = AcquireBatch(s, key, renderable);
@@ -432,9 +434,9 @@ namespace SceneryEditorX
 
 				const uint32_t slot = found->second;
 				Proxy &proxy = s.proxies[slot];
-				if (proxy.entity != entity)
+				if (proxy.entity != entity || proxy.handle != static_cast<entt::entity>(*entity))
 				{
-					// a new renderable at a destroyed one's address
+					// a new renderable at a destroyed one's address (possibly on a recycled stored entity too)
 					RemoveProxy(s, slot);
 					AddProxy(s, *renderable, entity, key);
 					continue;

@@ -65,16 +65,6 @@ namespace SceneryEditorX
 	{
 	}
 
-	bool Entity::GetActive()
-	{
-		return m_Active;
-	}
-
-	void Entity::SetActive(const bool active)
-	{
-		m_Active = active;
-	}
-
 	xMath::Matrix Entity::ComposeLocalMatrix(const TransformComponent &transformComponent)
 	{
 		const TransformComponent *transform = &transformComponent;
@@ -114,7 +104,8 @@ namespace SceneryEditorX
 
 	xMath::Matrix Entity::GetMatrix() const
 	{
-		const TransformComponent* transform = TryGetComponent<TransformComponent>();
+		const entt::registry *registry = GetRegistry();
+		const TransformComponent* transform = registry ? registry->try_get<TransformComponent>(m_EntityHandle) : nullptr;
 		if (!transform)
 			return xMath::Matrix::IDENTITY;
 
@@ -122,23 +113,7 @@ namespace SceneryEditorX
 		xMath::Matrix world = ComposeLocalMatrix(*transform);
 		constexpr uint32_t maxDepth = 64; // guards against relationship cycles
 
-		const entt::registry *registry = GetRegistry();
-		if (!registry)
-		{
-			// a handle outside the scene registry keeps its struct components itself
-			const Entity parent = GetParent();
-			static thread_local uint32_t s_Depth = 0;
-			if (!parent || s_Depth >= maxDepth)
-				return world;
-
-			++s_Depth;
-			world = world * parent.GetMatrix();
-			--s_Depth;
-			return world;
-		}
-
-		// In the registry: walk the parents by handle. Building Entity handles for them (GetParent) costs heap
-		// allocations per level, and this runs for every drawn entity every frame.
+		// Walk the parents by registry handle: this runs for every drawn entity every frame.
 		entt::entity handle = m_EntityHandle;
 		for (uint32_t depth = 0; depth < maxDepth; ++depth)
 		{
@@ -371,39 +346,41 @@ namespace SceneryEditorX
 		return xMath::Normalize(transform.GetRotation() * xMath::Vec3(1.0f, 0.0f, 0.0f));
 	}
 
-	Component* Entity::GetComponentByType(const ComponentType type) const
-	{
-		const uint32_t index = static_cast<uint32_t>(type);
-		if (index >= m_components.size())
-			return nullptr;
-
-		return m_components[index].Get();
-	}
-
 	Component* Entity::AddComponentByType(const ComponentType type)
 	{
+		EntityRuntime *runtime = GetRuntime();
 		const uint32_t index = static_cast<uint32_t>(type);
-		if (index >= m_components.size())
+		if (!runtime || index >= runtime->components.size())
 			return nullptr;
 
-		if (!m_components[index])
-		{
-			auto component = CreateRef<Component>(this);
-			component->SetType(type);
-			component->Init();
-			m_components[index] = std::move(component);
-		}
+		if (!runtime->components[index])
+			AttachComponent(type, CreateRef<Component>(&runtime->entity));
 
-		return m_components[index].Get();
+		return runtime->components[index].Get();
 	}
 
 	void Entity::RemoveComponentByType(const ComponentType type)
 	{
+		EntityRuntime *runtime = GetRuntime();
 		const uint32_t index = static_cast<uint32_t>(type);
-		if (index < m_components.size())
+		if (runtime && index < runtime->components.size() && runtime->components[index])
 		{
-			m_components[index] = nullptr;
+			runtime->components[index] = nullptr;
+			Scene::MarkStructureChanged(); // cached renderable / light lists
 		}
+	}
+
+	void Entity::AttachComponent(const ComponentType type, const Ref<Component> &component)
+	{
+		EntityRuntime *runtime = GetRuntime();
+		const uint32_t index = static_cast<uint32_t>(type);
+		if (!runtime || index >= runtime->components.size() || !component)
+			return;
+
+		runtime->components[index] = component;
+		component->SetType(type);
+		component->Init();
+		Scene::MarkStructureChanged(); // cached renderable / light lists
 	}
 
 	Component* Entity::AddComponent(const ComponentType type)

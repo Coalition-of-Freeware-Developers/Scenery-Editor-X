@@ -53,7 +53,15 @@ namespace SceneryEditorX
 
 	Ref<Camera> Scene::m_Camera = nullptr;
 	static Scope<Scene> s_ActiveScene = nullptr;
-	static std::unordered_map<entt::entity, Scope<Entity>> s_EntityStorage;
+
+	// Runtime records (runtime components, active flag, previous matrix), one per live entity. Allocated in chunks so
+	// their addresses never move; a destroyed entity's record is recycled once it has left s_EntityPointers.
+	static constexpr size_t RUNTIME_CHUNK_SIZE = 1024;
+	static std::vector<std::unique_ptr<EntityRuntime[]>> s_RuntimeChunks;
+	static size_t s_RuntimeChunkUsed = RUNTIME_CHUNK_SIZE; // records handed out from the last chunk
+	static std::vector<EntityRuntime*> s_FreeRuntimes;
+	static std::vector<EntityRuntime*> s_RuntimeByIndex;   // indexed by the entity part of an entt handle (see FindRuntime)
+
 	static std::vector<Entity*> s_EntityPointers;
 	static std::vector<Entity*> s_LightEntities;       // entities subset that contains only lights (cached, see RefreshEntityLists)
 	static std::vector<Entity*> s_RenderableEntities;  // entities subset that contains only renderables (cached)
@@ -61,7 +69,7 @@ namespace SceneryEditorX
 	static uint64_t s_StructureVersion = 1;            // see Scene::GetStructureVersion()
 	static uint64_t s_EntityListsVersion = 0;          // structure version the cached lists were built at
 	static uint64_t s_DestroyVersion = 1;              // see Scene::GetDestroyVersion()
-	static std::vector<const Entity*> s_DestroyedEntities; // destroyed, still listed in s_EntityPointers (CompactEntityPointers)
+	static std::vector<EntityRuntime*> s_DestroyedEntities; // destroyed, still listed in s_EntityPointers (CompactEntityPointers)
 	static BoundingBox s_BoundingBox = BoundingBox::UNIT;
 	static std::string s_FilePath;
 	static std::string s_SceneName; // cached to avoid per-frame allocation
@@ -113,20 +121,49 @@ namespace SceneryEditorX
 			if (s_DestroyedEntities.empty())
 				return;
 
-			// The pointers are only compared (the entities are gone): sorted for a binary search per entity.
-			std::ranges::sort(s_DestroyedEntities);
-			std::erase_if(s_EntityPointers, [](const Entity *entityPtr)
+			// Sorted by stored-handle address for a binary search per entity. The records stay out of reuse until
+			// here, so no live entity shares an address with a queued one.
+			const auto storedHandle = [](const EntityRuntime *runtime) { return static_cast<const Entity*>(&runtime->entity); };
+			std::ranges::sort(s_DestroyedEntities, {}, storedHandle);
+			std::erase_if(s_EntityPointers, [&storedHandle](const Entity *entityPtr)
 			{
-				return std::ranges::binary_search(s_DestroyedEntities, entityPtr);
+				return std::ranges::binary_search(s_DestroyedEntities, entityPtr, {}, storedHandle);
 			});
+			s_FreeRuntimes.insert(s_FreeRuntimes.end(), s_DestroyedEntities.begin(), s_DestroyedEntities.end());
 			s_DestroyedEntities.clear();
+		}
+
+		/* @brief A cleared runtime record for a new entity: a recycled one, else the next slot of the last chunk. */
+		EntityRuntime *AcquireRuntime()
+		{
+			if (!s_FreeRuntimes.empty())
+			{
+				EntityRuntime *runtime = s_FreeRuntimes.back();
+				s_FreeRuntimes.pop_back();
+				*runtime = EntityRuntime{};
+				return runtime;
+			}
+
+			if (s_RuntimeChunkUsed == RUNTIME_CHUNK_SIZE)
+			{
+				s_RuntimeChunks.push_back(std::make_unique<EntityRuntime[]>(RUNTIME_CHUNK_SIZE));
+				s_RuntimeChunkUsed = 0;
+			}
+			return &s_RuntimeChunks.back()[s_RuntimeChunkUsed++];
+		}
+
+		/* @brief The s_RuntimeByIndex slot of a registry handle (its entity part; the version is checked by FindRuntime). */
+		size_t RuntimeIndex(const entt::entity handle)
+		{
+			return static_cast<size_t>(entt::to_entity(handle));
 		}
 	}
 
 	/**
 	 * @brief Carries change-tracking hashes over to a rebuilt list: entries still listed keep theirs, new ones start at
 	 * 0 (so their first hash reads as a change).
-	 * @return True when entries were dropped (that is a change the remaining hashes can't show).
+	 * @return True when entries were dropped or the order moved, changes the remaining hashes can't show (a new
+	 * entity can reuse a destroyed one's stored-entity address, see AcquireRuntime, and keep its hash elsewhere).
 	 */
 	template <typename T>
 	static bool RemapHashes(const std::vector<T*> &current, std::vector<const T*> &keys, std::vector<size_t> &hashes)
@@ -147,10 +184,10 @@ namespace SceneryEditorX
 			}
 		}
 
-		const bool dropped = kept < keys.size();
+		const bool changed = kept < keys.size() || !std::ranges::equal(current, keys);
 		keys.assign(current.begin(), current.end());
 		hashes.swap(next);
-		return dropped;
+		return changed;
 	}
 
 	/**
@@ -304,18 +341,14 @@ namespace SceneryEditorX
 
 		if (!hasRenderableEntity)
 		{
-			if (const Entity bootstrapHandle = s_ActiveScene->CreateEntity("DefaultSceneMesh"))
+			if (Entity bootstrapEntity = s_ActiveScene->CreateEntity("DefaultSceneMesh"))
 			{
-				// CreateEntity returns a handle copy; attach runtime components to the stored entity so the renderer
-				// (which walks GetEntities()) sees them and the component's entity pointer stays valid.
-				Entity* bootstrapEntity = s_EntityStorage.at(static_cast<entt::entity>(bootstrapHandle)).get();
-
 				// unit cube resting on the ground plane
-				auto& transform = bootstrapEntity->GetComponent<TransformComponent>();
+				auto& transform = bootstrapEntity.GetComponent<TransformComponent>();
 				transform.translation = Vec3(0.0f, 0.5f, 0.0f);
 				transform.scale = Vec3(1.0f, 1.0f, 1.0f);
 
-				if (Renderable* renderable = bootstrapEntity->AddComponent<Renderable>())
+				if (Renderable* renderable = bootstrapEntity.AddComponent<Renderable>())
 				{
 					renderable->SetMesh(MeshType::Cube);
 					renderable->SetDefaultMaterial();
@@ -329,9 +362,24 @@ namespace SceneryEditorX
 	void Scene::Shutdown()
 	{
 		m_Camera.Reset();
-		s_EntityStorage.clear();
 		s_EntityPointers.clear();
 		s_DestroyedEntities.clear();
+		s_RuntimeByIndex.clear();
+
+		// The records stay allocated (cleared, free for a next scene): a handle kept past Shutdown then misses its
+		// record instead of reading freed memory. Their runtime components are released here, before the device goes.
+		s_FreeRuntimes.clear();
+		for (size_t chunk = 0; chunk < s_RuntimeChunks.size(); ++chunk)
+		{
+			const size_t used = chunk + 1 == s_RuntimeChunks.size() ? s_RuntimeChunkUsed : RUNTIME_CHUNK_SIZE;
+			for (size_t i = 0; i < used; ++i)
+			{
+				EntityRuntime &runtime = s_RuntimeChunks[chunk][i];
+				runtime.components = {};
+				runtime.entity.m_EntityHandle = entt::null;
+				s_FreeRuntimes.push_back(&runtime);
+			}
+		}
 		s_RenderableEntities.clear();
 		s_LightEntities.clear();
 		s_RenderableMaterials.clear();
@@ -518,27 +566,28 @@ namespace SceneryEditorX
 		s_ActiveScene->m_Registry.emplace<RelationshipComponent>(entityHandle);
 		s_ActiveScene->m_Registry.emplace<TransformComponent>(entityHandle);
 
-		auto entity = CreateScope<Entity>(entityHandle, s_ActiveScene.get());
-		s_EntityPointers.push_back(entity.get());
-		s_EntityStorage[entityHandle] = std::move(entity);
+		EntityRuntime *runtime = AcquireRuntime();
+		runtime->entity = Entity(entityHandle, s_ActiveScene.get());
+		runtime->entity.m_Runtime = runtime;
+
+		const size_t index = RuntimeIndex(entityHandle);
+		if (index >= s_RuntimeByIndex.size())
+			s_RuntimeByIndex.resize(index + 1, nullptr);
+		s_RuntimeByIndex[index] = runtime;
+
+		s_EntityPointers.push_back(&runtime->entity);
 		MarkStructureChanged();
 
-		return {entityHandle, s_ActiveScene.get()};
+		return runtime->entity;
 	}
 
 	Entity Scene::GetEntity(const UUID &uuid)
 	{
-		if (!s_ActiveScene)
-			return {};
+		if (const Entity entity = TryGetEntityWithUUID(uuid))
+			return entity;
 
-		if (const auto it = s_ActiveScene->m_EntityMap.find(uuid); it != s_ActiveScene->m_EntityMap.end())
-		{
-			if (s_ActiveScene->m_Registry.valid(it->second))
-			{
-				return {it->second, s_ActiveScene.get()};
-			}
-		}
-		SEDX_CORE_ERROR("Entity with UUID {} not found in scene!", static_cast<uint64_t>(uuid));
+		if (s_ActiveScene)
+			SEDX_CORE_ERROR("Entity with UUID {} not found in scene!", static_cast<uint64_t>(uuid));
 		return {};
 	}
 
@@ -574,14 +623,18 @@ namespace SceneryEditorX
 			}
 		}
 
-		// The ID lives in the registry; Entity::GetUUID() reads the handle's own (empty) component store.
 		if (const IDComponent *id = s_ActiveScene->m_Registry.try_get<IDComponent>(entityHandle))
 			s_ActiveScene->m_EntityMap.erase(id->pID);
 
-		if (const auto storageIt = s_EntityStorage.find(entityHandle); storageIt != s_EntityStorage.end())
+		// The runtime components go now (their owner, the stored handle, is still intact while they're released).
+		// The cleared handle makes every handle still carrying this record miss it; the record is reused once it
+		// has left s_EntityPointers.
+		if (EntityRuntime *runtime = FindRuntime(entityHandle, s_ActiveScene.get()))
 		{
-			s_DestroyedEntities.push_back(storageIt->second.get());
-			s_EntityStorage.erase(storageIt);
+			runtime->components = {};
+			runtime->entity.m_EntityHandle = entt::null;
+			s_RuntimeByIndex[RuntimeIndex(entityHandle)] = nullptr;
+			s_DestroyedEntities.push_back(runtime);
 		}
 
 		s_ActiveScene->m_Registry.destroy(entityHandle);
@@ -596,10 +649,12 @@ namespace SceneryEditorX
 
 		if (const auto it = s_ActiveScene->m_EntityMap.find(uuid); it != s_ActiveScene->m_EntityMap.end())
 		{
+			// the stored handle (carries the runtime record); every registry entity has one (CreateEntityWithUUID)
+			if (const EntityRuntime *runtime = FindRuntime(it->second, s_ActiveScene.get()))
+				return runtime->entity;
+
 			if (s_ActiveScene->m_Registry.valid(it->second))
-			{
-			  return {it->second, s_ActiveScene.get()};
-			}
+				return {it->second, s_ActiveScene.get()};
 		}
 
 		return {};
@@ -618,19 +673,27 @@ namespace SceneryEditorX
 
 	Entity *Scene::GetStoredEntity(const Entity &entity)
 	{
-		if (!s_ActiveScene || !entity)
-			return nullptr;
-
-		return GetStoredEntity(static_cast<entt::entity>(entity));
+		return entity.GetStored();
 	}
 
 	Entity *Scene::GetStoredEntity(const entt::entity handle)
 	{
-		if (!s_ActiveScene || handle == entt::null)
+		EntityRuntime *runtime = FindRuntime(handle, s_ActiveScene.get());
+		return runtime ? &runtime->entity : nullptr;
+	}
+
+	EntityRuntime *Scene::FindRuntime(const entt::entity handle, const Scene *scene)
+	{
+		if (handle == entt::null || !scene || scene != s_ActiveScene.get())
 			return nullptr;
 
-		const auto it = s_EntityStorage.find(handle);
-		return it != s_EntityStorage.end() ? it->second.get() : nullptr;
+		const size_t index = RuntimeIndex(handle);
+		if (index >= s_RuntimeByIndex.size())
+			return nullptr;
+
+		// the full handle (entity + version) must match: a recycled entity index belongs to a newer entity
+		EntityRuntime *runtime = s_RuntimeByIndex[index];
+		return runtime && runtime->entity.m_EntityHandle == handle ? runtime : nullptr;
 	}
 
 	float Scene::GetTimeOfDay()

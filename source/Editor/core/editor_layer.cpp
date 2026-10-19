@@ -44,7 +44,12 @@
 #include <Editor/panels/settings_panels.h>
 #include <Editor/panels/xplane_library_panel.h>
 #include <algorithm>
+#include <chrono>
 #include <cstdlib>
+#include <type_traits>
+#if defined(_MSC_VER) && defined(_DEBUG)
+#include <crtdbg.h>
+#endif
 #include <SceneryEditorX/core/application/application.h>
 #include <SceneryEditorX/core/frame_profiler.h>
 #include <SceneryEditorX/core/input/input.h>
@@ -101,6 +106,113 @@ namespace SceneryEditorX
 		constexpr const char *DOCKSPACE_NAME = "SEDX_EditorDockspace_v4";
 
 		constexpr ImGuiWindowFlags SIDE_BAR_FLAGS = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoSavedSettings;
+
+		// --entity-bench: heap calls made by the bench thread (the Debug CRT reports every allocation to the hook)
+		thread_local bool t_CountAllocations = false;
+		uint64_t s_BenchAllocations = 0;
+		uint64_t s_BenchBytes = 0;
+
+#if defined(_MSC_VER) && defined(_DEBUG)
+		int CountAllocationsHook(const int type, void *, const size_t size, const int blockType, long, const unsigned char *, int)
+		{
+			if (t_CountAllocations && blockType != _CRT_BLOCK && (type == _HOOK_ALLOC || type == _HOOK_REALLOC))
+			{
+				++s_BenchAllocations;
+				s_BenchBytes += size;
+			}
+			return TRUE;
+		}
+#endif
+
+		/**
+		 * @brief Times building, copying and walking Entity handles by value over every scene entity and counts the
+		 * heap allocations it makes (Debug only): TryGetEntityWithUUID, a copy and GetParent per entity.
+		 */
+		void RunEntityBench()
+		{
+			std::vector<UUID> ids;
+			ids.reserve(Scene::GetEntities().size());
+			for (const Entity *entity : Scene::GetEntities())
+				ids.push_back(entity->GetUUID());
+
+			for (int run = 0; run < 3; ++run)
+			{
+				uint64_t checksum = 0;
+				s_BenchAllocations = 0;
+				s_BenchBytes = 0;
+#if defined(_MSC_VER) && defined(_DEBUG)
+				const _CRT_ALLOC_HOOK previousHook = _CrtSetAllocHook(CountAllocationsHook);
+#endif
+				t_CountAllocations = true;
+				const auto start = std::chrono::steady_clock::now();
+				for (const UUID &id : ids)
+				{
+					const Entity handle = Scene::TryGetEntityWithUUID(id);
+					const Entity copy = handle;
+					const Entity parent = copy.GetParent();
+					checksum += static_cast<uint32_t>(copy) + (parent ? 1u : 0u);
+				}
+				const double milliseconds = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
+				t_CountAllocations = false;
+#if defined(_MSC_VER) && defined(_DEBUG)
+				_CrtSetAllocHook(previousHook);
+#endif
+				EDITOR_INFO_TAG("Perf", "Entity bench {}: {} x (TryGetEntityWithUUID + copy + GetParent) in {:.2f} ms ({:.0f} ns each), "
+					"{} heap allocations ({} bytes), sizeof(Entity) {}, trivially copyable {} (checksum {})",
+					run, ids.size(), milliseconds, ids.empty() ? 0.0 : milliseconds * 1.0e6 / static_cast<double>(ids.size()),
+					s_BenchAllocations, s_BenchBytes, sizeof(Entity), std::is_trivially_copyable_v<Entity>, checksum);
+			}
+
+			// The scene recycles destroyed entities' runtime records: handles to destroyed entities must miss them, and
+			// new entities (on recycled records) must start clean. Plugin is a plain Component without side effects.
+			constexpr size_t COUNT = 256;
+			std::vector<Entity> first;
+			std::vector<const Entity*> firstStored;
+			int failures = 0;
+			for (size_t i = 0; i < COUNT; ++i)
+			{
+				const Entity entity = Scene::CreateEntity("EntityBenchRecycle");
+				Entity copy = entity;
+				copy.AddComponentByType(ComponentType::Plugin);
+				Entity(static_cast<entt::entity>(entity), Scene::GetActive()).SetActive(false); // a bare handle reaches the record too
+				const Entity *stored = Scene::GetStoredEntity(entity);
+				failures += !stored || stored->GetActive() || !stored->GetComponentByType(ComponentType::Plugin) ||
+					stored->GetComponentByType(ComponentType::Plugin)->GetEntity() != stored;
+				first.push_back(entity);
+				firstStored.push_back(stored);
+			}
+			for (const Entity &entity : first)
+				Scene::DestroyEntity(entity);
+			(void)Scene::GetEntities(); // compacts the list, which frees the records for reuse
+
+			// Handles to destroyed entities (these still carry their old record's address) must stay dead, also once
+			// new entities live on those records with a Plugin and the active flag set.
+			const auto countDeadHandleFailures = [&first]()
+			{
+				int count = 0;
+				for (const Entity &old : first)
+					count += old.IsValid() || old.GetActive() || Scene::GetStoredEntity(old) != nullptr || old.GetComponentByType(ComponentType::Plugin) != nullptr;
+				return count;
+			};
+			failures += countDeadHandleFailures();
+
+			size_t reused = 0;
+			std::vector<Entity> second;
+			for (size_t i = 0; i < COUNT; ++i)
+			{
+				Entity entity = Scene::CreateEntity("EntityBenchRecycle");
+				const Entity *stored = Scene::GetStoredEntity(entity);
+				reused += std::ranges::find(firstStored, stored) != firstStored.end();
+				failures += !stored || !stored->GetActive() || stored->GetComponentByType(ComponentType::Plugin) != nullptr;
+				entity.AddComponentByType(ComponentType::Plugin);
+				second.push_back(entity);
+			}
+			failures += countDeadHandleFailures();
+			for (const Entity &entity : second)
+				Scene::DestroyEntity(entity);
+
+			EDITOR_INFO_TAG("Perf", "Entity recycle check: {} entities, {} recycled records, {} failures", COUNT, reused, failures);
+		}
 	}
 
 	// ---------------------------------------------------------
@@ -221,6 +333,20 @@ namespace SceneryEditorX
 	{
 		// X-Plane objects: dataref clock, animation, LODs and night lighting, before the panels read the scene.
 		PlaceStartupObjects();
+
+		// --entity-bench runs once the scene has over 1000 entities and their count held for 300 frames (the startup
+		// airport finished loading)
+		if (m_EntityBenchPending)
+		{
+			const size_t entityCount = Scene::GetEntities().size();
+			m_EntityBenchStableFrames = entityCount == m_EntityBenchCount ? m_EntityBenchStableFrames + 1 : 0;
+			m_EntityBenchCount = entityCount;
+			if (m_EntityBenchStableFrames >= 300 && entityCount > 1000)
+			{
+				m_EntityBenchPending = false;
+				RunEntityBench();
+			}
+		}
 		{
 			SEDX_PERF_SCOPE("Main: SceneObjects::Tick");
 			XPlane::SceneObjects::Tick(ImGui::GetIO().DeltaTime);
@@ -685,6 +811,8 @@ namespace SceneryEditorX
 				GpuScene::SetOcclusionCulling(false); // GPU scene without Hi-Z occlusion culling (comparison)
 			else if (args[i] == "--lock-camera")
 				Camera::SetInputLocked(true); // the startup view stays put (captures, A/B measurements)
+			else if (args[i] == "--entity-bench")
+				m_EntityBenchPending = true; // Entity handle lookups / copies, once the scene has settled
 			else if (i + 1 >= args.size())
 				break;
 			else if (args[i] == "--xp-object")

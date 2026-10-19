@@ -115,6 +115,11 @@ namespace SceneryEditorX
 		std::vector<std::string> m_StartupAssets;
 		bool m_HasStartupPosition = false;			// --xp-position x,y,z: where the startup objects go (default: origin)
 		float m_StartupPosition[3] = { 0.0f, 0.0f, 0.0f };
+
+		// --entity-bench: Entity handle lookup / copy timing and allocation count once the scene has settled
+		bool m_EntityBenchPending = false;
+		size_t m_EntityBenchCount = 0;
+		int m_EntityBenchStableFrames = 0;
 	};
 }
 
