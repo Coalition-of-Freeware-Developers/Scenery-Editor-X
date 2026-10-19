@@ -4,6 +4,7 @@
         "portable-file-dialogs",
         "spdlog",
         "stb",
+        "zlib",
         { "name": "curl", "features": ["http2", "idn", "ssl"] }
     ]
 }

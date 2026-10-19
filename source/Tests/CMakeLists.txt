@@ -258,7 +258,7 @@ INCLUDE(Catch)
 catch_discover_tests(ConversionTests)
 
 # --------------------------------
-# X-Plane Format Tests (OBJ8, library.txt, scenery_packs.ini; standard library only)
+# X-Plane Format Tests (OBJ8, library.txt, scenery_packs.ini, apt.dat, airport index; standard library only)
 # --------------------------------
 
 MESSAGE(STATUS "=================================================")
@@ -266,9 +266,20 @@ MESSAGE(STATUS "Generating X-Plane Format Unit Tests")
 
 ADD_EXECUTABLE(XPlaneFormatTests
     ${CMAKE_CURRENT_SOURCE_DIR}/xplane_tests/XPlaneFormatTests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/xplane_tests/AirportTests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/xplane_tests/OverlayTests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/xplane_tests/DsfWriterTests.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/filesystem/vfs.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_obj8.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_library.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_lights.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_apt.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_apt_geometry.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_airport_index.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_gateway_types.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_dsf.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_assets.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_overlay.cpp
 )
 
 TARGET_INCLUDE_DIRECTORIES(XPlaneFormatTests PRIVATE
@@ -277,6 +288,7 @@ TARGET_INCLUDE_DIRECTORIES(XPlaneFormatTests PRIVATE
 
 TARGET_LINK_LIBRARIES(XPlaneFormatTests PRIVATE
     Catch2::Catch2WithMain
+    nlohmann_json::nlohmann_json
 )
 
 IF(_SEDX_MSVCLIKE)
@@ -287,4 +299,56 @@ ENDIF()
 
 INCLUDE(Catch)
 catch_discover_tests(XPlaneFormatTests)
+
+# --------------------------------
+# Project File Tests (.edX JSON, .sex binary, WorldEditor earth.wed.xml, cache, document, DSF conversion, the VFS and
+# scenery pack creation / export; standard library only)
+# --------------------------------
+
+MESSAGE(STATUS "=================================================")
+MESSAGE(STATUS "Generating Project File Unit Tests")
+
+ADD_EXECUTABLE(ProjectFormatTests
+    ${CMAKE_CURRENT_SOURCE_DIR}/project_tests/ProjectFormatTests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/project_tests/SplineEditTests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/project_tests/VfsTests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/project_tests/SceneryPackTests.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/filesystem/vfs.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/project/spline_edit.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/project/scenery_project.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/project/project_edx.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/project/project_sex.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/project/project_wed.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/project/xml_document.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/project/project_io.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/project/project_cache.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/project/project_document.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/project/project_dsf.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/project/scenery_pack.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_airport_document.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_airport_index.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_apt.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_library.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_apt_geometry.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_dsf.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_assets.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_overlay.cpp
+)
+
+TARGET_INCLUDE_DIRECTORIES(ProjectFormatTests PRIVATE
+    ${CMAKE_SOURCE_DIR}/source
+)
+
+TARGET_LINK_LIBRARIES(ProjectFormatTests PRIVATE
+    Catch2::Catch2WithMain
+    nlohmann_json::nlohmann_json
+)
+
+IF(_SEDX_MSVCLIKE)
+    TARGET_COMPILE_OPTIONS(ProjectFormatTests PRIVATE /MP /W4 /bigobj)
+ELSE()
+    TARGET_COMPILE_OPTIONS(ProjectFormatTests PRIVATE -Wall -Wextra -Wpedantic)
+ENDIF()
+
+catch_discover_tests(ProjectFormatTests)
 

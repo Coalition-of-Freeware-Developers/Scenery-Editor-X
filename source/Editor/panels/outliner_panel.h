@@ -31,6 +31,9 @@
 #pragma once
 #include <Editor/core/editor_context.h>
 #include <SceneryEditorX/renderer/ui/editor_panel.h>
+#include <string>
+#include <vector>
+#include <entt/entity/fwd.hpp>
 
 // -------------------------------------------------------
 
@@ -49,8 +52,17 @@ namespace SceneryEditorX
 		void OnUIRender(bool &isOpen) override;
 
 	private:
+		/* @brief Rebuilds the root list (and the search matches) when the scene structure or the filter changed. */
+		void RefreshLists();
+
 		EditorContext *m_Context = nullptr;
 		ImGuiTextFilter m_Filter;
+
+		// Walking every entity each frame to find the roots was a large part of a frame with an airport loaded.
+		std::vector<entt::entity> m_Roots;
+		std::vector<entt::entity> m_Matches;	// Search results (the tree flattened)
+		uint64_t m_ListVersion = 0;				// Scene::GetStructureVersion() the lists were built at
+		std::string m_MatchFilter;				// Filter text m_Matches was built for
 	};
 
 }

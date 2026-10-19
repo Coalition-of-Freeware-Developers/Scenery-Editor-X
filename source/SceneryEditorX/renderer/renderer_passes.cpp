@@ -30,8 +30,10 @@
  */
 #include "bend_sss_cpu.h"
 #include "gbuffer.h"
+#include "gpu_scene.h"
 #include "renderer.h"
 #include "renderer_declarations.h"
+#include "scene_picking.h"
 #include "font/font.h"
 #include "vulkan/enums.h"
 #include "vulkan/rasterizer.h"
@@ -83,6 +85,22 @@ namespace SceneryEditorX
 			}
 
 			return shader;
+		}
+
+		/**
+		 * @brief Draws one GPU-scene bucket's commands with the bound pipeline: the early pass's and / or, when this frame
+		 * culls in two phases, the late pass's (GpuScene::GetLateCommandOffset() further on).
+		 */
+		void DrawGpuSceneBucket(CommandList *cmdList, const GpuScene::Bucket &bucket, const bool early, const bool late)
+		{
+			constexpr uint64_t stride = sizeof(VkDrawIndexedIndirectCommand);
+			if (early)
+				cmdList->DrawIndexedIndirect(GpuScene::GetCommandBuffer(), static_cast<uint64_t>(bucket.firstCommand) * stride, bucket.commandCount);
+			if (late && GpuScene::IsOcclusionActive())
+			{
+				const uint64_t first = static_cast<uint64_t>(GpuScene::GetLateCommandOffset()) + bucket.firstCommand;
+				cmdList->DrawIndexedIndirect(GpuScene::GetCommandBuffer(), first * stride, bucket.commandCount);
+			}
 		}
 
 		/* @brief Direction towards the placeholder sun light composition and the forward pass use without a directional light. */
@@ -166,6 +184,7 @@ namespace SceneryEditorX
 				if (graphicsPresent->IsStickyInvalid())
 					return;
 
+				GpuScene::Cull(graphicsPresent);
 				Pass_Depth_Prepass(graphicsPresent);
 				if (graphicsPresent->IsStickyInvalid())
 					return;
@@ -208,6 +227,11 @@ namespace SceneryEditorX
 					return;
 				depthTarget->SetLayout(Layout::ImageLayout::ShaderRead, graphicsPresent, 0, 0);
 
+				// editor selection / hover outlines over everything drawn into the frame
+				ScenePicking::RecordOutline(graphicsPresent, rt_render);
+				if (graphicsPresent->IsStickyInvalid())
+					return;
+
 				graphicsPresent->Blit(rt_render, rt_output, false);
 				if (graphicsPresent->IsStickyInvalid())
 					return;
@@ -233,6 +257,7 @@ namespace SceneryEditorX
 				->SetLayout(Layout::ImageLayout::Attachment, graphicsPresent, 0, 0);
 			GetRenderTarget(Renderer_RenderTarget::gbuffer_depth)
 				->SetLayout(Layout::ImageLayout::Attachment, graphicsPresent, 0, 0);
+			ScenePicking::EndFrame(graphicsPresent);
 
 			return;
 		}
@@ -305,6 +330,7 @@ namespace SceneryEditorX
 				bool isTransparent = false;
 				Pass_HiZ(graphicsPresent);
 				Pass_IndirectCull(graphicsPresent);
+				GpuScene::Cull(graphicsPresent);
 				Pass_Depth_Prepass(graphicsPresent);
 				Pass_GBuffer(graphicsPresent, isTransparent);
 			}
@@ -652,6 +678,25 @@ namespace SceneryEditorX
 		Pass_Downscale(cmdList, tex_occluders_hiz, Renderer_DownsampleFilter::Min);
 	}
 
+	void Renderer::Pass_GpuScene_Occlusion(CommandList *cmdList)
+	{
+		// Between the GPU scene's two culling phases in the depth prepass: a hi-z pyramid of the depth drawn so far
+		// (the instances visible last frame and the CPU draws), then the late cull against it. The hi-z target is shared
+		// with Pass_HiZ, which rebuilds it from scratch before its own use.
+		ImageResource *tex_depth = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
+		ImageResource *tex_hiz = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_occluders_hiz);
+
+		Pass_Blit(cmdList, tex_depth, tex_hiz);
+		Pass_Downscale(cmdList, tex_hiz, Renderer_DownsampleFilter::Min);
+
+		// the cull samples every level through one view: all of them shader-readable (per mip, the chain left them
+		// in different layouts and a whole-image transition assumes one)
+		for (uint32_t mip = 0; mip < tex_hiz->GetMipCount(); ++mip)
+			tex_hiz->SetLayout(Layout::ImageLayout::ShaderRead, cmdList, mip, 1);
+
+		GpuScene::CullLate(cmdList, tex_hiz);
+	}
+
 	void Renderer::Pass_IndirectCull(CommandList *cmdList)
 	{
 		if (m_Indirect_DrawCount == 0)
@@ -728,6 +773,39 @@ namespace SceneryEditorX
 												  0, m_Indirect_DrawCount);
 			}
 
+			// GPU scene: one instanced indirect draw per bucket (gpu_cull.slang chose the instances and their LODs). With
+			// occlusion culling these are the early pass's draws; the late pass's follow the CPU draws (below).
+			bool depthWritten = m_Indirect_DrawCount > 0;
+			const auto drawGpuScene = [&](const bool late)
+			{
+				PipelineState pso;
+				pso.name = "depth_prepass_gpu";
+				pso.shaders[static_cast<uint32_t>(StageType::Vertex)] = ShaderManager::GetShader(Renderer_Shader::depth_prepass_gpu);
+				pso.rasterizerState = rasterizer_state;
+				pso.blendState = GetBlendState(Renderer_BlendState::Off);
+				pso.depthStencil_State = GetDepthStencilState(Renderer_DepthStencilState::ReadWrite);
+				pso.vrsInputTexture = cvar_variable_rate_shading.GetValueAs<bool>() ? GetRenderTarget(Renderer_RenderTarget::shading_rate) : nullptr;
+				pso.renderTarget_DepthTexture = tex_depth;
+				pso.resolutionScale = true;
+
+				for (const GpuScene::Bucket &bucket : GpuScene::GetBuckets())
+				{
+					if (bucket.commandCount == 0)
+						continue;
+
+					// alpha-tested buckets discard cut-out texels, the rest need no fragment shader
+					pso.shaders[static_cast<uint32_t>(StageType::Fragment)] = bucket.alphaTested ? ShaderManager::GetShader(Renderer_Shader::depth_prepass_gpu) : nullptr;
+					pso.clearDepth = depthWritten ? RHI_DEPTH_LOAD : 0.0f;
+					cmdList->SetPipelineState(pso);
+					cmdList->SetIndexBuffer(GeometryBuffer::GetIndexBuffer());
+					cmdList->SetCullMode(is_wireframe ? CullMode::None : bucket.cullMode);
+					DrawGpuSceneBucket(cmdList, bucket, !late, late);
+					depthWritten = true;
+				}
+			};
+			if (GpuScene::HasDraws())
+				drawGpuScene(false);
+
 			// cpu-driven path for remaining draws (tessellated, instanced, alpha-tested)
 			{
 				PipelineState pso;
@@ -740,9 +818,9 @@ namespace SceneryEditorX
 				pso.renderTarget_DepthTexture = tex_depth;
 				pso.resolutionScale = true;
 
-				// load when the indirect path already wrote depth, otherwise this path owns the clear (reverse-z: 0 = far)
+				// load when an indirect path already wrote depth, otherwise this path owns the clear (reverse-z: 0 = far)
 				const bool indirectActive = m_Indirect_DrawCount > 0;
-				pso.clearDepth = indirectActive ? RHI_DEPTH_LOAD : 0.0f;
+				pso.clearDepth = depthWritten ? RHI_DEPTH_LOAD : 0.0f;
 
 				bool pipelineSet = false;
 				bool drew = false;
@@ -805,13 +883,21 @@ namespace SceneryEditorX
 				}
 
 				// nothing was drawn, but depth must still be cleared for the passes that read it
-				if (!drew && !indirectActive)
+				if (!drew && !depthWritten)
 				{
 					pso.shaders[static_cast<uint32_t>(StageType::Fragment)] = nullptr;
 					pso.shaders[static_cast<uint32_t>(StageType::TessellationControl)] = nullptr;
 					pso.shaders[static_cast<uint32_t>(StageType::TessellationEvaluation)] = nullptr;
 					cmdList->ClearPipelineStateRenderTargets(pso);
 				}
+			}
+
+			// GPU scene, late pass (two-phase occlusion culling): what the early pass held back, culled against a Hi-Z
+			// of the depth drawn so far
+			if (GpuScene::HasDraws() && GpuScene::IsOcclusionActive())
+			{
+				Pass_GpuScene_Occlusion(cmdList);
+				drawGpuScene(true);
 			}
 
 			float resolutionScale = cvar_resolution_scale.GetValue();
@@ -832,6 +918,7 @@ namespace SceneryEditorX
 		ImageResource *texMaterial = GetRenderTarget(Renderer_RenderTarget::gbuffer_material);
 		ImageResource *texVelocity = GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity);
 		ImageResource *texDepth = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
+		ImageResource *texPick = GetRenderTarget(Renderer_RenderTarget::gbuffer_pick);	// editor picking ids (ScenePicking)
 
 		{
 			if (!isTransparentPass && m_Indirect_DrawCount > 0)
@@ -850,11 +937,13 @@ namespace SceneryEditorX
 				pso.renderTarget_ColorTextures[1] = texNormal;
 				pso.renderTarget_ColorTextures[2] = texMaterial;
 				pso.renderTarget_ColorTextures[3] = texVelocity;
+				pso.renderTarget_ColorTextures[4] = texPick;
 				pso.renderTarget_DepthTexture = texDepth;
 				pso.clearColor[0] = PipelineStateColor{.r = 0.0f, .g = 0.0f, .b = 0.0f, .a = 0.0f};
 				pso.clearColor[1] = PipelineStateColor{.r = 0.0f, .g = 0.0f, .b = 0.0f, .a = 0.0f};
 				pso.clearColor[2] = PipelineStateColor{.r = 0.0f, .g = 0.0f, .b = 0.0f, .a = 0.0f};
 				pso.clearColor[3] = PipelineStateColor{.r = 0.0f, .g = 0.0f, .b = 0.0f, .a = 0.0f};
+				pso.clearColor[4] = PipelineStateColor{.r = 0.0f, .g = 0.0f, .b = 0.0f, .a = 0.0f};	// pick id 0: nothing
 				cmdList->SetPipelineState(pso);
 
 				cmdList->SetIndexBuffer(GeometryBuffer::GetIndexBuffer());
@@ -878,6 +967,55 @@ namespace SceneryEditorX
 				}
 			}
 
+			// GPU scene (opaque pass): one instanced indirect draw per bucket, clearing the targets with the first
+			bool gpuDrew = false;
+			if (!isTransparentPass && GpuScene::HasDraws())
+			{
+				PipelineState pso;
+				pso.name = "g_buffer_gpu";
+				pso.shaders[static_cast<uint32_t>(StageType::Vertex)] = ShaderManager::GetShader(Renderer_Shader::gbuffer_gpu);
+				pso.shaders[static_cast<uint32_t>(StageType::Fragment)] = ShaderManager::GetShader(Renderer_Shader::gbuffer_gpu);
+				pso.blendState = GetBlendState(Renderer_BlendState::Off);
+				pso.rasterizerState = cvar_wireframe.GetValueAs<bool>() ? GetRasterizerState(Renderer_RasterizerState::Wireframe)
+										  : GetRasterizerState(Renderer_RasterizerState::Solid);
+				pso.depthStencil_State = GetDepthStencilState(Renderer_DepthStencilState::ReadGreaterEqual);
+				pso.vrsInputTexture = cvar_variable_rate_shading.GetValueAs<bool>() ? GetRenderTarget(Renderer_RenderTarget::shading_rate) : nullptr;
+				pso.resolutionScale = true;
+				pso.renderTarget_ColorTextures[0] = texColor;
+				pso.renderTarget_ColorTextures[1] = texNormal;
+				pso.renderTarget_ColorTextures[2] = texMaterial;
+				pso.renderTarget_ColorTextures[3] = texVelocity;
+				pso.renderTarget_ColorTextures[4] = texPick;
+				pso.renderTarget_DepthTexture = texDepth;
+
+				const bool indirectWrote = m_Indirect_DrawCount > 0;
+				for (const GpuScene::Bucket &bucket : GpuScene::GetBuckets())
+				{
+					if (bucket.commandCount == 0)
+						continue;
+
+					const PipelineStateColor clearOrLoad = (indirectWrote || gpuDrew) ? RHI_COLOR_LOAD : PipelineStateColor{.r = 0.0f, .g = 0.0f, .b = 0.0f, .a = 0.0f};
+					for (PipelineStateColor &clearColor : pso.clearColor)
+						clearColor = clearOrLoad;
+					pso.clearDepth = RHI_DEPTH_LOAD;
+
+					cmdList->SetPipelineState(pso);
+
+					// The draws carry no per-draw constants, but gbuffer.slang reads the pass's opaque flag (cut-out
+					// discard). Nothing may have pushed graphics constants yet this frame (the culls push compute ones),
+					// and an undefined flag (e.g. the forward transparent pass's 1) wrote cut-out forest texels solid.
+					m_Pcb_Pass_Cpu.drawIndex = 0;
+					m_Pcb_Pass_Cpu.isTransparent = 0;
+					m_Pcb_Pass_Cpu.materialIndex = 0;
+					cmdList->PushConstants(m_Pcb_Pass_Cpu);
+
+					cmdList->SetIndexBuffer(GeometryBuffer::GetIndexBuffer());
+					cmdList->SetCullMode(cvar_wireframe.GetValueAs<bool>() ? CullMode::None : bucket.cullMode);
+					DrawGpuSceneBucket(cmdList, bucket, true, true); // both culling phases' draws
+					gpuDrew = true;
+				}
+			}
+
 			{
 				PipelineState pso;
 				pso.name = isTransparentPass ? "g_buffer_transparent" : "g_buffer_tessellated";
@@ -894,14 +1032,16 @@ namespace SceneryEditorX
 				pso.renderTarget_ColorTextures[1] = texNormal;
 				pso.renderTarget_ColorTextures[2] = texMaterial;
 				pso.renderTarget_ColorTextures[3] = texVelocity;
+				pso.renderTarget_ColorTextures[4] = texPick;
 				pso.renderTarget_DepthTexture = texDepth;
-				// load when the indirect path already cleared and wrote the g-buffer, otherwise clear on the first draw
+				// load when an indirect path already cleared and wrote the g-buffer, otherwise clear on the first draw
 				const bool indirectActive = !isTransparentPass && m_Indirect_DrawCount > 0;
-				const PipelineStateColor clearOrLoad = (isTransparentPass || indirectActive) ? RHI_COLOR_LOAD : PipelineStateColor{.r = 0.0f, .g = 0.0f, .b = 0.0f, .a = 0.0f};
+				const PipelineStateColor clearOrLoad = (isTransparentPass || indirectActive || gpuDrew) ? RHI_COLOR_LOAD : PipelineStateColor{.r = 0.0f, .g = 0.0f, .b = 0.0f, .a = 0.0f};
 				pso.clearColor[0] = clearOrLoad;
 				pso.clearColor[1] = clearOrLoad;
 				pso.clearColor[2] = clearOrLoad;
 				pso.clearColor[3] = clearOrLoad;
+				pso.clearColor[4] = clearOrLoad;
 
 				bool pipeline_set = false;
 
@@ -920,7 +1060,7 @@ namespace SceneryEditorX
 					}
 					else
 					{
-					    if (materialAsset->IsTransparent())
+					    if (materialAsset->IsTransparent() || draw_call.gpuDriven)
 							continue;
 
 						// skip draws the indirect path already covered
@@ -980,6 +1120,10 @@ namespace SceneryEditorX
 			texMaterial->SetLayout(Layout::ImageLayout::General, cmdList, 0, 0);
 			texVelocity->SetLayout(Layout::ImageLayout::General, cmdList, 0, 0);
 			texDepth->SetLayout(Layout::ImageLayout::ShaderRead, cmdList, 0, 0);
+
+			// editor picking: copy the regions the viewport asked for (the outline pass reads the ids later)
+			if (!isTransparentPass)
+				ScenePicking::RecordReadbacks(cmdList);
 		}
 	}
 
@@ -1165,7 +1309,7 @@ namespace SceneryEditorX
 									 c.x * world.m01 + c.y * world.m11 + c.z * world.m21 + world.m31,
 									 c.x * world.m02 + c.y * world.m12 + c.z * world.m22 + world.m32);
 			const xMath::Vec3 d = center - camera;
-			draws.push_back({ i, d.x * d.x + d.y * d.y + d.z * d.z, entity->GetObjectId() });
+			draws.push_back({ i, d.x * d.x + d.y * d.y + d.z * d.z, static_cast<uint64_t>(entt::to_integral(static_cast<entt::entity>(*entity))) });
 		}
 
 		if (draws.empty())
@@ -1553,6 +1697,31 @@ namespace SceneryEditorX
 	{
 		if (!img || img->GetImageSpec().mipCount <= 1)
 			return;
+
+		// The SPD shaders aren't ported yet (scale.slang has no entry point): a min chain (hi-z) is reduced one level
+		// per dispatch instead, each reading the level above through its own view
+		if (filter == Renderer_DownsampleFilter::Min && !ShaderManager::IsShaderAvailable(Renderer_Shader::ffx_spd_min))
+		{
+			PipelineState pso;
+			pso.name = "downsample_min";
+			Shader *shader = GetValidComputeShader(Renderer_Shader::downsample_min, pso.name);
+			if (!shader)
+				return;
+			pso.shaders[static_cast<uint32_t>(StageType::Compute)] = shader;
+			cmdList->SetPipelineState(pso);
+
+			for (uint32_t mip = 1; mip < img->GetImageSpec().mipCount; mip++)
+			{
+				// binding the level above moves it to ShaderRead: the barrier after the previous dispatch's writes
+				cmdList->SetTexture(Renderer_BindingsSrv::tex, img, mip - 1, 1);
+				cmdList->SetTexture(Renderer_BindingsUav::tex, img, mip, 1);
+
+				const uint32_t width = xMath::Max(img->GetWidth() >> mip, 1u);
+				const uint32_t height = xMath::Max(img->GetHeight() >> mip, 1u);
+				cmdList->Dispatch((width + 7) / 8, (height + 7) / 8, 1);
+			}
+			return;
+		}
 
 		Renderer_Shader spdShader;
 		switch (filter)

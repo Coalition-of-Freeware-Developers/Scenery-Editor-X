@@ -36,6 +36,7 @@
 #include <sysinfoapi.h>
 #include <timezoneapi.h>
 #include <SceneryEditorX/core/application/application_data.h>
+#include <SceneryEditorX/filesystem/vfs.h>
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <vulkan/vulkan.h>
@@ -73,7 +74,7 @@ namespace SceneryEditorX
 		{"SDL",					TagDetails{.enabled = true,.levelFilter = Level::Error}},
 		{"Memory",				TagDetails{.enabled = true,.levelFilter = Level::Error}},
 		{"Mesh",				    TagDetails{.enabled = true,.levelFilter = Level::Warn}},
-		{"Project",				TagDetails{.enabled = true,.levelFilter = Level::Warn}},
+		{"Project",				TagDetails{.enabled = true,.levelFilter = Level::Info}},
 		{"Renderer",				TagDetails{.enabled = true,.levelFilter = Level::Info}},
 		{"Scene",					TagDetails{.enabled = true,.levelFilter = Level::Info}},
 		{"Scripting",				TagDetails{.enabled = true,.levelFilter = Level::Warn}},
@@ -124,8 +125,8 @@ namespace SceneryEditorX
 
 		  // -------------------------------------------------------
 
-			// Ensure logs are written to: %APPDATA%\SceneryEditorX\logs
-			std::filesystem::path appLogDir = IO::FileSystem::GetAppDataRoaming() / "logs";
+			// The layout's log folder (VFS AppLocation::Logs: %APPDATA%\SceneryEditorX\logs on Windows)
+			std::filesystem::path appLogDir = VFS::GetAppLocation(VFS::AppLocation::Logs);
 
 			// Try to create the directory if it doesn't exist. Ignore errors here.
 			std::error_code ec;

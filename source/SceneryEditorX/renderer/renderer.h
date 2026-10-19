@@ -231,9 +231,10 @@ namespace SceneryEditorX
 		 * @param prevTransform The previous transformation matrix of the mesh (for motion blur, etc.).
 		 * @param matIndex The index of the material to use.
 		 * @param isTransparent Whether the mesh is transparent.
+		 * @param pickId Editor pick id of the drawing entity (ScenePicking::GetPickId), 0 when it can't be picked.
 		 * @return Index of the written draw data.
 		 */
-		static uint32_t WriteDrawData(const xMath::Matrix& transform, const xMath::Matrix &prevTransform = xMath::Matrix::IDENTITY, uint32_t matIndex = 0, uint32_t isTransparent = 0);
+		static uint32_t WriteDrawData(const xMath::Matrix& transform, const xMath::Matrix &prevTransform = xMath::Matrix::IDENTITY, uint32_t matIndex = 0, uint32_t isTransparent = 0, uint32_t pickId = 0);
 
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		/// Render Context Management                                                                                     ///
@@ -636,6 +637,13 @@ namespace SceneryEditorX
 		static void Pass_IndirectCull(CommandList *cmdList);
 
 		/**
+		 * @brief GPU-scene occlusion culling between the depth prepass's two phases: builds a min-depth hi-z pyramid of the
+		 * depth drawn so far and runs GpuScene::CullLate() against it.
+		 * @param cmdList Command list to record the pass into.
+		 */
+		static void Pass_GpuScene_Occlusion(CommandList *cmdList);
+
+		/**
 		 * @brief Perform the depth pre-pass for the current frame.
 		 * @param cmdList Command list to record the pass into.
 		 */
@@ -866,6 +874,12 @@ namespace SceneryEditorX
 		 */
 		static void AddLinesToBeRendered();
 
+	public:
+		/* @brief Light gizmos and renderable bounding boxes as debug lines (off: costly for big scenes). */
+		static void SetDebugGizmos(bool enabled);
+
+	private:
+
 		// line and icon rendering
 		static Ref<Buffer> m_Lines_VertexBuffer;
 		static std::vector<Vertex_PosCol> m_Lines_Vertices;
@@ -909,7 +923,8 @@ namespace SceneryEditorX
 		static uint32_t m_DrawData_Count; // Number of draw data entries written for the current frame; used to determine how many to copy to GPU and how many draw calls to issue
 
 		// Array of pointers to all textures used by the renderer, indexed by material parameters; bound as a bindless array in shaders
-		static std::array<ImageResource*, MAX_ARRAY_SIZE> m_Bindless_Textures;
+		static std::array<ImageResource*, MAX_MATERIAL_TEXTURES> m_Bindless_Textures;
+		static uint32_t m_Bindless_TextureCount; // Slots of m_Bindless_Textures in use (written to the descriptor set)
 
 		// Array of light data for all active lights in the scene, indexed by a per-light index; bound as a bindless array in shaders
 		static std::array<ShaderBuffer_Light, MAX_ARRAY_SIZE> m_Bindless_Lights; 

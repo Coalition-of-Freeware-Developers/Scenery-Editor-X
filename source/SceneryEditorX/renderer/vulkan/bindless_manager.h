@@ -71,6 +71,11 @@ namespace SceneryEditorX
 		GeometryVertices,
 		GeometryIndices,
 		Instances,
+		GpuInstances,		// GPU scene (gpu_scene.slang): per-instance transforms and bounds
+		GpuBatches,			// GPU scene: per-batch draw ranges and material
+		GpuCommands,		// GPU scene: instanced indirect draw commands (written by the cull pass)
+		GpuVisibleInstances,// GPU scene: visible instance indices per draw (written by the cull pass)
+		GpuVisibility,		// GPU scene: per-instance visibility from the last frame (two-phase occlusion culling)
 		MaxEnum
 	};
 
@@ -151,10 +156,12 @@ namespace SceneryEditorX
 		static void UpdateSamplers(BindlessResource type, const Ref<Sampler> *samplers, uint32_t count);
 
 		/**
-		 * @brief Updates the images for a given bindless resource type.
+		 * @brief Writes the material texture array. Only the first `count` slots are written: the binding is partially
+		 * bound, and shaders only index slots of materials that exist.
 		 * @param imageArrays The array of image resources to update.
+		 * @param count Slots in use.
 		 */
-		static void UpdateImages(const std::array<ImageResource*, MAX_ARRAY_SIZE> *imageArrays);
+		static void UpdateImages(const std::array<ImageResource*, MAX_MATERIAL_TEXTURES> *imageArrays, uint32_t count);
 
 		/**
 		 * @brief Creates a descriptor set layout for a given bindless resource type.

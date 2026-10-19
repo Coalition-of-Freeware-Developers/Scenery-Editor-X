@@ -386,6 +386,13 @@ namespace SceneryEditorX
 				SEDX_CORE_ASSERT(support.features.tessellationShader == VK_TRUE);
 				feat.s_Features.features.tessellationShader = VK_TRUE;
 
+				// GPU-driven drawing (GpuScene): one vkCmdDrawIndexedIndirect per pipeline bucket for many commands,
+				// each command's visible instances starting at its firstInstance
+				SEDX_CORE_ASSERT(support.features.multiDrawIndirect == VK_TRUE);
+				feat.s_Features.features.multiDrawIndirect = VK_TRUE;
+				SEDX_CORE_ASSERT(support.features.drawIndirectFirstInstance == VK_TRUE);
+				feat.s_Features.features.drawIndirectFirstInstance = VK_TRUE;
+
 				// Depth Clamp
 				SEDX_CORE_ASSERT(support.features.depthClamp == VK_TRUE);
 				feat.s_Features.features.depthClamp = VK_TRUE;

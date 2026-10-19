@@ -178,6 +178,9 @@ namespace SceneryEditorX
 	private:
 		void InitializeApplication(const AppData& appData);
 
+		/* @brief The editor's folders (IO::FileSystem::InitAppLocations), logged, plus the working folders inside them. */
+		static void SetUpAppLocations();
+
 		Scope<Window> m_Window;
 		AppData m_AppData;
 		UILayer* m_UILayer = nullptr;	// Owned by m_LayerStack (pushed as an overlay)

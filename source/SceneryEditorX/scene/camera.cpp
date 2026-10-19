@@ -47,6 +47,7 @@ namespace SceneryEditorX
 {
 	// Written by the UI on the main thread, read by Camera::Tick() on the render thread.
 	static std::atomic<bool> s_InputEnabled = true;
+	static std::atomic<bool> s_InputLocked = false;	// --lock-camera: SetInputEnabled() can't turn input on
 
 	Camera::Camera() { m_CameraFlag.SetDirty(); }
 
@@ -69,7 +70,13 @@ namespace SceneryEditorX
 		return data;
 	}
 
-	void Camera::SetInputEnabled(const bool enabled) { s_InputEnabled.store(enabled, std::memory_order_relaxed); }
+	void Camera::SetInputEnabled(const bool enabled) { s_InputEnabled.store(enabled && !s_InputLocked.load(std::memory_order_relaxed), std::memory_order_relaxed); }
+	void Camera::SetInputLocked(const bool locked)
+	{
+		s_InputLocked.store(locked, std::memory_order_relaxed);
+		if (locked)
+			s_InputEnabled.store(false, std::memory_order_relaxed);
+	}
 	bool Camera::IsInputEnabled() { return s_InputEnabled.load(std::memory_order_relaxed); }
 
 	void Camera::Init()
@@ -153,7 +160,6 @@ namespace SceneryEditorX
 	void Camera::ProcessInput(TransformComponent& transform, float deltaTime)
 	{
 		constexpr float mouseSensitivity = 0.005f;
-		constexpr float moveSpeed = 5.0f;
 		constexpr float pitchLimit = PI * 0.49f;
 
 		if (deltaTime <= 0.0f)
@@ -164,43 +170,126 @@ namespace SceneryEditorX
 		const auto [mouseX, mouseY] = Input::GetMousePosition();
 		const Vec2 currentMouse(mouseX, mouseY);
 		const Vec2 delta = currentMouse - m_LastMousePosition;
-		m_LastMousePosition = currentMouse;
+		m_LastMousePosition = currentMouse; // keep tracking while disabled so re-enabling doesn't jump
+
+		// The viewport enables input while it is hovered or dragged, so typing in a panel never moves the camera.
+		if (!s_InputEnabled.load(std::memory_order_relaxed))
+			return;
 
 		Vec3 euler = transform.GetRotationEuler();
 		Vec3 translation = transform.translation;
 
-		const bool rightMouseDown = Input::IsMouseButtonDown(MouseButton::Right);
-		if (rightMouseDown)
+		const bool leftMouseDown   = Input::IsMouseButtonDown(MouseButton::Left);
+		const bool rightMouseDown  = Input::IsMouseButtonDown(MouseButton::Right);
+		const bool middleMouseDown = Input::IsMouseButtonDown(MouseButton::Middle);
+		const bool shiftDown       = Input::IsKeyDown(KeyCode::LeftShift) || Input::IsKeyDown(KeyCode::RightShift);
+		const bool controlDown     = Input::IsKeyDown(KeyCode::LeftControl) || Input::IsKeyDown(KeyCode::RightControl);
+		const bool altDown         = Input::IsKeyDown(KeyCode::LeftAlt) || Input::IsKeyDown(KeyCode::RightAlt);
+		const float scroll         = Window::GetDeltaScroll();
+
+		// The left button and single-letter keys belong to the editor's tools (select, gizmos, Q W E R V): orbiting
+		// takes Alt + left drag (as in Substance Painter) and WASD / Q E fly only while the right button is held
+		const bool flyKeys         = rightMouseDown;
+
+		const auto forwardOf = [](const Vec3 &angles)
 		{
+			const float cosPitch = std::cos(angles.x);
+			return xMath::Normalize(Vec3(cosPitch * std::sin(angles.y), std::sin(angles.x), cosPitch * std::cos(angles.y)));
+		};
+
+		// Scenery is kilometers across: move faster the higher the camera is and the farther away the orbit pivot
+		// sits, so a whole airport and a single light fixture are both reachable. Shift hurries, Ctrl creeps.
+		const float altitude = std::abs(translation.y);
+		const float pivotDistance = mode == ORBIT ? std::max(m_Zoom, 1.0f) : std::max(altitude, 1.0f);
+		float moveSpeed = std::clamp(5.0f + std::max(altitude, pivotDistance * 0.5f) * 1.2f, 5.0f, 4000.0f);
+		if (shiftDown)
+			moveSpeed *= 4.0f;
+		if (controlDown)
+			moveSpeed *= 0.25f;
+
+		if (mode == ORBIT && leftMouseDown && altDown && !rightMouseDown)
+		{
+			// Orbit around the pivot (center), keeping the distance to it.
+			euler.y += delta.x * mouseSensitivity;
+			euler.x -= delta.y * mouseSensitivity;
+			euler.x = std::clamp(euler.x, -pitchLimit, pitchLimit);
+			translation = center - forwardOf(euler) * m_Zoom;
+		}
+		else if (rightMouseDown)
+		{
+			// Look around from where the camera is
 			euler.y += delta.x * mouseSensitivity;
 			euler.x += delta.y * mouseSensitivity;
 			euler.x = std::clamp(euler.x, -pitchLimit, pitchLimit);
 		}
 
-		const float cosPitch = std::cos(euler.x);
-		const Vec3 forward = xMath::Normalize(
-			Vec3(cosPitch * std::sin(euler.y), std::sin(euler.x), cosPitch * std::cos(euler.y)));
+		const Vec3 forward = forwardOf(euler);
 		const Vec3 right = xMath::Normalize(xMath::Cross(forward, Vec3(0.0f, 1.0f, 0.0f)));
+		const Vec3 up = xMath::Normalize(xMath::Cross(right, forward));
+		Vec3 pan(0.0f, 0.0f, 0.0f);
+
+		if (middleMouseDown)
+		{
+			// Pan in the view plane: a screen pixel moves a fixed fraction of the pivot distance
+			const float panScale = pivotDistance * 0.0015f;
+			pan -= right * (delta.x * panScale);
+			pan += up * (delta.y * panScale);
+		}
+
+		if (scroll != 0.0f)
+		{
+			if (mode == ORBIT)
+			{
+				// Dolly toward / away from the pivot
+				m_Zoom = std::max(0.5f, m_Zoom * (1.0f - scroll * 0.15f));
+				translation = center - forward * m_Zoom;
+			}
+			else
+				pan += forward * (scroll * moveSpeed * 0.25f);
+		}
 
 		const float speed = moveSpeed * deltaTime;
-		if (Input::IsKeyDown(KeyCode::W) || Input::IsKeyDown(KeyCode::Up))
-			translation += forward * speed;
-		if (Input::IsKeyDown(KeyCode::S) || Input::IsKeyDown(KeyCode::Down))
-			translation -= forward * speed;
-		if (Input::IsKeyDown(KeyCode::A) || Input::IsKeyDown(KeyCode::Left))
-			translation -= right * speed;
-		if (Input::IsKeyDown(KeyCode::D) || Input::IsKeyDown(KeyCode::Right))
-			translation += right * speed;
-		if (Input::IsKeyDown(KeyCode::E) || Input::IsKeyDown(KeyCode::Space))
-			translation.y += speed;
-		if (Input::IsKeyDown(KeyCode::Q))
-			translation.y -= speed;
+		if ((flyKeys && Input::IsKeyDown(KeyCode::W)) || Input::IsKeyDown(KeyCode::Up))
+			pan += forward * speed;
+		if ((flyKeys && Input::IsKeyDown(KeyCode::S)) || Input::IsKeyDown(KeyCode::Down))
+			pan -= forward * speed;
+		if ((flyKeys && Input::IsKeyDown(KeyCode::A)) || Input::IsKeyDown(KeyCode::Left))
+			pan -= right * speed;
+		if ((flyKeys && Input::IsKeyDown(KeyCode::D)) || Input::IsKeyDown(KeyCode::Right))
+			pan += right * speed;
+		if ((flyKeys && Input::IsKeyDown(KeyCode::E)) || Input::IsKeyDown(KeyCode::Space) || Input::IsKeyDown(KeyCode::PageUp))
+			pan.y += speed;
+		if ((flyKeys && Input::IsKeyDown(KeyCode::Q)) || Input::IsKeyDown(KeyCode::PageDown))
+			pan.y -= speed;
+
+		translation += pan;
+		if (mode == ORBIT)
+			center += pan;	// The pivot travels with the camera
+		else
+			center = translation + forward * std::max(m_Zoom, 1.0f);	// Keep a pivot ahead for when orbit is switched on
 
 		transform.translation = translation;
 		transform.SetRotationEuler(euler);
 
 		eye = transform.translation;
 		rotation = euler;
+		m_CameraFlag.SetDirty();
+	}
+
+	void Camera::LookAt(TransformComponent &transform, const Vec3 &eyePosition, const Vec3 &target)
+	{
+		const Vec3 toTarget = target - eyePosition;
+		const float distance = Length(toTarget);
+		if (distance > 1e-4f)
+		{
+			const Vec3 forward = toTarget / distance;
+			rotation = Vec3(std::asin(std::clamp(forward.y, -1.0f, 1.0f)), std::atan2(forward.x, forward.z), 0.0f);
+		}
+		transform.translation = eyePosition;
+		transform.SetRotationEuler(rotation);
+		eye = eyePosition;
+		center = target;
+		m_Zoom = std::max(0.1f, distance);
 		m_CameraFlag.SetDirty();
 	}
 

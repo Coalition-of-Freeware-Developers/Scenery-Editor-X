@@ -57,6 +57,7 @@ namespace SceneryEditorX
 		gbuffer_depth_occluders,
 		gbuffer_depth_occluders_hiz,
 		gbuffer_depth_opaque_output,
+		gbuffer_pick,				// R32_UINT: pick id (entity index + 1) of the surface in each pixel, 0 for none (ScenePicking)
 		lut_brdf_specular,
 		lut_atmosphere_scatter,
 		lut_atmosphere_transmittance,
@@ -207,6 +208,13 @@ namespace SceneryEditorX
 		// forward passes drawn over the composed frame
 		forward_transparent,
 		light_billboard,
+		// GPU scene (GpuScene): culling + LOD compute, instanced indirect geometry passes
+		gpu_cull,
+		gpu_cull_late,			// two-phase occlusion culling: the instances not drawn early, against the Hi-Z
+		depth_prepass_gpu,
+		gbuffer_gpu,
+		downsample_min,			// one level of a min mip chain (Hi-Z), until the FidelityFX SPD shaders are ported
+		selection_outline,		// editor selection / hover outlines from the pick ids (ScenePicking)
 		MaxEnum
 	};
 
@@ -272,6 +280,12 @@ namespace SceneryEditorX
 		case Renderer_Shader::texture_compress_bc5: return "texture_compress_bc5";
 		case Renderer_Shader::forward_transparent: return "forward_transparent";
 		case Renderer_Shader::light_billboard: return "light_billboard";
+		case Renderer_Shader::gpu_cull: return "gpu_cull";
+		case Renderer_Shader::gpu_cull_late: return "gpu_cull_late";
+		case Renderer_Shader::depth_prepass_gpu: return "depth_prepass_gpu";
+		case Renderer_Shader::gbuffer_gpu: return "gbuffer_gpu";
+		case Renderer_Shader::downsample_min: return "downsample_min";
+		case Renderer_Shader::selection_outline: return "selection_outline";
 		case Renderer_Shader::MaxEnum: return "MaxEnum";
 		default: return "unknown";
 		}
@@ -473,6 +487,9 @@ namespace SceneryEditorX
 		compress_input         = 40,
 		compress_output        = 41,
 		compress_output_bc1    = 42,
+
+		// editor selection (ScenePicking): 2 bits per entity index, selected / hovered
+		selection_mask         = 45,
 	};
 
 	// -------------------------------------------------------
@@ -539,6 +556,7 @@ namespace SceneryEditorX
 		Renderable* renderable       = nullptr; // Scene renderable to draw
 		bool        cameraVisible    = false;   // Passes frustum / occlusion cull
 		bool        isOccluder       = false;   // Used as Hi-Z occluder mesh
+		bool        gpuDriven        = false;   // The GPU scene draws it in the deferred passes (listed for the forward pass)
 		uint32_t    drawData_Index   = 0;       // Index into the GPU draw-data buffer
 		uint32_t    lodIndex         = 0;       // LOD level to render
 		uint32_t    instanceIndex    = 0;       // First instance offset

@@ -40,6 +40,11 @@
 
 namespace SceneryEditorX
 {
+	namespace
+	{
+		bool s_DebugGizmos = false; // Renderer::SetDebugGizmos
+	}
+
 	void Renderer::DrawLine(const Vec3& from, const Vec3& to, const Color& color_from, const Color& color_to, float duration_sec /*= 0.0f*/)
 	{
 		if (duration_sec <= 0.0f)
@@ -252,13 +257,22 @@ namespace SceneryEditorX
 		}
 	}
 
+	void Renderer::SetDebugGizmos(const bool enabled)
+	{
+		s_DebugGizmos = enabled;
+	}
+
 	void Renderer::AddLinesToBeRendered()
 	{
+		// Light gizmos and a box per renderable: tens of thousands of lines for an airport, and the bootstrap frame
+		// graph has no line pass to draw them, so they are only built on request.
+		if (!s_DebugGizmos)
+			return;
 
 		// Debug: draw scene lights (iterate all entities and draw light gizmos)
 		if (Camera* camera = Scene::GetCamera())
 		{
-			for (Entity* entity : Scene::GetEntities())
+			for (Entity* entity : Scene::GetLightEntities())
 			{
 				if (!entity)
 					continue;

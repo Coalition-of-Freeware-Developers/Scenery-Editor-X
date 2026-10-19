@@ -102,6 +102,7 @@ namespace SceneryEditorX
 		std::vector<Vertex_PosTexNorTan>& GetVertices()   { return m_vertices; }
 		std::vector<uint32_t>& GetIndices()                   { return m_indices; }
 		const LodLevels& GetSubMesh(const uint32_t index) const { return m_sub_meshes[index]; }
+		uint32_t GetSubMeshCount() const { return static_cast<uint32_t>(m_sub_meshes.size()); }
 
 		// get counts
 		virtual uint32_t GetVertexCount() const;

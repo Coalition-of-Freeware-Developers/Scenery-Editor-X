@@ -34,6 +34,7 @@
 #include <functional>
 #include <libconfig.h++>
 #include <SceneryEditorX/core/application/application_data.h>
+#include <SceneryEditorX/filesystem/vfs.h>
 
 // -------------------------------------------------------
 
@@ -252,7 +253,7 @@ namespace SceneryEditorX
 				return;
 			}
 
-			Setting &setting = cfg.getRoot()[section];
+			Setting &setting = cfg.lookup(section);
 			if (setting.exists(name))
 			{
 				setting.remove(name);
@@ -297,7 +298,7 @@ namespace SceneryEditorX
 
 			if (cfg.exists(section))
 			{
-				if (Setting &setting = cfg.getRoot()[section]; setting.exists(name))
+				if (Setting &setting = cfg.lookup(section); setting.exists(name))
 				{
 					setting.remove(name);
 				}
@@ -329,7 +330,7 @@ namespace SceneryEditorX
 					return;
 				}
 
-				Setting &setting = cfg.getRoot()[section];
+				Setting &setting = cfg.lookup(section);
 				if (setting.exists(name))
 					setting.remove(name);
 				setting.add(name, Setting::TypeInt) = value;
@@ -367,7 +368,7 @@ namespace SceneryEditorX
 					return;
 				}
 
-				Setting &setting = cfg.getRoot()[section];
+				Setting &setting = cfg.lookup(section);
 				if (setting.exists(name))
 					setting.remove(name);
 				setting.add(name, Setting::TypeFloat) = value;
@@ -404,7 +405,7 @@ namespace SceneryEditorX
 					return;
 				}
 
-				Setting &setting = cfg.getRoot()[section];
+				Setting &setting = cfg.lookup(section);
 				if (setting.exists(name))
 					setting.remove(name);
 
@@ -443,7 +444,7 @@ namespace SceneryEditorX
 					return;
 				}
 
-				Setting &setting = cfg.getRoot()[section];
+				Setting &setting = cfg.lookup(section);
 				if (setting.exists(name))
 					setting.remove(name);
 
@@ -528,23 +529,25 @@ namespace SceneryEditorX
 
 #elif defined(SEDX_PLATFORM_MACOS)
 		/// macOS paths
-		const char *homeDir = getenv("HOME");
-		if (homeDir)
+		if (const std::filesystem::path home = VFS::GetFolder(VFS::Folder::Home); !home.empty())
 		{
-			commonPaths.push_back(std::string(homeDir) + "/X-Plane 12");
-			commonPaths.push_back(std::string(homeDir) + "/Applications/X-Plane 12");
+			commonPaths.push_back(VFS::ToUtf8(home / "X-Plane 12"));
+			commonPaths.push_back(VFS::ToUtf8(home / "Applications" / "X-Plane 12"));
 		}
 		commonPaths.push_back("/Applications/X-Plane 12");
 #elif defined(SEDX_PLATFORM_LINUX)
 		/// Linux paths
-		const char *homeDir = getenv("HOME");
-		if (homeDir)
+		if (const std::filesystem::path home = VFS::GetFolder(VFS::Folder::Home); !home.empty())
 		{
-			commonPaths.push_back(std::string(homeDir) + "/X-Plane 12");
-			commonPaths.push_back(std::string(homeDir) + "/Games/X-Plane 12");
+			commonPaths.push_back(VFS::ToUtf8(home / "X-Plane 12"));
+			commonPaths.push_back(VFS::ToUtf8(home / "Games" / "X-Plane 12"));
 		}
 		commonPaths.push_back("/opt/X-Plane 12");
 #endif
+
+		/// Wherever X-Plane says it ran from (x-plane_install_12.txt), on every platform
+		for (const std::filesystem::path &install : VFS::FindXPlaneInstalls(12))
+			commonPaths.push_back(VFS::ToUtf8(install));
 
 		for (const auto &path : commonPaths)
 		{
@@ -911,24 +914,9 @@ namespace SceneryEditorX
 			}
 			if (!HasOption("project.default_project_dir"))
 			{
-				// Set default project directory
-				std::string defaultDir = "~/Documents/SceneryEditorX";
-
-				// Replace ~ with actual home directory
-				if (defaultDir.starts_with("~"))
-				{
-					const char *homeDir = nullptr;
-#ifdef _WIN32
-					homeDir = getenv("USERPROFILE");
-#else
-					homeDir = getenv("HOME");
-#endif
-
-					if (homeDir)
-						defaultDir.replace(0, 1, homeDir);
-				}
-
-				AddStringOption("project.default_project_dir", defaultDir);
+				// Documents/SceneryEditorX (XDG_DOCUMENTS_DIR on Linux)
+				const std::filesystem::path documents = VFS::GetFolder(VFS::Folder::Documents);
+				AddStringOption("project.default_project_dir", VFS::ToUtf8(documents.empty() ? std::filesystem::path("SceneryEditorX") : documents / "SceneryEditorX"));
 			}
 		}
 	}

@@ -579,7 +579,7 @@ namespace SceneryEditorX
 				{
 					if (entity)
 					{
-						ImGui::BulletText("%s", entity->GetObjectName().c_str());
+						ImGui::BulletText("%s", entity->Name().c_str());
 					}
 				}
 				ImGui::PopStyleColor();
@@ -661,7 +661,7 @@ namespace SceneryEditorX
 			// entity name display
 			ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
 			ImGui::PushFont(EditorLayer::fontBold);
-			ImGui::TextUnformatted(entity->GetObjectName().c_str());
+			ImGui::TextUnformatted(entity->Name().c_str());
 			ImGui::PopFont();
 			ImGui::PopStyleColor();
 	
@@ -1672,7 +1672,7 @@ namespace SceneryEditorX
 					 Entity child = Scene::TryGetEntityWithUUID(children[i - 1]);
 						if (child)
 						{
-							if (child.GetObjectName().starts_with("spline_point_"))
+							if (child.Name().starts_with("spline_point_"))
 							{
 							   position = child.GetPositionLocal() + xMath::Vec3(5.0f, 0.0f, 0.0f);
 								break;
@@ -2098,7 +2098,7 @@ namespace SceneryEditorX
 		bool is_open = ImGui::IsPopupOpen("##SaveAsPrefab");
 		if (is_open && needs_init)
 		{
-			strncpy_s(prefab_name, sizeof(prefab_name), entity->GetObjectName().c_str(), _TRUNCATE);
+			strncpy_s(prefab_name, sizeof(prefab_name), entity->Name().c_str(), _TRUNCATE);
 			needs_init = false;
 		}
 		else if (!is_open)

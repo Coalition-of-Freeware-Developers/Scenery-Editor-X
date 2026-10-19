@@ -43,7 +43,9 @@
 namespace SceneryEditorX
 {
 	class Entity;
+	struct EntityRuntime;
 	class Light;
+	class MaterialAsset;
 	class Camera;
 
 	/**
@@ -83,7 +85,29 @@ namespace SceneryEditorX
 		/* @brief The ECS registry holding this scene's components (IDComponent, TagComponent, TransformComponent, ...). */
 		entt::registry &GetRegistry() { return m_Registry; }
 		static Light *GetDirectionalLight() { return nullptr; }
-		static std::vector<Entity*> GetEntities();
+
+		/* @brief Every scene-owned entity, in creation order. Don't create or destroy entities while iterating it. */
+		static const std::vector<Entity*> &GetEntities();
+
+		/**
+		 * @brief The stored entities that carry a Renderable / a Light. Cached: rebuilt when the structure version
+		 * (GetStructureVersion) has moved, so per-frame passes don't walk every entity.
+		 */
+		static const std::vector<Entity*> &GetRenderableEntities();
+		static const std::vector<Entity*> &GetLightEntities();
+
+		/* @brief The distinct materials of GetRenderableEntities() (cached the same way). */
+		static const std::vector<MaterialAsset*> &GetRenderableMaterials();
+
+		/**
+		 * @brief Bumped when entities are created or destroyed, runtime components are added or removed, or a
+		 * renderable's mesh / material changes. Caches of entity pointers rebuild when it moves.
+		 */
+		static uint64_t GetStructureVersion();
+		static void MarkStructureChanged();
+
+		/* @brief Bumped only when an entity is destroyed: caches of Entity pointers revalidate when it moves. */
+		static uint64_t GetDestroyVersion();
 
 		/**
 		 * @brief Saves the current scene to a file.
@@ -135,12 +159,19 @@ namespace SceneryEditorX
 		static Entity TryGetEntityWithUUID(const UUID &uuid);
 
 		/**
-		 * @brief The scene-owned Entity object behind a handle: the one runtime components (Renderable, ...) and the
-		 * active flag live on, and the one the renderer walks.
+		 * @brief Like TryGetEntityWithUUID(), returning only the registry handle.
+		 * @return The registry handle, or entt::null when no live entity has the UUID.
+		 */
+		static entt::entity TryGetEntityHandle(const UUID &uuid);
+
+		/**
+		 * @brief The entity's stored handle (the one in its EntityRuntime record): a fixed address until the entity is
+		 * destroyed, the owner runtime components (Renderable, ...) point to and what GetEntities() lists.
 		 * @param entity A handle returned by CreateEntity() / TryGetEntityWithUUID().
 		 * @return The stored entity, or nullptr when the handle isn't part of the active scene.
 		 */
 		static Entity *GetStoredEntity(const Entity &entity);
+		static Entity *GetStoredEntity(entt::entity handle);
 
 		/**
 		 * @brief Retrieves all entities with the specified components.
@@ -197,6 +228,12 @@ namespace SceneryEditorX
 		static Flag UpdateSceneChanges(ComponentType entity);
 
 	private:
+		/**
+		 * @brief The runtime record of a live entity of the active scene, by registry handle (an index lookup).
+		 * @return The record, or nullptr for entt::null, another scene or a destroyed entity (the version differs).
+		 */
+		static EntityRuntime *FindRuntime(entt::entity handle, const Scene *scene);
+
 		static Ref<Camera> m_Camera;
 
 		UUID m_SceneID;

@@ -33,6 +33,7 @@
 #include <Editor/core/editor_ui.h>
 #include <SceneryEditorX/core/application/application.h>
 #include <SceneryEditorX/core/time/fps_timer.h>
+#include <SceneryEditorX/renderer/gpu_scene.h>
 #include <SceneryEditorX/renderer/renderer.h>
 #include <SceneryEditorX/renderer/ui/ui_impl.h>
 #include <SceneryEditorX/renderer/vulkan/swapchain.h>
@@ -243,6 +244,53 @@ namespace SceneryEditorX
 					ValueText("Swapchain", "%u x %u, %zu images", extent.width, extent.height, swapchain->GetImages().size());
 					ValueText("Format", "%s", FormatName(swapchain->GetImageFormat()));
 				}
+				EditorUI::EndPropertyGrid();
+			}
+
+			if (EditorUI::SectionHeader("GPU SCENE") && EditorUI::BeginPropertyGrid("##RendererGpuScene"))
+			{
+				// GPU culling, LOD selection and instancing of the deferred geometry (GpuScene)
+				EditorUI::PropertyLabel("GPU-driven");
+				bool enabled = GpuScene::IsEnabled();
+				if (ImGui::Checkbox("##GpuSceneEnabled", &enabled))
+					GpuScene::SetEnabled(enabled);
+				EditorUI::ItemTooltip("Culls, picks LODs and instances the scenery on the GPU. Off: one CPU draw call per object");
+
+				static float minPixels = 1.0f;
+				static float lodScale = 1.0f;
+				static bool frustum = true;
+				bool changed = false;
+				EditorUI::PropertyLabel("Cull below");
+				changed |= ImGui::SliderFloat("##GpuSceneMinPixels", &minPixels, 0.0f, 8.0f, "%.1f px");
+				EditorUI::ItemTooltip("Objects whose bounding sphere covers fewer pixels than this are not drawn");
+				EditorUI::PropertyLabel("LOD scale");
+				changed |= ImGui::SliderFloat("##GpuSceneLodScale", &lodScale, 0.25f, 4.0f, "%.2f");
+				EditorUI::ItemTooltip("Above 1 keeps mesh LODs at higher detail for longer");
+				EditorUI::PropertyLabel("Frustum culling");
+				changed |= ImGui::Checkbox("##GpuSceneFrustum", &frustum);
+				if (changed)
+					GpuScene::SetCullingOptions(minPixels, lodScale, frustum);
+
+				EditorUI::PropertyLabel("Occlusion culling");
+				bool occlusion = GpuScene::IsOcclusionCullingEnabled();
+				if (ImGui::Checkbox("##GpuSceneOcclusion", &occlusion))
+					GpuScene::SetOcclusionCulling(occlusion);
+				EditorUI::ItemTooltip("Skips objects hidden behind nearer ones (two-phase Hi-Z test against this frame's depth)");
+
+				const GpuScene::Stats &stats = GpuScene::GetStats();
+				ValueText("Instances", "%u (%u active)", stats.instances, stats.enabledInstances);
+				if (GpuScene::IsOcclusionActive())
+				{
+					ValueText("Visible", "%u (%u newly visible)", stats.visibleInstances, stats.lateInstances);
+					ValueText("Occluded", "%u", stats.occludedInstances);
+				}
+				else
+				{
+					ValueText("Visible", "%u", stats.visibleInstances);
+				}
+				ValueText("Batches", "%u", stats.batches);
+				ValueText("Draw commands", "%u of %u drawing", stats.drawnCommands, stats.commands);
+				ValueText("Uploads", "%u instances, %u transforms checked", stats.uploadedInstances, stats.validatedTransforms);
 				EditorUI::EndPropertyGrid();
 			}
 

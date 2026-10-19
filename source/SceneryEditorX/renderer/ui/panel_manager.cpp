@@ -31,6 +31,7 @@
 #include "panel_manager.h"
 #include "SceneryEditorX/logging/asserts.h"
 #include <nlohmann/json.hpp>
+#include <SceneryEditorX/filesystem/vfs.h>
 
 // -------------------------------------------------------
 
@@ -166,9 +167,9 @@ namespace SceneryEditorX
 			}
 		}
 
-		std::ofstream fout(IO::FileSystem::GetAppDataRoaming() / "EditorLayout.json");
-		fout << root.dump(4);
-		fout.close();
+		std::string error;
+		if (!VFS::WriteFileAtomic(IO::FileSystem::GetAppDataRoaming() / "EditorLayout.json", root.dump(4), &error))
+			SEDX_CORE_WARN_TAG("PanelManager", "Could not save the panel layout: {}", error);
 
 		SEDX_CORE_TRACE_TAG("PanelManager", "Finished serializing panel layout");
 	}

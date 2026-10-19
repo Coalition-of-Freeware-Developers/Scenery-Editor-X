@@ -67,15 +67,16 @@ struct Vertex_PosUvNorTan
     uint instance_scale : INSTANCE_SCALE;
 };
 
+// vertex_id must include the draw's vertex offset: Slang's SV_VertexID excludes it (add SV_StartVertexLocation)
 Vertex_PosUvNorTan pull_vertex(uint vertex_id)
 {
-    PulledVertex pulled = geometry_vertices[vertex_id];
+    const uint base = vertex_id * PULLED_VERTEX_FLOATS;
 
     Vertex_PosUvNorTan v;
-    v.position = float4(pulled.position, 1.0f);
-    v.uv = pulled.uv;
-    v.normal = pulled.normal;
-    v.tangent = pulled.tangent;
+    v.position = float4(geometry_vertices[base + 0], geometry_vertices[base + 1], geometry_vertices[base + 2], 1.0f);
+    v.uv = float2(geometry_vertices[base + 3], geometry_vertices[base + 4]);
+    v.normal = float3(geometry_vertices[base + 5], geometry_vertices[base + 6], geometry_vertices[base + 7]);
+    v.tangent = float3(geometry_vertices[base + 8], geometry_vertices[base + 9], geometry_vertices[base + 10]);
     v.instance_position_x = (min16float)0;
     v.instance_position_y = (min16float)0;
     v.instance_position_z = (min16float)0;
@@ -96,6 +97,7 @@ struct gbuffer_vertex
     float4 uv_misc : TEXCOORD;                       // xy = uv, z = height_percent, w = instance_id - packed together to reduced the interpolators (shader registers) the gpu needs to track
     float width_percent : TEXCOORD2;                 // temp, will remove
     nointerpolation uint material_index : TEXCOORD3; // for indirect draws, material index passed from vs
+    nointerpolation uint pick_id : TEXCOORD4;        // editor picking: the drawing entity's index + 1 (DrawData::pick_id), 0 = none
 };
 
 float4x4 compose_instance_transform(float instance_position_x, float instance_position_y, float instance_position_z, uint instance_normal_oct, uint instance_yaw, uint instance_scale)
@@ -373,6 +375,7 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
 
     gbuffer_vertex vertex;
     vertex.uv_misc.w = instance_id;
+    vertex.pick_id = 0;
 
     // compute UV with tiling and offset
     float2 uv = input.uv * material.tiling + material.offset;

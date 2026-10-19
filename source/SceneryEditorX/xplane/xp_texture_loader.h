@@ -43,9 +43,9 @@ namespace SceneryEditorX::XPlane
 	/**
 	 * Texture loading for X-Plane art.
 	 *
-	 * Orientation: X-Plane texture coordinates start at the bottom-left, and X-Plane's DDS files are stored
-	 * bottom row first for that reason. PNGs decode top row first, so they are flipped on load; every texture
-	 * then has row 0 at t = 0 and meshes keep their (s, t) coordinates unchanged.
+	 * Orientation: X-Plane texture coordinates start at the bottom-left. PNGs decode and DDS files are stored top
+	 * row first, so both are flipped on load (DDS losslessly, block rows and rows within blocks, like WorldEditor's
+	 * BCx_y_flip); every texture then has row 0 at t = 0 and meshes keep their (s, t) coordinates unchanged.
 	 *
 	 * Lookup: like X-Plane, a reference to "foo.png" loads "foo.dds" when that file exists.
 	 */

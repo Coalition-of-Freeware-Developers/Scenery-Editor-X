@@ -92,6 +92,13 @@ namespace SceneryEditorX
 		 */
 		static bool WasRebuilt();
 
+		/**
+		 * @brief Bumped whenever the GPU buffers are (re)allocated: descriptors pointing at them must be written again.
+		 * Unlike WasRebuilt() it isn't consumed by reading, and unlike the buffer pointers it can't repeat.
+		 */
+		static uint64_t GetGeneration();
+
+
 		/** @brief Get the static quad index buffer. */
 		static Buffer *GetIndexBuffer();
 
@@ -116,6 +123,7 @@ namespace SceneryEditorX
 		// state
 		static Flag m_Dirty;
 		static bool m_WasRebuilt;
+		static uint64_t m_Generation;
 		static std::mutex m_Mutex;
 
 		// growth factor applied when allocating gpu buffers

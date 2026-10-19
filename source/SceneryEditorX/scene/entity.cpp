@@ -65,21 +65,9 @@ namespace SceneryEditorX
 	{
 	}
 
-	bool Entity::GetActive()
+	xMath::Matrix Entity::ComposeLocalMatrix(const TransformComponent &transformComponent)
 	{
-		return m_Active;
-	}
-
-	void Entity::SetActive(const bool active)
-	{
-		m_Active = active;
-	}
-
-	xMath::Matrix Entity::GetMatrix() const
-	{
-		const TransformComponent* transform = TryGetComponent<TransformComponent>();
-		if (!transform)
-			return xMath::Matrix::IDENTITY;
+		const TransformComponent *transform = &transformComponent;
 
 		// Built from the transform's fields rather than TransformComponent::GetTransform(): xMath::Mat4's member
 		// layout depends on include order (XMATH_MATRIX_IS_ROW_MAJOR), xMath::Matrix's does not.
@@ -111,17 +99,39 @@ namespace SceneryEditorX
 		local.m10 = 2.0f * (xy - wz) * s.y;          local.m11 = (1.0f - 2.0f * (xx + zz)) * s.y; local.m12 = 2.0f * (yz + wx) * s.y;          local.m13 = 0.0f;
 		local.m20 = 2.0f * (xz + wy) * s.z;          local.m21 = 2.0f * (yz - wx) * s.z;          local.m22 = (1.0f - 2.0f * (xx + yy)) * s.z; local.m23 = 0.0f;
 		local.m30 = t.x;                             local.m31 = t.y;                             local.m32 = t.z;                             local.m33 = 1.0f;
+		return local;
+	}
 
-		// row-vector composition: local first, then the parent's world transform
+	xMath::Matrix Entity::GetMatrix() const
+	{
+		const entt::registry *registry = GetRegistry();
+		const TransformComponent* transform = registry ? registry->try_get<TransformComponent>(m_EntityHandle) : nullptr;
+		if (!transform)
+			return xMath::Matrix::IDENTITY;
+
+		// row-vector composition: local first, then each parent's local transform up the chain
+		xMath::Matrix world = ComposeLocalMatrix(*transform);
 		constexpr uint32_t maxDepth = 64; // guards against relationship cycles
-		const Entity parent = GetParent();
-		static thread_local uint32_t s_Depth = 0;
-		if (!parent || s_Depth >= maxDepth)
-			return local;
 
-		++s_Depth;
-		const xMath::Matrix world = local * parent.GetMatrix();
-		--s_Depth;
+		// Walk the parents by registry handle: this runs for every drawn entity every frame.
+		entt::entity handle = m_EntityHandle;
+		for (uint32_t depth = 0; depth < maxDepth; ++depth)
+		{
+			const RelationshipComponent *relationship = registry->try_get<RelationshipComponent>(handle);
+			if (!relationship || static_cast<uint64_t>(relationship->pParentHandle) == 0)
+				break;
+
+			const auto it = m_Scene->m_EntityMap.find(relationship->pParentHandle);
+			if (it == m_Scene->m_EntityMap.end() || !registry->valid(it->second))
+				break;
+
+			const TransformComponent *parentTransform = registry->try_get<TransformComponent>(it->second);
+			if (!parentTransform)
+				break;
+
+			world = world * ComposeLocalMatrix(*parentTransform);
+			handle = it->second;
+		}
 		return world;
 	}
 
@@ -336,39 +346,41 @@ namespace SceneryEditorX
 		return xMath::Normalize(transform.GetRotation() * xMath::Vec3(1.0f, 0.0f, 0.0f));
 	}
 
-	Component* Entity::GetComponentByType(const ComponentType type) const
-	{
-		const uint32_t index = static_cast<uint32_t>(type);
-		if (index >= m_components.size())
-			return nullptr;
-
-		return m_components[index].Get();
-	}
-
 	Component* Entity::AddComponentByType(const ComponentType type)
 	{
+		EntityRuntime *runtime = GetRuntime();
 		const uint32_t index = static_cast<uint32_t>(type);
-		if (index >= m_components.size())
+		if (!runtime || index >= runtime->components.size())
 			return nullptr;
 
-		if (!m_components[index])
-		{
-			auto component = CreateRef<Component>(this);
-			component->SetType(type);
-			component->Init();
-			m_components[index] = std::move(component);
-		}
+		if (!runtime->components[index])
+			AttachComponent(type, CreateRef<Component>(&runtime->entity));
 
-		return m_components[index].Get();
+		return runtime->components[index].Get();
 	}
 
 	void Entity::RemoveComponentByType(const ComponentType type)
 	{
+		EntityRuntime *runtime = GetRuntime();
 		const uint32_t index = static_cast<uint32_t>(type);
-		if (index < m_components.size())
+		if (runtime && index < runtime->components.size() && runtime->components[index])
 		{
-			m_components[index] = nullptr;
+			runtime->components[index] = nullptr;
+			Scene::MarkStructureChanged(); // cached renderable / light lists
 		}
+	}
+
+	void Entity::AttachComponent(const ComponentType type, const Ref<Component> &component)
+	{
+		EntityRuntime *runtime = GetRuntime();
+		const uint32_t index = static_cast<uint32_t>(type);
+		if (!runtime || index >= runtime->components.size() || !component)
+			return;
+
+		runtime->components[index] = component;
+		component->SetType(type);
+		component->Init();
+		Scene::MarkStructureChanged(); // cached renderable / light lists
 	}
 
 	Component* Entity::AddComponent(const ComponentType type)

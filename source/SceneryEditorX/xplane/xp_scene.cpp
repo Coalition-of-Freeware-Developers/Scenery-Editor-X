@@ -34,13 +34,17 @@
 #include <array>
 #include <cmath>
 #include <unordered_map>
+#include <unordered_set>
 #include <SceneryEditorX/asset/standards.h>
+#include <SceneryEditorX/core/frame_profiler.h>
 #include <SceneryEditorX/logging/logging.hpp>
+#include <SceneryEditorX/renderer/gpu_scene.h>
 #include <SceneryEditorX/renderer/renderer.h>
 #include <SceneryEditorX/scene/components/component_sets.h>
 #include <SceneryEditorX/scene/components/lights.h>
 #include <SceneryEditorX/scene/components/renderable.h>
 #include <SceneryEditorX/scene/entity.h>
+#include <SceneryEditorX/scene/camera.h>
 #include <SceneryEditorX/scene/scene.h>
 
 // -------------------------------------------------------
@@ -66,6 +70,21 @@ namespace SceneryEditorX::XPlane
 		/* @brief Placement to frame once its asset has loaded (the latest FrameObject() request wins), or 0. */
 		uint64_t s_FrameWhenLoaded = 0;
 
+		/* @brief Roots placed while their asset loads: BuildLoadedObjects() visits these instead of every placement. */
+		std::vector<uint64_t> s_PendingRoots;
+
+		/* @brief Bumped when the camera moves: placements whose LODs depend on distance are evaluated again. */
+		uint64_t s_CameraStamp = 1;
+		Vec3 s_LastCameraPosition(0.0f, 0.0f, 0.0f);
+		bool s_LastHasCamera = false;
+		uint64_t s_TickCount = 0;
+
+		/**
+		 * @brief While the camera moves, a placement's LODs are re-evaluated every LOD_PHASES frames (each frame takes a
+		 * different share); the frame it stops, all of them. LOD bands span hundreds of meters, so the delay is invisible.
+		 */
+		constexpr uint32_t LOD_PHASES = 4;
+
 		entt::registry *GetRegistry()
 		{
 			Scene *scene = Scene::GetActive();
@@ -83,9 +102,37 @@ namespace SceneryEditorX::XPlane
 			if (id == 0)
 				return entt::null;
 
-			const Entity entity = Scene::TryGetEntityWithUUID(UUID(id));
-			const entt::entity handle = entity ? static_cast<entt::entity>(entity) : entt::null;
-			return registry.valid(handle) ? handle : entt::null;
+			const entt::entity handle = Scene::TryGetEntityHandle(UUID(id));
+			return handle != entt::null && registry.valid(handle) ? handle : entt::null;
+		}
+
+		/* @brief Fills the component's entity pointers from its UUIDs when an entity was destroyed since the last time. */
+		void ResolveEntities(entt::registry &registry, const entt::entity rootHandle, XPlaneObjectComponent &object)
+		{
+			const uint64_t version = Scene::GetDestroyVersion();
+			if (object.resolvedDestroyVersion == version && object.nodeStored.size() == object.nodeEntities.size() &&
+				object.batchStored.size() == object.batchEntities.size() && object.spillStored.size() == object.spillEntities.size())
+				return;
+
+			object.rootStored = Scene::GetStoredEntity(rootHandle);
+
+			object.nodeHandles.resize(object.nodeEntities.size());
+			object.nodeStored.resize(object.nodeEntities.size());
+			for (size_t i = 0; i < object.nodeEntities.size(); ++i)
+			{
+				object.nodeHandles[i] = FindHandle(registry, object.nodeEntities[i]);
+				object.nodeStored[i] = Scene::GetStoredEntity(object.nodeHandles[i]);
+			}
+
+			object.batchStored.resize(object.batchEntities.size());
+			for (size_t i = 0; i < object.batchEntities.size(); ++i)
+				object.batchStored[i] = Scene::GetStoredEntity(FindHandle(registry, object.batchEntities[i]));
+
+			object.spillStored.resize(object.spillEntities.size());
+			for (size_t i = 0; i < object.spillEntities.size(); ++i)
+				object.spillStored[i] = Scene::GetStoredEntity(FindHandle(registry, object.spillEntities[i]));
+
+			object.resolvedDestroyVersion = version;
 		}
 
 		/* @brief Links child under parent in both RelationshipComponents. */
@@ -95,6 +142,7 @@ namespace SceneryEditorX::XPlane
 			const UUID childId = registry.get<IDComponent>(child).pID;
 			registry.get<RelationshipComponent>(child).pParentHandle = parentId;
 			registry.get<RelationshipComponent>(parent).pChildren.push_back(childId);
+			Scene::MarkStructureChanged(); // hierarchy caches (outliner roots, ...)
 		}
 
 		/* @brief Leaf name of a dataref for entity labels ("sim/graphics/animation/windsock_psi" -> "windsock_psi"). */
@@ -218,10 +266,44 @@ namespace SceneryEditorX::XPlane
 		}
 
 		/**
+		 * @brief World matrix of the parent the last placement had. Placements sit under a few shared groups, so one
+		 * entry saves walking the group / airport chain per object. Valid for one Tick(): nothing moves the groups
+		 * while it runs.
+		 */
+		struct ParentWorldCache
+		{
+			entt::entity parent = entt::null;
+			xMath::Matrix world = xMath::Matrix::IDENTITY;
+		};
+
+		/* @brief A placement root's world matrix: its local transform under the (cached) parent world matrix. */
+		xMath::Matrix RootWorld(entt::registry &registry, const entt::entity rootHandle, Entity &root, ParentWorldCache &cache)
+		{
+			const TransformComponent *transform = registry.try_get<TransformComponent>(rootHandle);
+			const RelationshipComponent *relationship = registry.try_get<RelationshipComponent>(rootHandle);
+			if (!transform)
+				return root.GetMatrix();
+
+			const xMath::Matrix local = Entity::ComposeLocalMatrix(*transform);
+			const entt::entity parent = relationship ? Scene::TryGetEntityHandle(relationship->pParentHandle) : entt::null;
+			if (parent == entt::null)
+				return local;
+
+			if (cache.parent != parent)
+			{
+				Entity *stored = Scene::GetStoredEntity(parent);
+				cache.world = stored ? stored->GetMatrix() : xMath::Matrix::IDENTITY;
+				cache.parent = parent;
+			}
+			return local * cache.world;
+		}
+
+		/**
 		 * @brief Evaluates one placed object's lights: billboards go into the frame's batches, spill becomes candidates
 		 * for the nearest-first budget. Lights follow their animation group's world transform, LOD and hide / show rules.
 		 */
-		void CollectObjectLights(entt::registry &registry, const entt::entity rootHandle, XPlaneObjectComponent &object, LightFrame &frame)
+		void CollectObjectLights(entt::registry &registry, const entt::entity rootHandle, XPlaneObjectComponent &object, LightFrame &frame,
+			ParentWorldCache &parentCache)
 		{
 			object.visibleBillboards = 0;
 			object.litSpills = 0;
@@ -232,22 +314,48 @@ namespace SceneryEditorX::XPlane
 			if (lights.empty())
 				return;
 
-			// World transforms of the root and of every animation group
-			Entity *root = Scene::GetStoredEntity(Entity(rootHandle, Scene::GetActive()));
+			Entity *root = object.rootStored;
 			if (!root)
 				return;
-			const xMath::Matrix rootWorld = root->GetMatrix();
-			std::vector<xMath::Matrix> nodeWorld(data.nodes.size(), rootWorld);
-			for (size_t i = 0; i < object.nodeEntities.size() && i < nodeWorld.size(); ++i)
+
+			// Lights off (daytime, hidden object): the spills only need switching off once.
+			const bool lightsOn = object.visible && frame.night > 0.0f && frame.hasCamera;
+			if (!lightsOn)
 			{
-				const entt::entity handle = FindHandle(registry, object.nodeEntities[i]);
-				if (Entity *stored = handle != entt::null ? Scene::GetStoredEntity(Entity(handle, Scene::GetActive())) : nullptr)
-					nodeWorld[i] = stored->GetMatrix();
+				if (!object.spillsDark)
+				{
+					for (Entity *stored : object.spillStored)
+					{
+						if (stored && stored->GetActive())
+							stored->SetActive(false);
+					}
+					object.spillsDark = true;
+				}
+				return;
+			}
+			object.spillsDark = false;
+
+			// World transforms of the root and of every animation group (scratch storage reused across objects)
+			static std::vector<xMath::Matrix> nodeWorld;
+			static std::vector<uint8_t> lightVisible;
+			static std::vector<std::array<float, 3>> lightWorld;
+			// Groups compose from their parents (parents precede children in Obj8Data::nodes), like the entity tree
+			const xMath::Matrix rootWorld = RootWorld(registry, rootHandle, *root, parentCache);
+			nodeWorld.assign(data.nodes.size(), rootWorld);
+			for (size_t i = 0; i < object.nodeHandles.size() && i < nodeWorld.size(); ++i)
+			{
+				const entt::entity handle = object.nodeHandles[i];
+				const TransformComponent *transform = handle != entt::null ? registry.try_get<TransformComponent>(handle) : nullptr;
+				if (!transform)
+					continue;
+
+				const int parent = data.nodes[i].parent;
+				const xMath::Matrix &parentWorld = parent >= 0 && static_cast<size_t>(parent) < i ? nodeWorld[static_cast<size_t>(parent)] : rootWorld;
+				nodeWorld[i] = Entity::ComposeLocalMatrix(*transform) * parentWorld;
 			}
 
-			const bool lightsOn = object.visible && frame.night > 0.0f && frame.hasCamera;
-			std::vector<uint8_t> lightVisible(lights.size(), 0);
-			std::vector<std::array<float, 3>> lightWorld(lights.size());
+			lightVisible.assign(lights.size(), 0);
+			lightWorld.resize(lights.size());
 
 			for (size_t i = 0; i < lights.size(); ++i)
 			{
@@ -323,10 +431,9 @@ namespace SceneryEditorX::XPlane
 			}
 
 			// Spill entities: dimmed here, switched on by the nearest-first budget in Tick()
-			for (size_t k = 0; k < object.spillEntities.size() && k < object.spillSources.size(); ++k)
+			for (size_t k = 0; k < object.spillStored.size() && k < object.spillSources.size(); ++k)
 			{
-				const entt::entity handle = FindHandle(registry, object.spillEntities[k]);
-				Entity *stored = handle != entt::null ? Scene::GetStoredEntity(Entity(handle, Scene::GetActive())) : nullptr;
+				Entity *stored = object.spillStored[k];
 				Light *component = stored ? stored->GetComponent<Light>() : nullptr;
 				if (!component)
 					continue;
@@ -471,31 +578,52 @@ namespace SceneryEditorX::XPlane
 
 			// Entities were created above: look the component up again.
 			XPlaneObjectComponent &component = registry.get<XPlaneObjectComponent>(rootHandle);
+			component.dynamicState = !data.nodes.empty() ||
+				std::ranges::any_of(batches, [](const ObjectBatch &batch) { return !batch.visibility.empty(); }) ||
+				std::ranges::any_of(lights, [](const ObjectLight &light) { return !light.visibility.empty(); });
+			component.usesDistance = std::ranges::any_of(batches, [](const ObjectBatch &batch) { return batch.lod >= 0; }) ||
+				std::ranges::any_of(lights, [](const ObjectLight &light) { return light.lod >= 0; });
+			component.evaluatedStamp = 0;
 			component.nodeEntities = std::move(nodeEntities);
 			component.batchEntities = std::move(batchEntities);
 			component.spillEntities = std::move(spillEntities);
 			component.spillSources = std::move(spillSources);
 			component.loaded = true;
 
-			const TagComponent *tag = registry.try_get<TagComponent>(rootHandle);
-			SEDX_CORE_INFO_TAG(LOG_TAG, "Placed '{}' ({} batches, {} animation groups, {} lights){}", tag ? tag->pTag : asset->GetPath().filename().string(),
-				batches.size(), data.nodes.size(), lights.size(), component.virtualPath.empty() ? std::string() : " as " + component.virtualPath);
+			if (component.logPlacement)
+			{
+				const TagComponent *tag = registry.try_get<TagComponent>(rootHandle);
+				SEDX_CORE_INFO_TAG(LOG_TAG, "Placed '{}' ({} batches, {} animation groups, {} lights){}", tag ? tag->pTag : asset->GetPath().filename().string(),
+					batches.size(), data.nodes.size(), lights.size(), component.virtualPath.empty() ? std::string() : " as " + component.virtualPath);
+			}
 		}
 
 		/* @brief Builds the placements whose asset has arrived and removes the ones whose asset failed to load. */
 		void BuildLoadedObjects(entt::registry &registry)
 		{
+			// Only the placements still waiting (walking every placement each frame cost milliseconds with an airport)
 			std::vector<entt::entity> ready;
 			std::vector<entt::entity> failed;
-			for (const entt::entity handle : registry.view<XPlaneObjectComponent>())
+			for (size_t i = 0; i < s_PendingRoots.size();)
 			{
-				const XPlaneObjectComponent &object = registry.get<XPlaneObjectComponent>(handle);
-				if (object.loaded || !object.asset)
-					continue;
-				if (object.asset->IsReady())
-					ready.push_back(handle);
-				else if (object.asset->HasFailed())
-					failed.push_back(handle);
+				const entt::entity handle = FindHandle(registry, s_PendingRoots[i]);
+				const XPlaneObjectComponent *object = handle != entt::null ? registry.try_get<XPlaneObjectComponent>(handle) : nullptr;
+				const bool done = !object || object->loaded || !object->asset || object->asset->IsReady() || object->asset->HasFailed();
+				if (object && !object->loaded && object->asset)
+				{
+					if (object->asset->IsReady())
+						ready.push_back(handle);
+					else if (object->asset->HasFailed())
+						failed.push_back(handle);
+				}
+
+				if (done)
+				{
+					s_PendingRoots[i] = s_PendingRoots.back();
+					s_PendingRoots.pop_back();
+				}
+				else
+					++i;
 			}
 
 			for (const entt::entity handle : ready)
@@ -508,13 +636,80 @@ namespace SceneryEditorX::XPlane
 			for (const entt::entity handle : failed)
 			{
 				const XPlaneObjectComponent &object = registry.get<XPlaneObjectComponent>(handle);
-				SEDX_CORE_ERROR_TAG(LOG_TAG, "Could not load '{}': {}", object.asset->GetPath().string(), object.asset->GetError());
+				// Once per file: a scenery pack places the same broken (or deliberately empty) object thousands of times
+				static std::unordered_set<std::string> reported;
+				if (reported.insert(object.asset->GetPath().string()).second)
+					SEDX_CORE_ERROR_TAG(LOG_TAG, "Could not load '{}': {}", object.asset->GetPath().string(), object.asset->GetError());
 
 				const uint64_t rootId = GetId(registry, handle);
 				if (rootId == s_FrameWhenLoaded)
 					s_FrameWhenLoaded = 0;
 				if (const Entity entity = Scene::TryGetEntityWithUUID(UUID(rootId)))
 					Scene::DestroyEntity(entity);
+			}
+		}
+
+		/* @brief Animation, camera distance, LOD and hide / show for one loaded placement. */
+		void UpdateObject(entt::registry &registry, const entt::entity rootHandle, XPlaneObjectComponent &object, const bool hasCamera,
+			const Vec3 &cameraPosition, const DatarefReader &reader, ParentWorldCache &parentCache)
+		{
+			ResolveEntities(registry, rootHandle, object);
+			const Obj8Data &data = object.asset->GetData();
+
+			// Animation groups
+			if (object.animate)
+			{
+				for (size_t i = 0; i < object.nodeHandles.size() && i < data.nodes.size(); ++i)
+				{
+					const entt::entity handle = object.nodeHandles[i];
+					TransformComponent *transform = handle != entt::null ? registry.try_get<TransformComponent>(handle) : nullptr;
+					if (!transform)
+						continue;
+
+					const RigidTransform local = EvaluateAnimNode(data.nodes[i], reader);
+					transform->translation = Vec3(local.translation[0], local.translation[1], local.translation[2]);
+					transform->SetRotation(Quat(local.rotation[3], local.rotation[0], local.rotation[1], local.rotation[2]));
+				}
+
+				// animated batches follow the pose the same frame
+				if (!object.nodeHandles.empty())
+					GpuScene::MarkTransformDirty(rootHandle);
+			}
+
+			// Camera distance for LOD selection, from the root's world position
+			float distance = 0.0f;
+			if (hasCamera && object.rootStored)
+			{
+				const xMath::Matrix world = RootWorld(registry, rootHandle, *object.rootStored, parentCache);
+				const Vec3 delta(world.m30 - cameraPosition.x, world.m31 - cameraPosition.y, world.m32 - cameraPosition.z);
+				distance = std::sqrt(delta.x * delta.x + delta.y * delta.y + delta.z * delta.z);
+			}
+			object.cameraDistance = distance;
+
+			object.evaluatedStamp = s_CameraStamp;
+			object.evaluatedVisible = object.visible;
+			object.evaluatedLodOverride = object.lodOverride;
+
+			// Batches: LOD + hide / show
+			object.visibleBatches = 0;
+			object.visibleTriangles = 0;
+			const std::vector<ObjectBatch> &batches = object.asset->GetBatches();
+			for (size_t i = 0; i < object.batchStored.size() && i < batches.size(); ++i)
+			{
+				Entity *stored = object.batchStored[i];
+				if (!stored)
+					continue;
+
+				const ObjectBatch &batch = batches[i];
+				const bool visible = object.visible && IsLodVisible(data, batch.lod, distance, object.lodOverride) &&
+									 EvaluateVisibility(data, batch.visibility, reader);
+				if (stored->GetActive() != visible)
+					stored->SetActive(visible);
+				if (visible)
+				{
+					++object.visibleBatches;
+					object.visibleTriangles += batch.triangleCount;
+				}
 			}
 		}
 	}
@@ -555,17 +750,29 @@ namespace SceneryEditorX::XPlane
 		XPlaneObjectComponent component;
 		component.asset = asset;
 		component.virtualPath = options.virtualPath;
+		component.logPlacement = options.frameCamera; // a user placement, not one of an airport's thousands
 		registry->emplace_or_replace<XPlaneObjectComponent>(rootHandle, std::move(component));
 		const uint64_t rootId = GetId(*registry, rootHandle);
 
 		if (asset->IsReady())
 		{
+			// This placement only: a full Tick() here walked every placed object for each new one (quadratic when an
+			// airport places thousands of already-loaded objects). Its lights follow with the next Tick().
 			BuildObject(*registry, rootHandle);
-			Tick(0.0);
+			Vec3 cameraPosition(0.0f, 0.0f, 0.0f);
+			const bool hasCamera = GetCameraPosition(*registry, cameraPosition);
+			ParentWorldCache parentCache;
+			if (XPlaneObjectComponent *object = registry->try_get<XPlaneObjectComponent>(rootHandle); object && object->loaded)
+			{
+				UpdateObject(*registry, rootHandle, *object, hasCamera, cameraPosition, Datarefs::GetReader(), parentCache);
+				object->evaluatedStamp = 0; // again next Tick(): the caller may still attach the root under a group
+			}
 		}
 		else
 		{
-			SEDX_CORE_INFO_TAG(LOG_TAG, "Placing '{}'{} while it loads", rootName, options.virtualPath.empty() ? std::string() : " (" + options.virtualPath + ")");
+			s_PendingRoots.push_back(rootId);
+			if (options.frameCamera)
+				SEDX_CORE_INFO_TAG(LOG_TAG, "Placing '{}'{} while it loads", rootName, options.virtualPath.empty() ? std::string() : " (" + options.virtualPath + ")");
 		}
 
 		if (options.frameCamera)
@@ -576,10 +783,16 @@ namespace SceneryEditorX::XPlane
 	void SceneObjects::Tick(const double deltaSeconds)
 	{
 		// Background loads: upload what the workers finished, then fill in the placements that were waiting for it.
-		ObjectAsset::Update();
+		{
+			SEDX_PERF_SCOPE("Objects: asset uploads");
+			ObjectAsset::Update();
+		}
 		entt::registry *registry = GetRegistry();
 		if (registry)
+		{
+			SEDX_PERF_SCOPE("Objects: build loaded");
 			BuildLoadedObjects(*registry);
+		}
 
 		Datarefs::Tick(deltaSeconds);
 		ObjectAsset::SetLitTexturesVisible(Datarefs::GetNightFactor() > 0.5f);
@@ -612,6 +825,18 @@ namespace SceneryEditorX::XPlane
 			lights.atlasInset[1] = atlasInfo.height > 0 ? 0.5f / static_cast<float>(atlasInfo.height) : 0.0f;
 		}
 
+		SEDX_PERF_SCOPE("Objects: animation, LOD, lights");
+		const bool cameraMoving = hasCamera != s_LastHasCamera || xMath::Length2(cameraPosition - s_LastCameraPosition) > 1e-6f;
+		if (cameraMoving)
+		{
+			++s_CameraStamp;
+			s_LastCameraPosition = cameraPosition;
+			s_LastHasCamera = hasCamera;
+		}
+		const uint64_t phase = s_TickCount++ % LOD_PHASES;
+
+		ParentWorldCache parentCache;
+		uint64_t index = 0;
 		auto view = registry->view<XPlaneObjectComponent>();
 		for (const entt::entity rootHandle : view)
 		{
@@ -619,61 +844,17 @@ namespace SceneryEditorX::XPlane
 			if (!object.asset || !object.loaded)
 				continue; // still loading
 
-			const Obj8Data &data = object.asset->GetData();
-
-			// Animation groups
-			if (object.animate)
-			{
-				for (size_t i = 0; i < object.nodeEntities.size() && i < data.nodes.size(); ++i)
-				{
-					const entt::entity handle = FindHandle(*registry, object.nodeEntities[i]);
-					if (handle == entt::null)
-						continue;
-
-					const RigidTransform local = EvaluateAnimNode(data.nodes[i], reader);
-					TransformComponent &transform = registry->get<TransformComponent>(handle);
-					transform.translation = Vec3(local.translation[0], local.translation[1], local.translation[2]);
-					transform.SetRotation(Quat(local.rotation[3], local.rotation[0], local.rotation[1], local.rotation[2]));
-				}
-			}
-
-			// Camera distance for LOD selection, from the root's world position
-			float distance = 0.0f;
-			if (hasCamera)
-			{
-				if (Entity *stored = Scene::GetStoredEntity(Entity(rootHandle, Scene::GetActive())))
-				{
-					const xMath::Matrix world = stored->GetMatrix();
-					const Vec3 delta(world.m30 - cameraPosition.x, world.m31 - cameraPosition.y, world.m32 - cameraPosition.z);
-					distance = std::sqrt(delta.x * delta.x + delta.y * delta.y + delta.z * delta.z);
-				}
-			}
-			object.cameraDistance = distance;
-
-			// Batches: LOD + hide / show
-			object.visibleBatches = 0;
-			object.visibleTriangles = 0;
-			const std::vector<ObjectBatch> &batches = object.asset->GetBatches();
-			for (size_t i = 0; i < object.batchEntities.size() && i < batches.size(); ++i)
-			{
-				const entt::entity handle = FindHandle(*registry, object.batchEntities[i]);
-				Entity *stored = handle != entt::null ? Scene::GetStoredEntity(Entity(handle, Scene::GetActive())) : nullptr;
-				if (!stored)
-					continue;
-
-				const ObjectBatch &batch = batches[i];
-				const bool visible = object.visible && IsLodVisible(data, batch.lod, distance, object.lodOverride) &&
-									 EvaluateVisibility(data, batch.visibility, reader);
-				stored->SetActive(visible);
-				if (visible)
-				{
-					++object.visibleBatches;
-					object.visibleTriangles += batch.triangleCount;
-				}
-			}
+			// Static placements keep their batch states until the camera moves (LODs) or their settings change
+			const bool settingsChanged = object.evaluatedStamp == 0 || object.visible != object.evaluatedVisible || object.lodOverride != object.evaluatedLodOverride;
+			const bool inPhase = !cameraMoving || index++ % LOD_PHASES == phase;
+			const bool cameraMatters = object.usesDistance && object.evaluatedStamp != s_CameraStamp && inPhase;
+			if (object.dynamicState || settingsChanged || cameraMatters)
+				UpdateObject(*registry, rootHandle, object, hasCamera, cameraPosition, reader, parentCache);
+			else
+				ResolveEntities(*registry, rootHandle, object); // the lights below use the entity pointers
 
 			// Lights: billboards and spill candidates
-			CollectObjectLights(*registry, rootHandle, object, lights);
+			CollectObjectLights(*registry, rootHandle, object, lights, parentCache);
 		}
 
 		// Spill: only the nearest lights light the scene
@@ -697,6 +878,12 @@ namespace SceneryEditorX::XPlane
 			billboardBatches.push_back(std::move(lights.atlasBatch));
 		for (Renderer_LightBillboardBatch &batch : lights.customBatches)
 			billboardBatches.push_back(std::move(batch));
+		{
+			size_t billboards = 0;
+			for (const Renderer_LightBillboardBatch &batch : billboardBatches)
+				billboards += batch.billboards.size();
+			Perf::SetCounter("light billboards", static_cast<double>(billboards));
+		}
 		Renderer::SetLightBillboards(std::move(billboardBatches));
 	}
 
@@ -767,8 +954,13 @@ namespace SceneryEditorX::XPlane
 			const float distance = radius / std::sin(30.0f * kDegToRad) * 1.15f;
 
 			TransformComponent &transform = view.get<TransformComponent>(handle);
-			transform.translation = center - forward * distance;
-			transform.SetRotationEuler(Vec3(pitch, yaw, 0.0f));
+			if (Camera *camera = Scene::GetCamera())
+				camera->LookAt(transform, center - forward * distance, center);	// The object becomes the orbit pivot
+			else
+			{
+				transform.translation = center - forward * distance;
+				transform.SetRotationEuler(Vec3(pitch, yaw, 0.0f));
+			}
 			break;
 		}
 	}
@@ -789,6 +981,7 @@ namespace SceneryEditorX::XPlane
 		}
 
 		s_FrameWhenLoaded = 0;
+		s_PendingRoots.clear();
 		Renderer::SetLightBillboards({}); // the batches hold the light textures
 		ObjectAsset::ClearCache();
 		TextureLoader::ClearCache();

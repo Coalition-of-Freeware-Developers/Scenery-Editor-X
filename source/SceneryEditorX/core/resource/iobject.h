@@ -29,6 +29,10 @@
  * -------------------------------------------------------
  */
 #pragma once
+#include <atomic>
+#include <cstdint>
+#include <string>
+#include <utility>
 
 // -----------------------------------------------------------------
 
@@ -37,20 +41,31 @@ namespace SceneryEditorX
 	class IObject
 	{
 	public:
-	    IObject()
+	    // IDs come from a process-wide counter, so no two objects share one and they can key caches (bound buffers,
+	    // pipeline hashes, watched shaders). They used to be derived from the clock and repeated for objects created
+	    // within one clock tick.
+	    IObject() : m_ObjectId(NextObjectId()) {}
+
+	    // A copy is another object: it gets its own ID. Assignment keeps the target's.
+	    IObject(const IObject &other) : m_ObjectName(other.m_ObjectName), m_ObjectId(NextObjectId()), m_ObjectSize(other.m_ObjectSize) {}
+	    IObject(IObject &&other) noexcept : m_ObjectName(std::move(other.m_ObjectName)), m_ObjectId(NextObjectId()), m_ObjectSize(other.m_ObjectSize) {}
+
+	    IObject &operator=(const IObject &other)
 	    {
-	        // stack-only, deterministic pseudo-random ID
-	        auto timeNow = static_cast<uint64_t>(std::chrono::high_resolution_clock::now().time_since_epoch().count());
-	
-	        // simple stack-safe thread-unique value
-	        uint64_t threadUnique = reinterpret_cast<uint64_t>(GetThreadUniqueAddress());
-	
-	        uint64_t randomValue = (timeNow ^ threadUnique) * 2654435761u;
-	        randomValue ^= (randomValue >> 16);
-	
-	        m_ObjectId = randomValue;
+	        m_ObjectName = other.m_ObjectName;
+	        m_ObjectSize = other.m_ObjectSize;
+	        return *this;
 	    }
-	
+
+	    IObject &operator=(IObject &&other) noexcept
+	    {
+	        m_ObjectName = std::move(other.m_ObjectName);
+	        m_ObjectSize = other.m_ObjectSize;
+	        return *this;
+	    }
+
+	    ~IObject() = default;
+
 	    // Object name
 	    const std::string &GetObjectName() const { return m_ObjectName; }
 	    void SetObjectName(const std::string &name) { m_ObjectName = name; }
@@ -68,10 +83,10 @@ namespace SceneryEditorX
 	    uint64_t m_ObjectSize = 0;
 	
 	private:
-	    static void *GetThreadUniqueAddress()
+	    static uint64_t NextObjectId()
 	    {
-	        thread_local int dummy;
-	        return &dummy;
+	        static std::atomic<uint64_t> s_NextObjectId{1}; // 0 stays free for "no object"
+	        return s_NextObjectId.fetch_add(1, std::memory_order_relaxed);
 	    }
 	};
 	

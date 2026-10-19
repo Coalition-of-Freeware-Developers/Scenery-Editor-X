@@ -112,7 +112,8 @@ namespace SceneryEditorX
 	std::vector<PersistentLine> Renderer::m_Persistent_Lines;
 	std::vector<std::tuple<ImageResource*, xMath::Vec3>> Renderer::m_Icons;
 
-	std::array<ImageResource*, MAX_ARRAY_SIZE> Renderer::m_Bindless_Textures;
+	std::array<ImageResource*, MAX_MATERIAL_TEXTURES> Renderer::m_Bindless_Textures;
+	uint32_t Renderer::m_Bindless_TextureCount = 0;
 	std::array<ShaderBuffer_Light, MAX_ARRAY_SIZE> Renderer::m_Bindless_Lights;
 	std::array<ShaderBuffer_Aabb, MAX_ARRAY_SIZE> Renderer::m_Bindless_Aabbs;
 
@@ -195,6 +196,10 @@ namespace SceneryEditorX
 
 				s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_depth)]    = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, widthRender, heightRender, 1, 1, VK_FORMAT_D32_SFLOAT, flags, "gbuffer_depth"});
 				SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_depth)] != nullptr, "Failed to create gbuffer_depth render target");
+
+				// editor picking: written by the g-buffer pass, read by the selection outline (storage) and copied for readback
+				s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_pick)]     = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, widthRender, heightRender, 1, 1, VK_FORMAT_R32_UINT, RenderTargetViews | UnorderedAccessView | BlitClear, "gbuffer_pick"});
+				SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_pick)] != nullptr, "Failed to create gbuffer_pick render target");
 			}
 #pragma endregion
 #pragma region Lighting Render Targets
@@ -785,7 +790,7 @@ namespace SceneryEditorX
 		identity.fill(Instance::GetIdentity());
 
 		At(s_Buffers, Renderer_Buffer::ConstantFrame)      = CreateRef<Buffer>(sizeof(ConstantBuffer_Frame), elementCount, nullptr, true, "frame");
-		At(s_Buffers, Renderer_Buffer::MaterialParameters) = CreateRef<Buffer>(static_cast<uint32_t>(sizeof(ShaderBuffer_Material)), MAX_ARRAY_SIZE, nullptr, true, "materials");
+		At(s_Buffers, Renderer_Buffer::MaterialParameters) = CreateRef<Buffer>(static_cast<uint32_t>(sizeof(ShaderBuffer_Material)), MAX_MATERIAL_TEXTURES, nullptr, true, "materials");
 		At(s_Buffers, Renderer_Buffer::LightParameters)    = CreateRef<Buffer>(static_cast<uint32_t>(sizeof(ShaderBuffer_Light)), MAX_ARRAY_SIZE, nullptr, true, "lights");
 		At(s_Buffers, Renderer_Buffer::DummyInstance)      = CreateRef<Buffer>(sizeof(Instance), static_cast<uint32_t>(identity.size()), &identity, true, "dummy_instance_buffer");
 		At(s_Buffers, Renderer_Buffer::GeometryInfo)       = CreateRef<Buffer>(static_cast<uint32_t>(sizeof(ShaderBuffer_GeometryInfo)), MAX_ARRAY_SIZE, nullptr, true, "geometry_info");

@@ -41,6 +41,10 @@ import transforms;
 import structs;
 import color;
 import terrain;
+#ifdef GPU_SCENE
+import gpu_scene;
+#endif
+
 
 struct gbuffer
 {
@@ -48,6 +52,7 @@ struct gbuffer
     float4 normal : SV_Target1;
     float4 material : SV_Target2;
     float2 velocity : SV_Target3;
+    uint pick : SV_Target4;        // gbuffer_pick (R32_UINT): editor picking id of the surface, 0 = none
 };
 
 // constants
@@ -136,12 +141,19 @@ float3 compute_flower_color(float height_percent, uint instance_id)
     return lerp(flower_base, tip, smoothstep(0.2f, 1.0f, height_percent));
 }
 
+#if defined(GPU_SCENE)
+// instanced indirect draws of the GPU scene (gpu_cull.slang picked the instances), vertices pulled from the global buffer
 [shader("vertex")]
-#ifdef INDIRECT_DRAW
-gbuffer_vertex main_vs(uint vertex_id: SV_VertexID, uint instance_id: SV_InstanceID, [[vk::builtin("DrawIndex")]] uint draw_id: DRAW_INDEX)
+gbuffer_vertex main_vs(uint vertex_id: SV_VertexID, uint base_vertex: SV_StartVertexLocation, uint draw_instance: SV_InstanceID, uint base_instance: SV_StartInstanceLocation)
+{
+    const uint instance_id = gpu_scene_load_draw(draw_instance, base_instance);
+    Vertex_PosUvNorTan input = pull_vertex(vertex_id + base_vertex);
+#elif defined(INDIRECT_DRAW)
+[shader("vertex")]
+gbuffer_vertex main_vs(uint vertex_id: SV_VertexID, uint base_vertex: SV_StartVertexLocation, uint instance_id: SV_InstanceID, [[vk::builtin("DrawIndex")]] uint draw_id: DRAW_INDEX)
 {
     _draw = indirect_draw_data_out[draw_id];
-    Vertex_PosUvNorTan input = pull_vertex(vertex_id);
+    Vertex_PosUvNorTan input = pull_vertex(vertex_id + base_vertex);
 #else
 [shader("vertex")]
 gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id: SV_InstanceID)
@@ -153,6 +165,7 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id: SV_InstanceID
     float3 position_world_previous = 0.0f;
     gbuffer_vertex vertex = transform_to_world_space(input, instance_id, _draw.transform, position_world, position_world_previous);
     vertex.material_index = _draw.material_index;
+    vertex.pick_id = _draw.pick_id;
     return transform_to_clip_space(vertex, position_world, position_world_previous);
 }
 
@@ -208,6 +221,16 @@ gbuffer main_frag(gbuffer_vertex vertex, bool is_front_face: SV_IsFrontFace)
         albedo_sample = sample_texture(vertex, material_texture_index_albedo, surface, position_world);
         albedo_sample.rgb = srgb_to_linear(albedo_sample.rgb);
         albedo *= albedo_sample;
+
+        // Cut-out texels: the depth prepass discards them, but this pass only tests depth (greater-equal, no write),
+        // so a cut-out texel with nothing nearer behind it would still be written solid (a decal over pavement, a
+        // leaf against the sky). Apply the prepass's test here too.
+        if (pass_is_opaque())
+        {
+            const float alpha_threshold = material.alpha_cutoff > 0.0f ? material.alpha_cutoff : get_alpha_threshold(position_world);
+            if (material.alpha_cutoff > 0.0f ? albedo_sample.a < alpha_threshold : albedo_sample.a <= alpha_threshold)
+                discard;
+        }
     }
 
     // vegetation coloring
@@ -338,5 +361,6 @@ gbuffer main_frag(gbuffer_vertex vertex, bool is_front_face: SV_IsFrontFace)
     g_buffer.normal = float4(normal, pass_get_material_index());
     g_buffer.material = float4(roughness, metalness, emission, occlusion);
     g_buffer.velocity = velocity;
+    g_buffer.pick = vertex.pick_id;
     return g_buffer;
 }

@@ -29,32 +29,49 @@
  * -------------------------------------------------------
  */
 #include "editor_layer.h"
+#include "editor_airports.h"
+#include "editor_project.h"
 #include "editor_camera.h"
+#include "editor_history.h"
 #include "editor_scene.h"
+#include "editor_selection.h"
+#include "editor_tools.h"
+#include "project_dialogs.h"
+#include "tools_selftest.h"
 #include "editor_theme.h"
 #include "editor_ui.h"
 #include "editor_xplane.h"
+#include <Editor/panels/airport_panel.h>
 #include <Editor/panels/asset_shelf_panel.h>
 #include <Editor/panels/console_panel.h>
 #include <Editor/panels/outliner_panel.h>
+#include <Editor/panels/project_panel.h>
 #include <Editor/panels/properties_panel.h>
 #include <Editor/panels/scene_viewport.h>
 #include <Editor/panels/settings_panels.h>
 #include <Editor/panels/xplane_library_panel.h>
 #include <algorithm>
+#include <chrono>
 #include <cstdlib>
+#include <type_traits>
+#if defined(_MSC_VER) && defined(_DEBUG)
+#include <crtdbg.h>
+#endif
 #include <SceneryEditorX/core/application/application.h>
+#include <SceneryEditorX/core/frame_profiler.h>
 #include <SceneryEditorX/core/input/input.h>
 #include <SceneryEditorX/core/resource/resource_cache.h>
 #include <SceneryEditorX/core/time/fps_timer.h>
 #include <SceneryEditorX/core/window/window.h>
 #include <SceneryEditorX/logging/logging.hpp>
+#include <SceneryEditorX/renderer/gpu_scene.h>
 #include <SceneryEditorX/renderer/renderer.h>
 #include <SceneryEditorX/renderer/font/font_awesome.h>
 #include <SceneryEditorX/renderer/ui/resources/fonts.h>
 #include <SceneryEditorX/renderer/ui/source/imgui/imgui_internal.h>
 #include <SceneryEditorX/renderer/vulkan/debug/render_doc.h>
 #include <SceneryEditorX/scene/entity.h>
+#include <SceneryEditorX/xplane/xp_airport_manager.h>
 #include <SceneryEditorX/xplane/xp_datarefs.h>
 #include <SceneryEditorX/xplane/xp_library_manager.h>
 #include <SceneryEditorX/xplane/xp_scene.h>
@@ -85,16 +102,125 @@ namespace SceneryEditorX
 		constexpr PanelInfo PANEL_CAMERA			= { "CameraSettings",	"CAMERA###CameraSettings",			SEDX_ICON_CAMERA };
 		constexpr PanelInfo PANEL_RENDERER			= { "RendererStats",	"RENDERER###RendererStats",			SEDX_ICON_TACHOMETER };
 		constexpr PanelInfo PANEL_XPLANE			= { "XPlaneLibrary",	"X-PLANE LIBRARY###XPlaneLibrary",	SEDX_ICON_PLANE };
+		constexpr PanelInfo PANEL_AIRPORTS			= { "Airports",			"AIRPORTS###Airports",				SEDX_ICON_GLOBE };
+		constexpr PanelInfo PANEL_PROJECT			= { "Project",			"PROJECT###Project",				SEDX_ICON_FILE_TEXT };
 
 		constexpr PanelInfo s_StripPanels[] =
 		{
-			PANEL_PROPERTIES, PANEL_OUTLINER, PANEL_XPLANE, PANEL_ASSETS, PANEL_CONSOLE, PANEL_SCENE_SETTINGS, PANEL_CAMERA, PANEL_RENDERER, PANEL_VIEWPORT
+			PANEL_PROPERTIES, PANEL_OUTLINER, PANEL_PROJECT, PANEL_AIRPORTS, PANEL_XPLANE, PANEL_ASSETS, PANEL_CONSOLE, PANEL_SCENE_SETTINGS, PANEL_CAMERA, PANEL_RENDERER, PANEL_VIEWPORT
 		};
 
 		/* Bump when the default layout changes so existing users get the new arrangement once. */
-		constexpr const char *DOCKSPACE_NAME = "SEDX_EditorDockspace_v3";
+		constexpr const char *DOCKSPACE_NAME = "SEDX_EditorDockspace_v5";
 
 		constexpr ImGuiWindowFlags SIDE_BAR_FLAGS = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoSavedSettings;
+
+		// --entity-bench: heap calls made by the bench thread (the Debug CRT reports every allocation to the hook)
+		thread_local bool t_CountAllocations = false;
+		uint64_t s_BenchAllocations = 0;
+		uint64_t s_BenchBytes = 0;
+
+#if defined(_MSC_VER) && defined(_DEBUG)
+		int CountAllocationsHook(const int type, void *, const size_t size, const int blockType, long, const unsigned char *, int)
+		{
+			if (t_CountAllocations && blockType != _CRT_BLOCK && (type == _HOOK_ALLOC || type == _HOOK_REALLOC))
+			{
+				++s_BenchAllocations;
+				s_BenchBytes += size;
+			}
+			return TRUE;
+		}
+#endif
+
+		/**
+		 * @brief Times building, copying and walking Entity handles by value over every scene entity and counts the
+		 * heap allocations it makes (Debug only): TryGetEntityWithUUID, a copy and GetParent per entity.
+		 */
+		void RunEntityBench()
+		{
+			std::vector<UUID> ids;
+			ids.reserve(Scene::GetEntities().size());
+			for (const Entity *entity : Scene::GetEntities())
+				ids.push_back(entity->GetUUID());
+
+			for (int run = 0; run < 3; ++run)
+			{
+				uint64_t checksum = 0;
+				s_BenchAllocations = 0;
+				s_BenchBytes = 0;
+#if defined(_MSC_VER) && defined(_DEBUG)
+				const _CRT_ALLOC_HOOK previousHook = _CrtSetAllocHook(CountAllocationsHook);
+#endif
+				t_CountAllocations = true;
+				const auto start = std::chrono::steady_clock::now();
+				for (const UUID &id : ids)
+				{
+					const Entity handle = Scene::TryGetEntityWithUUID(id);
+					const Entity copy = handle;
+					const Entity parent = copy.GetParent();
+					checksum += static_cast<uint32_t>(copy) + (parent ? 1u : 0u);
+				}
+				const double milliseconds = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
+				t_CountAllocations = false;
+#if defined(_MSC_VER) && defined(_DEBUG)
+				_CrtSetAllocHook(previousHook);
+#endif
+				EDITOR_INFO_TAG("Perf", "Entity bench {}: {} x (TryGetEntityWithUUID + copy + GetParent) in {:.2f} ms ({:.0f} ns each), "
+					"{} heap allocations ({} bytes), sizeof(Entity) {}, trivially copyable {} (checksum {})",
+					run, ids.size(), milliseconds, ids.empty() ? 0.0 : milliseconds * 1.0e6 / static_cast<double>(ids.size()),
+					s_BenchAllocations, s_BenchBytes, sizeof(Entity), std::is_trivially_copyable_v<Entity>, checksum);
+			}
+
+			// The scene recycles destroyed entities' runtime records: handles to destroyed entities must miss them, and
+			// new entities (on recycled records) must start clean. Plugin is a plain Component without side effects.
+			constexpr size_t COUNT = 256;
+			std::vector<Entity> first;
+			std::vector<const Entity*> firstStored;
+			int failures = 0;
+			for (size_t i = 0; i < COUNT; ++i)
+			{
+				const Entity entity = Scene::CreateEntity("EntityBenchRecycle");
+				Entity copy = entity;
+				copy.AddComponentByType(ComponentType::Plugin);
+				Entity(static_cast<entt::entity>(entity), Scene::GetActive()).SetActive(false); // a bare handle reaches the record too
+				const Entity *stored = Scene::GetStoredEntity(entity);
+				failures += !stored || stored->GetActive() || !stored->GetComponentByType(ComponentType::Plugin) ||
+					stored->GetComponentByType(ComponentType::Plugin)->GetEntity() != stored;
+				first.push_back(entity);
+				firstStored.push_back(stored);
+			}
+			for (const Entity &entity : first)
+				Scene::DestroyEntity(entity);
+			(void)Scene::GetEntities(); // compacts the list, which frees the records for reuse
+
+			// Handles to destroyed entities (these still carry their old record's address) must stay dead, also once
+			// new entities live on those records with a Plugin and the active flag set.
+			const auto countDeadHandleFailures = [&first]()
+			{
+				int count = 0;
+				for (const Entity &old : first)
+					count += old.IsValid() || old.GetActive() || Scene::GetStoredEntity(old) != nullptr || old.GetComponentByType(ComponentType::Plugin) != nullptr;
+				return count;
+			};
+			failures += countDeadHandleFailures();
+
+			size_t reused = 0;
+			std::vector<Entity> second;
+			for (size_t i = 0; i < COUNT; ++i)
+			{
+				Entity entity = Scene::CreateEntity("EntityBenchRecycle");
+				const Entity *stored = Scene::GetStoredEntity(entity);
+				reused += std::ranges::find(firstStored, stored) != firstStored.end();
+				failures += !stored || !stored->GetActive() || stored->GetComponentByType(ComponentType::Plugin) != nullptr;
+				entity.AddComponentByType(ComponentType::Plugin);
+				second.push_back(entity);
+			}
+			failures += countDeadHandleFailures();
+			for (const Entity &entity : second)
+				Scene::DestroyEntity(entity);
+
+			EDITOR_INFO_TAG("Perf", "Entity recycle check: {} entities, {} recycled records, {} failures", COUNT, reused, failures);
+		}
 	}
 
 	// ---------------------------------------------------------
@@ -128,8 +254,10 @@ namespace SceneryEditorX
 	{
 		AttachLogSink();
 
-		// X-Plane folder + library index (the first scan runs in the background)
+		// X-Plane folder + library index (the first scan runs in the background), then the airport index and the Gateway client
 		XPlane::LibraryManager::Init();
+		EditorAirports::Init();
+		EditorProjects::Init(m_UserPreferences);
 		ReadStartupObjects();
 		RegisterPanels();
 		EditorCamera::CaptureHome();
@@ -155,6 +283,8 @@ namespace SceneryEditorX
 		// The UI layer (an overlay) detaches first, so ImGui is already gone here: no ImGui calls.
 		Camera::SetInputEnabled(true);
 		m_PanelManager.reset();
+		EditorProjects::Shutdown();	// Keeps unsaved project work as recovery data while the scene still exists
+		EditorAirports::Shutdown();
 		XPlane::SceneObjects::Shutdown();
 		XPlane::LibraryManager::Shutdown();
 		DetachLogSink();
@@ -172,6 +302,8 @@ namespace SceneryEditorX
 		m_PanelManager->AddPanel<AssetShelfPanel>(PanelCategory::Editor, PANEL_ASSETS.id, "Assets", true, resources);
 		m_PanelManager->AddPanel<ConsolePanel>(PanelCategory::Editor, PANEL_CONSOLE.id, "Console", true, m_LogSink);
 		m_PanelManager->AddPanel<XPlaneLibraryPanel>(PanelCategory::Editor, PANEL_XPLANE.id, "X-Plane Library", true, &m_Context);
+		m_PanelManager->AddPanel<AirportPanel>(PanelCategory::Editor, PANEL_AIRPORTS.id, "Airports", true, &m_Context);
+		m_PanelManager->AddPanel<ProjectPanel>(PanelCategory::Editor, PANEL_PROJECT.id, "Project", true, &m_Context);
 		m_PanelManager->AddPanel<SceneSettingsPanel>(PanelCategory::Settings, PANEL_SCENE_SETTINGS.id, "Scene Settings", true);
 		m_PanelManager->AddPanel<CameraSettingsPanel>(PanelCategory::Settings, PANEL_CAMERA.id, "Camera", true);
 		m_PanelManager->AddPanel<RendererStatsPanel>(PanelCategory::Settings, PANEL_RENDERER.id, "Renderer", true);
@@ -212,7 +344,39 @@ namespace SceneryEditorX
 	{
 		// X-Plane objects: dataref clock, animation, LODs and night lighting, before the panels read the scene.
 		PlaceStartupObjects();
-		XPlane::SceneObjects::Tick(ImGui::GetIO().DeltaTime);
+
+		// --entity-bench runs once the scene has over 1000 entities and their count held for 300 frames (the startup
+		// airport finished loading)
+		if (m_EntityBenchPending)
+		{
+			const size_t entityCount = Scene::GetEntities().size();
+			m_EntityBenchStableFrames = entityCount == m_EntityBenchCount ? m_EntityBenchStableFrames + 1 : 0;
+			m_EntityBenchCount = entityCount;
+			if (m_EntityBenchStableFrames >= 300 && entityCount > 1000)
+			{
+				m_EntityBenchPending = false;
+				RunEntityBench();
+			}
+		}
+		{
+			SEDX_PERF_SCOPE("Main: SceneObjects::Tick");
+			XPlane::SceneObjects::Tick(ImGui::GetIO().DeltaTime);
+		}
+
+		// Airports: the startup airport, scene rebuilds after edits, finished Gateway downloads
+		{
+			SEDX_PERF_SCOPE("Main: EditorAirports::Tick");
+			EditorAirports::Tick(&m_Context);
+		}
+
+		// Project: the startup project, scene edits flowing into it, autosave, the window title
+		{
+			SEDX_PERF_SCOPE("Main: EditorProjects::Tick");
+			EditorProjects::Tick(&m_Context);
+		}
+
+		// Selection: follow what other panels selected last frame, drop what rebuilds removed
+		EditorSelection::Sync(&m_Context);
 
 		HandleShortcuts();
 
@@ -224,7 +388,13 @@ namespace SceneryEditorX
 		DrawDockSpace();
 
 		if (m_PanelManager)
+		{
+			SEDX_PERF_SCOPE("Main: panels");
 			m_PanelManager->OnUIRender();
+		}
+
+		// Outlines for the selected / hovered objects (uploaded only when they changed)
+		EditorSelection::UpdateHighlight();
 
 		// After a layout build: open on Substance's default tabs (the X-Plane library browser and the first settings tab) and
 		// give focus to the viewport. Newly docked windows otherwise select themselves as they get submitted.
@@ -243,6 +413,8 @@ namespace SceneryEditorX
 
 		DrawAboutPopup();
 		DrawDebugWindows();
+		EditorAirports::DrawModals(&m_Context);
+		EditorProjects::DrawModals(&m_Context);
 	}
 
 	void EditorLayer::DrawMenuBar()
@@ -252,24 +424,33 @@ namespace SceneryEditorX
 
 		if (ImGui::BeginMenu("File"))
 		{
-			ImGui::MenuItem("New Scene", nullptr, false, false);
-			ImGui::MenuItem("Open Project...", "Ctrl+O", false, false);
-			ImGui::MenuItem("Save Scene", "Ctrl+S", false, false);
-			ImGui::Separator();
-			if (ImGui::MenuItem("Exit", "Alt+F4"))
-				Application::Get().Stop();
+			EditorProjects::DrawFileMenu(&m_Context);
 			ImGui::EndMenu();
 		}
 
 		if (ImGui::BeginMenu("Edit"))
 		{
-			ImGui::MenuItem("Undo", "Ctrl+Z", false, false);
-			ImGui::MenuItem("Redo", "Ctrl+Y", false, false);
+			const std::string undo = EditorHistory::CanUndo() ? "Undo " + EditorHistory::GetUndoLabel() : std::string("Undo");
+			const std::string redo = EditorHistory::CanRedo() ? "Redo " + EditorHistory::GetRedoLabel() : std::string("Redo");
+			if (ImGui::MenuItem(undo.c_str(), "Ctrl+Z", false, EditorHistory::CanUndo()))
+				EditorHistory::Undo();
+			if (ImGui::MenuItem(redo.c_str(), "Ctrl+Y", false, EditorHistory::CanRedo()))
+				EditorHistory::Redo();
 			ImGui::Separator();
-			if (ImGui::MenuItem("Delete", "Del", false, m_Context.selectedEntity != 0))
+			if (ImGui::MenuItem("Delete", "Del", false, !EditorSelection::IsEmpty()))
 				DeleteSelectedEntity();
-			if (ImGui::MenuItem("Deselect", "Esc", false, m_Context.selectedEntity != 0))
-				m_Context.selectedEntity = 0;
+			if (ImGui::MenuItem("Deselect", "Esc", false, !EditorSelection::IsEmpty()))
+				EditorSelection::Clear(&m_Context);
+			if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_CROSSHAIRS, "Frame Selection").c_str(), "F", false, !EditorSelection::IsEmpty()))
+				EditorTools::FrameSelection();
+			ImGui::Separator();
+			for (int t = 0; t < static_cast<int>(EditorTools::Tool::Count); ++t)
+			{
+				const EditorTools::Tool tool = static_cast<EditorTools::Tool>(t);
+				static constexpr const char *keys[] = { "Q", "W", "E", "R", "V" };
+				if (ImGui::MenuItem(EditorUI::IconLabel(EditorTools::GetToolIcon(tool), EditorTools::GetToolName(tool)).c_str(), keys[t], EditorTools::GetTool() == tool))
+					EditorTools::SetTool(tool);
+			}
 			ImGui::EndMenu();
 		}
 
@@ -278,7 +459,7 @@ namespace SceneryEditorX
 			if (ImGui::MenuItem("Add Empty Entity"))
 			{
 				if (const uint64_t created = EditorScene::CreateEmpty("Empty Entity"); created != 0)
-					m_Context.selectedEntity = created;
+					EditorSelection::Select(&m_Context, EditorSelection::Target::ForEntity(created));
 			}
 			ImGui::EndMenu();
 		}
@@ -287,6 +468,33 @@ namespace SceneryEditorX
 		{
 			if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_CUBE, "Import Object (.obj)...").c_str()))
 				EditorXPlane::ImportObjFile(&m_Context);
+
+			ImGui::Separator();
+			if (PanelData *panel = FindPanel(PANEL_AIRPORTS.id))
+			{
+				if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_GLOBE, "Airports").c_str(), nullptr, panel->IsOpen))
+				{
+					panel->IsOpen = true;
+					ImGui::SetWindowFocus(PANEL_AIRPORTS.window);
+				}
+			}
+			if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_FOLDER_OPEN, "Open Airport (apt.dat)...").c_str()))
+				EditorAirports::BrowseForAirport(&m_Context);
+			{
+				const XPlane::AirportDocument *document = EditorAirports::GetDocument();
+				const bool open = document != nullptr;
+				if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_FLOPPY_O, "Save Airport").c_str(), "Ctrl+S", false, open && document->IsDirty()))
+					EditorAirports::SaveAirport();
+				if (ImGui::MenuItem("Save Airport As...", "Ctrl+Shift+S", false, open))
+					EditorAirports::SaveAirportAs();
+				if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_CROSSHAIRS, "Frame Airport").c_str(), nullptr, false, open))
+					EditorAirports::FrameAirport();
+				if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_TIMES, "Close Airport").c_str(), nullptr, false, open))
+					EditorAirports::CloseAirport(&m_Context);
+			}
+			if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_REFRESH, "Rescan Airports").c_str(), nullptr, false,
+				XPlane::AirportManager::GetScanState() != XPlane::ScanState::Scanning))
+				XPlane::AirportManager::Rescan();
 
 			ImGui::Separator();
 			if (PanelData *panel = FindPanel(PANEL_XPLANE.id))
@@ -440,11 +648,23 @@ namespace SceneryEditorX
 		if (open)
 		{
 			const float buttonSize = width - padding * 2.0f;
+
+			// Editing tools first, as in Substance's tool strip
+			for (int t = 0; t < static_cast<int>(EditorTools::Tool::Count); ++t)
+			{
+				const EditorTools::Tool tool = static_cast<EditorTools::Tool>(t);
+				ImGui::PushID(t);
+				if (EditorUI::StripButton(EditorTools::GetToolIcon(tool), EditorTools::GetToolTooltip(tool), EditorTools::GetTool() == tool, buttonSize))
+					EditorTools::SetTool(tool);
+				ImGui::PopID();
+			}
+
+			ImGui::Separator();
 			ImGui::BeginDisabled(EditorCamera::Get() == nullptr);
 
-			if (EditorUI::StripButton(SEDX_ICON_REFRESH, "Orbit navigation\nLMB orbit, RMB pan, wheel zoom", EditorCamera::IsMode(ORBIT), buttonSize))
+			if (EditorUI::StripButton(SEDX_ICON_REFRESH, "Orbit navigation\nAlt+LMB orbit, MMB pan, RMB look, wheel zoom", EditorCamera::IsMode(ORBIT), buttonSize))
 				EditorCamera::SetMode(ORBIT);
-			if (EditorUI::StripButton(SEDX_ICON_VIDEO_CAMERA, "Fly navigation\nRMB look, WASD move, Q/E down/up", EditorCamera::IsMode(FLY), buttonSize))
+			if (EditorUI::StripButton(SEDX_ICON_VIDEO_CAMERA, "Fly navigation\nRMB look, hold RMB + WASD move, Q/E down/up", EditorCamera::IsMode(FLY), buttonSize))
 				EditorCamera::SetMode(FLY);
 
 			ImGui::Separator();
@@ -529,7 +749,7 @@ namespace SceneryEditorX
 		ImGui::DockBuilderSetNodeSize(dockspaceId, viewport->WorkSize);
 
 		//  +------------+--------------------------+------------------+
-		//  |            |                          | OUTLINER         |
+		//  |            |                          | OUTLINER/PROJECT |
 		//  | PROPERTIES |        VIEWPORT          +------------------+
 		//  |            |                          | SCENE SETTINGS / |
 		//  |            +--------------------------+ CAMERA /         |
@@ -543,12 +763,14 @@ namespace SceneryEditorX
 
 		ImGui::DockBuilderDockWindow(PANEL_PROPERTIES.window, left);
 		ImGui::DockBuilderDockWindow(PANEL_OUTLINER.window, rightTop);
+		ImGui::DockBuilderDockWindow(PANEL_PROJECT.window, rightTop);
 		ImGui::DockBuilderDockWindow(PANEL_SCENE_SETTINGS.window, rightBottom);
 		ImGui::DockBuilderDockWindow(PANEL_CAMERA.window, rightBottom);
 		ImGui::DockBuilderDockWindow(PANEL_RENDERER.window, rightBottom);
 		ImGui::DockBuilderDockWindow(PANEL_ASSETS.window, bottom);
 		ImGui::DockBuilderDockWindow(PANEL_CONSOLE.window, bottom);
 		ImGui::DockBuilderDockWindow(PANEL_XPLANE.window, bottom);
+		ImGui::DockBuilderDockWindow(PANEL_AIRPORTS.window, bottom);
 		ImGui::DockBuilderDockWindow(PANEL_VIEWPORT.window, center);
 		ImGui::DockBuilderFinish(dockspaceId);
 	}
@@ -599,14 +821,40 @@ namespace SceneryEditorX
 	void EditorLayer::HandleShortcuts()
 	{
 		// Global routes lose to whatever has focus, so typing in a text field never triggers these.
-		if (ImGui::Shortcut(ImGuiKey_Delete, ImGuiInputFlags_RouteGlobal) && m_Context.selectedEntity != 0)
-			DeleteSelectedEntity();
+		// Tools: Del, Esc and (over the viewport) Q W E R V, F, X
+		EditorTools::HandleShortcuts(&m_Context);
 
-		if (ImGui::Shortcut(ImGuiKey_Escape, ImGuiInputFlags_RouteGlobal))
-			m_Context.selectedEntity = 0;
+		if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_Z, ImGuiInputFlags_RouteGlobal))
+			EditorHistory::Undo();
+		if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_Y, ImGuiInputFlags_RouteGlobal) || ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_Z, ImGuiInputFlags_RouteGlobal))
+			EditorHistory::Redo();
 
 		if (ImGui::Shortcut(ImGuiKey_Home, ImGuiInputFlags_RouteGlobal))
 			EditorCamera::Reset();
+
+		// The open project (which saves its airport too), else the open airport
+		if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_N, ImGuiInputFlags_RouteGlobal))
+			EditorProjects::NewProject(&m_Context);
+		if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_O, ImGuiInputFlags_RouteGlobal))
+			EditorProjects::BrowseOpen(&m_Context);
+		if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_E, ImGuiInputFlags_RouteGlobal))
+			ProjectDialogs::OpenExport();
+		if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_E, ImGuiInputFlags_RouteGlobal))
+			ProjectDialogs::QuickExport();
+		if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_S, ImGuiInputFlags_RouteGlobal))
+		{
+			if (EditorProjects::GetDocument())
+				EditorProjects::Save();
+			else if (EditorAirports::GetDocument())
+				EditorAirports::SaveAirport();
+		}
+		if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_S, ImGuiInputFlags_RouteGlobal))
+		{
+			if (EditorProjects::GetDocument())
+				EditorProjects::SaveAs();
+			else if (EditorAirports::GetDocument())
+				EditorAirports::SaveAirportAs();
+		}
 	}
 
 	void EditorLayer::ReadStartupObjects()
@@ -621,6 +869,18 @@ namespace SceneryEditorX
 		{
 			if (args[i] == "--xp-lights-on")
 				environment.forceLightsOn = true; // lights and LIT textures in daylight
+			else if (args[i] == "--perf-log")
+				Perf::SetEnabled(true); // frame timings in the log every two seconds
+			else if (args[i] == "--no-gpu-scene")
+				GpuScene::SetEnabled(false); // one CPU draw call per renderable (comparison / debugging)
+			else if (args[i] == "--no-gpu-occlusion")
+				GpuScene::SetOcclusionCulling(false); // GPU scene without Hi-Z occlusion culling (comparison)
+			else if (args[i] == "--lock-camera")
+				Camera::SetInputLocked(true); // the startup view stays put (captures, A/B measurements)
+			else if (args[i] == "--entity-bench")
+				m_EntityBenchPending = true; // Entity handle lookups / copies, once the scene has settled
+			else if (args[i] == "--tools-selftest")
+				ToolsSelfTest::Enable(); // drives the viewport tools (picking, moves, node edits, undo) and logs PASS / FAIL
 			else if (i + 1 >= args.size())
 				break;
 			else if (args[i] == "--xp-object")
@@ -668,8 +928,7 @@ namespace SceneryEditorX
 
 	void EditorLayer::DeleteSelectedEntity()
 	{
-		EditorScene::Destroy(m_Context.selectedEntity);
-		m_Context.selectedEntity = 0;
+		EditorTools::DeleteSelection(&m_Context);
 	}
 
 	PanelData *EditorLayer::FindPanel(const char *panelId) const
