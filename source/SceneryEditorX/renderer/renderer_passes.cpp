@@ -989,6 +989,15 @@ namespace SceneryEditorX
 					pso.clearDepth = RHI_DEPTH_LOAD;
 
 					cmdList->SetPipelineState(pso);
+
+					// The draws carry no per-draw constants, but gbuffer.slang reads the pass's opaque flag (cut-out
+					// discard). Nothing may have pushed graphics constants yet this frame (the culls push compute ones),
+					// and an undefined flag (e.g. the forward transparent pass's 1) wrote cut-out forest texels solid.
+					m_Pcb_Pass_Cpu.drawIndex = 0;
+					m_Pcb_Pass_Cpu.isTransparent = 0;
+					m_Pcb_Pass_Cpu.materialIndex = 0;
+					cmdList->PushConstants(m_Pcb_Pass_Cpu);
+
 					cmdList->SetIndexBuffer(GeometryBuffer::GetIndexBuffer());
 					cmdList->SetCullMode(cvar_wireframe.GetValueAs<bool>() ? CullMode::None : bucket.cullMode);
 					DrawGpuSceneBucket(cmdList, bucket, true, true); // both culling phases' draws
