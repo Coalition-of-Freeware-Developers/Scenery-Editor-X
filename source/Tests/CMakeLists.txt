@@ -307,6 +307,8 @@ MESSAGE(STATUS "Generating Project File Unit Tests")
 
 ADD_EXECUTABLE(ProjectFormatTests
     ${CMAKE_CURRENT_SOURCE_DIR}/project_tests/ProjectFormatTests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/project_tests/SplineEditTests.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/project/spline_edit.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/project/scenery_project.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/project/project_edx.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/project/project_sex.cpp

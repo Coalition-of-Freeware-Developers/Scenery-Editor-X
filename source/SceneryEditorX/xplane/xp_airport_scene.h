@@ -34,6 +34,7 @@
 #include <cstdint>
 #include <string>
 #include <string_view>
+#include <vector>
 
 // -------------------------------------------------------
 
@@ -125,8 +126,30 @@ namespace SceneryEditorX::XPlane
 		 */
 		static uint64_t Load(const AirportDocument &document, bool frameCamera = true);
 
-		/* @brief Rebuilds the geometry after edits, keeping the root entity (and its selection) in place. */
+		/* @brief An apt.dat row: its kind and index in the matching AptAirport vector. */
+		struct ElementRef
+		{
+			AirportElementKind kind = AirportElementKind::Airport;
+			uint32_t index = 0;
+		};
+
+		/**
+		 * @brief Rebuilds everything (the apt.dat rows and the pack's DSF overlay), keeping the root entity (and its
+		 * selection) and the frame of the first build in place. For a newer library index; edits use the calls below.
+		 */
 		static void Rebuild(const AirportDocument &document);
+
+		/**
+		 * @brief Rebuilds the apt.dat rows after edits that add, remove or reorder them. The pack's DSF overlay
+		 * (draped polygons, forests, facades, thousands of objects) stays as it is.
+		 */
+		static void RebuildAirportLayer(const AirportDocument &document);
+
+		/**
+		 * @brief Rebuilds just some apt.dat rows (their parts and light string objects) after their geometry changed:
+		 * the cost of a node edit is that of the edited rows. Falls back to RebuildAirportLayer() when a row is gone.
+		 */
+		static void RebuildElements(const AirportDocument &document, const std::vector<ElementRef> &elements);
 
 		/**
 		 * @brief Moves the point features (startup locations, signs, windsocks, ...) to where the document now puts
@@ -166,6 +189,15 @@ namespace SceneryEditorX::XPlane
 
 		/* @brief Entity drawing an element, or 0. */
 		static uint64_t FindEntity(AirportElementKind kind, uint32_t index, uint32_t subIndex = 0);
+
+		/* @brief Every part entity of a row (its surface, edge lines, light ribbons...). */
+		static void FindEntities(AirportElementKind kind, uint32_t index, std::vector<uint64_t> &out);
+
+		/* @brief Root entities of the light objects a row's light strings placed (pavement edges, linear features). */
+		static void FindLightObjects(AirportElementKind kind, uint32_t index, std::vector<uint64_t> &out);
+
+		/* @brief The row whose light string placed a light object (by the object's root entity). */
+		static bool FindLightSource(uint64_t objectRootId, AirportElementKind &kind, uint32_t &index);
 
 		/* @brief Shows or hides every entity of a kind (taxi routes clutter a 3D view, for instance). */
 		static void SetKindVisible(AirportElementKind kind, bool visible);

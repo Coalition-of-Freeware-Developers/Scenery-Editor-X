@@ -184,7 +184,12 @@ namespace SceneryEditorX
 		const bool middleMouseDown = Input::IsMouseButtonDown(MouseButton::Middle);
 		const bool shiftDown       = Input::IsKeyDown(KeyCode::LeftShift) || Input::IsKeyDown(KeyCode::RightShift);
 		const bool controlDown     = Input::IsKeyDown(KeyCode::LeftControl) || Input::IsKeyDown(KeyCode::RightControl);
+		const bool altDown         = Input::IsKeyDown(KeyCode::LeftAlt) || Input::IsKeyDown(KeyCode::RightAlt);
 		const float scroll         = Window::GetDeltaScroll();
+
+		// The left button and single-letter keys belong to the editor's tools (select, gizmos, Q W E R V): orbiting
+		// takes Alt + left drag (as in Substance Painter) and WASD / Q E fly only while the right button is held
+		const bool flyKeys         = rightMouseDown;
 
 		const auto forwardOf = [](const Vec3 &angles)
 		{
@@ -202,7 +207,7 @@ namespace SceneryEditorX
 		if (controlDown)
 			moveSpeed *= 0.25f;
 
-		if (mode == ORBIT && leftMouseDown && !rightMouseDown)
+		if (mode == ORBIT && leftMouseDown && altDown && !rightMouseDown)
 		{
 			// Orbit around the pivot (center), keeping the distance to it.
 			euler.y += delta.x * mouseSensitivity;
@@ -244,17 +249,17 @@ namespace SceneryEditorX
 		}
 
 		const float speed = moveSpeed * deltaTime;
-		if (Input::IsKeyDown(KeyCode::W) || Input::IsKeyDown(KeyCode::Up))
+		if ((flyKeys && Input::IsKeyDown(KeyCode::W)) || Input::IsKeyDown(KeyCode::Up))
 			pan += forward * speed;
-		if (Input::IsKeyDown(KeyCode::S) || Input::IsKeyDown(KeyCode::Down))
+		if ((flyKeys && Input::IsKeyDown(KeyCode::S)) || Input::IsKeyDown(KeyCode::Down))
 			pan -= forward * speed;
-		if (Input::IsKeyDown(KeyCode::A) || Input::IsKeyDown(KeyCode::Left))
+		if ((flyKeys && Input::IsKeyDown(KeyCode::A)) || Input::IsKeyDown(KeyCode::Left))
 			pan -= right * speed;
-		if (Input::IsKeyDown(KeyCode::D) || Input::IsKeyDown(KeyCode::Right))
+		if ((flyKeys && Input::IsKeyDown(KeyCode::D)) || Input::IsKeyDown(KeyCode::Right))
 			pan += right * speed;
-		if (Input::IsKeyDown(KeyCode::E) || Input::IsKeyDown(KeyCode::Space))
+		if ((flyKeys && Input::IsKeyDown(KeyCode::E)) || Input::IsKeyDown(KeyCode::Space) || Input::IsKeyDown(KeyCode::PageUp))
 			pan.y += speed;
-		if (Input::IsKeyDown(KeyCode::Q))
+		if ((flyKeys && Input::IsKeyDown(KeyCode::Q)) || Input::IsKeyDown(KeyCode::PageDown))
 			pan.y -= speed;
 
 		translation += pan;

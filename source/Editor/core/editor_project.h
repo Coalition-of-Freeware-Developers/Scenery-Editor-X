@@ -33,6 +33,7 @@
 #include <string>
 #include <SceneryEditorX/project/project_document.h>
 #include <SceneryEditorX/settings/user_settings.h>
+#include <SceneryEditorX/xplane/xp_apt_geometry.h>
 
 // -------------------------------------------------------
 
@@ -131,6 +132,12 @@ namespace SceneryEditorX::EditorProjects
 	/* @brief Removes an item (and its scene entities) from the project. */
 	bool RemoveItem(const std::string &itemId, EditorContext *context);
 
+	/* @brief Where an item sits in the hierarchy: its container's id (empty at the top level) and its position there. */
+	bool FindItemLocation(const std::string &itemId, std::string &parentId, size_t &index);
+
+	/* @brief Puts an item (back) into the project at a position and into the scene (objects placed, the rest drawn). */
+	bool InsertItem(ProjectFile::SceneryItem item, const std::string &parentId, size_t index);
+
 	/**
 	 * @brief Fills the project's library references from the X-Plane library index: every library a placed resource
 	 * comes from gets a reference, and each item its "associated-library". Resources the index doesn't know are left alone.
@@ -140,6 +147,12 @@ namespace SceneryEditorX::EditorProjects
 
 	/* @brief Records an edit made through the PROJECT panel (info, libraries, library exports). */
 	void MarkEdited(ProjectFile::ProjectDocument::Section section);
+
+	/* @brief The local frame the project is drawn in (+X east, -Z north, meters): where item coordinates land in the scene. */
+	const XPlane::GeoProjection &GetProjection();
+
+	/* @brief Brings scene edits (objects moved, turned or deleted) into the project now instead of at the next periodic sync. */
+	void NotifySceneEdited();
 
 	/* @brief Problems ValidateProject finds, recomputed after edits. */
 	const std::vector<std::string> &GetValidationProblems();

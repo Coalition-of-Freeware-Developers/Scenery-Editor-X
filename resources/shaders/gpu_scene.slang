@@ -49,6 +49,6 @@ public uint gpu_scene_load_draw(uint instance_id, uint base_instance)
     _draw.material_index     = gpu_batches[instance.batch()].material_index;
     _draw.is_transparent     = 0;
     _draw.aabb_index         = 0;
-    _draw.padding            = 0;
+    _draw.pick_id            = instance.pick_id();
     return index;
 }

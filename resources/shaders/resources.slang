@@ -233,7 +233,7 @@ public struct DrawData
     public uint material_index;
     public uint is_transparent;
     public uint aabb_index;
-    public uint padding;
+    public uint pick_id;    // editor picking: entity index + 1, 0 = not pickable (gbuffer_pick, ScenePicking)
 };
 
 // bindless draw data - per-draw transforms, material indices, etc.

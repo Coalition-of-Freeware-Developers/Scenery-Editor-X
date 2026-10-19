@@ -29,6 +29,7 @@
  * -------------------------------------------------------
  */
 #include "properties_panel.h"
+#include <Editor/core/edit_changes.h>
 #include <Editor/core/editor_scene.h>
 #include <Editor/core/editor_theme.h>
 #include <Editor/core/editor_ui.h>
@@ -798,8 +799,33 @@ namespace SceneryEditorX
 				{
 					if (EditorUI::SectionHeader("TRANSFORM") && EditorUI::BeginPropertyGrid("##Transform"))
 					{
+						// Each field's edit (a drag or typed value) is one undo step: the transform as it was when the field
+						// became active, against how it is when it lets go
+						static uint64_t s_EditedEntity = 0;
+						static TransformComponent s_EditedBefore;
+						const uint64_t entityId = EditorScene::GetID(handle);
+						const TransformComponent previous = *transform;
+						const auto track = [&](const char *what)
+						{
+							if (ImGui::IsItemActivated())
+							{
+								s_EditedEntity = entityId;
+								s_EditedBefore = previous;
+							}
+							if (ImGui::IsItemDeactivatedAfterEdit() && s_EditedEntity == entityId)
+							{
+								EditChanges::ChangeSet changes = EditChanges::Begin();
+								changes.entities.push_back({ entityId, s_EditedBefore, *transform });
+								changes.syncProject = true;
+								EditChanges::Publish(changes);
+								EditChanges::Record(std::string("Edit ") + what + " of " + EditorScene::GetName(handle), std::move(changes));
+								s_EditedEntity = 0;
+							}
+						};
+
 						EditorUI::PropertyLabel("Position");
 						bool moved = DragVec3("##Position", transform->translation, 0.05f);
+						track("position");
 
 						// Stored in radians, edited in degrees.
 						EditorUI::PropertyLabel("Rotation");
@@ -809,9 +835,11 @@ namespace SceneryEditorX
 							transform->SetRotationEuler(degrees * xMath::DEG_TO_RAD);
 							moved = true;
 						}
+						track("rotation");
 
 						EditorUI::PropertyLabel("Scale");
 						moved |= DragVec3("##Scale", transform->scale, 0.01f);
+						track("scale");
 
 						// the GPU scene re-reads the subtree's world matrices this frame instead of within its round robin
 						if (moved)

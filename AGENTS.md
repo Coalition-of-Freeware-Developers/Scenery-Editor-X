@@ -40,8 +40,10 @@ The dependency-light, cross-platform Catch2 unit suites that only need `source/`
   reader/writer (determinism, git-friendly layout, the documented legacy layout), the `.sex` binary format
   (checksums, damage / truncation / CRLF detection, fuzzing, the encode cache), the XML DOM, WorldEditor
   `earth.wed.xml` import/export (`docs/XCoder/earth.wed.xml`), atomic writes, the project cache (snapshots,
-  recovery, backups), `ProjectDocument` open/edit/save/close and the project -> DSF conversion the editor draws
-  through the overlay builder (`SceneryEditorX/project/*` plus `xplane/xp_apt.*`, `xp_library.*`,
+  recovery, backups), `ProjectDocument` open/edit/save/close, the project -> DSF conversion the editor draws
+  through the overlay builder, and the viewport node editor's bezier core (`SplineEditTests.cpp`:
+  `project/spline_edit.*` round trips apt.dat chains and project rings bit for bit, de Casteljau inserts, handles,
+  deletes, smoothing, transforms) (`SceneryEditorX/project/*` plus `xplane/xp_apt.*`, `xp_library.*`,
   `xp_apt_geometry.*`, `xp_dsf.*`, `xp_assets.*`, `xp_overlay.*`). Standard library plus `dependency/json`, fully green. Its
   `[performance]` case times a 22k-item project; exclude it with `"~[performance]"` for quick runs.
 
@@ -110,6 +112,7 @@ g++ -std=c++20 -O2 -pthread $INCS source/Tests/xplane_tests/XPlaneFormatTests.cp
 
 # 5. ProjectFormatTests (fully green)
 g++ -std=c++20 -O2 -pthread $INCS source/Tests/project_tests/ProjectFormatTests.cpp \
+    source/Tests/project_tests/SplineEditTests.cpp source/SceneryEditorX/project/spline_edit.cpp \
     source/SceneryEditorX/project/scenery_project.cpp source/SceneryEditorX/project/project_edx.cpp \
     source/SceneryEditorX/project/project_sex.cpp source/SceneryEditorX/project/project_wed.cpp \
     source/SceneryEditorX/project/xml_document.cpp source/SceneryEditorX/project/project_io.cpp \

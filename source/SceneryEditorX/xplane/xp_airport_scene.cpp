@@ -39,9 +39,11 @@
 #include <chrono>
 #include <cmath>
 #include <cstdio>
+#include <functional>
 #include <map>
 #include <memory>
 #include <set>
+#include <unordered_set>
 #include <SceneryEditorX/logging/logging.hpp>
 #include <SceneryEditorX/renderer/gpu_scene.h>
 #include <SceneryEditorX/renderer/vulkan/enums.h>
@@ -161,6 +163,7 @@ namespace SceneryEditorX::XPlane
 		constexpr double OVERLAY_MARGIN_OWN_PACK = 8000.0;		// Meters around the airport kept from the pack's own DSF tile
 		constexpr double OVERLAY_MARGIN_SHARED_TILE = 1500.0;	// ... from a tile shared with other airports (Global Airports)
 		constexpr double OVERLAY_MAX_OBJECTS = 12000;			// DSF object placements per airport
+		constexpr double FOCUS_REACH = 1500.0;					// Meters around the runways that still count as the airport (FocusBounds)
 		constexpr float BLEND_SPLIT_ALPHA = 0.9f;				// Alpha at or above this stays in the deferred passes of a blended material
 
 		/* @brief Height of a DSF draped polygon's LAYER_GROUP within the stack above. */
@@ -216,6 +219,7 @@ namespace SceneryEditorX::XPlane
 			GeoProjection projection;
 			std::vector<Part> parts;
 			Bounds2 bounds;
+			Bounds2 focus;							// The working area: bounds without far-off rows (FocusBounds)
 			float pavementTop = HEIGHT_PAVEMENT;
 			float runwayHeight = HEIGHT_PAVEMENT + HEIGHT_RUNWAY_ABOVE_PAVEMENT;
 			std::vector<OverlayObject> objects;		// OBJ8 placements: DSF objects, strings, facade attachments, apt.dat light strings
@@ -224,6 +228,9 @@ namespace SceneryEditorX::XPlane
 			uint32_t overlayCulled = 0;
 			uint32_t overlayUnsupported = 0;
 		};
+
+		/* @brief Which apt.dat rows a partial build makes, by kind and index (null: every row). */
+		using ElementFilter = std::function<bool(AirportElementKind kind, uint32_t index)>;
 
 		// -------------------------------------------------------
 
@@ -532,10 +539,37 @@ namespace SceneryEditorX::XPlane
 			};
 		}
 
+		/**
+		 * @brief The airport's working area: its runways and helipads and every part that comes near them. Rows far
+		 * from the field are left out: KSEA's apt.dat outlines the Space Needle, 19 km away, as a second boundary, and
+		 * the full bounds framed the camera beyond its far plane and pulled a city's worth of DSF overlay in.
+		 */
+		Bounds2 FocusBounds(const std::vector<Part> &parts, const Bounds2 &all)
+		{
+			Bounds2 core;
+			for (const Part &part : parts)
+			{
+				if (part.bounds.valid && (part.kind == AirportElementKind::Runway || part.kind == AirportElementKind::WaterRunway || part.kind == AirportElementKind::Helipad))
+					core.Add(part.bounds);
+			}
+			if (!core.valid)
+				return all;
+
+			const double reach = std::max(FOCUS_REACH, core.GetRadius());
+			const double minX = core.minX - reach, maxX = core.maxX + reach, minZ = core.minZ - reach, maxZ = core.maxZ + reach;
+			Bounds2 focus = core;
+			for (const Part &part : parts)
+			{
+				if (part.bounds.valid && part.bounds.maxX >= minX && part.bounds.minX <= maxX && part.bounds.maxZ >= minZ && part.bounds.minZ <= maxZ)
+					focus.Add(part.bounds);
+			}
+			return focus;
+		}
+
 		OverlayBuilder::Options MakeOverlayOptions(const Build &build, const double margin)
 		{
 			OverlayBuilder::Options options;
-			options.area = build.bounds;
+			options.area = build.focus.valid ? build.focus : build.bounds;
 			options.areaMargin = margin;
 			options.maxObjects = OVERLAY_MAX_OBJECTS;
 			options.bezierSegment = BEZIER_SEGMENT;
@@ -551,15 +585,19 @@ namespace SceneryEditorX::XPlane
 		 * library's .pol / .lin art (the same WorldEditor shows) and light strings become the library's light objects;
 		 * without one everything is drawn in flat colors.
 		 */
-		void BuildAirport(const AptAirport &airport, Build &out, OverlayBuilder *overlay)
+		void BuildAirport(const AptAirport &airport, Build &out, OverlayBuilder *overlay, const GeoProjection *frame = nullptr, const ElementFilter *filter = nullptr)
 		{
 			double datumLat = 0.0, datumLon = 0.0;
-			if (!airport.GetDatum(datumLat, datumLon))
+			if (frame)
+				out.projection = *frame;	// Rebuilds keep the frame of the first build
+			else if (airport.GetDatum(datumLat, datumLon))
+				out.projection = GeoProjection(datumLat, datumLon);
+			else
 			{
 				out.projection = GeoProjection();
 				return;
 			}
-			out.projection = GeoProjection(datumLat, datumLon);
+			const auto wanted = [filter](const AirportElementKind kind, const size_t index) { return !filter || (*filter)(kind, static_cast<uint32_t>(index)); };
 			const GeoProjection &projection = out.projection;
 			std::vector<Part> &parts = out.parts;
 
@@ -593,6 +631,21 @@ namespace SceneryEditorX::XPlane
 			{
 				OverlayBuilder::Options options = MakeOverlayOptions(out, 0.0);
 				options.area = Bounds2();	// Everything of the airport
+				if (filter)
+				{
+					options.elementFilter = [filter](const OverlayKind kind, const uint32_t index)
+					{
+						switch (kind)
+						{
+							case OverlayKind::Pavement:
+							case OverlayKind::PavementLine:	return (*filter)(AirportElementKind::Pavement, index);
+							case OverlayKind::Runway:		return (*filter)(AirportElementKind::Runway, index);
+							case OverlayKind::Helipad:		return (*filter)(AirportElementKind::Helipad, index);
+							case OverlayKind::PaintedLine:	return (*filter)(AirportElementKind::LinearFeature, index);
+							default:						return true;
+						}
+					};
+				}
 				overlay->BuildAirportSurfaces(airport, pavementHeights, runwayHeight, lineHeight, options, surfaces);
 				for (const OverlayMesh &mesh : surfaces.meshes)
 					textured[{ static_cast<int>(mesh.kind), mesh.placement }].push_back(&mesh);
@@ -610,6 +663,8 @@ namespace SceneryEditorX::XPlane
 			for (size_t i = 0; i < pavementCount; ++i)
 			{
 				const AptPavement &pavement = airport.pavements[i];
+				if (!wanted(AirportElementKind::Pavement, i))
+					continue;
 				Part &part = start_part(AirportElementKind::Pavement, static_cast<uint32_t>(i), Describe("Pavement", i, pavement.description), SurfacePaint(pavement.surface, false));
 
 				if (const auto *meshes = texturedMeshes(OverlayKind::Pavement, static_cast<uint32_t>(i)))
@@ -680,6 +735,8 @@ namespace SceneryEditorX::XPlane
 			for (size_t i = 0; i < airport.runways.size(); ++i)
 			{
 				const AptRunway &runway = airport.runways[i];
+				if (!wanted(AirportElementKind::Runway, i))
+					continue;
 				Part &part = start_part(AirportElementKind::Runway, static_cast<uint32_t>(i), "Runway " + runway.GetName(), SurfacePaint(runway.surface, true));
 				if (const auto *meshes = texturedMeshes(OverlayKind::Runway, static_cast<uint32_t>(i)))
 				{
@@ -708,6 +765,8 @@ namespace SceneryEditorX::XPlane
 			for (size_t i = 0; i < airport.waterRunways.size(); ++i)
 			{
 				const AptWaterRunway &runway = airport.waterRunways[i];
+				if (!wanted(AirportElementKind::WaterRunway, i))
+					continue;
 				Part &part = start_part(AirportElementKind::WaterRunway, static_cast<uint32_t>(i), "Water runway " + runway.GetName(), Paint::Water);
 				Point2 corners[4];
 				GetWaterRunwayCorners(runway, projection, corners);
@@ -717,6 +776,8 @@ namespace SceneryEditorX::XPlane
 			for (size_t i = 0; i < airport.helipads.size(); ++i)
 			{
 				const AptHelipad &helipad = airport.helipads[i];
+				if (!wanted(AirportElementKind::Helipad, i))
+					continue;
 				Part &part = start_part(AirportElementKind::Helipad, static_cast<uint32_t>(i), "Helipad " + helipad.designator, SurfacePaint(helipad.surface, true));
 				if (const auto *meshes = texturedMeshes(OverlayKind::Helipad, static_cast<uint32_t>(i)))
 				{
@@ -735,6 +796,8 @@ namespace SceneryEditorX::XPlane
 			for (size_t i = 0; i < airport.linearFeatures.size(); ++i)
 			{
 				const AptLinearFeature &feature = airport.linearFeatures[i];
+				if (!wanted(AirportElementKind::LinearFeature, i))
+					continue;
 				Part prototype;
 				prototype.kind = AirportElementKind::LinearFeature;
 				prototype.index = static_cast<uint32_t>(i);
@@ -781,6 +844,8 @@ namespace SceneryEditorX::XPlane
 			for (size_t i = 0; i < airport.boundaries.size(); ++i)
 			{
 				const AptBoundary &boundary = airport.boundaries[i];
+				if (!wanted(AirportElementKind::Boundary, i))
+					continue;
 				Part &part = start_part(AirportElementKind::Boundary, static_cast<uint32_t>(i), airport.boundaries.size() > 1 ? Describe("Boundary", i, boundary.description) : std::string("Boundary"), Paint::Boundary);
 				for (const AptNodeChain &ring : boundary.rings)
 				{
@@ -795,12 +860,12 @@ namespace SceneryEditorX::XPlane
 			const float markerHeight = runwayHeight + HEIGHT_MARKERS_EXTRA;
 			Point2 origin;
 			double heading = 0.0;
-			if (airport.viewpoint && GetPlacement(airport, projection, AirportElementKind::Viewpoint, 0, origin, heading))
+			if (airport.viewpoint && wanted(AirportElementKind::Viewpoint, 0) && GetPlacement(airport, projection, AirportElementKind::Viewpoint, 0, origin, heading))
 			{
 				Part &part = start_part(AirportElementKind::Viewpoint, 0, "Viewpoint: " + airport.viewpoint->name, Paint::Viewpoint);
 				PlaceMarker(part, origin, heading, 3.0, markerHeight, false);
 			}
-			if (airport.beacon && airport.beacon->type != 0 && GetPlacement(airport, projection, AirportElementKind::Beacon, 0, origin, heading))
+			if (airport.beacon && airport.beacon->type != 0 && wanted(AirportElementKind::Beacon, 0) && GetPlacement(airport, projection, AirportElementKind::Beacon, 0, origin, heading))
 			{
 				Part &part = start_part(AirportElementKind::Beacon, 0, airport.beacon->name.empty() ? std::string("Beacon") : "Beacon: " + airport.beacon->name, Paint::Beacon);
 				PlaceMarker(part, origin, heading, 2.5, markerHeight, false);
@@ -808,6 +873,8 @@ namespace SceneryEditorX::XPlane
 			for (size_t i = 0; i < airport.windsocks.size(); ++i)
 			{
 				const AptWindsock &windsock = airport.windsocks[i];
+				if (!wanted(AirportElementKind::Windsock, i))
+					continue;
 				Part &part = start_part(AirportElementKind::Windsock, static_cast<uint32_t>(i), windsock.name.empty() ? Describe("Windsock", i, "") : "Windsock " + windsock.name, Paint::Windsock);
 				GetPlacement(airport, projection, AirportElementKind::Windsock, static_cast<uint32_t>(i), origin, heading);
 				PlaceMarker(part, origin, heading, 2.0, markerHeight, false);
@@ -815,6 +882,8 @@ namespace SceneryEditorX::XPlane
 			for (size_t i = 0; i < airport.signs.size(); ++i)
 			{
 				const AptSign &sign = airport.signs[i];
+				if (!wanted(AirportElementKind::Sign, i))
+					continue;
 				Part &part = start_part(AirportElementKind::Sign, static_cast<uint32_t>(i), "Sign " + sign.text, Paint::Sign);
 				GetPlacement(airport, projection, AirportElementKind::Sign, static_cast<uint32_t>(i), origin, heading);
 				PlaceMarker(part, origin, heading, 1.5 + 0.5 * std::clamp(sign.size, 1, 5), markerHeight, true);
@@ -822,6 +891,8 @@ namespace SceneryEditorX::XPlane
 			for (size_t i = 0; i < airport.lightFixtures.size(); ++i)
 			{
 				const AptLightFixture &fixture = airport.lightFixtures[i];
+				if (!wanted(AirportElementKind::LightFixture, i))
+					continue;
 				std::string name = GetLightFixtureName(fixture.type);
 				if (!fixture.name.empty())
 					name += ": " + fixture.name;
@@ -832,6 +903,8 @@ namespace SceneryEditorX::XPlane
 			for (size_t i = 0; i < airport.startups.size(); ++i)
 			{
 				const AptStartup &startup = airport.startups[i];
+				if (!wanted(AirportElementKind::Startup, i))
+					continue;
 				std::string name = GetStartupTypeName(startup.type);
 				if (!startup.name.empty())
 					name += " " + startup.name;
@@ -846,12 +919,14 @@ namespace SceneryEditorX::XPlane
 			for (size_t i = 0; i < airport.legacyStartups.size(); ++i)
 			{
 				const AptLegacyStartup &startup = airport.legacyStartups[i];
+				if (!wanted(AirportElementKind::LegacyStartup, i))
+					continue;
 				Part &part = start_part(AirportElementKind::LegacyStartup, static_cast<uint32_t>(i), "Startup (legacy) " + startup.name, Paint::Startup);
 				GetPlacement(airport, projection, AirportElementKind::LegacyStartup, static_cast<uint32_t>(i), origin, heading);
 				PlaceMarker(part, origin, heading, 5.0, markerHeight, true);
 			}
 
-			if (airport.taxiNetwork && !airport.taxiNetwork->edges.empty())
+			if (airport.taxiNetwork && !airport.taxiNetwork->edges.empty() && wanted(AirportElementKind::TaxiRoutes, 0))
 			{
 				const AptTaxiNetwork &network = *airport.taxiNetwork;
 				std::vector<Point2> nodePositions(network.nodes.size());
@@ -891,6 +966,8 @@ namespace SceneryEditorX::XPlane
 			for (size_t i = 0; i < airport.truckParkings.size(); ++i)
 			{
 				const AptTruckParking &truck = airport.truckParkings[i];
+				if (!wanted(AirportElementKind::TruckParking, i))
+					continue;
 				std::string name = GetTruckTypeName(truck.type);
 				if (!truck.name.empty())
 					name += ": " + truck.name;
@@ -901,6 +978,8 @@ namespace SceneryEditorX::XPlane
 			for (size_t i = 0; i < airport.truckDestinations.size(); ++i)
 			{
 				const AptTruckDestination &destination = airport.truckDestinations[i];
+				if (!wanted(AirportElementKind::TruckDestination, i))
+					continue;
 				Part &part = start_part(AirportElementKind::TruckDestination, static_cast<uint32_t>(i), destination.name.empty() ? Describe("Truck destination", i, destination.truckTypes) : "Truck destination: " + destination.name, Paint::Truck);
 				GetPlacement(airport, projection, AirportElementKind::TruckDestination, static_cast<uint32_t>(i), origin, heading);
 				PlaceMarker(part, origin, heading, 2.5, markerHeight, false);
@@ -908,6 +987,8 @@ namespace SceneryEditorX::XPlane
 			for (size_t i = 0; i < airport.jetways.size(); ++i)
 			{
 				const AptJetway &jetway = airport.jetways[i];
+				if (!wanted(AirportElementKind::Jetway, i))
+					continue;
 				Part &part = start_part(AirportElementKind::Jetway, static_cast<uint32_t>(i), Describe("Jetway", i, ""), Paint::Jetway);
 				GetPlacement(airport, projection, AirportElementKind::Jetway, static_cast<uint32_t>(i), origin, heading);
 
@@ -930,6 +1011,7 @@ namespace SceneryEditorX::XPlane
 			out.bounds = Bounds2();
 			for (const Part &part : parts)
 				out.bounds.Add(part.bounds);
+			out.focus = FocusBounds(parts, out.bounds);
 		}
 
 		/**
@@ -1068,18 +1150,31 @@ namespace SceneryEditorX::XPlane
 			TextureInfo info;
 		};
 
+		/* @brief A placed OBJ8's root, the group it is under and, for light string objects, the apt.dat row that placed it. */
+		struct ObjectRoot
+		{
+			uint64_t id = 0;
+			AirportElementKind kind = AirportElementKind::SceneryObject;
+			AirportElementKind sourceKind = AirportElementKind::Airport;	// AirportLight: Pavement (edge lights) or LinearFeature
+			uint32_t sourceIndex = 0;
+		};
+
 		struct Loaded
 		{
 			uint64_t root = 0;
 			std::array<uint64_t, static_cast<size_t>(AirportElementKind::Count)> groups{};
 			std::vector<uint64_t> entities;			// Every part entity
-			std::vector<std::pair<uint64_t, AirportElementKind>> objectRoots;	// Placed OBJ8 roots and the group kind they're under
-			Ref<Mesh> mesh;
+			std::vector<ObjectRoot> objectRoots;	// Placed OBJ8 roots
+			Ref<Mesh> mesh;							// The full build's parts
+			std::vector<std::pair<Ref<Mesh>, std::vector<uint64_t>>> patchMeshes;	// Rebuilt apt.dat rows' meshes and the parts drawing them
+			std::unique_ptr<OverlayBuilder> aptArt;	// Library art for the apt.dat rows, kept for rebuilds (it caches the assets it parsed)
+			bool hasProjection = false;				// projection is the first build's frame, kept by every rebuild
 			std::array<Ref<MaterialAsset>, static_cast<size_t>(Paint::Count)> materials;
 			std::map<std::string, Ref<MaterialAsset>> overlayMaterials;		// By texture + flags
 			std::map<std::string, TextureEntry> textures;					// By file
 			GeoProjection projection;
 			Bounds2 bounds;
+			Bounds2 focus;															// What framing looks at (FocusBounds)
 			float pavementTop = HEIGHT_PAVEMENT;									// Layer heights the build used (GetOverlayLayerHeight)
 			float runwayHeight = HEIGHT_PAVEMENT + HEIGHT_RUNWAY_ABOVE_PAVEMENT;
 			uint64_t revision = 0;
@@ -1093,6 +1188,12 @@ namespace SceneryEditorX::XPlane
 
 		std::unique_ptr<Loaded> s_Loaded;
 		GeoProjection s_NoProjection;
+
+		/* @brief The area framing and the root entity stand for: the working area, else everything built. */
+		const Bounds2 &FocusOf(const Loaded &loaded)
+		{
+			return loaded.focus.valid ? loaded.focus : loaded.bounds;
+		}
 
 		entt::registry *GetRegistry()
 		{
@@ -1285,80 +1386,64 @@ namespace SceneryEditorX::XPlane
 					if (Entity *stored = Scene::GetStoredEntity(Entity(handle, Scene::GetActive())))
 						stored->SetActive(false);
 				}
-				loaded.objectRoots.emplace_back(id, kind);
+				ObjectRoot &root = loaded.objectRoots.emplace_back();
+				root.id = id;
+				root.kind = kind;
+				if (object.source == OverlayObject::Source::AirportLights)
+				{
+					// The light string's row: bit 31 marks a pavement edge, else a linear feature (OverlayBuilder::BuildAirportSurfaces)
+					root.sourceKind = (object.placement & 0x80000000u) != 0 ? AirportElementKind::Pavement : AirportElementKind::LinearFeature;
+					root.sourceIndex = object.placement & 0x7FFFFFFFu;
+				}
 				++placed;
 			}
 			loaded.stats.objects += placed;
 			loaded.stats.entities += placed;
 			SEDX_CORE_INFO_TAG(LOG_TAG, "Placed {} objects ({} light fixtures) in {:.0f} ms{}", placed,
-				std::count_if(loaded.objectRoots.begin(), loaded.objectRoots.end(), [](const auto &entry) { return entry.second == AirportElementKind::AirportLight; }),
+				std::count_if(loaded.objectRoots.begin(), loaded.objectRoots.end(), [](const ObjectRoot &entry) { return entry.kind == AirportElementKind::AirportLight; }),
 				std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count(),
 				failed ? "; " + std::to_string(failed) + " could not be placed: " + firstError : std::string());
 		}
 
-		/* @brief Builds the groups and part entities under the root, then places the objects. */
-		void BuildEntities(Loaded &loaded, const AirportDocument &document)
+		/**
+		 * @brief Creates the group and part entities for built parts (one new mesh, a sub-mesh per part) under the root.
+		 * @param created Receives the new part entities' UUIDs.
+		 * @return The mesh the parts draw (null when none has geometry).
+		 */
+		Ref<Mesh> CreateParts(Loaded &loaded, entt::registry &registry, const entt::entity rootHandle, std::vector<Part> &parts, const std::string &meshName, std::vector<uint64_t> &created)
 		{
-			entt::registry *registry = GetRegistry();
-			const entt::entity rootHandle = registry ? FindHandle(*registry, loaded.root) : entt::null;
-			if (!registry || rootHandle == entt::null)
-				return;
-
-			const auto start = std::chrono::steady_clock::now();
-			loaded.libraryGeneration = LibraryManager::GetGeneration();
-			Build build;
-			double datumLat = 0.0, datumLon = 0.0;
-			std::unique_ptr<OverlayBuilder> overlay;
-			if (document.airport.GetDatum(datumLat, datumLon))
-				overlay = std::make_unique<OverlayBuilder>(MakeResolver(document.GetPackageFolder()), GeoProjection(datumLat, datumLon));
-			BuildAirport(document.airport, build, overlay.get());
-			if (overlay)
-				BuildOverlay(document, build, *overlay);
-			loaded.projection = build.projection;
-			loaded.bounds = build.bounds;
-			loaded.pavementTop = build.pavementTop;
-			loaded.runwayHeight = build.runwayHeight;
-			loaded.groups.fill(0);
-			loaded.entities.clear();
-			loaded.objectRoots.clear();
-			loaded.overlayMaterials.clear();
-			loaded.textures.clear();
-			loaded.stats = {};
-			loaded.stats.overlayMeshes = build.overlayMeshes;
-			loaded.stats.warnings = static_cast<uint32_t>(build.warnings.size());
-
 			// One mesh, a sub-mesh per part
-			loaded.mesh.Reset();
+			Ref<Mesh> mesh;
 			bool anyGeometry = false;
-			for (Part &part : build.parts)
+			for (Part &part : parts)
 			{
 				if (part.indices.empty())
 					continue;
-				if (!loaded.mesh)
+				if (!mesh)
 				{
-					loaded.mesh = CreateRef<Mesh>();
-					loaded.mesh->SetFlags(0);	// Keep the local meters as they are: no normalization or generated LODs
-					loaded.mesh->SetResourceName("Airport " + document.airport.id);
+					mesh = CreateRef<Mesh>();
+					mesh->SetFlags(0);	// Keep the local meters as they are: no normalization or generated LODs
+					mesh->SetResourceName(meshName);
 				}
-				loaded.mesh->AddGeometry(part.vertices, part.indices, false, &part.subMesh);
+				mesh->AddGeometry(part.vertices, part.indices, false, &part.subMesh);
 				loaded.stats.triangles += static_cast<uint32_t>(part.indices.size() / 3);
 				anyGeometry = true;
 			}
 			if (anyGeometry)
-				loaded.mesh->CreateGpuBuffers();
+				mesh->CreateGpuBuffers();
 
 			// Groups, in part order, only for kinds that have parts
-			for (const Part &part : build.parts)
-				EnsureGroup(loaded, *registry, rootHandle, part.kind);
+			for (const Part &part : parts)
+				EnsureGroup(loaded, registry, rootHandle, part.kind);
 
-			for (const Part &part : build.parts)
+			for (const Part &part : parts)
 			{
 				const Entity entity = Scene::CreateEntity(part.name);
 				const entt::entity handle = static_cast<entt::entity>(entity);
-				if (!registry->valid(handle))
+				if (!registry.valid(handle))
 					continue;
 
-				AirportElementComponent &component = registry->emplace<AirportElementComponent>(handle);
+				AirportElementComponent &component = registry.emplace<AirportElementComponent>(handle);
 				component.kind = part.kind;
 				component.index = part.index;
 				component.subIndex = part.subIndex;
@@ -1366,13 +1451,13 @@ namespace SceneryEditorX::XPlane
 				component.triangles = static_cast<uint32_t>(part.indices.size() / 3);
 				component.bounds = part.bounds;
 
-				const entt::entity groupHandle = FindHandle(*registry, loaded.groups[static_cast<size_t>(part.kind)]);
-				Attach(*registry, handle, groupHandle != entt::null ? groupHandle : rootHandle);
+				const entt::entity groupHandle = FindHandle(registry, loaded.groups[static_cast<size_t>(part.kind)]);
+				Attach(registry, handle, groupHandle != entt::null ? groupHandle : rootHandle);
 
 				if (part.placed)
 				{
 					// Heading is clockwise from north (-Z), like DSF placements; the entity's yaw is the opposite sense.
-					TransformComponent &transform = registry->get<TransformComponent>(handle);
+					TransformComponent &transform = registry.get<TransformComponent>(handle);
 					transform.translation = Vec3(static_cast<float>(part.origin.x), 0.0f, static_cast<float>(part.origin.z));
 					transform.SetRotationEuler(Vec3(0.0f, -static_cast<float>(part.heading) * kDegToRad, 0.0f));
 				}
@@ -1405,7 +1490,7 @@ namespace SceneryEditorX::XPlane
 									paintMaterial = MakeMaterial(part.paint);
 								material = paintMaterial;
 							}
-							renderable->SetMesh(loaded.mesh.Get(), part.subMesh);
+							renderable->SetMesh(mesh.Get(), part.subMesh);
 							renderable->SetMaterial(material);
 							renderable->SetFlag(CastsShadows, part.kind == AirportElementKind::Facade || part.kind == AirportElementKind::Forest);
 						}
@@ -1413,11 +1498,67 @@ namespace SceneryEditorX::XPlane
 							stored->SetActive(false);
 					}
 				}
-				loaded.entities.push_back(GetId(*registry, handle));
+				const uint64_t id = GetId(registry, handle);
+				loaded.entities.push_back(id);
+				created.push_back(id);
 				++loaded.stats.entities;
 				++loaded.stats.parts;
 			}
+			return mesh;
+		}
 
+		/* @brief Builds the groups and part entities under the root, then places the objects. */
+		void BuildEntities(Loaded &loaded, const AirportDocument &document)
+		{
+			entt::registry *registry = GetRegistry();
+			const entt::entity rootHandle = registry ? FindHandle(*registry, loaded.root) : entt::null;
+			if (!registry || rootHandle == entt::null)
+				return;
+
+			const auto start = std::chrono::steady_clock::now();
+			loaded.libraryGeneration = LibraryManager::GetGeneration();
+
+			// The first build sets the frame (the airport's datum); later builds keep it, so nothing placed in it moves
+			// when an edit shifts a datum derived from the runways
+			double datumLat = 0.0, datumLon = 0.0;
+			if (!loaded.hasProjection && document.airport.GetDatum(datumLat, datumLon))
+			{
+				loaded.projection = GeoProjection(datumLat, datumLon);
+				loaded.hasProjection = true;
+			}
+
+			// The apt.dat rows' art builder lives on for their rebuilds (it caches the library assets it parsed); the
+			// pack's DSF overlay gets its own, dropped once the overlay is built
+			Build build;
+			loaded.aptArt.reset();
+			if (loaded.hasProjection)
+				loaded.aptArt = std::make_unique<OverlayBuilder>(MakeResolver(document.GetPackageFolder()), loaded.projection);
+			BuildAirport(document.airport, build, loaded.aptArt.get(), loaded.hasProjection ? &loaded.projection : nullptr);
+			if (loaded.hasProjection)
+			{
+				OverlayBuilder overlay(MakeResolver(document.GetPackageFolder()), loaded.projection);
+				BuildOverlay(document, build, overlay);
+			}
+			loaded.projection = build.projection;
+			loaded.bounds = build.bounds;
+			loaded.focus = build.focus;
+			if (build.focus.valid && build.bounds.GetRadius() > 1.5 * build.focus.GetRadius())
+				SEDX_CORE_INFO_TAG(LOG_TAG, "{}: rows far from the field left out of the camera framing and the overlay area ({:.0f} m across instead of {:.0f} m)",
+					document.airport.id, 2.0 * build.focus.GetRadius(), 2.0 * build.bounds.GetRadius());
+			loaded.pavementTop = build.pavementTop;
+			loaded.runwayHeight = build.runwayHeight;
+			loaded.groups.fill(0);
+			loaded.entities.clear();
+			loaded.objectRoots.clear();
+			loaded.patchMeshes.clear();
+			loaded.overlayMaterials.clear();
+			loaded.textures.clear();
+			loaded.stats = {};
+			loaded.stats.overlayMeshes = build.overlayMeshes;
+			loaded.stats.warnings = static_cast<uint32_t>(build.warnings.size());
+
+			std::vector<uint64_t> created;
+			loaded.mesh = CreateParts(loaded, *registry, rootHandle, build.parts, "Airport " + document.airport.id, created);
 			PlaceObjects(loaded, *registry, rootHandle, build);
 
 			loaded.revision = document.GetRevision();
@@ -1454,8 +1595,162 @@ namespace SceneryEditorX::XPlane
 			loaded.entities.clear();
 			loaded.objectRoots.clear();
 			loaded.mesh.Reset();
+			loaded.patchMeshes.clear();
+			loaded.aptArt.reset();
 			loaded.overlayMaterials.clear();
 			loaded.textures.clear();
+		}
+
+		/* @brief Kinds the apt.dat rows draw (rebuilt after edits); the others are the pack's DSF overlay, built once. */
+		bool IsAptLayerKind(const AirportElementKind kind)
+		{
+			switch (kind)
+			{
+				case AirportElementKind::Airport:
+				case AirportElementKind::Group:
+				case AirportElementKind::DrapedPolygon:
+				case AirportElementKind::LineString:
+				case AirportElementKind::Forest:
+				case AirportElementKind::Facade:
+				case AirportElementKind::SceneryObject:
+				case AirportElementKind::Count:
+					return false;
+				default:
+					return true;
+			}
+		}
+
+		void DestroyById(const uint64_t id)
+		{
+			if (const Entity entity = Scene::TryGetEntityWithUUID(UUID(id)))
+				Scene::DestroyEntity(entity);
+		}
+
+		/**
+		 * @brief Removes the apt.dat layer's part entities and light string objects (the rows the filter names, or all of
+		 * them) and lets go of rebuild meshes nothing draws any more.
+		 */
+		void DestroyAptLayer(Loaded &loaded, const ElementFilter *filter)
+		{
+			entt::registry *registry = GetRegistry();
+			if (!registry)
+				return;
+
+			std::unordered_set<uint64_t> removed;
+			std::vector<uint64_t> kept;
+			kept.reserve(loaded.entities.size());
+			for (const uint64_t id : loaded.entities)
+			{
+				const entt::entity handle = FindHandle(*registry, id);
+				const AirportElementComponent *component = handle != entt::null ? registry->try_get<AirportElementComponent>(handle) : nullptr;
+				if (!component)
+				{
+					removed.insert(id);	// Deleted from the scene already
+					continue;
+				}
+				if (IsAptLayerKind(component->kind) && (!filter || (*filter)(component->kind, component->index)))
+				{
+					removed.insert(id);
+					Scene::DestroyEntity(Entity(handle, Scene::GetActive()));
+					continue;
+				}
+				kept.push_back(id);
+			}
+			loaded.entities.swap(kept);
+
+			std::erase_if(loaded.objectRoots, [filter](const ObjectRoot &root)
+			{
+				if (root.kind != AirportElementKind::AirportLight || (filter && !(*filter)(root.sourceKind, root.sourceIndex)))
+					return false;
+				DestroyById(root.id);
+				return true;
+			});
+
+			std::erase_if(loaded.patchMeshes, [&removed](std::pair<Ref<Mesh>, std::vector<uint64_t>> &patch)
+			{
+				std::erase_if(patch.second, [&removed](const uint64_t id) { return removed.contains(id); });
+				return patch.second.empty();
+			});
+		}
+
+		/**
+		 * @brief Rebuilds the apt.dat rows the filter names (all of them without one) and leaves the pack's DSF overlay
+		 * (draped polygons, forests, facades, objects) untouched: an edit costs what its rows cost, not the whole pack.
+		 */
+		void RebuildAptLayer(Loaded &loaded, const AirportDocument &document, const ElementFilter *filter)
+		{
+			entt::registry *registry = GetRegistry();
+			const entt::entity rootHandle = registry ? FindHandle(*registry, loaded.root) : entt::null;
+			if (!registry || rootHandle == entt::null)
+				return;
+
+			const auto start = std::chrono::steady_clock::now();
+			DestroyAptLayer(loaded, filter);
+
+			Build build;
+			if (!loaded.aptArt && loaded.hasProjection)
+				loaded.aptArt = std::make_unique<OverlayBuilder>(MakeResolver(document.GetPackageFolder()), loaded.projection);
+			BuildAirport(document.airport, build, loaded.aptArt.get(), loaded.hasProjection ? &loaded.projection : nullptr, filter);
+			if (!filter)
+			{
+				loaded.pavementTop = build.pavementTop;
+				loaded.runwayHeight = build.runwayHeight;
+				loaded.focus = build.focus;
+			}
+
+			std::vector<uint64_t> created;
+			if (Ref<Mesh> mesh = CreateParts(loaded, *registry, rootHandle, build.parts, "Airport " + document.airport.id + " edit", created))
+				loaded.patchMeshes.emplace_back(mesh, std::move(created));
+			PlaceObjects(loaded, *registry, rootHandle, build);
+			loaded.bounds.Add(build.bounds);
+			if (AirportElementComponent *component = registry->try_get<AirportElementComponent>(rootHandle))
+				component->bounds = FocusOf(loaded);
+
+			// What the scene holds now (the counters only ever added)
+			loaded.stats.parts = static_cast<uint32_t>(loaded.entities.size());
+			loaded.stats.objects = static_cast<uint32_t>(loaded.objectRoots.size());
+			loaded.stats.triangles = 0;
+			for (const uint64_t id : loaded.entities)
+			{
+				const entt::entity handle = FindHandle(*registry, id);
+				if (const AirportElementComponent *component = handle != entt::null ? registry->try_get<AirportElementComponent>(handle) : nullptr)
+					loaded.stats.triangles += component->triangles;
+			}
+			loaded.stats.entities = loaded.stats.parts + loaded.stats.objects;
+
+			loaded.revision = document.GetRevision();
+			if (!filter)
+				loaded.geometryRevision = document.GetGeometryRevision();
+			const double milliseconds = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
+			SEDX_CORE_INFO_TAG(LOG_TAG, "{}: rebuilt {} ({} parts, {} light objects) in {:.1f} ms", document.airport.id, filter ? "the edited rows" : "the apt.dat layer",
+				build.parts.size(), build.objects.size(), milliseconds);
+		}
+
+		/* @brief True when the document still has the row (kind, index) names. */
+		bool ElementExists(const AptAirport &airport, const AirportElementKind kind, const uint32_t index)
+		{
+			switch (kind)
+			{
+				case AirportElementKind::Runway:			return index < airport.runways.size();
+				case AirportElementKind::WaterRunway:		return index < airport.waterRunways.size();
+				case AirportElementKind::Helipad:			return index < airport.helipads.size();
+				case AirportElementKind::Pavement:			return index < airport.pavements.size();
+				case AirportElementKind::LinearFeature:		return index < airport.linearFeatures.size();
+				case AirportElementKind::Boundary:			return index < airport.boundaries.size();
+				case AirportElementKind::Viewpoint:			return index == 0 && airport.viewpoint.has_value();
+				case AirportElementKind::Beacon:			return index == 0 && airport.beacon.has_value();
+				case AirportElementKind::Windsock:			return index < airport.windsocks.size();
+				case AirportElementKind::Sign:				return index < airport.signs.size();
+				case AirportElementKind::LightFixture:		return index < airport.lightFixtures.size();
+				case AirportElementKind::Startup:			return index < airport.startups.size();
+				case AirportElementKind::LegacyStartup:		return index < airport.legacyStartups.size();
+				case AirportElementKind::TruckParking:		return index < airport.truckParkings.size();
+				case AirportElementKind::TruckDestination:	return index < airport.truckDestinations.size();
+				case AirportElementKind::Jetway:			return index < airport.jetways.size();
+				case AirportElementKind::TaxiRoutes:
+				case AirportElementKind::TaxiNodes:			return index == 0 && airport.taxiNetwork.has_value();
+				default:									return false;
+			}
 		}
 
 		/* @brief View direction for a yaw and pitch in radians (yaw 0 looks along +Z). */
@@ -1494,7 +1789,11 @@ namespace SceneryEditorX::XPlane
 			const float yaw = -35.0f * kDegToRad;
 			const float pitch = pitchDegrees * kDegToRad;
 			const Vec3 forward = ViewForward(yaw, pitch);
-			const float distance = std::max(radius, 5.0f) / std::sin(30.0f * kDegToRad) * 1.1f;
+			float distance = std::max(radius, 5.0f) / std::sin(30.0f * kDegToRad) * 1.1f;
+			// A very large airport doesn't fit: stay well inside the far plane (beyond it the culling drops everything)
+			// and show its middle, rather than an empty view
+			if (const Camera *camera = Scene::GetCamera())
+				distance = std::min(distance, camera->GetFarPlane() * 0.5f);
 			PlaceCamera(center - forward * distance, center, yaw, pitch);
 		}
 
@@ -1585,7 +1884,7 @@ namespace SceneryEditorX::XPlane
 		component.airportRoot = loaded->root;
 
 		BuildEntities(*loaded, document);
-		registry->get<AirportElementComponent>(rootHandle).bounds = loaded->bounds;
+		registry->get<AirportElementComponent>(rootHandle).bounds = FocusOf(*loaded);
 		s_Loaded = std::move(loaded);
 
 		if (frameCamera)
@@ -1609,13 +1908,38 @@ namespace SceneryEditorX::XPlane
 		DestroyChildren(*s_Loaded);
 		BuildEntities(*s_Loaded, document);
 		if (AirportElementComponent *component = registry->try_get<AirportElementComponent>(rootHandle))
-			component->bounds = s_Loaded->bounds;
+			component->bounds = FocusOf(*s_Loaded);
 
 		std::string rootName = "Airport " + document.airport.id;
 		if (!document.airport.name.empty())
 			rootName += " - " + document.airport.name;
 		if (TagComponent *tag = registry->try_get<TagComponent>(rootHandle))
 			tag->pTag = rootName;
+	}
+
+	void SceneAirports::RebuildAirportLayer(const AirportDocument &document)
+	{
+		if (!IsLoaded())
+			return;
+		RebuildAptLayer(*s_Loaded, document, nullptr);
+	}
+
+	void SceneAirports::RebuildElements(const AirportDocument &document, const std::vector<ElementRef> &elements)
+	{
+		if (!IsLoaded() || elements.empty())
+			return;
+		std::set<std::pair<int, uint32_t>> rows;
+		for (const ElementRef &element : elements)
+		{
+			if (!ElementExists(document.airport, element.kind, element.index))
+			{
+				RebuildAptLayer(*s_Loaded, document, nullptr);	// Rows were added or removed meanwhile: indices moved
+				return;
+			}
+			rows.insert({ static_cast<int>(element.kind), element.index });
+		}
+		const ElementFilter filter = [&rows](const AirportElementKind kind, const uint32_t index) { return rows.contains({ static_cast<int>(kind), index }); };
+		RebuildAptLayer(*s_Loaded, document, &filter);
 	}
 
 	void SceneAirports::Unload()
@@ -1747,6 +2071,50 @@ namespace SceneryEditorX::XPlane
 		return 0;
 	}
 
+	void SceneAirports::FindEntities(const AirportElementKind kind, const uint32_t index, std::vector<uint64_t> &out)
+	{
+		if (!IsLoaded())
+			return;
+		entt::registry *registry = GetRegistry();
+		for (const uint64_t id : s_Loaded->entities)
+		{
+			const entt::entity handle = FindHandle(*registry, id);
+			if (handle == entt::null)
+				continue;
+			const AirportElementComponent *component = registry->try_get<AirportElementComponent>(handle);
+			if (component && component->kind == kind && component->index == index)
+				out.push_back(id);
+		}
+	}
+
+	void SceneAirports::FindLightObjects(const AirportElementKind kind, const uint32_t index, std::vector<uint64_t> &out)
+	{
+		if (!IsLoaded())
+			return;
+		for (const ObjectRoot &root : s_Loaded->objectRoots)
+		{
+			if (root.kind == AirportElementKind::AirportLight && root.sourceKind == kind && root.sourceIndex == index)
+				out.push_back(root.id);
+		}
+	}
+
+	bool SceneAirports::FindLightSource(const uint64_t objectRootId, AirportElementKind &kind, uint32_t &index)
+	{
+		if (!IsLoaded() || objectRootId == 0)
+			return false;
+		for (const ObjectRoot &root : s_Loaded->objectRoots)
+		{
+			if (root.id != objectRootId)
+				continue;
+			if (root.kind != AirportElementKind::AirportLight)
+				return false;
+			kind = root.sourceKind;
+			index = root.sourceIndex;
+			return true;
+		}
+		return false;
+	}
+
 	void SceneAirports::SetKindVisible(const AirportElementKind kind, const bool visible)
 	{
 		if (!IsLoaded())
@@ -1764,11 +2132,11 @@ namespace SceneryEditorX::XPlane
 			if (Entity *stored = Scene::GetStoredEntity(Entity(handle, Scene::GetActive())))
 				stored->SetActive(visible);
 		}
-		for (const auto &[id, objectKind] : s_Loaded->objectRoots)
+		for (const ObjectRoot &root : s_Loaded->objectRoots)
 		{
-			if (objectKind != kind)
+			if (root.kind != kind)
 				continue;
-			const entt::entity handle = FindHandle(*registry, id);
+			const entt::entity handle = FindHandle(*registry, root.id);
 			if (handle == entt::null)
 				continue;
 			if (Entity *stored = Scene::GetStoredEntity(Entity(handle, Scene::GetActive())))
@@ -1783,11 +2151,11 @@ namespace SceneryEditorX::XPlane
 
 	void SceneAirports::Frame()
 	{
-		if (!IsLoaded() || !s_Loaded->bounds.valid)
+		if (!IsLoaded() || !FocusOf(*s_Loaded).valid)
 			return;
-		const Point2 center = s_Loaded->bounds.GetCenter();
-		const Vec3 offset = RootOffset(*s_Loaded);
-		FrameSphere(Vec3(static_cast<float>(center.x), 0.0f, static_cast<float>(center.z)) + offset, static_cast<float>(s_Loaded->bounds.GetRadius()), -50.0f);
+		const Bounds2 &focus = FocusOf(*s_Loaded);
+		const Point2 center = focus.GetCenter();
+		FrameSphere(Vec3(static_cast<float>(center.x), 0.0f, static_cast<float>(center.z)) + RootOffset(*s_Loaded), static_cast<float>(focus.GetRadius()), -50.0f);
 	}
 
 	void SceneAirports::FrameEntity(const uint64_t entityId)
@@ -1807,9 +2175,9 @@ namespace SceneryEditorX::XPlane
 
 	void SceneAirports::LookFrom(const float x, const float y, const float z, const float yawDegrees, const float pitchDegrees)
 	{
-		if (!IsLoaded() || !s_Loaded->bounds.valid)
+		if (!IsLoaded() || !FocusOf(*s_Loaded).valid)
 			return;
-		const Point2 center = s_Loaded->bounds.GetCenter();
+		const Point2 center = FocusOf(*s_Loaded).GetCenter();
 		const Vec3 eye = Vec3(static_cast<float>(center.x), 0.0f, static_cast<float>(center.z)) + RootOffset(*s_Loaded) + Vec3(x, y, z);
 		const float yaw = yawDegrees * kDegToRad;
 		const float pitch = pitchDegrees * kDegToRad;

@@ -97,6 +97,7 @@ struct gbuffer_vertex
     float4 uv_misc : TEXCOORD;                       // xy = uv, z = height_percent, w = instance_id - packed together to reduced the interpolators (shader registers) the gpu needs to track
     float width_percent : TEXCOORD2;                 // temp, will remove
     nointerpolation uint material_index : TEXCOORD3; // for indirect draws, material index passed from vs
+    nointerpolation uint pick_id : TEXCOORD4;        // editor picking: the drawing entity's index + 1 (DrawData::pick_id), 0 = none
 };
 
 float4x4 compose_instance_transform(float instance_position_x, float instance_position_y, float instance_position_z, uint instance_normal_oct, uint instance_yaw, uint instance_scale)
@@ -374,6 +375,7 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
 
     gbuffer_vertex vertex;
     vertex.uv_misc.w = instance_id;
+    vertex.pick_id = 0;
 
     // compute UV with tiling and offset
     float2 uv = input.uv * material.tiling + material.offset;

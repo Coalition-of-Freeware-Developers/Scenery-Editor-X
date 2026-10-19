@@ -32,6 +32,7 @@
 #include "editor_context.h"
 #include "editor_scene.h"
 #include "editor_ui.h"
+#include <algorithm>
 #include <array>
 #include <cstdlib>
 #include <portable-file-dialogs.h>
@@ -71,6 +72,7 @@ namespace SceneryEditorX::EditorAirports
 			std::function<bool()> projectSave;	// Saves the project (set by EditorProjects)
 			std::vector<std::string> validation;
 			uint64_t validationRevision = ~0ull;
+			std::vector<SceneAirports::ElementRef> editedRows;	// Rows whose geometry changed, rebuilt on the next Tick
 
 			std::string startupAirport;			// --xp-airport <id>, opened once the index is ready
 			bool startupDone = false;
@@ -355,20 +357,32 @@ namespace SceneryEditorX::EditorAirports
 			{
 				if (SceneAirports::GetBuiltGeometryRevision() != state.document->GetGeometryRevision())
 				{
-					// Entities are recreated: keep the selection on the same element.
+					// Rows added, removed or changed through the properties: the apt.dat layer is rebuilt (the pack's DSF
+					// overlay stays). Entities are recreated: keep the selection on the same element.
 					AirportElementComponent selected;
 					const AirportElementComponent *element = context ? SceneAirports::FindElement(context->selectedEntity) : nullptr;
 					if (element)
 						selected = *element;
-					SceneAirports::Rebuild(*state.document);
+					state.editedRows.clear();
+					SceneAirports::RebuildAirportLayer(*state.document);
 					if (element && context)
 					{
 						const uint64_t entity = selected.kind == AirportElementKind::Airport ? SceneAirports::GetRootId() : SceneAirports::FindEntity(selected.kind, selected.index, selected.subIndex);
 						context->selectedEntity = entity != 0 ? entity : SceneAirports::GetRootId();
 					}
 				}
-				else if (SceneAirports::GetBuiltRevision() != state.document->GetRevision())
-					SceneAirports::UpdatePlacements(*state.document);
+				else
+				{
+					if (SceneAirports::GetBuiltRevision() != state.document->GetRevision())
+						SceneAirports::UpdatePlacements(*state.document);
+					// Rows the viewport tools reshaped: just those are rebuilt
+					if (!state.editedRows.empty())
+					{
+						const std::vector<SceneAirports::ElementRef> rows = std::move(state.editedRows);
+						state.editedRows.clear();
+						SceneAirports::RebuildElements(*state.document, rows);
+					}
+				}
 
 				// A newer library index (first scan finished after the airport opened, a rescan, a library added):
 				// rebuild once so the art that couldn't be found before is drawn.
@@ -401,6 +415,21 @@ namespace SceneryEditorX::EditorAirports
 	{
 		if (AirportDocument *document = GetDocument())
 			document->MarkDirty(geometryChanged);
+	}
+
+	void MarkElementsEdited(const std::vector<SceneAirports::ElementRef> &rows)
+	{
+		State &state = GetState();
+		AirportDocument *document = state.document.get();
+		if (!document || rows.empty())
+			return;
+		document->MarkDirty(false);
+		for (const SceneAirports::ElementRef &row : rows)
+		{
+			const bool known = std::ranges::any_of(state.editedRows, [&row](const SceneAirports::ElementRef &edited) { return edited.kind == row.kind && edited.index == row.index; });
+			if (!known)
+				state.editedRows.push_back(row);
+		}
 	}
 
 	bool OpenAirport(const AirportEntry &entry, EditorContext *context)

@@ -154,6 +154,13 @@ namespace SceneryEditorX::XPlane
 			 * between its own apt.dat layers. Null: a built-in spacing.
 			 */
 			std::function<float(std::string_view group, int offset)> layerHeight;
+
+			/**
+			 * BuildAirportSurfaces only: which apt.dat rows to build, by the kind and index their meshes carry (Pavement and
+			 * PavementLine: pavement index, Runway, Helipad, PaintedLine: feature index). Null: every row. Lets an editor
+			 * rebuild just the rows it changed.
+			 */
+			std::function<bool(OverlayKind kind, uint32_t index)> elementFilter;
 		};
 
 		OverlayBuilder(AssetResolver resolver, GeoProjection projection);

@@ -45,12 +45,15 @@ public struct GpuInstance
     public uint batch() { return asuint(bounds_min_batch.w); }
     public uint flags() { return asuint(bounds_max_flags.w); }
     public bool enabled() { return (flags() & GPU_INSTANCE_ENABLED) != 0; }
+    public uint pick_id() { return flags() >> GPU_INSTANCE_PICK_SHIFT; } // editor picking: entity index + 1, 0 = none
 
     // the row-vector form the vertex code multiplies with: mul(float4(p, 1), transform())
     public float4x4 transform() { return transpose(float4x4(world0, world1, world2, float4(0.0f, 0.0f, 0.0f, 1.0f))); }
 };
 
 public static const uint GPU_INSTANCE_ENABLED = 1u << 0;
+// Bits 8..31 of the flags carry the instance's pick id (entity index + 1, 24 bits), which gbuffer_pick receives
+public static const uint GPU_INSTANCE_PICK_SHIFT = 8u;
 
 // Instances that share geometry and material: one indirect draw per mesh LOD, its visible instances listed in a
 // region of the visible-instance buffer starting at the draw's first_instance.

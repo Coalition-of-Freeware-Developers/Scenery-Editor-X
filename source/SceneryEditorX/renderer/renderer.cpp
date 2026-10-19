@@ -55,6 +55,7 @@
 #include <SceneryEditorX/core/window/monitor_data.h>
 #include <SceneryEditorX/renderer/gbuffer.h>
 #include <SceneryEditorX/renderer/gpu_scene.h>
+#include <SceneryEditorX/renderer/scene_picking.h>
 #include <SceneryEditorX/renderer/ui/ui_impl.h>
 #include <SceneryEditorX/scene/camera.h>
 #include <SceneryEditorX/scene/entity.h>
@@ -703,6 +704,7 @@ void dynamic_resolution()
 
 		// Destroy frame resources
 		GpuScene::Shutdown();
+		ScenePicking::Shutdown();
 		GeometryBuffer::Shutdown();
 		DestroyResources();
 		DestroyFrameResources();
@@ -2707,7 +2709,7 @@ void dynamic_resolution()
 			const bool isTransparent = material->IsTransparent();
 			m_Transparents_Present  |= isTransparent;
 
-			const uint32_t drawDataIndex = WriteDrawData(world, entity->GetMatrixPrevious(), material->GetIndex(), isTransparent ? 1 : 0);
+			const uint32_t drawDataIndex = WriteDrawData(world, entity->GetMatrixPrevious(), material->GetIndex(), isTransparent ? 1 : 0, ScenePicking::GetPickId(static_cast<entt::entity>(*entity)));
 
 			Renderer_DrawCall& drawCall = m_DrawCalls[m_DrawCall_Count++];
 			drawCall.renderable         = renderable;
@@ -2861,7 +2863,7 @@ void dynamic_resolution()
 		frame.camera_position_previous            = frame.camera_position;
 	}
 
-	uint32_t Renderer::WriteDrawData(const xMath::Matrix &transform, const xMath::Matrix &prevTransform, uint32_t matIndex, uint32_t isTransparent)
+	uint32_t Renderer::WriteDrawData(const xMath::Matrix &transform, const xMath::Matrix &prevTransform, uint32_t matIndex, uint32_t isTransparent, uint32_t pickId)
 	{
 		// TODO: Write the transform matrix into the GPU draw-data structured buffer and return its index.
 		if (m_DrawData_Count >= static_cast<uint32_t>(m_DrawData_CPU.size()))
@@ -2888,7 +2890,7 @@ void dynamic_resolution()
 		entry.material_index			= matIndex;
 		entry.is_transparent			= isTransparent;
 		entry.aabb_index				= 0;
-		entry.padding					= 0;
+		entry.pick_id					= pickId;
 
 		// the draw data buffer is a single large allocation partitioned into per-frame regions;
 		// each frame writes to its own region so there is no write-after-read race with the gpu

@@ -77,6 +77,12 @@ namespace SceneryEditorX::EditorAirports
 	 */
 	void MarkEdited(bool geometryChanged = true);
 
+	/**
+	 * @brief Records edits to the geometry of existing rows (moved, rotated, reshaped): only those rows are rebuilt on
+	 * the next Tick(), not the airport. Rows added or removed need MarkEdited(true).
+	 */
+	void MarkElementsEdited(const std::vector<XPlane::SceneAirports::ElementRef> &rows);
+
 	/* @brief Opens an airport the index found, replacing the open one (asks about unsaved changes via the modal). */
 	bool OpenAirport(const XPlane::AirportEntry &entry, EditorContext *context);
 

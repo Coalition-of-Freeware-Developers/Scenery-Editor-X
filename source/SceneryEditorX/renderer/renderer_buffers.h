@@ -215,7 +215,7 @@ namespace SceneryEditorX
 		uint32_t material_index = 0;     // index into the bindless material parameters array
 		uint32_t is_transparent = 0;     // transparency flag
 		uint32_t aabb_index     = 0;     // index into the aabb buffer for culling
-		uint32_t padding        = 0;
+		uint32_t pick_id        = 0;     // editor picking: entity index + 1 (ScenePicking::GetPickId), 0 = not pickable
 	};
 
 	/**

@@ -31,8 +31,12 @@
 #include "scene_viewport.h"
 #include <Editor/core/editor_camera.h>
 #include <Editor/core/editor_theme.h>
+#include <Editor/core/editor_tools.h>
 #include <Editor/core/editor_ui.h>
 #include <Editor/core/editor_xplane.h>
+#include <Editor/core/node_tool.h>
+#include <Editor/core/transform_tool.h>
+#include <Editor/core/viewport_view.h>
 #include <SceneryEditorX/scene/scene.h>
 #include <SceneryEditorX/renderer/renderer.h>
 #include <SceneryEditorX/renderer/font/font_awesome.h>
@@ -129,24 +133,6 @@ namespace SceneryEditorX
 
 			if (imageSize.x > 0.0f && imageSize.y > 0.0f)
 			{
-				// The whole image is one button so a drag that starts here keeps camera control after leaving it.
-				ImGui::InvisibleButton("##ViewportCanvas", imageSize, ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight | ImGuiButtonFlags_MouseButtonMiddle);
-				hovered = ImGui::IsItemHovered();
-				dragging = ImGui::IsItemActive();
-
-				// X-Plane library objects dropped on the image land on the ground plane under the cursor.
-				if (ImGui::BeginDragDropTarget())
-				{
-					if (const ImGuiPayload *payload = ImGui::AcceptDragDropPayload(EditorXPlane::ASSET_PAYLOAD))
-					{
-						float ground[3] = { 0.0f, 0.0f, 0.0f };
-						const ImVec2 mouse = ImGui::GetMousePos();
-						const bool hit = PickGround((mouse.x - imageMin.x) / imageSize.x, (mouse.y - imageMin.y) / imageSize.y, imageSize.x / imageSize.y, ground);
-						EditorXPlane::PlaceLibraryAsset(static_cast<const char *>(payload->Data), m_Context, hit ? ground : nullptr);
-					}
-					ImGui::EndDragDropTarget();
-				}
-
 				ImDrawList *drawList = ImGui::GetWindowDrawList();
 				const ImVec2 imageMax(imageMin.x + imageSize.x, imageMin.y + imageSize.y);
 				const ImTextureID texture = UI::GetTextureID(Renderer::GetRenderTarget(Renderer_RenderTarget::frame_output));
@@ -166,6 +152,41 @@ namespace SceneryEditorX
 						EditorTheme::ToU32(EditorTheme::Palette::TextDisabled), message);
 				}
 
+				// The editing tools draw over the image. Their handles come before the image's input item: ImGuizmo only
+				// takes a click while no ImGui item is hovered, so the item is left out while a handle has the mouse.
+				const float renderWidth = m_AppliedWidth > 0 ? static_cast<float>(m_AppliedWidth) : imageSize.x;
+				const float renderHeight = m_AppliedHeight > 0 ? static_cast<float>(m_AppliedHeight) : imageSize.y;
+				const ViewportView view = ViewportView::Build(imageMin, imageSize, renderWidth / renderHeight);
+				const bool imageHovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) && ImGui::IsMouseHoveringRect(imageMin, imageMax);
+				const bool toolHasMouse = EditorTools::BeginViewport(m_Context, view, imageHovered);
+
+				bool canvasHovered = false;
+				ImGui::SetCursorScreenPos(imageMin);
+				if (!toolHasMouse)
+				{
+					// The whole image is one button so a drag that starts here keeps camera control after leaving it.
+					ImGui::InvisibleButton("##ViewportCanvas", imageSize, ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight | ImGuiButtonFlags_MouseButtonMiddle);
+					canvasHovered = ImGui::IsItemHovered();
+					dragging = ImGui::IsItemActive();
+
+					// X-Plane library objects dropped on the image land on the ground plane under the cursor.
+					if (ImGui::BeginDragDropTarget())
+					{
+						if (const ImGuiPayload *payload = ImGui::AcceptDragDropPayload(EditorXPlane::ASSET_PAYLOAD))
+						{
+							float ground[3] = { 0.0f, 0.0f, 0.0f };
+							const ImVec2 mouse = ImGui::GetMousePos();
+							const bool hit = PickGround((mouse.x - imageMin.x) / imageSize.x, (mouse.y - imageMin.y) / imageSize.y, imageSize.x / imageSize.y, ground);
+							EditorXPlane::PlaceLibraryAsset(static_cast<const char *>(payload->Data), m_Context, hit ? ground : nullptr);
+						}
+						ImGui::EndDragDropTarget();
+					}
+				}
+				else
+					ImGui::Dummy(imageSize);
+				hovered = canvasHovered || (toolHasMouse && imageHovered);
+
+				EditorTools::EndViewport(m_Context, view, canvasHovered, renderWidth, renderHeight);
 				DrawOverlay(camera, imageMin);
 			}
 		}
@@ -177,9 +198,10 @@ namespace SceneryEditorX
 			m_Context->viewportFocused = visible && ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
 		}
 
-		// Camera input: while the image is hovered (wheel, keyboard fly) or a drag that started on it continues.
+		// Camera input: while the image is hovered (wheel, keyboard fly) or a drag that started on it continues, and no
+		// tool drags (gizmo, nodes, a selection box)
 		const bool typing = ImGui::GetIO().WantTextInput;
-		Camera::SetInputEnabled(isOpen && (dragging || (hovered && !typing)));
+		Camera::SetInputEnabled(isOpen && !EditorTools::IsBusy() && (dragging || (hovered && !typing)));
 	}
 
 	void SceneViewport::DrawToolbar(Camera *camera)
@@ -197,13 +219,66 @@ namespace SceneryEditorX
 		const float rightEdge = ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x;
 		const bool hasCamera = camera != nullptr;
 
-		ImGui::BeginDisabled(!hasCamera);
+		// Left: the editing tools, then navigation mode and projection, as toggle buttons.
+		for (int t = 0; t < static_cast<int>(EditorTools::Tool::Count); ++t)
+		{
+			const EditorTools::Tool tool = static_cast<EditorTools::Tool>(t);
+			ImGui::PushID(t);
+			if (EditorUI::StripButton(EditorTools::GetToolIcon(tool), EditorTools::GetToolTooltip(tool), EditorTools::GetTool() == tool, buttonSize))
+				EditorTools::SetTool(tool);
+			ImGui::PopID();
+			ImGui::SameLine(0.0f, 2.0f * dpi);
+		}
 
-		// Left: navigation mode and projection, as toggle buttons.
-		if (EditorUI::StripButton(SEDX_ICON_REFRESH, "Orbit navigation\nLMB orbit, RMB pan, wheel zoom", EditorCamera::IsMode(ORBIT), buttonSize))
+		// Tool options: snapping, gizmo axes, node edits
+		TransformTool::Settings &settings = TransformTool::GetSettings();
+		ImGui::SameLine(0.0f, 8.0f * dpi);
+		if (EditorUI::StripButton(SEDX_ICON_MAGNET, "Snapping (hold Ctrl while dragging to invert)\nRight-click: snap steps", settings.snap, buttonSize, EditorUI::StripStyle::Tinted))
+			settings.snap = !settings.snap;
+		if (ImGui::BeginPopupContextItem("##SnapSteps"))
+		{
+			ImGui::SetNextItemWidth(120.0f * dpi);
+			ImGui::DragFloat("Move (m)", &settings.snapMove, 0.05f, 0.01f, 1000.0f, "%.2f");
+			ImGui::SetNextItemWidth(120.0f * dpi);
+			ImGui::DragFloat("Rotate (deg)", &settings.snapAngle, 0.5f, 0.5f, 180.0f, "%.1f");
+			ImGui::SetNextItemWidth(120.0f * dpi);
+			ImGui::DragFloat("Scale", &settings.snapScale, 0.01f, 0.01f, 10.0f, "%.2f");
+			ImGui::EndPopup();
+		}
+		ImGui::SameLine(0.0f, 2.0f * dpi);
+		if (EditorUI::StripButton(settings.localSpace ? SEDX_ICON_CUBE : SEDX_ICON_GLOBE, settings.localSpace ? "Gizmo: local axes (X)\nClick for world axes" : "Gizmo: world axes (X)\nClick for the active object's axes", settings.localSpace, buttonSize, EditorUI::StripStyle::Tinted))
+			settings.localSpace = !settings.localSpace;
+		ImGui::SameLine(0.0f, 2.0f * dpi);
+		if (EditorUI::StripButton(SEDX_ICON_DOT_CIRCLE_O, settings.pivotActive ? "Pivot: the active object\nClick to turn and scale about the selection's center" : "Pivot: the selection's center\nClick to turn and scale about the active object", settings.pivotActive, buttonSize, EditorUI::StripStyle::Tinted))
+			settings.pivotActive = !settings.pivotActive;
+
+		if (EditorTools::GetTool() == EditorTools::Tool::Nodes)
+		{
+			const bool nodes = NodeTool::GetSelectedNodeCount() > 0;
+			ImGui::SameLine(0.0f, 8.0f * dpi);
+			ImGui::BeginDisabled(!nodes);
+			if (EditorUI::StripButton(SEDX_ICON_CODE_FORK, "Smooth: give the selected nodes symmetric bezier handles", false, buttonSize))
+				NodeTool::SmoothSelectedNodes();
+			ImGui::SameLine(0.0f, 2.0f * dpi);
+			if (EditorUI::StripButton(SEDX_ICON_SQUARE_O, "Corner: remove the selected nodes' handles", false, buttonSize))
+				NodeTool::CornerSelectedNodes();
+			ImGui::SameLine(0.0f, 2.0f * dpi);
+			if (EditorUI::StripButton(SEDX_ICON_TRASH, "Delete the selected nodes (Del)", false, buttonSize))
+				NodeTool::DeleteSelectedNodes();
+			ImGui::EndDisabled();
+			ImGui::SameLine(0.0f, 2.0f * dpi);
+			ImGui::BeginDisabled(!NodeTool::HasShapes());
+			if (EditorUI::StripButton(SEDX_ICON_EXCHANGE, "Reverse the direction of the selected shapes (or of the selected nodes' chains)\nFacades face, strings and lines run by their direction", false, buttonSize))
+				NodeTool::ReverseSelectedShapes();
+			ImGui::EndDisabled();
+		}
+
+		ImGui::SameLine(0.0f, 10.0f * dpi);
+		ImGui::BeginDisabled(!hasCamera);
+		if (EditorUI::StripButton(SEDX_ICON_REFRESH, "Orbit navigation\nAlt+LMB orbit, MMB pan, RMB look, wheel zoom", EditorCamera::IsMode(ORBIT), buttonSize))
 			EditorCamera::SetMode(ORBIT);
 		ImGui::SameLine(0.0f, 2.0f * dpi);
-		if (EditorUI::StripButton(SEDX_ICON_VIDEO_CAMERA, "Fly navigation\nRMB look, WASD move, Q/E down/up", EditorCamera::IsMode(FLY), buttonSize))
+		if (EditorUI::StripButton(SEDX_ICON_VIDEO_CAMERA, "Fly navigation\nRMB look, hold RMB + WASD move, Q/E down/up", EditorCamera::IsMode(FLY), buttonSize))
 			EditorCamera::SetMode(FLY);
 
 		ImGui::SameLine(0.0f, 10.0f * dpi);

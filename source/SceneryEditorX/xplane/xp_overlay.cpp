@@ -1482,10 +1482,12 @@ namespace SceneryEditorX::XPlane
 			return true;
 		};
 
+		const auto wanted = [&options](const OverlayKind kind, const uint32_t index) { return !options.elementFilter || options.elementFilter(kind, index); };
+
 		for (uint32_t i = 0; i < airport.pavements.size(); ++i)
 		{
 			const AptPavement &pavement = airport.pavements[i];
-			if (GetSurfaceFamily(pavement.surface) == SurfaceFamily::Transparent)
+			if (GetSurfaceFamily(pavement.surface) == SurfaceFamily::Transparent || !wanted(OverlayKind::Pavement, i))
 				continue;
 			OverlayMesh mesh;
 			const PolygonAsset *asset = nullptr;
@@ -1514,7 +1516,7 @@ namespace SceneryEditorX::XPlane
 		for (uint32_t i = 0; i < airport.runways.size(); ++i)
 		{
 			const AptRunway &runway = airport.runways[i];
-			if (GetSurfaceFamily(runway.surface) == SurfaceFamily::Transparent)
+			if (GetSurfaceFamily(runway.surface) == SurfaceFamily::Transparent || !wanted(OverlayKind::Runway, i))
 				continue;
 			OverlayMesh mesh;
 			const PolygonAsset *asset = nullptr;
@@ -1531,7 +1533,7 @@ namespace SceneryEditorX::XPlane
 		for (uint32_t i = 0; i < airport.helipads.size(); ++i)
 		{
 			const AptHelipad &helipad = airport.helipads[i];
-			if (GetSurfaceFamily(helipad.surface) == SurfaceFamily::Transparent)
+			if (GetSurfaceFamily(helipad.surface) == SurfaceFamily::Transparent || !wanted(OverlayKind::Helipad, i))
 				continue;
 			OverlayMesh mesh;
 			const PolygonAsset *asset = nullptr;
@@ -1618,9 +1620,11 @@ namespace SceneryEditorX::XPlane
 		};
 
 		for (uint32_t i = 0; i < airport.linearFeatures.size(); ++i)
-			buildChains(airport.linearFeatures[i].chains, airport.linearFeatures[i].description.empty() ? "Line " + std::to_string(i + 1) : airport.linearFeatures[i].description, i, OverlayKind::PaintedLine);
+			if (wanted(OverlayKind::PaintedLine, i))
+				buildChains(airport.linearFeatures[i].chains, airport.linearFeatures[i].description.empty() ? "Line " + std::to_string(i + 1) : airport.linearFeatures[i].description, i, OverlayKind::PaintedLine);
 		for (uint32_t i = 0; i < airport.pavements.size(); ++i)
-			buildChains(airport.pavements[i].rings, "Pavement " + std::to_string(i + 1) + " edge", i, OverlayKind::PavementLine);
+			if (wanted(OverlayKind::PavementLine, i))
+				buildChains(airport.pavements[i].rings, "Pavement " + std::to_string(i + 1) + " edge", i, OverlayKind::PavementLine);
 	}
 }
 

@@ -32,7 +32,11 @@
 #include "editor_airports.h"
 #include "editor_project.h"
 #include "editor_camera.h"
+#include "editor_history.h"
 #include "editor_scene.h"
+#include "editor_selection.h"
+#include "editor_tools.h"
+#include "tools_selftest.h"
 #include "editor_theme.h"
 #include "editor_ui.h"
 #include "editor_xplane.h"
@@ -370,6 +374,9 @@ namespace SceneryEditorX
 			EditorProjects::Tick(&m_Context);
 		}
 
+		// Selection: follow what other panels selected last frame, drop what rebuilds removed
+		EditorSelection::Sync(&m_Context);
+
 		HandleShortcuts();
 
 		// Order matters: each side bar shrinks the viewport work area the dockspace then fills.
@@ -384,6 +391,9 @@ namespace SceneryEditorX
 			SEDX_PERF_SCOPE("Main: panels");
 			m_PanelManager->OnUIRender();
 		}
+
+		// Outlines for the selected / hovered objects (uploaded only when they changed)
+		EditorSelection::UpdateHighlight();
 
 		// After a layout build: open on Substance's default tabs (the X-Plane library browser and the first settings tab) and
 		// give focus to the viewport. Newly docked windows otherwise select themselves as they get submitted.
@@ -419,13 +429,27 @@ namespace SceneryEditorX
 
 		if (ImGui::BeginMenu("Edit"))
 		{
-			ImGui::MenuItem("Undo", "Ctrl+Z", false, false);
-			ImGui::MenuItem("Redo", "Ctrl+Y", false, false);
+			const std::string undo = EditorHistory::CanUndo() ? "Undo " + EditorHistory::GetUndoLabel() : std::string("Undo");
+			const std::string redo = EditorHistory::CanRedo() ? "Redo " + EditorHistory::GetRedoLabel() : std::string("Redo");
+			if (ImGui::MenuItem(undo.c_str(), "Ctrl+Z", false, EditorHistory::CanUndo()))
+				EditorHistory::Undo();
+			if (ImGui::MenuItem(redo.c_str(), "Ctrl+Y", false, EditorHistory::CanRedo()))
+				EditorHistory::Redo();
 			ImGui::Separator();
-			if (ImGui::MenuItem("Delete", "Del", false, m_Context.selectedEntity != 0))
+			if (ImGui::MenuItem("Delete", "Del", false, !EditorSelection::IsEmpty()))
 				DeleteSelectedEntity();
-			if (ImGui::MenuItem("Deselect", "Esc", false, m_Context.selectedEntity != 0))
-				m_Context.selectedEntity = 0;
+			if (ImGui::MenuItem("Deselect", "Esc", false, !EditorSelection::IsEmpty()))
+				EditorSelection::Clear(&m_Context);
+			if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_CROSSHAIRS, "Frame Selection").c_str(), "F", false, !EditorSelection::IsEmpty()))
+				EditorTools::FrameSelection();
+			ImGui::Separator();
+			for (int t = 0; t < static_cast<int>(EditorTools::Tool::Count); ++t)
+			{
+				const EditorTools::Tool tool = static_cast<EditorTools::Tool>(t);
+				static constexpr const char *keys[] = { "Q", "W", "E", "R", "V" };
+				if (ImGui::MenuItem(EditorUI::IconLabel(EditorTools::GetToolIcon(tool), EditorTools::GetToolName(tool)).c_str(), keys[t], EditorTools::GetTool() == tool))
+					EditorTools::SetTool(tool);
+			}
 			ImGui::EndMenu();
 		}
 
@@ -434,7 +458,7 @@ namespace SceneryEditorX
 			if (ImGui::MenuItem("Add Empty Entity"))
 			{
 				if (const uint64_t created = EditorScene::CreateEmpty("Empty Entity"); created != 0)
-					m_Context.selectedEntity = created;
+					EditorSelection::Select(&m_Context, EditorSelection::Target::ForEntity(created));
 			}
 			ImGui::EndMenu();
 		}
@@ -623,11 +647,23 @@ namespace SceneryEditorX
 		if (open)
 		{
 			const float buttonSize = width - padding * 2.0f;
+
+			// Editing tools first, as in Substance's tool strip
+			for (int t = 0; t < static_cast<int>(EditorTools::Tool::Count); ++t)
+			{
+				const EditorTools::Tool tool = static_cast<EditorTools::Tool>(t);
+				ImGui::PushID(t);
+				if (EditorUI::StripButton(EditorTools::GetToolIcon(tool), EditorTools::GetToolTooltip(tool), EditorTools::GetTool() == tool, buttonSize))
+					EditorTools::SetTool(tool);
+				ImGui::PopID();
+			}
+
+			ImGui::Separator();
 			ImGui::BeginDisabled(EditorCamera::Get() == nullptr);
 
-			if (EditorUI::StripButton(SEDX_ICON_REFRESH, "Orbit navigation\nLMB orbit, RMB pan, wheel zoom", EditorCamera::IsMode(ORBIT), buttonSize))
+			if (EditorUI::StripButton(SEDX_ICON_REFRESH, "Orbit navigation\nAlt+LMB orbit, MMB pan, RMB look, wheel zoom", EditorCamera::IsMode(ORBIT), buttonSize))
 				EditorCamera::SetMode(ORBIT);
-			if (EditorUI::StripButton(SEDX_ICON_VIDEO_CAMERA, "Fly navigation\nRMB look, WASD move, Q/E down/up", EditorCamera::IsMode(FLY), buttonSize))
+			if (EditorUI::StripButton(SEDX_ICON_VIDEO_CAMERA, "Fly navigation\nRMB look, hold RMB + WASD move, Q/E down/up", EditorCamera::IsMode(FLY), buttonSize))
 				EditorCamera::SetMode(FLY);
 
 			ImGui::Separator();
@@ -784,11 +820,13 @@ namespace SceneryEditorX
 	void EditorLayer::HandleShortcuts()
 	{
 		// Global routes lose to whatever has focus, so typing in a text field never triggers these.
-		if (ImGui::Shortcut(ImGuiKey_Delete, ImGuiInputFlags_RouteGlobal) && m_Context.selectedEntity != 0)
-			DeleteSelectedEntity();
+		// Tools: Del, Esc and (over the viewport) Q W E R V, F, X
+		EditorTools::HandleShortcuts(&m_Context);
 
-		if (ImGui::Shortcut(ImGuiKey_Escape, ImGuiInputFlags_RouteGlobal))
-			m_Context.selectedEntity = 0;
+		if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_Z, ImGuiInputFlags_RouteGlobal))
+			EditorHistory::Undo();
+		if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_Y, ImGuiInputFlags_RouteGlobal) || ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_Z, ImGuiInputFlags_RouteGlobal))
+			EditorHistory::Redo();
 
 		if (ImGui::Shortcut(ImGuiKey_Home, ImGuiInputFlags_RouteGlobal))
 			EditorCamera::Reset();
@@ -836,6 +874,8 @@ namespace SceneryEditorX
 				Camera::SetInputLocked(true); // the startup view stays put (captures, A/B measurements)
 			else if (args[i] == "--entity-bench")
 				m_EntityBenchPending = true; // Entity handle lookups / copies, once the scene has settled
+			else if (args[i] == "--tools-selftest")
+				ToolsSelfTest::Enable(); // drives the viewport tools (picking, moves, node edits, undo) and logs PASS / FAIL
 			else if (i + 1 >= args.size())
 				break;
 			else if (args[i] == "--xp-object")
@@ -883,8 +923,7 @@ namespace SceneryEditorX
 
 	void EditorLayer::DeleteSelectedEntity()
 	{
-		EditorScene::Destroy(m_Context.selectedEntity);
-		m_Context.selectedEntity = 0;
+		EditorTools::DeleteSelection(&m_Context);
 	}
 
 	PanelData *EditorLayer::FindPanel(const char *panelId) const

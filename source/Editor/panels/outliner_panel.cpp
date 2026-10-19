@@ -31,7 +31,10 @@
 #include "outliner_panel.h"
 #include <algorithm>
 #include <Editor/core/editor_scene.h>
+#include <Editor/core/editor_selection.h>
+#include <Editor/core/editor_tools.h>
 #include <Editor/core/editor_ui.h>
+#include <unordered_set>
 #include <SceneryEditorX/renderer/font/font_awesome.h>
 #include <SceneryEditorX/renderer/ui/source/imgui/imgui_internal.h>
 #include <SceneryEditorX/scene/components/renderable.h>
@@ -200,6 +203,14 @@ namespace SceneryEditorX
 					flush();
 				};
 
+				// Every selected target's entity shows as selected (the active one is what the PROPERTIES panel shows)
+				std::unordered_set<uint64_t> selectedIds;
+				for (const EditorSelection::Target &target : EditorSelection::Get())
+				{
+					if (const uint64_t entity = EditorSelection::Resolve(target))
+						selectedIds.insert(entity);
+				}
+
 				// One row and, when it is open, its children.
 				const auto draw_entity = [&](const auto &self, const entt::entity handle, const bool asTree) -> void
 				{
@@ -210,7 +221,7 @@ namespace SceneryEditorX
 
 					const RelationshipComponent *relationship = EditorScene::TryGet<RelationshipComponent>(handle);
 					const std::vector<UUID> children = (asTree && relationship) ? relationship->pChildren : std::vector<UUID>{};
-					const bool selected = m_Context && m_Context->selectedEntity == id;
+					const bool selected = (m_Context && m_Context->selectedEntity == id) || selectedIds.contains(id);
 
 					ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanAvailWidth;
 					if (selected)
@@ -228,7 +239,15 @@ namespace SceneryEditorX
 						ImGui::PopStyleColor();
 
 					if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen() && m_Context)
-						m_Context->selectedEntity = id;
+					{
+						// Ctrl toggles, Shift adds, a plain click replaces the selection
+						const ImGuiIO &io = ImGui::GetIO();
+						const EditorSelection::Mode mode = io.KeyCtrl ? EditorSelection::Mode::Toggle : io.KeyShift ? EditorSelection::Mode::Add : EditorSelection::Mode::Replace;
+						if (const std::optional<EditorSelection::Target> target = EditorSelection::FromEntity(id))
+							EditorSelection::Select(m_Context, *target, mode);
+					}
+					if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && !ImGui::IsItemToggledOpen())
+						EditorTools::FrameSelection();
 
 					ImGui::PushID(reinterpret_cast<void *>(static_cast<uintptr_t>(id)));
 					if (ImGui::BeginPopupContextItem("##EntityMenu"))
@@ -257,7 +276,7 @@ namespace SceneryEditorX
 
 				// Clicking empty space clears the selection.
 				if (m_Context && ImGui::IsWindowHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGui::IsAnyItemHovered())
-					m_Context->selectedEntity = 0;
+					EditorSelection::Clear(m_Context);
 			}
 			ImGui::EndChild();
 

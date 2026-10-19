@@ -86,6 +86,7 @@ namespace SceneryEditorX
 				{ Renderer_Shader::outline, "outline", "outline.slang", {VS, FS, CS}, {}, VertexType::PositionUvNormalTangent },
 				{ Renderer_Shader::font,    "font",    "font.slang",    {VS, FS},     {}, VertexType::PositionUv, true },
 				{ Renderer_Shader::icon,    "icon",    "icons.slang",   {CS} },
+				{ Renderer_Shader::selection_outline, "selection_outline", "selection_outline.slang", {CS}, {}, VertexType::MaxEnum, true }, // ScenePicking
 
 				// forward passes over the composed frame (blended surfaces, light billboards)
 				{ Renderer_Shader::forward_transparent, "forward_transparent", "forward_transparent.slang", {VS, FS}, {}, VertexType::PositionUvNormalTangent, true },

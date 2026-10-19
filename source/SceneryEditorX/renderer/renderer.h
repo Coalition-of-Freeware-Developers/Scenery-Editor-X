@@ -231,9 +231,10 @@ namespace SceneryEditorX
 		 * @param prevTransform The previous transformation matrix of the mesh (for motion blur, etc.).
 		 * @param matIndex The index of the material to use.
 		 * @param isTransparent Whether the mesh is transparent.
+		 * @param pickId Editor pick id of the drawing entity (ScenePicking::GetPickId), 0 when it can't be picked.
 		 * @return Index of the written draw data.
 		 */
-		static uint32_t WriteDrawData(const xMath::Matrix& transform, const xMath::Matrix &prevTransform = xMath::Matrix::IDENTITY, uint32_t matIndex = 0, uint32_t isTransparent = 0);
+		static uint32_t WriteDrawData(const xMath::Matrix& transform, const xMath::Matrix &prevTransform = xMath::Matrix::IDENTITY, uint32_t matIndex = 0, uint32_t isTransparent = 0, uint32_t pickId = 0);
 
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		/// Render Context Management                                                                                     ///

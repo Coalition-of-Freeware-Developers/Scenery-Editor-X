@@ -960,7 +960,7 @@ namespace IMGUIZMO_NAMESPACE
       gContext.mWidth = width;
       gContext.mHeight = height;
       gContext.mXMax = gContext.mX + gContext.mWidth;
-      gContext.mYMax = gContext.mY + gContext.mXMax;
+      gContext.mYMax = gContext.mY + gContext.mHeight;
       gContext.mDisplayRatio = width / height;
    }
 
@@ -1324,7 +1324,7 @@ namespace IMGUIZMO_NAMESPACE
          }
          if (!gContext.mbUsing || usingAxis)
          {
-            drawList->AddPolyline(circlePos, circleMul* halfCircleSegmentCount + 1, colors[3 - axis], false, gContext.mStyle.RotationLineThickness);
+            drawList->AddPolyline(circlePos, circleMul* halfCircleSegmentCount + 1, colors[3 - axis], ImDrawFlags_None, gContext.mStyle.RotationLineThickness);
          }
 
          float radiusAxis = sqrtf((ImLengthSqr(worldToPos(gContext.mModel.v.position, gContext.mViewProjection) - circlePos[0])));
@@ -1354,7 +1354,7 @@ namespace IMGUIZMO_NAMESPACE
             circlePos[i] = worldToPos(pos + gContext.mModel.v.position, gContext.mViewProjection);
          }
          drawList->AddConvexPolyFilled(circlePos, halfCircleSegmentCount + 1, GetColorU32(ROTATION_USING_FILL));
-         drawList->AddPolyline(circlePos, halfCircleSegmentCount + 1, GetColorU32(ROTATION_USING_BORDER), true, gContext.mStyle.RotationLineThickness);
+         drawList->AddPolyline(circlePos, halfCircleSegmentCount + 1, GetColorU32(ROTATION_USING_BORDER), ImDrawFlags_Closed, gContext.mStyle.RotationLineThickness);
 
          ImVec2 destinationPosOnScreen = circlePos[1];
          char tmps[512];
@@ -1617,7 +1617,7 @@ namespace IMGUIZMO_NAMESPACE
                   vec_t cornerWorldPos = (dirPlaneX * quadUV[j * 2] + dirPlaneY * quadUV[j * 2 + 1]) * gContext.mScreenFactor;
                   screenQuadPts[j] = worldToPos(cornerWorldPos, gContext.mMVP);
                }
-               drawList->AddPolyline(screenQuadPts, 4, GetColorU32(DIRECTION_X + i), true, 1.0f);
+               drawList->AddPolyline(screenQuadPts, 4, GetColorU32(DIRECTION_X + i), ImDrawFlags_Closed, 1.0f);
                drawList->AddConvexPolyFilled(screenQuadPts, 4, colors[i + 4]);
             }
          }

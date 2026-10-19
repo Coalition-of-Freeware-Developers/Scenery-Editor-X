@@ -196,6 +196,10 @@ namespace SceneryEditorX
 
 				s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_depth)]    = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, widthRender, heightRender, 1, 1, VK_FORMAT_D32_SFLOAT, flags, "gbuffer_depth"});
 				SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_depth)] != nullptr, "Failed to create gbuffer_depth render target");
+
+				// editor picking: written by the g-buffer pass, read by the selection outline (storage) and copied for readback
+				s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_pick)]     = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, widthRender, heightRender, 1, 1, VK_FORMAT_R32_UINT, RenderTargetViews | UnorderedAccessView | BlitClear, "gbuffer_pick"});
+				SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_pick)] != nullptr, "Failed to create gbuffer_pick render target");
 			}
 #pragma endregion
 #pragma region Lighting Render Targets

@@ -31,6 +31,7 @@
 #include "gpu_scene.h"
 #include "renderer.h"
 #include "renderer_declarations.h"
+#include "scene_picking.h"
 #include "vulkan/bindless_manager.h"
 #include "vulkan/buffer.h"
 #include "vulkan/command_list.h"
@@ -65,6 +66,7 @@ namespace SceneryEditorX
 
 		// Layouts shared with gpu_scene_types.slang
 		constexpr uint32_t INSTANCE_ENABLED = 1u << 0;
+		constexpr uint32_t INSTANCE_PICK_SHIFT = 8u;	// GPU_INSTANCE_PICK_SHIFT: bits 8..31 hold the editor pick id
 		constexpr uint32_t MAX_LODS = 4;
 
 		struct GpuInstance
@@ -310,7 +312,7 @@ namespace SceneryEditorX
 			}
 
 			gpu.batch = proxy.batch;
-			gpu.flags = proxy.enabled ? INSTANCE_ENABLED : 0u;
+			gpu.flags = (proxy.enabled ? INSTANCE_ENABLED : 0u) | (ScenePicking::GetPickId(proxy.handle) << INSTANCE_PICK_SHIFT);
 			MarkDirty(s, slot);
 		}
 

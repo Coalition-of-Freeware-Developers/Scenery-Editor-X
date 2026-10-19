@@ -33,6 +33,7 @@
 #include "gpu_scene.h"
 #include "renderer.h"
 #include "renderer_declarations.h"
+#include "scene_picking.h"
 #include "font/font.h"
 #include "vulkan/enums.h"
 #include "vulkan/rasterizer.h"
@@ -226,6 +227,11 @@ namespace SceneryEditorX
 					return;
 				depthTarget->SetLayout(Layout::ImageLayout::ShaderRead, graphicsPresent, 0, 0);
 
+				// editor selection / hover outlines over everything drawn into the frame
+				ScenePicking::RecordOutline(graphicsPresent, rt_render);
+				if (graphicsPresent->IsStickyInvalid())
+					return;
+
 				graphicsPresent->Blit(rt_render, rt_output, false);
 				if (graphicsPresent->IsStickyInvalid())
 					return;
@@ -251,6 +257,7 @@ namespace SceneryEditorX
 				->SetLayout(Layout::ImageLayout::Attachment, graphicsPresent, 0, 0);
 			GetRenderTarget(Renderer_RenderTarget::gbuffer_depth)
 				->SetLayout(Layout::ImageLayout::Attachment, graphicsPresent, 0, 0);
+			ScenePicking::EndFrame(graphicsPresent);
 
 			return;
 		}
@@ -911,6 +918,7 @@ namespace SceneryEditorX
 		ImageResource *texMaterial = GetRenderTarget(Renderer_RenderTarget::gbuffer_material);
 		ImageResource *texVelocity = GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity);
 		ImageResource *texDepth = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
+		ImageResource *texPick = GetRenderTarget(Renderer_RenderTarget::gbuffer_pick);	// editor picking ids (ScenePicking)
 
 		{
 			if (!isTransparentPass && m_Indirect_DrawCount > 0)
@@ -929,11 +937,13 @@ namespace SceneryEditorX
 				pso.renderTarget_ColorTextures[1] = texNormal;
 				pso.renderTarget_ColorTextures[2] = texMaterial;
 				pso.renderTarget_ColorTextures[3] = texVelocity;
+				pso.renderTarget_ColorTextures[4] = texPick;
 				pso.renderTarget_DepthTexture = texDepth;
 				pso.clearColor[0] = PipelineStateColor{.r = 0.0f, .g = 0.0f, .b = 0.0f, .a = 0.0f};
 				pso.clearColor[1] = PipelineStateColor{.r = 0.0f, .g = 0.0f, .b = 0.0f, .a = 0.0f};
 				pso.clearColor[2] = PipelineStateColor{.r = 0.0f, .g = 0.0f, .b = 0.0f, .a = 0.0f};
 				pso.clearColor[3] = PipelineStateColor{.r = 0.0f, .g = 0.0f, .b = 0.0f, .a = 0.0f};
+				pso.clearColor[4] = PipelineStateColor{.r = 0.0f, .g = 0.0f, .b = 0.0f, .a = 0.0f};	// pick id 0: nothing
 				cmdList->SetPipelineState(pso);
 
 				cmdList->SetIndexBuffer(GeometryBuffer::GetIndexBuffer());
@@ -975,6 +985,7 @@ namespace SceneryEditorX
 				pso.renderTarget_ColorTextures[1] = texNormal;
 				pso.renderTarget_ColorTextures[2] = texMaterial;
 				pso.renderTarget_ColorTextures[3] = texVelocity;
+				pso.renderTarget_ColorTextures[4] = texPick;
 				pso.renderTarget_DepthTexture = texDepth;
 
 				const bool indirectWrote = m_Indirect_DrawCount > 0;
@@ -1021,6 +1032,7 @@ namespace SceneryEditorX
 				pso.renderTarget_ColorTextures[1] = texNormal;
 				pso.renderTarget_ColorTextures[2] = texMaterial;
 				pso.renderTarget_ColorTextures[3] = texVelocity;
+				pso.renderTarget_ColorTextures[4] = texPick;
 				pso.renderTarget_DepthTexture = texDepth;
 				// load when an indirect path already cleared and wrote the g-buffer, otherwise clear on the first draw
 				const bool indirectActive = !isTransparentPass && m_Indirect_DrawCount > 0;
@@ -1029,6 +1041,7 @@ namespace SceneryEditorX
 				pso.clearColor[1] = clearOrLoad;
 				pso.clearColor[2] = clearOrLoad;
 				pso.clearColor[3] = clearOrLoad;
+				pso.clearColor[4] = clearOrLoad;
 
 				bool pipeline_set = false;
 
@@ -1107,6 +1120,10 @@ namespace SceneryEditorX
 			texMaterial->SetLayout(Layout::ImageLayout::General, cmdList, 0, 0);
 			texVelocity->SetLayout(Layout::ImageLayout::General, cmdList, 0, 0);
 			texDepth->SetLayout(Layout::ImageLayout::ShaderRead, cmdList, 0, 0);
+
+			// editor picking: copy the regions the viewport asked for (the outline pass reads the ids later)
+			if (!isTransparentPass)
+				ScenePicking::RecordReadbacks(cmdList);
 		}
 	}
 

@@ -1298,6 +1298,60 @@ namespace SceneryEditorX::EditorProjects
 			state.document.Mark(section);
 	}
 
+	bool FindItemLocation(const std::string &itemId, std::string &parentId, size_t &index)
+	{
+		State &state = GetState();
+		if (!state.document.IsOpen())
+			return false;
+		SceneryProject &project = state.document.GetProject();
+		const std::vector<SceneryItem> *list = project.FindParentList(itemId, &index);
+		if (!list)
+			return false;
+		parentId.clear();
+		if (list == &project.items)
+			return true;
+		bool found = false;
+		project.ForEachItem([&](SceneryItem &item, int)
+		{
+			if (&item.children == list)
+			{
+				parentId = item.id;
+				found = true;
+				return false;
+			}
+			return true;
+		});
+		return found;
+	}
+
+	bool InsertItem(SceneryItem item, const std::string &parentId, const size_t index)
+	{
+		State &state = GetState();
+		if (!state.document.IsOpen())
+			return false;
+		const std::string id = state.document.AddItem(std::move(item), parentId, index);
+		if (id.empty())
+			return false;
+		// Objects go through the object loader; everything else is drawn with the project's scenery (UpdateScenery)
+		if (const SceneryItem *added = state.document.FindItem(id))
+			PlaceItems({ *added }, false);
+		return true;
+	}
+
+	const XPlane::GeoProjection &GetProjection()
+	{
+		return GetState().projection;
+	}
+
+	void NotifySceneEdited()
+	{
+		State &state = GetState();
+		if (!state.document.IsOpen())
+			return;
+		SyncFromScene();
+		state.lastSync = ImGui::GetTime();
+	}
+
 	const std::vector<std::string> &GetValidationProblems()
 	{
 		return GetState().validation;

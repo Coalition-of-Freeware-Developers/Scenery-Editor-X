@@ -57,6 +57,7 @@ namespace SceneryEditorX
 		gbuffer_depth_occluders,
 		gbuffer_depth_occluders_hiz,
 		gbuffer_depth_opaque_output,
+		gbuffer_pick,				// R32_UINT: pick id (entity index + 1) of the surface in each pixel, 0 for none (ScenePicking)
 		lut_brdf_specular,
 		lut_atmosphere_scatter,
 		lut_atmosphere_transmittance,
@@ -213,6 +214,7 @@ namespace SceneryEditorX
 		depth_prepass_gpu,
 		gbuffer_gpu,
 		downsample_min,			// one level of a min mip chain (Hi-Z), until the FidelityFX SPD shaders are ported
+		selection_outline,		// editor selection / hover outlines from the pick ids (ScenePicking)
 		MaxEnum
 	};
 
@@ -283,6 +285,7 @@ namespace SceneryEditorX
 		case Renderer_Shader::depth_prepass_gpu: return "depth_prepass_gpu";
 		case Renderer_Shader::gbuffer_gpu: return "gbuffer_gpu";
 		case Renderer_Shader::downsample_min: return "downsample_min";
+		case Renderer_Shader::selection_outline: return "selection_outline";
 		case Renderer_Shader::MaxEnum: return "MaxEnum";
 		default: return "unknown";
 		}
@@ -484,6 +487,9 @@ namespace SceneryEditorX
 		compress_input         = 40,
 		compress_output        = 41,
 		compress_output_bc1    = 42,
+
+		// editor selection (ScenePicking): 2 bits per entity index, selected / hovered
+		selection_mask         = 45,
 	};
 
 	// -------------------------------------------------------

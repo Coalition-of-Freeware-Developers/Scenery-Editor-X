@@ -123,6 +123,8 @@ gbuffer_vertex main_tese(HsConstantDataOutput input, float3 bary_coords : SV_Dom
     vertex.uv_misc.xy        = barycentric(patch[0].uv_misc.xy, patch[1].uv_misc.xy, patch[2].uv_misc.xy, bary_coords);
     vertex.uv_misc.z         = barycentric(patch[0].uv_misc.z, patch[1].uv_misc.z, patch[2].uv_misc.z, bary_coords);
     vertex.uv_misc.w         = patch[0].uv_misc.w; // instance_id is constant per patch
+    vertex.material_index    = patch[0].material_index;
+    vertex.pick_id           = patch[0].pick_id;
 
     // reconstruct world positions from interpolated clip
     float clip_w             = vertex.position.w;

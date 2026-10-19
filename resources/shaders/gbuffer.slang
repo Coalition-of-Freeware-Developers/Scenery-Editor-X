@@ -52,6 +52,7 @@ struct gbuffer
     float4 normal : SV_Target1;
     float4 material : SV_Target2;
     float2 velocity : SV_Target3;
+    uint pick : SV_Target4;        // gbuffer_pick (R32_UINT): editor picking id of the surface, 0 = none
 };
 
 // constants
@@ -164,6 +165,7 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id: SV_InstanceID
     float3 position_world_previous = 0.0f;
     gbuffer_vertex vertex = transform_to_world_space(input, instance_id, _draw.transform, position_world, position_world_previous);
     vertex.material_index = _draw.material_index;
+    vertex.pick_id = _draw.pick_id;
     return transform_to_clip_space(vertex, position_world, position_world_previous);
 }
 
@@ -359,5 +361,6 @@ gbuffer main_frag(gbuffer_vertex vertex, bool is_front_face: SV_IsFrontFace)
     g_buffer.normal = float4(normal, pass_get_material_index());
     g_buffer.material = float4(roughness, metalness, emission, occlusion);
     g_buffer.velocity = velocity;
+    g_buffer.pick = vertex.pick_id;
     return g_buffer;
 }
