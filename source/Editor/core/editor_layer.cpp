@@ -881,6 +881,11 @@ namespace SceneryEditorX
 				m_EntityBenchPending = true; // Entity handle lookups / copies, once the scene has settled
 			else if (args[i] == "--tools-selftest")
 				ToolsSelfTest::Enable(); // drives the viewport tools (picking, moves, node edits, undo) and logs PASS / FAIL
+			else if (args[i] == "--tools-selftest-showcase")
+			{
+				ToolsSelfTest::Enable();
+				ToolsSelfTest::EnableShowcase(); // then shows the node tool's drawing for a while (frame captures) and undoes it
+			}
 			else if (i + 1 >= args.size())
 				break;
 			else if (args[i] == "--xp-object")

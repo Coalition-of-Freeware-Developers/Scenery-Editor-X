@@ -34,6 +34,8 @@
 #include <SceneryEditorX/xplane/xp_apt_geometry.h>
 #include <compare>
 #include <cstdint>
+#include <optional>
+#include <utility>
 #include <vector>
 
 // -------------------------------------------------------
@@ -53,10 +55,31 @@ namespace SceneryEditorX::Splines
 	 *  - project nodes store both handles as offsets in degrees, plus a split flag.
 	 * Nodes and handles that weren't moved write back their original coordinates bit for bit, so editing one node
 	 * of a shape changes only that node in a git diff. Standard library only (unit tested without the engine).
+	 *
+	 * A chain can also be edited as a uniform cubic B-spline (see the B-spline section): its control polygon is
+	 * what gets dragged, and the bezier nodes the formats store are worked out from it exactly.
 	 */
 
 	using XPlane::Point2;
 	using XPlane::GeoProjection;
+
+	/**
+	 * @brief How a node's handles behave while they are edited. The formats only store the handles and a split
+	 * flag, so the type is read from the geometry (GetNodeType):
+	 *  - Corner     no handles: the segments meet the node in a sharp point
+	 *  - Free       handles move on their own (a cusp); one or both
+	 *  - Smooth     handles point opposite ways, each keeping its own length (the curve's direction is continuous)
+	 *  - Symmetric  handles are mirror images (same length)
+	 */
+	enum class NodeType : uint8_t
+	{
+		Corner,
+		Free,
+		Smooth,
+		Symmetric
+	};
+
+	const char *GetNodeTypeName(NodeType type);
 
 	/* @brief Per-node data the shapes carry besides geometry, kept through edits (inserted nodes take their neighbor's). */
 	struct NodeAttributes
@@ -95,6 +118,11 @@ namespace SceneryEditorX::Splines
 		bool hasIn = false;
 		bool hasOut = false;
 		bool split = false;			// Handles independent; otherwise handleIn mirrors handleOut through position
+		/**
+		 * What SetNodeType last asked for (Corner: nothing). Only decides between types the geometry can't tell
+		 * apart: mirror-image handles (smooth or symmetric) and split handles that happen to line up (smooth or free).
+		 */
+		NodeType preferred = NodeType::Corner;
 		NodeAttributes attributes;
 
 		SourcePoint sourcePosition;
@@ -111,9 +139,19 @@ namespace SceneryEditorX::Splines
 		bool closed = true;
 		bool wrapsSplit = false;	// apt.dat: node 0 is a split pair whose incoming half closed the ring (written last)
 
+		/**
+		 * B-spline control polygon, one point per node, while the chain is edited as a B-spline (empty otherwise).
+		 * The nodes then follow it: the edits below move, add and remove control points and rework the nodes.
+		 */
+		std::vector<Point2> controls;
+
 		/* @brief Segments: nodes - 1 for an open chain, nodes for a closed one. */
 		[[nodiscard]] uint32_t GetSegmentCount() const;
 		[[nodiscard]] uint32_t GetMinimumNodes() const { return closed ? 3u : 2u; }
+		[[nodiscard]] bool IsBSpline() const { return !controls.empty(); }
+
+		/* @brief Where node i is edited from: its control point for a B-spline, the node itself otherwise. */
+		[[nodiscard]] const Point2 &GetEditPoint(uint32_t node) const { return IsBSpline() ? controls[node] : nodes[node].position; }
 	};
 
 	/* @brief A whole shape: chains[0] is the outline (or the line), the rest holes. */
@@ -200,8 +238,26 @@ namespace SceneryEditorX::Splines
 	/* @brief Every node of the shape, in order. */
 	std::vector<NodeRef> AllNodes(const Shape &shape);
 
+	/* @brief The node's type as its handles show it (and its preferred type where they can't tell). */
+	NodeType GetNodeType(const Node &node);
+
+	/* @brief Length of a segment along the curve, meters. */
+	double GetSegmentLength(const Bezier &bezier);
+
+	/* @brief Length of a chain along its curves (a closed one includes its closing segment). */
+	double GetChainLength(const Chain &chain);
+
+	/**
+	 * @brief Radius of the tightest bend along a chain's curves, meters, and where it is; infinity when every segment
+	 * is straight. Measured through points about half a meter apart along the curve, so it is the bend that shows:
+	 * hooks of a few centimeters (at a handle of no length) don't count, nor do segments under a meter or sharp
+	 * corners at nodes.
+	 */
+	double GetMinimumRadius(const Chain &chain, uint32_t *segment = nullptr, double *t = nullptr);
+
 	// -------------------------------------------------------
-	// Edits (each keeps the shape valid: chains never drop below their minimum node count)
+	// Edits (each keeps the shape valid: chains never drop below their minimum node count). On a chain edited as a
+	// B-spline the node edits act on its control points, and handle edits don't apply (its handles follow the spline).
 
 	/* @brief Moves nodes (with their handles) by an affine transform. */
 	void TransformNodes(Shape &shape, const std::vector<NodeRef> &nodes, const Affine2 &transform);
@@ -210,14 +266,35 @@ namespace SceneryEditorX::Splines
 	void TransformShape(Shape &shape, const Affine2 &transform);
 
 	/**
-	 * @brief Places a handle. An unsplit node mirrors its other handle through the node (same length, opposite
-	 * direction) unless breakSymmetry, which splits it. Placing a handle on the node itself removes it.
+	 * @brief Places a handle; the other one follows the node's type: a symmetric node mirrors it through the node,
+	 * a smooth one turns it to point the opposite way (keeping its length), a free one leaves it. A corner node grows
+	 * symmetric handles. breakSymmetry moves just this handle and makes the node free. Placing a handle on the node
+	 * itself removes it (both of a symmetric node's).
 	 */
 	void SetHandle(Shape &shape, const NodeRef &node, bool outgoing, const Point2 &position, bool breakSymmetry);
 
 	/**
+	 * @brief Gives nodes a type, reshaping their handles to fit: smooth and symmetric nodes without handles get
+	 * tangents along the line through their neighbors (smooth ones reaching a third of the way to each neighbor),
+	 * existing handles are lined up (symmetric ones also evened out). Free nodes keep their handles, corners lose them.
+	 */
+	void SetNodeType(Shape &shape, const std::vector<NodeRef> &nodes, NodeType type);
+
+	/**
+	 * @brief Bends a segment so its curve passes through target at parameter t, moving the segment's two handles (a
+	 * straight segment becomes a curve). Each end node's other handle follows its type, so smooth nodes stay smooth;
+	 * a corner node grows a handle on this side only. Near either end the nearer handle does most of the work.
+	 * On a B-spline it moves the control points under that point of the curve instead (as little as possible).
+	 */
+	bool BendSegment(Shape &shape, uint32_t chain, uint32_t segment, double t, const Point2 &target);
+
+	/* @brief Straightens the segments both of whose end nodes are listed: the handles facing along them are removed. */
+	size_t StraightenSegments(Shape &shape, const std::vector<NodeRef> &nodes);
+
+	/**
 	 * @brief Inserts a node on a segment without changing the curve's shape (de Casteljau): the segment's end nodes
-	 * get shorter handles, which splits them when that leaves their handles unequal.
+	 * get shorter handles, which splits them when that leaves their handles unequal. On a B-spline a control point is
+	 * added on the segment's control polygon edge instead (the curve changes a little, nearby only).
 	 * @return The new node, or nothing when the segment doesn't exist or t isn't strictly inside it.
 	 */
 	bool InsertNode(Shape &shape, uint32_t chain, uint32_t segment, double t, NodeRef *inserted = nullptr);
@@ -237,6 +314,60 @@ namespace SceneryEditorX::Splines
 
 	/* @brief Reverses a chain's direction (handles swap sides). */
 	void ReverseChain(Chain &chain);
+
+	/**
+	 * @brief Extends an open chain with a node before its first (atStart) or after its last node. The new segment
+	 * carries the style of the segment it continues.
+	 */
+	bool AppendNode(Shape &shape, uint32_t chain, bool atStart, const Point2 &position, NodeRef *added = nullptr);
+
+	/* @brief Closes an open chain with a segment from its last node back to the first (two ends on one spot merge). */
+	bool CloseChain(Shape &shape, uint32_t chain);
+
+	/* @brief Opens a closed chain at a node, which becomes both of its ends (the chain starts and stops there). */
+	bool OpenChain(Shape &shape, uint32_t chain, uint32_t node);
+
+	// -------------------------------------------------------
+	// B-splines
+	//
+	// A uniform cubic B-spline with one control point B[i] per node is the same curve as the bezier chain with node i
+	// at (B[i-1] + 4 B[i] + B[i+1]) / 6 and symmetric handles at (B[i-1] + 2 B[i]) / 3 and (2 B[i] + B[i+1]) / 3,
+	// so it can be stored by every format without losing anything and recognized again when read back. The curve is
+	// C2 (no kinks, no sudden change of bend), passes near rather than through its control points and only changes
+	// near a moved one. Open chains run from their first to their last control point (as if a mirrored point lay
+	// beyond each end: the curve starts straight toward the next control point).
+
+	/* @brief How a chain that isn't a B-spline yet becomes one. */
+	enum class BSplineFit : uint8_t
+	{
+		NodesAsControls,	// The nodes become the control points (the curve smooths inside them)
+		ThroughNodes		// Control points chosen so the curve still passes through every node
+	};
+
+	/**
+	 * @brief Edits a chain as a B-spline. A chain that already is one (within tolerance meters) keeps its curve and
+	 * gets its control polygon back; any other is refit as asked. Points-only and too short chains can't.
+	 * @param recoverOnly Only recover an existing B-spline; false (and the chain unchanged) when it isn't one.
+	 */
+	bool BeginBSpline(Chain &chain, BSplineFit fit = BSplineFit::NodesAsControls, bool recoverOnly = false, double tolerance = 0.01);
+
+	/* @brief Back to editing nodes and handles (the curve stays as it is). */
+	void EndBSpline(Chain &chain);
+
+	/**
+	 * @brief Reworks a B-spline chain's nodes from its control points. Nodes depending only on control points that are
+	 * as they were in previous (same count) keep their exact coordinates, so unmoved parts write back bit for bit.
+	 */
+	void ApplyBSpline(Chain &chain, const std::vector<Point2> *previous = nullptr);
+
+	/* @brief The control polygon of a chain whose bezier nodes form a uniform B-spline (nothing when they don't). */
+	std::optional<std::vector<Point2>> RecoverBSpline(const Chain &chain, double tolerance = 0.01);
+
+	/* @brief Control points whose B-spline passes through the chain's nodes (open chains: no bend at the ends). */
+	std::vector<Point2> InterpolateBSpline(const Chain &chain);
+
+	/* @brief How much each control point moves a B-spline's curve at a segment's parameter (weights sum to 1). */
+	std::vector<std::pair<uint32_t, double>> GetBSplineWeights(uint32_t controls, bool closed, uint32_t segment, double t);
 }
 
 // -------------------------------------------------------

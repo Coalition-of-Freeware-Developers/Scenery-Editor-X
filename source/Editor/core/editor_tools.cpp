@@ -377,7 +377,8 @@ namespace SceneryEditorX::EditorTools
 			case Tool::Rotate:	return "Rotate (E)\nTurn about the vertical (X-Plane objects and rows have a heading only)\nCtrl: snap";
 			case Tool::Scale:	return "Scale (R)\nScale shapes on the ground, entities on any axis\nCtrl: snap";
 			case Tool::Nodes:	return "Nodes (V)\nEdit the bezier nodes of pavement, lines, boundaries, runway ends and project shapes\n"
-										"Drag nodes or handles (Shift: split a handle), double-click an edge to insert, Del deletes nodes";
+										"Drag nodes, handles or the curve itself; double-click a curve to insert; Ctrl+click past a line's end to extend it\n"
+										"Shift+C/S/Y/F: corner, smooth, symmetric, free nodes; Shift+B: edit as a B-spline; Del deletes nodes";
 			default:			return "";
 		}
 	}
@@ -526,6 +527,9 @@ namespace SceneryEditorX::EditorTools
 		if (io.KeyCtrl && !io.KeyAlt && !io.KeyShift && ImGui::IsKeyPressed(ImGuiKey_A, false) && GetTool() == Tool::Nodes)
 			NodeTool::SelectAllNodes();
 		if (io.KeyCtrl || io.KeyAlt || io.KeySuper)
+			return;
+		// Shift+letter: the node tool's node types, straighten and B-spline
+		if (GetTool() == Tool::Nodes && NodeTool::HandleShortcuts())
 			return;
 
 		if (ImGui::IsKeyPressed(ImGuiKey_Q, false))
@@ -719,12 +723,8 @@ namespace SceneryEditorX::EditorTools
 				return hint;
 			}
 			case Tool::Nodes:
-			{
-				if (const std::string &status = NodeTool::GetStatus(); !status.empty())
-					return status + "  |  double-click an edge: insert  |  Del: delete  |  Shift+drag a handle: split";
-				return NodeTool::HasShapes() ? "Drag nodes and handles  |  click an edge to grab both its nodes  |  double-click an edge to insert"
-											 : "Select pavement, lines, boundaries, runways or project shapes to edit their nodes";
-			}
+				NodeTool::HasShapes();	// Follows the selection before describing it
+				return NodeTool::GetHint();
 			default:
 				return EditorSelection::IsEmpty() ? std::string("Click to select  |  drag a box  |  Alt+LMB orbit, MMB pan, RMB look (+WASD), wheel zoom")
 												  : std::to_string(EditorSelection::Get().size()) + " selected  |  W move, E rotate, R scale, V nodes, F frame, Del delete";

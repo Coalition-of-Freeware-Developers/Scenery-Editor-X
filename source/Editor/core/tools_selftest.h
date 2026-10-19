@@ -51,6 +51,13 @@ namespace SceneryEditorX::ToolsSelfTest
 	void Enable();
 	bool IsEnabled();
 
+	/**
+	 * @brief --tools-selftest-showcase: after the checks, frames an airport pavement edited as a B-spline (control
+	 * polygon) beside a bezier shape with a selected smooth node (handles), holds that for a while so a frame capture
+	 * shows the node tool's drawing, then undoes it all.
+	 */
+	void EnableShowcase();
+
 	/* @brief Once per frame from the viewport, after the tools. */
 	void Tick(EditorContext *context, const ViewportView &view, float renderWidth, float renderHeight);
 }

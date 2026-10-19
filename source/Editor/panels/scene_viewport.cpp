@@ -254,20 +254,62 @@ namespace SceneryEditorX
 
 		if (EditorTools::GetTool() == EditorTools::Tool::Nodes)
 		{
+			using Splines::NodeType;
+			const bool shapes = NodeTool::HasShapes();
 			const bool nodes = NodeTool::GetSelectedNodeCount() > 0;
+
+			// Node types: the selection's own type shows active
+			NodeType selectedType = NodeType::Corner;
+			const bool sameType = NodeTool::GetSelectedNodeType(selectedType);
+			struct TypeButton
+			{
+				NodeType type;
+				const char *icon;
+				const char *tooltip;
+			};
+			static constexpr TypeButton TYPE_BUTTONS[] = {
+				{ NodeType::Corner, SEDX_ICON_SQUARE_O, "Corner (Shift+C)\nRemove the handles: the segments meet in a sharp point" },
+				{ NodeType::Smooth, SEDX_ICON_CIRCLE_O, "Smooth (Shift+S)\nHandles opposite each other, each keeping its own length: the curve runs through without a kink" },
+				{ NodeType::Symmetric, SEDX_ICON_ARROWS_H, "Symmetric (Shift+Y)\nMirror-image handles: same length either side" },
+				{ NodeType::Free, SEDX_ICON_CHAIN_BROKEN, "Free (Shift+F)\nHandles move on their own (a cusp). Shift while dragging a handle does the same" },
+			};
 			ImGui::SameLine(0.0f, 8.0f * dpi);
 			ImGui::BeginDisabled(!nodes);
-			if (EditorUI::StripButton(SEDX_ICON_CODE_FORK, "Smooth: give the selected nodes symmetric bezier handles", false, buttonSize))
-				NodeTool::SmoothSelectedNodes();
-			ImGui::SameLine(0.0f, 2.0f * dpi);
-			if (EditorUI::StripButton(SEDX_ICON_SQUARE_O, "Corner: remove the selected nodes' handles", false, buttonSize))
-				NodeTool::CornerSelectedNodes();
+			for (const TypeButton &button : TYPE_BUTTONS)
+			{
+				ImGui::PushID(button.tooltip);
+				if (EditorUI::StripButton(button.icon, button.tooltip, sameType && selectedType == button.type, buttonSize, EditorUI::StripStyle::Tinted))
+					NodeTool::SetSelectedNodeType(button.type);
+				ImGui::PopID();
+				ImGui::SameLine(0.0f, 2.0f * dpi);
+			}
+			if (EditorUI::StripButton(SEDX_ICON_MINUS, "Straighten (Shift+L)\nMake the segments between selected nodes straight", false, buttonSize))
+				NodeTool::StraightenSelectedSegments();
 			ImGui::SameLine(0.0f, 2.0f * dpi);
 			if (EditorUI::StripButton(SEDX_ICON_TRASH, "Delete the selected nodes (Del)", false, buttonSize))
 				NodeTool::DeleteSelectedNodes();
 			ImGui::EndDisabled();
+
+			// Curve mode and chain edits
+			ImGui::SameLine(0.0f, 8.0f * dpi);
+			ImGui::BeginDisabled(!shapes || !NodeTool::CanUseBSpline());
+			const bool spline = NodeTool::IsBSplineActive();
+			if (EditorUI::StripButton(SEDX_ICON_DIAMOND, spline ? "B-spline (Shift+B)\nEditing the control polygon: click to go back to nodes and handles"
+															   : "B-spline (Shift+B)\nEdit the selected chains through a control polygon: the curve stays smooth (C2)\n"
+																 "and only changes near the points that move. Nodes become the control points",
+					spline, buttonSize, EditorUI::StripStyle::Tinted))
+				NodeTool::SetBSpline(!spline);
+			ImGui::EndDisabled();
 			ImGui::SameLine(0.0f, 2.0f * dpi);
-			ImGui::BeginDisabled(!NodeTool::HasShapes());
+			bool closed = false;
+			const bool closable = NodeTool::CanToggleClosed(&closed);
+			ImGui::BeginDisabled(!closable);
+			if (EditorUI::StripButton(SEDX_ICON_CIRCLE_O_NOTCH, closed ? "Open the line at its selected node (or its first)" : "Close the line (lines and strings)\nOr Ctrl+click its other end with one end selected",
+					closable && closed, buttonSize, EditorUI::StripStyle::Tinted))
+				NodeTool::ToggleClosed();
+			ImGui::EndDisabled();
+			ImGui::SameLine(0.0f, 2.0f * dpi);
+			ImGui::BeginDisabled(!shapes);
 			if (EditorUI::StripButton(SEDX_ICON_EXCHANGE, "Reverse the direction of the selected shapes (or of the selected nodes' chains)\nFacades face, strings and lines run by their direction", false, buttonSize))
 				NodeTool::ReverseSelectedShapes();
 			ImGui::EndDisabled();

@@ -1027,6 +1027,19 @@ namespace SceneryEditorX::EditorProjects
 		return CloseNow(context);
 	}
 
+	bool Revert(EditorContext *context)
+	{
+		State &state = GetState();
+		if (!state.document.IsOpen() || !state.document.HasFile())
+			return false;
+		const fs::path path = state.document.GetPath();
+		CloseNow(context);	// Closing without keeping recovery data removes it
+		if (!OpenNow(path, context))
+			return false;
+		EDITOR_INFO_TAG(LOG_TAG, "Reverted {} to its file", state.document.GetProject().info.name);
+		return true;
+	}
+
 	void ImportWed(EditorContext *context)
 	{
 		if (ConfirmDiscard(Pending::ImportWed))
@@ -1500,13 +1513,17 @@ namespace SceneryEditorX::EditorProjects
 		ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
 		if (ImGui::BeginPopupModal(RECOVERY_MODAL, nullptr, ImGuiWindowFlags_AlwaysAutoResize))
 		{
-			if (state.recovery)
+			if (!state.recovery)
 			{
-				ImGui::Text("Unsaved changes to %s from %s were found.", state.recovery->projectName.c_str(), state.recovery->written.c_str());
-				if (state.recovery->sourceChangedSince)
-					ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.3f, 1.0f), "The project file changed after they were made (another save, a git checkout...).");
-				ImGui::TextDisabled("Restoring replaces what's open with them; nothing is written until you save.");
+				// Settled elsewhere (the project was closed or reverted)
+				ImGui::CloseCurrentPopup();
+				ImGui::EndPopup();
+				return;
 			}
+			ImGui::Text("Unsaved changes to %s from %s were found.", state.recovery->projectName.c_str(), state.recovery->written.c_str());
+			if (state.recovery->sourceChangedSince)
+				ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.3f, 1.0f), "The project file changed after they were made (another save, a git checkout...).");
+			ImGui::TextDisabled("Restoring replaces what's open with them; nothing is written until you save.");
 			ImGui::Spacing();
 			if (ImGui::Button("Restore", ImVec2(width, 0.0f)))
 			{

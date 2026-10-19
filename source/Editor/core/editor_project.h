@@ -99,6 +99,9 @@ namespace SceneryEditorX::EditorProjects
 	/* @brief Closes the project and removes it from the scene. False when unsaved changes block it (the modal asks). */
 	bool Close(EditorContext *context, bool force = false);
 
+	/* @brief Opens the project again from its file, dropping unsaved changes and their recovery data. False without a file. */
+	bool Revert(EditorContext *context);
+
 	/* @brief Starts a project from a WorldEditor earth.wed.xml (unsaved; Save offers a .edX beside it). */
 	void ImportWed(EditorContext *context);
 

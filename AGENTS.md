@@ -45,7 +45,9 @@ The dependency-light, cross-platform Catch2 unit suites that only need `source/`
   recovery, backups), `ProjectDocument` open/edit/save/close, the project -> DSF conversion the editor draws
   through the overlay builder, and the viewport node editor's bezier core (`SplineEditTests.cpp`:
   `project/spline_edit.*` round trips apt.dat chains and project rings bit for bit, de Casteljau inserts, handles,
-  deletes, smoothing, transforms), the cross-platform VFS (`VfsTests.cpp`: `filesystem/vfs.*` mounts, virtual
+  deletes, smoothing, transforms, node types (corner / smooth / symmetric / free), bending a segment through a point,
+  uniform cubic B-spline control polygons stored as bezier nodes and recovered from them, extending / closing /
+  opening lines, lengths and tightest bend radius), the cross-platform VFS (`VfsTests.cpp`: `filesystem/vfs.*` mounts, virtual
   paths, portable names, case-insensitive lookups, atomic writes, platform folders; the twin-spelling case only
   runs on a case-sensitive disk) and scenery packs (`SceneryPackTests.cpp`: `project/scenery_pack.*` new airport
   projects, coordinate parsing, export to apt.dat + DSF tiles + copied art) (`SceneryEditorX/project/*` plus

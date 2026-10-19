@@ -77,11 +77,26 @@ namespace SceneryEditorX::ToolsSelfTest
 			NodeSelect,
 			NodeMove,
 			NodeUndo,
+			NodeTypes,
+			NodeTypesCheck,
+			BSpline,
+			BSplineMove,
+			BSplineCheck,
+			BSplineUndoCheck,
+			LineClose,
+			LineCloseUndo,
 			Delete,
 			DeleteUndo,
 			Box,
 			WaitBox,
 			Finish,
+			Showcase,
+			ShowcaseSpline,
+			ShowcaseNodes,
+			ShowcaseHold,
+			ShowcaseUndo,
+			Cleanup,
+			Reselect,
 			Done
 		};
 
@@ -105,6 +120,15 @@ namespace SceneryEditorX::ToolsSelfTest
 			std::optional<ProjectFile::SceneryItem> objectBefore;
 			uint32_t pavement = ~0u;			// An airport pavement row
 			AirportEdit::Snapshot rowBefore;
+			std::string lineId;					// A project line (.lin) or string
+			std::optional<ProjectFile::SceneryItem> lineBefore;
+
+			bool hadRecovery = false;			// The project had unsaved work from an earlier session when the test started
+			bool showcase = false;				// --tools-selftest-showcase
+			std::optional<Target> showcaseOther;	// The bezier shape shown beside the B-spline pavement
+			std::vector<std::pair<Target, AirportEdit::Snapshot>> showcaseRows;
+			int showcaseEdits = 0;				// Undo steps the showcase pushed
+			int holdFrames = 0;
 		};
 
 		State &S()
@@ -164,6 +188,14 @@ namespace SceneryEditorX::ToolsSelfTest
 		{
 			const XPlane::AptPavement *pavement = std::get_if<XPlane::AptPavement>(&snapshot);
 			return pavement ? &pavement->rings : nullptr;
+		}
+
+		/* @brief The node chains a pavement or painted line row copy holds. */
+		const std::vector<XPlane::AptNodeChain> *ShapeChains(const AirportEdit::Snapshot &snapshot)
+		{
+			if (const XPlane::AptLinearFeature *line = std::get_if<XPlane::AptLinearFeature>(&snapshot))
+				return &line->chains;
+			return PavementRings(snapshot);
 		}
 
 		/* @brief Screen rectangle an entity's drawn box covers (false when part of it is behind the camera). */
@@ -296,6 +328,11 @@ namespace SceneryEditorX::ToolsSelfTest
 		S().enabled = true;
 	}
 
+	void EnableShowcase()
+	{
+		S().showcase = true;
+	}
+
 	bool IsEnabled()
 	{
 		return S().enabled;
@@ -326,6 +363,8 @@ namespace SceneryEditorX::ToolsSelfTest
 				s.structure = structure;
 				if (s.frames > 300 && s.stableFrames > 180)
 				{
+					const ProjectFile::ProjectDocument *project = EditorProjects::GetDocument();
+					s.hadRecovery = project && project->GetRecovery().has_value();
 					EDITOR_INFO_TAG(LOG_TAG, "Scene settled after {} frames: starting", s.frames);
 					s.step = Step::Pick;
 				}
@@ -550,6 +589,139 @@ namespace SceneryEditorX::ToolsSelfTest
 				EditorHistory::Undo();
 				XPlane::AirportDocument *airport = EditorAirports::GetDocument();
 				Check(airport && SameChains(airport->airport.pavements[s.pavement].rings, *PavementRings(s.rowBefore)), "undo of the node edit restores the pavement bit for bit");
+				s.wait = 4;
+				s.step = Step::NodeTypes;
+				break;
+			}
+
+			case Step::NodeTypes:
+			{
+				NodeTool::SelectAllNodes();
+				const bool set = NodeTool::SetSelectedNodeType(Splines::NodeType::Smooth);
+				XPlane::AirportDocument *airport = EditorAirports::GetDocument();
+				Check(set && airport && !SameChains(airport->airport.pavements[s.pavement].rings, *PavementRings(s.rowBefore)), "make every pavement node smooth");
+				s.wait = 4;
+				s.step = Step::NodeTypesCheck;
+				break;
+			}
+
+			case Step::NodeTypesCheck:
+			{
+				// Read back from the rewritten rows: smooth nodes are split pairs whose handles line up, or mirror images
+				Splines::NodeType type = Splines::NodeType::Corner;
+				const bool same = NodeTool::GetSelectedNodeType(type);
+				Check(NodeTool::GetSelectedNodeCount() > 0 && same && type == Splines::NodeType::Smooth,
+					std::string("the nodes read back as smooth after the rows were rewritten (") + (same ? Splines::GetNodeTypeName(type) : "mixed") + ")");
+				EditorHistory::Undo();
+				XPlane::AirportDocument *airport = EditorAirports::GetDocument();
+				Check(airport && SameChains(airport->airport.pavements[s.pavement].rings, *PavementRings(s.rowBefore)), "undo of the node types restores the pavement bit for bit");
+				s.wait = 4;
+				s.step = Step::BSpline;
+				break;
+			}
+
+			case Step::BSpline:
+			{
+				NodeTool::SelectAllNodes();
+				const bool made = NodeTool::SetBSpline(true);
+				Check(made && NodeTool::IsBSplineActive(), "edit the pavement as a B-spline");
+				s.wait = 4;
+				s.step = Step::BSplineMove;
+				break;
+			}
+
+			case Step::BSplineMove:
+			{
+				// apt.dat stores bezier nodes only: the B-spline must be recognized again in the rewritten rows
+				Check(NodeTool::IsBSplineActive(), "the rewritten pavement is recognized as a B-spline again");
+				NodeTool::SelectAllNodes();
+				const bool moved = NodeTool::TranslateSelectedNodes(0.0, 2.0);
+				Check(moved, "move all of its control points 2 m north");
+				s.wait = 4;
+				s.step = Step::BSplineCheck;
+				break;
+			}
+
+			case Step::BSplineCheck:
+			{
+				Check(NodeTool::IsBSplineActive(), "still a B-spline after its control points moved");
+				EditorHistory::Undo();
+				EditorHistory::Undo();
+				s.wait = 4;
+				s.step = Step::BSplineUndoCheck;
+				break;
+			}
+
+			case Step::BSplineUndoCheck:
+			{
+				XPlane::AirportDocument *airport = EditorAirports::GetDocument();
+				Check(airport && SameChains(airport->airport.pavements[s.pavement].rings, *PavementRings(s.rowBefore)), "undoing the B-spline restores the pavement bit for bit");
+				NodeTool::SelectAllNodes();
+				Check(!NodeTool::IsBSplineActive(), "the restored pavement is edited with nodes and handles again");
+				s.wait = 2;
+				s.step = Step::LineClose;
+				break;
+			}
+
+			case Step::LineClose:
+			{
+				// A line or string that can close (three nodes or more) or open; a two-node one must refuse
+				std::string shortLine;
+				s.lineId.clear();
+				if (ProjectFile::ProjectDocument *document = EditorProjects::GetDocument())
+				{
+					document->GetProject().ForEachItem([&](const ProjectFile::SceneryItem &item, int)
+					{
+						using ProjectFile::ItemKind;
+						if ((item.kind != ItemKind::Line && item.kind != ItemKind::String) || item.locked || item.rings.size() != 1)
+							return true;
+						if (item.closed || item.rings[0].size() >= 3)
+						{
+							s.lineId = item.id;
+							return false;
+						}
+						if (shortLine.empty())
+							shortLine = item.id;
+						return true;
+					});
+				}
+				if (s.lineId.empty() && !shortLine.empty())
+				{
+					EditorSelection::Select(context, Target::ForItem(shortLine));
+					NodeTool::ClearNodeSelection();
+					const ProjectFile::SceneryItem before = *FindItem(shortLine);
+					const bool refused = !NodeTool::CanToggleClosed() && !NodeTool::ToggleClosed();
+					Check(refused && SameItem(*FindItem(shortLine), before), "a two-node line refuses to close and stays as it was");
+				}
+				ProjectFile::SceneryItem *item = FindItem(s.lineId);
+				if (!item)
+				{
+					EDITOR_INFO_TAG(LOG_TAG, "No project line or string of three nodes: skipping the close / open test");
+					EditorTools::SetTool(EditorTools::Tool::Select);
+					s.step = Step::Delete;
+					break;
+				}
+				s.lineBefore = *item;
+				EditorSelection::Select(context, Target::ForItem(s.lineId));
+				NodeTool::ClearNodeSelection();
+				bool closed = false;
+				const bool can = NodeTool::CanToggleClosed(&closed);
+				const bool toggled = can && NodeTool::ToggleClosed();
+				item = FindItem(s.lineId);
+				const size_t nodesBefore = s.lineBefore->rings[0].size();
+				const size_t nodesAfter = item && !item->rings.empty() ? item->rings[0].size() : 0;
+				Check(toggled && item && item->closed != s.lineBefore->closed && nodesAfter == nodesBefore + (closed ? 1 : 0),
+					std::string(closed ? "open" : "close") + " a project line (" + std::to_string(nodesBefore) + " -> " + std::to_string(nodesAfter) + " nodes)");
+				s.wait = 4;
+				s.step = Step::LineCloseUndo;
+				break;
+			}
+
+			case Step::LineCloseUndo:
+			{
+				EditorHistory::Undo();
+				const ProjectFile::SceneryItem *item = FindItem(s.lineId);
+				Check(item && SameItem(*item, *s.lineBefore), "undo puts the line back as it was");
 				EditorTools::SetTool(EditorTools::Tool::Select);
 				s.wait = 4;
 				s.step = Step::Delete;
@@ -617,6 +789,149 @@ namespace SceneryEditorX::ToolsSelfTest
 				if (s.picked)
 					EditorSelection::Select(context, *s.picked);
 				EDITOR_INFO_TAG(LOG_TAG, "Done: {} passed, {} failed. Selected '{}' for the outline", s.passed, s.failed, s.picked ? EditorSelection::Describe(*s.picked) : std::string("nothing"));
+				s.step = s.showcase ? Step::Showcase : Step::Cleanup;
+				break;
+
+			case Step::Showcase:
+			{
+				// The pavement tested above as a B-spline, beside a painted line (or another pavement) edited with handles
+				XPlane::AirportDocument *airport = EditorAirports::GetDocument();
+				if (!airport || s.pavement == ~0u)
+				{
+					EDITOR_INFO_TAG(LOG_TAG, "Showcase: no airport pavement to show");
+					s.step = Step::Done;
+					break;
+				}
+				// The painted line or pavement nearest the tested pavement, so both fill the view
+				const XPlane::AptAirport &apt = airport->airport;
+				const auto center = [](const XPlane::AptNodeChain &chain)
+				{
+					double latitude = 0.0, longitude = 0.0;
+					for (const XPlane::AptNode &node : chain.nodes)
+					{
+						latitude += node.latitude;
+						longitude += node.longitude;
+					}
+					const double count = static_cast<double>(std::max<size_t>(1, chain.nodes.size()));
+					return std::pair{ latitude / count, longitude / count };
+				};
+				const auto [baseLatitude, baseLongitude] = center(apt.pavements[s.pavement].rings[0]);
+				double nearest = 1e30;
+				const auto consider = [&](const AirportElementKind kind, const uint32_t index, const std::vector<XPlane::AptNodeChain> &chains)
+				{
+					if (chains.empty() || chains[0].nodes.size() < 3)
+						return;
+					const auto [latitude, longitude] = center(chains[0]);
+					const double distance = std::hypot(latitude - baseLatitude, (longitude - baseLongitude) * std::cos(baseLatitude * 0.017453292519943295));
+					if (distance < nearest)
+					{
+						nearest = distance;
+						s.showcaseOther = Target::ForElement(kind, index);
+					}
+				};
+				for (uint32_t i = 0; i < apt.linearFeatures.size(); ++i)
+					consider(AirportElementKind::LinearFeature, i, apt.linearFeatures[i].chains);
+				for (uint32_t i = 0; i < apt.pavements.size(); ++i)
+					if (i != s.pavement)
+						consider(AirportElementKind::Pavement, i, apt.pavements[i].rings);
+
+				const Target pavement = Target::ForElement(AirportElementKind::Pavement, s.pavement);
+				s.showcaseRows.clear();
+				for (const std::optional<Target> &target : { std::optional<Target>(pavement), s.showcaseOther })
+					if (target)
+						s.showcaseRows.emplace_back(*target, AirportEdit::Capture(apt, target->kind, target->index));
+				EditorTools::SetTool(EditorTools::Tool::Nodes);
+				EditorSelection::Select(context, pavement);
+				s.wait = 2;
+				s.step = Step::ShowcaseSpline;
+				break;
+			}
+
+			case Step::ShowcaseSpline:
+			{
+				NodeTool::SelectAllNodes();
+				const uint64_t revision = EditorHistory::GetRevision();
+				NodeTool::SetBSpline(true);
+				s.showcaseEdits += EditorHistory::GetRevision() != revision ? 1 : 0;
+				NodeTool::ClearNodeSelection();
+				std::vector<Target> targets = { Target::ForElement(AirportElementKind::Pavement, s.pavement) };
+				if (s.showcaseOther)
+					targets.push_back(*s.showcaseOther);
+				EditorSelection::Select(context, targets);
+				s.wait = 3;
+				s.step = Step::ShowcaseNodes;
+				break;
+			}
+
+			case Step::ShowcaseNodes:
+			{
+				// A smooth node selected on the second shape: its handles and the node shapes show
+				if (s.showcaseOther && NodeTool::SelectNode(1, 0, 1, false))
+				{
+					const uint64_t revision = EditorHistory::GetRevision();
+					NodeTool::SetSelectedNodeType(Splines::NodeType::Smooth);
+					s.showcaseEdits += EditorHistory::GetRevision() != revision ? 1 : 0;
+				}
+				EditorTools::FrameSelection();
+				s.holdFrames = 2400;
+				EDITOR_INFO_TAG(LOG_TAG, "Showcase: '{}' as a B-spline beside '{}' with a smooth node selected, for {} frames (from frame {})",
+					EditorSelection::Describe(Target::ForElement(AirportElementKind::Pavement, s.pavement)), s.showcaseOther ? EditorSelection::Describe(*s.showcaseOther) : std::string("nothing"),
+					s.holdFrames, s.frames);
+				s.step = Step::ShowcaseHold;
+				break;
+			}
+
+			case Step::ShowcaseHold:
+				if (--s.holdFrames <= 0)
+					s.step = Step::ShowcaseUndo;
+				break;
+
+			case Step::ShowcaseUndo:
+			{
+				for (int i = 0; i < s.showcaseEdits; ++i)
+					EditorHistory::Undo();
+				XPlane::AirportDocument *airport = EditorAirports::GetDocument();
+				bool restored = airport != nullptr;
+				for (const auto &[target, row] : s.showcaseRows)
+				{
+					const std::vector<XPlane::AptNodeChain> *now = airport ? AirportEdit::GetChains(airport->airport, target.kind, target.index) : nullptr;
+					const std::vector<XPlane::AptNodeChain> *before = ShapeChains(row);
+					restored &= now && before && SameChains(*now, *before);
+				}
+				Check(restored, "the showcase's edits are undone (" + std::to_string(s.showcaseEdits) + " steps)");
+				NodeTool::ClearNodeSelection();
+				EditorTools::SetTool(EditorTools::Tool::Select);
+				if (s.picked)
+					EditorSelection::Select(context, *s.picked);
+				EDITOR_INFO_TAG(LOG_TAG, "Showcase finished");
+				s.step = Step::Cleanup;
+				break;
+			}
+
+			case Step::Cleanup:
+			{
+				// Every edit above was undone, but the project still counts as edited: open it again from its file so
+				// the run leaves no recovery data behind (unless unsaved work from an earlier session is waiting)
+				s.step = Step::Done;
+				if (!EditorProjects::IsDirty())
+					break;
+				if (s.failed > 0 || s.hadRecovery)
+				{
+					EDITOR_WARN_TAG(LOG_TAG, "The project stays marked as edited ({})", s.failed > 0 ? "checks failed: kept for a look" : "it had unsaved work from an earlier session");
+					break;
+				}
+				if (EditorProjects::Revert(context))
+				{
+					EDITOR_INFO_TAG(LOG_TAG, "Reopened the project from its file: the test leaves no unsaved changes");
+					s.wait = 30;
+					s.step = Step::Reselect;
+				}
+				break;
+			}
+
+			case Step::Reselect:
+				if (s.picked)
+					EditorSelection::Select(context, *s.picked);
 				s.step = Step::Done;
 				break;
 

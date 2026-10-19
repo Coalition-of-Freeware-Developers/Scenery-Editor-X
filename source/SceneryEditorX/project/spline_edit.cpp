@@ -31,7 +31,9 @@
 #include "spline_edit.h"
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <map>
+#include <set>
 
 // -------------------------------------------------------
 
@@ -41,6 +43,8 @@ namespace SceneryEditorX::Splines
 	{
 		constexpr double COLOCATED_METERS = 1e-4;	// apt.dat nodes this close are one (split) node
 		constexpr double HANDLE_EPSILON = 1e-6;		// A handle this close to its node is no handle
+		constexpr double ALIGN_SINE = 2e-3;			// Handles within ~0.1 degrees of opposite line up (rounding in files)
+		constexpr double MERGE_METERS = 1e-3;		// Closing a chain whose ends sit this close merges them
 
 		double Distance(const Point2 &a, const Point2 &b)
 		{
@@ -60,6 +64,50 @@ namespace SceneryEditorX::Splines
 		bool Same(const Point2 &a, const Point2 &b)
 		{
 			return a.x == b.x && a.z == b.z;
+		}
+
+		Point2 Add(const Point2 &a, const Point2 &b)
+		{
+			return { a.x + b.x, a.z + b.z };
+		}
+
+		Point2 Sub(const Point2 &a, const Point2 &b)
+		{
+			return { a.x - b.x, a.z - b.z };
+		}
+
+		Point2 Scale(const Point2 &a, const double s)
+		{
+			return { a.x * s, a.z * s };
+		}
+
+		double Length(const Point2 &a)
+		{
+			return std::hypot(a.x, a.z);
+		}
+
+		/* @brief Unit vector along a (nothing when a is too short to have a direction). */
+		std::optional<Point2> Direction(const Point2 &a)
+		{
+			const double length = Length(a);
+			if (length < HANDLE_EPSILON)
+				return std::nullopt;
+			return Point2{ a.x / length, a.z / length };
+		}
+
+		/* @brief Both handles present and pointing (nearly) opposite ways. */
+		bool HandlesLineUp(const Node &node)
+		{
+			if (!node.hasIn || !node.hasOut)
+				return false;
+			const Point2 in = Sub(node.handleIn, node.position);
+			const Point2 out = Sub(node.handleOut, node.position);
+			const double lengths = Length(in) * Length(out);
+			if (lengths < HANDLE_EPSILON * HANDLE_EPSILON)
+				return false;
+			const double cross = in.x * out.z - in.z * out.x;
+			const double dot = in.x * out.x + in.z * out.z;
+			return dot < 0.0 && std::abs(cross) <= ALIGN_SINE * lengths;
 		}
 
 		/* @brief Lengths equal enough that the handles count as mirror images (relative, so it holds at any scale). */
@@ -129,6 +177,124 @@ namespace SceneryEditorX::Splines
 			if (!EqualLengths(in, out) || Distance(mirrored, node.handleIn) > 1e-7 * std::max(1.0, out))
 				node.split = true;
 		}
+
+		/* @brief The split flag for a node's handles as they are: one handle, or two that aren't mirror images, are split. */
+		void UpdateSplit(Node &node)
+		{
+			if (!node.hasIn && !node.hasOut)
+			{
+				node.split = false;
+				return;
+			}
+			if (node.hasIn != node.hasOut)
+			{
+				node.split = true;
+				return;
+			}
+			node.split = false;
+			Resymmetrize(node);
+		}
+
+		/* @brief The node a new node on segment from -> to starts as: the segment's style, texture coordinates interpolated. */
+		Node MakeInsertedNode(const Node &start, const Node &end, const double t)
+		{
+			Node node;
+			node.attributes = start.attributes;
+			node.attributes.lineTypeIn = start.attributes.lineType;
+			node.attributes.lightTypeIn = start.attributes.lightType;
+			if (start.attributes.hasUv && end.attributes.hasUv)
+			{
+				const float f = static_cast<float>(t);
+				node.attributes.s = start.attributes.s + (end.attributes.s - start.attributes.s) * f;
+				node.attributes.t = start.attributes.t + (end.attributes.t - start.attributes.t) * f;
+				node.attributes.sLo = node.attributes.sHi = node.attributes.s;
+				node.attributes.tLo = node.attributes.tHi = node.attributes.t;
+			}
+			return node;
+		}
+
+		/* @brief A node about to start a segment of its own (the end of a line being extended or closed) carries on the style of the one before it. */
+		void ContinueStyle(Node &node, const Node &before)
+		{
+			if (node.attributes.lineType == 0 && node.attributes.lightType == 0)
+			{
+				node.attributes.lineType = before.attributes.lineType;
+				node.attributes.lightType = before.attributes.lightType;
+			}
+		}
+
+		// -------------------------------------------------------
+		// B-spline helpers
+
+		/* @brief Control point i of a B-spline, with the mirrored points beyond an open chain's ends. */
+		Point2 ControlAt(const std::vector<Point2> &controls, const bool closed, const int64_t i)
+		{
+			const int64_t count = static_cast<int64_t>(controls.size());
+			if (closed)
+				return controls[static_cast<size_t>(((i % count) + count) % count)];
+			if (i < 0)
+				return Mirror(controls[1], controls[0]);
+			if (i >= count)
+				return Mirror(controls[count - 2], controls[count - 1]);
+			return controls[static_cast<size_t>(i)];
+		}
+
+		struct SplineNode
+		{
+			Point2 position;
+			Point2 handleIn;
+			Point2 handleOut;
+			bool hasHandles = false;
+
+			bool operator==(const SplineNode &other) const
+			{
+				return Same(position, other.position) && Same(handleIn, other.handleIn) && Same(handleOut, other.handleOut) && hasHandles == other.hasHandles;
+			}
+		};
+
+		/* @brief Bezier node i of the B-spline a control polygon defines. */
+		SplineNode ComputeSplineNode(const std::vector<Point2> &controls, const bool closed, const uint32_t i)
+		{
+			const uint32_t count = static_cast<uint32_t>(controls.size());
+			const Point2 previous = ControlAt(controls, closed, static_cast<int64_t>(i) - 1);
+			const Point2 current = controls[i];
+			const Point2 next = ControlAt(controls, closed, static_cast<int64_t>(i) + 1);
+
+			SplineNode node;
+			if (!closed && i == 0)
+			{
+				// The curve starts on the first control point, heading for the second
+				node.position = current;
+				node.handleOut = { (2.0 * current.x + next.x) / 3.0, (2.0 * current.z + next.z) / 3.0 };
+				node.handleIn = Mirror(node.handleOut, node.position);
+			}
+			else if (!closed && i + 1 == count)
+			{
+				node.position = current;
+				node.handleIn = { (previous.x + 2.0 * current.x) / 3.0, (previous.z + 2.0 * current.z) / 3.0 };
+				node.handleOut = Mirror(node.handleIn, node.position);
+			}
+			else
+			{
+				node.position = { (previous.x + 4.0 * current.x + next.x) / 6.0, (previous.z + 4.0 * current.z + next.z) / 6.0 };
+				node.handleOut = { (2.0 * current.x + next.x) / 3.0, (2.0 * current.z + next.z) / 3.0 };
+				node.handleIn = Mirror(node.handleOut, node.position);
+			}
+			node.hasHandles = Distance(node.handleOut, node.position) >= HANDLE_EPSILON;
+			return node;
+		}
+	}
+
+	const char *GetNodeTypeName(const NodeType type)
+	{
+		switch (type)
+		{
+			case NodeType::Corner:		return "Corner";
+			case NodeType::Free:		return "Free";
+			case NodeType::Smooth:		return "Smooth";
+			case NodeType::Symmetric:	return "Symmetric";
+		}
+		return "";
 	}
 
 	// -------------------------------------------------------
@@ -581,22 +747,125 @@ namespace SceneryEditorX::Splines
 		return nodes;
 	}
 
+	NodeType GetNodeType(const Node &node)
+	{
+		if (!node.hasIn && !node.hasOut)
+			return NodeType::Corner;
+		if (!node.hasIn || !node.hasOut)
+			return NodeType::Free;
+		if (!node.split)
+			return node.preferred == NodeType::Smooth || node.preferred == NodeType::Free ? node.preferred : NodeType::Symmetric;
+		return node.preferred != NodeType::Free && HandlesLineUp(node) ? NodeType::Smooth : NodeType::Free;
+	}
+
+	double GetSegmentLength(const Bezier &bezier)
+	{
+		if (bezier.IsStraight())
+			return Distance(bezier.p[0], bezier.p[3]);
+
+		// Gauss-Legendre (5 points) on 8 pieces: far below a millimeter for any curve scenery uses
+		constexpr double nodes[5] = { -0.9061798459386640, -0.5384693101056831, 0.0, 0.5384693101056831, 0.9061798459386640 };
+		constexpr double weights[5] = { 0.2369268850561891, 0.4786286704993665, 0.5688888888888889, 0.4786286704993665, 0.2369268850561891 };
+		const Point2 d0 = Sub(bezier.p[1], bezier.p[0]), d1 = Sub(bezier.p[2], bezier.p[1]), d2 = Sub(bezier.p[3], bezier.p[2]);
+		constexpr int pieces = 8;
+		double length = 0.0;
+		for (int piece = 0; piece < pieces; ++piece)
+		{
+			const double a = static_cast<double>(piece) / pieces, b = static_cast<double>(piece + 1) / pieces;
+			for (int i = 0; i < 5; ++i)
+			{
+				const double t = 0.5 * (a + b) + 0.5 * (b - a) * nodes[i];
+				const double u = 1.0 - t;
+				const double x = 3.0 * (u * u * d0.x + 2.0 * u * t * d1.x + t * t * d2.x);
+				const double z = 3.0 * (u * u * d0.z + 2.0 * u * t * d1.z + t * t * d2.z);
+				length += 0.5 * (b - a) * weights[i] * std::hypot(x, z);
+			}
+		}
+		return length;
+	}
+
+	double GetChainLength(const Chain &chain)
+	{
+		double length = 0.0;
+		for (uint32_t s = 0; s < chain.GetSegmentCount(); ++s)
+			length += GetSegmentLength(GetSegment(chain, s));
+		return length;
+	}
+
+	double GetMinimumRadius(const Chain &chain, uint32_t *segment, double *t)
+	{
+		// The circle through three points of the curve about half a meter apart (along it), rather than the derivatives:
+		// a handle of no length makes a bezier's curvature spike at its node and short segments hook within
+		// centimeters, though nothing visibly bends there. Segments under a meter are corners, not bends.
+		constexpr double spacing = 0.5;
+		double largest = 0.0;	// Curvature, 1 / meters
+		std::vector<Point2> points;
+		std::vector<double> parameters;
+		for (uint32_t s = 0; s < chain.GetSegmentCount(); ++s)
+		{
+			const Bezier bezier = GetSegment(chain, s);
+			if (bezier.IsStraight())
+				continue;
+			const int dense = std::clamp(static_cast<int>(std::ceil(GetSegmentLength(bezier) / (spacing * 0.2))), 8, 1024);
+			points.assign(1, bezier.p[0]);
+			parameters.assign(1, 0.0);
+			for (int i = 1; i <= dense; ++i)
+			{
+				const double u = static_cast<double>(i) / dense;
+				const Point2 p = bezier.Evaluate(u);
+				if (Distance(p, points.back()) >= spacing)
+				{
+					points.push_back(p);
+					parameters.push_back(u);
+				}
+			}
+			for (size_t i = 1; i + 1 < points.size(); ++i)
+			{
+				const Point2 &a = points[i - 1], &b = points[i], &c = points[i + 1];
+				const double ab = Distance(a, b), bc = Distance(b, c), ca = Distance(c, a);
+				if (ab < 1e-4 || bc < 1e-4 || ca < 1e-4)
+					continue;
+				const double cross = (b.x - a.x) * (c.z - a.z) - (b.z - a.z) * (c.x - a.x);
+				const double curvature = 2.0 * std::abs(cross) / (ab * bc * ca);
+				if (curvature > largest)
+				{
+					largest = curvature;
+					if (segment)
+						*segment = s;
+					if (t)
+						*t = parameters[i];
+				}
+			}
+		}
+		return largest > 0.0 ? 1.0 / largest : std::numeric_limits<double>::infinity();
+	}
+
 	// -------------------------------------------------------
 	// Edits
 
 	void TransformNodes(Shape &shape, const std::vector<NodeRef> &nodes, const Affine2 &transform)
 	{
+		std::map<uint32_t, std::vector<Point2>> splines;	// B-spline chains touched: their control points before
 		for (const NodeRef &ref : nodes)
 		{
 			if (!shape.IsValid(ref.chain, ref.node))
 				continue;
-			Node &node = shape.chains[ref.chain].nodes[ref.node];
+			Chain &chain = shape.chains[ref.chain];
+			if (chain.IsBSpline())
+			{
+				splines.try_emplace(ref.chain, chain.controls);
+				chain.controls[ref.node] = transform.Apply(chain.controls[ref.node]);
+				continue;
+			}
+			Node &node = chain.nodes[ref.node];
 			node.position = transform.Apply(node.position);
 			if (node.hasIn)
 				node.handleIn = transform.Apply(node.handleIn);
 			if (node.hasOut)
 				node.handleOut = transform.Apply(node.handleOut);
 		}
+		for (const auto &[chain, previous] : splines)
+			ApplyBSpline(shape.chains[chain], &previous);
 	}
 
 	void TransformShape(Shape &shape, const Affine2 &transform)
@@ -606,34 +875,253 @@ namespace SceneryEditorX::Splines
 
 	void SetHandle(Shape &shape, const NodeRef &ref, const bool outgoing, const Point2 &position, const bool breakSymmetry)
 	{
-		if (!shape.IsValid(ref.chain, ref.node))
+		if (!shape.IsValid(ref.chain, ref.node) || shape.chains[ref.chain].IsBSpline())
 			return;
 		Node &node = shape.chains[ref.chain].nodes[ref.node];
+		const NodeType type = GetNodeType(node);
 
 		if (Distance(position, node.position) < HANDLE_EPSILON)
 		{
-			// Dropped onto its node: the handle goes (an unsplit node loses both, they mirror each other)
-			if (outgoing || !node.split)
+			// Dropped onto its node: the handle goes (a symmetric node loses both, they mirror each other)
+			const bool both = type == NodeType::Symmetric;
+			if (outgoing || both)
 				node.hasOut = false;
-			if (!outgoing || !node.split)
+			if (!outgoing || both)
 				node.hasIn = false;
-			if (!node.hasIn && !node.hasOut)
-				node.split = false;
+			node.preferred = NodeType::Corner;
+			UpdateSplit(node);
 			return;
 		}
 
-		(outgoing ? node.handleOut : node.handleIn) = position;
-		(outgoing ? node.hasOut : node.hasIn) = true;
+		Point2 &handle = outgoing ? node.handleOut : node.handleIn;
+		Point2 &other = outgoing ? node.handleIn : node.handleOut;
+		bool &hasHandle = outgoing ? node.hasOut : node.hasIn;
+		bool &hasOther = outgoing ? node.hasIn : node.hasOut;
+		handle = position;
+		hasHandle = true;
 		if (breakSymmetry)
 		{
 			node.split = true;
+			node.preferred = NodeType::Free;
 			return;
 		}
-		if (!node.split)
+
+		switch (type)
 		{
-			(outgoing ? node.handleIn : node.handleOut) = Mirror(position, node.position);
-			(outgoing ? node.hasIn : node.hasOut) = true;
+			case NodeType::Corner:
+			case NodeType::Symmetric:
+				other = Mirror(position, node.position);
+				hasOther = true;
+				node.split = false;
+				break;
+			case NodeType::Smooth:
+			{
+				// Turn the other handle to point the opposite way; it keeps its length
+				const double length = Distance(other, node.position);
+				const double reach = Distance(position, node.position);
+				if (EqualLengths(length, reach))
+				{
+					other = Mirror(position, node.position);
+					node.split = false;
+				}
+				else
+				{
+					const Point2 away = Scale(Sub(node.position, position), length / reach);
+					other = Add(node.position, away);
+					node.split = true;
+				}
+				node.preferred = NodeType::Smooth;
+				break;
+			}
+			case NodeType::Free:
+				node.split = true;
+				break;
 		}
+	}
+
+	void SetNodeType(Shape &shape, const std::vector<NodeRef> &nodes, const NodeType type)
+	{
+		for (const NodeRef &ref : nodes)
+		{
+			if (!shape.IsValid(ref.chain, ref.node) || shape.chains[ref.chain].IsBSpline())
+				continue;
+			const Chain &chain = shape.chains[ref.chain];
+			Node &node = shape.chains[ref.chain].nodes[ref.node];
+			const Point2 p = node.position;
+
+			if (type == NodeType::Corner)
+			{
+				node.hasIn = node.hasOut = false;
+				node.split = false;
+				node.preferred = NodeType::Corner;
+				continue;
+			}
+			if (type == NodeType::Free)
+			{
+				// Nothing moves; mirror-image handles stay stored as such (no split pair in apt.dat) until one is dragged
+				UpdateSplit(node);
+				node.preferred = NodeType::Free;
+				continue;
+			}
+
+			// Smooth / symmetric: a direction through the node and a reach on either side
+			bool hasPrevious = false, hasNext = false;
+			const Point2 previous = chain.nodes[Previous(chain, ref.node, hasPrevious)].position;
+			const Point2 next = chain.nodes[Next(chain, ref.node, hasNext)].position;
+			const double toPrevious = hasPrevious ? Distance(p, previous) : 0.0;
+			const double toNext = hasNext ? Distance(p, next) : 0.0;
+
+			std::optional<Point2> direction;
+			if (node.hasIn && node.hasOut)
+				direction = Direction(Sub(node.handleOut, node.handleIn));
+			if (!direction && node.hasOut)
+				direction = Direction(Sub(node.handleOut, p));
+			if (!direction && node.hasIn)
+				direction = Direction(Sub(p, node.handleIn));
+			if (!direction && hasPrevious && hasNext)
+				direction = Direction(Sub(next, previous));
+			if (!direction && hasNext)
+				direction = Direction(Sub(next, p));
+			if (!direction && hasPrevious)
+				direction = Direction(Sub(p, previous));
+			if (!direction)
+				continue;
+
+			double reachIn = node.hasIn ? Distance(node.handleIn, p) : 0.0;
+			double reachOut = node.hasOut ? Distance(node.handleOut, p) : 0.0;
+			if (type == NodeType::Symmetric)
+			{
+				double reach = node.hasIn && node.hasOut ? 0.5 * (reachIn + reachOut) : std::max(reachIn, reachOut);
+				if (reach < HANDLE_EPSILON)
+				{
+					// No handles yet: a third of the way to the nearer neighbor (as Smooth Nodes does)
+					reach = (hasPrevious && hasNext ? std::min(toPrevious, toNext) : std::max(toPrevious, toNext)) / 3.0;
+				}
+				if (reach < HANDLE_EPSILON)
+					continue;
+				node.handleOut = Add(p, Scale(*direction, reach));
+				node.handleIn = Mirror(node.handleOut, p);
+				node.hasIn = node.hasOut = true;
+				node.split = false;
+				node.preferred = NodeType::Symmetric;
+				continue;
+			}
+
+			// Smooth: missing handles reach a third of the way to their neighbor (or as far as the other handle)
+			if (reachIn < HANDLE_EPSILON && hasPrevious)
+				reachIn = toPrevious / 3.0;
+			if (reachOut < HANDLE_EPSILON && hasNext)
+				reachOut = toNext / 3.0;
+			if (reachIn < HANDLE_EPSILON)
+				reachIn = reachOut;
+			if (reachOut < HANDLE_EPSILON)
+				reachOut = reachIn;
+			if (reachIn < HANDLE_EPSILON || reachOut < HANDLE_EPSILON)
+				continue;
+			node.handleOut = Add(p, Scale(*direction, reachOut));
+			node.hasIn = node.hasOut = true;
+			if (EqualLengths(reachIn, reachOut))
+			{
+				node.handleIn = Mirror(node.handleOut, p);
+				node.split = false;
+			}
+			else
+			{
+				node.handleIn = Sub(p, Scale(*direction, reachIn));
+				node.split = true;
+			}
+			node.preferred = NodeType::Smooth;
+		}
+	}
+
+	namespace
+	{
+		/* @brief A bent segment's handle: a corner node grows it on this side only; any other node keeps its type. */
+		void PlaceBendHandle(Shape &shape, const NodeRef &ref, const bool outgoing, const Point2 &position)
+		{
+			Node &node = shape.chains[ref.chain].nodes[ref.node];
+			const NodeType type = GetNodeType(node);
+			if (type == NodeType::Corner || (type == NodeType::Free && !(outgoing ? node.hasOut : node.hasIn)))
+			{
+				if (Distance(position, node.position) < HANDLE_EPSILON)
+					return;
+				(outgoing ? node.handleOut : node.handleIn) = position;
+				(outgoing ? node.hasOut : node.hasIn) = true;
+				UpdateSplit(node);
+				return;
+			}
+			SetHandle(shape, ref, outgoing, position, false);
+		}
+	}
+
+	bool BendSegment(Shape &shape, const uint32_t chainIndex, const uint32_t segment, double t, const Point2 &target)
+	{
+		if (chainIndex >= shape.chains.size())
+			return false;
+		Chain &chain = shape.chains[chainIndex];
+		if (segment >= chain.GetSegmentCount())
+			return false;
+		t = std::clamp(t, 0.05, 0.95);
+		const Bezier bezier = GetSegment(chain, segment);
+		const Point2 delta = Sub(target, bezier.Evaluate(t));
+
+		if (chain.IsBSpline())
+		{
+			// The least movement of the control points that takes the curve point there
+			const std::vector<std::pair<uint32_t, double>> weights = GetBSplineWeights(static_cast<uint32_t>(chain.controls.size()), chain.closed, segment, t);
+			double sum = 0.0;
+			for (const auto &[index, weight] : weights)
+				sum += weight * weight;
+			if (sum < 1e-12)
+				return false;
+			const std::vector<Point2> previous = chain.controls;
+			for (const auto &[index, weight] : weights)
+				chain.controls[index] = Add(chain.controls[index], Scale(delta, weight / sum));
+			ApplyBSpline(chain, &previous);
+			return true;
+		}
+
+		// The curve point moves by 3t(1-t)^2 dP1 + 3t^2(1-t) dP2: share the move between the handles, the nearer one
+		// doing more (all of it within a sixth of either end)
+		const double share = std::clamp((t - 1.0 / 6.0) / (2.0 / 3.0), 0.0, 1.0);
+		const double w = share * share * (3.0 - 2.0 * share);
+		const double u = 1.0 - t;
+		const Point2 p1 = Add(bezier.p[1], Scale(delta, (1.0 - w) / (3.0 * t * u * u)));
+		const Point2 p2 = Add(bezier.p[2], Scale(delta, w / (3.0 * t * t * u)));
+		const uint32_t count = static_cast<uint32_t>(chain.nodes.size());
+		PlaceBendHandle(shape, { chainIndex, segment }, true, p1);
+		PlaceBendHandle(shape, { chainIndex, (segment + 1) % count }, false, p2);
+		return true;
+	}
+
+	size_t StraightenSegments(Shape &shape, const std::vector<NodeRef> &nodes)
+	{
+		const std::set<NodeRef> listed(nodes.begin(), nodes.end());
+		size_t straightened = 0;
+		for (uint32_t c = 0; c < shape.chains.size(); ++c)
+		{
+			Chain &chain = shape.chains[c];
+			if (chain.IsBSpline())
+				continue;
+			const uint32_t count = static_cast<uint32_t>(chain.nodes.size());
+			for (uint32_t s = 0; s < chain.GetSegmentCount(); ++s)
+			{
+				const uint32_t to = (s + 1) % count;
+				if (!listed.contains({ c, s }) || !listed.contains({ c, to }))
+					continue;
+				Node &from = chain.nodes[s];
+				Node &end = chain.nodes[to];
+				if (!from.hasOut && !end.hasIn)
+					continue;
+				from.hasOut = false;
+				end.hasIn = false;
+				from.preferred = end.preferred = NodeType::Corner;
+				UpdateSplit(from);
+				UpdateSplit(end);
+				++straightened;
+			}
+		}
+		return straightened;
 	}
 
 	bool InsertNode(Shape &shape, const uint32_t chainIndex, const uint32_t segment, const double t, NodeRef *inserted)
@@ -649,21 +1137,19 @@ namespace SceneryEditorX::Splines
 		const uint32_t to = (segment + 1) % count;
 		const Bezier bezier = GetSegment(chain, segment);
 
-		Node node;
-		const Node &start = chain.nodes[from];
-		const Node &end = chain.nodes[to];
-
 		// Attributes continue the segment's (its style starts at `from`); texture coordinates are interpolated
-		node.attributes = start.attributes;
-		node.attributes.lineTypeIn = start.attributes.lineType;
-		node.attributes.lightTypeIn = start.attributes.lightType;
-		if (start.attributes.hasUv && end.attributes.hasUv)
+		Node node = MakeInsertedNode(chain.nodes[from], chain.nodes[to], t);
+
+		if (chain.IsBSpline())
 		{
-			const float f = static_cast<float>(t);
-			node.attributes.s = start.attributes.s + (end.attributes.s - start.attributes.s) * f;
-			node.attributes.t = start.attributes.t + (end.attributes.t - start.attributes.t) * f;
-			node.attributes.sLo = node.attributes.sHi = node.attributes.s;
-			node.attributes.tLo = node.attributes.tHi = node.attributes.t;
+			// A control point on the control polygon's edge under the segment
+			const uint32_t at = to == 0 ? count : to;
+			chain.nodes.insert(chain.nodes.begin() + at, node);
+			chain.controls.insert(chain.controls.begin() + at, Lerp(chain.controls[from], chain.controls[to], std::clamp(t, 0.1, 0.9)));
+			ApplyBSpline(chain);
+			if (inserted)
+				*inserted = { chainIndex, at };
+			return true;
 		}
 
 		if (bezier.IsStraight())
@@ -731,6 +1217,7 @@ namespace SceneryEditorX::Splines
 			}
 
 			std::sort(indices.rbegin(), indices.rend());
+			size_t erased = 0;
 			for (const uint32_t index : indices)
 			{
 				if (chain.nodes.size() <= chain.GetMinimumNodes())
@@ -738,8 +1225,13 @@ namespace SceneryEditorX::Splines
 				if (index == 0)
 					chain.wrapsSplit = false;
 				chain.nodes.erase(chain.nodes.begin() + index);
-				++removed;
+				if (chain.IsBSpline())
+					chain.controls.erase(chain.controls.begin() + index);
+				++erased;
 			}
+			if (erased > 0 && chain.IsBSpline())
+				ApplyBSpline(chain);
+			removed += erased;
 		}
 		return removed;
 	}
@@ -750,7 +1242,7 @@ namespace SceneryEditorX::Splines
 		const Shape before = shape;
 		for (const NodeRef &ref : nodes)
 		{
-			if (!before.IsValid(ref.chain, ref.node))
+			if (!before.IsValid(ref.chain, ref.node) || before.chains[ref.chain].IsBSpline())
 				continue;
 			const Chain &chain = before.chains[ref.chain];
 			Node &node = shape.chains[ref.chain].nodes[ref.node];
@@ -780,19 +1272,13 @@ namespace SceneryEditorX::Splines
 			node.handleIn = Mirror(out, p);
 			node.hasIn = node.hasOut = true;
 			node.split = false;
+			node.preferred = NodeType::Symmetric;
 		}
 	}
 
 	void CornerNodes(Shape &shape, const std::vector<NodeRef> &nodes)
 	{
-		for (const NodeRef &ref : nodes)
-		{
-			if (!shape.IsValid(ref.chain, ref.node))
-				continue;
-			Node &node = shape.chains[ref.chain].nodes[ref.node];
-			node.hasIn = node.hasOut = false;
-			node.split = false;
-		}
+		SetNodeType(shape, nodes, NodeType::Corner);
 	}
 
 	void ReverseChain(Chain &chain)
@@ -807,6 +1293,7 @@ namespace SceneryEditorX::Splines
 			segmentStyle[i] = chain.nodes[i].attributes;
 
 		std::reverse(chain.nodes.begin(), chain.nodes.end());
+		std::reverse(chain.controls.begin(), chain.controls.end());
 		for (size_t i = 0; i < count; ++i)
 		{
 			Node &node = chain.nodes[i];
@@ -828,6 +1315,301 @@ namespace SceneryEditorX::Splines
 			node.attributes.spawnTiles = hasOldSegment ? style.spawnTiles : true;
 		}
 		chain.wrapsSplit = false;
+	}
+
+	bool AppendNode(Shape &shape, const uint32_t chainIndex, const bool atStart, const Point2 &position, NodeRef *added)
+	{
+		if (chainIndex >= shape.chains.size())
+			return false;
+		Chain &chain = shape.chains[chainIndex];
+		if (chain.closed || chain.nodes.empty())
+			return false;
+
+		Node node;
+		node.position = position;
+		uint32_t at = 0;
+		if (atStart)
+		{
+			// The new first node starts the segment into the old one: it continues the old first segment's style
+			node.attributes = chain.nodes.front().attributes;
+			chain.nodes.insert(chain.nodes.begin(), node);
+			if (chain.IsBSpline())
+				chain.controls.insert(chain.controls.begin(), position);
+		}
+		else
+		{
+			// The old last node now starts a segment: it carries on the style of the one before it
+			Node &last = chain.nodes.back();
+			if (chain.nodes.size() >= 2)
+				ContinueStyle(last, chain.nodes[chain.nodes.size() - 2]);
+			node.attributes = last.attributes;
+			at = static_cast<uint32_t>(chain.nodes.size());
+			chain.nodes.push_back(node);
+			if (chain.IsBSpline())
+				chain.controls.push_back(position);
+		}
+		if (chain.IsBSpline())
+			ApplyBSpline(chain);
+		if (added)
+			*added = { chainIndex, at };
+		return true;
+	}
+
+	bool CloseChain(Shape &shape, const uint32_t chainIndex)
+	{
+		if (chainIndex >= shape.chains.size())
+			return false;
+		Chain &chain = shape.chains[chainIndex];
+		if (chain.closed)
+			return false;
+		const size_t count = chain.nodes.size();
+		const bool merge = count >= 2 && Distance(chain.nodes.front().position, chain.nodes.back().position) < MERGE_METERS;
+		if (count - (merge ? 1 : 0) < 3)
+			return false;
+
+		if (merge)
+		{
+			// The last node lies on the first: one node, the first, taking the last one's incoming handle
+			Node &first = chain.nodes.front();
+			const Node &last = chain.nodes.back();
+			first.handleIn = last.hasIn ? Add(first.position, Sub(last.handleIn, last.position)) : first.position;
+			first.hasIn = last.hasIn;
+			first.preferred = NodeType::Corner;
+			UpdateSplit(first);
+			chain.nodes.pop_back();
+			if (chain.IsBSpline())
+				chain.controls.pop_back();
+		}
+		else
+			ContinueStyle(chain.nodes.back(), chain.nodes[count - 2]);
+
+		chain.closed = true;
+		chain.wrapsSplit = false;
+		if (chain.IsBSpline())
+			ApplyBSpline(chain);
+		return true;
+	}
+
+	bool OpenChain(Shape &shape, const uint32_t chainIndex, const uint32_t nodeIndex)
+	{
+		if (!shape.IsValid(chainIndex, nodeIndex))
+			return false;
+		Chain &chain = shape.chains[chainIndex];
+		if (!chain.closed)
+			return false;
+
+		std::rotate(chain.nodes.begin(), chain.nodes.begin() + nodeIndex, chain.nodes.end());
+		if (chain.IsBSpline())
+		{
+			std::rotate(chain.controls.begin(), chain.controls.begin() + nodeIndex, chain.controls.end());
+			chain.controls.push_back(chain.controls.front());
+		}
+
+		// The node becomes both ends: the first keeps its outgoing handle, its copy at the end the incoming one
+		Node end = chain.nodes.front();
+		Node &start = chain.nodes.front();
+		start.hasIn = false;
+		end.hasOut = false;
+		for (Node *node : { &start, &end })
+		{
+			node->split = false;	// An end node's single handle needs no split (written as one apt.dat row)
+			node->preferred = NodeType::Corner;
+		}
+		end.sourcePositionIn = {};
+		chain.nodes.push_back(end);
+
+		chain.closed = false;
+		chain.wrapsSplit = false;
+		if (chain.IsBSpline())
+			ApplyBSpline(chain);
+		return true;
+	}
+
+	// -------------------------------------------------------
+	// B-splines
+
+	bool BeginBSpline(Chain &chain, const BSplineFit fit, const bool recoverOnly, const double tolerance)
+	{
+		if (chain.IsBSpline())
+			return true;
+		if (chain.nodes.size() < chain.GetMinimumNodes())
+			return false;
+		if (std::optional<std::vector<Point2>> recovered = RecoverBSpline(chain, tolerance))
+		{
+			chain.controls = std::move(*recovered);
+			return true;
+		}
+		if (recoverOnly)
+			return false;
+
+		if (fit == BSplineFit::ThroughNodes)
+			chain.controls = InterpolateBSpline(chain);
+		else
+		{
+			chain.controls.clear();
+			for (const Node &node : chain.nodes)
+				chain.controls.push_back(node.position);
+		}
+		ApplyBSpline(chain);
+		return true;
+	}
+
+	void EndBSpline(Chain &chain)
+	{
+		chain.controls.clear();
+	}
+
+	void ApplyBSpline(Chain &chain, const std::vector<Point2> *previous)
+	{
+		const uint32_t count = static_cast<uint32_t>(chain.controls.size());
+		if (count < chain.GetMinimumNodes())
+			return;
+		if (chain.nodes.size() != count)
+			chain.nodes.resize(count, chain.nodes.empty() ? Node{} : chain.nodes.back());
+		const bool comparable = previous && previous->size() == count;
+
+		for (uint32_t i = 0; i < count; ++i)
+		{
+			const SplineNode now = ComputeSplineNode(chain.controls, chain.closed, i);
+			if (comparable && ComputeSplineNode(*previous, chain.closed, i) == now)
+				continue;	// Its control points didn't move: it keeps its coordinates exactly (unchanged in the file)
+
+			Node &node = chain.nodes[i];
+			node.position = now.position;
+			node.hasIn = node.hasOut = now.hasHandles;
+			node.handleIn = now.hasHandles ? now.handleIn : now.position;
+			node.handleOut = now.hasHandles ? now.handleOut : now.position;
+			node.split = false;
+			node.preferred = NodeType::Corner;
+		}
+		chain.wrapsSplit = false;
+	}
+
+	std::optional<std::vector<Point2>> RecoverBSpline(const Chain &chain, const double tolerance)
+	{
+		const uint32_t count = static_cast<uint32_t>(chain.nodes.size());
+		if (count < chain.GetMinimumNodes() || count < 2)
+			return std::nullopt;
+
+		// Each segment's handles give its two control points: B[i] = 2 P1 - P2, B[i+1] = 2 P2 - P1
+		std::vector<Point2> sums(count);
+		std::vector<int> estimates(count, 0);
+		for (uint32_t s = 0; s < chain.GetSegmentCount(); ++s)
+		{
+			const Bezier bezier = GetSegment(chain, s);
+			const uint32_t to = (s + 1) % count;
+			sums[s] = Add(sums[s], Sub(Scale(bezier.p[1], 2.0), bezier.p[2]));
+			sums[to] = Add(sums[to], Sub(Scale(bezier.p[2], 2.0), bezier.p[1]));
+			++estimates[s];
+			++estimates[to];
+		}
+		std::vector<Point2> controls(count);
+		for (uint32_t i = 0; i < count; ++i)
+			controls[i] = Scale(sums[i], 1.0 / std::max(1, estimates[i]));
+		if (!chain.closed)
+		{
+			// Open chains end on their first and last control points
+			controls.front() = chain.nodes.front().position;
+			controls.back() = chain.nodes.back().position;
+		}
+
+		// Only a B-spline when the chain those control points make is this one
+		Chain check;
+		check.closed = chain.closed;
+		check.controls = controls;
+		check.nodes.resize(count);
+		ApplyBSpline(check);
+		for (uint32_t i = 0; i < count; ++i)
+		{
+			if (Distance(check.nodes[i].position, chain.nodes[i].position) > tolerance)
+				return std::nullopt;
+		}
+		for (uint32_t s = 0; s < chain.GetSegmentCount(); ++s)
+		{
+			const Bezier expected = GetSegment(check, s);
+			const Bezier actual = GetSegment(chain, s);
+			if (Distance(expected.p[1], actual.p[1]) > tolerance || Distance(expected.p[2], actual.p[2]) > tolerance)
+				return std::nullopt;
+		}
+		return controls;
+	}
+
+	std::vector<Point2> InterpolateBSpline(const Chain &chain)
+	{
+		const uint32_t count = static_cast<uint32_t>(chain.nodes.size());
+		std::vector<Point2> controls(count);
+		for (uint32_t i = 0; i < count; ++i)
+			controls[i] = chain.nodes[i].position;
+		if (count < chain.GetMinimumNodes() || count < 3)
+			return controls;
+
+		// Node i = (B[i-1] + 4 B[i] + B[i+1]) / 6, open ends B = node. Strictly diagonally dominant, so Gauss-Seidel
+		// converges (at least 4x per sweep)
+		double scale = 0.0;
+		for (const Node &node : chain.nodes)
+			scale = std::max({ scale, std::abs(node.position.x), std::abs(node.position.z) });
+		const double settled = 1e-12 * std::max(1.0, scale);
+		const uint32_t first = chain.closed ? 0 : 1;
+		const uint32_t end = chain.closed ? count : count - 1;
+		for (int sweep = 0; sweep < 200; ++sweep)
+		{
+			double change = 0.0;
+			for (uint32_t i = first; i < end; ++i)
+			{
+				const Point2 &previous = controls[(i + count - 1) % count];
+				const Point2 &next = controls[(i + 1) % count];
+				const Point2 &node = chain.nodes[i].position;
+				const Point2 updated{ (6.0 * node.x - previous.x - next.x) / 4.0, (6.0 * node.z - previous.z - next.z) / 4.0 };
+				change = std::max(change, Distance(updated, controls[i]));
+				controls[i] = updated;
+			}
+			if (change <= settled)
+				break;
+		}
+		return controls;
+	}
+
+	std::vector<std::pair<uint32_t, double>> GetBSplineWeights(const uint32_t controls, const bool closed, const uint32_t segment, const double t)
+	{
+		std::map<uint32_t, double> weights;
+		if (controls < (closed ? 3u : 2u))
+			return {};
+		const int64_t count = controls;
+
+		// Control point j's share (the mirrored points beyond an open chain's ends are 2 B[end] - B[next to it])
+		const auto add = [&](const int64_t j, const double w)
+		{
+			if (closed)
+				weights[static_cast<uint32_t>(((j % count) + count) % count)] += w;
+			else if (j < 0)
+			{
+				weights[0] += 2.0 * w;
+				weights[1] -= w;
+			}
+			else if (j >= count)
+			{
+				weights[static_cast<uint32_t>(count - 1)] += 2.0 * w;
+				weights[static_cast<uint32_t>(count - 2)] -= w;
+			}
+			else
+				weights[static_cast<uint32_t>(j)] += w;
+		};
+
+		// The segment's bezier: P0 = (B[i-1] + 4B[i] + B[i+1]) / 6, P1 = (2B[i] + B[i+1]) / 3, P2 = (B[i] + 2B[i+1]) / 3,
+		// P3 = (B[i] + 4B[i+1] + B[i+2]) / 6, weighted by the Bernstein polynomials
+		const int64_t i = segment;
+		const double u = 1.0 - t;
+		const double b0 = u * u * u, b1 = 3.0 * u * u * t, b2 = 3.0 * u * t * t, b3 = t * t * t;
+		add(i - 1, b0 / 6.0);
+		add(i, b0 * 4.0 / 6.0 + b1 * 2.0 / 3.0 + b2 / 3.0 + b3 / 6.0);
+		add(i + 1, b0 / 6.0 + b1 / 3.0 + b2 * 2.0 / 3.0 + b3 * 4.0 / 6.0);
+		add(i + 2, b3 / 6.0);
+
+		std::vector<std::pair<uint32_t, double>> result;
+		for (const auto &[index, weight] : weights)
+			if (weight != 0.0)
+				result.emplace_back(index, weight);
+		return result;
 	}
 }
 

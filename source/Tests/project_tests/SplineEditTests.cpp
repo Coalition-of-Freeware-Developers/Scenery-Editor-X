@@ -417,3 +417,467 @@ TEST_CASE("Spline edit: sampling for drawing and hit tests", "[splines][edit]")
 	SampleChain(shape.chains[1], samples, 0.5);
 	CHECK(samples.size() == 4);		// Three straight segments and the closing point
 }
+
+// -------------------------------------------------------
+// Node types, bending, B-splines, extending / closing
+
+namespace
+{
+	Point2 Add(const Point2 &a, const Point2 &b)
+	{
+		return { a.x + b.x, a.z + b.z };
+	}
+
+	Point2 Lerp(const Point2 &a, const Point2 &b, const double t)
+	{
+		return { a.x + (b.x - a.x) * t, a.z + (b.z - a.z) * t };
+	}
+
+	bool Same(const Point2 &a, const Point2 &b)
+	{
+		return a.x == b.x && a.z == b.z;
+	}
+
+	/* A zigzag of five nodes running east (all corners). */
+	Shape MakeLine(const bool closed = false)
+	{
+		const ProjectFile::GeoRing ring = { GeoPoint(44.6000, -123.9400), GeoPoint(44.6003, -123.9390), GeoPoint(44.5999, -123.9380), GeoPoint(44.6004, -123.9371), GeoPoint(44.6001, -123.9360) };
+		return FromGeoRings({ ring }, closed, PROJECTION);
+	}
+
+	/* First and second derivatives of a segment at its start (atEnd false) or end. */
+	Point2 FirstDerivative(const Bezier &b, const bool atEnd)
+	{
+		if (atEnd)
+			return { 3.0 * (b.p[3].x - b.p[2].x), 3.0 * (b.p[3].z - b.p[2].z) };
+		return { 3.0 * (b.p[1].x - b.p[0].x), 3.0 * (b.p[1].z - b.p[0].z) };
+	}
+
+	Point2 SecondDerivative(const Bezier &b, const bool atEnd)
+	{
+		if (atEnd)
+			return { 6.0 * (b.p[3].x - 2.0 * b.p[2].x + b.p[1].x), 6.0 * (b.p[3].z - 2.0 * b.p[2].z + b.p[1].z) };
+		return { 6.0 * (b.p[0].x - 2.0 * b.p[1].x + b.p[2].x), 6.0 * (b.p[0].z - 2.0 * b.p[1].z + b.p[2].z) };
+	}
+
+	/* Every joint of the chain is C2: position, first and second derivatives carry on. */
+	void RequireC2(const Chain &chain, const double tolerance)
+	{
+		const uint32_t segments = chain.GetSegmentCount();
+		for (uint32_t s = 1; s < segments || (chain.closed && s == segments); ++s)
+		{
+			INFO("joint " << s);
+			const Bezier before = GetSegment(chain, s - 1);
+			const Bezier after = GetSegment(chain, s % segments);
+			CHECK(Distance(before.p[3], after.p[0]) < tolerance);
+			CHECK(Distance(FirstDerivative(before, true), FirstDerivative(after, false)) < tolerance);
+			CHECK(Distance(SecondDerivative(before, true), SecondDerivative(after, false)) < tolerance);
+		}
+	}
+
+	bool HandlesOpposite(const Node &node)
+	{
+		const double ix = node.handleIn.x - node.position.x, iz = node.handleIn.z - node.position.z;
+		const double ox = node.handleOut.x - node.position.x, oz = node.handleOut.z - node.position.z;
+		const double lengths = std::hypot(ix, iz) * std::hypot(ox, oz);
+		return lengths > 0.0 && std::abs(ix * oz - iz * ox) < 1e-9 * lengths && ix * ox + iz * oz < 0.0;
+	}
+}
+
+TEST_CASE("Spline edit: node types are read from the handles", "[splines][types]")
+{
+	Shape shape = MakeLine();
+	Node &node = shape.chains[0].nodes[2];
+	const Point2 p = node.position;
+	CHECK(GetNodeType(node) == NodeType::Corner);
+
+	SetHandle(shape, { 0, 2 }, true, { p.x + 6.0, p.z + 1.0 }, false);
+	CHECK(GetNodeType(node) == NodeType::Symmetric);		// A corner grows mirror-image handles
+
+	SetHandle(shape, { 0, 2 }, false, { p.x - 2.0, p.z + 3.0 }, true);
+	CHECK(GetNodeType(node) == NodeType::Free);				// Broken on purpose
+	CHECK(node.split);
+
+	// Split handles that line up read as smooth (WorldEditor writes them as split pairs when their lengths differ)
+	Node lined = node;
+	lined.handleIn = { p.x - 3.0, p.z - 0.5 };
+	lined.preferred = NodeType::Corner;
+	CHECK(GetNodeType(lined) == NodeType::Smooth);
+	lined.preferred = NodeType::Free;						// ...unless they were made free
+	CHECK(GetNodeType(lined) == NodeType::Free);
+
+	Node one = node;
+	one.hasIn = false;
+	CHECK(GetNodeType(one) == NodeType::Free);
+
+	CHECK(std::string(GetNodeTypeName(NodeType::Smooth)) == "Smooth");
+}
+
+TEST_CASE("Spline edit: setting node types reshapes the handles", "[splines][types]")
+{
+	Shape shape = MakeLine();
+	const Chain &chain = shape.chains[0];
+	const Point2 previous = chain.nodes[1].position, p = chain.nodes[2].position, next = chain.nodes[3].position;
+
+	// Smooth from a corner: along the line through the neighbors, a third of the way to each (lengths differ: split)
+	SetNodeType(shape, { { 0, 2 } }, NodeType::Smooth);
+	const Node &node = chain.nodes[2];
+	REQUIRE(GetNodeType(node) == NodeType::Smooth);
+	CHECK(HandlesOpposite(node));
+	CHECK(Distance(node.handleIn, p) == Approx(Distance(previous, p) / 3.0));
+	CHECK(Distance(node.handleOut, p) == Approx(Distance(next, p) / 3.0));
+	const double cross = (node.handleOut.x - p.x) * (next.z - previous.z) - (node.handleOut.z - p.z) * (next.x - previous.x);
+	CHECK(std::abs(cross) < 1e-9 * Distance(next, previous) * Distance(node.handleOut, p));
+
+	// Dragging one handle of a smooth node turns the other, which keeps its length
+	const double inLength = Distance(node.handleIn, p);
+	SetHandle(shape, { 0, 2 }, true, { p.x + 4.0, p.z - 4.0 }, false);
+	CHECK(GetNodeType(node) == NodeType::Smooth);
+	CHECK(HandlesOpposite(node));
+	CHECK(Distance(node.handleIn, p) == Approx(inLength));
+
+	// Symmetric evens the lengths out; free keeps everything, but then a handle moves alone
+	SetNodeType(shape, { { 0, 2 } }, NodeType::Symmetric);
+	CHECK(GetNodeType(node) == NodeType::Symmetric);
+	CHECK_FALSE(node.split);
+	CHECK(Distance(node.handleIn, p) == Approx(Distance(node.handleOut, p)));
+	const Point2 out = node.handleOut;
+	SetNodeType(shape, { { 0, 2 } }, NodeType::Free);
+	CHECK(GetNodeType(node) == NodeType::Free);
+	CHECK(Same(node.handleOut, out));
+	const Point2 in = node.handleIn;
+	SetHandle(shape, { 0, 2 }, true, { p.x + 1.0, p.z + 5.0 }, false);
+	CHECK(Same(node.handleIn, in));
+	CHECK(node.split);
+
+	// A smooth node with mirror-image handles stays one apt.dat row until its lengths differ
+	SetNodeType(shape, { { 0, 2 } }, NodeType::Symmetric);
+	SetNodeType(shape, { { 0, 2 } }, NodeType::Smooth);
+	CHECK(GetNodeType(node) == NodeType::Smooth);
+	CHECK_FALSE(node.split);
+
+	// Corner removes the handles; an open chain's end gets one along its segment
+	SetNodeType(shape, { { 0, 2 } }, NodeType::Corner);
+	CHECK(GetNodeType(node) == NodeType::Corner);
+	SetNodeType(shape, { { 0, 0 } }, NodeType::Smooth);
+	CHECK(chain.nodes[0].hasOut);
+	CHECK(Distance(chain.nodes[0].handleOut, Lerp(chain.nodes[0].position, chain.nodes[1].position, 1.0 / 3.0)) < 1e-9);
+}
+
+TEST_CASE("Spline edit: bending a segment passes the curve through the point", "[splines][bend]")
+{
+	Shape shape = MakeLine();
+	const Chain before = shape.chains[0];
+
+	// A straight segment between corners becomes a curve; its neighbors stay straight
+	const Bezier straight = GetSegment(before, 1);
+	REQUIRE(straight.IsStraight());
+	for (const double t : { 0.1, 0.35, 0.5, 0.8 })
+	{
+		INFO("t " << t);
+		Shape bent = shape;
+		const Point2 target = Add(straight.Evaluate(t), { 3.0, -2.0 });
+		REQUIRE(BendSegment(bent, 0, 1, t, target));
+		CHECK(Distance(GetSegment(bent.chains[0], 1).Evaluate(t), target) < 1e-9);
+		CHECK(GetSegment(bent.chains[0], 0).IsStraight());
+		CHECK(GetSegment(bent.chains[0], 2).IsStraight());
+		CHECK(GetNodeType(bent.chains[0].nodes[1]) == NodeType::Free);	// One handle
+		// The nearer handle does more of the work (near an end, all of it)
+		const Node &start = bent.chains[0].nodes[1];
+		const Node &end = bent.chains[0].nodes[2];
+		const double startReach = start.hasOut ? Distance(start.handleOut, start.position) : 0.0;
+		const double endReach = end.hasIn ? Distance(end.handleIn, end.position) : 0.0;
+		if (t < 0.4)
+			CHECK(startReach > endReach);
+		if (t > 0.6)
+			CHECK(endReach > startReach);
+	}
+
+	// Smooth nodes stay smooth: the neighboring segments bend along
+	SetNodeType(shape, AllNodes(shape), NodeType::Smooth);
+	const Bezier curve = GetSegment(shape.chains[0], 2);
+	const Point2 target = Add(curve.Evaluate(0.5), { -1.5, 2.5 });
+	REQUIRE(BendSegment(shape, 0, 2, 0.5, target));
+	CHECK(Distance(GetSegment(shape.chains[0], 2).Evaluate(0.5), target) < 1e-9);
+	CHECK(GetNodeType(shape.chains[0].nodes[2]) == NodeType::Smooth);
+	CHECK(GetNodeType(shape.chains[0].nodes[3]) == NodeType::Smooth);
+	CHECK(HandlesOpposite(shape.chains[0].nodes[2]));
+
+	CHECK_FALSE(BendSegment(shape, 0, 4, 0.5, target));		// An open chain of 5 has 4 segments
+}
+
+TEST_CASE("Spline edit: straightening segments", "[splines][edit]")
+{
+	Shape shape = MakeLine();
+	SetNodeType(shape, AllNodes(shape), NodeType::Symmetric);
+	CHECK(StraightenSegments(shape, { { 0, 1 }, { 0, 2 } }) == 1);
+	CHECK(GetSegment(shape.chains[0], 1).IsStraight());
+	CHECK_FALSE(GetSegment(shape.chains[0], 0).IsStraight());
+	CHECK_FALSE(GetSegment(shape.chains[0], 2).IsStraight());
+	CHECK(GetNodeType(shape.chains[0].nodes[1]) == NodeType::Free);	// Its incoming handle stays
+	CHECK(StraightenSegments(shape, { { 0, 1 }, { 0, 2 } }) == 0);
+	CHECK(StraightenSegments(shape, { { 0, 0 } }) == 0);
+}
+
+TEST_CASE("Spline edit: a chain becomes a B-spline and back", "[splines][bspline]")
+{
+	for (const bool closed : { false, true })
+	{
+		INFO((closed ? "closed" : "open"));
+		Shape shape = MakeLine(closed);
+		const Chain corners = shape.chains[0];
+		Chain &chain = shape.chains[0];
+
+		// The nodes become the control points: the curve is C2 and runs inside them
+		REQUIRE(BeginBSpline(chain, BSplineFit::NodesAsControls));
+		REQUIRE(chain.IsBSpline());
+		REQUIRE(chain.controls.size() == corners.nodes.size());
+		for (size_t i = 0; i < corners.nodes.size(); ++i)
+			CHECK(Same(chain.controls[i], corners.nodes[i].position));
+		RequireC2(chain, 1e-9);
+		for (const Node &node : chain.nodes)
+		{
+			CHECK_FALSE(node.split);
+			CHECK(GetNodeType(node) == NodeType::Symmetric);
+		}
+		if (!closed)
+		{
+			CHECK(Same(chain.nodes.front().position, corners.nodes.front().position));
+			CHECK(Same(chain.nodes.back().position, corners.nodes.back().position));
+		}
+
+		// Written to a project and to apt.dat and read back, the control polygon comes back
+		for (const bool apt : { false, true })
+		{
+			INFO((apt ? "apt.dat" : "project"));
+			const Shape reread = apt ? FromAptChains(ToAptChains(shape, PROJECTION), PROJECTION) : FromGeoRings(ToGeoRings(shape, PROJECTION), closed, PROJECTION);
+			REQUIRE(reread.chains[0].nodes.size() == chain.nodes.size());
+			const std::optional<std::vector<Point2>> recovered = RecoverBSpline(reread.chains[0]);
+			REQUIRE(recovered.has_value());
+			for (size_t i = 0; i < recovered->size(); ++i)
+				CHECK(Distance((*recovered)[i], chain.controls[i]) < 1e-6);
+			Chain again = reread.chains[0];
+			CHECK(BeginBSpline(again, BSplineFit::NodesAsControls, true));
+		}
+
+		// Plain beziers aren't B-splines; recovering only leaves them alone
+		Chain plain = corners;
+		CHECK_FALSE(RecoverBSpline(plain).has_value());
+		CHECK_FALSE(BeginBSpline(plain, BSplineFit::NodesAsControls, true));
+		CHECK_FALSE(plain.IsBSpline());
+
+		// Ending keeps the curve as it is
+		const Chain spline = chain;
+		EndBSpline(chain);
+		CHECK_FALSE(chain.IsBSpline());
+		for (uint32_t s = 0; s < chain.GetSegmentCount(); ++s)
+			CHECK(Distance(GetSegment(chain, s).Evaluate(0.3), GetSegment(spline, s).Evaluate(0.3)) == 0.0);
+	}
+}
+
+TEST_CASE("Spline edit: an interpolating B-spline passes through the nodes", "[splines][bspline]")
+{
+	for (const bool closed : { false, true })
+	{
+		INFO((closed ? "closed" : "open"));
+		Shape shape = MakeLine(closed);
+		const Chain corners = shape.chains[0];
+		Chain &chain = shape.chains[0];
+		REQUIRE(BeginBSpline(chain, BSplineFit::ThroughNodes));
+		for (size_t i = 0; i < corners.nodes.size(); ++i)
+			CHECK(Distance(chain.nodes[i].position, corners.nodes[i].position) < 1e-6);
+		RequireC2(chain, 1e-9);
+		if (!closed)
+		{
+			// Natural ends: no bend at the first node
+			const Point2 bend = SecondDerivative(GetSegment(chain, 0), false);
+			CHECK(std::hypot(bend.x, bend.z) < 1e-9);
+		}
+	}
+}
+
+TEST_CASE("Spline edit: moving a B-spline control point changes the curve nearby only", "[splines][bspline]")
+{
+	// A longer line, so some nodes sit far from the moved control point
+	ProjectFile::GeoRing ring;
+	for (int i = 0; i < 9; ++i)
+		ring.push_back(GeoPoint(44.6000 + 0.0002 * ((i * 7) % 3), -123.9400 + 0.0008 * i));
+	Shape shape = FromGeoRings({ ring }, false, PROJECTION);
+	REQUIRE(BeginBSpline(shape.chains[0]));
+	const std::vector<ProjectFile::GeoRing> before = ToGeoRings(shape, PROJECTION);
+
+	// Written out and read back, then edited: the nodes that don't depend on control 4 write back bit for bit
+	Shape reread = FromGeoRings(before, false, PROJECTION);
+	REQUIRE(BeginBSpline(reread.chains[0], BSplineFit::NodesAsControls, true));
+	TransformNodes(reread, { { 0, 4 } }, Affine2::Translation(5.0, -3.0));
+	CHECK(Distance(reread.chains[0].controls[4], Add(shape.chains[0].controls[4], { 5.0, -3.0 })) < 1e-6);
+	RequireC2(reread.chains[0], 1e-6);
+	const std::vector<ProjectFile::GeoRing> after = ToGeoRings(reread, PROJECTION);
+	for (size_t i = 0; i < ring.size(); ++i)
+	{
+		INFO("node " << i);
+		if (i >= 3 && i <= 5)
+			CHECK_FALSE(after[0][i] == before[0][i]);
+		else
+			CHECK(after[0][i] == before[0][i]);
+	}
+
+	// Inserting and deleting control points keeps the nodes and control points paired
+	NodeRef inserted;
+	REQUIRE(InsertNode(reread, 0, 2, 0.5, &inserted));
+	CHECK(inserted.node == 3);
+	CHECK(reread.chains[0].controls.size() == reread.chains[0].nodes.size());
+	CHECK(reread.chains[0].nodes.size() == ring.size() + 1);
+	RequireC2(reread.chains[0], 1e-9);
+	CHECK(DeleteNodes(reread, { { 0, 0 }, { 0, 3 } }) == 2);
+	CHECK(reread.chains[0].controls.size() == reread.chains[0].nodes.size());
+	CHECK(Same(reread.chains[0].nodes[0].position, reread.chains[0].controls[0]));
+	RequireC2(reread.chains[0], 1e-9);
+
+	// Handle edits don't apply to a B-spline
+	const Chain spline = reread.chains[0];
+	SetHandle(reread, { 0, 2 }, true, { 0.0, 0.0 }, false);
+	SetNodeType(reread, { { 0, 2 } }, NodeType::Corner);
+	CHECK(Same(reread.chains[0].nodes[2].handleOut, spline.nodes[2].handleOut));
+}
+
+TEST_CASE("Spline edit: dragging a B-spline's curve", "[splines][bspline]")
+{
+	for (const bool closed : { false, true })
+	{
+		INFO((closed ? "closed" : "open"));
+		for (const uint32_t controls : { 2u, 3u, 6u })
+		{
+			if (closed && controls < 3)
+				continue;
+			for (uint32_t segment = 0; segment < (closed ? controls : controls - 1); ++segment)
+			{
+				double sum = 0.0;
+				for (const auto &[index, weight] : GetBSplineWeights(controls, closed, segment, 0.37))
+				{
+					CHECK(index < controls);
+					sum += weight;
+				}
+				CHECK(sum == Approx(1.0));
+			}
+		}
+
+		Shape shape = MakeLine(closed);
+		REQUIRE(BeginBSpline(shape.chains[0]));
+		for (uint32_t segment = 0; segment < shape.chains[0].GetSegmentCount(); ++segment)
+		{
+			INFO("segment " << segment);
+			Shape dragged = shape;
+			const Point2 target = Add(GetSegment(dragged.chains[0], segment).Evaluate(0.6), { 2.0, 4.0 });
+			REQUIRE(BendSegment(dragged, 0, segment, 0.6, target));
+			CHECK(Distance(GetSegment(dragged.chains[0], segment).Evaluate(0.6), target) < 1e-9);
+			RequireC2(dragged.chains[0], 1e-9);
+		}
+	}
+}
+
+TEST_CASE("Spline edit: extending, closing and opening chains", "[splines][chains]")
+{
+	XPlane::AptNodeChain line;
+	line.closed = false;
+	line.nodes = { AptPoint(44.600, -123.940, 1, 101), AptPoint(44.601, -123.939, 2, 0), AptPoint(44.602, -123.938) };
+	Shape shape = FromAptChains({ line }, PROJECTION);
+	Chain &chain = shape.chains[0];
+
+	// Extending the end: the old last node starts a segment in the style of the one before it
+	NodeRef added;
+	const Point2 beyond = Add(chain.nodes.back().position, { 30.0, 5.0 });
+	REQUIRE(AppendNode(shape, 0, false, beyond, &added));
+	CHECK(added.node == 3);
+	CHECK(Same(chain.nodes[3].position, beyond));
+	CHECK(chain.nodes[2].attributes.lineType == 2);
+	REQUIRE(AppendNode(shape, 0, true, Add(chain.nodes.front().position, { -30.0, 0.0 }), &added));
+	CHECK(added.node == 0);
+	CHECK(chain.nodes[0].attributes.lineType == 1);
+	CHECK(chain.nodes.size() == 5);
+
+	// Closing adds the segment back to the first node (one row per node, the ring ends with 113)
+	REQUIRE(CloseChain(shape, 0));
+	CHECK(chain.closed);
+	CHECK_FALSE(CloseChain(shape, 0));
+	CHECK_FALSE(AppendNode(shape, 0, false, beyond));
+	std::vector<XPlane::AptNodeChain> written = ToAptChains(shape, PROJECTION);
+	CHECK(written[0].closed);
+	CHECK(written[0].nodes.size() == 5);
+
+	// Opening at a node: it becomes both ends, and the curve keeps its shape
+	SetNodeType(shape, { { 0, 2 } }, NodeType::Smooth);
+	const Chain ring = chain;
+	REQUIRE(OpenChain(shape, 0, 2));
+	CHECK_FALSE(chain.closed);
+	REQUIRE(chain.nodes.size() == ring.nodes.size() + 1);
+	CHECK(Same(chain.nodes.front().position, ring.nodes[2].position));
+	CHECK(Same(chain.nodes.back().position, ring.nodes[2].position));
+	CHECK_FALSE(chain.nodes.front().hasIn);
+	CHECK(chain.nodes.front().hasOut);
+	CHECK(chain.nodes.back().hasIn);
+	for (uint32_t s = 0; s < chain.GetSegmentCount(); ++s)
+	{
+		const Bezier a = GetSegment(chain, s);
+		const Bezier b = GetSegment(ring, (s + 2) % ring.GetSegmentCount());
+		for (int i = 0; i <= 4; ++i)
+			CHECK(Distance(a.Evaluate(i / 4.0), b.Evaluate(i / 4.0)) < 1e-9);
+	}
+	// Its ends are single apt.dat rows (no split pairs)
+	written = ToAptChains(shape, PROJECTION);
+	CHECK_FALSE(written[0].closed);
+	CHECK(written[0].nodes.size() == chain.nodes.size());
+
+	// Closing two ends that sit on one spot merges them back into one node
+	REQUIRE(CloseChain(shape, 0));
+	CHECK(chain.nodes.size() == ring.nodes.size());
+	CHECK(HandlesOpposite(chain.nodes[0]));
+
+	// A two-node line can't close
+	Shape pair = FromGeoRings({ { GeoPoint(44.60, -123.94), GeoPoint(44.60, -123.93) } }, false, PROJECTION);
+	CHECK_FALSE(CloseChain(pair, 0));
+}
+
+TEST_CASE("Spline edit: lengths and the tightest bend", "[splines][measure]")
+{
+	// A 100 m square
+	Chain square;
+	square.closed = true;
+	for (const Point2 &p : { Point2{ 0.0, 0.0 }, Point2{ 100.0, 0.0 }, Point2{ 100.0, 100.0 }, Point2{ 0.0, 100.0 } })
+	{
+		Node node;
+		node.position = p;
+		square.nodes.push_back(node);
+	}
+	CHECK(GetChainLength(square) == Approx(400.0));
+	CHECK(std::isinf(GetMinimumRadius(square)));
+
+	// A quarter circle of radius 50 as one bezier (handles 0.5523 r)
+	constexpr double r = 50.0, k = 0.5522847498 * r;
+	Chain arc;
+	arc.closed = false;
+	Node a, b;
+	a.position = { r, 0.0 };
+	a.handleOut = { r, k };
+	a.hasOut = true;
+	b.position = { 0.0, r };
+	b.handleIn = { k, r };
+	b.hasIn = true;
+	arc.nodes = { a, b };
+	CHECK(GetChainLength(arc) == Approx(std::acos(-1.0) * r / 2.0).epsilon(5e-4));
+	uint32_t segment = 9;
+	const double radius = GetMinimumRadius(arc, &segment);
+	CHECK(radius == Approx(r).epsilon(0.02));
+	CHECK(segment == 0);
+
+	// A handle on one side only: the curvature spike at the bare node isn't a bend
+	Chain gentle;
+	gentle.closed = false;
+	Node start, end;
+	start.position = { 0.0, 0.0 };
+	end.position = { 100.0, 0.0 };
+	end.handleIn = { 60.0, 15.0 };
+	end.hasIn = true;
+	gentle.nodes = { start, end };
+	CHECK(GetMinimumRadius(gentle) > 20.0);
+}

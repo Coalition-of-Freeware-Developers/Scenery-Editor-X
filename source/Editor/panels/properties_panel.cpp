@@ -32,8 +32,10 @@
 #include <Editor/core/edit_changes.h>
 #include <Editor/core/editor_scene.h>
 #include <Editor/core/editor_theme.h>
+#include <Editor/core/editor_tools.h>
 #include <Editor/core/editor_ui.h>
 #include <Editor/core/editor_xplane.h>
+#include <Editor/core/node_tool.h>
 #include <SceneryEditorX/renderer/font/font_awesome.h>
 #include <SceneryEditorX/renderer/ui/source/imgui/misc/cpp/imgui_stdlib.h>
 #include <SceneryEditorX/renderer/gpu_scene.h>
@@ -775,9 +777,15 @@ namespace SceneryEditorX
 		{
 			const entt::entity handle = EditorScene::FindHandle(m_Context ? m_Context->selectedEntity : 0);
 
+			// The node tool's selection first: the nodes being edited, their handles and their chain
+			const bool nodes = EditorTools::GetTool() == EditorTools::Tool::Nodes && NodeTool::HasShapes();
+			if (nodes)
+				NodeTool::DrawProperties(m_Context);
+
 			if (handle == entt::null)
 			{
-				EditorUI::EmptyState("No properties found");
+				if (!nodes)
+					EditorUI::EmptyState("No properties found");
 			}
 			else
 			{
