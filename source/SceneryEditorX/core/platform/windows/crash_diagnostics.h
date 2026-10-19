@@ -39,6 +39,9 @@ namespace SceneryEditorX::Diagnostics
 	 * (flushed) when the process is about to die: abort(), std::terminate (uncaught C++ exceptions), CRT
 	 * assertion/error reports and unhandled SEH exceptions (access violations, ...). Crashes after Log::ShutDown()
 	 * (static destructors) are appended to SceneryEditorX.log directly and sent to OutputDebugString.
+	 * Every report includes the process and system commit headroom (CPU allocations fail at the commit limit). An
+	 * unhandled exception also logs the faulting address of an access violation and what the address space holds
+	 * there, the stacks the other threads had at the time, and writes SceneryEditorX_crash.dmp next to the log.
 	 *
 	 * Complements the out-of-process CrashHandler service: this needs no setup and puts the cause in
 	 * SceneryEditorX.log, where it is otherwise lost with the debug console. Safe to call more than once.

@@ -2640,6 +2640,27 @@ namespace SceneryEditorX
 		);
 	}
 
+	void CommandList::DrawIndexedIndirect(Buffer* drawArgs, const uint64_t argsOffset, const uint32_t drawCount)
+	{
+		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state for indirect draw");
+		SEDX_CORE_ASSERT(drawArgs != nullptr, "Indirect draw buffer must be valid");
+		if (m_StickyInvalidState || drawCount == 0)
+			return;
+
+		if (!m_pso.IsGraphics() || GetPipelineHandle() == VK_NULL_HANDLE || GetPipelineLayoutHandle() == VK_NULL_HANDLE)
+		{
+			m_StickyInvalidState = true;
+			SEDX_CORE_WARN_TAG("CommandList", "DrawIndexedIndirect skipped: invalid graphics pipeline state for '{}'", m_ObjectName.c_str());
+			return;
+		}
+
+		PreDraw();
+		if (m_StickyInvalidState)
+			return;
+
+		vkCmdDrawIndexedIndirect(m_CmdBuffer, drawArgs->Get(), argsOffset, drawCount, sizeof(VkDrawIndexedIndirectCommand));
+	}
+
 	void CommandList::InsertBarrier(ImageResource* img, BarrierType type)
 	{
 		SEDX_CORE_ASSERT(img != nullptr, "ImageResource must be valid for barrier insertion");

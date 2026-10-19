@@ -39,6 +39,7 @@
 #include "components/lights.h"
 #include "components/wind.h"
 #include <algorithm>
+#include <unordered_set>
 #include <filesystem>
 #include <Editor/modules/scene_render.h>
 #include <SceneryEditorX/core/window/window.h>
@@ -52,10 +53,23 @@ namespace SceneryEditorX
 
 	Ref<Camera> Scene::m_Camera = nullptr;
 	static Scope<Scene> s_ActiveScene = nullptr;
-	static std::unordered_map<entt::entity, Scope<Entity>> s_EntityStorage;
+
+	// Runtime records (runtime components, active flag, previous matrix), one per live entity. Allocated in chunks so
+	// their addresses never move; a destroyed entity's record is recycled once it has left s_EntityPointers.
+	static constexpr size_t RUNTIME_CHUNK_SIZE = 1024;
+	static std::vector<std::unique_ptr<EntityRuntime[]>> s_RuntimeChunks;
+	static size_t s_RuntimeChunkUsed = RUNTIME_CHUNK_SIZE; // records handed out from the last chunk
+	static std::vector<EntityRuntime*> s_FreeRuntimes;
+	static std::vector<EntityRuntime*> s_RuntimeByIndex;   // indexed by the entity part of an entt handle (see FindRuntime)
+
 	static std::vector<Entity*> s_EntityPointers;
-	static std::vector<Entity*> s_LightEntities;       // entities subset that contains only lights
-	static std::vector<Entity*> s_ActiveRenderableEntities;  // entities subset that contains only active renderables
+	static std::vector<Entity*> s_LightEntities;       // entities subset that contains only lights (cached, see RefreshEntityLists)
+	static std::vector<Entity*> s_RenderableEntities;  // entities subset that contains only renderables (cached)
+	static std::vector<MaterialAsset*> s_RenderableMaterials; // distinct materials of s_RenderableEntities (cached)
+	static uint64_t s_StructureVersion = 1;            // see Scene::GetStructureVersion()
+	static uint64_t s_EntityListsVersion = 0;          // structure version the cached lists were built at
+	static uint64_t s_DestroyVersion = 1;              // see Scene::GetDestroyVersion()
+	static std::vector<EntityRuntime*> s_DestroyedEntities; // destroyed, still listed in s_EntityPointers (CompactEntityPointers)
 	static BoundingBox s_BoundingBox = BoundingBox::UNIT;
 	static std::string s_FilePath;
 	static std::string s_SceneName; // cached to avoid per-frame allocation
@@ -63,8 +77,14 @@ namespace SceneryEditorX
 	static std::mutex s_EntityAccess_Mutex;
 	static std::atomic<bool> s_Resolve = false;
 	static std::unordered_map<uint64_t, uint32_t> s_EntityStates; // stores: low 8 bits for flags, next 8 for component count, next 8 for cull mode, next 8 for light type
-	static std::unordered_map<uint64_t, size_t> s_MaterialStateHashes; // material change tracking - things that change the nature of the material for rendering
-	static std::unordered_map<uint64_t, size_t> s_LightStateHashes; // light change tracking - things that change the nature of the light for rendering
+	// Change tracking, one hash per entry of s_RenderableMaterials / s_LightEntities (rebuilt with those lists, which
+	// counts as a change): things that change the nature of a material / light for rendering
+	static std::vector<size_t> s_MaterialStateHashes;
+	static std::vector<size_t> s_LightStateHashes;
+	static std::vector<const MaterialAsset*> s_MaterialHashKeys; // the list the hashes were made for
+	static std::vector<const Entity*> s_LightHashKeys;
+	static uint64_t s_MaterialHashesListVersion = 0;
+	static uint64_t s_LightHashesListVersion = 0;
 
 	/**
 	 * @enum EntityChange
@@ -88,6 +108,86 @@ namespace SceneryEditorX
 	{
 		s_EntityStates[id] |= static_cast<uint32_t>(change);
 		s_Resolve = true;
+	}
+
+	namespace
+	{
+		/**
+		 * @brief Drops destroyed entities from s_EntityPointers in one pass. DestroyEntity only queues them: erasing
+		 * each one from the vector made unloading tens of thousands of entities quadratic.
+		 */
+		void CompactEntityPointers()
+		{
+			if (s_DestroyedEntities.empty())
+				return;
+
+			// Sorted by stored-handle address for a binary search per entity. The records stay out of reuse until
+			// here, so no live entity shares an address with a queued one.
+			const auto storedHandle = [](const EntityRuntime *runtime) { return static_cast<const Entity*>(&runtime->entity); };
+			std::ranges::sort(s_DestroyedEntities, {}, storedHandle);
+			std::erase_if(s_EntityPointers, [&storedHandle](const Entity *entityPtr)
+			{
+				return std::ranges::binary_search(s_DestroyedEntities, entityPtr, {}, storedHandle);
+			});
+			s_FreeRuntimes.insert(s_FreeRuntimes.end(), s_DestroyedEntities.begin(), s_DestroyedEntities.end());
+			s_DestroyedEntities.clear();
+		}
+
+		/* @brief A cleared runtime record for a new entity: a recycled one, else the next slot of the last chunk. */
+		EntityRuntime *AcquireRuntime()
+		{
+			if (!s_FreeRuntimes.empty())
+			{
+				EntityRuntime *runtime = s_FreeRuntimes.back();
+				s_FreeRuntimes.pop_back();
+				*runtime = EntityRuntime{};
+				return runtime;
+			}
+
+			if (s_RuntimeChunkUsed == RUNTIME_CHUNK_SIZE)
+			{
+				s_RuntimeChunks.push_back(std::make_unique<EntityRuntime[]>(RUNTIME_CHUNK_SIZE));
+				s_RuntimeChunkUsed = 0;
+			}
+			return &s_RuntimeChunks.back()[s_RuntimeChunkUsed++];
+		}
+
+		/* @brief The s_RuntimeByIndex slot of a registry handle (its entity part; the version is checked by FindRuntime). */
+		size_t RuntimeIndex(const entt::entity handle)
+		{
+			return static_cast<size_t>(entt::to_entity(handle));
+		}
+	}
+
+	/**
+	 * @brief Carries change-tracking hashes over to a rebuilt list: entries still listed keep theirs, new ones start at
+	 * 0 (so their first hash reads as a change).
+	 * @return True when entries were dropped or the order moved, changes the remaining hashes can't show (a new
+	 * entity can reuse a destroyed one's stored-entity address, see AcquireRuntime, and keep its hash elsewhere).
+	 */
+	template <typename T>
+	static bool RemapHashes(const std::vector<T*> &current, std::vector<const T*> &keys, std::vector<size_t> &hashes)
+	{
+		std::unordered_map<const T*, size_t> previous;
+		previous.reserve(keys.size());
+		for (size_t i = 0; i < keys.size() && i < hashes.size(); ++i)
+			previous.emplace(keys[i], hashes[i]);
+
+		std::vector<size_t> next(current.size(), 0);
+		size_t kept = 0;
+		for (size_t i = 0; i < current.size(); ++i)
+		{
+			if (const auto it = previous.find(current[i]); it != previous.end())
+			{
+				next[i] = it->second;
+				++kept;
+			}
+		}
+
+		const bool changed = kept < keys.size() || !std::ranges::equal(current, keys);
+		keys.assign(current.begin(), current.end());
+		hashes.swap(next);
+		return changed;
 	}
 
 	/**
@@ -129,6 +229,12 @@ namespace SceneryEditorX
 	{
 		size_t hash = 17;
 
+		// An inactive light other than the sun isn't uploaded (Renderer::UpdateLights skips it), so only switching
+		// it on matters: thousands of X-Plane spill lights sit switched off in daylight.
+		if (!entity->GetActive() && light->GetLightType() != LightType::Directional)
+			return (hash * 31) ^ static_cast<size_t>(light->GetLightType());
+
+
 		hash = (hash * 31) ^ std::hash<float>{}(light->GetLightColor().r);
 		hash = (hash * 31) ^ std::hash<float>{}(light->GetLightColor().g);
 		hash = (hash * 31) ^ std::hash<float>{}(light->GetLightColor().b);
@@ -152,7 +258,9 @@ namespace SceneryEditorX
 		hash = (hash * 31) ^ std::hash<float>{}(world.m21);
 		hash = (hash * 31) ^ std::hash<float>{}(world.m22);
 
-		for (uint32_t i = 0; i < light->GetSliceCount(); i++)
+		// the slice matrices follow from the values above; they only reach the GPU for shadowed lights
+		const uint32_t sliceCount = light->GetFlag(LightFlags::Shadows) ? light->GetSliceCount() : 0;
+		for (uint32_t i = 0; i < sliceCount; i++)
 		{
 			const Matrix& vp       = light->GetViewProjectionMatrix(i);
 			const float* vp_data   = vp.Data();
@@ -225,6 +333,7 @@ namespace SceneryEditorX
 		}
 
 		// Runtime components (Renderable, Light, ...) live on the Entity objects the scene stores, not in the registry.
+		CompactEntityPointers();
 		const bool hasRenderableEntity = std::ranges::any_of(s_EntityPointers, [](Entity* entity)
 		{
 			return entity && entity->GetComponent<Renderable>() != nullptr;
@@ -232,18 +341,14 @@ namespace SceneryEditorX
 
 		if (!hasRenderableEntity)
 		{
-			if (const Entity bootstrapHandle = s_ActiveScene->CreateEntity("DefaultSceneMesh"))
+			if (Entity bootstrapEntity = s_ActiveScene->CreateEntity("DefaultSceneMesh"))
 			{
-				// CreateEntity returns a handle copy; attach runtime components to the stored entity so the renderer
-				// (which walks GetEntities()) sees them and the component's entity pointer stays valid.
-				Entity* bootstrapEntity = s_EntityStorage.at(static_cast<entt::entity>(bootstrapHandle)).get();
-
 				// unit cube resting on the ground plane
-				auto& transform = bootstrapEntity->GetComponent<TransformComponent>();
+				auto& transform = bootstrapEntity.GetComponent<TransformComponent>();
 				transform.translation = Vec3(0.0f, 0.5f, 0.0f);
 				transform.scale = Vec3(1.0f, 1.0f, 1.0f);
 
-				if (Renderable* renderable = bootstrapEntity->AddComponent<Renderable>())
+				if (Renderable* renderable = bootstrapEntity.AddComponent<Renderable>())
 				{
 					renderable->SetMesh(MeshType::Cube);
 					renderable->SetDefaultMaterial();
@@ -257,8 +362,34 @@ namespace SceneryEditorX
 	void Scene::Shutdown()
 	{
 		m_Camera.Reset();
-		s_EntityStorage.clear();
 		s_EntityPointers.clear();
+		s_DestroyedEntities.clear();
+		s_RuntimeByIndex.clear();
+
+		// The records stay allocated (cleared, free for a next scene): a handle kept past Shutdown then misses its
+		// record instead of reading freed memory. Their runtime components are released here, before the device goes.
+		s_FreeRuntimes.clear();
+		for (size_t chunk = 0; chunk < s_RuntimeChunks.size(); ++chunk)
+		{
+			const size_t used = chunk + 1 == s_RuntimeChunks.size() ? s_RuntimeChunkUsed : RUNTIME_CHUNK_SIZE;
+			for (size_t i = 0; i < used; ++i)
+			{
+				EntityRuntime &runtime = s_RuntimeChunks[chunk][i];
+				runtime.components = {};
+				runtime.entity.m_EntityHandle = entt::null;
+				s_FreeRuntimes.push_back(&runtime);
+			}
+		}
+		s_RenderableEntities.clear();
+		s_LightEntities.clear();
+		s_RenderableMaterials.clear();
+		s_LightStateHashes.clear();
+		s_MaterialStateHashes.clear();
+		s_LightHashKeys.clear();
+		s_MaterialHashKeys.clear();
+		s_LightHashesListVersion = 0;
+		s_MaterialHashesListVersion = 0;
+		MarkStructureChanged();
 		s_ActiveScene.reset();
 	}
 
@@ -323,9 +454,74 @@ namespace SceneryEditorX
 		return view.size_hint() > 0;
 	}
 
-	std::vector<Entity*> Scene::GetEntities()
+	const std::vector<Entity*> &Scene::GetEntities()
 	{
+		CompactEntityPointers();
 		return s_EntityPointers;
+	}
+
+	namespace
+	{
+		/* @brief Rebuilds the renderable / light / material lists when the structure version has moved. */
+		void RefreshEntityLists()
+		{
+			if (s_EntityListsVersion == s_StructureVersion)
+				return;
+
+			CompactEntityPointers();
+			s_RenderableEntities.clear();
+			s_LightEntities.clear();
+			s_RenderableMaterials.clear();
+			std::unordered_set<const MaterialAsset*> materials;
+			for (Entity *entity : s_EntityPointers)
+			{
+				if (!entity)
+					continue;
+
+				if (Renderable *renderable = entity->GetComponent<Renderable>())
+				{
+					s_RenderableEntities.push_back(entity);
+					if (MaterialAsset *material = renderable->GetMaterialAsset(); material && materials.insert(material).second)
+						s_RenderableMaterials.push_back(material);
+				}
+				if (entity->GetComponent<Light>())
+					s_LightEntities.push_back(entity);
+			}
+			s_EntityListsVersion = s_StructureVersion;
+		}
+	}
+
+	const std::vector<Entity*> &Scene::GetRenderableEntities()
+	{
+		RefreshEntityLists();
+		return s_RenderableEntities;
+	}
+
+	const std::vector<Entity*> &Scene::GetLightEntities()
+	{
+		RefreshEntityLists();
+		return s_LightEntities;
+	}
+
+	const std::vector<MaterialAsset*> &Scene::GetRenderableMaterials()
+	{
+		RefreshEntityLists();
+		return s_RenderableMaterials;
+	}
+
+	uint64_t Scene::GetStructureVersion()
+	{
+		return s_StructureVersion;
+	}
+
+	void Scene::MarkStructureChanged()
+	{
+		++s_StructureVersion;
+	}
+
+	uint64_t Scene::GetDestroyVersion()
+	{
+		return s_DestroyVersion;
 	}
 
 	bool Scene::SaveToFile(std::string filePath)
@@ -370,26 +566,28 @@ namespace SceneryEditorX
 		s_ActiveScene->m_Registry.emplace<RelationshipComponent>(entityHandle);
 		s_ActiveScene->m_Registry.emplace<TransformComponent>(entityHandle);
 
-		auto entity = CreateScope<Entity>(entityHandle, s_ActiveScene.get());
-		s_EntityPointers.push_back(entity.get());
-		s_EntityStorage[entityHandle] = std::move(entity);
+		EntityRuntime *runtime = AcquireRuntime();
+		runtime->entity = Entity(entityHandle, s_ActiveScene.get());
+		runtime->entity.m_Runtime = runtime;
 
-		return {entityHandle, s_ActiveScene.get()};
+		const size_t index = RuntimeIndex(entityHandle);
+		if (index >= s_RuntimeByIndex.size())
+			s_RuntimeByIndex.resize(index + 1, nullptr);
+		s_RuntimeByIndex[index] = runtime;
+
+		s_EntityPointers.push_back(&runtime->entity);
+		MarkStructureChanged();
+
+		return runtime->entity;
 	}
 
 	Entity Scene::GetEntity(const UUID &uuid)
 	{
-		if (!s_ActiveScene)
-			return {};
+		if (const Entity entity = TryGetEntityWithUUID(uuid))
+			return entity;
 
-		if (const auto it = s_ActiveScene->m_EntityMap.find(uuid); it != s_ActiveScene->m_EntityMap.end())
-		{
-			if (s_ActiveScene->m_Registry.valid(it->second))
-			{
-				return {it->second, s_ActiveScene.get()};
-			}
-		}
-		SEDX_CORE_ERROR("Entity with UUID {} not found in scene!", static_cast<uint64_t>(uuid));
+		if (s_ActiveScene)
+			SEDX_CORE_ERROR("Entity with UUID {} not found in scene!", static_cast<uint64_t>(uuid));
 		return {};
 	}
 
@@ -425,18 +623,23 @@ namespace SceneryEditorX
 			}
 		}
 
-		// The ID lives in the registry; Entity::GetUUID() reads the handle's own (empty) component store.
 		if (const IDComponent *id = s_ActiveScene->m_Registry.try_get<IDComponent>(entityHandle))
 			s_ActiveScene->m_EntityMap.erase(id->pID);
 
-		if (const auto storageIt = s_EntityStorage.find(entityHandle); storageIt != s_EntityStorage.end())
+		// The runtime components go now (their owner, the stored handle, is still intact while they're released).
+		// The cleared handle makes every handle still carrying this record miss it; the record is reused once it
+		// has left s_EntityPointers.
+		if (EntityRuntime *runtime = FindRuntime(entityHandle, s_ActiveScene.get()))
 		{
-			const Entity* entityPtr = storageIt->second.get();
-			s_EntityPointers.erase(std::ranges::remove(s_EntityPointers, entityPtr).begin(), s_EntityPointers.end());
-			s_EntityStorage.erase(storageIt);
+			runtime->components = {};
+			runtime->entity.m_EntityHandle = entt::null;
+			s_RuntimeByIndex[RuntimeIndex(entityHandle)] = nullptr;
+			s_DestroyedEntities.push_back(runtime);
 		}
 
 		s_ActiveScene->m_Registry.destroy(entityHandle);
+		MarkStructureChanged();
+		++s_DestroyVersion;
 	}
 
 	Entity Scene::TryGetEntityWithUUID(const UUID &uuid)
@@ -446,22 +649,51 @@ namespace SceneryEditorX
 
 		if (const auto it = s_ActiveScene->m_EntityMap.find(uuid); it != s_ActiveScene->m_EntityMap.end())
 		{
+			// the stored handle (carries the runtime record); every registry entity has one (CreateEntityWithUUID)
+			if (const EntityRuntime *runtime = FindRuntime(it->second, s_ActiveScene.get()))
+				return runtime->entity;
+
 			if (s_ActiveScene->m_Registry.valid(it->second))
-			{
-			  return {it->second, s_ActiveScene.get()};
-			}
+				return {it->second, s_ActiveScene.get()};
 		}
 
 		return {};
 	}
 
+	entt::entity Scene::TryGetEntityHandle(const UUID &uuid)
+	{
+		if (!s_ActiveScene)
+			return entt::null;
+
+		const auto it = s_ActiveScene->m_EntityMap.find(uuid);
+		if (it == s_ActiveScene->m_EntityMap.end() || !s_ActiveScene->m_Registry.valid(it->second))
+			return entt::null;
+		return it->second;
+	}
+
 	Entity *Scene::GetStoredEntity(const Entity &entity)
 	{
-		if (!s_ActiveScene || !entity)
+		return entity.GetStored();
+	}
+
+	Entity *Scene::GetStoredEntity(const entt::entity handle)
+	{
+		EntityRuntime *runtime = FindRuntime(handle, s_ActiveScene.get());
+		return runtime ? &runtime->entity : nullptr;
+	}
+
+	EntityRuntime *Scene::FindRuntime(const entt::entity handle, const Scene *scene)
+	{
+		if (handle == entt::null || !scene || scene != s_ActiveScene.get())
 			return nullptr;
 
-		const auto it = s_EntityStorage.find(static_cast<entt::entity>(entity));
-		return it != s_EntityStorage.end() ? it->second.get() : nullptr;
+		const size_t index = RuntimeIndex(handle);
+		if (index >= s_RuntimeByIndex.size())
+			return nullptr;
+
+		// the full handle (entity + version) must match: a recycled entity index belongs to a newer entity
+		EntityRuntime *runtime = s_RuntimeByIndex[index];
+		return runtime && runtime->entity.m_EntityHandle == handle ? runtime : nullptr;
 	}
 
 	float Scene::GetTimeOfDay()
@@ -507,66 +739,43 @@ namespace SceneryEditorX
 		{
 			case ComponentType::Light:
 			{
-				// Light components live on the stored entities (s_LightEntities is never filled), so walk them all.
-				size_t lightCount = 0;
-				for (Entity* ent : s_EntityPointers)
+				// Hashes sit in a vector parallel to the cached light list: a map lookup per light per frame was most
+				// of the cost with thousands of X-Plane spill lights.
+				RefreshEntityLists();
+				if (s_LightHashesListVersion != s_EntityListsVersion)
 				{
-					if (Light* light = ent ? ent->GetComponent<Light>() : nullptr)
-					{
-						++lightCount;
-						const uint64_t id = ent->GetObjectId();
-						size_t currentHash = ComputeLightHash(light, ent);
-						if (auto it = s_LightStateHashes.find(id); it == s_LightStateHashes.end())
-						{
-							s_LightStateHashes[id] = currentHash;
-							changed = true;
-						}
-						else if (it->second != currentHash)
-						{
-							it->second = currentHash;
-							changed = true;
-						}
-					}
+					changed |= RemapHashes(s_LightEntities, s_LightHashKeys, s_LightStateHashes);
+					s_LightHashesListVersion = s_EntityListsVersion;
 				}
-
-				// a light went away: forget the hashes of entities that no longer carry one
-				if (s_LightStateHashes.size() > lightCount)
+				for (size_t i = 0; i < s_LightEntities.size(); ++i)
 				{
-					std::erase_if(s_LightStateHashes, [](const auto &entry)
+					Entity* ent = s_LightEntities[i];
+					const size_t currentHash = ComputeLightHash(ent->GetComponent<Light>(), ent);
+					if (s_LightStateHashes[i] != currentHash)
 					{
-						return !std::ranges::any_of(s_EntityPointers, [&entry](Entity *ent)
-						{
-							return ent && ent->GetObjectId() == entry.first && ent->GetComponent<Light>() != nullptr;
-						});
-					});
-					changed = true;
+						s_LightStateHashes[i] = currentHash;
+						changed = true;
+					}
 				}
 				break;
 			}
 	
 			case ComponentType::Material:
 			{
-				for (Entity* ent : s_EntityPointers)
+				// Each distinct material once: thousands of renderables share far fewer materials.
+				RefreshEntityLists();
+				if (s_MaterialHashesListVersion != s_EntityListsVersion)
 				{
-					if (Renderable* renderable = ent->GetComponent<Renderable>())
+					changed |= RemapHashes(s_RenderableMaterials, s_MaterialHashKeys, s_MaterialStateHashes);
+					s_MaterialHashesListVersion = s_EntityListsVersion;
+				}
+				for (size_t i = 0; i < s_RenderableMaterials.size(); ++i)
+				{
+					const size_t currentHash = ComputeMaterialHash(s_RenderableMaterials[i]);
+					if (s_MaterialStateHashes[i] != currentHash)
 					{
-						if (MaterialAsset* material = renderable->GetMaterialAsset())
-						{
-							const uint64_t id = material->GetObjectId();
-							size_t currentHash = ComputeMaterialHash(material);
-							if (auto it = s_MaterialStateHashes.find(id); it == s_MaterialStateHashes.end())
-							{
-								// new material
-								s_MaterialStateHashes[id] = currentHash;
-								changed = true;
-							}
-							else if (it->second != currentHash)
-							{
-								// material changed
-								it->second = currentHash;
-								changed = true;
-							}
-						}
+						s_MaterialStateHashes[i] = currentHash;
+						changed = true;
 					}
 				}
 				break;

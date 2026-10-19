@@ -30,17 +30,28 @@
  */
 #include "memory_allocator.h"
 #include "render_context.h"
+#include <algorithm>
+#include <chrono>
+#include <cstdlib>
 #include <mutex>
+#include <thread>
+
+namespace SceneryEditorX
+{
+	static void *AllocateVmaHostMemory(size_t size, size_t alignment);
+}
 
 /**
  * VMA implementation — must be defined in exactly ONE translation unit.
  * VK_NO_PROTOTYPES is active (volk is used), so we disable VMA's static
  * Vulkan function resolution and enable dynamic resolution via the
  * VmaVulkanFunctions struct populated in MemoryAllocator::Init().
+ * VMA's own CPU allocations go through AllocateVmaHostMemory (freed by VMA's default, matching _aligned_free / free).
  */
 #define VMA_IMPLEMENTATION
 #define VMA_STATIC_VULKAN_FUNCTIONS  0
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 1
+#define VMA_SYSTEM_ALIGNED_MALLOC(size, alignment) ::SceneryEditorX::AllocateVmaHostMemory((size), (alignment))
 #ifndef VK_USE_64_BIT_NON_DISPATCHABLE_HANDLES
 #define VK_USE_64_BIT_NON_DISPATCHABLE_HANDLES 1
 #endif
@@ -87,6 +98,67 @@ namespace SceneryEditorX
 	static Renderer_AllocatorData *s_AllocatorData; // Pointer to the allocator data, initialized in MemoryAllocator::Init()
 	static std::map<VmaAllocation, AllocInfo> s_AllocationMap; // Map to track active allocations and their information
 	static std::mutex s_MutexAllocator; // Mutex to protect access to the allocation map for thread safety
+
+	// -------------------------------------------------------
+
+	static void *AlignedAlloc(const size_t size, const size_t alignment)
+	{
+	#if defined(_WIN32)
+		return _aligned_malloc(size, alignment);
+	#else
+		void *memory = nullptr;
+		return posix_memalign(&memory, std::max(alignment, sizeof(void *)), size) == 0 ? memory : nullptr;
+	#endif
+	}
+
+	/**
+	 * VMA's CPU-side allocations (block metadata, allocation objects). VMA can't survive one failing: it asserts (in
+	 * Debug an Abort/Retry/Ignore box) and then uses the null pointer, e.g. the memset in VmaBlockBufferImageGranularity::Init
+	 * when a new 256 MB block's 1 MB region table is allocated. They fail when the system commit limit (RAM + page
+	 * file) is reached, which is often brief: Windows grows a system-managed page file, or whatever took the memory
+	 * gives it back. So wait for memory (the frame stalls), and if none comes back stop with the reason in the log
+	 * (abort() reports the stack and memory status) instead of crashing somewhere inside VMA.
+	 */
+	static void *AllocateVmaHostMemory(const size_t size, const size_t alignment)
+	{
+		if (void *memory = AlignedAlloc(size, alignment))
+			return memory;
+
+		// Growing the page file took 20-30 s when another process took ~30 GB within a minute (KPDX, 2026-10-18).
+		constexpr auto RETRY_FOR = std::chrono::seconds(30);
+		const auto start = std::chrono::steady_clock::now();
+		try
+		{
+			SEDX_CORE_WARN_TAG("MemoryAllocator", "Out of CPU memory allocating {} for VMA (system commit limit reached?); waiting up to {} s for memory",
+				Utils::BytesToString(size), RETRY_FOR.count());
+		}
+		catch (...) {} // Logging may need memory too
+
+		uint32_t sleepMilliseconds = 1;
+		while (std::chrono::steady_clock::now() - start < RETRY_FOR)
+		{
+			std::this_thread::sleep_for(std::chrono::milliseconds(sleepMilliseconds));
+			sleepMilliseconds = std::min(sleepMilliseconds * 2, 100u);
+
+			if (void *memory = AlignedAlloc(size, alignment))
+			{
+				try
+				{
+					SEDX_CORE_WARN_TAG("MemoryAllocator", "CPU allocation of {} for VMA succeeded after {:.0f} ms", Utils::BytesToString(size),
+						std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count());
+				}
+				catch (...) {}
+				return memory;
+			}
+		}
+
+		try
+		{
+			SEDX_CORE_FATAL_TAG("MemoryAllocator", "Out of CPU memory: VMA could not allocate {} within {} s; stopping", Utils::BytesToString(size), RETRY_FOR.count());
+		}
+		catch (...) {}
+		std::abort();
+	}
 
 	// -------------------------------------------------------
 

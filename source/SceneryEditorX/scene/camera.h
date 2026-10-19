@@ -399,6 +399,18 @@ namespace SceneryEditorX
 		/* @brief True when the camera reacts to mouse and keyboard input. */
 		static bool IsInputEnabled();
 
+		/**
+		 * @brief Locked: mouse and keyboard never move the camera, whatever SetInputEnabled() says (--lock-camera, for
+		 * repeatable captures and measurements while other windows get the input).
+		 */
+		static void SetInputLocked(bool locked);
+
+		/**
+		 * @brief Places the camera at eye looking at target and makes target the orbit pivot, so orbiting, dollying and
+		 * panning carry on from there. Writes the camera entity's transform too (the scene reads input from it).
+		 */
+		void LookAt(TransformComponent &transform, const Vec3 &eye, const Vec3 &target);
+
 		/* @brief Orbit-mode distance between the eye and the orbit center. */
 		[[nodiscard]] float GetOrbitDistance() const { return m_Zoom; }
 

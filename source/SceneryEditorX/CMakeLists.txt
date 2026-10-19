@@ -450,6 +450,7 @@ TARGET_LINK_LIBRARIES(AppCore
 		nlohmann_json::nlohmann_json
 		spdlog::spdlog_header_only
 		CURL::libcurl
+		ZLIB::ZLIB
 		Vulkan::Vulkan
 		libconfig
 		libconfig++

@@ -35,6 +35,7 @@
 #include <portable-file-dialogs.h>
 #include <SceneryEditorX/logging/logging.hpp>
 #include <SceneryEditorX/renderer/font/font_awesome.h>
+#include <SceneryEditorX/xplane/xp_airport_manager.h>
 #include <SceneryEditorX/xplane/xp_datarefs.h>
 #include <SceneryEditorX/xplane/xp_library_manager.h>
 #include <SceneryEditorX/xplane/xp_object.h>
@@ -61,6 +62,8 @@ namespace SceneryEditorX::EditorXPlane
 
 		if (!XPlane::LibraryManager::SetInstallPath(folder))
 			EDITOR_ERROR_TAG("X-Plane", "'{}' is not an X-Plane 12 folder: {}", folder, XPlane::InspectInstall(folder).GetProblem());
+		else
+			XPlane::AirportManager::Rescan(); // The airport index follows the install folder
 	}
 
 	void BrowseForTrackedFolder()

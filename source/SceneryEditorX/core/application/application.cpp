@@ -29,6 +29,7 @@
  * -------------------------------------------------------
  */
 #include "application.h"
+#include <SceneryEditorX/core/frame_profiler.h>
 #include <SceneryEditorX/core/input/input.h>
 #include <SceneryEditorX/core/platform/windows/crash_diagnostics.h>
 #include <SceneryEditorX/core/resource/resource_cache.h>
@@ -268,12 +269,16 @@ namespace SceneryEditorX
 
 			// Wait for render thread to finish frame
 			{
+				SEDX_PERF_SCOPE("Main: wait for render thread");
 				m_RenderThread.BlockUntilRenderComplete();
 				m_PerformanceTimers.MainThreadWaitTime = timer.ElapsedMillis();
 			}
+			Perf::EndFrame();
 
 			if (!m_IsMinimized)
 			{
+				SEDX_PERF_SCOPE("Main: update + UI");
+
 				// Poll events
 				ProcessEvents();
 

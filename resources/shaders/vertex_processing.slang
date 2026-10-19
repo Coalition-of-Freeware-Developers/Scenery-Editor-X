@@ -67,15 +67,16 @@ struct Vertex_PosUvNorTan
     uint instance_scale : INSTANCE_SCALE;
 };
 
+// vertex_id must include the draw's vertex offset: Slang's SV_VertexID excludes it (add SV_StartVertexLocation)
 Vertex_PosUvNorTan pull_vertex(uint vertex_id)
 {
-    PulledVertex pulled = geometry_vertices[vertex_id];
+    const uint base = vertex_id * PULLED_VERTEX_FLOATS;
 
     Vertex_PosUvNorTan v;
-    v.position = float4(pulled.position, 1.0f);
-    v.uv = pulled.uv;
-    v.normal = pulled.normal;
-    v.tangent = pulled.tangent;
+    v.position = float4(geometry_vertices[base + 0], geometry_vertices[base + 1], geometry_vertices[base + 2], 1.0f);
+    v.uv = float2(geometry_vertices[base + 3], geometry_vertices[base + 4]);
+    v.normal = float3(geometry_vertices[base + 5], geometry_vertices[base + 6], geometry_vertices[base + 7]);
+    v.tangent = float3(geometry_vertices[base + 8], geometry_vertices[base + 9], geometry_vertices[base + 10]);
     v.instance_position_x = (min16float)0;
     v.instance_position_y = (min16float)0;
     v.instance_position_z = (min16float)0;

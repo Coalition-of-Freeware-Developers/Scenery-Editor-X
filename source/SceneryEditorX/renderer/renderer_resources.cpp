@@ -112,7 +112,8 @@ namespace SceneryEditorX
 	std::vector<PersistentLine> Renderer::m_Persistent_Lines;
 	std::vector<std::tuple<ImageResource*, xMath::Vec3>> Renderer::m_Icons;
 
-	std::array<ImageResource*, MAX_ARRAY_SIZE> Renderer::m_Bindless_Textures;
+	std::array<ImageResource*, MAX_MATERIAL_TEXTURES> Renderer::m_Bindless_Textures;
+	uint32_t Renderer::m_Bindless_TextureCount = 0;
 	std::array<ShaderBuffer_Light, MAX_ARRAY_SIZE> Renderer::m_Bindless_Lights;
 	std::array<ShaderBuffer_Aabb, MAX_ARRAY_SIZE> Renderer::m_Bindless_Aabbs;
 
@@ -785,7 +786,7 @@ namespace SceneryEditorX
 		identity.fill(Instance::GetIdentity());
 
 		At(s_Buffers, Renderer_Buffer::ConstantFrame)      = CreateRef<Buffer>(sizeof(ConstantBuffer_Frame), elementCount, nullptr, true, "frame");
-		At(s_Buffers, Renderer_Buffer::MaterialParameters) = CreateRef<Buffer>(static_cast<uint32_t>(sizeof(ShaderBuffer_Material)), MAX_ARRAY_SIZE, nullptr, true, "materials");
+		At(s_Buffers, Renderer_Buffer::MaterialParameters) = CreateRef<Buffer>(static_cast<uint32_t>(sizeof(ShaderBuffer_Material)), MAX_MATERIAL_TEXTURES, nullptr, true, "materials");
 		At(s_Buffers, Renderer_Buffer::LightParameters)    = CreateRef<Buffer>(static_cast<uint32_t>(sizeof(ShaderBuffer_Light)), MAX_ARRAY_SIZE, nullptr, true, "lights");
 		At(s_Buffers, Renderer_Buffer::DummyInstance)      = CreateRef<Buffer>(sizeof(Instance), static_cast<uint32_t>(identity.size()), &identity, true, "dummy_instance_buffer");
 		At(s_Buffers, Renderer_Buffer::GeometryInfo)       = CreateRef<Buffer>(static_cast<uint32_t>(sizeof(ShaderBuffer_GeometryInfo)), MAX_ARRAY_SIZE, nullptr, true, "geometry_info");

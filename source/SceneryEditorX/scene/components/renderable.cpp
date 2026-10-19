@@ -258,20 +258,25 @@ namespace SceneryEditorX
 		// set mesh
 		m_mesh           = mesh;
 		m_sub_mesh_index = sub_mesh_index;
+		Scene::MarkStructureChanged(); // the GPU scene re-batches it
 
-		// compute and set bounding box (GetGeometry validates bounds internally)
-		std::vector<Vertex_PosTexNorTan> vertices;
-		mesh->GetGeometry(sub_mesh_index, nullptr, &vertices);
-		if (!vertices.empty())
+
+		// bounding box of LOD 0, read in place: copying the vertices out (twice) cost every placed batch a heap round trip
+		const std::vector<Vertex_PosTexNorTan>& meshVertices = mesh->GetVertices();
+		const MeshLod* lod0 = sub_mesh_index < mesh->GetSubMeshCount() && !mesh->GetSubMesh(sub_mesh_index).lods.empty() ? &mesh->GetSubMesh(sub_mesh_index).lods.front() : nullptr;
+		if (!lod0)
+			SEDX_CORE_ERROR_TAG("Renderable", "SetMesh: sub-mesh {} has no geometry (mesh has {} sub-meshes)", sub_mesh_index, mesh->GetSubMeshCount());
+		else if (lod0->vertex_count > 0 && static_cast<size_t>(lod0->vertex_offset) + lod0->vertex_count <= meshVertices.size())
 		{
-		 std::vector<Vec3> positions;
-			positions.reserve(vertices.size());
-			for (const Vertex_PosTexNorTan& vertex : vertices)
+			Vec3 lo(FLT_MAX, FLT_MAX, FLT_MAX);
+			Vec3 hi(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+			for (uint32_t i = 0; i < lod0->vertex_count; ++i)
 			{
-				positions.emplace_back(vertex.pos[0], vertex.pos[1], vertex.pos[2]);
+				const float* p = meshVertices[lod0->vertex_offset + i].pos;
+				lo = Vec3(std::min(lo.x, p[0]), std::min(lo.y, p[1]), std::min(lo.z, p[2]));
+				hi = Vec3(std::max(hi.x, p[0]), std::max(hi.y, p[1]), std::max(hi.z, p[2]));
 			}
-
-			m_bounding_box_mesh = BoundingBox(positions.data(), static_cast<uint32_t>(positions.size()));
+			m_bounding_box_mesh = BoundingBox(lo, hi);
 		}
 
 		Tick(); // update bounding boxes, frustum and distance culling
@@ -304,33 +309,10 @@ namespace SceneryEditorX
 		   SEDX_CORE_ERROR_TAG("Renderable", "Material was null and failed to be set.");
 			return;
 		}
+		Scene::MarkStructureChanged(); // the GPU scene re-batches it
 
-		// compute world dimensions (skip if no mesh is available yet, e.g. procedural meshes like roads)
-		{
-			std::vector<Vertex_PosTexNorTan> vertices;
-			GetGeometry(nullptr, &vertices);
 
-			if (!vertices.empty())
-			{
-				float height_min = FLT_MAX;
-				float max_height = -FLT_MAX;
-				float min_width  = FLT_MAX;
-				float max_width  = -FLT_MAX;
-
-				for (const Vertex_PosTexNorTan& vertex : vertices)
-				{
-					Vec3 position = Vec3(vertex.pos[0], vertex.pos[1], vertex.pos[2]);
-					height_min       = xMath::Min(height_min, position.y);
-					max_height       = xMath::Max(max_height, position.y);
-					min_width        = xMath::Min(min_width, position.x);
-					max_width        = xMath::Max(max_width, position.x);
-				}
-
-				static_cast<void>(max_width - min_width);
-				static_cast<void>(max_height - height_min);
-			}
 		}
-	}
 
 	void Renderable::SetMaterial(const std::string & file_path)
 	{
@@ -416,6 +398,7 @@ namespace SceneryEditorX
 
 		// store instance data
 		m_instances = instances;
+		Scene::MarkStructureChanged(); // instanced renderables stay on the CPU draw path
 		m_instance_buffer = CreateRef<Buffer>(
 			sizeof(Instance),
 			static_cast<uint32_t>(instances.size()),
