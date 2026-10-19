@@ -210,7 +210,8 @@ namespace SceneryEditorX::XPlane
 		std::filesystem::path ResolveFile(std::string_view path);
 		bool InArea(const Options &options, const Point2 &point) const;
 		bool PolygonInArea(const Options &options, const std::vector<std::vector<Point2>> &rings) const;
-		void FlattenWinding(const std::vector<DsfPoint> &winding, bool closed, bool bezier, std::vector<Point2> &out, const Options &options) const;
+		/* @brief Local polyline of a winding; with curves, each point's control is planes controlPlane, controlPlane + 1 (lon, lat). */
+		void FlattenWinding(const std::vector<DsfPoint> &winding, bool closed, bool bezier, std::vector<Point2> &out, const Options &options, size_t controlPlane = 2) const;
 
 		void BuildDrapedPolygon(const DsfPolygonPlacement &placement, uint32_t index, const std::string &resource, const Options &options, OverlayBuild &out);
 		void BuildLine(const DsfPolygonPlacement &placement, uint32_t index, const std::string &resource, const Options &options, OverlayBuild &out);

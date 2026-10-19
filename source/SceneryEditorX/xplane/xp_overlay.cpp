@@ -143,6 +143,84 @@ namespace SceneryEditorX::XPlane
 			return best < uvs.size() ? uvs[best] : std::pair<double, double>(0.0, 0.0);
 		}
 
+		/**
+		 * @brief Flattens a closed UV mapped winding with curves (8 planes: lon, lat, control lon, control lat, s, t,
+		 * control s, control t). Texture coordinates follow the same curves as the positions, with the bezier convention
+		 * of FlattenWinding: a point's control leads out of it, the next point's mirrored control leads in.
+		 */
+		void FlattenUvWinding(const std::vector<DsfPoint> &winding, const GeoProjection &projection, const double maxSegmentLength, std::vector<Point2> &points, std::vector<std::pair<double, double>> &uvs)
+		{
+			points.clear();
+			uvs.clear();
+			const size_t count = winding.size();
+			if (count == 0)
+				return;
+
+			const auto curved = [](const DsfPoint &point) { return point.planes >= 8 && (std::abs(point.v[2] - point.v[0]) > 1e-9 || std::abs(point.v[3] - point.v[1]) > 1e-9); };
+			const auto cubic = [](const double a, const double b, const double c, const double d, const double t)
+			{
+				const double u = 1.0 - t;
+				return u * u * u * a + 3.0 * u * u * t * b + 3.0 * u * t * t * c + t * t * t * d;
+			};
+
+			points.push_back(LocalOf(projection, winding[0]));
+			uvs.emplace_back(winding[0].v[4], winding[0].v[5]);
+			for (size_t i = 0; i < count; ++i)
+			{
+				const DsfPoint &from = winding[i];
+				const DsfPoint &to = winding[(i + 1) % count];
+				const Point2 p0 = LocalOf(projection, from), p3 = LocalOf(projection, to);
+				const double s0 = from.v[4], t0 = from.v[5], s3 = to.v[4], t3 = to.v[5];
+				const bool fromCurved = curved(from), toCurved = curved(to);
+				if (std::hypot(p3.x - p0.x, p3.z - p0.z) < 1e-4 || (!fromCurved && !toCurved))
+				{
+					points.push_back(p3);
+					uvs.emplace_back(s3, t3);
+					continue;
+				}
+
+				const Point2 p1 = fromCurved ? projection.ToLocal(from.v[3], from.v[2]) : p0;
+				const double s1 = fromCurved ? from.v[6] : s0, t1 = fromCurved ? from.v[7] : t0;
+				Point2 p2 = p3;
+				double s2 = s3, t2 = t3;
+				if (toCurved)
+				{
+					const Point2 control = projection.ToLocal(to.v[3], to.v[2]);
+					p2 = { 2.0 * p3.x - control.x, 2.0 * p3.z - control.z };
+					s2 = 2.0 * s3 - to.v[6];
+					t2 = 2.0 * t3 - to.v[7];
+				}
+				const double estimate = std::hypot(p1.x - p0.x, p1.z - p0.z) + std::hypot(p2.x - p1.x, p2.z - p1.z) + std::hypot(p3.x - p2.x, p3.z - p2.z);
+				const int segments = std::clamp(static_cast<int>(std::ceil(estimate / std::max(0.1, maxSegmentLength))), 4, 48);
+				for (int k = 1; k <= segments; ++k)
+				{
+					const double t = static_cast<double>(k) / segments;
+					points.push_back({ cubic(p0.x, p1.x, p2.x, p3.x, t), cubic(p0.z, p1.z, p2.z, p3.z, t) });
+					uvs.emplace_back(cubic(s0, s1, s2, s3, t), cubic(t0, t1, t2, t3, t));
+				}
+			}
+
+			// The last point closes back onto the first; co-located points (split nodes) collapse into one
+			points.pop_back();
+			uvs.pop_back();
+			std::vector<Point2> keptPoints;
+			std::vector<std::pair<double, double>> keptUvs;
+			for (size_t i = 0; i < points.size(); ++i)
+			{
+				if (!keptPoints.empty() && std::hypot(points[i].x - keptPoints.back().x, points[i].z - keptPoints.back().z) < 1e-4)
+					continue;
+				keptPoints.push_back(points[i]);
+				keptUvs.push_back(uvs[i]);
+			}
+			if (keptPoints.size() > 1 && std::hypot(keptPoints.front().x - keptPoints.back().x, keptPoints.front().z - keptPoints.back().z) < 1e-4)
+			{
+				keptPoints.pop_back();
+				keptUvs.pop_back();
+			}
+			points.swap(keptPoints);
+			uvs.swap(keptUvs);
+		}
+
 		std::string BaseName(const std::string &path)
 		{
 			const size_t slash = path.find_last_of("/\\");
@@ -358,7 +436,7 @@ namespace SceneryEditorX::XPlane
 		return false;
 	}
 
-	void OverlayBuilder::FlattenWinding(const std::vector<DsfPoint> &winding, const bool closed, const bool bezier, std::vector<Point2> &out, const Options &options) const
+	void OverlayBuilder::FlattenWinding(const std::vector<DsfPoint> &winding, const bool closed, const bool bezier, std::vector<Point2> &out, const Options &options, const size_t controlPlane) const
 	{
 		// Reuse the apt.dat bezier convention: a point's control leads out of it, the next point's mirrored control leads in.
 		AptNodeChain chain;
@@ -368,10 +446,10 @@ namespace SceneryEditorX::XPlane
 			AptNode node;
 			node.latitude = point.v[1];
 			node.longitude = point.v[0];
-			if (bezier && point.planes >= 4)
+			if (bezier && point.planes >= controlPlane + 2)
 			{
-				node.controlLongitude = point.v[2];
-				node.controlLatitude = point.v[3];
+				node.controlLongitude = point.v[controlPlane];
+				node.controlLatitude = point.v[controlPlane + 1];
 				node.hasControl = std::abs(node.controlLongitude - node.longitude) > 1e-9 || std::abs(node.controlLatitude - node.latitude) > 1e-9;
 			}
 			chain.nodes.push_back(node);
@@ -492,11 +570,16 @@ namespace SceneryEditorX::XPlane
 		const bool bezier = uvMapped ? placement.planes >= 8 : placement.planes >= 4;
 
 		std::vector<std::vector<Point2>> rings;
-		std::vector<std::vector<std::pair<double, double>>> ringUvs;	// Only for UV mapped polygons without curves
+		std::vector<std::vector<std::pair<double, double>>> ringUvs;	// Only for UV mapped polygons
 		for (const std::vector<DsfPoint> &winding : placement.windings)
 		{
 			rings.emplace_back();
-			if (uvMapped && !bezier)
+			if (uvMapped && bezier)
+			{
+				ringUvs.emplace_back();
+				FlattenUvWinding(winding, m_Projection, options.bezierSegment, rings.back(), ringUvs.back());
+			}
+			else if (uvMapped)
 			{
 				ringUvs.emplace_back();
 				for (const DsfPoint &point : winding)
@@ -537,9 +620,9 @@ namespace SceneryEditorX::XPlane
 		mesh.blended = !asset->noAlpha && !mesh.cutout;
 		const float y = Height(options, asset->layerGroup, asset->layerOffset);
 
-		if (uvMapped && !bezier)
+		if (uvMapped)
 		{
-			// Orthophoto: the UVs come with the points; triangulate, then give each vertex the UV of its input point
+			// Orthophoto: the UVs come with the points (or follow their curves); triangulate, then give each vertex the UV of its input point
 			std::vector<Point2> points;
 			std::vector<uint32_t> indices;
 			if (!TriangulatePolygon(rings, points, indices))
@@ -564,9 +647,7 @@ namespace SceneryEditorX::XPlane
 		{
 			// Projected: the parameter is the texture heading (in 1/128 degree steps above 360 for flattened polygons)
 			double heading = placement.parameter;
-			if (uvMapped)
-				heading = 0.0;
-			else if (heading >= 360.0)
+			if (heading >= 360.0)
 				heading = (1.0 / 128.0) * static_cast<int>(heading / 360.0) + std::fmod(heading, 360.0);
 			AppendTexturedPolygon(mesh, rings, y, asset->scaleS * static_cast<float>(asset->tilesX), asset->scaleT * static_cast<float>(asset->tilesY), heading);
 		}
@@ -786,7 +867,9 @@ namespace SceneryEditorX::XPlane
 			++out.culled;
 			return;
 		}
-		PlaceObjectString(*asset, file, resource, path, false, std::max(1.0, static_cast<double>(placement.parameter)), 0.0f, index, out);
+		// Spacing in meters; X-Plane 12 writes spacings off the whole meter as 10000 + 1/128ths of a meter
+		const double spacing = placement.parameter >= 10000 ? (placement.parameter - 10000) / 128.0 : static_cast<double>(placement.parameter);
+		PlaceObjectString(*asset, file, resource, path, false, std::max(1.0, spacing), 0.0f, index, out);
 	}
 
 	void OverlayBuilder::PlaceObjectString(const ObjectStringAsset &asset, const fs::path &assetFile, const std::string_view resource, const std::vector<Point2> &path, const bool closed, const double spacing, const float y, const uint32_t placement, OverlayBuild &out, const OverlayObject::Source source)
@@ -1016,20 +1099,21 @@ namespace SceneryEditorX::XPlane
 		if (!asset)
 			return;
 
+		// Planes after lon / lat: 3 wall type, 4 bezier control, 5 wall type then bezier control (WorldEditor's stacking)
 		const bool hasWallTypes = placement.planes == 3 || placement.planes == 5;
 		const bool bezier = placement.planes >= 4;
+		const size_t controlPlane = placement.planes == 5 ? 3 : 2;
 		std::vector<std::vector<Point2>> rings;
 		std::vector<std::vector<int>> wallTypes;
 		for (const std::vector<DsfPoint> &winding : placement.windings)
 		{
 			rings.emplace_back();
-			FlattenWinding(winding, asset->ring, bezier, rings.back(), options);
+			FlattenWinding(winding, asset->ring, bezier, rings.back(), options, controlPlane);
 			wallTypes.emplace_back();
 			if (hasWallTypes)
 			{
-				const size_t typePlane = placement.planes == 3 ? 2 : 4;
 				for (const DsfPoint &point : winding)
-					wallTypes.back().push_back(static_cast<int>(point.v[typePlane]));
+					wallTypes.back().push_back(static_cast<int>(point.v[2]));
 			}
 			if (rings.back().size() != winding.size())
 				wallTypes.back().clear();	// Curves re-sampled the ring; wall types no longer line up

@@ -47,8 +47,10 @@ namespace SceneryEditorX::EditorProjects
 	 * Editor actions for Scenery Editor X projects (.edX / .sex, WorldEditor import / export), shared by the File menu,
 	 * the shortcuts and the PROJECT panel. One project is open at a time. Main thread only.
 	 *
-	 * The scene shows the project: its first airport opens in the airport editor (edits stay in the project), and its
-	 * objects are placed through the X-Plane object loader. Moving, deleting or placing X-Plane objects in the scene
+	 * The scene shows the project: its first airport opens in the airport editor (edits stay in the project), its
+	 * objects are placed through the X-Plane object loader, and its other visible placements (draped polygons and
+	 * orthophotos, lines, strings, forests, facades, autogen points) are drawn the way a scenery pack's DSF is, one entity
+	 * per item, redrawn when they change. Moving, deleting or placing X-Plane objects in the scene
 	 * flows back into the project (checked every couple of seconds and before every save). Unsaved work is autosaved
 	 * into the project cache (never the project file) and offered back after a crash.
 	 */
@@ -120,10 +122,10 @@ namespace SceneryEditorX::EditorProjects
 	/* @brief The airport the airport editor shows for the project, empty when none. */
 	const std::string &GetShownAirport();
 
-	/* @brief The scene entity drawing a project object item (0 when it isn't placed). */
+	/* @brief The scene entity drawing a project item: an object's root, a polygon's (line's, forest's...) entity; 0 when it isn't drawn. */
 	uint64_t GetPlacedEntity(const std::string &itemId);
 
-	/* @brief The project object item an entity draws (empty when none). */
+	/* @brief The project item an entity is part of (empty when none). */
 	std::string FindItemForEntity(uint64_t entityId);
 
 	/* @brief Removes an item (and its scene entities) from the project. */

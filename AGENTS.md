@@ -40,8 +40,9 @@ The dependency-light, cross-platform Catch2 unit suites that only need `source/`
   reader/writer (determinism, git-friendly layout, the documented legacy layout), the `.sex` binary format
   (checksums, damage / truncation / CRLF detection, fuzzing, the encode cache), the XML DOM, WorldEditor
   `earth.wed.xml` import/export (`docs/XCoder/earth.wed.xml`), atomic writes, the project cache (snapshots,
-  recovery, backups) and `ProjectDocument` open/edit/save/close (`SceneryEditorX/project/*` plus
-  `xplane/xp_apt.*`, `xp_library.*`). Standard library plus `dependency/json`, fully green. Its
+  recovery, backups), `ProjectDocument` open/edit/save/close and the project -> DSF conversion the editor draws
+  through the overlay builder (`SceneryEditorX/project/*` plus `xplane/xp_apt.*`, `xp_library.*`,
+  `xp_apt_geometry.*`, `xp_dsf.*`, `xp_assets.*`, `xp_overlay.*`). Standard library plus `dependency/json`, fully green. Its
   `[performance]` case times a 22k-item project; exclude it with `"~[performance]"` for quick runs.
 
 The other suites are **not** Linux-buildable as written: `SettingsTest` links Windows libs
@@ -113,7 +114,10 @@ g++ -std=c++20 -O2 -pthread $INCS source/Tests/project_tests/ProjectFormatTests.
     source/SceneryEditorX/project/project_sex.cpp source/SceneryEditorX/project/project_wed.cpp \
     source/SceneryEditorX/project/xml_document.cpp source/SceneryEditorX/project/project_io.cpp \
     source/SceneryEditorX/project/project_cache.cpp source/SceneryEditorX/project/project_document.cpp \
-    source/SceneryEditorX/xplane/xp_apt.cpp source/SceneryEditorX/xplane/xp_library.cpp $LIBS \
+    source/SceneryEditorX/project/project_dsf.cpp source/SceneryEditorX/xplane/xp_apt.cpp \
+    source/SceneryEditorX/xplane/xp_library.cpp source/SceneryEditorX/xplane/xp_apt_geometry.cpp \
+    source/SceneryEditorX/xplane/xp_dsf.cpp source/SceneryEditorX/xplane/xp_assets.cpp \
+    source/SceneryEditorX/xplane/xp_overlay.cpp $LIBS \
     -o build_linux_tests/ProjectFormatTests
 ./build_linux_tests/ProjectFormatTests "~[performance]"
 ```

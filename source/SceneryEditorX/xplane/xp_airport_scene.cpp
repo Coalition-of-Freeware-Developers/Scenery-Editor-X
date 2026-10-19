@@ -1080,6 +1080,8 @@ namespace SceneryEditorX::XPlane
 			std::map<std::string, TextureEntry> textures;					// By file
 			GeoProjection projection;
 			Bounds2 bounds;
+			float pavementTop = HEIGHT_PAVEMENT;									// Layer heights the build used (GetOverlayLayerHeight)
+			float runwayHeight = HEIGHT_PAVEMENT + HEIGHT_RUNWAY_ABOVE_PAVEMENT;
 			uint64_t revision = 0;
 			uint64_t geometryRevision = 0;
 			uint64_t libraryGeneration = 0;
@@ -1314,6 +1316,8 @@ namespace SceneryEditorX::XPlane
 				BuildOverlay(document, build, *overlay);
 			loaded.projection = build.projection;
 			loaded.bounds = build.bounds;
+			loaded.pavementTop = build.pavementTop;
+			loaded.runwayHeight = build.runwayHeight;
 			loaded.groups.fill(0);
 			loaded.entities.clear();
 			loaded.objectRoots.clear();
@@ -1815,6 +1819,13 @@ namespace SceneryEditorX::XPlane
 	const GeoProjection &SceneAirports::GetProjection()
 	{
 		return s_Loaded ? s_Loaded->projection : s_NoProjection;
+	}
+
+	float SceneAirports::GetOverlayLayerHeight(const std::string_view group, const int offset)
+	{
+		const float pavementTop = s_Loaded ? s_Loaded->pavementTop : HEIGHT_PAVEMENT;
+		const float runwayHeight = s_Loaded ? s_Loaded->runwayHeight : HEIGHT_PAVEMENT + HEIGHT_RUNWAY_ABOVE_PAVEMENT;
+		return OverlayLayerHeight(pavementTop, runwayHeight, group.empty() ? std::string_view("terrain") : group, offset);
 	}
 
 	SceneAirports::Stats SceneAirports::GetStats()

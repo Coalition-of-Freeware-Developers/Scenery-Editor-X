@@ -32,15 +32,19 @@
 #include <SceneryEditorX/project/project_archive.h>
 #include <SceneryEditorX/project/project_cache.h>
 #include <SceneryEditorX/project/project_document.h>
+#include <SceneryEditorX/project/project_dsf.h>
 #include <SceneryEditorX/project/project_edx.h>
 #include <SceneryEditorX/project/project_io.h>
 #include <SceneryEditorX/project/project_sex.h>
 #include <SceneryEditorX/project/project_wed.h>
 #include <SceneryEditorX/project/scenery_project.h>
 #include <SceneryEditorX/project/xml_document.h>
+#include <SceneryEditorX/xplane/xp_overlay.h>
 #include <algorithm>
 #include <chrono>
 #include <filesystem>
+#include <fstream>
+#include <map>
 #include <random>
 #include <set>
 
@@ -1619,4 +1623,608 @@ TEST_CASE("Large projects load and save quickly", "[project][performance]")
 	CHECK(fromWed.CountItems(ItemKind::Polygon) == project.CountItems(ItemKind::Polygon));
 	CHECK(sexRead < edxRead);
 	CHECK(sex.size() < edx.size());
+}
+
+// -------------------------------------------------------
+// DSF conversion (what the editor draws through the overlay builder)
+
+namespace
+{
+	SceneryProject ProjectWith(std::vector<SceneryItem> items)
+	{
+		SceneryProject project = MakeNewProject("DSF");
+		project.items = std::move(items);
+		return project;
+	}
+
+	/* @brief The DSF polygons converted from an item. */
+	std::vector<const XPlane::DsfPolygonPlacement *> PolygonsOf(const DsfConversion &conversion, const std::string &id)
+	{
+		std::vector<const XPlane::DsfPolygonPlacement *> polygons;
+		for (size_t i = 0; i < conversion.polygonItems.size() && i < conversion.dsf.polygons.size(); ++i)
+		{
+			if (conversion.polygonItems[i] == id)
+				polygons.push_back(&conversion.dsf.polygons[i]);
+		}
+		return polygons;
+	}
+
+	/* @brief Shoelace area in degrees: positive counter-clockwise (longitude east, latitude north). */
+	double WindingArea(const std::vector<XPlane::DsfPoint> &winding)
+	{
+		double sum = 0.0;
+		for (size_t i = 0, j = winding.size() - 1; i < winding.size(); j = i++)
+			sum += winding[j].v[0] * winding[i].v[1] - winding[i].v[0] * winding[j].v[1];
+		return 0.5 * sum;
+	}
+
+	std::vector<std::string> PropertyValues(const XPlane::DsfFile &dsf, const std::string_view key)
+	{
+		std::vector<std::string> values;
+		for (const auto &[name, value] : dsf.properties)
+		{
+			if (name == key)
+				values.push_back(value);
+		}
+		return values;
+	}
+
+	const SceneryItem &Named(const std::vector<SceneryItem> &items, const std::string &name)
+	{
+		const auto it = std::ranges::find_if(items, [&name](const SceneryItem &item) { return item.name == name; });
+		REQUIRE(it != items.end());
+		return *it;
+	}
+
+	/* @brief A 4-plane bezier point: on the node, its control point the node plus an offset. */
+	void CheckBezierPoint(const XPlane::DsfPoint &point, const GeoNode &node, const double controlLatitude, const double controlLongitude)
+	{
+		CHECK(point.planes == 4);
+		CHECK(point.v[0] == Catch::Approx(node.longitude).margin(1e-12));
+		CHECK(point.v[1] == Catch::Approx(node.latitude).margin(1e-12));
+		CHECK(point.v[2] == Catch::Approx(node.longitude + controlLongitude).margin(1e-12));
+		CHECK(point.v[3] == Catch::Approx(node.latitude + controlLatitude).margin(1e-12));
+	}
+
+	void CheckLocation(const XPlane::DsfPoint &point, const GeoNode &node)
+	{
+		CHECK(point.v[0] == Catch::Approx(node.longitude).margin(1e-12));
+		CHECK(point.v[1] == Catch::Approx(node.latitude).margin(1e-12));
+	}
+}
+
+TEST_CASE("Project DSF: every overlay kind with its parameter and planes", "[project][dsf]")
+{
+	SceneryItem group = MakeItem(ItemKind::Group, "Overlays");
+	group.children = MakeOverlayItems();
+	const std::vector<SceneryItem> &items = group.children;
+	const DsfConversion conversion = BuildProjectDsf(ProjectWith({ group }));
+	const XPlane::DsfFile &dsf = conversion.dsf;
+
+	CHECK(dsf.IsOverlay());
+	CHECK(dsf.objects.empty());				// .obj objects are placed by the editor itself
+	CHECK(dsf.objectDefinitions.empty());
+	REQUIRE(conversion.polygonItems.size() == dsf.polygons.size());
+
+	// Curved outline and a hole; Square() runs clockwise, so the outline is turned around
+	const auto apron = PolygonsOf(conversion, Named(items, "Apron").id);
+	REQUIRE(apron.size() == 1);
+	CHECK(dsf.polygonDefinitions[apron[0]->definition] == "lib/airport/ground/pavement/asphalt/plain.pol");
+	CHECK(apron[0]->parameter == EncodePolygonHeading(45.5));
+	CHECK(apron[0]->planes == 4);
+	REQUIRE(apron[0]->windings.size() == 2);
+	CHECK(apron[0]->windings[0].size() == 4);
+	CHECK(WindingArea(apron[0]->windings[0]) > 0.0);
+	CHECK(WindingArea(apron[0]->windings[1]) < 0.0);
+
+	// UV mapped with a split curve: 65535, 8 planes, the split node as three points
+	const auto ortho = PolygonsOf(conversion, Named(items, "Ortho").id);
+	REQUIRE(ortho.size() == 1);
+	CHECK(ortho[0]->parameter == 65535);
+	CHECK(ortho[0]->planes == 8);
+	REQUIRE(ortho[0]->windings.size() == 1);
+	CHECK(ortho[0]->windings[0].size() == 6);
+	for (const XPlane::DsfPoint &point : ortho[0]->windings[0])
+		CHECK(point.planes == 8);
+
+	const auto line = PolygonsOf(conversion, Named(items, "Fence line").id);
+	REQUIRE(line.size() == 1);
+	CHECK(line[0]->parameter == 1);			// Closed
+	CHECK(line[0]->planes == 4);
+	CHECK(line[0]->windings[0].size() == 3);
+
+	const auto string = PolygonsOf(conversion, Named(items, "Edge lights").id);
+	REQUIRE(string.size() == 1);
+	CHECK(string[0]->parameter == 30);		// Whole meters stay plain
+	CHECK(string[0]->planes == 2);
+	CHECK(string[0]->windings[0].size() == 2);
+
+	const auto forest = PolygonsOf(conversion, Named(items, "Trees").id);
+	REQUIRE(forest.size() == 1);
+	CHECK(forest[0]->parameter == 191 + 2 * 256);	// 0.75 density, point fill
+	REQUIRE(forest[0]->windings.size() == 1);
+	CHECK(forest[0]->windings[0].size() == 3);
+
+	// Picked walls: the wall type plane; the node order (which way the walls face) is kept
+	const auto facade = PolygonsOf(conversion, Named(items, "Office").id);
+	REQUIRE(facade.size() == 1);
+	CHECK(facade[0]->parameter == 14);
+	CHECK(facade[0]->planes == 3);
+	REQUIRE(facade[0]->windings[0].size() == 4);
+	CHECK(facade[0]->windings[0][0].v[2] == 0.0);
+	CHECK(facade[0]->windings[0][1].v[2] == 3.0);
+	CHECK(WindingArea(facade[0]->windings[0]) < 0.0);
+
+	// The two-node autogen outline can't be drawn
+	CHECK(PolygonsOf(conversion, Named(items, "Houses").id).empty());
+	REQUIRE(conversion.warnings.size() == 1);
+	CHECK_THAT(conversion.warnings[0], ContainsSubstring("Houses"));
+
+	// Exclusions become sim/exclude_* properties
+	const std::string zone = "-123.950000/44.590000/-123.930000/44.610000";
+	CHECK(PropertyValues(dsf, "sim/exclude_obj") == std::vector<std::string>{ zone });
+	CHECK(PropertyValues(dsf, "sim/exclude_for") == std::vector<std::string>{ zone });
+	CHECK(PropertyValues(dsf, "sim/exclude_str") == std::vector<std::string>{ zone });
+	CHECK(PropertyValues(dsf, "sim/exclude_fac").empty());
+	const std::vector<std::string> polygons = PropertyValues(dsf, "sim/exclude_pol");
+	REQUIRE(polygons.size() == 1);
+	CHECK(polygons[0].starts_with("-123.945000/44.595000/-123.943000/44.597000;"));
+	CHECK(std::ranges::count(polygons[0], ',') == 3);	// Four corners
+	CHECK(PropertyValues(dsf, "sim/exclude_lin") == polygons);
+	CHECK(conversion.exclusionItems.size() == 2);
+	CHECK(dsf.GetExclusions().size() == 5);
+
+	// One definition per resource, and the tile's whole-degree bounds
+	const std::set<std::string> unique(dsf.polygonDefinitions.begin(), dsf.polygonDefinitions.end());
+	CHECK(unique.size() == dsf.polygonDefinitions.size());
+	CHECK(dsf.west == -124.0);
+	CHECK(dsf.east == -123.0);
+	CHECK(dsf.south == 44.0);
+	CHECK(dsf.north == 45.0);
+	CHECK(dsf.GetProperty("sim/west") == "-124");
+}
+
+TEST_CASE("Project DSF: bezier handles become WorldEditor's absolute control points", "[project][dsf]")
+{
+	SECTION("Open chain")
+	{
+		const GeoNode a = Curved(44.0, -123.0, 0.001, 0.0);		// First node: only the outgoing handle counts
+		const GeoNode b = Curved(44.0, -122.99, 0.0, 0.002);	// Mirror-image handles: one point
+		GeoNode c = Node(44.01, -122.98);						// Split: incoming handle, corner, outgoing handle
+		c.loLatitude = -0.003;
+		c.hiLongitude = 0.004;
+		c.split = true;
+		const GeoNode d = Curved(44.02, -122.98, 0.0, 0.005);	// Last node: only the incoming handle counts
+
+		SceneryItem line = MakeItem(ItemKind::Line, "Curvy", "lines/taxi.lin");
+		line.rings.push_back({ a, b, c, d });
+		const DsfConversion conversion = BuildProjectDsf(ProjectWith({ line }));
+		REQUIRE(conversion.dsf.polygons.size() == 1);
+		const XPlane::DsfPolygonPlacement &placement = conversion.dsf.polygons[0];
+		CHECK(placement.parameter == 0);
+		CHECK(placement.planes == 4);
+		const std::vector<XPlane::DsfPoint> &points = placement.windings[0];
+		REQUIRE(points.size() == 8);
+		CheckBezierPoint(points[0], a, 0.0, 0.0);
+		CheckBezierPoint(points[1], a, 0.001, 0.0);
+		CheckBezierPoint(points[2], b, 0.0, 0.002);
+		CheckBezierPoint(points[3], c, 0.003, 0.0);		// The incoming handle, written as the control point it mirrors
+		CheckBezierPoint(points[4], c, 0.0, 0.0);
+		CheckBezierPoint(points[5], c, 0.0, 0.004);
+		CheckBezierPoint(points[6], d, 0.0, 0.005);
+		CheckBezierPoint(points[7], d, 0.0, 0.0);
+	}
+
+	SECTION("Closed ring: the first node's incoming handle is used")
+	{
+		GeoNode first = Node(44.0, -123.0);
+		first.loLongitude = -0.001;
+		first.hiLatitude = 0.002;
+		first.split = true;
+		SceneryItem polygon = MakeItem(ItemKind::Polygon, "Curved apron", "polygons/apron.pol");
+		polygon.rings.push_back({ first, Node(44.0, -122.99), Node(44.01, -122.99), Node(44.01, -123.0) });	// Counter-clockwise already
+		const DsfConversion conversion = BuildProjectDsf(ProjectWith({ polygon }));
+		REQUIRE(conversion.dsf.polygons.size() == 1);
+		const std::vector<XPlane::DsfPoint> &points = conversion.dsf.polygons[0].windings[0];
+		REQUIRE(points.size() == 6);
+		CheckBezierPoint(points[0], first, 0.0, 0.001);
+		CheckBezierPoint(points[1], first, 0.0, 0.0);
+		CheckBezierPoint(points[2], first, 0.002, 0.0);
+		CheckBezierPoint(points[3], polygon.rings[0][1], 0.0, 0.0);
+	}
+
+	SECTION("Reversing a curved outline swaps its handles")
+	{
+		SceneryItem polygon = MakeItem(ItemKind::Polygon, "Clockwise", "polygons/apron.pol");
+		polygon.rings.push_back(Square(44.0, -123.0, 0.01));		// Clockwise
+		GeoNode &node = polygon.rings[0][1];
+		node.loLatitude = -0.001;			// Back toward the first node (south)
+		node.hiLongitude = 0.002;			// On toward the third (east)
+		node.split = true;
+		const DsfConversion conversion = BuildProjectDsf(ProjectWith({ polygon }));
+		REQUIRE(conversion.dsf.polygons.size() == 1);
+		const std::vector<XPlane::DsfPoint> &points = conversion.dsf.polygons[0].windings[0];
+		CHECK(WindingArea(points) > 0.0);
+		// Reversed order: node 3, node 2, node 1 (now leaving east-to-south: its old hi comes in, its old lo goes out), node 0
+		REQUIRE(points.size() == 6);
+		CheckLocation(points[0], polygon.rings[0][3]);
+		CheckLocation(points[1], polygon.rings[0][2]);
+		CheckBezierPoint(points[2], node, 0.0, -0.002);
+		CheckBezierPoint(points[3], node, 0.0, 0.0);
+		CheckBezierPoint(points[4], node, -0.001, 0.0);
+		CheckLocation(points[5], polygon.rings[0][0]);
+	}
+}
+
+TEST_CASE("Project DSF: strings, forests, facades and autogen follow WorldEditor's export", "[project][dsf]")
+{
+	SECTION("A closed string ends on its first node; spacing keeps its fraction")
+	{
+		SceneryItem string = MakeItem(ItemKind::String, "Lights", "strings/lamps.str");
+		string.closed = true;
+		string.spacing = 2.5f;
+		string.rings.push_back({ Node(44.0, -123.0), Node(44.0, -122.999), Node(44.001, -122.999) });
+		const DsfConversion conversion = BuildProjectDsf(ProjectWith({ string }));
+		REQUIRE(conversion.dsf.polygons.size() == 1);
+		const std::vector<XPlane::DsfPoint> &points = conversion.dsf.polygons[0].windings[0];
+		REQUIRE(points.size() == 4);
+		CheckLocation(points.back(), string.rings[0][0]);
+		CHECK(conversion.dsf.polygons[0].parameter == 10000 + 320);
+	}
+
+	SECTION("Forest fill modes")
+	{
+		SceneryItem area = MakeItem(ItemKind::Forest, "Area", "forests/trees.for");
+		area.density = 1.0f;
+		area.rings = { Square(44.0, -123.0, 0.001), Square(44.0003, -122.9997, 0.0002) };
+		SceneryItem rows = area;
+		rows.id = MakeItemId();
+		rows.name = "Rows";
+		rows.fill = ForestFill::Line;
+		rows.density = 0.5f;
+		const DsfConversion conversion = BuildProjectDsf(ProjectWith({ area, rows }));
+
+		const auto filled = PolygonsOf(conversion, area.id);
+		REQUIRE(filled.size() == 1);
+		CHECK(filled[0]->parameter == 255);
+		REQUIRE(filled[0]->windings.size() == 2);
+		CHECK(WindingArea(filled[0]->windings[0]) > 0.0);
+		CHECK(WindingArea(filled[0]->windings[1]) < 0.0);
+
+		const auto lines = PolygonsOf(conversion, rows.id);	// One open chain per ring
+		REQUIRE(lines.size() == 2);
+		for (const XPlane::DsfPolygonPlacement *placement : lines)
+		{
+			CHECK(placement->parameter == 127 + 256);
+			REQUIRE(placement->windings.size() == 1);
+			CHECK(placement->windings[0].size() == 4);
+		}
+		CHECK(conversion.dsf.polygonDefinitions.size() == 1);
+	}
+
+	SECTION("Facade with picked walls and curves: wall type, then the control point")
+	{
+		SceneryItem facade = MakeItem(ItemKind::Facade, "Terminal", "facades/terminal.fac");
+		facade.pickWalls = true;
+		facade.height = 9.0f;
+		facade.rings.push_back({ Node(44.0, -123.0), Curved(44.0, -122.999, 0.0001, 0.0), Node(44.001, -122.999), Node(44.001, -123.0) });
+		facade.rings[0][1].wallType = 2;
+		facade.rings[0][2].wallType = 1;
+		const DsfConversion conversion = BuildProjectDsf(ProjectWith({ facade }));
+		REQUIRE(conversion.dsf.polygons.size() == 1);
+		const XPlane::DsfPolygonPlacement &placement = conversion.dsf.polygons[0];
+		CHECK(placement.planes == 5);
+		CHECK(placement.parameter == 9);
+		const std::vector<XPlane::DsfPoint> &points = placement.windings[0];
+		REQUIRE(points.size() == 4);
+		CHECK(points[1].v[2] == 2.0);
+		CHECK(points[2].v[2] == 1.0);
+		CHECK(points[1].v[3] == Catch::Approx(-122.999));
+		CHECK(points[1].v[4] == Catch::Approx(44.0001));
+		CHECK(points[0].v[3] == Catch::Approx(-123.0));		// A corner's control sits on it
+		CHECK(points[0].v[4] == Catch::Approx(44.0));
+	}
+
+	SECTION("Autogen strings split where spawning switches")
+	{
+		GeoRing ring = { Node(44.0, -123.0), Node(44.0, -122.999), Node(44.001, -122.999), Node(44.001, -123.0) };	// Counter-clockwise
+		ring[1].spawnTiles = false;
+		SceneryItem houses = MakeItem(ItemKind::Autogen, "Houses", "autogen/houses.ags");
+		houses.height = 10.0f;
+		houses.rings.push_back(ring);
+		SceneryItem block = houses;
+		block.id = MakeItemId();
+		block.resource = "autogen/block.agb";
+		block.spelling = 4;
+		const DsfConversion conversion = BuildProjectDsf(ProjectWith({ houses, block }));
+		REQUIRE(conversion.dsf.polygons.size() == 2);
+
+		// Spawning chains first ([0 1], [2 3 0]), then the non-spawning one ([1 2])
+		const XPlane::DsfPolygonPlacement &ags = conversion.dsf.polygons[0];
+		CHECK(ags.parameter == EncodeAutogenParameter(10.0f, 2));
+		CHECK(ags.planes == 2);
+		REQUIRE(ags.windings.size() == 3);
+		REQUIRE(ags.windings[0].size() == 2);
+		CheckLocation(ags.windings[0][0], ring[0]);
+		CheckLocation(ags.windings[0][1], ring[1]);
+		REQUIRE(ags.windings[1].size() == 3);
+		CheckLocation(ags.windings[1][0], ring[2]);
+		CheckLocation(ags.windings[1][2], ring[0]);
+		REQUIRE(ags.windings[2].size() == 2);
+		CheckLocation(ags.windings[2][0], ring[1]);
+		CheckLocation(ags.windings[2][1], ring[2]);
+
+		CHECK(conversion.dsf.polygons[1].parameter == EncodeAutogenParameter(10.0f, 4));	// Blocks carry their spelling
+	}
+
+	SECTION("Turning an outline around keeps each segment's flags with the segment")
+	{
+		GeoRing ring = Square(44.0, -123.0, 0.001);		// Clockwise: a, b, c, d
+		ring[1].spawnTiles = false;						// b -> c doesn't spawn
+		SceneryItem houses = MakeItem(ItemKind::Autogen, "Houses", "autogen/houses.ags");
+		houses.rings.push_back(ring);
+		const DsfConversion conversion = BuildProjectDsf(ProjectWith({ houses }));
+		REQUIRE(conversion.dsf.polygons.size() == 1);
+		const std::vector<std::vector<XPlane::DsfPoint>> &windings = conversion.dsf.polygons[0].windings;
+		REQUIRE(windings.size() == 3);
+		REQUIRE(windings[2].size() == 2);				// Still the c - b side that doesn't spawn
+		CheckLocation(windings[2][0], ring[2]);
+		CheckLocation(windings[2][1], ring[1]);
+	}
+}
+
+TEST_CASE("Project DSF: hidden items, objects and what can't be drawn", "[project][dsf]")
+{
+	SceneryItem visible = MakeItem(ItemKind::Polygon, "Visible", "polygons/apron.pol");
+	visible.rings.push_back(Square(44.0, -123.0, 0.001));
+	SceneryItem hidden = visible;
+	hidden.id = MakeItemId();
+	hidden.name = "Hidden";
+	hidden.hidden = true;
+	SceneryItem group = MakeItem(ItemKind::Group, "Hidden group");
+	group.hidden = true;
+	SceneryItem inGroup = visible;
+	inGroup.id = MakeItemId();
+	inGroup.name = "In a hidden group";
+	group.children.push_back(inGroup);
+
+	SceneryItem airport = MakeItem(ItemKind::Airport, "Airport");
+	airport.airportId = "5S4";
+	SceneryItem farm = MakeItem(ItemKind::Object, "Farm", "autogen/farm.agp");
+	farm.latitude = 44.0005;
+	farm.longitude = -123.0005;
+	farm.heading = 90.0f;
+	SceneryItem hangar = MakeItem(ItemKind::Object, "Hangar", "objects/hangar.obj");
+	hangar.latitude = 44.0006;
+	hangar.longitude = -123.0006;
+	hangar.elevationMode = ElevationMode::Msl;
+	hangar.altitude = 12.5;
+	airport.children = { farm, hangar };
+
+	SceneryItem wrong = MakeItem(ItemKind::Polygon, "Wrong", "lines/taxi.lin");
+	wrong.rings.push_back(Square(44.0, -123.0, 0.001));
+	SceneryItem tiny = MakeItem(ItemKind::Line, "Tiny", "lines/taxi.lin");
+	tiny.rings.push_back({ Node(44.0, -123.0) });
+	const SceneryProject project = ProjectWith({ visible, hidden, group, airport, wrong, tiny, MakeItem(ItemKind::Raw, "Road") });
+
+	const DsfConversion conversion = BuildProjectDsf(project);
+	CHECK(conversion.polygonItems == std::vector<std::string>{ visible.id });
+	CHECK(conversion.hidden == 2);
+	REQUIRE(conversion.objectItems == std::vector<std::string>{ farm.id });	// .agp only: .obj objects are the editor's
+	CHECK(conversion.dsf.objectDefinitions == std::vector<std::string>{ "autogen/farm.agp" });
+	CHECK(conversion.dsf.objects[0].heading == Catch::Approx(90.0));
+	CHECK(conversion.dsf.objects[0].mode == XPlane::DsfObjectPlacement::Mode::Draped);
+	REQUIRE(conversion.warnings.size() == 2);
+	CHECK_THAT(conversion.warnings[0], ContainsSubstring("Wrong") && ContainsSubstring(".pol"));
+	CHECK_THAT(conversion.warnings[1], ContainsSubstring("Tiny"));
+
+	DsfConversionOptions everything;
+	everything.includeHidden = true;
+	everything.includeObjects = true;
+	const DsfConversion all = BuildProjectDsf(project, everything);
+	CHECK(all.polygonItems.size() == 3);
+	CHECK(all.hidden == 0);
+	REQUIRE(all.objectItems.size() == 2);
+	CHECK(all.dsf.objects[1].mode == XPlane::DsfObjectPlacement::Mode::Msl);
+	CHECK(all.dsf.objects[1].elevation == 12.5);
+}
+
+TEST_CASE("Project DSF fingerprint changes only with what is drawn", "[project][dsf]")
+{
+	SceneryItem group = MakeItem(ItemKind::Group, "Overlays");
+	group.children = MakeOverlayItems();
+	const SceneryProject project = ProjectWith({ group });
+	const auto fingerprint = [](const SceneryProject &changed) { return GetDsfFingerprint(BuildProjectDsf(changed).dsf); };
+	const uint64_t base = fingerprint(project);
+	CHECK(fingerprint(project) == base);
+
+	SceneryProject renamed = project;
+	renamed.items[0].children[2].name = "Renamed apron";
+	CHECK(fingerprint(renamed) == base);
+
+	SceneryProject movedObject = project;		// The editor places .obj objects itself
+	movedObject.items[0].children[0].latitude += 0.001;
+	CHECK(fingerprint(movedObject) == base);
+
+	SceneryProject movedNode = project;
+	movedNode.items[0].children[2].rings[0][0].latitude += 0.00001;
+	CHECK(fingerprint(movedNode) != base);
+
+	SceneryProject hidden = project;
+	hidden.items[0].children[2].hidden = true;
+	CHECK(fingerprint(hidden) != base);
+
+	SceneryProject turned = project;
+	turned.items[0].children[2].textureHeading = 50.0f;
+	CHECK(fingerprint(turned) != base);
+}
+
+TEST_CASE("Project DSF parameter encodings", "[project][dsf]")
+{
+	CHECK(EncodePolygonHeading(0.0) == 0);
+	CHECK(EncodePolygonHeading(90.0) == 90);
+	CHECK(EncodePolygonHeading(90.5) == 90 + 360 * 64);
+	CHECK(EncodePolygonHeading(-90.0) == 270);
+	CHECK(EncodePolygonHeading(360.0) == 0);
+	CHECK(EncodePolygonHeading(359.99) == 359 + 360 * 126);
+
+	CHECK(EncodeStringSpacing(10.0) == 10);
+	CHECK(EncodeStringSpacing(10.1) == 10);			// Within 2 % of whole meters
+	CHECK(EncodeStringSpacing(2.5) == 10000 + 320);
+	CHECK(EncodeStringSpacing(0.25) == 10000 + 32);
+	CHECK(EncodeStringSpacing(500.0) == 500);
+	CHECK(EncodeStringSpacing(-1.0) == 0);
+
+	CHECK(EncodeForestParameter(1.0f, ForestFill::Area) == 255);
+	CHECK(EncodeForestParameter(0.5f, ForestFill::Line) == 127 + 256);
+	CHECK(EncodeForestParameter(2.0f, ForestFill::Points) == 255 + 512);
+	CHECK(EncodeForestParameter(-1.0f, ForestFill::Area) == 0);
+
+	CHECK(EncodeAutogenParameter(10.0f, 2) == (3 << 8) + 2);
+	CHECK(EncodeAutogenParameter(0.0f, 300) == 255);
+	CHECK(EncodeAutogenParameter(5000.0f, 1) == (255 << 8) + 1);
+
+	CHECK(FormatExclusionBounds(-123.95, 44.59, -123.93, 44.61) == "-123.950000/44.590000/-123.930000/44.610000");
+}
+
+TEST_CASE("Project DSF draws through the overlay builder", "[project][dsf][overlay]")
+{
+	TempFolder temp;
+	const auto write = [&temp](const std::string &name, const std::string &text)
+	{
+		const fs::path file = temp.path / name;
+		fs::create_directories(file.parent_path());
+		std::ofstream(file, std::ios::binary) << text;
+	};
+	write("polygons/apron.pol", "A\n850\nDRAPED_POLYGON\n\nTEXTURE apron.png\nSCALE 20 20\nLAYER_GROUP taxiways 0\n");
+	write("polygons/ortho.pol", "A\n850\nDRAPED_POLYGON\n\nTEXTURE_NOWRAP ortho.png\nSCALE 100 100\nLAYER_GROUP beaches -1\n");
+	write("lines/taxi.lin", "A\n850\nLINE_PAINT\n\nTEXTURE lines.png\nSCALE 12 3\nTEX_WIDTH 1024\nS_OFFSET 0 46 54 62\nLAYER_GROUP markings 0\n");
+	write("strings/lamps.str", "A\n850\nOBJECT_STRING\n\nOBJECT 0 0 lamp.obj\n");
+	write("strings/lamp.obj", "I\n800\nOBJ\n");
+	write("forests/trees.for", "A\n800\nFOREST\n\nTEXTURE trees.png\nSCALE_X 1024\nSCALE_Y 1024\nSPACING 10 10\nRANDOM 2 2\nTREE 0 0 256 512 128 100 12 24 2 0\n");
+	write("facades/shed.fac", "A\n800\nFACADE\n\nTEXTURE wall.png\nRING 1\nROOF 0.5 0.5\nROOF 1 0.5\nROOF 1 1\nROOF 0.5 1\nWALL 0 100 0 0\nSCALE 20 10\n"
+		"LEFT 0 0.25\nCENTER 0.25 0.5\nRIGHT 0.5 0.75\nBOTTOM 0 0.3\nMIDDLE 0.3 0.6\nTOP 0.6 1\n");
+
+	const fs::path package = temp.path;
+	const XPlane::AssetResolver resolver = [package](const std::string_view path) -> fs::path
+	{
+		const fs::path local = package / fs::path(std::string(path));
+		return fs::exists(local) ? local : fs::path();
+	};
+	const XPlane::GeoProjection projection(44.0, -123.0);
+	const auto at = [&projection](const double east, const double north)
+	{
+		GeoNode node;
+		projection.ToGeo(XPlane::Point2{ east, -north }, node.latitude, node.longitude);
+		return node;
+	};
+	const auto offset = [&projection](const double east, const double north, double &latitude, double &longitude)
+	{
+		projection.ToGeo(XPlane::Point2{ east, -north }, latitude, longitude);
+		latitude -= 44.0;
+		longitude -= -123.0;
+	};
+	const auto square = [&at](const double east, const double north, const double half)
+	{
+		return GeoRing{ at(east - half, north - half), at(east - half, north + half), at(east + half, north + half), at(east + half, north - half) };	// Clockwise
+	};
+
+	SceneryItem apron = MakeItem(ItemKind::Polygon, "Apron", "polygons/apron.pol");
+	apron.rings.push_back(square(0.0, 0.0, 50.0));
+
+	// Curved UV mapped polygon: the corners keep their texture coordinates
+	SceneryItem ortho = MakeItem(ItemKind::Orthophoto, "Ortho", "polygons/ortho.pol");
+	ortho.rings.push_back({ at(175.0, -25.0), at(225.0, -25.0), at(225.0, 25.0), at(175.0, 25.0) });
+	const float uvs[4][2] = { { 0.0f, 0.0f }, { 1.0f, 0.0f }, { 1.0f, 1.0f }, { 0.0f, 1.0f } };
+	for (size_t i = 0; i < 4; ++i)
+	{
+		ortho.rings[0][i].hasUv = true;
+		ortho.rings[0][i].s = uvs[i][0];
+		ortho.rings[0][i].t = uvs[i][1];
+	}
+	offset(5.0, 10.0, ortho.rings[0][1].hiLatitude, ortho.rings[0][1].hiLongitude);
+	ortho.rings[0][1].loLatitude = -ortho.rings[0][1].hiLatitude;
+	ortho.rings[0][1].loLongitude = -ortho.rings[0][1].hiLongitude;
+
+	// A corner split into two curves: no loop may stick out past it (east or south)
+	SceneryItem line = MakeItem(ItemKind::Line, "Taxi line", "lines/taxi.lin");
+	GeoNode corner = at(100.0, 300.0);
+	offset(-20.0, 0.0, corner.loLatitude, corner.loLongitude);
+	offset(0.0, 20.0, corner.hiLatitude, corner.hiLongitude);
+	corner.split = true;
+	line.rings.push_back({ at(0.0, 300.0), corner, at(100.0, 400.0) });
+
+	SceneryItem lamps = MakeItem(ItemKind::String, "Lamps", "strings/lamps.str");
+	lamps.closed = true;
+	lamps.spacing = 2.5f;
+	lamps.rings.push_back(square(-200.0, 0.0, 5.0));
+
+	SceneryItem trees = MakeItem(ItemKind::Forest, "Trees", "forests/trees.for");
+	trees.rings.push_back(square(0.0, -200.0, 25.0));
+
+	// Picked walls and a curve: 5 planes
+	SceneryItem shed = MakeItem(ItemKind::Facade, "Shed", "facades/shed.fac");
+	shed.pickWalls = true;
+	shed.height = 6.0f;
+	shed.rings.push_back(square(-200.0, -200.0, 10.0));
+	offset(0.0, 3.0, shed.rings[0][1].hiLatitude, shed.rings[0][1].hiLongitude);
+	shed.rings[0][1].loLatitude = -shed.rings[0][1].hiLatitude;
+	shed.rings[0][1].loLongitude = -shed.rings[0][1].hiLongitude;
+
+	const DsfConversion conversion = BuildProjectDsf(ProjectWith({ apron, ortho, line, lamps, trees, shed }));
+	REQUIRE(conversion.warnings.empty());
+	REQUIRE(conversion.dsf.polygons.size() == 6);
+	CHECK(conversion.dsf.polygons[1].planes == 8);
+	CHECK(conversion.dsf.polygons[5].planes == 5);
+
+	XPlane::OverlayBuilder builder(resolver, projection);
+	XPlane::OverlayBuild build;
+	builder.Build(conversion.dsf, XPlane::OverlayBuilder::Options(), build);
+	CHECK(build.warnings.empty());
+
+	std::map<std::string, std::vector<const XPlane::OverlayMesh *>> meshes;
+	for (const XPlane::OverlayMesh &mesh : build.meshes)
+	{
+		REQUIRE(mesh.placement < conversion.polygonItems.size());
+		meshes[conversion.polygonItems[mesh.placement]].push_back(&mesh);
+	}
+	for (const SceneryItem *item : { &apron, &ortho, &line, &trees, &shed })
+	{
+		INFO(item->name);
+		REQUIRE(meshes.contains(item->id));
+		CHECK_FALSE(meshes[item->id].front()->indices.empty());
+	}
+
+	const XPlane::OverlayMesh &apronMesh = *meshes[apron.id].front();
+	CHECK(apronMesh.bounds.minX == Catch::Approx(-50.0).margin(0.01));
+	CHECK(apronMesh.bounds.maxZ == Catch::Approx(50.0).margin(0.01));
+
+	float minU = 1.0f, maxU = 0.0f;
+	for (const XPlane::OverlayVertex &vertex : meshes[ortho.id].front()->vertices)
+	{
+		CHECK(vertex.u >= -1e-3f);
+		CHECK(vertex.u <= 1.001f);
+		CHECK(vertex.v >= -1e-3f);
+		CHECK(vertex.v <= 1.001f);
+		minU = std::min(minU, vertex.u);
+		maxU = std::max(maxU, vertex.u);
+	}
+	CHECK(minU == Catch::Approx(0.0f).margin(1e-4));
+	CHECK(maxU == Catch::Approx(1.0f).margin(1e-4));
+	CHECK(meshes[ortho.id].front()->vertices.size() > 4);	// The curved edge is flattened
+
+	const XPlane::Bounds2 lineBounds = meshes[line.id].front()->bounds;
+	CHECK(lineBounds.maxX < 100.5);		// The split corner sits at x 100, z -300
+	CHECK(lineBounds.maxZ < -299.5);
+	CHECK(lineBounds.minZ < -399.0);
+
+	// Facade walls stay around the outline (a misread plane would put the curve's control at 0 degrees)
+	const XPlane::Bounds2 shedBounds = meshes[shed.id].front()->bounds;
+	CHECK(shedBounds.maxX - shedBounds.minX < 30.0);
+	CHECK(shedBounds.maxZ - shedBounds.minZ < 30.0);
+
+	// 40 m around the lamps at 2.5 m
+	const size_t lampCount = std::ranges::count_if(build.objects, [](const XPlane::OverlayObject &object) { return object.source == XPlane::OverlayObject::Source::String; });
+	CHECK(lampCount >= 15);
+	CHECK(lampCount <= 17);
 }

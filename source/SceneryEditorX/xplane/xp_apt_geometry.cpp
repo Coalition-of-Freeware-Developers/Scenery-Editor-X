@@ -64,7 +64,9 @@ namespace SceneryEditorX::XPlane
 		{
 			const Point2 p0 = projection.ToLocal(from.latitude, from.longitude);
 			const Point2 p3 = projection.ToLocal(to.latitude, to.longitude);
-			if (!from.hasControl && !to.hasControl)
+			// Co-located nodes (how split bezier nodes are written) join their curves at a corner: no curve between them,
+			// else their controls would draw a loop out and back.
+			if ((!from.hasControl && !to.hasControl) || Distance(p0, p3) < 1e-4)
 			{
 				out.push_back(p3);
 				return;
