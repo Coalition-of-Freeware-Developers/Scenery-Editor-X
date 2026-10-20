@@ -93,6 +93,7 @@ namespace SceneryEditorX
 	// Static members defined here (declared in renderer.h)
 	PushConstantBuffer_Pass Renderer::m_Pcb_Pass_Cpu;
 	ConstantBuffer_Frame    Renderer::m_Cb_Frame_Cpu = {};
+	ConstantBuffer_Environment Renderer::m_Cb_Environment_Cpu = {};
 	uint32_t           Renderer::m_DrawCall_Count           = 0;
 	Flag               Renderer::m_BindlessSamplers_Dirty;
 	uint32_t           Renderer::m_DrawCalls_Prepass_Count  = 0;
@@ -790,6 +791,7 @@ namespace SceneryEditorX
 		identity.fill(Instance::GetIdentity());
 
 		At(s_Buffers, Renderer_Buffer::ConstantFrame)      = CreateRef<Buffer>(sizeof(ConstantBuffer_Frame), elementCount, nullptr, true, "frame");
+		At(s_Buffers, Renderer_Buffer::ConstantEnvironment) = CreateRef<Buffer>(sizeof(ConstantBuffer_Environment), elementCount, nullptr, true, "environment");
 		At(s_Buffers, Renderer_Buffer::MaterialParameters) = CreateRef<Buffer>(static_cast<uint32_t>(sizeof(ShaderBuffer_Material)), MAX_MATERIAL_TEXTURES, nullptr, true, "materials");
 		At(s_Buffers, Renderer_Buffer::LightParameters)    = CreateRef<Buffer>(static_cast<uint32_t>(sizeof(ShaderBuffer_Light)), MAX_ARRAY_SIZE, nullptr, true, "lights");
 		At(s_Buffers, Renderer_Buffer::DummyInstance)      = CreateRef<Buffer>(sizeof(Instance), static_cast<uint32_t>(identity.size()), &identity, true, "dummy_instance_buffer");

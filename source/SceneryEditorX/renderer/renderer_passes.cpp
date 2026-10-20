@@ -30,6 +30,7 @@
  */
 #include "bend_sss_cpu.h"
 #include "frame_capture.h"
+#include "gpu_timer.h"
 #include "gbuffer.h"
 #include "gpu_scene.h"
 #include "renderer.h"
@@ -44,7 +45,9 @@
 #include "vulkan/shader/shader_manager.h"
 #include <algorithm>
 #include <atomic>
+#include <fstream>
 #include <mutex>
+#include <nlohmann/json.hpp>
 #include <SceneryEditorX/scene/camera.h>
 #include <SceneryEditorX/scene/entity.h>
 #include <SceneryEditorX/scene/material.h>
@@ -123,6 +126,13 @@ namespace SceneryEditorX
 		float s_ReferenceSplit = 0.5f;
 		float s_ReferenceGain = 4.0f;
 
+		// XP12 emulation state (RENDERER panel, command line); set while the render thread is idle
+		RendererFeatures s_Features;
+		Renderer_DebugView s_DebugView = Renderer_DebugView::None;
+		int s_ToneCurve = 1;	// tonemap.slang: 1 AgX (X-Plane 12.2+), 2 ACES fit, 3 Reinhard
+		RendererQualityPreset s_Quality = GetDefaultQualityPreset();
+		Renderer::EnvironmentConstants s_EnvironmentConstants;
+
 		// Light billboards (Renderer::SetLightBillboards) and the vertex buffers they stream through. Each frame
 		// writes the next buffer of the ring, so a frame still in flight keeps reading its own.
 		constexpr uint32_t BILLBOARD_BUFFER_COUNT = 4;
@@ -146,348 +156,185 @@ namespace SceneryEditorX
 	static CVar cvar_tonemapping          { 0.0f };
 	static CVar cvar_auto_exposure_adaptation_speed{ 1.0f };
 	static CVar cvar_cloud_coverage       { 0.45f };
-	static CVar cvar_minimal_bootstrap_path{ 1.0f };
 
 	void Renderer::ProduceFrame(CommandList *graphicsPresent, CommandList *compute)
 	{
+		// The XP12 frame graph (plan TASK-024): one ordered sequence on the graphics list, each step behind its feature
+		// flag. Async compute stays off until queue-family ownership transfers exist (plan CON-009).
+		(void)compute;
+		CommandList *cmd = graphicsPresent;
 		ImageResource *rt_render = GetRenderTarget(Renderer_RenderTarget::frame_render);
 		ImageResource *rt_output = GetRenderTarget(Renderer_RenderTarget::frame_output);
-
 		const bool hasRtRender = rt_render && rt_render->Get() && *rt_render->Get() != VK_NULL_HANDLE;
 		const bool hasRtOutput = rt_output && rt_output->Get() && *rt_output->Get() != VK_NULL_HANDLE;
-
-		if (!hasRtRender || !hasRtOutput)
+		if (!cmd || !hasRtRender || !hasRtOutput)
 			return;
 
-		const bool useMinimalBootstrapPath = cvar_minimal_bootstrap_path.GetValueAs<bool>();
-		if (useMinimalBootstrapPath)
-		{
-			// Minimal frame graph for stabilization while descriptor/indexing and
-			// post-process paths are being debugged.
-			// Kept passes: LUTs, skysphere, depth prepass + gbuffer, lighting,
-			// grid, text. Everything else is intentionally skipped.
+		const RendererFeatures &features = GetFeatures();
+		GpuTimer::BeginFrame(cmd);
+		const auto valid = [cmd] { return !cmd->IsStickyInvalid(); };
 
-			if (!m_PassState.m_BRDF_LutProduced)
-			{
-				Pass_Lut_BrdfSpecular(graphicsPresent);
-				m_PassState.m_BRDF_LutProduced = true;
-			}
-
-			/*
-			Pass_CloudNoise(graphicsPresent);
-
-			if (!m_PassState.m_Atmosphere_LutProduced)
-			{
-				Pass_Lut_AtmosphericScattering(graphicsPresent);
-				m_PassState.m_Atmosphere_LutProduced = true;
-			}
-
-			Pass_Skysphere(graphicsPresent);
-			*/
-
-			// Keep bootstrap deterministic: skip cloud-noise + atmospheric LUT + skysphere
-			// until their shader registration/compilation paths are stabilized.
-
-			if (Camera *camera = Scene::GetCamera())
-			{
-				(void)camera;
-
-				if (graphicsPresent->IsStickyInvalid())
-					return;
-
-				GpuScene::Cull(graphicsPresent);
-				Pass_Depth_Prepass(graphicsPresent);
-				if (graphicsPresent->IsStickyInvalid())
-					return;
-				Pass_GBuffer(graphicsPresent, false);
-				if (graphicsPresent->IsStickyInvalid())
-					return;
-
-				GetRenderTarget(Renderer_RenderTarget::gbuffer_color)
-					->SetLayout(Layout::ImageLayout::ShaderRead, graphicsPresent, 0, 0);
-				GetRenderTarget(Renderer_RenderTarget::gbuffer_normal)
-					->SetLayout(Layout::ImageLayout::ShaderRead, graphicsPresent, 0, 0);
-				GetRenderTarget(Renderer_RenderTarget::gbuffer_material)
-					->SetLayout(Layout::ImageLayout::ShaderRead, graphicsPresent, 0, 0);
-				GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity)
-					->SetLayout(Layout::ImageLayout::ShaderRead, graphicsPresent, 0, 0);
-				GetRenderTarget(Renderer_RenderTarget::gbuffer_depth)
-					->SetLayout(Layout::ImageLayout::ShaderRead, graphicsPresent, 0, 0);
-
-				Pass_Light(graphicsPresent, false);
-				if (graphicsPresent->IsStickyInvalid())
-					return;
-				Pass_Light_Composition(graphicsPresent, false);
-				if (graphicsPresent->IsStickyInvalid())
-					return;
-
-				// Pass_Light_ImageBased samples the skysphere, which this path doesn't render yet;
-				// light composition supplies a placeholder sky and ambient term instead.
-
-				// Forward passes depth-test against the opaque depth: grid, then blended surfaces over it, then lights.
-				ImageResource *depthTarget = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
-				depthTarget->SetLayout(Layout::ImageLayout::DepthStencilAttachment, graphicsPresent, 0, 0);
-				Pass_Grid(graphicsPresent, rt_render);
-				if (graphicsPresent->IsStickyInvalid())
-					return;
-				Pass_Forward_Transparent(graphicsPresent, rt_render);
-				if (graphicsPresent->IsStickyInvalid())
-					return;
-				Pass_Light_Billboards(graphicsPresent, rt_render);
-				if (graphicsPresent->IsStickyInvalid())
-					return;
-				depthTarget->SetLayout(Layout::ImageLayout::ShaderRead, graphicsPresent, 0, 0);
-
-				// editor selection / hover outlines over everything drawn into the frame
-				ScenePicking::RecordOutline(graphicsPresent, rt_render);
-				if (graphicsPresent->IsStickyInvalid())
-					return;
-
-				graphicsPresent->Blit(rt_render, rt_output, false);
-				if (graphicsPresent->IsStickyInvalid())
-					return;
-
-				// Parity captures (--capture-png) read the output before any overlay is drawn on it
-				FrameCapture::Record(graphicsPresent, rt_output, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
-				Pass_ReferenceOverlay(graphicsPresent, rt_output);
-				if (graphicsPresent->IsStickyInvalid())
-					return;
-			}
-			else
-			{
-				graphicsPresent->ClearTexture(rt_output, Color::Black());
-			}
-
-			if (!graphicsPresent->IsStickyInvalid())
-			{
-				Pass_Text(graphicsPresent, rt_output);
-			}
-
-			rt_output->SetLayout(Layout::ImageLayout::ShaderRead, graphicsPresent, 0, 0);
-			GetRenderTarget(Renderer_RenderTarget::gbuffer_color)
-				->SetLayout(Layout::ImageLayout::Attachment, graphicsPresent, 0, 0);
-			GetRenderTarget(Renderer_RenderTarget::gbuffer_normal)
-				->SetLayout(Layout::ImageLayout::Attachment, graphicsPresent, 0, 0);
-			GetRenderTarget(Renderer_RenderTarget::gbuffer_material)
-				->SetLayout(Layout::ImageLayout::Attachment, graphicsPresent, 0, 0);
-			GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity)
-				->SetLayout(Layout::ImageLayout::Attachment, graphicsPresent, 0, 0);
-			GetRenderTarget(Renderer_RenderTarget::gbuffer_depth)
-				->SetLayout(Layout::ImageLayout::Attachment, graphicsPresent, 0, 0);
-			ScenePicking::EndFrame(graphicsPresent);
-
-			return;
-		}
-
-		// brdf lut (once)
+		// (0) Environment constants are uploaded with the frame constants (UpdateEnvironmentConstantBuffer);
+		//     environment probes: Phase 6
 		if (!m_PassState.m_BRDF_LutProduced)
 		{
-			Pass_Lut_BrdfSpecular(graphicsPresent);
+			GpuTimer::Scope scope(cmd, "brdf lut");
+			Pass_Lut_BrdfSpecular(cmd);
 			m_PassState.m_BRDF_LutProduced = true;
 		}
+		// (1) Atmosphere LUTs (XP12: scatter_compute_*): Phase 6
+		// (2) Cloud weather volumes and cloud shadows (XP12: cloud_update, cloud_shadows): Phases 7 / 15
 
-		// cloud noise (once)
-		Pass_CloudNoise(graphicsPresent);
-
-		// skysphere (re-render on light/coverage changes, converge over several frames)
-		bool cloudsVisible = cvar_cloud_coverage.GetValue() > 0.0f;
-
-
+		Camera *camera = Scene::GetCamera();
+		if (!camera)
 		{
-			bool updateSkysphere = false;
-			Light* directionalLight = Scene::GetDirectionalLight();
-			
-			{
-				const uint32_t temporalConvergenceFrames = 8;
-				
-				bool hasDirectionalLight = directionalLight != nullptr;
-				float currentCoverage = cvar_cloud_coverage.GetValue();
-				
-				bool lightChanged = (hasDirectionalLight && directionalLight->NeedsSkysphereUpdate()) || 
-									 (hasDirectionalLight != m_PassState.m_SkyHadDirectionalLight);
-				bool cloudParamsChanged = currentCoverage != m_PassState.m_SkyLastCoverage;
-				
-				if (m_PassState.m_SkyFirstFrame || lightChanged || cloudParamsChanged)
-				{
-					m_PassState.m_SkyFramesRemaining = temporalConvergenceFrames;
-				}
-				
-				updateSkysphere = m_PassState.m_SkyFramesRemaining > 0;
-				
-				if (m_PassState.m_SkyFramesRemaining > 0)
-				{
-					m_PassState.m_SkyFramesRemaining--;
-				}
-				
-				m_PassState.m_SkyFirstFrame           = false;
-				m_PassState.m_SkyHadDirectionalLight = hasDirectionalLight;
-				m_PassState.m_SkyLastCoverage         = currentCoverage;
-			}
-			
-			if (updateSkysphere)
-			{
-				// lut (expensive, only on light change)
-				if (!m_PassState.m_Atmosphere_LutProduced || (directionalLight && directionalLight->NeedsSkysphereUpdate()))
-				{
-					Pass_Lut_AtmosphericScattering(graphicsPresent);
-					m_PassState.m_Atmosphere_LutProduced = true;
-				}
-
-				Pass_Skysphere(graphicsPresent);
-			}
+			cmd->ClearTexture(rt_output, Color::Black());
 		}
-
-
-		if (Camera *camera = Scene::GetCamera())
+		else if (valid())
 		{
-			Pass_VariableRateShading(graphicsPresent);
-
-			// graphics phase 1: geometry
+			// (3) Culling; sun shadow cascades (XP12: CSM collection): Phase 7
 			{
-				bool isTransparent = false;
-				Pass_HiZ(graphicsPresent);
-				Pass_IndirectCull(graphicsPresent);
-				GpuScene::Cull(graphicsPresent);
-				Pass_Depth_Prepass(graphicsPresent);
-				Pass_GBuffer(graphicsPresent, isTransparent);
+				GpuTimer::Scope scope(cmd, "cull");
+				GpuScene::Cull(cmd);
 			}
 
-			// transition g-buffer to shader-readable before submit
-			GetRenderTarget(Renderer_RenderTarget::gbuffer_color)
-				->SetLayout(Layout::ImageLayout::ShaderRead, graphicsPresent, 0, 0);
-			GetRenderTarget(Renderer_RenderTarget::gbuffer_normal)
-				->SetLayout(Layout::ImageLayout::ShaderRead, graphicsPresent, 0, 0);
-			GetRenderTarget(Renderer_RenderTarget::gbuffer_material)
-				->SetLayout(Layout::ImageLayout::ShaderRead, graphicsPresent, 0, 0);
-			GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity)
-				->SetLayout(Layout::ImageLayout::ShaderRead, graphicsPresent, 0, 0);
-			GetRenderTarget(Renderer_RenderTarget::gbuffer_depth)
-				->SetLayout(Layout::ImageLayout::ShaderRead, graphicsPresent, 0, 0);
-
-			// submit phase 1, signal g-buffer ready
-			graphicsPresent->Submit(nullptr, false);
-
-			uint64_t gfxPhase1TimelineValue = graphicsPresent->GetLastTimelineSignalValue();
-			FrameSync *gfxTimeline = graphicsPresent->GetTimelineSemaphore();
-			graphicsPresent->WaitForExecution();
-
-			// async compute: overlaps with shadow rasterization.
-			// Queue ownership transfers between graphics/compute image usage are not fully wired yet,
-			// so only use async compute when both command lists target the same queue family.
-			uint64_t computeTimelineValue = gfxPhase1TimelineValue;
-			FrameSync *computeTimeline = gfxTimeline;
-
-			const bool canUseAsyncCompute = compute && compute->GetQueue() && graphicsPresent->GetQueue() &&
-				(compute->GetQueue()->GetFamilyIndex() == graphicsPresent->GetQueue()->GetFamilyIndex());
-
-			if (canUseAsyncCompute)
+			// (4) Depth prepass and g-buffer (terrain: Phase 10)
 			{
-				if (cloudsVisible)
-				{
-					Pass_CloudShadow(compute);
-				}
-
-				Pass_ScreenSpaceAO(compute);
-				// Temporarily disabled: sss_blend.slang is not part of the active Slang module set.
-				// Keep this pass disabled until the shader is fully ported/registered.
-				// Pass_ScreenSpaceShadows(compute);
-
-				// submit compute, wait on phase 1
-				compute->Submit(nullptr, false, nullptr, gfxTimeline, gfxPhase1TimelineValue);
-				computeTimelineValue = compute->GetLastTimelineSignalValue();
-				computeTimeline = compute->GetTimelineSemaphore();
-				compute->WaitForExecution();
+				GpuTimer::Scope scope(cmd, "depth prepass");
+				Pass_Depth_Prepass(cmd);
 			}
-			else
+			if (!valid())
+				return;
 			{
-				static bool warnedNoOwnershipSync = false;
-				if (!warnedNoOwnershipSync)
-				{
-					SEDX_CORE_WARN_TAG(
-						"Renderer",
-						"Async compute disabled: queue-family ownership/layout sync is not fully implemented yet");
-					warnedNoOwnershipSync = true;
-				}
+				GpuTimer::Scope scope(cmd, "gbuffer");
+				Pass_GBuffer(cmd, false);
 			}
+			if (!valid())
+				return;
 
-			// graphics phase 2: shadow maps
-			Ref<QueueManager> queueManager = RenderContext::Get()->GetDevice()->GetQueueManager();
-			graphicsPresent = queueManager->NextCommandList();
-			graphicsPresent->Begin();
-			m_CmdList_Present = graphicsPresent;
+			GetRenderTarget(Renderer_RenderTarget::gbuffer_color)->SetLayout(Layout::ImageLayout::ShaderRead, cmd, 0, 0);
+			GetRenderTarget(Renderer_RenderTarget::gbuffer_normal)->SetLayout(Layout::ImageLayout::ShaderRead, cmd, 0, 0);
+			GetRenderTarget(Renderer_RenderTarget::gbuffer_material)->SetLayout(Layout::ImageLayout::ShaderRead, cmd, 0, 0);
+			GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity)->SetLayout(Layout::ImageLayout::ShaderRead, cmd, 0, 0);
+			GetRenderTarget(Renderer_RenderTarget::gbuffer_depth)->SetLayout(Layout::ImageLayout::ShaderRead, cmd, 0, 0);
 
-			Pass_ShadowMaps(graphicsPresent);
+			// (5) Min / max depth pyramid (XP12: z_minmax): Phase 9
+			// (6) Weather apply (XP12: weather_apply_compute): Phase 12
+			// (7) Ambient occlusion (XP12: cacao): Phase 8
+			// (8) Light tiling (XP12: light_tile, light_spill_compact): Phase 14
+			// (9) Screen-space reflections (XP12: ssr_deferred): Phase 9
+			// (10) Clouds and volumetric fog: Phase 15
 
-			// graphics phase 3: lighting and post-process (waits on compute)
-			graphicsPresent->Submit(nullptr, false, nullptr, computeTimeline, computeTimelineValue);
-			graphicsPresent->WaitForExecution();
-
-			graphicsPresent = queueManager->NextCommandList();
-			graphicsPresent->Begin();
-			m_CmdList_Present = graphicsPresent;
-
+			// (11) Deferred lighting: sun, shadows, AO, IBL, SSR, tiled lights, emissive, aerial perspective (later
+			//      phases add to it); spilled light volumes: Phase 14
 			{
-				bool isTransparent = false;
-				Pass_Light(graphicsPresent, isTransparent);
-				Pass_Light_Composition(graphicsPresent, isTransparent);
-				graphicsPresent->Blit(GetRenderTarget(Renderer_RenderTarget::frame_render),
-									  GetRenderTarget(Renderer_RenderTarget::frame_render_opaque),
-									  false);
+				GpuTimer::Scope scope(cmd, "lighting");
+				Pass_Light(cmd, false);
+				if (!valid())
+					return;
+				Pass_Light_Composition(cmd, false);
 			}
+			if (!valid())
+				return;
 
-			// particles
-			Pass_Particles(graphicsPresent);
+			// (12) Water (XP12: ocean_shading): Phase 11
+			// (13) Sky where nothing was drawn, volumetric apply: Phase 6 / 15
 
-			// transparents
-			if (m_Transparents_Present)
+			// (14) Forward passes over the composed frame, depth tested against the g-buffer: grid, blended surfaces, lights
 			{
-				bool isTransparent = true;
-				Pass_GBuffer(graphicsPresent, isTransparent);
-				Pass_Light(graphicsPresent, isTransparent);
-				Pass_Light_Composition(graphicsPresent, isTransparent);
-			}
-
-			Pass_Light_ImageBased(graphicsPresent);
-
-			Pass_Light_Reflections(graphicsPresent);
-
-			Pass_TransparencyReflectionRefraction(graphicsPresent);
-
-			// Infinite editor grid: depth-test against render-resolution depth
-			{
+				GpuTimer::Scope scope(cmd, "forward");
 				ImageResource *depthTarget = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
-				depthTarget->SetLayout(Layout::ImageLayout::DepthStencilAttachment, graphicsPresent, 0, 0);
-				Pass_Grid(graphicsPresent, GetRenderTarget(Renderer_RenderTarget::frame_render));
-				Pass_Forward_Transparent(graphicsPresent, GetRenderTarget(Renderer_RenderTarget::frame_render));
-				Pass_Light_Billboards(graphicsPresent, GetRenderTarget(Renderer_RenderTarget::frame_render));
-				depthTarget->SetLayout(Layout::ImageLayout::ShaderRead, graphicsPresent, 0, 0);
+				depthTarget->SetLayout(Layout::ImageLayout::DepthStencilAttachment, cmd, 0, 0);
+				Pass_Grid(cmd, rt_render);
+				if (!valid())
+					return;
+				Pass_Forward_Transparent(cmd, rt_render);
+				if (!valid())
+					return;
+				Pass_Light_Billboards(cmd, rt_render);
+				if (!valid())
+					return;
+				depthTarget->SetLayout(Layout::ImageLayout::ShaderRead, cmd, 0, 0);
 			}
-			Pass_AA_Upscale(graphicsPresent);
-			Pass_PostProcess(graphicsPresent);
+
+			// (15) HDR clean-up (XP12: fix_hdr): Phase 5
+			// (16) Metering, exposure fusion, bloom (Phase 5), then the output transform to display values; FXAA, FSR 1: Phase 5
+			{
+				GpuTimer::Scope scope(cmd, "output");
+				if (features.tonemap)
+					Pass_Tonemap(cmd, rt_render, rt_output);
+				else
+					cmd->Blit(rt_render, rt_output, false);	// The frame as rendered
+			}
+			if (!valid())
+				return;
+			if (GetDebugView() != Renderer_DebugView::None)
+			{
+				GpuTimer::Scope scope(cmd, "debug view");
+				Pass_DebugView(cmd, rt_output);
+			}
+
+			// Parity captures (--capture-png) read the output before anything editor-only is drawn on it
+			FrameCapture::Record(cmd, rt_output, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
+
+			// (17) Editor overlays on the display image: selection / hover outlines, the reference image
+			ScenePicking::RecordOutline(cmd, rt_output);
+			if (!valid())
+				return;
+			Pass_ReferenceOverlay(cmd, rt_output);
+			if (!valid())
+				return;
 		}
-		else
+
+		if (valid())
+			Pass_Text(cmd, rt_output);
+		GpuTimer::EndFrame(cmd);
+
+		// Early transitions for the next frame
+		rt_output->SetLayout(Layout::ImageLayout::ShaderRead, cmd, 0, 0);
+		GetRenderTarget(Renderer_RenderTarget::gbuffer_color)->SetLayout(Layout::ImageLayout::Attachment, cmd, 0, 0);
+		GetRenderTarget(Renderer_RenderTarget::gbuffer_normal)->SetLayout(Layout::ImageLayout::Attachment, cmd, 0, 0);
+		GetRenderTarget(Renderer_RenderTarget::gbuffer_material)->SetLayout(Layout::ImageLayout::Attachment, cmd, 0, 0);
+		GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity)->SetLayout(Layout::ImageLayout::Attachment, cmd, 0, 0);
+		GetRenderTarget(Renderer_RenderTarget::gbuffer_depth)->SetLayout(Layout::ImageLayout::Attachment, cmd, 0, 0);
+		ScenePicking::EndFrame(cmd);
+
+		// Submission and synchronization are owned by the caller (Renderer::OnRender)
+	}
+
+	void Renderer::Pass_Tonemap(CommandList *cmdList, ImageResource *in, ImageResource *out)
+	{
+		if (!ShaderManager::IsShaderAvailable(Renderer_Shader::tonemap))
 		{
-			graphicsPresent->ClearTexture(rt_output, Color::Black());
+			cmdList->Blit(in, out, false);
+			return;
 		}
+		in->SetLayout(Layout::ImageLayout::ShaderRead, cmdList, 0, 0);
+		out->SetLayout(Layout::ImageLayout::General, cmdList, 0, 0);
+		Pass_Compute(cmdList, "tonemap", Renderer_Shader::tonemap, in, out, [&]
+		{
+			// Tone curve: AgX, X-Plane 12's since 12.2 (tonemap.slang: 0 none, 1 AgX, 2 ACES fit, 3 Reinhard)
+			m_Pcb_Pass_Cpu.SetF4Value(static_cast<float>(s_ToneCurve), 0.0f, 0.0f, 0.0f);
+			cmdList->PushConstants(m_Pcb_Pass_Cpu);
+		});
+	}
 
-		Pass_Text(graphicsPresent, rt_output);
-
-		// early transitions for next frame
-		rt_output->SetLayout(Layout::ImageLayout::ShaderRead, graphicsPresent, 0, 0);
-		GetRenderTarget(Renderer_RenderTarget::gbuffer_color)
-			->SetLayout(Layout::ImageLayout::Attachment, graphicsPresent, 0, 0);
-		GetRenderTarget(Renderer_RenderTarget::gbuffer_normal)
-			->SetLayout(Layout::ImageLayout::Attachment, graphicsPresent, 0, 0);
-		GetRenderTarget(Renderer_RenderTarget::gbuffer_material)
-			->SetLayout(Layout::ImageLayout::Attachment, graphicsPresent, 0, 0);
-		GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity)
-			->SetLayout(Layout::ImageLayout::Attachment, graphicsPresent, 0, 0);
-		GetRenderTarget(Renderer_RenderTarget::gbuffer_depth)
-			->SetLayout(Layout::ImageLayout::Attachment, graphicsPresent, 0, 0);
-
-		// Submission and synchronization are owned by the caller (for example,
-		// Renderer::OnRender) so the full frame lifecycle can be coordinated with
-		// the appropriate fence/semaphore primitives.
+	void Renderer::Pass_DebugView(CommandList *cmdList, ImageResource *out)
+	{
+		if (!ShaderManager::IsShaderAvailable(Renderer_Shader::debug_view))
+			return;
+		ImageResource *frame = GetRenderTarget(Renderer_RenderTarget::frame_render);
+		frame->SetLayout(Layout::ImageLayout::ShaderRead, cmdList, 0, 0);
+		out->SetLayout(Layout::ImageLayout::General, cmdList, 0, 0);
+		Pass_Compute(cmdList, "debug_view", Renderer_Shader::debug_view, frame, out, [&]
+		{
+			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_albedo, GetRenderTarget(Renderer_RenderTarget::gbuffer_color));
+			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_normal, GetRenderTarget(Renderer_RenderTarget::gbuffer_normal));
+			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_material, GetRenderTarget(Renderer_RenderTarget::gbuffer_material));
+			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_depth, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
+			m_Pcb_Pass_Cpu.SetF4Value(static_cast<float>(GetDebugView()), 0.0f, 0.0f, 0.0f);
+			cmdList->PushConstants(m_Pcb_Pass_Cpu);
+		});
 	}
 
 	void Renderer::Pass_Lut_BrdfSpecular(CommandList *cmdList)
@@ -1288,6 +1135,97 @@ namespace SceneryEditorX
 		const float length = xMath::Length(towardSun);
 		if (length > 1e-6f)
 			s_FallbackSunDirection = towardSun / length;
+	}
+
+	const RendererFeatures &Renderer::GetFeatures()
+	{
+		return s_Features;
+	}
+
+	void Renderer::SetFeatures(const RendererFeatures &features)
+	{
+		s_Features = features;
+	}
+
+	Renderer_DebugView Renderer::GetDebugView()
+	{
+		return s_DebugView;
+	}
+
+	void Renderer::SetDebugView(const Renderer_DebugView view)
+	{
+		s_DebugView = view < Renderer_DebugView::Count ? view : Renderer_DebugView::None;
+	}
+
+	const RendererQualityPreset &Renderer::GetQualityPreset()
+	{
+		return s_Quality;
+	}
+
+	void Renderer::SetQualityPreset(const RendererQualityPreset &preset)
+	{
+		s_Quality = preset;
+	}
+
+	int Renderer::GetToneCurve()
+	{
+		return s_ToneCurve;
+	}
+
+	void Renderer::SetToneCurve(const int curve)
+	{
+		s_ToneCurve = std::clamp(curve, 1, 3);
+	}
+
+	const Renderer::EnvironmentConstants &Renderer::GetEnvironmentConstants()
+	{
+		return s_EnvironmentConstants;
+	}
+
+	Renderer::EnvironmentConstants &Renderer::EditEnvironmentConstants()
+	{
+		return s_EnvironmentConstants;
+	}
+
+	bool Renderer::LoadEnvironmentConstants(const std::filesystem::path &path, std::string *error)
+	{
+		// resources/environment/xp12_environment.json: { "controls": { "<art control>": { "value": v, "source": "..." } } }
+		std::ifstream file(path);
+		if (!file)
+		{
+			if (error)
+				*error = "can't open " + path.string();
+			return false;
+		}
+		try
+		{
+			const nlohmann::json root = nlohmann::json::parse(file);
+			const nlohmann::json &controls = root.at("controls");
+			const auto value = [&controls](const char *name, float &out)
+			{
+				const auto it = controls.find(name);
+				if (it != controls.end() && it->contains("value") && (*it)["value"].is_number())
+					out = (*it)["value"].get<float>();
+			};
+			EnvironmentConstants &c = s_EnvironmentConstants;
+			value("lighting/E_sun_lx", c.sunIlluminanceLux);
+			value("lighting/E_moon_lx", c.moonIlluminanceLux);
+			value("atmo/rayleigh_r", c.rayleigh.x);
+			value("atmo/rayleigh_g", c.rayleigh.y);
+			value("atmo/rayleigh_b", c.rayleigh.z);
+			value("atmo/ozone_r", c.ozone.x);
+			value("atmo/ozone_g", c.ozone.y);
+			value("atmo/ozone_b", c.ozone.z);
+			value("exposure_fusion/dis_near", c.exposureFusion.z);
+			value("exposure_fusion/dis_far", c.exposureFusion.w);
+			return true;
+		}
+		catch (const std::exception &e)
+		{
+			if (error)
+				*error = e.what();
+			return false;
+		}
 	}
 
 	void Renderer::SetGridVisible(const bool visible)

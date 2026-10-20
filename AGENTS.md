@@ -75,8 +75,9 @@ The dependency-light, cross-platform Catch2 unit suites that only need `source/`
   `--env-scenario` share, plus the shipped `tools/xp12_reference_probe/scenarios/xp12_parity.json` when run from the repo
   root) and the environment model (`EnvironmentTests.cpp`: NOAA sun against an independent almanac formula, Meeus moon
   examples 47.a / 48.a, the 16 runway-friction states and the wetting / drying integrator, seasons from date and latitude
-  or DSF ranges, sky-condition weights, world-frame directions, the `World` object). Standard library plus
-  `dependency/json`, fully green.
+  or DSF ranges, sky-condition weights, world-frame directions, the `World` object), plus the renderer's X-Plane quality
+  levels (`renderer/renderer_quality.*`, from `settings.txt`) and feature switches (`renderer/renderer_features.*`).
+  Standard library plus `dependency/json`, fully green.
 
 The other suites are **not** Linux-buildable as written: `SettingsTest` links Windows libs
 (`dxgi`, `d3d12`, `Shell32.lib`); `MemoryAllocatorTests` links `vulkan-1` and needs the Vulkan
@@ -175,7 +176,8 @@ ENV=source/SceneryEditorX/environment
 g++ -std=c++20 -O2 -pthread $INCS source/Tests/environment_tests/ParityScenarioTests.cpp \
     source/Tests/environment_tests/EnvironmentTests.cpp $ENV/parity_scenario.cpp $ENV/solar_position.cpp \
     $ENV/surface_weather.cpp $ENV/season_model.cpp $ENV/sky_conditions.cpp $ENV/environment_state.cpp \
-    $ENV/environment.cpp $LIBS -o build_linux_tests/EnvironmentTests
+    $ENV/environment.cpp source/SceneryEditorX/renderer/renderer_quality.cpp \
+    source/SceneryEditorX/renderer/renderer_features.cpp $LIBS -o build_linux_tests/EnvironmentTests
 ./build_linux_tests/EnvironmentTests
 ```
 

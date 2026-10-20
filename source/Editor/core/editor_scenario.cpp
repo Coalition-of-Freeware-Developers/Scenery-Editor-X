@@ -60,6 +60,7 @@ namespace SceneryEditorX::EditorScenario
 			WaitingForAirport,		// The airport (and the library index it waits for) is loading
 			WaitingForProject,		// The scenario's project (drawn in the airport's frame) is opening
 			Settling,				// Camera placed; counting frames while assets stream in and lighting settles
+			FreeSettling,			// --capture-png without a scenario: the startup view, once its airport (if any) is up
 			Capturing,				// FrameCapture request in flight
 			Done
 		};
@@ -72,6 +73,7 @@ namespace SceneryEditorX::EditorScenario
 			std::optional<uint32_t> captureAfterFrames;		// --capture-after-frames
 			std::filesystem::path capturePng;				// --capture-png
 			bool exitAfterCapture = false;
+			bool waitForAirport = false;					// --xp-airport given: free captures wait for it
 		};
 
 		State &GetState()
@@ -102,6 +104,24 @@ namespace SceneryEditorX::EditorScenario
 		void ApplyEnvironment(const Environment::ParityScenario &scenario)
 		{
 			Environment::Get().ApplyScenario(scenario);
+		}
+
+		/* @brief Waits for the capture to be written, logs it and exits when asked to. */
+		void FinishCapture(State &state, const std::string &what)
+		{
+			FrameCapture::Result result;
+			if (!FrameCapture::TakeResult(result))
+				return;
+			state.stage = Stage::Done;
+			if (result.success)
+				EDITOR_INFO_TAG(LOG_TAG, "Scenario {} captured to {} ({})", what, result.png.string(), result.message);
+			else
+				EDITOR_ERROR_TAG(LOG_TAG, "Scenario {} capture failed: {}", what, result.message);
+			if (state.exitAfterCapture)
+			{
+				EDITOR_INFO_TAG(LOG_TAG, "Exiting after the capture (--capture-png)");
+				Application::Get().Stop();
+			}
 		}
 
 		bool PlaceCamera(const Environment::ParityScenario &scenario)
@@ -138,6 +158,8 @@ namespace SceneryEditorX::EditorScenario
 			}
 			else if (args[i] == "--capture-after-frames")
 				state.captureAfterFrames = static_cast<uint32_t>(std::max(0, std::atoi(args[++i].c_str())));
+			else if (args[i] == "--xp-airport")
+				state.waitForAirport = true;
 			else if (args[i] == "--reference-image")
 				referenceImage = args[++i];
 			else if (args[i] == "--reference-view")
@@ -154,8 +176,13 @@ namespace SceneryEditorX::EditorScenario
 
 		if (file.empty())
 		{
+			// No scenario: capture the startup view as it is (A/B comparisons of renderer changes)
 			if (!state.capturePng.empty())
-				EDITOR_WARN_TAG(LOG_TAG, "--capture-png needs --env-scenario: nothing will be captured");
+			{
+				state.stage = Stage::FreeSettling;
+				state.framesLeft = state.captureAfterFrames.value_or(600);
+				EDITOR_INFO_TAG(LOG_TAG, "Capturing the startup view {} frames after it is ready", state.framesLeft);
+			}
 			return;
 		}
 
@@ -214,6 +241,24 @@ namespace SceneryEditorX::EditorScenario
 	{
 		(void)context;
 		State &state = GetState();
+		if (state.stage == Stage::FreeSettling)
+		{
+			if (state.waitForAirport && !XPlane::SceneAirports::IsLoaded())
+				return;
+			if (state.framesLeft > 0)
+			{
+				--state.framesLeft;
+				return;
+			}
+			FrameCapture::Request(state.capturePng, true);
+			state.stage = Stage::Capturing;
+			return;
+		}
+		if (state.stage == Stage::Capturing && !state.active)
+		{
+			FinishCapture(state, "startup view");
+			return;
+		}
 		if (!state.active)
 			return;
 		const Environment::ParityScenario &scenario = *state.active;
@@ -272,22 +317,8 @@ namespace SceneryEditorX::EditorScenario
 			}
 
 			case Stage::Capturing:
-			{
-				FrameCapture::Result result;
-				if (!FrameCapture::TakeResult(result))
-					return;
-				state.stage = Stage::Done;
-				if (result.success)
-					EDITOR_INFO_TAG(LOG_TAG, "Scenario {} captured to {} ({})", scenario.id, result.png.string(), result.message);
-				else
-					EDITOR_ERROR_TAG(LOG_TAG, "Scenario {} capture failed: {}", scenario.id, result.message);
-				if (state.exitAfterCapture)
-				{
-					EDITOR_INFO_TAG(LOG_TAG, "Exiting after the capture (--capture-png)");
-					Application::Get().Stop();
-				}
+				FinishCapture(state, scenario.id);
 				return;
-			}
 
 			default:
 				return;

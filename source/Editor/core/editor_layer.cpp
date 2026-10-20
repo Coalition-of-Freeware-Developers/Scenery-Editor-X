@@ -1013,6 +1013,19 @@ namespace SceneryEditorX
 				GpuScene::SetOcclusionCulling(false); // GPU scene without Hi-Z occlusion culling (comparison)
 			else if (args[i] == "--lock-camera")
 				Camera::SetInputLocked(true); // the startup view stays put (captures, A/B measurements)
+			else if (args[i] == "--all-features-off")
+				Renderer::SetFeatures(RendererFeatures::AllOff()); // the XP12 frame graph with every switchable pass off (A/B)
+			else if (args[i].starts_with("--no-") || args[i].starts_with("--with-"))
+			{
+				// --no-<feature> / --with-<feature>: one XP12 emulation pass off or on (RENDERER panel names)
+				const bool on = args[i].starts_with("--with-");
+				if (const RendererFeatureInfo *feature = FindRendererFeature(std::string_view(args[i]).substr(on ? 7 : 5)))
+				{
+					RendererFeatures features = Renderer::GetFeatures();
+					features.*feature->member = on;
+					Renderer::SetFeatures(features);
+				}
+			}
 			else if (args[i] == "--entity-bench")
 				m_EntityBenchPending = true; // Entity handle lookups / copies, once the scene has settled
 			else if (args[i] == "--tools-selftest")
@@ -1031,6 +1044,21 @@ namespace SceneryEditorX
 				break;
 			else if (args[i] == "--xp-object")
 				m_StartupObjectFiles.push_back(args[++i]);
+			else if (args[i] == "--debug-view")
+			{
+				// --debug-view <n | name>: what the frame shows instead of the image (RENDERER panel DEBUG VIEW)
+				const std::string &value = args[++i];
+				for (int v = 0; v < static_cast<int>(Renderer_DebugView::Count); ++v)
+				{
+					std::string name = GetDebugViewName(static_cast<Renderer_DebugView>(v));
+					std::ranges::transform(name, name.begin(), [](const unsigned char c) { return static_cast<char>(std::tolower(c)); });
+					if (value == std::to_string(v) || name.starts_with(value))
+					{
+						Renderer::SetDebugView(static_cast<Renderer_DebugView>(v));
+						break;
+					}
+				}
+			}
 			else if (args[i] == "--focus-panel")
 				m_FocusPanel = args[++i];	// A panel id ("Environment", "RendererStats"...): its tab comes to the front
 			else if (args[i] == "--xp-asset")
@@ -1140,6 +1168,9 @@ namespace SceneryEditorX
 		std::string error;
 		if (!Environment::Get().LoadSkyConditions(table, &error))
 			EDITOR_WARN_TAG("Environment", "Sky-condition table not loaded ({}): every class stays at 1", error);
+		const std::filesystem::path constants = std::filesystem::path(ResourceCache::GetResourceDirectory()) / "environment" / "xp12_environment.json";
+		if (!Renderer::LoadEnvironmentConstants(constants, &error))
+			EDITOR_WARN_TAG("Environment", "XP12 constants not loaded ({}): the built-in initial values are used", error);
 	}
 
 	void EditorLayer::UpdateEnvironment()

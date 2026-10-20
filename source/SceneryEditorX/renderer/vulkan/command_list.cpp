@@ -2317,6 +2317,10 @@ namespace SceneryEditorX
 		constexpr uint32_t frameConstantBufferBinding = 200;
 		if (Buffer* frameConstants = Renderer::GetBuffer(Renderer_Buffer::ConstantFrame))
 			m_DescriptorLayout_Current->SetConstantBuffer(frameConstantBufferBinding, frameConstants);
+		// The world environment ([[vk::binding(201)]] cbuffer BufferEnvironment), for the shaders that read it
+		constexpr uint32_t environmentConstantBufferBinding = 201;
+		if (Buffer* environmentConstants = Renderer::GetBuffer(Renderer_Buffer::ConstantEnvironment))
+			m_DescriptorLayout_Current->SetConstantBuffer(environmentConstantBufferBinding, environmentConstants);
 
 		if (pso.shaders[static_cast<uint32_t>(StageType::Compute)])
 		{

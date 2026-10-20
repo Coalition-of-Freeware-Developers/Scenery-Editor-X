@@ -216,6 +216,8 @@ namespace SceneryEditorX
 		downsample_min,			// one level of a min mip chain (Hi-Z), until the FidelityFX SPD shaders are ported
 		selection_outline,		// editor selection / hover outlines from the pick ids (ScenePicking)
 		reference_overlay,		// viewport reference image: split / difference / full over frame_output (parity harness)
+		tonemap,				// output transform: exposure + tone curve to frame_output (XP12: hdr)
+		debug_view,				// RENDERER panel DEBUG VIEW
 		MaxEnum
 	};
 
@@ -288,6 +290,8 @@ namespace SceneryEditorX
 		case Renderer_Shader::downsample_min: return "downsample_min";
 		case Renderer_Shader::selection_outline: return "selection_outline";
 		case Renderer_Shader::reference_overlay: return "reference_overlay";
+		case Renderer_Shader::tonemap: return "tonemap";
+		case Renderer_Shader::debug_view: return "debug_view";
 		case Renderer_Shader::MaxEnum: return "MaxEnum";
 		default: return "unknown";
 		}
@@ -336,6 +340,7 @@ namespace SceneryEditorX
 		IndirectDrawArgsOut,
 		IndirectDrawCount,
 		DrawData, // bindless per-draw data (transforms, material index, etc.)
+		ConstantEnvironment, // the world environment (ConstantBuffer_Environment, binding 201)
 
 		// gpu-driven particles
 		ParticleBufferA,

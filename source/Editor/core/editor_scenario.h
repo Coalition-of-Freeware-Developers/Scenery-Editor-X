@@ -42,7 +42,8 @@ namespace SceneryEditorX::EditorScenario
 	 *
 	 *   --env-scenario <file>            scenario file (tools/xp12_reference_probe/scenarios/xp12_parity.json)
 	 *   --env-scenario-index <n | id>    entry to render (default 0)
-	 *   --capture-png <path>             write the frame (and <name>_sky.png) once the scene has settled, then exit
+	 *   --capture-png <path>             write the frame (and <name>_sky.png) once the scene has settled, then exit; without
+	 *                                    --env-scenario: the startup view, after its --xp-airport (if any) has opened
 	 *   --capture-after-frames <n>       frames to wait after the camera is placed (default: the scenario's settle_frames)
 	 *   --reference-image <png>          load a reference into the viewport REFERENCE overlay (with or without a scenario)
 	 *   --reference-view <view>          split (default), difference, flicker or off

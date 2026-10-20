@@ -30,6 +30,8 @@
  */
 #pragma once
 #include "renderer_buffers.h"
+#include "renderer_features.h"
+#include "renderer_quality.h"
 #include "font/font.h"
 #include "vulkan/blend_states.h"
 #include "vulkan/command_list.h"
@@ -41,6 +43,8 @@
 #include "vulkan/viewport.h"
 #include "vulkan/sync/frame_sync.h"
 #include <array>
+#include <filesystem>
+#include <string>
 #include <utility>
 #include <SceneryEditorX/core/identifiers/flag.h>
 #include <SceneryEditorX/core/threading/render_thread.h>
@@ -470,6 +474,48 @@ namespace SceneryEditorX
 		/* @brief Direction toward the placeholder sun (world frame: +X east, +Y up, +Z south), from the environment. */
 		static void SetFallbackSunDirection(const xMath::Vec3 &towardSun);
 
+		/* @brief The XP12 emulation passes that are switched on (RENDERER panel, --no-<feature>). */
+		static const RendererFeatures &GetFeatures();
+		static void SetFeatures(const RendererFeatures &features);
+
+		/* @brief What the frame shows instead of the image (RENDERER panel DEBUG VIEW). */
+		static Renderer_DebugView GetDebugView();
+		static void SetDebugView(Renderer_DebugView view);
+
+		/* @brief X-Plane's quality levels the passes follow (shadows, AO, clouds, FSR...); defaults = X-Plane's vkmtl_async. */
+		static const RendererQualityPreset &GetQualityPreset();
+		static void SetQualityPreset(const RendererQualityPreset &preset);
+
+		/* @brief The curve Tone mapping uses: 1 AgX (X-Plane 12.2+, default), 2 ACES fit, 3 Reinhard (A/B only). */
+		static int GetToneCurve();
+		static void SetToneCurve(int curve);
+
+		/**
+		 * @brief Constants the environment buffer carries besides the world state: X-Plane art-control values (sun and
+		 * moon illuminance, atmosphere coefficients) and the exposure. Loaded by art-control name from
+		 * resources/environment/xp12_environment.json (plan GUD-002); the defaults are the plan's initial values.
+		 */
+		struct EnvironmentConstants
+		{
+			float sunIlluminanceLux = 115000.0f;		// lighting/E_sun_lx
+			float moonIlluminanceLux = 0.25f;			// lighting/E_moon_lx (full moon)
+			float sunAngularRadiusRad = 0.2666f * 3.14159265f / 180.0f;
+			xMath::Vec4 rayleigh = xMath::Vec4(5.802e-6f, 13.558e-6f, 33.1e-6f, 8000.0f);
+			xMath::Vec4 mie = xMath::Vec4(3.996e-6f, 4.4e-6f, 1200.0f, 0.8f);
+			xMath::Vec4 ozone = xMath::Vec4(0.65e-6f, 1.881e-6f, 0.085e-6f, 25000.0f);
+			xMath::Vec4 planet = xMath::Vec4(15000.0f, 6360000.0f, 6460000.0f, 0.1f);
+			float hazeTopM = 1500.0f;
+			float hazeBandM = 1000.0f;
+			float exposureScale = 1.0f;					// What the tone mapper multiplies the pre-exposed frame by
+			float preExposure = 1.0f;					// What lighting and emissive writes are multiplied by (Phase 5)
+			float ev100 = 0.0f;
+			float ev100Bias = 0.0f;
+			xMath::Vec4 exposureFusion = xMath::Vec4(0.0f, 0.2f, 1.0f, 4.0f);	// shadows, sigma, dis_near, dis_far
+		};
+		static const EnvironmentConstants &GetEnvironmentConstants();
+		static EnvironmentConstants &EditEnvironmentConstants();
+		static bool LoadEnvironmentConstants(const std::filesystem::path &path, std::string *error = nullptr);
+
 		/* @brief Draws the editor grid (on by default; parity captures hide it, X-Plane has none). */
 		static void SetGridVisible(bool visible);
 		static bool IsGridVisible();
@@ -724,6 +770,10 @@ namespace SceneryEditorX
 		static void Pass_Grid(CommandList *cmdList, ImageResource *out);
 		static void Pass_Text(CommandList *cmdList, ImageResource *out);
 		static void Pass_ReferenceOverlay(CommandList *cmdList, ImageResource *out);
+		/* @brief Output transform: the pre-exposed HDR frame to display-referred linear values (tonemap.slang). */
+		static void Pass_Tonemap(CommandList *cmdList, ImageResource *in, ImageResource *out);
+		/* @brief The DEBUG VIEW over the output (debug_view.slang). */
+		static void Pass_DebugView(CommandList *cmdList, ImageResource *out);
 
 		/**
 		 * @brief Draws alpha-blended materials (MaterialProperty::BlendMode) back to front over the composed frame.
@@ -791,6 +841,8 @@ namespace SceneryEditorX
 		 * @param cmdList 
 		 */
 		static void UpdateFrameConstantBuffer(CommandList *cmdList);
+		/* @brief Fills ConstantBuffer_Environment from the world environment (Environment::Get()) and uploads it. */
+		static void UpdateEnvironmentConstantBuffer(CommandList *cmdList);
 
 		/**
 		 * @brief Updates the draw calls for the current frame.
@@ -990,6 +1042,7 @@ namespace SceneryEditorX
 		static PassState m_PassState; // Tracks one-shot initialization and feature-toggle state for various render passes and resources; used to conditionally execute certain passes or initialization steps
 		static PushConstantBuffer_Pass m_Pcb_Pass_Cpu; // Per-pass push constant staging buffer (written by passes, uploaded by PushConstants())
 		static ConstantBuffer_Frame m_Cb_Frame_Cpu; // Staging area for per-frame constants written by the CPU; copied to GPU buffer each frame
+		static ConstantBuffer_Environment m_Cb_Environment_Cpu; // Same for the world environment (binding 201)
 
 		// CPU-side draw call arrays (populated by scene submission, consumed by passes)
 		static std::array<Renderer_DrawCall, RENDERER_MAX_DRAW_CALLS> m_DrawCalls;

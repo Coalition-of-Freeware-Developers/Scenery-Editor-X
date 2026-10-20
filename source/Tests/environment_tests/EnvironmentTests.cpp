@@ -34,8 +34,12 @@
 #include <catch2/catch_all.hpp>
 #include <SceneryEditorX/environment/environment.h>
 #include <SceneryEditorX/environment/parity_scenario.h>
+#include <SceneryEditorX/renderer/renderer_features.h>
+#include <SceneryEditorX/renderer/renderer_quality.h>
 #include <cmath>
 #include <numeric>
+#include <set>
+#include <string>
 
 using namespace SceneryEditorX::Environment;
 using Catch::Approx;
@@ -460,4 +464,83 @@ TEST_CASE("Environment: the world versions its changes and takes scenarios", "[e
 	const float wet = world.GetDerived().surface.wetness;
 	world.Tick(1800.0);
 	CHECK(world.GetDerived().surface.wetness < wet);
+}
+
+TEST_CASE("Renderer quality levels match X-Plane's settings.txt", "[environment][quality]")
+{
+	using namespace SceneryEditorX;
+	// renopt_shadow_quality_04
+	CHECK_FALSE(GetShadowQuality(0).sceneryShadows);
+	CHECK(GetShadowQuality(0).fadeRatio == Approx(0.999f));
+	CHECK(GetShadowQuality(1).exteriorCascades == 2);
+	CHECK(GetShadowQuality(1).exteriorFarM == 120.0f);
+	CHECK(GetShadowQuality(1).mapSize == 1024u);
+	CHECK(GetShadowQuality(2).exteriorCascades == 3);
+	CHECK(GetShadowQuality(2).exteriorFarM == 250.0f);
+	CHECK(GetShadowQuality(2).mapSize == 2048u);
+	CHECK(GetShadowQuality(3).mapSize == 4096u);
+	CHECK(GetShadowQuality(4).exteriorCascades == 4);
+	CHECK(GetShadowQuality(4).exteriorFarM == 1000.0f);
+	CHECK(GetShadowQuality(4).interiorFarM == 500.0f);
+	CHECK(GetShadowQuality(4).fadeRatio == Approx(0.5f));
+	for (int level = 0; level < SHADOW_LEVELS; ++level)
+		CHECK(GetShadowQuality(level).interiorCascades == 3);
+	CHECK(GetShadowQuality(99).mapSize == GetShadowQuality(4).mapSize);	// Clamped
+
+	// renopt_SSAO_04
+	CHECK_FALSE(GetAoQuality(0).enabled);
+	CHECK(GetAoQuality(2).cacaoQuality == 3);
+	CHECK(GetAoQuality(3).halfResolution);
+	CHECK_FALSE(GetAoQuality(4).halfResolution);
+
+	// renopt_clouds_02
+	CHECK(GetCloudQuality(0).resolutionScale == Approx(0.20f));
+	CHECK(GetCloudQuality(1).resolutionMax == 980u);
+	CHECK(GetCloudQuality(2).resolutionMax == 1920u);
+	CHECK(GetCloudQuality(3).shadowSteps == 8);
+	CHECK_FALSE(GetCloudQuality(0).color);
+
+	// renopt_FSR_04 and renopt_draw_distance04
+	CHECK_FALSE(GetFsrQuality(0).enabled);
+	CHECK(GetFsrQuality(1).textureLodBias == Approx(-0.38f));
+	CHECK(GetFsrQuality(4).textureLodBias == Approx(-1.0f));
+	CHECK(GetDrawDistanceQuality(0).lodBiasRatio == Approx(5.0f));
+	CHECK(GetDrawDistanceQuality(1).lodBiasRatio == Approx(3.375f));
+	CHECK(GetDrawDistanceQuality(4).lodBiasRatio == Approx(1.0f));
+	CHECK(GetTextureResolution(4) == 5);
+
+	// vkmtl_async defaults: shadows 2, SSAO 2, clouds 2, FXAA on, FSR off, anisotropy 16, texture resolution 4
+	const RendererQualityPreset preset = GetDefaultQualityPreset();
+	CHECK(preset.shadows == 2);
+	CHECK(preset.ao == 2);
+	CHECK(preset.clouds == 2);
+	CHECK(preset.fxaa);
+	CHECK(preset.fsr == 0);
+	CHECK(preset.anisotropy == 16);
+	CHECK(preset.textureResolution == 4);
+}
+
+TEST_CASE("Renderer feature switches", "[environment][quality]")
+{
+	using namespace SceneryEditorX;
+	const RendererFeatures defaults;
+	CHECK(RendererFeatures::FromBits(defaults.ToBits()) == defaults);
+	CHECK(RendererFeatures::AllOff().ToBits() == 0u);
+	CHECK_FALSE(defaults.fsr1);
+	CHECK_FALSE(defaults.screenSpaceShadows);
+
+	std::set<std::string> names;
+	for (const RendererFeatureInfo &feature : GetRendererFeatureTable())
+	{
+		CHECK(names.insert(feature.name).second);	// --no-<name> spellings are unique
+		CHECK(FindRendererFeature(feature.name) == &feature);
+	}
+	CHECK(names.size() == GetRendererFeatureTable().size());
+	CHECK(GetRendererFeatureTable().size() <= 24);	// Bits fit the environment buffer's float exactly
+	REQUIRE(FindRendererFeature("csm"));
+	RendererFeatures features;
+	features.*FindRendererFeature("csm")->member = false;
+	CHECK_FALSE(features.csmShadows);
+	CHECK(FindRendererFeature("nonsense") == nullptr);
+	CHECK(std::string(GetDebugViewName(Renderer_DebugView::Normals)) == "Normals");
 }

@@ -274,8 +274,42 @@ namespace SceneryEditorX
 		float padding2         = 0.0f;
 	};
 
+	/**
+	 * @struct ConstantBuffer_Environment
+	 * @brief The world environment for the shaders (plan TASK-020), filled once per frame from Environment::Get():
+	 * sun and moon, sky-condition multipliers, atmosphere, haze, surface weather, season, exposure, clouds, wind.
+	 * Vec4 members only (std140). Mirrors EnvironmentData in resources.slang (binding 201). World frame: +X east,
+	 * +Y up, +Z south. Units: lux, meters, 1/m.
+	 */
+	struct ConstantBuffer_Environment
+	{
+		xMath::Vec4 sun_direction;			// xyz toward the sun, w angular radius (rad)
+		xMath::Vec4 sun_illuminance;		// rgb illuminance outside the atmosphere (lux), w apparent elevation (deg)
+		xMath::Vec4 moon_direction;			// xyz toward the moon, w illuminated fraction
+		xMath::Vec4 moon_illuminance;		// rgb (lux, full moon x fraction), w phase angle (rad)
+		xMath::Vec4 sky_multipliers;		// ambient, direct, tone, shadow level (sky-condition blend)
+		xMath::Vec4 sky_multipliers2;		// rayleigh, mie, shadow offset, daylight (0 night .. 1 day)
+		xMath::Vec4 rayleigh;				// rgb scattering (1/m), w scale height (m)
+		xMath::Vec4 mie;					// scattering, extinction (1/m), scale height (m), phase g
+		xMath::Vec4 ozone;					// rgb absorption (1/m), w tent center altitude (m)
+		xMath::Vec4 planet;					// ozone tent half width (m), earth radius (m), atmosphere top radius (m), ground albedo
+		xMath::Vec4 haze;					// visibility (m), haze layer top (m), haze fade band (m), time (s)
+		xMath::Vec4 weather;				// rain wetness, ice, snow level, puddles (0-1)
+		xMath::Vec4 snow_projection_x;		// world xz -> snow coverage map u (Phase 12)
+		xMath::Vec4 snow_projection_z;		// world xz -> snow coverage map v
+		xMath::Vec4 season;					// ratio toward the next season, season index (0 spr .. 3 win), day of year, latitude
+		xMath::Vec4 exposure;				// exposure scale, pre-exposure, EV100, EV100 bias
+		xMath::Vec4 exposure_fusion;		// shadows, sigma, near distance, far distance
+		xMath::Vec4 camera;					// camera altitude MSL (m), ground elevation (m), night factor, rain percent
+		xMath::Vec4 clouds[3];				// per layer: base MSL (m), top MSL (m), coverage, type
+		xMath::Vec4 wind;					// direction from (deg true), speed (m/s), wave amplitude (m), wave direction (deg true)
+		xMath::Vec4 debug;					// x debug view (Renderer_DebugView), y feature bits, z temperature (C), w unused
+		xMath::Vec4 padding[9];				// to 512 bytes
+	};
+
 	// sizes the shaders see (resources.slang: cbuffer std140, structured buffers std430)
 	static_assert(sizeof(ConstantBuffer_Frame) == 1024, "ConstantBuffer_Frame must match FrameBufferData in resources.slang");
+	static_assert(sizeof(ConstantBuffer_Environment) == 512, "ConstantBuffer_Environment must match EnvironmentData in resources.slang");
 	static_assert(sizeof(ShaderBuffer_Material) == 112, "ShaderBuffer_Material must match MaterialParameters in resources.slang");
 	static_assert(sizeof(ShaderBuffer_Light) == 608, "ShaderBuffer_Light must match LightParameters in resources.slang");
 	static_assert(sizeof(ShaderBuffer_DrawData) == 144, "ShaderBuffer_DrawData must match DrawData in resources.slang");

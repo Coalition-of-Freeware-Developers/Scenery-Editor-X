@@ -311,6 +311,41 @@ public struct EmitterParams
 public PassBufferData buffer_pass;
 public [[vk::binding(200)]] cbuffer BufferFrame : register(b200) { FrameBufferData buffer_frame; };
 
+// the world environment (ConstantBuffer_Environment, renderer_buffers.h): sun, moon, sky, atmosphere, weather, exposure
+// world frame +X east, +Y up, +Z south; lux, meters, 1/m
+public struct EnvironmentData
+{
+    public float4 sun_direction;     // xyz toward the sun, w angular radius (rad)
+    public float4 sun_illuminance;   // rgb lux outside the atmosphere, w apparent elevation (deg)
+    public float4 moon_direction;    // xyz, w illuminated fraction
+    public float4 moon_illuminance;  // rgb lux, w phase angle (rad)
+    public float4 sky_multipliers;   // ambient, direct, tone, shadow level
+    public float4 sky_multipliers2;  // rayleigh, mie, shadow offset, daylight
+    public float4 rayleigh;          // rgb scattering, w scale height
+    public float4 mie;               // scattering, extinction, scale height, g
+    public float4 ozone;             // rgb absorption, w tent center altitude
+    public float4 planet;            // ozone half width, earth radius, atmosphere radius, ground albedo
+    public float4 haze;              // visibility, haze top, haze band, time
+    public float4 weather;           // rain wetness, ice, snow level, puddles
+    public float4 snow_projection_x;
+    public float4 snow_projection_z;
+    public float4 season;            // ratio, index, day of year, latitude
+    public float4 exposure;          // exposure scale, pre-exposure, EV100, EV100 bias
+    public float4 exposure_fusion;   // shadows, sigma, near, far
+    public float4 camera;            // altitude MSL, ground elevation, night factor, rain percent
+    public float4 clouds[3];         // base MSL, top MSL, coverage, type
+    public float4 wind;              // direction from (deg), speed (m/s), wave amplitude (m), wave direction (deg)
+    public float4 debug;             // debug view, feature bits, temperature (C)
+    public float4 padding_environment[9];
+};
+public [[vk::binding(201)]] cbuffer BufferEnvironment : register(b201) { EnvironmentData buffer_environment; };
+
+public float3 get_sun_direction() { return buffer_environment.sun_direction.xyz; }
+public float get_exposure_scale() { return buffer_environment.exposure.x; }
+public float get_pre_exposure() { return buffer_environment.exposure.y; }
+public uint get_debug_view() { return uint(buffer_environment.debug.x + 0.5f); }
+public bool is_feature_enabled(uint bit) { return (uint(buffer_environment.debug.y + 0.5f) & (1u << bit)) != 0; }
+
 // easy access to buffer_frame members
 public bool is_hdr_enabled() { return buffer_frame.hdr_enabled != 0.0f; }
 public uint get_frame_index() { return buffer_frame.frame; }

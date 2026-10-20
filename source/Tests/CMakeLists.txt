@@ -387,6 +387,8 @@ ADD_EXECUTABLE(EnvironmentTests
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/environment/sky_conditions.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/environment/environment_state.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/environment/environment.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/renderer/renderer_quality.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/renderer/renderer_features.cpp
 )
 
 TARGET_INCLUDE_DIRECTORIES(EnvironmentTests PRIVATE

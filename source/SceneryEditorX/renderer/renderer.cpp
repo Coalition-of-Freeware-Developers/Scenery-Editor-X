@@ -53,7 +53,9 @@
 #include <SceneryEditorX/core/application/application.h>
 #include <SceneryEditorX/core/frame_profiler.h>
 #include <SceneryEditorX/core/window/monitor_data.h>
+#include <SceneryEditorX/environment/environment.h>
 #include <SceneryEditorX/renderer/frame_capture.h>
+#include <SceneryEditorX/renderer/gpu_timer.h>
 #include <SceneryEditorX/renderer/gbuffer.h>
 #include <SceneryEditorX/renderer/gpu_scene.h>
 #include <SceneryEditorX/renderer/scene_picking.h>
@@ -707,6 +709,7 @@ void dynamic_resolution()
 		GpuScene::Shutdown();
 		ScenePicking::Shutdown();
 		FrameCapture::Shutdown();
+		GpuTimer::Shutdown();
 		SetReferenceOverlay(nullptr, ReferenceOverlayMode::Off);
 		GeometryBuffer::Shutdown();
 		DestroyResources();
@@ -880,6 +883,8 @@ void dynamic_resolution()
 					{
 						constantFrameBuffer->ResetOffset();
 					}
+					if (Buffer *environmentBuffer = GetBuffer(Renderer_Buffer::ConstantEnvironment))
+						environmentBuffer->ResetOffset();
 					else
 					{
 						SEDX_CORE_ERROR_TAG("Renderer", "ConstantFrame buffer is null — cannot reset offset");
@@ -1067,6 +1072,7 @@ void dynamic_resolution()
 #pragma endregion
 				
 			UpdateFrameConstantBuffer(m_CmdList_Present);
+			UpdateEnvironmentConstantBuffer(m_CmdList_Present);
 			{
 				SEDX_PERF_SCOPE("Render: Debug lines");
 				UpdatePersistentLines();
@@ -2864,6 +2870,47 @@ void dynamic_resolution()
 		frame.view_projection_previous            = frame.view_projection;
 		frame.view_projection_previous_unjittered = frame.view_projection_unjittered;
 		frame.camera_position_previous            = frame.camera_position;
+	}
+
+	void Renderer::UpdateEnvironmentConstantBuffer(CommandList *cmdList)
+	{
+		Buffer *environmentBuffer = GetBuffer(Renderer_Buffer::ConstantEnvironment);
+		if (!cmdList || !environmentBuffer)
+			return;
+
+		const Environment::World::Snapshot snapshot = Environment::Get().GetSnapshot();
+		const Environment::EnvironmentState &state = snapshot.state;
+		const Environment::EnvironmentDerived &derived = snapshot.derived;
+		const EnvironmentConstants &constants = GetEnvironmentConstants();
+		ConstantBuffer_Environment &env = m_Cb_Environment_Cpu;
+
+		env.sun_direction = xMath::Vec4(derived.sunDirection.x, derived.sunDirection.y, derived.sunDirection.z, constants.sunAngularRadiusRad);
+		env.sun_illuminance = xMath::Vec4(constants.sunIlluminanceLux, constants.sunIlluminanceLux, constants.sunIlluminanceLux,
+			static_cast<float>(derived.sun.apparentElevationDeg));
+		env.moon_direction = xMath::Vec4(derived.moonDirection.x, derived.moonDirection.y, derived.moonDirection.z, static_cast<float>(derived.moon.illuminatedFraction));
+		const float moonLux = constants.moonIlluminanceLux * static_cast<float>(derived.moon.illuminatedFraction);
+		env.moon_illuminance = xMath::Vec4(moonLux, moonLux, moonLux, static_cast<float>(derived.moon.phaseAngleDeg) * xMath::DEG_TO_RAD);
+		env.sky_multipliers = xMath::Vec4(derived.sky.ambient, derived.sky.direct, derived.sky.tone, derived.sky.shadowLevel);
+		env.sky_multipliers2 = xMath::Vec4(derived.sky.rayleigh, derived.sky.mie, derived.sky.shadowOffset, derived.daylight);
+		env.rayleigh = constants.rayleigh;
+		env.mie = constants.mie;
+		env.ozone = constants.ozone;
+		env.planet = constants.planet;
+		env.haze = xMath::Vec4(state.visibilityM, constants.hazeTopM, constants.hazeBandM, static_cast<float>(m_Cb_Frame_Cpu.time));
+		env.weather = xMath::Vec4(derived.surface.wetness, derived.surface.ice, derived.surface.snow, derived.surface.puddles);
+		env.season = xMath::Vec4(derived.season.ratio, static_cast<float>(derived.season.season), static_cast<float>(derived.dayOfYear), static_cast<float>(state.latitudeDeg));
+		env.exposure = xMath::Vec4(constants.exposureScale, constants.preExposure, constants.ev100, constants.ev100Bias);
+		env.exposure_fusion = constants.exposureFusion;
+		env.camera = xMath::Vec4(m_Cb_Frame_Cpu.camera_position.y + state.elevationM, state.elevationM, derived.nightFactor, state.rainPercent);
+		for (size_t i = 0; i < 3; ++i)
+		{
+			const Environment::CloudLayer &layer = state.clouds[i];
+			env.clouds[i] = xMath::Vec4(layer.baseMslM, layer.topMslM, layer.coverage, layer.type);
+		}
+		env.wind = xMath::Vec4(state.windDirectionDegT, state.windSpeedKt * 0.514444f, state.waveAmplitudeM, state.waveDirectionDegT);
+		env.debug = xMath::Vec4(static_cast<float>(GetDebugView()), static_cast<float>(GetFeatures().ToBits()), state.temperatureC, 0.0f);
+
+		environmentBuffer->Update(cmdList, &env);
 	}
 
 	uint32_t Renderer::WriteDrawData(const xMath::Matrix &transform, const xMath::Matrix &prevTransform, uint32_t matIndex, uint32_t isTransparent, uint32_t pickId)

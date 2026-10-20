@@ -34,6 +34,7 @@
 #include <SceneryEditorX/core/application/application.h>
 #include <SceneryEditorX/core/time/fps_timer.h>
 #include <SceneryEditorX/renderer/gpu_scene.h>
+#include <SceneryEditorX/renderer/gpu_timer.h>
 #include <SceneryEditorX/renderer/renderer.h>
 #include <SceneryEditorX/renderer/ui/ui_impl.h>
 #include <SceneryEditorX/renderer/vulkan/swapchain.h>
@@ -291,6 +292,125 @@ namespace SceneryEditorX
 				ValueText("Batches", "%u", stats.batches);
 				ValueText("Draw commands", "%u of %u drawing", stats.drawnCommands, stats.commands);
 				ValueText("Uploads", "%u instances, %u transforms checked", stats.uploadedInstances, stats.validatedTransforms);
+				EditorUI::EndPropertyGrid();
+			}
+
+			if (EditorUI::SectionHeader("XP12 EMULATION") && EditorUI::BeginPropertyGrid("##RendererXp12"))
+			{
+				// The switchable passes of the X-Plane 12 frame graph (--no-<name> / --with-<name> on the command line)
+				RendererFeatures features = Renderer::GetFeatures();
+				bool changed = false;
+				for (const RendererFeatureInfo &feature : GetRendererFeatureTable())
+				{
+					const bool available = feature.implementedInPhase <= RENDERER_IMPLEMENTED_PHASE;
+					EditorUI::PropertyLabel(feature.label);
+					ImGui::PushID(feature.name);
+					ImGui::BeginDisabled(!available);
+					changed |= ImGui::Checkbox("##Feature", &(features.*feature.member));
+					ImGui::EndDisabled();
+					ImGui::PopID();
+					if (available)
+						EditorUI::ItemTooltip(feature.description);
+					else
+					{
+						char tooltip[256];
+						snprintf(tooltip, sizeof(tooltip), "%s\nNot in this build yet (plan phase %d)", feature.description, feature.implementedInPhase);
+						EditorUI::ItemTooltip(tooltip);
+					}
+				}
+				if (changed)
+					Renderer::SetFeatures(features);
+
+				EditorUI::PropertyLabel("Tone curve");
+				static constexpr const char *curves[] = { "AgX (X-Plane 12.2+)", "ACES fit", "Reinhard" };
+				int curve = Renderer::GetToneCurve() - 1;
+				ImGui::BeginDisabled(!features.tonemap);
+				if (ImGui::Combo("##ToneCurve", &curve, curves, 3))
+					Renderer::SetToneCurve(curve + 1);
+				ImGui::EndDisabled();
+
+				EditorUI::PropertyLabel("Passes");
+				if (ImGui::Button("All off"))
+					Renderer::SetFeatures(RendererFeatures::AllOff());
+				ImGui::SameLine();
+				if (ImGui::Button("Defaults"))
+					Renderer::SetFeatures(RendererFeatures{});
+				EditorUI::ItemTooltip("All off: the frame graph with every switchable pass off (A/B against the plain renderer)");
+				EditorUI::EndPropertyGrid();
+			}
+
+			if (EditorUI::SectionHeader("QUALITY", false) && EditorUI::BeginPropertyGrid("##RendererQuality"))
+			{
+				// X-Plane 12's graphics settings levels (Resources/settings.txt); passes read them as they arrive
+				RendererQualityPreset preset = Renderer::GetQualityPreset();
+				bool changed = false;
+				const auto level = [&changed](const char *label, const char *id, int &value, const int count, const char *(*name)(int))
+				{
+					EditorUI::PropertyLabel(label);
+					ImGui::SetNextItemWidth(-FLT_MIN);
+					if (ImGui::BeginCombo(id, name(value)))
+					{
+						for (int i = 0; i < count; ++i)
+						{
+							if (ImGui::Selectable(name(i), i == value))
+							{
+								value = i;
+								changed = true;
+							}
+						}
+						ImGui::EndCombo();
+					}
+				};
+				level("Shadows", "##Shadows", preset.shadows, SHADOW_LEVELS, GetShadowLevelName);
+				level("Ambient occlusion", "##Ao", preset.ao, AO_LEVELS, GetAoLevelName);
+				level("Clouds", "##Clouds", preset.clouds, CLOUD_LEVELS, GetCloudLevelName);
+				level("FSR", "##Fsr", preset.fsr, FSR_LEVELS, GetFsrLevelName);
+				level("Draw distance", "##DrawDistance", preset.drawDistance, DRAW_DISTANCE_LEVELS, GetDrawDistanceLevelName);
+				EditorUI::PropertyLabel("FXAA");
+				changed |= ImGui::Checkbox("##Fxaa", &preset.fxaa);
+				EditorUI::PropertyLabel("Preset");
+				if (ImGui::Button("X-Plane defaults"))
+				{
+					preset = GetDefaultQualityPreset();
+					changed = true;
+				}
+				EditorUI::ItemTooltip("X-Plane 12's defaults for desktop Vulkan (vkmtl_async): what the parity references use");
+				if (changed)
+					Renderer::SetQualityPreset(preset);
+				const ShadowQuality shadow = GetShadowQuality(preset.shadows);
+				ValueText("Shadow maps", "%d cascades to %.0f m, %u px", shadow.exteriorCascades, shadow.exteriorFarM, shadow.mapSize);
+				EditorUI::EndPropertyGrid();
+			}
+
+			if (EditorUI::SectionHeader("DEBUG VIEW", false) && EditorUI::BeginPropertyGrid("##RendererDebugView"))
+			{
+				EditorUI::PropertyLabel("Show");
+				const Renderer_DebugView current = Renderer::GetDebugView();
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				if (ImGui::BeginCombo("##DebugView", GetDebugViewName(current)))
+				{
+					for (int v = 0; v < static_cast<int>(Renderer_DebugView::Count); ++v)
+					{
+						const Renderer_DebugView view = static_cast<Renderer_DebugView>(v);
+						const int phase = GetDebugViewPhase(view);
+						char label[96];
+						if (phase > RENDERER_IMPLEMENTED_PHASE)
+							snprintf(label, sizeof(label), "%s (phase %d)", GetDebugViewName(view), phase);
+						else
+							snprintf(label, sizeof(label), "%s", GetDebugViewName(view));
+						if (ImGui::Selectable(label, view == current))
+							Renderer::SetDebugView(view);
+					}
+					ImGui::EndCombo();
+				}
+				EditorUI::EndPropertyGrid();
+			}
+
+			if (EditorUI::SectionHeader("GPU TIMINGS", false) && EditorUI::BeginPropertyGrid("##RendererGpuTimings"))
+			{
+				// Per pass, from timestamp queries of the last finished frame (also in the --perf-log counters)
+				for (const GpuTimer::Result &result : GpuTimer::GetResults())
+					ValueText(result.name.c_str(), "%.3f ms", result.milliseconds);
 				EditorUI::EndPropertyGrid();
 			}
 
