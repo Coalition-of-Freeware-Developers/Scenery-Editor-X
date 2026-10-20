@@ -1,0 +1,421 @@
+---
+goal: Emulate X-Plane 12's world-environment rendering (photometric lighting, PBR, exposure and tone mapping, atmosphere, shadows, AO, reflections, water, wet surfaces, snow, seasons) in the Scenery Editor X viewport at near 1:1 visual parity
+version: 1.0
+date_created: 2026-10-19
+last_updated: 2026-10-19
+owner: Scenery Editor X renderer (Coalition of Freeware Developers)
+status: 'Planned'
+tags: [feature, renderer, vulkan, slang, x-plane, pbr, atmosphere, weather, seasons, architecture]
+---
+
+# Introduction
+
+![Status: Planned](https://img.shields.io/badge/status-Planned-blue)
+
+This plan turns the Scenery Editor X (SEDX) viewport into an emulation of X-Plane 12's world rendering, so scenery developers see their work as X-Plane 12 draws it. It covers the world environment model (date, time, location, weather, season), photometric lighting, X-Plane's PBR material decode, histogram exposure plus exposure fusion and AgX tone mapping, Hillaire-style atmosphere and haze, cascaded sun shadows, CACAO ambient occlusion, screen-space reflections and environment probes, FFT water, the weather surface pass (wetness, puddles, ice, snow), seasonal asset switching, and photometric tiled night lighting.
+
+The plan rests on the research in `reports/X Plane 12 graphics pipeline.md` and its notes in `research_notes/X Plane 12 graphics pipeline/`. The reference build is X-Plane 12.4.4-b4 (`X-Plane.exe` and `Resources/shaders/bin` dated 2026-10-01 to 2026-10-06 in `K:/SteamLibrary/steamapps/common/X-Plane 12`); `Log.txt` is from 12.4.3 (build 124311). Parity is measured against reference screenshots that X-Plane 12 renders for a fixed scenario set (Phase 1), never against memory or marketing images.
+
+## 1. Requirements & Constraints
+
+### Baseline facts (SEDX at commit `aba6ee7d`, branch `dev`)
+
+- **BAS-001**: `Renderer::ProduceFrame` (`source/SceneryEditorX/renderer/renderer_passes.cpp:140`) runs a minimal bootstrap graph while `cvar_minimal_bootstrap_path` is 1 (line 138): BRDF LUT, GpuScene cull, depth prepass, g-buffer, `Pass_Light`, `Pass_Light_Composition`, grid, forward transparent, light billboards, selection outline, then a raw `Blit` of the HDR `frame_render` to `frame_output` (line 235). No exposure, no tone mapping.
+- **BAS-002**: The non-bootstrap branch (lines 265-456) contains Spartan-derived passes that are not running: atmosphere LUTs + skysphere (`skysphere.slang`, Hillaire-style transmittance 256x64 and multi-scatter 32x32 LUTs, hard-coded constants at lines 21-47), cloud noise + cloud shadow, shadow atlas 8192² D32 with Vogel/PCSS filtering (`shadow_mapping.slang`), visibility-bitmask GTAO (`ssao.slang`), SSR (`light_reflections.slang`), volumetric fog (`fog.slang`), auto exposure (`auto_exposure.slang`), bloom, ACES/AgX/Reinhard tone curves (`output.slang`), FXAA, CAS.
+- **BAS-003**: Lighting without a directional light uses `fallback_lighting.slang` (hard-coded sky gradient, sun 2.5 units, hemispherical ambient) scaled by `Renderer::SetFallbackDaylight` from `XPlane::Datarefs::GetDaylight()`.
+- **BAS-004**: Sun elevation is `sin((hours-6)/12·π)·60°` (`source/SceneryEditorX/xplane/xp_datarefs.cpp:55`); no latitude, date or moon. Two time sources exist: `Scene::GetTimeOfDay` (`scene.cpp:699`, DateTime) and `DatarefEnvironment::localTimeHours` (`xp_datarefs.h`, edited at `source/Editor/core/editor_xplane.cpp:255`).
+- **BAS-005**: G-buffer (`renderer_resources.cpp:185-201`): `gbuffer_color` RGBA8_UNORM, `gbuffer_normal` RGBA16F (world normal + material index), `gbuffer_material` RGBA8 (roughness, metalness, emission luminance, occlusion), `gbuffer_velocity` RG16F, `gbuffer_depth` D32 reverse-Z, `gbuffer_pick` R32_UINT. `gbuffer.slang:265-271` adds LIT emissive into albedo.
+- **BAS-006**: X-Plane gloss/metalness comes from `TextureLoader::DecodePackedMaterial` (`xp_texture_loader.cpp:819`), which only decodes uncompressed normal maps (line 840-845); DXT/BC normal maps fall back to flat roughness. LIT textures are toggled by `ObjectAsset::SetLitTexturesVisible(Datarefs::GetNightFactor() > 0.5f)` (`xp_scene.cpp`).
+- **BAS-007**: `ConstantBuffer_Frame` (`renderer_buffers.h`) is padded to exactly 1024 bytes for the dynamic-offset ring buffer and has no sun, atmosphere, exposure, weather or season fields.
+- **BAS-008**: The DSF reader counts and skips terrain patches (`xp_dsf.h:47`); no `.ter` parser exists; no base terrain is drawn. The X-Plane 12 Global Scenery (353 tile folders) is installed locally.
+- **BAS-009**: `LibrarySystem` parses `EXPORT_*_SEASON` into `SeasonBits` (`xp_library.h:92-112`) but `Resolve()` ignores season and region (line 261).
+- **BAS-010**: `Obj8Data` already parses `ATTR_light_level` with an optional nits brightness (`lightLevelBrightness`), `GLOBAL_luminance`, `GLOBAL_specular`, `NORMAL_METALNESS`, `BLEND_GLASS`, `ATTR_shadow_blend`, `ATTR_no_shadow` (`xp_obj8.h:147-267`).
+
+### Requirements
+
+- **REQ-001**: Reference target is X-Plane 12.4.4-b4 as installed. Every calibrated constant records the X-Plane build it came from in `resources/environment/xp12_environment.json` (`"xp_build": "12.4.4-b4"`).
+- **REQ-002**: The renderer works in scene-referred photometric units: luminance in nits (cd/m²), sun and moon illuminance in lux (`E_sun_lx` initial 115000 lx, `E_moon_lx` initial 0.25 lx), point/spot lights in candela (lights.txt `375cd` syntax), emissive in nits (`GLOBAL_luminance`, `ATTR_light_level` brightness, `.ter LUMINANCE`; clamp 65530). `frame_render` stays `VK_FORMAT_R16G16B16A16_SFLOAT` and stores radiance × pre-exposure.
+- **REQ-003**: Material decode matches X-Plane 12:
+  - Normal map channels: RG = normal XY (Z reconstructed), B = F0/metalness value `v` when `NORMAL_METALNESS`, A = gloss (1 = smooth). Legacy layout (no `NORMAL_METALNESS`): B = Z, A = specular level. Translucency mode (`NORMAL_TRANSLUCENCY`, forest normals): B = translucency.
+  - Perceptual roughness = `1 − 0.96875·gloss`; GGX α = roughness².
+  - Metalness = `v`; dielectric F0 = `min(v, 0.08)`; F0 = `lerp(dielectricF0, albedo, metalness)`.
+  - F0 when the asset has no metalness value: 0.06 aircraft glass (`BLEND_GLASS`), 0.0 translucency-mode normal maps, 0.04 for other normal maps and for glossy surfaces without one, 0.0 for fully rough surfaces without one.
+  - Albedo textures are sRGB.
+- **REQ-004**: BRDF: GGX NDF, height-correlated Smith visibility, Schlick Fresnel. The split-sum DFG LUT is 256x256 `VK_FORMAT_R32G32_SFLOAT`, x = N·V, y = perceptual roughness, and matches `<X-Plane>/Resources/brdf_lookup` within 2e-3 absolute per channel.
+- **REQ-005**: Image-based lighting uses a cube array of up to 8 probes with 7 mips; specular LOD = `roughness·5 + specularBias`; diffuse irradiance is read from mip 6 (cosine-filtered).
+- **REQ-006**: Exposure: EV100 camera model with K = 12.5; histogram auto exposure (256 bins, log2 luminance range −2..18 EV); clamp EV100 to [5, 15]; EV100 bias lookup (EV 5 → +3.5, 8 → +3.0, 11 → 0, 12 → 0, 12.33 → −0.3, linear in between, clamped at the ends); manual EV100 mode.
+- **REQ-007**: Tone pipeline order: fix-HDR clamp → histogram/adapt → exposure fusion (local tone mapping, Wronski 2022) → bloom add → AgX → ASC-CDL SDR grade (slope/offset/power per channel + saturation, identity by default) → FXAA → optional FSR 1 (EASU + RCAS) → display-referred output for the sRGB swapchain.
+- **REQ-008**: Atmosphere follows Hillaire 2020: transmittance LUT, multi-scattering LUT, sky-view LUT, sky-ambient LUT, and two aerial-perspective 3D volumes (in-scatter and transmittance, `VK_FORMAT_B10G11R11_UFLOAT_PACK32`). Parameters: Rayleigh scattering (5.802, 13.558, 33.1)e-6 m⁻¹, scale height 8 km; Mie scattering 3.996e-6, extinction 4.4e-6, scale height 1.2 km, Cornette-Shanks phase g = 0.8; ozone absorption (0.65, 1.881, 0.085)e-6 m⁻¹, tent centered at 25 km with half-width 30 km (X-Plane 12.05 art values); ground albedo 0.1. Visibility drives Mie density through Koschmieder (β_ext = 3.912 / V) inside a surface haze layer that fades to clear air over an altitude band (12.4.4 behaviour). Like X-Plane, the transmittance volume is RGB (not Hillaire's greyscale), the medium has a fourth ground-fog layer (fog elevation, scattering and absorption factors, fog albedo), and cloud shadows are baked into the sky-view and aerial-perspective LUTs. X-Plane tabulates its Mie phase; SEDX evaluates Cornette-Shanks analytically unless calibration shows a visible difference.
+- **REQ-009**: 11 sky-condition classes (`clean, hazy, foggy, sockd, ocast, strat, snowy, mount, hialt, orbit, final`) each carry ambient, direct, tone, Rayleigh, Mie, shadow-level and shadow-offset multipliers, blended by weights derived from the weather.
+- **REQ-010**: Sun shadows are cascaded shadow maps in a 2D-array depth texture, with quality presets copied from `Resources/settings.txt` (`renopt_shadow_quality_04`):
+
+  | level | scenery shadows | fade ratio | exterior cascades | interior cascades | exterior far (m) | interior far (m) | map size |
+  |---|---|---|---|---|---|---|---|
+  | 0 | off | 0.999 | 1 | 3 | 500 | 500 | 2048 |
+  | 1 | on | 0.7 | 2 | 3 | 120 | 120 | 1024 |
+  | 2 (default) | on | 0.7 | 3 | 3 | 250 | 250 | 2048 |
+  | 3 | on | 0.7 | 3 | 3 | 500 | 500 | 4096 |
+  | 4 | on | 0.5 | 4 | 3 | 1000 | 500 | 4096 |
+
+  (Level 0's interior far limit isn't set in X-Plane's file, which repeats the exterior key; SEDX uses 500.)
+- **REQ-011**: Ambient occlusion is AMD FidelityFX CACAO with X-Plane's preset map: off; quality 2 half-res; quality 3 half-res (default); quality 4 half-res; quality 4 full-res.
+- **REQ-012**: Reflections: hierarchical-Z screen-space reflections traced into the previous frame's lit HDR image, gated by a minimum gloss, falling back to the probes; water is a second trace source.
+- **REQ-013**: Night lighting: tiled light culling (16x16-pixel tiles, 2 depth slices per tile, up to 512 lights per tile) with overflow lights drawn as additive light volumes (interior and exterior lists); billboards and ground lights drawn forward; lights are never dimmed by daylight (exposure hides them).
+- **REQ-014**: Weather surfaces follow X-Plane's two-stage design: geometry writes a per-pixel weather receptivity target (rain/damp, puddle, snow, ice), then one compute pass after the g-buffer edits albedo, material and normal from global weather intensities (`u_weather` = rain wetness, ice, snow level, puddles). The state comes from `sim/weather/region/runway_friction` (0 dry; 1-3 wet; 4-6 puddly; 7-9 snowy; 10-12 icy; 13-15 snowy and icy), `snow_cover` (0-1) and `rain_percent` (0-1).
+- **REQ-015**: Snow coverage combines a world-projected coverage map (from the 12 monthly MODIS maps in `Resources/bitmaps/Snow Cover/`, 3600x1800), a slope test against world up, a noise mask, per-material receptivity (`WEATHER` masks, `WEATHER_TRANSPARENT`, `SNOW_ALBEDO_LUMA`) and a roof-occlusion mask (no snow inside hangars, 12.3.0 behaviour), and uses `Resources/bitmaps/world/weather/{snow,ice}_{ALB,NML,DCL}.png` plus `noise.png`.
+- **REQ-016**: Seasons: library resolution honors `EXPORT_SEASON`, `EXPORT_RATIO_SEASON`, `EXPORT_EXTEND_SEASON`, `EXPORT_EXCLUDE_SEASON` with codes `spr,sum,fal,win`; DSF season rasters (`spr1/spr2 … win1/win2`, day-of-year ranges) drive the season and a 0-1 ratio; `SEASONAL <texture>` in `.for`/`.ter` blends toward the next season's albedo by that ratio. With no DSF raster, the season comes from day of year and latitude. X-Plane has no public season dataref.
+- **REQ-017**: Base terrain: DSF terrain patches and `.ter` definitions render around the project airport, so seasons, snow, water and haze apply to the ground the way X-Plane applies them.
+- **REQ-018**: Water: DSF water patches and water polygons render with per-1°-tile water colour (`Resources/bitmaps/world/water/<tile>.png`, fallback `any.png` = RGBA 13,32,51,191), sea-floor decals visible through turbidity, Tessendorf FFT waves whose amplitude and direction follow the environment and the patch fetch ratio (1 ocean, 0 pond).
+- **REQ-019**: Every subsystem has a runtime toggle (RENDERER panel and `--no-<feature>` CLI flag) for RenderDoc A/B comparison, as the GpuScene work does (`--no-gpu-scene`).
+- **REQ-020**: Quality presets mirror the `renopt_*` levels of `Resources/settings.txt`; the default preset equals X-Plane's `vkmtl_async` defaults (shadows 2, SSAO 2, clouds 2, FXAA on, FSR off, anisotropy 16x, texture resolution 4).
+- **REQ-021**: Deterministic scenario rendering from the command line (environment, camera, frame count, PNG output) so SEDX images can be compared to X-Plane references automatically.
+
+### Legal and licensing
+
+- **LEG-001**: X-Plane's executable, shader archives (`Resources/shaders/bin/spv/*.xsa`, `msl/*.xsa`), binding maps (`*_mapping.xsv`) and art are Laminar Research proprietary. They are a behavioural reference only: record observed formulas, parameters and formats in prose (`docs/xplane/xp12_render_reference.md`); never copy, translate or decompile shader code into SEDX; never commit X-Plane binaries, shaders, textures or reference screenshots. X-Plane textures (weather, water colour, snow cover) are loaded at runtime from the user's install path.
+- **LEG-002**: Ported third-party code must be MIT, BSD, Apache-2.0 or public domain, with its license text added to `docs/dependency manuals/` and a header comment in each ported file. No GPL code. The license of Bend Studio's screen-space shadow sample (already ported as `renderer/bend_sss_cpu.h` and `sss.slang`) must be confirmed before Phase 7 completes; remove the port if it cannot be confirmed.
+
+### Constraints
+
+- **CON-001**: GPU conventions from the existing renderer stay unchanged: reverse-Z (depth cleared to 0), D3D-style clip space with `CommandList::SetViewport` flipping height, `VK_FRONT_FACE_COUNTER_CLOCKWISE`, matrices uploaded as transposed xMath row-vector matrices, right-handed +Y up world.
+- **CON-002**: `xMath::Color` stores components as a, b, g, r; never place it in a GPU struct. Use `xMath::Vec4`.
+- **CON-003**: `ConstantBuffer_Frame` must stay exactly 1024 bytes (mirrored in `resources/shaders/resources.slang:89`). Environment data goes in a new constant buffer (TASK-020).
+- **CON-004**: Every pipeline has its own push-constant range; a graphics draw that reads push constants must push a defined block (the KPDX black-forest bug, 2026-10-18).
+- **CON-005**: Code that reparents entities or swaps meshes/materials calls `Scene::MarkStructureChanged()`; edited transforms call `GpuScene::MarkTransformDirty(entity)`.
+- **CON-006**: CPU-side math and parsers (solar position, season model, sky classes, surface weather decode, quality tables, `.ter` parser, DSF patch decode, CSM split math, BRDF LUT reference, atmosphere parameter mapping) are standard-library only so they build in the Linux g++ test recipe in `AGENTS.md`.
+- **CON-007**: Do not open the existing `RenderDoc/xp12_capture*.rdc` files (6.6-7.2 GB each) with the RenderDoc MCP: the MCP keeps whole captures in memory (13.6 GB observed for a 3.5 GB capture) and the machine runs near its commit limit (~55 GB used of 77-89 GB). New captures for this work are 1280x720, single frame, and are opened only after checking `\Memory\Committed Bytes` against `\Memory\Commit Limit`.
+- **CON-008**: Shaders are Slang modules in `resources/shaders/`, registered in the table in `source/SceneryEditorX/renderer/vulkan/shader/shader_manager.cpp` (~line 105) and in `Renderer_Shader` plus `RendererShaderStageToString` (`renderer_declarations.h`). Validate offline with slangc + spirv-val before running the editor.
+- **CON-009**: Async compute stays off until queue-family ownership transfers are implemented (`renderer_passes.cpp:357-394`); all new passes record on the graphics command list.
+- **CON-010**: X-Plane 12 has no motion vectors and uses FSR 1. SEDX keeps its velocity target, but parity mode does not enable temporal AA or temporal upscaling.
+
+### Guidelines and patterns
+
+- **GUD-001**: Name each new pass and resource after its X-Plane counterpart in a comment (for example `// XP12: weather_apply_compute`) so the research catalog stays traceable.
+- **GUD-002**: Store every tunable that corresponds to an X-Plane art control under its X-Plane relative name (for example `"shadow/csm/lambda"`, `"photometric/ev100_min"`, `"twxr/rain_darkening_strength"`) in `resources/environment/xp12_environment.json`, so values dumped from X-Plane (TASK-002) can be applied by name.
+- **GUD-003**: Values marked ASSUMPTION in this plan are initial guesses. Replace each with a probe-dumped or reference-calibrated value in Phase 16 and record the source.
+- **PAT-001**: New passes follow the static `Renderer::Pass_*` pattern in `renderer_passes.cpp`, use `Pass_Compute` for full-screen compute work, check `IsStickyInvalid()` after each pass, and add a `SEDX_PERF_SCOPE`.
+- **PAT-002**: New editor panels use `EditorUI::BeginPanel`, the `EditorTheme` palette and registration in `EditorLayer::RegisterPanels`, and bind controls to real engine state only.
+- **PAT-003**: New `.edX`/`.sex` fields are appended at the end of the existing `Visit()` field lists; readers tolerate their absence.
+
+## 2. Implementation Steps
+
+### Implementation Phase 1 — Ground truth: reference probe and comparison harness
+
+- GOAL-001: Produce repeatable X-Plane 12 reference images and art-control value dumps for a fixed scenario set, render the same scenarios in SEDX from the command line, and compare them automatically.
+- CRIT-001: The probe writes one PNG and one JSON per scenario for every entry in `xp12_parity.json`; `--env-scenario` renders the same entries in SEDX; `xp_compare.py` writes `report.html` and `summary.json` with per-scenario metrics.
+
+| Task | Description | Completed | Date |
+|------|-------------|-----------|------|
+| TASK-001 | Create `tools/xp12_reference_probe/` with CMake target `SEDXReferenceProbe` (MODULE library named `win.xpl` / `lin.xpl` / `mac.xpl` in a `SEDXReferenceProbe/64/` folder), built only when root option `SEDX_BUILD_XP_PROBE` (default OFF) is ON, linking the X-Plane SDK found through the `XPLANE_12_SDK` environment variable (XPLM 4.x). | | |
+| TASK-002 | Probe behaviour: read `<X-Plane>/Output/sedx_probe/scenarios.json`; per scenario set date/time (`sim/time/local_date_days`, `sim/time/zulu_time_sec`), place the user at lat/lon/alt/heading (`XPLMPlaceUserAtLocation`), take the camera (`XPLMControlCamera`, fixed pose), apply weather through the writable `sim/weather/region/*` datarefs (visibility, 3 cloud layers, `rain_percent`, `runway_friction`, `snow_cover` when writable; `update_immediately`), wait `settle_frames` (default 600) for exposure and weather, run `sim/operation/screenshot`, then dump every name listed in `docs/xplane/xp12_art_controls.txt` (prefixed `sim/private/controls/`) plus `sim/graphics/scenery/sun_pitch_degrees`, `sun_heading_degrees` and all readable `sim/private/stats/*` names to `<scenario-id>.json`. | | |
+| TASK-003 | Commit `docs/xplane/xp12_art_controls.txt` (the ~2,077 relative art-control names extracted from the 12.4.4-b4 executable, grouped by subsystem, names only) and `docs/xplane/xp12_render_reference.md` (prose summary of observed X-Plane formulas, formats and pass order from the research notes; no code; LEG-001). | | |
+| TASK-004 | Scenario file `tools/xp12_reference_probe/scenarios/xp12_parity.json` (schema: id, icao, lat, lon, alt_m_agl, heading, pitch, fov, date, local_time, utc_offset, visibility_m, clouds[3], rain_percent, runway_friction, snow_cover, settle_frames). Minimum set: KSEA (47.449N, 122.309W) runway 16L threshold eye 2 m AGL heading 161 and aerial 600 m AGL pitch −20, on 2026-07-15 at local times giving sun elevations −12, −6, −2, 2, 8, 20, 40, 58°; weather presets clean (80 km, no clouds), hazy (8 km), foggy (800 m), overcast (8/8 stratus base 600 m AGL), snowy (`snow_cover` 1, friction 9); wet (friction 2 and 5, `rain_percent` 0.6); seasons 2026-01-15 / 04-15 / 07-15 / 10-15 at noon at KSEA and 2026-01-15 at YSSY (33.946S, 151.177E); night KSEA 2026-07-15 23:30 local. | | |
+| TASK-005 | SEDX command line (argument parser in `source/Editor/core/editor_layer.cpp`, next to the existing flags around line 977-1007): `--env-scenario <file>`, `--env-scenario-index <n>` (applies environment + camera), `--capture-png <path>` and `--capture-after-frames <n>` (default 600): read back `frame_output` after tone mapping, write an 8-bit sRGB PNG with stb_image_write, then exit through the normal shutdown path. | | |
+| TASK-006 | `tools/image_compare/xp_compare.py` (Python 3.11+, run with `python -I`; numpy, Pillow, `flip-evaluator`): pair references with SEDX images by scenario id; resize SEDX to the reference size (bicubic); mask per-scenario UI rectangles; compute mean and 95th-percentile CIEDE2000, mean FLIP, log2-luminance histogram Earth Mover's Distance, and sky-region mean ΔE (pixels where SEDX depth is 0, exported by `--capture-png` as a side mask PNG); write `report.html` and `summary.json`; exit code 1 when a scenario breaks `tools/image_compare/thresholds.json`. | | |
+| TASK-007 | Viewport reference overlay in `source/Editor/panels/scene_viewport.cpp`: "REFERENCE" menu to load a PNG and show it Off / Split (draggable vertical wipe) / Difference (abs × 4) / Flicker (1 Hz). | | |
+| TASK-101 | Calibration scenery pack `tools/xp12_reference_probe/test_scenery/SEDX_Calibration/` (authored by SEDX contributors, no Laminar art): at KSEA place an 18% grey card, a metalness ramp (`v` = 0, 0.04, 0.08, 0.25, 0.5, 0.75, 1), a gloss ramp (0-1 in 8 steps), `SUPER_ROUGHNESS` 0.5 and 1.0 panels, a LIT luminance ramp (`GLOBAL_luminance` 10/100/1000/10000 nits), pure red / green / blue `WEATHER` mask panels, `SNOW_ALBEDO_LUMA` variants and a `WEATHER_TRANSPARENT` panel. The probe installs it in `Custom Scenery`; SEDX loads the same pack for the same scenarios. Closes RISK-003 and RISK-004. | | |
+| TASK-102 | Locked-exposure scenarios: scenario field `ev100_lock`; the probe writes `sim/private/controls/photometric/ev100` (the control X-Plane's screenshot tool drives) and SEDX uses manual EV100, so lighting and materials are compared without auto-exposure differences; each lighting scenario runs once locked and once with auto exposure. | | |
+| TASK-008 | One controlled RenderDoc capture of X-Plane 12 (1280x720, default preset, single frame, CON-007 memory check first) to confirm pass order, the `gbuf-emissive` / `gbuf-weather` / depth formats, LUT and froxel sizes, and probe resolution. Record findings in `docs/xplane/xp12_frame_capture_summary.md`; delete the capture afterwards. | | |
+
+### Implementation Phase 2 — World environment model (CPU, standard library only)
+
+- GOAL-002: One source of truth for date, time, location, weather, surface state and season, which drives the renderer, the emulated datarefs, the UI and project files.
+- CRIT-002: `EnvironmentTests` passes on Windows and in the Linux g++ recipe; sun elevation matches NOAA reference values within 0.05° and azimuth within 0.1° in 12 cases; the ENVIRONMENT panel and CLI flags change the rendered sun.
+
+| Task | Description | Completed | Date |
+|------|-------------|-----------|------|
+| TASK-009 | `source/SceneryEditorX/environment/solar_position.h/.cpp`: `double JulianDay(int y, int m, int d, double utcHours)`; `SunPosition ComputeSun(double jd, double latDeg, double lonDeg)` (NOAA solar calculator equations: equation of time, declination, hour angle, atmospheric refraction) returning elevation, true azimuth clockwise from north and earth-sun distance (AU); `MoonPosition ComputeMoon(double jd, double latDeg, double lonDeg)` (Meeus ch. 47 low-precision, ≤ 0.3°) returning elevation, azimuth, phase angle and illuminated fraction. | | |
+| TASK-010 | `source/SceneryEditorX/environment/environment_state.h/.cpp`: `struct EnvironmentState { int year; int dayOfYear; double localTimeHours; float utcOffsetHours; double latDeg, lonDeg; float elevationM; float visibilityM = 40000; CloudLayer clouds[3] {baseMslM, topMslM, coverage, type}; float rainPercent; float snowCover; uint8_t runwayFriction; float temperatureC = 15; float windDirDegT = 270, windSpeedKt = 8; float waveAmplitudeM = 0.5f, waveDirDegT = 270; SeasonOverride season = Auto; float seasonRatioOverride = -1; }` and `EnvironmentDerived Derive(const EnvironmentState&)` (sun/moon direction in the scene's local tangent frame, sun elevation, moon illuminated fraction, surface weather, season, sky-condition weights). | | |
+| TASK-011 | `source/SceneryEditorX/environment/surface_weather.h/.cpp`: decode `runwayFriction` to `{wetness, puddles, snow, ice}`: 0 → all 0; 1/2/3 → wetness 0.33/0.66/1; 4/5/6 → wetness 1, puddles 0.33/0.66/1; 7/8/9 → snow 0.33/0.66/1; 10/11/12 → ice 0.33/0.66/1; 13/14/15 → snow and ice 0.33/0.66/1. `SurfaceWeatherIntegrator::Step(dtSeconds, rainPercent, temperatureC)`: wetness time constant 300 s at full rain, drying 1800 s above 0 °C (ASSUMPTION, X-Plane does not document accumulation); editor default is "snap" mode, where friction sets the state directly. | | |
+| TASK-012 | `source/SceneryEditorX/environment/season_model.h/.cpp`: `SeasonResult ComputeSeason(int dayOfYear, double latDeg, const DsfSeasonRanges *ranges)` returning code (spr/sum/fal/win), `SeasonBits` mask (from `xp_library.h`) and ratio 0-1 toward the next season. With DSF ranges: the season whose range contains the day; the ratio is the progress through the transition between ranges. Fallback (ASSUMPTION until Phase 16): northern hemisphere spring days 60-151, summer 152-243, fall 244-334, winter 335-59; southern hemisphere shifted by 182 days; abs(lat) < 23.5° is always summer with ratio 0; the ratio rises over the last 15 days of each season. | | |
+| TASK-013 | `source/SceneryEditorX/environment/sky_conditions.h/.cpp`: classify the state into weights over the 11 classes (clean V ≥ 40 km; hazy 5-40 km; foggy < 1.6 km; sockd < 400 m; strat/ocast when coverage ≥ 0.875 and base < 1000 m AGL; snowy during snowfall; hialt above 9 km; orbit above 30 km; mount and final reserved, weight 0) and blend per-class multipliers loaded from `resources/environment/xp12_sky_conditions.json` (initial value 1.0 for every multiplier; calibrated in TASK-096 from `skyc/*_<class>` dumps). | | |
+| TASK-014 | `source/SceneryEditorX/environment/environment.h/.cpp`: singleton `Environment::Get()` owning `EnvironmentState` + `EnvironmentDerived` with `GetVersion()` incremented on every change. `Scene::GetTimeOfDay/SetTimeOfDay` (`scene.cpp:699-707`) and `XPlane::Datarefs` (`DatarefEnvironment::localTimeHours`, `SunPitchDegrees()` at `xp_datarefs.cpp:55`, `GetDaylight`, `GetNightFactor`) read and write it. Add dataref builtins `sim/graphics/scenery/sun_heading_degrees`, `sim/time/local_date_days`, `sim/weather/region/runway_friction`, `sim/weather/region/snow_cover`, `sim/weather/region/rain_percent`, `sim/weather/view/rain_ratio`, `sim/weather/view/snow_ratio`. | | |
+| TASK-015 | Location source: active airport datum (lat, lon, elevation) from the airport manager / project document; otherwise the camera position through the scene's geodetic origin used by `xp_overlay_scene` and `xp_airport_scene`. Add a test that an azimuth of 90° maps to the scene's east axis. | | |
+| TASK-016 | `source/Editor/panels/environment_panel.h/.cpp` ("ENVIRONMENT"), registered in `EditorLayer::RegisterPanels`: DATE & TIME (date, time slider, UTC offset, use airport location, lat/lon), SUN & MOON (read-only elevation, azimuth, moon phase), WEATHER (visibility on a log slider 100 m-100 km, 3 cloud layers, rain %, temperature, wind, wave amplitude), SURFACE (runway friction combo with the 16 X-Plane states, snow cover, integrate-over-time toggle), SEASON (Auto or override, ratio), PRESETS (Clear, Hazy, Foggy, Overcast, Rain, Snow, matching TASK-004). Remove the local-time slider at `editor_xplane.cpp:255`; keep "Force lights on" there. | | |
+| TASK-017 | CLI flags in `editor_layer.cpp`: `--env-date YYYY-MM-DD`, `--env-time HH:MM` (the existing local-time flag at line ~1007 stays as an alias), `--env-latlon lat,lon`, `--env-visibility <m>`, `--env-rain <0..1>`, `--env-snow <0..1>`, `--env-friction <0..15>`, `--env-season spr\|sum\|fal\|win\|auto`. | | |
+| TASK-018 | Persist `EnvironmentState` per project: optional `"environment"` object appended to the `.edX` JSON (`project/project_edx.cpp`) and an appended field in `.sex` (`project/project_sex.cpp`); absent → defaults. | | |
+| TASK-019 | Tests `source/Tests/environment_tests/EnvironmentTests.cpp` (Catch2): 12 NOAA cases (equinox and solstices at 0°, 47.45°N, 33.9°S, 64.8°N, at 06/12/18 UTC); moon within 0.5° of Meeus examples; all 16 friction states; season model in both hemispheres, tropics and DSF ranges; sky weights sum to 1. Add target `EnvironmentTests` to `source/Tests/CMakeLists.txt` and a g++ build line to `AGENTS.md`. | | |
+
+### Implementation Phase 3 — Frame graph foundation and GPU environment data
+
+- GOAL-003: Replace the bootstrap branch with one X-Plane-ordered frame graph whose passes switch on and off individually, feed it environment data in a dedicated constant buffer, and tone map to the display.
+- CRIT-003: `cvar_minimal_bootstrap_path` and the bootstrap branch are gone; with every feature off, KPDX default framing matches the pre-change bootstrap output (≤ 26 differing pixels, the GpuScene A/B tolerance); every feature toggled on produces zero Vulkan validation errors; a mid-grey card lit to EV100 12 and exposed at EV100 12 writes PNG value 118 ± 2.
+
+| Task | Description | Completed | Date |
+|------|-------------|-----------|------|
+| TASK-020 | `struct ConstantBuffer_Environment` in `renderer/renderer_buffers.h` (Vec4 members only, 512 bytes): sun direction + angular radius; sun illuminance RGB (lux) + EV100; moon direction + illuminance; sky multipliers (ambient, direct, tone, shadow level); Rayleigh RGB + scale height; Mie scattering, extinction, scale height, g; ozone RGB + center; ozone width, earth radius, atmosphere radius, ground albedo; visibility, haze top, haze band, time; weather (rain wetness, ice, snow level, puddles); snow projection planes; season ratio + index; exposure scale, pre-exposure, exposure-fusion parameters; camera altitude MSL; 3 cloud layers; wind + wave amplitude. Mirror as `struct EnvironmentData` + `ConstantBuffer<EnvironmentData> buffer_environment` in `resources/shaders/resources.slang` at the next free `vk::binding` (52 and 53 are taken by the cloud noise volumes; check BindlessManager sets). Add `Renderer_Buffer::ConstantEnvironment`; fill it from `Environment::Get()` and upload once per frame next to the frame buffer update in `renderer.cpp` (~lines 2813-2846). | | |
+| TASK-021 | `struct RendererFeatures` in `renderer/renderer.h` (atmosphere, aerialPerspective, envProbes, csmShadows, cloudShadows, ao, ssr, tiledLights, weatherApply, terrain, water, clouds, volumetricFog, bloom, autoExposure, exposureFusion, fxaa, fsr1, screenSpaceShadows) with setters, `--no-<feature>` CLI flags, and checkboxes in an "XP12 EMULATION" section of `source/Editor/panels/render_options.cpp`. | | |
+| TASK-022 | `source/SceneryEditorX/renderer/renderer_quality.h/.cpp` (standard library only): `RendererQualityPreset` tables copied from `Resources/settings.txt`: shadows (REQ-010), SSAO (REQ-011), clouds (resolution scale 0.20/0.25/0.50/0.50, max 980/980/1920/1920 px, shadow steps 3/5/5/8), FSR (off, ultra, quality, balanced, performance; texture LOD bias 0/−0.38/−0.58/−0.79/−1.0), FXAA, anisotropy (1-32), texture resolution, draw distance (`LOD_bias_rat` 5/3.375/2.25/1.5/1). Default = REQ-020. Table checks in `EnvironmentTests`. | | |
+| TASK-023 | Stabilize the shader modules that the bootstrap comment marks as unregistered or not compiling (`skysphere`, `skysphere_lut`, `skysphere_transmittance_lut`, `skysphere_multiscatter_lut`, `cloud_noise_*`, `cloud_shadow`, `sss_blend`) so each compiles in slangc and validates in spirv-val, and each pipeline builds without layout conflicts. | | |
+| TASK-024 | Rewrite `Renderer::ProduceFrame` (`renderer_passes.cpp:140-474`) as one ordered sequence, each step behind its feature flag and an `IsStickyInvalid()` check: (0) environment upload, probe update; (1) atmosphere LUTs; (2) cloud weather + cloud shadow; (3) GpuScene cull, CSM; (4) depth prepass, g-buffer (incl. terrain); (5) depth pyramid min/max; (6) weather apply; (7) AO; (8) light tiling; (9) SSR; (10) clouds, volumetric fog; (11) deferred lighting (sun, CSM, cloud shadow, AO, IBL, SSR, tiled lights, emissive, aerial perspective) then spilled light volumes; (12) water; (13) sky where depth = 0, volumetric apply; (14) forward: grid, transparents, billboards, particles; (15) fix-HDR; (16) histogram, exposure adapt, exposure fusion, bloom, tonemap, FXAA, FSR 1; (17) outlines, text. Delete `cvar_minimal_bootstrap_path` and the bootstrap branch (lines 151-263). | | |
+| TASK-025 | Output transform: `frame_output` receives display-referred linear values in 0-1 from the tonemap pass (the sRGB swapchain encodes; ImGui samples `frame_output`); replace the raw `Blit` at `renderer_passes.cpp:235`. | | |
+| TASK-026 | Debug views (RENDERER panel "DEBUG VIEW" combo, written to `debug_output`): albedo, roughness, metalness, normals, emissive nits, weather channels, AO, CSM cascades colourized, cloud shadow, SSR, tile light count, EV false colour, luminance in nits. | | |
+| TASK-027 | GPU timing: timestamp queries per pass (extend `renderer/gpu_stats.h`), shown in the RENDERER panel and logged by `--perf-log`. | | |
+
+### Implementation Phase 4 — G-buffer and X-Plane material parity
+
+- GOAL-004: Decode X-Plane materials exactly as X-Plane 12 does and give the g-buffer the emissive and weather channels later phases need.
+- CRIT-004: The generated BRDF LUT matches `Resources/brdf_lookup` within 2e-3; a DXT5 normal map with `NORMAL_METALNESS` shows non-zero metalness and per-texel gloss in the debug views; the LIT toggle is gone and windows glow at night through exposure alone.
+
+| Task | Description | Completed | Date |
+|------|-------------|-----------|------|
+| TASK-028 | G-buffer targets in `renderer_resources.cpp:185-201`: `gbuffer_color` → `VK_FORMAT_R8G8B8A8_SRGB` created with `VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT` (UNORM storage view for TASK-079), alpha = coverage; `gbuffer_material` RGBA8_UNORM re-laid out as R = X-Plane material lighting factor (default 0, see RISK-004), G = perceptual roughness, B = metal/F0 value `v`, A = material occlusion; new `gbuffer_emissive` `VK_FORMAT_R16G16B16A16_SFLOAT` (emissive nits × pre-exposure); new `gbuffer_weather` `VK_FORMAT_R8G8B8A8_UNORM` (R rain/damp, G puddle, B snow stored ½ + ½·s, A ice receptivity). `gbuffer_normal` stays RGBA16F world-space (X-Plane uses view-space RG16F equal-area encoding; the difference has no visual effect). Add both targets to `Renderer_RenderTarget`, `Renderer_BindingsSrv` and `resources.slang` (next free bindings), and to every g-buffer pipeline (gbuffer, gbuffer_gpu, gbuffer_indirect, tessellation) with output order albedo 0, normal 1, material 2, velocity 3, pick 4, emissive 5, weather 6. | | |
+| TASK-029 | X-Plane normal-map mode in `resources/shaders/gbuffer.slang`: material flag field `xp_normal_mode` (0 none, 1 legacy, 2 metalness, 3 translucency) in `ShaderBuffer_Material.flags` (`renderer_buffers.h`) and `MaterialProperty` (`scene/material.h`). Sample the normal texture once; Z = sqrt(1 − x² − y²); gloss = A × specular gain (`GLOBAL_specular` / `ATTR_shiny_rat`, default 1 with a normal map); roughness = 1 − 0.96875·gloss; `v` = B in mode 2, otherwise the REQ-003 fallback F0; `SUPER_ROUGHNESS r` raises roughness to at least r (ASSUMPTION, RISK-003). | | |
+| TASK-030 | Stop generating packed ORM textures on the CPU: remove the `DecodePackedMaterial` path in `xp_object.cpp:337-341` and `944-970`; bind the X-Plane normal map directly with the TASK-029 flags. Delete `TextureLoader::DecodePackedMaterial` / `LoadPackedMaterial` (`xp_texture_loader.cpp:813-869`) once nothing calls them. | | |
+| TASK-031 | BRDF: `light_integration.slang` `integrate_brdf` uses GGX with α = roughness², height-correlated Smith, Schlick Fresnel and N·V clamped at 1e-3; `lut_brdf_specular` becomes 256x256 `VK_FORMAT_R32G32_SFLOAT` (`renderer_resources.cpp:306`); `brdf.slang` direct lighting uses the same NDF and visibility; the LUT is sampled at (N·V, perceptual roughness). Multiple-scattering energy compensation stays off in parity mode. | | |
+| TASK-032 | `source/SceneryEditorX/environment/brdf_lut.h/.cpp` (standard library only) computes the same LUT on the CPU; `source/Tests/xplane_tests/BrdfLutTests.cpp` compares it, and a 32x32 GPU readback, against `<X-Plane>/Resources/brdf_lookup` (install path from `x-plane_install_12.txt`, tag `[xp-install]`, skipped when absent): max abs error ≤ 2e-3. | | |
+| TASK-033 | Photometric emissive in `gbuffer.slang`: emissive = LIT texel (linear) × luminance nits × pre-exposure → `gbuffer_emissive`; luminance = `ATTR_light_level` brightness (`Obj8Data::lightLevelBrightness`, scaled by the v1/v2 dataref ratio) else `GLOBAL_luminance` (`globalLuminance`, clamp 65530) else the `lighting/scenery_ref_nts` default (initial 100 nits, ASSUMPTION); `.ter LUMINANCE` and `LIT_FADE_PARAMS` for terrain. Remove the albedo += emissive and `material.b` emission code (`gbuffer.slang:265-271`), update `light_composition.slang` accordingly, and remove `ObjectAsset::SetLitTexturesVisible(Datarefs::GetNightFactor() > 0.5f)` from `xp_scene.cpp` (X-Plane 12 never dims lights by daylight). | | |
+| TASK-034 | OBJ8 parser (`xp_obj8.h/.cpp`, tests in `XPlaneFormatTests.cpp`): add `TEXTURE_MAP <usage> <file>` (normal, material_gloss, gloss), `NORMAL_TRANSLUCENCY`, `BLEND_HASH <ratio>`, `SUPER_ROUGHNESS <v>`, `WEATHER <mask>`, `WEATHER_TRANSPARENT`, `SNOW_ALBEDO_LUMA a b c d`, `DECAL_LIB`, `DECAL_PARAMS`, `DECAL_PARAMS_PROJ`, `NORMAL_DECAL_PARAMS`, `TEXTURE_CONTROL`, `TEXTURE_MODULATOR`, and the misspellings found in shipped art (`NORMAL_metalness`, `NORMAL METALNESS`). Store them in `Obj8Data`; keep counting unknown directives. | | |
+| TASK-035 | Detail and normal decals in `gbuffer.slang` (`apply_detail_decals`): two detail-decal and two normal-decal slots with RGBA/KM keys from `TEXTURE_CONTROL` R/B or albedo channels, scale in repeats per albedo tile, modulation; normal decals combined with reoriented normal mapping; `TEXTURE_CONTROL` alpha as baked shadow past the CSM far limit. | | |
+| TASK-036 | Texture path robustness in `xp_texture_loader.cpp`: when a referenced `.png` is missing try `.dds`, and the reverse (15,585 shipped references need this); accept `\` and `/`. Add `XPlane::ParseFloatLenient` (accepts `20,000000`) in `xp_text.h` for `.ter` and `.pol` parsing. | | |
+
+### Implementation Phase 5 — Photometric lighting, exposure and tone mapping
+
+- GOAL-005: Light the scene in real units and expose and tone map it the way X-Plane 12.2+ does.
+- CRIT-005: In the 8 daylight scenarios, converged EV100 is within ±0.3 EV of the dumped X-Plane value; log2-luminance histogram EMD is within the `thresholds.json` limit; night scenarios hold EV100 at the 5.0 floor.
+
+| Task | Description | Completed | Date |
+|------|-------------|-----------|------|
+| TASK-037 | Sun and moon from the environment: `sun_illuminance` = `E_sun_lx` × normalized solar colour, attenuated per pixel by the transmittance LUT in lighting; moon = `E_moon_lx` × illuminated fraction. A scene directional-light entity overrides direction and intensity when present (`Scene::GetDirectionalLight`). Replace `fallback_lighting.slang` in `light_composition.slang` and `forward_transparent.slang`, then delete `fallback_lighting.slang` and `Renderer::SetFallbackDaylight`. | | |
+| TASK-038 | `resources/shaders/luminance_histogram.slang` (compute 16x16, 256 bins over log2 luminance −2..18, centre-weighted with radius 0.33 of the screen per `_exp_radius`) and `exposure_adapt.slang` (mean of bins between the 50th and 98th percentiles (ASSUMPTION); metered EV100 = log2(L_avg·100/12.5); apply the REQ-006 bias table and clamp; adapt with `exposure/speed_up` / `speed_down` (initial 2 and 5 EV/s); manual mode uses a fixed EV100) writing the 1x1 R32F `auto_exposure` targets. Replaces `auto_exposure.slang`. | | |
+| TASK-039 | Pre-exposure: every lighting and emissive write multiplies by the previous frame's exposure scale `1/(1.2·2^EV100)` (stored in `buffer_environment`), as X-Plane scales emissive by `u_exposure_scale`; tonemap applies the residual. | | |
+| TASK-040 | `resources/shaders/exposure_fusion.slang` (Wronski 2022, public-domain demo): at quarter resolution, build 3 synthetic exposures (shadows lifted by `exposure_fusion/shadows`, neutral, highlights compressed), weight by well-exposedness (`sigma`), blend through a Laplacian pyramid to `max_mip` (initial 5), and output an R16F luminance guide `exposure_fusion_guide`; `dis_near` (1) / `dis_far` (4) gate the effect by distance (ASSUMPTION about their meaning). The tonemap pass applies guide/luma through an edge-aware upsample. | | |
+| TASK-041 | `resources/shaders/tonemap.slang` replacing `output.slang`: pre-exposed HDR + bloom + exposure-fusion guide → AgX (verify the inset/outset matrices and log2 range −12.47393..4.026069 already in `output.slang:50-81` against the reference AgX) → ASC-CDL from `color_management/sdr/*` (identity defaults) → output gain/gamma → `frame_output`. Keep ACES and Reinhard selectable for A/B because X-Plane's `tonemap/mode` enumeration is unknown. | | |
+| TASK-042 | Bloom: reuse the bloom chain in `Pass_PostProcess` with threshold 0 (energy conserving) and intensity 0.04 (ASSUMPTION), calibrated on the night scenarios. | | |
+| TASK-043 | `fix_hdr`: a compute pass before the histogram that replaces NaN/Inf/negative values in `frame_render`. | | |
+| TASK-044 | FXAA after tonemap (default on). FSR 1 EASU + RCAS ported from AMD FidelityFX FSR 1 (MIT) as `fsr1_easu.slang` / `fsr1_rcas.slang`, RCAS sharpness from `_rcas_ratio` (1.0), and the preset's texture LOD bias applied to the material samplers. | | |
+
+### Implementation Phase 6 — Atmosphere, sky, haze and environment probes
+
+- GOAL-006: Physically based sky and aerial perspective driven by the environment, with X-Plane-style haze and probe-based IBL.
+- CRIT-006: In clean scenarios with the sun at 2° or higher, sky-region mean ΔE2000 ≤ 3 against the references; horizon/zenith luminance ratio within 15% of the reference; probe updates cost ≤ 2 ms on the frames they run.
+
+| Task | Description | Completed | Date |
+|------|-------------|-----------|------|
+| TASK-045 | Split `skysphere.slang` into `atmosphere_common.slang`, `atmosphere_luts.slang` (transmittance 256x64 RGBA16F, multi-scatter 32x32 RGBA16F; existing targets), `sky_view_lut.slang` (new `lut_sky_view` 192x108 RGBA16F, Hillaire's non-linear horizon mapping, every frame), `aerial_perspective.slang` (new 3D targets `lut_aerial_inscatter` and `lut_aerial_transmittance`, 32x32x32 B10G11R11, 32 slices × 4 km (initial; calibrate against `scattering/cache_*` in TASK-008)) and `sky_ambient_lut.slang` (64x16 ambient irradiance by sun zenith and altitude). All constants come from `buffer_environment` (REQ-008). Port reference: `sebh/UnrealEngineSkyAtmosphere` (MIT). | | |
+| TASK-046 | `source/SceneryEditorX/environment/atmosphere_params.h/.cpp` (standard library only): visibility → ground Mie extinction (β = 3.912/V), haze-layer top `max(1500 m, f(V))` and fade band, sky-condition Rayleigh/Mie multipliers; unit tests (V = 10 km → β = 3.912e-4 m⁻¹). | | |
+| TASK-047 | `Pass_Sky` (compute, writes `frame_render` where depth = 0): sky-view lookup, sun disc (angular radius 0.2666°, limb darkening), moon disc with phase, procedural star field (ASSUMPTION until a catalog source is chosen). Replaces the sky branch of `light_composition.slang` (lines 20-31). | | |
+| TASK-048 | Aerial perspective (`colour·T + inscatter` from the froxel volumes) in deferred lighting, `forward_transparent.slang`, billboards and water; remove `get_fog_atmospheric` use from `fog.slang`. | | |
+| TASK-049 | Environment probes `renderer/env_probes.h/.cpp` + `resources/shaders/cube_filter.slang`: cube array of up to 8 probes, 128² per face (ASSUMPTION; `lighting/probe_resolution` from TASK-002), RGBA16F, 7 mips; probe 0 sits at the camera snapped to a 50 m grid and refreshes when the environment version changes, the sun moves more than 0.5°, or the camera moves more than 200 m (optionally one face per frame); content = sky-view LUT plus a ground hemisphere with albedo 0.1 below the horizon; GGX importance-sampled mips 1-5 (roughness = mip/5) and cosine irradiance in mip 6 (approach of Khronos `glTF-IBL-Sampler`, Apache-2.0). Deferred lighting samples them per REQ-005. Remove `Pass_Light_ImageBased` and the 4096x2048 `skysphere` target after parity. | | |
+| TASK-050 | Night sky: below −18° sun elevation the sky comes from moon illuminance plus an airglow floor; confirm against the night references that EV100 sits at its 5.0 floor. | | |
+
+### Implementation Phase 7 — Sun shadows (CSM)
+
+- GOAL-007: X-Plane-equivalent cascaded sun shadows that include GPU-scene instances.
+- CRIT-007: At preset 2, KPDX shows 3 cascades to 250 m; GpuScene instances cast shadows; shadow edges do not shimmer while the camera pans; a hangar-edge scenario places the shadow within 2 px of the reference at 1080p.
+
+| Task | Description | Completed | Date |
+|------|-------------|-----------|------|
+| TASK-051 | New target `shadow_csm`: 2D array, 4 layers, size from the preset (1024/2048/4096), `VK_FORMAT_D32_SFLOAT`; the 8192² `shadow_atlas` stays for local lights only. | | |
+| TASK-052 | `source/SceneryEditorX/renderer/csm.h/.cpp` (standard library only): practical split scheme with `shadow/csm/lambda` (initial 0.75, ASSUMPTION), near/far limits and cascade count from the preset, `shadow/overlap_ratio` blend band (initial 0.1, ASSUMPTION), bounding-sphere fitting with texel snapping, reverse-Z orthographic projections; distance fade by `total_fade_ratio`. Unit tests for split monotonicity and snapping. | | |
+| TASK-053 | GpuScene shadow culling: `GpuScene::CullShadow(cmd, cascade, viewProj)` using a `GPU_CULL_SHADOW` variant of `gpu_cull.slang` (frustum only, no occlusion) into a per-cascade region of the visible lists; draw with a new `depth_light_gpu` pipeline (`depth_light.slang` + `GPU_SCENE` define), one render pass per layer. Respect `ATTR_no_shadow` / `GLOBAL_no_shadow` / `.for NO_SHADOW` through an instance flag bit, alpha-tested casters with the `ATTR_shadow_blend` cutoff, and never let draped geometry cast. | | |
+| TASK-054 | `resources/shaders/csm_sample.slang`: cascade selection by view depth, blending across the overlap band, 3x3 GatherCmp PCF when `shadow/want_soft` is on, normal-offset + slope bias (`bias_const`, `bias_slope`), fade to the baked `TEXTURE_CONTROL` shadow or to lit beyond the far limit; used by deferred lighting, transparents and water. | | |
+| TASK-055 | Cloud shadows: `Pass_CloudShadow` produces world-space cloud-shadow cascades (2D array, up to 9 layers like X-Plane, 1024² R16F each, temporally filtered with jitter and reprojection), sampled by deferred lighting, the sky-view/aerial-perspective LUTs and water. | | |
+| TASK-056 | Turn off Bend screen-space shadows (`Pass_ScreenSpaceShadows`) by default in parity mode, because X-Plane 12.4 has no screen-space shadow pass (12.06's `csm_resolve` was removed); keep the `screenSpaceShadows` feature flag. | | |
+
+### Implementation Phase 8 — Ambient occlusion (CACAO)
+
+- GOAL-008: Ambient occlusion that matches X-Plane's CACAO presets.
+- CRIT-008: All five SSAO presets run without validation errors; AO debug view matches the reference AO character on the KSEA ground scenario (visual review recorded in the parity report).
+
+| Task | Description | Completed | Date |
+|------|-------------|-----------|------|
+| TASK-057 | Port AMD FidelityFX CACAO 1.4 (MIT) to Slang under `resources/shaders/ffx/cacao/`: prepare depths and normals (from `gbuffer_depth` and world normals converted to view space), importance map, generate (quality 2/3/4), edge-aware blur, upsample/reinterleave into the existing `ssao` target. | | |
+| TASK-058 | Map the REQ-011 presets to CACAO settings in `renderer_quality.cpp` and expose them in the RENDERER panel. | | |
+| TASK-059 | Apply AO to diffuse IBL and ambient only, plus Lagarde specular occlusion on IBL; never to the sun or local lights. Keep `ssao.slang` (GTAO bitmask) selectable as a fallback. | | |
+
+### Implementation Phase 9 — Screen-space reflections
+
+- GOAL-009: Hi-Z screen-space reflections that blend with the probes like X-Plane's `ssr_deferred`.
+- CRIT-009: Wet runway (friction 5) and water scenarios show reflections of lit buildings; disabling SSR falls back to probe reflections with no seams.
+
+| Task | Description | Completed | Date |
+|------|-------------|-----------|------|
+| TASK-060 | `resources/shaders/z_minmax.slang`: RG32F min/max depth pyramid (reverse-Z aware) shared by SSR, light tiling and volumetrics; it replaces the min-only chain built in `Pass_GpuScene_Occlusion` and keeps occlusion culling working. | | |
+| TASK-061 | `resources/shaders/ssr_trace.slang`: hierarchical-Z march in view space (FidelityFX SSSR approach, MIT), skipping pixels below `ssr/min_gloss`, sampling the previous frame's lit HDR (new `frame_render_previous` with mips, reprojected with `view_projection_previous`), edge and thickness fades, temporal history, output to the existing `reflections` target (RGBA16F). | | |
+| TASK-062 | Deferred lighting combines specular IBL as `lerp(probe, ssr.rgb, ssr.a) × (F0·A + B)` from the BRDF LUT; remove the `reflections_composite` blit (`renderer_passes.cpp:2042`) and the old `light_reflections.slang` path. | | |
+| TASK-063 | `BLEND_GLASS` surfaces in `forward_transparent.slang` sample SSR/probes and keep full reflection where the glass is clear (blend mode 2 from `xp_object.cpp:961`). | | |
+
+### Implementation Phase 10 — Base terrain (DSF patches and .ter)
+
+- GOAL-010: Draw X-Plane's base terrain around the project airport with `.ter` materials, so seasons, snow, water and haze apply to the ground.
+- CRIT-010: Every shipped `.ter` (9,848 files) parses with zero errors and resolvable textures; the KSEA tile renders with its land classes; overlays and objects sit on the terrain elevation.
+
+| Task | Description | Completed | Date |
+|------|-------------|-----------|------|
+| TASK-064 | `xp_dsf.h/.cpp`: decode terrain patches (patch commands and triangle primitives, pool coordinates incl. longitude, latitude, elevation, normal and s/t), terrain definition index, patch flags (physical/overlay), near/far LOD and water patch parameters; enabled by a new read option `terrain` (default off so current overlay reads keep their speed). Tests in `XPlaneFormatTests.cpp` with a hand-built fixture plus a Global Scenery tile (`[xp-install]`). | | |
+| TASK-065 | Read DSF rasters: season ranges (`spr1/spr2/sum1/sum2/fal1/fal2/win1/win2`), `sea_level`/bathymetry, and elevation (this also lets MSL objects stop being grounded). | | |
+| TASK-066 | `source/SceneryEditorX/xplane/xp_terrain.h/.cpp` `.ter` parser (standard library only) for every directive found in shipped art: `BASE_TEX`, `BASE_TEX_NOWRAP`, `TEXTURE`, `TEXTURE_NOWRAP`, `NORMAL_TEX` (ratio), `NORMAL_TEX_NOWRAP`, `BORDER_TEX`, `COMPOSITE_TEX`, `COMPOSITE_PARAMS` (7 floats), `COMPOSITE_BORDERS`, `COMPOSITE_DETAIL`, `DECAL_LIB`, `DECAL_PARAMS`, `NORMAL_DECAL_PARAMS`, `TEXTURE_TERRAIN` (3 arguments), `PROJECTED`, `PROJECT_ANGLE`, `PROJECT_OFFSET`, `LOAD_CENTER`, `NO_ALPHA`, `SPECULAR`, `BUMP_LEVEL`, `NORMAL_METALNESS`, `LUMINANCE`, `LIT_TEX`, `LIT_FADE_PARAMS`, `FAR`, `SEASONAL`, `SEASONAL_HILL`, `SEASONAL_CLIFF`, `SEASONAL_FAR`, `WEATHER`, `WEATHER_TRANSPARENT`, `SNOW_ALBEDO_LUMA`, `SUPER_ROUGHNESS`, `WATER_COLOR_MASK`, `AUTO_VARY`, `AUTO_SLOPE*`, `CREASE_ANGLE`, `PREVIEW_RGB`, `DYNAMIC_TERRAIN`, `BUMPY`; comma decimals and mixed separators via TASK-036. Test `[library-sweep]` over all shipped `.ter` files. | | |
+| TASK-067 | `source/SceneryEditorX/xplane/xp_terrain_scene.h/.cpp`: build terrain meshes for DSF tiles within `terrain_radius_km` (default 30) of the project airport, one mesh per (tile, terrain definition, LOD), placed through the same geodetic origin as `xp_overlay_scene`; GpuScene instanced; LOD from patch near/far and `LOD_bias_rat`. Provide a CPU height query used by `xp_overlay_scene` and object placement to drape overlays and seat objects on the terrain. | | |
+| TASK-068 | `resources/shaders/xp_terrain.slang` (g-buffer variant with `TERRAIN` define): projected base texture, composite blending (`tex_comp`/`comp2` masks with `COMPOSITE_PARAMS` and noise), borders, 2 detail + 2 normal decals, `NORMAL_TEX` ratio, seasonal blend (`SEASONAL` + season ratio), night LIT with `LUMINANCE` and `LIT_FADE_PARAMS`, weather receptivity output (`WEATHER` mask or the `SNOW_ALBEDO_LUMA` luma rule) into `gbuffer_weather`, material channels per Phase 4. Register it in `shader_manager.cpp`. | | |
+| TASK-069 | Water patches skip the g-buffer and go to the water pass (Phase 11). | | |
+
+### Implementation Phase 11 — Water
+
+- GOAL-011: X-Plane-style water bodies with tile colour, turbidity, FFT waves and reflections.
+- CRIT-011: The KSEA aerial scenario shows Puget Sound with its tile colour and waves; water ΔE2000 in the water mask region is within `thresholds.json`.
+
+| Task | Description | Completed | Date |
+|------|-------------|-----------|------|
+| TASK-070 | Water geometry: DSF water patches (fetch ratio, `sea_level`), airport `water_body_*.pol` draped polygons, and project water polygons. | | |
+| TASK-071 | Water colour and floor: per-tile PNG `Resources/bitmaps/world/water/<+lat+lon>.png` with `any.png` fallback (RGB colour, alpha turbidity); `.ter WATER_COLOR_MASK`; sea-floor decals (`lib/g10/decals/water.dcl` and the tropical set) projected on the bathymetry and seen through the turbidity. | | |
+| TASK-072 | FFT ocean: `ocean_spectrum.slang` (TMA/JONSWAP, γ = 3.3, swell, directional spreading, short-wave fade and depth term, Horvath 2015), `ocean_fft.slang` (256² Stockham radix-2, 4 cascades like X-Plane's `water/cascade_0..3_scale`; initial sizes 500 m / 120 m / 30 m / 7 m (ASSUMPTION)), displacement, normal and Jacobian foam maps (RGBA16F), and a 3D RG16F slope-variance table (`ocean_variance`, Bruneton 2010); amplitude and direction from the environment (wave length and speed are derived, as in X-Plane), scaled by fetch ratio. Port reference: GodotOceanWaves (MIT). | | |
+| TASK-073 | `Pass_Water` (raster after deferred lighting): GPU projected-grid mesh with displacement, Fresnel with F0 0.02, SSR water trace plus probe reflection, sun glint with slope-variance roughness filtering (Bruneton 2010 / LEAN), refraction of `frame_render_opaque` with depth-based absorption from the turbidity, Jacobian foam, aerial perspective, CSM and cloud shadows. | | |
+| TASK-074 | Confirm shoreline `.lin` edge markings still draw through the existing line overlay path on top of the new water. | | |
+
+### Implementation Phase 12 — Weather surfaces (wet, puddles, ice, snow)
+
+- GOAL-012: Reproduce X-Plane's weather surface pass for wet runways, puddles, ice and snow, driven by the environment.
+- CRIT-012: The friction 2 / 5 / 9 / 11 and snow-cover scenarios each meet the wet/snow thresholds in `thresholds.json`; there is no snow under hangar roofs; vertical walls stay snow-free.
+
+| Task | Description | Completed | Date |
+|------|-------------|-----------|------|
+| TASK-075 | `renderer/snow_coverage.h/.cpp`: load the monthly MODIS maps from `Resources/bitmaps/Snow Cover/`, interpolate between months by day of year, crop a 2048² window projected around the camera (projection planes into `buffer_environment`), multiply by `snowCover`, upload as R8 `snow_coverage`; refresh on environment version change. | | |
+| TASK-076 | Load `Resources/bitmaps/world/weather/snow_ALB.png`, `snow_NML.png`, `snow_DCL.png`, `ice_ALB.png`, `ice_NML.png`, `ice_DCL.png` and `noise.png` from the user's install at renderer start (LEG-001: never bundled). | | |
+| TASK-077 | `resources/shaders/ripple.slang`: compute 256² RGBA8 animated rain ripples following Lagarde's "Water drop" ripple layout, drop scale from rain intensity. | | |
+| TASK-078 | `resources/shaders/weather_apply.slang` (compute 8x8, after the g-buffer, in place on `gbuffer_color` through its UNORM storage view with manual sRGB encode/decode, and on `gbuffer_material` / `gbuffer_normal`). Rain: w = weather.r × smoothstep(rain wetness) → albedo × lerp(1, darkening, w × porosity) with darkening from `twxr/rain_darkening_strength` (initial 0.6) and porosity = roughness; roughness × lerp(1, `rain_roughness_multiplier` (0.5), w). Puddles: p = weather.g × smoothstep(puddles) → normal toward up plus ripple normal, roughness → 0.05, `v` → 0.02. Snow: s = decode(weather.b) × coverage × slope mask (dot(n, up) against `u_snow_slope`, initial 0.7) × noise × snow level → triplanar snow albedo/normal/decal. Ice: ice textures and low roughness scaled by the ice level. All initial values are ASSUMPTIONS calibrated in Phase 16. | | |
+| TASK-079 | Roof occlusion for snow: top-down orthographic depth (1024², 256 m around the camera, GpuScene depth-only, refreshed every 30 frames or on structure change); snow is suppressed where the surface lies more than 0.5 m below the top-down depth. | | |
+| TASK-080 | Receptivity plumbing: `WEATHER` mask textures (`_WM` R damp, G puddles, B snow; `_SM` blue only; channel meanings are an ASSUMPTION from visual inspection), `WEATHER_TRANSPARENT` (no weather), `SNOW_ALBEDO_LUMA` (luma rule) from OBJ8/.pol/.ter/.fac into material textures and parameters, written to `gbuffer_weather` by `gbuffer.slang` and `xp_terrain.slang`. Materials without any weather directive use receptivity (rain 1, puddle 0, snow from the default luma rule; ASSUMPTION). | | |
+| TASK-081 | Optional falling rain/snow through the GPU particle passes (`particle_emit/simulate/render`) around the camera; off by default. | | |
+
+### Implementation Phase 13 — Seasons
+
+- GOAL-013: Season-correct assets and textures that follow the environment date and location.
+- CRIT-013: In the four KSEA season scenarios and the YSSY January scenario, forests, terrain and autogen show the season variant X-Plane shows; changing the date in the ENVIRONMENT panel swaps assets without reloading the project.
+
+| Task | Description | Completed | Date |
+|------|-------------|-----------|------|
+| TASK-082 | `LibrarySystem::Resolve(std::string_view virtualPath, const ResolveContext &ctx)` overload in `xp_library.h/.cpp`, with `ResolveContext { uint8_t seasonBit; double latDeg, lonDeg; uint64_t placementHash; }`: apply `EXPORT_SEASON`, `EXPORT_RATIO_SEASON` (deterministic choice by placement hash), `EXPORT_EXTEND_SEASON`, `EXPORT_EXCLUDE_SEASON` and region tests (`REGION_RECT`, `REGION_BITMAP`); the existing seasonless `Resolve` keeps its behaviour. Tests: synthetic library cases plus a `[library-sweep]` that resolves every seasonal path in the default library for all four seasons. | | |
+| TASK-083 | Season changes re-resolve seasonal virtual paths in `SceneObjects` (`xp_scene.cpp`), `xp_overlay_scene` and `xp_terrain_scene` and swap assets through the async `ObjectAsset` request/update path, keeping placements; call `Scene::MarkStructureChanged()`. | | |
+| TASK-084 | `SEASONAL <texture>` next-season albedo in `.for` (forest parser in `xp_assets.*`) and `.ter`: load both textures and blend by the season ratio in the forest and terrain shaders. | | |
+| TASK-085 | DSF season ranges (TASK-065) feed `ComputeSeason` per tile; the date/latitude model is the fallback. | | |
+| TASK-086 | Autogen `_fal` variants and seasonal `.agp` files switch through library resolution only (no extra code beyond TASK-082/083); verify on KSEA. | | |
+
+### Implementation Phase 14 — Photometric night lighting (tiled lights)
+
+- GOAL-014: X-Plane-style night lighting with thousands of airport lights.
+- CRIT-014: The KSEA night scenario renders all airport spill lights with tile counts ≤ 512 per tile or spilled correctly; night ΔE and FLIP meet the night thresholds.
+
+| Task | Description | Completed | Date |
+|------|-------------|-----------|------|
+| TASK-087 | GPU light list builder (CPU side in `xp_lights.cpp`): records `{position, cosTheta, colour, intensityCd, radius, direction, mask}` for `SPILL_HW_DIR`, `SPILL_HW_FLA`, `SPILL_SW`, `SPILL_GND`, `SPILL_GND_REV` and parameterized `_pm` lights (their `INTENSITY` parameter), candela from lights.txt, plus scene `Light` components (lumens converted to candela); uploaded as `StructuredBuffer` `GpuLights`. | | |
+| TASK-088 | `resources/shaders/light_tile.slang` (16x16-pixel tiles, frusta from the min/max pyramid, 2 depth slices, ≤ 512 lights per tile in shared memory, overflow flagged) and `light_spill_compact.slang` (interior/exterior index lists + 2 indexed indirect commands); spilled lights draw as additive sphere/cone volumes (depth-tested exterior, front-face-culled interior). | | |
+| TASK-089 | Deferred lighting evaluates tile lights with inverse-square falloff and a radius window, spot cones, a nits cutoff and GGX specular. `Pass_Light` keeps handling shadowed scene lights only. | | |
+| TASK-090 | Billboards (`BILLBOARD_HW`, `BILLBOARD_SW`) in `Pass_Light_Billboards`: luminance from candela over the billboard's projected area with a minimum pixel size; no daylight dimming; aerial perspective per vertex. | | |
+| TASK-091 | Verify runway/taxiway edge lights, approach lights and VASI/PAPI through the same path in the KSEA night scenario. | | |
+
+### Implementation Phase 15 — Volumetric clouds and volumetric fog
+
+- GOAL-015: Clouds and ground fog from the environment, consistent with the atmosphere and shadows.
+- CRIT-015: The overcast and foggy scenarios meet their thresholds; clouds sit behind terrain correctly; cloud cover reduces ambient light.
+
+| Task | Description | Completed | Date |
+|------|-------------|-----------|------|
+| TASK-092 | Move the cloud raymarch out of `skysphere.slang` (lines 421+) into `clouds.slang`, driven by the 3 environment cloud layers turned into 3D coverage (R16_UINT) and property (RGBA8) volumes, accelerated by a 3D signed distance field built with jump flooding (X-Plane `cloud_minify`), rendered at the preset resolution scale (half resolution at the default preset) into RGBA16F colour + RG16F depth with temporal upscale (history reprojection with depth and brightness clipping) and depth compositing; cloud shadows feed the sky-view LUT and lighting; cloud cover scales ambient (12.2 behaviour). | | |
+| TASK-093 | Froxel volumetric fog `volumetric_fog.slang` (160x90x64 RGBA16F, temporal reprojection; Wronski 2014 / Hillaire 2015) for ground fog when visibility < 5 km, sharing the aerial-perspective froxel mapping; sun in-scattering with CSM; applied in `Pass_VolumetricApply`. | | |
+
+### Implementation Phase 16 — Calibration, parity sign-off, performance and documentation
+
+- GOAL-016: Calibrate against X-Plane, hold the frame budget, and document the system.
+- CRIT-016: Every scenario meets `thresholds.json`; the release build meets the TASK-098 budget; documentation is merged.
+
+| Task | Description | Completed | Date |
+|------|-------------|-----------|------|
+| TASK-094 | Run the probe for all scenarios on X-Plane 12.4.4; store reference PNGs and dumps in `%LOCALAPPDATA%\SceneryEditorX\cache\xp12_reference\` (never committed, LEG-001); commit only `summary.json` metrics. | | |
+| TASK-095 | Apply dumped art-control values to `resources/environment/xp12_environment.json` and `xp12_sky_conditions.json` by name (GUD-002): `lighting/E_sun_lx`, `E_moon_lx`, `photometric/*`, `autoexposure/*`, `exposure_fusion/*`, `color_management/sdr/*`, `atmo/*`, `scattering/*`, `skyc/*`, `shadow/*`, `ssao/*`, `ssr/*`, `twxr/*`, `snow/luma_*`, `lighting/probe_resolution`. | | |
+| TASK-096 | Iterate scenario by scenario until the thresholds hold; replace every ASSUMPTION value with its calibrated value and source in `docs/rendering/xp12-emulation.md`. | | |
+| TASK-097 | Initial `tools/image_compare/thresholds.json` (reviewed after the first calibration pass): daylight clean mean ΔE2000 ≤ 4.0, p95 ≤ 10, FLIP ≤ 0.15, sky ΔE ≤ 3; hazy/foggy/overcast mean ΔE ≤ 5; night mean ΔE ≤ 6, FLIP ≤ 0.20; wet/snow mean ΔE ≤ 6. | | |
+| TASK-098 | Performance budget, release build, RTX 3090, 1920x1080, KPDX default framing, default preset: total GPU ≤ 8 ms; atmosphere + sky ≤ 0.5; CSM ≤ 1.5; g-buffer incl. terrain ≤ 2.0; weather apply ≤ 0.3; CACAO ≤ 0.8; SSR ≤ 0.8; light tiling + spill ≤ 0.5; deferred lighting ≤ 1.0; water ≤ 1.0; post ≤ 0.8 (TASK-027 timings). | | |
+| TASK-099 | Documentation: `docs/rendering/xp12-emulation.md` (frame graph diagram, `buffer_environment` layout, g-buffer layout, material decode, unit conventions, calibration workflow, deviations from X-Plane); add the `EnvironmentTests` and `BrdfLutTests` recipes to `AGENTS.md`. | | |
+| TASK-100 | RenderDoc checks per phase on SEDX captures at 1280x720 (< 2 GB): grey-card `assert_pixel`, pass counts with `assert_count`, A/B `diff_framebuffer` with each feature toggled. | | |
+
+## 3. Alternatives
+
+- **ALT-001**: Translate X-Plane's SPIR-V/MSL into SEDX shaders for bit-exact output. Rejected: copyright (LEG-001); also brittle across X-Plane updates.
+- **ALT-002**: Bruneton 2008/2017 precomputed scattering (BSD). Rejected as the main model: X-Plane's live passes (`scatter_compute_t/multi/skydome/scattering`) follow Hillaire 2020's small LUTs, which update cheaply when weather changes. X-Plane's unused `atmosphere` family has Bruneton names but nothing reads its output.
+- **ALT-003**: Keep the existing GTAO-bitmask `ssao.slang` instead of porting CACAO. Kept as a fallback only: X-Plane's AO look and presets are CACAO's.
+- **ALT-004**: TAA or FSR 2 with SEDX's velocity target. Rejected for parity mode: X-Plane has no motion vectors and uses FSR 1, so temporal techniques would change the look.
+- **ALT-005**: Ray-traced reflections and ReSTIR GI (render targets exist in `Renderer_RenderTarget`). Rejected: X-Plane is a rasterizer with SSR and probes.
+- **ALT-006**: Keep the equirectangular `skysphere` texture for IBL. Rejected: X-Plane uses GGX-filtered cube probes with fixed LOD rules; matching those rules is simpler with the same structure.
+- **ALT-007**: Re-encode SEDX normals as view-space RG16F like X-Plane. Rejected: no visual difference and it would ripple through picking, SSAO and SSR inputs.
+- **ALT-008**: Single global season with no DSF rasters. Rejected: X-Plane interpolates by per-tile day-of-year ranges, and hemisphere handling needs at least latitude.
+- **ALT-009**: Infer art-control defaults only from community scripts (12.05-12.09 values). Rejected as final values: 12.2 changed exposure, clouds and colour; the probe dumps live 12.4.4 values.
+
+## 4. Dependencies
+
+- **DEP-001**: X-Plane 12.4.4 installation (`K:/SteamLibrary/steamapps/common/X-Plane 12`, path via `x-plane_install_12.txt`) with Global Scenery, for runtime textures (weather, water colour, snow cover), `brdf_lookup`, terrain and library tests, and the probe.
+- **DEP-002**: X-Plane SDK (XPLM 4.x) via `XPLANE_12_SDK`, only for `SEDX_BUILD_XP_PROBE`.
+- **DEP-003**: Vulkan SDK 1.3+ with slangc and spirv-val (existing).
+- **DEP-004**: AMD FidelityFX CACAO 1.4 (MIT), FSR 1 (MIT) and SSSR 1.5 (MIT) as porting references (GPUOpen FidelityFX SDK).
+- **DEP-005**: `sebh/UnrealEngineSkyAtmosphere` (MIT) for the atmosphere LUTs; Bart Wronski's exposure-fusion demo (public domain); Khronos `glTF-IBL-Sampler` (Apache-2.0) for cube filtering; GodotOceanWaves (MIT) for the FFT ocean; Filament documentation (Apache-2.0) for specular occlusion.
+- **DEP-006**: AgX reference parameters (Troy Sobotka's AgX / Blender's implementation); confirm the license of any code taken, or implement from the published formulas.
+- **DEP-007**: Python 3.11+ with numpy, Pillow and `flip-evaluator` (NVIDIA FLIP, BSD-3-Clause) for `xp_compare.py`.
+- **DEP-008**: stb_image_write (existing vcpkg `stb`) for `--capture-png`.
+- **DEP-009**: Catch2 v3 (existing `dependency/Catch2`) for new tests.
+
+## 5. Files
+
+- **FILE-001**: `source/SceneryEditorX/environment/` (new): `environment.h/.cpp`, `environment_state.h/.cpp`, `solar_position.h/.cpp`, `surface_weather.h/.cpp`, `season_model.h/.cpp`, `sky_conditions.h/.cpp`, `atmosphere_params.h/.cpp`, `brdf_lut.h/.cpp`.
+- **FILE-002**: `source/SceneryEditorX/renderer/renderer_passes.cpp` — `ProduceFrame` rewrite and new `Pass_*` functions.
+- **FILE-003**: `source/SceneryEditorX/renderer/renderer.h`, `renderer.cpp` — `RendererFeatures`, environment buffer upload, pass declarations.
+- **FILE-004**: `source/SceneryEditorX/renderer/renderer_buffers.h` — `ConstantBuffer_Environment`, `ShaderBuffer_Material` flags.
+- **FILE-005**: `source/SceneryEditorX/renderer/renderer_declarations.h` — new render targets, shaders, buffers, SRV bindings.
+- **FILE-006**: `source/SceneryEditorX/renderer/renderer_resources.cpp` — g-buffer formats, new targets (emissive, weather, sky-view, aerial volumes, CSM array, probes, frame_render_previous, exposure-fusion guide).
+- **FILE-007**: `source/SceneryEditorX/renderer/renderer_quality.h/.cpp`, `csm.h/.cpp`, `env_probes.h/.cpp`, `snow_coverage.h/.cpp`, `gpu_scene.h/.cpp` (shadow culling), `gpu_stats.h` (timestamps) — new or changed.
+- **FILE-008**: `source/SceneryEditorX/renderer/vulkan/shader/shader_manager.cpp` — shader registrations.
+- **FILE-009**: `resources/shaders/` — new: `atmosphere_common`, `atmosphere_luts`, `sky_view_lut`, `aerial_perspective`, `sky_ambient_lut`, `cube_filter`, `luminance_histogram`, `exposure_adapt`, `exposure_fusion`, `tonemap`, `fsr1_easu`, `fsr1_rcas`, `csm_sample`, `z_minmax`, `ssr_trace`, `ripple`, `weather_apply`, `xp_terrain`, `ocean_spectrum`, `ocean_fft`, `water`, `light_tile`, `light_spill_compact`, `clouds`, `volumetric_fog`, `ffx/cacao/*`; changed: `resources`, `gbuffer`, `light_integration`, `brdf`, `light_composition`, `forward_transparent`, `light_billboard`, `gpu_cull`, `depth_light`, `skysphere` (split), `fog`; removed after parity: `fallback_lighting`, `output`, `auto_exposure`, `light_reflections`.
+- **FILE-010**: `source/SceneryEditorX/xplane/xp_obj8.h/.cpp`, `xp_object.cpp`, `xp_texture_loader.cpp/.h`, `xp_text.h`, `xp_assets.h/.cpp`, `xp_library.h/.cpp`, `xp_lights.cpp/.h`, `xp_datarefs.h/.cpp`, `xp_scene.cpp`, `xp_dsf.h/.cpp`, `xp_overlay_scene.cpp` — parser, material, season and terrain changes.
+- **FILE-011**: `source/SceneryEditorX/xplane/xp_terrain.h/.cpp`, `xp_terrain_scene.h/.cpp` — new.
+- **FILE-012**: `source/SceneryEditorX/scene/scene.cpp/.h`, `scene/material.h/.cpp` — time-of-day delegation, material flags.
+- **FILE-013**: `source/SceneryEditorX/project/project_edx.cpp`, `project_sex.cpp` — environment persistence.
+- **FILE-014**: `source/Editor/panels/environment_panel.h/.cpp` (new), `render_options.cpp`, `scene_viewport.cpp`; `source/Editor/core/editor_layer.cpp`, `editor_xplane.cpp` — UI and CLI.
+- **FILE-015**: `resources/environment/xp12_environment.json`, `xp12_sky_conditions.json` — calibrated constants.
+- **FILE-016**: `tools/xp12_reference_probe/` (plugin + scenarios), `tools/image_compare/` (`xp_compare.py`, `thresholds.json`).
+- **FILE-017**: `source/Tests/environment_tests/EnvironmentTests.cpp` (new), `source/Tests/xplane_tests/BrdfLutTests.cpp` (new), `XPlaneFormatTests.cpp`, `source/Tests/project_tests/ProjectFormatTests.cpp`, `source/Tests/CMakeLists.txt`.
+- **FILE-018**: `docs/xplane/xp12_art_controls.txt`, `docs/xplane/xp12_render_reference.md`, `docs/xplane/xp12_frame_capture_summary.md`, `docs/rendering/xp12-emulation.md`, `AGENTS.md`, root `CMakeLists.txt` (`SEDX_BUILD_XP_PROBE`).
+
+## 6. Testing
+
+- **TEST-001**: `EnvironmentTests` — solar position (12 NOAA cases, ±0.05° elevation, ±0.1° azimuth), moon (±0.5°), friction decode (16 states), season model (both hemispheres, tropics, DSF ranges), sky-condition weights sum to 1, quality tables match `settings.txt` values, CSM split monotonicity and snapping, visibility → extinction mapping.
+- **TEST-002**: `BrdfLutTests` — CPU LUT vs `Resources/brdf_lookup` max abs error ≤ 2e-3 (`[xp-install]`); GPU LUT readback vs CPU LUT ≤ 1e-3.
+- **TEST-003**: `XPlaneFormatTests` additions — new OBJ8 directives and misspellings; `.ter` parser over all 9,848 shipped files with zero errors (`[library-sweep]`); png↔dds substitution; comma decimals; DSF terrain patch decode (fixture + Global Scenery tile); seasonal library resolution for all four seasons.
+- **TEST-004**: `ProjectFormatTests` — `.edX` and `.sex` round trip with and without the `environment` object; files from before the change still load.
+- **TEST-005**: Shader validation — every new or changed Slang module compiles with slangc and passes spirv-val in CI or a pre-commit script.
+- **TEST-006**: Vulkan validation — the editor runs KPDX and KSEA for 600 frames with every feature combination in `RendererFeatures` toggled one at a time, with zero validation errors.
+- **TEST-007**: Parity — `xp_compare.py` over the full scenario set meets `thresholds.json` (Phase 16 gate); each phase records its scenario metrics in `summary.json` so regressions are visible.
+- **TEST-008**: Grey card — an 18% grey plane under the environment sun at EV100 12, exposed at EV100 12, outputs PNG value 118 ± 2.
+- **TEST-009**: Performance — `--perf-log` plus GPU timestamps on KPDX meet the TASK-098 budget in a release build.
+- **TEST-010**: RenderDoc A/B — per feature, `diff_framebuffer` between on and off captures shows changes only where the feature applies (for example weather apply off → no albedo change on dry surfaces).
+
+## 7. Risks & Assumptions
+
+- **RISK-001**: Live default values of most art controls, the `tonemap/mode` enumeration, `color_management/sdr/*`, `skyc/*` ratios and `twxr/*` are unknown until the probe runs. Mitigation: Phase 1 first; every guess is labelled ASSUMPTION and stored by art-control name.
+- **RISK-002**: The probe cannot read or write some datarefs (private controls hidden from plugins, weather datarefs read-only in some modes). Mitigation: fall back to X-Plane's own weather UI presets recorded by hand, and to the TASK-008 capture for pass parameters.
+- **RISK-003**: Undocumented directives (`SUPER_ROUGHNESS`, `WEATHER` channel meanings, `SNOW_ALBEDO_LUMA` parameters, `BLEND_HASH`, `LIT_FADE_PARAMS`, `COMPOSITE_PARAMS`) may be misread. Mitigation: A/B against probe references with assets that use them; Laminar contact for documentation.
+- **RISK-004**: The meaning of X-Plane's material R channel (decoded as a sun-term factor `clamp(R + N·L·shadow)`) and the negative halves of material G/B are not determined. SEDX writes R = 0 (standard N·L·shadow) until TASK-008 or probe A/B settles it.
+- **RISK-005**: X-Plane is a moving target: 12.4.4 is in beta, and Laminar announced a new tile-based scenery engine for late 2026. Mitigation: REQ-001 build stamping; re-run the probe per X-Plane release and diff `summary.json`.
+- **RISK-006**: Changing g-buffer formats and output order touches every g-buffer pipeline, picking (`gbuffer_pick`) and selection outlines. Mitigation: Phase 3/4 A/B with all features off; picking self-test (`--tools-selftest`) after Phase 4.
+- **RISK-007**: Base terrain over 30 km radius may exceed memory and frame budget (`GeometryBuffer` only appends). Mitigation: radius setting, LOD, and a terrain-specific buffer that can be released.
+- **RISK-008**: Snow, wetness and seasons look plausible but X-Plane's exact rules (season algorithm, accumulation and drying rates, snow placement) are not published. Mitigation: calibrate visually against references; document deviations.
+- **RISK-009**: Memory commit limit while capturing or replaying (CON-007). Mitigation: 720p single-frame captures and commit checks.
+- **RISK-010**: SEDX has no MSAA in its deferred path while X-Plane offers MSAA 2x-8x (the user's profile runs 2x MSAA), so edge aliasing will differ. Mitigation: compare with X-Plane MSAA off in reference scenarios (probe sets `renopt_MSAA` 0 through the settings file of a dedicated X-Plane profile, or record the setting and accept the difference).
+- **RISK-011**: Laminar's licence terms on reverse engineering were not reviewed during research. Mitigation: review the X-Plane 12 EULA before publishing `docs/xplane/xp12_render_reference.md` (TASK-003) or any SPIR-V-derived fact; if the terms forbid it, keep only facts from Laminar's public statements, authoring docs and rendered output.
+- **RISK-012**: Some numbers in this plan were observed in Laminar files (the EV100 bias table comes from a community script that says it mirrors X-Plane's internal table; the `brdf_lookup` match). Mitigation: SEDX generates its own tables (TASK-032) and re-checks every observed constant against X-Plane's rendered output (TASK-096); `brdf_lookup` is read only by an opt-in test from the user's install.
+- **ASSUMPTION-001**: `E_sun_lx` ≈ 115,000 lx, EV100 range 5-15 and the EV bias table (from 12.05-12.09 community scripts) are close enough to start calibration.
+- **ASSUMPTION-002**: The reference machine (RTX 3090) is representative for both the X-Plane references and the SEDX performance budget.
+- **ASSUMPTION-003**: Reading X-Plane art and data files at runtime from the user's own install is acceptable use; SEDX ships none of them.
+- **ASSUMPTION-004**: The research's pass order (inferred from executable strings and resource bindings) is close to X-Plane's actual execution order; TASK-008 confirms it.
+
+## 8. Related Specifications / Further Reading
+
+- [Research report: X Plane 12 graphics pipeline](../reports/X%20Plane%2012%20graphics%20pipeline.md)
+- [Research notes folder](../research_notes/X%20Plane%2012%20graphics%20pipeline/) — `xsv_pass_catalog.md`, `settings_art_controls.md`, `default_art_assets.md`, `authoring_material_specs.md`, `laminar_renderer_statements.md`, `reference_techniques.md`
+- [Photometric lighting: what is it and why do we need it? (Laminar, 2021)](https://developer.x-plane.com/2021/11/photometric-lighting-what-is-it-and-why-do-we-need-it/)
+- [X-Plane 12.2.0 SDK news (AgX, exposure fusion)](https://developer.x-plane.com/2025/04/12-2-0-chockingly-good-fun/)
+- [Weather datarefs in X-Plane 12](https://developer.x-plane.com/article/weather-datarefs-in-x-plane-12/)
+- [library.txt file format specification](https://developer.x-plane.com/article/library-library-txt-file-format-specification/)
+- [Hillaire 2020 reference implementation (MIT)](https://github.com/sebh/UnrealEngineSkyAtmosphere)
+- [AMD FidelityFX SDK manuals](https://gpuopen.com/manuals/fidelityfx_sdk/) — [CACAO](https://gpuopen.com/manuals/fidelityfx_sdk/techniques/combined-adaptive-compute-ambient-occlusion/), [SSSR](https://gpuopen.com/manuals/fidelityfx_sdk/techniques/stochastic-screen-space-reflections/)
+- [Bart Wronski — Local tone mapping using exposure fusion (2022)](https://bartwronski.com/2022/02/28/exposure-fusion-local-tonemapping-for-real-time-rendering/)
+- [Khronos glTF-IBL-Sampler](https://github.com/KhronosGroup/glTF-IBL-Sampler)
+- [Sébastien Lagarde — Water drop 3b: physically based wet surfaces](https://seblagarde.wordpress.com/2013/04/14/water-drop-3b-physically-based-wet-surfaces/) and [2b: dynamic rain and its effects](https://seblagarde.wordpress.com/2013/01/03/water-drop-2b-dynamic-rain-and-its-effects/)
