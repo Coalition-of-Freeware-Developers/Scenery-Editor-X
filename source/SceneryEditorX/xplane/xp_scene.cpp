@@ -59,11 +59,8 @@ namespace SceneryEditorX::XPlane
 
 		/* @brief Spill lights that light the scene at once, nearest first (the light pass loops over every light per pixel). */
 		constexpr uint32_t MAX_SPILL_LIGHTS = 48;
-		/*
-		 * Radiant intensity (W/sr) a spill gets per candela^0.75. The bootstrap renderer has no exposure, so intensities
-		 * are compressed: a 15 cd taxiway light still pools on the ground while a 400 000 cd apron flood doesn't burn out.
-		 */
-		constexpr float SPILL_GAIN = 0.25f;
+		/* @brief Luminous efficacy the renderer's radiometric light units assume (Light::GetIntensityWatt): lm per W. */
+		constexpr float LUMENS_PER_WATT = 683.0f;
 		constexpr float LUMENS_PER_WATT_STERADIAN = 683.0f * 4.0f * 3.14159265358979323846f; // inverse of Light::GetIntensityWatt()
 		/* @brief Lights dimmer than this (after direction, flashing and night) are not drawn. */
 		constexpr float MIN_LIGHT_BRIGHTNESS = 0.002f;
@@ -226,12 +223,16 @@ namespace SceneryEditorX::XPlane
 			return std::max(color[0], std::max(color[1], color[2]));
 		}
 
-		/* @brief Peak radiant intensity (W/sr) of a spill, before night, flashing and its alpha dimmer. */
+		/*
+		 * Peak radiant intensity (W/sr) of a spill, before night, flashing and its alpha dimmer: candela over the luminous
+		 * efficacy, lit and exposed physically (plan Phase 5). Legacy spills give a reach in meters instead: 2 cd per
+		 * square meter of it (ASSUMPTION: about 2 lux at the edge before the window takes it to 0).
+		 */
 		float SpillRadiantIntensity(const LightSpillSpec &spill)
 		{
 			const float range = spill.GetRange();
-			const float candela = spill.IsPhotometric() ? spill.intensity : 2.0f * range * range; // legacy: reach in meters
-			return SPILL_GAIN * std::pow(std::max(candela, 0.0f), 0.75f);
+			const float candela = spill.IsPhotometric() ? spill.intensity : 2.0f * range * range;
+			return std::max(candela, 0.0f) / LUMENS_PER_WATT;
 		}
 
 		/* @brief A spill light that could be lit this frame. */
@@ -796,15 +797,6 @@ namespace SceneryEditorX::XPlane
 		}
 
 		Datarefs::Tick(deltaSeconds);
-
-		// The placeholder sun and sky follow the world environment's sun (kept a little above the horizon: below it the
-		// placeholder light is faded out by the daylight factor anyway)
-		Renderer::SetFallbackDaylight(Datarefs::GetDaylight());
-		{
-			const Environment::EnvironmentDerived &environment = Environment::Get().GetDerived();
-			const Environment::Direction sun = Environment::DirectionFromAzimuth(environment.sun.azimuthDeg, std::max(environment.sun.apparentElevationDeg, 2.0));
-			Renderer::SetFallbackSunDirection(xMath::Vec3(sun.x, sun.y, sun.z));
-		}
 
 		if (!registry)
 		{

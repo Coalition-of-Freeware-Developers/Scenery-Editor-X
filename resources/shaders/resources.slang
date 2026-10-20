@@ -343,19 +343,52 @@ public struct EnvironmentData
     public float4 snow_projection_x;
     public float4 snow_projection_z;
     public float4 season;            // ratio, index, day of year, latitude
-    public float4 exposure;          // exposure scale, pre-exposure, EV100, EV100 bias
+    public float4 exposure;          // exposure scale, pre-exposure, metered EV100, applied EV
     public float4 exposure_fusion;   // shadows, sigma, near, far
     public float4 camera;            // altitude MSL, ground elevation, night factor, rain percent
     public float4 clouds[3];         // base MSL, top MSL, coverage, type
     public float4 wind;              // direction from (deg), speed (m/s), wave amplitude (m), wave direction (deg)
     public float4 debug;             // debug view, feature bits, temperature (C)
-    public float4 padding_environment[9];
+    public float4 sky_radiance[7];   // nits without the Mie lobe: zenith, horizon toward / side / away from the sun, 30 deg up (same)
+    public float4 sky_mie[7];        // Mie single scattering with the phase factored out (same directions)
+    public float4 sky_irradiance;    // rgb lux on a level surface, w ground albedo
+    public float4 exposure_meter;    // EV100 min, max, K, centre-weight radius
+    public float4 exposure_adapt;    // speed up, speed down (EV/s), lower trim, upper trim
+    public float4 exposure_bias_ev;  // EV100 of bias points 0-3
+    public float4 exposure_bias;     // bias of points 0-3 (EV, positive brightens)
+    public float4 exposure_bias_last; // point 4: EV100, bias; z compensation (EV)
+    public float4 color_slope;       // ASC-CDL rgb slope, w saturation
+    public float4 color_offset;      // rgb offset, w output gain
+    public float4 color_power;       // rgb power, w output gamma
+    public float4 post;              // bloom intensity, exposure fusion highlights (EV), fusion strength
+    public float4 padding_environment[1];
 };
-public [[vk::binding(201)]] cbuffer BufferEnvironment : register(b201) { EnvironmentData buffer_environment; };
+public [[vk::binding(201)]] cbuffer BufferEnvironment : register(b201) { public EnvironmentData buffer_environment; };
 
 public float3 get_sun_direction() { return buffer_environment.sun_direction.xyz; }
+public float3 get_sun_illuminance() { return buffer_environment.sun_illuminance.rgb; }
+public float3 get_moon_direction() { return buffer_environment.moon_direction.xyz; }
+public float3 get_moon_illuminance() { return buffer_environment.moon_illuminance.rgb; }
 public float get_exposure_scale() { return buffer_environment.exposure.x; }
 public float get_pre_exposure() { return buffer_environment.exposure.y; }
+
+// Exposure (renderer/exposure.h): the log2-luminance histogram luminance_histogram.slang fills and exposure_adapt.slang
+// meters and clears, and the exposure state exposure_adapt.slang keeps (EXPOSURE_STATE_*)
+public [[vk::binding(146)]] RWStructuredBuffer<uint> exposure_histogram : register(u146);
+public [[vk::binding(147)]] RWStructuredBuffer<float> exposure_state : register(u147);
+public static const uint EXPOSURE_HISTOGRAM_BINS = 256;
+public static const float EXPOSURE_LOG2_MIN = -2.0f;
+public static const float EXPOSURE_LOG2_MAX = 18.0f;
+public static const uint EXPOSURE_STATE_EV = 0;          // EV100 the frame is exposed at (adapted, bias applied)
+public static const uint EXPOSURE_STATE_METERED = 1;     // metered EV100, clamped to the range (before the bias)
+public static const uint EXPOSURE_STATE_TARGET = 2;      // EV100 the adaptation moves toward
+public static const uint EXPOSURE_STATE_MEAN_LOG2 = 3;   // mean log2 luminance (nits) between the trims
+public static const uint EXPOSURE_STATE_VALID = 4;       // 1 once the first frame has been metered
+public static const uint EXPOSURE_STATE_RAW = 5;         // metered EV100 before the clamp
+public static const uint EXPOSURE_STATE_FLOATS = 8;
+
+/* @brief What a frame exposed at an EV100 is multiplied by: 1 / (1.2 x 2^EV) (renderer/exposure.h). */
+public float exposure_scale_from_ev(float ev100) { return 1.0f / (1.2f * exp2(ev100)); }
 public uint get_debug_view() { return uint(buffer_environment.debug.x + 0.5f); }
 public bool is_feature_enabled(uint bit) { return (uint(buffer_environment.debug.y + 0.5f) & (1u << bit)) != 0; }
 

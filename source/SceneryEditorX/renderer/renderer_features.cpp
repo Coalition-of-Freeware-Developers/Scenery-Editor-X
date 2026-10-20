@@ -57,7 +57,7 @@ namespace SceneryEditorX
 			{ "auto-exposure", "Auto exposure", "Histogram metering of EV100", 5, &F::autoExposure },
 			{ "exposure-fusion", "Exposure fusion", "Local tone mapping (dark interiors, bright skies)", 5, &F::exposureFusion },
 			{ "bloom", "Bloom", "Energy-conserving glow around bright lights", 5, &F::bloom },
-			{ "tonemap", "Tone mapping", "AgX output transform; off shows the frame as rendered", 3, &F::tonemap },
+			{ "tonemap", "Tone mapping", "Exposure and the AgX output transform; off shows the pre-exposed frame as rendered", 3, &F::tonemap },
 			{ "fxaa", "FXAA", "Post-process anti-aliasing", 5, &F::fxaa },
 			{ "fsr1", "FSR 1", "Spatial upscaling (render below output resolution)", 5, &F::fsr1 },
 			{ "sss", "Screen-space shadows", "Bend contact shadows (X-Plane 12.4 has none)", 7, &F::screenSpaceShadows },

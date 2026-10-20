@@ -116,6 +116,12 @@ namespace SceneryEditorX
 		nrd_out_spec_radiance_hitdist,
 		// debug
 		debug_output,
+		// exposure fusion (exposure_fusion.slang), half the render resolution: three synthetic exposures and their weights
+		// (Gaussian pyramids), the blended result (Laplacian collapse), and the R16F gain guide the tone map applies
+		exposure_fusion_exposures,
+		exposure_fusion_weights,
+		exposure_fusion_result,
+		exposure_fusion_guide,
 		MaxEnum
 	};
 
@@ -162,7 +168,6 @@ namespace SceneryEditorX
 		bloom_blend_frame,
 		bloom_upsample_blend_mip,
 		bloom_downsample,
-		output,
 		light_integration_brdf_specular_lut,
 		light_integration_environment_filter,
 		light,
@@ -189,7 +194,6 @@ namespace SceneryEditorX
 		icon,
 		dithering,
 		transparency_reflection_refraction,
-		auto_exposure,
 		// volumetric clouds
 		cloud_noise_shape,
 		cloud_noise_detail,
@@ -220,6 +224,16 @@ namespace SceneryEditorX
 		reference_overlay,		// viewport reference image: split / difference / full over frame_output (parity harness)
 		tonemap,				// output transform: exposure + tone curve to frame_output (XP12: hdr)
 		debug_view,				// RENDERER panel DEBUG VIEW
+		// plan Phase 5: HDR clean-up, exposure, local tone mapping, upscaling
+		fix_hdr,
+		luminance_histogram,
+		exposure_adapt,
+		exposure_fusion_exposures,
+		exposure_fusion_downsample,
+		exposure_fusion_collapse,
+		exposure_fusion_guide,
+		fsr1_easu,
+		fsr1_rcas,
 		MaxEnum
 	};
 
@@ -242,7 +256,6 @@ namespace SceneryEditorX
 		case Renderer_Shader::bloom_blend_frame: return "bloom_blend_frame";
 		case Renderer_Shader::bloom_upsample_blend_mip: return "bloom_upsample_blend_mip";
 		case Renderer_Shader::bloom_downsample: return "bloom_downsample";
-		case Renderer_Shader::output: return "output";
 		case Renderer_Shader::light_integration_brdf_specular_lut: return "light_integration_brdf_specular_lut";
 		case Renderer_Shader::light_integration_environment_filter: return "light_integration_environment_filter";
 		case Renderer_Shader::light: return "light";
@@ -269,7 +282,6 @@ namespace SceneryEditorX
 		case Renderer_Shader::icon: return "icon";
 		case Renderer_Shader::dithering: return "dithering";
 		case Renderer_Shader::transparency_reflection_refraction: return "transparency_reflection_refraction";
-		case Renderer_Shader::auto_exposure: return "auto_exposure";
 		case Renderer_Shader::cloud_noise_shape: return "cloud_noise_shape";
 		case Renderer_Shader::cloud_noise_detail: return "cloud_noise_detail";
 		case Renderer_Shader::cloud_shadow: return "cloud_shadow";
@@ -294,6 +306,15 @@ namespace SceneryEditorX
 		case Renderer_Shader::reference_overlay: return "reference_overlay";
 		case Renderer_Shader::tonemap: return "tonemap";
 		case Renderer_Shader::debug_view: return "debug_view";
+		case Renderer_Shader::fix_hdr: return "fix_hdr";
+		case Renderer_Shader::luminance_histogram: return "luminance_histogram";
+		case Renderer_Shader::exposure_adapt: return "exposure_adapt";
+		case Renderer_Shader::exposure_fusion_exposures: return "exposure_fusion_exposures";
+		case Renderer_Shader::exposure_fusion_downsample: return "exposure_fusion_downsample";
+		case Renderer_Shader::exposure_fusion_collapse: return "exposure_fusion_collapse";
+		case Renderer_Shader::exposure_fusion_guide: return "exposure_fusion_guide";
+		case Renderer_Shader::fsr1_easu: return "fsr1_easu";
+		case Renderer_Shader::fsr1_rcas: return "fsr1_rcas";
 		case Renderer_Shader::MaxEnum: return "MaxEnum";
 		default: return "unknown";
 		}
@@ -343,6 +364,8 @@ namespace SceneryEditorX
 		IndirectDrawCount,
 		DrawData, // bindless per-draw data (transforms, material index, etc.)
 		ConstantEnvironment, // the world environment (ConstantBuffer_Environment, binding 201)
+		ExposureHistogram,   // 256 log2-luminance bins (luminance_histogram.slang -> exposure_adapt.slang), device local
+		ExposureState,       // EXPOSURE_STATE_* floats (resources.slang), host visible: the CPU reads the EV back
 
 		// gpu-driven particles
 		ParticleBufferA,
@@ -501,6 +524,10 @@ namespace SceneryEditorX
 
 		// editor selection (ScenePicking): 2 bits per entity index, selected / hovered
 		selection_mask         = 45,
+
+		// exposure (Renderer_Buffer::ExposureHistogram / ExposureState)
+		exposure_histogram     = 46,
+		exposure_state         = 47,
 	};
 
 	// -------------------------------------------------------

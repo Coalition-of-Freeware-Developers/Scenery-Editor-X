@@ -113,21 +113,31 @@ namespace SceneryEditorX
 				// post-processing
 				{ Renderer_Shader::blur_gaussian,            "blur_gaussian",            "blur.slang",   {CS} },
 				{ Renderer_Shader::blur_gaussian_bilateral,  "blur_gaussian_bilateral",  "blur.slang",   {CS}, {{"PASS_BLUR_GAUSSIAN_BILATERAL"}} },
-				{ Renderer_Shader::bloom_luminance,          "bloom_luminance",          "bloom.slang",  {CS}, {{"LUMINANCE"}} },
-				{ Renderer_Shader::bloom_downsample,         "bloom_downsample",         "bloom.slang",  {CS}, {{"DOWNSAMPLE"}} },
-				{ Renderer_Shader::bloom_upsample_blend_mip, "bloom_upsample_blend_mip", "bloom.slang",  {CS}, {{"UPSAMPLE_BLEND_MIP"}} },
+				{ Renderer_Shader::bloom_luminance,          "bloom_luminance",          "bloom.slang",  {CS}, {{"LUMINANCE"}},          VertexType::MaxEnum, true },
+				{ Renderer_Shader::bloom_downsample,         "bloom_downsample",         "bloom.slang",  {CS}, {{"DOWNSAMPLE"}},         VertexType::MaxEnum, true },
+				{ Renderer_Shader::bloom_upsample_blend_mip, "bloom_upsample_blend_mip", "bloom.slang",  {CS}, {{"UPSAMPLE_BLEND_MIP"}}, VertexType::MaxEnum, true },
 				{ Renderer_Shader::bloom_blend_frame,        "bloom_blend_frame",        "bloom.slang",  {CS}, {{"BLEND_FRAME"}} },
-				{ Renderer_Shader::auto_exposure,            "auto_exposure",            "auto_exposure.slang", {CS} },
 				{ Renderer_Shader::dithering,                "dithering",                "dither.slang", {CS} },
-				{ Renderer_Shader::output,                   "output",                   "output.slang", {CS} },
 				{ Renderer_Shader::blit,                     "blit",                     "blit.slang",   {CS}, {}, VertexType::MaxEnum, true },
 				{ Renderer_Shader::downsample_min,           "downsample_min",           "downsample_min.slang", {CS}, {}, VertexType::MaxEnum, true }, // Hi-Z (Pass_Downscale, Min)
 				{ Renderer_Shader::reference_overlay,        "reference_overlay",        "reference_overlay.slang", {CS}, {}, VertexType::MaxEnum, true }, // viewport REFERENCE menu
 				{ Renderer_Shader::tonemap,                  "tonemap",                  "tonemap.slang",    {CS}, {}, VertexType::MaxEnum, true }, // output transform
 				{ Renderer_Shader::debug_view,               "debug_view",               "debug_view.slang", {CS}, {}, VertexType::MaxEnum, true }, // RENDERER panel DEBUG VIEW
 
+				// exposure and the output chain (plan Phase 5): HDR clean-up, metering, local tone mapping, bloom, AA, upscaling
+				{ Renderer_Shader::fix_hdr,                    "fix_hdr",                    "fix_hdr.slang",             {CS}, {},                VertexType::MaxEnum, true },
+				{ Renderer_Shader::luminance_histogram,        "luminance_histogram",        "luminance_histogram.slang", {CS}, {},                VertexType::MaxEnum, true },
+				{ Renderer_Shader::exposure_adapt,             "exposure_adapt",             "exposure_adapt.slang",      {CS}, {},                VertexType::MaxEnum, true },
+				{ Renderer_Shader::exposure_fusion_exposures,  "exposure_fusion_exposures",  "exposure_fusion.slang",     {CS}, {{"EXPOSURES"}},   VertexType::MaxEnum, true },
+				{ Renderer_Shader::exposure_fusion_downsample, "exposure_fusion_downsample", "exposure_fusion.slang",     {CS}, {{"DOWNSAMPLE"}},  VertexType::MaxEnum, true },
+				{ Renderer_Shader::exposure_fusion_collapse,   "exposure_fusion_collapse",   "exposure_fusion.slang",     {CS}, {{"COLLAPSE"}},    VertexType::MaxEnum, true },
+				{ Renderer_Shader::exposure_fusion_guide,      "exposure_fusion_guide",      "exposure_fusion.slang",     {CS}, {{"GUIDE"}},       VertexType::MaxEnum, true },
+				{ Renderer_Shader::fxaa,                       "fxaa",                       "fxaa.slang",                {CS}, {},                VertexType::MaxEnum, true },
+				{ Renderer_Shader::fsr1_easu,                  "fsr1_easu",                  "fsr1_easu.slang",           {CS}, {},                VertexType::MaxEnum, true },
+				{ Renderer_Shader::fsr1_rcas,                  "fsr1_rcas",                  "fsr1_rcas.slang",           {CS}, {},                VertexType::MaxEnum, true },
+
 				// Not registered: ffx_spd_* (scale.slang has no entry point yet), sss_bend (sss_blend.slang disabled),
-				// tessellation, depth_of_field, fxaa and the particle / texture-compression passes.
+				// tessellation, depth_of_field and the particle / texture-compression passes.
 			};
 
 			return registrations;

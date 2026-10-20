@@ -37,6 +37,7 @@ struct PixelInput
 };
 
 static const float min_radius_pixels = 1.5f; // far lights stay a few pixels wide
+static const float BILLBOARD_NITS = 10.0f;      // luminance of a sprite of brightness 1 (ASSUMPTION until plan Phase 14's photometric lights)
 
 [shader("vertex")]
 PixelInput main_vs(BillboardVertex input)
@@ -83,5 +84,6 @@ float4 main_frag(PixelInput input) : SV_TARGET
     else
         result = input.color * rgb;
 
-    return float4(max(result, 0.0f), 0.0f); // additive
+    // A sprite of brightness 1 is BILLBOARD_NITS of luminance, pre-exposed like the rest of the frame
+    return float4(max(result, 0.0f) * BILLBOARD_NITS * get_pre_exposure(), 0.0f); // additive
 }

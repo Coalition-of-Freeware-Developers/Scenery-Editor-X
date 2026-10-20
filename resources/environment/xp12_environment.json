@@ -89,6 +89,86 @@
 		"atmo/ozone_b": {
 			"value": 8.5e-08,
 			"source": "12.05 community script"
+		},
+		"exposure_fusion/shadows": {
+			"value": 1.0,
+			"source": "ASSUMPTION: EV the shadows exposure is lifted by"
+		},
+		"exposure_fusion/sigma": {
+			"value": 0.2,
+			"source": "Mertens et al. 2007 well-exposedness width, as in Wronski 2022"
+		},
+		"exposure_fusion/highlights": {
+			"value": 1.0,
+			"source": "ASSUMPTION: SEDX control, EV the highlights exposure is lowered by"
+		},
+		"autoexposure/trim_lo": {
+			"value": 0.5,
+			"source": "ASSUMPTION: histogram fraction below which nothing meters"
+		},
+		"autoexposure/trim_hi": {
+			"value": 0.98,
+			"source": "ASSUMPTION: histogram fraction above which nothing meters"
+		},
+		"autoexposure/_exp_radius": {
+			"value": 0.33,
+			"source": "ASSUMPTION: centre-weight radius in screen heights"
+		},
+		"bloom/intensity": {
+			"value": 0.04,
+			"source": "ASSUMPTION: share of the bloom chain in the frame (plan TASK-042)"
+		},
+		"fsr/_rcas_ratio": {
+			"value": 1.0,
+			"source": "ASSUMPTION: read as FSR 1 RCAS scale, 1 the sharpest"
+		},
+		"color_management/sdr/slope_r": {
+			"value": 1.0,
+			"source": "identity (ASC-CDL)"
+		},
+		"color_management/sdr/slope_g": {
+			"value": 1.0,
+			"source": "identity (ASC-CDL)"
+		},
+		"color_management/sdr/slope_b": {
+			"value": 1.0,
+			"source": "identity (ASC-CDL)"
+		},
+		"color_management/sdr/saturation": {
+			"value": 1.0,
+			"source": "identity (ASC-CDL)"
+		},
+		"color_management/sdr/gain": {
+			"value": 1.0,
+			"source": "identity (ASC-CDL)"
+		},
+		"color_management/sdr/power_r": {
+			"value": 1.0,
+			"source": "identity (ASC-CDL)"
+		},
+		"color_management/sdr/power_g": {
+			"value": 1.0,
+			"source": "identity (ASC-CDL)"
+		},
+		"color_management/sdr/power_b": {
+			"value": 1.0,
+			"source": "identity (ASC-CDL)"
+		},
+		"color_management/sdr/gamma": {
+			"value": 1.0,
+			"source": "identity (ASC-CDL)"
+		},
+		"color_management/sdr/offset_r": {
+			"value": 0.0,
+			"source": "identity (ASC-CDL)"
+		},
+		"color_management/sdr/offset_g": {
+			"value": 0.0,
+			"source": "identity (ASC-CDL)"
+		},
+		"color_management/sdr/offset_b": {
+			"value": 0.0,
+			"source": "identity (ASC-CDL)"
 		}
 	}
 }

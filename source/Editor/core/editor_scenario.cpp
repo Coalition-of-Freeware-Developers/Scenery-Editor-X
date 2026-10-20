@@ -34,6 +34,7 @@
 #include "editor_project.h"
 #include <Editor/panels/scene_viewport.h>
 #include <algorithm>
+#include <cmath>
 #include <cstdlib>
 #include <optional>
 #include <SceneryEditorX/core/application/application.h>
@@ -100,10 +101,18 @@ namespace SceneryEditorX::EditorScenario
 			}
 		}
 
-		/* @brief The scenario's date, time and weather into the world environment (the airport's datum then sets the place). */
+		/**
+		 * @brief The scenario's date, time and weather into the world environment (the airport's datum then sets the place),
+		 * and its exposure: ev100_lock holds a fixed EV100 (plan TASK-102), none meters as X-Plane does.
+		 */
 		void ApplyEnvironment(const Environment::ParityScenario &scenario)
 		{
 			Environment::Get().ApplyScenario(scenario);
+			ExposureSettings &exposure = Renderer::EditEnvironmentConstants().exposure;
+			exposure.automatic = !scenario.ev100Lock.has_value();
+			if (scenario.ev100Lock)
+				exposure.manualEv100 = *scenario.ev100Lock;
+			Renderer::ResetExposure();
 		}
 
 		/* @brief Waits for the capture to be written, logs it and exits when asked to. */
@@ -114,7 +123,13 @@ namespace SceneryEditorX::EditorScenario
 				return;
 			state.stage = Stage::Done;
 			if (result.success)
+			{
 				EDITOR_INFO_TAG(LOG_TAG, "Scenario {} captured to {} ({})", what, result.png.string(), result.message);
+				const Renderer::ExposureReadout exposure = Renderer::GetExposureReadout();
+				if (exposure.valid)
+					EDITOR_INFO_TAG(LOG_TAG, "Scenario {} exposure: EV100 {:.2f}, metered {:.2f} (raw {:.2f}), target {:.2f}, mean {:.4g} nits", what,
+						exposure.ev100, exposure.meteredEv100, exposure.rawEv100, exposure.targetEv100, std::exp2(exposure.meanLog2Nits));
+			}
 			else
 				EDITOR_ERROR_TAG(LOG_TAG, "Scenario {} capture failed: {}", what, result.message);
 			if (state.exitAfterCapture)
@@ -290,6 +305,7 @@ namespace SceneryEditorX::EditorScenario
 					return;
 				if (!PlaceCamera(scenario))
 					return;
+				Renderer::ResetExposure();	// Meter the placed view from scratch, not adapt to it from the startup view
 				state.framesLeft = state.captureAfterFrames.value_or(scenario.settleFrames);
 				state.stage = Stage::Settling;
 				EDITOR_INFO_TAG(LOG_TAG, "Scenario {}: camera at {:.6f}, {:.6f}, {} m, heading {}, pitch {}; {} frames to settle", scenario.id,

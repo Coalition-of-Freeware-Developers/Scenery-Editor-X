@@ -34,9 +34,12 @@
 #include <catch2/catch_all.hpp>
 #include <SceneryEditorX/environment/environment.h>
 #include <SceneryEditorX/environment/parity_scenario.h>
+#include <SceneryEditorX/environment/sky_light.h>
+#include <SceneryEditorX/renderer/exposure.h>
 #include <SceneryEditorX/renderer/renderer_features.h>
 #include <SceneryEditorX/renderer/renderer_quality.h>
 #include <cmath>
+#include <numbers>
 #include <numeric>
 #include <set>
 #include <string>
@@ -543,4 +546,159 @@ TEST_CASE("Renderer feature switches", "[environment][quality]")
 	CHECK_FALSE(features.csmShadows);
 	CHECK(FindRendererFeature("nonsense") == nullptr);
 	CHECK(std::string(GetDebugViewName(Renderer_DebugView::Normals)) == "Normals");
+}
+
+// -------------------------------------------------------
+// Sky light (environment/sky_light.*): the interim atmosphere that lights the scene in plan Phase 5
+// -------------------------------------------------------
+
+namespace
+{
+	double Lum(const Rgb &c) { return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; }
+}
+
+TEST_CASE("Sky light: the sun's transmittance follows the air mass", "[environment][sky-light]")
+{
+	const AtmosphereParams clear;
+
+	// Straight up through a clean atmosphere: Rayleigh optical depth 0.265 in blue, 0.046 in red
+	const Rgb zenith = ComputeTransmittance(clear, 0.0, 1.0);
+	CHECK(zenith[0] == Catch::Approx(0.94).margin(0.01));
+	CHECK(zenith[2] == Catch::Approx(0.76).margin(0.01));
+	CHECK(zenith[0] > zenith[1]);
+	CHECK(zenith[1] > zenith[2]);	// blue scatters most: the sun reddens
+
+	// Lower suns go through more air; below the horizon the ground blocks them
+	double previous = 1.0;
+	for (const double elevation : { 60.0, 30.0, 10.0, 3.0, 0.5 })
+	{
+		const double t = Lum(ComputeTransmittance(clear, 0.0, std::sin(elevation * std::numbers::pi / 180.0)));
+		CHECK(t < previous);
+		previous = t;
+	}
+	CHECK(Lum(ComputeTransmittance(clear, 0.0, std::sin(-2.0 * std::numbers::pi / 180.0))) == 0.0);
+
+	// Higher up there is less air above
+	CHECK(Lum(ComputeTransmittance(clear, 10000.0, 0.2)) > Lum(ComputeTransmittance(clear, 0.0, 0.2)));
+}
+
+TEST_CASE("Sky light: a clear day's sun and sky", "[environment][sky-light]")
+{
+	const AtmosphereParams hazy = WithVisibility(AtmosphereParams{}, 40000.0);
+	CHECK(hazy.mieExtinction == Catch::Approx(3.912 / 40000.0 - 13.558e-6).epsilon(1e-6));
+	CHECK(hazy.mieScattering / hazy.mieExtinction == Catch::Approx(3.996 / 4.4).epsilon(1e-6));
+	CHECK(WithVisibility(AtmosphereParams{}, 1.0e6).mieExtinction == Catch::Approx(4.4e-6));	// never cleaner than clear
+
+	const SkyLight noon = ComputeSkyLight(hazy, 0.0, 60.0, 115000.0, -20.0, 0.25);
+	const double sun = Lum(noon.sunIlluminance);
+	const double sky = Lum(noon.irradiance);
+	CHECK(sun > 80000.0);
+	CHECK(sun < 110000.0);
+	CHECK(sky > 8000.0);			// clear-sky diffuse illuminance is 10-20 klx with a high sun
+	CHECK(sky < 25000.0);
+	CHECK(sky / (sun * std::sin(60.0 * std::numbers::pi / 180.0) + sky) < 0.25);	// mostly direct light on a clear day
+
+	// Blue overhead, brighter toward the horizon, the sun's side brighter than the opposite one at 30 degrees up
+	CHECK(noon.zenith[2] > noon.zenith[0]);
+	CHECK(Lum(noon.horizon[1]) > Lum(noon.zenith));
+	const double phaseToward = MiePhaseCornetteShanks(std::cos(30.0 * std::numbers::pi / 180.0), hazy.mieG);
+	const double phaseAway = MiePhaseCornetteShanks(std::cos(150.0 * std::numbers::pi / 180.0), hazy.mieG);
+	CHECK(Lum(noon.mid[0]) + phaseToward * Lum(noon.midMie[0]) > Lum(noon.mid[2]) + phaseAway * Lum(noon.midMie[2]));
+
+	// The moon is below the horizon
+	CHECK(Lum(noon.moonIlluminance) == 0.0);
+
+	// Twilight: no direct sun, a dim sky; night: nothing
+	const SkyLight dusk = ComputeSkyLight(hazy, 0.0, -3.0, 115000.0, 30.0, 0.25);
+	CHECK(Lum(dusk.sunIlluminance) == 0.0);
+	CHECK(Lum(dusk.irradiance) > 10.0);
+	CHECK(Lum(dusk.irradiance) < 1000.0);
+	CHECK(Lum(dusk.moonIlluminance) > 0.1);
+	CHECK(Lum(dusk.moonIlluminance) < 0.25);
+	const SkyLight night = ComputeSkyLight(hazy, 0.0, -30.0, 115000.0, 30.0, 0.25);
+	CHECK(Lum(night.irradiance) == 0.0);
+}
+
+TEST_CASE("Sky light: the Mie phase function is normalized", "[environment][sky-light]")
+{
+	// Integral over the sphere: 2 pi x integral of p(cos) d(cos) over -1..1
+	for (const double g : { 0.0, 0.5, 0.8 })
+	{
+		double sum = 0.0;
+		constexpr int N = 20000;
+		for (int i = 0; i < N; ++i)
+		{
+			const double mu = -1.0 + (i + 0.5) * 2.0 / N;
+			sum += MiePhaseCornetteShanks(mu, g) * 2.0 / N;
+		}
+		CHECK(sum * 2.0 * std::numbers::pi == Catch::Approx(1.0).margin(0.01));
+	}
+}
+
+// -------------------------------------------------------
+// Exposure (renderer/exposure.*): the reference for exposure_adapt.slang
+// -------------------------------------------------------
+
+TEST_CASE("Exposure: EV100 camera, bias table and adaptation", "[environment][exposure]")
+{
+	using namespace SceneryEditorX;
+	const ExposureSettings settings;
+
+	// A meter reading EV 12 sees 512 nits; exposed at EV 12 they become 512 / (1.2 x 4096)
+	CHECK(EvFromLuminance(512.0f) == Catch::Approx(12.0f).margin(1e-4));
+	CHECK(EvFromLuminance(512.0f) - EvFromLuminance(256.0f) == Catch::Approx(1.0f).margin(1e-4));
+	CHECK(ExposureScaleFromEv(12.0f) * 512.0f == Catch::Approx(0.10417f).margin(1e-4));
+
+	// The table: its points, linear between them, flat beyond
+	CHECK(GetExposureBias(settings, 5.0f) == Catch::Approx(3.5f));
+	CHECK(GetExposureBias(settings, 6.5f) == Catch::Approx(3.25f));
+	CHECK(GetExposureBias(settings, 11.5f) == Catch::Approx(0.0f));
+	CHECK(GetExposureBias(settings, 12.33f) == Catch::Approx(-0.3f));
+	CHECK(GetExposureBias(settings, 2.0f) == Catch::Approx(3.5f));
+	CHECK(GetExposureBias(settings, 15.0f) == Catch::Approx(-0.3f));
+
+	// Metering clamps to EV 5-15 before the bias: a moonlit scene (EV -3) exposes like EV 5 brightened 3.5 stops
+	CHECK(GetTargetEv(settings, -3.0f) == Catch::Approx(1.5f));
+	CHECK(GetTargetEv(settings, 14.0f) == Catch::Approx(14.3f));
+	CHECK(GetTargetEv(settings, 20.0f) == Catch::Approx(15.3f));
+	ExposureSettings manual = settings;
+	manual.automatic = false;
+	manual.manualEv100 = 9.0f;
+	CHECK(GetTargetEv(manual, 14.0f) == Catch::Approx(9.0f));
+
+	// Adaptation: at most speed x dt per frame, faster toward a darker scene (speed_down)
+	CHECK(AdaptEv(settings, 10.0f, 14.0f, 0.5f) == Catch::Approx(11.0f));
+	CHECK(AdaptEv(settings, 10.0f, 4.0f, 0.5f) == Catch::Approx(7.5f));
+	CHECK(AdaptEv(settings, 10.0f, 10.2f, 0.5f) == Catch::Approx(10.2f));
+}
+
+TEST_CASE("Exposure: histogram bins and metering", "[environment][exposure]")
+{
+	using namespace SceneryEditorX;
+	CHECK(GetExposureBin(0.0f) == 0);
+	CHECK(GetExposureBin(-1.0f) == 0);
+	CHECK(GetExposureBin(0.25f) == 0);					// log2 = -2: the range's start
+	CHECK(GetExposureBin(1.0e9f) == EXPOSURE_HISTOGRAM_BINS - 1);
+	CHECK(GetExposureBin(1.0f) == 25);					// (0 + 2) / 20 x 256 = 25.6
+
+	// One luminance everywhere: the mean is its bin's centre
+	std::array<uint32_t, EXPOSURE_HISTOGRAM_BINS> bins{};
+	bins[static_cast<size_t>(GetExposureBin(512.0f))] = 1000;
+	float mean = 0.0f;
+	REQUIRE(MeterHistogram(bins, 0.5f, 0.98f, mean));
+	CHECK(mean == Catch::Approx(std::log2(512.0f)).margin(20.0f / EXPOSURE_HISTOGRAM_BINS));
+
+	// Half the pixels black: the lower trim leaves them out entirely
+	bins[0] = 1000;
+	REQUIRE(MeterHistogram(bins, 0.5f, 0.98f, mean));
+	CHECK(mean == Catch::Approx(std::log2(512.0f)).margin(20.0f / EXPOSURE_HISTOGRAM_BINS));
+
+	// A few very bright pixels (the sun) are trimmed off the top
+	bins[0] = 0;
+	bins[EXPOSURE_HISTOGRAM_BINS - 1] = 10;
+	REQUIRE(MeterHistogram(bins, 0.5f, 0.98f, mean));
+	CHECK(mean == Catch::Approx(std::log2(512.0f)).margin(20.0f / EXPOSURE_HISTOGRAM_BINS));
+
+	std::array<uint32_t, EXPOSURE_HISTOGRAM_BINS> empty{};
+	CHECK_FALSE(MeterHistogram(empty, 0.5f, 0.98f, mean));
 }

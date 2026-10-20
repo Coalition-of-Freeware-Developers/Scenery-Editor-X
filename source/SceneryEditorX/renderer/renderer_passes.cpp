@@ -108,15 +108,6 @@ namespace SceneryEditorX
 			}
 		}
 
-		/* @brief Direction towards the placeholder sun light composition and the forward pass use without a directional light. */
-		xMath::Vec3 s_FallbackSunDirection = xMath::Normalize(xMath::Vec3(0.35f, 0.85f, -0.4f));
-
-		const xMath::Vec3 &GetFallbackSunDirection()
-		{
-			return s_FallbackSunDirection;
-		}
-
-		float s_FallbackDaylight = 1.0f;
 		std::atomic<bool> s_GridVisible{ true };
 
 		// Viewport reference overlay (Renderer::SetReferenceOverlay), read by the render thread
@@ -153,8 +144,6 @@ namespace SceneryEditorX
 	static CVar cvar_variable_rate_shading{ 0.0f };
 	static CVar cvar_hiz_occlusion        { 1.0f };
 	static CVar cvar_ssao                 { 1.0f };
-	static CVar cvar_tonemapping          { 0.0f };
-	static CVar cvar_auto_exposure_adaptation_speed{ 1.0f };
 	static CVar cvar_cloud_coverage       { 0.45f };
 
 	void Renderer::ProduceFrame(CommandList *graphicsPresent, CommandList *compute)
@@ -263,14 +252,30 @@ namespace SceneryEditorX
 				depthTarget->SetLayout(Layout::ImageLayout::ShaderRead, cmd, 0, 0);
 			}
 
-			// (15) HDR clean-up (XP12: fix_hdr): Phase 5
-			// (16) Metering, exposure fusion, bloom (Phase 5), then the output transform to display values; FXAA, FSR 1: Phase 5
+			// (15) HDR clean-up (XP12: fix_hdr)
+			{
+				GpuTimer::Scope scope(cmd, "fix hdr");
+				Pass_FixHdr(cmd, rt_render);
+			}
+			if (!valid())
+				return;
+
+			// (16) Metering and adaptation (manual EV100 when auto exposure is off), then the output chain: exposure
+			//      fusion, bloom, the tone map to display values, FXAA, FSR 1
+			{
+				GpuTimer::Scope scope(cmd, "exposure");
+				Pass_Exposure(cmd, rt_render);
+			}
+			if (!valid())
+				return;
+			if (features.tonemap)
+			{
+				Pass_OutputChain(cmd, rt_render, rt_output);	// Times its own passes (GpuTimer scopes don't nest)
+			}
+			else
 			{
 				GpuTimer::Scope scope(cmd, "output");
-				if (features.tonemap)
-					Pass_Tonemap(cmd, rt_render, rt_output);
-				else
-					cmd->Blit(rt_render, rt_output, false);	// The frame as rendered
+				cmd->Blit(rt_render, rt_output, false);	// The frame as rendered (pre-exposed)
 			}
 			if (!valid())
 				return;
@@ -310,7 +315,7 @@ namespace SceneryEditorX
 		// Submission and synchronization are owned by the caller (Renderer::OnRender)
 	}
 
-	void Renderer::Pass_Tonemap(CommandList *cmdList, ImageResource *in, ImageResource *out)
+	void Renderer::Pass_Tonemap(CommandList *cmdList, ImageResource *in, ImageResource *out, const uint32_t bloomMips, const bool fusion)
 	{
 		if (!ShaderManager::IsShaderAvailable(Renderer_Shader::tonemap))
 		{
@@ -319,10 +324,23 @@ namespace SceneryEditorX
 		}
 		in->SetLayout(Layout::ImageLayout::ShaderRead, cmdList, 0, 0);
 		out->SetLayout(Layout::ImageLayout::General, cmdList, 0, 0);
+		const EnvironmentConstants &constants = GetEnvironmentConstants();
 		Pass_Compute(cmdList, "tonemap", Renderer_Shader::tonemap, in, out, [&]
 		{
-			// Tone curve: AgX, X-Plane 12's since 12.2 (tonemap.slang: 0 none, 1 AgX, 2 ACES fit, 3 Reinhard)
-			m_Pcb_Pass_Cpu.SetF4Value(static_cast<float>(s_ToneCurve), 0.0f, 0.0f, 0.0f);
+			// The bloom chain, the fusion guide and the exposures it was made from, depth for the fusion's distance fade,
+			// and the exposure state (the residual)
+			cmdList->SetTexture(Renderer_BindingsSrv::tex2, GetRenderTarget(Renderer_RenderTarget::bloom), 0, 1);
+			cmdList->SetTexture(Renderer_BindingsSrv::tex3, GetRenderTarget(Renderer_RenderTarget::exposure_fusion_guide));
+			cmdList->SetTexture(Renderer_BindingsSrv::tex4, GetRenderTarget(Renderer_RenderTarget::exposure_fusion_exposures), 0, 1);
+			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_depth, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
+			cmdList->SetBuffer(Renderer_BindingsUav::exposure_state, GetBuffer(Renderer_Buffer::ExposureState));
+
+			// Tone curve: AgX, X-Plane 12's since 12.2 (tonemap.slang: 0 none, 1 AgX, 2 ACES fit, 3 Reinhard); bloom weight
+			// and the normalization of the summed mips; fusion strength
+			const float bloomWeight = bloomMips > 0 ? std::clamp(constants.bloomIntensity, 0.0f, 1.0f) : 0.0f;
+			const float bloomNormalize = bloomMips > 0 ? 1.0f / static_cast<float>(bloomMips) : 0.0f;
+			const float fusionStrength = fusion ? std::max(constants.fusionStrength, 0.0f) : 0.0f;
+			m_Pcb_Pass_Cpu.SetF4Value(static_cast<float>(s_ToneCurve), bloomWeight, bloomNormalize, fusionStrength);
 			cmdList->PushConstants(m_Pcb_Pass_Cpu);
 		});
 	}
@@ -1067,24 +1085,6 @@ namespace SceneryEditorX
 		}
 	}
 
-	void Renderer::Pass_Output(CommandList *cmdList, ImageResource *in, ImageResource *out)
-	{
-		Shader *shader_c = ShaderManager::GetShader(Renderer_Shader::output);
-
-		PipelineState pso;
-		pso.name = "output";
-		pso.shaders[static_cast<uint32_t>(StageType::Compute)] = shader_c;
-		cmdList->SetPipelineState(pso);
-
-		m_Pcb_Pass_Cpu.SetF3Value(cvar_tonemapping.GetValue(), cvar_auto_exposure_adaptation_speed.GetValue(), 0.0f);
-		cmdList->PushConstants(m_Pcb_Pass_Cpu);
-
-		cmdList->SetTexture(Renderer_BindingsUav::tex, out);
-		cmdList->SetTexture(Renderer_BindingsSrv::tex, in);
-		cmdList->SetTexture(Renderer_BindingsSrv::tex2, GetRenderTarget(Renderer_RenderTarget::auto_exposure));
-		cmdList->Dispatch(out);
-	}
-
 	void Renderer::Pass_Blit(CommandList *cmdList, ImageResource *in, ImageResource *out)
 	{
 		// compute blit: vulkan can't blit depth to float, amd uav requires float
@@ -1196,23 +1196,6 @@ namespace SceneryEditorX
 		s_LightBillboards = std::move(batches);
 	}
 
-	void Renderer::SetFallbackDaylight(const float daylight)
-	{
-		s_FallbackDaylight = std::clamp(daylight, 0.0f, 1.0f);
-	}
-
-	float Renderer::GetFallbackDaylight()
-	{
-		return s_FallbackDaylight;
-	}
-
-	void Renderer::SetFallbackSunDirection(const xMath::Vec3 &towardSun)
-	{
-		const float length = xMath::Length(towardSun);
-		if (length > 1e-6f)
-			s_FallbackSunDirection = towardSun / length;
-	}
-
 	const RendererFeatures &Renderer::GetFeatures()
 	{
 		return s_Features;
@@ -1292,8 +1275,37 @@ namespace SceneryEditorX
 			value("atmo/ozone_r", c.ozone.x);
 			value("atmo/ozone_g", c.ozone.y);
 			value("atmo/ozone_b", c.ozone.z);
+			value("exposure_fusion/shadows", c.exposureFusion.x);
+			value("exposure_fusion/sigma", c.exposureFusion.y);
 			value("exposure_fusion/dis_near", c.exposureFusion.z);
 			value("exposure_fusion/dis_far", c.exposureFusion.w);
+			value("exposure_fusion/highlights", c.fusionHighlights);
+			value("photometric/K", c.exposure.meterK);
+			value("photometric/ev100_min", c.exposure.evMin);
+			value("photometric/ev100_max", c.exposure.evMax);
+			value("photometric/ev100_bias", c.exposure.compensation);
+			value("exposure/speed_up", c.exposure.speedUp);
+			value("exposure/speed_down", c.exposure.speedDown);
+			value("autoexposure/trim_lo", c.exposure.trimLow);
+			value("autoexposure/trim_hi", c.exposure.trimHigh);
+			value("autoexposure/_exp_radius", c.exposure.centerRadius);
+			value("bloom/intensity", c.bloomIntensity);
+			value("fsr/_rcas_ratio", c.rcasSharpness);
+			float maxMip = static_cast<float>(c.fusionMaxMip);
+			value("exposure_fusion/max_mip", maxMip);
+			c.fusionMaxMip = std::clamp(static_cast<int>(std::lround(maxMip)), 1, 5);
+			value("color_management/sdr/slope_r", c.colorSlope.x);
+			value("color_management/sdr/slope_g", c.colorSlope.y);
+			value("color_management/sdr/slope_b", c.colorSlope.z);
+			value("color_management/sdr/saturation", c.colorSlope.w);
+			value("color_management/sdr/offset_r", c.colorOffset.x);
+			value("color_management/sdr/offset_g", c.colorOffset.y);
+			value("color_management/sdr/offset_b", c.colorOffset.z);
+			value("color_management/sdr/gain", c.colorOffset.w);
+			value("color_management/sdr/power_r", c.colorPower.x);
+			value("color_management/sdr/power_g", c.colorPower.y);
+			value("color_management/sdr/power_b", c.colorPower.z);
+			value("color_management/sdr/gamma", c.colorPower.w);
 			return true;
 		}
 		catch (const std::exception &e)
@@ -1426,7 +1438,8 @@ namespace SceneryEditorX
 		if (cmdList->IsStickyInvalid())
 			return;
 
-		const xMath::Vec3 &sun = GetFallbackSunDirection();
+		// The environment's light, as light_composition.slang gives the deferred surfaces (environment_lighting.slang)
+		cmdList->SetTexture(Renderer_BindingsSrv::tex3, GetRenderTarget(Renderer_RenderTarget::lut_brdf_specular));
 		for (const ForwardDraw &draw : draws)
 		{
 			const Renderer_DrawCall &drawCall = m_DrawCalls[draw.drawCall];
@@ -1436,8 +1449,7 @@ namespace SceneryEditorX
 			m_Pcb_Pass_Cpu.drawIndex = drawCall.drawData_Index;
 			m_Pcb_Pass_Cpu.isTransparent = 1;
 			m_Pcb_Pass_Cpu.materialIndex = materialAsset->GetIndex();
-			m_Pcb_Pass_Cpu.SetF3Value(sun.x, sun.y, sun.z);
-			m_Pcb_Pass_Cpu.SetF2Value(m_Has_DirectionalLight ? 0.0f : 1.0f, s_FallbackDaylight);
+			m_Pcb_Pass_Cpu.SetF4Value(m_Has_DirectionalLight ? 0.0f : 1.0f, 0.0f, 0.0f, 0.0f);
 			cmdList->PushConstants(m_Pcb_Pass_Cpu);
 
 			cmdList->SetCullMode(cvar_wireframe.GetValueAs<bool>() ? CullMode::None :
@@ -2037,14 +2049,13 @@ namespace SceneryEditorX
 			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_emissive, GetRenderTarget(Renderer_RenderTarget::gbuffer_emissive));
 			cmdList->SetTexture(Renderer_BindingsSrv::tex,              texDiffuse);
 			cmdList->SetTexture(Renderer_BindingsSrv::tex2,             texSpecular);
+			cmdList->SetTexture(Renderer_BindingsSrv::tex3,             GetRenderTarget(Renderer_RenderTarget::lut_brdf_specular));
 			cmdList->SetTexture(Renderer_BindingsUav::tex,              texFrameRender);
 
-			// Until the scene has a directional light of its own, light_composition.slang lights it with a placeholder
-			// sun + sky (fallback_lighting.slang) dimmed by the daylight setting; point and spot lights add on top.
-			const xMath::Vec3 &fallbackSunDirection = GetFallbackSunDirection();
+			// The environment's sun and moon light the scene unless it has a directional light of its own (Pass_Light
+			// draws that one, in the same units); the sky and the ground always add their ambient light
 			m_Pcb_Pass_Cpu.isTransparent = isTransparentPass ? 1u : 0u;
-			m_Pcb_Pass_Cpu.SetF3Value(fallbackSunDirection.x, fallbackSunDirection.y, fallbackSunDirection.z);
-			m_Pcb_Pass_Cpu.SetF2Value(m_Has_DirectionalLight ? 0.0f : 1.0f, s_FallbackDaylight);
+			m_Pcb_Pass_Cpu.SetF4Value(m_Has_DirectionalLight ? 0.0f : 1.0f, 0.0f, 0.0f, 0.0f);
 			cmdList->PushConstants(m_Pcb_Pass_Cpu);
 
 			cmdList->Dispatch(texFrameRender);
@@ -2229,147 +2240,6 @@ namespace SceneryEditorX
 			cmdList->SetTexture(Renderer_BindingsUav::tex, tex_frame_render);
 
 			cmdList->Dispatch(tex_frame_render);
-		}
-	}
-
-	// -------------------------------------------------------
-	// Pass_AA_Upscale
-	// Applies CAS (Contrast Adaptive Sharpening) upscale from render to output resolution,
-	// optionally followed by FXAA, then computes auto-exposure from the output luminance.
-	// -------------------------------------------------------
-
-	void Renderer::Pass_AA_Upscale(CommandList* cmdList)
-	{
-		ImageResource* tex_render  = GetRenderTarget(Renderer_RenderTarget::frame_render);
-		ImageResource* tex_output  = GetRenderTarget(Renderer_RenderTarget::frame_output);
-
-		// CAS upscale: render → output
-		Pass_Compute(cmdList, "cas_upscale", Renderer_Shader::ffx_cas, tex_render, tex_output, nullptr);
-
-		// Auto-exposure: sample output luminance into a 1×1 R32_SFLOAT texture
-		{
-			ImageResource* tex_auto_exp          = GetRenderTarget(Renderer_RenderTarget::auto_exposure);
-			ImageResource* tex_auto_exp_previous = GetRenderTarget(Renderer_RenderTarget::auto_exposure_previous);
-
-			PipelineState pso;
-			pso.name = "auto_exposure";
-			Shader* shader_auto_exposure = GetValidComputeShader(Renderer_Shader::auto_exposure, pso.name);
-			if (!shader_auto_exposure)
-				return;
-			pso.shaders[static_cast<uint32_t>(StageType::Compute)] = shader_auto_exposure;
-			cmdList->SetPipelineState(pso);
-
-			cmdList->SetTexture(Renderer_BindingsSrv::tex,  tex_output);
-			cmdList->SetTexture(Renderer_BindingsSrv::tex2, tex_auto_exp_previous);
-			cmdList->SetTexture(Renderer_BindingsUav::tex,  tex_auto_exp);
-
-			cmdList->Dispatch(tex_auto_exp);
-
-			// Ping-pong: swap current ↔ previous for temporal smoothing next frame
-			std::swap(
-				GetRenderTargets()[static_cast<uint32_t>(Renderer_RenderTarget::auto_exposure)],
-				GetRenderTargets()[static_cast<uint32_t>(Renderer_RenderTarget::auto_exposure_previous)]
-			);
-		}
-	}
-
-	// -------------------------------------------------------
-	// Pass_PostProcess
-	// Full post-processing stack: bloom, tone-mapping, film grain, dithering, outline.
-	// Reads from frame_output and writes back to frame_output.
-	// -------------------------------------------------------
-
-	void Renderer::Pass_PostProcess(CommandList* cmdList)
-	{
-		ImageResource* tex_output   = GetRenderTarget(Renderer_RenderTarget::frame_output);
-		ImageResource* tex_output_2 = GetRenderTarget(Renderer_RenderTarget::frame_output_2);
-		ImageResource* tex_bloom    = GetRenderTarget(Renderer_RenderTarget::bloom);
-
-		// Bloom -------------------------------------------------------
-		{
-			// 1. Luminance threshold + downsample to bloom mip-0
-			{
-				PipelineState pso;
-				pso.name = "bloom_luminance";
-				pso.shaders[static_cast<uint32_t>(StageType::Compute)] = ShaderManager::GetShader(Renderer_Shader::bloom_luminance);
-				cmdList->SetPipelineState(pso);
-
-				cmdList->SetTexture(Renderer_BindingsSrv::tex,  tex_output);
-				cmdList->SetTexture(Renderer_BindingsUav::tex,  tex_bloom, 0, 1);
-				cmdList->Dispatch(tex_bloom);
-			}
-
-			// 2. Build full mip chain via SPD average
-			Pass_Downscale(cmdList, tex_bloom, Renderer_DownsampleFilter::Average);
-
-			// 3. Progressive upsample + blend mips (coarse → fine)
-			for (uint32_t mip = tex_bloom->GetImageSpec().mipCount - 1; mip > 0; mip--)
-			{
-				PipelineState pso;
-				pso.name = "bloom_upsample_blend";
-				pso.shaders[static_cast<uint32_t>(StageType::Compute)] = ShaderManager::GetShader(Renderer_Shader::bloom_upsample_blend_mip);
-				cmdList->SetPipelineState(pso);
-
-				cmdList->SetTexture(Renderer_BindingsSrv::tex, tex_bloom, mip,     1);
-				cmdList->SetTexture(Renderer_BindingsUav::tex, tex_bloom, mip - 1, 1);
-				cmdList->Dispatch(tex_bloom);
-
-				cmdList->InsertBarrier(tex_bloom->Get(), tex_bloom->GetImageSpec().format, mip - 1, 1, 0, Layout::ImageLayout::ShaderRead);
-			}
-
-			// 4. Blend full bloom into frame buffer → tex_output_2
-			{
-				PipelineState pso;
-				pso.name = "bloom_blend_frame";
-				pso.shaders[static_cast<uint32_t>(StageType::Compute)] = ShaderManager::GetShader(Renderer_Shader::bloom_blend_frame);
-				cmdList->SetPipelineState(pso);
-
-				cmdList->SetTexture(Renderer_BindingsSrv::tex,  tex_bloom);
-				cmdList->SetTexture(Renderer_BindingsSrv::tex2, tex_output);
-				cmdList->SetTexture(Renderer_BindingsUav::tex,  tex_output_2);
-				cmdList->Dispatch(tex_output_2);
-			}
-		}
-
-		// Tonemapping + auto-exposure (output_c reads from tex_output_2, writes to tex_output)
-		Pass_Output(cmdList, tex_output_2, tex_output);
-
-		// Dithering
-		Pass_Compute(cmdList, "dithering",   Renderer_Shader::dithering,    tex_output, tex_output, nullptr);
-
-		// Film grain
-		Pass_Compute(cmdList, "film_grain",  Renderer_Shader::film_grain_comp,   tex_output, tex_output, nullptr);
-
-		// Selection outline (optional)
-		{
-			ImageResource* tex_outline = GetRenderTarget(Renderer_RenderTarget::outline);
-			if (tex_outline)
-			{
-				PipelineState pso;
-				pso.name = "outline_composite";
-				pso.shaders[static_cast<uint32_t>(StageType::Compute)] = ShaderManager::GetShader(Renderer_Shader::outline);
-				cmdList->SetPipelineState(pso);
-
-				cmdList->SetTexture(Renderer_BindingsSrv::tex, tex_outline);
-				cmdList->SetTexture(Renderer_BindingsUav::tex, tex_output);
-				cmdList->Dispatch(tex_output);
-			}
-		}
-
-		// Debug visualisation (no-op in release)
-		{
-			PipelineState pso;
-			pso.name = "dof";
-			pso.shaders[static_cast<uint32_t>(StageType::Compute)] = ShaderManager::GetShader(Renderer_Shader::depth_of_field);
-			cmdList->SetPipelineState(pso);
-
-			cmdList->SetTexture(Renderer_BindingsSrv::tex,              tex_output);
-			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_depth,    GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
-			cmdList->SetTexture(Renderer_BindingsUav::tex,              tex_output_2);
-			cmdList->Dispatch(tex_output_2);
-
-			// Blit result back to primary output
-			Pass_Blit(cmdList, tex_output_2, tex_output);
 		}
 	}
 

@@ -29,6 +29,7 @@
  * -------------------------------------------------------
  */
 #pragma once
+#include "exposure.h"
 #include "renderer_buffers.h"
 #include "renderer_features.h"
 #include "renderer_quality.h"
@@ -464,16 +465,6 @@ namespace SceneryEditorX
 		 */
 		static void SetLightBillboards(std::vector<Renderer_LightBillboardBatch> batches);
 
-		/**
-		 * @brief How much daylight the placeholder sun and sky give while the scene has no directional light of its own
-		 * (1 = full day, 0 = night). Light composition and the forward transparent pass both use it.
-		 */
-		static void SetFallbackDaylight(float daylight);
-		static float GetFallbackDaylight();
-
-		/* @brief Direction toward the placeholder sun (world frame: +X east, +Y up, +Z south), from the environment. */
-		static void SetFallbackSunDirection(const xMath::Vec3 &towardSun);
-
 		/* @brief The XP12 emulation passes that are switched on (RENDERER panel, --no-<feature>). */
 		static const RendererFeatures &GetFeatures();
 		static void SetFeatures(const RendererFeatures &features);
@@ -506,15 +497,40 @@ namespace SceneryEditorX
 			xMath::Vec4 planet = xMath::Vec4(15000.0f, 6360000.0f, 6460000.0f, 0.1f);
 			float hazeTopM = 1500.0f;
 			float hazeBandM = 1000.0f;
-			float exposureScale = 1.0f;					// What the tone mapper multiplies the pre-exposed frame by
-			float preExposure = 1.0f;					// What lighting and emissive writes are multiplied by (Phase 5)
-			float ev100 = 0.0f;
-			float ev100Bias = 0.0f;
-			xMath::Vec4 exposureFusion = xMath::Vec4(0.0f, 0.2f, 1.0f, 4.0f);	// shadows, sigma, dis_near, dis_far
+			ExposureSettings exposure;					// photometric/*, exposure/*, autoexposure/* (renderer/exposure.h)
+
+			// exposure_fusion/shadows (EV), sigma, dis_near, dis_far (km); shadows 1 EV is an ASSUMPTION
+			xMath::Vec4 exposureFusion = xMath::Vec4(1.0f, 0.2f, 1.0f, 4.0f);
+			float fusionHighlights = 1.0f;				// EV the highlights exposure is lowered by (ASSUMPTION)
+			float fusionStrength = 1.0f;				// 0 off .. 1 the full fused gain
+			int fusionMaxMip = 5;						// exposure_fusion/max_mip: pyramid levels below the first
+			float bloomIntensity = 0.04f;				// Share of the bloom chain in the frame (ASSUMPTION, plan TASK-042)
+			float rcasSharpness = 1.0f;					// _rcas_ratio: FSR 1 RCAS scale, 1 the sharpest
+
+			// color_management/sdr/*: ASC-CDL after the tone curve, identity by default
+			xMath::Vec4 colorSlope = xMath::Vec4(1.0f, 1.0f, 1.0f, 1.0f);		// rgb slope, w saturation
+			xMath::Vec4 colorOffset = xMath::Vec4(0.0f, 0.0f, 0.0f, 1.0f);	// rgb offset, w output gain
+			xMath::Vec4 colorPower = xMath::Vec4(1.0f, 1.0f, 1.0f, 1.0f);		// rgb power, w output gamma
 		};
 		static const EnvironmentConstants &GetEnvironmentConstants();
 		static EnvironmentConstants &EditEnvironmentConstants();
 		static bool LoadEnvironmentConstants(const std::filesystem::path &path, std::string *error = nullptr);
+
+		/* @brief The exposure the GPU last reported (exposure_adapt.slang), read back a frame or two late. */
+		struct ExposureReadout
+		{
+			float ev100 = 0.0f;				// What the frame is exposed at (adapted, bias applied)
+			float meteredEv100 = 0.0f;		// Metered, clamped to the range
+			float targetEv100 = 0.0f;
+			float rawEv100 = 0.0f;			// Metered before the clamp
+			float meanLog2Nits = 0.0f;
+			float preExposure = 1.0f;		// What this frame's lighting writes were multiplied by
+			bool valid = false;
+		};
+		static ExposureReadout GetExposureReadout();
+
+		/* @brief Jump straight to the metered exposure on the next frame instead of adapting (scenario loads, teleports). */
+		static void ResetExposure();
 
 		/* @brief Draws the editor grid (on by default; parity captures hide it, X-Plane has none). */
 		static void SetGridVisible(bool visible);
@@ -760,27 +776,32 @@ namespace SceneryEditorX
 		static void Pass_TransparencyReflectionRefraction(CommandList *cmdList);
 
 #pragma endregion
-#pragma region Upscale / Anti-aliasing
-
-		static void Pass_AA_Upscale(CommandList *cmdList);
-
-#pragma endregion
-#pragma region Post-processing
-
-		static void Pass_PostProcess(CommandList *cmdList);
-
-#pragma endregion
 #pragma region Output / utility
-		static void Pass_Output(CommandList *cmdList, ImageResource *in, ImageResource *out);
 		static void Pass_Blit(CommandList *cmdList, ImageResource *in, ImageResource *out);
 		static void Pass_Downscale(CommandList *cmdList, ImageResource *img, Renderer_DownsampleFilter filter);
 		static void Pass_Grid(CommandList *cmdList, ImageResource *out);
 		static void Pass_Text(CommandList *cmdList, ImageResource *out);
 		static void Pass_ReferenceOverlay(CommandList *cmdList, ImageResource *out);
 		/* @brief Output transform: the pre-exposed HDR frame to display-referred linear values (tonemap.slang). */
-		static void Pass_Tonemap(CommandList *cmdList, ImageResource *in, ImageResource *out);
+		static void Pass_Tonemap(CommandList *cmdList, ImageResource *in, ImageResource *out, uint32_t bloomMips = 0, bool fusion = false);
 		/* @brief The DEBUG VIEW over the output (debug_view.slang). */
 		static void Pass_DebugView(CommandList *cmdList, ImageResource *out);
+
+		// The output chain of plan Phase 5 (renderer_post.cpp)
+		/* @brief NaN / Inf / negative values out of frame_render (fix_hdr.slang). */
+		static void Pass_FixHdr(CommandList *cmdList, ImageResource *frame);
+		/* @brief Histogram metering and adaptation (luminance_histogram.slang, exposure_adapt.slang). */
+		static void Pass_Exposure(CommandList *cmdList, ImageResource *frame);
+		/* @brief The bloom mip chain from frame_render; returns the number of mips summed in mip 0 (0: none). */
+		static uint32_t Pass_Bloom(CommandList *cmdList, ImageResource *frame);
+		/* @brief Exposure fusion down to exposure_fusion_guide (exposure_fusion.slang). */
+		static void Pass_ExposureFusion(CommandList *cmdList, ImageResource *frame);
+		/* @brief The output chain: tone map, FXAA, FSR 1 (EASU + RCAS) into out. */
+		static void Pass_OutputChain(CommandList *cmdList, ImageResource *frame, ImageResource *out);
+		/* @brief Reads the exposure the GPU last wrote, for the next frame's pre-exposure. */
+		static void UpdateExposureReadback();
+		/* @brief Records the pre-exposure this frame's lighting is written with (GetExposureReadout().preExposure). */
+		static void SetExposurePreExposure(float preExposure);
 
 		/**
 		 * @brief Draws alpha-blended materials (MaterialProperty::BlendMode) back to front over the composed frame.

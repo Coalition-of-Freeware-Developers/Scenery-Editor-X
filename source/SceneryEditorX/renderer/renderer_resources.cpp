@@ -246,6 +246,23 @@ namespace SceneryEditorX
 			s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::reflections)]        = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, widthRender, heightRender, 1, 1, VK_FORMAT_R16G16B16A16_SFLOAT, UnorderedAccessView | ShaderViews | BlitClear, "reflections"});
 			SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::reflections)] != nullptr, "Failed to create reflections render target");
 
+			// exposure fusion (exposure_fusion.slang): half the render resolution, pyramids of up to 6 levels
+			// (exposure_fusion/max_mip 5)
+			{
+				const uint32_t fusionWidth  = xMath::Max(widthRender / 2, 1u);
+				const uint32_t fusionHeight = xMath::Max(heightRender / 2, 1u);
+				const uint32_t fusionMips   = xMath::Min(6u, compute_mip_count(fusionWidth, fusionHeight, 8));
+				const auto fusion_target = [&](const Renderer_RenderTarget target, const uint32_t mips, const VkFormat format, const char *name)
+				{
+					s_RenderTargets[static_cast<uint8_t>(target)] = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, fusionWidth, fusionHeight, 1, mips, format, UnorderedAccessView | ShaderViews | PerMipViews | BlitClear, name});
+					SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(target)] != nullptr, "Failed to create an exposure fusion render target");
+				};
+				fusion_target(Renderer_RenderTarget::exposure_fusion_exposures, fusionMips, VK_FORMAT_R16G16B16A16_SFLOAT, "exposure_fusion_exposures");
+				fusion_target(Renderer_RenderTarget::exposure_fusion_weights, fusionMips, VK_FORMAT_R16G16B16A16_SFLOAT, "exposure_fusion_weights");
+				fusion_target(Renderer_RenderTarget::exposure_fusion_result, fusionMips, VK_FORMAT_R16G16B16A16_SFLOAT, "exposure_fusion_result");
+				fusion_target(Renderer_RenderTarget::exposure_fusion_guide, 1, VK_FORMAT_R16_SFLOAT, "exposure_fusion_guide");
+			}
+
 			// optional render targets (ssao, rt reflections, restir)
 			UpdateOptionalRenderTargets();
 			
@@ -597,6 +614,10 @@ namespace SceneryEditorX
 			{
 				mipBiasNew = log2f(GetRendererResolution().x / GetOutputResolution().x) - 1.0f;
 			}
+			// FSR 1 asks for its preset's texture LOD bias (plan TASK-044; applied when the samplers are made)
+			const FsrQuality fsr = GetFsrQuality(GetQualityPreset().fsr);
+			if (GetFeatures().fsr1 && fsr.enabled)
+				mipBiasNew += fsr.textureLodBias;
 
 			static float mipBias = std::numeric_limits<float>::max();
 			if (mipBiasNew != mipBias)
@@ -799,6 +820,15 @@ namespace SceneryEditorX
 
 		At(s_Buffers, Renderer_Buffer::ConstantFrame)      = CreateRef<Buffer>(sizeof(ConstantBuffer_Frame), elementCount, nullptr, true, "frame");
 		At(s_Buffers, Renderer_Buffer::ConstantEnvironment) = CreateRef<Buffer>(sizeof(ConstantBuffer_Environment), elementCount, nullptr, true, "environment");
+
+		// exposure (plan TASK-038): the histogram stays on the GPU (zeroed here, then by exposure_adapt.slang after each
+		// read); the state is host visible so the CPU can read the EV back for the next frame's pre-exposure
+		{
+			const std::array<uint32_t, EXPOSURE_HISTOGRAM_BINS> bins{};
+			At(s_Buffers, Renderer_Buffer::ExposureHistogram) = CreateRef<Buffer>(sizeof(uint32_t), EXPOSURE_HISTOGRAM_BINS, bins.data(), false, "exposure_histogram");
+			const std::array<float, EXPOSURE_STATE_FLOATS> state{};
+			At(s_Buffers, Renderer_Buffer::ExposureState) = CreateRef<Buffer>(sizeof(float), EXPOSURE_STATE_FLOATS, state.data(), true, "exposure_state");
+		}
 		At(s_Buffers, Renderer_Buffer::MaterialParameters) = CreateRef<Buffer>(static_cast<uint32_t>(sizeof(ShaderBuffer_Material)), MAX_MATERIAL_TEXTURES, nullptr, true, "materials");
 		At(s_Buffers, Renderer_Buffer::LightParameters)    = CreateRef<Buffer>(static_cast<uint32_t>(sizeof(ShaderBuffer_Light)), MAX_ARRAY_SIZE, nullptr, true, "lights");
 		At(s_Buffers, Renderer_Buffer::DummyInstance)      = CreateRef<Buffer>(sizeof(Instance), static_cast<uint32_t>(identity.size()), &identity, true, "dummy_instance_buffer");

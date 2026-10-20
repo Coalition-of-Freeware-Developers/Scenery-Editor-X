@@ -455,7 +455,9 @@ struct Light
         atlas_scale = light.atlas_scales;
         atlas_texel_size = light.atlas_texel_sizes;
 
-        radiance = color * intensity * attenuation * n_dot_l;
+        // intensity is radiometric (W/sr, or W/m^2 for a directional light; Light::GetIntensityWatt): x 683 lm/W back to
+        // candela / lux, then pre-exposed like every lighting write (plan TASK-039)
+        radiance = color * intensity * attenuation * n_dot_l * 683.0f * get_pre_exposure();
     }
 };
 

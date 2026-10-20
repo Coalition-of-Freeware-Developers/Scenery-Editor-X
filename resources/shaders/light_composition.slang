@@ -7,16 +7,21 @@
  * -------------------------------------------------------
  * light_composition.slang
  * -------------------------------------------------------
- * Combines deferred diffuse/specular lighting into frame output.
+ * Composes the deferred frame in pre-exposed radiance (nits x get_pre_exposure()): the scene's own lights
+ * (light.slang), the environment's sun, moon, sky and ground (environment_lighting.slang), emissive (LIT) light,
+ * and the sky where nothing was drawn.
+ *   tex       light_diffuse   (scene lights, pre-exposed irradiance x BRDF, without the albedo)
+ *   tex2      light_specular  (scene lights, pre-exposed)
+ *   tex3      lut_brdf_specular
+ *   pass_get_f4_value(): x 1 when the environment's sun and moon light the scene (no scene directional light)
  * -------------------------------------------------------
  */
 import common;
 import resources;
 import constants;
 import position;
-import fallback_lighting;
-
-// The placeholder sky and sun (fallback_lighting.slang) light the scene while it has no directional light of its own.
+import xp_material;
+import environment_lighting;
 
 [shader("compute")]
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
@@ -29,6 +34,7 @@ void main_comp(uint3 thread_id : SV_DispatchThreadID)
 
 	const float2 uv   = (thread_id.xy + 0.5f) / resolution_out;
 	const float depth = tex_depth[thread_id.xy].r;
+	const float pre_exposure = get_pre_exposure();
 
 	// reverse-z: the depth buffer is cleared to 0, so 0 means nothing was drawn here
 	if (depth <= 0.0f)
@@ -38,7 +44,8 @@ void main_comp(uint3 thread_id : SV_DispatchThreadID)
 			return;
 
 		float3 view_direction = normalize(get_position(0.5f, uv) - get_camera_position());
-		tex_uav[thread_id.xy] = validate_output(float4(fallback_sky_color(view_direction), 1.0f));
+		float3 sky = xp_sky_radiance(view_direction) + xp_sun_moon_discs(view_direction);
+		tex_uav[thread_id.xy] = validate_output(float4(sky * pre_exposure, 1.0f));
 		return;
 	}
 
@@ -49,20 +56,24 @@ void main_comp(uint3 thread_id : SV_DispatchThreadID)
 	float4 light_diffuse  = tex[thread_id.xy];
 	float4 light_specular = tex2[thread_id.xy];
 
-	float metallic  = saturate(gbuffer_mat.b);
-	float occlusion = saturate(gbuffer_mat.a);
+	XpLitSurface surface;
+	surface.albedo    = gbuffer_albedo.rgb;
+	surface.normal    = normalize(gbuffer_normal.xyz);
+	surface.roughness = saturate(gbuffer_mat.g);
+	surface.v         = saturate(gbuffer_mat.b);
+	surface.occlusion = saturate(gbuffer_mat.a);
+	const float3 position = get_position(depth, uv);
+	surface.view = normalize(get_camera_position() - position);
+	const float n_dot_v = saturate(dot(surface.normal, surface.view));
+	surface.env_brdf = tex3.SampleLevel(samplers[sampler_bilinear_clamp], float2(n_dot_v, surface.roughness), 0.0f).rg;
+	const float3 f0 = xp_f0(surface.albedo, surface.v);
 
-	float3 diffuse_term  = gbuffer_albedo.rgb * light_diffuse.rgb * (1.0f - metallic);
-	float3 specular_term = light_specular.rgb;
-	float3 result        = diffuse_term + specular_term;
+	// The scene's own lights (already pre-exposed)
+	float3 result = surface.albedo * light_diffuse.rgb * (1.0f - surface.v) + light_specular.rgb;
 
-	if (fallback_lighting_active())
-	{
-		float3 n       = normalize(gbuffer_normal.xyz);
-		float n_dot_l  = saturate(dot(n, fallback_sun_direction()));
-		float3 ambient = fallback_ambient(n);
-		result += gbuffer_albedo.rgb * (1.0f - metallic) * (fallback_sun_color() * n_dot_l * INV_PI + ambient) * occlusion;
-	}
+	// The environment
+	const bool sun_and_moon = pass_get_f4_value().x > 0.5f;
+	result += xp_environment_lighting(surface, f0, sun_and_moon) * pre_exposure;
 
 	// Emissive luminance (X-Plane LIT textures), already pre-exposed: lights are never dimmed by daylight, exposure
 	// alone hides them in the day

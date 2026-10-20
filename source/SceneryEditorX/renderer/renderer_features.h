@@ -62,7 +62,7 @@ namespace SceneryEditorX
 		bool autoExposure = true;		// Histogram metering (Phase 5)
 		bool exposureFusion = true;		// Local tone mapping (Phase 5)
 		bool bloom = true;				// (Phase 5)
-		bool tonemap = false;			// AgX output transform; off: the frame is shown as rendered (on once lighting is photometric, Phase 5)
+		bool tonemap = true;			// AgX output transform; off: the frame is shown as rendered (pre-exposed)
 		bool fxaa = true;				// (Phase 5)
 		bool fsr1 = false;				// FSR 1 upscaling (Phase 5; off in X-Plane's default preset)
 		bool screenSpaceShadows = false;	// Bend screen-space shadows: X-Plane 12.4 has none (Phase 7)
@@ -91,7 +91,7 @@ namespace SceneryEditorX
 	const RendererFeatureInfo *FindRendererFeature(std::string_view name);
 
 	/* @brief The latest plan phase whose passes are in this build: features of later phases have no effect yet. */
-	inline constexpr int RENDERER_IMPLEMENTED_PHASE = 4;
+	inline constexpr int RENDERER_IMPLEMENTED_PHASE = 5;
 
 	/**
 	 * @brief What the RENDERER panel's DEBUG VIEW shows instead of the frame (plan TASK-026); debug_view.slang.

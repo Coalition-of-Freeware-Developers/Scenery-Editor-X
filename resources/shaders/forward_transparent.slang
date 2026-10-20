@@ -13,7 +13,9 @@
  * (depth_prepass.slang cuts the rest out), this pass draws the ones below it. Output is premultiplied:
  *   blend_mode 1 (X-Plane ATTR_blend): (diffuse + specular) * alpha
  *   blend_mode 2 (X-Plane BLEND_GLASS): diffuse * alpha + specular, so reflections stay on clear glass
- * Lighting is the placeholder sun and sky (fallback_lighting.slang) the deferred composition uses.
+ * Lighting is the environment's (environment_lighting.slang), as the deferred composition's, pre-exposed.
+ *   tex3  lut_brdf_specular
+ *   pass_get_f4_value(): x 1 when the environment's sun and moon light the scene (no scene directional light)
  * -------------------------------------------------------
  */
 import constants;
@@ -23,7 +25,7 @@ import resources;
 import color;
 import luminance;
 import position;
-import fallback_lighting;
+import environment_lighting;
 import xp_material;
 
 [shader("vertex")]
@@ -82,28 +84,24 @@ float4 main_frag(gbuffer_vertex vertex, bool is_front_face: SV_IsFrontFace) : SV
     float3 v = normalize(get_camera_position() - position_world);
     float n_dot_v = saturate(dot(normal, v));
 
-    // diffuse: placeholder sun + ambient, emission (LIT) on top
-    float3 diffuse = 0.0f;
-    float3 specular = 0.0f;
-    if (fallback_lighting_active())
-    {
-        float3 l = fallback_sun_direction();
-        float n_dot_l = saturate(dot(normal, l));
-        diffuse = albedo.rgb * (1.0f - metalness) * (fallback_sun_color() * n_dot_l * INV_PI + fallback_ambient(normal));
+    // The environment's light (the scene's own lights only reach the deferred surfaces), split so glass keeps its
+    // reflections: diffuse fades with alpha, specular doesn't
+    XpLitSurface surface;
+    surface.albedo = albedo.rgb;
+    surface.normal = normal;
+    surface.view = v;
+    surface.roughness = roughness;
+    surface.v = metalness;
+    surface.occlusion = 1.0f;
+    surface.env_brdf = tex3.SampleLevel(samplers[sampler_bilinear_clamp], float2(n_dot_v, roughness), 0.0f).rg;
+    const float3 f0 = xp_f0(albedo.rgb, metalness);
+    const bool sun_and_moon = pass_get_f4_value().x > 0.5f;
+    const float pre_exposure = get_pre_exposure();
 
-        // sun highlight (normalized Blinn-Phong) and sky reflection, both weighted by Schlick's fresnel
-        float3 f0 = xp_f0(albedo.rgb, metalness);
-        float3 fresnel = f0 + (1.0f - f0) * pow(1.0f - n_dot_v, 5.0f);
-        float3 h = normalize(l + v);
-        float shininess = 2.0f / max(roughness * roughness * roughness * roughness, 1e-4f) - 2.0f;
-        float highlight = pow(saturate(dot(normal, h)), shininess) * (shininess + 8.0f) / (8.0f * PI);
-        specular = fresnel * fallback_sun_color() * highlight * n_dot_l;
-        specular += fresnel * fallback_sky_color(reflect(-v, normal)) * (1.0f - roughness);
-    }
-    else
-    {
-        diffuse = albedo.rgb * 0.05f; // the scene's own lights only reach the deferred surfaces
-    }
+    float3 diffuse, specular;
+    xp_environment_lighting_split(surface, f0, sun_and_moon, diffuse, specular);
+    diffuse *= pre_exposure;
+    specular *= pre_exposure;
 
     // emissive luminance (LIT), pre-exposed like the deferred surfaces' gbuffer_emissive
     if (material.has_texture_emissive())

@@ -339,6 +339,72 @@ namespace SceneryEditorX
 				EditorUI::EndPropertyGrid();
 			}
 
+			if (EditorUI::SectionHeader("EXPOSURE", false) && EditorUI::BeginPropertyGrid("##RendererExposure"))
+			{
+				// X-Plane 12's camera: histogram-metered EV100 (or a fixed one), the bias table, then the output chain's
+				// art controls. Edits apply from the next frame; resources/environment/xp12_environment.json has the defaults.
+				Renderer::EnvironmentConstants &constants = Renderer::EditEnvironmentConstants();
+				ExposureSettings &exposure = constants.exposure;
+
+				EditorUI::PropertyLabel("Mode");
+				int mode = exposure.automatic ? 0 : 1;
+				static constexpr const char *modes[] = { "Auto (metered)", "Manual" };
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				if (ImGui::Combo("##ExposureMode", &mode, modes, 2))
+				{
+					exposure.automatic = mode == 0;
+					Renderer::ResetExposure();
+				}
+				EditorUI::PropertyLabel("Manual EV100");
+				ImGui::BeginDisabled(exposure.automatic);
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##ManualEv", &exposure.manualEv100, -2.0f, 18.0f, "%.2f");
+				ImGui::EndDisabled();
+				EditorUI::PropertyLabel("Compensation");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##Compensation", &exposure.compensation, -4.0f, 4.0f, "%+.2f EV");
+				EditorUI::ItemTooltip("On top of the bias table; positive brightens");
+
+				const Renderer::ExposureReadout readout = Renderer::GetExposureReadout();
+				if (readout.valid)
+				{
+					ValueText("Exposed at", "EV100 %.2f", readout.ev100);
+					ValueText("Metered", "EV100 %.2f (%.2f before the %.0f-%.0f clamp)", readout.meteredEv100, readout.rawEv100, exposure.evMin, exposure.evMax);
+					ValueText("Target", "EV100 %.2f (bias %+.2f)", readout.targetEv100, GetExposureBias(exposure, readout.meteredEv100));
+					ValueText("Mean luminance", "%.3g nits", std::exp2(readout.meanLog2Nits));
+				}
+				else
+				{
+					ValueText("Exposed at", "not metered yet");
+				}
+				EditorUI::PropertyLabel("Adaptation");
+				if (ImGui::Button("Reset"))
+					Renderer::ResetExposure();
+				EditorUI::ItemTooltip("Jump straight to the metered exposure");
+
+				EditorUI::PropertyLabel("Bloom");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##Bloom", &constants.bloomIntensity, 0.0f, 0.25f, "%.3f");
+				EditorUI::PropertyLabel("Fusion shadows");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##FusionShadows", &constants.exposureFusion.x, 0.0f, 4.0f, "%.2f EV");
+				EditorUI::ItemTooltip("Exposure fusion: how far the shadows exposure is lifted (exposure_fusion/shadows)");
+				EditorUI::PropertyLabel("Fusion highlights");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##FusionHighlights", &constants.fusionHighlights, 0.0f, 4.0f, "%.2f EV");
+				EditorUI::PropertyLabel("Fusion strength");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##FusionStrength", &constants.fusionStrength, 0.0f, 1.0f, "%.2f");
+				EditorUI::PropertyLabel("Saturation");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##Saturation", &constants.colorSlope.w, 0.0f, 2.0f, "%.2f");
+				EditorUI::ItemTooltip("ASC-CDL saturation after the tone curve (color_management/sdr)");
+				EditorUI::PropertyLabel("FSR sharpness");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##RcasSharpness", &constants.rcasSharpness, 0.0f, 1.0f, "%.2f");
+				EditorUI::EndPropertyGrid();
+			}
+
 			if (EditorUI::SectionHeader("QUALITY", false) && EditorUI::BeginPropertyGrid("##RendererQuality"))
 			{
 				// X-Plane 12's graphics settings levels (Resources/settings.txt); passes read them as they arrive

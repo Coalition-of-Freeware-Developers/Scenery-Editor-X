@@ -290,9 +290,9 @@ namespace SceneryEditorX
 	struct ConstantBuffer_Environment
 	{
 		xMath::Vec4 sun_direction;			// xyz toward the sun, w angular radius (rad)
-		xMath::Vec4 sun_illuminance;		// rgb illuminance outside the atmosphere (lux), w apparent elevation (deg)
+		xMath::Vec4 sun_illuminance;		// rgb illuminance at the observer, after the atmosphere (lux), w apparent elevation (deg)
 		xMath::Vec4 moon_direction;			// xyz toward the moon, w illuminated fraction
-		xMath::Vec4 moon_illuminance;		// rgb (lux, full moon x fraction), w phase angle (rad)
+		xMath::Vec4 moon_illuminance;		// rgb at the observer (lux, full moon x fraction x atmosphere), w phase angle (rad)
 		xMath::Vec4 sky_multipliers;		// ambient, direct, tone, shadow level (sky-condition blend)
 		xMath::Vec4 sky_multipliers2;		// rayleigh, mie, shadow offset, daylight (0 night .. 1 day)
 		xMath::Vec4 rayleigh;				// rgb scattering (1/m), w scale height (m)
@@ -304,18 +304,38 @@ namespace SceneryEditorX
 		xMath::Vec4 snow_projection_x;		// world xz -> snow coverage map u (Phase 12)
 		xMath::Vec4 snow_projection_z;		// world xz -> snow coverage map v
 		xMath::Vec4 season;					// ratio toward the next season, season index (0 spr .. 3 win), day of year, latitude
-		xMath::Vec4 exposure;				// exposure scale, pre-exposure, EV100, EV100 bias
+		xMath::Vec4 exposure;				// exposure scale, pre-exposure, metered EV100, applied EV
 		xMath::Vec4 exposure_fusion;		// shadows, sigma, near distance, far distance
 		xMath::Vec4 camera;					// camera altitude MSL (m), ground elevation (m), night factor, rain percent
 		xMath::Vec4 clouds[3];				// per layer: base MSL (m), top MSL (m), coverage, type
 		xMath::Vec4 wind;					// direction from (deg true), speed (m/s), wave amplitude (m), wave direction (deg true)
 		xMath::Vec4 debug;					// x debug view (Renderer_DebugView), y feature bits, z temperature (C), w unused
-		xMath::Vec4 padding[9];				// to 512 bytes
+
+		// The sky (environment/sky_light.h): radiance without the Mie lobe and the Mie single scattering with its
+		// phase factored out (nits), straight up, at the horizon toward / 90 degrees off / away from the sun's azimuth,
+		// then 30 degrees up at the same azimuths; w unused
+		xMath::Vec4 sky_radiance[7];
+		xMath::Vec4 sky_mie[7];
+		xMath::Vec4 sky_irradiance;			// rgb sky irradiance on a level surface (lux), w ground albedo
+
+		// Exposure (exposure_adapt.slang, renderer/exposure.h)
+		xMath::Vec4 exposure_meter;			// EV100 min, EV100 max, meter constant K, centre-weight radius (screen heights)
+		xMath::Vec4 exposure_adapt;			// speed up, speed down (EV/s), lower trim, upper trim (histogram fractions)
+		xMath::Vec4 exposure_bias_ev;		// EV100 of the first four bias table points
+		xMath::Vec4 exposure_bias;			// their bias (EV, positive brightens)
+		xMath::Vec4 exposure_bias_last;		// fifth point: EV100, bias; z exposure compensation (EV), w unused
+
+		// The SDR grade after the tone curve (color_management/sdr/*, ASC-CDL; identity by default) and the post chain
+		xMath::Vec4 color_slope;			// rgb slope, w saturation
+		xMath::Vec4 color_offset;			// rgb offset, w output gain
+		xMath::Vec4 color_power;			// rgb power, w output gamma (1: none)
+		xMath::Vec4 post;					// bloom intensity, exposure fusion highlights (EV), fusion strength, unused
+		xMath::Vec4 padding[1];				// to 768 bytes
 	};
 
 	// sizes the shaders see (resources.slang: cbuffer std140, structured buffers std430)
 	static_assert(sizeof(ConstantBuffer_Frame) == 1024, "ConstantBuffer_Frame must match FrameBufferData in resources.slang");
-	static_assert(sizeof(ConstantBuffer_Environment) == 512, "ConstantBuffer_Environment must match EnvironmentData in resources.slang");
+	static_assert(sizeof(ConstantBuffer_Environment) == 768, "ConstantBuffer_Environment must match EnvironmentData in resources.slang");
 	static_assert(sizeof(ShaderBuffer_Material) == 128, "ShaderBuffer_Material must match MaterialParameters in resources.slang");
 	static_assert(sizeof(ShaderBuffer_Light) == 608, "ShaderBuffer_Light must match LightParameters in resources.slang");
 	static_assert(sizeof(ShaderBuffer_DrawData) == 160, "ShaderBuffer_DrawData must match DrawData in resources.slang");
