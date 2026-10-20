@@ -405,6 +405,35 @@ namespace SceneryEditorX
 				EditorUI::EndPropertyGrid();
 			}
 
+			if (EditorUI::SectionHeader("ATMOSPHERE", false) && EditorUI::BeginPropertyGrid("##RendererAtmosphere"))
+			{
+				// The sky, haze and probes of plan Phase 6 (the visibility itself is in the ENVIRONMENT panel)
+				Renderer::EnvironmentConstants &constants = Renderer::EditEnvironmentConstants();
+				EditorUI::PropertyLabel("Haze layer top");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##HazeTop", &constants.hazeTopM, 100.0f, 5000.0f, "%.0f m");
+				EditorUI::ItemTooltip("The surface haze layer's top above the ground (at least; very clear air mixes higher)");
+				EditorUI::PropertyLabel("Haze fade band");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##HazeBand", &constants.hazeBandM, 10.0f, 5000.0f, "%.0f m");
+				EditorUI::PropertyLabel("Aerial range");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##AerialRange", &constants.aerialRangeM, 16000.0f, 256000.0f, "%.0f m");
+				EditorUI::ItemTooltip("How far the aerial perspective volume reaches");
+				EditorUI::PropertyLabel("Airglow");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##Airglow", &constants.airglowNits, 0.0f, 0.01f, "%.5f nits", ImGuiSliderFlags_Logarithmic);
+				EditorUI::ItemTooltip("The night sky's floor: airglow and unresolved starlight");
+				EditorUI::PropertyLabel("Stars");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##Stars", &constants.starBrightness, 0.0f, 16.0f, "%.2f", ImGuiSliderFlags_Logarithmic);
+				EditorUI::PropertyLabel("Probe LOD bias");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##ProbeBias", &constants.probeSpecularBias, -2.0f, 2.0f, "%.2f");
+				EditorUI::ItemTooltip("Reflections' blur: added to roughness x 5 when the probes are sampled");
+				EditorUI::EndPropertyGrid();
+			}
+
 			if (EditorUI::SectionHeader("QUALITY", false) && EditorUI::BeginPropertyGrid("##RendererQuality"))
 			{
 				// X-Plane 12's graphics settings levels (Resources/settings.txt); passes read them as they arrive

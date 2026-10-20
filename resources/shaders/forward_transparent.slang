@@ -99,7 +99,7 @@ float4 main_frag(gbuffer_vertex vertex, bool is_front_face: SV_IsFrontFace) : SV
     const float pre_exposure = get_pre_exposure();
 
     float3 diffuse, specular;
-    xp_environment_lighting_split(surface, f0, sun_and_moon, diffuse, specular);
+    xp_environment_lighting_split(surface, f0, sun_and_moon, position_world, diffuse, specular);
     diffuse *= pre_exposure;
     specular *= pre_exposure;
 
@@ -109,5 +109,8 @@ float4 main_frag(gbuffer_vertex vertex, bool is_front_face: SV_IsFrontFace) : SV
 
     float alpha = saturate(albedo.a);
     float3 color = glass ? diffuse * alpha + specular : (diffuse + specular) * alpha;
+
+    // The air between: premultiplied, so the in-scattering counts for the covered part (the frame behind has the rest)
+    color = xp_apply_aerial_perspective(color, screen_uv, length(position_world - get_camera_position()), alpha);
     return validate_output(float4(color, alpha));
 }

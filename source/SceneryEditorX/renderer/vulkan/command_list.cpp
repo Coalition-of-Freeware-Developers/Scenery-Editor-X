@@ -1716,6 +1716,24 @@ namespace SceneryEditorX
 		vkCmdSetCullMode(m_CmdBuffer, m_CullMode);
 	}
 
+	bool CommandList::UsesTexture(const uint32_t slot, const bool uav) const
+	{
+		if (!m_DescriptorLayout_Current)
+			return false;
+		const auto matches = [&](const uint32_t candidate)
+		{
+			if (!m_DescriptorLayout_Current->FindBinding(candidate))
+				return false;
+			for (const Descriptor &descriptor : m_DescriptorLayout_Current->GetDescriptors())
+			{
+				if (descriptor.GetSlot() == candidate)
+					return uav ? descriptor.GetType() == DescriptorType::TextureStorage : descriptor.GetType() == DescriptorType::Image;
+			}
+			return false;
+		};
+		return matches(slot) || matches(slot + (uav ? SHADER_REGISTER_SHIFT_U : SHADER_REGISTER_SHIFT_T));
+	}
+
 	void CommandList::SetTexture(const uint32_t slot, ImageResource* img, const uint32_t mipIndex /*= all_mips*/, uint32_t mipRange /*= 0*/, const bool uav /*= false*/)
 	{
 		if (m_State != CommandState::Recording)

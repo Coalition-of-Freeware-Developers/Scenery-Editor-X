@@ -507,6 +507,12 @@ namespace SceneryEditorX
 			float bloomIntensity = 0.04f;				// Share of the bloom chain in the frame (ASSUMPTION, plan TASK-042)
 			float rcasSharpness = 1.0f;					// _rcas_ratio: FSR 1 RCAS scale, 1 the sharpest
 
+			// The atmosphere (plan Phase 6)
+			float aerialRangeM = 128000.0f;				// Aerial perspective volume depth (ASSUMPTION; X-Plane scattering/cache_*)
+			float airglowNits = 2e-4f;					// Night sky floor: airglow and starlight (ASSUMPTION)
+			float starBrightness = 1.0f;				// Procedural stars (1: magnitudes as given)
+			float probeSpecularBias = 0.0f;				// REQ-005 specular LOD bias
+
 			// color_management/sdr/*: ASC-CDL after the tone curve, identity by default
 			xMath::Vec4 colorSlope = xMath::Vec4(1.0f, 1.0f, 1.0f, 1.0f);		// rgb slope, w saturation
 			xMath::Vec4 colorOffset = xMath::Vec4(0.0f, 0.0f, 0.0f, 1.0f);	// rgb offset, w output gain
@@ -669,12 +675,6 @@ namespace SceneryEditorX
 		 */
 		static void Pass_Lut_BrdfSpecular(CommandList *cmdList);
 
-		/**
-		 * @brief Generate the atmospheric scattering lookup table.
-		 * @param cmdList Command list to record the pass into.
-		 */
-		static void Pass_Lut_AtmosphericScattering(CommandList *cmdList);
-
 #pragma endregion
 #pragma region Noise generation passes
 		/**
@@ -685,12 +685,6 @@ namespace SceneryEditorX
 
 #pragma endregion
 #pragma region Per-frame Sky & Atmosphere
-
-		/**
-		 * @brief Render the skysphere for the current frame.
-		 * @param cmdList Command list to record the pass into.
-		 */
-		static void Pass_Skysphere(CommandList *cmdList);
 
 		/**
 		 * @brief Render the cloud shadows for the current frame.
@@ -762,7 +756,6 @@ namespace SceneryEditorX
 
 		static void Pass_Light(CommandList *cmdList, const bool isTransparentPass);
 		static void Pass_Light_Composition(CommandList *cmdList, const bool isTransparentPass);
-		static void Pass_Light_ImageBased(CommandList *cmdList);
 		static void Pass_Light_Reflections(CommandList *cmdList);
 
 #pragma endregion
@@ -802,6 +795,29 @@ namespace SceneryEditorX
 		static void UpdateExposureReadback();
 		/* @brief Records the pre-exposure this frame's lighting is written with (GetExposureReadout().preExposure). */
 		static void SetExposurePreExposure(float preExposure);
+
+		// The atmosphere and environment probes (plan Phase 6, renderer_atmosphere.cpp)
+		/* @brief Transmittance, multi-scattering and sky-ambient LUTs when the medium changed; sky-view and aerial perspective. */
+		static void Pass_Atmosphere(CommandList *cmdList);
+		/* @brief Captures and filters probe 0 when what it sees changed (env_probes.h). */
+		static void Pass_EnvProbes(CommandList *cmdList);
+		/* @brief The sky where nothing was drawn (sky.slang). */
+		static void Pass_Sky(CommandList *cmdList, ImageResource *frame);
+		/* @brief The atmosphere textures a pass reads (BindAtmosphere). */
+		enum AtmosphereTextures : uint32_t
+		{
+			ATMOSPHERE_PROBES = 1u << 0,
+			ATMOSPHERE_AERIAL = (1u << 1) | (1u << 2),
+			ATMOSPHERE_SKY_VIEW = 1u << 3,
+			ATMOSPHERE_TRANSMITTANCE = 1u << 4,
+			ATMOSPHERE_MULTISCATTER = 1u << 5,
+			ATMOSPHERE_SKY_AMBIENT = 1u << 6,
+			ATMOSPHERE_LIGHTING = ATMOSPHERE_PROBES | ATMOSPHERE_AERIAL | ATMOSPHERE_TRANSMITTANCE,	// environment_lighting.slang
+		};
+		/* @brief Binds the atmosphere LUTs and probes a pass reads (and its shaders declare). */
+		static void BindAtmosphere(CommandList *cmdList, uint32_t textures);
+		/* @brief Puts the atmosphere LUTs and probes in shader-read layout (before render passes that read them). */
+		static void ReadyAtmosphereTextures(CommandList *cmdList);
 
 		/**
 		 * @brief Draws alpha-blended materials (MaterialProperty::BlendMode) back to front over the composed frame.
@@ -1054,12 +1070,6 @@ namespace SceneryEditorX
 			bool m_ClearedRtReflections   = false;
 			bool m_ClearedRtShadows       = false;
 			bool m_ClearedRestir          = false;
-
-			// skysphere convergence tracking
-			bool     m_SkyFirstFrame           = true;
-			bool     m_SkyHadDirectionalLight  = false;
-			float    m_SkyLastCoverage         = -1.0f;
-			uint32_t m_SkyFramesRemaining      = 0;
 
 			// vrs
 			ImageResource* m_VrsLastClearedTexture = nullptr;

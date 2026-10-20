@@ -29,6 +29,7 @@
  * -------------------------------------------------------
  */
 // ReSharper disable CommentTypo
+#include "env_probes.h"
 #include "gbuffer.h"
 #include "renderer.h"
 #include "renderer_buffers.h"
@@ -331,22 +332,30 @@ namespace SceneryEditorX
 			s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::lut_brdf_specular)]           = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, 256, 256, 1, 1, VK_FORMAT_R32G32_SFLOAT, UnorderedAccessView | ShaderViews | BlitClear, "lut_brdf_specular"});
 			SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::lut_brdf_specular)] != nullptr, "Failed to create lut_brdf_specular render target");
 
-			s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::lut_atmosphere_scatter)]      = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type3D, 256, 256, 32, 1, VK_FORMAT_R16G16B16A16_SFLOAT, UnorderedAccessView | ShaderViews, "lut_atmosphere_scatter"});
-			SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::lut_atmosphere_scatter)] != nullptr, "Failed to create lut_atmosphere_scatter render target");
-
 			s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::lut_atmosphere_transmittance)] = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, 256, 64, 1, 1, VK_FORMAT_R16G16B16A16_SFLOAT, UnorderedAccessView | ShaderViews, "lut_atmosphere_transmittance"});
 			SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::lut_atmosphere_transmittance)] != nullptr, "Failed to create lut_atmosphere_transmittance render target");
 
 			s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::lut_atmosphere_multiscatter)] = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, 32,  32, 1, 1, VK_FORMAT_R16G16B16A16_SFLOAT, UnorderedAccessView | ShaderViews, "lut_atmosphere_multiscatter"});
 			SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::lut_atmosphere_multiscatter)] != nullptr, "Failed to create lut_atmosphere_multi-scatter render target");
 
+			// the atmosphere (plan TASK-045) and the environment probes (TASK-049)
+			const auto lut = [](const Renderer_RenderTarget target, const ImageType type, const uint32_t width, const uint32_t height, const uint32_t depth,
+								const uint32_t mips, const VkFormat format, const char *name)
+			{
+				const uint32_t flags = mips > 1 ? (UnorderedAccessView | ShaderViews | PerMipViews) : (UnorderedAccessView | ShaderViews);
+				s_RenderTargets[static_cast<uint8_t>(target)] = CreateRef<ImageResource>(ImgResourceSpec{type, width, height, depth, mips, format, flags, name});
+				SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(target)] != nullptr, "Failed to create an atmosphere render target");
+			};
+			lut(Renderer_RenderTarget::lut_sky_view, ImageType::Type2D, 192, 108, 1, 1, VK_FORMAT_R16G16B16A16_SFLOAT, "lut_sky_view");
+			lut(Renderer_RenderTarget::lut_sky_ambient, ImageType::Type2D, 64, 16, 1, 1, VK_FORMAT_R16G16B16A16_SFLOAT, "lut_sky_ambient");
+			lut(Renderer_RenderTarget::lut_aerial_inscatter, ImageType::Type3D, 32, 32, 32, 1, VK_FORMAT_B10G11R11_UFLOAT_PACK32, "lut_aerial_inscatter");
+			lut(Renderer_RenderTarget::lut_aerial_transmittance, ImageType::Type3D, 32, 32, 32, 1, VK_FORMAT_B10G11R11_UFLOAT_PACK32, "lut_aerial_transmittance");
+			lut(Renderer_RenderTarget::env_probes, ImageType::TypeCubeArray, ENV_PROBE_SIZE, ENV_PROBE_SIZE, ENV_PROBE_COUNT * 6, ENV_PROBE_MIPS,
+				VK_FORMAT_R16G16B16A16_SFLOAT, "env_probes");
+
 			// Misc
 			s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::blur)] = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, 4096, 4096, 1, 1, VK_FORMAT_R16G16B16A16_SFLOAT, UnorderedAccessView | ShaderViews, "blur_scratch"});
 			SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::blur)] != nullptr, "Failed to create blur render target");
-
-			constexpr uint32_t lowestDimension = 16; // lowest mip is 16x16, preserving directional detail for diffuse IBL (1x1 loses directionality)
-			s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::skysphere)] = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, 4096, 2048, 1, compute_mip_count(4096, 2048, lowestDimension), VK_FORMAT_B10G11R11_UFLOAT_PACK32, UnorderedAccessView | ShaderViews | PerMipViews | BlitClear | QueueShare, "skysphere"});
-			SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::skysphere)] != nullptr, "Failed to create skysphere render target");
 
 			// Auto-Exposure
 			s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::auto_exposure)]          = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, 1, 1, 1, 1, VK_FORMAT_R32_SFLOAT, UnorderedAccessView | ShaderViews | BlitClear, "auto_exposure_1"});

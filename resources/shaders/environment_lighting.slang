@@ -33,14 +33,23 @@
  * Shared by light_composition.slang (deferred surfaces, the sky behind them) and forward_transparent.slang (blended
  * surfaces) so both light alike. Everything here is radiance in nits: callers multiply by get_pre_exposure().
  *
- * Interim until plan Phase 6 (atmosphere LUTs, aerial perspective, probes) and Phase 7 (shadows): the sky is
- * interpolated from seven directions, ambient light is two hemispheres (sky above, sunlit ground below), and nothing
- * casts shadows yet.
+ * With the atmosphere on (plan Phase 6) the sun and moon reach each pixel through the transmittance LUT, ambient light
+ * and reflections come from the environment probes (cube_filter.slang), and aerial perspective is applied by the
+ * callers (xp_apply_aerial_perspective). With those features off it falls back to the interim CPU sky: the sun and
+ * moon at the camera, the sky interpolated from seven directions, two hemispheres of ambient light. Nothing casts
+ * shadows until Phase 7.
  */
 module environment_lighting;
 
 import resources;
 import constants;
+import atmosphere_common;
+
+// RendererFeatures bits (renderer_features.cpp table order) the lighting follows
+public static const uint FEATURE_ATMOSPHERE = 0;
+public static const uint FEATURE_AERIAL_PERSPECTIVE = 1;
+public static const uint FEATURE_ENV_PROBES = 2;
+public static const float PROBE_DIFFUSE_MIP = 6.0f;
 
 static const float3 LUMA = float3(0.2126f, 0.7152f, 0.0722f);
 static const float MOON_ANGULAR_RADIUS = 0.00452f;	// rad (mean distance)
@@ -195,30 +204,93 @@ public void xp_directional_light(XpLitSurface surface, float3 f0, float3 l, floa
     specular += d * vis * f * illuminance * n_dot_l;
 }
 
+/* @brief The sun's illuminance (lux) at a world position: through the transmittance LUT, or at the camera (CPU). */
+public float3 xp_sun_illuminance_at(float3 world)
+{
+    if (!is_feature_enabled(FEATURE_ATMOSPHERE))
+        return get_sun_illuminance();
+    const AtmosphereParameters a = get_atmosphere();
+    return get_sun_illuminance_toa() * get_transmittance_to_space(a, world_to_atmosphere(a, world), get_sun_direction());
+}
+
+public float3 xp_moon_illuminance_at(float3 world)
+{
+    if (!is_feature_enabled(FEATURE_ATMOSPHERE))
+        return get_moon_illuminance();
+    const AtmosphereParameters a = get_atmosphere();
+    return get_moon_illuminance_toa() * get_transmittance_to_space(a, world_to_atmosphere(a, world), get_moon_direction());
+}
+
+/* @brief Probe 0's prefiltered radiance (absolute nits) along r for a roughness (REQ-005: LOD roughness x 5 + bias). */
+public float3 xp_probe_specular(float3 r, float roughness)
+{
+    const float lod = clamp(roughness * 5.0f + buffer_environment.probe.w, 0.0f, 5.0f);
+    return tex_env_probes.SampleLevel(samplers[sampler_trilinear_clamp], float4(r, 0.0f), lod).rgb;
+}
+
+/* @brief Probe 0's cosine-filtered radiance (irradiance / pi, absolute) around a normal. */
+public float3 xp_probe_diffuse(float3 n)
+{
+    return tex_env_probes.SampleLevel(samplers[sampler_trilinear_clamp], float4(n, 0.0f), PROBE_DIFFUSE_MIP).rgb;
+}
+
 /**
- * @brief Everything the environment lights a surface with (nits), split into diffuse and specular: the sun and moon
- * (unless a scene directional light replaces them), the sky and ground ambient diffuse, and the sky's reflection
- * through the BRDF LUT.
+ * @brief Everything the environment lights a surface at world with (nits), split into diffuse and specular: the sun and
+ * moon (unless a scene directional light replaces them), the ambient light and the reflected sky (probes, or the
+ * interim two-hemisphere sky), through the BRDF LUT.
  */
-public void xp_environment_lighting_split(XpLitSurface surface, float3 f0, bool sun_and_moon, out float3 diffuse, out float3 specular)
+public void xp_environment_lighting_split(XpLitSurface surface, float3 f0, bool sun_and_moon, float3 world, out float3 diffuse, out float3 specular)
 {
     diffuse = 0.0f;
     specular = 0.0f;
     if (sun_and_moon)
     {
-        xp_directional_light(surface, f0, get_sun_direction(), get_sun_illuminance(), diffuse, specular);
-        xp_directional_light(surface, f0, get_moon_direction(), get_moon_illuminance(), diffuse, specular);
+        xp_directional_light(surface, f0, get_sun_direction(), xp_sun_illuminance_at(world), diffuse, specular);
+        xp_directional_light(surface, f0, get_moon_direction(), xp_moon_illuminance_at(world), diffuse, specular);
     }
 
     const float3 r = reflect(-surface.view, surface.normal);
-    diffuse += surface.albedo * (1.0f - surface.v) * xp_ambient_irradiance(surface.normal) * INV_PI * surface.occlusion;
-    specular += (f0 * surface.env_brdf.x + surface.env_brdf.y) * xp_ambient_reflection(r, surface.roughness) * surface.occlusion;
+    const float3 specular_brdf = f0 * surface.env_brdf.x + surface.env_brdf.y;
+    if (is_feature_enabled(FEATURE_ENV_PROBES) && is_feature_enabled(FEATURE_ATMOSPHERE))	// probes are drawn from the atmosphere
+    {
+        diffuse += surface.albedo * (1.0f - surface.v) * xp_probe_diffuse(surface.normal) * surface.occlusion;
+        specular += specular_brdf * xp_probe_specular(r, surface.roughness) * surface.occlusion;
+    }
+    else
+    {
+        diffuse += surface.albedo * (1.0f - surface.v) * xp_ambient_irradiance(surface.normal) * INV_PI * surface.occlusion;
+        specular += specular_brdf * xp_ambient_reflection(r, surface.roughness) * surface.occlusion;
+    }
 }
 
 /* @brief xp_environment_lighting_split, summed. */
-public float3 xp_environment_lighting(XpLitSurface surface, float3 f0, bool sun_and_moon)
+public float3 xp_environment_lighting(XpLitSurface surface, float3 f0, bool sun_and_moon, float3 world)
 {
     float3 diffuse, specular;
-    xp_environment_lighting_split(surface, f0, sun_and_moon, diffuse, specular);
+    xp_environment_lighting_split(surface, f0, sun_and_moon, world, diffuse, specular);
     return diffuse + specular;
+}
+
+/**
+ * @brief Aerial perspective over a pre-exposed colour seen at distance_m through screen_uv (XP12: the aerial volumes in
+ * the deferred lighting): colour x transmittance + in-scattering x coverage (coverage: a blended surface's alpha; the
+ * frame behind it already has the in-scattering for the rest). Unchanged with the feature off.
+ */
+public float3 xp_apply_aerial_perspective(float3 color, float2 screen_uv, float distance_m, float coverage)
+{
+    if (!is_feature_enabled(FEATURE_AERIAL_PERSPECTIVE) || !is_feature_enabled(FEATURE_ATMOSPHERE))
+        return color;
+    float3 inscatter, transmittance;
+    sample_aerial_perspective(screen_uv, distance_m, inscatter, transmittance);
+    return color * transmittance + inscatter * coverage;
+}
+
+/* @brief The transmittance part alone, for additive light (billboards: the in-scattering is in the frame already). */
+public float3 xp_aerial_transmittance(float2 screen_uv, float distance_m)
+{
+    if (!is_feature_enabled(FEATURE_AERIAL_PERSPECTIVE) || !is_feature_enabled(FEATURE_ATMOSPHERE))
+        return 1.0f;
+    float3 inscatter, transmittance;
+    sample_aerial_perspective(screen_uv, distance_m, inscatter, transmittance);
+    return transmittance;
 }

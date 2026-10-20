@@ -8,11 +8,11 @@
  * light_composition.slang
  * -------------------------------------------------------
  * Composes the deferred frame in pre-exposed radiance (nits x get_pre_exposure()): the scene's own lights
- * (light.slang), the environment's sun, moon, sky and ground (environment_lighting.slang), emissive (LIT) light,
- * and the sky where nothing was drawn.
+ * (light.slang), the environment's sun, moon, sky and ground (environment_lighting.slang), emissive (LIT) light, then
+ * aerial perspective. Where nothing was drawn: the interim sky with the atmosphere off (sky.slang draws it otherwise).
  *   tex       light_diffuse   (scene lights, pre-exposed irradiance x BRDF, without the albedo)
  *   tex2      light_specular  (scene lights, pre-exposed)
- *   tex3      lut_brdf_specular
+ *   tex3      lut_brdf_specular;  the atmosphere LUTs and probes (atmosphere_common.slang)
  *   pass_get_f4_value(): x 1 when the environment's sun and moon light the scene (no scene directional light)
  * -------------------------------------------------------
  */
@@ -39,8 +39,9 @@ void main_comp(uint3 thread_id : SV_DispatchThreadID)
 	// reverse-z: the depth buffer is cleared to 0, so 0 means nothing was drawn here
 	if (depth <= 0.0f)
 	{
-		// the transparent pass runs after the opaque one, which already wrote the sky
-		if (pass_is_transparent())
+		// the transparent pass runs after the opaque one, which already wrote the sky; with the atmosphere on the sky
+		// pass draws it
+		if (pass_is_transparent() || is_feature_enabled(FEATURE_ATMOSPHERE))
 			return;
 
 		float3 view_direction = normalize(get_position(0.5f, uv) - get_camera_position());
@@ -73,11 +74,14 @@ void main_comp(uint3 thread_id : SV_DispatchThreadID)
 
 	// The environment
 	const bool sun_and_moon = pass_get_f4_value().x > 0.5f;
-	result += xp_environment_lighting(surface, f0, sun_and_moon) * pre_exposure;
+	result += xp_environment_lighting(surface, f0, sun_and_moon, position) * pre_exposure;
 
 	// Emissive luminance (X-Plane LIT textures), already pre-exposed: lights are never dimmed by daylight, exposure
 	// alone hides them in the day
 	result += tex_emissive[thread_id.xy].rgb;
+
+	// The air between the camera and the surface
+	result = xp_apply_aerial_perspective(result, uv, length(position - get_camera_position()), 1.0f);
 
 	tex_uav[thread_id.xy] = validate_output(float4(result, 1.0f));
 }

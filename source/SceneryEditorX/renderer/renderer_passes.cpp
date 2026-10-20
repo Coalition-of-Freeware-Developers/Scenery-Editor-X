@@ -172,7 +172,23 @@ namespace SceneryEditorX
 			m_PassState.m_BRDF_LutProduced = true;
 		}
 		FrameCapture::RecordDump(cmd, GetRenderTarget(Renderer_RenderTarget::lut_brdf_specular));	// --dump-brdf-lut
-		// (1) Atmosphere LUTs (XP12: scatter_compute_*): Phase 6
+
+		// (1) Atmosphere LUTs (XP12: scatter_compute_*) and the environment probes; whatever the switches, they end in
+		//     shader-read layout for the passes that bind them
+		if (features.atmosphere && valid())
+		{
+			{
+				GpuTimer::Scope scope(cmd, "atmosphere");
+				Pass_Atmosphere(cmd);
+			}
+			if (features.envProbes && valid())
+			{
+				GpuTimer::Scope scope(cmd, "env probes");
+				Pass_EnvProbes(cmd);
+			}
+		}
+		if (valid())
+			ReadyAtmosphereTextures(cmd);
 		// (2) Cloud weather volumes and cloud shadows (XP12: cloud_update, cloud_shadows): Phases 7 / 15
 
 		Camera *camera = Scene::GetCamera();
@@ -233,7 +249,15 @@ namespace SceneryEditorX
 				return;
 
 			// (12) Water (XP12: ocean_shading): Phase 11
-			// (13) Sky where nothing was drawn, volumetric apply: Phase 6 / 15
+			// (13) Sky where nothing was drawn (XP12: sky); volumetric apply: Phase 15
+			if (features.atmosphere)
+			{
+				GpuTimer::Scope scope(cmd, "sky");
+				Pass_Sky(cmd, rt_render);
+				if (!valid())
+					return;
+				ReadyAtmosphereTextures(cmd);
+			}
 
 			// (14) Forward passes over the composed frame, depth tested against the g-buffer: grid, blended surfaces, lights
 			{
@@ -388,119 +412,6 @@ namespace SceneryEditorX
 								   1,
 								   1,
 								   Layout::ImageLayout::ShaderRead);
-		}
-	}
-
-	void Renderer::Pass_Lut_AtmosphericScattering(CommandList *cmdList)
-	{
-		ImageResource *tex_lut_atmosphere_scatter		= GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_scatter);
-		ImageResource *tex_lut_atmosphere_transmittance = GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_transmittance);
-		ImageResource *tex_lut_atmosphere_multiscatter	= GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_multiscatter);
-
-		{
-			// transmittance lut
-			{
-				PipelineState pso;
-				pso.name = "lut_atmosphere_transmittance";
-				pso.shaders[static_cast<uint32_t>(StageType::Compute)] = ShaderManager::GetShader(Renderer_Shader::skysphere_transmittance_lut);
-				cmdList->SetPipelineState(pso);
-
-				cmdList->SetTexture(Renderer_BindingsUav::tex, tex_lut_atmosphere_transmittance);
-				cmdList->Dispatch(tex_lut_atmosphere_transmittance);
-
-				tex_lut_atmosphere_transmittance->SetLayout(Layout::ImageLayout::ShaderRead, cmdList, 0, 0);
-			}
-
-			// multi-scatter lut
-			{
-				PipelineState pso;
-				pso.name = "lut_atmosphere_multi_scatter";
-				pso.shaders[static_cast<uint32_t>(StageType::Compute)] = ShaderManager::GetShader(Renderer_Shader::skysphere_multiscatter_lut);
-				cmdList->SetPipelineState(pso);
-
-				cmdList->SetTexture(Renderer_BindingsSrv::tex, tex_lut_atmosphere_transmittance);
-				cmdList->SetTexture(Renderer_BindingsUav::tex, tex_lut_atmosphere_multiscatter);
-				cmdList->Dispatch(tex_lut_atmosphere_multiscatter);
-
-				tex_lut_atmosphere_multiscatter->SetLayout(Layout::ImageLayout::ShaderRead, cmdList, 0, 0);
-			}
-
-			// legacy 3d lut
-			{
-				PipelineState pso;
-				pso.name = "lut_atmospheric_scattering";
-				pso.shaders[static_cast<uint32_t>(StageType::Compute)] = ShaderManager::GetShader(Renderer_Shader::skysphere_lut);
-				cmdList->SetPipelineState(pso);
-
-				cmdList->SetTexture(Renderer_BindingsUav::tex3d, tex_lut_atmosphere_scatter);
-				cmdList->Dispatch(tex_lut_atmosphere_scatter);
-
-				tex_lut_atmosphere_scatter->SetLayout(Layout::ImageLayout::ShaderRead, cmdList, 0, 0);
-			}
-		}
-	}
-
-	void Renderer::Pass_Skysphere(CommandList *cmdList)
-	{
-		ImageResource *tex_skysphere = GetRenderTarget(Renderer_RenderTarget::skysphere);
-		ImageResource *tex_lut_atmosphere_scatter = GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_scatter);
-		ImageResource *tex_lut_atmosphere_transmittance = GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_transmittance);
-		ImageResource *tex_lut_atmosphere_multi_scatter = GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_multiscatter);
-		ImageResource *tex_cloud_shape = GetRenderTarget(Renderer_RenderTarget::cloud_noise_shape);
-		ImageResource *tex_cloud_detail = GetRenderTarget(Renderer_RenderTarget::cloud_noise_detail);
-
-		if (Scene::GetDirectionalLight())
-		{
-			PipelineState pso;
-			pso.name = "skysphere_atmospheric_scattering";
-			pso.shaders[static_cast<uint32_t>(StageType::Compute)] = ShaderManager::GetShader(Renderer_Shader::skysphere);
-			cmdList->SetPipelineState(pso);
-
-			cmdList->SetTexture(Renderer_BindingsUav::tex, tex_skysphere);
-			cmdList->SetTexture(Renderer_BindingsSrv::tex, tex_lut_atmosphere_transmittance);
-			cmdList->SetTexture(Renderer_BindingsSrv::tex2, tex_lut_atmosphere_multi_scatter);
-			cmdList->SetTexture(Renderer_BindingsSrv::tex3d, tex_lut_atmosphere_scatter);
-
-			if (tex_cloud_shape)
-			{
-				cmdList->SetTexture(Renderer_BindingsSrv::tex3d_cloud_shape, tex_cloud_shape);
-			}
-			if (tex_cloud_detail)
-			{
-				cmdList->SetTexture(Renderer_BindingsSrv::tex3d_cloud_detail, tex_cloud_detail);
-			}
-
-			cmdList->Dispatch(tex_skysphere);
-		}
-		else
-		{
-			cmdList->ClearTexture(tex_skysphere, Color::Black());
-		}
-
-		// filter all mip levels
-		{
-			Pass_Downscale(cmdList, tex_skysphere, Renderer_DownsampleFilter::Average);
-
-			PipelineState pso;
-			pso.name = "skysphere_filter";
-			pso.shaders[static_cast<uint32_t>(StageType::Compute)] = ShaderManager::GetShader(Renderer_Shader::light_integration_environment_filter);
-			cmdList->SetPipelineState(pso);
-			cmdList->SetTexture(Renderer_BindingsSrv::tex, tex_skysphere);
-
-			for (uint32_t mip_level = 1; mip_level < tex_skysphere->GetImageSpec().mipCount; mip_level++)
-			{
-				cmdList->SetTexture(Renderer_BindingsUav::tex, tex_skysphere, mip_level, 1);
-
-				m_Pcb_Pass_Cpu.SetF3Value(static_cast<float>(mip_level),
-										  static_cast<float>(tex_skysphere->GetImageSpec().mipCount),
-										  0.0f);
-				cmdList->PushConstants(m_Pcb_Pass_Cpu);
-
-				const uint32_t resolutionX = tex_skysphere->GetWidth() >> mip_level;
-				const uint32_t resolutionY = tex_skysphere->GetHeight() >> mip_level;
-				cmdList->Dispatch(resolutionX, resolutionY, 1);
-				cmdList->InsertBarrier(tex_skysphere, BarrierType::EnsureWriteThenRead);
-			}
 		}
 	}
 
@@ -1291,6 +1202,10 @@ namespace SceneryEditorX
 			value("autoexposure/_exp_radius", c.exposure.centerRadius);
 			value("bloom/intensity", c.bloomIntensity);
 			value("fsr/_rcas_ratio", c.rcasSharpness);
+			value("sedx/aerial_range_m", c.aerialRangeM);
+			value("sedx/airglow_nits", c.airglowNits);
+			value("sedx/star_brightness", c.starBrightness);
+			value("sedx/probe_specular_bias", c.probeSpecularBias);
 			float maxMip = static_cast<float>(c.fusionMaxMip);
 			value("exposure_fusion/max_mip", maxMip);
 			c.fusionMaxMip = std::clamp(static_cast<int>(std::lround(maxMip)), 1, 5);
@@ -1440,6 +1355,7 @@ namespace SceneryEditorX
 
 		// The environment's light, as light_composition.slang gives the deferred surfaces (environment_lighting.slang)
 		cmdList->SetTexture(Renderer_BindingsSrv::tex3, GetRenderTarget(Renderer_RenderTarget::lut_brdf_specular));
+		BindAtmosphere(cmdList, ATMOSPHERE_LIGHTING);
 		for (const ForwardDraw &draw : draws)
 		{
 			const Renderer_DrawCall &drawCall = m_DrawCalls[draw.drawCall];
@@ -1546,6 +1462,7 @@ namespace SceneryEditorX
 			return;
 
 		cmdList->PushConstants(m_Pcb_Pass_Cpu);
+		BindAtmosphere(cmdList, ATMOSPHERE_AERIAL);
 		cmdList->SetCullMode(CullMode::None);
 		cmdList->SetVertexBuffer(buffer.Get(), nullptr);
 		for (const Range &range : ranges)
@@ -2051,46 +1968,13 @@ namespace SceneryEditorX
 			cmdList->SetTexture(Renderer_BindingsSrv::tex2,             texSpecular);
 			cmdList->SetTexture(Renderer_BindingsSrv::tex3,             GetRenderTarget(Renderer_RenderTarget::lut_brdf_specular));
 			cmdList->SetTexture(Renderer_BindingsUav::tex,              texFrameRender);
+			BindAtmosphere(cmdList, ATMOSPHERE_LIGHTING);
 
 			// The environment's sun and moon light the scene unless it has a directional light of its own (Pass_Light
 			// draws that one, in the same units); the sky and the ground always add their ambient light
 			m_Pcb_Pass_Cpu.isTransparent = isTransparentPass ? 1u : 0u;
 			m_Pcb_Pass_Cpu.SetF4Value(m_Has_DirectionalLight ? 0.0f : 1.0f, 0.0f, 0.0f, 0.0f);
 			cmdList->PushConstants(m_Pcb_Pass_Cpu);
-
-			cmdList->Dispatch(texFrameRender);
-		}
-	}
-
-	// -------------------------------------------------------
-	// Pass_Light_ImageBased
-	// Applies specular IBL from the filtered skysphere and the BRDF split-sum LUT.
-	// -------------------------------------------------------
-
-	void Renderer::Pass_Light_ImageBased(CommandList* cmdList)
-	{
-		ImageResource* texSkysphere    = GetRenderTarget(Renderer_RenderTarget::skysphere);
-		ImageResource* texLutBrdf     = GetRenderTarget(Renderer_RenderTarget::lut_brdf_specular);
-		ImageResource* texFrameRender = GetRenderTarget(Renderer_RenderTarget::frame_render);
-		if (!texSkysphere || !texLutBrdf)
-			return;
-		Shader* shader_light_ibl = GetValidComputeShader(Renderer_Shader::light_image_based, "light_image_based");
-		if (!shader_light_ibl)
-			return;
-
-		{
-			PipelineState pso;
-			pso.name = "light_image_based";
-			pso.shaders[static_cast<uint32_t>(StageType::Compute)] = shader_light_ibl;
-			cmdList->SetPipelineState(pso);
-
-			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_albedo,   GetRenderTarget(Renderer_RenderTarget::gbuffer_color));
-			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_normal,   GetRenderTarget(Renderer_RenderTarget::gbuffer_normal));
-			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_material, GetRenderTarget(Renderer_RenderTarget::gbuffer_material));
-			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_depth,    GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
-			cmdList->SetTexture(Renderer_BindingsSrv::tex,              texSkysphere);
-			cmdList->SetTexture(Renderer_BindingsSrv::tex2,             texLutBrdf);
-			cmdList->SetTexture(Renderer_BindingsUav::tex,              texFrameRender);
 
 			cmdList->Dispatch(texFrameRender);
 		}
@@ -2217,7 +2101,6 @@ namespace SceneryEditorX
 	{
 		ImageResource* tex_frame_render        = GetRenderTarget(Renderer_RenderTarget::frame_render);
 		ImageResource* tex_frame_render_opaque = GetRenderTarget(Renderer_RenderTarget::frame_render_opaque);
-		ImageResource* tex_skysphere           = GetRenderTarget(Renderer_RenderTarget::skysphere);
 
 		{
 			PipelineState pso;
@@ -2234,8 +2117,7 @@ namespace SceneryEditorX
 			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_depth,    GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
 			cmdList->SetTexture(Renderer_BindingsSrv::tex,              tex_frame_render_opaque);
 
-			if (tex_skysphere)
-				cmdList->SetTexture(Renderer_BindingsSrv::tex2, tex_skysphere);
+			// tex2 held the old skysphere (gone with plan Phase 6); this pass isn't in the frame graph
 
 			cmdList->SetTexture(Renderer_BindingsUav::tex, tex_frame_render);
 

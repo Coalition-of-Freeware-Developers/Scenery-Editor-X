@@ -55,6 +55,8 @@
 #include <SceneryEditorX/core/window/monitor_data.h>
 #include <SceneryEditorX/environment/environment.h>
 #include <SceneryEditorX/environment/sky_light.h>
+#include <SceneryEditorX/environment/solar_position.h>
+#include <SceneryEditorX/renderer/env_probes.h>
 #include <SceneryEditorX/renderer/frame_capture.h>
 #include <SceneryEditorX/renderer/gpu_timer.h>
 #include <SceneryEditorX/renderer/gbuffer.h>
@@ -2915,7 +2917,7 @@ void dynamic_resolution()
 			double sunElevationDeg = 0.0;
 			double moonElevationDeg = 0.0;
 			double altitudeM = 0.0;
-			double visibilityM = 0.0;
+			uint64_t mediumKey = 0;
 			double sunLux = 0.0;
 			double moonLux = 0.0;
 			std::chrono::steady_clock::time_point computedAt;
@@ -2939,25 +2941,35 @@ void dynamic_resolution()
 			params.groundRadius = c.planet.y;
 			params.topRadius = c.planet.z;
 			params.groundAlbedo = c.planet.w;
+			params.hazeTopM = c.hazeTopM;
+			params.hazeBandM = c.hazeBandM;
 			return params;
 		}
 
-		const SkyLightCache &UpdateSkyLight(const Renderer::EnvironmentConstants &c, const double sunElevationDeg, const double moonElevationDeg,
-			const double altitudeM, const double visibilityM, const double moonLux)
+		/* @brief A key of the medium: the cache is redone when it changes (visibility, sky condition, ground elevation). */
+		uint64_t GetMediumKey(const Environment::AtmosphereParams &a)
+		{
+			uint64_t key = 0;
+			for (const double v : { a.rayleighScattering[0], a.rayleighScattering[1], a.rayleighScattering[2], a.mieScattering, a.mieExtinction, a.hazeExtinction,
+					 a.hazeScatteringAlbedo, a.hazeTopM, a.groundElevationM, a.groundAlbedo })
+				key = HashCombine(key, v);
+			return key;
+		}
+
+		const SkyLightCache &UpdateSkyLight(const Environment::AtmosphereParams &atmosphere, const double sunLux, const double sunElevationDeg,
+			const double moonElevationDeg, const double altitudeM, const double moonLux)
 		{
 			SkyLightCache &cache = s_SkyLightCache;
 			const auto now = std::chrono::steady_clock::now();
-			const double sunLux = c.sunIlluminanceLux;
-			const bool sunJumped = std::abs(sunElevationDeg - cache.sunElevationDeg) > 1.0;
+			const uint64_t mediumKey = GetMediumKey(atmosphere);
+			const bool sunJumped = std::abs(sunElevationDeg - cache.sunElevationDeg) > 1.0 || mediumKey != cache.mediumKey;
 			const bool moved = std::abs(sunElevationDeg - cache.sunElevationDeg) > 0.02 || std::abs(moonElevationDeg - cache.moonElevationDeg) > 0.05 ||
-							   std::abs(altitudeM - cache.altitudeM) > std::max(20.0, 0.02 * std::abs(altitudeM)) ||
-							   std::abs(visibilityM - cache.visibilityM) > 0.01 * std::max(visibilityM, 1.0) ||
+							   std::abs(altitudeM - cache.altitudeM) > std::max(20.0, 0.02 * std::abs(altitudeM)) || mediumKey != cache.mediumKey ||
 							   sunLux != cache.sunLux || std::abs(moonLux - cache.moonLux) > 1e-3 * std::max(cache.moonLux, 1e-6);
 			const bool due = now - cache.computedAt > std::chrono::milliseconds(200);
 			if (cache.valid && !(moved && (due || sunJumped)))
 				return cache;
 
-			const Environment::AtmosphereParams atmosphere = Environment::WithVisibility(GetAtmosphereParams(c), visibilityM);
 			cache.sky = Environment::ComputeSkyLight(atmosphere, altitudeM, sunElevationDeg, sunLux, moonElevationDeg, moonLux);
 
 			// After dusk the moon lights the sky the same way, a million times dimmer
@@ -2969,7 +2981,7 @@ void dynamic_resolution()
 			cache.sunElevationDeg = sunElevationDeg;
 			cache.moonElevationDeg = moonElevationDeg;
 			cache.altitudeM = altitudeM;
-			cache.visibilityM = visibilityM;
+			cache.mediumKey = mediumKey;
 			cache.sunLux = sunLux;
 			cache.moonLux = moonLux;
 			cache.computedAt = now;
@@ -2994,10 +3006,15 @@ void dynamic_resolution()
 		const EnvironmentConstants &constants = GetEnvironmentConstants();
 		ConstantBuffer_Environment &env = m_Cb_Environment_Cpu;
 
-		// The sun, moon and sky at the camera (plan TASK-037): the CPU sky model until the atmosphere LUTs (Phase 6)
+		// The medium (plan TASK-046): the clear atmosphere, the haze layer the visibility asks for, the sky condition's
+		// multipliers. The GPU atmosphere (atmosphere_common.slang) reads it from this buffer; the CPU sky model gives the
+		// sun, moon and sky at the camera for the interim lighting (atmosphere off) and the first exposure guess.
 		const float altitudeM = m_Cb_Frame_Cpu.camera_position.y + state.elevationM;
+		const Environment::AtmosphereParams atmosphere = Environment::WithSkyMultipliers(
+			Environment::WithVisibility(GetAtmosphereParams(constants), state.visibilityM, state.elevationM), derived.sky.rayleigh, derived.sky.mie);
 		const double moonLux = constants.moonIlluminanceLux * derived.moon.illuminatedFraction;
-		const SkyLightCache &light = UpdateSkyLight(constants, derived.sun.apparentElevationDeg, derived.moon.apparentElevationDeg, altitudeM, state.visibilityM, moonLux);
+		const SkyLightCache &light = UpdateSkyLight(atmosphere, constants.sunIlluminanceLux, derived.sun.apparentElevationDeg, derived.moon.apparentElevationDeg,
+			altitudeM, moonLux);
 
 		env.sun_direction = xMath::Vec4(derived.sunDirection.x, derived.sunDirection.y, derived.sunDirection.z, constants.sunAngularRadiusRad);
 		env.sun_illuminance = ToVec4(light.sky.sunIlluminance, static_cast<float>(derived.sun.apparentElevationDeg));
@@ -3031,10 +3048,39 @@ void dynamic_resolution()
 
 		env.sky_multipliers = xMath::Vec4(derived.sky.ambient, derived.sky.direct, derived.sky.tone, derived.sky.shadowLevel);
 		env.sky_multipliers2 = xMath::Vec4(derived.sky.rayleigh, derived.sky.mie, derived.sky.shadowOffset, derived.daylight);
-		env.rayleigh = constants.rayleigh;
-		env.mie = constants.mie;
+		env.rayleigh = xMath::Vec4(static_cast<float>(atmosphere.rayleighScattering[0]), static_cast<float>(atmosphere.rayleighScattering[1]),
+			static_cast<float>(atmosphere.rayleighScattering[2]), static_cast<float>(atmosphere.rayleighScaleHeight));
+		env.mie = xMath::Vec4(static_cast<float>(atmosphere.mieScattering), static_cast<float>(atmosphere.mieExtinction), static_cast<float>(atmosphere.mieScaleHeight),
+			static_cast<float>(atmosphere.mieG));
 		env.ozone = constants.ozone;
 		env.planet = constants.planet;
+		env.atmosphere_haze = xMath::Vec4(static_cast<float>(atmosphere.hazeExtinction), static_cast<float>(atmosphere.hazeScatteringAlbedo),
+			static_cast<float>(atmosphere.hazeTopM), static_cast<float>(atmosphere.hazeBandM));
+		env.light_toa = xMath::Vec4(static_cast<float>(constants.sunIlluminanceLux * Environment::SUN_COLOR[0]),
+			static_cast<float>(constants.sunIlluminanceLux * Environment::SUN_COLOR[1]), static_cast<float>(constants.sunIlluminanceLux * Environment::SUN_COLOR[2]),
+			static_cast<float>(moonLux));
+		env.atmosphere_view = xMath::Vec4(constants.aerialRangeM, constants.airglowNits, constants.starBrightness, 0.0f);
+		{
+			const ProbeVec3 probe = SnapProbePosition({ m_Cb_Frame_Cpu.camera_position.x, m_Cb_Frame_Cpu.camera_position.y, m_Cb_Frame_Cpu.camera_position.z });
+			env.probe = xMath::Vec4(static_cast<float>(probe[0]), static_cast<float>(probe[1]), static_cast<float>(probe[2]), constants.probeSpecularBias);
+		}
+
+		// The stars: world -> equatorial (x the vernal equinox, z the north pole) at the local sidereal time. The meridian's
+		// equator point, east and the celestial pole in the world (+X east, +Y up, +Z south), turned by the sidereal time.
+		{
+			const double latitude = state.latitudeDeg * std::numbers::pi / 180.0;
+			const double lst = (Environment::GreenwichSiderealDeg(derived.julianDay) + state.longitudeDeg) * std::numbers::pi / 180.0;
+			const xMath::Vec3 meridian(0.0f, static_cast<float>(std::cos(latitude)), static_cast<float>(std::sin(latitude)));
+			const xMath::Vec3 east(1.0f, 0.0f, 0.0f);
+			const xMath::Vec3 pole(0.0f, static_cast<float>(std::sin(latitude)), static_cast<float>(-std::cos(latitude)));
+			const float c = static_cast<float>(std::cos(lst));
+			const float s = static_cast<float>(std::sin(lst));
+			const xMath::Vec3 row0 = meridian * c - east * s;
+			const xMath::Vec3 row1 = meridian * s + east * c;
+			env.celestial[0] = xMath::Vec4(row0.x, row0.y, row0.z, 0.0f);
+			env.celestial[1] = xMath::Vec4(row1.x, row1.y, row1.z, 0.0f);
+			env.celestial[2] = xMath::Vec4(pole.x, pole.y, pole.z, 0.0f);
+		}
 		env.haze = xMath::Vec4(state.visibilityM, constants.hazeTopM, constants.hazeBandM, static_cast<float>(m_Cb_Frame_Cpu.time));
 		env.weather = xMath::Vec4(derived.surface.wetness, derived.surface.ice, derived.surface.snow, derived.surface.puddles);
 		env.season = xMath::Vec4(derived.season.ratio, static_cast<float>(derived.season.season), static_cast<float>(derived.dayOfYear), static_cast<float>(state.latitudeDeg));

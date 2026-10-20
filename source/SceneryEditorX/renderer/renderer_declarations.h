@@ -61,9 +61,13 @@ namespace SceneryEditorX
 		gbuffer_emissive,			// RGBA16F: emissive luminance (nits) x pre-exposure (X-Plane LIT textures)
 		gbuffer_weather,			// RGBA8: weather receptivity (R rain / damp, G puddles, B snow 0.5 + 0.5 s, A ice)
 		lut_brdf_specular,
-		lut_atmosphere_scatter,
-		lut_atmosphere_transmittance,
-		lut_atmosphere_multiscatter,
+		lut_atmosphere_transmittance,	// 256x64: transmittance to space by height and view zenith (atmosphere_luts.slang)
+		lut_atmosphere_multiscatter,	// 32x32: Hillaire's multiple-scattering transfer
+		lut_sky_view,					// 192x108: the sky from the camera, pre-exposed (sky_view_lut.slang)
+		lut_sky_ambient,				// 64x16: sky irradiance on a level surface per unit light (sky_ambient_lut.slang)
+		lut_aerial_inscatter,			// 32x32x32: froxel in-scattering, pre-exposed (aerial_perspective.slang)
+		lut_aerial_transmittance,		// 32x32x32: froxel transmittance
+		env_probes,						// cube array, 8 probes x 6 faces, 128 px, 7 mips (cube_filter.slang)
 		light_diffuse,
 		light_specular,
 		light_volumetric,
@@ -77,7 +81,6 @@ namespace SceneryEditorX
 		gbuffer_reflections_normal,
 		gbuffer_reflections_albedo,
 		sss,
-		skysphere,
 		bloom,
 		blur,
 		outline,
@@ -172,17 +175,12 @@ namespace SceneryEditorX
 		light_integration_environment_filter,
 		light,
 		light_composition,
-		light_image_based,
 		line,
 		grid,
 		outline,
 		font,
 		ssao,
 		sss_bend,
-		skysphere,
-		skysphere_lut,
-		skysphere_transmittance_lut,
-		skysphere_multiscatter_lut,
 		blur_gaussian,
 		blur_gaussian_bilateral,
 		variable_rate_shading,
@@ -234,6 +232,16 @@ namespace SceneryEditorX
 		exposure_fusion_guide,
 		fsr1_easu,
 		fsr1_rcas,
+		// plan Phase 6: the atmosphere (XP12: scatter_compute_*), the sky, environment probes
+		atmosphere_transmittance_lut,
+		atmosphere_multiscatter_lut,
+		sky_view_lut,
+		sky_ambient_lut,
+		aerial_perspective,
+		sky,
+		cube_filter_capture,
+		cube_filter_ggx,
+		cube_filter_irradiance,
 		MaxEnum
 	};
 
@@ -260,17 +268,12 @@ namespace SceneryEditorX
 		case Renderer_Shader::light_integration_environment_filter: return "light_integration_environment_filter";
 		case Renderer_Shader::light: return "light";
 		case Renderer_Shader::light_composition: return "light_composition";
-		case Renderer_Shader::light_image_based: return "light_image_based";
 		case Renderer_Shader::line: return "line";
 		case Renderer_Shader::grid: return "grid";
 		case Renderer_Shader::outline: return "outline";
 		case Renderer_Shader::font: return "font";
 		case Renderer_Shader::ssao: return "ssao";
 		case Renderer_Shader::sss_bend: return "sss_bend";
-		case Renderer_Shader::skysphere: return "skysphere";
-		case Renderer_Shader::skysphere_lut: return "skysphere_lut";
-		case Renderer_Shader::skysphere_transmittance_lut: return "skysphere_transmittance_lut";
-		case Renderer_Shader::skysphere_multiscatter_lut: return "skysphere_multiscatter_lut";
 		case Renderer_Shader::blur_gaussian: return "blur_gaussian";
 		case Renderer_Shader::blur_gaussian_bilateral: return "blur_gaussian_bilateral";
 		case Renderer_Shader::variable_rate_shading: return "variable_rate_shading";
@@ -315,6 +318,15 @@ namespace SceneryEditorX
 		case Renderer_Shader::exposure_fusion_guide: return "exposure_fusion_guide";
 		case Renderer_Shader::fsr1_easu: return "fsr1_easu";
 		case Renderer_Shader::fsr1_rcas: return "fsr1_rcas";
+		case Renderer_Shader::atmosphere_transmittance_lut: return "atmosphere_transmittance_lut";
+		case Renderer_Shader::atmosphere_multiscatter_lut: return "atmosphere_multiscatter_lut";
+		case Renderer_Shader::sky_view_lut: return "sky_view_lut";
+		case Renderer_Shader::sky_ambient_lut: return "sky_ambient_lut";
+		case Renderer_Shader::aerial_perspective: return "aerial_perspective";
+		case Renderer_Shader::sky: return "sky";
+		case Renderer_Shader::cube_filter_capture: return "cube_filter_capture";
+		case Renderer_Shader::cube_filter_ggx: return "cube_filter_ggx";
+		case Renderer_Shader::cube_filter_irradiance: return "cube_filter_irradiance";
 		case Renderer_Shader::MaxEnum: return "MaxEnum";
 		default: return "unknown";
 		}
@@ -468,6 +480,15 @@ namespace SceneryEditorX
 		tex3d_cloud_shape  = 52,
 		tex3d_cloud_detail = 53,
 
+		// the atmosphere and environment probes (atmosphere_common.slang)
+		env_probes           = 55,
+		aerial_inscatter     = 56,
+		aerial_transmittance = 57,
+		sky_view             = 58,
+		transmittance        = 59,
+		multiscatter         = 60,
+		sky_ambient          = 61,
+
 		// restir reservoir srv bindings (for temporal/spatial read)
 		reservoir_prev0    = 21,
 		reservoir_prev1    = 22,
@@ -491,6 +512,8 @@ namespace SceneryEditorX
 		tex4          = 3,
 		tex3d         = 4,
 		tex_sss       = 5,
+		tex_array     = 6,	// RWTexture2DArray (cube faces); atmosphere_common.slang
+		tex3d_2       = 7,	// a second RWTexture3D
 		sb_spd        = 44,
 		tex_spd       = 8,
 

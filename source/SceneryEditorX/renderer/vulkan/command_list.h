@@ -413,6 +413,15 @@ namespace SceneryEditorX
 		void SetTexture(const Renderer_BindingsSrv slot, ImageResource* img,  const uint32_t mipIndex = ALL_MIPS, uint32_t mipRange = 0) { SetTexture(static_cast<uint32_t>(slot), img, mipIndex, mipRange, false); }
 
 		/**
+		 * @brief Whether the bound pipeline's shaders declare a texture at a slot (SetTexture logs an error otherwise):
+		 * for resources a pass binds only where its shader reads them.
+		 */
+		[[nodiscard]] bool UsesTexture(uint32_t slot, bool uav) const;
+		[[nodiscard]] bool UsesTexture(const Renderer_BindingsSrv slot) const { return UsesTexture(static_cast<uint32_t>(slot), false); }
+		[[nodiscard]] bool UsesTexture(const Renderer_BindingsUav slot) const { return UsesTexture(static_cast<uint32_t>(slot), true); }
+		[[nodiscard]] const char *GetPipelineStateName() const { return m_pso.name ? m_pso.name : ""; }
+
+		/**
 		 * @brief Bind a buffer to a specific UAV slot using the typed binding enum.
 		 * @param slot The Renderer_BindingsUav slot to bind the buffer to.
 		 * @param buffer The buffer to bind.

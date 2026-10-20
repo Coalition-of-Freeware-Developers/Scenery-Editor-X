@@ -143,6 +143,21 @@ namespace SceneryEditorX
 		return mipCount;
 	}
 
+	namespace
+	{
+		/* @brief The view of every mip and layer: cube images (6 layers per cube) are sampled as cubes. */
+		VkImageViewType GetFullViewType(const ImageType type, const uint32_t depth)
+		{
+			switch (type)
+			{
+				case ImageType::Type3D: return VK_IMAGE_VIEW_TYPE_3D;
+				case ImageType::TypeCube: return VK_IMAGE_VIEW_TYPE_CUBE;
+				case ImageType::TypeCubeArray: return VK_IMAGE_VIEW_TYPE_CUBE_ARRAY;
+				default: return depth > 1 ? VK_IMAGE_VIEW_TYPE_2D_ARRAY : VK_IMAGE_VIEW_TYPE_2D;
+			}
+		}
+	}
+
 	ImageResource::ImageResource(const ImgResourceSpec &spec) : SharedResource(ResourceType::Image), m_Spec(spec)
 	{
 		m_Device = RenderContext::Get()->GetDevice();
@@ -187,6 +202,8 @@ namespace SceneryEditorX
 		imageCI.tiling = VK_IMAGE_TILING_OPTIMAL;
 		imageCI.usage = usage;
 		imageCI.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		if (m_Spec.type == ImageType::TypeCube || m_Spec.type == ImageType::TypeCubeArray)
+			imageCI.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;	// sampled as cubes, written per face
 
 		uint32_t queueFamilies[2] = {};
 		if ((m_Spec.flags & QueueShare) != 0)
@@ -219,7 +236,7 @@ namespace SceneryEditorX
 		viewCI.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 		viewCI.image = m_Image;
 		viewCI.format = m_Spec.format;
-		viewCI.viewType = (m_Spec.type == ImageType::Type3D) ? VK_IMAGE_VIEW_TYPE_3D : ((m_Depth > 1) ? VK_IMAGE_VIEW_TYPE_2D_ARRAY : VK_IMAGE_VIEW_TYPE_2D);
+		viewCI.viewType = GetFullViewType(m_Spec.type, m_Depth);
 		viewCI.subresourceRange.aspectMask = GetAspectMask(m_Spec.format);
 		viewCI.subresourceRange.baseMipLevel = 0;
 		viewCI.subresourceRange.levelCount = m_Spec.mipCount;
@@ -292,6 +309,8 @@ namespace SceneryEditorX
 		imageCI.tiling = VK_IMAGE_TILING_OPTIMAL;
 		imageCI.usage = usage;
 		imageCI.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		if (m_Spec.type == ImageType::TypeCube || m_Spec.type == ImageType::TypeCubeArray)
+			imageCI.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;	// sampled as cubes, written per face
 
 		uint32_t queueFamilies[2] = {};
 		if ((m_Spec.flags & QueueShare) != 0)
@@ -324,7 +343,7 @@ namespace SceneryEditorX
 		viewCI.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 		viewCI.image = m_Image;
 		viewCI.format = m_Spec.format;
-		viewCI.viewType = (m_Spec.type == ImageType::Type3D) ? VK_IMAGE_VIEW_TYPE_3D : ((m_Depth > 1) ? VK_IMAGE_VIEW_TYPE_2D_ARRAY : VK_IMAGE_VIEW_TYPE_2D);
+		viewCI.viewType = GetFullViewType(m_Spec.type, m_Depth);
 		viewCI.subresourceRange.aspectMask = GetAspectMask(m_Spec.format);
 		viewCI.subresourceRange.baseMipLevel = 0;
 		viewCI.subresourceRange.levelCount = m_Spec.mipCount;
@@ -450,6 +469,9 @@ namespace SceneryEditorX
 				VkImageViewCreateInfo mipViewCI = viewCI;
 				mipViewCI.subresourceRange.baseMipLevel = mip;
 				mipViewCI.subresourceRange.levelCount   = 1;
+				// a cube's mips are written face by face: storage views can't be cubes
+				if (viewCI.viewType == VK_IMAGE_VIEW_TYPE_CUBE || viewCI.viewType == VK_IMAGE_VIEW_TYPE_CUBE_ARRAY)
+					mipViewCI.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
 				VkImageView mipView = create_view(mipViewCI);
 				m_ImageViews.push_back(mipView);
 				m_ShaderResourceView_mips[mip] = mipView;

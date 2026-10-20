@@ -32,9 +32,11 @@
  * -------------------------------------------------------
  */
 #include <catch2/catch_all.hpp>
+#include <SceneryEditorX/environment/atmosphere_params.h>
 #include <SceneryEditorX/environment/environment.h>
 #include <SceneryEditorX/environment/parity_scenario.h>
 #include <SceneryEditorX/environment/sky_light.h>
+#include <SceneryEditorX/renderer/env_probes.h>
 #include <SceneryEditorX/renderer/exposure.h>
 #include <SceneryEditorX/renderer/renderer_features.h>
 #include <SceneryEditorX/renderer/renderer_quality.h>
@@ -584,10 +586,7 @@ TEST_CASE("Sky light: the sun's transmittance follows the air mass", "[environme
 
 TEST_CASE("Sky light: a clear day's sun and sky", "[environment][sky-light]")
 {
-	const AtmosphereParams hazy = WithVisibility(AtmosphereParams{}, 40000.0);
-	CHECK(hazy.mieExtinction == Catch::Approx(3.912 / 40000.0 - 13.558e-6).epsilon(1e-6));
-	CHECK(hazy.mieScattering / hazy.mieExtinction == Catch::Approx(3.996 / 4.4).epsilon(1e-6));
-	CHECK(WithVisibility(AtmosphereParams{}, 1.0e6).mieExtinction == Catch::Approx(4.4e-6));	// never cleaner than clear
+	const AtmosphereParams hazy = WithVisibility(AtmosphereParams{}, 80000.0);	// the parity scenarios' default
 
 	const SkyLight noon = ComputeSkyLight(hazy, 0.0, 60.0, 115000.0, -20.0, 0.25);
 	const double sun = Lum(noon.sunIlluminance);
@@ -617,6 +616,53 @@ TEST_CASE("Sky light: a clear day's sun and sky", "[environment][sky-light]")
 	CHECK(Lum(dusk.moonIlluminance) < 0.25);
 	const SkyLight night = ComputeSkyLight(hazy, 0.0, -30.0, 115000.0, 30.0, 0.25);
 	CHECK(Lum(night.irradiance) == 0.0);
+
+	// Thicker haze: less direct sun, never more light on the ground than arrives at the top
+	double previousSun = sun;
+	for (const double visibility : { 40000.0, 20000.0, 10000.0 })
+	{
+		const SkyLight hazier = ComputeSkyLight(WithVisibility(AtmosphereParams{}, visibility), 0.0, 60.0, 115000.0, -20.0, 0.25);
+		const double direct = Lum(hazier.sunIlluminance);
+		const double diffuse = Lum(hazier.irradiance);
+		CHECK(direct < previousSun);
+		CHECK(diffuse + direct * std::sin(60.0 * std::numbers::pi / 180.0) < 115000.0 * std::sin(60.0 * std::numbers::pi / 180.0));
+		previousSun = direct;
+	}
+}
+
+TEST_CASE("Atmosphere: visibility to haze", "[environment][atmosphere]")
+{
+	// Koschmieder: 2% contrast at the visibility
+	CHECK(VisibilityExtinction(10000.0) == Catch::Approx(3.912e-4));
+	CHECK(VisibilityExtinction(0.0) == 0.0);
+
+	// The haze layer takes what the clear layers don't give at the ground, scattering like the clear Mie
+	const AtmosphereParams clear;
+	const AtmosphereParams hazy = WithVisibility(clear, 40000.0);
+	CHECK(hazy.hazeExtinction == Catch::Approx(3.912 / 40000.0 - 13.558e-6 - 4.4e-6).epsilon(1e-9));
+	CHECK(hazy.hazeScatteringAlbedo == Catch::Approx(3.996 / 4.4));
+	CHECK(hazy.mieExtinction == clear.mieExtinction);
+	CHECK(WithVisibility(clear, 1.0e6).hazeExtinction == 0.0);	// never cleaner than clear air
+	const MediumSample ground = SampleMedium(hazy, 0.0);
+	CHECK(ground.Extinction()[1] == Catch::Approx(3.912 / 40000.0).epsilon(1e-6));	// green: the visibility
+
+	// The layer: uniform to its top above the ground, fading over the band, gone above it; on an elevated airport too
+	const AtmosphereParams fog = WithVisibility(clear, 1000.0, 400.0);
+	CHECK(fog.hazeTopM == Catch::Approx(1500.0));
+	CHECK(HazeTopFromVisibility(200000.0) == Catch::Approx(4000.0));
+	CHECK(HazeProfile(fog, 400.0) == 1.0);
+	CHECK(HazeProfile(fog, 1899.0) == 1.0);
+	CHECK(HazeProfile(fog, 1900.0 + fog.hazeBandM * 0.5) == Catch::Approx(0.5));
+	CHECK(HazeProfile(fog, 1900.0 + fog.hazeBandM) == 0.0);
+	CHECK(SampleMedium(fog, 400.0).Extinction()[1] == Catch::Approx(3.912e-3).epsilon(1e-6));
+	CHECK(SampleMedium(fog, 5000.0).mieExtinction < 1e-5);
+
+	// Sky-condition multipliers scale the scattering, not the absorption
+	const AtmosphereParams doubled = WithSkyMultipliers(hazy, 2.0, 2.0);
+	CHECK(doubled.rayleighScattering[2] == Catch::Approx(2.0 * clear.rayleighScattering[2]));
+	CHECK(doubled.mieScattering == Catch::Approx(2.0 * clear.mieScattering));
+	CHECK(doubled.mieExtinction - doubled.mieScattering == Catch::Approx(clear.mieExtinction - clear.mieScattering));
+	CHECK(doubled.hazeExtinction * doubled.hazeScatteringAlbedo == Catch::Approx(2.0 * hazy.hazeExtinction * hazy.hazeScatteringAlbedo));
 }
 
 TEST_CASE("Sky light: the Mie phase function is normalized", "[environment][sky-light]")
@@ -701,4 +747,53 @@ TEST_CASE("Exposure: histogram bins and metering", "[environment][exposure]")
 
 	std::array<uint32_t, EXPOSURE_HISTOGRAM_BINS> empty{};
 	CHECK_FALSE(MeterHistogram(empty, 0.5f, 0.98f, mean));
+}
+
+// -------------------------------------------------------
+// Environment probes (renderer/env_probes.*): when probe 0 is captured again
+// -------------------------------------------------------
+
+TEST_CASE("Environment probes: capture rules", "[environment][probes]")
+{
+	using namespace SceneryEditorX;
+
+	// The camera snaps to the 50 m grid
+	const ProbeVec3 snapped = SnapProbePosition({ 124.0, 26.0, -76.0 });
+	CHECK(snapped[0] == 100.0);
+	CHECK(snapped[1] == 50.0);
+	CHECK(snapped[2] == -100.0);
+
+	EnvProbeInputs inputs;
+	inputs.camera = { 10.0, 2.0, 10.0 };
+	inputs.sun = { 0.0, 1.0, 0.0 };
+	inputs.mediumHash = HashCombine(0, 40000.0);
+	CHECK(EnvProbeNeedsCapture(EnvProbeState{}, inputs));	// never captured
+
+	const EnvProbeState state = CaptureEnvProbe(inputs);
+	CHECK_FALSE(EnvProbeNeedsCapture(state, inputs));
+
+	// The camera moving within 200 m of the probe: no; further: yes
+	EnvProbeInputs moved = inputs;
+	moved.camera = { 150.0, 2.0, 10.0 };
+	CHECK_FALSE(EnvProbeNeedsCapture(state, moved));
+	moved.camera = { 250.0, 2.0, 10.0 };
+	CHECK(EnvProbeNeedsCapture(state, moved));
+
+	// The sun or moon turning more than half a degree
+	const double small = 0.4 * std::numbers::pi / 180.0;
+	const double large = 0.6 * std::numbers::pi / 180.0;
+	EnvProbeInputs turned = inputs;
+	turned.sun = { std::sin(small), std::cos(small), 0.0 };
+	CHECK_FALSE(EnvProbeNeedsCapture(state, turned));
+	turned.sun = { std::sin(large), std::cos(large), 0.0 };
+	CHECK(EnvProbeNeedsCapture(state, turned));
+	turned = inputs;
+	turned.moon = { 0.0, std::cos(large), std::sin(large) };
+	CHECK(EnvProbeNeedsCapture(state, turned));
+
+	// The medium changing (visibility, sky condition, light)
+	EnvProbeInputs hazier = inputs;
+	hazier.mediumHash = HashCombine(0, 20000.0);
+	CHECK(hazier.mediumHash != inputs.mediumHash);
+	CHECK(EnvProbeNeedsCapture(state, hazier));
 }

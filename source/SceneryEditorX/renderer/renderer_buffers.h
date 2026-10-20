@@ -330,12 +330,19 @@ namespace SceneryEditorX
 		xMath::Vec4 color_offset;			// rgb offset, w output gain
 		xMath::Vec4 color_power;			// rgb power, w output gamma (1: none)
 		xMath::Vec4 post;					// bloom intensity, exposure fusion highlights (EV), fusion strength, unused
-		xMath::Vec4 padding[1];				// to 768 bytes
+
+		// The atmosphere (plan Phase 6, atmosphere_common.slang)
+		xMath::Vec4 light_toa;				// rgb sun illuminance outside the atmosphere (lux), w the moon's (lux, x illuminated fraction)
+		xMath::Vec4 atmosphere_haze;		// haze extinction at the ground (1/m), scattering albedo, layer top above the ground (m), fade band (m)
+		xMath::Vec4 atmosphere_view;		// aerial perspective range (m), airglow (nits), star brightness scale, unused
+		xMath::Vec4 probe;					// xyz environment probe 0 (world), w specular LOD bias
+		xMath::Vec4 celestial[3];			// rows of the world -> equatorial rotation (x vernal equinox, z north pole): stars
+		xMath::Vec4 padding[10];			// to 1024 bytes
 	};
 
 	// sizes the shaders see (resources.slang: cbuffer std140, structured buffers std430)
 	static_assert(sizeof(ConstantBuffer_Frame) == 1024, "ConstantBuffer_Frame must match FrameBufferData in resources.slang");
-	static_assert(sizeof(ConstantBuffer_Environment) == 768, "ConstantBuffer_Environment must match EnvironmentData in resources.slang");
+	static_assert(sizeof(ConstantBuffer_Environment) == 1024, "ConstantBuffer_Environment must match EnvironmentData in resources.slang");
 	static_assert(sizeof(ShaderBuffer_Material) == 128, "ShaderBuffer_Material must match MaterialParameters in resources.slang");
 	static_assert(sizeof(ShaderBuffer_Light) == 608, "ShaderBuffer_Light must match LightParameters in resources.slang");
 	static_assert(sizeof(ShaderBuffer_DrawData) == 160, "ShaderBuffer_DrawData must match DrawData in resources.slang");

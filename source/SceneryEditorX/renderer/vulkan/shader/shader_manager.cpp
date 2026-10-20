@@ -64,7 +64,7 @@ namespace SceneryEditorX
 
 		[[nodiscard]] const std::vector<ShaderRegistration>& GetRegistrations()
 		{
-			// Variants of one source (bloom, skysphere, blur, cloud_noise, indirect draws) are selected with
+			// Variants of one source (bloom, atmosphere LUTs, probe filters, blur, cloud_noise, indirect draws) are selected with
 			// preprocessor defines; each define set is compiled into its own program.
 			static const std::vector<ShaderRegistration> registrations = {
 				// geometry
@@ -95,17 +95,21 @@ namespace SceneryEditorX
 				// lighting
 				{ Renderer_Shader::light,                                "light",                                "light.slang",             {CS}, {}, VertexType::MaxEnum, true },
 				{ Renderer_Shader::light_composition,                    "light_composition",                    "light_composition.slang", {CS}, {}, VertexType::MaxEnum, true },
-				{ Renderer_Shader::light_image_based,                    "light_image_based",                    "light_base.slang",        {CS}, {}, VertexType::MaxEnum, true },
 				{ Renderer_Shader::light_integration_brdf_specular_lut,  "light_integration_brdf_specular_lut",  "light_integration.slang", {CS}, {}, VertexType::MaxEnum, true },
 				{ Renderer_Shader::light_integration_environment_filter, "light_integration_environment_filter", "light_integration.slang", {CS}, {}, VertexType::MaxEnum, true },
 				{ Renderer_Shader::light_reflections,                    "light_reflections",                    "light_reflections.slang", {CS} },
 				{ Renderer_Shader::ssao,                                 "ssao",                                 "ssao.slang",              {CS} },
 
-				// sky / atmosphere
-				{ Renderer_Shader::skysphere,                   "skysphere",                   "skysphere.slang", {CS}, {},                        VertexType::MaxEnum, true },
-				{ Renderer_Shader::skysphere_lut,               "skysphere_lut",               "skysphere.slang", {CS}, {{"LUT"}},                 VertexType::MaxEnum, true },
-				{ Renderer_Shader::skysphere_transmittance_lut, "skysphere_transmittance_lut", "skysphere.slang", {CS}, {{"TRANSMITTANCE_LUT"}},   VertexType::MaxEnum, true },
-				{ Renderer_Shader::skysphere_multiscatter_lut,  "skysphere_multiscatter_lut",  "skysphere.slang", {CS}, {{"MULTISCATTER_LUT"}},    VertexType::MaxEnum, true },
+				// the atmosphere (plan Phase 6), the sky, environment probes
+				{ Renderer_Shader::atmosphere_transmittance_lut, "atmosphere_transmittance_lut", "atmosphere_luts.slang",    {CS}, {{"TRANSMITTANCE"}}, VertexType::MaxEnum, true },
+				{ Renderer_Shader::atmosphere_multiscatter_lut,  "atmosphere_multiscatter_lut",  "atmosphere_luts.slang",    {CS}, {{"MULTISCATTER"}},  VertexType::MaxEnum, true },
+				{ Renderer_Shader::sky_view_lut,                 "sky_view_lut",                 "sky_view_lut.slang",       {CS}, {},                  VertexType::MaxEnum, true },
+				{ Renderer_Shader::sky_ambient_lut,              "sky_ambient_lut",              "sky_ambient_lut.slang",    {CS}, {},                  VertexType::MaxEnum, true },
+				{ Renderer_Shader::aerial_perspective,           "aerial_perspective",           "aerial_perspective.slang", {CS}, {},                  VertexType::MaxEnum, true },
+				{ Renderer_Shader::sky,                          "sky",                          "sky.slang",                {CS}, {},                  VertexType::MaxEnum, true },
+				{ Renderer_Shader::cube_filter_capture,          "cube_filter_capture",          "cube_filter.slang",        {CS}, {{"CAPTURE"}},       VertexType::MaxEnum, true },
+				{ Renderer_Shader::cube_filter_ggx,              "cube_filter_ggx",              "cube_filter.slang",        {CS}, {{"FILTER"}},        VertexType::MaxEnum, true },
+				{ Renderer_Shader::cube_filter_irradiance,       "cube_filter_irradiance",       "cube_filter.slang",        {CS}, {{"IRRADIANCE"}},    VertexType::MaxEnum, true },
 				{ Renderer_Shader::cloud_noise_shape,           "cloud_noise_shape",           "cloud_noise.slang",   {CS}, {{"SHAPE_NOISE"}} },
 				{ Renderer_Shader::cloud_noise_detail,          "cloud_noise_detail",          "cloud_noise.slang",   {CS}, {{"DETAIL_NOISE"}} },
 				{ Renderer_Shader::cloud_shadow,                "cloud_shadow",                "cloud_shadows.slang", {CS} },

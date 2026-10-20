@@ -29,34 +29,13 @@
  * -------------------------------------------------------
  */
 #pragma once
+#include "atmosphere_params.h"
 #include <array>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX::Environment
 {
-	using Rgb = std::array<double, 3>;
-
-	/**
-	 * A clear atmosphere (Bruneton / Hillaire parameterization): Rayleigh and Mie layers falling off exponentially, an
-	 * ozone tent. Units: meters and 1/m. Defaults are the values resources/environment/xp12_environment.json starts from.
-	 */
-	struct AtmosphereParams
-	{
-		Rgb rayleighScattering = { 5.802e-6, 13.558e-6, 33.1e-6 };
-		double rayleighScaleHeight = 8000.0;
-		double mieScattering = 3.996e-6;
-		double mieExtinction = 4.4e-6;
-		double mieScaleHeight = 1200.0;
-		double mieG = 0.8;
-		Rgb ozoneAbsorption = { 0.65e-6, 1.881e-6, 0.085e-6 };
-		double ozoneCenter = 25000.0;
-		double ozoneHalfWidth = 15000.0;
-		double groundRadius = 6360000.0;
-		double topRadius = 6460000.0;
-		double groundAlbedo = 0.1;
-	};
-
 	/**
 	 * What lights the scene, at the observer: the sun and moon after the atmosphere, and the sky's radiance in a few
 	 * directions plus its irradiance on a level surface. Units: lux (illuminance) and nits (radiance), linear sRGB.
@@ -83,12 +62,6 @@ namespace SceneryEditorX::Environment
 
 	/* @brief The extraterrestrial sun's colour, linear sRGB scaled to unit luminance (ASSUMPTION: about 5900 K). */
 	constexpr Rgb SUN_COLOR = { 1.0236, 0.9961, 0.9693 };
-
-	/**
-	 * @brief Haze from the visibility (Koschmieder: extinction 3.912 / V at the ground, 550 nm): the Mie layer takes what
-	 * Rayleigh doesn't, never less than the clear atmosphere's, scattering 90% of it. Plan TASK-046 extends this.
-	 */
-	AtmosphereParams WithVisibility(const AtmosphereParams &atmosphere, double visibilityM);
 
 	/* @brief Fraction of light passing from altitude (m) to space along a ray at cosZenith (0 when it meets the ground). */
 	Rgb ComputeTransmittance(const AtmosphereParams &atmosphere, double altitudeM, double cosZenith, int steps = 40);

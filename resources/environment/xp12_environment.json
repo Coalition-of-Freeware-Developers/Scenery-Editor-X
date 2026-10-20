@@ -169,6 +169,22 @@
 		"color_management/sdr/offset_b": {
 			"value": 0.0,
 			"source": "identity (ASC-CDL)"
+		},
+		"sedx/aerial_range_m": {
+			"value": 128000.0,
+			"source": "ASSUMPTION: aerial perspective volume depth (X-Plane scattering/cache_* unknown)"
+		},
+		"sedx/airglow_nits": {
+			"value": 0.0002,
+			"source": "ASSUMPTION: moonless night sky, about 22 mag/arcsec^2"
+		},
+		"sedx/star_brightness": {
+			"value": 1.0,
+			"source": "procedural stars: 1 = catalogue magnitudes"
+		},
+		"sedx/probe_specular_bias": {
+			"value": 0.0,
+			"source": "REQ-005 specular LOD bias"
 		}
 	}
 }
