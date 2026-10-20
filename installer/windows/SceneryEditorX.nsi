@@ -117,7 +117,7 @@ VIAddVersionKey /LANG=1033 "Comments" "${APP_DESCRIPTION}"
 !define MUI_WELCOMEPAGE_TEXT "This installs an $\"${CHANNEL}$\" test build of ${APP_NAME}.$\r$\n$\r$\n\
 Test builds are unfinished. Keep backups of your projects and scenery, and report anything that goes wrong at:$\r$\n\
 ${ISSUES_URL}$\r$\n$\r$\n\
-${APP_NAME} needs a Vulkan graphics driver and an X-Plane 12 installation.$\r$\n$\r$\n$_CLICK"
+${APP_NAME} needs a graphics driver with Vulkan 1.3 and an X-Plane 11 or 12 installation. Setup checks for Vulkan and can install the Vulkan runtime when it is missing.$\r$\n$\r$\n$_CLICK"
 !insertmacro MUI_PAGE_WELCOME
 !insertmacro MUI_PAGE_LICENSE "${ROOT}\LICENSE.txt"
 !insertmacro MULTIUSER_PAGE_INSTALLMODE
@@ -170,19 +170,6 @@ Function .onInit
 
   SetRegView 64
   !insertmacro MULTIUSER_INIT
-
-  ; Vulkan comes with the graphics driver: without it the editor can't start
-  ${DisableX64FSRedirection}
-  ${If} ${FileExists} "$SYSDIR\vulkan-1.dll"
-    StrCpy $0 1
-  ${Else}
-    StrCpy $0 0
-  ${EndIf}
-  ${EnableX64FSRedirection}
-  ${If} $0 == 0
-  ${AndIf} ${Cmd} `MessageBox MB_OKCANCEL|MB_ICONEXCLAMATION "No Vulkan driver was found on this PC. ${APP_NAME} needs one to start: install the latest driver for your graphics card.$\r$\n$\r$\nInstall anyway?" /SD IDOK IDCANCEL`
-    Abort
-  ${EndIf}
 
   ${IfNot} ${Silent}
     InitPluginsDir
@@ -255,6 +242,78 @@ SectionEnd
 Section "Desktop shortcut" SecDesktop
   SetOutPath "$INSTDIR"
   CreateShortCut "$DESKTOP\${APP_NAME}.lnk" "$INSTDIR\${APP_EXE}" "" "$INSTDIR\${APP_EXE}" 0 SW_SHOWNORMAL "" "${APP_DESCRIPTION}"
+SectionEnd
+
+; Prerequisites -------------------------------------------------
+; Everything else the editor loads is installed beside it (the Visual C++ runtime included). What can be missing is
+; system-wide: the Vulkan runtime (vulkan-1.dll), which setup can install, and a graphics driver with Vulkan 1.3, which
+; only the card's maker provides. The editor checks both the way its renderer will (--check-vulkan, exit codes below).
+
+!define VULKAN_OK 0
+!define VULKAN_NO_RUNTIME 2
+!define VULKAN_OLD_RUNTIME 3
+!define VULKAN_NO_DRIVER 4
+!define VULKAN_OLD_DRIVER 5
+!define DRIVER_HELP "Install the latest driver for your graphics card:$\r$\n\
+  NVIDIA: https://www.nvidia.com/drivers$\r$\n\
+  AMD: https://www.amd.com/support$\r$\n\
+  Intel: https://www.intel.com/content/www/us/en/support/detect.html"
+
+!ifdef VULKAN_RUNTIME
+  !getdllversion "${VULKAN_RUNTIME}" VULKAN_RUNTIME_
+  !define VULKAN_RUNTIME_VERSION "${VULKAN_RUNTIME_1}.${VULKAN_RUNTIME_2}.${VULKAN_RUNTIME_3}"
+!endif
+
+; $0 = the check's exit code ("error" when the editor couldn't be run)
+!macro SEDX_CHECK_VULKAN
+  nsExec::Exec '"$INSTDIR\${APP_EXE}" --check-vulkan'
+  Pop $0
+!macroend
+
+Section "-Vulkan" SecVulkan
+  DetailPrint "Checking for Vulkan 1.3..."
+  !insertmacro SEDX_CHECK_VULKAN
+
+!ifdef VULKAN_RUNTIME
+  ; The runtime needs System32, so only an all-users setup can install it; LunarG's installer asks for its license itself
+  ${If} $0 == ${VULKAN_NO_RUNTIME}
+  ${OrIf} $0 == ${VULKAN_OLD_RUNTIME}
+    ${If} $MultiUser.InstallMode == "AllUsers"
+    ${AndIfNot} ${Silent}
+      MessageBox MB_YESNO|MB_ICONQUESTION "${APP_NAME} needs the Vulkan runtime (vulkan-1.dll), which is missing or older than 1.3 on this PC.$\r$\n$\r$\n\
+        Install the Vulkan Runtime ${VULKAN_RUNTIME_VERSION} from LunarG now? Its installer asks you to accept its license." IDNO vulkan_runtime_done
+      DetailPrint "Installing the Vulkan Runtime ${VULKAN_RUNTIME_VERSION}..."
+      File "/oname=$PLUGINSDIR\VulkanRT.exe" "${VULKAN_RUNTIME}"
+      ExecWait '"$PLUGINSDIR\VulkanRT.exe"' $1
+      DetailPrint "Vulkan Runtime installer finished (exit code $1)"
+      !insertmacro SEDX_CHECK_VULKAN
+    ${EndIf}
+  ${EndIf}
+  vulkan_runtime_done:
+!endif
+
+  ${If} $0 == ${VULKAN_OK}
+    DetailPrint "Vulkan 1.3 is available"
+  ${ElseIf} $0 == ${VULKAN_NO_RUNTIME}
+  ${OrIf} $0 == ${VULKAN_OLD_RUNTIME}
+    DetailPrint "The Vulkan runtime is missing or older than 1.3"
+!ifdef VULKAN_RUNTIME
+    StrCpy $1 "$\r$\n$\r$\nRunning this setup for anyone who uses this computer (as an administrator) can also install the Vulkan runtime."
+!else
+    StrCpy $1 ""
+!endif
+    MessageBox MB_OK|MB_ICONEXCLAMATION "${APP_NAME} needs the Vulkan runtime (vulkan-1.dll), which is missing or older than 1.3 on this PC. \
+      Graphics drivers install it.$\r$\n$\r$\n${DRIVER_HELP}$1" /SD IDOK
+  ${ElseIf} $0 == ${VULKAN_NO_DRIVER}
+    DetailPrint "No graphics driver offers Vulkan"
+    MessageBox MB_OK|MB_ICONEXCLAMATION "No graphics driver on this PC offers Vulkan, and ${APP_NAME} needs Vulkan 1.3 to start.$\r$\n$\r$\n${DRIVER_HELP}" /SD IDOK
+  ${ElseIf} $0 == ${VULKAN_OLD_DRIVER}
+    DetailPrint "The graphics driver offers a Vulkan older than 1.3"
+    MessageBox MB_OK|MB_ICONEXCLAMATION "This PC's graphics driver offers an older Vulkan than the 1.3 ${APP_NAME} needs.$\r$\n$\r$\n${DRIVER_HELP}$\r$\n$\r$\n\
+      If the newest driver doesn't add Vulkan 1.3, the graphics card is too old for ${APP_NAME}." /SD IDOK
+  ${Else}
+    DetailPrint "Could not check for Vulkan ($0)"
+  ${EndIf}
 SectionEnd
 
 !insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN

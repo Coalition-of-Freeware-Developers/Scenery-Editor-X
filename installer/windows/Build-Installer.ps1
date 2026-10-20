@@ -14,6 +14,10 @@
         so no separate VC++ redistributable is needed and per-user installs work without admin rights.
       - resources\, LICENSE.txt and licenses\ (the vcpkg copyright file of each staged third-party DLL).
 
+    Also embeds LunarG's Vulkan Runtime installer (VULKAN_SDK\Helpers\VulkanRT.exe) unless -NoVulkanRuntime is given.
+    It is not installed with the editor: setup runs it only when SceneryEditorX.exe --check-vulkan finds the Vulkan
+    runtime missing or older than 1.3, and only for an all-users install (it writes to System32).
+
     Also writes <OutputDir>\uninstall_files.nsh, the exact list of staged files the uninstaller removes.
     The installer lands in <OutputDir>\SceneryEditorX-<version>-<Channel>-Setup.exe.
 
@@ -29,6 +33,10 @@
 .PARAMETER OutputDir
     Where the stage folder and the installer go, relative to the repository root. Default: build\installer.
 
+.PARAMETER NoVulkanRuntime
+    Leaves out LunarG's Vulkan Runtime installer (about 25 MB). Without it, setup can only point users at their graphics
+    driver when the Vulkan runtime is missing.
+
 .EXAMPLE
     pwsh installer\windows\Build-Installer.ps1 -Build
 #>
@@ -37,7 +45,8 @@ param(
     [switch]$Build,
     [string]$BuildDir = 'build',
     [string]$Channel = 'Alpha',
-    [string]$OutputDir = 'build\installer'
+    [string]$OutputDir = 'build\installer',
+    [switch]$NoVulkanRuntime
 )
 
 $ErrorActionPreference = 'Stop'
@@ -244,13 +253,30 @@ foreach ($folder in $Folders) { $Lines.Add("  RMDir `"`$INSTDIR\$($folder.Replac
 $Lines.Add('!macroend')
 [IO.File]::WriteAllLines($ListPath, $Lines, (New-Object System.Text.UTF8Encoding($true)))
 
+# Prerequisites -----------------------------------------------------
+
+# Everything above sits beside the exe. What setup can only install system-wide is the Vulkan runtime (vulkan-1.dll),
+# with LunarG's redistributable installer; setup runs it only when the editor's --check-vulkan finds the runtime missing.
+$Defines = @()
+if (-not $NoVulkanRuntime) {
+    $VulkanRuntime = Join-Path $env:VULKAN_SDK 'Helpers\VulkanRT.exe'
+    if (-not (Test-Path $VulkanRuntime)) { throw "The Vulkan SDK has no $VulkanRuntime (pass -NoVulkanRuntime to build without it)." }
+    $Signature = Get-AuthenticodeSignature $VulkanRuntime
+    if ($Signature.Status -ne 'Valid') { throw "$VulkanRuntime isn't validly signed ($($Signature.Status))." }
+    $Prerequisites = Join-Path $OutputPath 'prerequisites'
+    New-Item -ItemType Directory -Path $Prerequisites -Force | Out-Null
+    Copy-Item $VulkanRuntime -Destination $Prerequisites -Force
+    $Defines += "/DVULKAN_RUNTIME=$(Join-Path $Prerequisites 'VulkanRT.exe')"
+    Write-Step "Including the Vulkan Runtime $((Get-Item $VulkanRuntime).VersionInfo.ProductVersion) (signed by $($Signature.SignerCertificate.GetNameInfo('SimpleName', $false)))"
+}
+
 # Installer -------------------------------------------------------
 
 $MakeNsis = Get-MakeNsis
 $Script = Join-Path $PSScriptRoot 'SceneryEditorX.nsi'
 $OutFile = Join-Path $OutputPath "SceneryEditorX-$Version-$Channel-Setup.exe"
 Write-Step "Compiling the installer with $MakeNsis"
-& $MakeNsis /V3 /INPUTCHARSET UTF8 "/DSTAGE_DIR=$StagePath" "/DFILE_LIST=$ListPath" "/DCHANNEL=$Channel" "/DVERSION=$Version" "/DOUT_FILE=$OutFile" $Script
+& $MakeNsis /V3 /INPUTCHARSET UTF8 "/DSTAGE_DIR=$StagePath" "/DFILE_LIST=$ListPath" "/DCHANNEL=$Channel" "/DVERSION=$Version" "/DOUT_FILE=$OutFile" @Defines $Script
 if ($LASTEXITCODE -ne 0) { throw "makensis failed (exit code $LASTEXITCODE)." }
 
 $size = (Get-Item $OutFile).Length / 1MB
