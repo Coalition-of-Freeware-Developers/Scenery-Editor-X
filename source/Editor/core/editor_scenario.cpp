@@ -44,7 +44,7 @@
 #include <SceneryEditorX/scene/camera.h>
 #include <SceneryEditorX/scene/scene.h>
 #include <SceneryEditorX/xplane/xp_airport_scene.h>
-#include <SceneryEditorX/xplane/xp_datarefs.h>
+#include <SceneryEditorX/environment/environment.h>
 
 // -------------------------------------------------------
 
@@ -98,11 +98,10 @@ namespace SceneryEditorX::EditorScenario
 			}
 		}
 
-		/* @brief What the environment model can take from a scenario today: the local time of day. */
+		/* @brief The scenario's date, time and weather into the world environment (the airport's datum then sets the place). */
 		void ApplyEnvironment(const Environment::ParityScenario &scenario)
 		{
-			XPlane::DatarefEnvironment &environment = XPlane::Datarefs::GetEnvironment();
-			environment.localTimeHours = static_cast<float>(std::clamp(scenario.localTimeHours, 0.0, 24.0));
+			Environment::Get().ApplyScenario(scenario);
 		}
 
 		bool PlaceCamera(const Environment::ParityScenario &scenario)
@@ -244,7 +243,6 @@ namespace SceneryEditorX::EditorScenario
 					return;
 				if (!PlaceCamera(scenario))
 					return;
-				ApplyEnvironment(scenario);	// Opening an airport doesn't change the time, but keep the scenario authoritative
 				state.framesLeft = state.captureAfterFrames.value_or(scenario.settleFrames);
 				state.stage = Stage::Settling;
 				EDITOR_INFO_TAG(LOG_TAG, "Scenario {}: camera at {:.6f}, {:.6f}, {} m, heading {}, pitch {}; {} frames to settle", scenario.id,

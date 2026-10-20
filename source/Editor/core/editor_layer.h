@@ -44,6 +44,7 @@
 #include <SceneryEditorX/renderer/ui/ui_widget.h>
 #include <SceneryEditorX/scene/camera.h>
 #include <SceneryEditorX/scene/scene.h>
+#include <SceneryEditorX/environment/environment_state.h>
 #include <SceneryEditorX/settings/user_settings.h>
 
 // ---------------------------------------------------------
@@ -104,6 +105,11 @@ namespace SceneryEditorX
 		void DeleteSelectedEntity();
 		void ReadStartupObjects();
 		void PlaceStartupObjects();
+		/* @brief One --env-* flag with its value into the startup environment; false when the flag isn't one. */
+		static bool ParseEnvironmentFlag(const std::string &flag, const std::string &value, Environment::EnvironmentState &state);
+		static void LoadEnvironmentTables();
+		/* @brief Per frame: the world environment's place, observer altitude and time-dependent surface. */
+		void UpdateEnvironment();
 		void UpdateWindowTitle() const;
 		bool OnKeyPressed(KeyPressedEvent &event);
 
@@ -132,6 +138,8 @@ namespace SceneryEditorX
 
 		// --entity-bench: Entity handle lookup / copy timing and allocation count once the scene has settled
 		bool m_EntityBenchPending = false;
+		std::string m_FocusPanel;			// --focus-panel <id>: brought to the front once the layout exists
+		int m_FocusPanelFrames = 0;
 		size_t m_EntityBenchCount = 0;
 		int m_EntityBenchStableFrames = 0;
 	};

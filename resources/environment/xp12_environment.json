@@ -1,0 +1,94 @@
+{
+	"about": "X-Plane 12 rendering constants by art-control name (plan REQ-001, GUD-002). Each entry: value and where it came from. Phase 16 replaces the initial values with values the reference probe dumped from X-Plane.",
+	"xp_build": "12.4.4-b4",
+	"controls": {
+		"lighting/E_sun_lx": {
+			"value": 115000.0,
+			"source": "ASSUMPTION: 12.0x community script"
+		},
+		"lighting/E_moon_lx": {
+			"value": 0.25,
+			"source": "ASSUMPTION"
+		},
+		"lighting/scenery_ref_nts": {
+			"value": 100.0,
+			"source": "ASSUMPTION"
+		},
+		"photometric/K": {
+			"value": 12.5,
+			"source": "reflected-light meter constant (ISO 2720)"
+		},
+		"photometric/ev100_min": {
+			"value": 5.0,
+			"source": "Laminar statement (12.06 post)"
+		},
+		"photometric/ev100_max": {
+			"value": 15.0,
+			"source": "ASSUMPTION: 12.0x community script"
+		},
+		"exposure/speed_up": {
+			"value": 2.0,
+			"source": "ASSUMPTION"
+		},
+		"exposure/speed_down": {
+			"value": 5.0,
+			"source": "ASSUMPTION"
+		},
+		"exposure_fusion/max_mip": {
+			"value": 5.0,
+			"source": "ASSUMPTION"
+		},
+		"exposure_fusion/dis_near": {
+			"value": 1.0,
+			"source": "ASSUMPTION"
+		},
+		"exposure_fusion/dis_far": {
+			"value": 4.0,
+			"source": "ASSUMPTION"
+		},
+		"shadow/csm/lambda": {
+			"value": 0.75,
+			"source": "ASSUMPTION"
+		},
+		"shadow/overlap_ratio": {
+			"value": 0.1,
+			"source": "ASSUMPTION"
+		},
+		"twxr/rain_darkening_strength": {
+			"value": 0.6,
+			"source": "ASSUMPTION"
+		},
+		"twxr/rain_roughness_multiplier": {
+			"value": 0.5,
+			"source": "ASSUMPTION"
+		},
+		"snow/slope_min": {
+			"value": 0.7,
+			"source": "ASSUMPTION"
+		},
+		"atmo/rayleigh_r": {
+			"value": 5.802e-06,
+			"source": "Hillaire 2020 / X-Plane 12.05 art values"
+		},
+		"atmo/rayleigh_g": {
+			"value": 1.3558e-05,
+			"source": "Hillaire 2020 / X-Plane 12.05 art values"
+		},
+		"atmo/rayleigh_b": {
+			"value": 3.31e-05,
+			"source": "Hillaire 2020 / X-Plane 12.05 art values"
+		},
+		"atmo/ozone_r": {
+			"value": 6.5e-07,
+			"source": "12.05 community script"
+		},
+		"atmo/ozone_g": {
+			"value": 1.881e-06,
+			"source": "12.05 community script"
+		},
+		"atmo/ozone_b": {
+			"value": 8.5e-08,
+			"source": "12.05 community script"
+		}
+	}
+}

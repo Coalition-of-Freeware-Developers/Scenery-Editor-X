@@ -106,10 +106,11 @@ namespace SceneryEditorX
 		}
 
 		/* @brief Direction towards the placeholder sun light composition and the forward pass use without a directional light. */
+		xMath::Vec3 s_FallbackSunDirection = xMath::Normalize(xMath::Vec3(0.35f, 0.85f, -0.4f));
+
 		const xMath::Vec3 &GetFallbackSunDirection()
 		{
-			static const xMath::Vec3 direction = xMath::Normalize(xMath::Vec3(0.35f, 0.85f, -0.4f));
-			return direction;
+			return s_FallbackSunDirection;
 		}
 
 		float s_FallbackDaylight = 1.0f;
@@ -1280,6 +1281,13 @@ namespace SceneryEditorX
 	float Renderer::GetFallbackDaylight()
 	{
 		return s_FallbackDaylight;
+	}
+
+	void Renderer::SetFallbackSunDirection(const xMath::Vec3 &towardSun)
+	{
+		const float length = xMath::Length(towardSun);
+		if (length > 1e-6f)
+			s_FallbackSunDirection = towardSun / length;
 	}
 
 	void Renderer::SetGridVisible(const bool visible)

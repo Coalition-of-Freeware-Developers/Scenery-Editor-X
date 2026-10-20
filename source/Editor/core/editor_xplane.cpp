@@ -250,17 +250,8 @@ namespace SceneryEditorX::EditorXPlane
 			if (ImGui::SliderFloat("##Speed", &scale, 0.0f, 8.0f, "x%.2f"))
 				Datarefs::SetTimeScale(scale);
 
+			// Date, time, place, weather and wind: the ENVIRONMENT panel (the world environment)
 			DatarefEnvironment &environment = Datarefs::GetEnvironment();
-			EditorUI::PropertyLabel("Local time");
-			ImGui::SliderFloat("##LocalTime", &environment.localTimeHours, 0.0f, 24.0f, "%.2f h");
-			EditorUI::ItemTooltip("Drives sim/time/local_time_sec, the sun pitch, the viewport's daylight and when LIT textures and lights switch on");
-
-			EditorUI::PropertyLabel("Wind from");
-			ImGui::SliderFloat("##WindDir", &environment.windDirectionDeg, 0.0f, 360.0f, "%.0f deg");
-
-			EditorUI::PropertyLabel("Wind speed");
-			ImGui::SliderFloat("##WindSpeed", &environment.windSpeedKnots, 0.0f, 40.0f, "%.0f kt");
-
 			EditorUI::PropertyLabel("Night lighting");
 			ImGui::Checkbox("Force lights on", &environment.forceLightsOn);
 			EditorUI::ItemTooltip("Show LIT textures, light billboards and spill in daylight too");

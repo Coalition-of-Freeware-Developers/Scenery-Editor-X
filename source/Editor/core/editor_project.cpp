@@ -45,6 +45,7 @@
 #include <SceneryEditorX/core/application/application.h>
 #include <SceneryEditorX/core/platform/platform_context.h>
 #include <SceneryEditorX/core/window/window.h>
+#include <SceneryEditorX/environment/environment.h>
 #include <SceneryEditorX/filesystem/file_system.h>
 #include <SceneryEditorX/filesystem/vfs.h>
 #include <SceneryEditorX/logging/logging.hpp>
@@ -92,6 +93,7 @@ namespace SceneryEditorX::EditorProjects
 			std::unique_ptr<ProjectCache> cache;
 			ProjectDocument document;
 			Ref<UserPreferences> preferences;
+			uint64_t environmentVersion = 0;	// The world environment's version when the project opened (or last saved)
 
 			// The project in the scene
 			std::unordered_map<std::string, uint64_t> placed;	// Object item id -> root entity UUID
@@ -692,6 +694,11 @@ namespace SceneryEditorX::EditorProjects
 			LoadIntoScene(context);
 			AddRecent(path);
 
+			// The world the project was last viewed in (date, time, weather); the place follows its airport
+			if (const std::optional<Environment::EnvironmentState> &environment = document.GetProject().environment)
+				Environment::Get().SetState(*environment);
+			state.environmentVersion = Environment::Get().GetVersion();
+
 			const SceneryProject &project = document.GetProject();
 			EDITOR_INFO_TAG(LOG_TAG, "Opened {} ({}{}): {} airports, {} items", project.info.name, GetProjectFormatName(document.GetFormat()),
 				document.WasLoadedFromSnapshot() ? ", from the cache" : "", project.airports.size(), project.CountItems());
@@ -817,10 +824,25 @@ namespace SceneryEditorX::EditorProjects
 			}
 		}
 
+		/* @brief The world environment into the project when it has one or it changed while the project was open. */
+		void SyncEnvironment()
+		{
+			State &state = GetState();
+			SceneryProject &project = state.document.GetProject();
+			const Environment::World &world = Environment::Get();
+			if (!project.environment && world.GetVersion() == state.environmentVersion)
+				return;	// Untouched: a project without one saves without one (unchanged bytes)
+			if (project.environment && *project.environment == world.GetState())
+				return;
+			project.environment = world.GetState();
+			state.document.Mark(ProjectDocument::Section::Info);
+		}
+
 		bool SaveTo(const fs::path &path, const ProjectFormat format)
 		{
 			State &state = GetState();
 			SyncFromScene();
+			SyncEnvironment();
 			std::string error;
 			if (!state.document.SaveAs(path, format, &error))
 			{
@@ -831,6 +853,7 @@ namespace SceneryEditorX::EditorProjects
 			state.suggestedPath.clear();
 			state.lastAutosave = ImGui::GetTime();
 			AddRecent(path);
+			state.environmentVersion = Environment::Get().GetVersion();
 			EDITOR_INFO_TAG(LOG_TAG, "Saved {} ({})", ToUtf8(path), GetProjectFormatName(state.document.GetFormat()));
 			return true;
 		}

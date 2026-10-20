@@ -88,6 +88,40 @@ namespace SceneryEditorX::ProjectFile
 		a.FieldIf("valid", v.valid, true);
 	}
 
+	template<typename A> void Visit(A &a, Environment::CloudLayer &v)
+	{
+		a.Field("base-msl-m", v.baseMslM);
+		a.Field("top-msl-m", v.topMslM);
+		a.Field("coverage", v.coverage);
+		a.Field("type", v.type);
+	}
+
+	template<typename A> void Visit(A &a, Environment::EnvironmentState &v)
+	{
+		a.Field("year", v.year);
+		a.Field("month", v.month);
+		a.Field("day", v.day);
+		a.Field("local-time-hours", v.localTimeHours);
+		a.Field("utc-offset-hours", v.utcOffsetHours);
+		a.Field("latitude", v.latitudeDeg);
+		a.Field("longitude", v.longitudeDeg);
+		a.Field("elevation", v.elevationM);
+		a.Field("follow-airport", v.followAirport);
+		a.Field("visibility-m", v.visibilityM);
+		a.Field("clouds", v.clouds);
+		a.Field("rain-percent", v.rainPercent);
+		a.Field("temperature-c", v.temperatureC);
+		a.Field("wind-direction-degt", v.windDirectionDegT);
+		a.Field("wind-speed-kt", v.windSpeedKt);
+		a.Field("wave-amplitude-m", v.waveAmplitudeM);
+		a.Field("wave-direction-degt", v.waveDirectionDegT);
+		a.Field("runway-friction", v.runwayFriction);
+		a.Field("snow-cover", v.snowCover);
+		a.Field("integrate-surface", v.integrateSurface);
+		a.Field("season", v.season);
+		a.Field("season-ratio", v.seasonRatioOverride);
+	}
+
 	template<typename A> void Visit(A &a, LibraryReference &v)
 	{
 		a.Field("Library", v.name);

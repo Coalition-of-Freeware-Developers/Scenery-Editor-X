@@ -379,7 +379,14 @@ MESSAGE(STATUS "Generating Environment Unit Tests")
 
 ADD_EXECUTABLE(EnvironmentTests
     ${CMAKE_CURRENT_SOURCE_DIR}/environment_tests/ParityScenarioTests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/environment_tests/EnvironmentTests.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/environment/parity_scenario.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/environment/solar_position.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/environment/surface_weather.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/environment/season_model.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/environment/sky_conditions.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/environment/environment_state.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/environment/environment.cpp
 )
 
 TARGET_INCLUDE_DIRECTORIES(EnvironmentTests PRIVATE

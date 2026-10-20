@@ -770,6 +770,58 @@ TEST_CASE(".sex round trips every field", "[project][sex]")
 	CHECK(tags == std::vector<std::string>{ "INFO", "LIBS", "APRT", "ITEM", "LIBR" });
 }
 
+TEST_CASE("The world environment round trips in .edX and .sex, and stays out until set", "[project][edx][sex][environment]")
+{
+	SceneryProject project = MakeSampleProject();
+	const std::string withoutText = WriteEdx(project);
+	CHECK(withoutText.find("\"Environment\"") == std::string::npos);	// Projects without one stay byte-identical
+
+	SceneryEditorX::Environment::EnvironmentState environment;
+	environment.year = 2026;
+	environment.month = 1;
+	environment.day = 15;
+	environment.localTimeHours = 9.75;
+	environment.utcOffsetHours = -8.0f;
+	environment.followAirport = false;
+	environment.latitudeDeg = 47.449889;
+	environment.longitudeDeg = -122.311778;
+	environment.visibilityM = 800.0f;
+	environment.clouds[1] = { 700.0f, 1400.0f, 1.0f, 1.0f };
+	environment.rainPercent = 0.6f;
+	environment.runwayFriction = 9;
+	environment.snowCover = 1.0f;
+	environment.temperatureC = -5.0f;
+	environment.season = SceneryEditorX::Environment::SeasonOverride::Winter;
+	environment.seasonRatioOverride = 0.25f;
+	project.environment = environment;
+
+	const std::string text = WriteEdx(project);
+	CHECK(text.find("\"Environment\"") != std::string::npos);
+	CHECK(text.find("\"win\"") != std::string::npos);
+	SceneryProject read;
+	std::vector<std::string> warnings;
+	std::string error;
+	REQUIRE(ParseEdx(text, read, &warnings, &error));
+	CHECK(warnings.empty());
+	REQUIRE(read.environment.has_value());
+	CHECK(*read.environment == environment);
+	CHECK(WriteEdx(read) == text);
+
+	const std::string bytes = WriteSex(project);
+	SceneryProject binary;
+	REQUIRE(ParseSex(bytes.data(), bytes.size(), binary, &warnings, &error));
+	REQUIRE(binary.environment.has_value());
+	CHECK(*binary.environment == environment);
+	std::vector<SexChunkInfo> chunks;
+	REQUIRE(ReadSexChunkTable(bytes.data(), bytes.size(), chunks));
+	CHECK(chunks.back().tag == "ENVR");
+
+	// Files from before the environment existed still load (no section, no chunk)
+	SceneryProject old;
+	REQUIRE(ParseEdx(withoutText, old, &warnings, &error));
+	CHECK_FALSE(old.environment.has_value());
+}
+
 TEST_CASE(".sex detects damage instead of loading garbage", "[project][sex]")
 {
 	const std::string bytes = WriteSex(MakeSampleProject());

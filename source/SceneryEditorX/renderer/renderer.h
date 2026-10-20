@@ -467,6 +467,9 @@ namespace SceneryEditorX
 		static void SetFallbackDaylight(float daylight);
 		static float GetFallbackDaylight();
 
+		/* @brief Direction toward the placeholder sun (world frame: +X east, +Y up, +Z south), from the environment. */
+		static void SetFallbackSunDirection(const xMath::Vec3 &towardSun);
+
 		/* @brief Draws the editor grid (on by default; parity captures hide it, X-Plane has none). */
 		static void SetGridVisible(bool visible);
 		static bool IsGridVisible();

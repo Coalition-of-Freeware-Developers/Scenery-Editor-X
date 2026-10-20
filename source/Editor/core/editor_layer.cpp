@@ -49,6 +49,7 @@
 #include <Editor/panels/airport_panel.h>
 #include <Editor/panels/asset_shelf_panel.h>
 #include <Editor/panels/console_panel.h>
+#include <Editor/panels/environment_panel.h>
 #include <Editor/panels/facade_editor_panel.h>
 #include <Editor/panels/facade_inspector_panel.h>
 #include <Editor/panels/outliner_panel.h>
@@ -70,6 +71,8 @@
 #include <SceneryEditorX/core/resource/resource_cache.h>
 #include <SceneryEditorX/core/time/fps_timer.h>
 #include <SceneryEditorX/core/window/window.h>
+#include <SceneryEditorX/environment/environment.h>
+#include <SceneryEditorX/environment/parity_scenario.h>
 #include <SceneryEditorX/logging/logging.hpp>
 #include <SceneryEditorX/renderer/gpu_scene.h>
 #include <SceneryEditorX/renderer/renderer.h>
@@ -78,7 +81,9 @@
 #include <SceneryEditorX/renderer/ui/source/imgui/imgui_internal.h>
 #include <SceneryEditorX/renderer/vulkan/debug/render_doc.h>
 #include <SceneryEditorX/scene/entity.h>
+#include <SceneryEditorX/project/project_document.h>
 #include <SceneryEditorX/xplane/xp_airport_manager.h>
+#include <SceneryEditorX/xplane/xp_airport_scene.h>
 #include <SceneryEditorX/xplane/xp_datarefs.h>
 #include <SceneryEditorX/xplane/xp_library_manager.h>
 #include <SceneryEditorX/xplane/xp_scene.h>
@@ -113,14 +118,15 @@ namespace SceneryEditorX
 		constexpr PanelInfo PANEL_PROJECT			= { "Project",			"PROJECT###Project",				SEDX_ICON_FILE_TEXT };
 		constexpr PanelInfo PANEL_FACADES			= { "FacadeInspector",	"FACADES###FacadeInspector",		SEDX_ICON_BUILDING_O };
 		constexpr PanelInfo PANEL_FACADE_EDITOR		= { "FacadeEditor",		"FACADE EDITOR###FacadeEditor",		SEDX_ICON_PICTURE_O };
+		constexpr PanelInfo PANEL_ENVIRONMENT		= { "Environment",		"ENVIRONMENT###Environment",		SEDX_ICON_SUN_O };
 
 		constexpr PanelInfo s_StripPanels[] =
 		{
-			PANEL_PROPERTIES, PANEL_OUTLINER, PANEL_PROJECT, PANEL_AIRPORTS, PANEL_XPLANE, PANEL_FACADES, PANEL_FACADE_EDITOR, PANEL_ASSETS, PANEL_CONSOLE, PANEL_SCENE_SETTINGS, PANEL_CAMERA, PANEL_RENDERER, PANEL_VIEWPORT
+			PANEL_PROPERTIES, PANEL_OUTLINER, PANEL_PROJECT, PANEL_AIRPORTS, PANEL_XPLANE, PANEL_FACADES, PANEL_FACADE_EDITOR, PANEL_ENVIRONMENT, PANEL_ASSETS, PANEL_CONSOLE, PANEL_SCENE_SETTINGS, PANEL_CAMERA, PANEL_RENDERER, PANEL_VIEWPORT
 		};
 
 		/* Bump when the default layout changes so existing users get the new arrangement once. */
-		constexpr const char *DOCKSPACE_NAME = "SEDX_EditorDockspace_v7";
+		constexpr const char *DOCKSPACE_NAME = "SEDX_EditorDockspace_v8";
 
 		constexpr ImGuiWindowFlags SIDE_BAR_FLAGS = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoSavedSettings;
 
@@ -267,8 +273,9 @@ namespace SceneryEditorX
 		XPlane::LibraryManager::Init();
 		EditorAirports::Init();
 		EditorProjects::Init(m_UserPreferences);
-		ReadStartupObjects();
+		LoadEnvironmentTables();
 		EditorScenario::Init();		// --env-scenario: after the airports, so its airport wins over --xp-airport
+		ReadStartupObjects();		// After the scenario, so --env-* flags override its environment
 		RegisterPanels();
 		// Commands the menus offer (menu bar, right-click quad menu, Space hotbox), and the menus themselves
 		ViewportMenus::RegisterCommands();
@@ -321,6 +328,7 @@ namespace SceneryEditorX
 		m_PanelManager->AddPanel<ProjectPanel>(PanelCategory::Editor, PANEL_PROJECT.id, "Project", true, &m_Context);
 		m_PanelManager->AddPanel<FacadeInspectorPanel>(PanelCategory::Editor, PANEL_FACADES.id, "Facades", true, &m_Context);
 		m_PanelManager->AddPanel<FacadeEditorPanel>(PanelCategory::Editor, PANEL_FACADE_EDITOR.id, "Facade Editor", false, &m_Context);
+		m_PanelManager->AddPanel<EnvironmentPanel>(PanelCategory::Editor, PANEL_ENVIRONMENT.id, "Environment", true, &m_Context);
 		m_PanelManager->AddPanel<SceneSettingsPanel>(PanelCategory::Settings, PANEL_SCENE_SETTINGS.id, "Scene Settings", true);
 		m_PanelManager->AddPanel<CameraSettingsPanel>(PanelCategory::Settings, PANEL_CAMERA.id, "Camera", true);
 		m_PanelManager->AddPanel<RendererStatsPanel>(PanelCategory::Settings, PANEL_RENDERER.id, "Renderer", true);
@@ -380,6 +388,9 @@ namespace SceneryEditorX
 			XPlane::SceneObjects::Tick(ImGui::GetIO().DeltaTime);
 		}
 
+		// World environment: place from the open airport (or project), the camera's altitude, surface wetting over time
+		UpdateEnvironment();
+
 		// Airports: the startup airport, scene rebuilds after edits, finished Gateway downloads
 		{
 			SEDX_PERF_SCOPE("Main: EditorAirports::Tick");
@@ -414,6 +425,20 @@ namespace SceneryEditorX
 
 		// The viewport's right-click quad menu and Space hotbox, over the panels
 		ViewportMenus::Draw(&m_Context);
+
+		// --focus-panel: once the dock layout has been built (a few frames in)
+		if (!m_FocusPanel.empty() && ++m_FocusPanelFrames > 3)
+		{
+			for (const PanelInfo &info : s_StripPanels)
+			{
+				if (m_FocusPanel != info.id)
+					continue;
+				if (PanelData *panel = FindPanel(info.id))
+					panel->IsOpen = true;
+				ImGui::SetWindowFocus(info.window);
+			}
+			m_FocusPanel.clear();
+		}
 
 		// Inspect (menus, PROPERTIES, the library panel) brings the FACADES panel up
 		if (FacadeTool::ConsumeOpenRequest())
@@ -876,6 +901,7 @@ namespace SceneryEditorX
 		ImGui::DockBuilderDockWindow(PANEL_RENDERER.window, rightBottom);
 		ImGui::DockBuilderDockWindow(PANEL_FACADES.window, rightBottom);
 		ImGui::DockBuilderDockWindow(PANEL_FACADE_EDITOR.window, rightBottom);
+		ImGui::DockBuilderDockWindow(PANEL_ENVIRONMENT.window, rightBottom);
 		ImGui::DockBuilderDockWindow(PANEL_ASSETS.window, bottom);
 		ImGui::DockBuilderDockWindow(PANEL_CONSOLE.window, bottom);
 		ImGui::DockBuilderDockWindow(PANEL_XPLANE.window, bottom);
@@ -974,6 +1000,7 @@ namespace SceneryEditorX
 
 		const std::vector<std::string> &args = platform->GetCommandLineArgs();
 		XPlane::DatarefEnvironment &environment = XPlane::Datarefs::GetEnvironment();
+		Environment::EnvironmentState world = Environment::Get().GetState();
 		for (size_t i = 0; i < args.size(); ++i)
 		{
 			if (args[i] == "--xp-lights-on")
@@ -1004,10 +1031,14 @@ namespace SceneryEditorX
 				break;
 			else if (args[i] == "--xp-object")
 				m_StartupObjectFiles.push_back(args[++i]);
+			else if (args[i] == "--focus-panel")
+				m_FocusPanel = args[++i];	// A panel id ("Environment", "RendererStats"...): its tab comes to the front
 			else if (args[i] == "--xp-asset")
 				m_StartupAssets.push_back(args[++i]);
 			else if (args[i] == "--xp-time")
-				environment.localTimeHours = std::clamp(std::strtof(args[++i].c_str(), nullptr), 0.0f, 24.0f); // local time in hours
+				world.localTimeHours = std::clamp(std::strtod(args[++i].c_str(), nullptr), 0.0, 24.0); // local time in hours (alias of --env-time)
+			else if (ParseEnvironmentFlag(args[i], args[i + 1], world))
+				++i;
 			else if (args[i] == "--xp-position")
 			{
 				// "x,y,z" in meters (+X east, +Y up, +Z south)
@@ -1021,6 +1052,121 @@ namespace SceneryEditorX
 				m_HasStartupPosition = true;
 			}
 		}
+		Environment::Get().SetState(world);
+	}
+
+	bool EditorLayer::ParseEnvironmentFlag(const std::string &flag, const std::string &value, Environment::EnvironmentState &state)
+	{
+		// --env-* flags (plan TASK-017): the world environment at startup
+		const auto number = [&value](double &out)
+		{
+			char *end = nullptr;
+			out = std::strtod(value.c_str(), &end);
+			return end && end != value.c_str();
+		};
+		double x = 0.0;
+		if (flag == "--env-date")
+		{
+			if (!Environment::ParseIsoDate(value, state.year, state.month, state.day))
+				EDITOR_ERROR_TAG("Environment", "--env-date wants YYYY-MM-DD, not '{}'", value);
+			return true;
+		}
+		if (flag == "--env-time")
+		{
+			if (!Environment::ParseClockTime(value, state.localTimeHours))
+				EDITOR_ERROR_TAG("Environment", "--env-time wants HH:MM, not '{}'", value);
+			return true;
+		}
+		if (flag == "--env-utc-offset" && number(x))
+		{
+			state.utcOffsetHours = static_cast<float>(std::clamp(x, -14.0, 14.0));
+			return true;
+		}
+		if (flag == "--env-latlon")
+		{
+			double lat = 0.0, lon = 0.0;
+			if (std::sscanf(value.c_str(), "%lf,%lf", &lat, &lon) == 2)
+			{
+				state.latitudeDeg = std::clamp(lat, -90.0, 90.0);
+				state.longitudeDeg = std::clamp(lon, -180.0, 180.0);
+				state.followAirport = false;
+			}
+			else
+				EDITOR_ERROR_TAG("Environment", "--env-latlon wants lat,lon in degrees, not '{}'", value);
+			return true;
+		}
+		if (flag == "--env-visibility" && number(x))
+		{
+			state.visibilityM = static_cast<float>(std::clamp(x, 10.0, 200000.0));
+			return true;
+		}
+		if (flag == "--env-rain" && number(x))
+		{
+			state.rainPercent = static_cast<float>(std::clamp(x, 0.0, 1.0));
+			return true;
+		}
+		if (flag == "--env-snow" && number(x))
+		{
+			state.snowCover = static_cast<float>(std::clamp(x, 0.0, 1.0));
+			return true;
+		}
+		if (flag == "--env-friction" && number(x))
+		{
+			state.runwayFriction = std::clamp(static_cast<int>(x), 0, 15);
+			return true;
+		}
+		if (flag == "--env-temperature" && number(x))
+		{
+			state.temperatureC = static_cast<float>(std::clamp(x, -80.0, 60.0));
+			return true;
+		}
+		if (flag == "--env-season")
+		{
+			Environment::Season season;
+			if (value == "auto")
+				state.season = Environment::SeasonOverride::Auto;
+			else if (Environment::ParseSeasonCode(value, season))
+				state.season = static_cast<Environment::SeasonOverride>(static_cast<uint8_t>(season) + 1);
+			else
+				EDITOR_ERROR_TAG("Environment", "--env-season wants spr, sum, fal, win or auto, not '{}'", value);
+			return true;
+		}
+		return false;
+	}
+
+	void EditorLayer::LoadEnvironmentTables()
+	{
+		const std::filesystem::path table = std::filesystem::path(ResourceCache::GetResourceDirectory()) / "environment" / "xp12_sky_conditions.json";
+		std::string error;
+		if (!Environment::Get().LoadSkyConditions(table, &error))
+			EDITOR_WARN_TAG("Environment", "Sky-condition table not loaded ({}): every class stays at 1", error);
+	}
+
+	void EditorLayer::UpdateEnvironment()
+	{
+		Environment::World &world = Environment::Get();
+
+		// The place: the open airport's datum, else the open project's center
+		if (world.GetState().followAirport)
+		{
+			if (XPlane::SceneAirports::IsLoaded())
+			{
+				const XPlane::GeoProjection &projection = XPlane::SceneAirports::GetProjection();
+				const XPlane::AirportDocument *airport = EditorAirports::GetDocument();
+				const float elevation = airport ? static_cast<float>(airport->airport.elevationFt) * 0.3048f : world.GetState().elevationM;
+				world.SetAirportLocation(projection.GetDatumLatitude(), projection.GetDatumLongitude(), elevation);
+			}
+			else if (const ProjectFile::ProjectDocument *project = EditorProjects::GetDocument())
+			{
+				double latitude = 0.0, longitude = 0.0;
+				if (ProjectFile::GetProjectCenter(project->GetProject(), latitude, longitude))
+					world.SetAirportLocation(latitude, longitude, static_cast<float>(project->GetProject().datum.valid ? project->GetProject().datum.elevation : world.GetState().elevationM));
+			}
+		}
+
+		if (const Camera *camera = EditorCamera::Get())
+			world.SetObserverAltitude(camera->GetEyePosition().y + world.GetState().elevationM);
+		world.Tick(ImGui::GetIO().DeltaTime);
 	}
 
 	void EditorLayer::PlaceStartupObjects()

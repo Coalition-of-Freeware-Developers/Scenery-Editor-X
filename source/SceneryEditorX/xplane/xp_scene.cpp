@@ -37,6 +37,7 @@
 #include <unordered_set>
 #include <SceneryEditorX/asset/standards.h>
 #include <SceneryEditorX/core/frame_profiler.h>
+#include <SceneryEditorX/environment/environment.h>
 #include <SceneryEditorX/logging/logging.hpp>
 #include <SceneryEditorX/renderer/gpu_scene.h>
 #include <SceneryEditorX/renderer/renderer.h>
@@ -797,8 +798,14 @@ namespace SceneryEditorX::XPlane
 		Datarefs::Tick(deltaSeconds);
 		ObjectAsset::SetLitTexturesVisible(Datarefs::GetNightFactor() > 0.5f);
 
-		// The placeholder sun and sky follow the emulated time of day.
+		// The placeholder sun and sky follow the world environment's sun (kept a little above the horizon: below it the
+		// placeholder light is faded out by the daylight factor anyway)
 		Renderer::SetFallbackDaylight(Datarefs::GetDaylight());
+		{
+			const Environment::EnvironmentDerived &environment = Environment::Get().GetDerived();
+			const Environment::Direction sun = Environment::DirectionFromAzimuth(environment.sun.azimuthDeg, std::max(environment.sun.apparentElevationDeg, 2.0));
+			Renderer::SetFallbackSunDirection(xMath::Vec3(sun.x, sun.y, sun.z));
+		}
 
 		if (!registry)
 		{

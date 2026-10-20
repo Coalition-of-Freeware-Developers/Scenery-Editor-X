@@ -29,6 +29,7 @@
  * -------------------------------------------------------
  */
 #pragma once
+#include <SceneryEditorX/environment/environment_state.h>
 #include <SceneryEditorX/xplane/xp_apt.h>
 #include <SceneryEditorX/xplane/xp_library.h>
 #include <cstdint>
@@ -270,6 +271,7 @@ namespace SceneryEditorX::ProjectFile
 		std::vector<ProjectAirport> airports;
 		std::vector<SceneryItem> items;					// The scene hierarchy ("Assets"); top level = WorldEditor's world
 		std::optional<XPlane::LibraryFile> library;		// Library projects: the library.txt being authored
+		std::optional<Environment::EnvironmentState> environment;	// The world the project was last viewed in (date, weather...)
 		PropertyList wedPreferences;					// WorldEditor <prefs>, kept for the round trip
 		PropertyList properties;						// "other-properties"
 
