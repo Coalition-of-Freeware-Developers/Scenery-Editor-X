@@ -271,6 +271,7 @@ ADD_EXECUTABLE(XPlaneFormatTests
     ${CMAKE_CURRENT_SOURCE_DIR}/xplane_tests/DsfWriterTests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/xplane_tests/FacadeTests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/xplane_tests/FacadeWriterTests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/xplane_tests/InstallFinderTests.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/filesystem/vfs.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_obj8.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_library.cpp
@@ -285,6 +286,7 @@ ADD_EXECUTABLE(XPlaneFormatTests
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_facade_writer.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_facade_authoring.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_overlay.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_install_finder.cpp
 )
 
 TARGET_INCLUDE_DIRECTORIES(XPlaneFormatTests PRIVATE
@@ -295,6 +297,11 @@ TARGET_LINK_LIBRARIES(XPlaneFormatTests PRIVATE
     Catch2::Catch2WithMain
     nlohmann_json::nlohmann_json
 )
+
+IF(WIN32)
+    # xp_install_finder reads the registry and the desktop folder
+    TARGET_LINK_LIBRARIES(XPlaneFormatTests PRIVATE advapi32 shell32)
+ENDIF()
 
 IF(_SEDX_MSVCLIKE)
     TARGET_COMPILE_OPTIONS(XPlaneFormatTests PRIVATE /MP /W4)
@@ -341,6 +348,7 @@ ADD_EXECUTABLE(ProjectFormatTests
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_assets.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_facade.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_overlay.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_install_finder.cpp
 )
 
 TARGET_INCLUDE_DIRECTORIES(ProjectFormatTests PRIVATE

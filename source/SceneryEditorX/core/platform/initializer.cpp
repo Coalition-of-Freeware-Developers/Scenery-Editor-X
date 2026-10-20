@@ -30,6 +30,7 @@
  */
 #include "initializer.h"
 #include <SceneryEditorX/core/memory/memory.h>
+#include <SceneryEditorX/core/platform/windows/crash_diagnostics.h>
 #include <SceneryEditorX/logging/logging.hpp>
 #include <SceneryEditorX/renderer/vulkan/debug/graphics_debug.h>
 
@@ -96,6 +97,9 @@ namespace SceneryEditorX
 
 		Log::Init();
 		Log::LogHeader();
+
+		// Before the application is constructed: its members (the settings, for one) do work that can fail
+		Diagnostics::InstallCrashHandlers();
 	}
 
 	void Shutdown()

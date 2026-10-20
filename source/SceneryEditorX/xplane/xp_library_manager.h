@@ -29,6 +29,7 @@
  * -------------------------------------------------------
  */
 #pragma once
+#include "xp_install_finder.h"
 #include "xp_library.h"
 #include <filesystem>
 #include <memory>
@@ -59,14 +60,8 @@ namespace SceneryEditorX::XPlane
 		[[nodiscard]] std::string GetProblem() const;
 	};
 
-	/* @brief Inspects a folder for an X-Plane 12 installation. */
+	/* @brief Inspects a folder for an X-Plane 11 or 12 installation. FindInstallCandidates() finds them. */
 	InstallInfo InspectInstall(const std::filesystem::path &root);
-
-	/**
-	 * @brief X-Plane installs found on this machine: the paths X-Plane records in x-plane_install_12.txt and Steam
-	 * libraries. Valid installs come first.
-	 */
-	std::vector<std::filesystem::path> FindInstalls();
 
 	/* @brief State of the background library scan. */
 	enum class ScanState : uint8_t

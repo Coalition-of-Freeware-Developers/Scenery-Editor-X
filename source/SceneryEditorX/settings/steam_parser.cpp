@@ -34,6 +34,7 @@
 #include <fstream>
 #include <libconfig.h++>
 #include <regex>
+#include <SceneryEditorX/filesystem/vfs.h>
 
 // -------------------------------------------------------
 
@@ -41,6 +42,23 @@ namespace SceneryEditorX
 {
 	using namespace libconfig;
 	namespace fs = std::filesystem;
+
+	/*
+	 * Checks that answer "no" instead of throwing. The throwing std::filesystem calls fail on a drive letter without
+	 * media (an empty card reader or DVD drive), a locked BitLocker drive or a lost network drive, and the X-Plane
+	 * search probes several drives while the editor starts: one such drive aborted the whole editor.
+	 */
+	static bool Exists(const fs::path &path)
+	{
+		std::error_code ec;
+		return fs::exists(path, ec);
+	}
+
+	static bool IsDirectory(const fs::path &path)
+	{
+		std::error_code ec;
+		return fs::is_directory(path, ec);
+	}
 
 	const char SteamGameFinder::DIR_SEPARATOR =
 	#ifdef _WIN32
@@ -81,82 +99,24 @@ namespace SceneryEditorX
 			return false;
 		}
 
-		const fs::path basePath = path;
-		SEDX_CORE_TRACE_TAG("SteamParser", "Validating X-Plane path: {}", basePath.string());
+		// What the X-Plane library needs (XPlane::InspectInstall). X-Plane 11 and 12 have no bin/ folder: their
+		// executable sits in the root, which is why the old bin/X-Plane.exe check turned down every real install.
+		const fs::path basePath = VFS::FromUtf8(path);
+		SEDX_CORE_TRACE_TAG("SteamParser", "Validating X-Plane path: {}", path);
 
-		// Check if the directory exists
-		if (!fs::exists(basePath))
+		if (!IsDirectory(basePath / "Resources" / "default scenery"))
 		{
-			SEDX_CORE_TRACE_TAG("SteamParser", "validateXPlanePath: Directory does not exist: {}", basePath.string());
-			return false;
-		}
-
-		if (!fs::is_directory(basePath))
-		{
-			SEDX_CORE_TRACE_TAG("SteamParser", "validateXPlanePath: Path is not a directory: {}", basePath.string());
+			SEDX_CORE_TRACE_TAG("SteamParser", "validateXPlanePath: Missing Resources/default scenery in {}", path);
 			return false;
 		}
 
-		// Check for essential subdirectories
-		if (!fs::exists(basePath / "Resources"))
+		if (!IsDirectory(basePath / "Custom Scenery"))
 		{
-			SEDX_CORE_TRACE_TAG("SteamParser", "validateXPlanePath: Missing Resources directory");
+			SEDX_CORE_TRACE_TAG("SteamParser", "validateXPlanePath: Missing Custom Scenery in {}", path);
 			return false;
 		}
 
-		if (!fs::is_directory(basePath / "Resources"))
-		{
-			SEDX_CORE_TRACE_TAG("SteamParser", "validateXPlanePath: Resources is not a directory");
-			return false;
-		}
-
-		if (!fs::exists(basePath / "bin"))
-		{
-			SEDX_CORE_TRACE_TAG("SteamParser", "validateXPlanePath: Missing bin directory");
-			return false;
-		}
-
-		if (!fs::is_directory(basePath / "bin"))
-		{
-			SEDX_CORE_TRACE_TAG("SteamParser", "validateXPlanePath: bin is not a directory");
-			return false;
-		}
-
-	// Check for X-Plane executable
-#ifdef SEDX_PLATFORM_WINDOWS
-		if (!fs::exists(basePath / "bin" / "X-Plane.exe"))
-		{
-			SEDX_CORE_TRACE_TAG("SteamParser", "validateXPlanePath: X-Plane.exe not found");
-			return false;
-		}
-#elif defined(SEDX_PLATFORM_MACOS)
-		if (!fs::exists(basePath / "X-Plane.app"))
-		{
-			SEDX_CORE_TRACE_TAG("SteamParser", "validateXPlanePath: X-Plane.app not found");
-			return false;
-		}
-#else
-		if (!fs::exists(basePath / "bin" / "X-Plane-x86_64"))
-		{
-			SEDX_CORE_TRACE_TAG("SteamParser", "validateXPlanePath: X-Plane-x86_64 not found");
-			return false;
-		}
-#endif
-
-		// Check for Resources/default data directory
-		if (!fs::exists(basePath / "Resources" / "default data"))
-		{
-			SEDX_CORE_TRACE_TAG("SteamParser", "validateXPlanePath: Missing Resources/default data directory");
-			return false;
-		}
-
-		if (!fs::is_directory(basePath / "Resources" / "default data"))
-		{
-			SEDX_CORE_TRACE_TAG("SteamParser", "validateXPlanePath: Resources/default data is not a directory");
-			return false;
-		}
-
-		SEDX_CORE_TRACE_TAG("SteamParser", "Path is a valid X-Plane 12 installation: {}", basePath.string());
+		SEDX_CORE_TRACE_TAG("SteamParser", "Path is a valid X-Plane installation: {}", path);
 		return true;
 	}
 
@@ -198,7 +158,7 @@ namespace SceneryEditorX
 			// Replace forward slashes with backslashes for consistent path format
 			std::ranges::replace(steamPath, '/', '\\');
 
-			if (fs::exists(steamPath))
+			if (Exists(steamPath))
 			{
 			    return steamPath;
 			}
@@ -221,7 +181,7 @@ namespace SceneryEditorX
 		};
 
 		for (const auto& path : defaultPaths)
-			if (fs::exists(path))
+			if (Exists(path))
 			{
 				SEDX_CORE_TRACE_TAG("SteamParser", "Found Steam at default path: {}", path);
 				return path;
@@ -245,7 +205,7 @@ namespace SceneryEditorX
 		std::vector<std::string> libraries;
 
 		// Add the main Steam library
-		if (std::string mainLibrary = steamPath + DIR_SEPARATOR + "steamapps"; fs::exists(mainLibrary))
+		if (std::string mainLibrary = steamPath + DIR_SEPARATOR + "steamapps"; Exists(mainLibrary))
 		{
 			libraries.push_back(mainLibrary);
 			SEDX_CORE_TRACE_TAG("SteamParser", "Added main Steam library: {}", mainLibrary);
@@ -256,7 +216,7 @@ namespace SceneryEditorX
 
 		SEDX_CORE_TRACE_TAG("SteamParser", "Looking for Steam library config at: {}", configPath);
 
-		if (!fs::exists(configPath))
+		if (!Exists(configPath))
 		{
 			SEDX_CORE_WARN_TAG("SteamParser", "Steam library config file not found: {}", configPath);
 			return libraries;
@@ -301,7 +261,7 @@ namespace SceneryEditorX
 					}
 
 					// Add steamapps subdirectory
-					if (std::string steamappsPath = libraryPath + DIR_SEPARATOR + "steamapps"; fs::exists(steamappsPath))
+					if (std::string steamappsPath = libraryPath + DIR_SEPARATOR + "steamapps"; Exists(steamappsPath))
 					{
 						libraries.push_back(steamappsPath);
 						SEDX_CORE_TRACE_TAG("SteamParser", "Found Steam library from path format: {}", steamappsPath);
@@ -331,7 +291,7 @@ namespace SceneryEditorX
 						steamappsPath = libraryPath;
 					}
 
-					if (fs::exists(steamappsPath))
+					if (Exists(steamappsPath))
 					{
 						libraries.push_back(steamappsPath);
 						SEDX_CORE_TRACE_TAG("SteamParser", "Found Steam library from numeric format: {}", steamappsPath);
@@ -360,7 +320,7 @@ namespace SceneryEditorX
 			{
 				for (const auto& path : commonPaths)
 				{
-					if (std::string fullPath = drive + path; fs::exists(fullPath) && std::ranges::find(libraries, fullPath) == libraries.end())
+					if (std::string fullPath = drive + path; Exists(fullPath) && std::ranges::find(libraries, fullPath) == libraries.end())
 					{
 						// Check if this path is already in our libraries list
 						libraries.push_back(fullPath);
@@ -400,7 +360,7 @@ namespace SceneryEditorX
 			SEDX_CORE_TRACE_TAG("SteamParser", "Scanning library: {}", library);
 
 			// First, check common folder directly - it's faster
-			if (std::string commonPath = library.substr(0, library.find("steamapps")) + DIR_SEPARATOR + "steamapps" + DIR_SEPARATOR + "common"; fs::exists(commonPath))
+			if (std::string commonPath = library.substr(0, library.find("steamapps")) + DIR_SEPARATOR + "steamapps" + DIR_SEPARATOR + "common"; Exists(commonPath))
 			{
 				SEDX_CORE_TRACE_TAG("SteamParser", "Checking common folder: {}", commonPath);
 
@@ -418,7 +378,7 @@ namespace SceneryEditorX
 					xplanePath = commonPath + DIR_SEPARATOR + name;
 					SEDX_CORE_TRACE_TAG("SteamParser", "Checking potential X-Plane path: {}", xplanePath);
 
-					if (fs::exists(xplanePath))
+					if (Exists(xplanePath))
 					{
 						if (ValidateXPlanePath(xplanePath))
 						{
@@ -479,7 +439,7 @@ namespace SceneryEditorX
 
 									SEDX_CORE_TRACE_TAG("SteamParser", "Found X-Plane 12 install dir: {} -> {}", installDir, fullPath);
 
-									if (fs::exists(fullPath))
+									if (Exists(fullPath))
 									{
 										if (ValidateXPlanePath(fullPath))
 										{

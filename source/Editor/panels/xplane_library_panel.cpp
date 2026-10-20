@@ -146,9 +146,9 @@ namespace SceneryEditorX
 		const InstallInfo &install = LibraryManager::GetInstallInfo();
 
 		ImGui::AlignTextToFramePadding();
-		StatusIcon(install.IsValid(), install.IsValid() ? "X-Plane 12 folder found" : install.GetProblem().c_str());
+		StatusIcon(install.IsValid(), install.IsValid() ? "X-Plane folder found" : install.GetProblem().c_str());
 		ImGui::SameLine();
-		ImGui::TextUnformatted(install.IsValid() ? (install.version.empty() ? "X-Plane 12" : ("X-Plane " + install.version).c_str()) : "X-Plane 12");
+		ImGui::TextUnformatted(install.IsValid() && !install.version.empty() ? ("X-Plane " + install.version).c_str() : "X-Plane");
 		ImGui::SameLine();
 
 		// Editable path: Enter applies it.
@@ -158,39 +158,42 @@ namespace SceneryEditorX
 		ImGui::SetNextItemWidth(std::max(120.0f, ImGui::GetContentRegionAvail().x - buttons));
 		if (!s_EditingPath)
 			s_PathEdit = install.root.string();
-		if (ImGui::InputTextWithHint("##InstallPath", "X-Plane 12 folder", &s_PathEdit, ImGuiInputTextFlags_EnterReturnsTrue))
+		if (ImGui::InputTextWithHint("##InstallPath", "X-Plane folder", &s_PathEdit, ImGuiInputTextFlags_EnterReturnsTrue))
 		{
 			if (!LibraryManager::SetInstallPath(s_PathEdit))
 				s_PathEdit = install.root.string();
 		}
 		s_EditingPath = ImGui::IsItemActive();
-		EditorUI::ItemTooltip(install.IsValid() ? install.root.string().c_str() : "Type or browse to your X-Plane 12 folder, then press Enter");
+		EditorUI::ItemTooltip(install.IsValid() ? install.root.string().c_str() : "Type or browse to your X-Plane 11 or 12 folder, then press Enter");
 
 		ImGui::SameLine();
 		if (ImGui::Button(EditorUI::IconLabel(SEDX_ICON_FOLDER_OPEN, "Browse...").c_str()))
 			EditorXPlane::BrowseForInstall();
 
 		ImGui::SameLine();
-		static std::vector<std::filesystem::path> s_Candidates;
+		static std::vector<InstallCandidate> s_Candidates;
 		if (ImGui::Button(EditorUI::IconLabel(SEDX_ICON_MAGIC, "Detect").c_str()))
 		{
-			s_Candidates = FindInstalls();
+			s_Candidates = FindInstallCandidates();
 			ImGui::OpenPopup("##DetectedInstalls");
 		}
-		EditorUI::ItemTooltip("Find X-Plane 12 installs (x-plane_install_12.txt and Steam libraries)");
+		EditorUI::ItemTooltip("Find X-Plane 11 and 12 installs: X-Plane's own install lists, Steam libraries, the registry and the usual folders");
 
 		if (ImGui::BeginPopup("##DetectedInstalls"))
 		{
 			if (s_Candidates.empty())
-				ImGui::TextDisabled("No X-Plane 12 installation found");
-			for (const std::filesystem::path &candidate : s_Candidates)
+				ImGui::TextDisabled("No X-Plane installation found");
+			for (const InstallCandidate &candidate : s_Candidates)
 			{
-				const InstallInfo info = InspectInstall(candidate);
+				const InstallInfo info = InspectInstall(candidate.root);
+				const std::string version = !info.version.empty() ? info.version : candidate.majorVersion > 0 ? std::to_string(candidate.majorVersion) : "?";
+				const std::string label = candidate.root.string() + "  (X-Plane " + version + ", " + GetInstallSourceName(candidate.source) + ")";
 				ImGui::BeginDisabled(!info.IsValid());
-				const std::string label = candidate.string() + (info.version.empty() ? std::string() : "  (" + info.version + ")");
-				if (ImGui::Selectable(label.c_str(), candidate == install.root))
-					LibraryManager::SetInstallPath(candidate);
+				if (ImGui::Selectable(label.c_str(), candidate.root == install.root))
+					LibraryManager::SetInstallPath(candidate.root);
 				ImGui::EndDisabled();
+				if (!info.IsValid())
+					EditorUI::ItemTooltip(info.GetProblem().c_str());
 			}
 			ImGui::EndPopup();
 		}
@@ -306,7 +309,7 @@ namespace SceneryEditorX
 		if (index.GetAssets().empty())
 		{
 			EditorUI::EmptyState(LibraryManager::GetInstallInfo().IsValid() ? "No library assets yet (scanning, or no tracked libraries)."
-																			  : "Set the X-Plane 12 folder above to browse its libraries.");
+																			  : "Set the X-Plane folder above to browse its libraries.");
 			return;
 		}
 

@@ -269,7 +269,7 @@ namespace SceneryEditorX::XPlane
 						packs += source.error.empty() ? 1 : 0;
 					message = std::to_string(index->GetAirports().size()) + " airports (" + std::to_string(index->Get3DCount()) + " 3D) in " + std::to_string(packs) + " scenery packs";
 					if (!install.IsValid() && tracked.empty())
-						message = install.root.empty() ? "Set the X-Plane 12 folder to index its airports" : install.GetProblem();
+						message = install.root.empty() ? "Set the X-Plane folder to index its airports" : install.GetProblem();
 				}
 				catch (const std::exception &e)
 				{

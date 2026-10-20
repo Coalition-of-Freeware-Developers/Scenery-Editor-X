@@ -56,12 +56,12 @@ namespace SceneryEditorX::EditorXPlane
 
 	void BrowseForInstall()
 	{
-		const std::string folder = pfd::select_folder("Select the X-Plane 12 folder", StartFolder()).result();
+		const std::string folder = pfd::select_folder("Select the X-Plane 11 or 12 folder", StartFolder()).result();
 		if (folder.empty())
 			return;
 
 		if (!XPlane::LibraryManager::SetInstallPath(folder))
-			EDITOR_ERROR_TAG("X-Plane", "'{}' is not an X-Plane 12 folder: {}", folder, XPlane::InspectInstall(folder).GetProblem());
+			EDITOR_ERROR_TAG("X-Plane", "'{}' is not an X-Plane folder: {}", folder, XPlane::InspectInstall(folder).GetProblem());
 		else
 			XPlane::AirportManager::Rescan(); // The airport index follows the install folder
 	}

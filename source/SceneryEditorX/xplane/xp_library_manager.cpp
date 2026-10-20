@@ -40,7 +40,6 @@
 #include <nlohmann/json.hpp>
 #include <SceneryEditorX/filesystem/file_system.h>
 #include <SceneryEditorX/logging/logging.hpp>
-#include <SceneryEditorX/settings/steam_parser.h>
 
 #ifdef _WIN32
 	#include <windows.h>
@@ -338,7 +337,7 @@ namespace SceneryEditorX::XPlane
 					message = std::to_string(index->GetAssets().size()) + " assets from " + std::to_string(tracked) + " of " +
 							  std::to_string(libraries) + " libraries";
 					if (!install.IsValid() && settings.trackedFolders.empty())
-						message = install.root.empty() ? "Set the X-Plane 12 folder to index its libraries" : install.GetProblem();
+						message = install.root.empty() ? "Set the X-Plane folder to index its libraries" : install.GetProblem();
 				}
 				catch (const std::exception &e)
 				{
@@ -421,41 +420,6 @@ namespace SceneryEditorX::XPlane
 		return info;
 	}
 
-	std::vector<fs::path> FindInstalls()
-	{
-		std::vector<fs::path> candidates;
-
-		// X-Plane records every install it has run from.
-		const fs::path recordFile = VFS::GetXPlaneInstallList(12);
-		if (std::string text; !recordFile.empty() && ReadTextFile(recordFile, text))
-		{
-			LineReader reader(text);
-			std::string_view line;
-			while (reader.Next(line))
-			{
-				std::string path(Trim(line));
-				while (!path.empty() && (path.back() == '/' || path.back() == '\\'))
-					path.pop_back();
-				if (!path.empty())
-					candidates.push_back(fs::path(path).make_preferred());
-			}
-		}
-
-		if (const std::optional<std::string> steam = SteamGameFinder::FindXPlane12())
-			candidates.push_back(fs::path(*steam).make_preferred());
-
-		std::vector<fs::path> unique;
-		std::set<std::string> seen;
-		for (const fs::path &candidate : candidates)
-		{
-			if (seen.insert(PathKey(candidate)).second)
-				unique.push_back(candidate);
-		}
-
-		std::ranges::stable_sort(unique, [](const fs::path &a, const fs::path &b) { return InspectInstall(a).IsValid() && !InspectInstall(b).IsValid(); });
-		return unique;
-	}
-
 	// -------------------------------------------------------
 
 	void LibraryManager::Init()
@@ -469,7 +433,7 @@ namespace SceneryEditorX::XPlane
 			LoadSettings(state.settings);
 		}
 
-		// Auto-detect outside the lock (Steam library parsing reads several files).
+		// Auto-detect outside the lock (the search reads Steam's files, the registry and several folders).
 		fs::path installPath;
 		{
 			std::scoped_lock lock(state.mutex);
@@ -478,12 +442,12 @@ namespace SceneryEditorX::XPlane
 
 		if (installPath.empty() || !InspectInstall(installPath).IsValid())
 		{
-			for (const fs::path &candidate : FindInstalls())
+			for (const InstallCandidate &candidate : FindInstallCandidates())
 			{
-				if (InspectInstall(candidate).IsValid())
+				if (InspectInstall(candidate.root).IsValid())
 				{
-					SEDX_CORE_INFO_TAG(LOG_TAG, "Detected X-Plane 12 at '{}'", candidate.string());
-					installPath = candidate;
+					SEDX_CORE_INFO_TAG(LOG_TAG, "Detected X-Plane {} at '{}' ({})", candidate.majorVersion, candidate.root.string(), GetInstallSourceName(candidate.source));
+					installPath = candidate.root;
 					break;
 				}
 			}
@@ -505,7 +469,7 @@ namespace SceneryEditorX::XPlane
 		}
 
 		if (!info.IsValid())
-			SEDX_CORE_WARN_TAG(LOG_TAG, "X-Plane 12 folder: {}", info.GetProblem());
+			SEDX_CORE_WARN_TAG(LOG_TAG, "X-Plane folder: {}", info.GetProblem());
 	}
 
 	void LibraryManager::Shutdown()
@@ -555,7 +519,7 @@ namespace SceneryEditorX::XPlane
 		state.installInfo = info;
 		SaveSettings(state.settings);
 		RequestScanLocked(state);
-		SEDX_CORE_INFO_TAG(LOG_TAG, "X-Plane 12 folder set to '{}'", path.string());
+		SEDX_CORE_INFO_TAG(LOG_TAG, "X-Plane folder set to '{}'", path.string());
 		return true;
 	}
 

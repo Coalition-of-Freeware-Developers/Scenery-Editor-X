@@ -35,6 +35,7 @@
 #include <libconfig.h++>
 #include <SceneryEditorX/core/application/application_data.h>
 #include <SceneryEditorX/filesystem/vfs.h>
+#include <SceneryEditorX/xplane/xp_install_finder.h>
 
 // -------------------------------------------------------
 
@@ -92,32 +93,45 @@ namespace SceneryEditorX
 					   Config::OptionAllowOverrides);
 		cfg.setTabWidth(2);
 
-		if (!Settings::ReadSettings())
+		// This runs while the application is being constructed: a failure here may cost the X-Plane path, never the editor
+		try
 		{
-			// If we couldn't read existing settings, create a minimal configuration
-			InitMinConfig();
-			configInitialized = true;
-
-			/// Try to detect X-Plane installation
-			if (DetectXPlanePath())
-				SEDX_CORE_TRACE_TAG("Settings", "X-Plane 12 detected and paths configured");
-			else
-				SEDX_CORE_WARN_TAG("Settings", "X-Plane 12 installation not found");
-
-			// Save the initial configuration
-			Settings::WriteSettings();
-		}
-		else
-		{
-			// Validate X-Plane paths from loaded configuration
-			if (!ValidateXPlanePaths())
+			if (!Settings::ReadSettings())
 			{
-				SEDX_CORE_WARN_TAG("Settings", "X-Plane paths in configuration are invalid, attempting detection");
+				// If we couldn't read existing settings, create a minimal configuration
+				InitMinConfig();
+				configInitialized = true;
+
+				/// Try to detect X-Plane installation
 				if (DetectXPlanePath())
+					SEDX_CORE_TRACE_TAG("Settings", "X-Plane detected and paths configured");
+				else
+					SEDX_CORE_WARN_TAG("Settings", "No X-Plane 11 or 12 installation found");
+
+				// Save the initial configuration
+				Settings::WriteSettings();
+			}
+			else
+			{
+				// Validate X-Plane paths from loaded configuration
+				if (!ValidateXPlanePaths())
 				{
-					SEDX_CORE_TRACE_TAG("Settings", "X-Plane 12 detected and paths updated");
-					Settings::WriteSettings();
+					SEDX_CORE_WARN_TAG("Settings", "X-Plane paths in configuration are invalid, attempting detection");
+					if (DetectXPlanePath())
+					{
+						SEDX_CORE_TRACE_TAG("Settings", "X-Plane detected and paths updated");
+						Settings::WriteSettings();
+					}
 				}
+			}
+		}
+		catch (const std::exception &e)
+		{
+			SEDX_CORE_ERROR_TAG("Settings", "Could not load {} or detect X-Plane: {}", filePath.string(), e.what());
+			if (!configInitialized)
+			{
+				InitMinConfig();
+				configInitialized = true;
 			}
 		}
 	}
@@ -497,71 +511,22 @@ namespace SceneryEditorX
 
 	bool Settings::DetectXPlanePath()
 	{
-		// First try to find X-Plane through Steam
-		SEDX_CORE_TRACE_TAG("Settings", "Attempting to detect X-Plane 12 via Steam...");
-		if (const auto steamPath = SteamGameFinder::FindXPlane12())
+		// The search the X-Plane library uses: X-Plane's install lists, Steam, the registry and the usual folders on fixed drives
+		for (const XPlane::InstallCandidate &candidate : XPlane::FindInstallCandidates())
 		{
-			SEDX_CORE_TRACE_TAG("Settings", "Found X-Plane 12 via Steam: {}", *steamPath);
-			xPlaneStats.isSteam = true;
-			return SetXPlanePath(*steamPath);
-		}
-
-		SEDX_CORE_TRACE_TAG("Settings", "X-Plane 12 not found via Steam, checking common installation paths...");
-		xPlaneStats.isSteam = false;
-
-		// If not found via Steam, try some common installation paths
-		std::vector<std::string> commonPaths;
-
-#ifdef SEDX_PLATFORM_WINDOWS
-		// Common Windows installation paths
-		// Add more potential drive letters
-		const std::vector<std::string> driveLetters = {"C:", "D:", "E:", "F:", "G:", "H:"};
-		const std::vector<std::string> pathPatterns = {"\\X-Plane 12",
-													   "\\Program Files\\X-Plane 12",
-													   "\\Program Files (x86)\\X-Plane 12",
-													   "\\Games\\X-Plane 12",
-													   "\\Flight Simulator\\X-Plane 12"};
-
-		/// Build combinations of drives and paths
-		for (const auto &drive : driveLetters)
-			for (const auto &pattern : pathPatterns)
-				commonPaths.push_back(drive + pattern);
-
-#elif defined(SEDX_PLATFORM_MACOS)
-		/// macOS paths
-		if (const std::filesystem::path home = VFS::GetFolder(VFS::Folder::Home); !home.empty())
-		{
-			commonPaths.push_back(VFS::ToUtf8(home / "X-Plane 12"));
-			commonPaths.push_back(VFS::ToUtf8(home / "Applications" / "X-Plane 12"));
-		}
-		commonPaths.push_back("/Applications/X-Plane 12");
-#elif defined(SEDX_PLATFORM_LINUX)
-		/// Linux paths
-		if (const std::filesystem::path home = VFS::GetFolder(VFS::Folder::Home); !home.empty())
-		{
-			commonPaths.push_back(VFS::ToUtf8(home / "X-Plane 12"));
-			commonPaths.push_back(VFS::ToUtf8(home / "Games" / "X-Plane 12"));
-		}
-		commonPaths.push_back("/opt/X-Plane 12");
-#endif
-
-		/// Wherever X-Plane says it ran from (x-plane_install_12.txt), on every platform
-		for (const std::filesystem::path &install : VFS::FindXPlaneInstalls(12))
-			commonPaths.push_back(VFS::ToUtf8(install));
-
-		for (const auto &path : commonPaths)
-		{
-			SEDX_CORE_TRACE_TAG("Settings", "Checking potential X-Plane path: {}", path);
-			if (SteamGameFinder::ValidateXPlanePath(path))
+			if (!candidate.complete)
+				continue;
+			SEDX_CORE_INFO_TAG("Settings", "Found X-Plane {} at {} ({})", candidate.majorVersion, VFS::ToUtf8(candidate.root), XPlane::GetInstallSourceName(candidate.source));
+			if (SetXPlanePath(VFS::ToUtf8(candidate.root)))
 			{
-				SEDX_CORE_INFO_TAG("Settings", "Found X-Plane 12 at common path: {}", path);
-				return SetXPlanePath(path);
+				if (candidate.majorVersion > 0)
+					xPlaneStats.xPlaneVersion = "X-Plane " + std::to_string(candidate.majorVersion);
+				return true;
 			}
 		}
 
-		// Additional fallback: ask user to locate X-Plane directory
-		SEDX_CORE_WARN_TAG("Settings", "Could not automatically detect X-Plane 12 installation");
-		SEDX_CORE_INFO_TAG("Settings", "Please set the X-Plane 12 path manually in the settings menu");
+		SEDX_CORE_WARN_TAG("Settings", "Could not automatically detect an X-Plane 11 or 12 installation");
+		SEDX_CORE_INFO_TAG("Settings", "Set the X-Plane folder in the X-Plane Library panel");
 
 		// Initialize with empty path but don't report error
 		xPlaneStats.xPlanePath = "";
@@ -584,7 +549,7 @@ namespace SceneryEditorX
 
 		if (!SteamGameFinder::ValidateXPlanePath(path))
 		{
-			SEDX_CORE_ERROR_TAG("Settings", "Invalid X-Plane 12 path: {}", path);
+			SEDX_CORE_ERROR_TAG("Settings", "Not an X-Plane folder: {}", path);
 			return false;
 		}
 
@@ -631,7 +596,7 @@ namespace SceneryEditorX
 			settings["x_plane.resources_path"] = xPlaneStats.xPlaneResourcesPath;
 			settings["x_plane.is_steam"] = xPlaneStats.isSteam ? "true" : "false";
 
-			SEDX_CORE_TRACE_TAG("Settings", "X-Plane 12 path set to: {}", path);
+			SEDX_CORE_TRACE_TAG("Settings", "X-Plane path set to: {}", path);
 			return true;
 		}
 		catch (const ConfigException &e)
