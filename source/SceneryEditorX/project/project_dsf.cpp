@@ -285,13 +285,42 @@ namespace SceneryEditorX::ProjectFile
 						++m_Result.hidden;
 						continue;
 					}
-					Convert(item);
+					Convert(item);	// In hierarchy order; Finish() writes the polygons bottom first
 				}
 			}
 
 			DsfConversion Finish()
 			{
 				DsfFile &dsf = m_Result.dsf;
+
+				// X-Plane draws later polygons of a layer over earlier ones, and items higher in the hierarchy draw on top
+				// (WorldEditor's rule): write the items bottom first, each item's own polygons in their order
+				{
+					std::vector<std::pair<size_t, size_t>> blocks;	// [first, end) per item
+					for (size_t i = 0; i < m_Result.polygonItems.size();)
+					{
+						size_t end = i + 1;
+						while (end < m_Result.polygonItems.size() && m_Result.polygonItems[end] == m_Result.polygonItems[i])
+							++end;
+						blocks.emplace_back(i, end);
+						i = end;
+					}
+					std::vector<DsfPolygonPlacement> polygons;
+					std::vector<std::string> items;
+					polygons.reserve(dsf.polygons.size());
+					items.reserve(m_Result.polygonItems.size());
+					for (auto block = blocks.rbegin(); block != blocks.rend(); ++block)
+					{
+						for (size_t i = block->first; i < block->second; ++i)
+						{
+							polygons.push_back(std::move(dsf.polygons[i]));
+							items.push_back(std::move(m_Result.polygonItems[i]));
+						}
+					}
+					dsf.polygons = std::move(polygons);
+					m_Result.polygonItems = std::move(items);
+				}
+
 				if (m_HasBounds)
 				{
 					dsf.west = std::floor(m_West);

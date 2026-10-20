@@ -1991,7 +1991,7 @@ TEST_CASE("Project DSF: strings, forests, facades and autogen follow WorldEditor
 		block.id = MakeItemId();
 		block.resource = "autogen/block.agb";
 		block.spelling = 4;
-		const DsfConversion conversion = BuildProjectDsf(ProjectWith({ houses, block }));
+		const DsfConversion conversion = BuildProjectDsf(ProjectWith({ block, houses }));	// Written bottom first: houses, block
 		REQUIRE(conversion.dsf.polygons.size() == 2);
 
 		// Spawning chains first ([0 1], [2 3 0]), then the non-spawning one ([1 2])
@@ -2010,6 +2010,26 @@ TEST_CASE("Project DSF: strings, forests, facades and autogen follow WorldEditor
 		CheckLocation(ags.windings[2][1], ring[2]);
 
 		CHECK(conversion.dsf.polygons[1].parameter == EncodeAutogenParameter(10.0f, 4));	// Blocks carry their spelling
+	}
+
+	SECTION("Items higher in the hierarchy are written later, so X-Plane draws them on top")
+	{
+		SceneryItem top = MakeItem(ItemKind::Polygon, "Top", "lib/top.pol");
+		top.rings.push_back(Square(44.0, -123.0, 0.001));
+		SceneryItem middle = top;
+		middle.id = MakeItemId();
+		middle.name = "Middle";
+		middle.rings.push_back(Square(44.0005, -123.0005, 0.001));	// Two rings: still one placement
+		SceneryItem bottom = top;
+		bottom.id = MakeItemId();
+		bottom.name = "Bottom";
+		const DsfConversion conversion = BuildProjectDsf(ProjectWith({ top, middle, bottom }));
+		REQUIRE(conversion.dsf.polygons.size() == 3);
+		REQUIRE(conversion.polygonItems.size() == 3);
+		CHECK(conversion.polygonItems[0] == bottom.id);
+		CHECK(conversion.polygonItems[1] == middle.id);
+		CHECK(conversion.polygonItems[2] == top.id);
+		CHECK(conversion.dsf.polygons[1].windings.size() == 2);	// Each placement still carries its own item's rings
 	}
 
 	SECTION("Turning an outline around keeps each segment's flags with the segment")
@@ -2226,7 +2246,8 @@ TEST_CASE("Project DSF draws through the overlay builder", "[project][dsf][overl
 	shed.rings[0][1].loLatitude = -shed.rings[0][1].hiLatitude;
 	shed.rings[0][1].loLongitude = -shed.rings[0][1].hiLongitude;
 
-	const DsfConversion conversion = BuildProjectDsf(ProjectWith({ apron, ortho, line, lamps, trees, shed }));
+	// Listed top first, written bottom first: apron, ortho, line, lamps, trees, shed
+	const DsfConversion conversion = BuildProjectDsf(ProjectWith({ shed, trees, lamps, line, ortho, apron }));
 	REQUIRE(conversion.warnings.empty());
 	REQUIRE(conversion.dsf.polygons.size() == 6);
 	CHECK(conversion.dsf.polygons[1].planes == 8);

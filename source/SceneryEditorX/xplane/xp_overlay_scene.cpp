@@ -71,7 +71,15 @@ namespace SceneryEditorX::XPlane
 			std::vector<uint32_t> indices;
 			Bounds2 bounds;
 			uint32_t subMesh = 0;
+			float height = 0.0f;			// Draped kinds: the layer height the builder drew them at
+			uint32_t placement = 0;			// The DSF placement of the first mesh
 		};
+
+		/* @brief Kinds drawn flat on the ground, in drape order (Renderable::SetDrapeOrder) rather than by depth. */
+		bool IsDraped(const OverlayKind kind)
+		{
+			return kind != OverlayKind::Forest && kind != OverlayKind::Facade;
+		}
 
 		std::string MaterialKey(const OverlayMesh &mesh)
 		{
@@ -149,6 +157,7 @@ namespace SceneryEditorX::XPlane
 
 		uint64_t root = 0;
 		Ref<Mesh> mesh;
+		uint32_t drapeSequenceBase = 0;								// SetDrapeSequenceBase()
 		std::map<std::string, Ref<MaterialAsset>> materials;		// By texture + alpha treatment (or color)
 		std::map<std::string, TextureEntry> textures;				// By file
 		std::unordered_map<std::string, uint64_t> entities;		// Group key -> its entity
@@ -305,6 +314,8 @@ namespace SceneryEditorX::XPlane
 					part.cutout = mesh->cutout;
 					part.cutoff = mesh->cutoff;
 					part.blended = mesh->blended;
+					part.height = mesh->vertices.empty() ? 0.0f : mesh->vertices.front().y;
+					part.placement = mesh->placement;
 				}
 				Append(parts[g][it->second], *mesh);
 			}
@@ -340,6 +351,8 @@ namespace SceneryEditorX::XPlane
 			renderable->SetMesh(impl.mesh.Get(), part.subMesh);
 			renderable->SetMaterial(impl.GetMaterial(part, missingTexture));
 			renderable->SetFlag(CastsShadows, part.kind == OverlayKind::Facade || part.kind == OverlayKind::Forest);
+			if (IsDraped(part.kind))
+				renderable->SetDrapeOrder(Renderable::MakeDrapeOrder(part.height, impl.drapeSequenceBase + std::min(part.placement, 0x7FFFFFFFu)));
 			impl.stats.missingTextures += missingTexture ? 1 : 0;
 		};
 
@@ -404,6 +417,11 @@ namespace SceneryEditorX::XPlane
 		SEDX_CORE_INFO_TAG(LOG_TAG, "{}: {} groups, {} parts, {} triangles, {} objects in {:.0f} ms{}", rootName, impl.stats.groups, impl.stats.parts, impl.stats.triangles,
 			impl.stats.objects, impl.stats.buildMilliseconds, failed ? "; " + std::to_string(failed) + " objects could not be placed: " + firstError : std::string());
 		return impl.root;
+	}
+
+	void OverlayScene::SetDrapeSequenceBase(const uint32_t base)
+	{
+		m_Impl->drapeSequenceBase = base;
 	}
 
 	void OverlayScene::Clear()

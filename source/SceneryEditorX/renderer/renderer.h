@@ -725,6 +725,13 @@ namespace SceneryEditorX
 		 */
 		static void Pass_GBuffer(CommandList *cmdList, const bool isTransparentPass);
 
+		/**
+		 * @brief Writes the depth of the opaque drapes the g-buffer just drew (in drape order, tested against everything
+		 * else only), each nudged nearer by its rank, so lighting sees their surface and the forward pass's blended drapes
+		 * sort against them by rank.
+		 */
+		static void Pass_Drape_Depth(CommandList *cmdList);
+
 #pragma endregion
 #pragma region Shadow passes
 

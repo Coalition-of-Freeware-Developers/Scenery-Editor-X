@@ -50,5 +50,6 @@ public uint gpu_scene_load_draw(uint instance_id, uint base_instance)
     _draw.is_transparent     = 0;
     _draw.aabb_index         = 0;
     _draw.pick_id            = instance.pick_id();
+    _draw.drape_rank         = 0; // drapes are drawn on the CPU path, in order
     return index;
 }

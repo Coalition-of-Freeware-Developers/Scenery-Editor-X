@@ -81,7 +81,11 @@ namespace SceneryEditorX::ProjectFile
 		uint32_t hidden = 0;						// Items left out because they (or a container above them) are hidden
 	};
 
-	/* @brief Converts every overlay item of a project (depth-first, in hierarchy order). */
+	/**
+	 * @brief Converts every overlay item of a project, depth-first. Objects and roads keep the hierarchy order; polygons
+	 * are written bottom of the hierarchy first, so in X-Plane (later polygons of a layer on top) the item at the top
+	 * draws over the ones below it, as in WorldEditor.
+	 */
 	DsfConversion BuildProjectDsf(const SceneryProject &project, const DsfConversionOptions &options = {});
 
 	/* @brief Hash of everything a DSF draws (definitions, placements, properties): equal hashes draw the same. */

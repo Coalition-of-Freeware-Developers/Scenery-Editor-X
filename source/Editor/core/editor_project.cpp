@@ -433,6 +433,8 @@ namespace SceneryEditorX::EditorProjects
 				state.scenery.Clear();
 				return;
 			}
+			// Project items draw over the airport scene's art at the same layer height (their DSF order among themselves)
+			state.scenery.SetDrapeSequenceBase(0x80000000u);
 			state.scenery.Build("Project scenery", groups);
 
 			const XPlane::OverlayScene::Stats &stats = state.scenery.GetStats();

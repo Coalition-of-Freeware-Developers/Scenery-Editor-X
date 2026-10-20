@@ -243,6 +243,10 @@ public struct DrawData
     public uint is_transparent;
     public uint aabb_index;
     public uint pick_id;    // editor picking: entity index + 1, 0 = not pickable (gbuffer_pick, ScenePicking)
+    public uint drape_rank; // position among the frame's visible drapes (1 = lowest), 0 = not draped (apply_drape_depth)
+    public uint padding0;   // scalars: a uint3 would be 16-byte aligned under std430 and make the stride 176, not 160
+    public uint padding1;
+    public uint padding2;
 };
 
 // bindless draw data - per-draw transforms, material indices, etc.

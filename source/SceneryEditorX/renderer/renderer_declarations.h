@@ -568,6 +568,7 @@ namespace SceneryEditorX
 		bool        cameraVisible    = false;   // Passes frustum / occlusion cull
 		bool        isOccluder       = false;   // Used as Hi-Z occluder mesh
 		bool        gpuDriven        = false;   // The GPU scene draws it in the deferred passes (listed for the forward pass)
+		uint64_t    drapeOrder       = 0;       // Renderable::GetDrapeOrder(): draped geometry, drawn in this order (0: not draped)
 		uint32_t    drawData_Index   = 0;       // Index into the GPU draw-data buffer
 		uint32_t    lodIndex         = 0;       // LOD level to render
 		uint32_t    instanceIndex    = 0;       // First instance offset

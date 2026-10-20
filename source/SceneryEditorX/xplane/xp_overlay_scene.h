@@ -81,6 +81,13 @@ namespace SceneryEditorX::XPlane
 		 */
 		uint64_t Build(const std::string &rootName, const std::vector<Group> &groups);
 
+		/**
+		 * @brief Added to the DSF placement of each draped part to order it among drapes at the same layer height
+		 * (later on top): a project's own items use a base above the airport scene's, so they draw over its art.
+		 * Takes effect at the next Build().
+		 */
+		void SetDrapeSequenceBase(uint32_t base);
+
 		/* @brief Removes the root and everything below it and releases the mesh, materials and textures. */
 		void Clear();
 

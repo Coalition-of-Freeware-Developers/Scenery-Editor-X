@@ -156,6 +156,7 @@ void dynamic_resolution()
 	// First draw-data slot of the region this frame's draws were written to (WriteDrawData), so the bulk upload
 	// lands on the same entries the shaders index instead of a region another frame in flight is reading.
 	static uint32_t s_DrawDataRegionStart = 0;
+	static uint32_t s_DrapeDrawCount = 0;	// Visible drapes this frame (UpdateDrawCalls), a --perf-log counter
 
 	// per-frame rotated buffers
 	std::array<Renderer::IndirectFrameResource, DRAW_DATA_BUFFER_COUNT> Renderer::m_FrameResources;
@@ -864,6 +865,7 @@ void dynamic_resolution()
 				UpdateDrawCalls(m_CmdList_Present);
 				Perf::SetCounter("entities", static_cast<double>(Scene::GetEntities().size()));
 				Perf::SetCounter("cpu draw calls", static_cast<double>(m_DrawCall_Count));
+				Perf::SetCounter("drapes", static_cast<double>(s_DrapeDrawCount));
 			}
 
 			// retire cached pipelines that stopped being used (e.g. built for render targets replaced on resize)
@@ -2731,24 +2733,50 @@ void dynamic_resolution()
 			drawCall.instanceIndex      = 0;
 			drawCall.instanceCount      = renderable->GetInstanceCount();
 			drawCall.drawData_Index     = drawDataIndex;
+			drawCall.drapeOrder         = renderable->GetDrapeOrder();
 		}
 
-		// sort: opaque before transparent, then by material to minimize state changes
+		// sort: opaque before transparent; among the opaque ones everything else (by material, to minimize state changes)
+		// before the drapes, which go in their drape order: the g-buffer draws them painter's-style, later on top
 		std::sort(m_DrawCalls.begin(), m_DrawCalls.begin() + m_DrawCall_Count, [](const Renderer_DrawCall& a, const Renderer_DrawCall& b)
 		{
 			const bool aTransparent = a.renderable->GetMaterialAsset()->IsTransparent();
 			const bool bTransparent = b.renderable->GetMaterialAsset()->IsTransparent();
 			if (aTransparent != bTransparent)
 				return !aTransparent;
+			if (a.drapeOrder != b.drapeOrder)
+				return a.drapeOrder < b.drapeOrder;
 
 			return a.renderable->GetMaterialAsset() < b.renderable->GetMaterialAsset();
 		});
 
-		// prepass: visible opaques the CPU draws, non-alpha-tested first
+		// drape ranks (1 = lowest) over the visible drapes, opaque and blended: the drape depth and forward passes nudge
+		// depth by rank (vertex_processing.slang apply_drape_depth)
+		{
+			static std::vector<std::pair<uint64_t, uint32_t>> drapes;	// order, draw call
+			drapes.clear();
+			for (uint32_t i = 0; i < m_DrawCall_Count; ++i)
+			{
+				if (m_DrawCalls[i].drapeOrder != 0)
+					drapes.emplace_back(m_DrawCalls[i].drapeOrder, i);
+			}
+			std::ranges::sort(drapes);
+			s_DrapeDrawCount = static_cast<uint32_t>(drapes.size());
+			// drawData_Index counts from the start of the whole buffer; the CPU copy holds this frame's region (uploaded below)
+			for (uint32_t rank = 0; rank < static_cast<uint32_t>(drapes.size()); ++rank)
+			{
+				const uint32_t local = m_DrawCalls[drapes[rank].second].drawData_Index - s_DrawDataRegionStart;
+				if (local < m_DrawData_Count)
+					m_DrawData_CPU[local].drape_rank = rank + 1;
+			}
+		}
+
+		// prepass: visible opaques the CPU draws, non-alpha-tested first. Not the drapes: the g-buffer tests them against
+		// everything else only (drawn in order, they never fight each other), and Pass_Drape_Depth writes their depth after.
 		for (uint32_t i = 0; i < m_DrawCall_Count; ++i)
 		{
 			const Renderer_DrawCall& drawCall = m_DrawCalls[i];
-			if (!drawCall.gpuDriven && !drawCall.renderable->GetMaterialAsset()->IsTransparent() && drawCall.cameraVisible)
+			if (!drawCall.gpuDriven && drawCall.drapeOrder == 0 && !drawCall.renderable->GetMaterialAsset()->IsTransparent() && drawCall.cameraVisible)
 			{
 				m_DrawCalls_Prepass[m_DrawCalls_Prepass_Count++] = drawCall;
 			}
@@ -2950,6 +2978,7 @@ void dynamic_resolution()
 		entry.transform					= transform.Transposed();
 		entry.transform_previous		= prevTransform.Transposed();
 		entry.material_index			= matIndex;
+		entry.drape_rank				= 0;
 		entry.is_transparent			= isTransparent;
 		entry.aabb_index				= 0;
 		entry.pick_id					= pickId;

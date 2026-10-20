@@ -220,6 +220,8 @@ namespace SceneryEditorX
 		uint32_t is_transparent = 0;     // transparency flag
 		uint32_t aabb_index     = 0;     // index into the aabb buffer for culling
 		uint32_t pick_id        = 0;     // editor picking: entity index + 1 (ScenePicking::GetPickId), 0 = not pickable
+		uint32_t drape_rank     = 0;     // position among this frame's visible drapes (1 = lowest), 0 = not draped
+		uint32_t padding[3]     = {};
 	};
 
 	/**
@@ -316,7 +318,7 @@ namespace SceneryEditorX
 	static_assert(sizeof(ConstantBuffer_Environment) == 512, "ConstantBuffer_Environment must match EnvironmentData in resources.slang");
 	static_assert(sizeof(ShaderBuffer_Material) == 128, "ShaderBuffer_Material must match MaterialParameters in resources.slang");
 	static_assert(sizeof(ShaderBuffer_Light) == 608, "ShaderBuffer_Light must match LightParameters in resources.slang");
-	static_assert(sizeof(ShaderBuffer_DrawData) == 144, "ShaderBuffer_DrawData must match DrawData in resources.slang");
+	static_assert(sizeof(ShaderBuffer_DrawData) == 160, "ShaderBuffer_DrawData must match DrawData in resources.slang");
 
 }
 

@@ -60,7 +60,11 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceI
     float3 position_world_previous = 0.0f;
     gbuffer_vertex vertex          = transform_to_world_space(input, instance_id, _draw.transform, position_world, position_world_previous);
     vertex.material_index          = _draw.material_index;
-    return transform_to_clip_space(vertex, position_world, position_world_previous);
+    vertex                         = transform_to_clip_space(vertex, position_world, position_world_previous);
+#if !defined(GPU_SCENE) && !defined(INDIRECT_DRAW)
+    vertex                         = apply_drape_depth(vertex, _draw.drape_rank); // the drape depth pass (rank 0 elsewhere)
+#endif
+    return vertex;
 }
 
 [shader("fragment")]

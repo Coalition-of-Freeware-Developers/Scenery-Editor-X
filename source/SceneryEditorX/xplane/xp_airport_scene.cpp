@@ -187,6 +187,28 @@ namespace SceneryEditorX::XPlane
 			}
 		}
 
+		/* @brief Kinds drawn flat on the ground, in drape order (Renderable::SetDrapeOrder) rather than by depth. */
+		bool IsDraped(const AirportElementKind kind)
+		{
+			switch (kind)
+			{
+				case AirportElementKind::Runway:
+				case AirportElementKind::WaterRunway:
+				case AirportElementKind::Helipad:
+				case AirportElementKind::Pavement:
+				case AirportElementKind::LinearFeature:
+				case AirportElementKind::Boundary:
+				case AirportElementKind::TaxiRoutes:
+				case AirportElementKind::TaxiNodes:
+				case AirportElementKind::DrapedPolygon:
+				case AirportElementKind::LineString:
+				case AirportElementKind::Road:
+					return true;
+				default:
+					return false;
+			}
+		}
+
 		/* @brief One entity's worth of geometry. */
 		struct Part
 		{
@@ -1496,6 +1518,14 @@ namespace SceneryEditorX::XPlane
 							renderable->SetMesh(mesh.Get(), part.subMesh);
 							renderable->SetMaterial(material);
 							renderable->SetFlag(CastsShadows, part.kind == AirportElementKind::Facade || part.kind == AirportElementKind::Forest);
+
+							// Drapes stack by the layer height they were built at (apt.dat order and LAYER_GROUP are in
+							// it), then by row / DSF placement (later on top); stable across partial rebuilds
+							if (!part.placed && IsDraped(part.kind) && !part.vertices.empty())
+							{
+								const uint32_t sequence = (std::min(part.index, (1u << 26) - 1) << 5) | static_cast<uint32_t>(part.kind);
+								renderable->SetDrapeOrder(Renderable::MakeDrapeOrder(part.vertices.front().pos[1], sequence));
+							}
 						}
 						if (!loaded.kindVisible[static_cast<size_t>(part.kind)])
 							stored->SetActive(false);

@@ -35,7 +35,7 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id: SV_InstanceID
     float3 position_world_previous = 0.0f;
     gbuffer_vertex vertex = transform_to_world_space(input, instance_id, _draw.transform, position_world, position_world_previous);
     vertex.material_index = _draw.material_index;
-    return transform_to_clip_space(vertex, position_world, position_world_previous);
+    return apply_drape_depth(transform_to_clip_space(vertex, position_world, position_world_previous), _draw.drape_rank);
 }
 
 static float4 sample_material_texture(uint texture_index, float2 uv)

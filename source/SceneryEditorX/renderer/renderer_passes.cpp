@@ -209,6 +209,9 @@ namespace SceneryEditorX
 			{
 				GpuTimer::Scope scope(cmd, "gbuffer");
 				Pass_GBuffer(cmd, false);
+				if (!valid())
+					return;
+				Pass_Drape_Depth(cmd);
 			}
 			if (!valid())
 				return;
@@ -782,6 +785,60 @@ namespace SceneryEditorX
 		}
 	}
 
+	void Renderer::Pass_Drape_Depth(CommandList *cmdList)
+	{
+		bool any = false;
+		for (uint32_t i = 0; i < m_DrawCall_Count && !any; i++)
+			any = m_DrawCalls[i].drapeOrder != 0 && m_DrawCalls[i].cameraVisible;
+		if (!any)
+			return;
+
+		PipelineState pso;
+		pso.name = "drape_depth";
+		pso.shaders[static_cast<uint32_t>(StageType::Vertex)] = ShaderManager::GetShader(Renderer_Shader::depth_prepass);
+		pso.rasterizerState = cvar_wireframe.GetValueAs<bool>() ? GetRasterizerState(Renderer_RasterizerState::Wireframe) : GetRasterizerState(Renderer_RasterizerState::Solid);
+		pso.blendState = GetBlendState(Renderer_BlendState::Off);
+		pso.depthStencil_State = GetDepthStencilState(Renderer_DepthStencilState::ReadWrite);
+		pso.renderTarget_DepthTexture = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
+		pso.resolutionScale = true;
+		pso.clearDepth = RHI_DEPTH_LOAD;
+
+		bool pipelineSet = false;
+		for (uint32_t i = 0; i < m_DrawCall_Count; i++)
+		{
+			const Renderer_DrawCall &drawCall = m_DrawCalls[i];
+			Renderable *renderable = drawCall.renderable;
+			MaterialAsset *materialAsset = renderable->GetMaterialAsset();
+			if (drawCall.drapeOrder == 0 || !drawCall.cameraVisible || !materialAsset || materialAsset->IsTransparent())
+				continue;
+
+			// cut-out texels (and the blended texels the forward pass draws) leave the depth to what is below them
+			const bool alphaTested = materialAsset->IsAlphaTested() || materialAsset->GetProperty(MaterialProperty::AlphaCutoff) > 0.0f;
+			Shader *ps = alphaTested ? ShaderManager::GetShader(Renderer_Shader::depth_prepass) : nullptr;
+			if (!pipelineSet || pso.shaders[static_cast<uint32_t>(StageType::Fragment)] != ps)
+			{
+				pso.shaders[static_cast<uint32_t>(StageType::Fragment)] = ps;
+				cmdList->SetPipelineState(pso);
+				pipelineSet = true;
+				if (cmdList->IsStickyInvalid())
+					return;
+			}
+
+			m_Pcb_Pass_Cpu.drawIndex = drawCall.drawData_Index;
+			m_Pcb_Pass_Cpu.isTransparent = 0;
+			m_Pcb_Pass_Cpu.materialIndex = materialAsset->GetIndex();
+			m_Pcb_Pass_Cpu.SetF3Value(0.0f, materialAsset->HasTextureOfType(MaterialTextureType::Color) ? 1.0f : 0.0f, static_cast<float>(i));
+			cmdList->PushConstants(m_Pcb_Pass_Cpu);
+
+			const CullMode cullMode = static_cast<CullMode>(materialAsset->GetProperty(MaterialProperty::CullMode));
+			cmdList->SetCullMode(pso.rasterizerState->GetPolygonMode() == PolygonMode::Wireframe ? CullMode::None : cullMode);
+			cmdList->SetVertexBuffer(renderable->GetVertexBuffer(), renderable->GetInstanceBuffer());
+			cmdList->SetIndexBuffer(renderable->GetIndexBuffer());
+			cmdList->DrawIndexed(renderable->GetIndexCount(drawCall.lodIndex), drawCall.instanceCount, renderable->GetIndexOffset(drawCall.lodIndex),
+								 renderable->GetVertexOffset(drawCall.lodIndex), drawCall.instanceIndex);
+		}
+	}
+
 	void Renderer::Pass_GBuffer(CommandList *cmdList, const bool isTransparentPass)
 	{
 		ImageResource *texColor = GetRenderTarget(Renderer_RenderTarget::gbuffer_color);
@@ -1307,12 +1364,14 @@ namespace SceneryEditorX
 		if (!cmdList || cmdList->IsStickyInvalid() || !out)
 			return;
 
-		// Blended draws back to front; equal distances keep creation order (an X-Plane object's file order).
+		// Blended drapes first, in drape order (their depth nudged by rank sorts them against the opaque drapes below),
+		// then the rest back to front; equal distances keep creation order (an X-Plane object's file order).
 		struct ForwardDraw
 		{
 			uint32_t drawCall;
 			float distanceSquared;
 			uint64_t order;
+			uint64_t drapeOrder;
 		};
 		static std::vector<ForwardDraw> draws;
 		draws.clear();
@@ -1333,7 +1392,7 @@ namespace SceneryEditorX
 									 c.x * world.m01 + c.y * world.m11 + c.z * world.m21 + world.m31,
 									 c.x * world.m02 + c.y * world.m12 + c.z * world.m22 + world.m32);
 			const xMath::Vec3 d = center - camera;
-			draws.push_back({ i, d.x * d.x + d.y * d.y + d.z * d.z, static_cast<uint64_t>(entt::to_integral(static_cast<entt::entity>(*entity))) });
+			draws.push_back({ i, d.x * d.x + d.y * d.y + d.z * d.z, static_cast<uint64_t>(entt::to_integral(static_cast<entt::entity>(*entity))), drawCall.drapeOrder });
 		}
 
 		if (draws.empty())
@@ -1341,6 +1400,10 @@ namespace SceneryEditorX
 
 		std::ranges::sort(draws, [](const ForwardDraw &a, const ForwardDraw &b)
 		{
+			if ((a.drapeOrder != 0) != (b.drapeOrder != 0))
+				return a.drapeOrder != 0;
+			if (a.drapeOrder != b.drapeOrder)
+				return a.drapeOrder < b.drapeOrder;
 			return a.distanceSquared != b.distanceSquared ? a.distanceSquared > b.distanceSquared : a.order < b.order;
 		});
 
