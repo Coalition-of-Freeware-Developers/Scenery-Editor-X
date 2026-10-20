@@ -29,6 +29,7 @@
  * -------------------------------------------------------
  */
 #include "xp_overlay.h"
+#include "xp_facade.h"
 #include "xp_text.h"
 #include <algorithm>
 #include <cmath>
@@ -1172,84 +1173,27 @@ namespace SceneryEditorX::XPlane
 
 	namespace
 	{
+		/* @brief One side of a facade footprint: from a DSF point to the next, flattened when it is a curve. */
 		struct WallSide
 		{
-			Point2 a, b;
+			FacadePath path;
 			double length = 0.0;
-			Point2 direction;		// Unit, a -> b
-			Point2 outward;			// Unit, to the right of travel (outside a counter-clockwise ring)
-			int wallType = 0;
+			double heading = 0.0;	// Where the side faces (outward, from its chord), true degrees
+			int wallType = 0;		// The DSF's wall for it (wall type planes only)
 		};
 
-		std::vector<WallSide> MakeSides(const std::vector<Point2> &ring, const std::vector<int> &wallTypes, const bool closed)
+		AptNode ToAptNode(const DsfPoint &point, const bool bezier, const size_t controlPlane)
 		{
-			std::vector<WallSide> sides;
-			const size_t count = ring.size();
-			const size_t sideCount = closed ? count : (count > 0 ? count - 1 : 0);
-			for (size_t i = 0; i < sideCount; ++i)
+			AptNode node;
+			node.latitude = point.v[1];
+			node.longitude = point.v[0];
+			if (bezier && point.planes >= controlPlane + 2)
 			{
-				WallSide side;
-				side.a = ring[i];
-				side.b = ring[(i + 1) % count];
-				const double dx = side.b.x - side.a.x, dz = side.b.z - side.a.z;
-				side.length = std::hypot(dx, dz);
-				if (side.length < 0.05)
-					continue;
-				side.direction = { dx / side.length, dz / side.length };
-				side.outward = { -side.direction.z, side.direction.x };
-				side.wallType = i < wallTypes.size() ? wallTypes[i] : 0;
-				sides.push_back(side);
+				node.controlLongitude = point.v[controlPlane];
+				node.controlLatitude = point.v[controlPlane + 1];
+				node.hasControl = std::abs(node.controlLongitude - node.longitude) > 1e-9 || std::abs(node.controlLatitude - node.latitude) > 1e-9;
 			}
-			return sides;
-		}
-
-		/* @brief Picks the segment sequence whose total width is closest to the wall length (repeating the longest when the wall is longer than any). */
-		std::vector<int> ChooseSpelling(const FacadeAsset::Floor &floor, const FacadeAsset::WallRule &rule, const double length, double &total)
-		{
-			std::vector<int> best;
-			double bestTotal = 0.0;
-			double bestError = 1e30;
-			const auto widthOf = [&floor](const std::vector<int> &spelling)
-			{
-				double width = 0.0;
-				for (const int s : spelling)
-				{
-					if (s >= 0 && static_cast<size_t>(s) < floor.segments.size())
-						width += floor.segments[static_cast<size_t>(s)].width;
-				}
-				return width;
-			};
-			for (const std::vector<int> &spelling : rule.spellings)
-			{
-				const double width = widthOf(spelling);
-				if (width <= 0.0)
-					continue;
-				const double error = std::abs(width - length);
-				if (error < bestError)
-				{
-					bestError = error;
-					best = spelling;
-					bestTotal = width;
-				}
-			}
-			if (best.empty())
-			{
-				total = 0.0;
-				return best;
-			}
-
-			// Longer walls: repeat the chosen spelling until it's close
-			while (bestTotal > 0.0 && length > bestTotal * 1.5)
-			{
-				std::vector<int> doubled = best;
-				doubled.insert(doubled.end(), best.begin(), best.end());
-				bestTotal *= 2.0;
-				best = std::move(doubled);
-				if (best.size() > 512)
-					break;
-			}
-			total = bestTotal;
-			return best;
+			return node;
 		}
 	}
 
@@ -1257,40 +1201,60 @@ namespace SceneryEditorX::XPlane
 	{
 		fs::path file;
 		const FacadeAsset *asset = GetFacade(resource, &file, out);
-		if (!asset)
+		if (!asset || placement.windings.empty())
 			return;
 
-		// Planes after lon / lat: 3 wall type, 4 bezier control, 5 wall type then bezier control (WorldEditor's stacking)
+		// Planes after lon / lat: 3 wall type, 4 bezier control, 5 wall type then bezier control (WorldEditor's stacking).
+		// Without wall types X-Plane picks each wall by its width and heading rules.
 		const bool hasWallTypes = placement.planes == 3 || placement.planes == 5;
 		const bool bezier = placement.planes >= 4;
 		const size_t controlPlane = placement.planes == 5 ? 3 : 2;
-		std::vector<std::vector<Point2>> rings;
-		std::vector<std::vector<int>> wallTypes;
-		for (const std::vector<DsfPoint> &winding : placement.windings)
-		{
-			rings.emplace_back();
-			FlattenWinding(winding, asset->ring, bezier, rings.back(), options, controlPlane);
-			wallTypes.emplace_back();
-			if (hasWallTypes)
-			{
-				for (const DsfPoint &point : winding)
-					wallTypes.back().push_back(static_cast<int>(point.v[2]));
-			}
-			if (rings.back().size() != winding.size())
-				wallTypes.back().clear();	// Curves re-sampled the ring; wall types no longer line up
-		}
-		if (rings.empty() || rings[0].size() < 2)
+		const std::vector<DsfPoint> &winding = placement.windings[0];	// Facades have no holes
+
+		std::vector<Point2> footprint;
+		FlattenWinding(winding, asset->ring, bezier, footprint, options, controlPlane);
+		if (footprint.size() < 2)
 			return;
-		if (!PolygonInArea(options, rings))
+		if (!PolygonInArea(options, { footprint }))
 		{
 			++out.culled;
 			return;
 		}
 
-		const double height = placement.parameter > 0 ? static_cast<double>(placement.parameter) : 3.0;
-		const std::vector<WallSide> sides = MakeSides(rings[0], wallTypes[0], asset->ring);
+		// Each side on its own, so a curved side keeps its wall type and bends its wall instead of being cut into many
+		std::vector<WallSide> sides;
+		const size_t count = winding.size();
+		const size_t sideCount = asset->ring ? count : (count > 0 ? count - 1 : 0);
+		for (size_t i = 0; i < sideCount; ++i)
+		{
+			const DsfPoint &a = winding[i];
+			const DsfPoint &b = winding[(i + 1) % count];
+			AptNodeChain chain;
+			chain.closed = false;
+			chain.nodes = { ToAptNode(a, bezier, controlPlane), ToAptNode(b, bezier, controlPlane) };
+			std::vector<Point2> points;
+			FlattenChain(chain, m_Projection, points, options.bezierSegment);
+
+			WallSide side;
+			side.path = FacadePath(std::move(points));
+			side.length = side.path.GetLength();
+			if (side.length < 0.05)
+				continue;	// Split bezier nodes are co-located points: no wall between them
+			const Point2 &start = side.path.GetPoints().front(), &end = side.path.GetPoints().back();
+			const double chord = std::max(1e-9, std::hypot(end.x - start.x, end.z - start.z));
+			side.heading = DirectionToHeading(GetFacadeOutward({ (end.x - start.x) / chord, (end.z - start.z) / chord }));
+			side.wallType = hasWallTypes ? static_cast<int>(a.v[2]) : 0;
+			sides.push_back(std::move(side));
+		}
 		if (sides.empty())
 			return;
+
+		const double height = placement.parameter > 0 ? static_cast<double>(placement.parameter) : 3.0;
+		std::vector<FacadeSideInput> inputs;
+		inputs.reserve(sides.size());
+		for (const WallSide &side : sides)
+			inputs.push_back({ side.length, side.heading, side.wallType });
+		const FacadeLayout layout = LayoutFacade(*asset, inputs, hasWallTypes, height);
 
 		OverlayMesh walls;
 		walls.kind = OverlayKind::Facade;
@@ -1304,145 +1268,108 @@ namespace SceneryEditorX::XPlane
 		walls.color[0] = walls.color[1] = walls.color[2] = 0.75f;
 
 		double roofHeight = height;
-		const FacadeAsset::Floor *floor = nullptr;
-
 		if (asset->IsType2())
 		{
-			// Type 2: the floor whose roof heights come closest to the asked height, then segment meshes per wall
-			double bestError = 1e30;
-			for (const FacadeAsset::Floor &candidate : asset->floors)
-			{
-				if (candidate.segments.empty() || candidate.walls.empty())
-					continue;
-				double error = 0.0;
-				if (!candidate.roofHeights.empty())
-				{
-					error = 1e30;
-					for (const float h : candidate.roofHeights)
-						error = std::min(error, std::abs(h - height));
-				}
-				if (error < bestError)
-				{
-					bestError = error;
-					floor = &candidate;
-				}
-			}
-			if (!floor)
+			if (layout.floor < 0)
 			{
 				++out.unsupported;
 				return;
 			}
-			if (!floor->roofHeights.empty())
-			{
-				roofHeight = floor->roofHeights[0];
-				for (const float h : floor->roofHeights)
-				{
-					if (std::abs(h - height) < std::abs(roofHeight - height))
-						roofHeight = h;
-				}
-			}
+			const FacadeAsset::Floor &floor = asset->floors[static_cast<size_t>(layout.floor)];
+			roofHeight = layout.roofHeight;
+			// Curved sides bend the SEGMENT_CURVED variants when the facade has them
+			const bool hasCurved = floor.curvedSegments.size() == floor.segments.size();
 
-			if (!asset->noWallMesh)
+			for (size_t s = 0; s < sides.size() && !asset->noWallMesh; ++s)
 			{
-				for (const WallSide &side : sides)
+				const WallSide &side = sides[s];
+				const FacadeWallLayout &wall = layout.walls[s];
+				if (wall.spelling.empty() || wall.total <= 0.0)
+					continue;
+
+				// Template space: x outward, y up, -z along the wall; each segment spans z in [-width, 0]
+				double along = 0.0;
+				for (const int segmentIndex : wall.spelling)
 				{
-					const FacadeAsset::WallRule &rule = floor->walls[static_cast<size_t>(std::clamp(side.wallType, 0, static_cast<int>(floor->walls.size()) - 1))];
-					double total = 0.0;
-					const std::vector<int> spelling = ChooseSpelling(*floor, rule, side.length, total);
-					if (spelling.empty() || total <= 0.0)
+					if (segmentIndex < 0 || static_cast<size_t>(segmentIndex) >= floor.segments.size())
 						continue;
-					const double stretch = side.length / total;
+					const FacadeAsset::Segment &straight = floor.segments[static_cast<size_t>(segmentIndex)];
+					const FacadeAsset::Segment &segment = side.path.IsCurved() && hasCurved ? floor.curvedSegments[static_cast<size_t>(segmentIndex)] : straight;
+					// A curved variant fills the straight one's width
+					const double scale = wall.stretch * (segment.width > 1e-6 && &segment != &straight ? straight.width / segment.width : 1.0);
 
-					// Template space: x outward, y up, -z along the wall; each segment spans z in [-width, 0]
-					double along = 0.0;
-					for (const int segmentIndex : spelling)
+					for (const FacadeAsset::Mesh &m : segment.meshes)
 					{
-						if (segmentIndex < 0 || static_cast<size_t>(segmentIndex) >= floor->segments.size())
-							continue;
-						const FacadeAsset::Segment &segment = floor->segments[static_cast<size_t>(segmentIndex)];
-						for (const FacadeAsset::Mesh &m : segment.meshes)
+						const uint32_t base = static_cast<uint32_t>(walls.vertices.size());
+						const size_t vertexCount = m.positions.size() / 3;
+						for (size_t v = 0; v < vertexCount; ++v)
 						{
-							const uint32_t base = static_cast<uint32_t>(walls.vertices.size());
-							const size_t vertexCount = m.positions.size() / 3;
-							for (size_t v = 0; v < vertexCount; ++v)
-							{
-								const double lx = m.positions[v * 3], ly = m.positions[v * 3 + 1], lz = m.positions[v * 3 + 2];
-								const double d = along + (-lz) * stretch;	// Distance from the side's start
-								const double wx = side.a.x + side.direction.x * d + side.outward.x * lx;
-								const double wz = side.a.z + side.direction.z * d + side.outward.z * lx;
-								const float nx = v * 3 + 2 < m.normals.size() ? m.normals[v * 3] : 0.0f;
-								const float ny = v * 3 + 2 < m.normals.size() ? m.normals[v * 3 + 1] : 1.0f;
-								const float nz = v * 3 + 2 < m.normals.size() ? m.normals[v * 3 + 2] : 0.0f;
-								// Rotate the normal like the position (x -> outward, -z -> along)
-								const float wnx = static_cast<float>(side.outward.x * nx - side.direction.x * nz);
-								const float wnz = static_cast<float>(side.outward.z * nx - side.direction.z * nz);
-								AddVertex(walls, wx, ly, wz, v * 2 + 1 < m.uvs.size() ? m.uvs[v * 2] : 0.0, v * 2 + 1 < m.uvs.size() ? m.uvs[v * 2 + 1] : 0.0, wnx, ny, wnz);
-							}
-							for (size_t i = 0; i + 2 < m.indices.size(); i += 3)
-							{
-								// OBJ-style clockwise triangles become the engine's counter-clockwise
-								if (m.indices[i] < vertexCount && m.indices[i + 1] < vertexCount && m.indices[i + 2] < vertexCount)
-									walls.indices.insert(walls.indices.end(), { base + m.indices[i], base + m.indices[i + 2], base + m.indices[i + 1] });
-							}
+							const double lx = m.positions[v * 3], ly = m.positions[v * 3 + 1], lz = m.positions[v * 3 + 2];
+							Point2 position, direction;
+							side.path.Evaluate(along + (-lz) * scale, position, direction);
+							const Point2 outward = GetFacadeOutward(direction);
+							const float nx = v * 3 + 2 < m.normals.size() ? m.normals[v * 3] : 0.0f;
+							const float ny = v * 3 + 2 < m.normals.size() ? m.normals[v * 3 + 1] : 1.0f;
+							const float nz = v * 3 + 2 < m.normals.size() ? m.normals[v * 3 + 2] : 0.0f;
+							// Rotate the normal like the position (x -> outward, -z -> along)
+							const float wnx = static_cast<float>(outward.x * nx - direction.x * nz);
+							const float wnz = static_cast<float>(outward.z * nx - direction.z * nz);
+							AddVertex(walls, position.x + outward.x * lx, ly, position.z + outward.z * lx, v * 2 + 1 < m.uvs.size() ? m.uvs[v * 2] : 0.0,
+								v * 2 + 1 < m.uvs.size() ? m.uvs[v * 2 + 1] : 0.0, wnx, ny, wnz);
 						}
-
-						// Attached objects (jetway tunnels, light poles...)
-						for (const FacadeAsset::Attachment &attachment : segment.attachments)
+						for (size_t i = 0; i + 2 < m.indices.size(); i += 3)
 						{
-							if (attachment.object < 0 || static_cast<size_t>(attachment.object) >= asset->objects.size() || !options.placeObjects)
-								continue;
-							const std::string &name = asset->objects[static_cast<size_t>(attachment.object)];
-							const std::string reference = ObjectReference(file, name);
-							fs::path objectFile = ResolveFile(reference);
-							if (objectFile.empty() && !name.starts_with("lib/"))
-								objectFile = ResolveFile(name);
-							if (objectFile.empty())
-							{
-								Warn(out, "Object of " + resource + " not found: " + name);
-								continue;
-							}
-							const double d = along + (-attachment.z) * stretch;
-							OverlayObject object;
-							object.source = OverlayObject::Source::Facade;
-							object.file = objectFile;
-							object.resource = resource;
-							object.name = BaseName(name);
-							object.x = side.a.x + side.direction.x * d + side.outward.x * attachment.x;
-							object.z = side.a.z + side.direction.z * d + side.outward.z * attachment.x;
-							object.y = attachment.y;
-							object.heading = static_cast<float>(DirectionToHeading(side.outward)) + attachment.heading;
-							object.placement = index;
-							out.objects.push_back(std::move(object));
+							// OBJ-style clockwise triangles become the engine's counter-clockwise
+							if (m.indices[i] < vertexCount && m.indices[i + 1] < vertexCount && m.indices[i + 2] < vertexCount)
+								walls.indices.insert(walls.indices.end(), { base + m.indices[i], base + m.indices[i + 2], base + m.indices[i + 1] });
 						}
-						along += segment.width * stretch;
 					}
+
+					// Attached objects (jetway tunnels, light poles, door handles...)
+					for (const FacadeAsset::Attachment &attachment : segment.attachments)
+					{
+						if (attachment.object < 0 || static_cast<size_t>(attachment.object) >= asset->objects.size() || !options.placeObjects)
+							continue;
+						const std::string &name = asset->objects[static_cast<size_t>(attachment.object)];
+						const std::string reference = ObjectReference(file, name);
+						fs::path objectFile = ResolveFile(reference);
+						if (objectFile.empty() && !name.starts_with("lib/"))
+							objectFile = ResolveFile(name);
+						if (objectFile.empty())
+						{
+							Warn(out, "Object of " + resource + " not found: " + name);
+							continue;
+						}
+						Point2 position, direction;
+						side.path.Evaluate(along + (-attachment.z) * scale, position, direction);
+						const Point2 outward = GetFacadeOutward(direction);
+						OverlayObject object;
+						object.source = OverlayObject::Source::Facade;
+						object.file = objectFile;
+						object.resource = resource;
+						object.name = BaseName(name);
+						object.x = position.x + outward.x * attachment.x;
+						object.z = position.z + outward.z * attachment.x;
+						object.y = attachment.y;
+						object.heading = static_cast<float>(DirectionToHeading(outward)) + attachment.heading;
+						object.placement = index;
+						out.objects.push_back(std::move(object));
+					}
+					along += straight.width * wall.stretch;
 				}
 			}
 		}
 		else
 		{
-			// Type 1: texture panels. Pick the wall whose width range fits, tile left / center / right panels across
-			// and bottom / middle / top floors up, stretched to fit the side exactly.
+			// Type 1: texture panels. Left / center / right panels across (center repeated) and bottom / middle / top
+			// floors up (middle repeated), stretched to fit the side exactly.
 			if (asset->walls.empty())
 				return;
-			for (const WallSide &side : sides)
+			for (size_t s = 0; s < sides.size(); ++s)
 			{
-				const FacadeAsset::Wall *wall = &asset->walls[0];
-				if (side.wallType > 0 && static_cast<size_t>(side.wallType) < asset->walls.size())
-					wall = &asset->walls[static_cast<size_t>(side.wallType)];
-				else
-				{
-					for (const FacadeAsset::Wall &candidate : asset->walls)
-					{
-						if (side.length >= candidate.minWidth && side.length <= candidate.maxWidth)
-						{
-							wall = &candidate;
-							break;
-						}
-					}
-				}
+				const WallSide &side = sides[s];
+				const FacadeAsset::Wall *wall = &asset->walls[static_cast<size_t>(std::clamp(layout.walls[s].wall, 0, static_cast<int>(asset->walls.size()) - 1))];
 
-				// Horizontal panels: left once, center repeated, right once
 				struct Span
 				{
 					float t0, t1;	// Texture range
@@ -1487,22 +1414,27 @@ namespace SceneryEditorX::XPlane
 				for (const Span &r : rows) totalHeight += r.size;
 				const double stretchX = totalWidth > 0.01 ? side.length / totalWidth : 1.0;
 				const double stretchY = totalHeight > 0.01 ? height / totalHeight : 1.0;
-				const float normal[3] = { static_cast<float>(side.outward.x), 0.0f, static_cast<float>(side.outward.z) };
 
 				double x = 0.0;
 				for (const Span &column : columns)
 				{
 					const double w = column.size * stretchX;
+					Point2 p0, p1, d0, d1, mid, dm;
+					side.path.Evaluate(x, p0, d0);
+					side.path.Evaluate(x + w, p1, d1);
+					side.path.Evaluate(x + w * 0.5, mid, dm);
+					const Point2 outward = GetFacadeOutward(dm);
+					const float normal[3] = { static_cast<float>(outward.x), 0.0f, static_cast<float>(outward.z) };
 					double yPos = 0.0;
 					for (const Span &row : rows)
 					{
 						const double h = row.size * stretchY;
 						const double corners[4][3] =
 						{
-							{ side.a.x + side.direction.x * x, yPos, side.a.z + side.direction.z * x },
-							{ side.a.x + side.direction.x * (x + w), yPos, side.a.z + side.direction.z * (x + w) },
-							{ side.a.x + side.direction.x * (x + w), yPos + h, side.a.z + side.direction.z * (x + w) },
-							{ side.a.x + side.direction.x * x, yPos + h, side.a.z + side.direction.z * x }
+							{ p0.x, yPos, p0.z },
+							{ p1.x, yPos, p1.z },
+							{ p1.x, yPos + h, p1.z },
+							{ p0.x, yPos + h, p0.z }
 						};
 						const double uvs[4][2] = { { column.t0, row.t0 }, { column.t1, row.t0 }, { column.t1, row.t1 }, { column.t0, row.t1 } };
 						AddQuad(walls, corners, uvs, normal);
@@ -1518,7 +1450,7 @@ namespace SceneryEditorX::XPlane
 			out.meshes.push_back(std::move(walls));
 
 		// Roof: the footprint at the roof height
-		if (asset->ring && asset->hasRoof && !asset->noRoofMesh && rings[0].size() >= 3)
+		if (asset->ring && asset->hasRoof && !asset->noRoofMesh && footprint.size() >= 3)
 		{
 			OverlayMesh roof;
 			roof.kind = OverlayKind::Facade;
@@ -1530,13 +1462,20 @@ namespace SceneryEditorX::XPlane
 			roof.twoSided = true;
 			roof.color[0] = roof.color[1] = roof.color[2] = 0.45f;
 			if (asset->IsType2() || asset->roofUv.size() != 4)
-				AppendTexturedPolygon(roof, { rings[0] }, static_cast<float>(roofHeight), asset->roofScaleS > 0.01f ? asset->roofScaleS : 10.0f, asset->roofScaleT > 0.01f ? asset->roofScaleT : 10.0f, 0.0);
+			{
+				// The roof texture runs along the front wall (s) and in from it (t), as X-Plane and WorldEditor lay it out
+				const Point2 &start = sides.front().path.GetPoints().front(), &end = sides.front().path.GetPoints().back();
+				const double chord = std::max(1e-9, std::hypot(end.x - start.x, end.z - start.z));
+				const double frontHeading = DirectionToHeading({ (end.x - start.x) / chord, (end.z - start.z) / chord });
+				AppendTexturedPolygon(roof, { footprint }, static_cast<float>(roofHeight), asset->roofScaleS > 0.01f ? asset->roofScaleS : 10.0f,
+					asset->roofScaleT > 0.01f ? asset->roofScaleT : 10.0f, frontHeading - 90.0);
+			}
 			else
 			{
 				// Type 1 ROOF corners: map the footprint's bounding box onto the texture rectangle
 				std::vector<Point2> points;
 				std::vector<uint32_t> indices;
-				if (TriangulatePolygon({ rings[0] }, points, indices))
+				if (TriangulatePolygon({ footprint }, points, indices))
 				{
 					const Bounds2 bounds = GetBounds(points);
 					const double w = std::max(0.01, bounds.maxX - bounds.minX), h = std::max(0.01, bounds.maxZ - bounds.minZ);

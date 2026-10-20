@@ -31,7 +31,9 @@
 #include "editor_project.h"
 #include "editor_airports.h"
 #include "editor_context.h"
+#include "editor_history.h"
 #include "editor_scene.h"
+#include "editor_selection.h"
 #include "editor_ui.h"
 #include "project_dialogs.h"
 #include <cmath>
@@ -1379,10 +1381,33 @@ namespace SceneryEditorX::EditorProjects
 		return GetState().projection;
 	}
 
+	namespace
+	{
+		/* @brief Art parsed for the editor's tools, by resource (a failed load is remembered too, so a missing file isn't searched every frame). */
+		struct ArtCache
+		{
+			std::unordered_map<std::string, std::optional<XPlane::RoadNetworkAsset>> networks;
+			std::unordered_map<std::string, std::optional<XPlane::FacadeAsset>> facades;
+			uint64_t libraryGeneration = ~0ull;
+		};
+
+		ArtCache &GetArtCache()
+		{
+			static ArtCache cache;
+			// A new library scan can resolve a resource to another file
+			if (cache.libraryGeneration != XPlane::LibraryManager::GetGeneration())
+			{
+				cache.networks.clear();
+				cache.facades.clear();
+				cache.libraryGeneration = XPlane::LibraryManager::GetGeneration();
+			}
+			return cache;
+		}
+	}
+
 	const XPlane::RoadNetworkAsset *GetRoadNetwork(const std::string &resource)
 	{
-		// Parsed once per resource (a failed load is remembered too, so a missing network isn't searched every frame)
-		static std::unordered_map<std::string, std::optional<XPlane::RoadNetworkAsset>> networks;
+		auto &networks = GetArtCache().networks;
 		const auto [it, added] = networks.try_emplace(resource);
 		if (added)
 		{
@@ -1395,6 +1420,82 @@ namespace SceneryEditorX::EditorProjects
 				WarnOnce("network:" + resource, file.empty() ? "Road network not found: " + resource : error);
 		}
 		return it->second ? &*it->second : nullptr;
+	}
+
+	const XPlane::FacadeAsset *GetFacade(const std::string &resource)
+	{
+		auto &facades = GetArtCache().facades;
+		const auto [it, added] = facades.try_emplace(resource);
+		if (added)
+		{
+			XPlane::FacadeAsset asset;
+			std::string error;
+			const fs::path file = ResolveResource(resource);
+			if (!file.empty() && XPlane::LoadFacadeAsset(file, asset, &error))
+				it->second = std::move(asset);
+			else
+				WarnOnce("facade:" + resource, file.empty() ? "Facade not found: " + resource : error);
+		}
+		return it->second ? &*it->second : nullptr;
+	}
+
+	fs::path ResolveResourceFile(const std::string &resource)
+	{
+		return resource.empty() ? fs::path() : ResolveResource(resource);
+	}
+
+	std::string AddItem(SceneryItem item, EditorContext *context, const std::string &label)
+	{
+		State &state = GetState();
+		if (!state.document.IsOpen())
+			return {};
+		if (item.id.empty() || state.document.FindItem(item.id))
+			item.id = MakeItemId();
+
+		// Beside the active item, else in the first airport, else at the end of the top level
+		std::string parentId;
+		size_t index = 0;
+		const EditorSelection::Target *active = EditorSelection::GetActive();
+		const bool besideActive = active && active->type == EditorSelection::TargetType::ProjectItem && FindItemLocation(active->itemId, parentId, index);
+		if (besideActive)
+			++index;
+		else
+		{
+			SceneryProject &project = state.document.GetProject();
+			const SceneryItem *airport = nullptr;
+			project.ForEachItem([&airport](const SceneryItem &entry, int)
+			{
+				if (entry.kind != ItemKind::Airport)
+					return true;
+				airport = &entry;
+				return false;
+			});
+			parentId = airport ? airport->id : std::string();
+			index = airport ? airport->children.size() : project.items.size();
+		}
+
+		const std::string id = item.id;
+		if (!InsertItem(item, parentId, index))
+			return {};
+		EditorHistory::Command command;
+		command.label = label;
+		command.bytes = sizeof(SceneryItem);
+		for (const GeoRing &ring : item.rings)
+			command.bytes += ring.size() * sizeof(GeoNode);
+		command.undo = [id, context]() { return RemoveItem(id, context); };
+		command.redo = [item = std::move(item), parentId, index]() { return InsertItem(item, parentId, index); };
+		EditorHistory::Push(std::move(command));
+		EditorSelection::Select(context, EditorSelection::Target::ForItem(id));
+		return id;
+	}
+
+	void ReloadArt()
+	{
+		ArtCache &cache = GetArtCache();
+		cache.networks.clear();
+		cache.facades.clear();
+		// The scenery is rebuilt from a new overlay builder, which parses every asset again
+		GetState().sceneryLibrary = ~0ull;
 	}
 
 	void NotifySceneEdited()

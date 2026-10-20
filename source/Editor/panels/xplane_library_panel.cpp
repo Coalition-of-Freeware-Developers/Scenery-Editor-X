@@ -30,8 +30,10 @@
  */
 #include "xplane_library_panel.h"
 #include <Editor/core/editor_theme.h>
+#include <Editor/core/editor_tools.h>
 #include <Editor/core/editor_ui.h>
 #include <Editor/core/editor_xplane.h>
+#include <Editor/core/facade_tool.h>
 #include <SceneryEditorX/filesystem/file_system.h>
 #include <SceneryEditorX/renderer/font/font_awesome.h>
 #include <SceneryEditorX/renderer/ui/resources/fonts.h>
@@ -346,14 +348,21 @@ namespace SceneryEditorX
 							m_SelectedAsset = asset.virtualPath;
 							if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && asset.type == XPlane::AssetType::Object)
 								EditorXPlane::PlaceLibraryAsset(asset.virtualPath, m_Context);
+							// A facade is armed in the facade tool, ready to draw
+							if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && asset.type == XPlane::AssetType::Facade)
+							{
+								FacadeTool::SetResource(asset.virtualPath);
+								EditorTools::SetTool(EditorTools::Tool::Facade);
+							}
 						}
 						if (missing)
 							ImGui::PopStyleColor();
 
-						if (asset.type == XPlane::AssetType::Object && ImGui::BeginDragDropSource())
+						const bool draggable = asset.type == XPlane::AssetType::Object || asset.type == XPlane::AssetType::Facade;
+						if (draggable && ImGui::BeginDragDropSource())
 						{
 							ImGui::SetDragDropPayload(EditorXPlane::ASSET_PAYLOAD, asset.virtualPath.c_str(), asset.virtualPath.size() + 1);
-							ImGui::Text("%s  %s", SEDX_ICON_CUBE, asset.virtualPath.c_str());
+							ImGui::Text("%s  %s", asset.type == XPlane::AssetType::Facade ? SEDX_ICON_BUILDING_O : SEDX_ICON_CUBE, asset.virtualPath.c_str());
 							ImGui::EndDragDropSource();
 						}
 
@@ -378,7 +387,8 @@ namespace SceneryEditorX
 			if (selected)
 				DrawAssetDetails(index, *selected);
 			else
-				EditorUI::EmptyState("Select an asset to see where it comes from.\nDouble-click or drag an object into the viewport to place it.");
+				EditorUI::EmptyState("Select an asset to see where it comes from.\nDouble-click or drag an object into the viewport to place it.\n"
+									 "Double-click a facade to draw with it, or drag it onto the ground.");
 		}
 		ImGui::EndChild();
 	}
@@ -396,14 +406,34 @@ namespace SceneryEditorX
 
 		// Actions
 		const bool canPlace = asset.type == XPlane::AssetType::Object && resolved && resolved->fileExists;
-		ImGui::BeginDisabled(!canPlace);
-		if (ImGui::Button(EditorUI::IconLabel(SEDX_ICON_PLUS, "Place in scene").c_str()))
-			EditorXPlane::PlaceLibraryAsset(asset.virtualPath, m_Context);
-		ImGui::EndDisabled();
-		if (asset.type != XPlane::AssetType::Object)
-			EditorUI::ItemTooltip("Only objects (.obj) can be placed for now");
+		if (asset.type == XPlane::AssetType::Facade)
+		{
+			// Facades are drawn into the project with the facade tool
+			ImGui::BeginDisabled(!resolved || !resolved->fileExists);
+			if (ImGui::Button(EditorUI::IconLabel(SEDX_ICON_PENCIL, "Draw with it").c_str()))
+			{
+				FacadeTool::SetResource(asset.virtualPath);
+				EditorTools::SetTool(EditorTools::Tool::Facade);
+			}
+			EditorUI::ItemTooltip("Arm the facade tool with it (B): draw a polygon, rectangle, circle or line in the viewport.\n"
+								  "Or drag it onto the ground for a default footprint");
+			ImGui::SameLine();
+			if (ImGui::Button(EditorUI::IconLabel(SEDX_ICON_INFO_CIRCLE, "Inspect").c_str()))
+				FacadeTool::Inspect(asset.virtualPath);
+			EditorUI::ItemTooltip("Floors, walls and their rules, spellings and segments in the FACADES inspector");
+			ImGui::EndDisabled();
+		}
 		else
-			EditorUI::ItemTooltip("Places the object right away; it appears when it has loaded in the background");
+		{
+			ImGui::BeginDisabled(!canPlace);
+			if (ImGui::Button(EditorUI::IconLabel(SEDX_ICON_PLUS, "Place in scene").c_str()))
+				EditorXPlane::PlaceLibraryAsset(asset.virtualPath, m_Context);
+			ImGui::EndDisabled();
+			if (asset.type != XPlane::AssetType::Object)
+				EditorUI::ItemTooltip("Only objects (.obj) and facades (.fac) can be placed for now");
+			else
+				EditorUI::ItemTooltip("Places the object right away; it appears when it has loaded in the background");
+		}
 
 		ImGui::SameLine();
 		if (ImGui::Button(EditorUI::IconLabel(SEDX_ICON_LINK, "Copy path").c_str()))

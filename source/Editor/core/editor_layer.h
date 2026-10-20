@@ -31,7 +31,11 @@
 #pragma once
 #include "child_window.h"
 #include "editor_context.h"
+#include <functional>
 #include <memory>
+#include <string>
+#include <utility>
+#include <vector>
 #include <SceneryEditorX/core/events/key_events.h>
 #include <SceneryEditorX/core/events/mouse_events.h>
 #include <SceneryEditorX/core/layers/layer.h>
@@ -80,6 +84,14 @@ namespace SceneryEditorX
 		void DetachLogSink();
 
 		void DrawMenuBar();
+		/* @brief The menu bar's menus (name, items): drawn in the bar and in the viewport's Space hotbox. */
+		void BuildMainMenus();
+		void DrawEditMenu();
+		void DrawSceneMenu();
+		void DrawXPlaneMenu();
+		void DrawFacadeMenu();
+		void DrawWindowMenu();
+		void DrawViewportMenu();
 		void DrawStatusBar();
 		void DrawToolStrip();
 		void DrawPanelStrip();
@@ -102,6 +114,8 @@ namespace SceneryEditorX
 		Scope<PanelManager> m_PanelManager;
 		EditorContext m_Context;
 		std::shared_ptr<EditorLogSink> m_LogSink;
+
+		std::vector<std::pair<std::string, std::function<void()>>> m_MainMenus;
 
 		bool m_ShowAbout = false;
 		bool m_ShowMetrics = false;

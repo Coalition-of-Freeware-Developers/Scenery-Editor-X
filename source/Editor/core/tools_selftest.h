@@ -58,6 +58,12 @@ namespace SceneryEditorX::ToolsSelfTest
 	 */
 	void EnableShowcase();
 
+	/**
+	 * @brief --facade-showcase: the facade tests' facades stay selected with the facade tool's wall labels, the quad
+	 * menu open on the sidewalk for 1200 frames, then the hotbox for 1200 (for RenderDoc captures); then it is all undone.
+	 */
+	void EnableFacadeShowcase();
+
 	/* @brief Once per frame from the viewport, after the tools. */
 	void Tick(EditorContext *context, const ViewportView &view, float renderWidth, float renderHeight);
 }

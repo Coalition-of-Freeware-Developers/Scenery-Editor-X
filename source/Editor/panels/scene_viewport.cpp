@@ -34,6 +34,7 @@
 #include <Editor/core/editor_tools.h>
 #include <Editor/core/editor_ui.h>
 #include <Editor/core/editor_xplane.h>
+#include <Editor/core/facade_tool.h>
 #include <Editor/core/node_tool.h>
 #include <Editor/core/transform_tool.h>
 #include <Editor/core/viewport_view.h>
@@ -42,6 +43,7 @@
 #include <SceneryEditorX/renderer/font/font_awesome.h>
 #include <SceneryEditorX/renderer/ui/ui_impl.h>
 #include <SceneryEditorX/scene/camera.h>
+#include <SceneryEditorX/xplane/xp_library.h>
 
 // -------------------------------------------------------
 
@@ -177,7 +179,12 @@ namespace SceneryEditorX
 							float ground[3] = { 0.0f, 0.0f, 0.0f };
 							const ImVec2 mouse = ImGui::GetMousePos();
 							const bool hit = PickGround((mouse.x - imageMin.x) / imageSize.x, (mouse.y - imageMin.y) / imageSize.y, imageSize.x / imageSize.y, ground);
-							EditorXPlane::PlaceLibraryAsset(static_cast<const char *>(payload->Data), m_Context, hit ? ground : nullptr);
+							const std::string path = static_cast<const char *>(payload->Data);
+							// A facade gets a default footprint on the ground there (in the open project); objects are placed as before
+							if (XPlane::GetAssetType(path) == XPlane::AssetType::Facade)
+								FacadeTool::Drop(m_Context, path, hit ? ground : nullptr);
+							else
+								EditorXPlane::PlaceLibraryAsset(path, m_Context, hit ? ground : nullptr);
 						}
 						ImGui::EndDragDropTarget();
 					}
@@ -313,6 +320,12 @@ namespace SceneryEditorX
 			if (EditorUI::StripButton(SEDX_ICON_EXCHANGE, "Reverse the direction of the selected shapes (or of the selected nodes' chains)\nFacades face, strings and lines run by their direction", false, buttonSize))
 				NodeTool::ReverseSelectedShapes();
 			ImGui::EndDisabled();
+		}
+
+		if (EditorTools::GetTool() == EditorTools::Tool::Facade)
+		{
+			ImGui::SameLine(0.0f, 8.0f * dpi);
+			FacadeTool::DrawToolbar(m_Context, buttonSize);
 		}
 
 		ImGui::SameLine(0.0f, 10.0f * dpi);

@@ -32,6 +32,7 @@
 #include "editor_airports.h"
 #include "editor_project.h"
 #include "editor_camera.h"
+#include "editor_commands.h"
 #include "editor_history.h"
 #include "editor_scene.h"
 #include "editor_selection.h"
@@ -41,9 +42,12 @@
 #include "editor_theme.h"
 #include "editor_ui.h"
 #include "editor_xplane.h"
+#include "facade_tool.h"
+#include "viewport_menus.h"
 #include <Editor/panels/airport_panel.h>
 #include <Editor/panels/asset_shelf_panel.h>
 #include <Editor/panels/console_panel.h>
+#include <Editor/panels/facade_inspector_panel.h>
 #include <Editor/panels/outliner_panel.h>
 #include <Editor/panels/project_panel.h>
 #include <Editor/panels/properties_panel.h>
@@ -104,14 +108,15 @@ namespace SceneryEditorX
 		constexpr PanelInfo PANEL_XPLANE			= { "XPlaneLibrary",	"X-PLANE LIBRARY###XPlaneLibrary",	SEDX_ICON_PLANE };
 		constexpr PanelInfo PANEL_AIRPORTS			= { "Airports",			"AIRPORTS###Airports",				SEDX_ICON_GLOBE };
 		constexpr PanelInfo PANEL_PROJECT			= { "Project",			"PROJECT###Project",				SEDX_ICON_FILE_TEXT };
+		constexpr PanelInfo PANEL_FACADES			= { "FacadeInspector",	"FACADES###FacadeInspector",		SEDX_ICON_BUILDING_O };
 
 		constexpr PanelInfo s_StripPanels[] =
 		{
-			PANEL_PROPERTIES, PANEL_OUTLINER, PANEL_PROJECT, PANEL_AIRPORTS, PANEL_XPLANE, PANEL_ASSETS, PANEL_CONSOLE, PANEL_SCENE_SETTINGS, PANEL_CAMERA, PANEL_RENDERER, PANEL_VIEWPORT
+			PANEL_PROPERTIES, PANEL_OUTLINER, PANEL_PROJECT, PANEL_AIRPORTS, PANEL_XPLANE, PANEL_FACADES, PANEL_ASSETS, PANEL_CONSOLE, PANEL_SCENE_SETTINGS, PANEL_CAMERA, PANEL_RENDERER, PANEL_VIEWPORT
 		};
 
 		/* Bump when the default layout changes so existing users get the new arrangement once. */
-		constexpr const char *DOCKSPACE_NAME = "SEDX_EditorDockspace_v5";
+		constexpr const char *DOCKSPACE_NAME = "SEDX_EditorDockspace_v6";
 
 		constexpr ImGuiWindowFlags SIDE_BAR_FLAGS = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoSavedSettings;
 
@@ -260,6 +265,10 @@ namespace SceneryEditorX
 		EditorProjects::Init(m_UserPreferences);
 		ReadStartupObjects();
 		RegisterPanels();
+		// Commands the menus offer (menu bar, right-click quad menu, Space hotbox), and the menus themselves
+		ViewportMenus::RegisterCommands();
+		FacadeTool::RegisterCommands();
+		BuildMainMenus();
 		EditorCamera::CaptureHome();
 		UpdateWindowTitle();
 
@@ -304,6 +313,7 @@ namespace SceneryEditorX
 		m_PanelManager->AddPanel<XPlaneLibraryPanel>(PanelCategory::Editor, PANEL_XPLANE.id, "X-Plane Library", true, &m_Context);
 		m_PanelManager->AddPanel<AirportPanel>(PanelCategory::Editor, PANEL_AIRPORTS.id, "Airports", true, &m_Context);
 		m_PanelManager->AddPanel<ProjectPanel>(PanelCategory::Editor, PANEL_PROJECT.id, "Project", true, &m_Context);
+		m_PanelManager->AddPanel<FacadeInspectorPanel>(PanelCategory::Editor, PANEL_FACADES.id, "Facades", true, &m_Context);
 		m_PanelManager->AddPanel<SceneSettingsPanel>(PanelCategory::Settings, PANEL_SCENE_SETTINGS.id, "Scene Settings", true);
 		m_PanelManager->AddPanel<CameraSettingsPanel>(PanelCategory::Settings, PANEL_CAMERA.id, "Camera", true);
 		m_PanelManager->AddPanel<RendererStatsPanel>(PanelCategory::Settings, PANEL_RENDERER.id, "Renderer", true);
@@ -393,6 +403,17 @@ namespace SceneryEditorX
 			m_PanelManager->OnUIRender();
 		}
 
+		// The viewport's right-click quad menu and Space hotbox, over the panels
+		ViewportMenus::Draw(&m_Context);
+
+		// Inspect (menus, PROPERTIES, the library panel) brings the FACADES panel up
+		if (FacadeTool::ConsumeOpenRequest())
+		{
+			if (PanelData *panel = FindPanel(PANEL_FACADES.id))
+				panel->IsOpen = true;
+			ImGui::SetWindowFocus(PANEL_FACADES.window);
+		}
+
 		// Outlines for the selected / hovered objects (uploaded only when they changed)
 		EditorSelection::UpdateHighlight();
 
@@ -417,157 +438,221 @@ namespace SceneryEditorX
 		EditorProjects::DrawModals(&m_Context);
 	}
 
+	void EditorLayer::BuildMainMenus()
+	{
+		m_MainMenus.clear();
+		m_MainMenus.emplace_back("File", [this]() { EditorProjects::DrawFileMenu(&m_Context); });
+		m_MainMenus.emplace_back("Edit", [this]() { DrawEditMenu(); });
+		m_MainMenus.emplace_back("Scene", [this]() { DrawSceneMenu(); });
+		m_MainMenus.emplace_back("X-Plane", [this]() { DrawXPlaneMenu(); });
+		m_MainMenus.emplace_back("Facade", [this]() { DrawFacadeMenu(); });
+		m_MainMenus.emplace_back("Window", [this]() { DrawWindowMenu(); });
+		m_MainMenus.emplace_back("Viewport", [this]() { DrawViewportMenu(); });
+		m_MainMenus.emplace_back("Help", [this]()
+		{
+			if (ImGui::MenuItem("About Scenery Editor X"))
+				m_ShowAbout = true;
+			ImGui::Separator();
+			ImGui::TextDisabled("Viewport: right-click for the quad menu, hold Space for the hotbox");
+		});
+		ViewportMenus::SetMainMenus(m_MainMenus);
+	}
+
 	void EditorLayer::DrawMenuBar()
 	{
 		if (!ImGui::BeginMainMenuBar())
 			return;
-
-		if (ImGui::BeginMenu("File"))
+		for (const auto &[name, items] : m_MainMenus)
 		{
-			EditorProjects::DrawFileMenu(&m_Context);
-			ImGui::EndMenu();
-		}
-
-		if (ImGui::BeginMenu("Edit"))
-		{
-			const std::string undo = EditorHistory::CanUndo() ? "Undo " + EditorHistory::GetUndoLabel() : std::string("Undo");
-			const std::string redo = EditorHistory::CanRedo() ? "Redo " + EditorHistory::GetRedoLabel() : std::string("Redo");
-			if (ImGui::MenuItem(undo.c_str(), "Ctrl+Z", false, EditorHistory::CanUndo()))
-				EditorHistory::Undo();
-			if (ImGui::MenuItem(redo.c_str(), "Ctrl+Y", false, EditorHistory::CanRedo()))
-				EditorHistory::Redo();
-			ImGui::Separator();
-			if (ImGui::MenuItem("Delete", "Del", false, !EditorSelection::IsEmpty()))
-				DeleteSelectedEntity();
-			if (ImGui::MenuItem("Deselect", "Esc", false, !EditorSelection::IsEmpty()))
-				EditorSelection::Clear(&m_Context);
-			if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_CROSSHAIRS, "Frame Selection").c_str(), "F", false, !EditorSelection::IsEmpty()))
-				EditorTools::FrameSelection();
-			ImGui::Separator();
-			for (int t = 0; t < static_cast<int>(EditorTools::Tool::Count); ++t)
+			if (ImGui::BeginMenu(name.c_str()))
 			{
-				const EditorTools::Tool tool = static_cast<EditorTools::Tool>(t);
-				static constexpr const char *keys[] = { "Q", "W", "E", "R", "V" };
-				if (ImGui::MenuItem(EditorUI::IconLabel(EditorTools::GetToolIcon(tool), EditorTools::GetToolName(tool)).c_str(), keys[t], EditorTools::GetTool() == tool))
-					EditorTools::SetTool(tool);
-			}
-			ImGui::EndMenu();
-		}
-
-		if (ImGui::BeginMenu("Scene"))
-		{
-			if (ImGui::MenuItem("Add Empty Entity"))
-			{
-				if (const uint64_t created = EditorScene::CreateEmpty("Empty Entity"); created != 0)
-					EditorSelection::Select(&m_Context, EditorSelection::Target::ForEntity(created));
-			}
-			ImGui::EndMenu();
-		}
-
-		if (ImGui::BeginMenu("X-Plane"))
-		{
-			if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_CUBE, "Import Object (.obj)...").c_str()))
-				EditorXPlane::ImportObjFile(&m_Context);
-
-			ImGui::Separator();
-			if (PanelData *panel = FindPanel(PANEL_AIRPORTS.id))
-			{
-				if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_GLOBE, "Airports").c_str(), nullptr, panel->IsOpen))
-				{
-					panel->IsOpen = true;
-					ImGui::SetWindowFocus(PANEL_AIRPORTS.window);
-				}
-			}
-			if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_FOLDER_OPEN, "Open Airport (apt.dat)...").c_str()))
-				EditorAirports::BrowseForAirport(&m_Context);
-			{
-				const XPlane::AirportDocument *document = EditorAirports::GetDocument();
-				const bool open = document != nullptr;
-				if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_FLOPPY_O, "Save Airport").c_str(), "Ctrl+S", false, open && document->IsDirty()))
-					EditorAirports::SaveAirport();
-				if (ImGui::MenuItem("Save Airport As...", "Ctrl+Shift+S", false, open))
-					EditorAirports::SaveAirportAs();
-				if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_CROSSHAIRS, "Frame Airport").c_str(), nullptr, false, open))
-					EditorAirports::FrameAirport();
-				if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_TIMES, "Close Airport").c_str(), nullptr, false, open))
-					EditorAirports::CloseAirport(&m_Context);
-			}
-			if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_REFRESH, "Rescan Airports").c_str(), nullptr, false,
-				XPlane::AirportManager::GetScanState() != XPlane::ScanState::Scanning))
-				XPlane::AirportManager::Rescan();
-
-			ImGui::Separator();
-			if (PanelData *panel = FindPanel(PANEL_XPLANE.id))
-			{
-				if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_BOOK, "Library Browser").c_str(), nullptr, panel->IsOpen))
-				{
-					panel->IsOpen = true;
-					ImGui::SetWindowFocus(PANEL_XPLANE.window);
-				}
-			}
-			if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_FOLDER_OPEN, "Set X-Plane 12 Folder...").c_str()))
-				EditorXPlane::BrowseForInstall();
-			if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_PLUS, "Track Library Folder...").c_str()))
-				EditorXPlane::BrowseForTrackedFolder();
-			if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_REFRESH, "Rescan Libraries").c_str(), nullptr, false,
-				XPlane::LibraryManager::GetScanState() != XPlane::ScanState::Scanning))
-				XPlane::LibraryManager::Rescan();
-
-			ImGui::Separator();
-			const XPlane::InstallInfo &install = XPlane::LibraryManager::GetInstallInfo();
-			ImGui::TextDisabled("%s", install.IsValid() ? install.root.string().c_str() : install.GetProblem().c_str());
-			ImGui::EndMenu();
-		}
-
-		if (ImGui::BeginMenu("Window"))
-		{
-			for (const PanelInfo &info : s_StripPanels)
-			{
-				if (PanelData *panel = FindPanel(info.id))
-					ImGui::MenuItem(EditorUI::IconLabel(info.icon, panel->Name).c_str(), nullptr, &panel->IsOpen);
-			}
-
-			ImGui::Separator();
-			if (ImGui::MenuItem("Reset Layout"))
-				m_Context.requestLayoutReset = true;
-
-			ImGui::Separator();
-			if (ImGui::BeginMenu("Dear ImGui"))
-			{
-				ImGui::MenuItem("Metrics / Debugger", nullptr, &m_ShowMetrics);
-				ImGui::MenuItem("Style Editor", nullptr, &m_ShowStyleEditor);
-				ImGui::MenuItem("Demo Window", nullptr, &m_ShowDemo);
+				items();
 				ImGui::EndMenu();
 			}
-			ImGui::EndMenu();
 		}
-
-		if (ImGui::BeginMenu("Viewport"))
-		{
-			const bool hasCamera = EditorCamera::Get() != nullptr;
-			if (ImGui::MenuItem("Orbit Navigation", nullptr, EditorCamera::IsMode(ORBIT), hasCamera))
-				EditorCamera::SetMode(ORBIT);
-			if (ImGui::MenuItem("Fly Navigation", nullptr, EditorCamera::IsMode(FLY), hasCamera))
-				EditorCamera::SetMode(FLY);
-			ImGui::Separator();
-			if (ImGui::MenuItem("Perspective", nullptr, EditorCamera::IsProjection(CameraType::Perspective), hasCamera))
-				EditorCamera::SetProjection(CameraType::Perspective);
-			if (ImGui::MenuItem("Orthographic", nullptr, EditorCamera::IsProjection(CameraType::Orthographic), hasCamera))
-				EditorCamera::SetProjection(CameraType::Orthographic);
-			ImGui::Separator();
-			if (ImGui::MenuItem("Reset Camera", "Home", false, hasCamera))
-				EditorCamera::Reset();
-			ImGui::EndMenu();
-		}
-
-		if (ImGui::BeginMenu("Help"))
-		{
-			if (ImGui::MenuItem("About Scenery Editor X"))
-				m_ShowAbout = true;
-			ImGui::EndMenu();
-		}
-
 		ImGui::EndMainMenuBar();
+	}
+
+	void EditorLayer::DrawEditMenu()
+	{
+		const std::string undo = EditorHistory::CanUndo() ? "Undo " + EditorHistory::GetUndoLabel() : std::string("Undo");
+		const std::string redo = EditorHistory::CanRedo() ? "Redo " + EditorHistory::GetRedoLabel() : std::string("Redo");
+		if (ImGui::MenuItem(undo.c_str(), "Ctrl+Z", false, EditorHistory::CanUndo()))
+			EditorHistory::Undo();
+		if (ImGui::MenuItem(redo.c_str(), "Ctrl+Y", false, EditorHistory::CanRedo()))
+			EditorHistory::Redo();
+		ImGui::Separator();
+		if (ImGui::MenuItem("Delete", "Del", false, !EditorSelection::IsEmpty()))
+			DeleteSelectedEntity();
+		EditorCommands::MenuItem("item.duplicate", &m_Context);
+		if (ImGui::MenuItem("Deselect", "Esc", false, !EditorSelection::IsEmpty()))
+			EditorSelection::Clear(&m_Context);
+		if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_CROSSHAIRS, "Frame Selection").c_str(), "F", false, !EditorSelection::IsEmpty()))
+			EditorTools::FrameSelection();
+		ImGui::Separator();
+		EditorCommands::MenuItem("item.hide", &m_Context);
+		EditorCommands::MenuItem("item.unhide_all", &m_Context);
+		EditorCommands::MenuItem("item.lock", &m_Context);
+		ImGui::Separator();
+		for (int t = 0; t < static_cast<int>(EditorTools::Tool::Count); ++t)
+		{
+			const EditorTools::Tool tool = static_cast<EditorTools::Tool>(t);
+			if (ImGui::MenuItem(EditorUI::IconLabel(EditorTools::GetToolIcon(tool), EditorTools::GetToolName(tool)).c_str(), EditorTools::GetToolKey(tool), EditorTools::GetTool() == tool))
+				EditorTools::SetTool(tool);
+		}
+	}
+
+	void EditorLayer::DrawSceneMenu()
+	{
+		if (ImGui::MenuItem("Add Empty Entity"))
+		{
+			if (const uint64_t created = EditorScene::CreateEmpty("Empty Entity"); created != 0)
+				EditorSelection::Select(&m_Context, EditorSelection::Target::ForEntity(created));
+		}
+	}
+
+	void EditorLayer::DrawXPlaneMenu()
+	{
+		if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_CUBE, "Import Object (.obj)...").c_str()))
+			EditorXPlane::ImportObjFile(&m_Context);
+
+		ImGui::Separator();
+		if (PanelData *panel = FindPanel(PANEL_AIRPORTS.id))
+		{
+			if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_GLOBE, "Airports").c_str(), nullptr, panel->IsOpen))
+			{
+				panel->IsOpen = true;
+				ImGui::SetWindowFocus(PANEL_AIRPORTS.window);
+			}
+		}
+		if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_FOLDER_OPEN, "Open Airport (apt.dat)...").c_str()))
+			EditorAirports::BrowseForAirport(&m_Context);
+		{
+			const XPlane::AirportDocument *document = EditorAirports::GetDocument();
+			const bool open = document != nullptr;
+			if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_FLOPPY_O, "Save Airport").c_str(), "Ctrl+S", false, open && document->IsDirty()))
+				EditorAirports::SaveAirport();
+			if (ImGui::MenuItem("Save Airport As...", "Ctrl+Shift+S", false, open))
+				EditorAirports::SaveAirportAs();
+			if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_CROSSHAIRS, "Frame Airport").c_str(), nullptr, false, open))
+				EditorAirports::FrameAirport();
+			if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_TIMES, "Close Airport").c_str(), nullptr, false, open))
+				EditorAirports::CloseAirport(&m_Context);
+		}
+		if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_REFRESH, "Rescan Airports").c_str(), nullptr, false,
+			XPlane::AirportManager::GetScanState() != XPlane::ScanState::Scanning))
+			XPlane::AirportManager::Rescan();
+
+		ImGui::Separator();
+		if (PanelData *panel = FindPanel(PANEL_XPLANE.id))
+		{
+			if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_BOOK, "Library Browser").c_str(), nullptr, panel->IsOpen))
+			{
+				panel->IsOpen = true;
+				ImGui::SetWindowFocus(PANEL_XPLANE.window);
+			}
+		}
+		if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_FOLDER_OPEN, "Set X-Plane 12 Folder...").c_str()))
+			EditorXPlane::BrowseForInstall();
+		if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_PLUS, "Track Library Folder...").c_str()))
+			EditorXPlane::BrowseForTrackedFolder();
+		if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_REFRESH, "Rescan Libraries").c_str(), nullptr, false,
+			XPlane::LibraryManager::GetScanState() != XPlane::ScanState::Scanning))
+			XPlane::LibraryManager::Rescan();
+
+		ImGui::Separator();
+		const XPlane::InstallInfo &install = XPlane::LibraryManager::GetInstallInfo();
+		ImGui::TextDisabled("%s", install.IsValid() ? install.root.string().c_str() : install.GetProblem().c_str());
+	}
+
+	void EditorLayer::DrawFacadeMenu()
+	{
+		// Drawing: the tool and its modes, what to draw with
+		EditorCommands::MenuItem("facade.tool", &m_Context);
+		for (const char *id : { "facade.draw.rectangle", "facade.draw.polygon", "facade.draw.circle", "facade.draw.line" })
+			EditorCommands::MenuItem(id, &m_Context);
+		if (ImGui::BeginMenu(EditorUI::IconLabel(SEDX_ICON_BOOK, "Library").c_str()))
+		{
+			FacadeTool::DrawLibraryMenu();
+			ImGui::EndMenu();
+		}
+		if (ImGui::BeginMenu(EditorUI::IconLabel(SEDX_ICON_STAR, "Recent").c_str(), !FacadeTool::GetRecent().empty()))
+		{
+			for (const std::string &resource : FacadeTool::GetRecent())
+			{
+				if (ImGui::MenuItem(resource.c_str(), nullptr, resource == FacadeTool::GetSettings().resource))
+				{
+					FacadeTool::SetResource(resource);
+					EditorTools::SetTool(EditorTools::Tool::Facade);
+				}
+			}
+			ImGui::EndMenu();
+		}
+
+		// The selected facades
+		ImGui::SeparatorText("Selected facades");
+		const std::vector<std::string> facades = FacadeTool::GetSelectedFacades();
+		if (ImGui::BeginMenu(EditorUI::IconLabel(SEDX_ICON_TH_LIST, "Wall Type").c_str(), !facades.empty()))
+		{
+			FacadeTool::DrawWallTypeMenu(facades);
+			ImGui::EndMenu();
+		}
+		if (ImGui::BeginMenu(EditorUI::IconLabel(SEDX_ICON_ARROWS_V, "Height").c_str(), !facades.empty()))
+		{
+			FacadeTool::DrawHeightMenu(facades);
+			ImGui::EndMenu();
+		}
+		if (ImGui::BeginMenu(EditorUI::IconLabel(SEDX_ICON_RETWEET, "Replace With").c_str(), !facades.empty()))
+		{
+			FacadeTool::DrawReplaceMenu(facades);
+			ImGui::EndMenu();
+		}
+		for (const char *id : { "facade.pick_walls", "facade.front", "facade.subdivide", "facade.square", "facade.reverse", "facade.use", "facade.inspect" })
+			EditorCommands::MenuItem(id, &m_Context);
+		ImGui::Separator();
+		EditorCommands::MenuItem("facade.labels", &m_Context);
+		if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_REFRESH, "Reload Facades").c_str(), nullptr, false, EditorProjects::GetDocument() != nullptr))
+			EditorProjects::ReloadArt();
+		EditorUI::ItemTooltip("Read the project's facades and other art again after editing them on disk, and redraw");
+	}
+
+	void EditorLayer::DrawWindowMenu()
+	{
+		for (const PanelInfo &info : s_StripPanels)
+		{
+			if (PanelData *panel = FindPanel(info.id))
+				ImGui::MenuItem(EditorUI::IconLabel(info.icon, panel->Name).c_str(), nullptr, &panel->IsOpen);
+		}
+
+		ImGui::Separator();
+		if (ImGui::MenuItem("Reset Layout"))
+			m_Context.requestLayoutReset = true;
+
+		ImGui::Separator();
+		if (ImGui::BeginMenu("Dear ImGui"))
+		{
+			ImGui::MenuItem("Metrics / Debugger", nullptr, &m_ShowMetrics);
+			ImGui::MenuItem("Style Editor", nullptr, &m_ShowStyleEditor);
+			ImGui::MenuItem("Demo Window", nullptr, &m_ShowDemo);
+			ImGui::EndMenu();
+		}
+	}
+
+	void EditorLayer::DrawViewportMenu()
+	{
+		const bool hasCamera = EditorCamera::Get() != nullptr;
+		if (ImGui::MenuItem("Orbit Navigation", nullptr, EditorCamera::IsMode(ORBIT), hasCamera))
+			EditorCamera::SetMode(ORBIT);
+		if (ImGui::MenuItem("Fly Navigation", nullptr, EditorCamera::IsMode(FLY), hasCamera))
+			EditorCamera::SetMode(FLY);
+		ImGui::Separator();
+		if (ImGui::MenuItem("Perspective", nullptr, EditorCamera::IsProjection(CameraType::Perspective), hasCamera))
+			EditorCamera::SetProjection(CameraType::Perspective);
+		if (ImGui::MenuItem("Orthographic", nullptr, EditorCamera::IsProjection(CameraType::Orthographic), hasCamera))
+			EditorCamera::SetProjection(CameraType::Orthographic);
+		ImGui::Separator();
+		if (ImGui::MenuItem("Reset Camera", "Home", false, hasCamera))
+			EditorCamera::Reset();
 	}
 
 	void EditorLayer::DrawStatusBar()
@@ -753,7 +838,7 @@ namespace SceneryEditorX
 		//  | PROPERTIES |        VIEWPORT          +------------------+
 		//  |            |                          | SCENE SETTINGS / |
 		//  |            +--------------------------+ CAMERA /         |
-		//  |            | ASSETS / CONSOLE         | RENDERER         |
+		//  |            | ASSETS / CONSOLE         | RENDERER/FACADES |
 		//  +------------+--------------------------+------------------+
 		ImGuiID center = dockspaceId;
 		const ImGuiID left = ImGui::DockBuilderSplitNode(center, ImGuiDir_Left, 0.18f, nullptr, &center);
@@ -767,6 +852,7 @@ namespace SceneryEditorX
 		ImGui::DockBuilderDockWindow(PANEL_SCENE_SETTINGS.window, rightBottom);
 		ImGui::DockBuilderDockWindow(PANEL_CAMERA.window, rightBottom);
 		ImGui::DockBuilderDockWindow(PANEL_RENDERER.window, rightBottom);
+		ImGui::DockBuilderDockWindow(PANEL_FACADES.window, rightBottom);
 		ImGui::DockBuilderDockWindow(PANEL_ASSETS.window, bottom);
 		ImGui::DockBuilderDockWindow(PANEL_CONSOLE.window, bottom);
 		ImGui::DockBuilderDockWindow(PANEL_XPLANE.window, bottom);
@@ -885,6 +971,11 @@ namespace SceneryEditorX
 			{
 				ToolsSelfTest::Enable();
 				ToolsSelfTest::EnableShowcase(); // then shows the node tool's drawing for a while (frame captures) and undoes it
+			}
+			else if (args[i] == "--facade-showcase")
+			{
+				ToolsSelfTest::Enable();
+				ToolsSelfTest::EnableFacadeShowcase(); // holds the facade tests' facades with wall labels and the quad menu open (frame captures)
 			}
 			else if (i + 1 >= args.size())
 				break;

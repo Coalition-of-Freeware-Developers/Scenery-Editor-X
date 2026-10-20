@@ -168,15 +168,31 @@ namespace SceneryEditorX::XPlane
 	/* @brief .fac: a building (or fence) extruded along a polygon. */
 	struct FacadeAsset
 	{
+		/**
+		 * @brief When a wall may be used (WALL and each WALL_RULE): its width range in meters and its heading range in
+		 * degrees relative to the facade's front (the first wall). Equal headings ("0 0") mean any heading.
+		 */
+		struct WallFilter
+		{
+			float minWidth = 0.0f;
+			float maxWidth = 9999.0f;
+			float minHeading = 0.0f;
+			float maxHeading = 0.0f;
+
+			[[nodiscard]] bool Accepts(double width, double relativeHeading) const;
+		};
+
 		/* Type 1: a wall is a grid of texture panels. */
 		struct Wall
 		{
 			std::string name;
 			float minWidth = 0.0f;
 			float maxWidth = 9999.0f;
+			std::vector<WallFilter> filters;	// The WALL row's own filter, then its WALL_RULE rows
 			float scaleS = 1.0f;			// Meters the whole texture width / height cover (SCALE)
 			float scaleT = 1.0f;
 			float roofSlope = 0.0f;
+			bool slant = false;				// ROOF_SLOPE ... SLANT: the sloped row shortens instead of stretching
 			float basement = 0.0f;			// Normalized t below ground
 			std::vector<std::pair<float, float>> leftPanels;		// Normalized s ranges
 			std::vector<std::pair<float, float>> centerPanels;
@@ -193,8 +209,9 @@ namespace SceneryEditorX::XPlane
 			std::vector<float> normals;
 			std::vector<float> uvs;
 			std::vector<uint32_t> indices;
-			int group = 0;					// MESH <group> <far LOD> ...
+			int group = 0;					// MESH <group> <far LOD> <cuts> ...
 			float lodFar = 0.0f;
+			int cuts = 1;					// Pieces a curved wall bends the mesh in
 		};
 
 		struct Attachment
@@ -203,6 +220,8 @@ namespace SceneryEditorX::XPlane
 			float x = 0.0f, y = 0.0f, z = 0.0f;
 			float heading = 0.0f;
 			bool draped = true;
+			int showLo = 0;					// Object density range 1..6 ([lo hi]); 0 when the row gives none
+			int showHi = 0;
 		};
 
 		struct Segment
@@ -219,15 +238,49 @@ namespace SceneryEditorX::XPlane
 			float maxWidth = 9999.0f;
 			float minHeading = 0.0f;
 			float maxHeading = 360.0f;
+			std::vector<WallFilter> filters;			// The WALL row's own filter, then its WALL_RULE rows
 			std::vector<std::vector<int>> spellings;	// Segment index sequences to fill a wall with
+		};
+
+		/* @brief An OBJ on a roof (ROOF_OBJ / ROOF_OBJ_HEADING): meters across the roof from the front wall. */
+		struct RoofObject
+		{
+			int object = 0;
+			float s = 0.0f;
+			float t = 0.0f;
+			float heading = 0.0f;			// Relative to the facade's front
+			int showLo = 0;
+			int showHi = 0;
+		};
+
+		struct Roof
+		{
+			float height = 0.0f;			// Meters; 0 drapes the roof on the ground
+			bool twoSided = false;
+			std::vector<RoofObject> objects;
 		};
 
 		struct Floor
 		{
 			std::string name;
 			std::vector<Segment> segments;
+			std::vector<Segment> curvedSegments;	// SEGMENT_CURVED: what a bezier wall bends (same indices as segments)
 			std::vector<WallRule> walls;
 			std::vector<float> roofHeights;	// ROOF_HEIGHT values (meters), one per allowed roof
+			std::vector<Roof> roofs;		// The same roofs with their options and objects
+			std::string hardRoof;			// HARD_ROOF surface, empty when the roofs aren't solid
+			float height = 0.0f;			// Its top roof, else its tallest segment (computed after parsing): what a DSF height matches
+		};
+
+		/* @brief FACADE_SCRAPER: above this height the facade becomes a skyscraper (base + tower models). */
+		struct Scraper
+		{
+			float minAgl = 0.0f;
+			float maxAgl = 0.0f;
+			float step = 0.0f;
+			int floors = 0;
+			int models = 0;					// FACADE_SCRAPER_MODEL(_OFFSET) rows
+			int pads = 0;					// FACADE_SCRAPER_PAD rows
 		};
 
 		int version = 800;					// 800 = type 1, 1000 = type 2
@@ -238,6 +291,11 @@ namespace SceneryEditorX::XPlane
 		std::string roofTexture;
 		std::string wallTextureNormal;
 		float noBlendCutoff = -1.0f;
+		std::string layerGroup;				// LAYER_GROUP name and offset, empty for the default ("objects")
+		int layerOffset = 0;
+		std::string drapedLayerGroup;		// LAYER_GROUP_DRAPED
+		int drapedLayerOffset = 0;
+		std::vector<Scraper> scrapers;
 
 		// Type 1
 		std::vector<Wall> walls;
@@ -247,6 +305,9 @@ namespace SceneryEditorX::XPlane
 		float roofScaleT = 1.0f;
 		int floorsMin = 1;
 		int floorsMax = 999;
+		bool doubled = false;				// DOUBLED: walls built inside and out
+		std::string hardWall;				// HARD_WALL / HARD_ROOF surfaces
+		std::string hardRoof;
 
 		// Type 2
 		std::vector<std::string> objects;	// OBJ paths relative to the .fac (or library)

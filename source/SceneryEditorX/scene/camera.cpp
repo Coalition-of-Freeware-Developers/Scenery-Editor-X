@@ -257,7 +257,8 @@ namespace SceneryEditorX
 			pan -= right * speed;
 		if ((flyKeys && Input::IsKeyDown(KeyCode::D)) || Input::IsKeyDown(KeyCode::Right))
 			pan += right * speed;
-		if ((flyKeys && Input::IsKeyDown(KeyCode::E)) || Input::IsKeyDown(KeyCode::Space) || Input::IsKeyDown(KeyCode::PageUp))
+		// Space rises only while flying: on its own it opens the editor's hotbox
+		if ((flyKeys && (Input::IsKeyDown(KeyCode::E) || Input::IsKeyDown(KeyCode::Space))) || Input::IsKeyDown(KeyCode::PageUp))
 			pan.y += speed;
 		if ((flyKeys && Input::IsKeyDown(KeyCode::Q)) || Input::IsKeyDown(KeyCode::PageDown))
 			pan.y -= speed;

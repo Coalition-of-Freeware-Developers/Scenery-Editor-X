@@ -35,6 +35,7 @@
 #include <Editor/core/editor_tools.h>
 #include <Editor/core/editor_ui.h>
 #include <Editor/core/editor_xplane.h>
+#include <Editor/core/facade_tool.h>
 #include <Editor/core/node_tool.h>
 #include <SceneryEditorX/renderer/font/font_awesome.h>
 #include <SceneryEditorX/renderer/ui/source/imgui/misc/cpp/imgui_stdlib.h>
@@ -782,9 +783,14 @@ namespace SceneryEditorX
 			if (nodes)
 				NodeTool::DrawProperties(m_Context);
 
+			// Selected facades: their facade, height, walls and rebuilds
+			const bool facades = !FacadeTool::GetSelectedFacades().empty();
+			if (facades)
+				FacadeTool::DrawProperties(m_Context);
+
 			if (handle == entt::null)
 			{
-				if (!nodes)
+				if (!nodes && !facades)
 					EditorUI::EmptyState("No properties found");
 			}
 			else

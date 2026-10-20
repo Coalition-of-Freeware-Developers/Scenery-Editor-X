@@ -37,10 +37,13 @@
 #include "editor_project.h"
 #include "editor_scene.h"
 #include "editor_selection.h"
+#include "editor_commands.h"
 #include "editor_theme.h"
+#include "facade_tool.h"
 #include "node_tool.h"
 #include "tools_selftest.h"
 #include "transform_tool.h"
+#include "viewport_menus.h"
 #include <algorithm>
 #include <cmath>
 #include <map>
@@ -65,6 +68,8 @@ namespace SceneryEditorX::EditorTools
 		constexpr float MARQUEE_THRESHOLD = 4.0f;	// Pixels the mouse moves before a press becomes a box selection
 		constexpr int CLICK_RADIUS = 4;				// A click hits what is within this many pixels (thin lines, lights)
 		constexpr int HOVER_RADIUS = 2;
+		constexpr float MENU_CLICK_DRAG = 5.0f;		// A right press that moves less than this many pixels...
+		constexpr double MENU_CLICK_SECONDS = 0.35;	// ...and lets go within this long opens the quad menu (else it looked around)
 
 		/* @brief A pick region requested from the GPU, waiting for its result. */
 		struct PendingPick
@@ -91,6 +96,14 @@ namespace SceneryEditorX::EditorTools
 			PendingPick hover;
 			ImVec2 lastHoverMouse = ImVec2(-1.0f, -1.0f);
 			uint64_t lastHoverStructure = 0;
+
+			// Right-click quad menu: the press, then the pick of what was under it
+			bool rightPressed = false;
+			ImVec2 rightPressMouse;
+			double rightPressTime = 0.0;
+			PendingPick menu;
+			ImVec2 menuMouse;
+			ViewportView menuView;
 		};
 
 		State &S()
@@ -202,6 +215,25 @@ namespace SceneryEditorX::EditorTools
 			{
 				s.hover.ticket = 0;
 				EditorSelection::SetHovered(TargetForPickId(NearestId(result, s.hover.centerX, s.hover.centerY)));
+			}
+
+			if (s.menu.ticket != 0 && ScenePicking::TryGetResult(s.menu.ticket, result))
+			{
+				s.menu.ticket = 0;
+				// What was right-clicked becomes the selection (unless it is part of it already), then its menu opens
+				const std::optional<Target> target = TargetForPickId(NearestId(result, s.menu.centerX, s.menu.centerY));
+				if (target && !EditorSelection::IsSelected(*target))
+					EditorSelection::Select(context, *target);
+				// A selected facade's wall under the cursor is picked for the menu's wall commands
+				if (const auto wall = FacadeTool::FindWallAt(s.menuView, s.menuMouse))
+				{
+					const std::vector<uint32_t> &picked = FacadeTool::GetSelectedWalls();
+					if (std::ranges::find(picked, wall->second) == picked.end())
+						FacadeTool::SelectWalls(wall->first, { wall->second });
+				}
+				Point3 ground;
+				const bool onGround = s.menuView.RayToPlane(s.menuMouse, 0.0, ground);
+				ViewportMenus::OpenQuadMenu(context, s.menuMouse, target, onGround ? std::optional<Point3>(ground) : std::nullopt);
 			}
 		}
 
@@ -339,6 +371,8 @@ namespace SceneryEditorX::EditorTools
 			TransformTool::Cancel();
 		if (NodeTool::IsDragging())
 			NodeTool::Cancel();
+		if (FacadeTool::IsDrawing())
+			FacadeTool::Cancel();
 		s.tool = tool;
 	}
 
@@ -351,6 +385,21 @@ namespace SceneryEditorX::EditorTools
 			case Tool::Rotate:	return "Rotate";
 			case Tool::Scale:	return "Scale";
 			case Tool::Nodes:	return "Nodes";
+			case Tool::Facade:	return "Facade";
+			default:			return "";
+		}
+	}
+
+	const char *GetToolKey(const Tool tool)
+	{
+		switch (tool)
+		{
+			case Tool::Select:	return "Q";
+			case Tool::Move:	return "W";
+			case Tool::Rotate:	return "E";
+			case Tool::Scale:	return "R";
+			case Tool::Nodes:	return "V";
+			case Tool::Facade:	return "B";
 			default:			return "";
 		}
 	}
@@ -364,6 +413,7 @@ namespace SceneryEditorX::EditorTools
 			case Tool::Rotate:	return SEDX_ICON_REPEAT;
 			case Tool::Scale:	return SEDX_ICON_EXPAND;
 			case Tool::Nodes:	return SEDX_ICON_SHARE_ALT;
+			case Tool::Facade:	return SEDX_ICON_BUILDING_O;
 			default:			return "";
 		}
 	}
@@ -379,6 +429,9 @@ namespace SceneryEditorX::EditorTools
 			case Tool::Nodes:	return "Nodes (V)\nEdit the bezier nodes of pavement, lines, boundaries, runway ends and project shapes\n"
 										"Drag nodes, handles or the curve itself; double-click a curve to insert; Ctrl+click past a line's end to extend it\n"
 										"Shift+C/S/Y/F: corner, smooth, symmetric, free nodes; Shift+B: edit as a B-spline; Del deletes nodes";
+			case Tool::Facade:	return "Facade (B)\nDraw facades with the armed one: polygon, rectangle, circle or line (1-4)\n"
+										"Click a selected facade's wall to pick it, right-click for its wall types, heights and rebuilds\n"
+										"Arm a facade from the toolbar, the X-PLANE LIBRARY panel or Space > Facades";
 			default:			return "";
 		}
 	}
@@ -404,7 +457,10 @@ namespace SceneryEditorX::EditorTools
 				owns = TransformTool::OnViewportGui(context, view, TransformTool::Operation::Scale, allowInput);
 				break;
 			case Tool::Nodes:
-				owns = NodeTool::OnViewportGui(context, view, allowInput);
+				owns = NodeTool::OnViewportGui(context, view, allowInput && !ViewportMenus::IsOpen());
+				break;
+			case Tool::Facade:
+				owns = FacadeTool::OnViewportGui(context, view, allowInput && !ViewportMenus::IsOpen());
 				break;
 			default:
 				break;
@@ -468,6 +524,33 @@ namespace SceneryEditorX::EditorTools
 				}
 			}
 
+			// A quick right-click (no drag: a drag looks around) opens the quad menu for what is under the cursor, once its
+			// pick comes back. While a facade is being drawn it finishes the shape instead (3ds Max style).
+			const bool overImage = canvasHovered || (s.toolOwnsMouse && view.Contains(mouse));
+			if (overImage && ImGui::IsMouseClicked(ImGuiMouseButton_Right))
+			{
+				s.rightPressed = true;
+				s.rightPressMouse = mouse;
+				s.rightPressTime = ImGui::GetTime();
+			}
+			if (s.rightPressed && ImGui::IsMouseReleased(ImGuiMouseButton_Right))
+			{
+				s.rightPressed = false;
+				const float dx = mouse.x - s.rightPressMouse.x, dy = mouse.y - s.rightPressMouse.y;
+				const bool quick = dx * dx + dy * dy < MENU_CLICK_DRAG * MENU_CLICK_DRAG && ImGui::GetTime() - s.rightPressTime < MENU_CLICK_SECONDS;
+				if (quick && !(s.tool == Tool::Facade && FacadeTool::OnRightClick(context)))
+				{
+					int x = 0, y = 0;
+					ToPixel(view, renderWidth, renderHeight, s.rightPressMouse, x, y);
+					ScenePicking::Cancel(s.menu.ticket);
+					s.menu.ticket = RequestAround(x, y, CLICK_RADIUS);
+					s.menu.centerX = x;
+					s.menu.centerY = y;
+					s.menuMouse = s.rightPressMouse;
+					s.menuView = view;
+				}
+			}
+
 			// What is under the cursor (asked again when the mouse or the scene moved; one request at a time)
 			const bool idle = canvasHovered && !s.pressed && !s.toolOwnsMouse && !IsBusy() && !ImGui::IsAnyMouseDown();
 			if (idle)
@@ -496,7 +579,12 @@ namespace SceneryEditorX::EditorTools
 
 		PollResults(context);
 		if (view.valid)
+		{
+			// Wall labels of the selected facades follow the other tools too (the facade tool draws its own)
+			if (s.tool != Tool::Facade && s.tool != Tool::Nodes)
+				FacadeTool::DrawLabels(view);
 			DrawOverlay(view);
+		}
 		if (ToolsSelfTest::IsEnabled())
 			ToolsSelfTest::Tick(context, view, renderWidth, renderHeight);
 	}
@@ -514,22 +602,27 @@ namespace SceneryEditorX::EditorTools
 			return;
 
 		// Del and Esc wherever the keyboard isn't typing (routed globally, so a focused text field wins)
+		// (an open quad menu or hotbox takes Esc itself)
 		if (ImGui::Shortcut(ImGuiKey_Delete, ImGuiInputFlags_RouteGlobal))
 			DeleteSelection(context);
-		if (ImGui::Shortcut(ImGuiKey_Escape, ImGuiInputFlags_RouteGlobal))
+		if (ImGui::Shortcut(ImGuiKey_Escape, ImGuiInputFlags_RouteGlobal) && !ViewportMenus::IsOpen())
 			Escape(context);
 
 		// Tool keys only over the viewport, and not while the right button flies the camera (WASD / Q E move it then)
 		const bool viewport = context && (context->viewportHovered || context->viewportFocused);
-		if (!viewport || ImGui::IsMouseDown(ImGuiMouseButton_Right) || ImGui::IsMouseDown(ImGuiMouseButton_Middle))
+		if (!viewport || ImGui::IsMouseDown(ImGuiMouseButton_Right) || ImGui::IsMouseDown(ImGuiMouseButton_Middle) || ViewportMenus::IsOpen())
 			return;
 
 		if (io.KeyCtrl && !io.KeyAlt && !io.KeyShift && ImGui::IsKeyPressed(ImGuiKey_A, false) && GetTool() == Tool::Nodes)
 			NodeTool::SelectAllNodes();
+		if (io.KeyCtrl && !io.KeyAlt && !io.KeyShift && ImGui::IsKeyPressed(ImGuiKey_D, false))
+			EditorCommands::Run("item.duplicate", context);
 		if (io.KeyCtrl || io.KeyAlt || io.KeySuper)
 			return;
-		// Shift+letter: the node tool's node types, straighten and B-spline
+		// Shift+letter: the node tool's node types, straighten and B-spline; the facade tool's Enter, Backspace and modes
 		if (GetTool() == Tool::Nodes && NodeTool::HandleShortcuts())
+			return;
+		if (GetTool() == Tool::Facade && FacadeTool::HandleShortcuts(context))
 			return;
 
 		if (ImGui::IsKeyPressed(ImGuiKey_Q, false))
@@ -542,6 +635,8 @@ namespace SceneryEditorX::EditorTools
 			SetTool(Tool::Scale);
 		if (ImGui::IsKeyPressed(ImGuiKey_V, false))
 			SetTool(Tool::Nodes);
+		if (ImGui::IsKeyPressed(ImGuiKey_B, false) && !io.KeyShift)
+			SetTool(Tool::Facade);
 		if (ImGui::IsKeyPressed(ImGuiKey_F, false))
 			FrameSelection();
 		if (ImGui::IsKeyPressed(ImGuiKey_X, false))
@@ -683,6 +778,11 @@ namespace SceneryEditorX::EditorTools
 			NodeTool::Cancel();
 			return;
 		}
+		if (FacadeTool::IsDrawing())
+		{
+			FacadeTool::Cancel();
+			return;
+		}
 		State &s = S();
 		if (s.pressed)
 		{
@@ -725,9 +825,11 @@ namespace SceneryEditorX::EditorTools
 			case Tool::Nodes:
 				NodeTool::HasShapes();	// Follows the selection before describing it
 				return NodeTool::GetHint();
+			case Tool::Facade:
+				return FacadeTool::GetHint();
 			default:
-				return EditorSelection::IsEmpty() ? std::string("Click to select  |  drag a box  |  Alt+LMB orbit, MMB pan, RMB look (+WASD), wheel zoom")
-												  : std::to_string(EditorSelection::Get().size()) + " selected  |  W move, E rotate, R scale, V nodes, F frame, Del delete";
+				return EditorSelection::IsEmpty() ? std::string("Click to select  |  drag a box  |  right-click: quad menu, hold Space: hotbox  |  Alt+LMB orbit, MMB pan, RMB look (+WASD)")
+												  : std::to_string(EditorSelection::Get().size()) + " selected  |  W move, E rotate, R scale, V nodes, B facades, F frame, Del delete  |  right-click: menu";
 		}
 	}
 }

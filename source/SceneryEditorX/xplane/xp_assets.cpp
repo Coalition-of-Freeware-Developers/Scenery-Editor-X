@@ -415,6 +415,21 @@ namespace SceneryEditorX::XPlane
 
 	// -------------------------------------------------------
 
+	bool FacadeAsset::WallFilter::Accepts(const double width, const double relativeHeading) const
+	{
+		if (width < minWidth || width > maxWidth)
+			return false;
+		if (minHeading == maxHeading)
+			return true;	// "0 0": any heading
+		const auto wrap = [](double degrees)
+		{
+			degrees = std::fmod(degrees, 360.0);
+			return degrees < 0.0 ? degrees + 360.0 : degrees;
+		};
+		const double h = wrap(relativeHeading), lo = wrap(minHeading), hi = wrap(maxHeading);
+		return lo < hi ? (lo <= h && h < hi) : (lo <= h || h < hi);	// A range may wrap past north (315 .. 45)
+	}
+
 	bool ParseFacadeAsset(const std::string_view text, FacadeAsset &out, std::string *error)
 	{
 		out = FacadeAsset();
@@ -439,6 +454,28 @@ namespace SceneryEditorX::XPlane
 		{
 			return out.floors.empty() ? nullptr : &out.floors.back();
 		};
+		// WALL / WALL_RULE: <min width> <max width> [<min heading> <max heading>]
+		const auto parseFilter = [](const std::vector<std::string_view> &tokens)
+		{
+			FacadeAsset::WallFilter filter;
+			filter.minWidth = ParseFloat(tokens[1]);
+			filter.maxWidth = ParseFloat(tokens[2], 9999.0f);
+			if (tokens.size() >= 5)
+			{
+				filter.minHeading = ParseFloat(tokens[3]);
+				filter.maxHeading = ParseFloat(tokens[4]);
+			}
+			return filter;
+		};
+		// The optional [<lo> <hi>] object density range after a row's required values
+		const auto showRange = [](const std::vector<std::string_view> &tokens, const size_t first, int &lo, int &hi)
+		{
+			if (tokens.size() >= first + 2)
+			{
+				lo = std::clamp(ParseInt(tokens[first], 0), 0, 6);
+				hi = std::clamp(ParseInt(tokens[first + 1], 0), 0, 6);
+			}
+		};
 
 		ForEachRow(text, start, [&](const std::vector<std::string_view> &tokens, const std::string_view line)
 		{
@@ -461,6 +498,38 @@ namespace SceneryEditorX::XPlane
 			if (key == "SHADER_WALL")
 			{
 				roofSection = false;
+				return;
+			}
+			if (key == "LAYER_GROUP" && tokens.size() >= 2)
+			{
+				out.layerGroup = std::string(tokens[1]);
+				out.layerOffset = tokens.size() >= 3 ? ParseInt(tokens[2], 0) : 0;
+				return;
+			}
+			if (key == "LAYER_GROUP_DRAPED" && tokens.size() >= 2)
+			{
+				out.drapedLayerGroup = std::string(tokens[1]);
+				out.drapedLayerOffset = tokens.size() >= 3 ? ParseInt(tokens[2], 0) : 0;
+				return;
+			}
+			if (key == "FACADE_SCRAPER" && tokens.size() >= 5)
+			{
+				FacadeAsset::Scraper scraper;
+				scraper.minAgl = ParseFloat(tokens[1]);
+				scraper.maxAgl = ParseFloat(tokens[2]);
+				scraper.step = ParseFloat(tokens[3]);
+				scraper.floors = ParseInt(tokens[4], 0);
+				out.scrapers.push_back(scraper);
+				return;
+			}
+			if ((key == "FACADE_SCRAPER_MODEL" || key == "FACADE_SCRAPER_MODEL_OFFSET") && !out.scrapers.empty())
+			{
+				++out.scrapers.back().models;
+				return;
+			}
+			if (key == "FACADE_SCRAPER_PAD" && !out.scrapers.empty())
+			{
+				++out.scrapers.back().pads;
 				return;
 			}
 			if (key == "TEXTURE")
@@ -539,10 +608,17 @@ namespace SceneryEditorX::XPlane
 					FacadeAsset::Wall wall;
 					wall.minWidth = ParseFloat(tokens[1]);
 					wall.maxWidth = ParseFloat(tokens[2], 9999.0f);
+					wall.filters.push_back(parseFilter(tokens));
 					wall.name = tokens.size() >= 6 ? std::string(RestOfLine(line, 5)) : std::string();
 					out.walls.push_back(std::move(wall));
 					roofSection = false;
 				}
+				else if (key == "HARD_WALL" && tokens.size() >= 2)
+					out.hardWall = std::string(tokens[1]);
+				else if (key == "HARD_ROOF" && tokens.size() >= 2)
+					out.hardRoof = std::string(tokens[1]);
+				else if (key == "DOUBLED")
+					out.doubled = tokens.size() < 2 || ParseInt(tokens[1], 1) > 0;
 				else if (FacadeAsset::Wall *wall = currentWall())
 				{
 					const auto range = [&](std::vector<std::pair<float, float>> &list, const float scale)
@@ -550,13 +626,18 @@ namespace SceneryEditorX::XPlane
 						if (tokens.size() >= 3)
 							list.emplace_back(ParseFloat(tokens[1]) * scale, ParseFloat(tokens[2]) * scale);
 					};
-					if (key == "SCALE" && tokens.size() >= 3)
+					if (key == "WALL_RULE" && tokens.size() >= 3)
+						wall->filters.push_back(parseFilter(tokens));
+					else if (key == "SCALE" && tokens.size() >= 3)
 					{
 						wall->scaleS = ParseFloat(tokens[1], 1.0f);
 						wall->scaleT = ParseFloat(tokens[2], 1.0f);
 					}
 					else if (key == "ROOF_SLOPE" && tokens.size() >= 2)
+					{
 						wall->roofSlope = ParseFloat(tokens[1]);
+						wall->slant = tokens.size() >= 3 && tokens[2] == "SLANT";
+					}
 					else if (key == "BASEMENT_DEPTH" && tokens.size() >= 2)
 						wall->basement = ParseFloat(tokens[1]) * scaleT;
 					else if (key == "LEFT") range(wall->leftPanels, scaleS);
@@ -603,13 +684,9 @@ namespace SceneryEditorX::XPlane
 				FacadeAsset::Floor *floor = currentFloor();
 				if (!floor)
 					return;
-				if (key == "SEGMENT")
-				{
-					floor->segments.emplace_back();
-					segment = &floor->segments.back();
-				}
-				else
-					segment = nullptr;	// Curved variants aren't drawn
+				std::vector<FacadeAsset::Segment> &list = key == "SEGMENT" ? floor->segments : floor->curvedSegments;
+				list.emplace_back();
+				segment = &list.back();
 				mesh = nullptr;
 			}
 			else if (key == "MESH" && segment && tokens.size() >= 6)
@@ -618,6 +695,7 @@ namespace SceneryEditorX::XPlane
 				mesh = &segment->meshes.back();
 				mesh->group = ParseInt(tokens[1], 0);
 				mesh->lodFar = ParseFloat(tokens[2], 0.0f);
+				mesh->cuts = std::max(1, ParseInt(tokens[3], 1));
 				const size_t vertices = static_cast<size_t>(std::max(0, ParseInt(tokens[4], 0)));
 				const size_t indices = static_cast<size_t>(std::max(0, ParseInt(tokens[5], 0)));
 				mesh->positions.reserve(vertices * 3);
@@ -648,6 +726,7 @@ namespace SceneryEditorX::XPlane
 				attachment.z = ParseFloat(tokens[4]);
 				attachment.heading = ParseFloat(tokens[5]);
 				attachment.draped = key == "ATTACH_DRAPED";
+				showRange(tokens, 6, attachment.showLo, attachment.showHi);
 				segment->attachments.push_back(attachment);
 			}
 			else if (key == "WALL" && tokens.size() >= 5)
@@ -660,10 +739,17 @@ namespace SceneryEditorX::XPlane
 				rule.maxWidth = ParseFloat(tokens[2], 9999.0f);
 				rule.minHeading = ParseFloat(tokens[3]);
 				rule.maxHeading = ParseFloat(tokens[4], 360.0f);
+				rule.filters.push_back(parseFilter(tokens));
 				rule.name = tokens.size() >= 6 ? std::string(RestOfLine(line, 5)) : std::string();
 				floor->walls.push_back(std::move(rule));
 				segment = nullptr;
 				mesh = nullptr;
+			}
+			else if (key == "WALL_RULE" && tokens.size() >= 3)
+			{
+				FacadeAsset::Floor *floor = currentFloor();
+				if (floor && !floor->walls.empty())
+					floor->walls.back().filters.push_back(parseFilter(tokens));
 			}
 			else if (key == "SPELLING")
 			{
@@ -682,8 +768,39 @@ namespace SceneryEditorX::XPlane
 				if (!floor)
 					return;
 				for (size_t i = 1; i < tokens.size(); ++i)
-					floor->roofHeights.push_back(ParseFloat(tokens[i]));
+				{
+					const float height = ParseFloat(tokens[i]);
+					floor->roofHeights.push_back(height);
+					floor->roofs.push_back({ height, false, {} });
+				}
 				out.hasRoof = true;
+			}
+			else if (key == "TWO_SIDED_ROOF")
+			{
+				FacadeAsset::Floor *floor = currentFloor();
+				if (floor && !floor->roofs.empty())
+					floor->roofs.back().twoSided = true;
+			}
+			else if (key == "HARD_ROOF" && tokens.size() >= 2)
+			{
+				if (FacadeAsset::Floor *floor = currentFloor())
+					floor->hardRoof = std::string(tokens[1]);
+			}
+			else if ((key == "ROOF_OBJ" && tokens.size() >= 4) || (key == "ROOF_OBJ_HEADING" && tokens.size() >= 5))
+			{
+				// ROOF_OBJ <index> <s> <t> [<lo> <hi>], ROOF_OBJ_HEADING <index> <s> <t> <heading> [<lo> <hi>]: on the latest roof
+				FacadeAsset::Floor *floor = currentFloor();
+				if (!floor || floor->roofs.empty())
+					return;
+				FacadeAsset::RoofObject object;
+				object.object = ParseInt(tokens[1], 0);
+				object.s = ParseFloat(tokens[2]);
+				object.t = ParseFloat(tokens[3]);
+				const bool heading = key == "ROOF_OBJ_HEADING";
+				if (heading)
+					object.heading = ParseFloat(tokens[4]);
+				showRange(tokens, heading ? 5 : 4, object.showLo, object.showHi);
+				floor->roofs.back().objects.push_back(object);
 			}
 			else if (key == "NO_ROOF_MESH")
 				out.noRoofMesh = true;
@@ -695,7 +812,8 @@ namespace SceneryEditorX::XPlane
 		// segment is shifted so it spans [-width, 0] (X-Plane and WorldEditor right-adjust them the same way).
 		for (FacadeAsset::Floor &floor : out.floors)
 		{
-			for (FacadeAsset::Segment &seg : floor.segments)
+			for (std::vector<FacadeAsset::Segment> *list : { &floor.segments, &floor.curvedSegments })
+			for (FacadeAsset::Segment &seg : *list)
 			{
 				float minZ = 0.0f, maxZ = 0.0f;
 				bool any = false;
@@ -727,6 +845,21 @@ namespace SceneryEditorX::XPlane
 					for (FacadeAsset::Attachment &attachment : seg.attachments)
 						attachment.z -= maxZ;
 				}
+			}
+		}
+
+		// A floor's height: its top roof, else its tallest segment (roofless hangars and fences)
+		for (FacadeAsset::Floor &floor : out.floors)
+		{
+			floor.height = 0.0f;
+			for (const float h : floor.roofHeights)
+				floor.height = std::max(floor.height, h);
+			if (floor.roofHeights.empty())
+			{
+				for (const FacadeAsset::Segment &seg : floor.segments)
+					for (const FacadeAsset::Mesh &m : seg.meshes)
+						for (size_t i = 1; i < m.positions.size(); i += 3)
+							floor.height = std::max(floor.height, m.positions[i]);
 			}
 		}
 

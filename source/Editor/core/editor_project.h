@@ -167,6 +167,22 @@ namespace SceneryEditorX::EditorProjects
 	/* @brief A road network (.net) a road item names, parsed once (null when it can't be found or read). */
 	const XPlane::RoadNetworkAsset *GetRoadNetwork(const std::string &resource);
 
+	/* @brief A facade (.fac) an item names, parsed once per library scan (null when it can't be found or read). */
+	const XPlane::FacadeAsset *GetFacade(const std::string &resource);
+
+	/* @brief The file behind a resource: a path relative to the project folder, an absolute one or a library path (empty when not found). */
+	std::filesystem::path ResolveResourceFile(const std::string &resource);
+
+	/**
+	 * @brief Adds an item to the project as one undo step and selects it: after the active project item (in its
+	 * container), else into the project's first airport (where WorldEditor keeps a pack's art), else at the top level.
+	 * @return The new item's id (a fresh one when it had none or a taken one), empty without a project.
+	 */
+	std::string AddItem(ProjectFile::SceneryItem item, EditorContext *context, const std::string &label);
+
+	/* @brief Reads the art the project's scenery is drawn with again (after a .fac, .pol... changed on disk) and redraws it. */
+	void ReloadArt();
+
 	/* @brief Brings scene edits (objects moved, turned or deleted) into the project now instead of at the next periodic sync. */
 	void NotifySceneEdited();
 

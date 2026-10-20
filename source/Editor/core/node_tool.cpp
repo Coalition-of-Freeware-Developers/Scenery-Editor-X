@@ -251,6 +251,12 @@ namespace SceneryEditorX::NodeTool
 				case ItemKind::Forest:			return item.fill == ProjectFile::ForestFill::Area;
 				case ItemKind::ExclusionZone:
 				case ItemKind::Road:			return false;
+				case ItemKind::Facade:
+				{
+					// RING 0 facades (fences, hangars built along a line, doors) are open runs of walls
+					const XPlane::FacadeAsset *asset = EditorProjects::GetFacade(item.resource);
+					return !asset || asset->ring;
+				}
 				default:						return true;
 			}
 		}

@@ -50,11 +50,13 @@ namespace SceneryEditorX::EditorTools
 	 *   E  Rotate   > the gizmo on the selection; clicking elsewhere still selects
 	 *   R  Scale   /
 	 *   V  Nodes   bezier nodes and handles of the selected pavement, lines, boundaries, runways and project shapes
+	 *   B  Facade  draw facades with the armed one; pick and type the selected facades' walls (FacadeTool)
 	 *
 	 * Picking reads the g-buffer's pick ids back from the GPU (ScenePicking), so whatever a pixel shows can be clicked,
 	 * at any scene size. The camera keeps Alt + left drag (orbit), the middle button (pan), the right button (look,
 	 * with WASD / Q E to fly) and the wheel. F frames the selection, Del deletes it, Esc cancels a drag or deselects,
-	 * X switches the gizmo between world and local axes, Ctrl inverts snapping while dragging.
+	 * X switches the gizmo between world and local axes, Ctrl inverts snapping while dragging, Ctrl+D duplicates.
+	 * A quick right-click (no drag) opens the quad menu for what is under the cursor (ViewportMenus).
 	 */
 
 	enum class Tool : uint8_t
@@ -64,8 +66,12 @@ namespace SceneryEditorX::EditorTools
 		Rotate,
 		Scale,
 		Nodes,
+		Facade,
 		Count
 	};
+
+	/* @brief The key that picks a tool ("Q" ... "B"). */
+	const char *GetToolKey(Tool tool);
 
 	Tool GetTool();
 	void SetTool(Tool tool);

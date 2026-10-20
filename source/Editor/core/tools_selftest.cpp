@@ -36,8 +36,10 @@
 #include "editor_scene.h"
 #include "editor_selection.h"
 #include "editor_tools.h"
+#include "facade_tool.h"
 #include "node_tool.h"
 #include "transform_tool.h"
+#include "viewport_menus.h"
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -91,6 +93,14 @@ namespace SceneryEditorX::ToolsSelfTest
 			RoadsJunctionUndo,
 			RoadsEnd,
 			RoadsEndUndo,
+			FacadesCreate,
+			FacadesDrawn,
+			FacadesEdit,
+			FacadeShowcase,
+			FacadeShowcaseMenu,
+			FacadeShowcaseHold,
+			FacadeHotboxHold,
+			FacadesUndo,
 			Delete,
 			DeleteUndo,
 			Box,
@@ -132,6 +142,12 @@ namespace SceneryEditorX::ToolsSelfTest
 			std::vector<std::string> roadItems;	// Road nodes West, Middle, East, then the roads West-Middle, Middle-East
 			std::vector<ProjectFile::SceneryItem> roadsBefore;
 			bool roadMoved = false;	// The junction drag made an undo step (undone next)
+
+			std::vector<std::string> facadeItems;	// The curved sidewalk, the skewed outline, the hangar door line, then what the edits added
+			size_t itemsBefore = 0;					// Project items before the facade tests
+			int facadeEdits = 0;					// Undo steps the facade tests pushed
+			double doorLength = 0.0;				// The door facade's first natural length
+			bool facadeShowcase = false;			// --facade-showcase
 			bool hadRecovery = false;			// The project had unsaved work from an earlier session when the test started
 			bool showcase = false;				// --tools-selftest-showcase
 			std::optional<Target> showcaseOther;	// The bezier shape shown beside the B-spline pavement
@@ -340,6 +356,11 @@ namespace SceneryEditorX::ToolsSelfTest
 	void EnableShowcase()
 	{
 		S().showcase = true;
+	}
+
+	void EnableFacadeShowcase()
+	{
+		S().facadeShowcase = true;
 	}
 
 	bool IsEnabled()
@@ -929,6 +950,234 @@ namespace SceneryEditorX::ToolsSelfTest
 				}
 				Check(back, "undo puts the roads and their junction back bit for bit");
 				EditorTools::SetTool(EditorTools::Tool::Select);
+				s.wait = 4;
+				s.step = Step::FacadesCreate;
+				break;
+			}
+
+			case Step::FacadesCreate:
+			{
+				// X-Plane's 3D sidewalk (lib/airport/ground/sidewalk_15cm) drawn with a curved front, a skewed outline to
+				// square, and a hangar door (a RING 0 line) at its natural length, 100 m south of the tested pavement
+				ProjectFile::ProjectDocument *document = EditorProjects::GetDocument();
+				if (!document)
+				{
+					EDITOR_INFO_TAG(LOG_TAG, "No project: skipping the facade tests");
+					s.step = Step::Delete;
+					break;
+				}
+				s.facadeItems.clear();
+				s.facadeEdits = 0;
+				s.itemsBefore = document->GetProject().CountItems();
+				XPlane::Point2 base{ 0.0, 0.0 };
+				XPlane::AirportDocument *airport = EditorAirports::GetDocument();
+				if (airport && s.pavement != ~0u)
+				{
+					double latitude = 0.0, longitude = 0.0;
+					const XPlane::AptNodeChain &ring = airport->airport.pavements[s.pavement].rings[0];
+					for (const XPlane::AptNode &node : ring.nodes)
+					{
+						latitude += node.latitude / static_cast<double>(ring.nodes.size());
+						longitude += node.longitude / static_cast<double>(ring.nodes.size());
+					}
+					base = projectProjection.ToLocal(latitude, longitude);
+				}
+				const double x0 = base.x - 40.0, z0 = base.z + 100.0;
+
+				const std::string sidewalk = "lib/airport/ground/sidewalk_15cm/sw_concrete.fac";
+				const std::string door = "lib/airport/hangars/door/Uni/gray_1.fac";
+				const XPlane::FacadeAsset *sidewalkAsset = FacadeTool::GetAsset(sidewalk);
+				const XPlane::FacadeAsset *doorAsset = FacadeTool::GetAsset(door);
+				Check(sidewalkAsset && XPlane::GetFacadeWallCount(*sidewalkAsset) == 7 && XPlane::GetFacadeFamily(*sidewalkAsset) == XPlane::FacadeFamily::Ground,
+					"X-Plane's 3D sidewalk facade loads: 7 curb wall types, a ground facade");
+				const std::vector<double> natural = doorAsset ? XPlane::GetFacadeNaturalLengths(*doorAsset, XPlane::ChooseFacadeFloor(*doorAsset, 4.0), 0) : std::vector<double>();
+				s.doorLength = 0.0;
+				for (const double length : natural)
+				{
+					if (length >= 8.0)
+					{
+						s.doorLength = length;
+						break;
+					}
+				}
+				Check(doorAsset && !doorAsset->ring && s.doorLength > 0.0, "a hangar door facade is a line with natural wall lengths (" + std::to_string(s.doorLength) + " m)");
+
+				// The sidewalk's first wall bows 6 m south
+				Splines::Chain curved = FacadeEdit::MakeChain({ { x0, z0 }, { x0 + 30.0, z0 }, { x0 + 30.0, z0 - 8.0 }, { x0, z0 - 8.0 } }, true);
+				curved.nodes[0].hasOut = true;
+				curved.nodes[0].handleOut = { x0 + 8.0, z0 + 6.0 };
+				curved.nodes[0].split = true;
+				curved.nodes[1].hasIn = true;
+				curved.nodes[1].handleIn = { x0 + 22.0, z0 + 6.0 };
+				curved.nodes[1].split = true;
+				const Splines::Chain skewed = FacadeEdit::MakeChain({ { x0 + 40.0, z0 }, { x0 + 60.0, z0 + 0.6 }, { x0 + 59.4, z0 - 12.0 }, { x0 + 39.7, z0 - 12.3 } }, true);
+				const Splines::Chain line = FacadeEdit::MakeChain({ { x0 + 70.0, z0 }, { x0 + 70.0 + std::max(1.0, s.doorLength), z0 } }, false);
+				const uint64_t history = EditorHistory::GetRevision();
+				s.facadeItems.push_back(FacadeTool::Create(context, sidewalk, curved, 0.15f, "SelfTest sidewalk"));
+				s.facadeItems.push_back(FacadeTool::Create(context, sidewalk, skewed, 0.15f, "SelfTest outline"));
+				s.facadeItems.push_back(FacadeTool::Create(context, door, line, 4.0f, "SelfTest door"));
+				s.facadeEdits = 3;
+				const bool created = std::ranges::all_of(s.facadeItems, [](const std::string &id) { return FindItem(id) != nullptr; });
+				Check(created && EditorHistory::GetRevision() == history + 3, "draw a curved sidewalk, a skewed outline and a hangar door line (3 undo steps)");
+				s.wait = 150;	// The project scenery rebuilds
+				s.step = created ? Step::FacadesDrawn : Step::FacadesUndo;
+				break;
+			}
+
+			case Step::FacadesDrawn:
+			{
+				Check(std::ranges::all_of(s.facadeItems, [](const std::string &id) { return EditorProjects::GetPlacedEntity(id) != 0; }), "the facades are drawn (an entity each)");
+				const std::vector<FacadeEdit::WallInfo> doorWalls = FacadeTool::GetWalls(s.facadeItems[2]);
+				Check(doorWalls.size() == 1 && std::abs(doorWalls[0].length - s.doorLength) < 0.01, "the door line is one wall of its natural length");
+				s.step = Step::FacadesEdit;
+				break;
+			}
+
+			case Step::FacadesEdit:
+			{
+				const std::string sidewalk = s.facadeItems[0], outline = s.facadeItems[1], door = s.facadeItems[2];
+				const auto counted = [&s](const bool done)
+				{
+					s.facadeEdits += done ? 1 : 0;
+					return done;
+				};
+
+				// A curb color on the curved wall: walls become picked
+				const bool typed = counted(FacadeTool::SetWallTypes({ sidewalk }, { 0 }, 2));
+				const ProjectFile::SceneryItem *item = FindItem(sidewalk);
+				Check(typed && item && item->pickWalls && item->rings[0][0].wallType == 2, "set the curved wall's type (white_curb): the facade's walls become picked");
+
+				// The 3D sidewalk article's recipe: the curve as ~0.65 m straight pieces, each keeping the curb
+				const size_t before = item ? item->rings[0].size() : 0;
+				const bool cut = counted(FacadeTool::SubdivideCurves({ sidewalk }, 0.65f));
+				item = FindItem(sidewalk);
+				const std::vector<FacadeEdit::WallInfo> walls = FacadeTool::GetWalls(sidewalk);
+				const bool straight = std::ranges::none_of(walls, [](const FacadeEdit::WallInfo &wall) { return wall.curved; });
+				const size_t white = item ? static_cast<size_t>(std::ranges::count_if(item->rings[0], [](const ProjectFile::GeoNode &node) { return node.wallType == 2; })) : 0;
+				Check(cut && straight && item && item->rings[0].size() > before + 30 && white + 3 == item->rings[0].size(),
+					"subdivide the curved wall into ~0.65 m straight pieces, each keeping its white curb (" + std::to_string(item ? item->rings[0].size() : 0) + " nodes)");
+
+				// The skewed outline squared, its third wall made the front, then reversed
+				const bool squared = counted(FacadeTool::SquareCorners({ outline }));
+				std::vector<FacadeEdit::WallInfo> outlineWalls = FacadeTool::GetWalls(outline);
+				bool right = outlineWalls.size() == 4;
+				for (size_t i = 0; right && i < 4; ++i)
+				{
+					const FacadeEdit::WallInfo &a = outlineWalls[i], &b = outlineWalls[(i + 1) % 4];
+					const double dot = ((a.end.x - a.start.x) * (b.end.x - b.start.x) + (a.end.z - a.start.z) * (b.end.z - b.start.z)) / (a.length * b.length);
+					right = std::abs(dot) < 1e-6;
+				}
+				Check(squared && right, "square the skewed outline's corners");
+				const double heading = outlineWalls.size() == 4 ? outlineWalls[2].heading : -1.0;
+				const bool front = counted(FacadeTool::SetFrontWall(outline, 2));
+				outlineWalls = FacadeTool::GetWalls(outline);
+				Check(front && !outlineWalls.empty() && std::abs(outlineWalls[0].heading - heading) < 1e-6, "make the outline's third wall its front");
+				const bool reversed = counted(FacadeTool::Reverse({ outline }));
+				Check(reversed && FacadeTool::GetWalls(outline).size() == 4, "reverse the outline");
+
+				// The asphalt sidewalk instead: the curbs keep their names
+				const std::string asphalt = "lib/airport/ground/sidewalk_15cm/sw_asphalt.fac";
+				const bool replaced = counted(FacadeTool::Replace({ sidewalk }, asphalt));
+				item = FindItem(sidewalk);
+				const XPlane::FacadeAsset *asphaltAsset = FacadeTool::GetAsset(asphalt);
+				const std::vector<std::string> names = asphaltAsset ? XPlane::GetFacadeWallNames(*asphaltAsset) : std::vector<std::string>();
+				const bool kept = item && !item->rings[0].empty() && static_cast<size_t>(item->rings[0][0].wallType) < names.size() && names[static_cast<size_t>(item->rings[0][0].wallType)] == "white_curb";
+				Check(replaced && item && item->resource == asphalt && kept, "replace with the asphalt sidewalk: walls keep their curbs by name");
+
+				// A sidewalk around the outline, and a copy of the door
+				const std::vector<std::string> around = FacadeTool::AddAround(context, { outline }, "lib/airport/ground/sidewalk_15cm/sw_concrete.fac", 0.5f);
+				s.facadeEdits += static_cast<int>(around.size());
+				s.facadeItems.insert(s.facadeItems.end(), around.begin(), around.end());
+				bool outward = false;
+				if (around.size() == 1)
+				{
+					const ProjectFile::SceneryItem *ring = FindItem(around[0]);
+					Splines::Shape shape;
+					if (ring)
+						shape = Splines::FromGeoRings({ ring->rings[0] }, true, projectProjection);
+					outward = ring && !shape.chains.empty() && FacadeEdit::GetSignedArea(shape.chains[0]) > 200.0;
+				}
+				Check(around.size() == 1 && outward, "add a sidewalk around the outline (counter-clockwise, its curbs facing out)");
+				const std::vector<std::string> copies = FacadeTool::Duplicate(context, { door });
+				s.facadeEdits += static_cast<int>(copies.size());
+				s.facadeItems.insert(s.facadeItems.end(), copies.begin(), copies.end());
+				Check(copies.size() == 1 && FindItem(copies[0]) && FindItem(copies[0])->resource == FindItem(door)->resource, "duplicate the door");
+
+				// Then both context menus are drawn on them (held for frame captures with --facade-showcase)
+				s.wait = s.facadeShowcase ? 150 : 30;
+				s.step = Step::FacadeShowcase;
+				break;
+			}
+
+			case Step::FacadeShowcase:
+			{
+				// The facade tool on the subdivided sidewalk and the sidewalk around the outline: wall labels, picked walls
+				FacadeTool::SetResource("lib/airport/ground/sidewalk_15cm/sw_concrete.fac");
+				EditorTools::SetTool(EditorTools::Tool::Facade);
+				std::vector<Target> targets = { Target::ForItem(s.facadeItems[0]) };
+				if (s.facadeItems.size() > 3)
+					targets.push_back(Target::ForItem(s.facadeItems[3]));
+				EditorSelection::Select(context, targets);
+				FacadeTool::SelectWalls(s.facadeItems[0], { 0, 1, 2, 3 });
+				EditorTools::FrameSelection();
+				s.wait = s.facadeShowcase ? 60 : 10;
+				s.step = Step::FacadeShowcaseMenu;
+				break;
+			}
+
+			case Step::FacadeShowcaseMenu:
+			{
+				// The quad menu, opened on the sidewalk's back wall as a right-click there would
+				const std::vector<FacadeEdit::WallInfo> walls = FacadeTool::GetWalls(s.facadeItems[0]);
+				ImVec2 at(view.imageMin.x + view.imageSize.x * 0.5f, view.imageMin.y + view.imageSize.y * 0.5f);
+				if (walls.size() > 2)
+				{
+					const FacadeEdit::WallInfo &wall = walls[walls.size() - 2];
+					view.WorldToScreen({ (wall.start.x + wall.end.x) * 0.5, 0.15, (wall.start.z + wall.end.z) * 0.5 }, at);
+				}
+				Point3 ground;
+				const bool onGround = view.RayToPlane(at, 0.0, ground);
+				ViewportMenus::OpenQuadMenu(context, at, Target::ForItem(s.facadeItems[0]), onGround ? std::optional<Point3>(ground) : std::nullopt);
+				s.holdFrames = s.facadeShowcase ? 1200 : 10;
+				if (s.facadeShowcase)
+					EDITOR_INFO_TAG(LOG_TAG, "Facade showcase: wall labels and the quad menu on the sidewalk for {} frames (from frame {})", s.holdFrames, s.frames);
+				s.step = Step::FacadeShowcaseHold;
+				break;
+			}
+
+			case Step::FacadeShowcaseHold:
+				if (--s.holdFrames > 0)
+					break;
+				Check(ViewportMenus::IsQuadMenuOpen(), "the quad menu opens on the sidewalk (facade panels) and stays up while drawn");
+				ViewportMenus::CloseMenus();
+				// The hotbox, as holding Space over the viewport shows it
+				ViewportMenus::PinHotbox(context, ImVec2(view.imageMin.x + view.imageSize.x * 0.5f, view.imageMin.y + view.imageSize.y * 0.5f));
+				s.holdFrames = s.facadeShowcase ? 1200 : 10;
+				if (s.facadeShowcase)
+					EDITOR_INFO_TAG(LOG_TAG, "Facade showcase: the hotbox for {} frames (from frame {})", s.holdFrames, s.frames);
+				s.step = Step::FacadeHotboxHold;
+				break;
+
+			case Step::FacadeHotboxHold:
+				if (--s.holdFrames > 0)
+					break;
+				Check(ViewportMenus::IsHotboxOpen(), "the hotbox shows its rows (menus, recent commands and facades, the selection's menus)");
+				ViewportMenus::CloseMenus();
+				FacadeTool::SelectWalls({}, {});
+				EditorTools::SetTool(EditorTools::Tool::Select);
+				s.wait = 4;
+				s.step = Step::FacadesUndo;
+				break;
+
+			case Step::FacadesUndo:
+			{
+				for (int i = 0; i < s.facadeEdits; ++i)
+					EditorHistory::Undo();
+				const ProjectFile::ProjectDocument *document = EditorProjects::GetDocument();
+				const bool gone = std::ranges::none_of(s.facadeItems, [](const std::string &id) { return !id.empty() && FindItem(id) != nullptr; });
+				Check(document && gone && document->GetProject().CountItems() == s.itemsBefore,
+					"undo every facade step (" + std::to_string(s.facadeEdits) + "): the project is as it was");
+				s.facadeItems.clear();
 				s.wait = 4;
 				s.step = Step::Delete;
 				break;
