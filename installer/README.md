@@ -21,7 +21,9 @@ pwsh installer\windows\Build-Installer.ps1 -Build
 `-Channel Beta` changes the channel shown in the installer and its file name.
 
 The setup program lands in `build\installer\SceneryEditorX-<version>-<channel>-Setup.exe`. The version comes from
-`source\resource.h`.
+`source\resource.h`. Bump it for every build you hand to testers: `python scripts\increment_sedx_build.py` adds one to
+the build number, or edit `SEDX_PATCH` / `SEDX_BUILD` and the `SEDX_VERSION_STRING` / `SEDX_VERSION` lines below
+them. Setup compares versions to decide between Update and Repair.
 
 The script stages, in `build\installer\stage`:
 
@@ -75,7 +77,12 @@ Steam, the registry and the usual folders.
 - Adds a Start menu entry, an optional desktop shortcut, and an Add/Remove Programs entry.
 - Checks for Vulkan 1.3 after installing, and can install the Vulkan runtime (see Prerequisites). Refuses 32-bit
   Windows and anything older than Windows 10.
-- On an upgrade, the previous version's uninstaller removes the files that version installed first.
+- Over an installed copy, setup skips the first-install pages and shows one page with two choices. The first is
+  **Update** (the installed copy is older), **Repair** (same version: reinstalls every file, the file associations and
+  the shortcuts) or **Replace with the older version** (with a warning). The second is **Uninstall**. The copy keeps its
+  folder and install mode, and the desktop shortcut stays as the tester left it. A silent `/S` setup updates or
+  repairs without asking. The installed version's uninstaller first removes the files that version installed, so
+  nothing stale is left behind. A user without admin rights can't update an all-users copy, and setup says so.
 - Uninstalling removes only the files it installed, plus its registry entries and shortcuts. Settings, logs, caches
   and unsaved-project recovery data (`%APPDATA%\SceneryEditorX`, `%LOCALAPPDATA%\SceneryEditorX`) are removed only
   if that box is ticked. Project files are never touched.

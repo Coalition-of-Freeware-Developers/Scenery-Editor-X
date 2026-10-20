@@ -5,6 +5,7 @@
 ;   - installs for all users (Program Files, needs admin) or just the current user (no admin)
 ;   - makes Scenery Editor X the handler of .edX (JSON) and .sex (binary) project files
 ;   - adds a Start menu entry, an optional desktop shortcut and an Add/Remove Programs entry
+;   - over an installed copy, offers to update, repair or uninstall it (same folder, same install mode)
 ;   - uninstalls exactly the files it installed; user settings and caches only when asked to
 ;
 ; Build it with installer\windows\Build-Installer.ps1, which stages the files and writes the uninstall list.
@@ -98,6 +99,9 @@ VIAddVersionKey /LANG=1033 "Comments" "${APP_DESCRIPTION}"
 !include MUI2.nsh
 !include LogicLib.nsh
 !include FileFunc.nsh
+!include WordFunc.nsh
+!include Sections.nsh
+!include nsDialogs.nsh
 !include WinVer.nsh
 !include x64.nsh
 !include "FileAssociations.nsh"
@@ -118,12 +122,27 @@ VIAddVersionKey /LANG=1033 "Comments" "${APP_DESCRIPTION}"
 Test builds are unfinished. Keep backups of your projects and scenery, and report anything that goes wrong at:$\r$\n\
 ${ISSUES_URL}$\r$\n$\r$\n\
 ${APP_NAME} needs a graphics driver with Vulkan 1.3 and an X-Plane 11 or 12 installation. Setup checks for Vulkan and can install the Vulkan runtime when it is missing.$\r$\n$\r$\n$_CLICK"
+; An installed copy gets the maintenance page instead of the first-install pages (see DetectInstalled)
+Var InstalledVersion	; The installed copy's version, empty when there is none
+Var InstalledCompare	; ${VersionCompare} of it against this setup: 0 same, 1 installed is newer, 2 this setup is newer
+Var Maintenance			; What this setup does to it: "update", "repair" or "downgrade" (empty: a first install)
+Var MaintenanceKeep		; The page's radio buttons
+Var MaintenanceUninstall
+Var FinishText			; The finish page's first line: installed, updated, repaired or replaced
+
+!define MUI_PAGE_CUSTOMFUNCTION_PRE SkipWhenInstalled
 !insertmacro MUI_PAGE_WELCOME
+Page custom MaintenancePageCreate MaintenancePageLeave
+!define MUI_PAGE_CUSTOMFUNCTION_PRE SkipWhenInstalled
 !insertmacro MUI_PAGE_LICENSE "${ROOT}\LICENSE.txt"
+!define MULTIUSER_PAGE_CUSTOMFUNCTION_PRE SkipWhenInstalled
 !insertmacro MULTIUSER_PAGE_INSTALLMODE
+!define MUI_PAGE_CUSTOMFUNCTION_PRE SkipWhenInstalled
 !insertmacro MUI_PAGE_COMPONENTS
+!define MUI_PAGE_CUSTOMFUNCTION_PRE SkipWhenInstalled
 !insertmacro MUI_PAGE_DIRECTORY
 !insertmacro MUI_PAGE_INSTFILES
+!define MUI_FINISHPAGE_TEXT "$FinishText$\r$\n$\r$\nClick Finish to close Setup."
 !define MUI_FINISHPAGE_RUN
 !define MUI_FINISHPAGE_RUN_TEXT "Start ${APP_NAME}"
 !define MUI_FINISHPAGE_RUN_FUNCTION LaunchEditor
@@ -146,12 +165,19 @@ ${APP_NAME} needs a graphics driver with Vulkan 1.3 and an X-Plane 11 or 12 inst
       Return
     ${EndIf}
     retry:
-      ClearErrors
-      FileOpen $0 "$INSTDIR\${APP_EXE}" a
-      ${IfNot} ${Errors}
-        FileClose $0
-        Return
-      ${EndIf}
+      ; Only a running editor keeps it locked: a just-closed one, or a virus scan of a just-written file, lets go
+      ; within moments, so wait a little before asking (a silent setup would give up straight away)
+      StrCpy $1 0
+      ${Do}
+        ClearErrors
+        FileOpen $0 "$INSTDIR\${APP_EXE}" a
+        ${IfNot} ${Errors}
+          FileClose $0
+          Return
+        ${EndIf}
+        Sleep 500
+        IntOp $1 $1 + 1
+      ${LoopWhile} $1 < 10
       MessageBox MB_RETRYCANCEL|MB_ICONEXCLAMATION "${APP_NAME} is running.$\r$\n$\r$\nSave your work and close it, then click Retry." /SD IDCANCEL IDRETRY retry
       Abort "${APP_NAME} is still running."
   FunctionEnd
@@ -169,7 +195,8 @@ Function .onInit
   ${EndIf}
 
   SetRegView 64
-  !insertmacro MULTIUSER_INIT
+  !insertmacro MULTIUSER_INIT		; Picks the installed copy's mode and folder when there is one
+  Call DetectInstalled
 
   ${IfNot} ${Silent}
     InitPluginsDir
@@ -186,9 +213,16 @@ FunctionEnd
 
 Section "!${APP_NAME}" SecEditor
   SectionIn RO
+  ${If} $Maintenance == "update"
+    DetailPrint "Updating ${APP_NAME} $InstalledVersion to ${VERSION} in $INSTDIR"
+  ${ElseIf} $Maintenance == "repair"
+    DetailPrint "Repairing ${APP_NAME} ${VERSION} in $INSTDIR"
+  ${ElseIf} $Maintenance == "downgrade"
+    DetailPrint "Replacing ${APP_NAME} $InstalledVersion with ${VERSION} in $INSTDIR"
+  ${EndIf}
   Call CheckEditorClosed
 
-  ; Upgrading: the previous version's uninstaller removes the files it installed (and nothing else)
+  ; Updating or repairing: the installed version's uninstaller removes the files it installed (and nothing else)
   ReadRegStr $0 SHCTX "${APP_KEY}" "InstallDir"
   ${If} $0 == $INSTDIR
   ${AndIf} ${FileExists} "$INSTDIR\uninstall.exe"
@@ -321,6 +355,96 @@ SectionEnd
   !insertmacro MUI_DESCRIPTION_TEXT ${SecAssociations} "Double-clicking a .edX or .sex project opens it in ${APP_NAME}."
   !insertmacro MUI_DESCRIPTION_TEXT ${SecDesktop} "A shortcut to ${APP_NAME} on the desktop."
 !insertmacro MUI_FUNCTION_DESCRIPTION_END
+
+; Update / repair -------------------------------------------------
+; MULTIUSER_INIT has already switched to the installed copy's mode and folder (InstallMode and InstallDir in the
+; registry). Its setup also wrote the version, so this setup knows whether it updates, repairs or downgrades it.
+
+Function DetectInstalled
+  StrCpy $Maintenance ""
+  StrCpy $FinishText "${APP_NAME} ${VERSION} has been installed on your computer."
+  ReadRegStr $InstalledVersion SHCTX "${APP_KEY}" "Version"
+  ${If} $InstalledVersion != ""
+  ${AndIf} ${FileExists} "$INSTDIR\${APP_EXE}"
+    ${VersionCompare} $InstalledVersion "${VERSION}" $InstalledCompare
+    ${If} $InstalledCompare == 2
+      StrCpy $Maintenance "update"
+      StrCpy $FinishText "${APP_NAME} has been updated from $InstalledVersion to ${VERSION}."
+    ${ElseIf} $InstalledCompare == 0
+      StrCpy $Maintenance "repair"
+      StrCpy $FinishText "${APP_NAME} ${VERSION} has been repaired."
+    ${Else}
+      StrCpy $Maintenance "downgrade"
+      StrCpy $FinishText "${APP_NAME} $InstalledVersion has been replaced with ${VERSION}."
+    ${EndIf}
+    ; The components page is skipped: keep the desktop shortcut as the installed copy has it
+    ${IfNot} ${FileExists} "$DESKTOP\${APP_NAME}.lnk"
+      !insertmacro UnselectSection ${SecDesktop}
+    ${EndIf}
+    Return
+  ${EndIf}
+  StrCpy $InstalledVersion ""
+
+  ; Installed for all users while this user can't elevate: only an administrator can update that copy
+  ${If} $MultiUser.InstallMode == "CurrentUser"
+    ReadRegStr $0 HKLM "${APP_KEY}" "InstallDir"
+    ${If} $0 != ""
+    ${AndIf} ${Cmd} `MessageBox MB_YESNO|MB_ICONEXCLAMATION "${APP_NAME} is installed for all users in $0. Updating that copy needs an administrator: run this setup from an administrator account.$\r$\n$\r$\nInstall a separate copy just for you instead?" /SD IDNO IDNO`
+      Quit
+    ${EndIf}
+  ${EndIf}
+FunctionEnd
+
+; The first-install pages (welcome, license, install mode, components, folder) don't apply to an installed copy
+Function SkipWhenInstalled
+  ${If} $Maintenance != ""
+    Abort
+  ${EndIf}
+FunctionEnd
+
+Function MaintenancePageCreate
+  ${If} $Maintenance == ""
+    Abort
+  ${EndIf}
+
+  !insertmacro MUI_HEADER_TEXT "${APP_NAME} $InstalledVersion is already installed" "$INSTDIR"
+  nsDialogs::Create 1018
+  Pop $0
+  GetDlgItem $0 $HWNDPARENT 3		; Back: every page before this one is skipped
+  EnableWindow $0 0
+
+  ${If} $Maintenance == "update"
+    StrCpy $1 "&Update to ${VERSION}"
+    StrCpy $2 "Replaces the program files with version ${VERSION}. Shortcuts and the .edX / .sex file associations stay as they are."
+  ${ElseIf} $Maintenance == "repair"
+    StrCpy $1 "&Repair ${VERSION}"
+    StrCpy $2 "Reinstalls every program file, the .edX / .sex file associations, the shortcuts and the Add/Remove Programs entry."
+  ${Else}
+    StrCpy $1 "&Replace it with the older ${VERSION}"
+    StrCpy $2 "The installed $InstalledVersion is newer than this setup. Projects saved with it may not open in ${VERSION}."
+  ${EndIf}
+
+  ${NSD_CreateLabel} 0 0 100% 20u "Your settings, projects and unsaved-project recovery data are kept whatever you choose."
+  Pop $0
+  ${NSD_CreateRadioButton} 10u 28u -10u 12u $1
+  Pop $MaintenanceKeep
+  ${NSD_CreateLabel} 24u 42u -24u 24u $2
+  Pop $0
+  ${NSD_CreateRadioButton} 10u 72u -10u 12u "Unin&stall ${APP_NAME}"
+  Pop $MaintenanceUninstall
+  ${NSD_CreateLabel} 24u 86u -24u 24u "Removes the program, its shortcuts and file associations. The uninstaller asks whether your settings and caches go too."
+  Pop $0
+  ${NSD_Check} $MaintenanceKeep
+  nsDialogs::Show
+FunctionEnd
+
+Function MaintenancePageLeave
+  ${NSD_GetState} $MaintenanceUninstall $0
+  ${If} $0 == ${BST_CHECKED}
+    Exec '"$INSTDIR\uninstall.exe" /$MultiUser.InstallMode'
+    Quit
+  ${EndIf}
+FunctionEnd
 
 ; Uninstaller ------------------------------------------------
 
