@@ -49,14 +49,16 @@ namespace SceneryEditorX::FacadeAuthoring
 	 * from a cross-section, saved as <project>/facades/<name>.fac (through the VFS, textures copied beside it). While
 	 * "Live preview" is on, every change is saved shortly after it is made and the project's scenery redrawn, so a
 	 * facade item using it (Place preview, or any drawn with the facade tool) shows the change in the viewport.
-	 * Curbs keep their cross-section in <name>.fac.json beside the facade so they can be edited again.
+	 * Curbs keep their cross-section in <name>.fac.json beside the facade so they can be edited again. Edits have their
+	 * own undo history (Undo / Redo), separate from the project's.
 	 */
 
 	enum class Kind : uint8_t
 	{
 		None,
 		Building,		// Type 1: texture panels
-		Curb			// Type 2: generated from CurbFacadeSpec
+		Curb,			// Type 2: generated from CurbFacadeSpec
+		Type2			// Type 2 as written (a copy of the library's or another pack's): textures, roof and wall rules edited, segments kept
 	};
 
 	Kind GetKind();
@@ -93,16 +95,26 @@ namespace SceneryEditorX::FacadeAuthoring
 	bool NewCurb(const XPlane::CurbProfile &profile, std::string *error = nullptr);
 
 	/**
-	 * @brief Edits a facade: one in the project's facades folder in place (a curb with its saved spec), any other type 1
-	 * facade (the X-Plane library's, another pack's) as a copy in the facades folder with its textures copied along.
+	 * @brief Edits a facade: one in the project's facades folder in place (a curb with its saved spec, another type 2
+	 * facade as written), any other (the X-Plane library's, another pack's) as a copy in the facades folder with its
+	 * textures, a type 2's OBJs and their textures copied along (XPlane::CopyFacadeFiles).
 	 */
 	bool Edit(const std::string &resource, std::string *error = nullptr);
 
-	/* @brief True when Edit() can open the facade (type 1 anywhere, type 2 only curbs made here). */
+	/* @brief True when Edit() can open the facade (any facade the project can load, once a project is open). */
 	bool CanEdit(const std::string &resource);
 
-	/* @brief Call after changing GetAsset() / GetCurbSpec(): regenerates a curb, checks it, schedules the live preview. */
+	/**
+	 * @brief Call after changing GetAsset() / GetCurbSpec(): one undo step (changes made while one widget is held - a
+	 * drag, typing in a field - join the step it started), regenerates a curb, checks it, schedules the live preview.
+	 */
 	void MarkEdited();
+
+	/* @brief Steps back / forward through the edits since the facade was opened (the project's history is untouched). */
+	bool CanUndo();
+	bool CanRedo();
+	bool Undo();
+	bool Redo();
 
 	bool IsDirty();
 
@@ -124,7 +136,7 @@ namespace SceneryEditorX::FacadeAuthoring
 	/* @brief Saves and redraws a short while after the last change (MarkEdited) while on. */
 	bool &LiveSave();
 
-	/* @brief Once per frame: the live preview's delayed save. */
+	/* @brief Once per frame: the live preview's delayed save; closes the undo step of a widget that was let go. */
 	void Tick();
 
 	/* @brief The facades in the project's facades folder (resources, sorted). */

@@ -30,9 +30,13 @@
  */
 #include "xp_facade_authoring.h"
 #include <algorithm>
+#include <charconv>
 #include <cmath>
 #include <cstdio>
 #include <fstream>
+#include <map>
+#include <optional>
+#include <SceneryEditorX/filesystem/vfs.h>
 
 // -------------------------------------------------------
 
@@ -578,6 +582,307 @@ namespace SceneryEditorX::XPlane
 			out.push_back(keep ? c : '_');
 		}
 		return out.empty() ? "facade" : out;
+	}
+
+	// -------------------------------------------------------
+	// Copying a facade with its files
+
+	namespace
+	{
+		bool IsBlank(const char c)
+		{
+			return c == ' ' || c == '\t' || c == '\r';
+		}
+
+		std::string Lower(std::string text)
+		{
+			for (char &c : text)
+				c = c >= 'A' && c <= 'Z' ? static_cast<char>(c - 'A' + 'a') : c;
+			return text;
+		}
+
+		bool IsImageFile(const std::string_view path)
+		{
+			const size_t dot = path.find_last_of('.');
+			if (dot == std::string_view::npos || path.find_first_of("/\\", dot) != std::string_view::npos)
+				return false;
+			const std::string extension = Lower(std::string(path.substr(dot)));
+			return extension == ".png" || extension == ".dds" || extension == ".jpg" || extension == ".jpeg" || extension == ".tga" || extension == ".bmp";
+		}
+
+		bool IsNumber(const std::string_view token)
+		{
+			float value = 0.0f;
+			const char *begin = token.data(), *end = token.data() + token.size();
+			if (begin != end && *begin == '+')
+				++begin;
+			const auto [at, ec] = std::from_chars(begin, end, value);
+			return ec == std::errc() && at == end;
+		}
+
+		/* @brief A reference as a relative path: '\' as '/', blanks around it dropped. */
+		std::string CleanReference(const std::string_view reference)
+		{
+			size_t from = 0, to = reference.size();
+			while (from < to && IsBlank(reference[from]))
+				++from;
+			while (to > from && IsBlank(reference[to - 1]))
+				--to;
+			std::string out(reference.substr(from, to - from));
+			std::ranges::replace(out, '\\', '/');
+			return out;
+		}
+
+		/**
+		 * Copies files into one folder: each source once (a texture with its .dds / .png twin, an OBJ with its textures
+		 * and its texture rows renamed), named after the source unless a different file has the name there.
+		 */
+		class FileCopier
+		{
+		public:
+			FileCopier(std::filesystem::path folder, FacadeFileCopy *report) : m_Folder(std::move(folder)), m_Report(report) {}
+
+			[[nodiscard]] const std::string &GetError() const { return m_Error; }
+
+			/* @brief Copies the texture `reference` (relative to `base`) names; its reference in the folder, empty when not found. */
+			std::string Texture(const std::filesystem::path &base, const std::string_view reference)
+			{
+				const std::string clean = CleanReference(reference);
+				if (clean.empty() || !m_Error.empty())
+					return {};
+				const std::filesystem::path named = (base / VFS::FromUtf8(clean)).lexically_normal();
+				// The file as named and its twins (X-Plane loads the .dds; packs name .png and ship .dds, or the other way round)
+				std::vector<std::filesystem::path> sources;
+				for (const char *extension : { "", ".dds", ".png" })
+				{
+					std::filesystem::path candidate = named;
+					if (*extension)
+						candidate.replace_extension(extension);
+					const std::optional<std::filesystem::path> found = VFS::FindCaseInsensitive(candidate);
+					std::error_code ec;
+					if (found && std::filesystem::is_regular_file(*found, ec) &&
+						std::ranges::none_of(sources, [&](const std::filesystem::path &known) { return VFS::PathKey(known) == VFS::PathKey(*found); }))
+						sources.push_back(*found);
+				}
+				if (sources.empty())
+					return Keep(clean);
+				const std::string key = "texture:" + VFS::PathKey(sources.front());
+				if (const auto done = m_Done.find(key); done != m_Done.end())
+					return done->second;
+
+				std::vector<std::pair<std::string, std::string>> files;
+				for (const std::filesystem::path &source : sources)
+				{
+					std::string bytes;
+					if (!VFS::ReadFile(source, bytes, &m_Error))
+						return {};
+					files.emplace_back(Lower(VFS::ToUtf8(source.extension())), std::move(bytes));
+				}
+				const std::string stem = Place(VFS::ToUtf8(named.stem()), files, sources);
+				if (stem.empty())
+					return {};
+				return m_Done[key] = stem + Lower(VFS::ToUtf8(named.extension()));
+			}
+
+			/* @brief Copies the OBJ `reference` (relative to `base`) names and its textures; its reference in the folder, empty when not found. */
+			std::string Object(const std::filesystem::path &base, const std::string_view reference)
+			{
+				const std::string clean = CleanReference(reference);
+				if (clean.empty() || !m_Error.empty())
+					return {};
+				const std::optional<std::filesystem::path> found = VFS::FindCaseInsensitive((base / VFS::FromUtf8(clean)).lexically_normal());
+				std::error_code ec;
+				if (!found || !std::filesystem::is_regular_file(*found, ec))
+					return Keep(clean);
+				const std::string key = "object:" + VFS::PathKey(*found);
+				if (const auto done = m_Done.find(key); done != m_Done.end())
+					return done->second;
+
+				std::string text;
+				if (!VFS::ReadFile(*found, text, &m_Error))
+					return {};
+				// Its texture rows (all before POINT_COUNTS) renamed to the copies
+				std::string out;
+				out.reserve(text.size() + 64);
+				size_t at = 0;
+				bool header = true;
+				while (at < text.size())
+				{
+					const size_t end = std::min(text.find('\n', at), text.size());
+					const std::string_view row(text.data() + at, end - at);
+					if (header && row.find("POINT_COUNTS") != std::string_view::npos)
+						header = false;
+					std::string renamed;
+					if (header)
+						renamed = RenameTexture(row, found->parent_path());
+					out += renamed.empty() ? std::string(row) : renamed;
+					if (end < text.size())
+						out += '\n';
+					at = end + 1;
+				}
+				if (!m_Error.empty())
+					return {};
+				const std::string extension = Lower(VFS::ToUtf8(found->extension()));
+				const std::string stem = Place(VFS::ToUtf8(found->stem()), { { extension, std::move(out) } }, { *found });
+				if (stem.empty())
+					return {};
+				return m_Done[key] = stem + extension;
+			}
+
+			/* @brief A header row with its texture's reference replaced by the copy's; empty when the row names none (or it wasn't found). */
+			std::string RenameTexture(const std::string_view row, const std::filesystem::path &base)
+			{
+				const auto [start, length] = FindTextureReference(row);
+				if (start == std::string_view::npos)
+					return {};
+				const std::string copied = Texture(base, row.substr(start, length));
+				if (copied.empty())
+					return {};
+				return std::string(row.substr(0, start)) + copied + std::string(row.substr(start + length));
+			}
+
+		private:
+			std::string Keep(const std::string &reference)
+			{
+				if (m_Report && std::ranges::find(m_Report->kept, reference) == m_Report->kept.end())
+					m_Report->kept.push_back(reference);
+				return {};
+			}
+
+			/**
+			 * @brief Writes the files (extension, bytes) as <stem><extension> in the folder, or <stem>_2... when a
+			 * different file has one of the names; files already there with the same bytes are reused. The stem used,
+			 * empty on failure.
+			 */
+			std::string Place(const std::string &stem, const std::vector<std::pair<std::string, std::string>> &files, const std::vector<std::filesystem::path> &sources)
+			{
+				for (int n = 1; n < 1000; ++n)
+				{
+					const std::string candidate = n == 1 ? stem : stem + "_" + std::to_string(n);
+					bool fits = true;
+					std::vector<bool> present(files.size(), false);
+					for (size_t i = 0; i < files.size() && fits; ++i)
+					{
+						const std::optional<std::filesystem::path> existing = VFS::FindCaseInsensitive(m_Folder / VFS::FromUtf8(candidate + files[i].first));
+						if (!existing)
+							continue;
+						std::string bytes;
+						fits = VFS::ReadFile(*existing, bytes) && bytes == files[i].second;
+						present[i] = fits;
+					}
+					if (!fits)
+						continue;
+					for (size_t i = 0; i < files.size(); ++i)
+					{
+						const std::filesystem::path target = m_Folder / VFS::FromUtf8(candidate + files[i].first);
+						if (!present[i] && !VFS::WriteFileAtomic(target, files[i].second, &m_Error))
+							return {};
+						if (m_Report)
+							m_Report->files.emplace_back(i < sources.size() ? sources[i] : std::filesystem::path(), target);
+					}
+					return candidate;
+				}
+				m_Error = "No free name for " + stem + " in " + VFS::ToUtf8(m_Folder);
+				return {};
+			}
+
+			std::filesystem::path m_Folder;
+			FacadeFileCopy *m_Report = nullptr;
+			std::map<std::string, std::string> m_Done;	// Source key -> the copy's reference
+			std::string m_Error;
+		};
+	}
+
+	std::pair<size_t, size_t> FindTextureReference(const std::string_view row)
+	{
+		constexpr std::pair<size_t, size_t> NONE{ std::string_view::npos, 0 };
+		size_t at = 0;
+		while (at < row.size() && IsBlank(row[at]))
+			++at;
+		// The keyword: a word (vertex rows and numbers name nothing)
+		const size_t keyword = at;
+		while (at < row.size() && ((row[at] >= 'A' && row[at] <= 'Z') || (row[at] >= 'a' && row[at] <= 'z') || row[at] == '_' || (at > keyword && row[at] >= '0' && row[at] <= '9')))
+			++at;
+		if (at == keyword || (at < row.size() && !IsBlank(row[at])))
+			return NONE;
+		// Numbers before the path (TEXTURE_NORMAL <ratio>, DECAL <scale>...)
+		for (;;)
+		{
+			while (at < row.size() && IsBlank(row[at]))
+				++at;
+			size_t end = at;
+			while (end < row.size() && !IsBlank(row[end]))
+				++end;
+			if (end == at || !IsNumber(row.substr(at, end - at)))
+				break;
+			at = end;
+		}
+		size_t end = row.size();
+		while (end > at && IsBlank(row[end - 1]))
+			--end;
+		if (end == at || !IsImageFile(row.substr(at, end - at)))
+			return NONE;
+		return { at, end - at };
+	}
+
+	bool CopyFacadeFiles(FacadeAsset &asset, const std::filesystem::path &facadeFile, const std::filesystem::path &folder, FacadeFileCopy *report, std::string *error)
+	{
+		const std::filesystem::path base = facadeFile.parent_path();
+		std::string createError;
+		if (!VFS::CreateFolders(folder, &createError))
+		{
+			if (error)
+				*error = createError;
+			return false;
+		}
+		FileCopier copier(folder, report);
+		for (std::string *texture : { &asset.wallTexture, &asset.wallTextureNormal, &asset.roofTexture, &asset.roofTextureNormal })
+		{
+			if (const std::string copied = texture->empty() ? std::string() : copier.Texture(base, *texture); !copied.empty())
+				*texture = copied;
+		}
+		for (std::vector<std::string> *rows : { &asset.wallShaderRows, &asset.roofShaderRows })
+		{
+			for (std::string &row : *rows)
+			{
+				if (std::string renamed = copier.RenameTexture(row, base); !renamed.empty())
+					row = std::move(renamed);
+			}
+		}
+		for (std::string &object : asset.objects)
+		{
+			if (const std::string copied = copier.Object(base, object); !copied.empty())
+				object = copied;
+		}
+		// FACADE_SCRAPER_MODEL / _OFFSET / _PAD rows name OBJs among their numbers
+		for (FacadeAsset::Scraper &scraper : asset.scrapers)
+		{
+			for (std::string &row : scraper.rows)
+			{
+				std::string out;
+				size_t at = 0;
+				while (at < row.size())
+				{
+					size_t end = at;
+					while (end < row.size() && !IsBlank(row[end]))
+						++end;
+					const std::string token = row.substr(at, end - at);
+					const std::string copied = token.size() > 4 && Lower(token.substr(token.size() - 4)) == ".obj" ? copier.Object(base, token) : std::string();
+					out += copied.empty() ? token : copied;
+					while (end < row.size() && IsBlank(row[end]))
+						out += row[end++];
+					at = end;
+				}
+				row = std::move(out);
+			}
+		}
+		if (!copier.GetError().empty())
+		{
+			if (error)
+				*error = copier.GetError();
+			return false;
+		}
+		return true;
 	}
 }
 

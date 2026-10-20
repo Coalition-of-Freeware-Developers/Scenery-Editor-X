@@ -9,7 +9,8 @@
  * -------------------------------------------------------
  * Writing facades: parse -> write -> parse gives the same asset for type 1 and type 2 facades (synthetic ones and the
  * X-Plane 12 library's own when an install is found), type 1 facades authored from a texture (panel edges, roofs) and
- * type 2 sidewalks / curbs generated from a cross-section, drawn by the overlay builder.
+ * type 2 sidewalks / curbs generated from a cross-section, drawn by the overlay builder (ROOF_SCALE roofs repeated by
+ * meters), and facades copied for editing with their textures and OBJs.
  * -------------------------------------------------------
  */
 #include <catch2/catch_all.hpp>
@@ -25,7 +26,9 @@
 #include <cmath>
 #include <filesystem>
 #include <fstream>
+#include <sstream>
 #include <string>
+#include <string_view>
 #include <vector>
 
 using namespace SceneryEditorX::XPlane;
@@ -838,4 +841,268 @@ TEST_CASE("Facade authoring file helpers", "[facades][authoring]")
 	CHECK(MakeFacadeRelativePath("C:/pack/facades/a.fac", "C:/pack/facades/b.png") == "b.png");
 	CHECK(MakeFacadeFileName("Hangar 2 (red)") == "Hangar_2__red_");
 	CHECK(MakeFacadeFileName("") == "facade");
+}
+
+TEST_CASE("Type 1 ROOF_SCALE roofs repeat their texture rectangle by meters", "[facades][overlay]")
+{
+	// The rectangle s 0 - 0.25, t 0.5 - 1 covers 12 x 6 m of roof; a 20 x 12 m building
+	FacadeAsset fac = MakeType1Facade("brick.png", 1024, 512, 20.0f);
+	SetFacadeRoofScaled(fac, 0.0f, 0.5f, 0.25f, 1.0f, 12.0f, 6.0f);
+	TempDir temp;
+	REQUIRE(SaveFacadeAsset(temp.path / "brick.fac", fac));
+	const OverlayBuild out = BuildOverlay(temp.path, "brick.fac", { { 0, 0 }, { 20, 0 }, { 20, 12 }, { 0, 12 } }, 12);
+	const OverlayMesh *roof = nullptr;
+	for (const OverlayMesh &mesh : out.meshes)
+	{
+		if (mesh.kind == OverlayKind::Facade && mesh.name.find("roof") != std::string::npos)
+			roof = &mesh;
+	}
+	REQUIRE(roof);
+	REQUIRE_FALSE(roof->indices.empty());
+
+	// Every piece samples inside the rectangle
+	for (const OverlayVertex &vertex : roof->vertices)
+	{
+		CHECK(vertex.u >= -1e-5f);
+		CHECK(vertex.u <= 0.25f + 1e-5f);
+		CHECK(vertex.v >= 0.5f - 1e-5f);
+		CHECK(vertex.v <= 1.0f + 1e-5f);
+	}
+
+	// ...and maps meters onto it: 0.25 of s per 12 m along the front (east), 0.5 of t per 6 m in from it (north)
+	double area = 0.0;
+	for (size_t i = 0; i + 2 < roof->indices.size(); i += 3)
+	{
+		const OverlayVertex &a = roof->vertices[roof->indices[i]], &b = roof->vertices[roof->indices[i + 1]], &c = roof->vertices[roof->indices[i + 2]];
+		const double e1 = b.x - a.x, n1 = -(b.z - a.z), e2 = c.x - a.x, n2 = -(c.z - a.z);
+		const double det = e1 * n2 - e2 * n1;
+		area += std::abs(det) * 0.5;
+		if (std::abs(det) < 1e-4)
+			continue;
+		// d(u, v) / d(east, north) from the two edges
+		const double du1 = b.u - a.u, du2 = c.u - a.u, dv1 = b.v - a.v, dv2 = c.v - a.v;
+		const double duEast = (du1 * n2 - du2 * n1) / det, duNorth = (e1 * du2 - e2 * du1) / det;
+		const double dvEast = (dv1 * n2 - dv2 * n1) / det, dvNorth = (e1 * dv2 - e2 * dv1) / det;
+		CHECK(duEast == Catch::Approx(0.25 / 12.0).margin(1e-4));
+		CHECK(duNorth == Catch::Approx(0.0).margin(1e-4));
+		CHECK(dvEast == Catch::Approx(0.0).margin(1e-4));
+		CHECK(dvNorth == Catch::Approx(0.5 / 6.0).margin(1e-4));
+	}
+	CHECK(area == Catch::Approx(240.0).margin(0.01));
+
+	// The roof's center (10, 6 m) takes the rectangle's center: repeats meet 4 and 16 m east, 3 and 9 m north
+	const auto cutAt = [&](const bool east, const double meters)
+	{
+		return std::ranges::any_of(roof->vertices, [&](const OverlayVertex &vertex)
+		{
+			const double at = east ? vertex.x : -vertex.z;
+			return std::abs(at - meters) < 0.01 && (east ? (vertex.u < 1e-4f || vertex.u > 0.25f - 1e-4f) : (vertex.v < 0.5f + 1e-4f || vertex.v > 1.0f - 1e-4f));
+		});
+	};
+	CHECK(cutAt(true, 4.0));
+	CHECK(cutAt(true, 16.0));
+	CHECK(cutAt(false, 3.0));
+	CHECK(cutAt(false, 9.0));
+
+	// Corners still stretch the rectangle once over the roof
+	SetFacadeRoofRectangle(fac, 0.0f, 0.5f, 0.25f, 1.0f);
+	REQUIRE(SaveFacadeAsset(temp.path / "stretched.fac", fac));
+	const OverlayBuild stretched = BuildOverlay(temp.path, "stretched.fac", { { 0, 0 }, { 20, 0 }, { 20, 12 }, { 0, 12 } }, 12);
+	for (const OverlayMesh &mesh : stretched.meshes)
+	{
+		if (mesh.kind == OverlayKind::Facade && mesh.name.find("roof") != std::string::npos)
+			CHECK(mesh.vertices.size() == 4);
+	}
+}
+
+TEST_CASE("Texture references in header rows", "[facades][authoring]")
+{
+	const auto reference = [](const std::string_view row)
+	{
+		const auto [start, length] = FindTextureReference(row);
+		return start == std::string_view::npos ? std::string("(none)") : std::string(row.substr(start, length));
+	};
+	CHECK(reference("TEXTURE ../textures\\wall.png") == "../textures\\wall.png");
+	CHECK(reference("TEXTURE_NORMAL 1.0 ../textures/wall_NML.png") == "../textures/wall_NML.png");
+	CHECK(reference("TEXTURE_LIT\t../../textures/lit.dds\r") == "../../textures/lit.dds");
+	CHECK(reference("WEATHER ../textures/str_SM.png") == "../textures/str_SM.png");
+	CHECK(reference("DECAL 4.0 decals/dirt.png") == "decals/dirt.png");
+	CHECK(reference("TEXTURE   my texture.png  ") == "my texture.png");
+	CHECK(reference("DECAL_LIB lib/g10/decals/apt_sw_curb_1.dcl") == "(none)");
+	CHECK(reference("EXPORT lib/a/b.fac a\\b.fac") == "(none)");
+	CHECK(reference("NORMAL_METALNESS ") == "(none)");
+	CHECK(reference("TEXTURE") == "(none)");
+	CHECK(reference("VT 1 2 3 0 1 0 0.5 0.5") == "(none)");
+	CHECK(reference("TEXTURE ../textures.v2/notes") == "(none)");
+}
+
+TEST_CASE("Facades copied for editing take their textures and objects along", "[facades][authoring]")
+{
+	TempDir temp;
+	const fs::path pack = temp.path / "pack", project = temp.path / "project" / "facades";
+	const auto write = [](const fs::path &file, const std::string &text)
+	{
+		fs::create_directories(file.parent_path());
+		std::ofstream(file, std::ios::binary) << text;
+	};
+	const auto read = [](const fs::path &file)
+	{
+		std::string text;
+		SceneryEditorX::VFS::ReadFile(file, text);
+		return text;
+	};
+	write(pack / "textures" / "wall.png", "WALL-PNG");
+	write(pack / "textures" / "wall.dds", "WALL-DDS");
+	write(pack / "textures" / "roof.dds", "ROOF-DDS");	// Named roof.png, shipped as .dds
+	write(pack / "textures" / "lit.png", "LIT");
+	write(pack / "textures" / "obj.png", "OBJ-TEX");
+	// An OBJ with its own textures (CRLF rows, tabs) and a skyscraper model
+	write(pack / "facades" / "grate.obj", "I\r\n800\r\nOBJ\r\n\r\nTEXTURE\t../textures/obj.png\r\nTEXTURE_LIT\t../textures\\lit.png\r\nWEATHER ../textures/wall.png\r\n"
+		"POINT_COUNTS\t0\t0\t0\t0\r\nTEXTURE\tnot_a_header_row.png\r\n");
+	write(pack / "facades" / "base.obj", "I\n800\nOBJ\n\nTEXTURE ../textures/wall.png\nPOINT_COUNTS 0 0 0 0\n");
+	write(pack / "facades" / "test.fac", std::string("A\n1000\nFACADE\n\nRING 1\n"
+		"FACADE_SCRAPER 100 300 4 2\nFACADE_SCRAPER_MODEL base.obj - 0 0\n"
+		"SHADER_WALL\nTEXTURE ../textures\\wall.png\nTEXTURE_NORMAL 1.0 ../textures/missing_NML.png\nTEXTURE_LIT ../textures\\lit.png\n"
+		"DECAL_LIB lib/g10/decals/apt_sw_curb_1.dcl\n"
+		"SHADER_ROOF\nTEXTURE ../textures/roof.png\n"
+		"ROOF_SCALE 8 8\n\nOBJ grate.obj\nOBJ lib/airport/thing.obj\n\n"
+		"FLOOR f\nROOF_HEIGHT 0.15\nSEGMENT 0\nMESH 0 100 1 4 6\n"
+		"VERTEX 0 0 0 0 0 1 0 0\nVERTEX 0 0 -1 0 0 1 1 0\nVERTEX 0 0.15 -1 0 0 1 1 1\nVERTEX 0 0.15 0 0 0 1 0 1\nIDX 0 1 2 0 2 3\n"
+		"ATTACH_DRAPED 0 0 0 -0.5 0\nWALL 0 999 0 0 w\nSPELLING 0\n"));
+	// The project already has a different roof.dds and the same lit.png
+	write(project / "roof.dds", "OTHER");
+	write(project / "lit.png", "LIT");
+
+	FacadeAsset fac;
+	std::string error;
+	REQUIRE(LoadFacadeAsset(pack / "facades" / "test.fac", fac, &error));
+	FacadeFileCopy report;
+	REQUIRE(CopyFacadeFiles(fac, pack / "facades" / "test.fac", project, &report, &error));
+	INFO(error);
+
+	// Textures: copied flat with their twins, renamed where a different file had the name, reused where the same one did
+	CHECK(fac.wallTexture == "wall.png");
+	CHECK(read(project / "wall.png") == "WALL-PNG");
+	CHECK(read(project / "wall.dds") == "WALL-DDS");
+	CHECK(fac.roofTexture == "roof_2.png");
+	CHECK(read(project / "roof_2.dds") == "ROOF-DDS");
+	CHECK(read(project / "roof.dds") == "OTHER");
+	CHECK_FALSE(fs::exists(project / "roof_2.png"));
+	CHECK_FALSE(fs::exists(project / "lit_2.png"));
+	CHECK(std::ranges::find(fac.wallShaderRows, "TEXTURE_LIT lit.png") != fac.wallShaderRows.end());
+	CHECK(std::ranges::find(fac.wallShaderRows, "DECAL_LIB lib/g10/decals/apt_sw_curb_1.dcl") != fac.wallShaderRows.end());
+	// Not found beside the facade: kept as named
+	CHECK(fac.wallTextureNormal == "../textures/missing_NML.png");
+	CHECK(std::ranges::find(report.kept, "../textures/missing_NML.png") != report.kept.end());
+	CHECK(std::ranges::find(report.kept, "lib/airport/thing.obj") != report.kept.end());
+
+	// Objects: copied with their texture rows renamed (header rows only, CRLF kept), library paths kept
+	REQUIRE(fac.objects.size() == 2);
+	CHECK(fac.objects[0] == "grate.obj");
+	CHECK(fac.objects[1] == "lib/airport/thing.obj");
+	CHECK(read(project / "grate.obj") == "I\r\n800\r\nOBJ\r\n\r\nTEXTURE\tobj.png\r\nTEXTURE_LIT\tlit.png\r\nWEATHER wall.png\r\n"
+		"POINT_COUNTS\t0\t0\t0\t0\r\nTEXTURE\tnot_a_header_row.png\r\n");
+	CHECK(read(project / "obj.png") == "OBJ-TEX");
+	REQUIRE(fac.scrapers.size() == 1);
+	REQUIRE_FALSE(fac.scrapers[0].rows.empty());
+	CHECK(fac.scrapers[0].rows[0] == "FACADE_SCRAPER_MODEL base.obj - 0 0");
+	CHECK(read(project / "base.obj") == "I\n800\nOBJ\n\nTEXTURE wall.png\nPOINT_COUNTS 0 0 0 0\n");
+	CHECK(std::ranges::any_of(report.files, [&](const auto &copied) { return copied.second == project / "grate.obj"; }));
+
+	// Saved beside them, the copy reads back the same
+	REQUIRE(SaveFacadeAsset(project / "test_copy.fac", fac));
+	FacadeAsset reread;
+	REQUIRE(LoadFacadeAsset(project / "test_copy.fac", reread));
+	CHECK(Diff(fac, reread).empty());
+
+	// Copied again into the same folder: every file is reused
+	FacadeAsset again;
+	REQUIRE(LoadFacadeAsset(pack / "facades" / "test.fac", again));
+	REQUIRE(CopyFacadeFiles(again, pack / "facades" / "test.fac", project));
+	CHECK(again.wallTexture == "wall.png");
+	CHECK(again.roofTexture == "roof_2.png");
+	CHECK(again.objects[0] == "grate.obj");
+	CHECK_FALSE(fs::exists(project / "grate_2.obj"));
+	CHECK_FALSE(fs::exists(project / "wall_2.png"));
+
+	// Another pack's different grate.obj gets its own name
+	write(temp.path / "other" / "grate.obj", "I\n800\nOBJ\n\nPOINT_COUNTS 0 0 0 0\n");
+	write(temp.path / "other" / "other.fac", "A\n1000\nFACADE\n\nOBJ grate.obj\n");
+	FacadeAsset other;
+	REQUIRE(LoadFacadeAsset(temp.path / "other" / "other.fac", other));
+	REQUIRE(CopyFacadeFiles(other, temp.path / "other" / "other.fac", project));
+	REQUIRE(other.objects.size() == 1);
+	CHECK(other.objects[0] == "grate_2.obj");
+	CHECK(read(project / "grate_2.obj") == "I\n800\nOBJ\n\nPOINT_COUNTS 0 0 0 0\n");
+}
+
+TEST_CASE("An X-Plane 12 library type 2 facade copied with its objects", "[facades][authoring][xplane-install]")
+{
+	const fs::path xplane = FindXPlane();
+	if (xplane.empty())
+	{
+		WARN("No X-Plane 12 install found (x-plane_install_12.txt): skipped");
+		return;
+	}
+	// lib/g10/autogen/civic/school_E_6m_1.fac: OBJs beside it and from the library, textures named .png and shipped as .dds
+	const fs::path file = xplane / "Resources" / "default scenery" / "1000 autogen" / "US" / "civic" / "facades" / "school_E_6m01a_M.fac";
+	if (!fs::exists(file))
+	{
+		WARN("Not in this install: " << file.string());
+		return;
+	}
+	FacadeAsset fac;
+	std::string error;
+	REQUIRE(LoadFacadeAsset(file, fac, &error));
+	const FacadeAsset original = fac;
+	TempDir temp;
+	FacadeFileCopy report;
+	REQUIRE(CopyFacadeFiles(fac, file, temp.path, &report, &error));
+	INFO(error);
+	CHECK(fac.IsType2());
+	CHECK(fac.wallTexture.find('/') == std::string::npos);
+	CHECK(fac.objects.size() == original.objects.size());
+	CHECK(std::ranges::find(fac.objects, "gnd_sw8m_end.obj") != fac.objects.end());
+	CHECK(std::ranges::find(fac.objects, "lib/buildings/equipment/roof_units_24x12_reg3.obj") != fac.objects.end());
+	CHECK(fac.floors.size() == original.floors.size());
+
+	// Every texture the copy and its OBJs name is there (as named or as its .dds twin)
+	const auto found = [&](const std::string &reference)
+	{
+		const fs::path named = temp.path / reference;
+		fs::path dds = named;
+		dds.replace_extension(".dds");
+		return SceneryEditorX::VFS::FindCaseInsensitive(named).has_value() || SceneryEditorX::VFS::FindCaseInsensitive(dds).has_value();
+	};
+	for (const std::string &texture : { fac.wallTexture, fac.wallTextureNormal, fac.roofTexture })
+	{
+		INFO(texture);
+		CHECK((texture.empty() || found(texture)));
+	}
+	size_t objects = 0;
+	for (const fs::directory_entry &entry : fs::directory_iterator(temp.path))
+	{
+		if (entry.path().extension() != ".obj")
+			continue;
+		++objects;
+		std::string text;
+		REQUIRE(SceneryEditorX::VFS::ReadFile(entry.path(), text));
+		std::istringstream rows(text);
+		std::string row;
+		while (std::getline(rows, row) && row.find("POINT_COUNTS") == std::string::npos)
+		{
+			const auto [start, length] = FindTextureReference(row);
+			if (start == std::string::npos)
+				continue;
+			INFO(entry.path().filename().string() << ": " << row);
+			CHECK(found(row.substr(start, length)));
+		}
+	}
+	CHECK(objects >= 2);
+
+	// The copy saved beside them round trips
+	REQUIRE(SaveFacadeAsset(temp.path / "school_copy.fac", fac));
+	FacadeAsset reread;
+	REQUIRE(LoadFacadeAsset(temp.path / "school_copy.fac", reread));
+	CHECK(Diff(fac, reread).empty());
 }

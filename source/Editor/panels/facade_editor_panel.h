@@ -45,8 +45,10 @@ namespace SceneryEditorX
 	 * @brief "FACADE EDITOR": makes new facades. A type 1 building from a texture: its panels across (left / center /
 	 * right) and floors up (bottom / middle / top) marked by dragging their edges on the texture, meters per texture,
 	 * the roof's texture rectangle, the wall types' width / heading rules. A type 2 sidewalk / curb from a cross-section
-	 * drawn in a profile view, its texture strip and segments. Place preview drops a footprint using it in the viewport
-	 * and Live preview redraws it on every change; the .fac is saved in the project's facades folder.
+	 * drawn in a profile view, its texture strip and segments. A copy of another type 2 facade (the library's, another
+	 * pack's) with its textures, roof and wall rules editable and its segments kept. Place preview drops a footprint
+	 * using it in the viewport and Live preview redraws it on every change; the .fac is saved in the project's facades
+	 * folder. Ctrl+Z / Ctrl+Y undo and redo the panel's own edits while it has focus.
 	 */
 	class FacadeEditorPanel : public UI::EditorPanel
 	{
@@ -75,6 +77,10 @@ namespace SceneryEditorX
 		void DrawCurb();
 		void DrawProfile(XPlane::CurbFacadeSpec &spec);
 		void DrawStripCanvas(XPlane::CurbFacadeSpec &spec);
+		void DrawType2();
+
+		/* @brief The panel's own undo / redo (buttons and, while it has focus, Ctrl+Z / Ctrl+Y). */
+		void UndoStep(bool redo);
 
 		/* @brief A texture row: path, Choose... (imported into the project), Clear when optional. True when it changed. */
 		bool TextureRow(const char *label, std::string &reference, bool optional, const char *tooltip);

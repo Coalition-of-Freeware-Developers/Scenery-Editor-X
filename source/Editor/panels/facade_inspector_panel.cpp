@@ -129,7 +129,7 @@ namespace SceneryEditorX
 					FacadeAuthoring::RequestOpen();
 			}
 			ImGui::EndDisabled();
-			EditorUI::ItemTooltip("Open it in the FACADE EDITOR: this project's own facades in place, other type 1 facades (the X-Plane library's...) as a copy in the project's facades folder");
+			EditorUI::ItemTooltip("Open it in the FACADE EDITOR: this project's own facades in place, others (the X-Plane library's...) as a copy in the project's facades folder, their textures and objects copied along");
 
 			const XPlane::FacadeAsset *asset = resource.empty() ? nullptr : FacadeTool::GetAsset(resource);
 			if (resource.empty())

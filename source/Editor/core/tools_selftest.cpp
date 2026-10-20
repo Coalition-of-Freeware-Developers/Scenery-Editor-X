@@ -109,6 +109,8 @@ namespace SceneryEditorX::ToolsSelfTest
 			AuthorBuildingLive,
 			AuthorCurb,
 			AuthorCurbDrawn,
+			AuthorType2Copy,
+			AuthorType2Drawn,
 			FacadesUndo,
 			Delete,
 			DeleteUndo,
@@ -1321,6 +1323,88 @@ namespace SceneryEditorX::ToolsSelfTest
 			{
 				const std::string &preview = FacadeAuthoring::GetPreviewItem();
 				Check(!preview.empty() && EditorProjects::GetPlacedEntity(preview) != 0, "the authored curb is drawn");
+				s.wait = 4;
+				s.step = Step::AuthorType2Copy;
+				break;
+			}
+
+			case Step::AuthorType2Copy:
+			{
+				// "Edit a copy" of a library type 2 facade (a school: OBJs beside it and from the library, textures named
+				// .png and shipped as .dds): its textures, OBJs and their textures are copied into the facades folder
+				namespace fs = std::filesystem;
+				const std::string resource = "lib/g10/autogen/civic/school_E_6m_1.fac";
+				const fs::path folder = EditorProjects::GetProjectFolder() / "facades";
+				const auto listFolder = [&folder]
+				{
+					std::vector<fs::path> files;
+					std::error_code ec;
+					for (const fs::directory_entry &entry : fs::directory_iterator(folder, ec))
+						files.push_back(entry.path());
+					return files;
+				};
+				const std::vector<fs::path> before = listFolder();
+				std::string error;
+				const bool opened = FacadeAuthoring::CanEdit(resource) && FacadeAuthoring::Edit(resource, &error);
+				for (const fs::path &file : listFolder())
+				{
+					if (std::ranges::find(before, file) == before.end())
+						s.authoredFiles.push_back(file);
+				}
+				const XPlane::FacadeAsset &asset = FacadeAuthoring::GetAsset();
+				const bool type2 = opened && FacadeAuthoring::GetKind() == FacadeAuthoring::Kind::Type2 && asset.IsType2() && !asset.floors.empty();
+				const bool textures = type2 && !FacadeAuthoring::ResolveTexture(asset.wallTexture).empty() && VFS::IsInside(FacadeAuthoring::ResolveTexture(asset.wallTexture), folder);
+				const size_t local = type2 ? static_cast<size_t>(std::ranges::count_if(asset.objects, [&folder](const std::string &object) { return fs::exists(folder / VFS::FromUtf8(object)); })) : 0;
+				const bool library = type2 && std::ranges::any_of(asset.objects, [](const std::string &object) { return object.starts_with("lib/"); });
+				Check(type2 && textures && local >= 2 && library, "edit a copy of a library type 2 facade: its textures and " + std::to_string(local) +
+					" OBJs copied into the facades folder, library OBJs kept (" + std::to_string(s.authoredFiles.size()) + " files" + (error.empty() ? std::string() : ", " + error) + ")");
+				if (!type2)
+				{
+					s.step = Step::FacadesUndo;
+					break;
+				}
+
+				// The panel's own undo: a roof scale and a wall name changed, undone and redone, the project's history untouched
+				const uint64_t history = EditorHistory::GetRevision();
+				const float roofScale = asset.roofScaleS;
+				const std::string wallName = asset.floors[0].walls.empty() ? std::string() : asset.floors[0].walls[0].name;
+				FacadeAuthoring::GetAsset().roofScaleS = roofScale * 2.0f;
+				FacadeAuthoring::MarkEdited();
+				if (!FacadeAuthoring::GetAsset().floors[0].walls.empty())
+					FacadeAuthoring::GetAsset().floors[0].walls[0].name = "selftest_wall";
+				FacadeAuthoring::MarkEdited();
+				const size_t segments = FacadeAuthoring::GetAsset().floors[0].segments.size();
+				const bool undoneName = FacadeAuthoring::Undo() && (FacadeAuthoring::GetAsset().floors[0].walls.empty() || FacadeAuthoring::GetAsset().floors[0].walls[0].name == wallName);
+				const bool undoneScale = FacadeAuthoring::Undo() && FacadeAuthoring::GetAsset().roofScaleS == roofScale && !FacadeAuthoring::CanUndo();
+				const bool redone = FacadeAuthoring::Redo() && FacadeAuthoring::GetAsset().roofScaleS == roofScale * 2.0f && FacadeAuthoring::CanRedo();
+				Check(undoneName && undoneScale && redone && FacadeAuthoring::GetAsset().floors[0].segments.size() == segments && EditorHistory::GetRevision() == history,
+					"the facade editor undoes and redoes its own edits (segments kept, the project's history untouched)");
+
+				// Saved, it reads back with its segments and the edit
+				FacadeAuthoring::SetName("SelfTest_type2");
+				const bool saved = FacadeAuthoring::Save(&error);
+				s.authoredFiles.push_back(FacadeAuthoring::GetFilePath());
+				XPlane::FacadeAsset reread;
+				const bool read = saved && XPlane::LoadFacadeAsset(FacadeAuthoring::GetFilePath(), reread);
+				Check(read && XPlane::WriteFacadeAsset(reread) == XPlane::WriteFacadeAsset(FacadeAuthoring::GetAsset()) && reread.roofScaleS == roofScale * 2.0f &&
+					reread.floors.size() == FacadeAuthoring::GetAsset().floors.size(), "save the type 2 copy and read it back the same");
+				const uint64_t placeHistory = EditorHistory::GetRevision();
+				const std::string preview = saved ? FacadeAuthoring::PlacePreview(context) : std::string();
+				if (!preview.empty())
+				{
+					s.facadeItems.push_back(preview);
+					++s.facadeEdits;
+				}
+				Check(!preview.empty() && EditorHistory::GetRevision() == placeHistory + 1, "place a footprint built with the type 2 copy");
+				s.wait = 150;
+				s.step = Step::AuthorType2Drawn;
+				break;
+			}
+
+			case Step::AuthorType2Drawn:
+			{
+				const std::string &preview = FacadeAuthoring::GetPreviewItem();
+				Check(!preview.empty() && EditorProjects::GetPlacedEntity(preview) != 0, "the type 2 copy is drawn (its copied OBJs resolve)");
 				s.wait = 4;
 				s.step = Step::FacadesUndo;
 				break;

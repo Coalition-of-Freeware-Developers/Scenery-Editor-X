@@ -225,15 +225,37 @@ namespace SceneryEditorX
 	{
 		if (EditorUI::BeginPanel("FACADE EDITOR###FacadeEditor", &isOpen))
 		{
+			// The panel's own history while it has focus (Ctrl+Z anywhere else undoes the project; a text field being typed in undoes its text)
+			if (FacadeAuthoring::GetKind() != FacadeAuthoring::Kind::None)
+			{
+				if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_Z, ImGuiInputFlags_Repeat))
+					UndoStep(false);
+				if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_Y, ImGuiInputFlags_Repeat) || ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_Z, ImGuiInputFlags_Repeat))
+					UndoStep(true);
+			}
 			DrawHeader();
 			switch (FacadeAuthoring::GetKind())
 			{
 				case FacadeAuthoring::Kind::Building:	DrawBuilding(); break;
 				case FacadeAuthoring::Kind::Curb:		DrawCurb(); break;
+				case FacadeAuthoring::Kind::Type2:		DrawType2(); break;
 				default: break;
 			}
 		}
 		EditorUI::EndPanel();
+	}
+
+	void FacadeEditorPanel::UndoStep(const bool redo)
+	{
+		if (redo ? FacadeAuthoring::Redo() : FacadeAuthoring::Undo())
+		{
+			m_Status = redo ? "Redone" : "Undone";
+			m_DragCut = -1.0f;
+			m_Dragging = false;
+			m_ProfilePoint = -1;
+		}
+		else
+			m_Status = redo ? "Nothing to redo" : "Nothing to undo";
 	}
 
 	void FacadeEditorPanel::DrawHeader()
@@ -257,7 +279,7 @@ namespace SceneryEditorX
 		if (ImGui::Button(edit.c_str()))
 			EditorCommands::Run("facade.author.edit", m_Context);
 		ImGui::EndDisabled();
-		EditorUI::ItemTooltip("The selected (or armed) facade: this project's own in place, a library or other pack's type 1 facade as a copy with its textures");
+		EditorUI::ItemTooltip("The selected (or armed) facade: this project's own in place, a library or other pack's as a copy with its textures (and a type 2's objects)");
 		const std::string open = EditorUI::IconLabel(SEDX_ICON_FOLDER_OPEN, "Open");
 		row.Next(FlowRow::ButtonWidth(open));
 		if (ImGui::Button(open.c_str()))
@@ -284,7 +306,7 @@ namespace SceneryEditorX
 
 		if (FacadeAuthoring::GetKind() == FacadeAuthoring::Kind::None)
 		{
-			EditorUI::EmptyState(project ? "Start a building from a texture or a sidewalk / curb from a cross-section, or edit a facade (the X-Plane library's type 1 facades are copied into the project)"
+			EditorUI::EmptyState(project ? "Start a building from a texture or a sidewalk / curb from a cross-section, or edit a facade (the X-Plane library's are copied into the project with their textures and objects)"
 				: "Open a project: new facades are saved in its facades folder");
 			return;
 		}
@@ -313,8 +335,21 @@ namespace SceneryEditorX
 			m_Status = FacadeAuthoring::Save(&error) ? "Saved " + resource : error;
 		}
 		EditorUI::ItemTooltip("Write the .fac (and redraw every facade using it)");
+		const std::string undo = std::string(SEDX_ICON_UNDO) + "##Undo", redo = std::string(SEDX_ICON_REPEAT) + "##Redo";
+		actions.Next(FlowRow::ButtonWidth(undo) + FlowRow::ButtonWidth(redo) + ImGui::GetStyle().ItemSpacing.x);
+		ImGui::BeginDisabled(!FacadeAuthoring::CanUndo());
+		if (ImGui::Button(undo.c_str()))
+			UndoStep(false);
+		ImGui::EndDisabled();
+		EditorUI::ItemTooltip("Undo the last edit (Ctrl+Z while this panel has focus; the project's own history is separate)");
+		ImGui::SameLine();
+		ImGui::BeginDisabled(!FacadeAuthoring::CanRedo());
+		if (ImGui::Button(redo.c_str()))
+			UndoStep(true);
+		ImGui::EndDisabled();
+		EditorUI::ItemTooltip("Redo (Ctrl+Y)");
 		const bool saved = std::filesystem::exists(FacadeAuthoring::GetFilePath());
-		const std::string revert = EditorUI::IconLabel(SEDX_ICON_UNDO, "Revert");
+		const std::string revert = EditorUI::IconLabel(SEDX_ICON_REFRESH, "Revert");
 		actions.Next(FlowRow::ButtonWidth(revert));
 		ImGui::BeginDisabled(!saved);
 		if (ImGui::Button(revert.c_str()))
@@ -1162,6 +1197,153 @@ namespace SceneryEditorX
 		draw->AddText(ImVec2(p0.x + 3.0f, p0.y + 1.0f), EditorTheme::ToU32(EditorTheme::Palette::Text), "top edge");
 		EndCanvas();
 		ImGui::TextDisabled("Drag the curb's strip: along the curb left to right, its top edge at the top");
+		if (edited)
+			FacadeAuthoring::MarkEdited();
+	}
+
+	// -------------------------------------------------------
+	// Type 2 facades as written (copies of the library's, other packs')
+
+	void FacadeEditorPanel::DrawType2()
+	{
+		FacadeAsset &asset = FacadeAuthoring::GetAsset();
+		bool edited = false;
+
+		if (EditorUI::SectionHeader("TEXTURES") && EditorUI::BeginPropertyGrid("##Type2Textures", 100.0f))
+		{
+			edited |= TextureRow("Wall", asset.wallTexture, false, "SHADER_WALL's texture: what the segment meshes are cut from");
+			edited |= TextureRow("Wall normal", asset.wallTextureNormal, true, "The walls' normal map");
+			edited |= TextureRow("Roof", asset.roofTexture, true, "SHADER_ROOF's texture; none: the roof is cut from the wall texture");
+			edited |= TextureRow("Roof normal", asset.roofTextureNormal, true, "The roof's normal map");
+			// Rows the editor doesn't model (TEXTURE_LIT, WEATHER, DECAL_LIB...), written back as they are
+			if (!asset.wallShaderRows.empty() || !asset.roofShaderRows.empty())
+			{
+				EditorUI::PropertyLabel("Kept rows");
+				ImGui::BeginGroup();
+				for (const std::string &row : asset.wallShaderRows)
+					ImGui::TextDisabled("%s", row.c_str());
+				for (const std::string &row : asset.roofShaderRows)
+					ImGui::TextDisabled("roof: %s", row.c_str());
+				ImGui::EndGroup();
+				EditorUI::ItemTooltip("Shader rows written back as they are (the textures they name were copied with the facade)");
+			}
+			EditorUI::EndPropertyGrid();
+		}
+
+		if (EditorUI::SectionHeader("ROOF") && EditorUI::BeginPropertyGrid("##Type2Roof", 100.0f))
+		{
+			EditorUI::PropertyLabel("Texture repeat");
+			ImGui::SetNextItemWidth(-FLT_MIN);
+			float scale[2] = { asset.roofScaleS, asset.roofScaleT };
+			if (ImGui::DragFloat2("##RoofScale", scale, 0.1f, 0.1f, 1000.0f, "%.1f m"))
+			{
+				asset.roofScaleS = std::max(0.1f, scale[0]);
+				asset.roofScaleT = std::max(0.1f, scale[1]);
+				edited = true;
+			}
+			EditorUI::ItemTooltip("ROOF_SCALE: meters of roof one roof texture covers, along the front wall and in from it");
+			for (size_t f = 0; f < asset.floors.size(); ++f)
+			{
+				FacadeAsset::Floor &floor = asset.floors[f];
+				ImGui::PushID(static_cast<int>(f));
+				const std::string label = asset.floors.size() > 1 ? "Hard roof " + (floor.name.empty() ? std::to_string(f + 1) : floor.name) : std::string("Hard roof");
+				EditorUI::PropertyLabel(label.c_str());
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				edited |= ImGui::InputTextWithHint("##HardRoof", "none", &floor.hardRoof, ImGuiInputTextFlags_CharsNoBlank);
+				EditorUI::ItemTooltip("HARD_ROOF: concrete, asphalt... what aircraft and vehicles feel on this floor's roofs; empty for none");
+				ImGui::PopID();
+			}
+			EditorUI::EndPropertyGrid();
+		}
+
+		if (EditorUI::SectionHeader("WALL TYPES"))
+		{
+			for (size_t f = 0; f < asset.floors.size(); ++f)
+			{
+				FacadeAsset::Floor &floor = asset.floors[f];
+				ImGui::PushID(static_cast<int>(f));
+				if (asset.floors.size() > 1)
+					ImGui::SeparatorText(("Floor " + (floor.name.empty() ? std::to_string(f + 1) : floor.name)).c_str());
+				for (size_t w = 0; w < floor.walls.size(); ++w)
+				{
+					FacadeAsset::WallRule &wall = floor.walls[w];
+					if (wall.filters.empty())
+						wall.filters.push_back({ wall.minWidth, wall.maxWidth, wall.minHeading, wall.maxHeading });
+					FacadeAsset::WallFilter &rule = wall.filters.front();
+					ImGui::PushID(static_cast<int>(w));
+					if (EditorUI::BeginPropertyGrid("##Wall", 100.0f))
+					{
+						EditorUI::PropertyLabel("Name");
+						ImGui::SetNextItemWidth(-FLT_MIN);
+						edited |= ImGui::InputTextWithHint("##Name", ("Wall " + std::to_string(w + 1)).c_str(), &wall.name);
+						EditorUI::ItemTooltip("What the facade tool lists the wall type as");
+						EditorUI::PropertyLabel("Widths");
+						ImGui::SetNextItemWidth(-FLT_MIN);
+						float widths[2] = { rule.minWidth, rule.maxWidth };
+						if (ImGui::DragFloat2("##Widths", widths, 0.1f, 0.0f, 9999.0f, "%.1f m"))
+						{
+							rule.minWidth = wall.minWidth = std::max(0.0f, widths[0]);
+							rule.maxWidth = wall.maxWidth = std::max(rule.minWidth, widths[1]);
+							edited = true;
+						}
+						EditorUI::ItemTooltip("Walls this wide (meters) can get this wall type");
+						EditorUI::PropertyLabel("Headings");
+						ImGui::SetNextItemWidth(-FLT_MIN);
+						float headings[2] = { rule.minHeading, rule.maxHeading };
+						if (ImGui::DragFloat2("##Headings", headings, 1.0f, 0.0f, 360.0f, "%.0f deg"))
+						{
+							rule.minHeading = wall.minHeading = std::clamp(headings[0], 0.0f, 360.0f);
+							rule.maxHeading = wall.maxHeading = std::clamp(headings[1], 0.0f, 360.0f);
+							edited = true;
+						}
+						EditorUI::ItemTooltip("Facing these degrees from the front wall, clockwise (equal: any heading). 270 - 90 is the front half");
+						if (wall.filters.size() > 1)
+						{
+							EditorUI::PropertyLabel("More rules");
+							ImGui::Text("%zu WALL_RULE rows (kept)", wall.filters.size() - 1);
+						}
+						EditorUI::PropertyLabel("Spellings");
+						std::string spellings;
+						for (const std::vector<int> &spelling : wall.spellings)
+						{
+							spellings += spellings.empty() ? "" : "  |  ";
+							for (size_t i = 0; i < spelling.size(); ++i)
+								spellings += (i ? " " : "") + std::to_string(spelling[i]);
+						}
+						ImGui::TextWrapped("%s", spellings.empty() ? "(none)" : spellings.c_str());
+						EditorUI::ItemTooltip("The segment sequences X-Plane fills a wall with (read-only)");
+						EditorUI::EndPropertyGrid();
+					}
+					ImGui::PopID();
+				}
+				ImGui::PopID();
+			}
+		}
+
+		if (EditorUI::SectionHeader("SEGMENTS", false))
+		{
+			ImGui::TextWrapped("Segments are kept as written (model them in a 3D tool); their objects were copied with the facade.");
+			for (size_t f = 0; f < asset.floors.size(); ++f)
+			{
+				const FacadeAsset::Floor &floor = asset.floors[f];
+				size_t triangles = 0;
+				for (const FacadeAsset::Segment &segment : floor.segments)
+					for (const FacadeAsset::Mesh &mesh : segment.meshes)
+						triangles += mesh.indices.size() / 3;
+				std::string roofs;
+				for (const FacadeAsset::Roof &roof : floor.roofs)
+					roofs += (roofs.empty() ? "" : ", ") + Meters(roof.height);
+				ImGui::BulletText("%s: %zu segments (%zu curved), %zu triangles; roofs at %s", floor.name.empty() ? ("Floor " + std::to_string(f + 1)).c_str() : floor.name.c_str(),
+					floor.segments.size(), floor.curvedSegments.size(), triangles, roofs.empty() ? "none" : roofs.c_str());
+			}
+			const std::filesystem::path folder = FacadeAuthoring::GetFilePath().parent_path();
+			for (size_t i = 0; i < asset.objects.size(); ++i)
+			{
+				const bool local = !folder.empty() && std::filesystem::exists(folder / VFS::FromUtf8(asset.objects[i]));
+				ImGui::BulletText("OBJ %zu  %s%s", i, asset.objects[i].c_str(), local ? "" : "  (library)");
+			}
+		}
+
 		if (edited)
 			FacadeAuthoring::MarkEdited();
 	}

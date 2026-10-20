@@ -33,6 +33,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -173,6 +174,34 @@ namespace SceneryEditorX::XPlane
 
 	/* @brief A file name from free text: letters, digits, '-' and '_' kept, the rest '_' ("Hangar 2 (red)" -> "Hangar_2_red_"). */
 	std::string MakeFacadeFileName(const std::string &name);
+
+	/**
+	 * @brief Where a header row names a texture file: after its keyword and any numbers before the path (TEXTURE <file>,
+	 * TEXTURE_NORMAL <ratio> <file>, TEXTURE_LIT, WEATHER, DECAL <scale> <file>... of a .fac or an OBJ). The path runs to
+	 * the end of the row (trailing blanks dropped) and must end in an image extension (.png .dds .jpg .jpeg .tga .bmp),
+	 * so DECAL_LIB, EXPORT and vertex rows name none. {npos, 0} when the row names none.
+	 */
+	std::pair<size_t, size_t> FindTextureReference(std::string_view row);
+
+	/* @brief What CopyFacadeFiles did. */
+	struct FacadeFileCopy
+	{
+		std::vector<std::pair<std::filesystem::path, std::filesystem::path>> files;	// Each file copied (or an identical copy reused): from -> to
+		std::vector<std::string> kept;		// References found nowhere beside their file, kept as named (library paths such as lib/..., or missing files)
+	};
+
+	/**
+	 * @brief Makes a facade's files local to `folder` so a copy of it can be saved there (as <folder>/<name>.fac): its
+	 * textures (walls, roof, normal maps, and the TEXTURE_LIT / WEATHER / DECAL... rows kept verbatim), its OBJs (OBJ
+	 * rows, the OBJs FACADE_SCRAPER rows name) and every OBJ's own textures are copied in flat and the asset's references
+	 * rewritten to the copies; the OBJs are written with their texture rows renamed. A texture's .dds / .png twin goes
+	 * along (X-Plane loads the .dds), and a reference keeps the kind of file it named (.png stays .png when only the .dds
+	 * ships; extensions are written in lower case). A name a different file
+	 * already has there gets "_2", "_3"...; an identical file there is reused. References that don't resolve beside
+	 * `facadeFile` (library paths) stay as named and are listed in `kept`. False with `error` when a file can't be written.
+	 */
+	bool CopyFacadeFiles(FacadeAsset &asset, const std::filesystem::path &facadeFile, const std::filesystem::path &folder, FacadeFileCopy *report = nullptr,
+		std::string *error = nullptr);
 }
 
 // -------------------------------------------------------

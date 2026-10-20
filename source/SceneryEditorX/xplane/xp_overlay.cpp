@@ -227,6 +227,114 @@ namespace SceneryEditorX::XPlane
 			const size_t slash = path.find_last_of("/\\");
 			return slash == std::string::npos ? path : path.substr(slash + 1);
 		}
+
+		/**
+		 * @brief A flat polygon at height y repeating the texture rectangle s1 t1 - s2 t2 (a type 1 ROOF_SCALE roof): the
+		 * rectangle covers metersS along the heading's s axis by metersT across, the polygon's center takes the texture
+		 * point centerS / centerT, and the triangles are cut along the repeats so every piece maps onto the rectangle
+		 * (a sampler can't repeat part of a texture). Axes as AppendTexturedPolygon's.
+		 */
+		void AppendRepeatedRectangle(OverlayMesh &mesh, const std::vector<std::vector<Point2>> &rings, const float y, const float s1, const float t1, const float s2,
+			const float t2, const double metersS, const double metersT, const float centerS, const float centerT, const double headingDegrees)
+		{
+			std::vector<Point2> points;
+			std::vector<uint32_t> indices;
+			if (!TriangulatePolygon(rings, points, indices) || s2 <= s1 || t2 <= t1)
+				return;
+
+			// Each point in repeats of the rectangle: meters along the texture axes from the polygon's center, over the rectangle's meters
+			const double angle = headingDegrees * kDegToRad;
+			const double c = std::cos(angle), s = std::sin(angle);
+			std::vector<std::pair<double, double>> meters;
+			meters.reserve(points.size());
+			double minU = 1e300, maxU = -1e300, minV = 1e300, maxV = -1e300;
+			for (const Point2 &point : points)
+			{
+				const double east = point.x, north = -point.z;
+				const double u = east * c - north * s, v = east * s + north * c;
+				meters.emplace_back(u, v);
+				minU = std::min(minU, u);
+				maxU = std::max(maxU, u);
+				minV = std::min(minV, v);
+				maxV = std::max(maxV, v);
+			}
+			const double sizeU = std::max(0.01, metersS), sizeV = std::max(0.01, metersT);
+			const double offsetU = (centerS - s1) / (s2 - s1) - 0.5 * (minU + maxU) / sizeU;
+			const double offsetV = (centerT - t1) / (t2 - t1) - 0.5 * (minV + maxV) / sizeV;
+
+			struct Corner
+			{
+				double a, b;	// Repeats along s and t
+				double x, z;	// World position
+			};
+			const auto clip = [](std::vector<Corner> &polygon, const bool alongA, const double limit, const bool keepAbove)
+			{
+				std::vector<Corner> out;
+				for (size_t i = 0; i < polygon.size(); ++i)
+				{
+					const Corner &p = polygon[i], &q = polygon[(i + 1) % polygon.size()];
+					const double dp = (alongA ? p.a : p.b) - limit, dq = (alongA ? q.a : q.b) - limit;
+					const bool inP = keepAbove ? dp >= 0.0 : dp <= 0.0, inQ = keepAbove ? dq >= 0.0 : dq <= 0.0;
+					if (inP)
+						out.push_back(p);
+					if (inP != inQ)
+					{
+						const double f = dp / (dp - dq);
+						out.push_back({ p.a + (q.a - p.a) * f, p.b + (q.b - p.b) * f, p.x + (q.x - p.x) * f, p.z + (q.z - p.z) * f });
+					}
+				}
+				polygon.swap(out);
+			};
+
+			const float spanS = s2 - s1, spanT = t2 - t1;
+			for (size_t i = 0; i + 2 < indices.size(); i += 3)
+			{
+				Corner triangle[3];
+				double minA = 1e300, maxA = -1e300, minB = 1e300, maxB = -1e300;
+				for (int k = 0; k < 3; ++k)
+				{
+					const uint32_t index = indices[i + k];
+					triangle[k] = { meters[index].first / sizeU + offsetU, meters[index].second / sizeV + offsetV, points[index].x, points[index].z };
+					minA = std::min(minA, triangle[k].a);
+					maxA = std::max(maxA, triangle[k].a);
+					minB = std::min(minB, triangle[k].b);
+					maxB = std::max(maxB, triangle[k].b);
+				}
+				// One piece per repeat the triangle covers (a roof needing more than 4096 per triangle keeps one piece, its texture clamped)
+				const double firstA = std::floor(minA), firstB = std::floor(minB);
+				const double columns = std::max(1.0, std::ceil(maxA) - firstA), rows = std::max(1.0, std::ceil(maxB) - firstB);
+				const bool cut = columns * rows <= 4096.0;
+				for (double column = 0.0; column < (cut ? columns : 1.0); column += 1.0)
+				{
+					for (double row = 0.0; row < (cut ? rows : 1.0); row += 1.0)
+					{
+						const double a0 = firstA + column, b0 = firstB + row;
+						std::vector<Corner> piece(std::begin(triangle), std::end(triangle));
+						if (cut)
+						{
+							clip(piece, true, a0, true);
+							clip(piece, true, a0 + 1.0, false);
+							clip(piece, false, b0, true);
+							clip(piece, false, b0 + 1.0, false);
+						}
+						if (piece.size() < 3)
+							continue;
+						const uint32_t base = static_cast<uint32_t>(mesh.vertices.size());
+						for (const Corner &corner : piece)
+						{
+							const double fa = std::clamp(corner.a - a0, 0.0, 1.0), fb = std::clamp(corner.b - b0, 0.0, 1.0);
+							AddVertex(mesh, corner.x, y, corner.z, s1 + spanS * fa, t1 + spanT * fb);
+						}
+						for (uint32_t k = 1; k + 1 < piece.size(); ++k)
+						{
+							mesh.indices.push_back(base);
+							mesh.indices.push_back(base + k);
+							mesh.indices.push_back(base + k + 1);
+						}
+					}
+				}
+			}
+		}
 	}
 
 	// -------------------------------------------------------
@@ -1461,14 +1569,24 @@ namespace SceneryEditorX::XPlane
 			roof.cutout = false;
 			roof.twoSided = true;
 			roof.color[0] = roof.color[1] = roof.color[2] = 0.45f;
-			if (asset->IsType2() || asset->roofUv.size() != 4)
+			// The roof texture runs along the front wall (s) and in from it (t), as X-Plane and WorldEditor lay it out
+			const auto frontHeading = [&]
 			{
-				// The roof texture runs along the front wall (s) and in from it (t), as X-Plane and WorldEditor lay it out
 				const Point2 &start = sides.front().path.GetPoints().front(), &end = sides.front().path.GetPoints().back();
 				const double chord = std::max(1e-9, std::hypot(end.x - start.x, end.z - start.z));
-				const double frontHeading = DirectionToHeading({ (end.x - start.x) / chord, (end.z - start.z) / chord });
+				return DirectionToHeading({ (end.x - start.x) / chord, (end.z - start.z) / chord });
+			};
+			if (asset->IsType2() || asset->roofUv.size() != 4)
+			{
 				AppendTexturedPolygon(roof, { footprint }, static_cast<float>(roofHeight), asset->roofScaleS > 0.01f ? asset->roofScaleS : 10.0f,
-					asset->roofScaleT > 0.01f ? asset->roofScaleT : 10.0f, frontHeading - 90.0);
+					asset->roofScaleT > 0.01f ? asset->roofScaleT : 10.0f, frontHeading() - 90.0);
+			}
+			else if (asset->roofScaled)
+			{
+				// Type 1 ROOF_SCALE: the texture rectangle repeats every so many meters (GetFacadeRoofMeters), centered on the roof
+				const float s1 = asset->roofUv[0].first, t1 = asset->roofUv[0].second, s2 = asset->roofUv[2].first, t2 = asset->roofUv[2].second;
+				AppendRepeatedRectangle(roof, { footprint }, static_cast<float>(roofHeight), s1, t1, s2, t2, static_cast<double>(asset->roofScaleS) * (s2 - s1),
+					static_cast<double>(asset->roofScaleT) * (t2 - t1), asset->roofCenter.first, asset->roofCenter.second, frontHeading() - 90.0);
 			}
 			else
 			{

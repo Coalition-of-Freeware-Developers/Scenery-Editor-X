@@ -40,6 +40,7 @@
 #include <SceneryEditorX/filesystem/vfs.h>
 #include <SceneryEditorX/logging/logging.hpp>
 #include <SceneryEditorX/renderer/font/font_awesome.h>
+#include <SceneryEditorX/renderer/ui/source/imgui/imgui_internal.h>
 #include <SceneryEditorX/xplane/xp_facade_writer.h>
 #include <SceneryEditorX/xplane/xp_texture_loader.h>
 #include <SceneryEditorX/xplane/xp_text.h>
@@ -58,6 +59,17 @@ namespace SceneryEditorX::FacadeAuthoring
 		constexpr const char *FOLDER = "facades";
 		constexpr const char *SPEC_EXTENSION = ".fac.json";
 		constexpr double LIVE_DELAY = 0.35;	// Seconds after the last change the live preview saves
+		constexpr size_t UNDO_STEPS = 100;	// Undo steps kept per facade
+
+		/**
+		 * The facade as an undo step keeps it: a curb's spec (its asset is built from it), else the asset without its
+		 * type 2 segment meshes (they aren't edited here, so a step doesn't copy them).
+		 */
+		struct Snapshot
+		{
+			XPlane::FacadeAsset asset;
+			XPlane::CurbFacadeSpec curb;
+		};
 
 		struct State
 		{
@@ -71,6 +83,11 @@ namespace SceneryEditorX::FacadeAuthoring
 			std::vector<std::string> problems;
 			std::string previewItem;
 			bool openRequested = false;
+
+			std::vector<Snapshot> undo;		// Oldest first
+			std::vector<Snapshot> redo;		// Most recently undone last
+			Snapshot committed;				// The facade as of the last edit (what the next one is undone to)
+			ImGuiID held = 0;				// The widget held when the current step started (0: none); its later changes join that step
 		};
 
 		State &S()
@@ -176,7 +193,81 @@ namespace SceneryEditorX::FacadeAuthoring
 			return true;
 		}
 
-		/* @brief Starts editing an asset: what the panel shows, unsaved until Save(). */
+		/* @brief After a change (or an undo): a curb rebuilt from its spec, the problems checked, the live preview's save scheduled. */
+		void Refresh()
+		{
+			State &s = S();
+			if (s.kind == Kind::Curb)
+				s.asset = XPlane::BuildCurbFacade(s.curb);
+			s.problems = s.kind == Kind::None ? std::vector<std::string>() : XPlane::CheckFacadeAsset(s.asset);
+			s.dirty = true;
+			// Live: saved (and redrawn) shortly after the last change, once the facade has a file
+			if (s.live && s.kind != Kind::None && !GetFilePath().empty() && fs::exists(GetFilePath()))
+				s.saveAt = ImGui::GetTime() + LIVE_DELAY;
+		}
+
+		Snapshot Capture()
+		{
+			State &s = S();
+			Snapshot snapshot;
+			if (s.kind == Kind::Curb)
+			{
+				snapshot.curb = s.curb;
+				return snapshot;
+			}
+			// The segment meshes are moved aside while the rest is copied
+			std::vector<std::pair<std::vector<XPlane::FacadeAsset::Segment>, std::vector<XPlane::FacadeAsset::Segment>>> meshes;
+			for (XPlane::FacadeAsset::Floor &floor : s.asset.floors)
+				meshes.emplace_back(std::move(floor.segments), std::move(floor.curvedSegments));
+			snapshot.asset = s.asset;
+			for (size_t i = 0; i < meshes.size(); ++i)
+			{
+				s.asset.floors[i].segments = std::move(meshes[i].first);
+				s.asset.floors[i].curvedSegments = std::move(meshes[i].second);
+			}
+			return snapshot;
+		}
+
+		/* @brief What a step changes, as text (two steps are the same facade when their texts are). */
+		std::string Serialize(const Snapshot &snapshot)
+		{
+			return S().kind == Kind::Curb ? SpecToJson(snapshot.curb).dump() : XPlane::WriteFacadeAsset(snapshot.asset);
+		}
+
+		/* @brief Goes back (or forward) to a step: the current segment meshes stay (floors aren't added or removed here). */
+		void Restore(Snapshot snapshot)
+		{
+			State &s = S();
+			if (s.kind == Kind::Curb)
+				s.curb = std::move(snapshot.curb);
+			else
+			{
+				for (size_t i = 0; i < snapshot.asset.floors.size() && i < s.asset.floors.size(); ++i)
+				{
+					snapshot.asset.floors[i].segments = std::move(s.asset.floors[i].segments);
+					snapshot.asset.floors[i].curvedSegments = std::move(s.asset.floors[i].curvedSegments);
+				}
+				s.asset = std::move(snapshot.asset);
+			}
+			Refresh();
+			s.committed = Capture();
+			s.held = 0;
+		}
+
+		/* @brief Ends the step a held widget started: dropped when letting go left the facade as it was. */
+		void CloseStep()
+		{
+			State &s = S();
+			if (s.held == 0)
+				return;
+			if (!s.undo.empty() && Serialize(s.undo.back()) == Serialize(s.committed))
+				s.undo.pop_back();
+			else
+				s.redo.clear();
+			s.held = 0;
+		}
+
+		/* @brief Starts editing an asset: what the panel shows, unsaved until Save(), with a fresh undo history. */
 		void Begin(const Kind kind, XPlane::FacadeAsset asset, const std::string &name, const bool dirty)
 		{
 			State &s = S();
@@ -184,9 +275,13 @@ namespace SceneryEditorX::FacadeAuthoring
 			s.asset = std::move(asset);
 			s.name = name;
 			s.previewItem.clear();
-			MarkEdited();
+			Refresh();
 			s.saveAt = -1.0;	// Nothing changed yet
 			s.dirty = dirty;
+			s.undo.clear();
+			s.redo.clear();
+			s.held = 0;
+			s.committed = Capture();
 		}
 
 		/* @brief The facade the menus mean: the selected facade item's, else the one armed in the facade tool. */
@@ -197,15 +292,6 @@ namespace SceneryEditorX::FacadeAuthoring
 			if (const ProjectFile::SceneryItem *item = !selected.empty() && document ? document->FindItem(selected.front()) : nullptr)
 				return item->resource;
 			return FacadeTool::GetSettings().resource;
-		}
-
-		/* @brief The (last) path in a verbatim shader row naming a texture (TEXTURE_LIT, TEXTURE_MODULATOR...), npos when none. */
-		size_t TexturePathStart(const std::string &row)
-		{
-			if (!row.starts_with("TEXTURE"))
-				return std::string::npos;
-			const size_t space = row.find_last_of(" \t");
-			return space == std::string::npos ? std::string::npos : space + 1;
 		}
 	}
 
@@ -335,15 +421,7 @@ namespace SceneryEditorX::FacadeAuthoring
 
 	bool CanEdit(const std::string &resource)
 	{
-		if (resource.empty() || FacadesFolder().empty())
-			return false;
-		const XPlane::FacadeAsset *asset = EditorProjects::GetFacade(resource);
-		if (!asset)
-			return false;
-		if (!asset->IsType2())
-			return true;
-		const fs::path file = EditorProjects::ResolveResourceFile(resource);
-		return IsInside(file, FacadesFolder()) && fs::exists(fs::path(file).replace_extension(SPEC_EXTENSION));
+		return !resource.empty() && !FacadesFolder().empty() && EditorProjects::GetFacade(resource) != nullptr;
 	}
 
 	bool Edit(const std::string &resource, std::string *error)
@@ -363,14 +441,23 @@ namespace SceneryEditorX::FacadeAuthoring
 			const std::string name = ToUtf8(file.stem());
 			if (asset.IsType2())
 			{
+				// A curb made here comes back from its spec; any other type 2 facade is edited as written
+				const fs::path specFile = fs::path(file).replace_extension(SPEC_EXTENSION);
 				std::string text;
 				XPlane::CurbFacadeSpec spec;
 				nlohmann::json json;
-				if (!XPlane::ReadTextFile(fs::path(file).replace_extension(SPEC_EXTENSION), text) ||
-					!(json = nlohmann::json::parse(text, nullptr, false)).is_object() || !SpecFromJson(json, spec))
-					return Fail(error, ToUtf8(file.filename()) + " is a type 2 facade not made here: only its curb spec (.fac.json) can be edited");
-				S().curb = spec;
-				Begin(Kind::Curb, std::move(asset), name, false);
+				if (fs::exists(specFile) && XPlane::ReadTextFile(specFile, text) && (json = nlohmann::json::parse(text, nullptr, false)).is_object() &&
+					SpecFromJson(json, spec))
+				{
+					S().curb = spec;
+					Begin(Kind::Curb, std::move(asset), name, false);
+				}
+				else
+				{
+					if (fs::exists(specFile))
+						EDITOR_WARN_TAG(LOG_TAG, "Can't read the curb spec {}: editing {} as written", ToUtf8(specFile), resource);
+					Begin(Kind::Type2, std::move(asset), name, false);
+				}
 			}
 			else
 				Begin(Kind::Building, std::move(asset), name, false);
@@ -378,56 +465,80 @@ namespace SceneryEditorX::FacadeAuthoring
 			return true;
 		}
 
-		// Any other type 1 facade: a copy with its textures copied along
-		if (asset.IsType2())
-			return Fail(error, "Only type 1 facades can be copied for editing (" + resource + " is type 2: segment meshes)");
-		const fs::path from = file.parent_path();
+		// Any other facade: a copy, its textures (and a type 2's OBJs with their textures) copied along
+		XPlane::FacadeFileCopy copied;
 		std::string copyError;
-		const auto copy = [&](std::string &reference)
-		{
-			if (reference.empty())
-				return;
-			const fs::path texture = XPlane::TextureLoader::ResolveTexturePath(from, reference);
-			const std::string imported = texture.empty() ? std::string() : ImportTexture(texture, &copyError);
-			if (!imported.empty())
-				reference = imported;
-		};
-		copy(asset.wallTexture);
-		copy(asset.roofTexture);
-		copy(asset.wallTextureNormal);
-		copy(asset.roofTextureNormal);
-		for (std::vector<std::string> *rows : { &asset.wallShaderRows, &asset.roofShaderRows })
-		{
-			for (std::string &row : *rows)
-			{
-				const size_t start = TexturePathStart(row);
-				if (start == std::string::npos)
-					continue;
-				std::string path = row.substr(start);
-				for (char &c : path)
-					c = c == '\\' ? '/' : c;
-				copy(path);
-				row = row.substr(0, start) + path;
-			}
-		}
-		if (!copyError.empty())
-			EDITOR_WARN_TAG(LOG_TAG, "Copying {}'s textures: {}", resource, copyError);
+		if (!XPlane::CopyFacadeFiles(asset, file, folder, &copied, &copyError))
+			return Fail(error, "Could not copy " + resource + "'s files into " + ToUtf8(folder) + ": " + copyError);
+		for (const std::string &kept : copied.kept)
+			EDITOR_INFO_TAG(LOG_TAG, "{}: {} kept as named (a library path, or not found beside it)", resource, kept);
 		const std::string base = resource.substr(resource.find_last_of('/') == std::string::npos ? 0 : resource.find_last_of('/') + 1);
-		Begin(Kind::Building, std::move(asset), UniqueName(base.substr(0, base.rfind('.')) + "_copy"), true);
-		EDITOR_INFO_TAG(LOG_TAG, "Editing a copy of {} as {}", resource, GetResource());
+		const Kind kind = asset.IsType2() ? Kind::Type2 : Kind::Building;
+		Begin(kind, std::move(asset), UniqueName(base.substr(0, base.rfind('.')) + "_copy"), true);
+		EDITOR_INFO_TAG(LOG_TAG, "Editing a copy of {} as {} ({} files copied into {})", resource, GetResource(), copied.files.size(), ToUtf8(folder));
 		return true;
 	}
 
 	void MarkEdited()
 	{
 		State &s = S();
-		if (s.kind == Kind::Curb)
-			s.asset = XPlane::BuildCurbFacade(s.curb);
-		s.problems = s.kind == Kind::None ? std::vector<std::string>() : XPlane::CheckFacadeAsset(s.asset);
-		s.dirty = true;
-		// Live: saved (and redrawn) shortly after the last change, once the facade has a file
-		if (s.live && s.kind != Kind::None && !GetFilePath().empty() && fs::exists(GetFilePath()))
-			s.saveAt = ImGui::GetTime() + LIVE_DELAY;
+		if (s.kind != Kind::None)
+		{
+			// One undo step per change; while one widget stays held (a drag, typing) its changes join the step it started
+			const ImGuiID held = ImGui::GetActiveID();
+			Snapshot now = Capture();
+			if (held == 0 || held != s.held)
+			{
+				CloseStep();
+				if (held != 0 || Serialize(now) != Serialize(s.committed))
+				{
+					s.undo.push_back(std::move(s.committed));
+					if (s.undo.size() > UNDO_STEPS)
+						s.undo.erase(s.undo.begin());
+					if (held == 0)
+						s.redo.clear();	// A held step clears it when let go, unless it changed nothing
+				}
+				s.held = held;
+			}
+			s.committed = std::move(now);
+		}
+		Refresh();
+	}
+
+	bool CanUndo()
+	{
+		return S().kind != Kind::None && !S().undo.empty();
+	}
+
+	bool CanRedo()
+	{
+		return S().kind != Kind::None && !S().redo.empty();
+	}
+
+	bool Undo()
+	{
+		State &s = S();
+		CloseStep();
+		if (!CanUndo())
+			return false;
+		s.redo.push_back(std::move(s.committed));
+		Snapshot previous = std::move(s.undo.back());
+		s.undo.pop_back();
+		Restore(std::move(previous));
+		return true;
+	}
+
+	bool Redo()
+	{
+		State &s = S();
+		CloseStep();
+		if (!CanRedo())
+			return false;
+		s.undo.push_back(std::move(s.committed));
+		Snapshot next = std::move(s.redo.back());
+		s.redo.pop_back();
+		Restore(std::move(next));
+		return true;
 	}
 
 	bool IsDirty()
@@ -501,6 +612,9 @@ namespace SceneryEditorX::FacadeAuthoring
 	void Tick()
 	{
 		State &s = S();
+		// A widget let go closes its undo step
+		if (s.held != 0 && ImGui::GetActiveID() != s.held)
+			CloseStep();
 		if (s.saveAt >= 0.0 && ImGui::GetTime() >= s.saveAt)
 			Save();
 	}
@@ -562,7 +676,7 @@ namespace SceneryEditorX::FacadeAuthoring
 					RequestOpen();
 			} });
 		EditorCommands::Register({ "facade.author.edit", "Edit Facade", SEDX_ICON_PENCIL, "",
-			"Open the selected (or armed) facade in the FACADE EDITOR: this project's own in place, a library or other pack's type 1 facade as a copy",
+			"Open the selected (or armed) facade in the FACADE EDITOR: this project's own in place, a library or other pack's as a copy (its textures, and a type 2's objects, copied along)",
 			[](EditorContext *) { return CanEdit(TargetResource()); }, nullptr,
 			[](EditorContext *)
 			{
