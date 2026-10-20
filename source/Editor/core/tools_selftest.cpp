@@ -36,6 +36,7 @@
 #include "editor_scene.h"
 #include "editor_selection.h"
 #include "editor_tools.h"
+#include "facade_authoring.h"
 #include "facade_tool.h"
 #include "node_tool.h"
 #include "transform_tool.h"
@@ -49,6 +50,9 @@
 #include <SceneryEditorX/renderer/gpu_scene.h>
 #include <SceneryEditorX/renderer/scene_picking.h>
 #include <SceneryEditorX/scene/components/renderable.h>
+#include <SceneryEditorX/filesystem/vfs.h>
+#include <SceneryEditorX/xplane/xp_facade_writer.h>
+#include <SceneryEditorX/xplane/xp_texture_loader.h>
 #include <SceneryEditorX/xplane/xp_scene.h>
 
 // -------------------------------------------------------
@@ -100,6 +104,11 @@ namespace SceneryEditorX::ToolsSelfTest
 			FacadeShowcaseMenu,
 			FacadeShowcaseHold,
 			FacadeHotboxHold,
+			AuthorBuilding,
+			AuthorBuildingDrawn,
+			AuthorBuildingLive,
+			AuthorCurb,
+			AuthorCurbDrawn,
 			FacadesUndo,
 			Delete,
 			DeleteUndo,
@@ -148,6 +157,9 @@ namespace SceneryEditorX::ToolsSelfTest
 			int facadeEdits = 0;					// Undo steps the facade tests pushed
 			double doorLength = 0.0;				// The door facade's first natural length
 			bool facadeShowcase = false;			// --facade-showcase
+			std::vector<std::filesystem::path> authoredFiles;	// Files the authoring steps wrote (removed at the end)
+			std::filesystem::path authoredFolder;	// The project's facades folder when the test created it
+			float authoredScale = 0.0f;				// The building's SCALE after the live edit
 			bool hadRecovery = false;			// The project had unsaved work from an earlier session when the test started
 			bool showcase = false;				// --tools-selftest-showcase
 			std::optional<Target> showcaseOther;	// The bezier shape shown beside the B-spline pavement
@@ -1166,8 +1178,153 @@ namespace SceneryEditorX::ToolsSelfTest
 				FacadeTool::SelectWalls({}, {});
 				EditorTools::SetTool(EditorTools::Tool::Select);
 				s.wait = 4;
+				s.step = Step::AuthorBuilding;
+				break;
+
+			case Step::AuthorBuilding:
+			{
+				// A new type 1 building from a texture (the hangar door's, from the X-Plane library), saved into the
+				// project's facades folder, and a preview footprint built with it
+				namespace fs = std::filesystem;
+				const fs::path door = EditorProjects::ResolveResourceFile("lib/airport/hangars/door/Uni/gray_1.fac");
+				XPlane::FacadeAsset doorAsset;
+				fs::path texture;
+				if (!door.empty() && XPlane::LoadFacadeAsset(door, doorAsset))
+					texture = XPlane::TextureLoader::ResolveTexturePath(door.parent_path(), doorAsset.wallTexture);
+				const fs::path folder = EditorProjects::GetProjectFolder() / "facades";
+				if (!fs::exists(folder))
+					s.authoredFolder = folder;
+				const fs::path copied = texture.empty() ? fs::path() : folder / texture.filename();
+				const bool copiedBefore = !copied.empty() && fs::exists(copied);
+				std::string error;
+				const bool made = !texture.empty() && FacadeAuthoring::NewBuilding(texture, &error);
+				if (made && !copiedBefore)
+					s.authoredFiles.push_back(copied);
+				Check(made && FacadeAuthoring::GetKind() == FacadeAuthoring::Kind::Building && FacadeAuthoring::GetProblems().empty(),
+					"author a type 1 building from a texture (" + VFS::ToUtf8(texture.filename()) + (error.empty() ? std::string() : ": " + error) + ")");
+				if (!made)
+				{
+					s.step = Step::FacadesUndo;
+					break;
+				}
+				FacadeAuthoring::SetName("SelfTest_building");
+				XPlane::FacadeAsset &asset = FacadeAuthoring::GetAsset();
+				// Narrower end panels: the left / center edge moves 32 pixels, both panels follow
+				XPlane::FacadeAsset::Wall &wall = asset.walls[0];
+				const float from = wall.leftPanels[0].second;
+				const float to = XPlane::FacadeFromPixels(std::round(from * wall.textureWidth) - 32.0f, wall.textureWidth);
+				const float moved = XPlane::MoveFacadeTextureCut(wall, false, from, to);
+				FacadeAuthoring::MarkEdited();
+				Check(moved == to && wall.centerPanels[0].first == to, "drag the left panel's edge: the center panel follows");
+
+				const bool saved = FacadeAuthoring::Save(&error);
+				s.authoredFiles.push_back(FacadeAuthoring::GetFilePath());
+				XPlane::FacadeAsset reread;
+				const bool read = saved && XPlane::LoadFacadeAsset(FacadeAuthoring::GetFilePath(), reread);
+				Check(read && XPlane::WriteFacadeAsset(reread) == XPlane::WriteFacadeAsset(asset), "save it into the project's facades folder and read it back the same");
+				FacadeAuthoring::RequestOpen();
+				const uint64_t history = EditorHistory::GetRevision();
+				const std::string preview = FacadeAuthoring::PlacePreview(context);
+				if (!preview.empty())
+				{
+					s.facadeItems.push_back(preview);
+					++s.facadeEdits;
+				}
+				Check(!preview.empty() && EditorHistory::GetRevision() == history + 1 && FacadeAuthoring::GetPreviewItem() == preview,
+					"place a preview footprint built with it (one undo step)");
+				if (s.facadeShowcase && !preview.empty())
+				{
+					// Held for frame captures: the FACADE EDITOR panel beside the framed preview
+					EditorSelection::Select(context, Target::ForItem(preview));
+					EditorTools::FrameSelection();
+					EDITOR_INFO_TAG(LOG_TAG, "Facade showcase: the facade editor and its preview for 1200 frames (from frame {})", s.frames);
+				}
+				s.wait = s.facadeShowcase ? 1200 : 150;	// The project scenery rebuilds
+				s.step = Step::AuthorBuildingDrawn;
+				break;
+			}
+
+			case Step::AuthorBuildingDrawn:
+			{
+				const std::string &preview = FacadeAuthoring::GetPreviewItem();
+				Check(!preview.empty() && EditorProjects::GetPlacedEntity(preview) != 0, "the authored building is drawn");
+				// Live preview: a change is saved (and redrawn) shortly after it is made
+				FacadeAuthoring::LiveSave() = true;
+				XPlane::FacadeAsset::Wall &wall = FacadeAuthoring::GetAsset().walls[0];
+				wall.scaleS *= 0.5f;
+				wall.scaleT *= 0.5f;
+				s.authoredScale = wall.scaleS;
+				FacadeAuthoring::MarkEdited();
+				s.wait = 200;	// The delayed save, then the scenery rebuild
+				s.step = Step::AuthorBuildingLive;
+				break;
+			}
+
+			case Step::AuthorBuildingLive:
+			{
+				XPlane::FacadeAsset reread;
+				const bool read = XPlane::LoadFacadeAsset(FacadeAuthoring::GetFilePath(), reread);
+				const std::string &building = FacadeAuthoring::GetPreviewItem();
+				Check(read && !reread.walls.empty() && reread.walls[0].scaleS == s.authoredScale && !FacadeAuthoring::IsDirty() &&
+					!building.empty() && EditorProjects::GetPlacedEntity(building) != 0, "live preview saves the change and the footprint is drawn again");
+				s.step = Step::AuthorCurb;
+				break;
+			}
+
+			case Step::AuthorCurb:
+			{
+				// A sidewalk curb from X-Plane's 15 cm cross-section, textured with the building's texture
+				const std::string texture = FacadeAuthoring::GetAsset().wallTexture;
+				std::string error;
+				const bool made = FacadeAuthoring::NewCurb(XPlane::GetCurbProfilePresets().front(), &error);
+				XPlane::CurbFacadeSpec &spec = FacadeAuthoring::GetCurbSpec();
+				spec.wallTexture = texture;
+				spec.textureLength = 2.0f;
+				FacadeAuthoring::SetName("SelfTest_curb");
+				FacadeAuthoring::MarkEdited();
+				const bool saved = made && FacadeAuthoring::Save(&error);
+				const std::filesystem::path file = FacadeAuthoring::GetFilePath();
+				std::filesystem::path specFile = file;
+				specFile.replace_extension(".fac.json");
+				s.authoredFiles.push_back(file);
+				s.authoredFiles.push_back(specFile);
+				const std::vector<std::pair<float, float>> profile = spec.profile;
+				// Opened again: the cross-section comes back from the spec saved beside it
+				const bool reopened = saved && FacadeAuthoring::Edit(FacadeAuthoring::GetResource(), &error) && FacadeAuthoring::GetKind() == FacadeAuthoring::Kind::Curb &&
+					FacadeAuthoring::GetCurbSpec().profile == profile;
+				Check(saved && std::filesystem::exists(specFile) && reopened && FacadeAuthoring::GetProblems().empty(),
+					"author a 15 cm sidewalk curb, save it and open it again from its spec" + (error.empty() ? std::string() : ": " + error));
+				const uint64_t history = EditorHistory::GetRevision();
+				const std::string preview = saved ? FacadeAuthoring::PlacePreview(context) : std::string();
+				if (!preview.empty())
+				{
+					s.facadeItems.push_back(preview);
+					++s.facadeEdits;
+				}
+				const XPlane::FacadeAsset *placed = FacadeTool::GetAsset(FacadeAuthoring::GetResource());
+				Check(!preview.empty() && EditorHistory::GetRevision() == history + 1 && placed && XPlane::GetFacadeFamily(*placed) == XPlane::FacadeFamily::Ground &&
+					placed->floors.size() == 1 && placed->floors[0].curvedSegments.size() == placed->floors[0].segments.size(),
+					"place the curb: a ground facade with curved segment variants");
+				if (s.facadeShowcase && !preview.empty())
+				{
+					// Held for frame captures: the curb's cross-section in the FACADE EDITOR beside the framed curb
+					EditorSelection::Select(context, Target::ForItem(preview));
+					EditorTools::FrameSelection();
+					EDITOR_INFO_TAG(LOG_TAG, "Facade showcase: the curb editor and its preview for 1200 frames (from frame {})", s.frames);
+				}
+				s.wait = s.facadeShowcase ? 1200 : 150;
+				s.step = Step::AuthorCurbDrawn;
+				break;
+			}
+
+			case Step::AuthorCurbDrawn:
+			{
+				const std::string &preview = FacadeAuthoring::GetPreviewItem();
+				Check(!preview.empty() && EditorProjects::GetPlacedEntity(preview) != 0, "the authored curb is drawn");
+				s.wait = 4;
 				s.step = Step::FacadesUndo;
 				break;
+			}
 
 			case Step::FacadesUndo:
 			{
@@ -1178,6 +1335,16 @@ namespace SceneryEditorX::ToolsSelfTest
 				Check(document && gone && document->GetProject().CountItems() == s.itemsBefore,
 					"undo every facade step (" + std::to_string(s.facadeEdits) + "): the project is as it was");
 				s.facadeItems.clear();
+				// The facades and textures the authoring steps wrote go again (and the facades folder when the test made it)
+				std::error_code ec;
+				for (const std::filesystem::path &file : s.authoredFiles)
+					std::filesystem::remove(file, ec);
+				if (!s.authoredFolder.empty() && std::filesystem::is_empty(s.authoredFolder, ec))
+					std::filesystem::remove(s.authoredFolder, ec);
+				if (!s.authoredFiles.empty())
+					EditorProjects::ReloadArt();
+				s.authoredFiles.clear();
+				s.authoredFolder.clear();
 				s.wait = 4;
 				s.step = Step::Delete;
 				break;

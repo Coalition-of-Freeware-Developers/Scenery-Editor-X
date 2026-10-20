@@ -270,6 +270,7 @@ ADD_EXECUTABLE(XPlaneFormatTests
     ${CMAKE_CURRENT_SOURCE_DIR}/xplane_tests/OverlayTests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/xplane_tests/DsfWriterTests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/xplane_tests/FacadeTests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/xplane_tests/FacadeWriterTests.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/filesystem/vfs.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_obj8.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_library.cpp
@@ -281,6 +282,8 @@ ADD_EXECUTABLE(XPlaneFormatTests
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_dsf.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_assets.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_facade.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_facade_writer.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_facade_authoring.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_overlay.cpp
 )
 

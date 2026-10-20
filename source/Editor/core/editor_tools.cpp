@@ -104,6 +104,7 @@ namespace SceneryEditorX::EditorTools
 			PendingPick menu;
 			ImVec2 menuMouse;
 			ViewportView menuView;
+			ViewportView lastView;				// The viewport as drawn last frame
 		};
 
 		State &S()
@@ -439,6 +440,7 @@ namespace SceneryEditorX::EditorTools
 	bool BeginViewport(EditorContext *context, const ViewportView &view, const bool imageHovered)
 	{
 		State &s = S();
+		s.lastView = view;
 		const ImGuiIO &io = ImGui::GetIO();
 		// The tools get the mouse unless the camera has it (Alt orbits, right / middle buttons look and pan) or a box is being drawn
 		const bool cameraButtons = io.KeyAlt || ImGui::IsMouseDown(ImGuiMouseButton_Right) || ImGui::IsMouseDown(ImGuiMouseButton_Middle);
@@ -641,6 +643,18 @@ namespace SceneryEditorX::EditorTools
 			FrameSelection();
 		if (ImGui::IsKeyPressed(ImGuiKey_X, false))
 			TransformTool::GetSettings().localSpace = !TransformTool::GetSettings().localSpace;
+	}
+
+	bool GetViewCenterOnGround(float position[3])
+	{
+		const ViewportView &view = S().lastView;
+		Point3 ground;
+		if (!view.valid || !view.RayToPlane(ImVec2(view.imageMin.x + view.imageSize.x * 0.5f, view.imageMin.y + view.imageSize.y * 0.5f), 0.0, ground))
+			return false;
+		position[0] = static_cast<float>(ground.x);
+		position[1] = static_cast<float>(ground.y);
+		position[2] = static_cast<float>(ground.z);
+		return true;
 	}
 
 	void FrameSelection()

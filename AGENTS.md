@@ -37,7 +37,11 @@ The dependency-light, cross-platform Catch2 unit suites that only need `source/`
   and .net (road types, virtual types, draped strips) asset parsers and the overlay geometry builder (roads
   drawn as their road type's strips) and facades (`FacadeTests.cpp`: `xp_facade.*` WALL_RULE / SEGMENT_CURVED /
   roof directives, X-Plane's floor and wall-rule choice, WorldEditor's spelling choice, natural wall lengths,
-  curved walls bent along their bezier)
+  curved walls bent along their bezier), the .fac writer and facade authoring (`FacadeWriterTests.cpp`:
+  `xp_facade_writer.*` parse -> write -> parse gives the same asset for type 1 / type 2 facades, the install's
+  default scenery facades included when an X-Plane 12 install is listed in x-plane_install_12.txt (tag
+  `[library-sweep]`, a few seconds; exclude with `"~[library-sweep]"`); `xp_facade_authoring.*` type 1 facades from a
+  texture (panel edges, roofs), type 2 sidewalks / curbs generated from a cross-section)
   (`SceneryEditorX/xplane/xp_obj8.*`, `xp_library.*`, `xp_lights.*`, `xp_apt.*`, `xp_apt_geometry.*`,
   `xp_airport_index.*`, `xp_gateway_types.*`, `xp_dsf.*`, `xp_assets.*`, `xp_overlay.*`, plus `filesystem/vfs.*`,
   which every reader goes through for case-insensitive lookups and atomic writes). Standard library
@@ -125,12 +129,13 @@ g++ -std=c++20 -O2 -pthread -DSEDX_NO_LOGGING -DZoneScoped= $INCS \
 g++ -std=c++20 -O2 -pthread $INCS source/Tests/xplane_tests/XPlaneFormatTests.cpp \
     source/Tests/xplane_tests/AirportTests.cpp source/Tests/xplane_tests/OverlayTests.cpp \
     source/Tests/xplane_tests/DsfWriterTests.cpp source/Tests/xplane_tests/FacadeTests.cpp \
-    source/SceneryEditorX/filesystem/vfs.cpp \
+    source/Tests/xplane_tests/FacadeWriterTests.cpp source/SceneryEditorX/filesystem/vfs.cpp \
     source/SceneryEditorX/xplane/xp_obj8.cpp source/SceneryEditorX/xplane/xp_library.cpp \
     source/SceneryEditorX/xplane/xp_lights.cpp source/SceneryEditorX/xplane/xp_apt.cpp \
     source/SceneryEditorX/xplane/xp_apt_geometry.cpp source/SceneryEditorX/xplane/xp_airport_index.cpp \
     source/SceneryEditorX/xplane/xp_gateway_types.cpp source/SceneryEditorX/xplane/xp_dsf.cpp \
     source/SceneryEditorX/xplane/xp_assets.cpp source/SceneryEditorX/xplane/xp_facade.cpp \
+    source/SceneryEditorX/xplane/xp_facade_writer.cpp source/SceneryEditorX/xplane/xp_facade_authoring.cpp \
     source/SceneryEditorX/xplane/xp_overlay.cpp $LIBS \
     -o build_linux_tests/XPlaneFormatTests
 ./build_linux_tests/XPlaneFormatTests

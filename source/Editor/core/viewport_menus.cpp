@@ -238,7 +238,7 @@ namespace SceneryEditorX::ViewportMenus
 					Submenu(wallsLabel, SEDX_ICON_TH_LIST, [facades]() { FacadeTool::DrawWallTypeMenu(facades); }),
 					Submenu("Height", SEDX_ICON_ARROWS_V, [facades]() { FacadeTool::DrawHeightMenu(facades); }),
 					Submenu("Replace With", SEDX_ICON_RETWEET, [facades]() { FacadeTool::DrawReplaceMenu(facades); }),
-					Command("facade.pick_walls"), Command("facade.front"), Separator(), Command("facade.use"), Command("facade.inspect") } };
+					Command("facade.pick_walls"), Command("facade.front"), Separator(), Command("facade.use"), Command("facade.inspect"), Command("facade.author.edit") } };
 				panels[BottomLeft] = { "REBUILD", {
 					Command("facade.subdivide"), Command("facade.square"), Command("facade.reverse"),
 					Submenu("Add Around", SEDX_ICON_PLUS_SQUARE, [context, facades]()

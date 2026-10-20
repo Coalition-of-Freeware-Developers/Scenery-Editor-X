@@ -101,6 +101,9 @@ namespace SceneryEditorX::EditorTools
 	/* @brief Moves the camera to see the selection. */
 	void FrameSelection();
 
+	/* @brief Where the middle of the viewport (as drawn last frame) meets the ground, in scene meters; false when it looks above the horizon. */
+	bool GetViewCenterOnGround(float position[3]);
+
 	/* @brief Deletes the selected nodes (node tool) or the selection: apt.dat rows and project items undoably. */
 	bool DeleteSelection(EditorContext *context);
 

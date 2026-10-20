@@ -37,6 +37,7 @@
 #include "editor_theme.h"
 #include "editor_tools.h"
 #include "editor_ui.h"
+#include "facade_authoring.h"
 #include "transform_tool.h"
 #include <algorithm>
 #include <cmath>
@@ -1063,6 +1064,24 @@ namespace SceneryEditorX::FacadeTool
 			if (ImGui::BeginMenu(EditorUI::IconLabel(SEDX_ICON_BOOK, "Library").c_str()))
 			{
 				DrawLibraryMenu([](const std::string &resource) { SetResource(resource); });
+				ImGui::EndMenu();
+			}
+			// The project's own facades (made in the FACADE EDITOR), and making a new one
+			const std::vector<std::string> mine = FacadeAuthoring::GetProjectFacades();
+			if (ImGui::BeginMenu(EditorUI::IconLabel(SEDX_ICON_FOLDER_OPEN, "Project facades").c_str(), !mine.empty()))
+			{
+				for (const std::string &resource : mine)
+				{
+					if (ImGui::MenuItem(BaseName(resource).c_str(), nullptr, resource == settings.resource))
+						SetResource(resource);
+					EditorUI::ItemTooltip(resource.c_str());
+				}
+				ImGui::EndMenu();
+			}
+			if (ImGui::BeginMenu(EditorUI::IconLabel(SEDX_ICON_PLUS, "New facade").c_str(), EditorProjects::GetDocument() != nullptr))
+			{
+				for (const char *id : { "facade.author.building", "facade.author.curb", "facade.author.edit" })
+					EditorCommands::MenuItem(id, context);
 				ImGui::EndMenu();
 			}
 			ImGui::EndCombo();

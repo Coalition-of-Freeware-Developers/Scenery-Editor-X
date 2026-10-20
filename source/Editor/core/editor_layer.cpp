@@ -42,11 +42,13 @@
 #include "editor_theme.h"
 #include "editor_ui.h"
 #include "editor_xplane.h"
+#include "facade_authoring.h"
 #include "facade_tool.h"
 #include "viewport_menus.h"
 #include <Editor/panels/airport_panel.h>
 #include <Editor/panels/asset_shelf_panel.h>
 #include <Editor/panels/console_panel.h>
+#include <Editor/panels/facade_editor_panel.h>
 #include <Editor/panels/facade_inspector_panel.h>
 #include <Editor/panels/outliner_panel.h>
 #include <Editor/panels/project_panel.h>
@@ -109,14 +111,15 @@ namespace SceneryEditorX
 		constexpr PanelInfo PANEL_AIRPORTS			= { "Airports",			"AIRPORTS###Airports",				SEDX_ICON_GLOBE };
 		constexpr PanelInfo PANEL_PROJECT			= { "Project",			"PROJECT###Project",				SEDX_ICON_FILE_TEXT };
 		constexpr PanelInfo PANEL_FACADES			= { "FacadeInspector",	"FACADES###FacadeInspector",		SEDX_ICON_BUILDING_O };
+		constexpr PanelInfo PANEL_FACADE_EDITOR		= { "FacadeEditor",		"FACADE EDITOR###FacadeEditor",		SEDX_ICON_PICTURE_O };
 
 		constexpr PanelInfo s_StripPanels[] =
 		{
-			PANEL_PROPERTIES, PANEL_OUTLINER, PANEL_PROJECT, PANEL_AIRPORTS, PANEL_XPLANE, PANEL_FACADES, PANEL_ASSETS, PANEL_CONSOLE, PANEL_SCENE_SETTINGS, PANEL_CAMERA, PANEL_RENDERER, PANEL_VIEWPORT
+			PANEL_PROPERTIES, PANEL_OUTLINER, PANEL_PROJECT, PANEL_AIRPORTS, PANEL_XPLANE, PANEL_FACADES, PANEL_FACADE_EDITOR, PANEL_ASSETS, PANEL_CONSOLE, PANEL_SCENE_SETTINGS, PANEL_CAMERA, PANEL_RENDERER, PANEL_VIEWPORT
 		};
 
 		/* Bump when the default layout changes so existing users get the new arrangement once. */
-		constexpr const char *DOCKSPACE_NAME = "SEDX_EditorDockspace_v6";
+		constexpr const char *DOCKSPACE_NAME = "SEDX_EditorDockspace_v7";
 
 		constexpr ImGuiWindowFlags SIDE_BAR_FLAGS = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoSavedSettings;
 
@@ -268,6 +271,7 @@ namespace SceneryEditorX
 		// Commands the menus offer (menu bar, right-click quad menu, Space hotbox), and the menus themselves
 		ViewportMenus::RegisterCommands();
 		FacadeTool::RegisterCommands();
+		FacadeAuthoring::RegisterCommands();
 		BuildMainMenus();
 		EditorCamera::CaptureHome();
 		UpdateWindowTitle();
@@ -314,6 +318,7 @@ namespace SceneryEditorX
 		m_PanelManager->AddPanel<AirportPanel>(PanelCategory::Editor, PANEL_AIRPORTS.id, "Airports", true, &m_Context);
 		m_PanelManager->AddPanel<ProjectPanel>(PanelCategory::Editor, PANEL_PROJECT.id, "Project", true, &m_Context);
 		m_PanelManager->AddPanel<FacadeInspectorPanel>(PanelCategory::Editor, PANEL_FACADES.id, "Facades", true, &m_Context);
+		m_PanelManager->AddPanel<FacadeEditorPanel>(PanelCategory::Editor, PANEL_FACADE_EDITOR.id, "Facade Editor", false, &m_Context);
 		m_PanelManager->AddPanel<SceneSettingsPanel>(PanelCategory::Settings, PANEL_SCENE_SETTINGS.id, "Scene Settings", true);
 		m_PanelManager->AddPanel<CameraSettingsPanel>(PanelCategory::Settings, PANEL_CAMERA.id, "Camera", true);
 		m_PanelManager->AddPanel<RendererStatsPanel>(PanelCategory::Settings, PANEL_RENDERER.id, "Renderer", true);
@@ -383,6 +388,7 @@ namespace SceneryEditorX
 		{
 			SEDX_PERF_SCOPE("Main: EditorProjects::Tick");
 			EditorProjects::Tick(&m_Context);
+			FacadeAuthoring::Tick();	// The facade editor's live preview
 		}
 
 		// Selection: follow what other panels selected last frame, drop what rebuilds removed
@@ -412,6 +418,13 @@ namespace SceneryEditorX
 			if (PanelData *panel = FindPanel(PANEL_FACADES.id))
 				panel->IsOpen = true;
 			ImGui::SetWindowFocus(PANEL_FACADES.window);
+		}
+		// So do the facade editor's commands (new building / curb, edit) for the FACADE EDITOR panel
+		if (FacadeAuthoring::ConsumeOpenRequest())
+		{
+			if (PanelData *panel = FindPanel(PANEL_FACADE_EDITOR.id))
+				panel->IsOpen = true;
+			ImGui::SetWindowFocus(PANEL_FACADE_EDITOR.window);
 		}
 
 		// Outlines for the selected / hovered objects (uploaded only when they changed)
@@ -567,6 +580,11 @@ namespace SceneryEditorX
 
 	void EditorLayer::DrawFacadeMenu()
 	{
+		// Making facades: buildings from a texture, sidewalks / curbs from a cross-section, editing one (a copy of a library facade)
+		for (const char *id : { "facade.author.building", "facade.author.curb", "facade.author.edit", "facade.author.open" })
+			EditorCommands::MenuItem(id, &m_Context);
+		ImGui::Separator();
+
 		// Drawing: the tool and its modes, what to draw with
 		EditorCommands::MenuItem("facade.tool", &m_Context);
 		for (const char *id : { "facade.draw.rectangle", "facade.draw.polygon", "facade.draw.circle", "facade.draw.line" })
@@ -838,7 +856,8 @@ namespace SceneryEditorX
 		//  | PROPERTIES |        VIEWPORT          +------------------+
 		//  |            |                          | SCENE SETTINGS / |
 		//  |            +--------------------------+ CAMERA /         |
-		//  |            | ASSETS / CONSOLE         | RENDERER/FACADES |
+		//  |            | ASSETS / CONSOLE         | RENDERER/FACADES/|
+		//  |            |                          | FACADE EDITOR    |
 		//  +------------+--------------------------+------------------+
 		ImGuiID center = dockspaceId;
 		const ImGuiID left = ImGui::DockBuilderSplitNode(center, ImGuiDir_Left, 0.18f, nullptr, &center);
@@ -853,6 +872,7 @@ namespace SceneryEditorX
 		ImGui::DockBuilderDockWindow(PANEL_CAMERA.window, rightBottom);
 		ImGui::DockBuilderDockWindow(PANEL_RENDERER.window, rightBottom);
 		ImGui::DockBuilderDockWindow(PANEL_FACADES.window, rightBottom);
+		ImGui::DockBuilderDockWindow(PANEL_FACADE_EDITOR.window, rightBottom);
 		ImGui::DockBuilderDockWindow(PANEL_ASSETS.window, bottom);
 		ImGui::DockBuilderDockWindow(PANEL_CONSOLE.window, bottom);
 		ImGui::DockBuilderDockWindow(PANEL_XPLANE.window, bottom);

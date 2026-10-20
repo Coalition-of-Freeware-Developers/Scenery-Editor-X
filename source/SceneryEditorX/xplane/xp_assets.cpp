@@ -415,6 +415,35 @@ namespace SceneryEditorX::XPlane
 
 	// -------------------------------------------------------
 
+	namespace
+	{
+		enum class FacadeRowKind : uint8_t
+		{
+			Unknown,	// Not modeled: kept verbatim inside a shader section
+			Shader,		// Modeled shader rows (a shader section stays open)
+			Header,		// Facade-wide switches that may appear anywhere (a shader section stays open)
+			Structure	// LODs, walls, floors, segments, roofs... (closes a shader section)
+		};
+
+		FacadeRowKind GetFacadeRowKind(const std::string_view key)
+		{
+			static constexpr std::string_view SHADER[] = { "SHADER_WALL", "SHADER_ROOF", "TEXTURE", "TEXTURE_NORMAL", "NO_BLEND", "TWO_SIDED" };
+			static constexpr std::string_view HEADER[] = { "RING", "GRADED", "DRAPED", "DOUBLED", "FLOORS_MIN", "FLOORS_MAX", "LAYER_GROUP", "LAYER_GROUP_DRAPED",
+				"HARD_WALL", "HARD_ROOF", "NO_ROOF_MESH", "NO_WALL_MESH" };
+			static constexpr std::string_view STRUCTURE[] = { "LOD", "TEX_SIZE", "ROOF", "ROOF_SCALE", "WALL", "WALL_RULE", "SCALE", "ROOF_SLOPE", "BASEMENT_DEPTH",
+				"LEFT", "CENTER", "RIGHT", "BOTTOM", "MIDDLE", "TOP", "OBJ", "FLOOR", "SEGMENT", "SEGMENT_CURVED", "MESH", "VERTEX", "IDX", "ATTACH_DRAPED",
+				"ATTACH_GRADED", "SPELLING", "ROOF_HEIGHT", "TWO_SIDED_ROOF", "ROOF_OBJ", "ROOF_OBJ_HEADING", "FACADE_SCRAPER", "FACADE_SCRAPER_MODEL",
+				"FACADE_SCRAPER_MODEL_OFFSET", "FACADE_SCRAPER_PAD" };
+			if (std::ranges::find(SHADER, key) != std::end(SHADER))
+				return FacadeRowKind::Shader;
+			if (std::ranges::find(HEADER, key) != std::end(HEADER))
+				return FacadeRowKind::Header;
+			if (std::ranges::find(STRUCTURE, key) != std::end(STRUCTURE))
+				return FacadeRowKind::Structure;
+			return FacadeRowKind::Unknown;
+		}
+	}
+
 	bool FacadeAsset::WallFilter::Accepts(const double width, const double relativeHeading) const
 	{
 		if (width < minWidth || width > maxWidth)
@@ -441,8 +470,16 @@ namespace SceneryEditorX::XPlane
 
 		bool roofSection = false;
 		bool farLod = false;
+		bool lodSeen = false;
 		float scaleS = 1.0f;	// TEX_SIZE normalizes pixel coordinates (type 1)
 		float scaleT = 1.0f;
+		float texWidth = 0.0f;	// That TEX_SIZE, 0 when coordinates are fractions
+		float texHeight = 0.0f;
+		bool wallRows = false;	// The current type 1 wall has texture rows (a TEX_SIZE after them no longer applies to it)
+		bool roofRows = false;
+		// The shader section unmodeled rows are kept for: open from SHADER_WALL / SHADER_ROOF (the walls' from the start)
+		// until the first structural row
+		std::vector<std::string> *shaderRows = &out.wallShaderRows;
 		FacadeAsset::Segment *segment = nullptr;
 		FacadeAsset::Mesh *mesh = nullptr;
 
@@ -485,19 +522,43 @@ namespace SceneryEditorX::XPlane
 			{
 				// Only the nearest LOD's walls are kept
 				farLod = ParseFloat(tokens[1]) > 0.1f;
+				if (!farLod && !lodSeen && tokens.size() >= 3)
+					out.lodFar = ParseFloat(tokens[2], out.lodFar);
+				lodSeen = true;
+				shaderRows = nullptr;
 				return;
 			}
 			if (farLod)
 				return;
 
+			// Rows the parser doesn't model are kept verbatim while a shader section is open (EXPORT rows some tools
+			// leave in facades are library business and dropped); structural rows close the section
+			const FacadeRowKind kind = GetFacadeRowKind(key);
+			if (kind == FacadeRowKind::Unknown)
+			{
+				if (shaderRows && !key.starts_with("EXPORT"))
+					shaderRows->push_back(std::string(Trim(line)));
+				return;
+			}
+			if (kind == FacadeRowKind::Structure)
+				shaderRows = nullptr;
+
 			if (key == "SHADER_ROOF")
 			{
 				roofSection = true;
+				shaderRows = &out.roofShaderRows;
 				return;
 			}
 			if (key == "SHADER_WALL")
 			{
 				roofSection = false;
+				shaderRows = &out.wallShaderRows;
+				return;
+			}
+			// The roof's blending and sidedness are the roof shader's business: kept with its rows
+			if ((key == "NO_BLEND" || key == "TWO_SIDED") && shaderRows == &out.roofShaderRows)
+			{
+				shaderRows->push_back(std::string(Trim(line)));
 				return;
 			}
 			if (key == "LAYER_GROUP" && tokens.size() >= 2)
@@ -522,14 +583,11 @@ namespace SceneryEditorX::XPlane
 				out.scrapers.push_back(scraper);
 				return;
 			}
-			if ((key == "FACADE_SCRAPER_MODEL" || key == "FACADE_SCRAPER_MODEL_OFFSET") && !out.scrapers.empty())
+			if ((key == "FACADE_SCRAPER_MODEL" || key == "FACADE_SCRAPER_MODEL_OFFSET" || key == "FACADE_SCRAPER_PAD") && !out.scrapers.empty())
 			{
-				++out.scrapers.back().models;
-				return;
-			}
-			if (key == "FACADE_SCRAPER_PAD" && !out.scrapers.empty())
-			{
-				++out.scrapers.back().pads;
+				FacadeAsset::Scraper &scraper = out.scrapers.back();
+				++(key == "FACADE_SCRAPER_PAD" ? scraper.pads : scraper.models);
+				scraper.rows.push_back(std::string(Trim(line)));
 				return;
 			}
 			if (key == "TEXTURE")
@@ -539,8 +597,8 @@ namespace SceneryEditorX::XPlane
 			}
 			if (key == "TEXTURE_NORMAL" && tokens.size() >= 3)
 			{
-				if (!roofSection)
-					out.wallTextureNormal = CleanPath(RestOfLine(line, 2));
+				(roofSection ? out.roofTextureNormal : out.wallTextureNormal) = CleanPath(RestOfLine(line, 2));
+				(roofSection ? out.roofTextureNormalScale : out.wallTextureNormalScale) = ParseFloat(tokens[1], 1.0f);
 				return;
 			}
 			if (key == "NO_BLEND")
@@ -568,12 +626,13 @@ namespace SceneryEditorX::XPlane
 				out.graded = false;
 				return;
 			}
-			if (key == "ROOF_SCALE" && tokens.size() >= 3)
+			if (key == "ROOF_SCALE" && tokens.size() >= 2)
 			{
 				if (out.IsType2())
 				{
+					// ROOF_SCALE <meters x> [<meters y>]: y defaults to x
 					out.roofScaleS = ParseFloat(tokens[1], 1.0f);
-					out.roofScaleT = ParseFloat(tokens[2], out.roofScaleS);
+					out.roofScaleT = tokens.size() >= 3 ? ParseFloat(tokens[2], out.roofScaleS) : out.roofScaleS;
 					if (out.roofScaleT == 0.0f)
 						out.roofScaleT = out.roofScaleS;
 				}
@@ -589,6 +648,11 @@ namespace SceneryEditorX::XPlane
 						out.roofScaleS = sizeX / (s2 - s1);
 						out.roofScaleT = sizeY / (t2 - t1);
 					}
+					out.roofCenter = { ParseFloat(tokens[3]) * scaleS, ParseFloat(tokens[4]) * scaleT };
+					out.roofScaled = true;
+					out.roofTextureWidth = texWidth;
+					out.roofTextureHeight = texHeight;
+					roofRows = true;
 					out.hasRoof = true;
 				}
 				return;
@@ -602,6 +666,16 @@ namespace SceneryEditorX::XPlane
 					const float w = ParseFloat(tokens[1]), h = ParseFloat(tokens[2]);
 					scaleS = w > 0.0f ? 1.0f / w : 1.0f;
 					scaleT = h > 0.0f ? 1.0f / h : 1.0f;
+					// "TEX_SIZE 1 1" is the same as fractions
+					const bool fractions = w == 1.0f && h == 1.0f;
+					texWidth = w > 0.0f && !fractions ? w : 0.0f;
+					texHeight = h > 0.0f && !fractions ? h : 0.0f;
+					// A TEX_SIZE right after WALL still applies to that wall's rows
+					if (FacadeAsset::Wall *wall = currentWall(); wall && !wallRows)
+					{
+						wall->textureWidth = texWidth;
+						wall->textureHeight = texHeight;
+					}
 				}
 				else if (key == "WALL" && tokens.size() >= 3)
 				{
@@ -610,7 +684,10 @@ namespace SceneryEditorX::XPlane
 					wall.maxWidth = ParseFloat(tokens[2], 9999.0f);
 					wall.filters.push_back(parseFilter(tokens));
 					wall.name = tokens.size() >= 6 ? std::string(RestOfLine(line, 5)) : std::string();
+					wall.textureWidth = texWidth;
+					wall.textureHeight = texHeight;
 					out.walls.push_back(std::move(wall));
+					wallRows = false;
 					roofSection = false;
 				}
 				else if (key == "HARD_WALL" && tokens.size() >= 2)
@@ -619,12 +696,29 @@ namespace SceneryEditorX::XPlane
 					out.hardRoof = std::string(tokens[1]);
 				else if (key == "DOUBLED")
 					out.doubled = tokens.size() < 2 || ParseInt(tokens[1], 1) > 0;
+				else if (key == "ROOF" && tokens.size() >= 3)
+				{
+					// Roof corners, wherever they are in the LOD
+					if (!roofRows)
+					{
+						out.roofTextureWidth = texWidth;
+						out.roofTextureHeight = texHeight;
+						roofRows = true;
+					}
+					out.roofUv.emplace_back(ParseFloat(tokens[1]) * scaleS, ParseFloat(tokens[2]) * scaleT);
+					out.hasRoof = true;
+				}
+				else if (key == "FLOORS_MIN" && tokens.size() >= 2)
+					out.floorsMin = ParseInt(tokens[1], 1);
+				else if (key == "FLOORS_MAX" && tokens.size() >= 2)
+					out.floorsMax = ParseInt(tokens[1], 999);
 				else if (FacadeAsset::Wall *wall = currentWall())
 				{
 					const auto range = [&](std::vector<std::pair<float, float>> &list, const float scale)
 					{
 						if (tokens.size() >= 3)
 							list.emplace_back(ParseFloat(tokens[1]) * scale, ParseFloat(tokens[2]) * scale);
+						wallRows = true;
 					};
 					if (key == "WALL_RULE" && tokens.size() >= 3)
 						wall->filters.push_back(parseFilter(tokens));
@@ -639,32 +733,17 @@ namespace SceneryEditorX::XPlane
 						wall->slant = tokens.size() >= 3 && tokens[2] == "SLANT";
 					}
 					else if (key == "BASEMENT_DEPTH" && tokens.size() >= 2)
+					{
 						wall->basement = ParseFloat(tokens[1]) * scaleT;
+						wallRows = true;
+					}
 					else if (key == "LEFT") range(wall->leftPanels, scaleS);
 					else if (key == "CENTER") range(wall->centerPanels, scaleS);
 					else if (key == "RIGHT") range(wall->rightPanels, scaleS);
 					else if (key == "BOTTOM") range(wall->bottomFloors, scaleT);
 					else if (key == "MIDDLE") range(wall->middleFloors, scaleT);
 					else if (key == "TOP") range(wall->topFloors, scaleT);
-					else if (key == "ROOF" && tokens.size() >= 3)
-					{
-						out.roofUv.emplace_back(ParseFloat(tokens[1]) * scaleS, ParseFloat(tokens[2]) * scaleT);
-						out.hasRoof = true;
-					}
-					else if (key == "FLOORS_MIN" && tokens.size() >= 2)
-						out.floorsMin = ParseInt(tokens[1], 1);
-					else if (key == "FLOORS_MAX" && tokens.size() >= 2)
-						out.floorsMax = ParseInt(tokens[1], 999);
 				}
-				else if (key == "ROOF" && tokens.size() >= 3)
-				{
-					out.roofUv.emplace_back(ParseFloat(tokens[1]) * scaleS, ParseFloat(tokens[2]) * scaleT);
-					out.hasRoof = true;
-				}
-				else if (key == "FLOORS_MIN" && tokens.size() >= 2)
-					out.floorsMin = ParseInt(tokens[1], 1);
-				else if (key == "FLOORS_MAX" && tokens.size() >= 2)
-					out.floorsMax = ParseInt(tokens[1], 999);
 				return;
 			}
 

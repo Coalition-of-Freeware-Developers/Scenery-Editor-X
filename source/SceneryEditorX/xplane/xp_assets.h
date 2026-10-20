@@ -194,6 +194,8 @@ namespace SceneryEditorX::XPlane
 			float roofSlope = 0.0f;
 			bool slant = false;				// ROOF_SLOPE ... SLANT: the sloped row shortens instead of stretching
 			float basement = 0.0f;			// Normalized t below ground
+			float textureWidth = 0.0f;		// TEX_SIZE (pixels) its rows are written in; 0 when they are fractions
+			float textureHeight = 0.0f;
 			std::vector<std::pair<float, float>> leftPanels;		// Normalized s ranges
 			std::vector<std::pair<float, float>> centerPanels;
 			std::vector<std::pair<float, float>> rightPanels;
@@ -205,7 +207,7 @@ namespace SceneryEditorX::XPlane
 		/* Type 2: walls are built from segment meshes picked by spellings. */
 		struct Mesh
 		{
-			std::vector<float> positions;	// x (along the wall), y (up), z (in / out), 3 per vertex
+			std::vector<float> positions;	// x (outward), y (up), z (-z along the wall), 3 per vertex
 			std::vector<float> normals;
 			std::vector<float> uvs;
 			std::vector<uint32_t> indices;
@@ -266,8 +268,8 @@ namespace SceneryEditorX::XPlane
 			std::vector<Segment> segments;
 			std::vector<Segment> curvedSegments;	// SEGMENT_CURVED: what a bezier wall bends (same indices as segments)
 			std::vector<WallRule> walls;
-			std::vector<float> roofHeights;	// ROOF_HEIGHT values (meters), one per allowed roof
-			std::vector<Roof> roofs;		// The same roofs with their options and objects
+			std::vector<float> roofHeights;	// ROOF_HEIGHT values (meters), one per allowed roof (mirrors roofs)
+			std::vector<Roof> roofs;		// The same roofs with their options and objects (what a writer writes)
 			std::string hardRoof;			// HARD_ROOF surface, empty when the roofs aren't solid
 			float height = 0.0f;			// Its top roof, else its tallest segment (computed after parsing): what a DSF height matches
 		};
@@ -281,6 +283,7 @@ namespace SceneryEditorX::XPlane
 			int floors = 0;
 			int models = 0;					// FACADE_SCRAPER_MODEL(_OFFSET) rows
 			int pads = 0;					// FACADE_SCRAPER_PAD rows
+			std::vector<std::string> rows;	// Those rows, verbatim (written back as they were)
 		};
 
 		int version = 800;					// 800 = type 1, 1000 = type 2
@@ -290,17 +293,33 @@ namespace SceneryEditorX::XPlane
 		std::string wallTexture;			// Relative to the .fac
 		std::string roofTexture;
 		std::string wallTextureNormal;
-		float noBlendCutoff = -1.0f;
+		float wallTextureNormalScale = 1.0f;	// TEXTURE_NORMAL <ratio> <file>
+		std::string roofTextureNormal;
+		float roofTextureNormalScale = 1.0f;
+		float noBlendCutoff = -1.0f;		// The walls' NO_BLEND
 		std::string layerGroup;				// LAYER_GROUP name and offset, empty for the default ("objects")
 		int layerOffset = 0;
 		std::string drapedLayerGroup;		// LAYER_GROUP_DRAPED
 		int drapedLayerOffset = 0;
 		std::vector<Scraper> scrapers;
 
+		/**
+		 * Rows of the SHADER_WALL / SHADER_ROOF sections the editor doesn't model (TEXTURE_LIT, TEXTURE_MODULATOR,
+		 * NORMAL_METALNESS, DECAL_LIB, SNOW_ALBEDO_LUMA, the roof's NO_BLEND and TWO_SIDED...), verbatim, so a facade
+		 * written back keeps its X-Plane 12 material. Rows before any SHADER_ line belong to the walls.
+		 */
+		std::vector<std::string> wallShaderRows;
+		std::vector<std::string> roofShaderRows;
+
 		// Type 1
 		std::vector<Wall> walls;
+		float lodFar = 10000.0f;			// The nearest LOD's far distance, meters (LOD 0 <far>)
 		bool hasRoof = false;
-		std::vector<std::pair<float, float>> roofUv;	// ROOF s t corners, normalized
+		std::vector<std::pair<float, float>> roofUv;	// ROOF s t corners, normalized (ROOF_SCALE: its rectangle, counter-clockwise from s1 t1)
+		bool roofScaled = false;			// ROOF_SCALE (a texture rectangle repeated by meters) instead of ROOF corners
+		std::pair<float, float> roofCenter{ 0.0f, 0.0f };	// ROOF_SCALE's reference point, normalized
+		float roofTextureWidth = 0.0f;		// TEX_SIZE (pixels) the roof rows are written in; 0 when fractions
+		float roofTextureHeight = 0.0f;
 		float roofScaleS = 1.0f;			// Meters per roof texture repeat (ROOF_SCALE), type 2 too
 		float roofScaleT = 1.0f;
 		int floorsMin = 1;

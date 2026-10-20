@@ -33,6 +33,7 @@
 #include <Editor/core/editor_theme.h>
 #include <Editor/core/editor_tools.h>
 #include <Editor/core/editor_ui.h>
+#include <Editor/core/facade_authoring.h>
 #include <Editor/core/facade_tool.h>
 #include <algorithm>
 #include <cmath>
@@ -114,12 +115,21 @@ namespace SceneryEditorX
 			EditorUI::ItemTooltip("Read the facades (and the project's other art) again after editing them on disk, and redraw");
 			ImGui::SameLine();
 			ImGui::BeginDisabled(resource.empty() || !EditorProjects::GetDocument());
-			if (ImGui::Button(EditorUI::IconLabel(SEDX_ICON_PENCIL, "Draw with it").c_str()))
+			if (ImGui::Button(EditorUI::IconLabel(SEDX_ICON_BUILDING_O, "Draw with it").c_str()))
 			{
 				FacadeTool::SetResource(resource);
 				EditorTools::SetTool(EditorTools::Tool::Facade);
 			}
 			ImGui::EndDisabled();
+			ImGui::SameLine();
+			ImGui::BeginDisabled(!FacadeAuthoring::CanEdit(resource));
+			if (ImGui::Button(EditorUI::IconLabel(SEDX_ICON_PENCIL, "Edit").c_str()))
+			{
+				if (FacadeAuthoring::Edit(resource))
+					FacadeAuthoring::RequestOpen();
+			}
+			ImGui::EndDisabled();
+			EditorUI::ItemTooltip("Open it in the FACADE EDITOR: this project's own facades in place, other type 1 facades (the X-Plane library's...) as a copy in the project's facades folder");
 
 			const XPlane::FacadeAsset *asset = resource.empty() ? nullptr : FacadeTool::GetAsset(resource);
 			if (resource.empty())
