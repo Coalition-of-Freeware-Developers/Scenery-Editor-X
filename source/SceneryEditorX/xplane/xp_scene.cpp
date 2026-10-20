@@ -796,7 +796,6 @@ namespace SceneryEditorX::XPlane
 		}
 
 		Datarefs::Tick(deltaSeconds);
-		ObjectAsset::SetLitTexturesVisible(Datarefs::GetNightFactor() > 0.5f);
 
 		// The placeholder sun and sky follow the world environment's sun (kept a little above the horizon: below it the
 		// placeholder light is faded out by the daylight factor anyway)

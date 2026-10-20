@@ -131,6 +131,11 @@ public struct MaterialParameters
     public float anisotropic_rotation;
     public float clearcoat;
     public float clearcoat_roughness;
+    public float2 padding3;
+
+    // X-Plane materials (xp_material.slang): specular gain, super roughness floor, F0 when the normal map carries
+    // none, emissive luminance in nits (0: emissive texels are display values)
+    public float4 xp;
 
     public bool has_texture_albedo() { return (flags & (1 << 2)) != 0; }
     public bool has_texture_normal() { return (flags & (1 << 1)) != 0; }
@@ -139,6 +144,8 @@ public struct MaterialParameters
     public bool has_texture_metalness() { return (flags & (1 << 4)) != 0; }
     public bool has_texture_emissive() { return (flags & (1 << 6)) != 0; }
     public bool emissive_from_albedo() { return (flags & (1 << 15)) != 0; }
+    public uint xp_normal_mode() { return (flags >> 16) & 3u; }	// xp_material.slang xp_normal_*
+    public bool is_xp_material() { return (flags & (1 << 18)) != 0; }
 };
 
 // struct which forms the bindless light parameters array
@@ -174,6 +181,8 @@ public [[vk::binding(1)]] Texture2D tex_normal : register(t1);
 public [[vk::binding(2)]] Texture2D tex_material : register(t2);
 public [[vk::binding(3)]] Texture2D tex_velocity : register(t3);
 public [[vk::binding(4)]] Texture2D tex_depth : register(t4);
+public [[vk::binding(5)]] Texture2D tex_emissive : register(t5);	// emissive nits x pre-exposure
+public [[vk::binding(54)]] Texture2D tex_weather : register(t54);	// weather receptivity (rain, puddles, snow, ice)
 
 // other
 public [[vk::binding(6)]] Texture2D tex_ssao : register(t6);

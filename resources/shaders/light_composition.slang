@@ -44,12 +44,12 @@ void main_comp(uint3 thread_id : SV_DispatchThreadID)
 
 	float4 gbuffer_albedo = tex_albedo[thread_id.xy];
 	float4 gbuffer_normal = tex_normal[thread_id.xy];
-	float4 gbuffer_mat    = tex_material[thread_id.xy]; // roughness, metalness, emission, occlusion
+	float4 gbuffer_mat    = tex_material[thread_id.xy]; // lighting factor, roughness, metalness / F0, occlusion
 
 	float4 light_diffuse  = tex[thread_id.xy];
 	float4 light_specular = tex2[thread_id.xy];
 
-	float metallic  = saturate(gbuffer_mat.g);
+	float metallic  = saturate(gbuffer_mat.b);
 	float occlusion = saturate(gbuffer_mat.a);
 
 	float3 diffuse_term  = gbuffer_albedo.rgb * light_diffuse.rgb * (1.0f - metallic);
@@ -64,9 +64,9 @@ void main_comp(uint3 thread_id : SV_DispatchThreadID)
 		result += gbuffer_albedo.rgb * (1.0f - metallic) * (fallback_sun_color() * n_dot_l * INV_PI + ambient) * occlusion;
 	}
 
-	// gbuffer.slang adds emissive texels (LIT textures) to albedo and stores their luminance in material.b: let them
-	// glow without light, otherwise lit windows would go dark with the sun
-	result += gbuffer_albedo.rgb * saturate(gbuffer_mat.b * 2.0f);
+	// Emissive luminance (X-Plane LIT textures), already pre-exposed: lights are never dimmed by daylight, exposure
+	// alone hides them in the day
+	result += tex_emissive[thread_id.xy].rgb;
 
 	tex_uav[thread_id.xy] = validate_output(float4(result, 1.0f));
 }

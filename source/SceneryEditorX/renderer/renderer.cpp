@@ -66,6 +66,8 @@
 #include <SceneryEditorX/scene/components/component_sets.h>
 #include <SceneryEditorX/scene/components/renderable.h>
 #include <algorithm>
+#include <cmath>
+#include <numbers>
 #include <chrono>
 #include <slang/slang-com-ptr.h>
 #include <slang/slang.h>
@@ -2899,6 +2901,16 @@ void dynamic_resolution()
 		env.haze = xMath::Vec4(state.visibilityM, constants.hazeTopM, constants.hazeBandM, static_cast<float>(m_Cb_Frame_Cpu.time));
 		env.weather = xMath::Vec4(derived.surface.wetness, derived.surface.ice, derived.surface.snow, derived.surface.puddles);
 		env.season = xMath::Vec4(derived.season.ratio, static_cast<float>(derived.season.season), static_cast<float>(derived.dayOfYear), static_cast<float>(state.latitudeDeg));
+		// Until metering arrives (plan Phase 5) exposure follows the light: the EV100 of an 18% grey card under the sun
+		// (scaled by daylight) and moon, in X-Plane's 5-15 range. The placeholder lighting is display-referred at about
+		// EV 15, so emissive nits x pre-exposure lands on the same scale by day and glows at night.
+		{
+			EnvironmentConstants &exposure = EditEnvironmentConstants();
+			const float sceneLux = constants.sunIlluminanceLux * std::clamp(derived.daylight, 0.0f, 1.0f) + moonLux;
+			const float greyNits = 0.18f * sceneLux / std::numbers::pi_v<float>;
+			exposure.ev100 = std::clamp(std::log2(std::max(greyNits, 1e-4f) * 100.0f / 12.5f), 5.0f, 15.0f);
+			exposure.preExposure = 1.0f / (1.2f * std::exp2(exposure.ev100 + exposure.ev100Bias));
+		}
 		env.exposure = xMath::Vec4(constants.exposureScale, constants.preExposure, constants.ev100, constants.ev100Bias);
 		env.exposure_fusion = constants.exposureFusion;
 		env.camera = xMath::Vec4(m_Cb_Frame_Cpu.camera_position.y + state.elevationM, state.elevationM, derived.nightFactor, state.rainPercent);
@@ -3054,10 +3066,14 @@ void dynamic_resolution()
 				properties[count].flags |= material->GetProperty(MaterialProperty::Water)                      ? (1U << 13) : 0;
 				properties[count].flags |= material->GetProperty(MaterialProperty::Tessellation)               ? (1U << 14) : 0;
 				properties[count].flags |= material->GetProperty(MaterialProperty::EmissiveFromAlbedo)         ? (1U << 15) : 0;
+				properties[count].flags |= (static_cast<uint32_t>(std::clamp(material->GetProperty(MaterialProperty::XpNormalMode), 0.0f, 3.0f)) & 3U) << 16;
+				properties[count].flags |= material->GetProperty(MaterialProperty::XpMaterial)                 ? (1U << 18) : 0;
 				// keep in sync with Surface struct in common_structs.slang
 
 				properties[count].alpha_cutoff = material->GetProperty(MaterialProperty::AlphaCutoff);
 				properties[count].blend_mode   = material->GetProperty(MaterialProperty::BlendMode);
+				properties[count].xp = xMath::Vec4(material->GetProperty(MaterialProperty::XpSpecularGain), material->GetProperty(MaterialProperty::XpSuperRoughness),
+					material->GetProperty(MaterialProperty::XpDefaultF0), material->GetProperty(MaterialProperty::EmissiveNits));
 			}
 	
 			// textures, in the order of the material_texture_index_* slots in resources.slang

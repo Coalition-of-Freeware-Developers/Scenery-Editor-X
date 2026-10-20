@@ -76,6 +76,15 @@ namespace SceneryEditorX
 		 */
 		static void Record(CommandList *cmdList, ImageResource *output, ImageResource *depth);
 
+		/**
+		 * @brief Writes the raw texels of an image (mip 0, no header, rows top to bottom) to a file a few frames later:
+		 * --dump-brdf-lut writes the GPU's BRDF table in X-Plane's brdf_lookup layout for BrdfLutTests.
+		 */
+		static void RequestDump(const std::filesystem::path &file);
+
+		/* @brief Render thread: copies the image of a queued RequestDump() (any format with a known texel size). */
+		static void RecordDump(CommandList *cmdList, ImageResource *image);
+
 		/* @brief Releases the readback buffers. Call before the device goes away. */
 		static void Shutdown();
 	};

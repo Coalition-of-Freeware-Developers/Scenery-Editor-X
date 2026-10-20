@@ -183,7 +183,7 @@ namespace SceneryEditorX
 			{
 				uint32_t flags = RenderTargetViews | ShaderViews | BlitClear | QueueShare;
 
-				s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_color)]    = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, widthRender, heightRender, 1, 1, VK_FORMAT_R8G8B8A8_UNORM, flags, "gbuffer_color"});
+				s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_color)]    = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, widthRender, heightRender, 1, 1, VK_FORMAT_R8G8B8A8_SRGB, flags, "gbuffer_color"});
 				SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_color)] != nullptr, "Failed to create gbuffer_color render target");
 
 				s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_normal)]   = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, widthRender, heightRender, 1, 1, VK_FORMAT_R16G16B16A16_SFLOAT, flags, "gbuffer_normal"});
@@ -201,6 +201,13 @@ namespace SceneryEditorX
 				// editor picking: written by the g-buffer pass, read by the selection outline (storage) and copied for readback
 				s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_pick)]     = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, widthRender, heightRender, 1, 1, VK_FORMAT_R32_UINT, RenderTargetViews | UnorderedAccessView | BlitClear, "gbuffer_pick"});
 				SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_pick)] != nullptr, "Failed to create gbuffer_pick render target");
+
+				// X-Plane 12 layout: emissive luminance (pre-exposed) and weather receptivity, read by lighting / weather apply
+				s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_emissive)] = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, widthRender, heightRender, 1, 1, VK_FORMAT_R16G16B16A16_SFLOAT, flags, "gbuffer_emissive"});
+				SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_emissive)] != nullptr, "Failed to create gbuffer_emissive render target");
+
+				s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_weather)]  = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, widthRender, heightRender, 1, 1, VK_FORMAT_R8G8B8A8_UNORM, flags, "gbuffer_weather"});
+				SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_weather)] != nullptr, "Failed to create gbuffer_weather render target");
 			}
 #pragma endregion
 #pragma region Lighting Render Targets
@@ -304,7 +311,7 @@ namespace SceneryEditorX
 		if (!s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::lut_brdf_specular)])
 		{
 			// lookup tables
-			s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::lut_brdf_specular)]           = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, 512, 512, 1, 1, VK_FORMAT_R16G16_SFLOAT, UnorderedAccessView | ShaderViews, "lut_brdf_specular"});
+			s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::lut_brdf_specular)]           = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, 256, 256, 1, 1, VK_FORMAT_R32G32_SFLOAT, UnorderedAccessView | ShaderViews | BlitClear, "lut_brdf_specular"});
 			SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::lut_brdf_specular)] != nullptr, "Failed to create lut_brdf_specular render target");
 
 			s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::lut_atmosphere_scatter)]      = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type3D, 256, 256, 32, 1, VK_FORMAT_R16G16B16A16_SFLOAT, UnorderedAccessView | ShaderViews, "lut_atmosphere_scatter"});

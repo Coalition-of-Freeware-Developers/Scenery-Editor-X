@@ -30,7 +30,7 @@
  *
  * The RENDERER panel's DEBUG VIEW (plan TASK-026): one g-buffer channel or a measurement of the frame instead of the
  * image. Writes display-referred linear values into frame_output (tex_uav). Views whose data a later phase adds
- * (emissive, weather, AO, cascades, cloud shadow, SSR, tile lights) show black until then.
+ * (AO, cascades, cloud shadow, SSR, tile lights) show black until then.
  *   tex           frame_render (radiance x pre-exposure) for the luminance views
  *   pass_get_f4_value(): x view (Renderer_DebugView)
  */
@@ -43,11 +43,16 @@ static const uint VIEW_ALBEDO = 1;
 static const uint VIEW_ROUGHNESS = 2;
 static const uint VIEW_METALNESS = 3;
 static const uint VIEW_NORMALS = 4;
+static const uint VIEW_EMISSIVE = 5;
+static const uint VIEW_WEATHER = 6;
 static const uint VIEW_EV = 12;
 static const uint VIEW_NITS = 13;
 static const uint VIEW_DEPTH = 14;
 
 float3 to_linear(float3 display) { return pow(saturate(display), 2.2); }
+
+// log10 of a luminance from 0.01 to 100000 nits as a grey ramp
+float3 nits_ramp(float nits) { return to_linear(((log10(max(nits, 1e-4)) + 2.0) / 7.0).xxx); }
 
 // Colour bands for a value 0-1 (blue, cyan, green, yellow, red, magenta)
 float3 false_color(float t)
@@ -74,11 +79,19 @@ void main_comp(uint3 thread_id: SV_DispatchThreadID)
     if (view == VIEW_ALBEDO)
         color = tex_albedo.Load(pixel).rgb;
     else if (view == VIEW_ROUGHNESS)
-        color = tex_material.Load(pixel).rrr;
+        color = tex_material.Load(pixel).ggg;	// Perceptual roughness
     else if (view == VIEW_METALNESS)
-        color = tex_material.Load(pixel).ggg;
+        color = tex_material.Load(pixel).bbb;	// Metalness / F0 value
     else if (view == VIEW_NORMALS)
         color = to_linear(normalize(tex_normal.Load(pixel).xyz) * 0.5 + 0.5);
+    else if (view == VIEW_EMISSIVE)
+    {
+        const float3 emissive = tex_emissive.Load(pixel).rgb / max(get_pre_exposure(), 1e-20);
+        const float nits = dot(emissive, float3(0.2126, 0.7152, 0.0722));
+        color = nits > 0.0 ? nits_ramp(nits) : float3(0.0, 0.0, 0.0);
+    }
+    else if (view == VIEW_WEATHER)
+        color = tex_weather.Load(pixel).rgb;	// R rain / damp, G puddles, B snow (0.5 + 0.5 s)
     else if (view == VIEW_DEPTH)
         color = to_linear(pow(tex_depth.Load(pixel).r, 0.25).xxx);	// Reverse-Z: near is white
     else if (view == VIEW_EV || view == VIEW_NITS)
@@ -87,9 +100,7 @@ void main_comp(uint3 thread_id: SV_DispatchThreadID)
         const float nits = dot(radiance, float3(0.2126, 0.7152, 0.0722));
         if (view == VIEW_NITS)
         {
-            // log10 from 0.01 to 100000 nits, as a greyscale with false-colour beyond
-            const float t = (log10(max(nits, 1e-4)) + 2.0) / 7.0;
-            color = to_linear(t.xxx);
+            color = nits_ramp(nits);
         }
         else
         {

@@ -73,13 +73,6 @@ float3 BRDF_Diffuse(Surface surface, AngularInfo angular_info)
     DISTRIBUTION
 ------------------------------------------------------------------------------*/
 
-// attempt to remap roughness to alpha - call of duty: wwii, attempt to provide wider range
-float D_GGX_Alpha(float roughness)
-{
-    float gloss = 1.0 - roughness;
-    return sqrt(2.0 / (1.0 + pow(2.0, 18.0 * gloss)));
-}
-
 // walter et al. 2007 - attempt to provide ggx/trowbridge-reitz ndf, takes alpha^2
 float D_GGX(float n_dot_h, float a2)
 {
@@ -136,7 +129,7 @@ float3 compute_diffuse_energy(float3 F, float metallic)
     return (1.0 - F) * (1.0 - metallic);
 }
 
-// fdez-aguera 2019 - attempt to provide multi-scattering energy compensation
+// fdez-aguera 2019 - attempt to provide multi-scattering energy compensation (unused: X-Plane 12 shades single scattering)
 float3 compute_multiscatter_energy(float3 f0, float n_dot_v, float roughness)
 {
     // approximate directional-hemispherical reflectance
@@ -151,18 +144,18 @@ float3 compute_multiscatter_energy(float3 f0, float n_dot_v, float roughness)
 
 float3 BRDF_Specular_Isotropic(inout Surface surface, AngularInfo angular_info)
 {
-    // roughness
-    float a = D_GGX_Alpha(surface.roughness);
+    // roughness: X-Plane 12's GGX takes alpha = perceptual roughness^2 (the split-sum table in light_integration.slang
+    // uses the same NDF and visibility); no multiple-scattering compensation, as in X-Plane
+    float a = surface.roughness_alpha;
     float a2 = a * a;
 
     // specular
     float D = D_GGX(angular_info.n_dot_h, a2);
-    float V = V_SmithGGX(angular_info.n_dot_v, angular_info.n_dot_l, a2);
+    float V = V_SmithGGX(max(angular_info.n_dot_v, 1e-3), angular_info.n_dot_l, a2);
     float3 F = F_Schlick(surface.F0, compute_f90(surface.F0), angular_info.v_dot_h);
     float3 Fr = D * V * F;
 
     // energy
-    Fr *= compute_multiscatter_energy(surface.F0, angular_info.n_dot_v, surface.roughness);
     surface.diffuse_energy *= compute_diffuse_energy(F, surface.metallic);
 
     return Fr;
@@ -182,8 +175,8 @@ float3 BRDF_Specular_Anisotropic(inout Surface surface, AngularInfo angular_info
     t = normalize(mul(float3(cos(rotation), sin(rotation), 0.0), TBN));
     b = normalize(cross(surface.normal, t));
 
-    // roughness
-    float a = D_GGX_Alpha(surface.roughness);
+    // roughness (alpha = perceptual roughness^2, as the isotropic lobe)
+    float a = surface.roughness_alpha;
     float aspect = sqrt(1.0 - surface.anisotropic * 0.9);
     float at = a / aspect;
     float ab = a * aspect;
@@ -207,7 +200,6 @@ float3 BRDF_Specular_Anisotropic(inout Surface surface, AngularInfo angular_info
     float3 Fr = D * V * F;
 
     // energy
-    Fr *= compute_multiscatter_energy(surface.F0, angular_info.n_dot_v, surface.roughness);
     surface.diffuse_energy *= compute_diffuse_energy(F, surface.metallic);
 
     return Fr;

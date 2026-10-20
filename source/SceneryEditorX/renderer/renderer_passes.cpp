@@ -182,6 +182,7 @@ namespace SceneryEditorX
 			Pass_Lut_BrdfSpecular(cmd);
 			m_PassState.m_BRDF_LutProduced = true;
 		}
+		FrameCapture::RecordDump(cmd, GetRenderTarget(Renderer_RenderTarget::lut_brdf_specular));	// --dump-brdf-lut
 		// (1) Atmosphere LUTs (XP12: scatter_compute_*): Phase 6
 		// (2) Cloud weather volumes and cloud shadows (XP12: cloud_update, cloud_shadows): Phases 7 / 15
 
@@ -216,6 +217,8 @@ namespace SceneryEditorX
 			GetRenderTarget(Renderer_RenderTarget::gbuffer_normal)->SetLayout(Layout::ImageLayout::ShaderRead, cmd, 0, 0);
 			GetRenderTarget(Renderer_RenderTarget::gbuffer_material)->SetLayout(Layout::ImageLayout::ShaderRead, cmd, 0, 0);
 			GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity)->SetLayout(Layout::ImageLayout::ShaderRead, cmd, 0, 0);
+			GetRenderTarget(Renderer_RenderTarget::gbuffer_emissive)->SetLayout(Layout::ImageLayout::ShaderRead, cmd, 0, 0);
+			GetRenderTarget(Renderer_RenderTarget::gbuffer_weather)->SetLayout(Layout::ImageLayout::ShaderRead, cmd, 0, 0);
 			GetRenderTarget(Renderer_RenderTarget::gbuffer_depth)->SetLayout(Layout::ImageLayout::ShaderRead, cmd, 0, 0);
 
 			// (5) Min / max depth pyramid (XP12: z_minmax): Phase 9
@@ -296,6 +299,8 @@ namespace SceneryEditorX
 		GetRenderTarget(Renderer_RenderTarget::gbuffer_normal)->SetLayout(Layout::ImageLayout::Attachment, cmd, 0, 0);
 		GetRenderTarget(Renderer_RenderTarget::gbuffer_material)->SetLayout(Layout::ImageLayout::Attachment, cmd, 0, 0);
 		GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity)->SetLayout(Layout::ImageLayout::Attachment, cmd, 0, 0);
+		GetRenderTarget(Renderer_RenderTarget::gbuffer_emissive)->SetLayout(Layout::ImageLayout::Attachment, cmd, 0, 0);
+		GetRenderTarget(Renderer_RenderTarget::gbuffer_weather)->SetLayout(Layout::ImageLayout::Attachment, cmd, 0, 0);
 		GetRenderTarget(Renderer_RenderTarget::gbuffer_depth)->SetLayout(Layout::ImageLayout::Attachment, cmd, 0, 0);
 		ScenePicking::EndFrame(cmd);
 
@@ -332,6 +337,8 @@ namespace SceneryEditorX
 			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_normal, GetRenderTarget(Renderer_RenderTarget::gbuffer_normal));
 			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_material, GetRenderTarget(Renderer_RenderTarget::gbuffer_material));
 			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_depth, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
+			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_emissive, GetRenderTarget(Renderer_RenderTarget::gbuffer_emissive));
+			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_weather, GetRenderTarget(Renderer_RenderTarget::gbuffer_weather));
 			m_Pcb_Pass_Cpu.SetF4Value(static_cast<float>(GetDebugView()), 0.0f, 0.0f, 0.0f);
 			cmdList->PushConstants(m_Pcb_Pass_Cpu);
 		});
@@ -783,6 +790,8 @@ namespace SceneryEditorX
 		ImageResource *texVelocity = GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity);
 		ImageResource *texDepth = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
 		ImageResource *texPick = GetRenderTarget(Renderer_RenderTarget::gbuffer_pick);	// editor picking ids (ScenePicking)
+		ImageResource *texEmissive = GetRenderTarget(Renderer_RenderTarget::gbuffer_emissive);
+		ImageResource *texWeather = GetRenderTarget(Renderer_RenderTarget::gbuffer_weather);
 
 		{
 			if (!isTransparentPass && m_Indirect_DrawCount > 0)
@@ -802,12 +811,16 @@ namespace SceneryEditorX
 				pso.renderTarget_ColorTextures[2] = texMaterial;
 				pso.renderTarget_ColorTextures[3] = texVelocity;
 				pso.renderTarget_ColorTextures[4] = texPick;
+				pso.renderTarget_ColorTextures[5] = texEmissive;
+				pso.renderTarget_ColorTextures[6] = texWeather;
 				pso.renderTarget_DepthTexture = texDepth;
 				pso.clearColor[0] = PipelineStateColor{.r = 0.0f, .g = 0.0f, .b = 0.0f, .a = 0.0f};
 				pso.clearColor[1] = PipelineStateColor{.r = 0.0f, .g = 0.0f, .b = 0.0f, .a = 0.0f};
 				pso.clearColor[2] = PipelineStateColor{.r = 0.0f, .g = 0.0f, .b = 0.0f, .a = 0.0f};
 				pso.clearColor[3] = PipelineStateColor{.r = 0.0f, .g = 0.0f, .b = 0.0f, .a = 0.0f};
 				pso.clearColor[4] = PipelineStateColor{.r = 0.0f, .g = 0.0f, .b = 0.0f, .a = 0.0f};	// pick id 0: nothing
+				pso.clearColor[5] = PipelineStateColor{.r = 0.0f, .g = 0.0f, .b = 0.0f, .a = 0.0f};
+				pso.clearColor[6] = PipelineStateColor{.r = 0.0f, .g = 0.0f, .b = 0.0f, .a = 0.0f};
 				cmdList->SetPipelineState(pso);
 
 				cmdList->SetIndexBuffer(GeometryBuffer::GetIndexBuffer());
@@ -850,6 +863,8 @@ namespace SceneryEditorX
 				pso.renderTarget_ColorTextures[2] = texMaterial;
 				pso.renderTarget_ColorTextures[3] = texVelocity;
 				pso.renderTarget_ColorTextures[4] = texPick;
+				pso.renderTarget_ColorTextures[5] = texEmissive;
+				pso.renderTarget_ColorTextures[6] = texWeather;
 				pso.renderTarget_DepthTexture = texDepth;
 
 				const bool indirectWrote = m_Indirect_DrawCount > 0;
@@ -897,6 +912,8 @@ namespace SceneryEditorX
 				pso.renderTarget_ColorTextures[2] = texMaterial;
 				pso.renderTarget_ColorTextures[3] = texVelocity;
 				pso.renderTarget_ColorTextures[4] = texPick;
+				pso.renderTarget_ColorTextures[5] = texEmissive;
+				pso.renderTarget_ColorTextures[6] = texWeather;
 				pso.renderTarget_DepthTexture = texDepth;
 				// load when an indirect path already cleared and wrote the g-buffer, otherwise clear on the first draw
 				const bool indirectActive = !isTransparentPass && m_Indirect_DrawCount > 0;
@@ -906,6 +923,8 @@ namespace SceneryEditorX
 				pso.clearColor[2] = clearOrLoad;
 				pso.clearColor[3] = clearOrLoad;
 				pso.clearColor[4] = clearOrLoad;
+				pso.clearColor[5] = clearOrLoad;
+				pso.clearColor[6] = clearOrLoad;
 
 				bool pipeline_set = false;
 
@@ -1952,6 +1971,7 @@ namespace SceneryEditorX
 			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_normal,   GetRenderTarget(Renderer_RenderTarget::gbuffer_normal));
 			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_material, GetRenderTarget(Renderer_RenderTarget::gbuffer_material));
 			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_depth,    GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
+			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_emissive, GetRenderTarget(Renderer_RenderTarget::gbuffer_emissive));
 			cmdList->SetTexture(Renderer_BindingsSrv::tex,              texDiffuse);
 			cmdList->SetTexture(Renderer_BindingsSrv::tex2,             texSpecular);
 			cmdList->SetTexture(Renderer_BindingsUav::tex,              texFrameRender);

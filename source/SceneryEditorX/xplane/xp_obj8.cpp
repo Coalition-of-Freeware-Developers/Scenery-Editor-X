@@ -298,9 +298,15 @@ namespace SceneryEditorX::XPlane
 					return;
 				}
 
-				if (cmd.starts_with("TEXTURE") || cmd == "NORMAL_METALNESS" || cmd == "BLEND_GLASS")
+				if (cmd.starts_with("TEXTURE") || cmd.starts_with("NORMAL") || cmd.starts_with("BLEND_"))
 				{
 					HandleTexture(t);
+					return;
+				}
+
+				if (cmd == "SUPER_ROUGHNESS" || cmd.starts_with("WEATHER") || cmd == "SNOW_ALBEDO_LUMA" || cmd.starts_with("DECAL"))
+				{
+					HandleMaterial(t);
 					return;
 				}
 
@@ -345,10 +351,8 @@ namespace SceneryEditorX::XPlane
 				{
 					"SLOPE_LIMIT", "REQUIRE_WET", "REQUIRE_DRY", "slung_load_weight", "COCKPIT_REGION", "RAIN_scale",
 					"RAIN_friction", "THERMAL_texture", "THERMAL_source", "THERMAL_source2", "WIPER_texture", "WIPER_param",
-					"EMITTER", "MAGNET", "smoke_black", "smoke_white", "DECAL", "DECAL_RGBA", "DECAL_KEYED", "DECAL_PARAMS",
-					"DECAL_PARAMS_PROJ", "DECAL_LIB", "NO_BLEND", "TWO_SIDED", "SPECULAR", "BUMP_LEVEL", "NO_SHADOW", "DITHER_ALPHA",
-					"NO_ALPHA", "LOAD_CENTER", "SHADOW_BLEND", "WEATHER", "WEATHER_TRANSPARENT", "SUPER_ROUGHNESS", "SNOW_ALBEDO_LUMA",
-					"NORMAL_TRANSLUCENCY", "NORMAL_DECAL_PARAMS", "ATTACHMENT", "DEBUG", "EXPORT"
+					"EMITTER", "MAGNET", "smoke_black", "smoke_white", "NO_BLEND", "TWO_SIDED", "SPECULAR", "BUMP_LEVEL", "NO_SHADOW",
+					"DITHER_ALPHA", "NO_ALPHA", "LOAD_CENTER", "SHADOW_BLEND", "ATTACHMENT", "DEBUG", "EXPORT"
 				};
 
 				if (std::ranges::find(IGNORED, cmd) != std::end(IGNORED))
@@ -950,9 +954,22 @@ namespace SceneryEditorX::XPlane
 					return;
 				}
 
-				if (cmd == "NORMAL_METALNESS")
+				// NORMAL_METALNESS, also as shipped misspelled ("NORMAL_metalness", "NORMAL METALNESS")
+				if (cmd == "NORMAL_METALNESS" || cmd == "NORMAL_metalness" || (cmd == "NORMAL" && t.size() > 1 && t[1] == "METALNESS"))
 				{
 					(m_LastNormalDraped ? m_Data.drapedNormalMetalness : m_Data.normalMetalness) = true;
+					return;
+				}
+
+				if (cmd == "NORMAL_TRANSLUCENCY")
+				{
+					m_Data.normalTranslucency = true;
+					return;
+				}
+
+				if (cmd == "NORMAL_DECAL_PARAMS")
+				{
+					HandleMaterial(t);
 					return;
 				}
 
@@ -962,9 +979,28 @@ namespace SceneryEditorX::XPlane
 					return;
 				}
 
-				// Terrain-shader and modulator textures (X-Plane 12 terrain FX / antennas) are not emulated yet.
-				if (cmd == "TEXTURE_CONTROL" || cmd == "TEXTURE_TERRAIN" || cmd == "TEXTURE_MODULATOR")
+				if (cmd == "BLEND_HASH")
+				{
+					m_Data.blendHash = true;
+					m_Data.blendHashRatio = t.size() > 1 ? ParseFloat(t[1], 0.0f) : 0.0f;
 					return;
+				}
+
+				if (cmd == "TEXTURE_CONTROL")												{ m_Data.textureControl = read_path(nullptr); return; }
+				if (cmd == "TEXTURE_MODULATOR")												{ m_Data.textureModulator = read_path(nullptr); return; }
+				if (cmd == "TEXTURE_TERRAIN")
+				{
+					// TEXTURE_TERRAIN <scale x> <scale z> <texture>
+					if (t.size() < 4)
+					{
+						Warn("TEXTURE_TERRAIN needs two scales and a texture");
+						return;
+					}
+					m_Data.textureTerrainScale[0] = ParseFloat(t[1], 0.0f);
+					m_Data.textureTerrainScale[1] = ParseFloat(t[2], 0.0f);
+					m_Data.textureTerrain = std::string(RestOfLine(m_RawLine, 3));
+					return;
+				}
 
 				if (cmd == "TEXTURE_MAP")
 				{
@@ -998,6 +1034,81 @@ namespace SceneryEditorX::XPlane
 
 				++m_Data.unknownCommandCount;
 				Warn("Unknown texture command '" + std::string(cmd) + "'");
+			}
+
+			/* @brief X-Plane 12 material directives: roughness floor, weather receptivity, decals. */
+			void HandleMaterial(const std::vector<std::string_view> &t)
+			{
+				const std::string_view cmd = t[0];
+
+				if (cmd == "SUPER_ROUGHNESS")
+				{
+					m_Data.superRoughness = t.size() > 1 ? ParseFloat(t[1], 0.0f) : 0.0f;
+					return;
+				}
+
+				if (cmd == "WEATHER_TRANSPARENT")
+				{
+					m_Data.weatherTransparent = true;
+					return;
+				}
+
+				if (cmd == "WEATHER")
+				{
+					m_Data.weatherMask = std::string(RestOfLine(m_RawLine, 1));
+					return;
+				}
+
+				if (cmd == "SNOW_ALBEDO_LUMA")
+				{
+					if (t.size() < 5)
+					{
+						Warn("SNOW_ALBEDO_LUMA needs four values");
+						return;
+					}
+					m_Data.hasSnowAlbedoLuma = true;
+					for (size_t i = 0; i < 4; ++i)
+						m_Data.snowAlbedoLuma[i] = ParseFloat(t[i + 1], 0.0f);
+					return;
+				}
+
+				if (cmd == "DECAL_LIB")
+				{
+					m_Data.decalLibrary = std::string(RestOfLine(m_RawLine, 1));
+					return;
+				}
+
+				if (cmd == "DECAL" || cmd == "DECAL_RGBA" || cmd == "DECAL_KEYED" || cmd == "DECAL_PARAMS" || cmd == "DECAL_PARAMS_PROJ" ||
+					cmd == "NORMAL_DECAL_PARAMS")
+				{
+					// <numbers...> <texture> [numbers...]: their meaning differs per directive (plan TASK-035 reads them)
+					Obj8Decal decal;
+					decal.directive = std::string(cmd);
+					size_t first = 1;
+					float value = 0.0f;
+					while (first < t.size() && TryParseFloat(t[first], value))
+					{
+						decal.values.push_back(value);
+						++first;
+					}
+					size_t last = t.size();
+					while (last > first + 1 && TryParseFloat(t[last - 1], value))
+						--last;
+					for (size_t i = last; i < t.size(); ++i)
+						decal.trailing.push_back(ParseFloat(t[i], 0.0f));
+					if (first < last)
+					{
+						// The texture runs from its first token to the end of its last (paths may contain spaces)
+						const std::string_view rest = RestOfLine(m_RawLine, first);
+						const size_t end = static_cast<size_t>(t[last - 1].data() + t[last - 1].size() - rest.data());
+						decal.texture = std::string(rest.substr(0, std::min(end, rest.size())));
+					}
+					m_Data.decals.push_back(std::move(decal));
+					return;
+				}
+
+				++m_Data.unknownCommandCount;
+				Warn("Unknown material command '" + std::string(cmd) + "'");
 			}
 
 			void HandleGlobal(const std::vector<std::string_view> &t)

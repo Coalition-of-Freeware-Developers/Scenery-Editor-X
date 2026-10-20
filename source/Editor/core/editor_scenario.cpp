@@ -162,6 +162,8 @@ namespace SceneryEditorX::EditorScenario
 				state.waitForAirport = true;
 			else if (args[i] == "--reference-image")
 				referenceImage = args[++i];
+			else if (args[i] == "--dump-brdf-lut")
+				FrameCapture::RequestDump(args[++i]);	// The GPU BRDF table, raw RG32F (BrdfLutTests reads it)
 			else if (args[i] == "--reference-view")
 			{
 				const std::string &view = args[++i];

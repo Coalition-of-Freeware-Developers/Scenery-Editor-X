@@ -43,7 +43,9 @@ The dependency-light, cross-platform Catch2 unit suites that only need `source/`
   `[library-sweep]`, a few seconds; exclude with `"~[library-sweep]"`); `xp_facade_authoring.*` type 1 facades from a
   texture (panel edges, roofs), type 2 sidewalks / curbs generated from a cross-section), and finding X-Plane 11 / 12
   installs (`InstallFinderTests.cpp`: `xp_install_finder.*` install lists, Steam libraryfolders.vdf / appmanifests,
-  uninstall entries and usual folders, deduplicated and ranked complete / newest version / most recently run first)
+  uninstall entries and usual folders, deduplicated and ranked complete / newest version / most recently run first),
+  and the split-sum BRDF table (`BrdfLutTests.cpp`: `environment/brdf_lut.*`, GGX with height-correlated Smith; with an
+  X-Plane 12 install listed it is compared against `Resources/brdf_lookup`, tag `[xplane-install]`, about a second)
   (`SceneryEditorX/xplane/xp_obj8.*`, `xp_library.*`, `xp_lights.*`, `xp_apt.*`, `xp_apt_geometry.*`,
   `xp_airport_index.*`, `xp_gateway_types.*`, `xp_dsf.*`, `xp_assets.*`, `xp_overlay.*`, plus `filesystem/vfs.*`,
   which every reader goes through for case-insensitive lookups and atomic writes). Standard library
@@ -142,6 +144,7 @@ g++ -std=c++20 -O2 -pthread $INCS source/Tests/xplane_tests/XPlaneFormatTests.cp
     source/Tests/xplane_tests/AirportTests.cpp source/Tests/xplane_tests/OverlayTests.cpp \
     source/Tests/xplane_tests/DsfWriterTests.cpp source/Tests/xplane_tests/FacadeTests.cpp \
     source/Tests/xplane_tests/FacadeWriterTests.cpp source/Tests/xplane_tests/InstallFinderTests.cpp \
+    source/Tests/xplane_tests/BrdfLutTests.cpp source/SceneryEditorX/environment/brdf_lut.cpp \
     source/SceneryEditorX/filesystem/vfs.cpp \
     source/SceneryEditorX/xplane/xp_obj8.cpp source/SceneryEditorX/xplane/xp_library.cpp \
     source/SceneryEditorX/xplane/xp_lights.cpp source/SceneryEditorX/xplane/xp_apt.cpp \

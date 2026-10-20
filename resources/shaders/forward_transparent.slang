@@ -24,6 +24,7 @@ import color;
 import luminance;
 import position;
 import fallback_lighting;
+import xp_material;
 
 [shader("vertex")]
 gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id: SV_InstanceID)
@@ -63,27 +64,17 @@ float4 main_frag(gbuffer_vertex vertex, bool is_front_face: SV_IsFrontFace) : SV
     if (albedo.a >= cutoff || (!glass && albedo.a < 1.0f / 255.0f))
         discard;
 
-    // normal (two-sided: back faces of no-cull glass face the camera too)
+    // normal, roughness and metalness / F0 (xp_material.slang); two-sided: back faces of no-cull glass face the camera too
+    const float4 normal_texel = material.has_texture_normal() ? sample_material_texture(material_texture_index_normal, vertex.uv_misc.xy) : float4(0.5f, 0.5f, 1.0f, 1.0f);
+    const XpSurfaceMaterial surface_material = xp_decode_material(material, normal_texel);
     float3 normal = normalize(vertex.normal);
     if (material.has_texture_normal())
-    {
-        float3 tangent_normal = normalize(unpack(sample_material_texture(material_texture_index_normal, vertex.uv_misc.xy).xyz));
-        tangent_normal.z = sqrt(max(0.0f, 1.0f - dot(tangent_normal.xy, tangent_normal.xy)));
-        tangent_normal.xy *= saturate(max(0.01f, material.normal));
-        normal = normalize(mul(tangent_normal, make_tangent_to_world_matrix(normalize(vertex.normal), normalize(vertex.tangent))).xyz);
-    }
+        normal = normalize(mul(surface_material.tangent_normal, make_tangent_to_world_matrix(normalize(vertex.normal), normalize(vertex.tangent))).xyz);
     if (!is_front_face)
         normal = -normal;
 
-    // material
-    float roughness = material.roughness;
-    float metalness = material.metallness;
-    {
-        float4 packed = sample_material_texture(material_texture_index_packed, vertex.uv_misc.xy);
-        roughness *= lerp(1.0f, packed.g, (float)material.has_texture_roughness());
-        metalness *= lerp(1.0f, packed.b, (float)material.has_texture_metalness());
-    }
-    roughness = clamp(roughness, 0.04f, 1.0f);
+    float roughness = clamp(surface_material.roughness, 0.04f, 1.0f);
+    float metalness = surface_material.v;
 
     // view
     const float2 screen_uv = vertex.position.xy / (get_resolution_render() * get_resolution_scale());
@@ -101,7 +92,7 @@ float4 main_frag(gbuffer_vertex vertex, bool is_front_face: SV_IsFrontFace) : SV
         diffuse = albedo.rgb * (1.0f - metalness) * (fallback_sun_color() * n_dot_l * INV_PI + fallback_ambient(normal));
 
         // sun highlight (normalized Blinn-Phong) and sky reflection, both weighted by Schlick's fresnel
-        float3 f0 = lerp(0.04f, albedo.rgb, metalness);
+        float3 f0 = xp_f0(albedo.rgb, metalness);
         float3 fresnel = f0 + (1.0f - f0) * pow(1.0f - n_dot_v, 5.0f);
         float3 h = normalize(l + v);
         float shininess = 2.0f / max(roughness * roughness * roughness * roughness, 1e-4f) - 2.0f;
@@ -114,8 +105,9 @@ float4 main_frag(gbuffer_vertex vertex, bool is_front_face: SV_IsFrontFace) : SV
         diffuse = albedo.rgb * 0.05f; // the scene's own lights only reach the deferred surfaces
     }
 
+    // emissive luminance (LIT), pre-exposed like the deferred surfaces' gbuffer_emissive
     if (material.has_texture_emissive())
-        diffuse += sample_material_texture(material_texture_index_emission, vertex.uv_misc.xy).rgb;
+        diffuse += srgb_to_linear(sample_material_texture(material_texture_index_emission, vertex.uv_misc.xy).rgb) * xp_emissive_scale(material);
 
     float alpha = saturate(albedo.a);
     float3 color = glass ? diffuse * alpha + specular : (diffuse + specular) * alpha;

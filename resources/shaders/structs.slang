@@ -100,10 +100,12 @@ struct Surface
         flags = material.flags;
         albedo = replace_color_with_one ? 1.0f : sample_albedo.rgb;
         alpha = sample_albedo.a;
-        roughness = sample_material.r;
-        metallic = sample_material.g;
-        emissive = sample_material.b;
-        F0 = lerp(0.04f, albedo, metallic);
+        // g-buffer material (gbuffer.slang): R lighting factor, G perceptual roughness, B metalness / F0 value v,
+        // A occlusion. X-Plane's single value: F0 = lerp(min(v, 0.08), albedo, v), diffuse x (1 - v)
+        roughness = sample_material.g;
+        metallic = sample_material.b;
+        emissive = 0.0f; // gbuffer_emissive, added by light_composition.slang
+        F0 = lerp(min(metallic, 0.08f).xxx, albedo, metallic);
         anisotropic = material.anisotropic;
         anisotropic_rotation = material.anisotropic_rotation;
         clearcoat = material.clearcoat;

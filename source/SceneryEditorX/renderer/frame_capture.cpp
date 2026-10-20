@@ -36,6 +36,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstring>
+#include <fstream>
 #include <mutex>
 #include <optional>
 #include <vector>
@@ -68,12 +69,15 @@ namespace SceneryEditorX
 			uint32_t depthWidth = 0;
 			uint32_t depthHeight = 0;
 			VkFormat colorFormat = VK_FORMAT_UNDEFINED;
+			VkDeviceSize rawBytes = 0;				// RequestDump(): the texels go to request.png as they are
+			bool sameRecording = false;				// RecordDump() ran earlier in the recording Record() is part of
 		};
 
 		struct State
 		{
 			std::mutex mutex;
 			std::optional<Pending> queued;
+			std::optional<std::filesystem::path> queuedDump;
 			std::vector<InFlight> inFlight;
 			std::optional<FrameCapture::Result> result;
 		};
@@ -245,6 +249,8 @@ namespace SceneryEditorX
 			{
 				case VK_FORMAT_R16G16B16A16_SFLOAT:	return 8;
 				case VK_FORMAT_R32G32B32A32_SFLOAT:	return 16;
+				case VK_FORMAT_R32G32_SFLOAT:		return 8;
+				case VK_FORMAT_R16G16_SFLOAT:		return 4;
 				case VK_FORMAT_R8G8B8A8_UNORM:
 				case VK_FORMAT_R8G8B8A8_SRGB:
 				case VK_FORMAT_B8G8R8A8_UNORM:
@@ -295,6 +301,30 @@ namespace SceneryEditorX
 			if (it->list != cmdList)
 			{
 				++it;
+				continue;
+			}
+			if (it->sameRecording)
+			{
+				// Copied earlier in this frame's recording: complete the next time this list comes round
+				it->sameRecording = false;
+				++it;
+				continue;
+			}
+			if (it->rawBytes > 0)
+			{
+				// RequestDump(): no PNG, no result for the scenario runner
+				const void *data = MapReadback(it->color);
+				std::error_code ec;
+				if (it->request.png.has_parent_path())
+					std::filesystem::create_directories(it->request.png.parent_path(), ec);
+				std::ofstream file(it->request.png, std::ios::binary);
+				if (data && file.write(static_cast<const char *>(data), static_cast<std::streamsize>(it->rawBytes)))
+					SEDX_CORE_INFO_TAG(LOG_TAG, "Image dumped to {} ({} x {}, {} bytes)", it->request.png.string(), it->width, it->height, it->rawBytes);
+				else
+					SEDX_CORE_ERROR_TAG(LOG_TAG, "Could not write the image dump {}", it->request.png.string());
+				if (it->color)
+					it->color->Destroy();
+				it = s.inFlight.erase(it);
 				continue;
 			}
 			Result result = Write(*it);
@@ -365,6 +395,53 @@ namespace SceneryEditorX
 		s.inFlight.push_back(std::move(flight));
 	}
 
+	void FrameCapture::RequestDump(const std::filesystem::path &file)
+	{
+		State &s = S();
+		std::lock_guard lock(s.mutex);
+		s.queuedDump = file;
+	}
+
+	void FrameCapture::RecordDump(CommandList *cmdList, ImageResource *image)
+	{
+		if (!cmdList || cmdList->IsStickyInvalid())
+			return;
+
+		State &s = S();
+		std::lock_guard lock(s.mutex);
+		if (!s.queuedDump || !IsUsable(image))
+			return;
+
+		InFlight flight;
+		flight.list = cmdList;
+		flight.request.png = *s.queuedDump;
+		s.queuedDump.reset();
+		flight.width = image->GetWidth();
+		flight.height = image->GetHeight();
+		flight.colorFormat = image->GetImageSpec().format;
+		const uint32_t texelBytes = BytesPerTexel(flight.colorFormat);
+		if (texelBytes == 0)
+		{
+			SEDX_CORE_ERROR_TAG(LOG_TAG, "Image dump {}: unsupported format", flight.request.png.string());
+			return;
+		}
+		flight.rawBytes = static_cast<VkDeviceSize>(flight.width) * flight.height * texelBytes;
+		flight.sameRecording = true;	// Record() runs later in this frame
+		flight.color = CreateReadback(flight.rawBytes);
+		if (!flight.color || !flight.color->Get())
+			return;
+
+		image->SetLayout(Layout::ImageLayout::TransferSrc, cmdList, 0, 0);
+		VkBufferImageCopy copy{};
+		copy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		copy.imageSubresource.layerCount = 1;
+		copy.imageExtent = { flight.width, flight.height, 1 };
+		vkCmdCopyImageToBuffer(cmdList->GetCommandBuffer(), *image->Get(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, flight.color->Get(), 1, &copy);
+		image->SetLayout(Layout::ImageLayout::ShaderRead, cmdList, 0, 0);
+		HostReadBarrier(cmdList);
+		s.inFlight.push_back(std::move(flight));
+	}
+
 	void FrameCapture::Shutdown()
 	{
 		State &s = S();
@@ -378,6 +455,7 @@ namespace SceneryEditorX
 		}
 		s.inFlight.clear();
 		s.queued.reset();
+		s.queuedDump.reset();
 	}
 }
 

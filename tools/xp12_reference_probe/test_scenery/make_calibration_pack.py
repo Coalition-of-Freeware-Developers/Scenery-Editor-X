@@ -37,6 +37,27 @@ def png(path, rgba, size=TEXTURE_SIZE):
         f.write(data)
 
 
+def dds_dxt5(path, rgba, size=TEXTURE_SIZE):
+    """A solid DXT5 (BC3) DDS with its full mip chain. Next to a PNG of the same name both X-Plane and SEDX load this
+    one, so the metalness row exercises block-compressed NORMAL_METALNESS maps (565 colour: B, the F0 value, is kept to
+    1/31)."""
+    r, g, b, a = rgba
+    color = ((r * 31 + 127) // 255) << 11 | ((g * 63 + 127) // 255) << 5 | ((b * 31 + 127) // 255)
+    block = struct.pack('<BB6xHHI', a, a, color, color, 0)    # Both endpoints equal, every index 0
+    mips, blocks, side = [], 0, size
+    while True:
+        count = max(1, side // 4) ** 2
+        mips.append(block * count)
+        if side == 1:
+            break
+        side //= 2
+    header = struct.pack('<4sIIIIIII44x', b'DDS ', 124, 0x000A1007, size, size, len(mips[0]), 0, len(mips))
+    pixel_format = struct.pack('<II4sIIIII', 32, 0x4, b'DXT5', 0, 0, 0, 0, 0)
+    caps = struct.pack('<IIIII', 0x00401008, 0, 0, 0, 0)
+    with open(path, 'wb') as f:
+        f.write(header + pixel_format + caps + b''.join(mips))
+
+
 def srgb_byte(linear):
     c = linear * 12.92 if linear <= 0.0031308 else 1.055 * linear ** (1.0 / 2.4) - 0.055
     return max(0, min(255, round(c * 255.0)))
@@ -123,6 +144,8 @@ def main():
         for c, (name, albedo, v, gloss, extra) in enumerate(row):
             png(os.path.join(PACK, 'textures', f'{name}_alb.png'), (*albedo, 255))
             png(os.path.join(PACK, 'textures', f'{name}_nml.png'), (128, 128, to_byte(v), to_byte(gloss)))
+            if name.startswith('metal_'):
+                dds_dxt5(os.path.join(PACK, 'textures', f'{name}_nml.dds'), (128, 128, to_byte(v), to_byte(gloss)))
             with open(os.path.join(PACK, 'objects', f'{name}.obj'), 'w', encoding='ascii', newline='\n') as f:
                 f.write(obj_text(name, extra))
             east = (c - (len(row) - 1) * 0.5) * PITCH_M

@@ -58,6 +58,8 @@ namespace SceneryEditorX
 		gbuffer_depth_occluders_hiz,
 		gbuffer_depth_opaque_output,
 		gbuffer_pick,				// R32_UINT: pick id (entity index + 1) of the surface in each pixel, 0 for none (ScenePicking)
+		gbuffer_emissive,			// RGBA16F: emissive luminance (nits) x pre-exposure (X-Plane LIT textures)
+		gbuffer_weather,			// RGBA8: weather receptivity (R rain / damp, G puddles, B snow 0.5 + 0.5 s, A ice)
 		lut_brdf_specular,
 		lut_atmosphere_scatter,
 		lut_atmosphere_transmittance,
@@ -412,6 +414,8 @@ namespace SceneryEditorX
 		gbuffer_material = 2,
 		gbuffer_velocity = 3,
 		gbuffer_depth    = 4,
+		gbuffer_emissive = 5,
+		gbuffer_weather  = 54,
 
 		// values are the vk::binding numbers declared in resources/shaders/resources.slang
 
