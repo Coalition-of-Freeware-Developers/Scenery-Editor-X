@@ -29,6 +29,7 @@
  * -------------------------------------------------------
  */
 #pragma once
+#include <filesystem>
 #include <string>
 #include <vector>
 
@@ -52,6 +53,8 @@ namespace SceneryEditorX
 		virtual const std::string &GetWorkingDirectory() const { return m_WorkingDirectory; }
 		virtual const std::string &GetTempDirectory() const { return m_TempDirectory; }
 		virtual const std::vector<std::string> &GetCommandLineArgs() const { return m_CommandLineArgs; }
+		/* @brief The folder the process was started in; relative command-line paths are relative to it (empty: the current one). */
+		virtual const std::filesystem::path &GetLaunchDirectory() const { return m_LaunchDirectory; }
 
 		//static Ref<PlatformContext> Create(const std::string &name, const std::string &workingDirectory, const std::vector<std::string> &commandLineArgs);
 
@@ -59,6 +62,7 @@ namespace SceneryEditorX
 		std::string m_WorkingDirectory;
 		std::string m_TempDirectory;
 		std::vector<std::string> m_CommandLineArgs;
+		std::filesystem::path m_LaunchDirectory;
 		//static PlatformContext *appCtx;
 
 		PlatformContext() = default;

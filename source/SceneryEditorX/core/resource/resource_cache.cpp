@@ -206,8 +206,7 @@ namespace SceneryEditorX
 			return;
 		}
 
-		IO::FileSystem::CreateDir(std::filesystem::path(directory));
-
+		// Only a path prefix now (prefab saving is disabled), so it isn't created: an install's "..\project\" isn't ours
 		std::strncpy(s_ProjectDir, directory, sizeof(s_ProjectDir) - 1);
 		s_ProjectDir[sizeof(s_ProjectDir) - 1] = '\0';
 	}
@@ -224,13 +223,9 @@ namespace SceneryEditorX
 
 	std::string ResourceCache::GetResourceDirectory()
 	{
-#ifdef SEDX_DEBUG
-		std::filesystem::path resourceDir = IO::FileSystem::GetWorkingDirectory() + "\\resources";
-#else
-		std::filesystem::path resourceDir = IO::FileSystem::GetProgramFilesPath() / "\\resources";
-#endif
+		// The platform layer starts every build in the folder holding resources/ (the install folder, or the checkout)
+		const std::filesystem::path resourceDir = IO::FileSystem::GetWorkingDirectory() + "\\resources";
 		return resourceDir.string();
-		
 	}
 
 	std::vector<Ref<SharedResource>> &ResourceCache::GetResources()

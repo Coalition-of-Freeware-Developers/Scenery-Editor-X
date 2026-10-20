@@ -41,3 +41,4 @@ vcpkg note (mingw triplets)
 
 Where to go next
 - After installing Ninja and the toolchain, re-run the CMake configure command using `-G Ninja` (single-config) or install a matching multi-config ninja if you need that workflow.
+- To package a build for testers (MSVC builds), see `installer/README.md`.

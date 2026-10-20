@@ -844,7 +844,12 @@ namespace SceneryEditorX::EditorProjects
 			for (size_t i = 0; i + 1 < args.size(); ++i)
 			{
 				if (args[i] == "--project")
+				{
+					// The process may have moved to the install folder since it started: a relative path is the launcher's
 					state.startupProject = FromUtf8(args[++i]);
+					if (state.startupProject.is_relative() && !platform->GetLaunchDirectory().empty())
+						state.startupProject = platform->GetLaunchDirectory() / state.startupProject;
+				}
 				else if (args[i] == "--project-autosave")
 					state.autosaveSeconds = std::max(1.0, std::atof(args[++i].c_str()));	// Seconds between autosaves (verification runs)
 			}

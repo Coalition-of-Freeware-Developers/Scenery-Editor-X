@@ -39,6 +39,7 @@
 #include <SceneryEditorX/core/time/time.h>
 #include <SceneryEditorX/core/time/timer.h>
 #include <SceneryEditorX/core/window/window.h>
+#include <SceneryEditorX/filesystem/vfs.h>
 #include <SceneryEditorX/settings/settings.h>
 #include <SceneryEditorX/utils/pointers.h>
 
@@ -193,7 +194,7 @@ namespace SceneryEditorX
 		bool m_ShowStats = true;
 
 		const PlatformContext* m_PlatformContext = nullptr;
-		Settings m_Settings = Settings(std::filesystem::path("settings.cfg"));
+		Settings m_Settings = Settings(VFS::GetAppLocation(VFS::AppLocation::Settings) / "settings.cfg");	// Not the working folder: an install's is read-only
 		static Application *s_AppInstance;
 		PerformanceProfiler *m_Profiler = nullptr; // TODO: Should be null in Dist
 		std::unordered_map<const char *, PerformanceProfiler::PerFrameData> m_ProfilerPreviousFrameData;

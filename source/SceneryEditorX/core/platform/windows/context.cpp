@@ -102,13 +102,44 @@ namespace SceneryEditorX
 	
 		return args;
 	}
-	
+
+	/**
+	 * @brief The folder holding resources/ for this executable: beside it (installed) or one up (bin/ in a checkout).
+	 * @return The folder, or empty when neither has resources/shaders.
+	 */
+	static std::filesystem::path FindAppRoot()
+	{
+		std::wstring module(MAX_PATH, L'\0');
+		DWORD length = 0;
+		while ((length = GetModuleFileNameW(nullptr, module.data(), static_cast<DWORD>(module.size()))) == module.size())
+			module.resize(module.size() * 2);
+		if (length == 0)
+			return {};
+		module.resize(length);
+
+		std::error_code ec;
+		const std::filesystem::path exeFolder = std::filesystem::path(module).parent_path();
+		for (const std::filesystem::path &folder : { exeFolder, exeFolder.parent_path() })
+		{
+			if (std::filesystem::is_directory(folder / "resources" / "shaders", ec))
+				return folder;
+		}
+		return {};
+	}
+
 	WindowsContext::WindowsContext(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, INT nCmdShow) : PlatformContext()
 	{
 		m_WorkingDirectory = "";
 		m_TempDirectory = GetTempDir();
 		m_CommandLineArgs = GetArgs();
-	
+
+		// Shaders, fonts and icons load from resources/ under the working directory, but Explorer starts a file
+		// association (double-clicking a .edX) in the document's folder: work from the executable's root instead.
+		std::error_code ec;
+		m_LaunchDirectory = std::filesystem::current_path(ec);
+		if (const std::filesystem::path root = FindAppRoot(); !root.empty())
+			std::filesystem::current_path(root, ec);
+
 	#ifdef SEDX_DEBUG
 		// Attempt to attach to the parent process console if it exists
 		if (!AttachConsole(ATTACH_PARENT_PROCESS))
