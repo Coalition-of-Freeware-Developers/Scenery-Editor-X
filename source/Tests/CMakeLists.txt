@@ -368,3 +368,33 @@ ENDIF()
 
 catch_discover_tests(ProjectFormatTests)
 
+
+# --------------------------------
+# Environment Tests (the XP12 environment model: parity scenarios, solar position, weather, seasons, quality tables;
+# standard library + nlohmann_json only)
+# --------------------------------
+
+MESSAGE(STATUS "=================================================")
+MESSAGE(STATUS "Generating Environment Unit Tests")
+
+ADD_EXECUTABLE(EnvironmentTests
+    ${CMAKE_CURRENT_SOURCE_DIR}/environment_tests/ParityScenarioTests.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/environment/parity_scenario.cpp
+)
+
+TARGET_INCLUDE_DIRECTORIES(EnvironmentTests PRIVATE
+    ${CMAKE_SOURCE_DIR}/source
+)
+
+TARGET_LINK_LIBRARIES(EnvironmentTests PRIVATE
+    Catch2::Catch2WithMain
+    nlohmann_json::nlohmann_json
+)
+
+IF(_SEDX_MSVCLIKE)
+    TARGET_COMPILE_OPTIONS(EnvironmentTests PRIVATE /MP /W4)
+ELSE()
+    TARGET_COMPILE_OPTIONS(EnvironmentTests PRIVATE -Wall -Wextra -Wpedantic)
+ENDIF()
+
+catch_discover_tests(EnvironmentTests)

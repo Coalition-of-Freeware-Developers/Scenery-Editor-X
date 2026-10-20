@@ -122,6 +122,7 @@ namespace SceneryEditorX
 				{ Renderer_Shader::output,                   "output",                   "output.slang", {CS} },
 				{ Renderer_Shader::blit,                     "blit",                     "blit.slang",   {CS}, {}, VertexType::MaxEnum, true },
 				{ Renderer_Shader::downsample_min,           "downsample_min",           "downsample_min.slang", {CS}, {}, VertexType::MaxEnum, true }, // Hi-Z (Pass_Downscale, Min)
+				{ Renderer_Shader::reference_overlay,        "reference_overlay",        "reference_overlay.slang", {CS}, {}, VertexType::MaxEnum, true }, // viewport REFERENCE menu
 
 				// Not registered: ffx_spd_* (scale.slang has no entry point yet), sss_bend (sss_blend.slang disabled),
 				// tessellation, depth_of_field, fxaa and the particle / texture-compression passes.

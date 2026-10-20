@@ -2190,6 +2190,20 @@ namespace SceneryEditorX::XPlane
 		PlaceCamera(eye, eye + ViewForward(yaw, pitch) * 100.0f, yaw, pitch);
 	}
 
+	bool SceneAirports::LookFromGeo(const double latitude, const double longitude, const float heightMeters, const float headingTrueDegrees, const float pitchDegrees)
+	{
+		if (!IsLoaded())
+			return false;
+		// The scene was built with the projection's datum at the root's origin; +X east, +Z south
+		const Point2 local = s_Loaded->projection.ToLocal(latitude, longitude);
+		const Vec3 eye = Vec3(static_cast<float>(local.x), heightMeters, static_cast<float>(local.z)) + RootOffset(*s_Loaded);
+		// Yaw 0 looks along +Z (south): a true heading h looks along yaw 180 - h
+		const float yaw = (180.0f - headingTrueDegrees) * kDegToRad;
+		const float pitch = pitchDegrees * kDegToRad;
+		PlaceCamera(eye, eye + ViewForward(yaw, pitch) * 100.0f, yaw, pitch);
+		return true;
+	}
+
 	const GeoProjection &SceneAirports::GetProjection()
 	{
 		return s_Loaded ? s_Loaded->projection : s_NoProjection;

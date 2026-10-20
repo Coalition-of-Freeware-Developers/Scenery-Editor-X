@@ -29,6 +29,7 @@
  * -------------------------------------------------------
  */
 #include "bend_sss_cpu.h"
+#include "frame_capture.h"
 #include "gbuffer.h"
 #include "gpu_scene.h"
 #include "renderer.h"
@@ -42,6 +43,7 @@
 #include "vulkan/pipeline/pipeline_state.h"
 #include "vulkan/shader/shader_manager.h"
 #include <algorithm>
+#include <atomic>
 #include <mutex>
 #include <SceneryEditorX/scene/camera.h>
 #include <SceneryEditorX/scene/entity.h>
@@ -111,6 +113,14 @@ namespace SceneryEditorX
 		}
 
 		float s_FallbackDaylight = 1.0f;
+		std::atomic<bool> s_GridVisible{ true };
+
+		// Viewport reference overlay (Renderer::SetReferenceOverlay), read by the render thread
+		std::mutex s_ReferenceMutex;
+		Ref<ImageResource> s_ReferenceImage;
+		Renderer::ReferenceOverlayMode s_ReferenceMode = Renderer::ReferenceOverlayMode::Off;
+		float s_ReferenceSplit = 0.5f;
+		float s_ReferenceGain = 4.0f;
 
 		// Light billboards (Renderer::SetLightBillboards) and the vertex buffers they stream through. Each frame
 		// writes the next buffer of the ring, so a frame still in flight keeps reading its own.
@@ -233,6 +243,12 @@ namespace SceneryEditorX
 					return;
 
 				graphicsPresent->Blit(rt_render, rt_output, false);
+				if (graphicsPresent->IsStickyInvalid())
+					return;
+
+				// Parity captures (--capture-png) read the output before any overlay is drawn on it
+				FrameCapture::Record(graphicsPresent, rt_output, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
+				Pass_ReferenceOverlay(graphicsPresent, rt_output);
 				if (graphicsPresent->IsStickyInvalid())
 					return;
 			}
@@ -1169,7 +1185,7 @@ namespace SceneryEditorX
 
 	void Renderer::Pass_Grid(CommandList *cmdList, ImageResource *out)
 	{
-		if (!cvar_grid.GetValueAs<bool>())
+		if (!cvar_grid.GetValueAs<bool>() || !s_GridVisible.load(std::memory_order_relaxed))
 			return;
 
 		if (!cmdList || cmdList->IsStickyInvalid())
@@ -1264,6 +1280,49 @@ namespace SceneryEditorX
 	float Renderer::GetFallbackDaylight()
 	{
 		return s_FallbackDaylight;
+	}
+
+	void Renderer::SetGridVisible(const bool visible)
+	{
+		s_GridVisible.store(visible, std::memory_order_relaxed);
+	}
+
+	bool Renderer::IsGridVisible()
+	{
+		return s_GridVisible.load(std::memory_order_relaxed);
+	}
+
+	void Renderer::SetReferenceOverlay(const Ref<ImageResource> &image, const ReferenceOverlayMode mode, const float split, const float differenceGain)
+	{
+		std::scoped_lock lock(s_ReferenceMutex);
+		s_ReferenceImage = image;
+		s_ReferenceMode = image ? mode : ReferenceOverlayMode::Off;
+		s_ReferenceSplit = std::clamp(split, 0.0f, 1.0f);
+		s_ReferenceGain = differenceGain;
+	}
+
+	void Renderer::Pass_ReferenceOverlay(CommandList *cmdList, ImageResource *out)
+	{
+		Ref<ImageResource> image;
+		ReferenceOverlayMode mode;
+		float split, gain;
+		{
+			std::scoped_lock lock(s_ReferenceMutex);
+			image = s_ReferenceImage;
+			mode = s_ReferenceMode;
+			split = s_ReferenceSplit;
+			gain = s_ReferenceGain;
+		}
+		if (mode == ReferenceOverlayMode::Off || !image || !image->Get() || *image->Get() == VK_NULL_HANDLE || !out)
+			return;
+		if (!cmdList || cmdList->IsStickyInvalid() || !ShaderManager::IsShaderAvailable(Renderer_Shader::reference_overlay))
+			return;
+
+		Pass_Compute(cmdList, "reference_overlay", Renderer_Shader::reference_overlay, image.Get(), out, [&]
+		{
+			m_Pcb_Pass_Cpu.SetF4Value(static_cast<float>(mode), split, gain, 0.0f);
+			cmdList->PushConstants(m_Pcb_Pass_Cpu);
+		});
 	}
 
 	void Renderer::DestroyForwardResources()

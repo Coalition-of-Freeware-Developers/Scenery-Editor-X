@@ -31,6 +31,7 @@
 #include "editor_layer.h"
 #include "editor_airports.h"
 #include "editor_project.h"
+#include "editor_scenario.h"
 #include "editor_camera.h"
 #include "editor_commands.h"
 #include "editor_history.h"
@@ -267,6 +268,7 @@ namespace SceneryEditorX
 		EditorAirports::Init();
 		EditorProjects::Init(m_UserPreferences);
 		ReadStartupObjects();
+		EditorScenario::Init();		// --env-scenario: after the airports, so its airport wins over --xp-airport
 		RegisterPanels();
 		// Commands the menus offer (menu bar, right-click quad menu, Space hotbox), and the menus themselves
 		ViewportMenus::RegisterCommands();
@@ -382,6 +384,7 @@ namespace SceneryEditorX
 		{
 			SEDX_PERF_SCOPE("Main: EditorAirports::Tick");
 			EditorAirports::Tick(&m_Context);
+			EditorScenario::Tick(&m_Context);	// Parity scenario: camera, settling, --capture-png
 		}
 
 		// Project: the startup project, scene edits flowing into it, autosave, the window title

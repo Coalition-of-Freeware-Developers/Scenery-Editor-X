@@ -53,6 +53,7 @@
 #include <SceneryEditorX/core/application/application.h>
 #include <SceneryEditorX/core/frame_profiler.h>
 #include <SceneryEditorX/core/window/monitor_data.h>
+#include <SceneryEditorX/renderer/frame_capture.h>
 #include <SceneryEditorX/renderer/gbuffer.h>
 #include <SceneryEditorX/renderer/gpu_scene.h>
 #include <SceneryEditorX/renderer/scene_picking.h>
@@ -705,6 +706,8 @@ void dynamic_resolution()
 		// Destroy frame resources
 		GpuScene::Shutdown();
 		ScenePicking::Shutdown();
+		FrameCapture::Shutdown();
+		SetReferenceOverlay(nullptr, ReferenceOverlayMode::Off);
 		GeometryBuffer::Shutdown();
 		DestroyResources();
 		DestroyFrameResources();

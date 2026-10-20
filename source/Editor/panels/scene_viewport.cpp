@@ -44,6 +44,8 @@
 #include <SceneryEditorX/renderer/ui/ui_impl.h>
 #include <SceneryEditorX/scene/camera.h>
 #include <SceneryEditorX/xplane/xp_library.h>
+#include <SceneryEditorX/xplane/xp_texture_loader.h>
+#include <portable-file-dialogs.h>
 
 // -------------------------------------------------------
 
@@ -58,6 +60,25 @@ namespace SceneryEditorX
 		constexpr uint32_t MIN_RENDER_SIZE = 64;
 
 		constexpr float TOOLBAR_HEIGHT = 30.0f;
+
+		// SetFixedRenderSize(): parity captures render at the reference's size whatever the panel's
+		uint32_t s_FixedWidth = 0;
+		uint32_t s_FixedHeight = 0;
+
+		std::filesystem::path s_RequestedReference;
+		SceneViewport::ReferenceView s_RequestedReferenceView = SceneViewport::ReferenceView::Split;
+	}
+
+	void SceneViewport::RequestReference(const std::filesystem::path &png, const ReferenceView view)
+	{
+		s_RequestedReference = png;
+		s_RequestedReferenceView = view;
+	}
+
+	void SceneViewport::SetFixedRenderSize(const uint32_t width, const uint32_t height)
+	{
+		s_FixedWidth = width;
+		s_FixedHeight = height;
 	}
 
 	SceneViewport::SceneViewport(EditorContext *context) : m_Context(context)
@@ -124,11 +145,30 @@ namespace SceneryEditorX
 			Camera *camera = EditorCamera::Get();
 			DrawToolbar(camera);
 
-			const ImVec2 imageMin = ImGui::GetCursorScreenPos();
-			const ImVec2 imageSize = ImGui::GetContentRegionAvail();
-			const uint32_t width  = static_cast<uint32_t>(std::max(imageSize.x, 0.0f));
-			const uint32_t height = static_cast<uint32_t>(std::max(imageSize.y, 0.0f));
+			const ImVec2 panelMin = ImGui::GetCursorScreenPos();
+			const ImVec2 panelSize = ImGui::GetContentRegionAvail();
+			ImVec2 imageMin = panelMin;
+			ImVec2 imageSize = panelSize;
+			uint32_t width  = static_cast<uint32_t>(std::max(panelSize.x, 0.0f));
+			uint32_t height = static_cast<uint32_t>(std::max(panelSize.y, 0.0f));
+			if (s_FixedWidth > 0 && s_FixedHeight > 0 && panelSize.x > 0.0f && panelSize.y > 0.0f)
+			{
+				// A fixed render size is shown fitted into the panel, centered, with black bars
+				width = s_FixedWidth;
+				height = s_FixedHeight;
+				const float scale = std::min(panelSize.x / static_cast<float>(width), panelSize.y / static_cast<float>(height));
+				imageSize = ImVec2(std::floor(static_cast<float>(width) * scale), std::floor(static_cast<float>(height) * scale));
+				imageMin = ImVec2(std::floor(panelMin.x + (panelSize.x - imageSize.x) * 0.5f), std::floor(panelMin.y + (panelSize.y - imageSize.y) * 0.5f));
+				ImGui::GetWindowDrawList()->AddRectFilled(panelMin, ImVec2(panelMin.x + panelSize.x, panelMin.y + panelSize.y), IM_COL32(0, 0, 0, 255));
+			}
 			UpdateRenderSize(width, height);
+			if (!s_RequestedReference.empty())
+			{
+				if (LoadReference(s_RequestedReference))
+					m_ReferenceView = s_RequestedReferenceView;
+				s_RequestedReference.clear();
+			}
+			UpdateReferenceOverlay();
 
 			m_ViewportBounds[0] = Vec2(imageMin.x, imageMin.y);
 			m_ViewportBounds[1] = Vec2(imageMin.x + imageSize.x, imageMin.y + imageSize.y);
@@ -160,7 +200,8 @@ namespace SceneryEditorX
 				const float renderHeight = m_AppliedHeight > 0 ? static_cast<float>(m_AppliedHeight) : imageSize.y;
 				const ViewportView view = ViewportView::Build(imageMin, imageSize, renderWidth / renderHeight);
 				const bool imageHovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) && ImGui::IsMouseHoveringRect(imageMin, imageMax);
-				const bool toolHasMouse = EditorTools::BeginViewport(m_Context, view, imageHovered);
+				const bool splitHasMouse = DrawReferenceSplit(imageMin, imageSize);
+				const bool toolHasMouse = EditorTools::BeginViewport(m_Context, view, imageHovered && !splitHasMouse) || splitHasMouse;
 
 				bool canvasHovered = false;
 				ImGui::SetCursorScreenPos(imageMin);
@@ -343,7 +384,9 @@ namespace SceneryEditorX
 		if (EditorUI::StripButton(SEDX_ICON_TH_LARGE, "Orthographic projection", EditorCamera::IsProjection(CameraType::Orthographic), buttonSize))
 			EditorCamera::SetProjection(CameraType::Orthographic);
 
-		// Right: reset view.
+		// Right: the reference image, reset view.
+		ImGui::SameLine(rightEdge - buttonSize * 2.0f - 2.0f * dpi);
+		DrawReferenceMenu(buttonSize);
 		ImGui::SameLine(rightEdge - buttonSize);
 		if (EditorUI::StripButton(SEDX_ICON_CROSSHAIRS, "Reset camera to the startup view", false, buttonSize))
 			EditorCamera::Reset();
@@ -378,6 +421,115 @@ namespace SceneryEditorX
 		ImDrawList *drawList = ImGui::GetWindowDrawList();
 		drawList->AddRectFilled(boxMin, boxMax, ToU32(ImVec4(Palette::Separator.x, Palette::Separator.y, Palette::Separator.z, 0.75f)), 2.0f * dpi);
 		drawList->AddText(ImVec2(boxMin.x + padding.x, boxMin.y + padding.y), ToU32(Palette::TextLabel), text);
+
+		if (m_Reference && m_ReferenceView != ReferenceView::Off)
+		{
+			static constexpr const char *views[] = { "", "split", "difference", "flicker" };
+			const std::string name = m_ReferencePath.filename().string();
+			snprintf(text, sizeof(text), "REFERENCE  %s  |  %s", name.c_str(), views[static_cast<int>(m_ReferenceView)]);
+			const ImVec2 size = ImGui::CalcTextSize(text);
+			const ImVec2 min(boxMin.x, boxMax.y + 4.0f * dpi);
+			const ImVec2 max(min.x + size.x + padding.x * 2.0f, min.y + size.y + padding.y * 2.0f);
+			drawList->AddRectFilled(min, max, ToU32(ImVec4(Palette::Separator.x, Palette::Separator.y, Palette::Separator.z, 0.75f)), 2.0f * dpi);
+			drawList->AddText(ImVec2(min.x + padding.x, min.y + padding.y), ToU32(Palette::TextLabel), text);
+		}
+	}
+
+	bool SceneViewport::LoadReference(const std::filesystem::path &png)
+	{
+		XPlane::TextureInfo info;
+		Ref<ImageResource> image = XPlane::TextureLoader::Load(png, XPlane::TextureUsage::Data, &info);
+		if (!image)
+		{
+			EDITOR_ERROR_TAG("Viewport", "Reference image {} could not be loaded: {}", png.string(), info.error);
+			return false;
+		}
+		m_Reference = image;
+		m_ReferencePath = png;
+		if (m_ReferenceView == ReferenceView::Off)
+			m_ReferenceView = ReferenceView::Split;
+		EDITOR_INFO_TAG("Viewport", "Reference image {} ({} x {})", png.string(), info.width, info.height);
+		return true;
+	}
+
+	void SceneViewport::DrawReferenceMenu(const float buttonSize)
+	{
+		const float dpi = ImGui::GetStyle().FontScaleDpi;
+		if (EditorUI::StripButton(SEDX_ICON_PICTURE_O, "Reference image\nCompare the view with an X-Plane 12 screenshot: split, difference or flicker", m_Reference && m_ReferenceView != ReferenceView::Off, buttonSize))
+			ImGui::OpenPopup("##ReferenceMenu");
+
+		if (!ImGui::BeginPopup("##ReferenceMenu"))
+			return;
+
+		ImGui::TextUnformatted("REFERENCE");
+		ImGui::Separator();
+		if (ImGui::MenuItem("Load reference image..."))
+		{
+			const std::string start = m_ReferencePath.empty() ? std::string() : m_ReferencePath.parent_path().string();
+			const std::vector<std::string> files = pfd::open_file("Open a reference image", start, { "PNG images", "*.png", "All files", "*" }).result();
+			if (!files.empty())
+				LoadReference(files.front());
+		}
+		if (m_Reference)
+			ImGui::TextDisabled("%s", m_ReferencePath.filename().string().c_str());
+		else
+			ImGui::TextDisabled("No image loaded");
+
+		ImGui::Separator();
+		ImGui::BeginDisabled(!m_Reference);
+		static constexpr const char *labels[] = { "Off", "Split", "Difference (x gain)", "Flicker (1 Hz)" };
+		for (int i = 0; i < 4; ++i)
+		{
+			if (ImGui::RadioButton(labels[i], m_ReferenceView == static_cast<ReferenceView>(i)))
+				m_ReferenceView = static_cast<ReferenceView>(i);
+		}
+		ImGui::SetNextItemWidth(140.0f * dpi);
+		ImGui::SliderFloat("Difference gain", &m_ReferenceGain, 1.0f, 16.0f, "%.1f");
+		if (ImGui::MenuItem("Clear"))
+		{
+			m_Reference = nullptr;
+			m_ReferencePath.clear();
+			m_ReferenceView = ReferenceView::Off;
+		}
+		ImGui::EndDisabled();
+		ImGui::EndPopup();
+	}
+
+	bool SceneViewport::DrawReferenceSplit(const ImVec2 &imageMin, const ImVec2 &imageSize)
+	{
+		if (!m_Reference || m_ReferenceView != ReferenceView::Split || imageSize.x <= 0.0f)
+			return false;
+
+		const float dpi = ImGui::GetStyle().FontScaleDpi;
+		const float x = imageMin.x + m_ReferenceSplit * imageSize.x;
+		const float halfWidth = 4.0f * dpi;
+		ImGui::SetCursorScreenPos(ImVec2(x - halfWidth, imageMin.y));
+		ImGui::InvisibleButton("##ReferenceSplit", ImVec2(halfWidth * 2.0f, imageSize.y));
+		const bool hovered = ImGui::IsItemHovered();
+		const bool active = ImGui::IsItemActive();
+		if (hovered || active)
+			ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
+		if (active)
+			m_ReferenceSplit = std::clamp((ImGui::GetIO().MousePos.x - imageMin.x) / imageSize.x, 0.0f, 1.0f);
+
+		// A grip in the middle of the line (the renderer draws the line itself into the image)
+		const ImVec2 grip(x, imageMin.y + imageSize.y * 0.5f);
+		ImDrawList *drawList = ImGui::GetWindowDrawList();
+		drawList->AddCircleFilled(grip, 7.0f * dpi, IM_COL32(255, 255, 255, hovered || active ? 255 : 200));
+		return hovered || active;
+	}
+
+	void SceneViewport::UpdateReferenceOverlay() const
+	{
+		Renderer::ReferenceOverlayMode mode = Renderer::ReferenceOverlayMode::Off;
+		switch (m_Reference ? m_ReferenceView : ReferenceView::Off)
+		{
+			case ReferenceView::Split:		mode = Renderer::ReferenceOverlayMode::Split; break;
+			case ReferenceView::Difference:	mode = Renderer::ReferenceOverlayMode::Difference; break;
+			case ReferenceView::Flicker:	mode = std::fmod(ImGui::GetTime(), 1.0) < 0.5 ? Renderer::ReferenceOverlayMode::Reference : Renderer::ReferenceOverlayMode::Off; break;
+			default: break;
+		}
+		Renderer::SetReferenceOverlay(m_Reference, mode, m_ReferenceSplit, m_ReferenceGain);
 	}
 
 	void SceneViewport::UpdateRenderSize(const uint32_t width, const uint32_t height)

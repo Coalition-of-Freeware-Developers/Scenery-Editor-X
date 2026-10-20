@@ -215,6 +215,7 @@ namespace SceneryEditorX
 		gbuffer_gpu,
 		downsample_min,			// one level of a min mip chain (Hi-Z), until the FidelityFX SPD shaders are ported
 		selection_outline,		// editor selection / hover outlines from the pick ids (ScenePicking)
+		reference_overlay,		// viewport reference image: split / difference / full over frame_output (parity harness)
 		MaxEnum
 	};
 
@@ -286,6 +287,7 @@ namespace SceneryEditorX
 		case Renderer_Shader::gbuffer_gpu: return "gbuffer_gpu";
 		case Renderer_Shader::downsample_min: return "downsample_min";
 		case Renderer_Shader::selection_outline: return "selection_outline";
+		case Renderer_Shader::reference_overlay: return "reference_overlay";
 		case Renderer_Shader::MaxEnum: return "MaxEnum";
 		default: return "unknown";
 		}

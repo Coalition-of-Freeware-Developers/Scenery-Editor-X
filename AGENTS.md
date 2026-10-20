@@ -69,6 +69,12 @@ The dependency-light, cross-platform Catch2 unit suites that only need `source/`
   `xp_airport_index.*`, `xp_dsf.*`, `xp_assets.*`, `xp_overlay.*`). Standard library plus `dependency/json`, fully green. Its
   `[performance]` case times a 22k-item project; exclude it with `"~[performance]"` for quick runs.
 
+- **`EnvironmentTests`** (`source/Tests/environment_tests`) — the XP12 environment model behind the viewport's
+  X-Plane 12 emulation (`plan/feature-xp12-environment-rendering-1.md`): parity scenario files
+  (`ParityScenarioTests.cpp`: `environment/parity_scenario.*`, the format `tools/xp12_reference_probe` and
+  `--env-scenario` share, plus the shipped `tools/xp12_reference_probe/scenarios/xp12_parity.json` when run from the repo
+  root). Standard library plus `dependency/json`, fully green.
+
 The other suites are **not** Linux-buildable as written: `SettingsTest` links Windows libs
 (`dxgi`, `d3d12`, `Shell32.lib`); `MemoryAllocatorTests` links `vulkan-1` and needs the Vulkan
 SDK; `VulkanSmokeTests` (opt-in via `SEDX_ENABLE_VULKAN_SMOKE_TESTS`) needs the full engine.
@@ -160,6 +166,12 @@ g++ -std=c++20 -O2 -pthread $INCS source/Tests/project_tests/ProjectFormatTests.
     source/SceneryEditorX/xplane/xp_facade.cpp source/SceneryEditorX/xplane/xp_overlay.cpp $LIBS \
     -o build_linux_tests/ProjectFormatTests
 ./build_linux_tests/ProjectFormatTests "~[performance]"
+
+# 6. EnvironmentTests (fully green; run from the repo root so the shipped scenario file is checked)
+g++ -std=c++20 -O2 -pthread $INCS source/Tests/environment_tests/ParityScenarioTests.cpp \
+    source/SceneryEditorX/environment/parity_scenario.cpp $LIBS \
+    -o build_linux_tests/EnvironmentTests
+./build_linux_tests/EnvironmentTests
 ```
 
 `build_linux_tests/` and `dependency/Catch2/build-linux/` are throwaway build output — do not commit them.

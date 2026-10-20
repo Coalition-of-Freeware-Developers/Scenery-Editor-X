@@ -467,6 +467,26 @@ namespace SceneryEditorX
 		static void SetFallbackDaylight(float daylight);
 		static float GetFallbackDaylight();
 
+		/* @brief Draws the editor grid (on by default; parity captures hide it, X-Plane has none). */
+		static void SetGridVisible(bool visible);
+		static bool IsGridVisible();
+
+		/* @brief What the viewport reference overlay shows over frame_output (reference_overlay.slang). */
+		enum class ReferenceOverlayMode : uint8_t
+		{
+			Off,
+			Reference,		// The reference image only (flicker alternates this with Off)
+			Split,			// The reference left of a vertical line, the frame right of it
+			Difference		// |frame - reference| x gain, on sRGB-encoded values
+		};
+
+		/**
+		 * @brief A reference image (an X-Plane 12 screenshot, loaded by TextureLoader) drawn over the output after any
+		 * frame capture, so captures never include it.
+		 * @param split Position of the split line, 0-1 of the width.
+		 */
+		static void SetReferenceOverlay(const Ref<ImageResource> &image, ReferenceOverlayMode mode, float split = 0.5f, float differenceGain = 4.0f);
+
 	private:
 
 		/**
@@ -700,6 +720,7 @@ namespace SceneryEditorX
 		static void Pass_Downscale(CommandList *cmdList, ImageResource *img, Renderer_DownsampleFilter filter);
 		static void Pass_Grid(CommandList *cmdList, ImageResource *out);
 		static void Pass_Text(CommandList *cmdList, ImageResource *out);
+		static void Pass_ReferenceOverlay(CommandList *cmdList, ImageResource *out);
 
 		/**
 		 * @brief Draws alpha-blended materials (MaterialProperty::BlendMode) back to front over the composed frame.

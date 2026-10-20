@@ -1,0 +1,17 @@
+{
+	"about": "Pass limits per scenario for xp_compare.py (plan TASK-097, initial values; review after the first calibration pass). The first rule whose regular expression matches the scenario id applies, over the defaults. Metrics: mean_de2000, p95_de2000, mean_flip, luminance_emd (stops), sky_mean_de2000.",
+	"default": {
+		"max_mean_de2000": 4.0,
+		"max_p95_de2000": 10.0,
+		"max_mean_flip": 0.15,
+		"max_sky_mean_de2000": 3.0,
+		"max_luminance_emd": 0.5
+	},
+	"rules": [
+		{ "name": "night", "match": "night|sunm(06|12)", "limits": { "max_mean_de2000": 6.0, "max_p95_de2000": 14.0, "max_mean_flip": 0.20, "max_sky_mean_de2000": 6.0, "max_luminance_emd": 1.0 } },
+		{ "name": "twilight", "match": "sunm02", "limits": { "max_mean_de2000": 5.0, "max_p95_de2000": 12.0, "max_mean_flip": 0.18, "max_sky_mean_de2000": 4.0, "max_luminance_emd": 0.75 } },
+		{ "name": "hazy / foggy / overcast", "match": "hazy|foggy|overcast", "limits": { "max_mean_de2000": 5.0, "max_p95_de2000": 12.0, "max_sky_mean_de2000": 4.0 } },
+		{ "name": "wet / snow", "match": "wet|snow", "limits": { "max_mean_de2000": 6.0, "max_p95_de2000": 14.0, "max_mean_flip": 0.18 } },
+		{ "name": "daylight", "match": ".", "limits": {} }
+	]
+}

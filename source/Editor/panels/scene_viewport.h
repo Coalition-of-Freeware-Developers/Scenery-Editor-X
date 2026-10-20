@@ -30,7 +30,9 @@
  */
 #pragma once
 #include <array>
+#include <filesystem>
 #include <Editor/core/editor_context.h>
+#include <SceneryEditorX/renderer/vulkan/image_resource.h>
 #include <SceneryEditorX/renderer/ui/editor_panel.h>
 
 // -------------------------------------------------------
@@ -61,9 +63,35 @@ namespace SceneryEditorX
 		/* @brief Size in pixels the renderer was last resized to. */
 		[[nodiscard]] Vec2 GetRenderSize() const { return { static_cast<float>(m_AppliedWidth), static_cast<float>(m_AppliedHeight) }; }
 
+		/**
+		 * @brief Renders at a fixed size instead of the panel's (parity captures: the same image size and aspect as the
+		 * X-Plane reference); the image is shown fitted into the panel. 0 x 0 follows the panel again.
+		 */
+		static void SetFixedRenderSize(uint32_t width, uint32_t height);
+
+		/* @brief What the REFERENCE menu shows over the rendered image. */
+		enum class ReferenceView : uint8_t
+		{
+			Off,
+			Split,			// Reference left of a draggable vertical line
+			Difference,		// |frame - reference| x gain
+			Flicker			// Reference and frame alternate at 1 Hz
+		};
+
+		/* @brief Loads a reference image (PNG) for the overlay; false when it can't be read. */
+		bool LoadReference(const std::filesystem::path &png);
+		void SetReferenceView(ReferenceView view) { m_ReferenceView = view; }
+
+		/* @brief A reference the viewport loads when it is next drawn (--reference-image, --reference-view). */
+		static void RequestReference(const std::filesystem::path &png, ReferenceView view);
+
 	private:
 		void DrawToolbar(Camera *camera);
 		void DrawOverlay(Camera *camera, const ImVec2 &imageMin) const;
+		void DrawReferenceMenu(float buttonSize);
+		/* @brief The draggable split line; true while it has the mouse (the camera doesn't get it then). */
+		bool DrawReferenceSplit(const ImVec2 &imageMin, const ImVec2 &imageSize);
+		void UpdateReferenceOverlay() const;
 		void UpdateRenderSize(uint32_t width, uint32_t height);
 
 		/**
@@ -76,6 +104,12 @@ namespace SceneryEditorX
 		static bool PickGround(float u, float v, float aspect, float out[3]);
 
 		EditorContext *m_Context = nullptr;
+
+		Ref<ImageResource> m_Reference;
+		std::filesystem::path m_ReferencePath;
+		ReferenceView m_ReferenceView = ReferenceView::Off;
+		float m_ReferenceSplit = 0.5f;
+		float m_ReferenceGain = 4.0f;
 		std::array<Vec2, 2> m_ViewportBounds = {};
 
 		uint32_t m_PendingWidth		= 0;

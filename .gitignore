@@ -210,3 +210,6 @@ lib/*
 
 # Throwaway output of the standalone (g++) test builds described in AGENTS.md
 /build_linux_tests/
+
+# Parity harness: Python environment for tools/image_compare
+/tools/image_compare/.venv/

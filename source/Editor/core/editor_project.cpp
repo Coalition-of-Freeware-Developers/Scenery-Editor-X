@@ -457,6 +457,13 @@ namespace SceneryEditorX::EditorProjects
 			state.airportId.clear();
 		}
 
+		/* @brief A point within 20 km of the open airport's datum (a project without an airport of its own is then drawn with it). */
+		bool IsNearOpenAirport(const double latitude, const double longitude)
+		{
+			const XPlane::Point2 local = XPlane::SceneAirports::GetProjection().ToLocal(latitude, longitude);
+			return std::hypot(local.x, local.z) < 20000.0;
+		}
+
 		void LoadIntoScene(EditorContext *context)
 		{
 			State &state = GetState();
@@ -471,9 +478,12 @@ namespace SceneryEditorX::EditorProjects
 			}
 
 			double latitude = 0.0, longitude = 0.0;
+			const bool hasCenter = GetProjectCenter(project, latitude, longitude);
 			if (!state.airportId.empty() && XPlane::SceneAirports::IsLoaded())
 				state.projection = XPlane::SceneAirports::GetProjection();
-			else if (GetProjectCenter(project, latitude, longitude))
+			else if (hasCenter && XPlane::SceneAirports::IsLoaded() && IsNearOpenAirport(latitude, longitude))
+				state.projection = XPlane::SceneAirports::GetProjection();	// Drawn in the open airport's frame, so they line up
+			else if (hasCenter)
 				state.projection = XPlane::GeoProjection(latitude, longitude);
 			else
 				state.projection = XPlane::GeoProjection(0.0, 0.0);
