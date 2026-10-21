@@ -979,6 +979,8 @@ void dynamic_resolution()
 					{
 						SEDX_CORE_ERROR_TAG("Renderer", "ConstantFrame buffer is null — cannot reset offset");
 					}
+					if (Buffer *cacaoBuffer = GetBuffer(Renderer_Buffer::ConstantCacao))
+						cacaoBuffer->ResetOffset();
 				}
 			}
 

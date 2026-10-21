@@ -102,7 +102,22 @@ namespace SceneryEditorX
 				{ Renderer_Shader::light_integration_brdf_specular_lut,  "light_integration_brdf_specular_lut",  "light_integration.slang", {CS}, {}, VertexType::MaxEnum, true },
 				{ Renderer_Shader::light_integration_environment_filter, "light_integration_environment_filter", "light_integration.slang", {CS}, {}, VertexType::MaxEnum, true },
 				{ Renderer_Shader::light_reflections,                    "light_reflections",                    "light_reflections.slang", {CS} },
-				{ Renderer_Shader::ssao,                                 "ssao",                                 "ssao.slang",              {CS} },
+				{ Renderer_Shader::ssao,                                 "ssao",                                 "ssao.slang",              {CS}, {}, VertexType::MaxEnum, true }, // GTAO, the AO fallback
+
+				// ambient occlusion (plan Phase 8; XP12: cacao): AMD FidelityFX CACAO's kernels, X-Plane's qualities (renderer/cacao.h)
+				{ Renderer_Shader::cacao_prepare_depths,    "cacao_prepare_depths",     "cacao.slang", {CS}, {{"CACAO_PREPARE_DEPTHS"}}, VertexType::MaxEnum, true },
+				{ Renderer_Shader::cacao_prepare_normals,   "cacao_prepare_normals",    "cacao.slang", {CS}, {{"CACAO_PREPARE_NORMALS"}}, VertexType::MaxEnum, true },
+				{ Renderer_Shader::cacao_generate_q1,       "cacao_generate_q1",        "cacao.slang", {CS}, {{"CACAO_GENERATE"}, {"CACAO_QUALITY", "1"}}, VertexType::MaxEnum, true },
+				{ Renderer_Shader::cacao_generate_q2,       "cacao_generate_q2",        "cacao.slang", {CS}, {{"CACAO_GENERATE"}, {"CACAO_QUALITY", "2"}}, VertexType::MaxEnum, true },
+				{ Renderer_Shader::cacao_generate_q3,       "cacao_generate_q3",        "cacao.slang", {CS}, {{"CACAO_GENERATE"}, {"CACAO_QUALITY", "3"}}, VertexType::MaxEnum, true },
+				{ Renderer_Shader::cacao_generate_q3_base,  "cacao_generate_q3_base",   "cacao.slang", {CS}, {{"CACAO_GENERATE_BASE"}}, VertexType::MaxEnum, true },
+				{ Renderer_Shader::cacao_importance_map,    "cacao_importance_map",     "cacao.slang", {CS}, {{"CACAO_IMPORTANCE_MAP"}}, VertexType::MaxEnum, true },
+				{ Renderer_Shader::cacao_importance_map_a,  "cacao_importance_map_a",   "cacao.slang", {CS}, {{"CACAO_IMPORTANCE_MAP_A"}}, VertexType::MaxEnum, true },
+				{ Renderer_Shader::cacao_importance_map_b,  "cacao_importance_map_b",   "cacao.slang", {CS}, {{"CACAO_IMPORTANCE_MAP_B"}}, VertexType::MaxEnum, true },
+				{ Renderer_Shader::cacao_blur,              "cacao_blur",               "cacao.slang", {CS}, {{"CACAO_BLUR"}}, VertexType::MaxEnum, true },
+				{ Renderer_Shader::cacao_apply,             "cacao_apply",              "cacao.slang", {CS}, {{"CACAO_APPLY"}}, VertexType::MaxEnum, true },
+				{ Renderer_Shader::cacao_upscale,           "cacao_upscale",            "cacao.slang", {CS}, {{"CACAO_UPSCALE"}, {"CACAO_SMART", "0"}}, VertexType::MaxEnum, true },
+				{ Renderer_Shader::cacao_upscale_smart,     "cacao_upscale_smart",      "cacao.slang", {CS}, {{"CACAO_UPSCALE"}, {"CACAO_SMART", "1"}}, VertexType::MaxEnum, true },
 
 				// the atmosphere (plan Phase 6), the sky, environment probes
 				{ Renderer_Shader::atmosphere_transmittance_lut, "atmosphere_transmittance_lut", "atmosphere_luts.slang",    {CS}, {{"TRANSMITTANCE"}}, VertexType::MaxEnum, true },

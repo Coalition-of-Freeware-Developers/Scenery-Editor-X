@@ -32,6 +32,7 @@
  * image. Writes display-referred linear values into frame_output (tex_uav). Views whose data a later phase adds
  * (AO, SSR, tile lights) show black until then.
  *   tex           frame_render (radiance x pre-exposure) for the luminance views
+ *   tex_ssao      the ambient occlusion (Renderer::BindAmbientOcclusion; white when none ran)
  *   the shadow maps (csm_sample.slang, Renderer::BindShadows) for the cascade and cloud-shadow views
  *   pass_get_f4_value(): x view (Renderer_DebugView)
  */
@@ -48,6 +49,7 @@ static const uint VIEW_METALNESS = 3;
 static const uint VIEW_NORMALS = 4;
 static const uint VIEW_EMISSIVE = 5;
 static const uint VIEW_WEATHER = 6;
+static const uint VIEW_AO = 7;
 static const uint VIEW_CASCADES = 8;
 static const uint VIEW_CLOUD_SHADOW = 9;
 static const uint VIEW_EV = 12;
@@ -97,6 +99,13 @@ void main_comp(uint3 thread_id: SV_DispatchThreadID)
     }
     else if (view == VIEW_WEATHER)
         color = tex_weather.Load(pixel).rgb;	// R rain / damp, G puddles, B snow (0.5 + 0.5 s)
+    else if (view == VIEW_AO)
+    {
+        // The visibility the ambient light gets as a grey level (128: half of it), nothing where the sky is
+        const float2 uv = (float2(thread_id.xy) + 0.5) / resolution;
+        if (tex_depth.Load(pixel).r > 0.0)
+            color = to_linear(tex_ssao.SampleLevel(samplers[sampler_point_clamp], uv, 0.0).rrr);
+    }
     else if (view == VIEW_DEPTH)
         color = to_linear(pow(tex_depth.Load(pixel).r, 0.25).xxx);	// Reverse-Z: near is white
     else if (view == VIEW_CASCADES || view == VIEW_CLOUD_SHADOW)

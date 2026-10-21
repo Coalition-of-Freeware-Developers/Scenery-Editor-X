@@ -1251,6 +1251,30 @@ namespace SceneryEditorX
 	   }
 	}
 
+	void CommandList::InsertComputeMemoryBarrier()
+	{
+		if (m_StickyInvalidState || m_CmdBuffer == VK_NULL_HANDLE || m_State != CommandState::Recording)
+		{
+			SEDX_CORE_WARN_TAG("CommandList", "InsertComputeMemoryBarrier skipped: '{}' is not recording", m_ObjectName.c_str());
+			return;
+		}
+		if (m_RenderPassActive)
+			EndRenderPass();
+
+		VkMemoryBarrier2 barrier{};
+		barrier.sType         = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2;
+		barrier.srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+		barrier.srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT;
+		barrier.dstStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+		barrier.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT;
+
+		VkDependencyInfo depInfo{};
+		depInfo.sType              = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+		depInfo.memoryBarrierCount = 1;
+		depInfo.pMemoryBarriers    = &barrier;
+		vkCmdPipelineBarrier2(m_CmdBuffer, &depInfo);
+	}
+
 	void CommandList::InsertBarrier(Buffer *buffer)
 	{
 		if (buffer == nullptr || buffer->Get() == VK_NULL_HANDLE)
@@ -2339,6 +2363,10 @@ namespace SceneryEditorX
 		constexpr uint32_t environmentConstantBufferBinding = 201;
 		if (Buffer* environmentConstants = Renderer::GetBuffer(Renderer_Buffer::ConstantEnvironment))
 			m_DescriptorLayout_Current->SetConstantBuffer(environmentConstantBufferBinding, environmentConstants);
+		// Ambient occlusion ([[vk::binding(202)]] cbuffer BufferCacao, cacao.slang)
+		constexpr uint32_t cacaoConstantBufferBinding = 202;
+		if (Buffer* cacaoConstants = Renderer::GetBuffer(Renderer_Buffer::ConstantCacao))
+			m_DescriptorLayout_Current->SetConstantBuffer(cacaoConstantBufferBinding, cacaoConstants);
 
 		if (pso.shaders[static_cast<uint32_t>(StageType::Compute)])
 		{

@@ -286,6 +286,13 @@ namespace SceneryEditorX
 		void InsertBarrier(Buffer* buffer);
 
 		/**
+		 * @brief Compute shader writes before later compute reads and writes, of any resource (a UAV barrier). For storage
+		 * images that stay in General from one dispatch to the next: SetTexture inserts no barrier when the layout
+		 * doesn't change.
+		 */
+		void InsertComputeMemoryBarrier();
+
+		/**
 		 * @brief Insert a barrier for an image resource with detailed parameters.
 		 * @param image The image resource.
 		 * @param format The format of the image.

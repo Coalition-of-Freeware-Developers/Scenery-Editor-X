@@ -82,6 +82,14 @@ Every target is premultiplied by coverage × LOD fade so decals blend into the g
   a minimum gloss skipped, probes as fallback; water traces too.
 - Ambient occlusion: AMD FidelityFX CACAO. Presets: off; quality 2 half res; quality 3 half res (default); quality 4
   half res; quality 4 full res.
+  12.4.4 behaviour (shader archive and art-control dump, 2026-10-21): the FidelityFX SDK version, whose output is the
+  visibility raised to 2.2; one addition, a fade-in near the camera (`ssao/fade_in_from`, `fade_in_to`) applied with the
+  fade-out as the smaller of the two; depth linearised from the clip planes (reverse-Z). Dumped controls: radius 2.1 m,
+  multiplier 1.4, power 2.4, clamp 1, horizon threshold 0.4, fade-out 1-10 km, fade-in 0.5-2 m, adaptive limit 0.75,
+  3 blur passes, sharpness 1, detail 0, bilateral sigma² 2.4 / similarity 2.7, exterior strength and curve 1. With
+  `ssao/dynamic_values` on, X-Plane rewrites radius and fade-in by the camera's height (2.1 m / 2 m at 2-8 m above the
+  ground, 22 m / 100 m at 600 m) and, through a fog-dependent `ssao/visibility` factor, blends toward radius 3.9 m,
+  multiplier 1.5, fade-in 2-10 m (seen at 800 m visibility on the runway; not yet pinned down).
 - Sun shadows: cascaded shadow maps (2D array, 1-4 cascades, practical split λ, soft PCF), resolved in deferred
   lighting; beyond the far limit, baked shadow from `TEXTURE_CONTROL` alpha. Cloud shadows: world-space, temporally
   filtered, up to 9 cascades. No screen-space contact shadows.

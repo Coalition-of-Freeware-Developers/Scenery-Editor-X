@@ -63,7 +63,9 @@ void main_comp(uint3 thread_id : SV_DispatchThreadID)
 	surface.normal    = normalize(gbuffer_normal.xyz);
 	surface.roughness = saturate(gbuffer_mat.g);
 	surface.v         = saturate(gbuffer_mat.b);
-	surface.occlusion = saturate(gbuffer_mat.a);
+	// X-Plane's ambient occlusion (CACAO, Renderer::Pass_AmbientOcclusion; white when none ran) with the material's own:
+	// it darkens the ambient light and the reflections only (environment_lighting.slang), never the sun, moon or lights
+	surface.occlusion = min(saturate(gbuffer_mat.a), tex_ssao.SampleLevel(samplers[sampler_point_clamp], uv, 0.0f).r);
 	const float3 position = get_position(depth, uv);
 	surface.geometric_normal = xp_receiver_normal(int2(thread_id.xy), position, surface.normal);	// the shadow lookups' plane
 	surface.view = normalize(get_camera_position() - position);

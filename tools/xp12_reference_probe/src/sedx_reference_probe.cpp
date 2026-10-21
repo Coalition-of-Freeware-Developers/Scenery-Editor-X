@@ -61,6 +61,7 @@
 #include <filesystem>
 #include <fstream>
 #include <optional>
+#include <utility>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -109,6 +110,7 @@ namespace
 		float runwayFriction = 0.0f;
 		int settleFrames = 600;
 		std::optional<float> ev100Lock;
+		std::vector<std::pair<std::string, float>> artControls;	// "art_controls": set for this shot only (sim/private/controls/)
 		Json source;		// The entry as read, echoed into the dump
 	};
 
@@ -151,6 +153,7 @@ namespace
 
 		// Values to restore after the run
 		std::optional<float> savedEv100Min, savedEv100Max, savedFov;
+		std::vector<std::pair<std::string, float>> savedArtControls;	// What the current shot's art_controls replaced
 		std::optional<int> savedUseSystemTime;
 
 		std::vector<std::string> artControls;
@@ -318,6 +321,15 @@ namespace
 			ParseTime(it->get<std::string>(), s.localTimeHours);
 		if (const auto it = object.find("ev100_lock"); it != object.end())
 			s.ev100Lock = it->is_null() ? std::nullopt : std::optional<float>(it->get<float>());
+		if (const auto it = object.find("art_controls"); it != object.end() && it->is_object())
+		{
+			s.artControls.clear();
+			for (const auto &[name, value] : it->items())
+			{
+				if (value.is_number())
+					s.artControls.emplace_back(name, value.get<float>());
+			}
+		}
 		if (const auto it = object.find("clouds"); it != object.end() && it->is_array())
 		{
 			s.clouds.clear();
@@ -487,6 +499,29 @@ namespace
 		SetFloat("sim/private/controls/photometric/ev100_max", *s.ev100Lock);
 	}
 
+	/* @brief The shot's art controls (an A/B such as ssao/enable 0), keeping what they replaced for RestoreArtControls. */
+	void ApplyArtControls(const Scenario &s)
+	{
+		for (const auto &[name, value] : s.artControls)
+		{
+			const std::string path = "sim/private/controls/" + name;
+			const std::optional<float> previous = GetFloat(path.c_str());
+			if (!previous || !SetFloat(path.c_str(), value))
+			{
+				Log(s.id + ": art control " + name + " is not writable here, left as it is");
+				continue;
+			}
+			g.savedArtControls.emplace_back(path, *previous);
+		}
+	}
+
+	void RestoreArtControls()
+	{
+		for (const auto &[path, value] : g.savedArtControls)
+			SetFloat(path.c_str(), value);
+		g.savedArtControls.clear();
+	}
+
 	void ApplyWeather(const Scenario &s)
 	{
 		SetInt("sim/weather/region/change_mode", 3);	// Static
@@ -628,6 +663,7 @@ namespace
 			SetFloat("sim/graphics/view/field_of_view_deg", *g.savedFov);
 		if (g.savedUseSystemTime)
 			SetInt("sim/time/use_system_time", *g.savedUseSystemTime);
+		RestoreArtControls();
 	}
 
 	void StartRun(const bool all)
@@ -678,6 +714,7 @@ namespace
 			SetFloat("sim/private/controls/photometric/ev100_min", *g.savedEv100Min);
 		if (g.savedEv100Max)
 			SetFloat("sim/private/controls/photometric/ev100_max", *g.savedEv100Max);
+		RestoreArtControls();
 		++g.index;
 		if (!g.runAll || g.index >= g.scenarios.size())
 		{
@@ -716,6 +753,7 @@ namespace
 				ApplyTime(s);
 				ApplyWeather(s);
 				ApplyExposureLock(s);
+				ApplyArtControls(s);
 				PlaceCameraAndUser(s);
 				g.framesLeft = s.settleFrames;
 				g.stage = Stage::Settle;

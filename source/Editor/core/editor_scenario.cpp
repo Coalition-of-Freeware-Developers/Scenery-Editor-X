@@ -243,6 +243,21 @@ namespace SceneryEditorX::EditorScenario
 		Camera::SetInputLocked(true);
 		ApplyEnvironment(scenario);
 
+		// The art controls the shot sets that SEDX emulates (the probe sets every one in X-Plane)
+		for (const auto &[name, value] : scenario.artControls)
+		{
+			if (name == "ssao/enable")
+			{
+				RendererQualityPreset preset = Renderer::GetQualityPreset();
+				preset.ao = value > 0.5f ? std::max(preset.ao, 1) : 0;
+				Renderer::SetQualityPreset(preset);
+			}
+			else
+			{
+				EDITOR_WARN_TAG(LOG_TAG, "Scenario {}: art control {} isn't emulated, ignored", scenario.id, name);
+			}
+		}
+
 		if (!scenario.icao.empty())
 			EditorAirports::RequestOpenWhenReady(scenario.icao);
 		else

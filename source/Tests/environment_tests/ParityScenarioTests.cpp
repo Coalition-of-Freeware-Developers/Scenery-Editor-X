@@ -33,9 +33,11 @@
  */
 #include <catch2/catch_all.hpp>
 #include <SceneryEditorX/environment/parity_scenario.h>
+#include <algorithm>
 #include <cmath>
 #include <filesystem>
 #include <string>
+#include <utility>
 
 using namespace SceneryEditorX::Environment;
 using Catch::Approx;
@@ -79,7 +81,7 @@ TEST_CASE("Parity scenarios: defaults apply under each entry", "[environment][sc
 			{ "id": "a", "icao": "KSEA", "lat": 47.45, "lon": -122.31, "date": "2026-01-15", "local_time": "12:00", "utc_offset": -8 },
 			{ "id": "b", "icao": "YSSY", "fov": 70, "visibility_m": 800, "runway_friction": 5, "rain_percent": 0.6, "ev100_lock": 12.5,
 			  "clouds": [ { "base_msl_m": 700, "top_msl_m": 1400, "coverage": 1.0, "type": 1 } ],
-			  "ui_mask": [ [0.0, 0.9, 1.0, 1.0] ], "project": "tools/x.edX" }
+			  "ui_mask": [ [0.0, 0.9, 1.0, 1.0] ], "project": "tools/x.edX", "art_controls": { "ssao/enable": 0, "ssao/radius": 3.5 } }
 		]
 	})";
 
@@ -115,6 +117,10 @@ TEST_CASE("Parity scenarios: defaults apply under each entry", "[environment][sc
 	CHECK(b.uiMask[0][1] == Approx(0.9f));
 	CHECK(b.project == "tools/x.edX");
 	CHECK(b.width == 1920);		// From the defaults
+	REQUIRE(b.artControls.size() == 2);
+	CHECK(std::ranges::count(b.artControls, std::pair<std::string, float>{ "ssao/enable", 0.0f }) == 1);
+	CHECK(std::ranges::count(b.artControls, std::pair<std::string, float>{ "ssao/radius", 3.5f }) == 1);
+	CHECK(a.artControls.empty());
 
 	CHECK(FindParityScenario(file, "b") == &file.scenarios[1]);
 	CHECK(FindParityScenario(file, "c") == nullptr);
@@ -189,4 +195,20 @@ TEST_CASE("Parity scenarios: the shipped scenario set", "[environment][scenario]
 	const ParityScenario *calibration = FindParityScenario(file, "ksea_calib_sunp40");
 	REQUIRE(calibration);
 	CHECK(calibration->project.find("SEDX_Calibration.edX") != std::string::npos);
+
+	// Ambient occlusion A/B (plan CRIT-008): the same shot with ssao/enable 0
+	for (const char *id : { "ksea_calib_sunp40", "ksea_aerial_sunp40" })
+	{
+		INFO(id);
+		const ParityScenario *withAo = FindParityScenario(file, id);
+		const ParityScenario *withoutAo = FindParityScenario(file, std::string(id) + "_noao");
+		REQUIRE(withAo);
+		REQUIRE(withoutAo);
+		CHECK(withAo->artControls.empty());
+		REQUIRE(withoutAo->artControls.size() == 1);
+		CHECK(withoutAo->artControls[0].first == "ssao/enable");
+		CHECK(withoutAo->artControls[0].second == 0.0f);
+		CHECK(withoutAo->latitude == Approx(withAo->latitude));
+		CHECK(withoutAo->localTimeHours == Approx(withAo->localTimeHours));
+	}
 }

@@ -29,6 +29,7 @@
  * -------------------------------------------------------
  */
 #pragma once
+#include "cacao.h"
 #include "csm.h"
 #include "exposure.h"
 #include "renderer_buffers.h"
@@ -587,6 +588,10 @@ namespace SceneryEditorX
 			float cloudShadowExtinction = 0.0125f;		// cloud/shadow_alpha (ASSUMPTION: extinction per meter of cloud cover)
 			float cloudShadowExtentMinKm = 64.0f;		// clouds/shadow_extent_min_km: the first cascade's width
 			float cloudShadowExtentKm = 256.0f;			// clouds/shadow_extent_km: the last cascade's width
+
+			// Ambient occlusion (plan Phase 8): X-Plane's CACAO controls (ssao/*); the QUALITY AO level sets the CACAO
+			// quality and resolution over these, as renopt_SSAO_04 does in X-Plane
+			CacaoSettings ao;
 		};
 		static const EnvironmentConstants &GetEnvironmentConstants();
 		static EnvironmentConstants &EditEnvironmentConstants();
@@ -595,6 +600,28 @@ namespace SceneryEditorX
 		/* @brief This frame's sun-shadow cascades (renderer/csm.h; count 0: none) and the light they are for (0 none, 1 sun, 2 moon). */
 		static const CsmSetup &GetShadowCascades();
 		static uint32_t GetShadowLight();
+
+		/* @brief How ambient occlusion is made: X-Plane's CACAO, or SEDX's older GTAO pass (ssao.slang) as a fallback. */
+		enum class AoTechnique : uint8_t
+		{
+			Cacao,
+			Gtao,
+		};
+		static AoTechnique GetAoTechnique();
+		static void SetAoTechnique(AoTechnique technique);
+
+		/* @brief What the last frame's ambient occlusion ran with (RENDERER panel). */
+		struct AoReadout
+		{
+			bool ran = false;
+			AoTechnique technique = AoTechnique::Cacao;
+			CacaoQuality quality = CacaoQuality::High;
+			bool halfResolution = true;
+			CacaoSettings settings;					// After X-Plane's dynamic values
+			uint32_t width = 0;						// The SSAO buffer's layers
+			uint32_t height = 0;
+		};
+		static const AoReadout &GetAoReadout();
 
 		/* @brief The exposure the GPU last reported (exposure_adapt.slang), read back a frame or two late. */
 		struct ExposureReadout
@@ -847,6 +874,18 @@ namespace SceneryEditorX
 		static void WriteShadowConstants(ConstantBuffer_Environment &env);
 		/* @brief Binds shadow_csm and cloud_shadow to a pass whose shaders read them (csm_sample.slang). */
 		static void BindShadows(CommandList *cmdList);
+
+#pragma endregion
+#pragma region Ambient occlusion
+
+		// Ambient occlusion (plan Phase 8, renderer_ao.cpp; XP12: cacao)
+		/* @brief CACAO (or the GTAO fallback) into the ssao target, which ends shader-readable; false when nothing ran. */
+		static bool Pass_AmbientOcclusion(CommandList *cmdList);
+		/* @brief (Re)creates the ssao target and CACAO's buffers for the render resolution and the AO quality's resolution;
+		 * force: the render resolution changed (CreateRenderTargets), else only when the AO resolution did (waits for the GPU). */
+		static void CreateAmbientOcclusionTargets(bool force);
+		/* @brief Binds the ambient occlusion (white when none ran this frame) to a pass whose shaders read tex_ssao. */
+		static void BindAmbientOcclusion(CommandList *cmdList);
 
 #pragma endregion
 #pragma region Lighting passes

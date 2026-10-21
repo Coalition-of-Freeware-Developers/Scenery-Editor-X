@@ -408,6 +408,23 @@
 			"notes": "sun elevation 40 deg"
 		},
 		{
+			"id": "ksea_aerial_sunp40_noao",
+			"icao": "KSEA",
+			"lat": 47.48,
+			"lon": -122.308,
+			"alt_m_agl": 600.0,
+			"heading": 180.0,
+			"pitch": -20.0,
+			"date": "2026-07-15",
+			"local_time": "09:40:45",
+			"utc_offset": -7.0,
+			"visibility_m": 80000.0,
+			"notes": "sun elevation 40 deg; ambient occlusion off: ksea_aerial_sunp40 minus this is the AO (plan CRIT-008)",
+			"art_controls": {
+				"ssao/enable": 0
+			}
+		},
+		{
 			"id": "ksea_aerial_sunp40_ev",
 			"icao": "KSEA",
 			"lat": 47.48,
@@ -662,6 +679,24 @@
 			"utc_offset": -7.0,
 			"visibility_m": 80000.0,
 			"notes": "calibration tiles, sun elevation 40 deg"
+		},
+		{
+			"id": "ksea_calib_sunp40_noao",
+			"icao": "KSEA",
+			"project": "tools/xp12_reference_probe/test_scenery/SEDX_Calibration/SEDX_Calibration.edX",
+			"lat": 47.45619788,
+			"lon": -122.31442,
+			"alt_m_agl": 8.0,
+			"heading": 180.0,
+			"pitch": -21.0,
+			"date": "2026-07-15",
+			"local_time": "09:40:45",
+			"utc_offset": -7.0,
+			"visibility_m": 80000.0,
+			"notes": "calibration tiles, sun elevation 40 deg; ambient occlusion off: ksea_calib_sunp40 minus this is the AO (plan CRIT-008)",
+			"art_controls": {
+				"ssao/enable": 0
+			}
 		},
 		{
 			"id": "ksea_calib_sunp40_ev",

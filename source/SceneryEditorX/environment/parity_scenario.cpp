@@ -152,6 +152,20 @@ namespace SceneryEditorX::Environment
 				}
 			}
 
+			if (const auto it = object.find("art_controls"); it != object.end() && it->is_object())
+			{
+				scenario.artControls.clear();
+				for (const auto &[name, value] : it->items())
+				{
+					if (!value.is_number())
+					{
+						error = "\"art_controls\" values are numbers: " + name;
+						return false;
+					}
+					scenario.artControls.emplace_back(name, value.get<float>());
+				}
+			}
+
 			scenario.localTimeHours = std::clamp(scenario.localTimeHours, 0.0, 24.0);
 			scenario.runwayFriction = std::clamp(scenario.runwayFriction, 0, 15);
 			scenario.rainPercent = std::clamp(scenario.rainPercent, 0.0f, 1.0f);
