@@ -126,6 +126,14 @@ namespace SceneryEditorX
 		exposure_fusion_weights,
 		exposure_fusion_result,
 		exposure_fusion_guide,
+		// ambient occlusion (cacao.slang; ssao is the result): CACAO's deinterleaved buffers, sized by renderer/cacao.h
+		cacao_depths,				// 2D array, 4 layers, 4 mips, R16F: view depth
+		cacao_normals,				// 2D array, 4 layers, RGBA8 SNORM: view-space normals
+		cacao_ssao_ping,			// 2D array, 4 layers, RG8: AO and packed edges
+		cacao_ssao_pong,
+		cacao_importance,			// R8: where the adaptive (highest) quality adds samples
+		cacao_importance_pong,
+		cacao_load_counter,		// 1 x 1 R32_UINT: summed importance (highest quality)
 		MaxEnum
 	};
 
@@ -247,6 +255,20 @@ namespace SceneryEditorX
 		gpu_cull_shadow,		// GPU-scene instances into each shadow cascade's draws
 		depth_light_csm,		// shadow casters into a cascade of shadow_csm (CPU draws)
 		depth_light_csm_gpu,	// the same for GPU-scene instances
+		// plan Phase 8: ambient occlusion (XP12: cacao), AMD FidelityFX CACAO ported to cacao.slang
+		cacao_prepare_depths,
+		cacao_prepare_normals,
+		cacao_generate_q1,		// CACAO medium
+		cacao_generate_q2,		// CACAO high
+		cacao_generate_q3,		// CACAO highest (adaptive)
+		cacao_generate_q3_base,
+		cacao_importance_map,
+		cacao_importance_map_a,
+		cacao_importance_map_b,
+		cacao_blur,
+		cacao_apply,
+		cacao_upscale,
+		cacao_upscale_smart,
 		MaxEnum
 	};
 
@@ -335,6 +357,19 @@ namespace SceneryEditorX
 		case Renderer_Shader::gpu_cull_shadow: return "gpu_cull_shadow";
 		case Renderer_Shader::depth_light_csm: return "depth_light_csm";
 		case Renderer_Shader::depth_light_csm_gpu: return "depth_light_csm_gpu";
+		case Renderer_Shader::cacao_prepare_depths: return "cacao_prepare_depths";
+		case Renderer_Shader::cacao_prepare_normals: return "cacao_prepare_normals";
+		case Renderer_Shader::cacao_generate_q1: return "cacao_generate_q1";
+		case Renderer_Shader::cacao_generate_q2: return "cacao_generate_q2";
+		case Renderer_Shader::cacao_generate_q3: return "cacao_generate_q3";
+		case Renderer_Shader::cacao_generate_q3_base: return "cacao_generate_q3_base";
+		case Renderer_Shader::cacao_importance_map: return "cacao_importance_map";
+		case Renderer_Shader::cacao_importance_map_a: return "cacao_importance_map_a";
+		case Renderer_Shader::cacao_importance_map_b: return "cacao_importance_map_b";
+		case Renderer_Shader::cacao_blur: return "cacao_blur";
+		case Renderer_Shader::cacao_apply: return "cacao_apply";
+		case Renderer_Shader::cacao_upscale: return "cacao_upscale";
+		case Renderer_Shader::cacao_upscale_smart: return "cacao_upscale_smart";
 		case Renderer_Shader::MaxEnum: return "MaxEnum";
 		default: return "unknown";
 		}
@@ -386,6 +421,7 @@ namespace SceneryEditorX
 		ConstantEnvironment, // the world environment (ConstantBuffer_Environment, binding 201)
 		ExposureHistogram,   // 256 log2-luminance bins (luminance_histogram.slang -> exposure_adapt.slang), device local
 		ExposureState,       // EXPOSURE_STATE_* floats (resources.slang), host visible: the CPU reads the EV back
+		ConstantCacao,       // ambient occlusion constants (CacaoConstants, renderer/cacao.h; binding 202)
 
 		// gpu-driven particles
 		ParticleBufferA,
@@ -501,6 +537,12 @@ namespace SceneryEditorX
 		shadow_csm   = 62,
 		cloud_shadow = 63,
 
+		// ambient occlusion (cacao.slang): what a CACAO kernel reads
+		cacao_depth      = 64,
+		cacao_normals    = 65,
+		cacao_ssao       = 66,
+		cacao_importance = 67,
+
 		// restir reservoir srv bindings (for temporal/spatial read)
 		reservoir_prev0    = 21,
 		reservoir_prev1    = 22,
@@ -528,6 +570,12 @@ namespace SceneryEditorX
 		tex3d_2       = 7,	// a second RWTexture3D
 		sb_spd        = 44,
 		tex_spd       = 8,
+
+		// ambient occlusion (cacao.slang): what a CACAO kernel writes
+		cacao_depth_mips = 9,	// RWTexture2DArray[4]: the view depth's mips
+		cacao_normals    = 10,
+		cacao_ssao       = 11,
+		cacao_importance = 12,
 
 		// restir reservoir uav bindings
 		reservoir0    = 20,

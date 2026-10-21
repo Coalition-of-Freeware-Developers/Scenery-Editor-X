@@ -36,12 +36,14 @@
 #include <SceneryEditorX/environment/environment.h>
 #include <SceneryEditorX/environment/parity_scenario.h>
 #include <SceneryEditorX/environment/sky_light.h>
+#include <SceneryEditorX/renderer/cacao.h>
 #include <SceneryEditorX/renderer/csm.h>
 #include <SceneryEditorX/renderer/env_probes.h>
 #include <SceneryEditorX/renderer/exposure.h>
 #include <SceneryEditorX/renderer/renderer_features.h>
 #include <SceneryEditorX/renderer/renderer_quality.h>
 #include <cmath>
+#include <cstddef>
 #include <numbers>
 #include <numeric>
 #include <set>
@@ -1026,4 +1028,200 @@ TEST_CASE("Cloud shadows: cascades around the camera", "[environment][csm]")
 
 	// One cascade: the smallest width
 	CHECK(FitCloudShadowCascade(0, 1, 64000.0, 256000.0, 0.0, 0.0).halfExtentM == Approx(32000.0));
+}
+
+TEST_CASE("Ambient occlusion: CACAO's buffer sizes", "[environment][cacao]")
+{
+	using namespace SceneryEditorX;
+
+	// Half resolution (X-Plane's downsample 1): 4 deinterleaved layers of a quarter of the output, importance at an eighth
+	const CacaoBufferSizes half = ComputeCacaoBufferSizes(1920, 1080, true);
+	CHECK(half.ssaoWidth == 480u);
+	CHECK(half.ssaoHeight == 270u);
+	CHECK(half.deinterleavedDepthWidth == 480u);
+	CHECK(half.deinterleavedDepthHeight == 270u);
+	CHECK(half.importanceWidth == 240u);
+	CHECK(half.importanceHeight == 135u);
+	CHECK(half.downsampled);
+
+	// Full resolution (renopt_SSAO_04 level 4): layers of half the output
+	const CacaoBufferSizes full = ComputeCacaoBufferSizes(1920, 1080, false);
+	CHECK(full.ssaoWidth == 960u);
+	CHECK(full.ssaoHeight == 540u);
+	CHECK(full.importanceWidth == 480u);
+	CHECK(full.importanceHeight == 270u);
+
+	// Odd sizes round up at every halving
+	const CacaoBufferSizes odd = ComputeCacaoBufferSizes(1281, 721, true);
+	CHECK(odd.ssaoWidth == 321u);
+	CHECK(odd.ssaoHeight == 181u);
+	CHECK(odd.importanceWidth == 161u);
+	CHECK(odd.importanceHeight == 91u);
+}
+
+TEST_CASE("Ambient occlusion: CACAO's constants for SEDX's reverse-Z camera", "[environment][cacao]")
+{
+	using namespace SceneryEditorX;
+
+	CacaoCamera camera;
+	camera.tanHalfFovX = std::tan(0.5 * 60.0 * 3.14159265358979323846 / 180.0);
+	camera.tanHalfFovY = camera.tanHalfFovX / (1920.0 / 1080.0);
+	camera.nearPlane = 0.1;
+	camera.farPlane = 10000.0;
+	const CacaoSettings settings;	// X-Plane 12.4.4's
+	const CacaoBufferSizes sizes = ComputeCacaoBufferSizes(1920, 1080, true);
+	const CacaoConstants c = ComputeCacaoConstants(settings, CacaoQuality::High, sizes, camera);
+
+	// The shaders' view depth of a reverse-Z depth: 1 at the near plane, 0 at the far one
+	const double n = camera.nearPlane;
+	const double f = camera.farPlane;
+	for (const double z : { 0.1, 0.5, 2.0, 10.0, 250.0, 1000.0, 10000.0 })
+	{
+		const double depth = n * (f / z - 1.0) / (f - n);
+		CHECK(CacaoViewDepth(c, depth) == Approx(z).epsilon(1e-4));
+	}
+	CHECK(CacaoViewDepth(c, 1.0) == Approx(n).epsilon(1e-4));
+	CHECK(CacaoViewDepth(c, 0.0) == Approx(f).epsilon(1e-4));
+
+	// Screen uv (y down) to view space (y up): the center is on the axis, the top right corner at (tan x, tan y)
+	const auto toView = [&c](const double u, const double v, const double z)
+	{
+		return std::array<double, 2>{ (c.ndcToView[0] * u + c.ndcToView[2]) * z, (c.ndcToView[1] * v + c.ndcToView[3]) * z };
+	};
+	CHECK(toView(0.5, 0.5, 10.0)[0] == Approx(0.0).margin(1e-6));
+	CHECK(toView(0.5, 0.5, 10.0)[1] == Approx(0.0).margin(1e-6));
+	CHECK(toView(1.0, 0.0, 10.0)[0] == Approx(camera.tanHalfFovX * 10.0).epsilon(1e-5));
+	CHECK(toView(1.0, 0.0, 10.0)[1] == Approx(camera.tanHalfFovY * 10.0).epsilon(1e-5));
+
+	// X-Plane's controls: strength x 4.3, fade-out 1 km -> 10 km, fade-in 0.5 m -> 2 m
+	CHECK(c.effect[0] == Approx(2.1f));
+	CHECK(c.effect[1] == Approx(1.4f * 4.3f));
+	CHECK(c.effect[2] == Approx(2.4f));
+	const auto fadeOut = [&c](const float z) { return std::clamp(z * c.fade[0] + c.fade[1], 0.0f, 1.0f); };
+	const auto fadeIn = [&c](const float z) { return 1.0f - std::clamp(z * c.fade[2] + c.fade[3], 0.0f, 1.0f); };
+	CHECK(fadeOut(500.0f) == Approx(1.0f));
+	CHECK(fadeOut(5500.0f) == Approx(0.5f));
+	CHECK(fadeOut(20000.0f) == Approx(0.0f));
+	CHECK(fadeIn(0.25f) == Approx(0.0f));
+	CHECK(fadeIn(1.25f) == Approx(0.5f));
+	CHECK(fadeIn(10.0f) == Approx(1.0f));
+
+	// AMD's derived values
+	CHECK(c.sampling[1] == Approx(static_cast<float>(camera.tanHalfFovY) / (2.1f * 1.2f)));	// 1 / sampling radius near limit
+	CHECK(c.sampling[2] == Approx(0.9992f));
+	CHECK(c.sampling[3] == Approx(-1.0f / 2.1f));
+	CHECK(c.adaptive[0] == Approx(9.0 / (240.0 * 135.0 * 255.0)));
+	CHECK(c.adaptive[2] == Approx(0.0f));	// sharpness 1
+	CHECK(c.bilateral[2] == Approx(3.0f));	// blur passes
+	CHECK(c.perPassFullResUvOffset[3][0] == Approx(1.0f / 480.0f));
+	CHECK(c.perPassFullResUvOffset[3][1] == Approx(1.0f / 270.0f));
+	CHECK(c.output[1] == Approx(static_cast<float>(CacaoQuality::High)));
+	CHECK(c.output[2] == Approx(1.0f));
+
+	// The sampling pattern: a rotation and mirror scaled by 1 + (layer - 1.5 + (sub-pass - 2) / 5) x 0.07
+	const CacaoVec4 &first = c.patternRotScale[0];
+	CHECK(first[0] == Approx(0.867f));
+	CHECK(first[1] == Approx(0.0f).margin(1e-6));
+	CHECK(first[3] == Approx(-0.867f));
+	for (uint32_t layer = 0; layer < CACAO_LAYERS; ++layer)
+	{
+		for (uint32_t subPass = 0; subPass < CACAO_PATTERN_SUBPASSES; ++subPass)
+		{
+			const CacaoVec4 &m = c.patternRotScale[layer * CACAO_PATTERN_SUBPASSES + subPass];
+			const int b = std::array<int, 5>{ 0, 1, 4, 3, 2 }[subPass];
+			const double scale = 1.0 + (layer - 1.5 + (b - 2.0) / 5.0) * 0.07;
+			CHECK(m[0] * m[3] - m[1] * m[2] == Approx(-scale * scale).epsilon(1e-5));
+		}
+	}
+
+	// The layout cacao.slang's std140 cbuffer reads (spirv-dis: member offsets 224, 288, 608, 656)
+	CHECK(offsetof(CacaoConstants, output) == 208u);
+	CHECK(offsetof(CacaoConstants, perPassFullResUvOffset) == 224u);
+	CHECK(offsetof(CacaoConstants, patternRotScale) == 288u);
+	CHECK(offsetof(CacaoConstants, normalsToView) == 608u);
+	CHECK(offsetof(CacaoConstants, padding) == 656u);
+}
+
+TEST_CASE("Ambient occlusion: X-Plane's dynamic values follow the camera's height", "[environment][cacao]")
+{
+	using namespace SceneryEditorX;
+
+	// X-Plane 12.4.4 (probe dumps): 2 m and 8 m above the ground radius 2.1 m and fade-in to 2 m, 600 m up 22 m and 100 m
+	const CacaoSettings base;
+	for (const double height : { 0.0, 2.0, 8.0 })
+	{
+		const CacaoSettings at = ApplyCacaoDynamicValues(base, height);
+		CHECK(at.radius == Approx(2.1f));
+		CHECK(at.fadeInToM == Approx(2.0f));
+		CHECK(at.fadeInFromM == Approx(0.5f));
+	}
+	const CacaoSettings aerial = ApplyCacaoDynamicValues(base, 600.0);
+	CHECK(aerial.radius == Approx(22.0f));
+	CHECK(aerial.fadeInToM == Approx(100.0f));
+	CHECK(aerial.shadowMultiplier == Approx(base.shadowMultiplier));
+
+	// Monotonic in between, untouched with the control off
+	CHECK(ApplyCacaoDynamicValues(base, 300.0).radius > ApplyCacaoDynamicValues(base, 100.0).radius);
+	CacaoSettings fixed = base;
+	fixed.dynamicValues = false;
+	CHECK(ApplyCacaoDynamicValues(fixed, 600.0).radius == Approx(2.1f));
+}
+
+TEST_CASE("Ambient occlusion: CACAO's dispatches for X-Plane's presets", "[environment][cacao]")
+{
+	using namespace SceneryEditorX;
+
+	const auto kernels = [](const std::vector<CacaoDispatch> &plan)
+	{
+		std::vector<CacaoKernel> result;
+		for (const CacaoDispatch &d : plan)
+			result.push_back(d.kernel);
+		return result;
+	};
+	const CacaoBufferSizes half = ComputeCacaoBufferSizes(1920, 1080, true);
+
+	// High at half resolution (X-Plane's default, renopt_SSAO_04 2)
+	const std::vector<CacaoDispatch> high = PlanCacaoDispatches(CacaoQuality::High, half, 3);
+	CHECK(kernels(high) == std::vector{ CacaoKernel::PrepareDepths, CacaoKernel::PrepareNormals, CacaoKernel::Generate, CacaoKernel::Blur, CacaoKernel::Upscale });
+	CHECK(high[0].groupsX == 60u);
+	CHECK(high[0].groupsY == 34u);
+	CHECK(high[2].groupsZ == 4u);
+	CHECK(high[3].groupsX == 9u);	// 480 / (64 - 2 x 3)
+	CHECK(high[3].groupsY == 7u);	// 270 / (48 - 2 x 3)
+	CHECK(high[4].groupsX == 120u);	// 2 x 2 output pixels per thread
+	CHECK(high[4].groupsY == 68u);
+	CHECK(high[4].readsBlurred);
+
+	// Medium: the sparse kernel, every fifth pixel in 5 slices per layer
+	const std::vector<CacaoDispatch> medium = PlanCacaoDispatches(CacaoQuality::Medium, half, 3);
+	REQUIRE(medium.size() == 5u);
+	CHECK(medium[2].groupsX == 24u);
+	CHECK(medium[2].groupsY == 17u);
+	CHECK(medium[2].groupsZ == 20u);
+
+	// Highest: the base pass and the importance map before the adaptive pass
+	CHECK(kernels(PlanCacaoDispatches(CacaoQuality::Highest, half, 3)) ==
+		  std::vector{ CacaoKernel::PrepareDepths, CacaoKernel::PrepareNormals, CacaoKernel::GenerateBase, CacaoKernel::ImportanceMap, CacaoKernel::ImportanceMapA,
+					   CacaoKernel::ImportanceMapB, CacaoKernel::Generate, CacaoKernel::Blur, CacaoKernel::Upscale });
+
+	// Full resolution applies instead of upscaling; no blur reads the unblurred buffer
+	const std::vector<CacaoDispatch> full = PlanCacaoDispatches(CacaoQuality::Highest, ComputeCacaoBufferSizes(1920, 1080, false), 0);
+	CHECK(full.back().kernel == CacaoKernel::Apply);
+	CHECK(full.back().groupsX == 240u);
+	CHECK(full.back().groupsY == 135u);
+	CHECK_FALSE(full.back().readsBlurred);
+	CHECK(std::ranges::none_of(full, [](const CacaoDispatch &d) { return d.kernel == CacaoKernel::Blur; }));
+
+	// X-Plane's presets: every enabled level runs CACAO 2-4 with the resolution it asks for; lower qualities run as medium
+	for (int level = 1; level < AO_LEVELS; ++level)
+	{
+		const AoQuality quality = GetAoQuality(level);
+		const CacaoQuality cacao = static_cast<CacaoQuality>(quality.cacaoQuality);
+		CHECK(GetCacaoRunQuality(cacao) == cacao);
+		const std::vector<CacaoDispatch> plan = PlanCacaoDispatches(cacao, ComputeCacaoBufferSizes(1280, 720, quality.halfResolution), 3);
+		CHECK(plan.back().kernel == (quality.halfResolution ? CacaoKernel::Upscale : CacaoKernel::Apply));
+	}
+	CHECK(GetCacaoRunQuality(CacaoQuality::Lowest) == CacaoQuality::Medium);
+	CHECK(GetAoQuality(1).cacaoQuality == 2);
+	CHECK(GetAoQuality(3).cacaoQuality == 4);
 }

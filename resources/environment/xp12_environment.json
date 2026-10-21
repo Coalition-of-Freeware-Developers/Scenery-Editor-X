@@ -306,6 +306,78 @@
 			"value": 256.0,
 			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): the last cloud-shadow cascade's width"
 		},
+		"ssao/radius": {
+			"value": 2.1,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): m, view space; with ssao/dynamic_values X-Plane wrote 2.1 at 2-8 m above the ground and 22 at 600 m (renderer/cacao.h scales it with the height)"
+		},
+		"ssao/shadow_multiplier": {
+			"value": 1.4,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): CACAO's shadowMultiplier (x 4.3 in the shaders)"
+		},
+		"ssao/shadow_power": {
+			"value": 2.4,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20)"
+		},
+		"ssao/shadow_clamp": {
+			"value": 1.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20)"
+		},
+		"ssao/horizon_angle_threshold": {
+			"value": 0.4,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20)"
+		},
+		"ssao/fade_out_from": {
+			"value": 1000.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): m"
+		},
+		"ssao/fade_out_to": {
+			"value": 10000.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): m"
+		},
+		"ssao/fade_in_from": {
+			"value": 0.5,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): m, X-Plane's own fade near the camera (not in AMD's CACAO)"
+		},
+		"ssao/fade_in_to": {
+			"value": 2.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): m; 100 at 600 m above the ground (dynamic values)"
+		},
+		"ssao/adaptive_quality_limit": {
+			"value": 0.75,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): CACAO highest only"
+		},
+		"ssao/blur_pass_count": {
+			"value": 3.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20)"
+		},
+		"ssao/sharpness": {
+			"value": 1.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20)"
+		},
+		"ssao/detail_shadow_strength": {
+			"value": 0.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20)"
+		},
+		"ssao/bilateral_sigma_squared": {
+			"value": 2.4,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): half-resolution upscale"
+		},
+		"ssao/bilateral_similarity_distance_sigma": {
+			"value": 2.7,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20)"
+		},
+		"ssao/exterior_strength": {
+			"value": 1.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): applied as lerp(1, ao ^ curve, strength) (ASSUMPTION; identity at these values)"
+		},
+		"ssao/exterior_curve": {
+			"value": 1.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20)"
+		},
+		"ssao/dynamic_values": {
+			"value": 1.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): radius and fade-in follow the camera's height above the ground"
+		},
 		"sedx/csm_receiver_plane": {
 			"value": 1.0,
 			"source": "SEDX: soft shadow lookups compare against the receiver's plane (from the depth buffer), so the casters' slope bias covers half a texel each way. With X-Plane's shadow/bias_slope 2 alone, the calibration panels 5 cm above the ground lose their shadow at cascade 1's 4 cm texels; X-Plane 12.4.4's reference keeps a 12 cm band."

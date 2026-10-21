@@ -274,5 +274,6 @@ void main_comp(uint3 thread_id: SV_DispatchThreadID)
     bent_normal *= 1.0f - (float)any(isnan(bent_normal));
     visibility *= 1.0f - (float)isnan(visibility);
 
-    tex_uav[thread_id.xy] = float4(bent_normal, visibility);
+    // the visibility first: the ssao target CACAO shares is R16F (Renderer::CreateAmbientOcclusionTargets)
+    tex_uav[thread_id.xy] = float4(visibility, bent_normal);
 }

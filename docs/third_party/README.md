@@ -8,6 +8,7 @@ copyright and license notice in its header; this page collects them so the licen
 |---|---|---|---|
 | `source/SceneryEditorX/renderer/bend_sss_cpu.h` (screen-space shadow dispatch list) | Bend Studio, "Screen Space Shadows" sample, Copyright 2023 Sony Interactive Entertainment | Apache License 2.0 | [LICENSE-Apache-2.0.txt](LICENSE-Apache-2.0.txt) |
 | `resources/shaders/fsr1_easu.slang`, `fsr1_rcas.slang` | AMD FidelityFX Super Resolution 1.0 (`ffx_fsr1.h`), Copyright (c) 2021 Advanced Micro Devices, Inc. | MIT | in each file's header |
+| `resources/shaders/cacao.slang`, `source/SceneryEditorX/renderer/cacao.cpp` (ambient occlusion) | AMD FidelityFX CACAO 1.4 (FidelityFX SDK 1.1.4: `ffx_cacao_*.h`, `ffx_cacao.cpp`), Copyright (C) 2024 Advanced Micro Devices, Inc. | MIT | [LICENSE-FidelityFX-MIT.txt](LICENSE-FidelityFX-MIT.txt), and in each file's header |
 
 ## Notes
 
@@ -17,3 +18,7 @@ copyright and license notice in its header; this page collects them so the licen
   in `bend_sss_cpu.h` is the one the sample ships with; nothing in SEDX's own code is relicensed by it.
 - X-Plane 12's shaders, binaries and art are not third-party code in SEDX: they are a behavioural reference only and are
   never copied (plan LEG-001).
+- AMD FidelityFX CACAO: the shaders' FP32 paths of the medium, high and highest qualities (the ones X-Plane 12's presets
+  use) and the host code that fills their constants and plans their dispatches; the lowest / low kernels and the FP16
+  paths were not ported. SEDX's changes (reverse-Z depth, world normals, X-Plane's fade-in, bounds checks) are listed in
+  the header of `cacao.slang`.

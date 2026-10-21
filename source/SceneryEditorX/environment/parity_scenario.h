@@ -35,6 +35,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 // -------------------------------------------------------
@@ -92,6 +93,10 @@ namespace SceneryEditorX::Environment
 		std::optional<float> ev100Lock;					// Locked exposure (TASK-102); none = auto exposure
 		std::vector<std::array<float, 4>> uiMask;		// Rectangles (x0, y0, x1, y1 in 0-1 of the image) the comparison ignores
 		std::string notes;
+
+		// X-Plane art controls set for this shot only ("art_controls": { "ssao/enable": 0 }, names relative to
+		// sim/private/controls/): the probe writes them and puts them back after; SEDX applies the ones it emulates
+		std::vector<std::pair<std::string, float>> artControls;
 	};
 
 	/* @brief A parity scenario file: what X-Plane build its references belong to and its entries. */

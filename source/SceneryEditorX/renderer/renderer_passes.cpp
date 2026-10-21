@@ -248,7 +248,13 @@ namespace SceneryEditorX
 
 			// (5) Min / max depth pyramid (XP12: z_minmax): Phase 9
 			// (6) Weather apply (XP12: weather_apply_compute): Phase 12
-			// (7) Ambient occlusion (XP12: cacao): Phase 8
+			// (7) Ambient occlusion (XP12: cacao; renderer_ao.cpp): AMD FidelityFX CACAO at the QUALITY AO level into ssao
+			{
+				GpuTimer::Scope scope(cmd, "ambient occlusion");
+				Pass_AmbientOcclusion(cmd);
+			}
+			if (!valid())
+				return;
 			// (8) Light tiling (XP12: light_tile, light_spill_compact): Phase 14
 			// (9) Screen-space reflections (XP12: ssr_deferred): Phase 9
 			// (10) Clouds and volumetric fog: Phase 15
@@ -402,6 +408,7 @@ namespace SceneryEditorX
 			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_emissive, GetRenderTarget(Renderer_RenderTarget::gbuffer_emissive));
 			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_weather, GetRenderTarget(Renderer_RenderTarget::gbuffer_weather));
 			BindShadows(cmdList);	// the cascade and cloud-shadow views
+			BindAmbientOcclusion(cmdList);
 			m_Pcb_Pass_Cpu.SetF4Value(static_cast<float>(GetDebugView()), 0.0f, 0.0f, 0.0f);
 			cmdList->PushConstants(m_Pcb_Pass_Cpu);
 		});
@@ -1283,6 +1290,32 @@ namespace SceneryEditorX
 			value("clouds/shadow_extent_min_km", c.cloudShadowExtentMinKm);
 			value("clouds/shadow_extent_km", c.cloudShadowExtentKm);
 
+			// Ambient occlusion (plan Phase 8). The AO quality sets ssao/quality_level and downsample over these each frame,
+			// as X-Plane's renopt_SSAO_04 does.
+			CacaoSettings &ao = c.ao;
+			value("ssao/radius", ao.radius);
+			value("ssao/shadow_multiplier", ao.shadowMultiplier);
+			value("ssao/shadow_power", ao.shadowPower);
+			value("ssao/shadow_clamp", ao.shadowClamp);
+			value("ssao/horizon_angle_threshold", ao.horizonAngleThreshold);
+			value("ssao/fade_out_from", ao.fadeOutFromM);
+			value("ssao/fade_out_to", ao.fadeOutToM);
+			value("ssao/fade_in_from", ao.fadeInFromM);
+			value("ssao/fade_in_to", ao.fadeInToM);
+			value("ssao/adaptive_quality_limit", ao.adaptiveQualityLimit);
+			float blurPasses = static_cast<float>(ao.blurPassCount);
+			value("ssao/blur_pass_count", blurPasses);
+			ao.blurPassCount = static_cast<uint32_t>(std::clamp(std::lround(blurPasses), 0l, static_cast<long>(CACAO_MAX_BLUR_PASSES)));
+			value("ssao/sharpness", ao.sharpness);
+			value("ssao/detail_shadow_strength", ao.detailShadowStrength);
+			value("ssao/bilateral_sigma_squared", ao.bilateralSigmaSquared);
+			value("ssao/bilateral_similarity_distance_sigma", ao.bilateralSimilarityDistanceSigma);
+			value("ssao/exterior_strength", ao.exteriorStrength);
+			value("ssao/exterior_curve", ao.exteriorCurve);
+			float dynamicValues = ao.dynamicValues ? 1.0f : 0.0f;
+			value("ssao/dynamic_values", dynamicValues);
+			ao.dynamicValues = dynamicValues > 0.5f;
+
 			// SEDX's own controls (no X-Plane counterpart, or one whose meaning differs)
 			value("sedx/meter_trim_lo", c.exposure.trimLow);
 			value("sedx/meter_trim_hi", c.exposure.trimHigh);
@@ -1595,8 +1628,13 @@ namespace SceneryEditorX
 		pso.shaders[static_cast<uint32_t>(StageType::Compute)] = shader_ssao;
 
 		{
+			// The g-buffer (not SetCommonTextures: it binds ssao too, which this pass writes)
 			cmdList->SetPipelineState(pso);
-			SetCommonTextures(cmdList);
+			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_albedo,   GetRenderTarget(Renderer_RenderTarget::gbuffer_color));
+			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_normal,   GetRenderTarget(Renderer_RenderTarget::gbuffer_normal));
+			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_material, GetRenderTarget(Renderer_RenderTarget::gbuffer_material));
+			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_velocity, GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity));
+			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_depth,    GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
 			cmdList->SetTexture(Renderer_BindingsUav::tex, tex_ssao);
 			cmdList->Dispatch(tex_ssao, cvar_resolution_scale.GetValue());
 		}
@@ -1961,11 +1999,8 @@ namespace SceneryEditorX
 			// Shadow atlas
 			cmdList->SetTexture(Renderer_BindingsSrv::tex,  GetRenderTarget(Renderer_RenderTarget::shadow_atlas));
 
-			// Screen-space ambient occlusion (optional)
-			if (ImageResource* texSsao = GetRenderTarget(Renderer_RenderTarget::ssao))
-			{
-			    cmdList->SetTexture(Renderer_BindingsSrv::ssao, texSsao);
-			}
+			// Ambient occlusion (white when none ran this frame)
+			BindAmbientOcclusion(cmdList);
 
 			// Screen-space shadows
 			cmdList->SetTexture(Renderer_BindingsSrv::tex2, GetRenderTarget(Renderer_RenderTarget::sss));
@@ -2015,6 +2050,7 @@ namespace SceneryEditorX
 			cmdList->SetTexture(Renderer_BindingsUav::tex,              texFrameRender);
 			BindAtmosphere(cmdList, ATMOSPHERE_LIGHTING);
 			BindShadows(cmdList);
+			BindAmbientOcclusion(cmdList);	// the ambient light's and the reflections' occlusion
 
 			// The environment's sun and moon light the scene unless it has a directional light of its own (Pass_Light
 			// draws that one, in the same units); the sky and the ground always add their ambient light

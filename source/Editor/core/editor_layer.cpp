@@ -1015,6 +1015,8 @@ namespace SceneryEditorX
 				Camera::SetInputLocked(true); // the startup view stays put (captures, A/B measurements)
 			else if (args[i] == "--all-features-off")
 				Renderer::SetFeatures(RendererFeatures::AllOff()); // the XP12 frame graph with every switchable pass off (A/B)
+			else if (args[i] == "--ao-gtao")
+				Renderer::SetAoTechnique(Renderer::AoTechnique::Gtao); // SEDX's GTAO pass instead of CACAO (A/B)
 			else if (args[i].starts_with("--no-") || args[i].starts_with("--with-"))
 			{
 				// --no-<feature> / --with-<feature>: one XP12 emulation pass off or on (RENDERER panel names)
@@ -1044,6 +1046,13 @@ namespace SceneryEditorX
 				break;
 			else if (args[i] == "--xp-object")
 				m_StartupObjectFiles.push_back(args[++i]);
+			else if (args[i] == "--ao-quality")
+			{
+				// --ao-quality <0-4>: the QUALITY ambient occlusion level (X-Plane's renopt_SSAO_04: off .. highest at full resolution)
+				RendererQualityPreset preset = Renderer::GetQualityPreset();
+				preset.ao = std::clamp(std::atoi(args[++i].c_str()), 0, AO_LEVELS - 1);
+				Renderer::SetQualityPreset(preset);
+			}
 			else if (args[i] == "--debug-view")
 			{
 				// --debug-view <n | name>: what the frame shows instead of the image (RENDERER panel DEBUG VIEW)

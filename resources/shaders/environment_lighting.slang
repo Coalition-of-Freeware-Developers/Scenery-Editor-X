@@ -224,6 +224,16 @@ public float3 xp_moon_illuminance_at(float3 world)
     return get_moon_illuminance_toa() * get_transmittance_to_space(a, world_to_atmosphere(a, world), get_moon_direction());
 }
 
+/**
+ * @brief Lagarde and de Rousiers' specular occlusion (Moving Frostbite to PBR, 2014): how much of the reflected
+ * environment an ambient occlusion (visibility) hides, by the view angle and the GGX roughness (alpha = perceptual^2).
+ */
+public float xp_specular_occlusion(float n_dot_v, float occlusion, float perceptual_roughness)
+{
+    const float alpha = perceptual_roughness * perceptual_roughness;
+    return saturate(pow(n_dot_v + occlusion, exp2(-16.0f * alpha - 1.0f)) - 1.0f + occlusion);
+}
+
 /* @brief Probe 0's prefiltered radiance (absolute nits) along r for a roughness (REQ-005: LOD roughness x 5 + bias). */
 public float3 xp_probe_specular(float3 r, float roughness)
 {
@@ -255,15 +265,17 @@ public void xp_environment_lighting_split(XpLitSurface surface, float3 f0, bool 
 
     const float3 r = reflect(-surface.view, surface.normal);
     const float3 specular_brdf = f0 * surface.env_brdf.x + surface.env_brdf.y;
+    // Ambient occlusion: the diffuse ambient light takes it as it is, the reflections Lagarde's specular occlusion of it
+    const float specular_occlusion = xp_specular_occlusion(saturate(dot(surface.normal, surface.view)), surface.occlusion, surface.roughness);
     if (is_feature_enabled(FEATURE_ENV_PROBES) && is_feature_enabled(FEATURE_ATMOSPHERE))	// probes are drawn from the atmosphere
     {
         diffuse += surface.albedo * (1.0f - surface.v) * xp_probe_diffuse(surface.normal) * surface.occlusion;
-        specular += specular_brdf * xp_probe_specular(r, surface.roughness) * surface.occlusion;
+        specular += specular_brdf * xp_probe_specular(r, surface.roughness) * specular_occlusion;
     }
     else
     {
         diffuse += surface.albedo * (1.0f - surface.v) * xp_ambient_irradiance(surface.normal) * INV_PI * surface.occlusion;
-        specular += specular_brdf * xp_ambient_reflection(r, surface.roughness) * surface.occlusion;
+        specular += specular_brdf * xp_ambient_reflection(r, surface.roughness) * specular_occlusion;
     }
 }
 

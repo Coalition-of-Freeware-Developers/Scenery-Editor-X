@@ -488,6 +488,81 @@ namespace SceneryEditorX
 				EditorUI::EndPropertyGrid();
 			}
 
+			if (EditorUI::SectionHeader("AMBIENT OCCLUSION", false) && EditorUI::BeginPropertyGrid("##RendererAo"))
+			{
+				// Plan Phase 8: X-Plane's CACAO controls (ssao/*); the QUALITY AO level sets the CACAO quality and resolution
+				Renderer::EnvironmentConstants &constants = Renderer::EditEnvironmentConstants();
+				CacaoSettings &ao = constants.ao;
+				EditorUI::PropertyLabel("Technique");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				static constexpr const char *techniques[] = { "CACAO (X-Plane 12)", "GTAO (fallback)" };
+				int technique = static_cast<int>(Renderer::GetAoTechnique());
+				if (ImGui::Combo("##AoTechnique", &technique, techniques, IM_ARRAYSIZE(techniques)))
+					Renderer::SetAoTechnique(static_cast<Renderer::AoTechnique>(technique));
+				EditorUI::ItemTooltip("CACAO is X-Plane 12's ambient occlusion; GTAO is SEDX's older pass, for comparison");
+				EditorUI::PropertyLabel("Follow height");
+				ImGui::Checkbox("##AoDynamic", &ao.dynamicValues);
+				EditorUI::ItemTooltip("Radius and fade-in grow with the camera's height above the ground, as X-Plane's do "
+									  "(ssao/dynamic_values)");
+				EditorUI::PropertyLabel("Radius");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##AoRadius", &ao.radius, 0.1f, 30.0f, "%.2f m");
+				EditorUI::ItemTooltip("Size of the occlusion sphere near the ground (ssao/radius)");
+				EditorUI::PropertyLabel("Strength");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##AoStrength", &ao.shadowMultiplier, 0.0f, 3.0f, "%.2f");
+				EditorUI::ItemTooltip("ssao/shadow_multiplier");
+				EditorUI::PropertyLabel("Power");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##AoPower", &ao.shadowPower, 0.5f, 5.0f, "%.2f");
+				EditorUI::ItemTooltip("ssao/shadow_power");
+				EditorUI::PropertyLabel("Horizon angle");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##AoHorizon", &ao.horizonAngleThreshold, 0.0f, 1.0f, "%.2f");
+				EditorUI::ItemTooltip("Limits self-occlusion on slopes and coarse geometry (ssao/horizon_angle_threshold)");
+				EditorUI::PropertyLabel("Sharpness");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##AoSharpness", &ao.sharpness, 0.0f, 1.0f, "%.2f");
+				EditorUI::ItemTooltip("1: the blur never crosses depth or normal edges (ssao/sharpness)");
+				EditorUI::PropertyLabel("Blur passes");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				int blurPasses = static_cast<int>(ao.blurPassCount);
+				if (ImGui::SliderInt("##AoBlur", &blurPasses, 0, static_cast<int>(CACAO_MAX_BLUR_PASSES)))
+					ao.blurPassCount = static_cast<uint32_t>(blurPasses);
+				EditorUI::ItemTooltip("ssao/blur_pass_count");
+				EditorUI::PropertyLabel("Detail");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##AoDetail", &ao.detailShadowStrength, 0.0f, 5.0f, "%.2f");
+				EditorUI::ItemTooltip("Extra occlusion from the neighbouring pixels (ssao/detail_shadow_strength)");
+				EditorUI::PropertyLabel("Fade in");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::DragFloatRange2("##AoFadeIn", &ao.fadeInFromM, &ao.fadeInToM, 0.05f, 0.0f, 1000.0f, "%.1f m", "%.1f m");
+				EditorUI::ItemTooltip("No occlusion nearer the camera than the first distance, all of it from the second "
+									  "(ssao/fade_in_from, fade_in_to)");
+				EditorUI::PropertyLabel("Fade out");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::DragFloatRange2("##AoFadeOut", &ao.fadeOutFromM, &ao.fadeOutToM, 10.0f, 0.0f, 100000.0f, "%.0f m", "%.0f m");
+				EditorUI::ItemTooltip("ssao/fade_out_from, fade_out_to");
+
+				const Renderer::AoReadout &readout = Renderer::GetAoReadout();
+				if (!readout.ran)
+				{
+					ValueText("Last frame", "%s", "off");
+				}
+				else if (readout.technique == Renderer::AoTechnique::Gtao)
+				{
+					ValueText("Last frame", "GTAO, %u x %u", readout.width, readout.height);
+				}
+				else
+				{
+					static constexpr const char *qualities[] = { "lowest", "low", "medium", "high", "highest" };
+					ValueText("Last frame", "CACAO %s, %s resolution, 4 x %u x %u", qualities[static_cast<int>(readout.quality)],
+						readout.halfResolution ? "half" : "full", readout.width, readout.height);
+					ValueText("In use", "radius %.1f m, fade-in to %.1f m", readout.settings.radius, readout.settings.fadeInToM);
+				}
+				EditorUI::EndPropertyGrid();
+			}
+
 			if (EditorUI::SectionHeader("QUALITY", false) && EditorUI::BeginPropertyGrid("##RendererQuality"))
 			{
 				// X-Plane 12's graphics settings levels (Resources/settings.txt); passes read them as they arrive
@@ -528,6 +603,13 @@ namespace SceneryEditorX
 					Renderer::SetQualityPreset(preset);
 				const ShadowQuality shadow = GetShadowQuality(preset.shadows);
 				ValueText("Shadow maps", "%d cascades to %.0f m, %u px", shadow.exteriorCascades, shadow.exteriorFarM, shadow.mapSize);
+				const AoQuality aoQuality = GetAoQuality(preset.ao);
+				static constexpr const char *cacaoQualities[] = { "lowest", "low", "medium", "high", "highest" };
+				if (aoQuality.enabled)
+					ValueText("Ambient occlusion", "CACAO %s, %s resolution", cacaoQualities[std::clamp(aoQuality.cacaoQuality, 0, 4)],
+						aoQuality.halfResolution ? "half" : "full");
+				else
+					ValueText("Ambient occlusion", "%s", "none");
 				EditorUI::EndPropertyGrid();
 			}
 

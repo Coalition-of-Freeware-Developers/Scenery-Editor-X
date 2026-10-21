@@ -266,7 +266,10 @@ namespace SceneryEditorX
 				fusion_target(Renderer_RenderTarget::exposure_fusion_guide, 1, VK_FORMAT_R16_SFLOAT, "exposure_fusion_guide");
 			}
 
-			// optional render targets (ssao, rt reflections, restir)
+			// ambient occlusion (renderer_ao.cpp): the result and CACAO's buffers, at the AO quality's resolution
+			CreateAmbientOcclusionTargets(true);
+
+			// optional render targets (rt reflections, restir)
 			UpdateOptionalRenderTargets();
 			
 			const Ref<Device> device = RenderContext::Get()->GetLogicalDevice();
@@ -387,23 +390,7 @@ namespace SceneryEditorX
 
 	void Renderer::UpdateOptionalRenderTargets()
 	{
-		uint32_t width  = static_cast<uint32_t>(GetRendererResolution().x);
-		uint32_t height = static_cast<uint32_t>(GetRendererResolution().y);
-		uint32_t flags  = UnorderedAccessView | ShaderViews | BlitClear;
-		
-		// (SSAO) Screen-space ambient occlusion - optional since it can be expensive and not noticeable in many scenes
-		bool needSSAO = false; /* TODO: Have the option settable in user settings */
-		if (needSSAO && !s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::ssao)])
-		{
-		    s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::ssao)] = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, width, height, 1, 1, VK_FORMAT_R16G16B16A16_SFLOAT, flags | QueueShare, "ssao"});
-			SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::ssao)] != nullptr, "Failed to create ssao render target");
-		}
-		else if (!needSSAO && s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::ssao)])
-		{
-			s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::ssao)] = nullptr;
-			SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::ssao)] == nullptr, "Failed to destroy ssao render target");
-		}
-
+		// The ssao target is the ambient occlusion's (CreateAmbientOcclusionTargets, plan Phase 8)
 		{
 			s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_reflections_position)]  = nullptr;
 			SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_reflections_position)] == nullptr, "Failed to destroy gbuffer_reflections_position render target");
@@ -837,6 +824,7 @@ namespace SceneryEditorX
 
 		At(s_Buffers, Renderer_Buffer::ConstantFrame)      = CreateRef<Buffer>(sizeof(ConstantBuffer_Frame), elementCount, nullptr, true, "frame");
 		At(s_Buffers, Renderer_Buffer::ConstantEnvironment) = CreateRef<Buffer>(sizeof(ConstantBuffer_Environment), elementCount, nullptr, true, "environment");
+		At(s_Buffers, Renderer_Buffer::ConstantCacao)       = CreateRef<Buffer>(sizeof(CacaoConstants), elementCount, nullptr, true, "cacao");
 
 		// exposure (plan TASK-038): the histogram stays on the GPU (zeroed here, then by exposure_adapt.slang after each
 		// read); the state is host visible so the CPU can read the EV back for the next frame's pre-exposure

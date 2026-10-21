@@ -123,9 +123,9 @@ struct Surface
         bool is_fully_opaque = sample_albedo.a >= 0.999f;
         if (is_ssao_enabled() && is_fully_opaque)
         {
-            float4 normal_sample = tex_ssao.SampleLevel(samplers[sampler_point_clamp], uv, 0);
-            bent_normal = normal_sample.rgb;
-            occlusion = min(sample_material.a, normal_sample.a); // use the minimum of the ssao and material occlusion
+            // the ssao target holds the visibility alone (R16F, CACAO or ssao.slang)
+            const float ssao_visibility = tex_ssao.SampleLevel(samplers[sampler_point_clamp], uv, 0).r;
+            occlusion = min(sample_material.a, ssao_visibility); // use the minimum of the ssao and material occlusion
         }
 
         if (!is_fully_opaque)

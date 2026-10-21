@@ -51,7 +51,10 @@ runway, so the order keeps one scenario's weather out of the next). For each sce
 2. sets the date and time (`sim/time/*`), the weather (`sim/weather/region/*`: visibility, three cloud layers, rain,
    runway friction, snow cover, temperature; `update_immediately`), and the field of view,
 3. holds the camera at the scenario's pose (`XPLMControlCamera`) and, for `ev100_lock` scenarios, clamps
-   `photometric/ev100_min` / `_max` to the locked value (`photometric/ev100`, auto exposure's output, is only read),
+   `photometric/ev100_min` / `_max` to the locked value (`photometric/ev100`, auto exposure's output, is only read);
+   a scenario's `art_controls` (`{ "ssao/enable": 0 }`, names under `sim/private/controls/`) are set for that shot and
+   put back after it (the `_noao` twins: X-Plane's ambient occlusion is the shot minus its twin; SEDX's `--env-scenario`
+   applies `ssao/enable` too),
 4. waits `settle_frames` frames, takes a screenshot (`sim/operation/screenshot`) and copies it to
    `X-Plane 12/Output/sedx_probe/<id>.png`,
 5. writes `<id>.json`: the scenario, what was applied, sun position, window size, weather as X-Plane reports it, and the
