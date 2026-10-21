@@ -22,6 +22,7 @@ import constants;
 import position;
 import xp_material;
 import environment_lighting;
+import csm_sample;
 
 [shader("compute")]
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
@@ -64,6 +65,7 @@ void main_comp(uint3 thread_id : SV_DispatchThreadID)
 	surface.v         = saturate(gbuffer_mat.b);
 	surface.occlusion = saturate(gbuffer_mat.a);
 	const float3 position = get_position(depth, uv);
+	surface.geometric_normal = xp_receiver_normal(int2(thread_id.xy), position, surface.normal);	// the shadow lookups' plane
 	surface.view = normalize(get_camera_position() - position);
 	const float n_dot_v = saturate(dot(surface.normal, surface.view));
 	surface.env_brdf = tex3.SampleLevel(samplers[sampler_bilinear_clamp], float2(n_dot_v, surface.roughness), 0.0f).rg;

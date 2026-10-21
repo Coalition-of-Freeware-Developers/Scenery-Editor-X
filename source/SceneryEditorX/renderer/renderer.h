@@ -29,6 +29,7 @@
  * -------------------------------------------------------
  */
 #pragma once
+#include "csm.h"
 #include "exposure.h"
 #include "renderer_buffers.h"
 #include "renderer_features.h"
@@ -525,10 +526,33 @@ namespace SceneryEditorX
 			// How much of the slope applies (slope^strength): X-Plane's tone curve keeps bright neutrals warm and its grade
 			// cools them back; after SEDX's AgX, which whitens them, half the slope balances sky and ground
 			float colorSlopeStrength = 0.5f;
+
+			// Sun shadows (plan Phase 7): X-Plane's shadow controls. The quality preset's shadow level sets the cascade
+			// count, far limit, fade and map size over these (renopt_shadow_quality does the same in X-Plane).
+			CsmSettings shadow;							// shadow/csm/*, shadow/overlap_ratio, total_fade_ratio, fbo/shadow_cam_size
+			float shadowBiasConst = 1.0f;				// shadow/bias_const: constant depth bias on the casters (depth units)
+			float shadowBiasSlope = 2.0f;				// shadow/bias_slope: slope-scaled depth bias on the casters
+			float shadowNormalBias = 0.0f;				// shadow/bias_n_constant: receivers moved along their normal (texels)
+			float shadowNormalBiasSlope = 0.0f;			// shadow/bias_n_slope: plus this per unit of tan(angle to the light)
+			bool shadowSoft = true;						// shadow/want_soft: 3 x 3 PCF
+			// SEDX: the soft lookups compare against the receiver's plane (csm_sample.slang), so the casters' slope bias
+			// only covers half a texel each way; X-Plane's factor 2 would lose a panel 5 cm above the ground (which its
+			// references show casting a shadow) at cascade 1's 4 cm texels
+			bool shadowReceiverPlane = true;			// sedx/csm_receiver_plane
+			float shadowReceiverPlaneSlopeBias = 1.0f;	// sedx/csm_receiver_plane_slope_bias: the casters' slope bias with it
+			// Cloud shadows (plan TASK-055)
+			float cloudShadowStrength = 0.75f;			// clouds/cloud_shadow_lighten_ratio (ASSUMPTION: share of the light clouds can take)
+			float cloudShadowExtinction = 0.0125f;		// cloud/shadow_alpha (ASSUMPTION: extinction per meter of cloud cover)
+			float cloudShadowExtentMinKm = 64.0f;		// clouds/shadow_extent_min_km: the first cascade's width
+			float cloudShadowExtentKm = 256.0f;			// clouds/shadow_extent_km: the last cascade's width
 		};
 		static const EnvironmentConstants &GetEnvironmentConstants();
 		static EnvironmentConstants &EditEnvironmentConstants();
 		static bool LoadEnvironmentConstants(const std::filesystem::path &path, std::string *error = nullptr);
+
+		/* @brief This frame's sun-shadow cascades (renderer/csm.h; count 0: none) and the light they are for (0 none, 1 sun, 2 moon). */
+		static const CsmSetup &GetShadowCascades();
+		static uint32_t GetShadowLight();
 
 		/* @brief The exposure the GPU last reported (exposure_adapt.slang), read back a frame or two late. */
 		struct ExposureReadout
@@ -758,6 +782,19 @@ namespace SceneryEditorX
 		 * @param cmdList Command list to record the pass into.
 		 */
 		static void Pass_ShadowMaps(CommandList *cmdList);
+
+		// Sun and cloud shadows (plan Phase 7, renderer_shadows.cpp)
+		/* @brief The casters into each cascade of shadow_csm: the GPU scene's instances (GpuScene::CullShadows) and the CPU
+		 * shadow draw list; shadow_csm ends in shader-read layout whatever happens. */
+		static void Pass_ShadowCascades(CommandList *cmdList);
+		/* @brief (Re)creates shadow_csm, 4 layers of mapSize squared D32F (waits for the GPU when it replaces one). */
+		static void CreateShadowCascadeTarget(uint32_t mapSize);
+		/* @brief Fits this frame's cascades to the camera and the shadow light (UpdateDrawCalls, before it collects casters). */
+		static void UpdateShadowCascades(const CsmCamera *camera);
+		/* @brief Writes the cascades and the cloud shadow cascades into the environment constants. */
+		static void WriteShadowConstants(ConstantBuffer_Environment &env);
+		/* @brief Binds shadow_csm and cloud_shadow to a pass whose shaders read them (csm_sample.slang). */
+		static void BindShadows(CommandList *cmdList);
 
 #pragma endregion
 #pragma region Lighting passes
@@ -1093,8 +1130,10 @@ namespace SceneryEditorX
 		// CPU-side draw call arrays (populated by scene submission, consumed by passes)
 		static std::array<Renderer_DrawCall, RENDERER_MAX_DRAW_CALLS> m_DrawCalls;
 		static std::array<Renderer_DrawCall, RENDERER_MAX_DRAW_CALLS> m_DrawCalls_Prepass;
+		static std::array<Renderer_DrawCall, RENDERER_MAX_DRAW_CALLS> m_DrawCalls_Shadow; // CPU-drawn sun-shadow casters (shadowCascades set)
 		static uint32_t m_DrawCall_Count;
 		static uint32_t m_DrawCalls_Prepass_Count;
+		static uint32_t m_DrawCalls_Shadow_Count;
 		static uint32_t m_Indirect_DrawCount;
 		static bool     m_Transparents_Present;
 		static bool     m_Is_Hiz_Suppressed;

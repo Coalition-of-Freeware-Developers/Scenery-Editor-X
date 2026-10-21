@@ -98,6 +98,7 @@ namespace SceneryEditorX
 	uint32_t           Renderer::m_DrawCall_Count           = 0;
 	Flag               Renderer::m_BindlessSamplers_Dirty;
 	uint32_t           Renderer::m_DrawCalls_Prepass_Count  = 0;
+	uint32_t           Renderer::m_DrawCalls_Shadow_Count   = 0;
 	uint32_t           Renderer::m_Indirect_DrawCount       = 0;
 	bool               Renderer::m_Transparents_Present     = false;
 	bool               Renderer::m_Is_Hiz_Suppressed        = false;
@@ -105,6 +106,7 @@ namespace SceneryEditorX
 	// Additional static member definitions centralized here
 	std::array<Renderer_DrawCall, RENDERER_MAX_DRAW_CALLS> Renderer::m_DrawCalls;
 	std::array<Renderer_DrawCall, RENDERER_MAX_DRAW_CALLS> Renderer::m_DrawCalls_Prepass;
+	std::array<Renderer_DrawCall, RENDERER_MAX_DRAW_CALLS> Renderer::m_DrawCalls_Shadow;
 	std::array<ShaderBuffer_IndirectDrawArgs, MAX_ARRAY_SIZE> Renderer::m_Indirect_DrawArgs;
 	std::array<ShaderBuffer_DrawData, MAX_ARRAY_SIZE> Renderer::m_Indirect_DrawData;
 
@@ -371,8 +373,14 @@ namespace SceneryEditorX
 			s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::cloud_noise_detail)] = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type3D, 32,  32,  32,  1, VK_FORMAT_R16G16B16A16_SFLOAT, UnorderedAccessView | ShaderViews | QueueShare, "cloud_noise_detail"});
 			SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::cloud_noise_detail)] != nullptr, "Failed to create cloud_noise_detail render target");
 
-			s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::cloud_shadow)]       = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, 1024, 1024, 1, 1, VK_FORMAT_R16_SFLOAT, UnorderedAccessView | ShaderViews | QueueShare, "cloud_shadow"});
+			// Cloud shadows (plan TASK-055; XP12: clouds/shadow_size 1024, cloud/shadow_cascades 2): sunlight through the cloud
+			// layers, one world-space cascade per layer of the array (Pass_CloudShadow)
+			s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::cloud_shadow)]       = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2DArray, CLOUD_SHADOW_SIZE, CLOUD_SHADOW_SIZE, CLOUD_SHADOW_CASCADES, 1, VK_FORMAT_R16_SFLOAT, UnorderedAccessView | ShaderViews, "cloud_shadow"});
 			SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::cloud_shadow)] != nullptr, "Failed to create cloud_shadow render target");
+
+			// Sun shadow cascades (plan TASK-051), at the shadow quality's map size; Pass_ShadowCascades makes it again when
+			// the quality asks for another size
+			CreateShadowCascadeTarget(GetShadowQuality(GetQualityPreset().shadows).mapSize);
 		}
 #pragma endregion
 	}

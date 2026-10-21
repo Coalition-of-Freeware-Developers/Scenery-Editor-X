@@ -375,7 +375,15 @@ public struct EnvironmentData
     public float4 atmosphere_view;   // aerial perspective range (m), airglow (nits), star brightness, unused
     public float4 probe;             // xyz environment probe 0 (world), w specular LOD bias
     public float4 celestial[3];      // rows of the world -> equatorial rotation (x vernal equinox, z north pole)
-    public float4 padding_environment[10];
+    public float4x4 csm_view_projection[4]; // sun shadows (renderer/csm.h): the light's view-projection per cascade
+    public float4 csm_split;         // view depth (m) where cascade 0..3 ends
+    public float4 csm_blend;         // depth (m) over which cascade 0..3 blends into the next before it ends
+    public float4 csm_texel;         // shadow-map texel size (m) of cascade 0..3
+    public float4 csm_params;        // cascade count (0: none), fade start and end (view depth, m), shadow light (0 none, 1 sun, 2 moon)
+    public float4 csm_filter;        // normal offset (texels), slope-scaled normal offset (texels), soft (3x3 PCF), map size
+    public float4 cloud_shadow;      // cascade count (0: none), strength (0 none .. 1 full), extinction (1/m of cloud cover), march steps per layer
+    public float4 cloud_shadow_cascades[2]; // per cascade: center x, center z (world, m), half extent (m), texel size (m)
+    public float4 padding_environment[18];
 };
 public [[vk::binding(201)]] cbuffer BufferEnvironment : register(b201) { public EnvironmentData buffer_environment; };
 

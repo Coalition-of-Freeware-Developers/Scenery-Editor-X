@@ -86,6 +86,7 @@ namespace SceneryEditorX
 		outline,
 		shading_rate,
 		shadow_atlas,
+		shadow_csm,						// sun shadow cascades: 2D array, 4 layers, D32F, size from the shadow quality (csm.h)
 		auto_exposure,
 		auto_exposure_previous,
 		// restir reservoir buffers (current frame)
@@ -242,6 +243,10 @@ namespace SceneryEditorX
 		cube_filter_capture,
 		cube_filter_ggx,
 		cube_filter_irradiance,
+		// plan Phase 7: sun shadows (XP12: the CSM pass) and cloud shadows
+		gpu_cull_shadow,		// GPU-scene instances into each shadow cascade's draws
+		depth_light_csm,		// shadow casters into a cascade of shadow_csm (CPU draws)
+		depth_light_csm_gpu,	// the same for GPU-scene instances
 		MaxEnum
 	};
 
@@ -327,6 +332,9 @@ namespace SceneryEditorX
 		case Renderer_Shader::cube_filter_capture: return "cube_filter_capture";
 		case Renderer_Shader::cube_filter_ggx: return "cube_filter_ggx";
 		case Renderer_Shader::cube_filter_irradiance: return "cube_filter_irradiance";
+		case Renderer_Shader::gpu_cull_shadow: return "gpu_cull_shadow";
+		case Renderer_Shader::depth_light_csm: return "depth_light_csm";
+		case Renderer_Shader::depth_light_csm_gpu: return "depth_light_csm_gpu";
 		case Renderer_Shader::MaxEnum: return "MaxEnum";
 		default: return "unknown";
 		}
@@ -489,6 +497,10 @@ namespace SceneryEditorX
 		multiscatter         = 60,
 		sky_ambient          = 61,
 
+		// sun and cloud shadows (csm_sample.slang)
+		shadow_csm   = 62,
+		cloud_shadow = 63,
+
 		// restir reservoir srv bindings (for temporal/spatial read)
 		reservoir_prev0    = 21,
 		reservoir_prev1    = 22,
@@ -623,6 +635,7 @@ namespace SceneryEditorX
 		uint32_t    lodIndex         = 0;       // LOD level to render
 		uint32_t    instanceIndex    = 0;       // First instance offset
 		uint32_t    instanceCount    = 1;       // Number of instances
+		uint32_t    shadowCascades   = 0;       // Sun-shadow cascades it casts into (bit per cascade; CPU shadow draw list)
 	};
 
 	// -------------------------------------------------------

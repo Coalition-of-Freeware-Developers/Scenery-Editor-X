@@ -30,14 +30,17 @@
  *
  * The RENDERER panel's DEBUG VIEW (plan TASK-026): one g-buffer channel or a measurement of the frame instead of the
  * image. Writes display-referred linear values into frame_output (tex_uav). Views whose data a later phase adds
- * (AO, cascades, cloud shadow, SSR, tile lights) show black until then.
+ * (AO, SSR, tile lights) show black until then.
  *   tex           frame_render (radiance x pre-exposure) for the luminance views
+ *   the shadow maps (csm_sample.slang, Renderer::BindShadows) for the cascade and cloud-shadow views
  *   pass_get_f4_value(): x view (Renderer_DebugView)
  */
 
 import common;
 import resources;
 import constants;
+import position;
+import csm_sample;
 
 static const uint VIEW_ALBEDO = 1;
 static const uint VIEW_ROUGHNESS = 2;
@@ -45,6 +48,8 @@ static const uint VIEW_METALNESS = 3;
 static const uint VIEW_NORMALS = 4;
 static const uint VIEW_EMISSIVE = 5;
 static const uint VIEW_WEATHER = 6;
+static const uint VIEW_CASCADES = 8;
+static const uint VIEW_CLOUD_SHADOW = 9;
 static const uint VIEW_EV = 12;
 static const uint VIEW_NITS = 13;
 static const uint VIEW_DEPTH = 14;
@@ -94,6 +99,27 @@ void main_comp(uint3 thread_id: SV_DispatchThreadID)
         color = tex_weather.Load(pixel).rgb;	// R rain / damp, G puddles, B snow (0.5 + 0.5 s)
     else if (view == VIEW_DEPTH)
         color = to_linear(pow(tex_depth.Load(pixel).r, 0.25).xxx);	// Reverse-Z: near is white
+    else if (view == VIEW_CASCADES || view == VIEW_CLOUD_SHADOW)
+    {
+        // the g-buffer's surface (nothing where the sky is): its cascade in red, green, blue, yellow (white past the far
+        // limit), darkened where shadowed; or the share of the light the clouds let through
+        const float depth = tex_depth.Load(pixel).r;
+        if (depth > 0.0)
+        {
+            const float3 world = get_position(depth, (float2(thread_id.xy) + 0.5) / resolution);
+            const float3 normal = xp_receiver_normal(int2(thread_id.xy), world, normalize(tex_normal.Load(pixel).xyz));
+            if (view == VIEW_CLOUD_SHADOW)
+            {
+                color = xp_cloud_shadow(world).xxx;
+            }
+            else
+            {
+                const float3 tints[5] = { float3(1.0, 0.25, 0.25), float3(0.25, 1.0, 0.25), float3(0.3, 0.45, 1.0), float3(1.0, 0.9, 0.2), float3(1.0, 1.0, 1.0) };
+                const uint cascade = min(xp_csm_select(xp_view_depth(world)), 4u);
+                color = tints[cascade] * (0.2 + 0.8 * xp_csm_visibility(world, normal));
+            }
+        }
+    }
     else if (view == VIEW_EV || view == VIEW_NITS)
     {
         const float3 radiance = tex.Load(pixel).rgb / max(get_pre_exposure(), 1e-20);

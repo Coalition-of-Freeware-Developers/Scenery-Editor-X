@@ -79,6 +79,10 @@ namespace SceneryEditorX
 				{ Renderer_Shader::gpu_cull_late,          "gpu_cull_late",          "gpu_cull.slang",      {CS},     {{"GPU_CULL_LATE"}}, VertexType::MaxEnum, true },
 				{ Renderer_Shader::depth_prepass_gpu,      "depth_prepass_gpu",      "depth_prepass.slang", {VS, FS}, {{"GPU_SCENE"}},    VertexType::MaxEnum, true },
 				{ Renderer_Shader::gbuffer_gpu,            "gbuffer_gpu",            "gbuffer.slang",       {VS, FS}, {{"GPU_SCENE"}},    VertexType::MaxEnum, true },
+				// sun shadows (plan Phase 7): GPU-scene instances into each cascade, the casters drawn into shadow_csm
+				{ Renderer_Shader::gpu_cull_shadow,        "gpu_cull_shadow",        "gpu_cull.slang",      {CS},     {{"GPU_CULL_SHADOW"}}, VertexType::MaxEnum, true },
+				{ Renderer_Shader::depth_light_csm,        "depth_light_csm",        "depth_light.slang",   {VS, FS}, {{"CSM"}},          VertexType::PositionUvNormalTangent, true },
+				{ Renderer_Shader::depth_light_csm_gpu,    "depth_light_csm_gpu",    "depth_light.slang",   {VS, FS}, {{"CSM"}, {"GPU_SCENE"}}, VertexType::MaxEnum, true },
 
 				// editor overlays
 				{ Renderer_Shader::grid,    "grid",    "grid.slang",    {VS, FS},     {}, VertexType::PositionUvNormalTangent, true },
@@ -112,7 +116,7 @@ namespace SceneryEditorX
 				{ Renderer_Shader::cube_filter_irradiance,       "cube_filter_irradiance",       "cube_filter.slang",        {CS}, {{"IRRADIANCE"}},    VertexType::MaxEnum, true },
 				{ Renderer_Shader::cloud_noise_shape,           "cloud_noise_shape",           "cloud_noise.slang",   {CS}, {{"SHAPE_NOISE"}} },
 				{ Renderer_Shader::cloud_noise_detail,          "cloud_noise_detail",          "cloud_noise.slang",   {CS}, {{"DETAIL_NOISE"}} },
-				{ Renderer_Shader::cloud_shadow,                "cloud_shadow",                "cloud_shadows.slang", {CS} },
+				{ Renderer_Shader::cloud_shadow,                "cloud_shadow",                "cloud_shadows.slang", {CS}, {}, VertexType::MaxEnum, true }, // cloud shadows (plan TASK-055)
 
 				// post-processing
 				{ Renderer_Shader::blur_gaussian,            "blur_gaussian",            "blur.slang",   {CS} },

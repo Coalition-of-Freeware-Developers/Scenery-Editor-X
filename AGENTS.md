@@ -84,7 +84,8 @@ The dependency-light, cross-platform Catch2 unit suites that only need `source/`
   quality levels (`renderer/renderer_quality.*`, from `settings.txt`), feature switches (`renderer/renderer_features.*`),
   exposure (`renderer/exposure.*`: EV100 camera mapping to middle grey, X-Plane 12.4.4's sun-elevation target and gains,
   histogram metering, adaptation) and when the environment
-  probe is captured again (`renderer/env_probes.*`).
+  probe is captured again (`renderer/env_probes.*`), and the sun-shadow cascades (`renderer/csm.*`: X-Plane 12.4.4's practical
+  split scheme, slice bounding spheres, texel snapping that keeps edges still while the camera pans, caster culling).
   Standard library plus `dependency/json`, fully green.
 
 The other suites are **not** Linux-buildable as written: `SettingsTest` links Windows libs
@@ -187,7 +188,7 @@ g++ -std=c++20 -O2 -pthread $INCS source/Tests/environment_tests/ParityScenarioT
     $ENV/surface_weather.cpp $ENV/season_model.cpp $ENV/sky_conditions.cpp $ENV/environment_state.cpp \
     $ENV/environment.cpp $ENV/sky_light.cpp $ENV/atmosphere_params.cpp source/SceneryEditorX/renderer/renderer_quality.cpp \
     source/SceneryEditorX/renderer/renderer_features.cpp source/SceneryEditorX/renderer/exposure.cpp \
-    source/SceneryEditorX/renderer/env_probes.cpp $LIBS -o build_linux_tests/EnvironmentTests
+    source/SceneryEditorX/renderer/env_probes.cpp source/SceneryEditorX/renderer/csm.cpp $LIBS -o build_linux_tests/EnvironmentTests
 ./build_linux_tests/EnvironmentTests
 ```
 

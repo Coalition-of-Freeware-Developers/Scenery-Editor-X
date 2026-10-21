@@ -175,12 +175,12 @@
 			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20)"
 		},
 		"shadow/csm/lambda": {
-			"value": 0.75,
-			"source": "ASSUMPTION"
+			"value": 1.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): 1 = logarithmic cascade splits"
 		},
 		"shadow/overlap_ratio": {
-			"value": 0.1,
-			"source": "ASSUMPTION"
+			"value": 0.01,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): share of a cascade's depth it blends into the next over"
 		},
 		"twxr/rain_darkening_strength": {
 			"value": 0.6,
@@ -241,6 +241,78 @@
 		"sedx/sdr_slope_strength": {
 			"value": 0.5,
 			"source": "SEDX: share of color_management/sdr/slope_* applied (slope^strength). X-Plane's tone curve (tonemap/mode 6) keeps bright neutrals warm and the slope cools them back; after SEDX's AgX, which whitens them, the full slope turns lit ground and fog cyan while the sky matches. 0.5 balances them against the 12.4.4 references at KSEA (sky r/g +0.15, ground -0.15 log2)"
+		},
+		"shadow/csm_split_exterior": {
+			"value": 3.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): sun-shadow cascades; the shadow quality level sets it (renopt_shadow_quality)"
+		},
+		"shadow/csm/near_limit_exterior": {
+			"value": 4.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): m, where the split scheme starts (the first cascade still starts at the camera)"
+		},
+		"shadow/csm/far_limit_exterior": {
+			"value": 250.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): m of view depth; the shadow quality level sets it"
+		},
+		"shadow/total_fade_ratio": {
+			"value": 0.7,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): shadows fade out from this share of the far limit (ASSUMPTION about its meaning); the shadow quality level sets it"
+		},
+		"shadow/csm/pad_near_const": {
+			"value": 100.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): m the near plane moves toward the light"
+		},
+		"shadow/csm/pad_near_ratio": {
+			"value": 1.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): plus this share of the cascade's radius (ASSUMPTION: radius, not diameter)"
+		},
+		"fbo/shadow_cam_size": {
+			"value": 2048.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): shadow-map size; the shadow quality level sets it"
+		},
+		"shadow/bias_const": {
+			"value": 1.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): constant depth bias on the casters, in depth units (read as polygon-offset units)"
+		},
+		"shadow/bias_slope": {
+			"value": 2.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): slope-scaled depth bias on the casters (read as polygon-offset slope factor)"
+		},
+		"shadow/bias_n_constant": {
+			"value": 0.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): receiver normal offset, texels"
+		},
+		"shadow/bias_n_slope": {
+			"value": 0.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): receiver normal offset per unit of tan(angle to the light), texels"
+		},
+		"shadow/want_soft": {
+			"value": 1.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): 3 x 3 filtered lookups"
+		},
+		"clouds/cloud_shadow_lighten_ratio": {
+			"value": 0.75,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): read as the share of the light clouds can take away (ASSUMPTION)"
+		},
+		"cloud/shadow_alpha": {
+			"value": 0.0125,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): read as extinction per meter of cloud cover along the light (ASSUMPTION)"
+		},
+		"clouds/shadow_extent_min_km": {
+			"value": 64.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): the first cloud-shadow cascade's width"
+		},
+		"clouds/shadow_extent_km": {
+			"value": 256.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): the last cloud-shadow cascade's width"
+		},
+		"sedx/csm_receiver_plane": {
+			"value": 1.0,
+			"source": "SEDX: soft shadow lookups compare against the receiver's plane (from the depth buffer), so the casters' slope bias covers half a texel each way. With X-Plane's shadow/bias_slope 2 alone, the calibration panels 5 cm above the ground lose their shadow at cascade 1's 4 cm texels; X-Plane 12.4.4's reference keeps a 12 cm band."
+		},
+		"sedx/csm_receiver_plane_slope_bias": {
+			"value": 1.0,
+			"source": "SEDX: the casters' slope-scaled depth bias with the receiver plane on (half a texel each way of the 2 x 2 gathers)"
 		}
 	}
 }

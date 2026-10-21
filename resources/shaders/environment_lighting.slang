@@ -36,14 +36,16 @@
  * With the atmosphere on (plan Phase 6) the sun and moon reach each pixel through the transmittance LUT, ambient light
  * and reflections come from the environment probes (cube_filter.slang), and aerial perspective is applied by the
  * callers (xp_apply_aerial_perspective). With those features off it falls back to the interim CPU sky: the sun and
- * moon at the camera, the sky interpolated from seven directions, two hemispheres of ambient light. Nothing casts
- * shadows until Phase 7.
+ * moon at the camera, the sky interpolated from seven directions, two hemispheres of ambient light. The sun (or the
+ * moon at night) is shadowed by the cascades and the clouds (plan Phase 7, csm_sample.slang): callers bind them with
+ * Renderer::BindShadows.
  */
 module environment_lighting;
 
 import resources;
 import constants;
 import atmosphere_common;
+import csm_sample;
 
 // RendererFeatures bits (renderer_features.cpp table order) the lighting follows
 public static const uint FEATURE_ATMOSPHERE = 0;
@@ -169,6 +171,7 @@ public struct XpLitSurface
 {
     public float3 albedo;
     public float3 normal;		// unit, world
+    public float3 geometric_normal;	// unit, world: the surface's plane without its normal map (the shadow lookups)
     public float3 view;			// unit, from the surface toward the camera
     public float roughness;		// perceptual (alpha = roughness^2)
     public float v;				// metalness / F0 parameter (xp_material.slang)
@@ -236,8 +239,8 @@ public float3 xp_probe_diffuse(float3 n)
 
 /**
  * @brief Everything the environment lights a surface at world with (nits), split into diffuse and specular: the sun and
- * moon (unless a scene directional light replaces them), the ambient light and the reflected sky (probes, or the
- * interim two-hemisphere sky), through the BRDF LUT.
+ * moon (unless a scene directional light replaces them) through their shadows, the ambient light and the reflected sky
+ * (probes, or the interim two-hemisphere sky), through the BRDF LUT.
  */
 public void xp_environment_lighting_split(XpLitSurface surface, float3 f0, bool sun_and_moon, float3 world, out float3 diffuse, out float3 specular)
 {
@@ -245,8 +248,9 @@ public void xp_environment_lighting_split(XpLitSurface surface, float3 f0, bool 
     specular = 0.0f;
     if (sun_and_moon)
     {
-        xp_directional_light(surface, f0, get_sun_direction(), xp_sun_illuminance_at(world), diffuse, specular);
-        xp_directional_light(surface, f0, get_moon_direction(), xp_moon_illuminance_at(world), diffuse, specular);
+        const float2 shadows = xp_light_shadows(world, surface.geometric_normal);
+        xp_directional_light(surface, f0, get_sun_direction(), xp_sun_illuminance_at(world) * shadows.x, diffuse, specular);
+        xp_directional_light(surface, f0, get_moon_direction(), xp_moon_illuminance_at(world) * shadows.y, diffuse, specular);
     }
 
     const float3 r = reflect(-surface.view, surface.normal);

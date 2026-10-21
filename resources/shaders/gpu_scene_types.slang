@@ -52,6 +52,7 @@ public struct GpuInstance
 };
 
 public static const uint GPU_INSTANCE_ENABLED = 1u << 0;
+public static const uint GPU_INSTANCE_CASTS_SHADOW = 1u << 1; // drawn into the sun-shadow cascades (RenderableFlags::CastsShadows)
 // Bits 8..31 of the flags carry the instance's pick id (entity index + 1, 24 bits), which gbuffer_pick receives
 public static const uint GPU_INSTANCE_PICK_SHIFT = 8u;
 

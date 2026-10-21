@@ -440,6 +440,26 @@ void dynamic_resolution()
 				return true;
 			}
 		};
+
+		/* @brief A local box placed by a row-vector world matrix, as a world axis-aligned box (for the shadow cascades). */
+		void WorldBounds(const xMath::BoundingBox &local, const xMath::Matrix &world, CsmVec3 &boxMin, CsmVec3 &boxMax)
+		{
+			const xMath::Vec3 lo = local.GetMin();
+			const xMath::Vec3 hi = local.GetMax();
+			const double c[3] = { (lo.x + hi.x) * 0.5, (lo.y + hi.y) * 0.5, (lo.z + hi.z) * 0.5 };
+			const double e[3] = { (hi.x - lo.x) * 0.5, (hi.y - lo.y) * 0.5, (hi.z - lo.z) * 0.5 };
+			const double m[3][4] = {
+				{ world.m00, world.m10, world.m20, world.m30 },
+				{ world.m01, world.m11, world.m21, world.m31 },
+				{ world.m02, world.m12, world.m22, world.m32 } };
+			for (size_t axis = 0; axis < 3; ++axis)
+			{
+				const double center = c[0] * m[axis][0] + c[1] * m[axis][1] + c[2] * m[axis][2] + m[axis][3];
+				const double extent = e[0] * std::abs(m[axis][0]) + e[1] * std::abs(m[axis][1]) + e[2] * std::abs(m[axis][2]);
+				boxMin[axis] = center - extent;
+				boxMax[axis] = center + extent;
+			}
+		}
 	}
 
 	static std::filesystem::path ResolveResourcePath(const std::filesystem::path& relativePath)
@@ -1070,6 +1090,9 @@ void dynamic_resolution()
 					Perf::SetCounter("gpu batches", stats.batches);
 					Perf::SetCounter("gpu commands drawn", stats.drawnCommands);
 					Perf::SetCounter("gpu uploads", stats.uploadedInstances);
+					Perf::SetCounter("gpu shadow draws", stats.shadowInstances);
+					Perf::SetCounter("cpu shadow casters", m_DrawCalls_Shadow_Count);
+					Perf::SetCounter("shadow cascades", GetShadowCascades().count);
 				}
 
 #pragma endregion
@@ -2670,6 +2693,7 @@ void dynamic_resolution()
 
 		m_DrawCall_Count          = 0;
 		m_DrawCalls_Prepass_Count = 0;
+		m_DrawCalls_Shadow_Count  = 0;
 		m_Transparents_Present    = false;
 
 		// The per-draw indirect path (indirect_cull) stays off: GpuScene draws the deferred geometry instead.
@@ -2680,13 +2704,29 @@ void dynamic_resolution()
 		bool hasFrustum = false;
 		{
 			const xMath::Vec2 resolution = GetRendererResolution();
+			const float aspect = resolution.y > 0.0f ? resolution.x / resolution.y : 1.0f;
 			SceneCameraView camera;
-			if (BuildSceneCameraView(resolution.y > 0.0f ? resolution.x / resolution.y : 1.0f, camera))
+			if (BuildSceneCameraView(aspect, camera))
 			{
 				frustum = ViewFrustum(camera.projection * camera.view);
 				hasFrustum = true;
+
+				// the sun-shadow cascades this camera needs, before the casters are collected
+				CsmCamera csmCamera;
+				csmCamera.position = { camera.position.x, camera.position.y, camera.position.z };
+				csmCamera.forward = { camera.forward.x, camera.forward.y, camera.forward.z };
+				csmCamera.tanHalfFovX = std::tan(0.5 * camera.fovHorizontal);
+				csmCamera.tanHalfFovY = csmCamera.tanHalfFovX / std::max(aspect, 1e-3f);
+				csmCamera.nearPlane = camera.nearPlane;
+				UpdateShadowCascades(&csmCamera);
+			}
+			else
+			{
+				UpdateShadowCascades(nullptr);
 			}
 		}
+		const CsmSetup &shadows = GetShadowCascades();
+		const uint32_t allCascades = (1u << shadows.count) - 1u;
 
 		// collect draw calls: renderables the GPU scene doesn't draw, plus the blended part of the ones it does
 		for (Entity* entity : Scene::GetRenderableEntities())
@@ -2719,24 +2759,49 @@ void dynamic_resolution()
 
 			// frustum culling on the world bounds (the renderable's own box is only updated when its mesh is set)
 			const xMath::Matrix world = entity->GetMatrix();
-			if (hasFrustum && !renderable->HasInstancing() && !frustum.IntersectsBox(renderable->GetBoundingBoxMesh(), world))
+			const bool inView = !hasFrustum || renderable->HasInstancing() || frustum.IntersectsBox(renderable->GetBoundingBoxMesh(), world);
+
+			// Sun-shadow casters the GPU scene doesn't draw (plan TASK-053): opaque or cut-out, not draped, casting; in view
+			// or not. Instanced ones (their box is one instance's) go into every cascade.
+			const bool isTransparent = material->IsTransparent();
+			uint32_t shadowCascades = 0;
+			if (shadows.count > 0 && !gpuDriven && !isTransparent && !renderable->IsDraped() && renderable->HasFlag(RenderableFlags::CastsShadows))
+			{
+				if (renderable->HasInstancing())
+				{
+					shadowCascades = allCascades;
+				}
+				else
+				{
+					CsmVec3 boxMin, boxMax;
+					WorldBounds(renderable->GetBoundingBoxMesh(), world, boxMin, boxMax);
+					shadowCascades = shadows.CascadeMask(boxMin, boxMax);
+				}
+			}
+			if (!inView && shadowCascades == 0)
 				continue;
 
-			const bool isTransparent = material->IsTransparent();
-			m_Transparents_Present  |= isTransparent;
+			if (inView)
+				m_Transparents_Present |= isTransparent;
 
 			const uint32_t drawDataIndex = WriteDrawData(world, entity->GetMatrixPrevious(), material->GetIndex(), isTransparent ? 1 : 0, ScenePicking::GetPickId(static_cast<entt::entity>(*entity)));
 
-			Renderer_DrawCall& drawCall = m_DrawCalls[m_DrawCall_Count++];
+			Renderer_DrawCall drawCall;
 			drawCall.renderable         = renderable;
 			drawCall.lodIndex           = std::min(renderable->GetLodIndex(), renderable->GetLodCount() - 1);
 			drawCall.isOccluder         = false;
-			drawCall.cameraVisible      = true;
+			drawCall.cameraVisible      = inView;
 			drawCall.gpuDriven          = gpuDriven;
 			drawCall.instanceIndex      = 0;
 			drawCall.instanceCount      = renderable->GetInstanceCount();
 			drawCall.drawData_Index     = drawDataIndex;
 			drawCall.drapeOrder         = renderable->GetDrapeOrder();
+			drawCall.shadowCascades     = shadowCascades;
+
+			if (shadowCascades != 0 && m_DrawCalls_Shadow_Count < static_cast<uint32_t>(m_DrawCalls_Shadow.size()))
+				m_DrawCalls_Shadow[m_DrawCalls_Shadow_Count++] = drawCall;
+			if (inView)
+				m_DrawCalls[m_DrawCall_Count++] = drawCall;
 		}
 
 		// sort: opaque before transparent; among the opaque ones everything else (by material, to minimize state changes)
@@ -3136,6 +3201,9 @@ void dynamic_resolution()
 		}
 		env.wind = xMath::Vec4(state.windDirectionDegT, state.windSpeedKt * 0.514444f, state.waveAmplitudeM, state.waveDirectionDegT);
 		env.debug = xMath::Vec4(static_cast<float>(GetDebugView()), static_cast<float>(GetFeatures().ToBits()), state.temperatureC, 0.0f);
+
+		// Sun and cloud shadows (plan Phase 7): the cascades UpdateDrawCalls fitted this frame
+		WriteShadowConstants(env);
 
 		environmentBuffer->Update(cmdList, &env);
 	}

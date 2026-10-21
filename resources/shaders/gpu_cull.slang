@@ -48,8 +48,14 @@ import gpu_scene_types;
 // A visible instance is appended to the visible list of its batch's draw for the chosen LOD; the draw's instance_count
 // (reset to 0 by the CPU-recorded copy of the command templates) is the append counter.
 //
-// Push constants: buffer_pass.draw_index = instance count; values[2] = (minimum projected diameter in pixels,
-// LOD distance scale, frustum culling on (> 0), unused); values[0].xy = (late command offset, occlusion culling on (> 0)).
+// - shadow pass (GPU_CULL_SHADOW, plan TASK-053): every enabled instance that casts shadows is tested against each sun
+//   shadow cascade (buffer_environment.csm_*) and appended to that cascade's commands, which follow the occluded counter
+//   (cascade c's command = first shadow command + c x late offset + the early command). LODs are the camera's, so the
+//   casters match what is drawn.
+//
+// Push constants: buffer_pass.draw_index = instance count; values[2] = (minimum projected diameter in pixels (shadow
+// pass: in cascade texels), LOD distance scale, frustum culling on (> 0), unused); values[0].xyz = (late command
+// offset, occlusion culling on (> 0), first shadow command).
 
 [[vk::binding(24, 11)]] StructuredBuffer<GpuInstance> cull_instances : register(t24, space11);
 [[vk::binding(25, 12)]] StructuredBuffer<GpuBatch> cull_batches : register(t25, space12);
@@ -83,6 +89,33 @@ bool is_outside_frustum(float4x4 clip_rows, float3 center, float3 extent)
     return false;
 }
 
+// How much of the screen height an instance's bounding sphere covers (huge with the camera inside its box)
+float screen_fraction(float3 bounds_min, float3 bounds_max)
+{
+    const float3 camera      = get_camera_position();
+    const float distance     = length(camera - clamp(camera, bounds_min, bounds_max));
+    const float projection_y = get_projection_matrix()[1][1]; // 1 / tan(vertical fov / 2)
+    return distance > 0.0f ? length((bounds_max - bounds_min) * 0.5f) * projection_y / distance : 1e30f;
+}
+
+// The early draw command of an instance's batch for the mesh LOD its screen coverage picks
+uint lod_command(GpuInstance instance, float fraction)
+{
+    const GpuBatch batch = cull_batches[instance.batch()];
+    const uint lod_count = clamp(batch.lod_count, 1u, GPU_MAX_LODS);
+    const float coverage = fraction * pass_get_f4_value().y;
+    uint lod             = lod_count - 1;
+    for (uint i = 0; i + 1 < lod_count; ++i)
+    {
+        if (coverage >= GPU_LOD_SCREEN_FRACTIONS[i])
+        {
+            lod = i;
+            break;
+        }
+    }
+    return batch.first_command + lod;
+}
+
 // Frustum and small-feature tests and LOD selection: false when the instance isn't drawn, else its early draw command
 // (the batch's command for the chosen LOD).
 bool select_command(GpuInstance instance, out uint command)
@@ -101,33 +134,39 @@ bool select_command(GpuInstance instance, out uint command)
     if (options.z > 0.0f && is_outside_frustum(transpose(get_view_projection_matrix()), center, extent))
         return false;
 
-    // how much of the screen height the bounding sphere covers (0 distance: the camera is inside the box)
-    const float3 camera          = get_camera_position();
-    const float distance         = length(camera - clamp(camera, bounds_min, bounds_max));
-    const float projection_y     = get_projection_matrix()[1][1]; // 1 / tan(vertical fov / 2)
-    const float screen_fraction  = distance > 0.0f ? length(extent) * projection_y / distance : 1e30f;
-
     // small-feature culling: below a few pixels an object can't be told apart from its neighbours
-    if (screen_fraction * get_resolution_render().y < options.x)
+    const float fraction = screen_fraction(bounds_min, bounds_max);
+    if (fraction * get_resolution_render().y < options.x)
         return false;
 
     // mesh LOD by screen coverage
-    const GpuBatch batch   = cull_batches[instance.batch()];
-    const uint lod_count   = clamp(batch.lod_count, 1u, GPU_MAX_LODS);
-    const float coverage   = screen_fraction * options.y;
-    uint lod               = lod_count - 1;
-    for (uint i = 0; i + 1 < lod_count; ++i)
-    {
-        if (coverage >= GPU_LOD_SCREEN_FRACTIONS[i])
-        {
-            lod = i;
-            break;
-        }
-    }
-
-    command = batch.first_command + lod;
+    command = lod_command(instance, fraction);
     return true;
 }
+
+#if defined(GPU_CULL_SHADOW)
+// A sun-shadow cascade's four sides and far plane (renderer/csm.h CsmCascade::CanCast): the near plane is left out, so
+// casters nearer the light than the cascade still cast (the depth clamp puts them on its near plane while drawn)
+bool is_outside_cascade(float4x4 clip_rows, float3 center, float3 extent)
+{
+    const float4 planes[5] =
+    {
+        clip_rows[3] + clip_rows[0], // left
+        clip_rows[3] - clip_rows[0], // right
+        clip_rows[3] + clip_rows[1], // bottom
+        clip_rows[3] - clip_rows[1], // top
+        clip_rows[2]                 // far (z >= 0)
+    };
+
+    [unroll]
+    for (int i = 0; i < 5; ++i)
+    {
+        if (dot(planes[i].xyz, center) + planes[i].w + dot(abs(planes[i].xyz), extent) < 0.0f)
+            return true;
+    }
+    return false;
+}
+#endif
 
 void append(uint command, uint index)
 {
@@ -200,9 +239,33 @@ void main_comp(uint3 thread_id : SV_DispatchThreadID)
         return;
 
     const GpuInstance instance = cull_instances[index];
+    const uint late_offset     = uint(pass_get_f3_value().x);
+
+#if defined(GPU_CULL_SHADOW)
+    if (!instance.enabled() || (instance.flags() & GPU_INSTANCE_CASTS_SHADOW) == 0)
+        return;
+
+    const float3 bounds_min = instance.bounds_min_batch.xyz;
+    const float3 bounds_max = instance.bounds_max_flags.xyz;
+    const float3 center     = (bounds_min + bounds_max) * 0.5f;
+    const float3 extent     = (bounds_max - bounds_min) * 0.5f;
+    const uint command      = lod_command(instance, screen_fraction(bounds_min, bounds_max));
+    const uint first_shadow = uint(pass_get_f3_value().z);
+    const float min_texels  = pass_get_f4_value().x;
+    const uint cascades     = min(uint(buffer_environment.csm_params.x + 0.5f), 4u);
+    for (uint cascade = 0; cascade < cascades; ++cascade)
+    {
+        // smaller than a texel or so of this cascade: its shadow wouldn't show
+        if (2.0f * length(extent) < min_texels * buffer_environment.csm_texel[cascade])
+            continue;
+        // the cascade's matrix reads back transposed like the frame's (see GpuMatrix)
+        if (is_outside_cascade(transpose(buffer_environment.csm_view_projection[cascade]), center, extent))
+            continue;
+        append(first_shadow + cascade * late_offset + command, index);
+    }
+#else
     uint command;
-    const bool in_view     = select_command(instance, command);
-    const uint late_offset = uint(pass_get_f3_value().x);
+    const bool in_view = select_command(instance, command);
 
 #if defined(GPU_CULL_LATE)
     // the early pass drew what was visible last frame (and in view); an instance it drew isn't hidden by its own depth
@@ -221,5 +284,6 @@ void main_comp(uint3 thread_id : SV_DispatchThreadID)
     const bool occlusion = pass_get_f3_value().y > 0.0f;
     if (in_view && (!occlusion || cull_visibility[index] != 0))
         append(command, index);
+#endif
 #endif
 }

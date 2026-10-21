@@ -36,6 +36,7 @@
 #include <SceneryEditorX/environment/environment.h>
 #include <SceneryEditorX/environment/parity_scenario.h>
 #include <SceneryEditorX/environment/sky_light.h>
+#include <SceneryEditorX/renderer/csm.h>
 #include <SceneryEditorX/renderer/env_probes.h>
 #include <SceneryEditorX/renderer/exposure.h>
 #include <SceneryEditorX/renderer/renderer_features.h>
@@ -823,4 +824,206 @@ TEST_CASE("Environment probes: capture rules", "[environment][probes]")
 	hazier.mediumHash = HashCombine(0, 20000.0);
 	CHECK(hazier.mediumHash != inputs.mediumHash);
 	CHECK(EnvProbeNeedsCapture(state, hazier));
+}
+
+namespace
+{
+	/* @brief A camera at a position looking along yaw (from -Z toward +X) and pitch, 60 degrees wide, 16:9. */
+	SceneryEditorX::CsmCamera MakeCsmCamera(const SceneryEditorX::CsmVec3 &position, const double yawDeg, const double pitchDeg)
+	{
+		SceneryEditorX::CsmCamera camera;
+		camera.position = position;
+		const double yaw = yawDeg * DEG, pitch = pitchDeg * DEG;
+		camera.forward = { std::cos(pitch) * std::sin(yaw), std::sin(pitch), -std::cos(pitch) * std::cos(yaw) };
+		camera.tanHalfFovX = std::tan(30.0 * DEG);
+		camera.tanHalfFovY = camera.tanHalfFovX * 9.0 / 16.0;
+		camera.nearPlane = 0.1;
+		return camera;
+	}
+
+	/* @brief The 8 corners of the camera's view-frustum slice between two view depths. */
+	std::array<SceneryEditorX::CsmVec3, 8> SliceCorners(const SceneryEditorX::CsmCamera &camera, const double depthNear, const double depthFar)
+	{
+		const SceneryEditorX::CsmVec3 &f = camera.forward;
+		const double length = std::sqrt(f[2] * f[2] + f[0] * f[0]);
+		const SceneryEditorX::CsmVec3 right{ -f[2] / length, 0.0, f[0] / length };	// forward x world up
+		const SceneryEditorX::CsmVec3 up{ right[1] * f[2] - right[2] * f[1], right[2] * f[0] - right[0] * f[2], right[0] * f[1] - right[1] * f[0] };
+		std::array<SceneryEditorX::CsmVec3, 8> corners{};
+		size_t n = 0;
+		for (const double depth : { depthNear, depthFar })
+		{
+			for (const double sx : { -1.0, 1.0 })
+			{
+				for (const double sy : { -1.0, 1.0 })
+				{
+					SceneryEditorX::CsmVec3 &c = corners[n++];
+					for (size_t axis = 0; axis < 3; ++axis)
+						c[axis] = camera.position[axis] + depth * (f[axis] + sx * camera.tanHalfFovX * right[axis] + sy * camera.tanHalfFovY * up[axis]);
+				}
+			}
+		}
+		return corners;
+	}
+}
+
+TEST_CASE("Sun shadows: cascade splits", "[environment][csm]")
+{
+	using namespace SceneryEditorX;
+
+	// X-Plane 12.4.4's controls (3 cascades, 4 - 250 m, lambda 1): logarithmic splits, the first cascade from the camera
+	CsmSettings settings;
+	auto splits = ComputeCsmSplits(settings, 0.1);
+	CHECK(splits[0] == Approx(0.1));
+	CHECK(splits[1] == Approx(4.0 * std::pow(62.5, 1.0 / 3.0)));
+	CHECK(splits[2] == Approx(4.0 * std::pow(62.5, 2.0 / 3.0)));
+	CHECK(splits[3] == Approx(250.0));
+
+	// lambda 0: uniform between the limits
+	settings.lambda = 0.0;
+	splits = ComputeCsmSplits(settings, 0.1);
+	CHECK(splits[1] == Approx(4.0 + 246.0 / 3.0));
+	CHECK(splits[2] == Approx(4.0 + 2.0 * 246.0 / 3.0));
+
+	// Monotonic for every level, count and lambda
+	for (int level = 0; level < SHADOW_LEVELS; ++level)
+	{
+		const ShadowQuality quality = GetShadowQuality(level);
+		for (const double lambda : { 0.0, 0.5, 0.75, 1.0 })
+		{
+			settings.cascadeCount = static_cast<uint32_t>(quality.exteriorCascades);
+			settings.farLimitM = quality.exteriorFarM;
+			settings.lambda = lambda;
+			splits = ComputeCsmSplits(settings, 0.25);
+			for (uint32_t i = 0; i < settings.cascadeCount; ++i)
+				CHECK(splits[i] < splits[i + 1]);
+			CHECK(splits[settings.cascadeCount] == Approx(quality.exteriorFarM));
+		}
+	}
+}
+
+TEST_CASE("Sun shadows: a slice's bounding sphere holds its corners", "[environment][csm]")
+{
+	using namespace SceneryEditorX;
+	const CsmCamera camera = MakeCsmCamera({ 0.0, 0.0, 0.0 }, 0.0, 0.0);
+	for (const auto &[n, f] : { std::pair{ 0.1, 15.9 }, std::pair{ 15.9, 63.0 }, std::pair{ 63.0, 250.0 }, std::pair{ 0.1, 1000.0 } })
+	{
+		double centerDepth = 0.0, radius = 0.0;
+		CsmSliceSphere(n, f, camera.tanHalfFovX, camera.tanHalfFovY, centerDepth, radius);
+		CHECK(centerDepth >= n);
+		CHECK(centerDepth <= f);
+		double furthest = 0.0;
+		for (const CsmVec3 &corner : SliceCorners(camera, n, f))
+		{
+			const CsmVec3 d{ corner[0] - camera.forward[0] * centerDepth, corner[1] - camera.forward[1] * centerDepth, corner[2] - camera.forward[2] * centerDepth };
+			furthest = std::max(furthest, std::sqrt(d[0] * d[0] + d[1] * d[1] + d[2] * d[2]));
+		}
+		CHECK(furthest <= radius * (1.0 + 1e-9));
+		CHECK(furthest >= radius * 0.999);	// and is no larger than it needs to be
+	}
+}
+
+TEST_CASE("Sun shadows: cascades cover the view and stay put while the camera moves", "[environment][csm]")
+{
+	using namespace SceneryEditorX;
+	const CsmSettings settings;
+	const CsmVec3 towardSun = { 0.5 * std::cos(40.0 * DEG), std::sin(40.0 * DEG), 0.866 * std::cos(40.0 * DEG) };
+
+	CsmSetup setup;
+	const CsmCamera camera = MakeCsmCamera({ 120.0, 2.0, -40.0 }, 161.0, -5.0);
+	REQUIRE(FitCsm(settings, camera, towardSun, setup));
+	REQUIRE(setup.count == 3);
+	CHECK(setup.fadeStart == Approx(0.7 * 250.0));
+	CHECK(setup.fadeEnd == Approx(250.0));
+
+	for (uint32_t i = 0; i < setup.count; ++i)
+	{
+		const CsmCascade &cascade = setup.cascades[i];
+		CHECK(cascade.texelSize == Approx(2.0 * cascade.radius / settings.mapSize));
+
+		// Every corner of the slice it serves lands inside its square, with room for the filter, and in its depth range
+		for (const CsmVec3 &corner : SliceCorners(camera, cascade.depthNear, cascade.depthFar))
+		{
+			const CsmVec3 clip = cascade.Project(corner);
+			CHECK(std::abs(clip[0]) <= 1.0 - 3.0 / settings.mapSize);
+			CHECK(std::abs(clip[1]) <= 1.0 - 3.0 / settings.mapSize);
+			CHECK(clip[2] >= 0.0);
+			CHECK(clip[2] <= 1.0);
+			CHECK(cascade.CanCast(corner, corner));
+		}
+
+		// Reverse-Z: points toward the light are nearer (larger depth)
+		const CsmVec3 lifted{ cascade.center[0] + towardSun[0] * 10.0, cascade.center[1] + towardSun[1] * 10.0, cascade.center[2] + towardSun[2] * 10.0 };
+		CHECK(cascade.Project(lifted)[2] > cascade.Project(cascade.center)[2]);
+	}
+
+	// The blend band: the next cascade starts that far before this one ends
+	CHECK(setup.cascades[1].depthNear == Approx(setup.splits[1] - setup.blendBand[0]));
+	CHECK(setup.blendBand[0] == Approx(0.01 * (setup.splits[1] - setup.splits[0])));
+	CHECK(setup.blendBand[2] == 0.0);
+
+	// Panning and turning: the radii stay the same, and a fixed world point moves by whole texels in every cascade
+	const CsmVec3 world{ 100.0, 0.0, -30.0 };
+	for (const auto &[offset, yaw] : { std::pair{ CsmVec3{ 0.37, 0.0, 0.11 }, 161.0 }, std::pair{ CsmVec3{ -3.3, 0.2, 7.9 }, 150.0 }, std::pair{ CsmVec3{ 25.0, 0.0, -14.0 }, 200.0 } })
+	{
+		CsmSetup moved;
+		const CsmCamera other = MakeCsmCamera({ camera.position[0] + offset[0], camera.position[1] + offset[1], camera.position[2] + offset[2] }, yaw, -5.0);
+		REQUIRE(FitCsm(settings, other, towardSun, moved));
+		for (uint32_t i = 0; i < setup.count; ++i)
+		{
+			CHECK(moved.cascades[i].radius == Approx(setup.cascades[i].radius).epsilon(1e-12));
+			const double before = (setup.cascades[i].Project(world)[0] * 0.5 + 0.5) * settings.mapSize;
+			const double after = (moved.cascades[i].Project(world)[0] * 0.5 + 0.5) * settings.mapSize;
+			const double shift = after - before;
+			CHECK(std::abs(shift - std::round(shift)) < 1e-6);
+			const double beforeY = (setup.cascades[i].Project(world)[1] * 0.5 + 0.5) * settings.mapSize;
+			const double afterY = (moved.cascades[i].Project(world)[1] * 0.5 + 0.5) * settings.mapSize;
+			CHECK(std::abs((afterY - beforeY) - std::round(afterY - beforeY)) < 1e-6);
+		}
+	}
+}
+
+TEST_CASE("Sun shadows: which boxes cast into a cascade", "[environment][csm]")
+{
+	using namespace SceneryEditorX;
+	const CsmSettings settings;
+	const CsmVec3 towardSun = { 0.0, std::sin(30.0 * DEG), std::cos(30.0 * DEG) };	// low in the south (+Z)
+
+	CsmSetup setup;
+	const CsmCamera camera = MakeCsmCamera({ 0.0, 2.0, 0.0 }, 0.0, -10.0);	// looking north (-Z)
+	REQUIRE(FitCsm(settings, camera, towardSun, setup));
+	const CsmCascade &last = setup.cascades[setup.count - 1];
+
+	// A hangar between the view and the sun, outside the view itself, casts; so does one far toward the sun (clamped
+	// onto the near plane while drawn); one beside the cascade's square or beyond its far plane doesn't
+	CHECK(last.CanCast({ -10.0, 0.0, 20.0 }, { 10.0, 15.0, 40.0 }));
+	CHECK(last.CanCast({ -10.0, 1000.0, 1700.0 }, { 10.0, 1010.0, 1720.0 }));
+	CHECK_FALSE(last.CanCast({ 900.0, 0.0, -100.0 }, { 920.0, 15.0, -80.0 }));
+	CHECK_FALSE(last.CanCast({ -10.0, -2000.0, -3500.0 }, { 10.0, -1990.0, -3480.0 }));
+	CHECK((setup.CascadeMask({ -1.0, 0.0, -6.0 }, { 1.0, 1.0, -5.0 }) & 1u) != 0);
+
+	// The sun below the horizon: no shadows
+	CsmSetup night;
+	CHECK_FALSE(FitCsm(settings, camera, { 0.0, -0.1, 0.995 }, night));
+	CHECK(night.count == 0);
+}
+
+TEST_CASE("Cloud shadows: cascades around the camera", "[environment][csm]")
+{
+	using namespace SceneryEditorX;
+
+	// X-Plane 12.4.4: two 1024 px cascades, 64 km and 256 km wide
+	const CloudShadowCascade fine = FitCloudShadowCascade(0, CLOUD_SHADOW_CASCADES, 64000.0, 256000.0, 1234.0, -987.0);
+	const CloudShadowCascade coarse = FitCloudShadowCascade(1, CLOUD_SHADOW_CASCADES, 64000.0, 256000.0, 1234.0, -987.0);
+	CHECK(fine.halfExtentM == Approx(32000.0));
+	CHECK(coarse.halfExtentM == Approx(128000.0));
+	CHECK(fine.texelM == Approx(62.5));
+	CHECK(coarse.texelM == Approx(250.0));
+
+	// Centers on whole texels, within half a texel of the camera
+	CHECK(std::abs(fine.centerX / fine.texelM - std::round(fine.centerX / fine.texelM)) < 1e-9);
+	CHECK(std::abs(fine.centerX - 1234.0) <= 0.5 * fine.texelM);
+	CHECK(std::abs(coarse.centerZ - -987.0) <= 0.5 * coarse.texelM);
+
+	// One cascade: the smallest width
+	CHECK(FitCloudShadowCascade(0, 1, 64000.0, 256000.0, 0.0, 0.0).halfExtentM == Approx(32000.0));
 }

@@ -291,9 +291,9 @@ namespace SceneryEditorX
 	/**
 	 * @struct ConstantBuffer_Environment
 	 * @brief The world environment for the shaders (plan TASK-020), filled once per frame from Environment::Get():
-	 * sun and moon, sky-condition multipliers, atmosphere, haze, surface weather, season, exposure, clouds, wind.
-	 * Vec4 members only (std140). Mirrors EnvironmentData in resources.slang (binding 201). World frame: +X east,
-	 * +Y up, +Z south. Units: lux, meters, 1/m.
+	 * sun and moon, sky-condition multipliers, atmosphere, haze, surface weather, season, exposure, clouds, wind, the
+	 * sun-shadow cascades. Vec4 and matrix members only (std140). Mirrors EnvironmentData in resources.slang (binding
+	 * 201). World frame: +X east, +Y up, +Z south. Units: lux, meters, 1/m.
 	 */
 	struct ConstantBuffer_Environment
 	{
@@ -345,12 +345,24 @@ namespace SceneryEditorX
 		xMath::Vec4 atmosphere_view;		// aerial perspective range (m), airglow (nits), star brightness scale, unused
 		xMath::Vec4 probe;					// xyz environment probe 0 (world), w specular LOD bias
 		xMath::Vec4 celestial[3];			// rows of the world -> equatorial rotation (x vernal equinox, z north pole): stars
-		xMath::Vec4 padding[10];			// to 1024 bytes
+
+		// Sun shadows (plan Phase 7, renderer/csm.h, csm_sample.slang): the light's view-projection per cascade, stored like
+		// the frame's matrices (the rows of the column-vector matrix, see GpuMatrix), where each cascade ends and blends
+		// into the next, and the filter. The cloud shadow map's cascades follow (Pass_CloudShadow).
+		xMath::Matrix csm_view_projection[4];
+		xMath::Vec4 csm_split;				// view depth (m) where cascade 0..3 ends
+		xMath::Vec4 csm_blend;				// depth (m) over which cascade 0..3 blends into the next before it ends
+		xMath::Vec4 csm_texel;				// shadow-map texel size (m) of cascade 0..3
+		xMath::Vec4 csm_params;				// cascade count (0: none), fade start and end (view depth, m), shadow light (0 none, 1 sun, 2 moon)
+		xMath::Vec4 csm_filter;				// normal offset (texels), slope-scaled normal offset (texels), soft (3x3 PCF), map size
+		xMath::Vec4 cloud_shadow;			// cascade count (0: none), strength (0 none .. 1 full), extinction (1/m of cloud cover), march steps per layer
+		xMath::Vec4 cloud_shadow_cascades[2];	// per cascade: center x, center z (world, m), half extent (m), texel size (m)
+		xMath::Vec4 padding[18];			// to 1536 bytes
 	};
 
 	// sizes the shaders see (resources.slang: cbuffer std140, structured buffers std430)
 	static_assert(sizeof(ConstantBuffer_Frame) == 1024, "ConstantBuffer_Frame must match FrameBufferData in resources.slang");
-	static_assert(sizeof(ConstantBuffer_Environment) == 1024, "ConstantBuffer_Environment must match EnvironmentData in resources.slang");
+	static_assert(sizeof(ConstantBuffer_Environment) == 1536, "ConstantBuffer_Environment must match EnvironmentData in resources.slang");
 	static_assert(sizeof(ShaderBuffer_Material) == 192, "ShaderBuffer_Material must match MaterialParameters in resources.slang");
 	static_assert(sizeof(ShaderBuffer_Light) == 608, "ShaderBuffer_Light must match LightParameters in resources.slang");
 	static_assert(sizeof(ShaderBuffer_DrawData) == 160, "ShaderBuffer_DrawData must match DrawData in resources.slang");

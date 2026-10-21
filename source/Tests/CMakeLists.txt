@@ -395,6 +395,7 @@ ADD_EXECUTABLE(EnvironmentTests
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/renderer/renderer_features.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/renderer/exposure.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/renderer/env_probes.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/renderer/csm.cpp
 )
 
 TARGET_INCLUDE_DIRECTORIES(EnvironmentTests PRIVATE

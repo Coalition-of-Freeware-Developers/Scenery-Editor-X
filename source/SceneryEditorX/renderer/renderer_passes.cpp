@@ -189,7 +189,14 @@ namespace SceneryEditorX
 		}
 		if (valid())
 			ReadyAtmosphereTextures(cmd);
-		// (2) Cloud weather volumes and cloud shadows (XP12: cloud_update, cloud_shadows): Phases 7 / 15
+
+		// (2) Cloud shadows (XP12: cloud_shadows; renderer_shadows.cpp); cloud weather volumes: Phase 15. Ends shader-readable
+		//     whatever the switches.
+		if (valid())
+		{
+			GpuTimer::Scope scope(cmd, "cloud shadows");
+			Pass_CloudShadow(cmd);
+		}
 
 		Camera *camera = Scene::GetCamera();
 		if (!camera)
@@ -198,11 +205,20 @@ namespace SceneryEditorX
 		}
 		else if (valid())
 		{
-			// (3) Culling; sun shadow cascades (XP12: CSM collection): Phase 7
+			// (3) Culling, then the sun shadow cascades (XP12: the CSM pass; renderer_shadows.cpp), which end shader-readable
+			//     whatever the switches
 			{
 				GpuTimer::Scope scope(cmd, "cull");
 				GpuScene::Cull(cmd);
 			}
+			if (!valid())
+				return;
+			{
+				GpuTimer::Scope scope(cmd, "shadows");
+				Pass_ShadowCascades(cmd);
+			}
+			if (!valid())
+				return;
 
 			// (4) Depth prepass and g-buffer (terrain: Phase 10)
 			{
@@ -220,6 +236,7 @@ namespace SceneryEditorX
 			}
 			if (!valid())
 				return;
+			GpuScene::RecordReadBack(cmd);	// every cull of the frame has run (stats)
 
 			GetRenderTarget(Renderer_RenderTarget::gbuffer_color)->SetLayout(Layout::ImageLayout::ShaderRead, cmd, 0, 0);
 			GetRenderTarget(Renderer_RenderTarget::gbuffer_normal)->SetLayout(Layout::ImageLayout::ShaderRead, cmd, 0, 0);
@@ -384,6 +401,7 @@ namespace SceneryEditorX
 			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_depth, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
 			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_emissive, GetRenderTarget(Renderer_RenderTarget::gbuffer_emissive));
 			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_weather, GetRenderTarget(Renderer_RenderTarget::gbuffer_weather));
+			BindShadows(cmdList);	// the cascade and cloud-shadow views
 			m_Pcb_Pass_Cpu.SetF4Value(static_cast<float>(GetDebugView()), 0.0f, 0.0f, 0.0f);
 			cmdList->PushConstants(m_Pcb_Pass_Cpu);
 		});
@@ -1231,6 +1249,40 @@ namespace SceneryEditorX
 			value("color_management/sdr/power_blue", c.colorPower.z);
 			value("color_management/sdr/output_gamma", c.colorPower.w);
 
+			// Sun and cloud shadows (plan Phase 7). The shadow quality sets the cascade count, far limit, fade and map size
+			// over these each frame, as X-Plane's renopt_shadow_quality does.
+			CsmSettings &shadow = c.shadow;
+			const auto valueD = [&value](const char *name, double &out)
+			{
+				float v = static_cast<float>(out);
+				value(name, v);
+				out = v;
+			};
+			float cascades = static_cast<float>(shadow.cascadeCount);
+			value("shadow/csm_split_exterior", cascades);
+			shadow.cascadeCount = static_cast<uint32_t>(std::clamp(std::lround(cascades), 1l, static_cast<long>(CSM_MAX_CASCADES)));
+			valueD("shadow/csm/near_limit_exterior", shadow.nearLimitM);
+			valueD("shadow/csm/far_limit_exterior", shadow.farLimitM);
+			valueD("shadow/csm/lambda", shadow.lambda);
+			valueD("shadow/overlap_ratio", shadow.overlapRatio);
+			valueD("shadow/total_fade_ratio", shadow.fadeRatio);
+			valueD("shadow/csm/pad_near_const", shadow.padNearConstM);
+			valueD("shadow/csm/pad_near_ratio", shadow.padNearRatio);
+			float mapSize = static_cast<float>(shadow.mapSize);
+			value("fbo/shadow_cam_size", mapSize);
+			shadow.mapSize = static_cast<uint32_t>(std::clamp(std::lround(mapSize), 256l, 8192l));
+			value("shadow/bias_const", c.shadowBiasConst);
+			value("shadow/bias_slope", c.shadowBiasSlope);
+			value("shadow/bias_n_constant", c.shadowNormalBias);
+			value("shadow/bias_n_slope", c.shadowNormalBiasSlope);
+			float soft = c.shadowSoft ? 1.0f : 0.0f;
+			value("shadow/want_soft", soft);
+			c.shadowSoft = soft > 0.5f;
+			value("clouds/cloud_shadow_lighten_ratio", c.cloudShadowStrength);
+			value("cloud/shadow_alpha", c.cloudShadowExtinction);
+			value("clouds/shadow_extent_min_km", c.cloudShadowExtentMinKm);
+			value("clouds/shadow_extent_km", c.cloudShadowExtentKm);
+
 			// SEDX's own controls (no X-Plane counterpart, or one whose meaning differs)
 			value("sedx/meter_trim_lo", c.exposure.trimLow);
 			value("sedx/meter_trim_hi", c.exposure.trimHigh);
@@ -1244,6 +1296,10 @@ namespace SceneryEditorX
 			value("sedx/airglow_nits", c.airglowNits);
 			value("sedx/star_brightness", c.starBrightness);
 			value("sedx/probe_specular_bias", c.probeSpecularBias);
+			float receiverPlane = c.shadowReceiverPlane ? 1.0f : 0.0f;
+			value("sedx/csm_receiver_plane", receiverPlane);
+			c.shadowReceiverPlane = receiverPlane > 0.5f;
+			value("sedx/csm_receiver_plane_slope_bias", c.shadowReceiverPlaneSlopeBias);
 			return true;
 		}
 		catch (const std::exception &e)
@@ -1379,6 +1435,7 @@ namespace SceneryEditorX
 		// The environment's light, as light_composition.slang gives the deferred surfaces (environment_lighting.slang)
 		cmdList->SetTexture(Renderer_BindingsSrv::tex3, GetRenderTarget(Renderer_RenderTarget::lut_brdf_specular));
 		BindAtmosphere(cmdList, ATMOSPHERE_LIGHTING);
+		BindShadows(cmdList);
 		for (const ForwardDraw &draw : draws)
 		{
 			const Renderer_DrawCall &drawCall = m_DrawCalls[draw.drawCall];
@@ -1807,41 +1864,6 @@ namespace SceneryEditorX
 	}
 
 	// -------------------------------------------------------
-	// Pass_CloudShadow
-	// Projects cloud shadow onto a 2D shadow map consumed by lighting passes.
-	// Requires cloud noise textures to already be in ShaderRead layout.
-	// -------------------------------------------------------
-
-	void Renderer::Pass_CloudShadow(CommandList* cmdList)
-	{
-		ImageResource* texCloudShadow = GetRenderTarget(Renderer_RenderTarget::cloud_shadow);
-		ImageResource* texCloudShape  = GetRenderTarget(Renderer_RenderTarget::cloud_noise_shape);
-		ImageResource* texCloudDetail = GetRenderTarget(Renderer_RenderTarget::cloud_noise_detail);
-
-		if (!texCloudShadow || !texCloudShape)
-			return;
-
-		{
-			PipelineState pso;
-			pso.name = "cloud_shadow";
-			Shader* shader_cloud_shadow = GetValidComputeShader(Renderer_Shader::cloud_shadow, pso.name);
-			if (!shader_cloud_shadow)
-				return;
-			pso.shaders[static_cast<uint32_t>(StageType::Compute)] = shader_cloud_shadow;
-			cmdList->SetPipelineState(pso);
-
-			cmdList->SetTexture(Renderer_BindingsSrv::tex3d_cloud_shape, texCloudShape);
-			if (texCloudDetail)
-				cmdList->SetTexture(Renderer_BindingsSrv::tex3d_cloud_detail, texCloudDetail);
-
-			cmdList->SetTexture(Renderer_BindingsUav::tex, texCloudShadow);
-			cmdList->Dispatch(texCloudShadow);
-
-			texCloudShadow->SetLayout(Layout::ImageLayout::ShaderRead, cmdList, 0, 0);
-		}
-	}
-
-	// -------------------------------------------------------
 	// Pass_ShadowMaps
 	// Renders all shadow-casting lights into the shadow atlas (8192×8192 depth texture).
 	// Each light is given a tile inside the atlas; shadow matrices are written to the
@@ -1992,6 +2014,7 @@ namespace SceneryEditorX
 			cmdList->SetTexture(Renderer_BindingsSrv::tex3,             GetRenderTarget(Renderer_RenderTarget::lut_brdf_specular));
 			cmdList->SetTexture(Renderer_BindingsUav::tex,              texFrameRender);
 			BindAtmosphere(cmdList, ATMOSPHERE_LIGHTING);
+			BindShadows(cmdList);
 
 			// The environment's sun and moon light the scene unless it has a directional light of its own (Pass_Light
 			// draws that one, in the same units); the sky and the ground always add their ambient light

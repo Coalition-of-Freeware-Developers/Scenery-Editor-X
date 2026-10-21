@@ -442,6 +442,52 @@ namespace SceneryEditorX
 				EditorUI::EndPropertyGrid();
 			}
 
+			if (EditorUI::SectionHeader("SHADOWS", false) && EditorUI::BeginPropertyGrid("##RendererShadows"))
+			{
+				// Sun and cloud shadows of plan Phase 7 (X-Plane's shadow controls; the QUALITY shadow level sets the cascades)
+				Renderer::EnvironmentConstants &constants = Renderer::EditEnvironmentConstants();
+				EditorUI::PropertyLabel("Soft edges");
+				ImGui::Checkbox("##ShadowSoft", &constants.shadowSoft);
+				EditorUI::ItemTooltip("3 x 3 filtered shadow-map lookups (shadow/want_soft)");
+				EditorUI::PropertyLabel("Receiver plane");
+				ImGui::Checkbox("##ShadowReceiverPlane", &constants.shadowReceiverPlane);
+				EditorUI::ItemTooltip("Soft lookups compare against the receiver's own plane, so thin gaps keep their shadow "
+									  "(sedx/csm_receiver_plane); off: X-Plane's caster bias alone");
+				EditorUI::PropertyLabel("Slope bias");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				float &slopeBias = constants.shadowReceiverPlane ? constants.shadowReceiverPlaneSlopeBias : constants.shadowBiasSlope;
+				ImGui::SliderFloat("##ShadowBiasSlope", &slopeBias, 0.0f, 8.0f, "%.2f");
+				EditorUI::ItemTooltip("Casters pushed away from the light by this many times their depth slope (shadow/bias_slope, "
+									  "or sedx/csm_receiver_plane_slope_bias with the receiver plane)");
+				EditorUI::PropertyLabel("Normal offset");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##ShadowNormalBias", &constants.shadowNormalBias, 0.0f, 4.0f, "%.2f texels");
+				EditorUI::ItemTooltip("Receivers moved along their normal before the lookup (shadow/bias_n_constant; X-Plane uses 0)");
+				EditorUI::PropertyLabel("Split lambda");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				float lambda = static_cast<float>(constants.shadow.lambda);
+				if (ImGui::SliderFloat("##ShadowLambda", &lambda, 0.0f, 1.0f, "%.2f"))
+					constants.shadow.lambda = lambda;
+				EditorUI::ItemTooltip("1 logarithmic .. 0 uniform cascade splits (shadow/csm/lambda)");
+				EditorUI::PropertyLabel("Cloud shadows");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##CloudShadowStrength", &constants.cloudShadowStrength, 0.0f, 1.0f, "%.2f");
+				EditorUI::ItemTooltip("Share of the sunlight clouds can take away (clouds/cloud_shadow_lighten_ratio)");
+
+				const CsmSetup &cascades = Renderer::GetShadowCascades();
+				static constexpr const char *lights[] = { "none", "the sun", "the moon" };
+				ValueText("Cast by", "%s", lights[std::min(Renderer::GetShadowLight(), 2u)]);
+				for (uint32_t i = 0; i < cascades.count; ++i)
+				{
+					char label[32];
+					snprintf(label, sizeof(label), "Cascade %u", i);
+					ValueText(label, "%.1f - %.1f m, %.1f cm texels", cascades.cascades[i].depthNear, cascades.cascades[i].depthFar,
+						cascades.cascades[i].texelSize * 100.0);
+				}
+				ValueText("GPU casters", "%u instance draws", GpuScene::GetStats().shadowInstances);
+				EditorUI::EndPropertyGrid();
+			}
+
 			if (EditorUI::SectionHeader("QUALITY", false) && EditorUI::BeginPropertyGrid("##RendererQuality"))
 			{
 				// X-Plane 12's graphics settings levels (Resources/settings.txt); passes read them as they arrive

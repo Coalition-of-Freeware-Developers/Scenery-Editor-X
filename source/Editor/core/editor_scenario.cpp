@@ -75,6 +75,7 @@ namespace SceneryEditorX::EditorScenario
 			std::filesystem::path capturePng;				// --capture-png
 			bool exitAfterCapture = false;
 			bool waitForAirport = false;					// --xp-airport given: free captures wait for it
+			bool projectEnvironmentReplaced = false;		// The scenario's environment applied again after its project opened
 		};
 
 		State &GetState()
@@ -303,6 +304,12 @@ namespace SceneryEditorX::EditorScenario
 			{
 				if (!scenario.project.empty() && !EditorProjects::GetDocument())
 					return;
+				if (!scenario.project.empty() && state.stage == Stage::WaitingForProject && !state.projectEnvironmentReplaced)
+				{
+					// Opening the project put back the world it was saved in (its Environment block): the scenario's wins
+					ApplyEnvironment(scenario);
+					state.projectEnvironmentReplaced = true;
+				}
 				if (!PlaceCamera(scenario))
 					return;
 				Renderer::ResetExposure();	// Meter the placed view from scratch, not adapt to it from the startup view

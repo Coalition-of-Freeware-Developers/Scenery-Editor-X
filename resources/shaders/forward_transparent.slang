@@ -90,6 +90,7 @@ float4 main_frag(gbuffer_vertex vertex, bool is_front_face: SV_IsFrontFace) : SV
     XpLitSurface surface;
     surface.albedo = albedo.rgb;
     surface.normal = normal;
+    surface.geometric_normal = is_front_face ? normalize(vertex.normal) : -normalize(vertex.normal);	// the shadow lookups' plane
     surface.view = v;
     surface.roughness = roughness;
     surface.v = metalness;
