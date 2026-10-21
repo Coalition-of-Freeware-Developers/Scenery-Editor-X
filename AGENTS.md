@@ -77,11 +77,13 @@ The dependency-light, cross-platform Catch2 unit suites that only need `source/`
   `--env-scenario` share, plus the shipped `tools/xp12_reference_probe/scenarios/xp12_parity.json` when run from the repo
   root) and the environment model (`EnvironmentTests.cpp`: NOAA sun against an independent almanac formula, Meeus moon
   examples 47.a / 48.a, the 16 runway-friction states and the wetting / drying integrator, seasons from date and latitude
-  or DSF ranges, sky-condition weights, world-frame directions, the `World` object, the atmosphere's medium (visibility
-  to the surface haze layer, sky-condition multipliers, `environment/atmosphere_params.*`), the interim CPU sky light
+  or DSF ranges, sky-condition weights, world-frame directions, the `World` object, the atmosphere's medium (X-Plane
+  12.4.4's dumped values, visibility to the surface haze layer at 1% contrast, per-channel Mie, sky-condition multipliers,
+  `environment/atmosphere_params.*`), the interim CPU sky light
   model (transmittance, sun / sky illuminance, energy bounds, `environment/sky_light.*`), plus the renderer's X-Plane
   quality levels (`renderer/renderer_quality.*`, from `settings.txt`), feature switches (`renderer/renderer_features.*`),
-  exposure (`renderer/exposure.*`: EV100 camera, bias table, histogram metering, adaptation) and when the environment
+  exposure (`renderer/exposure.*`: EV100 camera mapping to middle grey, X-Plane 12.4.4's sun-elevation target and gains,
+  histogram metering, adaptation) and when the environment
   probe is captured again (`renderer/env_probes.*`).
   Standard library plus `dependency/json`, fully green.
 

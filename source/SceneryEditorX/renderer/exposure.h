@@ -38,29 +38,43 @@ namespace SceneryEditorX
 {
 	/**
 	 * X-Plane 12's camera exposure (plan REQ-006, TASK-038): an EV100 camera with reflected-light meter constant K,
-	 * metered by a centre-weighted histogram of log2 luminance and clamped to EV100 5-15, then shifted by an art-directed
-	 * bias table. Standard library only: exposure_adapt.slang does the same on the GPU, these are the reference.
+	 * metered by a centre-weighted histogram of log2 luminance. As X-Plane 12.4.4 behaves (fitted to the reference
+	 * probe's photometric/* readouts): a target EV100 for the sun's elevation (photometric/ev100_mid) that the meter
+	 * (ev100_mtr, plus the elevation's ev100_bias) pulls on part of the way, gain_lo below the target and gain_hi above,
+	 * clamped to ev100_min..ev100_max. Standard library only: exposure_adapt.slang does the same on the GPU, these are
+	 * the reference.
 	 */
 	struct ExposureSettings
 	{
 		bool automatic = true;				// false: manualEv100 (photometric/ev100, the parity scenarios' ev100_lock)
 		float manualEv100 = 12.0f;
-		float evMin = 5.0f;					// photometric/ev100_min
-		float evMax = 15.0f;				// photometric/ev100_max
+		float evMin = 3.5f;					// photometric/ev100_min
+		float evMax = 14.8f;				// photometric/ev100_max
 		float meterK = 12.5f;				// photometric/K
-		float speedUp = 2.0f;				// exposure/speed_up (EV/s toward a brighter scene's higher EV)
+		float gainLow = 0.5f;				// autoexposure/gain_lo: share of a darker reading (than the target) taken
+		float gainHigh = 0.4f;				// autoexposure/gain_hi: share of a brighter one
+		float speedUp = 3.0f;				// exposure/speed_up (EV/s toward a brighter scene's higher EV)
 		float speedDown = 5.0f;				// exposure/speed_down
-		float trimLow = 0.5f;				// autoexposure/trim_lo: the darkest half of the histogram doesn't meter (ASSUMPTION)
-		float trimHigh = 0.98f;				// autoexposure/trim_hi: nor the brightest 2% (ASSUMPTION)
+		float trimLow = 0.5f;				// SEDX metering: the darkest half of the histogram doesn't meter
+		float trimHigh = 0.98f;				// nor the brightest 2% (reads within 0.3 EV of X-Plane's ev100_mtr)
 		float centerRadius = 0.33f;			// _exp_radius: pixels within this many screen heights of the centre weigh 4x
-		float compensation = 0.0f;			// photometric/ev100_bias on top of the table (EV, positive brightens)
+		float compensation = 0.0f;			// SEDX exposure compensation (EV, positive brightens)
 
 		/**
-		 * Bias by metered EV100, linear between the points and flat beyond them (positive brightens: night scenes, held
-		 * at the EV floor, come back up). ASSUMPTION: the 12.05 community script's table, sign read as compensation.
+		 * photometric/ev100_mid by the sun's apparent elevation (deg), linear between the points and flat beyond them.
+		 * X-Plane 12.4.4 readouts at KSEA in July (and the season scenarios); it leaves its 5.0 floor somewhere between
+		 * -11.8 and -5.8 deg: -10 is an ASSUMPTION.
 		 */
-		std::array<float, 5> biasEv = { 5.0f, 8.0f, 11.0f, 12.0f, 12.33f };
-		std::array<float, 5> bias = { 3.5f, 3.0f, 0.0f, 0.0f, -0.3f };
+		std::array<float, 10> midElevation = { -10.0f, -5.84f, -1.93f, 1.92f, 8.12f, 20.18f, 40.19f, 58.15f, 77.66f, 90.0f };
+		std::array<float, 10> midEv = { 5.0f, 7.76f, 10.425f, 12.754f, 13.848f, 14.5f, 14.62f, 14.758f, 14.911f, 15.0f };
+
+		/**
+		 * photometric/ev100_bias by the sun's elevation, added to the metered EV100 (positive darkens). X-Plane 12.4.4
+		 * readouts in clear air, runway and aerial views averaged; X-Plane also moves it with the view's contrast (fog,
+		 * haze), which this leaves out.
+		 */
+		std::array<float, 9> biasElevation = { -12.0f, -5.84f, -1.93f, 1.92f, 8.12f, 20.18f, 40.19f, 58.15f, 77.66f };
+		std::array<float, 9> biasEv = { 2.59f, 2.115f, -1.10f, -1.695f, -0.585f, -0.365f, -0.34f, -0.32f, -0.21f };
 	};
 
 	inline constexpr int EXPOSURE_HISTOGRAM_BINS = 256;
@@ -68,12 +82,12 @@ namespace SceneryEditorX
 	/* @brief The floats of the GPU exposure state (Renderer_Buffer::ExposureState; EXPOSURE_STATE_* in resources.slang). */
 	enum ExposureStateIndex : int
 	{
-		EXPOSURE_STATE_EV = 0,			// EV100 the frame is exposed at (adapted, bias applied)
-		EXPOSURE_STATE_METERED = 1,		// Metered EV100, clamped to the range (before the bias)
+		EXPOSURE_STATE_EV = 0,			// EV100 the frame is exposed at (adapted)
+		EXPOSURE_STATE_METERED = 1,		// Metered EV100 (ev100_mtr)
 		EXPOSURE_STATE_TARGET = 2,		// EV100 the adaptation moves toward
 		EXPOSURE_STATE_MEAN_LOG2 = 3,	// Mean log2 luminance (nits) between the trims
 		EXPOSURE_STATE_VALID = 4,		// 1 once the first frame has been metered
-		EXPOSURE_STATE_RAW = 5,			// Metered EV100 before the clamp
+		EXPOSURE_STATE_RAW = 5,			// Metered EV100 (same as METERED since the 12.4.4 model)
 		EXPOSURE_STATE_FLOATS = 8
 	};
 	inline constexpr float EXPOSURE_LOG2_MIN = -2.0f;	// Histogram range: log2 luminance (nits)
@@ -82,14 +96,24 @@ namespace SceneryEditorX
 	/* @brief EV100 a reflected-light meter reads for an average luminance (nits): log2(L x 100 / K). */
 	float EvFromLuminance(float nits, float meterK = 12.5f);
 
-	/* @brief What the frame is multiplied by at an exposure EV100: 1 / (1.2 x 2^EV) (saturation-based, q = 0.65). */
-	float ExposureScaleFromEv(float ev100);
+	/**
+	 * @brief What the frame is multiplied by at an exposure EV100: the luminance a meter reads as that EV100 becomes
+	 * middle grey, 0.18 x 100 / (K x 2^EV) (ISO 2720 meter, standard-output-sensitivity exposure). X-Plane 12.4.4's
+	 * references sit 0.8 EV brighter than the saturation-based 1 / (1.2 x 2^EV) the first phases used.
+	 */
+	float ExposureScaleFromEv(float ev100, float meterK = 12.5f);
 
-	/* @brief The bias table at a metered EV100. */
-	float GetExposureBias(const ExposureSettings &settings, float meteredEv100);
+	/* @brief photometric/ev100_mid for the sun's apparent elevation (deg). */
+	float GetExposureMid(const ExposureSettings &settings, float sunElevationDeg);
 
-	/* @brief The EV100 a frame is exposed at for a metered EV100 (clamped to the range, then the bias applied). */
-	float GetTargetEv(const ExposureSettings &settings, float meteredEv100);
+	/* @brief photometric/ev100_bias for the sun's apparent elevation (deg). */
+	float GetExposureBias(const ExposureSettings &settings, float sunElevationDeg);
+
+	/**
+	 * @brief The EV100 a frame is exposed at for a metered EV100 and the sun's elevation: mid + gain x (metered + bias -
+	 * mid), gain_lo below mid and gain_hi above, clamped to the range, then the compensation.
+	 */
+	float GetTargetEv(const ExposureSettings &settings, float meteredEv100, float sunElevationDeg);
 
 	/* @brief One step toward the target EV100 at the adaptation speeds. */
 	float AdaptEv(const ExposureSettings &settings, float currentEv100, float targetEv100, float deltaSeconds);

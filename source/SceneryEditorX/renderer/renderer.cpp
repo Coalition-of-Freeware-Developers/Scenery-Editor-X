@@ -2935,6 +2935,10 @@ void dynamic_resolution()
 			params.mieExtinction = c.mie.y;
 			params.mieScaleHeight = c.mie.z;
 			params.mieG = c.mie.w;
+			params.mieSpectral = Environment::MieSpectralFactors(params.rayleighScattering, c.mieAngstrom);
+			params.multipleScattering = c.multipleScattering;
+			params.visibilityContrast = c.visibilityContrast;
+			params.hazeScatteringAlbedo = c.fogAlbedo;
 			params.ozoneAbsorption = { c.ozone.x, c.ozone.y, c.ozone.z };
 			params.ozoneCenter = c.ozone.w;
 			params.ozoneHalfWidth = c.planet.x;
@@ -2951,7 +2955,8 @@ void dynamic_resolution()
 		{
 			uint64_t key = 0;
 			for (const double v : { a.rayleighScattering[0], a.rayleighScattering[1], a.rayleighScattering[2], a.mieScattering, a.mieExtinction, a.hazeExtinction,
-					 a.hazeScatteringAlbedo, a.hazeTopM, a.groundElevationM, a.groundAlbedo })
+					 a.hazeScatteringAlbedo, a.hazeTopM, a.groundElevationM, a.groundAlbedo, a.mieSpectral[0], a.mieSpectral[2], a.multipleScattering,
+					 a.ozoneAbsorption[0], a.ozoneAbsorption[1], a.ozoneAbsorption[2], a.ozoneCenter, a.mieG })
 				key = HashCombine(key, v);
 			return key;
 		}
@@ -3053,6 +3058,7 @@ void dynamic_resolution()
 		env.mie = xMath::Vec4(static_cast<float>(atmosphere.mieScattering), static_cast<float>(atmosphere.mieExtinction), static_cast<float>(atmosphere.mieScaleHeight),
 			static_cast<float>(atmosphere.mieG));
 		env.ozone = constants.ozone;
+		env.atmosphere_scattering = ToVec4(atmosphere.mieSpectral, static_cast<float>(atmosphere.multipleScattering));
 		env.planet = constants.planet;
 		env.atmosphere_haze = xMath::Vec4(static_cast<float>(atmosphere.hazeExtinction), static_cast<float>(atmosphere.hazeScatteringAlbedo),
 			static_cast<float>(atmosphere.hazeTopM), static_cast<float>(atmosphere.hazeBandM));
@@ -3099,20 +3105,25 @@ void dynamic_resolution()
 			{
 				const double levelLux = light.sky.sunIlluminance[1] * std::max(std::sin(derived.sun.apparentElevationDeg * std::numbers::pi / 180.0), 0.0) +
 										light.sky.irradiance[1];
-				ev100 = GetTargetEv(exposure, EvFromLuminance(static_cast<float>(0.18 * levelLux / std::numbers::pi), exposure.meterK));
+				ev100 = GetTargetEv(exposure, EvFromLuminance(static_cast<float>(0.18 * levelLux / std::numbers::pi), exposure.meterK),
+					static_cast<float>(derived.sun.apparentElevationDeg));
 			}
-			const float preExposure = ExposureScaleFromEv(ev100);
+			const float preExposure = ExposureScaleFromEv(ev100, exposure.meterK);
 			SetExposurePreExposure(preExposure);
-			env.exposure = xMath::Vec4(ExposureScaleFromEv(ev100), preExposure, readout.meteredEv100, ev100);
+			env.exposure = xMath::Vec4(ExposureScaleFromEv(ev100, exposure.meterK), preExposure, readout.meteredEv100, ev100);
 
 			env.exposure_meter = xMath::Vec4(exposure.evMin, exposure.evMax, exposure.meterK, exposure.centerRadius);
 			env.exposure_adapt = xMath::Vec4(exposure.speedUp, exposure.speedDown, exposure.trimLow, exposure.trimHigh);
-			env.exposure_bias_ev = xMath::Vec4(exposure.biasEv[0], exposure.biasEv[1], exposure.biasEv[2], exposure.biasEv[3]);
-			env.exposure_bias = xMath::Vec4(exposure.bias[0], exposure.bias[1], exposure.bias[2], exposure.bias[3]);
-			env.exposure_bias_last = xMath::Vec4(exposure.biasEv[4], exposure.bias[4], exposure.compensation, 0.0f);
+			const float sunElevation = static_cast<float>(derived.sun.apparentElevationDeg);
+			env.exposure_target = xMath::Vec4(GetExposureMid(exposure, sunElevation), GetExposureBias(exposure, sunElevation), exposure.gainLow, exposure.gainHigh);
+			env.exposure_extra = xMath::Vec4(exposure.compensation, 0.0f, 0.0f, 0.0f);
 		}
 		env.exposure_fusion = constants.exposureFusion;
-		env.color_slope = constants.colorSlope;
+		{
+			const float strength = std::clamp(constants.colorSlopeStrength, 0.0f, 1.0f);
+			const auto part = [strength](const float slope) { return std::pow(std::max(slope, 1e-3f), strength); };
+			env.color_slope = xMath::Vec4(part(constants.colorSlope.x), part(constants.colorSlope.y), part(constants.colorSlope.z), constants.colorSlope.w);
+		}
 		env.color_offset = constants.colorOffset;
 		env.color_power = constants.colorPower;
 		env.post = xMath::Vec4(constants.bloomIntensity, constants.fusionHighlights, constants.fusionStrength, 0.0f);

@@ -321,9 +321,9 @@ namespace SceneryEditorX
 		// Exposure (exposure_adapt.slang, renderer/exposure.h)
 		xMath::Vec4 exposure_meter;			// EV100 min, EV100 max, meter constant K, centre-weight radius (screen heights)
 		xMath::Vec4 exposure_adapt;			// speed up, speed down (EV/s), lower trim, upper trim (histogram fractions)
-		xMath::Vec4 exposure_bias_ev;		// EV100 of the first four bias table points
-		xMath::Vec4 exposure_bias;			// their bias (EV, positive brightens)
-		xMath::Vec4 exposure_bias_last;		// fifth point: EV100, bias; z exposure compensation (EV), w unused
+		xMath::Vec4 exposure_target;		// photometric/ev100_mid and ev100_bias for the sun's elevation, gain_lo, gain_hi
+		xMath::Vec4 exposure_extra;			// x exposure compensation (EV, positive brightens), yzw unused
+		xMath::Vec4 atmosphere_scattering;	// rgb Mie spectral factor (scattering/mie_*_exponent; green 1), w scattering/multi_rat
 
 		// The SDR grade after the tone curve (color_management/sdr/*, ASC-CDL; identity by default) and the post chain
 		xMath::Vec4 color_slope;			// rgb slope, w saturation

@@ -354,9 +354,9 @@ public struct EnvironmentData
     public float4 sky_irradiance;    // rgb lux on a level surface, w ground albedo
     public float4 exposure_meter;    // EV100 min, max, K, centre-weight radius
     public float4 exposure_adapt;    // speed up, speed down (EV/s), lower trim, upper trim
-    public float4 exposure_bias_ev;  // EV100 of bias points 0-3
-    public float4 exposure_bias;     // bias of points 0-3 (EV, positive brightens)
-    public float4 exposure_bias_last; // point 4: EV100, bias; z compensation (EV)
+    public float4 exposure_target;   // ev100_mid and ev100_bias for the sun's elevation, gain below mid, gain above
+    public float4 exposure_extra;    // x compensation (EV, positive brightens)
+    public float4 atmosphere_scattering; // rgb Mie spectral factor (Angstrom exponent, green 1), w multiple-scattering ratio
     public float4 color_slope;       // ASC-CDL rgb slope, w saturation
     public float4 color_offset;      // rgb offset, w output gain
     public float4 color_power;       // rgb power, w output gamma
@@ -393,7 +393,7 @@ public static const uint EXPOSURE_STATE_RAW = 5;         // metered EV100 before
 public static const uint EXPOSURE_STATE_FLOATS = 8;
 
 /* @brief What a frame exposed at an EV100 is multiplied by: 1 / (1.2 x 2^EV) (renderer/exposure.h). */
-public float exposure_scale_from_ev(float ev100) { return 1.0f / (1.2f * exp2(ev100)); }
+public float exposure_scale_from_ev(float ev100) { return 18.0f / (max(buffer_environment.exposure_meter.z, 1e-3f) * exp2(ev100)); }
 public uint get_debug_view() { return uint(buffer_environment.debug.x + 0.5f); }
 public bool is_feature_enabled(uint bit) { return (uint(buffer_environment.debug.y + 0.5f) & (1u << bit)) != 0; }
 

@@ -106,8 +106,8 @@ namespace SceneryEditorX::XPlane
 		 */
 		constexpr float BLEND_SPLIT_ALPHA = 0.9f;
 
-		/* @brief Luminance of a white LIT texel when the OBJ names none (lighting/scenery_ref_nts; ASSUMPTION until measured). */
-		constexpr float DEFAULT_SCENERY_LIT_NITS = 100.0f;
+		/* @brief Luminance of a white LIT texel when the OBJ names none (lighting/scenery_ref_nts, X-Plane 12.4.4: 33). */
+		constexpr float DEFAULT_SCENERY_LIT_NITS = 33.0f;
 		/* @brief X-Plane clamps GLOBAL_luminance here (the largest half-float below infinity, minus margin). */
 		constexpr float MAX_LIT_NITS = 65530.0f;
 
@@ -931,7 +931,7 @@ namespace SceneryEditorX::XPlane
 		material->SetProperty(MaterialClass::Normal, normal ? 1.0f : 0.0f);
 
 		// LIT textures are luminance in nits: ATTR_light_level's brightness, else GLOBAL_luminance, else X-Plane's
-		// scenery default (lighting/scenery_ref_nts, 100 nits until measured). Never hidden in daylight: exposure is.
+		// scenery default (lighting/scenery_ref_nts, 33 nits). Never hidden in daylight: exposure is.
 		if (lit)
 		{
 			const float nits = state.hasLightLevel && state.lightLevelBrightness > 0.0f ? state.lightLevelBrightness

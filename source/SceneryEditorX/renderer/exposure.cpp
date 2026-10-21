@@ -41,34 +41,49 @@ namespace SceneryEditorX
 		return std::log2(std::max(nits, 1e-9f) * 100.0f / meterK);
 	}
 
-	float ExposureScaleFromEv(const float ev100)
+	float ExposureScaleFromEv(const float ev100, const float meterK)
 	{
-		return 1.0f / (1.2f * std::exp2(ev100));
+		return 18.0f / (std::max(meterK, 1e-3f) * std::exp2(ev100));
 	}
 
-	float GetExposureBias(const ExposureSettings &settings, const float meteredEv100)
+	namespace
 	{
-		const auto &x = settings.biasEv;
-		const auto &y = settings.bias;
-		if (meteredEv100 <= x.front())
-			return y.front();
-		for (size_t i = 1; i < x.size(); ++i)
+		/* @brief Linear between the points, flat beyond them. */
+		template <size_t N>
+		float Interpolate(const std::array<float, N> &x, const std::array<float, N> &y, const float at)
 		{
-			if (meteredEv100 <= x[i])
+			if (at <= x.front())
+				return y.front();
+			for (size_t i = 1; i < N; ++i)
 			{
-				const float t = (meteredEv100 - x[i - 1]) / std::max(x[i] - x[i - 1], 1e-6f);
-				return y[i - 1] + (y[i] - y[i - 1]) * t;
+				if (at <= x[i])
+				{
+					const float t = (at - x[i - 1]) / std::max(x[i] - x[i - 1], 1e-6f);
+					return y[i - 1] + (y[i] - y[i - 1]) * t;
+				}
 			}
+			return y.back();
 		}
-		return y.back();
 	}
 
-	float GetTargetEv(const ExposureSettings &settings, const float meteredEv100)
+	float GetExposureMid(const ExposureSettings &settings, const float sunElevationDeg)
+	{
+		return Interpolate(settings.midElevation, settings.midEv, sunElevationDeg);
+	}
+
+	float GetExposureBias(const ExposureSettings &settings, const float sunElevationDeg)
+	{
+		return Interpolate(settings.biasElevation, settings.biasEv, sunElevationDeg);
+	}
+
+	float GetTargetEv(const ExposureSettings &settings, const float meteredEv100, const float sunElevationDeg)
 	{
 		if (!settings.automatic)
 			return settings.manualEv100;
-		const float clamped = std::clamp(meteredEv100, settings.evMin, settings.evMax);
-		return clamped - GetExposureBias(settings, clamped) - settings.compensation;
+		const float mid = GetExposureMid(settings, sunElevationDeg);
+		const float offset = meteredEv100 + GetExposureBias(settings, sunElevationDeg) - mid;
+		const float ev = mid + (offset < 0.0f ? settings.gainLow : settings.gainHigh) * offset;
+		return std::clamp(ev, settings.evMin, settings.evMax) - settings.compensation;
 	}
 
 	float AdaptEv(const ExposureSettings &settings, const float currentEv100, const float targetEv100, const float deltaSeconds)
