@@ -210,3 +210,6 @@ lib/*
 
 # Throwaway output of the standalone (g++) test builds described in AGENTS.md
 /build_linux_tests/
+
+# The user manual's built website and PDF (python docs/manual/build.py)
+docs/manual/site/

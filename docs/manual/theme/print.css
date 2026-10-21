@@ -1,0 +1,151 @@
+/*
+ * Scenery Editor X manual: the printed book (print.html -> PDF through headless Chrome / Edge).
+ * A4, a full-bleed cover and part dividers, page numbers in the margin boxes, chapters on new pages.
+ */
+
+@page {
+  size: A4;
+  margin: 19mm 18mm 21mm 18mm;
+  @bottom-left { content: "Scenery Editor X  ·  User Manual"; font-family: "Open Sans", sans-serif; font-size: 7.5pt; color: #8b959e; }
+  @bottom-right { content: counter(page); font-family: "Open Sans", sans-serif; font-size: 8pt; font-weight: 700; color: #4f5a64; }
+}
+@page cover { margin: 0; @bottom-left { content: none; } @bottom-right { content: none; } }
+@page divider { margin: 0; @bottom-left { content: none; } @bottom-right { content: none; } }
+@page front { @bottom-left { content: none; } }
+
+html, body { background: #fff !important; }
+* { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+body.print-page {
+  --text: #1b2127; --text-soft: #3f4a54; --muted: #66727e; --border: #dfe4e9; --border-strong: #c8d0d8;
+  --surface: #fff; --surface-2: #f3f6f8; --accent: #1670b4; --accent-strong: #0e5d99; --accent-soft: #eaf3fb; --accent-line: #b9d8f2;
+  --code-bg: #f1f4f7; --code-text: #23303b; --pre-bg: #f4f6f8; --pre-text: #1f2a33; --kbd-bg: #fff; --kbd-border: #c4ccd4;
+  --bg: #fff; --shadow: none; --shadow-sm: none;
+  font-size: 9.8pt; line-height: 1.58; color: var(--text);
+}
+
+.anchor, .copy-button, .chapter-meta { display: none !important; }
+a { color: var(--accent); }
+a:hover { text-decoration: none; }
+
+/* ---------------------------------------------------------------------------------------------------------------- */
+/* Cover */
+
+.cover {
+  page: cover;
+  position: relative; height: 296.5mm; overflow: hidden;
+  background:
+    linear-gradient(rgba(108, 195, 255, .07) 1px, transparent 1px) 0 0 / 9mm 9mm,
+    linear-gradient(90deg, rgba(108, 195, 255, .07) 1px, transparent 1px) 0 0 / 9mm 9mm,
+    linear-gradient(180deg, #13212d 0%, #0d1720 100%);
+  color: #e8eef3;
+  break-after: page;
+}
+.cover-art {
+  position: absolute; left: 0; right: 0; top: 0; height: 118mm;
+  background-size: 100% auto; background-repeat: no-repeat; background-position: center top;
+  -webkit-mask-image: linear-gradient(180deg, #000 70%, transparent 96%);
+  mask-image: linear-gradient(180deg, #000 70%, transparent 96%);
+  opacity: .95;
+}
+.cover-text { position: absolute; left: 22mm; right: 22mm; top: 140mm; }
+.cover-icon { width: 22mm; height: 22mm; border-radius: 5mm; margin-bottom: 9mm; box-shadow: 0 4mm 10mm rgba(0, 0, 0, .45); }
+.cover .kicker { color: #6cc3ff; font-size: 8.5pt; letter-spacing: .22em; margin-bottom: 4mm; }
+.cover h1 { margin: 0; font-size: 44pt; line-height: 1; font-weight: 800; letter-spacing: -.03em; color: #fff; }
+.cover-subtitle { margin: 3mm 0 0; font-size: 22pt; font-weight: 400; color: #8fcdf7; letter-spacing: -.01em; }
+.cover-tagline { margin: 9mm 0 0; max-width: 135mm; font-size: 11pt; line-height: 1.55; color: #b8c6d1; }
+.cover-footer {
+  position: absolute; left: 22mm; right: 22mm; bottom: 16mm;
+  display: flex; justify-content: space-between;
+  padding-top: 4mm; border-top: .3mm solid rgba(143, 205, 247, .35);
+  font-size: 8.5pt; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #8fa3b3;
+}
+
+/* ---------------------------------------------------------------------------------------------------------------- */
+/* Front matter */
+
+.colophon { page: front; break-after: page; padding-top: 120mm; max-width: 125mm; }
+.colophon h2, .print-toc h2 {
+  margin: 0 0 6mm; font-size: 20pt; font-weight: 800; letter-spacing: -.02em;
+}
+.colophon h2::after, .print-toc h2::after {
+  content: ""; display: block; width: 14mm; height: .9mm; margin-top: 4mm; border-radius: .5mm; background: linear-gradient(90deg, #1f8ad6, #6cc3ff);
+}
+.colophon p { margin: 0 0 3.5mm; color: var(--text-soft); font-size: 9.5pt; }
+.colophon .colophon-meta { margin-top: 8mm; color: var(--muted); font-size: 8.5pt; }
+
+.print-toc { page: front; break-after: page; }
+.print-toc ol { list-style: none; margin: 0; padding: 0; }
+.print-toc .toc-part { margin: 0 0 5mm; break-inside: avoid; }
+.print-toc .toc-part > a {
+  display: block; padding: 2mm 0 1.5mm; margin-bottom: 1mm;
+  font-size: 11.5pt; font-weight: 800; color: var(--text); border-bottom: .3mm solid var(--border-strong);
+}
+.print-toc .toc-part > a .toc-label { display: block; font-size: 7pt; letter-spacing: .18em; text-transform: uppercase; color: var(--accent); }
+.print-toc .toc-part li a { display: flex; gap: 4mm; padding: 1.1mm 0; color: var(--text); font-size: 10pt; }
+.print-toc .toc-part li .toc-label { min-width: 7mm; color: var(--muted); font-weight: 700; font-size: 8.5pt; padding-top: .4mm; }
+
+/* ---------------------------------------------------------------------------------------------------------------- */
+/* Part dividers */
+
+.part-divider {
+  page: divider;
+  position: relative; height: 296.5mm; overflow: hidden; break-before: page; break-after: page;
+  padding: 92mm 22mm 0;
+  background:
+    linear-gradient(rgba(108, 195, 255, .07) 1px, transparent 1px) 0 0 / 9mm 9mm,
+    linear-gradient(90deg, rgba(108, 195, 255, .07) 1px, transparent 1px) 0 0 / 9mm 9mm,
+    linear-gradient(160deg, #15242f 0%, #0d1720 100%);
+  color: #e8eef3;
+}
+.part-numeral {
+  position: absolute; right: 16mm; top: 22mm; margin: 0;
+  font-size: 150pt; font-weight: 800; line-height: 1; letter-spacing: -.04em;
+  color: rgba(108, 195, 255, .10); -webkit-text-stroke: .4mm rgba(108, 195, 255, .45);
+}
+.part-divider .kicker { color: #6cc3ff; font-size: 9pt; letter-spacing: .22em; }
+.part-divider h1 { margin: 2mm 0 6mm; font-size: 34pt; line-height: 1.05; font-weight: 800; letter-spacing: -.03em; color: #fff; }
+.part-divider .part-description { max-width: 130mm; margin: 0 0 12mm; color: #b8c6d1; font-size: 11pt; line-height: 1.55; }
+.part-chapters { list-style: none; margin: 0; padding: 0; max-width: 140mm; border-top: .3mm solid rgba(143, 205, 247, .3); }
+.part-chapters li { display: flex; gap: 5mm; padding: 2.4mm 0; border-bottom: .3mm solid rgba(143, 205, 247, .14); font-size: 10.5pt; color: #e2e9ef; }
+.part-chapters li span { min-width: 7mm; color: #6cc3ff; font-weight: 700; }
+
+/* ---------------------------------------------------------------------------------------------------------------- */
+/* Chapters */
+
+.print-chapter { break-before: page; max-width: none; }
+.print-chapter .chapter-header { padding-top: 8mm; }
+.print-chapter .chapter-header h1 { font-size: 26pt; margin-bottom: 9mm; }
+.print-chapter .chapter-header h1::after { margin-top: 5mm; width: 14mm; height: .9mm; }
+.print-chapter .kicker { font-size: 7.5pt; }
+
+.chapter-body > p:first-child { font-size: 11.5pt; }
+.chapter-body h2 { font-size: 15.5pt; margin: 9mm 0 3mm; padding-top: 4mm; break-after: avoid; }
+.chapter-body h3 { font-size: 12pt; margin: 6mm 0 2mm; break-after: avoid; }
+.chapter-body h4 { font-size: 7.8pt; margin: 5mm 0 1.5mm; break-after: avoid; }
+.chapter-body p, .chapter-body li { orphans: 3; widows: 3; }
+.chapter-body p:has(+ .table-wrap), .chapter-body p:has(+ figure), .chapter-body p:has(+ ol.steps) { break-after: avoid; }
+
+figure, .table-wrap, pre.code, .callout, ol.steps > li, ul.cards > li, tr { break-inside: avoid; }
+.chapter-body figure { margin: 5mm 0 6mm; }
+.chapter-body figure img { max-height: 118mm; width: auto; max-width: 100%; border-radius: 2mm; }
+.chapter-body figcaption { font-size: 8.3pt; }
+
+.table-wrap { overflow: visible; border-radius: 2mm; }
+.chapter-body table { font-size: 8.8pt; }
+.chapter-body th { font-size: 6.8pt; padding: 2mm 3mm; }
+.chapter-body td { padding: 1.8mm 3mm; }
+.chapter-body tbody tr:hover td { background: none; }
+
+pre.code { border: .3mm solid var(--border); font-size: 8.3pt; white-space: pre-wrap; word-break: break-word; }
+pre.code[data-lang]::before { right: 3mm; color: #8b959e; }
+code { font-size: .84em; }
+kbd { box-shadow: none; }
+
+.callout { padding: 3mm 4mm 3mm 11mm; border-radius: 2mm; }
+
+/* Step markers float instead of being positioned: a positioned marker of a step that moves to the next page leaves a
+   sliver behind at the foot of the previous one */
+ol.steps > li::before { position: relative; top: 0; left: 0; float: left; margin-left: -3.1em; box-shadow: none; }
+ol.steps > li::after { display: none; }
+.callout::before { left: 3.5mm; top: 3.4mm; width: 4.5mm; height: 4.5mm; }
