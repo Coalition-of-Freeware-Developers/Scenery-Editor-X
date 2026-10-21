@@ -342,6 +342,14 @@ namespace SceneryEditorX::XPlane
 	 */
 	void AppendOffsetRibbon(OverlayMesh &mesh, const std::vector<Point2> &path, float y, float left, float right, float sLeft, float sRight, float scaleT);
 
+	/**
+	 * @brief Appends a .lin along a path the way X-Plane draws it: every S_OFFSET row (lowest layer first, so later rows
+	 * paint over earlier ones) as its own strip, with the path running through the row's center pixel (sm): the s1 edge
+	 * lies (sm - s1) * SCALE right of travel, the s2 edge (s2 - sm) * SCALE left. Open lines get their START_CAP /
+	 * END_CAP rows at the ends; MIRROR runs the texture back and forth, ALIGN ends it on a whole fraction of a repeat.
+	 */
+	void AppendLinePaint(OverlayMesh &mesh, const LineAsset &asset, const std::vector<Point2> &path, bool closed, float y);
+
 	/* @brief Resamples a polyline (open or closed) at a spacing: positions and headings (degrees) along it. */
 	void ResamplePath(const std::vector<Point2> &path, bool closed, double spacing, double startOffset, std::vector<Point2> &outPoints, std::vector<double> &outHeadings);
 }

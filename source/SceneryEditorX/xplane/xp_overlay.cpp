@@ -744,6 +744,193 @@ namespace SceneryEditorX::XPlane
 		}
 	}
 
+	void AppendLinePaint(OverlayMesh &mesh, const LineAsset &asset, const std::vector<Point2> &path, const bool closed, const float y)
+	{
+		const size_t count = path.size();
+		if (count < 2 || asset.segments.empty())
+			return;
+
+		// Stations along the path: where it is, its miter (right of travel, stretched at corners) and the distance
+		// travelled. A closed line comes back to its first point.
+		struct Station
+		{
+			Point2 position;
+			Point2 miter;
+			double distance = 0.0;
+		};
+		const auto direction = [&](const size_t from, const size_t to) -> Point2
+		{
+			const double dx = path[to].x - path[from].x, dz = path[to].z - path[from].z;
+			const double length = std::hypot(dx, dz);
+			return length > 1e-9 ? Point2{ dx / length, dz / length } : Point2{ 1.0, 0.0 };
+		};
+		std::vector<Station> stations;
+		const size_t stationCount = closed ? count + 1 : count;
+		stations.reserve(stationCount);
+		for (size_t s = 0; s < stationCount; ++s)
+		{
+			const size_t i = s % count;
+			Point2 in, out;
+			if (closed)
+			{
+				in = direction((i + count - 1) % count, i);
+				out = direction(i, (i + 1) % count);
+			}
+			else
+			{
+				in = i > 0 ? direction(i - 1, i) : direction(0, 1);
+				out = i + 1 < count ? direction(i, i + 1) : direction(count - 2, count - 1);
+			}
+			Point2 miter{ in.x + out.x, in.z + out.z };
+			const double miterLength = std::hypot(miter.x, miter.z);
+			miter = miterLength < 1e-6 ? in : Point2{ miter.x / miterLength, miter.z / miterLength };
+			const Point2 normal{ -miter.z, miter.x };
+			const double scale = 1.0 / std::clamp(std::abs(normal.x * -in.z + normal.z * in.x), 0.35, 1.0);
+
+			Station station;
+			station.position = path[i];
+			station.miter = { normal.x * scale, normal.z * scale };
+			if (!stations.empty())
+				station.distance = stations.back().distance + std::hypot(path[i].x - stations.back().position.x, path[i].z - stations.back().position.z);
+			stations.push_back(station);
+		}
+		const double total = stations.back().distance;
+		if (total <= 1e-6)
+			return;
+
+		// A point part way along the path: a station where one is, else on its segment with the segment's own normal
+		const auto stationAt = [&](const double distance) -> Station
+		{
+			if (distance <= 0.0)
+				return stations.front();
+			if (distance >= total)
+				return stations.back();
+			size_t k = 0;
+			while (k + 2 < stations.size() && stations[k + 1].distance <= distance)
+				++k;
+			const Station &a = stations[k], &b = stations[k + 1];
+			if (std::abs(distance - a.distance) < 1e-9)
+				return a;
+			if (std::abs(distance - b.distance) < 1e-9)
+				return b;
+			const double length = b.distance - a.distance;
+			const double f = length > 1e-12 ? (distance - a.distance) / length : 0.0;
+			const Point2 along = length > 1e-12 ? Point2{ (b.position.x - a.position.x) / length, (b.position.z - a.position.z) / length } : Point2{ 1.0, 0.0 };
+			Station station;
+			station.position = { a.position.x + (b.position.x - a.position.x) * f, a.position.z + (b.position.z - a.position.z) * f };
+			station.miter = { -along.z, along.x };
+			station.distance = distance;
+			return station;
+		};
+
+		// Rows paint in layer order: later rows over earlier ones (drapes are drawn in order within a mesh)
+		std::vector<size_t> rows(asset.segments.size());
+		for (size_t i = 0; i < rows.size(); ++i)
+			rows[i] = i;
+		std::stable_sort(rows.begin(), rows.end(), [&](const size_t a, const size_t b) { return asset.segments[a].layer < asset.segments[b].layer; });
+
+		const double scaleS = asset.scaleS;
+		const double scaleT = asset.scaleT > 0.001f ? asset.scaleT : 1.0;
+		for (const size_t row : rows)
+		{
+			const LineAsset::Segment &segment = asset.segments[row];
+
+			// The path runs through the row's center pixel: the s1 edge lies right of travel, the s2 edge left
+			const double right = (segment.sm - segment.s1) * scaleS;
+			const double left = -(segment.s2 - segment.sm) * scaleS;
+			if (right - left <= 1e-6)
+				continue;
+
+			// Caps (open lines only), each the length its texture rows cover; shrunk together when the line is shorter
+			const LineAsset::Cap *startCap = !closed && row < asset.startCaps.size() ? &asset.startCaps[row] : nullptr;
+			const LineAsset::Cap *endCap = !closed && row < asset.endCaps.size() ? &asset.endCaps[row] : nullptr;
+			double startLength = startCap ? std::max(0.0, static_cast<double>(startCap->t2 - startCap->t1)) * scaleT : 0.0;
+			double endLength = endCap ? std::max(0.0, static_cast<double>(endCap->t2 - endCap->t1)) * scaleT : 0.0;
+			double capScale = 1.0;
+			if (startLength + endLength > total)
+			{
+				capScale = total / (startLength + endLength);
+				startLength *= capScale;
+				endLength *= capScale;
+			}
+			const double bodyStart = startLength, bodyEnd = total - endLength;
+
+			// ALIGN n: the body ends on a whole 1/n of a texture repeat (stretched evenly, where WorldEditor stretches its last piece)
+			double alignScale = 1.0;
+			if (asset.align > 0 && bodyEnd - bodyStart > 1e-6)
+			{
+				const double repeats = (bodyEnd - bodyStart) / scaleT;
+				const double rounded = std::max(1.0, std::round(repeats * asset.align)) / asset.align;
+				alignScale = rounded / repeats;
+			}
+
+			// Cuts: the caps' ends and, with MIRROR, every repeat (the texture runs back and forth)
+			struct Span
+			{
+				double from, to;
+				int kind;	// 0 start cap, 1 body, 2 end cap
+			};
+			std::vector<Span> spans;
+			if (startLength > 1e-6)
+				spans.push_back({ 0.0, startLength, 0 });
+			if (bodyEnd - bodyStart > 1e-6)
+			{
+				const double repeat = scaleT / alignScale;
+				if (asset.mirror && (bodyEnd - bodyStart) / repeat < 4096.0)
+				{
+					for (double from = bodyStart; from < bodyEnd - 1e-6; from += repeat)
+						spans.push_back({ from, std::min(from + repeat, bodyEnd), 1 });
+				}
+				else
+					spans.push_back({ bodyStart, bodyEnd, 1 });
+			}
+			if (endLength > 1e-6)
+				spans.push_back({ bodyEnd, total, 2 });
+
+			for (const Span &span : spans)
+			{
+				const LineAsset::Cap *cap = span.kind == 0 ? startCap : span.kind == 2 ? endCap : nullptr;
+				const float sRight = cap ? cap->s1 : segment.s1;
+				const float sLeft = cap ? cap->s2 : segment.s2;
+				const auto textureV = [&](const double distance) -> double
+				{
+					if (cap)
+						return cap->t1 + (distance - span.from) / (scaleT * capScale);
+					const double v = (distance - bodyStart) / scaleT * alignScale;
+					if (!asset.mirror)
+						return v;
+					// Alternate direction each repeat; a span covers one repeat, so its end is that repeat's far edge
+					const double whole = std::floor((span.from - bodyStart) / scaleT * alignScale + 1e-9);
+					const double frac = std::clamp(v - whole, 0.0, 1.0);
+					return static_cast<long long>(whole) % 2 == 0 ? frac : 1.0 - frac;
+				};
+
+				std::vector<Station> strip;
+				strip.push_back(stationAt(span.from));
+				for (const Station &station : stations)
+				{
+					if (station.distance > span.from + 1e-9 && station.distance < span.to - 1e-9)
+						strip.push_back(station);
+				}
+				strip.push_back(stationAt(span.to));
+
+				const uint32_t base = static_cast<uint32_t>(mesh.vertices.size());
+				for (const Station &station : strip)
+				{
+					const double v = textureV(station.distance);
+					AddVertex(mesh, station.position.x + station.miter.x * right, y, station.position.z + station.miter.z * right, sRight, v);
+					AddVertex(mesh, station.position.x + station.miter.x * left, y, station.position.z + station.miter.z * left, sLeft, v);
+				}
+				for (size_t i = 0; i + 1 < strip.size(); ++i)
+				{
+					const uint32_t a = base + static_cast<uint32_t>(i * 2);
+					const uint32_t b = a + 2;
+					mesh.indices.insert(mesh.indices.end(), { a, b, a + 1, a + 1, b, b + 1 });
+				}
+			}
+		}
+	}
+
 	void ResamplePath(const std::vector<Point2> &path, const bool closed, const double spacing, const double startOffset, std::vector<Point2> &outPoints, std::vector<double> &outHeadings)
 	{
 		outPoints.clear();
@@ -1289,9 +1476,7 @@ namespace SceneryEditorX::XPlane
 		mesh.texture = TexturePath(file, asset->texture);
 		mesh.cutout = true;
 		mesh.cutoff = 0.5f;
-		const LineAsset::Segment &segment = asset->segments[0];
-		const float y = Height(options, asset->layerGroup, asset->layerOffset);
-		AppendTexturedRibbon(mesh, path, closed, y, asset->GetWidthMeters(0) + 2.0f / asset->textureWidth * asset->scaleS, segment.s1, segment.s2, asset->scaleT, asset->mirror);
+		AppendLinePaint(mesh, *asset, path, closed, Height(options, asset->layerGroup, asset->layerOffset));
 		if (!mesh.indices.empty())
 			out.meshes.push_back(std::move(mesh));
 	}
@@ -1795,7 +1980,9 @@ namespace SceneryEditorX::XPlane
 						object.x = position.x + outward.x * attachment.x;
 						object.z = position.z + outward.z * attachment.x;
 						object.y = attachment.y;
-						object.heading = static_cast<float>(DirectionToHeading(outward)) + attachment.heading;
+						// The OBJ sits in the segment's frame (x outward, -z along the wall): its -Z runs along the wall,
+						// turned by the attachment's heading (WorldEditor's WED_FacadePreview does the same)
+						object.heading = static_cast<float>(DirectionToHeading(direction)) + attachment.heading;
 						object.placement = index;
 						out.objects.push_back(std::move(object));
 					}
@@ -2237,8 +2424,7 @@ namespace SceneryEditorX::XPlane
 									mesh.texture = TexturePath(file, asset->texture);
 									mesh.cutout = true;
 									mesh.cutoff = 0.5f;
-									const LineAsset::Segment &segment = asset->segments[0];
-									AppendTexturedRibbon(mesh, path, run.closed, lineHeight, asset->GetWidthMeters(0) + 2.0f / asset->textureWidth * asset->scaleS, segment.s1, segment.s2, asset->scaleT, asset->mirror);
+									AppendLinePaint(mesh, *asset, path, run.closed, lineHeight);
 									if (!mesh.indices.empty())
 										out.meshes.push_back(std::move(mesh));
 								}

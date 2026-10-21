@@ -577,6 +577,100 @@ TEST_CASE("Overlay geometry helpers", "[overlay]")
 		CHECK(mirrored.vertices[2].v == Catch::Approx(0.5f));	// 1.5 repeats, mirrored back to 0.5
 	}
 
+	SECTION("Line paint draws every S_OFFSET row with the path at its center pixel")
+	{
+		// Row 1 (layer 1) is a narrow yellow line over row 0 (layer 0), a black border; row 2 sits right of the path.
+		// Listed out of layer order: the layers decide what paints over what.
+		LineAsset lin;
+		REQUIRE(ParseLineAsset("A\n850\nLINE_PAINT\n\nTEXTURE lines.png\nSCALE 10 5\nTEX_WIDTH 100\n"
+							   "S_OFFSET 1 10 15 20\nS_OFFSET 0 0 15 30\nS_OFFSET 2 40 40 50\n", lin));
+		REQUIRE(lin.segments.size() == 3);
+
+		OverlayMesh mesh;
+		const std::vector<Point2> path = { { 0.0, 0.0 }, { 0.0, -20.0 } };	// 20 m north
+		AppendLinePaint(mesh, lin, path, false, 0.2f);
+		REQUIRE(mesh.vertices.size() == 12);	// Three strips, two stations each
+		REQUIRE(mesh.indices.size() == 18);
+
+		// Layer order: border (u 0..0.3), then the yellow line (0.1..0.2), then the offset row (0.4..0.5)
+		CHECK(mesh.vertices[0].u == Catch::Approx(0.0f));
+		CHECK(mesh.vertices[1].u == Catch::Approx(0.3f));
+		CHECK(mesh.vertices[4].u == Catch::Approx(0.1f));
+		CHECK(mesh.vertices[5].u == Catch::Approx(0.2f));
+		CHECK(mesh.vertices[8].u == Catch::Approx(0.4f));
+
+		// Heading north, right of travel is east (+x). The border spans 1.5 m either side; the offset row starts on
+		// the path (sm = s1) and reaches 1 m to the west (the s2 edge is left of travel).
+		CHECK(mesh.vertices[0].x == Catch::Approx(1.5f));
+		CHECK(mesh.vertices[1].x == Catch::Approx(-1.5f));
+		CHECK(mesh.vertices[4].x == Catch::Approx(0.5f));
+		CHECK(mesh.vertices[5].x == Catch::Approx(-0.5f));
+		CHECK(mesh.vertices[8].x == Catch::Approx(0.0f).margin(1e-6));
+		CHECK(mesh.vertices[9].x == Catch::Approx(-1.0f));
+		CHECK(mesh.vertices[2].v == Catch::Approx(4.0f));	// 20 m at 5 m per repeat
+		for (const OverlayVertex &vertex : mesh.vertices)
+			CHECK(vertex.y == Catch::Approx(0.2f));
+
+		// Counter-clockwise from above, whichever side of the path a strip lies
+		for (size_t i = 0; i + 2 < mesh.indices.size(); i += 3)
+		{
+			const OverlayVertex &a = mesh.vertices[mesh.indices[i]], &b = mesh.vertices[mesh.indices[i + 1]], &c = mesh.vertices[mesh.indices[i + 2]];
+			CHECK((b.x - a.x) * (-(c.z - a.z)) - (-(b.z - a.z)) * (c.x - a.x) > 0.0);
+		}
+	}
+
+	SECTION("Line paint caps, mirror and align")
+	{
+		LineAsset lin;
+		REQUIRE(ParseLineAsset("A\n850\nLINE_PAINT\n\nTEXTURE lines.png\nSCALE 10 10\nTEX_WIDTH 100\nTEX_HEIGHT 100\n"
+							   "S_OFFSET 0 0 5 10\nSTART_CAP 0 20 25 30 0 20\nEND_CAP 0 40 45 50 50 60\n", lin));
+		const std::vector<Point2> path = { { 0.0, 0.0 }, { 0.0, -20.0 } };
+
+		// Start cap 2 m (t 0..0.2), end cap 1 m (t 0.5..0.6), the body between
+		OverlayMesh mesh;
+		AppendLinePaint(mesh, lin, path, false, 0.0f);
+		REQUIRE(mesh.vertices.size() == 12);
+		CHECK(mesh.vertices[0].u == Catch::Approx(0.2f));		// Start cap's s range
+		CHECK(mesh.vertices[0].v == Catch::Approx(0.0f));
+		CHECK(mesh.vertices[2].z == Catch::Approx(-2.0f));
+		CHECK(mesh.vertices[2].v == Catch::Approx(0.2f));
+		CHECK(mesh.vertices[4].u == Catch::Approx(0.0f));		// Body
+		CHECK(mesh.vertices[4].v == Catch::Approx(0.0f));
+		CHECK(mesh.vertices[6].z == Catch::Approx(-19.0f));
+		CHECK(mesh.vertices[6].v == Catch::Approx(1.7f));		// 17 m at 10 m per repeat
+		CHECK(mesh.vertices[8].u == Catch::Approx(0.4f));		// End cap
+		CHECK(mesh.vertices[8].v == Catch::Approx(0.5f));
+		CHECK(mesh.vertices[10].v == Catch::Approx(0.6f));
+
+		// A closed ring has no caps
+		OverlayMesh ring;
+		AppendLinePaint(ring, lin, { { 0.0, 0.0 }, { 10.0, 0.0 }, { 10.0, -10.0 }, { 0.0, -10.0 } }, true, 0.0f);
+		REQUIRE(ring.vertices.size() == 10);	// Back to the first point
+		CHECK(ring.vertices[8].v == Catch::Approx(4.0f));
+		CHECK(ring.vertices[8].x == Catch::Approx(ring.vertices[0].x));
+
+		// MIRROR: one strip per repeat, running back on odd repeats
+		LineAsset mirrored;
+		REQUIRE(ParseLineAsset("A\n850\nLINE_PAINT\n\nTEXTURE lines.png\nSCALE 10 8\nTEX_WIDTH 100\nS_OFFSET 0 0 5 10\nMIRROR\n", mirrored));
+		OverlayMesh back;
+		AppendLinePaint(back, mirrored, path, false, 0.0f);
+		REQUIRE(back.vertices.size() == 12);	// 20 m: 8 + 8 + 4
+		CHECK(back.vertices[2].v == Catch::Approx(1.0f));
+		CHECK(back.vertices[4].v == Catch::Approx(1.0f));
+		CHECK(back.vertices[6].v == Catch::Approx(0.0f).margin(1e-6));
+		CHECK(back.vertices[10].v == Catch::Approx(0.5f));
+
+		// ALIGN 1: 20 m at 9 m per repeat ends on 2 whole repeats, not 2.22
+		LineAsset aligned = mirrored;
+		aligned.mirror = false;
+		aligned.align = 1;
+		aligned.scaleT = 9.0f;
+		OverlayMesh even;
+		AppendLinePaint(even, aligned, path, false, 0.0f);
+		REQUIRE(even.vertices.size() == 4);
+		CHECK(even.vertices[2].v == Catch::Approx(2.0f));
+	}
+
 	SECTION("Resampling walks the path at the spacing")
 	{
 		std::vector<Point2> points;
@@ -732,7 +826,24 @@ TEST_CASE("Overlay builder turns DSF placements into meshes and object placement
 			CHECK(object.name == "shed.obj");
 		}
 		else if (object.source == OverlayObject::Source::Facade)
+		{
 			++doors;
+			// The terminal is a 16 m square around (300, 300) local, drawn counter-clockwise from its south side. Its door
+			// is attached 0.5 m outside each wall with heading 0: the OBJ's -Z runs along the wall, as X-Plane places it.
+			const double south = std::abs(object.z - 308.5), east = std::abs(object.x - 308.5);
+			const double north = std::abs(object.z - 291.5), west = std::abs(object.x - 291.5);
+			const double heading = std::fmod(object.heading + 360.0, 360.0);
+			if (south < 0.01)
+				CHECK(heading == Catch::Approx(90.0).margin(0.01));		// The south wall runs east
+			else if (east < 0.01)
+				CHECK(heading == Catch::Approx(0.0).margin(0.01));		// The east wall runs north
+			else if (north < 0.01)
+				CHECK(heading == Catch::Approx(270.0).margin(0.01));
+			else if (west < 0.01)
+				CHECK(heading == Catch::Approx(180.0).margin(0.01));
+			else
+				FAIL("A door off its wall at " << object.x << ", " << object.z);
+		}
 	}
 	CHECK(hangars == 1);
 	CHECK(lampPosts == 13);	// 120 m at 10 m spacing, both ends
@@ -760,7 +871,16 @@ TEST_CASE("Overlay builder turns DSF placements into meshes and object placement
 	const OverlayMesh &lineMesh = *byKind[OverlayKind::Line][0];
 	CHECK(lineMesh.texture.filename() == "apt_lines.png");
 	CHECK(lineMesh.cutout);
-	CHECK(lineMesh.vertices.size() == 4);
+	// Both S_OFFSET rows, mirrored every 3 m along the 80 m line: 27 strips of two stations each per row
+	CHECK(lineMesh.vertices.size() == 2 * 27 * 4);
+	bool rowZero = false, rowOne = false;
+	for (const OverlayVertex &vertex : lineMesh.vertices)
+	{
+		rowZero |= std::abs(vertex.u - 46.0f / 1024.0f) < 1e-5f;
+		rowOne |= std::abs(vertex.u - 70.0f / 1024.0f) < 1e-5f;
+	}
+	CHECK(rowZero);
+	CHECK(rowOne);
 
 	REQUIRE(byKind[OverlayKind::Forest].size() == 1);
 	const OverlayMesh &forestMesh = *byKind[OverlayKind::Forest][0];
