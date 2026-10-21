@@ -978,6 +978,28 @@ namespace SceneryEditorX::EditorProjects
 		return state.document.IsOpen() ? &state.document : nullptr;
 	}
 
+	bool SetLibraryFilters(std::vector<LibraryFilter> filters, const std::string &label)
+	{
+		ProjectDocument *document = GetDocument();
+		if (!document)
+			return false;
+		const auto apply = [](const std::vector<LibraryFilter> &value)
+		{
+			ProjectDocument *open = GetDocument();
+			if (!open)
+				return false;
+			open->GetProject().libraryFilters = value;
+			open->Mark(ProjectDocument::Section::Info);
+			return true;
+		};
+		std::vector<LibraryFilter> before = document->GetProject().libraryFilters;
+		apply(filters);
+		EDITOR_INFO_TAG(LOG_TAG, "{} ({} saved library filters)", label, filters.size());
+		const size_t bytes = (before.size() + filters.size()) * sizeof(LibraryFilter) + 64;
+		EditorHistory::Push({ label, [apply, before] { return apply(before); }, [apply, filters] { return apply(filters); }, bytes });
+		return true;
+	}
+
 	bool IsDirty()
 	{
 		const State &state = GetState();

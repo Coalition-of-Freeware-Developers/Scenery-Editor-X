@@ -69,6 +69,9 @@ namespace SceneryEditorX::EditorProjects
 	/* @brief The open project, or nullptr. */
 	ProjectFile::ProjectDocument *GetDocument();
 
+	/* @brief Replaces the open project's saved library-browser filters as one undo step. False without a project. */
+	bool SetLibraryFilters(std::vector<ProjectFile::LibraryFilter> filters, const std::string &label);
+
 	/* @brief True when the project (or its airport in the airport editor) has unsaved changes. */
 	bool IsDirty();
 

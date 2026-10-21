@@ -145,9 +145,9 @@ The tester list, as received:
 
 | Task | Description | Completed | Date |
 |------|-------------|-----------|------|
-| TASK-009 | Assets grouped by library in collapsible sections (collapse / expand all); libraries and assets that don't match the search or filters are hidden; match counts per library. | | |
-| TASK-010 | A Filter button (funnel) opening a drop-down: asset types (multi-select), libraries (multi-select with search), private / deprecated, missing files; a short summary of the active filters next to the search box; clear all. | | |
-| TASK-011 | `SceneryProject::libraryFilters` (name, search, types, libraries by name, flags) in `.edX` / `.sex` (appended to `Visit`), edited through `ProjectDocument` (undo, dirty), ignored by WED import / export. The drop-down saves, applies, renames and deletes them. ProjectFormatTests round-trip them. | | |
+| TASK-009 | Assets grouped by library in collapsible sections (collapse / expand all); libraries and assets that don't match the search or filters are hidden; match counts per library.| ✅ | 2026-10-21 |
+| TASK-010 | A Filter button (funnel) opening a drop-down: asset types (multi-select), libraries (multi-select with search), private / deprecated, missing files; a short summary of the active filters next to the search box; clear all.| ✅ | 2026-10-21 |
+| TASK-011 | `SceneryProject::libraryFilters` (name, search, types, libraries by name, flags) in `.edX` / `.sex` (appended to `Visit`), edited through `ProjectDocument` (undo, dirty), ignored by WED import / export. The drop-down saves, applies, renames and deletes them. ProjectFormatTests round-trip them.| ✅ | 2026-10-21 |
 
 ### Phase 4 - Projects without an airport (item 4)
 

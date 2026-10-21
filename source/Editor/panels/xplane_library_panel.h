@@ -29,6 +29,7 @@
  * -------------------------------------------------------
  */
 #pragma once
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -55,25 +56,68 @@ namespace SceneryEditorX
 		void OnUIRender(bool &isOpen) override;
 
 	private:
+		/* @brief One line of the asset list: a library's header, or an asset under it. */
+		struct Row
+		{
+			uint32_t group = 0;				// Index into m_Groups
+			uint32_t asset = HEADER;		// Index into the index's assets, HEADER for the library's own line
+		};
+		static constexpr uint32_t HEADER = ~0u;
+
+		/* @brief The assets one library provides that pass the search and filters. */
+		struct Group
+		{
+			int package = -1;				// Package index, -1 for assets no library resolves
+			uint32_t total = 0;				// Assets it provides at all (before filtering)
+			std::vector<uint32_t> assets;
+		};
+
 		void DrawInstallBar();
 		void DrawAssetsTab(const XPlane::LibraryIndex &index);
+		void DrawFilterBar(const XPlane::LibraryIndex &index);
+		void DrawFilterPopup(const XPlane::LibraryIndex &index);
+		void DrawSavedFilters(const XPlane::LibraryIndex &index);
+		void DrawAssetList(const XPlane::LibraryIndex &index);
 		void DrawAssetDetails(const XPlane::LibraryIndex &index, const XPlane::LibraryAsset &asset);
 		void DrawLibrariesTab(const XPlane::LibraryIndex &index);
 		void RefreshFilter(const XPlane::LibraryIndex &index);
+
+		/* @brief True when the search or any filter narrows the list (libraries then open on their matches). */
+		[[nodiscard]] bool IsFiltering() const;
+		/* @brief The search and filters as one string (changes whenever any of them does). */
+		[[nodiscard]] std::string GetFilterKey() const;
+		[[nodiscard]] bool IsGroupOpen(const XPlane::LibraryIndex &index, const Group &group) const;
+		void SetGroupsOpen(const XPlane::LibraryIndex &index, bool open);
+		void ClearFilters();
+		/* @brief Shows only one library (the Libraries tab's "Browse assets"). */
+		void BrowseLibrary(const XPlane::LibraryIndex &index, int package);
 
 		EditorContext *m_Context = nullptr;
 
 		// Asset browser
 		ImGuiTextFilter m_Filter;
-		int m_TypeFilter = static_cast<int>(XPlane::AssetType::Object);	// AssetType, or -1 for all
-		int m_PackageFilter = -1;											// Package index, or -1 for all
+		uint32_t m_TypeMask = ~0u;											// Bit per AssetType that passes
+		std::vector<std::string> m_Libraries;								// Package names that pass; empty: every library
 		bool m_ShowHidden = false;											// Private and deprecated assets
 		bool m_OnlyMissing = false;
-		std::vector<uint32_t> m_Filtered;									// Indices into the index's assets
-		std::string m_FilterKey;											// Inputs m_Filtered was built for
+		bool m_GroupByLibrary = true;
+		std::string m_AppliedFilter;										// The saved filter applied last (until the filters change)
+		std::string m_AppliedKey;
+		std::vector<Group> m_Groups;										// Libraries with matches, in priority order
+		std::vector<Row> m_Rows;											// The list as drawn (collapsed libraries keep only their header)
+		size_t m_MatchCount = 0;
+		std::map<std::string, bool> m_GroupOpen;							// Libraries opened or closed by hand (by name)
+		std::string m_FilterKey;											// Inputs m_Groups was built for
+		std::string m_RowsKey;
 		uint64_t m_FilterGeneration = ~0ull;
+		std::string m_LastSearch;
 		std::string m_SelectedAsset;										// Virtual path
 		bool m_SelectTab = false;											// Jump to the Assets tab next frame
+		bool m_OpenFilterPopup = false;
+		ImGuiTextFilter m_PopupLibraryFilter;
+		std::string m_SaveName;												// "Save as" in the filter drop-down
+		std::string m_RenameFrom;											// A saved filter being renamed
+		std::string m_RenameTo;
 
 		// Selected object preview (parsed on selection, CPU only)
 		std::string m_PreviewPath;

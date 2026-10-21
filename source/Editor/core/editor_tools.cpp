@@ -813,8 +813,14 @@ namespace SceneryEditorX::EditorTools
 			case Tool::Facade:
 				return FacadeTool::GetHint();
 			default:
-				return EditorSelection::IsEmpty() ? std::string("Click to select  |  drag a box  |  right-click: quad menu, hold Space: hotbox  |  Alt+LMB orbit, MMB pan, RMB look (+WASD)")
-												  : std::to_string(EditorSelection::Get().size()) + " selected  |  W move, E rotate, R scale, V nodes, B facades, F frame, Del delete  |  right-click: menu";
+			{
+				// The navigation keymap's own mouse bindings, and its frame key
+				const NavigationKeymap keymap = EditorPreferences::Get().keymap;
+				if (EditorSelection::IsEmpty())
+					return std::string("Click to select  |  drag a box  |  right-click: quad menu, hold Space: hotbox  |  ") + ViewportCamera::GetKeymapSummary(keymap);
+				return std::to_string(EditorSelection::Get().size()) + " selected  |  W move, E rotate, R scale, V nodes, B facades, " +
+					   (keymap == NavigationKeymap::Max ? "Z" : "F") + " frame, Del delete  |  right-click: menu";
+			}
 		}
 	}
 }

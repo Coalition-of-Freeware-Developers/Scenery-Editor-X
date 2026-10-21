@@ -822,6 +822,51 @@ TEST_CASE("The world environment round trips in .edX and .sex, and stays out unt
 	CHECK_FALSE(old.environment.has_value());
 }
 
+TEST_CASE("Saved library filters round trip in .edX and .sex, and stay out until saved", "[project][edx][sex][filters]")
+{
+	SceneryProject project = MakeSampleProject();
+	const std::string withoutText = WriteEdx(project);
+	CHECK(withoutText.find("\"LibraryFilters\"") == std::string::npos);	// Projects without any stay byte-identical
+
+	LibraryFilter sidewalks;
+	sidewalks.name = "Sidewalks";
+	sidewalks.search = "sidewalk curb";
+	sidewalks.types = { "fac", "lin" };	// By file extension
+	sidewalks.libraries = { "Laminar Research", "OpenSceneryX" };
+	LibraryFilter broken;
+	broken.name = "Broken files";
+	broken.showHidden = true;
+	broken.onlyMissing = true;
+	project.libraryFilters = { sidewalks, broken };
+
+	const std::string text = WriteEdx(project);
+	CHECK(text.find("\"LibraryFilters\"") != std::string::npos);
+	SceneryProject read;
+	std::vector<std::string> warnings;
+	std::string error;
+	REQUIRE(ParseEdx(text, read, &warnings, &error));
+	CHECK(warnings.empty());
+	REQUIRE(read.libraryFilters.size() == 2);
+	CHECK(read.libraryFilters[0] == sidewalks);
+	CHECK(read.libraryFilters[1] == broken);
+	CHECK(WriteEdx(read) == text);
+
+	const std::string bytes = WriteSex(project);
+	SceneryProject binary;
+	REQUIRE(ParseSex(bytes.data(), bytes.size(), binary, &warnings, &error));
+	REQUIRE(binary.libraryFilters.size() == 2);
+	CHECK(binary.libraryFilters[0] == sidewalks);
+	CHECK(binary.libraryFilters[1] == broken);
+	std::vector<SexChunkInfo> chunks;
+	REQUIRE(ReadSexChunkTable(bytes.data(), bytes.size(), chunks));
+	CHECK(std::ranges::any_of(chunks, [](const SexChunkInfo &chunk) { return chunk.tag == "LFLT"; }));
+
+	// Files from before the filters existed still load; WorldEditor exports leave them out
+	SceneryProject old;
+	REQUIRE(ParseEdx(withoutText, old, &warnings, &error));
+	CHECK(old.libraryFilters.empty());
+}
+
 TEST_CASE(".sex detects damage instead of loading garbage", "[project][sex]")
 {
 	const std::string bytes = WriteSex(MakeSampleProject());

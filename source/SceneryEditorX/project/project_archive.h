@@ -122,6 +122,16 @@ namespace SceneryEditorX::ProjectFile
 		a.Field("season-ratio", v.seasonRatioOverride);
 	}
 
+	template<typename A> void Visit(A &a, LibraryFilter &v)
+	{
+		a.Field("name", v.name);
+		a.FieldIf("search", v.search, std::string());
+		a.FieldIf("types", v.types, std::vector<std::string>());
+		a.FieldIf("libraries", v.libraries, std::vector<std::string>());
+		a.FieldIf("show-hidden", v.showHidden, false);
+		a.FieldIf("only-missing", v.onlyMissing, false);
+	}
+
 	template<typename A> void Visit(A &a, LibraryReference &v)
 	{
 		a.Field("Library", v.name);

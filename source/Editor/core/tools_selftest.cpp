@@ -75,6 +75,7 @@ namespace SceneryEditorX::ToolsSelfTest
 			OrthoTop,
 			OrthoPick,
 			OrthoWaitPick,
+			LibraryFilters,
 			ItemMove,
 			ItemUndo,
 			ItemRedo,
@@ -520,7 +521,30 @@ namespace SceneryEditorX::ToolsSelfTest
 				if (s.rigBefore)
 					EditorCamera::SetRig(*s.rigBefore);
 				s.wait = 60;
+				s.step = Step::LibraryFilters;
+				break;
+			}
+
+			case Step::LibraryFilters:
+			{
+				// A library-browser filter saved in the project: an undoable edit that marks the project changed
+				ProjectFile::ProjectDocument *document = EditorProjects::GetDocument();
 				s.step = Step::ItemMove;
+				if (!document)
+					break;
+				const std::vector<ProjectFile::LibraryFilter> before = document->GetProject().libraryFilters;
+				const uint64_t revision = document->GetRevision();
+				ProjectFile::LibraryFilter filter;
+				filter.name = "SelfTest Sidewalks";
+				filter.search = "sidewalk";
+				filter.types = { "fac", "lin" };
+				std::vector<ProjectFile::LibraryFilter> saved = before;
+				saved.push_back(filter);
+				Check(EditorProjects::SetLibraryFilters(saved, "Save library filter SelfTest Sidewalks"), "library filters: saved in the open project");
+				Check(document->GetProject().libraryFilters == saved && document->GetRevision() != revision && document->IsDirty(), "library filters: the project holds it and has unsaved changes");
+				Check(EditorHistory::Undo() && document->GetProject().libraryFilters == before, "library filters: undo takes it back out");
+				Check(EditorHistory::Redo() && document->GetProject().libraryFilters == saved, "library filters: redo puts it back");
+				EditorHistory::Undo();
 				break;
 			}
 
