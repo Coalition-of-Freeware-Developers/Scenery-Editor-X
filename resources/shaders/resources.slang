@@ -137,6 +137,14 @@ public struct MaterialParameters
     // none, emissive luminance in nits (0: emissive texels are display values)
     public float4 xp;
 
+    // Draped polygons (xp_material.slang xp_drape_*): tile atlas (tiles x / y, mapping cells x / y; 0: random), detail
+    // decals (repeats per meter, strength x 2), normal decals (repeats per meter, gain x 2), misc (decal t / s aspect,
+    // normal decal t / s aspect, meters per u, meters per v; markings: paint rgb, border opacity)
+    public float4 drape_tiles;
+    public float4 drape_decal;
+    public float4 drape_normal_decal;
+    public float4 drape_misc;
+
     public bool has_texture_albedo() { return (flags & (1 << 2)) != 0; }
     public bool has_texture_normal() { return (flags & (1 << 1)) != 0; }
     public bool has_texture_occlusion() { return (flags & (1 << 7)) != 0; }
@@ -146,6 +154,7 @@ public struct MaterialParameters
     public bool emissive_from_albedo() { return (flags & (1 << 15)) != 0; }
     public uint xp_normal_mode() { return (flags >> 16) & 3u; }	// xp_material.slang xp_normal_*
     public bool is_xp_material() { return (flags & (1 << 18)) != 0; }
+    public uint xp_drape_mode() { return (flags >> 19) & 3u; }	// xp_material.slang xp_drape_*
 };
 
 // struct which forms the bindless light parameters array

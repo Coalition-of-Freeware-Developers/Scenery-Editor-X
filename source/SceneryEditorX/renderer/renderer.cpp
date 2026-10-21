@@ -3273,12 +3273,25 @@ void dynamic_resolution()
 				properties[count].flags |= material->GetProperty(MaterialProperty::EmissiveFromAlbedo)         ? (1U << 15) : 0;
 				properties[count].flags |= (static_cast<uint32_t>(std::clamp(material->GetProperty(MaterialProperty::XpNormalMode), 0.0f, 3.0f)) & 3U) << 16;
 				properties[count].flags |= material->GetProperty(MaterialProperty::XpMaterial)                 ? (1U << 18) : 0;
+				const uint32_t drapeMode = static_cast<uint32_t>(std::clamp(material->GetProperty(MaterialProperty::XpDrapeMode), 0.0f, 3.0f));
+				properties[count].flags |= (drapeMode & 3U) << 19;
 				// keep in sync with Surface struct in common_structs.slang
 
 				properties[count].alpha_cutoff = material->GetProperty(MaterialProperty::AlphaCutoff);
 				properties[count].blend_mode   = material->GetProperty(MaterialProperty::BlendMode);
 				properties[count].xp = xMath::Vec4(material->GetProperty(MaterialProperty::XpSpecularGain), material->GetProperty(MaterialProperty::XpSuperRoughness),
 					material->GetProperty(MaterialProperty::XpDefaultF0), material->GetProperty(MaterialProperty::EmissiveNits));
+				properties[count].drape_tiles = xMath::Vec4(material->GetProperty(MaterialProperty::XpTilesX), material->GetProperty(MaterialProperty::XpTilesY),
+					material->GetProperty(MaterialProperty::XpTileMapWidth), material->GetProperty(MaterialProperty::XpTileMapHeight));
+				properties[count].drape_decal = xMath::Vec4(material->GetProperty(MaterialProperty::XpDecal0Scale), material->GetProperty(MaterialProperty::XpDecal0Strength),
+					material->GetProperty(MaterialProperty::XpDecal1Scale), material->GetProperty(MaterialProperty::XpDecal1Strength));
+				properties[count].drape_normal_decal = xMath::Vec4(material->GetProperty(MaterialProperty::XpNormalDecal0Scale), material->GetProperty(MaterialProperty::XpNormalDecal0Gain),
+					material->GetProperty(MaterialProperty::XpNormalDecal1Scale), material->GetProperty(MaterialProperty::XpNormalDecal1Gain));
+				properties[count].drape_misc = drapeMode == 2
+					? xMath::Vec4(material->GetProperty(MaterialProperty::XpDrapeMiscR), material->GetProperty(MaterialProperty::XpDrapeMiscG),
+						material->GetProperty(MaterialProperty::XpDrapeMiscB), material->GetProperty(MaterialProperty::XpDrapeMiscA))
+					: xMath::Vec4(material->GetProperty(MaterialProperty::XpDecalAspect), material->GetProperty(MaterialProperty::XpNormalDecalAspect),
+						material->GetProperty(MaterialProperty::XpDrapeMetersU), material->GetProperty(MaterialProperty::XpDrapeMetersV));
 			}
 	
 			// textures, in the order of the material_texture_index_* slots in resources.slang

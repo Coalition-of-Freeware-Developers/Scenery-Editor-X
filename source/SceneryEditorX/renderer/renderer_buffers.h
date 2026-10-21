@@ -148,6 +148,14 @@ namespace SceneryEditorX
 		// X-Plane materials (xp_material.slang): specular gain, super roughness floor, F0 when the normal map carries
 		// none, emissive luminance in nits (0: emissive texels are display values)
 		xMath::Vec4 xp = xMath::Vec4{0.0f, 0.0f, 0.0f, 0.0f};
+
+		// Draped polygons (xp_material.slang xp_drape_*, mode in flags bits 19-20): tile atlas (tiles x / y, mapping texture
+		// cells x / y), detail decals (scale, strength x 2), normal decals (scale, gain x 2), misc (decal aspects, meters per
+		// u / v; markings: paint color, border opacity)
+		xMath::Vec4 drape_tiles = xMath::Vec4{0.0f, 0.0f, 0.0f, 0.0f};
+		xMath::Vec4 drape_decal = xMath::Vec4{0.0f, 0.0f, 0.0f, 0.0f};
+		xMath::Vec4 drape_normal_decal = xMath::Vec4{0.0f, 0.0f, 0.0f, 0.0f};
+		xMath::Vec4 drape_misc = xMath::Vec4{0.0f, 0.0f, 0.0f, 0.0f};
 	};
 
 	/**
@@ -343,7 +351,7 @@ namespace SceneryEditorX
 	// sizes the shaders see (resources.slang: cbuffer std140, structured buffers std430)
 	static_assert(sizeof(ConstantBuffer_Frame) == 1024, "ConstantBuffer_Frame must match FrameBufferData in resources.slang");
 	static_assert(sizeof(ConstantBuffer_Environment) == 1024, "ConstantBuffer_Environment must match EnvironmentData in resources.slang");
-	static_assert(sizeof(ShaderBuffer_Material) == 128, "ShaderBuffer_Material must match MaterialParameters in resources.slang");
+	static_assert(sizeof(ShaderBuffer_Material) == 192, "ShaderBuffer_Material must match MaterialParameters in resources.slang");
 	static_assert(sizeof(ShaderBuffer_Light) == 608, "ShaderBuffer_Light must match LightParameters in resources.slang");
 	static_assert(sizeof(ShaderBuffer_DrawData) == 160, "ShaderBuffer_DrawData must match DrawData in resources.slang");
 

@@ -929,13 +929,332 @@ TEST_CASE("Forest fill modes: line forests are open chains, point forests single
 	}
 }
 
-TEST_CASE("Tiled pavement atlases cover SCALE meters per tile", "[overlay]")
+TEST_CASE("Tiled pavement atlases: RUNWAY_TILE spans SCALE, TEXTURE_TILE repeats it per tile", "[overlay]")
 {
 	PolygonAsset pol;
 	REQUIRE(ParsePolygonAsset("A\n850\nDRAPED_POLYGON\n\nTEXTURE a.png\nRUNWAY_TILE 4 8 256 512 ../maps/noise.png\nSCALE 22 44\n", pol));
 	CHECK(pol.tiled);
+	CHECK(pol.runwayTile);
 	CHECK(pol.tilesX == 4);
 	CHECK(pol.tilesY == 8);
+	CHECK(pol.tileMapWidth == 256);
+	CHECK(pol.tileMapHeight == 512);
+	CHECK(pol.tileMap == "../maps/noise.png");
+
+	// X-Plane 12's runway atlases: 4 x 8 square tiles under SCALE 22 44, so one tile (a slab) is 5.5 m
+	float scaleS = 0.0f, scaleT = 0.0f;
+	OverlayBuilder::GetPolygonUvScale(pol, scaleS, scaleT);
+	CHECK(scaleS == Catch::Approx(22.0f));
+	CHECK(scaleT == Catch::Approx(44.0f));
+
+	PolygonAsset old;
+	REQUIRE(ParsePolygonAsset("A\n850\nDRAPED_POLYGON\n\nTEXTURE a.png\nTEXTURE_TILE 4 2 256 256\nSCALE 10 20\n", old));
+	CHECK(old.tiled);
+	CHECK_FALSE(old.runwayTile);
+	CHECK(old.tileMap.empty());
+	OverlayBuilder::GetPolygonUvScale(old, scaleS, scaleT);
+	CHECK(scaleS == Catch::Approx(40.0f));
+	CHECK(scaleT == Catch::Approx(40.0f));
+}
+
+TEST_CASE("Runway polygon directives: markings atlas, noise and decals", "[assets]")
+{
+	// AEP's Runway_Light_Dirty.pol, abridged (Windows separators, tabs, a NO_BLEND without effect on runways)
+	const char *text =
+		"A\n850\nDRAPED_POLYGON\n\n#Materials\nTEXTURE Light_Dirty.png\nTEXTURE_NORMAL 1\tConcrete_NML.png\n\n"
+		"RUNWAY_MARKINGS 1.0000 1.0000 1.0000 0.5000 ..\\Runway_Markings_Black.png\nNO_BLEND 0.00\n"
+		"DECAL_PARAMS 4.0 0.0 0.0 0.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 0.0 0.0 0.0 Concrete_Detail_Grooved_Overlay.png\n"
+		"DECAL_PARAMS 32.0 0.0 0.0 0.0 0.0 0.0 0.0 0.4 0.0 0.0 0.0 0.0 0.0 0.0 ..\\Concrete_Pebble_Detail.png\n"
+		"NORMAL_DECAL_PARAMS 4.0 0.0 0.0 0.0 0.0 0.0 1.0 Concrete_Detail_Grooved_Overlay_NML.png 0.30234139\n"
+		"RUNWAY_NOISE_PARAMS 0.1 0.37 0.7 0.7 0.25\n"
+		"DECAL_LIB  lib/g10/decals/apt_concrete_1t.dcl\n"
+		"LAYER_GROUP runways 0\nSCALE 22 44\nSURFACE concrete\n\nRUNWAY_TILE 4 8 256 256 Mapping.png\n";
+	PolygonAsset pol;
+	std::string error;
+	REQUIRE(ParsePolygonAsset(text, pol, &error));
+	CHECK(pol.runwayMarkings == "../Runway_Markings_Black.png");
+	CHECK(pol.runwayMarkingsColor[0] == Catch::Approx(1.0f));
+	CHECK(pol.runwayMarkingsColor[3] == Catch::Approx(0.5f));
+	CHECK(pol.noiseParams[1] == Catch::Approx(0.37f));
+	CHECK(pol.noiseParams[4] == Catch::Approx(0.25f));
+	CHECK(pol.decal == "lib/g10/decals/apt_concrete_1t.dcl");
+	CHECK(pol.tileMap == "Mapping.png");
+	CHECK(pol.tileMapWidth == 256);
+
+	REQUIRE(pol.decals.size() == 3);
+	CHECK_FALSE(pol.decals[0].normal);
+	CHECK(pol.decals[0].scaleS == Catch::Approx(4.0f));
+	CHECK(pol.decals[0].scaleT == Catch::Approx(4.0f));
+	CHECK(pol.decals[0].strength == Catch::Approx(1.0f));
+	CHECK(pol.decals[0].texture == "Concrete_Detail_Grooved_Overlay.png");
+	CHECK(pol.decals[1].scaleS == Catch::Approx(32.0f));
+	CHECK(pol.decals[1].strength == Catch::Approx(0.4f));
+	CHECK(pol.decals[1].texture == "../Concrete_Pebble_Detail.png");
+	CHECK(pol.decals[2].normal);
+	CHECK(pol.decals[2].strength == Catch::Approx(1.0f));
+	CHECK(pol.decals[2].gain == Catch::Approx(0.30234139f));
+	CHECK(pol.decals[2].texture == "Concrete_Detail_Grooved_Overlay_NML.png");
+
+	// Rows too short to be decals are ignored
+	PolygonAsset broken;
+	REQUIRE(ParsePolygonAsset("A\n850\nDRAPED_POLYGON\n\nTEXTURE a.png\nDECAL_PARAMS 4.0 tex.png\nNORMAL_DECAL_PARAMS 6.0 0 0\n", broken));
+	CHECK(broken.decals.empty());
+	CHECK(broken.runwayMarkings.empty());
+}
+
+TEST_CASE("Decal library asset", "[assets]")
+{
+	// X-Plane 12's lib/g10/decals/apt_concrete_1t.dcl
+	const char *text =
+		"A\n1000\nDECAL\n\n# HF detail\n"
+		"DECAL_PARAMS_PROJ\t3.0\t3.0\t0.0\t\t0.00\t0.00\t0.00\t0\t0\t0.0\t\t0.00\t0.00\t0.00\t0\t0\t0.75\t \ttextures/RGBA_asphalt_conc_1.png\n"
+		"# LF modulator\n"
+		"DECAL_PARAMS\t0.03125\t\t0.0\t\t0\t0\t0\t0\t0.0\t0.1\t\t0\t0\t0\t0\t0.0\t0.3\t \ttextures/RGBA_LF_concrete1.png\n"
+		"NORMAL_DECAL_PARAMS_PROJ 2.0 4.0 0.0 0 0 0 0 0.5 textures/n.png 2.0\n";
+	DecalLibraryAsset dcl;
+	REQUIRE(ParseDecalLibraryAsset(text, dcl));
+	REQUIRE(dcl.decals.size() == 3);
+	CHECK(dcl.decals[0].scaleS == Catch::Approx(3.0f));
+	CHECK(dcl.decals[0].scaleT == Catch::Approx(3.0f));
+	CHECK(dcl.decals[0].strength == Catch::Approx(0.75f));
+	CHECK(dcl.decals[0].texture == "textures/RGBA_asphalt_conc_1.png");
+	CHECK(dcl.decals[1].scaleS == Catch::Approx(0.03125f));
+	CHECK(dcl.decals[1].strength == Catch::Approx(0.3f));
+	CHECK(dcl.decals[1].texture == "textures/RGBA_LF_concrete1.png");
+	CHECK(dcl.decals[2].normal);
+	CHECK(dcl.decals[2].scaleS == Catch::Approx(2.0f));
+	CHECK(dcl.decals[2].scaleT == Catch::Approx(4.0f));
+	CHECK(dcl.decals[2].strength == Catch::Approx(0.5f));
+	CHECK(dcl.decals[2].gain == Catch::Approx(2.0f));
+
+	CHECK_FALSE(ParseDecalLibraryAsset("A\n850\nDRAPED_POLYGON\n", dcl));
+}
+
+TEST_CASE("Runway marking atlas sprites", "[overlay]")
+{
+	// Glyphs 1..9, 0, L, R, C every 288 px of a 4096 px atlas from x = 296; quads 200 px wide, 520 tall, v up
+	const RunwayMarkingSprite one = GetRunwayMarkingSprite(RunwayMarking::Glyph, '1');
+	CHECK(0.5f * (one.u0 + one.u1) == Catch::Approx(296.0f / 4096.0f));
+	CHECK(one.u1 - one.u0 == Catch::Approx(200.0f / 4096.0f));
+	CHECK(one.v1 == Catch::Approx(1.0f - 30.0f / 2048.0f));
+	CHECK(one.v0 == Catch::Approx(1.0f - 550.0f / 2048.0f));
+	CHECK(one.paintWidth == Catch::Approx(152.0f / 200.0f));
+	CHECK(one.paintLength == Catch::Approx(468.0f / 520.0f));
+	const RunwayMarkingSprite zero = GetRunwayMarkingSprite(RunwayMarking::Glyph, '0');
+	CHECK(0.5f * (zero.u0 + zero.u1) == Catch::Approx((296.0f + 9.0f * 288.0f) / 4096.0f));
+	const RunwayMarkingSprite c = GetRunwayMarkingSprite(RunwayMarking::Glyph, 'C');
+	CHECK(0.5f * (c.u0 + c.u1) == Catch::Approx((296.0f + 12.0f * 288.0f) / 4096.0f));
+
+	// Bars sit in the lower part of the atlas, with an 8 px border around the paint
+	const RunwayMarkingSprite bar = GetRunwayMarkingSprite(RunwayMarking::ThresholdBar);
+	CHECK(bar.u0 == Catch::Approx(2042.0f / 4096.0f));
+	CHECK(bar.u1 == Catch::Approx(2118.0f / 4096.0f));
+	CHECK(bar.v0 == Catch::Approx(1.0f - 2036.0f / 2048.0f));
+	CHECK(bar.v1 == Catch::Approx(1.0f - 588.0f / 2048.0f));
+	CHECK(bar.paintWidth == Catch::Approx(60.0f / 76.0f));
+
+	// The edge stripe spans the whole atlas height, so it can repeat along v
+	const RunwayMarkingSprite edge = GetRunwayMarkingSprite(RunwayMarking::EdgeStripe);
+	CHECK(edge.v0 == Catch::Approx(0.0f));
+	CHECK(edge.v1 == Catch::Approx(1.0f));
+	CHECK(edge.paintLength == Catch::Approx(1.0f));
+}
+
+namespace
+{
+	/* @brief A 3000 x 45 m runway running north (end 0 south of the origin), its ends "16L" style. */
+	AptRunway MakeMarkedRunway(const GeoProjection &projection, const int marking0, const int marking1)
+	{
+		AptRunway runway;
+		runway.width = 45.0f;
+		runway.surface = 2;
+		projection.ToGeo(Point2{ 0.0, 1500.0 }, runway.ends[0].latitude, runway.ends[0].longitude);
+		projection.ToGeo(Point2{ 0.0, -1500.0 }, runway.ends[1].latitude, runway.ends[1].longitude);
+		runway.ends[0].designator = "36L";
+		runway.ends[1].designator = "18R";
+		runway.ends[0].marking = marking0;
+		runway.ends[1].marking = marking1;
+		return runway;
+	}
+
+	/* @brief Center of a quad (4 vertices from index first) in local meters. */
+	Point2 QuadCenter(const OverlayMesh &mesh, const size_t first)
+	{
+		Point2 center;
+		for (size_t i = first; i < first + 4; ++i)
+		{
+			center.x += 0.25 * mesh.vertices[i].x;
+			center.z += 0.25 * mesh.vertices[i].z;
+		}
+		return center;
+	}
+}
+
+TEST_CASE("Runway markings from the apt.dat marking codes", "[overlay]")
+{
+	const GeoProjection projection(47.45, -122.3);
+
+	SECTION("Precision runway: bars, designator, touchdown zone, aiming points, centerline, edge stripes")
+	{
+		const AptRunway runway = MakeMarkedRunway(projection, 3, 3);
+		OverlayMesh mesh;
+		REQUIRE(AppendRunwayMarkings(mesh, runway, projection, 0.5f));
+
+		// Per end: 12 threshold bars (45 m wide), letter + 2 digits, 2 aiming points, 2 x (3 + 2 + 2 + 1 + 1) touchdown bars;
+		// 45 centerline dashes between the designators; 2 edge stripes
+		const size_t perEnd = 12 + 3 + 2 + 18;
+		const size_t quads = 2 * perEnd + 45 + 2;
+		CHECK(mesh.vertices.size() == 4 * quads);
+		CHECK(mesh.indices.size() == 6 * quads);
+		for (const OverlayVertex &vertex : mesh.vertices)
+			CHECK(vertex.y == Catch::Approx(0.5f));
+
+		// Every triangle counter-clockwise from above (the overlay convention)
+		for (size_t i = 0; i + 2 < mesh.indices.size(); i += 3)
+		{
+			const OverlayVertex &a = mesh.vertices[mesh.indices[i]], &b = mesh.vertices[mesh.indices[i + 1]], &c = mesh.vertices[mesh.indices[i + 2]];
+			CHECK((b.z - a.z) * (c.x - a.x) - (b.x - a.x) * (c.z - a.z) >= 0.0f);
+		}
+
+		// The first bar of end 0: left of the centerline (heading north: west) by 1.5 bar widths, starting 6.1 m in
+		const Point2 firstBar = QuadCenter(mesh, 0);
+		CHECK(firstBar.x == Catch::Approx(-2.625).margin(1e-3));
+		CHECK(firstBar.z == Catch::Approx(1500.0 - (6.1 + 0.5 * 45.72)).margin(1e-3));
+		const Point2 secondBar = QuadCenter(mesh, 4);
+		CHECK(secondBar.x == Catch::Approx(2.625).margin(1e-3));
+
+		// The letter after the bars (nearer the threshold than the number), on the centerline, upright from the approach:
+		// its texture top (v1) is the end further along the runway
+		const size_t letter = 4 * 12;
+		const Point2 letterCenter = QuadCenter(mesh, letter);
+		CHECK(letterCenter.x == Catch::Approx(0.0).margin(1e-3));
+		CHECK(letterCenter.z == Catch::Approx(1500.0 - (6.1 + 45.72 + 12.2 + 0.5 * 18.29)).margin(1e-3));
+		const RunwayMarkingSprite l = GetRunwayMarkingSprite(RunwayMarking::Glyph, 'L');
+		CHECK(mesh.vertices[letter].u == Catch::Approx(l.u0));
+		CHECK(mesh.vertices[letter].v == Catch::Approx(l.v0));
+		CHECK(mesh.vertices[letter + 2].v == Catch::Approx(l.v1));
+		CHECK(mesh.vertices[letter + 2].z < mesh.vertices[letter].z);		// Further north = further along from end 0
+		const Point2 three = QuadCenter(mesh, letter + 4);
+		const Point2 six = QuadCenter(mesh, letter + 8);
+		CHECK(three.x == Catch::Approx(-4.5).margin(1e-3));
+		CHECK(six.x == Catch::Approx(4.5).margin(1e-3));
+		CHECK(mesh.vertices[letter + 4].u == Catch::Approx(GetRunwayMarkingSprite(RunwayMarking::Glyph, '3').u0));
+
+		// End 1 reads the other way: its bars start 6.1 m from the north end
+		const Point2 otherBar = QuadCenter(mesh, 4 * perEnd);
+		CHECK(otherBar.z == Catch::Approx(-1500.0 + (6.1 + 0.5 * 45.72)).margin(1e-3));
+		CHECK(otherBar.x == Catch::Approx(2.625).margin(1e-3));		// Heading south, left is east
+	}
+
+	SECTION("Visual runway: designators and centerline only")
+	{
+		const AptRunway runway = MakeMarkedRunway(projection, 1, 1);
+		OverlayMesh mesh;
+		REQUIRE(AppendRunwayMarkings(mesh, runway, projection, 0.0f));
+		// Designators 6.1 m from the threshold, centerline after them: 3 glyphs per end, then dashes
+		const Point2 letter = QuadCenter(mesh, 0);
+		CHECK(letter.z == Catch::Approx(1500.0 - (6.1 + 0.5 * 18.29)).margin(1e-3));
+		const size_t dashes = mesh.vertices.size() / 4 - 6;
+		CHECK(dashes > 40);
+		CHECK(dashes < 50);
+	}
+
+	SECTION("Displaced threshold moves an end's markings in")
+	{
+		AptRunway runway = MakeMarkedRunway(projection, 2, 0);
+		runway.ends[0].displacedThreshold = 300.0f;
+		OverlayMesh mesh;
+		REQUIRE(AppendRunwayMarkings(mesh, runway, projection, 0.0f));
+		CHECK(QuadCenter(mesh, 0).z == Catch::Approx(1500.0 - (300.0 + 6.1 + 0.5 * 45.72)).margin(1e-3));
+	}
+
+	SECTION("No markings")
+	{
+		const AptRunway runway = MakeMarkedRunway(projection, 0, 0);
+		OverlayMesh mesh;
+		CHECK_FALSE(AppendRunwayMarkings(mesh, runway, projection, 0.0f));
+		CHECK(mesh.vertices.empty());
+	}
+}
+
+TEST_CASE("Overlay builder draws X-Plane 12 runway art: tile atlas, decals and markings", "[overlay]")
+{
+	TempDir temp;
+	const fs::path runwayPol = temp.Write("lib/rwy/runway.pol",
+		"A\n850\nDRAPED_POLYGON\n\nTEXTURE runway.png\nSCALE 22 44\nLAYER_GROUP runways 0\n"
+		"RUNWAY_TILE 4 8 256 512 ../maps/noise.png\nRUNWAY_MARKINGS 1 0.9 0.8 0.5 RWY_markings.png\n"
+		"DECAL_PARAMS 4.0 0.0 0.0 0.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 0.0 0.0 0.0 detail.png\n"
+		"NORMAL_DECAL_PARAMS 6.0 0 0 0 0 0 1 ../textures/NDHF.png 1.0\n"
+		"DECAL_LIB lib/decals/test.dcl\n");
+	const fs::path dcl = temp.Write("decals/test.dcl", "A\n1000\nDECAL\n\nDECAL_PARAMS 0.5 0 0 0 0 0 0.0 0.3 0 0 0 0 0 0 textures/lf.png\n");
+	const std::map<std::string, fs::path> library =
+	{
+		{ "lib/airport/default_runways/concrete/runway.pol", runwayPol },
+		{ "lib/decals/test.dcl", dcl }
+	};
+	const AssetResolver resolver = [&](const std::string_view path) -> fs::path
+	{
+		const auto it = library.find(std::string(path));
+		return it != library.end() ? it->second : fs::path();
+	};
+
+	const GeoProjection projection(47.45, -122.3);
+	AptAirport airport;
+	airport.id = "TEST";
+	airport.runways.push_back(MakeMarkedRunway(projection, 3, 2));
+	airport.runways.back().surface = 2;
+
+	OverlayBuilder builder(resolver, projection);
+	OverlayBuild out;
+	builder.BuildAirportSurfaces(airport, {}, 0.2f, 0.3f, OverlayBuilder::Options{}, out);
+
+	const OverlayMesh *surface = nullptr;
+	const OverlayMesh *markings = nullptr;
+	for (const OverlayMesh &mesh : out.meshes)
+	{
+		if (mesh.kind != OverlayKind::Runway)
+			continue;
+		(mesh.shading == OverlayShading::Markings ? markings : surface) = &mesh;
+	}
+	REQUIRE(surface);
+	REQUIRE(markings);
+
+	// The surface: a tile atlas whose UVs cover 22 x 44 m from end 0's center (u across, v along the runway)
+	CHECK(surface->shading == OverlayShading::Tiled);
+	CHECK(surface->tilesX == 4);
+	CHECK(surface->tilesY == 8);
+	CHECK(surface->tileMap.filename() == "noise.png");
+	CHECK(surface->tileMapWidth == 256);
+	CHECK(surface->tileMapHeight == 512);
+	CHECK(surface->metersPerU == Catch::Approx(22.0f));
+	CHECK(surface->metersPerV == Catch::Approx(44.0f));
+	CHECK(surface->tangentX == Catch::Approx(1.0f).margin(1e-4));	// Heading north: u runs east
+	for (const OverlayVertex &vertex : surface->vertices)
+	{
+		CHECK(vertex.u == Catch::Approx(vertex.x / 22.0f).margin(1e-3));
+		CHECK(vertex.v == Catch::Approx((1500.0f - vertex.z) / 44.0f).margin(1e-3));
+	}
+
+	// Decals: the .pol's own, then its DECAL_LIB library's (paths relative to the file naming them)
+	REQUIRE(surface->decals.size() == 3);
+	CHECK(surface->decals[0].texture.filename() == "detail.png");
+	CHECK_FALSE(surface->decals[0].normal);
+	CHECK(surface->decals[1].normal);
+	CHECK(surface->decals[1].scaleS == Catch::Approx(6.0f));
+	CHECK(surface->decals[1].texture.parent_path().filename() == "textures");
+	CHECK(surface->decals[2].texture.filename() == "lf.png");
+	CHECK(surface->decals[2].strength == Catch::Approx(0.3f));
+	CHECK(surface->decals[2].texture.parent_path().parent_path().filename() == "decals");
+
+	// The markings: their own blended mesh, just above the runway, painted in the polygon's color
+	CHECK(markings->placement == surface->placement);
+	CHECK(markings->blended);
+	CHECK(markings->texture.filename() == "RWY_markings.png");
+	CHECK(markings->color[1] == Catch::Approx(0.9f));
+	CHECK(markings->color[3] == Catch::Approx(0.5f));
+	REQUIRE_FALSE(markings->vertices.empty());
+	CHECK(markings->vertices.front().y > 0.2f);
+	CHECK(markings->vertices.front().y < 0.3f);
 }
 
 TEST_CASE("Overlay builder library mappings", "[overlay]")

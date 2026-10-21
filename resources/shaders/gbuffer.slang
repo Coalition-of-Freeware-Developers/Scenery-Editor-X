@@ -110,6 +110,10 @@ static float4 sample_texture(gbuffer_vertex vertex, uint texture_index, Surface 
 
         color = lerp(lerp(tex_rock, color, 1.0f - slope), tex_sand, 1.0f - sand_factor);
     }
+    else if (texture_index == material_texture_index_albedo && GetMaterial().xp_drape_mode() != xp_drape_plain)
+    {
+        color = xp_drape_sample_albedo(GetMaterial(), pass_get_material_index(), vertex.uv_misc.xy);	// tile / marking atlases
+    }
     else
     {
         color = sample_material_texture(texture_index, vertex.uv_misc.xy);
@@ -221,6 +225,7 @@ gbuffer main_frag(gbuffer_vertex vertex, bool is_front_face: SV_IsFrontFace)
         albedo_sample = sample_texture(vertex, material_texture_index_albedo, surface, position_world);
         albedo_sample.rgb = srgb_to_linear(albedo_sample.rgb);
         albedo *= albedo_sample;
+        albedo.rgb = xp_drape_apply_detail_decals(material, pass_get_material_index(), vertex.uv_misc.xy, albedo.rgb);
 
         // Cut-out texels: the depth prepass discards them, but this pass only tests depth (greater-equal, no write),
         // so a cut-out texel with nothing nearer behind it would still be written solid (a decal over pavement, a
@@ -319,6 +324,13 @@ gbuffer main_frag(gbuffer_vertex vertex, bool is_front_face: SV_IsFrontFace)
         tangent_normal.xy *= distance_fade;
         float3x3 tangent_to_world = make_tangent_to_world_matrix(vertex.normal, vertex.tangent);
         normal = normalize(mul(tangent_normal, tangent_to_world).xyz);
+    }
+
+    // draped polygons: normal decals (overlays have no normal map of their own)
+    if (!surface.has_texture_normal() && xp_drape_has_normal_decals(material))
+    {
+        const float3 tangent_normal = xp_drape_normal_decals(material, pass_get_material_index(), vertex.uv_misc.xy);
+        normal = normalize(mul(tangent_normal, make_tangent_to_world_matrix(vertex.normal, vertex.tangent)).xyz);
     }
 
     // foliage curved normals
