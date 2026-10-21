@@ -935,12 +935,16 @@ namespace SceneryEditorX
 	{
 		m_FocusViewportFrames = 2;
 
-		// Every panel comes back for a reset, including ones the user had closed.
+		// Every panel comes back for a reset, including ones the user had closed. VIEWPORT 2 isn't part of the
+		// default layout: it stays closed until Window > New Viewport, and keeps its state through a reset.
 		for (const PanelInfo &info : s_StripPanels)
 		{
+			if (std::string_view(info.id) == PANEL_VIEWPORT2.id)
+				continue;
 			if (PanelData *panel = FindPanel(info.id))
 				panel->IsOpen = true;
 		}
+		const PanelData *viewport2 = FindPanel(PANEL_VIEWPORT2.id);
 
 		const ImGuiViewport *viewport = ImGui::GetMainViewport();
 		ImGui::DockBuilderRemoveNode(dockspaceId);
@@ -975,6 +979,9 @@ namespace SceneryEditorX
 		ImGui::DockBuilderDockWindow(PANEL_XPLANE.window, bottom);
 		ImGui::DockBuilderDockWindow(PANEL_AIRPORTS.window, bottom);
 		ImGui::DockBuilderDockWindow(PANEL_VIEWPORT.window, center);
+		// Open through a reset: a tab beside VIEWPORT rather than left floating over the panels
+		if (viewport2 && viewport2->IsOpen)
+			ImGui::DockBuilderDockWindow(PANEL_VIEWPORT2.window, center);
 		ImGui::DockBuilderFinish(dockspaceId);
 	}
 
