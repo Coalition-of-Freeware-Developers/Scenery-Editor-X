@@ -37,7 +37,9 @@
 #include <Editor/core/facade_tool.h>
 #include <Editor/core/node_tool.h>
 #include <Editor/core/transform_tool.h>
+#include <Editor/core/viewport_menus.h>
 #include <Editor/core/viewport_view.h>
+#include <Editor/settings/editor_preferences.h>
 #include <SceneryEditorX/scene/scene.h>
 #include <SceneryEditorX/renderer/renderer.h>
 #include <SceneryEditorX/renderer/font/font_awesome.h>
@@ -88,42 +90,17 @@ namespace SceneryEditorX
 
 	bool SceneViewport::PickGround(const float u, const float v, const float aspect, float out[3])
 	{
-		// Same camera the renderer draws through: the primary camera entity (pitch in x, yaw in y, as Camera::ProcessInput).
-		Scene *scene = Scene::GetActive();
-		if (!scene || aspect <= 0.0f)
+		// Same camera the renderer draws through (perspective or orthographic): a unit-high image of the given aspect
+		if (aspect <= 0.0f)
 			return false;
-
-		auto view = scene->GetRegistry().view<TransformComponent, CameraComponent>();
-		for (const entt::entity handle : view)
-		{
-			const CameraComponent &camera = view.get<CameraComponent>(handle);
-			if (!camera.isPrimary)
-				continue;
-
-			const TransformComponent &transform = view.get<TransformComponent>(handle);
-			const Vec3 euler = transform.GetRotationEuler();
-			const float cosPitch = std::cos(euler.x);
-			const Vec3 forward(cosPitch * std::sin(euler.y), std::sin(euler.x), cosPitch * std::cos(euler.y));
-			const Vec3 right = xMath::Normalize(xMath::Cross(forward, Vec3(0.0f, 1.0f, 0.0f)));
-			const Vec3 up = xMath::Cross(right, forward);
-
-			const float tanX = std::tan(camera.horizontalFov_Rad * 0.5f);
-			const float tanY = tanX / aspect;
-			const float ndcX = u * 2.0f - 1.0f;
-			const float ndcY = 1.0f - v * 2.0f;
-			const Vec3 direction = xMath::Normalize(forward + right * (ndcX * tanX) + up * (ndcY * tanY));
-
-			const Vec3 &origin = transform.translation;
-			if (direction.y >= -1e-4f)
-				return false; // looking at or above the horizon
-
-			const float t = -origin.y / direction.y;
-			out[0] = origin.x + direction.x * t;
-			out[1] = 0.0f;
-			out[2] = origin.z + direction.z * t;
-			return true;
-		}
-		return false;
+		const ViewportView view = ViewportView::Build(ImVec2(0.0f, 0.0f), ImVec2(aspect, 1.0f), aspect);
+		Point3 hit;
+		if (!view.valid || !view.RayToPlane(ImVec2(u * aspect, v), 0.0, hit))
+			return false;	// Looking at or above the horizon
+		out[0] = static_cast<float>(hit.x);
+		out[1] = 0.0f;
+		out[2] = static_cast<float>(hit.z);
+		return true;
 	}
 
 	void SceneViewport::OnUIRender(bool &isOpen)
@@ -201,7 +178,15 @@ namespace SceneryEditorX
 				const ViewportView view = ViewportView::Build(imageMin, imageSize, renderWidth / renderHeight);
 				const bool imageHovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) && ImGui::IsMouseHoveringRect(imageMin, imageMax);
 				const bool splitHasMouse = DrawReferenceSplit(imageMin, imageSize);
-				const bool toolHasMouse = EditorTools::BeginViewport(m_Context, view, imageHovered && !splitHasMouse) || splitHasMouse;
+				const bool toolHasMouse = EditorTools::BeginViewport(m_Context, view, imageHovered && !splitHasMouse && !EditorCamera::IsNavigating()) || splitHasMouse;
+
+				// Camera navigation with the user's keymap: drags start over the image unless a tool, gizmo or menu has the mouse
+				ViewportCamera::Input navigation;
+				navigation.hovered = imageHovered && !splitHasMouse;
+				navigation.blocked = toolHasMouse || EditorTools::IsBusy() || ViewportMenus::IsOpen();
+				navigation.imageSize = imageSize;
+				navigation.aspect = renderWidth / renderHeight;
+				EditorCamera::Update(navigation);
 
 				bool canvasHovered = false;
 				ImGui::SetCursorScreenPos(imageMin);
@@ -371,18 +356,16 @@ namespace SceneryEditorX
 
 		ImGui::SameLine(0.0f, 10.0f * dpi);
 		ImGui::BeginDisabled(!hasCamera);
-		if (EditorUI::StripButton(SEDX_ICON_REFRESH, "Orbit navigation\nAlt+LMB orbit, MMB pan, RMB look, wheel zoom", EditorCamera::IsMode(ORBIT), buttonSize))
+		const std::string orbitTip = std::string("Orbit navigation (") + GetNavigationKeymapName(EditorPreferences::Get().keymap) + " keymap)\n" +
+									 ViewportCamera::GetKeymapSummary(EditorPreferences::Get().keymap) + "\nRight mouse looks around. Edit > Preferences changes the keymap";
+		if (EditorUI::StripButton(SEDX_ICON_REFRESH, orbitTip.c_str(), EditorCamera::IsMode(ORBIT), buttonSize))
 			EditorCamera::SetMode(ORBIT);
 		ImGui::SameLine(0.0f, 2.0f * dpi);
-		if (EditorUI::StripButton(SEDX_ICON_VIDEO_CAMERA, "Fly navigation\nRMB look, hold RMB + WASD move, Q/E down/up", EditorCamera::IsMode(FLY), buttonSize))
+		if (EditorUI::StripButton(SEDX_ICON_VIDEO_CAMERA, "Fly navigation\nRMB look, hold RMB + WASD move, Q/E down/up; the wheel moves the camera", EditorCamera::IsMode(FLY), buttonSize))
 			EditorCamera::SetMode(FLY);
 
 		ImGui::SameLine(0.0f, 10.0f * dpi);
-		if (EditorUI::StripButton(SEDX_ICON_CUBE, "Perspective projection", EditorCamera::IsProjection(CameraType::Perspective), buttonSize))
-			EditorCamera::SetProjection(CameraType::Perspective);
-		ImGui::SameLine(0.0f, 2.0f * dpi);
-		if (EditorUI::StripButton(SEDX_ICON_TH_LARGE, "Orthographic projection", EditorCamera::IsProjection(CameraType::Orthographic), buttonSize))
-			EditorCamera::SetProjection(CameraType::Orthographic);
+		DrawViewMenu(buttonSize);
 
 		// Right: the reference image, reset view.
 		ImGui::SameLine(rightEdge - buttonSize * 2.0f - 2.0f * dpi);
@@ -405,7 +388,7 @@ namespace SceneryEditorX
 		char text[128];
 		if (camera)
 		{
-			snprintf(text, sizeof(text), "%s  |  %s  |  %u x %u", EditorCamera::GetModeName(),
+			snprintf(text, sizeof(text), "%s  |  %s %s  |  %u x %u", EditorCamera::GetModeName(), ViewportCamera::GetPresetName(EditorCamera::GetViewPreset()),
 				EditorCamera::IsProjection(CameraType::Orthographic) ? "Orthographic" : "Perspective", m_AppliedWidth, m_AppliedHeight);
 		}
 		else
@@ -433,6 +416,53 @@ namespace SceneryEditorX
 			drawList->AddRectFilled(min, max, ToU32(ImVec4(Palette::Separator.x, Palette::Separator.y, Palette::Separator.z, 0.75f)), 2.0f * dpi);
 			drawList->AddText(ImVec2(min.x + padding.x, min.y + padding.y), ToU32(Palette::TextLabel), text);
 		}
+	}
+
+	void SceneViewport::DrawViewMenu(const float buttonSize)
+	{
+		// Projection toggle (numpad 5), then the view presets in a drop-down
+		const bool orthographic = EditorCamera::IsProjection(CameraType::Orthographic);
+		if (EditorUI::StripButton(orthographic ? SEDX_ICON_TH_LARGE : SEDX_ICON_CUBE,
+				orthographic ? "Orthographic projection (Numpad 5)\nClick for perspective" : "Perspective projection (Numpad 5)\nClick for orthographic", orthographic, buttonSize, EditorUI::StripStyle::Tinted))
+			EditorCamera::ToggleProjection();
+
+		using ViewportCamera::ViewPreset;
+		const ViewPreset current = EditorCamera::GetViewPreset();
+		ImGui::SameLine(0.0f, 2.0f * ImGui::GetStyle().FontScaleDpi);
+		if (EditorUI::StripButton(SEDX_ICON_EYE, (std::string("View: ") + ViewportCamera::GetPresetName(current) + "\nTop, front, side views and framing").c_str(), current != ViewPreset::Free, buttonSize))
+			ImGui::OpenPopup("##ViewMenu");
+
+		if (!ImGui::BeginPopup("##ViewMenu"))
+			return;
+		ImGui::TextUnformatted("VIEW");
+		ImGui::Separator();
+		struct Item
+		{
+			ViewPreset preset;
+			const char *shortcut;
+		};
+		static constexpr Item ITEMS[] = {
+			{ ViewPreset::Top, "Numpad 7" }, { ViewPreset::Bottom, "Ctrl+Numpad 7" }, { ViewPreset::Front, "Numpad 1" },
+			{ ViewPreset::Back, "Ctrl+Numpad 1" }, { ViewPreset::Right, "Numpad 3" }, { ViewPreset::Left, "Ctrl+Numpad 3" },
+		};
+		for (const Item &item : ITEMS)
+		{
+			if (ImGui::MenuItem(ViewportCamera::GetPresetName(item.preset), item.shortcut, current == item.preset))
+				EditorCamera::SetViewPreset(item.preset);
+		}
+		if (ImGui::MenuItem("Opposite Side", "Numpad 9"))
+			EditorCamera::ViewFromOtherSide();
+		ImGui::Separator();
+		if (ImGui::MenuItem("Perspective", "Numpad 5", !orthographic))
+			EditorCamera::SetProjection(CameraType::Perspective);
+		if (ImGui::MenuItem("Orthographic", "Numpad 5", orthographic))
+			EditorCamera::SetProjection(CameraType::Orthographic);
+		ImGui::Separator();
+		if (ImGui::MenuItem("Frame Selection", "Numpad ."))
+			EditorTools::FrameSelection();
+		if (ImGui::MenuItem("Frame All", "Home"))
+			EditorCamera::FrameAll();
+		ImGui::EndPopup();
 	}
 
 	bool SceneViewport::LoadReference(const std::filesystem::path &png)

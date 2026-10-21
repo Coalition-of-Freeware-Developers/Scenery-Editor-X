@@ -984,6 +984,53 @@ TEST_CASE("Sun shadows: cascades cover the view and stay put while the camera mo
 	}
 }
 
+TEST_CASE("Sun shadows: orthographic views split evenly around the pivot", "[environment][csm]")
+{
+	using namespace SceneryEditorX;
+	const CsmSettings settings;	// 3 cascades, 250 m
+	const CsmVec3 towardSun = { 0.5 * std::cos(40.0 * DEG), std::sin(40.0 * DEG), 0.866 * std::cos(40.0 * DEG) };
+
+	// A top view from 600 m up (beyond the perspective far limit): 300 x 168.75 m of ground around the pivot
+	CsmCamera camera;
+	camera.position = { 50.0, 600.0, -20.0 };
+	camera.forward = { 0.0, -1.0, 0.0 };
+	camera.orthographic = true;
+	camera.orthoHalfWidth = 150.0;
+	camera.orthoHalfHeight = 84.375;
+	camera.focusDepth = 600.0;
+
+	CsmSetup setup;
+	REQUIRE(FitCsm(settings, camera, towardSun, setup));
+	REQUIRE(setup.count == 3);
+	CHECK(setup.splits[0] == Approx(475.0));
+	CHECK(setup.splits[1] == Approx(475.0 + 250.0 / 3.0));
+	CHECK(setup.splits[3] == Approx(725.0));
+	CHECK(setup.fadeEnd == Approx(725.0));
+	CHECK(setup.fadeStart == Approx(475.0 + 0.7 * 250.0));
+
+	// Every corner of each slice's box lies inside its cascade (the ground at the pivot included)
+	for (uint32_t i = 0; i < setup.count; ++i)
+	{
+		const CsmCascade &cascade = setup.cascades[i];
+		for (const double depth : { cascade.depthNear, cascade.depthFar })
+		{
+			for (const double sx : { -1.0, 1.0 })
+			{
+				for (const double sz : { -1.0, 1.0 })
+				{
+					// Looking straight down, right is east (+X) and up the screen is north (-Z)
+					const CsmVec3 corner{ camera.position[0] + sx * camera.orthoHalfWidth, camera.position[1] - depth, camera.position[2] + sz * camera.orthoHalfHeight };
+					const CsmVec3 clip = cascade.Project(corner);
+					CHECK(std::abs(clip[0]) <= 1.0);
+					CHECK(std::abs(clip[1]) <= 1.0);
+					CHECK(clip[2] >= 0.0);
+					CHECK(clip[2] <= 1.0);
+				}
+			}
+		}
+	}
+}
+
 TEST_CASE("Sun shadows: which boxes cast into a cascade", "[environment][csm]")
 {
 	using namespace SceneryEditorX;

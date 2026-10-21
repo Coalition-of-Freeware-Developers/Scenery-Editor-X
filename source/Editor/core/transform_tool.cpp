@@ -778,7 +778,7 @@ namespace SceneryEditorX::TransformTool
 			return false;
 		}
 
-		ImGuizmo::SetOrthographic(false);
+		ImGuizmo::SetOrthographic(view.orthographic);
 		ImGuizmo::SetDrawlist(ImGui::GetWindowDrawList());
 		ImGuizmo::SetRect(view.imageMin.x, view.imageMin.y, view.imageSize.x, view.imageSize.y);
 		ImGuizmo::Enable(allowInput || s.dragging);

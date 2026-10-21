@@ -29,6 +29,7 @@
  * -------------------------------------------------------
  */
 #include "facade_authoring.h"
+#include "asset_thumbnails.h"
 #include "editor_commands.h"
 #include "editor_project.h"
 #include "editor_tools.h"
@@ -567,8 +568,9 @@ namespace SceneryEditorX::FacadeAuthoring
 			return Fail(error, "Could not save " + ToUtf8(SpecPath()) + ": " + writeError);
 		s.dirty = false;
 		EDITOR_INFO_TAG(LOG_TAG, "Saved {}", ToUtf8(path));
-		// Every item using it is drawn again from the new file
+		// Every item using it is drawn again from the new file, and so is its thumbnail
 		EditorProjects::ReloadArt();
+		AssetThumbnails::Invalidate(path);
 		return true;
 	}
 

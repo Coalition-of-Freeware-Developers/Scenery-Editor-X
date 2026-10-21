@@ -440,10 +440,22 @@ namespace SceneryEditorX
 			static_cast<uint32_t>(MeshFlags::PostProcessGenerateLods);
 	}
 
+	Mesh::~Mesh()
+	{
+		// Its space in the global geometry buffer becomes reusable (after the frames in flight)
+		GeometryBuffer::FreeVertices(m_global_vertex_offset, m_global_vertex_count);
+		GeometryBuffer::FreeIndices(m_global_index_offset, m_global_index_count);
+	}
+
 	void Mesh::CreateGpuBuffers()
 	{
+		// Built again: what it held before is given back first
+		GeometryBuffer::FreeVertices(m_global_vertex_offset, m_global_vertex_count);
+		GeometryBuffer::FreeIndices(m_global_index_offset, m_global_index_count);
 		m_global_vertex_offset = 0;
 		m_global_index_offset  = 0;
+		m_global_vertex_count  = 0;
+		m_global_index_count   = 0;
 
 		// normalize scale
 		if (m_Flags & static_cast<uint32_t>(MeshFlags::PostProcessNormalizeScale))
@@ -466,6 +478,8 @@ namespace SceneryEditorX
 		{
 			m_global_vertex_offset = GeometryBuffer::AppendVertices(m_vertices.data(), static_cast<uint32_t>(m_vertices.size()));
 			m_global_index_offset  = GeometryBuffer::AppendIndices(m_indices.data(), static_cast<uint32_t>(m_indices.size()));
+			m_global_vertex_count  = static_cast<uint32_t>(m_vertices.size());
+			m_global_index_count   = static_cast<uint32_t>(m_indices.size());
 		}
 	}
 

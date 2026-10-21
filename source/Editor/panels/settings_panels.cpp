@@ -149,24 +149,48 @@ namespace SceneryEditorX
 					if (ImGui::Combo("##Projection", &projection, "Perspective\0Orthographic\0"))
 						EditorCamera::SetProjection(projection == 1 ? CameraType::Orthographic : CameraType::Perspective);
 
-					if (camera->mode == ORBIT)
+					ViewportCamera::Rig rig;
+					if (EditorCamera::GetRig(rig))
 					{
+						EditorUI::PropertyLabel("View");
+						ImGui::TextUnformatted(ViewportCamera::GetPresetName(rig.preset));
+
 						EditorUI::PropertyLabel("Orbit center");
-						float center[3] = { camera->center.x, camera->center.y, camera->center.z };
+						float center[3] = { static_cast<float>(rig.pivot.x), static_cast<float>(rig.pivot.y), static_cast<float>(rig.pivot.z) };
 						if (ImGui::DragFloat3("##Center", center, 0.05f))
-							camera->center = Vec3(center[0], center[1], center[2]);
+						{
+							rig.pivot = { center[0], center[1], center[2] };
+							EditorCamera::SetRig(rig);
+						}
 
 						EditorUI::PropertyLabel("Distance");
-						float distance = camera->GetOrbitDistance();
-						if (ImGui::DragFloat("##Distance", &distance, 0.05f, 0.1f, 100000.0f, "%.2f"))
-							camera->SetOrbitDistance(distance);
-					}
-					else
-					{
+						float distance = static_cast<float>(rig.distance);
+						if (ImGui::DragFloat("##Distance", &distance, 0.05f, 0.5f, 5000.0f, "%.2f m"))
+						{
+							rig.distance = std::max(0.5f, distance);
+							EditorCamera::SetRig(rig);
+						}
+						EditorUI::ItemTooltip("Orthographic views show twice this distance times tan(vertical fov / 2) from bottom to top");
+
 						EditorUI::PropertyLabel("Position");
-						float eye[3] = { camera->eye.x, camera->eye.y, camera->eye.z };
-						if (ImGui::DragFloat3("##Eye", eye, 0.05f))
-							camera->eye = Vec3(eye[0], eye[1], eye[2]);
+						const Point3 eye = rig.Eye();
+						float position[3] = { static_cast<float>(eye.x), static_cast<float>(eye.y), static_cast<float>(eye.z) };
+						if (ImGui::DragFloat3("##Eye", position, 0.05f))
+						{
+							rig.KeepEye({ position[0], position[1], position[2] });
+							EditorCamera::SetRig(rig);
+						}
+
+						EditorUI::PropertyLabel("Heading / pitch");
+						float angles[2] = { static_cast<float>(std::fmod(std::fmod(180.0 - rig.yaw * 57.29577951308232, 360.0) + 360.0, 360.0)), static_cast<float>(rig.pitch * 57.29577951308232) };
+						if (ImGui::DragFloat2("##Angles", angles, 0.25f, 0.0f, 0.0f, "%.1f deg"))
+						{
+							// Heading: compass degrees the camera looks toward (0 north, 90 east)
+							rig.yaw = (180.0 - angles[0]) / 57.29577951308232;
+							rig.pitch = std::clamp(static_cast<double>(angles[1]), -90.0, 90.0) / 57.29577951308232;
+							rig.preset = ViewportCamera::ViewPreset::Free;
+							EditorCamera::SetRig(rig);
+						}
 					}
 
 					EditorUI::PropertyLabel("Reset");
@@ -178,10 +202,18 @@ namespace SceneryEditorX
 
 				if (EditorUI::SectionHeader("LENS") && EditorUI::BeginPropertyGrid("##CameraLens"))
 				{
-					EditorUI::PropertyLabel("Field of view");
-					float fov = camera->GetFovHorizontalDeg();
-					if (ImGui::SliderFloat("##Fov", &fov, 10.0f, 150.0f, "%.0f deg"))
-						camera->SetFovHorizontalDeg(fov);
+					// The renderer reads the field of view from the camera entity (Camera's own copy is overwritten every frame)
+					ViewportCamera::Rig rig;
+					if (EditorCamera::GetRig(rig))
+					{
+						EditorUI::PropertyLabel("Field of view");
+						float fov = static_cast<float>(rig.fovHorizontal * 57.29577951308232);
+						if (ImGui::SliderFloat("##Fov", &fov, 10.0f, 150.0f, "%.0f deg"))
+						{
+							rig.fovHorizontal = fov / 57.29577951308232;
+							EditorCamera::SetRig(rig);
+						}
+					}
 
 					ValueText("Near / far", "%.2f / %.0f", camera->GetNearPlane(), camera->GetFarPlane());
 					EditorUI::EndPropertyGrid();

@@ -31,6 +31,7 @@
 #include "project_dialogs.h"
 #include "editor_project.h"
 #include "editor_theme.h"
+#include "editor_tools.h"
 #include "editor_ui.h"
 #include <algorithm>
 #include <cmath>
@@ -45,6 +46,7 @@
 #include <SceneryEditorX/renderer/font/font_awesome.h>
 #include <SceneryEditorX/renderer/ui/source/imgui/misc/cpp/imgui_stdlib.h>
 #include <SceneryEditorX/xplane/xp_airport_document.h>
+#include <SceneryEditorX/xplane/xp_airport_scene.h>
 #include <SceneryEditorX/xplane/xp_library_manager.h>
 
 // -------------------------------------------------------
@@ -57,7 +59,10 @@ namespace SceneryEditorX::ProjectDialogs
 	namespace
 	{
 		constexpr const char *LOG_TAG = "Project";
-		constexpr const char *NEW_MODAL = "New Airport Project";
+		constexpr const char *NEW_MODAL = "New Project";
+		constexpr int FORM_SCENERY = 0;		// NewForm::kind
+		constexpr int FORM_AIRPORT = 1;
+		constexpr int FORM_LIBRARY = 2;
 		constexpr const char *EXPORT_MODAL = "Export Scenery Pack";
 		constexpr const char *LOCATION_FILE = "user:/new_project_location.txt";	// The folder the last project was created in
 		constexpr double METERS_PER_FOOT = 0.3048;
@@ -65,9 +70,13 @@ namespace SceneryEditorX::ProjectDialogs
 		constexpr XPlane::AirportType AIRPORT_TYPES[] = { XPlane::AirportType::Land, XPlane::AirportType::Seaplane, XPlane::AirportType::Heliport };
 		constexpr const char *AIRPORT_TYPE_NAMES[] = { "Land airport", "Seaplane base", "Heliport" };
 
-		/* @brief The New Airport Project form, as typed. */
+		/* @brief The New Project form, as typed. */
 		struct NewForm
 		{
+			int kind = FORM_SCENERY;		// FORM_SCENERY, FORM_AIRPORT or FORM_LIBRARY
+			bool addAirport = false;		// Only the airport fields: a new airport in the open project
+			bool hasReference = true;		// Scenery and libraries: the reference point is optional
+			std::string description;
 			std::string icao;
 			std::string name;
 			std::string country;
@@ -291,6 +300,103 @@ namespace SceneryEditorX::ProjectDialogs
 			return spec;
 		}
 
+		/* @brief A scenery or library project as the form describes it, and every problem with it (coordinates first). */
+		NewSceneryProject ToScenerySpec(const NewForm &form, std::vector<FieldProblem> &problems)
+		{
+			NewSceneryProject spec;
+			spec.kind = form.kind == FORM_LIBRARY ? ProjectKind::Library : ProjectKind::Scenery;
+			spec.name = form.projectName.empty() ? std::string(form.kind == FORM_LIBRARY ? "New Library" : "New Scenery") : form.projectName;	// The placeholder
+			spec.location = VFS::FromUtf8(form.location);
+			spec.author = form.author;
+			spec.description = form.description;
+			spec.hasReferencePoint = form.hasReference;
+			spec.elevationMeters = form.meters ? form.elevation : form.elevation * METERS_PER_FOOT;
+
+			problems.clear();
+			std::string reason;
+			if (spec.hasReferencePoint)
+			{
+				if (!ParseCoordinate(form.latitude, true, spec.latitude, &reason))
+					problems.push_back({ "latitude", reason });
+				if (!ParseCoordinate(form.longitude, false, spec.longitude, &reason))
+					problems.push_back({ "longitude", reason });
+			}
+			const bool coordinatesBad = !problems.empty();
+			for (FieldProblem &problem : ValidateNewSceneryProject(spec))
+			{
+				const bool coordinate = problem.field == "latitude" || problem.field == "longitude";
+				if (!(coordinate && coordinatesBad))
+					problems.push_back(std::move(problem));
+			}
+			return spec;
+		}
+
+		/* @brief Where the camera looks in the open airport or project, as a reference point for a new project there. */
+		bool GetViewLocation(double &latitude, double &longitude)
+		{
+			float ground[3] = {};
+			if (!EditorTools::GetViewCenterOnGround(ground))
+				return false;
+			const XPlane::Point2 local{ ground[0], ground[2] };
+			if (EditorProjects::GetDocument())
+				EditorProjects::GetProjection().ToGeo(local, latitude, longitude);
+			else if (XPlane::SceneAirports::IsLoaded())
+				XPlane::SceneAirports::GetProjection().ToGeo(local, latitude, longitude);
+			else
+				return false;
+			return true;
+		}
+
+		/* @brief The reference point fields (latitude, longitude, elevation in feet or meters) with their problems. */
+		void DrawReferencePoint(NewForm &form, const std::vector<FieldProblem> &problems, const float labelWidth, const bool airport)
+		{
+			const float dpi = ImGui::GetStyle().FontScaleDpi;
+			const auto touched = [&form](const std::string &text) { return form.attempted || !text.empty(); };
+			if (!EditorUI::BeginPropertyGrid("##newLocation", labelWidth))
+				return;
+			EditorUI::PropertyLabel("Latitude");
+			ImGui::SetNextItemWidth(-FLT_MIN);
+			ImGui::InputTextWithHint("##latitude", "47.44898333", &form.latitude, ImGuiInputTextFlags_CallbackCharFilter, CoordinateCharFilter);
+			DrawProblem(problems, "latitude", touched(form.latitude));
+
+			EditorUI::PropertyLabel("Longitude");
+			ImGui::SetNextItemWidth(-FLT_MIN);
+			ImGui::InputTextWithHint("##longitude", "-122.30916667", &form.longitude, ImGuiInputTextFlags_CallbackCharFilter, CoordinateCharFilter);
+			DrawProblem(problems, "longitude", touched(form.longitude));
+
+			EditorUI::PropertyLabel("Elevation (MSL)");
+			ImGui::SetNextItemWidth(160.0f * dpi);
+			ImGui::InputDouble("##elevation", &form.elevation, form.meters ? 1.0 : 10.0, form.meters ? 10.0 : 100.0, "%.0f");
+			ImGui::SameLine();
+			if (ImGui::RadioButton("ft", !form.meters) && form.meters)
+			{
+				form.meters = false;
+				form.elevation = std::round(form.elevation / METERS_PER_FOOT);
+			}
+			ImGui::SameLine();
+			if (ImGui::RadioButton("m", form.meters) && !form.meters)
+			{
+				form.meters = true;
+				form.elevation = std::round(form.elevation * METERS_PER_FOOT);
+			}
+			DrawProblem(problems, "elevation", true);
+
+			// The place the camera looks at, when an airport or project is open
+			double latitude = 0.0, longitude = 0.0;
+			if (GetViewLocation(latitude, longitude))
+			{
+				EditorUI::PropertyLabel("");
+				if (ImGui::SmallButton(EditorUI::IconLabel(SEDX_ICON_CROSSHAIRS, "Where the viewport looks").c_str()))
+				{
+					form.latitude = FormatCoordinate(latitude);
+					form.longitude = FormatCoordinate(longitude);
+				}
+				EditorUI::ItemTooltip(airport ? "The ground in the middle of the viewport (the open airport or project)"
+											  : "The ground in the middle of the viewport: the new scenery lines up with what is open now");
+			}
+			EditorUI::EndPropertyGrid();
+		}
+
 		void DrawNewProject(EditorContext *context)
 		{
 			State &s = S();
@@ -302,161 +408,227 @@ namespace SceneryEditorX::ProjectDialogs
 			if (!ImGui::BeginPopupModal(NEW_MODAL, nullptr, ImGuiWindowFlags_AlwaysAutoResize))
 				return;
 
-			std::vector<FieldProblem> problems;
-			NewAirportProject spec = ToSpec(form, problems);
-			const auto touched = [&form](const std::string &text) { return form.attempted || !text.empty(); };
 			const float labelWidth = 170.0f;
+			const auto touched = [&form](const std::string &text) { return form.attempted || !text.empty(); };
 
-			ImGui::SeparatorText("Airport");
-			if (EditorUI::BeginPropertyGrid("##newAirport", labelWidth))
+			// What kind of project (adding an airport to the open project skips this and the project fields)
+			if (form.addAirport)
 			{
-				EditorUI::PropertyLabel("ICAO code");
-				ImGui::SetNextItemWidth(-FLT_MIN);
-				if (ImGui::InputTextWithHint("##icao", "KSEA", &form.icao, ImGuiInputTextFlags_CharsUppercase | ImGuiInputTextFlags_CharsNoBlank) && form.icao.size() > 7)
-					form.icao.resize(7);
-				EditorUI::ItemTooltip("The airport's identifier in apt.dat: its ICAO code, or 3 to 7 letters and digits when it has none");
-				DrawProblem(problems, "icao", touched(form.icao));
-
-				EditorUI::PropertyLabel("Airport name");
-				ImGui::SetNextItemWidth(-FLT_MIN);
-				ImGui::InputTextWithHint("##name", "Seattle Tacoma Intl", &form.name);
-				DrawProblem(problems, "name", touched(form.name));
-
-				EditorUI::PropertyLabel("Type");
-				ImGui::SetNextItemWidth(-FLT_MIN);
-				ImGui::Combo("##type", &form.type, AIRPORT_TYPE_NAMES, IM_ARRAYSIZE(AIRPORT_TYPE_NAMES));
-
-				EditorUI::PropertyLabel("Starter layout");
-				ImGui::Checkbox(form.type == 2 ? "A helipad, windsock and beacon##starter" : (form.type == 1 ? "A water runway, windsock and beacon##starter" : "A runway, windsock and beacon##starter"), &form.starterLayout);
-				EditorUI::ItemTooltip("Something to start shaping: X-Plane needs at least one runway, water runway or helipad");
-				EditorUI::EndPropertyGrid();
+				const ProjectDocument *document = EditorProjects::GetDocument();
+				ImGui::TextColored(Color(EditorTheme::Palette::TextLabel), "A new airport in %s", document ? document->GetProject().info.name.c_str() : "the project");
+			}
+			else
+			{
+				struct KindInfo
+				{
+					int kind;
+					const char *icon;
+					const char *name;
+					const char *description;
+				};
+				static constexpr KindInfo KINDS[] = {
+					{ FORM_SCENERY, SEDX_ICON_MAP_O, "Scenery", "Objects, polygons, lines, facades, forests and roads, anywhere in the world. Airports can be added to it later." },
+					{ FORM_AIRPORT, SEDX_ICON_PLANE, "Airport", "An airport with its ICAO code and reference point, ready to lay out (runways, taxiways, objects around it)." },
+					{ FORM_LIBRARY, SEDX_ICON_BOOK, "Library", "A library of your own objects, facades and textures that other scenery packs use through library.txt." },
+				};
+				ImGui::SeparatorText("Project");
+				for (const KindInfo &kind : KINDS)
+				{
+					if (kind.kind != FORM_SCENERY)
+						ImGui::SameLine(0.0f, 16.0f * dpi);
+					if (ImGui::RadioButton(EditorUI::IconLabel(kind.icon, kind.name).c_str(), form.kind == kind.kind))
+					{
+						form.kind = kind.kind;
+						form.attempted = false;
+						form.error.clear();
+						if (kind.kind == FORM_LIBRARY)
+							form.hasReference = false;	// A library isn't anywhere in particular
+					}
+				}
+				ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + 540.0f * dpi);
+				for (const KindInfo &kind : KINDS)
+					if (kind.kind == form.kind)
+						ImGui::TextColored(Color(EditorTheme::Palette::TextLabel), "%s", kind.description);
+				ImGui::PopTextWrapPos();
 			}
 
-			ImGui::SeparatorText("Reference point");
-			if (EditorUI::BeginPropertyGrid("##newLocation", labelWidth))
+			const bool airport = form.addAirport || form.kind == FORM_AIRPORT;
+			std::vector<FieldProblem> problems;
+			NewAirportProject airportSpec;
+			NewSceneryProject scenerySpec;
+			if (airport)
 			{
-				EditorUI::PropertyLabel("Latitude");
-				ImGui::SetNextItemWidth(-FLT_MIN);
-				ImGui::InputTextWithHint("##latitude", "47.44898333", &form.latitude, ImGuiInputTextFlags_CallbackCharFilter, CoordinateCharFilter);
-				DrawProblem(problems, "latitude", touched(form.latitude));
-
-				EditorUI::PropertyLabel("Longitude");
-				ImGui::SetNextItemWidth(-FLT_MIN);
-				ImGui::InputTextWithHint("##longitude", "-122.30916667", &form.longitude, ImGuiInputTextFlags_CallbackCharFilter, CoordinateCharFilter);
-				DrawProblem(problems, "longitude", touched(form.longitude));
-
-				EditorUI::PropertyLabel("Elevation (MSL)");
-				ImGui::SetNextItemWidth(160.0f * dpi);
-				ImGui::InputDouble("##elevation", &form.elevation, form.meters ? 1.0 : 10.0, form.meters ? 10.0 : 100.0, "%.0f");
-				ImGui::SameLine();
-				if (ImGui::RadioButton("ft", !form.meters) && form.meters)
-				{
-					form.meters = false;
-					form.elevation = std::round(form.elevation / METERS_PER_FOOT);
-				}
-				ImGui::SameLine();
-				if (ImGui::RadioButton("m", form.meters) && !form.meters)
-				{
-					form.meters = true;
-					form.elevation = std::round(form.elevation * METERS_PER_FOOT);
-				}
-				DrawProblem(problems, "elevation", true);
-				EditorUI::EndPropertyGrid();
+				airportSpec = ToSpec(form, problems);
+				if (form.addAirport)	// The project exists: its name and folder aren't asked for
+					std::erase_if(problems, [](const FieldProblem &problem) { return problem.field == "projectName" || problem.field == "location"; });
 			}
-			ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + 540.0f * dpi);
-			ImGui::TextColored(Color(EditorTheme::Palette::TextLabel), "Decimal degrees with up to 8 places. North and east are positive, south and west negative: 50 degrees 30 minutes south is -50.50000000. Headings in the project are true, not magnetic.");
-			ImGui::PopTextWrapPos();
+			else
+				scenerySpec = ToScenerySpec(form, problems);
 
-			ImGui::SeparatorText("Region");
-			if (EditorUI::BeginPropertyGrid("##newRegion", labelWidth))
+			if (airport)
 			{
-				EditorUI::PropertyLabel("Country");
-				ImGui::SetNextItemWidth(-FLT_MIN);
-				ImGui::InputTextWithHint("##country", "USA United States", &form.country);
-				DrawProblem(problems, "country", touched(form.country));
+				ImGui::SeparatorText("Airport");
+				if (EditorUI::BeginPropertyGrid("##newAirport", labelWidth))
+				{
+					EditorUI::PropertyLabel("ICAO code");
+					ImGui::SetNextItemWidth(-FLT_MIN);
+					if (ImGui::InputTextWithHint("##icao", "KSEA", &form.icao, ImGuiInputTextFlags_CharsUppercase | ImGuiInputTextFlags_CharsNoBlank) && form.icao.size() > 7)
+						form.icao.resize(7);
+					EditorUI::ItemTooltip("The airport's identifier in apt.dat: its ICAO code, or 3 to 7 letters and digits when it has none");
+					DrawProblem(problems, "icao", touched(form.icao));
 
-				EditorUI::PropertyLabel("State / county");
-				ImGui::SetNextItemWidth(-FLT_MIN);
-				ImGui::InputTextWithHint("##state", "Optional: state, province or county", &form.state);
-				DrawProblem(problems, "state", true);
+					EditorUI::PropertyLabel("Airport name");
+					ImGui::SetNextItemWidth(-FLT_MIN);
+					ImGui::InputTextWithHint("##name", "Seattle Tacoma Intl", &form.name);
+					DrawProblem(problems, "name", touched(form.name));
 
-				EditorUI::PropertyLabel("City");
-				ImGui::SetNextItemWidth(-FLT_MIN);
-				ImGui::InputTextWithHint("##city", "Optional", &form.city);
-				DrawProblem(problems, "city", true);
-				EditorUI::EndPropertyGrid();
+					EditorUI::PropertyLabel("Type");
+					ImGui::SetNextItemWidth(-FLT_MIN);
+					ImGui::Combo("##type", &form.type, AIRPORT_TYPE_NAMES, IM_ARRAYSIZE(AIRPORT_TYPE_NAMES));
+
+					EditorUI::PropertyLabel("Starter layout");
+					ImGui::Checkbox(form.type == 2 ? "A helipad, windsock and beacon##starter" : (form.type == 1 ? "A water runway, windsock and beacon##starter" : "A runway, windsock and beacon##starter"), &form.starterLayout);
+					EditorUI::ItemTooltip("Something to start shaping: X-Plane needs at least one runway, water runway or helipad");
+					EditorUI::EndPropertyGrid();
+				}
+
+				ImGui::SeparatorText("Reference point");
+				DrawReferencePoint(form, problems, labelWidth, true);
+				ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + 540.0f * dpi);
+				ImGui::TextColored(Color(EditorTheme::Palette::TextLabel), "Decimal degrees with up to 8 places. North and east are positive, south and west negative: 50 degrees 30 minutes south is -50.50000000. Headings in the project are true, not magnetic.");
+				ImGui::PopTextWrapPos();
+
+				ImGui::SeparatorText("Region");
+				if (EditorUI::BeginPropertyGrid("##newRegion", labelWidth))
+				{
+					EditorUI::PropertyLabel("Country");
+					ImGui::SetNextItemWidth(-FLT_MIN);
+					ImGui::InputTextWithHint("##country", "USA United States", &form.country);
+					DrawProblem(problems, "country", touched(form.country));
+
+					EditorUI::PropertyLabel("State / county");
+					ImGui::SetNextItemWidth(-FLT_MIN);
+					ImGui::InputTextWithHint("##state", "Optional: state, province or county", &form.state);
+					DrawProblem(problems, "state", true);
+
+					EditorUI::PropertyLabel("City");
+					ImGui::SetNextItemWidth(-FLT_MIN);
+					ImGui::InputTextWithHint("##city", "Optional", &form.city);
+					DrawProblem(problems, "city", true);
+					EditorUI::EndPropertyGrid();
+				}
 			}
-
-			ImGui::SeparatorText("Project");
-			const std::string defaultName = MakeDefaultProjectName(form.icao, form.name);
-			if (EditorUI::BeginPropertyGrid("##newProject", labelWidth))
+			else
 			{
-				EditorUI::PropertyLabel("Project name");
-				ImGui::SetNextItemWidth(-FLT_MIN);
-				ImGui::InputTextWithHint("##projectName", defaultName.c_str(), &form.projectName);
-				EditorUI::ItemTooltip("The scenery pack's folder and the project file are named after it");
-				DrawProblem(problems, "projectName", true);
-
-				EditorUI::PropertyLabel("Create in");
-				const float browseWidth = ImGui::CalcTextSize("Browse...").x + ImGui::GetStyle().FramePadding.x * 2.0f;
-				ImGui::SetNextItemWidth(-(browseWidth + ImGui::GetStyle().ItemSpacing.x));
-				ImGui::InputText("##location", &form.location);
-				ImGui::SameLine();
-				if (ImGui::Button("Browse...##location"))
-				{
-					const std::string chosen = pfd::select_folder("Choose the folder the project is created in", form.location).result();
-					if (!chosen.empty())
-						form.location = chosen;
-				}
-				if (const fs::path root = XPlaneRoot(); !root.empty())
-				{
-					if (ImGui::SmallButton("Custom Scenery"))
-						form.location = VFS::ToUtf8(VFS::GetCustomSceneryFolder(root));
-					EditorUI::ItemTooltip("X-Plane 12's Custom Scenery folder: the pack loads in X-Plane where it's made");
-				}
-				DrawProblem(problems, "location", true);
-
-				EditorUI::PropertyLabel("Author");
-				ImGui::SetNextItemWidth(-FLT_MIN);
-				ImGui::InputTextWithHint("##author", "Optional", &form.author);
-				EditorUI::EndPropertyGrid();
+				// Scenery and libraries: a reference point is optional (the scene then centers on what gets placed)
+				ImGui::SeparatorText("Location");
+				ImGui::Checkbox("Reference point##hasReference", &form.hasReference);
+				EditorUI::ItemTooltip("Where the scenery is: the viewport centers there and new placements start around it.\n"
+									  "Leave it out and the project centers on what you place (or import)");
+				if (form.hasReference)
+					DrawReferencePoint(form, problems, labelWidth, false);
 			}
 
-			if (!form.location.empty())
+			if (!form.addAirport)
 			{
-				const std::string folder = VFS::ToUtf8(GetNewProjectFolder(spec));
-				ImGui::TextColored(Color(EditorTheme::Palette::TextLabel), "%s  %s", SEDX_ICON_FOLDER_O, folder.c_str());
-				ImGui::TextColored(Color(EditorTheme::Palette::TextDisabled), "Earth nav data, objects and textures folders, and %s.edX inside it",
-					(form.projectName.empty() ? defaultName : form.projectName).c_str());
+				ImGui::SeparatorText(airport ? "Pack" : "Pack and project file");
+				const std::string defaultName = airport ? MakeDefaultProjectName(form.icao, form.name) : std::string(form.kind == FORM_LIBRARY ? "New Library" : "New Scenery");
+				if (EditorUI::BeginPropertyGrid("##newProject", labelWidth))
+				{
+					EditorUI::PropertyLabel("Project name");
+					ImGui::SetNextItemWidth(-FLT_MIN);
+					ImGui::InputTextWithHint("##projectName", defaultName.c_str(), &form.projectName);
+					EditorUI::ItemTooltip(airport ? "The scenery pack's folder and the project file are named after it (empty: \"ICAO - Name\")"
+												  : "The scenery pack's folder and the project file are named after it");
+					DrawProblem(problems, airport ? "projectName" : "name", airport || form.attempted || !form.projectName.empty());
+
+					EditorUI::PropertyLabel("Create in");
+					const float browseWidth = ImGui::CalcTextSize("Browse...").x + ImGui::GetStyle().FramePadding.x * 2.0f;
+					ImGui::SetNextItemWidth(-(browseWidth + ImGui::GetStyle().ItemSpacing.x));
+					ImGui::InputText("##location", &form.location);
+					ImGui::SameLine();
+					if (ImGui::Button("Browse...##location"))
+					{
+						const std::string chosen = pfd::select_folder("Choose the folder the project is created in", form.location).result();
+						if (!chosen.empty())
+							form.location = chosen;
+					}
+					if (const fs::path root = XPlaneRoot(); !root.empty())
+					{
+						if (ImGui::SmallButton("Custom Scenery"))
+							form.location = VFS::ToUtf8(VFS::GetCustomSceneryFolder(root));
+						EditorUI::ItemTooltip("X-Plane 12's Custom Scenery folder: the pack loads in X-Plane where it's made");
+					}
+					DrawProblem(problems, "location", true);
+
+					EditorUI::PropertyLabel("Author");
+					ImGui::SetNextItemWidth(-FLT_MIN);
+					ImGui::InputTextWithHint("##author", "Optional", &form.author);
+					if (!airport)
+					{
+						EditorUI::PropertyLabel("Description");
+						ImGui::SetNextItemWidth(-FLT_MIN);
+						ImGui::InputTextWithHint("##description", "Optional", &form.description);
+					}
+					EditorUI::EndPropertyGrid();
+				}
+
+				if (!form.location.empty())
+				{
+					const std::string folder = VFS::ToUtf8(airport ? GetNewProjectFolder(airportSpec) : GetNewProjectFolder(scenerySpec));
+					const std::string name = form.projectName.empty() ? defaultName : form.projectName;
+					ImGui::TextColored(Color(EditorTheme::Palette::TextLabel), "%s  %s", SEDX_ICON_FOLDER_O, folder.c_str());
+					ImGui::TextColored(Color(EditorTheme::Palette::TextDisabled), form.kind == FORM_LIBRARY ? "objects and textures folders, and %s.edX inside it"
+						: "Earth nav data, objects and textures folders, and %s.edX inside it", name.c_str());
+				}
 			}
 			if (!form.error.empty())
 				ImGui::TextColored(Color(EditorTheme::Palette::Error), "%s  %s", SEDX_ICON_EXCLAMATION_TRIANGLE, form.error.c_str());
 
 			ImGui::Spacing();
 			const float buttonWidth = 130.0f * dpi;
-			if (ImGui::Button(EditorUI::IconLabel(SEDX_ICON_PLUS, "Create").c_str(), ImVec2(buttonWidth, 0.0f)))
+			if (ImGui::Button(EditorUI::IconLabel(SEDX_ICON_PLUS, form.addAirport ? "Add" : "Create").c_str(), ImVec2(buttonWidth, 0.0f)))
 			{
 				form.attempted = true;
 				form.error.clear();
 				fs::path projectFile;
+				bool done = false;
 				if (problems.empty())
 				{
-					if (CreateAirportProject(spec, projectFile, &form.error))
+					if (form.addAirport)
+						done = EditorProjects::AddNewAirport(airportSpec, context, &form.error);
+					else if (airport && CreateAirportProject(airportSpec, projectFile, &form.error))
+					{
+						EDITOR_INFO_TAG(LOG_TAG, "Created the airport project {}", VFS::ToUtf8(projectFile));
+						done = true;
+					}
+					else if (!airport && CreateSceneryProject(scenerySpec, projectFile, &form.error))
+					{
+						EDITOR_INFO_TAG(LOG_TAG, "Created the {} project {}", form.kind == FORM_LIBRARY ? "library" : "scenery", VFS::ToUtf8(projectFile));
+						done = true;
+					}
+				}
+				if (done)
+				{
+					if (!form.addAirport)
 					{
 						VFS::Get().Write(LOCATION_FILE, form.location);
-						EDITOR_INFO_TAG(LOG_TAG, "Created the airport project {}", VFS::ToUtf8(projectFile));
-						ImGui::CloseCurrentPopup();
 						EditorProjects::Open(projectFile, context, true);
-						const NewForm previous = form;
-						form = NewForm();
-						form.location = previous.location;
-						form.author = previous.author;
 					}
+					ImGui::CloseCurrentPopup();
+					const NewForm previous = form;
+					form = NewForm();
+					form.location = previous.location;
+					form.author = previous.author;
+					form.kind = previous.kind;
 				}
 			}
 			ImGui::SameLine();
 			if (ImGui::Button("Cancel", ImVec2(buttonWidth, 0.0f)) || ImGui::IsKeyPressed(ImGuiKey_Escape))
+			{
+				form.addAirport = false;
 				ImGui::CloseCurrentPopup();
+			}
 			if (form.attempted && !problems.empty())
 			{
 				ImGui::SameLine();
@@ -648,6 +820,44 @@ namespace SceneryEditorX::ProjectDialogs
 				}
 				EditorProjects::OpenWhenReady(projectFile);
 			}
+			else if (args[i] == "--new-scenery-project" && i + 1 < args.size())
+			{
+				// "Name;latitude;longitude[;folder]": a scenery pack without an airport (empty coordinates: no reference point)
+				const std::string text = args[++i];
+				std::vector<std::string> parts;
+				for (size_t start = 0; start <= text.size();)
+				{
+					const size_t end = std::min(text.find(';', start), text.size());
+					parts.push_back(text.substr(start, end - start));
+					start = end + 1;
+				}
+				NewSceneryProject spec;
+				spec.name = parts[0];
+				spec.location = VFS::FromUtf8(parts.size() > 3 && !parts[3].empty() ? parts[3] : DefaultLocation());
+				std::string error;
+				spec.hasReferencePoint = parts.size() > 2 && !parts[1].empty() && !parts[2].empty();
+				if (spec.hasReferencePoint && (!ParseCoordinate(parts[1], true, spec.latitude, &error) || !ParseCoordinate(parts[2], false, spec.longitude, &error)))
+				{
+					EDITOR_ERROR_TAG(LOG_TAG, "--new-scenery-project: {}", error);
+					continue;
+				}
+				fs::path projectFile;
+				if (CreateSceneryProject(spec, projectFile, &error))
+					EDITOR_INFO_TAG(LOG_TAG, "Created the scenery project {}", VFS::ToUtf8(projectFile));
+				else
+				{
+					const fs::path folder = GetNewProjectFolder(spec);
+					projectFile = folder / VFS::FromUtf8(VFS::ToUtf8(folder.filename()) + EDX_EXTENSION);
+					std::error_code ec;
+					if (!fs::is_regular_file(projectFile, ec))
+					{
+						EDITOR_ERROR_TAG(LOG_TAG, "Could not create the scenery project: {}", error);
+						continue;
+					}
+					EDITOR_INFO_TAG(LOG_TAG, "{} exists already: opening it", VFS::ToUtf8(projectFile));
+				}
+				EditorProjects::OpenWhenReady(projectFile);
+			}
 			else if (args[i] == "--show-dialog" && i + 1 < args.size())
 				S().showOnStartup = args[++i];
 			else if (args[i] == "--export-scenery")
@@ -695,8 +905,20 @@ namespace SceneryEditorX::ProjectDialogs
 	void OpenNewProject()
 	{
 		State &s = S();
+		s.form.addAirport = false;
 		if (s.form.location.empty())
 			s.form.location = DefaultLocation();
+		s.form.attempted = false;
+		s.form.error.clear();
+		s.openNew = true;
+	}
+
+	void OpenAddAirport()
+	{
+		if (!EditorProjects::GetDocument())
+			return;
+		State &s = S();
+		s.form.addAirport = true;
 		s.form.attempted = false;
 		s.form.error.clear();
 		s.openNew = true;

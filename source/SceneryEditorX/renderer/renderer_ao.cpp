@@ -52,7 +52,6 @@ namespace SceneryEditorX
 	{
 		Renderer::AoTechnique s_AoTechnique = Renderer::AoTechnique::Cacao;
 		Renderer::AoReadout s_AoReadout;
-		bool s_AoTargetsHalfResolution = true;	// What CACAO's buffers were made for
 		bool s_AoValid = false;					// The ssao target holds this frame's occlusion
 
 		bool IsUsable(ImageResource *image)
@@ -142,13 +141,17 @@ namespace SceneryEditorX
 		const uint32_t width = std::max(static_cast<uint32_t>(resolution.x), 1u);
 		const uint32_t height = std::max(static_cast<uint32_t>(resolution.y), 1u);
 
+		// The targets in place (the main view's, or an extra view's while it is drawn) are kept while their sizes are the ones
+		// this resolution and AO resolution need
 		auto &targets = GetRenderTargets();
-		Ref<ImageResource> &ssao = targets[static_cast<size_t>(Renderer_RenderTarget::ssao)];
-		if (!force && ssao && halfResolution == s_AoTargetsHalfResolution && ssao->GetWidth() == width && ssao->GetHeight() == height)
+		const CacaoBufferSizes sizes = ComputeCacaoBufferSizes(width, height, halfResolution);
+		const Ref<ImageResource> &ssao = targets[static_cast<size_t>(Renderer_RenderTarget::ssao)];
+		const Ref<ImageResource> &ping = targets[static_cast<size_t>(Renderer_RenderTarget::cacao_ssao_ping)];
+		if (!force && ssao && ping && ssao->GetWidth() == width && ssao->GetHeight() == height && ping->GetWidth() == sizes.ssaoWidth &&
+			ping->GetHeight() == sizes.ssaoHeight)
 			return;
 		if (!force && ssao)
 			QueueManager::WaitIdleAll();	// frames in flight still read the old ones
-		s_AoTargetsHalfResolution = halfResolution;
 
 		const auto make = [&targets](const Renderer_RenderTarget target, const ImgResourceSpec &spec)
 		{
@@ -160,7 +163,6 @@ namespace SceneryEditorX
 		make(Renderer_RenderTarget::ssao, { ImageType::Type2D, width, height, 1, 1, VK_FORMAT_R16_SFLOAT, UnorderedAccessView | ShaderViews | BlitClear, "ssao" });
 
 		// CACAO's buffers (ffxCacaoContextCreate's formats): four 2 x 2 deinterleaved layers
-		const CacaoBufferSizes sizes = ComputeCacaoBufferSizes(width, height, halfResolution);
 		const uint32_t largest = std::max(sizes.deinterleavedDepthWidth, sizes.deinterleavedDepthHeight);
 		const uint32_t depthMips = std::min(CACAO_DEPTH_MIPS, static_cast<uint32_t>(std::floor(std::log2(static_cast<float>(std::max(largest, 1u))))) + 1);
 		constexpr uint32_t flags = UnorderedAccessView | ShaderViews;
@@ -186,7 +188,9 @@ namespace SceneryEditorX
 	bool Renderer::Pass_AmbientOcclusion(CommandList *cmdList)
 	{
 		s_AoValid = false;
-		s_AoReadout.ran = false;
+		const bool mainView = !IsRenderingExtraView();	// The readout (RENDERER panel) is the main view's
+		if (mainView)
+			s_AoReadout.ran = false;
 
 		const AoQuality quality = GetAoQuality(GetQualityPreset().ao);
 		if (!GetFeatures().ao || !quality.enabled)
@@ -206,7 +210,8 @@ namespace SceneryEditorX
 				return false;
 			output->SetLayout(Layout::ImageLayout::ShaderRead, cmdList, 0, 0);
 			s_AoValid = true;
-			s_AoReadout = { true, AoTechnique::Gtao, CacaoQuality::High, false, {}, output->GetWidth(), output->GetHeight() };
+			if (mainView)
+				s_AoReadout = { true, AoTechnique::Gtao, CacaoQuality::High, false, {}, output->GetWidth(), output->GetHeight() };
 			return true;
 		}
 
@@ -352,7 +357,8 @@ namespace SceneryEditorX
 
 		output->SetLayout(Layout::ImageLayout::ShaderRead, cmdList, 0, 0);
 		s_AoValid = true;
-		s_AoReadout = { true, AoTechnique::Cacao, run, quality.halfResolution, settings, sizes.ssaoWidth, sizes.ssaoHeight };
+		if (mainView)
+			s_AoReadout = { true, AoTechnique::Cacao, run, quality.halfResolution, settings, sizes.ssaoWidth, sizes.ssaoHeight };
 		return true;
 	}
 }

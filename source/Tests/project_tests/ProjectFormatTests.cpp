@@ -822,6 +822,51 @@ TEST_CASE("The world environment round trips in .edX and .sex, and stays out unt
 	CHECK_FALSE(old.environment.has_value());
 }
 
+TEST_CASE("Saved library filters round trip in .edX and .sex, and stay out until saved", "[project][edx][sex][filters]")
+{
+	SceneryProject project = MakeSampleProject();
+	const std::string withoutText = WriteEdx(project);
+	CHECK(withoutText.find("\"LibraryFilters\"") == std::string::npos);	// Projects without any stay byte-identical
+
+	LibraryFilter sidewalks;
+	sidewalks.name = "Sidewalks";
+	sidewalks.search = "sidewalk curb";
+	sidewalks.types = { "fac", "lin" };	// By file extension
+	sidewalks.libraries = { "Laminar Research", "OpenSceneryX" };
+	LibraryFilter broken;
+	broken.name = "Broken files";
+	broken.showHidden = true;
+	broken.onlyMissing = true;
+	project.libraryFilters = { sidewalks, broken };
+
+	const std::string text = WriteEdx(project);
+	CHECK(text.find("\"LibraryFilters\"") != std::string::npos);
+	SceneryProject read;
+	std::vector<std::string> warnings;
+	std::string error;
+	REQUIRE(ParseEdx(text, read, &warnings, &error));
+	CHECK(warnings.empty());
+	REQUIRE(read.libraryFilters.size() == 2);
+	CHECK(read.libraryFilters[0] == sidewalks);
+	CHECK(read.libraryFilters[1] == broken);
+	CHECK(WriteEdx(read) == text);
+
+	const std::string bytes = WriteSex(project);
+	SceneryProject binary;
+	REQUIRE(ParseSex(bytes.data(), bytes.size(), binary, &warnings, &error));
+	REQUIRE(binary.libraryFilters.size() == 2);
+	CHECK(binary.libraryFilters[0] == sidewalks);
+	CHECK(binary.libraryFilters[1] == broken);
+	std::vector<SexChunkInfo> chunks;
+	REQUIRE(ReadSexChunkTable(bytes.data(), bytes.size(), chunks));
+	CHECK(std::ranges::any_of(chunks, [](const SexChunkInfo &chunk) { return chunk.tag == "LFLT"; }));
+
+	// Files from before the filters existed still load; WorldEditor exports leave them out
+	SceneryProject old;
+	REQUIRE(ParseEdx(withoutText, old, &warnings, &error));
+	CHECK(old.libraryFilters.empty());
+}
+
 TEST_CASE(".sex detects damage instead of loading garbage", "[project][sex]")
 {
 	const std::string bytes = WriteSex(MakeSampleProject());
@@ -2132,6 +2177,41 @@ TEST_CASE("Project DSF fingerprint changes only with what is drawn", "[project][
 	SceneryProject turned = project;
 	turned.items[0].children[2].textureHeading = 50.0f;
 	CHECK(fingerprint(turned) != base);
+}
+
+TEST_CASE("Project DSF item fingerprints change only for the edited item", "[project][dsf]")
+{
+	SceneryItem group = MakeItem(ItemKind::Group, "Overlays");
+	group.children = MakeOverlayItems();
+	const SceneryProject project = ProjectWith({ group });
+	const DsfConversion base = BuildProjectDsf(project);
+	const auto items = GetItemFingerprints(base);
+	REQUIRE(items.size() >= 3);
+	for (size_t i = 0; i < base.polygonItems.size(); ++i)
+		CHECK(items.at(base.polygonItems[i]).firstPlacement <= i);	// Each item's first entry comes no later than its others
+
+	// One node moved: that item's hash alone changes
+	SceneryProject moved = project;
+	moved.items[0].children[2].rings[0][0].latitude += 0.00001;
+	const std::string &movedId = moved.items[0].children[2].id;
+	const auto after = GetItemFingerprints(BuildProjectDsf(moved));
+	REQUIRE(after.size() == items.size());
+	for (const auto &[id, fingerprint] : items)
+	{
+		if (id == movedId)
+			CHECK(after.at(id).hash != fingerprint.hash);
+		else
+			CHECK(after.at(id).hash == fingerprint.hash);
+	}
+
+	// An item removed before the others: the rest keep their hashes (only their places in the lists move)
+	SceneryProject removed = project;
+	const std::string removedId = removed.items[0].children[2].id;
+	removed.items[0].children.erase(removed.items[0].children.begin() + 2);
+	const auto fewer = GetItemFingerprints(BuildProjectDsf(removed));
+	CHECK_FALSE(fewer.contains(removedId));
+	for (const auto &[id, fingerprint] : fewer)
+		CHECK(items.at(id).hash == fingerprint.hash);
 }
 
 TEST_CASE("Project DSF parameter encodings", "[project][dsf]")

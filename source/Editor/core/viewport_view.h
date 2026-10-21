@@ -60,6 +60,9 @@ namespace SceneryEditorX
 		double yScale = 1.0;			// xScale * aspect
 		double nearPlane = 0.1;
 		double farPlane = 10000.0;
+		bool orthographic = false;		// Parallel rays along forward; the view is halfWidth x halfHeight meters around the eye
+		double halfWidth = 50.0;
+		double halfHeight = 50.0;
 		ImVec2 imageMin;				// Screen rectangle the image is drawn in
 		ImVec2 imageSize;
 
@@ -72,6 +75,13 @@ namespace SceneryEditorX
 		 * @param aspect Width / height of the render target (the image may be stretched while the panel resizes).
 		 */
 		static ViewportView Build(const ImVec2 &imageMin, const ImVec2 &imageSize, float aspect);
+
+		/**
+		 * @brief A view from explicit camera values (yaw / pitch in radians as the camera entity stores them): what Build
+		 * does with the primary camera, for viewports with cameras of their own.
+		 */
+		static ViewportView FromCamera(const ImVec2 &imageMin, const ImVec2 &imageSize, float aspect, const Point3 &eye, double yaw, double pitch,
+			double horizontalFov, double nearPlane, double farPlane, bool orthographic, double orthographicHeight);
 
 		/* @brief Screen position of a world point; false when it is behind the camera (near plane). */
 		bool WorldToScreen(const Point3 &world, ImVec2 &screen, double *depth = nullptr) const;

@@ -30,7 +30,9 @@
  */
 #include "tools_selftest.h"
 #include "airport_edit.h"
+#include "asset_thumbnails.h"
 #include "editor_airports.h"
+#include "editor_camera.h"
 #include "editor_history.h"
 #include "editor_project.h"
 #include "editor_scene.h"
@@ -47,11 +49,14 @@
 #include <map>
 #include <optional>
 #include <SceneryEditorX/logging/logging.hpp>
+#include <SceneryEditorX/renderer/gbuffer.h>
+#include <SceneryEditorX/renderer/renderer.h>
 #include <SceneryEditorX/renderer/gpu_scene.h>
 #include <SceneryEditorX/renderer/scene_picking.h>
 #include <SceneryEditorX/scene/components/renderable.h>
 #include <SceneryEditorX/filesystem/vfs.h>
 #include <SceneryEditorX/xplane/xp_facade_writer.h>
+#include <SceneryEditorX/xplane/xp_library_manager.h>
 #include <SceneryEditorX/xplane/xp_texture_loader.h>
 #include <SceneryEditorX/xplane/xp_scene.h>
 
@@ -71,6 +76,19 @@ namespace SceneryEditorX::ToolsSelfTest
 			WaitScene,
 			Pick,
 			WaitPick,
+			OrthoTop,
+			OrthoPick,
+			OrthoWaitPick,
+			LibraryFilters,
+			LargePolygonCreate,
+			LargePolygonSelect,
+			LargePolygonEdit,
+			LargePolygonCheck,
+			Thumbnails,
+			ThumbnailsWait,
+			ExtraView,
+			ExtraViewResize,
+			ExtraViewCheck,
 			ItemMove,
 			ItemUndo,
 			ItemRedo,
@@ -137,6 +155,17 @@ namespace SceneryEditorX::ToolsSelfTest
 			uint64_t structure = 0;
 			uint64_t ticket = 0;
 			int pickAttempts = 0;
+			std::optional<ViewportCamera::Rig> rigBefore;
+			std::string largeItem;					// A ~3000 node polygon (editing big shapes stays smooth)
+			int largeEdits = 0;
+			float largeWorstFrame = 0.0f;			// Seconds, the slowest frame while editing it
+			uint32_t largeVerticesBefore = 0;		// Global geometry buffer size before the edits
+			std::vector<std::filesystem::path> thumbnailFiles;	// One library asset of each kind with a thumbnail
+			int thumbnailFrames = 0;
+			uint32_t extraView = 0;					// A second renderer view (VIEWPORT 2's kind), made and resized here
+			uint32_t extraViewsBefore = 0;
+			int extraViewFrames = 0;
+			uint32_t largeVerticesAfterAdd = 0;	// The view before the orthographic steps (put back after)
 			int passed = 0;
 			int failed = 0;
 
@@ -263,7 +292,7 @@ namespace SceneryEditorX::ToolsSelfTest
 		}
 
 		/* @brief The pick ids line up with what is drawn: sampled pixels fall inside the projected boxes of the entities they name. */
-		void CheckPicks(const ViewportView &view, const ScenePicking::Result &result, const float renderWidth, const float renderHeight)
+		void CheckPicks(const ViewportView &view, const ScenePicking::Result &result, const float renderWidth, const float renderHeight, const bool remember = true)
 		{
 			State &s = S();
 			entt::registry *registry = EditorScene::GetRegistry();
@@ -315,6 +344,9 @@ namespace SceneryEditorX::ToolsSelfTest
 			}
 			EDITOR_INFO_TAG(LOG_TAG, "Pick alignment: {} of {} sampled pixels inside their entity's projected box", inside, checked);
 			Check(checked >= 3 && inside * 10 >= checked * 9, "pick ids line up with the drawn image (not flipped or offset)");
+
+			if (!remember)
+				return;
 
 			// What clicking the most covered entity selects
 			uint32_t largest = 0;
@@ -388,6 +420,9 @@ namespace SceneryEditorX::ToolsSelfTest
 		if (!s.enabled || s.step == Step::Done || !view.valid)
 			return;
 		++s.frames;
+		// Every frame while the large polygon is edited counts, waiting ones included (that is when its scenery rebuilds)
+		if (s.step == Step::LargePolygonEdit || s.step == Step::LargePolygonCheck)
+			s.largeWorstFrame = std::max(s.largeWorstFrame, ImGui::GetIO().DeltaTime);
 		if (s.wait > 0)
 		{
 			--s.wait;
@@ -442,6 +477,294 @@ namespace SceneryEditorX::ToolsSelfTest
 					break;
 				}
 				CheckPicks(view, result, renderWidth, renderHeight);
+				s.step = Step::OrthoTop;
+				break;
+			}
+
+			case Step::OrthoTop:
+			{
+				// Numpad 7 then 5: straight down, orthographic. The renderer's projection must match the tools' (picks line up)
+				ViewportCamera::Rig rig;
+				if (!EditorCamera::GetRig(rig))
+				{
+					s.step = Step::ItemMove;
+					break;
+				}
+				s.rigBefore = rig;
+				double yaw = 0.0, pitch = 0.0;
+				ViewportCamera::GetPresetDirection(ViewportCamera::ViewPreset::Top, yaw, pitch);
+				rig.yaw = yaw;
+				rig.pitch = pitch;
+				rig.preset = ViewportCamera::ViewPreset::Top;
+				rig.orthographic = true;
+				EditorCamera::SetRig(rig);
+				s.pickAttempts = 0;
+				s.wait = 90;
+				s.step = Step::OrthoPick;
+				break;
+			}
+
+			case Step::OrthoPick:
+			{
+				Check(view.orthographic && EditorCamera::IsProjection(CameraType::Orthographic) && EditorCamera::GetViewPreset() == ViewportCamera::ViewPreset::Top,
+					"orthographic top view (numpad 7 + 5)");
+				Check(std::abs(view.forward.y + 1.0) < 1e-6 && std::abs(view.up.z + 1.0) < 1e-6, "the top view looks straight down with north up");
+
+				// A ground point under the middle of the image comes back to the same pixel, and a meter covers the same
+				// pixels wherever it is (parallel projection)
+				const ImVec2 middle(view.imageMin.x + view.imageSize.x * 0.5f, view.imageMin.y + view.imageSize.y * 0.5f);
+				Point3 ground;
+				ImVec2 back;
+				const bool hit = view.RayToPlane(middle, 0.0, ground) && view.WorldToScreen(ground, back);
+				Check(hit && std::abs(back.x - middle.x) < 0.5f && std::abs(back.y - middle.y) < 0.5f, "orthographic rays and projection agree");
+				Check(std::abs(view.PixelsPerMeter(ground) - view.PixelsPerMeter({ ground.x + 500.0, ground.y + 30.0, ground.z })) < 1e-9, "orthographic scale is the same everywhere");
+
+				s.ticket = ScenePicking::Request(0, 0, static_cast<uint32_t>(renderWidth), static_cast<uint32_t>(renderHeight));
+				s.step = Step::OrthoWaitPick;
+				break;
+			}
+
+			case Step::OrthoWaitPick:
+			{
+				ScenePicking::Result result;
+				if (!ScenePicking::TryGetResult(s.ticket, result))
+				{
+					if (s.frames > 12000)
+					{
+						Check(false, "orthographic pick readback arrived");
+						s.step = Step::ItemMove;
+					}
+					break;
+				}
+				if (std::ranges::none_of(result.ids, [](const uint32_t id) { return id != 0; }) && ++s.pickAttempts < 4)
+				{
+					s.wait = 120;
+					s.ticket = ScenePicking::Request(0, 0, static_cast<uint32_t>(renderWidth), static_cast<uint32_t>(renderHeight));
+					break;
+				}
+				EDITOR_INFO_TAG(LOG_TAG, "Orthographic top view: {:.0f} x {:.0f} m", view.halfWidth * 2.0, view.halfHeight * 2.0);
+				CheckPicks(view, result, renderWidth, renderHeight, false);
+				if (s.rigBefore)
+					EditorCamera::SetRig(*s.rigBefore);
+				s.wait = 60;
+				s.step = Step::LibraryFilters;
+				break;
+			}
+
+			case Step::LibraryFilters:
+			{
+				// A library-browser filter saved in the project: an undoable edit that marks the project changed
+				ProjectFile::ProjectDocument *document = EditorProjects::GetDocument();
+				s.step = Step::ItemMove;
+				if (!document)
+					break;
+				const std::vector<ProjectFile::LibraryFilter> before = document->GetProject().libraryFilters;
+				const uint64_t revision = document->GetRevision();
+				ProjectFile::LibraryFilter filter;
+				filter.name = "SelfTest Sidewalks";
+				filter.search = "sidewalk";
+				filter.types = { "fac", "lin" };
+				std::vector<ProjectFile::LibraryFilter> saved = before;
+				saved.push_back(filter);
+				Check(EditorProjects::SetLibraryFilters(saved, "Save library filter SelfTest Sidewalks"), "library filters: saved in the open project");
+				Check(document->GetProject().libraryFilters == saved && document->GetRevision() != revision && document->IsDirty(), "library filters: the project holds it and has unsaved changes");
+				Check(EditorHistory::Undo() && document->GetProject().libraryFilters == before, "library filters: undo takes it back out");
+				Check(EditorHistory::Redo() && document->GetProject().libraryFilters == saved, "library filters: redo puts it back");
+				EditorHistory::Undo();
+				s.step = Step::LargePolygonCreate;
+				break;
+			}
+
+			case Step::LargePolygonCreate:
+			{
+				// A big draped polygon: a 300 m circle of 3000 nodes 700 m north of the scene's center
+				s.step = Step::ItemMove;
+				if (!EditorProjects::GetDocument())
+					break;
+				ProjectFile::SceneryItem item;
+				item.kind = ProjectFile::ItemKind::Polygon;
+				item.name = "SelfTest Large Polygon";
+				item.resource = "lib/airport/ground/pavement/asphalt_L/plain.pol";
+				std::vector<ProjectFile::GeoNode> ring;
+				constexpr int NODES = 3000;
+				for (int i = 0; i < NODES; ++i)
+				{
+					const double angle = 6.283185307179586 * i / NODES;
+					ProjectFile::GeoNode node;
+					projectProjection.ToGeo(XPlane::Point2{ 300.0 * std::sin(angle), -700.0 - 300.0 * std::cos(angle) }, node.latitude, node.longitude);
+					ring.push_back(node);
+				}
+				item.rings.push_back(std::move(ring));
+				s.largeVerticesBefore = GeometryBuffer::GetVertexCount();
+				s.largeItem = EditorProjects::AddItem(item, context, "Add SelfTest Large Polygon");
+				Check(!s.largeItem.empty(), "large polygon: a 3000 node polygon added to the project");
+				s.largeEdits = 0;
+				s.largeWorstFrame = 0.0f;
+				s.wait = 60;
+				s.step = s.largeItem.empty() ? Step::ItemMove : Step::LargePolygonSelect;
+				break;
+			}
+
+			case Step::LargePolygonSelect:
+			{
+				s.largeVerticesAfterAdd = GeometryBuffer::GetVertexCount();
+				EditorSelection::Select(context, Target::ForItem(s.largeItem));
+				EditorTools::SetTool(EditorTools::Tool::Nodes);
+				s.largeWorstFrame = 0.0f;
+				s.wait = 20;
+				s.step = Step::LargePolygonEdit;
+				break;
+			}
+
+			case Step::LargePolygonEdit:
+			{
+				// Eight node moves a few frames apart, as quick clicks and drags would make; the slowest frame is kept
+				s.largeWorstFrame = std::max(s.largeWorstFrame, ImGui::GetIO().DeltaTime);
+				if (s.wait == 0 && s.largeEdits < 8)
+				{
+					const auto start = std::chrono::steady_clock::now();
+					NodeTool::SelectNode(0, 0, static_cast<uint32_t>(s.largeEdits * 300), false);
+					NodeTool::TranslateSelectedNodes(2.0, 1.0);
+					EDITOR_INFO_TAG(LOG_TAG, "Large polygon edit {}: {:.1f} ms in the node tool", s.largeEdits + 1,
+						std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count());
+					++s.largeEdits;
+					s.wait = 8;
+					break;
+				}
+				if (s.largeEdits >= 8)
+				{
+					s.wait = 30;
+					s.step = Step::LargePolygonCheck;
+				}
+				break;
+			}
+
+			case Step::LargePolygonCheck:
+			{
+				const uint32_t vertices = GeometryBuffer::GetVertexCount();
+				const uint32_t added = s.largeVerticesAfterAdd > s.largeVerticesBefore ? s.largeVerticesAfterAdd - s.largeVerticesBefore : 0;
+				const uint32_t grown = vertices > s.largeVerticesAfterAdd ? vertices - s.largeVerticesAfterAdd : 0;
+				EDITOR_INFO_TAG(LOG_TAG, "Large polygon: slowest frame {:.1f} ms over 8 edits; geometry buffer {} -> {} (+{} for the polygon) -> {} vertices", s.largeWorstFrame * 1000.0f,
+					s.largeVerticesBefore, s.largeVerticesAfterAdd, added, vertices);
+				Check(s.largeWorstFrame < 0.25f, "large polygon: no frame over 250 ms while editing its nodes");
+				Check(grown <= added + added / 2, "large polygon: edits reuse the scene's geometry space instead of piling it up");
+				for (int i = 0; i < s.largeEdits; ++i)
+					EditorHistory::Undo();
+				EditorHistory::Undo();	// The add
+				Check(FindItem(s.largeItem) == nullptr, "large polygon: undo takes the edits and the polygon back out");
+				EditorTools::SetTool(EditorTools::Tool::Select);
+				EditorSelection::Clear(context);
+				s.wait = 30;
+				s.step = Step::Thumbnails;
+				break;
+			}
+
+			case Step::Thumbnails:
+			{
+				// One library asset of each kind that has a thumbnail
+				s.step = Step::ItemMove;
+				s.thumbnailFiles.clear();
+				const std::shared_ptr<const XPlane::LibraryIndex> index = XPlane::LibraryManager::GetIndex();
+				if (!index)
+					break;
+				for (const XPlane::AssetType type : { XPlane::AssetType::Object, XPlane::AssetType::Facade, XPlane::AssetType::Forest, XPlane::AssetType::Polygon,
+					XPlane::AssetType::Line, XPlane::AssetType::String, XPlane::AssetType::AutogenPoint })
+				{
+					for (const XPlane::LibraryAsset &asset : index->GetAssets())
+					{
+						const XPlane::AssetProvider *resolved = asset.GetResolved();
+						if (asset.type == type && resolved && resolved->fileExists && !asset.IsPrivate() && !asset.IsDeprecated())
+						{
+							s.thumbnailFiles.push_back(resolved->realPath);
+							break;
+						}
+					}
+				}
+				if (s.thumbnailFiles.empty())
+				{
+					EDITOR_INFO_TAG(LOG_TAG, "No library assets: skipping the thumbnail tests");
+					break;
+				}
+				s.thumbnailFrames = 0;
+				s.step = Step::ThumbnailsWait;
+				break;
+			}
+
+			case Step::ThumbnailsWait:
+			{
+				// Asked for every frame, as a panel showing them does (requests nobody draws are dropped)
+				size_t ready = 0, failed = 0;
+				std::string errors;
+				for (const std::filesystem::path &file : s.thumbnailFiles)
+				{
+					AssetThumbnails::Thumbnail thumbnail;
+					const AssetThumbnails::State state = AssetThumbnails::Get(file, thumbnail);
+					ready += state == AssetThumbnails::State::Ready && thumbnail.texture != ImTextureID_Invalid ? 1 : 0;
+					if (state == AssetThumbnails::State::Failed)
+					{
+						++failed;
+						errors += "\n  " + VFS::ToUtf8(file.filename()) + ": " + AssetThumbnails::GetError(file);
+					}
+				}
+				if (ready + failed < s.thumbnailFiles.size() && ++s.thumbnailFrames < 1200)
+					break;
+
+				const AssetThumbnails::Stats stats = AssetThumbnails::GetStats();
+				size_t cached = 0;
+				std::error_code ec;
+				for (std::filesystem::directory_iterator it(VFS::GetAppLocation(VFS::AppLocation::Cache) / "thumbnails", ec), end; !ec && it != end; it.increment(ec))
+					cached += it->path().extension() == ".png" ? 1 : 0;
+				EDITOR_INFO_TAG(LOG_TAG, "Thumbnails: {} of {} drawn, {} failed, in {} frames ({} rendered in {:.0f} ms, {} from the disk cache, {} cached files){}", ready,
+					s.thumbnailFiles.size(), failed, s.thumbnailFrames, stats.rendered, stats.renderMilliseconds, stats.fromDisk, cached, errors);
+				Check(ready + failed == s.thumbnailFiles.size(), "thumbnails: every request finished");
+				Check(ready + 1 >= s.thumbnailFiles.size(), "thumbnails: library objects, facades, forests, polygons, lines and strings are drawn");
+				Check(cached >= ready, "thumbnails: kept in the disk cache");
+				s.step = Step::ExtraView;
+				break;
+			}
+
+			case Step::ExtraView:
+			{
+				// A second view drawn after the main one (VIEWPORT 2): a top view of the scene's center
+				s.extraViewsBefore = Renderer::GetViewCount();
+				s.extraView = Renderer::CreateView();
+				Renderer::SetViewResolution(s.extraView, 320, 200);
+				ImageResource *output = Renderer::GetViewOutput(s.extraView);
+				Check(s.extraView != 0 && Renderer::GetViewCount() == s.extraViewsBefore + 1, "extra view: created");
+				Check(output && output->GetWidth() == 320 && output->GetHeight() == 200, "extra view: its own 320 x 200 render targets");
+				s.extraViewFrames = 0;
+				s.step = Step::ExtraViewResize;
+				break;
+			}
+
+			case Step::ExtraViewResize:
+			case Step::ExtraViewCheck:
+			{
+				// Drawn every frame its camera is set; resized once halfway
+				Renderer::ViewCamera camera;
+				camera.position = Vec3(0.0f, 600.0f, 0.0f);
+				camera.pitch = -1.5707f;
+				camera.orthographic = true;
+				camera.orthographicHeight = 800.0f;
+				Renderer::SetViewCamera(s.extraView, camera);
+				if (++s.extraViewFrames < 30)
+					break;
+				if (s.step == Step::ExtraViewResize)
+				{
+					Renderer::SetViewResolution(s.extraView, 400, 300);
+					ImageResource *output = Renderer::GetViewOutput(s.extraView);
+					Check(output && output->GetWidth() == 400 && output->GetHeight() == 300, "extra view: resized to 400 x 300");
+					s.extraViewFrames = 0;
+					s.step = Step::ExtraViewCheck;
+					break;
+				}
+				const ImageResource *output = Renderer::GetViewOutput(s.extraView);
+				Check(output && output->GetLayout(0) == Layout::ImageLayout::ShaderRead, "extra view: its output drawn and ready to show");
+				const ImageResource *main = Renderer::GetRenderTarget(Renderer_RenderTarget::frame_output);
+				Check(main && main != output && main->GetWidth() != 400, "extra view: the main view kept its own targets");
+				Renderer::DestroyView(s.extraView);
+				Check(Renderer::GetViewOutput(s.extraView) == nullptr && Renderer::GetViewCount() == s.extraViewsBefore, "extra view: destroyed with its targets");
+				s.extraView = 0;
 				s.step = Step::ItemMove;
 				break;
 			}

@@ -57,6 +57,12 @@ namespace SceneryEditorX::XPlane
 			std::string name;
 			std::vector<const OverlayMesh *> meshes;
 			std::vector<const OverlayObject *> objects;
+
+			// Update() only: what the group's content was made from (equal fingerprints: nothing to rebuild), and the DSF
+			// placement its drape order counts from (it moves when items before it come and go)
+			uint64_t fingerprint = 0;
+			uint32_t firstPlacement = 0;
+			bool reuse = false;					// Keep what is shown under this key (its fingerprint must match): no meshes needed
 		};
 
 		struct Stats
@@ -80,6 +86,18 @@ namespace SceneryEditorX::XPlane
 		 * @return The root entity's UUID, 0 when nothing is shown or there is no active scene.
 		 */
 		uint64_t Build(const std::string &rootName, const std::vector<Group> &groups);
+
+		/**
+		 * @brief Shows these groups, rebuilding only what changed: a group marked reuse whose key is shown with the same
+		 * fingerprint keeps its entities, mesh and objects (its drape order follows firstPlacement); other groups are
+		 * built (replacing what their key showed); keys no longer listed go. Textures and materials stay loaded between
+		 * updates. A project edit then costs the edited items, not the whole project.
+		 * @return The root entity's UUID, 0 when nothing is shown.
+		 */
+		uint64_t Update(const std::string &rootName, const std::vector<Group> &groups);
+
+		/* @brief The fingerprint a key is shown with, 0 when it isn't shown. */
+		[[nodiscard]] uint64_t GetFingerprint(std::string_view key) const;
 
 		/**
 		 * @brief Added to the DSF placement of each draped part to order it among drapes at the same layer height

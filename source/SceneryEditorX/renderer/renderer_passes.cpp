@@ -160,7 +160,10 @@ namespace SceneryEditorX
 			return;
 
 		const RendererFeatures &features = GetFeatures();
-		GpuTimer::BeginFrame(cmd);
+		// An extra view (RenderExtraViews) leaves the main view's timings, exposure metering, probes, picking and captures alone
+		const bool mainView = !IsRenderingExtraView();
+		if (mainView)
+			GpuTimer::BeginFrame(cmd);
 		const auto valid = [cmd] { return !cmd->IsStickyInvalid(); };
 
 		// (0) Environment constants are uploaded with the frame constants (UpdateEnvironmentConstantBuffer);
@@ -171,7 +174,8 @@ namespace SceneryEditorX
 			Pass_Lut_BrdfSpecular(cmd);
 			m_PassState.m_BRDF_LutProduced = true;
 		}
-		FrameCapture::RecordDump(cmd, GetRenderTarget(Renderer_RenderTarget::lut_brdf_specular));	// --dump-brdf-lut
+		if (mainView)
+			FrameCapture::RecordDump(cmd, GetRenderTarget(Renderer_RenderTarget::lut_brdf_specular));	// --dump-brdf-lut
 
 		// (1) Atmosphere LUTs (XP12: scatter_compute_*) and the environment probes; whatever the switches, they end in
 		//     shader-read layout for the passes that bind them
@@ -181,7 +185,7 @@ namespace SceneryEditorX
 				GpuTimer::Scope scope(cmd, "atmosphere");
 				Pass_Atmosphere(cmd);
 			}
-			if (features.envProbes && valid())
+			if (features.envProbes && mainView && valid())
 			{
 				GpuTimer::Scope scope(cmd, "env probes");
 				Pass_EnvProbes(cmd);
@@ -236,7 +240,8 @@ namespace SceneryEditorX
 			}
 			if (!valid())
 				return;
-			GpuScene::RecordReadBack(cmd);	// every cull of the frame has run (stats)
+			if (mainView)
+				GpuScene::RecordReadBack(cmd);	// every cull of the frame has run (stats)
 
 			GetRenderTarget(Renderer_RenderTarget::gbuffer_color)->SetLayout(Layout::ImageLayout::ShaderRead, cmd, 0, 0);
 			GetRenderTarget(Renderer_RenderTarget::gbuffer_normal)->SetLayout(Layout::ImageLayout::ShaderRead, cmd, 0, 0);
@@ -309,9 +314,10 @@ namespace SceneryEditorX
 
 			// (16) Metering and adaptation (manual EV100 when auto exposure is off), then the output chain: exposure
 			//      fusion, bloom, the tone map to display values, FXAA, FSR 1
+			if (mainView)
 			{
 				GpuTimer::Scope scope(cmd, "exposure");
-				Pass_Exposure(cmd, rt_render);
+				Pass_Exposure(cmd, rt_render);	// Extra views use the exposure it adapts
 			}
 			if (!valid())
 				return;
@@ -333,20 +339,23 @@ namespace SceneryEditorX
 			}
 
 			// Parity captures (--capture-png) read the output before anything editor-only is drawn on it
-			FrameCapture::Record(cmd, rt_output, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
+			if (mainView)
+				FrameCapture::Record(cmd, rt_output, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
 
 			// (17) Editor overlays on the display image: selection / hover outlines, the reference image
 			ScenePicking::RecordOutline(cmd, rt_output);
 			if (!valid())
 				return;
-			Pass_ReferenceOverlay(cmd, rt_output);
+			if (mainView)
+				Pass_ReferenceOverlay(cmd, rt_output);
 			if (!valid())
 				return;
 		}
 
-		if (valid())
+		if (valid() && mainView)
 			Pass_Text(cmd, rt_output);
-		GpuTimer::EndFrame(cmd);
+		if (mainView)
+			GpuTimer::EndFrame(cmd);
 
 		// Early transitions for the next frame
 		rt_output->SetLayout(Layout::ImageLayout::ShaderRead, cmd, 0, 0);
@@ -1016,7 +1025,7 @@ namespace SceneryEditorX
 			texDepth->SetLayout(Layout::ImageLayout::ShaderRead, cmdList, 0, 0);
 
 			// editor picking: copy the regions the viewport asked for (the outline pass reads the ids later)
-			if (!isTransparentPass)
+			if (!isTransparentPass && !IsRenderingExtraView())
 				ScenePicking::RecordReadbacks(cmdList);
 		}
 	}

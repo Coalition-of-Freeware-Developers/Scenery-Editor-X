@@ -33,6 +33,7 @@
 #include <SceneryEditorX/xplane/xp_dsf.h>
 #include <cstdint>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 // -------------------------------------------------------
@@ -90,6 +91,19 @@ namespace SceneryEditorX::ProjectFile
 
 	/* @brief Hash of everything a DSF draws (definitions, placements, properties): equal hashes draw the same. */
 	uint64_t GetDsfFingerprint(const XPlane::DsfFile &dsf);
+
+	/* @brief What one item contributes to a conversion. */
+	struct DsfItemFingerprint
+	{
+		uint64_t hash = 0;					// Its placements with their definitions' paths: equal hashes draw the same
+		uint32_t firstPlacement = 0;		// Its first entry in the list it is in (polygons, objects or roads)
+	};
+
+	/**
+	 * @brief Per item id, so an editor can redraw only the items an edit changed. An item's hash leaves out where its
+	 * placements sit in the lists (other items coming and going don't change it); roads include the junction ids they share.
+	 */
+	std::unordered_map<std::string, DsfItemFingerprint> GetItemFingerprints(const DsfConversion &conversion);
 
 	/* @brief Draped polygon parameter: whole degrees plus 360 x 1/128ths of a degree (WorldEditor's encode_heading). */
 	uint16_t EncodePolygonHeading(double heading);

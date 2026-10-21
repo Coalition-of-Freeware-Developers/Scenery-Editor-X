@@ -419,6 +419,48 @@ namespace SceneryEditorX
 		static Camera* GetCamera();
 
 		/**
+		 * Extra views (a second viewport): each has its own camera, size and resolution-dependent render targets and is
+		 * drawn after the main view in the same frame, through the same passes. The main view keeps what only it does:
+		 * exposure metering (extra views use its exposure), the environment probes, picking readbacks, GPU timings and
+		 * captures. Shared, view-independent targets (LUTs, probes, the shadow maps, which each view draws again) aren't
+		 * duplicated. Main thread, while the render thread is idle (it builds the UI then).
+		 */
+
+		/* @brief What an extra view looks through: the eye, its yaw / pitch in radians (forward = (cos p sin y, sin p, cos p cos y)), the field of view and projection. */
+		struct ViewCamera
+		{
+			Vec3 position = Vec3(0.0f, 0.0f, 0.0f);
+			float yaw = 0.0f;
+			float pitch = 0.0f;
+			float horizontalFov = 1.0471976f;
+			bool orthographic = false;
+			float orthographicHeight = 100.0f;		// Meters top to bottom
+		};
+
+		/* @brief Extra views at most: each takes a frame and an environment constant buffer update per frame. */
+		static constexpr uint32_t MAX_EXTRA_VIEWS = 3;
+
+		/* @brief Adds a view; it is drawn once it has a size. Returns its id, 0 when MAX_EXTRA_VIEWS exist. */
+		static uint32_t CreateView();
+
+		/* @brief Removes a view and frees its render targets (waits for the GPU). */
+		static void DestroyView(uint32_t view);
+
+		static void SetViewCamera(uint32_t view, const ViewCamera &camera);
+
+		/* @brief The view's size in pixels; its render targets are made again when it changes (waits for the GPU). */
+		static void SetViewResolution(uint32_t view, uint32_t width, uint32_t height);
+
+		/* @brief The view's display image, shader-readable after a frame drew it; null before it has a size. */
+		static ImageResource *GetViewOutput(uint32_t view);
+
+		/* @brief Extra views that exist. */
+		static uint32_t GetViewCount();
+
+		/* @brief True while an extra view's passes are recorded (what only the main view does checks it). */
+		static bool IsRenderingExtraView();
+
+		/**
 		 * @brief Get a structured buffer by type.
 		 * @param type The type of buffer to retrieve.
 		 * @return Pointer to the requested Buffer.
@@ -627,6 +669,13 @@ namespace SceneryEditorX
 		 */
 		static void CreateRenderTargets(const bool createRender, const bool createOutput, const bool createDynamic);
 
+		/**
+		 * @brief An extra view's resolution-dependent render targets at its size: the entries CreateRenderTargets makes
+		 * for the render and output resolutions, without the shared ones (the shadow atlas). The main view's are kept.
+		 * @param out Receives them; the other entries are left null.
+		 */
+		static void CreateViewRenderTargets(uint32_t width, uint32_t height, std::array<Ref<ImageResource>, static_cast<uint32_t>(Renderer_RenderTarget::MaxEnum)> &out);
+
 		/* 
 		 * @brief Update optional render targets based on current renderer configuration. 
 		 */
@@ -726,6 +775,9 @@ namespace SceneryEditorX
 		 * @param compute Command list for compute operations (optional, may be nullptr).
 		 */
 		static void ProduceFrame(CommandList* graphicsPresent, CommandList* compute);
+
+		/* @brief Records every extra view after the main one: its targets, camera and constants swapped in, its draw lists and shadow cascades built again. */
+		static void RenderExtraViews(CommandList *cmdList);
 
 #pragma region LUT generation passes
 		/**

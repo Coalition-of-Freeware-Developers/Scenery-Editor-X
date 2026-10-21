@@ -529,7 +529,7 @@ namespace SceneryEditorX::EditorTools
 			// A quick right-click (no drag: a drag looks around) opens the quad menu for what is under the cursor, once its
 			// pick comes back. While a facade is being drawn it finishes the shape instead (3ds Max style).
 			const bool overImage = canvasHovered || (s.toolOwnsMouse && view.Contains(mouse));
-			if (overImage && ImGui::IsMouseClicked(ImGuiMouseButton_Right))
+			if (overImage && ImGui::IsMouseClicked(ImGuiMouseButton_Right) && !io.KeyAlt)	// Alt + right drags zoom (Maya)
 			{
 				s.rightPressed = true;
 				s.rightPressMouse = mouse;
@@ -639,8 +639,7 @@ namespace SceneryEditorX::EditorTools
 			SetTool(Tool::Nodes);
 		if (ImGui::IsKeyPressed(ImGuiKey_B, false) && !io.KeyShift)
 			SetTool(Tool::Facade);
-		if (ImGui::IsKeyPressed(ImGuiKey_F, false))
-			FrameSelection();
+		// F (frame) and the view keys belong to the navigation keymap (EditorCamera::HandleShortcuts)
 		if (ImGui::IsKeyPressed(ImGuiKey_X, false))
 			TransformTool::GetSettings().localSpace = !TransformTool::GetSettings().localSpace;
 	}
@@ -657,43 +656,15 @@ namespace SceneryEditorX::EditorTools
 		return true;
 	}
 
-	void FrameSelection()
+	bool FrameSelection()
 	{
+		// Keep looking the way the camera looks (tilting down from the horizon); back off until the selection fits
 		Point3 center;
 		double radius = 0.0;
-		if (!TransformTool::GetSelectionCenter(center, radius))
-			return;
-
-		Camera *camera = EditorCamera::Get();
-		entt::registry *registry = EditorScene::GetRegistry();
-		if (!camera || !registry)
-			return;
-		auto view = registry->view<TransformComponent, CameraComponent>();
-		for (const entt::entity handle : view)
-		{
-			if (!view.get<CameraComponent>(handle).isPrimary)
-				continue;
-			TransformComponent &transform = view.get<TransformComponent>(handle);
-			const CameraComponent &cameraData = view.get<CameraComponent>(handle);
-
-			// Keep looking the way the camera looks; back off until the selection fits the narrower field of view
-			const Vec3 euler = transform.GetRotationEuler();
-			const double cosPitch = std::cos(static_cast<double>(euler.x));
-			Point3 forward{ cosPitch * std::sin(static_cast<double>(euler.y)), std::sin(static_cast<double>(euler.x)), cosPitch * std::cos(static_cast<double>(euler.y)) };
-			if (forward.y > -0.2)
-			{
-				// Looking at or above the horizon: tilt down so the ground selection is seen from above
-				const double yaw = euler.y;
-				const double pitch = -0.6;
-				forward = { std::cos(pitch) * std::sin(yaw), std::sin(pitch), std::cos(pitch) * std::cos(yaw) };
-			}
-			const double halfFov = std::max(0.1, static_cast<double>(cameraData.horizontalFov_Rad) * 0.5 * 0.75);
-			const double distance = std::max(8.0, radius / std::tan(halfFov) * 1.15);
-			const Vec3 target(static_cast<float>(center.x), static_cast<float>(center.y), static_cast<float>(center.z));
-			const Vec3 eye(static_cast<float>(center.x - forward.x * distance), static_cast<float>(center.y - forward.y * distance), static_cast<float>(center.z - forward.z * distance));
-			camera->LookAt(transform, eye, target);
-			break;
-		}
+		if (!TransformTool::GetSelectionCenter(center, radius) || !EditorCamera::Get())
+			return false;
+		EditorCamera::Frame(center, std::max(radius, 3.0));
+		return true;
 	}
 
 	bool DeleteSelection(EditorContext *context)
@@ -842,8 +813,14 @@ namespace SceneryEditorX::EditorTools
 			case Tool::Facade:
 				return FacadeTool::GetHint();
 			default:
-				return EditorSelection::IsEmpty() ? std::string("Click to select  |  drag a box  |  right-click: quad menu, hold Space: hotbox  |  Alt+LMB orbit, MMB pan, RMB look (+WASD)")
-												  : std::to_string(EditorSelection::Get().size()) + " selected  |  W move, E rotate, R scale, V nodes, B facades, F frame, Del delete  |  right-click: menu";
+			{
+				// The navigation keymap's own mouse bindings, and its frame key
+				const NavigationKeymap keymap = EditorPreferences::Get().keymap;
+				if (EditorSelection::IsEmpty())
+					return std::string("Click to select  |  drag a box  |  right-click: quad menu, hold Space: hotbox  |  ") + ViewportCamera::GetKeymapSummary(keymap);
+				return std::to_string(EditorSelection::Get().size()) + " selected  |  W move, E rotate, R scale, V nodes, B facades, " +
+					   (keymap == NavigationKeymap::Max ? "Z" : "F") + " frame, Del delete  |  right-click: menu";
+			}
 		}
 	}
 }

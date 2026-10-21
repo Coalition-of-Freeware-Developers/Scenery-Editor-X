@@ -2318,6 +2318,19 @@ namespace SceneryEditorX::XPlane
 		FrameSphere(Vec3(static_cast<float>(center.x), 0.0f, static_cast<float>(center.z)) + RootOffset(*s_Loaded), static_cast<float>(focus.GetRadius()), -50.0f);
 	}
 
+	bool SceneAirports::GetFocus(float &centerX, float &centerZ, float &radius)
+	{
+		if (!IsLoaded() || !FocusOf(*s_Loaded).valid)
+			return false;
+		const Bounds2 &focus = FocusOf(*s_Loaded);
+		const Point2 center = focus.GetCenter();
+		const Vec3 offset = RootOffset(*s_Loaded);
+		centerX = static_cast<float>(center.x) + offset.x;
+		centerZ = static_cast<float>(center.z) + offset.z;
+		radius = static_cast<float>(focus.GetRadius());
+		return true;
+	}
+
 	void SceneAirports::FrameEntity(const uint64_t entityId)
 	{
 		const AirportElementComponent *component = FindElement(entityId);

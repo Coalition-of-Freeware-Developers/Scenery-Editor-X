@@ -98,8 +98,8 @@ namespace SceneryEditorX::EditorTools
 	/* @brief Tool keys while the viewport is hovered or focused; Del and Esc anywhere text isn't being typed. */
 	void HandleShortcuts(EditorContext *context);
 
-	/* @brief Moves the camera to see the selection. */
-	void FrameSelection();
+	/* @brief Moves the camera to see the selection (gliding there). False when nothing is selected. */
+	bool FrameSelection();
 
 	/* @brief Where the middle of the viewport (as drawn last frame) meets the ground, in scene meters; false when it looks above the horizon. */
 	bool GetViewCenterOnGround(float position[3]);

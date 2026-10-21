@@ -92,10 +92,17 @@ bool is_outside_frustum(float4x4 clip_rows, float3 center, float3 extent)
 // How much of the screen height an instance's bounding sphere covers (huge with the camera inside its box)
 float screen_fraction(float3 bounds_min, float3 bounds_max)
 {
+    const float4x4 projection = get_projection_matrix();
+    const float radius        = length((bounds_max - bounds_min) * 0.5f);
+
+    // orthographic (w stays 1): the size on screen doesn't depend on distance; [1][1] = 2 / view height
+    if (projection[3][3] > 0.5f)
+        return radius * projection[1][1];
+
     const float3 camera      = get_camera_position();
     const float distance     = length(camera - clamp(camera, bounds_min, bounds_max));
-    const float projection_y = get_projection_matrix()[1][1]; // 1 / tan(vertical fov / 2)
-    return distance > 0.0f ? length((bounds_max - bounds_min) * 0.5f) * projection_y / distance : 1e30f;
+    const float projection_y = projection[1][1]; // 1 / tan(vertical fov / 2)
+    return distance > 0.0f ? radius * projection_y / distance : 1e30f;
 }
 
 // The early draw command of an instance's batch for the mesh LOD its screen coverage picks

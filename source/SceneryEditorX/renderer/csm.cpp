@@ -135,7 +135,16 @@ namespace SceneryEditorX
 
 		const uint32_t count = std::clamp(settings.cascadeCount, 1u, CSM_MAX_CASCADES);
 		const double mapSize = static_cast<double>(std::max(settings.mapSize, 16u));
-		out.splits = ComputeCsmSplits(settings, camera.nearPlane);
+		if (camera.orthographic)
+		{
+			// Screen size doesn't shrink with depth: even splits around the pivot (it can sit behind the eye's plane too)
+			const double range = std::max(settings.farLimitM, 1.0);
+			const double start = camera.focusDepth - 0.5 * range;
+			for (uint32_t i = 0; i <= count; ++i)
+				out.splits[i] = start + range * static_cast<double>(i) / static_cast<double>(count);
+		}
+		else
+			out.splits = ComputeCsmSplits(settings, camera.nearPlane);
 		if (out.splits[count] <= out.splits[0])
 			return false;
 
@@ -163,7 +172,15 @@ namespace SceneryEditorX
 			cascade.depthFar = ownFar;
 
 			double centerDepth = 0.0, sphereRadius = 0.0;
-			CsmSliceSphere(cascade.depthNear, cascade.depthFar, camera.tanHalfFovX, camera.tanHalfFovY, centerDepth, sphereRadius);
+			if (camera.orthographic)
+			{
+				// A box: half its depth and the view's half width and height
+				const double halfDepth = 0.5 * (cascade.depthFar - cascade.depthNear);
+				centerDepth = cascade.depthNear + halfDepth;
+				sphereRadius = std::sqrt(halfDepth * halfDepth + camera.orthoHalfWidth * camera.orthoHalfWidth + camera.orthoHalfHeight * camera.orthoHalfHeight);
+			}
+			else
+				CsmSliceSphere(cascade.depthNear, cascade.depthFar, camera.tanHalfFovX, camera.tanHalfFovY, centerDepth, sphereRadius);
 			sphereRadius = std::max(sphereRadius, 1e-3);
 
 			// The square around the sphere keeps a margin of texels for the filter; texel size follows from it
@@ -205,7 +222,8 @@ namespace SceneryEditorX
 
 		const double farM = out.splits[count];
 		out.fadeEnd = farM;
-		out.fadeStart = std::clamp(settings.fadeRatio, 0.0, 1.0) * farM;
+		out.fadeStart = camera.orthographic ? out.splits[0] + std::clamp(settings.fadeRatio, 0.0, 1.0) * (farM - out.splits[0])
+											: std::clamp(settings.fadeRatio, 0.0, 1.0) * farM;
 		out.count = count;
 		return true;
 	}
