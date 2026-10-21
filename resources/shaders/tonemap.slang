@@ -138,13 +138,14 @@ float fusion_distance_weight(uint2 pixel, float2 uv)
     return 1.0f - saturate((km - near_km) / (far_km - near_km));
 }
 
-// ASC-CDL on display-encoded values (color_management/sdr/*): slope, offset, power, then saturation (Rec. 709 luma)
+// The SDR grade on display-encoded values (color_management/sdr/*): slope, offset, then power read as a gamma
+// (1 / power: X-Plane 12.4.4's references match that, not the ASC-CDL exponent), then saturation (Rec. 709 luma)
 float3 grade(float3 display)
 {
     const float4 slope = buffer_environment.color_slope;
     const float4 offset = buffer_environment.color_offset;
     const float4 power = buffer_environment.color_power;
-    float3 c = pow(max(display * slope.rgb + offset.rgb, 0.0f), power.rgb);
+    float3 c = pow(max(display * slope.rgb + offset.rgb, 0.0f), 1.0f / max(power.rgb, 0.01f));
     const float luma = dot(c, LUMA);
     c = luma + slope.w * (c - luma);
 

@@ -563,10 +563,11 @@ TEST_CASE("Sky light: the sun's transmittance follows the air mass", "[environme
 {
 	const AtmosphereParams clear;
 
-	// Straight up through a clean atmosphere: Rayleigh optical depth 0.265 in blue, 0.046 in red
+	// Straight up through X-Plane 12.4.4's clean atmosphere: Rayleigh, ozone and Mie optical depth about 0.09 in red
+	// (half of it ozone), 0.23 in blue
 	const Rgb zenith = ComputeTransmittance(clear, 0.0, 1.0);
-	CHECK(zenith[0] == Catch::Approx(0.94).margin(0.01));
-	CHECK(zenith[2] == Catch::Approx(0.76).margin(0.01));
+	CHECK(zenith[0] == Catch::Approx(0.912).margin(0.01));
+	CHECK(zenith[2] == Catch::Approx(0.794).margin(0.01));
 	CHECK(zenith[0] > zenith[1]);
 	CHECK(zenith[1] > zenith[2]);	// blue scatters most: the sun reddens
 
@@ -632,19 +633,31 @@ TEST_CASE("Sky light: a clear day's sun and sky", "[environment][sky-light]")
 
 TEST_CASE("Atmosphere: visibility to haze", "[environment][atmosphere]")
 {
-	// Koschmieder: 2% contrast at the visibility
-	CHECK(VisibilityExtinction(10000.0) == Catch::Approx(3.912e-4));
+	// X-Plane's scattering/vis_cutoff_ratio: 1% contrast at the visibility (Koschmieder's 2% on request)
+	CHECK(VisibilityExtinction(10000.0) == Catch::Approx(4.60517e-4).epsilon(1e-5));
+	CHECK(VisibilityExtinction(10000.0, 0.02) == Catch::Approx(3.912e-4).epsilon(1e-4));
 	CHECK(VisibilityExtinction(0.0) == 0.0);
 
-	// The haze layer takes what the clear layers don't give at the ground, scattering like the clear Mie
+	// The haze layer takes what the clear layers don't give at the ground, scattering with atmo/fog_albedo
 	const AtmosphereParams clear;
 	const AtmosphereParams hazy = WithVisibility(clear, 40000.0);
-	CHECK(hazy.hazeExtinction == Catch::Approx(3.912 / 40000.0 - 13.558e-6 - 4.4e-6).epsilon(1e-9));
-	CHECK(hazy.hazeScatteringAlbedo == Catch::Approx(3.996 / 4.4));
+	const double cutoff = -std::log(0.01);
+	CHECK(hazy.hazeExtinction == Catch::Approx(cutoff / 40000.0 - 11.75e-6 - 4.44e-6).epsilon(1e-9));
+	CHECK(hazy.hazeScatteringAlbedo == Catch::Approx(0.9));
 	CHECK(hazy.mieExtinction == clear.mieExtinction);
 	CHECK(WithVisibility(clear, 1.0e6).hazeExtinction == 0.0);	// never cleaner than clear air
 	const MediumSample ground = SampleMedium(hazy, 0.0);
-	CHECK(ground.Extinction()[1] == Catch::Approx(3.912 / 40000.0).epsilon(1e-6));	// green: the visibility
+	CHECK(ground.Extinction()[1] == Catch::Approx(cutoff / 40000.0).epsilon(1e-6));	// green: the visibility
+
+	// Mie and haze per channel: Angstrom -1.3 with the wavelengths the Rayleigh coefficients imply (blue scatters 1.32x)
+	const Rgb spectral = MieSpectralFactors(clear.rayleighScattering, -1.3);
+	CHECK(spectral[0] == Catch::Approx(0.786).margin(0.002));
+	CHECK(spectral[1] == 1.0);
+	CHECK(spectral[2] == Catch::Approx(1.321).margin(0.002));
+	CHECK(spectral[2] == Catch::Approx(clear.mieSpectral[2]).margin(1e-3));
+	CHECK(MieSpectralFactors(clear.rayleighScattering, 0.0)[2] == 1.0);
+	CHECK(SampleMedium(clear, 0.0).mieExtinction[2] / SampleMedium(clear, 0.0).mieExtinction[1] == Catch::Approx(clear.mieSpectral[2]));
+	CHECK(ground.mieExtinction[2] - ground.mieExtinction[1] == Catch::Approx(SampleMedium(clear, 0.0).mieExtinction[2] - SampleMedium(clear, 0.0).mieExtinction[1]));	// the haze is grey
 
 	// The layer: uniform to its top above the ground, fading over the band, gone above it; on an elevated airport too
 	const AtmosphereParams fog = WithVisibility(clear, 1000.0, 400.0);
@@ -654,8 +667,8 @@ TEST_CASE("Atmosphere: visibility to haze", "[environment][atmosphere]")
 	CHECK(HazeProfile(fog, 1899.0) == 1.0);
 	CHECK(HazeProfile(fog, 1900.0 + fog.hazeBandM * 0.5) == Catch::Approx(0.5));
 	CHECK(HazeProfile(fog, 1900.0 + fog.hazeBandM) == 0.0);
-	CHECK(SampleMedium(fog, 400.0).Extinction()[1] == Catch::Approx(3.912e-3).epsilon(1e-6));
-	CHECK(SampleMedium(fog, 5000.0).mieExtinction < 1e-5);
+	CHECK(SampleMedium(fog, 400.0).Extinction()[1] == Catch::Approx(cutoff / 1000.0).epsilon(1e-6));
+	CHECK(SampleMedium(fog, 5000.0).mieExtinction[1] < 1e-5);
 
 	// Sky-condition multipliers scale the scattering, not the absorption
 	const AtmosphereParams doubled = WithSkyMultipliers(hazy, 2.0, 2.0);
@@ -685,35 +698,49 @@ TEST_CASE("Sky light: the Mie phase function is normalized", "[environment][sky-
 // Exposure (renderer/exposure.*): the reference for exposure_adapt.slang
 // -------------------------------------------------------
 
-TEST_CASE("Exposure: EV100 camera, bias table and adaptation", "[environment][exposure]")
+namespace
+{
+	// The luminance a meter with constant K reads as an EV100
+	float EvToNits(const float ev100, const float meterK) { return std::exp2(ev100) * meterK / 100.0f; }
+}
+
+TEST_CASE("Exposure: EV100 camera, X-Plane 12.4.4's target and adaptation", "[environment][exposure]")
 {
 	using namespace SceneryEditorX;
 	const ExposureSettings settings;
 
-	// A meter reading EV 12 sees 512 nits; exposed at EV 12 they become 512 / (1.2 x 4096)
+	// A meter reading EV 12 sees 512 nits; exposed at EV 12 they become middle grey
 	CHECK(EvFromLuminance(512.0f) == Catch::Approx(12.0f).margin(1e-4));
 	CHECK(EvFromLuminance(512.0f) - EvFromLuminance(256.0f) == Catch::Approx(1.0f).margin(1e-4));
-	CHECK(ExposureScaleFromEv(12.0f) * 512.0f == Catch::Approx(0.10417f).margin(1e-4));
+	CHECK(ExposureScaleFromEv(12.0f) * 512.0f == Catch::Approx(0.18f).margin(1e-4));
+	CHECK(ExposureScaleFromEv(9.0f, 14.0f) * EvToNits(9.0f, 14.0f) == Catch::Approx(0.18f).margin(1e-4));
 
-	// The table: its points, linear between them, flat beyond
-	CHECK(GetExposureBias(settings, 5.0f) == Catch::Approx(3.5f));
-	CHECK(GetExposureBias(settings, 6.5f) == Catch::Approx(3.25f));
-	CHECK(GetExposureBias(settings, 11.5f) == Catch::Approx(0.0f));
-	CHECK(GetExposureBias(settings, 12.33f) == Catch::Approx(-0.3f));
-	CHECK(GetExposureBias(settings, 2.0f) == Catch::Approx(3.5f));
-	CHECK(GetExposureBias(settings, 15.0f) == Catch::Approx(-0.3f));
+	// photometric/ev100_mid and ev100_bias by the sun's elevation: the readouts they were fitted to, flat beyond
+	CHECK(GetExposureMid(settings, 40.19f) == Catch::Approx(14.62f));
+	CHECK(GetExposureMid(settings, -1.93f) == Catch::Approx(10.425f));
+	CHECK(GetExposureMid(settings, -30.0f) == Catch::Approx(5.0f));
+	CHECK(GetExposureMid(settings, 30.0f) > 14.5f);
+	CHECK(GetExposureMid(settings, 30.0f) < 14.62f);
+	CHECK(GetExposureBias(settings, -17.0f) == Catch::Approx(2.59f));
+	CHECK(GetExposureBias(settings, 40.19f) == Catch::Approx(-0.34f));
 
-	// Metering clamps to EV 5-15 before the bias: a moonlit scene (EV -3) exposes like EV 5 brightened 3.5 stops
-	CHECK(GetTargetEv(settings, -3.0f) == Catch::Approx(1.5f));
-	CHECK(GetTargetEv(settings, 14.0f) == Catch::Approx(14.3f));
-	CHECK(GetTargetEv(settings, 20.0f) == Catch::Approx(15.3f));
+	// X-Plane's one genuine automatic readout: sun -11.8 deg, metered 1.02 -> EV 4.31 (5 + 0.5 x (1.02 + 2.59 - 5))
+	CHECK(GetTargetEv(settings, 1.02f, -11.82f) == Catch::Approx(4.305f).margin(0.01f));
+	// Darker than the target: gain_lo; brighter: gain_hi; then the 3.5-14.8 range
+	CHECK(GetTargetEv(settings, 14.0f, 40.19f) == Catch::Approx(14.62f + 0.5f * (14.0f - 0.34f - 14.62f)));
+	CHECK(GetTargetEv(settings, 15.2f, 40.19f) == Catch::Approx(14.62f + 0.4f * (15.2f - 0.34f - 14.62f)));
+	CHECK(GetTargetEv(settings, 15.9f, 40.19f) == Catch::Approx(14.8f));
+	CHECK(GetTargetEv(settings, -10.0f, -30.0f) == Catch::Approx(3.5f));
+	ExposureSettings brighter = settings;
+	brighter.compensation = 1.0f;
+	CHECK(GetTargetEv(brighter, 14.0f, 40.19f) == Catch::Approx(GetTargetEv(settings, 14.0f, 40.19f) - 1.0f));
 	ExposureSettings manual = settings;
 	manual.automatic = false;
 	manual.manualEv100 = 9.0f;
-	CHECK(GetTargetEv(manual, 14.0f) == Catch::Approx(9.0f));
+	CHECK(GetTargetEv(manual, 14.0f, 40.0f) == Catch::Approx(9.0f));
 
-	// Adaptation: at most speed x dt per frame, faster toward a darker scene (speed_down)
-	CHECK(AdaptEv(settings, 10.0f, 14.0f, 0.5f) == Catch::Approx(11.0f));
+	// Adaptation: at most speed x dt per frame, faster toward a darker scene (speed_down 5, speed_up 3)
+	CHECK(AdaptEv(settings, 10.0f, 14.0f, 0.5f) == Catch::Approx(11.5f));
 	CHECK(AdaptEv(settings, 10.0f, 4.0f, 0.5f) == Catch::Approx(7.5f));
 	CHECK(AdaptEv(settings, 10.0f, 10.2f, 0.5f) == Catch::Approx(10.2f));
 }

@@ -73,14 +73,16 @@ public struct AtmosphereParameters
     public float top_radius;
     public float3 rayleigh_scattering;  // 1/km at sea level
     public float rayleigh_exp_scale;    // -1 / scale height (1/km)
-    public float mie_scattering;
-    public float mie_extinction;
+    public float3 mie_scattering;       // Per channel: the green value times the Angstrom factors
+    public float3 mie_extinction;
+    public float3 mie_spectral;         // Those factors (green 1); the visibility haze is grey (X-Plane's fog is white)
     public float mie_exp_scale;
     public float mie_g;
+    public float multiple_ratio;        // X-Plane scattering/multi_rat on the multiple-scattering estimate
     public float3 ozone_absorption;
     public float ozone_center;          // km
     public float ozone_half_width;
-    public float haze_extinction;       // 1/km inside the surface haze layer
+    public float haze_extinction;       // 1/km inside the surface haze layer (green)
     public float haze_albedo;
     public float haze_top;              // km above sea level
     public float haze_band;             // km
@@ -96,10 +98,12 @@ public AtmosphereParameters get_atmosphere()
     a.top_radius = e.planet.z * 0.001f;
     a.rayleigh_scattering = e.rayleigh.rgb * 1000.0f;
     a.rayleigh_exp_scale = -1000.0f / max(e.rayleigh.w, 1.0f);
-    a.mie_scattering = e.mie.x * 1000.0f;
-    a.mie_extinction = e.mie.y * 1000.0f;
+    a.mie_spectral = e.atmosphere_scattering.rgb;
+    a.mie_scattering = e.mie.x * 1000.0f * a.mie_spectral;
+    a.mie_extinction = e.mie.y * 1000.0f * a.mie_spectral;
     a.mie_exp_scale = -1000.0f / max(e.mie.z, 1.0f);
     a.mie_g = e.mie.w;
+    a.multiple_ratio = e.atmosphere_scattering.w;
     a.ozone_absorption = e.ozone.rgb * 1000.0f;
     a.ozone_center = e.ozone.w * 0.001f;
     a.ozone_half_width = max(e.planet.x * 0.001f, 0.001f);
@@ -131,7 +135,7 @@ public float3 world_to_atmosphere(AtmosphereParameters a, float3 world)
 public struct MediumSample
 {
     public float3 rayleigh_scattering;
-    public float mie_scattering;
+    public float3 mie_scattering;
     public float3 scattering;
     public float3 extinction;
 };
@@ -166,7 +170,7 @@ public MediumSample sample_medium_diffuse(AtmosphereParameters a, float3 positio
 {
     MediumSample m = sample_medium(a, position);
     const float f = a.mie_g * a.mie_g;
-    const float removed = f * m.mie_scattering;
+    const float3 removed = f * m.mie_scattering;
     m.mie_scattering -= removed;
     m.scattering -= removed;
     m.extinction -= removed;
@@ -264,7 +268,7 @@ public float2 multiscatter_params_to_uv(AtmosphereParameters a, float view_heigh
 public float3 get_multiple_scattering(AtmosphereParameters a, float3 position, float cos_light_zenith)
 {
     const float2 uv = multiscatter_params_to_uv(a, length(position), cos_light_zenith);
-    return tex_multiscatter.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0.0f).rgb;
+    return tex_multiscatter.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0.0f).rgb * a.multiple_ratio;
 }
 
 /**

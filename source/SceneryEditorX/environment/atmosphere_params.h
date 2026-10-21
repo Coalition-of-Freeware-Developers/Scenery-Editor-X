@@ -41,36 +41,47 @@ namespace SceneryEditorX::Environment
 	 * The atmosphere's medium (plan REQ-008, TASK-046), Bruneton / Hillaire parameterization plus X-Plane 12.4's surface
 	 * haze: Rayleigh and Mie layers falling off exponentially with altitude, an ozone tent, and a haze layer of uniform
 	 * extra Mie extinction from the ground up to hazeTopM that fades to clear air over hazeBandM. Units: meters and 1/m.
-	 * The defaults are the clear atmosphere resources/environment/xp12_environment.json starts from. The GPU
-	 * (atmosphere_common.slang) samples the same medium from the environment buffer.
+	 * The defaults are X-Plane 12.4.4's clear atmosphere as the reference probe dumped it (atmo/*, scattering/*), which
+	 * resources/environment/xp12_environment.json repeats. The GPU (atmosphere_common.slang) samples the same medium
+	 * from the environment buffer.
 	 */
 	struct AtmosphereParams
 	{
-		Rgb rayleighScattering = { 5.802e-6, 13.558e-6, 33.1e-6 };
+		Rgb rayleighScattering = { 5.596e-6, 11.75e-6, 27.68e-6 };	// atmo/rayleigh_*
 		double rayleighScaleHeight = 8000.0;
-		double mieScattering = 3.996e-6;
-		double mieExtinction = 4.4e-6;
+		double mieScattering = 3.996e-6;		// Green; Hillaire 2020 (X-Plane's scattering/mie_rat 1 scales a base it doesn't show)
+		double mieExtinction = 4.44e-6;			// Scattering / scattering/mie_albedo 0.9
+		Rgb mieSpectral = { 0.7859, 1.0, 1.3211 };	// Per channel on the clear Mie, green 1: MieSpectralFactors(rayleigh, -1.3)
 		double mieScaleHeight = 1200.0;
-		double mieG = 0.8;
-		Rgb ozoneAbsorption = { 0.65e-6, 1.881e-6, 0.085e-6 };
-		double ozoneCenter = 25000.0;
-		double ozoneHalfWidth = 15000.0;
+		double mieG = 0.76;						// scattering/g_cornette_shanks
+		double multipleScattering = 1.25;		// scattering/multi_rat: on the multiple-scattering estimate
+		Rgb ozoneAbsorption = { 2.427e-6, 1.508e-6, 0.105e-6 };	// atmo/ozone_*
+		double ozoneCenter = 22300.0;			// atmo/ozone_center
+		double ozoneHalfWidth = 17800.0;		// atmo/ozone_width (35600) / 2
 		double groundRadius = 6360000.0;
 		double topRadius = 6460000.0;
-		double groundAlbedo = 0.1;
+		double groundAlbedo = 0.15;				// scattering/earth_albedo
 
 		// The surface haze layer (12.4.4 behaviour): Mie on top of the clear layer, from the visibility (WithVisibility)
-		double hazeExtinction = 0.0;			// 1/m inside the layer (grey)
-		double hazeScatteringAlbedo = 0.9;		// Scattering / extinction
+		double hazeExtinction = 0.0;			// 1/m inside the layer, grey (fog and haze droplets: X-Plane's fog is white)
+		double hazeScatteringAlbedo = 0.9;		// atmo/fog_albedo
 		double hazeTopM = 1500.0;				// Above the ground
 		double hazeBandM = 1000.0;				// Fade to clear air above the top
+		double visibilityContrast = 0.01;		// scattering/vis_cutoff_ratio (VisibilityExtinction)
 		double groundElevationM = 0.0;			// MSL of the ground the layer sits on
 	};
 
-	inline constexpr double KOSCHMIEDER_CONTRAST = 3.912;	// -ln(0.02): visibility is where contrast falls to 2%
+	/* @brief X-Plane's scattering/vis_cutoff_ratio: visibility is where contrast falls to 1% (Koschmieder's 2% is 3.912 / V). */
+	inline constexpr double VISIBILITY_CONTRAST = 0.01;
 
-	/* @brief Extinction (1/m) that gives a visibility (Koschmieder: 3.912 / V); 0 for no visibility limit. */
-	double VisibilityExtinction(double visibilityM);
+	/* @brief Extinction (1/m) that gives a visibility: -ln(contrast) / V (4.605 / V); 0 for no visibility limit. */
+	double VisibilityExtinction(double visibilityM, double contrast = VISIBILITY_CONTRAST);
+
+	/**
+	 * @brief Per-channel Mie factors (green 1) for an Angstrom exponent (X-Plane scattering/mie_scattering_exponent
+	 * -1.3: Mie ~ wavelength^-1.3), with the channels' wavelengths implied by the Rayleigh coefficients (~ wavelength^-4).
+	 */
+	Rgb MieSpectralFactors(const Rgb &rayleighScattering, double angstromExponent);
 
 	/**
 	 * @brief Top of the haze layer above the ground for a visibility: at least minimumTopM, deeper for very clear air
@@ -95,8 +106,8 @@ namespace SceneryEditorX::Environment
 	struct MediumSample
 	{
 		Rgb rayleighScattering{};
-		double mieScattering = 0.0;
-		double mieExtinction = 0.0;
+		Rgb mieScattering{};
+		Rgb mieExtinction{};
 		Rgb ozoneAbsorption{};
 
 		[[nodiscard]] Rgb Extinction() const;

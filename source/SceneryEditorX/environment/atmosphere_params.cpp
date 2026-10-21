@@ -36,9 +36,24 @@
 
 namespace SceneryEditorX::Environment
 {
-	double VisibilityExtinction(const double visibilityM)
+	double VisibilityExtinction(const double visibilityM, const double contrast)
 	{
-		return visibilityM > 0.0 ? KOSCHMIEDER_CONTRAST / visibilityM : 0.0;
+		return visibilityM > 0.0 ? -std::log(std::clamp(contrast, 1e-6, 0.999)) / visibilityM : 0.0;
+	}
+
+	Rgb MieSpectralFactors(const Rgb &rayleighScattering, const double angstromExponent)
+	{
+		// (lambda_c / lambda_g)^exponent with lambda_c / lambda_g = (rayleigh_g / rayleigh_c)^(1/4)
+		Rgb out{ 1.0, 1.0, 1.0 };
+		const double green = rayleighScattering[1];
+		if (green <= 0.0)
+			return out;
+		for (int c = 0; c < 3; ++c)
+		{
+			if (rayleighScattering[c] > 0.0)
+				out[c] = std::pow(rayleighScattering[c] / green, -angstromExponent / 4.0);
+		}
+		return out;
 	}
 
 	double HazeTopFromVisibility(const double visibilityM, const double minimumTopM)
@@ -51,13 +66,12 @@ namespace SceneryEditorX::Environment
 		AtmosphereParams out = atmosphere;
 		out.groundElevationM = groundElevationM;
 		out.hazeTopM = HazeTopFromVisibility(visibilityM, atmosphere.hazeTopM);
-		out.hazeScatteringAlbedo = atmosphere.mieExtinction > 0.0 ? atmosphere.mieScattering / atmosphere.mieExtinction : 0.9;
 
 		// What the clear layers already give at the ground (green, about 550 nm), the haze the rest
 		const double ground = std::max(groundElevationM, 0.0);
 		const double rayleigh = atmosphere.rayleighScattering[1] * std::exp(-ground / atmosphere.rayleighScaleHeight);
 		const double mie = atmosphere.mieExtinction * std::exp(-ground / atmosphere.mieScaleHeight);
-		out.hazeExtinction = std::max(VisibilityExtinction(visibilityM) - rayleigh - mie, 0.0);
+		out.hazeExtinction = std::max(VisibilityExtinction(visibilityM, atmosphere.visibilityContrast) - rayleigh - mie * atmosphere.mieSpectral[1], 0.0);
 		return out;
 	}
 
@@ -89,13 +103,13 @@ namespace SceneryEditorX::Environment
 
 	Rgb MediumSample::Extinction() const
 	{
-		return { rayleighScattering[0] + mieExtinction + ozoneAbsorption[0], rayleighScattering[1] + mieExtinction + ozoneAbsorption[1],
-				 rayleighScattering[2] + mieExtinction + ozoneAbsorption[2] };
+		return { rayleighScattering[0] + mieExtinction[0] + ozoneAbsorption[0], rayleighScattering[1] + mieExtinction[1] + ozoneAbsorption[1],
+				 rayleighScattering[2] + mieExtinction[2] + ozoneAbsorption[2] };
 	}
 
 	Rgb MediumSample::Scattering() const
 	{
-		return { rayleighScattering[0] + mieScattering, rayleighScattering[1] + mieScattering, rayleighScattering[2] + mieScattering };
+		return { rayleighScattering[0] + mieScattering[0], rayleighScattering[1] + mieScattering[1], rayleighScattering[2] + mieScattering[2] };
 	}
 
 	MediumSample SampleMedium(const AtmosphereParams &a, const double altitudeMslM)
@@ -111,9 +125,9 @@ namespace SceneryEditorX::Environment
 		{
 			s.rayleighScattering[c] = a.rayleighScattering[c] * rayleigh;
 			s.ozoneAbsorption[c] = a.ozoneAbsorption[c] * ozone;
+			s.mieScattering[c] = a.mieScattering * mie * a.mieSpectral[c] + haze * a.hazeScatteringAlbedo;
+			s.mieExtinction[c] = a.mieExtinction * mie * a.mieSpectral[c] + haze;
 		}
-		s.mieScattering = a.mieScattering * mie + haze * a.hazeScatteringAlbedo;
-		s.mieExtinction = a.mieExtinction * mie + haze;
 		return s;
 	}
 }

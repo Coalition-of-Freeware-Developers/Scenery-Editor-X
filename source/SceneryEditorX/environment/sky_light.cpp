@@ -174,9 +174,9 @@ namespace SceneryEditorX::Environment
 				{
 					const double light = toObserver[c] * toSun[c] * sunLux * SUN_COLOR[c] * dt;
 					out.rayleigh[c] += light * m.rayleighScattering[c] * phaseR;
-					out.mie[c] += light * m.mieScattering;
+					out.mie[c] += light * m.mieScattering[c];
 				}
-				out.gather += toObserver[1] * (m.rayleighScattering[1] + m.mieScattering) * dt;
+				out.gather += toObserver[1] * (m.rayleighScattering[1] + m.mieScattering[1]) * dt;
 				depth.Add(m, dt);
 			}
 			return out;
@@ -258,7 +258,7 @@ namespace SceneryEditorX::Environment
 		for (int c = 0; c < 3; ++c)
 		{
 			const double up = atmosphere.groundAlbedo * (light.sunIlluminance[c] * sunUp + single[c]);
-			diffuse[c] = (single[c] + up) / (2.0 * PI) * series;
+			diffuse[c] = (single[c] + up) / (2.0 * PI) * series * atmosphere.multipleScattering;
 		}
 		const auto base = [&](const Marched &m)
 		{

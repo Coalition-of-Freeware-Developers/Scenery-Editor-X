@@ -33,6 +33,7 @@
 #include <Editor/core/editor_ui.h>
 #include <SceneryEditorX/core/application/application.h>
 #include <SceneryEditorX/core/time/fps_timer.h>
+#include <SceneryEditorX/environment/environment.h>
 #include <SceneryEditorX/renderer/gpu_scene.h>
 #include <SceneryEditorX/renderer/gpu_timer.h>
 #include <SceneryEditorX/renderer/renderer.h>
@@ -341,8 +342,8 @@ namespace SceneryEditorX
 
 			if (EditorUI::SectionHeader("EXPOSURE", false) && EditorUI::BeginPropertyGrid("##RendererExposure"))
 			{
-				// X-Plane 12's camera: histogram-metered EV100 (or a fixed one), the bias table, then the output chain's
-				// art controls. Edits apply from the next frame; resources/environment/xp12_environment.json has the defaults.
+				// X-Plane 12's camera: histogram-metered EV100 pulled toward the sun elevation's target (or a fixed EV100),
+				// then the output chain's art controls. Edits apply from the next frame; resources/environment/xp12_environment.json has the defaults.
 				Renderer::EnvironmentConstants &constants = Renderer::EditEnvironmentConstants();
 				ExposureSettings &exposure = constants.exposure;
 
@@ -363,14 +364,16 @@ namespace SceneryEditorX
 				EditorUI::PropertyLabel("Compensation");
 				ImGui::SetNextItemWidth(-FLT_MIN);
 				ImGui::SliderFloat("##Compensation", &exposure.compensation, -4.0f, 4.0f, "%+.2f EV");
-				EditorUI::ItemTooltip("On top of the bias table; positive brightens");
+				EditorUI::ItemTooltip("On top of the automatic exposure; positive brightens");
 
 				const Renderer::ExposureReadout readout = Renderer::GetExposureReadout();
 				if (readout.valid)
 				{
 					ValueText("Exposed at", "EV100 %.2f", readout.ev100);
-					ValueText("Metered", "EV100 %.2f (%.2f before the %.0f-%.0f clamp)", readout.meteredEv100, readout.rawEv100, exposure.evMin, exposure.evMax);
-					ValueText("Target", "EV100 %.2f (bias %+.2f)", readout.targetEv100, GetExposureBias(exposure, readout.meteredEv100));
+					const float sunElevation = static_cast<float>(Environment::Get().GetSnapshot().derived.sun.apparentElevationDeg);
+					ValueText("Metered", "EV100 %.2f", readout.meteredEv100);
+					ValueText("Target", "EV100 %.2f (mid %.2f, bias %+.2f, range %.1f-%.1f)", readout.targetEv100, GetExposureMid(exposure, sunElevation),
+						GetExposureBias(exposure, sunElevation), exposure.evMin, exposure.evMax);
 					ValueText("Mean luminance", "%.3g nits", std::exp2(readout.meanLog2Nits));
 				}
 				else
@@ -399,6 +402,11 @@ namespace SceneryEditorX
 				ImGui::SetNextItemWidth(-FLT_MIN);
 				ImGui::SliderFloat("##Saturation", &constants.colorSlope.w, 0.0f, 2.0f, "%.2f");
 				EditorUI::ItemTooltip("ASC-CDL saturation after the tone curve (color_management/sdr)");
+				EditorUI::PropertyLabel("Grade slope");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##SlopeStrength", &constants.colorSlopeStrength, 0.0f, 1.0f, "%.2f");
+				EditorUI::ItemTooltip("Share of X-Plane's color_management/sdr/slope applied after SEDX's AgX (0.5 balances sky and ground "
+									  "against X-Plane 12.4.4; 1 is X-Plane's full cooling)");
 				EditorUI::PropertyLabel("FSR sharpness");
 				ImGui::SetNextItemWidth(-FLT_MIN);
 				ImGui::SliderFloat("##RcasSharpness", &constants.rcasSharpness, 0.0f, 1.0f, "%.2f");

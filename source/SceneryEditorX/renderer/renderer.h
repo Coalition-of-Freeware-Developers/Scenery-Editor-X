@@ -488,13 +488,18 @@ namespace SceneryEditorX
 		 */
 		struct EnvironmentConstants
 		{
-			float sunIlluminanceLux = 115000.0f;		// lighting/E_sun_lx
-			float moonIlluminanceLux = 0.25f;			// lighting/E_moon_lx (full moon)
-			float sunAngularRadiusRad = 0.2666f * 3.14159265f / 180.0f;
-			xMath::Vec4 rayleigh = xMath::Vec4(5.802e-6f, 13.558e-6f, 33.1e-6f, 8000.0f);
-			xMath::Vec4 mie = xMath::Vec4(3.996e-6f, 4.4e-6f, 1200.0f, 0.8f);
-			xMath::Vec4 ozone = xMath::Vec4(0.65e-6f, 1.881e-6f, 0.085e-6f, 25000.0f);
-			xMath::Vec4 planet = xMath::Vec4(15000.0f, 6360000.0f, 6460000.0f, 0.1f);
+			// X-Plane 12.4.4's values as the reference probe dumped them (environment/atmosphere_params.h has the same)
+			float sunIlluminanceLux = 133000.0f;		// lighting/E_sun_lx
+			float moonIlluminanceLux = 0.6f;			// lighting/E_moon_lx (full moon)
+			float sunAngularRadiusRad = 0.26f * 3.14159265f / 180.0f;	// sun/angular_diameter 0.52
+			xMath::Vec4 rayleigh = xMath::Vec4(5.596e-6f, 11.75e-6f, 27.68e-6f, 8000.0f);	// atmo/rayleigh_*, scale height
+			xMath::Vec4 mie = xMath::Vec4(3.996e-6f, 4.44e-6f, 1200.0f, 0.76f);	// scattering (green), extinction (mie_albedo 0.9), scale height, g_cornette_shanks
+			xMath::Vec4 ozone = xMath::Vec4(2.427e-6f, 1.508e-6f, 0.105e-6f, 22300.0f);	// atmo/ozone_*, ozone_center
+			xMath::Vec4 planet = xMath::Vec4(17800.0f, 6360000.0f, 6460000.0f, 0.15f);	// ozone_width / 2, radii, scattering/earth_albedo
+			float mieAngstrom = -1.3f;					// scattering/mie_scattering_exponent (and _absorption_)
+			float multipleScattering = 1.25f;			// scattering/multi_rat
+			float visibilityContrast = 0.01f;			// scattering/vis_cutoff_ratio
+			float fogAlbedo = 0.9f;						// atmo/fog_albedo: the visibility haze's scattering albedo
 			float hazeTopM = 1500.0f;
 			float hazeBandM = 1000.0f;
 			ExposureSettings exposure;					// photometric/*, exposure/*, autoexposure/* (renderer/exposure.h)
@@ -517,6 +522,9 @@ namespace SceneryEditorX
 			xMath::Vec4 colorSlope = xMath::Vec4(1.0f, 1.0f, 1.0f, 1.0f);		// rgb slope, w saturation
 			xMath::Vec4 colorOffset = xMath::Vec4(0.0f, 0.0f, 0.0f, 1.0f);	// rgb offset, w output gain
 			xMath::Vec4 colorPower = xMath::Vec4(1.0f, 1.0f, 1.0f, 1.0f);		// rgb power, w output gamma
+			// How much of the slope applies (slope^strength): X-Plane's tone curve keeps bright neutrals warm and its grade
+			// cools them back; after SEDX's AgX, which whitens them, half the slope balances sky and ground
+			float colorSlopeStrength = 0.5f;
 		};
 		static const EnvironmentConstants &GetEnvironmentConstants();
 		static EnvironmentConstants &EditEnvironmentConstants();
