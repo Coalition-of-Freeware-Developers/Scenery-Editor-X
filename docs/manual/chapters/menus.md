@@ -98,7 +98,7 @@ The menu ends with the X-Plane folder in use, or what's wrong with it.
 |---|---|
 | New Viewport | Opens VIEWPORT 2: its own camera, a top view to start with. |
 | *each panel* | Shows or hides it. |
-| Reset Layout | Puts every panel back in the default layout. |
+| Reset Layout | Puts every panel back in the default layout, with one viewport (VIEWPORT 2 closes). |
 | Dear ImGui › Metrics / Debugger, Style Editor, Demo Window | The interface library's own tools (for developers). |
 
 ## Viewport

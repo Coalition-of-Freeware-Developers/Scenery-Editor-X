@@ -91,6 +91,7 @@ Right-click in the viewport (a quick click, without dragging) to open the **quad
 Click an entry to run it; <kbd>Esc</kbd> or a click outside closes the menu. A right-*drag* still looks around, so the quad menu never gets in the way of navigating.
 
 ## The hotbox
+
 Hold <kbd>Space</kbd> with the mouse over the viewport to open the **hotbox**, inspired by Maya. The editor dims and three rows of menus open around the cursor:
 
 1. **The menu bar's menus:** File, Edit, Scene, X-Plane, Facade, Window, Viewport, Help.

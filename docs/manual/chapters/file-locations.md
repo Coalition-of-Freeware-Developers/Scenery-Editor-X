@@ -29,6 +29,7 @@ Type a folder's name (for example `%LOCALAPPDATA%\SceneryEditorX`) into File Exp
 `logs\SceneryEditorX.log` is the editor's log: the same messages as the CONSOLE panel, kept after the editor closes. If the editor crashes, the reason and where it happened are added at the end, and a crash dump `SceneryEditorX_crash.dmp` is written beside it. Attach both when you [report a problem](troubleshooting.md#reporting-a-problem).
 
 ### The project cache
+
 Each project file you open gets a folder in `project-cache`, named by a hash of the project's path. In it:
 
 | File | What it is |

@@ -83,6 +83,7 @@ The **CAMERA** panel shows the camera's state and lets you type exact values:
 The **Reset camera** button at the right of the viewport toolbar also returns to the startup view.
 
 ## A second viewport
+
 ![VIEWPORT 2 floating over the left of the workspace with a top orthographic view of Portland's runways, while the main viewport looks across the airfield in perspective.](../images/viewport2.png "Window › New Viewport: VIEWPORT 2 (left) opens as a top orthographic view. Drag its tab to dock it, or onto another monitor.")
 
 **Window › New Viewport** opens **VIEWPORT 2**, a second view of the same scene with its own camera. It starts as a top-down orthographic view of the airport: a live map while you work in the main view.
@@ -90,8 +91,8 @@ The **Reset camera** button at the right of the viewport toolbar also returns to
 - It has its own camera, projection and view presets, and uses your keymap, the numpad views and <kbd>Home</kbd> while the mouse is over it.
 - Its toolbar has **Top**, **Front** and **Right**, the orthographic toggle, **Frame the airport**, and **Match the main viewport's camera**.
 - Dock it anywhere like a panel, or drag its tab out of the window and onto another monitor.
-- Its camera is remembered between sessions.
-- Closing it frees the memory its rendering used. The main viewport is as fast as before when it's closed.
+- It doesn't come back by itself: every launch starts with the main viewport only, and **Window › Reset Layout** closes it. Open it again with **Window › New Viewport** (or its button on the panel strip). It reopens where you last put it, on the same monitor, with its camera as you left it.
+- Until you open it, and once you close it, the editor doesn't render it at all, so the main viewport is as fast as it would be without it.
 
 VIEWPORT 2 is for looking: selecting and editing happen in the main viewport, and the second view shows the results as you work.
 

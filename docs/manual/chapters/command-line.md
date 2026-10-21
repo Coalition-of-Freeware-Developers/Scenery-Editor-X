@@ -45,6 +45,7 @@ SceneryEditorX.exe --project "D:\Scenery\KSEA Seattle\KSEA Seattle.edX" --env-ti
 | `--lock-camera` | Freezes the startup view: the mouse and keys don't move the camera. For captures and comparisons. |
 
 ## Renderer and environment
+
 ### Environment at startup
 
 | Option | Value |

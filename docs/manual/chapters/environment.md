@@ -72,6 +72,7 @@ Lit textures (`_LIT`) and lights switch on at dusk, as they do in X-Plane. To ch
 X-Plane 12's photometric light *spill* (lights brightening the pavement and walls around them) belongs to the tiled-lights step of the emulation, which isn't in this build yet.
 
 ## Exposure
+
 Like X-Plane, the editor exposes the scene like a camera. The **EXPOSURE** section of the RENDERER panel sets:
 
 - **Mode:** **Auto (metered)**, as X-Plane does it, or **Manual**, at the **Manual EV100** you set (or from the aperture, shutter and ISO in the CAMERA panel).
@@ -82,6 +83,7 @@ Like X-Plane, the editor exposes the scene like a camera. The **EXPOSURE** secti
 Its read-outs show the exposure in use, what was metered, and the target.
 
 ## Renderer quality and features
+
 The **RENDERER** panel shows frame timings and GPU memory, and controls what the renderer draws.
 
 ### QUALITY
@@ -121,6 +123,7 @@ Every switch also has a command-line option, `--no-<name>` or `--with-<name>`, l
 - **GPU TIMINGS** and **GPU MEMORY:** where the frame's time and the GPU's memory go.
 
 ## Comparing with an X-Plane screenshot
+
 To check a scene against the sim:
 
 <!-- class: steps -->

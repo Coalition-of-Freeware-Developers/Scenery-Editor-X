@@ -59,6 +59,7 @@ Usually a library the scenery depends on isn't installed. The asset's **Exported
 X-Plane's Global Airports, and any airport file the editor can't write, are read-only. Use **Save As…** to write your edits into a scenery pack of your own.
 
 ### My exported airport doesn't show up in X-Plane
+
 Check, in order:
 
 1. **The pack is in `Custom Scenery`.** The Export dialog says *Outside Custom Scenery* when it isn't.
@@ -106,6 +107,7 @@ The CONSOLE says why:
 Backups of the last five saves are in the project's cache folder: see [The project cache](file-locations.md#the-project-cache).
 
 ## Reporting a problem
+
 Report problems on the project's [issue tracker](https://github.com/Coalition-of-Freeware-Developers/Scenery-Editor-X/issues). A good report has:
 
 - **the version**, from **Help › About Scenery Editor X**;

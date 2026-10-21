@@ -5,6 +5,7 @@ A project is where you work; X-Plane reads `apt.dat`, DSF tiles and art files; W
 ![How work flows: a project is saved as .edX or .sex, exported as a scenery pack for X-Plane, and exchanged with WorldEditor through earth.wed.xml.](../images/diagram-workflow.svg "From a project to X-Plane, and to and from WorldEditor.")
 
 ## Exporting a scenery pack
+
 **File › Export Scenery Pack…** (<kbd>Ctrl+E</kbd>) writes the open project as an X-Plane 12 scenery pack.
 
 ![The Export dialog: the destination folder, what to write, and the validation result.](../images/export-dialog.png "File › Export Scenery Pack…. After an export, a report of what was written appears under the options.")

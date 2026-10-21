@@ -10,7 +10,7 @@ See [Navigating the viewport](viewport-navigation.md) and [Selecting, transformi
 
 ## VIEWPORT 2
 
-A second view of the scene with its own camera, opened with **Window › New Viewport**. Its toolbar has **Top**, **Front** and **Right**, the orthographic toggle, **Frame the airport** and **Match the main viewport's camera**. See [A second viewport](viewport-navigation.md#a-second-viewport).
+A second view of the scene with its own camera, opened with **Window › New Viewport**. Each launch starts without it, and **Reset Layout** closes it. Its toolbar has **Top**, **Front** and **Right**, the orthographic toggle, **Frame the airport** and **Match the main viewport's camera**. See [A second viewport](viewport-navigation.md#a-second-viewport).
 
 ## PROPERTIES
 

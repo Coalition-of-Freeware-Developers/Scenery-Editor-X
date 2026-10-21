@@ -36,6 +36,7 @@ After installing, double-clicking a `.edX` or `.sex` project file opens it in Sc
 > Install **Only for me** if you don't have an administrator account or just want to try the editor. Everything works the same way; only the install folder and who can use it differ.
 
 ## Checking Vulkan
+
 Scenery Editor X draws with Vulkan 1.3. Setup checks for it, and the editor checks again every time it starts. When something is missing you see one of these:
 
 | What setup or the editor says | What it means | What to do |

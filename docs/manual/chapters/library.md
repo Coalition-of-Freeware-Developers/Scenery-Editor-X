@@ -38,6 +38,7 @@ Click the **Filter** button (the funnel) to open the filter drop-down:
 The active filters appear as **chips** next to the search box (the types, the library, *Private / deprecated*, *Missing files*, the search text, the saved filter in use). Click a chip to clear that filter.
 
 ### Saved filters
+
 The bottom of the filter drop-down, **Saved in the project**, keeps named filters with the open project:
 
 - set the search and filters, type a name and click **Save** (or press <kbd>Enter</kbd>);

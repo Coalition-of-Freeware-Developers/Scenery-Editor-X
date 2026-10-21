@@ -49,6 +49,7 @@ The window title shows the project's name, and the PROJECT panel's toolbar has t
 Both hold exactly the same information, and you can switch at any time with **Save Project As…** or **File › Export › Binary Copy (.sex)…**. [Project file formats](file-formats.md) describes both in detail.
 
 ## Recovery and backups
+
 The editor protects your work in three ways, all kept *outside* the project folder (in `%LOCALAPPDATA%\SceneryEditorX\project-cache`), so they never clutter a pack or a git repository:
 
 - **Recovery copies.** Every minute, if the project has unsaved changes, the editor writes them to a recovery file. Saving clears it.

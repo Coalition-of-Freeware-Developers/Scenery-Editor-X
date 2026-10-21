@@ -80,7 +80,7 @@ To rearrange them:
 - **Drag a tab** to move a panel. While you drag, drop targets appear: drop on the center target to add the panel as a tab, or on an edge target to split the area.
 - **Drag a tab out of the window** to float the panel. A floating panel can go on another monitor; it's a window of its own.
 - **Drag the divider** between two areas to resize them.
-- **Window › Reset Layout** puts every panel back where it started, and opens any you had closed. In this build that includes VIEWPORT 2, which then floats over the workspace: close it, or dock it where you like.
+- **Window › Reset Layout** puts every panel back where it started, and opens any you had closed. VIEWPORT 2 is the exception: the reset closes it, so the default layout always has one viewport.
 
 The layout is saved when you quit and restored the next time.
 
