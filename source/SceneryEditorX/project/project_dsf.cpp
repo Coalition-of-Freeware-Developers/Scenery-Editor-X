@@ -839,6 +839,76 @@ namespace SceneryEditorX::ProjectFile
 		return hash.Get();
 	}
 
+	std::unordered_map<std::string, DsfItemFingerprint> GetItemFingerprints(const DsfConversion &conversion)
+	{
+		// One running hash per item, fed its placements in list order (kind tag first, so a polygon never equals an object)
+		std::unordered_map<std::string, Fingerprint> hashes;
+		std::unordered_map<std::string, DsfItemFingerprint> out;
+		const XPlane::DsfFile &dsf = conversion.dsf;
+		const auto start = [&](const std::string &item, const uint32_t index, const char tag) -> Fingerprint &
+		{
+			const auto [it, added] = hashes.try_emplace(item);
+			if (added)
+				out[item].firstPlacement = index;
+			it->second.Add(tag);
+			return it->second;
+		};
+
+		for (uint32_t i = 0; i < dsf.polygons.size() && i < conversion.polygonItems.size(); ++i)
+		{
+			const DsfPolygonPlacement &polygon = dsf.polygons[i];
+			Fingerprint &hash = start(conversion.polygonItems[i], i, 'p');
+			hash.Add(polygon.definition < dsf.polygonDefinitions.size() ? dsf.polygonDefinitions[polygon.definition] : std::string());
+			hash.Add(polygon.parameter);
+			hash.Add(polygon.planes);
+			hash.Add(polygon.filter);
+			hash.Add(polygon.windings.size());
+			for (const Winding &winding : polygon.windings)
+			{
+				hash.Add(winding.size());
+				for (const DsfPoint &point : winding)
+				{
+					for (uint8_t plane = 0; plane < point.planes && plane < point.v.size(); ++plane)
+						hash.Add(point.v[plane]);
+				}
+			}
+		}
+		for (uint32_t i = 0; i < dsf.objects.size() && i < conversion.objectItems.size(); ++i)
+		{
+			const DsfObjectPlacement &object = dsf.objects[i];
+			Fingerprint &hash = start(conversion.objectItems[i], i, 'o');
+			hash.Add(object.definition < dsf.objectDefinitions.size() ? dsf.objectDefinitions[object.definition] : std::string());
+			hash.Add(object.longitude);
+			hash.Add(object.latitude);
+			hash.Add(object.heading);
+			hash.Add(object.elevation);
+			hash.Add(object.mode);
+		}
+		for (uint32_t i = 0; i < dsf.roads.size() && i < conversion.roadItems.size(); ++i)
+		{
+			const XPlane::DsfRoadSegment &road = dsf.roads[i];
+			Fingerprint &hash = start(conversion.roadItems[i], i, 'r');
+			hash.Add(road.definition < dsf.networkDefinitions.size() ? dsf.networkDefinitions[road.definition] : std::string());
+			hash.Add(road.subtype);
+			hash.Add(road.startJunction);
+			hash.Add(road.endJunction);
+			hash.Add(road.startLevel);
+			hash.Add(road.endLevel);
+			hash.Add(road.filter);
+			hash.Add(road.points.size());
+			for (const XPlane::DsfRoadPoint &point : road.points)
+			{
+				hash.Add(point.longitude);
+				hash.Add(point.latitude);
+				hash.Add(point.control);
+			}
+		}
+
+		for (const auto &[item, hash] : hashes)
+			out[item].hash = hash.Get();
+		return out;
+	}
+
 	uint16_t EncodePolygonHeading(const double heading)
 	{
 		double wrapped = std::isfinite(heading) ? std::fmod(heading, 360.0) : 0.0;

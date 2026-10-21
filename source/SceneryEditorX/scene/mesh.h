@@ -90,7 +90,7 @@ namespace SceneryEditorX
 	{
 	public:
 		Mesh();
-		virtual ~Mesh() = default;
+		virtual ~Mesh();
 		static Mesh *Get() { return {}; }
 
 		// geometry
@@ -142,6 +142,8 @@ namespace SceneryEditorX
 		// global geometry buffer offsets (base offsets into the shared vertex/index buffers)
 		uint32_t m_global_vertex_offset = 0;
 		uint32_t m_global_index_offset  = 0;
+		uint32_t m_global_vertex_count  = 0;	// What this mesh holds there (given back when it goes or is rebuilt)
+		uint32_t m_global_index_count   = 0;
 
 		// misc
 		std::mutex m_mutex;

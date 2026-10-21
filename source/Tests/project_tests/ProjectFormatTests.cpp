@@ -2179,6 +2179,41 @@ TEST_CASE("Project DSF fingerprint changes only with what is drawn", "[project][
 	CHECK(fingerprint(turned) != base);
 }
 
+TEST_CASE("Project DSF item fingerprints change only for the edited item", "[project][dsf]")
+{
+	SceneryItem group = MakeItem(ItemKind::Group, "Overlays");
+	group.children = MakeOverlayItems();
+	const SceneryProject project = ProjectWith({ group });
+	const DsfConversion base = BuildProjectDsf(project);
+	const auto items = GetItemFingerprints(base);
+	REQUIRE(items.size() >= 3);
+	for (size_t i = 0; i < base.polygonItems.size(); ++i)
+		CHECK(items.at(base.polygonItems[i]).firstPlacement <= i);	// Each item's first entry comes no later than its others
+
+	// One node moved: that item's hash alone changes
+	SceneryProject moved = project;
+	moved.items[0].children[2].rings[0][0].latitude += 0.00001;
+	const std::string &movedId = moved.items[0].children[2].id;
+	const auto after = GetItemFingerprints(BuildProjectDsf(moved));
+	REQUIRE(after.size() == items.size());
+	for (const auto &[id, fingerprint] : items)
+	{
+		if (id == movedId)
+			CHECK(after.at(id).hash != fingerprint.hash);
+		else
+			CHECK(after.at(id).hash == fingerprint.hash);
+	}
+
+	// An item removed before the others: the rest keep their hashes (only their places in the lists move)
+	SceneryProject removed = project;
+	const std::string removedId = removed.items[0].children[2].id;
+	removed.items[0].children.erase(removed.items[0].children.begin() + 2);
+	const auto fewer = GetItemFingerprints(BuildProjectDsf(removed));
+	CHECK_FALSE(fewer.contains(removedId));
+	for (const auto &[id, fingerprint] : fewer)
+		CHECK(items.at(id).hash == fingerprint.hash);
+}
+
 TEST_CASE("Project DSF parameter encodings", "[project][dsf]")
 {
 	CHECK(EncodePolygonHeading(0.0) == 0);

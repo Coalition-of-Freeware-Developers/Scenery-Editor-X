@@ -165,8 +165,8 @@ The tester list, as received:
 
 | Task | Description | Completed | Date |
 |------|-------------|-----------|------|
-| TASK-015 | A reproducible case: a generated project with a ~5000 node draped polygon, a forest and a facade; `--tools-selftest` steps that select and drag its nodes; `--perf-log` scopes around the node tool, project sync and scenery rebuild. | | |
-| TASK-016 | Fix what the measurement shows (expected: rebuild only the edited item's overlay meshes while dragging, defer full rebuilds to the end of the drag, cache triangulation and selection outlines). | | |
+| TASK-015 | A reproducible case: a generated project with a ~5000 node draped polygon, a forest and a facade; `--tools-selftest` steps that select and drag its nodes; `--perf-log` scopes around the node tool, project sync and scenery rebuild.| ✅ | 2026-10-21 |
+| TASK-016 | Fix what the measurement shows (expected: rebuild only the edited item's overlay meshes while dragging, defer full rebuilds to the end of the drag, cache triangulation and selection outlines). Measured: every edit rebuilt the whole project scenery (1.8-2.8 s in Debug) with a fresh asset cache, and the append-only global geometry buffer grew by the whole scene each time (periodic GPU drains and full re-uploads). Now only edited items rebuild (~30 ms), assets stay parsed, and freed geometry space is reused after the frames in flight. | ✅ | 2026-10-21 |
 
 ### Phase 6 - Asset previews (item 13)
 

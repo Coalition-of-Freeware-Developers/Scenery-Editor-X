@@ -155,12 +155,35 @@ namespace SceneryEditorX::XPlane
 			TextureInfo info;
 		};
 
+		/* @brief A drawn part of a group: its entity and what its drape order is made of. */
+		struct PartState
+		{
+			uint64_t entity = 0;
+			OverlayKind kind = OverlayKind::DrapedPolygon;
+			float height = 0.0f;
+			uint32_t placementOffset = 0;	// Its DSF placement minus the group's first
+		};
+
+		/* @brief What one group shows: its entity, its own mesh (so it can be rebuilt alone), its parts and objects. */
+		struct GroupState
+		{
+			uint64_t entity = 0;
+			uint64_t fingerprint = 0;
+			uint32_t firstPlacement = 0;
+			std::string name;
+			Ref<Mesh> mesh;
+			std::vector<PartState> parts;
+			std::vector<uint64_t> objects;
+			Bounds2 bounds;
+			uint32_t triangles = 0;
+			uint32_t missingTextures = 0;
+		};
+
 		uint64_t root = 0;
-		Ref<Mesh> mesh;
 		uint32_t drapeSequenceBase = 0;								// SetDrapeSequenceBase()
 		std::map<std::string, Ref<MaterialAsset>> materials;		// By texture + alpha treatment (or color)
 		std::map<std::string, TextureEntry> textures;				// By file
-		std::unordered_map<std::string, uint64_t> entities;		// Group key -> its entity
+		std::unordered_map<std::string, GroupState> groups;		// By group key
 		std::unordered_map<uint64_t, std::string> keys;			// Group, part and object root entities -> group key
 		Bounds2 bounds;
 		Stats stats;
@@ -229,84 +252,46 @@ namespace SceneryEditorX::XPlane
 			return material;
 		}
 
-		/* @brief Removes everything below the root (groups take their parts and objects with them). */
-		void DestroyChildren()
+		uint64_t MakeDrapeOrder(const PartState &part, const uint32_t firstPlacement) const
 		{
-			entt::registry *registry = GetRegistry();
-			const entt::entity rootHandle = registry ? FindHandle(*registry, root) : entt::null;
-			if (rootHandle == entt::null)
-				return;
-			const std::vector<UUID> children = registry->get<RelationshipComponent>(rootHandle).pChildren;
-			for (const UUID &child : children)
+			return Renderable::MakeDrapeOrder(part.height, drapeSequenceBase + std::min(firstPlacement + part.placementOffset, 0x7FFFFFFFu));
+		}
+
+		/* @brief Takes a group's entities out of the scene (its parts and objects go with it) and forgets its keys. */
+		void DestroyGroup(GroupState &group)
+		{
+			keys.erase(group.entity);
+			for (const PartState &part : group.parts)
+				keys.erase(part.entity);
+			for (const uint64_t object : group.objects)
+				keys.erase(object);
+			if (entt::registry *registry = GetRegistry(); registry && FindHandle(*registry, group.entity) != entt::null)
 			{
-				if (const Entity entity = Scene::TryGetEntityWithUUID(child))
+				if (const Entity entity = Scene::TryGetEntityWithUUID(UUID(group.entity)))
 					Scene::DestroyEntity(entity);
+				Scene::MarkStructureChanged();
 			}
-			registry->get<RelationshipComponent>(rootHandle).pChildren.clear();
-			Scene::MarkStructureChanged();
+			group.mesh.Reset();	// After the renderables using it are gone; its geometry space is reused frames later
 		}
 
-		/* @brief Drops the GPU resources and the bookkeeping (after the entities using them are gone). */
-		void Release()
+		/* @brief Builds a group's entity below the root: its meshes merged per material into its own mesh, its objects. */
+		void BuildGroup(entt::registry &registry, const entt::entity rootHandle, const Group &group, GroupState &state, uint32_t &failed, std::string &firstError)
 		{
-			mesh.Reset();
-			materials.clear();
-			textures.clear();
-			entities.clear();
-			keys.clear();
-			bounds = {};
-			stats = {};
-		}
-	};
+			state = GroupState{};
+			state.fingerprint = group.fingerprint;
+			state.firstPlacement = group.firstPlacement;
+			state.name = group.name;
 
-	// -------------------------------------------------------
-
-	OverlayScene::OverlayScene() : m_Impl(std::make_unique<Impl>())
-	{
-	}
-
-	OverlayScene::~OverlayScene() = default;
-
-	uint64_t OverlayScene::Build(const std::string &rootName, const std::vector<Group> &groups)
-	{
-		Impl &impl = *m_Impl;
-		const auto start = std::chrono::steady_clock::now();
-		impl.DestroyChildren();
-		impl.Release();
-
-		entt::registry *registry = GetRegistry();
-		if (!registry || groups.empty())
-		{
-			Clear();
-			return 0;
-		}
-
-		entt::entity rootHandle = FindHandle(*registry, impl.root);
-		if (rootHandle == entt::null)
-		{
-			const Entity root = Scene::CreateEntity(rootName);
-			rootHandle = static_cast<entt::entity>(root);
-			if (!registry->valid(rootHandle))
-			{
-				impl.root = 0;
-				return 0;
-			}
-			impl.root = GetId(*registry, rootHandle);
-		}
-
-		// Each group's meshes, merged per material
-		std::vector<std::vector<Part>> parts(groups.size());
-		for (size_t g = 0; g < groups.size(); ++g)
-		{
+			std::vector<Part> parts;
 			std::map<std::string, size_t> byMaterial;
-			for (const OverlayMesh *mesh : groups[g].meshes)
+			for (const OverlayMesh *mesh : group.meshes)
 			{
 				if (!mesh || mesh->indices.empty())
 					continue;
-				const auto [it, added] = byMaterial.emplace(MaterialKey(*mesh), parts[g].size());
+				const auto [it, added] = byMaterial.emplace(MaterialKey(*mesh), parts.size());
 				if (added)
 				{
-					Part &part = parts[g].emplace_back();
+					Part &part = parts.emplace_back();
 					part.name = mesh->name;
 					part.kind = mesh->kind;
 					part.texture = mesh->texture;
@@ -317,71 +302,66 @@ namespace SceneryEditorX::XPlane
 					part.height = mesh->vertices.empty() ? 0.0f : mesh->vertices.front().y;
 					part.placement = mesh->placement;
 				}
-				Append(parts[g][it->second], *mesh);
+				Append(parts[it->second], *mesh);
 			}
-		}
 
-		// One mesh, a sub-mesh per part
-		for (std::vector<Part> &groupParts : parts)
-		{
-			for (Part &part : groupParts)
+			for (Part &part : parts)
 			{
-				if (!impl.mesh)
+				if (!state.mesh)
 				{
-					impl.mesh = CreateRef<Mesh>();
-					impl.mesh->SetFlags(0);	// Keep the local meters as they are: no normalization or generated LODs
-					impl.mesh->SetResourceName(rootName);
+					state.mesh = CreateRef<Mesh>();
+					state.mesh->SetFlags(0);	// Keep the local meters as they are: no normalization or generated LODs
+					state.mesh->SetResourceName(group.name);
 				}
-				impl.mesh->AddGeometry(part.vertices, part.indices, false, &part.subMesh);
-				impl.stats.triangles += static_cast<uint32_t>(part.indices.size() / 3);
-				impl.bounds.Add(part.bounds);
-				++impl.stats.parts;
+				state.mesh->AddGeometry(part.vertices, part.indices, false, &part.subMesh);
+				state.triangles += static_cast<uint32_t>(part.indices.size() / 3);
+				state.bounds.Add(part.bounds);
 			}
-		}
-		if (impl.mesh)
-			impl.mesh->CreateGpuBuffers();
+			if (state.mesh)
+				state.mesh->CreateGpuBuffers();
 
-		const auto addRenderable = [&impl](const entt::entity handle, const Part &part)
-		{
-			Entity *stored = Scene::GetStoredEntity(handle);
-			Renderable *renderable = stored ? stored->AddComponent<Renderable>() : nullptr;
-			if (!renderable)
-				return;
-			bool missingTexture = false;
-			renderable->SetMesh(impl.mesh.Get(), part.subMesh);
-			renderable->SetMaterial(impl.GetMaterial(part, missingTexture));
-			renderable->SetFlag(CastsShadows, part.kind == OverlayKind::Facade || part.kind == OverlayKind::Forest);
-			if (IsDraped(part.kind))
-				renderable->SetDrapeOrder(Renderable::MakeDrapeOrder(part.height, impl.drapeSequenceBase + std::min(part.placement, 0x7FFFFFFFu)));
-			impl.stats.missingTextures += missingTexture ? 1 : 0;
-		};
-
-		uint32_t failed = 0;
-		std::string firstError;
-		for (size_t g = 0; g < groups.size(); ++g)
-		{
-			const Group &group = groups[g];
 			const entt::entity handle = static_cast<entt::entity>(Scene::CreateEntity(group.name.empty() ? std::string("Overlay") : group.name));
-			if (!registry->valid(handle))
-				continue;
-			Attach(*registry, handle, rootHandle);
-			const uint64_t id = GetId(*registry, handle);
-			impl.entities[group.key] = id;
-			impl.keys[id] = group.key;
-			++impl.stats.groups;
+			if (!registry.valid(handle))
+				return;
+			Attach(registry, handle, rootHandle);
+			state.entity = GetId(registry, handle);
+			keys[state.entity] = group.key;
+
+			const auto addRenderable = [&](const entt::entity partHandle, const Part &part)
+			{
+				PartState partState;
+				partState.entity = GetId(registry, partHandle);
+				partState.kind = part.kind;
+				partState.height = part.height;
+				partState.placementOffset = part.placement >= group.firstPlacement ? part.placement - group.firstPlacement : 0;
+
+				Entity *stored = Scene::GetStoredEntity(partHandle);
+				Renderable *renderable = stored ? stored->AddComponent<Renderable>() : nullptr;
+				if (renderable)
+				{
+					bool missingTexture = false;
+					renderable->SetMesh(state.mesh.Get(), part.subMesh);
+					renderable->SetMaterial(GetMaterial(part, missingTexture));
+					renderable->SetFlag(CastsShadows, part.kind == OverlayKind::Facade || part.kind == OverlayKind::Forest);
+					if (IsDraped(part.kind))
+						renderable->SetDrapeOrder(MakeDrapeOrder(partState, group.firstPlacement));
+					state.missingTextures += missingTexture ? 1 : 0;
+				}
+				state.parts.push_back(partState);
+			};
 
 			// One part draws on the group's entity; several get an entity each below it
-			if (parts[g].size() == 1)
-				addRenderable(handle, parts[g].front());
+			if (parts.size() == 1)
+				addRenderable(handle, parts.front());
 			else
 			{
-				for (const Part &part : parts[g])
+				for (const Part &part : parts)
 				{
 					const entt::entity partHandle = static_cast<entt::entity>(Scene::CreateEntity(part.name));
-					if (!registry->valid(partHandle))
+					if (!registry.valid(partHandle))
 						continue;
-					Attach(*registry, partHandle, handle);
-					impl.keys[GetId(*registry, partHandle)] = group.key;
+					Attach(registry, partHandle, handle);
+					keys[GetId(registry, partHandle)] = group.key;
 					addRenderable(partHandle, part);
 				}
 			}
@@ -400,23 +380,164 @@ namespace SceneryEditorX::XPlane
 				options.frameCamera = false;
 				std::string error;
 				const uint64_t objectId = SceneObjects::Place(object->file, options, &error);
-				const entt::entity objectHandle = FindHandle(*registry, objectId);
+				const entt::entity objectHandle = FindHandle(registry, objectId);
 				if (objectHandle == entt::null)
 				{
 					if (failed++ == 0)
 						firstError = error;
 					continue;
 				}
-				Attach(*registry, objectHandle, handle);
-				impl.keys[objectId] = group.key;
-				++impl.stats.objects;
+				Attach(registry, objectHandle, handle);
+				keys[objectId] = group.key;
+				state.objects.push_back(objectId);
 			}
 		}
 
+		/* @brief The totals of what every group shows. */
+		void Recount()
+		{
+			const double milliseconds = stats.buildMilliseconds;
+			stats = {};
+			stats.buildMilliseconds = milliseconds;
+			bounds = {};
+			for (const auto &[key, group] : groups)
+			{
+				++stats.groups;
+				stats.parts += static_cast<uint32_t>(group.parts.size());
+				stats.triangles += group.triangles;
+				stats.objects += static_cast<uint32_t>(group.objects.size());
+				stats.missingTextures += group.missingTextures;
+				bounds.Add(group.bounds);
+			}
+		}
+
+		/* @brief Drops the GPU resources and the bookkeeping (after the entities using them are gone). */
+		void Release()
+		{
+			for (auto &[key, group] : groups)
+				group.mesh.Reset();
+			groups.clear();
+			materials.clear();
+			textures.clear();
+			keys.clear();
+			bounds = {};
+			stats = {};
+		}
+	};
+
+	// -------------------------------------------------------
+
+	OverlayScene::OverlayScene() : m_Impl(std::make_unique<Impl>())
+	{
+	}
+
+	OverlayScene::~OverlayScene() = default;
+
+	uint64_t OverlayScene::Build(const std::string &rootName, const std::vector<Group> &groups)
+	{
+		// Everything from scratch (textures load again), keeping the root so selecting it survives
+		Impl &impl = *m_Impl;
+		for (auto &[key, group] : impl.groups)
+			impl.DestroyGroup(group);
+		impl.groups.clear();
+		impl.keys.clear();
+		impl.materials.clear();
+		impl.textures.clear();
+		std::vector<Group> fresh = groups;
+		for (Group &group : fresh)
+			group.reuse = false;
+		return Update(rootName, fresh);
+	}
+
+	uint64_t OverlayScene::Update(const std::string &rootName, const std::vector<Group> &groups)
+	{
+		Impl &impl = *m_Impl;
+		const auto start = std::chrono::steady_clock::now();
+		entt::registry *registry = GetRegistry();
+		if (!registry || groups.empty())
+		{
+			Clear();
+			return 0;
+		}
+
+		entt::entity rootHandle = FindHandle(*registry, impl.root);
+		if (rootHandle == entt::null)
+		{
+			// A new root (the first build, or the scene lost it): nothing of the old groups is left to reuse
+			for (auto &[key, group] : impl.groups)
+				group.mesh.Reset();
+			impl.groups.clear();
+			impl.keys.clear();
+			const Entity root = Scene::CreateEntity(rootName);
+			rootHandle = static_cast<entt::entity>(root);
+			if (!registry->valid(rootHandle))
+			{
+				impl.root = 0;
+				return 0;
+			}
+			impl.root = GetId(*registry, rootHandle);
+		}
+
+		// Groups no longer listed go
+		std::unordered_map<std::string, const Group *> listed;
+		listed.reserve(groups.size());
+		for (const Group &group : groups)
+			listed[group.key] = &group;
+		for (auto it = impl.groups.begin(); it != impl.groups.end();)
+		{
+			if (listed.contains(it->first))
+			{
+				++it;
+				continue;
+			}
+			impl.DestroyGroup(it->second);
+			it = impl.groups.erase(it);
+		}
+
+		uint32_t failed = 0, built = 0, kept = 0;
+		std::string firstError;
+		for (const Group &group : groups)
+		{
+			const auto existing = impl.groups.find(group.key);
+			if (group.reuse && existing != impl.groups.end() && existing->second.fingerprint == group.fingerprint && existing->second.entity != 0)
+			{
+				// Unchanged: only its place among the drapes may have moved
+				Impl::GroupState &state = existing->second;
+				if (state.firstPlacement != group.firstPlacement)
+				{
+					state.firstPlacement = group.firstPlacement;
+					for (const Impl::PartState &part : state.parts)
+					{
+						if (!IsDraped(part.kind))
+							continue;
+						Entity *stored = Scene::GetStoredEntity(FindHandle(*registry, part.entity));
+						if (Renderable *renderable = stored ? stored->GetComponent<Renderable>() : nullptr)
+							renderable->SetDrapeOrder(impl.MakeDrapeOrder(part, state.firstPlacement));
+					}
+				}
+				++kept;
+				continue;
+			}
+			if (group.reuse && group.meshes.empty() && group.objects.empty())
+				continue;	// Meant to be kept but not shown (a lost root): nothing to build it from
+			if (existing != impl.groups.end())
+				impl.DestroyGroup(existing->second);
+			impl.BuildGroup(*registry, rootHandle, group, impl.groups[group.key], failed, firstError);
+			++built;
+		}
+
 		impl.stats.buildMilliseconds = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
-		SEDX_CORE_INFO_TAG(LOG_TAG, "{}: {} groups, {} parts, {} triangles, {} objects in {:.0f} ms{}", rootName, impl.stats.groups, impl.stats.parts, impl.stats.triangles,
-			impl.stats.objects, impl.stats.buildMilliseconds, failed ? "; " + std::to_string(failed) + " objects could not be placed: " + firstError : std::string());
+		impl.Recount();
+		SEDX_CORE_INFO_TAG(LOG_TAG, "{}: {} groups ({} built, {} kept), {} parts, {} triangles, {} objects in {:.0f} ms{}", rootName, impl.stats.groups, built, kept, impl.stats.parts,
+			impl.stats.triangles, impl.stats.objects, impl.stats.buildMilliseconds,
+			failed ? "; " + std::to_string(failed) + " objects could not be placed: " + firstError : std::string());
 		return impl.root;
+	}
+
+	uint64_t OverlayScene::GetFingerprint(const std::string_view key) const
+	{
+		const auto it = m_Impl->groups.find(std::string(key));
+		return it != m_Impl->groups.end() ? it->second.fingerprint : 0;
 	}
 
 	void OverlayScene::SetDrapeSequenceBase(const uint32_t base)
@@ -446,8 +567,8 @@ namespace SceneryEditorX::XPlane
 
 	uint64_t OverlayScene::FindEntity(const std::string_view key) const
 	{
-		const auto it = m_Impl->entities.find(std::string(key));
-		return it != m_Impl->entities.end() ? it->second : 0;
+		const auto it = m_Impl->groups.find(std::string(key));
+		return it != m_Impl->groups.end() ? it->second.entity : 0;
 	}
 
 	std::string OverlayScene::FindKey(const uint64_t entityId) const

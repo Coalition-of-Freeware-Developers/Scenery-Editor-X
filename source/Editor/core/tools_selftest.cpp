@@ -48,6 +48,7 @@
 #include <map>
 #include <optional>
 #include <SceneryEditorX/logging/logging.hpp>
+#include <SceneryEditorX/renderer/gbuffer.h>
 #include <SceneryEditorX/renderer/gpu_scene.h>
 #include <SceneryEditorX/renderer/scene_picking.h>
 #include <SceneryEditorX/scene/components/renderable.h>
@@ -76,6 +77,10 @@ namespace SceneryEditorX::ToolsSelfTest
 			OrthoPick,
 			OrthoWaitPick,
 			LibraryFilters,
+			LargePolygonCreate,
+			LargePolygonSelect,
+			LargePolygonEdit,
+			LargePolygonCheck,
 			ItemMove,
 			ItemUndo,
 			ItemRedo,
@@ -142,7 +147,12 @@ namespace SceneryEditorX::ToolsSelfTest
 			uint64_t structure = 0;
 			uint64_t ticket = 0;
 			int pickAttempts = 0;
-			std::optional<ViewportCamera::Rig> rigBefore;	// The view before the orthographic steps (put back after)
+			std::optional<ViewportCamera::Rig> rigBefore;
+			std::string largeItem;					// A ~3000 node polygon (editing big shapes stays smooth)
+			int largeEdits = 0;
+			float largeWorstFrame = 0.0f;			// Seconds, the slowest frame while editing it
+			uint32_t largeVerticesBefore = 0;		// Global geometry buffer size before the edits
+			uint32_t largeVerticesAfterAdd = 0;	// The view before the orthographic steps (put back after)
 			int passed = 0;
 			int failed = 0;
 
@@ -397,6 +407,9 @@ namespace SceneryEditorX::ToolsSelfTest
 		if (!s.enabled || s.step == Step::Done || !view.valid)
 			return;
 		++s.frames;
+		// Every frame while the large polygon is edited counts, waiting ones included (that is when its scenery rebuilds)
+		if (s.step == Step::LargePolygonEdit || s.step == Step::LargePolygonCheck)
+			s.largeWorstFrame = std::max(s.largeWorstFrame, ImGui::GetIO().DeltaTime);
 		if (s.wait > 0)
 		{
 			--s.wait;
@@ -545,6 +558,91 @@ namespace SceneryEditorX::ToolsSelfTest
 				Check(EditorHistory::Undo() && document->GetProject().libraryFilters == before, "library filters: undo takes it back out");
 				Check(EditorHistory::Redo() && document->GetProject().libraryFilters == saved, "library filters: redo puts it back");
 				EditorHistory::Undo();
+				s.step = Step::LargePolygonCreate;
+				break;
+			}
+
+			case Step::LargePolygonCreate:
+			{
+				// A big draped polygon: a 300 m circle of 3000 nodes 700 m north of the scene's center
+				s.step = Step::ItemMove;
+				if (!EditorProjects::GetDocument())
+					break;
+				ProjectFile::SceneryItem item;
+				item.kind = ProjectFile::ItemKind::Polygon;
+				item.name = "SelfTest Large Polygon";
+				item.resource = "lib/airport/ground/pavement/asphalt_L/plain.pol";
+				std::vector<ProjectFile::GeoNode> ring;
+				constexpr int NODES = 3000;
+				for (int i = 0; i < NODES; ++i)
+				{
+					const double angle = 6.283185307179586 * i / NODES;
+					ProjectFile::GeoNode node;
+					projectProjection.ToGeo(XPlane::Point2{ 300.0 * std::sin(angle), -700.0 - 300.0 * std::cos(angle) }, node.latitude, node.longitude);
+					ring.push_back(node);
+				}
+				item.rings.push_back(std::move(ring));
+				s.largeVerticesBefore = GeometryBuffer::GetVertexCount();
+				s.largeItem = EditorProjects::AddItem(item, context, "Add SelfTest Large Polygon");
+				Check(!s.largeItem.empty(), "large polygon: a 3000 node polygon added to the project");
+				s.largeEdits = 0;
+				s.largeWorstFrame = 0.0f;
+				s.wait = 60;
+				s.step = s.largeItem.empty() ? Step::ItemMove : Step::LargePolygonSelect;
+				break;
+			}
+
+			case Step::LargePolygonSelect:
+			{
+				s.largeVerticesAfterAdd = GeometryBuffer::GetVertexCount();
+				EditorSelection::Select(context, Target::ForItem(s.largeItem));
+				EditorTools::SetTool(EditorTools::Tool::Nodes);
+				s.largeWorstFrame = 0.0f;
+				s.wait = 20;
+				s.step = Step::LargePolygonEdit;
+				break;
+			}
+
+			case Step::LargePolygonEdit:
+			{
+				// Eight node moves a few frames apart, as quick clicks and drags would make; the slowest frame is kept
+				s.largeWorstFrame = std::max(s.largeWorstFrame, ImGui::GetIO().DeltaTime);
+				if (s.wait == 0 && s.largeEdits < 8)
+				{
+					const auto start = std::chrono::steady_clock::now();
+					NodeTool::SelectNode(0, 0, static_cast<uint32_t>(s.largeEdits * 300), false);
+					NodeTool::TranslateSelectedNodes(2.0, 1.0);
+					EDITOR_INFO_TAG(LOG_TAG, "Large polygon edit {}: {:.1f} ms in the node tool", s.largeEdits + 1,
+						std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count());
+					++s.largeEdits;
+					s.wait = 8;
+					break;
+				}
+				if (s.largeEdits >= 8)
+				{
+					s.wait = 30;
+					s.step = Step::LargePolygonCheck;
+				}
+				break;
+			}
+
+			case Step::LargePolygonCheck:
+			{
+				const uint32_t vertices = GeometryBuffer::GetVertexCount();
+				const uint32_t added = s.largeVerticesAfterAdd > s.largeVerticesBefore ? s.largeVerticesAfterAdd - s.largeVerticesBefore : 0;
+				const uint32_t grown = vertices > s.largeVerticesAfterAdd ? vertices - s.largeVerticesAfterAdd : 0;
+				EDITOR_INFO_TAG(LOG_TAG, "Large polygon: slowest frame {:.1f} ms over 8 edits; geometry buffer {} -> {} (+{} for the polygon) -> {} vertices", s.largeWorstFrame * 1000.0f,
+					s.largeVerticesBefore, s.largeVerticesAfterAdd, added, vertices);
+				Check(s.largeWorstFrame < 0.25f, "large polygon: no frame over 250 ms while editing its nodes");
+				Check(grown <= added + added / 2, "large polygon: edits reuse the scene's geometry space instead of piling it up");
+				for (int i = 0; i < s.largeEdits; ++i)
+					EditorHistory::Undo();
+				EditorHistory::Undo();	// The add
+				Check(FindItem(s.largeItem) == nullptr, "large polygon: undo takes the edits and the polygon back out");
+				EditorTools::SetTool(EditorTools::Tool::Select);
+				EditorSelection::Clear(context);
+				s.wait = 30;
+				s.step = Step::ItemMove;
 				break;
 			}
 
