@@ -29,6 +29,7 @@
  * -------------------------------------------------------
  */
 #include "editor_layer.h"
+#include "asset_thumbnails.h"
 #include "editor_airports.h"
 #include "editor_project.h"
 #include "editor_scenario.h"
@@ -312,6 +313,7 @@ namespace SceneryEditorX
 		Camera::SetInputEnabled(true);
 		Camera::SetInputExternal(false);
 		m_PanelManager.reset();
+		AssetThumbnails::Shutdown();	// Before the renderer frees the device: the thumbnail atlas is on the GPU
 		EditorProjects::Shutdown();	// Keeps unsaved project work as recovery data while the scene still exists
 		EditorAirports::Shutdown();
 		XPlane::SceneObjects::Shutdown();
@@ -411,6 +413,9 @@ namespace SceneryEditorX
 			EditorProjects::Tick(&m_Context);
 			FacadeAuthoring::Tick();	// The facade editor's live preview
 		}
+
+		// Asset thumbnails the panels asked for last frame: finished ones uploaded, workers started
+		AssetThumbnails::Update();
 
 		// Selection: follow what other panels selected last frame, drop what rebuilds removed
 		EditorSelection::Sync(&m_Context);

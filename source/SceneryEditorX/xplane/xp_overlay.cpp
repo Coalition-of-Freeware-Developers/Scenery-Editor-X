@@ -1909,7 +1909,7 @@ namespace SceneryEditorX::XPlane
 			// Curved sides bend the SEGMENT_CURVED variants when the facade has them
 			const bool hasCurved = floor.curvedSegments.size() == floor.segments.size();
 
-			for (size_t s = 0; s < sides.size() && !asset->noWallMesh; ++s)
+			for (size_t s = 0; s < sides.size(); ++s)
 			{
 				const WallSide &side = sides[s];
 				const FacadeWallLayout &wall = layout.walls[s];
@@ -1927,7 +1927,9 @@ namespace SceneryEditorX::XPlane
 					// A curved variant fills the straight one's width
 					const double scale = wall.stretch * (segment.width > 1e-6 && &segment != &straight ? straight.width / segment.width : 1.0);
 
-					for (const FacadeAsset::Mesh &m : segment.meshes)
+					// NO_WALL_MESH: only the attached objects are drawn (barricades, fences of objects), as in WorldEditor
+					static const std::vector<FacadeAsset::Mesh> noMeshes;
+					for (const FacadeAsset::Mesh &m : asset->noWallMesh ? noMeshes : segment.meshes)
 					{
 						const uint32_t base = static_cast<uint32_t>(walls.vertices.size());
 						const size_t vertexCount = m.positions.size() / 3;

@@ -443,6 +443,66 @@ namespace SceneryEditorX
 		Buffer::ReleaseStagingBuffer(staging);
 	}
 
+	bool ImageResource::WriteRegions(const std::vector<RegionWrite>& writes)
+	{
+		if (writes.empty() || m_Image == VK_NULL_HANDLE || Device::IsDeviceLost() || IsCompressedFormat(m_Spec.format))
+			return false;
+
+		std::vector<VkBufferImageCopy> regions;
+		std::vector<const RegionWrite*> sources;
+		VkDeviceSize totalSize = 0;
+		for (const RegionWrite& write : writes)
+		{
+			if (!write.texels || write.width == 0 || write.height == 0 || write.x + write.width > m_Spec.width || write.y + write.height > m_Spec.height)
+				continue;
+
+			VkBufferImageCopy region{};
+			region.bufferOffset                = totalSize;
+			region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			region.imageSubresource.layerCount = 1;
+			region.imageOffset                 = { static_cast<int32_t>(write.x), static_cast<int32_t>(write.y), 0 };
+			region.imageExtent                 = { write.width, write.height, 1 };
+			regions.push_back(region);
+			sources.push_back(&write);
+			totalSize += (static_cast<VkDeviceSize>(write.width) * write.height * 4 + 15) & ~static_cast<VkDeviceSize>(15);
+		}
+		if (regions.empty())
+			return false;
+
+		auto* staging = static_cast<Buffer*>(Buffer::AcquireStagingBuffer(totalSize));
+		if (!staging)
+		{
+			SEDX_CORE_ERROR_TAG("ImageResource", "Failed to allocate a {} byte staging buffer for '{}'", totalSize, m_ObjectName);
+			return false;
+		}
+		auto* mapped = static_cast<uint8_t*>(staging->Map());
+		if (!mapped)
+		{
+			SEDX_CORE_ERROR_TAG("ImageResource", "Failed to map the staging buffer for '{}'", m_ObjectName);
+			Buffer::ReleaseStagingBuffer(staging);
+			return false;
+		}
+		for (size_t i = 0; i < regions.size(); ++i)
+			std::memcpy(mapped + regions[i].bufferOffset, sources[i]->texels, static_cast<size_t>(sources[i]->width) * sources[i]->height * 4);
+		staging->Unmap();
+
+		bool written = false;
+		if (CommandList* cmdList = CommandList::BeginImmediateExecution(QueueType::Graphics))
+		{
+			cmdList->InsertBarrier(m_Image, m_Spec.format, ALL_MIPS, 0, GetArrayLength(), Layout::ImageLayout::TransferDst);
+			vkCmdCopyBufferToImage(cmdList->GetCommandBuffer(), staging->Get(), m_Image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+				static_cast<uint32_t>(regions.size()), regions.data());
+			cmdList->InsertBarrier(m_Image, m_Spec.format, ALL_MIPS, 0, GetArrayLength(), Layout::ImageLayout::ShaderRead);
+			CommandList::EndImmediateExecution(cmdList);
+			written = true;
+		}
+		else
+			SEDX_CORE_ERROR_TAG("ImageResource", "No immediate command list available to write '{}'", m_ObjectName);
+
+		Buffer::ReleaseStagingBuffer(staging);
+		return written;
+	}
+
 	void ImageResource::CreateViews(const VkImageViewCreateInfo& viewCI)
 	{
 		const VkDevice device = m_Device->GetLogicalDevice();

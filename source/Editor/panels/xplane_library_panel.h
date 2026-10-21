@@ -31,6 +31,7 @@
 #pragma once
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 #include <Editor/core/editor_context.h>
@@ -78,7 +79,13 @@ namespace SceneryEditorX
 		void DrawFilterPopup(const XPlane::LibraryIndex &index);
 		void DrawSavedFilters(const XPlane::LibraryIndex &index);
 		void DrawAssetList(const XPlane::LibraryIndex &index);
+		void DrawAssetGrid(const XPlane::LibraryIndex &index);
 		void DrawAssetDetails(const XPlane::LibraryIndex &index, const XPlane::LibraryAsset &asset);
+		void DrawAssetPreview(const XPlane::LibraryAsset &asset);
+		/* @brief A library's line: click to open or close it (both views). */
+		void DrawGroupHeader(const XPlane::LibraryIndex &index, const Group &group, std::optional<std::pair<std::string, bool>> &toggled);
+		/* @brief After an asset's item: selects it when pressed, a double-click places an object or arms a facade, dragging drops it. */
+		void HandleAssetItem(const XPlane::LibraryAsset &asset, bool pressed);
 		void DrawLibrariesTab(const XPlane::LibraryIndex &index);
 		void RefreshFilter(const XPlane::LibraryIndex &index);
 
@@ -101,6 +108,8 @@ namespace SceneryEditorX
 		bool m_ShowHidden = false;											// Private and deprecated assets
 		bool m_OnlyMissing = false;
 		bool m_GroupByLibrary = true;
+		bool m_GridView = false;											// Tiles with thumbnails instead of rows
+		float m_TileSize = 96.0f;
 		std::string m_AppliedFilter;										// The saved filter applied last (until the filters change)
 		std::string m_AppliedKey;
 		std::vector<Group> m_Groups;										// Libraries with matches, in priority order

@@ -1742,3 +1742,49 @@ TEST_CASE("Overlay builder draws road segments as their road type's strips", "[o
 	builder.Build(dsf, OverlayBuilder::Options{}, missing);
 	CHECK_FALSE(missing.warnings.empty());
 }
+
+TEST_CASE("A facade without wall meshes still places its attached objects", "[overlay][facade]")
+{
+	// NO_WALL_MESH (barricades, fences of objects): WorldEditor skips the meshes, not the attachments
+	TempDir temp;
+	std::string text = FAC2_TEXT;
+	const size_t ring = text.find("RING 1\n");
+	REQUIRE(ring != std::string::npos);
+	text.insert(ring, "NO_WALL_MESH\nNO_ROOF_MESH\n");
+	const fs::path fac = temp.Write("facades/barrier.fac", text);
+	temp.Write("facades/objects/door.obj", "I\n800\nOBJ\n");
+
+	const GeoProjection projection(45.6, -122.6);
+	OverlayBuilder builder([&](const std::string_view path) -> fs::path
+	{
+		const fs::path direct(std::string{ path });
+		return direct.is_absolute() && fs::exists(direct) ? direct : fs::path();
+	}, projection);
+	DsfFile dsf;
+	dsf.polygonDefinitions = { fac.generic_string() };
+	DsfPolygonPlacement placement;
+	placement.parameter = 3;
+	for (const auto &[east, north] : { std::pair{ -8.0, -8.0 }, std::pair{ 8.0, -8.0 }, std::pair{ 8.0, 8.0 }, std::pair{ -8.0, 8.0 } })
+	{
+		DsfPoint point;
+		point.planes = 2;
+		projection.ToGeo(Point2{ east, -north }, point.v[1], point.v[0]);
+		placement.windings.resize(1);
+		placement.windings[0].push_back(point);
+	}
+	dsf.polygons.push_back(placement);
+
+	OverlayBuild out;
+	builder.Build(dsf, OverlayBuilder::Options{}, out);
+	size_t triangles = 0;
+	for (const OverlayMesh &mesh : out.meshes)
+	{
+		if (mesh.kind == OverlayKind::Facade)
+			triangles += mesh.indices.size() / 3;
+	}
+	CHECK(triangles == 0);
+	size_t doors = 0;
+	for (const OverlayObject &object : out.objects)
+		doors += object.source == OverlayObject::Source::Facade ? 1 : 0;
+	CHECK(doors >= 4);
+}

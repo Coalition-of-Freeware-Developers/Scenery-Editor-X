@@ -30,6 +30,7 @@
  */
 #include "xplane_library_panel.h"
 #include <optional>
+#include <Editor/core/asset_thumbnails.h>
 
 #include <Editor/core/editor_project.h>
 #include <Editor/core/editor_theme.h>
@@ -41,10 +42,12 @@
 #include <SceneryEditorX/filesystem/file_system.h>
 #include <SceneryEditorX/renderer/font/font_awesome.h>
 #include <SceneryEditorX/renderer/ui/resources/fonts.h>
+#include <SceneryEditorX/renderer/ui/source/imgui/imgui_internal.h>
 #include <SceneryEditorX/renderer/ui/source/imgui/misc/cpp/imgui_stdlib.h>
 #include <SceneryEditorX/project/project_document.h>
 #include <SceneryEditorX/xplane/xp_library_manager.h>
 #include <SceneryEditorX/xplane/xp_object.h>
+#include <SceneryEditorX/xplane/xp_thumbnail.h>
 
 // -------------------------------------------------------
 
@@ -106,17 +109,19 @@ namespace SceneryEditorX
 	{
 		m_Title = "X-PLANE LIBRARY";
 
-		// --library-search <text>: start with a search (screenshots and checks without typing)
+		// --library-search <text>: start with a search; --library-grid: start in the thumbnail grid (screenshots and checks without typing)
 		if (const PlatformContext *platform = Application::Get().GetPlatformContext())
 		{
 			const std::vector<std::string> &args = platform->GetCommandLineArgs();
-			for (size_t i = 0; i + 1 < args.size(); ++i)
+			for (size_t i = 0; i < args.size(); ++i)
 			{
-				if (args[i] == "--library-search")
+				if (args[i] == "--library-search" && i + 1 < args.size())
 				{
 					std::snprintf(m_Filter.InputBuf, sizeof(m_Filter.InputBuf), "%s", args[i + 1].c_str());
 					m_Filter.Build();
 				}
+				else if (args[i] == "--library-grid")
+					m_GridView = true;
 			}
 		}
 	}
@@ -400,7 +405,12 @@ namespace SceneryEditorX
 		const float dpi = ImGui::GetStyle().FontScaleDpi;
 		const float listWidth = std::max(260.0f * dpi, ImGui::GetContentRegionAvail().x * 0.58f);
 		if (ImGui::BeginChild("##AssetList", ImVec2(listWidth, 0.0f), ImGuiChildFlags_ResizeX))
-			DrawAssetList(index);
+		{
+			if (m_GridView)
+				DrawAssetGrid(index);
+			else
+				DrawAssetList(index);
+		}
 		ImGui::EndChild();
 
 		ImGui::SameLine();
@@ -426,7 +436,7 @@ namespace SceneryEditorX
 		const char *countFormat = "%zu of %zu";
 		char count[64];
 		snprintf(count, sizeof(count), countFormat, m_MatchCount, index.GetAssets().size());
-		const float right = (buttonSize + spacing) * 4.0f + ImGui::CalcTextSize(count).x + spacing;
+		const float right = (buttonSize + spacing) * 5.0f + ImGui::CalcTextSize(count).x + spacing;
 		EditorUI::SearchFilter("##AssetSearch", m_Filter, std::max(120.0f * dpi, ImGui::GetContentRegionAvail().x - right));
 		EditorUI::ItemTooltip("Search virtual paths: words narrow it down, -word leaves out (\"hangar -small\")");
 
@@ -454,6 +464,10 @@ namespace SceneryEditorX
 		}
 		DrawFilterPopup(index);
 
+		ImGui::SameLine();
+		if (EditorUI::StripButton(m_GridView ? SEDX_ICON_TH_LARGE : SEDX_ICON_TH_LIST, m_GridView ? "Thumbnail grid\nClick for the list (Ctrl + wheel sizes the tiles)" :
+			"List with thumbnails\nClick for the thumbnail grid", m_GridView, buttonSize))
+			m_GridView = !m_GridView;
 		ImGui::SameLine();
 		if (EditorUI::StripButton(SEDX_ICON_LIST, m_GroupByLibrary ? "Grouped by library\nClick for one list" : "One list\nClick to group by library", m_GroupByLibrary, buttonSize))
 			m_GroupByLibrary = !m_GroupByLibrary;
@@ -753,32 +767,24 @@ namespace SceneryEditorX
 		ImGui::TableHeadersRow();
 
 		std::optional<std::pair<std::string, bool>> toggled;
+		const float thumbnail = std::round(2.0f * ImGui::GetTextLineHeight());
+		const float rowHeight = thumbnail + 2.0f * dpi;
 		ImGuiListClipper clipper;
-		clipper.Begin(static_cast<int>(m_Rows.size()));
+		clipper.Begin(static_cast<int>(m_Rows.size()), rowHeight + ImGui::GetStyle().CellPadding.y * 2.0f);
 		while (clipper.Step())
 		{
 			for (int r = clipper.DisplayStart; r < clipper.DisplayEnd; ++r)
 			{
 				const Row &row = m_Rows[static_cast<size_t>(r)];
 				const Group &group = m_Groups[row.group];
-				ImGui::TableNextRow();
+				ImGui::TableNextRow(ImGuiTableRowFlags_None, rowHeight);
 				ImGui::TableNextColumn();
 				ImGui::PushID(r);
 
 				if (row.asset == HEADER)
 				{
-					// The library's line: click to open or close it
-					const std::string name = group.package >= 0 ? packages[static_cast<size_t>(group.package)].name : std::string();
-					const bool open = IsGroupOpen(index, group);
-					ImGui::SetNextItemOpen(open, ImGuiCond_Always);
-					UI::Fonts::PushFont("Bold");
-					const bool nowOpen = ImGui::TreeNodeEx("##Library", ImGuiTreeNodeFlags_SpanAllColumns | ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_FramePadding,
-						"%s  %s", SEDX_ICON_BOOK, name.empty() ? "Not resolved by any library" : name.c_str());
-					UI::Fonts::PopFont();
-					if (nowOpen != open)
-						toggled = std::make_pair(name, nowOpen);
-					if (group.package >= 0)
-						EditorUI::ItemTooltip(packages[static_cast<size_t>(group.package)].path.string().c_str());
+					ImGui::SetCursorPosY(ImGui::GetCursorPosY() + std::max(0.0f, (rowHeight - ImGui::GetFrameHeight()) * 0.5f));
+					DrawGroupHeader(index, group, toggled);
 					ImGui::TableNextColumn();
 					if (IsFiltering())
 						ImGui::TextDisabled("%zu / %u", group.assets.size(), group.total);
@@ -793,34 +799,25 @@ namespace SceneryEditorX
 				const bool missing = resolved && !resolved->fileExists;
 				if (m_GroupByLibrary)
 					ImGui::Indent(ImGui::GetStyle().IndentSpacing);
-				if (missing)
-					ImGui::PushStyleColor(ImGuiCol_Text, Color(EditorTheme::Palette::Error));
-				const std::string label = std::string(TypeIcon(asset.type)) + "  " + asset.virtualPath;
+				const ImVec2 start = ImGui::GetCursorScreenPos();
 				const bool selected = m_SelectedAsset == asset.virtualPath;
-				if (ImGui::Selectable(label.c_str(), selected, ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowDoubleClick))
+				const bool pressed = ImGui::Selectable("##Asset", selected, ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowDoubleClick, ImVec2(0.0f, rowHeight));
+				HandleAssetItem(asset, pressed);
+
+				// The thumbnail (the type's icon while it draws, or when there is none), then the path
+				ImDrawList *draw = ImGui::GetWindowDrawList();
+				const ImVec2 thumbMin(start.x, start.y + (rowHeight - thumbnail) * 0.5f);
+				const ImVec2 thumbMax(thumbMin.x + thumbnail, thumbMin.y + thumbnail);
+				if (!AssetThumbnails::Draw(resolved && !missing ? resolved->realPath : std::filesystem::path(), thumbMin, thumbMax))
 				{
-					m_SelectedAsset = asset.virtualPath;
-					if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && asset.type == XPlane::AssetType::Object)
-						EditorXPlane::PlaceLibraryAsset(asset.virtualPath, m_Context);
-					// A facade is armed in the facade tool, ready to draw
-					if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && asset.type == XPlane::AssetType::Facade)
-					{
-						FacadeTool::SetResource(asset.virtualPath);
-						EditorTools::SetTool(EditorTools::Tool::Facade);
-					}
+					const ImVec2 iconSize = ImGui::CalcTextSize(TypeIcon(asset.type));
+					draw->AddText(ImVec2(thumbMin.x + (thumbnail - iconSize.x) * 0.5f, thumbMin.y + (thumbnail - iconSize.y) * 0.5f),
+						EditorTheme::ToU32(EditorTheme::Palette::TextDisabled), TypeIcon(asset.type));
 				}
-				if (missing)
-					ImGui::PopStyleColor();
+				draw->AddText(ImVec2(thumbMax.x + ImGui::GetStyle().ItemSpacing.x, start.y + (rowHeight - ImGui::GetTextLineHeight()) * 0.5f),
+					EditorTheme::ToU32(missing ? EditorTheme::Palette::Error : EditorTheme::Palette::Text), asset.virtualPath.c_str());
 				if (m_GroupByLibrary)
 					ImGui::Unindent(ImGui::GetStyle().IndentSpacing);
-
-				const bool draggable = asset.type == XPlane::AssetType::Object || asset.type == XPlane::AssetType::Facade;
-				if (draggable && ImGui::BeginDragDropSource())
-				{
-					ImGui::SetDragDropPayload(EditorXPlane::ASSET_PAYLOAD, asset.virtualPath.c_str(), asset.virtualPath.size() + 1);
-					ImGui::Text("%s  %s", asset.type == XPlane::AssetType::Facade ? SEDX_ICON_BUILDING_O : SEDX_ICON_CUBE, asset.virtualPath.c_str());
-					ImGui::EndDragDropSource();
-				}
 
 				if (!m_GroupByLibrary)
 				{
@@ -838,10 +835,209 @@ namespace SceneryEditorX
 			m_GroupOpen[toggled->first] = toggled->second;
 	}
 
+	void XPlaneLibraryPanel::DrawGroupHeader(const LibraryIndex &index, const Group &group, std::optional<std::pair<std::string, bool>> &toggled)
+	{
+		const std::vector<LibraryPackage> &packages = index.GetPackages();
+		const std::string name = group.package >= 0 ? packages[static_cast<size_t>(group.package)].name : std::string();
+		const bool open = IsGroupOpen(index, group);
+		ImGui::SetNextItemOpen(open, ImGuiCond_Always);
+		UI::Fonts::PushFont("Bold");
+		const bool nowOpen = ImGui::TreeNodeEx("##Library", ImGuiTreeNodeFlags_SpanAllColumns | ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_FramePadding,
+			"%s  %s", SEDX_ICON_BOOK, name.empty() ? "Not resolved by any library" : name.c_str());
+		UI::Fonts::PopFont();
+		if (nowOpen != open)
+			toggled = std::make_pair(name, nowOpen);
+		if (group.package >= 0)
+			EditorUI::ItemTooltip(packages[static_cast<size_t>(group.package)].path.string().c_str());
+	}
+
+	void XPlaneLibraryPanel::HandleAssetItem(const LibraryAsset &asset, const bool pressed)
+	{
+		if (pressed)
+		{
+			m_SelectedAsset = asset.virtualPath;
+			if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && asset.type == XPlane::AssetType::Object)
+				EditorXPlane::PlaceLibraryAsset(asset.virtualPath, m_Context);
+			// A facade is armed in the facade tool, ready to draw
+			if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && asset.type == XPlane::AssetType::Facade)
+			{
+				FacadeTool::SetResource(asset.virtualPath);
+				EditorTools::SetTool(EditorTools::Tool::Facade);
+			}
+		}
+
+		const bool draggable = asset.type == XPlane::AssetType::Object || asset.type == XPlane::AssetType::Facade;
+		if (draggable && ImGui::BeginDragDropSource())
+		{
+			ImGui::SetDragDropPayload(EditorXPlane::ASSET_PAYLOAD, asset.virtualPath.c_str(), asset.virtualPath.size() + 1);
+			const AssetProvider *resolved = asset.GetResolved();
+			AssetThumbnails::Thumbnail thumbnail;
+			if (resolved && resolved->fileExists && AssetThumbnails::Get(resolved->realPath, thumbnail) == AssetThumbnails::State::Ready)
+			{
+				const float side = 64.0f * ImGui::GetStyle().FontScaleDpi;
+				ImGui::Image(ImTextureRef(thumbnail.texture), ImVec2(side, side), thumbnail.uv0, thumbnail.uv1);
+				ImGui::SameLine();
+			}
+			ImGui::Text("%s  %s", asset.type == XPlane::AssetType::Facade ? SEDX_ICON_BUILDING_O : SEDX_ICON_CUBE, asset.virtualPath.c_str());
+			ImGui::EndDragDropSource();
+		}
+	}
+
+	void XPlaneLibraryPanel::DrawAssetGrid(const LibraryIndex &index)
+	{
+		const std::vector<LibraryAsset> &assets = index.GetAssets();
+		if (m_Rows.empty())
+		{
+			EditorUI::EmptyState(IsFiltering() ? "Nothing matches the search and filters." : "No assets.");
+			return;
+		}
+
+		// Ctrl + wheel sizes the tiles
+		const ImGuiIO &io = ImGui::GetIO();
+		if (ImGui::IsWindowHovered() && io.KeyCtrl && io.MouseWheel != 0.0f)
+		{
+			m_TileSize = std::clamp(m_TileSize * (io.MouseWheel > 0.0f ? 1.15f : 0.87f), 56.0f, 192.0f);
+			ImGui::SetScrollY(ImGui::GetScrollY());	// Keep the wheel from scrolling as well
+		}
+
+		const ImGuiStyle &style = ImGui::GetStyle();
+		const float dpi = style.FontScaleDpi;
+		const float tile = std::round(m_TileSize * dpi);
+		const float labelHeight = ImGui::GetTextLineHeightWithSpacing() + 2.0f * dpi;
+		const int columns = std::max(1, static_cast<int>((ImGui::GetContentRegionAvail().x + style.ItemSpacing.x) / (tile + style.ItemSpacing.x)));
+
+		// Lines: library headers, and rows of tiles between them; only the visible ones are drawn
+		struct Line
+		{
+			size_t first = 0;
+			size_t count = 0;
+			bool header = false;
+		};
+		std::vector<Line> lines;
+		for (size_t r = 0; r < m_Rows.size();)
+		{
+			if (m_Rows[r].asset == HEADER)
+			{
+				lines.push_back({ r, 1, true });
+				++r;
+				continue;
+			}
+			Line line{ r, 0, false };
+			while (r < m_Rows.size() && m_Rows[r].asset != HEADER && line.count < static_cast<size_t>(columns))
+			{
+				++line.count;
+				++r;
+			}
+			lines.push_back(line);
+		}
+
+		std::optional<std::pair<std::string, bool>> toggled;
+		const float headerHeight = ImGui::GetFrameHeightWithSpacing();
+		const float tileHeight = tile + labelHeight + style.ItemSpacing.y;
+		const float scrollTop = ImGui::GetScrollY();
+		const float scrollBottom = scrollTop + ImGui::GetWindowHeight();
+		float y = ImGui::GetCursorPosY();
+		for (const Line &line : lines)
+		{
+			const float height = line.header ? headerHeight : tileHeight;
+			if (y + height < scrollTop || y > scrollBottom)
+			{
+				y += height;
+				continue;
+			}
+			ImGui::SetCursorPosY(y);
+			if (line.header)
+			{
+				ImGui::PushID(static_cast<int>(line.first));
+				DrawGroupHeader(index, m_Groups[m_Rows[line.first].group], toggled);
+				ImGui::PopID();
+				y += height;
+				continue;
+			}
+
+			for (size_t i = 0; i < line.count; ++i)
+			{
+				const LibraryAsset &asset = assets[m_Rows[line.first + i].asset];
+				const AssetProvider *resolved = asset.GetResolved();
+				const bool missing = resolved && !resolved->fileExists;
+				if (i > 0)
+					ImGui::SameLine();
+				ImGui::PushID(static_cast<int>(line.first + i));
+				const ImVec2 min = ImGui::GetCursorScreenPos();
+				const ImVec2 max(min.x + tile, min.y + tile);
+				ImGui::InvisibleButton("##Tile", ImVec2(tile, tile + labelHeight));
+				const bool hovered = ImGui::IsItemHovered();
+				const bool selected = m_SelectedAsset == asset.virtualPath;
+				HandleAssetItem(asset, ImGui::IsItemClicked(ImGuiMouseButton_Left));
+
+				ImDrawList *draw = ImGui::GetWindowDrawList();
+				draw->AddRectFilled(min, max, EditorTheme::ToU32(hovered ? EditorTheme::Palette::FrameHovered : EditorTheme::Palette::Frame), 3.0f * dpi);
+				const float inset = 3.0f * dpi;
+				if (!AssetThumbnails::Draw(missing || !resolved ? std::filesystem::path() : resolved->realPath, ImVec2(min.x + inset, min.y + inset), ImVec2(max.x - inset, max.y - inset)))
+				{
+					ImGui::PushFont(nullptr, style.FontSizeBase * std::max(1.0f, m_TileSize / 40.0f));
+					const ImVec2 iconSize = ImGui::CalcTextSize(TypeIcon(asset.type));
+					draw->AddText(ImVec2(min.x + (tile - iconSize.x) * 0.5f, min.y + (tile - iconSize.y) * 0.5f), EditorTheme::ToU32(EditorTheme::Palette::TextDisabled), TypeIcon(asset.type));
+					ImGui::PopFont();
+				}
+				if (selected)
+					draw->AddRect(min, max, EditorTheme::ToU32(EditorTheme::Palette::Accent), 3.0f * dpi, 0, 2.0f * dpi);
+
+				// The file name under the tile
+				const size_t slash = asset.virtualPath.find_last_of('/');
+				const char *name = asset.virtualPath.c_str() + (slash == std::string::npos ? 0 : slash + 1);
+				const ImVec2 labelMin(min.x, max.y + 2.0f * dpi);
+				const ImVec2 labelMax(max.x, labelMin.y + ImGui::GetTextLineHeight());
+				ImGui::PushStyleColor(ImGuiCol_Text, Color(missing ? EditorTheme::Palette::Error : EditorTheme::Palette::Text));
+				ImGui::RenderTextEllipsis(draw, labelMin, labelMax, labelMax.x, name, nullptr, nullptr);
+				ImGui::PopStyleColor();
+				if (hovered)
+					ImGui::SetItemTooltip("%s", asset.virtualPath.c_str());
+				ImGui::PopID();
+			}
+			y += height;
+		}
+		ImGui::SetCursorPosY(y);
+		ImGui::Dummy(ImVec2(1.0f, 1.0f));
+
+		if (toggled)
+			m_GroupOpen[toggled->first] = toggled->second;
+	}
+
+	void XPlaneLibraryPanel::DrawAssetPreview(const LibraryAsset &asset)
+	{
+		const AssetProvider *resolved = asset.GetResolved();
+		if (!resolved || !resolved->fileExists || !XPlane::CanMakeThumbnail(resolved->realPath.string()))
+			return;
+		const float dpi = ImGui::GetStyle().FontScaleDpi;
+		const float side = std::min(ImGui::GetContentRegionAvail().x, 256.0f * dpi);
+		if (side < 32.0f * dpi)
+			return;
+		const ImVec2 min = ImGui::GetCursorScreenPos();
+		const ImVec2 max(min.x + side, min.y + side);
+		ImDrawList *draw = ImGui::GetWindowDrawList();
+		draw->AddRectFilled(min, max, EditorTheme::ToU32(EditorTheme::Palette::Frame), 4.0f * dpi);
+
+		AssetThumbnails::Thumbnail thumbnail;
+		const AssetThumbnails::State state = AssetThumbnails::Get(resolved->realPath, thumbnail, AssetThumbnails::Size::Large);
+		if (state == AssetThumbnails::State::Ready)
+			draw->AddImage(thumbnail.texture, min, max, thumbnail.uv0, thumbnail.uv1);
+		else
+		{
+			const std::string text = state == AssetThumbnails::State::Failed ? AssetThumbnails::GetError(resolved->realPath, AssetThumbnails::Size::Large) : "Drawing the preview...";
+			const ImVec2 size = ImGui::CalcTextSize(text.c_str(), nullptr, false, side - 16.0f * dpi);
+			draw->AddText(nullptr, 0.0f, ImVec2(min.x + (side - size.x) * 0.5f, min.y + (side - size.y) * 0.5f), EditorTheme::ToU32(EditorTheme::Palette::TextDisabled),
+				text.c_str(), nullptr, side - 16.0f * dpi);
+		}
+		ImGui::Dummy(ImVec2(side, side));
+	}
+
 	void XPlaneLibraryPanel::DrawAssetDetails(const LibraryIndex &index, const LibraryAsset &asset)
 	{
 		const std::vector<LibraryPackage> &packages = index.GetPackages();
 		const AssetProvider *resolved = asset.GetResolved();
+
+		DrawAssetPreview(asset);
 
 		UI::Fonts::PushFont("Bold");
 		ImGui::TextWrapped("%s", asset.virtualPath.c_str());

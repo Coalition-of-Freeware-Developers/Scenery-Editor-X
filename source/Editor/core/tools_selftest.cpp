@@ -30,6 +30,7 @@
  */
 #include "tools_selftest.h"
 #include "airport_edit.h"
+#include "asset_thumbnails.h"
 #include "editor_airports.h"
 #include "editor_camera.h"
 #include "editor_history.h"
@@ -54,6 +55,7 @@
 #include <SceneryEditorX/scene/components/renderable.h>
 #include <SceneryEditorX/filesystem/vfs.h>
 #include <SceneryEditorX/xplane/xp_facade_writer.h>
+#include <SceneryEditorX/xplane/xp_library_manager.h>
 #include <SceneryEditorX/xplane/xp_texture_loader.h>
 #include <SceneryEditorX/xplane/xp_scene.h>
 
@@ -81,6 +83,8 @@ namespace SceneryEditorX::ToolsSelfTest
 			LargePolygonSelect,
 			LargePolygonEdit,
 			LargePolygonCheck,
+			Thumbnails,
+			ThumbnailsWait,
 			ItemMove,
 			ItemUndo,
 			ItemRedo,
@@ -152,6 +156,8 @@ namespace SceneryEditorX::ToolsSelfTest
 			int largeEdits = 0;
 			float largeWorstFrame = 0.0f;			// Seconds, the slowest frame while editing it
 			uint32_t largeVerticesBefore = 0;		// Global geometry buffer size before the edits
+			std::vector<std::filesystem::path> thumbnailFiles;	// One library asset of each kind with a thumbnail
+			int thumbnailFrames = 0;
 			uint32_t largeVerticesAfterAdd = 0;	// The view before the orthographic steps (put back after)
 			int passed = 0;
 			int failed = 0;
@@ -642,6 +648,70 @@ namespace SceneryEditorX::ToolsSelfTest
 				EditorTools::SetTool(EditorTools::Tool::Select);
 				EditorSelection::Clear(context);
 				s.wait = 30;
+				s.step = Step::Thumbnails;
+				break;
+			}
+
+			case Step::Thumbnails:
+			{
+				// One library asset of each kind that has a thumbnail
+				s.step = Step::ItemMove;
+				s.thumbnailFiles.clear();
+				const std::shared_ptr<const XPlane::LibraryIndex> index = XPlane::LibraryManager::GetIndex();
+				if (!index)
+					break;
+				for (const XPlane::AssetType type : { XPlane::AssetType::Object, XPlane::AssetType::Facade, XPlane::AssetType::Forest, XPlane::AssetType::Polygon,
+					XPlane::AssetType::Line, XPlane::AssetType::String, XPlane::AssetType::AutogenPoint })
+				{
+					for (const XPlane::LibraryAsset &asset : index->GetAssets())
+					{
+						const XPlane::AssetProvider *resolved = asset.GetResolved();
+						if (asset.type == type && resolved && resolved->fileExists && !asset.IsPrivate() && !asset.IsDeprecated())
+						{
+							s.thumbnailFiles.push_back(resolved->realPath);
+							break;
+						}
+					}
+				}
+				if (s.thumbnailFiles.empty())
+				{
+					EDITOR_INFO_TAG(LOG_TAG, "No library assets: skipping the thumbnail tests");
+					break;
+				}
+				s.thumbnailFrames = 0;
+				s.step = Step::ThumbnailsWait;
+				break;
+			}
+
+			case Step::ThumbnailsWait:
+			{
+				// Asked for every frame, as a panel showing them does (requests nobody draws are dropped)
+				size_t ready = 0, failed = 0;
+				std::string errors;
+				for (const std::filesystem::path &file : s.thumbnailFiles)
+				{
+					AssetThumbnails::Thumbnail thumbnail;
+					const AssetThumbnails::State state = AssetThumbnails::Get(file, thumbnail);
+					ready += state == AssetThumbnails::State::Ready && thumbnail.texture != ImTextureID_Invalid ? 1 : 0;
+					if (state == AssetThumbnails::State::Failed)
+					{
+						++failed;
+						errors += "\n  " + VFS::ToUtf8(file.filename()) + ": " + AssetThumbnails::GetError(file);
+					}
+				}
+				if (ready + failed < s.thumbnailFiles.size() && ++s.thumbnailFrames < 1200)
+					break;
+
+				const AssetThumbnails::Stats stats = AssetThumbnails::GetStats();
+				size_t cached = 0;
+				std::error_code ec;
+				for (std::filesystem::directory_iterator it(VFS::GetAppLocation(VFS::AppLocation::Cache) / "thumbnails", ec), end; !ec && it != end; it.increment(ec))
+					cached += it->path().extension() == ".png" ? 1 : 0;
+				EDITOR_INFO_TAG(LOG_TAG, "Thumbnails: {} of {} drawn, {} failed, in {} frames ({} rendered in {:.0f} ms, {} from the disk cache, {} cached files){}", ready,
+					s.thumbnailFiles.size(), failed, s.thumbnailFrames, stats.rendered, stats.renderMilliseconds, stats.fromDisk, cached, errors);
+				Check(ready + failed == s.thumbnailFiles.size(), "thumbnails: every request finished");
+				Check(ready + 1 >= s.thumbnailFiles.size(), "thumbnails: library objects, facades, forests, polygons, lines and strings are drawn");
+				Check(cached >= ready, "thumbnails: kept in the disk cache");
 				s.step = Step::ItemMove;
 				break;
 			}

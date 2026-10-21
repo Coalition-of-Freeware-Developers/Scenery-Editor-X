@@ -174,9 +174,9 @@ The tester list, as received:
 
 | Task | Description | Completed | Date |
 |------|-------------|-----------|------|
-| TASK-017 | `xplane/xp_thumbnail.*` (standard library): a small software rasterizer (depth buffer, perspective-correct texturing, alpha cut-out, sun + sky shading, 2x2 supersampling) that frames an asset: OBJ8 (LOD 0, at rest), facades (a default footprint through `OverlayBuilder`), polygons, lines, strings, forests, textures. CPU PNG / DDS decoding. Unit tests. | | |
-| TASK-018 | Thumbnail cache: `cache:/thumbnails/<hash of path, size, time, version>.png`, background workers, GPU upload on the main thread under a time budget, LRU of GPU images. | | |
-| TASK-019 | X-PLANE LIBRARY: preview column and a grid view, large preview in the details pane. ASSETS shelf: previews on X-Plane art and texture tiles. | | |
+| TASK-017 | `xplane/xp_thumbnail.*` (standard library): a small software rasterizer (depth buffer, perspective-correct texturing, per-triangle mips, alpha cut-out, draped painter's order, near-plane clipping, linear-light shading, 2x2 supersampling) and WorldEditor's preview of each kind (WED_LibraryPreviewPane): OBJ8 LOD 0 at rest; facades on a 20 m square with a wall type per side on a lawn; forests as a 6 x 6 tree grid; strings as their first object; .agp tiles; polygons and lines flat (one texture repeat, S_OFFSET rows as strips). CPU BC1-BC5 / uncompressed DDS decoding (PNG through the engine's decoder). `ThumbnailTests.cpp`. Also fixed: `NO_WALL_MESH` facades now place their attached objects (the overlay builder skipped whole walls, so object-only barricades drew nothing). | ✅ | 2026-10-21 |
+| TASK-018 | `Editor/core/asset_thumbnails.*`: `cache:/thumbnails/<hash of path, size, time, version>.png`, two thread-pool workers (newest request first, requests nobody draws dropped), uploads on the main thread under a 3 ms budget into 1024 px sRGB atlas pages (`ImageResource::WriteRegions`, LRU of 128 px cells) and separate 256 px images for the details pane. Facade editor saves invalidate the facade's thumbnail. | ✅ | 2026-10-21 |
+| TASK-019 | X-PLANE LIBRARY: thumbnails in list rows, a thumbnail grid (Ctrl + wheel sizes tiles, `--library-grid`), a 256 px preview in the details pane, the thumbnail in drag previews. ASSETS shelf: thumbnails on X-Plane art and texture tiles. Self-test: one library asset of each kind drawn and cached. | ✅ | 2026-10-21 |
 
 ### Phase 7 - Second viewport (item 3)
 
