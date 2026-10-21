@@ -1050,8 +1050,10 @@ namespace SceneryEditorX
 		const VkCommandBuffer cb = cmdList->GetCommandBuffer();
 		cmdList->EndRenderPass();
 
-		// the templates (uploaded above or in an earlier frame) reset every command's instance counter
-		BufferBarrier(cmdList, VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
+		// the templates (uploaded above or in an earlier frame) reset every command's instance counter, once the draws and
+		// culls recorded before have read them (an extra view culls again in the same command list)
+		BufferBarrier(cmdList, VK_PIPELINE_STAGE_2_TRANSFER_BIT | VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT | VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT |
+			VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
 			VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_READ_BIT | VK_ACCESS_2_TRANSFER_WRITE_BIT);
 		const VkBufferCopy reset{ 0, 0, s.commandTemplates.size() * sizeof(DrawCommand) };
 		vkCmdCopyBuffer(cb, s.templateBuffer->Get(), s.commandBuffer->Get(), 1, &reset);

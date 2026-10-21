@@ -82,6 +82,22 @@ namespace SceneryEditorX
 					out.orbitSpeed = std::clamp(navigation->value("orbit_speed", 1.0f), 0.1f, 5.0f);
 					out.zoomSpeed = std::clamp(navigation->value("zoom_speed", 1.0f), 0.1f, 5.0f);
 				}
+				if (const auto viewport = root.find("viewport2"); viewport != root.end() && viewport->is_object())
+				{
+					EditorPreferences::ViewportCameraState &camera = out.viewport2;
+					camera.saved = true;
+					if (const auto pivot = viewport->find("pivot"); pivot != viewport->end() && pivot->is_array() && pivot->size() == 3)
+					{
+						for (size_t i = 0; i < 3; ++i)
+							camera.pivot[i] = (*pivot)[i].get<double>();
+					}
+					camera.distance = std::clamp(viewport->value("distance", camera.distance), 0.1, 1.0e7);
+					camera.yaw = viewport->value("yaw", camera.yaw);
+					camera.pitch = std::clamp(viewport->value("pitch", camera.pitch), -1.5707963267948966, 1.5707963267948966);
+					camera.fovHorizontal = std::clamp(viewport->value("fov", camera.fovHorizontal), 0.05, 3.0);
+					camera.orthographic = viewport->value("orthographic", camera.orthographic);
+					camera.preset = std::clamp(viewport->value("preset", camera.preset), 0, 6);
+				}
 			}
 			catch (const std::exception &e)
 			{
@@ -134,6 +150,12 @@ namespace SceneryEditorX
 
 		nlohmann::json root;
 		root["navigation"] = navigation;
+		if (p.viewport2.saved)
+		{
+			const EditorPreferences::ViewportCameraState &camera = p.viewport2;
+			root["viewport2"] = { { "pivot", { camera.pivot[0], camera.pivot[1], camera.pivot[2] } }, { "distance", camera.distance }, { "yaw", camera.yaw },
+				{ "pitch", camera.pitch }, { "fov", camera.fovHorizontal }, { "orthographic", camera.orthographic }, { "preset", camera.preset } };
+		}
 
 		std::string error;
 		if (!VFS::Get().Write(PREFERENCES_FILE, root.dump(4) + "\n", &error))

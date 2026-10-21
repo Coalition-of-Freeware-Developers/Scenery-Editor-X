@@ -227,6 +227,33 @@ void dynamic_resolution()
 
 	namespace
 	{
+		/* @brief An extra view (Renderer::CreateView): its camera, size, render targets and frame constants. */
+		struct ExtraView
+		{
+			uint32_t id = 0;
+			Renderer::ViewCamera camera;
+			uint32_t width = 0;
+			uint32_t height = 0;
+			std::array<Ref<ImageResource>, static_cast<uint32_t>(Renderer_RenderTarget::MaxEnum)> targets;	// Its resolution-dependent ones
+			ConstantBuffer_Frame frame{};
+			bool hasPreviousFrame = false;
+			uint64_t shownFrame = 0;		// Frame its camera was last set: a view nobody shows (closed, a hidden tab) isn't drawn
+		};
+
+		std::vector<ExtraView> s_ExtraViews;
+		uint32_t s_NextViewId = 1;
+		const Renderer::ViewCamera *s_ViewCamera = nullptr;	// The extra view being drawn: BuildSceneCameraView looks through it
+		bool s_RenderingExtraView = false;
+		bool s_FrameHasPrevious = false;					// m_Cb_Frame_Cpu holds a previous frame (the view's being drawn)
+		xMath::Vec3 s_MainCameraPosition(0.0f, 0.0f, 0.0f);	// The main view's eye: the environment probes stay with it
+		float s_MainDeltaTime = 0.0f;						// Extra views see the main view's frame time
+
+		ExtraView *FindView(const uint32_t id)
+		{
+			const auto it = std::ranges::find_if(s_ExtraViews, [id](const ExtraView &view) { return view.id == id; });
+			return it != s_ExtraViews.end() ? &*it : nullptr;
+		}
+
 		/**
 		 * @struct GpuMatrix
 		 * @brief 4x4 column-vector matrix (clip = M * position) stored row-major: element (r, c) at m[r * 4 + c].
@@ -367,13 +394,19 @@ void dynamic_resolution()
 			const TransformComponent& transform = cameras.get<TransformComponent>(selected);
 			const CameraComponent& camera       = cameras.get<CameraComponent>(selected);
 
+			// An extra view looks through its own camera (the scene camera's near and far planes)
+			const Renderer::ViewCamera *view = s_ViewCamera;
+			const bool orthographic = view ? view->orthographic : camera.projectionType == CameraComponent::ProjectionType::Orthographic;
+			const float orthographicHeight = view ? view->orthographicHeight : camera.orthographicHeight;
+			const float horizontalFov = view ? view->horizontalFov : camera.horizontalFov_Rad;
+
 			// Right comes from the yaw alone, so looking straight down (top views) keeps its bearing
-			const xMath::Vec3 euler   = transform.GetRotationEuler();
+			const xMath::Vec3 euler   = view ? xMath::Vec3(view->pitch, view->yaw, 0.0f) : transform.GetRotationEuler();
 			const float cosPitch      = std::cos(euler.x);
 			const xMath::Vec3 forward = xMath::Normalize(xMath::Vec3(cosPitch * std::sin(euler.y), std::sin(euler.x), cosPitch * std::cos(euler.y)));
 			const xMath::Vec3 right   = xMath::Vec3(-std::cos(euler.y), 0.0f, std::sin(euler.y));
 			const xMath::Vec3 up      = xMath::Cross(right, forward);
-			const xMath::Vec3 eye     = transform.translation;
+			const xMath::Vec3 eye     = view ? view->position : transform.translation;
 
 			// the camera looks down its local -Z
 			out.view = GpuMatrix::Rows({
@@ -384,10 +417,10 @@ void dynamic_resolution()
 
 			const float nearPlane = std::max(camera.nearPlane, 0.001f);
 			const float farPlane  = std::max(camera.farPlane, nearPlane + 1.0f);
-			if (camera.projectionType == CameraComponent::ProjectionType::Orthographic)
+			if (orthographic)
 			{
 				// Reverse-Z orthographic: view depth d = -z maps to (far - d) / (far - near), the near plane behind the eye
-				const float halfHeight = std::max(camera.orthographicHeight * 0.5f, 0.01f);
+				const float halfHeight = std::max(orthographicHeight * 0.5f, 0.01f);
 				const float halfWidth  = halfHeight * aspect;
 				const float orthoNear  = -ORTHOGRAPHIC_BEHIND_EYE;
 				const float range      = farPlane - orthoNear;
@@ -402,7 +435,7 @@ void dynamic_resolution()
 			}
 			else
 			{
-				const float xScale = 1.0f / std::tan(camera.horizontalFov_Rad * 0.5f);
+				const float xScale = 1.0f / std::tan(horizontalFov * 0.5f);
 				const float yScale = xScale * aspect;
 				out.projection = GpuMatrix::Rows({
 					xScale, 0.0f,   0.0f,                                0.0f,
@@ -416,7 +449,7 @@ void dynamic_resolution()
 			out.right         = right;
 			out.nearPlane     = nearPlane;
 			out.farPlane      = farPlane;
-			out.fovHorizontal = camera.horizontalFov_Rad;
+			out.fovHorizontal = horizontalFov;
 			return true;
 		}
 
@@ -686,6 +719,7 @@ void dynamic_resolution()
 
 		// Wait for all GPU work to complete
 		device->GetQueueManager()->WaitIdleAll();
+		s_ExtraViews.clear();	// Their render targets
 
 		// Release the immediate-execution command lists/pools now, while the device and loggers are alive.
 		CommandList::ShutdownImmediateExecution();
@@ -1198,6 +1232,7 @@ void dynamic_resolution()
 				{
 					SEDX_PERF_SCOPE("Render: Record passes");
 					ProduceFrame(m_CmdList_Present, m_CmdList_Compute);
+					RenderExtraViews(m_CmdList_Present);
 				}
 				else
 				{
@@ -2154,6 +2189,137 @@ void dynamic_resolution()
 		return m_Camera;
 	}
 
+	uint32_t Renderer::CreateView()
+	{
+		if (s_ExtraViews.size() >= MAX_EXTRA_VIEWS)
+		{
+			SEDX_CORE_WARN_TAG("Renderer", "No extra view created: {} already exist (the most there can be)", MAX_EXTRA_VIEWS);
+			return 0;
+		}
+		ExtraView view;
+		view.id = s_NextViewId++;
+		s_ExtraViews.push_back(std::move(view));
+		SEDX_CORE_INFO_TAG("Renderer", "Extra view {} created", s_ExtraViews.back().id);
+		return s_ExtraViews.back().id;
+	}
+
+	void Renderer::DestroyView(const uint32_t view)
+	{
+		const auto it = std::ranges::find_if(s_ExtraViews, [view](const ExtraView &v) { return v.id == view; });
+		if (it == s_ExtraViews.end())
+			return;
+		if (RenderContext::Get() && RenderContext::Get()->GetDevice())
+			RenderContext::Get()->GetDevice()->GetQueueManager()->WaitIdleAll();	// Frames in flight still use its targets
+		s_ExtraViews.erase(it);
+		SEDX_CORE_INFO_TAG("Renderer", "Extra view {} destroyed", view);
+	}
+
+	void Renderer::SetViewCamera(const uint32_t view, const ViewCamera &camera)
+	{
+		if (ExtraView *extra = FindView(view))
+		{
+			extra->camera = camera;
+			extra->shownFrame = s_FrameNumber;
+		}
+	}
+
+	void Renderer::SetViewResolution(const uint32_t view, const uint32_t width, const uint32_t height)
+	{
+		ExtraView *extra = FindView(view);
+		if (!extra || width == 0 || height == 0 || !m_ResourcesInitialized || (extra->width == width && extra->height == height))
+			return;
+		if (RenderContext::Get() && RenderContext::Get()->GetDevice())
+			RenderContext::Get()->GetDevice()->GetQueueManager()->WaitIdleAll();	// Frames in flight still use the old targets
+		CreateViewRenderTargets(width, height, extra->targets);
+		extra->width = width;
+		extra->height = height;
+		extra->hasPreviousFrame = false;
+		SEDX_CORE_INFO_TAG("Renderer", "Extra view {} resolution set to {} x {}", view, width, height);
+	}
+
+	ImageResource *Renderer::GetViewOutput(const uint32_t view)
+	{
+		const ExtraView *extra = FindView(view);
+		return extra ? extra->targets[static_cast<size_t>(Renderer_RenderTarget::frame_output)].Get() : nullptr;
+	}
+
+	uint32_t Renderer::GetViewCount()
+	{
+		return static_cast<uint32_t>(s_ExtraViews.size());
+	}
+
+	bool Renderer::IsRenderingExtraView()
+	{
+		return s_RenderingExtraView;
+	}
+
+	void Renderer::RenderExtraViews(CommandList *cmdList)
+	{
+		if (s_ExtraViews.empty() || !cmdList || cmdList->IsStickyInvalid())
+			return;
+		SEDX_PERF_SCOPE("Render: extra views");
+
+		// The main view's state, put back after
+		auto &targets = GetRenderTargets();
+		const Vec2 mainRender = s_RendererResolution;
+		const Vec2 mainOutput = s_OutputResolution;
+		const Viewport mainViewport = s_Viewport;
+		const ConstantBuffer_Frame mainFrame = m_Cb_Frame_Cpu;
+		const bool mainHasPrevious = s_FrameHasPrevious;
+		const auto swapTargets = [&targets](ExtraView &view)
+		{
+			for (size_t i = 0; i < targets.size(); ++i)
+			{
+				if (view.targets[i])
+					std::swap(targets[i], view.targets[i]);
+			}
+		};
+
+		for (ExtraView &view : s_ExtraViews)
+		{
+			if (!view.targets[static_cast<size_t>(Renderer_RenderTarget::frame_output)] || !view.targets[static_cast<size_t>(Renderer_RenderTarget::frame_render)] ||
+				view.shownFrame + 2 < s_FrameNumber)
+				continue;
+			s_RenderingExtraView = true;
+			s_ViewCamera = &view.camera;
+			s_RendererResolution = Vec2(static_cast<float>(view.width), static_cast<float>(view.height));
+			s_OutputResolution = s_RendererResolution;
+			s_Viewport = Viewport(0.0f, 0.0f, static_cast<float>(view.width), static_cast<float>(view.height));
+			swapTargets(view);
+			m_Cb_Frame_Cpu = view.frame;
+			s_FrameHasPrevious = view.hasPreviousFrame;
+
+			// Its draw lists and shadow cascades (the passes read them while recording); its draw data follows the main
+			// view's in this frame's region
+			const uint32_t firstDrawData = m_DrawData_Count;
+			UpdateDrawCalls(cmdList);
+			if (m_DrawData_Count > firstDrawData)
+			{
+				if (Buffer *buffer = GetBuffer(Renderer_Buffer::DrawData))
+				{
+					constexpr uint32_t stride = static_cast<uint32_t>(sizeof(ShaderBuffer_DrawData));
+					CommandList::UpdateBuffer(buffer, static_cast<uint64_t>(s_DrawDataRegionStart + firstDrawData) * stride,
+						static_cast<uint64_t>(m_DrawData_Count - firstDrawData) * stride, &m_DrawData_CPU[firstDrawData]);
+				}
+			}
+			UpdateFrameConstantBuffer(cmdList);
+			UpdateEnvironmentConstantBuffer(cmdList);
+			ProduceFrame(cmdList, nullptr);
+
+			view.frame = m_Cb_Frame_Cpu;
+			view.hasPreviousFrame = s_FrameHasPrevious;
+			swapTargets(view);
+		}
+
+		s_RenderingExtraView = false;
+		s_ViewCamera = nullptr;
+		s_RendererResolution = mainRender;
+		s_OutputResolution = mainOutput;
+		s_Viewport = mainViewport;
+		m_Cb_Frame_Cpu = mainFrame;
+		s_FrameHasPrevious = mainHasPrevious;
+	}
+
 	void Renderer::CreateCameraResources()
 	{
 		VkDevice device = RenderContext::Get()->GetDevice()->GetLogicalDevice();
@@ -2935,11 +3101,14 @@ void dynamic_resolution()
 		static Clock::time_point s_LastTime        = s_StartTime;
 		const Clock::time_point now                = Clock::now();
 		const double timeSeconds                   = std::chrono::duration<double>(now - s_StartTime).count();
-		const float deltaSeconds                   = static_cast<float>(std::chrono::duration<double>(now - s_LastTime).count());
-		s_LastTime                                 = now;
+		const float deltaSeconds                   = s_RenderingExtraView ? s_MainDeltaTime : static_cast<float>(std::chrono::duration<double>(now - s_LastTime).count());
+		if (!s_RenderingExtraView)
+		{
+			s_LastTime = now;
+			s_MainDeltaTime = deltaSeconds;
+		}
 
-		// camera
-		static bool s_HasPreviousFrame = false;
+		// camera (an extra view's history is swapped in with it)
 		const xMath::Vec2 resolutionRender = GetRendererResolution();
 		const float aspect = resolutionRender.y > 0.0f ? resolutionRender.x / resolutionRender.y : 1.0f;
 
@@ -2965,17 +3134,19 @@ void dynamic_resolution()
 			frame.camera_near     = camera.nearPlane;
 			frame.camera_far      = camera.farPlane;
 			frame.camera_fov      = camera.fovHorizontal;
+			if (!s_RenderingExtraView)
+				s_MainCameraPosition = camera.position;
 		}
 
 		// the first frame has no history, so it is its own previous frame (no motion)
-		if (!s_HasPreviousFrame)
+		if (!s_FrameHasPrevious)
 		{
 			frame.view_previous                       = frame.view;
 			frame.projection_previous                 = frame.projection;
 			frame.view_projection_previous            = frame.view_projection;
 			frame.view_projection_previous_unjittered = frame.view_projection_unjittered;
 			frame.camera_position_previous            = frame.camera_position;
-			s_HasPreviousFrame                        = true;
+			s_FrameHasPrevious                        = true;
 		}
 
 		frame.view_projection_ortho = xMath::Matrix::IDENTITY;
@@ -3169,7 +3340,7 @@ void dynamic_resolution()
 			static_cast<float>(moonLux));
 		env.atmosphere_view = xMath::Vec4(constants.aerialRangeM, constants.airglowNits, constants.starBrightness, 0.0f);
 		{
-			const ProbeVec3 probe = SnapProbePosition({ m_Cb_Frame_Cpu.camera_position.x, m_Cb_Frame_Cpu.camera_position.y, m_Cb_Frame_Cpu.camera_position.z });
+			const ProbeVec3 probe = SnapProbePosition({ s_MainCameraPosition.x, s_MainCameraPosition.y, s_MainCameraPosition.z });	// Captured around the main view
 			env.probe = xMath::Vec4(static_cast<float>(probe[0]), static_cast<float>(probe[1]), static_cast<float>(probe[2]), constants.probeSpecularBias);
 		}
 

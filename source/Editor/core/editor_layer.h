@@ -116,6 +116,8 @@ namespace SceneryEditorX
 		/* @brief Menu checkbox / strip toggle for a registered panel's open state. */
 		PanelData *FindPanel(const char *panelId) const;
 
+		bool m_OpenViewport2 = false;		// Open VIEWPORT 2 next frame (Window > New Viewport, --viewport2)
+
 		Ref<UserPreferences> m_UserPreferences;
 		Scope<PanelManager> m_PanelManager;
 		EditorContext m_Context;

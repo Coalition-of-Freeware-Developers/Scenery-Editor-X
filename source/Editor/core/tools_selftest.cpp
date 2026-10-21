@@ -50,6 +50,7 @@
 #include <optional>
 #include <SceneryEditorX/logging/logging.hpp>
 #include <SceneryEditorX/renderer/gbuffer.h>
+#include <SceneryEditorX/renderer/renderer.h>
 #include <SceneryEditorX/renderer/gpu_scene.h>
 #include <SceneryEditorX/renderer/scene_picking.h>
 #include <SceneryEditorX/scene/components/renderable.h>
@@ -85,6 +86,9 @@ namespace SceneryEditorX::ToolsSelfTest
 			LargePolygonCheck,
 			Thumbnails,
 			ThumbnailsWait,
+			ExtraView,
+			ExtraViewResize,
+			ExtraViewCheck,
 			ItemMove,
 			ItemUndo,
 			ItemRedo,
@@ -158,6 +162,9 @@ namespace SceneryEditorX::ToolsSelfTest
 			uint32_t largeVerticesBefore = 0;		// Global geometry buffer size before the edits
 			std::vector<std::filesystem::path> thumbnailFiles;	// One library asset of each kind with a thumbnail
 			int thumbnailFrames = 0;
+			uint32_t extraView = 0;					// A second renderer view (VIEWPORT 2's kind), made and resized here
+			uint32_t extraViewsBefore = 0;
+			int extraViewFrames = 0;
 			uint32_t largeVerticesAfterAdd = 0;	// The view before the orthographic steps (put back after)
 			int passed = 0;
 			int failed = 0;
@@ -712,6 +719,52 @@ namespace SceneryEditorX::ToolsSelfTest
 				Check(ready + failed == s.thumbnailFiles.size(), "thumbnails: every request finished");
 				Check(ready + 1 >= s.thumbnailFiles.size(), "thumbnails: library objects, facades, forests, polygons, lines and strings are drawn");
 				Check(cached >= ready, "thumbnails: kept in the disk cache");
+				s.step = Step::ExtraView;
+				break;
+			}
+
+			case Step::ExtraView:
+			{
+				// A second view drawn after the main one (VIEWPORT 2): a top view of the scene's center
+				s.extraViewsBefore = Renderer::GetViewCount();
+				s.extraView = Renderer::CreateView();
+				Renderer::SetViewResolution(s.extraView, 320, 200);
+				ImageResource *output = Renderer::GetViewOutput(s.extraView);
+				Check(s.extraView != 0 && Renderer::GetViewCount() == s.extraViewsBefore + 1, "extra view: created");
+				Check(output && output->GetWidth() == 320 && output->GetHeight() == 200, "extra view: its own 320 x 200 render targets");
+				s.extraViewFrames = 0;
+				s.step = Step::ExtraViewResize;
+				break;
+			}
+
+			case Step::ExtraViewResize:
+			case Step::ExtraViewCheck:
+			{
+				// Drawn every frame its camera is set; resized once halfway
+				Renderer::ViewCamera camera;
+				camera.position = Vec3(0.0f, 600.0f, 0.0f);
+				camera.pitch = -1.5707f;
+				camera.orthographic = true;
+				camera.orthographicHeight = 800.0f;
+				Renderer::SetViewCamera(s.extraView, camera);
+				if (++s.extraViewFrames < 30)
+					break;
+				if (s.step == Step::ExtraViewResize)
+				{
+					Renderer::SetViewResolution(s.extraView, 400, 300);
+					ImageResource *output = Renderer::GetViewOutput(s.extraView);
+					Check(output && output->GetWidth() == 400 && output->GetHeight() == 300, "extra view: resized to 400 x 300");
+					s.extraViewFrames = 0;
+					s.step = Step::ExtraViewCheck;
+					break;
+				}
+				const ImageResource *output = Renderer::GetViewOutput(s.extraView);
+				Check(output && output->GetLayout(0) == Layout::ImageLayout::ShaderRead, "extra view: its output drawn and ready to show");
+				const ImageResource *main = Renderer::GetRenderTarget(Renderer_RenderTarget::frame_output);
+				Check(main && main != output && main->GetWidth() != 400, "extra view: the main view kept its own targets");
+				Renderer::DestroyView(s.extraView);
+				Check(Renderer::GetViewOutput(s.extraView) == nullptr && Renderer::GetViewCount() == s.extraViewsBefore, "extra view: destroyed with its targets");
+				s.extraView = 0;
 				s.step = Step::ItemMove;
 				break;
 			}

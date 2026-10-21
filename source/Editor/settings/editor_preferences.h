@@ -63,6 +63,20 @@ namespace SceneryEditorX
 		float orbitSpeed = 1.0f;		// Multiplies the mouse sensitivity of orbiting and looking
 		float zoomSpeed = 1.0f;			// Multiplies the wheel / drag zoom steps
 
+		// The second viewport's camera (ViewportCamera::Rig), remembered between sessions
+		struct ViewportCameraState
+		{
+			bool saved = false;
+			double pivot[3] = { 0.0, 0.0, 0.0 };
+			double distance = 200.0;
+			double yaw = 0.0;
+			double pitch = -1.5707963267948966;
+			double fovHorizontal = 1.0471975511965976;
+			bool orthographic = true;
+			int preset = 1;				// ViewportCamera::ViewPreset (Top)
+		};
+		ViewportCameraState viewport2;
+
 		/* @brief The preferences, loaded on first use. */
 		static EditorPreferences &Get();
 

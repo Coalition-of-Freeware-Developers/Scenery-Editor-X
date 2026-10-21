@@ -61,6 +61,7 @@ namespace SceneryEditorX
 	static std::array<Ref<Sampler>, static_cast<uint32_t>(Renderer_Sampler::MaxEnum)>			 s_Samplers;
 	static std::array<Ref<Buffer>,  static_cast<uint32_t>(Renderer_Buffer::MaxEnum)>			 s_Buffers;
 	static std::array<Ref<ImageResource>, static_cast<uint32_t>(Renderer_RenderTarget::MaxEnum)> s_RenderTargets;
+	static bool s_CreatingViewTargets = false;	// CreateViewRenderTargets: leave out the shared targets
 	Ref<Font>																					 s_StandardFont;
 	Ref<MaterialAsset>                                                                           s_StandardMaterial;
 	std::array<Ref<ImageResource>, static_cast<uint32_t>(Renderer_StandardTexture::MaxEnum)>	 s_StandardTextures;
@@ -281,8 +282,11 @@ namespace SceneryEditorX
 				SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::shading_rate)] != nullptr, "Failed to create shading_rate render target");
 			}
 
-			s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::shadow_atlas)] = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, 8192, 8192, 1, 1, VK_FORMAT_D32_SFLOAT, RenderTargetViews | ShaderViews | BlitClear, "shadow_atlas"});
-			SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::shadow_atlas)] != nullptr, "Failed to create shadow_atlas render target");
+			if (!s_CreatingViewTargets)	// Every view draws its shadows into the same atlas
+			{
+				s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::shadow_atlas)] = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, 8192, 8192, 1, 1, VK_FORMAT_D32_SFLOAT, RenderTargetViews | ShaderViews | BlitClear, "shadow_atlas"});
+				SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::shadow_atlas)] != nullptr, "Failed to create shadow_atlas render target");
+			}
 		}
 
 #pragma region Resolution Output Render Targets
@@ -835,8 +839,10 @@ namespace SceneryEditorX
 		std::array<Instance, MAX_INSTANCE_COUNT> identity;
 		identity.fill(Instance::GetIdentity());
 
-		At(s_Buffers, Renderer_Buffer::ConstantFrame)      = CreateRef<Buffer>(sizeof(ConstantBuffer_Frame), elementCount, nullptr, true, "frame");
-		At(s_Buffers, Renderer_Buffer::ConstantEnvironment) = CreateRef<Buffer>(sizeof(ConstantBuffer_Environment), elementCount, nullptr, true, "environment");
+		// One frame / environment update per view per frame (the main view and the extra ones, RenderExtraViews)
+		const uint32_t constantCount = elementCount * (1 + MAX_EXTRA_VIEWS);
+		At(s_Buffers, Renderer_Buffer::ConstantFrame)      = CreateRef<Buffer>(sizeof(ConstantBuffer_Frame), constantCount, nullptr, true, "frame");
+		At(s_Buffers, Renderer_Buffer::ConstantEnvironment) = CreateRef<Buffer>(sizeof(ConstantBuffer_Environment), constantCount, nullptr, true, "environment");
 
 		// exposure (plan TASK-038): the histogram stays on the GPU (zeroed here, then by exposure_adapt.slang after each
 		// read); the state is host visible so the CPU can read the EV back for the next frame's pre-exposure
@@ -955,6 +961,29 @@ namespace SceneryEditorX
 	}
 
 #pragma endregion
+
+	void Renderer::CreateViewRenderTargets(const uint32_t width, const uint32_t height, std::array<Ref<ImageResource>, static_cast<uint32_t>(Renderer_RenderTarget::MaxEnum)> &out)
+	{
+		// The main view's targets and sizes are put back after: what CreateRenderTargets replaced is the view's
+		const auto saved = s_RenderTargets;
+		const Vec2 render = GetRendererResolution();
+		const Vec2 output = GetOutputResolution();
+		SetRendererResolution(width, height, false);
+		SetOutputResolution(width, height, false);
+		s_CreatingViewTargets = true;
+		CreateRenderTargets(true, true, false);
+		s_CreatingViewTargets = false;
+
+		out = {};
+		for (size_t i = 0; i < s_RenderTargets.size(); ++i)
+		{
+			if (s_RenderTargets[i] != saved[i])
+				out[i] = s_RenderTargets[i];
+		}
+		s_RenderTargets = saved;
+		SetRendererResolution(static_cast<uint32_t>(render.x), static_cast<uint32_t>(render.y), false);
+		SetOutputResolution(static_cast<uint32_t>(output.x), static_cast<uint32_t>(output.y), false);
+	}
 
 	std::array<Ref<ImageResource>, static_cast<uint32_t>(Renderer_RenderTarget::MaxEnum)> &Renderer::GetRenderTargets()
 	{

@@ -4,13 +4,13 @@ version: 1.0
 date_created: 2026-10-21
 last_updated: 2026-10-21
 owner: Scenery Editor X editor (Coalition of Freeware Developers)
-status: 'In progress'
+status: 'Completed'
 tags: [feature, bug, editor, viewport, camera, renderer, x-plane, project, ui]
 ---
 
 # Introduction
 
-![Status: In progress](https://img.shields.io/badge/status-In%20progress-yellow)
+![Status: Completed](https://img.shields.io/badge/status-Completed-brightgreen)
 
 Testers sent a list of changes and bugs after using the alpha. This plan records what each item needs, what causes the
 bugs (found by reading the code before changing it), the order the work lands in, and how each part is verified. The
@@ -184,8 +184,8 @@ The tester list, as received:
 
 | Task | Description | Completed | Date |
 |------|-------------|-----------|------|
-| TASK-020 | Renderer views: per-view render targets, resolutions, camera, previous-frame matrices and CPU draw lists; the main view is view 0 and renders as before; extra views render after it in the same frame. Exposure comes from view 0; picking and captures stay on view 0 at first; selection outlines draw in every view. | | |
-| TASK-021 | Window > New Viewport: a VIEWPORT 2 panel with its own camera controller, toolbar and view presets, dockable or floating on another monitor; its camera is remembered; closing it frees its targets. | | |
+| TASK-020 | `Renderer::CreateView / SetViewCamera / SetViewResolution / GetViewOutput / DestroyView`: each extra view has its own resolution-dependent render targets (`CreateViewRenderTargets` reuses `CreateRenderTargets`; the shadow atlas, LUTs and probes are shared), camera (`BuildSceneCameraView` looks through it), frame constants with their previous-frame matrices, draw lists and shadow cascades (built again before it records; its draw data follows the main view's). `RenderExtraViews` records each after the main view in the same command list; the main view keeps exposure metering, environment probes, picking readbacks, GPU timings, captures and the reference overlay. `GpuScene::Cull` waits for earlier indirect draws before resetting commands. A view nobody shows (closed, hidden tab) isn't drawn. | ✅ | 2026-10-21 |
+| TASK-021 | Window > New Viewport (`--viewport2`): `panels/second_viewport_panel.*` "VIEWPORT 2" with its own `ViewportCamera::Controller` (the user's keymap, numpad views, projection toggle, Home), toolbar (Top / Front / Right, orthographic, frame, match the main camera), dockable or floating on another monitor (ImGui multi-viewports); starts as a top orthographic view of the airport; its camera is remembered in `editor_preferences.json`; closing it frees its targets. Self-test: an extra view made, drawn, resized and destroyed. | ✅ | 2026-10-21 |
 
 ## 3. Alternatives
 

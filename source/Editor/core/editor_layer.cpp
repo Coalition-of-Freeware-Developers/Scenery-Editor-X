@@ -58,6 +58,7 @@
 #include <Editor/panels/project_panel.h>
 #include <Editor/panels/properties_panel.h>
 #include <Editor/panels/scene_viewport.h>
+#include <Editor/panels/second_viewport_panel.h>
 #include <Editor/panels/settings_panels.h>
 #include <Editor/panels/xplane_library_panel.h>
 #include <Editor/settings/editor_preferences.h>
@@ -109,6 +110,7 @@ namespace SceneryEditorX
 		};
 
 		constexpr PanelInfo PANEL_VIEWPORT			= { "Viewport",			"VIEWPORT###Viewport",				SEDX_ICON_DESKTOP };
+		constexpr PanelInfo PANEL_VIEWPORT2			= { "Viewport2",		"VIEWPORT 2###Viewport2",			SEDX_ICON_CLONE };
 		constexpr PanelInfo PANEL_PROPERTIES		= { "Properties",		"PROPERTIES###Properties",			SEDX_ICON_SLIDERS };
 		constexpr PanelInfo PANEL_OUTLINER			= { "Outliner",			"OUTLINER###Outliner",				SEDX_ICON_LIST };
 		constexpr PanelInfo PANEL_ASSETS			= { "Assets",			"ASSETS###Assets",					SEDX_ICON_FOLDER_OPEN };
@@ -125,7 +127,7 @@ namespace SceneryEditorX
 
 		constexpr PanelInfo s_StripPanels[] =
 		{
-			PANEL_PROPERTIES, PANEL_OUTLINER, PANEL_PROJECT, PANEL_AIRPORTS, PANEL_XPLANE, PANEL_FACADES, PANEL_FACADE_EDITOR, PANEL_ENVIRONMENT, PANEL_ASSETS, PANEL_CONSOLE, PANEL_SCENE_SETTINGS, PANEL_CAMERA, PANEL_RENDERER, PANEL_VIEWPORT
+			PANEL_PROPERTIES, PANEL_OUTLINER, PANEL_PROJECT, PANEL_AIRPORTS, PANEL_XPLANE, PANEL_FACADES, PANEL_FACADE_EDITOR, PANEL_ENVIRONMENT, PANEL_ASSETS, PANEL_CONSOLE, PANEL_SCENE_SETTINGS, PANEL_CAMERA, PANEL_RENDERER, PANEL_VIEWPORT, PANEL_VIEWPORT2
 		};
 
 		/* Bump when the default layout changes so existing users get the new arrangement once. */
@@ -328,6 +330,7 @@ namespace SceneryEditorX
 		const std::filesystem::path resources = ResourceCache::GetResourceDirectory();
 
 		m_PanelManager->AddPanel<SceneViewport>(PanelCategory::Viewer, PANEL_VIEWPORT.id, "Viewport", true, &m_Context);
+		m_PanelManager->AddPanel<SecondViewportPanel>(PanelCategory::Viewer, PANEL_VIEWPORT2.id, "Viewport 2", false, &m_Context);
 		m_PanelManager->AddPanel<PropertiesPanel>(PanelCategory::Editor, PANEL_PROPERTIES.id, "Properties", true, &m_Context);
 		m_PanelManager->AddPanel<OutlinerPanel>(PanelCategory::Editor, PANEL_OUTLINER.id, "Outliner", true, &m_Context);
 		m_PanelManager->AddPanel<AssetShelfPanel>(PanelCategory::Editor, PANEL_ASSETS.id, "Assets", true, resources);
@@ -433,6 +436,19 @@ namespace SceneryEditorX
 		{
 			SEDX_PERF_SCOPE("Main: panels");
 			m_PanelManager->OnUIRender();
+		}
+
+		// VIEWPORT 2: opened by Window > New Viewport (or --viewport2); closed, its renderer view and targets go
+		if (PanelData *panel = FindPanel(PANEL_VIEWPORT2.id))
+		{
+			if (m_OpenViewport2)
+			{
+				panel->IsOpen = true;
+				ImGui::SetWindowFocus(PANEL_VIEWPORT2.window);
+				m_OpenViewport2 = false;
+			}
+			else if (!panel->IsOpen && panel->Panel)
+				static_cast<SecondViewportPanel *>(panel->Panel.Get())->Release();
 		}
 
 		// The viewport's right-click quad menu and Space hotbox, over the panels
@@ -684,6 +700,13 @@ namespace SceneryEditorX
 
 	void EditorLayer::DrawWindowMenu()
 	{
+		// A second camera on the scene, dockable or floating on another monitor
+		const PanelData *viewport2 = FindPanel(PANEL_VIEWPORT2.id);
+		if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_CLONE, "New Viewport").c_str(), nullptr, false, viewport2 && !viewport2->IsOpen))
+			m_OpenViewport2 = true;
+		EditorUI::ItemTooltip("Opens VIEWPORT 2: its own camera, a top view to start with. Drag its tab out of the window to put it on another monitor");
+		ImGui::Separator();
+
 		for (const PanelInfo &info : s_StripPanels)
 		{
 			if (PanelData *panel = FindPanel(info.id))
@@ -1058,6 +1081,8 @@ namespace SceneryEditorX
 				GpuScene::SetOcclusionCulling(false); // GPU scene without Hi-Z occlusion culling (comparison)
 			else if (args[i] == "--lock-camera")
 				Camera::SetInputLocked(true); // the startup view stays put (captures, A/B measurements)
+			else if (args[i] == "--viewport2")
+				m_OpenViewport2 = true; // VIEWPORT 2 open from the start (checks and captures)
 			else if (args[i] == "--all-features-off")
 				Renderer::SetFeatures(RendererFeatures::AllOff()); // the XP12 frame graph with every switchable pass off (A/B)
 			else if (args[i].starts_with("--no-") || args[i].starts_with("--with-"))
