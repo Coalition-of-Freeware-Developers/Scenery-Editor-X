@@ -1140,6 +1140,35 @@ namespace SceneryEditorX::EditorProjects
 		EDITOR_INFO_TAG(LOG_TAG, "Exported {} for WorldEditor", ToUtf8(path));
 	}
 
+	bool AddNewAirport(const NewAirportProject &spec, EditorContext *context, std::string *error)
+	{
+		State &state = GetState();
+		if (!state.document.IsOpen())
+		{
+			if (error)
+				*error = "No project is open";
+			return false;
+		}
+		SceneryProject made = MakeAirportProject(spec);
+		if (made.airports.empty())
+			return false;
+		ProjectAirport airport = std::move(made.airports.front());
+		if (state.document.FindAirportIndex(airport.airport.id) != ProjectDocument::NO_INDEX)
+		{
+			if (error)
+				*error = "The project already has an airport " + airport.airport.id;
+			return false;
+		}
+		SyncFromScene();
+		const bool hadAirport = !state.document.GetProject().airports.empty();
+		const std::string id = airport.airport.id;
+		state.document.AddAirport(std::move(airport));
+		EDITOR_INFO_TAG(LOG_TAG, "Added the new airport {} to {}", id, state.document.GetProject().info.name);
+		if (!hadAirport)
+			LoadIntoScene(context);
+		return true;
+	}
+
 	void ImportAptDat(EditorContext *context)
 	{
 		State &state = GetState();
@@ -1579,11 +1608,12 @@ namespace SceneryEditorX::EditorProjects
 		State &state = GetState();
 		const bool open = state.document.IsOpen();
 
-		if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_PLANE, "New Airport Project...").c_str(), "Ctrl+N"))
+		if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_FILE, "New Project...").c_str(), "Ctrl+N"))
 			NewProject(context);
-		EditorUI::ItemTooltip("A new scenery pack for an airport: ICAO, name, country and reference point, created in Custom Scenery or a folder you choose");
-		if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_FILE, "New Empty Project...").c_str()))
-			NewEmptyProject(context);
+		EditorUI::ItemTooltip("A new scenery pack (anything, anywhere), an airport or an asset library, created in Custom Scenery or a folder you choose");
+		if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_PLANE, "New Airport in Project...").c_str(), nullptr, false, open))
+			ProjectDialogs::OpenAddAirport();
+		EditorUI::ItemTooltip("Add a new airport (ICAO, name, reference point) to the open project");
 		if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_FOLDER_OPEN, "Open Project...").c_str(), "Ctrl+O"))
 			BrowseOpen(context);
 		if (ImGui::BeginMenu("Open Recent", state.preferences && !state.preferences->GetRecentProjects().empty()))

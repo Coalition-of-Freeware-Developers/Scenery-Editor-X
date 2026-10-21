@@ -32,6 +32,7 @@
 #include <filesystem>
 #include <string>
 #include <SceneryEditorX/project/project_document.h>
+#include <SceneryEditorX/project/scenery_pack.h>
 #include <SceneryEditorX/settings/user_settings.h>
 #include <SceneryEditorX/xplane/xp_apt_geometry.h>
 #include <SceneryEditorX/xplane/xp_assets.h>
@@ -78,8 +79,17 @@ namespace SceneryEditorX::EditorProjects
 	/* @brief "Name *" for the window title, empty without a project. */
 	std::string GetTitle();
 
-	/* @brief Asks about unsaved changes, then shows the New Airport Project form (ICAO, name, location...); the pack is created and opened from there. */
+	/**
+	 * @brief Asks about unsaved changes, then shows the New Project form: a scenery pack (no airport needed), an airport
+	 * or an asset library; the pack is created and opened from there.
+	 */
 	void NewProject(EditorContext *context);
+
+	/**
+	 * @brief Adds a new airport (the New Project form's airport fields) to the open project. The first airport of a
+	 * project goes to the airport editor and centers the scene unless the project has a datum of its own.
+	 */
+	bool AddNewAirport(const ProjectFile::NewAirportProject &spec, EditorContext *context, std::string *error = nullptr);
 
 	/* @brief Asks where to create an empty project file (library projects, imports) and opens it. */
 	void NewEmptyProject(EditorContext *context);

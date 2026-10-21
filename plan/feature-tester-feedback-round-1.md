@@ -155,9 +155,9 @@ The tester list, as received:
 
 | Task | Description | Completed | Date |
 |------|-------------|-----------|------|
-| TASK-012 | `NewSceneryProject` / `ValidateNewSceneryProject` / `CreateSceneryProject` in `project/scenery_pack.*` (name, location, author, reference point and elevation as the datum, optional library), with SceneryPackTests. | | |
-| TASK-013 | File > New Project (Ctrl+N): Scenery, Airport or Library, sharing the location / author fields; New Empty Project folds into it. | | |
-| TASK-014 | PROJECT panel: add a new airport to an open project, remove an airport; a project without an airport opens centered on its datum. | | |
+| TASK-012 | `NewSceneryProject` / `ValidateNewSceneryProject` / `CreateSceneryProject` in `project/scenery_pack.*` (name, location, author, reference point and elevation as the datum, optional library), with SceneryPackTests.| ✅ | 2026-10-21 |
+| TASK-013 | File > New Project (Ctrl+N): Scenery, Airport or Library, sharing the location / author fields; New Empty Project folds into it.| ✅ | 2026-10-21 |
+| TASK-014 | PROJECT panel: add a new airport to an open project, remove an airport; a project without an airport opens centered on its datum.| ✅ | 2026-10-21 |
 
 ### Phase 5 - Large polygon editing (item 10)
 
