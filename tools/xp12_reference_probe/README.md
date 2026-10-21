@@ -31,17 +31,27 @@ the build folder.
 1. Copy the `SEDXReferenceProbe` folder from the build folder to `X-Plane 12/Resources/plugins/`.
 2. Optional: copy `test_scenery/SEDX_Calibration` to `X-Plane 12/Custom Scenery/` (first export its DSF with SEDX, see
    below) for the `ksea_calib_*` scenarios.
-3. For references comparable with SEDX, turn MSAA off in X-Plane's graphics settings (SEDX's deferred path has none).
+3. For references comparable with SEDX, turn MSAA off in X-Plane's graphics settings (SEDX's deferred path has none),
+   and keep anything else off the screen: the Data Output tab's on-screen display, other plugins' messages
+   (FlyWithLua) and the network-data notice end up in every screenshot.
+   Scenery packs that replace library art are fine (AEP replaces `lib/airport/default_runways/*`, the runway and
+   taxiway polygons): SEDX resolves the same library in the same `scenery_packs.ini` order. Plugins that animate
+   scenery (Living Scenery Technology's vehicles and people) put objects SEDX doesn't draw into the shots, so compare
+   regions clear of them.
+4. Start X-Plane fresh for each run: an earlier probe build wrote `photometric/ev100`, which X-Plane then stops driving
+   for the rest of the session.
 
 ## Run
 
-Start X-Plane with any aircraft, then **Plugins > SEDX Reference Probe > Run all scenarios**. For each scenario the probe
+Start X-Plane with any aircraft, then **Plugins > SEDX Reference Probe > Run all scenarios**. Scenarios run clear and
+dry first, then hazy / foggy / overcast, then wet, then snowy (X-Plane takes minutes of sim time to melt snow and dry a
+runway, so the order keeps one scenario's weather out of the next). For each scenario the probe
 
 1. moves the user to the scenario's airport (and waits for the scenery to load) and then out of sight behind the camera,
 2. sets the date and time (`sim/time/*`), the weather (`sim/weather/region/*`: visibility, three cloud layers, rain,
    runway friction, snow cover, temperature; `update_immediately`), and the field of view,
-3. holds the camera at the scenario's pose (`XPLMControlCamera`) and, for `ev100_lock` scenarios, pins
-   `photometric/ev100` (and its min / max) to the locked value,
+3. holds the camera at the scenario's pose (`XPLMControlCamera`) and, for `ev100_lock` scenarios, clamps
+   `photometric/ev100_min` / `_max` to the locked value (`photometric/ev100`, auto exposure's output, is only read),
 4. waits `settle_frames` frames, takes a screenshot (`sim/operation/screenshot`) and copies it to
    `X-Plane 12/Output/sedx_probe/<id>.png`,
 5. writes `<id>.json`: the scenario, what was applied, sun position, window size, weather as X-Plane reports it, and the

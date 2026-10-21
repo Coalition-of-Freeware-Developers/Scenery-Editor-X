@@ -150,7 +150,7 @@ namespace
 		int screenshotStable = 0;
 
 		// Values to restore after the run
-		std::optional<float> savedEv100, savedEv100Min, savedEv100Max, savedFov;
+		std::optional<float> savedEv100Min, savedEv100Max, savedFov;
 		std::optional<int> savedUseSystemTime;
 
 		std::vector<std::string> artControls;
@@ -333,6 +333,27 @@ namespace
 		}
 	}
 
+	/**
+	 * @brief Weather X-Plane can't take back at once runs last: snow cover melts and wet runways dry over minutes of sim
+	 * time, and the first run's calibration and season shots, taken after the snowy ones, were still white. Clear and
+	 * dry scenarios first, then haze, fog and overcast, then rain and wet runways, then snow; file order within each.
+	 */
+	void OrderForWeather(std::vector<Scenario> &scenarios)
+	{
+		const auto rank = [](const Scenario &s)
+		{
+			if (s.snowCover > 0.0f || (s.temperatureC <= 0.0f && s.rainPercent > 0.0f))
+				return 3;
+			if (s.rainPercent > 0.0f || s.runwayFriction > 0.0f)
+				return 2;
+			bool cloudy = false;
+			for (const CloudLayer &layer : s.clouds)
+				cloudy |= layer.coverage > 0.0f;
+			return (cloudy || s.visibilityM < 50000.0f) ? 1 : 0;
+		};
+		std::stable_sort(scenarios.begin(), scenarios.end(), [&](const Scenario &a, const Scenario &b) { return rank(a) < rank(b); });
+	}
+
 	bool LoadScenarios()
 	{
 		g.scenarios.clear();
@@ -357,6 +378,7 @@ namespace
 					if (!s.id.empty())
 						g.scenarios.push_back(std::move(s));
 				}
+				OrderForWeather(g.scenarios);
 				Log("Loaded " + std::to_string(g.scenarios.size()) + " scenarios from " + path.string());
 				return !g.scenarios.empty();
 			}
@@ -458,8 +480,9 @@ namespace
 	{
 		if (!s.ev100Lock)
 			return;
-		// The control X-Plane's screenshot tool drives, plus a clamp so auto exposure can't move away from it
-		SetFloat("sim/private/controls/photometric/ev100", *s.ev100Lock);
+		// Clamp auto exposure to the locked value. photometric/ev100 itself is auto exposure's output: once a plugin writes
+		// it, X-Plane stops driving it, and every later scenario would be shot at that value (the first run's references
+		// were), so it is only read, never written.
 		SetFloat("sim/private/controls/photometric/ev100_min", *s.ev100Lock);
 		SetFloat("sim/private/controls/photometric/ev100_max", *s.ev100Lock);
 	}
@@ -597,8 +620,6 @@ namespace
 			g.cameraActive = false;
 			XPLMDontControlCamera();
 		}
-		if (g.savedEv100)
-			SetFloat("sim/private/controls/photometric/ev100", *g.savedEv100);
 		if (g.savedEv100Min)
 			SetFloat("sim/private/controls/photometric/ev100_min", *g.savedEv100Min);
 		if (g.savedEv100Max)
@@ -624,7 +645,6 @@ namespace
 		if (!fs::exists(g.xplaneFolder / "Custom Scenery" / "SEDX_Calibration"))
 			Log("Custom Scenery/SEDX_Calibration is not installed: the calibration panels won't be in the references");
 
-		g.savedEv100 = GetFloat("sim/private/controls/photometric/ev100");
 		g.savedEv100Min = GetFloat("sim/private/controls/photometric/ev100_min");
 		g.savedEv100Max = GetFloat("sim/private/controls/photometric/ev100_max");
 		g.savedFov = GetFloat("sim/graphics/view/field_of_view_deg");
