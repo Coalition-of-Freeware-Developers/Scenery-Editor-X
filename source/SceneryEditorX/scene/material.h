@@ -61,6 +61,28 @@ namespace SceneryEditorX
 		XpSuperRoughness			= 13,	// SUPER_ROUGHNESS: roughness floor
 		XpDefaultF0					= 14,	// F0 when the normal map's blue carries none (glass 0.06, normal map 0.04, ...)
 		EmissiveNits				= 15,	// Luminance of a white emissive texel, nits (0: texels are display values)
+		// Draped polygons (xp_material.slang xp_drape_*)
+		XpDrapeMode					= 16,	// 0 plain, 1 RUNWAY_TILE atlas (mapping texture: color slot 1), 2 RUNWAY_MARKINGS atlas
+		XpTilesX					= 17,	// Tile atlas: tiles across / down
+		XpTilesY					= 18,
+		XpTileMapWidth				= 19,	// Cells the mapping texture covers (0: tiles picked at random per cell)
+		XpTileMapHeight				= 20,
+		XpDecal0Scale				= 21,	// Detail decals (color slots 2, 3): repeats per meter (0: none), strength
+		XpDecal0Strength			= 22,
+		XpDecal1Scale				= 23,
+		XpDecal1Strength			= 24,
+		XpNormalDecal0Scale			= 25,	// Normal decals (normal slots 1, 2): repeats per meter (0: none), slope gain
+		XpNormalDecal0Gain			= 26,
+		XpNormalDecal1Scale			= 27,
+		XpNormalDecal1Gain			= 28,
+		XpDecalAspect				= 29,	// t repeats over s repeats per meter (1: square decal texels)
+		XpNormalDecalAspect			= 30,
+		XpDrapeMetersU				= 31,	// Meters one unit of u / v covers (UVs to meters for the decals)
+		XpDrapeMetersV				= 32,
+		XpDrapeMiscR				= 33,	// Markings: paint color and border opacity
+		XpDrapeMiscG				= 34,
+		XpDrapeMiscB				= 35,
+		XpDrapeMiscA				= 36,
 		MaxEnum						= 255
 	};
 
@@ -405,7 +427,7 @@ namespace SceneryEditorX
 		// mutable: the scalar setters are const (they forward to the underlying Material), but must keep the table current
 		mutable std::array<float, static_cast<uint32_t>(MaterialClass::MaxEnum)> m_Properties{};
 		// MaterialProperty values (tessellation, cull mode, ...); kept apart because their indices overlap MaterialClass
-		std::array<float, static_cast<uint32_t>(MaterialProperty::EmissiveNits) + 1> m_RenderSettings{};
+		std::array<float, static_cast<uint32_t>(MaterialProperty::XpDrapeMiscA) + 1> m_RenderSettings{};
 		std::array<ImageResource*, static_cast<uint32_t>(MaterialTextureType::MaxEnum) * SLOTS_PER_TEXTURE> m_Textures{};
 
 		bool m_Transparent = false;

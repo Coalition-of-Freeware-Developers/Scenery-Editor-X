@@ -118,3 +118,133 @@ public float xp_emissive_scale(MaterialParameters material)
 {
     return material.xp.w > 0.0f ? material.xp.w * get_pre_exposure() : 1.0f;
 }
+
+// -------------------------------------------------------
+// Draped polygons (.pol): X-Plane 12 runway / taxiway art
+//
+//   - RUNWAY_TILE: the albedo is an atlas of tiles x tiles; the mesh's UVs span the whole atlas (SCALE meters), and each
+//     tile-sized cell shows the tile its texel of the mapping texture (color slot 1) names: R = column, G = row, both
+//     in steps of 256 / tiles. The mapping repeats every drape_tiles.zw cells; without one, cells pick at random.
+//   - RUNWAY_MARKINGS: the albedo is a marking atlas whose R is the paint and G, where it reaches past R, a dark border
+//     (drape_misc: paint rgb, border opacity).
+//   - Detail decals (color slots 2, 3) are grey-centred and modulate the albedo 2x; normal decals (normal slots 1, 2) add
+//     their RG slopes. Both repeat per meter of the surface, so their scale is independent of the atlas.
+
+public static const uint xp_drape_plain    = 0;
+public static const uint xp_drape_tiled    = 1;
+public static const uint xp_drape_markings = 2;
+
+static const uint xp_drape_slot_tile_map     = material_texture_index_albedo + 1;
+static const uint xp_drape_slot_decal        = material_texture_index_albedo + 2;
+static const uint xp_drape_slot_normal_decal = material_texture_index_normal + 1;
+
+float xp_drape_hash(float2 cell)
+{
+    uint2 v = uint2(int2(cell) + 0x8000);
+    uint h = v.x * 0x8da6b343u ^ v.y * 0xd8163841u;
+    h ^= h >> 13;
+    h *= 0x5bd1e995u;
+    h ^= h >> 15;
+    return float(h & 0xffffu) / 65536.0f;
+}
+
+/**
+ * @brief Atlas UV for a tile atlas: the cell's tile (from the mapping texture, else random) at the cell's position.
+ * @param material_base pass_get_material_index() of the draw.
+ */
+public float2 xp_drape_tile_uv(MaterialParameters material, uint material_base, float2 uv)
+{
+    const float2 tiles = max(material.drape_tiles.xy, 1.0f);
+    const float2 position = uv * tiles;			// in tiles
+    const float2 cell = floor(position);
+    float2 tile;
+    if (material.drape_tiles.z > 0.5f && material.drape_tiles.w > 0.5f)
+    {
+        const float2 map_size = material.drape_tiles.zw;
+        const float2 texel = cell - map_size * floor(cell / map_size);
+        const float4 choice = material_textures[material_base + xp_drape_slot_tile_map].SampleLevel(samplers[sampler_point_wrap], (texel + 0.5f) / map_size, 0.0f);
+        tile = round(choice.xy * (255.0f / 256.0f) * tiles);	// 8-bit steps of 256 / tiles (63 reads as 64)
+    }
+    else
+    {
+        tile = floor(float2(xp_drape_hash(cell), xp_drape_hash(cell + 7919.0f)) * tiles);
+    }
+    tile = clamp(tile, 0.0f, tiles - 1.0f);
+    return (tile + (position - cell)) / tiles;
+}
+
+/**
+ * @brief The albedo texel of a draped material as the g-buffer / forward / depth passes use it (rgb in the texture's
+ * encoding, a = coverage): tile atlases pick their cell's tile (sampled with the surface's own gradients, so cell edges
+ * keep their mip), marking atlases decode paint and border.
+ */
+public float4 xp_drape_sample_albedo(MaterialParameters material, uint material_base, float2 uv)
+{
+    Texture2D albedo = material_textures[material_base + material_texture_index_albedo];
+    const uint mode = material.xp_drape_mode();
+    if (mode == xp_drape_tiled)
+        return albedo.SampleGrad(samplers[sampler_anisotropic_wrap], xp_drape_tile_uv(material, material_base, uv), ddx(uv), ddy(uv));
+
+    const float4 texel = albedo.Sample(samplers[sampler_anisotropic_wrap], uv);
+    if (mode == xp_drape_markings)
+    {
+        const float paint = texel.r;
+        const float border = saturate(texel.g - texel.r) * material.drape_misc.a;
+        const float coverage = paint + (1.0f - paint) * border;
+        const float3 color = coverage > 1e-4f ? material.drape_misc.rgb * (paint / coverage) : 0.0f;
+        return float4(color, coverage);
+    }
+    return texel;
+}
+
+/* @brief UVs in meters (decals repeat per meter). */
+float2 xp_drape_meters(MaterialParameters material, float2 uv)
+{
+    return uv * max(material.drape_misc.zw, 1e-3f);
+}
+
+/* @brief Albedo (linear) after the detail decals: 2x modulation by grey-centred textures, weighted by strength. */
+public float3 xp_drape_apply_detail_decals(MaterialParameters material, uint material_base, float2 uv, float3 albedo)
+{
+    if (material.xp_drape_mode() == xp_drape_markings || material.drape_decal.x <= 0.0f)
+        return albedo;
+    const float2 meters = xp_drape_meters(material, uv) * float2(1.0f, max(material.drape_misc.x, 1e-3f));
+    [unroll]
+    for (uint i = 0; i < 2; i++)
+    {
+        const float scale = i == 0 ? material.drape_decal.x : material.drape_decal.z;
+        const float strength = i == 0 ? material.drape_decal.y : material.drape_decal.w;
+        if (scale <= 0.0f)
+            continue;
+        const float3 decal = material_textures[material_base + xp_drape_slot_decal + i].Sample(samplers[sampler_anisotropic_wrap], meters * scale).rgb;
+        albedo *= lerp(1.0f, 2.0f * decal, saturate(strength));
+    }
+    return albedo;
+}
+
+/* @brief Tangent-space normal from the normal decals ((0, 0, 1) without any). */
+public float3 xp_drape_normal_decals(MaterialParameters material, uint material_base, float2 uv)
+{
+    float2 slope = 0.0f;
+    if (material.xp_drape_mode() != xp_drape_markings && material.drape_normal_decal.x > 0.0f)
+    {
+        const float2 meters = xp_drape_meters(material, uv) * float2(1.0f, max(material.drape_misc.y, 1e-3f));
+        [unroll]
+        for (uint i = 0; i < 2; i++)
+        {
+            const float scale = i == 0 ? material.drape_normal_decal.x : material.drape_normal_decal.z;
+            const float gain = i == 0 ? material.drape_normal_decal.y : material.drape_normal_decal.w;
+            if (scale <= 0.0f)
+                continue;
+            const float2 texel = material_textures[material_base + xp_drape_slot_normal_decal + i].Sample(samplers[sampler_anisotropic_wrap], meters * scale).rg;
+            slope += (texel * 2.0f - 1.0f) * gain;
+        }
+    }
+    return normalize(float3(slope, 1.0f));
+}
+
+/* @brief Whether a draped material has normal decals. */
+public bool xp_drape_has_normal_decals(MaterialParameters material)
+{
+    return material.xp_drape_mode() != xp_drape_markings && material.drape_normal_decal.x > 0.0f;
+}

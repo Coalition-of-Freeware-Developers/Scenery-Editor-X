@@ -225,6 +225,12 @@ namespace SceneryEditorX::XPlane
 			bool cutout = false;
 			float cutoff = 0.5f;
 			bool blended = false;
+			OverlayShading shading = OverlayShading::Plain;	// Runway / taxiway art: tile atlas, marking atlas
+			int tilesX = 1, tilesY = 1;
+			fs::path tileMap;
+			int tileMapWidth = 0, tileMapHeight = 0;
+			float metersPerU = 1.0f, metersPerV = 1.0f;
+			std::vector<OverlayDecal> decals;
 
 			std::vector<Vertex_PosTexNorTan> vertices;
 			std::vector<uint32_t> indices;
@@ -392,6 +398,15 @@ namespace SceneryEditorX::XPlane
 			part.cutout = mesh.cutout;
 			part.cutoff = mesh.cutoff;
 			part.blended = mesh.blended;
+			part.shading = mesh.shading;
+			part.tilesX = mesh.tilesX;
+			part.tilesY = mesh.tilesY;
+			part.tileMap = mesh.tileMap;
+			part.tileMapWidth = mesh.tileMapWidth;
+			part.tileMapHeight = mesh.tileMapHeight;
+			part.metersPerU = mesh.metersPerU;
+			part.metersPerV = mesh.metersPerV;
+			part.decals = mesh.decals;
 		}
 
 		/* @brief Appends an overlay mesh's textured geometry (positions, UVs and normals as built). */
@@ -402,8 +417,8 @@ namespace SceneryEditorX::XPlane
 			for (const OverlayVertex &vertex : mesh.vertices)
 			{
 				const Vec3 normal(vertex.nx, vertex.ny, vertex.nz);
-				// A tangent perpendicular to the normal: east for ground, along the ground for walls
-				const Vec3 tangent = std::abs(vertex.ny) > 0.9f ? Vec3(1.0f, 0.0f, 0.0f) : xMath::Normalize(xMath::Cross(Vec3(0.0f, 1.0f, 0.0f), normal));
+				// A tangent perpendicular to the normal: along u for ground (the texture heading), along the ground for walls
+				const Vec3 tangent = std::abs(vertex.ny) > 0.9f ? Vec3(mesh.tangentX, 0.0f, mesh.tangentZ) : xMath::Normalize(xMath::Cross(Vec3(0.0f, 1.0f, 0.0f), normal));
 				part.vertices.push_back(Vertex_PosTexNorTan(Vec3(vertex.x, vertex.y, vertex.z), Vec2(vertex.u, vertex.v), normal, tangent));
 			}
 			part.indices.reserve(part.indices.size() + mesh.indices.size());
@@ -764,7 +779,20 @@ namespace SceneryEditorX::XPlane
 				{
 					ApplyOverlayMaterial(part, *meshes->front());
 					for (const OverlayMesh *mesh : *meshes)
-						AppendOverlayMesh(part, *mesh);
+					{
+						if (mesh->shading != OverlayShading::Markings)
+							AppendOverlayMesh(part, *mesh);
+					}
+					// Painted markings: their own part (blended, a material of their own), drawn over the surface
+					for (const OverlayMesh *mesh : *meshes)
+					{
+						if (mesh->shading != OverlayShading::Markings)
+							continue;
+						Part &markings = start_part(AirportElementKind::Runway, static_cast<uint32_t>(i), mesh->name, Paint::WhiteLine);
+						markings.subIndex = 2;
+						ApplyOverlayMaterial(markings, *mesh);
+						AppendOverlayMesh(markings, *mesh);
+					}
 				}
 				else
 				{
@@ -1269,29 +1297,121 @@ namespace SceneryEditorX::XPlane
 			return material;
 		}
 
+		/* @brief An overlay texture, loaded once per file and usage (null when it can't be found or read; warned once). */
+		ImageResource *LoadOverlayTexture(Loaded &loaded, const fs::path &texture, const TextureUsage usage, bool *hasAlpha = nullptr)
+		{
+			if (texture.empty())
+				return nullptr;
+			const std::string key = std::to_string(static_cast<int>(usage)) + "|" + texture.generic_string();
+			auto it = loaded.textures.find(key);
+			if (it == loaded.textures.end())
+			{
+				TextureEntry entry;
+				const fs::path file = TextureLoader::ResolveTexturePath(texture.parent_path(), texture.filename().string());
+				if (!file.empty())
+					entry.image = TextureLoader::Load(file, usage, &entry.info);
+				if (!entry.image)
+					SEDX_CORE_WARN_TAG(LOG_TAG, "Texture not found or unreadable: {}{}", texture.generic_string(), entry.info.error.empty() ? std::string() : " (" + entry.info.error + ")");
+				it = loaded.textures.emplace(key, std::move(entry)).first;
+			}
+			if (hasAlpha)
+				*hasAlpha = it->second.info.hasAlpha;
+			return it->second.image.Get();
+		}
+
+		/**
+		 * @brief Draped-polygon shading on an overlay material (xp_material.slang xp_drape_*): the tile atlas's mapping
+		 * texture in color slot 1, detail decals in color slots 2-3, normal decals in normal slots 1-2 (slot 0 stays empty:
+		 * overlays draw without a normal map). Returns what it adds to the material's cache key.
+		 */
+		std::string ApplyDrapeShading(Loaded &loaded, const Part &part, MaterialAsset &material)
+		{
+			std::string key;
+			float mode = 0.0f;
+			if (part.shading == OverlayShading::Markings)
+			{
+				// The atlas's channels are masks: R paint, G border (loaded linear, decoded in the shader)
+				mode = 2.0f;
+				material.SetProperty(MaterialProperty::XpDrapeMiscR, part.color[0]);
+				material.SetProperty(MaterialProperty::XpDrapeMiscG, part.color[1]);
+				material.SetProperty(MaterialProperty::XpDrapeMiscB, part.color[2]);
+				material.SetProperty(MaterialProperty::XpDrapeMiscA, part.color[3]);
+				char text[96];
+				std::snprintf(text, sizeof(text), "|markings%.3f,%.3f,%.3f,%.3f", part.color[0], part.color[1], part.color[2], part.color[3]);
+				key += text;
+			}
+			else if (part.shading == OverlayShading::Tiled)
+			{
+				mode = 1.0f;
+				ImageResource *map = LoadOverlayTexture(loaded, part.tileMap, TextureUsage::Data);
+				material.SetProperty(MaterialProperty::XpTilesX, static_cast<float>(part.tilesX));
+				material.SetProperty(MaterialProperty::XpTilesY, static_cast<float>(part.tilesY));
+				material.SetProperty(MaterialProperty::XpTileMapWidth, map ? static_cast<float>(part.tileMapWidth) : 0.0f);
+				material.SetProperty(MaterialProperty::XpTileMapHeight, map ? static_cast<float>(part.tileMapHeight) : 0.0f);
+				if (map)
+					material.SetTexture(MaterialTextureType::Color, map, 1);
+				key += "|tiles" + std::to_string(part.tilesX) + "x" + std::to_string(part.tilesY) + (map ? "|" + part.tileMap.generic_string() : std::string());
+			}
+
+			// Up to two detail and two normal decals, in file order
+			int details = 0, normals = 0;
+			for (const OverlayDecal &decal : part.decals)
+			{
+				const bool normal = decal.normal;
+				int &count = normal ? normals : details;
+				if (count >= 2)
+					continue;
+				ImageResource *image = LoadOverlayTexture(loaded, decal.texture, normal ? TextureUsage::Normal : TextureUsage::Data);
+				if (!image)
+					continue;
+				// Repeats per meter, so decals keep their own scale whatever the atlas's
+				const float perMeterS = decal.scaleS / std::max(0.01f, part.metersPerU);
+				const float perMeterT = decal.scaleT / std::max(0.01f, part.metersPerV);
+				const int slot = count;
+				if (normal)
+				{
+					material.SetTexture(MaterialTextureType::Normal, image, 1 + slot);
+					material.SetProperty(slot == 0 ? MaterialProperty::XpNormalDecal0Scale : MaterialProperty::XpNormalDecal1Scale, perMeterS);
+					material.SetProperty(slot == 0 ? MaterialProperty::XpNormalDecal0Gain : MaterialProperty::XpNormalDecal1Gain, decal.strength * decal.gain);
+				}
+				else
+				{
+					material.SetTexture(MaterialTextureType::Color, image, 2 + slot);
+					material.SetProperty(slot == 0 ? MaterialProperty::XpDecal0Scale : MaterialProperty::XpDecal1Scale, perMeterS);
+					material.SetProperty(slot == 0 ? MaterialProperty::XpDecal0Strength : MaterialProperty::XpDecal1Strength, decal.strength);
+				}
+				// t repeats per meter relative to s (1 for square decal texels; a _PROJ row may set its own)
+				if (slot == 0)
+					material.SetProperty(normal ? MaterialProperty::XpNormalDecalAspect : MaterialProperty::XpDecalAspect, perMeterT / std::max(1e-6f, perMeterS));
+				++count;
+				char text[160];
+				std::snprintf(text, sizeof(text), "|%s%.4f,%.4f,%.3f,%.3f:", normal ? "nd" : "d", decal.scaleS, decal.scaleT, decal.strength, decal.gain);
+				key += text + decal.texture.generic_string();
+			}
+			if (details + normals > 0)
+			{
+				// u / v units in meters: the shader turns UVs into meters for the decals' per-meter scales
+				material.SetProperty(MaterialProperty::XpDrapeMetersU, part.metersPerU);
+				material.SetProperty(MaterialProperty::XpDrapeMetersV, part.metersPerV);
+				char text[64];
+				std::snprintf(text, sizeof(text), "|m%.3f,%.3f", part.metersPerU, part.metersPerV);
+				key += text;
+			}
+			material.SetProperty(MaterialProperty::XpDrapeMode, mode);
+			return key;
+		}
+
 		/* @brief The material for library / DSF art: its texture (loaded once per file) with the asset's alpha treatment. */
 		Ref<MaterialAsset> GetOverlayMaterial(Loaded &loaded, const Part &part)
 		{
-			ImageResource *image = nullptr;
 			bool hasAlpha = false;
 			std::string key;
-			if (!part.texture.empty())
-			{
+			// Marking atlases are masks, not colors: read them linear
+			ImageResource *image = LoadOverlayTexture(loaded, part.texture, part.shading == OverlayShading::Markings ? TextureUsage::Data : TextureUsage::Albedo, &hasAlpha);
+			if (image)
 				key = part.texture.generic_string();
-				auto it = loaded.textures.find(key);
-				if (it == loaded.textures.end())
-				{
-					TextureEntry entry;
-					const fs::path file = TextureLoader::ResolveTexturePath(part.texture.parent_path(), part.texture.filename().string());
-					if (!file.empty())
-						entry.image = TextureLoader::Load(file, TextureUsage::Albedo, &entry.info);
-					if (!entry.image)
-						SEDX_CORE_WARN_TAG(LOG_TAG, "Texture not found or unreadable: {}{}", key, entry.info.error.empty() ? std::string() : " (" + entry.info.error + ")");
-					it = loaded.textures.emplace(key, std::move(entry)).first;
-				}
-				image = it->second.image.Get();
-				hasAlpha = it->second.info.hasAlpha;
-			}
+			if (part.shading == OverlayShading::Markings)
+				hasAlpha = true;	// Coverage comes from the R / G masks
 			if (!image)
 			{
 				char color[64];
@@ -1306,11 +1426,15 @@ namespace SceneryEditorX::XPlane
 			if (blended)
 				key += "|blend";
 
+			// The shading's textures load before the lookup: they are part of the key
+			Ref<MaterialAsset> material = CreateRef<MaterialAsset>();
+			if (image)
+				key += ApplyDrapeShading(loaded, part, *material);
+
 			auto it = loaded.overlayMaterials.find(key);
 			if (it != loaded.overlayMaterials.end())
 				return it->second;
 
-			Ref<MaterialAsset> material = CreateRef<MaterialAsset>();
 			material->SetName(image ? "Airport " + part.texture.filename().string() : "Airport overlay color");
 			const float tone = image ? 1.0f : 1.0f;
 			material->SetProperty(MaterialClass::ColorR, image ? tone : part.color[0]);

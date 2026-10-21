@@ -44,6 +44,7 @@ namespace SceneryEditorX::XPlane
 	{
 		constexpr double kPi = 3.14159265358979323846;
 		constexpr double kDegToRad = kPi / 180.0;
+		constexpr float RUNWAY_MARKINGS_LIFT = 0.008f;	// Runway markings above their runway (below the apt.dat lines, 0.03 up)
 
 		// Draw heights above the ground for draped overlay groups (LAYER_GROUP), so stacked layers don't fight
 		constexpr float LAYER_BASE_HEIGHT = 0.4f;
@@ -360,7 +361,7 @@ namespace SceneryEditorX::XPlane
 
 	// -------------------------------------------------------
 
-	void AppendTexturedPolygon(OverlayMesh &mesh, const std::vector<std::vector<Point2>> &rings, const float y, const float scaleS, const float scaleT, const double headingDegrees)
+	void AppendTexturedPolygon(OverlayMesh &mesh, const std::vector<std::vector<Point2>> &rings, const float y, const float scaleS, const float scaleT, const double headingDegrees, const Point2 origin)
 	{
 		std::vector<Point2> points;
 		std::vector<uint32_t> indices;
@@ -372,17 +373,297 @@ namespace SceneryEditorX::XPlane
 		const double c = std::cos(angle), s = std::sin(angle);
 		const double invS = scaleS > 0.001f ? 1.0 / scaleS : 0.001;
 		const double invT = scaleT > 0.001f ? 1.0 / scaleT : 0.001;
+		mesh.tangentX = static_cast<float>(c);	// u grows east x cos - north x sin: (cos, sin) in x / z
+		mesh.tangentZ = static_cast<float>(s);
 		const uint32_t base = static_cast<uint32_t>(mesh.vertices.size());
 		for (const Point2 &point : points)
 		{
 			// Texture t runs north (-z); a heading turns the texture clockwise
-			const double east = point.x, north = -point.z;
+			const double east = point.x - origin.x, north = origin.z - point.z;
 			const double u = (east * c - north * s) * invS;
 			const double v = (east * s + north * c) * invT;
 			AddVertex(mesh, point.x, y, point.z, u, v);
 		}
 		for (const uint32_t index : indices)
 			mesh.indices.push_back(base + index);
+	}
+
+	namespace
+	{
+		/**
+		 * Marking atlas layout, in pixels of a 4096 x 2048 atlas with the origin top-left (AEP's Runway_Markings_Black.png;
+		 * X-Plane 12's 2048 x 1024 RWY_markings_*.dds have the same layout at half size). Rectangles are the paint; the
+		 * quads take a border around it (the atlas's dark outline, channel G, reaches 6 px past the paint).
+		 */
+		struct AtlasRect
+		{
+			float x0, y0, x1, y1;
+		};
+
+		constexpr float MARKING_ATLAS_WIDTH = 4096.0f;
+		constexpr float MARKING_ATLAS_HEIGHT = 2048.0f;
+		constexpr float MARKING_BORDER = 8.0f;
+		constexpr AtlasRect MARKING_THRESHOLD_BAR = { 2050.0f, 596.0f, 2110.0f, 2028.0f };	// One of eight long bars
+		constexpr AtlasRect MARKING_TOUCHDOWN_BAR = { 322.0f, 1316.0f, 382.0f, 2028.0f };	// One of the short bars
+		constexpr AtlasRect MARKING_AIMING_POINT = { 2994.0f, 596.0f, 3278.0f, 2028.0f };	// The wide block
+		constexpr AtlasRect MARKING_CENTERLINE = { 98.0f, 8.0f, 126.0f, 1220.0f };			// A stripe the length of a dash
+		constexpr AtlasRect MARKING_EDGE_STRIPE = { 4034.0f, 0.0f, 4062.0f, 2048.0f };		// Full height: repeats along v
+		constexpr float MARKING_GLYPH_FIRST_CENTER = 296.0f;	// "1"; then 2..9, 0, L, R, C every 288 px
+		constexpr float MARKING_GLYPH_PITCH = 288.0f;
+		constexpr AtlasRect MARKING_GLYPH_PAINT = { -76.0f, 54.0f, 76.0f, 522.0f };			// Around the glyph's center x
+		constexpr AtlasRect MARKING_GLYPH_QUAD = { -100.0f, 30.0f, 100.0f, 550.0f };		// Covers the widest glyph (4) and the tails (6, 9)
+
+		// FAA AC 150/5340-1 dimensions, meters
+		constexpr double THRESHOLD_SETBACK = 6.1;			// Threshold to the bars
+		constexpr double THRESHOLD_BAR_LENGTH = 45.72;
+		constexpr double THRESHOLD_BAR_WIDTH = 1.75;		// Bars and the gaps between them; the center gap is two
+		constexpr double DESIGNATOR_GAP = 12.2;				// Bars to designator, designator to centerline
+		constexpr double GLYPH_LENGTH = 18.29;
+		constexpr double GLYPH_WIDTH = 6.1;
+		constexpr double GLYPH_SPACING = 9.0;				// Between the centers of two digits
+		constexpr double LETTER_GAP = 6.1;					// Letter (nearer the threshold) to number
+		constexpr double CENTERLINE_DASH = 36.58;
+		constexpr double CENTERLINE_GAP = 24.38;
+		constexpr double AIMING_POINT_START = 306.0;
+		constexpr double AIMING_POINT_LENGTH = 45.72;
+		constexpr double TOUCHDOWN_BAR_LENGTH = 22.86;
+		constexpr double TOUCHDOWN_BAR_WIDTH = 1.83;
+		constexpr double TOUCHDOWN_BAR_GAP = 1.52;
+		constexpr double EDGE_STRIPE_WIDTH = 0.91;
+		constexpr double EDGE_STRIPE_REPEAT = 60.0;			// Meters per repeat of the edge stripe's texture
+		constexpr double MARKED_LENGTH_MIN = 1200.0;		// Aiming points and touchdown zones only on runways this long
+
+		/* @brief 0 none, 1 visual, 2 non-precision, 3 precision (FAA, UK and EASA codes alike). */
+		int MarkingClass(const int code)
+		{
+			switch (code)
+			{
+				case 1:					return 1;
+				case 2: case 4: case 6:	return 2;
+				case 3: case 5: case 7:	return 3;
+				default:				return 0;
+			}
+		}
+
+		int GlyphIndex(const char glyph)
+		{
+			if (glyph >= '1' && glyph <= '9')
+				return glyph - '1';
+			switch (glyph)
+			{
+				case '0':	return 9;
+				case 'L':	return 10;
+				case 'R':	return 11;
+				case 'C':	return 12;
+				default:	return -1;
+			}
+		}
+
+		/* @brief A runway end's frame: its end point, the direction into the runway and the right of it. */
+		struct EndFrame
+		{
+			Point2 origin;
+			Point2 forward;
+			Point2 right;
+
+			Point2 At(const double along, const double lateral) const
+			{
+				return { origin.x + forward.x * along + right.x * lateral, origin.z + forward.z * along + right.z * lateral };
+			}
+		};
+
+		/**
+		 * @brief One marking quad: paint of paintLength x paintWidth meters centered at (along, lateral), the sprite's
+		 * border around it. repeat > 0: the texture repeats that many times along (the sprite must span the atlas height).
+		 */
+		void AppendMarkingQuad(OverlayMesh &mesh, const EndFrame &frame, const float y, const double along, const double lateral,
+			const double paintLength, const double paintWidth, const RunwayMarkingSprite &sprite, const double repeat = 0.0)
+		{
+			const double length = repeat > 0.0 ? paintLength : paintLength / std::max(0.01f, sprite.paintLength);
+			const double width = paintWidth / std::max(0.01f, sprite.paintWidth);
+			const double v1 = repeat > 0.0 ? sprite.v0 + repeat : sprite.v1;
+			const Point2 corners[4] =
+			{
+				frame.At(along - 0.5 * length, lateral - 0.5 * width),
+				frame.At(along - 0.5 * length, lateral + 0.5 * width),
+				frame.At(along + 0.5 * length, lateral + 0.5 * width),
+				frame.At(along + 0.5 * length, lateral - 0.5 * width)
+			};
+			const double uvs[4][2] = { { sprite.u0, sprite.v0 }, { sprite.u1, sprite.v0 }, { sprite.u1, v1 }, { sprite.u0, v1 } };
+			const uint32_t base = static_cast<uint32_t>(mesh.vertices.size());
+			for (int i = 0; i < 4; ++i)
+				AddVertex(mesh, corners[i].x, y, corners[i].z, uvs[i][0], uvs[i][1]);
+
+			// Counter-clockwise from above, like the rest of the overlay geometry
+			uint32_t indices[6] = { 0, 1, 2, 0, 2, 3 };
+			for (int i = 0; i < 6; i += 3)
+			{
+				const Point2 &a = corners[indices[i]], &b = corners[indices[i + 1]], &c = corners[indices[i + 2]];
+				if ((b.z - a.z) * (c.x - a.x) - (b.x - a.x) * (c.z - a.z) < 0.0)
+					std::swap(indices[i + 1], indices[i + 2]);
+			}
+			for (const uint32_t index : indices)
+				mesh.indices.push_back(base + index);
+		}
+	}
+
+	RunwayMarkingSprite GetRunwayMarkingSprite(const RunwayMarking marking, const char glyph)
+	{
+		AtlasRect paint{};
+		AtlasRect quad{};
+		const auto bordered = [](const AtlasRect &r) { return AtlasRect{ r.x0 - MARKING_BORDER, r.y0 - MARKING_BORDER, r.x1 + MARKING_BORDER, r.y1 + MARKING_BORDER }; };
+		switch (marking)
+		{
+			case RunwayMarking::ThresholdBar:	paint = MARKING_THRESHOLD_BAR; quad = bordered(paint); break;
+			case RunwayMarking::TouchdownBar:	paint = MARKING_TOUCHDOWN_BAR; quad = bordered(paint); break;
+			case RunwayMarking::AimingPoint:	paint = MARKING_AIMING_POINT; quad = bordered(paint); break;
+			case RunwayMarking::Centerline:		paint = MARKING_CENTERLINE; quad = bordered(paint); break;
+			case RunwayMarking::EdgeStripe:
+				paint = MARKING_EDGE_STRIPE;
+				quad = { paint.x0 - MARKING_BORDER, 0.0f, paint.x1 + MARKING_BORDER, MARKING_ATLAS_HEIGHT };
+				break;
+			case RunwayMarking::Glyph:
+			{
+				const float center = MARKING_GLYPH_FIRST_CENTER + MARKING_GLYPH_PITCH * static_cast<float>(std::max(0, GlyphIndex(glyph)));
+				paint = { center + MARKING_GLYPH_PAINT.x0, MARKING_GLYPH_PAINT.y0, center + MARKING_GLYPH_PAINT.x1, MARKING_GLYPH_PAINT.y1 };
+				quad = { center + MARKING_GLYPH_QUAD.x0, MARKING_GLYPH_QUAD.y0, center + MARKING_GLYPH_QUAD.x1, MARKING_GLYPH_QUAD.y1 };
+				break;
+			}
+		}
+
+		// X-Plane UVs: v up, so the atlas's top row is v = 1
+		RunwayMarkingSprite sprite;
+		sprite.u0 = quad.x0 / MARKING_ATLAS_WIDTH;
+		sprite.u1 = quad.x1 / MARKING_ATLAS_WIDTH;
+		sprite.v0 = 1.0f - quad.y1 / MARKING_ATLAS_HEIGHT;
+		sprite.v1 = 1.0f - quad.y0 / MARKING_ATLAS_HEIGHT;
+		sprite.paintWidth = (paint.x1 - paint.x0) / (quad.x1 - quad.x0);
+		sprite.paintLength = (paint.y1 - paint.y0) / (quad.y1 - quad.y0);
+		return sprite;
+	}
+
+	bool AppendRunwayMarkings(OverlayMesh &mesh, const AptRunway &runway, const GeoProjection &projection, const float y)
+	{
+		const Point2 points[2] = { projection.ToLocal(runway.ends[0].latitude, runway.ends[0].longitude), projection.ToLocal(runway.ends[1].latitude, runway.ends[1].longitude) };
+		const double length = std::hypot(points[1].x - points[0].x, points[1].z - points[0].z);
+		const int classes[2] = { MarkingClass(runway.ends[0].marking), MarkingClass(runway.ends[1].marking) };
+		const int strongest = std::max(classes[0], classes[1]);
+		if (length < 1.0 || strongest == 0 || runway.width < 1.0f)
+			return false;
+		const size_t before = mesh.indices.size();
+		const double halfWidth = 0.5 * runway.width;
+
+		EndFrame frames[2];
+		double clearOfDesignator[2] = { 0.0, 0.0 };	// From each end point: where its centerline may begin
+		for (int e = 0; e < 2; ++e)
+		{
+			const Point2 &from = points[e], &to = points[1 - e];
+			EndFrame &frame = frames[e];
+			frame.forward = { (to.x - from.x) / length, (to.z - from.z) / length };
+			frame.right = { -frame.forward.z, frame.forward.x };	// Heading north (0, -1): east (1, 0)
+			frame.origin = from;
+
+			const int cls = classes[e];
+			if (cls == 0)
+				continue;
+			const double threshold = std::clamp(static_cast<double>(runway.ends[e].displacedThreshold), 0.0, 0.5 * length);
+			double along = threshold + THRESHOLD_SETBACK;
+
+			// Threshold bars: 4 / 6 / 8 / 12 / 16 by width, a bar's width apart, twice that across the centerline
+			if (cls >= 2)
+			{
+				const int bars = runway.width < 20.0f ? 4 : runway.width < 26.0f ? 6 : runway.width < 38.0f ? 8 : runway.width < 53.0f ? 12 : 16;
+				const RunwayMarkingSprite sprite = GetRunwayMarkingSprite(RunwayMarking::ThresholdBar);
+				for (int i = 0; i < bars / 2; ++i)
+				{
+					const double lateral = THRESHOLD_BAR_WIDTH * (1.5 + 2.0 * i);
+					if (lateral + 0.5 * THRESHOLD_BAR_WIDTH > halfWidth)
+						break;
+					AppendMarkingQuad(mesh, frame, y, along + 0.5 * THRESHOLD_BAR_LENGTH, -lateral, THRESHOLD_BAR_LENGTH, THRESHOLD_BAR_WIDTH, sprite);
+					AppendMarkingQuad(mesh, frame, y, along + 0.5 * THRESHOLD_BAR_LENGTH, lateral, THRESHOLD_BAR_LENGTH, THRESHOLD_BAR_WIDTH, sprite);
+				}
+				along += THRESHOLD_BAR_LENGTH + DESIGNATOR_GAP;
+			}
+
+			// Designator: the letter nearer the threshold, the number beyond it, both read from the approach
+			const std::string &designator = runway.ends[e].designator;
+			std::string number;
+			char letter = 0;
+			for (const char c : designator)
+			{
+				if (c >= '0' && c <= '9')
+					number += c;
+				else if (c == 'L' || c == 'R' || c == 'C')
+					letter = c;
+			}
+			if (letter != 0)
+			{
+				AppendMarkingQuad(mesh, frame, y, along + 0.5 * GLYPH_LENGTH, 0.0, GLYPH_LENGTH, GLYPH_WIDTH, GetRunwayMarkingSprite(RunwayMarking::Glyph, letter));
+				along += GLYPH_LENGTH + LETTER_GAP;
+			}
+			if (!number.empty())
+			{
+				const double first = -0.5 * GLYPH_SPACING * static_cast<double>(number.size() - 1);
+				for (size_t i = 0; i < number.size(); ++i)
+					AppendMarkingQuad(mesh, frame, y, along + 0.5 * GLYPH_LENGTH, first + GLYPH_SPACING * static_cast<double>(i), GLYPH_LENGTH, GLYPH_WIDTH, GetRunwayMarkingSprite(RunwayMarking::Glyph, number[i]));
+				along += GLYPH_LENGTH;
+			}
+			clearOfDesignator[e] = along + DESIGNATOR_GAP;
+
+			// Aiming points and (precision) touchdown zone bars, inner edges ~24% of the width apart
+			if (cls >= 2 && length >= MARKED_LENGTH_MIN)
+			{
+				const double inner = std::clamp(0.24 * runway.width, 3.0, 11.0);
+				const double aimWidth = runway.width >= 45.0f ? 9.14 : runway.width >= 30.0f ? 6.1 : 3.0;
+				if (inner + aimWidth <= halfWidth)
+				{
+					const RunwayMarkingSprite aim = GetRunwayMarkingSprite(RunwayMarking::AimingPoint);
+					const double at = threshold + AIMING_POINT_START + 0.5 * AIMING_POINT_LENGTH;
+					AppendMarkingQuad(mesh, frame, y, at, -(inner + 0.5 * aimWidth), AIMING_POINT_LENGTH, aimWidth, aim);
+					AppendMarkingQuad(mesh, frame, y, at, inner + 0.5 * aimWidth, AIMING_POINT_LENGTH, aimWidth, aim);
+				}
+				if (cls == 3)
+				{
+					static constexpr std::pair<double, int> TOUCHDOWN[] = { { 152.4, 3 }, { 457.2, 2 }, { 609.6, 2 }, { 762.0, 1 }, { 914.4, 1 } };
+					const RunwayMarkingSprite bar = GetRunwayMarkingSprite(RunwayMarking::TouchdownBar);
+					for (const auto &[start, count] : TOUCHDOWN)
+					{
+						if (threshold + start + TOUCHDOWN_BAR_LENGTH > 0.5 * length - 30.0)
+							break;
+						for (int k = 0; k < count; ++k)
+						{
+							const double lateral = inner + 0.5 * TOUCHDOWN_BAR_WIDTH + k * (TOUCHDOWN_BAR_WIDTH + TOUCHDOWN_BAR_GAP);
+							if (lateral + 0.5 * TOUCHDOWN_BAR_WIDTH > halfWidth)
+								break;
+							const double at = threshold + start + 0.5 * TOUCHDOWN_BAR_LENGTH;
+							AppendMarkingQuad(mesh, frame, y, at, -lateral, TOUCHDOWN_BAR_LENGTH, TOUCHDOWN_BAR_WIDTH, bar);
+							AppendMarkingQuad(mesh, frame, y, at, lateral, TOUCHDOWN_BAR_LENGTH, TOUCHDOWN_BAR_WIDTH, bar);
+						}
+					}
+				}
+			}
+		}
+
+		// Centerline dashes between the two designators (measured from end 0)
+		{
+			const double width = strongest == 3 ? 0.91 : strongest == 2 ? 0.46 : 0.3;
+			const RunwayMarkingSprite sprite = GetRunwayMarkingSprite(RunwayMarking::Centerline);
+			const double last = length - clearOfDesignator[1];
+			for (double at = clearOfDesignator[0]; at + CENTERLINE_DASH <= last; at += CENTERLINE_DASH + CENTERLINE_GAP)
+				AppendMarkingQuad(mesh, frames[0], y, at + 0.5 * CENTERLINE_DASH, 0.0, CENTERLINE_DASH, width, sprite);
+		}
+
+		// Edge stripes along the full length (non-precision and precision runways)
+		if (strongest >= 2 && halfWidth > 4.0 * EDGE_STRIPE_WIDTH)
+		{
+			const RunwayMarkingSprite sprite = GetRunwayMarkingSprite(RunwayMarking::EdgeStripe);
+			const double lateral = halfWidth - EDGE_STRIPE_WIDTH;
+			const double repeat = std::max(1.0, std::round(length / EDGE_STRIPE_REPEAT));
+			AppendMarkingQuad(mesh, frames[0], y, 0.5 * length, -lateral, length, EDGE_STRIPE_WIDTH, sprite, repeat);
+			AppendMarkingQuad(mesh, frames[0], y, 0.5 * length, lateral, length, EDGE_STRIPE_WIDTH, sprite, repeat);
+		}
+
+		return mesh.indices.size() > before;
 	}
 
 	void AppendTexturedRibbon(OverlayMesh &mesh, const std::vector<Point2> &path, const bool closed, const float y, const float width, const float s1, const float s2, const float scaleT, const bool mirror)
@@ -568,6 +849,58 @@ namespace SceneryEditorX::XPlane
 	const FacadeAsset *OverlayBuilder::GetFacade(const std::string_view path, fs::path *file, OverlayBuild &out) { return GetCached(m_Facades, path, file, out, &LoadFacadeAsset, "Facade"); }
 	const AutogenPointAsset *OverlayBuilder::GetAutogen(const std::string_view path, fs::path *file, OverlayBuild &out) { return GetCached(m_Autogens, path, file, out, &LoadAutogenPointAsset, "Autogen point"); }
 	const RoadNetworkAsset *OverlayBuilder::GetRoadNetwork(const std::string_view path, fs::path *file, OverlayBuild &out) { return GetCached(m_Roads, path, file, out, &LoadRoadNetworkAsset, "Road network"); }
+	const DecalLibraryAsset *OverlayBuilder::GetDecalLibrary(const std::string_view path, fs::path *file, OverlayBuild &out) { return GetCached(m_DecalLibraries, path, file, out, &LoadDecalLibraryAsset, "Decal library"); }
+
+	void OverlayBuilder::GetPolygonUvScale(const PolygonAsset &asset, float &scaleS, float &scaleT)
+	{
+		// RUNWAY_TILE: SCALE is the whole atlas (X-Plane 12's 4 x 8 runway atlases have square tiles, SCALE 22 44 = 5.5 m
+		// slabs, matching the joints in X-Plane's own frames). TEXTURE_TILE: SCALE is one tile.
+		const bool perTile = asset.tiled && !asset.runwayTile;
+		scaleS = asset.scaleS * (perTile ? static_cast<float>(asset.tilesX) : 1.0f);
+		scaleT = asset.scaleT * (perTile ? static_cast<float>(asset.tilesY) : 1.0f);
+	}
+
+	void OverlayBuilder::ApplyPolygonShading(OverlayMesh &mesh, const PolygonAsset &asset, const fs::path &assetFile, OverlayBuild &out)
+	{
+		GetPolygonUvScale(asset, mesh.metersPerU, mesh.metersPerV);
+		if (asset.runwayTile && (asset.tilesX > 1 || asset.tilesY > 1))
+		{
+			mesh.shading = OverlayShading::Tiled;
+			mesh.tilesX = asset.tilesX;
+			mesh.tilesY = asset.tilesY;
+			if (!asset.tileMap.empty() && asset.tileMapWidth > 0 && asset.tileMapHeight > 0)
+			{
+				mesh.tileMap = TexturePath(assetFile, asset.tileMap);
+				mesh.tileMapWidth = asset.tileMapWidth;
+				mesh.tileMapHeight = asset.tileMapHeight;
+			}
+		}
+
+		// Decals: the .pol's own rows, then its DECAL_LIB library's (paths relative to the file that names them)
+		const auto add = [&mesh](const PolygonDecal &decal, const fs::path &file)
+		{
+			OverlayDecal resolved;
+			resolved.normal = decal.normal;
+			resolved.scaleS = decal.scaleS;
+			resolved.scaleT = decal.scaleT;
+			resolved.strength = decal.strength;
+			resolved.gain = decal.gain;
+			resolved.texture = TexturePath(file, decal.texture);
+			if (resolved.strength > 0.0f)
+				mesh.decals.push_back(std::move(resolved));
+		};
+		for (const PolygonDecal &decal : asset.decals)
+			add(decal, assetFile);
+		if (!asset.decal.empty())
+		{
+			fs::path libraryFile;
+			if (const DecalLibraryAsset *library = GetDecalLibrary(asset.decal, &libraryFile, out))
+			{
+				for (const PolygonDecal &decal : library->decals)
+					add(decal, libraryFile);
+			}
+		}
+	}
 
 	void OverlayBuilder::FlattenRoad(const DsfRoadSegment &segment, std::vector<Point2> &out, const Options &options) const
 	{
@@ -919,7 +1252,10 @@ namespace SceneryEditorX::XPlane
 			double heading = placement.parameter;
 			if (heading >= 360.0)
 				heading = (1.0 / 128.0) * static_cast<int>(heading / 360.0) + std::fmod(heading, 360.0);
-			AppendTexturedPolygon(mesh, rings, y, asset->scaleS * static_cast<float>(asset->tilesX), asset->scaleT * static_cast<float>(asset->tilesY), heading);
+			float scaleS = 1.0f, scaleT = 1.0f;
+			GetPolygonUvScale(*asset, scaleS, scaleT);
+			AppendTexturedPolygon(mesh, rings, y, scaleS, scaleT, heading);
+			ApplyPolygonShading(mesh, *asset, file, out);
 		}
 
 		if (!mesh.indices.empty())
@@ -1780,7 +2116,10 @@ namespace SceneryEditorX::XPlane
 			if (rings.empty())
 				continue;
 			const float y = i < pavementHeights.size() ? pavementHeights[i] : runwayHeight - 0.02f;
-			AppendTexturedPolygon(mesh, rings, y, asset->scaleS * static_cast<float>(asset->tilesX), asset->scaleT * static_cast<float>(asset->tilesY), pavement.textureHeading);
+			float scaleS = 1.0f, scaleT = 1.0f;
+			GetPolygonUvScale(*asset, scaleS, scaleT);
+			AppendTexturedPolygon(mesh, rings, y, scaleS, scaleT, pavement.textureHeading);
+			ApplyPolygonShading(mesh, *asset, file, out);
 			if (!mesh.indices.empty())
 				out.meshes.push_back(std::move(mesh));
 		}
@@ -1797,9 +2136,34 @@ namespace SceneryEditorX::XPlane
 				continue;
 			Point2 corners[4];
 			GetRunwayCorners(runway, m_Projection, corners, false);
-			AppendTexturedPolygon(mesh, { { corners[0], corners[1], corners[2], corners[3] } }, runwayHeight, asset->scaleS * static_cast<float>(asset->tilesX), asset->scaleT * static_cast<float>(asset->tilesY), runway.GetHeading());
-			if (!mesh.indices.empty())
-				out.meshes.push_back(std::move(mesh));
+			// The texture starts at end 0's center, so slab joints line up with the centerline and the threshold
+			float scaleS = 1.0f, scaleT = 1.0f;
+			GetPolygonUvScale(*asset, scaleS, scaleT);
+			AppendTexturedPolygon(mesh, { { corners[0], corners[1], corners[2], corners[3] } }, runwayHeight, scaleS, scaleT, runway.GetHeading(),
+				m_Projection.ToLocal(runway.ends[0].latitude, runway.ends[0].longitude));
+			ApplyPolygonShading(mesh, *asset, file, out);
+			if (mesh.indices.empty())
+				continue;
+
+			// The painted markings, from the polygon's RUNWAY_MARKINGS atlas, just above the surface
+			OverlayMesh markings;
+			if (!asset->runwayMarkings.empty())
+			{
+				markings.kind = OverlayKind::Runway;
+				markings.resource = mesh.resource;
+				markings.name = mesh.name + " markings";
+				markings.placement = i;
+				markings.texture = TexturePath(file, asset->runwayMarkings);
+				markings.shading = OverlayShading::Markings;
+				std::copy(std::begin(asset->runwayMarkingsColor), std::end(asset->runwayMarkingsColor), std::begin(markings.color));
+				markings.blended = true;
+				markings.tangentX = mesh.tangentX;
+				markings.tangentZ = mesh.tangentZ;
+				AppendRunwayMarkings(markings, runway, m_Projection, runwayHeight + RUNWAY_MARKINGS_LIFT);
+			}
+			out.meshes.push_back(std::move(mesh));
+			if (!markings.indices.empty())
+				out.meshes.push_back(std::move(markings));
 		}
 
 		for (uint32_t i = 0; i < airport.helipads.size(); ++i)
@@ -1814,7 +2178,10 @@ namespace SceneryEditorX::XPlane
 				continue;
 			Point2 corners[4];
 			GetHelipadCorners(helipad, m_Projection, corners);
-			AppendTexturedPolygon(mesh, { { corners[0], corners[1], corners[2], corners[3] } }, runwayHeight + 0.01f, asset->scaleS * static_cast<float>(asset->tilesX), asset->scaleT * static_cast<float>(asset->tilesY), helipad.heading);
+			float scaleS = 1.0f, scaleT = 1.0f;
+			GetPolygonUvScale(*asset, scaleS, scaleT);
+			AppendTexturedPolygon(mesh, { { corners[0], corners[1], corners[2], corners[3] } }, runwayHeight + 0.01f, scaleS, scaleT, helipad.heading);
+			ApplyPolygonShading(mesh, *asset, file, out);
 			if (!mesh.indices.empty())
 				out.meshes.push_back(std::move(mesh));
 		}
