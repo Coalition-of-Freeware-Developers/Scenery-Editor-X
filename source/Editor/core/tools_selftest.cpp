@@ -31,6 +31,7 @@
 #include "tools_selftest.h"
 #include "airport_edit.h"
 #include "editor_airports.h"
+#include "editor_camera.h"
 #include "editor_history.h"
 #include "editor_project.h"
 #include "editor_scene.h"
@@ -71,6 +72,9 @@ namespace SceneryEditorX::ToolsSelfTest
 			WaitScene,
 			Pick,
 			WaitPick,
+			OrthoTop,
+			OrthoPick,
+			OrthoWaitPick,
 			ItemMove,
 			ItemUndo,
 			ItemRedo,
@@ -137,6 +141,7 @@ namespace SceneryEditorX::ToolsSelfTest
 			uint64_t structure = 0;
 			uint64_t ticket = 0;
 			int pickAttempts = 0;
+			std::optional<ViewportCamera::Rig> rigBefore;	// The view before the orthographic steps (put back after)
 			int passed = 0;
 			int failed = 0;
 
@@ -263,7 +268,7 @@ namespace SceneryEditorX::ToolsSelfTest
 		}
 
 		/* @brief The pick ids line up with what is drawn: sampled pixels fall inside the projected boxes of the entities they name. */
-		void CheckPicks(const ViewportView &view, const ScenePicking::Result &result, const float renderWidth, const float renderHeight)
+		void CheckPicks(const ViewportView &view, const ScenePicking::Result &result, const float renderWidth, const float renderHeight, const bool remember = true)
 		{
 			State &s = S();
 			entt::registry *registry = EditorScene::GetRegistry();
@@ -315,6 +320,9 @@ namespace SceneryEditorX::ToolsSelfTest
 			}
 			EDITOR_INFO_TAG(LOG_TAG, "Pick alignment: {} of {} sampled pixels inside their entity's projected box", inside, checked);
 			Check(checked >= 3 && inside * 10 >= checked * 9, "pick ids line up with the drawn image (not flipped or offset)");
+
+			if (!remember)
+				return;
 
 			// What clicking the most covered entity selects
 			uint32_t largest = 0;
@@ -442,6 +450,76 @@ namespace SceneryEditorX::ToolsSelfTest
 					break;
 				}
 				CheckPicks(view, result, renderWidth, renderHeight);
+				s.step = Step::OrthoTop;
+				break;
+			}
+
+			case Step::OrthoTop:
+			{
+				// Numpad 7 then 5: straight down, orthographic. The renderer's projection must match the tools' (picks line up)
+				ViewportCamera::Rig rig;
+				if (!EditorCamera::GetRig(rig))
+				{
+					s.step = Step::ItemMove;
+					break;
+				}
+				s.rigBefore = rig;
+				double yaw = 0.0, pitch = 0.0;
+				ViewportCamera::GetPresetDirection(ViewportCamera::ViewPreset::Top, yaw, pitch);
+				rig.yaw = yaw;
+				rig.pitch = pitch;
+				rig.preset = ViewportCamera::ViewPreset::Top;
+				rig.orthographic = true;
+				EditorCamera::SetRig(rig);
+				s.pickAttempts = 0;
+				s.wait = 90;
+				s.step = Step::OrthoPick;
+				break;
+			}
+
+			case Step::OrthoPick:
+			{
+				Check(view.orthographic && EditorCamera::IsProjection(CameraType::Orthographic) && EditorCamera::GetViewPreset() == ViewportCamera::ViewPreset::Top,
+					"orthographic top view (numpad 7 + 5)");
+				Check(std::abs(view.forward.y + 1.0) < 1e-6 && std::abs(view.up.z + 1.0) < 1e-6, "the top view looks straight down with north up");
+
+				// A ground point under the middle of the image comes back to the same pixel, and a meter covers the same
+				// pixels wherever it is (parallel projection)
+				const ImVec2 middle(view.imageMin.x + view.imageSize.x * 0.5f, view.imageMin.y + view.imageSize.y * 0.5f);
+				Point3 ground;
+				ImVec2 back;
+				const bool hit = view.RayToPlane(middle, 0.0, ground) && view.WorldToScreen(ground, back);
+				Check(hit && std::abs(back.x - middle.x) < 0.5f && std::abs(back.y - middle.y) < 0.5f, "orthographic rays and projection agree");
+				Check(std::abs(view.PixelsPerMeter(ground) - view.PixelsPerMeter({ ground.x + 500.0, ground.y + 30.0, ground.z })) < 1e-9, "orthographic scale is the same everywhere");
+
+				s.ticket = ScenePicking::Request(0, 0, static_cast<uint32_t>(renderWidth), static_cast<uint32_t>(renderHeight));
+				s.step = Step::OrthoWaitPick;
+				break;
+			}
+
+			case Step::OrthoWaitPick:
+			{
+				ScenePicking::Result result;
+				if (!ScenePicking::TryGetResult(s.ticket, result))
+				{
+					if (s.frames > 12000)
+					{
+						Check(false, "orthographic pick readback arrived");
+						s.step = Step::ItemMove;
+					}
+					break;
+				}
+				if (std::ranges::none_of(result.ids, [](const uint32_t id) { return id != 0; }) && ++s.pickAttempts < 4)
+				{
+					s.wait = 120;
+					s.ticket = ScenePicking::Request(0, 0, static_cast<uint32_t>(renderWidth), static_cast<uint32_t>(renderHeight));
+					break;
+				}
+				EDITOR_INFO_TAG(LOG_TAG, "Orthographic top view: {:.0f} x {:.0f} m", view.halfWidth * 2.0, view.halfHeight * 2.0);
+				CheckPicks(view, result, renderWidth, renderHeight, false);
+				if (s.rigBefore)
+					EditorCamera::SetRig(*s.rigBefore);
+				s.wait = 60;
 				s.step = Step::ItemMove;
 				break;
 			}

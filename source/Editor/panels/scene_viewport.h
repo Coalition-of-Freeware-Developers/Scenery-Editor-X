@@ -89,6 +89,7 @@ namespace SceneryEditorX
 		void DrawToolbar(Camera *camera);
 		void DrawOverlay(Camera *camera, const ImVec2 &imageMin) const;
 		void DrawReferenceMenu(float buttonSize);
+		void DrawViewMenu(float buttonSize);
 		/* @brief The draggable split line; true while it has the mouse (the camera doesn't get it then). */
 		bool DrawReferenceSplit(const ImVec2 &imageMin, const ImVec2 &imageSize);
 		void UpdateReferenceOverlay() const;

@@ -207,6 +207,9 @@ namespace SceneryEditorX::XPlane
 		/* @brief Moves the camera to see the whole airport. */
 		static void Frame();
 
+		/* @brief The circle Frame() fits on the ground (scene meters, outliers left out). False without an airport. */
+		static bool GetFocus(float &centerX, float &centerZ, float &radius);
+
 		/* @brief Moves the camera to see one element. */
 		static void FrameEntity(uint64_t entityId);
 

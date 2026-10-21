@@ -64,7 +64,7 @@ namespace SceneryEditorX
 		uint32_t mapSize = 2048;		// fbo/shadow_cam_size (renopt_shadow_quality)
 	};
 
-	/* @brief The view the cascades cover: a symmetric perspective camera. */
+	/* @brief The view the cascades cover: a symmetric perspective camera, or an orthographic one. */
 	struct CsmCamera
 	{
 		CsmVec3 position{};				// World (m)
@@ -72,6 +72,13 @@ namespace SceneryEditorX
 		double tanHalfFovX = 0.57735;	// tan(horizontal field of view / 2)
 		double tanHalfFovY = 0.32476;
 		double nearPlane = 0.1;			// m
+
+		// Orthographic: every slice is a box of the view's half width and height. What it shows sits around the orbit pivot,
+		// whatever the eye's distance, so the cascades split depths evenly over the far limit centered on focusDepth.
+		bool orthographic = false;
+		double orthoHalfWidth = 50.0;	// m
+		double orthoHalfHeight = 50.0;
+		double focusDepth = 0.0;		// View depth of the orbit pivot (m)
 	};
 
 	/* @brief One cascade: the slice of the view it serves and the light's projection of it. */

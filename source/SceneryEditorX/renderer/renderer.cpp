@@ -320,7 +320,16 @@ void dynamic_resolution()
 			float nearPlane     = 0.1f;
 			float farPlane      = 10000.0f;
 			float fovHorizontal = 0.0f;
+			bool orthographic   = false;
+			float orthoHalfWidth  = 0.0f;	// Orthographic: meters from the view's center to its sides
+			float orthoHalfHeight = 0.0f;
 		};
+
+		/**
+		 * @brief How far behind the eye an orthographic view still draws (m). The eye sits at the perspective orbit distance
+		 * (distance LODs keep working); anything between it and the far plane, or this far behind it, is drawn.
+		 */
+		constexpr float ORTHOGRAPHIC_BEHIND_EYE = 10000.0f;
 
 		/**
 		 * @brief Builds the view and projection of the active scene's primary camera entity.
@@ -358,10 +367,11 @@ void dynamic_resolution()
 			const TransformComponent& transform = cameras.get<TransformComponent>(selected);
 			const CameraComponent& camera       = cameras.get<CameraComponent>(selected);
 
+			// Right comes from the yaw alone, so looking straight down (top views) keeps its bearing
 			const xMath::Vec3 euler   = transform.GetRotationEuler();
 			const float cosPitch      = std::cos(euler.x);
 			const xMath::Vec3 forward = xMath::Normalize(xMath::Vec3(cosPitch * std::sin(euler.y), std::sin(euler.x), cosPitch * std::cos(euler.y)));
-			const xMath::Vec3 right   = xMath::Normalize(xMath::Cross(forward, xMath::Vec3(0.0f, 1.0f, 0.0f)));
+			const xMath::Vec3 right   = xMath::Vec3(-std::cos(euler.y), 0.0f, std::sin(euler.y));
 			const xMath::Vec3 up      = xMath::Cross(right, forward);
 			const xMath::Vec3 eye     = transform.translation;
 
@@ -374,13 +384,32 @@ void dynamic_resolution()
 
 			const float nearPlane = std::max(camera.nearPlane, 0.001f);
 			const float farPlane  = std::max(camera.farPlane, nearPlane + 1.0f);
-			const float xScale    = 1.0f / std::tan(camera.horizontalFov_Rad * 0.5f);
-			const float yScale    = xScale * aspect;
-			out.projection = GpuMatrix::Rows({
-				xScale, 0.0f,   0.0f,                                0.0f,
-				0.0f,   yScale, 0.0f,                                0.0f,
-				0.0f,   0.0f,   nearPlane / (farPlane - nearPlane),  (farPlane * nearPlane) / (farPlane - nearPlane),
-				0.0f,   0.0f,   -1.0f,                               0.0f });
+			if (camera.projectionType == CameraComponent::ProjectionType::Orthographic)
+			{
+				// Reverse-Z orthographic: view depth d = -z maps to (far - d) / (far - near), the near plane behind the eye
+				const float halfHeight = std::max(camera.orthographicHeight * 0.5f, 0.01f);
+				const float halfWidth  = halfHeight * aspect;
+				const float orthoNear  = -ORTHOGRAPHIC_BEHIND_EYE;
+				const float range      = farPlane - orthoNear;
+				out.projection = GpuMatrix::Rows({
+					1.0f / halfWidth, 0.0f,              0.0f,          0.0f,
+					0.0f,             1.0f / halfHeight, 0.0f,          0.0f,
+					0.0f,             0.0f,              1.0f / range,  farPlane / range,
+					0.0f,             0.0f,              0.0f,          1.0f });
+				out.orthographic    = true;
+				out.orthoHalfWidth  = halfWidth;
+				out.orthoHalfHeight = halfHeight;
+			}
+			else
+			{
+				const float xScale = 1.0f / std::tan(camera.horizontalFov_Rad * 0.5f);
+				const float yScale = xScale * aspect;
+				out.projection = GpuMatrix::Rows({
+					xScale, 0.0f,   0.0f,                                0.0f,
+					0.0f,   yScale, 0.0f,                                0.0f,
+					0.0f,   0.0f,   nearPlane / (farPlane - nearPlane),  (farPlane * nearPlane) / (farPlane - nearPlane),
+					0.0f,   0.0f,   -1.0f,                               0.0f });
+			}
 
 			out.position      = eye;
 			out.forward       = forward;
@@ -2718,6 +2747,14 @@ void dynamic_resolution()
 				csmCamera.tanHalfFovX = std::tan(0.5 * camera.fovHorizontal);
 				csmCamera.tanHalfFovY = csmCamera.tanHalfFovX / std::max(aspect, 1e-3f);
 				csmCamera.nearPlane = camera.nearPlane;
+				if (camera.orthographic)
+				{
+					// The pivot sits where a perspective view of the same framing would have it: the eye's orbit distance
+					csmCamera.orthographic = true;
+					csmCamera.orthoHalfWidth = camera.orthoHalfWidth;
+					csmCamera.orthoHalfHeight = camera.orthoHalfHeight;
+					csmCamera.focusDepth = camera.orthoHalfHeight / std::max(csmCamera.tanHalfFovY, 1e-3);
+				}
 				UpdateShadowCascades(&csmCamera);
 			}
 			else

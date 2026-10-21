@@ -38,6 +38,7 @@
 #include "editor_scene.h"
 #include "editor_selection.h"
 #include "editor_tools.h"
+#include "editor_welcome.h"
 #include "project_dialogs.h"
 #include "tools_selftest.h"
 #include "editor_theme.h"
@@ -58,6 +59,7 @@
 #include <Editor/panels/scene_viewport.h>
 #include <Editor/panels/settings_panels.h>
 #include <Editor/panels/xplane_library_panel.h>
+#include <Editor/settings/editor_preferences.h>
 #include <algorithm>
 #include <chrono>
 #include <cstdlib>
@@ -282,7 +284,11 @@ namespace SceneryEditorX
 		FacadeTool::RegisterCommands();
 		FacadeAuthoring::RegisterCommands();
 		BuildMainMenus();
+		// The viewports drive the camera (keymaps, several viewports): the engine camera reads no input of its own
+		Camera::SetInputExternal(true);
 		EditorCamera::CaptureHome();
+		EditorCamera::ReadCommandLine();
+		EditorWelcome::Init();
 		UpdateWindowTitle();
 
 		if (!ImGui::GetCurrentContext())
@@ -304,6 +310,7 @@ namespace SceneryEditorX
 	{
 		// The UI layer (an overlay) detaches first, so ImGui is already gone here: no ImGui calls.
 		Camera::SetInputEnabled(true);
+		Camera::SetInputExternal(false);
 		m_PanelManager.reset();
 		EditorProjects::Shutdown();	// Keeps unsaved project work as recovery data while the scene still exists
 		EditorAirports::Shutdown();
@@ -474,6 +481,7 @@ namespace SceneryEditorX
 		}
 
 		DrawAboutPopup();
+		EditorWelcome::Draw();	// First-launch keymap choice and Edit > Preferences
 		DrawDebugWindows();
 		EditorAirports::DrawModals(&m_Context);
 		EditorProjects::DrawModals(&m_Context);
@@ -493,6 +501,10 @@ namespace SceneryEditorX
 		{
 			if (ImGui::MenuItem("About Scenery Editor X"))
 				m_ShowAbout = true;
+			if (ImGui::MenuItem("Choose a Navigation Keymap..."))
+				EditorWelcome::OpenWelcome();
+			if (ImGui::MenuItem("Controls && Shortcuts..."))
+				EditorWelcome::OpenPreferences();
 			ImGui::Separator();
 			ImGui::TextDisabled("Viewport: right-click for the quad menu, hold Space for the hotbox");
 		});
@@ -528,7 +540,7 @@ namespace SceneryEditorX
 		EditorCommands::MenuItem("item.duplicate", &m_Context);
 		if (ImGui::MenuItem("Deselect", "Esc", false, !EditorSelection::IsEmpty()))
 			EditorSelection::Clear(&m_Context);
-		if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_CROSSHAIRS, "Frame Selection").c_str(), "F", false, !EditorSelection::IsEmpty()))
+		if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_CROSSHAIRS, "Frame Selection").c_str(), EditorPreferences::Get().keymap == NavigationKeymap::Max ? "Z" : "F", false, !EditorSelection::IsEmpty()))
 			EditorTools::FrameSelection();
 		ImGui::Separator();
 		EditorCommands::MenuItem("item.hide", &m_Context);
@@ -541,6 +553,9 @@ namespace SceneryEditorX
 			if (ImGui::MenuItem(EditorUI::IconLabel(EditorTools::GetToolIcon(tool), EditorTools::GetToolName(tool)).c_str(), EditorTools::GetToolKey(tool), EditorTools::GetTool() == tool))
 				EditorTools::SetTool(tool);
 		}
+		ImGui::Separator();
+		if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_COG, "Preferences...").c_str()))
+			EditorWelcome::OpenPreferences();
 	}
 
 	void EditorLayer::DrawSceneMenu()
@@ -692,13 +707,35 @@ namespace SceneryEditorX
 		if (ImGui::MenuItem("Fly Navigation", nullptr, EditorCamera::IsMode(FLY), hasCamera))
 			EditorCamera::SetMode(FLY);
 		ImGui::Separator();
-		if (ImGui::MenuItem("Perspective", nullptr, EditorCamera::IsProjection(CameraType::Perspective), hasCamera))
+		if (ImGui::MenuItem("Perspective", "Numpad 5", EditorCamera::IsProjection(CameraType::Perspective), hasCamera))
 			EditorCamera::SetProjection(CameraType::Perspective);
-		if (ImGui::MenuItem("Orthographic", nullptr, EditorCamera::IsProjection(CameraType::Orthographic), hasCamera))
+		if (ImGui::MenuItem("Orthographic", "Numpad 5", EditorCamera::IsProjection(CameraType::Orthographic), hasCamera))
 			EditorCamera::SetProjection(CameraType::Orthographic);
 		ImGui::Separator();
-		if (ImGui::MenuItem("Reset Camera", "Home", false, hasCamera))
+		using ViewportCamera::ViewPreset;
+		const ViewPreset preset = EditorCamera::GetViewPreset();
+		if (ImGui::MenuItem("Top", "Numpad 7", preset == ViewPreset::Top, hasCamera))
+			EditorCamera::SetViewPreset(ViewPreset::Top);
+		if (ImGui::MenuItem("Bottom", "Ctrl+Numpad 7", preset == ViewPreset::Bottom, hasCamera))
+			EditorCamera::SetViewPreset(ViewPreset::Bottom);
+		if (ImGui::MenuItem("Front", "Numpad 1", preset == ViewPreset::Front, hasCamera))
+			EditorCamera::SetViewPreset(ViewPreset::Front);
+		if (ImGui::MenuItem("Back", "Ctrl+Numpad 1", preset == ViewPreset::Back, hasCamera))
+			EditorCamera::SetViewPreset(ViewPreset::Back);
+		if (ImGui::MenuItem("Right", "Numpad 3", preset == ViewPreset::Right, hasCamera))
+			EditorCamera::SetViewPreset(ViewPreset::Right);
+		if (ImGui::MenuItem("Left", "Ctrl+Numpad 3", preset == ViewPreset::Left, hasCamera))
+			EditorCamera::SetViewPreset(ViewPreset::Left);
+		ImGui::Separator();
+		if (ImGui::MenuItem("Frame Selection", "Numpad .", false, hasCamera && !EditorSelection::IsEmpty()))
+			EditorTools::FrameSelection();
+		if (ImGui::MenuItem("Frame All", "Home", false, hasCamera))
+			EditorCamera::FrameAll();
+		if (ImGui::MenuItem("Reset Camera", nullptr, false, hasCamera))
 			EditorCamera::Reset();
+		ImGui::Separator();
+		if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_KEYBOARD_O, "Navigation Keymap...").c_str()))
+			EditorWelcome::OpenPreferences();
 	}
 
 	void EditorLayer::DrawStatusBar()
@@ -793,22 +830,25 @@ namespace SceneryEditorX
 			ImGui::Separator();
 			ImGui::BeginDisabled(EditorCamera::Get() == nullptr);
 
-			if (EditorUI::StripButton(SEDX_ICON_REFRESH, "Orbit navigation\nAlt+LMB orbit, MMB pan, RMB look, wheel zoom", EditorCamera::IsMode(ORBIT), buttonSize))
+			const std::string orbitTip = std::string("Orbit navigation\n") + ViewportCamera::GetKeymapSummary(EditorPreferences::Get().keymap);
+			if (EditorUI::StripButton(SEDX_ICON_REFRESH, orbitTip.c_str(), EditorCamera::IsMode(ORBIT), buttonSize))
 				EditorCamera::SetMode(ORBIT);
 			if (EditorUI::StripButton(SEDX_ICON_VIDEO_CAMERA, "Fly navigation\nRMB look, hold RMB + WASD move, Q/E down/up", EditorCamera::IsMode(FLY), buttonSize))
 				EditorCamera::SetMode(FLY);
 
 			ImGui::Separator();
 
-			if (EditorUI::StripButton(SEDX_ICON_CUBE, "Perspective projection", EditorCamera::IsProjection(CameraType::Perspective), buttonSize))
+			if (EditorUI::StripButton(SEDX_ICON_CUBE, "Perspective projection (Numpad 5)", EditorCamera::IsProjection(CameraType::Perspective), buttonSize))
 				EditorCamera::SetProjection(CameraType::Perspective);
-			if (EditorUI::StripButton(SEDX_ICON_TH_LARGE, "Orthographic projection", EditorCamera::IsProjection(CameraType::Orthographic), buttonSize))
+			if (EditorUI::StripButton(SEDX_ICON_TH_LARGE, "Orthographic projection (Numpad 5)", EditorCamera::IsProjection(CameraType::Orthographic), buttonSize))
 				EditorCamera::SetProjection(CameraType::Orthographic);
+			if (EditorUI::StripButton(SEDX_ICON_ARROW_DOWN, "Top view (Numpad 7)", EditorCamera::GetViewPreset() == ViewportCamera::ViewPreset::Top, buttonSize))
+				EditorCamera::SetViewPreset(ViewportCamera::ViewPreset::Top);
 
 			ImGui::Separator();
 
-			if (EditorUI::StripButton(SEDX_ICON_CROSSHAIRS, "Reset camera (Home)", false, buttonSize))
-				EditorCamera::Reset();
+			if (EditorUI::StripButton(SEDX_ICON_CROSSHAIRS, "Frame all (Home)", false, buttonSize))
+				EditorCamera::FrameAll();
 
 			ImGui::EndDisabled();
 		}
@@ -964,8 +1004,8 @@ namespace SceneryEditorX
 		if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_Y, ImGuiInputFlags_RouteGlobal) || ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_Z, ImGuiInputFlags_RouteGlobal))
 			EditorHistory::Redo();
 
-		if (ImGui::Shortcut(ImGuiKey_Home, ImGuiInputFlags_RouteGlobal))
-			EditorCamera::Reset();
+		// Camera: numpad views, Home, and the keymap's own keys (over the viewport)
+		EditorCamera::HandleShortcuts(&m_Context);
 
 		// The open project (which saves its airport too), else the open airport
 		if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_N, ImGuiInputFlags_RouteGlobal))

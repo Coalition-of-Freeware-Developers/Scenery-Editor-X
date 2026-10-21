@@ -134,10 +134,10 @@ The tester list, as received:
 
 | Task | Description | Completed | Date |
 |------|-------------|-----------|------|
-| TASK-005 | `CameraComponent` gains an orthographic height; `BuildSceneCameraView` builds a reverse-Z orthographic projection (near plane behind the eye so nothing in front of the orbit pivot is clipped) and takes the right vector from yaw. The shadow cascades, GPU cull and shaders are checked for perspective-only maths. | | |
-| TASK-006 | `Editor/core/viewport_camera.*`: camera state (pivot, distance, yaw, pitch, projection, field of view), keymaps (Blender, 3ds Max, Maya), view presets with a short eased transition, numpad keys, frame selection / frame all. Writes the primary camera entity; the engine's `Camera::ProcessInput` stands down while the editor drives the camera. `--lock-camera` still freezes it. | | |
-| TASK-007 | `ViewportView`, ImGuizmo (orthographic mode), `PickGround` and drops support orthographic. | | |
-| TASK-008 | Editor preferences (`user:/editor_preferences.json`): keymap, invert options. First-launch welcome modal to pick the keymap; Edit > Preferences; the Controls & Shortcuts window lists the active bindings. Viewport toolbar: projection toggle and a view-preset menu. | | |
+| TASK-005 | `CameraComponent` gains an orthographic height; `BuildSceneCameraView` builds a reverse-Z orthographic projection (near plane behind the eye so nothing in front of the orbit pivot is clipped) and takes the right vector from yaw. The shadow cascades, GPU cull and shaders are checked for perspective-only maths.| ✅ | 2026-10-21 |
+| TASK-006 | `Editor/core/viewport_camera.*`: camera state (pivot, distance, yaw, pitch, projection, field of view), keymaps (Blender, 3ds Max, Maya), view presets with a short eased transition, numpad keys, frame selection / frame all. Writes the primary camera entity; the engine's `Camera::ProcessInput` stands down while the editor drives the camera. `--lock-camera` still freezes it.| ✅ | 2026-10-21 |
+| TASK-007 | `ViewportView`, ImGuizmo (orthographic mode), `PickGround` and drops support orthographic.| ✅ | 2026-10-21 |
+| TASK-008 | Editor preferences (`user:/editor_preferences.json`): keymap, invert options. First-launch welcome modal to pick the keymap; Edit > Preferences; the Controls & Shortcuts window lists the active bindings. Viewport toolbar: projection toggle and a view-preset menu.| ✅ | 2026-10-21 |
 
 ### Phase 3 - Library panel (items 7, 8, 9)
 

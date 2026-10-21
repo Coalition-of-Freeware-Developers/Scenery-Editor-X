@@ -405,6 +405,15 @@ namespace SceneryEditorX
 		 */
 		static void SetInputLocked(bool locked);
 
+		/* @brief True while --lock-camera holds the camera (controllers outside the camera must respect it too). */
+		static bool IsInputLocked();
+
+		/**
+		 * @brief External: an application drives the camera itself (the editor's viewport navigation, with its keymaps
+		 * and several viewports), so ProcessInput reads no mouse or keyboard.
+		 */
+		static void SetInputExternal(bool external);
+
 		/**
 		 * @brief Places the camera at eye looking at target and makes target the orbit pivot, so orbiting, dollying and
 		 * panning carry on from there. Writes the camera entity's transform too (the scene reads input from it).
