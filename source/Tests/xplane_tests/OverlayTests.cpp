@@ -946,6 +946,15 @@ TEST_CASE("Overlay builder library mappings", "[overlay]")
 	CHECK(OverlayBuilder::GetSurfaceLibraryPolygon(57) == "lib/airport/ground/pavement/concrete_D/worn.pol");
 	CHECK(OverlayBuilder::GetSurfaceLibraryPolygon(3).empty());		// Grass
 	CHECK(OverlayBuilder::GetSurfaceLibraryPolygon(13).empty());	// Water
+	CHECK(OverlayBuilder::GetRunwayLibraryPolygon(1, OverlayKind::Runway) == "lib/airport/default_runways/asphalt/runway.pol");
+	CHECK(OverlayBuilder::GetRunwayLibraryPolygon(25, OverlayKind::Pavement) == "lib/airport/default_runways/asphalt/taxiway_plain.pol");
+	CHECK(OverlayBuilder::GetRunwayLibraryPolygon(36, OverlayKind::Runway) == "lib/airport/default_runways/asphalt_D3/runway_patch.pol");
+	CHECK(OverlayBuilder::GetRunwayLibraryPolygon(23, OverlayKind::Helipad) == "lib/airport/default_runways/asphalt_L/helipad_worn.pol");
+	CHECK(OverlayBuilder::GetRunwayLibraryPolygon(2, OverlayKind::Runway) == "lib/airport/default_runways/concrete/runway.pol");
+	CHECK(OverlayBuilder::GetRunwayLibraryPolygon(56, OverlayKind::Pavement) == "lib/airport/default_runways/concrete_D/taxiway_dirty.pol");
+	CHECK(OverlayBuilder::GetRunwayLibraryPolygon(52, OverlayKind::Runway) == "lib/airport/default_runways/concrete_L/runway_worn.pol");
+	CHECK(OverlayBuilder::GetRunwayLibraryPolygon(3, OverlayKind::Runway).empty());		// Grass
+	CHECK(OverlayBuilder::GetRunwayLibraryPolygon(1, OverlayKind::DrapedPolygon).empty());
 	CHECK(OverlayBuilder::GetLineLibraryPath(1) == "lib/airport/lines/1_");
 	CHECK(OverlayBuilder::GetLineLibraryPath(51) == "lib/airport/lines/51_");
 	CHECK(OverlayBuilder::GetLineLibraryPath(0).empty());
@@ -1067,6 +1076,72 @@ TEST_CASE("Overlay builder textures apt.dat surfaces through the library", "[ove
 	for (const std::string &warning : out.warnings)
 		unknownWarnings += warning.find("lines/99_") != std::string::npos;
 	CHECK(unknownWarnings == 1);
+}
+
+TEST_CASE("Overlay builder prefers X-Plane 12's runway and taxiway art", "[overlay]")
+{
+	TempDir temp;
+	const fs::path ground = temp.Write("lib/ground_concrete.pol", "A\n850\nDRAPED_POLYGON\n\nTEXTURE ground.png\nSCALE 10 10\n");
+	const fs::path runwayPol = temp.Write("lib/rwy_concrete.pol", "A\n850\nDRAPED_POLYGON\n\nTEXTURE runway.png\nSCALE 22 44\nLAYER_GROUP runways 0\n");
+
+	// The runway's X-Plane 12 polygon is exported, the taxiway's isn't (an X-Plane 11 style library): that one falls back
+	const std::map<std::string, fs::path> library =
+	{
+		{ "lib/airport/ground/pavement/concrete/new.pol", ground },
+		{ "lib/airport/default_runways/concrete/runway.pol", runwayPol }
+	};
+	const AssetResolver resolver = [&](const std::string_view path) -> fs::path
+	{
+		const auto it = library.find(std::string(path));
+		return it != library.end() ? it->second : fs::path();
+	};
+
+	const GeoProjection projection(47.45, -122.3);
+	AptAirport airport;
+	airport.id = "TEST";
+	AptPavement pavement;
+	pavement.surface = 2;
+	AptNodeChain ring;
+	ring.closed = true;
+	for (const Point2 &corner : { Point2{ -50.0, -50.0 }, Point2{ 50.0, -50.0 }, Point2{ 50.0, 50.0 }, Point2{ -50.0, 50.0 } })
+	{
+		AptNode node;
+		projection.ToGeo(corner, node.latitude, node.longitude);
+		ring.nodes.push_back(node);
+	}
+	pavement.rings.push_back(ring);
+	airport.pavements.push_back(pavement);
+
+	AptRunway runway;
+	runway.width = 45.0f;
+	runway.surface = 2;
+	projection.ToGeo(Point2{ 100.0, 500.0 }, runway.ends[0].latitude, runway.ends[0].longitude);
+	projection.ToGeo(Point2{ 100.0, -500.0 }, runway.ends[1].latitude, runway.ends[1].longitude);
+	airport.runways.push_back(runway);
+
+	OverlayBuilder builder(resolver, projection);
+	OverlayBuild out;
+	builder.BuildAirportSurfaces(airport, { 0.1f }, 0.2f, 0.3f, OverlayBuilder::Options{}, out);
+
+	const OverlayMesh *runwayMesh = nullptr;
+	const OverlayMesh *pavementMesh = nullptr;
+	for (const OverlayMesh &mesh : out.meshes)
+	{
+		if (mesh.kind == OverlayKind::Runway)
+			runwayMesh = &mesh;
+		else if (mesh.kind == OverlayKind::Pavement)
+			pavementMesh = &mesh;
+	}
+	REQUIRE(runwayMesh);
+	REQUIRE(pavementMesh);
+	CHECK(runwayMesh->resource == "lib/airport/default_runways/concrete/runway.pol");
+	CHECK(runwayMesh->texture.filename() == "runway.png");
+	CHECK(pavementMesh->resource == "lib/airport/ground/pavement/concrete/new.pol");
+	CHECK(pavementMesh->texture.filename() == "ground.png");
+
+	// Looking for the missing X-Plane 12 taxiway polygon isn't worth a warning
+	for (const std::string &warning : out.warnings)
+		CHECK(warning.find("default_runways") == std::string::npos);
 }
 
 // -------------------------------------------------------

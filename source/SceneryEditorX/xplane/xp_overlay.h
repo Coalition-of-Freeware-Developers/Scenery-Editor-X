@@ -195,6 +195,13 @@ namespace SceneryEditorX::XPlane
 		/* @brief Library .pol WorldEditor pairs with an apt.dat surface code ("lib/airport/ground/pavement/asphalt/strips.pol"), empty when the family has none. */
 		static std::string GetSurfaceLibraryPolygon(int surface);
 
+		/**
+		 * @brief Library .pol X-Plane 12 draws an apt.dat surface with ("lib/airport/default_runways/asphalt/runway.pol"):
+		 * kind Runway, Pavement (taxiway) or Helipad; empty for other kinds and for families it has no polygon for here.
+		 * Scenery packs replace these (AEP does), so drawing through them shows what the user's X-Plane shows.
+		 */
+		static std::string GetRunwayLibraryPolygon(int surface, OverlayKind kind);
+
 		/* @brief Library .lin for an apt.dat painted line code (1..59), empty when unknown. */
 		static std::string GetLineLibraryPath(int lineType);
 

@@ -1653,6 +1653,57 @@ namespace SceneryEditorX::XPlane
 		return std::string("lib/airport/ground/pavement/") + name;
 	}
 
+	std::string OverlayBuilder::GetRunwayLibraryPolygon(const int surface, const OverlayKind kind)
+	{
+		const char *role = nullptr;
+		switch (kind)
+		{
+			case OverlayKind::Runway:	role = "runway"; break;
+			case OverlayKind::Pavement:	role = "taxiway"; break;
+			case OverlayKind::Helipad:	role = "helipad"; break;
+			default:					return {};
+		}
+
+		// The same family and variant as the WorldEditor table above: asphalt strips / patched / plain / worn are
+		// <role> / _patch / _plain / _worn, concrete new / dirty / worn are <role> / _dirty / _worn
+		const char *family = nullptr;
+		const char *variant = nullptr;
+		switch (surface)
+		{
+			case 1:		family = "asphalt";		variant = ""; break;
+			case 24:	family = "asphalt";		variant = "_patch"; break;
+			case 25:	family = "asphalt";		variant = "_plain"; break;
+			case 26:	family = "asphalt";		variant = "_worn"; break;
+			case 20:	family = "asphalt_L";	variant = ""; break;
+			case 21:	family = "asphalt_L";	variant = "_patch"; break;
+			case 22:	family = "asphalt_L";	variant = "_plain"; break;
+			case 23:	family = "asphalt_L";	variant = "_worn"; break;
+			case 27:	family = "asphalt_D";	variant = ""; break;
+			case 28:	family = "asphalt_D";	variant = "_patch"; break;
+			case 29:	family = "asphalt_D";	variant = "_plain"; break;
+			case 30:	family = "asphalt_D";	variant = "_worn"; break;
+			case 31:	family = "asphalt_D2";	variant = ""; break;
+			case 32:	family = "asphalt_D2";	variant = "_patch"; break;
+			case 33:	family = "asphalt_D2";	variant = "_plain"; break;
+			case 34:	family = "asphalt_D2";	variant = "_worn"; break;
+			case 35:	family = "asphalt_D3";	variant = ""; break;
+			case 36:	family = "asphalt_D3";	variant = "_patch"; break;
+			case 37:	family = "asphalt_D3";	variant = "_plain"; break;
+			case 38:	family = "asphalt_D3";	variant = "_worn"; break;
+			case 2:		family = "concrete";	variant = ""; break;
+			case 53:	family = "concrete";	variant = "_dirty"; break;
+			case 54:	family = "concrete";	variant = "_worn"; break;
+			case 50:	family = "concrete_L";	variant = ""; break;
+			case 51:	family = "concrete_L";	variant = "_dirty"; break;
+			case 52:	family = "concrete_L";	variant = "_worn"; break;
+			case 55:	family = "concrete_D";	variant = ""; break;
+			case 56:	family = "concrete_D";	variant = "_dirty"; break;
+			case 57:	family = "concrete_D";	variant = "_worn"; break;
+			default:	return {};	// Grass, dirt, gravel, lakebed, water, snow and transparent: drawn with a color
+		}
+		return std::string("lib/airport/default_runways/") + family + "/" + role + variant + ".pol";
+	}
+
 	std::string OverlayBuilder::GetLineLibraryPath(const int lineType)
 	{
 		// lib/airport/lines/<code>_<name>.lin; the resolver finds the file by code prefix
@@ -1684,7 +1735,10 @@ namespace SceneryEditorX::XPlane
 		// Pavement and runways
 		const auto surfaceMesh = [&](const int surface, const OverlayKind kind, const std::string &name, const uint32_t index, OverlayMesh &mesh, const PolygonAsset *&asset, fs::path &file) -> bool
 		{
-			const std::string library = GetSurfaceLibraryPolygon(surface);
+			// X-Plane 12's runway / taxiway art when the library has it, else WorldEditor's ground pavement (X-Plane 11)
+			std::string library = GetRunwayLibraryPolygon(surface, kind);
+			if (library.empty() || (!m_Polygons.contains(library) && ResolveFile(library).empty()))
+				library = GetSurfaceLibraryPolygon(surface);
 			if (library.empty())
 				return false;
 			asset = GetPolygon(library, &file, out);
