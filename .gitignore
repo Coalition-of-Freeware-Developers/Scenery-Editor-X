@@ -210,3 +210,7 @@ lib/*
 
 # Throwaway output of the standalone (g++) test builds described in AGENTS.md
 /build_linux_tests/
+
+# The user manual's built website and PDFs (python docs/manual/build.py), and its scripts' bytecode
+docs/manual/site/
+docs/manual/**/__pycache__/

@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 520" width="1200" height="520" role="img" aria-labelledby="title desc">
+  <title id="title">How a type 1 facade uses its texture</title>
+  <desc id="desc">On the left, a building texture marked with vertical panel edges and horizontal floor lines, and a roof area. On the right, a building made from it: the panels repeat across each wall and the floors stack up it, with the roof area on top.</desc>
+  <defs>
+    <pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse">
+      <path d="M24 0H0V24" fill="none" stroke="#6cc3ff" stroke-opacity=".07"/>
+    </pattern>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#14232f"/><stop offset="1" stop-color="#0d1720"/>
+    </linearGradient>
+    <pattern id="wall" width="60" height="50" patternUnits="userSpaceOnUse">
+      <rect width="60" height="50" fill="#b9b1a3"/>
+      <rect x="10" y="10" width="40" height="26" rx="2" fill="#3f5568"/>
+      <rect x="10" y="10" width="40" height="5" fill="#5f7a91"/>
+      <rect x="0" y="46" width="60" height="4" fill="#a49b8c"/>
+    </pattern>
+    <pattern id="wallSide" width="60" height="50" patternUnits="userSpaceOnUse" patternTransform="skewY(-24)">
+      <rect width="60" height="50" fill="#968e81"/>
+      <rect x="10" y="10" width="40" height="26" rx="2" fill="#33475a"/>
+      <rect x="0" y="46" width="60" height="4" fill="#857d71"/>
+    </pattern>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 Z" fill="#6cc3ff"/>
+    </marker>
+    <style>
+      text { white-space: pre; font-family: "Segoe UI", "Open Sans", Helvetica, Arial, sans-serif; }
+      .edge { stroke: #1f8ad6; stroke-width: 3; }
+      .floor { stroke: #5fd39b; stroke-width: 3; }
+      .label { fill: #ffffff; font-size: 15px; font-weight: 700; }
+      .note { fill: #b8c6d1; font-size: 13.5px; }
+      .blue { fill: #6cc3ff; }
+      .green { fill: #5fd39b; }
+      .amber { fill: #f0c46a; }
+      .frame { fill: none; stroke: #8fcdf7; stroke-opacity: .5; stroke-width: 1.5; }
+    </style>
+  </defs>
+  <rect width="1200" height="520" fill="url(#bg)"/>
+  <rect width="1200" height="520" fill="url(#grid)"/>
+
+  <!-- The texture -->
+  <text x="60" y="52" class="label">The texture</text>
+  <text x="60" y="74" class="note">marked up in the FACADE EDITOR</text>
+  <g transform="translate(60 96)">
+    <rect width="360" height="300" fill="url(#wall)"/>
+    <!-- roof area -->
+    <rect x="240" y="0" width="120" height="100" fill="#6d6a64"/>
+    <path d="M240 0 L360 100 M360 0 L240 100" stroke="#8a867f" stroke-width="1"/>
+    <rect x="240" y="0" width="120" height="100" fill="none" stroke="#f0c46a" stroke-width="3" stroke-dasharray="8 5"/>
+    <!-- panel edges -->
+    <line x1="0" y1="100" x2="0" y2="300" class="edge"/>
+    <line x1="60" y1="100" x2="60" y2="300" class="edge"/>
+    <line x1="180" y1="100" x2="180" y2="300" class="edge"/>
+    <line x1="240" y1="100" x2="240" y2="300" class="edge"/>
+    <!-- floor lines -->
+    <line x1="0" y1="300" x2="240" y2="300" class="floor"/>
+    <line x1="0" y1="250" x2="240" y2="250" class="floor"/>
+    <line x1="0" y1="150" x2="240" y2="150" class="floor"/>
+    <line x1="0" y1="100" x2="240" y2="100" class="floor"/>
+    <rect width="360" height="300" class="frame"/>
+  </g>
+  <text x="60" y="428" class="label blue">│ Panel edges</text>
+  <text x="200" y="428" class="note">split the image across: an end, a middle that repeats, an end</text>
+  <text x="60" y="452" class="label green">─ Floor lines</text>
+  <text x="200" y="452" class="note">split it up: a ground floor, middle floors that repeat, a top</text>
+  <text x="60" y="476" class="label amber">▭ Roof</text>
+  <text x="200" y="476" class="note">the part of the image laid on the roof, stretched or repeated</text>
+
+  <path d="M470 246 H600" stroke="#6cc3ff" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <text x="476" y="232" class="note">X-Plane builds</text>
+
+  <!-- The building -->
+  <text x="650" y="52" class="label">The building</text>
+  <text x="650" y="74" class="note">any footprint, any number of floors</text>
+  <g transform="translate(640 120)">
+    <!-- front wall: 5 panels wide, 5 floors -->
+    <rect x="0" y="80" width="300" height="250" fill="url(#wall)"/>
+    <!-- side wall -->
+    <path d="M300 80 L420 26 L420 276 L300 330 Z" fill="url(#wallSide)"/>
+    <!-- roof -->
+    <path d="M0 80 L120 26 L420 26 L300 80 Z" fill="#6d6a64" stroke="#f0c46a" stroke-width="2" stroke-dasharray="8 5"/>
+    <!-- outline -->
+    <path d="M0 80 H300 V330 H0 Z M300 80 L420 26 V276 L300 330" fill="none" stroke="#e8eef3" stroke-opacity=".5"/>
+    <!-- repeat brackets -->
+    <path d="M60 350 V360 H240 V350" stroke="#1f8ad6" stroke-width="2" fill="none"/>
+    <text x="150" y="380" class="note" text-anchor="middle">middle panels repeat to fill the wall</text>
+    <path d="M-16 130 H-26 V280 H-16" stroke="#5fd39b" stroke-width="2" fill="none"/>
+    <text x="-34" y="210" class="note" text-anchor="end">middle</text>
+    <text x="-34" y="228" class="note" text-anchor="end">floors</text>
+    <text x="-34" y="246" class="note" text-anchor="end">repeat</text>
+  </g>
+</svg>

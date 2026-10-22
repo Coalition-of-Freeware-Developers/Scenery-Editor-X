@@ -1,0 +1,143 @@
+{
+  "subtitle": "The Complete Documentation",
+  "pdfName": "SceneryEditorX-Documentation.pdf",
+  "tagline": "The user manual and the developer reference for Scenery Editor X, the 3D scenery editor for X-Plane 12, in one volume.",
+  "colophon": [
+    "This book collects all of Scenery Editor X's documentation. Volume I is the user manual: installing the editor, the workspace, every kind of scenery work, and the reference you come back to. Volume II is the developer reference: the guides and system documents kept in the source repository, for anyone who builds, extends or contributes to the editor.",
+    "The two volumes are written differently on purpose. The user manual is kept in step with the editor and describes what you see on screen. The developer documents were written at different times as the engine evolved and are reproduced as they are; where one of them disagrees with the source code, the code is right.",
+    "Scenery Editor X is alpha software. Features change between test builds; please report anything that is out of date.",
+    "X-Plane is a trademark of Laminar Research. Scenery Editor X is not made or endorsed by Laminar Research."
+  ],
+  "volumes": [
+    {
+      "title": "User Manual",
+      "art": "volume-1",
+      "manual": true,
+      "description": "Installing the editor, a first airport from an empty folder to X-Plane, the workspace, every kind of scenery work, and the reference: shortcuts, menus, panels, options, files and fixes."
+    },
+    {
+      "title": "Developer Reference",
+      "art": "volume-2",
+      "description": "The documents kept in the source repository: how to build and contribute, and how the engine's systems work, from the application framework and memory to serialization, rendering and the file formats. Each chapter names the file it comes from.",
+      "parts": [
+        {
+          "title": "Building and Contributing",
+          "description": "Getting the code, building it, testing it, packaging it for testers, and the house style.",
+          "documents": [
+            { "path": "README.md", "title": "The project README" },
+            { "path": "BUILD_SETUP_WINDOWS.md", "title": "Windows build setup" },
+            { "path": "AGENTS.md", "title": "Test suites and headless builds" },
+            { "path": "installer/README.md", "title": "The Windows installer" },
+            { "path": "docs/coding-style.md", "title": "Coding style" },
+            { "path": "SECURITY.md", "title": "Security policy" }
+          ]
+        },
+        {
+          "title": "Application Framework",
+          "description": "How the editor starts, runs and shuts down: the application, modules and their stages, the node system, static state, the precompiled header, windows, monitors and settings.",
+          "documents": [
+            { "path": "docs/application-framework-documentation.md", "title": "Application framework" },
+            { "path": "docs/application-data-documentation.md", "title": "Application data structures" },
+            { "path": "docs/application-implementation-guide.md", "title": "Implementing an application" },
+            { "path": "docs/module-system-documentation.md", "title": "Module system" },
+            { "path": "docs/module-system-complete-documentation.md", "title": "Module system in depth" },
+            { "path": "docs/module-stage-documentation.md", "title": "Module stages" },
+            { "path": "docs/node-system-complete-documentation.md", "title": "Node system" },
+            { "path": "docs/static-states-documentation.md", "title": "Static states" },
+            { "path": "docs/static-states-pch-quick-reference.md", "title": "Static states and PCH: quick reference" },
+            { "path": "docs/precompiled-header-documentation.md", "title": "Precompiled header" },
+            { "path": "docs/window-h-documentation.md", "title": "Window API (Window.h)" },
+            { "path": "docs/window-cpp-documentation.md", "title": "Window implementation (Window.cpp)" },
+            { "path": "docs/monitor-data-h-documentation.md", "title": "Monitor API (Monitor_Data.h)" },
+            { "path": "docs/monitor-data-cpp-documentation.md", "title": "Monitor implementation (Monitor_Data.cpp)" },
+            { "path": "docs/settings-system-documentation.md", "title": "Settings system" },
+            { "path": "docs/settings-system-examples.md", "title": "Settings examples" }
+          ]
+        },
+        {
+          "title": "Core Systems",
+          "description": "The engine's foundations: memory, smart pointers, UUIDs, assertions, logging and formatting, and threading.",
+          "documents": [
+            { "path": "docs/memory-system-documentation.md", "title": "Memory management" },
+            { "path": "docs/memory-system.md", "title": "Memory system: development notes" },
+            { "path": "docs/memory-system-examples.md", "title": "Memory examples" },
+            { "path": "docs/smartpointer-system-documentation.md", "title": "Smart pointers (Ref and WeakRef)" },
+            { "path": "docs/uuid-system-documentation.md", "title": "UUIDs" },
+            { "path": "docs/assert-system-documentation.md", "title": "Assertions" },
+            { "path": "docs/logging-documentation-index.md", "title": "Logging: overview" },
+            { "path": "docs/logging-system-documentation.md", "title": "Logging system" },
+            { "path": "docs/logging-system-api-reference.md", "title": "Logging API reference" },
+            { "path": "docs/logging-system-examples.md", "title": "Logging examples" },
+            { "path": "docs/formatter-system-documentation.md", "title": "Formatter" },
+            { "path": "docs/threading-documentation-index.md", "title": "Threading: overview" },
+            { "path": "docs/threading-system-documentation.md", "title": "Threading system" },
+            { "path": "docs/thread-h-documentation.md", "title": "Thread API (Thread.h)" },
+            { "path": "docs/thread-cpp-documentation.md", "title": "Thread implementation (Thread.cpp)" },
+            { "path": "docs/thread-manager-h-documentation.md", "title": "Thread manager API (Thread_Manager.h)" },
+            { "path": "docs/thread-manager-cpp-documentation.md", "title": "Thread manager implementation (Thread_Manager.cpp)" }
+          ]
+        },
+        {
+          "title": "Strings and Types",
+          "description": "The string classes and utilities, and the compile-time type system: descriptors, names, structs and utilities.",
+          "documents": [
+            { "path": "docs/string-h-api-reference.md", "title": "String API (String.h)" },
+            { "path": "docs/string-cpp-implementation-guide.md", "title": "String implementation (String.cpp)" },
+            { "path": "docs/string-utils-system-documentation.md", "title": "String utilities" },
+            { "path": "docs/string-utils-h-documentation.md", "title": "Low-level string utilities (StringUtils.h)" },
+            { "path": "docs/type-descriptors-documentation.md", "title": "Type descriptors" },
+            { "path": "docs/type-names-documentation.md", "title": "Type names" },
+            { "path": "docs/type-structs-documentation.md", "title": "Type structs" },
+            { "path": "docs/type-utils-documentation.md", "title": "Type utilities" }
+          ]
+        },
+        {
+          "title": "Serialization and Encoding",
+          "description": "Reading and writing the engine's data: the serialization system and its reader and writer, text encodings, and the asset manager's file format.",
+          "documents": [
+            { "path": "docs/serialization-system-documentation.md", "title": "Serialization system" },
+            { "path": "docs/serialization-implementation-guide.md", "title": "Implementing serialization" },
+            { "path": "docs/serialization-system-best-practices.md", "title": "Serialization best practices" },
+            { "path": "docs/serialization-system-examples.md", "title": "Serialization examples" },
+            { "path": "docs/serializer-writer-api-reference.md", "title": "SerializeWriter API" },
+            { "path": "docs/serializer-reader-api-reference.md", "title": "SerializeReader API" },
+            { "path": "docs/encoding-system-documentation.md", "title": "Encoding system" },
+            { "path": "docs/encoding-system-implementation-guide.md", "title": "Implementing encodings" },
+            { "path": "docs/encoding-system-examples.md", "title": "Encoding examples" },
+            { "path": "docs/asset-manager-yaml-to-json-conversion.md", "title": "Asset manager: from YAML to JSON" }
+          ]
+        },
+        {
+          "title": "Rendering and Vulkan",
+          "description": "The renderer's integration, the render context and dispatcher, command submission, and the Vulkan buffer, memory and enum layers.",
+          "documents": [
+            { "path": "docs/Renderer_Integration.md", "title": "Renderer integration" },
+            { "path": "docs/render-context-documentation.md", "title": "Render context" },
+            { "path": "docs/render-context-comprehensive-documentation.md", "title": "Render context in depth" },
+            { "path": "docs/render-context-implementation-guide.md", "title": "Working with the render context" },
+            { "path": "docs/render-dispatcher-documentation.md", "title": "Render dispatcher" },
+            { "path": "docs/renderer-command-submission.md", "title": "Command submission and resource freeing" },
+            { "path": "docs/vulkan-buffer-system-documentation.md", "title": "Vulkan buffers" },
+            { "path": "docs/vulkan-buffer-system-implementation-guide.md", "title": "Working with Vulkan buffers" },
+            { "path": "docs/vulkan-memory-allocator-documentation.md", "title": "Vulkan memory allocator" },
+            { "path": "docs/vulkan-enums-system-documentation.md", "title": "Vulkan enums" }
+          ]
+        },
+        {
+          "title": "File Formats and X-Plane Data",
+          "description": "The project formats in full, notes on WorldEditor's earth.wed.xml, and the X-Plane scenery library parser.",
+          "documents": [
+            { "path": "docs/edx File Format Documentation.md", "title": "Project file formats: .edX, .sex and WorldEditor" },
+            { "path": "docs/XCoder/WED format.md", "title": "WorldEditor's earth.wed.xml", "titleFromFile": false },
+            { "path": "docs/xplane-scenery-library-parser-headers-documentation.md", "title": "Scenery library: parser headers" },
+            { "path": "docs/xplane-scenery-library-xplibrarysystem-documentation.md", "title": "Scenery library: XPLibrarySystem" },
+            { "path": "docs/xplane-scenery-library-xplibrarypath-documentation.md", "title": "Scenery library: XPLibraryPath" },
+            { "path": "docs/xplane-scenery-library-xpasset-documentation.md", "title": "Scenery library: XPAsset" },
+            { "path": "docs/xplane-scenery-library-xpobj-documentation.md", "title": "Scenery library: XPObj" },
+            { "path": "docs/xplane-scenery-library-xplayergroups-documentation.md", "title": "Scenery library: XPLayerGroups" }
+          ]
+        }
+      ]
+    }
+  ]
+}
