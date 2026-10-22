@@ -10,28 +10,41 @@ This manual lives in the repository, next to the code it describes, so a change 
 | `docs/manual/chapters/*.md` | One Markdown file per chapter |
 | `docs/manual/images/` | Screenshots (`.png`) and diagrams (`.svg`) |
 | `docs/manual/theme/` | The website's and the PDF's styles (`manual.css`, `print.css`) and script (`manual.js`) |
-| `docs/manual/build.py` | Builds the website and the PDF |
-| `docs/manual/tools/md2html.py` | The Markdown converter the build uses |
-| `docs/manual/site/` | The built website and PDF (not committed) |
+| `docs/manual/build.py` | Builds the website and the PDFs |
+| `docs/manual/book.json`, `book.py` | The complete documentation: this manual and the developer reference in one book |
+| `docs/manual/art/` | The book's cover and volume charts, drawn by `tools/make_art.py`; `philosophy.md` describes their style |
+| `docs/manual/tools/` | The Markdown converter (`md2html.py`), its code highlighting (`highlight.py`) and the PDF bookmark tool (`pdfoutline.py`) |
+| `docs/manual/site/` | The built website and PDFs (not committed) |
 
 ## Building
 
-You need Python 3.12 or newer, and Chrome, Chromium or Microsoft Edge for the PDF. Nothing else: the build uses only Python's standard library.
+You need Python 3.12 or newer, and Chrome, Chromium or Microsoft Edge for the PDFs. Nothing else: the build uses only Python's standard library.
 
 ```bash
 python docs/manual/build.py
 ```
 
-This writes the website to `docs/manual/site/` (open `index.html`) and prints the PDF, `SceneryEditorX-Manual.pdf`, beside it. Options:
+This writes the website to `docs/manual/site/` (open `index.html`) and prints two PDFs beside it: this manual, `SceneryEditorX-Manual.pdf`, and the complete documentation, `SceneryEditorX-Documentation.pdf`. Options:
 
 | Option | Effect |
 |---|---|
-| `--no-pdf` | Skip the PDF (much faster while writing) |
-| `--browser <path>` | The browser that prints the PDF, when it isn't found on its own |
+| `--no-pdf` | Skip the PDFs (much faster while writing) |
+| `--no-book` | Print only this manual, not the complete documentation (which takes a minute or two) |
+| `--browser <path>` | The browser that prints the PDFs, when it isn't found on its own |
 | `--strict` | Exit with an error on a broken link or missing image (for CI) |
 | `--date "October 2026"` | The publication date printed in the manual |
 
 The build checks every link between chapters, every `#section` link, and every image, and warns about any that don't resolve.
+
+Each PDF is printed twice. The first print shows where every chapter starts; the second prints those page numbers in the contents and on the part pages. The build then nests the PDF's bookmarks (part, then chapter, then section), because Chrome makes every chapter a top-level bookmark.
+
+## The complete documentation
+
+`SceneryEditorX-Documentation.pdf` is one book in two volumes. Volume I is this manual. Volume II, the developer reference, is the Markdown documentation kept elsewhere in the repository: the README, the build and installer guides, the coding style, and the documents in `docs/` on the engine's systems. `book.json` lists its parts and, in each part, the documents in order with the title each has in the book.
+
+The reference documents are printed as they are written. Their own sections become the chapter's sections. A document with several `#` headings gets them as sections, with the rest moved down a level, and `"titleFromFile": false` does the same for a document whose first `#` heading isn't its title. Links between documents in the book go to their chapters, and links to other repository files go to GitHub. Images that are missing or on the web are left out, and links to sections that don't exist are printed as plain text. The build lists everything it left out or unlinked, so you can fix the documents themselves.
+
+To add a document to the book, add `{ "path": "docs/<file>.md", "title": "<title in the book>" }` to a part in `book.json`. The art is generated: change `tools/make_art.py` and run it, rather than editing the SVGs.
 
 To preview the website with search working, serve the folder:
 

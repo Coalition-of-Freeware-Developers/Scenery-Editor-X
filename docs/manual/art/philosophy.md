@@ -1,0 +1,15 @@
+# Datum Lines
+
+*A design philosophy for the covers and dividers of the Scenery Editor X documentation.*
+
+**Datum Lines** holds that every place begins as a measurement. Before there is a runway or a roof there is a point, fixed in latitude and longitude, and a field of invisible lines that agree on where everything else lies. The work makes those lines visible. It is the art of the survey sheet and the aeronautical chart, distilled until only their quiet authority remains: a world that has been carefully, patiently located.
+
+**Space and form.** The page is a field of fine graticule: parallels as long shallow arcs, meridians leaning together toward a pole far beyond the sheet, the true geometry of a conic projection rather than a convenient grid. Over it, a few perfect forms carry the weight: concentric rings, a single long curve with its handles exposed, a bar of light. Everything is drawn, never filled; hairlines do the work that mass would do elsewhere. Composition favors one decisive event per page and a great deal of breathing field around it, so the eye travels the lines the way a navigator's finger does.
+
+**Color and material.** Night-chart navy is the ground: deep, cool, faintly warmer at the foot, like ink that has dried on heavy stock. Lines are a pale instrument cyan at whisper opacities, layered so that density itself becomes tone. One warm amber, used sparingly, marks the single thing that matters on the sheet, a lit runway at dusk seen from altitude. No textures, no glows, no gradients that announce themselves; the material honesty of ink on paper, rendered with the precision of a plate engraver.
+
+**Scale and rhythm.** Rhythm comes from systematic repetition: tick marks at every five degrees, longer at ten, longer again at thirty; contour rings stepping outward at an even interval and wandering only as the ground asks; parallels every ten minutes, a heavier line at every degree. The repetition is the content. Sustained looking should be rewarded with structure that keeps resolving: a tile boundary emerging from the graticule, a compass rose turned three degrees toward magnetic north, coordinates small enough to be found rather than read.
+
+**Hierarchy and text.** Typography is thin, sparse and exact, set like the margin notes of a technical sheet: a sheet number, a projection, a scale, a coordinate. Titles are light rather than loud, given room instead of weight, and placed where the field grows calm. Nothing touches the edge, nothing collides, every label sits on its own clear ground. Words only name what the lines already show.
+
+**Craft.** These pages must read as the product of painstaking, master-level drafting: hours spent at a light table with a ruling pen, every interval measured, every hairline placed with intent. Meticulously crafted restraint is the whole of the style. If a mark does not belong to the system, it is removed; if a line is uncertain, it is redrawn until it is inevitable. The finished sheets should feel like plates from an atlas kept by someone at the very top of the cartographer's craft, quiet enough to frame and exact enough to navigate by.

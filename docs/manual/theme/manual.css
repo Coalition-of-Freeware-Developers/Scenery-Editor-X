@@ -4,6 +4,7 @@
  * Light and dark: the system's choice, or data-theme on <html> when the reader picks one.
  */
 
+@font-face { font-family: "Open Sans"; src: url("fonts/OpenSans-Light.ttf") format("truetype"); font-weight: 300; font-style: normal; font-display: swap; }
 @font-face { font-family: "Open Sans"; src: url("fonts/OpenSans-Regular.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
 @font-face { font-family: "Open Sans"; src: url("fonts/OpenSans-Italic.ttf") format("truetype"); font-weight: 400; font-style: italic; font-display: swap; }
 @font-face { font-family: "Open Sans"; src: url("fonts/OpenSans-Medium.ttf") format("truetype"); font-weight: 500; font-style: normal; font-display: swap; }
@@ -322,6 +323,7 @@ h2:hover .anchor, h3:hover .anchor, .anchor:focus { opacity: 1; }
 /* Inline code and keys */
 code {
   font-family: var(--font-mono); font-size: .86em;
+  font-variant-ligatures: none; font-feature-settings: "calt" 0, "liga" 0;  /* Cascadia draws != as a single ≠ */
   color: var(--code-text); background: var(--code-bg);
   border: 1px solid var(--border); border-radius: 5px; padding: .08em .38em;
   overflow-wrap: anywhere;
@@ -349,6 +351,14 @@ pre.code {
   box-shadow: var(--shadow-sm);
 }
 pre.code code { background: none; border: 0; padding: 0; color: inherit; font-size: inherit; overflow-wrap: normal; }
+/* Highlighting (tools/highlight.py); code blocks are dark in both themes */
+.tok-com { color: #7d8b98; font-style: italic; }
+.tok-str { color: #a9d68b; }
+.tok-num, .tok-flag { color: #f2a679; }
+.tok-kw, .tok-key, .tok-cmd { color: #79c0f5; }
+.tok-ty { color: #7fd6c2; }
+.tok-fn, .tok-var { color: #f0c46a; }
+.tok-pp { color: #c7a2f2; }
 pre.code[data-lang]::before {
   content: attr(data-lang); position: absolute; top: 6px; right: 46px;
   font-family: var(--font); font-size: .66rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #7f8c97;

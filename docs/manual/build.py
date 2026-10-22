@@ -4,13 +4,16 @@ Builds the Scenery Editor X user manual from the Markdown chapters in docs/manua
 
 - an HTML site (one page per chapter, a landing page, client-side search, light and dark themes)
 - a print page with a cover, contents and part dividers, and from it a PDF (Chrome, Chromium or Edge, headless)
+- the complete documentation: the manual and the developer reference (the repository's own Markdown documents,
+  listed in book.json) as one printed book (book.py)
 
 Standard library only. Run it from anywhere:
 
-    python docs/manual/build.py                  # site + PDF in docs/manual/site
+    python docs/manual/build.py                  # site + both PDFs in docs/manual/site
     python docs/manual/build.py --no-pdf         # site only
+    python docs/manual/build.py --no-book        # site + the manual's PDF
     python docs/manual/build.py --strict         # fail on broken links or missing images (CI)
-    python docs/manual/build.py --browser PATH   # the browser that prints the PDF
+    python docs/manual/build.py --browser PATH   # the browser that prints the PDFs
 """
 
 from __future__ import annotations
@@ -33,10 +36,11 @@ REPO = HERE.parent.parent
 sys.path.insert(0, str(HERE / "tools"))
 
 import md2html  # noqa: E402
+import pdfoutline  # noqa: E402
 
-ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"]
-FONT_FILES = ["OpenSans-Regular.ttf", "OpenSans-Italic.ttf", "OpenSans-Medium.ttf", "OpenSans-SemiBold.ttf",
-              "OpenSans-Bold.ttf", "OpenSans-ExtraBold.ttf", "LICENSE.txt"]
+ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII", "XIII", "XIV", "XV", "XVI"]
+FONT_FILES = ["OpenSans-Light.ttf", "OpenSans-Regular.ttf", "OpenSans-Italic.ttf", "OpenSans-Medium.ttf",
+              "OpenSans-SemiBold.ttf", "OpenSans-Bold.ttf", "OpenSans-ExtraBold.ttf", "LICENSE.txt"]
 
 
 # --------------------------------------------------------------------------------------------------------------------
@@ -58,6 +62,7 @@ class Chapter:
     site_links: list[str] = field(default_factory=list)
     print_links: list[str] = field(default_factory=list)
     images: list[str] = field(default_factory=list)
+    origin: str = ""  # A developer reference chapter: the repository file it comes from
 
     @property
     def url(self) -> str:
@@ -79,10 +84,15 @@ class Part:
     description: str
     appendix: bool
     chapters: list[Chapter] = field(default_factory=list)
+    numeral: str = ""  # When it isn't the part's number (the book's developer reference goes on from Volume I)
+
+    @property
+    def roman(self) -> str:
+        return self.numeral or ROMAN[self.number - 1]
 
     @property
     def kicker(self) -> str:
-        return "Appendices" if self.appendix else f"Part {ROMAN[self.number - 1]}"
+        return "Appendices" if self.appendix else f"Part {self.roman}"
 
     @property
     def anchor(self) -> str:
@@ -391,7 +401,7 @@ def chapter_page(manual: Manual, chapter: Chapter, pdf_available: bool) -> str:
 """
 
 
-def index_page(manual: Manual, pdf_available: bool) -> str:
+def index_page(manual: Manual, pdf_available: bool, book_pdf: Path | None = None) -> str:
     cfg = manual.config
     first = manual.find(cfg.get("startHere", "")) or manual.chapters[0]
     cards = []
@@ -406,6 +416,9 @@ def index_page(manual: Manual, pdf_available: bool) -> str:
         f'<span>{esc(q["text"])}</span></a>' for q in cfg.get("quickLinks", []))
     pdf_button = (f'<a class="button button-secondary" href="{esc(cfg["pdfName"])}">{ICONS["pdf"]}Download the PDF</a>'
                   if pdf_available else "")
+    if book_pdf:
+        pdf_button += (f'<a class="button button-secondary" href="{esc(book_pdf.name)}" title="The user manual and the developer reference">'
+                       f'{ICONS["pdf"]}Complete documentation</a>')
     title = esc(cfg["title"])
     if title.endswith(" X"):
         title = title[:-1] + '<span class="x">X</span>'
@@ -439,25 +452,105 @@ def index_page(manual: Manual, pdf_available: bool) -> str:
 """
 
 
-def print_page(manual: Manual) -> str:
-    cfg = manual.config
-    toc = []
-    for part in manual.parts:
-        toc.append(f'<li class="toc-part"><a href="#{part.anchor}"><span class="toc-label">{esc(part.kicker)}</span>{esc(part.title)}</a><ol>')
-        toc += [f'<li><a href="#{c.anchor}"><span class="toc-label">{esc(c.label)}</span>{c.title_html}</a></li>' for c in part.chapters]
-        toc.append("</ol></li>")
+# Printed pages. Every <h1> becomes a top-level PDF bookmark, so each page builder also returns its "targets": one
+# (anchor, title, depth, section titles) per <h1> in document order, which find the pages for the contents and nest
+# and name the bookmarks.
 
+Targets = list[tuple[str, str, int, list[str]]]
+
+# Chrome tags every element of a printed page in the PDF, and the developer reference's code has some 100,000
+# highlighted tokens: as <span>s they made the PDF three times the size. In print, the spans become CSS highlight
+# ranges over one text node per block, coloured by the ::highlight() rules in print.css.
+PRINT_SCRIPT = """<script>
+(function () {
+  if (!window.CSS || !CSS.highlights) return;
+  var kinds = new Map();
+  document.querySelectorAll('pre.code > code').forEach(function (code) {
+    if (!code.querySelector('span')) return;
+    var parts = [], text = '';
+    code.childNodes.forEach(function (node) {
+      var kind = node.nodeType === 1 && /^tok-/.test(node.className) ? node.className : null;
+      parts.push([kind, text.length, text.length + node.textContent.length]);
+      text += node.textContent;
+    });
+    code.textContent = text;
+    parts.forEach(function (p) {
+      if (!p[0]) return;
+      var range = new Range();
+      range.setStart(code.firstChild, p[1]);
+      range.setEnd(code.firstChild, p[2]);
+      if (!kinds.has(p[0])) kinds.set(p[0], new Highlight());
+      kinds.get(p[0]).add(range);
+    });
+  });
+  kinds.forEach(function (highlight, kind) { CSS.highlights.set(kind, highlight); });
+})();
+</script>"""
+
+
+def chapter_target(chapter: Chapter, depth: int) -> tuple[str, str, int, list[str]]:
+    return chapter.anchor, chapter.title, depth, [h.text for h in chapter.headings]
+
+
+def page_of(pages: dict[str, int], anchor: str) -> str:
+    return str(pages[anchor]) if anchor in pages else ""
+
+
+def toc_line(anchor: str, label: str, title_html: str, pages: dict[str, int]) -> str:
+    return (f'<a href="#{anchor}"><span class="toc-label">{esc(label)}</span><span class="toc-title">{title_html}</span>'
+            f'<span class="toc-fill"></span><span class="toc-page">{page_of(pages, anchor)}</span></a>')
+
+
+def toc_parts(parts: list[Part], pages: dict[str, int]) -> str:
+    out = []
+    for part in parts:
+        out.append(f'<li class="toc-part">{toc_line(part.anchor, part.kicker, esc(part.title), pages)}<ol>')
+        out += [f"<li>{toc_line(c.anchor, c.label, c.title_html, pages)}</li>" for c in part.chapters]
+        out.append("</ol></li>")
+    return "".join(out)
+
+
+def part_divider(part: Part, pages: dict[str, int]) -> str:
+    chapters = "".join(f'<li><span>{esc(c.label)}</span>{c.title_html}<em>{page_of(pages, c.anchor)}</em></li>' for c in part.chapters)
+    numeral = "A–" + part.chapters[-1].label if part.appendix and part.chapters else part.roman
+    many = " many" if len(part.chapters) > 9 else ""  # A long list starts higher, in smaller type
+    return (f'<section class="part-divider{many}" id="{part.anchor}"><p class="part-numeral">{esc(numeral)}</p>'
+            f'<p class="kicker">{esc(part.kicker)}</p><h1>{esc(part.title)}</h1><p class="part-description">{esc(part.description)}</p>'
+            f'<ol class="part-chapters">{chapters}</ol></section>')
+
+
+def print_chapter(chapter: Chapter, body: str | None = None) -> str:
+    origin = f'<p class="chapter-origin"><span>Source</span>{esc(chapter.origin)}</p>' if chapter.origin else ""
+    kind = " reference" if chapter.origin else ""
+    return (f'<article class="chapter print-chapter{kind}" id="{chapter.anchor}"><header class="chapter-header">'
+            f'<p class="kicker"><span>{esc(chapter.part.kicker)}</span><span class="dot">·</span><span>{esc(chapter.kicker)}</span></p>'
+            f'<h1>{chapter.title_html}</h1>{origin}</header><div class="chapter-body">{chapter.print_html if body is None else body}</div></article>')
+
+
+def part_pages(part: Part, pages: dict[str, int], body=None) -> str:
+    """A part's divider and chapters. The chapters' pages are named after the part, for the running footer."""
+    chapters = "".join(print_chapter(c, body(c) if body else None) for c in part.chapters)
+    return f'{part_divider(part, pages)}<div class="part-body" style="page: {part.anchor}">{chapters}</div>'
+
+
+def footer_css(rules: list[tuple[str | None, str]]) -> str:
+    """@page rules for the running footer: (page name or None for every page, text)."""
+    out = []
+    for name, text in rules:
+        quoted = text.replace("\\", "\\\\").replace('"', '\\"')
+        out.append(f'@page{" " + name if name else ""} {{ @bottom-left {{ content: "{quoted}"; }} }}')
+    return "\n".join(out)
+
+
+def print_page(manual: Manual, pages: dict[str, int]) -> tuple[str, Targets]:
+    cfg = manual.config
+    targets: Targets = [("cover", cfg["title"], 0, [])]
     body = []
     for part in manual.parts:
-        chapters_list = "".join(f'<li><span>{esc(c.label)}</span>{c.title_html}</li>' for c in part.chapters)
-        numeral = "A–" + part.chapters[-1].label if part.appendix and part.chapters else ROMAN[part.number - 1]
-        body.append(f'<section class="part-divider" id="{part.anchor}"><p class="part-numeral">{esc(numeral)}</p>'
-                    f'<p class="kicker">{esc(part.kicker)}</p><h1>{esc(part.title)}</h1><p class="part-description">{esc(part.description)}</p>'
-                    f'<ol class="part-chapters">{chapters_list}</ol></section>')
-        for c in part.chapters:
-            body.append(f'<article class="chapter print-chapter" id="{c.anchor}"><header class="chapter-header">'
-                        f'<p class="kicker"><span>{esc(c.part.kicker)}</span><span class="dot">·</span><span>{esc(c.kicker)}</span></p>'
-                        f'<h1>{c.title_html}</h1></header><div class="chapter-body">{c.print_html}</div></article>')
+        targets.append((part.anchor, part.title, 0, []))
+        targets += [chapter_target(c, 1) for c in part.chapters]
+        body.append(part_pages(part, pages))
+    footers = footer_css([(p.anchor, f'{cfg["subtitle"]}  ·  {p.title}') for p in manual.parts])
 
     colophon = "".join(f"<p>{esc(line)}</p>" for line in cfg.get("colophon", []))
     return f"""<!doctype html>
@@ -467,9 +560,12 @@ def print_page(manual: Manual) -> str:
 <title>{esc(cfg["title"])} {esc(cfg["subtitle"])} {esc(manual.version)}</title>
 <link rel="stylesheet" href="assets/manual.css">
 <link rel="stylesheet" href="assets/print.css">
+<style>
+{footers}
+</style>
 </head>
 <body class="print-page">
-<section class="cover">
+<section class="cover" id="cover">
   <div class="cover-art" style="background-image:url('assets/splash.png')"></div>
   <div class="cover-text">
     <img class="cover-icon" src="assets/icon.png" alt="">
@@ -485,11 +581,12 @@ def print_page(manual: Manual) -> str:
   {colophon}
   <p class="colophon-meta">Written for Scenery Editor X {esc(manual.version)} · Published {esc(manual.date)}<br>{esc(cfg.get("copyright", ""))}</p>
 </section>
-<nav class="print-toc"><h2>Contents</h2><ol>{"".join(toc)}</ol></nav>
+<nav class="print-toc"><h2>Contents</h2><ol>{toc_parts(manual.parts, pages)}</ol></nav>
 {"".join(body)}
+{PRINT_SCRIPT}
 </body>
 </html>
-"""
+""", targets
 
 
 def search_index(manual: Manual) -> str:
@@ -571,11 +668,37 @@ def print_pdf(browser: str, page: Path, pdf: Path) -> bool:
     return pdf.exists() and pdf.stat().st_size > 0
 
 
+def print_numbered(browser: str, page: Path, pdf: Path, render, open_depth: int = 1) -> bool:
+    """Prints render(pages) -> (html, targets) until the page numbers it shows are the pages its <h1>s land on (twice,
+    normally: the first print says where everything is), then nests the PDF's bookmarks by the targets' depths.
+    pages also gets "@pages", the page count."""
+    pages: dict[str, int] = {}
+    for _ in range(3):
+        text, targets = render(pages)
+        page.write_text(text, encoding="utf-8")
+        if not print_pdf(browser, page, pdf):
+            return False
+        found = pdfoutline.match_pages([(t[0], t[1]) for t in targets], pdfoutline.read(pdf))
+        found["@pages"] = len(pdfoutline.Pdf(pdf).pages())
+        if found == pages:
+            break
+        pages = found
+    else:
+        print(f"warning: {pdf.name}: the page numbers didn't settle; some in the contents may be off by a page")
+    missing = [t[1] for t in targets if t[0] not in pages]
+    if missing:
+        print(f"warning: {pdf.name}: no bookmark found for {len(missing)} headings, e.g. {missing[0]!r}")
+    if not pdfoutline.nest(pdf, [t[2] for t in targets], open_depth, [(t[1], t[3]) for t in targets]):
+        print(f"warning: {pdf.name}: the bookmarks didn't line up with the headings; they're left flat")
+    return True
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Build the Scenery Editor X user manual (HTML site and PDF).")
     parser.add_argument("--out", type=Path, default=HERE / "site", help="output folder (default: docs/manual/site)")
-    parser.add_argument("--no-pdf", action="store_true", help="skip the PDF")
-    parser.add_argument("--browser", help="Chrome, Chromium or Edge executable for the PDF")
+    parser.add_argument("--no-pdf", action="store_true", help="skip the PDFs")
+    parser.add_argument("--no-book", action="store_true", help="skip the complete documentation (manual + developer reference)")
+    parser.add_argument("--browser", help="Chrome, Chromium or Edge executable for the PDFs")
     parser.add_argument("--strict", action="store_true", help="exit with an error on broken links or missing images")
     parser.add_argument("--date", help='publication date printed in the manual (default: this month, e.g. "October 2026")')
     args = parser.parse_args()
@@ -600,19 +723,27 @@ def main() -> int:
     browser = None if args.no_pdf else find_browser(args.browser)
     pdf_available = pdf.exists()
     print_html = out / "print.html"
-    print_html.write_text(print_page(manual), encoding="utf-8")
     if browser:
         print(f"printing the PDF with {browser}")
-        pdf_available = print_pdf(browser, print_html, pdf)
-    elif not args.no_pdf:
-        print("warning: no Chrome, Chromium or Edge found for the PDF (use --browser PATH)")
+        pdf_available = print_numbered(browser, print_html, pdf, lambda pages: print_page(manual, pages))
+    else:
+        print_html.write_text(print_page(manual, {})[0], encoding="utf-8")
+        if not args.no_pdf:
+            print("warning: no Chrome, Chromium or Edge found for the PDF (use --browser PATH)")
 
-    (out / "index.html").write_text(index_page(manual, pdf_available), encoding="utf-8")
+    book_pdf = None
+    if browser and not args.no_book:
+        sys.modules.setdefault("build", sys.modules[__name__])  # book.py imports this module by name
+        import book
+        book_pdf = book.make(manual, out, browser)
+
+    (out / "index.html").write_text(index_page(manual, pdf_available, book_pdf), encoding="utf-8")
     for chapter in manual.chapters:
         (out / chapter.url).write_text(chapter_page(manual, chapter, pdf_available), encoding="utf-8")
 
     words = sum(len(md2html.plain_text(c.site_html).split()) for c in manual.chapters)
-    print(f"built {len(manual.chapters)} chapters ({words:,} words) into {out}" + (f", PDF {pdf.name}" if pdf_available else ""))
+    print(f"built {len(manual.chapters)} chapters ({words:,} words) into {out}" + (f", PDF {pdf.name}" if pdf_available else "")
+          + (f", {book_pdf.name}" if book_pdf else ""))
     return 1 if problems and args.strict else 0
 
 

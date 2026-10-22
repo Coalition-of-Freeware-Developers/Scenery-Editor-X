@@ -20,6 +20,10 @@ import re
 from dataclasses import dataclass, field
 from typing import Callable
 
+from highlight import highlight
+
+LONG_BLOCK = 10  # Code blocks with more lines, and tables with more rows, get class "long"
+
 
 @dataclass
 class Heading:
@@ -37,6 +41,8 @@ class Context:
     image: Callable[[str], str] = lambda src: src
     id_prefix: str = ""
     title: str = ""
+    consume_title: bool = True  # The first # heading is the document's title (not drawn in the body)
+    heading_shift: int = 0  # Added to the level of every other heading (documents with several # headings)
     headings: list[Heading] = field(default_factory=list)
     used_ids: set[str] = field(default_factory=set)
     links: list[str] = field(default_factory=list)  # Rewritten hrefs, for the link check
@@ -61,7 +67,9 @@ _TOKEN_RE = re.compile("\x00(\\d+)\x00")
 _CODE_RE = re.compile(r"(`+)(.+?)(?<!`)\1(?!`)", re.S)
 _KBD_RE = re.compile(r"<kbd>(.*?)</kbd>", re.S)
 _AUTOLINK_RE = re.compile(r"<(https?://[^\s>]+)>")
-_TAG_RE = re.compile(r"<!--.*?-->|</?[A-Za-z][A-Za-z0-9-]*(?:\s[^<>]*?)?/?>", re.S)
+# Inline HTML that passes through. Anything else in angle brackets (C++ templates: <typename T>, <int>) is text.
+_INLINE_TAGS = "a|abbr|b|br|code|del|em|i|img|ins|kbd|mark|s|small|span|strong|sub|sup|u|div|p|details|summary|hr|font|center"
+_TAG_RE = re.compile(r"<!--.*?-->|</?(?:" + _INLINE_TAGS + r")(?:\s[^<>]*?)?/?>", re.S | re.I)
 _IMAGE_RE = re.compile(r'!\[([^\]]*)\]\(\s*<?([^)\s>]+)>?(?:\s+"([^"]*)")?\s*\)')
 _LINK_RE = re.compile(r'\[((?:[^\[\]]|\[[^\]]*\])*)\]\(\s*<?([^)\s>]+)>?(?:\s+"([^"]*)")?\s*\)')
 _ENTITY_RE = re.compile(r"&(?!(?:#\d+|#x[0-9a-fA-F]+|[A-Za-z][A-Za-z0-9]*);)")
@@ -92,10 +100,10 @@ def plain_text(fragment: str) -> str:
 
 
 def slugify(text: str) -> str:
-    text = plain_text(text).lower()
-    text = re.sub(r"[^\w\s-]", "", text)
-    text = re.sub(r"[\s_]+", "-", text).strip("-")
-    return re.sub(r"-{2,}", "-", text) or "section"
+    """Heading text -> id, the way GitHub makes them, so a link written for GitHub works here too."""
+    text = plain_text(text).strip().lower()
+    text = re.sub(r"[^\w\- ]", "", text)
+    return text.replace(" ", "-") or "section"
 
 
 def render_inline(text: str, ctx: Context) -> str:
@@ -239,7 +247,8 @@ def _render_table(lines: list[str], ctx: Context) -> str:
         style = f' style="text-align:{align}"' if align else ""
         return f"<{tag}{style}>{render_inline(text.replace(chr(92) + '|', '|'), ctx)}</{tag}>"
 
-    out = ['<div class="table-wrap"><table>', "<thead><tr>"]
+    long = " long" if len(lines) - 2 > LONG_BLOCK else ""
+    out = [f'<div class="table-wrap{long}"><table>', "<thead><tr>"]
     out += [cell("th", text, c) for c, text in enumerate(header)]
     out.append("</tr></thead><tbody>")
     for row in lines[2:]:
@@ -252,9 +261,11 @@ def _render_table(lines: list[str], ctx: Context) -> str:
 
 def _render_heading(level: int, text: str, custom_id: str | None, ctx: Context) -> str:
     inline = render_inline(text, ctx)
-    if level == 1 and not ctx.title:
+    if level == 1 and ctx.consume_title and not ctx.title:
         ctx.title = inline
         return ""
+    # A body never draws an h1: the page template owns those (and the PDF's bookmarks are built from them)
+    level = min(6, max(2, level + ctx.heading_shift))
     hid = ctx.unique_id(custom_id or slugify(inline))
     ctx.headings.append(Heading(level, plain_text(inline), inline, hid))
     anchor = f'<a class="anchor" href="#{hid}" aria-label="Link to this section">#</a>' if level in (2, 3) else ""
@@ -360,10 +371,11 @@ def parse_blocks(lines: list[str], ctx: Context) -> str:
                 body.append(lines[i][indent:] if lines[i][:indent].strip() == "" else lines[i])
                 i += 1
             i += 1
-            code = html.escape("\n".join(body), quote=False)
+            code = highlight("\n".join(body), lang)
             lang_attr = f' class="language-{lang}"' if lang else ""
             label = f' data-lang="{lang}"' if lang else ""
-            emit(f'<pre class="code"{label}><code{lang_attr}>{code}</code></pre>')
+            long = " long" if len(body) > LONG_BLOCK else ""  # Long blocks may break across printed pages
+            emit(f'<pre class="code{long}"{label}><code{lang_attr}>{code}</code></pre>')
             continue
 
         heading = _HEADING_RE.match(line)
