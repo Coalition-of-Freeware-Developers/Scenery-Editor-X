@@ -1120,6 +1120,11 @@ namespace SceneryEditorX
 				ToolsSelfTest::Enable();
 				ToolsSelfTest::EnableFacadeShowcase(); // holds the facade tests' facades with wall labels and the quad menu open (frame captures)
 			}
+			else if (args[i] == "--gizmo-selftest" || args[i] == "--gizmo-showcase")
+			{
+				ToolsSelfTest::Enable();
+				ToolsSelfTest::EnableGizmoTests(args[i] == "--gizmo-showcase"); // only the gizmo checks, dragged with a scripted mouse (then held for screenshots)
+			}
 			else if (i + 1 >= args.size())
 				break;
 			else if (args[i] == "--xp-object")
