@@ -252,6 +252,12 @@ namespace SceneryEditorX::EditorScenario
 				preset.ao = value > 0.5f ? std::max(preset.ao, 1) : 0;
 				Renderer::SetQualityPreset(preset);
 			}
+			else if (name == "debug/kill_ssr")
+			{
+				RendererFeatures features = Renderer::GetFeatures();
+				features.ssr = value < 0.5f;	// X-Plane's switch for its screen-space reflections: the probes alone
+				Renderer::SetFeatures(features);
+			}
 			else
 			{
 				EDITOR_WARN_TAG(LOG_TAG, "Scenario {}: art control {} isn't emulated, ignored", scenario.id, name);

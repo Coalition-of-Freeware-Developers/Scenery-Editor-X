@@ -1093,6 +1093,8 @@ namespace SceneryEditorX
 				Renderer::SetFeatures(RendererFeatures::AllOff()); // the XP12 frame graph with every switchable pass off (A/B)
 			else if (args[i] == "--ao-gtao")
 				Renderer::SetAoTechnique(Renderer::AoTechnique::Gtao); // SEDX's GTAO pass instead of CACAO (A/B)
+			else if (args[i] == "--ssr-trace-all")
+				Renderer::SetSsrTraceAll(true); // every deferred surface traces its reflection as a mirror (with --debug-view reflections)
 			else if (args[i].starts_with("--no-") || args[i].starts_with("--with-"))
 			{
 				// --no-<feature> / --with-<feature>: one XP12 emulation pass off or on (RENDERER panel names)

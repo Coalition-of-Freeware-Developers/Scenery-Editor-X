@@ -595,6 +595,58 @@ namespace SceneryEditorX
 				EditorUI::EndPropertyGrid();
 			}
 
+			if (EditorUI::SectionHeader("REFLECTIONS", false) && EditorUI::BeginPropertyGrid("##RendererSsr"))
+			{
+				// Plan Phase 9: X-Plane's screen-space reflection controls (ssr/*) and SEDX's (sedx/ssr_*)
+				Renderer::EnvironmentConstants &constants = Renderer::EditEnvironmentConstants();
+				SsrSettings &ssr = constants.ssr;
+				EditorUI::PropertyLabel("Minimum gloss");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##SsrMinGloss", &ssr.minGloss, 0.0f, 1.0f, "%.2f");
+				char tooltip[160];
+				snprintf(tooltip, sizeof(tooltip), "Surfaces less glossy keep the probes' reflections alone (ssr/min_gloss; roughness %.3f)",
+					RoughnessFromGloss(ssr.minGloss));
+				EditorUI::ItemTooltip(tooltip);
+				EditorUI::PropertyLabel("Gloss fade");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##SsrGlossFade", &ssr.glossFade, 0.0f, 0.5f, "%.2f");
+				EditorUI::ItemTooltip("Gloss over which reflections fade in above the minimum (sedx/ssr_gloss_fade)");
+				EditorUI::PropertyLabel("Blur rough");
+				ImGui::Checkbox("##SsrPrefiltered", &ssr.usePrefiltered);
+				EditorUI::ItemTooltip("Glossy lobes read blurred mips of the previous frame (ssr/use_prefiltered); off: every "
+									  "reflection is sharp");
+				EditorUI::PropertyLabel("LOD bias");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##SsrLodBias", &ssr.lodBias, -2.0f, 4.0f, "%.2f");
+				EditorUI::ItemTooltip("Added to the history mip a reflection reads (ssr/lod_bias)");
+				EditorUI::PropertyLabel("Thickness");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##SsrThickness", &ssr.thicknessM, 0.01f, 5.0f, "%.2f m");
+				snprintf(tooltip, sizeof(tooltip), "How far behind a surface in the depth buffer a hit still counts, plus %.1f%% of its "
+					"distance (sedx/ssr_thickness_m, sedx/ssr_thickness_ratio)", ssr.thicknessRatio * 100.0f);
+				EditorUI::ItemTooltip(tooltip);
+				EditorUI::PropertyLabel("Max steps");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				int steps = static_cast<int>(ssr.maxSteps);
+				if (ImGui::SliderInt("##SsrSteps", &steps, 8, 256))
+					ssr.maxSteps = static_cast<uint32_t>(steps);
+				EditorUI::ItemTooltip("Hierarchical-Z iterations before a ray gives up (sedx/ssr_max_steps)");
+				EditorUI::PropertyLabel("Trace everything");
+				bool traceAll = Renderer::GetSsrTraceAll();
+				if (ImGui::Checkbox("##SsrTraceAll", &traceAll))
+					Renderer::SetSsrTraceAll(traceAll);
+				EditorUI::ItemTooltip("Debug: every surface traces as a mirror (see the Reflections debug view); the lighting "
+									  "takes them too");
+
+				const Renderer::SsrReadout &readout = Renderer::GetSsrReadout();
+				if (!readout.ran)
+					ValueText("Last frame", "%s", "off");
+				else
+					ValueText("Last frame", "%u x %u, pyramid %u levels, history %u levels%s", readout.width, readout.height,
+						readout.pyramidLevels, readout.historyLevels, readout.history ? "" : " (none yet)");
+				EditorUI::EndPropertyGrid();
+			}
+
 			if (EditorUI::SectionHeader("QUALITY", false) && EditorUI::BeginPropertyGrid("##RendererQuality"))
 			{
 				// X-Plane 12's graphics settings levels (Resources/settings.txt); passes read them as they arrive

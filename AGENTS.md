@@ -90,8 +90,10 @@ The dependency-light, cross-platform Catch2 unit suites that only need `source/`
   probe is captured again (`renderer/env_probes.*`), and the sun-shadow cascades (`renderer/csm.*`: X-Plane 12.4.4's practical
   split scheme, slice bounding spheres, texel snapping that keeps edges still while the camera pans, caster culling), and
   the CPU half of the CACAO ambient occlusion (`renderer/cacao.*`, tag `[cacao]`: buffer sizes, the constants for SEDX's
-  reverse-Z camera and their std140 layout, X-Plane 12.4.4's dynamic values by camera height, the dispatches per preset).
-  Standard library plus `dependency/json`, fully green.
+  reverse-Z camera and their std140 layout, X-Plane 12.4.4's dynamic values by camera height, the dispatches per preset),
+  and the CPU half of the screen-space reflections (`renderer/ssr.*`, tag `[ssr]`: X-Plane's gloss and `ssr/*` weights,
+  the lobe's history mip, the min / max depth pyramid with odd sizes, and the hierarchical-Z march against an analytic
+  ground-and-wall scene). Standard library plus `dependency/json`, fully green.
 
 The other suites are **not** Linux-buildable as written: `SettingsTest` links Windows libs
 (`dxgi`, `d3d12`, `Shell32.lib`); `MemoryAllocatorTests` links `vulkan-1` and needs the Vulkan
@@ -195,7 +197,7 @@ g++ -std=c++20 -O2 -pthread $INCS source/Tests/environment_tests/ParityScenarioT
     $ENV/environment.cpp $ENV/sky_light.cpp $ENV/atmosphere_params.cpp source/SceneryEditorX/renderer/renderer_quality.cpp \
     source/SceneryEditorX/renderer/renderer_features.cpp source/SceneryEditorX/renderer/exposure.cpp \
     source/SceneryEditorX/renderer/env_probes.cpp source/SceneryEditorX/renderer/csm.cpp source/SceneryEditorX/renderer/cacao.cpp \
-    $LIBS -o build_linux_tests/EnvironmentTests
+    source/SceneryEditorX/renderer/ssr.cpp $LIBS -o build_linux_tests/EnvironmentTests
 ./build_linux_tests/EnvironmentTests
 ```
 

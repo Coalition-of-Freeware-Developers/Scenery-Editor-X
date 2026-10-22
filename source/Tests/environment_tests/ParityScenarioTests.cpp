@@ -211,4 +211,20 @@ TEST_CASE("Parity scenarios: the shipped scenario set", "[environment][scenario]
 		CHECK(withoutAo->latitude == Approx(withAo->latitude));
 		CHECK(withoutAo->localTimeHours == Approx(withAo->localTimeHours));
 	}
+
+	// Screen-space reflections A/B (plan CRIT-009): the same shot with debug/kill_ssr 1
+	for (const char *id : { "ksea_calib_sunp40", "ksea_rwy16l_wet5" })
+	{
+		INFO(id);
+		const ParityScenario *withSsr = FindParityScenario(file, id);
+		const ParityScenario *withoutSsr = FindParityScenario(file, std::string(id) + "_nossr");
+		REQUIRE(withSsr);
+		REQUIRE(withoutSsr);
+		CHECK(withSsr->artControls.empty());
+		REQUIRE(withoutSsr->artControls.size() == 1);
+		CHECK(withoutSsr->artControls[0].first == "debug/kill_ssr");
+		CHECK(withoutSsr->artControls[0].second == 1.0f);
+		CHECK(withoutSsr->runwayFriction == withSsr->runwayFriction);
+		CHECK(withoutSsr->localTimeHours == Approx(withSsr->localTimeHours));
+	}
 }

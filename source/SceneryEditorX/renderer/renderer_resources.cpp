@@ -180,6 +180,13 @@ namespace SceneryEditorX
 				s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::frame_render_opaque)] = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D,
 					widthRender, heightRender, 1, 1, VK_FORMAT_R16G16B16A16_SFLOAT, ShaderViews | RenderTargetViews | BlitClear, "frame_render_opaque"});
 				SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::frame_render_opaque)] != nullptr, "Failed to create frame_render_opaque render target");
+
+				// The reflection history (ssr_trace.slang): the finished frame kept for the next one's screen-space
+				// reflections, every mip down to 1 x 1 (rough reflections read the blurred ones)
+				const uint32_t historyMips = static_cast<uint32_t>(floor(log2(static_cast<float>(xMath::Max(widthRender, heightRender))))) + 1;
+				s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::frame_render_previous)] = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D,
+					widthRender, heightRender, 1, historyMips, VK_FORMAT_R16G16B16A16_SFLOAT, UnorderedAccessView | ShaderViews | PerMipViews | BlitClear, "frame_render_previous"});
+				SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::frame_render_previous)] != nullptr, "Failed to create frame_render_previous render target");
 			}
 #pragma endregion
 #pragma region G-Buffer Render Targets
@@ -236,10 +243,11 @@ namespace SceneryEditorX
 				s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_depth_occluders)] = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, widthRender, heightRender, 1, 1, VK_FORMAT_D32_SFLOAT, RenderTargetViews | ShaderViews, "depth_occluders"});
 				SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_depth_occluders)] != nullptr, "Failed to create depth_occluders render target");
 
-				// full mip chain so the cull shader can pick a level where the aabb fits in ~1-2 texels
+				// The min / max depth pyramid (z_minmax.slang: r farthest, g nearest), a full mip chain so the cull shader can
+				// pick a level where the aabb fits in ~1-2 texels and the reflections' march can step across the screen
 				uint32_t hizMipCount = static_cast<uint32_t>(floor(log2(static_cast<float>(xMath::Max(widthRender, heightRender))))) + 1;
 
-				s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_depth_occluders_hiz)] = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, widthRender, heightRender, 1, hizMipCount, VK_FORMAT_R32_SFLOAT, UnorderedAccessView | ShaderViews | BlitClear | PerMipViews, "depth_occluders_hiz"});
+				s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_depth_occluders_hiz)] = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, widthRender, heightRender, 1, hizMipCount, VK_FORMAT_R32G32_SFLOAT, UnorderedAccessView | ShaderViews | BlitClear | PerMipViews, "depth_occluders_hiz"});
 				SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_depth_occluders_hiz)] != nullptr, "Failed to create depth_occluders_hiz render target");
 			}
 #pragma endregion

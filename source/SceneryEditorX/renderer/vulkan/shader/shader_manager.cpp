@@ -101,8 +101,15 @@ namespace SceneryEditorX
 				{ Renderer_Shader::light_composition,                    "light_composition",                    "light_composition.slang", {CS}, {}, VertexType::MaxEnum, true },
 				{ Renderer_Shader::light_integration_brdf_specular_lut,  "light_integration_brdf_specular_lut",  "light_integration.slang", {CS}, {}, VertexType::MaxEnum, true },
 				{ Renderer_Shader::light_integration_environment_filter, "light_integration_environment_filter", "light_integration.slang", {CS}, {}, VertexType::MaxEnum, true },
-				{ Renderer_Shader::light_reflections,                    "light_reflections",                    "light_reflections.slang", {CS} },
 				{ Renderer_Shader::ssao,                                 "ssao",                                 "ssao.slang",              {CS}, {}, VertexType::MaxEnum, true }, // GTAO, the AO fallback
+
+				// the min / max depth pyramid (plan Phase 9; XP12: z_minmax), also occlusion culling's Hi-Z, and screen-space
+				// reflections (XP12: ssr_deferred) with the history they read
+				{ Renderer_Shader::z_minmax_depth,   "z_minmax_depth",   "z_minmax.slang",  {CS}, {{"ZMINMAX_FROM_DEPTH"}}, VertexType::MaxEnum, true },
+				{ Renderer_Shader::z_minmax,         "z_minmax",         "z_minmax.slang",  {CS}, {},                       VertexType::MaxEnum, true },
+				{ Renderer_Shader::ssr_trace,        "ssr_trace",        "ssr_trace.slang", {CS}, {{"SSR_TRACE"}},          VertexType::MaxEnum, true },
+				{ Renderer_Shader::ssr_history_copy, "ssr_history_copy", "ssr_trace.slang", {CS}, {{"SSR_HISTORY_COPY"}},   VertexType::MaxEnum, true },
+				{ Renderer_Shader::ssr_history_mip,  "ssr_history_mip",  "ssr_trace.slang", {CS}, {{"SSR_HISTORY_MIP"}},    VertexType::MaxEnum, true },
 
 				// ambient occlusion (plan Phase 8; XP12: cacao): AMD FidelityFX CACAO's kernels, X-Plane's qualities (renderer/cacao.h)
 				{ Renderer_Shader::cacao_prepare_depths,    "cacao_prepare_depths",     "cacao.slang", {CS}, {{"CACAO_PREPARE_DEPTHS"}}, VertexType::MaxEnum, true },
@@ -142,7 +149,6 @@ namespace SceneryEditorX
 				{ Renderer_Shader::bloom_blend_frame,        "bloom_blend_frame",        "bloom.slang",  {CS}, {{"BLEND_FRAME"}} },
 				{ Renderer_Shader::dithering,                "dithering",                "dither.slang", {CS} },
 				{ Renderer_Shader::blit,                     "blit",                     "blit.slang",   {CS}, {}, VertexType::MaxEnum, true },
-				{ Renderer_Shader::downsample_min,           "downsample_min",           "downsample_min.slang", {CS}, {}, VertexType::MaxEnum, true }, // Hi-Z (Pass_Downscale, Min)
 				{ Renderer_Shader::reference_overlay,        "reference_overlay",        "reference_overlay.slang", {CS}, {}, VertexType::MaxEnum, true }, // viewport REFERENCE menu
 				{ Renderer_Shader::tonemap,                  "tonemap",                  "tonemap.slang",    {CS}, {}, VertexType::MaxEnum, true }, // output transform
 				{ Renderer_Shader::debug_view,               "debug_view",               "debug_view.slang", {CS}, {}, VertexType::MaxEnum, true }, // RENDERER panel DEBUG VIEW

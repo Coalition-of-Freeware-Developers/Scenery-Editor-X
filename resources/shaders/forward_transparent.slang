@@ -27,6 +27,7 @@ import luminance;
 import position;
 import environment_lighting;
 import xp_material;
+import ssr_common;
 
 [shader("vertex")]
 gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id: SV_InstanceID)
@@ -100,8 +101,17 @@ float4 main_frag(gbuffer_vertex vertex, bool is_front_face: SV_IsFrontFace) : SV
     const bool sun_and_moon = pass_get_f4_value().x > 0.5f;
     const float pre_exposure = get_pre_exposure();
 
+    // Blended surfaces aren't in the g-buffer, so the glossy ones (glass, wet drapes) trace their own screen-space
+    // reflection over the opaque depth (XP12: ssr_mesh); it replaces that share of the probes' reflection, in nits
+    float4 ssr = 0.0f;
+    if (xp_ssr_active())
+    {
+        ssr = xp_ssr_trace(position_world, normal, xp_ssr_view_direction(position_world), roughness);
+        ssr.rgb /= max(pre_exposure, 1e-20f);
+    }
+
     float3 diffuse, specular;
-    xp_environment_lighting_split(surface, f0, sun_and_moon, position_world, diffuse, specular);
+    xp_environment_lighting_split(surface, f0, sun_and_moon, position_world, ssr, diffuse, specular);
     diffuse *= pre_exposure;
     specular *= pre_exposure;
 

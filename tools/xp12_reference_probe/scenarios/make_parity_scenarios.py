@@ -27,6 +27,10 @@ YSSY_UTC_OFFSET_SUMMER = 11.0           # AEDT
 CALIBRATION_CENTER = (47.4560, -122.31442)
 CALIBRATION_CAMERA_NORTH_M = 22.0
 CALIBRATION_PROJECT = 'tools/xp12_reference_probe/test_scenery/SEDX_Calibration/SEDX_Calibration.edX'   # What SEDX opens; X-Plane gets the pack
+# Art controls a twin shot sets (the probe sets and restores them in X-Plane; SEDX emulates them): the twin's difference
+# from its base shot isolates one X-Plane effect
+NO_AO = {'ssao/enable': 0}
+NO_SSR = {'debug/kill_ssr': 1}
 
 
 def bearing(a, b):
@@ -162,6 +166,10 @@ def main():
         for cam in ('rwy16l', 'aerial'):
             note = f'sun elevation {elevation} deg'
             add(f'ksea_{cam}_sun{tag}', cam, summer, local, KSEA_UTC_OFFSET_SUMMER, notes=note)
+            if cam == 'aerial' and elevation == 40:
+                add(f'ksea_{cam}_sun{tag}_noao', cam, summer, local, KSEA_UTC_OFFSET_SUMMER,
+                    notes=note + f'; ambient occlusion off: ksea_{cam}_sun{tag} minus this is the AO (plan CRIT-008)',
+                    art_controls=NO_AO)
             add(f'ksea_{cam}_sun{tag}_ev', cam, summer, local, KSEA_UTC_OFFSET_SUMMER, ev100_lock=EV100_LOCK[elevation], notes=note + ', locked exposure')
 
     # Weather at the 40 degree time
@@ -170,11 +178,21 @@ def main():
                           ('snowy', ('rwy16l', 'aerial')), ('wet2', ('rwy16l',)), ('wet5', ('rwy16l',))):
         for cam in cams:
             add(f'ksea_{cam}_{weather}', cam, summer, day40, KSEA_UTC_OFFSET_SUMMER, weather, notes='sun elevation 40 deg')
+    add('ksea_rwy16l_wet5_nossr', 'rwy16l', summer, day40, KSEA_UTC_OFFSET_SUMMER, 'wet5',
+        notes='sun elevation 40 deg; screen-space reflections off: ksea_rwy16l_wet5 minus this is the SSR on the wet runway (plan CRIT-009)',
+        art_controls=NO_SSR)
 
     # Calibration tiles: materials in sun (auto and locked exposure), LIT ramp at night, weather masks wet and snowy
     day20 = morning_time_for_elevation(KSEA_16L[0], KSEA_16L[1], summer, KSEA_UTC_OFFSET_SUMMER, 20)
     for elevation, local in ((40, day40), (20, day20)):
         add(f'ksea_calib_sunp{elevation:02d}', 'calib', summer, local, KSEA_UTC_OFFSET_SUMMER, notes=f'calibration tiles, sun elevation {elevation} deg')
+        if elevation == 40:
+            add(f'ksea_calib_sunp{elevation:02d}_noao', 'calib', summer, local, KSEA_UTC_OFFSET_SUMMER,
+                notes=f'calibration tiles, sun elevation {elevation} deg; ambient occlusion off: ksea_calib_sunp{elevation:02d} minus this is the AO (plan CRIT-008)',
+                art_controls=NO_AO)
+            add(f'ksea_calib_sunp{elevation:02d}_nossr', 'calib', summer, local, KSEA_UTC_OFFSET_SUMMER,
+                notes=f'calibration tiles, sun elevation {elevation} deg; screen-space reflections off: ksea_calib_sunp{elevation:02d} minus this is the SSR on the gloss and metal ramps (plan CRIT-009)',
+                art_controls=NO_SSR)
         add(f'ksea_calib_sunp{elevation:02d}_ev', 'calib', summer, local, KSEA_UTC_OFFSET_SUMMER, ev100_lock=EV100_LOCK[elevation],
             notes=f'calibration tiles, sun elevation {elevation} deg, locked exposure')
     add('ksea_calib_night', 'calib', summer, 23.5, KSEA_UTC_OFFSET_SUMMER, notes='calibration tiles: LIT luminance ramp')

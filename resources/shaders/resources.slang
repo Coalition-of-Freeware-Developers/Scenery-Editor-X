@@ -383,7 +383,10 @@ public struct EnvironmentData
     public float4 csm_filter;        // normal offset (texels), slope-scaled normal offset (texels), soft (3x3 PCF), map size
     public float4 cloud_shadow;      // cascade count (0: none), strength (0 none .. 1 full), extinction (1/m of cloud cover), march steps per layer
     public float4 cloud_shadow_cascades[2]; // per cascade: center x, center z (world, m), half extent (m), texel size (m)
-    public float4 padding_environment[18];
+    public float4 ssr;               // screen-space reflections (ssr_common.slang): min gloss, gloss fade, LOD bias, use prefiltered (0 / 1)
+    public float4 ssr_trace;         // max Hi-Z steps, thickness (m), thickness per meter of view depth, edge fade (share of the screen)
+    public float4 ssr_history;       // history clamp (pre-exposed), lobe half width per GGX alpha, trace every pixel (debug), SSR active
+    public float4 padding_environment[15];
 };
 public [[vk::binding(201)]] cbuffer BufferEnvironment : register(b201) { public EnvironmentData buffer_environment; };
 
@@ -433,6 +436,7 @@ public float get_delta_time_seconds() { return buffer_frame.delta_time; }
 public matrix get_view_matrix() { return buffer_frame.view; }
 public matrix get_view_inverted_matrix() { return buffer_frame.view_inverted; }
 public matrix get_projection_matrix() { return buffer_frame.projection; }
+public matrix get_projection_inverted_matrix() { return buffer_frame.projection_inverted; }
 public matrix get_view_projection_matrix() { return buffer_frame.view_projection; }
 public matrix get_view_projection_ortho_matrix() { return buffer_frame.view_projection_orthographic; }
 public matrix get_view_projection_unjittered_matrix() { return buffer_frame.view_projection_unjittered; }

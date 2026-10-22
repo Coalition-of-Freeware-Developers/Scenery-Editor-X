@@ -35,6 +35,7 @@
 #include "renderer_buffers.h"
 #include "renderer_features.h"
 #include "renderer_quality.h"
+#include "ssr.h"
 #include "font/font.h"
 #include "vulkan/blend_states.h"
 #include "vulkan/command_list.h"
@@ -592,6 +593,9 @@ namespace SceneryEditorX
 			// Ambient occlusion (plan Phase 8): X-Plane's CACAO controls (ssao/*); the QUALITY AO level sets the CACAO
 			// quality and resolution over these, as renopt_SSAO_04 does in X-Plane
 			CacaoSettings ao;
+
+			// Screen-space reflections (plan Phase 9): X-Plane's ssr/* controls and SEDX's own (sedx/ssr_*)
+			SsrSettings ssr;
 		};
 		static const EnvironmentConstants &GetEnvironmentConstants();
 		static EnvironmentConstants &EditEnvironmentConstants();
@@ -622,6 +626,21 @@ namespace SceneryEditorX
 			uint32_t height = 0;
 		};
 		static const AoReadout &GetAoReadout();
+
+		/* @brief What the last frame's screen-space reflections ran with (RENDERER panel). */
+		struct SsrReadout
+		{
+			bool ran = false;
+			bool history = false;					// The previous frame was there to reflect
+			uint32_t width = 0;						// The reflections target
+			uint32_t height = 0;
+			uint32_t pyramidLevels = 0;
+			uint32_t historyLevels = 0;
+		};
+		static const SsrReadout &GetSsrReadout();
+		/* @brief Debug (--ssr-trace-all): every deferred surface traces as a mirror, for the Reflections debug view. */
+		static void SetSsrTraceAll(bool all);
+		static bool GetSsrTraceAll();
 
 		/* @brief The exposure the GPU last reported (exposure_adapt.slang), read back a frame or two late. */
 		struct ExposureReadout
@@ -888,11 +907,32 @@ namespace SceneryEditorX
 		static void BindAmbientOcclusion(CommandList *cmdList);
 
 #pragma endregion
+#pragma region Screen-space reflections
+
+		// The depth pyramid and screen-space reflections (plan Phase 9, renderer_ssr.cpp; XP12: z_minmax, ssr_deferred)
+		/* @brief The min / max depth pyramid (z_minmax.slang) of depth into gbuffer_depth_occluders_hiz, every level
+		 * shader-readable after; false when it couldn't be built. */
+		static bool Pass_DepthPyramid(CommandList *cmdList, ImageResource *depth);
+		/* @brief Forgets the reflections of the frame before (BindReflections binds black until this frame's are traced). */
+		static void BeginReflectionsFrame();
+		/* @brief The reflections run this frame: the ssr feature is on and their shaders are built. */
+		static bool AreReflectionsAvailable();
+		/* @brief Step (5) of the frame graph: the pyramid of the finished depth, for the reflections' march. */
+		static bool Pass_ReflectionDepthPyramid(CommandList *cmdList);
+		/* @brief Step (9): the deferred surfaces' reflections (ssr_trace.slang) into the reflections target, which ends
+		 * shader-readable; false when nothing ran. */
+		static bool Pass_ScreenSpaceReflections(CommandList *cmdList);
+		/* @brief After fix_hdr: the finished frame into frame_render_previous and its blurred mips, for the next frame. */
+		static void Pass_ReflectionHistory(CommandList *cmdList, ImageResource *frame);
+		/* @brief Binds the reflections, the pyramid and the history (black where they aren't ready) to a pass whose shaders
+		 * import ssr_common.slang, and the g-buffer normals the march checks hits against. */
+		static void BindReflections(CommandList *cmdList);
+
+#pragma endregion
 #pragma region Lighting passes
 
 		static void Pass_Light(CommandList *cmdList, const bool isTransparentPass);
 		static void Pass_Light_Composition(CommandList *cmdList, const bool isTransparentPass);
-		static void Pass_Light_Reflections(CommandList *cmdList);
 
 #pragma endregion
 #pragma region Particle passes
@@ -1202,7 +1242,6 @@ namespace SceneryEditorX
 			bool m_CloudNoiseProduced      = false;
 
 			// feature-toggle clear flags (set when feature disabled, reset when re-enabled)
-			bool m_ClearedReflections     = false;
 			bool m_ClearedRtReflections   = false;
 			bool m_ClearedRtShadows       = false;
 			bool m_ClearedRestir          = false;

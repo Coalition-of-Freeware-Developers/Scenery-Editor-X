@@ -166,8 +166,10 @@ namespace SceneryEditorX::Perf
 		std::string counters;
 		for (const Counter &counter : s_Counters)
 		{
+			// Counts as whole numbers, measurements (the GPU passes' milliseconds) to two decimals
 			char entry[96];
-			std::snprintf(entry, sizeof(entry), "%s%s %.0f", counters.empty() ? "" : ", ", counter.name, counter.value);
+			const bool whole = counter.value == static_cast<double>(static_cast<long long>(counter.value));
+			std::snprintf(entry, sizeof(entry), whole ? "%s%s %.0f" : "%s%s %.2f", counters.empty() ? "" : ", ", counter.name, counter.value);
 			counters += entry;
 		}
 

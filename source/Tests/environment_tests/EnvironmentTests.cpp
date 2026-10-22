@@ -42,6 +42,9 @@
 #include <SceneryEditorX/renderer/exposure.h>
 #include <SceneryEditorX/renderer/renderer_features.h>
 #include <SceneryEditorX/renderer/renderer_quality.h>
+#include <SceneryEditorX/renderer/ssr.h>
+#include <algorithm>
+#include <cfloat>
 #include <cmath>
 #include <cstddef>
 #include <numbers>
@@ -1271,4 +1274,266 @@ TEST_CASE("Ambient occlusion: CACAO's dispatches for X-Plane's presets", "[envir
 	CHECK(GetCacaoRunQuality(CacaoQuality::Lowest) == CacaoQuality::Medium);
 	CHECK(GetAoQuality(1).cacaoQuality == 2);
 	CHECK(GetAoQuality(3).cacaoQuality == 4);
+}
+
+namespace
+{
+	/**
+	 * A camera 2 m above level ground looking along it at a wall 30 m ahead (view space: x right, y up, -z ahead), drawn
+	 * into a reverse-Z depth buffer the way SEDX's projection writes it (horizontal field of view 90 degrees).
+	 */
+	struct SsrTestScene
+	{
+		static constexpr uint32_t WIDTH = 320;
+		static constexpr uint32_t HEIGHT = 180;
+		static constexpr float NEAR_PLANE = 0.5f;
+		static constexpr float FAR_PLANE = 10000.0f;
+		float xScale = 1.0f;
+		float yScale = 1.0f;
+		std::vector<float> depth;
+
+		SsrTestScene()
+		{
+			yScale = xScale * static_cast<float>(WIDTH) / static_cast<float>(HEIGHT);
+			depth.resize(static_cast<size_t>(WIDTH) * HEIGHT);
+			for (uint32_t y = 0; y < HEIGHT; ++y)
+			{
+				for (uint32_t x = 0; x < WIDTH; ++x)
+				{
+					const float u = (static_cast<float>(x) + 0.5f) / WIDTH;
+					const float v = (static_cast<float>(y) + 0.5f) / HEIGHT;
+					depth[static_cast<size_t>(y) * WIDTH + x] = Cast(u, v);
+				}
+			}
+		}
+
+		static float DepthOf(const float distance)
+		{
+			return NEAR_PLANE * (FAR_PLANE - distance) / ((FAR_PLANE - NEAR_PLANE) * distance);
+		}
+
+		SceneryEditorX::SsrScreenVector Project(const float x, const float y, const float z) const
+		{
+			const float d = -z;
+			return { xScale * x / d * 0.5f + 0.5f, -yScale * y / d * 0.5f + 0.5f, DepthOf(d) };
+		}
+
+		// The reverse-Z depth of the first surface through a screen point: the ground (y = -2) or the wall (z = -30, x
+		// -10..10, y -2..6); 0 where there's nothing
+		float Cast(const float u, const float v) const
+		{
+			const float dx = (u * 2.0f - 1.0f) / xScale;
+			const float dy = (1.0f - v * 2.0f) / yScale;
+			float distance = FLT_MAX;	// along -z (the view depth)
+			if (dy < 0.0f)
+				distance = -2.0f / dy;
+			const float wallX = dx * 30.0f;
+			const float wallY = dy * 30.0f;
+			if (wallX >= -10.0f && wallX <= 10.0f && wallY >= -2.0f && wallY <= 6.0f)
+				distance = std::min(distance, 30.0f);
+			return distance < FAR_PLANE ? DepthOf(distance) : 0.0f;
+		}
+
+		static float DistanceOf(const float depth)
+		{
+			return NEAR_PLANE * FAR_PLANE / (NEAR_PLANE + depth * (FAR_PLANE - NEAR_PLANE));
+		}
+
+		/**
+		 * A mirror ray off the ground the way ssr_common.slang starts one: from the centre of the pixel the ground point
+		 * (x, -2, z) falls in, at the depth the buffer holds there, lifted SSR_ORIGIN_OFFSET_PIXELS pixel widths along the
+		 * normal, toward the reflection of the view direction (a step of half the point's distance). surface: the reflecting
+		 * point (view space) and the mirrored direction, for the expected hit.
+		 */
+		void GroundReflection(const float x, const float z, SceneryEditorX::SsrScreenVector &origin, SceneryEditorX::SsrScreenVector &direction,
+							  float surface[3], float mirrored[3]) const
+		{
+			const SceneryEditorX::SsrScreenVector projected = Project(x, -2.0f, z);
+			const uint32_t px = std::min(static_cast<uint32_t>(projected.u * WIDTH), WIDTH - 1);
+			const uint32_t py = std::min(static_cast<uint32_t>(projected.v * HEIGHT), HEIGHT - 1);
+			const float u = (static_cast<float>(px) + 0.5f) / WIDTH;
+			const float v = (static_cast<float>(py) + 0.5f) / HEIGHT;
+			const float d = DistanceOf(depth[static_cast<size_t>(py) * WIDTH + px]);
+			surface[0] = (u * 2.0f - 1.0f) / xScale * d;
+			surface[1] = (1.0f - v * 2.0f) / yScale * d;
+			surface[2] = -d;
+
+			const float length = std::sqrt(surface[0] * surface[0] + surface[1] * surface[1] + surface[2] * surface[2]);
+			mirrored[0] = surface[0] / length;
+			mirrored[1] = -surface[1] / length;
+			mirrored[2] = surface[2] / length;
+
+			const float lift = SceneryEditorX::SSR_ORIGIN_OFFSET_PIXELS * 2.0f * d / (yScale * HEIGHT);
+			const float step = 0.5f * length;
+			origin = Project(surface[0], surface[1] + lift, surface[2]);
+			const SceneryEditorX::SsrScreenVector end = Project(surface[0] + mirrored[0] * step, surface[1] + lift + mirrored[1] * step, surface[2] + mirrored[2] * step);
+			direction = { end.u - origin.u, end.v - origin.v, end.z - origin.z };
+		}
+	};
+}
+
+TEST_CASE("Screen-space reflections: gloss, weight and lobe footprint", "[environment][ssr]")
+{
+	using namespace SceneryEditorX;
+
+	// X-Plane's gloss: roughness 1 - 0.96875 gloss; ssr/min_gloss 0.5 is roughness 0.515625
+	CHECK(RoughnessFromGloss(0.5f) == Approx(0.515625f));
+	CHECK(GlossFromRoughness(RoughnessFromGloss(0.73f)) == Approx(0.73f));
+	CHECK(GlossFromRoughness(1.0f) == 0.0f);
+	CHECK(GlossFromRoughness(0.0f) == 1.0f);
+
+	// The weight: none below min_gloss, all of it from the fade's end, smooth between
+	const SsrSettings settings;
+	CHECK(ReflectionGlossWeight(RoughnessFromGloss(0.49f), settings) == 0.0f);
+	CHECK(ReflectionGlossWeight(RoughnessFromGloss(0.55f), settings) == Approx(0.5f).margin(1e-4));
+	CHECK(ReflectionGlossWeight(RoughnessFromGloss(0.6f), settings) == 1.0f);
+	CHECK(ReflectionGlossWeight(0.0f, settings) == 1.0f);
+	SsrSettings hard = settings;
+	hard.glossFade = 0.0f;
+	CHECK(ReflectionGlossWeight(RoughnessFromGloss(0.5f), hard) == 1.0f);
+
+	// The lobe's history mip: 0 for mirrors and for footprints under a pixel, one more per doubling of distance
+	CHECK(ReflectionConeMip(0.0f, 100.0f, 0.01f, settings) == 0.0f);
+	CHECK(ReflectionConeMip(0.3f, 0.1f, 0.05f, settings) == 0.0f);
+	const float tenMetres = ReflectionConeMip(0.4f, 10.0f, 0.01f, settings);
+	CHECK(tenMetres > 1.0f);
+	CHECK(ReflectionConeMip(0.4f, 20.0f, 0.01f, settings) == Approx(tenMetres + 1.0f));
+	SsrSettings biased = settings;
+	biased.lodBias = 0.5f;
+	CHECK(ReflectionConeMip(0.4f, 10.0f, 0.01f, biased) == Approx(tenMetres + 0.5f));
+	SsrSettings sharp = settings;
+	sharp.usePrefiltered = false;
+	CHECK(ReflectionConeMip(0.4f, 10.0f, 0.01f, sharp) == 0.0f);
+}
+
+TEST_CASE("Screen-space reflections: the min / max depth pyramid", "[environment][ssr]")
+{
+	using namespace SceneryEditorX;
+
+	// The editor viewport's render size: 11 levels, halves rounded down, to 1 x 1
+	const std::vector<PyramidLevel> levels = ComputeDepthPyramidLevels(1117, 642);
+	REQUIRE(levels.size() == 11u);
+	CHECK(levels[1].width == 558u);
+	CHECK(levels[1].height == 321u);
+	CHECK(levels[2].height == 160u);
+	CHECK(levels[9].width == 2u);
+	CHECK(levels[9].height == 1u);
+	CHECK(levels[10].width == 1u);
+	CHECK(levels[10].height == 1u);
+	CHECK(ComputeDepthPyramidLevels(1, 1).size() == 1u);
+
+	// Every level-0 texel lies within the farthest / nearest bounds of the texel min(p >> level, size - 1) on every level,
+	// odd sizes included, and the bounds are reached
+	constexpr uint32_t width = 37;
+	constexpr uint32_t height = 23;
+	std::vector<float> depth(static_cast<size_t>(width) * height);
+	uint32_t state = 12345u;
+	for (float &d : depth)
+	{
+		state = state * 1664525u + 1013904223u;
+		d = static_cast<float>(state >> 8) / static_cast<float>(1u << 24);
+	}
+	const DepthPyramid pyramid = BuildDepthPyramid(depth, width, height);
+	REQUIRE(pyramid.levels.size() == 6u);
+	for (uint32_t level = 0; level < pyramid.levels.size(); ++level)
+	{
+		const PyramidLevel size = pyramid.levels[level];
+		std::vector<float> lowest(static_cast<size_t>(size.width) * size.height, FLT_MAX);
+		std::vector<float> highest(lowest.size(), -FLT_MAX);
+		bool inside = true;
+		for (uint32_t y = 0; y < height; ++y)
+		{
+			for (uint32_t x = 0; x < width; ++x)
+			{
+				const uint32_t tx = std::min(x >> level, size.width - 1);
+				const uint32_t ty = std::min(y >> level, size.height - 1);
+				const float d = depth[static_cast<size_t>(y) * width + x];
+				inside = inside && pyramid.Farthest(level, static_cast<int32_t>(tx), static_cast<int32_t>(ty)) <= d &&
+						 d <= pyramid.Nearest(level, static_cast<int32_t>(tx), static_cast<int32_t>(ty));
+				const size_t t = static_cast<size_t>(ty) * size.width + tx;
+				lowest[t] = std::min(lowest[t], d);
+				highest[t] = std::max(highest[t], d);
+			}
+		}
+		CHECK(inside);
+		CHECK(pyramid.farthest[level] == lowest);
+		CHECK(pyramid.nearest[level] == highest);
+	}
+}
+
+TEST_CASE("Screen-space reflections: the hierarchical-Z march finds what a mirror sees", "[environment][ssr]")
+{
+	using namespace SceneryEditorX;
+
+	const SsrTestScene scene;
+	const DepthPyramid pyramid = BuildDepthPyramid(scene.depth, SsrTestScene::WIDTH, SsrTestScene::HEIGHT);
+	const SsrSettings settings;
+	const float texelU = 1.0f / SsrTestScene::WIDTH;
+	const float texelV = 1.0f / SsrTestScene::HEIGHT;
+
+	// Where the mirror at a ground point meets the wall plane (z = -30)
+	const auto wall_hit = [](const float surface[3], const float mirrored[3], float &x, float &y)
+	{
+		const float k = (-30.0f - surface[2]) / mirrored[2];
+		x = surface[0] + k * mirrored[0];
+		y = surface[1] + k * mirrored[1];
+	};
+
+	// The ground near (3, -2, -12) mirrors the wall near (7.5, 1, -30): the march ends there, within a texel, in few steps
+	{
+		SsrScreenVector origin, direction;
+		float surface[3], mirrored[3], wallX, wallY;
+		scene.GroundReflection(3.0f, -12.0f, origin, direction, surface, mirrored);
+		wall_hit(surface, mirrored, wallX, wallY);
+		CHECK(wallX == Approx(7.5f).margin(0.2f));
+		CHECK(wallY == Approx(1.0f).margin(0.2f));
+		const SsrMarchResult march = MarchHiZ(pyramid, origin, direction, settings.maxSteps);
+		const SsrScreenVector expected = scene.Project(wallX, wallY, -30.0f);
+		REQUIRE(march.hit);
+		CHECK(std::abs(march.position.u - expected.u) <= texelU);
+		CHECK(std::abs(march.position.v - expected.v) <= texelV);
+		CHECK(march.position.z == Approx(expected.z).epsilon(1e-3));
+		CHECK(march.iterations < 40u);
+	}
+
+	// Mirrored points all over the ground in front of the wall: each ray ends on the wall where geometry says
+	uint32_t checked = 0;
+	for (float x = -6.0f; x <= 6.0f; x += 1.5f)
+	{
+		for (float z = -6.0f; z >= -26.0f; z -= 2.5f)
+		{
+			SsrScreenVector origin, direction;
+			float surface[3], mirrored[3], wallX, wallY;
+			scene.GroundReflection(x, z, origin, direction, surface, mirrored);
+			wall_hit(surface, mirrored, wallX, wallY);
+			if (wallX < -9.0f || wallX > 9.0f || wallY > 5.0f)
+				continue;
+			const SsrMarchResult march = MarchHiZ(pyramid, origin, direction, settings.maxSteps);
+			const SsrScreenVector expected = scene.Project(wallX, wallY, -30.0f);
+			INFO("ground point " << x << ", " << z);
+			REQUIRE(march.hit);
+			CHECK(std::abs(march.position.u - expected.u) <= 1.5f * texelU);
+			CHECK(std::abs(march.position.v - expected.v) <= 1.5f * texelV);
+			++checked;
+		}
+	}
+	CHECK(checked > 20u);
+
+	// Near the camera the mirror looks over the wall into the sky: the ray runs out past the far plane, no hit
+	{
+		SsrScreenVector origin, direction;
+		float surface[3], mirrored[3];
+		scene.GroundReflection(0.0f, -4.0f, origin, direction, surface, mirrored);
+		const SsrMarchResult march = MarchHiZ(pyramid, origin, direction, settings.maxSteps);
+		CHECK_FALSE(march.hit);
+	}
+
+	// The wall mirrors the space behind the camera: the ray comes toward it and leaves the screen, no hit
+	{
+		const SsrScreenVector origin = scene.Project(0.0f, 2.0f, -30.0f);
+		const float length = std::sqrt(4.0f + 900.0f);
+		const SsrScreenVector end = scene.Project(0.0f, 2.0f + 2.0f / length * 10.0f, -30.0f + 30.0f / length * 10.0f);
+		const SsrMarchResult march = MarchHiZ(pyramid, origin, { end.u - origin.u, end.v - origin.v, end.z - origin.z }, settings.maxSteps);
+		CHECK_FALSE(march.hit);
+	}
 }
