@@ -34,6 +34,7 @@
 #include <catch2/catch_all.hpp>
 #include <SceneryEditorX/environment/parity_scenario.h>
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <filesystem>
 #include <string>
@@ -227,4 +228,68 @@ TEST_CASE("Parity scenarios: the shipped scenario set", "[environment][scenario]
 		CHECK(withoutSsr->runwayFriction == withSsr->runwayFriction);
 		CHECK(withoutSsr->localTimeHours == Approx(withSsr->localTimeHours));
 	}
+}
+
+TEST_CASE("Parity scenarios: the test-airport set", "[environment][scenario]")
+{
+	// tools/xp12_reference_probe/scenarios/xp12_airports.json: the standard test airports' views
+	std::filesystem::path path = "tools/xp12_reference_probe/scenarios/xp12_airports.json";
+	for (int up = 0; up < 4 && !std::filesystem::exists(path); ++up)
+		path = std::filesystem::path("..") / path;
+	if (!std::filesystem::exists(path))
+	{
+		WARN("xp12_airports.json not found from the working folder: skipped");
+		return;
+	}
+
+	ParityScenarioFile file;
+	std::string error;
+	REQUIRE(LoadParityScenarios(path, file, &error));
+	CHECK(file.xpBuild == "12.4.4-b4");
+
+	// Field elevations (m), for the overcast layer 600 m above each field
+	const std::pair<const char *, float> airports[] = { { "KGON", 2.1f }, { "KDEN", 1656.3f }, { "KORD", 203.0f }, { "KBOS", 5.8f }, { "KBTV", 101.5f } };
+	for (const auto &[icao, elevationM] : airports)
+	{
+		std::string prefix = icao;
+		std::ranges::transform(prefix, prefix.begin(), [](const char c) { return static_cast<char>(std::tolower(static_cast<unsigned char>(c))); });
+		INFO(icao);
+		for (const char *view : { "_rwy_sunp40", "_aerial_sunp40", "_aerial_sunp08" })
+		{
+			INFO(view);
+			const ParityScenario *autoExposure = FindParityScenario(file, prefix + view);
+			const ParityScenario *locked = FindParityScenario(file, prefix + view + "_ev");
+			REQUIRE(autoExposure);
+			REQUIRE(locked);
+			CHECK(autoExposure->icao == icao);
+			CHECK_FALSE(autoExposure->ev100Lock.has_value());
+			CHECK(locked->ev100Lock.has_value());
+			CHECK(locked->localTimeHours == Approx(autoExposure->localTimeHours));
+		}
+		const ParityScenario *runway = FindParityScenario(file, prefix + "_rwy_sunp40");
+		REQUIRE(runway);
+		CHECK(runway->altitudeMAgl == Approx(2.0f));
+		const ParityScenario *overcast = FindParityScenario(file, prefix + "_aerial_overcast");
+		REQUIRE(overcast);
+		CHECK(overcast->clouds[0].coverage == Approx(1.0f));
+		CHECK(overcast->clouds[0].baseMslM == Approx(elevationM + 600.0f).margin(1.0f));
+		const ParityScenario *winter = FindParityScenario(file, prefix + "_aerial_season01");
+		REQUIRE(winter);
+		CHECK(winter->month == 1);
+		CHECK(winter->utcOffsetHours == Approx(runway->utcOffsetHours - 1.0f));
+		REQUIRE(FindParityScenario(file, prefix + "_aerial_snowy"));
+		CHECK(FindParityScenario(file, prefix + "_aerial_snowy")->snowCover == Approx(1.0f));
+	}
+
+	// The coastal fields' low views over the water carry a sea state
+	for (const char *id : { "kgon_water_sunp40", "kbos_water_sunp40" })
+	{
+		INFO(id);
+		const ParityScenario *water = FindParityScenario(file, id);
+		REQUIRE(water);
+		REQUIRE(water->waveAmplitudeM.has_value());
+		CHECK(*water->waveAmplitudeM == Approx(0.6f));
+		REQUIRE(water->waveDirectionDeg.has_value());
+	}
+	CHECK_FALSE(FindParityScenario(file, "kden_water_sunp40"));
 }

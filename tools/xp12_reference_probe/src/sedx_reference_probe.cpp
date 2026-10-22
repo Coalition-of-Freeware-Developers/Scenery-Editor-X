@@ -30,14 +30,15 @@
  *
  * SEDX Reference Probe: an X-Plane 12 plugin that renders the parity scenarios (scenarios.json, the same file SEDX
  * reads with --env-scenario) and dumps X-Plane's art-control values, so the editor's XP12 emulation can be compared
- * with and calibrated against X-Plane itself (plan TASK-001 / TASK-002 / TASK-102).
+ * with and calibrated against X-Plane itself (plan TASK-001 / TASK-002 / TASK-102). A second set, airports.json
+ * (scenarios/xp12_airports.json), takes the same kinds of views at the standard test airports.
  *
  * For each scenario it sets the date, time and weather through the public datarefs, takes the camera to a fixed pose,
  * waits settle_frames for exposure and weather to settle, saves a screenshot as Output/sedx_probe/<id>.png and writes
  * Output/sedx_probe/<id>.json with what it applied and the live value of every art control in art_controls.txt.
  *
  * Start it from Plugins > SEDX Reference Probe, or put a file named "autorun" (containing "quit" to exit X-Plane
- * afterwards) into Output/sedx_probe/.
+ * afterwards, "airports" to run the test-airport set) into Output/sedx_probe/.
  *
  * Reads and writes only public SDK datarefs plus the sim/private/controls/ values X-Plane exposes to plugins; it never
  * reads X-Plane's own files.
@@ -83,6 +84,19 @@ namespace
 	constexpr int SCREENSHOT_TIMEOUT_FRAMES = 1200;
 	constexpr double METERS_PER_STATUTE_MILE = 1609.344;
 	constexpr double PI = 3.14159265358979323846;
+
+	/* @brief A scenario file installed with the plugin (a copy in Output/sedx_probe/ overrides it for a run). */
+	struct ScenarioSet
+	{
+		const char *file;
+		const char *runAll;
+		const char *runFirst;
+	};
+	constexpr ScenarioSet SCENARIO_SETS[] = {
+		{ "scenarios.json", "Run all parity scenarios (KSEA)", "Run the first parity scenario" },
+		{ "airports.json", "Run all test-airport scenarios (KGON KDEN KORD KBOS KBTV)", "Run the first test-airport scenario" },
+	};
+	constexpr intptr_t MENU_STOP = 0xFF;	// Menu item refs: set index << 8 | 1 (all) or 2 (first); MENU_STOP stops a run
 
 	// -------------------------------------------------------
 
@@ -354,9 +368,11 @@ namespace
 	/**
 	 * @brief Weather X-Plane can't take back at once runs last: snow cover melts and wet runways dry over minutes of sim
 	 * time, and the first run's calibration and season shots, taken after the snowy ones, were still white. Clear and
-	 * dry scenarios first, then haze, fog and overcast, then rain and wet runways, then snow; file order within each.
+	 * dry scenarios first, then haze, fog and overcast, then rain and wet runways, then snow. Within each group an
+	 * airport's scenarios run together (airports in the order the file first names them, then file order), so X-Plane
+	 * loads each airport's scenery once per group instead of flying back and forth.
 	 */
-	void OrderForWeather(std::vector<Scenario> &scenarios)
+	void OrderForRun(std::vector<Scenario> &scenarios)
 	{
 		const auto rank = [](const Scenario &s)
 		{
@@ -369,14 +385,25 @@ namespace
 				cloudy |= layer.coverage > 0.0f;
 			return (cloudy || s.visibilityM < 50000.0f) ? 1 : 0;
 		};
-		std::stable_sort(scenarios.begin(), scenarios.end(), [&](const Scenario &a, const Scenario &b) { return rank(a) < rank(b); });
+		std::vector<std::string> airports;
+		for (const Scenario &s : scenarios)
+		{
+			if (std::find(airports.begin(), airports.end(), s.icao) == airports.end())
+				airports.push_back(s.icao);
+		}
+		const auto airport = [&](const Scenario &s) { return std::find(airports.begin(), airports.end(), s.icao) - airports.begin(); };
+		std::stable_sort(scenarios.begin(), scenarios.end(), [&](const Scenario &a, const Scenario &b)
+		{
+			const int rankA = rank(a), rankB = rank(b);
+			return rankA != rankB ? rankA < rankB : airport(a) < airport(b);
+		});
 	}
 
-	bool LoadScenarios()
+	bool LoadScenarios(const std::string &fileName)
 	{
 		g.scenarios.clear();
-		// Output/sedx_probe/scenarios.json first (per-run sets), then the copy installed with the plugin
-		for (const fs::path &path : { g.outputFolder / "scenarios.json", g.pluginFolder / "scenarios.json" })
+		// Output/sedx_probe/<file> first (per-run sets), then the copy installed with the plugin
+		for (const fs::path &path : { g.outputFolder / fileName, g.pluginFolder / fileName })
 		{
 			std::ifstream file(path);
 			if (!file)
@@ -396,7 +423,7 @@ namespace
 					if (!s.id.empty())
 						g.scenarios.push_back(std::move(s));
 				}
-				OrderForWeather(g.scenarios);
+				OrderForRun(g.scenarios);
 				Log("Loaded " + std::to_string(g.scenarios.size()) + " scenarios from " + path.string());
 				return !g.scenarios.empty();
 			}
@@ -406,7 +433,7 @@ namespace
 				return false;
 			}
 		}
-		Log("No scenarios.json in " + g.outputFolder.string() + " or " + g.pluginFolder.string());
+		Log("No " + fileName + " in " + g.outputFolder.string() + " or " + g.pluginFolder.string());
 		return false;
 	}
 
@@ -678,14 +705,14 @@ namespace
 		RestoreArtControls();
 	}
 
-	void StartRun(const bool all)
+	void StartRun(const ScenarioSet &set, const bool all)
 	{
 		if (g.stage != Stage::Idle && g.stage != Stage::Finished)
 		{
 			Log("A run is already in progress");
 			return;
 		}
-		if (!LoadScenarios())
+		if (!LoadScenarios(set.file))
 			return;
 		LoadArtControls();
 		std::error_code ec;
@@ -704,7 +731,7 @@ namespace
 		g.loadedAirport.clear();
 		g.stage = Stage::MoveToAirport;
 		g.framesLeft = -1;	// Not placed yet
-		Log(std::string("Run started: ") + (all ? "all scenarios" : "the first scenario"));
+		Log(std::string("Run started: ") + (all ? "all scenarios" : "the first scenario") + " of " + set.file);
 	}
 
 	void FinishRun()
@@ -849,11 +876,10 @@ namespace
 	void MenuHandler(void *, void *item)
 	{
 		const intptr_t command = reinterpret_cast<intptr_t>(item);
-		if (command == 1)
-			StartRun(true);
-		else if (command == 2)
-			StartRun(false);
-		else if (command == 3 && g.stage != Stage::Idle && g.stage != Stage::Finished)
+		const size_t set = static_cast<size_t>(command >> 8);
+		if (command != MENU_STOP && set < std::size(SCENARIO_SETS))
+			StartRun(SCENARIO_SETS[set], (command & 0xFF) == 1);
+		else if (command == MENU_STOP && g.stage != Stage::Idle && g.stage != Stage::Finished)
 		{
 			Log("Run stopped");
 			Restore();
@@ -904,18 +930,22 @@ PLUGIN_API int XPluginEnable(void)
 {
 	const int item = XPLMAppendMenuItem(XPLMFindPluginsMenu(), PROBE_NAME, nullptr, 0);
 	g.menu = XPLMCreateMenu(PROBE_NAME, XPLMFindPluginsMenu(), item, MenuHandler, nullptr);
-	XPLMAppendMenuItem(g.menu, "Run all scenarios", reinterpret_cast<void *>(intptr_t(1)), 0);
-	XPLMAppendMenuItem(g.menu, "Run the first scenario", reinterpret_cast<void *>(intptr_t(2)), 0);
-	XPLMAppendMenuItem(g.menu, "Stop", reinterpret_cast<void *>(intptr_t(3)), 0);
+	for (size_t set = 0; set < std::size(SCENARIO_SETS); ++set)
+	{
+		XPLMAppendMenuItem(g.menu, SCENARIO_SETS[set].runAll, reinterpret_cast<void *>(static_cast<intptr_t>(set << 8 | 1)), 0);
+		XPLMAppendMenuItem(g.menu, SCENARIO_SETS[set].runFirst, reinterpret_cast<void *>(static_cast<intptr_t>(set << 8 | 2)), 0);
+	}
+	XPLMAppendMenuItem(g.menu, "Stop", reinterpret_cast<void *>(MENU_STOP), 0);
 
-	// Unattended runs: Output/sedx_probe/autorun ("quit" inside: exit X-Plane when done)
+	// Unattended runs: Output/sedx_probe/autorun ("quit" inside: exit X-Plane when done; "airports": the test-airport set)
 	std::ifstream autorun(g.outputFolder / "autorun");
 	if (autorun)
 	{
 		std::string text((std::istreambuf_iterator<char>(autorun)), std::istreambuf_iterator<char>());
 		g.quitWhenDone = text.find("quit") != std::string::npos;
-		Log(std::string("autorun found") + (g.quitWhenDone ? " (quit when done)" : ""));
-		StartRun(true);
+		const ScenarioSet &set = SCENARIO_SETS[text.find("airports") != std::string::npos ? 1 : 0];
+		Log(std::string("autorun found: ") + set.file + (g.quitWhenDone ? " (quit when done)" : ""));
+		StartRun(set, true);
 	}
 	return 1;
 }
