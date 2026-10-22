@@ -941,12 +941,34 @@ TEST_CASE("The terrain around KSEA from X-Plane 12's Global Scenery", "[dsf][ter
 	CHECK_THAT(elevation->Sample(-122.309, 47.449, dsf.west, dsf.south, dsf.east, dsf.north), WithinAbs(120.0, 15.0));
 
 	build.datumElevation = elevation->Sample(-122.309, 47.449, dsf.west, dsf.south, dsf.east, dsf.north);
+	build.waterCellSize = 64.0;
 	std::vector<TerrainMeshPart> parts;
 	CHECK(BuildTerrainMeshes(dsf, projection, build, parts) > 1000);
 	std::set<std::string> definitions;
 	for (const TerrainMeshPart &part : parts)
 		definitions.insert(part.definition);
 	CHECK(definitions.contains("lib/g10/terrain10/apt_tmp_wet.ter"));
+
+	// The lakes around the field: cut into 64 m cells, each vertex's t the floor's depth in meters from the bathymetry
+	// (sea_level raster) and the DSF's depth ratio, s its fetch ratio
+	const auto water = std::ranges::find_if(parts, [](const TerrainMeshPart &part) { return part.water; });
+	REQUIRE(water != parts.end());
+	float deepest = 0.0f;
+	for (size_t t = 0; t + 2 < water->indices.size(); t += 3)
+	{
+		const TerrainVertex &a = water->vertices[water->indices[t]], &b = water->vertices[water->indices[t + 1]], &c = water->vertices[water->indices[t + 2]];
+		CHECK(std::max({ a.x, b.x, c.x }) - std::min({ a.x, b.x, c.x }) <= 64.0f + 1e-3f);
+		CHECK(std::max({ a.z, b.z, c.z }) - std::min({ a.z, b.z, c.z }) <= 64.0f + 1e-3f);
+	}
+	for (const TerrainVertex &vertex : water->vertices)
+	{
+		CHECK(vertex.t >= 0.0f);
+		CHECK(vertex.t < 200.0f);
+		CHECK(vertex.s >= 0.0f);
+		CHECK(vertex.s <= 1.0f);
+		deepest = std::max(deepest, vertex.t);
+	}
+	CHECK(deepest > 0.5f);
 
 	TerrainSurface surface;
 	surface.Build(parts);
@@ -1168,3 +1190,104 @@ TEST_CASE("DSF overlay placements limited to an area", "[dsf][terrain]")
 }
 
 // -------------------------------------------------------
+
+TEST_CASE("Water meshes cut into cells for tessellation, and the floor's depth", "[terrain][water]")
+{
+	// X-Plane 12's depth ratio: 0 the shore (the ground), 1 the bathymetry
+	CHECK_THAT(WaterFloorDepth(10.0, -40.0, 0.5), WithinAbs(25.0, 1e-9));
+	CHECK(WaterFloorDepth(10.0, -40.0, 0.0) == 0.0);
+	CHECK(WaterFloorDepth(10.0, 12.0, 1.0) == 0.0);		// Bathymetry above the surface: no water under it
+	CHECK_THAT(WaterFloorDepth(10.0, -40.0, 3.0), WithinAbs(50.0, 1e-9));
+
+	// A 200 x 150 m rectangle in two triangles reaching into negative x, plus a triangle sharing an edge with it
+	TerrainMeshPart part;
+	part.water = true;
+	const auto vertex = [](const float x, const float z)
+	{
+		TerrainVertex v;
+		v.x = x;
+		v.z = z;
+		v.y = 0.01f * x;	// A plane: interpolation keeps it
+		v.s = x / 200.0f;
+		v.t = z / 150.0f;
+		return v;
+	};
+	part.vertices = { vertex(-40.0f, 0.0f), vertex(160.0f, 0.0f), vertex(160.0f, 150.0f), vertex(-40.0f, 150.0f), vertex(260.0f, 70.0f) };
+	part.indices = { 0, 2, 1, 0, 3, 2, 1, 2, 4 };	// Counter-clockwise from above (x east, z south)
+	const auto area = [](const TerrainVertex &a, const TerrainVertex &b, const TerrainVertex &c)
+	{
+		return 0.5 * ((static_cast<double>(b.z) - a.z) * (static_cast<double>(c.x) - a.x) - (static_cast<double>(b.x) - a.x) * (static_cast<double>(c.z) - a.z));
+	};
+	double before = 0.0;
+	for (size_t t = 0; t < part.indices.size(); t += 3)
+		before += area(part.vertices[part.indices[t]], part.vertices[part.indices[t + 1]], part.vertices[part.indices[t + 2]]);
+	REQUIRE(before > 0.0);
+
+	constexpr double cell = 64.0;
+	const uint32_t triangles = CutTerrainAlongGrid(part, cell);
+	CHECK(triangles == part.indices.size() / 3);
+	CHECK(triangles > 20u);
+
+	double after = 0.0;
+	std::map<std::pair<uint32_t, uint32_t>, int> edges;
+	for (size_t t = 0; t < part.indices.size(); t += 3)
+	{
+		const TerrainVertex &a = part.vertices[part.indices[t]], &b = part.vertices[part.indices[t + 1]], &c = part.vertices[part.indices[t + 2]];
+		const double piece = area(a, b, c);
+		CHECK(piece > 0.0);		// Winding kept, no slivers
+		after += piece;
+		// Inside one cell
+		const double minX = std::min({ a.x, b.x, c.x }), maxX = std::max({ a.x, b.x, c.x });
+		const double minZ = std::min({ a.z, b.z, c.z }), maxZ = std::max({ a.z, b.z, c.z });
+		CHECK(std::floor(minX / cell) == std::floor((maxX - 1e-3) / cell));
+		CHECK(std::floor(minZ / cell) == std::floor((maxZ - 1e-3) / cell));
+		for (int k = 0; k < 3; ++k)
+		{
+			const uint32_t i0 = part.indices[t + k], i1 = part.indices[t + (k + 1) % 3];
+			++edges[{ std::min(i0, i1), std::max(i0, i1) }];
+		}
+	}
+	CHECK_THAT(after, WithinAbs(before, 1e-2));
+
+	// No T-junctions: an edge used once lies on the outline (the rectangle's edges, the third triangle's two outer edges)
+	const auto onOutline = [](const TerrainVertex &a, const TerrainVertex &b)
+	{
+		const auto onLine = [](const TerrainVertex &p, const float x0, const float z0, const float x1, const float z1)
+		{
+			const double cross = (static_cast<double>(x1) - x0) * (static_cast<double>(p.z) - z0) - (static_cast<double>(z1) - z0) * (static_cast<double>(p.x) - x0);
+			return std::abs(cross) / std::hypot(x1 - x0, z1 - z0) < 1e-3;
+		};
+		const float lines[5][4] = { { -40, 0, 160, 0 }, { -40, 150, 160, 150 }, { -40, 0, -40, 150 }, { 160, 0, 260, 70 }, { 160, 150, 260, 70 } };
+		for (const auto &line : lines)
+		{
+			if (onLine(a, line[0], line[1], line[2], line[3]) && onLine(b, line[0], line[1], line[2], line[3]))
+				return true;
+		}
+		return false;
+	};
+	for (const auto &[edge, uses] : edges)
+	{
+		INFO("edge " << edge.first << " - " << edge.second);
+		CHECK(uses <= 2);
+		if (uses == 1)
+			CHECK(onOutline(part.vertices[edge.first], part.vertices[edge.second]));
+	}
+
+	// Attributes interpolate linearly
+	for (const TerrainVertex &v : part.vertices)
+	{
+		if (v.x <= 160.0f)
+		{
+			CHECK_THAT(v.s, WithinAbs(v.x / 200.0f, 1e-4));
+			CHECK_THAT(v.t, WithinAbs(v.z / 150.0f, 1e-4));
+		}
+		CHECK_THAT(v.y, WithinAbs(0.01f * v.x, 1e-3));
+	}
+
+	// No cut asked: as it was
+	TerrainMeshPart whole;
+	whole.vertices = { vertex(0.0f, 0.0f), vertex(500.0f, 0.0f), vertex(0.0f, 500.0f) };
+	whole.indices = { 0, 2, 1 };
+	CHECK(CutTerrainAlongGrid(whole, 0.0) == 1u);
+	CHECK(whole.vertices.size() == 3);
+}

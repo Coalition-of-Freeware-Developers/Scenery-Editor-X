@@ -647,6 +647,55 @@ namespace SceneryEditorX
 				EditorUI::EndPropertyGrid();
 			}
 
+			if (EditorUI::SectionHeader("WATER", false) && EditorUI::BeginPropertyGrid("##RendererWater"))
+			{
+				// Plan Phase 11: X-Plane's water controls (water/*) and SEDX's (sedx/water_*); the waves' height and direction
+				// are the ENVIRONMENT panel's
+				Renderer::EnvironmentConstants &constants = Renderer::EditEnvironmentConstants();
+				OceanSettings &water = constants.water;
+				EditorUI::PropertyLabel("Gloss");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##WaterGloss", &water.gloss, 0.0f, 1.0f, "%.2f");
+				EditorUI::ItemTooltip("The surface's own gloss before the waves roughen it (water/gloss)");
+				EditorUI::PropertyLabel("F0");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##WaterF0", &water.f0, 0.0f, 0.1f, "%.3f");
+				EditorUI::ItemTooltip("Reflectance looking straight down (water/F0)");
+				EditorUI::PropertyLabel("Turbidity");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##WaterTurbidity", &water.turbidity, 0.1f, 20.0f, "%.1f");
+				EditorUI::ItemTooltip("What stands in the water fades over turbidity / (1 - the water map's alpha) meters (water/turbidity)");
+				EditorUI::PropertyLabel("Choppiness");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##WaterChoppy", &water.displaceLambda, 0.0f, 2.0f, "%.2f");
+				EditorUI::ItemTooltip("Horizontal displacement that sharpens the crests (water/h_displace_lambda)");
+				EditorUI::PropertyLabel("Foam");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##WaterFoam", &water.foamBias, 0.0f, 1.5f, "%.2f");
+				EditorUI::ItemTooltip("Waves break where their surface folds tighter than this (water/foam_bias): higher, more foam");
+				EditorUI::PropertyLabel("Calm ponds");
+				ImGui::Checkbox("##WaterFetch", &water.useFetch);
+				EditorUI::ItemTooltip("The DSF's fetch ratio scales the waves: lakes and ponds stay calm (sedx/water_use_fetch)");
+				EditorUI::PropertyLabel("Sea floor");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##WaterFloor", &water.seaFloorCoef, 0.0f, 1.0f, "%.2f");
+				EditorUI::ItemTooltip("Share of the sea floor seen through clear water (water/sea_floor_coef; 0 in X-Plane 12.4.4)");
+
+				const Renderer::WaterReadout &readout = Renderer::GetWaterReadout();
+				const OceanSpectrum &sea = readout.spectrum;
+				if (!readout.ran)
+					ValueText("Last frame", "%s", readout.draws == 0 ? "no water in view" : "off");
+				else
+					ValueText("Last frame", "%u water draws, 4 cascades of 256 x 256", readout.draws);
+				if (sea.peakOmega > 0.0f)
+				{
+					ValueText("Sea", "Hs %.2f m, wind %.1f m/s, fetch %.0f km, swell %.2f", sea.significantHeightM, sea.windSpeed, sea.fetchM / 1000.0f, sea.swell);
+					const float period = 2.0f * OCEAN_PI / sea.peakOmega;
+					ValueText("Peak waves", "%.1f s, %.0f m long", period, OCEAN_GRAVITY * period * period / (2.0f * OCEAN_PI));
+				}
+				EditorUI::EndPropertyGrid();
+			}
+
 			if (EditorUI::SectionHeader("QUALITY", false) && EditorUI::BeginPropertyGrid("##RendererQuality"))
 			{
 				// X-Plane 12's graphics settings levels (Resources/settings.txt); passes read them as they arrive

@@ -204,6 +204,11 @@ namespace SceneryEditorX
 			Pass_CloudShadow(cmd);
 		}
 
+		// (2b) The FFT ocean's cascades at this frame's time (XP12: ocean_spectrum, compute_fft, ocean_bake_textures;
+		//      renderer_water.cpp), once a frame and only with water in view; times its own steps
+		if (IsWaterVisible() && valid())
+			Pass_Ocean(cmd);
+
 		Camera *camera = Scene::GetCamera();
 		if (!camera)
 		{
@@ -253,9 +258,9 @@ namespace SceneryEditorX
 			GetRenderTarget(Renderer_RenderTarget::gbuffer_weather)->SetLayout(Layout::ImageLayout::ShaderRead, cmd, 0, 0);
 			GetRenderTarget(Renderer_RenderTarget::gbuffer_depth)->SetLayout(Layout::ImageLayout::ShaderRead, cmd, 0, 0);
 
-			// (5) Min / max depth pyramid (XP12: z_minmax; renderer_ssr.cpp) of the finished depth, for the reflections (light
-			//     tiling and volumetrics later)
-			if (AreReflectionsAvailable())
+			// (5) Min / max depth pyramid (XP12: z_minmax; renderer_ssr.cpp) of the finished depth, for the reflections and the
+			//     water (what lies under it); light tiling and volumetrics later
+			if (AreReflectionsAvailable() || IsWaterVisible())
 			{
 				GpuTimer::Scope scope(cmd, "depth pyramid");
 				Pass_ReflectionDepthPyramid(cmd);
@@ -294,8 +299,7 @@ namespace SceneryEditorX
 			if (!valid())
 				return;
 
-			// (12) Water (XP12: ocean_shading): Phase 11
-			// (13) Sky where nothing was drawn (XP12: sky); volumetric apply: Phase 15
+			// (12) Sky where nothing was drawn (XP12: sky); volumetric apply: Phase 15
 			if (features.atmosphere)
 			{
 				GpuTimer::Scope scope(cmd, "sky");
@@ -303,6 +307,16 @@ namespace SceneryEditorX
 				if (!valid())
 					return;
 				ReadyAtmosphereTextures(cmd);
+			}
+
+			// (13) Water (XP12: ocean_shading, "mix down water"; renderer_water.cpp): tessellated and displaced by the ocean's
+			//      cascades, over the sky and the surfaces under it, its depth written for the forward passes
+			if (IsWaterVisible())
+			{
+				GpuTimer::Scope scope(cmd, "water");
+				Pass_Water(cmd, rt_render);
+				if (!valid())
+					return;
 			}
 
 			// (14) Forward passes over the composed frame, depth tested against the g-buffer: grid, blended surfaces, lights
@@ -1352,6 +1366,39 @@ namespace SceneryEditorX
 			value("ssr/sample_count", samples);
 			ssr.sampleCount = static_cast<uint32_t>(std::clamp(std::lround(samples), 1l, 64l));
 
+			// Water (plan Phase 11)
+			OceanSettings &water = c.water;
+			const auto flag = [&value](const char *name, bool &out)
+			{
+				float v = out ? 1.0f : 0.0f;
+				value(name, v);
+				out = v > 0.5f;
+			};
+			value("water/F0", water.f0);
+			value("water/gloss", water.gloss);
+			value("water/turbidity", water.turbidity);
+			value("water/turbidity/cutoff", water.turbidityCutoff);
+			flag("water/enable_turbidity", water.enableTurbidity);
+			value("water/foam_bias", water.foamBias);
+			value("water/foam_ratio", water.foamRatio);
+			value("water/foam_scale", water.foamScale);
+			value("water/h_displace_lambda", water.displaceLambda);
+			value("water/cascade_0_scale", water.cascadeScale[0]);
+			value("water/cascade_1_scale", water.cascadeScale[1]);
+			value("water/cascade_2_scale", water.cascadeScale[2]);
+			value("water/cascade_3_scale", water.cascadeScale[3]);
+			value("water/spectrum/fetch_lo_m", water.fetchLoM);
+			value("water/spectrum/fetch_hi_m", water.fetchHiM);
+			value("water/spectrum/fetch_multiplier", water.fetchMultiplier);
+			value("water/spectrum/height_lo_m", water.heightLoM);
+			value("water/spectrum/height_hi_m", water.heightHiM);
+			value("water/spectrum/height_no_swell_m", water.heightNoSwellM);
+			value("water/spectrum/height_swell_m", water.heightSwellM);
+			value("water/spectrum/max_swell", water.maxSwell);
+			value("water/spectrum/spread_blend", water.spreadBlend);
+			value("water/spectrum/short_waves_fade", water.shortWavesFade);
+			value("water/sea_floor_coef", water.seaFloorCoef);
+
 			// SEDX's own controls (no X-Plane counterpart, or one whose meaning differs)
 			value("sedx/meter_trim_lo", c.exposure.trimLow);
 			value("sedx/meter_trim_hi", c.exposure.trimHigh);
@@ -1378,6 +1425,25 @@ namespace SceneryEditorX
 			value("sedx/ssr_edge_fade", ssr.edgeFade);
 			value("sedx/ssr_history_clamp", ssr.historyClamp);
 			value("sedx/ssr_lobe_scale", ssr.lobeScale);
+			value("sedx/water_cascade_size_0", water.cascadeSizeM[0]);
+			value("sedx/water_cascade_size_1", water.cascadeSizeM[1]);
+			value("sedx/water_cascade_size_2", water.cascadeSizeM[2]);
+			value("sedx/water_cascade_size_3", water.cascadeSizeM[3]);
+			value("sedx/water_cascade_min_cycles", water.cascadeMinCycles);
+			value("sedx/water_spectrum_depth_m", water.spectrumDepthM);
+			value("sedx/water_height_per_amplitude", water.heightFromAmplitude);
+			value("sedx/water_foam_decay", water.foamDecay);
+			value("sedx/water_ior", water.refractiveIndex);
+			value("sedx/water_floor_albedo_r", water.floorAlbedo[0]);
+			value("sedx/water_floor_albedo_g", water.floorAlbedo[1]);
+			value("sedx/water_floor_albedo_b", water.floorAlbedo[2]);
+			value("sedx/water_floor_decal_m", water.floorDecalMeters);
+			value("sedx/water_clarity_min_m", water.clarityMinM);
+			value("sedx/water_shore_depth_m", water.shoreDepthM);
+			value("sedx/water_pond_wave_scale", water.pondWaveScale);
+			flag("sedx/water_use_fetch", water.useFetch);
+			value("sedx/water_grid_m", water.gridCellM);
+			value("sedx/water_tessellation_px", water.tessellationPixels);
 			return true;
 		}
 		catch (const std::exception &e)

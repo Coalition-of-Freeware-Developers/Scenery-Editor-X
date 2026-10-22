@@ -398,7 +398,16 @@ public struct EnvironmentData
     public float4 ssr;               // screen-space reflections (ssr_common.slang): min gloss, gloss fade, LOD bias, use prefiltered (0 / 1)
     public float4 ssr_trace;         // max Hi-Z steps, thickness (m), thickness per meter of view depth, edge fade (share of the screen)
     public float4 ssr_history;       // history clamp (pre-exposed), lobe half width per GGX alpha, trace every pixel (debug), SSR active
-    public float4 padding_environment[15];
+    public float4 ocean;             // water (renderer/ocean.h, ocean_common.slang): time (s), choppiness, height scale, wave travel direction (rad, atan2(z, x))
+    public float4 ocean_cascade[4];  // per cascade: tile size (m), first and past-last wave number (rad/m), water/cascade_N_scale
+    public float4 ocean_sea;         // wind speed (m/s), swell, spread blend, short waves fade (m)
+    public float4 ocean_jonswap;     // alpha, peak omega (rad/s), gamma, spectrum depth (m)
+    public float4 water_surface;     // F0, surface roughness (perceptual, from water/gloss), refractive index, turbidity on (0 / 1)
+    public float4 water_volume;      // water/turbidity, turbidity cutoff (ln), clearest-water floor (m), shore depth (m)
+    public float4 water_foam;        // foam bias, ratio, scale, share fading per second
+    public float4 water_floor;       // floor albedo rgb, water/sea_floor_coef (share of the floor seen)
+    public float4 water_tessellation; // target edge pixels, max factor, pond wave scale (0: fetch ignored), frame time step (s)
+    public float4 padding_environment[3];
 };
 public [[vk::binding(201)]] cbuffer BufferEnvironment : register(b201) { public EnvironmentData buffer_environment; };
 

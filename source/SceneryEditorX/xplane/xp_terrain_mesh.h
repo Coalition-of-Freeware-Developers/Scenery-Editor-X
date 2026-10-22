@@ -91,6 +91,8 @@ namespace SceneryEditorX::XPlane
 		double datumElevation = 0.0;		// Meters above sea level that y = 0 stands for
 		bool earthCurvature = true;			// Lower points by d^2 / 2R with their distance from the datum point, as on X-Plane's round earth
 		TerrainArea area;
+		double waterCellSize = 0.0;			// Water meshes cut into cells this size (CutTerrainAlongGrid; 0: as the DSF has them)
+		double waterDepthWithoutBathymetryM = 10.0;	// Floor depth at a depth ratio of 1 when the tile has no sea_level raster (ASSUMPTION)
 	};
 
 	/**
@@ -104,9 +106,27 @@ namespace SceneryEditorX::XPlane
 	 * parts in the local frame, appended to out: one part per definition and kind (base, overlay), triangles facing up.
 	 * Points whose elevation is the raster flag take the raster's height; normals the patch doesn't carry come from the
 	 * raster's slope (as X-Plane computes them), else from the mesh. Triangles outside options.area are left out.
+	 * Water parts are cut into options.waterCellSize cells, and their vertices' t becomes the floor's depth in meters
+	 * (WaterFloorDepth); s stays the DSF's fetch ratio.
 	 * @return Triangles appended.
 	 */
 	uint32_t BuildTerrainMeshes(const DsfFile &dsf, const GeoProjection &projection, const TerrainBuildOptions &options, std::vector<TerrainMeshPart> &out);
+
+	/**
+	 * @brief Depth (m) of the water's floor below its surface at a water vertex. X-Plane 12's DSF water carries a depth
+	 * ratio per vertex: 0 the ground's elevation (the shore), 1 the bathymetry (the tile's sea_level raster), so the floor
+	 * lies ratio x (surface - bathymetry) down; never above the surface.
+	 */
+	[[nodiscard]] double WaterFloorDepth(double surfaceElevationM, double bathymetryElevationM, double depthRatio);
+
+	/**
+	 * @brief Cuts triangles along the lines x = k cell and z = k cell, so no piece is wider than a cell: each triangle is
+	 * clipped to every cell it covers and the pieces fanned, then vertices within 5 mm are welded, so triangles that shared
+	 * an edge share its new points too (no T-junctions: tessellated and displaced, the mesh has no cracks). Attributes
+	 * interpolate linearly; winding is kept.
+	 * @return Triangles after cutting.
+	 */
+	uint32_t CutTerrainAlongGrid(TerrainMeshPart &part, double cell);
 
 	/**
 	 * @class TerrainSurface

@@ -70,8 +70,10 @@ namespace SceneryEditorX::XPlane
 		// ASSUMPTIONS until Phase 16 calibrates them: where the composite mask is half in, and the half width of its fade
 		constexpr float COMPOSITE_CENTER = 0.5f;
 		constexpr float COMPOSITE_HALF_WIDTH = 0.12f;
-		// X-Plane 12's open water colour when the tile has no water map (Resources/bitmaps/world/water/any.png): 13, 32, 51
+		// X-Plane 12's open water colour and clarity when the tile has no water map (Resources/bitmaps/world/water/any.png):
+		// 13, 32, 51, 191
 		constexpr float WATER_SRGB[3] = { 13.0f / 255.0f, 32.0f / 255.0f, 51.0f / 255.0f };
+		constexpr float WATER_CLARITY = 191.0f / 255.0f;
 
 		/* @brief xp_terrain.slang flags. */
 		enum TerrainFlag : uint32_t
@@ -196,6 +198,17 @@ namespace SceneryEditorX::XPlane
 			std::unique_ptr<OverlayScene> scenery;
 			bool sceneryShown = false;
 			bool sceneryAutogen = false;					// What the scenery was built with
+
+			// Water parts (plan Phase 11): X-Plane's water (Renderer::Pass_Water) or, with the water switch off, the flat
+			// surface of Phase 10
+			struct WaterPart
+			{
+				uint64_t entity = 0;
+				Ref<MaterialAsset> water;
+				Ref<MaterialAsset> flat;
+			};
+			std::vector<WaterPart> waterParts;
+			bool waterShown = true;							// Which of the two the parts have
 		};
 
 		State &GetState()
@@ -542,8 +555,76 @@ namespace SceneryEditorX::XPlane
 			return material;
 		}
 
-		/* @brief Water patches until Phase 11's water pass: a smooth surface in X-Plane's open water colour. */
-		Ref<MaterialAsset> MakeWaterMaterial()
+		/* @brief Where X-Plane keeps a tile's water colour map: Resources/bitmaps/world/water/<10 degree block>/<tile>.png. */
+		fs::path WaterMapPath(const int lat, const int lon)
+		{
+			const auto block = [](const int degrees) { return static_cast<int>(std::floor(degrees / 10.0)) * 10; };
+			char folder[16], tile[24];
+			std::snprintf(folder, sizeof(folder), "%+03d%+04d", block(lat), block(lon));
+			std::snprintf(tile, sizeof(tile), "%+03d%+04d.png", lat, lon);
+			const fs::path water = LibraryManager::GetInstallPath() / "Resources" / "bitmaps" / "world" / "water";
+			if (std::optional<fs::path> found = VFS::FindCaseInsensitive(water / folder / tile))
+				return *found;
+			return VFS::FindCaseInsensitive(water / "any.png").value_or(fs::path());	// Open water, for tiles without a map
+		}
+
+		/* @brief The sea-floor decal X-Plane exports for a tile's region (lib/g10/decals/water.dcl: tropical or the rest of the world). */
+		bool FindSeaFloorDecal(const int lat, const int lon, PolygonDecal &decal, fs::path &base)
+		{
+			const fs::path library = LibraryManager::ResolveAt("lib/g10/decals/water.dcl", lat + 0.5, lon + 0.5);
+			DecalLibraryAsset decals;
+			std::string error;
+			if (library.empty() || !LoadDecalLibraryAsset(library, decals, &error))
+				return false;
+			for (const PolygonDecal &candidate : decals.decals)
+			{
+				if (!candidate.normal && !candidate.texture.empty())
+				{
+					decal = candidate;
+					base = library.parent_path();
+					return true;
+				}
+			}
+			return false;
+		}
+
+		/**
+		 * @brief X-Plane's water for a tile's water parts (water.slang, drawn by Renderer::Pass_Water): the tile's water map
+		 * over the frame (u east from the tile's west edge, v south from its north edge, a degree each), the sea floor's
+		 * decal, the open-water colour where the map is missing.
+		 */
+		Ref<MaterialAsset> MakeWaterMaterial(const State &state, const int lat, const int lon, ImageResource *map, ImageResource *floorDecal, const float floorStrength)
+		{
+			Ref<MaterialAsset> material = CreateRef<MaterialAsset>();
+			char name[48];
+			std::snprintf(name, sizeof(name), "Water %+03d%+04d", lat, lon);
+			material->SetName(name);
+			material->SetProperty(MaterialProperty::Water, 1.0f);
+			material->SetProperty(MaterialClass::ColorR, SrgbToLinear(WATER_SRGB[0]));
+			material->SetProperty(MaterialClass::ColorG, SrgbToLinear(WATER_SRGB[1]));
+			material->SetProperty(MaterialClass::ColorB, SrgbToLinear(WATER_SRGB[2]));
+			material->SetProperty(MaterialClass::ColorA, WATER_CLARITY);
+			material->SetProperty(MaterialClass::TextureTilingX, 1.0f);
+			material->SetProperty(MaterialClass::TextureTilingY, 1.0f);
+			material->SetProperty(MaterialProperty::CullMode, static_cast<float>(CullMode::None));
+			if (map)
+				material->SetTexture(MaterialTextureType::Color, map, 0);
+			const GeoProjection &projection = state.projection;
+			material->SetProperty(MaterialProperty::XpWaterMapScaleU, static_cast<float>(1.0 / projection.GetMetersPerDegreeLongitude()));
+			material->SetProperty(MaterialProperty::XpWaterMapOffsetU, static_cast<float>(projection.GetDatumLongitude() - lon));
+			material->SetProperty(MaterialProperty::XpWaterMapScaleV, static_cast<float>(1.0 / projection.GetMetersPerDegreeLatitude()));
+			material->SetProperty(MaterialProperty::XpWaterMapOffsetV, static_cast<float>(lat + 1 - projection.GetDatumLatitude()));
+			if (floorDecal)
+			{
+				material->SetTexture(MaterialTextureType::Color, floorDecal, 1);
+				material->SetProperty(MaterialProperty::XpDecal0Scale, 1.0f / std::max(Renderer::GetEnvironmentConstants().water.floorDecalMeters, 0.1f));
+				material->SetProperty(MaterialProperty::XpDecal0Strength, std::clamp(floorStrength, 0.0f, 1.0f));
+			}
+			return material;
+		}
+
+		/* @brief Water patches with the water switch off (Phase 10's look): a smooth surface in X-Plane's open water colour. */
+		Ref<MaterialAsset> MakeFlatWaterMaterial()
 		{
 			Ref<MaterialAsset> material = CreateRef<MaterialAsset>();
 			material->SetName("Terrain water");
@@ -828,9 +909,28 @@ namespace SceneryEditorX::XPlane
 			}
 			state.root = 0;
 			state.parts.clear();
+			state.waterParts.clear();
 			state.mesh.Reset();
 			state.materials.clear();
 			state.textures.clear();
+		}
+
+		/* @brief Gives the water parts X-Plane's water or the flat surface, as the water switch asks. */
+		void ShowWater(State &state, const bool water)
+		{
+			state.waterShown = water;
+			entt::registry *registry = GetRegistry();
+			if (!registry)
+				return;
+			for (const State::WaterPart &part : state.waterParts)
+			{
+				if (FindHandle(*registry, part.entity) == entt::null)
+					continue;
+				Entity *stored = Scene::GetStoredEntity(Scene::TryGetEntityWithUUID(UUID(part.entity)));
+				if (Renderable *renderable = stored ? stored->GetComponent<Renderable>() : nullptr)
+					renderable->SetMaterial(water ? part.water : part.flat);
+			}
+			Scene::MarkStructureChanged();
 		}
 	}
 
@@ -916,6 +1016,7 @@ namespace SceneryEditorX::XPlane
 		TerrainBuildOptions build;
 		build.datumElevation = state.datumElevation;
 		build.area = area;
+		build.waterCellSize = Renderer::GetEnvironmentConstants().water.gridCellM;	// Room for water.slang's tessellation
 		struct TileParts
 		{
 			const Tile *tile = nullptr;
@@ -950,6 +1051,32 @@ namespace SceneryEditorX::XPlane
 			entry.file = file;
 			entry.usage = usage;
 		};
+		// Water: each tile's water map and its region's sea-floor decal
+		struct TileWater
+		{
+			fs::path map;
+			fs::path floorDecal;
+			float floorStrength = 1.0f;
+		};
+		std::map<const Tile *, TileWater> tileWater;
+		for (const TileParts &entry : built)
+		{
+			if (!std::ranges::any_of(entry.parts, [](const TerrainMeshPart &part) { return part.water && !part.indices.empty(); }))
+				continue;
+			TileWater &water = tileWater[entry.tile];
+			water.map = WaterMapPath(entry.tile->lat, entry.tile->lon);
+			if (!water.map.empty())
+				request(water.map.parent_path(), water.map.filename().string(), TextureUsage::Albedo);
+			PolygonDecal decal;
+			fs::path base;
+			if (FindSeaFloorDecal(entry.tile->lat, entry.tile->lon, decal, base))
+			{
+				water.floorDecal = TextureLoader::ResolveTexturePath(base, decal.texture);
+				water.floorStrength = decal.strength;
+				request(base, decal.texture, TextureUsage::Data);
+			}
+		}
+
 		uint32_t missing = 0;
 		for (const TileParts &entry : built)
 		{
@@ -1020,10 +1147,16 @@ namespace SceneryEditorX::XPlane
 		{
 			std::string name;
 			Ref<MaterialAsset> material;
+			Ref<MaterialAsset> flatWater;	// Water: the material with the water switch off
 			bool border = false;
 			bool water = false;
 			uint32_t order = 0;
 			uint32_t subMesh = 0;
+		};
+		const auto loadedTexture = [&state](const fs::path &file, const TextureUsage usage) -> ImageResource *
+		{
+			const auto it = file.empty() ? state.textures.end() : state.textures.find(TextureKey(file, usage));
+			return it != state.textures.end() ? it->second.Get() : nullptr;
 		};
 		std::vector<Drawn> drawn;
 		uint32_t triangles = 0;
@@ -1039,11 +1172,19 @@ namespace SceneryEditorX::XPlane
 				item.order = part.order;
 				if (part.water)
 				{
-					std::string key = "water";
+					auto flat = state.materials.find("water");
+					if (flat == state.materials.end())
+						flat = state.materials.emplace("water", MakeFlatWaterMaterial()).first;
+					const std::string key = "water|" + std::to_string(entry.tile->lat) + "," + std::to_string(entry.tile->lon);
 					auto it = state.materials.find(key);
 					if (it == state.materials.end())
-						it = state.materials.emplace(key, MakeWaterMaterial()).first;
+					{
+						const TileWater &water = tileWater[entry.tile];
+						it = state.materials.emplace(key, MakeWaterMaterial(state, entry.tile->lat, entry.tile->lon, loadedTexture(water.map, TextureUsage::Albedo),
+							loadedTexture(water.floorDecal, TextureUsage::Data), water.floorStrength)).first;
+					}
 					item.material = it->second;
+					item.flatWater = flat->second;
 					item.name = "Water";
 				}
 				else
@@ -1095,12 +1236,22 @@ namespace SceneryEditorX::XPlane
 			if (!renderable)
 				continue;
 			renderable->SetMesh(state.mesh.Get(), item.subMesh);
-			renderable->SetMaterial(item.material);
+			if (item.water)
+			{
+				state.waterParts.push_back({ GetId(*registry, handle), item.material, item.flatWater });
+				renderable->SetMaterial(Renderer::GetFeatures().water ? item.material : item.flatWater);
+			}
+			else
+			{
+				renderable->SetMaterial(item.material);
+			}
 			renderable->SetFlag(CastsShadows, !item.border && !item.water);
 			// Border patches draw over the base in the DSF's order, below everything an airport drapes
 			if (item.border)
 				renderable->SetDrapeOrder(Renderable::MakeDrapeOrder(0.0f, item.order));
 		}
+
+		state.waterShown = Renderer::GetFeatures().water;
 
 		state.stats = {};
 		state.stats.tiles = static_cast<uint32_t>(tiles.size());
@@ -1253,6 +1404,9 @@ namespace SceneryEditorX::XPlane
 	void SceneTerrain::Update()
 	{
 		State &state = GetState();
+		if (Renderer::GetFeatures().water != state.waterShown)
+			ShowWater(state, Renderer::GetFeatures().water);
+
 		const bool wanted = IsSceneryEnabled() && state.root != 0;
 		if (wanted == state.sceneryShown && (!wanted || state.sceneryAutogen == IsAutogenEnabled()))
 			return;

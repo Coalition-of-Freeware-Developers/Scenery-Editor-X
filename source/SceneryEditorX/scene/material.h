@@ -51,7 +51,7 @@ namespace SceneryEditorX
 		WindAnimation				= 3,
 		ColorVariationFromInstance	= 4,
 		GrassBlades					= 5,
-		Water                       = 6,
+		Water                       = 6,	// 1: drawn by Renderer::Pass_Water alone (water.slang); see XpWaterMap*
 		EmissiveFromAlbedo			= 7,
 		AlphaCutoff					= 8,	// Alpha below this is cut out of the deferred passes (0 = the renderer's default)
 		BlendMode					= 9,	// 0 opaque / alpha tested, 1 alpha blended, 2 glass (reflections not faded by alpha)
@@ -111,6 +111,12 @@ namespace SceneryEditorX
 		XpTerrainFarStart			= 59,
 		XpTerrainFarEnd				= 60,
 		XpFoliage					= 61,	// X-Plane 2D trees (.for): crossed quads lit by their canopy normals on both faces
+		// Water (with Water set; water.slang). Textures: color 0 the tile's water map (rgb colour, a clarity), 1 the floor
+		// decal (XpDecal0Scale / XpDecal0Strength); Color* the colour (linear) and clarity without a map
+		XpWaterMapScaleU			= 62,	// The map's u = world x * scale + offset, v = world z * scale + offset
+		XpWaterMapOffsetU			= 63,
+		XpWaterMapScaleV			= 64,
+		XpWaterMapOffsetV			= 65,
 		MaxEnum						= 255
 	};
 

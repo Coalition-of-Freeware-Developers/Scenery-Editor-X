@@ -2891,6 +2891,7 @@ void dynamic_resolution()
 		m_DrawCall_Count          = 0;
 		m_DrawCalls_Prepass_Count = 0;
 		m_DrawCalls_Shadow_Count  = 0;
+		m_DrawCalls_Water_Count   = 0;
 		m_Transparents_Present    = false;
 
 		// The per-draw indirect path (indirect_cull) stays off: GpuScene draws the deferred geometry instead.
@@ -2965,6 +2966,24 @@ void dynamic_resolution()
 			// frustum culling on the world bounds (the renderable's own box is only updated when its mesh is set)
 			const xMath::Matrix world = entity->GetMatrix();
 			const bool inView = !hasFrustum || renderable->HasInstancing() || frustum.IntersectsBox(renderable->GetBoundingBoxMesh(), world);
+
+			// Water (plan Phase 11) is drawn by Pass_Water alone: not in the g-buffer, the shadows or the GPU scene. Waves
+			// rise a few meters above the mesh: its box is grown by that much for the test.
+			if (material->GetProperty(MaterialProperty::Water) > 0.0f)
+			{
+				const xMath::BoundingBox &mesh = renderable->GetBoundingBoxMesh();
+				const xMath::BoundingBox box(mesh.GetMin() - xMath::Vec3(8.0f, 8.0f, 8.0f), mesh.GetMax() + xMath::Vec3(8.0f, 8.0f, 8.0f));
+				if ((hasFrustum && !frustum.IntersectsBox(box, world)) || m_DrawCalls_Water_Count >= static_cast<uint32_t>(m_DrawCalls_Water.size()))
+					continue;
+				Renderer_DrawCall &water = m_DrawCalls_Water[m_DrawCalls_Water_Count++];
+				water = Renderer_DrawCall();
+				water.renderable = renderable;
+				water.cameraVisible = true;
+				water.lodIndex = std::min(renderable->GetLodIndex(), renderable->GetLodCount() - 1);
+				water.instanceCount = renderable->GetInstanceCount();
+				water.drawData_Index = WriteDrawData(world, entity->GetMatrixPrevious(), material->GetIndex(), 0, 0);
+				continue;
+			}
 
 			// Sun-shadow casters the GPU scene doesn't draw (plan TASK-053): opaque or cut-out, not draped, casting; in view
 			// or not. Instanced ones (their box is one instance's) go into every cascade.
@@ -3423,6 +3442,9 @@ void dynamic_resolution()
 			env.ssr_history = xMath::Vec4(ssr.historyClamp, ssr.lobeScale, GetSsrTraceAll() ? 1.0f : 0.0f, AreReflectionsAvailable() ? 1.0f : 0.0f);
 		}
 
+		// Water (plan Phase 11, renderer_water.cpp): the sea state, the ocean's time, the water's optics
+		WriteWaterConstants(env);
+
 		environmentBuffer->Update(cmdList, &env);
 	}
 
@@ -3602,6 +3624,12 @@ void dynamic_resolution()
 					properties[count].terrain_slope_scale = vec4(MaterialProperty::XpTerrainHillS, MaterialProperty::XpTerrainHillT, MaterialProperty::XpTerrainCliffS, MaterialProperty::XpTerrainCliffT);
 					properties[count].terrain_lit = vec4(MaterialProperty::XpTerrainLitS, MaterialProperty::XpTerrainLitT, MaterialProperty::XpTerrainLitFadeStart, MaterialProperty::XpTerrainLitFadeEnd);
 					properties[count].terrain_far = vec4(MaterialProperty::XpTerrainFarS, MaterialProperty::XpTerrainFarT, MaterialProperty::XpTerrainFarStart, MaterialProperty::XpTerrainFarEnd);
+				}
+				else if (material->GetProperty(MaterialProperty::Water) > 0.0f)
+				{
+					// water.slang: the tile's water map over the world's x / z
+					properties[count].terrain_base = xMath::Vec4(material->GetProperty(MaterialProperty::XpWaterMapScaleU), material->GetProperty(MaterialProperty::XpWaterMapOffsetU),
+						material->GetProperty(MaterialProperty::XpWaterMapScaleV), material->GetProperty(MaterialProperty::XpWaterMapOffsetV));
 				}
 			}
 	

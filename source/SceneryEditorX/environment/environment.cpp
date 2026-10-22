@@ -112,6 +112,10 @@ namespace SceneryEditorX::Environment
 			s.runwayFriction = scenario.runwayFriction;
 			s.snowCover = scenario.snowCover;
 			s.temperatureC = scenario.temperatureC;
+			if (scenario.waveAmplitudeM)
+				s.waveAmplitudeM = std::max(*scenario.waveAmplitudeM, 0.0f);
+			if (scenario.waveDirectionDeg)
+				s.waveDirectionDegT = *scenario.waveDirectionDeg;
 			s.integrateSurface = false;
 			s.season = SeasonOverride::Auto;
 			s.seasonRatioOverride = -1.0f;

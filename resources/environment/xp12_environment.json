@@ -429,6 +429,178 @@
 		"sedx/ssr_lobe_scale": {
 			"value": 1.3,
 			"source": "SEDX (ASSUMPTION): the GGX lobe's half width as a tangent per unit alpha (half maximum of the reflected lobe: about 1.29 alpha), which sizes the history mip"
+		},
+		"water/F0": {
+			"value": 0.02,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): Fresnel reflectance of the water surface at normal incidence"
+		},
+		"water/gloss": {
+			"value": 0.78,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): the surface's own gloss (roughness 1 - 0.96875 gloss) before the waves' slope variance widens it (SEDX: added to the variance, ASSUMPTION)"
+		},
+		"water/turbidity": {
+			"value": 2.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20) (SEDX ASSUMPTION about its meaning: clarity distance = turbidity / (1 - the water map's alpha), meters)"
+		},
+		"water/turbidity/cutoff": {
+			"value": -4.605170249938965,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): ln(0.01): light left at the clarity distance"
+		},
+		"water/enable_turbidity": {
+			"value": 1.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20)"
+		},
+		"water/sea_floor_coef": {
+			"value": 0.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20) (SEDX ASSUMPTION about its meaning: share of the sea floor at the bathymetry's depth seen through the water; its lakes show none)"
+		},
+		"water/foam_bias": {
+			"value": 0.8,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): waves break where the Jacobian of their choppy displacement falls below this"
+		},
+		"water/foam_ratio": {
+			"value": 2.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20) (SEDX ASSUMPTION about its meaning: foam per unit of Jacobian below the bias)"
+		},
+		"water/foam_scale": {
+			"value": 2.4,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20) (meaning unknown; SEDX doesn't use it yet)"
+		},
+		"water/h_displace_lambda": {
+			"value": 1.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): choppiness, the horizontal displacement's scale"
+		},
+		"water/cascade_0_scale": {
+			"value": 1.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20)"
+		},
+		"water/cascade_1_scale": {
+			"value": 1.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20)"
+		},
+		"water/cascade_2_scale": {
+			"value": 1.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20)"
+		},
+		"water/cascade_3_scale": {
+			"value": 1.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20)"
+		},
+		"water/spectrum/fetch_lo_m": {
+			"value": 1000.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): fetch at height_lo_m (SEDX ASSUMPTION: times fetch_multiplier, rising to fetch_hi_m at height_hi_m)"
+		},
+		"water/spectrum/fetch_hi_m": {
+			"value": 5000.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20)"
+		},
+		"water/spectrum/fetch_multiplier": {
+			"value": 10.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20)"
+		},
+		"water/spectrum/height_lo_m": {
+			"value": 0.3048,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): 1 ft"
+		},
+		"water/spectrum/height_hi_m": {
+			"value": 1.8288,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): 6 ft"
+		},
+		"water/spectrum/height_no_swell_m": {
+			"value": 0.1524,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): no swell at or below this height (SEDX ASSUMPTION: max_swell from height_swell_m up)"
+		},
+		"water/spectrum/height_swell_m": {
+			"value": 1.8288,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20)"
+		},
+		"water/spectrum/max_swell": {
+			"value": 0.8,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20)"
+		},
+		"water/spectrum/spread_blend": {
+			"value": 1.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): 0 waves from every direction, 1 the directional spreading (Horvath 2015)"
+		},
+		"water/spectrum/short_waves_fade": {
+			"value": 0.01,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): waves shorter than about this many meters fade (exp(-(k l)^2))"
+		},
+		"sedx/water_cascade_size_0": {
+			"value": 500.0,
+			"source": "SEDX (ASSUMPTION; X-Plane's cascade sizes aren't exposed): meters across the first FFT cascade"
+		},
+		"sedx/water_cascade_size_1": {
+			"value": 120.0,
+			"source": "SEDX (ASSUMPTION)"
+		},
+		"sedx/water_cascade_size_2": {
+			"value": 30.0,
+			"source": "SEDX (ASSUMPTION)"
+		},
+		"sedx/water_cascade_size_3": {
+			"value": 7.0,
+			"source": "SEDX (ASSUMPTION)"
+		},
+		"sedx/water_cascade_min_cycles": {
+			"value": 4.0,
+			"source": "SEDX: a smaller cascade starts at waves this many times across its tile; the larger one holds the longer ones"
+		},
+		"sedx/water_spectrum_depth_m": {
+			"value": 100.0,
+			"source": "SEDX (ASSUMPTION): water depth the spectrum's dispersion and TMA factor assume"
+		},
+		"sedx/water_height_per_amplitude": {
+			"value": 2.0,
+			"source": "SEDX (ASSUMPTION): significant wave height per meter of sim/weather/region/wave_amplitude"
+		},
+		"sedx/water_foam_decay": {
+			"value": 0.6,
+			"source": "SEDX (ASSUMPTION): share of the foam that fades each second"
+		},
+		"sedx/water_ior": {
+			"value": 1.333,
+			"source": "SEDX: refractive index of water"
+		},
+		"sedx/water_floor_albedo_r": {
+			"value": 0.3,
+			"source": "SEDX (ASSUMPTION): sea floor albedo under the floor decal (water/sea_floor_coef > 0 only)"
+		},
+		"sedx/water_floor_albedo_g": {
+			"value": 0.27,
+			"source": "SEDX (ASSUMPTION)"
+		},
+		"sedx/water_floor_albedo_b": {
+			"value": 0.2,
+			"source": "SEDX (ASSUMPTION)"
+		},
+		"sedx/water_floor_decal_m": {
+			"value": 25.0,
+			"source": "SEDX (ASSUMPTION): meters one repeat of the sea floor decal (lib/g10/decals/water.dcl) covers"
+		},
+		"sedx/water_clarity_min_m": {
+			"value": 0.5,
+			"source": "SEDX: clarity distance floor for a water map alpha near 1"
+		},
+		"sedx/water_shore_depth_m": {
+			"value": 0.5,
+			"source": "SEDX: waves rise to full height over this floor depth, so shores stay put (the bathymetry under lakes is often only 1-2 m: a deeper fade shows the 64 m cells)"
+		},
+		"sedx/water_use_fetch": {
+			"value": 1.0,
+			"source": "SEDX (ASSUMPTION): the DSF's per-vertex fetch ratio scales the waves (X-Plane 12.4.4's dsf/kill_fetch is 1, but its references show calm lakes mirroring their shores)"
+		},
+		"sedx/water_pond_wave_scale": {
+			"value": 0.08,
+			"source": "SEDX (ASSUMPTION): wave height at fetch ratio 0 (a few hundred meters of fetch: about 0.09 m under a 1 m sea)"
+		},
+		"sedx/water_grid_m": {
+			"value": 64.0,
+			"source": "SEDX: water meshes are cut into cells this size so tessellation has vertices where the camera is"
+		},
+		"sedx/water_tessellation_px": {
+			"value": 6.0,
+			"source": "SEDX: target length of a tessellated water edge on screen (pixels)"
 		}
 	}
 }

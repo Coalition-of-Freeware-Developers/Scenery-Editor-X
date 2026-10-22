@@ -32,6 +32,7 @@
 #include "cacao.h"
 #include "csm.h"
 #include "exposure.h"
+#include "ocean.h"
 #include "renderer_buffers.h"
 #include "renderer_features.h"
 #include "renderer_quality.h"
@@ -596,6 +597,9 @@ namespace SceneryEditorX
 
 			// Screen-space reflections (plan Phase 9): X-Plane's ssr/* controls and SEDX's own (sedx/ssr_*)
 			SsrSettings ssr;
+
+			// Water (plan Phase 11): X-Plane's water/* controls and SEDX's own (sedx/water_*)
+			OceanSettings water;
 		};
 		static const EnvironmentConstants &GetEnvironmentConstants();
 		static EnvironmentConstants &EditEnvironmentConstants();
@@ -626,6 +630,23 @@ namespace SceneryEditorX
 			uint32_t height = 0;
 		};
 		static const AoReadout &GetAoReadout();
+
+		/* @brief What the last frame's water ran with (RENDERER panel). */
+		struct WaterReadout
+		{
+			bool ran = false;						// The ocean's cascades were made this frame
+			uint32_t draws = 0;						// Water draws in the main view
+			OceanSpectrum spectrum;					// The sea state (after NormalizeOceanSpectrum)
+			double time = 0.0;						// The ocean's time (s)
+		};
+		static const WaterReadout &GetWaterReadout();
+
+		/**
+		 * @brief Advances the ocean's waves by this step every frame instead of the frame's real time (0: real time), and
+		 * starts them over: parity captures (--env-scenario) see the same sea every run.
+		 */
+		static void SetWaterFixedTimeStep(float seconds);
+		static void ResetWaterTime();
 
 		/* @brief What the last frame's screen-space reflections ran with (RENDERER panel). */
 		struct SsrReadout
@@ -930,6 +951,22 @@ namespace SceneryEditorX
 		/* @brief Binds the reflections, the pyramid and the history (black where they aren't ready) to a pass whose shaders
 		 * import ssr_common.slang, and the g-buffer normals the march checks hits against. */
 		static void BindReflections(CommandList *cmdList);
+
+#pragma endregion
+#pragma region Water
+
+		// Water (plan Phase 11, renderer_water.cpp; XP12: ocean_spectrum, compute_fft, ocean_bake_textures, ocean_shading)
+		/* @brief The sea state from the environment's waves and the water constants (renderer/ocean.h); the ocean's time
+		 * advances once a frame (extra views reuse it). */
+		static void WriteWaterConstants(ConstantBuffer_Environment &env);
+		/* @brief Water is drawn in this view: the feature is on, water draws are visible and the shaders are built. */
+		static bool IsWaterVisible();
+		/* @brief The FFT ocean's cascades at this frame's time (ocean.slang), once a frame; they end shader-readable. */
+		static void Pass_Ocean(CommandList *cmdList);
+		/* @brief Step (13): the water draws over the composed frame (water.slang), opaque, their depth written. */
+		static void Pass_Water(CommandList *cmdList, ImageResource *frame);
+		/* @brief Binds the baked cascades to a pass whose shaders import ocean_common.slang. */
+		static void BindOcean(CommandList *cmdList);
 
 #pragma endregion
 #pragma region Lighting passes
@@ -1264,9 +1301,11 @@ namespace SceneryEditorX
 		static std::array<Renderer_DrawCall, RENDERER_MAX_DRAW_CALLS> m_DrawCalls;
 		static std::array<Renderer_DrawCall, RENDERER_MAX_DRAW_CALLS> m_DrawCalls_Prepass;
 		static std::array<Renderer_DrawCall, RENDERER_MAX_DRAW_CALLS> m_DrawCalls_Shadow; // CPU-drawn sun-shadow casters (shadowCascades set)
+		static std::array<Renderer_DrawCall, RENDERER_MAX_WATER_DRAW_CALLS> m_DrawCalls_Water; // Visible water (materials with MaterialProperty::Water): Pass_Water only
 		static uint32_t m_DrawCall_Count;
 		static uint32_t m_DrawCalls_Prepass_Count;
 		static uint32_t m_DrawCalls_Shadow_Count;
+		static uint32_t m_DrawCalls_Water_Count;
 		static uint32_t m_Indirect_DrawCount;
 		static bool     m_Transparents_Present;
 		static bool     m_Is_Hiz_Suppressed;

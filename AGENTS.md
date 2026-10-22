@@ -54,7 +54,9 @@ The dependency-light, cross-platform Catch2 unit suites that only need `source/`
   into it, overlays read only from base meshes, sim/exclude_* zones as boxes and X-Plane 12 polygons), `.ter` terrain types
   (`xp_terrain.*`; every default `.ter` parses with its textures, tag `[library-sweep]`), library resolution by REGION bitmap
   and season (`xp_library.*` ResolveProvider), the terrain meshes in the local frame and the surface drapes are cut onto
-  (`xp_terrain_mesh.*`: heights, rays, exact draping across a crease, clipped at the terrain's edge); with an X-Plane 12
+  (`xp_terrain_mesh.*`: heights, rays, exact draping across a crease, clipped at the terrain's edge; water meshes cut into
+  64 m cells without T-junctions for tessellation, `CutTerrainAlongGrid`, and the floor's depth from X-Plane 12's depth
+  ratio and the bathymetry, `WaterFloorDepth`, tag `[water]`); with an X-Plane 12
   install listed it reads KSEA's 7-zip Global Scenery tile and its scenery within a mile, tag `[xplane-install]`, about two
   seconds), and the terrain's own scenery in `OverlayTests.cpp` (`.bch` beaches parsed and laid along shores with the
   water on the left, forests planted only in the area and where the caller allows), and autogen (`AutogenTests.cpp`:
@@ -107,7 +109,11 @@ The dependency-light, cross-platform Catch2 unit suites that only need `source/`
   reverse-Z camera and their std140 layout, X-Plane 12.4.4's dynamic values by camera height, the dispatches per preset),
   and the CPU half of the screen-space reflections (`renderer/ssr.*`, tag `[ssr]`: X-Plane's gloss and `ssr/*` weights,
   the lobe's history mip, the min / max depth pyramid with odd sizes, and the hierarchical-Z march against an analytic
-  ground-and-wall scene). Standard library plus `dependency/json`, fully green.
+  ground-and-wall scene), and the CPU half of the water (`renderer/ocean.*`, tag `[ocean]`: the FFT ocean's cascades covering
+  every wave number once, the sea state X-Plane's `water/spectrum/*` controls make of a wave amplitude, JONSWAP / TMA /
+  dispersion, directional spreading that integrates to 1, cascades normalized to the requested significant height, the
+  GPU's 256-point inverse FFT against a direct sum, the water's clarity, wave scale and tessellation factors). Standard
+  library plus `dependency/json`, fully green.
 
 The other suites are **not** Linux-buildable as written: `SettingsTest` links Windows libs
 (`dxgi`, `d3d12`, `Shell32.lib`); `MemoryAllocatorTests` links `vulkan-1` and needs the Vulkan
@@ -213,7 +219,7 @@ g++ -std=c++20 -O2 -pthread $INCS source/Tests/environment_tests/ParityScenarioT
     $ENV/environment.cpp $ENV/sky_light.cpp $ENV/atmosphere_params.cpp source/SceneryEditorX/renderer/renderer_quality.cpp \
     source/SceneryEditorX/renderer/renderer_features.cpp source/SceneryEditorX/renderer/exposure.cpp \
     source/SceneryEditorX/renderer/env_probes.cpp source/SceneryEditorX/renderer/csm.cpp source/SceneryEditorX/renderer/cacao.cpp \
-    source/SceneryEditorX/renderer/ssr.cpp $LIBS -o build_linux_tests/EnvironmentTests
+    source/SceneryEditorX/renderer/ssr.cpp source/SceneryEditorX/renderer/ocean.cpp $LIBS -o build_linux_tests/EnvironmentTests
 ./build_linux_tests/EnvironmentTests
 ```
 

@@ -33,6 +33,7 @@
 #include <algorithm>
 #include <cmath>
 #include <map>
+#include <unordered_map>
 
 // Draping cuts every overlay triangle of an airport against the terrain: keep it optimized in MSVC debug builds too
 #if defined(_MSC_VER) && !defined(__clang__) && !defined(NDEBUG)
@@ -130,6 +131,166 @@ namespace SceneryEditorX::XPlane
 			double x = 0.0;
 			double z = 0.0;
 		};
+
+		TerrainVertex LerpVertex(const TerrainVertex &a, const TerrainVertex &b, const double t)
+		{
+			const auto lerp = [t](const float u, const float v) { return static_cast<float>(u + (static_cast<double>(v) - u) * t); };
+			TerrainVertex out;
+			out.x = lerp(a.x, b.x);
+			out.y = lerp(a.y, b.y);
+			out.z = lerp(a.z, b.z);
+			out.nx = lerp(a.nx, b.nx);
+			out.ny = lerp(a.ny, b.ny);
+			out.nz = lerp(a.nz, b.nz);
+			Normalize(out.nx, out.ny, out.nz);
+			out.s = lerp(a.s, b.s);
+			out.t = lerp(a.t, b.t);
+			return out;
+		}
+
+		/* @brief A fixed order of points, so a crossing is computed from an edge's ends the same way whichever triangle asks. */
+		bool VertexBefore(const TerrainVertex &a, const TerrainVertex &b)
+		{
+			if (a.x != b.x)
+				return a.x < b.x;
+			if (a.z != b.z)
+				return a.z < b.z;
+			return a.y < b.y;
+		}
+
+		/**
+		 * @brief Sutherland-Hodgman: the part of a convex polygon on one side of the line x = value (axisX) or z = value,
+		 * keepAbove keeping the side of larger coordinates. Crossings land exactly on the line.
+		 */
+		void ClipPolygon(const std::vector<TerrainVertex> &in, std::vector<TerrainVertex> &out, const bool axisX, const double value, const bool keepAbove)
+		{
+			out.clear();
+			const size_t n = in.size();
+			const auto side = [axisX, value](const TerrainVertex &v) { return (axisX ? static_cast<double>(v.x) : static_cast<double>(v.z)) - value; };
+			for (size_t i = 0; i < n; ++i)
+			{
+				const TerrainVertex &p = in[i];
+				const TerrainVertex &q = in[(i + 1) % n];
+				const double dp = side(p), dq = side(q);
+				if (keepAbove ? dp >= 0.0 : dp <= 0.0)
+					out.push_back(p);
+				if ((dp > 0.0 && dq < 0.0) || (dp < 0.0 && dq > 0.0))
+				{
+					const bool swap = VertexBefore(q, p);
+					const TerrainVertex &a = swap ? q : p, &b = swap ? p : q;
+					const double da = swap ? dq : dp, db = swap ? dp : dq;
+					TerrainVertex crossing = LerpVertex(a, b, da / (da - db));
+					(axisX ? crossing.x : crossing.z) = static_cast<float>(value);
+					out.push_back(crossing);
+				}
+			}
+		}
+	}
+
+	double WaterFloorDepth(const double surfaceElevationM, const double bathymetryElevationM, const double depthRatio)
+	{
+		return std::clamp(depthRatio, 0.0, 1.0) * std::max(surfaceElevationM - bathymetryElevationM, 0.0);
+	}
+
+	uint32_t CutTerrainAlongGrid(TerrainMeshPart &part, const double cell)
+	{
+		if (cell <= 0.0 || part.indices.empty())
+			return static_cast<uint32_t>(part.indices.size() / 3);
+
+		std::vector<TerrainVertex> vertices;
+		std::vector<uint32_t> indices;
+		vertices.reserve(part.vertices.size() * 2);
+		indices.reserve(part.indices.size() * 2);
+
+		// Welding: a 1 cm bucket grid; points within 5 mm on the ground plane are the same vertex
+		constexpr double BUCKET = 0.01;
+		constexpr double WELD = 0.005;
+		std::unordered_map<uint64_t, std::vector<uint32_t>> buckets;
+		const auto key = [](const int64_t bx, const int64_t bz) { return (static_cast<uint64_t>(bx) << 32) ^ (static_cast<uint64_t>(bz) & 0xFFFFFFFFull); };
+		const auto weld = [&](const TerrainVertex &v)
+		{
+			const int64_t bx = static_cast<int64_t>(std::floor(v.x / BUCKET)), bz = static_cast<int64_t>(std::floor(v.z / BUCKET));
+			for (int64_t dx = -1; dx <= 1; ++dx)
+			{
+				for (int64_t dz = -1; dz <= 1; ++dz)
+				{
+					const auto it = buckets.find(key(bx + dx, bz + dz));
+					if (it == buckets.end())
+						continue;
+					for (const uint32_t index : it->second)
+					{
+						const TerrainVertex &other = vertices[index];
+						if (std::abs(other.x - v.x) <= WELD && std::abs(other.z - v.z) <= WELD)
+							return index;
+					}
+				}
+			}
+			const uint32_t index = static_cast<uint32_t>(vertices.size());
+			vertices.push_back(v);
+			buckets[key(bx, bz)].push_back(index);
+			return index;
+		};
+
+		std::vector<TerrainVertex> polygon, clipped;
+		for (size_t t = 0; t + 2 < part.indices.size(); t += 3)
+		{
+			const TerrainVertex corners[3] = { part.vertices[part.indices[t]], part.vertices[part.indices[t + 1]], part.vertices[part.indices[t + 2]] };
+			const double minX = std::min({ corners[0].x, corners[1].x, corners[2].x }), maxX = std::max({ corners[0].x, corners[1].x, corners[2].x });
+			const double minZ = std::min({ corners[0].z, corners[1].z, corners[2].z }), maxZ = std::max({ corners[0].z, corners[1].z, corners[2].z });
+			const int64_t i0 = static_cast<int64_t>(std::floor(minX / cell)), i1 = static_cast<int64_t>(std::floor(maxX / cell));
+			const int64_t j0 = static_cast<int64_t>(std::floor(minZ / cell)), j1 = static_cast<int64_t>(std::floor(maxZ / cell));
+			for (int64_t i = i0; i <= i1; ++i)
+			{
+				for (int64_t j = j0; j <= j1; ++j)
+				{
+					polygon.assign(corners, corners + 3);
+					const double x0 = static_cast<double>(i) * cell, z0 = static_cast<double>(j) * cell;
+					if (i > i0)
+					{
+						ClipPolygon(polygon, clipped, true, x0, true);
+						polygon.swap(clipped);
+					}
+					if (i < i1 && polygon.size() >= 3)
+					{
+						ClipPolygon(polygon, clipped, true, x0 + cell, false);
+						polygon.swap(clipped);
+					}
+					if (j > j0 && polygon.size() >= 3)
+					{
+						ClipPolygon(polygon, clipped, false, z0, true);
+						polygon.swap(clipped);
+					}
+					if (j < j1 && polygon.size() >= 3)
+					{
+						ClipPolygon(polygon, clipped, false, z0 + cell, false);
+						polygon.swap(clipped);
+					}
+					if (polygon.size() < 3)
+						continue;
+
+					// A fan of the convex piece, slivers and pieces welded flat left out
+					const uint32_t first = weld(polygon[0]);
+					uint32_t previous = weld(polygon[1]);
+					for (size_t k = 2; k < polygon.size(); ++k)
+					{
+						const uint32_t current = weld(polygon[k]);
+						const TerrainVertex &a = vertices[first], &b = vertices[previous], &c = vertices[current];
+						const double area = 0.5 * Cross2(b.x - a.x, b.z - a.z, c.x - a.x, c.z - a.z);
+						if (first != previous && previous != current && current != first && std::abs(area) > MIN_PIECE_AREA)
+						{
+							indices.push_back(first);
+							indices.push_back(previous);
+							indices.push_back(current);
+						}
+						previous = current;
+					}
+				}
+			}
+		}
+
+		part.vertices.swap(vertices);
+		part.indices.swap(indices);
+		return static_cast<uint32_t>(part.indices.size() / 3);
 	}
 
 	// -------------------------------------------------------
@@ -222,6 +383,7 @@ namespace SceneryEditorX::XPlane
 		};
 
 		std::map<std::pair<std::string, bool>, size_t> partIndex;	// (definition, overlay) -> part in out
+		const size_t firstPart = out.size();
 		uint32_t appended = 0;
 		std::vector<uint32_t> remap;
 		std::vector<Point2> local;
@@ -367,6 +529,30 @@ namespace SceneryEditorX::XPlane
 				}
 			}
 			needsNormal.clear();
+		}
+
+		// Water: cut for tessellation, then each vertex's floor depth from its depth ratio and the bathymetry under it
+		const DsfRaster *bathymetry = dsf.FindRaster("sea_level");
+		for (size_t p = firstPart; p < out.size(); ++p)
+		{
+			TerrainMeshPart &part = out[p];
+			if (!part.water)
+				continue;
+			const uint32_t before = static_cast<uint32_t>(part.indices.size() / 3);
+			const uint32_t after = CutTerrainAlongGrid(part, options.waterCellSize);
+			appended = appended - before + after;
+			for (TerrainVertex &vertex : part.vertices)
+			{
+				const double surface = vertex.y + options.datumElevation + (options.earthCurvature ? GetTerrainCurvatureDrop(vertex.x, vertex.z) : 0.0);
+				double floor = surface - options.waterDepthWithoutBathymetryM;
+				if (bathymetry)
+				{
+					double lat, lon;
+					projection.ToGeo(Point2{ vertex.x, vertex.z }, lat, lon);
+					floor = bathymetry->Sample(lon, lat, dsf.west, dsf.south, dsf.east, dsf.north);
+				}
+				vertex.t = static_cast<float>(WaterFloorDepth(surface, floor, vertex.t));
+			}
 		}
 		return appended;
 	}

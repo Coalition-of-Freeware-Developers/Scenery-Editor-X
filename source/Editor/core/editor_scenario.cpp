@@ -241,6 +241,7 @@ namespace SceneryEditorX::EditorScenario
 		Renderer::SetGridVisible(false);
 		ScenePicking::SetOutlineEnabled(false);
 		Camera::SetInputLocked(true);
+		Renderer::SetWaterFixedTimeStep(1.0f / 60.0f);	// The same sea every run: waves advance by frames, not the clock
 		ApplyEnvironment(scenario);
 
 		// The art controls the shot sets that SEDX emulates (the probe sets every one in X-Plane)
@@ -334,6 +335,7 @@ namespace SceneryEditorX::EditorScenario
 				if (!PlaceCamera(scenario))
 					return;
 				Renderer::ResetExposure();	// Meter the placed view from scratch, not adapt to it from the startup view
+				Renderer::ResetWaterTime();	// The capture sees the waves at the same time every run
 				state.framesLeft = state.captureAfterFrames.value_or(scenario.settleFrames);
 				state.stage = Stage::Settling;
 				EDITOR_INFO_TAG(LOG_TAG, "Scenario {}: camera at {:.6f}, {:.6f}, {} m, heading {}, pitch {}; {} frames to settle", scenario.id,

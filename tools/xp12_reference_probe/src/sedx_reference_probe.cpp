@@ -108,6 +108,8 @@ namespace
 		std::vector<CloudLayer> clouds;
 		float rainPercent = 0.0f, snowCover = 0.0f, temperatureC = 15.0f;
 		float runwayFriction = 0.0f;
+		std::optional<float> waveAmplitudeM;	// sim/weather/region/wave_amplitude; none: X-Plane's own sea
+		std::optional<float> waveDirectionDeg;	// sim/weather/region/wave_dir
 		int settleFrames = 600;
 		std::optional<float> ev100Lock;
 		std::vector<std::pair<std::string, float>> artControls;	// "art_controls": set for this shot only (sim/private/controls/)
@@ -321,6 +323,10 @@ namespace
 			ParseTime(it->get<std::string>(), s.localTimeHours);
 		if (const auto it = object.find("ev100_lock"); it != object.end())
 			s.ev100Lock = it->is_null() ? std::nullopt : std::optional<float>(it->get<float>());
+		if (const auto it = object.find("wave_amplitude_m"); it != object.end())
+			s.waveAmplitudeM = it->is_null() ? std::nullopt : std::optional<float>(it->get<float>());
+		if (const auto it = object.find("wave_direction_deg"); it != object.end())
+			s.waveDirectionDeg = it->is_null() ? std::nullopt : std::optional<float>(it->get<float>());
 		if (const auto it = object.find("art_controls"); it != object.end() && it->is_object())
 		{
 			s.artControls.clear();
@@ -543,6 +549,10 @@ namespace
 		if (!SetFloat("sim/weather/region/snow_cover", s.snowCover))
 			Log("sim/weather/region/snow_cover is not writable here: the snow scenario keeps X-Plane's own cover");
 		SetFloat("sim/weather/region/sealevel_temperature_c", s.temperatureC);
+		if (s.waveAmplitudeM)
+			SetFloat("sim/weather/region/wave_amplitude", *s.waveAmplitudeM);
+		if (s.waveDirectionDeg)
+			SetFloat("sim/weather/region/wave_dir", *s.waveDirectionDeg);
 		SetInt("sim/weather/region/update_immediately", 1);
 	}
 
@@ -614,7 +624,9 @@ namespace
 								  "sim/graphics/view/window_width", "sim/graphics/view/window_height", "sim/graphics/view/visibility_effective_m",
 								  "sim/weather/region/visibility_reported_sm", "sim/weather/region/runway_friction", "sim/weather/region/rain_percent",
 								  "sim/weather/region/snow_cover", "sim/weather/region/cloud_coverage_percent", "sim/weather/region/cloud_base_msl_m",
-								  "sim/weather/view/rain_ratio", "sim/weather/view/snow_ratio" })
+								  "sim/weather/view/rain_ratio", "sim/weather/view/snow_ratio", "sim/weather/region/wave_amplitude",
+								  "sim/weather/region/wave_dir", "sim/weather/region/wave_length", "sim/weather/region/wave_speed",
+								  "sim/weather/region/wind_speed_msc", "sim/weather/region/wind_direction_degt" })
 		{
 			if (XPLMDataRef ref = Find(name))
 				sim[name] = ReadValue(ref);
