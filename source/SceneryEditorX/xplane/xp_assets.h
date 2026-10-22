@@ -123,6 +123,12 @@ namespace SceneryEditorX::XPlane
 	};
 
 	bool ParseDecalLibraryAsset(std::string_view text, DecalLibraryAsset &out, std::string *error = nullptr);
+
+	/**
+	 * @brief Reads one decal row (DECAL, DECAL_RGBA, DECAL_PARAMS[_PROJ], NORMAL_DECAL_PARAMS[_PROJ]) of the standard
+	 * shader formats (.pol, .dcl, .ter, ...), tokenized; false for other rows.
+	 */
+	bool ParsePolygonDecalRow(const std::vector<std::string_view> &tokens, PolygonDecal &out);
 	bool LoadDecalLibraryAsset(const std::filesystem::path &path, DecalLibraryAsset &out, std::string *error = nullptr);
 
 	/* @brief .lin: a painted line following a path. */

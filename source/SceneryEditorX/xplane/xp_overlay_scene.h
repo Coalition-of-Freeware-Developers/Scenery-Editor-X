@@ -106,6 +106,12 @@ namespace SceneryEditorX::XPlane
 		 */
 		void SetDrapeSequenceBase(uint32_t base);
 
+		/**
+		 * @brief Whether groups built from now on stand on the loaded terrain (SceneTerrain): drapes cut along it, facades
+		 * and forests and objects on the ground under them. Only when the groups are in the terrain's frame.
+		 */
+		void SetOnTerrain(bool onTerrain);
+
 		/* @brief Removes the root and everything below it and releases the mesh, materials and textures. */
 		void Clear();
 

@@ -126,6 +126,12 @@ namespace SceneryEditorX::XPlane
 		/* @brief File X-Plane would load for a virtual path ("lib/airport/..."), or empty. */
 		static std::filesystem::path Resolve(std::string_view virtualPath);
 
+		/**
+		 * @brief File X-Plane would load for a virtual path at a place (its library REGIONs: terrain picks regional land
+		 * classes) and season (a SeasonBits value; 0 = any), or empty.
+		 */
+		static std::filesystem::path ResolveAt(std::string_view virtualPath, double latitude, double longitude, uint8_t season = 0);
+
 		/* @brief Duration of the last completed scan, in milliseconds. */
 		static double GetLastScanMilliseconds();
 	};

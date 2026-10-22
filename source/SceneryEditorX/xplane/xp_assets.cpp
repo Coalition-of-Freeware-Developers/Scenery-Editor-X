@@ -162,6 +162,11 @@ namespace SceneryEditorX::XPlane
 
 	// -------------------------------------------------------
 
+	bool ParsePolygonDecalRow(const std::vector<std::string_view> &tokens, PolygonDecal &out)
+	{
+		return !tokens.empty() && ParseDecalRow(tokens, out);
+	}
+
 	size_t ParseAssetHeader(const std::string_view text, AssetHeader &out)
 	{
 		out = AssetHeader();

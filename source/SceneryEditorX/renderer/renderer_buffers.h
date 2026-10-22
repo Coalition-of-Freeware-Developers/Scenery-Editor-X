@@ -156,6 +156,16 @@ namespace SceneryEditorX
 		xMath::Vec4 drape_decal = xMath::Vec4{0.0f, 0.0f, 0.0f, 0.0f};
 		xMath::Vec4 drape_normal_decal = xMath::Vec4{0.0f, 0.0f, 0.0f, 0.0f};
 		xMath::Vec4 drape_misc = xMath::Vec4{0.0f, 0.0f, 0.0f, 0.0f};
+
+		// X-Plane terrain (.ter, xp_terrain.slang): base (projected s / t meters, normal map repeats per base repeat, flags),
+		// composite (s / t, noise mask center / half width), slopes (hill / cliff start and end degrees), slope textures (s / t
+		// meters), lit (s / t meters, fade start / end), far (s / t meters, start / end)
+		xMath::Vec4 terrain_base = xMath::Vec4{0.0f, 0.0f, 0.0f, 0.0f};
+		xMath::Vec4 terrain_composite = xMath::Vec4{0.0f, 0.0f, 0.0f, 0.0f};
+		xMath::Vec4 terrain_slope = xMath::Vec4{0.0f, 0.0f, 0.0f, 0.0f};
+		xMath::Vec4 terrain_slope_scale = xMath::Vec4{0.0f, 0.0f, 0.0f, 0.0f};
+		xMath::Vec4 terrain_lit = xMath::Vec4{0.0f, 0.0f, 0.0f, 0.0f};
+		xMath::Vec4 terrain_far = xMath::Vec4{0.0f, 0.0f, 0.0f, 0.0f};
 	};
 
 	/**
@@ -368,7 +378,7 @@ namespace SceneryEditorX
 	// sizes the shaders see (resources.slang: cbuffer std140, structured buffers std430)
 	static_assert(sizeof(ConstantBuffer_Frame) == 1024, "ConstantBuffer_Frame must match FrameBufferData in resources.slang");
 	static_assert(sizeof(ConstantBuffer_Environment) == 1536, "ConstantBuffer_Environment must match EnvironmentData in resources.slang");
-	static_assert(sizeof(ShaderBuffer_Material) == 192, "ShaderBuffer_Material must match MaterialParameters in resources.slang");
+	static_assert(sizeof(ShaderBuffer_Material) == 288, "ShaderBuffer_Material must match MaterialParameters in resources.slang");
 	static_assert(sizeof(ShaderBuffer_Light) == 608, "ShaderBuffer_Light must match LightParameters in resources.slang");
 	static_assert(sizeof(ShaderBuffer_DrawData) == 160, "ShaderBuffer_DrawData must match DrawData in resources.slang");
 

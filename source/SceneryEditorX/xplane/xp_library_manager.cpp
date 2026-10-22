@@ -39,7 +39,9 @@
 #include <thread>
 #include <nlohmann/json.hpp>
 #include <SceneryEditorX/filesystem/file_system.h>
+#include <SceneryEditorX/filesystem/vfs.h>
 #include <SceneryEditorX/logging/logging.hpp>
+#include <stb_image.h>
 
 #ifdef _WIN32
 	#include <windows.h>
@@ -57,6 +59,33 @@ namespace SceneryEditorX::XPlane
 	{
 		constexpr const char *LOG_TAG = "XPlaneLibrary";
 		constexpr const char *SETTINGS_FILE = "xplane_library.json";
+
+		/* @brief A REGION_BITMAP world map: its red channel, one byte a pixel (non-zero inside the region). */
+		bool LoadRegionBitmap(const fs::path &file, uint32_t &width, uint32_t &height, std::vector<uint8_t> &mask)
+		{
+			std::string bytes;
+			if (!VFS::ReadFile(file, bytes))
+			{
+				SEDX_CORE_WARN_TAG(LOG_TAG, "Region bitmap not found: {}", VFS::ToUtf8(file));
+				return false;
+			}
+			int w = 0, h = 0, channels = 0;
+			stbi_uc *pixels = stbi_load_from_memory(reinterpret_cast<const stbi_uc *>(bytes.data()), static_cast<int>(bytes.size()), &w, &h, &channels, 4);
+			if (!pixels || w <= 0 || h <= 0)
+			{
+				if (pixels)
+					stbi_image_free(pixels);
+				SEDX_CORE_WARN_TAG(LOG_TAG, "Region bitmap unreadable: {}", VFS::ToUtf8(file));
+				return false;
+			}
+			width = static_cast<uint32_t>(w);
+			height = static_cast<uint32_t>(h);
+			mask.resize(static_cast<size_t>(w) * h);
+			for (size_t i = 0; i < mask.size(); ++i)
+				mask[i] = pixels[i * 4];
+			stbi_image_free(pixels);
+			return true;
+		}
 
 		using VFS::FromUtf8;
 		using VFS::IsDirectory;
@@ -326,6 +355,7 @@ namespace SceneryEditorX::XPlane
 					LibraryIndex::BuildOptions options;
 					options.checkFilesExist = settings.checkFiles;
 					index->Build(std::move(packages), options);
+					index->LoadRegionBitmaps(&LoadRegionBitmap);
 
 					uint32_t libraries = 0, tracked = 0;
 					for (const LibraryPackage &package : index->GetPackages())
@@ -620,6 +650,16 @@ namespace SceneryEditorX::XPlane
 	fs::path LibraryManager::Resolve(const std::string_view virtualPath)
 	{
 		return GetIndex()->Resolve(virtualPath);
+	}
+
+	fs::path LibraryManager::ResolveAt(const std::string_view virtualPath, const double latitude, const double longitude, const uint8_t season)
+	{
+		LibraryIndex::ResolveContext context;
+		context.hasLocation = true;
+		context.latitude = latitude;
+		context.longitude = longitude;
+		context.season = season;
+		return GetIndex()->Resolve(virtualPath, context);
 	}
 
 	double LibraryManager::GetLastScanMilliseconds()

@@ -29,6 +29,7 @@
  * -------------------------------------------------------
  */
 #include "xp_dsf.h"
+#include "xp_7z.h"
 #include <SceneryEditorX/filesystem/vfs.h>
 #include <algorithm>
 #include <cmath>
@@ -38,6 +39,7 @@
 #include <limits>
 #include <map>
 #include <optional>
+#include <unordered_map>
 
 // -------------------------------------------------------
 
@@ -65,6 +67,9 @@ namespace SceneryEditorX::XPlane
 		constexpr uint32_t ATOM_PO32 = FourCC('P', 'O', '3', '2');
 		constexpr uint32_t ATOM_SC32 = FourCC('S', 'C', '3', '2');
 		constexpr uint32_t ATOM_CMDS = FourCC('C', 'M', 'D', 'S');
+		constexpr uint32_t ATOM_DEMS = FourCC('D', 'E', 'M', 'S');
+		constexpr uint32_t ATOM_DEMI = FourCC('D', 'E', 'M', 'I');
+		constexpr uint32_t ATOM_DEMD = FourCC('D', 'E', 'M', 'D');
 
 		// Command ids
 		enum : uint8_t
@@ -358,13 +363,70 @@ namespace SceneryEditorX::XPlane
 
 	// -------------------------------------------------------
 
+	const DsfRaster *DsfFile::FindRaster(const std::string_view name) const
+	{
+		for (const DsfRaster &raster : rasters)
+		{
+			if (raster.name == name)
+				return &raster;
+		}
+		return nullptr;
+	}
+
+	float DsfRaster::At(const uint32_t x, const uint32_t y) const
+	{
+		if (width == 0 || height == 0 || values.size() < static_cast<size_t>(width) * height)
+			return 0.0f;
+		return values[static_cast<size_t>(std::min(y, height - 1)) * width + std::min(x, width - 1)];
+	}
+
+	float DsfRaster::Sample(const double longitude, const double latitude, const double west, const double south, const double east, const double north) const
+	{
+		if (width == 0 || height == 0 || east <= west || north <= south)
+			return 0.0f;
+		const double u = (longitude - west) / (east - west);
+		const double v = (latitude - south) / (north - south);
+		double x, y;
+		if (IsPostCentric())
+		{
+			x = u * static_cast<double>(width - 1);
+			y = v * static_cast<double>(height - 1);
+		}
+		else
+		{
+			x = u * static_cast<double>(width) - 0.5;
+			y = v * static_cast<double>(height) - 0.5;
+		}
+		x = std::clamp(x, 0.0, static_cast<double>(width - 1));
+		y = std::clamp(y, 0.0, static_cast<double>(height - 1));
+		const uint32_t x0 = static_cast<uint32_t>(x), y0 = static_cast<uint32_t>(y);
+		const uint32_t x1 = std::min(x0 + 1, width - 1), y1 = std::min(y0 + 1, height - 1);
+		const float fx = static_cast<float>(x - x0), fy = static_cast<float>(y - y0);
+		const float bottom = At(x0, y0) + (At(x1, y0) - At(x0, y0)) * fx;
+		const float top = At(x0, y1) + (At(x1, y1) - At(x0, y1)) * fx;
+		return bottom + (top - bottom) * fy;
+	}
+
+	// -------------------------------------------------------
+
 	bool ReadDsf(const uint8_t *data, const size_t size, DsfFile &out, std::string *error)
 	{
+		return ReadDsf(data, size, out, DsfReadOptions{}, error);
+	}
+
+	bool ReadDsf(const uint8_t *data, const size_t size, DsfFile &out, const DsfReadOptions &options, std::string *error)
+	{
 		out = DsfFile();
+		if (Is7zArchive(data, size))
+		{
+			std::vector<uint8_t> unpacked;
+			std::string unpackError;
+			if (!Extract7zFirstFile(data, size, unpacked, &unpackError))
+				return Fail(error, "The compressed DSF can't be unpacked: " + unpackError);
+			return ReadDsf(unpacked.data(), unpacked.size(), out, options, error);
+		}
 		if (!data || size < 8 + 4 + 16)
 			return Fail(error, "Not a DSF file (too small)");
-		if (std::memcmp(data, "7z\xBC\xAF\x27\x1C", 6) == 0)
-			return Fail(error, "The DSF is 7-zip compressed; compressed tiles aren't supported yet");
 		if (std::memcmp(data, "XPLNEDSF", 8) != 0)
 			return Fail(error, "Not a DSF file (bad signature)");
 
@@ -376,6 +438,7 @@ namespace SceneryEditorX::XPlane
 
 		std::vector<std::vector<std::pair<float, float>>> scales16, scales32;
 		std::vector<Reader> pools16, pools32;
+		std::vector<Reader> demsAtoms;
 		Reader commands(nullptr, 0);
 		bool haveCommands = false;
 
@@ -448,8 +511,68 @@ namespace SceneryEditorX::XPlane
 					commands = atom.content;
 					haveCommands = true;
 					break;
+				case ATOM_DEMS:
+					if (options.rasters)
+						demsAtoms.push_back(atom.content);
+					break;
 				default:
-					break;	// DEMS rasters and anything newer
+					break;	// Anything newer
+			}
+		}
+
+		// Raster layers: a DEMI (header) and DEMD (data) atom per layer, in the order DEMN names them
+		uint32_t rasterIndex = 0;
+		for (Reader &dems : demsAtoms)
+		{
+			Atom inner;
+			DsfRaster raster;
+			bool haveInfo = false;
+			while (NextAtom(dems, inner))
+			{
+				if (inner.id == ATOM_DEMI)
+				{
+					raster = DsfRaster();
+					raster.version = inner.content.U8();
+					raster.bytesPerPixel = inner.content.U8();
+					raster.flags = inner.content.U16();
+					raster.width = inner.content.U32();
+					raster.height = inner.content.U32();
+					raster.scale = inner.content.F32();
+					raster.offset = inner.content.F32();
+					haveInfo = !inner.content.Overrun();
+				}
+				else if (inner.id == ATOM_DEMD && haveInfo)
+				{
+					haveInfo = false;
+					raster.name = rasterIndex < out.rasterDefinitions.size() ? out.rasterDefinitions[rasterIndex] : "raster" + std::to_string(rasterIndex);
+					++rasterIndex;
+					if (!options.rasterNames.empty() && std::ranges::find(options.rasterNames, raster.name) == options.rasterNames.end())
+						continue;
+
+					const uint32_t type = raster.flags & 3u;
+					const uint32_t bytes = raster.bytesPerPixel;
+					const bool sizeOk = (type == 0 && bytes == 4) || ((type == 1 || type == 2) && (bytes == 1 || bytes == 2 || bytes == 4));
+					const uint64_t count = static_cast<uint64_t>(raster.width) * raster.height;
+					if (!sizeOk || count == 0 || count > (1ull << 26) || inner.content.GetRemaining() < count * bytes)
+						return Fail(error, "Corrupt DSF raster '" + raster.name + "'");
+
+					raster.values.resize(static_cast<size_t>(count));
+					Reader &cells = inner.content;
+					for (float &value : raster.values)
+					{
+						double stored;
+						if (type == 0)
+							stored = cells.F32();
+						else if (bytes == 1)
+							stored = type == 1 ? static_cast<double>(static_cast<int8_t>(cells.U8())) : static_cast<double>(cells.U8());
+						else if (bytes == 2)
+							stored = type == 1 ? static_cast<double>(static_cast<int16_t>(cells.U16())) : static_cast<double>(cells.U16());
+						else
+							stored = type == 1 ? static_cast<double>(cells.S32()) : static_cast<double>(cells.U32());
+						value = static_cast<float>(stored * raster.scale + raster.offset);
+					}
+					out.rasters.push_back(std::move(raster));
+				}
 			}
 		}
 
@@ -466,18 +589,11 @@ namespace SceneryEditorX::XPlane
 		if (scales16.size() < pools16.size() || scales32.size() < pools32.size())
 			return Fail(error, "The DSF has pools without scaling atoms");
 
-		// Decode the pools (the nth SCAL belongs to the nth POOL)
+		// The pools (the nth SCAL belongs to the nth POOL), decoded when a command first uses one: a terrain read limited
+		// to an area never decodes the pools of the rest of the tile
 		std::vector<Pool> pool16(pools16.size()), pool32(pools32.size());
-		for (size_t i = 0; i < pools16.size(); ++i)
-		{
-			if (!ReadPool<uint16_t>(pools16[i], scales16[i], pool16[i], 1.0 / 65535.0))
-				return Fail(error, "Corrupt 16-bit point pool " + std::to_string(i));
-		}
-		for (size_t i = 0; i < pools32.size(); ++i)
-		{
-			if (!ReadPool<uint32_t>(pools32[i], scales32[i], pool32[i], 1.0 / 4294967295.0))
-				return Fail(error, "Corrupt 32-bit point pool " + std::to_string(i));
-		}
+		std::vector<uint8_t> state16(pools16.size(), 0), state32(pools32.size(), 0);	// 0 not decoded, 1 decoded, 2 corrupt
+		std::string poolError;
 
 		// Command stream
 		uint32_t currentPool = 0;
@@ -486,10 +602,152 @@ namespace SceneryEditorX::XPlane
 		uint8_t roadSubtype = 0;
 		DsfObjectPlacement::Mode objectMode = DsfObjectPlacement::Mode::Msl;
 		int32_t currentFilter = -1;
-		bool patchOpen = false;
 
-		const auto pool = [&](const uint32_t index) -> const Pool * { return index < pool16.size() ? &pool16[index] : nullptr; };
-		const auto pool32At = [&](const uint32_t index) -> const Pool * { return index < pool32.size() ? &pool32[index] : nullptr; };
+		const auto pool = [&](const uint32_t index) -> const Pool *
+		{
+			if (index >= pool16.size())
+				return nullptr;
+			if (state16[index] == 0)
+			{
+				state16[index] = ReadPool<uint16_t>(pools16[index], scales16[index], pool16[index], 1.0 / 65535.0) ? 1 : 2;
+				if (state16[index] == 2 && poolError.empty())
+					poolError = "Corrupt 16-bit point pool " + std::to_string(index);
+			}
+			return state16[index] == 1 ? &pool16[index] : nullptr;
+		};
+		const auto pool32At = [&](const uint32_t index) -> const Pool *
+		{
+			if (index >= pool32.size())
+				return nullptr;
+			if (state32[index] == 0)
+			{
+				state32[index] = ReadPool<uint32_t>(pools32[index], scales32[index], pool32[index], 1.0 / 4294967295.0) ? 1 : 2;
+				if (state32[index] == 2 && poolError.empty())
+					poolError = "Corrupt 32-bit point pool " + std::to_string(index);
+			}
+			return state32[index] == 1 ? &pool32[index] : nullptr;
+		};
+		const auto overlayPool = [&](const uint32_t index) -> const Pool * { return options.overlays ? pool(index) : nullptr; };
+
+		// Terrain: the open patch, and where each pool point it uses landed in it
+		uint8_t patchFlags = DsfTerrainPatch::Physical;
+		float patchLodStart = 0.0f, patchLodEnd = -1.0f;
+		bool patchOpen = false;
+		std::unordered_map<uint64_t, uint32_t> patchPoints;
+
+		/* @brief True when a pool's box (from its scaling) lies wholly outside the terrain area. */
+		const auto poolOutsideArea = [&](const uint32_t index) -> bool
+		{
+			if (!options.HasArea() || index >= scales16.size())
+				return false;
+			const auto &scaling = scales16[index];
+			if (scaling.size() < 2 || scaling[0].first == 0.0f || scaling[1].first == 0.0f)
+				return false;
+			const double west = scaling[0].second, east = west + scaling[0].first;
+			const double south = scaling[1].second, north = south + scaling[1].first;
+			return east < options.areaWest || west > options.areaEast || north < options.areaSouth || south > options.areaNorth;
+		};
+
+		const auto beginPatch = [&]()
+		{
+			++out.terrainPatchCount;
+			patchOpen = true;
+			if (!options.terrain)
+				return;
+			if (!out.terrainPatches.empty() && out.terrainPatches.back().indices.empty())
+				out.terrainPatches.pop_back();	// Nothing of the last one in the area
+			patchPoints.clear();
+			DsfTerrainPatch &patch = out.terrainPatches.emplace_back();
+			patch.definition = currentDefinition;
+			patch.flags = patchFlags;
+			patch.lodStart = patchLodStart;
+			patch.lodEnd = patchLodEnd;
+		};
+
+		/* @brief Adds triangles to the open patch: refs are (pool, index) pairs as a list, a strip (1) or a fan (2). */
+		std::vector<std::pair<uint32_t, uint32_t>> refs;
+		const auto addTriangles = [&](const int mode)
+		{
+			const size_t count = refs.size();
+			const size_t triangles = mode == 0 ? count / 3 : (count >= 3 ? count - 2 : 0);
+			out.terrainTriangleCount += static_cast<uint32_t>(triangles);
+			if (!options.terrain || !patchOpen || out.terrainPatches.empty() || triangles == 0)
+				return;
+			DsfTerrainPatch &patch = out.terrainPatches.back();
+
+			// Points first: a triangle needs all three, and its box must reach into the area
+			for (size_t t = 0; t < triangles; ++t)
+			{
+				size_t corner[3];
+				if (mode == 0)
+					corner[0] = t * 3, corner[1] = t * 3 + 1, corner[2] = t * 3 + 2;
+				else if (mode == 1)
+				{
+					corner[0] = (t & 1) ? t + 1 : t;
+					corner[1] = (t & 1) ? t : t + 1;
+					corner[2] = t + 2;
+				}
+				else
+					corner[0] = 0, corner[1] = t + 1, corner[2] = t + 2;
+
+				const Pool *pools[3] = {};
+				bool usable = true;
+				for (int c = 0; c < 3 && usable; ++c)
+				{
+					const auto [poolIndex, pointIndex] = refs[corner[c]];
+					if (poolOutsideArea(poolIndex))
+					{
+						// A point in a pool outside the area: the triangle can still reach into it only when another of
+						// its points doesn't (cross-pool triangles along pool edges); keep it simple and test its box
+						bool anyInside = false;
+						for (int o = 0; o < 3; ++o)
+							anyInside |= !poolOutsideArea(refs[corner[o]].first);
+						if (!anyInside)
+						{
+							usable = false;
+							break;
+						}
+					}
+					pools[c] = pool(poolIndex);
+					usable = pools[c] && pointIndex < pools[c]->count;
+				}
+				if (!usable)
+					continue;
+
+				if (options.HasArea())
+				{
+					double west = 1e9, east = -1e9, south = 1e9, north = -1e9;
+					for (int c = 0; c < 3; ++c)
+					{
+						const double *point = pools[c]->values.data() + static_cast<size_t>(refs[corner[c]].second) * pools[c]->planes;
+						west = std::min(west, point[0]);
+						east = std::max(east, point[0]);
+						south = std::min(south, point[1]);
+						north = std::max(north, point[1]);
+					}
+					if (east < options.areaWest || west > options.areaEast || north < options.areaSouth || south > options.areaNorth)
+						continue;
+				}
+
+				for (int c = 0; c < 3; ++c)
+				{
+					const auto [poolIndex, pointIndex] = refs[corner[c]];
+					const uint64_t key = (static_cast<uint64_t>(poolIndex) << 32) | pointIndex;
+					auto [it, added] = patchPoints.try_emplace(key, 0u);
+					if (added)
+					{
+						const Pool &source = *pools[c];
+						if (patch.planes == 0)
+							patch.planes = source.planes;
+						it->second = patch.GetPointCount();
+						const double *point = source.values.data() + static_cast<size_t>(pointIndex) * source.planes;
+						for (uint8_t plane = 0; plane < patch.planes; ++plane)
+							patch.points.push_back(plane < source.planes ? point[plane] : 0.0);
+					}
+					patch.indices.push_back(it->second);
+				}
+			}
+		};
 
 		const auto addObject = [&](const Pool &p, const uint32_t index)
 		{
@@ -621,7 +879,7 @@ namespace SceneryEditorX::XPlane
 				case CMD_OBJECT:
 				{
 					const uint32_t index = commands.U16();
-					if (const Pool *p = pool(currentPool))
+					if (const Pool *p = overlayPool(currentPool))
 						addObject(*p, index);
 					break;
 				}
@@ -629,7 +887,7 @@ namespace SceneryEditorX::XPlane
 				{
 					const uint32_t first = commands.U16();
 					const uint32_t last = commands.U16();
-					if (const Pool *p = pool(currentPool))
+					if (const Pool *p = overlayPool(currentPool))
 					{
 						for (uint32_t index = first; index < last; ++index)
 							addObject(*p, index);
@@ -645,7 +903,7 @@ namespace SceneryEditorX::XPlane
 					indices.reserve(count);
 					for (uint32_t i = 0; i < count; ++i)
 						indices.push_back(command == CMD_NETWORK_CHAIN ? junctionOffset + commands.U16() : commands.U32());
-					if (const Pool *p = pool32At(currentPool))
+					if (const Pool *p = options.overlays ? pool32At(currentPool) : nullptr)
 						addChain(*p, indices);
 					break;
 				}
@@ -656,7 +914,7 @@ namespace SceneryEditorX::XPlane
 					std::vector<uint32_t> indices;
 					for (uint32_t index = first; index < last; ++index)
 						indices.push_back(index);
-					if (const Pool *p = pool32At(currentPool))
+					if (const Pool *p = options.overlays ? pool32At(currentPool) : nullptr)
 						addChain(*p, indices);
 					break;
 				}
@@ -665,7 +923,7 @@ namespace SceneryEditorX::XPlane
 				{
 					const uint16_t parameter = commands.U16();
 					const uint32_t count = commands.U8();
-					const Pool *p = pool(currentPool);
+					const Pool *p = overlayPool(currentPool);
 					beginPolygon(parameter, p ? p->planes : 2);
 					std::vector<DsfPoint> winding;
 					for (uint32_t i = 0; i < count; ++i)
@@ -682,7 +940,7 @@ namespace SceneryEditorX::XPlane
 					const uint16_t parameter = commands.U16();
 					const uint32_t first = commands.U16();
 					const uint32_t last = commands.U16();
-					const Pool *p = pool(currentPool);
+					const Pool *p = overlayPool(currentPool);
 					beginPolygon(parameter, p ? p->planes : 2);
 					std::vector<DsfPoint> winding;
 					if (p)
@@ -697,7 +955,7 @@ namespace SceneryEditorX::XPlane
 				{
 					const uint16_t parameter = commands.U16();
 					const uint32_t windings = commands.U8();
-					const Pool *p = pool(currentPool);
+					const Pool *p = overlayPool(currentPool);
 					beginPolygon(parameter, p ? p->planes : 2);
 					for (uint32_t w = 0; w < windings; ++w)
 					{
@@ -718,7 +976,7 @@ namespace SceneryEditorX::XPlane
 					const uint16_t parameter = commands.U16();
 					const uint32_t windings = commands.U8();
 					uint32_t first = commands.U16();
-					const Pool *p = pool(currentPool);
+					const Pool *p = overlayPool(currentPool);
 					beginPolygon(parameter, p ? p->planes : 2);
 					for (uint32_t w = 0; w < windings; ++w)
 					{
@@ -735,30 +993,30 @@ namespace SceneryEditorX::XPlane
 					break;
 				}
 
-				// Terrain: counted, not kept
+				// Terrain: a patch takes the current definition (and flags / LOD, which carry over to the next patch);
+				// its triangles follow
 				case CMD_TERRAIN_PATCH:
-					patchOpen = true;
-					++out.terrainPatchCount;
+					beginPatch();
 					break;
 				case CMD_TERRAIN_PATCH_FLAGS:
-					commands.U8();
-					patchOpen = true;
-					++out.terrainPatchCount;
+					patchFlags = commands.U8();
+					beginPatch();
 					break;
 				case CMD_TERRAIN_PATCH_FLAGS_LOD:
-					commands.U8();
-					commands.F32();
-					commands.F32();
-					patchOpen = true;
-					++out.terrainPatchCount;
+					patchFlags = commands.U8();
+					patchLodStart = commands.F32();
+					patchLodEnd = commands.F32();
+					beginPatch();
 					break;
 				case CMD_TRIANGLE:
 				case CMD_TRIANGLE_STRIP:
 				case CMD_TRIANGLE_FAN:
 				{
 					const uint32_t count = commands.U8();
-					commands.Skip(static_cast<size_t>(count) * 2);
-					out.terrainTriangleCount += command == CMD_TRIANGLE ? count / 3 : (count >= 3 ? count - 2 : 0);
+					refs.clear();
+					for (uint32_t i = 0; i < count; ++i)
+						refs.emplace_back(currentPool, commands.U16());
+					addTriangles(command == CMD_TRIANGLE ? 0 : (command == CMD_TRIANGLE_STRIP ? 1 : 2));
 					break;
 				}
 				case CMD_TRIANGLE_CROSS_POOL:
@@ -766,8 +1024,13 @@ namespace SceneryEditorX::XPlane
 				case CMD_TRIANGLE_FAN_CROSS_POOL:
 				{
 					const uint32_t count = commands.U8();
-					commands.Skip(static_cast<size_t>(count) * 4);
-					out.terrainTriangleCount += command == CMD_TRIANGLE_CROSS_POOL ? count / 3 : (count >= 3 ? count - 2 : 0);
+					refs.clear();
+					for (uint32_t i = 0; i < count; ++i)
+					{
+						const uint32_t poolIndex = commands.U16();
+						refs.emplace_back(poolIndex, commands.U16());
+					}
+					addTriangles(command == CMD_TRIANGLE_CROSS_POOL ? 0 : (command == CMD_TRIANGLE_STRIP_CROSS_POOL ? 1 : 2));
 					break;
 				}
 				case CMD_TRIANGLE_RANGE:
@@ -776,8 +1039,10 @@ namespace SceneryEditorX::XPlane
 				{
 					const uint32_t first = commands.U16();
 					const uint32_t last = commands.U16();
-					const uint32_t count = last > first ? last - first : 0;
-					out.terrainTriangleCount += command == CMD_TRIANGLE_RANGE ? count / 3 : (count >= 3 ? count - 2 : 0);
+					refs.clear();
+					for (uint32_t index = first; index < last; ++index)
+						refs.emplace_back(currentPool, index);
+					addTriangles(command == CMD_TRIANGLE_RANGE ? 0 : (command == CMD_TRIANGLE_STRIP_RANGE ? 1 : 2));
 					break;
 				}
 
@@ -794,21 +1059,31 @@ namespace SceneryEditorX::XPlane
 				default:
 					return Fail(error, "Unknown DSF command " + std::to_string(command) + " at byte " + std::to_string(commands.GetPosition()));
 			}
+			if (!poolError.empty())
+				return Fail(error, poolError);
 		}
-		(void)patchOpen;
 
 		if (commands.Overrun())
 			return Fail(error, "The DSF command stream ends in the middle of a command");
+		if (!out.terrainPatches.empty() && out.terrainPatches.back().indices.empty())
+			out.terrainPatches.pop_back();
+		if (!options.overlays)
+			out.polygons.clear();	// Commands walked for their length only
 		return true;
 	}
 
 	bool LoadDsf(const std::filesystem::path &path, DsfFile &out, std::string *error)
 	{
+		return LoadDsf(path, out, DsfReadOptions{}, error);
+	}
+
+	bool LoadDsf(const std::filesystem::path &path, DsfFile &out, const DsfReadOptions &options, std::string *error)
+	{
 		std::string bytes;
 		std::string readError;
 		if (!VFS::ReadFile(path, bytes, &readError))
 			return Fail(error, readError);
-		if (!ReadDsf(reinterpret_cast<const uint8_t *>(bytes.data()), bytes.size(), out, &readError))
+		if (!ReadDsf(reinterpret_cast<const uint8_t *>(bytes.data()), bytes.size(), out, options, &readError))
 			return Fail(error, VFS::ToUtf8(path.filename()) + ": " + readError);
 		return true;
 	}

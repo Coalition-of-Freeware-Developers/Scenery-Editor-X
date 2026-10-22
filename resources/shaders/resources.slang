@@ -145,6 +145,17 @@ public struct MaterialParameters
     public float4 drape_normal_decal;
     public float4 drape_misc;
 
+    // X-Plane terrain (.ter, xp_terrain.slang): base (projected s / t meters a repeat, normal map repeats per base repeat,
+    // flags), composite (s / t meters, noise mask center / half width), slopes (hill start / end, cliff start / end
+    // degrees), slope textures (hill s / t, cliff s / t meters), lit (s / t meters, distance fade start / end), far
+    // (s / t meters, start / end distance)
+    public float4 terrain_base;
+    public float4 terrain_composite;
+    public float4 terrain_slope;
+    public float4 terrain_slope_scale;
+    public float4 terrain_lit;
+    public float4 terrain_far;
+
     public bool has_texture_albedo() { return (flags & (1 << 2)) != 0; }
     public bool has_texture_normal() { return (flags & (1 << 1)) != 0; }
     public bool has_texture_occlusion() { return (flags & (1 << 7)) != 0; }

@@ -30,6 +30,7 @@
  */
 #include "xp_overlay_scene.h"
 #include "xp_scene.h"
+#include "xp_terrain_scene.h"
 #include "xp_texture_loader.h"
 #include <algorithm>
 #include <chrono>
@@ -181,6 +182,7 @@ namespace SceneryEditorX::XPlane
 
 		uint64_t root = 0;
 		uint32_t drapeSequenceBase = 0;								// SetDrapeSequenceBase()
+		bool onTerrain = false;										// SetOnTerrain()
 		std::map<std::string, Ref<MaterialAsset>> materials;		// By texture + alpha treatment (or color)
 		std::map<std::string, TextureEntry> textures;				// By file
 		std::unordered_map<std::string, GroupState> groups;		// By group key
@@ -284,6 +286,9 @@ namespace SceneryEditorX::XPlane
 
 			std::vector<Part> parts;
 			std::map<std::string, size_t> byMaterial;
+			static const TerrainSurface flat;
+			const TerrainSurface &surface = onTerrain ? SceneTerrain::GetSurface() : flat;
+			OverlayMesh draped;
 			for (const OverlayMesh *mesh : group.meshes)
 			{
 				if (!mesh || mesh->indices.empty())
@@ -302,7 +307,18 @@ namespace SceneryEditorX::XPlane
 					part.height = mesh->vertices.empty() ? 0.0f : mesh->vertices.front().y;
 					part.placement = mesh->placement;
 				}
-				Append(parts[it->second], *mesh);
+				if (surface.IsEmpty())
+				{
+					Append(parts[it->second], *mesh);
+					continue;
+				}
+				// On the terrain: drapes cut along it, facades and forests standing on it
+				draped = *mesh;
+				if (IsDraped(mesh->kind))
+					surface.Drape(draped);
+				else
+					surface.Lift(draped.vertices);
+				Append(parts[it->second], draped);
 			}
 
 			for (Part &part : parts)
@@ -372,7 +388,9 @@ namespace SceneryEditorX::XPlane
 					continue;
 				SceneObjects::PlaceOptions options;
 				options.position[0] = static_cast<float>(object->x);
-				options.position[1] = static_cast<float>(object->y);
+				options.position[1] = !onTerrain ? static_cast<float>(object->msl ? 0.0 : object->y)
+									: object->msl && SceneTerrain::IsLoaded() ? SceneTerrain::ElevationToY(object->y, object->x, object->z)
+										: SceneTerrain::GetHeight(object->x, object->z) + static_cast<float>(object->msl ? 0.0 : object->y);
 				options.position[2] = static_cast<float>(object->z);
 				options.headingDegrees = object->heading;
 				options.virtualPath = object->resource.starts_with("lib/") ? object->resource : std::string();
@@ -543,6 +561,11 @@ namespace SceneryEditorX::XPlane
 	void OverlayScene::SetDrapeSequenceBase(const uint32_t base)
 	{
 		m_Impl->drapeSequenceBase = base;
+	}
+
+	void OverlayScene::SetOnTerrain(const bool onTerrain)
+	{
+		m_Impl->onTerrain = onTerrain;
 	}
 
 	void OverlayScene::Clear()

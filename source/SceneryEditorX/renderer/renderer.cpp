@@ -3589,6 +3589,19 @@ void dynamic_resolution()
 						material->GetProperty(MaterialProperty::XpDrapeMiscB), material->GetProperty(MaterialProperty::XpDrapeMiscA))
 					: xMath::Vec4(material->GetProperty(MaterialProperty::XpDecalAspect), material->GetProperty(MaterialProperty::XpNormalDecalAspect),
 						material->GetProperty(MaterialProperty::XpDrapeMetersU), material->GetProperty(MaterialProperty::XpDrapeMetersV));
+				if (material->GetProperty(MaterialProperty::Terrain) > 0.0f)
+				{
+					const auto vec4 = [material](const MaterialProperty a, const MaterialProperty b, const MaterialProperty c, const MaterialProperty d)
+					{
+						return xMath::Vec4(material->GetProperty(a), material->GetProperty(b), material->GetProperty(c), material->GetProperty(d));
+					};
+					properties[count].terrain_base = vec4(MaterialProperty::XpTerrainProjectedS, MaterialProperty::XpTerrainProjectedT, MaterialProperty::XpTerrainNormalRatio, MaterialProperty::XpTerrainFlags);
+					properties[count].terrain_composite = vec4(MaterialProperty::XpTerrainCompositeS, MaterialProperty::XpTerrainCompositeT, MaterialProperty::XpTerrainCompositeCenter, MaterialProperty::XpTerrainCompositeWidth);
+					properties[count].terrain_slope = vec4(MaterialProperty::XpTerrainHillStart, MaterialProperty::XpTerrainHillEnd, MaterialProperty::XpTerrainCliffStart, MaterialProperty::XpTerrainCliffEnd);
+					properties[count].terrain_slope_scale = vec4(MaterialProperty::XpTerrainHillS, MaterialProperty::XpTerrainHillT, MaterialProperty::XpTerrainCliffS, MaterialProperty::XpTerrainCliffT);
+					properties[count].terrain_lit = vec4(MaterialProperty::XpTerrainLitS, MaterialProperty::XpTerrainLitT, MaterialProperty::XpTerrainLitFadeStart, MaterialProperty::XpTerrainLitFadeEnd);
+					properties[count].terrain_far = vec4(MaterialProperty::XpTerrainFarS, MaterialProperty::XpTerrainFarT, MaterialProperty::XpTerrainFarStart, MaterialProperty::XpTerrainFarEnd);
+				}
 			}
 	
 			// textures, in the order of the material_texture_index_* slots in resources.slang

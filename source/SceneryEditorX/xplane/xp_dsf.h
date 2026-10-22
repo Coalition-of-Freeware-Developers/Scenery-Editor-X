@@ -42,11 +42,31 @@
 namespace SceneryEditorX::XPlane
 {
 	/**
-	 * X-Plane DSF scenery tiles (https://developer.x-plane.com/article/dsf-file-format-specification/), read far
-	 * enough for overlays: the placements of objects, polygons (facades, forests, lines, strings, draped polygons)
-	 * and road chains, with every definition name. Terrain patches are counted and skipped. Standard library only;
-	 * 7-zip compressed tiles are detected and reported, not decoded.
+	 * X-Plane DSF scenery tiles (https://developer.x-plane.com/article/dsf-file-format-specification/): the placements
+	 * of objects, polygons (facades, forests, lines, strings, draped polygons) and road chains, with every definition
+	 * name; on request (DsfReadOptions) the terrain patches of the base mesh and the raster layers (elevation,
+	 * bathymetry, season ranges), limited to an area. 7-zip compressed tiles (the Global Scenery's) are unpacked on the
+	 * way in (xp_7z.h). Standard library only.
 	 */
+
+	/* @brief What ReadDsf decodes besides the definitions and properties. */
+	struct DsfReadOptions
+	{
+		bool overlays = true;				// Objects, polygons and roads
+		bool terrain = false;				// Terrain patches (off keeps overlay reads as fast as before)
+		bool rasters = false;				// Raster layers
+		std::vector<std::string> rasterNames;	// Rasters to keep (empty: all)
+		/**
+		 * Terrain triangles kept: those whose longitude / latitude box overlaps this one (degrees). An empty box
+		 * (west >= east) keeps every triangle. Point pools wholly outside it aren't decoded at all.
+		 */
+		double areaWest = 0.0;
+		double areaSouth = 0.0;
+		double areaEast = 0.0;
+		double areaNorth = 0.0;
+
+		[[nodiscard]] bool HasArea() const { return areaWest < areaEast && areaSouth < areaNorth; }
+	};
 
 	/* @brief A pool point: up to 8 planes (longitude, latitude, then type-specific values). */
 	struct DsfPoint
@@ -112,6 +132,60 @@ namespace SceneryEditorX::XPlane
 		int32_t filter = -1;			// Airport filter: index among the sim/filter/aptid properties, -1 for none
 	};
 
+	/**
+	 * @brief One terrain patch of the base mesh (TERRAIN_PATCH commands and the triangles after them), with the points
+	 * its triangles use. Planes per point (DSF Usage in X-Plane): longitude, latitude, elevation (meters MSL; -32768
+	 * means "sample the elevation raster"), the normal's east and north components (0, 0 when the raster provides
+	 * them), then the .ter's texture coordinates: for an overlay patch the border's s, t; for a water patch (the
+	 * "terrain_Water" definition) the fetch ratio (1 open sea, 0 pond) and the bathymetry ratio.
+	 */
+	struct DsfTerrainPatch
+	{
+		enum Flags : uint8_t
+		{
+			Physical = 1 << 0,		// Hard: part of the collision mesh
+			Overlay = 1 << 1		// Drawn over the patches before it, faded by its .ter's BORDER_TEX
+		};
+
+		uint32_t definition = 0;		// Index into DsfFile::terrainDefinitions
+		uint8_t flags = Physical;
+		float lodStart = 0.0f;			// Meters (TERRAIN_PATCH_FLAGS_LOD)
+		float lodEnd = -1.0f;			// -1: no limit
+		uint8_t planes = 0;				// Values per point
+		std::vector<double> points;		// planes values per point
+		std::vector<uint32_t> indices;	// Triangles (strips and fans expanded), as wound in the file
+
+		[[nodiscard]] uint32_t GetPointCount() const { return planes ? static_cast<uint32_t>(points.size() / planes) : 0u; }
+		[[nodiscard]] const double *GetPoint(const uint32_t index) const { return points.data() + static_cast<size_t>(index) * planes; }
+		[[nodiscard]] bool IsOverlay() const { return (flags & Overlay) != 0; }
+	};
+
+	/**
+	 * @brief A raster layer (DEMS atom): a grid over the tile, row 0 the southern edge. Post-centric rasters sample the
+	 * edges exactly (1201 x 1201 for a 3 arc-second DEM); area-centric ones sample cell centers.
+	 */
+	struct DsfRaster
+	{
+		std::string name;				// "elevation", "sea_level", "spr1" ... "win2", "soundscape"
+		uint8_t version = 0;
+		uint8_t bytesPerPixel = 0;
+		uint16_t flags = 0;				// Bits 0-1: 0 float, 1 signed, 2 unsigned; bit 2: post-centric
+		uint32_t width = 0;
+		uint32_t height = 0;
+		float scale = 1.0f;				// value = stored * scale + offset
+		float offset = 0.0f;
+		std::vector<float> values;		// width x height, row-major from the south-west corner
+
+		[[nodiscard]] bool IsPostCentric() const { return (flags & 4) != 0; }
+		[[nodiscard]] float At(uint32_t x, uint32_t y) const;
+
+		/* @brief Bilinear value at a point of the tile bounds (clamped to the edges). */
+		[[nodiscard]] float Sample(double longitude, double latitude, double west, double south, double east, double north) const;
+	};
+
+	/* @brief Elevation in a vertex that asks for the elevation raster's value instead. */
+	inline constexpr double DSF_ELEVATION_FROM_RASTER = -32768.0;
+
 	struct DsfFile
 	{
 		std::vector<std::pair<std::string, std::string>> properties;	// PROP atom
@@ -124,6 +198,8 @@ namespace SceneryEditorX::XPlane
 		std::vector<DsfObjectPlacement> objects;
 		std::vector<DsfPolygonPlacement> polygons;
 		std::vector<DsfRoadSegment> roads;
+		std::vector<DsfTerrainPatch> terrainPatches;	// DsfReadOptions::terrain only (those with triangles in its area)
+		std::vector<DsfRaster> rasters;					// DsfReadOptions::rasters only
 		uint32_t terrainPatchCount = 0;
 		uint32_t terrainTriangleCount = 0;
 
@@ -140,13 +216,22 @@ namespace SceneryEditorX::XPlane
 
 		/* @brief Exclusion zones (sim/exclude_*), as "west/south/east/north" strings paired with their key. */
 		[[nodiscard]] std::vector<std::pair<std::string, std::string>> GetExclusions() const;
+
+		/* @brief A raster layer by name, or nullptr. */
+		[[nodiscard]] const DsfRaster *FindRaster(std::string_view name) const;
 	};
 
-	/* @brief Parses a DSF held in memory. */
+	/* @brief Parses a DSF held in memory (overlay content only). A 7-zip compressed tile is unpacked first. */
 	bool ReadDsf(const uint8_t *data, size_t size, DsfFile &out, std::string *error = nullptr);
 
-	/* @brief Reads a DSF file. A 7-zip compressed tile fails with an error naming the problem. */
+	/* @brief Parses a DSF held in memory, decoding what the options ask for. */
+	bool ReadDsf(const uint8_t *data, size_t size, DsfFile &out, const DsfReadOptions &options, std::string *error = nullptr);
+
+	/* @brief Reads a DSF file (overlay content only), compressed or not. */
 	bool LoadDsf(const std::filesystem::path &path, DsfFile &out, std::string *error = nullptr);
+
+	/* @brief Reads a DSF file, compressed or not, decoding what the options ask for. */
+	bool LoadDsf(const std::filesystem::path &path, DsfFile &out, const DsfReadOptions &options, std::string *error = nullptr);
 
 	/* @brief True when the file starts with the 7-zip signature X-Plane uses for compressed tiles. */
 	bool IsDsfCompressed(const std::filesystem::path &path);

@@ -214,8 +214,19 @@ namespace SceneryEditorX::XPlane
 
 	bool LibraryRegion::Contains(const double latitude, const double longitude) const
 	{
-		if (all || !bitmap.empty())
+		if (all)
 			return true;
+		if (!bitmap.empty())
+		{
+			if (bitmapMask.empty() || bitmapWidth == 0 || bitmapHeight == 0 || bitmapMask.size() < static_cast<size_t>(bitmapWidth) * bitmapHeight)
+				return true;
+			// The tile's south-west corner, nudged inside it, on a world map whose row 0 is the north pole
+			const double tileLon = std::floor(longitude) + 0.5;
+			const double tileLat = std::floor(latitude) + 0.5;
+			const int x = std::clamp(static_cast<int>(std::floor((tileLon + 180.0) / 360.0 * bitmapWidth)), 0, static_cast<int>(bitmapWidth) - 1);
+			const int y = std::clamp(static_cast<int>(std::floor((90.0 - tileLat) / 180.0 * bitmapHeight)), 0, static_cast<int>(bitmapHeight) - 1);
+			return bitmapMask[static_cast<size_t>(y) * bitmapWidth + x] != 0;
+		}
 
 		const int tileLat = static_cast<int>(std::floor(latitude));
 		const int tileLon = static_cast<int>(std::floor(longitude));
@@ -502,6 +513,8 @@ namespace SceneryEditorX::XPlane
 			package.warnings = std::move(file.warnings);
 			for (LibraryRegion &region : file.regions)
 			{
+				if (!region.bitmap.empty())
+					region.bitmapFile = (package.path / ToNativeRelativePath(region.bitmap)).lexically_normal();
 				if (regionNames.insert(region.name).second)
 					m_Regions.push_back(std::move(region));
 			}
@@ -596,6 +609,112 @@ namespace SceneryEditorX::XPlane
 		const LibraryAsset *asset = Find(virtualPath);
 		const AssetProvider *provider = asset ? asset->GetResolved() : nullptr;
 		return provider ? VFS::ResolveCase(provider->realPath) : std::filesystem::path();
+	}
+
+	const LibraryRegion *LibraryIndex::FindRegion(const std::string_view name) const
+	{
+		for (const LibraryRegion &region : m_Regions)
+		{
+			if (region.name == name)
+				return &region;
+		}
+		return nullptr;
+	}
+
+	const AssetProvider *LibraryIndex::ResolveProvider(const std::string_view virtualPath, const ResolveContext &context) const
+	{
+		const LibraryAsset *asset = Find(virtualPath);
+		if (!asset)
+			return nullptr;
+
+		const auto applies = [&](const AssetProvider &provider)
+		{
+			if (context.season != 0 && provider.seasons != 0 && (provider.seasons & context.season) == 0)
+				return false;
+			if (context.hasLocation && !provider.region.empty())
+			{
+				// An undefined region name counts as everywhere (X-Plane reports it and carries on)
+				const LibraryRegion *region = FindRegion(provider.region);
+				if (region && !region->Contains(context.latitude, context.longitude))
+					return false;
+			}
+			return true;
+		};
+
+		// The first package with an applicable export (not a backup), its alternatives, and the next package's when it
+		// only extends
+		std::vector<const AssetProvider *> choices;
+		uint32_t package = UINT32_MAX;
+		bool onlyExtends = true;
+		for (const AssetProvider &provider : asset->providers)
+		{
+			if (provider.kind == ExportKind::Backup || !applies(provider))
+				continue;
+			if (package != UINT32_MAX && provider.package != package)
+			{
+				if (!onlyExtends)
+					break;
+				onlyExtends = true;
+			}
+			package = provider.package;
+			onlyExtends = onlyExtends && provider.kind == ExportKind::Extend;
+			choices.push_back(&provider);
+		}
+		if (choices.empty())
+		{
+			for (const AssetProvider &provider : asset->providers)
+			{
+				if (provider.kind == ExportKind::Backup && applies(provider))
+					return &provider;
+			}
+			return nullptr;
+		}
+		if (choices.size() == 1 || context.placementHash == 0)
+			return choices.front();
+
+		// EXPORT_RATIO: a deterministic pick weighted by ratio
+		double total = 0.0;
+		for (const AssetProvider *choice : choices)
+			total += std::max(0.0f, choice->ratio);
+		if (total <= 0.0)
+			return choices.front();
+		uint64_t hash = context.placementHash;
+		hash ^= hash >> 33;
+		hash *= 0xff51afd7ed558ccdull;
+		hash ^= hash >> 33;
+		double pick = static_cast<double>(hash >> 11) / 9007199254740992.0 * total;
+		for (const AssetProvider *choice : choices)
+		{
+			pick -= std::max(0.0f, choice->ratio);
+			if (pick < 0.0)
+				return choice;
+		}
+		return choices.back();
+	}
+
+	std::filesystem::path LibraryIndex::Resolve(const std::string_view virtualPath, const ResolveContext &context) const
+	{
+		const AssetProvider *provider = ResolveProvider(virtualPath, context);
+		return provider ? VFS::ResolveCase(provider->realPath) : std::filesystem::path();
+	}
+
+	void LibraryIndex::LoadRegionBitmaps(const RegionBitmapLoader &loader)
+	{
+		if (!loader)
+			return;
+		for (LibraryRegion &region : m_Regions)
+		{
+			if (region.bitmapFile.empty() || !region.bitmapMask.empty())
+				continue;
+			uint32_t width = 0, height = 0;
+			std::vector<uint8_t> mask;
+			if (loader(region.bitmapFile, width, height, mask) && width > 0 && height > 0 && mask.size() >= static_cast<size_t>(width) * height)
+			{
+				region.bitmapWidth = width;
+				region.bitmapHeight = height;
+				region.bitmapMask = std::move(mask);
+			}
+		}
 	}
 
 }

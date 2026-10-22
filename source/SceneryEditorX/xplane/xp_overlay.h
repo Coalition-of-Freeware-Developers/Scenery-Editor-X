@@ -143,9 +143,10 @@ namespace SceneryEditorX::XPlane
 		std::filesystem::path file;
 		std::string resource;					// As named by the DSF / string / autogen
 		std::string name;
-		double x = 0.0, y = 0.0, z = 0.0;		// Local meters
+		double x = 0.0, y = 0.0, z = 0.0;		// Local meters; y above the ground (or, msl, meters above sea level)
 		float heading = 0.0f;					// True degrees
 		uint32_t placement = 0;
+		bool msl = false;						// y is an elevation above sea level (DSF objects placed MSL)
 	};
 
 	struct OverlayBuild

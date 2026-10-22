@@ -83,6 +83,33 @@ namespace SceneryEditorX
 		XpDrapeMiscG				= 34,
 		XpDrapeMiscB				= 35,
 		XpDrapeMiscA				= 36,
+		// X-Plane terrain (.ter, xp_terrain.slang; with Terrain and XpMaterial set). Textures: color 0 base, 1 tile map,
+		// 2-3 detail decals; normal 0 normal map, 1-2 normal decals; roughness 0 composite, 1 hill, 2 cliff, 3 noise;
+		// metalness 0 border, 1 far; emission 0 lit
+		XpTerrainFlags				= 37,	// xp_terrain_* bits (border, composite borders, composite, hill, cliff, lit, far, tiled, noise)
+		XpTerrainProjectedS			= 38,	// Meters a base repeat covers east / north
+		XpTerrainProjectedT			= 39,
+		XpTerrainNormalRatio		= 40,	// Normal map repeats per base repeat
+		XpTerrainCompositeS			= 41,	// Meters a composite repeat covers
+		XpTerrainCompositeT			= 42,
+		XpTerrainCompositeCenter	= 43,	// Noise value where the composite is half in, and the half width of the fade
+		XpTerrainCompositeWidth		= 44,
+		XpTerrainHillStart			= 45,	// Slope degrees where the hill / cliff texture starts and is complete
+		XpTerrainHillEnd			= 46,
+		XpTerrainCliffStart			= 47,
+		XpTerrainCliffEnd			= 48,
+		XpTerrainHillS				= 49,	// Meters a hill / cliff repeat covers
+		XpTerrainHillT				= 50,
+		XpTerrainCliffS				= 51,
+		XpTerrainCliffT				= 52,
+		XpTerrainLitS				= 53,	// Meters a lit repeat covers, distances its fade starts and completes
+		XpTerrainLitT				= 54,
+		XpTerrainLitFadeStart		= 55,
+		XpTerrainLitFadeEnd			= 56,
+		XpTerrainFarS				= 57,	// Meters a far repeat covers, distances the far texture starts and is complete
+		XpTerrainFarT				= 58,
+		XpTerrainFarStart			= 59,
+		XpTerrainFarEnd				= 60,
 		MaxEnum						= 255
 	};
 
@@ -427,7 +454,7 @@ namespace SceneryEditorX
 		// mutable: the scalar setters are const (they forward to the underlying Material), but must keep the table current
 		mutable std::array<float, static_cast<uint32_t>(MaterialClass::MaxEnum)> m_Properties{};
 		// MaterialProperty values (tessellation, cull mode, ...); kept apart because their indices overlap MaterialClass
-		std::array<float, static_cast<uint32_t>(MaterialProperty::XpDrapeMiscA) + 1> m_RenderSettings{};
+		std::array<float, static_cast<uint32_t>(MaterialProperty::XpTerrainFarEnd) + 1> m_RenderSettings{};
 		std::array<ImageResource*, static_cast<uint32_t>(MaterialTextureType::MaxEnum) * SLOTS_PER_TEXTURE> m_Textures{};
 
 		bool m_Transparent = false;

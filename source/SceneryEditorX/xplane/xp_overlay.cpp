@@ -1226,7 +1226,9 @@ namespace SceneryEditorX::XPlane
 			object.name = BaseName(resource);
 			object.x = local.x;
 			object.z = local.z;
-			object.y = placement.mode == DsfObjectPlacement::Mode::Agl ? placement.elevation : 0.0;	// MSL elevations need terrain we don't have: ground them
+			// The scene seats them on the terrain: above the ground (AGL) or at their elevation (MSL)
+			object.y = placement.mode == DsfObjectPlacement::Mode::Draped ? 0.0 : placement.elevation;
+			object.msl = placement.mode == DsfObjectPlacement::Mode::Msl;
 			object.heading = static_cast<float>(placement.heading);
 			object.placement = i;
 			out.objects.push_back(std::move(object));

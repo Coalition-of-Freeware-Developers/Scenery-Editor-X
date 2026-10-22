@@ -109,6 +109,7 @@ namespace SceneryEditorX
 		}
 
 		std::atomic<bool> s_GridVisible{ true };
+		std::atomic<bool> s_GroundShown{ false };	// SetGroundShown(): terrain is drawn, the y = 0 grid would cut through it
 
 		// Viewport reference overlay (Renderer::SetReferenceOverlay), read by the render thread
 		std::mutex s_ReferenceMutex;
@@ -1069,7 +1070,7 @@ namespace SceneryEditorX
 
 	void Renderer::Pass_Grid(CommandList *cmdList, ImageResource *out)
 	{
-		if (!cvar_grid.GetValueAs<bool>() || !s_GridVisible.load(std::memory_order_relaxed))
+		if (!cvar_grid.GetValueAs<bool>() || !s_GridVisible.load(std::memory_order_relaxed) || s_GroundShown.load(std::memory_order_relaxed))
 			return;
 
 		if (!cmdList || cmdList->IsStickyInvalid())
@@ -1395,6 +1396,11 @@ namespace SceneryEditorX
 	bool Renderer::IsGridVisible()
 	{
 		return s_GridVisible.load(std::memory_order_relaxed);
+	}
+
+	void Renderer::SetGroundShown(const bool shown)
+	{
+		s_GroundShown.store(shown, std::memory_order_relaxed);
 	}
 
 	void Renderer::SetReferenceOverlay(const Ref<ImageResource> &image, const ReferenceOverlayMode mode, const float split, const float differenceGain)

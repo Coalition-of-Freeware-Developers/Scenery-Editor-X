@@ -48,9 +48,16 @@ The dependency-light, cross-platform Catch2 unit suites that only need `source/`
   X-Plane 12 install listed it is compared against `Resources/brdf_lookup`, tag `[xplane-install]`, about a second), and
   asset thumbnails (`ThumbnailTests.cpp`: `xp_thumbnail.*` BC1-BC5 DDS decoding and mip choice, the software rasterizer's
   framing / depth / draped painter's order / cutout, WorldEditor-style previews per kind; with an X-Plane 12 install listed it
-  draws default library assets, tag `[xplane-install]`, and `SEDX_THUMBNAIL_DUMP=<folder>` writes them as PNGs)
+  draws default library assets, tag `[xplane-install]`, and `SEDX_THUMBNAIL_DUMP=<folder>` writes them as PNGs), and the
+  base terrain (`TerrainTests.cpp`: `xp_7z.*` LZMA / LZMA2 against liblzma fixtures and one-file 7-zip archives, DSF terrain
+  patches and rasters (`xp_dsf.*` DsfReadOptions, an area keeping only its triangles), `.ter` terrain types (`xp_terrain.*`;
+  every default `.ter` parses with its textures, tag `[library-sweep]`), library resolution by REGION bitmap and season
+  (`xp_library.*` ResolveProvider), the terrain meshes in the local frame and the surface drapes are cut onto
+  (`xp_terrain_mesh.*`: heights, rays, exact draping across a crease); with an X-Plane 12 install listed it reads KSEA's
+  7-zip Global Scenery tile, tag `[xplane-install]`, about a second)
   (`SceneryEditorX/xplane/xp_obj8.*`, `xp_library.*`, `xp_lights.*`, `xp_apt.*`, `xp_apt_geometry.*`,
-  `xp_airport_index.*`, `xp_gateway_types.*`, `xp_dsf.*`, `xp_assets.*`, `xp_overlay.*`, plus `filesystem/vfs.*`,
+  `xp_airport_index.*`, `xp_gateway_types.*`, `xp_dsf.*`, `xp_7z.*`, `xp_assets.*`, `xp_overlay.*`, `xp_terrain.*`,
+  `xp_terrain_mesh.*`, plus `filesystem/vfs.*`,
   which every reader goes through for case-insensitive lookups and atomic writes). Standard library
   plus the header-only `dependency/json` submodule, fully green.
 - **`ProjectFormatTests`** (`source/Tests/project_tests`) — the project file formats: the `.edX` JSON
@@ -160,6 +167,8 @@ g++ -std=c++20 -O2 -pthread $INCS source/Tests/xplane_tests/XPlaneFormatTests.cp
     source/Tests/xplane_tests/FacadeWriterTests.cpp source/Tests/xplane_tests/InstallFinderTests.cpp \
     source/Tests/xplane_tests/BrdfLutTests.cpp source/SceneryEditorX/environment/brdf_lut.cpp \
     source/Tests/xplane_tests/ThumbnailTests.cpp source/SceneryEditorX/xplane/xp_thumbnail.cpp \
+    source/Tests/xplane_tests/TerrainTests.cpp source/SceneryEditorX/xplane/xp_7z.cpp \
+    source/SceneryEditorX/xplane/xp_terrain.cpp source/SceneryEditorX/xplane/xp_terrain_mesh.cpp \
     source/SceneryEditorX/filesystem/vfs.cpp \
     source/SceneryEditorX/xplane/xp_obj8.cpp source/SceneryEditorX/xplane/xp_library.cpp \
     source/SceneryEditorX/xplane/xp_lights.cpp source/SceneryEditorX/xplane/xp_apt.cpp \
@@ -184,7 +193,7 @@ g++ -std=c++20 -O2 -pthread $INCS source/Tests/project_tests/ProjectFormatTests.
     source/SceneryEditorX/project/project_cache.cpp source/SceneryEditorX/project/project_document.cpp \
     source/SceneryEditorX/project/project_dsf.cpp source/SceneryEditorX/xplane/xp_apt.cpp \
     source/SceneryEditorX/xplane/xp_library.cpp source/SceneryEditorX/xplane/xp_apt_geometry.cpp \
-    source/SceneryEditorX/xplane/xp_dsf.cpp source/SceneryEditorX/xplane/xp_assets.cpp \
+    source/SceneryEditorX/xplane/xp_dsf.cpp source/SceneryEditorX/xplane/xp_7z.cpp source/SceneryEditorX/xplane/xp_assets.cpp \
     source/SceneryEditorX/xplane/xp_facade.cpp source/SceneryEditorX/xplane/xp_overlay.cpp $LIBS \
     -o build_linux_tests/ProjectFormatTests
 ./build_linux_tests/ProjectFormatTests "~[performance]"

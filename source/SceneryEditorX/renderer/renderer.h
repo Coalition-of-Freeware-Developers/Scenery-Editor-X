@@ -662,6 +662,9 @@ namespace SceneryEditorX
 		static void SetGridVisible(bool visible);
 		static bool IsGridVisible();
 
+		/* @brief Terrain is drawn (SceneTerrain): the grid, a plane at y = 0, stays hidden as it would cut through the ground. */
+		static void SetGroundShown(bool shown);
+
 		/* @brief What the viewport reference overlay shows over frame_output (reference_overlay.slang). */
 		enum class ReferenceOverlayMode : uint8_t
 		{
