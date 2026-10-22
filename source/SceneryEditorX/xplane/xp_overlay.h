@@ -32,6 +32,7 @@
 #include "xp_apt.h"
 #include "xp_apt_geometry.h"
 #include "xp_assets.h"
+#include "xp_autogen.h"
 #include "xp_dsf.h"
 #include <cstdint>
 #include <filesystem>
@@ -148,6 +149,8 @@ namespace SceneryEditorX::XPlane
 		float heading = 0.0f;					// True degrees
 		uint32_t placement = 0;
 		bool msl = false;						// y is an elevation above sea level (DSF objects placed MSL)
+		bool graded = false;					// Autogen OBJ_GRADED: y above the ground under (groundX, groundZ), not under itself
+		double groundX = 0.0, groundZ = 0.0;
 	};
 
 	struct OverlayBuild
@@ -182,6 +185,8 @@ namespace SceneryEditorX::XPlane
 			bool drawPolygons = true;
 			bool drawRoads = true;
 			bool drawBeaches = true;
+			bool drawAutogen = true;			// .ags / .agb polygons (.agp points follow placeObjects)
+			int autogenObjectLevel = 5;			// AutogenLayoutOptions::objectLevel
 			bool placeObjects = true;
 			bool placeStrings = true;
 			uint32_t forestTreeLimit = 40000;	// Trees per forest polygon
@@ -192,6 +197,12 @@ namespace SceneryEditorX::XPlane
 			 * within it (plus margin).
 			 */
 			std::function<bool(const Point2 &point)> keepTree;
+
+			/**
+			 * Where autogen may put a tile, object or facade (local meters): false leaves it out (the airport's grounds,
+			 * the edge of the terrain). Null: anywhere. Autogen trees go through keepTree.
+			 */
+			std::function<bool(const Point2 &point)> keepAutogen;
 
 			/**
 			 * Height above the ground for a draped LAYER_GROUP (name, offset), so the scene can slot DSF polygons
@@ -228,7 +239,7 @@ namespace SceneryEditorX::XPlane
 		const ObjectStringAsset *GetString(std::string_view path, std::filesystem::path *file, OverlayBuild &out);
 		const ForestAsset *GetForest(std::string_view path, std::filesystem::path *file, OverlayBuild &out);
 		const FacadeAsset *GetFacade(std::string_view path, std::filesystem::path *file, OverlayBuild &out);
-		const AutogenPointAsset *GetAutogen(std::string_view path, std::filesystem::path *file, OverlayBuild &out);
+		const AutogenAsset *GetAutogen(std::string_view path, std::filesystem::path *file, OverlayBuild &out);
 		const RoadNetworkAsset *GetRoadNetwork(std::string_view path, std::filesystem::path *file, OverlayBuild &out);
 		const DecalLibraryAsset *GetDecalLibrary(std::string_view path, std::filesystem::path *file, OverlayBuild &out);
 		const BeachAsset *GetBeach(std::string_view path, std::filesystem::path *file, OverlayBuild &out);
@@ -294,6 +305,14 @@ namespace SceneryEditorX::XPlane
 		void BuildAutogen(const DsfObjectPlacement &placement, uint32_t index, const std::string &resource, const Options &options, OverlayBuild &out);
 		void BuildRoad(const DsfRoadSegment &segment, uint32_t index, const std::string &resource, const Options &options, OverlayBuild &out);
 		void BuildBeach(const DsfPolygonPlacement &placement, uint32_t index, const std::string &resource, const Options &options, OverlayBuild &out);
+		void BuildAutogenPolygon(const DsfPolygonPlacement &placement, uint32_t index, const std::string &resource, const Options &options, OverlayBuild &out);
+
+		/* @brief An autogen layout as meshes (ground tiles, trees), objects and facades. */
+		void EmitAutogen(const AutogenLayout &layout, const AutogenAsset &asset, const std::filesystem::path &assetFile, const std::string &resource, uint32_t index,
+						 const Options &options, OverlayBuild &out);
+
+		/* @brief A tree of a forest's layer (any tree when the layer has none), a width (0: its own height range) and yaw. */
+		void AppendForestTree(OverlayMesh &mesh, const ForestAsset &forest, int layer, const Point2 &at, float width, double yawRadians, uint32_t &seed) const;
 
 		AssetResolver m_Resolver;
 		GeoProjection m_Projection;
@@ -302,7 +321,7 @@ namespace SceneryEditorX::XPlane
 		std::map<std::string, Cached<ObjectStringAsset>> m_Strings;
 		std::map<std::string, Cached<ForestAsset>> m_Forests;
 		std::map<std::string, Cached<FacadeAsset>> m_Facades;
-		std::map<std::string, Cached<AutogenPointAsset>> m_Autogens;
+		std::map<std::string, Cached<AutogenAsset>> m_Autogens;
 		std::map<std::string, Cached<RoadNetworkAsset>> m_Roads;
 		std::map<std::string, Cached<DecalLibraryAsset>> m_DecalLibraries;
 		std::map<std::string, Cached<BeachAsset>> m_Beaches;

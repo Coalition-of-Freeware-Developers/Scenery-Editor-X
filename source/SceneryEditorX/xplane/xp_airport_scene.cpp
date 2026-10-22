@@ -310,13 +310,11 @@ namespace SceneryEditorX::XPlane
 		void EmitTriangles(Part &part, const std::vector<Point2> &points, const std::vector<uint32_t> &indices, const float y)
 		{
 			const uint32_t base = static_cast<uint32_t>(part.vertices.size());
-			part.vertices.reserve(part.vertices.size() + points.size());
 			for (const Point2 &point : points)
 			{
 				part.vertices.push_back(MakeVertex(point, y));
 				part.bounds.Add(point);
 			}
-			part.indices.reserve(part.indices.size() + indices.size());
 			for (const uint32_t index : indices)
 				part.indices.push_back(base + index);
 		}
@@ -415,7 +413,6 @@ namespace SceneryEditorX::XPlane
 		void AppendOverlayMesh(Part &part, const OverlayMesh &mesh)
 		{
 			const uint32_t base = static_cast<uint32_t>(part.vertices.size());
-			part.vertices.reserve(part.vertices.size() + mesh.vertices.size());
 			for (const OverlayVertex &vertex : mesh.vertices)
 			{
 				const Vec3 normal(vertex.nx, vertex.ny, vertex.nz);
@@ -423,7 +420,6 @@ namespace SceneryEditorX::XPlane
 				const Vec3 tangent = std::abs(vertex.ny) > 0.9f ? Vec3(mesh.tangentX, 0.0f, mesh.tangentZ) : xMath::Normalize(xMath::Cross(Vec3(0.0f, 1.0f, 0.0f), normal));
 				part.vertices.push_back(Vertex_PosTexNorTan(Vec3(vertex.x, vertex.y, vertex.z), Vec2(vertex.u, vertex.v), normal, tangent));
 			}
-			part.indices.reserve(part.indices.size() + mesh.indices.size());
 			for (const uint32_t index : mesh.indices)
 				part.indices.push_back(base + index);
 			part.bounds.Add(mesh.bounds);
@@ -1581,6 +1577,8 @@ namespace SceneryEditorX::XPlane
 		{
 			if (object.msl && SceneTerrain::IsLoaded())
 				return SceneTerrain::ElevationToY(object.y, object.x, object.z);
+			if (object.graded)
+				return SceneTerrain::GetHeight(object.groundX, object.groundZ) + static_cast<float>(object.y);	// Autogen OBJ_GRADED
 			return SceneTerrain::GetHeight(object.x, object.z) + static_cast<float>(object.msl ? 0.0 : object.y);
 		}
 

@@ -44,7 +44,7 @@ namespace SceneryEditorX::XPlane
 	 * scenery pack that has one for each tile (a custom mesh before the Global Scenery), cut down to an area (the airport
 	 * property plus a mile), drawn with its .ter land classes (xp_terrain.slang), and the surface the airport, its
 	 * overlays and objects are draped on. y = 0 is the terrain's height at the airport's datum. With it, the same tile's
-	 * own scenery in that area (its forests, roads, beaches and buildings; not its autogen), minus what higher-priority
+	 * own scenery in that area (its forests, roads, beaches, buildings and autogen), minus what higher-priority
 	 * overlays exclude (sim/exclude_*) and the trees and buildings inside the airport's boundary, cut off where the
 	 * terrain ends. Main thread only; one terrain at a time.
 	 */
@@ -65,8 +65,9 @@ namespace SceneryEditorX::XPlane
 			// The tile's scenery
 			uint32_t sceneryPlacements = 0;	// Forests, roads, beaches, buildings ... kept in the area
 			uint32_t sceneryExcluded = 0;	// Left out by exclusion zones or the airport's boundary
-			uint32_t sceneryUnsupported = 0;	// Not drawn (autogen)
+			uint32_t sceneryUnsupported = 0;	// Kinds not drawn
 			uint32_t sceneryTriangles = 0;
+			uint32_t sceneryObjects = 0;		// Autogen buildings and the tile's objects
 			double sceneryMilliseconds = 0.0;
 		};
 
@@ -118,6 +119,9 @@ namespace SceneryEditorX::XPlane
 
 		/* @brief Whether the tile's scenery is drawn with the terrain (--no-terrain-scenery / the RENDERER panel). */
 		[[nodiscard]] static bool IsSceneryEnabled();
+
+		/* @brief Whether that scenery includes the tile's autogen (--no-autogen / the RENDERER panel). */
+		[[nodiscard]] static bool IsAutogenEnabled();
 
 		/* @brief Shows or removes the tile's scenery when its switch changed since the last call (no re-read). Per frame. */
 		static void Update();

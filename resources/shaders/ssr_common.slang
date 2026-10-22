@@ -60,7 +60,7 @@ public [[vk::binding(69)]] Texture2D tex_hiz : register(t69);				// Min / max de
 public [[vk::binding(70)]] Texture2D tex_ssr_history : register(t70);		// The previous frame lit, with mips: rgb pre-exposed, a its pre-exposure
 
 // RendererFeatures bit (renderer_features.cpp table order)
-public static const uint FEATURE_SSR = 10;
+public static const uint FEATURE_SSR = 11;
 
 static const float XP_GLOSS_SCALE = 0.96875f;		// renderer/ssr.h
 static const float SSR_ORIGIN_OFFSET_PIXELS = 1.0f;	// renderer/ssr.h

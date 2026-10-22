@@ -100,6 +100,68 @@ namespace SceneryEditorX::XPlane
 			std::vector<std::pair<PolygonDecal, fs::path>> decals;	// Rows and DECAL_LIB rows, with the file they're relative to
 		};
 
+		/**
+		 * @brief The airport's grounds rasterized once (5 m cells, scanlines even-odd over every ring), so the hundreds of
+		 * thousands of trees and tiles a mile of autogen tests aren't each run against the boundary's rings.
+		 */
+		struct GroundsMask
+		{
+			double minX = 0.0, minZ = 0.0;
+			double cell = 5.0;
+			int width = 0, height = 0;
+			std::vector<uint8_t> cells;
+
+			void Build(const std::vector<std::vector<Point2>> &rings)
+			{
+				*this = GroundsMask();
+				Bounds2 bounds;
+				for (const std::vector<Point2> &ring : rings)
+				{
+					if (ring.size() >= 3)
+						bounds.Add(GetBounds(ring));
+				}
+				if (!bounds.valid)
+					return;
+				minX = bounds.minX;
+				minZ = bounds.minZ;
+				width = static_cast<int>(std::ceil((bounds.maxX - minX) / cell)) + 1;
+				height = static_cast<int>(std::ceil((bounds.maxZ - minZ) / cell)) + 1;
+				cells.assign(static_cast<size_t>(width) * static_cast<size_t>(height), 0);
+				std::vector<double> crossings;
+				for (int row = 0; row < height; ++row)
+				{
+					const double z = minZ + (row + 0.5) * cell;
+					crossings.clear();
+					for (const std::vector<Point2> &ring : rings)
+					{
+						if (ring.size() < 3)
+							continue;
+						for (size_t i = 0, j = ring.size() - 1; i < ring.size(); j = i++)
+						{
+							if ((ring[i].z > z) != (ring[j].z > z))
+								crossings.push_back(ring[i].x + (ring[j].x - ring[i].x) * (z - ring[i].z) / (ring[j].z - ring[i].z));
+						}
+					}
+					std::ranges::sort(crossings);
+					for (size_t k = 0; k + 1 < crossings.size(); k += 2)
+					{
+						const int from = std::max(0, static_cast<int>(std::ceil((crossings[k] - minX) / cell - 0.5)));
+						const int to = std::min(width - 1, static_cast<int>(std::floor((crossings[k + 1] - minX) / cell - 0.5)));
+						for (int column = from; column <= to; ++column)
+							cells[static_cast<size_t>(row) * static_cast<size_t>(width) + static_cast<size_t>(column)] = 1;
+					}
+				}
+			}
+
+			[[nodiscard]] bool Contains(const Point2 &p) const
+			{
+				if (cells.empty())
+					return false;
+				const int column = static_cast<int>(std::floor((p.x - minX) / cell)), row = static_cast<int>(std::floor((p.z - minZ) / cell));
+				return column >= 0 && row >= 0 && column < width && row < height && cells[static_cast<size_t>(row) * static_cast<size_t>(width) + static_cast<size_t>(column)] != 0;
+			}
+		};
+
 		/* @brief A tile's own scenery in the area (its base mesh DSF's overlay placements), filtered once at load. */
 		struct SceneryTile
 		{
@@ -129,9 +191,11 @@ namespace SceneryEditorX::XPlane
 			std::string name;
 			TerrainArea area;
 			std::vector<std::vector<Point2>> grounds;		// The airport's boundary rings
+			GroundsMask groundsMask;
 			std::vector<SceneryTile> sceneryTiles;
 			std::unique_ptr<OverlayScene> scenery;
 			bool sceneryShown = false;
+			bool sceneryAutogen = false;					// What the scenery was built with
 		};
 
 		State &GetState()
@@ -511,25 +575,9 @@ namespace SceneryEditorX::XPlane
 			return 0.001f + 0.0005f * static_cast<float>(GetLayerGroupOrder(group)) + 0.00004f * static_cast<float>(std::clamp(offset, -5, 5));
 		}
 
-		bool InRing(const std::vector<Point2> &ring, const Point2 &p)
-		{
-			bool inside = false;
-			for (size_t i = 0, j = ring.size() - 1; i < ring.size(); j = i++)
-			{
-				if ((ring[i].z > p.z) != (ring[j].z > p.z) && p.x < (ring[j].x - ring[i].x) * (p.z - ring[i].z) / (ring[j].z - ring[i].z) + ring[i].x)
-					inside = !inside;
-			}
-			return inside;
-		}
-
 		bool OnGrounds(const State &state, const Point2 &p)
 		{
-			for (const std::vector<Point2> &ring : state.grounds)
-			{
-				if (ring.size() >= 3 && InRing(ring, p))
-					return true;
-			}
-			return false;
+			return state.groundsMask.Contains(p);
 		}
 
 		std::string ExtensionOf(const std::string &path)
@@ -543,7 +591,7 @@ namespace SceneryEditorX::XPlane
 		/**
 		 * @brief Leaves out of a tile's scenery what X-Plane wouldn't draw: placements with a point in an exclusion zone of
 		 * their kind (forests are thinned tree by tree when built), buildings and objects on the airport's grounds or off the
-		 * terrain, and autogen (.ags / .agb, not drawn here).
+		 * terrain, and what isn't drawn here (anything but forests, facades, beaches, lines, polygons, strings and autogen).
 		 */
 		void FilterScenery(SceneryTile &tile, const State &state)
 		{
@@ -567,7 +615,8 @@ namespace SceneryEditorX::XPlane
 			std::erase_if(dsf.polygons, [&](const DsfPolygonPlacement &polygon)
 			{
 				const std::string extension = polygon.definition < dsf.polygonDefinitions.size() ? ExtensionOf(dsf.polygonDefinitions[polygon.definition]) : std::string();
-				if (extension != "for" && extension != "fac" && extension != "bch" && extension != "lin" && extension != "pol" && extension != "str")
+				const bool autogen = extension == "ags" || extension == "agb";
+				if (extension != "for" && extension != "fac" && extension != "bch" && extension != "lin" && extension != "pol" && extension != "str" && !autogen)
 				{
 					++tile.unsupported;
 					return true;
@@ -581,7 +630,11 @@ namespace SceneryEditorX::XPlane
 				{
 					for (const DsfPoint &point : winding)
 					{
-						if (zoned(extension, point.Longitude(), point.Latitude()) || (building && OnGrounds(state, state.projection.ToLocal(point.Latitude(), point.Longitude()))))
+						// ASSUMPTION: autogen goes with object and facade zones (its buildings are both); its tiles are kept off
+						// the airport's grounds one by one when built
+						const bool excluded = autogen ? zoned("obj", point.Longitude(), point.Latitude()) || zoned("fac", point.Longitude(), point.Latitude())
+													  : zoned(extension, point.Longitude(), point.Latitude());
+						if (excluded || (building && OnGrounds(state, state.projection.ToLocal(point.Latitude(), point.Longitude()))))
 						{
 							++tile.excluded;
 							return true;
@@ -627,6 +680,7 @@ namespace SceneryEditorX::XPlane
 			state.stats.sceneryExcluded = 0;
 			state.stats.sceneryUnsupported = 0;
 			state.stats.sceneryTriangles = 0;
+			state.stats.sceneryObjects = 0;
 			state.stats.sceneryMilliseconds = 0.0;
 		}
 
@@ -649,6 +703,7 @@ namespace SceneryEditorX::XPlane
 		{
 			ClearScenery(state);
 			state.sceneryShown = true;
+			state.sceneryAutogen = SceneTerrain::IsAutogenEnabled();
 			if (state.surface.IsEmpty() || state.sceneryTiles.empty())
 				return;
 			const auto start = std::chrono::steady_clock::now();
@@ -661,9 +716,17 @@ namespace SceneryEditorX::XPlane
 			}
 			options.areaMargin = state.area.margin;
 			options.layerHeight = &SceneryLayerHeight;
+			options.drawAutogen = SceneTerrain::IsAutogenEnabled();
+			// Autogen tiles, buildings and objects only on the terrain and off the airport's grounds
+			options.keepAutogen = [&state](const Point2 &point)
+			{
+				float y = 0.0f;
+				return state.surface.HeightAt(point.x, point.z, y) && !OnGrounds(state, point);
+			};
 
 			std::vector<OverlayBuild> builds;
 			builds.reserve(state.sceneryTiles.size());
+			double buildMilliseconds = 0.0;
 			std::set<std::string> warnings;
 			for (const SceneryTile &tile : state.sceneryTiles)
 			{
@@ -706,7 +769,9 @@ namespace SceneryEditorX::XPlane
 
 				OverlayBuilder builder(resolver, state.projection);
 				OverlayBuild &build = builds.emplace_back();
+				const auto buildStart = std::chrono::steady_clock::now();
 				builder.Build(tile.dsf, options, build);
+				buildMilliseconds += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - buildStart).count();
 				warnings.insert(build.warnings.begin(), build.warnings.end());
 				state.stats.sceneryPlacements += static_cast<uint32_t>(tile.dsf.polygons.size() + tile.dsf.roads.size() + tile.dsf.objects.size());
 				state.stats.sceneryExcluded += tile.excluded;
@@ -747,8 +812,10 @@ namespace SceneryEditorX::XPlane
 				if (shown++ < 10)
 					SEDX_CORE_WARN_TAG(LOG_TAG, "Tile scenery: {}", warning);
 			}
-			SEDX_CORE_INFO_TAG(LOG_TAG, "{}: tile scenery: {} placements ({} excluded, {} autogen not drawn), {} entities, {} triangles in {:.0f} ms", state.name,
-				state.stats.sceneryPlacements, state.stats.sceneryExcluded, state.stats.sceneryUnsupported, groups.size(), state.stats.sceneryTriangles, state.stats.sceneryMilliseconds);
+			state.stats.sceneryObjects = state.scenery->GetStats().objects;
+			SEDX_CORE_INFO_TAG(LOG_TAG, "{}: tile scenery: {} placements ({} excluded, {} not drawn), {} entities, {} triangles, {} objects in {:.0f} ms ({:.0f} ms building)", state.name,
+				state.stats.sceneryPlacements, state.stats.sceneryExcluded, state.stats.sceneryUnsupported, groups.size(), state.stats.sceneryTriangles, state.stats.sceneryObjects,
+				state.stats.sceneryMilliseconds, buildMilliseconds);
 		}
 
 		void DestroyRoot(State &state)
@@ -1054,6 +1121,7 @@ namespace SceneryEditorX::XPlane
 		state.name = name;
 		state.area = area;
 		state.grounds = grounds;
+		state.groundsMask.Build(grounds);
 		for (std::unique_ptr<Tile> &tile : tiles)
 		{
 			SceneryTile &scenery = state.sceneryTiles.emplace_back();
@@ -1081,6 +1149,7 @@ namespace SceneryEditorX::XPlane
 		ClearScenery(state);
 		state.sceneryTiles.clear();
 		state.grounds.clear();
+		state.groundsMask = GroundsMask();
 		DestroyRoot(state);
 		Renderer::SetGroundShown(false);
 		state.surface.Clear();
@@ -1176,11 +1245,16 @@ namespace SceneryEditorX::XPlane
 		return Renderer::GetFeatures().terrainScenery;
 	}
 
+	bool SceneTerrain::IsAutogenEnabled()
+	{
+		return Renderer::GetFeatures().autogen;
+	}
+
 	void SceneTerrain::Update()
 	{
 		State &state = GetState();
 		const bool wanted = IsSceneryEnabled() && state.root != 0;
-		if (wanted == state.sceneryShown)
+		if (wanted == state.sceneryShown && (!wanted || state.sceneryAutogen == IsAutogenEnabled()))
 			return;
 		if (wanted)
 			BuildScenery(state);

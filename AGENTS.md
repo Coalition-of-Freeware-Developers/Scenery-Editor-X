@@ -57,7 +57,11 @@ The dependency-light, cross-platform Catch2 unit suites that only need `source/`
   (`xp_terrain_mesh.*`: heights, rays, exact draping across a crease, clipped at the terrain's edge); with an X-Plane 12
   install listed it reads KSEA's 7-zip Global Scenery tile and its scenery within a mile, tag `[xplane-install]`, about two
   seconds), and the terrain's own scenery in `OverlayTests.cpp` (`.bch` beaches parsed and laid along shores with the
-  water on the left, forests planted only in the area and where the caller allows)
+  water on the left, forests planted only in the area and where the caller allows), and autogen (`AutogenTests.cpp`:
+  `xp_autogen.*` .agp / .ags / .agb parsing, points facing their heading, strings lining their sides with corners,
+  atomic spellings, stop points and holes, blocks fitting their grid with slop and GROUND_PT_FORMULA, object detail levels,
+  the overlay builder's ground tiles / objects / facades / fill trees; every shipped autogen parses and lays out, tag
+  `[library-sweep]`)
   (`SceneryEditorX/xplane/xp_obj8.*`, `xp_library.*`, `xp_lights.*`, `xp_apt.*`, `xp_apt_geometry.*`,
   `xp_airport_index.*`, `xp_gateway_types.*`, `xp_dsf.*`, `xp_7z.*`, `xp_assets.*`, `xp_overlay.*`, `xp_terrain.*`,
   `xp_terrain_mesh.*`, plus `filesystem/vfs.*`,
@@ -170,14 +174,14 @@ g++ -std=c++20 -O2 -pthread $INCS source/Tests/xplane_tests/XPlaneFormatTests.cp
     source/Tests/xplane_tests/FacadeWriterTests.cpp source/Tests/xplane_tests/InstallFinderTests.cpp \
     source/Tests/xplane_tests/BrdfLutTests.cpp source/SceneryEditorX/environment/brdf_lut.cpp \
     source/Tests/xplane_tests/ThumbnailTests.cpp source/SceneryEditorX/xplane/xp_thumbnail.cpp \
-    source/Tests/xplane_tests/TerrainTests.cpp source/SceneryEditorX/xplane/xp_7z.cpp \
+    source/Tests/xplane_tests/TerrainTests.cpp source/Tests/xplane_tests/AutogenTests.cpp source/SceneryEditorX/xplane/xp_7z.cpp \
     source/SceneryEditorX/xplane/xp_terrain.cpp source/SceneryEditorX/xplane/xp_terrain_mesh.cpp \
     source/SceneryEditorX/filesystem/vfs.cpp \
     source/SceneryEditorX/xplane/xp_obj8.cpp source/SceneryEditorX/xplane/xp_library.cpp \
     source/SceneryEditorX/xplane/xp_lights.cpp source/SceneryEditorX/xplane/xp_apt.cpp \
     source/SceneryEditorX/xplane/xp_apt_geometry.cpp source/SceneryEditorX/xplane/xp_airport_index.cpp \
     source/SceneryEditorX/xplane/xp_gateway_types.cpp source/SceneryEditorX/xplane/xp_dsf.cpp \
-    source/SceneryEditorX/xplane/xp_assets.cpp source/SceneryEditorX/xplane/xp_facade.cpp \
+    source/SceneryEditorX/xplane/xp_assets.cpp source/SceneryEditorX/xplane/xp_autogen.cpp source/SceneryEditorX/xplane/xp_facade.cpp \
     source/SceneryEditorX/xplane/xp_facade_writer.cpp source/SceneryEditorX/xplane/xp_facade_authoring.cpp \
     source/SceneryEditorX/xplane/xp_overlay.cpp source/SceneryEditorX/xplane/xp_install_finder.cpp $LIBS \
     -o build_linux_tests/XPlaneFormatTests
@@ -197,7 +201,7 @@ g++ -std=c++20 -O2 -pthread $INCS source/Tests/project_tests/ProjectFormatTests.
     source/SceneryEditorX/project/project_dsf.cpp source/SceneryEditorX/xplane/xp_apt.cpp \
     source/SceneryEditorX/xplane/xp_library.cpp source/SceneryEditorX/xplane/xp_apt_geometry.cpp \
     source/SceneryEditorX/xplane/xp_dsf.cpp source/SceneryEditorX/xplane/xp_7z.cpp source/SceneryEditorX/xplane/xp_assets.cpp \
-    source/SceneryEditorX/xplane/xp_facade.cpp source/SceneryEditorX/xplane/xp_overlay.cpp $LIBS \
+    source/SceneryEditorX/xplane/xp_autogen.cpp source/SceneryEditorX/xplane/xp_facade.cpp source/SceneryEditorX/xplane/xp_overlay.cpp $LIBS \
     -o build_linux_tests/ProjectFormatTests
 ./build_linux_tests/ProjectFormatTests "~[performance]"
 

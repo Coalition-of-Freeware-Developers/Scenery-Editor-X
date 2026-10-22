@@ -33,9 +33,11 @@
 #include "xp_terrain_scene.h"
 #include "xp_texture_loader.h"
 #include <algorithm>
+#include <atomic>
 #include <chrono>
 #include <cstdio>
 #include <map>
+#include <thread>
 #include <unordered_map>
 #include <SceneryEditorX/logging/logging.hpp>
 #include <SceneryEditorX/renderer/vulkan/enums.h>
@@ -45,6 +47,11 @@
 #include <SceneryEditorX/scene/material.h>
 #include <SceneryEditorX/scene/mesh.h>
 #include <SceneryEditorX/scene/scene.h>
+
+// Building a mile of tile scenery copies, lifts and converts a million vertices: keep it optimized in MSVC debug builds
+#if defined(_MSC_VER) && !defined(__clang__) && !defined(NDEBUG)
+#pragma optimize("gt", on)
+#endif
 
 // -------------------------------------------------------
 
@@ -93,14 +100,12 @@ namespace SceneryEditorX::XPlane
 		void Append(Part &part, const OverlayMesh &mesh)
 		{
 			const uint32_t base = static_cast<uint32_t>(part.vertices.size());
-			part.vertices.reserve(part.vertices.size() + mesh.vertices.size());
 			for (const OverlayVertex &vertex : mesh.vertices)
 			{
 				const Vec3 normal(vertex.nx, vertex.ny, vertex.nz);
 				const Vec3 tangent = std::abs(vertex.ny) > 0.9f ? Vec3(1.0f, 0.0f, 0.0f) : xMath::Normalize(xMath::Cross(Vec3(0.0f, 1.0f, 0.0f), normal));
 				part.vertices.push_back(Vertex_PosTexNorTan(Vec3(vertex.x, vertex.y, vertex.z), Vec2(vertex.u, vertex.v), normal, tangent));
 			}
-			part.indices.reserve(part.indices.size() + mesh.indices.size());
 			for (const uint32_t index : mesh.indices)
 				part.indices.push_back(base + index);
 			part.bounds.Add(mesh.bounds);
@@ -402,8 +407,11 @@ namespace SceneryEditorX::XPlane
 					continue;
 				SceneObjects::PlaceOptions options;
 				options.position[0] = static_cast<float>(object->x);
+				// On the terrain: MSL at their elevation, graded autogen on the ground under its tile's ground point, the rest
+				// on the ground under themselves
 				options.position[1] = !onTerrain ? static_cast<float>(object->msl ? 0.0 : object->y)
 									: object->msl && SceneTerrain::IsLoaded() ? SceneTerrain::ElevationToY(object->y, object->x, object->z)
+									: object->graded ? SceneTerrain::GetHeight(object->groundX, object->groundZ) + static_cast<float>(object->y)
 										: SceneTerrain::GetHeight(object->x, object->z) + static_cast<float>(object->msl ? 0.0 : object->y);
 				options.position[2] = static_cast<float>(object->z);
 				options.headingDegrees = object->heading;
@@ -422,6 +430,63 @@ namespace SceneryEditorX::XPlane
 				Attach(registry, objectHandle, handle);
 				keys[objectId] = group.key;
 				state.objects.push_back(objectId);
+			}
+		}
+
+		/**
+		 * @brief Loads the textures the groups' meshes name that aren't loaded yet: decoded on a few workers, uploaded here
+		 * (GetMaterial then finds them). A mile of tile scenery names dozens of 2048 x 2048 textures.
+		 */
+		void Prefetch(const std::vector<Group> &groups)
+		{
+			struct Request
+			{
+				std::string key;
+				fs::path file;
+				DecodedTexture decoded;
+			};
+			std::vector<Request> requests;
+			std::unordered_map<std::string, bool> seen;
+			for (const Group &group : groups)
+			{
+				for (const OverlayMesh *mesh : group.meshes)
+				{
+					if (!mesh || mesh->texture.empty())
+						continue;
+					std::string key = mesh->texture.generic_string();
+					if (textures.contains(key) || !seen.emplace(key, true).second)
+						continue;
+					Request &request = requests.emplace_back();
+					request.file = TextureLoader::ResolveTexturePath(mesh->texture.parent_path(), mesh->texture.filename().string());
+					request.key = std::move(key);
+				}
+			}
+			if (requests.empty())
+				return;
+			std::atomic<size_t> next{ 0 };
+			const size_t workers = std::min(requests.size(), std::clamp<size_t>(std::thread::hardware_concurrency(), 1, 8));
+			std::vector<std::thread> threads;
+			for (size_t w = 0; w < workers; ++w)
+			{
+				threads.emplace_back([&next, &requests]()
+				{
+					for (size_t i = next++; i < requests.size(); i = next++)
+					{
+						if (!requests[i].file.empty())
+							requests[i].decoded = TextureLoader::Decode(requests[i].file, TextureUsage::Albedo);
+					}
+				});
+			}
+			for (std::thread &thread : threads)
+				thread.join();
+			for (Request &request : requests)
+			{
+				TextureEntry entry;
+				if (!request.file.empty())
+					entry.image = TextureLoader::Upload(request.decoded, &entry.info);
+				if (!entry.image)
+					SEDX_CORE_WARN_TAG(LOG_TAG, "Texture not found or unreadable: {}{}", request.key, entry.info.error.empty() ? std::string() : " (" + entry.info.error + ")");
+				textures.emplace(request.key, std::move(entry));
 			}
 		}
 
@@ -526,6 +591,7 @@ namespace SceneryEditorX::XPlane
 			it = impl.groups.erase(it);
 		}
 
+		impl.Prefetch(groups);
 		uint32_t failed = 0, built = 0, kept = 0;
 		std::string firstError;
 		for (const Group &group : groups)
@@ -651,5 +717,9 @@ namespace SceneryEditorX::XPlane
 		return m_Impl->stats;
 	}
 }
+
+#if defined(_MSC_VER) && !defined(__clang__) && !defined(NDEBUG)
+#pragma optimize("", on)
+#endif
 
 // -------------------------------------------------------

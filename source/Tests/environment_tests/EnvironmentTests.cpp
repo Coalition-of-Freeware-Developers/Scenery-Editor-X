@@ -562,9 +562,11 @@ TEST_CASE("Renderer feature switches", "[environment][quality]")
 	CHECK(bit("env-probes") == 2);
 	CHECK(bit("cloud-shadows") == 3);
 	CHECK(bit("csm") == 4);
-	CHECK(bit("ssr") == 10);
+	CHECK(bit("ssr") == 11);
 	REQUIRE(FindRendererFeature("terrain-scenery"));
+	REQUIRE(FindRendererFeature("autogen"));
 	CHECK(defaults.terrainScenery);
+	CHECK(defaults.autogen);
 }
 
 // -------------------------------------------------------
