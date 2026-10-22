@@ -80,6 +80,9 @@ Every target is premultiplied by coverage × LOD fade so decals blend into the g
   (cosine filtered). Refreshed when the sun moves or the camera travels.
 - Screen-space reflections: hierarchical-Z march into the previous frame's lit image, matrix reprojection, pixels below
   a minimum gloss skipped, probes as fallback; water traces too.
+  12.4.4 art-control dump (2026-10-20): `ssr/min_gloss` 0.5 (roughness 0.516), `ssr/sample_count` 1, `ssr/lod_bias` 0,
+  `ssr/use_prefiltered` 1, `ssr/want_cockpit` 0; the Hi-Z (`z_minmax`) is rg32f, min and max depth. One ray per pixel and
+  a prefiltered history mean the glossy lobe comes from blurred mips of the previous frame, not from many rays.
 - Ambient occlusion: AMD FidelityFX CACAO. Presets: off; quality 2 half res; quality 3 half res (default); quality 4
   half res; quality 4 full res.
   12.4.4 behaviour (shader archive and art-control dump, 2026-10-21): the FidelityFX SDK version, whose output is the

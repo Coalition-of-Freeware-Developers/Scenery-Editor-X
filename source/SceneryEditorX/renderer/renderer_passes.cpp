@@ -165,6 +165,7 @@ namespace SceneryEditorX
 		if (mainView)
 			GpuTimer::BeginFrame(cmd);
 		const auto valid = [cmd] { return !cmd->IsStickyInvalid(); };
+		BeginReflectionsFrame();
 
 		// (0) Environment constants are uploaded with the frame constants (UpdateEnvironmentConstantBuffer);
 		//     environment probes: Phase 6
@@ -251,7 +252,15 @@ namespace SceneryEditorX
 			GetRenderTarget(Renderer_RenderTarget::gbuffer_weather)->SetLayout(Layout::ImageLayout::ShaderRead, cmd, 0, 0);
 			GetRenderTarget(Renderer_RenderTarget::gbuffer_depth)->SetLayout(Layout::ImageLayout::ShaderRead, cmd, 0, 0);
 
-			// (5) Min / max depth pyramid (XP12: z_minmax): Phase 9
+			// (5) Min / max depth pyramid (XP12: z_minmax; renderer_ssr.cpp) of the finished depth, for the reflections (light
+			//     tiling and volumetrics later)
+			if (AreReflectionsAvailable())
+			{
+				GpuTimer::Scope scope(cmd, "depth pyramid");
+				Pass_ReflectionDepthPyramid(cmd);
+			}
+			if (!valid())
+				return;
 			// (6) Weather apply (XP12: weather_apply_compute): Phase 12
 			// (7) Ambient occlusion (XP12: cacao; renderer_ao.cpp): AMD FidelityFX CACAO at the QUALITY AO level into ssao
 			{
@@ -261,7 +270,15 @@ namespace SceneryEditorX
 			if (!valid())
 				return;
 			// (8) Light tiling (XP12: light_tile, light_spill_compact): Phase 14
-			// (9) Screen-space reflections (XP12: ssr_deferred): Phase 9
+			// (9) Screen-space reflections (XP12: ssr_deferred; renderer_ssr.cpp): the glossy g-buffer surfaces' mirrors
+			//     into the reflections target, from the previous frame (blended surfaces trace their own in the forward pass)
+			if (AreReflectionsAvailable())
+			{
+				GpuTimer::Scope scope(cmd, "reflections");
+				Pass_ScreenSpaceReflections(cmd);
+			}
+			if (!valid())
+				return;
 			// (10) Clouds and volumetric fog: Phase 15
 
 			// (11) Deferred lighting: sun, shadows, AO, IBL, SSR, tiled lights, emissive, aerial perspective (later
@@ -304,10 +321,17 @@ namespace SceneryEditorX
 				depthTarget->SetLayout(Layout::ImageLayout::ShaderRead, cmd, 0, 0);
 			}
 
-			// (15) HDR clean-up (XP12: fix_hdr)
+			// (15) HDR clean-up (XP12: fix_hdr), then the finished frame kept for the next frame's reflections
 			{
 				GpuTimer::Scope scope(cmd, "fix hdr");
 				Pass_FixHdr(cmd, rt_render);
+			}
+			if (!valid())
+				return;
+			if (AreReflectionsAvailable())
+			{
+				GpuTimer::Scope scope(cmd, "reflection history");
+				Pass_ReflectionHistory(cmd, rt_render);
 			}
 			if (!valid())
 				return;
@@ -418,6 +442,7 @@ namespace SceneryEditorX
 			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_weather, GetRenderTarget(Renderer_RenderTarget::gbuffer_weather));
 			BindShadows(cmdList);	// the cascade and cloud-shadow views
 			BindAmbientOcclusion(cmdList);
+			BindReflections(cmdList);
 			m_Pcb_Pass_Cpu.SetF4Value(static_cast<float>(GetDebugView()), 0.0f, 0.0f, 0.0f);
 			cmdList->PushConstants(m_Pcb_Pass_Cpu);
 		});
@@ -459,7 +484,6 @@ namespace SceneryEditorX
 		// cause non-deterministic culling artifacts depending on gpu memory contents.
 
 		ImageResource *tex_occluders = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_occluders);
-		ImageResource *tex_occluders_hiz = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_occluders_hiz);
 
 		bool render_occluders = cvar_hiz_occlusion.GetValueAs<bool>() && !m_Is_Hiz_Suppressed;
 
@@ -510,28 +534,19 @@ namespace SceneryEditorX
 			}
 		}
 
-		// hi-z mip chain (min depth downsample, reverse z)
-		Pass_Blit(cmdList, tex_occluders, tex_occluders_hiz);
-		Pass_Downscale(cmdList, tex_occluders_hiz, Renderer_DownsampleFilter::Min);
+		// hi-z mip chain (the min / max depth pyramid, reverse z; z_minmax.slang)
+		Pass_DepthPyramid(cmdList, tex_occluders);
 	}
 
 	void Renderer::Pass_GpuScene_Occlusion(CommandList *cmdList)
 	{
-		// Between the GPU scene's two culling phases in the depth prepass: a hi-z pyramid of the depth drawn so far
-		// (the instances visible last frame and the CPU draws), then the late cull against it. The hi-z target is shared
-		// with Pass_HiZ, which rebuilds it from scratch before its own use.
+		// Between the GPU scene's two culling phases in the depth prepass: the min / max depth pyramid of the depth drawn so
+		// far (the instances visible last frame and the CPU draws), then the late cull against its farthest depths. The
+		// pyramid target is shared with the reflections (step 5 of ProduceFrame), which rebuild it from the finished depth.
 		ImageResource *tex_depth = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
 		ImageResource *tex_hiz = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_occluders_hiz);
-
-		Pass_Blit(cmdList, tex_depth, tex_hiz);
-		Pass_Downscale(cmdList, tex_hiz, Renderer_DownsampleFilter::Min);
-
-		// the cull samples every level through one view: all of them shader-readable (per mip, the chain left them
-		// in different layouts and a whole-image transition assumes one)
-		for (uint32_t mip = 0; mip < tex_hiz->GetMipCount(); ++mip)
-			tex_hiz->SetLayout(Layout::ImageLayout::ShaderRead, cmdList, mip, 1);
-
-		GpuScene::CullLate(cmdList, tex_hiz);
+		if (Pass_DepthPyramid(cmdList, tex_depth))
+			GpuScene::CullLate(cmdList, tex_hiz);
 	}
 
 	void Renderer::Pass_IndirectCull(CommandList *cmdList)
@@ -1325,6 +1340,17 @@ namespace SceneryEditorX
 			value("ssao/dynamic_values", dynamicValues);
 			ao.dynamicValues = dynamicValues > 0.5f;
 
+			// Screen-space reflections (plan Phase 9)
+			SsrSettings &ssr = c.ssr;
+			value("ssr/min_gloss", ssr.minGloss);
+			value("ssr/lod_bias", ssr.lodBias);
+			float prefiltered = ssr.usePrefiltered ? 1.0f : 0.0f;
+			value("ssr/use_prefiltered", prefiltered);
+			ssr.usePrefiltered = prefiltered > 0.5f;
+			float samples = static_cast<float>(ssr.sampleCount);
+			value("ssr/sample_count", samples);
+			ssr.sampleCount = static_cast<uint32_t>(std::clamp(std::lround(samples), 1l, 64l));
+
 			// SEDX's own controls (no X-Plane counterpart, or one whose meaning differs)
 			value("sedx/meter_trim_lo", c.exposure.trimLow);
 			value("sedx/meter_trim_hi", c.exposure.trimHigh);
@@ -1342,6 +1368,15 @@ namespace SceneryEditorX
 			value("sedx/csm_receiver_plane", receiverPlane);
 			c.shadowReceiverPlane = receiverPlane > 0.5f;
 			value("sedx/csm_receiver_plane_slope_bias", c.shadowReceiverPlaneSlopeBias);
+			value("sedx/ssr_gloss_fade", ssr.glossFade);
+			float maxSteps = static_cast<float>(ssr.maxSteps);
+			value("sedx/ssr_max_steps", maxSteps);
+			ssr.maxSteps = static_cast<uint32_t>(std::clamp(std::lround(maxSteps), 1l, 1024l));
+			value("sedx/ssr_thickness_m", ssr.thicknessM);
+			value("sedx/ssr_thickness_ratio", ssr.thicknessRatio);
+			value("sedx/ssr_edge_fade", ssr.edgeFade);
+			value("sedx/ssr_history_clamp", ssr.historyClamp);
+			value("sedx/ssr_lobe_scale", ssr.lobeScale);
 			return true;
 		}
 		catch (const std::exception &e)
@@ -1478,6 +1513,7 @@ namespace SceneryEditorX
 		cmdList->SetTexture(Renderer_BindingsSrv::tex3, GetRenderTarget(Renderer_RenderTarget::lut_brdf_specular));
 		BindAtmosphere(cmdList, ATMOSPHERE_LIGHTING);
 		BindShadows(cmdList);
+		BindReflections(cmdList);	// glossy blended surfaces trace their own (ssr_common.slang)
 		for (const ForwardDraw &draw : draws)
 		{
 			const Renderer_DrawCall &drawCall = m_DrawCalls[draw.drawCall];
@@ -1841,31 +1877,8 @@ namespace SceneryEditorX
 		if (!img || img->GetImageSpec().mipCount <= 1)
 			return;
 
-		// The SPD shaders aren't ported yet (scale.slang has no entry point): a min chain (hi-z) is reduced one level
-		// per dispatch instead, each reading the level above through its own view
-		if (filter == Renderer_DownsampleFilter::Min && !ShaderManager::IsShaderAvailable(Renderer_Shader::ffx_spd_min))
-		{
-			PipelineState pso;
-			pso.name = "downsample_min";
-			Shader *shader = GetValidComputeShader(Renderer_Shader::downsample_min, pso.name);
-			if (!shader)
-				return;
-			pso.shaders[static_cast<uint32_t>(StageType::Compute)] = shader;
-			cmdList->SetPipelineState(pso);
-
-			for (uint32_t mip = 1; mip < img->GetImageSpec().mipCount; mip++)
-			{
-				// binding the level above moves it to ShaderRead: the barrier after the previous dispatch's writes
-				cmdList->SetTexture(Renderer_BindingsSrv::tex, img, mip - 1, 1);
-				cmdList->SetTexture(Renderer_BindingsUav::tex, img, mip, 1);
-
-				const uint32_t width = xMath::Max(img->GetWidth() >> mip, 1u);
-				const uint32_t height = xMath::Max(img->GetHeight() >> mip, 1u);
-				cmdList->Dispatch((width + 7) / 8, (height + 7) / 8, 1);
-			}
-			return;
-		}
-
+		// The SPD shaders aren't ported yet (scale.slang has no entry point); depth pyramids are built by
+		// Pass_DepthPyramid (z_minmax.slang) instead
 		Renderer_Shader spdShader;
 		switch (filter)
 		{
@@ -2060,6 +2073,7 @@ namespace SceneryEditorX
 			BindAtmosphere(cmdList, ATMOSPHERE_LIGHTING);
 			BindShadows(cmdList);
 			BindAmbientOcclusion(cmdList);	// the ambient light's and the reflections' occlusion
+			BindReflections(cmdList);		// the screen-space reflections over the probes
 
 			// The environment's sun and moon light the scene unless it has a directional light of its own (Pass_Light
 			// draws that one, in the same units); the sky and the ground always add their ambient light
@@ -2069,51 +2083,6 @@ namespace SceneryEditorX
 
 			cmdList->Dispatch(texFrameRender);
 		}
-	}
-
-	// -------------------------------------------------------
-	// Pass_Light_Reflections
-	// Screen-space reflections (SSR) that complement IBL for rough materials.
-	// Outputs a separate reflections buffer that is blended into frame_render.
-	// -------------------------------------------------------
-
-	void Renderer::Pass_Light_Reflections(CommandList* cmdList)
-	{
-		ImageResource* texReflections  = GetRenderTarget(Renderer_RenderTarget::reflections);
-		ImageResource* texFrameRender = GetRenderTarget(Renderer_RenderTarget::frame_render);
-		if (!texReflections)
-			return;
-
-		// Guard: clear reflections if the feature was just toggled off
-		if (m_PassState.m_ClearedReflections)
-		{
-			cmdList->ClearTexture(texReflections, Color::Black());
-			m_PassState.m_ClearedReflections = false;
-		}
-
-		{
-			PipelineState pso;
-			pso.name = "light_reflections";
-			Shader* shader_reflections = GetValidComputeShader(Renderer_Shader::light_reflections, pso.name);
-			if (!shader_reflections)
-				return;
-			pso.shaders[static_cast<uint32_t>(StageType::Compute)] = shader_reflections;
-			cmdList->SetPipelineState(pso);
-
-			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_normal,   GetRenderTarget(Renderer_RenderTarget::gbuffer_normal));
-			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_material, GetRenderTarget(Renderer_RenderTarget::gbuffer_material));
-			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_depth,    GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
-			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_velocity, GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity));
-			cmdList->SetTexture(Renderer_BindingsSrv::tex,              texFrameRender);
-			cmdList->SetTexture(Renderer_BindingsUav::tex,              texReflections);
-
-			cmdList->Dispatch(texReflections);
-		}
-
-		texReflections->SetLayout(Layout::ImageLayout::ShaderRead, cmdList, 0, 0);
-
-		// Composite reflections into the frame buffer using the blit pass
-		Pass_Compute(cmdList, "reflections_composite", Renderer_Shader::blit, texReflections, texFrameRender, nullptr);
 	}
 
 	// -------------------------------------------------------

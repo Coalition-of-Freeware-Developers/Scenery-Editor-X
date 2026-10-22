@@ -385,6 +385,50 @@
 		"sedx/csm_receiver_plane_slope_bias": {
 			"value": 1.0,
 			"source": "SEDX: the casters' slope-scaled depth bias with the receiver plane on (half a texel each way of the 2 x 2 gathers)"
+		},
+		"ssr/min_gloss": {
+			"value": 0.5,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): surfaces less glossy (gloss = (1 - roughness) / 0.96875) keep the probes' reflections alone"
+		},
+		"ssr/lod_bias": {
+			"value": 0.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): added to the history mip a reflection reads"
+		},
+		"ssr/use_prefiltered": {
+			"value": 1.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): glossy lobes read blurred mips of the previous frame (SEDX: the mip the lobe's footprint covers)"
+		},
+		"ssr/sample_count": {
+			"value": 1.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): rays per pixel (SEDX traces the mirror direction)"
+		},
+		"sedx/ssr_gloss_fade": {
+			"value": 0.1,
+			"source": "SEDX (ASSUMPTION): gloss over which reflections fade in above ssr/min_gloss, so the edge to the probes doesn't show"
+		},
+		"sedx/ssr_max_steps": {
+			"value": 96.0,
+			"source": "SEDX: hierarchical-Z iterations before a ray gives up (FidelityFX SSSR's max_traversal_intersections is 128)"
+		},
+		"sedx/ssr_thickness_m": {
+			"value": 0.25,
+			"source": "SEDX (ASSUMPTION): how far behind the depth buffer's surface a hit still counts"
+		},
+		"sedx/ssr_thickness_ratio": {
+			"value": 0.015,
+			"source": "SEDX (ASSUMPTION): plus this share of the hit's view depth (depth precision falls with distance)"
+		},
+		"sedx/ssr_edge_fade": {
+			"value": 0.05,
+			"source": "SEDX: reflections fade out over this share of the screen height at its edges (FidelityFX SSSR's vignette)"
+		},
+		"sedx/ssr_history_clamp": {
+			"value": 256.0,
+			"source": "SEDX: brightest pre-exposed luminance the reflection history keeps (about 10 EV over middle grey), so the sun disc doesn't glare in blurred mips (X-Plane 12.3.0 fixed 'glaring light blooms from SSR')"
+		},
+		"sedx/ssr_lobe_scale": {
+			"value": 1.3,
+			"source": "SEDX (ASSUMPTION): the GGX lobe's half width as a tangent per unit alpha (half maximum of the reflected lobe: about 1.29 alpha), which sizes the history mip"
 		}
 	}
 }

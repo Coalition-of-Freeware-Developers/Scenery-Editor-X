@@ -347,6 +347,11 @@ namespace SceneryEditorX
 
 		// Restore which panels were open last session.
 		m_PanelManager->Deserialize();
+
+		// Except VIEWPORT 2: the editor starts with one viewport, and the second opens only on request
+		// (Window > New Viewport, its strip button, --viewport2)
+		if (PanelData *panel = FindPanel(PANEL_VIEWPORT2.id))
+			panel->IsOpen = false;
 	}
 
 	void EditorLayer::AttachLogSink()
@@ -935,11 +940,12 @@ namespace SceneryEditorX
 	{
 		m_FocusViewportFrames = 2;
 
-		// Every panel comes back for a reset, including ones the user had closed.
+		// Every panel comes back for a reset, including ones the user had closed. The default layout has one
+		// viewport, so VIEWPORT 2 closes (Window > New Viewport opens it again).
 		for (const PanelInfo &info : s_StripPanels)
 		{
 			if (PanelData *panel = FindPanel(info.id))
-				panel->IsOpen = true;
+				panel->IsOpen = std::string_view(info.id) != PANEL_VIEWPORT2.id;
 		}
 
 		const ImGuiViewport *viewport = ImGui::GetMainViewport();
@@ -1087,6 +1093,8 @@ namespace SceneryEditorX
 				Renderer::SetFeatures(RendererFeatures::AllOff()); // the XP12 frame graph with every switchable pass off (A/B)
 			else if (args[i] == "--ao-gtao")
 				Renderer::SetAoTechnique(Renderer::AoTechnique::Gtao); // SEDX's GTAO pass instead of CACAO (A/B)
+			else if (args[i] == "--ssr-trace-all")
+				Renderer::SetSsrTraceAll(true); // every deferred surface traces its reflection as a mirror (with --debug-view reflections)
 			else if (args[i].starts_with("--no-") || args[i].starts_with("--with-"))
 			{
 				// --no-<feature> / --with-<feature>: one XP12 emulation pass off or on (RENDERER panel names)
@@ -1111,6 +1119,11 @@ namespace SceneryEditorX
 			{
 				ToolsSelfTest::Enable();
 				ToolsSelfTest::EnableFacadeShowcase(); // holds the facade tests' facades with wall labels and the quad menu open (frame captures)
+			}
+			else if (args[i] == "--gizmo-selftest" || args[i] == "--gizmo-showcase")
+			{
+				ToolsSelfTest::Enable();
+				ToolsSelfTest::EnableGizmoTests(args[i] == "--gizmo-showcase"); // only the gizmo checks, dragged with a scripted mouse (then held for screenshots)
 			}
 			else if (i + 1 >= args.size())
 				break;

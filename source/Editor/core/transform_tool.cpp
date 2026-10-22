@@ -36,13 +36,13 @@
 #include "editor_project.h"
 #include "editor_scene.h"
 #include "editor_selection.h"
+#include "viewport_gizmo.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <optional>
 #include <SceneryEditorX/project/spline_edit.h>
 #include <SceneryEditorX/renderer/gpu_scene.h>
-#include <SceneryEditorX/renderer/ui/source/imguizmo/ImGuizmo.h>
 #include <SceneryEditorX/xplane/xp_scene.h>
 
 // -------------------------------------------------------
@@ -57,26 +57,20 @@ namespace SceneryEditorX::TransformTool
 	{
 		constexpr double PI = 3.14159265358979323846;
 		constexpr double DEGREES = 180.0 / PI;
+		constexpr uint32_t GIZMO_OWNER = 1;
 
-		/* @brief A row-vector 4 x 4 matrix (p' = p * M) in double: Entity::GetMatrix's and ImGuizmo's convention. */
+		/* @brief A row-vector 4 x 4 matrix (p' = p * M) in double: Entity::GetMatrix's and the gizmo's convention. */
 		struct Mat4d
 		{
 			double m[4][4] = { { 1.0, 0.0, 0.0, 0.0 }, { 0.0, 1.0, 0.0, 0.0 }, { 0.0, 0.0, 1.0, 0.0 }, { 0.0, 0.0, 0.0, 1.0 } };
 
-			static Mat4d FromFloats(const float *values)
+			static Mat4d FromGizmo(const ViewportGizmo::Matrix &matrix)
 			{
 				Mat4d out;
 				for (int r = 0; r < 4; ++r)
 					for (int c = 0; c < 4; ++c)
-						out.m[r][c] = values[r * 4 + c];
+						out.m[r][c] = matrix.m[r][c];
 				return out;
-			}
-
-			void ToFloats(float *values) const
-			{
-				for (int r = 0; r < 4; ++r)
-					for (int c = 0; c < 4; ++c)
-						values[r * 4 + c] = static_cast<float>(m[r][c]);
 			}
 
 			static Mat4d FromMatrix(const xMath::Matrix &x)
@@ -284,13 +278,12 @@ namespace SceneryEditorX::TransformTool
 			std::string readOnlyNote;
 
 			bool dragging = false;
-			bool cancelled = false;
 			Operation operation = Operation::Translate;
 			std::vector<Item> items;
-			Mat4d start;
-			float gizmo[16] = {};
 			bool translateY = true;
 			std::string status;
+			std::string notice;		// About the last drag ("Cancelled"), shown for a moment
+			double noticeUntil = 0.0;
 		};
 
 		State &S()
@@ -469,8 +462,11 @@ namespace SceneryEditorX::TransformTool
 			return s.descriptors.empty() ? nullptr : &s.descriptors.back();
 		}
 
-		/* @brief The gizmo's matrix while idle: at the pivot, turned to the active object in local space. */
-		Mat4d RestMatrix(const State &s)
+		/**
+		 * @brief Where the gizmo sits while idle: the selection's center (or the active object's pivot), its axes turned
+		 * to the active object's heading when local.
+		 */
+		ViewportGizmo::Frame RestFrame(const State &s, const bool local)
 		{
 			XPlane::Bounds2 bounds;
 			Point3 sum;
@@ -491,26 +487,13 @@ namespace SceneryEditorX::TransformTool
 				if (s.settings.pivotActive)
 					pivot = activeCenter;
 			}
-
-			Mat4d matrix;
-			if (s.settings.localSpace && active)
-			{
-				const double c = std::cos(yaw), sn = std::sin(yaw);
-				matrix.m[0][0] = c;  matrix.m[0][2] = -sn;
-				matrix.m[2][0] = sn; matrix.m[2][2] = c;
-			}
-			matrix.m[3][0] = pivot.x;
-			matrix.m[3][1] = pivot.y;
-			matrix.m[3][2] = pivot.z;
-			return matrix;
+			return ViewportGizmo::Frame::Turned(pivot, local && active ? yaw : 0.0);
 		}
 
-		void Begin(State &s, const Mat4d &start, const Operation operation)
+		void Begin(State &s, const Operation operation)
 		{
 			s.dragging = true;
-			s.cancelled = false;
 			s.operation = operation;
-			s.start = start;
 			s.items.clear();
 			s.translateY = true;
 
@@ -544,12 +527,20 @@ namespace SceneryEditorX::TransformTool
 		}
 
 		/* @brief The drag so far as a world transform about the pivot; ground placements stay on the ground. */
-		Mat4d DragDelta(const State &s, const Mat4d &current)
+		Mat4d DragDelta(const State &s, const ViewportGizmo::Matrix &drag)
 		{
-			Mat4d delta = s.start.InverseAffine() * current;
+			Mat4d delta = Mat4d::FromGizmo(drag);
 			if (!s.translateY)
 				delta.m[3][1] = 0.0;
 			return delta;
+		}
+
+		void EndDrag(State &s)
+		{
+			s.dragging = false;
+			s.items.clear();
+			s.status.clear();
+			s.descriptorKey = ~0ull;	// Rows and items moved: centers again from the data
 		}
 
 		void ApplyPreview(State &s, const Mat4d &delta)
@@ -758,70 +749,60 @@ namespace SceneryEditorX::TransformTool
 		}
 
 		// What the selection allows of the operation
-		ImGuizmo::OPERATION mask = static_cast<ImGuizmo::OPERATION>(0);
+		using ViewportGizmo::Handle;
+		ViewportGizmo::Options options;
 		switch (operation)
 		{
 			case Operation::Translate:
-				mask = capabilities.translateY ? ImGuizmo::TRANSLATE : (ImGuizmo::TRANSLATE_X | ImGuizmo::TRANSLATE_Z);
+				options.mode = ViewportGizmo::Mode::Translate;
+				options.handles = capabilities.translateY ? Handle::Everything : Handle::Ground;
 				break;
 			case Operation::Rotate:
-				mask = capabilities.rotateFree ? ImGuizmo::ROTATE : ImGuizmo::ROTATE_Y;
+				options.mode = ViewportGizmo::Mode::Rotate;
+				options.handles = capabilities.rotateFree ? Handle::Axes | Handle::ViewRing : Handle::AxisY;
 				break;
 			case Operation::Scale:
+				options.mode = ViewportGizmo::Mode::Scale;
 				if (capabilities.scale)
-					mask = capabilities.scaleY ? ImGuizmo::SCALE : (ImGuizmo::SCALE_X | ImGuizmo::SCALE_Z);
+					options.handles = capabilities.scaleY ? Handle::Everything : Handle::Ground;
+				options.uniformGround = !capabilities.scaleY;
 				break;
 		}
-		if (static_cast<int>(mask) == 0 && !s.dragging)
+		if (options.handles == 0 && !s.dragging)
 		{
 			s.status = operation == Operation::Scale ? "X-Plane objects and point features can't be scaled" : std::string();
 			return false;
 		}
+		options.snap = s.settings.snap != ImGui::GetIO().KeyCtrl;
+		options.snapMove = s.settings.snapMove;
+		options.snapAngle = s.settings.snapAngle;
+		options.snapScale = s.settings.snapScale;
 
-		ImGuizmo::SetOrthographic(view.orthographic);
-		ImGuizmo::SetDrawlist(ImGui::GetWindowDrawList());
-		ImGuizmo::SetRect(view.imageMin.x, view.imageMin.y, view.imageSize.x, view.imageSize.y);
-		ImGuizmo::Enable(allowInput || s.dragging);
+		// Scale always works along the active object's axes: world axes would skew a turned object
+		const ViewportGizmo::Frame frame = RestFrame(s, s.settings.localSpace || operation == Operation::Scale);
+		const ViewportGizmo::Result result = ViewportGizmo::Manipulate(GIZMO_OWNER, view, frame, options, allowInput);
+		ViewportGizmo::Draw(view);
 
-		if (!s.dragging)
-			RestMatrix(s).ToFloats(s.gizmo);
-		const Mat4d before = Mat4d::FromFloats(s.gizmo);
-
-		const bool snapping = s.settings.snap != ImGui::GetIO().KeyCtrl;
-		float snapValues[3] = { s.settings.snapMove, s.settings.snapMove, s.settings.snapMove };
-		if (operation == Operation::Rotate)
-			snapValues[0] = snapValues[1] = snapValues[2] = s.settings.snapAngle;
-		else if (operation == Operation::Scale)
-			snapValues[0] = snapValues[1] = snapValues[2] = s.settings.snapScale;
-
-		float scratch[16];
-		std::copy(std::begin(s.gizmo), std::end(s.gizmo), std::begin(scratch));
-		ImGuizmo::Manipulate(view.view, view.projection, mask, s.settings.localSpace ? ImGuizmo::LOCAL : ImGuizmo::WORLD,
-			s.cancelled ? scratch : s.gizmo, nullptr, snapping ? snapValues : nullptr);
-
-		const bool usingNow = ImGuizmo::IsUsing();
-		if (usingNow && !s.dragging)
-			Begin(s, before, operation);
-
-		if (usingNow && s.dragging && !s.cancelled)
+		if (result.started && !s.dragging)
+			Begin(s, operation);
+		if (s.dragging && (result.active || result.finished))
 		{
-			const Mat4d delta = DragDelta(s, Mat4d::FromFloats(s.gizmo));
+			const Mat4d delta = DragDelta(s, result.delta);
 			ApplyPreview(s, delta);
-			s.status = DescribeDrag(s, delta);
+			if (result.finished)
+				Commit(s, delta);
+			else
+				s.status = DescribeDrag(s, delta);
 		}
-
-		if (!usingNow && s.dragging)
+		// Released (written above), cancelled, or dropped by the gizmo (e.g. the frame it wasn't shown in)
+		if (s.dragging && !result.active)
 		{
-			if (!s.cancelled)
-				Commit(s, DragDelta(s, Mat4d::FromFloats(s.gizmo)));
-			s.dragging = false;
-			s.cancelled = false;
-			s.items.clear();
-			s.status.clear();
-			s.descriptorKey = ~0ull;	// Rows and items moved: centers again from the data
+			if (!result.finished)
+				Restore(s);
+			EndDrag(s);
 		}
 
-		return usingNow || ImGuizmo::IsOver();
+		return result.hovered || result.active;
 	}
 
 	bool IsUsing()
@@ -832,16 +813,21 @@ namespace SceneryEditorX::TransformTool
 	void Cancel()
 	{
 		State &s = S();
-		if (!s.dragging || s.cancelled)
+		if (!s.dragging)
 			return;
 		Restore(s);
-		s.cancelled = true;
-		s.status = "Cancelled";
+		ViewportGizmo::Cancel();
+		EndDrag(s);
+		s.notice = "Cancelled";
+		s.noticeUntil = ImGui::GetTime() + 2.0;
 	}
 
 	const std::string &GetStatus()
 	{
-		return S().status;
+		const State &s = S();
+		if (s.status.empty() && !s.notice.empty() && ImGui::GetTime() < s.noticeUntil)
+			return s.notice;
+		return s.status;
 	}
 
 	bool TransformSelection(const double east, const double north, const double turnDegrees, const double scale)
@@ -853,8 +839,7 @@ namespace SceneryEditorX::TransformTool
 		if (s.descriptors.empty())
 			return false;
 
-		const Mat4d start = RestMatrix(s);
-		const Point3 pivot = start.GetTranslation();
+		const Point3 pivot = RestFrame(s, false).pivot;
 		const double angle = turnDegrees / DEGREES;
 		Mat4d turn;
 		turn.m[0][0] = std::cos(angle) * scale;
@@ -864,13 +849,10 @@ namespace SceneryEditorX::TransformTool
 		const Mat4d delta = Translation({ -pivot.x, -pivot.y, -pivot.z }) * turn * Translation({ pivot.x + east, pivot.y, pivot.z - north });
 
 		const Operation operation = std::abs(scale - 1.0) > 1e-12 ? Operation::Scale : std::abs(turnDegrees) > 1e-12 ? Operation::Rotate : Operation::Translate;
-		Begin(s, start, operation);
+		Begin(s, operation);
 		ApplyPreview(s, delta);
 		Commit(s, delta);
-		s.dragging = false;
-		s.items.clear();
-		s.status.clear();
-		s.descriptorKey = ~0ull;
+		EndDrag(s);
 		return true;
 	}
 

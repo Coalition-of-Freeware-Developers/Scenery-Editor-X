@@ -23,6 +23,7 @@ import position;
 import xp_material;
 import environment_lighting;
 import csm_sample;
+import ssr_common;
 
 [shader("compute")]
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
@@ -76,9 +77,16 @@ void main_comp(uint3 thread_id : SV_DispatchThreadID)
 	// The scene's own lights (already pre-exposed)
 	float3 result = surface.albedo * light_diffuse.rgb * (1.0f - surface.v) + light_specular.rgb;
 
-	// The environment
+	// The environment, its reflections from the screen where SSR found them (ssr_trace.slang; pre-exposed, made absolute
+	// here so they blend with the probes' nits)
 	const bool sun_and_moon = pass_get_f4_value().x > 0.5f;
-	result += xp_environment_lighting(surface, f0, sun_and_moon, position) * pre_exposure;
+	float4 ssr = 0.0f;
+	if (xp_ssr_active())
+	{
+		ssr = tex_ssr.SampleLevel(samplers[sampler_point_clamp], uv, 0.0f);	// clamped: a 1 x 1 black stands in when none ran
+		ssr.rgb /= max(pre_exposure, 1e-20f);
+	}
+	result += xp_environment_lighting(surface, f0, sun_and_moon, position, ssr) * pre_exposure;
 
 	// Emissive luminance (X-Plane LIT textures), already pre-exposed: lights are never dimmed by daylight, exposure
 	// alone hides them in the day

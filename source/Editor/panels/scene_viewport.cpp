@@ -171,8 +171,8 @@ namespace SceneryEditorX
 						EditorTheme::ToU32(EditorTheme::Palette::TextDisabled), message);
 				}
 
-				// The editing tools draw over the image. Their handles come before the image's input item: ImGuizmo only
-				// takes a click while no ImGui item is hovered, so the item is left out while a handle has the mouse.
+				// The editing tools draw over the image. Their handles (gizmo, nodes) come before the image's input item,
+				// which is left out while a handle has the mouse so the click goes to the handle.
 				const float renderWidth = m_AppliedWidth > 0 ? static_cast<float>(m_AppliedWidth) : imageSize.x;
 				const float renderHeight = m_AppliedHeight > 0 ? static_cast<float>(m_AppliedHeight) : imageSize.y;
 				const ViewportView view = ViewportView::Build(imageMin, imageSize, renderWidth / renderHeight);

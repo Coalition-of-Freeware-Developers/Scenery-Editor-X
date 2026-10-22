@@ -131,7 +131,7 @@ namespace SceneryEditorX
 			static_cast<float>(-Dot(r, e)), static_cast<float>(-Dot(u, e)), static_cast<float>(Dot(f, e)), 1.0f };
 		std::copy(std::begin(view), std::end(view), std::begin(out.view));
 
-		// OpenGL projection matching the renderer's (ImGuizmo only uses it to project its handles)
+		// OpenGL projection matching the renderer's
 		if (orthographic)
 		{
 			const double n = -ORTHOGRAPHIC_BEHIND_EYE, fa = out.farPlane;

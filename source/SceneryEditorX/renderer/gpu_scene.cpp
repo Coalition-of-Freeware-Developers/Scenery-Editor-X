@@ -772,8 +772,8 @@ namespace SceneryEditorX
 		/* @brief Whether the two-phase cull can run this frame: its shaders and the Hi-Z target exist. */
 		bool CanCullOcclusion()
 		{
-			if (!ShaderManager::IsShaderAvailable(Renderer_Shader::gpu_cull_late) || !ShaderManager::IsShaderAvailable(Renderer_Shader::downsample_min) ||
-				!ShaderManager::IsShaderAvailable(Renderer_Shader::blit))
+			if (!ShaderManager::IsShaderAvailable(Renderer_Shader::gpu_cull_late) || !ShaderManager::IsShaderAvailable(Renderer_Shader::z_minmax_depth) ||
+				!ShaderManager::IsShaderAvailable(Renderer_Shader::z_minmax))
 				return false;
 
 			ImageResource *hiz = Renderer::GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_occluders_hiz);

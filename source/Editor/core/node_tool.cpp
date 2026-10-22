@@ -43,7 +43,6 @@
 #include <functional>
 #include <map>
 #include <set>
-#include <SceneryEditorX/renderer/ui/source/imguizmo/ImGuizmo.h>
 
 // -------------------------------------------------------
 
@@ -67,6 +66,7 @@ namespace SceneryEditorX::NodeTool
 		constexpr float SNAP_PIXELS = 10.0f;		// Dragged nodes snap onto nodes this close to the cursor
 		constexpr float DASH_PIXELS = 5.0f;
 		constexpr size_t MAX_CHAIN_MODES = 256;		// Curve modes remembered per chain
+		constexpr uint32_t GIZMO_OWNER = 2;
 
 		constexpr ImU32 COLOR_OUTLINE = IM_COL32(255, 154, 31, 235);
 		constexpr ImU32 COLOR_OUTLINE_HOVER = IM_COL32(255, 214, 140, 255);
@@ -175,8 +175,6 @@ namespace SceneryEditorX::NodeTool
 			std::string gestureLabel;
 			std::optional<Point2> snapTarget;	// Where a dragged node snapped onto another node (drawn)
 
-			float gizmo[16] = {};
-			double gizmoStart[16] = {};
 			Hit hovered;
 			std::string status;					// About the drag in progress
 			std::string notice;					// About the last action, shown for a few seconds
@@ -1232,84 +1230,112 @@ namespace SceneryEditorX::NodeTool
 			drawList->PopClipRect();
 		}
 
-		/* @brief The node gizmo (two or more selected nodes): move, turn and scale them together on the ground. */
-		bool NodeGizmo(State &s, const ViewportView &view, const bool allowInput)
+		/* @brief Center of the selected nodes on the ground (false when none of them is there any more). */
+		bool SelectedCenter(const State &s, Point2 &center)
 		{
-			if (s.selected.size() < 2 || (s.drag != Drag::None && s.drag != Drag::Gizmo))
+			double sumX = 0.0, sumZ = 0.0;
+			size_t count = 0;
+			for (const NodeKey &key : s.selected)
+			{
+				if (!GetNode(s, key.session, key.ref))
+					continue;
+				const Point2 &point = s.sessions[key.session].shape.chains[key.ref.chain].GetEditPoint(key.ref.node);
+				sumX += point.x;
+				sumZ += point.z;
+				++count;
+			}
+			if (count == 0)
+				return false;
+			center = { sumX / static_cast<double>(count), sumZ / static_cast<double>(count) };
+			return true;
+		}
+
+		/**
+		 * @brief The move / rotate / scale gizmo on the selected nodes (W / E / R with nodes selected): they move, turn
+		 * (a single node turns its handles) and scale together on the ground about their center.
+		 */
+		bool NodeGizmo(State &s, const ViewportView &view, const ViewportGizmo::Mode mode, const bool allowInput)
+		{
+			if (s.selected.empty() || (s.drag != Drag::None && s.drag != Drag::Gizmo))
+				return false;
+			Point2 center;
+			if (s.drag != Drag::Gizmo && !SelectedCenter(s, center))
 				return false;
 
-			const auto toMatrix = [](const double *values, float *out) { for (int i = 0; i < 16; ++i) out[i] = static_cast<float>(values[i]); };
-			if (s.drag != Drag::Gizmo)
-			{
-				double sumX = 0.0, sumZ = 0.0;
-				size_t count = 0;
-				for (const NodeKey &key : s.selected)
-				{
-					if (GetNode(s, key.session, key.ref))
-					{
-						const Point2 &point = s.sessions[key.session].shape.chains[key.ref.chain].GetEditPoint(key.ref.node);
-						sumX += point.x;
-						sumZ += point.z;
-						++count;
-					}
-				}
-				if (count == 0)
-					return false;
-				double identity[16] = { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, sumX / count, 0, sumZ / count, 1 };
-				std::copy(std::begin(identity), std::end(identity), std::begin(s.gizmoStart));
-				toMatrix(s.gizmoStart, s.gizmo);
-			}
-
-			ImGuizmo::SetOrthographic(false);
-			ImGuizmo::SetDrawlist(ImGui::GetWindowDrawList());
-			ImGuizmo::SetRect(view.imageMin.x, view.imageMin.y, view.imageSize.x, view.imageSize.y);
-			ImGuizmo::Enable(allowInput || s.drag == Drag::Gizmo);
-			const ImGuizmo::OPERATION mask = ImGuizmo::TRANSLATE_X | ImGuizmo::TRANSLATE_Z | ImGuizmo::ROTATE_Y | ImGuizmo::SCALE_XU | ImGuizmo::SCALE_ZU;
+			using ViewportGizmo::Handle;
 			const TransformTool::Settings &settings = TransformTool::GetSettings();
-			const float snap[3] = { settings.snapMove, settings.snapMove, settings.snapMove };
-			ImGuizmo::Manipulate(view.view, view.projection, mask, ImGuizmo::WORLD, s.gizmo, nullptr, Snapping() ? snap : nullptr);
+			ViewportGizmo::Options options;
+			options.mode = mode;
+			options.handles = mode == ViewportGizmo::Mode::Rotate ? Handle::AxisY : Handle::Ground;
+			options.uniformGround = true;
+			options.snap = Snapping();
+			options.snapMove = settings.snapMove;
+			options.snapAngle = settings.snapAngle;
+			options.snapScale = settings.snapScale;
+			ViewportGizmo::Frame frame;
+			frame.pivot = { center.x, 0.0, center.z };
+			const ViewportGizmo::Result result = ViewportGizmo::Manipulate(GIZMO_OWNER, view, frame, options, allowInput);
 
-			const bool usingNow = ImGuizmo::IsUsing();
-			if (usingNow && s.drag != Drag::Gizmo)
+			if (result.started && s.drag != Drag::Gizmo)
 			{
 				s.drag = Drag::Gizmo;
 				StartGesture(s);
 			}
-			if (s.drag == Drag::Gizmo)
+			if (s.drag != Drag::Gizmo)
+				return result.hovered;
+
+			if (result.active || result.finished)
 			{
-				// G = start * D: the ground-plane part of D (row-vector) as the node transform
-				const double *a = s.gizmoStart;
-				double g[16];
-				for (int i = 0; i < 16; ++i)
-					g[i] = s.gizmo[i];
-				const double tx0 = a[12], tz0 = a[14];
+				// The ground-plane part of the drag (row vectors: x' = a x + b z + tx, z' = c x + d z + tz)
+				const ViewportGizmo::Matrix &m = result.delta;
 				Affine2 affine;
-				affine.a = g[0];
-				affine.b = g[8];
-				affine.c = g[2];
-				affine.d = g[10];
-				// Rotation / scale about the start pivot, then the gizmo's translation
-				affine.tx = g[12] - (affine.a * tx0 + affine.b * tz0);
-				affine.tz = g[14] - (affine.c * tx0 + affine.d * tz0);
-				for (uint32_t i = 0; i < s.sessions.size(); ++i)
+				affine.a = m.m[0][0];
+				affine.b = m.m[2][0];
+				affine.c = m.m[0][2];
+				affine.d = m.m[2][2];
+				affine.tx = m.m[3][0];
+				affine.tz = m.m[3][2];
+				for (uint32_t i = 0; i < s.sessions.size() && i < s.dragShapes.size(); ++i)
 				{
 					s.sessions[i].shape = s.dragShapes[i];
 					TransformNodes(s.sessions[i].shape, SelectedIn(s, i), affine);
 					s.sessions[i].resample = true;
 				}
-				char text[128];
-				snprintf(text, sizeof(text), "Transform %zu points: %.2f m, %.1f deg", s.selected.size(), std::hypot(g[12] - tx0, g[14] - tz0), std::atan2(g[8], g[0]) * 57.29577951308232);
-				s.status = text;
 
-				if (!usingNow)
+				const size_t count = s.selected.size();
+				const char *noun = count == 1 ? "node" : "nodes";
+				char text[128];
+				switch (mode)
 				{
-					const std::vector<uint32_t> changed = ChangedSessions(s);
-					Commit(s, "Transform " + std::to_string(s.selected.size()) + " nodes", changed);
-					s.drag = Drag::None;
-					s.status.clear();
+					case ViewportGizmo::Mode::Translate:
+						snprintf(text, sizeof(text), "Move %zu %s: %.2f m", count, noun, std::hypot(affine.tx, affine.tz));
+						break;
+					case ViewportGizmo::Mode::Rotate:
+						snprintf(text, sizeof(text), "Rotate %zu %s: %.1f deg", count, noun, std::atan2(affine.b, affine.a) * 57.29577951308232);
+						break;
+					case ViewportGizmo::Mode::Scale:
+						snprintf(text, sizeof(text), "Scale %zu %s: x%.3f / x%.3f", count, noun, std::hypot(affine.a, affine.c), std::hypot(affine.b, affine.d));
+						break;
 				}
+				s.status = text;
 			}
-			return usingNow || ImGuizmo::IsOver();
+
+			if (result.finished)
+			{
+				static constexpr const char *VERBS[] = { "Move", "Rotate", "Scale" };
+				const size_t count = s.selected.size();
+				Commit(s, std::string(VERBS[static_cast<int>(mode)]) + " " + std::to_string(count) + (count == 1 ? " node" : " nodes"), ChangedSessions(s));
+				s.drag = Drag::None;
+				s.status.clear();
+			}
+			else if (!result.active)
+			{
+				// Dropped without a release (cancelled, or the gizmo wasn't shown for a frame)
+				RestoreGesture(s);
+				s.drag = Drag::None;
+				s.status.clear();
+			}
+			return result.hovered || result.active;
 		}
 
 		/* @brief The chains an action on "the selection" means: those holding selected nodes, else every chain of the selected shapes. */
@@ -1439,187 +1465,210 @@ namespace SceneryEditorX::NodeTool
 				s.gestureLabel.clear();
 			}
 		}
+
+		/**
+		 * @brief The node editing overlay and its mouse handling, shared by the node tool (gizmo null) and the move /
+		 * rotate / scale tools working on selected nodes (the operation's gizmo on them, over the overlay).
+		 */
+		bool Gui(State &s, const ViewportView &view, const bool allowInput, const ViewportGizmo::Mode *gizmo)
+		{
+			Reload(s);
+			if (!view.valid || s.sessions.empty())
+			{
+				s.hovered = {};
+				if (s.drag != Drag::None && s.drag != Drag::Property)
+					Cancel();
+				return false;
+			}
+
+			ProjectSessions(s, view);
+			if (s.drag == Drag::Property)
+			{
+				// A value is being dragged in the PROPERTIES panel: show it, take no input
+				s.hovered = {};
+				Draw(s, view);
+				return false;
+			}
+
+			const ImGuiIO &io = ImGui::GetIO();
+			const ImVec2 mouse = io.MousePos;
+			const bool inImage = view.Contains(mouse);
+
+			bool wantsMouse = gizmo && NodeGizmo(s, view, *gizmo, allowInput && s.drag == Drag::None);
+			if (wantsMouse || s.drag == Drag::Gizmo)
+			{
+				s.hovered = {};
+				Draw(s, view);
+				ViewportGizmo::Draw(view);
+				return true;
+			}
+
+			if (s.drag == Drag::None)
+				s.hovered = allowInput && inImage ? HitTest(s, view, mouse) : Hit{};
+
+			s.extendPreview.reset();
+			if (s.drag == Drag::None && allowInput && inImage && io.KeyCtrl && !io.KeyAlt && s.hovered.type == Hit::Type::None)
+			{
+				if (const std::optional<LineEnd> end = SelectedEnd(s))
+				{
+					const std::vector<ScreenPoint> &points = s.sessions[end->session].pointScreens[end->chain];
+					const ScreenPoint from = points[end->atStart ? 0 : points.size() - 1];
+					if (from.visible)
+						s.extendPreview = std::pair{ from.position, mouse };
+				}
+			}
+
+			// Press: Ctrl+click extends a selected line end; otherwise on a handle, grip, node or curve (empty space is left
+			// to object picking and the marquee)
+			if (s.drag == Drag::None && allowInput && inImage && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !io.KeyAlt)
+			{
+				const bool add = io.KeyShift;
+				const bool toggle = io.KeyCtrl;
+				if (toggle && TryExtend(s, view, mouse))
+					wantsMouse = true;
+				else if (s.hovered.type != Hit::Type::None)
+				{
+					s.press = s.hovered;
+					s.pressMouse = mouse;
+					s.pressGroundValid = view.RayToPlane(mouse, 0.0, s.pressGround);
+					s.pressAdd = add;
+					s.pressToggle = toggle;
+
+					if (s.press.type == Hit::Type::Handle || s.press.type == Hit::Type::Grip)
+					{
+						s.drag = Drag::Handle;
+						s.breakSymmetry = io.KeyShift;
+						StartGesture(s);
+					}
+					else if (s.press.type == Hit::Type::Node)
+					{
+						const NodeKey key{ s.press.session, s.press.node };
+						if (toggle && s.selected.contains(key))
+							s.selected.erase(key);
+						else
+						{
+							if (!s.selected.contains(key) && !add && !toggle)
+								s.selected.clear();
+							s.selected.insert(key);
+							s.drag = Drag::PendingNodes;
+							StartGesture(s);
+						}
+					}
+					else if (s.press.type == Hit::Type::Edge)
+					{
+						const Session &session = s.sessions[s.press.session];
+						if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && !session.straight)
+						{
+							// Insert a node (a control point on a B-spline) where the curve was clicked
+							StartGesture(s);
+							NodeRef inserted;
+							if (InsertNode(s.sessions[s.press.session].shape, s.press.node.chain, s.press.segment, std::clamp(s.press.t, 0.02, 0.98), &inserted))
+							{
+								s.sessions[s.press.session].resample = true;
+								s.selected = { NodeKey{ s.press.session, inserted } };
+								Commit(s, session.shape.chains[s.press.node.chain].IsBSpline() ? "Add control point" : "Insert node", { s.press.session });
+							}
+						}
+						else if (session.straight)
+						{
+							// Runway / exclusion edges: grab both ends
+							const uint32_t count = static_cast<uint32_t>(session.shape.chains[s.press.node.chain].nodes.size());
+							if (!add && !toggle)
+								s.selected.clear();
+							s.selected.insert({ s.press.session, { s.press.node.chain, s.press.segment } });
+							s.selected.insert({ s.press.session, { s.press.node.chain, (s.press.segment + 1) % count } });
+							s.drag = Drag::PendingNodes;
+							StartGesture(s);
+						}
+						else
+						{
+							s.drag = Drag::PendingEdge;
+							StartGesture(s);
+						}
+					}
+					wantsMouse = true;
+				}
+			}
+
+			// Past the drag threshold, a pending press becomes its drag
+			const bool moved = ImGui::IsMouseDown(ImGuiMouseButton_Left) && Distance2(mouse, s.pressMouse) > DRAG_THRESHOLD * DRAG_THRESHOLD;
+			if (moved && s.drag == Drag::PendingNodes)
+				s.drag = Drag::Nodes;
+			else if (moved && s.drag == Drag::PendingEdge)
+				s.drag = Drag::Bend;
+			else if (moved && s.drag == Drag::PendingHandle)
+				s.drag = Drag::Handle;
+
+			if (s.drag == Drag::Nodes)
+				DragNodes(s, view, mouse);
+			else if (s.drag == Drag::Handle)
+				DragHandle(s, view, mouse);
+			else if (s.drag == Drag::Bend)
+				DragBend(s, view, mouse);
+
+			// Release: a click on a curve selects its two nodes; anything that changed is written
+			if (s.drag != Drag::None && !ImGui::IsMouseDown(ImGuiMouseButton_Left))
+			{
+				if (s.drag == Drag::PendingEdge && s.press.session < s.sessions.size())
+				{
+					const Chain &chain = s.sessions[s.press.session].shape.chains[s.press.node.chain];
+					const uint32_t count = static_cast<uint32_t>(chain.nodes.size());
+					if (!s.pressAdd && !s.pressToggle)
+						s.selected.clear();
+					for (const uint32_t node : { s.press.segment, (s.press.segment + 1) % count })
+					{
+						const NodeKey key{ s.press.session, { s.press.node.chain, node } };
+						if (s.pressToggle && s.selected.contains(key))
+							s.selected.erase(key);
+						else
+							s.selected.insert(key);
+					}
+				}
+				const std::vector<uint32_t> changed = ChangedSessions(s);
+				if (!changed.empty())
+				{
+					std::string label = s.gestureLabel;
+					if (label.empty())
+					{
+						if (s.drag == Drag::Handle || s.drag == Drag::Bend)
+							label = "Bend curve";
+						else
+							label = "Move " + std::to_string(s.selected.size()) + (s.selected.size() == 1 ? " node" : " nodes");
+					}
+					Commit(s, label, changed);
+				}
+				s.drag = Drag::None;
+				s.gestureLabel.clear();
+				s.snapTarget.reset();
+				s.status.clear();
+			}
+
+			Draw(s, view);
+			if (gizmo)
+				ViewportGizmo::Draw(view);
+			if (s.drag == Drag::None)
+				s.status.clear();
+			return wantsMouse || s.drag != Drag::None || (inImage && s.hovered.type != Hit::Type::None);
+		}
 	}
 
 	// -------------------------------------------------------
 
 	bool OnViewportGui(EditorContext *, const ViewportView &view, const bool allowInput)
 	{
+		return Gui(S(), view, allowInput, nullptr);
+	}
+
+	bool OnTransformGui(EditorContext *, const ViewportView &view, const ViewportGizmo::Mode mode, const bool allowInput)
+	{
+		return Gui(S(), view, allowInput, &mode);
+	}
+
+	bool HasNodeSelection()
+	{
 		State &s = S();
 		Reload(s);
-		if (!view.valid || s.sessions.empty())
-		{
-			s.hovered = {};
-			if (s.drag != Drag::None && s.drag != Drag::Property)
-				Cancel();
-			return false;
-		}
-
-		ProjectSessions(s, view);
-		if (s.drag == Drag::Property)
-		{
-			// A value is being dragged in the PROPERTIES panel: show it, take no input
-			s.hovered = {};
-			Draw(s, view);
-			return false;
-		}
-
-		const ImGuiIO &io = ImGui::GetIO();
-		const ImVec2 mouse = io.MousePos;
-		const bool inImage = view.Contains(mouse);
-
-		bool wantsMouse = NodeGizmo(s, view, allowInput && s.drag == Drag::None);
-		if (wantsMouse || s.drag == Drag::Gizmo)
-		{
-			s.hovered = {};
-			Draw(s, view);
-			return true;
-		}
-
-		if (s.drag == Drag::None)
-			s.hovered = allowInput && inImage ? HitTest(s, view, mouse) : Hit{};
-
-		s.extendPreview.reset();
-		if (s.drag == Drag::None && allowInput && inImage && io.KeyCtrl && !io.KeyAlt && s.hovered.type == Hit::Type::None)
-		{
-			if (const std::optional<LineEnd> end = SelectedEnd(s))
-			{
-				const std::vector<ScreenPoint> &points = s.sessions[end->session].pointScreens[end->chain];
-				const ScreenPoint from = points[end->atStart ? 0 : points.size() - 1];
-				if (from.visible)
-					s.extendPreview = std::pair{ from.position, mouse };
-			}
-		}
-
-		// Press: Ctrl+click extends a selected line end; otherwise on a handle, grip, node or curve (empty space is left
-		// to object picking and the marquee)
-		if (s.drag == Drag::None && allowInput && inImage && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !io.KeyAlt)
-		{
-			const bool add = io.KeyShift;
-			const bool toggle = io.KeyCtrl;
-			if (toggle && TryExtend(s, view, mouse))
-				wantsMouse = true;
-			else if (s.hovered.type != Hit::Type::None)
-			{
-				s.press = s.hovered;
-				s.pressMouse = mouse;
-				s.pressGroundValid = view.RayToPlane(mouse, 0.0, s.pressGround);
-				s.pressAdd = add;
-				s.pressToggle = toggle;
-
-				if (s.press.type == Hit::Type::Handle || s.press.type == Hit::Type::Grip)
-				{
-					s.drag = Drag::Handle;
-					s.breakSymmetry = io.KeyShift;
-					StartGesture(s);
-				}
-				else if (s.press.type == Hit::Type::Node)
-				{
-					const NodeKey key{ s.press.session, s.press.node };
-					if (toggle && s.selected.contains(key))
-						s.selected.erase(key);
-					else
-					{
-						if (!s.selected.contains(key) && !add && !toggle)
-							s.selected.clear();
-						s.selected.insert(key);
-						s.drag = Drag::PendingNodes;
-						StartGesture(s);
-					}
-				}
-				else if (s.press.type == Hit::Type::Edge)
-				{
-					const Session &session = s.sessions[s.press.session];
-					if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && !session.straight)
-					{
-						// Insert a node (a control point on a B-spline) where the curve was clicked
-						StartGesture(s);
-						NodeRef inserted;
-						if (InsertNode(s.sessions[s.press.session].shape, s.press.node.chain, s.press.segment, std::clamp(s.press.t, 0.02, 0.98), &inserted))
-						{
-							s.sessions[s.press.session].resample = true;
-							s.selected = { NodeKey{ s.press.session, inserted } };
-							Commit(s, session.shape.chains[s.press.node.chain].IsBSpline() ? "Add control point" : "Insert node", { s.press.session });
-						}
-					}
-					else if (session.straight)
-					{
-						// Runway / exclusion edges: grab both ends
-						const uint32_t count = static_cast<uint32_t>(session.shape.chains[s.press.node.chain].nodes.size());
-						if (!add && !toggle)
-							s.selected.clear();
-						s.selected.insert({ s.press.session, { s.press.node.chain, s.press.segment } });
-						s.selected.insert({ s.press.session, { s.press.node.chain, (s.press.segment + 1) % count } });
-						s.drag = Drag::PendingNodes;
-						StartGesture(s);
-					}
-					else
-					{
-						s.drag = Drag::PendingEdge;
-						StartGesture(s);
-					}
-				}
-				wantsMouse = true;
-			}
-		}
-
-		// Past the drag threshold, a pending press becomes its drag
-		const bool moved = ImGui::IsMouseDown(ImGuiMouseButton_Left) && Distance2(mouse, s.pressMouse) > DRAG_THRESHOLD * DRAG_THRESHOLD;
-		if (moved && s.drag == Drag::PendingNodes)
-			s.drag = Drag::Nodes;
-		else if (moved && s.drag == Drag::PendingEdge)
-			s.drag = Drag::Bend;
-		else if (moved && s.drag == Drag::PendingHandle)
-			s.drag = Drag::Handle;
-
-		if (s.drag == Drag::Nodes)
-			DragNodes(s, view, mouse);
-		else if (s.drag == Drag::Handle)
-			DragHandle(s, view, mouse);
-		else if (s.drag == Drag::Bend)
-			DragBend(s, view, mouse);
-
-		// Release: a click on a curve selects its two nodes; anything that changed is written
-		if (s.drag != Drag::None && !ImGui::IsMouseDown(ImGuiMouseButton_Left))
-		{
-			if (s.drag == Drag::PendingEdge && s.press.session < s.sessions.size())
-			{
-				const Chain &chain = s.sessions[s.press.session].shape.chains[s.press.node.chain];
-				const uint32_t count = static_cast<uint32_t>(chain.nodes.size());
-				if (!s.pressAdd && !s.pressToggle)
-					s.selected.clear();
-				for (const uint32_t node : { s.press.segment, (s.press.segment + 1) % count })
-				{
-					const NodeKey key{ s.press.session, { s.press.node.chain, node } };
-					if (s.pressToggle && s.selected.contains(key))
-						s.selected.erase(key);
-					else
-						s.selected.insert(key);
-				}
-			}
-			const std::vector<uint32_t> changed = ChangedSessions(s);
-			if (!changed.empty())
-			{
-				std::string label = s.gestureLabel;
-				if (label.empty())
-				{
-					if (s.drag == Drag::Handle || s.drag == Drag::Bend)
-						label = "Bend curve";
-					else
-						label = "Move " + std::to_string(s.selected.size()) + (s.selected.size() == 1 ? " node" : " nodes");
-				}
-				Commit(s, label, changed);
-			}
-			s.drag = Drag::None;
-			s.gestureLabel.clear();
-			s.snapTarget.reset();
-			s.status.clear();
-		}
-
-		Draw(s, view);
-		if (s.drag == Drag::None)
-			s.status.clear();
-		return wantsMouse || s.drag != Drag::None || (inImage && s.hovered.type != Hit::Type::None);
+		return !s.sessions.empty() && !s.selected.empty();
 	}
 
 	void DrawProperties(EditorContext *)
@@ -1861,6 +1910,8 @@ namespace SceneryEditorX::NodeTool
 		State &s = S();
 		if (s.drag == Drag::None)
 			return;
+		if (s.drag == Drag::Gizmo)
+			ViewportGizmo::Cancel();
 		RestoreGesture(s);
 		s.drag = Drag::None;
 		s.gestureLabel.clear();
@@ -2197,7 +2248,7 @@ namespace SceneryEditorX::NodeTool
 				(anySpline ? "  |  B-splines: drag the square control points" : "  |  Shift+B: edit as a B-spline");
 		}
 
-		std::string hint = std::to_string(s.selected.size()) + (s.selected.size() == 1 ? " selected" : " selected");
+		std::string hint = std::to_string(s.selected.size()) + " selected  |  W / E / R: gizmo";
 		if (spline)
 			hint += "  |  drag control points or the curve  |  double-click the curve: add a point  |  Shift+B: bezier";
 		else

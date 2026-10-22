@@ -399,6 +399,7 @@ ADD_EXECUTABLE(EnvironmentTests
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/renderer/env_probes.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/renderer/csm.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/renderer/cacao.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/renderer/ssr.cpp
 )
 
 TARGET_INCLUDE_DIRECTORIES(EnvironmentTests PRIVATE

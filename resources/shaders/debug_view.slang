@@ -30,10 +30,11 @@
  *
  * The RENDERER panel's DEBUG VIEW (plan TASK-026): one g-buffer channel or a measurement of the frame instead of the
  * image. Writes display-referred linear values into frame_output (tex_uav). Views whose data a later phase adds
- * (AO, SSR, tile lights) show black until then.
+ * (tile lights) show black until then.
  *   tex           frame_render (radiance x pre-exposure) for the luminance views
  *   tex_ssao      the ambient occlusion (Renderer::BindAmbientOcclusion; white when none ran)
  *   the shadow maps (csm_sample.slang, Renderer::BindShadows) for the cascade and cloud-shadow views
+ *   tex_ssr       the deferred surfaces' screen-space reflections (Renderer::BindReflections; black when none ran)
  *   pass_get_f4_value(): x view (Renderer_DebugView)
  */
 
@@ -42,6 +43,7 @@ import resources;
 import constants;
 import position;
 import csm_sample;
+import ssr_common;
 
 static const uint VIEW_ALBEDO = 1;
 static const uint VIEW_ROUGHNESS = 2;
@@ -52,6 +54,7 @@ static const uint VIEW_WEATHER = 6;
 static const uint VIEW_AO = 7;
 static const uint VIEW_CASCADES = 8;
 static const uint VIEW_CLOUD_SHADOW = 9;
+static const uint VIEW_REFLECTIONS = 10;
 static const uint VIEW_EV = 12;
 static const uint VIEW_NITS = 13;
 static const uint VIEW_DEPTH = 14;
@@ -108,6 +111,17 @@ void main_comp(uint3 thread_id: SV_DispatchThreadID)
     }
     else if (view == VIEW_DEPTH)
         color = to_linear(pow(tex_depth.Load(pixel).r, 0.25).xxx);	// Reverse-Z: near is white
+    else if (view == VIEW_REFLECTIONS)
+    {
+        // What SSR found, exposed like the frame and compressed (x / (1 + x)), over dark blue by its weight; black where
+        // the sky is or nothing glossy enough traced
+        if (tex_depth.Load(pixel).r > 0.0)
+        {
+            const float4 ssr = tex_ssr.SampleLevel(samplers[sampler_point_clamp], (float2(thread_id.xy) + 0.5) / resolution, 0.0);
+            const float3 exposed = ssr.rgb * get_exposure_scale() / max(get_pre_exposure(), 1e-20);
+            color = lerp(float3(0.0, 0.0, 0.02), exposed / (1.0 + exposed), saturate(ssr.a));
+        }
+    }
     else if (view == VIEW_CASCADES || view == VIEW_CLOUD_SHADOW)
     {
         // the g-buffer's surface (nothing where the sky is): its cascade in red, green, blue, yellow (white past the far

@@ -34,7 +34,8 @@
  * surfaces) so both light alike. Everything here is radiance in nits: callers multiply by get_pre_exposure().
  *
  * With the atmosphere on (plan Phase 6) the sun and moon reach each pixel through the transmittance LUT, ambient light
- * and reflections come from the environment probes (cube_filter.slang), and aerial perspective is applied by the
+ * and reflections come from the environment probes (cube_filter.slang) where the screen-space reflections (plan Phase 9,
+ * ssr_common.slang; callers pass them in) don't replace them, and aerial perspective is applied by the
  * callers (xp_apply_aerial_perspective). With those features off it falls back to the interim CPU sky: the sun and
  * moon at the camera, the sky interpolated from seven directions, two hemispheres of ambient light. The sun (or the
  * moon at night) is shadowed by the cascades and the clouds (plan Phase 7, csm_sample.slang): callers bind them with
@@ -250,9 +251,12 @@ public float3 xp_probe_diffuse(float3 n)
 /**
  * @brief Everything the environment lights a surface at world with (nits), split into diffuse and specular: the sun and
  * moon (unless a scene directional light replaces them) through their shadows, the ambient light and the reflected sky
- * (probes, or the interim two-hemisphere sky), through the BRDF LUT.
+ * (probes, or the interim two-hemisphere sky), through the BRDF LUT. ssr: the screen-space reflection (rgb absolute nits,
+ * a its weight; ssr_common.slang), which replaces that share of the probes' reflection (XP12: ssr_deferred's result in
+ * the deferred lighting): lerp(probe, ssr, a) x (F0 A + B). The ambient occlusion's specular occlusion dims the probes
+ * only: the screen-space reflection already sees what is in the way.
  */
-public void xp_environment_lighting_split(XpLitSurface surface, float3 f0, bool sun_and_moon, float3 world, out float3 diffuse, out float3 specular)
+public void xp_environment_lighting_split(XpLitSurface surface, float3 f0, bool sun_and_moon, float3 world, float4 ssr, out float3 diffuse, out float3 specular)
 {
     diffuse = 0.0f;
     specular = 0.0f;
@@ -267,24 +271,36 @@ public void xp_environment_lighting_split(XpLitSurface surface, float3 f0, bool 
     const float3 specular_brdf = f0 * surface.env_brdf.x + surface.env_brdf.y;
     // Ambient occlusion: the diffuse ambient light takes it as it is, the reflections Lagarde's specular occlusion of it
     const float specular_occlusion = xp_specular_occlusion(saturate(dot(surface.normal, surface.view)), surface.occlusion, surface.roughness);
+    const float ssr_weight = saturate(ssr.a);
     if (is_feature_enabled(FEATURE_ENV_PROBES) && is_feature_enabled(FEATURE_ATMOSPHERE))	// probes are drawn from the atmosphere
     {
         diffuse += surface.albedo * (1.0f - surface.v) * xp_probe_diffuse(surface.normal) * surface.occlusion;
-        specular += specular_brdf * xp_probe_specular(r, surface.roughness) * specular_occlusion;
+        specular += specular_brdf * lerp(xp_probe_specular(r, surface.roughness) * specular_occlusion, ssr.rgb, ssr_weight);
     }
     else
     {
         diffuse += surface.albedo * (1.0f - surface.v) * xp_ambient_irradiance(surface.normal) * INV_PI * surface.occlusion;
-        specular += specular_brdf * xp_ambient_reflection(r, surface.roughness) * specular_occlusion;
+        specular += specular_brdf * lerp(xp_ambient_reflection(r, surface.roughness) * specular_occlusion, ssr.rgb, ssr_weight);
     }
 }
 
+/* @brief xp_environment_lighting_split without a screen-space reflection. */
+public void xp_environment_lighting_split(XpLitSurface surface, float3 f0, bool sun_and_moon, float3 world, out float3 diffuse, out float3 specular)
+{
+    xp_environment_lighting_split(surface, f0, sun_and_moon, world, float4(0.0f, 0.0f, 0.0f, 0.0f), diffuse, specular);
+}
+
 /* @brief xp_environment_lighting_split, summed. */
-public float3 xp_environment_lighting(XpLitSurface surface, float3 f0, bool sun_and_moon, float3 world)
+public float3 xp_environment_lighting(XpLitSurface surface, float3 f0, bool sun_and_moon, float3 world, float4 ssr)
 {
     float3 diffuse, specular;
-    xp_environment_lighting_split(surface, f0, sun_and_moon, world, diffuse, specular);
+    xp_environment_lighting_split(surface, f0, sun_and_moon, world, ssr, diffuse, specular);
     return diffuse + specular;
+}
+
+public float3 xp_environment_lighting(XpLitSurface surface, float3 f0, bool sun_and_moon, float3 world)
+{
+    return xp_environment_lighting(surface, f0, sun_and_moon, world, float4(0.0f, 0.0f, 0.0f, 0.0f));
 }
 
 /**

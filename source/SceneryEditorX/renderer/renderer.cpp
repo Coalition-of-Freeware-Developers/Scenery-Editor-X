@@ -3415,6 +3415,14 @@ void dynamic_resolution()
 		// Sun and cloud shadows (plan Phase 7): the cascades UpdateDrawCalls fitted this frame
 		WriteShadowConstants(env);
 
+		// Screen-space reflections (plan Phase 9, renderer/ssr.h)
+		{
+			const SsrSettings &ssr = constants.ssr;
+			env.ssr = xMath::Vec4(ssr.minGloss, ssr.glossFade, ssr.lodBias, ssr.usePrefiltered ? 1.0f : 0.0f);
+			env.ssr_trace = xMath::Vec4(static_cast<float>(ssr.maxSteps), ssr.thicknessM, ssr.thicknessRatio, ssr.edgeFade);
+			env.ssr_history = xMath::Vec4(ssr.historyClamp, ssr.lobeScale, GetSsrTraceAll() ? 1.0f : 0.0f, AreReflectionsAvailable() ? 1.0f : 0.0f);
+		}
+
 		environmentBuffer->Update(cmdList, &env);
 	}
 

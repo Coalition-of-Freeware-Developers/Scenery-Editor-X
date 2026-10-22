@@ -66,7 +66,7 @@ namespace SceneryEditorX
 		ImVec2 imageMin;				// Screen rectangle the image is drawn in
 		ImVec2 imageSize;
 
-		// For ImGuizmo: row-vector matrices (p' = p * M), OpenGL clip space
+		// The same camera as row-vector matrices (p' = p * M), OpenGL clip space
 		float view[16] = {};
 		float projection[16] = {};
 

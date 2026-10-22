@@ -55,7 +55,7 @@ namespace SceneryEditorX
 		gbuffer_velocity,
 		gbuffer_depth,
 		gbuffer_depth_occluders,
-		gbuffer_depth_occluders_hiz,
+		gbuffer_depth_occluders_hiz,	// RG32F min / max depth pyramid, full mip chain (z_minmax.slang): r farthest, g nearest
 		gbuffer_depth_opaque_output,
 		gbuffer_pick,				// R32_UINT: pick id (entity index + 1) of the surface in each pixel, 0 for none (ScenePicking)
 		gbuffer_emissive,			// RGBA16F: emissive luminance (nits) x pre-exposure (X-Plane LIT textures)
@@ -134,6 +134,9 @@ namespace SceneryEditorX
 		cacao_importance,			// R8: where the adaptive (highest) quality adds samples
 		cacao_importance_pong,
 		cacao_load_counter,		// 1 x 1 R32_UINT: summed importance (highest quality)
+		// screen-space reflections (ssr_trace.slang): the finished frame kept for the next one, its mips blurred
+		// (RGBA16F, alpha the pre-exposure it was lit with); the reflections target holds what the trace found
+		frame_render_previous,
 		MaxEnum
 	};
 
@@ -205,7 +208,6 @@ namespace SceneryEditorX
 		cloud_noise_shape,
 		cloud_noise_detail,
 		cloud_shadow,
-		light_reflections,
 		// gpu-driven indirect rendering
 		indirect_cull,
 		gbuffer_indirect,
@@ -226,7 +228,6 @@ namespace SceneryEditorX
 		gpu_cull_late,			// two-phase occlusion culling: the instances not drawn early, against the Hi-Z
 		depth_prepass_gpu,
 		gbuffer_gpu,
-		downsample_min,			// one level of a min mip chain (Hi-Z), until the FidelityFX SPD shaders are ported
 		selection_outline,		// editor selection / hover outlines from the pick ids (ScenePicking)
 		reference_overlay,		// viewport reference image: split / difference / full over frame_output (parity harness)
 		tonemap,				// output transform: exposure + tone curve to frame_output (XP12: hdr)
@@ -269,6 +270,12 @@ namespace SceneryEditorX
 		cacao_apply,
 		cacao_upscale,
 		cacao_upscale_smart,
+		// plan Phase 9: the min / max depth pyramid (XP12: z_minmax) and screen-space reflections (XP12: ssr_deferred)
+		z_minmax_depth,			// level 0 from the depth buffer
+		z_minmax,				// one level from the level above (occlusion culling's Hi-Z too)
+		ssr_trace,				// the deferred surfaces' reflections into the reflections target
+		ssr_history_copy,		// the finished frame into the reflection history's level 0
+		ssr_history_mip,		// one level of the reflection history
 		MaxEnum
 	};
 
@@ -315,7 +322,6 @@ namespace SceneryEditorX
 		case Renderer_Shader::cloud_noise_shape: return "cloud_noise_shape";
 		case Renderer_Shader::cloud_noise_detail: return "cloud_noise_detail";
 		case Renderer_Shader::cloud_shadow: return "cloud_shadow";
-		case Renderer_Shader::light_reflections: return "light_reflections";
 		case Renderer_Shader::indirect_cull: return "indirect_cull";
 		case Renderer_Shader::gbuffer_indirect: return "gbuffer_indirect";
 		case Renderer_Shader::depth_prepass_indirect: return "depth_prepass_indirect";
@@ -331,7 +337,6 @@ namespace SceneryEditorX
 		case Renderer_Shader::gpu_cull_late: return "gpu_cull_late";
 		case Renderer_Shader::depth_prepass_gpu: return "depth_prepass_gpu";
 		case Renderer_Shader::gbuffer_gpu: return "gbuffer_gpu";
-		case Renderer_Shader::downsample_min: return "downsample_min";
 		case Renderer_Shader::selection_outline: return "selection_outline";
 		case Renderer_Shader::reference_overlay: return "reference_overlay";
 		case Renderer_Shader::tonemap: return "tonemap";
@@ -370,6 +375,11 @@ namespace SceneryEditorX
 		case Renderer_Shader::cacao_apply: return "cacao_apply";
 		case Renderer_Shader::cacao_upscale: return "cacao_upscale";
 		case Renderer_Shader::cacao_upscale_smart: return "cacao_upscale_smart";
+		case Renderer_Shader::z_minmax_depth: return "z_minmax_depth";
+		case Renderer_Shader::z_minmax: return "z_minmax";
+		case Renderer_Shader::ssr_trace: return "ssr_trace";
+		case Renderer_Shader::ssr_history_copy: return "ssr_history_copy";
+		case Renderer_Shader::ssr_history_mip: return "ssr_history_mip";
 		case Renderer_Shader::MaxEnum: return "MaxEnum";
 		default: return "unknown";
 		}
@@ -542,6 +552,11 @@ namespace SceneryEditorX
 		cacao_normals    = 65,
 		cacao_ssao       = 66,
 		cacao_importance = 67,
+
+		// screen-space reflections (ssr_common.slang)
+		ssr         = 68,	// the deferred surfaces' reflections (reflections target)
+		hiz         = 69,	// the min / max depth pyramid (gbuffer_depth_occluders_hiz), every level
+		ssr_history = 70,	// the previous frame lit, with mips (frame_render_previous)
 
 		// restir reservoir srv bindings (for temporal/spatial read)
 		reservoir_prev0    = 21,

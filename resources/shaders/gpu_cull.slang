@@ -183,9 +183,9 @@ void append(uint command, uint index)
 }
 
 #if defined(GPU_CULL_LATE)
-// tex: reverse-Z min-depth pyramid of what the early pass (and the CPU draws) put in the depth buffer. Mip 0 is that
-// depth, each texel of a smaller mip the farthest depth of the texels it covers (Renderer::Pass_Downscale, Min
-// filter), so pixel p falls in texel min(p >> mip, mip size - 1).
+// tex: reverse-Z min / max depth pyramid of what the early pass (and the CPU draws) put in the depth buffer
+// (z_minmax.slang). Mip 0 is that depth, each texel's .r of a smaller mip the farthest depth of the texels it covers,
+// so pixel p falls in texel min(p >> mip, mip size - 1).
 bool is_occluded(float3 bounds_min, float3 bounds_max)
 {
     // the box's screen rectangle and its nearest depth (reverse-Z: the largest)

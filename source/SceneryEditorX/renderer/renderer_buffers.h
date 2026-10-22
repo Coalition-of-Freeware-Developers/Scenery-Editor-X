@@ -357,7 +357,12 @@ namespace SceneryEditorX
 		xMath::Vec4 csm_filter;				// normal offset (texels), slope-scaled normal offset (texels), soft (3x3 PCF), map size
 		xMath::Vec4 cloud_shadow;			// cascade count (0: none), strength (0 none .. 1 full), extinction (1/m of cloud cover), march steps per layer
 		xMath::Vec4 cloud_shadow_cascades[2];	// per cascade: center x, center z (world, m), half extent (m), texel size (m)
-		xMath::Vec4 padding[18];			// to 1536 bytes
+
+		// Screen-space reflections (plan Phase 9, renderer/ssr.h, ssr_common.slang)
+		xMath::Vec4 ssr;					// ssr/min_gloss, sedx/ssr_gloss_fade, ssr/lod_bias, ssr/use_prefiltered (0 / 1)
+		xMath::Vec4 ssr_trace;				// max Hi-Z steps, thickness (m), thickness per meter of view depth, edge fade (share of the screen)
+		xMath::Vec4 ssr_history;			// history clamp (pre-exposed), lobe half width per GGX alpha, trace every pixel (debug), SSR active (0 / 1)
+		xMath::Vec4 padding[15];			// to 1536 bytes
 	};
 
 	// sizes the shaders see (resources.slang: cbuffer std140, structured buffers std430)
