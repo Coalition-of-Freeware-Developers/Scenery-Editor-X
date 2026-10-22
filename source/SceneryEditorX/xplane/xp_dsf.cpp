@@ -361,6 +361,85 @@ namespace SceneryEditorX::XPlane
 		return exclusions;
 	}
 
+	std::vector<DsfExclusion> DsfFile::GetExclusionZones() const
+	{
+		std::vector<DsfExclusion> zones;
+		for (const auto &[name, value] : properties)
+		{
+			DsfExclusion zone;
+			if (ParseDsfExclusion(name, value, zone))
+				zones.push_back(std::move(zone));
+		}
+		return zones;
+	}
+
+	bool ParseDsfExclusion(const std::string_view key, const std::string_view value, DsfExclusion &out)
+	{
+		constexpr std::string_view PREFIX = "sim/exclude_";
+		if (!key.starts_with(PREFIX) || key.size() == PREFIX.size())
+			return false;
+		out = DsfExclusion();
+		out.kind = std::string(key.substr(PREFIX.size()));
+
+		// Numbers in order: the box, then (after ';') the polygon's pairs, whatever separates them ("/" or ",")
+		const auto numbers = [](const std::string_view text, std::vector<double> &values)
+		{
+			size_t at = 0;
+			while (at < text.size())
+			{
+				while (at < text.size() && (text[at] == '/' || text[at] == ',' || text[at] == ' ' || text[at] == '\t'))
+					++at;
+				if (at >= text.size())
+					break;
+				const std::string token(text.substr(at, std::min(text.find_first_of("/, \t", at), text.size()) - at));
+				char *end = nullptr;
+				const double number = std::strtod(token.c_str(), &end);
+				if (end == token.c_str() || *end != '\0')
+					return false;
+				values.push_back(number);
+				at += token.size();
+			}
+			return true;
+		};
+
+		const size_t split = value.find(';');
+		std::vector<double> box, polygon;
+		if (!numbers(value.substr(0, split), box) || box.size() != 4)
+			return false;
+		out.west = std::min(box[0], box[2]);
+		out.east = std::max(box[0], box[2]);
+		out.south = std::min(box[1], box[3]);
+		out.north = std::max(box[1], box[3]);
+		if (split != std::string_view::npos)
+		{
+			if (!numbers(value.substr(split + 1), polygon) || polygon.size() % 2 != 0)
+				return false;
+			if (polygon.size() >= 6)
+			{
+				for (size_t i = 0; i + 1 < polygon.size(); i += 2)
+					out.polygon.emplace_back(polygon[i], polygon[i + 1]);
+			}
+		}
+		return true;
+	}
+
+	bool DsfExclusion::Contains(const double longitude, const double latitude) const
+	{
+		if (longitude < west || longitude > east || latitude < south || latitude > north)
+			return false;
+		if (polygon.size() < 3)
+			return true;
+		bool inside = false;
+		for (size_t i = 0, j = polygon.size() - 1; i < polygon.size(); j = i++)
+		{
+			const auto [xi, yi] = polygon[i];
+			const auto [xj, yj] = polygon[j];
+			if ((yi > latitude) != (yj > latitude) && longitude < (xj - xi) * (latitude - yi) / (yj - yi) + xi)
+				inside = !inside;
+		}
+		return inside;
+	}
+
 	// -------------------------------------------------------
 
 	const DsfRaster *DsfFile::FindRaster(const std::string_view name) const
@@ -627,25 +706,35 @@ namespace SceneryEditorX::XPlane
 			}
 			return state32[index] == 1 ? &pool32[index] : nullptr;
 		};
-		const auto overlayPool = [&](const uint32_t index) -> const Pool * { return options.overlays ? pool(index) : nullptr; };
-
 		// Terrain: the open patch, and where each pool point it uses landed in it
 		uint8_t patchFlags = DsfTerrainPatch::Physical;
 		float patchLodStart = 0.0f, patchLodEnd = -1.0f;
 		bool patchOpen = false;
 		std::unordered_map<uint64_t, uint32_t> patchPoints;
 
-		/* @brief True when a pool's box (from its scaling) lies wholly outside the terrain area. */
-		const auto poolOutsideArea = [&](const uint32_t index) -> bool
+		/* @brief True when a pool's box (from its scaling) lies wholly outside the area. */
+		const auto scalingOutsideArea = [&](const std::vector<std::vector<std::pair<float, float>>> &scales, const uint32_t index) -> bool
 		{
-			if (!options.HasArea() || index >= scales16.size())
+			if (!options.HasArea() || index >= scales.size())
 				return false;
-			const auto &scaling = scales16[index];
+			const auto &scaling = scales[index];
 			if (scaling.size() < 2 || scaling[0].first == 0.0f || scaling[1].first == 0.0f)
 				return false;
 			const double west = scaling[0].second, east = west + scaling[0].first;
 			const double south = scaling[1].second, north = south + scaling[1].first;
 			return east < options.areaWest || west > options.areaEast || north < options.areaSouth || south > options.areaNorth;
+		};
+		const auto poolOutsideArea = [&](const uint32_t index) { return scalingOutsideArea(scales16, index); };
+
+		// Overlays: none from an overlay tile when only the base mesh's are wanted; none from pools outside the area
+		const bool readOverlays = options.overlays && !(options.overlaysOnlyInBaseMesh && out.IsOverlay());
+		const auto overlayPool = [&](const uint32_t index) -> const Pool * { return readOverlays && !poolOutsideArea(index) ? pool(index) : nullptr; };
+		const auto overlayPool32 = [&](const uint32_t index) -> const Pool * { return readOverlays && !scalingOutsideArea(scales32, index) ? pool32At(index) : nullptr; };
+
+		/* @brief True when a box (degrees) reaches into the area (or there is none). */
+		const auto boxInArea = [&](const double west, const double south, const double east, const double north)
+		{
+			return !options.HasArea() || !(east < options.areaWest || west > options.areaEast || north < options.areaSouth || south > options.areaNorth);
 		};
 
 		const auto beginPatch = [&]()
@@ -754,6 +843,8 @@ namespace SceneryEditorX::XPlane
 			if (index >= p.count)
 				return;
 			const DsfPoint point = PointOf(p, index);
+			if (!boxInArea(point.v[0], point.v[1], point.v[0], point.v[1]))
+				return;
 			DsfObjectPlacement placement;
 			placement.definition = currentDefinition;
 			placement.longitude = point.v[0];
@@ -772,6 +863,23 @@ namespace SceneryEditorX::XPlane
 
 		// A network chain: junctions (id plane non-zero) split it into segments; shape points between them are vertices,
 		// or bezier control points (4 planes: the level plane 1; 7 planes: the point's own control lon / lat)
+		const auto addSegment = [&](DsfRoadSegment &&segment)
+		{
+			if (options.HasArea())
+			{
+				double west = 1e9, east = -1e9, south = 1e9, north = -1e9;
+				for (const DsfRoadPoint &point : segment.points)
+				{
+					west = std::min(west, point.longitude);
+					east = std::max(east, point.longitude);
+					south = std::min(south, point.latitude);
+					north = std::max(north, point.latitude);
+				}
+				if (!boxInArea(west, south, east, north))
+					return;
+			}
+			out.roads.push_back(std::move(segment));
+		};
 		const auto addChain = [&](const Pool &p, const std::vector<uint32_t> &indices)
 		{
 			std::optional<DsfRoadSegment> segment;
@@ -790,7 +898,7 @@ namespace SceneryEditorX::XPlane
 						segment->points.push_back(vertex);
 						segment->endJunction = junction;
 						segment->endLevel = level;
-						out.roads.push_back(std::move(*segment));
+						addSegment(std::move(*segment));
 						segment.reset();
 					}
 					if (i + 1 < indices.size())
@@ -826,6 +934,26 @@ namespace SceneryEditorX::XPlane
 			polygon.planes = planes;
 			polygon.filter = currentFilter;
 			out.polygons.push_back(std::move(polygon));
+		};
+
+		/* @brief With an area: the polygon just read goes unless its box reaches into it (it is kept whole when it does). */
+		const auto endPolygon = [&]()
+		{
+			if (!readOverlays || !options.HasArea() || out.polygons.empty())
+				return;
+			double west = 1e9, east = -1e9, south = 1e9, north = -1e9;
+			for (const std::vector<DsfPoint> &winding : out.polygons.back().windings)
+			{
+				for (const DsfPoint &point : winding)
+				{
+					west = std::min(west, point.v[0]);
+					east = std::max(east, point.v[0]);
+					south = std::min(south, point.v[1]);
+					north = std::max(north, point.v[1]);
+				}
+			}
+			if (west > east || !boxInArea(west, south, east, north))
+				out.polygons.pop_back();
 		};
 
 		const auto readComment = [&](const uint32_t length)
@@ -903,7 +1031,7 @@ namespace SceneryEditorX::XPlane
 					indices.reserve(count);
 					for (uint32_t i = 0; i < count; ++i)
 						indices.push_back(command == CMD_NETWORK_CHAIN ? junctionOffset + commands.U16() : commands.U32());
-					if (const Pool *p = options.overlays ? pool32At(currentPool) : nullptr)
+					if (const Pool *p = overlayPool32(currentPool))
 						addChain(*p, indices);
 					break;
 				}
@@ -914,7 +1042,7 @@ namespace SceneryEditorX::XPlane
 					std::vector<uint32_t> indices;
 					for (uint32_t index = first; index < last; ++index)
 						indices.push_back(index);
-					if (const Pool *p = options.overlays ? pool32At(currentPool) : nullptr)
+					if (const Pool *p = overlayPool32(currentPool))
 						addChain(*p, indices);
 					break;
 				}
@@ -933,6 +1061,7 @@ namespace SceneryEditorX::XPlane
 							winding.push_back(PointOf(*p, index));
 					}
 					out.polygons.back().windings.push_back(std::move(winding));
+					endPolygon();
 					break;
 				}
 				case CMD_POLYGON_RANGE:
@@ -949,6 +1078,7 @@ namespace SceneryEditorX::XPlane
 							winding.push_back(PointOf(*p, index));
 					}
 					out.polygons.back().windings.push_back(std::move(winding));
+					endPolygon();
 					break;
 				}
 				case CMD_NESTED_POLYGON:
@@ -969,6 +1099,7 @@ namespace SceneryEditorX::XPlane
 						}
 						out.polygons.back().windings.push_back(std::move(winding));
 					}
+					endPolygon();
 					break;
 				}
 				case CMD_NESTED_POLYGON_RANGE:
@@ -990,6 +1121,7 @@ namespace SceneryEditorX::XPlane
 						out.polygons.back().windings.push_back(std::move(winding));
 						first = last;
 					}
+					endPolygon();
 					break;
 				}
 
@@ -1067,7 +1199,7 @@ namespace SceneryEditorX::XPlane
 			return Fail(error, "The DSF command stream ends in the middle of a command");
 		if (!out.terrainPatches.empty() && out.terrainPatches.back().indices.empty())
 			out.terrainPatches.pop_back();
-		if (!options.overlays)
+		if (!readOverlays)
 			out.polygons.clear();	// Commands walked for their length only
 		return true;
 	}

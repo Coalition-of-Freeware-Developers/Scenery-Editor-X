@@ -355,11 +355,135 @@ namespace SceneryEditorX::XPlane
 			case OverlayKind::PaintedLine:		return "Painted line";
 			case OverlayKind::PavementLine:		return "Pavement edge line";
 			case OverlayKind::Road:				return "Road";
+			case OverlayKind::Beach:			return "Beach";
 		}
 		return "Overlay";
 	}
 
 	// -------------------------------------------------------
+
+	uint32_t AppendBeach(OverlayMesh &mesh, const BeachAsset &asset, const std::vector<Point2> &path, const std::vector<int> &types, const bool closed, const float y, uint32_t seed)
+	{
+		const size_t count = path.size();
+		if (count < 2 || types.size() != count)
+			return 0;
+		const size_t edges = closed ? count : count - 1;
+		const double metersPerS = asset.sizeX / asset.scaleX;
+		const double metersPerT = asset.sizeY / asset.scaleY;
+
+		// Runs of edges of one type (edge e runs from point e to the next); a ring's last run joins its first
+		struct Run
+		{
+			size_t first = 0;
+			size_t length = 0;
+			int type = 0;
+		};
+		std::vector<Run> runs;
+		for (size_t e = 0; e < edges; ++e)
+		{
+			if (!runs.empty() && runs.back().type == types[e])
+				++runs.back().length;
+			else
+				runs.push_back({ e, 1, types[e] });
+		}
+		if (closed && runs.size() > 1 && runs.front().type == runs.back().type)
+		{
+			runs.back().length += runs.front().length;
+			runs.erase(runs.begin());
+		}
+
+		uint32_t drawn = 0;
+		std::vector<Point2> line;
+		for (const Run &run : runs)
+		{
+			const std::vector<const BeachAsset::Tile *> tiles = asset.GetTiles(run.type);
+			if (run.type == 0 || tiles.empty())
+				continue;
+			const bool loop = closed && run.length == edges;	// The whole ring is one beach
+
+			// The run's points (a loop doesn't repeat its first), without repeats
+			line.clear();
+			for (size_t i = 0; i <= run.length - (loop ? 1 : 0); ++i)
+			{
+				const Point2 &point = path[(run.first + i) % count];
+				if (line.empty() || std::hypot(point.x - line.back().x, point.z - line.back().z) > 1e-3)
+					line.push_back(point);
+			}
+			if (loop && line.size() > 2 && std::hypot(line.front().x - line.back().x, line.front().z - line.back().z) <= 1e-3)
+				line.pop_back();
+			if (line.size() < 2)
+				continue;
+			const size_t points = line.size();
+
+			// Each point's left of travel (the water side), stretched at corners
+			const auto direction = [&](const size_t from, const size_t to) -> Point2
+			{
+				const double dx = line[to].x - line[from].x, dz = line[to].z - line[from].z;
+				const double length = std::hypot(dx, dz);
+				return length > 1e-9 ? Point2{ dx / length, dz / length } : Point2{ 1.0, 0.0 };
+			};
+			std::vector<Point2> left(points);
+			for (size_t i = 0; i < points; ++i)
+			{
+				const Point2 in = i > 0 ? direction(i - 1, i) : loop ? direction(points - 1, 0) : direction(0, 1);
+				const Point2 out = i + 1 < points ? direction(i, i + 1) : loop ? direction(points - 1, 0) : direction(points - 2, points - 1);
+				Point2 miter{ in.x + out.x, in.z + out.z };
+				const double length = std::hypot(miter.x, miter.z);
+				miter = length < 1e-6 ? in : Point2{ miter.x / length, miter.z / length };
+				const Point2 normal{ miter.z, -miter.x };
+				const double scale = 1.0 / std::clamp(normal.x * in.z - normal.z * in.x, 0.35, 1.0);
+				left[i] = Point2{ normal.x * scale, normal.z * scale };
+			}
+
+			// The shore's widths from the type's first piece; each piece maps its own rectangle
+			const double water = (tiles.front()->t2 - tiles.front()->t1) * metersPerT;
+			const double land = (tiles.front()->t3 - tiles.front()->t2) * metersPerT;
+			const auto pick = [&]() { return tiles[std::min(tiles.size() - 1, static_cast<size_t>(Random01(seed) * static_cast<float>(tiles.size())))]; };
+			const BeachAsset::Tile *tile = pick();
+			double pieceStart = 0.0;
+			double pieceLength = std::max(0.5, std::abs(tile->s2 - tile->s1) * metersPerS);
+
+			const size_t segments = loop ? points : points - 1;
+			double distance = 0.0;
+			for (size_t j = 0; j < segments; ++j)
+			{
+				const size_t a = j, b = (j + 1) % points;
+				const double length = std::hypot(line[b].x - line[a].x, line[b].z - line[a].z);
+				if (length <= 1e-6)
+					continue;
+				double at = distance;
+				const double end = distance + length;
+				while (at < end - 1e-6)
+				{
+					const double to = std::min(end, pieceStart + pieceLength);
+					const uint32_t base = static_cast<uint32_t>(mesh.vertices.size());
+					for (const double position : { at, to })
+					{
+						const double f = (position - distance) / length;
+						const double x = line[a].x + (line[b].x - line[a].x) * f, z = line[a].z + (line[b].z - line[a].z) * f;
+						const double lx = left[a].x + (left[b].x - left[a].x) * f, lz = left[a].z + (left[b].z - left[a].z) * f;
+						const double u = (tile->s1 + (tile->s2 - tile->s1) * (position - pieceStart) / pieceLength) / asset.scaleX;
+						AddVertex(mesh, x - lx * land, y, z - lz * land, u, tile->t3 / asset.scaleY);
+						AddVertex(mesh, x, y, z, u, tile->t2 / asset.scaleY);
+						AddVertex(mesh, x + lx * water, y, z + lz * water, u, tile->t1 / asset.scaleY);
+					}
+					// Land to shore, shore to water: counter-clockwise from above, as the offset ribbons
+					mesh.indices.insert(mesh.indices.end(), { base, base + 3, base + 1, base + 1, base + 3, base + 4 });
+					mesh.indices.insert(mesh.indices.end(), { base + 1, base + 4, base + 2, base + 2, base + 4, base + 5 });
+					at = to;
+					if (to >= pieceStart + pieceLength - 1e-6)
+					{
+						pieceStart += pieceLength;
+						tile = pick();
+						pieceLength = std::max(0.5, std::abs(tile->s2 - tile->s1) * metersPerS);
+					}
+				}
+				distance = end;
+			}
+			++drawn;
+		}
+		return drawn;
+	}
 
 	void AppendTexturedPolygon(OverlayMesh &mesh, const std::vector<std::vector<Point2>> &rings, const float y, const float scaleS, const float scaleT, const double headingDegrees, const Point2 origin)
 	{
@@ -1037,6 +1161,7 @@ namespace SceneryEditorX::XPlane
 	const AutogenPointAsset *OverlayBuilder::GetAutogen(const std::string_view path, fs::path *file, OverlayBuild &out) { return GetCached(m_Autogens, path, file, out, &LoadAutogenPointAsset, "Autogen point"); }
 	const RoadNetworkAsset *OverlayBuilder::GetRoadNetwork(const std::string_view path, fs::path *file, OverlayBuild &out) { return GetCached(m_Roads, path, file, out, &LoadRoadNetworkAsset, "Road network"); }
 	const DecalLibraryAsset *OverlayBuilder::GetDecalLibrary(const std::string_view path, fs::path *file, OverlayBuild &out) { return GetCached(m_DecalLibraries, path, file, out, &LoadDecalLibraryAsset, "Decal library"); }
+	const BeachAsset *OverlayBuilder::GetBeach(const std::string_view path, fs::path *file, OverlayBuild &out) { return GetCached(m_Beaches, path, file, out, &LoadBeachAsset, "Beach"); }
 
 	void OverlayBuilder::GetPolygonUvScale(const PolygonAsset &asset, float &scaleS, float &scaleT)
 	{
@@ -1145,15 +1270,15 @@ namespace SceneryEditorX::XPlane
 	{
 		if (!options.area.valid)
 			return true;
+		// By its box: a forest can surround the whole area without a point in it
+		Bounds2 bounds;
 		for (const std::vector<Point2> &ring : rings)
 		{
 			for (const Point2 &point : ring)
-			{
-				if (InArea(options, point))
-					return true;
-			}
+				bounds.Add(point);
 		}
-		return false;
+		return bounds.valid && bounds.maxX >= options.area.minX - options.areaMargin && bounds.minX <= options.area.maxX + options.areaMargin &&
+			   bounds.maxZ >= options.area.minZ - options.areaMargin && bounds.minZ <= options.area.maxZ + options.areaMargin;
 	}
 
 	void OverlayBuilder::FlattenWinding(const std::vector<DsfPoint> &winding, const bool closed, const bool bezier, std::vector<Point2> &out, const Options &options, const size_t controlPlane) const
@@ -1272,6 +1397,11 @@ namespace SceneryEditorX::XPlane
 				if (options.placeStrings)
 					BuildString(placement, i, resource, options, out);
 			}
+			else if (EndsWith(resource, ".bch"))
+			{
+				if (options.drawBeaches)
+					BuildBeach(placement, i, resource, options, out);
+			}
 			else
 				++out.unsupported;	// .ags / .agb autogen blocks and anything newer
 		}
@@ -1306,7 +1436,8 @@ namespace SceneryEditorX::XPlane
 		const RoadNetworkAsset::RoadType *type = network ? network->FindRoadType(static_cast<int>(segment.subtype)) : nullptr;
 		if (network && !type)
 			Warn(out, resource + " has no road type " + std::to_string(segment.subtype) + ": drawn as a plain band");
-		const float y = Height(options, "roads", 0);
+		// Raised segments (bridges, overpasses: junction levels) drape over the ones below them
+		const float y = Height(options, "roads", std::max(segment.startLevel, segment.endLevel));
 
 		const auto makeMesh = [&]()
 		{
@@ -1345,6 +1476,47 @@ namespace SceneryEditorX::XPlane
 			for (int c = 0; c < 3; ++c)
 				mesh.color[c] = type->color[c];
 		AppendOffsetRibbon(mesh, path, y, -half, half, 0.0f, 1.0f, 100.0f);
+		if (!mesh.indices.empty())
+			out.meshes.push_back(std::move(mesh));
+	}
+
+	void OverlayBuilder::BuildBeach(const DsfPolygonPlacement &placement, const uint32_t index, const std::string &resource, const Options &options, OverlayBuild &out)
+	{
+		fs::path file;
+		const BeachAsset *asset = GetBeach(resource, &file, out);
+		if (!asset)
+			return;
+
+		// Each point: longitude, latitude, then the beach type last (3 planes; MSL beaches add an elevation and a normal)
+		std::vector<Point2> path;
+		std::vector<int> types;
+		for (const DsfPoint &point : placement.windings[0])
+		{
+			path.push_back(LocalOf(m_Projection, point));
+			types.push_back(point.planes >= 3 ? static_cast<int>(std::lround(point.v[point.planes - 1])) : 0);
+		}
+		const bool closed = placement.parameter == 1;	// 0: a chain
+		if (closed && path.size() > 2 && std::hypot(path.front().x - path.back().x, path.front().z - path.back().z) < 1e-3)
+		{
+			path.pop_back();
+			types.pop_back();
+		}
+		if (path.size() < 2)
+			return;
+		if (!PolygonInArea(options, { path }))
+		{
+			++out.culled;
+			return;
+		}
+
+		OverlayMesh mesh;
+		mesh.kind = OverlayKind::Beach;
+		mesh.resource = resource;
+		mesh.name = BaseName(resource);
+		mesh.placement = index;
+		mesh.texture = TexturePath(file, asset->texture);
+		mesh.blended = true;		// The wet edge fades into the water
+		AppendBeach(mesh, *asset, path, types, closed, Height(options, "beaches", 0), m_Seed++ * 2654435761u + index);
 		if (!mesh.indices.empty())
 			out.meshes.push_back(std::move(mesh));
 	}
@@ -1587,9 +1759,22 @@ namespace SceneryEditorX::XPlane
 				const double uvs[4][2] = { { s1, t1 }, { s2, t1 }, { s2, t2 }, { s1, t2 } };
 				const float normal[3] = { static_cast<float>(-dz), 0.0f, static_cast<float>(dx) };
 				AddQuad(mesh, corners, uvs, normal);
+				// Lit as a canopy, not as the quad: normals leaning out from the trunk and up, more so towards the top
+				// (the same on both faces: foliage materials don't flip them)
+				for (size_t v = mesh.vertices.size() - 4; v < mesh.vertices.size(); ++v)
+				{
+					OverlayVertex &vertex = mesh.vertices[v];
+					const float outX = (vertex.x - static_cast<float>(at.x)) / std::max(1.0f, width), outZ = (vertex.z - static_cast<float>(at.z)) / std::max(1.0f, width);
+					const float up = 0.4f + 0.6f * vertex.y / std::max(0.1f, height);
+					const float length = std::sqrt(outX * outX + up * up + outZ * outZ);
+					vertex.nx = outX / length;
+					vertex.ny = up / length;
+					vertex.nz = outZ / length;
+				}
 			}
 			++trees;
 		};
+		const auto canStand = [&](const Point2 &at) { return InArea(options, at) && (!options.keepTree || options.keepTree(at)); };
 
 		if (fillMode == 2)
 		{
@@ -1600,7 +1785,8 @@ namespace SceneryEditorX::XPlane
 				{
 					if (trees >= options.forestTreeLimit)
 						break;
-					addTree(point);
+					if (canStand(point))
+						addTree(point);
 				}
 			}
 		}
@@ -1616,7 +1802,8 @@ namespace SceneryEditorX::XPlane
 				{
 					if (trees >= options.forestTreeLimit)
 						break;
-					addTree(point);
+					if (canStand(point))
+						addTree(point);
 				}
 			}
 		}
@@ -1625,14 +1812,24 @@ namespace SceneryEditorX::XPlane
 			const Bounds2 bounds = GetBounds(rings[0]);
 			if (!bounds.valid)
 				return;
-			for (double gz = bounds.minZ; gz <= bounds.maxZ && trees < options.forestTreeLimit; gz += spacingY)
+			// Only the grid rows and columns over the area (a Global Scenery forest can span the whole tile)
+			double minX = bounds.minX, minZ = bounds.minZ, maxX = bounds.maxX, maxZ = bounds.maxZ;
+			if (options.area.valid)
 			{
-				for (double gx = bounds.minX; gx <= bounds.maxX && trees < options.forestTreeLimit; gx += spacingX)
+				const auto firstStep = [](const double from, const double limit, const double step) { return from + std::max(0.0, std::ceil((limit - from) / step)) * step; };
+				minX = firstStep(bounds.minX, options.area.minX - options.areaMargin, spacingX);
+				minZ = firstStep(bounds.minZ, options.area.minZ - options.areaMargin, spacingY);
+				maxX = std::min(maxX, options.area.maxX + options.areaMargin);
+				maxZ = std::min(maxZ, options.area.maxZ + options.areaMargin);
+			}
+			for (double gz = minZ; gz <= maxZ && trees < options.forestTreeLimit; gz += spacingY)
+			{
+				for (double gx = minX; gx <= maxX && trees < options.forestTreeLimit; gx += spacingX)
 				{
 					if (Random01(seed) > density)
 						continue;
 					Point2 at{ gx + (Random01(seed) - 0.5f) * 2.0f * asset->randomX, gz + (Random01(seed) - 0.5f) * 2.0f * asset->randomY };
-					if (!inside(at))
+					if (!canStand(at) || !inside(at))
 						continue;
 					addTree(at);
 				}

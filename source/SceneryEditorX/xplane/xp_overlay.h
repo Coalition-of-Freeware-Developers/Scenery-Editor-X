@@ -65,7 +65,8 @@ namespace SceneryEditorX::XPlane
 		Helipad,		// apt.dat helipad with a library texture (placement = helipad index)
 		PaintedLine,	// apt.dat linear feature with a library .lin (placement = feature index)
 		PavementLine,	// apt.dat pavement edge line with a library .lin (placement = pavement index)
-		Road			// .net road segment (placement = index into DsfFile::roads)
+		Road,			// .net road segment (placement = index into DsfFile::roads)
+		Beach			// .bch strip along a shore
 	};
 
 	const char *GetOverlayKindName(OverlayKind kind);
@@ -155,7 +156,7 @@ namespace SceneryEditorX::XPlane
 		std::vector<OverlayObject> objects;
 		std::vector<std::string> warnings;		// Assets that couldn't be resolved or parsed (deduplicated)
 		uint32_t culled = 0;					// Placements outside the area of interest
-		uint32_t unsupported = 0;				// Placements of asset kinds not drawn (.ags, .agb, roads)
+		uint32_t unsupported = 0;				// Placements of asset kinds not drawn (.ags, .agb autogen)
 	};
 
 	/* @brief Finds the file behind an asset path: a library virtual path or a path relative to the scenery pack. */
@@ -180,9 +181,17 @@ namespace SceneryEditorX::XPlane
 			bool drawLines = true;
 			bool drawPolygons = true;
 			bool drawRoads = true;
+			bool drawBeaches = true;
 			bool placeObjects = true;
 			bool placeStrings = true;
 			uint32_t forestTreeLimit = 40000;	// Trees per forest polygon
+
+			/**
+			 * Where a forest's trees may stand (local meters): false leaves that tree out (X-Plane applies forest
+			 * exclusions tree by tree). Null: anywhere in the polygon. With a valid area, trees are only planted
+			 * within it (plus margin).
+			 */
+			std::function<bool(const Point2 &point)> keepTree;
 
 			/**
 			 * Height above the ground for a draped LAYER_GROUP (name, offset), so the scene can slot DSF polygons
@@ -222,6 +231,7 @@ namespace SceneryEditorX::XPlane
 		const AutogenPointAsset *GetAutogen(std::string_view path, std::filesystem::path *file, OverlayBuild &out);
 		const RoadNetworkAsset *GetRoadNetwork(std::string_view path, std::filesystem::path *file, OverlayBuild &out);
 		const DecalLibraryAsset *GetDecalLibrary(std::string_view path, std::filesystem::path *file, OverlayBuild &out);
+		const BeachAsset *GetBeach(std::string_view path, std::filesystem::path *file, OverlayBuild &out);
 
 		/**
 		 * @brief A draped mesh's shading from its .pol: RUNWAY_TILE atlas and mapping texture, the decals of its rows
@@ -283,6 +293,7 @@ namespace SceneryEditorX::XPlane
 		void BuildString(const DsfPolygonPlacement &placement, uint32_t index, const std::string &resource, const Options &options, OverlayBuild &out);
 		void BuildAutogen(const DsfObjectPlacement &placement, uint32_t index, const std::string &resource, const Options &options, OverlayBuild &out);
 		void BuildRoad(const DsfRoadSegment &segment, uint32_t index, const std::string &resource, const Options &options, OverlayBuild &out);
+		void BuildBeach(const DsfPolygonPlacement &placement, uint32_t index, const std::string &resource, const Options &options, OverlayBuild &out);
 
 		AssetResolver m_Resolver;
 		GeoProjection m_Projection;
@@ -294,6 +305,7 @@ namespace SceneryEditorX::XPlane
 		std::map<std::string, Cached<AutogenPointAsset>> m_Autogens;
 		std::map<std::string, Cached<RoadNetworkAsset>> m_Roads;
 		std::map<std::string, Cached<DecalLibraryAsset>> m_DecalLibraries;
+		std::map<std::string, Cached<BeachAsset>> m_Beaches;
 		std::map<std::string, bool> m_Warned;
 		std::map<std::string, std::filesystem::path> m_Resolved;
 		uint32_t m_Seed = 12345;
@@ -350,6 +362,16 @@ namespace SceneryEditorX::XPlane
 	 * END_CAP rows at the ends; MIRROR runs the texture back and forth, ALIGN ends it on a whole fraction of a repeat.
 	 */
 	void AppendLinePaint(OverlayMesh &mesh, const LineAsset &asset, const std::vector<Point2> &path, bool closed, float y);
+
+	/**
+	 * @brief Appends a .bch beach along a shore the way the DSF gives it: each point's type for the edge starting there
+	 * (0: no beach), the water on the left of travel (rings run counter-clockwise around lakes). Each run of one type is
+	 * laid with that type's TILE pieces one after another (picked at random with the seed), SIZE_X / SCALE_X meters a
+	 * pixel along the shore and SIZE_Y / SCALE_Y across it, from the water edge across the shoreline (the path) to the
+	 * land edge. Transition pieces aren't drawn. UVs are X-Plane's (pixels / SCALE).
+	 * @return Runs drawn.
+	 */
+	uint32_t AppendBeach(OverlayMesh &mesh, const BeachAsset &asset, const std::vector<Point2> &path, const std::vector<int> &types, bool closed, float y, uint32_t seed);
 
 	/* @brief Resamples a polyline (open or closed) at a spacing: positions and headings (degrees) along it. */
 	void ResamplePath(const std::vector<Point2> &path, bool closed, double spacing, double startOffset, std::vector<Point2> &outPoints, std::vector<double> &outHeadings);

@@ -166,6 +166,7 @@ public struct MaterialParameters
     public uint xp_normal_mode() { return (flags >> 16) & 3u; }	// xp_material.slang xp_normal_*
     public bool is_xp_material() { return (flags & (1 << 18)) != 0; }
     public uint xp_drape_mode() { return (flags >> 19) & 3u; }	// xp_material.slang xp_drape_*
+    public bool is_xp_foliage() { return (flags & (1 << 21)) != 0; }	// .for trees: canopy normals, kept on back faces
 };
 
 // struct which forms the bindless light parameters array

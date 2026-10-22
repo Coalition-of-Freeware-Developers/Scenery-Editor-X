@@ -32,6 +32,7 @@
 #include "xp_terrain_mesh.h"
 #include <cstdint>
 #include <string>
+#include <vector>
 
 // -------------------------------------------------------
 
@@ -42,8 +43,10 @@ namespace SceneryEditorX::XPlane
 	 * @brief X-Plane's base terrain around the loaded airport (plan Phase 10): the DSF base mesh of the highest-priority
 	 * scenery pack that has one for each tile (a custom mesh before the Global Scenery), cut down to an area (the airport
 	 * property plus a mile), drawn with its .ter land classes (xp_terrain.slang), and the surface the airport, its
-	 * overlays and objects are draped on. y = 0 is the terrain's height at the airport's datum. Main thread only; one
-	 * terrain at a time.
+	 * overlays and objects are draped on. y = 0 is the terrain's height at the airport's datum. With it, the same tile's
+	 * own scenery in that area (its forests, roads, beaches and buildings; not its autogen), minus what higher-priority
+	 * overlays exclude (sim/exclude_*) and the trees and buildings inside the airport's boundary, cut off where the
+	 * terrain ends. Main thread only; one terrain at a time.
 	 */
 	class SceneTerrain
 	{
@@ -58,15 +61,24 @@ namespace SceneryEditorX::XPlane
 			uint32_t textures = 0;
 			double datumElevation = 0.0;	// Meters above sea level of y = 0
 			double loadMilliseconds = 0.0;
+
+			// The tile's scenery
+			uint32_t sceneryPlacements = 0;	// Forests, roads, beaches, buildings ... kept in the area
+			uint32_t sceneryExcluded = 0;	// Left out by exclusion zones or the airport's boundary
+			uint32_t sceneryUnsupported = 0;	// Not drawn (autogen)
+			uint32_t sceneryTriangles = 0;
+			double sceneryMilliseconds = 0.0;
 		};
 
 		/**
 		 * @brief Replaces the terrain with the one in an area of a local frame. Nothing changes when the same frame and
 		 * area are loaded already.
 		 * @param fallbackElevation Meters MSL of y = 0 when no elevation raster covers the frame's datum.
+		 * @param grounds The airport's boundary rings (local meters): the tile's trees and buildings inside aren't drawn.
 		 * @return True when terrain is shown.
 		 */
-		static bool Load(const GeoProjection &projection, const TerrainArea &area, const std::string &name, double fallbackElevation);
+		static bool Load(const GeoProjection &projection, const TerrainArea &area, const std::string &name, double fallbackElevation,
+						 const std::vector<std::vector<Point2>> &grounds = {});
 
 		/* @brief Removes the terrain from the scene (and the surface: drapes go flat). */
 		static void Unload();
@@ -95,7 +107,7 @@ namespace SceneryEditorX::XPlane
 		/* @brief True when the terrain was built in this frame (a datum within a centimeter of the projection's). */
 		[[nodiscard]] static bool IsInFrame(const GeoProjection &projection);
 
-		/* @brief True for the terrain's root and its part entities. */
+		/* @brief True for the terrain's root and its part entities, and the tile scenery's. */
 		[[nodiscard]] static bool Contains(uint64_t entityId);
 
 		[[nodiscard]] static Stats GetStats();
@@ -103,6 +115,12 @@ namespace SceneryEditorX::XPlane
 		/* @brief Whether airports load terrain (--no-terrain / the RENDERER panel). Off unloads it. */
 		static void SetEnabled(bool enabled);
 		[[nodiscard]] static bool IsEnabled();
+
+		/* @brief Whether the tile's scenery is drawn with the terrain (--no-terrain-scenery / the RENDERER panel). */
+		[[nodiscard]] static bool IsSceneryEnabled();
+
+		/* @brief Shows or removes the tile's scenery when its switch changed since the last call (no re-read). Per frame. */
+		static void Update();
 
 		/* @brief Releases GPU resources. Call before the renderer shuts down. */
 		static void Shutdown();

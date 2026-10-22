@@ -532,6 +532,97 @@ namespace SceneryEditorX::XPlane
 
 	// -------------------------------------------------------
 
+	std::vector<const BeachAsset::Tile *> BeachAsset::GetTiles(const int type) const
+	{
+		std::vector<const Tile *> found;
+		for (const Tile &tile : tiles)
+		{
+			if (tile.type == type)
+				found.push_back(&tile);
+		}
+		return found;
+	}
+
+	bool ParseBeachAsset(const std::string_view text, BeachAsset &out, std::string *error)
+	{
+		out = BeachAsset();
+		AssetHeader header;
+		size_t start = 0;
+		if (!CheckHeader(text, "BEACH", header, start, error))
+			return false;
+
+		ForEachRow(text, start, [&](const std::vector<std::string_view> &tokens, const std::string_view line)
+		{
+			const std::string_view key = tokens[0];
+			if (key == "TEXTURE" || key == "BASE_TEX")
+				out.texture = CleanPath(RestOfLine(line, 1));
+			else if (key == "TEXTURE_NORMAL" && tokens.size() >= 3)
+			{
+				out.normalRatio = ParseFloat(tokens[1], 1.0f);
+				out.textureNormal = CleanPath(RestOfLine(line, 2));
+			}
+			else if (key == "DECAL_LIB" && tokens.size() >= 2)
+				out.decalLibrary = CleanPath(RestOfLine(line, 1));
+			else if (key == "SCALE_X" && tokens.size() >= 2)
+				out.scaleX = std::max(1.0f, ParseFloat(tokens[1], 1.0f));
+			else if (key == "SCALE_Y" && tokens.size() >= 2)
+				out.scaleY = std::max(1.0f, ParseFloat(tokens[1], 1.0f));
+			else if (key == "SIZE_X" && tokens.size() >= 2)
+				out.sizeX = ParseFloat(tokens[1], 1.0f);
+			else if (key == "SIZE_Y" && tokens.size() >= 2)
+				out.sizeY = ParseFloat(tokens[1], 1.0f);
+			else if (key == "GROUP" && tokens.size() >= 3)
+				out.groups.emplace_back(ParseInt(tokens[1]), ParseInt(tokens[2]));
+			else if (key == "TILE" && tokens.size() >= 7)
+			{
+				// TILE type s1 s2 t1 t2 t3
+				BeachAsset::Tile tile;
+				tile.type = ParseInt(tokens[1]);
+				tile.s1 = ParseFloat(tokens[2]);
+				tile.s2 = ParseFloat(tokens[3]);
+				tile.t1 = ParseFloat(tokens[4]);
+				tile.t2 = ParseFloat(tokens[5]);
+				tile.t3 = ParseFloat(tokens[6]);
+				if (tile.s2 != tile.s1 && tile.t3 > tile.t1)
+					out.tiles.push_back(tile);
+			}
+			else if ((key == "XONL2" || key == "XONR2") && tokens.size() >= 7)
+			{
+				// XONL2 type s1 s2 t1 t2 t3
+				BeachAsset::Transition transition;
+				transition.kind = std::string(key);
+				transition.from = ParseInt(tokens[1]);
+				transition.tile = { transition.from, ParseFloat(tokens[2]), ParseFloat(tokens[3]), ParseFloat(tokens[4]), ParseFloat(tokens[5]), ParseFloat(tokens[6]) };
+				out.transitions.push_back(std::move(transition));
+			}
+			else if ((key == "XONLG" || key == "XONRG") && tokens.size() >= 8)
+			{
+				// XONLG group group s1 s2 t1 t2 t3
+				BeachAsset::Transition transition;
+				transition.kind = std::string(key);
+				transition.from = ParseInt(tokens[1]);
+				transition.to = ParseInt(tokens[2]);
+				transition.tile = { 0, ParseFloat(tokens[3]), ParseFloat(tokens[4]), ParseFloat(tokens[5]), ParseFloat(tokens[6]), ParseFloat(tokens[7]) };
+				out.transitions.push_back(std::move(transition));
+			}
+		});
+
+		if (out.texture.empty())
+			return Fail(error, "The beach has no TEXTURE");
+		if (out.tiles.empty())
+			return Fail(error, "The beach has no TILE rows");
+		if (out.sizeX <= 0.0f || out.sizeY <= 0.0f)
+			return Fail(error, "The beach's SIZE_X / SIZE_Y must be positive");
+		return true;
+	}
+
+	bool LoadBeachAsset(const std::filesystem::path &path, BeachAsset &out, std::string *error)
+	{
+		return LoadAsset(path, out, error, &ParseBeachAsset);
+	}
+
+	// -------------------------------------------------------
+
 	namespace
 	{
 		enum class FacadeRowKind : uint8_t

@@ -29,14 +29,18 @@
  * -------------------------------------------------------
  */
 #include "xp_terrain_scene.h"
+#include "xp_assets.h"
 #include "xp_library_manager.h"
+#include "xp_overlay_scene.h"
 #include "xp_terrain.h"
 #include "xp_texture_loader.h"
 #include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <atomic>
+#include <cctype>
 #include <future>
+#include <memory>
 #include <thread>
 #include <map>
 #include <set>
@@ -96,6 +100,17 @@ namespace SceneryEditorX::XPlane
 			std::vector<std::pair<PolygonDecal, fs::path>> decals;	// Rows and DECAL_LIB rows, with the file they're relative to
 		};
 
+		/* @brief A tile's own scenery in the area (its base mesh DSF's overlay placements), filtered once at load. */
+		struct SceneryTile
+		{
+			int lat = 0, lon = 0;
+			fs::path file;
+			DsfFile dsf;							// Placements and definitions only (no terrain, no rasters)
+			std::vector<DsfExclusion> exclusions;	// Of the higher-priority overlays of the tile
+			uint32_t excluded = 0;
+			uint32_t unsupported = 0;
+		};
+
 		struct State
 		{
 			uint64_t root = 0;
@@ -109,6 +124,14 @@ namespace SceneryEditorX::XPlane
 			double datumElevation = 0.0;
 			uint64_t generation = 0;
 			SceneTerrain::Stats stats;
+
+			// The tile's scenery
+			std::string name;
+			TerrainArea area;
+			std::vector<std::vector<Point2>> grounds;		// The airport's boundary rings
+			std::vector<SceneryTile> sceneryTiles;
+			std::unique_ptr<OverlayScene> scenery;
+			bool sceneryShown = false;
 		};
 
 		State &GetState()
@@ -168,9 +191,10 @@ namespace SceneryEditorX::XPlane
 		/**
 		 * @brief The DSF holding a tile's base mesh: the highest-priority enabled scenery pack (custom scenery in
 		 * scenery_packs.ini order, then the Global Scenery folders) whose tile isn't an overlay. Reads it with terrain and
-		 * rasters (limited to the area).
+		 * rasters (limited to the area), and collects the exclusion zones of the overlays above it (Global Airports, custom
+		 * scenery).
 		 */
-		bool ReadBaseMesh(const int lat, const int lon, const DsfReadOptions &options, DsfFile &out, fs::path &file)
+		bool ReadBaseMesh(const int lat, const int lon, const DsfReadOptions &options, DsfFile &out, fs::path &file, std::vector<DsfExclusion> &exclusions)
 		{
 			const std::shared_ptr<const LibraryIndex> index = LibraryManager::GetIndex();
 			std::vector<const LibraryPackage *> packages;
@@ -201,7 +225,11 @@ namespace SceneryEditorX::XPlane
 					continue;
 				}
 				if (dsf.IsOverlay())
+				{
+					for (DsfExclusion &zone : dsf.GetExclusionZones())
+						exclusions.push_back(std::move(zone));
 					continue;
+				}
 				out = std::move(dsf);
 				file = *found;
 				return true;
@@ -471,6 +499,258 @@ namespace SceneryEditorX::XPlane
 			return material;
 		}
 
+		// -------------------------------------------------------
+		// The tile's scenery
+
+		/**
+		 * @brief Drape heights of the tile's scenery: X-Plane's layer order, all of it above the terrain's border patches
+		 * (0) and below every airport drape (the airport's lowest layer sits 8 mm up), which draws over it.
+		 */
+		float SceneryLayerHeight(const std::string_view group, const int offset)
+		{
+			return 0.001f + 0.0005f * static_cast<float>(GetLayerGroupOrder(group)) + 0.00004f * static_cast<float>(std::clamp(offset, -5, 5));
+		}
+
+		bool InRing(const std::vector<Point2> &ring, const Point2 &p)
+		{
+			bool inside = false;
+			for (size_t i = 0, j = ring.size() - 1; i < ring.size(); j = i++)
+			{
+				if ((ring[i].z > p.z) != (ring[j].z > p.z) && p.x < (ring[j].x - ring[i].x) * (p.z - ring[i].z) / (ring[j].z - ring[i].z) + ring[i].x)
+					inside = !inside;
+			}
+			return inside;
+		}
+
+		bool OnGrounds(const State &state, const Point2 &p)
+		{
+			for (const std::vector<Point2> &ring : state.grounds)
+			{
+				if (ring.size() >= 3 && InRing(ring, p))
+					return true;
+			}
+			return false;
+		}
+
+		std::string ExtensionOf(const std::string &path)
+		{
+			const size_t dot = path.find_last_of('.');
+			std::string extension = dot == std::string::npos ? std::string() : path.substr(dot + 1);
+			std::ranges::transform(extension, extension.begin(), [](const unsigned char c) { return static_cast<char>(std::tolower(c)); });
+			return extension;
+		}
+
+		/**
+		 * @brief Leaves out of a tile's scenery what X-Plane wouldn't draw: placements with a point in an exclusion zone of
+		 * their kind (forests are thinned tree by tree when built), buildings and objects on the airport's grounds or off the
+		 * terrain, and autogen (.ags / .agb, not drawn here).
+		 */
+		void FilterScenery(SceneryTile &tile, const State &state)
+		{
+			DsfFile &dsf = tile.dsf;
+			const auto zoned = [&tile](const std::string_view kind, const double longitude, const double latitude)
+			{
+				for (const DsfExclusion &zone : tile.exclusions)
+				{
+					if (zone.kind == kind && zone.Contains(longitude, latitude))
+						return true;
+				}
+				return false;
+			};
+			const auto onTerrain = [&state](const double longitude, const double latitude)
+			{
+				const Point2 local = state.projection.ToLocal(latitude, longitude);
+				float y = 0.0f;
+				return state.surface.HeightAt(local.x, local.z, y);
+			};
+
+			std::erase_if(dsf.polygons, [&](const DsfPolygonPlacement &polygon)
+			{
+				const std::string extension = polygon.definition < dsf.polygonDefinitions.size() ? ExtensionOf(dsf.polygonDefinitions[polygon.definition]) : std::string();
+				if (extension != "for" && extension != "fac" && extension != "bch" && extension != "lin" && extension != "pol" && extension != "str")
+				{
+					++tile.unsupported;
+					return true;
+				}
+				if (extension == "for" || polygon.windings.empty() || polygon.windings[0].empty())
+					return false;
+				const bool building = extension == "fac";
+				if (building && !onTerrain(polygon.windings[0][0].Longitude(), polygon.windings[0][0].Latitude()))
+					return true;	// Off the terrain: nothing to stand on (not counted as excluded)
+				for (const std::vector<DsfPoint> &winding : polygon.windings)
+				{
+					for (const DsfPoint &point : winding)
+					{
+						if (zoned(extension, point.Longitude(), point.Latitude()) || (building && OnGrounds(state, state.projection.ToLocal(point.Latitude(), point.Longitude()))))
+						{
+							++tile.excluded;
+							return true;
+						}
+					}
+				}
+				return false;
+			});
+			std::erase_if(dsf.objects, [&](const DsfObjectPlacement &object)
+			{
+				if (!onTerrain(object.longitude, object.latitude))
+					return true;
+				if (zoned("obj", object.longitude, object.latitude) || OnGrounds(state, state.projection.ToLocal(object.latitude, object.longitude)))
+				{
+					++tile.excluded;
+					return true;
+				}
+				return false;
+			});
+			std::erase_if(dsf.roads, [&](const DsfRoadSegment &segment)
+			{
+				for (const DsfRoadPoint &point : segment.points)
+				{
+					if (zoned("net", point.longitude, point.latitude))
+					{
+						++tile.excluded;
+						return true;
+					}
+				}
+				return false;
+			});
+			dsf.polygons.shrink_to_fit();
+			dsf.objects.shrink_to_fit();
+			dsf.roads.shrink_to_fit();
+		}
+
+		void ClearScenery(State &state)
+		{
+			if (state.scenery)
+				state.scenery->Clear();
+			state.sceneryShown = false;
+			state.stats.sceneryPlacements = 0;
+			state.stats.sceneryExcluded = 0;
+			state.stats.sceneryUnsupported = 0;
+			state.stats.sceneryTriangles = 0;
+			state.stats.sceneryMilliseconds = 0.0;
+		}
+
+		const char *GroupNameOf(const OverlayKind kind)
+		{
+			switch (kind)
+			{
+				case OverlayKind::Forest:			return "Forests";
+				case OverlayKind::Road:				return "Roads";
+				case OverlayKind::Beach:			return "Beaches";
+				case OverlayKind::Facade:			return "Buildings";
+				case OverlayKind::Line:				return "Lines";
+				case OverlayKind::DrapedPolygon:	return "Draped polygons";
+				default:							return GetOverlayKindName(kind);
+			}
+		}
+
+		/* @brief Builds the tiles' scenery onto the terrain: one entity per kind (forests, roads, beaches ...). */
+		void BuildScenery(State &state)
+		{
+			ClearScenery(state);
+			state.sceneryShown = true;
+			if (state.surface.IsEmpty() || state.sceneryTiles.empty())
+				return;
+			const auto start = std::chrono::steady_clock::now();
+
+			OverlayBuilder::Options options;
+			for (const std::vector<Point2> &ring : state.area.rings)
+			{
+				for (const Point2 &point : ring)
+					options.area.Add(point);
+			}
+			options.areaMargin = state.area.margin;
+			options.layerHeight = &SceneryLayerHeight;
+
+			std::vector<OverlayBuild> builds;
+			builds.reserve(state.sceneryTiles.size());
+			std::set<std::string> warnings;
+			for (const SceneryTile &tile : state.sceneryTiles)
+			{
+				// Library paths resolve for the tile's region; others are relative to its scenery pack
+				const fs::path pack = tile.file.parent_path().parent_path().parent_path();
+				const AssetResolver resolver = [lat = tile.lat, lon = tile.lon, pack](const std::string_view path) -> fs::path
+				{
+					const fs::path relative{ std::string(path) };
+					if (!relative.is_absolute())
+					{
+						if (fs::path file = LibraryManager::ResolveAt(path, lat + 0.5, lon + 0.5); !file.empty())
+							return file;
+					}
+					return VFS::FindCaseInsensitive((pack / relative).lexically_normal()).value_or(fs::path());
+				};
+				// Trees only on the terrain, outside the airport's grounds and the forest exclusion zones (tree by tree)
+				std::vector<const DsfExclusion *> forestZones;
+				for (const DsfExclusion &zone : tile.exclusions)
+				{
+					if (zone.kind == "for")
+						forestZones.push_back(&zone);
+				}
+				options.keepTree = [&state, &forestZones](const Point2 &point)
+				{
+					float y = 0.0f;
+					if (!state.surface.HeightAt(point.x, point.z, y) || OnGrounds(state, point))
+						return false;
+					if (!forestZones.empty())
+					{
+						double latitude = 0.0, longitude = 0.0;
+						state.projection.ToGeo(point, latitude, longitude);
+						for (const DsfExclusion *zone : forestZones)
+						{
+							if (zone->Contains(longitude, latitude))
+								return false;
+						}
+					}
+					return true;
+				};
+
+				OverlayBuilder builder(resolver, state.projection);
+				OverlayBuild &build = builds.emplace_back();
+				builder.Build(tile.dsf, options, build);
+				warnings.insert(build.warnings.begin(), build.warnings.end());
+				state.stats.sceneryPlacements += static_cast<uint32_t>(tile.dsf.polygons.size() + tile.dsf.roads.size() + tile.dsf.objects.size());
+				state.stats.sceneryExcluded += tile.excluded;
+				state.stats.sceneryUnsupported += tile.unsupported;
+			}
+			options.keepTree = nullptr;
+
+			// One entity per kind
+			std::map<std::string, OverlayScene::Group> byName;
+			for (const OverlayBuild &build : builds)
+			{
+				for (const OverlayMesh &mesh : build.meshes)
+				{
+					OverlayScene::Group &group = byName[GroupNameOf(mesh.kind)];
+					group.meshes.push_back(&mesh);
+				}
+				for (const OverlayObject &object : build.objects)
+					byName[object.source == OverlayObject::Source::Autogen ? "Autogen" : "Objects"].objects.push_back(&object);
+			}
+			std::vector<OverlayScene::Group> groups;
+			for (auto &[groupName, group] : byName)
+			{
+				group.key = groupName;
+				group.name = groupName;
+				groups.push_back(std::move(group));
+			}
+
+			if (!state.scenery)
+				state.scenery = std::make_unique<OverlayScene>();
+			state.scenery->SetOnTerrain(true, true);
+			state.scenery->Build("Terrain scenery " + state.name, groups);
+			state.stats.sceneryTriangles = state.scenery->GetStats().triangles;
+			state.stats.sceneryMilliseconds = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
+
+			size_t shown = 0;
+			for (const std::string &warning : warnings)
+			{
+				if (shown++ < 10)
+					SEDX_CORE_WARN_TAG(LOG_TAG, "Tile scenery: {}", warning);
+			}
+			SEDX_CORE_INFO_TAG(LOG_TAG, "{}: tile scenery: {} placements ({} excluded, {} autogen not drawn), {} entities, {} triangles in {:.0f} ms", state.name,
+				state.stats.sceneryPlacements, state.stats.sceneryExcluded, state.stats.sceneryUnsupported, groups.size(), state.stats.sceneryTriangles, state.stats.sceneryMilliseconds);
+		}
+
 		void DestroyRoot(State &state)
 		{
 			if (entt::registry *registry = GetRegistry(); registry && FindHandle(*registry, state.root) != entt::null)
@@ -489,7 +769,8 @@ namespace SceneryEditorX::XPlane
 
 	// -------------------------------------------------------
 
-	bool SceneTerrain::Load(const GeoProjection &projection, const TerrainArea &area, const std::string &name, const double fallbackElevation)
+	bool SceneTerrain::Load(const GeoProjection &projection, const TerrainArea &area, const std::string &name, const double fallbackElevation,
+							const std::vector<std::vector<Point2>> &grounds)
 	{
 		State &state = GetState();
 		if (!IsEnabled())
@@ -512,9 +793,10 @@ namespace SceneryEditorX::XPlane
 		if (!registry || LibraryManager::GetIndex()->GetPackages().empty())
 			return false;
 
-		// The tiles under the area, read with their terrain and rasters
+		// The tiles under the area, read with their terrain, rasters and own scenery (overlay packs: just their exclusions)
 		DsfReadOptions options;
-		options.overlays = false;
+		options.overlays = true;
+		options.overlaysOnlyInBaseMesh = true;
 		options.terrain = true;
 		options.rasters = true;
 		options.rasterNames = { "elevation", "sea_level", "spr1", "spr2", "sum1", "sum2", "fal1", "fal2", "win1", "win2" };
@@ -525,6 +807,7 @@ namespace SceneryEditorX::XPlane
 			int lat = 0, lon = 0;
 			DsfFile dsf;
 			fs::path file;
+			std::vector<DsfExclusion> exclusions;
 		};
 		std::vector<std::future<std::unique_ptr<Tile>>> reads;
 		for (int lat = static_cast<int>(std::floor(options.areaSouth)); lat <= static_cast<int>(std::floor(options.areaNorth)); ++lat)
@@ -536,7 +819,7 @@ namespace SceneryEditorX::XPlane
 					auto tile = std::make_unique<Tile>();
 					tile->lat = lat;
 					tile->lon = lon;
-					return ReadBaseMesh(lat, lon, options, tile->dsf, tile->file) ? std::move(tile) : nullptr;
+					return ReadBaseMesh(lat, lon, options, tile->dsf, tile->file, tile->exclusions) ? std::move(tile) : nullptr;
 				}));
 			}
 		}
@@ -766,6 +1049,25 @@ namespace SceneryEditorX::XPlane
 			files += (files.empty() ? "" : ", ") + tile->file.filename().string() + " (" + tile->file.parent_path().parent_path().parent_path().filename().string() + ")";
 		SEDX_CORE_INFO_TAG(LOG_TAG, "{}: {} triangles in {} parts from {} ({} land classes, {} missing; {} textures), y = 0 at {:.1f} m MSL, in {:.0f} ms ({:.0f} ms reading)",
 			name, triangles, drawn.size(), files, state.stats.terrainTypes, missing, state.stats.textures, state.datumElevation, state.stats.loadMilliseconds, readMilliseconds);
+
+		// The tiles' own scenery, kept filtered so its switch can show it again without reading the tiles
+		state.name = name;
+		state.area = area;
+		state.grounds = grounds;
+		for (std::unique_ptr<Tile> &tile : tiles)
+		{
+			SceneryTile &scenery = state.sceneryTiles.emplace_back();
+			scenery.lat = tile->lat;
+			scenery.lon = tile->lon;
+			scenery.file = tile->file;
+			scenery.dsf = std::move(tile->dsf);
+			scenery.dsf.terrainPatches = {};
+			scenery.dsf.rasters = {};
+			scenery.exclusions = std::move(tile->exclusions);
+			FilterScenery(scenery, state);
+		}
+		if (IsSceneryEnabled())
+			BuildScenery(state);
 		++state.generation;
 		Renderer::SetGroundShown(true);
 		return true;
@@ -776,6 +1078,9 @@ namespace SceneryEditorX::XPlane
 		State &state = GetState();
 		if (state.root != 0 || !state.surface.IsEmpty())
 			++state.generation;
+		ClearScenery(state);
+		state.sceneryTiles.clear();
+		state.grounds.clear();
 		DestroyRoot(state);
 		Renderer::SetGroundShown(false);
 		state.surface.Clear();
@@ -831,6 +1136,8 @@ namespace SceneryEditorX::XPlane
 		entt::registry *registry = GetRegistry();
 		if (!registry || state.root == 0)
 			return false;
+		if (state.scenery && state.scenery->Contains(entityId))
+			return true;
 		uint64_t id = entityId;
 		for (int depth = 0; id != 0 && depth < MAX_DEPTH; ++depth)
 		{
@@ -864,9 +1171,27 @@ namespace SceneryEditorX::XPlane
 		return Renderer::GetFeatures().terrain;
 	}
 
+	bool SceneTerrain::IsSceneryEnabled()
+	{
+		return Renderer::GetFeatures().terrainScenery;
+	}
+
+	void SceneTerrain::Update()
+	{
+		State &state = GetState();
+		const bool wanted = IsSceneryEnabled() && state.root != 0;
+		if (wanted == state.sceneryShown)
+			return;
+		if (wanted)
+			BuildScenery(state);
+		else
+			ClearScenery(state);
+	}
+
 	void SceneTerrain::Shutdown()
 	{
 		Unload();
+		GetState().scenery.reset();
 	}
 }
 

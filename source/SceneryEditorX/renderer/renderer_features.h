@@ -54,6 +54,7 @@ namespace SceneryEditorX
 		bool ao = true;					// Ambient occlusion, CACAO (Phase 8)
 		bool ssr = true;				// Screen-space reflections (Phase 9)
 		bool terrain = true;			// DSF base terrain (Phase 10)
+		bool terrainScenery = true;		// The base tile's forests, roads, beaches and buildings on the terrain (Phase 10)
 		bool water = true;				// (Phase 11)
 		bool weatherApply = true;		// Wet, puddles, snow, ice on the g-buffer (Phase 12)
 		bool tiledLights = true;		// Photometric night lighting (Phase 14)

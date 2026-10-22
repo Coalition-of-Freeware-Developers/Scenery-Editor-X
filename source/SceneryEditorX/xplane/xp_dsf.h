@@ -53,12 +53,13 @@ namespace SceneryEditorX::XPlane
 	struct DsfReadOptions
 	{
 		bool overlays = true;				// Objects, polygons and roads
+		bool overlaysOnlyInBaseMesh = false;	// Overlays only from a tile that isn't an overlay (sim/overlay 1): one read finds a pack's base mesh and its scenery, passing over overlay packs
 		bool terrain = false;				// Terrain patches (off keeps overlay reads as fast as before)
 		bool rasters = false;				// Raster layers
 		std::vector<std::string> rasterNames;	// Rasters to keep (empty: all)
 		/**
-		 * Terrain triangles kept: those whose longitude / latitude box overlaps this one (degrees). An empty box
-		 * (west >= east) keeps every triangle. Point pools wholly outside it aren't decoded at all.
+		 * Terrain triangles and overlay placements kept: those whose longitude / latitude box overlaps this one
+		 * (degrees). An empty box (west >= east) keeps everything. Point pools wholly outside it aren't decoded at all.
 		 */
 		double areaWest = 0.0;
 		double areaSouth = 0.0;
@@ -186,6 +187,26 @@ namespace SceneryEditorX::XPlane
 	/* @brief Elevation in a vertex that asks for the elevation raster's value instead. */
 	inline constexpr double DSF_ELEVATION_FROM_RASTER = -32768.0;
 
+	/**
+	 * @brief One sim/exclude_* zone: X-Plane leaves out scenery of its kind from lower-priority DSFs under it. A value
+	 * is "west/south/east/north"; X-Plane 12 polygon zones follow it with ";" and the polygon's longitude / latitude
+	 * pairs (the box bounds them). A placement with any point inside is excluded (forests: tree by tree).
+	 */
+	struct DsfExclusion
+	{
+		std::string kind;				// What it excludes: obj, fac, for, bch, net, lin, pol, str
+		double west = 0.0;
+		double south = 0.0;
+		double east = 0.0;
+		double north = 0.0;
+		std::vector<std::pair<double, double>> polygon;	// Longitude, latitude; empty for a box
+
+		[[nodiscard]] bool Contains(double longitude, double latitude) const;
+	};
+
+	/* @brief Parses a sim/exclude_* property; false when the key or value isn't one. */
+	bool ParseDsfExclusion(std::string_view key, std::string_view value, DsfExclusion &out);
+
 	struct DsfFile
 	{
 		std::vector<std::pair<std::string, std::string>> properties;	// PROP atom
@@ -216,6 +237,9 @@ namespace SceneryEditorX::XPlane
 
 		/* @brief Exclusion zones (sim/exclude_*), as "west/south/east/north" strings paired with their key. */
 		[[nodiscard]] std::vector<std::pair<std::string, std::string>> GetExclusions() const;
+
+		/* @brief The exclusion zones, parsed (values that don't parse are skipped). */
+		[[nodiscard]] std::vector<DsfExclusion> GetExclusionZones() const;
 
 		/* @brief A raster layer by name, or nullptr. */
 		[[nodiscard]] const DsfRaster *FindRaster(std::string_view name) const;

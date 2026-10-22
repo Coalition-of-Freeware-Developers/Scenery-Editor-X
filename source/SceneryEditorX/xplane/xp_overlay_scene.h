@@ -108,9 +108,10 @@ namespace SceneryEditorX::XPlane
 
 		/**
 		 * @brief Whether groups built from now on stand on the loaded terrain (SceneTerrain): drapes cut along it, facades
-		 * and forests and objects on the ground under them. Only when the groups are in the terrain's frame.
+		 * and forests and objects on the ground under them. Only when the groups are in the terrain's frame. With clip,
+		 * what has no terrain under it isn't drawn (drapes are cut at the terrain's edge; facades and objects off it go).
 		 */
-		void SetOnTerrain(bool onTerrain);
+		void SetOnTerrain(bool onTerrain, bool clip = false);
 
 		/* @brief Removes the root and everything below it and releases the mesh, materials and textures. */
 		void Clear();

@@ -394,6 +394,9 @@ namespace SceneryEditorX::EditorAirports
 					}
 				}
 
+				// The tile scenery's switch (RENDERER panel, --no-terrain-scenery) shows or removes it on the same terrain
+				SceneTerrain::Update();
+
 				// A newer library index (first scan finished after the airport opened, a rescan, a library added):
 				// rebuild once so the art that couldn't be found before is drawn. The terrain switch (RENDERER panel,
 				// --no-terrain) rebuilds too: the airport stands on the terrain, or on the flat ground plane.

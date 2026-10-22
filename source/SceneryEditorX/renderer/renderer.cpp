@@ -3572,6 +3572,7 @@ void dynamic_resolution()
 				properties[count].flags |= material->GetProperty(MaterialProperty::XpMaterial)                 ? (1U << 18) : 0;
 				const uint32_t drapeMode = static_cast<uint32_t>(std::clamp(material->GetProperty(MaterialProperty::XpDrapeMode), 0.0f, 3.0f));
 				properties[count].flags |= (drapeMode & 3U) << 19;
+				properties[count].flags |= material->GetProperty(MaterialProperty::XpFoliage)                  ? (1U << 21) : 0;
 				// keep in sync with Surface struct in common_structs.slang
 
 				properties[count].alpha_cutoff = material->GetProperty(MaterialProperty::AlphaCutoff);

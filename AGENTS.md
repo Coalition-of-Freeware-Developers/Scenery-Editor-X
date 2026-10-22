@@ -50,11 +50,14 @@ The dependency-light, cross-platform Catch2 unit suites that only need `source/`
   framing / depth / draped painter's order / cutout, WorldEditor-style previews per kind; with an X-Plane 12 install listed it
   draws default library assets, tag `[xplane-install]`, and `SEDX_THUMBNAIL_DUMP=<folder>` writes them as PNGs), and the
   base terrain (`TerrainTests.cpp`: `xp_7z.*` LZMA / LZMA2 against liblzma fixtures and one-file 7-zip archives, DSF terrain
-  patches and rasters (`xp_dsf.*` DsfReadOptions, an area keeping only its triangles), `.ter` terrain types (`xp_terrain.*`;
-  every default `.ter` parses with its textures, tag `[library-sweep]`), library resolution by REGION bitmap and season
-  (`xp_library.*` ResolveProvider), the terrain meshes in the local frame and the surface drapes are cut onto
-  (`xp_terrain_mesh.*`: heights, rays, exact draping across a crease); with an X-Plane 12 install listed it reads KSEA's
-  7-zip Global Scenery tile, tag `[xplane-install]`, about a second)
+  patches and rasters (`xp_dsf.*` DsfReadOptions, an area keeping only its triangles and the overlay placements reaching
+  into it, overlays read only from base meshes, sim/exclude_* zones as boxes and X-Plane 12 polygons), `.ter` terrain types
+  (`xp_terrain.*`; every default `.ter` parses with its textures, tag `[library-sweep]`), library resolution by REGION bitmap
+  and season (`xp_library.*` ResolveProvider), the terrain meshes in the local frame and the surface drapes are cut onto
+  (`xp_terrain_mesh.*`: heights, rays, exact draping across a crease, clipped at the terrain's edge); with an X-Plane 12
+  install listed it reads KSEA's 7-zip Global Scenery tile and its scenery within a mile, tag `[xplane-install]`, about two
+  seconds), and the terrain's own scenery in `OverlayTests.cpp` (`.bch` beaches parsed and laid along shores with the
+  water on the left, forests planted only in the area and where the caller allows)
   (`SceneryEditorX/xplane/xp_obj8.*`, `xp_library.*`, `xp_lights.*`, `xp_apt.*`, `xp_apt_geometry.*`,
   `xp_airport_index.*`, `xp_gateway_types.*`, `xp_dsf.*`, `xp_7z.*`, `xp_assets.*`, `xp_overlay.*`, `xp_terrain.*`,
   `xp_terrain_mesh.*`, plus `filesystem/vfs.*`,

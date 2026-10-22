@@ -402,8 +402,8 @@ gbuffer main_frag(gbuffer_vertex vertex, bool is_front_face: SV_IsFrontFace)
 
     // Double-sided geometry (ATTR_no_cull, two-sided facade walls) seen from behind: its normal faces the camera too, as
     // it would from the front, else the lighting and the ambient occlusion see a surface turned away from the viewer
-    // (grass and flowers flipped theirs above)
-    if (!is_front_face && !(surface.is_grass_blade() || surface.is_flower()))
+    // (grass and flowers flipped theirs above; X-Plane trees keep their canopy normals on both faces)
+    if (!is_front_face && !(surface.is_grass_blade() || surface.is_flower()) && !material.is_xp_foliage())
         normal = -normal;
 
     // output

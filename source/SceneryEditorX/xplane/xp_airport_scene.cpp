@@ -1427,6 +1427,9 @@ namespace SceneryEditorX::XPlane
 				key += "|cut" + std::to_string(part.cutoff);
 			if (blended)
 				key += "|blend";
+			const bool foliage = part.kind == AirportElementKind::Forest;
+			if (foliage)
+				key += "|foliage";
 
 			// The shading's textures load before the lookup: they are part of the key
 			Ref<MaterialAsset> material = CreateRef<MaterialAsset>();
@@ -1453,6 +1456,7 @@ namespace SceneryEditorX::XPlane
 			// deferred passes and blends the rest in the transparent pass.
 			material->SetProperty(MaterialProperty::AlphaCutoff, blended ? BLEND_SPLIT_ALPHA : (cutout ? std::clamp(part.cutoff, 0.001f, 1.0f) : 0.0f));
 			material->SetProperty(MaterialProperty::BlendMode, blended ? 1.0f : 0.0f);
+			material->SetProperty(MaterialProperty::XpFoliage, foliage ? 1.0f : 0.0f);
 			if (image)
 				material->SetTexture(MaterialTextureType::Color, image);
 			loaded.overlayMaterials.emplace(key, material);
@@ -1513,6 +1517,7 @@ namespace SceneryEditorX::XPlane
 			TerrainArea area;
 			area.margin = TERRAIN_MARGIN;
 			const Bounds2 &focus = build.focus.valid ? build.focus : build.bounds;
+			std::vector<std::vector<Point2>> grounds;	// The boundary: the tile's trees and buildings inside it aren't drawn
 			for (const AptBoundary &boundary : document.airport.boundaries)
 			{
 				for (const AptNodeChain &chain : boundary.rings)
@@ -1522,14 +1527,15 @@ namespace SceneryEditorX::XPlane
 					const Bounds2 ringBounds = GetBounds(ring);
 					// KSEA outlines the Space Needle 19 km away: keep the rings that touch the field
 					if (ring.size() >= 3 && focus.valid && ringBounds.maxX >= focus.minX && ringBounds.minX <= focus.maxX && ringBounds.maxZ >= focus.minZ && ringBounds.minZ <= focus.maxZ)
-						area.rings.push_back(std::move(ring));
+						grounds.push_back(std::move(ring));
 				}
 			}
+			area.rings = grounds;
 			if (area.rings.empty() && focus.valid)
 				area.rings.push_back({ Point2{ focus.minX, focus.minZ }, Point2{ focus.maxX, focus.minZ }, Point2{ focus.maxX, focus.maxZ }, Point2{ focus.minX, focus.maxZ } });
 			if (area.rings.empty())
 				return;
-			SceneTerrain::Load(projection, area, document.airport.id, document.airport.elevationFt * 0.3048);
+			SceneTerrain::Load(projection, area, document.airport.id, document.airport.elevationFt * 0.3048, grounds);
 		}
 
 		/**
@@ -2481,6 +2487,7 @@ namespace SceneryEditorX::XPlane
 	void SceneAirports::Shutdown()
 	{
 		Unload();
+		SceneTerrain::Shutdown();
 	}
 }
 

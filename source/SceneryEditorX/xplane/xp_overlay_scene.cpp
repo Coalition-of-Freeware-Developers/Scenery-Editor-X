@@ -183,6 +183,7 @@ namespace SceneryEditorX::XPlane
 		uint64_t root = 0;
 		uint32_t drapeSequenceBase = 0;								// SetDrapeSequenceBase()
 		bool onTerrain = false;										// SetOnTerrain()
+		bool clip = false;
 		std::map<std::string, Ref<MaterialAsset>> materials;		// By texture + alpha treatment (or color)
 		std::map<std::string, TextureEntry> textures;				// By file
 		std::unordered_map<std::string, GroupState> groups;		// By group key
@@ -228,6 +229,9 @@ namespace SceneryEditorX::XPlane
 				key += "|cut" + std::to_string(part.cutoff);
 			if (blended)
 				key += "|blend";
+			const bool foliage = part.kind == OverlayKind::Forest;
+			if (foliage)
+				key += "|foliage";
 
 			if (const auto it = materials.find(key); it != materials.end())
 				return it->second;
@@ -248,6 +252,7 @@ namespace SceneryEditorX::XPlane
 			// deferred passes and blends the rest in the transparent pass.
 			material->SetProperty(MaterialProperty::AlphaCutoff, blended ? BLEND_SPLIT_ALPHA : (cutout ? std::clamp(part.cutoff, 0.001f, 1.0f) : 0.0f));
 			material->SetProperty(MaterialProperty::BlendMode, blended ? 1.0f : 0.0f);
+			material->SetProperty(MaterialProperty::XpFoliage, foliage ? 1.0f : 0.0f);
 			if (image)
 				material->SetTexture(MaterialTextureType::Color, image);
 			materials.emplace(key, material);
@@ -313,13 +318,20 @@ namespace SceneryEditorX::XPlane
 					continue;
 				}
 				// On the terrain: drapes cut along it, facades and forests standing on it
+				if (clip && !IsDraped(mesh->kind) && mesh->bounds.valid)
+				{
+					float ground = 0.0f;
+					if (!surface.HeightAt(0.5 * (mesh->bounds.minX + mesh->bounds.maxX), 0.5 * (mesh->bounds.minZ + mesh->bounds.maxZ), ground) && mesh->kind != OverlayKind::Forest)
+						continue;	// Forests are planted tree by tree where the caller allows
+				}
 				draped = *mesh;
 				if (IsDraped(mesh->kind))
-					surface.Drape(draped);
+					surface.Drape(draped, clip);
 				else
 					surface.Lift(draped.vertices);
 				Append(parts[it->second], draped);
 			}
+			std::erase_if(parts, [](const Part &part) { return part.indices.empty(); });	// Clipped away
 
 			for (Part &part : parts)
 			{
@@ -385,6 +397,8 @@ namespace SceneryEditorX::XPlane
 			for (const OverlayObject *object : group.objects)
 			{
 				if (!object)
+					continue;
+				if (float ground = 0.0f; clip && onTerrain && !SceneTerrain::GetSurface().HeightAt(object->x, object->z, ground))
 					continue;
 				SceneObjects::PlaceOptions options;
 				options.position[0] = static_cast<float>(object->x);
@@ -563,9 +577,10 @@ namespace SceneryEditorX::XPlane
 		m_Impl->drapeSequenceBase = base;
 	}
 
-	void OverlayScene::SetOnTerrain(const bool onTerrain)
+	void OverlayScene::SetOnTerrain(const bool onTerrain, const bool clip)
 	{
 		m_Impl->onTerrain = onTerrain;
+		m_Impl->clip = clip;
 	}
 
 	void OverlayScene::Clear()

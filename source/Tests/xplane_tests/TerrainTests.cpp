@@ -14,6 +14,7 @@
 #include <catch2/catch_all.hpp>
 #include <SceneryEditorX/filesystem/vfs.h>
 #include <SceneryEditorX/xplane/xp_7z.h>
+#include <SceneryEditorX/xplane/xp_assets.h>
 #include <SceneryEditorX/xplane/xp_dsf.h>
 #include <SceneryEditorX/xplane/xp_library.h>
 #include <SceneryEditorX/xplane/xp_terrain.h>
@@ -804,6 +805,39 @@ TEST_CASE("The terrain surface: heights, rays and draping", "[terrain]")
 		CHECK_THAT(wall[0].y, WithinAbs(2.5, 1e-4));
 		CHECK_THAT(wall[1].y, WithinAbs(8.5, 1e-4));
 	}
+
+	SECTION("Clipped drapes end where the terrain does")
+	{
+		// [50, 150] x [20, 40]: half of it over the terrain (x <= 100); and a triangle wholly off it
+		std::vector<OverlayVertex> vertices(7);
+		const float points[7][2] = { { 50, 20 }, { 150, 20 }, { 150, 40 }, { 50, 40 }, { 200, 200 }, { 210, 210 }, { 210, 200 } };
+		for (int i = 0; i < 7; ++i)
+		{
+			vertices[i].x = points[i][0];
+			vertices[i].z = points[i][1];
+			vertices[i].y = 0.01f;
+		}
+		std::vector<uint32_t> kept = { 0, 2, 1, 0, 3, 2, 4, 5, 6 };
+		std::vector<OverlayVertex> keptVertices = vertices;
+		const uint32_t unclipped = surface.Drape(keptVertices, kept);
+
+		std::vector<uint32_t> indices = { 0, 2, 1, 0, 3, 2, 4, 5, 6 };
+		const uint32_t clipped = surface.Drape(vertices, indices, true);
+		CHECK(clipped > 0);
+		CHECK(clipped < unclipped);
+		double area = 0.0;
+		for (size_t i = 0; i + 2 < indices.size(); i += 3)
+		{
+			const OverlayVertex &a = vertices[indices[i]], &b = vertices[indices[i + 1]], &c = vertices[indices[i + 2]];
+			area += std::abs((b.x - a.x) * (c.z - a.z) - (b.z - a.z) * (c.x - a.x)) * 0.5;
+			for (const OverlayVertex *vertex : { &a, &b, &c })
+			{
+				CHECK(vertex->x <= 100.0f + 1e-3f);
+				CHECK_THAT(vertex->y, WithinAbs(CreaseHeight(vertex->x, vertex->z) + 0.01, 1e-3));
+			}
+		}
+		CHECK_THAT(area, WithinAbs(50.0 * 20.0, 0.01));
+	}
 }
 
 TEST_CASE("Every X-Plane 12 default .ter parses with its textures", "[assets][terrain][xplane-install][library-sweep]")
@@ -922,6 +956,215 @@ TEST_CASE("The terrain around KSEA from X-Plane 12's Global Scenery", "[dsf][ter
 	// The runway falls to the south: 16L's threshold stands above 34R's
 	const Point2 north16 = projection.ToLocal(47.4638, -122.3079), south34 = projection.ToLocal(47.4314, -122.3080);
 	CHECK(surface.HeightOr(north16.x, north16.z) > surface.HeightOr(south34.x, south34.z) + 5.0f);
+}
+
+TEST_CASE("KSEA's tile scenery within a mile, and X-Plane 12's beaches", "[dsf][terrain][xplane-install]")
+{
+	const fs::path xplane = FindXPlane();
+	const fs::path tile = xplane / "Global Scenery" / "X-Plane 12 Global Scenery" / "Earth nav data" / "+40-130" / "+47-123.dsf";
+	if (xplane.empty() || !fs::exists(tile))
+	{
+		WARN("No X-Plane 12 Global Scenery tile +47-123 found: skipped");
+		return;
+	}
+
+	// Both beach files parse, with pieces for the types the tile uses
+	for (const char *name : { "1200 beaches/coastlines.bch", "900 beaches/beach.bch" })
+	{
+		BeachAsset beach;
+		std::string error;
+		const bool loaded = LoadBeachAsset(xplane / "Resources" / "default scenery" / name, beach, &error);
+		INFO(name << ": " << error);
+		REQUIRE(loaded);
+		CHECK(beach.GetTiles(5).size() >= 3);
+		CHECK_FALSE(beach.transitions.empty());
+	}
+
+	const GeoProjection projection(47.449, -122.309);
+	TerrainArea area;
+	area.rings = { { projection.ToLocal(47.4638, -122.3180), projection.ToLocal(47.4638, -122.3020), projection.ToLocal(47.4300, -122.3020), projection.ToLocal(47.4300, -122.3180) } };
+	DsfReadOptions options;
+	options.overlaysOnlyInBaseMesh = true;
+	area.GetGeoBox(projection, options.areaWest, options.areaSouth, options.areaEast, options.areaNorth);
+	DsfFile dsf;
+	std::string error;
+	REQUIRE(LoadDsf(tile, dsf, options, &error));
+	CHECK(dsf.roads.size() > 1000);
+	CHECK(dsf.roads.size() < 20000);
+	std::map<std::string, size_t> kinds;
+	for (const DsfPolygonPlacement &polygon : dsf.polygons)
+	{
+		const std::string &definition = dsf.polygonDefinitions[polygon.definition];
+		++kinds[definition.substr(definition.find_last_of('.') + 1)];
+	}
+	CHECK(kinds["for"] > 50);
+	CHECK(kinds["bch"] > 0);
+	CHECK(dsf.polygons.size() < 5000);	// Of 78,000 in the tile
+
+	// The Global Airports overlay over it: passed over, its exclusion zones read
+	const fs::path airports = xplane / "Global Scenery" / "Global Airports" / "Earth nav data" / "+40-130" / "+47-123.dsf";
+	if (fs::exists(airports))
+	{
+		DsfFile overlay;
+		REQUIRE(LoadDsf(airports, overlay, options, &error));
+		CHECK(overlay.IsOverlay());
+		CHECK(overlay.objects.empty());
+		CHECK(overlay.polygons.empty());
+		CHECK(overlay.GetExclusionZones().size() > 10);
+	}
+}
+
+TEST_CASE("DSF exclusion zones", "[dsf][terrain]")
+{
+	DsfExclusion zone;
+	SECTION("Boxes")
+	{
+		REQUIRE(ParseDsfExclusion("sim/exclude_for", "-122.320000/47.430000/-122.300000/47.460000", zone));
+		CHECK(zone.kind == "for");
+		CHECK(zone.west == -122.32);
+		CHECK(zone.north == 47.46);
+		CHECK(zone.polygon.empty());
+		CHECK(zone.Contains(-122.31, 47.45));
+		CHECK_FALSE(zone.Contains(-122.33, 47.45));
+		CHECK_FALSE(zone.Contains(-122.31, 47.47));
+		// Corners in any order
+		REQUIRE(ParseDsfExclusion("sim/exclude_net", "-122.30/47.46/-122.32/47.43", zone));
+		CHECK(zone.west == -122.32);
+		CHECK(zone.south == 47.43);
+	}
+	SECTION("X-Plane 12 polygons, either separator")
+	{
+		// A triangle: west, south-east, north-east corners of its box
+		for (const char *value : { "0/0/2/2;0/1,2/0,2/2", "0/0/2/2;0,1,2,0,2,2" })
+		{
+			REQUIRE(ParseDsfExclusion("sim/exclude_obj", value, zone));
+			REQUIRE(zone.polygon.size() == 3);
+			CHECK(zone.Contains(1.8, 1.0));
+			CHECK_FALSE(zone.Contains(0.2, 0.2));	// In the box, not the triangle
+			CHECK_FALSE(zone.Contains(3.0, 1.0));
+		}
+	}
+	SECTION("Not zones")
+	{
+		CHECK_FALSE(ParseDsfExclusion("sim/west", "-123", zone));
+		CHECK_FALSE(ParseDsfExclusion("sim/exclude_", "0/0/1/1", zone));
+		CHECK_FALSE(ParseDsfExclusion("sim/exclude_for", "0/0/1", zone));
+		CHECK_FALSE(ParseDsfExclusion("sim/exclude_for", "a/0/1/1", zone));
+		CHECK_FALSE(ParseDsfExclusion("sim/exclude_for", "0/0/1/1;0/0,1", zone));
+	}
+	SECTION("From a tile's properties")
+	{
+		DsfFile dsf;
+		dsf.properties = { { "sim/overlay", "1" }, { "sim/exclude_fac", "0/0/1/1" }, { "sim/exclude_for", "bad" }, { "sim/exclude_bch", "0/0/1/1;0/0,1/0,1/1" } };
+		const std::vector<DsfExclusion> zones = dsf.GetExclusionZones();
+		REQUIRE(zones.size() == 2);
+		CHECK(zones[0].kind == "fac");
+		CHECK(zones[1].kind == "bch");
+		CHECK(zones[1].polygon.size() == 3);
+	}
+}
+
+TEST_CASE("DSF overlay placements limited to an area", "[dsf][terrain]")
+{
+	// A base tile with scenery near its south-west corner, its north-east corner, and a forest around the south-west
+	// area with no point in it
+	DsfFile written;
+	written.properties = { { "sim/west", "-123" }, { "sim/east", "-122" }, { "sim/north", "46" }, { "sim/south", "45" } };
+	written.objectDefinitions = { "lib/a.obj" };
+	written.polygonDefinitions = { "lib/trees.for", "lib/coast.bch" };
+	written.networkDefinitions = { "lib/g10/roads.net" };
+	const auto point = [](const double longitude, const double latitude, const double third = 0.0)
+	{
+		DsfPoint p;
+		p.planes = 3;
+		p.v[0] = longitude;
+		p.v[1] = latitude;
+		p.v[2] = third;
+		return p;
+	};
+	DsfObjectPlacement near, far;
+	near.longitude = -122.9;
+	near.latitude = 45.1;
+	far.longitude = -122.2;
+	far.latitude = 45.8;
+	written.objects = { near, far };
+	DsfPolygonPlacement forestNear, forestFar, forestAround, beach;
+	forestNear.definition = forestFar.definition = forestAround.definition = 0;
+	forestNear.parameter = forestFar.parameter = forestAround.parameter = 255;
+	forestNear.windings = { { point(-122.91, 45.09), point(-122.89, 45.09), point(-122.89, 45.11) } };
+	forestFar.windings = { { point(-122.21, 45.79), point(-122.19, 45.79), point(-122.19, 45.81) } };
+	forestAround.windings = { { point(-122.99, 45.01), point(-122.80, 45.01), point(-122.80, 45.19), point(-122.99, 45.19) } };
+	beach.definition = 1;
+	beach.parameter = 1;
+	beach.planes = 3;
+	beach.windings = { { point(-122.905, 45.095, 5), point(-122.895, 45.095, 5), point(-122.895, 45.105, 5) } };
+	written.polygons = { forestNear, forestFar, forestAround, beach };
+	for (auto &polygon : written.polygons)
+		polygon.planes = polygon.definition == 1 ? 3 : 2;
+	DsfRoadSegment roadNear, roadFar;
+	roadNear.startJunction = 1;
+	roadNear.endJunction = 2;
+	roadNear.subtype = 50;
+	roadNear.points = { { -122.91, 45.1 }, { -122.89, 45.1 } };
+	roadFar = roadNear;
+	roadFar.startJunction = 3;
+	roadFar.endJunction = 4;
+	roadFar.points = { { -122.21, 45.8 }, { -122.19, 45.8 } };
+	written.roads = { roadNear, roadFar };
+
+	std::vector<uint8_t> bytes;
+	std::string error;
+	REQUIRE(WriteDsf(written, bytes, &error));
+
+	DsfReadOptions options;
+	options.areaWest = -122.95;
+	options.areaEast = -122.85;
+	options.areaSouth = 45.05;
+	options.areaNorth = 45.15;
+
+	SECTION("Without an area, everything")
+	{
+		DsfFile all;
+		REQUIRE(ReadDsf(bytes.data(), bytes.size(), all, &error));
+		CHECK(all.objects.size() == 2);
+		CHECK(all.polygons.size() == 4);
+		CHECK(all.roads.size() == 2);
+	}
+	SECTION("With one, what reaches into it (polygons whole)")
+	{
+		DsfFile kept;
+		REQUIRE(ReadDsf(bytes.data(), bytes.size(), kept, options, &error));
+		REQUIRE(kept.objects.size() == 1);
+		CHECK(kept.objects[0].longitude == Catch::Approx(-122.9).margin(1e-6));
+		REQUIRE(kept.polygons.size() == 3);	// Near, around (in file order), the beach
+		CHECK(kept.polygons[0].windings[0].size() == 3);
+		CHECK(kept.polygons[1].windings[0].size() == 4);
+		CHECK(kept.polygons[2].definition == 1);
+		CHECK(kept.polygons[2].windings[0][0].v[2] == 5.0);	// The beach type plane
+		REQUIRE(kept.roads.size() == 1);
+		CHECK(kept.roads[0].startJunction == 1);
+	}
+	SECTION("Only a base mesh's overlays")
+	{
+		DsfReadOptions base = options;
+		base.overlaysOnlyInBaseMesh = true;
+		DsfFile kept;
+		REQUIRE(ReadDsf(bytes.data(), bytes.size(), kept, base, &error));
+		CHECK(kept.objects.size() == 1);
+
+		DsfFile overlay = written;
+		overlay.properties.emplace_back("sim/overlay", "1");
+		overlay.properties.emplace_back("sim/exclude_for", "-122.95/45.05/-122.85/45.15");
+		std::vector<uint8_t> overlayBytes;
+		REQUIRE(WriteDsf(overlay, overlayBytes, &error));
+		DsfFile skipped;
+		REQUIRE(ReadDsf(overlayBytes.data(), overlayBytes.size(), skipped, base, &error));
+		CHECK(skipped.IsOverlay());
+		CHECK(skipped.objects.empty());
+		CHECK(skipped.polygons.empty());
+		CHECK(skipped.roads.empty());
+		CHECK(skipped.GetExclusionZones().size() == 1);
+	}
 }
 
 // -------------------------------------------------------

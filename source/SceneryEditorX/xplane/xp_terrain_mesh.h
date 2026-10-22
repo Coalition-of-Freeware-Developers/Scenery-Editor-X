@@ -142,14 +142,14 @@ namespace SceneryEditorX::XPlane
 		/**
 		 * @brief Drapes flat geometry: each triangle is cut along the terrain triangles under it and every piece is
 		 * lifted by the terrain's height (the mesh's own y stays as the offset above the ground: layer heights), with the
-		 * terrain's normal. Attributes interpolate over the original triangle. Triangles with no terrain under them are
-		 * kept as they were.
+		 * terrain's normal. Attributes interpolate over the original triangle. What has no terrain under it is kept as it
+		 * was, or with clip left out (scenery that must end where the terrain does).
 		 * @return Triangles after draping.
 		 */
-		uint32_t Drape(std::vector<OverlayVertex> &vertices, std::vector<uint32_t> &indices) const;
+		uint32_t Drape(std::vector<OverlayVertex> &vertices, std::vector<uint32_t> &indices, bool clip = false) const;
 
 		/* @brief Drape() for an overlay mesh, bounds kept. */
-		uint32_t Drape(OverlayMesh &mesh) const;
+		uint32_t Drape(OverlayMesh &mesh, bool clip = false) const;
 
 		/* @brief Lifts every vertex by the terrain's height under it (3D geometry: walls and roofs follow the ground). */
 		void Lift(std::vector<OverlayVertex> &vertices) const;

@@ -554,6 +554,17 @@ TEST_CASE("Renderer feature switches", "[environment][quality]")
 	CHECK_FALSE(features.csmShadows);
 	CHECK(FindRendererFeature("nonsense") == nullptr);
 	CHECK(std::string(GetDebugViewName(Renderer_DebugView::Normals)) == "Normals");
+
+	// Shaders test these bits by their index in the table (FEATURE_* in environment_lighting, csm_sample and ssr_common.slang)
+	const auto bit = [](const char *name) { return FindRendererFeature(name) - GetRendererFeatureTable().data(); };
+	CHECK(bit("atmosphere") == 0);
+	CHECK(bit("aerial-perspective") == 1);
+	CHECK(bit("env-probes") == 2);
+	CHECK(bit("cloud-shadows") == 3);
+	CHECK(bit("csm") == 4);
+	CHECK(bit("ssr") == 10);
+	REQUIRE(FindRendererFeature("terrain-scenery"));
+	CHECK(defaults.terrainScenery);
 }
 
 // -------------------------------------------------------

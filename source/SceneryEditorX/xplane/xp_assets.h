@@ -217,6 +217,53 @@ namespace SceneryEditorX::XPlane
 	bool ParseForestAsset(std::string_view text, ForestAsset &out, std::string *error = nullptr);
 	bool LoadForestAsset(const std::filesystem::path &path, ForestAsset &out, std::string *error = nullptr);
 
+	/**
+	 * @brief .bch: the strips drawn along coasts and lake shores. A DSF beach polygon gives each point a beach type (the
+	 * type of the edge starting there, 0 none); a type's TILE rows are pieces of the atlas a strip is laid with, one
+	 * after another along the shore: s across the piece's length, t across the shore from its water edge (t1) through
+	 * the shoreline (t2, on the polygon's edge) to its land edge (t3). Pixels count in SCALE_X / SCALE_Y; the whole
+	 * texture covers SIZE_X x SIZE_Y meters. Types are grouped (GROUP group type) for the transition pieces
+	 * (XONL2 / XONR2 within a type, XONLG / XONRG between groups, to group 0 at dead ends).
+	 */
+	struct BeachAsset
+	{
+		struct Tile
+		{
+			int type = 0;
+			float s1 = 0.0f, s2 = 0.0f;		// Pixels along the shore
+			float t1 = 0.0f;				// Water edge (pixels)
+			float t2 = 0.0f;				// Shoreline
+			float t3 = 0.0f;				// Land edge
+		};
+
+		/* @brief A transition piece: its kind (XONL2, XONR2, XONLG, XONRG), the type or groups it joins, its rectangle. */
+		struct Transition
+		{
+			std::string kind;
+			int from = 0;					// Type (XONL2 / XONR2) or group the shore comes from
+			int to = 0;						// Group it goes to (XONLG / XONRG; 0 a dead end)
+			Tile tile;
+		};
+
+		std::string texture;				// TEXTURE (X-Plane 12) or BASE_TEX
+		std::string textureNormal;
+		float normalRatio = 1.0f;
+		std::string decalLibrary;			// DECAL_LIB
+		float scaleX = 1.0f;				// Pixels across the texture
+		float scaleY = 1.0f;
+		float sizeX = 1.0f;					// Meters the whole texture covers
+		float sizeY = 1.0f;
+		std::vector<Tile> tiles;
+		std::vector<Transition> transitions;
+		std::vector<std::pair<int, int>> groups;	// (group, type)
+
+		/* @brief The TILE rows of a type, in file order. */
+		[[nodiscard]] std::vector<const Tile *> GetTiles(int type) const;
+	};
+
+	bool ParseBeachAsset(std::string_view text, BeachAsset &out, std::string *error = nullptr);
+	bool LoadBeachAsset(const std::filesystem::path &path, BeachAsset &out, std::string *error = nullptr);
+
 	/* @brief .fac: a building (or fence) extruded along a polygon. */
 	struct FacadeAsset
 	{

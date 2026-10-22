@@ -605,7 +605,7 @@ namespace SceneryEditorX::XPlane
 		return hit;
 	}
 
-	uint32_t TerrainSurface::Drape(std::vector<OverlayVertex> &vertices, std::vector<uint32_t> &indices) const
+	uint32_t TerrainSurface::Drape(std::vector<OverlayVertex> &vertices, std::vector<uint32_t> &indices, const bool clip) const
 	{
 		if (IsEmpty() || indices.size() < 3)
 			return static_cast<uint32_t>(indices.size() / 3);
@@ -670,6 +670,8 @@ namespace SceneryEditorX::XPlane
 			if (std::abs(triArea) < 1e-9)
 			{
 				// Seen edge-on from above (a wall in a drape): lift each corner where it stands
+				if (clip && ta == NONE)
+					continue;
 				const uint32_t base = static_cast<uint32_t>(outVertices.size());
 				for (const OverlayVertex *vertex : { &A, &B, &C })
 				{
@@ -744,7 +746,7 @@ namespace SceneryEditorX::XPlane
 				emitted = true;
 			}
 
-			if (!emitted)
+			if (!emitted && !clip)
 			{
 				// No terrain under it: as it was
 				const uint32_t base = static_cast<uint32_t>(outVertices.size());
@@ -758,9 +760,9 @@ namespace SceneryEditorX::XPlane
 		return static_cast<uint32_t>(indices.size() / 3);
 	}
 
-	uint32_t TerrainSurface::Drape(OverlayMesh &mesh) const
+	uint32_t TerrainSurface::Drape(OverlayMesh &mesh, const bool clip) const
 	{
-		return Drape(mesh.vertices, mesh.indices);
+		return Drape(mesh.vertices, mesh.indices, clip);
 	}
 
 	void TerrainSurface::Lift(std::vector<OverlayVertex> &vertices) const

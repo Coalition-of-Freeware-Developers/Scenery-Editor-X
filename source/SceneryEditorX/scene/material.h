@@ -110,6 +110,7 @@ namespace SceneryEditorX
 		XpTerrainFarT				= 58,
 		XpTerrainFarStart			= 59,
 		XpTerrainFarEnd				= 60,
+		XpFoliage					= 61,	// X-Plane 2D trees (.for): crossed quads lit by their canopy normals on both faces
 		MaxEnum						= 255
 	};
 
@@ -454,7 +455,7 @@ namespace SceneryEditorX
 		// mutable: the scalar setters are const (they forward to the underlying Material), but must keep the table current
 		mutable std::array<float, static_cast<uint32_t>(MaterialClass::MaxEnum)> m_Properties{};
 		// MaterialProperty values (tessellation, cull mode, ...); kept apart because their indices overlap MaterialClass
-		std::array<float, static_cast<uint32_t>(MaterialProperty::XpTerrainFarEnd) + 1> m_RenderSettings{};
+		std::array<float, static_cast<uint32_t>(MaterialProperty::XpFoliage) + 1> m_RenderSettings{};
 		std::array<ImageResource*, static_cast<uint32_t>(MaterialTextureType::MaxEnum) * SLOTS_PER_TEXTURE> m_Textures{};
 
 		bool m_Transparent = false;
