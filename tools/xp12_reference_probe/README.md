@@ -46,12 +46,18 @@ test airports), `art_controls.txt` and this README into the build folder.
 ## Run
 
 Start X-Plane with any aircraft, then **Plugins > SEDX Reference Probe > Run all parity scenarios (KSEA)** or **Run all
-test-airport scenarios** (the first scenario of either alone is there for a quick check). Scenarios run clear and dry
+test-airport scenarios** (the first scenario of either alone is there for a quick check; **Resume ...** skips the
+scenarios whose `<id>.png` and `<id>.json` are already in `Output/sedx_probe`, to carry on after a crash or a stop).
+Scenarios run clear and dry
 first, then hazy / foggy / overcast, then wet, then snowy (X-Plane takes minutes of sim time to melt snow and dry a
 runway, so the order keeps one scenario's weather out of the next); within each of those groups an airport's scenarios
 run together, so X-Plane loads each airport once per group. For each scenario the probe
 
-1. moves the user to the scenario's airport (and waits for the scenery to load) and then out of sight behind the camera,
+1. moves the user to the scenario's airport when it changes (`XPLMPlaceUserAtAirport`, then waits for the scenery to
+   load) and holds the aircraft out of sight, 6 km behind and 1.2 km above the camera: the run overrides the plane's
+   flight path (`sim/operation/override/override_planepath`) and sets its position datarefs, so a shot is not a new
+   flight (X-Plane starting a new flight for every shot made Living Scenery Technology v1.11.6 crash X-Plane at KDEN);
+   at the end the aircraft is parked at the last airport,
 2. sets the date and time (`sim/time/*`), the weather (`sim/weather/region/*`: visibility, three cloud layers, rain,
    runway friction, snow cover, temperature; `update_immediately`), and the field of view,
 3. holds the camera at the scenario's pose (`XPLMControlCamera`) and, for `ev100_lock` scenarios, clamps
@@ -67,7 +73,9 @@ run together, so X-Plane loads each airport once per group. For each scenario th
 
 A log goes to `Output/sedx_probe/probe_log.txt` and X-Plane's `Log.txt`. For unattended runs put a file named
 `autorun` into `Output/sedx_probe/` (with the word `quit` inside to exit X-Plane when done, `airports` to run the
-test-airport set instead of the parity set); delete it afterwards, or every start runs again. A
+test-airport set instead of the parity set, `resume` to skip what is already captured); delete it afterwards, or every
+start runs again. If another plugin still stops X-Plane during a run, disable it for probe runs (**Plugins > Plugin
+Admin**) and resume. A
 `Output/sedx_probe/scenarios.json` (or `airports.json`) overrides the copy installed with the plugin.
 
 ## Render the same scenarios in SEDX
