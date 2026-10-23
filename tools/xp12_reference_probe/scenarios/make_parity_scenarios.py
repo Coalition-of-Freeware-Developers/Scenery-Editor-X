@@ -1,5 +1,6 @@
-"""Writes xp12_parity.json, the scenario set X-Plane 12 (through the reference probe) and SEDX (through
---env-scenario) both render for the parity comparison (plan TASK-004 / TASK-102).
+"""Writes the scenario sets X-Plane 12 (through the reference probe) and SEDX (through --env-scenario) both render:
+xp12_parity.json, the KSEA parity set (plan TASK-004 / TASK-102), and xp12_airports.json, the same kinds of views at
+the standard test airports (KGON, KDEN, KORD, KBOS, KBTV) used for feature, performance and parity checks.
 
 Run with:  python -I tools/xp12_reference_probe/scenarios/make_parity_scenarios.py
 Standard library only. Local times for the sun-elevation sweep are solved with the NOAA solar-position
@@ -12,6 +13,7 @@ import os
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, 'xp12_parity.json')
+OUT_AIRPORTS = os.path.join(HERE, 'xp12_airports.json')
 
 XP_BUILD = '12.4.4-b4'
 
@@ -144,6 +146,128 @@ WEATHER = {
     'wet5': {'visibility_m': 20000.0, 'runway_friction': 5, 'rain_percent': 0.6, 'temperature_c': 12.0},
 }
 
+# The standard test airports, each from the pack X-Plane uses for it (scenery_packs.ini order, then Global Airports):
+# field datum (apt.dat 1302 datum_lat / datum_lon), elevation, summer UTC offset, a runway threshold and the threshold
+# it looks toward (apt.dat 12.00), and for coastal fields a low view over the water inside the terrain area.
+TEST_AIRPORTS = [
+    {'icao': 'KGON', 'notes': 'Groton-New London (Global Airports): small coastal field on Long Island Sound',
+     'datum': (41.330055556, -72.045138889), 'elevation_ft': 7.0, 'utc_offset': -4.0,
+     'runway': ('05', (41.3250320, -72.0480260), (41.3364130, -72.0378530)),
+     'water': {'lat': 41.3225, 'lon': -72.0455, 'alt_m_agl': 60.0, 'heading': 180.0, 'pitch': -8.0}},
+    {'icao': 'KDEN', 'notes': "Denver International (X-Coder's custom scenery, its overlay and mesh packs)",
+     'datum': (39.861666667, -104.673166667), 'elevation_ft': 5434.0, 'utc_offset': -6.0,
+     'runway': ('34L', (39.8518877, -104.6965861), (39.8957903, -104.6960844))},
+    {'icao': 'KORD', 'notes': "Chicago O'Hare (Global Airports): very large default airport",
+     'datum': (41.977319444, -87.908005556), 'elevation_ft': 666.0, 'utc_offset': -5.0,
+     'runway': ('28R', (41.9690623, -87.8837878), (41.9689863, -87.9315632))},
+    {'icao': 'KBOS', 'notes': "Boston Logan (Zero Dollar Payware's scenery and library): harbour on three sides",
+     'datum': (42.362944444, -71.006388889), 'elevation_ft': 19.0, 'utc_offset': -4.0,
+     'runway': ('22L', (42.3769075, -70.9992907), (42.3510634, -71.0117945)),
+     'water': {'lat': 42.3530, 'lon': -70.9890, 'alt_m_agl': 60.0, 'heading': 135.0, 'pitch': -8.0}},
+    {'icao': 'KBTV', 'notes': "Burlington (Global Airports): Laminar Research's home field, extra care in its default art",
+     'datum': (44.471955556, -73.153277778), 'elevation_ft': 333.0, 'utc_offset': -4.0,
+     'runway': ('33', (44.4657555, -73.1417677), (44.4806823, -73.1658848))},
+]
+AIRPORT_AERIAL_ALT_M = 600.0
+AIRPORT_AERIAL_PITCH = -20.0        # The datum in the middle of the image: the camera stands 600 / tan(20 deg) m north of it
+WAVES = {'wave_amplitude_m': 0.6, 'wave_direction_deg': 210.0}
+
+
+def offset(lat, lon, bearing_deg, meters):
+    """The point some distance from (lat, lon) along a true bearing (spherical earth, as the probe's Offset)."""
+    r = 6371000.0
+    d = meters / r
+    b = math.radians(bearing_deg)
+    p1, l1 = math.radians(lat), math.radians(lon)
+    p2 = math.asin(math.sin(p1) * math.cos(d) + math.cos(p1) * math.sin(d) * math.cos(b))
+    l2 = l1 + math.atan2(math.sin(b) * math.sin(d) * math.cos(p1), math.cos(d) - math.sin(p1) * math.sin(p2))
+    return math.degrees(p2), math.degrees(l2)
+
+
+def airport_cameras(airport):
+    """The runway view (2 m over the threshold, down the runway), the aerial (north of the field looking south over
+    it) and, for coastal fields, the low view over the water."""
+    icao = airport['icao']
+    _, threshold, far_end = airport['runway']
+    cameras = {
+        'rwy': {'icao': icao, 'lat': threshold[0], 'lon': threshold[1], 'alt_m_agl': 2.0,
+                'heading': round(bearing(threshold, far_end), 2), 'pitch': 0.0},
+    }
+    lat, lon = offset(airport['datum'][0], airport['datum'][1], 0.0, AIRPORT_AERIAL_ALT_M / math.tan(math.radians(-AIRPORT_AERIAL_PITCH)))
+    cameras['aerial'] = {'icao': icao, 'lat': round(lat, 7), 'lon': round(lon, 7), 'alt_m_agl': AIRPORT_AERIAL_ALT_M,
+                         'heading': 180.0, 'pitch': AIRPORT_AERIAL_PITCH}
+    if 'water' in airport:
+        cameras['water'] = dict({'icao': icao}, **airport['water'])
+    return cameras
+
+
+def airport_scenarios():
+    """Per airport: sun 40 deg (auto and locked exposure) from the runway and the aerial, low sun, night, haze,
+    overcast 600 m above the field, a wet runway, snow, winter noon and the water views (waves 0.6 m)."""
+    summer = (2026, 7, 15)
+    winter = (2026, 1, 15)
+    scenarios = []
+    for airport in TEST_AIRPORTS:
+        icao = airport['icao'].lower()
+        lat, lon = airport['datum']
+        utc_offset = airport['utc_offset']
+        cameras = airport_cameras(airport)
+        elevation_m = airport['elevation_ft'] * 0.3048
+        runway = airport['runway'][0]
+
+        def add(sid, cam, date, local_time, offset_hours, weather, notes, **extra):
+            entry = {'id': f'{icao}_{sid}'}
+            entry.update(cameras[cam])
+            entry['date'] = '%04d-%02d-%02d' % date
+            entry['local_time'] = clock(local_time)
+            entry['utc_offset'] = offset_hours
+            entry.update(weather)
+            entry['notes'] = notes
+            entry.update(extra)
+            scenarios.append(entry)
+
+        day40 = morning_time_for_elevation(lat, lon, summer, utc_offset, 40)
+        day08 = morning_time_for_elevation(lat, lon, summer, utc_offset, 8)
+        clean = WEATHER['clean']
+        rwy_note = f'runway {runway} threshold, 2 m up'
+        for cam, where in (('rwy', rwy_note), ('aerial', 'aerial, 600 m up north of the field')):
+            add(f'{cam}_sunp40', cam, summer, day40, utc_offset, clean, f'{where}; sun elevation 40 deg')
+            add(f'{cam}_sunp40_ev', cam, summer, day40, utc_offset, clean, f'{where}; sun elevation 40 deg, locked exposure',
+                ev100_lock=EV100_LOCK[40])
+        add('aerial_sunp08', 'aerial', summer, day08, utc_offset, clean, 'aerial; sun elevation 8 deg')
+        add('aerial_sunp08_ev', 'aerial', summer, day08, utc_offset, clean, 'aerial; sun elevation 8 deg, locked exposure',
+            ev100_lock=EV100_LOCK[8])
+        for cam, where in (('rwy', rwy_note), ('aerial', 'aerial')):
+            add(f'{cam}_night', cam, summer, 23.5, utc_offset, clean, f'{where}; 23:30 local')
+        add('aerial_hazy', 'aerial', summer, day40, utc_offset, WEATHER['hazy'], 'aerial; sun elevation 40 deg, 8 km visibility')
+        overcast = {'visibility_m': 30000.0, 'clouds': [{'base_msl_m': round(elevation_m + 600.0, 1),
+                                                         'top_msl_m': round(elevation_m + 1268.0, 1), 'coverage': 1.0, 'type': 1}]}
+        add('aerial_overcast', 'aerial', summer, day40, utc_offset, overcast, 'aerial; 8/8 stratus 600 m above the field')
+        add('rwy_wet5', 'rwy', summer, day40, utc_offset, WEATHER['wet5'], f'{rwy_note}; sun elevation 40 deg, rain, runway friction 5')
+        add('aerial_snowy', 'aerial', summer, day40, utc_offset, WEATHER['snowy'], 'aerial; sun elevation 40 deg, snow cover 1')
+        add('aerial_season01', 'aerial', winter, 12.0, utc_offset - 1.0, clean, 'aerial; mid-January, local solar noon (12:00 standard time)')
+        if 'water' in cameras:
+            add('water_sunp40', 'water', summer, day40, utc_offset, clean, 'low over the water; sun elevation 40 deg, waves 0.6 m from 210 deg',
+                **WAVES)
+    return scenarios
+
+
+def write(path, scenarios, about):
+    data = {
+        'about': about + ' Generated by make_parity_scenarios.py; edit that script, not this file.',
+        'xp_build': XP_BUILD,
+        'defaults': {
+            'fov': 60.0, 'width': 1280, 'height': 720,
+            'visibility_m': 80000.0, 'clouds': [], 'rain_percent': 0.0, 'runway_friction': 0, 'snow_cover': 0.0,
+            'temperature_c': 15.0, 'settle_frames': 600, 'ev100_lock': None, 'ui_mask': [],
+        },
+        'scenarios': scenarios,
+    }
+    with open(path, 'w', encoding='utf-8', newline='\n') as f:
+        json.dump(data, f, indent='\t')
+        f.write('\n')
+    print(f'{len(scenarios)} scenarios -> {path}')
+
 
 def main():
     summer = (2026, 7, 15)
@@ -210,21 +334,10 @@ def main():
     for cam in ('rwy16l', 'aerial'):
         add(f'ksea_{cam}_night', cam, summer, 23.5, KSEA_UTC_OFFSET_SUMMER, notes='23:30 local')
 
-    data = {
-        'about': 'Parity scenarios rendered by X-Plane 12 (tools/xp12_reference_probe) and SEDX (--env-scenario). '
-                 'Generated by make_parity_scenarios.py; edit that script, not this file.',
-        'xp_build': XP_BUILD,
-        'defaults': {
-            'fov': 60.0, 'width': 1280, 'height': 720,
-            'visibility_m': 80000.0, 'clouds': [], 'rain_percent': 0.0, 'runway_friction': 0, 'snow_cover': 0.0,
-            'temperature_c': 15.0, 'settle_frames': 600, 'ev100_lock': None, 'ui_mask': [],
-        },
-        'scenarios': scenarios,
-    }
-    with open(OUT, 'w', encoding='utf-8', newline='\n') as f:
-        json.dump(data, f, indent='\t')
-        f.write('\n')
-    print(f'{len(scenarios)} scenarios -> {OUT}')
+    write(OUT, scenarios, 'Parity scenarios rendered by X-Plane 12 (tools/xp12_reference_probe) and SEDX (--env-scenario).')
+    write(OUT_AIRPORTS, airport_scenarios(),
+          'The standard test airports (KGON, KDEN, KORD, KBOS, KBTV) rendered by X-Plane 12 (the reference probe\'s '
+          'airport set) and SEDX (--env-scenario; tools/xp12_reference_probe/render_scenarios.py also logs performance).')
 
 
 if __name__ == '__main__':

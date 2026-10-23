@@ -155,7 +155,7 @@ namespace SceneryEditorX
 
 	bool Renderer::Pass_ReflectionDepthPyramid(CommandList *cmdList)
 	{
-		if (!AreReflectionsAvailable())
+		if (!AreReflectionsAvailable() && !IsWaterVisible())	// Water reads the opaque depth under it from level 0
 			return false;
 		s_PyramidValid = Pass_DepthPyramid(cmdList, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
 

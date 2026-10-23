@@ -124,6 +124,16 @@ namespace SceneryEditorX::Environment
 				else
 					scenario.ev100Lock = it->get<float>();
 			}
+			for (const auto &[key, field] : { std::pair{ "wave_amplitude_m", &scenario.waveAmplitudeM }, std::pair{ "wave_direction_deg", &scenario.waveDirectionDeg } })
+			{
+				if (const auto it = object.find(key); it != object.end())
+				{
+					if (it->is_null())
+						field->reset();
+					else
+						*field = it->get<float>();
+				}
+			}
 			if (const auto it = object.find("clouds"); it != object.end() && it->is_array())
 			{
 				scenario.clouds = {};

@@ -145,6 +145,17 @@ public struct MaterialParameters
     public float4 drape_normal_decal;
     public float4 drape_misc;
 
+    // X-Plane terrain (.ter, xp_terrain.slang): base (projected s / t meters a repeat, normal map repeats per base repeat,
+    // flags), composite (s / t meters, noise mask center / half width), slopes (hill start / end, cliff start / end
+    // degrees), slope textures (hill s / t, cliff s / t meters), lit (s / t meters, distance fade start / end), far
+    // (s / t meters, start / end distance)
+    public float4 terrain_base;
+    public float4 terrain_composite;
+    public float4 terrain_slope;
+    public float4 terrain_slope_scale;
+    public float4 terrain_lit;
+    public float4 terrain_far;
+
     public bool has_texture_albedo() { return (flags & (1 << 2)) != 0; }
     public bool has_texture_normal() { return (flags & (1 << 1)) != 0; }
     public bool has_texture_occlusion() { return (flags & (1 << 7)) != 0; }
@@ -155,6 +166,7 @@ public struct MaterialParameters
     public uint xp_normal_mode() { return (flags >> 16) & 3u; }	// xp_material.slang xp_normal_*
     public bool is_xp_material() { return (flags & (1 << 18)) != 0; }
     public uint xp_drape_mode() { return (flags >> 19) & 3u; }	// xp_material.slang xp_drape_*
+    public bool is_xp_foliage() { return (flags & (1 << 21)) != 0; }	// .for trees: canopy normals, kept on back faces
 };
 
 // struct which forms the bindless light parameters array
@@ -386,7 +398,16 @@ public struct EnvironmentData
     public float4 ssr;               // screen-space reflections (ssr_common.slang): min gloss, gloss fade, LOD bias, use prefiltered (0 / 1)
     public float4 ssr_trace;         // max Hi-Z steps, thickness (m), thickness per meter of view depth, edge fade (share of the screen)
     public float4 ssr_history;       // history clamp (pre-exposed), lobe half width per GGX alpha, trace every pixel (debug), SSR active
-    public float4 padding_environment[15];
+    public float4 ocean;             // water (renderer/ocean.h, ocean_common.slang): time (s), choppiness, height scale, wave travel direction (rad, atan2(z, x))
+    public float4 ocean_cascade[4];  // per cascade: tile size (m), first and past-last wave number (rad/m), water/cascade_N_scale
+    public float4 ocean_sea;         // wind speed (m/s), swell, spread blend, short waves fade (m)
+    public float4 ocean_jonswap;     // alpha, peak omega (rad/s), gamma, spectrum depth (m)
+    public float4 water_surface;     // F0, surface roughness (perceptual, from water/gloss), refractive index, turbidity on (0 / 1)
+    public float4 water_volume;      // water/turbidity, turbidity cutoff (ln), clearest-water floor (m), shore depth (m)
+    public float4 water_foam;        // foam bias, ratio, scale, share fading per second
+    public float4 water_floor;       // floor albedo rgb, water/sea_floor_coef (share of the floor seen)
+    public float4 water_tessellation; // target edge pixels, max factor, pond wave scale (0: fetch ignored), frame time step (s)
+    public float4 padding_environment[3];
 };
 public [[vk::binding(201)]] cbuffer BufferEnvironment : register(b201) { public EnvironmentData buffer_environment; };
 

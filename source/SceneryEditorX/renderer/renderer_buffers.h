@@ -156,6 +156,16 @@ namespace SceneryEditorX
 		xMath::Vec4 drape_decal = xMath::Vec4{0.0f, 0.0f, 0.0f, 0.0f};
 		xMath::Vec4 drape_normal_decal = xMath::Vec4{0.0f, 0.0f, 0.0f, 0.0f};
 		xMath::Vec4 drape_misc = xMath::Vec4{0.0f, 0.0f, 0.0f, 0.0f};
+
+		// X-Plane terrain (.ter, xp_terrain.slang): base (projected s / t meters, normal map repeats per base repeat, flags),
+		// composite (s / t, noise mask center / half width), slopes (hill / cliff start and end degrees), slope textures (s / t
+		// meters), lit (s / t meters, fade start / end), far (s / t meters, start / end)
+		xMath::Vec4 terrain_base = xMath::Vec4{0.0f, 0.0f, 0.0f, 0.0f};
+		xMath::Vec4 terrain_composite = xMath::Vec4{0.0f, 0.0f, 0.0f, 0.0f};
+		xMath::Vec4 terrain_slope = xMath::Vec4{0.0f, 0.0f, 0.0f, 0.0f};
+		xMath::Vec4 terrain_slope_scale = xMath::Vec4{0.0f, 0.0f, 0.0f, 0.0f};
+		xMath::Vec4 terrain_lit = xMath::Vec4{0.0f, 0.0f, 0.0f, 0.0f};
+		xMath::Vec4 terrain_far = xMath::Vec4{0.0f, 0.0f, 0.0f, 0.0f};
 	};
 
 	/**
@@ -362,13 +372,25 @@ namespace SceneryEditorX
 		xMath::Vec4 ssr;					// ssr/min_gloss, sedx/ssr_gloss_fade, ssr/lod_bias, ssr/use_prefiltered (0 / 1)
 		xMath::Vec4 ssr_trace;				// max Hi-Z steps, thickness (m), thickness per meter of view depth, edge fade (share of the screen)
 		xMath::Vec4 ssr_history;			// history clamp (pre-exposed), lobe half width per GGX alpha, trace every pixel (debug), SSR active (0 / 1)
-		xMath::Vec4 padding[15];			// to 1536 bytes
+
+		// Water (plan Phase 11, renderer/ocean.h, ocean_common.slang, water.slang): the FFT ocean's sea state and cascades, the
+		// water's surface, volume and foam
+		xMath::Vec4 ocean;					// time (s), choppiness (water/h_displace_lambda), height scale, wave travel direction (rad, atan2(z, x))
+		xMath::Vec4 ocean_cascade[4];		// per cascade: tile size (m), first and past-last wave number (rad/m), water/cascade_N_scale
+		xMath::Vec4 ocean_sea;				// wind speed (m/s), swell, spread blend, short waves fade (m)
+		xMath::Vec4 ocean_jonswap;			// alpha, peak omega (rad/s), gamma, spectrum depth (m)
+		xMath::Vec4 water_surface;			// F0, surface roughness (perceptual, from water/gloss), refractive index, turbidity on (0 / 1)
+		xMath::Vec4 water_volume;			// water/turbidity, turbidity cutoff (ln), clearest-water floor (m), shore depth (m)
+		xMath::Vec4 water_foam;				// foam bias, ratio, scale, share fading per second
+		xMath::Vec4 water_floor;			// floor albedo rgb, water/sea_floor_coef (share of the floor seen)
+		xMath::Vec4 water_tessellation;		// target edge pixels, max factor, pond wave scale (0: fetch ignored), frame time step (s)
+		xMath::Vec4 padding[3];				// to 1536 bytes
 	};
 
 	// sizes the shaders see (resources.slang: cbuffer std140, structured buffers std430)
 	static_assert(sizeof(ConstantBuffer_Frame) == 1024, "ConstantBuffer_Frame must match FrameBufferData in resources.slang");
 	static_assert(sizeof(ConstantBuffer_Environment) == 1536, "ConstantBuffer_Environment must match EnvironmentData in resources.slang");
-	static_assert(sizeof(ShaderBuffer_Material) == 192, "ShaderBuffer_Material must match MaterialParameters in resources.slang");
+	static_assert(sizeof(ShaderBuffer_Material) == 288, "ShaderBuffer_Material must match MaterialParameters in resources.slang");
 	static_assert(sizeof(ShaderBuffer_Light) == 608, "ShaderBuffer_Light must match LightParameters in resources.slang");
 	static_assert(sizeof(ShaderBuffer_DrawData) == 160, "ShaderBuffer_DrawData must match DrawData in resources.slang");
 

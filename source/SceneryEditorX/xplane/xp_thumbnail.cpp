@@ -1480,6 +1480,7 @@ namespace SceneryEditorX::XPlane
 			dsf.objectDefinitions.push_back(resource);
 			DsfObjectPlacement placement;
 			placement.definition = 0;
+			placement.heading = 180.0;	// The texture upright (an unrotated autogen point at heading 0 has its bottom edge north)
 			dsf.objects.push_back(placement);
 		}
 		else
@@ -1488,6 +1489,7 @@ namespace SceneryEditorX::XPlane
 		OverlayBuilder::Options options;
 		options.forestTreeLimit = 2000;
 		options.maxObjects = 2000;
+		options.autogenObjectLevel = 6;	// Every object an autogen tile has, as WorldEditor previews it
 		m_Overlay->Build(dsf, options, build);
 		AddOverlay(build, scene);
 		if (scene.meshes.empty())

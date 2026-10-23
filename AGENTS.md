@@ -48,9 +48,25 @@ The dependency-light, cross-platform Catch2 unit suites that only need `source/`
   X-Plane 12 install listed it is compared against `Resources/brdf_lookup`, tag `[xplane-install]`, about a second), and
   asset thumbnails (`ThumbnailTests.cpp`: `xp_thumbnail.*` BC1-BC5 DDS decoding and mip choice, the software rasterizer's
   framing / depth / draped painter's order / cutout, WorldEditor-style previews per kind; with an X-Plane 12 install listed it
-  draws default library assets, tag `[xplane-install]`, and `SEDX_THUMBNAIL_DUMP=<folder>` writes them as PNGs)
+  draws default library assets, tag `[xplane-install]`, and `SEDX_THUMBNAIL_DUMP=<folder>` writes them as PNGs), and the
+  base terrain (`TerrainTests.cpp`: `xp_7z.*` LZMA / LZMA2 against liblzma fixtures and one-file 7-zip archives, DSF terrain
+  patches and rasters (`xp_dsf.*` DsfReadOptions, an area keeping only its triangles and the overlay placements reaching
+  into it, overlays read only from base meshes, sim/exclude_* zones as boxes and X-Plane 12 polygons), `.ter` terrain types
+  (`xp_terrain.*`; every default `.ter` parses with its textures, tag `[library-sweep]`), library resolution by REGION bitmap
+  and season (`xp_library.*` ResolveProvider), the terrain meshes in the local frame and the surface drapes are cut onto
+  (`xp_terrain_mesh.*`: heights, rays, exact draping across a crease, clipped at the terrain's edge; water meshes cut into
+  64 m cells without T-junctions for tessellation, `CutTerrainAlongGrid`, and the floor's depth from X-Plane 12's depth
+  ratio and the bathymetry, `WaterFloorDepth`, tag `[water]`); with an X-Plane 12
+  install listed it reads KSEA's 7-zip Global Scenery tile and its scenery within a mile, tag `[xplane-install]`, about two
+  seconds), and the terrain's own scenery in `OverlayTests.cpp` (`.bch` beaches parsed and laid along shores with the
+  water on the left, forests planted only in the area and where the caller allows), and autogen (`AutogenTests.cpp`:
+  `xp_autogen.*` .agp / .ags / .agb parsing, points facing their heading, strings lining their sides with corners,
+  atomic spellings, stop points and holes, blocks fitting their grid with slop and GROUND_PT_FORMULA, object detail levels,
+  the overlay builder's ground tiles / objects / facades / fill trees; every shipped autogen parses and lays out, tag
+  `[library-sweep]`)
   (`SceneryEditorX/xplane/xp_obj8.*`, `xp_library.*`, `xp_lights.*`, `xp_apt.*`, `xp_apt_geometry.*`,
-  `xp_airport_index.*`, `xp_gateway_types.*`, `xp_dsf.*`, `xp_assets.*`, `xp_overlay.*`, plus `filesystem/vfs.*`,
+  `xp_airport_index.*`, `xp_gateway_types.*`, `xp_dsf.*`, `xp_7z.*`, `xp_assets.*`, `xp_overlay.*`, `xp_terrain.*`,
+  `xp_terrain_mesh.*`, plus `filesystem/vfs.*`,
   which every reader goes through for case-insensitive lookups and atomic writes). Standard library
   plus the header-only `dependency/json` submodule, fully green.
 - **`ProjectFormatTests`** (`source/Tests/project_tests`) — the project file formats: the `.edX` JSON
@@ -77,8 +93,8 @@ The dependency-light, cross-platform Catch2 unit suites that only need `source/`
 - **`EnvironmentTests`** (`source/Tests/environment_tests`) — the XP12 environment model behind the viewport's
   X-Plane 12 emulation (`plan/feature-xp12-environment-rendering-1.md`): parity scenario files
   (`ParityScenarioTests.cpp`: `environment/parity_scenario.*`, the format `tools/xp12_reference_probe` and
-  `--env-scenario` share, plus the shipped `tools/xp12_reference_probe/scenarios/xp12_parity.json` when run from the repo
-  root) and the environment model (`EnvironmentTests.cpp`: NOAA sun against an independent almanac formula, Meeus moon
+  `--env-scenario` share, plus the shipped `tools/xp12_reference_probe/scenarios/xp12_parity.json` and `xp12_airports.json`
+  when run from the repo root) and the environment model (`EnvironmentTests.cpp`: NOAA sun against an independent almanac formula, Meeus moon
   examples 47.a / 48.a, the 16 runway-friction states and the wetting / drying integrator, seasons from date and latitude
   or DSF ranges, sky-condition weights, world-frame directions, the `World` object, the atmosphere's medium (X-Plane
   12.4.4's dumped values, visibility to the surface haze layer at 1% contrast, per-channel Mie, sky-condition multipliers,
@@ -93,7 +109,11 @@ The dependency-light, cross-platform Catch2 unit suites that only need `source/`
   reverse-Z camera and their std140 layout, X-Plane 12.4.4's dynamic values by camera height, the dispatches per preset),
   and the CPU half of the screen-space reflections (`renderer/ssr.*`, tag `[ssr]`: X-Plane's gloss and `ssr/*` weights,
   the lobe's history mip, the min / max depth pyramid with odd sizes, and the hierarchical-Z march against an analytic
-  ground-and-wall scene). Standard library plus `dependency/json`, fully green.
+  ground-and-wall scene), and the CPU half of the water (`renderer/ocean.*`, tag `[ocean]`: the FFT ocean's cascades covering
+  every wave number once, the sea state X-Plane's `water/spectrum/*` controls make of a wave amplitude, JONSWAP / TMA /
+  dispersion, directional spreading that integrates to 1, cascades normalized to the requested significant height, the
+  GPU's 256-point inverse FFT against a direct sum, the water's clarity, wave scale and tessellation factors). Standard
+  library plus `dependency/json`, fully green.
 
 The other suites are **not** Linux-buildable as written: `SettingsTest` links Windows libs
 (`dxgi`, `d3d12`, `Shell32.lib`); `MemoryAllocatorTests` links `vulkan-1` and needs the Vulkan
@@ -101,6 +121,12 @@ SDK; `VulkanSmokeTests` (opt-in via `SEDX_ENABLE_VULKAN_SMOKE_TESTS`) needs the 
 
 ### Key gotchas
 
+- **Test airports.** Feature tests, performance runs and X-Plane 12 comparisons use the same five airports: KGON
+  (Groton-New London, coastal), KDEN (X-Coder's Denver custom scenery), KORD (O'Hare, very large default airport), KBOS
+  (Zero Dollar Payware's Boston Logan) and KBTV (Burlington, Laminar Research's home field). Their views are
+  `tools/xp12_reference_probe/scenarios/xp12_airports.json` (generated by `make_parity_scenarios.py`); on a GPU host
+  `python -I tools/xp12_reference_probe/render_scenarios.py` renders them in SEDX and reports load times, frame timings
+  and GPU passes per airport, and the reference probe's "test-airport" set renders them in X-Plane 12.
 - **Where the editor keeps its own files** (`VFS::MakeAppLayout`, mounted as `user:/ data:/ cache:/ logs:/ temp:/`,
   set up by `IO::FileSystem::InitAppLocations()` at startup): settings in `%APPDATA%\SceneryEditorX` (logs in its
   `logs\`), recovery data in `%LOCALAPPDATA%\SceneryEditorX\project-cache`, rebuildable caches (airport index,
@@ -160,12 +186,14 @@ g++ -std=c++20 -O2 -pthread $INCS source/Tests/xplane_tests/XPlaneFormatTests.cp
     source/Tests/xplane_tests/FacadeWriterTests.cpp source/Tests/xplane_tests/InstallFinderTests.cpp \
     source/Tests/xplane_tests/BrdfLutTests.cpp source/SceneryEditorX/environment/brdf_lut.cpp \
     source/Tests/xplane_tests/ThumbnailTests.cpp source/SceneryEditorX/xplane/xp_thumbnail.cpp \
+    source/Tests/xplane_tests/TerrainTests.cpp source/Tests/xplane_tests/AutogenTests.cpp source/SceneryEditorX/xplane/xp_7z.cpp \
+    source/SceneryEditorX/xplane/xp_terrain.cpp source/SceneryEditorX/xplane/xp_terrain_mesh.cpp \
     source/SceneryEditorX/filesystem/vfs.cpp \
     source/SceneryEditorX/xplane/xp_obj8.cpp source/SceneryEditorX/xplane/xp_library.cpp \
     source/SceneryEditorX/xplane/xp_lights.cpp source/SceneryEditorX/xplane/xp_apt.cpp \
     source/SceneryEditorX/xplane/xp_apt_geometry.cpp source/SceneryEditorX/xplane/xp_airport_index.cpp \
     source/SceneryEditorX/xplane/xp_gateway_types.cpp source/SceneryEditorX/xplane/xp_dsf.cpp \
-    source/SceneryEditorX/xplane/xp_assets.cpp source/SceneryEditorX/xplane/xp_facade.cpp \
+    source/SceneryEditorX/xplane/xp_assets.cpp source/SceneryEditorX/xplane/xp_autogen.cpp source/SceneryEditorX/xplane/xp_facade.cpp \
     source/SceneryEditorX/xplane/xp_facade_writer.cpp source/SceneryEditorX/xplane/xp_facade_authoring.cpp \
     source/SceneryEditorX/xplane/xp_overlay.cpp source/SceneryEditorX/xplane/xp_install_finder.cpp $LIBS \
     -o build_linux_tests/XPlaneFormatTests
@@ -184,8 +212,8 @@ g++ -std=c++20 -O2 -pthread $INCS source/Tests/project_tests/ProjectFormatTests.
     source/SceneryEditorX/project/project_cache.cpp source/SceneryEditorX/project/project_document.cpp \
     source/SceneryEditorX/project/project_dsf.cpp source/SceneryEditorX/xplane/xp_apt.cpp \
     source/SceneryEditorX/xplane/xp_library.cpp source/SceneryEditorX/xplane/xp_apt_geometry.cpp \
-    source/SceneryEditorX/xplane/xp_dsf.cpp source/SceneryEditorX/xplane/xp_assets.cpp \
-    source/SceneryEditorX/xplane/xp_facade.cpp source/SceneryEditorX/xplane/xp_overlay.cpp $LIBS \
+    source/SceneryEditorX/xplane/xp_dsf.cpp source/SceneryEditorX/xplane/xp_7z.cpp source/SceneryEditorX/xplane/xp_assets.cpp \
+    source/SceneryEditorX/xplane/xp_autogen.cpp source/SceneryEditorX/xplane/xp_facade.cpp source/SceneryEditorX/xplane/xp_overlay.cpp $LIBS \
     -o build_linux_tests/ProjectFormatTests
 ./build_linux_tests/ProjectFormatTests "~[performance]"
 
@@ -197,7 +225,7 @@ g++ -std=c++20 -O2 -pthread $INCS source/Tests/environment_tests/ParityScenarioT
     $ENV/environment.cpp $ENV/sky_light.cpp $ENV/atmosphere_params.cpp source/SceneryEditorX/renderer/renderer_quality.cpp \
     source/SceneryEditorX/renderer/renderer_features.cpp source/SceneryEditorX/renderer/exposure.cpp \
     source/SceneryEditorX/renderer/env_probes.cpp source/SceneryEditorX/renderer/csm.cpp source/SceneryEditorX/renderer/cacao.cpp \
-    source/SceneryEditorX/renderer/ssr.cpp $LIBS -o build_linux_tests/EnvironmentTests
+    source/SceneryEditorX/renderer/ssr.cpp source/SceneryEditorX/renderer/ocean.cpp $LIBS -o build_linux_tests/EnvironmentTests
 ./build_linux_tests/EnvironmentTests
 ```
 

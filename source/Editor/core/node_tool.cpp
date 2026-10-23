@@ -43,6 +43,7 @@
 #include <functional>
 #include <map>
 #include <set>
+#include <SceneryEditorX/xplane/xp_terrain_scene.h>
 
 // -------------------------------------------------------
 
@@ -462,7 +463,7 @@ namespace SceneryEditorX::NodeTool
 		ScreenPoint Project(const ViewportView &view, const Point2 &point)
 		{
 			ScreenPoint screen;
-			screen.visible = view.WorldToScreen(Point3{ point.x, 0.0, point.z }, screen.position);
+			screen.visible = view.WorldToScreen(Point3{ point.x, XPlane::SceneTerrain::GetHeight(point.x, point.z), point.z }, screen.position);
 			return screen;
 		}
 
@@ -868,7 +869,7 @@ namespace SceneryEditorX::NodeTool
 		void DragNodes(State &s, const ViewportView &view, const ImVec2 &mouse)
 		{
 			Point3 ground;
-			if (!s.pressGroundValid || !view.RayToPlane(mouse, 0.0, ground) || s.press.session >= s.dragShapes.size())
+			if (!s.pressGroundValid || !view.RayToGround(mouse, ground) || s.press.session >= s.dragShapes.size())
 				return;
 
 			// The node under the press leads; the others keep their offsets to it
@@ -910,7 +911,7 @@ namespace SceneryEditorX::NodeTool
 		void DragHandle(State &s, const ViewportView &view, const ImVec2 &mouse)
 		{
 			Point3 ground;
-			if (!view.RayToPlane(mouse, 0.0, ground) || s.press.session >= s.sessions.size())
+			if (!view.RayToGround(mouse, ground) || s.press.session >= s.sessions.size())
 				return;
 			Session &session = s.sessions[s.press.session];
 			session.shape = s.dragShapes[s.press.session];
@@ -929,7 +930,7 @@ namespace SceneryEditorX::NodeTool
 		void DragBend(State &s, const ViewportView &view, const ImVec2 &mouse)
 		{
 			Point3 ground;
-			if (!s.pressGroundValid || !view.RayToPlane(mouse, 0.0, ground) || s.press.session >= s.sessions.size())
+			if (!s.pressGroundValid || !view.RayToGround(mouse, ground) || s.press.session >= s.sessions.size())
 				return;
 			Session &session = s.sessions[s.press.session];
 			session.shape = s.dragShapes[s.press.session];
@@ -1020,7 +1021,7 @@ namespace SceneryEditorX::NodeTool
 				return false;	// Over something else: the usual Ctrl+click
 
 			Point3 ground;
-			if (!view.RayToPlane(mouse, 0.0, ground))
+			if (!view.RayToGround(mouse, ground))
 				return false;
 			StartGesture(s);
 			NodeRef added;
@@ -1273,7 +1274,7 @@ namespace SceneryEditorX::NodeTool
 			options.snapAngle = settings.snapAngle;
 			options.snapScale = settings.snapScale;
 			ViewportGizmo::Frame frame;
-			frame.pivot = { center.x, 0.0, center.z };
+			frame.pivot = { center.x, XPlane::SceneTerrain::GetHeight(center.x, center.z), center.z };
 			const ViewportGizmo::Result result = ViewportGizmo::Manipulate(GIZMO_OWNER, view, frame, options, allowInput);
 
 			if (result.started && s.drag != Drag::Gizmo)
@@ -1530,7 +1531,7 @@ namespace SceneryEditorX::NodeTool
 				{
 					s.press = s.hovered;
 					s.pressMouse = mouse;
-					s.pressGroundValid = view.RayToPlane(mouse, 0.0, s.pressGround);
+					s.pressGroundValid = view.RayToGround(mouse, s.pressGround);
 					s.pressAdd = add;
 					s.pressToggle = toggle;
 

@@ -33,6 +33,7 @@
 #include <cmath>
 #include <SceneryEditorX/scene/scene.h>
 #include <SceneryEditorX/scene/components/component_sets.h>
+#include <SceneryEditorX/xplane/xp_terrain_scene.h>
 
 // -------------------------------------------------------
 
@@ -205,6 +206,31 @@ namespace SceneryEditorX
 			return false;
 		hit = { origin.x + direction.x * t, origin.y + direction.y * t, origin.z + direction.z * t };
 		return true;
+	}
+
+	bool ViewportView::RayToGround(const ImVec2 &screen, Point3 &hit) const
+	{
+		if (!valid)
+			return false;
+		const XPlane::TerrainSurface &terrain = XPlane::SceneTerrain::GetSurface();
+		if (!terrain.IsEmpty())
+		{
+			Point3 origin, direction;
+			ScreenRay(screen, origin, direction);
+			const double from[3] = { origin.x, origin.y, origin.z }, along[3] = { direction.x, direction.y, direction.z };
+			double t = 0.0;
+			if (terrain.Raycast(from, along, farPlane * 4.0 + (orthographic ? ORTHOGRAPHIC_BEHIND_EYE : 0.0), t))
+			{
+				hit = { origin.x + direction.x * t, origin.y + direction.y * t, origin.z + direction.z * t };
+				return true;
+			}
+		}
+		return RayToPlane(screen, 0.0, hit);
+	}
+
+	double ViewportView::GroundHeight(const double x, const double z)
+	{
+		return XPlane::SceneTerrain::GetHeight(x, z);
 	}
 
 	double ViewportView::PixelsPerMeter(const Point3 &world) const

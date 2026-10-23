@@ -40,6 +40,7 @@
 #include <SceneryEditorX/renderer/csm.h>
 #include <SceneryEditorX/renderer/env_probes.h>
 #include <SceneryEditorX/renderer/exposure.h>
+#include <SceneryEditorX/renderer/ocean.h>
 #include <SceneryEditorX/renderer/renderer_features.h>
 #include <SceneryEditorX/renderer/renderer_quality.h>
 #include <SceneryEditorX/renderer/ssr.h>
@@ -554,6 +555,20 @@ TEST_CASE("Renderer feature switches", "[environment][quality]")
 	CHECK_FALSE(features.csmShadows);
 	CHECK(FindRendererFeature("nonsense") == nullptr);
 	CHECK(std::string(GetDebugViewName(Renderer_DebugView::Normals)) == "Normals");
+
+	// Shaders test these bits by their index in the table (FEATURE_* in environment_lighting, csm_sample and ssr_common.slang)
+	const auto bit = [](const char *name) { return FindRendererFeature(name) - GetRendererFeatureTable().data(); };
+	CHECK(bit("atmosphere") == 0);
+	CHECK(bit("aerial-perspective") == 1);
+	CHECK(bit("env-probes") == 2);
+	CHECK(bit("cloud-shadows") == 3);
+	CHECK(bit("csm") == 4);
+	CHECK(bit("ssr") == 11);
+	CHECK(bit("water") == 14);	// ocean_common.slang FEATURE_WATER
+	REQUIRE(FindRendererFeature("terrain-scenery"));
+	REQUIRE(FindRendererFeature("autogen"));
+	CHECK(defaults.terrainScenery);
+	CHECK(defaults.autogen);
 }
 
 // -------------------------------------------------------
@@ -1536,4 +1551,221 @@ TEST_CASE("Screen-space reflections: the hierarchical-Z march finds what a mirro
 		const SsrMarchResult march = MarchHiZ(pyramid, origin, { end.u - origin.u, end.v - origin.v, end.z - origin.z }, settings.maxSteps);
 		CHECK_FALSE(march.hit);
 	}
+}
+
+// -------------------------------------------------------
+// Water (renderer/ocean.*): the FFT ocean's sea state, spectrum and cascades, the CPU twin of its FFT, the water's optics
+// -------------------------------------------------------
+
+TEST_CASE("Water: the cascades hold every wave number once", "[environment][ocean]")
+{
+	using namespace SceneryEditorX;
+	const OceanSettings settings;
+	const std::array<OceanCascade, OCEAN_CASCADES> cascades = ComputeOceanCascades(settings);
+	CHECK(cascades[0].kMin == 0.0f);
+	for (uint32_t c = 0; c < OCEAN_CASCADES; ++c)
+	{
+		INFO("cascade " << c);
+		CHECK(cascades[c].sizeM == settings.cascadeSizeM[c]);
+		CHECK(cascades[c].kMin < cascades[c].kMax);
+		// No wave shorter than two of its grid's cells
+		CHECK(cascades[c].kMax <= OCEAN_PI * static_cast<float>(OCEAN_FFT_SIZE) / cascades[c].sizeM * 1.0001f);
+		if (c > 0)
+		{
+			CHECK(cascades[c].kMin == cascades[c - 1].kMax);	// Contiguous: no band left out or counted twice
+			// The smaller tile takes over a few waves across it: its longest wave fits its tile cascadeMinCycles times
+			CHECK_THAT(2.0f * OCEAN_PI / cascades[c].kMin, Catch::Matchers::WithinRel(cascades[c].sizeM / settings.cascadeMinCycles, 1e-4f));
+		}
+	}
+	// The last cascade ends at its Nyquist limit: ~5 cm waves for a 7 m tile of 256 cells
+	CHECK_THAT(2.0f * OCEAN_PI / cascades[OCEAN_CASCADES - 1].kMax, Catch::Matchers::WithinRel(2.0f * 7.0f / 256.0f, 1e-4f));
+	CHECK(OceanGridWaveNumber(1, 500.0f) == Approx(2.0f * OCEAN_PI / 500.0f));
+	CHECK(OceanGridWaveNumber(255, 500.0f) == Approx(-2.0f * OCEAN_PI / 500.0f));	// The FFT order: the top half is negative
+	CHECK(OceanGridWaveNumber(128, 500.0f) == Approx(-128.0f * 2.0f * OCEAN_PI / 500.0f));
+}
+
+TEST_CASE("Water: the sea state for a wave amplitude", "[environment][ocean]")
+{
+	using namespace SceneryEditorX;
+	const OceanSettings settings;
+
+	// From the west: the waves travel east (+x); from the north: south (+z)
+	CHECK(ComputeOceanSpectrum(0.5f, 270.0f, settings).directionRad == Approx(0.0f).margin(1e-5f));
+	CHECK(ComputeOceanSpectrum(0.5f, 0.0f, settings).directionRad == Approx(0.5f * OCEAN_PI).margin(1e-5f));
+
+	// Height picks the fetch (fetch_lo_m .. fetch_hi_m, times fetch_multiplier) and the swell (0 .. max_swell)
+	const OceanSpectrum calm = ComputeOceanSpectrum(0.05f, 270.0f, settings);
+	CHECK(calm.significantHeightM == Approx(0.1f));
+	CHECK(calm.fetchM == Approx(settings.fetchLoM * settings.fetchMultiplier));
+	CHECK(calm.swell == 0.0f);
+	const OceanSpectrum rough = ComputeOceanSpectrum(1.5f, 270.0f, settings);
+	CHECK(rough.fetchM == Approx(settings.fetchHiM * settings.fetchMultiplier));
+	CHECK(rough.swell == Approx(settings.maxSwell));
+
+	// The wind raises that height over that fetch (JONSWAP: Hs = 0.0016 U sqrt(F / g)), never less than a fully developed
+	// sea of that height needs (Hs = 0.21 U^2 / g)
+	for (const float amplitude : { 0.1f, 0.25f, 0.5f, 1.0f })
+	{
+		const OceanSpectrum sea = ComputeOceanSpectrum(amplitude, 270.0f, settings);
+		INFO("amplitude " << amplitude);
+		const float fetchLimited = 0.0016f * sea.windSpeed * std::sqrt(sea.fetchM / OCEAN_GRAVITY);
+		const float developed = 0.21f * sea.windSpeed * sea.windSpeed / OCEAN_GRAVITY;
+		CHECK(std::max(fetchLimited, developed) >= sea.significantHeightM * 0.999f);
+		CHECK(sea.peakOmega >= 0.855f * OCEAN_GRAVITY / sea.windSpeed * 0.999f);
+		CHECK(sea.alpha > 0.0f);
+	}
+	// Longer waves for a higher sea
+	CHECK(ComputeOceanSpectrum(1.0f, 270.0f, settings).peakOmega < ComputeOceanSpectrum(0.25f, 270.0f, settings).peakOmega);
+	CHECK(ComputeOceanSpectrum(0.0f, 270.0f, settings).significantHeightM == 0.0f);
+}
+
+TEST_CASE("Water: JONSWAP, TMA and the dispersion relation", "[environment][ocean]")
+{
+	using namespace SceneryEditorX;
+	const OceanSpectrum sea = ComputeOceanSpectrum(0.5f, 270.0f, OceanSettings());
+
+	// The spectrum peaks at the peak frequency
+	float best = 0.0f, bestOmega = 0.0f;
+	for (float omega = 0.2f * sea.peakOmega; omega < 4.0f * sea.peakOmega; omega += 0.001f)
+	{
+		const float s = JonswapSpectrum(omega, sea);
+		if (s > best)
+		{
+			best = s;
+			bestOmega = omega;
+		}
+	}
+	CHECK(bestOmega == Approx(sea.peakOmega).epsilon(0.01));
+	CHECK(JonswapSpectrum(0.0f, sea) == 0.0f);
+
+	// TMA: nothing changes in deep water, the low-frequency limit is w^2 h / 2g
+	CHECK(TmaAttenuation(2.0f, 100.0f) == 1.0f);
+	CHECK(TmaAttenuation(0.1f, 1.0f) == Approx(0.5f * 0.01f / OCEAN_GRAVITY));
+
+	// Deep water: w^2 = g k and dw / dk = g / 2w; shallow water: w = k sqrt(g h)
+	CHECK(OceanDispersion(1.0f, 1000.0f) == Approx(std::sqrt(OCEAN_GRAVITY)));
+	CHECK(OceanDispersionDerivative(1.0f, 1000.0f) == Approx(OCEAN_GRAVITY / (2.0f * std::sqrt(OCEAN_GRAVITY))));
+	CHECK(OceanDispersion(0.01f, 1.0f) == Approx(0.01f * std::sqrt(OCEAN_GRAVITY)).epsilon(0.001));
+	// The derivative against a finite difference
+	const float k = 0.3f, h = 5.0f;
+	CHECK(OceanDispersionDerivative(k, h) == Approx((OceanDispersion(k + 1e-3f, h) - OceanDispersion(k - 1e-3f, h)) / 2e-3f).epsilon(0.002));
+}
+
+TEST_CASE("Water: directional spreading", "[environment][ocean]")
+{
+	using namespace SceneryEditorX;
+	OceanSpectrum sea = ComputeOceanSpectrum(1.0f, 270.0f, OceanSettings());
+	const auto integral = [&sea](const float omega)
+	{
+		double sum = 0.0;
+		constexpr int steps = 4000;
+		for (int i = 0; i < steps; ++i)
+		{
+			const float theta = -OCEAN_PI + (static_cast<float>(i) + 0.5f) * 2.0f * OCEAN_PI / steps;
+			sum += OceanDirectionalSpread(omega, theta, sea) * 2.0 * OCEAN_PI / steps;
+		}
+		return sum;
+	};
+	for (const float ratio : { 0.5f, 1.0f, 2.0f, 5.0f })
+	{
+		INFO("w / wp " << ratio);
+		const float omega = ratio * sea.peakOmega;
+		CHECK(integral(omega) == Approx(1.0).epsilon(1e-3));
+		// Most along the sea's direction, least against it
+		CHECK(OceanDirectionalSpread(omega, 0.0f, sea) > OceanDirectionalSpread(omega, 0.5f * OCEAN_PI, sea));
+		CHECK(OceanDirectionalSpread(omega, 0.5f * OCEAN_PI, sea) >= OceanDirectionalSpread(omega, OCEAN_PI, sea));
+	}
+	// Swell narrows the spreading; a spread blend of 0 spreads evenly
+	OceanSpectrum swell = sea;
+	swell.swell = 1.0f;
+	sea.swell = 0.0f;
+	CHECK(OceanDirectionalSpread(sea.peakOmega, 0.0f, swell) > OceanDirectionalSpread(sea.peakOmega, 0.0f, sea));
+	sea.spreadBlend = 0.0f;
+	CHECK(OceanDirectionalSpread(sea.peakOmega, 1.0f, sea) == Approx(1.0f / (2.0f * OCEAN_PI)));
+}
+
+TEST_CASE("Water: the cascades make the requested significant height", "[environment][ocean]")
+{
+	using namespace SceneryEditorX;
+	const OceanSettings settings;
+	const std::array<OceanCascade, OCEAN_CASCADES> cascades = ComputeOceanCascades(settings);
+	for (const float amplitude : { 0.1f, 0.5f, 1.5f })
+	{
+		OceanSpectrum sea = ComputeOceanSpectrum(amplitude, 200.0f, settings);
+		NormalizeOceanSpectrum(sea, cascades);
+		INFO("amplitude " << amplitude);
+		REQUIRE(sea.heightScale > 0.0f);
+		CHECK(OceanCascadesSignificantHeight(sea, cascades) * sea.heightScale == Approx(sea.significantHeightM).epsilon(1e-4));
+		CHECK(sea.heightScale == Approx(1.0f).margin(0.5f));	// The JONSWAP sea of that wind and fetch is about that high already
+	}
+	OceanSpectrum flat = ComputeOceanSpectrum(0.0f, 0.0f, settings);
+	NormalizeOceanSpectrum(flat, cascades);
+	CHECK(flat.heightScale == 0.0f);
+}
+
+TEST_CASE("Water: the inverse FFT", "[environment][ocean]")
+{
+	using namespace SceneryEditorX;
+	CHECK(OceanBitReverse(1, 8) == 128u);
+	CHECK(OceanBitReverse(6, 3) == 3u);
+
+	// ocean.slang's 256-point transform against the direct sum (no 1 / n)
+	std::vector<std::complex<float>> data(OCEAN_FFT_SIZE), direct(OCEAN_FFT_SIZE);
+	for (uint32_t i = 0; i < OCEAN_FFT_SIZE; ++i)
+		data[i] = { std::sin(0.37f * static_cast<float>(i)) + 0.25f, std::cos(1.3f * static_cast<float>(i * i % 17)) };
+	for (uint32_t x = 0; x < OCEAN_FFT_SIZE; ++x)
+	{
+		std::complex<double> sum = 0.0;
+		for (uint32_t k = 0; k < OCEAN_FFT_SIZE; ++k)
+			sum += std::complex<double>(data[k]) * std::polar(1.0, 2.0 * std::numbers::pi * static_cast<double>(k * x % OCEAN_FFT_SIZE) / OCEAN_FFT_SIZE);
+		direct[x] = std::complex<float>(sum);
+	}
+	OceanInverseFft(data);
+	float error = 0.0f;
+	for (uint32_t i = 0; i < OCEAN_FFT_SIZE; ++i)
+		error = std::max(error, std::abs(data[i] - direct[i]));
+	CHECK(error < 2e-3f);
+
+	// A single wave number gives a real cosine when its conjugate partner is set (the surface is real)
+	std::vector<std::complex<float>> wave(16);
+	wave[3] = { 0.5f, 0.0f };
+	wave[13] = { 0.5f, 0.0f };
+	OceanInverseFft(wave);
+	for (uint32_t x = 0; x < 16; ++x)
+	{
+		CHECK(wave[x].real() == Approx(std::cos(2.0f * OCEAN_PI * 3.0f * static_cast<float>(x) / 16.0f)).margin(1e-5f));
+		CHECK(wave[x].imag() == Approx(0.0f).margin(1e-5f));
+	}
+}
+
+TEST_CASE("Water: optics, wave scale and tessellation", "[environment][ocean]")
+{
+	using namespace SceneryEditorX;
+	OceanSettings settings;
+
+	// X-Plane's open water (any.png alpha 191) is clear for about 8 m; the floor fades to 1% there
+	const float clarity = WaterClarityDistance(191.0f / 255.0f, settings);
+	CHECK(clarity == Approx(settings.turbidity / (1.0f - 191.0f / 255.0f)));
+	CHECK(WaterTransmittance(clarity, clarity, settings) == Approx(0.01f).epsilon(1e-3));
+	CHECK(WaterTransmittance(0.0f, clarity, settings) == 1.0f);
+	CHECK(WaterClarityDistance(1.0f, settings) >= settings.clarityMinM);
+	settings.enableTurbidity = false;
+	CHECK(WaterTransmittance(100.0f, clarity, settings) == 1.0f);
+
+	// Ponds are calm, the open sea has the full height; the shore keeps still
+	settings = OceanSettings();
+	CHECK(WaterWaveScale(1.0f, 50.0f, settings) == Approx(1.0f));
+	CHECK(WaterWaveScale(0.0f, 50.0f, settings) == Approx(settings.pondWaveScale));
+	CHECK(WaterWaveScale(1.0f, 0.0f, settings) == 0.0f);
+	CHECK(WaterWaveScale(1.0f, 0.5f * settings.shoreDepthM, settings) == Approx(0.5f));
+	settings.useFetch = false;
+	CHECK(WaterWaveScale(0.0f, 50.0f, settings) == Approx(1.0f));
+
+	// Edges as long as tessellationPixels pixels stay whole; longer ones are cut, up to the hardware limit
+	settings = OceanSettings();
+	const float pixelAngle = 0.001f;
+	CHECK(WaterTessellationFactor(settings.tessellationPixels * 0.1f, 100.0f, pixelAngle, settings) == Approx(1.0f));
+	CHECK(WaterTessellationFactor(settings.tessellationPixels * 0.1f * 10.0f, 100.0f, pixelAngle, settings) == Approx(10.0f));
+	CHECK(WaterTessellationFactor(64.0f, 0.5f, pixelAngle, settings) == settings.maxTessellation);
+	CHECK(WaterTessellationFactor(1.0f, 10000.0f, pixelAngle, settings) == 1.0f);
 }

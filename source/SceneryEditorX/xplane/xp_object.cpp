@@ -76,6 +76,7 @@ namespace SceneryEditorX::XPlane
 		DecodedTexture lit;
 		DecodedTexture drapedAlbedo;
 		DecodedTexture drapedNormal;
+		std::vector<std::pair<PolygonDecal, DecodedTexture>> decals;
 		float boundsMin[3] = { 0.0f, 0.0f, 0.0f };
 		float boundsMax[3] = { 0.0f, 0.0f, 0.0f };
 		std::string error;
@@ -128,6 +129,7 @@ namespace SceneryEditorX::XPlane
 			UploadLit,
 			UploadDrapedAlbedo,
 			UploadDrapedNormal,
+			UploadDecals,
 			UploadGeometry
 		};
 
@@ -260,6 +262,53 @@ namespace SceneryEditorX::XPlane
 			return TextureLoader::Decode(file, usage);
 		}
 
+		/**
+		 * @brief The OBJ's detail and normal decals (its rows, then its DECAL_LIB library's), up to two of each, decoded:
+		 * standard shading options (12.1.0+) that draw like the draped polygons' (xp_material.slang xp_drape_*).
+		 */
+		void DecodeDecals(ObjectLoadJob &job, const std::filesystem::path &folder)
+		{
+			std::vector<std::pair<PolygonDecal, std::filesystem::path>> rows;
+			for (const Obj8Decal &row : job.data.decals)
+			{
+				// Back to the row's words: directive, leading numbers, texture, trailing numbers
+				std::vector<std::string> words = { row.directive };
+				for (const float value : row.values)
+					words.push_back(std::to_string(value));
+				words.push_back(row.texture);
+				for (const float value : row.trailing)
+					words.push_back(std::to_string(value));
+				const std::vector<std::string_view> tokens(words.begin(), words.end());
+				PolygonDecal decal;
+				if (ParsePolygonDecalRow(tokens, decal))
+					rows.emplace_back(decal, folder);
+			}
+			if (!job.data.decalLibrary.empty())
+			{
+				const std::filesystem::path library = LibraryManager::Resolve(job.data.decalLibrary);
+				DecalLibraryAsset asset;
+				std::string error;
+				if (!library.empty() && LoadDecalLibraryAsset(library, asset, &error))
+				{
+					for (const PolygonDecal &decal : asset.decals)
+						rows.emplace_back(decal, library.parent_path());
+				}
+			}
+
+			int details = 0, normals = 0;
+			for (const auto &[decal, base] : rows)
+			{
+				int &count = decal.normal ? normals : details;
+				if (count >= 2)
+					continue;
+				DecodedTexture texture = DecodeTexture(base, decal.texture, decal.normal ? TextureUsage::Normal : TextureUsage::Data);
+				if (!texture.valid)
+					continue;
+				++count;
+				job.decals.emplace_back(decal, std::move(texture));
+			}
+		}
+
 		/* @brief Resolves the OBJ's lights against lights.txt (unknown names are left out). */
 		void ResolveLights(ObjectLoadJob &job)
 		{
@@ -335,6 +384,7 @@ namespace SceneryEditorX::XPlane
 			job.lit = DecodeTexture(folder, data.textureLit, TextureUsage::Lit);
 			job.drapedAlbedo = DecodeTexture(folder, data.textureDraped, TextureUsage::Albedo);
 			job.drapedNormal = DecodeTexture(folder, data.textureDrapedNormal, TextureUsage::Normal);
+			DecodeDecals(job, folder);
 
 			ResolveLights(job);
 
@@ -793,6 +843,13 @@ namespace SceneryEditorX::XPlane
 				m_Textures.drapedNormal = TextureLoader::Upload(job.drapedNormal, &drapedNormalInfo);
 				break;
 			}
+			case UploadDecals:
+				for (auto &[decal, texture] : job.decals)
+				{
+					if (Ref<ImageResource> image = TextureLoader::Upload(texture))
+						m_Textures.decals.push_back({ decal, std::move(image) });
+				}
+				break;
 			default:
 				FinishGeometry();
 				break;
@@ -948,6 +1005,37 @@ namespace SceneryEditorX::XPlane
 		material->SetTexture(MaterialTextureType::Color, albedo);
 		material->SetTexture(MaterialTextureType::Normal, normal);
 		material->SetTexture(MaterialTextureType::Emission, lit);
+
+		// Decals (xp_material.slang xp_drape_*): color slots 2-3, normal slots 1-2; their scales repeat per albedo tile,
+		// so the UVs are the "meters" they count in. Their strength is the rows' constant term (TEXTURE_CONTROL keys
+		// aren't read yet)
+		int details = 0, normals = 0;
+		for (const ObjectDecal &entry : m_Textures.decals)
+		{
+			const PolygonDecal &decal = entry.decal;
+			const int slot = decal.normal ? normals++ : details++;
+			if (slot >= 2)
+				continue;
+			if (decal.normal)
+			{
+				material->SetTexture(MaterialTextureType::Normal, entry.image.Get(), 1 + slot);
+				material->SetProperty(slot == 0 ? MaterialProperty::XpNormalDecal0Scale : MaterialProperty::XpNormalDecal1Scale, decal.scaleS);
+				material->SetProperty(slot == 0 ? MaterialProperty::XpNormalDecal0Gain : MaterialProperty::XpNormalDecal1Gain, decal.strength * decal.gain);
+			}
+			else
+			{
+				material->SetTexture(MaterialTextureType::Color, entry.image.Get(), 2 + slot);
+				material->SetProperty(slot == 0 ? MaterialProperty::XpDecal0Scale : MaterialProperty::XpDecal1Scale, decal.scaleS);
+				material->SetProperty(slot == 0 ? MaterialProperty::XpDecal0Strength : MaterialProperty::XpDecal1Strength, decal.strength);
+			}
+			if (slot == 0)
+				material->SetProperty(decal.normal ? MaterialProperty::XpNormalDecalAspect : MaterialProperty::XpDecalAspect, decal.scaleT / std::max(1e-6f, decal.scaleS));
+		}
+		if (!m_Textures.decals.empty())
+		{
+			material->SetProperty(MaterialProperty::XpDrapeMetersU, 1.0f);
+			material->SetProperty(MaterialProperty::XpDrapeMetersV, 1.0f);
+		}
 
 		m_Materials.push_back(material);
 		m_MaterialStates.push_back(state);

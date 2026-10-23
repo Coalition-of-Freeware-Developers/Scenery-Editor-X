@@ -261,8 +261,9 @@ namespace SceneryEditorX
 			const MaterialAsset *material = renderable.GetMaterialAsset();
 			if (!material || renderable.GetLodCount() == 0 || renderable.HasInstancing())
 				return false;
-			// tessellated, draped (drawn in their drape order), and CullMode::All (draws nothing), stay on the CPU path
-			if (renderable.IsDraped() || material->GetProperty(MaterialProperty::Tessellation) > 0.0f ||
+			// tessellated, draped (drawn in their drape order), water (Pass_Water), and CullMode::All (draws nothing), stay on
+			// the CPU path
+			if (renderable.IsDraped() || material->GetProperty(MaterialProperty::Tessellation) > 0.0f || material->GetProperty(MaterialProperty::Water) > 0.0f ||
 				static_cast<CullMode>(material->GetProperty(MaterialProperty::CullMode)) == CullMode::All)
 				return false;
 

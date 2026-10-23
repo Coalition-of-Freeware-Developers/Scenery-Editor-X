@@ -45,6 +45,7 @@
 #include <SceneryEditorX/scene/camera.h>
 #include <SceneryEditorX/scene/scene.h>
 #include <SceneryEditorX/xplane/xp_airport_scene.h>
+#include <SceneryEditorX/xplane/xp_scene.h>
 #include <SceneryEditorX/environment/environment.h>
 
 // -------------------------------------------------------
@@ -54,6 +55,7 @@ namespace SceneryEditorX::EditorScenario
 	namespace
 	{
 		constexpr const char *LOG_TAG = "Scenario";
+		constexpr uint32_t MAX_LOADING_FRAMES = 7200;	// Settle anyway after this long waiting for the scenery (an asset that never loads)
 
 		enum class Stage : uint8_t
 		{
@@ -76,6 +78,8 @@ namespace SceneryEditorX::EditorScenario
 			bool exitAfterCapture = false;
 			bool waitForAirport = false;					// --xp-airport given: free captures wait for it
 			bool projectEnvironmentReplaced = false;		// The scenario's environment applied again after its project opened
+			uint32_t loadingFrames = 0;						// Frames the settling waited for objects still loading
+			uint64_t structure = 0;							// Scene structure version last frame (entities still being added)
 		};
 
 		State &GetState()
@@ -241,6 +245,7 @@ namespace SceneryEditorX::EditorScenario
 		Renderer::SetGridVisible(false);
 		ScenePicking::SetOutlineEnabled(false);
 		Camera::SetInputLocked(true);
+		Renderer::SetWaterFixedTimeStep(1.0f / 60.0f);	// The same sea every run: waves advance by frames, not the clock
 		ApplyEnvironment(scenario);
 
 		// The art controls the shot sets that SEDX emulates (the probe sets every one in X-Plane)
@@ -334,6 +339,7 @@ namespace SceneryEditorX::EditorScenario
 				if (!PlaceCamera(scenario))
 					return;
 				Renderer::ResetExposure();	// Meter the placed view from scratch, not adapt to it from the startup view
+				Renderer::ResetWaterTime();	// The capture sees the waves at the same time every run
 				state.framesLeft = state.captureAfterFrames.value_or(scenario.settleFrames);
 				state.stage = Stage::Settling;
 				EDITOR_INFO_TAG(LOG_TAG, "Scenario {}: camera at {:.6f}, {:.6f}, {} m, heading {}, pitch {}; {} frames to settle", scenario.id,
@@ -344,8 +350,22 @@ namespace SceneryEditorX::EditorScenario
 			case Stage::Settling:
 			{
 				// A rebuild (library index change) may recreate the scene's entities: keep the view on the scenario
-				if (state.framesLeft % 60 == 0)
+				if ((state.framesLeft + state.loadingFrames) % 60 == 0)
 					PlaceCamera(scenario);
+
+				// The settle frames count once the scenery has loaded: objects still waiting for their assets, or entities
+				// still being added, would leave the capture half drawn (payware airports stream in for many seconds)
+				const uint64_t structure = Scene::GetStructureVersion();
+				const bool loading = XPlane::SceneObjects::GetLoadingObjectCount() > 0 || structure != state.structure;
+				state.structure = structure;
+				if (loading && state.loadingFrames < MAX_LOADING_FRAMES)
+				{
+					if (++state.loadingFrames == MAX_LOADING_FRAMES)
+						EDITOR_WARN_TAG(LOG_TAG, "Scenario {}: still loading after {} frames; settling anyway", scenario.id, MAX_LOADING_FRAMES);
+					return;
+				}
+				if (state.framesLeft == state.captureAfterFrames.value_or(scenario.settleFrames) && state.loadingFrames > 1)
+					EDITOR_INFO_TAG(LOG_TAG, "Scenario {}: scenery loaded after {} frames", scenario.id, state.loadingFrames);
 				if (state.framesLeft > 0)
 				{
 					--state.framesLeft;

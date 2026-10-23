@@ -95,10 +95,10 @@ namespace SceneryEditorX
 			return false;
 		const ViewportView view = ViewportView::Build(ImVec2(0.0f, 0.0f), ImVec2(aspect, 1.0f), aspect);
 		Point3 hit;
-		if (!view.valid || !view.RayToPlane(ImVec2(u * aspect, v), 0.0, hit))
+		if (!view.valid || !view.RayToGround(ImVec2(u * aspect, v), hit))
 			return false;	// Looking at or above the horizon
 		out[0] = static_cast<float>(hit.x);
-		out[1] = 0.0f;
+		out[1] = static_cast<float>(hit.y);
 		out[2] = static_cast<float>(hit.z);
 		return true;
 	}

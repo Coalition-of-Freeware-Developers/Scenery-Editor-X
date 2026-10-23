@@ -33,6 +33,7 @@
 #include "xp_library_manager.h"
 #include "xp_overlay.h"
 #include "xp_scene.h"
+#include "xp_terrain_scene.h"
 #include "xp_texture_loader.h"
 #include <algorithm>
 #include <array>
@@ -236,6 +237,7 @@ namespace SceneryEditorX::XPlane
 			std::vector<uint32_t> indices;
 			Bounds2 bounds;					// Airport-space footprint (for placed parts: around the origin)
 			uint32_t subMesh = 0;
+			float layerHeight = 0.0f;		// Height above the ground it was built at (its drape order), before draping
 
 			// Point features: geometry built at the origin pointing north; the entity transform places it
 			bool placed = false;
@@ -308,13 +310,11 @@ namespace SceneryEditorX::XPlane
 		void EmitTriangles(Part &part, const std::vector<Point2> &points, const std::vector<uint32_t> &indices, const float y)
 		{
 			const uint32_t base = static_cast<uint32_t>(part.vertices.size());
-			part.vertices.reserve(part.vertices.size() + points.size());
 			for (const Point2 &point : points)
 			{
 				part.vertices.push_back(MakeVertex(point, y));
 				part.bounds.Add(point);
 			}
-			part.indices.reserve(part.indices.size() + indices.size());
 			for (const uint32_t index : indices)
 				part.indices.push_back(base + index);
 		}
@@ -413,7 +413,6 @@ namespace SceneryEditorX::XPlane
 		void AppendOverlayMesh(Part &part, const OverlayMesh &mesh)
 		{
 			const uint32_t base = static_cast<uint32_t>(part.vertices.size());
-			part.vertices.reserve(part.vertices.size() + mesh.vertices.size());
 			for (const OverlayVertex &vertex : mesh.vertices)
 			{
 				const Vec3 normal(vertex.nx, vertex.ny, vertex.nz);
@@ -421,7 +420,6 @@ namespace SceneryEditorX::XPlane
 				const Vec3 tangent = std::abs(vertex.ny) > 0.9f ? Vec3(mesh.tangentX, 0.0f, mesh.tangentZ) : xMath::Normalize(xMath::Cross(Vec3(0.0f, 1.0f, 0.0f), normal));
 				part.vertices.push_back(Vertex_PosTexNorTan(Vec3(vertex.x, vertex.y, vertex.z), Vec2(vertex.u, vertex.v), normal, tangent));
 			}
-			part.indices.reserve(part.indices.size() + mesh.indices.size());
 			for (const uint32_t index : mesh.indices)
 				part.indices.push_back(base + index);
 			part.bounds.Add(mesh.bounds);
@@ -1425,6 +1423,9 @@ namespace SceneryEditorX::XPlane
 				key += "|cut" + std::to_string(part.cutoff);
 			if (blended)
 				key += "|blend";
+			const bool foliage = part.kind == AirportElementKind::Forest;
+			if (foliage)
+				key += "|foliage";
 
 			// The shading's textures load before the lookup: they are part of the key
 			Ref<MaterialAsset> material = CreateRef<MaterialAsset>();
@@ -1451,6 +1452,7 @@ namespace SceneryEditorX::XPlane
 			// deferred passes and blends the rest in the transparent pass.
 			material->SetProperty(MaterialProperty::AlphaCutoff, blended ? BLEND_SPLIT_ALPHA : (cutout ? std::clamp(part.cutoff, 0.001f, 1.0f) : 0.0f));
 			material->SetProperty(MaterialProperty::BlendMode, blended ? 1.0f : 0.0f);
+			material->SetProperty(MaterialProperty::XpFoliage, foliage ? 1.0f : 0.0f);
 			if (image)
 				material->SetTexture(MaterialTextureType::Color, image);
 			loaded.overlayMaterials.emplace(key, material);
@@ -1495,6 +1497,91 @@ namespace SceneryEditorX::XPlane
 			return groupHandle;
 		}
 
+		// -------------------------------------------------------
+		// The terrain under the airport (plan Phase 10): its property plus a mile, everything draped on it
+
+		constexpr double TERRAIN_MARGIN = 1609.344;		// One statute mile around the airport property
+
+		/**
+		 * @brief Loads the base terrain for the airport: its boundary rows (130) near the field, or the working area
+		 * when it has none, plus a mile.
+		 */
+		void LoadTerrain(const AirportDocument &document, const Build &build, const GeoProjection &projection)
+		{
+			if (!SceneTerrain::IsEnabled())
+				return;
+			TerrainArea area;
+			area.margin = TERRAIN_MARGIN;
+			const Bounds2 &focus = build.focus.valid ? build.focus : build.bounds;
+			std::vector<std::vector<Point2>> grounds;	// The boundary: the tile's trees and buildings inside it aren't drawn
+			for (const AptBoundary &boundary : document.airport.boundaries)
+			{
+				for (const AptNodeChain &chain : boundary.rings)
+				{
+					std::vector<Point2> ring;
+					FlattenChain(chain, projection, ring, 20.0);
+					const Bounds2 ringBounds = GetBounds(ring);
+					// KSEA outlines the Space Needle 19 km away: keep the rings that touch the field
+					if (ring.size() >= 3 && focus.valid && ringBounds.maxX >= focus.minX && ringBounds.minX <= focus.maxX && ringBounds.maxZ >= focus.minZ && ringBounds.minZ <= focus.maxZ)
+						grounds.push_back(std::move(ring));
+				}
+			}
+			area.rings = grounds;
+			if (area.rings.empty() && focus.valid)
+				area.rings.push_back({ Point2{ focus.minX, focus.minZ }, Point2{ focus.maxX, focus.minZ }, Point2{ focus.maxX, focus.maxZ }, Point2{ focus.minX, focus.maxZ } });
+			if (area.rings.empty())
+				return;
+			SceneTerrain::Load(projection, area, document.airport.id, document.airport.elevationFt * 0.3048, grounds);
+		}
+
+		/**
+		 * @brief Puts a part on the terrain: flat kinds are draped (cut along the terrain's triangles, lifted onto it),
+		 * facades and forests stand on the ground under each vertex. Placed parts move with their entity instead.
+		 */
+		void DrapePart(Part &part, const TerrainSurface &surface)
+		{
+			if (surface.IsEmpty() || part.indices.empty() || part.placed)
+				return;
+			std::vector<OverlayVertex> vertices;
+			vertices.reserve(part.vertices.size());
+			for (const Vertex_PosTexNorTan &v : part.vertices)
+			{
+				OverlayVertex vertex;
+				vertex.x = v.pos[0];
+				vertex.y = v.pos[1];
+				vertex.z = v.pos[2];
+				vertex.u = v.tex[0];
+				vertex.v = v.tex[1];
+				vertex.nx = v.nor[0];
+				vertex.ny = v.nor[1];
+				vertex.nz = v.nor[2];
+				vertices.push_back(vertex);
+			}
+			if (IsDraped(part.kind))
+				surface.Drape(vertices, part.indices);
+			else
+				surface.Lift(vertices);
+
+			part.vertices.clear();
+			part.vertices.reserve(vertices.size());
+			for (const OverlayVertex &vertex : vertices)
+			{
+				const Vec3 normal(vertex.nx, vertex.ny, vertex.nz);
+				const Vec3 tangent = std::abs(vertex.ny) > 0.9f ? xMath::Normalize(Vec3(1.0f, 0.0f, 0.0f) - normal * vertex.nx) : xMath::Normalize(xMath::Cross(Vec3(0.0f, 1.0f, 0.0f), normal));
+				part.vertices.emplace_back(Vec3(vertex.x, vertex.y, vertex.z), Vec2(vertex.u, vertex.v), normal, tangent);
+			}
+		}
+
+		/* @brief y of a placed OBJ8: on the ground, above it (AGL) or at its MSL elevation. */
+		float ObjectHeight(const OverlayObject &object)
+		{
+			if (object.msl && SceneTerrain::IsLoaded())
+				return SceneTerrain::ElevationToY(object.y, object.x, object.z);
+			if (object.graded)
+				return SceneTerrain::GetHeight(object.groundX, object.groundZ) + static_cast<float>(object.y);	// Autogen OBJ_GRADED
+			return SceneTerrain::GetHeight(object.x, object.z) + static_cast<float>(object.msl ? 0.0 : object.y);
+		}
+
 		/* @brief Places the OBJ8s (DSF objects, strings, facade attachments, light strings) under their groups. */
 		void PlaceObjects(Loaded &loaded, entt::registry &registry, const entt::entity rootHandle, const Build &build)
 		{
@@ -1512,7 +1599,7 @@ namespace SceneryEditorX::XPlane
 
 				SceneObjects::PlaceOptions options;
 				options.position[0] = static_cast<float>(object.x);
-				options.position[1] = static_cast<float>(object.y);
+				options.position[1] = ObjectHeight(object);
 				options.position[2] = static_cast<float>(object.z);
 				options.headingDegrees = object.heading;
 				options.virtualPath = object.resource.starts_with("lib/") ? object.resource : std::string();
@@ -1560,13 +1647,16 @@ namespace SceneryEditorX::XPlane
 		 */
 		Ref<Mesh> CreateParts(Loaded &loaded, entt::registry &registry, const entt::entity rootHandle, std::vector<Part> &parts, const std::string &meshName, std::vector<uint64_t> &created)
 		{
-			// One mesh, a sub-mesh per part
+			// One mesh, a sub-mesh per part, each on the terrain
 			Ref<Mesh> mesh;
 			bool anyGeometry = false;
+			const TerrainSurface &surface = SceneTerrain::GetSurface();
 			for (Part &part : parts)
 			{
 				if (part.indices.empty())
 					continue;
+				part.layerHeight = part.vertices.empty() ? 0.0f : part.vertices.front().pos[1];
+				DrapePart(part, surface);
 				if (!mesh)
 				{
 					mesh = CreateRef<Mesh>();
@@ -1606,7 +1696,7 @@ namespace SceneryEditorX::XPlane
 				{
 					// Heading is clockwise from north (-Z), like DSF placements; the entity's yaw is the opposite sense.
 					TransformComponent &transform = registry.get<TransformComponent>(handle);
-					transform.translation = Vec3(static_cast<float>(part.origin.x), 0.0f, static_cast<float>(part.origin.z));
+					transform.translation = Vec3(static_cast<float>(part.origin.x), SceneTerrain::GetHeight(part.origin.x, part.origin.z), static_cast<float>(part.origin.z));
 					transform.SetRotationEuler(Vec3(0.0f, -static_cast<float>(part.heading) * kDegToRad, 0.0f));
 				}
 
@@ -1648,7 +1738,7 @@ namespace SceneryEditorX::XPlane
 							if (!part.placed && IsDraped(part.kind) && !part.vertices.empty())
 							{
 								const uint32_t sequence = (std::min(part.index, (1u << 26) - 1) << 5) | static_cast<uint32_t>(part.kind);
-								renderable->SetDrapeOrder(Renderable::MakeDrapeOrder(part.vertices.front().pos[1], sequence));
+								renderable->SetDrapeOrder(Renderable::MakeDrapeOrder(part.layerHeight, sequence));
 							}
 						}
 						if (!loaded.kindVisible[static_cast<size_t>(part.kind)])
@@ -1695,6 +1785,7 @@ namespace SceneryEditorX::XPlane
 			{
 				OverlayBuilder overlay(MakeResolver(document.GetPackageFolder()), loaded.projection);
 				BuildOverlay(document, build, overlay);
+				LoadTerrain(document, build, loaded.projection);
 			}
 			loaded.projection = build.projection;
 			loaded.bounds = build.bounds;
@@ -2104,6 +2195,7 @@ namespace SceneryEditorX::XPlane
 
 	void SceneAirports::Unload()
 	{
+		SceneTerrain::Unload();
 		if (!s_Loaded)
 			return;
 		if (entt::registry *registry = GetRegistry())
@@ -2188,7 +2280,7 @@ namespace SceneryEditorX::XPlane
 				continue;
 
 			TransformComponent &transform = registry->get<TransformComponent>(handle);
-			transform.translation = Vec3(static_cast<float>(origin.x), 0.0f, static_cast<float>(origin.z));
+			transform.translation = Vec3(static_cast<float>(origin.x), SceneTerrain::GetHeight(origin.x, origin.z), static_cast<float>(origin.z));
 			transform.SetRotationEuler(Vec3(0.0f, -static_cast<float>(heading) * kDegToRad, 0.0f));
 			GpuScene::MarkTransformDirty(handle);
 
@@ -2315,7 +2407,7 @@ namespace SceneryEditorX::XPlane
 			return;
 		const Bounds2 &focus = FocusOf(*s_Loaded);
 		const Point2 center = focus.GetCenter();
-		FrameSphere(Vec3(static_cast<float>(center.x), 0.0f, static_cast<float>(center.z)) + RootOffset(*s_Loaded), static_cast<float>(focus.GetRadius()), -50.0f);
+		FrameSphere(Vec3(static_cast<float>(center.x), SceneTerrain::GetHeight(center.x, center.z), static_cast<float>(center.z)) + RootOffset(*s_Loaded), static_cast<float>(focus.GetRadius()), -50.0f);
 	}
 
 	bool SceneAirports::GetFocus(float &centerX, float &centerZ, float &radius)
@@ -2343,15 +2435,17 @@ namespace SceneryEditorX::XPlane
 		}
 		const Point2 center = component->bounds.GetCenter();
 		const Vec3 offset = RootOffset(*s_Loaded);
-		FrameSphere(Vec3(static_cast<float>(center.x), 0.0f, static_cast<float>(center.z)) + offset, std::max(3.0f, static_cast<float>(component->bounds.GetRadius())), -35.0f);
+		FrameSphere(Vec3(static_cast<float>(center.x), SceneTerrain::GetHeight(center.x, center.z), static_cast<float>(center.z)) + offset, std::max(3.0f, static_cast<float>(component->bounds.GetRadius())), -35.0f);
 	}
 
 	void SceneAirports::LookFrom(const float x, const float y, const float z, const float yawDegrees, const float pitchDegrees)
 	{
 		if (!IsLoaded() || !FocusOf(*s_Loaded).valid)
 			return;
+		// Heights are above the ground under the eye
 		const Point2 center = FocusOf(*s_Loaded).GetCenter();
-		const Vec3 eye = Vec3(static_cast<float>(center.x), 0.0f, static_cast<float>(center.z)) + RootOffset(*s_Loaded) + Vec3(x, y, z);
+		const float ground = SceneTerrain::GetHeight(center.x + x, center.z + z);
+		const Vec3 eye = Vec3(static_cast<float>(center.x), ground, static_cast<float>(center.z)) + RootOffset(*s_Loaded) + Vec3(x, y, z);
 		const float yaw = yawDegrees * kDegToRad;
 		const float pitch = pitchDegrees * kDegToRad;
 		PlaceCamera(eye, eye + ViewForward(yaw, pitch) * 100.0f, yaw, pitch);
@@ -2363,7 +2457,7 @@ namespace SceneryEditorX::XPlane
 			return false;
 		// The scene was built with the projection's datum at the root's origin; +X east, +Z south
 		const Point2 local = s_Loaded->projection.ToLocal(latitude, longitude);
-		const Vec3 eye = Vec3(static_cast<float>(local.x), heightMeters, static_cast<float>(local.z)) + RootOffset(*s_Loaded);
+		const Vec3 eye = Vec3(static_cast<float>(local.x), heightMeters + SceneTerrain::GetHeight(local.x, local.z), static_cast<float>(local.z)) + RootOffset(*s_Loaded);
 		// Yaw 0 looks along +Z (south): a true heading h looks along yaw 180 - h
 		const float yaw = (180.0f - headingTrueDegrees) * kDegToRad;
 		const float pitch = pitchDegrees * kDegToRad;
@@ -2391,6 +2485,7 @@ namespace SceneryEditorX::XPlane
 	void SceneAirports::Shutdown()
 	{
 		Unload();
+		SceneTerrain::Shutdown();
 	}
 }
 

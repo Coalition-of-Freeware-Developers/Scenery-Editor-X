@@ -34,6 +34,11 @@
 #include <algorithm>
 #include <cmath>
 
+// A mile of a tile's autogen and forests is hundreds of thousands of triangles: keep the builder optimized in MSVC debug builds
+#if defined(_MSC_VER) && !defined(__clang__) && !defined(NDEBUG)
+#pragma optimize("gt", on)
+#endif
+
 // -------------------------------------------------------
 
 namespace SceneryEditorX::XPlane
@@ -355,11 +360,135 @@ namespace SceneryEditorX::XPlane
 			case OverlayKind::PaintedLine:		return "Painted line";
 			case OverlayKind::PavementLine:		return "Pavement edge line";
 			case OverlayKind::Road:				return "Road";
+			case OverlayKind::Beach:			return "Beach";
 		}
 		return "Overlay";
 	}
 
 	// -------------------------------------------------------
+
+	uint32_t AppendBeach(OverlayMesh &mesh, const BeachAsset &asset, const std::vector<Point2> &path, const std::vector<int> &types, const bool closed, const float y, uint32_t seed)
+	{
+		const size_t count = path.size();
+		if (count < 2 || types.size() != count)
+			return 0;
+		const size_t edges = closed ? count : count - 1;
+		const double metersPerS = asset.sizeX / asset.scaleX;
+		const double metersPerT = asset.sizeY / asset.scaleY;
+
+		// Runs of edges of one type (edge e runs from point e to the next); a ring's last run joins its first
+		struct Run
+		{
+			size_t first = 0;
+			size_t length = 0;
+			int type = 0;
+		};
+		std::vector<Run> runs;
+		for (size_t e = 0; e < edges; ++e)
+		{
+			if (!runs.empty() && runs.back().type == types[e])
+				++runs.back().length;
+			else
+				runs.push_back({ e, 1, types[e] });
+		}
+		if (closed && runs.size() > 1 && runs.front().type == runs.back().type)
+		{
+			runs.back().length += runs.front().length;
+			runs.erase(runs.begin());
+		}
+
+		uint32_t drawn = 0;
+		std::vector<Point2> line;
+		for (const Run &run : runs)
+		{
+			const std::vector<const BeachAsset::Tile *> tiles = asset.GetTiles(run.type);
+			if (run.type == 0 || tiles.empty())
+				continue;
+			const bool loop = closed && run.length == edges;	// The whole ring is one beach
+
+			// The run's points (a loop doesn't repeat its first), without repeats
+			line.clear();
+			for (size_t i = 0; i <= run.length - (loop ? 1 : 0); ++i)
+			{
+				const Point2 &point = path[(run.first + i) % count];
+				if (line.empty() || std::hypot(point.x - line.back().x, point.z - line.back().z) > 1e-3)
+					line.push_back(point);
+			}
+			if (loop && line.size() > 2 && std::hypot(line.front().x - line.back().x, line.front().z - line.back().z) <= 1e-3)
+				line.pop_back();
+			if (line.size() < 2)
+				continue;
+			const size_t points = line.size();
+
+			// Each point's left of travel (the water side), stretched at corners
+			const auto direction = [&](const size_t from, const size_t to) -> Point2
+			{
+				const double dx = line[to].x - line[from].x, dz = line[to].z - line[from].z;
+				const double length = std::hypot(dx, dz);
+				return length > 1e-9 ? Point2{ dx / length, dz / length } : Point2{ 1.0, 0.0 };
+			};
+			std::vector<Point2> left(points);
+			for (size_t i = 0; i < points; ++i)
+			{
+				const Point2 in = i > 0 ? direction(i - 1, i) : loop ? direction(points - 1, 0) : direction(0, 1);
+				const Point2 out = i + 1 < points ? direction(i, i + 1) : loop ? direction(points - 1, 0) : direction(points - 2, points - 1);
+				Point2 miter{ in.x + out.x, in.z + out.z };
+				const double length = std::hypot(miter.x, miter.z);
+				miter = length < 1e-6 ? in : Point2{ miter.x / length, miter.z / length };
+				const Point2 normal{ miter.z, -miter.x };
+				const double scale = 1.0 / std::clamp(normal.x * in.z - normal.z * in.x, 0.35, 1.0);
+				left[i] = Point2{ normal.x * scale, normal.z * scale };
+			}
+
+			// The shore's widths from the type's first piece; each piece maps its own rectangle
+			const double water = (tiles.front()->t2 - tiles.front()->t1) * metersPerT;
+			const double land = (tiles.front()->t3 - tiles.front()->t2) * metersPerT;
+			const auto pick = [&]() { return tiles[std::min(tiles.size() - 1, static_cast<size_t>(Random01(seed) * static_cast<float>(tiles.size())))]; };
+			const BeachAsset::Tile *tile = pick();
+			double pieceStart = 0.0;
+			double pieceLength = std::max(0.5, std::abs(tile->s2 - tile->s1) * metersPerS);
+
+			const size_t segments = loop ? points : points - 1;
+			double distance = 0.0;
+			for (size_t j = 0; j < segments; ++j)
+			{
+				const size_t a = j, b = (j + 1) % points;
+				const double length = std::hypot(line[b].x - line[a].x, line[b].z - line[a].z);
+				if (length <= 1e-6)
+					continue;
+				double at = distance;
+				const double end = distance + length;
+				while (at < end - 1e-6)
+				{
+					const double to = std::min(end, pieceStart + pieceLength);
+					const uint32_t base = static_cast<uint32_t>(mesh.vertices.size());
+					for (const double position : { at, to })
+					{
+						const double f = (position - distance) / length;
+						const double x = line[a].x + (line[b].x - line[a].x) * f, z = line[a].z + (line[b].z - line[a].z) * f;
+						const double lx = left[a].x + (left[b].x - left[a].x) * f, lz = left[a].z + (left[b].z - left[a].z) * f;
+						const double u = (tile->s1 + (tile->s2 - tile->s1) * (position - pieceStart) / pieceLength) / asset.scaleX;
+						AddVertex(mesh, x - lx * land, y, z - lz * land, u, tile->t3 / asset.scaleY);
+						AddVertex(mesh, x, y, z, u, tile->t2 / asset.scaleY);
+						AddVertex(mesh, x + lx * water, y, z + lz * water, u, tile->t1 / asset.scaleY);
+					}
+					// Land to shore, shore to water: counter-clockwise from above, as the offset ribbons
+					mesh.indices.insert(mesh.indices.end(), { base, base + 3, base + 1, base + 1, base + 3, base + 4 });
+					mesh.indices.insert(mesh.indices.end(), { base + 1, base + 4, base + 2, base + 2, base + 4, base + 5 });
+					at = to;
+					if (to >= pieceStart + pieceLength - 1e-6)
+					{
+						pieceStart += pieceLength;
+						tile = pick();
+						pieceLength = std::max(0.5, std::abs(tile->s2 - tile->s1) * metersPerS);
+					}
+				}
+				distance = end;
+			}
+			++drawn;
+		}
+		return drawn;
+	}
 
 	void AppendTexturedPolygon(OverlayMesh &mesh, const std::vector<std::vector<Point2>> &rings, const float y, const float scaleS, const float scaleT, const double headingDegrees, const Point2 origin)
 	{
@@ -1034,9 +1163,10 @@ namespace SceneryEditorX::XPlane
 	const ObjectStringAsset *OverlayBuilder::GetString(const std::string_view path, fs::path *file, OverlayBuild &out) { return GetCached(m_Strings, path, file, out, &LoadObjectStringAsset, "Object string"); }
 	const ForestAsset *OverlayBuilder::GetForest(const std::string_view path, fs::path *file, OverlayBuild &out) { return GetCached(m_Forests, path, file, out, &LoadForestAsset, "Forest"); }
 	const FacadeAsset *OverlayBuilder::GetFacade(const std::string_view path, fs::path *file, OverlayBuild &out) { return GetCached(m_Facades, path, file, out, &LoadFacadeAsset, "Facade"); }
-	const AutogenPointAsset *OverlayBuilder::GetAutogen(const std::string_view path, fs::path *file, OverlayBuild &out) { return GetCached(m_Autogens, path, file, out, &LoadAutogenPointAsset, "Autogen point"); }
+	const AutogenAsset *OverlayBuilder::GetAutogen(const std::string_view path, fs::path *file, OverlayBuild &out) { return GetCached(m_Autogens, path, file, out, &LoadAutogenAsset, "Autogen"); }
 	const RoadNetworkAsset *OverlayBuilder::GetRoadNetwork(const std::string_view path, fs::path *file, OverlayBuild &out) { return GetCached(m_Roads, path, file, out, &LoadRoadNetworkAsset, "Road network"); }
 	const DecalLibraryAsset *OverlayBuilder::GetDecalLibrary(const std::string_view path, fs::path *file, OverlayBuild &out) { return GetCached(m_DecalLibraries, path, file, out, &LoadDecalLibraryAsset, "Decal library"); }
+	const BeachAsset *OverlayBuilder::GetBeach(const std::string_view path, fs::path *file, OverlayBuild &out) { return GetCached(m_Beaches, path, file, out, &LoadBeachAsset, "Beach"); }
 
 	void OverlayBuilder::GetPolygonUvScale(const PolygonAsset &asset, float &scaleS, float &scaleT)
 	{
@@ -1145,15 +1275,15 @@ namespace SceneryEditorX::XPlane
 	{
 		if (!options.area.valid)
 			return true;
+		// By its box: a forest can surround the whole area without a point in it
+		Bounds2 bounds;
 		for (const std::vector<Point2> &ring : rings)
 		{
 			for (const Point2 &point : ring)
-			{
-				if (InArea(options, point))
-					return true;
-			}
+				bounds.Add(point);
 		}
-		return false;
+		return bounds.valid && bounds.maxX >= options.area.minX - options.areaMargin && bounds.minX <= options.area.maxX + options.areaMargin &&
+			   bounds.maxZ >= options.area.minZ - options.areaMargin && bounds.minZ <= options.area.maxZ + options.areaMargin;
 	}
 
 	void OverlayBuilder::FlattenWinding(const std::vector<DsfPoint> &winding, const bool closed, const bool bezier, std::vector<Point2> &out, const Options &options, const size_t controlPlane) const
@@ -1226,7 +1356,9 @@ namespace SceneryEditorX::XPlane
 			object.name = BaseName(resource);
 			object.x = local.x;
 			object.z = local.z;
-			object.y = placement.mode == DsfObjectPlacement::Mode::Agl ? placement.elevation : 0.0;	// MSL elevations need terrain we don't have: ground them
+			// The scene seats them on the terrain: above the ground (AGL) or at their elevation (MSL)
+			object.y = placement.mode == DsfObjectPlacement::Mode::Draped ? 0.0 : placement.elevation;
+			object.msl = placement.mode == DsfObjectPlacement::Mode::Msl;
 			object.heading = static_cast<float>(placement.heading);
 			object.placement = i;
 			out.objects.push_back(std::move(object));
@@ -1270,8 +1402,18 @@ namespace SceneryEditorX::XPlane
 				if (options.placeStrings)
 					BuildString(placement, i, resource, options, out);
 			}
+			else if (EndsWith(resource, ".bch"))
+			{
+				if (options.drawBeaches)
+					BuildBeach(placement, i, resource, options, out);
+			}
+			else if (EndsWith(resource, ".ags") || EndsWith(resource, ".agb"))
+			{
+				if (options.drawAutogen)
+					BuildAutogenPolygon(placement, i, resource, options, out);
+			}
 			else
-				++out.unsupported;	// .ags / .agb autogen blocks and anything newer
+				++out.unsupported;	// Anything newer
 		}
 
 		for (uint32_t i = 0; i < dsf.roads.size() && options.drawRoads; ++i)
@@ -1304,7 +1446,8 @@ namespace SceneryEditorX::XPlane
 		const RoadNetworkAsset::RoadType *type = network ? network->FindRoadType(static_cast<int>(segment.subtype)) : nullptr;
 		if (network && !type)
 			Warn(out, resource + " has no road type " + std::to_string(segment.subtype) + ": drawn as a plain band");
-		const float y = Height(options, "roads", 0);
+		// Raised segments (bridges, overpasses: junction levels) drape over the ones below them
+		const float y = Height(options, "roads", std::max(segment.startLevel, segment.endLevel));
 
 		const auto makeMesh = [&]()
 		{
@@ -1343,6 +1486,47 @@ namespace SceneryEditorX::XPlane
 			for (int c = 0; c < 3; ++c)
 				mesh.color[c] = type->color[c];
 		AppendOffsetRibbon(mesh, path, y, -half, half, 0.0f, 1.0f, 100.0f);
+		if (!mesh.indices.empty())
+			out.meshes.push_back(std::move(mesh));
+	}
+
+	void OverlayBuilder::BuildBeach(const DsfPolygonPlacement &placement, const uint32_t index, const std::string &resource, const Options &options, OverlayBuild &out)
+	{
+		fs::path file;
+		const BeachAsset *asset = GetBeach(resource, &file, out);
+		if (!asset)
+			return;
+
+		// Each point: longitude, latitude, then the beach type last (3 planes; MSL beaches add an elevation and a normal)
+		std::vector<Point2> path;
+		std::vector<int> types;
+		for (const DsfPoint &point : placement.windings[0])
+		{
+			path.push_back(LocalOf(m_Projection, point));
+			types.push_back(point.planes >= 3 ? static_cast<int>(std::lround(point.v[point.planes - 1])) : 0);
+		}
+		const bool closed = placement.parameter == 1;	// 0: a chain
+		if (closed && path.size() > 2 && std::hypot(path.front().x - path.back().x, path.front().z - path.back().z) < 1e-3)
+		{
+			path.pop_back();
+			types.pop_back();
+		}
+		if (path.size() < 2)
+			return;
+		if (!PolygonInArea(options, { path }))
+		{
+			++out.culled;
+			return;
+		}
+
+		OverlayMesh mesh;
+		mesh.kind = OverlayKind::Beach;
+		mesh.resource = resource;
+		mesh.name = BaseName(resource);
+		mesh.placement = index;
+		mesh.texture = TexturePath(file, asset->texture);
+		mesh.blended = true;		// The wet edge fades into the water
+		AppendBeach(mesh, *asset, path, types, closed, Height(options, "beaches", 0), m_Seed++ * 2654435761u + index);
 		if (!mesh.indices.empty())
 			out.meshes.push_back(std::move(mesh));
 	}
@@ -1509,25 +1693,6 @@ namespace SceneryEditorX::XPlane
 			return;
 		}
 
-		// Weighted tree choice
-		float totalPercent = 0.0f;
-		for (const ForestAsset::Tree &tree : asset->trees)
-			totalPercent += std::max(0.0f, tree.percent);
-		if (totalPercent <= 0.0f)
-			return;
-
-		const auto pickTree = [&](uint32_t &seed) -> const ForestAsset::Tree &
-		{
-			float roll = Random01(seed) * totalPercent;
-			for (const ForestAsset::Tree &tree : asset->trees)
-			{
-				roll -= std::max(0.0f, tree.percent);
-				if (roll <= 0.0f)
-					return tree;
-			}
-			return asset->trees.back();
-		};
-
 		// Point-in-polygon (outline minus holes)
 		const auto inside = [&rings](const Point2 &p) -> bool
 		{
@@ -1566,28 +1731,10 @@ namespace SceneryEditorX::XPlane
 
 		const auto addTree = [&](const Point2 &at)
 		{
-			const ForestAsset::Tree &tree = pickTree(seed);
-			const float height = tree.minHeight + (tree.maxHeight - tree.minHeight) * Random01(seed);
-			const float aspect = std::abs(tree.width) / std::max(1.0f, tree.height);
-			const float width = height * aspect;
-			const float s1 = tree.s / asset->scaleX, s2 = (tree.s + tree.width) / asset->scaleX;
-			const float t1 = tree.t / asset->scaleY, t2 = (tree.t + tree.height) / asset->scaleY;
-			const float left = (tree.offset - tree.s) / std::max(1.0f, std::abs(tree.width));	// Fraction of the width left of the trunk
-			const double yaw = Random01(seed) * kPi;
-			const int quads = std::clamp(tree.quads, 1, 4);
-			for (int q = 0; q < quads; ++q)
-			{
-				const double angle = yaw + kPi * q / quads;
-				const double dx = std::cos(angle), dz = std::sin(angle);
-				const double x0 = at.x - dx * width * left, z0 = at.z - dz * width * left;
-				const double x1 = at.x + dx * width * (1.0f - left), z1 = at.z + dz * width * (1.0f - left);
-				const double corners[4][3] = { { x0, 0.0, z0 }, { x1, 0.0, z1 }, { x1, height, z1 }, { x0, height, z0 } };
-				const double uvs[4][2] = { { s1, t1 }, { s2, t1 }, { s2, t2 }, { s1, t2 } };
-				const float normal[3] = { static_cast<float>(-dz), 0.0f, static_cast<float>(dx) };
-				AddQuad(mesh, corners, uvs, normal);
-			}
+			AppendForestTree(mesh, *asset, -1, at, 0.0f, Random01(seed) * kPi, seed);
 			++trees;
 		};
+		const auto canStand = [&](const Point2 &at) { return InArea(options, at) && (!options.keepTree || options.keepTree(at)); };
 
 		if (fillMode == 2)
 		{
@@ -1598,7 +1745,8 @@ namespace SceneryEditorX::XPlane
 				{
 					if (trees >= options.forestTreeLimit)
 						break;
-					addTree(point);
+					if (canStand(point))
+						addTree(point);
 				}
 			}
 		}
@@ -1614,7 +1762,8 @@ namespace SceneryEditorX::XPlane
 				{
 					if (trees >= options.forestTreeLimit)
 						break;
-					addTree(point);
+					if (canStand(point))
+						addTree(point);
 				}
 			}
 		}
@@ -1623,20 +1772,366 @@ namespace SceneryEditorX::XPlane
 			const Bounds2 bounds = GetBounds(rings[0]);
 			if (!bounds.valid)
 				return;
-			for (double gz = bounds.minZ; gz <= bounds.maxZ && trees < options.forestTreeLimit; gz += spacingY)
+			// Only the grid rows and columns over the area (a Global Scenery forest can span the whole tile)
+			double minX = bounds.minX, minZ = bounds.minZ, maxX = bounds.maxX, maxZ = bounds.maxZ;
+			if (options.area.valid)
 			{
-				for (double gx = bounds.minX; gx <= bounds.maxX && trees < options.forestTreeLimit; gx += spacingX)
+				const auto firstStep = [](const double from, const double limit, const double step) { return from + std::max(0.0, std::ceil((limit - from) / step)) * step; };
+				minX = firstStep(bounds.minX, options.area.minX - options.areaMargin, spacingX);
+				minZ = firstStep(bounds.minZ, options.area.minZ - options.areaMargin, spacingY);
+				maxX = std::min(maxX, options.area.maxX + options.areaMargin);
+				maxZ = std::min(maxZ, options.area.maxZ + options.areaMargin);
+			}
+			for (double gz = minZ; gz <= maxZ && trees < options.forestTreeLimit; gz += spacingY)
+			{
+				for (double gx = minX; gx <= maxX && trees < options.forestTreeLimit; gx += spacingX)
 				{
 					if (Random01(seed) > density)
 						continue;
 					Point2 at{ gx + (Random01(seed) - 0.5f) * 2.0f * asset->randomX, gz + (Random01(seed) - 0.5f) * 2.0f * asset->randomY };
-					if (!inside(at))
+					if (!canStand(at) || !inside(at))
 						continue;
 					addTree(at);
 				}
 			}
 		}
 
+		if (!mesh.indices.empty())
+			out.meshes.push_back(std::move(mesh));
+	}
+
+	void OverlayBuilder::AppendForestTree(OverlayMesh &mesh, const ForestAsset &forest, const int layer, const Point2 &at, const float width, const double yaw, uint32_t &seed) const
+	{
+		// Weighted by PERCENT among the layer's trees (all of them when the layer has none)
+		float total = 0.0f;
+		for (const ForestAsset::Tree &tree : forest.trees)
+			total += layer < 0 || tree.layer == layer ? std::max(0.0f, tree.percent) : 0.0f;
+		const bool anyLayer = total <= 0.0f;
+		if (anyLayer)
+		{
+			for (const ForestAsset::Tree &tree : forest.trees)
+				total += std::max(0.0f, tree.percent);
+		}
+		if (total <= 0.0f)
+			return;
+		float roll = Random01(seed) * total;
+		const ForestAsset::Tree *picked = &forest.trees.back();
+		for (const ForestAsset::Tree &tree : forest.trees)
+		{
+			if (!anyLayer && layer >= 0 && tree.layer != layer)
+				continue;
+			roll -= std::max(0.0f, tree.percent);
+			if (roll <= 0.0f)
+			{
+				picked = &tree;
+				break;
+			}
+		}
+		const ForestAsset::Tree &tree = *picked;
+
+		// Its texture's aspect: a width (autogen) sets the height, else a height in its range sets the width
+		const float aspect = std::abs(tree.width) / std::max(1.0f, tree.height);
+		const float height = width > 0.0f ? width / std::max(1e-3f, aspect) : tree.minHeight + (tree.maxHeight - tree.minHeight) * Random01(seed);
+		const float treeWidth = width > 0.0f ? width : height * aspect;
+		const float s1 = tree.s / forest.scaleX, s2 = (tree.s + tree.width) / forest.scaleX;
+		const float t1 = tree.t / forest.scaleY, t2 = (tree.t + tree.height) / forest.scaleY;
+		const float left = (tree.offset - tree.s) / std::max(1.0f, std::abs(tree.width));	// Fraction of the width left of the trunk
+		const int quads = std::clamp(tree.quads, 1, 4);
+		for (int q = 0; q < quads; ++q)
+		{
+			const double angle = yaw + kPi * q / quads;
+			const double dx = std::cos(angle), dz = std::sin(angle);
+			const double x0 = at.x - dx * treeWidth * left, z0 = at.z - dz * treeWidth * left;
+			const double x1 = at.x + dx * treeWidth * (1.0f - left), z1 = at.z + dz * treeWidth * (1.0f - left);
+			const double corners[4][3] = { { x0, 0.0, z0 }, { x1, 0.0, z1 }, { x1, height, z1 }, { x0, height, z0 } };
+			const double uvs[4][2] = { { s1, t1 }, { s2, t1 }, { s2, t2 }, { s1, t2 } };
+			const float normal[3] = { static_cast<float>(-dz), 0.0f, static_cast<float>(dx) };
+			AddQuad(mesh, corners, uvs, normal);
+			// Lit as a canopy, not as the quad: normals leaning out from the trunk and up, more so towards the top
+			// (the same on both faces: foliage materials don't flip them)
+			for (size_t v = mesh.vertices.size() - 4; v < mesh.vertices.size(); ++v)
+			{
+				OverlayVertex &vertex = mesh.vertices[v];
+				const float outX = (vertex.x - static_cast<float>(at.x)) / std::max(1.0f, treeWidth), outZ = (vertex.z - static_cast<float>(at.z)) / std::max(1.0f, treeWidth);
+				const float up = 0.4f + 0.6f * vertex.y / std::max(0.1f, height);
+				const float length = std::sqrt(outX * outX + up * up + outZ * outZ);
+				vertex.nx = outX / length;
+				vertex.ny = up / length;
+				vertex.nz = outZ / length;
+			}
+		}
+	}
+
+	// -------------------------------------------------------
+	// Autogen
+
+	namespace
+	{
+		/* @brief Even-odd over the segments of polylines that together close an area (an AG string's contours). */
+		bool InPolylines(const std::vector<std::vector<Point2>> &lines, const Point2 &p)
+		{
+			bool inside = false;
+			for (const std::vector<Point2> &line : lines)
+			{
+				for (size_t i = 1; i < line.size(); ++i)
+				{
+					const Point2 &a = line[i - 1], &b = line[i];
+					if ((a.z > p.z) != (b.z > p.z) && p.x < (b.x - a.x) * (p.z - a.z) / (b.z - a.z) + a.x)
+						inside = !inside;
+				}
+			}
+			return inside;
+		}
+
+		bool InClosedRing(const std::vector<Point2> &ring, const Point2 &p)
+		{
+			bool inside = false;
+			for (size_t i = 0, j = ring.size() - 1; i < ring.size(); j = i++)
+			{
+				if ((ring[i].z > p.z) != (ring[j].z > p.z) && p.x < (ring[j].x - ring[i].x) * (p.z - ring[i].z) / (ring[j].z - ring[i].z) + ring[i].x)
+					inside = !inside;
+			}
+			return inside;
+		}
+	}
+
+	void OverlayBuilder::BuildAutogenPolygon(const DsfPolygonPlacement &placement, const uint32_t index, const std::string &resource, const Options &options, OverlayBuild &out)
+	{
+		fs::path file;
+		const AutogenAsset *asset = GetAutogen(resource, &file, out);
+		if (!asset)
+			return;
+		if (asset->type == AutogenType::Point)
+		{
+			Warn(out, resource + " is an autogen point placed as a polygon");
+			return;
+		}
+
+		std::vector<std::vector<Point2>> contours;
+		for (const std::vector<DsfPoint> &winding : placement.windings)
+		{
+			contours.emplace_back();
+			for (const DsfPoint &point : winding)
+				contours.back().push_back(LocalOf(m_Projection, point));
+		}
+		if (contours.empty() || contours[0].size() < 2)
+			return;
+		if (!PolygonInArea(options, contours))
+		{
+			++out.culled;
+			return;
+		}
+
+		// Parameter: the element's height / 4 in the high byte; the string's tile-spawning contours or the block's code below
+		AutogenLayoutOptions layoutOptions;
+		layoutOptions.objectLevel = options.autogenObjectLevel;
+		layoutOptions.seed = index * 2654435761u + 17u;
+		const float height = static_cast<float>((placement.parameter >> 8) * 4);
+		const int low = placement.parameter & 0xFF;
+		AutogenLayout layout;
+		if (asset->type == AutogenType::Block)
+			LayoutAutogenBlock(*asset, contours[0], low, height, layoutOptions, layout);
+		else
+			LayoutAutogenString(*asset, contours, low, height, layoutOptions, layout);
+		EmitAutogen(layout, *asset, file, resource, index, options, out);
+	}
+
+	void OverlayBuilder::EmitAutogen(const AutogenLayout &layout, const AutogenAsset &asset, const fs::path &assetFile, const std::string &resource, const uint32_t index,
+									 const Options &options, OverlayBuild &out)
+	{
+		const auto keep = [this, &options](const Point2 &p) { return InArea(options, p) && (!options.keepAutogen || options.keepAutogen(p)); };
+		const auto reference = [&assetFile](const std::string &name) { return name.starts_with("lib/") ? name : ObjectReference(assetFile, name); };
+
+		// Ground tiles: one draped mesh in the asset's layer group (tiles, crop polygons and clipped block cells are convex)
+		if (!layout.ground.empty() && options.drawPolygons)
+		{
+			OverlayMesh mesh;
+			mesh.kind = OverlayKind::Autogen;
+			mesh.resource = resource;
+			mesh.name = BaseName(resource);
+			mesh.placement = index;
+			mesh.texture = TexturePath(assetFile, asset.texture);
+			mesh.blended = true;		// Soft edges over the terrain
+			const float y = Height(options, asset.layerGroup, asset.layerOffset);
+			for (const AutogenLayout::Ground &ground : layout.ground)
+			{
+				Point2 center{ 0.0, 0.0 };
+				for (const Point2 &p : ground.ring)
+					center = { center.x + p.x / ground.ring.size(), center.z + p.z / ground.ring.size() };
+				if (ground.ring.size() < 3 || !keep(center))
+					continue;
+				const uint32_t base = static_cast<uint32_t>(mesh.vertices.size());
+				for (size_t i = 0; i < ground.ring.size(); ++i)
+					AddVertex(mesh, ground.ring[i].x, y, ground.ring[i].z, ground.uvs[i].first, ground.uvs[i].second);
+				for (uint32_t i = 1; i + 1 < ground.ring.size(); ++i)
+					mesh.indices.insert(mesh.indices.end(), { base, base + i, base + i + 1 });
+			}
+			if (!mesh.indices.empty())
+				out.meshes.push_back(std::move(mesh));
+		}
+
+		// Objects through the object loader; graded ones stand on their tile's ground point
+		if (options.placeObjects)
+		{
+			for (const AutogenLayout::Object &object : layout.objects)
+			{
+				if (object.object < 0 || static_cast<size_t>(object.object) >= asset.objects.size() || !keep(object.at))
+					continue;
+				if (out.objects.size() >= static_cast<size_t>(options.maxObjects))
+				{
+					Warn(out, "Object limit reached; the rest of the autogen's objects were skipped");
+					break;
+				}
+				const std::string &name = asset.objects[static_cast<size_t>(object.object)];
+				fs::path objectFile = ResolveFile(reference(name));
+				if (objectFile.empty() && !name.starts_with("lib/"))
+					objectFile = ResolveFile(name);
+				if (objectFile.empty())
+				{
+					Warn(out, "Object of " + resource + " not found: " + name);
+					continue;
+				}
+				OverlayObject placed;
+				placed.source = OverlayObject::Source::Autogen;
+				placed.file = objectFile;
+				placed.resource = name;
+				placed.name = BaseName(name);
+				placed.x = object.at.x;
+				placed.z = object.at.z;
+				placed.y = object.raise;
+				placed.heading = static_cast<float>(object.heading);
+				placed.placement = index;
+				placed.graded = object.graded;
+				placed.groundX = object.ground.x;
+				placed.groundZ = object.ground.z;
+				out.objects.push_back(std::move(placed));
+			}
+		}
+
+		// Facades through the facade builder, as DSF polygons (counter-clockwise rings, wall types when given)
+		if (options.drawFacades)
+		{
+			for (const AutogenLayout::Facade &facade : layout.facades)
+			{
+				if (facade.facade < 0 || static_cast<size_t>(facade.facade) >= asset.facades.size() || facade.points.size() < 2 || !keep(facade.points.front()))
+					continue;
+				const std::string facadeReference = reference(asset.facades[static_cast<size_t>(facade.facade)]);
+				fs::path facadeFile;
+				const FacadeAsset *facadeAsset = GetFacade(facadeReference, &facadeFile, out);
+				if (!facadeAsset)
+					continue;
+				std::vector<Point2> points = facade.points;
+				std::vector<int> walls = facade.walls;
+				if (facadeAsset->ring && points.size() >= 3 && SignedArea(points) < 0.0)
+				{
+					// Reversed: edge k runs over what was edge n - 2 - k
+					const size_t n = points.size();
+					std::ranges::reverse(points);
+					if (walls.size() == n)
+					{
+						std::vector<int> reversed(n);
+						for (size_t k = 0; k < n; ++k)
+							reversed[k] = walls[(2 * n - 2 - k) % n];
+						walls.swap(reversed);
+					}
+				}
+				DsfPolygonPlacement polygon;
+				polygon.parameter = static_cast<uint16_t>(std::clamp(std::lround(facade.height), 1L, 65535L));
+				polygon.planes = walls.size() == points.size() ? 3 : 2;
+				std::vector<DsfPoint> winding;
+				for (size_t k = 0; k < points.size(); ++k)
+				{
+					DsfPoint point;
+					point.planes = polygon.planes;
+					m_Projection.ToGeo(points[k], point.v[1], point.v[0]);
+					if (polygon.planes == 3)
+						point.v[2] = walls[k];
+					winding.push_back(point);
+				}
+				polygon.windings.push_back(std::move(winding));
+				BuildFacade(polygon, index, facadeReference, options, out);
+			}
+		}
+
+		// Trees: the annotations, tree lines and the string's fill, from the asset's vegetation
+		if (!options.drawForests || asset.vegetation.empty() || (layout.trees.empty() && layout.treeLines.empty() && layout.fills.empty()))
+			return;
+		fs::path forestFile;
+		const ForestAsset *forest = GetForest(reference(asset.vegetation), &forestFile, out);
+		if (!forest || forest->trees.empty())
+			return;
+		OverlayMesh mesh;
+		mesh.kind = OverlayKind::Forest;
+		mesh.resource = asset.vegetation;
+		mesh.name = BaseName(asset.vegetation);
+		mesh.placement = index;
+		mesh.texture = TexturePath(forestFile, forest->texture);
+		mesh.cutout = true;
+		mesh.cutoff = 0.5f;
+		mesh.twoSided = true;
+		uint32_t seed = m_Seed++ * 7919u + index;
+		const auto canStand = [this, &options](const Point2 &p) { return InArea(options, p) && (!options.keepTree || options.keepTree(p)); };
+		const double headingToYaw = kPi / 180.0;
+
+		for (const AutogenLayout::Tree &tree : layout.trees)
+		{
+			if (canStand(tree.at))
+				AppendForestTree(mesh, *forest, tree.layer, tree.at, tree.width, tree.heading * headingToYaw, seed);
+		}
+		const double spacing = std::max(1.0f, forest->spacingX);
+		for (const AutogenLayout::TreeLine &line : layout.treeLines)
+		{
+			const double length = std::hypot(line.to.x - line.from.x, line.to.z - line.from.z);
+			const int count = std::max(1, static_cast<int>(length / spacing));
+			for (int k = 0; k <= count; ++k)
+			{
+				const double f = static_cast<double>(k) / count;
+				const Point2 at{ line.from.x + (line.to.x - line.from.x) * f, line.from.z + (line.to.z - line.from.z) * f };
+				if (canStand(at))
+					AppendForestTree(mesh, *forest, line.layer, at, 0.0f, Random01(seed) * kPi, seed);
+			}
+		}
+		for (const AutogenLayout::Fill &fill : layout.fills)
+		{
+			// The forest's grid (jittered) over the polygon, outside the tiles; only within the area
+			Bounds2 bounds;
+			for (const std::vector<Point2> &contour : fill.contours)
+				bounds.Add(GetBounds(contour));
+			if (!bounds.valid)
+				continue;
+			std::vector<Bounds2> boxes;
+			for (const std::vector<Point2> &footprint : fill.footprints)
+				boxes.push_back(GetBounds(footprint));
+			double minX = bounds.minX, minZ = bounds.minZ, maxX = bounds.maxX, maxZ = bounds.maxZ;
+			if (options.area.valid)
+			{
+				minX = std::max(minX, options.area.minX - options.areaMargin);
+				minZ = std::max(minZ, options.area.minZ - options.areaMargin);
+				maxX = std::min(maxX, options.area.maxX + options.areaMargin);
+				maxZ = std::min(maxZ, options.area.maxZ + options.areaMargin);
+			}
+			const double stepX = std::max(1.0f, forest->spacingX), stepZ = std::max(1.0f, forest->spacingY);
+			uint32_t planted = 0;
+			for (double gz = minZ; gz <= maxZ && planted < options.forestTreeLimit; gz += stepZ)
+			{
+				for (double gx = minX; gx <= maxX && planted < options.forestTreeLimit; gx += stepX)
+				{
+					const Point2 at{ gx + (Random01(seed) - 0.5) * 2.0 * forest->randomX, gz + (Random01(seed) - 0.5) * 2.0 * forest->randomY };
+					if (!canStand(at) || !InPolylines(fill.contours, at))
+						continue;
+					bool covered = false;
+					for (size_t k = 0; k < fill.footprints.size() && !covered; ++k)
+					{
+						const Bounds2 &box = boxes[k];
+						covered = box.valid && at.x >= box.minX && at.x <= box.maxX && at.z >= box.minZ && at.z <= box.maxZ && InClosedRing(fill.footprints[k], at);
+					}
+					if (covered)
+						continue;
+					AppendForestTree(mesh, *forest, fill.layer, at, 0.0f, Random01(seed) * kPi, seed);
+					++planted;
+				}
+			}
+		}
 		if (!mesh.indices.empty())
 			out.meshes.push_back(std::move(mesh));
 	}
@@ -1716,85 +2211,20 @@ namespace SceneryEditorX::XPlane
 	void OverlayBuilder::BuildAutogen(const DsfObjectPlacement &placement, const uint32_t index, const std::string &resource, const Options &options, OverlayBuild &out)
 	{
 		fs::path file;
-		const AutogenPointAsset *asset = GetAutogen(resource, &file, out);
+		const AutogenAsset *asset = GetAutogen(resource, &file, out);
 		if (!asset)
 			return;
-
-		const Point2 origin = m_Projection.ToLocal(placement.latitude, placement.longitude);
-		const double heading = placement.heading * kDegToRad;
-		const double c = std::cos(heading), s = std::sin(heading);
-		// Tile x runs east and y north before rotation; rotate clockwise by the heading
-		const auto place = [&](const float tx, const float ty) -> Point2
+		if (asset->type != AutogenType::Point)
 		{
-			const double east = tx - asset->anchorX, north = ty - asset->anchorY;
-			const double rx = east * c + north * s;
-			const double rn = -east * s + north * c;
-			return { origin.x + rx, origin.z - rn };
-		};
-
-		if (asset->HasTile() && options.drawPolygons)
-		{
-			OverlayMesh mesh;
-			mesh.kind = OverlayKind::Autogen;
-			mesh.resource = resource;
-			mesh.name = BaseName(resource);
-			mesh.placement = index;
-			mesh.texture = TexturePath(file, asset->texture);
-			mesh.cutout = true;
-			mesh.cutoff = 0.5f;
-			const float y = Height(options, "objects", -1);
-			std::vector<Point2> ring;
-			std::vector<std::pair<double, double>> uvs;
-			for (size_t i = 0; i + 3 < asset->tile.size(); i += 4)
-			{
-				ring.push_back(place(asset->tile[i], asset->tile[i + 1]));
-				uvs.emplace_back(asset->tile[i + 2], asset->tile[i + 3]);
-			}
-			std::vector<Point2> points;
-			std::vector<uint32_t> indices;
-			if (ring.size() >= 3 && TriangulatePolygon({ ring }, points, indices))
-			{
-				const uint32_t base = static_cast<uint32_t>(mesh.vertices.size());
-				for (const Point2 &point : points)
-				{
-					const auto [u, v] = UvAt(point, ring, uvs);
-					AddVertex(mesh, point.x, y, point.z, u, v);
-				}
-				for (const uint32_t idx : indices)
-					mesh.indices.push_back(base + idx);
-				out.meshes.push_back(std::move(mesh));
-			}
-		}
-
-		if (!options.placeObjects)
+			Warn(out, resource + " is an autogen string or block placed as an object");
 			return;
-		for (const AutogenPointAsset::Object &object : asset->placedObjects)
-		{
-			if (object.object < 0 || static_cast<size_t>(object.object) >= asset->objects.size())
-				continue;
-			const std::string &name = asset->objects[static_cast<size_t>(object.object)];
-			const std::string reference = ObjectReference(file, name);
-			fs::path objectFile = ResolveFile(reference);
-			if (objectFile.empty() && !name.starts_with("lib/"))
-				objectFile = ResolveFile(name);
-			if (objectFile.empty())
-			{
-				Warn(out, "Object of " + resource + " not found: " + name);
-				continue;
-			}
-			OverlayObject placed;
-			placed.source = OverlayObject::Source::Autogen;
-			placed.file = objectFile;
-			placed.resource = resource;
-			placed.name = BaseName(name);
-			const Point2 at = place(object.x, object.y);
-			placed.x = at.x;
-			placed.z = at.z;
-			placed.y = 0.0;
-			placed.heading = static_cast<float>(placement.heading) + object.heading;
-			placed.placement = index;
-			out.objects.push_back(std::move(placed));
 		}
+		AutogenLayoutOptions layoutOptions;
+		layoutOptions.objectLevel = options.autogenObjectLevel;
+		layoutOptions.seed = index * 2654435761u + 23u;
+		AutogenLayout layout;
+		LayoutAutogenPoint(*asset, m_Projection.ToLocal(placement.latitude, placement.longitude), placement.heading, layoutOptions, layout);
+		EmitAutogen(layout, *asset, file, resource, index, options, out);
 	}
 
 	// -------------------------------------------------------
@@ -2454,5 +2884,9 @@ namespace SceneryEditorX::XPlane
 				buildChains(airport.pavements[i].rings, "Pavement " + std::to_string(i + 1) + " edge", i, OverlayKind::PavementLine);
 	}
 }
+
+#if defined(_MSC_VER) && !defined(__clang__) && !defined(NDEBUG)
+#pragma optimize("", on)
+#endif
 
 // -------------------------------------------------------

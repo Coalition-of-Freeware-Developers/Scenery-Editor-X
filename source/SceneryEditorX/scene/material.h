@@ -51,7 +51,7 @@ namespace SceneryEditorX
 		WindAnimation				= 3,
 		ColorVariationFromInstance	= 4,
 		GrassBlades					= 5,
-		Water                       = 6,
+		Water                       = 6,	// 1: drawn by Renderer::Pass_Water alone (water.slang); see XpWaterMap*
 		EmissiveFromAlbedo			= 7,
 		AlphaCutoff					= 8,	// Alpha below this is cut out of the deferred passes (0 = the renderer's default)
 		BlendMode					= 9,	// 0 opaque / alpha tested, 1 alpha blended, 2 glass (reflections not faded by alpha)
@@ -83,6 +83,40 @@ namespace SceneryEditorX
 		XpDrapeMiscG				= 34,
 		XpDrapeMiscB				= 35,
 		XpDrapeMiscA				= 36,
+		// X-Plane terrain (.ter, xp_terrain.slang; with Terrain and XpMaterial set). Textures: color 0 base, 1 tile map,
+		// 2-3 detail decals; normal 0 normal map, 1-2 normal decals; roughness 0 composite, 1 hill, 2 cliff, 3 noise;
+		// metalness 0 border, 1 far; emission 0 lit
+		XpTerrainFlags				= 37,	// xp_terrain_* bits (border, composite borders, composite, hill, cliff, lit, far, tiled, noise)
+		XpTerrainProjectedS			= 38,	// Meters a base repeat covers east / north
+		XpTerrainProjectedT			= 39,
+		XpTerrainNormalRatio		= 40,	// Normal map repeats per base repeat
+		XpTerrainCompositeS			= 41,	// Meters a composite repeat covers
+		XpTerrainCompositeT			= 42,
+		XpTerrainCompositeCenter	= 43,	// Noise value where the composite is half in, and the half width of the fade
+		XpTerrainCompositeWidth		= 44,
+		XpTerrainHillStart			= 45,	// Slope degrees where the hill / cliff texture starts and is complete
+		XpTerrainHillEnd			= 46,
+		XpTerrainCliffStart			= 47,
+		XpTerrainCliffEnd			= 48,
+		XpTerrainHillS				= 49,	// Meters a hill / cliff repeat covers
+		XpTerrainHillT				= 50,
+		XpTerrainCliffS				= 51,
+		XpTerrainCliffT				= 52,
+		XpTerrainLitS				= 53,	// Meters a lit repeat covers, distances its fade starts and completes
+		XpTerrainLitT				= 54,
+		XpTerrainLitFadeStart		= 55,
+		XpTerrainLitFadeEnd			= 56,
+		XpTerrainFarS				= 57,	// Meters a far repeat covers, distances the far texture starts and is complete
+		XpTerrainFarT				= 58,
+		XpTerrainFarStart			= 59,
+		XpTerrainFarEnd				= 60,
+		XpFoliage					= 61,	// X-Plane 2D trees (.for): crossed quads lit by their canopy normals on both faces
+		// Water (with Water set; water.slang). Textures: color 0 the tile's water map (rgb colour, a clarity), 1 the floor
+		// decal (XpDecal0Scale / XpDecal0Strength); Color* the colour (linear) and clarity without a map
+		XpWaterMapScaleU			= 62,	// The map's u = world x * scale + offset, v = world z * scale + offset
+		XpWaterMapOffsetU			= 63,
+		XpWaterMapScaleV			= 64,
+		XpWaterMapOffsetV			= 65,
 		MaxEnum						= 255
 	};
 
@@ -427,7 +461,7 @@ namespace SceneryEditorX
 		// mutable: the scalar setters are const (they forward to the underlying Material), but must keep the table current
 		mutable std::array<float, static_cast<uint32_t>(MaterialClass::MaxEnum)> m_Properties{};
 		// MaterialProperty values (tessellation, cull mode, ...); kept apart because their indices overlap MaterialClass
-		std::array<float, static_cast<uint32_t>(MaterialProperty::XpDrapeMiscA) + 1> m_RenderSettings{};
+		std::array<float, static_cast<uint32_t>(MaterialProperty::XpFoliage) + 1> m_RenderSettings{};
 		std::array<ImageResource*, static_cast<uint32_t>(MaterialTextureType::MaxEnum) * SLOTS_PER_TEXTURE> m_Textures{};
 
 		bool m_Transparent = false;

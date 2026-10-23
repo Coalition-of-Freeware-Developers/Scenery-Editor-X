@@ -29,6 +29,7 @@
  * -------------------------------------------------------
  */
 #pragma once
+#include "xp_assets.h"
 #include "xp_lights.h"
 #include "xp_obj8.h"
 #include "xp_texture_loader.h"
@@ -72,6 +73,13 @@ namespace SceneryEditorX::XPlane
 		ResolvedLight resolved;
 	};
 
+	/* @brief A detail or normal decal of an OBJ (its rows and DECAL_LIB's), with its texture. */
+	struct ObjectDecal
+	{
+		PolygonDecal decal;					// scaleS / scaleT: repeats per albedo tile (per unit of the OBJ's UVs)
+		Ref<ImageResource> image;
+	};
+
 	/* @brief The textures an OBJ resolved, with what the loader learned about them. */
 	struct ObjectTextures
 	{
@@ -84,6 +92,7 @@ namespace SceneryEditorX::XPlane
 		TextureInfo normalInfo;
 		TextureInfo litInfo;
 		TextureInfo drapedInfo;
+		std::vector<ObjectDecal> decals;	// Up to two detail and two normal decals, in file order
 	};
 
 	/* @brief Where an object file is in its load. */

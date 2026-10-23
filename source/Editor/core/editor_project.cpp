@@ -53,11 +53,13 @@
 #include <SceneryEditorX/logging/logging.hpp>
 #include <SceneryEditorX/project/project_dsf.h>
 #include <SceneryEditorX/renderer/font/font_awesome.h>
+#include <SceneryEditorX/renderer/gpu_scene.h>
 #include <SceneryEditorX/xplane/xp_airport_scene.h>
 #include <SceneryEditorX/xplane/xp_library_manager.h>
 #include <SceneryEditorX/xplane/xp_overlay.h>
 #include <SceneryEditorX/xplane/xp_overlay_scene.h>
 #include <SceneryEditorX/xplane/xp_scene.h>
+#include <SceneryEditorX/xplane/xp_terrain_scene.h>
 #include <SceneryEditorX/xplane/xp_text.h>
 
 // -------------------------------------------------------
@@ -112,6 +114,7 @@ namespace SceneryEditorX::EditorProjects
 			uint64_t sceneryRevision = ~0ull;					// Items revision it was built from
 			uint64_t sceneryLibrary = 0;						// Library index generation its assets were resolved with
 			uint64_t sceneryFingerprint = 0;					// GetDsfFingerprint of what it draws
+			uint64_t terrainGeneration = 0;						// SceneTerrain::GetGeneration() the objects and scenery stand on
 
 			double lastSync = 0.0;
 			double lastAutosave = 0.0;
@@ -270,15 +273,33 @@ namespace SceneryEditorX::EditorProjects
 
 		// Scene ----------------------------------------------------------
 
-		float HeightOf(const SceneryItem &item)
+		/* @brief True when the project is drawn in the frame of the loaded terrain (its airport's), so it stands on it. */
+		bool OnTerrain()
 		{
+			return XPlane::SceneTerrain::IsInFrame(GetState().projection);
+		}
+
+		/* @brief y of an object item at a point of the frame: on the ground (the terrain), above it, or at its MSL elevation. */
+		float HeightOf(const SceneryItem &item, const double x, const double z)
+		{
+			const bool onTerrain = OnTerrain();
+			const float ground = onTerrain ? XPlane::SceneTerrain::GetHeight(x, z) : 0.0f;
 			switch (item.elevationMode)
 			{
-				case ElevationMode::Agl:	return static_cast<float>(item.altitude);
-				case ElevationMode::Msl:	return static_cast<float>(item.altitude - GetState().datumElevation);
+				case ElevationMode::Agl:	return ground + static_cast<float>(item.altitude);
+				case ElevationMode::Msl:	return onTerrain ? XPlane::SceneTerrain::ElevationToY(item.altitude, x, z) : static_cast<float>(item.altitude - GetState().datumElevation);
 				case ElevationMode::Ground:	break;
 			}
-			return 0.0f;
+			return ground;
+		}
+
+		/* @brief The item's altitude (AGL or MSL by its mode) for a y at a point of the frame: HeightOf() undone. */
+		double AltitudeOf(const SceneryItem &item, const double y, const double x, const double z)
+		{
+			const bool onTerrain = OnTerrain();
+			if (item.elevationMode == ElevationMode::Agl)
+				return y - (onTerrain ? XPlane::SceneTerrain::GetHeight(x, z) : 0.0f);
+			return onTerrain ? y + XPlane::SceneTerrain::GetDatumElevation() + XPlane::GetTerrainCurvatureDrop(x, z) : y + GetState().datumElevation;
 		}
 
 		/* @brief Heading (clockwise from north) of a rotation, in the convention SceneObjects::Place turns objects with. */
@@ -321,7 +342,7 @@ namespace SceneryEditorX::EditorProjects
 			const XPlane::Point2 local = state.projection.ToLocal(item.latitude, item.longitude);
 			XPlane::SceneObjects::PlaceOptions options;
 			options.position[0] = static_cast<float>(local.x);
-			options.position[1] = HeightOf(item);
+			options.position[1] = HeightOf(item, local.x, local.z);
 			options.position[2] = static_cast<float>(local.z);
 			options.headingDegrees = item.heading;
 			options.virtualPath = item.resource;
@@ -393,6 +414,7 @@ namespace SceneryEditorX::EditorProjects
 				state.builder = std::make_unique<XPlane::OverlayBuilder>([](const std::string_view path) { return ResolveResource(std::string(path)); }, state.projection);
 				state.scenery.Clear();
 			}
+			state.scenery.SetOnTerrain(OnTerrain());
 
 			// The items to build: not shown yet, or shown from other placements. Roads go together (they share junctions).
 			const std::unordered_map<std::string, DsfItemFingerprint> items = GetItemFingerprints(conversion);
@@ -572,6 +594,7 @@ namespace SceneryEditorX::EditorProjects
 				state.projection = XPlane::GeoProjection(0.0, 0.0);
 			state.datumElevation = project.datum.valid ? project.datum.elevation : !project.airports.empty() ? project.airports.front().airport.elevationFt * 0.3048 : 0.0;
 
+			state.terrainGeneration = XPlane::SceneTerrain::GetGeneration();
 			PlaceItems(project.items, false);
 			UpdateScenery(context, true);
 			state.lastSync = ImGui::GetTime();
@@ -640,15 +663,18 @@ namespace SceneryEditorX::EditorProjects
 					it = state.placed.erase(it);
 					continue;
 				}
-				if (const TransformComponent *transform = EditorScene::TryGet<TransformComponent>(handle))
+				if (TransformComponent *transform = EditorScene::TryGet<TransformComponent>(handle))
 				{
 					double latitude = 0.0, longitude = 0.0;
-					state.projection.ToGeo({ transform->translation.x, transform->translation.z }, latitude, longitude);
+					const double x = transform->translation.x, z = transform->translation.z;
+					state.projection.ToGeo({ x, z }, latitude, longitude);
 					const float heading = HeadingOf(transform->GetRotation());
 					const double height = transform->translation.y;
+					const XPlane::Point2 was = state.projection.ToLocal(item->latitude, item->longitude);
 					const bool positionChanged = std::abs(latitude - item->latitude) > 1e-8 || std::abs(longitude - item->longitude) > 1e-8;
 					const bool headingChanged = std::abs(std::remainder(static_cast<double>(heading) - item->heading, 360.0)) > 0.01;
-					const bool heightChanged = item->elevationMode != ElevationMode::Ground && std::abs(height - HeightOf(*item)) > 0.005;
+					// A height edit is a y other than where the item stood before it moved (moving across sloped terrain isn't one)
+					const bool heightChanged = item->elevationMode != ElevationMode::Ground && std::abs(height - HeightOf(*item, was.x, was.z)) > 0.005;
 					if (positionChanged || headingChanged || heightChanged)
 					{
 						if (positionChanged)
@@ -659,8 +685,15 @@ namespace SceneryEditorX::EditorProjects
 						if (headingChanged)
 							item->heading = heading;
 						if (heightChanged)
-							item->altitude = item->elevationMode == ElevationMode::Agl ? height : height + state.datumElevation;
+							item->altitude = AltitudeOf(*item, height, x, z);
 						moved = true;
+					}
+					// Moved over the terrain: stand where it now is (its altitude kept)
+					const float seated = HeightOf(*item, x, z);
+					if (positionChanged && !heightChanged && std::abs(seated - transform->translation.y) > 0.001f)
+					{
+						transform->translation.y = seated;
+						GpuScene::MarkTransformDirty(handle);
 					}
 				}
 				++it;
@@ -1029,12 +1062,29 @@ namespace SceneryEditorX::EditorProjects
 				SyncFromScene();
 			}
 
-			// Item edits (PROJECT panel, scene sync) and a newer library index redraw the project's scenery
+			// Terrain loaded or gone under the project: objects stand on what is there now, the scenery is draped again
+			const bool terrainChanged = state.terrainGeneration != XPlane::SceneTerrain::GetGeneration();
+			if (terrainChanged)
+			{
+				state.terrainGeneration = XPlane::SceneTerrain::GetGeneration();
+				for (const auto &[id, root] : state.placed)
+				{
+					const SceneryItem *item = state.document.FindItem(id);
+					const entt::entity handle = EditorScene::FindHandle(root);
+					TransformComponent *transform = item && handle != entt::null ? EditorScene::TryGet<TransformComponent>(handle) : nullptr;
+					if (!transform)
+						continue;
+					transform->translation.y = HeightOf(*item, transform->translation.x, transform->translation.z);
+					GpuScene::MarkTransformDirty(handle);
+				}
+			}
+
+			// Item edits (PROJECT panel, scene sync), a newer library index and new terrain redraw the project's scenery
 			const bool libraryChanged = state.sceneryLibrary != XPlane::LibraryManager::GetGeneration();
-			if (libraryChanged || state.sceneryRevision != state.document.GetItemsRevision())
+			if (libraryChanged || terrainChanged || state.sceneryRevision != state.document.GetItemsRevision())
 			{
 				SEDX_PERF_SCOPE("Main: project scenery update");
-				UpdateScenery(context, libraryChanged);
+				UpdateScenery(context, libraryChanged || terrainChanged);
 			}
 
 			if (now - state.lastAutosave >= state.autosaveSeconds)

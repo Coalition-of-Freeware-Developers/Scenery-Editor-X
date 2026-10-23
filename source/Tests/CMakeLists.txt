@@ -274,6 +274,8 @@ ADD_EXECUTABLE(XPlaneFormatTests
     ${CMAKE_CURRENT_SOURCE_DIR}/xplane_tests/InstallFinderTests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/xplane_tests/BrdfLutTests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/xplane_tests/ThumbnailTests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/xplane_tests/TerrainTests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/xplane_tests/AutogenTests.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/environment/brdf_lut.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/filesystem/vfs.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_obj8.cpp
@@ -284,13 +286,17 @@ ADD_EXECUTABLE(XPlaneFormatTests
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_airport_index.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_gateway_types.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_dsf.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_7z.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_assets.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_autogen.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_facade.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_facade_writer.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_facade_authoring.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_overlay.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_install_finder.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_thumbnail.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_terrain.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_terrain_mesh.cpp
 )
 
 TARGET_INCLUDE_DIRECTORIES(XPlaneFormatTests PRIVATE
@@ -349,7 +355,9 @@ ADD_EXECUTABLE(ProjectFormatTests
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_library.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_apt_geometry.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_dsf.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_7z.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_assets.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_autogen.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_facade.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_overlay.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_install_finder.cpp

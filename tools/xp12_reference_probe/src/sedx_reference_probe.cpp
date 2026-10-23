@@ -30,14 +30,16 @@
  *
  * SEDX Reference Probe: an X-Plane 12 plugin that renders the parity scenarios (scenarios.json, the same file SEDX
  * reads with --env-scenario) and dumps X-Plane's art-control values, so the editor's XP12 emulation can be compared
- * with and calibrated against X-Plane itself (plan TASK-001 / TASK-002 / TASK-102).
+ * with and calibrated against X-Plane itself (plan TASK-001 / TASK-002 / TASK-102). A second set, airports.json
+ * (scenarios/xp12_airports.json), takes the same kinds of views at the standard test airports.
  *
  * For each scenario it sets the date, time and weather through the public datarefs, takes the camera to a fixed pose,
  * waits settle_frames for exposure and weather to settle, saves a screenshot as Output/sedx_probe/<id>.png and writes
  * Output/sedx_probe/<id>.json with what it applied and the live value of every art control in art_controls.txt.
  *
  * Start it from Plugins > SEDX Reference Probe, or put a file named "autorun" (containing "quit" to exit X-Plane
- * afterwards) into Output/sedx_probe/.
+ * afterwards, "airports" to run the test-airport set, "resume" to skip the scenarios already captured) into
+ * Output/sedx_probe/.
  *
  * Reads and writes only public SDK datarefs plus the sim/private/controls/ values X-Plane exposes to plugins; it never
  * reads X-Plane's own files.
@@ -84,6 +86,34 @@ namespace
 	constexpr double METERS_PER_STATUTE_MILE = 1609.344;
 	constexpr double PI = 3.14159265358979323846;
 
+	/* @brief A scenario file installed with the plugin (a copy in Output/sedx_probe/ overrides it for a run). */
+	struct ScenarioSet
+	{
+		const char *file;
+		const char *runAll;
+		const char *runMissing;
+		const char *runFirst;
+	};
+	constexpr ScenarioSet SCENARIO_SETS[] = {
+		{ "scenarios.json", "Run all parity scenarios (KSEA)", "Resume the parity scenarios (skip captured ones)", "Run the first parity scenario" },
+		{ "airports.json", "Run all test-airport scenarios (KGON KDEN KORD KBOS KBTV)", "Resume the test-airport scenarios (skip captured ones)",
+		  "Run the first test-airport scenario" },
+	};
+
+	/* @brief What a run covers: every scenario, the ones without a screenshot and dump yet, or the first one. */
+	enum class RunMode : intptr_t
+	{
+		All = 1,
+		First = 2,
+		Missing = 3
+	};
+	constexpr intptr_t MENU_STOP = 0xFF;	// Menu item refs: set index << 8 | RunMode; MENU_STOP stops a run
+
+	// The user aircraft is held out of the shot through these (see HoldUser)
+	constexpr const char *OVERRIDE_PLANE_PATH = "sim/operation/override/override_planepath";
+	constexpr double USER_BEHIND_CAMERA_M = 6000.0;
+	constexpr double USER_ABOVE_CAMERA_M = 1200.0;
+
 	// -------------------------------------------------------
 
 	struct CloudLayer
@@ -108,6 +138,8 @@ namespace
 		std::vector<CloudLayer> clouds;
 		float rainPercent = 0.0f, snowCover = 0.0f, temperatureC = 15.0f;
 		float runwayFriction = 0.0f;
+		std::optional<float> waveAmplitudeM;	// sim/weather/region/wave_amplitude; none: X-Plane's own sea
+		std::optional<float> waveDirectionDeg;	// sim/weather/region/wave_dir
 		int settleFrames = 600;
 		std::optional<float> ev100Lock;
 		std::vector<std::pair<std::string, float>> artControls;	// "art_controls": set for this shot only (sim/private/controls/)
@@ -145,6 +177,11 @@ namespace
 		float cameraHeading = 0.0f, cameraPitch = 0.0f;
 		bool cameraActive = false;
 
+		// Where the user aircraft is held (behind and above the camera), while the run overrides its flight path
+		double userLat = 0.0, userLon = 0.0, userMsl = 0.0;
+		float userHeading = 0.0f;
+		bool userHeld = false;
+
 		// Screenshot detection
 		fs::file_time_type screenshotsBefore{};
 		fs::path screenshotFile;
@@ -155,6 +192,7 @@ namespace
 		std::optional<float> savedEv100Min, savedEv100Max, savedFov;
 		std::vector<std::pair<std::string, float>> savedArtControls;	// What the current shot's art_controls replaced
 		std::optional<int> savedUseSystemTime;
+		std::optional<int> savedOverridePlanePath;
 
 		std::vector<std::string> artControls;
 	};
@@ -199,6 +237,41 @@ namespace
 	bool SetInt(const char *name, const int value)
 	{
 		return SetFloat(name, static_cast<float>(value));
+	}
+
+	bool SetDouble(const char *name, const double value)
+	{
+		XPLMDataRef ref = Find(name);
+		if (!ref || !XPLMCanWriteDataRef(ref))
+			return false;
+		const XPLMDataTypeID types = XPLMGetDataRefTypes(ref);
+		if (types & xplmType_Double)
+			XPLMSetDatad(ref, value);
+		else if (types & xplmType_Float)
+			XPLMSetDataf(ref, static_cast<float>(value));
+		else
+			return false;
+		return true;
+	}
+
+	/* @brief One element of an int array dataref; nullopt where there is no such array. */
+	std::optional<int> GetIntElement(const char *name, const int index)
+	{
+		XPLMDataRef ref = Find(name);
+		if (!ref || !(XPLMGetDataRefTypes(ref) & xplmType_IntArray) || XPLMGetDatavi(ref, nullptr, 0, 0) <= index)
+			return std::nullopt;
+		int value = 0;
+		XPLMGetDatavi(ref, &value, index, 1);
+		return value;
+	}
+
+	bool SetIntElement(const char *name, const int index, int value)
+	{
+		XPLMDataRef ref = Find(name);
+		if (!ref || !XPLMCanWriteDataRef(ref) || !(XPLMGetDataRefTypes(ref) & xplmType_IntArray))
+			return false;
+		XPLMSetDatavi(ref, &value, index, 1);
+		return true;
 	}
 
 	std::optional<float> GetFloat(const char *name)
@@ -321,6 +394,10 @@ namespace
 			ParseTime(it->get<std::string>(), s.localTimeHours);
 		if (const auto it = object.find("ev100_lock"); it != object.end())
 			s.ev100Lock = it->is_null() ? std::nullopt : std::optional<float>(it->get<float>());
+		if (const auto it = object.find("wave_amplitude_m"); it != object.end())
+			s.waveAmplitudeM = it->is_null() ? std::nullopt : std::optional<float>(it->get<float>());
+		if (const auto it = object.find("wave_direction_deg"); it != object.end())
+			s.waveDirectionDeg = it->is_null() ? std::nullopt : std::optional<float>(it->get<float>());
 		if (const auto it = object.find("art_controls"); it != object.end() && it->is_object())
 		{
 			s.artControls.clear();
@@ -348,9 +425,11 @@ namespace
 	/**
 	 * @brief Weather X-Plane can't take back at once runs last: snow cover melts and wet runways dry over minutes of sim
 	 * time, and the first run's calibration and season shots, taken after the snowy ones, were still white. Clear and
-	 * dry scenarios first, then haze, fog and overcast, then rain and wet runways, then snow; file order within each.
+	 * dry scenarios first, then haze, fog and overcast, then rain and wet runways, then snow. Within each group an
+	 * airport's scenarios run together (airports in the order the file first names them, then file order), so X-Plane
+	 * loads each airport's scenery once per group instead of flying back and forth.
 	 */
-	void OrderForWeather(std::vector<Scenario> &scenarios)
+	void OrderForRun(std::vector<Scenario> &scenarios)
 	{
 		const auto rank = [](const Scenario &s)
 		{
@@ -363,14 +442,25 @@ namespace
 				cloudy |= layer.coverage > 0.0f;
 			return (cloudy || s.visibilityM < 50000.0f) ? 1 : 0;
 		};
-		std::stable_sort(scenarios.begin(), scenarios.end(), [&](const Scenario &a, const Scenario &b) { return rank(a) < rank(b); });
+		std::vector<std::string> airports;
+		for (const Scenario &s : scenarios)
+		{
+			if (std::find(airports.begin(), airports.end(), s.icao) == airports.end())
+				airports.push_back(s.icao);
+		}
+		const auto airport = [&](const Scenario &s) { return std::find(airports.begin(), airports.end(), s.icao) - airports.begin(); };
+		std::stable_sort(scenarios.begin(), scenarios.end(), [&](const Scenario &a, const Scenario &b)
+		{
+			const int rankA = rank(a), rankB = rank(b);
+			return rankA != rankB ? rankA < rankB : airport(a) < airport(b);
+		});
 	}
 
-	bool LoadScenarios()
+	bool LoadScenarios(const std::string &fileName)
 	{
 		g.scenarios.clear();
-		// Output/sedx_probe/scenarios.json first (per-run sets), then the copy installed with the plugin
-		for (const fs::path &path : { g.outputFolder / "scenarios.json", g.pluginFolder / "scenarios.json" })
+		// Output/sedx_probe/<file> first (per-run sets), then the copy installed with the plugin
+		for (const fs::path &path : { g.outputFolder / fileName, g.pluginFolder / fileName })
 		{
 			std::ifstream file(path);
 			if (!file)
@@ -390,7 +480,7 @@ namespace
 					if (!s.id.empty())
 						g.scenarios.push_back(std::move(s));
 				}
-				OrderForWeather(g.scenarios);
+				OrderForRun(g.scenarios);
 				Log("Loaded " + std::to_string(g.scenarios.size()) + " scenarios from " + path.string());
 				return !g.scenarios.empty();
 			}
@@ -400,7 +490,7 @@ namespace
 				return false;
 			}
 		}
-		Log("No scenarios.json in " + g.outputFolder.string() + " or " + g.pluginFolder.string());
+		Log("No " + fileName + " in " + g.outputFolder.string() + " or " + g.pluginFolder.string());
 		return false;
 	}
 
@@ -543,7 +633,51 @@ namespace
 		if (!SetFloat("sim/weather/region/snow_cover", s.snowCover))
 			Log("sim/weather/region/snow_cover is not writable here: the snow scenario keeps X-Plane's own cover");
 		SetFloat("sim/weather/region/sealevel_temperature_c", s.temperatureC);
+		if (s.waveAmplitudeM)
+			SetFloat("sim/weather/region/wave_amplitude", *s.waveAmplitudeM);
+		if (s.waveDirectionDeg)
+			SetFloat("sim/weather/region/wave_dir", *s.waveDirectionDeg);
 		SetInt("sim/weather/region/update_immediately", 1);
+	}
+
+	/**
+	 * @brief Keeps the user aircraft where the run put it (g.userLat / userLon / userMsl), out of the shot. Moving it
+	 * with XPLMPlaceUserAtLocation starts a new flight every time (X-Plane reloads its sim objects and tells every
+	 * plugin the user moved): at KDEN, X-Coder's Living Scenery Technology package (v1.11.6) deleted a flight loop
+	 * twice on the second one and X-Plane's plugin manager stopped the sim. Here the run overrides the plane's flight
+	 * path (override_planepath[0], put back by ReleaseUser) and moves it through its position datarefs, the way
+	 * plugins move a plane mid-flight; called every frame, as X-Plane may shift its local frame while we wait.
+	 */
+	void HoldUser()
+	{
+		if (!g.userHeld)
+		{
+			g.savedOverridePlanePath = GetIntElement(OVERRIDE_PLANE_PATH, 0);
+			if (!SetIntElement(OVERRIDE_PLANE_PATH, 0, 1))
+				Log("sim/operation/override/override_planepath is not writable here: the aircraft may drift into the shot");
+			g.userHeld = true;
+		}
+		double x = 0.0, y = 0.0, z = 0.0;
+		XPLMWorldToLocal(g.userLat, g.userLon, g.userMsl, &x, &y, &z);
+		SetDouble("sim/flightmodel/position/local_x", x);
+		SetDouble("sim/flightmodel/position/local_y", y);
+		SetDouble("sim/flightmodel/position/local_z", z);
+		for (const char *velocity : { "sim/flightmodel/position/local_vx", "sim/flightmodel/position/local_vy", "sim/flightmodel/position/local_vz" })
+			SetFloat(velocity, 0.0f);
+		// Level, facing the camera's heading (X-Plane's quaternion with pitch and roll 0)
+		const double halfPsi = g.userHeading * PI / 360.0;
+		SetFloatArray("sim/flightmodel/position/q", { static_cast<float>(std::cos(halfPsi)), 0.0f, 0.0f, static_cast<float>(std::sin(halfPsi)) });
+	}
+
+	/* @brief Gives the plane's flight path back to X-Plane; parked at the run's last airport when asked (not on shutdown). */
+	void ReleaseUser(const bool parkAtAirport)
+	{
+		if (!g.userHeld)
+			return;
+		SetIntElement(OVERRIDE_PLANE_PATH, 0, g.savedOverridePlanePath.value_or(0));
+		g.userHeld = false;
+		if (parkAtAirport && !g.loadedAirport.empty())
+			XPLMPlaceUserAtAirport(g.loadedAirport.c_str());	// At the airport: not left hanging in the air without a flight path
 	}
 
 	/* @brief Places the camera and moves the user aircraft out of sight (behind and above the camera). */
@@ -558,9 +692,10 @@ namespace
 		g.cameraHeading = s.heading;
 		g.cameraPitch = s.pitch;
 
-		double userLat = 0.0, userLon = 0.0;
-		Offset(s.lat, s.lon, s.heading + 180.0, 6000.0, userLat, userLon);
-		XPLMPlaceUserAtLocation(userLat, userLon, static_cast<float>(g.cameraMsl + 1200.0), s.heading, 70.0f);
+		Offset(s.lat, s.lon, s.heading + 180.0, USER_BEHIND_CAMERA_M, g.userLat, g.userLon);
+		g.userMsl = g.cameraMsl + USER_ABOVE_CAMERA_M;
+		g.userHeading = s.heading;
+		HoldUser();
 
 		SetFloat("sim/graphics/view/field_of_view_deg", s.fov);
 		g.cameraActive = true;
@@ -614,7 +749,9 @@ namespace
 								  "sim/graphics/view/window_width", "sim/graphics/view/window_height", "sim/graphics/view/visibility_effective_m",
 								  "sim/weather/region/visibility_reported_sm", "sim/weather/region/runway_friction", "sim/weather/region/rain_percent",
 								  "sim/weather/region/snow_cover", "sim/weather/region/cloud_coverage_percent", "sim/weather/region/cloud_base_msl_m",
-								  "sim/weather/view/rain_ratio", "sim/weather/view/snow_ratio" })
+								  "sim/weather/view/rain_ratio", "sim/weather/view/snow_ratio", "sim/weather/region/wave_amplitude",
+								  "sim/weather/region/wave_dir", "sim/weather/region/wave_length", "sim/weather/region/wave_speed",
+								  "sim/weather/region/wind_speed_msc", "sim/weather/region/wind_direction_degt" })
 		{
 			if (XPLMDataRef ref = Find(name))
 				sim[name] = ReadValue(ref);
@@ -648,8 +785,9 @@ namespace
 
 	// -------------------------------------------------------
 
-	void Restore()
+	void Restore(const bool parkUser)
 	{
+		ReleaseUser(parkUser);
 		if (g.cameraActive)
 		{
 			g.cameraActive = false;
@@ -666,15 +804,28 @@ namespace
 		RestoreArtControls();
 	}
 
-	void StartRun(const bool all)
+	void StartRun(const ScenarioSet &set, const RunMode mode)
 	{
 		if (g.stage != Stage::Idle && g.stage != Stage::Finished)
 		{
 			Log("A run is already in progress");
 			return;
 		}
-		if (!LoadScenarios())
+		if (!LoadScenarios(set.file))
 			return;
+		if (mode == RunMode::Missing)
+		{
+			// Resume after a crash or a stop: the scenarios with both their screenshot and their dump are done
+			const size_t before = g.scenarios.size();
+			std::erase_if(g.scenarios, [](const Scenario &s)
+			{
+				std::error_code ec;
+				return fs::exists(g.outputFolder / (s.id + ".png"), ec) && fs::exists(g.outputFolder / (s.id + ".json"), ec);
+			});
+			Log("Resuming: " + std::to_string(before - g.scenarios.size()) + " scenarios already captured, " + std::to_string(g.scenarios.size()) + " to go");
+			if (g.scenarios.empty())
+				return;
+		}
 		LoadArtControls();
 		std::error_code ec;
 		fs::create_directories(g.outputFolder, ec);
@@ -688,16 +839,17 @@ namespace
 			g.savedUseSystemTime = static_cast<int>(*useSystem);
 
 		g.index = 0;
-		g.runAll = all;
+		g.runAll = mode != RunMode::First;
 		g.loadedAirport.clear();
 		g.stage = Stage::MoveToAirport;
 		g.framesLeft = -1;	// Not placed yet
-		Log(std::string("Run started: ") + (all ? "all scenarios" : "the first scenario"));
+		Log(std::string("Run started: ") + (mode == RunMode::All ? "all scenarios" : mode == RunMode::Missing ? "the scenarios not captured yet" : "the first scenario") +
+			" of " + set.file);
 	}
 
 	void FinishRun()
 	{
-		Restore();
+		Restore(true);
 		g.stage = Stage::Finished;
 		Log("Run finished: " + std::to_string(g.index) + " scenarios in " + g.outputFolder.string());
 		if (g.quitWhenDone)
@@ -740,6 +892,7 @@ namespace
 					if (s.icao != g.loadedAirport)
 					{
 						Log(s.id + ": moving to " + s.icao);
+						ReleaseUser(false);		// X-Plane places the plane at the airport itself: one new flight per airport
 						XPLMPlaceUserAtAirport(s.icao.c_str());
 						g.loadedAirport = s.icao;
 						g.framesLeft = SCENERY_LOAD_FRAMES;
@@ -763,9 +916,10 @@ namespace
 
 			case Stage::Settle:
 			{
-				// Hold the sun and the exposure still while everything else settles
+				// Hold the sun, the exposure and the plane still while everything else settles
 				ApplyTime(s);
 				ApplyExposureLock(s);
+				HoldUser();
 				if (g.framesLeft % 120 == 0)
 				{
 					// Terrain under the camera may have loaded in the meantime
@@ -794,6 +948,7 @@ namespace
 			{
 				ApplyTime(s);
 				ApplyExposureLock(s);
+				HoldUser();
 				std::error_code ec;
 				const fs::path newest = NewestScreenshot();
 				if (!newest.empty() && fs::last_write_time(newest, ec) > g.screenshotsBefore)
@@ -837,14 +992,13 @@ namespace
 	void MenuHandler(void *, void *item)
 	{
 		const intptr_t command = reinterpret_cast<intptr_t>(item);
-		if (command == 1)
-			StartRun(true);
-		else if (command == 2)
-			StartRun(false);
-		else if (command == 3 && g.stage != Stage::Idle && g.stage != Stage::Finished)
+		const size_t set = static_cast<size_t>(command >> 8);
+		if (command != MENU_STOP && set < std::size(SCENARIO_SETS))
+			StartRun(SCENARIO_SETS[set], static_cast<RunMode>(command & 0xFF));
+		else if (command == MENU_STOP && g.stage != Stage::Idle && g.stage != Stage::Finished)
 		{
 			Log("Run stopped");
-			Restore();
+			Restore(true);
 			g.stage = Stage::Finished;
 		}
 	}
@@ -892,25 +1046,32 @@ PLUGIN_API int XPluginEnable(void)
 {
 	const int item = XPLMAppendMenuItem(XPLMFindPluginsMenu(), PROBE_NAME, nullptr, 0);
 	g.menu = XPLMCreateMenu(PROBE_NAME, XPLMFindPluginsMenu(), item, MenuHandler, nullptr);
-	XPLMAppendMenuItem(g.menu, "Run all scenarios", reinterpret_cast<void *>(intptr_t(1)), 0);
-	XPLMAppendMenuItem(g.menu, "Run the first scenario", reinterpret_cast<void *>(intptr_t(2)), 0);
-	XPLMAppendMenuItem(g.menu, "Stop", reinterpret_cast<void *>(intptr_t(3)), 0);
+	for (size_t set = 0; set < std::size(SCENARIO_SETS); ++set)
+	{
+		const intptr_t base = static_cast<intptr_t>(set << 8);
+		XPLMAppendMenuItem(g.menu, SCENARIO_SETS[set].runAll, reinterpret_cast<void *>(base | static_cast<intptr_t>(RunMode::All)), 0);
+		XPLMAppendMenuItem(g.menu, SCENARIO_SETS[set].runMissing, reinterpret_cast<void *>(base | static_cast<intptr_t>(RunMode::Missing)), 0);
+		XPLMAppendMenuItem(g.menu, SCENARIO_SETS[set].runFirst, reinterpret_cast<void *>(base | static_cast<intptr_t>(RunMode::First)), 0);
+	}
+	XPLMAppendMenuItem(g.menu, "Stop", reinterpret_cast<void *>(MENU_STOP), 0);
 
-	// Unattended runs: Output/sedx_probe/autorun ("quit" inside: exit X-Plane when done)
+	// Unattended runs: Output/sedx_probe/autorun ("quit" inside: exit X-Plane when done; "airports": the test-airport set;
+	// "resume": skip the scenarios already captured)
 	std::ifstream autorun(g.outputFolder / "autorun");
 	if (autorun)
 	{
 		std::string text((std::istreambuf_iterator<char>(autorun)), std::istreambuf_iterator<char>());
 		g.quitWhenDone = text.find("quit") != std::string::npos;
-		Log(std::string("autorun found") + (g.quitWhenDone ? " (quit when done)" : ""));
-		StartRun(true);
+		const ScenarioSet &set = SCENARIO_SETS[text.find("airports") != std::string::npos ? 1 : 0];
+		Log(std::string("autorun found: ") + set.file + (g.quitWhenDone ? " (quit when done)" : ""));
+		StartRun(set, text.find("resume") != std::string::npos ? RunMode::Missing : RunMode::All);
 	}
 	return 1;
 }
 
 PLUGIN_API void XPluginDisable(void)
 {
-	Restore();
+	Restore(false);
 	if (g.menu)
 		XPLMDestroyMenu(g.menu);
 	g.menu = nullptr;

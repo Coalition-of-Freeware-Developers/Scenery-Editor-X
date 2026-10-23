@@ -87,6 +87,8 @@ namespace SceneryEditorX::Environment
 		int runwayFriction = 0;							// 0-15, sim/weather/region/runway_friction
 		float snowCover = 0.0f;							// 0-1
 		float temperatureC = 15.0f;
+		std::optional<float> waveAmplitudeM;			// sim/weather/region/wave_amplitude (m); none = the sim's own sea
+		std::optional<float> waveDirectionDeg;			// sim/weather/region/wave_dir (deg true, where the waves come from)
 
 		// Capture
 		uint32_t settleFrames = 600;					// Frames before the screenshot: exposure and weather settle
