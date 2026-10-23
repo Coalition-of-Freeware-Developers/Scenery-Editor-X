@@ -35,44 +35,7 @@ import noise;
 import structs;
 import transforms;
 
-// Atmospheric fog using exponential height-based falloff model
-float get_fog_atmospheric(const float camera_to_pixel_length, const float pixel_height_world)
-{
-    float camera_height = get_camera_position().y;
-    float density       = pass_get_f3_value().y * 0.0001f;
-    float scale_height  = 50.0f; // Lower = denser near ground, higher = more uniform
-    float b             = 1.0f / scale_height;
-    float delta_height  = pixel_height_world - camera_height;
-    float dist          = camera_to_pixel_length;
-
-    if (dist < 0.1f)
-        return 0.0f;
-
-    float rd_y = (abs(dist) > 1e-6f) ? delta_height / dist : 0.0f;
-    float tau = 0.0f;
-
-    if (abs(rd_y) < 1e-5f)
-    {
-        // Horizontal ray approximation
-        float base_density = density * exp(-camera_height * b);
-        tau = base_density * dist;
-    }
-    else
-    {
-        // Analytical integral for optical depth (numerically stable)
-        float base_density = density * exp(-camera_height * b);
-        float exponent     = -dist * rd_y * b;
-        float exp_term     = 1.0f - exp(exponent);
-        tau = base_density * exp_term / (b * rd_y);
-    }
-
-    // Beer's law: fog factor = in-scatter (1 - transmittance)
-    float transmittance = exp(-tau);
-    float fog_factor    = 1.0f - transmittance;
-    fog_factor = pow(fog_factor, 0.8f); // Smooth falloff curve
-
-    return saturate(fog_factor);
-}
+// Atmospheric fog is the atmosphere's aerial perspective (aerial_perspective.slang, environment_lighting.slang)
 
 // Check if position is visible from light (not in shadow), returns 1.0 if lit, 0.0 if shadowed
 float visible(float3 position, Light light, uint2 pixel_pos)

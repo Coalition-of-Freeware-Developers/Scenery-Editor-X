@@ -90,9 +90,11 @@ namespace SceneryEditorX
 			uint32_t drawnCommands = 0;		// Commands with at least one visible instance (read back)
 			uint32_t uploadedInstances = 0;	// Instances written to the GPU this frame
 			uint32_t validatedTransforms = 0; // World matrices re-read this frame
+			uint32_t shadowInstances = 0;	// Instance draws into the sun-shadow cascades, all cascades (read back)
 		};
 
 		static constexpr uint32_t BUCKET_COUNT = 6; // CullMode None / Front / Back x alpha test
+		static constexpr uint32_t SHADOW_CASCADES = 4; // Command sets laid out for sun-shadow cascades (CSM_MAX_CASCADES)
 
 		/* @brief Off: every renderable goes through the CPU draw path again (for comparison and debugging). */
 		static void SetEnabled(bool enabled);
@@ -120,6 +122,21 @@ namespace SceneryEditorX
 		 * @param hiz Reverse-Z min-depth pyramid of the depth drawn so far, every mip in ShaderRead layout.
 		 */
 		static void CullLate(CommandList *cmdList, ImageResource *hiz);
+
+		/**
+		 * @brief Sun-shadow culling (plan TASK-053): every enabled instance that casts shadows goes into the draws of each
+		 * cascade it can cast into (gpu_cull.slang GPU_CULL_SHADOW; the cascades come from the environment buffer), at the
+		 * LOD the camera picks. Call after Cull(), outside a render pass, before the cascades are drawn.
+		 * @param cascadeCount Cascades in use this frame (at most SHADOW_CASCADES); 0 does nothing.
+		 */
+		static void CullShadows(CommandList *cmdList, uint32_t cascadeCount);
+
+		/* @brief A bucket's draws into cascade c start at GetShadowCommandOffset(c) plus its firstCommand. */
+		[[nodiscard]] static uint32_t GetShadowCommandOffset(uint32_t cascade);
+
+		/* @brief Copies this frame's cull results for the stats (read when the command list comes round again). Call once
+		 * after the frame's last cull, outside a render pass. */
+		static void RecordReadBack(CommandList *cmdList);
 
 		/* @brief This frame culls in two phases: the depth prepass builds the Hi-Z, calls CullLate() and draws the late commands. */
 		[[nodiscard]] static bool IsOcclusionActive();

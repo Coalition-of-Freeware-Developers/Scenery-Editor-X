@@ -810,64 +810,6 @@ namespace SceneryEditorX::XPlane
 		return image;
 	}
 
-	Ref<ImageResource> TextureLoader::LoadPackedMaterial(const std::filesystem::path &normalMapPath, const bool normalMetalness, const float specular)
-	{
-		DecodedTexture texture = DecodePackedMaterial(normalMapPath, normalMetalness, specular);
-		return Upload(texture);
-	}
-
-	DecodedTexture TextureLoader::DecodePackedMaterial(const std::filesystem::path &normalMapPath, const bool normalMetalness, float specular)
-	{
-		DecodedTexture out;
-		if (normalMapPath.empty())
-			return out;
-
-		specular = std::clamp(specular, 0.0f, 1.0f);
-		out.cacheKey = CacheKey(normalMapPath, "|orm|" + std::to_string(normalMetalness) + "|" + std::to_string(static_cast<int>(specular * 1000.0f)));
-		{
-			std::scoped_lock lock(s_Mutex);
-			if (const auto it = s_Cache.find(out.cacheKey); it != s_Cache.end())
-			{
-				out.info = it->second.info;
-				out.cached = true;
-				out.valid = it->second.image != nullptr;
-				return out;
-			}
-		}
-
-		CpuImage normal;
-		std::string error;
-		if (!DecodeRGBA(normalMapPath, normal, &error))
-		{
-			// Block-compressed normal maps keep the material's flat roughness / metalness.
-			SEDX_CORE_TRACE_TAG(LOG_TAG, "No packed material for '{}': {}", normalMapPath.string(), error);
-			out.cacheFailure = true;
-			return out;
-		}
-
-		// R = occlusion (none), G = roughness = 1 - gloss * specular, B = metalness (NORMAL_METALNESS only)
-		const size_t texels = static_cast<size_t>(normal.width) * normal.height;
-		std::vector<uint8_t> packed(texels * 4);
-		for (size_t i = 0; i < texels; ++i)
-		{
-			const float gloss = static_cast<float>(normal.pixels[i * 4 + 3]) / 255.0f;
-			const float roughness = 1.0f - gloss * specular;
-			packed[i * 4 + 0] = 255;
-			packed[i * 4 + 1] = static_cast<uint8_t>(std::clamp(roughness, 0.0f, 1.0f) * 255.0f + 0.5f);
-			packed[i * 4 + 2] = normalMetalness ? normal.pixels[i * 4 + 2] : 0;
-			packed[i * 4 + 3] = 255;
-		}
-
-		out.mips = BuildMipChain(packed.data(), normal.width, normal.height);
-		out.name = "xp:" + normalMapPath.stem().string() + "_orm";
-		out.info.path = normalMapPath;
-		out.info.width = normal.width;
-		out.info.height = normal.height;
-		out.info.format = VK_FORMAT_R8G8B8A8_UNORM;
-		out.valid = true;
-		return out;
-	}
-
 	void TextureLoader::ClearCache()
 	{
 		std::scoped_lock lock(s_Mutex);

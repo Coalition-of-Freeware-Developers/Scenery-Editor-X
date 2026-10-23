@@ -30,6 +30,7 @@
  */
 #pragma once
 #include "source/imgui/imgui.h"
+#include <optional>
 #include <vulkan/vulkan.h>
 
 // -------------------------------------------------------
@@ -92,6 +93,16 @@ namespace SceneryEditorX::UI
 	 * @return True if the window is focused, false otherwise.
 	 */
 	bool IsWindowFocused(const char *windowName, bool checkWindow = true);
+
+	/**
+	 * @brief Scripted mouse input, for self-tests that drive the editor's tools: while a position is set, it and the
+	 * left button are queued after the platform backend's input every frame, so they win over wherever the real
+	 * cursor is. nullopt hands the mouse back.
+	 */
+	void SetScriptedMouse(const std::optional<ImVec2> &position, bool leftDown = false);
+
+	/* @brief Queues the scripted mouse input, if any. Call after the platform backend's NewFrame. */
+	void ApplyScriptedMouse();
 
 }
 

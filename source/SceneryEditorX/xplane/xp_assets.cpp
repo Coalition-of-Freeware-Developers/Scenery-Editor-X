@@ -95,9 +95,77 @@ namespace SceneryEditorX::XPlane
 				return Fail(error, path.filename().string() + ": " + parseError);
 			return true;
 		}
+
+		/* @brief The largest of tokens[first, first + count) as floats (a decal row's key / constant group). */
+		float MaxOf(const std::vector<std::string_view> &tokens, const size_t first, const size_t count)
+		{
+			float result = 0.0f;
+			for (size_t i = first; i < first + count && i < tokens.size(); ++i)
+				result = std::max(result, ParseFloat(tokens[i], 0.0f));
+			return result;
+		}
+
+		/**
+		 * @brief Reads a decal row of a .pol / .dcl into out; false for other rows. The forms:
+		 *   DECAL <scale> <texture>, DECAL_RGBA <scale> <texture>
+		 *   DECAL_PARAMS <scale> <dither> <6 RGB keys> <6 alpha keys> <texture>
+		 *   DECAL_PARAMS_PROJ <scale s> <scale t> <dither> <6 RGB keys> <6 alpha keys> <texture>
+		 *   NORMAL_DECAL_PARAMS <scale> <dither> <r g b a keys> <constant> <texture> <gain>
+		 *   NORMAL_DECAL_PARAMS_PROJ <scale s> <scale t> <dither> <r g b a keys> <constant> <texture> <gain>
+		 * Each key group is four albedo keys, a control key and a constant; their largest value is the strength.
+		 */
+		bool ParseDecalRow(const std::vector<std::string_view> &tokens, PolygonDecal &out)
+		{
+			const std::string_view key = tokens[0];
+			out = PolygonDecal();
+			if ((key == "DECAL" || key == "DECAL_RGBA") && tokens.size() >= 3)
+			{
+				out.scaleS = out.scaleT = ParseFloat(tokens[1], 1.0f);
+				out.texture = CleanPath(tokens[2]);
+			}
+			else if (key == "DECAL_PARAMS" && tokens.size() >= 16)
+			{
+				out.scaleS = out.scaleT = ParseFloat(tokens[1], 1.0f);
+				out.strength = std::max(MaxOf(tokens, 3, 6), MaxOf(tokens, 9, 6));
+				out.texture = CleanPath(tokens[15]);
+			}
+			else if (key == "DECAL_PARAMS_PROJ" && tokens.size() >= 17)
+			{
+				out.scaleS = ParseFloat(tokens[1], 1.0f);
+				out.scaleT = ParseFloat(tokens[2], 1.0f);
+				out.strength = std::max(MaxOf(tokens, 4, 6), MaxOf(tokens, 10, 6));
+				out.texture = CleanPath(tokens[16]);
+			}
+			else if (key == "NORMAL_DECAL_PARAMS" && tokens.size() >= 9)
+			{
+				out.normal = true;
+				out.scaleS = out.scaleT = ParseFloat(tokens[1], 1.0f);
+				out.strength = MaxOf(tokens, 3, 5);
+				out.texture = CleanPath(tokens[8]);
+				out.gain = tokens.size() >= 10 ? ParseFloat(tokens[9], 1.0f) : 1.0f;
+			}
+			else if (key == "NORMAL_DECAL_PARAMS_PROJ" && tokens.size() >= 10)
+			{
+				out.normal = true;
+				out.scaleS = ParseFloat(tokens[1], 1.0f);
+				out.scaleT = ParseFloat(tokens[2], 1.0f);
+				out.strength = MaxOf(tokens, 4, 5);
+				out.texture = CleanPath(tokens[9]);
+				out.gain = tokens.size() >= 11 ? ParseFloat(tokens[10], 1.0f) : 1.0f;
+			}
+			else
+				return false;
+			out.strength = std::clamp(out.strength, 0.0f, 1.0f);
+			return !out.texture.empty() && out.scaleS > 0.0f && out.scaleT > 0.0f;
+		}
 	}
 
 	// -------------------------------------------------------
+
+	bool ParsePolygonDecalRow(const std::vector<std::string_view> &tokens, PolygonDecal &out)
+	{
+		return !tokens.empty() && ParseDecalRow(tokens, out);
+	}
 
 	size_t ParseAssetHeader(const std::string_view text, AssetHeader &out)
 	{
@@ -184,13 +252,41 @@ namespace SceneryEditorX::XPlane
 				out.decal = std::string(RestOfLine(line, 1));
 			else if (key == "TEXTURE_TILE" || key == "RUNWAY_TILE")
 			{
-				// TEXTURE_TILE <x tiles> <y tiles> <x pixels> <y pixels> [map]
+				// TEXTURE_TILE <x tiles> <y tiles> <x pixels> <y pixels>; RUNWAY_TILE <x tiles> <y tiles> <map width> <map height> <map>
 				out.tiled = true;
 				if (tokens.size() >= 3)
 				{
 					out.tilesX = std::clamp(ParseInt(tokens[1], 1), 1, 64);
 					out.tilesY = std::clamp(ParseInt(tokens[2], 1), 1, 64);
 				}
+				if (key == "RUNWAY_TILE")
+				{
+					out.runwayTile = true;
+					if (tokens.size() >= 5)
+					{
+						out.tileMapWidth = std::clamp(ParseInt(tokens[3], 0), 0, 4096);
+						out.tileMapHeight = std::clamp(ParseInt(tokens[4], 0), 0, 4096);
+					}
+					if (tokens.size() >= 6)
+						out.tileMap = CleanPath(RestOfLine(line, 5));
+				}
+			}
+			else if (key == "RUNWAY_NOISE_PARAMS")
+			{
+				for (size_t i = 0; i < 5 && i + 1 < tokens.size(); ++i)
+					out.noiseParams[i] = ParseFloat(tokens[i + 1], 0.0f);
+			}
+			else if (key == "RUNWAY_MARKINGS" && tokens.size() >= 6)
+			{
+				for (size_t i = 0; i < 4; ++i)
+					out.runwayMarkingsColor[i] = std::clamp(ParseFloat(tokens[i + 1], 1.0f), 0.0f, 1.0f);
+				out.runwayMarkings = CleanPath(RestOfLine(line, 5));
+			}
+			else
+			{
+				PolygonDecal decal;
+				if (ParseDecalRow(tokens, decal))
+					out.decals.push_back(std::move(decal));
 			}
 		});
 
@@ -202,6 +298,27 @@ namespace SceneryEditorX::XPlane
 	bool LoadPolygonAsset(const std::filesystem::path &path, PolygonAsset &out, std::string *error)
 	{
 		return LoadAsset(path, out, error, &ParsePolygonAsset);
+	}
+
+	bool ParseDecalLibraryAsset(const std::string_view text, DecalLibraryAsset &out, std::string *error)
+	{
+		out = DecalLibraryAsset();
+		AssetHeader header;
+		size_t start = 0;
+		if (!CheckHeader(text, "DECAL", header, start, error))
+			return false;
+		ForEachRow(text, start, [&](const std::vector<std::string_view> &tokens, const std::string_view)
+		{
+			PolygonDecal decal;
+			if (ParseDecalRow(tokens, decal))
+				out.decals.push_back(std::move(decal));
+		});
+		return true;
+	}
+
+	bool LoadDecalLibraryAsset(const std::filesystem::path &path, DecalLibraryAsset &out, std::string *error)
+	{
+		return LoadAsset(path, out, error, &ParseDecalLibraryAsset);
 	}
 
 	// -------------------------------------------------------
@@ -411,6 +528,97 @@ namespace SceneryEditorX::XPlane
 	bool LoadForestAsset(const std::filesystem::path &path, ForestAsset &out, std::string *error)
 	{
 		return LoadAsset(path, out, error, &ParseForestAsset);
+	}
+
+	// -------------------------------------------------------
+
+	std::vector<const BeachAsset::Tile *> BeachAsset::GetTiles(const int type) const
+	{
+		std::vector<const Tile *> found;
+		for (const Tile &tile : tiles)
+		{
+			if (tile.type == type)
+				found.push_back(&tile);
+		}
+		return found;
+	}
+
+	bool ParseBeachAsset(const std::string_view text, BeachAsset &out, std::string *error)
+	{
+		out = BeachAsset();
+		AssetHeader header;
+		size_t start = 0;
+		if (!CheckHeader(text, "BEACH", header, start, error))
+			return false;
+
+		ForEachRow(text, start, [&](const std::vector<std::string_view> &tokens, const std::string_view line)
+		{
+			const std::string_view key = tokens[0];
+			if (key == "TEXTURE" || key == "BASE_TEX")
+				out.texture = CleanPath(RestOfLine(line, 1));
+			else if (key == "TEXTURE_NORMAL" && tokens.size() >= 3)
+			{
+				out.normalRatio = ParseFloat(tokens[1], 1.0f);
+				out.textureNormal = CleanPath(RestOfLine(line, 2));
+			}
+			else if (key == "DECAL_LIB" && tokens.size() >= 2)
+				out.decalLibrary = CleanPath(RestOfLine(line, 1));
+			else if (key == "SCALE_X" && tokens.size() >= 2)
+				out.scaleX = std::max(1.0f, ParseFloat(tokens[1], 1.0f));
+			else if (key == "SCALE_Y" && tokens.size() >= 2)
+				out.scaleY = std::max(1.0f, ParseFloat(tokens[1], 1.0f));
+			else if (key == "SIZE_X" && tokens.size() >= 2)
+				out.sizeX = ParseFloat(tokens[1], 1.0f);
+			else if (key == "SIZE_Y" && tokens.size() >= 2)
+				out.sizeY = ParseFloat(tokens[1], 1.0f);
+			else if (key == "GROUP" && tokens.size() >= 3)
+				out.groups.emplace_back(ParseInt(tokens[1]), ParseInt(tokens[2]));
+			else if (key == "TILE" && tokens.size() >= 7)
+			{
+				// TILE type s1 s2 t1 t2 t3
+				BeachAsset::Tile tile;
+				tile.type = ParseInt(tokens[1]);
+				tile.s1 = ParseFloat(tokens[2]);
+				tile.s2 = ParseFloat(tokens[3]);
+				tile.t1 = ParseFloat(tokens[4]);
+				tile.t2 = ParseFloat(tokens[5]);
+				tile.t3 = ParseFloat(tokens[6]);
+				if (tile.s2 != tile.s1 && tile.t3 > tile.t1)
+					out.tiles.push_back(tile);
+			}
+			else if ((key == "XONL2" || key == "XONR2") && tokens.size() >= 7)
+			{
+				// XONL2 type s1 s2 t1 t2 t3
+				BeachAsset::Transition transition;
+				transition.kind = std::string(key);
+				transition.from = ParseInt(tokens[1]);
+				transition.tile = { transition.from, ParseFloat(tokens[2]), ParseFloat(tokens[3]), ParseFloat(tokens[4]), ParseFloat(tokens[5]), ParseFloat(tokens[6]) };
+				out.transitions.push_back(std::move(transition));
+			}
+			else if ((key == "XONLG" || key == "XONRG") && tokens.size() >= 8)
+			{
+				// XONLG group group s1 s2 t1 t2 t3
+				BeachAsset::Transition transition;
+				transition.kind = std::string(key);
+				transition.from = ParseInt(tokens[1]);
+				transition.to = ParseInt(tokens[2]);
+				transition.tile = { 0, ParseFloat(tokens[3]), ParseFloat(tokens[4]), ParseFloat(tokens[5]), ParseFloat(tokens[6]), ParseFloat(tokens[7]) };
+				out.transitions.push_back(std::move(transition));
+			}
+		});
+
+		if (out.texture.empty())
+			return Fail(error, "The beach has no TEXTURE");
+		if (out.tiles.empty())
+			return Fail(error, "The beach has no TILE rows");
+		if (out.sizeX <= 0.0f || out.sizeY <= 0.0f)
+			return Fail(error, "The beach's SIZE_X / SIZE_Y must be positive");
+		return true;
+	}
+
+	bool LoadBeachAsset(const std::filesystem::path &path, BeachAsset &out, std::string *error)
+	{
+		return LoadAsset(path, out, error, &ParseBeachAsset);
 	}
 
 	// -------------------------------------------------------

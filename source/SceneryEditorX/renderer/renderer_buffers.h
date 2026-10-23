@@ -143,7 +143,29 @@ namespace SceneryEditorX
 		float clearcoat;
 		float clearcoat_roughness;
 
-		float padding3[2] = {}; // std430 rounds the struct (float4 aligned) up to 112 bytes
+		float padding3[2] = {};
+
+		// X-Plane materials (xp_material.slang): specular gain, super roughness floor, F0 when the normal map carries
+		// none, emissive luminance in nits (0: emissive texels are display values)
+		xMath::Vec4 xp = xMath::Vec4{0.0f, 0.0f, 0.0f, 0.0f};
+
+		// Draped polygons (xp_material.slang xp_drape_*, mode in flags bits 19-20): tile atlas (tiles x / y, mapping texture
+		// cells x / y), detail decals (scale, strength x 2), normal decals (scale, gain x 2), misc (decal aspects, meters per
+		// u / v; markings: paint color, border opacity)
+		xMath::Vec4 drape_tiles = xMath::Vec4{0.0f, 0.0f, 0.0f, 0.0f};
+		xMath::Vec4 drape_decal = xMath::Vec4{0.0f, 0.0f, 0.0f, 0.0f};
+		xMath::Vec4 drape_normal_decal = xMath::Vec4{0.0f, 0.0f, 0.0f, 0.0f};
+		xMath::Vec4 drape_misc = xMath::Vec4{0.0f, 0.0f, 0.0f, 0.0f};
+
+		// X-Plane terrain (.ter, xp_terrain.slang): base (projected s / t meters, normal map repeats per base repeat, flags),
+		// composite (s / t, noise mask center / half width), slopes (hill / cliff start and end degrees), slope textures (s / t
+		// meters), lit (s / t meters, fade start / end), far (s / t meters, start / end)
+		xMath::Vec4 terrain_base = xMath::Vec4{0.0f, 0.0f, 0.0f, 0.0f};
+		xMath::Vec4 terrain_composite = xMath::Vec4{0.0f, 0.0f, 0.0f, 0.0f};
+		xMath::Vec4 terrain_slope = xMath::Vec4{0.0f, 0.0f, 0.0f, 0.0f};
+		xMath::Vec4 terrain_slope_scale = xMath::Vec4{0.0f, 0.0f, 0.0f, 0.0f};
+		xMath::Vec4 terrain_lit = xMath::Vec4{0.0f, 0.0f, 0.0f, 0.0f};
+		xMath::Vec4 terrain_far = xMath::Vec4{0.0f, 0.0f, 0.0f, 0.0f};
 	};
 
 	/**
@@ -216,6 +238,8 @@ namespace SceneryEditorX
 		uint32_t is_transparent = 0;     // transparency flag
 		uint32_t aabb_index     = 0;     // index into the aabb buffer for culling
 		uint32_t pick_id        = 0;     // editor picking: entity index + 1 (ScenePicking::GetPickId), 0 = not pickable
+		uint32_t drape_rank     = 0;     // position among this frame's visible drapes (1 = lowest), 0 = not draped
+		uint32_t padding[3]     = {};
 	};
 
 	/**
@@ -274,11 +298,101 @@ namespace SceneryEditorX
 		float padding2         = 0.0f;
 	};
 
+	/**
+	 * @struct ConstantBuffer_Environment
+	 * @brief The world environment for the shaders (plan TASK-020), filled once per frame from Environment::Get():
+	 * sun and moon, sky-condition multipliers, atmosphere, haze, surface weather, season, exposure, clouds, wind, the
+	 * sun-shadow cascades. Vec4 and matrix members only (std140). Mirrors EnvironmentData in resources.slang (binding
+	 * 201). World frame: +X east, +Y up, +Z south. Units: lux, meters, 1/m.
+	 */
+	struct ConstantBuffer_Environment
+	{
+		xMath::Vec4 sun_direction;			// xyz toward the sun, w angular radius (rad)
+		xMath::Vec4 sun_illuminance;		// rgb illuminance at the observer, after the atmosphere (lux), w apparent elevation (deg)
+		xMath::Vec4 moon_direction;			// xyz toward the moon, w illuminated fraction
+		xMath::Vec4 moon_illuminance;		// rgb at the observer (lux, full moon x fraction x atmosphere), w phase angle (rad)
+		xMath::Vec4 sky_multipliers;		// ambient, direct, tone, shadow level (sky-condition blend)
+		xMath::Vec4 sky_multipliers2;		// rayleigh, mie, shadow offset, daylight (0 night .. 1 day)
+		xMath::Vec4 rayleigh;				// rgb scattering (1/m), w scale height (m)
+		xMath::Vec4 mie;					// scattering, extinction (1/m), scale height (m), phase g
+		xMath::Vec4 ozone;					// rgb absorption (1/m), w tent center altitude (m)
+		xMath::Vec4 planet;					// ozone tent half width (m), earth radius (m), atmosphere top radius (m), ground albedo
+		xMath::Vec4 haze;					// visibility (m), haze layer top (m), haze fade band (m), time (s)
+		xMath::Vec4 weather;				// rain wetness, ice, snow level, puddles (0-1)
+		xMath::Vec4 snow_projection_x;		// world xz -> snow coverage map u (Phase 12)
+		xMath::Vec4 snow_projection_z;		// world xz -> snow coverage map v
+		xMath::Vec4 season;					// ratio toward the next season, season index (0 spr .. 3 win), day of year, latitude
+		xMath::Vec4 exposure;				// exposure scale, pre-exposure, metered EV100, applied EV
+		xMath::Vec4 exposure_fusion;		// shadows, sigma, near distance, far distance
+		xMath::Vec4 camera;					// camera altitude MSL (m), ground elevation (m), night factor, rain percent
+		xMath::Vec4 clouds[3];				// per layer: base MSL (m), top MSL (m), coverage, type
+		xMath::Vec4 wind;					// direction from (deg true), speed (m/s), wave amplitude (m), wave direction (deg true)
+		xMath::Vec4 debug;					// x debug view (Renderer_DebugView), y feature bits, z temperature (C), w unused
+
+		// The sky (environment/sky_light.h): radiance without the Mie lobe and the Mie single scattering with its
+		// phase factored out (nits), straight up, at the horizon toward / 90 degrees off / away from the sun's azimuth,
+		// then 30 degrees up at the same azimuths; w unused
+		xMath::Vec4 sky_radiance[7];
+		xMath::Vec4 sky_mie[7];
+		xMath::Vec4 sky_irradiance;			// rgb sky irradiance on a level surface (lux), w ground albedo
+
+		// Exposure (exposure_adapt.slang, renderer/exposure.h)
+		xMath::Vec4 exposure_meter;			// EV100 min, EV100 max, meter constant K, centre-weight radius (screen heights)
+		xMath::Vec4 exposure_adapt;			// speed up, speed down (EV/s), lower trim, upper trim (histogram fractions)
+		xMath::Vec4 exposure_target;		// photometric/ev100_mid and ev100_bias for the sun's elevation, gain_lo, gain_hi
+		xMath::Vec4 exposure_extra;			// x exposure compensation (EV, positive brightens), yzw unused
+		xMath::Vec4 atmosphere_scattering;	// rgb Mie spectral factor (scattering/mie_*_exponent; green 1), w scattering/multi_rat
+
+		// The SDR grade after the tone curve (color_management/sdr/*, ASC-CDL; identity by default) and the post chain
+		xMath::Vec4 color_slope;			// rgb slope, w saturation
+		xMath::Vec4 color_offset;			// rgb offset, w output gain
+		xMath::Vec4 color_power;			// rgb power, w output gamma (1: none)
+		xMath::Vec4 post;					// bloom intensity, exposure fusion highlights (EV), fusion strength, unused
+
+		// The atmosphere (plan Phase 6, atmosphere_common.slang)
+		xMath::Vec4 light_toa;				// rgb sun illuminance outside the atmosphere (lux), w the moon's (lux, x illuminated fraction)
+		xMath::Vec4 atmosphere_haze;		// haze extinction at the ground (1/m), scattering albedo, layer top above the ground (m), fade band (m)
+		xMath::Vec4 atmosphere_view;		// aerial perspective range (m), airglow (nits), star brightness scale, unused
+		xMath::Vec4 probe;					// xyz environment probe 0 (world), w specular LOD bias
+		xMath::Vec4 celestial[3];			// rows of the world -> equatorial rotation (x vernal equinox, z north pole): stars
+
+		// Sun shadows (plan Phase 7, renderer/csm.h, csm_sample.slang): the light's view-projection per cascade, stored like
+		// the frame's matrices (the rows of the column-vector matrix, see GpuMatrix), where each cascade ends and blends
+		// into the next, and the filter. The cloud shadow map's cascades follow (Pass_CloudShadow).
+		xMath::Matrix csm_view_projection[4];
+		xMath::Vec4 csm_split;				// view depth (m) where cascade 0..3 ends
+		xMath::Vec4 csm_blend;				// depth (m) over which cascade 0..3 blends into the next before it ends
+		xMath::Vec4 csm_texel;				// shadow-map texel size (m) of cascade 0..3
+		xMath::Vec4 csm_params;				// cascade count (0: none), fade start and end (view depth, m), shadow light (0 none, 1 sun, 2 moon)
+		xMath::Vec4 csm_filter;				// normal offset (texels), slope-scaled normal offset (texels), soft (3x3 PCF), map size
+		xMath::Vec4 cloud_shadow;			// cascade count (0: none), strength (0 none .. 1 full), extinction (1/m of cloud cover), march steps per layer
+		xMath::Vec4 cloud_shadow_cascades[2];	// per cascade: center x, center z (world, m), half extent (m), texel size (m)
+
+		// Screen-space reflections (plan Phase 9, renderer/ssr.h, ssr_common.slang)
+		xMath::Vec4 ssr;					// ssr/min_gloss, sedx/ssr_gloss_fade, ssr/lod_bias, ssr/use_prefiltered (0 / 1)
+		xMath::Vec4 ssr_trace;				// max Hi-Z steps, thickness (m), thickness per meter of view depth, edge fade (share of the screen)
+		xMath::Vec4 ssr_history;			// history clamp (pre-exposed), lobe half width per GGX alpha, trace every pixel (debug), SSR active (0 / 1)
+
+		// Water (plan Phase 11, renderer/ocean.h, ocean_common.slang, water.slang): the FFT ocean's sea state and cascades, the
+		// water's surface, volume and foam
+		xMath::Vec4 ocean;					// time (s), choppiness (water/h_displace_lambda), height scale, wave travel direction (rad, atan2(z, x))
+		xMath::Vec4 ocean_cascade[4];		// per cascade: tile size (m), first and past-last wave number (rad/m), water/cascade_N_scale
+		xMath::Vec4 ocean_sea;				// wind speed (m/s), swell, spread blend, short waves fade (m)
+		xMath::Vec4 ocean_jonswap;			// alpha, peak omega (rad/s), gamma, spectrum depth (m)
+		xMath::Vec4 water_surface;			// F0, surface roughness (perceptual, from water/gloss), refractive index, turbidity on (0 / 1)
+		xMath::Vec4 water_volume;			// water/turbidity, turbidity cutoff (ln), clearest-water floor (m), shore depth (m)
+		xMath::Vec4 water_foam;				// foam bias, ratio, scale, share fading per second
+		xMath::Vec4 water_floor;			// floor albedo rgb, water/sea_floor_coef (share of the floor seen)
+		xMath::Vec4 water_tessellation;		// target edge pixels, max factor, pond wave scale (0: fetch ignored), frame time step (s)
+		xMath::Vec4 padding[3];				// to 1536 bytes
+	};
+
 	// sizes the shaders see (resources.slang: cbuffer std140, structured buffers std430)
 	static_assert(sizeof(ConstantBuffer_Frame) == 1024, "ConstantBuffer_Frame must match FrameBufferData in resources.slang");
-	static_assert(sizeof(ShaderBuffer_Material) == 112, "ShaderBuffer_Material must match MaterialParameters in resources.slang");
+	static_assert(sizeof(ConstantBuffer_Environment) == 1536, "ConstantBuffer_Environment must match EnvironmentData in resources.slang");
+	static_assert(sizeof(ShaderBuffer_Material) == 288, "ShaderBuffer_Material must match MaterialParameters in resources.slang");
 	static_assert(sizeof(ShaderBuffer_Light) == 608, "ShaderBuffer_Light must match LightParameters in resources.slang");
-	static_assert(sizeof(ShaderBuffer_DrawData) == 144, "ShaderBuffer_DrawData must match DrawData in resources.slang");
+	static_assert(sizeof(ShaderBuffer_DrawData) == 160, "ShaderBuffer_DrawData must match DrawData in resources.slang");
 
 }
 

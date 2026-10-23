@@ -112,7 +112,7 @@ namespace SceneryEditorX
 			DrawToolbar();
 			ProjectDocument *document = EditorProjects::GetDocument();
 			if (!document)
-				EditorUI::EmptyState("No project open.\nFile > New Airport Project (Ctrl+N), or open a .edX / .sex project or a WorldEditor earth.wed.xml.");
+				EditorUI::EmptyState("No project open.\nFile > New Project (Ctrl+N) for scenery, an airport or a library,\nor open a .edX / .sex project or a WorldEditor earth.wed.xml.");
 			else if (ImGui::BeginChild("##ProjectBody"))
 			{
 				SceneryProject &project = document->GetProject();
@@ -143,7 +143,7 @@ namespace SceneryEditorX
 		ProjectDocument *document = EditorProjects::GetDocument();
 		if (ImGui::Button(EditorUI::IconLabel(SEDX_ICON_FILE, "New").c_str()))
 			EditorProjects::NewProject(m_Context);
-		EditorUI::ItemTooltip("New airport project (Ctrl+N): ICAO, name, country and reference point");
+		EditorUI::ItemTooltip("New project (Ctrl+N): scenery anywhere, an airport or an asset library");
 		ImGui::SameLine();
 		if (ImGui::Button(EditorUI::IconLabel(SEDX_ICON_FOLDER_OPEN, "Open").c_str()))
 			EditorProjects::BrowseOpen(m_Context);
@@ -253,8 +253,15 @@ namespace SceneryEditorX
 	{
 		if (!EditorUI::SectionHeader("AIRPORTS"))
 			return;
+		if (ImGui::SmallButton(EditorUI::IconLabel(SEDX_ICON_PLUS, "New airport").c_str()))
+			ProjectDialogs::OpenAddAirport();
+		EditorUI::ItemTooltip("Add a new airport to the project: ICAO code, name and reference point");
+		ImGui::SameLine();
+		if (ImGui::SmallButton(EditorUI::IconLabel(SEDX_ICON_DOWNLOAD, "From apt.dat").c_str()))
+			EditorProjects::ImportAptDat(m_Context);
+		EditorUI::ItemTooltip("Add the airports of an apt.dat file");
 		if (project.airports.empty())
-			ImGui::TextDisabled("No airports. File > Import > Airports (apt.dat), or import a WorldEditor project.");
+			ImGui::TextDisabled("None: a project doesn't need an airport. Add one when the scenery has one.");
 		const std::string &shown = EditorProjects::GetShownAirport();
 		for (const ProjectAirport &airport : project.airports)
 		{
@@ -263,7 +270,24 @@ namespace SceneryEditorX
 			const std::string label = airport.airport.id + "  " + airport.airport.name;
 			if (ImGui::Selectable(label.c_str(), isShown) && !isShown)
 				EditorProjects::ShowAirport(airport.airport.id, m_Context);
-			EditorUI::ItemTooltip(isShown ? "Shown in the airport editor (AIRPORTS > Airport)" : "Show in the airport editor");
+			EditorUI::ItemTooltip(isShown ? "Shown in the airport editor (AIRPORTS > Airport)\nRight-click to remove it from the project" : "Show in the airport editor\nRight-click to remove it from the project");
+			if (ImGui::BeginPopupContextItem("##AirportMenu"))
+			{
+				if (ImGui::MenuItem("Remove from project"))
+				{
+					// Its hierarchy item: removing it removes the airport (undo puts it back with the item)
+					project.ForEachItem([&](const SceneryItem &item, int)
+					{
+						if (item.kind == ItemKind::Airport && item.airportId == airport.airport.id)
+						{
+							m_PendingRemove = item.id;
+							return false;
+						}
+						return true;
+					});
+				}
+				ImGui::EndPopup();
+			}
 			ImGui::SameLine(ImGui::GetContentRegionAvail().x - 80.0f * ImGui::GetStyle().FontScaleDpi);
 			ImGui::TextDisabled("%zu elements", airport.airport.GetElementCount());
 			ImGui::PopID();

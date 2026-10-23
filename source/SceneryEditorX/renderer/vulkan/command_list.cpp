@@ -1251,6 +1251,30 @@ namespace SceneryEditorX
 	   }
 	}
 
+	void CommandList::InsertComputeMemoryBarrier()
+	{
+		if (m_StickyInvalidState || m_CmdBuffer == VK_NULL_HANDLE || m_State != CommandState::Recording)
+		{
+			SEDX_CORE_WARN_TAG("CommandList", "InsertComputeMemoryBarrier skipped: '{}' is not recording", m_ObjectName.c_str());
+			return;
+		}
+		if (m_RenderPassActive)
+			EndRenderPass();
+
+		VkMemoryBarrier2 barrier{};
+		barrier.sType         = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2;
+		barrier.srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+		barrier.srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT;
+		barrier.dstStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+		barrier.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT;
+
+		VkDependencyInfo depInfo{};
+		depInfo.sType              = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+		depInfo.memoryBarrierCount = 1;
+		depInfo.pMemoryBarriers    = &barrier;
+		vkCmdPipelineBarrier2(m_CmdBuffer, &depInfo);
+	}
+
 	void CommandList::InsertBarrier(Buffer *buffer)
 	{
 		if (buffer == nullptr || buffer->Get() == VK_NULL_HANDLE)
@@ -1714,6 +1738,24 @@ namespace SceneryEditorX
 
 		m_CullMode = GetCullingType(cullMode);
 		vkCmdSetCullMode(m_CmdBuffer, m_CullMode);
+	}
+
+	bool CommandList::UsesTexture(const uint32_t slot, const bool uav) const
+	{
+		if (!m_DescriptorLayout_Current)
+			return false;
+		const auto matches = [&](const uint32_t candidate)
+		{
+			if (!m_DescriptorLayout_Current->FindBinding(candidate))
+				return false;
+			for (const Descriptor &descriptor : m_DescriptorLayout_Current->GetDescriptors())
+			{
+				if (descriptor.GetSlot() == candidate)
+					return uav ? descriptor.GetType() == DescriptorType::TextureStorage : descriptor.GetType() == DescriptorType::Image;
+			}
+			return false;
+		};
+		return matches(slot) || matches(slot + (uav ? SHADER_REGISTER_SHIFT_U : SHADER_REGISTER_SHIFT_T));
 	}
 
 	void CommandList::SetTexture(const uint32_t slot, ImageResource* img, const uint32_t mipIndex /*= all_mips*/, uint32_t mipRange /*= 0*/, const bool uav /*= false*/)
@@ -2317,6 +2359,14 @@ namespace SceneryEditorX
 		constexpr uint32_t frameConstantBufferBinding = 200;
 		if (Buffer* frameConstants = Renderer::GetBuffer(Renderer_Buffer::ConstantFrame))
 			m_DescriptorLayout_Current->SetConstantBuffer(frameConstantBufferBinding, frameConstants);
+		// The world environment ([[vk::binding(201)]] cbuffer BufferEnvironment), for the shaders that read it
+		constexpr uint32_t environmentConstantBufferBinding = 201;
+		if (Buffer* environmentConstants = Renderer::GetBuffer(Renderer_Buffer::ConstantEnvironment))
+			m_DescriptorLayout_Current->SetConstantBuffer(environmentConstantBufferBinding, environmentConstants);
+		// Ambient occlusion ([[vk::binding(202)]] cbuffer BufferCacao, cacao.slang)
+		constexpr uint32_t cacaoConstantBufferBinding = 202;
+		if (Buffer* cacaoConstants = Renderer::GetBuffer(Renderer_Buffer::ConstantCacao))
+			m_DescriptorLayout_Current->SetConstantBuffer(cacaoConstantBufferBinding, cacaoConstants);
 
 		if (pso.shaders[static_cast<uint32_t>(StageType::Compute)])
 		{

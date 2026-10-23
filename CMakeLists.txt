@@ -239,6 +239,7 @@ OPTION(SEDX_USE_FETCHCONTENT_XPLIB    	"Fetch X-PlaneSceneryLibrary via FetchCon
 OPTION(TRACY_ENABLE 					"Enable Tracy profiler" OFF)
 OPTION(SEDX_USE_FETCHCONTENT_TRACY    	"Fetch Tracy via FetchContent" ON)
 OPTION(RENDERDOC_ENABLE 				"Enable RenderDoc tooling integration for graphics debugging" ON)
+OPTION(SEDX_BUILD_XP_PROBE 			"Build the X-Plane 12 reference probe plugin (tools/xp12_reference_probe; needs XPLANE_12_SDK)" OFF)
 #OPTION(SEDX_ENABLE_MSDFGEN            	"Enable msdfgen usage" ON)
 
 SET(XMATH_BUILD_TESTS OFF CACHE BOOL "Build xMath tests" FORCE)
@@ -486,6 +487,11 @@ IF(SEDX_ENABLE_TESTS)
 	ADD_SUBDIRECTORY(${CMAKE_SOURCE_DIR}/source/Tests)
 ELSE()
 	SET(BUILD_TESTING OFF CACHE BOOL "" FORCE)
+ENDIF()
+
+# X-Plane 12 reference probe (parity harness): an X-Plane plugin, built only on request
+IF(SEDX_BUILD_XP_PROBE)
+	ADD_SUBDIRECTORY(${CMAKE_SOURCE_DIR}/tools/xp12_reference_probe)
 ENDIF()
 
 ############################################

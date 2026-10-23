@@ -40,12 +40,13 @@ namespace SceneryEditorX
 namespace SceneryEditorX::ProjectDialogs
 {
 	/**
-	 * The New Airport Project form and the Export Scenery Pack dialog, plus the editor's VFS mounts:
+	 * The New Project form and the Export Scenery Pack dialog, plus the editor's VFS mounts:
 	 *
-	 *  - New Airport Project asks for the ICAO code, name, country (city and state / province / county optional),
-	 *    the reference point in decimal degrees (8 places, north and east positive) and the elevation, then creates
-	 *    the pack folder (Custom Scenery by default, any folder on request) laid out like the other packs there, with
-	 *    the project file inside, and opens it.
+	 *  - New Project makes a scenery pack (anything, anywhere: an optional reference point centers it), an airport
+	 *    (ICAO code, name, country, city and state / province / county optional, the reference point in decimal degrees
+	 *    with 8 places, north and east positive, and the elevation) or an asset library, then creates the pack folder
+	 *    (Custom Scenery by default, any folder on request) laid out like the other packs there, with the project file
+	 *    inside, and opens it. Its airport fields also add a new airport to the open project.
 	 *  - Export Scenery Pack writes the open project into a pack X-Plane loads (apt.dat, DSF tiles, the pack's art,
 	 *    library.txt, optionally earth.wed.xml), lists it in scenery_packs.ini and reports what it wrote.
 	 *  - The VFS mounts follow the editor: "xplane" (read-only) and "scenery" from the X-Plane install, "user" and
@@ -63,8 +64,11 @@ namespace SceneryEditorX::ProjectDialogs
 	/* @brief Once per frame: keeps the mounts current and runs a pending command-line export. */
 	void Tick(EditorContext *context);
 
-	/* @brief Opens the New Airport Project form (unsaved changes were dealt with already). */
+	/* @brief Opens the New Project form: scenery, airport or library (unsaved changes were dealt with already). */
 	void OpenNewProject();
+
+	/* @brief Opens the form's airport fields to add a new airport to the open project. */
+	void OpenAddAirport();
 
 	/* @brief Opens the Export Scenery Pack dialog for the open project. */
 	void OpenExport();

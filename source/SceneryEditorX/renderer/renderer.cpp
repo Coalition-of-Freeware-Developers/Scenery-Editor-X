@@ -53,6 +53,12 @@
 #include <SceneryEditorX/core/application/application.h>
 #include <SceneryEditorX/core/frame_profiler.h>
 #include <SceneryEditorX/core/window/monitor_data.h>
+#include <SceneryEditorX/environment/environment.h>
+#include <SceneryEditorX/environment/sky_light.h>
+#include <SceneryEditorX/environment/solar_position.h>
+#include <SceneryEditorX/renderer/env_probes.h>
+#include <SceneryEditorX/renderer/frame_capture.h>
+#include <SceneryEditorX/renderer/gpu_timer.h>
 #include <SceneryEditorX/renderer/gbuffer.h>
 #include <SceneryEditorX/renderer/gpu_scene.h>
 #include <SceneryEditorX/renderer/scene_picking.h>
@@ -63,6 +69,8 @@
 #include <SceneryEditorX/scene/components/component_sets.h>
 #include <SceneryEditorX/scene/components/renderable.h>
 #include <algorithm>
+#include <cmath>
+#include <numbers>
 #include <chrono>
 #include <slang/slang-com-ptr.h>
 #include <slang/slang.h>
@@ -151,6 +159,7 @@ void dynamic_resolution()
 	// First draw-data slot of the region this frame's draws were written to (WriteDrawData), so the bulk upload
 	// lands on the same entries the shaders index instead of a region another frame in flight is reading.
 	static uint32_t s_DrawDataRegionStart = 0;
+	static uint32_t s_DrapeDrawCount = 0;	// Visible drapes this frame (UpdateDrawCalls), a --perf-log counter
 
 	// per-frame rotated buffers
 	std::array<Renderer::IndirectFrameResource, DRAW_DATA_BUFFER_COUNT> Renderer::m_FrameResources;
@@ -218,6 +227,33 @@ void dynamic_resolution()
 
 	namespace
 	{
+		/* @brief An extra view (Renderer::CreateView): its camera, size, render targets and frame constants. */
+		struct ExtraView
+		{
+			uint32_t id = 0;
+			Renderer::ViewCamera camera;
+			uint32_t width = 0;
+			uint32_t height = 0;
+			std::array<Ref<ImageResource>, static_cast<uint32_t>(Renderer_RenderTarget::MaxEnum)> targets;	// Its resolution-dependent ones
+			ConstantBuffer_Frame frame{};
+			bool hasPreviousFrame = false;
+			uint64_t shownFrame = 0;		// Frame its camera was last set: a view nobody shows (closed, a hidden tab) isn't drawn
+		};
+
+		std::vector<ExtraView> s_ExtraViews;
+		uint32_t s_NextViewId = 1;
+		const Renderer::ViewCamera *s_ViewCamera = nullptr;	// The extra view being drawn: BuildSceneCameraView looks through it
+		bool s_RenderingExtraView = false;
+		bool s_FrameHasPrevious = false;					// m_Cb_Frame_Cpu holds a previous frame (the view's being drawn)
+		xMath::Vec3 s_MainCameraPosition(0.0f, 0.0f, 0.0f);	// The main view's eye: the environment probes stay with it
+		float s_MainDeltaTime = 0.0f;						// Extra views see the main view's frame time
+
+		ExtraView *FindView(const uint32_t id)
+		{
+			const auto it = std::ranges::find_if(s_ExtraViews, [id](const ExtraView &view) { return view.id == id; });
+			return it != s_ExtraViews.end() ? &*it : nullptr;
+		}
+
 		/**
 		 * @struct GpuMatrix
 		 * @brief 4x4 column-vector matrix (clip = M * position) stored row-major: element (r, c) at m[r * 4 + c].
@@ -311,7 +347,16 @@ void dynamic_resolution()
 			float nearPlane     = 0.1f;
 			float farPlane      = 10000.0f;
 			float fovHorizontal = 0.0f;
+			bool orthographic   = false;
+			float orthoHalfWidth  = 0.0f;	// Orthographic: meters from the view's center to its sides
+			float orthoHalfHeight = 0.0f;
 		};
+
+		/**
+		 * @brief How far behind the eye an orthographic view still draws (m). The eye sits at the perspective orbit distance
+		 * (distance LODs keep working); anything between it and the far plane, or this far behind it, is drawn.
+		 */
+		constexpr float ORTHOGRAPHIC_BEHIND_EYE = 10000.0f;
 
 		/**
 		 * @brief Builds the view and projection of the active scene's primary camera entity.
@@ -349,12 +394,19 @@ void dynamic_resolution()
 			const TransformComponent& transform = cameras.get<TransformComponent>(selected);
 			const CameraComponent& camera       = cameras.get<CameraComponent>(selected);
 
-			const xMath::Vec3 euler   = transform.GetRotationEuler();
+			// An extra view looks through its own camera (the scene camera's near and far planes)
+			const Renderer::ViewCamera *view = s_ViewCamera;
+			const bool orthographic = view ? view->orthographic : camera.projectionType == CameraComponent::ProjectionType::Orthographic;
+			const float orthographicHeight = view ? view->orthographicHeight : camera.orthographicHeight;
+			const float horizontalFov = view ? view->horizontalFov : camera.horizontalFov_Rad;
+
+			// Right comes from the yaw alone, so looking straight down (top views) keeps its bearing
+			const xMath::Vec3 euler   = view ? xMath::Vec3(view->pitch, view->yaw, 0.0f) : transform.GetRotationEuler();
 			const float cosPitch      = std::cos(euler.x);
 			const xMath::Vec3 forward = xMath::Normalize(xMath::Vec3(cosPitch * std::sin(euler.y), std::sin(euler.x), cosPitch * std::cos(euler.y)));
-			const xMath::Vec3 right   = xMath::Normalize(xMath::Cross(forward, xMath::Vec3(0.0f, 1.0f, 0.0f)));
+			const xMath::Vec3 right   = xMath::Vec3(-std::cos(euler.y), 0.0f, std::sin(euler.y));
 			const xMath::Vec3 up      = xMath::Cross(right, forward);
-			const xMath::Vec3 eye     = transform.translation;
+			const xMath::Vec3 eye     = view ? view->position : transform.translation;
 
 			// the camera looks down its local -Z
 			out.view = GpuMatrix::Rows({
@@ -365,20 +417,39 @@ void dynamic_resolution()
 
 			const float nearPlane = std::max(camera.nearPlane, 0.001f);
 			const float farPlane  = std::max(camera.farPlane, nearPlane + 1.0f);
-			const float xScale    = 1.0f / std::tan(camera.horizontalFov_Rad * 0.5f);
-			const float yScale    = xScale * aspect;
-			out.projection = GpuMatrix::Rows({
-				xScale, 0.0f,   0.0f,                                0.0f,
-				0.0f,   yScale, 0.0f,                                0.0f,
-				0.0f,   0.0f,   nearPlane / (farPlane - nearPlane),  (farPlane * nearPlane) / (farPlane - nearPlane),
-				0.0f,   0.0f,   -1.0f,                               0.0f });
+			if (orthographic)
+			{
+				// Reverse-Z orthographic: view depth d = -z maps to (far - d) / (far - near), the near plane behind the eye
+				const float halfHeight = std::max(orthographicHeight * 0.5f, 0.01f);
+				const float halfWidth  = halfHeight * aspect;
+				const float orthoNear  = -ORTHOGRAPHIC_BEHIND_EYE;
+				const float range      = farPlane - orthoNear;
+				out.projection = GpuMatrix::Rows({
+					1.0f / halfWidth, 0.0f,              0.0f,          0.0f,
+					0.0f,             1.0f / halfHeight, 0.0f,          0.0f,
+					0.0f,             0.0f,              1.0f / range,  farPlane / range,
+					0.0f,             0.0f,              0.0f,          1.0f });
+				out.orthographic    = true;
+				out.orthoHalfWidth  = halfWidth;
+				out.orthoHalfHeight = halfHeight;
+			}
+			else
+			{
+				const float xScale = 1.0f / std::tan(horizontalFov * 0.5f);
+				const float yScale = xScale * aspect;
+				out.projection = GpuMatrix::Rows({
+					xScale, 0.0f,   0.0f,                                0.0f,
+					0.0f,   yScale, 0.0f,                                0.0f,
+					0.0f,   0.0f,   nearPlane / (farPlane - nearPlane),  (farPlane * nearPlane) / (farPlane - nearPlane),
+					0.0f,   0.0f,   -1.0f,                               0.0f });
+			}
 
 			out.position      = eye;
 			out.forward       = forward;
 			out.right         = right;
 			out.nearPlane     = nearPlane;
 			out.farPlane      = farPlane;
-			out.fovHorizontal = camera.horizontalFov_Rad;
+			out.fovHorizontal = horizontalFov;
 			return true;
 		}
 
@@ -431,6 +502,26 @@ void dynamic_resolution()
 				return true;
 			}
 		};
+
+		/* @brief A local box placed by a row-vector world matrix, as a world axis-aligned box (for the shadow cascades). */
+		void WorldBounds(const xMath::BoundingBox &local, const xMath::Matrix &world, CsmVec3 &boxMin, CsmVec3 &boxMax)
+		{
+			const xMath::Vec3 lo = local.GetMin();
+			const xMath::Vec3 hi = local.GetMax();
+			const double c[3] = { (lo.x + hi.x) * 0.5, (lo.y + hi.y) * 0.5, (lo.z + hi.z) * 0.5 };
+			const double e[3] = { (hi.x - lo.x) * 0.5, (hi.y - lo.y) * 0.5, (hi.z - lo.z) * 0.5 };
+			const double m[3][4] = {
+				{ world.m00, world.m10, world.m20, world.m30 },
+				{ world.m01, world.m11, world.m21, world.m31 },
+				{ world.m02, world.m12, world.m22, world.m32 } };
+			for (size_t axis = 0; axis < 3; ++axis)
+			{
+				const double center = c[0] * m[axis][0] + c[1] * m[axis][1] + c[2] * m[axis][2] + m[axis][3];
+				const double extent = e[0] * std::abs(m[axis][0]) + e[1] * std::abs(m[axis][1]) + e[2] * std::abs(m[axis][2]);
+				boxMin[axis] = center - extent;
+				boxMax[axis] = center + extent;
+			}
+		}
 	}
 
 	static std::filesystem::path ResolveResourcePath(const std::filesystem::path& relativePath)
@@ -628,6 +719,7 @@ void dynamic_resolution()
 
 		// Wait for all GPU work to complete
 		device->GetQueueManager()->WaitIdleAll();
+		s_ExtraViews.clear();	// Their render targets
 
 		// Release the immediate-execution command lists/pools now, while the device and loggers are alive.
 		CommandList::ShutdownImmediateExecution();
@@ -705,6 +797,9 @@ void dynamic_resolution()
 		// Destroy frame resources
 		GpuScene::Shutdown();
 		ScenePicking::Shutdown();
+		FrameCapture::Shutdown();
+		GpuTimer::Shutdown();
+		SetReferenceOverlay(nullptr, ReferenceOverlayMode::Off);
 		GeometryBuffer::Shutdown();
 		DestroyResources();
 		DestroyFrameResources();
@@ -856,6 +951,7 @@ void dynamic_resolution()
 				UpdateDrawCalls(m_CmdList_Present);
 				Perf::SetCounter("entities", static_cast<double>(Scene::GetEntities().size()));
 				Perf::SetCounter("cpu draw calls", static_cast<double>(m_DrawCall_Count));
+				Perf::SetCounter("drapes", static_cast<double>(s_DrapeDrawCount));
 			}
 
 			// retire cached pipelines that stopped being used (e.g. built for render targets replaced on resize)
@@ -877,10 +973,14 @@ void dynamic_resolution()
 					{
 						constantFrameBuffer->ResetOffset();
 					}
+					if (Buffer *environmentBuffer = GetBuffer(Renderer_Buffer::ConstantEnvironment))
+						environmentBuffer->ResetOffset();
 					else
 					{
 						SEDX_CORE_ERROR_TAG("Renderer", "ConstantFrame buffer is null — cannot reset offset");
 					}
+					if (Buffer *cacaoBuffer = GetBuffer(Renderer_Buffer::ConstantCacao))
+						cacaoBuffer->ResetOffset();
 				}
 			}
 
@@ -1055,6 +1155,9 @@ void dynamic_resolution()
 					Perf::SetCounter("gpu batches", stats.batches);
 					Perf::SetCounter("gpu commands drawn", stats.drawnCommands);
 					Perf::SetCounter("gpu uploads", stats.uploadedInstances);
+					Perf::SetCounter("gpu shadow draws", stats.shadowInstances);
+					Perf::SetCounter("cpu shadow casters", m_DrawCalls_Shadow_Count);
+					Perf::SetCounter("shadow cascades", GetShadowCascades().count);
 				}
 
 #pragma endregion
@@ -1064,6 +1167,7 @@ void dynamic_resolution()
 #pragma endregion
 				
 			UpdateFrameConstantBuffer(m_CmdList_Present);
+			UpdateEnvironmentConstantBuffer(m_CmdList_Present);
 			{
 				SEDX_PERF_SCOPE("Render: Debug lines");
 				UpdatePersistentLines();
@@ -1130,6 +1234,7 @@ void dynamic_resolution()
 				{
 					SEDX_PERF_SCOPE("Render: Record passes");
 					ProduceFrame(m_CmdList_Present, m_CmdList_Compute);
+					RenderExtraViews(m_CmdList_Present);
 				}
 				else
 				{
@@ -2086,6 +2191,137 @@ void dynamic_resolution()
 		return m_Camera;
 	}
 
+	uint32_t Renderer::CreateView()
+	{
+		if (s_ExtraViews.size() >= MAX_EXTRA_VIEWS)
+		{
+			SEDX_CORE_WARN_TAG("Renderer", "No extra view created: {} already exist (the most there can be)", MAX_EXTRA_VIEWS);
+			return 0;
+		}
+		ExtraView view;
+		view.id = s_NextViewId++;
+		s_ExtraViews.push_back(std::move(view));
+		SEDX_CORE_INFO_TAG("Renderer", "Extra view {} created", s_ExtraViews.back().id);
+		return s_ExtraViews.back().id;
+	}
+
+	void Renderer::DestroyView(const uint32_t view)
+	{
+		const auto it = std::ranges::find_if(s_ExtraViews, [view](const ExtraView &v) { return v.id == view; });
+		if (it == s_ExtraViews.end())
+			return;
+		if (RenderContext::Get() && RenderContext::Get()->GetDevice())
+			RenderContext::Get()->GetDevice()->GetQueueManager()->WaitIdleAll();	// Frames in flight still use its targets
+		s_ExtraViews.erase(it);
+		SEDX_CORE_INFO_TAG("Renderer", "Extra view {} destroyed", view);
+	}
+
+	void Renderer::SetViewCamera(const uint32_t view, const ViewCamera &camera)
+	{
+		if (ExtraView *extra = FindView(view))
+		{
+			extra->camera = camera;
+			extra->shownFrame = s_FrameNumber;
+		}
+	}
+
+	void Renderer::SetViewResolution(const uint32_t view, const uint32_t width, const uint32_t height)
+	{
+		ExtraView *extra = FindView(view);
+		if (!extra || width == 0 || height == 0 || !m_ResourcesInitialized || (extra->width == width && extra->height == height))
+			return;
+		if (RenderContext::Get() && RenderContext::Get()->GetDevice())
+			RenderContext::Get()->GetDevice()->GetQueueManager()->WaitIdleAll();	// Frames in flight still use the old targets
+		CreateViewRenderTargets(width, height, extra->targets);
+		extra->width = width;
+		extra->height = height;
+		extra->hasPreviousFrame = false;
+		SEDX_CORE_INFO_TAG("Renderer", "Extra view {} resolution set to {} x {}", view, width, height);
+	}
+
+	ImageResource *Renderer::GetViewOutput(const uint32_t view)
+	{
+		const ExtraView *extra = FindView(view);
+		return extra ? extra->targets[static_cast<size_t>(Renderer_RenderTarget::frame_output)].Get() : nullptr;
+	}
+
+	uint32_t Renderer::GetViewCount()
+	{
+		return static_cast<uint32_t>(s_ExtraViews.size());
+	}
+
+	bool Renderer::IsRenderingExtraView()
+	{
+		return s_RenderingExtraView;
+	}
+
+	void Renderer::RenderExtraViews(CommandList *cmdList)
+	{
+		if (s_ExtraViews.empty() || !cmdList || cmdList->IsStickyInvalid())
+			return;
+		SEDX_PERF_SCOPE("Render: extra views");
+
+		// The main view's state, put back after
+		auto &targets = GetRenderTargets();
+		const Vec2 mainRender = s_RendererResolution;
+		const Vec2 mainOutput = s_OutputResolution;
+		const Viewport mainViewport = s_Viewport;
+		const ConstantBuffer_Frame mainFrame = m_Cb_Frame_Cpu;
+		const bool mainHasPrevious = s_FrameHasPrevious;
+		const auto swapTargets = [&targets](ExtraView &view)
+		{
+			for (size_t i = 0; i < targets.size(); ++i)
+			{
+				if (view.targets[i])
+					std::swap(targets[i], view.targets[i]);
+			}
+		};
+
+		for (ExtraView &view : s_ExtraViews)
+		{
+			if (!view.targets[static_cast<size_t>(Renderer_RenderTarget::frame_output)] || !view.targets[static_cast<size_t>(Renderer_RenderTarget::frame_render)] ||
+				view.shownFrame + 2 < s_FrameNumber)
+				continue;
+			s_RenderingExtraView = true;
+			s_ViewCamera = &view.camera;
+			s_RendererResolution = Vec2(static_cast<float>(view.width), static_cast<float>(view.height));
+			s_OutputResolution = s_RendererResolution;
+			s_Viewport = Viewport(0.0f, 0.0f, static_cast<float>(view.width), static_cast<float>(view.height));
+			swapTargets(view);
+			m_Cb_Frame_Cpu = view.frame;
+			s_FrameHasPrevious = view.hasPreviousFrame;
+
+			// Its draw lists and shadow cascades (the passes read them while recording); its draw data follows the main
+			// view's in this frame's region
+			const uint32_t firstDrawData = m_DrawData_Count;
+			UpdateDrawCalls(cmdList);
+			if (m_DrawData_Count > firstDrawData)
+			{
+				if (Buffer *buffer = GetBuffer(Renderer_Buffer::DrawData))
+				{
+					constexpr uint32_t stride = static_cast<uint32_t>(sizeof(ShaderBuffer_DrawData));
+					CommandList::UpdateBuffer(buffer, static_cast<uint64_t>(s_DrawDataRegionStart + firstDrawData) * stride,
+						static_cast<uint64_t>(m_DrawData_Count - firstDrawData) * stride, &m_DrawData_CPU[firstDrawData]);
+				}
+			}
+			UpdateFrameConstantBuffer(cmdList);
+			UpdateEnvironmentConstantBuffer(cmdList);
+			ProduceFrame(cmdList, nullptr);
+
+			view.frame = m_Cb_Frame_Cpu;
+			view.hasPreviousFrame = s_FrameHasPrevious;
+			swapTargets(view);
+		}
+
+		s_RenderingExtraView = false;
+		s_ViewCamera = nullptr;
+		s_RendererResolution = mainRender;
+		s_OutputResolution = mainOutput;
+		s_Viewport = mainViewport;
+		m_Cb_Frame_Cpu = mainFrame;
+		s_FrameHasPrevious = mainHasPrevious;
+	}
+
 	void Renderer::CreateCameraResources()
 	{
 		VkDevice device = RenderContext::Get()->GetDevice()->GetLogicalDevice();
@@ -2654,6 +2890,8 @@ void dynamic_resolution()
 
 		m_DrawCall_Count          = 0;
 		m_DrawCalls_Prepass_Count = 0;
+		m_DrawCalls_Shadow_Count  = 0;
+		m_DrawCalls_Water_Count   = 0;
 		m_Transparents_Present    = false;
 
 		// The per-draw indirect path (indirect_cull) stays off: GpuScene draws the deferred geometry instead.
@@ -2664,13 +2902,37 @@ void dynamic_resolution()
 		bool hasFrustum = false;
 		{
 			const xMath::Vec2 resolution = GetRendererResolution();
+			const float aspect = resolution.y > 0.0f ? resolution.x / resolution.y : 1.0f;
 			SceneCameraView camera;
-			if (BuildSceneCameraView(resolution.y > 0.0f ? resolution.x / resolution.y : 1.0f, camera))
+			if (BuildSceneCameraView(aspect, camera))
 			{
 				frustum = ViewFrustum(camera.projection * camera.view);
 				hasFrustum = true;
+
+				// the sun-shadow cascades this camera needs, before the casters are collected
+				CsmCamera csmCamera;
+				csmCamera.position = { camera.position.x, camera.position.y, camera.position.z };
+				csmCamera.forward = { camera.forward.x, camera.forward.y, camera.forward.z };
+				csmCamera.tanHalfFovX = std::tan(0.5 * camera.fovHorizontal);
+				csmCamera.tanHalfFovY = csmCamera.tanHalfFovX / std::max(aspect, 1e-3f);
+				csmCamera.nearPlane = camera.nearPlane;
+				if (camera.orthographic)
+				{
+					// The pivot sits where a perspective view of the same framing would have it: the eye's orbit distance
+					csmCamera.orthographic = true;
+					csmCamera.orthoHalfWidth = camera.orthoHalfWidth;
+					csmCamera.orthoHalfHeight = camera.orthoHalfHeight;
+					csmCamera.focusDepth = camera.orthoHalfHeight / std::max(csmCamera.tanHalfFovY, 1e-3);
+				}
+				UpdateShadowCascades(&csmCamera);
+			}
+			else
+			{
+				UpdateShadowCascades(nullptr);
 			}
 		}
+		const CsmSetup &shadows = GetShadowCascades();
+		const uint32_t allCascades = (1u << shadows.count) - 1u;
 
 		// collect draw calls: renderables the GPU scene doesn't draw, plus the blended part of the ones it does
 		for (Entity* entity : Scene::GetRenderableEntities())
@@ -2703,41 +2965,110 @@ void dynamic_resolution()
 
 			// frustum culling on the world bounds (the renderable's own box is only updated when its mesh is set)
 			const xMath::Matrix world = entity->GetMatrix();
-			if (hasFrustum && !renderable->HasInstancing() && !frustum.IntersectsBox(renderable->GetBoundingBoxMesh(), world))
+			const bool inView = !hasFrustum || renderable->HasInstancing() || frustum.IntersectsBox(renderable->GetBoundingBoxMesh(), world);
+
+			// Water (plan Phase 11) is drawn by Pass_Water alone: not in the g-buffer, the shadows or the GPU scene. Waves
+			// rise a few meters above the mesh: its box is grown by that much for the test.
+			if (material->GetProperty(MaterialProperty::Water) > 0.0f)
+			{
+				const xMath::BoundingBox &mesh = renderable->GetBoundingBoxMesh();
+				const xMath::BoundingBox box(mesh.GetMin() - xMath::Vec3(8.0f, 8.0f, 8.0f), mesh.GetMax() + xMath::Vec3(8.0f, 8.0f, 8.0f));
+				if ((hasFrustum && !frustum.IntersectsBox(box, world)) || m_DrawCalls_Water_Count >= static_cast<uint32_t>(m_DrawCalls_Water.size()))
+					continue;
+				Renderer_DrawCall &water = m_DrawCalls_Water[m_DrawCalls_Water_Count++];
+				water = Renderer_DrawCall();
+				water.renderable = renderable;
+				water.cameraVisible = true;
+				water.lodIndex = std::min(renderable->GetLodIndex(), renderable->GetLodCount() - 1);
+				water.instanceCount = renderable->GetInstanceCount();
+				water.drawData_Index = WriteDrawData(world, entity->GetMatrixPrevious(), material->GetIndex(), 0, 0);
+				continue;
+			}
+
+			// Sun-shadow casters the GPU scene doesn't draw (plan TASK-053): opaque or cut-out, not draped, casting; in view
+			// or not. Instanced ones (their box is one instance's) go into every cascade.
+			const bool isTransparent = material->IsTransparent();
+			uint32_t shadowCascades = 0;
+			if (shadows.count > 0 && !gpuDriven && !isTransparent && !renderable->IsDraped() && renderable->HasFlag(RenderableFlags::CastsShadows))
+			{
+				if (renderable->HasInstancing())
+				{
+					shadowCascades = allCascades;
+				}
+				else
+				{
+					CsmVec3 boxMin, boxMax;
+					WorldBounds(renderable->GetBoundingBoxMesh(), world, boxMin, boxMax);
+					shadowCascades = shadows.CascadeMask(boxMin, boxMax);
+				}
+			}
+			if (!inView && shadowCascades == 0)
 				continue;
 
-			const bool isTransparent = material->IsTransparent();
-			m_Transparents_Present  |= isTransparent;
+			if (inView)
+				m_Transparents_Present |= isTransparent;
 
 			const uint32_t drawDataIndex = WriteDrawData(world, entity->GetMatrixPrevious(), material->GetIndex(), isTransparent ? 1 : 0, ScenePicking::GetPickId(static_cast<entt::entity>(*entity)));
 
-			Renderer_DrawCall& drawCall = m_DrawCalls[m_DrawCall_Count++];
+			Renderer_DrawCall drawCall;
 			drawCall.renderable         = renderable;
 			drawCall.lodIndex           = std::min(renderable->GetLodIndex(), renderable->GetLodCount() - 1);
 			drawCall.isOccluder         = false;
-			drawCall.cameraVisible      = true;
+			drawCall.cameraVisible      = inView;
 			drawCall.gpuDriven          = gpuDriven;
 			drawCall.instanceIndex      = 0;
 			drawCall.instanceCount      = renderable->GetInstanceCount();
 			drawCall.drawData_Index     = drawDataIndex;
+			drawCall.drapeOrder         = renderable->GetDrapeOrder();
+			drawCall.shadowCascades     = shadowCascades;
+
+			if (shadowCascades != 0 && m_DrawCalls_Shadow_Count < static_cast<uint32_t>(m_DrawCalls_Shadow.size()))
+				m_DrawCalls_Shadow[m_DrawCalls_Shadow_Count++] = drawCall;
+			if (inView)
+				m_DrawCalls[m_DrawCall_Count++] = drawCall;
 		}
 
-		// sort: opaque before transparent, then by material to minimize state changes
+		// sort: opaque before transparent; among the opaque ones everything else (by material, to minimize state changes)
+		// before the drapes, which go in their drape order: the g-buffer draws them painter's-style, later on top
 		std::sort(m_DrawCalls.begin(), m_DrawCalls.begin() + m_DrawCall_Count, [](const Renderer_DrawCall& a, const Renderer_DrawCall& b)
 		{
 			const bool aTransparent = a.renderable->GetMaterialAsset()->IsTransparent();
 			const bool bTransparent = b.renderable->GetMaterialAsset()->IsTransparent();
 			if (aTransparent != bTransparent)
 				return !aTransparent;
+			if (a.drapeOrder != b.drapeOrder)
+				return a.drapeOrder < b.drapeOrder;
 
 			return a.renderable->GetMaterialAsset() < b.renderable->GetMaterialAsset();
 		});
 
-		// prepass: visible opaques the CPU draws, non-alpha-tested first
+		// drape ranks (1 = lowest) over the visible drapes, opaque and blended: the drape depth and forward passes nudge
+		// depth by rank (vertex_processing.slang apply_drape_depth)
+		{
+			static std::vector<std::pair<uint64_t, uint32_t>> drapes;	// order, draw call
+			drapes.clear();
+			for (uint32_t i = 0; i < m_DrawCall_Count; ++i)
+			{
+				if (m_DrawCalls[i].drapeOrder != 0)
+					drapes.emplace_back(m_DrawCalls[i].drapeOrder, i);
+			}
+			std::ranges::sort(drapes);
+			s_DrapeDrawCount = static_cast<uint32_t>(drapes.size());
+			// drawData_Index counts from the start of the whole buffer; the CPU copy holds this frame's region (uploaded below)
+			for (uint32_t rank = 0; rank < static_cast<uint32_t>(drapes.size()); ++rank)
+			{
+				const uint32_t local = m_DrawCalls[drapes[rank].second].drawData_Index - s_DrawDataRegionStart;
+				if (local < m_DrawData_Count)
+					m_DrawData_CPU[local].drape_rank = rank + 1;
+			}
+		}
+
+		// prepass: visible opaques the CPU draws, non-alpha-tested first. Not the drapes: the g-buffer tests them against
+		// everything else only (drawn in order, they never fight each other), and Pass_Drape_Depth writes their depth after.
 		for (uint32_t i = 0; i < m_DrawCall_Count; ++i)
 		{
 			const Renderer_DrawCall& drawCall = m_DrawCalls[i];
-			if (!drawCall.gpuDriven && !drawCall.renderable->GetMaterialAsset()->IsTransparent() && drawCall.cameraVisible)
+			if (!drawCall.gpuDriven && drawCall.drapeOrder == 0 && !drawCall.renderable->GetMaterialAsset()->IsTransparent() && drawCall.cameraVisible)
 			{
 				m_DrawCalls_Prepass[m_DrawCalls_Prepass_Count++] = drawCall;
 			}
@@ -2791,11 +3122,14 @@ void dynamic_resolution()
 		static Clock::time_point s_LastTime        = s_StartTime;
 		const Clock::time_point now                = Clock::now();
 		const double timeSeconds                   = std::chrono::duration<double>(now - s_StartTime).count();
-		const float deltaSeconds                   = static_cast<float>(std::chrono::duration<double>(now - s_LastTime).count());
-		s_LastTime                                 = now;
+		const float deltaSeconds                   = s_RenderingExtraView ? s_MainDeltaTime : static_cast<float>(std::chrono::duration<double>(now - s_LastTime).count());
+		if (!s_RenderingExtraView)
+		{
+			s_LastTime = now;
+			s_MainDeltaTime = deltaSeconds;
+		}
 
-		// camera
-		static bool s_HasPreviousFrame = false;
+		// camera (an extra view's history is swapped in with it)
 		const xMath::Vec2 resolutionRender = GetRendererResolution();
 		const float aspect = resolutionRender.y > 0.0f ? resolutionRender.x / resolutionRender.y : 1.0f;
 
@@ -2821,17 +3155,19 @@ void dynamic_resolution()
 			frame.camera_near     = camera.nearPlane;
 			frame.camera_far      = camera.farPlane;
 			frame.camera_fov      = camera.fovHorizontal;
+			if (!s_RenderingExtraView)
+				s_MainCameraPosition = camera.position;
 		}
 
 		// the first frame has no history, so it is its own previous frame (no motion)
-		if (!s_HasPreviousFrame)
+		if (!s_FrameHasPrevious)
 		{
 			frame.view_previous                       = frame.view;
 			frame.projection_previous                 = frame.projection;
 			frame.view_projection_previous            = frame.view_projection;
 			frame.view_projection_previous_unjittered = frame.view_projection_unjittered;
 			frame.camera_position_previous            = frame.camera_position;
-			s_HasPreviousFrame                        = true;
+			s_FrameHasPrevious                        = true;
 		}
 
 		frame.view_projection_ortho = xMath::Matrix::IDENTITY;
@@ -2863,6 +3199,255 @@ void dynamic_resolution()
 		frame.camera_position_previous            = frame.camera_position;
 	}
 
+	namespace
+	{
+		/**
+		 * The sky light (environment/sky_light.h) the environment buffer carries, kept until its inputs move: a few
+		 * milliseconds to integrate, so it is redone at most five times a second unless the sun jumps (a time change).
+		 */
+		struct SkyLightCache
+		{
+			bool valid = false;
+			double sunElevationDeg = 0.0;
+			double moonElevationDeg = 0.0;
+			double altitudeM = 0.0;
+			uint64_t mediumKey = 0;
+			double sunLux = 0.0;
+			double moonLux = 0.0;
+			std::chrono::steady_clock::time_point computedAt;
+			Environment::SkyLight sky;			// Lit by the sun
+			Environment::SkyLight moonSky;		// Lit by the moon (night only)
+		};
+		SkyLightCache s_SkyLightCache;
+
+		Environment::AtmosphereParams GetAtmosphereParams(const Renderer::EnvironmentConstants &c)
+		{
+			Environment::AtmosphereParams params;
+			params.rayleighScattering = { c.rayleigh.x, c.rayleigh.y, c.rayleigh.z };
+			params.rayleighScaleHeight = c.rayleigh.w;
+			params.mieScattering = c.mie.x;
+			params.mieExtinction = c.mie.y;
+			params.mieScaleHeight = c.mie.z;
+			params.mieG = c.mie.w;
+			params.mieSpectral = Environment::MieSpectralFactors(params.rayleighScattering, c.mieAngstrom);
+			params.multipleScattering = c.multipleScattering;
+			params.visibilityContrast = c.visibilityContrast;
+			params.hazeScatteringAlbedo = c.fogAlbedo;
+			params.ozoneAbsorption = { c.ozone.x, c.ozone.y, c.ozone.z };
+			params.ozoneCenter = c.ozone.w;
+			params.ozoneHalfWidth = c.planet.x;
+			params.groundRadius = c.planet.y;
+			params.topRadius = c.planet.z;
+			params.groundAlbedo = c.planet.w;
+			params.hazeTopM = c.hazeTopM;
+			params.hazeBandM = c.hazeBandM;
+			return params;
+		}
+
+		/* @brief A key of the medium: the cache is redone when it changes (visibility, sky condition, ground elevation). */
+		uint64_t GetMediumKey(const Environment::AtmosphereParams &a)
+		{
+			uint64_t key = 0;
+			for (const double v : { a.rayleighScattering[0], a.rayleighScattering[1], a.rayleighScattering[2], a.mieScattering, a.mieExtinction, a.hazeExtinction,
+					 a.hazeScatteringAlbedo, a.hazeTopM, a.groundElevationM, a.groundAlbedo, a.mieSpectral[0], a.mieSpectral[2], a.multipleScattering,
+					 a.ozoneAbsorption[0], a.ozoneAbsorption[1], a.ozoneAbsorption[2], a.ozoneCenter, a.mieG })
+				key = HashCombine(key, v);
+			return key;
+		}
+
+		const SkyLightCache &UpdateSkyLight(const Environment::AtmosphereParams &atmosphere, const double sunLux, const double sunElevationDeg,
+			const double moonElevationDeg, const double altitudeM, const double moonLux)
+		{
+			SkyLightCache &cache = s_SkyLightCache;
+			const auto now = std::chrono::steady_clock::now();
+			const uint64_t mediumKey = GetMediumKey(atmosphere);
+			const bool sunJumped = std::abs(sunElevationDeg - cache.sunElevationDeg) > 1.0 || mediumKey != cache.mediumKey;
+			const bool moved = std::abs(sunElevationDeg - cache.sunElevationDeg) > 0.02 || std::abs(moonElevationDeg - cache.moonElevationDeg) > 0.05 ||
+							   std::abs(altitudeM - cache.altitudeM) > std::max(20.0, 0.02 * std::abs(altitudeM)) || mediumKey != cache.mediumKey ||
+							   sunLux != cache.sunLux || std::abs(moonLux - cache.moonLux) > 1e-3 * std::max(cache.moonLux, 1e-6);
+			const bool due = now - cache.computedAt > std::chrono::milliseconds(200);
+			if (cache.valid && !(moved && (due || sunJumped)))
+				return cache;
+
+			cache.sky = Environment::ComputeSkyLight(atmosphere, altitudeM, sunElevationDeg, sunLux, moonElevationDeg, moonLux);
+
+			// After dusk the moon lights the sky the same way, a million times dimmer
+			cache.moonSky = Environment::SkyLight();
+			if (sunElevationDeg < -12.0 && moonElevationDeg > -2.0 && moonLux > 0.0)
+				cache.moonSky = Environment::ComputeSkyLight(atmosphere, altitudeM, moonElevationDeg, moonLux, -90.0, 0.0);
+
+			cache.valid = true;
+			cache.sunElevationDeg = sunElevationDeg;
+			cache.moonElevationDeg = moonElevationDeg;
+			cache.altitudeM = altitudeM;
+			cache.mediumKey = mediumKey;
+			cache.sunLux = sunLux;
+			cache.moonLux = moonLux;
+			cache.computedAt = now;
+			return cache;
+		}
+
+		xMath::Vec4 ToVec4(const Environment::Rgb &rgb, const float w = 0.0f)
+		{
+			return xMath::Vec4(static_cast<float>(rgb[0]), static_cast<float>(rgb[1]), static_cast<float>(rgb[2]), w);
+		}
+	}
+
+	void Renderer::UpdateEnvironmentConstantBuffer(CommandList *cmdList)
+	{
+		Buffer *environmentBuffer = GetBuffer(Renderer_Buffer::ConstantEnvironment);
+		if (!cmdList || !environmentBuffer)
+			return;
+
+		const Environment::World::Snapshot snapshot = Environment::Get().GetSnapshot();
+		const Environment::EnvironmentState &state = snapshot.state;
+		const Environment::EnvironmentDerived &derived = snapshot.derived;
+		const EnvironmentConstants &constants = GetEnvironmentConstants();
+		ConstantBuffer_Environment &env = m_Cb_Environment_Cpu;
+
+		// The medium (plan TASK-046): the clear atmosphere, the haze layer the visibility asks for, the sky condition's
+		// multipliers. The GPU atmosphere (atmosphere_common.slang) reads it from this buffer; the CPU sky model gives the
+		// sun, moon and sky at the camera for the interim lighting (atmosphere off) and the first exposure guess.
+		const float altitudeM = m_Cb_Frame_Cpu.camera_position.y + state.elevationM;
+		const Environment::AtmosphereParams atmosphere = Environment::WithSkyMultipliers(
+			Environment::WithVisibility(GetAtmosphereParams(constants), state.visibilityM, state.elevationM), derived.sky.rayleigh, derived.sky.mie);
+		const double moonLux = constants.moonIlluminanceLux * derived.moon.illuminatedFraction;
+		const SkyLightCache &light = UpdateSkyLight(atmosphere, constants.sunIlluminanceLux, derived.sun.apparentElevationDeg, derived.moon.apparentElevationDeg,
+			altitudeM, moonLux);
+
+		env.sun_direction = xMath::Vec4(derived.sunDirection.x, derived.sunDirection.y, derived.sunDirection.z, constants.sunAngularRadiusRad);
+		env.sun_illuminance = ToVec4(light.sky.sunIlluminance, static_cast<float>(derived.sun.apparentElevationDeg));
+		env.moon_direction = xMath::Vec4(derived.moonDirection.x, derived.moonDirection.y, derived.moonDirection.z, static_cast<float>(derived.moon.illuminatedFraction));
+		env.moon_illuminance = ToVec4(light.sky.moonIlluminance, static_cast<float>(derived.moon.phaseAngleDeg) * xMath::DEG_TO_RAD);
+
+		// Sky samples: the sun's sky (Mie lobe split out) plus the moon's, its Mie part spread evenly (1 / 4 pi)
+		{
+			constexpr double ISOTROPIC = 1.0 / (4.0 * std::numbers::pi);
+			const auto add = [](const Environment::Rgb &a, const Environment::Rgb &b, const double scale)
+			{
+				return Environment::Rgb{ a[0] + b[0] * scale, a[1] + b[1] * scale, a[2] + b[2] * scale };
+			};
+			const auto base = [&](const Environment::Rgb &sun, const Environment::Rgb &moon, const Environment::Rgb &moonMie)
+			{
+				return ToVec4(add(add(sun, moon, 1.0), moonMie, ISOTROPIC));
+			};
+			const Environment::SkyLight &sun = light.sky;
+			const Environment::SkyLight &moon = light.moonSky;
+			env.sky_radiance[0] = base(sun.zenith, moon.zenith, moon.zenithMie);
+			env.sky_mie[0] = ToVec4(sun.zenithMie);
+			for (size_t i = 0; i < 3; ++i)
+			{
+				env.sky_radiance[1 + i] = base(sun.horizon[i], moon.horizon[i], moon.horizonMie[i]);
+				env.sky_radiance[4 + i] = base(sun.mid[i], moon.mid[i], moon.midMie[i]);
+				env.sky_mie[1 + i] = ToVec4(sun.horizonMie[i]);
+				env.sky_mie[4 + i] = ToVec4(sun.midMie[i]);
+			}
+			env.sky_irradiance = ToVec4(add(sun.irradiance, moon.irradiance, 1.0), constants.planet.w);
+		}
+
+		env.sky_multipliers = xMath::Vec4(derived.sky.ambient, derived.sky.direct, derived.sky.tone, derived.sky.shadowLevel);
+		env.sky_multipliers2 = xMath::Vec4(derived.sky.rayleigh, derived.sky.mie, derived.sky.shadowOffset, derived.daylight);
+		env.rayleigh = xMath::Vec4(static_cast<float>(atmosphere.rayleighScattering[0]), static_cast<float>(atmosphere.rayleighScattering[1]),
+			static_cast<float>(atmosphere.rayleighScattering[2]), static_cast<float>(atmosphere.rayleighScaleHeight));
+		env.mie = xMath::Vec4(static_cast<float>(atmosphere.mieScattering), static_cast<float>(atmosphere.mieExtinction), static_cast<float>(atmosphere.mieScaleHeight),
+			static_cast<float>(atmosphere.mieG));
+		env.ozone = constants.ozone;
+		env.atmosphere_scattering = ToVec4(atmosphere.mieSpectral, static_cast<float>(atmosphere.multipleScattering));
+		env.planet = constants.planet;
+		env.atmosphere_haze = xMath::Vec4(static_cast<float>(atmosphere.hazeExtinction), static_cast<float>(atmosphere.hazeScatteringAlbedo),
+			static_cast<float>(atmosphere.hazeTopM), static_cast<float>(atmosphere.hazeBandM));
+		env.light_toa = xMath::Vec4(static_cast<float>(constants.sunIlluminanceLux * Environment::SUN_COLOR[0]),
+			static_cast<float>(constants.sunIlluminanceLux * Environment::SUN_COLOR[1]), static_cast<float>(constants.sunIlluminanceLux * Environment::SUN_COLOR[2]),
+			static_cast<float>(moonLux));
+		env.atmosphere_view = xMath::Vec4(constants.aerialRangeM, constants.airglowNits, constants.starBrightness, 0.0f);
+		{
+			const ProbeVec3 probe = SnapProbePosition({ s_MainCameraPosition.x, s_MainCameraPosition.y, s_MainCameraPosition.z });	// Captured around the main view
+			env.probe = xMath::Vec4(static_cast<float>(probe[0]), static_cast<float>(probe[1]), static_cast<float>(probe[2]), constants.probeSpecularBias);
+		}
+
+		// The stars: world -> equatorial (x the vernal equinox, z the north pole) at the local sidereal time. The meridian's
+		// equator point, east and the celestial pole in the world (+X east, +Y up, +Z south), turned by the sidereal time.
+		{
+			const double latitude = state.latitudeDeg * std::numbers::pi / 180.0;
+			const double lst = (Environment::GreenwichSiderealDeg(derived.julianDay) + state.longitudeDeg) * std::numbers::pi / 180.0;
+			const xMath::Vec3 meridian(0.0f, static_cast<float>(std::cos(latitude)), static_cast<float>(std::sin(latitude)));
+			const xMath::Vec3 east(1.0f, 0.0f, 0.0f);
+			const xMath::Vec3 pole(0.0f, static_cast<float>(std::sin(latitude)), static_cast<float>(-std::cos(latitude)));
+			const float c = static_cast<float>(std::cos(lst));
+			const float s = static_cast<float>(std::sin(lst));
+			const xMath::Vec3 row0 = meridian * c - east * s;
+			const xMath::Vec3 row1 = meridian * s + east * c;
+			env.celestial[0] = xMath::Vec4(row0.x, row0.y, row0.z, 0.0f);
+			env.celestial[1] = xMath::Vec4(row1.x, row1.y, row1.z, 0.0f);
+			env.celestial[2] = xMath::Vec4(pole.x, pole.y, pole.z, 0.0f);
+		}
+		env.haze = xMath::Vec4(state.visibilityM, constants.hazeTopM, constants.hazeBandM, static_cast<float>(m_Cb_Frame_Cpu.time));
+		env.weather = xMath::Vec4(derived.surface.wetness, derived.surface.ice, derived.surface.snow, derived.surface.puddles);
+		env.season = xMath::Vec4(derived.season.ratio, static_cast<float>(derived.season.season), static_cast<float>(derived.dayOfYear), static_cast<float>(state.latitudeDeg));
+
+		// Exposure (plan TASK-038, TASK-039): this frame's lighting is pre-exposed with the EV the GPU last reported
+		// (manual mode: the manual EV); before the first report, the EV a grey card under this light would meter
+		{
+			const ExposureSettings &exposure = constants.exposure;
+			UpdateExposureReadback();
+			const ExposureReadout readout = GetExposureReadout();
+			const bool manual = !exposure.automatic || !GetFeatures().autoExposure;
+			float ev100 = readout.ev100;
+			if (manual)
+				ev100 = exposure.manualEv100;
+			else if (!readout.valid)
+			{
+				const double levelLux = light.sky.sunIlluminance[1] * std::max(std::sin(derived.sun.apparentElevationDeg * std::numbers::pi / 180.0), 0.0) +
+										light.sky.irradiance[1];
+				ev100 = GetTargetEv(exposure, EvFromLuminance(static_cast<float>(0.18 * levelLux / std::numbers::pi), exposure.meterK),
+					static_cast<float>(derived.sun.apparentElevationDeg));
+			}
+			const float preExposure = ExposureScaleFromEv(ev100, exposure.meterK);
+			SetExposurePreExposure(preExposure);
+			env.exposure = xMath::Vec4(ExposureScaleFromEv(ev100, exposure.meterK), preExposure, readout.meteredEv100, ev100);
+
+			env.exposure_meter = xMath::Vec4(exposure.evMin, exposure.evMax, exposure.meterK, exposure.centerRadius);
+			env.exposure_adapt = xMath::Vec4(exposure.speedUp, exposure.speedDown, exposure.trimLow, exposure.trimHigh);
+			const float sunElevation = static_cast<float>(derived.sun.apparentElevationDeg);
+			env.exposure_target = xMath::Vec4(GetExposureMid(exposure, sunElevation), GetExposureBias(exposure, sunElevation), exposure.gainLow, exposure.gainHigh);
+			env.exposure_extra = xMath::Vec4(exposure.compensation, 0.0f, 0.0f, 0.0f);
+		}
+		env.exposure_fusion = constants.exposureFusion;
+		{
+			const float strength = std::clamp(constants.colorSlopeStrength, 0.0f, 1.0f);
+			const auto part = [strength](const float slope) { return std::pow(std::max(slope, 1e-3f), strength); };
+			env.color_slope = xMath::Vec4(part(constants.colorSlope.x), part(constants.colorSlope.y), part(constants.colorSlope.z), constants.colorSlope.w);
+		}
+		env.color_offset = constants.colorOffset;
+		env.color_power = constants.colorPower;
+		env.post = xMath::Vec4(constants.bloomIntensity, constants.fusionHighlights, constants.fusionStrength, 0.0f);
+
+		env.camera = xMath::Vec4(altitudeM, state.elevationM, derived.nightFactor, state.rainPercent);
+		for (size_t i = 0; i < 3; ++i)
+		{
+			const Environment::CloudLayer &layer = state.clouds[i];
+			env.clouds[i] = xMath::Vec4(layer.baseMslM, layer.topMslM, layer.coverage, layer.type);
+		}
+		env.wind = xMath::Vec4(state.windDirectionDegT, state.windSpeedKt * 0.514444f, state.waveAmplitudeM, state.waveDirectionDegT);
+		env.debug = xMath::Vec4(static_cast<float>(GetDebugView()), static_cast<float>(GetFeatures().ToBits()), state.temperatureC, 0.0f);
+
+		// Sun and cloud shadows (plan Phase 7): the cascades UpdateDrawCalls fitted this frame
+		WriteShadowConstants(env);
+
+		// Screen-space reflections (plan Phase 9, renderer/ssr.h)
+		{
+			const SsrSettings &ssr = constants.ssr;
+			env.ssr = xMath::Vec4(ssr.minGloss, ssr.glossFade, ssr.lodBias, ssr.usePrefiltered ? 1.0f : 0.0f);
+			env.ssr_trace = xMath::Vec4(static_cast<float>(ssr.maxSteps), ssr.thicknessM, ssr.thicknessRatio, ssr.edgeFade);
+			env.ssr_history = xMath::Vec4(ssr.historyClamp, ssr.lobeScale, GetSsrTraceAll() ? 1.0f : 0.0f, AreReflectionsAvailable() ? 1.0f : 0.0f);
+		}
+
+		// Water (plan Phase 11, renderer_water.cpp): the sea state, the ocean's time, the water's optics
+		WriteWaterConstants(env);
+
+		environmentBuffer->Update(cmdList, &env);
+	}
+
 	uint32_t Renderer::WriteDrawData(const xMath::Matrix &transform, const xMath::Matrix &prevTransform, uint32_t matIndex, uint32_t isTransparent, uint32_t pickId)
 	{
 		// TODO: Write the transform matrix into the GPU draw-data structured buffer and return its index.
@@ -2888,6 +3473,7 @@ void dynamic_resolution()
 		entry.transform					= transform.Transposed();
 		entry.transform_previous		= prevTransform.Transposed();
 		entry.material_index			= matIndex;
+		entry.drape_rank				= 0;
 		entry.is_transparent			= isTransparent;
 		entry.aabb_index				= 0;
 		entry.pick_id					= pickId;
@@ -3004,10 +3590,47 @@ void dynamic_resolution()
 				properties[count].flags |= material->GetProperty(MaterialProperty::Water)                      ? (1U << 13) : 0;
 				properties[count].flags |= material->GetProperty(MaterialProperty::Tessellation)               ? (1U << 14) : 0;
 				properties[count].flags |= material->GetProperty(MaterialProperty::EmissiveFromAlbedo)         ? (1U << 15) : 0;
+				properties[count].flags |= (static_cast<uint32_t>(std::clamp(material->GetProperty(MaterialProperty::XpNormalMode), 0.0f, 3.0f)) & 3U) << 16;
+				properties[count].flags |= material->GetProperty(MaterialProperty::XpMaterial)                 ? (1U << 18) : 0;
+				const uint32_t drapeMode = static_cast<uint32_t>(std::clamp(material->GetProperty(MaterialProperty::XpDrapeMode), 0.0f, 3.0f));
+				properties[count].flags |= (drapeMode & 3U) << 19;
+				properties[count].flags |= material->GetProperty(MaterialProperty::XpFoliage)                  ? (1U << 21) : 0;
 				// keep in sync with Surface struct in common_structs.slang
 
 				properties[count].alpha_cutoff = material->GetProperty(MaterialProperty::AlphaCutoff);
 				properties[count].blend_mode   = material->GetProperty(MaterialProperty::BlendMode);
+				properties[count].xp = xMath::Vec4(material->GetProperty(MaterialProperty::XpSpecularGain), material->GetProperty(MaterialProperty::XpSuperRoughness),
+					material->GetProperty(MaterialProperty::XpDefaultF0), material->GetProperty(MaterialProperty::EmissiveNits));
+				properties[count].drape_tiles = xMath::Vec4(material->GetProperty(MaterialProperty::XpTilesX), material->GetProperty(MaterialProperty::XpTilesY),
+					material->GetProperty(MaterialProperty::XpTileMapWidth), material->GetProperty(MaterialProperty::XpTileMapHeight));
+				properties[count].drape_decal = xMath::Vec4(material->GetProperty(MaterialProperty::XpDecal0Scale), material->GetProperty(MaterialProperty::XpDecal0Strength),
+					material->GetProperty(MaterialProperty::XpDecal1Scale), material->GetProperty(MaterialProperty::XpDecal1Strength));
+				properties[count].drape_normal_decal = xMath::Vec4(material->GetProperty(MaterialProperty::XpNormalDecal0Scale), material->GetProperty(MaterialProperty::XpNormalDecal0Gain),
+					material->GetProperty(MaterialProperty::XpNormalDecal1Scale), material->GetProperty(MaterialProperty::XpNormalDecal1Gain));
+				properties[count].drape_misc = drapeMode == 2
+					? xMath::Vec4(material->GetProperty(MaterialProperty::XpDrapeMiscR), material->GetProperty(MaterialProperty::XpDrapeMiscG),
+						material->GetProperty(MaterialProperty::XpDrapeMiscB), material->GetProperty(MaterialProperty::XpDrapeMiscA))
+					: xMath::Vec4(material->GetProperty(MaterialProperty::XpDecalAspect), material->GetProperty(MaterialProperty::XpNormalDecalAspect),
+						material->GetProperty(MaterialProperty::XpDrapeMetersU), material->GetProperty(MaterialProperty::XpDrapeMetersV));
+				if (material->GetProperty(MaterialProperty::Terrain) > 0.0f)
+				{
+					const auto vec4 = [material](const MaterialProperty a, const MaterialProperty b, const MaterialProperty c, const MaterialProperty d)
+					{
+						return xMath::Vec4(material->GetProperty(a), material->GetProperty(b), material->GetProperty(c), material->GetProperty(d));
+					};
+					properties[count].terrain_base = vec4(MaterialProperty::XpTerrainProjectedS, MaterialProperty::XpTerrainProjectedT, MaterialProperty::XpTerrainNormalRatio, MaterialProperty::XpTerrainFlags);
+					properties[count].terrain_composite = vec4(MaterialProperty::XpTerrainCompositeS, MaterialProperty::XpTerrainCompositeT, MaterialProperty::XpTerrainCompositeCenter, MaterialProperty::XpTerrainCompositeWidth);
+					properties[count].terrain_slope = vec4(MaterialProperty::XpTerrainHillStart, MaterialProperty::XpTerrainHillEnd, MaterialProperty::XpTerrainCliffStart, MaterialProperty::XpTerrainCliffEnd);
+					properties[count].terrain_slope_scale = vec4(MaterialProperty::XpTerrainHillS, MaterialProperty::XpTerrainHillT, MaterialProperty::XpTerrainCliffS, MaterialProperty::XpTerrainCliffT);
+					properties[count].terrain_lit = vec4(MaterialProperty::XpTerrainLitS, MaterialProperty::XpTerrainLitT, MaterialProperty::XpTerrainLitFadeStart, MaterialProperty::XpTerrainLitFadeEnd);
+					properties[count].terrain_far = vec4(MaterialProperty::XpTerrainFarS, MaterialProperty::XpTerrainFarT, MaterialProperty::XpTerrainFarStart, MaterialProperty::XpTerrainFarEnd);
+				}
+				else if (material->GetProperty(MaterialProperty::Water) > 0.0f)
+				{
+					// water.slang: the tile's water map over the world's x / z
+					properties[count].terrain_base = xMath::Vec4(material->GetProperty(MaterialProperty::XpWaterMapScaleU), material->GetProperty(MaterialProperty::XpWaterMapOffsetU),
+						material->GetProperty(MaterialProperty::XpWaterMapScaleV), material->GetProperty(MaterialProperty::XpWaterMapOffsetV));
+				}
 			}
 	
 			// textures, in the order of the material_texture_index_* slots in resources.slang

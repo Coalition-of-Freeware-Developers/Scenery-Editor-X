@@ -59,12 +59,14 @@ namespace SceneryEditorX
 		};
 
 		constexpr ShaderType VS = ShaderType::Vertex;
+		constexpr ShaderType TCS = ShaderType::TessellationControl;
+		constexpr ShaderType TES = ShaderType::TessellationEvaluation;
 		constexpr ShaderType FS = ShaderType::Fragment;
 		constexpr ShaderType CS = ShaderType::Compute;
 
 		[[nodiscard]] const std::vector<ShaderRegistration>& GetRegistrations()
 		{
-			// Variants of one source (bloom, skysphere, blur, cloud_noise, indirect draws) are selected with
+			// Variants of one source (bloom, atmosphere LUTs, probe filters, blur, cloud_noise, indirect draws) are selected with
 			// preprocessor defines; each define set is compiled into its own program.
 			static const std::vector<ShaderRegistration> registrations = {
 				// geometry
@@ -79,6 +81,10 @@ namespace SceneryEditorX
 				{ Renderer_Shader::gpu_cull_late,          "gpu_cull_late",          "gpu_cull.slang",      {CS},     {{"GPU_CULL_LATE"}}, VertexType::MaxEnum, true },
 				{ Renderer_Shader::depth_prepass_gpu,      "depth_prepass_gpu",      "depth_prepass.slang", {VS, FS}, {{"GPU_SCENE"}},    VertexType::MaxEnum, true },
 				{ Renderer_Shader::gbuffer_gpu,            "gbuffer_gpu",            "gbuffer.slang",       {VS, FS}, {{"GPU_SCENE"}},    VertexType::MaxEnum, true },
+				// sun shadows (plan Phase 7): GPU-scene instances into each cascade, the casters drawn into shadow_csm
+				{ Renderer_Shader::gpu_cull_shadow,        "gpu_cull_shadow",        "gpu_cull.slang",      {CS},     {{"GPU_CULL_SHADOW"}}, VertexType::MaxEnum, true },
+				{ Renderer_Shader::depth_light_csm,        "depth_light_csm",        "depth_light.slang",   {VS, FS}, {{"CSM"}},          VertexType::PositionUvNormalTangent, true },
+				{ Renderer_Shader::depth_light_csm_gpu,    "depth_light_csm_gpu",    "depth_light.slang",   {VS, FS}, {{"CSM"}, {"GPU_SCENE"}}, VertexType::MaxEnum, true },
 
 				// editor overlays
 				{ Renderer_Shader::grid,    "grid",    "grid.slang",    {VS, FS},     {}, VertexType::PositionUvNormalTangent, true },
@@ -95,36 +101,83 @@ namespace SceneryEditorX
 				// lighting
 				{ Renderer_Shader::light,                                "light",                                "light.slang",             {CS}, {}, VertexType::MaxEnum, true },
 				{ Renderer_Shader::light_composition,                    "light_composition",                    "light_composition.slang", {CS}, {}, VertexType::MaxEnum, true },
-				{ Renderer_Shader::light_image_based,                    "light_image_based",                    "light_base.slang",        {CS}, {}, VertexType::MaxEnum, true },
 				{ Renderer_Shader::light_integration_brdf_specular_lut,  "light_integration_brdf_specular_lut",  "light_integration.slang", {CS}, {}, VertexType::MaxEnum, true },
 				{ Renderer_Shader::light_integration_environment_filter, "light_integration_environment_filter", "light_integration.slang", {CS}, {}, VertexType::MaxEnum, true },
-				{ Renderer_Shader::light_reflections,                    "light_reflections",                    "light_reflections.slang", {CS} },
-				{ Renderer_Shader::ssao,                                 "ssao",                                 "ssao.slang",              {CS} },
+				{ Renderer_Shader::ssao,                                 "ssao",                                 "ssao.slang",              {CS}, {}, VertexType::MaxEnum, true }, // GTAO, the AO fallback
 
-				// sky / atmosphere
-				{ Renderer_Shader::skysphere,                   "skysphere",                   "skysphere.slang", {CS}, {},                        VertexType::MaxEnum, true },
-				{ Renderer_Shader::skysphere_lut,               "skysphere_lut",               "skysphere.slang", {CS}, {{"LUT"}},                 VertexType::MaxEnum, true },
-				{ Renderer_Shader::skysphere_transmittance_lut, "skysphere_transmittance_lut", "skysphere.slang", {CS}, {{"TRANSMITTANCE_LUT"}},   VertexType::MaxEnum, true },
-				{ Renderer_Shader::skysphere_multiscatter_lut,  "skysphere_multiscatter_lut",  "skysphere.slang", {CS}, {{"MULTISCATTER_LUT"}},    VertexType::MaxEnum, true },
+				// the min / max depth pyramid (plan Phase 9; XP12: z_minmax), also occlusion culling's Hi-Z, and screen-space
+				// reflections (XP12: ssr_deferred) with the history they read
+				{ Renderer_Shader::z_minmax_depth,   "z_minmax_depth",   "z_minmax.slang",  {CS}, {{"ZMINMAX_FROM_DEPTH"}}, VertexType::MaxEnum, true },
+				{ Renderer_Shader::z_minmax,         "z_minmax",         "z_minmax.slang",  {CS}, {},                       VertexType::MaxEnum, true },
+				{ Renderer_Shader::ssr_trace,        "ssr_trace",        "ssr_trace.slang", {CS}, {{"SSR_TRACE"}},          VertexType::MaxEnum, true },
+				{ Renderer_Shader::ssr_history_copy, "ssr_history_copy", "ssr_trace.slang", {CS}, {{"SSR_HISTORY_COPY"}},   VertexType::MaxEnum, true },
+				{ Renderer_Shader::ssr_history_mip,  "ssr_history_mip",  "ssr_trace.slang", {CS}, {{"SSR_HISTORY_MIP"}},    VertexType::MaxEnum, true },
+
+				// ambient occlusion (plan Phase 8; XP12: cacao): AMD FidelityFX CACAO's kernels, X-Plane's qualities (renderer/cacao.h)
+				{ Renderer_Shader::cacao_prepare_depths,    "cacao_prepare_depths",     "cacao.slang", {CS}, {{"CACAO_PREPARE_DEPTHS"}}, VertexType::MaxEnum, true },
+				{ Renderer_Shader::cacao_prepare_normals,   "cacao_prepare_normals",    "cacao.slang", {CS}, {{"CACAO_PREPARE_NORMALS"}}, VertexType::MaxEnum, true },
+				{ Renderer_Shader::cacao_generate_q1,       "cacao_generate_q1",        "cacao.slang", {CS}, {{"CACAO_GENERATE"}, {"CACAO_QUALITY", "1"}}, VertexType::MaxEnum, true },
+				{ Renderer_Shader::cacao_generate_q2,       "cacao_generate_q2",        "cacao.slang", {CS}, {{"CACAO_GENERATE"}, {"CACAO_QUALITY", "2"}}, VertexType::MaxEnum, true },
+				{ Renderer_Shader::cacao_generate_q3,       "cacao_generate_q3",        "cacao.slang", {CS}, {{"CACAO_GENERATE"}, {"CACAO_QUALITY", "3"}}, VertexType::MaxEnum, true },
+				{ Renderer_Shader::cacao_generate_q3_base,  "cacao_generate_q3_base",   "cacao.slang", {CS}, {{"CACAO_GENERATE_BASE"}}, VertexType::MaxEnum, true },
+				{ Renderer_Shader::cacao_importance_map,    "cacao_importance_map",     "cacao.slang", {CS}, {{"CACAO_IMPORTANCE_MAP"}}, VertexType::MaxEnum, true },
+				{ Renderer_Shader::cacao_importance_map_a,  "cacao_importance_map_a",   "cacao.slang", {CS}, {{"CACAO_IMPORTANCE_MAP_A"}}, VertexType::MaxEnum, true },
+				{ Renderer_Shader::cacao_importance_map_b,  "cacao_importance_map_b",   "cacao.slang", {CS}, {{"CACAO_IMPORTANCE_MAP_B"}}, VertexType::MaxEnum, true },
+				{ Renderer_Shader::cacao_blur,              "cacao_blur",               "cacao.slang", {CS}, {{"CACAO_BLUR"}}, VertexType::MaxEnum, true },
+				{ Renderer_Shader::cacao_apply,             "cacao_apply",              "cacao.slang", {CS}, {{"CACAO_APPLY"}}, VertexType::MaxEnum, true },
+				{ Renderer_Shader::cacao_upscale,           "cacao_upscale",            "cacao.slang", {CS}, {{"CACAO_UPSCALE"}, {"CACAO_SMART", "0"}}, VertexType::MaxEnum, true },
+				{ Renderer_Shader::cacao_upscale_smart,     "cacao_upscale_smart",      "cacao.slang", {CS}, {{"CACAO_UPSCALE"}, {"CACAO_SMART", "1"}}, VertexType::MaxEnum, true },
+
+				// water (plan Phase 11; XP12: ocean_spectrum, compute_fft, ocean_bake_textures, ocean_shading): the FFT ocean's
+				// cascades and the tessellated surface
+				{ Renderer_Shader::ocean_spectrum, "ocean_spectrum", "ocean.slang", {CS}, {{"OCEAN_SPECTRUM"}}, VertexType::MaxEnum, true },
+				{ Renderer_Shader::ocean_evolve,   "ocean_evolve",   "ocean.slang", {CS}, {{"OCEAN_EVOLVE"}},   VertexType::MaxEnum, true },
+				{ Renderer_Shader::ocean_fft,      "ocean_fft",      "ocean.slang", {CS}, {{"OCEAN_FFT"}},      VertexType::MaxEnum, true },
+				{ Renderer_Shader::ocean_bake,     "ocean_bake",     "ocean.slang", {CS}, {{"OCEAN_BAKE"}},     VertexType::MaxEnum, true },
+				{ Renderer_Shader::ocean_mip,      "ocean_mip",      "ocean.slang", {CS}, {{"OCEAN_MIP"}},      VertexType::MaxEnum, true },
+				{ Renderer_Shader::water,          "water",          "water.slang", {VS, TCS, TES, FS}, {}, VertexType::PositionUvNormalTangent, true },
+
+				// the atmosphere (plan Phase 6), the sky, environment probes
+				{ Renderer_Shader::atmosphere_transmittance_lut, "atmosphere_transmittance_lut", "atmosphere_luts.slang",    {CS}, {{"TRANSMITTANCE"}}, VertexType::MaxEnum, true },
+				{ Renderer_Shader::atmosphere_multiscatter_lut,  "atmosphere_multiscatter_lut",  "atmosphere_luts.slang",    {CS}, {{"MULTISCATTER"}},  VertexType::MaxEnum, true },
+				{ Renderer_Shader::sky_view_lut,                 "sky_view_lut",                 "sky_view_lut.slang",       {CS}, {},                  VertexType::MaxEnum, true },
+				{ Renderer_Shader::sky_ambient_lut,              "sky_ambient_lut",              "sky_ambient_lut.slang",    {CS}, {},                  VertexType::MaxEnum, true },
+				{ Renderer_Shader::aerial_perspective,           "aerial_perspective",           "aerial_perspective.slang", {CS}, {},                  VertexType::MaxEnum, true },
+				{ Renderer_Shader::sky,                          "sky",                          "sky.slang",                {CS}, {},                  VertexType::MaxEnum, true },
+				{ Renderer_Shader::cube_filter_capture,          "cube_filter_capture",          "cube_filter.slang",        {CS}, {{"CAPTURE"}},       VertexType::MaxEnum, true },
+				{ Renderer_Shader::cube_filter_ggx,              "cube_filter_ggx",              "cube_filter.slang",        {CS}, {{"FILTER"}},        VertexType::MaxEnum, true },
+				{ Renderer_Shader::cube_filter_irradiance,       "cube_filter_irradiance",       "cube_filter.slang",        {CS}, {{"IRRADIANCE"}},    VertexType::MaxEnum, true },
 				{ Renderer_Shader::cloud_noise_shape,           "cloud_noise_shape",           "cloud_noise.slang",   {CS}, {{"SHAPE_NOISE"}} },
 				{ Renderer_Shader::cloud_noise_detail,          "cloud_noise_detail",          "cloud_noise.slang",   {CS}, {{"DETAIL_NOISE"}} },
-				{ Renderer_Shader::cloud_shadow,                "cloud_shadow",                "cloud_shadows.slang", {CS} },
+				{ Renderer_Shader::cloud_shadow,                "cloud_shadow",                "cloud_shadows.slang", {CS}, {}, VertexType::MaxEnum, true }, // cloud shadows (plan TASK-055)
 
 				// post-processing
 				{ Renderer_Shader::blur_gaussian,            "blur_gaussian",            "blur.slang",   {CS} },
 				{ Renderer_Shader::blur_gaussian_bilateral,  "blur_gaussian_bilateral",  "blur.slang",   {CS}, {{"PASS_BLUR_GAUSSIAN_BILATERAL"}} },
-				{ Renderer_Shader::bloom_luminance,          "bloom_luminance",          "bloom.slang",  {CS}, {{"LUMINANCE"}} },
-				{ Renderer_Shader::bloom_downsample,         "bloom_downsample",         "bloom.slang",  {CS}, {{"DOWNSAMPLE"}} },
-				{ Renderer_Shader::bloom_upsample_blend_mip, "bloom_upsample_blend_mip", "bloom.slang",  {CS}, {{"UPSAMPLE_BLEND_MIP"}} },
+				{ Renderer_Shader::bloom_luminance,          "bloom_luminance",          "bloom.slang",  {CS}, {{"LUMINANCE"}},          VertexType::MaxEnum, true },
+				{ Renderer_Shader::bloom_downsample,         "bloom_downsample",         "bloom.slang",  {CS}, {{"DOWNSAMPLE"}},         VertexType::MaxEnum, true },
+				{ Renderer_Shader::bloom_upsample_blend_mip, "bloom_upsample_blend_mip", "bloom.slang",  {CS}, {{"UPSAMPLE_BLEND_MIP"}}, VertexType::MaxEnum, true },
 				{ Renderer_Shader::bloom_blend_frame,        "bloom_blend_frame",        "bloom.slang",  {CS}, {{"BLEND_FRAME"}} },
-				{ Renderer_Shader::auto_exposure,            "auto_exposure",            "auto_exposure.slang", {CS} },
 				{ Renderer_Shader::dithering,                "dithering",                "dither.slang", {CS} },
-				{ Renderer_Shader::output,                   "output",                   "output.slang", {CS} },
 				{ Renderer_Shader::blit,                     "blit",                     "blit.slang",   {CS}, {}, VertexType::MaxEnum, true },
-				{ Renderer_Shader::downsample_min,           "downsample_min",           "downsample_min.slang", {CS}, {}, VertexType::MaxEnum, true }, // Hi-Z (Pass_Downscale, Min)
+				{ Renderer_Shader::reference_overlay,        "reference_overlay",        "reference_overlay.slang", {CS}, {}, VertexType::MaxEnum, true }, // viewport REFERENCE menu
+				{ Renderer_Shader::tonemap,                  "tonemap",                  "tonemap.slang",    {CS}, {}, VertexType::MaxEnum, true }, // output transform
+				{ Renderer_Shader::debug_view,               "debug_view",               "debug_view.slang", {CS}, {}, VertexType::MaxEnum, true }, // RENDERER panel DEBUG VIEW
+
+				// exposure and the output chain (plan Phase 5): HDR clean-up, metering, local tone mapping, bloom, AA, upscaling
+				{ Renderer_Shader::fix_hdr,                    "fix_hdr",                    "fix_hdr.slang",             {CS}, {},                VertexType::MaxEnum, true },
+				{ Renderer_Shader::luminance_histogram,        "luminance_histogram",        "luminance_histogram.slang", {CS}, {},                VertexType::MaxEnum, true },
+				{ Renderer_Shader::exposure_adapt,             "exposure_adapt",             "exposure_adapt.slang",      {CS}, {},                VertexType::MaxEnum, true },
+				{ Renderer_Shader::exposure_fusion_exposures,  "exposure_fusion_exposures",  "exposure_fusion.slang",     {CS}, {{"EXPOSURES"}},   VertexType::MaxEnum, true },
+				{ Renderer_Shader::exposure_fusion_downsample, "exposure_fusion_downsample", "exposure_fusion.slang",     {CS}, {{"DOWNSAMPLE"}},  VertexType::MaxEnum, true },
+				{ Renderer_Shader::exposure_fusion_collapse,   "exposure_fusion_collapse",   "exposure_fusion.slang",     {CS}, {{"COLLAPSE"}},    VertexType::MaxEnum, true },
+				{ Renderer_Shader::exposure_fusion_guide,      "exposure_fusion_guide",      "exposure_fusion.slang",     {CS}, {{"GUIDE"}},       VertexType::MaxEnum, true },
+				{ Renderer_Shader::fxaa,                       "fxaa",                       "fxaa.slang",                {CS}, {},                VertexType::MaxEnum, true },
+				{ Renderer_Shader::fsr1_easu,                  "fsr1_easu",                  "fsr1_easu.slang",           {CS}, {},                VertexType::MaxEnum, true },
+				{ Renderer_Shader::fsr1_rcas,                  "fsr1_rcas",                  "fsr1_rcas.slang",           {CS}, {},                VertexType::MaxEnum, true },
 
 				// Not registered: ffx_spd_* (scale.slang has no entry point yet), sss_bend (sss_blend.slang disabled),
-				// tessellation, depth_of_field, fxaa and the particle / texture-compression passes.
+				// tessellation, depth_of_field and the particle / texture-compression passes.
 			};
 
 			return registrations;

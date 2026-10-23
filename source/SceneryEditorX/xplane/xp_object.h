@@ -29,6 +29,7 @@
  * -------------------------------------------------------
  */
 #pragma once
+#include "xp_assets.h"
 #include "xp_lights.h"
 #include "xp_obj8.h"
 #include "xp_texture_loader.h"
@@ -72,19 +73,26 @@ namespace SceneryEditorX::XPlane
 		ResolvedLight resolved;
 	};
 
+	/* @brief A detail or normal decal of an OBJ (its rows and DECAL_LIB's), with its texture. */
+	struct ObjectDecal
+	{
+		PolygonDecal decal;					// scaleS / scaleT: repeats per albedo tile (per unit of the OBJ's UVs)
+		Ref<ImageResource> image;
+	};
+
 	/* @brief The textures an OBJ resolved, with what the loader learned about them. */
 	struct ObjectTextures
 	{
 		Ref<ImageResource> albedo;
 		Ref<ImageResource> normal;
 		Ref<ImageResource> lit;
-		Ref<ImageResource> packed;			// Occlusion / roughness / metalness built from the normal map
 		Ref<ImageResource> drapedAlbedo;
 		Ref<ImageResource> drapedNormal;
 		TextureInfo albedoInfo;
 		TextureInfo normalInfo;
 		TextureInfo litInfo;
 		TextureInfo drapedInfo;
+		std::vector<ObjectDecal> decals;	// Up to two detail and two normal decals, in file order
 	};
 
 	/* @brief Where an object file is in its load. */
@@ -170,10 +178,6 @@ namespace SceneryEditorX::XPlane
 		 */
 		static void ClearCache();
 
-		/* @brief Shows or hides LIT textures on every loaded object (night lighting). */
-		static void SetLitTexturesVisible(bool visible);
-		static bool AreLitTexturesVisible();
-
 		/**
 		 * @brief X-Plane's lights.txt, loaded on first use from the X-Plane install (or, without one, from the
 		 * install an OBJ lives in). Empty when neither has it. Thread-safe (workers resolve lights with it); the
@@ -218,7 +222,6 @@ namespace SceneryEditorX::XPlane
 		void FinishGeometry();
 		void Fail();
 		uint32_t GetOrCreateMaterial(const Obj8DrawState &state);
-		void ApplyLit(bool visible);
 
 		std::filesystem::path m_Path;
 		ObjectLoadState m_State = ObjectLoadState::NotLoaded;

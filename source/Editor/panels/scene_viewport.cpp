@@ -37,13 +37,17 @@
 #include <Editor/core/facade_tool.h>
 #include <Editor/core/node_tool.h>
 #include <Editor/core/transform_tool.h>
+#include <Editor/core/viewport_menus.h>
 #include <Editor/core/viewport_view.h>
+#include <Editor/settings/editor_preferences.h>
 #include <SceneryEditorX/scene/scene.h>
 #include <SceneryEditorX/renderer/renderer.h>
 #include <SceneryEditorX/renderer/font/font_awesome.h>
 #include <SceneryEditorX/renderer/ui/ui_impl.h>
 #include <SceneryEditorX/scene/camera.h>
 #include <SceneryEditorX/xplane/xp_library.h>
+#include <SceneryEditorX/xplane/xp_texture_loader.h>
+#include <portable-file-dialogs.h>
 
 // -------------------------------------------------------
 
@@ -58,6 +62,25 @@ namespace SceneryEditorX
 		constexpr uint32_t MIN_RENDER_SIZE = 64;
 
 		constexpr float TOOLBAR_HEIGHT = 30.0f;
+
+		// SetFixedRenderSize(): parity captures render at the reference's size whatever the panel's
+		uint32_t s_FixedWidth = 0;
+		uint32_t s_FixedHeight = 0;
+
+		std::filesystem::path s_RequestedReference;
+		SceneViewport::ReferenceView s_RequestedReferenceView = SceneViewport::ReferenceView::Split;
+	}
+
+	void SceneViewport::RequestReference(const std::filesystem::path &png, const ReferenceView view)
+	{
+		s_RequestedReference = png;
+		s_RequestedReferenceView = view;
+	}
+
+	void SceneViewport::SetFixedRenderSize(const uint32_t width, const uint32_t height)
+	{
+		s_FixedWidth = width;
+		s_FixedHeight = height;
 	}
 
 	SceneViewport::SceneViewport(EditorContext *context) : m_Context(context)
@@ -67,42 +90,17 @@ namespace SceneryEditorX
 
 	bool SceneViewport::PickGround(const float u, const float v, const float aspect, float out[3])
 	{
-		// Same camera the renderer draws through: the primary camera entity (pitch in x, yaw in y, as Camera::ProcessInput).
-		Scene *scene = Scene::GetActive();
-		if (!scene || aspect <= 0.0f)
+		// Same camera the renderer draws through (perspective or orthographic): a unit-high image of the given aspect
+		if (aspect <= 0.0f)
 			return false;
-
-		auto view = scene->GetRegistry().view<TransformComponent, CameraComponent>();
-		for (const entt::entity handle : view)
-		{
-			const CameraComponent &camera = view.get<CameraComponent>(handle);
-			if (!camera.isPrimary)
-				continue;
-
-			const TransformComponent &transform = view.get<TransformComponent>(handle);
-			const Vec3 euler = transform.GetRotationEuler();
-			const float cosPitch = std::cos(euler.x);
-			const Vec3 forward(cosPitch * std::sin(euler.y), std::sin(euler.x), cosPitch * std::cos(euler.y));
-			const Vec3 right = xMath::Normalize(xMath::Cross(forward, Vec3(0.0f, 1.0f, 0.0f)));
-			const Vec3 up = xMath::Cross(right, forward);
-
-			const float tanX = std::tan(camera.horizontalFov_Rad * 0.5f);
-			const float tanY = tanX / aspect;
-			const float ndcX = u * 2.0f - 1.0f;
-			const float ndcY = 1.0f - v * 2.0f;
-			const Vec3 direction = xMath::Normalize(forward + right * (ndcX * tanX) + up * (ndcY * tanY));
-
-			const Vec3 &origin = transform.translation;
-			if (direction.y >= -1e-4f)
-				return false; // looking at or above the horizon
-
-			const float t = -origin.y / direction.y;
-			out[0] = origin.x + direction.x * t;
-			out[1] = 0.0f;
-			out[2] = origin.z + direction.z * t;
-			return true;
-		}
-		return false;
+		const ViewportView view = ViewportView::Build(ImVec2(0.0f, 0.0f), ImVec2(aspect, 1.0f), aspect);
+		Point3 hit;
+		if (!view.valid || !view.RayToGround(ImVec2(u * aspect, v), hit))
+			return false;	// Looking at or above the horizon
+		out[0] = static_cast<float>(hit.x);
+		out[1] = static_cast<float>(hit.y);
+		out[2] = static_cast<float>(hit.z);
+		return true;
 	}
 
 	void SceneViewport::OnUIRender(bool &isOpen)
@@ -124,11 +122,30 @@ namespace SceneryEditorX
 			Camera *camera = EditorCamera::Get();
 			DrawToolbar(camera);
 
-			const ImVec2 imageMin = ImGui::GetCursorScreenPos();
-			const ImVec2 imageSize = ImGui::GetContentRegionAvail();
-			const uint32_t width  = static_cast<uint32_t>(std::max(imageSize.x, 0.0f));
-			const uint32_t height = static_cast<uint32_t>(std::max(imageSize.y, 0.0f));
+			const ImVec2 panelMin = ImGui::GetCursorScreenPos();
+			const ImVec2 panelSize = ImGui::GetContentRegionAvail();
+			ImVec2 imageMin = panelMin;
+			ImVec2 imageSize = panelSize;
+			uint32_t width  = static_cast<uint32_t>(std::max(panelSize.x, 0.0f));
+			uint32_t height = static_cast<uint32_t>(std::max(panelSize.y, 0.0f));
+			if (s_FixedWidth > 0 && s_FixedHeight > 0 && panelSize.x > 0.0f && panelSize.y > 0.0f)
+			{
+				// A fixed render size is shown fitted into the panel, centered, with black bars
+				width = s_FixedWidth;
+				height = s_FixedHeight;
+				const float scale = std::min(panelSize.x / static_cast<float>(width), panelSize.y / static_cast<float>(height));
+				imageSize = ImVec2(std::floor(static_cast<float>(width) * scale), std::floor(static_cast<float>(height) * scale));
+				imageMin = ImVec2(std::floor(panelMin.x + (panelSize.x - imageSize.x) * 0.5f), std::floor(panelMin.y + (panelSize.y - imageSize.y) * 0.5f));
+				ImGui::GetWindowDrawList()->AddRectFilled(panelMin, ImVec2(panelMin.x + panelSize.x, panelMin.y + panelSize.y), IM_COL32(0, 0, 0, 255));
+			}
 			UpdateRenderSize(width, height);
+			if (!s_RequestedReference.empty())
+			{
+				if (LoadReference(s_RequestedReference))
+					m_ReferenceView = s_RequestedReferenceView;
+				s_RequestedReference.clear();
+			}
+			UpdateReferenceOverlay();
 
 			m_ViewportBounds[0] = Vec2(imageMin.x, imageMin.y);
 			m_ViewportBounds[1] = Vec2(imageMin.x + imageSize.x, imageMin.y + imageSize.y);
@@ -154,13 +171,22 @@ namespace SceneryEditorX
 						EditorTheme::ToU32(EditorTheme::Palette::TextDisabled), message);
 				}
 
-				// The editing tools draw over the image. Their handles come before the image's input item: ImGuizmo only
-				// takes a click while no ImGui item is hovered, so the item is left out while a handle has the mouse.
+				// The editing tools draw over the image. Their handles (gizmo, nodes) come before the image's input item,
+				// which is left out while a handle has the mouse so the click goes to the handle.
 				const float renderWidth = m_AppliedWidth > 0 ? static_cast<float>(m_AppliedWidth) : imageSize.x;
 				const float renderHeight = m_AppliedHeight > 0 ? static_cast<float>(m_AppliedHeight) : imageSize.y;
 				const ViewportView view = ViewportView::Build(imageMin, imageSize, renderWidth / renderHeight);
 				const bool imageHovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) && ImGui::IsMouseHoveringRect(imageMin, imageMax);
-				const bool toolHasMouse = EditorTools::BeginViewport(m_Context, view, imageHovered);
+				const bool splitHasMouse = DrawReferenceSplit(imageMin, imageSize);
+				const bool toolHasMouse = EditorTools::BeginViewport(m_Context, view, imageHovered && !splitHasMouse && !EditorCamera::IsNavigating()) || splitHasMouse;
+
+				// Camera navigation with the user's keymap: drags start over the image unless a tool, gizmo or menu has the mouse
+				ViewportCamera::Input navigation;
+				navigation.hovered = imageHovered && !splitHasMouse;
+				navigation.blocked = toolHasMouse || EditorTools::IsBusy() || ViewportMenus::IsOpen();
+				navigation.imageSize = imageSize;
+				navigation.aspect = renderWidth / renderHeight;
+				EditorCamera::Update(navigation);
 
 				bool canvasHovered = false;
 				ImGui::SetCursorScreenPos(imageMin);
@@ -330,20 +356,20 @@ namespace SceneryEditorX
 
 		ImGui::SameLine(0.0f, 10.0f * dpi);
 		ImGui::BeginDisabled(!hasCamera);
-		if (EditorUI::StripButton(SEDX_ICON_REFRESH, "Orbit navigation\nAlt+LMB orbit, MMB pan, RMB look, wheel zoom", EditorCamera::IsMode(ORBIT), buttonSize))
+		const std::string orbitTip = std::string("Orbit navigation (") + GetNavigationKeymapName(EditorPreferences::Get().keymap) + " keymap)\n" +
+									 ViewportCamera::GetKeymapSummary(EditorPreferences::Get().keymap) + "\nRight mouse looks around. Edit > Preferences changes the keymap";
+		if (EditorUI::StripButton(SEDX_ICON_REFRESH, orbitTip.c_str(), EditorCamera::IsMode(ORBIT), buttonSize))
 			EditorCamera::SetMode(ORBIT);
 		ImGui::SameLine(0.0f, 2.0f * dpi);
-		if (EditorUI::StripButton(SEDX_ICON_VIDEO_CAMERA, "Fly navigation\nRMB look, hold RMB + WASD move, Q/E down/up", EditorCamera::IsMode(FLY), buttonSize))
+		if (EditorUI::StripButton(SEDX_ICON_VIDEO_CAMERA, "Fly navigation\nRMB look, hold RMB + WASD move, Q/E down/up; the wheel moves the camera", EditorCamera::IsMode(FLY), buttonSize))
 			EditorCamera::SetMode(FLY);
 
 		ImGui::SameLine(0.0f, 10.0f * dpi);
-		if (EditorUI::StripButton(SEDX_ICON_CUBE, "Perspective projection", EditorCamera::IsProjection(CameraType::Perspective), buttonSize))
-			EditorCamera::SetProjection(CameraType::Perspective);
-		ImGui::SameLine(0.0f, 2.0f * dpi);
-		if (EditorUI::StripButton(SEDX_ICON_TH_LARGE, "Orthographic projection", EditorCamera::IsProjection(CameraType::Orthographic), buttonSize))
-			EditorCamera::SetProjection(CameraType::Orthographic);
+		DrawViewMenu(buttonSize);
 
-		// Right: reset view.
+		// Right: the reference image, reset view.
+		ImGui::SameLine(rightEdge - buttonSize * 2.0f - 2.0f * dpi);
+		DrawReferenceMenu(buttonSize);
 		ImGui::SameLine(rightEdge - buttonSize);
 		if (EditorUI::StripButton(SEDX_ICON_CROSSHAIRS, "Reset camera to the startup view", false, buttonSize))
 			EditorCamera::Reset();
@@ -362,7 +388,7 @@ namespace SceneryEditorX
 		char text[128];
 		if (camera)
 		{
-			snprintf(text, sizeof(text), "%s  |  %s  |  %u x %u", EditorCamera::GetModeName(),
+			snprintf(text, sizeof(text), "%s  |  %s %s  |  %u x %u", EditorCamera::GetModeName(), ViewportCamera::GetPresetName(EditorCamera::GetViewPreset()),
 				EditorCamera::IsProjection(CameraType::Orthographic) ? "Orthographic" : "Perspective", m_AppliedWidth, m_AppliedHeight);
 		}
 		else
@@ -378,6 +404,162 @@ namespace SceneryEditorX
 		ImDrawList *drawList = ImGui::GetWindowDrawList();
 		drawList->AddRectFilled(boxMin, boxMax, ToU32(ImVec4(Palette::Separator.x, Palette::Separator.y, Palette::Separator.z, 0.75f)), 2.0f * dpi);
 		drawList->AddText(ImVec2(boxMin.x + padding.x, boxMin.y + padding.y), ToU32(Palette::TextLabel), text);
+
+		if (m_Reference && m_ReferenceView != ReferenceView::Off)
+		{
+			static constexpr const char *views[] = { "", "split", "difference", "flicker" };
+			const std::string name = m_ReferencePath.filename().string();
+			snprintf(text, sizeof(text), "REFERENCE  %s  |  %s", name.c_str(), views[static_cast<int>(m_ReferenceView)]);
+			const ImVec2 size = ImGui::CalcTextSize(text);
+			const ImVec2 min(boxMin.x, boxMax.y + 4.0f * dpi);
+			const ImVec2 max(min.x + size.x + padding.x * 2.0f, min.y + size.y + padding.y * 2.0f);
+			drawList->AddRectFilled(min, max, ToU32(ImVec4(Palette::Separator.x, Palette::Separator.y, Palette::Separator.z, 0.75f)), 2.0f * dpi);
+			drawList->AddText(ImVec2(min.x + padding.x, min.y + padding.y), ToU32(Palette::TextLabel), text);
+		}
+	}
+
+	void SceneViewport::DrawViewMenu(const float buttonSize)
+	{
+		// Projection toggle (numpad 5), then the view presets in a drop-down
+		const bool orthographic = EditorCamera::IsProjection(CameraType::Orthographic);
+		if (EditorUI::StripButton(orthographic ? SEDX_ICON_TH_LARGE : SEDX_ICON_CUBE,
+				orthographic ? "Orthographic projection (Numpad 5)\nClick for perspective" : "Perspective projection (Numpad 5)\nClick for orthographic", orthographic, buttonSize, EditorUI::StripStyle::Tinted))
+			EditorCamera::ToggleProjection();
+
+		using ViewportCamera::ViewPreset;
+		const ViewPreset current = EditorCamera::GetViewPreset();
+		ImGui::SameLine(0.0f, 2.0f * ImGui::GetStyle().FontScaleDpi);
+		if (EditorUI::StripButton(SEDX_ICON_EYE, (std::string("View: ") + ViewportCamera::GetPresetName(current) + "\nTop, front, side views and framing").c_str(), current != ViewPreset::Free, buttonSize))
+			ImGui::OpenPopup("##ViewMenu");
+
+		if (!ImGui::BeginPopup("##ViewMenu"))
+			return;
+		ImGui::TextUnformatted("VIEW");
+		ImGui::Separator();
+		struct Item
+		{
+			ViewPreset preset;
+			const char *shortcut;
+		};
+		static constexpr Item ITEMS[] = {
+			{ ViewPreset::Top, "Numpad 7" }, { ViewPreset::Bottom, "Ctrl+Numpad 7" }, { ViewPreset::Front, "Numpad 1" },
+			{ ViewPreset::Back, "Ctrl+Numpad 1" }, { ViewPreset::Right, "Numpad 3" }, { ViewPreset::Left, "Ctrl+Numpad 3" },
+		};
+		for (const Item &item : ITEMS)
+		{
+			if (ImGui::MenuItem(ViewportCamera::GetPresetName(item.preset), item.shortcut, current == item.preset))
+				EditorCamera::SetViewPreset(item.preset);
+		}
+		if (ImGui::MenuItem("Opposite Side", "Numpad 9"))
+			EditorCamera::ViewFromOtherSide();
+		ImGui::Separator();
+		if (ImGui::MenuItem("Perspective", "Numpad 5", !orthographic))
+			EditorCamera::SetProjection(CameraType::Perspective);
+		if (ImGui::MenuItem("Orthographic", "Numpad 5", orthographic))
+			EditorCamera::SetProjection(CameraType::Orthographic);
+		ImGui::Separator();
+		if (ImGui::MenuItem("Frame Selection", "Numpad ."))
+			EditorTools::FrameSelection();
+		if (ImGui::MenuItem("Frame All", "Home"))
+			EditorCamera::FrameAll();
+		ImGui::EndPopup();
+	}
+
+	bool SceneViewport::LoadReference(const std::filesystem::path &png)
+	{
+		XPlane::TextureInfo info;
+		Ref<ImageResource> image = XPlane::TextureLoader::Load(png, XPlane::TextureUsage::Data, &info);
+		if (!image)
+		{
+			EDITOR_ERROR_TAG("Viewport", "Reference image {} could not be loaded: {}", png.string(), info.error);
+			return false;
+		}
+		m_Reference = image;
+		m_ReferencePath = png;
+		if (m_ReferenceView == ReferenceView::Off)
+			m_ReferenceView = ReferenceView::Split;
+		EDITOR_INFO_TAG("Viewport", "Reference image {} ({} x {})", png.string(), info.width, info.height);
+		return true;
+	}
+
+	void SceneViewport::DrawReferenceMenu(const float buttonSize)
+	{
+		const float dpi = ImGui::GetStyle().FontScaleDpi;
+		if (EditorUI::StripButton(SEDX_ICON_PICTURE_O, "Reference image\nCompare the view with an X-Plane 12 screenshot: split, difference or flicker", m_Reference && m_ReferenceView != ReferenceView::Off, buttonSize))
+			ImGui::OpenPopup("##ReferenceMenu");
+
+		if (!ImGui::BeginPopup("##ReferenceMenu"))
+			return;
+
+		ImGui::TextUnformatted("REFERENCE");
+		ImGui::Separator();
+		if (ImGui::MenuItem("Load reference image..."))
+		{
+			const std::string start = m_ReferencePath.empty() ? std::string() : m_ReferencePath.parent_path().string();
+			const std::vector<std::string> files = pfd::open_file("Open a reference image", start, { "PNG images", "*.png", "All files", "*" }).result();
+			if (!files.empty())
+				LoadReference(files.front());
+		}
+		if (m_Reference)
+			ImGui::TextDisabled("%s", m_ReferencePath.filename().string().c_str());
+		else
+			ImGui::TextDisabled("No image loaded");
+
+		ImGui::Separator();
+		ImGui::BeginDisabled(!m_Reference);
+		static constexpr const char *labels[] = { "Off", "Split", "Difference (x gain)", "Flicker (1 Hz)" };
+		for (int i = 0; i < 4; ++i)
+		{
+			if (ImGui::RadioButton(labels[i], m_ReferenceView == static_cast<ReferenceView>(i)))
+				m_ReferenceView = static_cast<ReferenceView>(i);
+		}
+		ImGui::SetNextItemWidth(140.0f * dpi);
+		ImGui::SliderFloat("Difference gain", &m_ReferenceGain, 1.0f, 16.0f, "%.1f");
+		if (ImGui::MenuItem("Clear"))
+		{
+			m_Reference = nullptr;
+			m_ReferencePath.clear();
+			m_ReferenceView = ReferenceView::Off;
+		}
+		ImGui::EndDisabled();
+		ImGui::EndPopup();
+	}
+
+	bool SceneViewport::DrawReferenceSplit(const ImVec2 &imageMin, const ImVec2 &imageSize)
+	{
+		if (!m_Reference || m_ReferenceView != ReferenceView::Split || imageSize.x <= 0.0f)
+			return false;
+
+		const float dpi = ImGui::GetStyle().FontScaleDpi;
+		const float x = imageMin.x + m_ReferenceSplit * imageSize.x;
+		const float halfWidth = 4.0f * dpi;
+		ImGui::SetCursorScreenPos(ImVec2(x - halfWidth, imageMin.y));
+		ImGui::InvisibleButton("##ReferenceSplit", ImVec2(halfWidth * 2.0f, imageSize.y));
+		const bool hovered = ImGui::IsItemHovered();
+		const bool active = ImGui::IsItemActive();
+		if (hovered || active)
+			ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
+		if (active)
+			m_ReferenceSplit = std::clamp((ImGui::GetIO().MousePos.x - imageMin.x) / imageSize.x, 0.0f, 1.0f);
+
+		// A grip in the middle of the line (the renderer draws the line itself into the image)
+		const ImVec2 grip(x, imageMin.y + imageSize.y * 0.5f);
+		ImDrawList *drawList = ImGui::GetWindowDrawList();
+		drawList->AddCircleFilled(grip, 7.0f * dpi, IM_COL32(255, 255, 255, hovered || active ? 255 : 200));
+		return hovered || active;
+	}
+
+	void SceneViewport::UpdateReferenceOverlay() const
+	{
+		Renderer::ReferenceOverlayMode mode = Renderer::ReferenceOverlayMode::Off;
+		switch (m_Reference ? m_ReferenceView : ReferenceView::Off)
+		{
+			case ReferenceView::Split:		mode = Renderer::ReferenceOverlayMode::Split; break;
+			case ReferenceView::Difference:	mode = Renderer::ReferenceOverlayMode::Difference; break;
+			case ReferenceView::Flicker:	mode = std::fmod(ImGui::GetTime(), 1.0) < 0.5 ? Renderer::ReferenceOverlayMode::Reference : Renderer::ReferenceOverlayMode::Off; break;
+			default: break;
+		}
+		Renderer::SetReferenceOverlay(m_Reference, mode, m_ReferenceSplit, m_ReferenceGain);
 	}
 
 	void SceneViewport::UpdateRenderSize(const uint32_t width, const uint32_t height)

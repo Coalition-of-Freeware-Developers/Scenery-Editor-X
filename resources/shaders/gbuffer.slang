@@ -41,6 +41,8 @@ import transforms;
 import structs;
 import color;
 import terrain;
+import xp_material;
+import xp_terrain;
 #ifdef GPU_SCENE
 import gpu_scene;
 #endif
@@ -50,9 +52,11 @@ struct gbuffer
 {
     float4 albedo : SV_Target0;
     float4 normal : SV_Target1;
-    float4 material : SV_Target2;
+    float4 material : SV_Target2;  // R lighting factor (0), G perceptual roughness, B metalness / F0 value, A occlusion
     float2 velocity : SV_Target3;
     uint pick : SV_Target4;        // gbuffer_pick (R32_UINT): editor picking id of the surface, 0 = none
+    float4 emissive : SV_Target5;  // gbuffer_emissive: emissive luminance (nits) x pre-exposure
+    float4 weather : SV_Target6;   // gbuffer_weather: rain / damp, puddles, snow (0.5 + 0.5 s), ice receptivity
 };
 
 // constants
@@ -95,7 +99,7 @@ static float4 sample_texture(gbuffer_vertex vertex, uint texture_index, Surface 
 {
     float4 color;
 
-    if (surface.is_terrain())
+    if (surface.is_terrain() && !GetMaterial().is_xp_material())	// X-Plane terrain (.ter) shades in xp_terrain.slang
     {
         color = sample_reduce_tiling(texture_index, vertex.uv_misc.xy, world_pos);
         float4 tex_rock = sample_reduce_tiling(texture_index + 1, vertex.uv_misc.xy, world_pos);
@@ -106,6 +110,10 @@ static float4 sample_texture(gbuffer_vertex vertex, uint texture_index, Surface 
         float sand_factor = saturate((world_pos.y - sea_level) * 1.333f);
 
         color = lerp(lerp(tex_rock, color, 1.0f - slope), tex_sand, 1.0f - sand_factor);
+    }
+    else if (texture_index == material_texture_index_albedo && GetMaterial().xp_drape_mode() != xp_drape_plain)
+    {
+        color = xp_drape_sample_albedo(GetMaterial(), pass_get_material_index(), vertex.uv_misc.xy);	// tile / marking atlases
     }
     else
     {
@@ -182,10 +190,7 @@ gbuffer main_frag(gbuffer_vertex vertex, bool is_front_face: SV_IsFrontFace)
 
     float4 albedo = material.color;
     float3 normal = vertex.normal.xyz;
-    float roughness = material.roughness;
-    float metalness = material.metallness;
     float occlusion = 1.0f;
-    float emission = 0.0f;
 
     // velocity computation
     float2 position_ndc = uv_to_ndc(vertex.position.xy / (get_resolution_render() * get_resolution_scale()));
@@ -214,13 +219,29 @@ gbuffer main_frag(gbuffer_vertex vertex, bool is_front_face: SV_IsFrontFace)
         vertex.uv_misc.xy = lerp(uv_world, 1.0f - frac(uv_world) + floor(uv_world), invert_mask);
     }
 
+    // X-Plane terrain: its land class's textures, projected from above (xp_terrain.slang)
+    const bool xp_terrain = xp_is_terrain(material);
+    XpTerrainSurface terrain_surface;
+    if (xp_terrain)
+    {
+        terrain_surface = xp_terrain_shade(material, pass_get_material_index(), position_world, vertex.normal, vertex.uv_misc.xy, distance);
+        if (terrain_surface.cut)
+            discard;
+    }
+
     // albedo sampling
     float4 albedo_sample = 1.0f;
-    if (surface.has_texture_albedo())
+    if (xp_terrain)
+    {
+        albedo.rgb *= terrain_surface.albedo;
+        albedo.a = 1.0f;
+    }
+    else if (surface.has_texture_albedo())
     {
         albedo_sample = sample_texture(vertex, material_texture_index_albedo, surface, position_world);
         albedo_sample.rgb = srgb_to_linear(albedo_sample.rgb);
         albedo *= albedo_sample;
+        albedo.rgb = xp_drape_apply_detail_decals(material, pass_get_material_index(), vertex.uv_misc.xy, albedo.rgb);
 
         // Cut-out texels: the depth prepass discards them, but this pass only tests depth (greater-equal, no write),
         // so a cut-out texel with nothing nearer behind it would still be written solid (a decal over pavement, a
@@ -261,24 +282,31 @@ gbuffer main_frag(gbuffer_vertex vertex, bool is_front_face: SV_IsFrontFace)
     // alpha: opaque pass forces alpha to 1 for non-transparent pixels
     albedo.a = lerp(albedo.a, 1.0f, step(albedo_sample.a, 1.0f) * pass_is_opaque());
 
-    // emission
-    if (surface.has_texture_emissive())
+    // emission: X-Plane LIT textures are luminance in nits, pre-exposed like the lighting (never dimmed by daylight)
+    float3 emissive = 0.0f;
+    if (xp_terrain)
+        emissive = terrain_surface.emissive;
+    else
     {
-        float3 emissive = sample_material_texture(material_texture_index_emission, vertex.uv_misc.xy).rgb;
-        albedo.rgb += emissive;
-        emission = luminance(emissive);
+        const float emissive_scale = xp_emissive_scale(material);
+        if (surface.has_texture_emissive())
+            emissive = srgb_to_linear(sample_material_texture(material_texture_index_emission, vertex.uv_misc.xy).rgb) * emissive_scale;
+        if (material.emissive_from_albedo())
+            emissive += albedo.rgb * emissive_scale;
     }
-    emission += luminance(albedo.rgb) * (float)material.emissive_from_albedo();
+
+    // normal map: normal, roughness and metalness / F0 (xp_material.slang)
+    const float4 normal_texel = xp_terrain ? terrain_surface.normal_texel
+                              : (surface.has_texture_normal() ? sample_texture(vertex, material_texture_index_normal, surface, position_world) : float4(0.5f, 0.5f, 1.0f, 1.0f));
+    const XpSurfaceMaterial surface_material = xp_decode_material(material, normal_texel);
+    float roughness = surface_material.roughness;
+    float metalness = surface_material.v;
 
     // normal mapping
     float distance_fade = 1.0f;
     if (surface.has_texture_normal())
     {
-        float3 normal_sample = sample_texture(vertex, material_texture_index_normal, surface, position_world).xyz;
-        float3 tangent_normal = normalize(unpack(normal_sample));
-
-        // reconstruct z for bc5 two-channel normal maps
-        tangent_normal.z = fast_sqrt(max(0.0f, 1.0f - dot(tangent_normal.xy, tangent_normal.xy)));
+        float3 tangent_normal = surface_material.tangent_normal;
 
         // rotate normals to fake water waves/ripples
         if (surface.is_water())
@@ -313,10 +341,26 @@ gbuffer main_frag(gbuffer_vertex vertex, bool is_front_face: SV_IsFrontFace)
             distance_fade = saturate((fade_end - distance) / fade_range);
         }
 
-        float normal_intensity = saturate(max(0.01f, material.normal)) * distance_fade;
-        tangent_normal.xy *= normal_intensity;
+        tangent_normal.xy *= distance_fade;
+
+        // normal decals (terrain, OBJ8) add their slopes to the normal map's (whiteout blend); terrain repeats them per meter of ground
+        if (xp_drape_has_normal_decals(material))
+        {
+            const float2 decal_uv = xp_terrain ? float2(position_world.x, -position_world.z) : vertex.uv_misc.xy;
+            const float3 decal = xp_drape_normal_decals(material, pass_get_material_index(), decal_uv);
+            tangent_normal = normalize(float3(tangent_normal.xy + decal.xy, tangent_normal.z * decal.z));
+        }
+
         float3x3 tangent_to_world = make_tangent_to_world_matrix(vertex.normal, vertex.tangent);
         normal = normalize(mul(tangent_normal, tangent_to_world).xyz);
+    }
+
+    // draped polygons (and terrain without a normal map): normal decals alone; terrain repeats them per meter of ground
+    if (!surface.has_texture_normal() && xp_drape_has_normal_decals(material))
+    {
+        const float2 decal_uv = xp_terrain ? float2(position_world.x, -position_world.z) : vertex.uv_misc.xy;
+        const float3 tangent_normal = xp_drape_normal_decals(material, pass_get_material_index(), decal_uv);
+        normal = normalize(mul(tangent_normal, make_tangent_to_world_matrix(vertex.normal, vertex.tangent)).xyz);
     }
 
     // foliage curved normals
@@ -335,12 +379,13 @@ gbuffer main_frag(gbuffer_vertex vertex, bool is_front_face: SV_IsFrontFace)
         vertex.tangent *= face_sign;
     }
 
-    // packed material texture (occlusion, roughness, metalness)
+    // the editor's own materials: packed material texture (occlusion, roughness, metalness)
+    if (!material.is_xp_material())
     {
         float4 packed = sample_texture(vertex, material_texture_index_packed, surface, position_world);
         occlusion = lerp(occlusion, packed.r, (float)material.has_texture_occlusion());
         roughness *= lerp(1.0f, packed.g, (float)material.has_texture_roughness());
-        metalness *= lerp(1.0f, packed.b, (float)material.has_texture_metalness());
+        metalness = max(metalness * lerp(1.0f, packed.b, (float)material.has_texture_metalness()), 0.04f);
     }
 
     // specular anti-aliasing
@@ -355,12 +400,21 @@ gbuffer main_frag(gbuffer_vertex vertex, bool is_front_face: SV_IsFrontFace)
         roughness = fast_sqrt(saturate(roughness2 + min(variance * adaptive, 0.02f)));
     }
 
+    // Double-sided geometry (ATTR_no_cull, two-sided facade walls) seen from behind: its normal faces the camera too, as
+    // it would from the front, else the lighting and the ambient occlusion see a surface turned away from the viewer
+    // (grass and flowers flipped theirs above; X-Plane trees keep their canopy normals on both faces)
+    if (!is_front_face && !(surface.is_grass_blade() || surface.is_flower()) && !material.is_xp_foliage())
+        normal = -normal;
+
     // output
     gbuffer g_buffer;
     g_buffer.albedo = albedo;
     g_buffer.normal = float4(normal, pass_get_material_index());
-    g_buffer.material = float4(roughness, metalness, emission, occlusion);
+    g_buffer.material = float4(0.0f, roughness, metalness, occlusion);
     g_buffer.velocity = velocity;
     g_buffer.pick = vertex.pick_id;
+    g_buffer.emissive = float4(emissive, 1.0f);
+    // Receptivity until the WEATHER / SNOW_ALBEDO_LUMA rules arrive (plan Phase 12): wets, takes snow and ice, no puddles
+    g_buffer.weather = float4(1.0f, 0.0f, 1.0f, 1.0f);
     return g_buffer;
 }

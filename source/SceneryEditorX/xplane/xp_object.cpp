@@ -76,7 +76,7 @@ namespace SceneryEditorX::XPlane
 		DecodedTexture lit;
 		DecodedTexture drapedAlbedo;
 		DecodedTexture drapedNormal;
-		DecodedTexture packed;
+		std::vector<std::pair<PolygonDecal, DecodedTexture>> decals;
 		float boundsMin[3] = { 0.0f, 0.0f, 0.0f };
 		float boundsMax[3] = { 0.0f, 0.0f, 0.0f };
 		std::string error;
@@ -107,6 +107,11 @@ namespace SceneryEditorX::XPlane
 		 */
 		constexpr float BLEND_SPLIT_ALPHA = 0.9f;
 
+		/* @brief Luminance of a white LIT texel when the OBJ names none (lighting/scenery_ref_nts, X-Plane 12.4.4: 33). */
+		constexpr float DEFAULT_SCENERY_LIT_NITS = 33.0f;
+		/* @brief X-Plane clamps GLOBAL_luminance here (the largest half-float below infinity, minus margin). */
+		constexpr float MAX_LIT_NITS = 65530.0f;
+
 		/* @brief Main-thread time per frame for finishing loads (uploads); one step always runs, so loads progress. */
 		constexpr float UPLOAD_BUDGET_MS = 4.0f;
 
@@ -124,7 +129,7 @@ namespace SceneryEditorX::XPlane
 			UploadLit,
 			UploadDrapedAlbedo,
 			UploadDrapedNormal,
-			UploadPacked,
+			UploadDecals,
 			UploadGeometry
 		};
 
@@ -135,7 +140,6 @@ namespace SceneryEditorX::XPlane
 		uint32_t s_LoadsRequested = 0;								// Since s_Pending was last empty
 		uint32_t s_LoadsFinished = 0;
 		uint64_t s_UpdateFrame = 0;									// Counts ObjectAsset::Update() calls (upload statistics)
-		bool s_LitVisible = false;
 
 		// Workers resolve lights, so the catalog is shared under a lock and replaced, never modified.
 		std::mutex s_LightMutex;
@@ -258,6 +262,53 @@ namespace SceneryEditorX::XPlane
 			return TextureLoader::Decode(file, usage);
 		}
 
+		/**
+		 * @brief The OBJ's detail and normal decals (its rows, then its DECAL_LIB library's), up to two of each, decoded:
+		 * standard shading options (12.1.0+) that draw like the draped polygons' (xp_material.slang xp_drape_*).
+		 */
+		void DecodeDecals(ObjectLoadJob &job, const std::filesystem::path &folder)
+		{
+			std::vector<std::pair<PolygonDecal, std::filesystem::path>> rows;
+			for (const Obj8Decal &row : job.data.decals)
+			{
+				// Back to the row's words: directive, leading numbers, texture, trailing numbers
+				std::vector<std::string> words = { row.directive };
+				for (const float value : row.values)
+					words.push_back(std::to_string(value));
+				words.push_back(row.texture);
+				for (const float value : row.trailing)
+					words.push_back(std::to_string(value));
+				const std::vector<std::string_view> tokens(words.begin(), words.end());
+				PolygonDecal decal;
+				if (ParsePolygonDecalRow(tokens, decal))
+					rows.emplace_back(decal, folder);
+			}
+			if (!job.data.decalLibrary.empty())
+			{
+				const std::filesystem::path library = LibraryManager::Resolve(job.data.decalLibrary);
+				DecalLibraryAsset asset;
+				std::string error;
+				if (!library.empty() && LoadDecalLibraryAsset(library, asset, &error))
+				{
+					for (const PolygonDecal &decal : asset.decals)
+						rows.emplace_back(decal, library.parent_path());
+				}
+			}
+
+			int details = 0, normals = 0;
+			for (const auto &[decal, base] : rows)
+			{
+				int &count = decal.normal ? normals : details;
+				if (count >= 2)
+					continue;
+				DecodedTexture texture = DecodeTexture(base, decal.texture, decal.normal ? TextureUsage::Normal : TextureUsage::Data);
+				if (!texture.valid)
+					continue;
+				++count;
+				job.decals.emplace_back(decal, std::move(texture));
+			}
+		}
+
 		/* @brief Resolves the OBJ's lights against lights.txt (unknown names are left out). */
 		void ResolveLights(ObjectLoadJob &job)
 		{
@@ -333,13 +384,7 @@ namespace SceneryEditorX::XPlane
 			job.lit = DecodeTexture(folder, data.textureLit, TextureUsage::Lit);
 			job.drapedAlbedo = DecodeTexture(folder, data.textureDraped, TextureUsage::Albedo);
 			job.drapedNormal = DecodeTexture(folder, data.textureDrapedNormal, TextureUsage::Normal);
-
-			// With a normal map the specular level defaults to 1 (standard shading); without one surfaces are matte.
-			if (job.normal.valid && !job.normal.info.path.empty())
-			{
-				const float specular = data.hasGlobalSpecular ? data.globalSpecular : 1.0f;
-				job.packed = TextureLoader::DecodePackedMaterial(job.normal.info.path, data.normalMetalness, specular);
-			}
+			DecodeDecals(job, folder);
 
 			ResolveLights(job);
 
@@ -762,21 +807,6 @@ namespace SceneryEditorX::XPlane
 		return count;
 	}
 
-	void ObjectAsset::SetLitTexturesVisible(const bool visible)
-	{
-		if (s_LitVisible == visible)
-			return;
-
-		s_LitVisible = visible;
-		for (const auto &[key, asset] : s_Cache)
-			asset->ApplyLit(visible); // loads in flight have no materials yet; they apply it when they finish
-	}
-
-	bool ObjectAsset::AreLitTexturesVisible()
-	{
-		return s_LitVisible;
-	}
-
 	ObjectAsset::~ObjectAsset() = default;
 
 	ObjectLoadState ObjectAsset::GetState() const
@@ -813,9 +843,12 @@ namespace SceneryEditorX::XPlane
 				m_Textures.drapedNormal = TextureLoader::Upload(job.drapedNormal, &drapedNormalInfo);
 				break;
 			}
-			case UploadPacked:
-				if (m_Textures.normal)
-					m_Textures.packed = TextureLoader::Upload(job.packed);
+			case UploadDecals:
+				for (auto &[decal, texture] : job.decals)
+				{
+					if (Ref<ImageResource> image = TextureLoader::Upload(texture))
+						m_Textures.decals.push_back({ decal, std::move(image) });
+				}
 				break;
 			default:
 				FinishGeometry();
@@ -883,7 +916,6 @@ namespace SceneryEditorX::XPlane
 		// Appends the geometry to the renderer's global vertex / index buffers (uploaded at the start of the next frame).
 		if (m_Mesh)
 			m_Mesh->CreateGpuBuffers();
-		ApplyLit(s_LitVisible);
 
 		m_State = ObjectLoadState::Ready;
 	}
@@ -914,7 +946,8 @@ namespace SceneryEditorX::XPlane
 		// Only the parts of the draw state the renderer can express split materials.
 		const auto same_material = [](const Obj8DrawState &a, const Obj8DrawState &b)
 		{
-			return a.cull == b.cull && a.draped == b.draped && a.blend == b.blend && (a.blend || a.alphaCutoff == b.alphaCutoff);
+			return a.cull == b.cull && a.draped == b.draped && a.blend == b.blend && (a.blend || a.alphaCutoff == b.alphaCutoff) &&
+				a.shinyRatio == b.shinyRatio && a.hasLightLevel == b.hasLightLevel && a.lightLevelBrightness == b.lightLevelBrightness;
 		};
 
 		for (uint32_t i = 0; i < static_cast<uint32_t>(m_MaterialStates.size()); ++i)
@@ -925,7 +958,7 @@ namespace SceneryEditorX::XPlane
 
 		ImageResource *albedo = useDraped ? m_Textures.drapedAlbedo.Get() : m_Textures.albedo.Get();
 		ImageResource *normal = useDraped ? m_Textures.drapedNormal.Get() : m_Textures.normal.Get();
-		ImageResource *packed = useDraped ? nullptr : m_Textures.packed.Get();
+		ImageResource *lit = useDraped ? nullptr : m_Textures.lit.Get();	// Draped geometry has no LIT texture of its own in OBJ8
 
 		Ref<MaterialAsset> material = CreateRef<MaterialAsset>();
 		material->SetName(m_Path.stem().string() + "_" + std::to_string(m_Materials.size()));
@@ -939,20 +972,29 @@ namespace SceneryEditorX::XPlane
 		material->SetProperty(MaterialClass::TextureTilingX, 1.0f);
 		material->SetProperty(MaterialClass::TextureTilingY, 1.0f);
 
-		if (packed)
-		{
-			// The packed map carries roughness (G) and metalness (B); the scalars become multipliers.
-			material->SetProperty(MaterialClass::Roughness, 1.0f);
-			material->SetProperty(MaterialClass::Metalness, 1.0f);
-		}
-		else
-		{
-			const float specular = m_Data.hasGlobalSpecular ? m_Data.globalSpecular : (normal ? 1.0f : 0.0f);
-			material->SetProperty(MaterialClass::Roughness, std::clamp(1.0f - 0.6f * specular, 0.3f, 1.0f));
-			material->SetProperty(MaterialClass::Metalness, 0.0f);
-		}
-
+		// X-Plane 12's material rules (xp_material.slang): the normal map carries gloss (A) and, with NORMAL_METALNESS,
+		// F0 / metalness (B); GLOBAL_specular / ATTR_shiny_rat scale the gloss (1 with a normal map when neither is set)
+		const bool translucency = !useDraped && m_Data.normalTranslucency;
+		const bool metalness = useDraped ? m_Data.drapedNormalMetalness : m_Data.normalMetalness;
+		const float specularGain = std::max(m_Data.hasGlobalSpecular ? m_Data.globalSpecular : (state.shinyRatio > 0.0f ? state.shinyRatio : (normal ? 1.0f : 0.0f)), 0.0f);
+		const float defaultF0 = m_Data.blendGlass ? 0.06f : (translucency ? 0.0f : ((normal || specularGain > 0.0f) ? 0.04f : 0.0f));
+		material->SetProperty(MaterialProperty::XpMaterial, 1.0f);
+		material->SetProperty(MaterialProperty::XpNormalMode, normal ? (metalness ? 2.0f : (translucency ? 3.0f : 1.0f)) : 0.0f);
+		material->SetProperty(MaterialProperty::XpSpecularGain, specularGain);
+		material->SetProperty(MaterialProperty::XpSuperRoughness, std::clamp(m_Data.superRoughness, 0.0f, 1.0f));
+		material->SetProperty(MaterialProperty::XpDefaultF0, defaultF0);
+		material->SetProperty(MaterialClass::Roughness, 1.0f);
+		material->SetProperty(MaterialClass::Metalness, 0.0f);
 		material->SetProperty(MaterialClass::Normal, normal ? 1.0f : 0.0f);
+
+		// LIT textures are luminance in nits: ATTR_light_level's brightness, else GLOBAL_luminance, else X-Plane's
+		// scenery default (lighting/scenery_ref_nts, 33 nits). Never hidden in daylight: exposure is.
+		if (lit)
+		{
+			const float nits = state.hasLightLevel && state.lightLevelBrightness > 0.0f ? state.lightLevelBrightness
+				: (m_Data.globalLuminance > 0.0f ? m_Data.globalLuminance : DEFAULT_SCENERY_LIT_NITS);
+			material->SetProperty(MaterialProperty::EmissiveNits, std::min(nits, MAX_LIT_NITS));
+		}
 		material->SetProperty(MaterialProperty::CullMode, static_cast<float>(state.cull ? CullMode::Back : CullMode::None));
 
 		// Blended surfaces are split: the deferred passes keep texels at or above the cutoff, the forward transparent
@@ -962,27 +1004,42 @@ namespace SceneryEditorX::XPlane
 
 		material->SetTexture(MaterialTextureType::Color, albedo);
 		material->SetTexture(MaterialTextureType::Normal, normal);
-		if (packed)
+		material->SetTexture(MaterialTextureType::Emission, lit);
+
+		// Decals (xp_material.slang xp_drape_*): color slots 2-3, normal slots 1-2; their scales repeat per albedo tile,
+		// so the UVs are the "meters" they count in. Their strength is the rows' constant term (TEXTURE_CONTROL keys
+		// aren't read yet)
+		int details = 0, normals = 0;
+		for (const ObjectDecal &entry : m_Textures.decals)
 		{
-			// The shader samples the packed map for both; the typed slots only raise the "has texture" flags.
-			material->SetTexture(MaterialTextureType::None, packed);
-			material->SetTexture(MaterialTextureType::Roughness, packed);
-			material->SetTexture(MaterialTextureType::Metalness, packed);
+			const PolygonDecal &decal = entry.decal;
+			const int slot = decal.normal ? normals++ : details++;
+			if (slot >= 2)
+				continue;
+			if (decal.normal)
+			{
+				material->SetTexture(MaterialTextureType::Normal, entry.image.Get(), 1 + slot);
+				material->SetProperty(slot == 0 ? MaterialProperty::XpNormalDecal0Scale : MaterialProperty::XpNormalDecal1Scale, decal.scaleS);
+				material->SetProperty(slot == 0 ? MaterialProperty::XpNormalDecal0Gain : MaterialProperty::XpNormalDecal1Gain, decal.strength * decal.gain);
+			}
+			else
+			{
+				material->SetTexture(MaterialTextureType::Color, entry.image.Get(), 2 + slot);
+				material->SetProperty(slot == 0 ? MaterialProperty::XpDecal0Scale : MaterialProperty::XpDecal1Scale, decal.scaleS);
+				material->SetProperty(slot == 0 ? MaterialProperty::XpDecal0Strength : MaterialProperty::XpDecal1Strength, decal.strength);
+			}
+			if (slot == 0)
+				material->SetProperty(decal.normal ? MaterialProperty::XpNormalDecalAspect : MaterialProperty::XpDecalAspect, decal.scaleT / std::max(1e-6f, decal.scaleS));
+		}
+		if (!m_Textures.decals.empty())
+		{
+			material->SetProperty(MaterialProperty::XpDrapeMetersU, 1.0f);
+			material->SetProperty(MaterialProperty::XpDrapeMetersV, 1.0f);
 		}
 
 		m_Materials.push_back(material);
 		m_MaterialStates.push_back(state);
 		return static_cast<uint32_t>(m_Materials.size()) - 1;
-	}
-
-	void ObjectAsset::ApplyLit(const bool visible)
-	{
-		for (size_t i = 0; i < m_Materials.size(); ++i)
-		{
-			// Draped geometry has no LIT texture of its own in OBJ8.
-			const bool draped = m_MaterialStates[i].draped && m_Textures.drapedAlbedo;
-			m_Materials[i]->SetTexture(MaterialTextureType::Emission, visible && !draped ? m_Textures.lit.Get() : nullptr);
-		}
 	}
 
 }

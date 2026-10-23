@@ -138,7 +138,7 @@ namespace SceneryEditorX::XPlane
 		/**
 		 * @brief Creates the GPU image for a decoded texture and caches it (or returns the image already cached for the
 		 * file, e.g. when two loads decoded it at once). Main thread. Consumes the texture's mips.
-		 * @param texture From Decode() or DecodePackedMaterial().
+		 * @param texture From Decode().
 		 * @param info Receives size, format and alpha information (optional).
 		 * @return The texture, or nullptr when there is none or decoding failed.
 		 */
@@ -149,16 +149,6 @@ namespace SceneryEditorX::XPlane
 		 * uncompressed DDS; block-compressed DDS files can't be decoded on the CPU.
 		 */
 		static bool DecodeRGBA(const std::filesystem::path &path, CpuImage &out, std::string *error = nullptr);
-
-		/**
-		 * @brief Builds the renderer's packed material map (R occlusion, G roughness, B metalness) from an X-Plane
-		 * normal map: alpha is gloss (scaled by GLOBAL_specular), blue is metalness with NORMAL_METALNESS.
-		 * Cached per (normal map, metalness flag, specular). Main thread: DecodePackedMaterial() then Upload().
-		 */
-		static Ref<ImageResource> LoadPackedMaterial(const std::filesystem::path &normalMapPath, bool normalMetalness, float specular);
-
-		/* @brief The CPU half of LoadPackedMaterial(): decodes the normal map and builds the packed map. Thread-safe. */
-		static DecodedTexture DecodePackedMaterial(const std::filesystem::path &normalMapPath, bool normalMetalness, float specular);
 
 		/* @brief Releases every cached texture. Only safe when no material references them any more. */
 		static void ClearCache();

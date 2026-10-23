@@ -60,10 +60,13 @@ namespace SceneryEditorX
 		double yScale = 1.0;			// xScale * aspect
 		double nearPlane = 0.1;
 		double farPlane = 10000.0;
+		bool orthographic = false;		// Parallel rays along forward; the view is halfWidth x halfHeight meters around the eye
+		double halfWidth = 50.0;
+		double halfHeight = 50.0;
 		ImVec2 imageMin;				// Screen rectangle the image is drawn in
 		ImVec2 imageSize;
 
-		// For ImGuizmo: row-vector matrices (p' = p * M), OpenGL clip space
+		// The same camera as row-vector matrices (p' = p * M), OpenGL clip space
 		float view[16] = {};
 		float projection[16] = {};
 
@@ -73,6 +76,13 @@ namespace SceneryEditorX
 		 */
 		static ViewportView Build(const ImVec2 &imageMin, const ImVec2 &imageSize, float aspect);
 
+		/**
+		 * @brief A view from explicit camera values (yaw / pitch in radians as the camera entity stores them): what Build
+		 * does with the primary camera, for viewports with cameras of their own.
+		 */
+		static ViewportView FromCamera(const ImVec2 &imageMin, const ImVec2 &imageSize, float aspect, const Point3 &eye, double yaw, double pitch,
+			double horizontalFov, double nearPlane, double farPlane, bool orthographic, double orthographicHeight);
+
 		/* @brief Screen position of a world point; false when it is behind the camera (near plane). */
 		bool WorldToScreen(const Point3 &world, ImVec2 &screen, double *depth = nullptr) const;
 
@@ -81,6 +91,15 @@ namespace SceneryEditorX
 
 		/* @brief Where the ray through a screen position meets the horizontal plane y = planeY (false when it doesn't). */
 		bool RayToPlane(const ImVec2 &screen, double planeY, Point3 &hit) const;
+
+		/**
+		 * @brief Where the ray through a screen position meets the ground: the loaded terrain (SceneTerrain), and the plane
+		 * y = 0 beyond it or without one (false when it meets neither).
+		 */
+		bool RayToGround(const ImVec2 &screen, Point3 &hit) const;
+
+		/* @brief The ground's height (the terrain's; 0 without one) under a point of the ground plane. */
+		static double GroundHeight(double x, double z);
 
 		/* @brief Screen pixels a meter covers at a world point (for hit tolerances and handle sizes). */
 		double PixelsPerMeter(const Point3 &world) const;

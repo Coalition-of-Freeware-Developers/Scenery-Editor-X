@@ -35,6 +35,11 @@
 #include <set>
 #include <utility>
 
+// Autogen lays out thousands of facades (fences, hedges): keep the layout optimized in MSVC debug builds
+#if defined(_MSC_VER) && !defined(__clang__) && !defined(NDEBUG)
+#pragma optimize("gt", on)
+#endif
+
 // -------------------------------------------------------
 
 namespace SceneryEditorX::XPlane
@@ -556,5 +561,9 @@ namespace SceneryEditorX::XPlane
 		direction = l > 1e-9 ? Point2{ x / l, z / l } : here;
 	}
 }
+
+#if defined(_MSC_VER) && !defined(__clang__) && !defined(NDEBUG)
+#pragma optimize("", on)
+#endif
 
 // -------------------------------------------------------

@@ -131,6 +131,30 @@ public struct MaterialParameters
     public float anisotropic_rotation;
     public float clearcoat;
     public float clearcoat_roughness;
+    public float2 padding3;
+
+    // X-Plane materials (xp_material.slang): specular gain, super roughness floor, F0 when the normal map carries
+    // none, emissive luminance in nits (0: emissive texels are display values)
+    public float4 xp;
+
+    // Draped polygons (xp_material.slang xp_drape_*): tile atlas (tiles x / y, mapping cells x / y; 0: random), detail
+    // decals (repeats per meter, strength x 2), normal decals (repeats per meter, gain x 2), misc (decal t / s aspect,
+    // normal decal t / s aspect, meters per u, meters per v; markings: paint rgb, border opacity)
+    public float4 drape_tiles;
+    public float4 drape_decal;
+    public float4 drape_normal_decal;
+    public float4 drape_misc;
+
+    // X-Plane terrain (.ter, xp_terrain.slang): base (projected s / t meters a repeat, normal map repeats per base repeat,
+    // flags), composite (s / t meters, noise mask center / half width), slopes (hill start / end, cliff start / end
+    // degrees), slope textures (hill s / t, cliff s / t meters), lit (s / t meters, distance fade start / end), far
+    // (s / t meters, start / end distance)
+    public float4 terrain_base;
+    public float4 terrain_composite;
+    public float4 terrain_slope;
+    public float4 terrain_slope_scale;
+    public float4 terrain_lit;
+    public float4 terrain_far;
 
     public bool has_texture_albedo() { return (flags & (1 << 2)) != 0; }
     public bool has_texture_normal() { return (flags & (1 << 1)) != 0; }
@@ -139,6 +163,10 @@ public struct MaterialParameters
     public bool has_texture_metalness() { return (flags & (1 << 4)) != 0; }
     public bool has_texture_emissive() { return (flags & (1 << 6)) != 0; }
     public bool emissive_from_albedo() { return (flags & (1 << 15)) != 0; }
+    public uint xp_normal_mode() { return (flags >> 16) & 3u; }	// xp_material.slang xp_normal_*
+    public bool is_xp_material() { return (flags & (1 << 18)) != 0; }
+    public uint xp_drape_mode() { return (flags >> 19) & 3u; }	// xp_material.slang xp_drape_*
+    public bool is_xp_foliage() { return (flags & (1 << 21)) != 0; }	// .for trees: canopy normals, kept on back faces
 };
 
 // struct which forms the bindless light parameters array
@@ -174,6 +202,8 @@ public [[vk::binding(1)]] Texture2D tex_normal : register(t1);
 public [[vk::binding(2)]] Texture2D tex_material : register(t2);
 public [[vk::binding(3)]] Texture2D tex_velocity : register(t3);
 public [[vk::binding(4)]] Texture2D tex_depth : register(t4);
+public [[vk::binding(5)]] Texture2D tex_emissive : register(t5);	// emissive nits x pre-exposure
+public [[vk::binding(54)]] Texture2D tex_weather : register(t54);	// weather receptivity (rain, puddles, snow, ice)
 
 // other
 public [[vk::binding(6)]] Texture2D tex_ssao : register(t6);
@@ -234,6 +264,10 @@ public struct DrawData
     public uint is_transparent;
     public uint aabb_index;
     public uint pick_id;    // editor picking: entity index + 1, 0 = not pickable (gbuffer_pick, ScenePicking)
+    public uint drape_rank; // position among the frame's visible drapes (1 = lowest), 0 = not draped (apply_drape_depth)
+    public uint padding0;   // scalars: a uint3 would be 16-byte aligned under std430 and make the stride 176, not 160
+    public uint padding1;
+    public uint padding2;
 };
 
 // bindless draw data - per-draw transforms, material indices, etc.
@@ -311,6 +345,99 @@ public struct EmitterParams
 public PassBufferData buffer_pass;
 public [[vk::binding(200)]] cbuffer BufferFrame : register(b200) { FrameBufferData buffer_frame; };
 
+// the world environment (ConstantBuffer_Environment, renderer_buffers.h): sun, moon, sky, atmosphere, weather, exposure
+// world frame +X east, +Y up, +Z south; lux, meters, 1/m
+public struct EnvironmentData
+{
+    public float4 sun_direction;     // xyz toward the sun, w angular radius (rad)
+    public float4 sun_illuminance;   // rgb lux outside the atmosphere, w apparent elevation (deg)
+    public float4 moon_direction;    // xyz, w illuminated fraction
+    public float4 moon_illuminance;  // rgb lux, w phase angle (rad)
+    public float4 sky_multipliers;   // ambient, direct, tone, shadow level
+    public float4 sky_multipliers2;  // rayleigh, mie, shadow offset, daylight
+    public float4 rayleigh;          // rgb scattering, w scale height
+    public float4 mie;               // scattering, extinction, scale height, g
+    public float4 ozone;             // rgb absorption, w tent center altitude
+    public float4 planet;            // ozone half width, earth radius, atmosphere radius, ground albedo
+    public float4 haze;              // visibility, haze top, haze band, time
+    public float4 weather;           // rain wetness, ice, snow level, puddles
+    public float4 snow_projection_x;
+    public float4 snow_projection_z;
+    public float4 season;            // ratio, index, day of year, latitude
+    public float4 exposure;          // exposure scale, pre-exposure, metered EV100, applied EV
+    public float4 exposure_fusion;   // shadows, sigma, near, far
+    public float4 camera;            // altitude MSL, ground elevation, night factor, rain percent
+    public float4 clouds[3];         // base MSL, top MSL, coverage, type
+    public float4 wind;              // direction from (deg), speed (m/s), wave amplitude (m), wave direction (deg)
+    public float4 debug;             // debug view, feature bits, temperature (C)
+    public float4 sky_radiance[7];   // nits without the Mie lobe: zenith, horizon toward / side / away from the sun, 30 deg up (same)
+    public float4 sky_mie[7];        // Mie single scattering with the phase factored out (same directions)
+    public float4 sky_irradiance;    // rgb lux on a level surface, w ground albedo
+    public float4 exposure_meter;    // EV100 min, max, K, centre-weight radius
+    public float4 exposure_adapt;    // speed up, speed down (EV/s), lower trim, upper trim
+    public float4 exposure_target;   // ev100_mid and ev100_bias for the sun's elevation, gain below mid, gain above
+    public float4 exposure_extra;    // x compensation (EV, positive brightens)
+    public float4 atmosphere_scattering; // rgb Mie spectral factor (Angstrom exponent, green 1), w multiple-scattering ratio
+    public float4 color_slope;       // ASC-CDL rgb slope, w saturation
+    public float4 color_offset;      // rgb offset, w output gain
+    public float4 color_power;       // rgb power, w output gamma
+    public float4 post;              // bloom intensity, exposure fusion highlights (EV), fusion strength
+    public float4 light_toa;         // rgb sun illuminance outside the atmosphere (lux), w the moon's (lux, x fraction)
+    public float4 atmosphere_haze;   // haze extinction (1/m), scattering albedo, layer top above the ground (m), fade band (m)
+    public float4 atmosphere_view;   // aerial perspective range (m), airglow (nits), star brightness, unused
+    public float4 probe;             // xyz environment probe 0 (world), w specular LOD bias
+    public float4 celestial[3];      // rows of the world -> equatorial rotation (x vernal equinox, z north pole)
+    public float4x4 csm_view_projection[4]; // sun shadows (renderer/csm.h): the light's view-projection per cascade
+    public float4 csm_split;         // view depth (m) where cascade 0..3 ends
+    public float4 csm_blend;         // depth (m) over which cascade 0..3 blends into the next before it ends
+    public float4 csm_texel;         // shadow-map texel size (m) of cascade 0..3
+    public float4 csm_params;        // cascade count (0: none), fade start and end (view depth, m), shadow light (0 none, 1 sun, 2 moon)
+    public float4 csm_filter;        // normal offset (texels), slope-scaled normal offset (texels), soft (3x3 PCF), map size
+    public float4 cloud_shadow;      // cascade count (0: none), strength (0 none .. 1 full), extinction (1/m of cloud cover), march steps per layer
+    public float4 cloud_shadow_cascades[2]; // per cascade: center x, center z (world, m), half extent (m), texel size (m)
+    public float4 ssr;               // screen-space reflections (ssr_common.slang): min gloss, gloss fade, LOD bias, use prefiltered (0 / 1)
+    public float4 ssr_trace;         // max Hi-Z steps, thickness (m), thickness per meter of view depth, edge fade (share of the screen)
+    public float4 ssr_history;       // history clamp (pre-exposed), lobe half width per GGX alpha, trace every pixel (debug), SSR active
+    public float4 ocean;             // water (renderer/ocean.h, ocean_common.slang): time (s), choppiness, height scale, wave travel direction (rad, atan2(z, x))
+    public float4 ocean_cascade[4];  // per cascade: tile size (m), first and past-last wave number (rad/m), water/cascade_N_scale
+    public float4 ocean_sea;         // wind speed (m/s), swell, spread blend, short waves fade (m)
+    public float4 ocean_jonswap;     // alpha, peak omega (rad/s), gamma, spectrum depth (m)
+    public float4 water_surface;     // F0, surface roughness (perceptual, from water/gloss), refractive index, turbidity on (0 / 1)
+    public float4 water_volume;      // water/turbidity, turbidity cutoff (ln), clearest-water floor (m), shore depth (m)
+    public float4 water_foam;        // foam bias, ratio, scale, share fading per second
+    public float4 water_floor;       // floor albedo rgb, water/sea_floor_coef (share of the floor seen)
+    public float4 water_tessellation; // target edge pixels, max factor, pond wave scale (0: fetch ignored), frame time step (s)
+    public float4 padding_environment[3];
+};
+public [[vk::binding(201)]] cbuffer BufferEnvironment : register(b201) { public EnvironmentData buffer_environment; };
+
+public float3 get_sun_direction() { return buffer_environment.sun_direction.xyz; }
+public float3 get_sun_illuminance() { return buffer_environment.sun_illuminance.rgb; }
+public float3 get_moon_direction() { return buffer_environment.moon_direction.xyz; }
+public float3 get_moon_illuminance() { return buffer_environment.moon_illuminance.rgb; }
+public float get_exposure_scale() { return buffer_environment.exposure.x; }
+public float get_pre_exposure() { return buffer_environment.exposure.y; }
+
+// Exposure (renderer/exposure.h): the log2-luminance histogram luminance_histogram.slang fills and exposure_adapt.slang
+// meters and clears, and the exposure state exposure_adapt.slang keeps (EXPOSURE_STATE_*)
+public [[vk::binding(146)]] RWStructuredBuffer<uint> exposure_histogram : register(u146);
+public [[vk::binding(147)]] RWStructuredBuffer<float> exposure_state : register(u147);
+public static const uint EXPOSURE_HISTOGRAM_BINS = 256;
+public static const float EXPOSURE_LOG2_MIN = -2.0f;
+public static const float EXPOSURE_LOG2_MAX = 18.0f;
+public static const uint EXPOSURE_STATE_EV = 0;          // EV100 the frame is exposed at (adapted, bias applied)
+public static const uint EXPOSURE_STATE_METERED = 1;     // metered EV100, clamped to the range (before the bias)
+public static const uint EXPOSURE_STATE_TARGET = 2;      // EV100 the adaptation moves toward
+public static const uint EXPOSURE_STATE_MEAN_LOG2 = 3;   // mean log2 luminance (nits) between the trims
+public static const uint EXPOSURE_STATE_VALID = 4;       // 1 once the first frame has been metered
+public static const uint EXPOSURE_STATE_RAW = 5;         // metered EV100 before the clamp
+public static const uint EXPOSURE_STATE_FLOATS = 8;
+
+/* @brief What a frame exposed at an EV100 is multiplied by: 1 / (1.2 x 2^EV) (renderer/exposure.h). */
+public float exposure_scale_from_ev(float ev100) { return 18.0f / (max(buffer_environment.exposure_meter.z, 1e-3f) * exp2(ev100)); }
+public uint get_debug_view() { return uint(buffer_environment.debug.x + 0.5f); }
+public bool is_feature_enabled(uint bit) { return (uint(buffer_environment.debug.y + 0.5f) & (1u << bit)) != 0; }
+
 // easy access to buffer_frame members
 public bool is_hdr_enabled() { return buffer_frame.hdr_enabled != 0.0f; }
 public uint get_frame_index() { return buffer_frame.frame; }
@@ -330,6 +457,7 @@ public float get_delta_time_seconds() { return buffer_frame.delta_time; }
 public matrix get_view_matrix() { return buffer_frame.view; }
 public matrix get_view_inverted_matrix() { return buffer_frame.view_inverted; }
 public matrix get_projection_matrix() { return buffer_frame.projection; }
+public matrix get_projection_inverted_matrix() { return buffer_frame.projection_inverted; }
 public matrix get_view_projection_matrix() { return buffer_frame.view_projection; }
 public matrix get_view_projection_ortho_matrix() { return buffer_frame.view_projection_orthographic; }
 public matrix get_view_projection_unjittered_matrix() { return buffer_frame.view_projection_unjittered; }
