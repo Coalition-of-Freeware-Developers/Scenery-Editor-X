@@ -1,31 +1,49 @@
 ﻿/**
-* -------------------------------------------------------
-* Scenery Editor X
-* -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray
-* Copyright (c) 2025 Coalition of Freeware Developers
-* -------------------------------------------------------
-* graph_serializer.h
-* -------------------------------------------------------
-* Created: 11/7/2025
-* -------------------------------------------------------
-*/
+ * -------------------------------------------------------
+ * Scenery Editor X
+ * -------------------------------------------------------
+ * Copyright (c) 2026 Thomas Ray 
+ * Copyright (c) 2026 Coalition of Freeware Developers
+ * -------------------------------------------------------
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ * -------------------------------------------------------
+ * graph_serializer.h
+ * -------------------------------------------------------
+ * Created: 11/7/2025
+ * -------------------------------------------------------
+ */
 #pragma once
-#include <functional>
-#include <imgui.h>
+/*#include <functional>
+#include <Editor/ui/source/imgui/imgui.h>
 #include <optional>
 #include <string_view>
 #include <vector>
 #include "asset_serializer.h"
-#include "SceneryEditorX/utils/reflection/type_values.h"
+#include "SceneryEditorX/utils/reflection/type_values.h"*/
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
 
     /*
-    ///< Type definitions that need to be declared before use
+    // Type definitions that need to be declared before use
     enum class StorageKind : uint8_t
     {
         Value,
@@ -53,13 +71,13 @@ namespace SceneryEditorX
     */
 
     /*
-    ///< Forward declarations
+    // Forward declarations
     struct Pin;
     struct Link;
     */
     
     /*
-    ///< Graph Node class (different from scene Node)
+    // Graph Node class (different from scene Node)
     class GraphNode
     {
     public:
@@ -80,7 +98,7 @@ namespace SceneryEditorX
     */
 
     /*
-    ///< Basic Pin structure declaration
+    // Basic Pin structure declaration
     struct Pin
     {
         UUID ID;
@@ -100,7 +118,7 @@ namespace SceneryEditorX
     */
 
     /*
-    ///< Basic Link structure declaration  
+    // Basic Link structure declaration  
     struct Link
     {
         UUID ID;
@@ -125,7 +143,7 @@ namespace SceneryEditorX
 	}
 	*/
 
-	/// -------------------------------------------------------
+	// -------------------------------------------------------
 
 	/**
 	 * Graph serializer base provides static utilities for implementation
@@ -145,7 +163,7 @@ namespace SceneryEditorX
 		static void SerializeNodes(nlohmann::json& out, const std::vector<GraphNode*>& nodes, std::function<void(nlohmann::json&, const GraphNode*)> nodeCallBack = {});
 		static void SerializeLinks(nlohmann::json& out, const std::vector<Link>& links, std::function<void(nlohmann::json&, const Link&)> linkCallBack = {});
 
-		/// -------------------------------------------------------------------------------
+		// -------------------------------------------------------------------------------
 
 		/**
 		 * Implementation must provide this factory to deserialize nodes with static
@@ -153,18 +171,18 @@ namespace SceneryEditorX
 		 #1#
 		struct DeserializationFactory
 		{
-			///< Deserialized info about a Pin of a Node, may or may not be valid
+			// Deserialized info about a Pin of a Node, may or may not be valid
 			struct PinCandidate : Pin
 			{
 				using Pin::Pin;
 
-				std::string TypeString;	///< implementation specific
+				std::string TypeString;	// implementation specific
 
                 static int GetType() { return -1; }
                 [[nodiscard]] virtual std::string_view GetTypeString() const override { return TypeString; }
 			};
 
-			///< Deserialized info about a Node, may or may not be valid
+			// Deserialized info about a Node, may or may not be valid
 			struct NodeCandidate
 			{
 				UUID ID;
@@ -209,4 +227,4 @@ namespace SceneryEditorX
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

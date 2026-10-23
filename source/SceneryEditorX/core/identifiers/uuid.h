@@ -1,234 +1,253 @@
 ﻿/**
-* -------------------------------------------------------
-* Scenery Editor X
-* -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray
-* Copyright (c) 2025 Coalition of Freeware Developers
-* -------------------------------------------------------
-* uuid.h
-* -------------------------------------------------------
-* Created: 13/7/2025
-* -------------------------------------------------------
-*/
-
-/**
-* This file provides UUID (Universally Unique Identifier) functionality for the
-* Scenery Editor X application. It implements 32-bit, 64-bit, and 128-bit UUID variants
-* to optimize memory usage and performance for different use cases.
-*
-* Key Features:
-* - Thread-safe UUID generation using cryptographically secure RNG
-* - STL hash specializations for use in hash-based containers
-* - Explicit conversion operators to prevent accidental type confusion
-* - Minimal memory footprint with optimized storage
-* - Support for deterministic construction from explicit values
-* - Standard 128-bit UUID support for maximum uniqueness
-* - Base64 encoding/decoding utilities for UUID serialization
-* - Hash combination utilities for creating composite identifiers
-*
-* Usage Examples:
-* @code
-* // Generate random UUIDs
-* UUID entityId;           // 64-bit UUID for persistent entities
-* UUID32 eventToken;       // 32-bit UUID for temporary objects
-* UUID128 standardId;      // 128-bit standard UUID for maximum uniqueness
-*
-* // Create from explicit values (e.g., for serialization)
-* UUID loadedEntity(0x123456789ABCDEF0);
-* UUID32 savedToken(0x12345678);
-* UUID128 loadedStandardId({0x12345678, 0x9ABCDEF0, 0x11111111, 0x22222222});
-*
-* // Use in containers
-* std::unordered_map<UUID, Entity> entityMap;
-* std::unordered_set<UUID32> activeTokens;
-* std::unordered_map<UUID128, Asset> assetRegistry;
-*
-* // Convert for serialization
-* uint64_t serializedId = static_cast<uint64_t>(entityId);
-* std::string base64Id = UUID::EncodeBase64(reinterpret_cast<const unsigned char*>(&entityId), sizeof(entityId));
-* @endcode
-*
-* @see uuid-system-documentation.md for comprehensive usage guide
-* @see Identifier class for string-based identifiers
-* @see Hash class for additional hashing utilities
-* -------------------------------------------------------
-*/
+ * -------------------------------------------------------
+ * Scenery Editor X
+ * -------------------------------------------------------
+ * Copyright (c) 2026 Thomas Ray 
+ * Copyright (c) 2026 Coalition of Freeware Developers
+ * -------------------------------------------------------
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ * -------------------------------------------------------
+ * uuid.h
+ * -------------------------------------------------------
+ * Created: 13/7/2025
+ * -------------------------------------------------------
+ *
+ * This file provides UUID (Universally Unique Identifier) functionality for the
+ * Scenery Editor X application. It implements 32-bit, 64-bit, and 128-bit UUID variants
+ * to optimize memory usage and performance for different use cases.
+ *
+ * Key Features:
+ * - Thread-safe UUID generation using cryptographically secure RNG
+ * - STL hash specializations for use in hash-based containers
+ * - Explicit conversion operators to prevent accidental type confusion
+ * - Minimal memory footprint with optimized storage
+ * - Support for deterministic construction from explicit values
+ * - Standard 128-bit UUID support for maximum uniqueness
+ * - Base64 encoding/decoding utilities for UUID serialization
+ * - Hash combination utilities for creating composite identifiers
+ *
+ * Usage Examples:
+ * @code
+ * // Generate random UUIDs
+ * UUID entityId;           // 64-bit UUID for persistent entities
+ * UUID32 eventToken;       // 32-bit UUID for temporary objects
+ * UUID128 standardId;      // 128-bit standard UUID for maximum uniqueness
+ *
+ * // Create from explicit values (e.g., for serialization)
+ * UUID loadedEntity(0x123456789ABCDEF0);
+ * UUID32 savedToken(0x12345678);
+ * UUID128 loadedStandardId({0x12345678, 0x9ABCDEF0, 0x11111111, 0x22222222});
+ *
+ * // Use in containers
+ * std::unordered_map<UUID, Entity> entityMap;
+ * std::unordered_set<UUID32> activeTokens;
+ * std::unordered_map<UUID128, Asset> assetRegistry;
+ *
+ * // Convert for serialization
+ * uint64_t serializedId = static_cast<uint64_t>(entityId);
+ * std::string base64Id = UUID::EncodeBase64(reinterpret_cast<const unsigned char*>(&entityId), sizeof(entityId));
+ * @endcode
+ *
+ * @see uuid-system-documentation.md for comprehensive usage guide
+ * @see Identifier class for string-based identifiers
+ * @see Hash class for additional hashing utilities
+ * -------------------------------------------------------
+ */
+// ReSharper disable CppInconsistentNaming
+// ReSharper disable GrammarMistakeInComment
 #pragma once
 #include <array>
 #include <functional>
+#include <ostream>
 #include <string>
 #include <vector>
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-	///< Forward declarations
+	// Forward declarations
 	class UUID;
 	class UUID32;
 	class UUID128;
 
-    namespace Utils
-    {
-        /**
-         * @class UUID
-         * @brief Utility functions for UUID operations including encoding, decoding, and hashing.
-         *
-         * This class provides static utility functions for various UUID-related operations
-         * including Base64 encoding/decoding and hash combination utilities that can be
-         * used with all UUID types.
-         *
-         * @thread_safety All methods are thread-safe unless otherwise noted.
-         */
-	    class UUID
-	    {
-	    public:
-	        /**
-             * @brief Encodes a byte array to a base64 string.
-             *
-             * Converts binary data to a base64-encoded string representation suitable
-             * for text-based transmission or storage. The encoding follows the standard
-             * base64 alphabet and padding conventions.
-             *
-             * @param input Pointer to the input byte array to encode
-             * @param len Length of the input array in bytes
-             *
-             * @return std::string The base64 encoded string representation
-             *
-             * @pre input must not be nullptr if len > 0
-             * @pre len must accurately represent the size of the input buffer
-             *
-             * @thread_safety Thread-safe. No shared state is accessed.
-             *
-             * @complexity O(n) where n is the length of the input
-             *
-             * @example
-             * @code
-             * const unsigned char data[] = {0x48, 0x65, 0x6C, 0x6C, 0x6F}; // "Hello"
-             * std::string encoded = UUIDUtilities::EncodeBase64(data, sizeof(data));
-             * // Result: "SGVsbG8="
-             * @endcode
-             */
-	        static std::string EncodeBase64(const unsigned char* input, size_t len);
+	namespace Utils
+	{
+		/**
+		 * @class UUID
+		 * @brief Utility functions for UUID operations including encoding, decoding, and hashing.
+		 *
+		 * This class provides static utility functions for various UUID-related operations
+		 * including Base64 encoding/decoding and hash combination utilities that can be
+		 * used with all UUID types.
+		 *
+		 * @thread_safety All methods are thread-safe unless otherwise noted.
+		 */
+		class UUID
+		{
+		public:
+			/**
+			 * @brief Encodes a byte array to a base64 string.
+			 *
+			 * Converts binary data to a base64-encoded string representation suitable
+			 * for text-based transmission or storage. The encoding follows the standard
+			 * base64 alphabet and padding conventions.
+			 *
+			 * @param input Pointer to the input byte array to encode
+			 * @param len Length of the input array in bytes
+			 *
+			 * @return std::string The base64 encoded string representation
+			 *
+			 * @pre input must not be nullptr if len > 0
+			 * @pre len must accurately represent the size of the input buffer
+			 *
+			 * @thread_safety Thread-safe. No shared state is accessed.
+			 *
+			 * @complexity O(n) where n is the length of the input
+			 *
+			 * @example
+			 * @code
+			 * const unsigned char data[] = {0x48, 0x65, 0x6C, 0x6C, 0x6F}; // "Hello"
+			 * std::string encoded = UUIDUtilities::EncodeBase64(data, sizeof(data));
+			 * // Result: "SGVsbG8="
+			 * @endcode
+			 */
+			static std::string EncodeBase64(const unsigned char* input, size_t len);
 
-	        /**
-             * @brief Decodes a base64 string to a byte array.
-             *
-             * Converts a base64-encoded string back to its original binary representation.
-             * The function handles standard base64 padding and validates input format.
-             *
-             * @param input The base64 encoded string to decode
-             *
-             * @return std::vector<uint8_t> containing the decoded bytes
-             *
-             * @throws std::invalid_argument if the input string contains invalid base64 characters
-             * @throws std::runtime_error if the input string has invalid padding
-             *
-             * @thread_safety Thread-safe. No shared state is accessed.
-             *
-             * @complexity O(n) where n is the length of the input string
-             *
-             * @example
-             * @code
-             * std::string encoded = "SGVsbG8=";
-             * auto decoded = UUIDUtilities::DecodeBase64(encoded);
-             * // Result: {0x48, 0x65, 0x6C, 0x6C, 0x6F} // "Hello"
-             * @endcode
-             */
-	        static std::vector<uint8_t> DecodeBase64(const std::string& input);
+			/**
+			 * @brief Decodes a base64 string to a byte array.
+			 *
+			 * Converts a base64-encoded string back to its original binary representation.
+			 * The function handles standard base64 padding and validates input format.
+			 *
+			 * @param input The base64 encoded string to decode
+			 *
+			 * @return std::vector<uint8_t> containing the decoded bytes
+			 *
+			 * @throws std::invalid_argument if the input string contains invalid base64 characters
+			 * @throws std::runtime_error if the input string has invalid padding
+			 *
+			 * @thread_safety Thread-safe. No shared state is accessed.
+			 *
+			 * @complexity O(n) where n is the length of the input string
+			 *
+			 * @example
+			 * @code
+			 * std::string encoded = "SGVsbG8=";
+			 * auto decoded = UUIDUtilities::DecodeBase64(encoded);
+			 * // Result: {0x48, 0x65, 0x6C, 0x6C, 0x6F} // "Hello"
+			 * @endcode
+			 */
+			static std::vector<uint8_t> DecodeBase64(const std::string& input);
 
-	        /**
-             * @brief Generates a hash from a vector of 32-bit integers.
-             *
-             * Creates a 32-bit hash value from a vector of unsigned 32-bit integers
-             * using a hash algorithm suitable for UUID-like identifier generation.
-             * The function processes all elements in the vector to produce a
-             * deterministic hash value.
-             *
-             * @param vec Vector of 32-bit integers to hash
-             *
-             * @return uint32_t The computed hash value
-             *
-             * @pre The vector should not be empty for meaningful results
-             *
-             * @thread_safety Thread-safe. No shared state is accessed.
-             *
-             * @complexity O(n) where n is the size of the input vector
-             *
-             * @example
-             * @code
-             * std::vector<uint32_t> data = {0x12345678, 0x9ABCDEF0, 0x11111111};
-             * uint32_t hash = UUIDUtilities::HashUUID(data);
-             * @endcode
-             */
-	        static uint32_t HashUUID(const std::vector<uint32_t>& vec);
+			/**
+			 * @brief Generates a hash from a vector of 32-bit integers.
+			 *
+			 * Creates a 32-bit hash value from a vector of unsigned 32-bit integers
+			 * using a hash algorithm suitable for UUID-like identifier generation.
+			 * The function processes all elements in the vector to produce a
+			 * deterministic hash value.
+			 *
+			 * @param vec Vector of 32-bit integers to hash
+			 *
+			 * @return uint32_t The computed hash value
+			 *
+			 * @pre The vector should not be empty for meaningful results
+			 *
+			 * @thread_safety Thread-safe. No shared state is accessed.
+			 *
+			 * @complexity O(n) where n is the size of the input vector
+			 *
+			 * @example
+			 * @code
+			 * std::vector<uint32_t> data = {0x12345678, 0x9ABCDEF0, 0x11111111};
+			 * uint32_t hash = UUIDUtilities::HashUUID(data);
+			 * @endcode
+			 */
+			static uint32_t HashUUID(const std::vector<uint32_t>& vec);
 
-	        /**
-             * @brief Combines a hash value with another value using the FNV-1a algorithm.
-             *
-             * This template function uses a modified FNV-1a hashing algorithm to combine an existing
-             * hash value with another hashable value, producing a new combined hash. This is useful
-             * for building composite hash values from multiple data elements.
-             *
-             * @tparam T Type of the value to combine with the hash (must be hashable by std::hash<T>)
-             * @param h Reference to the hash value to be updated in-place
-             * @param v The value to combine with the hash
-             *
-             * @thread_safety Thread-safe if std::hash<T> is thread-safe for type T.
-             *
-             * @complexity O(1) plus the complexity of std::hash<T> for type T
-             *
-             * @example
-             * @code
-             * uint32_t combinedHash = 0;
-             * UUIDUtilities::HashCombine(combinedHash, std::string("hello"));
-             * UUIDUtilities::HashCombine(combinedHash, 42);
-             * UUIDUtilities::HashCombine(combinedHash, 3.14f);
-             * @endcode
-             */
-	        template <typename T>
-            static void HashCombine(uint32_t& h, const T& v)
-	        {
-	            std::hash<T> hash;
-	            const uint64_t temp = static_cast<uint64_t>(hash(v)) + 0x9e3779b9 + (static_cast<uint64_t>(h) << 6) + (static_cast<uint64_t>(h) >> 2);
-	            h ^= static_cast<uint32_t>(temp); // Cast back to uint32_t after the calculation
-	        }
+			/**
+			 * @brief Combines a hash value with another value using the FNV-1a algorithm.
+			 *
+			 * This template function uses a modified FNV-1a hashing algorithm to combine an existing
+			 * hash value with another hashable value, producing a new combined hash. This is useful
+			 * for building composite hash values from multiple data elements.
+			 *
+			 * @tparam T Type of the value to combine with the hash (must be hashable by std::hash<T>)
+			 * @param h Reference to the hash value to be updated in-place
+			 * @param v The value to combine with the hash
+			 *
+			 * @thread_safety Thread-safe if std::hash<T> is thread-safe for type T.
+			 *
+			 * @complexity O(1) plus the complexity of std::hash<T> for type T
+			 *
+			 * @example
+			 * @code
+			 * uint32_t combinedHash = 0;
+			 * UUIDUtilities::HashCombine(combinedHash, std::string("hello"));
+			 * UUIDUtilities::HashCombine(combinedHash, 42);
+			 * UUIDUtilities::HashCombine(combinedHash, 3.14f);
+			 * @endcode
+			 */
+			template <typename T>
+			static void HashCombine(uint32_t& h, const T& v)
+			{
+				std::hash<T> hash;
+				const uint64_t temp = static_cast<uint64_t>(hash(v)) + 0x9e3779b9 + (static_cast<uint64_t>(h) << 6) + (static_cast<uint64_t>(h) >> 2);
+				h ^= static_cast<uint32_t>(temp); // Cast back to uint32_t after the calculation
+			}
 
-	        /**
-             * @brief Combines a hash value with a memory block's hash.
-             *
-             * This function creates a hash from an arbitrary memory block and combines it with
-             * an existing hash value using a string_view-based approach. This allows hashing
-             * of any contiguous memory region, making it useful for hashing structs, arrays,
-             * or other binary data.
-             *
-             * @param h Reference to the hash value to be updated with the memory block's hash
-             * @param ptr Pointer to the memory block to hash
-             * @param size Size of the memory block in bytes
-             *
-             * @pre ptr must not be nullptr if size > 0
-             * @pre size must accurately represent the accessible memory size at ptr
-             * @pre The memory block must remain valid for the duration of the call
-             *
-             * @warning This function reads raw memory. Ensure the memory block does not
-             *          contain uninitialized padding bytes that could affect hash consistency.
-             *
-             * @thread_safety Thread-safe if the memory block is not modified concurrently.
-             *
-             * @complexity O(n) where n is the size of the memory block
-             *
-             * @example
-             * @code
-             * struct Data { int x; float y; };
-             * Data data = {42, 3.14f};
-             *
-             * uint32_t hash = 0;
-             * UUIDUtilities::HashCombine(hash, &data, sizeof(data));
-             * @endcode
-             */
-	        static void HashCombine(uint32_t& h, void* ptr, uint32_t size);
-	    };
-    }
+			/**
+			 * @brief Combines a hash value with a memory block's hash.
+			 *
+			 * This function creates a hash from an arbitrary memory block and combines it with
+			 * an existing hash value using a string_view-based approach. This allows hashing
+			 * of any contiguous memory region, making it useful for hashing structs, arrays,
+			 * or other binary data.
+			 *
+			 * @param h Reference to the hash value to be updated with the memory block's hash
+			 * @param ptr Pointer to the memory block to hash
+			 * @param size Size of the memory block in bytes
+			 *
+			 * @pre ptr must not be nullptr if size > 0
+			 * @pre size must accurately represent the accessible memory size at ptr
+			 * @pre The memory block must remain valid for the duration of the call
+			 *
+			 * @warning This function reads raw memory. Ensure the memory block does not
+			 *          contain uninitialized padding bytes that could affect hash consistency.
+			 *
+			 * @thread_safety Thread-safe if the memory block is not modified concurrently.
+			 *
+			 * @complexity O(n) where n is the size of the memory block
+			 *
+			 * @example
+			 * @code
+			 * struct Data { int x; float y; };
+			 * Data data = {42, 3.14f};
+			 *
+			 * uint32_t hash = 0;
+			 * UUIDUtilities::HashCombine(hash, &data, sizeof(data));
+			 * @endcode
+			 */
+			static void HashCombine(uint32_t& h, void* ptr, uint32_t size);
+		};
+	}
 
 	/**
 	 * @class UUID128
@@ -415,7 +434,7 @@ namespace SceneryEditorX
 		 * std::string encoded = id.ToBase64();
 		 * @endcode
 		 */
-		std::string ToBase64() const;
+		[[nodiscard]] std::string ToBase64() const;
 
 		/**
 		 * @brief Creates a UUID128 from a Base64 encoded string.
@@ -442,8 +461,8 @@ namespace SceneryEditorX
 		static UUID128 FromBase64(const std::string& base64);
 
 	private:
-		friend struct std::hash<UUID128>;  ///< Allow hash specialization access
-		std::array<uint32_t, 4> m_UUID;   ///< The underlying 128-bit identifier value
+		friend struct std::hash<UUID128>;  // Allow hash specialization access
+		std::array<uint32_t, 4> m_UUID;   // The underlying 128-bit identifier value
 	};
 
 	/**
@@ -624,9 +643,98 @@ namespace SceneryEditorX
 		 */
 		bool operator!=(const UUID& other) const { return m_UUID != other.m_UUID; }
 
+		/**
+		 * @brief Equality comparison operator with a raw 64-bit integer value.
+		 *
+		 * Compares the UUID's underlying value directly against a uint64_t, enabling
+		 * idiomatic zero-checks such as `handle == 0` without an explicit cast.
+		 *
+		 * @param value The 64-bit integer value to compare against
+		 * @return true if the underlying UUID value equals @p value, false otherwise
+		 *
+		 * @thread_safety Thread-safe. No shared state is accessed.
+		 *
+		 * @complexity O(1) - constant time operation
+		 *
+		 * @example
+		 * @code
+		 * UUID id(0);
+		 * bool isNull = (id == 0);  // true
+		 * @endcode
+		 */
+		bool operator==(uint64_t value) const { return m_UUID == value; }
+
+		/**
+		 * @brief Inequality comparison operator with a raw 64-bit integer value.
+		 *
+		 * Compares the UUID's underlying value directly against a uint64_t, enabling
+		 * idiomatic validity checks such as `handle != 0` without an explicit cast.
+		 *
+		 * @param value The 64-bit integer value to compare against
+		 * @return true if the underlying UUID value does not equal @p value, false otherwise
+		 *
+		 * @thread_safety Thread-safe. No shared state is accessed.
+		 *
+		 * @complexity O(1) - constant time operation
+		 *
+		 * @example
+		 * @code
+		 * UUID id;
+		 * bool isValid = (id != 0);  // true for any randomly generated UUID
+		 * @endcode
+		 */
+		bool operator!=(uint64_t value) const { return m_UUID != value; }
+
+		/**
+		 * @brief Less-than comparison operator for ordering UUIDs.
+		 *
+		 * Enables use of UUID as a key in ordered containers such as std::map and std::set
+		 * by providing a total ordering based on the underlying 64-bit value.
+		 *
+		 * @param other The UUID to compare with
+		 * @return true if this UUID is less than @p other, false otherwise
+		 *
+		 * @thread_safety Thread-safe. No shared state is accessed.
+		 *
+		 * @complexity O(1) - constant time operation
+		 */
+		bool operator<(const UUID& other) const { return m_UUID < other.m_UUID; }
+
+	    /**
+		 * @brief Greater-than comparison operator for ordering UUIDs.
+		 *
+		 * Enables use of UUID as a key in ordered containers such as std::map and std::set
+		 * by providing a total ordering based on the underlying 64-bit value.
+		 *
+		 * @param other The UUID to compare with
+		 * @return true if this UUID is greater than @p other, false otherwise
+		 *
+		 * @thread_safety Thread-safe. No shared state is accessed.
+		 *
+		 * @complexity O(1) - constant time operation
+		 */
+		bool operator>(const UUID& other) const { return m_UUID > other.m_UUID; }
+
+
+		/* @brief Copy assignment */
+		UUID &operator=(const UUID &) = default;
+
+		/**
+		 * @brief Move constructor for efficient transfer of ownership.
+		 * @param other The UUID to move from
+		 */
+		UUID(UUID &&other) noexcept;
+
+		/**
+		 * @brief Move assignment operator for efficient transfer of ownership.
+		 * @param other The UUID to move from
+		 * @return Reference to the current UUID instance
+		 */
+		UUID &operator=(UUID &&other) noexcept;
+
 	private:
-		friend struct std::hash<UUID>;  ///< Allow hash specialization access
-		uint64_t m_UUID;               ///< The underlying 64-bit identifier value
+		friend struct std::hash<UUID>;  // Allow hash specialization access
+		uint64_t m_UUID;                // The underlying 64-bit identifier value
 	};
 
 	/**
@@ -803,12 +911,23 @@ namespace SceneryEditorX
 		bool operator!=(const UUID32& other) const { return m_UUID != other.m_UUID; }
 
 
-        bool operator==(const UUID & uuid) const;
+		bool operator==(const UUID & uuid) const;
 
-    private:
-		friend struct std::hash<UUID32>;  ///< Allow hash specialization access
-		uint32_t m_UUID;                  ///< The underlying 32-bit identifier value
+	private:
+		friend struct std::hash<UUID32>;  // Allow hash specialization access
+		uint32_t m_UUID;                  // The underlying 32-bit identifier value
 	};
+
+   /**
+	 * @brief Stream insertion operator for UUID.
+	 * @param os The output stream.
+	 * @param uuid The UUID to write.
+	 * @return The output stream reference.
+	 */
+	inline std::ostream& operator<<(std::ostream& os, const UUID& uuid)
+	{
+		return os << static_cast<uint64_t>(uuid);
+	}
 
 }
 
@@ -868,7 +987,7 @@ namespace std
 		 *       produce the same hash value within a single program execution.
 		 */
 		std::size_t operator()(const SceneryEditorX::UUID &uuid) const noexcept
-        {
+		{
 			// uuid is already a randomly generated number, and is suitable as a hash key as-is.
 			// this may change in future, in which case return hash<uint64_t>{}(uuid); might be more appropriate
 			return static_cast<std::size_t>(static_cast<uint64_t>(uuid));
@@ -918,7 +1037,7 @@ namespace std
 		 *       produce the same hash value within a single program execution.
 		 */
 		std::size_t operator()(const SceneryEditorX::UUID32 &uuid) const noexcept
-        {
+		{
 			return hash<uint32_t>()(static_cast<uint32_t>(uuid));
 		}
 	};
@@ -966,7 +1085,7 @@ namespace std
 		 *       produce the same hash value within a single program execution.
 		 */
 		std::size_t operator()(const SceneryEditorX::UUID128 &uuid) const noexcept
-        {
+		{
 			const auto& components = static_cast<std::array<uint32_t, 4>>(uuid);
 
 			// Combine hash values of all components using a hash combination algorithm

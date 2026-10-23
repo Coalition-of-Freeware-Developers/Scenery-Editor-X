@@ -42,7 +42,7 @@ namespace SceneryEditorX
                 renderContext.Init();
                 
                 /// Get the device
-                device = renderContext.GetLogicDevice();
+                device = renderContext.GetDevice();
                 
                 /// Create memory allocator
                 allocator = CreateRef<MemoryAllocator>("TestAllocator");
@@ -80,7 +80,7 @@ namespace SceneryEditorX
                 return;
                 
             RenderContext renderContext;
-            if (const auto deviceRef = renderContext.GetLogicDevice(); !deviceRef) return;
+            if (const auto deviceRef = renderContext.GetDevice(); !deviceRef) return;
             
             ///< Since we can't access memoryAllocator directly, we'll use our test allocator
             ///< This assumes we have the allocator from the test fixture available

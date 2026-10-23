@@ -1,153 +1,404 @@
-﻿/**
-* -------------------------------------------------------
-* Scenery Editor X
-* -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray
-* Copyright (c) 2025 Coalition of Freeware Developers
-* -------------------------------------------------------
-* application.cpp
-* -------------------------------------------------------
-* Created: 25/5/2025
-* -------------------------------------------------------
-*/
+/**
+ * -------------------------------------------------------
+ * Scenery Editor X
+ * -------------------------------------------------------
+ * Copyright (c) 2026 Thomas Ray 
+ * Copyright (c) 2026 Coalition of Freeware Developers
+ * -------------------------------------------------------
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ * -------------------------------------------------------
+ * application.cpp
+ * -------------------------------------------------------
+ * Created: 25/5/2025
+ * -------------------------------------------------------
+ */
 #include "application.h"
-#include "SceneryEditorX/core/events/application_events.h"
-#include "SceneryEditorX/core/input/input.h"
-#include "SceneryEditorX/logging/logging.hpp"
-#include "SceneryEditorX/renderer/renderer.h"
-#include "SceneryEditorX/renderer/vulkan/vk_swapchain.h"
+#include <SceneryEditorX/core/frame_profiler.h>
+#include <SceneryEditorX/core/input/input.h>
+#include <SceneryEditorX/core/platform/windows/crash_diagnostics.h>
+#include <SceneryEditorX/core/resource/resource_cache.h>
+#include <SceneryEditorX/core/threading/thread_pool.h>
+#include <SceneryEditorX/core/time/fps_timer.h>
+#include <SceneryEditorX/filesystem/file_system.h>
+#include <SceneryEditorX/filesystem/vfs.h>
+#include <SceneryEditorX/logging/logging.hpp>
+#include <SceneryEditorX/logging/profiler.hpp>
+#include <SceneryEditorX/project/project.h>
+#include <SceneryEditorX/renderer/renderer.h>
+#include <SceneryEditorX/renderer/ui/ui_layer.h>
+#include <SceneryEditorX/renderer/vulkan/swapchain.h>
+#include <SceneryEditorX/scene/scene.h>
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
-extern bool appRunning; /// Global variable to control the application loop
+bool appRunning = true; // Global variable to control the application loop
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-    Application *Application::appInstance = nullptr;
-    INTERNAL std::thread::id s_MainThreadID;
+	Application *Application::s_AppInstance = nullptr;
+	static std::thread::id s_MainThreadID;
 
-    /// -------------------------------------------------------
+	// -------------------------------------------------------
 
-    Application::Application(const AppData &appData)
-    {
-        SEDX_CORE_INFO("Creating application with window: {}x{}", appData.WinWidth, appData.WinHeight);
+	/**
+	 * @brief Helper function to initialize the application with common setup
+	 * @param appData The application data configuration
+	 */
+	void Application::InitializeApplication(const AppData &appData)
+	{
+		m_AppData = appData;
 
-        appInstance = this;
+		// Set working directory if specified
+		if (!appData.workingDirectory.empty())
+		{
+			std::filesystem::current_path(appData.workingDirectory);
+		}
 
-        /// Create the window
-        m_Window = CreateScope<Window>();
+		// Create window
+		m_Window = CreateScope<Window>();
+		SEDX_CORE_TRACE("Initializing Window");
+		m_Window->Create();
+		
+		// Configure window properties BEFORE renderer init
+		if (appData.splashScreen)
+		{
+			m_Window->SetResizable(false);
+			m_Window->SetDecorated(false);
+		}
+		else
+		{
+			m_Window->SetResizable(appData.resizable);
+			m_Window->SetDecorated(appData.decorated);
+		}
+		
+		if (appData.startMaximized)
+		{
+			m_Window->Maximize();
+		}
+		else
+		{
+			m_Window->CenterWindow();
+		}
+		
+		// Set event callback before renderer init (so it can handle any initialization events)
+		m_Window->SetEventCallback([this](Event &e) { OnEvent(e); });
+		m_IsMinimized = false;
 
-        /// Set window properties from appData
-        if (appData.WinWidth > 0 && appData.WinHeight > 0)
-        {
-            /// Update window properties if provided
-            // m_Window->winData.width = appData.WinWidth;
-            // m_Window->winData.height = appData.WinHeight;
-            // Use public API to set window size if available.
-            // If not, set via m_winSpecs (public struct)
-            // But m_winSpecs is private, so use SetSize if exists
-            // Otherwise, fallback to constructor or expose a setter
-            // Here, we use ApplyChanges after setting width/height
-            // But since winData is private, we cannot access it directly
-            // Instead, set via a public method or constructor
-            // If not available, this is a design issue
-            // For now, skip direct assignment and rely on ApplyChanges
-        }
+		// Initialize RenderContext first so device/instance exist for Renderer
+		RenderContext::Init();
+		Renderer::Init();
+		m_RenderThread.Run();
 
-        if (!appData.appName.empty())
-        {
-            m_Window->SetTitle(appData.appName);
-            SEDX_CORE_INFO_TAG("Application", "Window title Changed to {}", appData.appName);
-        }
+		ResourceCache::Init();
 
-		SEDX_CORE_INFO("Initializing Window");
-        /// Initialize the window first
-        m_Window->Init();
+		// The UI layer needs the renderer's swapchain and the resource directories (fonts), so it attaches last.
+		if (appData.enableUI)
+		{
+			m_UILayer = new UILayer(appData.enableUIViewports);
+			PushOverlay(m_UILayer);
+		}
 
-        SEDX_CORE_INFO("Window Initialized");
-        /// Update window properties
-        m_Window->ApplyChanges();
-        SEDX_CORE_INFO("Window changes applied");
+		FPSTimer::Init();
+		ThreadPool::Init();
+		Scene::Init();
 
-        isRunning   = true;
-        isMinimized = false;
-    }
+		m_IsRunning = true;
+	}
 
-    Application::~Application()
-    {
-        m_Window->~Window();
-        // TODO: Re-enable Renderer::Shutdown() once the renderer header issue is resolved
-        //Renderer::Shutdown();
-    }
+	// -------------------------------------------------------
 
-    void Application::Run()
-    {
-        OnInit();
+	void Application::SetUpAppLocations()
+	{
+		// Settings, data, caches, logs and temp files where the platform expects them (moving older versions' files once)
+		for (const std::string &line : IO::FileSystem::InitAppLocations())
+			SEDX_CORE_INFO_TAG("Files", "{}", line);
+		const VFS::AppLayout layout = VFS::GetAppLayout();
+		SEDX_CORE_INFO_TAG("Files", "Settings {} | data {} | cache {} | logs {}", VFS::ToUtf8(layout.settings), VFS::ToUtf8(layout.data),
+			VFS::ToUtf8(layout.cache), VFS::ToUtf8(layout.logs));
 
-        /// Main application loop
-        while (isRunning && !m_Window->GetShouldClose())
-        {
-            /// Update the window (poll events)
-            m_Window->Update();
+		// Working folders: exchanges and autosaves stay on this machine, plugins travel with the settings
+		for (const char *name : { "autosave", "downloads", "export", "import" })
+			VFS::CreateFolders(layout.data / name);
+		VFS::CreateFolders(layout.settings / "plugins");
+	}
 
-            /// Skip frame if window is minimized
-            if (isMinimized)
-                continue;
+	Application::Application(const PlatformContext& context) : m_PlatformContext(&context), m_RenderThread(ThreadingPolicy::MultiThreaded)
+	{
+		Diagnostics::InstallCrashHandlers();
+		s_AppInstance = this;
+		s_MainThreadID = std::this_thread::get_id();
 
-            /// Call user-defined update function
-            OnUpdate();
-        }
+		SEDX_CORE_TRACE("Working directory set to: {}", std::filesystem::current_path().string());
 
-        OnShutdown();
-    }
+		// -------------------------------------------------------
 
-    void Application::Stop()
-    {
-        isRunning = false;
-    }
+		SEDX_CORE_TRACE("=== Initializing Application with PlatformContext ===");
+		SEDX_CORE_TRACE("  Working Directory: {}", context.GetWorkingDirectory());
+		SEDX_CORE_TRACE("  Temp Directory: {}", context.GetTempDirectory());
+		SEDX_CORE_TRACE("  Command Line Args: {}", context.GetCommandLineArgs().size());
 
-    void Application::OnShutdown()
-    {
-        SEDX_CORE_INFO("Shutting down application");
-        appRunning = false;
-    }
+		AppData specification;
+		specification.coreThreadingPolicy = ThreadingPolicy::MultiThreaded;
 
-    void Application::SyncEvents()
-    {
-        std::scoped_lock<std::mutex> lock(m_EventQueueMutex);
-        for (auto &synced : m_EventQueue | std::views::keys)
-        {
-            synced = true;
-        }
-    }
+		// Apply platform context settings to app data
+		if (!context.GetWorkingDirectory().empty())
+		{
+			specification.workingDirectory = context.GetWorkingDirectory();
+		}
 
+		SetUpAppLocations();
+
+		InitializeApplication(specification);
+	}
+
+	Application::Application(const PlatformContext& context, const AppData& appData) : m_PlatformContext(&context), m_RenderThread(appData.coreThreadingPolicy)
+	{
+		Diagnostics::InstallCrashHandlers();
+		s_AppInstance = this;
+		s_MainThreadID = std::this_thread::get_id();
+
+		// Set working directory to application root (2 levels up from bin/Debug)
+		std::filesystem::path exePath = std::filesystem::current_path();
+		std::filesystem::path repoRoot = exePath.parent_path().parent_path();
+		std::filesystem::current_path(repoRoot);
+
+		SEDX_CORE_TRACE("Executable directory: {}", exePath.string());
+		SEDX_CORE_TRACE("Repository root: {}", repoRoot.string());
+		SEDX_CORE_TRACE("Working directory set to: {}", std::filesystem::current_path().string());
+
+		// -------------------------------------------------------
+
+		SEDX_CORE_TRACE("=== Initializing Application with PlatformContext ===");
+		SEDX_CORE_TRACE("  Working Directory: {}", context.GetWorkingDirectory());
+		SEDX_CORE_TRACE("  Temp Directory: {}", context.GetTempDirectory());
+		SEDX_CORE_TRACE("  Command Line Args: {}", context.GetCommandLineArgs().size());
+
+		SetUpAppLocations();
+
+		AppData specification = appData;
+
+		// Apply platform context settings if not already set in appData
+		if (specification.workingDirectory.empty() && !context.GetWorkingDirectory().empty())
+		{
+			specification.workingDirectory = context.GetWorkingDirectory();
+		}
+
+		InitializeApplication(specification);
+	}
+
+	Application::~Application()
+	{
+		m_Window->SetEventCallback([](Event&) {});
+
+		// Stop producing new work first
+		m_RenderThread.Terminate();
+
+		// Detach and destroy layers in reverse order (dependencies unwind correctly). The UI layer is an
+		// overlay, so it goes first: client layers must not touch ImGui in OnDetach().
+		for (size_t i = m_LayerStack.Size(); i > 0; --i)
+		{
+			Layer* layer = m_LayerStack[i - 1];
+			layer->OnDetach();
+			delete layer;
+		}
+		m_UILayer = nullptr;
+
+		// Release shared resource owners/caches
+		ResourceCache::UnloadDefaultResources();
+		ResourceCache::Shutdown();
+		Scene::Shutdown();
+
+		// Shutdown systems that may hold/consume resources
+		Renderer::Shutdown();
+		ThreadPool::Shutdown();
+
+		// Destroy the Vulkan device and instance while logging is still up (Log shuts down after this).
+		RenderContext::Shutdown();
+	}
+
+	void Application::Tick()
+	{
+		Application* app = this;
+		Input::Tick();
+		Window::Tick();	// Per-frame housekeeping
+
+		// Execute UI render calls directly for now to avoid relying on the
+		// renderer submission system while that API is being refactored.
+		app->RenderUI();
+		m_RenderThread.Tick();
+		FPSTimer::PostTick();
+	}
+
+	void Application::Run()
+	{
+		OnInit(); // Call user-defined initialization function
+
+		static uint64_t frameCount = 0;
+
+		// Main application loop
+		while (m_IsRunning && !m_Window->GetShouldClose())
+		{
+			Timer timer;
+
+			// Wait for render thread to finish frame
+			{
+				SEDX_PERF_SCOPE("Main: wait for render thread");
+				m_RenderThread.BlockUntilRenderComplete();
+				m_PerformanceTimers.MainThreadWaitTime = timer.ElapsedMillis();
+			}
+			Perf::EndFrame();
+
+			if (!m_IsMinimized)
+			{
+				SEDX_PERF_SCOPE("Main: update + UI");
+
+				// Poll events
+				ProcessEvents();
+
+				for (size_t i = 0; i < m_LayerStack.Size(); ++i)
+				{
+					m_LayerStack[i]->Tick();
+				}
+
+				OnUpdate();
+				OnRender();
+				Tick();
+
+				// Start rendering previous frame
+				m_RenderThread.Kick();
+				m_CurrentFrameIndex = (m_CurrentFrameIndex + 1) % 2;
+				m_PerformanceTimers.MainThreadWorkTime = timer.ElapsedMillis();
+
+				frameCount++;
+			}
+		}
+
+		Input::ClearReleasedKeys();
+		m_RenderThread.BlockUntilRenderComplete();
+		float time = GetTime();
+		m_FrameTime = time - m_LastFrameTime;
+		m_DeltaTime = xMath::Min<float>(static_cast<float>(m_FrameTime), 0.0333f);
+		m_LastFrameTime = time;
+
+		//SEDX_CORE_INFO_TAG("Application", "=== Exiting Application Main Loop (frames rendered: {}) ===", frameCount);
+		OnShutdown();
+	}
+
+	void Application::Stop() { m_IsRunning = false; }
+
+	void Application::OnRender()
+	{
+		SEDX_CORE_TRACE_TAG("Application", "OnRender() has been called");
+	}
+
+	void Application::RenderUI()
+	{
+		//SEDX_PROFILE_FUNC();
+		//SEDX_SCOPE_PERF("Application::RenderUI");
+		for (size_t i = 0; i < m_LayerStack.Size(); i++)
+		{
+			m_LayerStack[i]->OnRender();
+		}
+
+		if (!m_UILayer || !m_UILayer->IsInitialized())
+			return;
+
+		m_UILayer->BeginRendering();
+		for (size_t i = 0; i < m_LayerStack.Size(); i++)
+		{
+			m_LayerStack[i]->OnUIRender();
+		}
+		m_UILayer->EndRendering();
+	}
+
+	void Application::OnShutdown()
+	{
+		SEDX_CORE_INFO_TAG("Application", "Application::OnShutdown()");
+		SEDX_CORE_TRACE("Shutting down application");
+		m_EventCallbacks.clear();
+		appRunning = false;
+	}
+
+	void Application::PushLayer(Layer *layer)
+	{
+		m_LayerStack.PushLayer(layer);
+		layer->OnAttach();
+	}
+
+	void Application::PushOverlay(Layer *layer)
+	{
+		m_LayerStack.PushOverlay(layer);
+		layer->OnAttach();
+	}
+
+	void Application::PopLayer(Layer *layer)
+	{
+		m_LayerStack.PopLayer(layer);
+		layer->OnDetach();
+	}
+
+	void Application::PopOverlay(Layer *layer)
+	{
+		m_LayerStack.PopOverlay(layer);
+		layer->OnDetach();
+	}
+
+	void Application::SyncEvents()
+	{
+		std::scoped_lock lock(m_EventQueueMutex);
+		for (auto &synced : m_EventQueue | std::views::keys)
+		{
+			synced = true;
+		}
+	}
 
 	void Application::ProcessEvents()
 	{
 		Input::TransitionPressedKeys();
 		Input::TransitionPressedButtons();
+		Window::ProcessEvents();
 
-        m_Window->ProcessEvents();
-
-		// NOTE: we have no control over what func() does.  holding this lock while calling func() is a bad idea:
-		// 1) func() might be slow (means we hold the lock for ages)
-		// 2) func() might result in events getting queued, in which case we have a deadlock
-		std::scoped_lock<std::mutex> lock(m_EventQueueMutex);
-
-		// Process custom event queue, up until we encounter an event that is not yet synced
-		// If application queues such events, then it is the application's responsibility to call
-		// SyncEvents() at the appropriate time.
-		while (!m_EventQueue.empty())
+		/*
+		 * Process custom event queue up until we encounter an event that is not yet synced.
+		 * If the application queues such events, it is the application's responsibility to call
+		 * SyncEvents() at the appropriate time.
+		 */
+		while (true)
 		{
-			const auto& [synced, func] = m_EventQueue.front();
-			if (!synced)
+			std::function<void()> func;
 			{
-				break;
+				std::scoped_lock lock(m_EventQueueMutex);
+				if (m_EventQueue.empty() || !m_EventQueue.front().first)
+				{
+					break;
+				}
+
+				func = std::move(m_EventQueue.front().second);
+				m_EventQueue.pop_front();
 			}
-			func();
-			m_EventQueue.pop_front();
+
+			if (func)
+			{
+				func();
+			}
 		}
 	}
 
@@ -157,52 +408,44 @@ namespace SceneryEditorX
 		dispatcher.Dispatch<WindowResizeEvent>([this](const WindowResizeEvent& e) { return OnWindowResize(e); });
 		dispatcher.Dispatch<WindowMinimizeEvent>([this](const WindowMinimizeEvent& e) { return OnWindowMinimize(e); });
 		dispatcher.Dispatch<WindowCloseEvent>([this](WindowCloseEvent& e) { return OnWindowClose(e); });
-
-		for (auto it = m_ModuleStage.end(); it != m_ModuleStage.begin(); )
+		
+		for (auto it = m_LayerStack.End(); it != m_LayerStack.Begin(); )
 		{
 			(*--it)->OnEvent(event);
-			if (event.Handled)
-				break;
+			if (event.m_Handled) break;
 		}
 
-		if (event.Handled)
-			return;
+		if (event.m_Handled) return;
 
-		// TODO: Should these callbacks be called BEFORE the layers receive events?
-		//				We may actually want that since most of these callbacks will be functions REQUIRED in order for the game
-		//				to work, and if a layer has already handled the event we may end up with problems
+		/**
+		 * TODO: Should these callbacks be called BEFORE the layers receive events?
+		 * We may actually want that since most of these callbacks will be functions REQUIRED in order for the game
+		 * to work, and if a layer has already handled the event we may end up with problems.
+		 */
 		for (auto& eventCallback : m_EventCallbacks)
 		{
 			eventCallback(event);
-
-			if (event.Handled)
-				break;
+			if (event.m_Handled) break;
 		}
 
 	}
 
 	bool Application::OnWindowResize(const WindowResizeEvent& e)
 	{
-		const uint32_t width = e.GetWidth(), height = e.GetHeight();
-		if (width == 0 || height == 0)
+		const uint32_t height = e.GetHeight();
+		if (const uint32_t width = e.GetWidth(); width == 0 || height == 0)
 		{
-			//m_Minimized = true;
+			//m_IsMinimized = true;
 			return false;
 		}
-		//m_Minimized = false;
-		
-		auto& window = m_Window;
-		Renderer::Submit([&window, width, height]() mutable
-		{
-			window->GetSwapChain().OnResize(width, height);
-		});
+		//m_IsMinimized = false;
 
 		return false;
 	}
 
 	bool Application::OnWindowMinimize(const WindowMinimizeEvent& e)
 	{
-        isMinimized = e.IsMinimized();
+		m_IsMinimized = e.IsMinimized();
 		return false;
 	}
 
@@ -212,31 +455,12 @@ namespace SceneryEditorX
 		return false; // give other things a chance to react to window close
 	}
 
-	float Application::GetTime() const
-	{
-		return (float)glfwGetTime();
-	}
-
-    const char* Application::GetConfigurationName()
-    {
-        return SEDX_BUILD_TYPE;
-    }
-
-    const char* Application::GetPlatformName()
-    {
-        return SEDX_PLATFORM_NAME;
-    }
-
-	std::thread::id Application::GetMainThreadID()
-    {
-        return s_MainThreadID;
-    }
-
-    bool Application::IsMainThread()
-    {
-        return std::this_thread::get_id() == s_MainThreadID;
-    }
+	float Application::GetTime() { return Time::GetTime(); }
+	const char* Application::GetConfigurationName() { return SEDX_BUILD_TYPE; }
+	const char* Application::GetPlatformName() { return SEDX_PLATFORM_NAME; }
+	std::thread::id Application::GetMainThreadID() { return s_MainThreadID; }
+	bool Application::IsMainThread() { return std::this_thread::get_id() == s_MainThreadID; }
 
 }
 
-/// -------------------------------------------------------------------------
+// -------------------------------------------------------------------------

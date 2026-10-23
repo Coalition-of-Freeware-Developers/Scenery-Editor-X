@@ -1,26 +1,47 @@
 ﻿/**
-* -------------------------------------------------------
-* Scenery Editor X
-* -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
-* Copyright (c) 2025 Coalition of Freeware Developers
-* -------------------------------------------------------
-* key_codes.h
-* -------------------------------------------------------
-* Created: 13/7/2025
-* -------------------------------------------------------
-*/
+ * -------------------------------------------------------
+ * Scenery Editor X
+ * -------------------------------------------------------
+ * Copyright (c) 2026 Thomas Ray 
+ * Copyright (c) 2026 Coalition of Freeware Developers
+ * -------------------------------------------------------
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ * -------------------------------------------------------
+ * key_codes.h
+ * -------------------------------------------------------
+ * Created: 13/7/2025
+ * -------------------------------------------------------
+ */
 #pragma once
 #include <cstdint>
 #include <ostream>
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
+	/**
+	 * @enum KeyCode
+	 * @brief Represents the key codes for keyboard input.
+	 */
 	typedef enum class KeyCode : uint16_t
 	{
-		// From glfw3.h
 		Space		= 32,
 		Apostrophe	= 39, /* ' */
 		Comma		= 44, /* , */
@@ -153,6 +174,10 @@ namespace SceneryEditorX
 		Menu			= 348
 	} Key;
 
+	/**
+	 * @enum KeyState
+	 * @brief Represents the state of a key.
+	 */
 	enum class KeyState
 	{
 		None = -1,
@@ -161,6 +186,10 @@ namespace SceneryEditorX
 		Released
 	};
 
+	/**
+	 * @enum CursorMode
+	 * @brief Represents the mode of the cursor.
+	 */
 	enum class CursorMode : uint8_t
 	{
 		Normal = 0,
@@ -168,6 +197,10 @@ namespace SceneryEditorX
 		Locked = 2
 	};
 
+	/**
+	 * @enum MouseButton
+	 * @brief Represents the mouse buttons.
+	 */
 	typedef enum class MouseButton : uint8_t
 	{
 		Button0 = 0,
@@ -182,12 +215,24 @@ namespace SceneryEditorX
 	} Button;
 
 
+	/**
+	 * @brief Overloads the stream insertion operator for KeyCode.
+	 * @param os The output stream.
+	 * @param keyCode The key code to be inserted into the stream.
+	 * @return The output stream.
+	 */
 	inline std::ostream& operator<<(std::ostream& os, KeyCode keyCode)
 	{
 		os << static_cast<int32_t>(keyCode);
 		return os;
 	}
 
+	/**
+	 * @brief Overloads the stream insertion operator for MouseButton.
+	 * @param os The output stream.
+	 * @param button The mouse button to be inserted into the stream.
+	 * @return The output stream.
+	 */
 	inline std::ostream& operator<<(std::ostream& os, MouseButton button)
 	{
 		os << static_cast<int32_t>(button);
@@ -196,7 +241,7 @@ namespace SceneryEditorX
 
 }
 
-/// ------------------------------------------------------------------------///
+// ------------------------------------------------------------------------///
 
 // From glfw3.h
 #define SEDX_KEY_SPACE				::SceneryEditorX::Key::Space
@@ -250,9 +295,9 @@ namespace SceneryEditorX
 #define SEDX_KEY_WORLD_1			::SceneryEditorX::Key::World1           /* non-US #1 */
 #define SEDX_KEY_WORLD_2			::SceneryEditorX::Key::World2           /* non-US #2 */
 
-/// ------------------------------------------------------------------------///
+// ------------------------------------------------------------------------///
 ///									FUNCTION KEYS							///
-/// ------------------------------------------------------------------------///
+// ------------------------------------------------------------------------///
 #define SEDX_KEY_ESCAPE				::SceneryEditorX::Key::Escape
 #define SEDX_KEY_ENTER				::SceneryEditorX::Key::Enter
 #define SEDX_KEY_TAB				::SceneryEditorX::Key::Tab
@@ -298,9 +343,9 @@ namespace SceneryEditorX
 #define SEDX_KEY_F24				::SceneryEditorX::Key::F24
 #define SEDX_KEY_F25				::SceneryEditorX::Key::F25
 
-/// ------------------------------------------------------------------------///
+// ------------------------------------------------------------------------///
 ///									KEYPAD									///
-/// ------------------------------------------------------------------------///
+// ------------------------------------------------------------------------///
 #define SEDX_KEY_KP_0				::SceneryEditorX::Key::KP0
 #define SEDX_KEY_KP_1				::SceneryEditorX::Key::KP1
 #define SEDX_KEY_KP_2				::SceneryEditorX::Key::KP2
@@ -329,11 +374,11 @@ namespace SceneryEditorX
 #define SEDX_KEY_RIGHT_SUPER		::SceneryEditorX::Key::RightSuper
 #define SEDX_KEY_MENU				::SceneryEditorX::Key::Menu
 
-/// ------------------------------------------------------------------------///
+// ------------------------------------------------------------------------///
 ///									MOUSE									///
-/// ------------------------------------------------------------------------///
+// ------------------------------------------------------------------------///
 #define SEDX_MOUSE_BUTTON_LEFT		::SceneryEditorX::Button::Left
 #define SEDX_MOUSE_BUTTON_RIGHT		::SceneryEditorX::Button::Right
 #define SEDX_MOUSE_BUTTON_MIDDLE	::SceneryEditorX::Button::Middle
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

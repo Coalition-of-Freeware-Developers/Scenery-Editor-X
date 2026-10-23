@@ -47,6 +47,7 @@
 *.dds   binary
 *.tiff  binary
 *.psd   binary
+*.ico   binary
 
 ###############################################################################
 # Behavior for 3d model files
@@ -80,3 +81,11 @@
 *.PDF   diff=astextplain
 #*.rtf   diff=astextplain
 #*.RTF   diff=astextplain
+
+###############################################################################
+# Scenery Editor X projects: .edX is diffable JSON written with LF endings,
+# .sex is binary (a text conversion corrupts it)
+###############################################################################
+*.edX   text eol=lf
+*.edx   text eol=lf
+*.sex   binary

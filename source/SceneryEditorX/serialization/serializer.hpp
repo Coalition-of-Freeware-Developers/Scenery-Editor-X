@@ -1,19 +1,37 @@
 ﻿/**
-* -------------------------------------------------------
-* Scenery Editor X
-* -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
-* Copyright (c) 2025 Coalition of Freeware Developers
-* -------------------------------------------------------
-* serializer.hpp
-* -------------------------------------------------------
-* Created: 9/4/2025
-* -------------------------------------------------------
-*/
+ * -------------------------------------------------------
+ * Scenery Editor X
+ * -------------------------------------------------------
+ * Copyright (c) 2026 Thomas Ray 
+ * Copyright (c) 2026 Coalition of Freeware Developers
+ * -------------------------------------------------------
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ * -------------------------------------------------------
+ * serializer.hpp
+ * -------------------------------------------------------
+ * Created: 9/4/2025
+ * -------------------------------------------------------
+ */
 #pragma once
 #include "SceneryEditorX/asset/managers/asset_manager.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -53,7 +71,7 @@ namespace SceneryEditorX
 
 	/*using Json = nlohmann::json;
 
-	/// -------------------------------------------------------
+	// -------------------------------------------------------
 
 	inline void to_json(Json& j, const Vec3& v)
 	{
@@ -86,7 +104,7 @@ namespace SceneryEditorX
 	    }
 	}
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	struct BinaryStorage
 	{
@@ -106,7 +124,7 @@ namespace SceneryEditorX
 	    }
 	};
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	struct Serializer
 	{
@@ -115,17 +133,17 @@ namespace SceneryEditorX
 	    AssetManager& manager;
 	    int directory = 0;
 
-		/// -------------------------------------------------------
+		// -------------------------------------------------------
 
 	    std::filesystem::path filename;
-	    LOCAL constexpr int LOAD = 0;
-	    LOCAL constexpr int SAVE = 1;
+	    static constexpr int LOAD = 0;
+	    static constexpr int SAVE = 1;
 
-		/// -------------------------------------------------------
+		// -------------------------------------------------------
 
 	    Serializer(Json& j, BinaryStorage& storage, int directory, AssetManager& manager) : j(j) , storage(storage) , manager(manager) , directory(directory) {}
 
-	    /// -------------------------------------------------------
+	    // -------------------------------------------------------
 
 	    template<typename T>
 	    void Serialize(Ref<T>& object)
@@ -158,7 +176,7 @@ namespace SceneryEditorX
 	        }
 	    }
 
-	    /// -------------------------------------------------------
+	    // -------------------------------------------------------
 	
 	    template<typename T>
 	    void operator()(const std::string& field, T& value)
@@ -173,7 +191,7 @@ namespace SceneryEditorX
 	        }
 	    }
 
-	    /// -------------------------------------------------------
+	    // -------------------------------------------------------
 
 	    template<typename T>
 	    void Vector(const std::string& field, std::vector<T>& v)
@@ -196,7 +214,7 @@ namespace SceneryEditorX
 	        }
 	    }
 
-	    /// -------------------------------------------------------
+	    // -------------------------------------------------------
 
 	    template<typename T>
 	    void VectorRef(const std::string& field, std::vector<T>& v)
@@ -227,7 +245,7 @@ namespace SceneryEditorX
              }
 	    }
 
-	    /// -------------------------------------------------------
+	    // -------------------------------------------------------
 
 	    template <typename T>
 	    void Asset(const std::string& field, Ref<T>& object)
@@ -249,7 +267,7 @@ namespace SceneryEditorX
 	        }
 	    }
 
-		/// -------------------------------------------------------
+		// -------------------------------------------------------
 
 	    template <typename T>
 	    void Node(const std::string& field, Ref<T>& node, SceneAsset* scene)
@@ -271,10 +289,10 @@ namespace SceneryEditorX
 	        }
 	    }
 
-		/// -------------------------------------------------------
+		// -------------------------------------------------------
 	};
 	*/
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

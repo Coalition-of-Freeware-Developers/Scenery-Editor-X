@@ -1,373 +1,826 @@
-CMAKE_MINIMUM_REQUIRED(VERSION 3.8...4.0)
+﻿CMAKE_MINIMUM_REQUIRED(VERSION 3.8...4.0)
 
-# --------------------------------
+# Early platform / compiler detection (sets SEDX_PREFERRED_COMPILER, VCPKG_TARGET_TRIPLET, etc.)
+include("${CMAKE_SOURCE_DIR}/cmake/detect-platform-compiler.cmake")
+
+# Allow legacy FetchContent_Populate calls for compatibility with our embedding patch
+IF(POLICY CMP0169)
+	CMAKE_POLICY(SET CMP0169 OLD)
+ENDIF()
+
+############################################
 # Global Setup
-# --------------------------------
-SET(CMAKE_TOOLCHAIN_FILE ${CMAKE_SOURCE_DIR}/dependency/vcpkg/scripts/buildsystems/vcpkg.cmake CACHE STRING "")
+############################################
+
+SET(TOOLCHAIN_DIRECTORY "${CMAKE_SOURCE_DIR}/cmake/toolchains")
+IF(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
+	IF(WIN32 AND EXISTS "${TOOLCHAIN_DIRECTORY}/sedx-windows.cmake")
+		SET(CMAKE_TOOLCHAIN_FILE "${TOOLCHAIN_DIRECTORY}/sedx-windows.cmake" CACHE STRING "" FORCE)
+	ELSEIF(APPLE AND EXISTS "${TOOLCHAIN_DIRECTORY}/sedx-mac.cmake")
+		SET(CMAKE_TOOLCHAIN_FILE "${TOOLCHAIN_DIRECTORY}/sedx-mac.cmake" CACHE STRING "" FORCE)
+	ELSEIF(UNIX AND EXISTS "${TOOLCHAIN_DIRECTORY}/sedx-linux.cmake")
+		SET(CMAKE_TOOLCHAIN_FILE "${TOOLCHAIN_DIRECTORY}/sedx-linux.cmake" CACHE STRING "" FORCE)
+	ENDIF()
+ENDIF()
+
 SET(CMAKE_CONFIGURATION_TYPES Debug Release CACHE STRING INTERNAL FORCE)
-SET(CMAKE_SYSTEM_NAME "Windows" CACHE STRING "")
-SET(CMAKE_SYSTEM_PROCESSOR "x64" CACHE STRING "")
-SET(CMAKE_SYSTEM_VERSION 10.0 CACHE STRING "")
-SET(CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION "10.0" CACHE STRING "")
 SET(CMAKE_SUPPRESS_DEVELOPER_WARNINGS 1 CACHE INTERNAL "No dev warnings")
 SET(VCPKG_INSTALL_OPTIONS --no-print-usage)
-SET_PROPERTY(GLOBAL PROPERTY USE_FOLDERS ON)
+SET(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+SET_PROPERTY(GLOBAL PROPERTY USE_FOLDERS ON) # Remove when min is 3.26, see CMP0143
 SET_PROPERTY(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT SceneryEditorX)
 SET_PROPERTY(GLOBAL PROPERTY PREDEFINED_TARGETS_FOLDER "_CMakePredefinedTargets")
+
+############################################
+# Scenery Editor X - Project Setup
+############################################
+PROJECT(SceneryEditorX
+	VERSION 1.0.0
+	DESCRIPTION "A 3d scenery editor for X-Plane 12 airports."
+	LANGUAGES CXX C
+	HOMEPAGE_URL "https://github.com/Coalition-of-Freeware-Developers/Scenery-Editor-X"
+)
+
+############################################
+# Platform configuration
+# (Handled by SEDX toolchains; keep module path for local cmake helpers)
+############################################
 LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-SET(BIN_DIR ${CMAKE_SOURCE_DIR}/bin/${CMAKE_CFG_INTDIR})
-SET(LIBS_DIR ${CMAKE_SOURCE_DIR}/lib/${CMAKE_CFG_INTDIR})
-SET_TARGET_PROPERTIES(${PROJECT_NAME} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/")
+############################################
+# Core dependency discovery helpers and options
+############################################
 
-# USE FINDVULKAN MODULE ADDED WITH CMAKE 3.7
-IF(NOT CMAKE_VERSION VERSION_LESS 3.7.0)
-    MESSAGE(STATUS "Using module to find Vulkan")
-    FIND_PACKAGE(Vulkan)
-    SET(VULKAN_VERS ${Vulkan_FOUND})
-    MESSAGE(STATUS "Using Vulkan SDK version: ${VULKAN_VERS}")
+# FetchContent availability (for optional vendoring)
+IF(CMAKE_VERSION VERSION_GREATER_EQUAL 3.11)
+	INCLUDE(FetchContent)
+ELSE()
+	MESSAGE(STATUS "CMake < 3.11: FetchContent is not available; using bundled subdirectories where applicable.")
 ENDIF()
 
-IF(TARGET WIN32)
-    FILE(COPY "C:/VulkanSDK/${VULKAN_VERS}/Config/vk_layer_settings.txt" DESTINATION ${CMAKE_BINARY_DIR})
-    SET(VK_USE_PLATFORM_WIN32_KHR)
-ELSEIF(TARGET UNIX)
-    FILE(COPY "$HOME/.local/share/vulkan/settings.d/vk_layer_settings.txt" DESTINATION ${CMAKE_BINARY_DIR})
-	SET(VK_USE_PLATFORM_XLIB_KHR)
-ELSEIF(TARGET APPLE)
-	FILE(COPY "/Library/Frameworks/Vulkan.framework/Resources/vk_layer_settings.txt" DESTINATION ${CMAKE_BINARY_DIR})
-	SET(VK_USE_PLATFORM_MACOS_MVK)
+############################################
+# Assets configuration
+############################################
+INCLUDE("${CMAKE_SOURCE_DIR}/cmake/assets.cmake")
+
+# Sanitize MSVC-only flags for non-MSVC builds (aggressive cleanup)
+include("${CMAKE_SOURCE_DIR}/cmake/sanitize-msvc-flags.cmake")
+
+############################################
+# Global debug postfix configuration
+############################################
+SET(CMAKE_DEBUG_POSTFIX "_d" CACHE STRING "Debug library postfix")
+SET(CMAKE_EXECUTABLE_DEBUG_POSTFIX "_debug" CACHE STRING "Debug executable postfix")
+
+############################################
+# Helper function to apply debug postfix to targets
+############################################
+FUNCTION(sedx_apply_debug_postfix TARGET_NAME)
+	IF(TARGET ${TARGET_NAME})
+		GET_TARGET_PROPERTY(_target_type ${TARGET_NAME} TYPE)
+		GET_TARGET_PROPERTY(_aliased ${TARGET_NAME} ALIASED_TARGET)
+
+		# Skip ALIAS targets
+		IF(_aliased)
+			RETURN()
+		ENDIF()
+
+		# Apply appropriate postfix based on target type
+		IF(_target_type STREQUAL "EXECUTABLE")
+			SET_TARGET_PROPERTIES(${TARGET_NAME} PROPERTIES
+				DEBUG_POSTFIX "${CMAKE_EXECUTABLE_DEBUG_POSTFIX}"
+			)
+		ELSEIF(_target_type MATCHES "LIBRARY")
+			SET_TARGET_PROPERTIES(${TARGET_NAME} PROPERTIES
+				DEBUG_POSTFIX "${CMAKE_DEBUG_POSTFIX}"
+			)
+		ENDIF()
+	ENDIF()
+ENDFUNCTION()
+
+############################################
+# Helper to configure PDB output for targets
+############################################
+FUNCTION(sedx_configure_pdb_output TARGET_NAME)
+	# Only configure PDB output for MSVC-like compilers. Prefer the
+	# early-detection marker `SEDX_PREFERRED_COMPILER` when available.
+	if(DEFINED SEDX_PREFERRED_COMPILER)
+		if(NOT (SEDX_PREFERRED_COMPILER STREQUAL "MSVC" OR SEDX_PREFERRED_COMPILER STREQUAL "CLANG_CL"))
+			RETURN()
+		endif()
+	else()
+		IF(NOT MSVC)
+			RETURN()
+		ENDIF()
+	endif()
+
+	IF(TARGET ${TARGET_NAME})
+		GET_TARGET_PROPERTY(_aliased ${TARGET_NAME} ALIASED_TARGET)
+
+		# Skip ALIAS targets
+		IF(_aliased)
+			RETURN()
+		ENDIF()
+
+		# Get target type
+		GET_TARGET_PROPERTY(_target_type ${TARGET_NAME} TYPE)
+
+		# Skip INTERFACE libraries
+		IF(_target_type STREQUAL "INTERFACE_LIBRARY")
+			RETURN()
+		ENDIF()
+
+		# Skip UNKNOWN libraries
+		IF(_target_type STREQUAL "UNKNOWN_LIBRARY")
+			RETURN()
+		ENDIF()
+
+		# Check if target is IMPORTED
+		GET_TARGET_PROPERTY(_is_imported ${TARGET_NAME} IMPORTED)
+
+		IF(_is_imported)
+			RETURN()
+		ENDIF()
+
+		# Set PDB output directory for this target
+		SET_TARGET_PROPERTIES(${TARGET_NAME} PROPERTIES
+			PDB_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/pdb"
+			PDB_OUTPUT_DIRECTORY_DEBUG "${CMAKE_SOURCE_DIR}/pdb"
+			PDB_OUTPUT_DIRECTORY_RELEASE "${CMAKE_SOURCE_DIR}/pdb"
+			COMPILE_PDB_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/pdb"
+			COMPILE_PDB_OUTPUT_DIRECTORY_DEBUG "${CMAKE_SOURCE_DIR}/pdb"
+			COMPILE_PDB_OUTPUT_DIRECTORY_RELEASE "${CMAKE_SOURCE_DIR}/pdb"
+		)
+
+		# Set PDB name with appropriate postfix
+		IF(_target_type STREQUAL "EXECUTABLE")
+			SET_TARGET_PROPERTIES(${TARGET_NAME} PROPERTIES
+				PDB_NAME "${TARGET_NAME}$<$<CONFIG:Debug>:${CMAKE_EXECUTABLE_DEBUG_POSTFIX}>"
+				COMPILE_PDB_NAME "${TARGET_NAME}$<$<CONFIG:Debug>:${CMAKE_EXECUTABLE_DEBUG_POSTFIX}>"
+			)
+		ELSEIF(_target_type MATCHES "LIBRARY")
+			SET_TARGET_PROPERTIES(${TARGET_NAME} PROPERTIES
+				PDB_NAME "${TARGET_NAME}$<$<CONFIG:Debug>:${CMAKE_DEBUG_POSTFIX}>"
+				COMPILE_PDB_NAME "${TARGET_NAME}$<$<CONFIG:Debug>:${CMAKE_DEBUG_POSTFIX}>"
+			)
+		ENDIF()
+	ENDIF()
+ENDFUNCTION()
+
+############################################
+# Build options (dependency toggles, features)
+############################################
+
+# Helper to apply per-target output directories (multi-config aware)
+FUNCTION(SEDX_APPLY_OUTPUT_DIRS)
+	# Accept optional arguments: <LIBS_DIR> <BIN_DIR>
+	# ARGV0/ARGV1 may be empty if caller passed undefined variables, so handle safely.
+	IF(ARGC GREATER 0)
+		SET(_libs_dir "${ARGV0}")
+	ELSE()
+		SET(_libs_dir "${CMAKE_SOURCE_DIR}/lib")
+	ENDIF()
+
+	IF(ARGC GREATER 1)
+		SET(_bin_dir "${ARGV1}")
+	ELSE()
+		SET(_bin_dir "${CMAKE_SOURCE_DIR}/bin")
+	ENDIF()
+
+	# Provide sensible defaults when caller passes empty strings
+	IF(NOT _libs_dir OR "${_libs_dir}" STREQUAL "")
+		SET(_libs_dir "${CMAKE_SOURCE_DIR}/lib")
+	ENDIF()
+	IF(NOT _bin_dir OR "${_bin_dir}" STREQUAL "")
+		SET(_bin_dir "${CMAKE_SOURCE_DIR}/bin")
+	ENDIF()
+
+	# Prefer per-config subfolders to keep Debug/Release separate when using multi-config generators
+	FOREACH(_t IN ITEMS ${SEDX_OUTPUT_TARGETS})
+		IF(TARGET ${_t})
+			# Standard properties (single-config fallback)
+			SET_TARGET_PROPERTIES(${_t} PROPERTIES
+				ARCHIVE_OUTPUT_DIRECTORY "${_libs_dir}"
+				LIBRARY_OUTPUT_DIRECTORY "${_libs_dir}"
+				RUNTIME_OUTPUT_DIRECTORY "${_bin_dir}"
+			)
+
+			# Per-config (multi-config generators) output directories
+			SET_TARGET_PROPERTIES(${_t} PROPERTIES
+				ARCHIVE_OUTPUT_DIRECTORY_DEBUG ${_libs_dir}
+				ARCHIVE_OUTPUT_DIRECTORY_RELEASE ${_libs_dir}
+				LIBRARY_OUTPUT_DIRECTORY_DEBUG ${_libs_dir}
+				LIBRARY_OUTPUT_DIRECTORY_RELEASE ${_libs_dir}
+				RUNTIME_OUTPUT_DIRECTORY_DEBUG ${_bin_dir}
+				RUNTIME_OUTPUT_DIRECTORY_RELEASE ${_bin_dir}
+			)
+
+			# Apply debug postfix and PDB configuration for each target
+			sedx_apply_debug_postfix(${_t})
+			sedx_configure_pdb_output(${_t})
+		ENDIF()
+	ENDFOREACH()
+ENDFUNCTION()
+
+
+OPTION(SEDX_ENABLE_TESTS              	"Build test targets" OFF)
+OPTION(SEDX_ENABLE_DOXYGEN            	"Build Doxygen documentation" OFF)
+OPTION(SEDX_ENABLE_VERSION_INCREMENT 	"Enable automatic semantic versioning, increment on build" OFF)
+OPTION(SEDX_BUILD_IMGUI               	"Build Dear ImGui (bundled sources)" OFF)
+OPTION(SEDX_WITH_IMGUI_DEMO           	"Compile ImGui demo window" OFF)
+OPTION(SEDX_USE_SYSTEM_SDL           	"Prefer system-provided sdl3 package" OFF)
+OPTION(SEDX_USE_SYSTEM_JSON           	"Prefer system-provided nlohmann_json package" OFF)
+OPTION(SEDX_USE_SYSTEM_ENTT           	"Prefer system-provided EnTT package" OFF)
+OPTION(SEDX_VERBOSE_LOGGING			 	"Enable verbose logging of Scenery Editor X" ON)
+OPTION(SEDX_USE_FETCHCONTENT_XMATH    	"Fetch xMath via FetchContent" ON)
+OPTION(SEDX_USE_FETCHCONTENT_EDX      	"Fetch edX via FetchContent" ON)
+OPTION(SEDX_USE_FETCHCONTENT_XPLIB    	"Fetch X-PlaneSceneryLibrary via FetchContent" ON)
+#OPTION(SEDX_PROFILING_ENABLED 			"Enable profiling features (Tracy, etc.)" ON)
+OPTION(TRACY_ENABLE 					"Enable Tracy profiler" OFF)
+OPTION(SEDX_USE_FETCHCONTENT_TRACY    	"Fetch Tracy via FetchContent" ON)
+OPTION(RENDERDOC_ENABLE 				"Enable RenderDoc tooling integration for graphics debugging" ON)
+OPTION(SEDX_BUILD_XP_PROBE 			"Build the X-Plane 12 reference probe plugin (tools/xp12_reference_probe; needs XPLANE_12_SDK)" OFF)
+#OPTION(SEDX_ENABLE_MSDFGEN            	"Enable msdfgen usage" ON)
+
+SET(XMATH_BUILD_TESTS OFF CACHE BOOL "Build xMath tests" FORCE)
+SET(XMATH_VENDOR_DEPS OFF CACHE BOOL "Vendor deps for xMath" FORCE)
+
+############################################
+# Doxygen (optional)
+############################################
+IF(SEDX_ENABLE_DOXYGEN)
+	INCLUDE(cmake/doxygen.cmake)
 ENDIF()
 
-# --------------------------------
-# DIRECTORIES
-# --------------------------------
-SET(ASSET_DIR   "${CMAKE_SOURCE_DIR}/assets")
-SET(FONT_DIR    "${CMAKE_SOURCE_DIR}/assets/fonts")
-SET(MODEL_DIR   "${CMAKE_SOURCE_DIR}/assets/models")
-SET(SHADER_DIR  "${CMAKE_SOURCE_DIR}/assets/shaders")
-SET(TEXTURE_DIR "${CMAKE_SOURCE_DIR}/assets/textures")
+# Prefer VMA headers from the Vulkan SDK to avoid ABI mismatches between
+# multiple copies (vcpkg vs SDK). If VULKAN_SDK environment variable is set
+# and the VMA include folder exists there, add it to the front of include
+# search paths for the main target and force consistent VMA call macros.
+if(DEFINED ENV{VULKAN_SDK})
+	set(_VULKAN_SDK_PATH $ENV{VULKAN_SDK})
+	set(_VMA_SDK_INCLUDE "${_VULKAN_SDK_PATH}/Include/vma")
+	if(EXISTS "${_VMA_SDK_INCLUDE}")
+		message(STATUS "Using VMA headers from Vulkan SDK: ${_VMA_SDK_INCLUDE}")
+		# Ensure SDK VMA headers are searched before other include paths
+		include_directories(BEFORE SYSTEM "${_VMA_SDK_INCLUDE}")
 
-# --------------------------------
-# Tracy Profiler Setup
-# --------------------------------
-OPTION(TRACY_ENABLE "Enable Tracy profiler" ON)
-OPTION(TRACY_ON_DEMAND "Enable Tracy on-demand profiling" OFF)
-OPTION(TRACY_NO_EXIT "Enable Tracy profiler even without exit" OFF)
-OPTION(TRACY_NO_BROADCAST "Disable Tracy broadcast" OFF)
+		# Force consistent VMA call decoration across all translation units
+		# and avoid differing decorations from vcpkg or other copies.
+		add_compile_definitions(VMA_CALL_PRE= VMA_CALL_POST=)
 
-# Add Tracy-specific compile definitions
+		# Also expose a variable so per-target configuration can reuse it if needed
+		set(VMA_SDK_INCLUDE_DIR "${_VMA_SDK_INCLUDE}" CACHE INTERNAL "VMA include directory from Vulkan SDK")
+	else()
+		message(STATUS "VMA include not found in VULKAN_SDK (${_VULKAN_SDK_PATH}), falling back to default include paths")
+	endif()
+else()
+	message(STATUS "VULKAN_SDK not defined in environment; using default include paths (vcpkg or system)")
+endif()
+
+# ###########################################
+# Tracy Profiler (optional)
+# ###########################################
 IF(TRACY_ENABLE)
-    ADD_COMPILE_DEFINITIONS(TRACY_ENABLE)
-    IF(TRACY_ON_DEMAND)
-        ADD_COMPILE_DEFINITIONS(TRACY_ON_DEMAND)
-    ENDIF()
-    IF(TRACY_NO_EXIT)
-        ADD_COMPILE_DEFINITIONS(TRACY_NO_EXIT)
-    ENDIF()
-    IF(TRACY_NO_BROADCAST)
-        ADD_COMPILE_DEFINITIONS(TRACY_NO_BROADCAST)
-    ENDIF()
+	INCLUDE(cmake/tracyprofiling.cmake)
+
+	IF(DEFINED tracy_SOURCE_DIR) # Add Tracy public include dir to all main targets if tracy is available
+		MESSAGE(STATUS "Adding Tracy public include dir: ${tracy_SOURCE_DIR}/public")
+
+		FOREACH(_tracy_target SceneryEditorX Launcher Editor CrashHandler)
+			IF(TARGET ${_tracy_target})
+				TARGET_INCLUDE_DIRECTORIES(${_tracy_target} PRIVATE ${tracy_SOURCE_DIR}/public)
+			ENDIF()
+		ENDFOREACH()
+	ENDIF()
 ENDIF()
 
-# --------------------------------
-# BUILD SYSTEM
-# --------------------------------
+# ###########################################
+# RenderDoc Tooling (optional)
+# ###########################################
+IF(RENDERDOC_ENABLE)
+	ADD_COMPILE_DEFINITIONS(RENDERDOC_TOOLING_ENABLED)
+	SET(RENDERDOC_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/dependency/renderdoc)
+ENDIF()
+
+############################################
+# Global build system defaults
+############################################
+# Override libconfig/bundled defaults before adding subdirectories
+OPTION(BUILD_EXAMPLES  		"Enable examples (3rd-party)" OFF)
+OPTION(BUILD_SHARED_LIBS 	"Build shared libraries by default" OFF)
+OPTION(BUILD_TESTS     		"Enable 3rd-party tests" OFF)
+OPTION(BUILD_FUZZERS  		"Enable 3rd-party fuzzers" OFF)
+
+############################################
+# Build system defaults
+############################################
+SET(CMAKE_C_STANDARD 17)
+SET(CMAKE_C_STANDARD_REQUIRED ON)
 SET(CMAKE_CXX_STANDARD 20)
-SET(CMAKE_CXX_STANDARD_REQUIRED True)
 SET(CMAKE_CXX_STANDARD_REQUIRED ON)
 SET(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-SET(CMAKE_CXX_FLAGS
-    "${CMAKE_CXX_FLAGS}
-    /EHsc
-	/Zc:preprocessor
-    -DVK_USE_PLATFORM_WIN32_KHR
-    -DNOMINMAX
-    -D_USE_MATH_DEFINES "
+ADD_COMPILE_DEFINITIONS(
+	$<$<CONFIG:Debug>:SEDX_DEBUG>
+	$<$<CONFIG:Release>:SEDX_RELEASE>
 )
-ADD_DEFINITIONS(
-    -D_CRT_SECURE_NO_WARNINGS
-    -DCMAKE_GENERATOR_PLATFORM=x64
-)
-MESSAGE(VCPKG_ROOT = " ${CMAKE_TOOLCHAIN_FILE} ")
+MESSAGE(STATUS "Toolchain file: ${CMAKE_TOOLCHAIN_FILE}")
 
-# --------------------------------
-
-IF(CMAKE_GENERATOR MATCHES "Visual Studio")
-    ADD_COMPILE_OPTIONS(${COMMON_COMPILE_OPTIONS})
-    SET(COMPILE_FLAGS ${COMMON_COMPILE_FLAGS})
-    SET(CMAKE_CXX_SCAN_FOR_MODULES OFF)
-    SET(CMAKE_INCREMENTAL_LINKING ON)
-    SET(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDebugDLL")
-    ADD_COMPILE_DEFINITIONS(${COMMON_COMPILE_DEF})
-    MESSAGE("Added Compile Definitions: ${COMMON_COMPILE_DEF}")
-ENDIF()
-
-# --------------------------------
-# REQUIRE BUILDS TO BE OUTSIDE OF SOURCE TREE.
-# --------------------------------
+# Require out-of-source builds
 FILE(TO_CMAKE_PATH "${PROJECT_BINARY_DIR}/CMakeLists.txt" LOC_PATH)
 
 IF(EXISTS "${LOC_PATH}")
-    MESSAGE(FATAL_ERROR "You cannot build in a source directory (or any directory with a CMakeLists.txt file). Please use a build directory instead.")
+	MESSAGE(FATAL_ERROR "You cannot build in a source directory (or any directory with a CMakeLists.txt file). Please use a build directory instead.")
 ENDIF()
 
-# SET DEFAULT BUILD TYPES
+# Default build type
 IF(NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "")
-    SET(CMAKE_BUILD_TYPE "Debug" CACHE STRING "" FORCE)
-ENDIF()
-
-# --------------------------------
-# Scenery Editor X Project Setup
-# --------------------------------
-PROJECT(SceneryEditorX
-    VERSION 1.0.0
-    DESCRIPTION "A 3d scenery editor for X-Plane 12 airports."
-    LANGUAGES CXX C
-    HOMEPAGE_URL "https://github.com/The3dVehicleguy/Scenery-Editor-X"
-)
-
-# Enable CTest/CTest integration at the top-level so tests added in subdirectories
-# are discoverable from the build root via `ctest`.
-INCLUDE(CTest)
-IF(BUILD_TESTING)
-    ENABLE_TESTING()
+	SET(CMAKE_BUILD_TYPE "Debug" CACHE STRING "")
 ENDIF()
 
 MESSAGE(STATUS "=================================================")
 MESSAGE(STATUS "Beginning project generation for Scenery Editor X")
 MESSAGE(STATUS "=================================================")
 
-SET(FONT_FILES
-    ${FONT_DIR}/industry/Industry-Bold.otf
-    ${FONT_DIR}/industry/Industry-Book.otf
-    ${FONT_DIR}/industry/Industry-Medium.otf
-    ${FONT_DIR}/industry/Industry-Thin.otf
-    ${FONT_DIR}/opensans/OpenSans-Bold.ttf
-    ${FONT_DIR}/opensans/OpenSans-BoldItalic.ttf
-    ${FONT_DIR}/opensans/OpenSans-ExtraBold.ttf
-    ${FONT_DIR}/opensans/OpenSans-ExtraBoldItalic.ttf
-    ${FONT_DIR}/opensans/OpenSans-Italic.ttf
-    ${FONT_DIR}/opensans/OpenSans-Light.ttf
-    ${FONT_DIR}/opensans/OpenSans-LightItalic.ttf
-    ${FONT_DIR}/opensans/OpenSans-Regular.ttf
-    ${FONT_DIR}/opensans/OpenSans-SemiBold.ttf
-    ${FONT_DIR}/opensans/OpenSans-SemiBoldItalic.ttf
+############################################
+# Packages and dependencies
+############################################
+FIND_PACKAGE(Vulkan REQUIRED)
+FIND_PACKAGE(Freetype REQUIRED)
+FIND_PACKAGE(Stb REQUIRED)
+FIND_PACKAGE(spdlog CONFIG REQUIRED)
+FIND_PACKAGE(msdfgen CONFIG REQUIRED)
+FIND_PACKAGE(Doxygen QUIET)
+FIND_PACKAGE(CURL CONFIG REQUIRED)
+FIND_PACKAGE(ZLIB REQUIRED)
+FIND_LIBRARY(Slang_LIBRARY NAMES slang HINTS "$ENV{VULKAN_SDK}/lib" REQUIRED)
+FIND_PATH(PORTABLE_FILE_DIALOGS_INCLUDE_DIRS "portable-file-dialogs.h") # Portable File Dialogs header-only
+
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DNOMINMAX -D_USE_MATH_DEFINES")
+
+# Ensure MSVC-only flags do not leak into non-MSVC builds (cached values).
+# Use `SEDX_PREFERRED_COMPILER` when set by early detection; otherwise
+# fall back to the built-in `MSVC` CMake variable.
+if(DEFINED SEDX_PREFERRED_COMPILER)
+	if(SEDX_PREFERRED_COMPILER STREQUAL "MSVC" OR SEDX_PREFERRED_COMPILER STREQUAL "CLANG_CL")
+		# MSVC-like compilers: ensure exception model flag is present
+		SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHsc")
+	else()
+		# Non-MSVC: strip MSVC-only tokens from cached flags
+		if(DEFINED CMAKE_CXX_FLAGS)
+			string(REPLACE "/EHsc" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+			string(REPLACE "/Zc:preprocessor" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+			string(REPLACE "/GR" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+		endif()
+		if(DEFINED CMAKE_C_FLAGS)
+			string(REPLACE "/Zc:preprocessor" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+			string(REPLACE "/EHsc" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+			string(REPLACE "/GR" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+		endif()
+	endif()
+else()
+	IF(NOT MSVC)
+		if(DEFINED CMAKE_CXX_FLAGS)
+			string(REPLACE "/EHsc" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+			string(REPLACE "/Zc:preprocessor" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+			string(REPLACE "/GR" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+		endif()
+		if(DEFINED CMAKE_C_FLAGS)
+			string(REPLACE "/Zc:preprocessor" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+			string(REPLACE "/EHsc" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+			string(REPLACE "/GR" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+		endif()
+	else()
+		# For MSVC, ensure exception model flag is present
+		SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHsc")
+	endif()
+endif()
+
+############################################
+# Add KTX library (bundled sources)
+############################################
+SET(KTX_DIR ${CMAKE_CURRENT_SOURCE_DIR}/dependency/ktx)
+SET(KTX_SOURCES
+	${KTX_DIR}/lib/texture.c
+	${KTX_DIR}/lib/hashlist.c
+	${KTX_DIR}/lib/checkheader.c
+	${KTX_DIR}/lib/swap.c
+	${KTX_DIR}/lib/memstream.c
+	${KTX_DIR}/lib/filestream.c
+	${KTX_DIR}/lib/vkloader.c)
+
+ADD_LIBRARY(ktx STATIC ${KTX_SOURCES})
+TARGET_INCLUDE_DIRECTORIES(ktx PUBLIC
+	${KTX_DIR}/include
+	${KTX_DIR}/other_include
+	${KTX_DIR}/lib
 )
 
-SET(REGISTRY_KEYS
-    ${CMAKE_SOURCE_DIR}/source/Launcher/Registry/edXLibReg.rgs
-    ${CMAKE_SOURCE_DIR}/source/Launcher/Registry/edXReg.rgs
-    ${CMAKE_SOURCE_DIR}/source/Launcher/Registry/ProgramReg.rgs
-)
-
-SET(ICON_FILES
-    ${ASSET_DIR}/icon.ico
-    ${ASSET_DIR}/icon.png
-    ${ASSET_DIR}/icon_edX.ico
-    ${ASSET_DIR}/icon_testing.ico
-    ${ASSET_DIR}/icon_testing.png
-)
-
-# --------------------------------
-# PACKAGES VCPKG
-# --------------------------------
-FIND_PACKAGE(Vulkan                        REQUIRED)
-FIND_PACKAGE(msdfgen				CONFIG REQUIRED)
-FIND_PACKAGE(spdlog                 CONFIG REQUIRED)
-FIND_PACKAGE(tracy				    CONFIG REQUIRED)
-FIND_PACKAGE(Stb                           REQUIRED)
-FIND_PACKAGE(CURL                   CONFIG REQUIRED)
-FIND_PACKAGE(Doxygen                          QUIET)
-FIND_PACKAGE(VulkanMemoryAllocator  CONFIG REQUIRED)
-
-FIND_PATH(PORTABLE_FILE_DIALOGS_INCLUDE_DIRS "portable-file-dialogs.h")
-
-# --------------------------------
-# PROJECT OPTIONS
-# --------------------------------
-
-OPTION(BUILD_DOXYGEN "Build Doxygen documentation" OFF)
-IF(BUILD_DOXYGEN)
-    INCLUDE(cmake/doxygen.cmake)
+# ktx's vkloader.c includes <vulkan/vulkan.h> via ktxvulkan.h
+IF(TARGET Vulkan::Headers)
+	TARGET_LINK_LIBRARIES(ktx PRIVATE Vulkan::Headers)
+ELSE()
+	TARGET_INCLUDE_DIRECTORIES(ktx PRIVATE ${Vulkan_INCLUDE_DIRS})
 ENDIF()
 
-# --------------------------------
-# GLFW
-# --------------------------------
-ADD_SUBDIRECTORY(dependency/glfw)
+############################################
+# SDL (system or bundled)
+############################################
+IF(SEDX_USE_SYSTEM_SDL)
+	FIND_PACKAGE(SDL3 CONFIG REQUIRED)
+ELSE()
+	# Disable precompiled headers for SDL to avoid SDL_internal.h include issues
+	SET(CMAKE_DISABLE_PRECOMPILE_HEADERS ON CACHE BOOL "" FORCE)
+	ADD_SUBDIRECTORY(dependency/SDL)
+	# Re-enable precompiled headers for other projects
+	SET(CMAKE_DISABLE_PRECOMPILE_HEADERS OFF CACHE BOOL "" FORCE)
+ENDIF()
 
-# --------------------------------
-# libconfig
-# --------------------------------
-# Override libconfig options before adding the subdirectory
-OPTION(BUILD_EXAMPLES "Enable examples" OFF)
-OPTION(BUILD_SHARED_LIBS "Enable shared library" OFF)
-OPTION(BUILD_TESTS "Enable tests" OFF)
-OPTION(BUILD_FUZZERS "Enable fuzzers" OFF)
+############################################
+# libconfig (bundled)
+############################################
 ADD_SUBDIRECTORY(dependency/libconfig)
 
-# --------------------------------
+############################################
 # Animation Compression Library - ACL
-# --------------------------------
+############################################
 #ADD_SUBDIRECTORY(dependency/acl)
 
-# --------------------------------
-# Catch2
-# --------------------------------
-ADD_SUBDIRECTORY(dependency/Catch2)
-
-# --------------------------------
-# EnTT
-# --------------------------------
-ADD_SUBDIRECTORY(dependency/entt)
-
-# --------------------------------
-# MSDF-Atlas-Generator
-# --------------------------------
-#ADD_SUBDIRECTORY(dependency/msdf-atlas-gen)
-
-# --------------------------------
-# json-cpp-gen
-# --------------------------------
-ADD_SUBDIRECTORY(dependency/json-cpp-gen)
-
-# --------------------------------
-# nlohmann/json
-# --------------------------------
-ADD_SUBDIRECTORY(dependency/json)
-
-# --------------------------------
-# Math Library
-# --------------------------------
-ADD_SUBDIRECTORY(source/Math)
-
-# --------------------------------
-# AppCore
-# --------------------------------
-ADD_SUBDIRECTORY(source/SceneryEditorX)
-
-# --------------------------------
-# Launcher
-# --------------------------------
-ADD_SUBDIRECTORY(source/Launcher)
-
-# --------------------------------
-# Scenery Editor X
-# --------------------------------
-ADD_SUBDIRECTORY(source/Editor)
-
-# --------------------------------
-# EDX
-# --------------------------------
-ADD_SUBDIRECTORY(source/edX)
-
-# --------------------------------
-# TESTS
-# --------------------------------
-ADD_SUBDIRECTORY(source/Tests)
-
-# --------------------------------
-# Crash Handler Service
-# --------------------------------
-ADD_SUBDIRECTORY(source/CrashHandler)
-
-# --------------------------------
-# X-PLANE SCENERY LIBRARY
-# --------------------------------
-ADD_SUBDIRECTORY(source/X-PlaneSceneryLibrary)
-
-# --------------------------------
-# ImGui
-# --------------------------------
-ADD_LIBRARY(imgui
-	${CMAKE_SOURCE_DIR}/dependency/imgui/imgui.cpp
-	${CMAKE_SOURCE_DIR}/dependency/imgui/imgui_draw.cpp
-	${CMAKE_SOURCE_DIR}/dependency/imgui/imgui_widgets.cpp
-	${CMAKE_SOURCE_DIR}/dependency/imgui/imgui_tables.cpp
-	${CMAKE_SOURCE_DIR}/dependency/imgui/imgui_demo.cpp
-	${CMAKE_SOURCE_DIR}/dependency/imgui/imgui_widgets.cpp
-	${CMAKE_SOURCE_DIR}/dependency/imgui/backends/imgui_impl_glfw.cpp
-	${CMAKE_SOURCE_DIR}/dependency/imgui/backends/imgui_impl_vulkan.cpp
-)
-
-TARGET_INCLUDE_DIRECTORIES(imgui
-	PRIVATE
-		${CMAKE_SOURCE_DIR}/dependency/imgui
-		${CMAKE_SOURCE_DIR}/dependency/imgui/backends
-		${CMAKE_SOURCE_DIR}/dependency/imgui/misc
-)
-
-TARGET_LINK_LIBRARIES(imgui
-	PRIVATE
-		glfw
-		Vulkan::Vulkan
-		GPUOpen::VulkanMemoryAllocator
-)
-
-# --------------------------------
-
-IF(TARGET WIN32)
-	FOREACH(TARGET IN ITEMS SceneryEditorX
-	        PUBLIC
-	            $<$<CONFIG:Debug>:SEDX_DEBUG>
-	            $<$<CONFIG:Release>:SEDX_RELEASE>
-	            UNICODE
-	            _UNICODE
-	            _CRT_SECURE_NO_WARNINGS
-	    )
-	ENDFOREACH()
-ELSEIF (TARGET UNIX)
-	FOREACH(TARGET IN ITEMS SceneryEditorX
-			PUBLIC
-				$<$<CONFIG:Debug>:SEDX_DEBUG>
-				$<$<CONFIG:Release>:SEDX_RELEASE>
-				UNICODE
-				_UNICODE
-				_CRT_SECURE_NO_WARNINGS
-		)
-	ENDFOREACH()
-ELSEIF (TARGET APPLE)
-	FOREACH(TARGET IN ITEMS SceneryEditorX
-			PUBLIC
-				$<$<CONFIG:Debug>:SEDX_DEBUG>
-				$<$<CONFIG:Release>:SEDX_RELEASE>
-				UNICODE
-				_UNICODE
-				_CRT_SECURE_NO_WARNINGS
-		)
-	ENDFOREACH()
+############################################
+# Catch2 (system or bundled)
+############################################
+IF(SEDX_USE_SYSTEM_CATCH2)
+	FIND_PACKAGE(Catch2 CONFIG REQUIRED)
+ELSE()
+	ADD_SUBDIRECTORY(dependency/Catch2)
 ENDIF()
 
-# --------------------------------
-# PRECOMPILED HEADER
-# --------------------------------
+############################################
+# EnTT (system or bundled)
+############################################
+IF(SEDX_USE_SYSTEM_ENTT)
+	FIND_PACKAGE(EnTT CONFIG REQUIRED)
+ELSE()
+	ADD_SUBDIRECTORY(dependency/entt)
+ENDIF()
+
+############################################
+# nlohmann/json (system or bundled)
+############################################
+IF(SEDX_USE_SYSTEM_JSON)
+	FIND_PACKAGE(nlohmann_json CONFIG REQUIRED)
+	# Create compatibility alias to match in-tree target name when using system package
+	IF(TARGET nlohmann_json::nlohmann_json AND NOT TARGET nlohmann_json)
+		ADD_LIBRARY(nlohmann_json INTERFACE IMPORTED)
+		TARGET_LINK_LIBRARIES(nlohmann_json INTERFACE nlohmann_json::nlohmann_json)
+	ENDIF()
+ELSE()
+	ADD_SUBDIRECTORY(dependency/json)
+ENDIF()
+
+############################################
+# Testing setup (CTest + project tests)
+############################################
+IF(SEDX_ENABLE_TESTS)
+	INCLUDE(CTest)
+	SET(BUILD_TESTING ON CACHE BOOL "" FORCE)
+	ENABLE_TESTING()
+	ADD_SUBDIRECTORY(${CMAKE_SOURCE_DIR}/source/Tests)
+ELSE()
+	SET(BUILD_TESTING OFF CACHE BOOL "" FORCE)
+ENDIF()
+
+# X-Plane 12 reference probe (parity harness): an X-Plane plugin, built only on request
+IF(SEDX_BUILD_XP_PROBE)
+	ADD_SUBDIRECTORY(${CMAKE_SOURCE_DIR}/tools/xp12_reference_probe)
+ENDIF()
+
+############################################
+# Math Library (xMath via FetchContent)
+############################################
+IF(SEDX_USE_FETCHCONTENT_XMATH AND CMAKE_VERSION VERSION_GREATER_EQUAL 3.11)
+	FETCHCONTENT_DECLARE(
+		xMath
+		GIT_REPOSITORY https://github.com/The3dVehicleguy/xMath.git
+		GIT_TAG main
+		GIT_SHALLOW TRUE
+		GIT_PROGRESS TRUE
+		GIT_SUBMODULES ""
+	)
+	FETCHCONTENT_GETPROPERTIES(xMath)
+	IF(NOT xmath_POPULATED)
+		FETCHCONTENT_POPULATE(xMath)
+		IF(EXISTS "${xmath_SOURCE_DIR}/cmake/math.cmake")
+			FILE(READ "${xmath_SOURCE_DIR}/cmake/math.cmake" XMATH_MATH_CMAKE)
+			STRING(REPLACE "CMAKE_SOURCE_DIR" "CMAKE_CURRENT_SOURCE_DIR" XMATH_MATH_CMAKE "${XMATH_MATH_CMAKE}")
+			FILE(WRITE "${xmath_SOURCE_DIR}/cmake/math.cmake" "${XMATH_MATH_CMAKE}")
+		ENDIF()
+		ADD_SUBDIRECTORY("${xmath_SOURCE_DIR}" "${xmath_BINARY_DIR}")
+	ENDIF()
+ENDIF()
+
+############################################
+# edX File Format Library (edX via FetchContent)
+############################################
+IF(SEDX_USE_FETCHCONTENT_EDX AND CMAKE_VERSION VERSION_GREATER_EQUAL 3.11)
+	FETCHCONTENT_DECLARE(
+		edX
+		GIT_REPOSITORY https://github.com/Coalition-of-Freeware-Developers/edX-Library.git
+		GIT_TAG main
+		GIT_SHALLOW TRUE
+		GIT_PROGRESS TRUE
+		GIT_SUBMODULES ""
+	)
+	FETCHCONTENT_GETPROPERTIES(edX)
+	IF(NOT edx_POPULATED)
+		FETCHCONTENT_POPULATE(edX)
+		IF(EXISTS "${edx_SOURCE_DIR}/cmake/edx.cmake")
+			FILE(READ "${edx_SOURCE_DIR}/cmake/edx.cmake" EDX_CMAKE)
+			STRING(REPLACE "CMAKE_SOURCE_DIR" "CMAKE_CURRENT_SOURCE_DIR" EDX_CMAKE "${EDX_CMAKE}")
+			FILE(WRITE "${edx_SOURCE_DIR}/cmake/edx.cmake" "${EDX_CMAKE}")
+		ENDIF()
+		# Make edX tolerant of pre-existing nlohmann_json target from our bundled submodule
+		IF(EXISTS "${edx_SOURCE_DIR}/CMakeLists.txt")
+			FILE(READ "${edx_SOURCE_DIR}/CMakeLists.txt" _EDX_TOP)
+			# Replace uppercase FIND_PACKAGE call
+			STRING(REPLACE "FIND_PACKAGE(nlohmann_json CONFIG REQUIRED)"
+						   "IF(NOT TARGET nlohmann_json AND NOT TARGET nlohmann_json::nlohmann_json)\n    FIND_PACKAGE(nlohmann_json CONFIG REQUIRED)\nENDIF()"
+						   _EDX_TOP "${_EDX_TOP}")
+			# Replace lowercase find_package call if present
+			STRING(REPLACE "find_package(nlohmann_json CONFIG REQUIRED)"
+						   "if(NOT TARGET nlohmann_json AND NOT TARGET nlohmann_json::nlohmann_json)\n    find_package(nlohmann_json CONFIG REQUIRED)\nendif()"
+						   _EDX_TOP "${_EDX_TOP}")
+			FILE(WRITE "${edx_SOURCE_DIR}/CMakeLists.txt" "${_EDX_TOP}")
+		ENDIF()
+		ADD_SUBDIRECTORY("${edx_SOURCE_DIR}" "${edx_BINARY_DIR}")
+	ENDIF()
+ENDIF()
+
+############################################
+# X-Plane Scenery Library (XPLIB via FetchContent)
+############################################
+IF(SEDX_USE_FETCHCONTENT_XPLIB AND CMAKE_VERSION VERSION_GREATER_EQUAL 3.11)
+	FETCHCONTENT_DECLARE(
+		XPSceneryLib
+		GIT_REPOSITORY https://github.com/Coalition-of-Freeware-Developers/X-PlaneSceneryLibrary.git
+		GIT_TAG main
+		GIT_SHALLOW TRUE
+		GIT_PROGRESS TRUE
+		GIT_SUBMODULES ""
+	)
+	FETCHCONTENT_GETPROPERTIES(XPSceneryLib)
+	IF(NOT xpscenerylib_POPULATED)
+		FETCHCONTENT_POPULATE(XPSceneryLib)
+		IF(EXISTS "${xpscenerylib_SOURCE_DIR}/cmake/xplib.cmake")
+			FILE(READ "${xpscenerylib_SOURCE_DIR}/cmake/xplib.cmake" XPSCENERYLIB_CMAKE)
+
+			# Normalize variables to be relative to the xplib CMakeLists location
+			STRING(REPLACE "CMAKE_SOURCE_DIR" "CMAKE_CURRENT_SOURCE_DIR" XPSCENERYLIB_CMAKE "${XPSCENERYLIB_CMAKE}")
+
+			# Do not clear platform sources after appending the .rc (fix upstream reset bug)
+			STRING(REPLACE "SET(XPLIB_PLATFORM_SOURCES)" "# (patched) Avoid clearing XPLIB_PLATFORM_SOURCES" XPSCENERYLIB_CMAKE "${XPSCENERYLIB_CMAKE}")
+
+			# Ensure source files are actually discovered from xplib/src and headers from xplib/includes
+			STRING(REPLACE "FILE(GLOB XPLIB_HEADER_FILES *.h *.hpp)"
+						   "FILE(GLOB_RECURSE XPLIB_HEADER_FILES\n    \"${CMAKE_CURRENT_SOURCE_DIR}/xplib/includes/*.h\"\n    \"${CMAKE_CURRENT_SOURCE_DIR}/xplib/includes/*.hpp\"\n)"
+						   XPSCENERYLIB_CMAKE "${XPSCENERYLIB_CMAKE}")
+
+			STRING(REPLACE "FILE(GLOB XPLIB_SOURCE_FILES *.cpp)"
+						   "FILE(GLOB_RECURSE XPLIB_SOURCE_FILES\n    \"${CMAKE_CURRENT_SOURCE_DIR}/xplib/src/*.cpp\"\n)"
+						   XPSCENERYLIB_CMAKE "${XPSCENERYLIB_CMAKE}")
+
+			# Remove stray RESOURCE_FILE reference if not defined
+			STRING(REPLACE "${RESOURCE_FILE}" "" XPSCENERYLIB_CMAKE "${XPSCENERYLIB_CMAKE}")
+
+			# Rename target to a single canonical name: XPSceneryLib
+			STRING(REPLACE "ADD_LIBRARY(X-PlaneSceneryLibrary" "ADD_LIBRARY(XPSceneryLib" XPSCENERYLIB_CMAKE "${XPSCENERYLIB_CMAKE}")
+			STRING(REPLACE "TARGET_COMPILE_DEFINITIONS(X-PlaneSceneryLibrary" "TARGET_COMPILE_DEFINITIONS(XPSceneryLib" XPSCENERYLIB_CMAKE "${XPSCENERYLIB_CMAKE}")
+			STRING(REPLACE "TARGET_INCLUDE_DIRECTORIES(X-PlaneSceneryLibrary" "TARGET_INCLUDE_DIRECTORIES(XPSceneryLib" XPSCENERYLIB_CMAKE "${XPSCENERYLIB_CMAKE}")
+			STRING(REPLACE "SET_TARGET_PROPERTIES(X-PlaneSceneryLibrary" "SET_TARGET_PROPERTIES(XPSceneryLib" XPSCENERYLIB_CMAKE "${XPSCENERYLIB_CMAKE}")
+			STRING(REPLACE "TARGET X-PlaneSceneryLibrary" "TARGET XPSceneryLib" XPSCENERYLIB_CMAKE "${XPSCENERYLIB_CMAKE}")
+			STRING(REPLACE "TARGET_COMPILE_OPTIONS(X-PlaneSceneryLibrary" "TARGET_COMPILE_OPTIONS(XPSceneryLib" XPSCENERYLIB_CMAKE "${XPSCENERYLIB_CMAKE}")
+
+			# Fix wrong target name in UTF-8 compile option
+			STRING(REPLACE "TARGET_COMPILE_OPTIONS(xMath PRIVATE /utf-8)" "TARGET_COMPILE_OPTIONS(XPSceneryLib PRIVATE /utf-8)" XPSCENERYLIB_CMAKE "${XPSCENERYLIB_CMAKE}")
+
+			# Ensure CMake can determine the linker language and set output name consistently
+			STRING(REPLACE "SET_TARGET_PROPERTIES(XPSceneryLib PROPERTIES"
+						   "SET_TARGET_PROPERTIES(XPSceneryLib PROPERTIES\n    LINKER_LANGUAGE CXX\n    OUTPUT_NAME \"XPSceneryLib\""
+						   XPSCENERYLIB_CMAKE "${XPSCENERYLIB_CMAKE}")
+
+			FILE(WRITE "${xpscenerylib_SOURCE_DIR}/cmake/xplib.cmake" "${XPSCENERYLIB_CMAKE}")
+		ENDIF()
+		# Upstream may unconditionally add_subdirectory(tests). If it's absent, stub it.
+		IF(NOT EXISTS "${xpscenerylib_SOURCE_DIR}/tests/CMakeLists.txt")
+			FILE(MAKE_DIRECTORY "${xpscenerylib_SOURCE_DIR}/tests")
+			FILE(WRITE "${xpscenerylib_SOURCE_DIR}/tests/CMakeLists.txt" "# Stubbed tests for XPSceneryLib\n")
+		ENDIF()
+		# Ensure top-level continues to reference XPSceneryLib (no hyphen) consistently
+		IF(EXISTS "${xpscenerylib_SOURCE_DIR}/CMakeLists.txt")
+			FILE(READ "${xpscenerylib_SOURCE_DIR}/CMakeLists.txt" _XPL_TOP)
+			STRING(REPLACE "IF(TARGET X-PlaneSceneryLibrary)" "IF(TARGET XPSceneryLib)" _XPL_TOP "${_XPL_TOP}")
+			STRING(REPLACE "TARGET_INCLUDE_DIRECTORIES(X-PlaneSceneryLibrary" "TARGET_INCLUDE_DIRECTORIES(XPSceneryLib" _XPL_TOP "${_XPL_TOP}")
+			STRING(REPLACE "SET_PROPERTY(TARGET X-PlaneSceneryLibrary" "SET_PROPERTY(TARGET XPSceneryLib" _XPL_TOP "${_XPL_TOP}")
+			STRING(REPLACE "FOREACH(TARGET IN ITEMS X-PlaneSceneryLibrary)" "FOREACH(TARGET IN ITEMS XPSceneryLib)" _XPL_TOP "${_XPL_TOP}")
+			STRING(REPLACE "TARGET_COMPILE_OPTIONS(X-PlaneSceneryLibrary" "TARGET_COMPILE_OPTIONS(XPSceneryLib" _XPL_TOP "${_XPL_TOP}")
+			STRING(REPLACE "TARGET_COMPILE_DEFINITIONS(X-PlaneSceneryLibrary" "TARGET_COMPILE_DEFINITIONS(XPSceneryLib" _XPL_TOP "${_XPL_TOP}")
+			STRING(REPLACE "ALIAS X-PlaneSceneryLibrary" "ALIAS XPSceneryLib" _XPL_TOP "${_XPL_TOP}")
+			STRING(REPLACE "ADD_LIBRARY(XPSceneryLib::XPSceneryLib ALIAS XPSceneryLib)" "ADD_LIBRARY(XPSceneryLib::XPSceneryLib ALIAS XPSceneryLib)" _XPL_TOP "${_XPL_TOP}")
+			FILE(WRITE "${xpscenerylib_SOURCE_DIR}/CMakeLists.txt" "${_XPL_TOP}")
+		ENDIF()
+		ADD_SUBDIRECTORY("${xpscenerylib_SOURCE_DIR}" "${xpscenerylib_BINARY_DIR}")
+	ENDIF()
+ENDIF()
+
+# Ensure edX links against XPSceneryLib when available; otherwise fallback
+IF(TARGET edX AND TARGET XPSceneryLib)
+	TARGET_LINK_LIBRARIES(edX PUBLIC XPSceneryLib)
+ENDIF()
+
+############################################
+# ImGui (system or bundled sources)
+############################################
+
+#IF(SEDX_BUILD_IMGUI)
+#	ADD_LIBRARY(imgui
+#		${CMAKE_SOURCE_DIR}/dependency/imgui/imgui.cpp
+#		${CMAKE_SOURCE_DIR}/dependency/imgui/imgui_draw.cpp
+#		${CMAKE_SOURCE_DIR}/dependency/imgui/imgui_widgets.cpp
+#		${CMAKE_SOURCE_DIR}/dependency/imgui/imgui_tables.cpp
+#		$<$<BOOL:${SEDX_WITH_IMGUI_DEMO}>:${CMAKE_SOURCE_DIR}/dependency/imgui/imgui_demo.cpp>
+#		${CMAKE_SOURCE_DIR}/dependency/imgui/backends/imgui_impl_sdl3.cpp
+#		${CMAKE_SOURCE_DIR}/dependency/imgui/backends/imgui_impl_vulkan.cpp
+#	)
+#	TARGET_INCLUDE_DIRECTORIES(imgui
+#		PRIVATE
+#			${CMAKE_SOURCE_DIR}/dependency/imgui
+#			${CMAKE_SOURCE_DIR}/dependency/imgui/backends
+#			${CMAKE_SOURCE_DIR}/dependency/imgui/misc
+#	)
+#	TARGET_LINK_LIBRARIES(imgui
+#		PRIVATE
+#			SDL3::SDL3
+#			Vulkan::Vulkan
+#			GPUOpen::VulkanMemoryAllocator
+#	)
+#ENDIF()
+
+############################################
+# AppCore
+############################################
+ADD_SUBDIRECTORY(source/SceneryEditorX)
+
+############################################
+# Launcher
+############################################
+ADD_SUBDIRECTORY(source/Launcher)
+
+############################################
+# Scenery Editor X
+############################################
+ADD_SUBDIRECTORY(source/Editor)
+
+############################################
+# Crash Handler Service
+############################################
+ADD_SUBDIRECTORY(source/CrashHandler)
+
+############################################
+# Precompiled Headers
+############################################
 MESSAGE(STATUS "=================================================")
 MESSAGE(STATUS "Generating precompiled headers")
 
-TARGET_PRECOMPILE_HEADERS(SceneryEditorX PRIVATE ${CMAKE_SOURCE_DIR}/Source/Editor/xpeditor_pch.h)
-TARGET_PRECOMPILE_HEADERS(AppCore PRIVATE ${CMAKE_SOURCE_DIR}/Source/SceneryEditorX/app_pch.h)
-TARGET_PRECOMPILE_HEADERS(Launcher PRIVATE ${CMAKE_SOURCE_DIR}/Source/Launcher/startup_pch.h)
+INCLUDE(${CMAKE_SOURCE_DIR}/cmake/pch.cmake)
+INCLUDE(${CMAKE_SOURCE_DIR}/cmake/sedx_targets.cmake)
 
-SET_PROPERTY(TARGET CrashHandler PROPERTY FOLDER "Tools")
-SET_PROPERTY(TARGET MemoryAllocatorTests RefTests MathTests SettingsTest EdxTests EdxDemoGenerator ConversionTests PROPERTY FOLDER "Tests")
-SET_PROPERTY(TARGET edX PROPERTY FOLDER "File Formats")
-SET_PROPERTY(TARGET glfw uninstall update_mappings PROPERTY FOLDER "Dependency/GLFW3")
-SET_PROPERTY(TARGET xMath imgui json-cpp-gen nlohmann_json PROPERTY FOLDER "Dependency")
-SET_PROPERTY(TARGET libconfig libconfig++ PROPERTY FOLDER "Dependency/LibConfig")
-SET_PROPERTY(TARGET Catch2 Catch2WithMain PROPERTY FOLDER "Dependency/Catch2")
+SEDX_ENABLE_PCH(SceneryEditorX ${CMAKE_SOURCE_DIR}/source/Editor/xpeditor_pch.h)
+SEDX_ENABLE_PCH(AppCore        ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/app_pch.h)
+SEDX_ENABLE_PCH(Launcher       ${CMAKE_SOURCE_DIR}/source/Launcher/startup_pch.h)
 
-FOREACH(TARGET IN ITEMS Launcher SceneryEditorX AppCore MemoryAllocatorTests ConversionTests RefTests MathTests SettingsTest EdxTests EdxDemoGenerator CrashHandler Catch2 Catch2WithMain nlohmann_json json-cpp-gen imgui xMath libconfig libconfig++ edX X-PlaneSceneryLibrary glfw)
-    SET_TARGET_PROPERTIES(${TARGET} PROPERTIES
-        ARCHIVE_OUTPUT_DIRECTORY ${LIBS_DIR}
-        LIBRARY_OUTPUT_DIRECTORY ${LIBS_DIR}
-        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin
-    )
+# Group and output dirs
+SEDX_GROUP_TARGETS()
+## Configure per-target output directories using ${CMAKE_CFG_INTDIR} once
+## Note: Avoid mixing target properties with global per-config variables to prevent
+## paths like lib/Debug/Debug from occurring (especially with multi-config generators).
+SEDX_APPLY_OUTPUT_DIRS(${LIBS_DIR} ${BIN_DIR})
+
+############################################
+# Set Command Line Definitions
+############################################
+## Configure Visual Studio debugger to pass `--verbose` to our executables
+# If the CMake option SEDX_VERBOSE_LOGGING is enabled and the build config is Debug,
+# pass the `--verbose` CLI flag to the debugger so developers get verbose logging
+# automatically when launching from the IDE.
+FOREACH(_sedx_dbg_target SceneryEditorX Launcher CrashHandler)
+	IF(TARGET ${_sedx_dbg_target})
+		# Only add --verbose when building Debug and SEDX_VERBOSE_LOGGING is true
+		SET_TARGET_PROPERTIES(${_sedx_dbg_target} PROPERTIES VS_DEBUGGER_COMMAND_ARGUMENTS "$<$<AND:$<CONFIG:Debug>,$<BOOL:${SEDX_VERBOSE_LOGGING}>>:--verbose>" )
+	ENDIF()
+
+	IF(TARGET ${_sedx_dbg_target})
+		# Also set the environment variable SEDX_LOG_LEVEL=trace for maximum logging verbosity when debugging
+		SET_TARGET_PROPERTIES(${_sedx_dbg_target} PROPERTIES VS_DEBUGGER_ENVIRONMENT "$<$<BOOL:${RENDERDOC_ENABLE}>:--renderdoc>")
+	ENDIF()
 ENDFOREACH()
 
-# --------------------------------
-FOREACH(OUTPUTCONFIG ${CMAKE_CONFIGURATION_TYPES})
-    SET(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_${OUTPUTCONFIG} ${CMAKE_SOURCE_DIR}/lib/${OUTPUTCONFIG})
-    SET(CMAKE_LIBRARY_OUTPUT_DIRECTORY_${OUTPUTCONFIG} ${CMAKE_SOURCE_DIR}/lib/${OUTPUTCONFIG})
-    SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY_${OUTPUTCONFIG} ${CMAKE_SOURCE_DIR}/bin/${OUTPUTCONFIG})
-ENDFOREACH(OUTPUTCONFIG CMAKE_CONFIGURATION_TYPES)
+# Ensure debugger working directory is set for startup target (after it exists)
+IF(TARGET SceneryEditorX)
+	SEDX_SET_DEBUGGER_WD(SceneryEditorX)
+ENDIF()
+
+############################################
+
+# Post-configuration sanitization: remove any MSVC-only compile options
+# that may have been added unguarded by subprojects. This runs at configure
+# time after all subdirectories have been processed.
+if(NOT MSVC)
+	message(STATUS "Sanitizing global and target compile options for non-MSVC build")
+
+	# Remove common MSVC-only tokens from CMAKE_C_FLAGS and CMAKE_CXX_FLAGS
+	if(DEFINED CMAKE_C_FLAGS)
+		string(REPLACE "/EHsc" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+		string(REPLACE "/Zc:preprocessor" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+		string(REPLACE "/GR" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+		set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}" CACHE STRING "" FORCE)
+	endif()
+	if(DEFINED CMAKE_CXX_FLAGS)
+		string(REPLACE "/EHsc" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+		string(REPLACE "/Zc:preprocessor" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+		string(REPLACE "/GR" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" CACHE STRING "" FORCE)
+	endif()
+
+	# Remove MSVC-only directory-level compile options if present
+	get_property(_dir_compile_opts DIRECTORY PROPERTY COMPILE_OPTIONS)
+	if(_dir_compile_opts)
+		set(_clean_dir_opts "")
+		foreach(_opt IN LISTS _dir_compile_opts)
+			set(_opt_clean "${_opt}")
+			string(REPLACE "/EHsc" "" _opt_clean "${_opt_clean}")
+			string(REPLACE "/Zc:preprocessor" "" _opt_clean "${_opt_clean}")
+			string(REPLACE "/GR" "" _opt_clean "${_opt_clean}")
+			string(STRIP "${_opt_clean}" _opt_clean)
+			if(NOT _opt_clean STREQUAL "")
+				list(APPEND _clean_dir_opts "${_opt_clean}")
+			endif()
+		endforeach()
+		set_property(DIRECTORY PROPERTY COMPILE_OPTIONS "${_clean_dir_opts}")
+	endif()
+
+	# Sanitize all existing targets' COMPILE_OPTIONS and remove MSVC-only tokens
+	get_property(_all_targets GLOBAL PROPERTY TARGETS)
+	foreach(_t IN LISTS _all_targets)
+		if(TARGET ${_t})
+			# COMPILE_OPTIONS may be attached as target property - clean embedded MSVC tokens
+			get_target_property(_opts ${_t} COMPILE_OPTIONS)
+			if(_opts)
+				set(_new_opts "")
+				foreach(_o IN LISTS _opts)
+					set(_o_clean "${_o}")
+					string(REPLACE "/EHsc" "" _o_clean "${_o_clean}")
+					string(REPLACE "/Zc:preprocessor" "" _o_clean "${_o_clean}")
+					string(REPLACE "/GR" "" _o_clean "${_o_clean}")
+					string(STRIP "${_o_clean}" _o_clean)
+					if(NOT _o_clean STREQUAL "")
+						list(APPEND _new_opts "${_o_clean}")
+					endif()
+				endforeach()
+				if(NOT _new_opts STREQUAL _opts)
+					set_target_properties(${_t} PROPERTIES COMPILE_OPTIONS "${_new_opts}")
+				endif()
+			endif()
+
+			# Also sanitize INTERFACE_COMPILE_OPTIONS on INTERFACE/IMPORTED targets
+			get_target_property(_iopts ${_t} INTERFACE_COMPILE_OPTIONS)
+			if(_iopts)
+				set(_new_iopts "")
+				foreach(_io IN LISTS _iopts)
+					set(_io_clean "${_io}")
+					string(REPLACE "/EHsc" "" _io_clean "${_io_clean}")
+					string(REPLACE "/Zc:preprocessor" "" _io_clean "${_io_clean}")
+					string(REPLACE "/GR" "" _io_clean "${_io_clean}")
+					string(STRIP "${_io_clean}" _io_clean)
+					if(NOT _io_clean STREQUAL "")
+						list(APPEND _new_iopts "${_io_clean}")
+					endif()
+				endforeach()
+				if(NOT _new_iopts STREQUAL _iopts)
+					set_target_properties(${_t} PROPERTIES INTERFACE_COMPILE_OPTIONS "${_new_iopts}")
+				endif()
+			endif()
+		endif()
+	endforeach()
+endif()
+
+	# Final sanitization pass after all subdirectories and external content.
+	# Prefer the SEDX_PREFERRED_COMPILER indication if available.
+	if(DEFINED SEDX_PREFERRED_COMPILER)
+		if(NOT (SEDX_PREFERRED_COMPILER STREQUAL "MSVC" OR SEDX_PREFERRED_COMPILER STREQUAL "CLANG_CL"))
+			include("${CMAKE_SOURCE_DIR}/cmake/sanitize-msvc-flags.cmake")
+		endif()
+	else()
+		if(NOT MSVC)
+			include("${CMAKE_SOURCE_DIR}/cmake/sanitize-msvc-flags.cmake")
+		endif()
+	endif()
+

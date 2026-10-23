@@ -1,21 +1,39 @@
 /**
-* -------------------------------------------------------
-* Scenery Editor X
-* -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
-* Copyright (c) 2025 Coalition of Freeware Developers
-* -------------------------------------------------------
-* type_utils.h
-* -------------------------------------------------------
-* Created: 9/7/2025
-* -------------------------------------------------------
-*/
+ * -------------------------------------------------------
+ * Scenery Editor X
+ * -------------------------------------------------------
+ * Copyright (c) 2026 Thomas Ray 
+ * Copyright (c) 2026 Coalition of Freeware Developers
+ * -------------------------------------------------------
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ * -------------------------------------------------------
+ * type_utils.h
+ * -------------------------------------------------------
+ * Created: 9/7/2025
+ * -------------------------------------------------------
+ */
 #pragma once
 #include <array>
 #include <type_traits>
 #include <vector>
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX::Types
 {
@@ -48,7 +66,7 @@ namespace SceneryEditorX::Types
             impl::return_type_object<T>, impl::return_type_function<T>>> {};
 	}
 
-	/// --------------------------------------------------------
+	// --------------------------------------------------------
 
 	template <typename, typename = void>
 	struct is_specialized : std::false_type {};
@@ -56,7 +74,7 @@ namespace SceneryEditorX::Types
 	template<typename T>
 	struct is_specialized < T, std::void_t<decltype(T{}) >> : std::true_type {};
 
-	/// --------------------------------------------------------
+	// --------------------------------------------------------
 
 	namespace is_array_impl
     {
@@ -74,7 +92,7 @@ namespace SceneryEditorX::Types
 	template<typename T>
 	inline constexpr bool is_array_v = is_array<T>::value;
 
-	/// --------------------------------------------------------
+	// --------------------------------------------------------
 
 	/// A helper trait to check if the type supports streaming (https://stackoverflow.com/a/66397194)
 	template<class T>
@@ -96,7 +114,7 @@ namespace SceneryEditorX::Types
 	template<class T>
 	inline constexpr bool is_streamable_v = is_streamable<T>::value;
 
-	/// --------------------------------------------------------
+	// --------------------------------------------------------
 
 	struct filter_void_alt {};
 
@@ -109,7 +127,7 @@ namespace SceneryEditorX::Types
 	template<class T>
 	using filter_void_t = filter_void<T>::type;
 
-	/// --------------------------------------------------------
+	// --------------------------------------------------------
 
 #if __cplusplus >= 202002L
 	template <typename TupleT, typename Fn>
@@ -137,7 +155,7 @@ namespace SceneryEditorX::Types
 	}
 #endif
 
-	/// --------------------------------------------------------
+	// --------------------------------------------------------
 
 #if __cplusplus >= 202002L
 		/// C++20
@@ -197,4 +215,4 @@ namespace SceneryEditorX::Types
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
