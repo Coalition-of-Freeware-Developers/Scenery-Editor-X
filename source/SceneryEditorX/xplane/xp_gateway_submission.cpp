@@ -97,18 +97,6 @@ namespace SceneryEditorX::XPlane
 			return CleanMessage(body);
 		}
 
-		void PutU16(std::vector<uint8_t> &out, const uint32_t value)
-		{
-			out.push_back(static_cast<uint8_t>(value & 0xFF));
-			out.push_back(static_cast<uint8_t>((value >> 8) & 0xFF));
-		}
-
-		void PutU32(std::vector<uint8_t> &out, const uint32_t value)
-		{
-			for (int shift = 0; shift < 32; shift += 8)
-				out.push_back(static_cast<uint8_t>((value >> shift) & 0xFF));
-		}
-
 		std::string Format(const char *format, const double value)
 		{
 			char buffer[64];
@@ -262,67 +250,11 @@ namespace SceneryEditorX::XPlane
 
 	std::vector<uint8_t> WriteStoredZip(const std::vector<ZipFile> &files)
 	{
-		// 1980-01-01 00:00: fixed, so the same files give the same bytes
-		constexpr uint32_t DOS_TIME = 0;
-		constexpr uint32_t DOS_DATE = (0u << 9) | (1u << 5) | 1u;
-		constexpr uint32_t UTF8_NAMES = 1u << 11;
-
-		std::vector<uint8_t> out;
-		std::vector<uint8_t> directory;
-		for (const ZipFile &file : files)
-		{
-			const uint32_t crc = Crc32(file.data);
-			const uint32_t size = static_cast<uint32_t>(file.data.size());
-			const uint32_t offset = static_cast<uint32_t>(out.size());
-
-			PutU32(out, 0x04034B50u);		// Local file header
-			PutU16(out, 20);				// Version needed: 2.0
-			PutU16(out, UTF8_NAMES);
-			PutU16(out, 0);					// Stored
-			PutU16(out, DOS_TIME);
-			PutU16(out, DOS_DATE);
-			PutU32(out, crc);
-			PutU32(out, size);
-			PutU32(out, size);
-			PutU16(out, static_cast<uint32_t>(file.name.size()));
-			PutU16(out, 0);
-			out.insert(out.end(), file.name.begin(), file.name.end());
-			out.insert(out.end(), file.data.begin(), file.data.end());
-
-			PutU32(directory, 0x02014B50u);	// Central directory header
-			PutU16(directory, (3u << 8) | 20u);	// Made by: Unix, 2.0
-			PutU16(directory, 20);
-			PutU16(directory, UTF8_NAMES);
-			PutU16(directory, 0);
-			PutU16(directory, DOS_TIME);
-			PutU16(directory, DOS_DATE);
-			PutU32(directory, crc);
-			PutU32(directory, size);
-			PutU32(directory, size);
-			PutU16(directory, static_cast<uint32_t>(file.name.size()));
-			PutU16(directory, 0);			// Extra
-			PutU16(directory, 0);			// Comment
-			PutU16(directory, 0);			// Disk
-			PutU16(directory, 0);			// Internal attributes
-			PutU32(directory, 0100644u << 16);	// External attributes: a regular file, rw-r--r--
-			PutU32(directory, offset);
-			directory.insert(directory.end(), file.name.begin(), file.name.end());
-		}
-
-		const uint32_t directoryOffset = static_cast<uint32_t>(out.size());
-		out.insert(out.end(), directory.begin(), directory.end());
-		PutU32(out, 0x06054B50u);			// End of central directory
-		PutU16(out, 0);
-		PutU16(out, 0);
-		PutU16(out, static_cast<uint32_t>(files.size()));
-		PutU16(out, static_cast<uint32_t>(files.size()));
-		PutU32(out, static_cast<uint32_t>(directory.size()));
-		PutU32(out, directoryOffset);
-		PutU16(out, 0);
-		return out;
+		return WriteZipArchive(files, ZipMethod::Stored);
 	}
 
-	std::vector<uint8_t> MakeGatewayMasterZip(const std::string_view icao, const std::string_view aptDat, const std::string_view dsfText, const std::vector<ZipFile> &packFiles)
+	std::vector<uint8_t> MakeGatewayMasterZip(const std::string_view icao, const std::string_view aptDat, const std::string_view dsfText, const std::vector<ZipFile> &packFiles,
+		const ZipMethod method)
 	{
 		const std::string id(icao);
 		const std::string folder = id + "_Scenery_Pack/";
@@ -330,14 +262,14 @@ namespace SceneryEditorX::XPlane
 		pack.reserve(packFiles.size());
 		for (const ZipFile &file : packFiles)
 			pack.push_back({ folder + file.name, file.data });
-		const std::vector<uint8_t> packZip = WriteStoredZip(pack);
+		const std::vector<uint8_t> packZip = WriteZipArchive(pack, method);
 
 		std::vector<ZipFile> master;
 		master.push_back({ id + ".dat", std::string(aptDat) });
 		if (!dsfText.empty())
 			master.push_back({ id + ".txt", std::string(dsfText) });
 		master.push_back({ id + "_Scenery_Pack.zip", std::string(packZip.begin(), packZip.end()) });
-		return WriteStoredZip(master);
+		return WriteZipArchive(master, method);
 	}
 
 	GatewaySubmission MakeGatewayTestSubmission(const std::string_view icao)

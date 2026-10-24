@@ -77,6 +77,103 @@ namespace SceneryEditorX::XPlane
 				return Fail(error, "Corrupt deflate stream in zip entry");
 			return true;
 		}
+
+		/* @brief Raw deflate (no zlib header) of some bytes; false when zlib fails. */
+		bool Deflate(const std::string &data, std::vector<uint8_t> &out)
+		{
+			z_stream stream{};
+			if (deflateInit2(&stream, Z_BEST_COMPRESSION, Z_DEFLATED, -MAX_WBITS, 8, Z_DEFAULT_STRATEGY) != Z_OK)
+				return false;
+			out.resize(deflateBound(&stream, static_cast<uLong>(data.size())));
+			stream.next_in = reinterpret_cast<Bytef *>(const_cast<char *>(data.data()));
+			stream.avail_in = static_cast<uInt>(data.size());
+			stream.next_out = out.data();
+			stream.avail_out = static_cast<uInt>(out.size());
+			const int result = deflate(&stream, Z_FINISH);
+			out.resize(stream.total_out);
+			deflateEnd(&stream);
+			return result == Z_STREAM_END;
+		}
+
+		void Put16(std::vector<uint8_t> &out, const uint32_t value)
+		{
+			out.push_back(static_cast<uint8_t>(value & 0xFF));
+			out.push_back(static_cast<uint8_t>((value >> 8) & 0xFF));
+		}
+
+		void Put32(std::vector<uint8_t> &out, const uint32_t value)
+		{
+			for (int shift = 0; shift < 32; shift += 8)
+				out.push_back(static_cast<uint8_t>((value >> shift) & 0xFF));
+		}
+	}
+
+	std::vector<uint8_t> WriteZipArchive(const std::vector<ZipFile> &files, const ZipMethod method)
+	{
+		constexpr uint32_t DOS_TIME = 0;
+		constexpr uint32_t DOS_DATE = (0u << 9) | (1u << 5) | 1u;	// 1980-01-01
+		constexpr uint32_t UTF8_NAMES = 1u << 11;
+
+		std::vector<uint8_t> out;
+		std::vector<uint8_t> directory;
+		std::vector<uint8_t> compressed;
+		for (const ZipFile &file : files)
+		{
+			const uint32_t crc = static_cast<uint32_t>(crc32(crc32(0L, Z_NULL, 0), reinterpret_cast<const Bytef *>(file.data.data()), static_cast<uInt>(file.data.size())));
+			const uint32_t size = static_cast<uint32_t>(file.data.size());
+			const bool deflated = method == ZipMethod::Deflated && !file.data.empty() && Deflate(file.data, compressed) && compressed.size() < file.data.size();
+			const uint16_t entryMethod = deflated ? METHOD_DEFLATE : METHOD_STORED;
+			const uint32_t storedSize = deflated ? static_cast<uint32_t>(compressed.size()) : size;
+			const uint32_t offset = static_cast<uint32_t>(out.size());
+
+			Put32(out, SIGNATURE_LOCAL_HEADER);
+			Put16(out, 20);							// Version needed: 2.0
+			Put16(out, UTF8_NAMES);
+			Put16(out, entryMethod);
+			Put16(out, DOS_TIME);
+			Put16(out, DOS_DATE);
+			Put32(out, crc);
+			Put32(out, storedSize);
+			Put32(out, size);
+			Put16(out, static_cast<uint32_t>(file.name.size()));
+			Put16(out, 0);
+			out.insert(out.end(), file.name.begin(), file.name.end());
+			if (deflated)
+				out.insert(out.end(), compressed.begin(), compressed.end());
+			else
+				out.insert(out.end(), file.data.begin(), file.data.end());
+
+			Put32(directory, SIGNATURE_CENTRAL_DIRECTORY);
+			Put16(directory, (3u << 8) | 20u);		// Made by: Unix, 2.0
+			Put16(directory, 20);
+			Put16(directory, UTF8_NAMES);
+			Put16(directory, entryMethod);
+			Put16(directory, DOS_TIME);
+			Put16(directory, DOS_DATE);
+			Put32(directory, crc);
+			Put32(directory, storedSize);
+			Put32(directory, size);
+			Put16(directory, static_cast<uint32_t>(file.name.size()));
+			Put16(directory, 0);					// Extra
+			Put16(directory, 0);					// Comment
+			Put16(directory, 0);					// Disk
+			Put16(directory, 0);					// Internal attributes
+			Put32(directory, 0100644u << 16);		// External attributes: a regular file, rw-r--r--
+			Put32(directory, offset);
+			directory.insert(directory.end(), file.name.begin(), file.name.end());
+		}
+
+		const uint32_t directoryOffset = static_cast<uint32_t>(out.size());
+		out.insert(out.end(), directory.begin(), directory.end());
+		Put32(out, SIGNATURE_END_OF_CENTRAL_DIRECTORY);
+		Put16(out, 0);
+		Put16(out, 0);
+		Put16(out, static_cast<uint32_t>(files.size()));
+		Put16(out, static_cast<uint32_t>(files.size()));
+		Put32(out, static_cast<uint32_t>(directory.size()));
+		Put32(out, directoryOffset);
+		Put16(out, 0);
+		return out;
 	}
 
 	bool ReadZipArchive(const std::vector<uint8_t> &bytes, std::vector<ZipEntry> &out, std::string *error)

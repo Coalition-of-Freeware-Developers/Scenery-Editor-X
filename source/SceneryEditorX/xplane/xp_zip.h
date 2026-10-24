@@ -51,6 +51,25 @@ namespace SceneryEditorX::XPlane
 	 */
 	bool ReadZipArchive(const uint8_t *bytes, size_t size, std::vector<ZipEntry> &out, std::string *error = nullptr);
 	bool ReadZipArchive(const std::vector<uint8_t> &bytes, std::vector<ZipEntry> &out, std::string *error = nullptr);
+
+	/* @brief A file to write into a zip archive. */
+	struct ZipFile
+	{
+		std::string name;			// Forward slashes
+		std::string data;
+	};
+
+	enum class ZipMethod : uint8_t
+	{
+		Stored,		// Uncompressed: any unzip reads it
+		Deflated	// zlib deflate (an entry deflate doesn't shrink is stored)
+	};
+
+	/**
+	 * @brief A zip archive of the files, in order, with fixed timestamps (1980-01-01) so the same files give the same
+	 * bytes. Names are flagged UTF-8. No ZIP64: entries and the archive stay under 4 GB.
+	 */
+	std::vector<uint8_t> WriteZipArchive(const std::vector<ZipFile> &files, ZipMethod method = ZipMethod::Deflated);
 }
 
 // -------------------------------------------------------

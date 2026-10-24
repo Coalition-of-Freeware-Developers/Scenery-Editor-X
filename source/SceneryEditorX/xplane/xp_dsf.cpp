@@ -1390,6 +1390,94 @@ namespace SceneryEditorX::XPlane
 		return true;
 	}
 
+	std::string WriteDsfText(const DsfFile &dsf, const std::string_view creator)
+	{
+		std::string out;
+		const auto line = [&out](const char *format, auto... values)
+		{
+			char buffer[160];
+			const int written = std::snprintf(buffer, sizeof(buffer), format, values...);
+			if (written > 0)
+				out.append(buffer, std::min(static_cast<size_t>(written), sizeof(buffer) - 1));
+		};
+
+		out += "I\n800 written by ";
+		out += creator;
+		out += "\nDSF2TEXT\n\n";
+		for (const auto &[key, value] : dsf.properties)
+			out += "PROPERTY " + key + " " + value + "\n";
+		for (const std::string &name : dsf.terrainDefinitions)
+			out += "TERRAIN_DEF " + name + "\n";
+		for (const std::string &name : dsf.objectDefinitions)
+			out += "OBJECT_DEF " + name + "\n";
+		for (const std::string &name : dsf.polygonDefinitions)
+			out += "POLYGON_DEF " + name + "\n";
+		for (const std::string &name : dsf.networkDefinitions)
+			out += "NETWORK_DEF " + name + "\n";
+
+		int32_t currentFilter = -1;
+		const auto selectFilter = [&](const int32_t filter)
+		{
+			if (filter != currentFilter)
+				line("FILTER %d\n", static_cast<int>(filter));
+			currentFilter = filter;
+		};
+
+		for (const DsfObjectPlacement &object : dsf.objects)
+		{
+			selectFilter(object.filter);
+			const double heading = std::fmod(std::fmod(object.heading, 360.0) + 360.0, 360.0);
+			const unsigned definition = object.definition;
+			switch (object.mode)
+			{
+				case DsfObjectPlacement::Mode::Draped:
+					line("OBJECT %u %.9f %.9f %.3f\n", definition, object.longitude, object.latitude, heading);
+					break;
+				case DsfObjectPlacement::Mode::Msl:
+					line("OBJECT_MSL %u %.9f %.9f %.5f %.3f\n", definition, object.longitude, object.latitude, object.elevation, heading);
+					break;
+				case DsfObjectPlacement::Mode::Agl:
+					line("OBJECT_AGL %u %.9f %.9f %.5f %.3f\n", definition, object.longitude, object.latitude, object.elevation, heading);
+					break;
+			}
+		}
+
+		for (const DsfPolygonPlacement &polygon : dsf.polygons)
+		{
+			selectFilter(polygon.filter);
+			line("BEGIN_POLYGON %u %u %u\n", static_cast<unsigned>(polygon.definition), static_cast<unsigned>(polygon.parameter), static_cast<unsigned>(polygon.planes));
+			for (const std::vector<DsfPoint> &winding : polygon.windings)
+			{
+				out += "BEGIN_WINDING\n";
+				for (const DsfPoint &point : winding)
+				{
+					out += "POLYGON_POINT";
+					for (uint8_t plane = 0; plane < polygon.planes && plane < point.v.size(); ++plane)
+						line(" %.9f", point.v[plane]);
+					out += "\n";
+				}
+				out += "END_WINDING\n";
+			}
+			out += "END_POLYGON\n";
+		}
+
+		// Road points: lon, lat, then the junction's level at the ends and the control flag (1) for shape points
+		for (const DsfRoadSegment &road : dsf.roads)
+		{
+			if (road.points.size() < 2)
+				continue;
+			selectFilter(road.filter);
+			const DsfRoadPoint &start = road.points.front();
+			const DsfRoadPoint &end = road.points.back();
+			line("BEGIN_SEGMENT %u %u %u %.9f %.9f %.9f\n", static_cast<unsigned>(road.definition), static_cast<unsigned>(road.subtype), static_cast<unsigned>(road.startJunction),
+				start.longitude, start.latitude, static_cast<double>(std::max(0, road.startLevel)));
+			for (size_t i = 1; i + 1 < road.points.size(); ++i)
+				line("SHAPE_POINT %.9f %.9f %.9f\n", road.points[i].longitude, road.points[i].latitude, road.points[i].control ? 1.0 : 0.0);
+			line("END_SEGMENT %u %.9f %.9f %.9f\n", static_cast<unsigned>(road.endJunction), end.longitude, end.latitude, static_cast<double>(std::max(0, road.endLevel)));
+		}
+		return out;
+	}
+
 	std::vector<DsfFile> SplitDsfByTile(const DsfFile &dsf, std::vector<std::string> *warnings)
 	{
 		using TileKey = std::pair<int, int>;	// south, west

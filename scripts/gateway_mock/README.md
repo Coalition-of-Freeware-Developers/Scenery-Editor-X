@@ -53,9 +53,11 @@ SceneryEditorX --gateway-url http://127.0.0.1:8780 --gateway-credentials memory
 | `GET /apiv1/scenery/{id}` | A submission with its `masterZipBlob` (zip of `<ICAO>.dat`, `<ICAO>.txt`, `<ICAO>_Scenery_Pack.zip`) |
 | `GET /apiv1/stats`, `/apiv1/releases` | Small made-up answers |
 | `PUT /apiv1/scenery` | An upload, checked against the test accounts (see below). `POST` gets `405`: the real Gateway takes uploads as `PUT` |
-| `GET /apiv1/mock/log` | Test hook: the sign-in checks and uploads received (never passwords) |
+| `GET /apiv1/mock/log` | Test hook: the sign-in checks and uploads received (never passwords): parent, type, features, the master zip's files and the scenery pack's files |
 
-KBTV and XSDX start with one approved 3D submission each (ids from 900001, well away from real Gateway ids).
+KBTV and XSDX start with one approved 2D submission each (ids from 900001, well away from real Gateway ids). Their
+metadata passes WorldEditor's Gateway checks (an ISO-3166 country prefix, `gui_label` matching the content), so a
+downloaded seed can be imported into a project, validated and uploaded back unchanged.
 Uploads get the next id, appear under their airport as `Uploaded`, and are written to the state folder as
 `<id>/request.json` (password removed) plus the decoded `masterZip.zip`.
 

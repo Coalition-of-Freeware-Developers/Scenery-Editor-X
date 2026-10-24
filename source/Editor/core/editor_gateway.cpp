@@ -736,6 +736,20 @@ namespace SceneryEditorX::EditorGateway
 		ForgetSessionPassword(state);
 		EDITOR_INFO_TAG(LOG_TAG, "Signed out of the Gateway");
 	}
+
+	void DrawServerBanner()
+	{
+		const State &state = GetState();
+		if (state.initialized)
+			DrawServerBanner(state);
+	}
+
+	void ReportUploadResult(const GatewayUploadResult &result)
+	{
+		State &state = GetState();
+		if (state.initialized && !state.password.empty())
+			ApplyUploadResult(state, result);
+	}
 }
 
 // -------------------------------------------------------

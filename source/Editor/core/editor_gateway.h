@@ -31,6 +31,7 @@
 #pragma once
 #include <string>
 #include <SceneryEditorX/xplane/xp_gateway_server.h>
+#include <SceneryEditorX/xplane/xp_gateway_submission.h>
 
 // -------------------------------------------------------
 
@@ -96,6 +97,12 @@ namespace SceneryEditorX::EditorGateway
 
 	/* @brief Forgets the password (memory and credential store) and the checked state. */
 	void SignOut();
+
+	/* @brief "TEST SERVER: <url>" (or "OFFLINE") in warning colors; nothing for the public Gateway. */
+	void DrawServerBanner();
+
+	/* @brief What an upload made with GetCredentials() was answered: updates the account's checked state. */
+	void ReportUploadResult(const XPlane::GatewayUploadResult &result);
 }
 
 namespace SceneryEditorX::EditorPreferencesWindow

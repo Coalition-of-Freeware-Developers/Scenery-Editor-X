@@ -31,6 +31,7 @@
 #include "editor_layer.h"
 #include "editor_airports.h"
 #include "editor_gateway.h"
+#include "editor_gateway_submit.h"
 #include "editor_project.h"
 #include "editor_camera.h"
 #include "editor_commands.h"
@@ -268,6 +269,7 @@ namespace SceneryEditorX
 		EditorAirports::Init();
 		EditorGateway::Init();		// The Gateway account and server (after the Gateway client started)
 		EditorProjects::Init(m_UserPreferences);
+		EditorGatewaySubmit::Init();	// Gateway imports / submissions (after the account and the project system)
 		ReadStartupObjects();
 		RegisterPanels();
 		// Commands the menus offer (menu bar, right-click quad menu, Space hotbox), and the menus themselves
@@ -392,6 +394,7 @@ namespace SceneryEditorX
 		{
 			SEDX_PERF_SCOPE("Main: EditorProjects::Tick");
 			EditorProjects::Tick(&m_Context);
+			EditorGatewaySubmit::Tick(&m_Context);	// Gateway imports, packaging and uploads in flight
 			FacadeAuthoring::Tick();	// The facade editor's live preview
 		}
 
@@ -451,6 +454,7 @@ namespace SceneryEditorX
 
 		DrawAboutPopup();
 		EditorPreferencesWindow::Draw();
+		EditorGatewaySubmit::Draw(&m_Context);
 		DrawDebugWindows();
 		EditorAirports::DrawModals(&m_Context);
 		EditorProjects::DrawModals(&m_Context);
@@ -569,6 +573,10 @@ namespace SceneryEditorX
 				EditorPreferencesWindow::Open("Scenery Gateway");
 			if (EditorGateway::IsTestServer())
 				EditorUI::ItemTooltip(("TEST SERVER: " + EditorGateway::GetServer().apiUrl).c_str());
+			if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_CLOUD_UPLOAD, "Submit to Scenery Gateway...").c_str(), nullptr, false, EditorGatewaySubmit::CanOpen()))
+				EditorGatewaySubmit::Open(&m_Context);
+			EditorUI::ItemTooltip(EditorGateway::IsTestServer() ? ("Check, pack and upload the open airport to the TEST SERVER " + EditorGateway::GetServer().apiUrl).c_str()
+				: "Check, pack and upload the open airport (uploads to the public Gateway are switched off for now)");
 		}
 
 		ImGui::Separator();

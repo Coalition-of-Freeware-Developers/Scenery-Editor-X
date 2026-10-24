@@ -406,6 +406,22 @@ TEST_CASE("Airport validation reports the problems X-Plane rejects", "[xplane][a
 	CHECK(has("outside the COM"));
 	CHECK(has("unknown type 'parking'"));
 
+	// Military UHF and ATIS on the NAV band are real frequencies; the gap between the bands isn't (WorldEditor's ranges)
+	const auto frequencyProblem = [&airport](const AptFrequency::Type type, const int khz)
+	{
+		AptAirport copy = airport;
+		copy.frequencies[0].type = type;
+		copy.frequencies[0].frequencyKhz = khz;
+		const std::vector<std::string> found = ValidateAptAirport(copy);
+		return std::ranges::any_of(found, [](const std::string &p) { return p.find("outside the COM") != std::string::npos; });
+	};
+	CHECK_FALSE(frequencyProblem(AptFrequency::Type::Approach, 278800));
+	CHECK_FALSE(frequencyProblem(AptFrequency::Type::Tower, 118300));
+	CHECK_FALSE(frequencyProblem(AptFrequency::Type::Recorded, 113450));
+	CHECK(frequencyProblem(AptFrequency::Type::Tower, 113450));
+	CHECK(frequencyProblem(AptFrequency::Type::Tower, 150000));
+	CHECK(frequencyProblem(AptFrequency::Type::Tower, 1000000));
+
 	AptAirport empty;
 	empty.id = "NEW";
 	empty.name = "New Field";

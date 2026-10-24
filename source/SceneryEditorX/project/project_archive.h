@@ -539,12 +539,19 @@ namespace SceneryEditorX::ProjectFile
 		a.Field("unknown-rows", v.unknownRows);
 	}
 
+	template<typename A> void Visit(A &a, GatewayTestSceneryId &v)
+	{
+		a.Field("server", v.server);
+		a.Field("scenery-id", v.sceneryId);
+	}
+
 	template<typename A> void Visit(A &a, ProjectAirport &v)
 	{
 		a.Inline("airport", v.airport);
 		a.FieldIf("has-atc", v.hasAtc, true);
 		a.FieldIf("scenery-id", v.sceneryId, -1);
 		a.Properties("other-properties", v.properties);
+		a.FieldIf("test-scenery-ids", v.testSceneryIds, std::vector<GatewayTestSceneryId>());
 	}
 
 	// library.txt (XPlane::LibraryFile)

@@ -35,6 +35,8 @@
 #include <SceneryEditorX/settings/user_settings.h>
 #include <SceneryEditorX/xplane/xp_apt_geometry.h>
 #include <SceneryEditorX/xplane/xp_assets.h>
+#include <SceneryEditorX/xplane/xp_gateway_server.h>
+#include <SceneryEditorX/xplane/xp_gateway_types.h>
 
 // -------------------------------------------------------
 
@@ -97,6 +99,9 @@ namespace SceneryEditorX::EditorProjects
 	bool Save();
 	bool SaveAs();
 
+	/* @brief Saves the project to a file without asking, binding the project to it. */
+	bool SaveAs(const std::filesystem::path &path);
+
 	/* @brief Closes the project and removes it from the scene. False when unsaved changes block it (the modal asks). */
 	bool Close(EditorContext *context, bool force = false);
 
@@ -111,6 +116,14 @@ namespace SceneryEditorX::EditorProjects
 
 	/* @brief Adds the airports of an apt.dat to the project. */
 	void ImportAptDat(EditorContext *context);
+
+	/**
+	 * @brief Adds a downloaded Scenery Gateway submission to the open project (a new, unsaved one when none is open):
+	 * its airport, replacing one with the same ID, and its pack's DSF placements as items in the airport's hierarchy,
+	 * with the submission's scenery id recorded for the server it came from (the next upload's parent). The airport is
+	 * shown afterwards.
+	 */
+	bool ImportGatewaySubmission(const XPlane::GatewaySceneryPack &pack, const XPlane::GatewayServer &server, EditorContext *context);
 
 	/* @brief Writes the project's airports as an apt.dat (a scenery pack's "Earth nav data/apt.dat"). */
 	void ExportAptDat();

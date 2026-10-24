@@ -168,6 +168,17 @@ namespace SceneryEditorX::XPlane
 	inline constexpr double DSF_POOL_SPAN = 0.02;
 
 	/**
+	 * @brief The DSF as DSFTool's text format (DSF2Text, what the Scenery Gateway keeps as <ICAO>.txt): the "I / 800 /
+	 * DSF2TEXT" header, PROPERTY lines, the TERRAIN / OBJECT / POLYGON / NETWORK_DEF lines, then the placements in
+	 * WriteDsf's order (objects, polygons, road segments), with a FILTER line wherever the airport filter changes.
+	 * Numbers are printed the way DSFTool prints them (9 decimals for coordinates; OBJECT_MSL / OBJECT_AGL give the
+	 * elevation before the heading, as DSFTool does). DSFTool --text2dsf turns it back into the binary tile.
+	 * Overlay content only, like WriteDsf: terrain patches and rasters aren't written. LF line endings.
+	 * @param creator Goes on the header's "800" line.
+	 */
+	std::string WriteDsfText(const DsfFile &dsf, std::string_view creator = "Scenery Editor X");
+
+	/**
 	 * @brief Splits a DSF covering several 1x1 degree tiles into one DSF per tile, sorted south-west first: objects go
 	 * to the tile under them, polygons to the tile of their first point (a warning names any reaching into another
 	 * tile), exclusions (sim/exclude_*) to every tile they overlap. Definitions are renumbered per tile, the bounds

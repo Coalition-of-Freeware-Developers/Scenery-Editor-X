@@ -734,6 +734,650 @@ namespace SceneryEditorX::ProjectFile
 		private:
 			uint64_t m_Hash = 0xcbf29ce484222325ull;
 		};
+
+		// -------------------------------------------------------
+		// DSF -> project items (the inverse of Converter)
+
+		constexpr double COLOCATED_EPSILON = 1e-9;	// Degrees: DSF points this close are one place (a node's points, a closed string's ends)
+		constexpr double ROAD_EPSILON = 1e-9;		// Degrees: road pools are 32-bit, so made-up control points are found this closely
+
+		bool SameLocation(const DsfPoint &a, const DsfPoint &b)
+		{
+			return std::abs(a.v[0] - b.v[0]) <= COLOCATED_EPSILON && std::abs(a.v[1] - b.v[1]) <= COLOCATED_EPSILON;
+		}
+
+		bool SameLocation(const GeoNode &a, const GeoNode &b)
+		{
+			return std::abs(a.longitude - b.longitude) <= COLOCATED_EPSILON && std::abs(a.latitude - b.latitude) <= COLOCATED_EPSILON;
+		}
+
+		/* @brief "plain" for "lib/airport/ground/plain.pol". */
+		std::string FileStem(const std::string_view path)
+		{
+			const size_t slash = path.find_last_of("/\\");
+			std::string_view name = slash == std::string_view::npos ? path : path.substr(slash + 1);
+			if (const size_t dot = name.rfind('.'); dot != std::string_view::npos && dot > 0)
+				name = name.substr(0, dot);
+			return std::string(name);
+		}
+
+		/* @brief A node from a DSF point: position plus what the layout carries besides the control point. */
+		GeoNode NodeOf(const DsfPoint &point, const Layout layout)
+		{
+			GeoNode node;
+			node.longitude = point.v[0];
+			node.latitude = point.v[1];
+			switch (layout)
+			{
+				case Layout::Wall:
+				case Layout::WallBezier:
+					node.wallType = static_cast<int>(std::lround(point.v[2]));
+					break;
+				case Layout::Uv:
+					node.hasUv = true;
+					node.s = static_cast<float>(point.v[2]);
+					node.t = static_cast<float>(point.v[3]);
+					break;
+				case Layout::UvBezier:
+					node.hasUv = true;
+					node.s = static_cast<float>(point.v[4]);
+					node.t = static_cast<float>(point.v[5]);
+					break;
+				default:
+					break;
+			}
+			return node;
+		}
+
+		/**
+		 * @brief How far a lone point's control point may sit from it and still be a corner. Control points have planes of
+		 * their own, which a 16-bit pool quantizes apart from the point's by up to a step of the pool's span (at least
+		 * DSF_POOL_SPAN, else the polygon's own size).
+		 */
+		double CornerTolerance(const DsfPolygonPlacement &placement)
+		{
+			bool first = true;
+			double west = 0.0, east = 0.0, south = 0.0, north = 0.0;
+			for (const Winding &winding : placement.windings)
+			{
+				for (const DsfPoint &point : winding)
+				{
+					west = first ? point.v[0] : std::min(west, point.v[0]);
+					east = first ? point.v[0] : std::max(east, point.v[0]);
+					south = first ? point.v[1] : std::min(south, point.v[1]);
+					north = first ? point.v[1] : std::max(north, point.v[1]);
+					first = false;
+				}
+			}
+			return 2.0 * std::max({ XPlane::DSF_POOL_SPAN, east - west, north - south }) / 65535.0;
+		}
+
+		/**
+		 * @brief A winding's nodes, the inverse of MakeWinding. Co-located points (the one to three a node becomes) make one
+		 * node: its incoming handle mirrors the first point's control point, its outgoing handle is the last point's (of two
+		 * points, the one whose control point sits on the node is the corner). A lone point's control point within
+		 * @p tolerance of it makes a corner. Split flags and open ends are left to FinishChain.
+		 */
+		GeoRing DecodeWinding(const Winding &points, const Layout layout, const double tolerance)
+		{
+			GeoRing ring;
+			ring.reserve(points.size());
+			if (!IsBezier(layout))
+			{
+				for (const DsfPoint &point : points)
+					ring.push_back(NodeOf(point, layout));
+				return ring;
+			}
+
+			const size_t control = layout == Layout::WallBezier ? 3 : 2;
+			const bool uv = layout == Layout::UvBezier;
+			const auto offset = [control](const DsfPoint &point)
+			{
+				return std::max(std::abs(point.v[control] - point.v[0]), std::abs(point.v[control + 1] - point.v[1]));
+			};
+			for (size_t i = 0; i < points.size();)
+			{
+				size_t end = i + 1;
+				while (end < points.size() && SameLocation(points[end], points[i]))
+					++end;
+				const DsfPoint *in = &points[i];
+				const DsfPoint *out = &points[end - 1];
+				if (end - i == 2)
+				{
+					if (offset(*in) <= offset(*out))
+						in = nullptr;
+					else
+						out = nullptr;
+				}
+				else if (end - i == 1 && offset(*in) <= tolerance)
+					in = out = nullptr;
+
+				GeoNode node = NodeOf(points[end - 1], layout);		// The last point's wall type: its segment leaves the node
+				if (in)
+				{
+					node.loLongitude = in->v[0] - in->v[control];
+					node.loLatitude = in->v[1] - in->v[control + 1];
+					if (uv)
+					{
+						node.sLo = static_cast<float>(in->v[4] - in->v[6]);
+						node.tLo = static_cast<float>(in->v[5] - in->v[7]);
+					}
+				}
+				if (out)
+				{
+					node.hiLongitude = out->v[control] - out->v[0];
+					node.hiLatitude = out->v[control + 1] - out->v[1];
+					if (uv)
+					{
+						node.sHi = static_cast<float>(out->v[6] - out->v[4]);
+						node.tHi = static_cast<float>(out->v[7] - out->v[5]);
+					}
+				}
+				ring.push_back(node);
+				i = end;
+			}
+			return ring;
+		}
+
+		/**
+		 * @brief Sets the split flags (handles that aren't mirror images). An open chain's first node has no incoming handle
+		 * in the DSF and its last none going out, so each gets the mirror of the handle it has.
+		 */
+		void FinishChain(GeoRing &ring, const bool open)
+		{
+			if (open && ring.size() >= 2)
+			{
+				GeoNode &first = ring.front();
+				first.loLatitude = 0.0 - first.hiLatitude;
+				first.loLongitude = 0.0 - first.hiLongitude;
+				first.sLo = 0.0f - first.sHi;
+				first.tLo = 0.0f - first.tHi;
+				GeoNode &last = ring.back();
+				last.hiLatitude = 0.0 - last.loLatitude;
+				last.hiLongitude = 0.0 - last.loLongitude;
+				last.sHi = 0.0f - last.sLo;
+				last.tHi = 0.0f - last.tLo;
+			}
+			for (GeoNode &node : ring)
+				node.split = std::abs(node.loLatitude + node.hiLatitude) > MIRROR_EPSILON || std::abs(node.loLongitude + node.hiLongitude) > MIRROR_EPSILON;
+		}
+
+		/**
+		 * @brief An autogen polygon's outline and holes, the inverse of ConvertAutogen's split. The outline runs through its
+		 * chains in the order spawning 0, non-spawning 0, spawning 1...; the DSF holds the spawning chains first, then the
+		 * S - 1 or S non-spawning ones, then the holes. Each chain starts where the one before it ends and the last ends
+		 * where the first starts; every point but a chain's last is a node that spawns as its chain does. @p spawning is the
+		 * chain count when known (.ags), else the first count whose chains join up is taken.
+		 */
+		std::vector<GeoRing> JoinAutogenChains(const std::vector<GeoRing> &windings, const size_t spawning)
+		{
+			const auto join = [&windings](const size_t count, std::vector<GeoRing> &rings)
+			{
+				for (const size_t quiet : { count, count - 1 })
+				{
+					if (count + quiet > windings.size())
+						continue;
+					std::vector<std::pair<const GeoRing *, bool>> chains;
+					for (size_t k = 0; k < count; ++k)
+					{
+						chains.emplace_back(&windings[k], true);
+						if (k < quiet)
+							chains.emplace_back(&windings[count + k], false);
+					}
+					bool joined = true;
+					for (size_t k = 0; k < chains.size() && joined; ++k)
+						joined = SameLocation(chains[k].first->back(), chains[(k + 1) % chains.size()].first->front());
+					if (!joined)
+						continue;
+					GeoRing outline;
+					for (const auto &[chain, spawn] : chains)
+					{
+						for (size_t i = 0; i + 1 < chain->size(); ++i)
+						{
+							outline.push_back((*chain)[i]);
+							outline.back().spawnTiles = spawn;
+						}
+					}
+					if (outline.size() < 3)
+						continue;
+					rings.assign(1, std::move(outline));
+					rings.insert(rings.end(), windings.begin() + static_cast<std::ptrdiff_t>(count + quiet), windings.end());
+					return true;
+				}
+				return false;
+			};
+
+			std::vector<GeoRing> rings;
+			if (spawning > 0 && join(spawning, rings))
+				return rings;
+			for (size_t count = 1; count <= windings.size(); ++count)
+			{
+				if (join(count, rings))
+					return rings;
+			}
+			// Not chains: the first winding is the outline (a repeated first node dropped), the rest holes
+			rings = windings;
+			if (!rings.empty() && rings[0].size() >= 2 && SameLocation(rings[0].front(), rings[0].back()))
+				rings[0].pop_back();
+			return rings;
+		}
+
+		/**
+		 * @brief The curve between two road vertices, the inverse of ConvertRoad: two control points are the outgoing handle
+		 * of the vertex before and the incoming handle of the one after (one, a quadratic, is raised to the cubic it is). A
+		 * control point where ConvertRoad puts the one a node lacks (a hundredth of the way to the other) is no handle.
+		 */
+		void SetRoadCurve(GeoNode &from, GeoNode &to, const std::vector<const DsfRoadPoint *> &controls)
+		{
+			double lon1 = controls.front()->longitude, lat1 = controls.front()->latitude;
+			double lon2 = controls.back()->longitude, lat2 = controls.back()->latitude;
+			if (controls.size() == 1)
+			{
+				lon1 = from.longitude + (lon1 - from.longitude) * (2.0 / 3.0);
+				lat1 = from.latitude + (lat1 - from.latitude) * (2.0 / 3.0);
+				lon2 = to.longitude + (lon2 - to.longitude) * (2.0 / 3.0);
+				lat2 = to.latitude + (lat2 - to.latitude) * (2.0 / 3.0);
+			}
+			const bool madeUpOut = std::abs(lon1 - (from.longitude + (lon2 - from.longitude) * 0.01)) <= ROAD_EPSILON &&
+				std::abs(lat1 - (from.latitude + (lat2 - from.latitude) * 0.01)) <= ROAD_EPSILON;
+			const bool madeUpIn = !madeUpOut && std::abs(lon2 - (to.longitude + (lon1 - to.longitude) * 0.01)) <= ROAD_EPSILON &&
+				std::abs(lat2 - (to.latitude + (lat1 - to.latitude) * 0.01)) <= ROAD_EPSILON;
+			if (!madeUpOut)
+			{
+				from.hiLongitude = lon1 - from.longitude;
+				from.hiLatitude = lat1 - from.latitude;
+			}
+			if (!madeUpIn)
+			{
+				to.loLongitude = lon2 - to.longitude;
+				to.loLatitude = lat2 - to.latitude;
+			}
+		}
+
+		/* @brief A road segment's vertices as a chain of nodes with their handles. */
+		GeoRing DecodeRoadChain(const DsfRoadSegment &segment)
+		{
+			GeoRing chain;
+			std::vector<const DsfRoadPoint *> controls;
+			for (const DsfRoadPoint &point : segment.points)
+			{
+				if (point.control)
+				{
+					controls.push_back(&point);
+					continue;
+				}
+				GeoNode node;
+				node.latitude = point.latitude;
+				node.longitude = point.longitude;
+				if (!chain.empty() && !controls.empty())
+					SetRoadCurve(chain.back(), node, controls);
+				controls.clear();
+				chain.push_back(node);
+			}
+			FinishChain(chain, true);
+			return chain;
+		}
+
+		/* @brief The nodes of a sim/exclude_* value: the two corners of "west/south/east/north", or the points after its ';'. */
+		bool ParseExclusion(const std::string &value, GeoRing &ring, bool &polygon)
+		{
+			double west = 0.0, south = 0.0, east = 0.0, north = 0.0;
+			if (std::sscanf(value.c_str(), "%lf/%lf/%lf/%lf", &west, &south, &east, &north) != 4)
+				return false;
+			ring.clear();
+			const size_t semicolon = value.find(';');
+			for (size_t start = semicolon == std::string::npos ? value.size() : semicolon + 1; start < value.size();)
+			{
+				const size_t comma = std::min(value.find(',', start), value.size());
+				GeoNode node;
+				if (std::sscanf(value.substr(start, comma - start).c_str(), "%lf/%lf", &node.longitude, &node.latitude) != 2)
+					return false;
+				ring.push_back(node);
+				start = comma + 1;
+			}
+			polygon = !ring.empty();
+			if (!polygon)
+			{
+				GeoNode a, b;
+				a.latitude = south;
+				a.longitude = west;
+				b.latitude = north;
+				b.longitude = east;
+				ring = { a, b };
+			}
+			return true;
+		}
+
+		// -------------------------------------------------------
+
+		class Importer
+		{
+		public:
+			explicit Importer(const DsfFile &dsf) : m_Dsf(dsf) {}
+
+			DsfImport Run()
+			{
+				ImportObjects();
+				for (size_t i = 0; i < m_Dsf.polygons.size(); ++i)
+					ImportPolygon(i);
+				ImportRoads();
+				ImportExclusions();
+				if (m_Dsf.terrainPatchCount > 0)
+					Warn("terrain", std::to_string(m_Dsf.terrainPatchCount) + " base mesh patches aren't imported");
+				if (!m_Dsf.rasterDefinitions.empty())
+					Warn("rasters", std::to_string(m_Dsf.rasterDefinitions.size()) + " raster layers aren't imported");
+				return std::move(m_Result);
+			}
+
+		private:
+			void Warn(const std::string &what, const std::string &problem)
+			{
+				m_Result.warnings.push_back(what + ": " + problem);
+			}
+
+			static SceneryItem NewItem(const ItemKind kind, const std::string &resource)
+			{
+				SceneryItem item;
+				item.kind = kind;
+				item.id = MakeItemId();
+				item.resource = resource;
+				item.name = FileStem(resource);
+				if (item.name.empty())
+					item.name = GetItemKindName(kind);
+				return item;
+			}
+
+			const std::string *Resource(const std::vector<std::string> &definitions, const uint32_t definition, const std::string &what)
+			{
+				if (definition < definitions.size())
+					return &definitions[definition];
+				Warn(what, "definition " + std::to_string(definition) + " isn't in the DSF");
+				return nullptr;
+			}
+
+			/* @brief Adds a shape item whose outline has enough nodes. */
+			void Add(SceneryItem item, const size_t minimum, const std::string &what)
+			{
+				const size_t count = item.rings.empty() ? 0 : item.rings[0].size();
+				if (count < minimum)
+				{
+					Warn(what, "needs at least " + std::to_string(minimum) + " nodes, has " + std::to_string(count));
+					return;
+				}
+				m_Result.items.push_back(std::move(item));
+			}
+
+			/* @brief The layout of a placement's points among those its kind is written with (else positions only). */
+			Layout PointLayout(const DsfPolygonPlacement &placement, const std::initializer_list<Layout> layouts, const std::string &what)
+			{
+				for (const Layout layout : layouts)
+				{
+					if (PlaneCount(layout) == placement.planes)
+						return layout;
+				}
+				Warn(what, std::to_string(placement.planes) + " planes per point: only the positions are imported");
+				return Layout::Plain;
+			}
+
+			/* @brief Every winding with points as nodes. */
+			static std::vector<GeoRing> DecodeRings(const DsfPolygonPlacement &placement, const Layout layout, const bool open)
+			{
+				const double tolerance = CornerTolerance(placement);
+				std::vector<GeoRing> rings;
+				for (const Winding &winding : placement.windings)
+				{
+					if (winding.empty())
+						continue;
+					GeoRing ring = DecodeWinding(winding, layout, tolerance);
+					FinishChain(ring, open);
+					rings.push_back(std::move(ring));
+				}
+				return rings;
+			}
+
+			void ImportObjects()
+			{
+				for (size_t i = 0; i < m_Dsf.objects.size(); ++i)
+				{
+					const DsfObjectPlacement &object = m_Dsf.objects[i];
+					const std::string what = "object " + std::to_string(i);
+					const std::string *resource = Resource(m_Dsf.objectDefinitions, object.definition, what);
+					if (!resource)
+						continue;
+					if (!EndsWithNoCase(*resource, ".obj") && !EndsWithNoCase(*resource, ".agp"))
+					{
+						Warn(what + " (" + *resource + ")", "not an .obj or .agp asset");
+						continue;
+					}
+					SceneryItem item = NewItem(ItemKind::Object, *resource);
+					item.latitude = object.latitude;
+					item.longitude = object.longitude;
+					item.heading = static_cast<float>(object.heading);
+					item.elevationMode = object.mode == DsfObjectPlacement::Mode::Msl ? ElevationMode::Msl : object.mode == DsfObjectPlacement::Mode::Agl ? ElevationMode::Agl : ElevationMode::Ground;
+					item.altitude = object.mode == DsfObjectPlacement::Mode::Draped ? 0.0 : object.elevation;
+					m_Result.items.push_back(std::move(item));
+				}
+			}
+
+			void ImportPolygon(const size_t index)
+			{
+				const DsfPolygonPlacement &placement = m_Dsf.polygons[index];
+				const std::string *resource = Resource(m_Dsf.polygonDefinitions, placement.definition, "polygon " + std::to_string(index));
+				if (!resource)
+					return;
+				const std::string what = "polygon " + std::to_string(index) + " (" + *resource + ")";
+				if (std::ranges::all_of(placement.windings, [](const Winding &winding) { return winding.empty(); }))
+				{
+					Warn(what, "has no points");
+					return;
+				}
+				if (EndsWithNoCase(*resource, ".pol"))
+					ImportDraped(placement, *resource, what);
+				else if (EndsWithNoCase(*resource, ".lin"))
+					ImportLine(placement, *resource, what);
+				else if (EndsWithNoCase(*resource, ".str"))
+					ImportString(placement, *resource, what);
+				else if (EndsWithNoCase(*resource, ".for"))
+					ImportForest(placement, *resource, what);
+				else if (EndsWithNoCase(*resource, ".fac"))
+					ImportFacade(placement, *resource, what);
+				else if (EndsWithNoCase(*resource, ".ags") || EndsWithNoCase(*resource, ".agb"))
+					ImportAutogen(placement, *resource, what);
+				else
+					Warn(what, "not an overlay asset (.pol, .lin, .str, .for, .fac, .ags, .agb)");
+			}
+
+			/* @brief 65535 with texture coordinates (4 or 8 planes): an orthophoto; else a polygon with a texture heading. */
+			void ImportDraped(const DsfPolygonPlacement &placement, const std::string &resource, const std::string &what)
+			{
+				const bool uv = placement.parameter == 65535 && (placement.planes == 4 || placement.planes == 8);
+				SceneryItem item = NewItem(uv ? ItemKind::Orthophoto : ItemKind::Polygon, resource);
+				const Layout layout = uv ? (placement.planes == 8 ? Layout::UvBezier : Layout::Uv) : PointLayout(placement, { Layout::Plain, Layout::Bezier }, what);
+				if (!uv)
+					item.textureHeading = static_cast<float>(DecodePolygonHeading(placement.parameter));
+				item.rings = DecodeRings(placement, layout, false);
+				Add(std::move(item), 3, what);
+			}
+
+			void ImportLine(const DsfPolygonPlacement &placement, const std::string &resource, const std::string &what)
+			{
+				const Layout layout = PointLayout(placement, { Layout::Plain, Layout::Bezier }, what);
+				const bool closed = placement.parameter != 0;
+				for (GeoRing &chain : DecodeRings(placement, layout, !closed))
+				{
+					SceneryItem item = NewItem(ItemKind::Line, resource);
+					item.closed = closed;
+					item.rings = { std::move(chain) };
+					Add(std::move(item), 2, what);
+				}
+			}
+
+			/* @brief Strings are open in the DSF: one back on its first node is closed (the repeat holds that node's incoming handle). */
+			void ImportString(const DsfPolygonPlacement &placement, const std::string &resource, const std::string &what)
+			{
+				const Layout layout = PointLayout(placement, { Layout::Plain, Layout::Bezier }, what);
+				const double tolerance = CornerTolerance(placement);
+				for (const Winding &winding : placement.windings)
+				{
+					if (winding.empty())
+						continue;
+					SceneryItem item = NewItem(ItemKind::String, resource);
+					item.spacing = static_cast<float>(DecodeStringSpacing(placement.parameter));
+					GeoRing chain = DecodeWinding(winding, layout, tolerance);
+					if (chain.size() >= 3 && SameLocation(chain.front(), chain.back()))
+					{
+						chain.front().loLatitude = chain.back().loLatitude;
+						chain.front().loLongitude = chain.back().loLongitude;
+						chain.pop_back();
+						item.closed = true;
+					}
+					FinishChain(chain, !item.closed);
+					item.rings = { std::move(chain) };
+					Add(std::move(item), 2, what);
+				}
+			}
+
+			/* @brief Area: outline and holes; line: open chains; points: one tree per node. Forests have no curves. */
+			void ImportForest(const DsfPolygonPlacement &placement, const std::string &resource, const std::string &what)
+			{
+				const auto [density, fill] = DecodeForestParameter(placement.parameter);
+				if ((placement.parameter >> 8) > 2)
+					Warn(what, "unknown fill mode " + std::to_string(placement.parameter >> 8) + ", imported as an area");
+				SceneryItem item = NewItem(ItemKind::Forest, resource);
+				item.density = density;
+				item.fill = fill;
+				item.rings = DecodeRings(placement, Layout::Plain, fill != ForestFill::Area);
+				Add(std::move(item), fill == ForestFill::Area ? 3 : fill == ForestFill::Line ? 2 : 1, what);
+			}
+
+			/* @brief Height in meters; 3 or 5 planes carry each segment's wall; node order kept (it says where walls face). */
+			void ImportFacade(const DsfPolygonPlacement &placement, const std::string &resource, const std::string &what)
+			{
+				const Layout layout = PointLayout(placement, { Layout::Plain, Layout::Wall, Layout::Bezier, Layout::WallBezier }, what);
+				SceneryItem item = NewItem(ItemKind::Facade, resource);
+				item.height = static_cast<float>(placement.parameter);
+				item.pickWalls = layout == Layout::Wall || layout == Layout::WallBezier;
+				item.rings = DecodeRings(placement, layout, false);
+				Add(std::move(item), 2, what);
+			}
+
+			void ImportAutogen(const DsfPolygonPlacement &placement, const std::string &resource, const std::string &what)
+			{
+				const bool block = EndsWithNoCase(resource, ".agb");
+				const auto [height, low] = DecodeAutogenParameter(placement.parameter);
+				SceneryItem item = NewItem(ItemKind::Autogen, resource);
+				item.height = height;
+				if (block)
+					item.spelling = low;
+				item.rings = JoinAutogenChains(DecodeRings(placement, Layout::Plain, false), block ? 0 : static_cast<size_t>(low));
+				Add(std::move(item), 3, what);
+			}
+
+			/* @brief One road node per junction id (where the first segment reaching it puts it), then the roads between them. */
+			void ImportRoads()
+			{
+				std::map<uint32_t, std::string> junctions;		// Junction id -> road node item id
+				std::vector<SceneryItem> nodes, roads;
+				for (size_t index = 0; index < m_Dsf.roads.size(); ++index)
+				{
+					const DsfRoadSegment &segment = m_Dsf.roads[index];
+					const std::string *resource = Resource(m_Dsf.networkDefinitions, segment.definition, "road " + std::to_string(index));
+					if (!resource)
+						continue;
+					const std::string what = "road " + std::to_string(index) + " (" + *resource + ")";
+					if (!EndsWithNoCase(*resource, ".net"))
+					{
+						Warn(what, "not a .net network");
+						continue;
+					}
+					GeoRing chain = DecodeRoadChain(segment);
+					if (chain.size() < 2)
+					{
+						Warn(what, "needs at least 2 vertices");
+						continue;
+					}
+
+					const auto node = [&](const uint32_t junction, const GeoNode &at) -> std::string
+					{
+						if (const auto it = junctions.find(junction); junction != 0 && it != junctions.end())
+							return it->second;
+						SceneryItem item = NewItem(ItemKind::RoadNode, {});
+						item.name = "Road node " + std::to_string(junction);
+						item.latitude = at.latitude;
+						item.longitude = at.longitude;
+						if (junction != 0)
+							junctions.emplace(junction, item.id);
+						nodes.push_back(std::move(item));
+						return nodes.back().id;
+					};
+					SceneryItem road = NewItem(ItemKind::Road, *resource);
+					road.roadSubtype = static_cast<int>(segment.subtype);
+					road.startNode = node(segment.startJunction, chain.front());
+					road.endNode = node(segment.endJunction, chain.back());
+					road.startLayer = segment.startLevel;
+					road.endLayer = segment.endLevel;
+					road.rings = { std::move(chain) };
+					roads.push_back(std::move(road));
+				}
+				m_Result.items.insert(m_Result.items.end(), std::make_move_iterator(nodes.begin()), std::make_move_iterator(nodes.end()));
+				m_Result.items.insert(m_Result.items.end(), std::make_move_iterator(roads.begin()), std::make_move_iterator(roads.end()));
+			}
+
+			/**
+			 * @brief An item per exclusion; the keys of one item follow each other in bit order with the same value (what
+			 * ConvertExclusion writes), so those become one item with several bits.
+			 */
+			void ImportExclusions()
+			{
+				size_t current = std::string::npos;
+				const std::string *currentValue = nullptr;
+				size_t lastBit = 0;
+				for (const auto &[key, value] : m_Dsf.properties)
+				{
+					if (!key.starts_with("sim/exclude_"))
+						continue;
+					const auto found = std::find_if(std::begin(EXCLUSION_KEYS), std::end(EXCLUSION_KEYS), [&key](const char *name) { return key == name; });
+					if (found == std::end(EXCLUSION_KEYS))
+					{
+						Warn(key, "unknown exclusion type");
+						current = std::string::npos;
+						continue;
+					}
+					const size_t bit = static_cast<size_t>(found - std::begin(EXCLUSION_KEYS));
+					if (current != std::string::npos && value == *currentValue && bit > lastBit)
+					{
+						m_Result.items[current].exclusions |= 1u << bit;
+						lastBit = bit;
+						continue;
+					}
+
+					GeoRing ring;
+					bool polygon = false;
+					current = std::string::npos;
+					if (!ParseExclusion(value, ring, polygon))
+					{
+						Warn(key, "can't read '" + value + "'");
+						continue;
+					}
+					if (polygon && ring.size() < 3)
+					{
+						Warn(key, "an exclusion polygon needs at least 3 points: '" + value + "'");
+						continue;
+					}
+					SceneryItem item = NewItem(polygon ? ItemKind::ExclusionPolygon : ItemKind::ExclusionZone, {});
+					item.name = polygon ? "Exclusion polygon" : "Exclusion zone";
+					item.exclusions = 1u << bit;
+					item.rings = { std::move(ring) };
+					current = m_Result.items.size();
+					currentValue = &value;
+					lastBit = bit;
+					m_Result.items.push_back(std::move(item));
+				}
+			}
+
+			const DsfFile &m_Dsf;
+			DsfImport m_Result;
+		};
 	}
 
 	// -------------------------------------------------------
@@ -743,6 +1387,12 @@ namespace SceneryEditorX::ProjectFile
 		Converter converter(options);
 		converter.Walk(project.items, false);
 		return converter.Finish();
+	}
+
+	DsfImport ImportDsfItems(const XPlane::DsfFile &dsf)
+	{
+		Importer importer(dsf);
+		return importer.Run();
 	}
 
 	uint64_t GetDsfFingerprint(const XPlane::DsfFile &dsf)
@@ -822,6 +1472,11 @@ namespace SceneryEditorX::ProjectFile
 		return static_cast<uint16_t>(whole + 360u * std::min(eighths, 127u));
 	}
 
+	double DecodePolygonHeading(const uint16_t parameter)
+	{
+		return static_cast<double>(parameter % 360u) + static_cast<double>(std::min(parameter / 360u, 127u)) / 128.0;
+	}
+
 	uint16_t EncodeStringSpacing(const double spacing)
 	{
 		if (!std::isfinite(spacing) || spacing <= 0.0)
@@ -838,16 +1493,48 @@ namespace SceneryEditorX::ProjectFile
 		return static_cast<uint16_t>(std::min(spacing, 65535.0));
 	}
 
+	double DecodeStringSpacing(const uint16_t parameter)
+	{
+		if (parameter < 10000)
+			return parameter;
+		const float spacing = static_cast<float>(parameter - 10000) / 128.0f;
+		if (EncodeStringSpacing(spacing) == parameter)
+			return spacing;
+		// n / 128 meters can land within 2 % of whole meters, which encode as such: the closest float just outside that band
+		const long nearest = std::lround(spacing);
+		const bool below = spacing < static_cast<float>(nearest);
+		float edge = static_cast<float>((below ? 0.98 : 1.02) * static_cast<double>(nearest));
+		for (int step = 0; step < 16 && EncodeStringSpacing(edge) != parameter; ++step)
+			edge = std::nextafter(edge, below ? 0.0f : 1e6f);
+		return EncodeStringSpacing(edge) == parameter ? edge : spacing;
+	}
+
 	uint16_t EncodeForestParameter(const float density, const ForestFill fill)
 	{
 		const int value = std::isfinite(density) ? std::clamp(static_cast<int>(static_cast<double>(density) * 255.0), 0, 255) : 0;
 		return static_cast<uint16_t>(value + 256 * static_cast<int>(fill));
 	}
 
+	std::pair<float, ForestFill> DecodeForestParameter(const uint16_t parameter)
+	{
+		// value / 255 as a float can land just under what truncates back to value: the next float up then
+		const int value = parameter & 0xFF;
+		float density = static_cast<float>(value) / 255.0f;
+		while (static_cast<int>(static_cast<double>(density) * 255.0) < value)
+			density = std::nextafter(density, 2.0f);
+		const int mode = parameter >> 8;
+		return { density, mode == 1 ? ForestFill::Line : mode == 2 ? ForestFill::Points : ForestFill::Area };
+	}
+
 	uint16_t EncodeAutogenParameter(const float height, const int low)
 	{
 		const long quarters = std::isfinite(height) ? std::clamp(std::lround(static_cast<double>(height) * 0.25), 0l, 255l) : 0l;
 		return static_cast<uint16_t>((quarters << 8) + std::clamp(low, 0, 255));
+	}
+
+	std::pair<float, int> DecodeAutogenParameter(const uint16_t parameter)
+	{
+		return { static_cast<float>(parameter >> 8) * 4.0f, parameter & 0xFF };
 	}
 
 	std::string FormatExclusionBounds(const double west, const double south, const double east, const double north)

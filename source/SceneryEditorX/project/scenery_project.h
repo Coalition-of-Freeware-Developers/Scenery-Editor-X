@@ -252,13 +252,26 @@ namespace SceneryEditorX::ProjectFile
 		[[nodiscard]] bool IsContainer() const { return kind == ItemKind::Group || kind == ItemKind::Airport; }
 	};
 
+	/**
+	 * @brief An airport's submission on a Scenery Gateway test server (scripts/gateway_mock), kept apart from the public
+	 * Gateway's scenery id so a test id is never sent to the real Gateway as a parent.
+	 */
+	struct GatewayTestSceneryId
+	{
+		std::string server;					// XPlane::GatewayServer::GetKey() ("127.0.0.1:8780")
+		int sceneryId = 0;
+
+		bool operator==(const GatewayTestSceneryId &) const = default;
+	};
+
 	/* @brief An airport of the project: its apt.dat rows plus what WorldEditor keeps beside them. */
 	struct ProjectAirport
 	{
 		XPlane::AptAirport airport;
 		bool hasAtc = true;					// Header flag WorldEditor writes (X-Plane 9 era, still round-tripped)
-		int sceneryId = -1;					// Scenery Gateway submission it came from, -1 when none
+		int sceneryId = -1;					// Public Scenery Gateway submission it came from or was uploaded as (the next upload's parent), -1 when none
 		PropertyList properties;			// "other-properties" (for example "MagVar")
+		std::vector<GatewayTestSceneryId> testSceneryIds;	// The same for Gateway test servers, sorted by server
 	};
 
 	/* @brief A whole project. */

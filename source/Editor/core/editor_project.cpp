@@ -49,6 +49,7 @@
 #include <SceneryEditorX/filesystem/vfs.h>
 #include <SceneryEditorX/logging/logging.hpp>
 #include <SceneryEditorX/project/project_dsf.h>
+#include <SceneryEditorX/project/project_gateway.h>
 #include <SceneryEditorX/renderer/font/font_awesome.h>
 #include <SceneryEditorX/xplane/xp_airport_scene.h>
 #include <SceneryEditorX/xplane/xp_library_manager.h>
@@ -1029,6 +1030,13 @@ namespace SceneryEditorX::EditorProjects
 		return SaveTo(WithExtension(FromUtf8(chosen), EDX_EXTENSION), ProjectFormat::Unknown);
 	}
 
+	bool SaveAs(const fs::path &path)
+	{
+		if (!GetState().document.IsOpen())
+			return false;
+		return SaveTo(WithExtension(path, EDX_EXTENSION), ProjectFormat::Unknown);
+	}
+
 	bool Close(EditorContext *context, const bool force)
 	{
 		if (!force && !ConfirmDiscard(Pending::Close))
@@ -1110,6 +1118,52 @@ namespace SceneryEditorX::EditorProjects
 		EDITOR_INFO_TAG(LOG_TAG, "Added {} airports from {}", file.airports.size(), files.front());
 		if (!hadAirport)
 			LoadIntoScene(context);
+	}
+
+	bool ImportGatewaySubmission(const XPlane::GatewaySceneryPack &pack, const XPlane::GatewayServer &server, EditorContext *context)
+	{
+		State &state = GetState();
+		if (!CheckOwnAirport())
+			return false;
+
+		// Into a copy, so a submission that can't be read leaves the project as it was
+		const bool fresh = !state.document.IsOpen();
+		SceneryProject project;
+		if (fresh)
+			project = MakeNewProject(XPlane::MakeGatewayPackageName(pack.icao, pack.airportName));
+		else
+		{
+			SyncFromScene();
+			project = state.document.GetProject();
+		}
+		GatewayImportReport report;
+		std::string error;
+		if (!ProjectFile::ImportGatewaySubmission(project, pack.masterZip, pack.info.sceneryId, server.official, server.GetKey(), report, &error))
+		{
+			EDITOR_ERROR_TAG(LOG_TAG, "Could not import Gateway submission {}: {}", pack.info.sceneryId, error);
+			return false;
+		}
+		LogWarnings(report.warnings, "Gateway import");
+
+		if (fresh)
+		{
+			const std::string name = project.info.name;
+			state.document.Adopt(std::move(project));
+			AfterOpen(context, {});
+			state.suggestedPath = DefaultFolder() / (name + EDX_EXTENSION);
+		}
+		else
+		{
+			UnloadScene(context, true);
+			state.document.GetProject() = std::move(project);
+			state.document.Mark(Section::All);
+			LoadIntoScene(context);
+		}
+		ShowAirport(report.airportId, context);
+		EDITOR_INFO_TAG(LOG_TAG, "Imported Gateway submission {} by {} from {}: airport {}{}, {} items; scenery id {} recorded for {}", pack.info.sceneryId,
+			pack.info.userName, server.GetKey(), report.airportId, report.replaced ? " (replaced the project's)" : "", report.items, pack.info.sceneryId,
+			server.official ? std::string("the public Gateway") : server.GetKey());
+		return true;
 	}
 
 	void ExportAptDat()

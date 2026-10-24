@@ -97,6 +97,12 @@ class MockGatewayTests(unittest.TestCase):
             self.assertIn("KBTV_Scenery_Pack.zip", names)
             with zipfile.ZipFile(io.BytesIO(archive.read("KBTV_Scenery_Pack.zip"))) as inner:
                 self.assertIn("KBTV_Scenery_Pack/Earth nav data/apt.dat", inner.namelist())
+            # Gateway-valid metadata: an ISO-3166 alpha-3 country prefix, gui_label matching the (2D) content
+            apt = archive.read("KBTV.dat").decode("utf-8")
+            self.assertIn("\n1302 country USA United States\n", apt)
+            self.assertIn("\n1302 gui_label 2D\n", apt)
+        self.assertEqual(pack["type"], "2D")
+        self.assertEqual(pack["additionalMetadata"]["country"], "USA United States")
 
         self.assertEqual(self.request("GET", "/airport/NOPE")[0], 404)
         self.assertEqual(self.request("GET", "/scenery/1")[0], 404)
@@ -126,6 +132,8 @@ class MockGatewayTests(unittest.TestCase):
 
         log = json.loads(self.request("GET", "/mock/log")[2])
         self.assertEqual(log["signIns"][-1], {"time": log["signIns"][-1]["time"], "userId": "Test Artist", "accepted": True})
+        self.assertEqual(log["uploads"][-1]["files"], ["XSDX.dat", "XSDX_Scenery_Pack.zip"])
+        self.assertIsNone(log["uploads"][-1]["packFiles"])      # The test's pack zip is empty: listed as unreadable
         self.assertNotIn("test-password", json.dumps(log))
 
     def test_upload_updates_chain_on_parent(self):

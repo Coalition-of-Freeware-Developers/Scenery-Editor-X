@@ -30,6 +30,7 @@
  */
 #pragma once
 #include "xp_gateway_server.h"
+#include "xp_zip.h"
 #include <cstdint>
 #include <map>
 #include <string>
@@ -104,14 +105,7 @@ namespace SceneryEditorX::XPlane
 
 	// -------------------------------------------------------
 
-	/* @brief A file for a zip archive. */
-	struct ZipFile
-	{
-		std::string name;			// Forward slashes
-		std::string data;
-	};
-
-	/* @brief A zip archive of the files, stored uncompressed (no zlib needed; any unzip reads it). */
+	/* @brief A zip archive of the files, stored uncompressed (WriteZipArchive with ZipMethod::Stored). */
 	std::vector<uint8_t> WriteStoredZip(const std::vector<ZipFile> &files);
 
 	/* @brief CRC-32 (the zip / PNG polynomial). */
@@ -121,8 +115,10 @@ namespace SceneryEditorX::XPlane
 	 * @brief The masterZipBlob archive WED builds: <ICAO>.dat, <ICAO>.txt when there's DSF text, and
 	 * <ICAO>_Scenery_Pack.zip holding the installable pack under one <ICAO>_Scenery_Pack/ folder.
 	 * @param packFiles The pack's files relative to its folder ("Earth nav data/apt.dat", ...).
+	 * @param method Both zips' compression: real uploads deflate, the made-up test airport stays stored.
 	 */
-	std::vector<uint8_t> MakeGatewayMasterZip(std::string_view icao, std::string_view aptDat, std::string_view dsfText, const std::vector<ZipFile> &packFiles);
+	std::vector<uint8_t> MakeGatewayMasterZip(std::string_view icao, std::string_view aptDat, std::string_view dsfText, const std::vector<ZipFile> &packFiles,
+		ZipMethod method = ZipMethod::Stored);
 
 	/**
 	 * @brief A tiny made-up airport (one runway, boundary, 1302 rows) as a submission, for checking an account and

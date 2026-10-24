@@ -158,7 +158,8 @@ The client keeps these protections:
 
 - It builds WED's PUT body and reads the answer (uploaded / not authorized / unknown airport / rejected /
   unconfirmed / no answer).
-- It writes stored (uncompressed) zip archives and WED's master zip layout.
+- It writes WED's master zip layout. The zip writer itself is in `xplane/xp_zip.*` (stored or deflated with zlib):
+  the made-up test airport stays stored, real packages are deflated.
 - `GatewayClient::UploadScenery` runs the upload on the Gateway worker. It wipes the password once sent and never
   logs it.
 - `CanUploadTo` refuses the public Gateway unless `GatewayClient::SetLiveUploadsAllowed(true)`. Nothing calls that
@@ -168,6 +169,89 @@ The client keeps these protections:
 
 The HTTP layer is a `GatewayTransport` function. libcurl is the default; tests use a fake in-process transport, and
 `--gateway-offline` uses one that never connects.
+
+### Validation
+
+`xplane/xp_gateway_validation.*` checks an airport the way WED's "Airport Scenery Gateway" export target does
+(`WED_Validate.cpp`). Errors block the upload; warnings need the artist's tick. It takes the airport's apt.dat rows plus
+its DSF content (a `DsfFile` of this airport's placements), so a project airport and a pack airport are checked alike.
+
+| Rule | Severity | Notes |
+| --- | --- | --- |
+| Name empty, over 30 UTF-8 characters, leading / trailing space, all upper case, `(X)` / `{X}` instead of `[X]` | Error | WED's `ValidateAptName` |
+| Name contains "Airport", the full words International / Regional / Municipal, or the airport ID | Warning | |
+| Airport ID empty or not ASCII letters / digits | Error | |
+| Land airport with helipads but no runway | Error | Gateway target only |
+| Runways but no boundary; boundary with bezier curves; boundary sides under 30 m | Error | |
+| Runway corners, taxiway (pavement) vertices, ramp starts outside every boundary | Error | Curves ignored, like WED |
+| Wider than 7 nm (KSEA / KEDW: 21 nm) | Error | Over the rows and the DSF content |
+| Pavement, point features, objects, polygons (not .lin / .str) more than 0.6 nm past the boundary box | Error | |
+| Art not exported by `Resources/default scenery`, or only privately / deprecated there (SEMI_DEPRECATED passes) | Error | `DescribeGatewayResource` on the LibraryManager index; `::FLATTEN::.pol` is default; no scanned library = error |
+| Orthophotos (UV-mapped .pol) without `#subtex` automatic subtextures | Error | `PolygonAsset::subtextures` |
+| `set_MSL` objects; `set_AGL` beyond +-100 m; MSL outside -1000..10000 m | Error | |
+| `set_AGL` objects | Warning | WED skips this for .agp with scrapers; SEDX always warns |
+| Custom truck objects (1402), transparent runways | Error | |
+| Roads other than `lib/g10/roads.net` / `roads_EU.net`, layers outside 0..5, loops, roads past the boundary box + 0.6 nm, nodes a few meters off a tile edge | Error | |
+| 1302: country must start with an upper case ISO-3166 alpha-3 code (WED's 249) and the name can't be / start with a number; datum lat / lon both numbers, as a pair, within 1 nm; FAA / IATA / ICAO / local code / local authority formats (ICAO not starting with X); FAA and local code not both; region code in WED's 251; state, city not numbers; transition altitude / level; `allows_circuits` 0/1; `tower_service_type` atc/fiso; `gui_label` 2D/3D; altimeter QNH/QFE; no "http" in any value | Error | WED's `ValidateAirportMetadata` |
+| Everything `ValidateAptAirport` finds | Error | Structural apt.dat problems |
+
+Deliberate differences from WED: a country's second code is only flagged when the word after the prefix is itself an
+ISO code (WED flags any three-letter first word, so "NZL New Zealand" would fail there); the Nan, Thailand exception also
+takes "THA Thailand"; name-style words are found anywhere in the name, not only at their first occurrence.
+
+**Not ported yet:** ATC flow / frequency / runway-use rules, runway heading vs. name (needs a magnetic declination
+model), the CIFP runway-end check against `runway_coordinates.txt`, filling missing metadata from
+`airport_metadata.csv`, sign syntax, ramp start and jetway rules, and WED's generic per-feature checks beyond what
+`ValidateAptAirport` covers. Laminar's ban warning is about uploads that skip WED's validation, so these gaps must close
+before live uploads are switched on.
+
+### Packaging
+
+`xplane/xp_gateway_package.*` builds what `GatewayClient::UploadScenery` sends, following `WED_GatewayExport.cpp`:
+
+- `type` is `3D` when the airport places objects (.obj / .agp), facades, forests, object strings or apt.dat jetways;
+  `features` lists `1` (ATC flows), `2` (aircraft taxi routes, 1202), `8` (truck routes, 1206), `86` (roads).
+  1302 `gui_label` is set to match, as WED does before validating.
+- `<ICAO>.dat`: the apt.dat 12.00 file of the airport (`xp_apt` writer).
+- `<ICAO>.txt`: the DSF content as DSF2Text (`WriteDsfText` in `xplane/xp_dsf.*`), with WED's whole-world header,
+  `sim/filter/aptid <ICAO>` and every placement in `FILTER 0`. DSFTool's format: OBJECT_MSL / OBJECT_AGL give the
+  elevation before the heading (its README has them the other way round; its code and WED's importer agree).
+  Only there when the airport has DSF content.
+- `<ICAO>_Scenery_Pack.zip`: `Earth nav data/apt.dat`, one binary DSF per 1x1 degree tile (`WriteDsf`, bounds first,
+  the airport filter, its exclusions), `README.txt` (airport, uploader, comments, install notes, GPL v2 notice) and
+  `COPYING` (the GPL v2 text, embedded in `xp_gateway_license.inl`), all under `<ICAO>_Scenery_Pack/`. WED's `doc.kml`
+  / `doc.osm` are only written for KML / OSM shapes, which SEDX doesn't have.
+- `additionalMetadata` carries only the 1302 keys WED uploads (`GetGatewayMetadataKeys`); `latitude` / `longitude` is
+  the middle of everything the airport places.
+- `validatedAgainst` is read from `<X-Plane>/Log.txt` the way WED does (`ReadXPlaneBuild`: "12.4.4-b5-3a0f7e10").
+- A pack airport's DSF content comes from its tiles: placements filtered to its `sim/filter/aptid`, or in tiles
+  without filters those near it (`LoadPackOverlay` / `SelectAirportPlacements`).
+
+### Scenery ids and Gateway imports
+
+- **In the project.** `ProjectAirport::sceneryId` (`.edX` `scenery-id`, WED's `scenery_id`) is the public Gateway's
+  submission the airport descends from. Submissions on test servers are kept apart in `testSceneryIds`
+  (`.edX` `test-scenery-ids`: server key + id, appended to the archive's field list), so a mock upload can never become
+  a real upload's parent. Projects without test ids save byte-for-byte as before.
+- **Import.** AIRPORTS > Gateway > **Import into Project** (or `--gateway-import <id>`) downloads a submission and adds
+  it to the open project (a new, unsaved one when none is open): the airport from `<ICAO>.dat`, replacing one with the
+  same ID, and the pack's DSF placements as items in the airport's hierarchy (`ImportDsfItems` in
+  `project/project_dsf.*`, the inverse of the project -> DSF conversion). The submission's id is recorded for the server
+  it came from.
+- **Upload.** The id recorded for the current server is sent as `parentId`; an accepted upload's `sceneryId`
+  replaces it (the project is marked changed: save it).
+
+### Submit dialog
+
+**X-Plane > Submit to Scenery Gateway...** works on the airport the airport editor shows: a project airport (its rows
+and the visible items in its hierarchy; items outside it are listed as a warning) or an airport opened from a scenery
+pack (its rows and the pack's tiles; no project remembers its scenery id). It shows the server (with the TEST SERVER
+banner), the account, 2D / 3D, the features, a content summary, the parent submission, the X-Plane build, the
+validation results and a comments box. **Upload...** packs the airport on a worker thread, then a confirmation names
+the server, the account, the package size and the parent. The upload's progress and the server's answer follow; on
+success the scenery id goes into the project, and on the public Gateway the dialog links to the submission's page. It
+uses `EditorGateway::GetCredentials` and `GatewayClient::UploadScenery`, so `CanUploadTo` still refuses the public
+Gateway.
 
 ## Testing without the public Gateway
 
@@ -196,40 +280,47 @@ The HTTP layer is a `GatewayTransport` function. libcurl is the default; tests u
    | `--gateway-offline` | Block all Gateway traffic |
    | `--gateway-preferences` | Open the Scenery Gateway page at startup |
    | `--gateway-test-upload <name>` | Upload the test airport at startup with the password in `SEDX_GATEWAY_PASSWORD`; refused for the public Gateway |
+   | `--gateway-import <id>` | Download a submission and add it to the project (a new one when none is open) |
+   | `--gateway-import-save <file.edX>` | Save the project there after the import |
+   | `--gateway-submit <airport id>` | Open the Submit dialog for a project airport (after any import) |
+   | `--gateway-submit-auto <name>` | With `--gateway-submit`: validate, pack and upload without the dialog, as this account with the password in `SEDX_GATEWAY_PASSWORD`; test servers only; the project is saved afterwards |
+   | `--gateway-comments <text>` | The artist's comments for `--gateway-submit` |
+
+   An end-to-end run against the test server (the seed KBTV is submission 900001 on a fresh server):
+
+   ```bash
+   bin/SceneryEditorX_debug.exe --gateway-url http://127.0.0.1:8780 --gateway-credentials memory --gateway-import 900001 --gateway-import-save KBTV.edX
+   SEDX_GATEWAY_PASSWORD=test-password bin/SceneryEditorX_debug.exe --project KBTV.edX --gateway-url http://127.0.0.1:8780 --gateway-credentials memory --gateway-submit KBTV --gateway-submit-auto "Test Artist"
+   ```
+
+   The editor's log (`Gateway` tag) shows the validation, the package and the answer; `GET /apiv1/mock/log` shows what
+   arrived (parent, type, features, the master zip's and the pack's files) and the server's state folder keeps each
+   `masterZip.zip`.
 
 3. Run the automated tests. Neither suite opens a connection to anything but the loopback interface.
    - **`XPlaneFormatTests`.** `GatewayAccountTests.cpp` covers server URLs, the settings file, the upload body and
-     answers, zips, and the live-upload guard, all through a fake transport. `CredentialStoreTests.cpp` covers the
-     store. Its hidden `[.keychain]` case writes and deletes one entry in the real system store; run it explicitly.
+     answers, zips, and the live-upload guard, all through a fake transport. `GatewayValidationTests.cpp` covers the
+     validation rules, `GatewayPackageTests.cpp` the packaging, deflated zips, DSF2Text and the X-Plane build.
+     `CredentialStoreTests.cpp` covers the store. Its hidden `[.keychain]` case writes and deletes one entry in the
+     real system store; run it explicitly.
+   - **`ProjectFormatTests`.** `GatewayProjectTests.cpp` covers scenery ids in `.edX` / `.sex`, what an airport uploads
+     and importing a submission; `DsfImportTests.cpp` the DSF -> project items conversion.
    - **The test server's own tests.** Run `python scripts/gateway_mock/test_gateway_mock.py`.
 
 ## What's still needed for the creation / update pipeline
 
-Roughly in order:
+Validation (most of WED's Gateway rules), packaging, scenery id tracking, Gateway imports and the Submit dialog are in
+place and tested against the test server. Before live uploads, roughly in order:
 
 1. **Laminar's agreement.** Before switching on live uploads, ask `gateway@x-plane.com` whether a non-WED uploader is
    acceptable. Ask what `clientVersion` and User-Agent it should send (SEDX sends `SceneryEditorX/1.0` and no
    `clientVersion`). Also ask which fields are required, what a wrong password returns, and the size limits.
-2. **Gateway validation at WED's level.** Port the `wet_gateway` checks listed above. Any error blocks the upload;
-   warnings ask for confirmation. This includes default-library-only art (LibraryManager already knows which packs
-   are default), the boundary and extent rules, CIFP runway ends from `runway_coordinates.txt`, and the metadata
-   rules. Fill missing metadata from `airport_metadata.csv`, cached for a day.
-3. **Packaging from the project.**
-   - Write the latest-version apt.dat. `xp_apt` can do this.
-   - Write the DSF as DSF2Text for `<ICAO>.txt`. SEDX only writes binary DSF so far.
-   - Build the pack with the binary DSF, a README carrying the uploader and the GPL notice, and `COPYING`.
-   - Deflate the zips with zlib. The stored writer here is fine for tests but makes real uploads larger.
-   - Work out `type` and `features` from the content.
-4. **The X-Plane build.** Read `validatedAgainst` from the X-Plane install's `Log.txt`. Warn before uploading when
-   that build isn't on `/xplaneversions/supported`.
-5. **Scenery id tracking.**
-   - Keep each airport's Gateway scenery id in the project file (`.edX`).
-   - Set it when a submission is imported, and after an accepted upload.
-   - Send it as `parentId`.
-   - Show the airport's lock (`checkedOutBy`) before uploading.
-6. **Submit dialog.** Comments, the 2D/3D and feature summary, the parent submission, a confirmation naming the
-   server, upload progress and the result. Link to the new submission's page when the upload is accepted.
-7. **Turning on live uploads.** Call `GatewayClient::SetLiveUploadsAllowed(true)` only after steps 1-6. Even then,
+2. **The rest of WED's validation.** The rules listed under "Not ported yet" above: ATC flows and frequencies, runway
+   headings (magnetic model), CIFP runway ends from `runway_coordinates.txt`, metadata defaults from
+   `airport_metadata.csv` (cached for a day), and WED's generic feature checks.
+3. **Supported X-Plane builds.** Warn before uploading when `validatedAgainst` isn't on `/xplaneversions/supported`.
+4. **The airport's lock.** Show `checkedOutBy` / `checkOutEndDate` in the Submit dialog before uploading.
+5. **Turning on live uploads.** Call `GatewayClient::SetLiveUploadsAllowed(true)` only after steps 1-4. Even then,
    keep test servers the default in development builds.
 
 **Notes for merging and other platforms:**
