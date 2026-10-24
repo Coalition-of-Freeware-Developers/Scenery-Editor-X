@@ -146,7 +146,7 @@ namespace SceneryEditorX
 		s_AppInstance = this;
 		s_MainThreadID = std::this_thread::get_id();
 
-		SEDX_CORE_TRACE("Working directory set to: {}", std::filesystem::current_path().string());
+		SEDX_CORE_TRACE("Working directory set to: {}", VFS::ToUtf8(std::filesystem::current_path()));
 
 		// -------------------------------------------------------
 
@@ -180,9 +180,9 @@ namespace SceneryEditorX
 		std::filesystem::path repoRoot = exePath.parent_path().parent_path();
 		std::filesystem::current_path(repoRoot);
 
-		SEDX_CORE_TRACE("Executable directory: {}", exePath.string());
-		SEDX_CORE_TRACE("Repository root: {}", repoRoot.string());
-		SEDX_CORE_TRACE("Working directory set to: {}", std::filesystem::current_path().string());
+		SEDX_CORE_TRACE("Executable directory: {}", VFS::ToUtf8(exePath));
+		SEDX_CORE_TRACE("Repository root: {}", VFS::ToUtf8(repoRoot));
+		SEDX_CORE_TRACE("Working directory set to: {}", VFS::ToUtf8(std::filesystem::current_path()));
 
 		// -------------------------------------------------------
 
