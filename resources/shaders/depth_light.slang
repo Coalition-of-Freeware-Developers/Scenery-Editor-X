@@ -82,7 +82,7 @@ void main_frag(gbuffer_vertex vertex)
 import pipeline;
 
 [shader("vertex")]
-gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
+depth_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
 {
     _draw = draw_data[buffer_pass.draw_index];
 
@@ -94,7 +94,7 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceI
     uint light_count, light_stride;
     light_parameters.GetDimensions(light_count, light_stride);
     if (index_light >= light_count || index_array >= 6)
-        return (gbuffer_vertex)0;
+        return (depth_vertex)0;
 
     LightParameters light = light_parameters[index_light];
 
@@ -104,11 +104,11 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceI
     vertex.material_index          = _draw.material_index;
     vertex.position                = mul(float4(position_world, 1.0f), light.transform[index_array]);
 
-    return vertex;
+    return to_depth_vertex(vertex);
 }
 
 [shader("fragment")]
-void main_frag(gbuffer_vertex vertex)
+void main_frag(depth_vertex vertex)
 {
     pass_load_draw_data_from_vertex(vertex.material_index);
 

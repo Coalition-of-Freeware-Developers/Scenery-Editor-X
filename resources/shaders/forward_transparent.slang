@@ -29,8 +29,19 @@ import environment_lighting;
 import xp_material;
 import ssr_common;
 
+// what the fragment stage reads: exporting the whole gbuffer_vertex would leave the previous position, width and
+// pick id interpolants unread (validation: WARNING-Shader-OutputNotConsumed)
+struct forward_vertex
+{
+    precise float4 position : SV_POSITION;
+    float3 normal : NORMAL_WORLD;
+    float3 tangent : TANGENT_WORLD;
+    float4 uv_misc : TEXCOORD;
+    nointerpolation uint material_index : TEXCOORD3;
+};
+
 [shader("vertex")]
-gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id: SV_InstanceID)
+forward_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id: SV_InstanceID)
 {
     _draw = draw_data[buffer_pass.draw_index];
 
@@ -38,7 +49,15 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id: SV_InstanceID
     float3 position_world_previous = 0.0f;
     gbuffer_vertex vertex = transform_to_world_space(input, instance_id, _draw.transform, position_world, position_world_previous);
     vertex.material_index = _draw.material_index;
-    return apply_drape_depth(transform_to_clip_space(vertex, position_world, position_world_previous), _draw.drape_rank);
+    vertex = apply_drape_depth(transform_to_clip_space(vertex, position_world, position_world_previous), _draw.drape_rank);
+
+    forward_vertex output;
+    output.position       = vertex.position;
+    output.normal         = vertex.normal;
+    output.tangent        = vertex.tangent;
+    output.uv_misc        = vertex.uv_misc;
+    output.material_index = vertex.material_index;
+    return output;
 }
 
 static float4 sample_material_texture(uint texture_index, float2 uv)
@@ -47,7 +66,7 @@ static float4 sample_material_texture(uint texture_index, float2 uv)
 }
 
 [shader("fragment")]
-float4 main_frag(gbuffer_vertex vertex, bool is_front_face: SV_IsFrontFace) : SV_TARGET
+float4 main_frag(forward_vertex vertex, bool is_front_face: SV_IsFrontFace) : SV_TARGET
 {
     pass_load_draw_data_from_vertex(vertex.material_index);
     MaterialParameters material = GetMaterial();

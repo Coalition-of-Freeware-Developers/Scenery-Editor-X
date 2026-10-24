@@ -2272,7 +2272,7 @@ namespace SceneryEditorX
 			return;
 
 		Ref<Font> font = GetFont();
-		if (!font->HasText())
+		if (!font || !font->HasText())
 			return;
 
 		font->UpdateVertexAndIndexBuffers(cmdList);

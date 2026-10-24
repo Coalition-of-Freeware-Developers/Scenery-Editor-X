@@ -363,6 +363,13 @@ namespace SceneryEditorX
 		/** @brief Vertex input layout expected by the vertex stage (MaxEnum when the shader pulls vertices itself). */
 		[[nodiscard]] VertexType GetVertexType() const { return m_VertexType; }
 
+		/**
+		 * @brief Vertex attribute locations the vertex stage actually reads (bit n = location n), from its SPIR-V.
+		 * A shader may read fewer attributes than its VertexType describes (the grid only reads POSITION); pipelines
+		 * leave the others out of their vertex input state. All bits are set when there is no vertex stage to inspect.
+		 */
+		[[nodiscard]] uint32_t GetVertexInputLocations() const { return m_VertexInputLocations; }
+
 		/** @brief Size in bytes of the push-constant block declared by the program (0 if none). */
 		[[nodiscard]] uint32_t GetPushConstantSize() const { return m_PushConstantSize; }
 
@@ -397,6 +404,7 @@ namespace SceneryEditorX
 		std::filesystem::file_time_type m_BuildTime{};
 		std::unique_ptr<ShaderCompileOptions> m_CompileOptions;	// Set when built from Slang source (enables recompilation)
 		VertexType m_VertexType = VertexType::MaxEnum;
+		uint32_t m_VertexInputLocations = ~0u;
 		uint32_t m_PushConstantSize = 0;
 		bool m_HasBindingConflicts = false;
 		bool m_DisableOptimization = false;

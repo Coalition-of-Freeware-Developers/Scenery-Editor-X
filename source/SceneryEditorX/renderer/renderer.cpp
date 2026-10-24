@@ -30,6 +30,7 @@
  */
 #include "renderer.h"
 #include "renderer_buffers.h"
+#include <SceneryEditorX/asset/import/font_importer.h>
 #include <SceneryEditorX/scene/material.h>
 #include "vulkan/bindless_manager.h"
 #include "vulkan/descriptor_pool_manager.h"
@@ -671,7 +672,8 @@ void dynamic_resolution()
 			CreateStandardMeshes();
 			CreateStandardTextures();
 			CreateStandardMaterials();
-			CreateFonts();
+			// FreeType for CreateFonts(), which the application calls once ResourceCache::Init() has set the font folder
+			FontImporter::Initialize();
 			LoadShaders();
 			m_ResourcesInitialized = true;
 
@@ -802,6 +804,7 @@ void dynamic_resolution()
 		SetReferenceOverlay(nullptr, ReferenceOverlayMode::Off);
 		GeometryBuffer::Shutdown();
 		DestroyResources();
+		FontImporter::Shutdown();
 		DestroyFrameResources();
 		if (s_AssetManager)
 		{

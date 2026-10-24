@@ -105,9 +105,11 @@ namespace SceneryEditorX
 		// Initialize RenderContext first so device/instance exist for Renderer
 		RenderContext::Init();
 		Renderer::Init();
-		m_RenderThread.Run();
 
+		// The renderer's font is read from the resource directories (fonts), so it is created once they are registered
 		ResourceCache::Init();
+		Renderer::CreateFonts();
+		m_RenderThread.Run();
 
 		// The UI layer needs the renderer's swapchain and the resource directories (fonts), so it attaches last.
 		if (appData.enableUI)
