@@ -402,6 +402,8 @@ namespace SceneryEditorX
 	{
 		FT_Stroker_Done(stroker);
 		ft_helper::handle_error(FT_Done_FreeType(library));
+		stroker = nullptr;
+		library = nullptr;
 	}
 
 	bool FontImporter::LoadFromFile(Font* font, const std::string & file_path)
