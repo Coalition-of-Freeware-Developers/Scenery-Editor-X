@@ -45,6 +45,10 @@ namespace SceneryEditorX::XPlane
 		constexpr uint16_t METHOD_DEFLATE = 8;
 		constexpr uint16_t FLAG_ENCRYPTED = 1;
 
+		// The entry sizes are what the archive claims: checked before anything is allocated for them
+		constexpr uint64_t MAX_DEFLATE_RATIO = 1032;					// Deflate can't expand data more than this
+		constexpr uint64_t MAX_ARCHIVE_BYTES = 512ull * 1024 * 1024;	// Gateway downloads are a few megabytes
+
 		uint16_t Read16(const uint8_t *at) { return static_cast<uint16_t>(at[0] | (at[1] << 8)); }
 		uint32_t Read32(const uint8_t *at) { return static_cast<uint32_t>(at[0]) | (static_cast<uint32_t>(at[1]) << 8) | (static_cast<uint32_t>(at[2]) << 16) | (static_cast<uint32_t>(at[3]) << 24); }
 
@@ -111,6 +115,7 @@ namespace SceneryEditorX::XPlane
 			return Fail(error, "Corrupt zip archive (central directory out of range)");
 
 		size_t position = directoryOffset;
+		uint64_t totalBytes = 0;
 		for (uint16_t i = 0; i < entryCount; ++i)
 		{
 			if (position + 46 > size || Read32(bytes + position) != SIGNATURE_CENTRAL_DIRECTORY)
@@ -151,6 +156,11 @@ namespace SceneryEditorX::XPlane
 			const size_t dataOffset = static_cast<size_t>(localOffset) + 30 + localNameLength + localExtraLength;
 			if (dataOffset + compressedSize > size)
 				return Fail(error, "Corrupt zip archive (entry data out of range)");
+			if (method == METHOD_DEFLATE && uncompressedSize > static_cast<uint64_t>(compressedSize) * MAX_DEFLATE_RATIO + 64)
+				return Fail(error, "Corrupt zip archive (an entry claims more data than its compressed size can hold)");
+			totalBytes += method == METHOD_DEFLATE ? uncompressedSize : compressedSize;
+			if (totalBytes > MAX_ARCHIVE_BYTES)
+				return Fail(error, "Zip archive too large (over 512 MB uncompressed)");
 
 			ZipEntry entry;
 			entry.name = std::move(name);

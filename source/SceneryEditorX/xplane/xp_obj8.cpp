@@ -61,6 +61,7 @@ namespace SceneryEditorX::XPlane
 
 			bool Parse(std::string_view text, std::string *error)
 			{
+				m_TextSize = text.size();
 				LineReader reader(text);
 				if (!ParseHeader(reader, error))
 					return false;
@@ -314,10 +315,15 @@ namespace SceneryEditorX::XPlane
 				{
 					if (t.size() >= 5)
 					{
-						m_Data.vertices.reserve(static_cast<size_t>(std::max(0, ParseInt(t[1], 0))));
-						m_Data.lineVertices.reserve(static_cast<size_t>(std::max(0, ParseInt(t[2], 0))));
-						m_Data.lightVertices.reserve(static_cast<size_t>(std::max(0, ParseInt(t[3], 0))));
-						m_Data.indices.reserve(static_cast<size_t>(std::max(0, ParseInt(t[4], 0))));
+						// The counts only size the tables: no more than the file can hold (a VT row is over 8 bytes, an index 2)
+						const auto counted = [&](const std::string_view token, const size_t bytesPerEntry)
+						{
+							return std::min(static_cast<size_t>(std::max(0, ParseInt(token, 0))), m_TextSize / bytesPerEntry);
+						};
+						m_Data.vertices.reserve(counted(t[1], 8));
+						m_Data.lineVertices.reserve(counted(t[2], 8));
+						m_Data.lightVertices.reserve(counted(t[3], 8));
+						m_Data.indices.reserve(counted(t[4], 2));
 					}
 					return;
 				}
@@ -846,14 +852,18 @@ namespace SceneryEditorX::XPlane
 					// LIGHTS <offset> <count>: legacy VLIGHT entries, not indexed
 					const int offset = t.size() > 1 ? ParseInt(t[1], -1) : -1;
 					const int count = t.size() > 2 ? ParseInt(t[2], 0) : 0;
-					if (offset < 0 || count <= 0)
+					if (offset < 0 || count <= 0 || static_cast<size_t>(offset) >= m_Data.lightVertices.size())
 					{
 						Warn("LIGHTS with an invalid range");
 						return;
 					}
 
+					// Each light is a VLIGHT row (the point pool comes before the commands): no more than the table holds
+					const int available = static_cast<int>(std::min<size_t>(m_Data.lightVertices.size() - static_cast<size_t>(offset), static_cast<size_t>(count)));
+					if (available < count)
+						Warn("LIGHTS range past the end of the VLIGHT table cut short");
 					SealCurrentNode();
-					for (int i = 0; i < count; ++i)
+					for (int i = 0; i < available; ++i)
 					{
 						Obj8Light light = make_light(Obj8Light::Kind::Legacy);
 						light.params = { static_cast<float>(offset + i) }; // Resolved against lightVertices in Validate()
@@ -1034,7 +1044,7 @@ namespace SceneryEditorX::XPlane
 				{
 					std::erase_if(batch.ranges, [&](const Obj8Batch::Range &range)
 					{
-						if (range.offset + range.count <= indexCount)
+						if (static_cast<uint64_t>(range.offset) + range.count <= indexCount)	// (64-bit: offset + count can wrap)
 							return false;
 						Warn("TRIS range past the end of the index table dropped");
 						return true;
@@ -1043,6 +1053,13 @@ namespace SceneryEditorX::XPlane
 				std::erase_if(m_Data.batches, [](const Obj8Batch &batch) { return batch.ranges.empty(); });
 
 				const uint32_t vertexCount = static_cast<uint32_t>(m_Data.vertices.size());
+				if (vertexCount == 0 && !m_Data.indices.empty())
+				{
+					// Clamping to vertex 0 needs a vertex 0: without vertices there is nothing to draw
+					Warn("Indices without vertices dropped");
+					m_Data.indices.clear();
+					m_Data.batches.clear();
+				}
 				uint32_t clamped = 0;
 				for (uint32_t &index : m_Data.indices)
 				{
@@ -1164,6 +1181,7 @@ namespace SceneryEditorX::XPlane
 			}
 
 			Obj8Data &m_Data;
+			size_t m_TextSize = 0;
 			uint32_t m_Line = 0;
 			std::string_view m_RawLine;
 

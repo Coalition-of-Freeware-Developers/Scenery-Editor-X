@@ -158,7 +158,10 @@ namespace SceneryEditorX::XPlane
 		return TryParseFloat(text, value) ? value : fallback;
 	}
 
-	/* @brief Parses an integer (a float token is truncated), returning fallback when the word isn't a number. */
+	/**
+	 * @brief Parses an integer (a float token is truncated), returning fallback when the word isn't a number. A number
+	 * past int's range (a typo, a damaged file) saturates at the nearest end instead of overflowing the cast.
+	 */
 	inline int ParseInt(std::string_view text, const int fallback = 0)
 	{
 		if (!text.empty() && text.front() == '+')
@@ -170,7 +173,9 @@ namespace SceneryEditorX::XPlane
 			return value;
 
 		float asFloat = 0.0f;
-		return TryParseFloat(text, asFloat) ? static_cast<int>(asFloat) : fallback;
+		if (!TryParseFloat(text, asFloat) || asFloat != asFloat)	// (NaN)
+			return fallback;
+		return static_cast<int>(std::clamp(static_cast<double>(asFloat), static_cast<double>(INT32_MIN), static_cast<double>(INT32_MAX)));
 	}
 
 	/* @brief ASCII lower-case copy. */

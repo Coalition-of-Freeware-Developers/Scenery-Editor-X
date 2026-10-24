@@ -441,6 +441,12 @@ namespace SceneryEditorX::ProjectFile
 
 	void WriteXml(const XmlElement &element, std::string &out, const int indent)
 	{
+		// The text as ParseXml reads it back (escaped, which drops control characters, and trimmed), so writing what
+		// was read gives the same document
+		std::string text = EscapeXml(element.text);
+		text.erase(text.begin(), std::find_if_not(text.begin(), text.end(), IsSpace));
+		text.erase(std::find_if_not(text.rbegin(), text.rend(), IsSpace).base(), text.end());
+
 		out.append(static_cast<size_t>(indent) * 2, ' ');
 		out.push_back('<');
 		out.append(element.name);
@@ -452,7 +458,7 @@ namespace SceneryEditorX::ProjectFile
 			out.append(EscapeXml(value));
 			out.push_back('"');
 		}
-		if (element.children.empty() && element.text.empty())
+		if (element.children.empty() && text.empty())
 		{
 			out.append("/>\n");
 			return;
@@ -460,17 +466,17 @@ namespace SceneryEditorX::ProjectFile
 		out.push_back('>');
 		if (element.children.empty())
 		{
-			out.append(EscapeXml(element.text));
+			out.append(text);
 			out.append("</");
 			out.append(element.name);
 			out.append(">\n");
 			return;
 		}
 		out.push_back('\n');
-		if (!element.text.empty())
+		if (!text.empty())
 		{
 			out.append(static_cast<size_t>(indent + 1) * 2, ' ');
-			out.append(EscapeXml(element.text));
+			out.append(text);
 			out.push_back('\n');
 		}
 		for (const XmlElement &child : element.children)

@@ -668,16 +668,14 @@ namespace SceneryEditorX::XPlane
 
 		for (const ZipEntry &entry : files)
 		{
-			// Names stay inside the pack: "../" or absolute names in a hostile archive are refused
-			bool escaped = false;
-			const std::string relative = VFS::NormalizeRelative(entry.name, &escaped);
-			if (escaped || relative.empty() || fs::path(VFS::FromUtf8(entry.name)).has_root_path())
+			// Names stay inside the pack: "../", absolute names and drive roots in a hostile archive are refused
+			fs::path target;
+			if (!VFS::ResolveInside(packageFolder, entry.name, target))
 			{
 				if (error)
 					*error = "The Gateway archive names a file outside the pack: " + entry.name;
 				return false;
 			}
-			const fs::path target = packageFolder / VFS::FromUtf8(relative);
 			const std::string_view bytes(reinterpret_cast<const char *>(entry.data.data()), entry.data.size());
 			if (!VFS::WriteFileAtomic(target, bytes, error))
 				return false;

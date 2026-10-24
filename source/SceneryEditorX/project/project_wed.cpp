@@ -533,6 +533,7 @@ namespace SceneryEditorX::ProjectFile
 					return false;
 				}
 
+				m_Placed.insert(world->id);		// The top level itself, so a child listing it doesn't nest it inside itself
 				ConvertChildren(*world, m_Project.items);
 				ResolveRoads();
 
@@ -607,6 +608,19 @@ namespace SceneryEditorX::ProjectFile
 
 			// Hierarchy ----------------------------------------------------
 
+			/**
+			 * @brief False (with a warning) when the hierarchy reaches an object a second time. WorldEditor writes a tree, but
+			 * a damaged or hand-edited document can list an object under two parents or inside itself, which would
+			 * otherwise convert it twice or recurse until the stack runs out.
+			 */
+			bool Place(const WedObject &object)
+			{
+				if (m_Placed.insert(object.id).second)
+					return true;
+				Warn("An object reached twice in the hierarchy (or inside itself) was skipped");
+				return false;
+			}
+
 			void ConvertChildren(const WedObject &parent, std::vector<SceneryItem> &out)
 			{
 				for (const WedObject *child : Children(parent))
@@ -615,6 +629,8 @@ namespace SceneryEditorX::ProjectFile
 
 			void ConvertObject(const WedObject &object, std::vector<SceneryItem> &out)
 			{
+				if (!Place(object))
+					return;
 				if (object.cls == "WED_Group")
 				{
 					SceneryItem group;
@@ -948,6 +964,9 @@ namespace SceneryEditorX::ProjectFile
 			void CollectAirport(const WedObject &object, ProjectAirport &project, AirportScratch &scratch, std::vector<SceneryItem> &overlay)
 			{
 				const std::string &cls = object.cls;
+				// (Anything else goes through ConvertObject, which places it itself)
+				if ((cls == "WED_Group" || IsAirportElementClass(cls)) && !Place(object))
+					return;
 				if (cls == "WED_Group")
 				{
 					// Airport elements inside groups belong to the airport (apt.dat has no folders); placements keep their group.
@@ -1424,6 +1443,7 @@ namespace SceneryEditorX::ProjectFile
 			std::vector<std::string> *m_Warnings;
 			const LineNames &m_Lines;
 			std::unordered_map<int, WedObject> m_Objects;
+			std::set<int> m_Placed;												// Hierarchy objects converted so far (see Place)
 			std::map<std::string, size_t> m_Repeats;
 			std::unordered_map<int, std::string> m_RoadNodes;					// WED_RoadNode id -> item id
 			std::map<std::string, std::pair<int, int>> m_PendingRoads;			// Road item id -> its source node ids

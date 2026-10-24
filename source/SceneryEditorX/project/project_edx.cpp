@@ -1142,8 +1142,9 @@ namespace SceneryEditorX::ProjectFile
 			// Comments are allowed so hand-maintained projects can carry notes.
 			root = Json::parse(text.begin(), text.end(), nullptr, true, true);
 		}
-		catch (const Json::parse_error &e)
+		catch (const Json::exception &e)
 		{
+			// Not only parse_error: a number too large for a double ("1e400") throws out_of_range
 			if (error)
 				*error = std::string("Not valid JSON: ") + e.what();
 			return false;

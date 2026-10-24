@@ -263,8 +263,12 @@ namespace SceneryEditorX::XPlane
 	 */
 	void AppendOffsetRibbon(OverlayMesh &mesh, const std::vector<Point2> &path, float y, float left, float right, float sLeft, float sRight, float scaleT);
 
-	/* @brief Resamples a polyline (open or closed) at a spacing: positions and headings (degrees) along it. */
-	void ResamplePath(const std::vector<Point2> &path, bool closed, double spacing, double startOffset, std::vector<Point2> &outPoints, std::vector<double> &outHeadings);
+	/**
+	 * @brief Resamples a polyline (open or closed) at a spacing: positions and headings (degrees) along it.
+	 * @param maxPoints Stops there: a mistyped coordinate can make a path a million kilometers long.
+	 */
+	void ResamplePath(const std::vector<Point2> &path, bool closed, double spacing, double startOffset, std::vector<Point2> &outPoints, std::vector<double> &outHeadings,
+		size_t maxPoints = 200000);
 }
 
 // -------------------------------------------------------
