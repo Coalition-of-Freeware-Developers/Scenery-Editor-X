@@ -33,6 +33,7 @@
 #include <cctype>
 #include <Editor/core/editor_theme.h>
 #include <Editor/core/editor_ui.h>
+#include <SceneryEditorX/filesystem/vfs.h>
 #include <SceneryEditorX/renderer/font/font_awesome.h>
 #include <SceneryEditorX/renderer/ui/source/imgui/imgui_internal.h>
 
@@ -53,7 +54,7 @@ namespace SceneryEditorX
 
 		AssetKind ClassifyFile(const std::filesystem::path &path)
 		{
-			const std::string ext = Lower(path.extension().string());
+			const std::string ext = Lower(VFS::ToUtf8(path.extension()));
 			if (ext == ".fbx" || ext == ".gltf" || ext == ".glb" || ext == ".dae" || ext == ".obj" || ext == ".blend")
 				return AssetKind::Model;
 			if (ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".dds" || ext == ".ktx" || ext == ".ktx2" ||
@@ -166,7 +167,7 @@ namespace SceneryEditorX
 		ImGui::SameLine();
 		std::error_code ec;
 		const std::filesystem::path relative = std::filesystem::relative(m_CurrentFolder, m_Root, ec);
-		const std::string crumb = (ec || relative == ".") ? m_Root.filename().string() : (m_Root.filename() / relative).generic_string();
+		const std::string crumb = (ec || relative == ".") ? VFS::ToUtf8(m_Root.filename()) : VFS::ToGenericUtf8(m_Root.filename() / relative);
 		ImGui::AlignTextToFramePadding();
 		ImGui::TextDisabled("%s", crumb.c_str());
 
@@ -217,8 +218,9 @@ namespace SceneryEditorX
 		if (folder == m_Root)
 			flags |= ImGuiTreeNodeFlags_DefaultOpen;
 
-		const std::string label = folder == m_Root ? "All libraries" : folder.filename().string();
-		const bool open = ImGui::TreeNodeEx(folder.string().c_str(), flags, "%s", EditorUI::IconLabel(SEDX_ICON_FOLDER, label.c_str()).c_str());
+		// UTF-8 like all ImGui text: path::string() throws on Windows for a folder outside the ANSI code page (C:\Users\<name>)
+		const std::string label = folder == m_Root ? "All libraries" : VFS::ToUtf8(folder.filename());
+		const bool open = ImGui::TreeNodeEx(VFS::ToUtf8(folder).c_str(), flags, "%s", EditorUI::IconLabel(SEDX_ICON_FOLDER, label.c_str()).c_str());
 		if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen())
 			Navigate(folder);
 
@@ -257,7 +259,7 @@ namespace SceneryEditorX
 			if (column > 0)
 				ImGui::SameLine();
 
-			ImGui::PushID(entry.path.string().c_str());
+			ImGui::PushID(VFS::ToUtf8(entry.path).c_str());
 			ImGui::BeginGroup();
 
 			const ImVec2 tileMin = ImGui::GetCursorScreenPos();
@@ -290,7 +292,7 @@ namespace SceneryEditorX
 			ImGui::RenderTextEllipsis(drawList, labelMin, labelMax, labelMax.x, entry.name.c_str(), nullptr, nullptr);
 
 			if (hovered)
-				ImGui::SetItemTooltip("%s", entry.path.generic_string().c_str());
+				ImGui::SetItemTooltip("%s", VFS::ToGenericUtf8(entry.path).c_str());
 
 			ImGui::EndGroup();
 			ImGui::PopID();
@@ -315,11 +317,11 @@ namespace SceneryEditorX
 		for (std::filesystem::directory_iterator it(folder, std::filesystem::directory_options::skip_permission_denied, ec), end; !ec && it != end; it.increment(ec))
 		{
 			const bool isFolder = it->is_directory(ec);
-			m_Entries.push_back({ it->path(), it->path().filename().string(), isFolder ? AssetKind::Folder : ClassifyFile(it->path()) });
+			m_Entries.push_back({ it->path(), VFS::ToUtf8(it->path().filename()), isFolder ? AssetKind::Folder : ClassifyFile(it->path()) });
 		}
 
 		if (ec)
-			EDITOR_WARN_TAG("Assets", "Could not list '{}': {}", folder.string(), ec.message());
+			EDITOR_WARN_TAG("Assets", "Could not list '{}': {}", VFS::ToUtf8(folder), ec.message());
 
 		SortEntries(m_Entries);
 	}
@@ -342,7 +344,7 @@ namespace SceneryEditorX
 		for (std::filesystem::recursive_directory_iterator it(m_Root, std::filesystem::directory_options::skip_permission_denied, ec), end;
 			 !ec && it != end && m_SearchResults.size() < MAX_SEARCH_RESULTS; it.increment(ec))
 		{
-			const std::string name = it->path().filename().string();
+			const std::string name = VFS::ToUtf8(it->path().filename());
 			if (Lower(name).find(query) == std::string::npos)
 				continue;
 

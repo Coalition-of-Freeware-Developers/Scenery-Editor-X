@@ -307,7 +307,7 @@ namespace SceneryEditorX
 	{
 		m_PanelManager = CreateScope<PanelManager>();
 
-		const std::filesystem::path resources = ResourceCache::GetResourceDirectory();
+		const std::filesystem::path resources = VFS::FromUtf8(ResourceCache::GetResourceDirectory());
 
 		m_PanelManager->AddPanel<SceneViewport>(PanelCategory::Viewer, PANEL_VIEWPORT.id, "Viewport", true, &m_Context);
 		m_PanelManager->AddPanel<PropertiesPanel>(PanelCategory::Editor, PANEL_PROPERTIES.id, "Properties", true, &m_Context);
