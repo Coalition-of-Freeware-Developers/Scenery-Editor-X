@@ -35,16 +35,81 @@
 #include <minwinbase.h>
 #include <sysinfoapi.h>
 #include <timezoneapi.h>
+#include <cerrno>
+#include <cstdio>
 #include <SceneryEditorX/core/application/application_data.h>
 #include <SceneryEditorX/filesystem/vfs.h>
-#include <spdlog/sinks/basic_file_sink.h>
+#include <spdlog/sinks/base_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <vulkan/vulkan.h>
+#ifdef _WIN32
+	#include <share.h>
+#endif
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
+
+	namespace
+	{
+		/**
+		 * @brief spdlog's basic_file_sink, opened from a std::filesystem::path.
+		 *
+		 * spdlog takes file names as std::string and opens them with the narrow _fsopen on Windows (the vcpkg build
+		 * has no SPDLOG_WCHAR_FILENAMES), so a log folder outside the ANSI code page, such as a profile in
+		 * C:\Users\日本, can't be opened (and path::string() throws before that). This opens the file with the
+		 * wide-character API instead; on Linux and macOS paths are UTF-8 already.
+		 */
+		class PathFileSink final : public spdlog::sinks::base_sink<std::mutex>
+		{
+		public:
+			PathFileSink(const std::filesystem::path &path, const bool truncate)
+			{
+				// Like spdlog: truncate, then append, so two sinks on one file both write at its end
+				if (truncate)
+				{
+					if (std::FILE *file = Open(path, false))
+						std::fclose(file);
+				}
+				m_File = Open(path, true);
+				if (!m_File)
+					throw spdlog::spdlog_ex("Failed opening file " + VFS::ToUtf8(path) + " for writing", errno);
+			}
+
+			~PathFileSink() override
+			{
+				if (m_File)
+					std::fclose(m_File);
+			}
+
+		protected:
+			void sink_it_(const spdlog::details::log_msg &msg) override
+			{
+				spdlog::memory_buf_t formatted;
+				formatter_->format(msg, formatted);
+				std::fwrite(formatted.data(), 1, formatted.size(), m_File);
+			}
+
+			void flush_() override
+			{
+				std::fflush(m_File);
+			}
+
+		private:
+			std::FILE *m_File = nullptr;
+
+			/* @brief Opens for binary writing, shared like spdlog's files (crash diagnostics appends while it's open). */
+			static std::FILE *Open(const std::filesystem::path &path, const bool append)
+			{
+			#ifdef _WIN32
+				return _wfsopen(path.c_str(), append ? L"ab" : L"wb", _SH_DENYNO);
+			#else
+				return std::fopen(path.c_str(), append ? "ab" : "wb");
+			#endif
+			}
+		};
+	}
 
 	/**
 	 * @brief Static member to hold the logger instance.
@@ -133,20 +198,20 @@ namespace SceneryEditorX
 			std::filesystem::create_directories(appLogDir, ec);
 
 			std::vector<spdlog::sink_ptr> coreSinks = {
-				std::make_shared<spdlog::sinks::basic_file_sink_mt>((appLogDir / "SceneryEditorX.log").string(), true),
+				std::make_shared<PathFileSink>(appLogDir / "SceneryEditorX.log", true),
 				std::make_shared<spdlog::sinks::stdout_color_sink_mt>()};
 
 			std::vector<spdlog::sink_ptr> editorSinks = {
 				std::make_shared<spdlog::sinks::stdout_color_sink_mt>(),
-				std::make_shared<spdlog::sinks::basic_file_sink_mt>((appLogDir / "SceneryEditorX.log").string(), true)};
+				std::make_shared<PathFileSink>(appLogDir / "SceneryEditorX.log", true)};
 
 			std::vector<spdlog::sink_ptr> editorConsoleSinks = {
 				std::make_shared<spdlog::sinks::stdout_color_sink_mt>(),
-				std::make_shared<spdlog::sinks::basic_file_sink_mt>((appLogDir / "EditorConsoleOut.log").string(), true)};
+				std::make_shared<PathFileSink>(appLogDir / "EditorConsoleOut.log", true)};
 
 			std::vector <spdlog::sink_ptr> launcherSinks = {
 				std::make_shared<spdlog::sinks::stdout_color_sink_mt>(),
-				std::make_shared<spdlog::sinks::basic_file_sink_mt>((appLogDir / "Launcher.log").string(), true)};
+				std::make_shared<PathFileSink>(appLogDir / "Launcher.log", true)};
 			// -------------------------------------------------------
 
 			// Pattern for console sinks
@@ -196,7 +261,7 @@ namespace SceneryEditorX
 			m_CoreLogger->info("Log system initialized successfully");
 			m_CoreLogger->flush();
 		}
-		catch (const spdlog::spdlog_ex& ex)
+		catch (const std::exception& ex)	// spdlog_ex, or a path the file system refused: run on without the files
 		{
 			std::cerr << "Log initialization failed: " << ex.what() << '\n';
 		}

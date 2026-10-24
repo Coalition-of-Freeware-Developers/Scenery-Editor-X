@@ -638,7 +638,7 @@ namespace SceneryEditorX
 			return nullptr;
 
 		if (!ShaderCache::StoreProgram(cacheFile, program))
-			SEDX_CORE_WARN_TAG("SlangCompiler", "Shader '{}': could not write cache file '{}'", options.name, cacheFile.string());
+			SEDX_CORE_WARN_TAG("SlangCompiler", "Shader '{}': could not write cache file '{}'", options.name, VFS::ToUtf8(cacheFile));
 
 		return BuildShader(options, sourcePath, program);
 	}

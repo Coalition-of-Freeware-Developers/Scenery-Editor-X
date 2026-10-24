@@ -179,7 +179,7 @@ namespace SceneryEditorX::XPlane
 			}
 			catch (const std::exception &e)
 			{
-				SEDX_CORE_WARN_TAG(LOG_TAG, "Ignoring unreadable {}: {}", GetSettingsPath().string(), e.what());
+				SEDX_CORE_WARN_TAG(LOG_TAG, "Ignoring unreadable {}: {}", VFS::ToUtf8(GetSettingsPath()), e.what());
 			}
 		}
 
@@ -446,7 +446,7 @@ namespace SceneryEditorX::XPlane
 			{
 				if (InspectInstall(candidate.root).IsValid())
 				{
-					SEDX_CORE_INFO_TAG(LOG_TAG, "Detected X-Plane {} at '{}' ({})", candidate.majorVersion, candidate.root.string(), GetInstallSourceName(candidate.source));
+					SEDX_CORE_INFO_TAG(LOG_TAG, "Detected X-Plane {} at '{}' ({})", candidate.majorVersion, VFS::ToUtf8(candidate.root), GetInstallSourceName(candidate.source));
 					installPath = candidate.root;
 					break;
 				}
@@ -509,7 +509,7 @@ namespace SceneryEditorX::XPlane
 		const InstallInfo info = InspectInstall(path);
 		if (!info.IsValid())
 		{
-			SEDX_CORE_WARN_TAG(LOG_TAG, "'{}' is not an X-Plane folder: {}", path.string(), info.GetProblem());
+			SEDX_CORE_WARN_TAG(LOG_TAG, "'{}' is not an X-Plane folder: {}", VFS::ToUtf8(path), info.GetProblem());
 			return false;
 		}
 
@@ -519,7 +519,7 @@ namespace SceneryEditorX::XPlane
 		state.installInfo = info;
 		SaveSettings(state.settings);
 		RequestScanLocked(state);
-		SEDX_CORE_INFO_TAG(LOG_TAG, "X-Plane folder set to '{}'", path.string());
+		SEDX_CORE_INFO_TAG(LOG_TAG, "X-Plane folder set to '{}'", VFS::ToUtf8(path));
 		return true;
 	}
 
@@ -534,7 +534,7 @@ namespace SceneryEditorX::XPlane
 			return false;
 
 		if (!IsFile(path / "library.txt"))
-			SEDX_CORE_WARN_TAG(LOG_TAG, "'{}' has no library.txt yet; it will be indexed once it has one", path.string());
+			SEDX_CORE_WARN_TAG(LOG_TAG, "'{}' has no library.txt yet; it will be indexed once it has one", VFS::ToUtf8(path));
 
 		State &state = GetState();
 		std::scoped_lock lock(state.mutex);

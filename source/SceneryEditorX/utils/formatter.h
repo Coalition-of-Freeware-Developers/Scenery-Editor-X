@@ -107,7 +107,10 @@ namespace std
 	struct formatter<filesystem::path> : formatter<string>
 	{
 		/**
-		 * Formats the filesystem::path object into the output.
+		 * Formats the filesystem::path object into the output as UTF-8.
+		 *
+		 * Not path.string(): on Windows that converts to the ANSI code page and throws for a path it can't hold
+		 * (a profile in C:\Users\日本).
 		 *
 		 * @param path The filesystem path object to format
 		 * @param ctx The formatting context that receives the formatted output
@@ -116,7 +119,8 @@ namespace std
 		template <typename FormatContext>
 		typename FormatContext::iterator format(const filesystem::path &path, FormatContext &ctx) const
 		{
-			return formatter<string>::format(path.string(), ctx);
+			const u8string text = path.u8string();
+			return formatter<string>::format(string(text.begin(), text.end()), ctx);
 		}
 	};
 

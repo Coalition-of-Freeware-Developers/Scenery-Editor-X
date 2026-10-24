@@ -30,6 +30,7 @@
  */
 #include "editor_layer.h"
 #include <SceneryEditorX/core/platform/entrypoint.h>
+#include <SceneryEditorX/filesystem/vfs.h>
 
 // -------------------------------------------------------
 
@@ -54,12 +55,14 @@ static void ClearTempCache()
 		return;
 	}
 
-	const std::filesystem::path tempRoot = std::filesystem::path(s_TempDirectory) / "SceneryEditorX";
+	// The platform context's folders are UTF-8: std::filesystem::path(std::string) would read them as ANSI on Windows
+	const std::filesystem::path tempRoot = SceneryEditorX::VFS::FromUtf8(s_TempDirectory) / "SceneryEditorX";
+	const std::string tempRootText = SceneryEditorX::VFS::ToUtf8(tempRoot);
 	std::error_code ec;
 
 	if (!std::filesystem::exists(tempRoot, ec))
 	{
-		EDITOR_INFO_TAG("Editor", "--clear-cache requested, but no temp cache folder found at '{}'", tempRoot.string());
+		EDITOR_INFO_TAG("Editor", "--clear-cache requested, but no temp cache folder found at '{}'", tempRootText);
 		s_CacheClearedByCli = true;
 		return;
 	}
@@ -67,11 +70,11 @@ static void ClearTempCache()
 	const uintmax_t removed = std::filesystem::remove_all(tempRoot, ec);
 	if (ec)
 	{
-		EDITOR_ERROR_TAG("Editor", "Failed to clear temp cache '{}' ({}): {}", tempRoot.string(), ec.value(), ec.message());
+		EDITOR_ERROR_TAG("Editor", "Failed to clear temp cache '{}' ({}): {}", tempRootText, ec.value(), ec.message());
 		return;
 	}
 
-	EDITOR_INFO_TAG("Editor", "Cleared temp cache folder '{}' (removed {} entries)", tempRoot.string(), removed);
+	EDITOR_INFO_TAG("Editor", "Cleared temp cache folder '{}' (removed {} entries)", tempRootText, removed);
 	s_CacheClearedByCli = true;
 }
 
