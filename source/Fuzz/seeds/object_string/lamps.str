@@ -1,0 +1,7 @@
+A
+850
+OBJECT_STRING
+
+OBJECT -10 10 lamp.obj
+OBJECT 0 0 lib/airport/lights/pole.obj
+OFFSET 1.5

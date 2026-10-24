@@ -62,6 +62,54 @@ namespace SceneryEditorX::VFS
 			return a.size() == b.size() && std::ranges::equal(a, b, [](const char x, const char y) { return ToLowerAscii(x) == ToLowerAscii(y); });
 		}
 
+		/* @brief The text with every byte sequence that isn't well-formed UTF-8 (Unicode table 3-7) replaced by U+FFFD. */
+		[[maybe_unused]] std::u8string ToWellFormedUtf8(const std::string_view text)
+		{
+			std::u8string out;
+			out.reserve(text.size());
+			size_t i = 0;
+			while (i < text.size())
+			{
+				const auto c = static_cast<uint8_t>(text[i]);
+				size_t length = 0;
+				uint8_t low = 0x80, high = 0xBF;	// Range of the second byte (narrower after E0, ED, F0 and F4)
+				if (c < 0x80)
+					length = 1;
+				else if (c >= 0xC2 && c <= 0xDF)
+					length = 2;
+				else if (c >= 0xE0 && c <= 0xEF)
+				{
+					length = 3;
+					low = c == 0xE0 ? 0xA0 : 0x80;
+					high = c == 0xED ? 0x9F : 0xBF;
+				}
+				else if (c >= 0xF0 && c <= 0xF4)
+				{
+					length = 4;
+					low = c == 0xF0 ? 0x90 : 0x80;
+					high = c == 0xF4 ? 0x8F : 0xBF;
+				}
+
+				bool valid = length > 0 && i + length <= text.size();
+				for (size_t k = 1; valid && k < length; ++k)
+				{
+					const auto next = static_cast<uint8_t>(text[i + k]);
+					valid = k == 1 ? next >= low && next <= high : next >= 0x80 && next <= 0xBF;
+				}
+				if (valid)
+				{
+					out.append(reinterpret_cast<const char8_t *>(text.data() + i), length);
+					i += length;
+				}
+				else
+				{
+					out.append(u8"�");
+					++i;
+				}
+			}
+			return out;
+		}
+
 		bool Fail(std::string *error, std::string message)
 		{
 			if (error)
@@ -243,7 +291,13 @@ namespace SceneryEditorX::VFS
 
 	fs::path FromUtf8(const std::string_view text)
 	{
+#ifdef _WIN32
+		// Windows converts to UTF-16 and throws on ill-formed UTF-8
+		return fs::path(ToWellFormedUtf8(text));
+#else
+		// POSIX paths are bytes: a name that isn't UTF-8 can still be a real file
 		return fs::path(std::u8string(text.begin(), text.end()));
+#endif
 	}
 
 	std::string NormalizeRelative(const std::string_view path, bool *escaped)
@@ -388,6 +442,20 @@ namespace SceneryEditorX::VFS
 				return false;
 		}
 		return true;
+	}
+
+	bool ResolveInside(const fs::path &folder, const std::string_view name, fs::path &target)
+	{
+		bool escaped = false;
+		const std::string relative = NormalizeRelative(name, &escaped);
+		if (escaped || relative.empty())
+			return false;
+		// Normalizing can bring a root to the front ("a/../C:/x"), and folder / "C:/x" is just "C:/x"
+		const fs::path path = FromUtf8(relative);
+		if (FromUtf8(name).has_root_path() || path.has_root_path())
+			return false;
+		target = folder / path;
+		return IsInside(target, folder);
 	}
 
 	std::string PathKey(const fs::path &path)

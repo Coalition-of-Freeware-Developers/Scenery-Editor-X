@@ -1,0 +1,28 @@
+{
+	"Project": {
+		"name": "MySceneryProject",
+		"uuid": "1f58ac5c-5826-40d5-9a4f-409344be5297",
+		"kind": "scenery",
+		"format-version": 1,
+		"editor-version": "1.0.8",
+		"XPlaneVersion": "12.1.4-r3",
+		"created": "",
+		"editdate": "2023-10-01T12:00:00Z",
+		"author": "John Doe",
+		"description": "",
+		"package": ""
+	},
+	"Libraries": [
+		{"Library": "Laminar Research. Airport Scenery", "local-path": "./Resources/default scenery/airport scenery/library.txt", "entry-count": 5000, "uuid": "15da3863-07d1-462a-be65-3873058675f3", "short-id": "a1b2c3d4"},
+		{"Library": "ZDP Library", "local-path": "./Custom Scenery/ZDP_Library/library.txt", "entry-count": 627, "uuid": "5ec54bdf-7be0-4b54-ac02-5d33472cd216", "short-id": "6587fddb"}
+	],
+	"Airports": [
+		{
+			"ident": "KSFO",
+			"name": "San Francisco",
+			"kind": "airport",
+			"eleheading": 90.0, "elevation-mode": "ground", "show-level": 1, "other-properties": {"object-type": "Hangar"}},
+		{"type": "object", "id": "Asset003", "name": "", "resource": "", "associated-library": "6587fddb", "latitude": 37.6185, "longitude": -122.38, "altitude": 641.0, "heading": 45.0, "elevation-mode": "ground", "show-level": 1, "other-properties": {"object-type": "ControlTower"}},
+		{"type": "airport", "id": "ee86fb0aa2c4", "name": "San Francisco", "airport": "KSFO"}
+	]
+}

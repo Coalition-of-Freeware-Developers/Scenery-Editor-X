@@ -511,6 +511,22 @@ TEST_CASE("NormalizeProject repairs merged and hand-edited projects", "[project]
 	CHECK(NormalizeProject(project).empty());					// Idempotent
 }
 
+TEST_CASE("A repaired .edX saves the same on the next load", "[project][edx][model]")
+{
+	// Found by fuzz_edx: airports without an id got "XXXX" after their name had been filled in from the (empty) id,
+	// so the next load named them XXXX and the second save of the file differed from the first
+	const char *text = R"({"Project": {"name": "Repair"}, "Airports": [{"name": ""}, {"name": ""}]})";
+	SceneryProject first;
+	REQUIRE(ParseEdx(text, first));
+	const std::string once = WriteEdx(first);
+	SceneryProject second;
+	REQUIRE(ParseEdx(once, second));
+	CHECK(WriteEdx(second) == once);
+	REQUIRE(second.airports.size() == 2);
+	CHECK(second.airports[0].airport.name == "XXXX");
+	CHECK(second.airports[1].airport.id == "XXXX2");
+}
+
 TEST_CASE("ValidateProject reports what X-Plane would reject", "[project][model]")
 {
 	SceneryProject project = MakeNewProject("Problems");
@@ -738,6 +754,16 @@ TEST_CASE(".edX keeps text that isn't UTF-8 readable", "[project][edx]")
 	CHECK(read.airports.front().airport.name == "Aeroporto S\xC3\xA3o Paulo");	// As UTF-8
 }
 
+TEST_CASE(".edX with a number too large for a double is refused, not thrown", "[project][edx]")
+{
+	// Found by fuzz_edx: nlohmann throws out_of_range (not parse_error) for these, and it escaped ParseEdx
+	SceneryProject project;
+	std::string error;
+	CHECK_FALSE(ParseEdx(R"({"Project": {"name": "x"}, "Datum": {"latitude": 525e744}})", project, nullptr, &error));
+	CHECK_THAT(error, ContainsSubstring("Not valid JSON"));
+	CHECK_FALSE(ParseEdx(R"({"Project": {"name": "x"}, "Datum": {"longitude": -1e400}})", project, nullptr, &error));
+}
+
 // -------------------------------------------------------
 // .sex
 
@@ -948,6 +974,18 @@ TEST_CASE("XML parser handles what WorldEditor files contain", "[project][xml]")
 	CHECK_FALSE(ParseXml("", root, &error));
 	CHECK_FALSE(ParseXml("<a/><b/>", root, &error));
 	CHECK(EscapeXml("a<b>&\"c\x01") == "a&lt;b&gt;&amp;&quot;c");
+
+	// Found by fuzz_xml: text that is nothing but characters XML can't carry was written as <doc></doc>, which reads
+	// back empty and then writes as <doc/>; text reads back trimmed, so it is written trimmed
+	for (const std::string_view text : { std::string_view("<doc>\0</doc>", 12), std::string_view("<doc>\x01 a \x02</doc>") })
+	{
+		REQUIRE(ParseXml(text, root, &error));
+		std::string first, second;
+		WriteXml(root, first);
+		REQUIRE(ParseXml(first, again, &error));
+		WriteXml(again, second);
+		CHECK(second == first);
+	}
 }
 
 // -------------------------------------------------------
@@ -1241,6 +1279,22 @@ TEST_CASE("WED import rejects what isn't WorldEditor data", "[project][wed]")
 	CHECK_FALSE(ParseWed("<html/>", project, nullptr, &error));
 	CHECK_FALSE(ParseWed("<doc><objects>", project, nullptr, &error));
 	CHECK_THAT(error, ContainsSubstring("isn't valid XML"));
+}
+
+TEST_CASE("WED import survives a hierarchy that loops", "[project][wed]")
+{
+	// Found by fuzz_wed: groups listing each other as children recursed until the stack overflowed
+	const char *looped = R"(<doc><objects>
+<object class="WED_Root" id="1" parent_id="0"><children><child id="2"/></children></object>
+<object class="WED_Group" id="2" parent_id="3"><children><child id="3"/></children><hierarchy name="a" locked="0" hidden="0"/></object>
+<object class="WED_Group" id="3" parent_id="2"><children><child id="2"/><child id="3"/></children><hierarchy name="b" locked="0" hidden="0"/></object>
+</objects></doc>)";
+	SceneryProject project;
+	std::vector<std::string> warnings;
+	std::string error;
+	REQUIRE(ParseWed(looped, project, &warnings, &error));
+	CHECK(project.CountItems() == 1);	// Group b; the world (a) is the top level, and the loops are cut
+	CHECK(std::ranges::any_of(warnings, [](const std::string &warning) { return warning.find("reached twice") != std::string::npos; }));
 }
 
 // -------------------------------------------------------

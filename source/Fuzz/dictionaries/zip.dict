@@ -1,0 +1,18 @@
+# Zip records
+# Written from the parser's string literals (see source/Fuzz/README.md); libFuzzer / AFL++ dictionary format.
+
+"PK\x03\x04"
+"PK\x01\x02"
+"PK\x05\x06"
+"PK\x06\x06"
+"PK\x06\x07"
+"PK\x07\x08"
+"\x14\x00"
+"\x08\x00"
+"\x00\x00"
+"\xC3\xBF\xC3\xBF\xC3\xBF\xC3\xBF"
+".zip"
+"Earth nav data/apt.dat"
+"../"
+"C:/"
+"/"

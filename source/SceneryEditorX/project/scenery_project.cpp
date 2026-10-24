@@ -447,7 +447,8 @@ namespace SceneryEditorX::ProjectFile
 		std::set<std::string> airportIds;
 		for (ProjectAirport &airport : project.airports)
 		{
-			if (airport.airport.id.empty())
+			const bool hadId = !airport.airport.id.empty();
+			if (!hadId)
 			{
 				airport.airport.id = "XXXX";
 				changes.push_back("An airport had no id; it is now XXXX");
@@ -461,6 +462,10 @@ namespace SceneryEditorX::ProjectFile
 				airport.airport.id = old + std::to_string(suffix);
 				changes.push_back("Airport id " + old + " was used twice; the second is now " + airport.airport.id);
 			}
+			// An unnamed airport is named after its id when an .edX is read: name the one that just got its id the
+			// same way, or the next load of this save would rename it (and a git-tracked .edX would change)
+			if (!hadId && airport.airport.name.empty())
+				airport.airport.name = airport.airport.id;
 			airportIds.insert(airport.airport.id);
 			if (!placed.contains(airport.airport.id))
 			{

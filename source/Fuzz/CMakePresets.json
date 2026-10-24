@@ -1,0 +1,71 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": { "major": 3, "minor": 25, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "fuzz-base",
+      "hidden": true,
+      "binaryDir": "${sourceDir}/../../build/fuzz-${presetName}",
+      "cacheVariables": { "SEDX_FUZZ_SMOKE_SECONDS": "60" }
+    },
+    {
+      "name": "msvc",
+      "displayName": "Windows - MSVC libFuzzer + AddressSanitizer",
+      "inherits": "fuzz-base",
+      "generator": "Visual Studio 18 2026",
+      "architecture": "x64",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" }
+    },
+    {
+      "name": "clang",
+      "displayName": "LLVM clang++ libFuzzer + ASan/UBSan (Windows, Linux; macOS: use mac-llvm)",
+      "inherits": "fuzz-base",
+      "generator": "Ninja",
+      "cacheVariables": { "CMAKE_C_COMPILER": "clang", "CMAKE_CXX_COMPILER": "clang++", "CMAKE_BUILD_TYPE": "RelWithDebInfo" }
+    },
+    {
+      "name": "mac-llvm",
+      "displayName": "macOS - Homebrew LLVM libFuzzer + ASan/UBSan (Apple's Clang has no libFuzzer)",
+      "inherits": "fuzz-base",
+      "generator": "Ninja",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Darwin" },
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "$env{HOMEBREW_PREFIX}/opt/llvm/bin/clang",
+        "CMAKE_CXX_COMPILER": "$env{HOMEBREW_PREFIX}/opt/llvm/bin/clang++",
+        "CMAKE_EXE_LINKER_FLAGS": "-L$env{HOMEBREW_PREFIX}/opt/llvm/lib/c++ -L$env{HOMEBREW_PREFIX}/opt/llvm/lib/unwind -lunwind -Wl,-rpath,$env{HOMEBREW_PREFIX}/opt/llvm/lib/c++",
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+      }
+    },
+    {
+      "name": "gcc",
+      "displayName": "GCC - replays the corpora with ASan/UBSan (GCC has no libFuzzer)",
+      "inherits": "fuzz-base",
+      "generator": "Ninja",
+      "cacheVariables": { "CMAKE_C_COMPILER": "gcc", "CMAKE_CXX_COMPILER": "g++", "CMAKE_BUILD_TYPE": "RelWithDebInfo", "SEDX_FUZZ_ENGINE": "standalone" }
+    },
+    {
+      "name": "afl",
+      "displayName": "AFL++ (Linux, macOS): run scripts/run_afl.sh afterwards",
+      "inherits": "fuzz-base",
+      "generator": "Ninja",
+      "condition": { "type": "notEquals", "lhs": "${hostSystemName}", "rhs": "Windows" },
+      "cacheVariables": { "CMAKE_C_COMPILER": "afl-clang-fast", "CMAKE_CXX_COMPILER": "afl-clang-fast++", "CMAKE_BUILD_TYPE": "RelWithDebInfo", "SEDX_FUZZ_ENGINE": "afl", "SEDX_FUZZ_PROPERTIES": "OFF" }
+    }
+  ],
+  "buildPresets": [
+    { "name": "msvc", "configurePreset": "msvc", "configuration": "RelWithDebInfo" },
+    { "name": "clang", "configurePreset": "clang" },
+    { "name": "mac-llvm", "configurePreset": "mac-llvm" },
+    { "name": "gcc", "configurePreset": "gcc" },
+    { "name": "afl", "configurePreset": "afl" }
+  ],
+  "testPresets": [
+    { "name": "msvc", "configurePreset": "msvc", "configuration": "RelWithDebInfo", "filter": { "exclude": { "label": "fuzz-smoke" } }, "execution": { "jobs": 8 } },
+    { "name": "msvc-smoke", "configurePreset": "msvc", "configuration": "RelWithDebInfo", "filter": { "include": { "label": "fuzz-smoke" } }, "execution": { "jobs": 4 } },
+    { "name": "clang", "configurePreset": "clang", "filter": { "exclude": { "label": "fuzz-smoke" } }, "execution": { "jobs": 8 } },
+    { "name": "clang-smoke", "configurePreset": "clang", "filter": { "include": { "label": "fuzz-smoke" } }, "execution": { "jobs": 4 } },
+    { "name": "mac-llvm", "configurePreset": "mac-llvm", "filter": { "exclude": { "label": "fuzz-smoke" } }, "execution": { "jobs": 4 } },
+    { "name": "mac-llvm-smoke", "configurePreset": "mac-llvm", "filter": { "include": { "label": "fuzz-smoke" } }, "execution": { "jobs": 4 } },
+    { "name": "gcc", "configurePreset": "gcc", "execution": { "jobs": 8 } }
+  ]
+}

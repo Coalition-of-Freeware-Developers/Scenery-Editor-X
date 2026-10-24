@@ -915,16 +915,14 @@ namespace SceneryEditorX::XPlane
 		uint16_t QuantizePlane(const double value, const PlaneScale &scale)
 		{
 			const double raw = std::round((value - static_cast<double>(scale.offset)) / static_cast<double>(scale.scale) * 65535.0);
-			return static_cast<uint16_t>(std::clamp(raw, 0.0, 65535.0));
+			return std::isnan(raw) ? 0 : static_cast<uint16_t>(std::clamp(raw, 0.0, 65535.0));	// (NaN: a damaged project's infinite coordinates)
 		}
 
 		/* @brief 32-bit pools: scale 0 stores whole numbers as they are (junction ids, levels, control flags). */
 		uint32_t QuantizePlane32(const double value, const PlaneScale &scale)
 		{
-			if (scale.scale == 0.0f)
-				return static_cast<uint32_t>(std::clamp(std::round(value), 0.0, 4294967295.0));
-			const double raw = std::round((value - static_cast<double>(scale.offset)) / static_cast<double>(scale.scale) * 4294967295.0);
-			return static_cast<uint32_t>(std::clamp(raw, 0.0, 4294967295.0));
+			const double raw = scale.scale == 0.0f ? std::round(value) : std::round((value - static_cast<double>(scale.offset)) / static_cast<double>(scale.scale) * 4294967295.0);
+			return std::isnan(raw) ? 0 : static_cast<uint32_t>(std::clamp(raw, 0.0, 4294967295.0));
 		}
 
 		/* @brief A 16-bit point pool being filled: one plane count, one kind of content (objects or polygons). */
@@ -1024,6 +1022,17 @@ namespace SceneryEditorX::XPlane
 		{
 			const double edge = std::floor(to);
 			return static_cast<int>(edge == to && to > from ? edge - 1.0 : edge);
+		}
+
+		/**
+		 * @brief The whole degree a coordinate's tile starts at (-90..89 for latitudes, -180..179 for longitudes). Clamped
+		 * into the world (NaN gives 0), so the cast to int is defined whatever a damaged project holds.
+		 */
+		int TileStart(const double degrees, const double limit)
+		{
+			if (std::isnan(degrees))
+				return 0;
+			return static_cast<int>(std::floor(std::clamp(degrees, -limit, std::nextafter(limit, 0.0))));
 		}
 	}
 
@@ -1399,11 +1408,12 @@ namespace SceneryEditorX::XPlane
 			std::map<uint32_t, uint32_t> objectDefinitions;
 			std::map<uint32_t, uint32_t> polygonDefinitions;
 			std::map<uint32_t, uint32_t> networkDefinitions;
+			std::vector<std::pair<std::string, std::string>> exclusions;
 		};
 		std::map<TileKey, Tile> tiles;
 		const auto tileOf = [](const double latitude, const double longitude)
 		{
-			return TileKey{ static_cast<int>(std::floor(latitude)), static_cast<int>(std::floor(longitude)) };
+			return TileKey{ TileStart(latitude, 90.0), TileStart(longitude, 180.0) };
 		};
 		const auto remap = [](std::map<uint32_t, uint32_t> &map, std::vector<std::string> &names, const std::vector<std::string> &source, const uint32_t definition)
 		{
@@ -1465,7 +1475,6 @@ namespace SceneryEditorX::XPlane
 
 		// Exclusions go to every tile they touch (a tile may hold nothing but exclusions)
 		std::vector<std::pair<std::string, std::string>> shared;
-		std::vector<std::pair<TileKey, std::pair<std::string, std::string>>> exclusions;
 		for (const auto &[key, value] : dsf.properties)
 		{
 			if (key == "sim/west" || key == "sim/east" || key == "sim/north" || key == "sim/south")
@@ -1476,19 +1485,22 @@ namespace SceneryEditorX::XPlane
 				continue;
 			}
 			double west = 0.0, south = 0.0, east = 0.0, north = 0.0;
-			if (!ParseExclusionBounds(value, west, south, east, north))
+			if (!ParseExclusionBounds(value, west, south, east, north) || !std::isfinite(west) || !std::isfinite(south) || !std::isfinite(east) ||
+				!std::isfinite(north) || west > east || south > north)
 			{
 				if (warnings)
 					warnings->push_back(key + " \"" + value + "\" isn't west/south/east/north; it was left out");
 				continue;
 			}
-			for (int lat = static_cast<int>(std::floor(south)); lat <= LastTile(south, north); ++lat)
+			// Only the tiles of the world: bounds past it would mean billions of tiles
+			west = std::clamp(west, -180.0, 180.0);
+			east = std::clamp(east, -180.0, 180.0);
+			south = std::clamp(south, -90.0, 90.0);
+			north = std::clamp(north, -90.0, 90.0);
+			for (int lat = TileStart(south, 90.0); lat <= std::min(LastTile(south, north), 89); ++lat)
 			{
-				for (int lon = static_cast<int>(std::floor(west)); lon <= LastTile(west, east); ++lon)
-				{
-					tiles.try_emplace(TileKey{ lat, lon });
-					exclusions.emplace_back(TileKey{ lat, lon }, std::make_pair(key, value));
-				}
+				for (int lon = TileStart(west, 180.0); lon <= std::min(LastTile(west, east), 179); ++lon)
+					tiles[TileKey{ lat, lon }].exclusions.emplace_back(key, value);
 			}
 		}
 
@@ -1508,11 +1520,7 @@ namespace SceneryEditorX::XPlane
 				{ "sim/north", std::to_string(key.first + 1) }, { "sim/south", std::to_string(key.first) } };
 			const size_t at = !file.properties.empty() && file.properties[0].first == "sim/overlay" ? 1 : 0;
 			file.properties.insert(file.properties.begin() + static_cast<std::ptrdiff_t>(at), std::begin(bounds), std::end(bounds));
-			for (const auto &[tileKey, property] : exclusions)
-			{
-				if (tileKey == key)
-					file.properties.push_back(property);
-			}
+			file.properties.insert(file.properties.end(), tile.exclusions.begin(), tile.exclusions.end());
 			out.push_back(std::move(file));
 		}
 		return out;
@@ -1520,8 +1528,8 @@ namespace SceneryEditorX::XPlane
 
 	std::string GetDsfTileName(const double latitude, const double longitude)
 	{
-		const int lat = static_cast<int>(std::floor(latitude));
-		const int lon = static_cast<int>(std::floor(longitude));
+		const int lat = TileStart(latitude, 90.0);
+		const int lon = TileStart(longitude, 180.0);
 		char buffer[32];
 		snprintf(buffer, sizeof(buffer), "%+03d%+04d", lat, lon);
 		return buffer;
@@ -1529,8 +1537,8 @@ namespace SceneryEditorX::XPlane
 
 	std::string GetDsfTileFolderName(const double latitude, const double longitude)
 	{
-		const int lat = static_cast<int>(std::floor(std::floor(latitude) / 10.0)) * 10;
-		const int lon = static_cast<int>(std::floor(std::floor(longitude) / 10.0)) * 10;
+		const int lat = static_cast<int>(std::floor(TileStart(latitude, 90.0) / 10.0)) * 10;
+		const int lon = static_cast<int>(std::floor(TileStart(longitude, 180.0) / 10.0)) * 10;
 		char buffer[32];
 		snprintf(buffer, sizeof(buffer), "%+03d%+04d", lat, lon);
 		return buffer;

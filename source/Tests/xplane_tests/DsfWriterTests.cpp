@@ -32,6 +32,7 @@
 #include <SceneryEditorX/xplane/xp_dsf.h>
 #include <cmath>
 #include <cstring>
+#include <limits>
 
 using namespace SceneryEditorX::XPlane;
 using Catch::Approx;
@@ -401,6 +402,47 @@ TEST_CASE("SplitDsfByTile gives each 1x1 degree tile its own DSF", "[dsf][tiles]
 	REQUIRE(edgeTiles.size() == 1);
 	CHECK(edgeTiles[0].west == -123.0);
 	CHECK(edgeTiles[0].south == 45.0);
+}
+
+TEST_CASE("SplitDsfByTile stays inside the world whatever a damaged project holds", "[dsf][tiles]")
+{
+	// Found by fuzz_dsf: exclusion bounds past the world made billions of tiles (and each tile scanned every
+	// exclusion); coordinates too large for an int were cast anyway
+	DsfFile dsf;
+	dsf.properties = { { "sim/exclude_obj", "-1e9/-95/1e9/-89.5" }, { "sim/exclude_fac", "nan/1/2/3" }, { "sim/exclude_pol", "5/5/4/4" } };
+	DsfObjectPlacement far;
+	far.latitude = 1.0e300;
+	far.longitude = -std::numeric_limits<double>::infinity();
+	dsf.objects.push_back(far);
+	std::vector<std::string> warnings;
+	const std::vector<DsfFile> tiles = SplitDsfByTile(dsf, &warnings);
+	CHECK(tiles.size() == 361);		// The 360 tiles of the southernmost row, plus the far object's corner tile
+	CHECK(warnings.size() == 2);	// NaN and inverted bounds are left out
+	for (const DsfFile &tile : tiles)
+	{
+		CHECK(tile.south >= -90.0);
+		CHECK(tile.north <= 90.0);
+		CHECK(tile.west >= -180.0);
+		CHECK(tile.east <= 180.0);
+	}
+	CHECK(GetDsfTileName(std::numeric_limits<double>::quiet_NaN(), 1.0e12) == "+00+179");
+
+	// Found by fuzz_dsf (UBSan): an infinite coordinate quantized to NaN and was cast to a 16-bit raw value anyway
+	DsfFile tile;
+	tile.properties = { { "sim/west", "-123" }, { "sim/south", "47" }, { "sim/east", "-122" }, { "sim/north", "48" } };
+	tile.objectDefinitions = { "a.obj" };
+	DsfObjectPlacement object;
+	object.latitude = 47.5;
+	object.longitude = std::numeric_limits<double>::infinity();
+	tile.objects = { object, object };
+	tile.objects[1].longitude = -122.5;
+	std::vector<uint8_t> bytes;
+	std::string error;
+	if (WriteDsf(tile, bytes, &error))
+	{
+		DsfFile back;
+		CHECK(ReadDsf(bytes.data(), bytes.size(), back, &error));
+	}
 }
 
 // -------------------------------------------------------

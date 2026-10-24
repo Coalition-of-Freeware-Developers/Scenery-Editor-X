@@ -78,7 +78,11 @@ namespace SceneryEditorX::VFS
 	/* @brief A path as UTF-8 text (generic '/' separators are not forced: it is the path as the OS spells it). */
 	std::string ToUtf8(const std::filesystem::path &path);
 
-	/* @brief A path from UTF-8 text. */
+	/**
+	 * @brief A path from UTF-8 text. On Windows, byte sequences that aren't UTF-8 (a file saved in another code page, a
+	 * damaged one) become U+FFFD, so such a path names a file that isn't there instead of throwing; Linux and macOS
+	 * keep the bytes, which can be a real file name there.
+	 */
 	std::filesystem::path FromUtf8(std::string_view text);
 
 	/**
@@ -112,6 +116,13 @@ namespace SceneryEditorX::VFS
 
 	/* @brief True when @p path is @p folder or inside it (compared lexically after making both absolute and normal). */
 	bool IsInside(const std::filesystem::path &path, const std::filesystem::path &folder);
+
+	/**
+	 * @brief Where a relative name from an archive or a download ("Earth nav data/apt.dat") lands inside @p folder.
+	 * False when it would land anywhere else: ".." above the folder, an absolute name, or a drive or server root (also
+	 * one that only shows after normalizing: "a/../C:/x" is "C:/x", which replaces the folder on Windows).
+	 */
+	bool ResolveInside(const std::filesystem::path &folder, std::string_view name, std::filesystem::path &target);
 
 	/**
 	 * @brief A key two spellings of one path share: normal, '/' separators, no trailing slash, lower-case (ASCII) on

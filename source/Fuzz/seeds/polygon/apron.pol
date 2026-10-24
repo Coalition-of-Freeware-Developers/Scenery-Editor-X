@@ -1,0 +1,10 @@
+A
+850
+DRAPED_POLYGON
+
+TEXTURE		apron.png
+TEXTURE_NORMAL	2	apron_NML.png
+SCALE		20 10
+LAYER_GROUP	taxiways +1
+SURFACE		concrete
+NO_BLEND 0.6

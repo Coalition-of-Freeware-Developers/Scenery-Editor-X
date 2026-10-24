@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- written by WED 2.6.0r2 -->
+<!DOCTYPE doc>
+<doc a='single' b="&lt;&amp;&gt;&quot;&apos;&#65;&#x42;&#x20AC;">
+  <empty/>
+  <text>  hello <![CDATA[<raw>]]> world  </text>
+  <!-- a comment -->
+  <nested><x id="1"/><x id="2"/></nested>
+</doc>

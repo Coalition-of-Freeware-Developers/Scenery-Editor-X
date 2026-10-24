@@ -169,6 +169,36 @@ TEST_CASE("OBJ8 merges consecutive TRIS with the same state", "[xplane][obj8]")
 	CHECK(data.batches[0].ranges[0].count == 6);
 }
 
+TEST_CASE("OBJ8 never hands the loader an index past its vertices", "[xplane][obj8]")
+{
+	// Found by fuzz_obj8: indices without any VT were clamped to vertex 0, which doesn't exist
+	Obj8Data data;
+	REQUIRE(ParseObj8("I\n800\nOBJ\nTEXTURE t.png\nIDX10 0 1 2 0 2 3 0 0 0 0\nTRIS 0 6\n", data));
+	CHECK(data.indices.empty());
+	CHECK(data.batches.empty());
+
+	// A TRIS range whose offset + count wraps around 32 bits is dropped, not kept
+	REQUIRE(ParseObj8("I\n800\nOBJ\nTEXTURE t.png\nVT 0 0 0 0 1 0 0 0\nIDX10 0 0 0 0 0 0 0 0 0 0\nTRIS 4294967295 3\n", data));
+	for (const Obj8Batch &batch : data.batches)
+	{
+		for (const Obj8Batch::Range &range : batch.ranges)
+			CHECK(static_cast<uint64_t>(range.offset) + range.count <= data.indices.size());
+	}
+}
+
+TEST_CASE("OBJ8 counts can't make the parser allocate more than the file holds", "[xplane][obj8]")
+{
+	// Found by fuzz_obj8: "LIGHTS 0 666666666" in a 756-byte file made 666 million lights (over 4 GB), and POINT_COUNTS
+	// reserved whatever it claimed
+	Obj8Data data;
+	REQUIRE(ParseObj8("I\n800\nOBJ\nTEXTURE t.png\nPOINT_COUNTS 2000000000 2000000000 2 2000000000\nVLIGHT 0 1 0 1 0 0\nVLIGHT 0 2 0 0 1 0\n"
+					  "LIGHTS 0 666666666\nLIGHTS 1 1\nLIGHTS 5 1\n", data));
+	CHECK(data.vertices.capacity() < 1000);
+	CHECK(data.indices.capacity() < 1000);
+	REQUIRE(data.lights.size() == 3);		// Two from the first LIGHTS (cut at the end of the table), one from the second
+	CHECK(data.lights[2].position[1] == Approx(2.0f));
+}
+
 TEST_CASE("OBJ8 accepts static ANIM_trans without calibration values", "[xplane][obj8]")
 {
 	// XPlane2Blender writes static offsets with six values only.

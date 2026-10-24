@@ -156,6 +156,12 @@ namespace SceneryEditorX::XPlane
 				direction[i] = args.Value(first + i);
 		}
 
+		/* @brief A cell size / column / row argument as an int: saturated, since a damaged file's 1e27 doesn't fit one. */
+		int ToCell(const float value)
+		{
+			return std::isfinite(value) ? static_cast<int>(std::clamp(value, -65536.0f, 65536.0f)) : 0;
+		}
+
 		/* @brief Texture rectangle of a cell given as size, column and row in units of the cell size. */
 		void CellToUv(const int cellSize, const int column, const int row, const int divisionsX, const int divisionsY, float uv[4])
 		{
@@ -401,7 +407,7 @@ namespace SceneryEditorX::XPlane
 					billboard.size = candela ? 1.0f : std::abs(size);
 					billboard.axial = !candela && size < 0.0f;
 
-					CellToUv(static_cast<int>(args.Value(5, 1.0f)), static_cast<int>(args.Value(6)), static_cast<int>(args.Value(7)), m_DivisionsX,
+					CellToUv(ToCell(args.Value(5, 1.0f)), ToCell(args.Value(6)), ToCell(args.Value(7)), m_DivisionsX,
 						m_DivisionsY, billboard.uv);
 					ReadDirection(args, 8, billboard.direction);
 					billboard.width = args.Value(11, 1.0f);

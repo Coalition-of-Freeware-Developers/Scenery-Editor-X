@@ -1,0 +1,7 @@
+A
+850
+OBJECT_STRING
+
+OBJECT 0 0 post.obj
+OBJECT 90 90 rail.obj
+OBJECT -45 45 lib/g10/fences/post.obj

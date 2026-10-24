@@ -50,6 +50,10 @@ namespace SceneryEditorX::XPlane
 		constexpr float LAYER_STEP = 0.012f;
 		constexpr float LAYER_OFFSET_STEP = 0.002f;
 
+		// Type 1 facade wall quads per placement, shared by its sides: a 1 km square block 300 m high in 4 x 3 m panels
+		// needs about 100000
+		constexpr size_t MAX_FACADE_QUADS = 1u << 18;
+
 		std::string Lower(std::string_view text)
 		{
 			return ToLower(text);
@@ -463,7 +467,8 @@ namespace SceneryEditorX::XPlane
 		}
 	}
 
-	void ResamplePath(const std::vector<Point2> &path, const bool closed, const double spacing, const double startOffset, std::vector<Point2> &outPoints, std::vector<double> &outHeadings)
+	void ResamplePath(const std::vector<Point2> &path, const bool closed, const double spacing, const double startOffset, std::vector<Point2> &outPoints, std::vector<double> &outHeadings,
+		const size_t maxPoints)
 	{
 		outPoints.clear();
 		outHeadings.clear();
@@ -487,6 +492,9 @@ namespace SceneryEditorX::XPlane
 			double t = carry;
 			while (t < length - 1e-6)
 			{
+				// (Also what ends the loop on a segment so long that t + spacing == t)
+				if (outPoints.size() >= maxPoints)
+					return;
 				outPoints.push_back({ a.x + dx * (t / length), a.z + dz * (t / length) });
 				outHeadings.push_back(heading);
 				t += spacing;
@@ -1490,28 +1498,57 @@ namespace SceneryEditorX::XPlane
 				double fixedWidth = 0.0;
 				for (const auto &panel : wall->leftPanels) fixedWidth += panelWidth(panel);
 				for (const auto &panel : wall->rightPanels) fixedWidth += panelWidth(panel);
+				// How often a repeated panel fits (in double: a long side over a thin panel overflows an int)
+				const auto repeats = [](const double space, const double unit) -> size_t
+				{
+					return unit > 0.01 && std::isfinite(space) ? static_cast<size_t>(std::clamp(std::round(space / unit), 0.0, 1.0e7)) : 0;
+				};
 				double centerWidth = 0.0;
 				for (const auto &panel : wall->centerPanels) centerWidth += panelWidth(panel);
-				int centerRepeats = centerWidth > 0.01 ? std::max(0, static_cast<int>(std::lround((side.length - fixedWidth) / centerWidth))) : 0;
+				size_t centerRepeats = repeats(side.length - fixedWidth, centerWidth);
 				if (wall->leftPanels.empty() && wall->rightPanels.empty() && centerRepeats == 0)
 					centerRepeats = 1;
-				for (const auto &panel : wall->leftPanels) columns.push_back({ panel.first, panel.second, panelWidth(panel) });
-				for (int r = 0; r < centerRepeats; ++r)
-					for (const auto &panel : wall->centerPanels) columns.push_back({ panel.first, panel.second, panelWidth(panel) });
-				for (const auto &panel : wall->rightPanels) columns.push_back({ panel.first, panel.second, panelWidth(panel) });
-				if (columns.empty())
-					continue;
 
 				double fixedHeight = 0.0;
 				for (const auto &panel : wall->bottomFloors) fixedHeight += floorHeight(panel);
 				for (const auto &panel : wall->topFloors) fixedHeight += floorHeight(panel);
 				double middleHeight = 0.0;
 				for (const auto &panel : wall->middleFloors) middleHeight += floorHeight(panel);
-				int middleRepeats = middleHeight > 0.01 ? std::max(0, static_cast<int>(std::lround((height - fixedHeight) / middleHeight))) : 0;
+				size_t middleRepeats = repeats(height - fixedHeight, middleHeight);
 				if (wall->bottomFloors.empty() && wall->topFloors.empty() && middleRepeats == 0)
 					middleRepeats = 1;
+
+				// A side past its share of the quad budget (a long, tall wall of small panels) repeats its panels less
+				// often and stretches them instead, so one placement can't build millions of quads
+				const double budget = std::max(64.0, static_cast<double>(MAX_FACADE_QUADS) / static_cast<double>(sides.size()));
+				const auto quads = [&]
+				{
+					return static_cast<double>(wall->leftPanels.size() + wall->rightPanels.size() + centerRepeats * wall->centerPanels.size()) *
+						   static_cast<double>(wall->bottomFloors.size() + wall->topFloors.size() + middleRepeats * wall->middleFloors.size());
+				};
+				if (quads() > budget)
+				{
+					Warn(out, "Facade " + resource + " is too large to draw panel by panel; its panels are stretched");
+					while (quads() > budget && (centerRepeats > 1 || middleRepeats > 1))
+					{
+						// Halve whichever repeat makes up more of the wall
+						if (middleRepeats <= 1 || (centerRepeats > 1 && centerRepeats * wall->centerPanels.size() >= middleRepeats * wall->middleFloors.size()))
+							centerRepeats /= 2;
+						else
+							middleRepeats /= 2;
+					}
+					if (quads() > budget)
+						continue;	// Its fixed panels alone are past the budget
+				}
+
+				for (const auto &panel : wall->leftPanels) columns.push_back({ panel.first, panel.second, panelWidth(panel) });
+				for (size_t r = 0; r < centerRepeats; ++r)
+					for (const auto &panel : wall->centerPanels) columns.push_back({ panel.first, panel.second, panelWidth(panel) });
+				for (const auto &panel : wall->rightPanels) columns.push_back({ panel.first, panel.second, panelWidth(panel) });
+				if (columns.empty())
+					continue;
 				for (const auto &panel : wall->bottomFloors) rows.push_back({ panel.first, panel.second, floorHeight(panel) });
-				for (int r = 0; r < middleRepeats; ++r)
+				for (size_t r = 0; r < middleRepeats; ++r)
 					for (const auto &panel : wall->middleFloors) rows.push_back({ panel.first, panel.second, floorHeight(panel) });
 				for (const auto &panel : wall->topFloors) rows.push_back({ panel.first, panel.second, floorHeight(panel) });
 				if (rows.empty())

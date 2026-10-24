@@ -590,6 +590,13 @@ TEST_CASE("Overlay geometry helpers", "[overlay]")
 
 		ResamplePath({ { 0.0, 0.0 }, { 10.0, 0.0 }, { 10.0, 10.0 }, { 0.0, 10.0 } }, true, 10.0, 0.0, points, headings);
 		CHECK(points.size() == 4);
+
+		// Found by fuzz_apt_dat: a mistyped longitude made a light string a million km long (22 s, 2 GB); past 1e16 m
+		// t + spacing == t and the loop never ended
+		ResamplePath({ { 0.0, 0.0 }, { 1.0e9, 0.0 } }, false, 3.0, 0.0, points, headings);
+		CHECK(points.size() == 200000);
+		ResamplePath({ { 0.0, 0.0 }, { 1.0e20, 0.0 } }, false, 3.0, 0.0, points, headings, 1000);
+		CHECK(points.size() == 1000);
 	}
 }
 

@@ -116,6 +116,45 @@ TEST_CASE("Virtual paths normalize and never escape their mount", "[vfs][paths]"
 	CHECK(VFS::Join("project:/a", "../b") == "project:/b");
 }
 
+TEST_CASE("Archive names land inside their folder or nowhere", "[vfs][paths]")
+{
+	const fs::path pack = fs::path("Custom Scenery") / "KSEA";
+	fs::path target;
+	REQUIRE(VFS::ResolveInside(pack, "Earth nav data/apt.dat", target));
+	CHECK(target == pack / "Earth nav data" / "apt.dat");
+	REQUIRE(VFS::ResolveInside(pack, "objects\\..\\textures/a.png", target));
+	CHECK(target == pack / "textures" / "a.png");
+
+	CHECK_FALSE(VFS::ResolveInside(pack, "../outside.txt", target));
+	CHECK_FALSE(VFS::ResolveInside(pack, "a/../../outside.txt", target));
+	CHECK_FALSE(VFS::ResolveInside(pack, "", target));
+	CHECK_FALSE(VFS::ResolveInside(pack, "a/..", target));
+#ifdef _WIN32
+	// Found by fuzz_zip: a root that only appears after ".." is resolved used to replace the pack folder
+	CHECK_FALSE(VFS::ResolveInside(pack, "C:/Windows/x.dll", target));
+	CHECK_FALSE(VFS::ResolveInside(pack, "a/../C:/Users/x/evil.txt", target));
+	CHECK_FALSE(VFS::ResolveInside(pack, "a/..//C:x", target));
+	CHECK_FALSE(VFS::ResolveInside(pack, "\\\\server\\share\\x", target));
+#else
+	CHECK_FALSE(VFS::ResolveInside(pack, "/etc/passwd", target));
+	REQUIRE(VFS::ResolveInside(pack, "a/../C:/x", target));	// Just a folder named "C:" here
+	CHECK(VFS::IsInside(target, pack));
+#endif
+}
+
+TEST_CASE("Text that isn't UTF-8 still makes a path", "[vfs][paths]")
+{
+	// Found by fuzz_install_finder: Windows threw on x-plane_install_12.txt lines that weren't UTF-8 (startup crash)
+	const std::string latin1 = "C:/X-Plane 12/Jos\xE9/";
+	const fs::path path = VFS::FromUtf8(latin1);
+#ifdef _WIN32
+	CHECK(VFS::ToUtf8(path) == "C:/X-Plane 12/Jos\xEF\xBF\xBD/");	// U+FFFD
+#else
+	CHECK(path.native() == latin1);	// The bytes are a valid name here
+#endif
+	CHECK_NOTHROW(VFS::FromUtf8("\xC0\xAF \xED\xA0\x80 \xF4\x90\x80\x80 \xE2\x82"));	// Overlong, surrogate, past U+10FFFF, cut short
+}
+
 TEST_CASE("Names are checked and made portable for Windows, macOS and Linux", "[vfs][names]")
 {
 	CHECK(VFS::CheckPortableName("KSEA - Seattle Tacoma Intl").empty());

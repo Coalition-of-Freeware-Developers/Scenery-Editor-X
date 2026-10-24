@@ -82,7 +82,9 @@ namespace SceneryEditorX::XPlane
 			}
 
 			const double estimate = Distance(p0, p1) + Distance(p1, p2) + Distance(p2, p3);
-			const int segments = std::clamp(static_cast<int>(std::ceil(estimate / std::max(0.1, maxSegmentLength))), 4, 48);
+			// Clamped as a double: a far-off control point makes the estimate too big for an int (NaN: the fewest pieces)
+			const double pieces = std::ceil(estimate / std::max(0.1, maxSegmentLength));
+			const int segments = std::isnan(pieces) ? 4 : static_cast<int>(std::clamp(pieces, 4.0, 48.0));
 			for (int i = 1; i <= segments; ++i)
 				out.push_back(CubicBezier(p0, p1, p2, p3, static_cast<double>(i) / segments));
 		}

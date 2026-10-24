@@ -1,0 +1,38 @@
+A
+800
+OBJ
+
+TEXTURE tower.png
+TEXTURE_LIT tower_LIT.png
+GLOBAL_specular 0.5
+POINT_COUNTS 4 0 2 6
+
+VT 0 0 0 0 1 0 0 0
+VT 10 0 0 0 1 0 1 0
+VT 10 0 10 0 1 0 1 1
+VT 0 0 10 0 1 0 0 1
+VLIGHT 0 12 0 1 0 0
+VLIGHT 0 14 0 0 1 0
+
+IDX10 0 1 2 0 2 3
+
+ATTR_LOD 0 2000
+ANIM_begin
+ANIM_hide 0 0.5 sim/graphics/animation/lights/airport_beacon
+ANIM_rotate_begin 0 1 0 sim/time/total_running_time_sec
+ANIM_rotate_key 0 0
+ANIM_rotate_key 10 360
+ANIM_rotate_end
+ANIM_keyframe_loop 10
+ATTR_light_level 0 1 sim/graphics/misc/light_level
+TRIS 0 6
+LIGHT_NAMED airplane_beacon_rotate 0 12 0
+LIGHT_PARAM apron_light_billboard 0 10 0 0 -1 0 0.5 20000
+LIGHT_CUSTOM 0 15 0 1 0 0 1 0.5 0 0 1 0 1 sim/lights/beacon
+LIGHTS 0 2
+ANIM_end
+ATTR_LOD 2000 8000
+ATTR_no_cull
+ATTR_shadow
+ATTR_layer_group objects 1
+TRIS 0 3
