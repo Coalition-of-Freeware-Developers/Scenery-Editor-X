@@ -30,6 +30,7 @@
  */
 #include "editor_layer.h"
 #include "editor_airports.h"
+#include "editor_gateway.h"
 #include "editor_project.h"
 #include "editor_camera.h"
 #include "editor_commands.h"
@@ -265,6 +266,7 @@ namespace SceneryEditorX
 		// X-Plane folder + library index (the first scan runs in the background), then the airport index and the Gateway client
 		XPlane::LibraryManager::Init();
 		EditorAirports::Init();
+		EditorGateway::Init();		// The Gateway account and server (after the Gateway client started)
 		EditorProjects::Init(m_UserPreferences);
 		ReadStartupObjects();
 		RegisterPanels();
@@ -297,6 +299,7 @@ namespace SceneryEditorX
 		Camera::SetInputEnabled(true);
 		m_PanelManager.reset();
 		EditorProjects::Shutdown();	// Keeps unsaved project work as recovery data while the scene still exists
+		EditorGateway::Shutdown();
 		EditorAirports::Shutdown();
 		XPlane::SceneObjects::Shutdown();
 		XPlane::LibraryManager::Shutdown();
@@ -382,6 +385,7 @@ namespace SceneryEditorX
 		{
 			SEDX_PERF_SCOPE("Main: EditorAirports::Tick");
 			EditorAirports::Tick(&m_Context);
+			EditorGateway::Tick();
 		}
 
 		// Project: the startup project, scene edits flowing into it, autosave, the window title
@@ -446,6 +450,7 @@ namespace SceneryEditorX
 		}
 
 		DrawAboutPopup();
+		EditorPreferencesWindow::Draw();
 		DrawDebugWindows();
 		EditorAirports::DrawModals(&m_Context);
 		EditorProjects::DrawModals(&m_Context);
@@ -513,6 +518,9 @@ namespace SceneryEditorX
 			if (ImGui::MenuItem(EditorUI::IconLabel(EditorTools::GetToolIcon(tool), EditorTools::GetToolName(tool)).c_str(), EditorTools::GetToolKey(tool), EditorTools::GetTool() == tool))
 				EditorTools::SetTool(tool);
 		}
+		ImGui::Separator();
+		if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_COG, "Preferences...").c_str()))
+			EditorPreferencesWindow::Open();
 	}
 
 	void EditorLayer::DrawSceneMenu()
@@ -555,6 +563,13 @@ namespace SceneryEditorX
 		if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_REFRESH, "Rescan Airports").c_str(), nullptr, false,
 			XPlane::AirportManager::GetScanState() != XPlane::ScanState::Scanning))
 			XPlane::AirportManager::Rescan();
+		{
+			const std::string account = EditorGateway::IsSignedIn() ? "Gateway Account (" + EditorGateway::GetUserName() + ")..." : std::string("Gateway Account...");
+			if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_USER, account.c_str()).c_str()))
+				EditorPreferencesWindow::Open("Scenery Gateway");
+			if (EditorGateway::IsTestServer())
+				EditorUI::ItemTooltip(("TEST SERVER: " + EditorGateway::GetServer().apiUrl).c_str());
+		}
 
 		ImGui::Separator();
 		if (PanelData *panel = FindPanel(PANEL_XPLANE.id))

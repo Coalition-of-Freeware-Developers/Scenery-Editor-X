@@ -34,6 +34,7 @@
 #include <ctime>
 #include <portable-file-dialogs.h>
 #include <Editor/core/editor_airports.h>
+#include <Editor/core/editor_gateway.h>
 #include <Editor/core/editor_scene.h>
 #include <Editor/core/editor_theme.h>
 #include <Editor/core/editor_ui.h>
@@ -451,6 +452,10 @@ namespace SceneryEditorX
 
 	void AirportPanel::DrawGatewayTab()
 	{
+		// Who's signed in, and on which server (test servers say so loudly)
+		EditorGateway::DrawStatusLine();
+		ImGui::Separator();
+
 		// Airport list status
 		const std::shared_ptr<const std::vector<GatewayAirport>> list = GatewayClient::GetAirports();
 		if (m_AirportsRequest && m_AirportsRequest->IsFinished())
@@ -471,7 +476,7 @@ namespace SceneryEditorX
 		if (ImGui::Button(EditorUI::IconLabel(SEDX_ICON_CLOUD_DOWNLOAD, list ? "Refresh list" : "Download list").c_str()))
 			m_AirportsRequest = GatewayClient::FetchAirports(true);
 		ImGui::EndDisabled();
-		EditorUI::ItemTooltip("Fetch https://gateway.x-plane.com/apiv1/airports (kept for a day)");
+		EditorUI::ItemTooltip(("Fetch " + GatewayClient::GetServer().apiUrl + "/airports (kept for a day)").c_str());
 
 		// Search
 		EditorUI::SearchFilter("##GatewaySearch", m_GatewayFilter, ImGui::GetContentRegionAvail().x * 0.4f);

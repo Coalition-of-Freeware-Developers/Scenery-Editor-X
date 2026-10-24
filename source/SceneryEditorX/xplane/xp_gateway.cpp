@@ -30,9 +30,11 @@
  */
 #include "xp_gateway.h"
 #include "xp_text.h"
+#include <SceneryEditorX/core/platform/credential_store.h>
 #include <condition_variable>
 #include <deque>
 #include <fstream>
+#include <functional>
 #include <mutex>
 #include <thread>
 #include <curl/curl.h>
@@ -53,12 +55,15 @@ namespace SceneryEditorX::XPlane
 
 		struct State
 		{
-			std::mutex mutex;				// Guards the queue, active, airports, airportsTimestamp
+			std::mutex mutex;				// Guards everything but the worker thread itself
 			std::condition_variable wake;
 			std::deque<std::shared_ptr<GatewayRequest>> queue;
 			std::shared_ptr<GatewayRequest> active;
 			std::shared_ptr<const std::vector<GatewayAirport>> airports;
 			int64_t airportsTimestamp = 0;
+			GatewayServer server = GetOfficialGatewayServer();
+			GatewayTransport transport;		// Empty: libcurl
+			bool liveUploadsAllowed = false;	// Uploads to the public Gateway (see CanUploadTo)
 
 			std::thread worker;
 			bool stopping = false;
@@ -83,19 +88,32 @@ namespace SceneryEditorX::XPlane
 			return state;
 		}
 
-		fs::path CacheDirectory()
+		/**
+		 * Downloads, fetched again when missing. The public Gateway keeps the folder it always had; any other server
+		 * (a local test server) gets its own, so its made-up airports never mix with real ones.
+		 */
+		fs::path CacheDirectory(const GatewayServer &server)
 		{
-			return VFS::GetAppLocation(VFS::AppLocation::Cache) / "gateway";		// Downloads: fetched again when missing
+			const fs::path root = VFS::GetAppLocation(VFS::AppLocation::Cache);
+			if (server.official)
+				return root / "gateway";
+			std::string name = server.GetKey();
+			for (char &c : name)
+			{
+				if (!std::isalnum(static_cast<unsigned char>(c)) && c != '.' && c != '-')
+					c = '_';
+			}
+			return root / "gateway-servers" / name;
 		}
 
-		fs::path AirportsCachePath()
+		fs::path AirportsCachePath(const GatewayServer &server)
 		{
-			return CacheDirectory() / "airports.json";
+			return CacheDirectory(server) / "airports.json";
 		}
 
-		fs::path SceneryCachePath(const int sceneryId)
+		fs::path SceneryCachePath(const GatewayServer &server, const int sceneryId)
 		{
-			return CacheDirectory() / "scenery" / (std::to_string(sceneryId) + ".json");
+			return CacheDirectory(server) / "scenery" / (std::to_string(sceneryId) + ".json");
 		}
 
 		/* @brief Write time of a file as seconds since the Unix epoch, 0 when it doesn't exist. */
@@ -140,45 +158,60 @@ namespace SceneryEditorX::XPlane
 
 		// -------------------------------------------------------
 
-		struct Download
+		struct CurlTransfer
 		{
-			GatewayRequest *request = nullptr;
+			const GatewayTransferHooks *hooks = nullptr;
 			std::string *body = nullptr;
 		};
 
 		size_t WriteBody(const char *data, const size_t size, const size_t count, void *userdata)
 		{
-			Download *download = static_cast<Download *>(userdata);
+			const CurlTransfer *transfer = static_cast<CurlTransfer *>(userdata);
 			const size_t bytes = size * count;
-			download->body->append(data, bytes);
-			download->request->m_Bytes.fetch_add(bytes);
+			transfer->body->append(data, bytes);
+			if (transfer->hooks->received)
+				transfer->hooks->received(bytes);
 			return bytes;
 		}
 
-		int ReportProgress(void *userdata, const curl_off_t downloadTotal, const curl_off_t downloaded, curl_off_t, curl_off_t)
+		int ReportProgress(void *userdata, const curl_off_t downloadTotal, const curl_off_t downloaded, const curl_off_t uploadTotal, const curl_off_t uploaded)
 		{
-			const Download *download = static_cast<Download *>(userdata);
-			if (download->request->m_Cancel.load())
+			const CurlTransfer *transfer = static_cast<CurlTransfer *>(userdata);
+			if (transfer->hooks->cancelled && transfer->hooks->cancelled())
 				return 1;	// Aborts the transfer
-			if (downloadTotal > 0)
-				download->request->m_Progress.store(static_cast<float>(static_cast<double>(downloaded) / static_cast<double>(downloadTotal)));
+			if (!transfer->hooks->progress)
+				return 0;
+			// An upload reports its body going out first, then the (small) answer coming back
+			if (uploadTotal > 0 && uploaded < uploadTotal)
+				transfer->hooks->progress(static_cast<double>(uploaded) / static_cast<double>(uploadTotal));
+			else if (downloadTotal > 0)
+				transfer->hooks->progress(static_cast<double>(downloaded) / static_cast<double>(downloadTotal));
 			return 0;
 		}
 
-		bool HttpGet(const std::string &url, GatewayRequest &request, std::string &body, std::string &error)
+		/* @brief The default transport. */
+		GatewayHttpResponse CurlTransport(const GatewayHttpRequest &request, const GatewayTransferHooks &hooks)
 		{
+			GatewayHttpResponse response;
 			CURL *curl = curl_easy_init();
 			if (!curl)
 			{
-				error = "libcurl could not be initialized";
-				return false;
+				response.error = "libcurl could not be initialized";
+				return response;
 			}
 
-			Download download{ &request, &body };
+			CurlTransfer transfer{ &hooks, &response.body };
 			char errorBuffer[CURL_ERROR_SIZE] = {};
-			curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+			curl_slist *headers = nullptr;
+			for (const auto &[name, value] : request.headers)
+				headers = curl_slist_append(headers, (name + ": " + value).c_str());
+
+			curl_easy_setopt(curl, CURLOPT_URL, request.url.c_str());
 			curl_easy_setopt(curl, CURLOPT_USERAGENT, USER_AGENT);
-			curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+			curl_easy_setopt(curl, CURLOPT_PROTOCOLS_STR, "http,https");
+			curl_easy_setopt(curl, CURLOPT_REDIR_PROTOCOLS_STR, "https");
+			// A redirect could carry the password elsewhere: credentialed calls go only where they were sent
+			curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, request.sendsCredentials ? 0L : 1L);
 			curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 5L);
 			curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "");		// gzip: the airport list is 20 MB uncompressed
 			curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 20L);
@@ -186,37 +219,69 @@ namespace SceneryEditorX::XPlane
 			curl_easy_setopt(curl, CURLOPT_LOW_SPEED_TIME, 60L);
 			curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
 			curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteBody);
-			curl_easy_setopt(curl, CURLOPT_WRITEDATA, &download);
+			curl_easy_setopt(curl, CURLOPT_WRITEDATA, &transfer);
 			curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, ReportProgress);
-			curl_easy_setopt(curl, CURLOPT_XFERINFODATA, &download);
+			curl_easy_setopt(curl, CURLOPT_XFERINFODATA, &transfer);
 			curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
 			curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errorBuffer);
+			if (headers)
+				curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+			if (request.method != "GET")
+			{
+				// The body goes out as-is; PUT (the Gateway's upload) is a POST with its method renamed
+				curl_easy_setopt(curl, CURLOPT_POST, 1L);
+				curl_easy_setopt(curl, CURLOPT_POSTFIELDS, request.body.data());
+				curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE_LARGE, static_cast<curl_off_t>(request.body.size()));
+				if (request.method != "POST")
+					curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, request.method.c_str());
+			}
 
 			const CURLcode result = curl_easy_perform(curl);
-			long httpStatus = 0;
-			curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpStatus);
+			curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response.status);
 			curl_easy_cleanup(curl);
+			curl_slist_free_all(headers);
 
 			if (result == CURLE_ABORTED_BY_CALLBACK)
+				response.error = "Cancelled";
+			else if (result != CURLE_OK)
+				response.error = errorBuffer[0] ? errorBuffer : curl_easy_strerror(result);
+			else
+				response.completed = true;
+			return response;
+		}
+
+		/* @brief Sends through the request's transport with its progress and cancel hooks. */
+		GatewayHttpResponse Send(GatewayRequest &request, const GatewayHttpRequest &http)
+		{
+			GatewayTransferHooks hooks;
+			hooks.received = [&request](const uint64_t bytes) { request.m_Bytes.fetch_add(bytes); };
+			hooks.progress = [&request](const double fraction) { request.m_Progress.store(static_cast<float>(fraction)); };
+			hooks.cancelled = [&request]() { return request.m_Cancel.load(); };
+			return request.m_Transport ? request.m_Transport(http, hooks) : CurlTransport(http, hooks);
+		}
+
+		/* @brief GET <api>/<path>; false with `error` set unless the answer is a 2xx. */
+		bool HttpGet(GatewayRequest &request, const std::string &path, std::string &body, std::string &error)
+		{
+			GatewayHttpRequest http;
+			http.url = request.m_Server.apiUrl + path;
+			GatewayHttpResponse response = Send(request, http);
+			if (!response.completed)
 			{
-				error = "Cancelled";
+				error = response.error.empty() ? std::string("No answer from the Gateway") : response.error;
 				return false;
 			}
-			if (result != CURLE_OK)
-			{
-				error = errorBuffer[0] ? errorBuffer : curl_easy_strerror(result);
-				return false;
-			}
-			if (httpStatus == 404)
+			if (response.status == 404)
 			{
 				error = "Not found on the Gateway (HTTP 404)";
 				return false;
 			}
-			if (httpStatus < 200 || httpStatus >= 300)
+			if (response.status < 200 || response.status >= 300)
 			{
-				error = "The Gateway answered HTTP " + std::to_string(httpStatus);
+				error = "The Gateway answered HTTP " + std::to_string(response.status);
 				return false;
 			}
+			body = std::move(response.body);
 			return true;
 		}
 
@@ -238,7 +303,7 @@ namespace SceneryEditorX::XPlane
 			{
 				case GatewayRequest::Kind::Airports:
 				{
-					const fs::path cachePath = AirportsCachePath();
+					const fs::path cachePath = AirportsCachePath(request.m_Server);
 					int64_t timestamp = FileTimestamp(cachePath);
 					bool fromCache = false;
 					if (!request.m_ForceRefresh && timestamp > 0 && (request.m_CacheOnly || NowSeconds() - timestamp < AIRPORTS_MAX_AGE_SECONDS))
@@ -248,7 +313,7 @@ namespace SceneryEditorX::XPlane
 					{
 						if (request.m_CacheOnly)
 							return fail("No cached airport list yet");
-						if (!HttpGet(std::string(GATEWAY_API_URL) + "/airports", request, body, error))
+						if (!HttpGet(request, "/airports", body, error))
 							return fail(error);
 						timestamp = NowSeconds();
 					}
@@ -262,16 +327,20 @@ namespace SceneryEditorX::XPlane
 					request.m_FromCache.store(fromCache);
 					request.airports = airports;
 					{
+						// Unless the user switched servers while this one was loading
 						std::scoped_lock lock(state.mutex);
-						state.airports = airports;
-						state.airportsTimestamp = timestamp;
+						if (state.server == request.m_Server)
+						{
+							state.airports = airports;
+							state.airportsTimestamp = timestamp;
+						}
 					}
 					SEDX_CORE_INFO_TAG(LOG_TAG, "{} Gateway airports {}", airports->size(), fromCache ? "from the cache" : "downloaded");
 					return true;
 				}
 				case GatewayRequest::Kind::Airport:
 				{
-					if (!HttpGet(std::string(GATEWAY_API_URL) + "/airport/" + EncodeSegment(request.m_Key), request, body, error))
+					if (!HttpGet(request, "/airport/" + EncodeSegment(request.m_Key), body, error))
 						return fail(error);
 					auto details = std::make_shared<GatewayAirportDetails>();
 					if (!ParseGatewayAirport(body, *details, &error))
@@ -282,13 +351,13 @@ namespace SceneryEditorX::XPlane
 				case GatewayRequest::Kind::Scenery:
 				{
 					const int sceneryId = std::atoi(request.m_Key.c_str());
-					const fs::path cachePath = SceneryCachePath(sceneryId);
+					const fs::path cachePath = SceneryCachePath(request.m_Server, sceneryId);
 					bool fromCache = false;
 					if (!request.m_ForceRefresh)
 						fromCache = ReadTextFile(cachePath, body) && !body.empty();
 					if (!fromCache)
 					{
-						if (!HttpGet(std::string(GATEWAY_API_URL) + "/scenery/" + std::to_string(sceneryId), request, body, error))
+						if (!HttpGet(request, "/scenery/" + std::to_string(sceneryId), body, error))
 							return fail(error);
 					}
 
@@ -315,7 +384,7 @@ namespace SceneryEditorX::XPlane
 				}
 				case GatewayRequest::Kind::Stats:
 				{
-					if (!HttpGet(std::string(GATEWAY_API_URL) + "/stats", request, body, error))
+					if (!HttpGet(request, "/stats", body, error))
 						return fail(error);
 					auto stats = std::make_shared<GatewayStats>();
 					if (!ParseGatewayStats(body, *stats, &error))
@@ -323,9 +392,34 @@ namespace SceneryEditorX::XPlane
 					request.stats = stats;
 					return true;
 				}
+				case GatewayRequest::Kind::Upload:
+				{
+					std::string reason;
+					if (!request.m_Submission || !CanUploadTo(request.m_Server, request.m_LiveUploadsAllowed, &reason))
+					{
+						Credentials::SecureClear(request.m_Password);
+						return fail(request.m_Submission ? reason : std::string("Nothing to upload"));
+					}
+
+					GatewayHttpRequest http = MakeGatewayUploadRequest(request.m_Server, *request.m_Submission, request.m_UserName, request.m_Password);
+					Credentials::SecureClear(request.m_Password);
+					SEDX_CORE_INFO_TAG(LOG_TAG, "Uploading {} ({} KB) to {} as {}", request.m_Submission->icao, request.m_Submission->masterZip.size() / 1024, request.m_Server.GetKey(), request.m_UserName);
+					const GatewayHttpResponse response = Send(request, http);
+					Credentials::SecureClear(http.body);
+
+					auto result = std::make_shared<GatewayUploadResult>(ReadGatewayUploadResponse(response));
+					request.upload = result;
+					if (result->outcome == GatewayUploadResult::Outcome::NoAnswer && request.m_Cancel.load())
+						return fail("Cancelled");
+					if (result->Succeeded())
+						SEDX_CORE_INFO_TAG(LOG_TAG, "{} accepted the upload of {}: scenery {}", request.m_Server.GetKey(), request.m_Submission->icao, result->sceneryId);
+					else
+						SEDX_CORE_WARN_TAG(LOG_TAG, "Upload of {} to {}: {} - {}", request.m_Submission->icao, request.m_Server.GetKey(), GetGatewayUploadOutcomeName(result->outcome), result->message);
+					return true;
+				}
 				case GatewayRequest::Kind::Releases:
 				{
-					if (!HttpGet(std::string(GATEWAY_API_URL) + "/releases", request, body, error))
+					if (!HttpGet(request, "/releases", body, error))
 						return fail(error);
 					auto releases = std::make_shared<std::vector<GatewayRelease>>();
 					if (!ParseGatewayReleases(body, *releases, &error))
@@ -378,7 +472,8 @@ namespace SceneryEditorX::XPlane
 			}
 		}
 
-		std::shared_ptr<GatewayRequest> Enqueue(const GatewayRequest::Kind kind, std::string key, std::string path, const bool forceRefresh, const bool cacheOnly = false)
+		std::shared_ptr<GatewayRequest> Enqueue(const GatewayRequest::Kind kind, std::string key, std::string path, const bool forceRefresh, const bool cacheOnly = false,
+			const std::function<void(GatewayRequest &)> &fill = {})
 		{
 			auto request = std::make_shared<GatewayRequest>();
 			request->m_Kind = kind;
@@ -386,12 +481,20 @@ namespace SceneryEditorX::XPlane
 			request->m_Path = std::move(path);
 			request->m_ForceRefresh = forceRefresh;
 			request->m_CacheOnly = cacheOnly;
+			if (fill)
+				fill(*request);
 
 			State &state = GetState();
 			{
 				std::scoped_lock lock(state.mutex);
+				// The server and transport are fixed when the request is made: switching servers later doesn't
+				// redirect requests (or a password) already queued
+				request->m_Server = state.server;
+				request->m_Transport = state.transport;
+				request->m_LiveUploadsAllowed = state.liveUploadsAllowed;
 				if (!state.initialized)
 				{
+					Credentials::SecureClear(request->m_Password);
 					request->m_Error = "The Gateway client isn't initialized";
 					request->m_State.store(GatewayRequestState::Failed, std::memory_order_release);
 					return request;
@@ -469,7 +572,7 @@ namespace SceneryEditorX::XPlane
 		// The cached airport list is big enough to be worth parsing off the main thread, and nothing goes to the
 		// network until the user asks for it.
 		Enqueue(GatewayRequest::Kind::Airports, std::string(), "/airports", false, true);
-		SEDX_CORE_INFO_TAG(LOG_TAG, "Gateway client ready (cache: {})", CacheDirectory().string());
+		SEDX_CORE_INFO_TAG(LOG_TAG, "Gateway client ready (cache: {})", GetCacheDirectory().string());
 	}
 
 	void GatewayClient::Shutdown()
@@ -484,6 +587,7 @@ namespace SceneryEditorX::XPlane
 			for (const std::shared_ptr<GatewayRequest> &request : state.queue)
 			{
 				request->m_Cancel.store(true);
+				Credentials::SecureClear(request->m_Password);
 				request->m_State.store(GatewayRequestState::Cancelled, std::memory_order_release);
 			}
 			state.queue.clear();
@@ -522,6 +626,31 @@ namespace SceneryEditorX::XPlane
 		return Enqueue(GatewayRequest::Kind::Releases, std::string(), "/releases", true);
 	}
 
+	std::shared_ptr<GatewayRequest> GatewayClient::UploadScenery(std::shared_ptr<const GatewaySubmission> submission, const std::string &userName, const std::string &password)
+	{
+		const std::string key = submission ? submission->icao : std::string();
+		return Enqueue(GatewayRequest::Kind::Upload, key, "/scenery", true, false, [&](GatewayRequest &request)
+		{
+			request.m_Submission = std::move(submission);
+			request.m_UserName = userName;
+			request.m_Password = password;
+		});
+	}
+
+	void GatewayClient::SetLiveUploadsAllowed(const bool allowed)
+	{
+		State &state = GetState();
+		std::scoped_lock lock(state.mutex);
+		state.liveUploadsAllowed = allowed;
+	}
+
+	bool GatewayClient::AreLiveUploadsAllowed()
+	{
+		State &state = GetState();
+		std::scoped_lock lock(state.mutex);
+		return state.liveUploadsAllowed;
+	}
+
 	std::shared_ptr<const std::vector<GatewayAirport>> GatewayClient::GetAirports()
 	{
 		State &state = GetState();
@@ -552,17 +681,50 @@ namespace SceneryEditorX::XPlane
 
 	fs::path GatewayClient::GetCacheDirectory()
 	{
-		return CacheDirectory();
+		return CacheDirectory(GetServer());
 	}
 
 	void GatewayClient::ClearCache()
 	{
 		std::error_code ec;
-		fs::remove_all(CacheDirectory(), ec);
+		fs::remove_all(GetCacheDirectory(), ec);
 		State &state = GetState();
 		std::scoped_lock lock(state.mutex);
 		state.airports.reset();
 		state.airportsTimestamp = 0;
+	}
+
+	void GatewayClient::SetServer(const GatewayServer &server)
+	{
+		State &state = GetState();
+		bool reload = false;
+		{
+			std::scoped_lock lock(state.mutex);
+			if (state.server == server)
+				return;
+			state.server = server;
+			// The airport list belongs to the old server; the new one's comes from its own cache (or a download)
+			state.airports.reset();
+			state.airportsTimestamp = 0;
+			reload = state.initialized;
+		}
+		SEDX_CORE_INFO_TAG(LOG_TAG, "Gateway server: {}{}", server.apiUrl, server.official ? "" : " (not the public Gateway)");
+		if (reload)
+			Enqueue(GatewayRequest::Kind::Airports, std::string(), "/airports", false, true);
+	}
+
+	GatewayServer GatewayClient::GetServer()
+	{
+		State &state = GetState();
+		std::scoped_lock lock(state.mutex);
+		return state.server;
+	}
+
+	void GatewayClient::SetTransport(GatewayTransport transport)
+	{
+		State &state = GetState();
+		std::scoped_lock lock(state.mutex);
+		state.transport = std::move(transport);
 	}
 
 	// -------------------------------------------------------

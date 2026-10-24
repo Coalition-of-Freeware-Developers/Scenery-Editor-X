@@ -29,6 +29,8 @@
  * -------------------------------------------------------
  */
 #pragma once
+#include "xp_gateway_server.h"
+#include "xp_gateway_submission.h"
 #include "xp_gateway_types.h"
 #include "xp_zip.h"
 #include <atomic>
@@ -68,7 +70,8 @@ namespace SceneryEditorX::XPlane
 			Airport,	// GET /airport/{code}
 			Scenery,	// GET /scenery/{id} (cached on disk: approved packs don't change)
 			Stats,		// GET /stats
-			Releases	// GET /releases
+			Releases,	// GET /releases
+			Upload		// PUT /scenery: a submission with the artist's user name and password
 		};
 
 		[[nodiscard]] Kind GetKind() const { return m_Kind; }
@@ -91,15 +94,22 @@ namespace SceneryEditorX::XPlane
 		std::shared_ptr<const GatewaySceneryPack> scenery;
 		std::shared_ptr<const GatewayStats> stats;
 		std::shared_ptr<const std::vector<GatewayRelease>> releases;
+		std::shared_ptr<const GatewayUploadResult> upload;		// Set whenever an upload got as far as the server (or tried to)
 
 		// Worker-side state: written by the GatewayClient worker, read through the getters above.
 		friend class GatewayClient;
 
 		Kind m_Kind = Kind::Stats;
 		std::string m_Key;
-		std::string m_Path;					// URL path under GATEWAY_API_URL
+		std::string m_Path;					// URL path under the server's API root
+		GatewayServer m_Server;				// Where it goes, fixed when it was queued
+		GatewayTransport m_Transport;		// Empty: libcurl
 		bool m_ForceRefresh = false;
 		bool m_CacheOnly = false;			// Never touch the network (startup load of the cached airport list)
+		std::shared_ptr<const GatewaySubmission> m_Submission;	// Upload only
+		std::string m_UserName;				// Upload only
+		std::string m_Password;				// Upload only; wiped once sent
+		bool m_LiveUploadsAllowed = false;	// Copied when queued
 		std::atomic<GatewayRequestState> m_State{ GatewayRequestState::Queued };
 		std::atomic<float> m_Progress{ -1.0f };
 		std::atomic<uint64_t> m_Bytes{ 0 };
@@ -111,9 +121,10 @@ namespace SceneryEditorX::XPlane
 
 	/**
 	 * @class GatewayClient
-	 * @brief The editor's connection to the X-Plane Scenery Gateway (https://gateway.x-plane.com/api). Requests run
-	 * one at a time on a worker thread (the Gateway asks not to be hammered) and responses that don't change are
-	 * cached under <app data>/gateway. Main thread only.
+	 * @brief The editor's connection to the X-Plane Scenery Gateway (https://gateway.x-plane.com/api), or to a test
+	 * server standing in for it (SetServer). Requests run one at a time on a worker thread (the Gateway asks not to be
+	 * hammered) and responses that don't change are cached under <app cache>/gateway (other servers: gateway-servers/
+	 * <host_port>). Main thread only.
 	 */
 	class GatewayClient
 	{
@@ -139,6 +150,17 @@ namespace SceneryEditorX::XPlane
 		static std::shared_ptr<GatewayRequest> FetchStats();
 		static std::shared_ptr<GatewayRequest> FetchReleases();
 
+		/**
+		 * @brief Uploads a submission (a new airport, or an update when parentId is set). The request finishes Done
+		 * with `upload` saying what the server answered, or Failed when it was never sent (see CanUploadTo).
+		 * The password is wiped from the request once it's sent and never logged.
+		 */
+		static std::shared_ptr<GatewayRequest> UploadScenery(std::shared_ptr<const GatewaySubmission> submission, const std::string &userName, const std::string &password);
+
+		/* @brief Whether uploads may go to the public Gateway (false: only test servers take them). */
+		static void SetLiveUploadsAllowed(bool allowed);
+		static bool AreLiveUploadsAllowed();
+
 		/* @brief The airport list from the last successful FetchAirports() (or the disk cache); null before that. */
 		static std::shared_ptr<const std::vector<GatewayAirport>> GetAirports();
 
@@ -149,7 +171,18 @@ namespace SceneryEditorX::XPlane
 		static std::shared_ptr<GatewayRequest> GetActiveRequest();
 		static size_t GetQueuedCount();
 
+		/* @brief The current server's cache folder. */
 		static std::filesystem::path GetCacheDirectory();
+
+		/**
+		 * @brief Talks to another server from now on (requests already queued keep theirs). The airport list is
+		 * reloaded from the new server's own cache.
+		 */
+		static void SetServer(const GatewayServer &server);
+		static GatewayServer GetServer();
+
+		/* @brief Replaces libcurl for new requests (tests, offline runs); an empty function restores it. */
+		static void SetTransport(GatewayTransport transport);
 
 		/* @brief Deletes the cached responses (the next requests go to the network). */
 		static void ClearCache();
