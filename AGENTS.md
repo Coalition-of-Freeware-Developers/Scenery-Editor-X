@@ -95,8 +95,13 @@ The dependency-light, cross-platform Catch2 unit suites that only need `source/`
   the lobe's history mip, the min / max depth pyramid with odd sizes, and the hierarchical-Z march against an analytic
   ground-and-wall scene). Standard library plus `dependency/json`, fully green.
 
-The other suites are **not** Linux-buildable as written: `SettingsTest` links Windows libs
-(`dxgi`, `d3d12`, `Shell32.lib`); `MemoryAllocatorTests` links `vulkan-1` and needs the Vulkan
+- **`SettingsTest`** (`source/Tests/settings_tests`) — `ConfigFile` (`settings/config_file.*`), the libconfig
+  settings files read and written through the VFS: value types and conversions, groups never replaced by values,
+  dirty tracking (floats compared as written), atomic saves through a mount, separate instances never sharing values,
+  case-insensitive lookups, unparsable files left alone and backed up, byte order marks, missing / read-only mounts,
+  UTF-8 physical paths. Standard library plus libconfig compiled from `dependency/libconfig`.
+
+The other suites are **not** Linux-buildable as written: `MemoryAllocatorTests` links `vulkan-1` and needs the Vulkan
 SDK; `VulkanSmokeTests` (opt-in via `SEDX_ENABLE_VULKAN_SMOKE_TESTS`) needs the full engine.
 
 ### Key gotchas
@@ -199,7 +204,23 @@ g++ -std=c++20 -O2 -pthread $INCS source/Tests/environment_tests/ParityScenarioT
     source/SceneryEditorX/renderer/env_probes.cpp source/SceneryEditorX/renderer/csm.cpp source/SceneryEditorX/renderer/cacao.cpp \
     source/SceneryEditorX/renderer/ssr.cpp $LIBS -o build_linux_tests/EnvironmentTests
 ./build_linux_tests/EnvironmentTests
+
+# 7. SettingsTest (green with MSYS2 g++ 15 on Windows; libconfig's C sources built with gcc)
+LC=dependency/libconfig/lib
+mkdir -p build_linux_tests/libconfig
+for f in grammar libconfig scanctx scanner strbuf strvec util wincompat; do
+  gcc -O2 -c -DLIBCONFIG_STATIC -DHAVE_USELOCALE -DHAVE_NEWLOCALE -DHAVE_FREELOCALE -I$LC $LC/$f.c \
+      -o build_linux_tests/libconfig/$f.o
+done
+g++ -std=c++20 -O2 -pthread -DLIBCONFIG_STATIC -DLIBCONFIGXX_STATIC $INCS -I$LC \
+    source/Tests/settings_tests/SettingsTest.cpp source/SceneryEditorX/settings/config_file.cpp \
+    source/SceneryEditorX/filesystem/vfs.cpp $LC/libconfigcpp.cc build_linux_tests/libconfig/*.o $LIBS \
+    -o build_linux_tests/SettingsTest
+./build_linux_tests/SettingsTest
 ```
+
+MinGW (MSYS2) has no `fsync`, which libconfig's `wincompat.h` maps its `posix_fsync` to there: on that toolchain drop the
+`HAVE_*LOCALE` defines and add `-Wno-error=implicit-function-declaration` to the `gcc` line (wincompat.c then supplies it).
 
 `build_linux_tests/` and `dependency/Catch2/build-linux/` are throwaway build output — do not commit them.
 

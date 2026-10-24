@@ -165,6 +165,7 @@ namespace SceneryEditorX
 		}
 
 		SetUpAppLocations();
+		m_Settings.Open(Settings::DEFAULT_LOCATION);	// After the folders: user:/ is mounted and older versions' files have moved
 
 		InitializeApplication(specification);
 	}
@@ -192,6 +193,7 @@ namespace SceneryEditorX
 		SEDX_CORE_TRACE("  Command Line Args: {}", context.GetCommandLineArgs().size());
 
 		SetUpAppLocations();
+		m_Settings.Open(Settings::DEFAULT_LOCATION);	// After the folders: user:/ is mounted and older versions' files have moved
 
 		AppData specification = appData;
 

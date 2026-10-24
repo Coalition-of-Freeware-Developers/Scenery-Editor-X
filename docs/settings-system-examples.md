@@ -2,6 +2,12 @@
 
 ---
 
+> [!NOTE]
+> These examples predate the VFS-based settings files. `ApplicationSettings` is now `ConfigFile` (one `.cfg` file,
+> any module) and `Settings` (the application's `settings.cfg`), with the same option methods as instance methods.
+> Locations are virtual paths such as `user:/my_module.cfg`, never working-folder paths like `config/module.cfg`.
+> See [settings-system-documentation.md](settings-system-documentation.md) for the current API.
+
 ## Table of Contents
 
 1. [Basic Usage Examples](#basic-usage-examples)

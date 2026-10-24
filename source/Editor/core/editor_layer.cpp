@@ -62,6 +62,7 @@
 #include <Editor/panels/settings_panels.h>
 #include <Editor/panels/xplane_library_panel.h>
 #include <Editor/settings/editor_preferences.h>
+#include <Editor/settings/editor_settings.h>
 #include <algorithm>
 #include <chrono>
 #include <cstdlib>
@@ -281,6 +282,10 @@ namespace SceneryEditorX
 		LoadEnvironmentTables();
 		EditorScenario::Init();		// --env-scenario: after the airports, so its airport wins over --xp-airport
 		ReadStartupObjects();		// After the scenario, so --env-* flags override its environment
+		// The user's snapping and gizmo options (user:/editor_settings.cfg); scripted self-tests start from the defaults
+		// and leave the file alone
+		if (!ToolsSelfTest::IsEnabled())
+			EditorSettingsSerializer::Init();
 		RegisterPanels();
 		// Commands the menus offer (menu bar, right-click quad menu, Space hotbox), and the menus themselves
 		ViewportMenus::RegisterCommands();
@@ -314,6 +319,7 @@ namespace SceneryEditorX
 		// The UI layer (an overlay) detaches first, so ImGui is already gone here: no ImGui calls.
 		Camera::SetInputEnabled(true);
 		Camera::SetInputExternal(false);
+		EditorSettingsSerializer::Shutdown();	// The tools' snapping and gizmo options, when they changed
 		m_PanelManager.reset();
 		AssetThumbnails::Shutdown();	// Before the renderer frees the device: the thumbnail atlas is on the GPU
 		EditorProjects::Shutdown();	// Keeps unsaved project work as recovery data while the scene still exists

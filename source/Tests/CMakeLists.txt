@@ -187,9 +187,11 @@ catch_discover_tests(MemoryAllocatorTests)
 # Setting Config Tests
 # --------------------------------
 
-# Define the test executable
+# Define the test executable: ConfigFile (the settings files) over the VFS, standard library + libconfig only
 ADD_EXECUTABLE(SettingsTest
     settings_tests/SettingsTest.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/settings/config_file.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/filesystem/vfs.cpp
 )
 
 # Include directories
@@ -197,16 +199,16 @@ TARGET_INCLUDE_DIRECTORIES(SettingsTest PRIVATE
     ${CMAKE_SOURCE_DIR}/source
 )
 
-# Link with Catch2 and libconfig libraries
+# Link with Catch2 and libconfig++ (named config++ outside MSVC)
+IF(TARGET libconfig++)
+    SET(_SEDX_LIBCONFIGXX libconfig++)
+ELSE()
+    SET(_SEDX_LIBCONFIGXX config++)
+ENDIF()
 TARGET_LINK_LIBRARIES(SettingsTest PRIVATE
     Catch2::Catch2WithMain
-    config++
-    dxgi
-    d3d12
-    Shell32.lib
+    ${_SEDX_LIBCONFIGXX}
 )
-# Disable engine logging; omit Tracy
-TARGET_COMPILE_DEFINITIONS(SettingsTest PRIVATE SEDX_NO_LOGGING ZoneScoped=)
 
 # Enable parallel compilation for MSVC-like compilers
 IF(_SEDX_MSVCLIKE)
