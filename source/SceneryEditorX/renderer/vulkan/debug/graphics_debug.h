@@ -87,6 +87,20 @@ namespace SceneryEditorX
 		static void Shutdown(VkInstance instance);
 
 		/**
+		 * @brief Describes the validation messenger (severities, types and callback).
+		 * Chain it into VkInstanceCreateInfo::pNext so messages raised by vkCreateInstance / vkDestroyInstance,
+		 * before or after the persistent messenger exists, reach the same log.
+		 */
+		static VkDebugUtilsMessengerCreateInfoEXT GetMessengerCreateInfo();
+
+		/**
+		 * @brief Names the object the calling thread is about to create (nullptr clears it).
+		 * Validation messages raised inside the create call can't name the object yet (it has no handle), so the
+		 * log adds this name to them instead. Used around pipeline creation.
+		 */
+		static void SetCreationContext(const char *name);
+
+		/**
 		 * @brief Sets a human-readable name for a GPU resource to improve debugging and profiling readability.
 		 *
 		 * Fetches the logical device from RenderContext. Safe to call at any time after RenderContext::Init()
