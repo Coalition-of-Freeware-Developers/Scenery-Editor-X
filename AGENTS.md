@@ -164,6 +164,22 @@ g++ -std=c++20 -O2 -pthread $INCS source/Tests/project_tests/ProjectFormatTests.
 
 `build_linux_tests/` and `dependency/Catch2/build-linux/` are throwaway build output — do not commit them.
 
+### Fuzzing (`source/Fuzz`, Windows / Linux / macOS)
+
+`source/Fuzz` is a CMake project of its own (standard library + `dependency/json`, zlib optional; it downloads the
+pinned json / Catch2 / RapidCheck commits when the submodules are missing), so it builds on this VM too. With GCC it
+replays every seed corpus under ASan + UBSan and runs the RapidCheck round-trip properties (no fuzzing engine: GCC has
+no libFuzzer); with LLVM clang++, MSVC or AFL++ it fuzzes. See `source/Fuzz/README.md`.
+
+```bash
+cmake -S source/Fuzz -B build/fuzz-gcc -G Ninja -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++
+cmake --build build/fuzz-gcc -j"$(nproc)"
+ctest --test-dir build/fuzz-gcc -j"$(nproc)"      # <harness>.corpus replays + properties::*
+```
+
+A parser change that breaks a harness invariant or a `regression_*` seed fails `<harness>.corpus`; CI
+(`.github/workflows/fuzz.yml`, `cflite_*.yml`) fuzzes on pull requests.
+
 ### Full cross-platform build (reference; needs a Vulkan-capable host, not this VM)
 
 Use the presets in `CMakePresets.json`. On Linux with the Vulkan SDK installed and `VULKAN_SDK`

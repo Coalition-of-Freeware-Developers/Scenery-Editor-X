@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doc>
+  <objects>
+    <object class="WED_Root" id="1" parent_id="0"><children><child id="2"/><child id="3"/><child id="4"/></children><hierarchy name="root"/></object>
+    <object class="WED_Select" id="2" parent_id="1"><children/><hierarchy name="selection"/><selection/></object>
+    <object class="WED_KeyObjects" id="3" parent_id="1"><children/><hierarchy name="choices"/><keys/></object>
+    <object class="WED_Group" id="4" parent_id="1"><children><child id="10"/><child id="50"/><child id="51"/><child id="52"/></children><hierarchy name="world" locked="0" hidden="0"/></object>
+    <object class="WED_Airport" id="10" parent_id="4"><children><child id="11"/><child id="20"/></children><hierarchy name="Split Test" locked="0" hidden="0"/><airport kind="Airport" elevation="10.0" has_atc="0" icao="XSPL" always_flatten="0" drive_on_left="1" scenery_id="-1"/><meta_data/></object>
+    <object class="WED_Taxiway" id="11" parent_id="10"><children><child id="12"/></children><hierarchy name="Split" locked="0" hidden="0"/><taxiway surface="Concrete" roughness="0.25" heading="0.0"/></object>
+    <object class="WED_AirportChain" id="12" parent_id="11"><children><child id="13"/><child id="14"/><child id="15"/></children><hierarchy name="Ring" locked="0" hidden="0"/><airport_chain closed="1"/></object>
+    <object class="WED_AirportNode" id="13" parent_id="12"><children/><hierarchy name="Node 1" locked="0" hidden="0"/><point latitude="10.0" longitude="20.0" split="0" ctrl_latitude_lo="0.0" ctrl_longitude_lo="0.0" ctrl_latitude_hi="0.0" ctrl_longitude_hi="0.0"/><markings><marking value="Solid Yellow"/></markings></object>
+    <object class="WED_AirportNode" id="14" parent_id="12"><children/><hierarchy name="Node 2" locked="0" hidden="0"/><point latitude="10.001" longitude="20.0" split="1" ctrl_latitude_lo="-0.0001" ctrl_longitude_lo="0.0" ctrl_latitude_hi="0.0" ctrl_longitude_hi="0.0002"/><markings><marking value="Red Line"/><marking value="Taxiway Edge Lights (Blue)"/></markings></object>
+    <object class="WED_AirportNode" id="15" parent_id="12"><children/><hierarchy name="Node 3" locked="0" hidden="0"/><point latitude="10.001" longitude="20.001" split="0" ctrl_latitude_lo="0.0" ctrl_longitude_lo="0.0" ctrl_latitude_hi="0.0" ctrl_longitude_hi="0.0"/><markings/></object>
+    <object class="WED_Windsock" id="20" parent_id="10"><children/><hierarchy name="Hidden sock" locked="0" hidden="1"/><point latitude="10.0005" longitude="20.0005"/><windsock lit="1"/></object>
+    <object class="WED_RoadNode" id="50" parent_id="4"><viewers><viewer id="52"/></viewers><children/><hierarchy name="Road A" locked="0" hidden="0"/><point latitude="10.002" longitude="20.002"/></object>
+    <object class="WED_RoadNode" id="51" parent_id="4"><viewers><viewer id="52"/></viewers><children/><hierarchy name="Road B" locked="0" hidden="0"/><point latitude="10.003" longitude="20.003"/></object>
+    <object class="WED_RoadEdge" id="52" parent_id="4"><sources><source id="50"/><source id="51"/></sources><children/><hierarchy name="Road" locked="0" hidden="0"/><road_edge layer="0" end_layer="0" sub_type="1" resource="lib/g10/roads.net"/></object>
+  </objects>
+  <prefs><pref name="map/north" value="10.1"/><pref name="map_Exclusion Zones_Exclusions"><item value="174"/><item value="175"/></pref></prefs>
+</doc>

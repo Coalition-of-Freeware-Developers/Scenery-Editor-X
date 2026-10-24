@@ -1,0 +1,35 @@
+# ClusterFuzzLite batch fuzzing: every harness in source/Fuzz for an hour each night (and on demand), so the fuzzers
+# get far past what a PR run reaches. Crashes come back as SARIF results and artifacts. Without a storage repository
+# each run starts from the committed and generated seeds; add one (below) to keep the corpus between runs.
+name: ClusterFuzzLite batch fuzzing
+on:
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+permissions: read-all
+jobs:
+  BatchFuzzing:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        sanitizer: [ address, undefined ]
+    steps:
+      - name: Build fuzzers (${{ matrix.sanitizer }})
+        id: build
+        uses: google/clusterfuzzlite/actions/build_fuzzers@v1
+        with:
+          language: c++
+          sanitizer: ${{ matrix.sanitizer }}
+      - name: Run fuzzers (${{ matrix.sanitizer }})
+        id: run
+        uses: google/clusterfuzzlite/actions/run_fuzzers@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          fuzz-seconds: 3600
+          mode: batch
+          sanitizer: ${{ matrix.sanitizer }}
+          output-sarif: true
+          # storage-repo: https://${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/Coalition-of-Freeware-Developers/Scenery-Editor-X-fuzz-corpus.git
+          # storage-repo-branch: main
+          # storage-repo-branch-coverage: gh-pages

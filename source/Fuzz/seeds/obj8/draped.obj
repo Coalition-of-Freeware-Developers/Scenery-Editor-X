@@ -1,0 +1,17 @@
+I
+800
+OBJ
+
+TEXTURE_DRAPED markings.png
+TEXTURE_DRAPED_NORMAL 1.0 markings_NML.png
+ATTR_layer_group_draped markings 2
+POINT_COUNTS 4 0 0 6
+
+VT 0 0 0 0 1 0 0 0
+VT 4 0 0 0 1 0 1 0
+VT 4 0 4 0 1 0 1 1
+VT 0 0 4 0 1 0 0 1
+
+IDX10 0 1 2 0 2 3
+ATTR_draped
+TRIS 0 6

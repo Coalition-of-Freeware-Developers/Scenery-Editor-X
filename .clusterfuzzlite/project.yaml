@@ -1,0 +1,4 @@
+# ClusterFuzzLite: builds source/Fuzz in OSS-Fuzz's image and runs the libFuzzer harnesses (see source/Fuzz/README.md).
+# Ubuntu 24.04 images: GCC 13's standard library has the C++20 pieces the parsers use (floating-point from_chars).
+language: c++
+base_os_version: ubuntu-24-04

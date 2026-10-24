@@ -1,0 +1,13 @@
+# .sex magic, chunk tags
+# Written from the parser's string literals (see source/Fuzz/README.md); libFuzzer / AFL++ dictionary format.
+
+"\xC2\x89SEX\x0D\x0A\x1A\x0A"
+"\x01\x00"
+"\x00\x00"
+"INFO"
+"LIBS"
+"APRT"
+"ITEM"
+"LIBR"
+"\x00\x00\x00\x00\x00\x00\x00\x00"
+"\xC3\xBF\xC3\xBF\xC3\xBF\xC3\xBF"

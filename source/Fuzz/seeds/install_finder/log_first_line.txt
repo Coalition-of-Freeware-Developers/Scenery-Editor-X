@@ -1,0 +1,1 @@
+Log.txt for X-Plane 12.4.3-r2-15ff1e4d (build 124302 win64 Vulkan)

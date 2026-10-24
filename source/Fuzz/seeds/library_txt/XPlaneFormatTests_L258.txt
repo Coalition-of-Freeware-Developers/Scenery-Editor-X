@@ -1,0 +1,17 @@
+A
+1200
+LIBRARY
+
+EXPORT lib/test/object.obj		objects/my object.obj
+EXPORT_RATIO 2 lib/test/object.obj	objects/variant.obj
+EXPORT_BACKUP lib/test/backup.obj	objects/backup.obj
+REGION_DEFINE test_region
+REGION_RECT -10 40 5 50
+REGION test_region
+EXPORT_EXCLUDE lib/test/object.obj	objects/regional.obj
+PRIVATE
+EXPORT_SEASON win,spr lib/test/tree.for	forests/cold.for
+DEPRECATED
+EXPORT lib/test/old.fac	facades/old.fac
+PUBLIC 20240101
+EXPORT lib/test/new.pol	polygons/new.pol

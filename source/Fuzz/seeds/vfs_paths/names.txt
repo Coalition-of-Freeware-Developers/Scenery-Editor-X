@@ -1,0 +1,19 @@
+Earth nav data/apt.dat
+project:/Earth nav data/apt.dat
+xplane:Resources/default scenery
+../outside
+a/../../b
+a/./b//c\d
+C:/Windows/x
+a/../C:/x
+\\server\share\x
+CON.txt
+name. 
+objects/hangar.obj
+user:/settings.cfg
+Zoë/日本/✈.obj
+.
+..
+
+mount:
+:/x

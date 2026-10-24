@@ -1,0 +1,10 @@
+{
+		// Comments are fine
+		"Project": { "name": "Hand edited", "kind": "library" },
+		"Assets": [
+			{ "type": "object", "id": "x1", "name": "Typo", "latitude": "44.5", "longitude": true, "show-level": 2.0, "colour": "red" },
+			{ "type": "teleporter", "id": "x2" },
+			{ "type": "polygon", "id": "x3", "rings": [[[1, 2], [3, 4], {"latitude": 5, "longitude": 6, "hi": [0.1, 0.2]}]] }
+		],
+		"Mystery": 1
+	}

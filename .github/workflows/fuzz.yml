@@ -1,0 +1,115 @@
+# Fuzzing on every platform Scenery Editor X ships for (see source/Fuzz/README.md):
+#   Windows   MSVC libFuzzer + AddressSanitizer: corpus replay, property tests, a minute of fuzzing per harness
+#   macOS     Homebrew LLVM libFuzzer + ASan/UBSan: the same
+#   Linux     GCC + ASan/UBSan with the standalone driver (corpus replay, property tests), and AFL++ for a minute per
+#             harness. ClusterFuzzLite (cflite_*.yml) runs libFuzzer on Linux.
+# A crash or hang fails the job; the reproducers are uploaded as artifacts.
+name: Fuzzing
+on:
+  pull_request:
+    branches: [ dev, master ]
+    paths:
+      - 'source/SceneryEditorX/xplane/**'
+      - 'source/SceneryEditorX/project/**'
+      - 'source/SceneryEditorX/filesystem/vfs.*'
+      - 'source/Fuzz/**'
+      - '.github/workflows/fuzz.yml'
+  push:
+    branches: [ dev ]
+    paths:
+      - 'source/SceneryEditorX/xplane/**'
+      - 'source/SceneryEditorX/project/**'
+      - 'source/SceneryEditorX/filesystem/vfs.*'
+      - 'source/Fuzz/**'
+  workflow_dispatch:
+    inputs:
+      seconds:
+        description: Seconds each harness fuzzes
+        default: '60'
+permissions: read-all
+env:
+  FUZZ_SECONDS: ${{ github.event.inputs.seconds || '60' }}
+jobs:
+  windows-msvc:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: zlib (vcpkg)
+        run: vcpkg install zlib:x64-windows
+      - name: Configure
+        shell: pwsh
+        run: cmake -S source/Fuzz -B build/fuzz -A x64 -DSEDX_FUZZ_SMOKE_SECONDS=${{ env.FUZZ_SECONDS }} "-DCMAKE_PREFIX_PATH=$env:VCPKG_INSTALLATION_ROOT/installed/x64-windows"
+      - name: Build
+        run: cmake --build build/fuzz --config RelWithDebInfo --parallel
+      - name: Replay the corpora, run the property tests
+        run: ctest --test-dir build/fuzz -C RelWithDebInfo -LE fuzz-smoke --output-on-failure -j4
+      - name: Fuzz each harness
+        run: ctest --test-dir build/fuzz -C RelWithDebInfo -L fuzz-smoke --output-on-failure -j4
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: fuzz-findings-windows
+          path: build/fuzz/fuzz-work/*/artifacts
+          if-no-files-found: ignore
+
+  macos-llvm:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Homebrew LLVM (Apple's Clang has no libFuzzer)
+        run: brew install llvm ninja
+      - name: Configure
+        run: |
+          LLVM="$(brew --prefix llvm)"
+          cmake -S source/Fuzz -B build/fuzz -G Ninja \
+            -DCMAKE_C_COMPILER="$LLVM/bin/clang" -DCMAKE_CXX_COMPILER="$LLVM/bin/clang++" \
+            -DCMAKE_EXE_LINKER_FLAGS="-L$LLVM/lib/c++ -L$LLVM/lib/unwind -lunwind -Wl,-rpath,$LLVM/lib/c++" \
+            -DSEDX_FUZZ_SMOKE_SECONDS=${{ env.FUZZ_SECONDS }}
+      - name: Build
+        run: cmake --build build/fuzz --parallel
+      - name: Replay the corpora, run the property tests
+        run: ctest --test-dir build/fuzz -LE fuzz-smoke --output-on-failure -j3
+      - name: Fuzz each harness
+        run: ctest --test-dir build/fuzz -L fuzz-smoke --output-on-failure -j3
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: fuzz-findings-macos
+          path: build/fuzz/fuzz-work/*/artifacts
+          if-no-files-found: ignore
+
+  linux-gcc:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Tools
+        run: sudo apt-get update && sudo apt-get install -y ninja-build zlib1g-dev
+      - name: Configure (GCC with the standalone replay driver, ASan + UBSan)
+        run: cmake -S source/Fuzz -B build/fuzz -G Ninja -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++
+      - name: Build
+        run: cmake --build build/fuzz --parallel
+      - name: Replay the corpora, run the property tests
+        run: ctest --test-dir build/fuzz --output-on-failure -j4
+
+  linux-aflplusplus:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: AFL++
+        run: |
+          sudo apt-get update && sudo apt-get install -y afl++ ninja-build zlib1g-dev
+          echo core | sudo tee /proc/sys/kernel/core_pattern
+      - name: Configure
+        run: CC=afl-clang-fast CXX=afl-clang-fast++ cmake -S source/Fuzz -B build/afl -G Ninja -DSEDX_FUZZ_ENGINE=afl -DSEDX_FUZZ_PROPERTIES=OFF
+      - name: Build
+        run: cmake --build build/afl --parallel
+      - name: Fuzz each harness
+        run: bash source/Fuzz/scripts/run_afl.sh build/afl ${{ env.FUZZ_SECONDS }} 4
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: fuzz-findings-aflplusplus
+          path: |
+            build/afl/afl-work/*/out/default/crashes
+            build/afl/afl-work/*/out/default/hangs
+          if-no-files-found: ignore

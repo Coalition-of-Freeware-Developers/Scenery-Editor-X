@@ -1,0 +1,48 @@
+A
+800
+OBJ
+
+TEXTURE tower.png
+TEXT¢RE_LIT tI
+800
+OBJ
+
+TEXTURE	textures/test_ALB.png
+TEXTURE_NORMAL	textures/test_NML.png
+NORMAL_METALNESS
+TDX	4
+IDX	5
+
+ATTR_LOD	0	1000
+TRIS	0 3
+ANIM_begin
+	ANIM_rotate_begin	0 1 0	sim/time/total_running_time_sec
+	ANIM_rotate_key	0	0
+	ANIM_rotate_key	4	360
+	ANIM_keyframe_loop	4
+	ANIM_rotate_end
+	ANIM_hide	0 0.5	sim/time/total_running_time_sec
+	ANIM_keyframe_loop	1
+	TRIS	3 3
+ANIM_end
+ATTR_no_cull
+TRIS	0 3
+ 0 0 1 0 1 sime_sec
+	ANIM_rotate_key	0	0
+	ANIM_rotate_key	4	360
+	ANIM_keyframe_loop	4
+	ANIM_rotate_end
+	ANIM_hide	0 0.5	sim/time/total_running_time_sec
+	ANIM_keyframe_loop	1
+	TRIS	3 3
+ANIM_end
+ATTR_no_cull
+TRIS	0 3
+ 0 0 1 0 1 sim/lights/beacon
+LIGHTS 0 2
+ANIM_end
+ATTR_LGD 2000 8000
+ATTR_no_cull
+ATTR_shadow
+ATTR_layer_grbjpueoo cts 1
+TRIS 0 3

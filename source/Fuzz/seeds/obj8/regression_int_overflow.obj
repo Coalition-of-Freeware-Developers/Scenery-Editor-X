@@ -1,0 +1,30 @@
+I
+8001e30
+
+TEXTURE	teAANIM_trans_begin
+800
+OBJ
+
+TEXTURE tower.png
+TEXT¢RE_LIT tI
+800
+OBJ
+
+TEXTUn
+LIGHTS 0 2
+ANIM_end
+ATTR_LOD 2000 8000
+ATTR_no_cull
+ATTR_shadow
+ATTR_layer_grouX	2
+IDX	5
+
+ATTR_LOD	0	1000
+TRIS	0 3
+ANIM_begin
+	ANIM_rotate_begin	0 1 0	sim/xture’/test_ALB.png
+TEXTURE_NORMAL	texturtime/total_running_time_sec
+	ANIM_rotate_key	0	0es/test_NML.png
+N1 1 0	1 0
+VT	0 1 1	0 1 0	
+	ANIM_rot0a

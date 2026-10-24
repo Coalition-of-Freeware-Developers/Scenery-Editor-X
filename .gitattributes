@@ -89,3 +89,8 @@
 *.edX   text eol=lf
 *.edx   text eol=lf
 *.sex   binary
+
+###############################################################################
+# Fuzz seeds are inputs byte for byte: never convert their line endings
+###############################################################################
+source/Fuzz/seeds/** -text

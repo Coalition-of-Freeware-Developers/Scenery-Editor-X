@@ -1,0 +1,48 @@
+# ClusterFuzzLite PR fuzzing: builds the libFuzzer harnesses in source/Fuzz (OSS-Fuzz's Linux image) with
+# AddressSanitizer and UndefinedBehaviorSanitizer and fuzzes the harnesses a pull request touches. A crash is reported
+# on the PR with its reproducer. See source/Fuzz/README.md.
+name: ClusterFuzzLite PR fuzzing
+on:
+  pull_request:
+    branches: [ dev, master ]
+    paths:
+      - 'source/SceneryEditorX/xplane/**'
+      - 'source/SceneryEditorX/project/**'
+      - 'source/SceneryEditorX/filesystem/vfs.*'
+      - 'source/Fuzz/**'
+      - '.clusterfuzzlite/**'
+      - '.github/workflows/cflite_pr.yml'
+  workflow_dispatch:
+permissions: read-all
+jobs:
+  PR:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: ${{ github.workflow }}-${{ matrix.sanitizer }}-${{ github.ref }}
+      cancel-in-progress: true
+    strategy:
+      fail-fast: false
+      matrix:
+        sanitizer: [ address, undefined ]
+    steps:
+      - name: Build fuzzers (${{ matrix.sanitizer }})
+        id: build
+        uses: google/clusterfuzzlite/actions/build_fuzzers@v1
+        with:
+          language: c++
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          sanitizer: ${{ matrix.sanitizer }}
+          # With a corpus storage repository, only the fuzzers a PR affects run, starting from the batch corpus:
+          # storage-repo: https://${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/Coalition-of-Freeware-Developers/Scenery-Editor-X-fuzz-corpus.git
+          # storage-repo-branch: main
+      - name: Run fuzzers (${{ matrix.sanitizer }})
+        id: run
+        uses: google/clusterfuzzlite/actions/run_fuzzers@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          fuzz-seconds: 600
+          mode: code-change
+          sanitizer: ${{ matrix.sanitizer }}
+          output-sarif: true
+          # storage-repo: https://${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/Coalition-of-Freeware-Developers/Scenery-Editor-X-fuzz-corpus.git
+          # storage-repo-branch: main
