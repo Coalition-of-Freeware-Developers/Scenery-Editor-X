@@ -102,13 +102,13 @@ namespace SceneryEditorX
 		m_Window->SetEventCallback([this](Event &e) { OnEvent(e); });
 		m_IsMinimized = false;
 
+		// The renderer's bootstrap uses the resource directories (standard meshes, textures, font), so they are
+		// registered first (only path strings, built from the working directory set above)
+		ResourceCache::Init();
+
 		// Initialize RenderContext first so device/instance exist for Renderer
 		RenderContext::Init();
 		Renderer::Init();
-
-		// The renderer's font is read from the resource directories (fonts), so it is created once they are registered
-		ResourceCache::Init();
-		Renderer::CreateFonts();
 		m_RenderThread.Run();
 
 		// The UI layer needs the renderer's swapchain and the resource directories (fonts), so it attaches last.

@@ -123,6 +123,7 @@ namespace SceneryEditorX
 		 * 
 		 * Creates Vulkan instance, device, swapchain, command pools, sync objects,
 		 * and all per-frame resources. Must be called once before any other Renderer method.
+		 * @note Call after ResourceCache::Init(): the standard meshes, textures and font are read from its directories.
 		 */
 		static void Init();
 
@@ -133,12 +134,6 @@ namespace SceneryEditorX
 		 * After calling Shutdown, Init must be called again before rendering.
 		 */
 		static void Shutdown();
-
-		/**
-		 * @brief Creates fonts used by the renderer.
-		 * @note Call after Init() and ResourceCache::Init(): the font is read from ResourceDirectory::Fonts.
-		 */
-		static void CreateFonts();
 
 		/**
 		 * @brief Per-frame tick for memory/resource management.
@@ -526,6 +521,11 @@ namespace SceneryEditorX
 		 * @brief Creates standard meshes used by the renderer.
 		 */
 		static void CreateStandardMeshes();
+
+		/**
+		 * @brief Creates fonts used by the renderer.
+		 */
+		static void CreateFonts();
 
 		/* 
 		 * @brief Creates standard materials used by the renderer. 

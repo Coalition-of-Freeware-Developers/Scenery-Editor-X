@@ -577,12 +577,13 @@ void dynamic_resolution()
 
 			// Bootstrap path: initialize critical resources synchronously so first frames
 			// always have quad mesh + essential shaders available.
+			// The standard meshes, textures and font use the directories ResourceCache::Init() registered before Init().
 			m_ResourcesInitialized = false;
 			CreateStandardMeshes();
 			CreateStandardTextures();
 			CreateStandardMaterials();
-			// FreeType for CreateFonts(), which the application calls once ResourceCache::Init() has set the font folder
 			FontImporter::Initialize();
+			CreateFonts();
 			LoadShaders();
 			m_ResourcesInitialized = true;
 
