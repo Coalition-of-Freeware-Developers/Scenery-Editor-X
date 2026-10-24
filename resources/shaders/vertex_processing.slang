@@ -100,6 +100,25 @@ struct gbuffer_vertex
     nointerpolation uint pick_id : TEXCOORD4;        // editor picking: the drawing entity's index + 1 (DrawData::pick_id), 0 = none
 };
 
+// what the depth-only passes' alpha test reads (depth_prepass.slang, depth_light.slang): their vertex stages export
+// this rather than the whole gbuffer_vertex, so they write no interpolants the fragment stage never reads
+// (validation: WARNING-Shader-OutputNotConsumed)
+struct depth_vertex
+{
+    precise float4 position : SV_POSITION;
+    float4 uv_misc : TEXCOORD;
+    nointerpolation uint material_index : TEXCOORD3;
+};
+
+depth_vertex to_depth_vertex(gbuffer_vertex vertex)
+{
+    depth_vertex output;
+    output.position       = vertex.position;
+    output.uv_misc        = vertex.uv_misc;
+    output.material_index = vertex.material_index;
+    return output;
+}
+
 float4x4 compose_instance_transform(float instance_position_x, float instance_position_y, float instance_position_z, uint instance_normal_oct, uint instance_yaw, uint instance_scale)
 {
     // compose position

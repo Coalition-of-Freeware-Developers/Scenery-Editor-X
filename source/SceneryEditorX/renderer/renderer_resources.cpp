@@ -877,6 +877,9 @@ namespace SceneryEditorX
 		for (Ref<ImageResource>& texture : s_StandardTextures)
 			texture.Reset();
 
+		// Its atlas images and buffers must go before the device, not in the CRT's static destructors
+		s_StandardFont.Reset();
+
 		for (Ref<Sampler>& sampler : s_Samplers)
 			sampler.Reset();
 

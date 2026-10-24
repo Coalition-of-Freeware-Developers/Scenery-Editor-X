@@ -39,19 +39,19 @@ import gpu_scene;
 #if defined(GPU_SCENE)
 // instanced indirect draws of the GPU scene (gpu_cull.slang picked the instances), vertices pulled from the global buffer
 [shader("vertex")]
-gbuffer_vertex main_vs(uint vertex_id : SV_VertexID, uint base_vertex : SV_StartVertexLocation, uint draw_instance : SV_InstanceID, uint base_instance : SV_StartInstanceLocation)
+depth_vertex main_vs(uint vertex_id : SV_VertexID, uint base_vertex : SV_StartVertexLocation, uint draw_instance : SV_InstanceID, uint base_instance : SV_StartInstanceLocation)
 {
     const uint instance_id = gpu_scene_load_draw(draw_instance, base_instance);
     Vertex_PosUvNorTan input = pull_vertex(vertex_id + base_vertex);
 #elif defined(INDIRECT_DRAW)
 [shader("vertex")]
-gbuffer_vertex main_vs(uint vertex_id : SV_VertexID, uint base_vertex : SV_StartVertexLocation, uint instance_id : SV_InstanceID, [[vk::builtin("DrawIndex")]] uint draw_id : DRAW_INDEX, uint view_id : SV_ViewID)
+depth_vertex main_vs(uint vertex_id : SV_VertexID, uint base_vertex : SV_StartVertexLocation, uint instance_id : SV_InstanceID, [[vk::builtin("DrawIndex")]] uint draw_id : DRAW_INDEX, uint view_id : SV_ViewID)
 {
     _draw = indirect_draw_data_out[draw_id];
     Vertex_PosUvNorTan input = pull_vertex(vertex_id + base_vertex);
 #else
 [shader("vertex")]
-gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID, uint view_id : SV_ViewID)
+depth_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID, uint view_id : SV_ViewID)
 {
     _draw = draw_data[buffer_pass.draw_index];
 #endif
@@ -60,11 +60,11 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceI
     float3 position_world_previous = 0.0f;
     gbuffer_vertex vertex          = transform_to_world_space(input, instance_id, _draw.transform, position_world, position_world_previous);
     vertex.material_index          = _draw.material_index;
-    return transform_to_clip_space(vertex, position_world, position_world_previous);
+    return to_depth_vertex(transform_to_clip_space(vertex, position_world, position_world_previous));
 }
 
 [shader("fragment")]
-void main_frag(gbuffer_vertex vertex)
+void main_frag(depth_vertex vertex)
 {
     pass_load_draw_data_from_vertex(vertex.material_index);
 
