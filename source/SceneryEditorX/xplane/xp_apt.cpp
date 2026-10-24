@@ -1714,9 +1714,12 @@ namespace SceneryEditorX::XPlane
 
 		for (const AptFrequency &frequency : airport.frequencies)
 		{
-			// COM band, plus the NAV band some airports broadcast ATIS on.
-			if (frequency.frequencyKhz < 108000 || frequency.frequencyKhz > 136990)
-				problem("Frequency " + frequency.name + ": " + std::to_string(frequency.frequencyKhz) + " kHz is outside the COM / NAV bands");
+			// The VHF air band (recorded weather also on the NAV band, as VORs broadcast it) or military UHF, as WorldEditor allows
+			const int khz = frequency.frequencyKhz;
+			const int lowest = frequency.type == AptFrequency::Type::Recorded ? 108000 : 118000;
+			if (khz < lowest || khz >= 1000000 || (khz >= 137000 && khz < 200000))
+				problem("Frequency " + frequency.name + ": " + std::to_string(khz) + " kHz is outside the COM / NAV bands (" + std::to_string(lowest / 1000) +
+					" .. 137 or 200 .. 1000 MHz)");
 		}
 
 		for (const AptStartup &startup : airport.startups)

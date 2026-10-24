@@ -29,6 +29,7 @@
  * -------------------------------------------------------
  */
 #pragma once
+#include <array>
 #include <cstdint>
 #include <filesystem>
 #include <string>
@@ -74,6 +75,7 @@ namespace SceneryEditorX::XPlane
 		bool tiled = false;					// TEXTURE_TILE / RUNWAY_TILE present
 		int tilesX = 1;						// The texture is an atlas of tilesX x tilesY variants, each covering SCALE
 		int tilesY = 1;						// meters (drawn in atlas order here; X-Plane picks them at random)
+		std::vector<std::array<float, 4>> subtextures;	// "#subtex s1 t1 s2 t2": WorldEditor's automatic orthophoto subtextures (s1 < s2, t1 < t2)
 	};
 
 	bool ParsePolygonAsset(std::string_view text, PolygonAsset &out, std::string *error = nullptr);

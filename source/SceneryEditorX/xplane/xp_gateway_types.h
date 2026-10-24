@@ -141,6 +141,9 @@ namespace SceneryEditorX::XPlane
 	/* @brief Standard base64 (with or without padding, whitespace ignored). False on a bad character. */
 	bool DecodeBase64(std::string_view text, std::vector<uint8_t> &out);
 
+	/* @brief Standard base64 with '=' padding and no line breaks (what the Gateway's masterZipBlob takes). */
+	std::string EncodeBase64(const std::vector<uint8_t> &bytes);
+
 	/* @brief Web page of an airport / submission on the Gateway. */
 	std::string GetGatewayAirportPageUrl(std::string_view code);
 	std::string GetGatewaySceneryPageUrl(int sceneryId);

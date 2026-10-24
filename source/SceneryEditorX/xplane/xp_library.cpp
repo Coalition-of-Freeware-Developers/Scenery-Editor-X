@@ -379,9 +379,15 @@ namespace SceneryEditorX::XPlane
 				continue;
 			}
 
-			if (cmd == "PRIVATE")			{ isPrivate = true; continue; }
-			if (cmd == "DEPRECATED")		{ deprecated = true; continue; }
-			if (cmd == "SEMI_DEPRECATED")	{ semiDeprecated = true; continue; }
+			// Each status replaces the one before it (WorldEditor keeps one current status): "1000 autogen" has DEPRECATED
+			// exports followed by SEMI_DEPRECATED ones with no PUBLIC between them
+			if (cmd == "PRIVATE" || cmd == "DEPRECATED" || cmd == "SEMI_DEPRECATED")
+			{
+				isPrivate = cmd == "PRIVATE";
+				deprecated = cmd == "DEPRECATED";
+				semiDeprecated = cmd == "SEMI_DEPRECATED";
+				continue;
+			}
 
 			warn("Unknown command '" + std::string(cmd) + "'");
 		}

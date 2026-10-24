@@ -34,6 +34,8 @@
 #include <ctime>
 #include <portable-file-dialogs.h>
 #include <Editor/core/editor_airports.h>
+#include <Editor/core/editor_gateway.h>
+#include <Editor/core/editor_gateway_submit.h>
 #include <Editor/core/editor_scene.h>
 #include <Editor/core/editor_theme.h>
 #include <Editor/core/editor_ui.h>
@@ -451,6 +453,10 @@ namespace SceneryEditorX
 
 	void AirportPanel::DrawGatewayTab()
 	{
+		// Who's signed in, and on which server (test servers say so loudly)
+		EditorGateway::DrawStatusLine();
+		ImGui::Separator();
+
 		// Airport list status
 		const std::shared_ptr<const std::vector<GatewayAirport>> list = GatewayClient::GetAirports();
 		if (m_AirportsRequest && m_AirportsRequest->IsFinished())
@@ -471,7 +477,7 @@ namespace SceneryEditorX
 		if (ImGui::Button(EditorUI::IconLabel(SEDX_ICON_CLOUD_DOWNLOAD, list ? "Refresh list" : "Download list").c_str()))
 			m_AirportsRequest = GatewayClient::FetchAirports(true);
 		ImGui::EndDisabled();
-		EditorUI::ItemTooltip("Fetch https://gateway.x-plane.com/apiv1/airports (kept for a day)");
+		EditorUI::ItemTooltip(("Fetch " + GatewayClient::GetServer().apiUrl + "/airports (kept for a day)").c_str());
 
 		// Search
 		EditorUI::SearchFilter("##GatewaySearch", m_GatewayFilter, ImGui::GetContentRegionAvail().x * 0.4f);
@@ -606,6 +612,19 @@ namespace SceneryEditorX
 			ImGui::OpenPopup(INSTALL_POPUP);
 		}
 		ImGui::EndDisabled();
+		ImGui::SameLine();
+		{
+			// Into the project, where the airport keeps the submission's scenery id (the parent of the next upload)
+			const int importing = EditorGatewaySubmit::GetImportInProgress();
+			const int importId = m_SelectedScenery != 0 ? m_SelectedScenery : recommended ? recommended->sceneryId : 0;
+			ImGui::BeginDisabled(importing != 0 || importId == 0);
+			if (ImGui::Button(EditorUI::IconLabel(SEDX_ICON_PLUS, "Import into Project").c_str()))
+				EditorGatewaySubmit::ImportSubmission(importId, m_Context);
+			ImGui::EndDisabled();
+			EditorUI::ItemTooltip(importing != 0 ? ("Importing submission " + std::to_string(importing) + "...").c_str()
+				: "Add the selected (or recommended) submission to the open project, or a new one: its airport and its DSF scenery, "
+				  "remembering the submission as the parent of your next upload");
+		}
 
 		if (pending && pending->request)
 		{

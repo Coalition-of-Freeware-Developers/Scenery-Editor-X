@@ -43,11 +43,25 @@ The dependency-light, cross-platform Catch2 unit suites that only need `source/`
   `[library-sweep]`, a few seconds; exclude with `"~[library-sweep]"`); `xp_facade_authoring.*` type 1 facades from a
   texture (panel edges, roofs), type 2 sidewalks / curbs generated from a cross-section), and finding X-Plane 11 / 12
   installs (`InstallFinderTests.cpp`: `xp_install_finder.*` install lists, Steam libraryfolders.vdf / appmanifests,
-  uninstall entries and usual folders, deduplicated and ranked complete / newest version / most recently run first)
+  uninstall entries and usual folders, deduplicated and ranked complete / newest version / most recently run first),
+  Scenery Gateway accounts and uploads (`GatewayAccountTests.cpp`: `xp_gateway_server.*` server URLs and the
+  http-only-on-loopback rule, `xp_gateway_account.*` the account settings file (never a password), `xp_gateway_submission.*`
+  WED's PUT /apiv1/scenery body, reading 200 / 401 / 404 answers, the live-upload guard, stored zips and the master
+  zip; requests only ever go to a fake in-process transport), Gateway validation (`GatewayValidationTests.cpp`:
+  `xp_gateway_validation.*` WorldEditor's "Airport Scenery Gateway" checks: names / IDs, boundary, extent, default-library
+  art via a `LibraryIndex`, roads, 1302 metadata), Gateway packaging (`GatewayPackageTests.cpp`: `xp_gateway_package.*`
+  type / features, the master zip with DSF2Text and the pack, deflated zips (`xp_zip.*`), `WriteDsfText`, the X-Plane build
+  from Log.txt, a pack's DSF content per airport) and the secure credential store
+  (`CredentialStoreTests.cpp`: `core/platform/credential_store.*`; the hidden `[.keychain]` case writes and deletes
+  one entry in the real Windows Credential Manager / macOS keychain / Secret Service, run it explicitly)
   (`SceneryEditorX/xplane/xp_obj8.*`, `xp_library.*`, `xp_lights.*`, `xp_apt.*`, `xp_apt_geometry.*`,
   `xp_airport_index.*`, `xp_gateway_types.*`, `xp_dsf.*`, `xp_assets.*`, `xp_overlay.*`, plus `filesystem/vfs.*`,
   which every reader goes through for case-insensitive lookups and atomic writes). Standard library
-  plus the header-only `dependency/json` submodule, fully green.
+  plus the header-only `dependency/json` submodule, zlib (`-lz`: zip archives) and the OS credential API (advapi32 on
+  Windows, the Security framework on macOS, `-ldl` on Linux for libsecret), fully green.
+- **Scenery Gateway test server** (`scripts/gateway_mock`) - a stand-in for gateway.x-plane.com on the loopback
+  interface (see its README). Its own tests: `python scripts/gateway_mock/test_gateway_mock.py` (standard library).
+  Never point tests or test uploads at the public Gateway.
 - **`ProjectFormatTests`** (`source/Tests/project_tests`) — the project file formats: the `.edX` JSON
   reader/writer (determinism, git-friendly layout, the documented legacy layout), the `.sex` binary format
   (checksums, damage / truncation / CRLF detection, fuzzing, the encode cache), the XML DOM, WorldEditor
@@ -63,10 +77,14 @@ The dependency-light, cross-platform Catch2 unit suites that only need `source/`
   rectangles / circles counter-clockwise from their front, curved walls cut into 0.5 - 0.8 m pieces (the 3D sidewalk
   recipe), squared corners, front wall, offsets, wall types moved by name), the cross-platform VFS (`VfsTests.cpp`: `filesystem/vfs.*` mounts, virtual
   paths, portable names, case-insensitive lookups, atomic writes, platform folders; the twin-spelling case only
-  runs on a case-sensitive disk) and scenery packs (`SceneryPackTests.cpp`: `project/scenery_pack.*` new airport
-  projects, coordinate parsing, export to apt.dat + DSF tiles + copied art) (`SceneryEditorX/project/*` plus
+  runs on a case-sensitive disk), scenery packs (`SceneryPackTests.cpp`: `project/scenery_pack.*` new airport
+  projects, coordinate parsing, export to apt.dat + DSF tiles + copied art), DSF -> project items (`DsfImportTests.cpp`:
+  `ImportDsfItems` in `project/project_dsf.*`, the inverse of the project -> DSF conversion, round trips for every item
+  kind) and the Scenery Gateway (`GatewayProjectTests.cpp`: `project/project_gateway.*` per-server scenery ids in .edX /
+  .sex, what an airport uploads, importing a submission) (`SceneryEditorX/project/*` plus
   `filesystem/vfs.*`, `xplane/xp_apt.*`, `xp_library.*`, `xp_apt_geometry.*`, `xp_airport_document.*`,
-  `xp_airport_index.*`, `xp_dsf.*`, `xp_assets.*`, `xp_overlay.*`). Standard library plus `dependency/json`, fully green. Its
+  `xp_airport_index.*`, `xp_dsf.*`, `xp_assets.*`, `xp_overlay.*`, `xp_gateway_*.*`, `xp_zip.*`). Standard library plus
+  `dependency/json` and zlib, fully green. Its
   `[performance]` case times a 22k-item project; exclude it with `"~[performance]"` for quick runs.
 
 The other suites are **not** Linux-buildable as written: `SettingsTest` links Windows libs
@@ -132,6 +150,12 @@ g++ -std=c++20 -O2 -pthread $INCS source/Tests/xplane_tests/XPlaneFormatTests.cp
     source/Tests/xplane_tests/AirportTests.cpp source/Tests/xplane_tests/OverlayTests.cpp \
     source/Tests/xplane_tests/DsfWriterTests.cpp source/Tests/xplane_tests/FacadeTests.cpp \
     source/Tests/xplane_tests/FacadeWriterTests.cpp source/Tests/xplane_tests/InstallFinderTests.cpp \
+    source/Tests/xplane_tests/GatewayAccountTests.cpp source/Tests/xplane_tests/CredentialStoreTests.cpp \
+    source/Tests/xplane_tests/GatewayValidationTests.cpp source/Tests/xplane_tests/GatewayPackageTests.cpp \
+    source/SceneryEditorX/core/platform/credential_store.cpp source/SceneryEditorX/xplane/xp_gateway_server.cpp \
+    source/SceneryEditorX/xplane/xp_gateway_account.cpp source/SceneryEditorX/xplane/xp_gateway_submission.cpp \
+    source/SceneryEditorX/xplane/xp_gateway_validation.cpp source/SceneryEditorX/xplane/xp_gateway_package.cpp \
+    source/SceneryEditorX/xplane/xp_zip.cpp \
     source/SceneryEditorX/filesystem/vfs.cpp \
     source/SceneryEditorX/xplane/xp_obj8.cpp source/SceneryEditorX/xplane/xp_library.cpp \
     source/SceneryEditorX/xplane/xp_lights.cpp source/SceneryEditorX/xplane/xp_apt.cpp \
@@ -139,7 +163,7 @@ g++ -std=c++20 -O2 -pthread $INCS source/Tests/xplane_tests/XPlaneFormatTests.cp
     source/SceneryEditorX/xplane/xp_gateway_types.cpp source/SceneryEditorX/xplane/xp_dsf.cpp \
     source/SceneryEditorX/xplane/xp_assets.cpp source/SceneryEditorX/xplane/xp_facade.cpp \
     source/SceneryEditorX/xplane/xp_facade_writer.cpp source/SceneryEditorX/xplane/xp_facade_authoring.cpp \
-    source/SceneryEditorX/xplane/xp_overlay.cpp source/SceneryEditorX/xplane/xp_install_finder.cpp $LIBS \
+    source/SceneryEditorX/xplane/xp_overlay.cpp source/SceneryEditorX/xplane/xp_install_finder.cpp $LIBS -lz -ldl \
     -o build_linux_tests/XPlaneFormatTests
 ./build_linux_tests/XPlaneFormatTests
 
@@ -148,6 +172,11 @@ g++ -std=c++20 -O2 -pthread $INCS source/Tests/project_tests/ProjectFormatTests.
     source/Tests/project_tests/SplineEditTests.cpp source/SceneryEditorX/project/spline_edit.cpp \
     source/Tests/project_tests/FacadeEditTests.cpp source/SceneryEditorX/project/facade_edit.cpp \
     source/Tests/project_tests/VfsTests.cpp source/Tests/project_tests/SceneryPackTests.cpp \
+    source/Tests/project_tests/DsfImportTests.cpp source/Tests/project_tests/GatewayProjectTests.cpp \
+    source/SceneryEditorX/project/project_gateway.cpp source/SceneryEditorX/xplane/xp_gateway_package.cpp \
+    source/SceneryEditorX/xplane/xp_gateway_validation.cpp source/SceneryEditorX/xplane/xp_gateway_submission.cpp \
+    source/SceneryEditorX/xplane/xp_gateway_types.cpp source/SceneryEditorX/xplane/xp_gateway_server.cpp \
+    source/SceneryEditorX/xplane/xp_zip.cpp \
     source/SceneryEditorX/filesystem/vfs.cpp source/SceneryEditorX/project/scenery_pack.cpp \
     source/SceneryEditorX/xplane/xp_airport_document.cpp source/SceneryEditorX/xplane/xp_airport_index.cpp \
     source/SceneryEditorX/project/scenery_project.cpp source/SceneryEditorX/project/project_edx.cpp \
@@ -157,7 +186,7 @@ g++ -std=c++20 -O2 -pthread $INCS source/Tests/project_tests/ProjectFormatTests.
     source/SceneryEditorX/project/project_dsf.cpp source/SceneryEditorX/xplane/xp_apt.cpp \
     source/SceneryEditorX/xplane/xp_library.cpp source/SceneryEditorX/xplane/xp_apt_geometry.cpp \
     source/SceneryEditorX/xplane/xp_dsf.cpp source/SceneryEditorX/xplane/xp_assets.cpp \
-    source/SceneryEditorX/xplane/xp_facade.cpp source/SceneryEditorX/xplane/xp_overlay.cpp $LIBS \
+    source/SceneryEditorX/xplane/xp_facade.cpp source/SceneryEditorX/xplane/xp_overlay.cpp $LIBS -lz \
     -o build_linux_tests/ProjectFormatTests
 ./build_linux_tests/ProjectFormatTests "~[performance]"
 ```

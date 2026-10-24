@@ -355,6 +355,32 @@ namespace SceneryEditorX::XPlane
 		return true;
 	}
 
+	std::string EncodeBase64(const std::vector<uint8_t> &bytes)
+	{
+		static constexpr char ALPHABET[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+		std::string out;
+		out.reserve((bytes.size() + 2) / 3 * 4);
+		size_t i = 0;
+		for (; i + 2 < bytes.size(); i += 3)
+		{
+			const uint32_t triple = (static_cast<uint32_t>(bytes[i]) << 16) | (static_cast<uint32_t>(bytes[i + 1]) << 8) | bytes[i + 2];
+			out.push_back(ALPHABET[(triple >> 18) & 63]);
+			out.push_back(ALPHABET[(triple >> 12) & 63]);
+			out.push_back(ALPHABET[(triple >> 6) & 63]);
+			out.push_back(ALPHABET[triple & 63]);
+		}
+		if (i < bytes.size())
+		{
+			const bool two = i + 1 < bytes.size();
+			const uint32_t triple = (static_cast<uint32_t>(bytes[i]) << 16) | (two ? static_cast<uint32_t>(bytes[i + 1]) << 8 : 0u);
+			out.push_back(ALPHABET[(triple >> 18) & 63]);
+			out.push_back(ALPHABET[(triple >> 12) & 63]);
+			out.push_back(two ? ALPHABET[(triple >> 6) & 63] : '=');
+			out.push_back('=');
+		}
+		return out;
+	}
+
 	std::string GetGatewayAirportPageUrl(const std::string_view code)
 	{
 		return std::string(GATEWAY_URL) + "/airports/" + std::string(code) + "/show";

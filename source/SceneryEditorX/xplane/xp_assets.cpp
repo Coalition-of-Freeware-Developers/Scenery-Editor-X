@@ -194,6 +194,20 @@ namespace SceneryEditorX::XPlane
 			}
 		});
 
+		// "#subtex" rows look like comments to X-Plane; WorldEditor reads them to pick an orthophoto's subtexture
+		LineReader reader(text.substr(std::min(start, text.size())));
+		std::string_view line;
+		std::vector<std::string_view> tokens;
+		while (reader.Next(line))
+		{
+			Tokenize(line, tokens);
+			if (tokens.size() < 5 || tokens[0] != "#subtex")
+				continue;
+			const std::array<float, 4> box = { ParseFloat(tokens[1], 0.0f), ParseFloat(tokens[2], 0.0f), ParseFloat(tokens[3], 0.0f), ParseFloat(tokens[4], 0.0f) };
+			if (box[2] > box[0] && box[3] > box[1])
+				out.subtextures.push_back(box);
+		}
+
 		if (out.texture.empty())
 			return Fail(error, "The polygon has no TEXTURE");
 		return true;

@@ -467,6 +467,16 @@ TARGET_LINK_LIBRARIES(AppCore
 		msdfgen::msdfgen
 )
 
+# The credential store (core/platform/credential_store.cpp): Credential Manager on Windows, the keychain on macOS,
+# libsecret through dlopen on Linux (no build dependency)
+IF(WIN32)
+	TARGET_LINK_LIBRARIES(AppCore PRIVATE advapi32)
+ELSEIF(APPLE)
+	TARGET_LINK_LIBRARIES(AppCore PRIVATE "-framework Security" "-framework CoreFoundation")
+ELSEIF(UNIX)
+	TARGET_LINK_LIBRARIES(AppCore PRIVATE ${CMAKE_DL_LIBS})
+ENDIF()
+
 # --------------------------------
 
 IF(RENDERDOC_ENABLE)

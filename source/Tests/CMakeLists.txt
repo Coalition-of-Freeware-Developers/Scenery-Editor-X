@@ -258,7 +258,8 @@ INCLUDE(Catch)
 catch_discover_tests(ConversionTests)
 
 # --------------------------------
-# X-Plane Format Tests (OBJ8, library.txt, scenery_packs.ini, apt.dat, airport index; standard library only)
+# X-Plane Format Tests (OBJ8, library.txt, scenery_packs.ini, apt.dat, airport index, Gateway accounts, validation and
+# packaging, the credential store; standard library + zlib + the OS credential APIs)
 # --------------------------------
 
 MESSAGE(STATUS "=================================================")
@@ -272,6 +273,11 @@ ADD_EXECUTABLE(XPlaneFormatTests
     ${CMAKE_CURRENT_SOURCE_DIR}/xplane_tests/FacadeTests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/xplane_tests/FacadeWriterTests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/xplane_tests/InstallFinderTests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/xplane_tests/GatewayAccountTests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/xplane_tests/CredentialStoreTests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/xplane_tests/GatewayValidationTests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/xplane_tests/GatewayPackageTests.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/core/platform/credential_store.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/filesystem/vfs.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_obj8.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_library.cpp
@@ -280,6 +286,12 @@ ADD_EXECUTABLE(XPlaneFormatTests
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_apt_geometry.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_airport_index.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_gateway_types.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_gateway_server.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_gateway_account.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_gateway_submission.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_gateway_validation.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_gateway_package.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_zip.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_dsf.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_assets.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_facade.cpp
@@ -296,11 +308,18 @@ TARGET_INCLUDE_DIRECTORIES(XPlaneFormatTests PRIVATE
 TARGET_LINK_LIBRARIES(XPlaneFormatTests PRIVATE
     Catch2::Catch2WithMain
     nlohmann_json::nlohmann_json
+    ZLIB::ZLIB
 )
 
 IF(WIN32)
-    # xp_install_finder reads the registry and the desktop folder
+    # xp_install_finder reads the registry and the desktop folder; credential_store uses Credential Manager (advapi32)
     TARGET_LINK_LIBRARIES(XPlaneFormatTests PRIVATE advapi32 shell32)
+ELSEIF(APPLE)
+    # credential_store: the keychain
+    TARGET_LINK_LIBRARIES(XPlaneFormatTests PRIVATE "-framework Security" "-framework CoreFoundation")
+ELSEIF(UNIX)
+    # credential_store: libsecret is opened with dlopen at run time
+    TARGET_LINK_LIBRARIES(XPlaneFormatTests PRIVATE ${CMAKE_DL_LIBS})
 ENDIF()
 
 IF(_SEDX_MSVCLIKE)
@@ -314,7 +333,7 @@ catch_discover_tests(XPlaneFormatTests)
 
 # --------------------------------
 # Project File Tests (.edX JSON, .sex binary, WorldEditor earth.wed.xml, cache, document, DSF conversion, the VFS and
-# scenery pack creation / export; standard library only)
+# scenery pack creation / export, Gateway imports; standard library + zlib)
 # --------------------------------
 
 MESSAGE(STATUS "=================================================")
@@ -326,6 +345,8 @@ ADD_EXECUTABLE(ProjectFormatTests
     ${CMAKE_CURRENT_SOURCE_DIR}/project_tests/VfsTests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/project_tests/SceneryPackTests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/project_tests/FacadeEditTests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/project_tests/DsfImportTests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/project_tests/GatewayProjectTests.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/filesystem/vfs.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/project/spline_edit.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/project/facade_edit.cpp
@@ -338,6 +359,7 @@ ADD_EXECUTABLE(ProjectFormatTests
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/project/project_cache.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/project/project_document.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/project/project_dsf.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/project/project_gateway.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/project/scenery_pack.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_airport_document.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_airport_index.cpp
@@ -349,6 +371,12 @@ ADD_EXECUTABLE(ProjectFormatTests
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_facade.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_overlay.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_install_finder.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_gateway_package.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_gateway_validation.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_gateway_submission.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_gateway_types.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_gateway_server.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_zip.cpp
 )
 
 TARGET_INCLUDE_DIRECTORIES(ProjectFormatTests PRIVATE
@@ -358,6 +386,7 @@ TARGET_INCLUDE_DIRECTORIES(ProjectFormatTests PRIVATE
 TARGET_LINK_LIBRARIES(ProjectFormatTests PRIVATE
     Catch2::Catch2WithMain
     nlohmann_json::nlohmann_json
+    ZLIB::ZLIB
 )
 
 IF(_SEDX_MSVCLIKE)
