@@ -213,3 +213,4 @@ lib/*
 
 # Parity harness: Python environment for tools/image_compare
 /tools/image_compare/.venv/
+build_linux_tests
