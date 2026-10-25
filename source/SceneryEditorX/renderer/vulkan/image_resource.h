@@ -373,6 +373,24 @@ namespace SceneryEditorX
 		 */
 		MipBytes *GetMip(const uint32_t arrayIndex, const uint32_t mipIndex);
 
+		/* @brief A rectangle of 4-byte texels to write into mip 0 of layer 0 (see WriteRegions). */
+		struct RegionWrite
+		{
+			uint32_t x = 0;
+			uint32_t y = 0;
+			uint32_t width = 0;
+			uint32_t height = 0;
+			const void *texels = nullptr;		// width * height * 4 bytes, the top row first
+		};
+
+		/**
+		 * @brief Writes rectangles of an uncompressed 4-byte image's mip 0 in one upload and leaves it in
+		 * SHADER_READ_ONLY_OPTIMAL; the rest of the image keeps its texels (an atlas filled a cell at a time).
+		 * Runs on the graphics queue and waits for completion.
+		 * @return False when nothing was written (no image, a compressed format, rectangles outside it, no staging buffer).
+		 */
+		bool WriteRegions(const std::vector<RegionWrite> &writes);
+
 		/**
 		 * @brief Returns the slice data for a specific array index.
 		 * @param arrayIndex The index of the array.

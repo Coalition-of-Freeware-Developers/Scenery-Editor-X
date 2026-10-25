@@ -262,6 +262,15 @@ namespace SceneryEditorX
 		#endif
 			}
 
+			// Route messages from vkCreateInstance / vkDestroyInstance (before or after Debugging's messenger exists) to the log too.
+			VkDebugUtilsMessengerCreateInfoEXT instanceMessengerInfo = Debugging::GetMessengerCreateInfo();
+			if (Debugging::IsValidationLayerEnabled() &&
+				std::ranges::any_of(instanceExtensions, [](const char *name) { return std::strcmp(name, VK_EXT_DEBUG_UTILS_EXTENSION_NAME) == 0; }))
+			{
+				instanceMessengerInfo.pNext = createInfo.pNext;
+				createInfo.pNext = &instanceMessengerInfo;
+			}
+
 			createInfo.enabledExtensionCount = static_cast<uint32_t>(instanceExtensions.size());
 			createInfo.ppEnabledExtensionNames = instanceExtensions.data();
 			createInfo.enabledLayerCount = static_cast<uint32_t>(instanceLayers.size());

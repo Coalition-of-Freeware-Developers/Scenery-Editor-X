@@ -420,6 +420,97 @@ namespace SceneryEditorX::ProjectFile
 	}
 
 	// -------------------------------------------------------
+	// New scenery and library projects
+
+	fs::path GetNewProjectFolder(const NewSceneryProject &spec)
+	{
+		return spec.location / VFS::FromUtf8(VFS::MakePortableName(std::string(Trim(spec.name)), spec.kind == ProjectKind::Library ? "New Library" : "New Scenery"));
+	}
+
+	std::vector<FieldProblem> ValidateNewSceneryProject(const NewSceneryProject &spec)
+	{
+		std::vector<FieldProblem> problems;
+		const auto problem = [&problems](const char *field, std::string message) { problems.push_back({ field, std::move(message) }); };
+
+		const std::string name(Trim(spec.name));
+		if (name.empty())
+			problem("name", "Enter the project's name");
+		else if (const std::string why = VFS::CheckPortableName(name); !why.empty())
+			problem("name", why);
+
+		if (spec.hasReferencePoint)
+		{
+			if (!std::isfinite(spec.latitude) || spec.latitude < -90.0 || spec.latitude > 90.0)
+				problem("latitude", "A latitude lies between -90 and 90");
+			if (!std::isfinite(spec.longitude) || spec.longitude < -180.0 || spec.longitude > 180.0)
+				problem("longitude", "A longitude lies between -180 and 180");
+			if (spec.latitude == 0.0 && spec.longitude == 0.0)
+				problem("latitude", "0, 0 is in the open ocean: enter where the scenery is, or leave the reference point out");
+			const double feet = spec.elevationMeters / FEET_TO_METERS;
+			if (!std::isfinite(spec.elevationMeters) || feet < MIN_ELEVATION_FEET || feet > MAX_ELEVATION_FEET)
+				problem("elevation", "Enter an elevation between " + std::to_string(static_cast<int>(MIN_ELEVATION_FEET * FEET_TO_METERS)) + " and " +
+					std::to_string(static_cast<int>(MAX_ELEVATION_FEET * FEET_TO_METERS)) + " meters");
+		}
+
+		std::error_code ec;
+		if (spec.location.empty())
+			problem("location", "Choose the folder the project goes in");
+		else if (!fs::is_directory(spec.location, ec))
+			problem("location", VFS::ToUtf8(spec.location) + " doesn't exist");
+		else if (!name.empty() && VFS::CheckPortableName(name).empty())
+		{
+			const fs::path folder = GetNewProjectFolder(spec);
+			if (fs::exists(folder, ec) && (!fs::is_directory(folder, ec) || !fs::is_empty(folder, ec)))
+				problem("name", VFS::ToUtf8(folder.filename()) + " already exists there: choose another name or location");
+		}
+		return problems;
+	}
+
+	SceneryProject MakeSceneryProject(const NewSceneryProject &spec)
+	{
+		const fs::path folder = GetNewProjectFolder(spec);
+		SceneryProject project = MakeNewProject(VFS::ToUtf8(folder.filename()), spec.kind);
+		project.info.packageName = project.info.name;
+		project.info.author = spec.author;
+		project.info.description = spec.description;
+		if (spec.hasReferencePoint)
+		{
+			project.datum.latitude = spec.latitude;
+			project.datum.longitude = spec.longitude;
+			project.datum.elevation = spec.elevationMeters;
+			project.datum.valid = true;
+		}
+		return project;
+	}
+
+	bool CreateSceneryProject(const NewSceneryProject &spec, fs::path &projectFile, std::string *error)
+	{
+		if (const std::vector<FieldProblem> problems = ValidateNewSceneryProject(spec); !problems.empty())
+			return Fail(error, problems.front().message);
+
+		const fs::path folder = GetNewProjectFolder(spec);
+		VFS::FileSystem vfs;
+		if (!vfs.Mount(PACK, folder, false, error))
+			return false;
+		// A library has no Earth nav data of its own
+		for (const std::string &name : GetPackFolders())
+		{
+			if (spec.kind == ProjectKind::Library && name == PACK_NAV_DATA)
+				continue;
+			if (!vfs.CreateFolders(VFS::MakeVirtualPath(PACK, name), error))
+				return false;
+		}
+
+		const SceneryProject project = MakeSceneryProject(spec);
+		projectFile = folder / VFS::FromUtf8(project.info.name + EDX_EXTENSION);
+		std::vector<std::string> warnings;
+		if (!SaveProjectFile(projectFile, project, ProjectFormat::Edx, &warnings, error))
+			return false;
+		WriteGitFiles(folder);
+		return true;
+	}
+
+	// -------------------------------------------------------
 	// Export
 
 	bool ExportSceneryPack(const SceneryProject &project, const fs::path &projectFolder, const fs::path &packFolder, const ExportOptions &options,

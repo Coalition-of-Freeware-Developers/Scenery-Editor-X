@@ -1,0 +1,106 @@
+{
+	"about": "Sky-condition multipliers per X-Plane 12 class (art controls skyc/<ratio>_<class>), read by environment/sky_conditions.cpp. Initial values are 1 (offset 0) until probe dumps replace them (plan TASK-013 / TASK-095).",
+	"xp_build": "12.4.4",
+	"source": "X-Plane 12.4.4 reference probe dump (2026-10-20): it lists skyc/ambient_ratio_<class> (clean 0.35, hazy 0.5, foggy 0.6, ocast / strat / snowy 0.9, sockd 0.8), skyc/direct_ratio_<class> (0.8-1.0), skyc/shadow_level_<class> and skyc/shadow_offset_<class>, but its skyc/ambient_ratio_final, direct_ratio_final, shadow_level_final and shadow_offset_final readouts are 0 in every scenario (clear, hazy, foggy, overcast, night): 12.4.4's lighting doesn't use them, so SEDX keeps 1 (offset 0). tone_ratio, rayleigh_ratio and mie_ratio aren't in 12.4.4's art controls.",
+	"classes": {
+		"clean": {
+			"ambient_ratio": 1.0,
+			"direct_ratio": 1.0,
+			"tone_ratio": 1.0,
+			"rayleigh_ratio": 1.0,
+			"mie_ratio": 1.0,
+			"shadow_level": 1.0,
+			"shadow_offset": 0.0
+		},
+		"hazy": {
+			"ambient_ratio": 1.0,
+			"direct_ratio": 1.0,
+			"tone_ratio": 1.0,
+			"rayleigh_ratio": 1.0,
+			"mie_ratio": 1.0,
+			"shadow_level": 1.0,
+			"shadow_offset": 0.0
+		},
+		"foggy": {
+			"ambient_ratio": 1.0,
+			"direct_ratio": 1.0,
+			"tone_ratio": 1.0,
+			"rayleigh_ratio": 1.0,
+			"mie_ratio": 1.0,
+			"shadow_level": 1.0,
+			"shadow_offset": 0.0
+		},
+		"sockd": {
+			"ambient_ratio": 1.0,
+			"direct_ratio": 1.0,
+			"tone_ratio": 1.0,
+			"rayleigh_ratio": 1.0,
+			"mie_ratio": 1.0,
+			"shadow_level": 1.0,
+			"shadow_offset": 0.0
+		},
+		"ocast": {
+			"ambient_ratio": 1.0,
+			"direct_ratio": 1.0,
+			"tone_ratio": 1.0,
+			"rayleigh_ratio": 1.0,
+			"mie_ratio": 1.0,
+			"shadow_level": 1.0,
+			"shadow_offset": 0.0
+		},
+		"strat": {
+			"ambient_ratio": 1.0,
+			"direct_ratio": 1.0,
+			"tone_ratio": 1.0,
+			"rayleigh_ratio": 1.0,
+			"mie_ratio": 1.0,
+			"shadow_level": 1.0,
+			"shadow_offset": 0.0
+		},
+		"snowy": {
+			"ambient_ratio": 1.0,
+			"direct_ratio": 1.0,
+			"tone_ratio": 1.0,
+			"rayleigh_ratio": 1.0,
+			"mie_ratio": 1.0,
+			"shadow_level": 1.0,
+			"shadow_offset": 0.0
+		},
+		"mount": {
+			"ambient_ratio": 1.0,
+			"direct_ratio": 1.0,
+			"tone_ratio": 1.0,
+			"rayleigh_ratio": 1.0,
+			"mie_ratio": 1.0,
+			"shadow_level": 1.0,
+			"shadow_offset": 0.0
+		},
+		"hialt": {
+			"ambient_ratio": 1.0,
+			"direct_ratio": 1.0,
+			"tone_ratio": 1.0,
+			"rayleigh_ratio": 1.0,
+			"mie_ratio": 1.0,
+			"shadow_level": 1.0,
+			"shadow_offset": 0.0
+		},
+		"orbit": {
+			"ambient_ratio": 1.0,
+			"direct_ratio": 1.0,
+			"tone_ratio": 1.0,
+			"rayleigh_ratio": 1.0,
+			"mie_ratio": 1.0,
+			"shadow_level": 1.0,
+			"shadow_offset": 0.0
+		},
+		"final": {
+			"ambient_ratio": 1.0,
+			"direct_ratio": 1.0,
+			"tone_ratio": 1.0,
+			"rayleigh_ratio": 1.0,
+			"mie_ratio": 1.0,
+			"shadow_level": 1.0,
+			"shadow_offset": 0.0
+		}
+	}
+}

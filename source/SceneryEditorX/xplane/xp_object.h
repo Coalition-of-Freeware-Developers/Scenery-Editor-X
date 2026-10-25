@@ -78,7 +78,6 @@ namespace SceneryEditorX::XPlane
 		Ref<ImageResource> albedo;
 		Ref<ImageResource> normal;
 		Ref<ImageResource> lit;
-		Ref<ImageResource> packed;			// Occlusion / roughness / metalness built from the normal map
 		Ref<ImageResource> drapedAlbedo;
 		Ref<ImageResource> drapedNormal;
 		TextureInfo albedoInfo;
@@ -170,10 +169,6 @@ namespace SceneryEditorX::XPlane
 		 */
 		static void ClearCache();
 
-		/* @brief Shows or hides LIT textures on every loaded object (night lighting). */
-		static void SetLitTexturesVisible(bool visible);
-		static bool AreLitTexturesVisible();
-
 		/**
 		 * @brief X-Plane's lights.txt, loaded on first use from the X-Plane install (or, without one, from the
 		 * install an OBJ lives in). Empty when neither has it. Thread-safe (workers resolve lights with it); the
@@ -218,7 +213,6 @@ namespace SceneryEditorX::XPlane
 		void FinishGeometry();
 		void Fail();
 		uint32_t GetOrCreateMaterial(const Obj8DrawState &state);
-		void ApplyLit(bool visible);
 
 		std::filesystem::path m_Path;
 		ObjectLoadState m_State = ObjectLoadState::NotLoaded;

@@ -207,6 +207,9 @@ namespace SceneryEditorX::XPlane
 		/* @brief Moves the camera to see the whole airport. */
 		static void Frame();
 
+		/* @brief The circle Frame() fits on the ground (scene meters, outliers left out). False without an airport. */
+		static bool GetFocus(float &centerX, float &centerZ, float &radius);
+
 		/* @brief Moves the camera to see one element. */
 		static void FrameEntity(uint64_t entityId);
 
@@ -218,6 +221,16 @@ namespace SceneryEditorX::XPlane
 		 * @param pitchDegrees Above (> 0) or below the horizon.
 		 */
 		static void LookFrom(float x, float y, float z, float yawDegrees, float pitchDegrees);
+
+		/**
+		 * @brief Puts the camera at a geographic position over the loaded airport's ground plane, as X-Plane's camera
+		 * would be placed (parity scenarios).
+		 * @param heightMeters Above the ground plane (the airport's elevation).
+		 * @param headingTrueDegrees Clockwise from true north.
+		 * @param pitchDegrees Above (> 0) or below the horizon.
+		 * @return False when no airport is loaded.
+		 */
+		static bool LookFromGeo(double latitude, double longitude, float heightMeters, float headingTrueDegrees, float pitchDegrees);
 
 		/* @brief The projection the loaded airport was built with (datum at the origin). */
 		static const GeoProjection &GetProjection();

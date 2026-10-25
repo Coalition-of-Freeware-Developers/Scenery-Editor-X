@@ -32,6 +32,7 @@ import common;
 import resources;
 import position;
 import vertex_processing;
+import xp_material;
 #ifdef GPU_SCENE
 import gpu_scene;
 #endif
@@ -39,19 +40,19 @@ import gpu_scene;
 #if defined(GPU_SCENE)
 // instanced indirect draws of the GPU scene (gpu_cull.slang picked the instances), vertices pulled from the global buffer
 [shader("vertex")]
-gbuffer_vertex main_vs(uint vertex_id : SV_VertexID, uint base_vertex : SV_StartVertexLocation, uint draw_instance : SV_InstanceID, uint base_instance : SV_StartInstanceLocation)
+depth_vertex main_vs(uint vertex_id : SV_VertexID, uint base_vertex : SV_StartVertexLocation, uint draw_instance : SV_InstanceID, uint base_instance : SV_StartInstanceLocation)
 {
     const uint instance_id = gpu_scene_load_draw(draw_instance, base_instance);
     Vertex_PosUvNorTan input = pull_vertex(vertex_id + base_vertex);
 #elif defined(INDIRECT_DRAW)
 [shader("vertex")]
-gbuffer_vertex main_vs(uint vertex_id : SV_VertexID, uint base_vertex : SV_StartVertexLocation, uint instance_id : SV_InstanceID, [[vk::builtin("DrawIndex")]] uint draw_id : DRAW_INDEX, uint view_id : SV_ViewID)
+depth_vertex main_vs(uint vertex_id : SV_VertexID, uint base_vertex : SV_StartVertexLocation, uint instance_id : SV_InstanceID, [[vk::builtin("DrawIndex")]] uint draw_id : DRAW_INDEX, uint view_id : SV_ViewID)
 {
     _draw = indirect_draw_data_out[draw_id];
     Vertex_PosUvNorTan input = pull_vertex(vertex_id + base_vertex);
 #else
 [shader("vertex")]
-gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID, uint view_id : SV_ViewID)
+depth_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID, uint view_id : SV_ViewID)
 {
     _draw = draw_data[buffer_pass.draw_index];
 #endif
@@ -60,11 +61,15 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceI
     float3 position_world_previous = 0.0f;
     gbuffer_vertex vertex          = transform_to_world_space(input, instance_id, _draw.transform, position_world, position_world_previous);
     vertex.material_index          = _draw.material_index;
-    return transform_to_clip_space(vertex, position_world, position_world_previous);
+    vertex                         = transform_to_clip_space(vertex, position_world, position_world_previous);
+#if !defined(GPU_SCENE) && !defined(INDIRECT_DRAW)
+    vertex                         = apply_drape_depth(vertex, _draw.drape_rank); // the drape depth pass (rank 0 elsewhere)
+#endif
+    return vertex;
 }
 
 [shader("fragment")]
-void main_frag(gbuffer_vertex vertex)
+void main_frag(depth_vertex vertex)
 {
     pass_load_draw_data_from_vertex(vertex.material_index);
 
@@ -75,7 +80,7 @@ void main_frag(gbuffer_vertex vertex)
     const float3 position_world = get_position(vertex.position.z, screen_uv);
     const float material_cutoff = GetMaterial().alpha_cutoff;
     const float alpha_threshold = material_cutoff > 0.0f ? material_cutoff : get_alpha_threshold(position_world);
-    const float alpha = has_albedo ? material_textures[pass_get_material_index() + material_texture_index_albedo].Sample(samplers[sampler_anisotropic_wrap], vertex.uv_misc.xy).a : 1.0f;
+    const float alpha = has_albedo ? xp_drape_sample_albedo(GetMaterial(), pass_get_material_index(), vertex.uv_misc.xy).a : 1.0f; // plain texels unless a draped atlas
 
     if (material_cutoff > 0.0f ? alpha < alpha_threshold : (has_albedo && alpha <= alpha_threshold))
         discard;

@@ -64,6 +64,15 @@ namespace SceneryEditorX::ToolsSelfTest
 	 */
 	void EnableFacadeShowcase();
 
+	/**
+	 * @brief --gizmo-selftest: only the gizmo checks, driven with a scripted mouse the way a user drags: hover a handle
+	 * (it lights up), press, drag, release, then compare what moved with what the cursor's path says it should be (an
+	 * object along X, turned on the Y ring, a drag cancelled with Esc, a polygon scaled along X, two pavement nodes
+	 * moved and turned by W / E after picking them with V), undoing each. --gizmo-showcase then holds each gizmo
+	 * (hovered or mid-drag) for a few seconds, logging "Gizmo showcase: <name>" as each one starts, for screenshots.
+	 */
+	void EnableGizmoTests(bool showcase);
+
 	/* @brief Once per frame from the viewport, after the tools. */
 	void Tick(EditorContext *context, const ViewportView &view, float renderWidth, float renderHeight);
 }

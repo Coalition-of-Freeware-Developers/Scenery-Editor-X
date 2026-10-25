@@ -48,6 +48,7 @@ namespace SceneryEditorX
 	// Written by the UI on the main thread, read by Camera::Tick() on the render thread.
 	static std::atomic<bool> s_InputEnabled = true;
 	static std::atomic<bool> s_InputLocked = false;	// --lock-camera: SetInputEnabled() can't turn input on
+	static std::atomic<bool> s_InputExternal = false;	// An application controller moves the camera (ProcessInput stands down)
 
 	Camera::Camera() { m_CameraFlag.SetDirty(); }
 
@@ -78,6 +79,8 @@ namespace SceneryEditorX
 			s_InputEnabled.store(false, std::memory_order_relaxed);
 	}
 	bool Camera::IsInputEnabled() { return s_InputEnabled.load(std::memory_order_relaxed); }
+	bool Camera::IsInputLocked() { return s_InputLocked.load(std::memory_order_relaxed); }
+	void Camera::SetInputExternal(const bool external) { s_InputExternal.store(external, std::memory_order_relaxed); }
 
 	void Camera::Init()
 	{
@@ -173,7 +176,7 @@ namespace SceneryEditorX
 		m_LastMousePosition = currentMouse; // keep tracking while disabled so re-enabling doesn't jump
 
 		// The viewport enables input while it is hovered or dragged, so typing in a panel never moves the camera.
-		if (!s_InputEnabled.load(std::memory_order_relaxed))
+		if (!s_InputEnabled.load(std::memory_order_relaxed) || s_InputExternal.load(std::memory_order_relaxed))
 			return;
 
 		Vec3 euler = transform.GetRotationEuler();

@@ -33,6 +33,8 @@
 #include <SceneryEditorX/asset/asset_instance.h>
 #include <SceneryEditorX/renderer/vulkan/vertex.h>
 #include <SceneryEditorX/scene/mesh.h>
+#include <algorithm>
+#include <cstdint>
 
 // -------------------------------------------------------
 
@@ -104,6 +106,25 @@ namespace SceneryEditorX
 		void SetInstances(const std::vector<Instance>& instances);
 		void SetInstances(const std::vector<xMath::Matrix>& transforms);
 
+		/**
+		 * Draped geometry (DSF draped polygons, lines and roads, apt.dat pavement and markings): drawn in this order,
+		 * later on top, instead of by depth among other drapes, so coplanar drapes never fight (X-Plane draws them in
+		 * layer order the same way). 0: not draped. See MakeDrapeOrder().
+		 */
+		void SetDrapeOrder(const uint64_t order) { m_drape_order = order; }
+		uint64_t GetDrapeOrder() const           { return m_drape_order; }
+		bool IsDraped() const                    { return m_drape_order != 0; }
+
+		/**
+		 * @brief The drape order of a surface drawn height meters above the ground (its layer: higher layers are drawn
+		 * over lower ones) and sequence (within a layer, later is on top: DSF and apt.dat file order).
+		 */
+		static uint64_t MakeDrapeOrder(const float height, const uint32_t sequence)
+		{
+			const double micrometers = std::clamp(static_cast<double>(height) * 1.0e6 + 2.0e9, 0.0, 4294967295.0);	// -2 km .. +2.2 km
+			return (1ull << 63) | (static_cast<uint64_t>(micrometers) >> 1 << 32) | sequence;
+		}
+
 		// render distance
 		float GetMaxRenderDistance() const                         { return m_max_distance_render; }
 		void SetMaxRenderDistance(const float max_render_distance) { m_max_distance_render = max_render_distance; }
@@ -152,6 +173,7 @@ namespace SceneryEditorX
 		// misc
 		xMath::Matrix m_transform_previous = xMath::Matrix::IDENTITY;
 		uint32_t m_flags = RenderableFlags::CastsShadows;
+		uint64_t m_drape_order = 0;
 
 		// deferred default material assignment (renderer may not be ready during load)
 		bool m_needs_default_material = false;

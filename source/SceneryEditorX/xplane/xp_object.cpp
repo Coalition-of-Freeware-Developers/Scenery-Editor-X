@@ -76,7 +76,6 @@ namespace SceneryEditorX::XPlane
 		DecodedTexture lit;
 		DecodedTexture drapedAlbedo;
 		DecodedTexture drapedNormal;
-		DecodedTexture packed;
 		float boundsMin[3] = { 0.0f, 0.0f, 0.0f };
 		float boundsMax[3] = { 0.0f, 0.0f, 0.0f };
 		std::string error;
@@ -107,6 +106,11 @@ namespace SceneryEditorX::XPlane
 		 */
 		constexpr float BLEND_SPLIT_ALPHA = 0.9f;
 
+		/* @brief Luminance of a white LIT texel when the OBJ names none (lighting/scenery_ref_nts, X-Plane 12.4.4: 33). */
+		constexpr float DEFAULT_SCENERY_LIT_NITS = 33.0f;
+		/* @brief X-Plane clamps GLOBAL_luminance here (the largest half-float below infinity, minus margin). */
+		constexpr float MAX_LIT_NITS = 65530.0f;
+
 		/* @brief Main-thread time per frame for finishing loads (uploads); one step always runs, so loads progress. */
 		constexpr float UPLOAD_BUDGET_MS = 4.0f;
 
@@ -124,7 +128,6 @@ namespace SceneryEditorX::XPlane
 			UploadLit,
 			UploadDrapedAlbedo,
 			UploadDrapedNormal,
-			UploadPacked,
 			UploadGeometry
 		};
 
@@ -135,7 +138,6 @@ namespace SceneryEditorX::XPlane
 		uint32_t s_LoadsRequested = 0;								// Since s_Pending was last empty
 		uint32_t s_LoadsFinished = 0;
 		uint64_t s_UpdateFrame = 0;									// Counts ObjectAsset::Update() calls (upload statistics)
-		bool s_LitVisible = false;
 
 		// Workers resolve lights, so the catalog is shared under a lock and replaced, never modified.
 		std::mutex s_LightMutex;
@@ -333,13 +335,6 @@ namespace SceneryEditorX::XPlane
 			job.lit = DecodeTexture(folder, data.textureLit, TextureUsage::Lit);
 			job.drapedAlbedo = DecodeTexture(folder, data.textureDraped, TextureUsage::Albedo);
 			job.drapedNormal = DecodeTexture(folder, data.textureDrapedNormal, TextureUsage::Normal);
-
-			// With a normal map the specular level defaults to 1 (standard shading); without one surfaces are matte.
-			if (job.normal.valid && !job.normal.info.path.empty())
-			{
-				const float specular = data.hasGlobalSpecular ? data.globalSpecular : 1.0f;
-				job.packed = TextureLoader::DecodePackedMaterial(job.normal.info.path, data.normalMetalness, specular);
-			}
 
 			ResolveLights(job);
 
@@ -762,21 +757,6 @@ namespace SceneryEditorX::XPlane
 		return count;
 	}
 
-	void ObjectAsset::SetLitTexturesVisible(const bool visible)
-	{
-		if (s_LitVisible == visible)
-			return;
-
-		s_LitVisible = visible;
-		for (const auto &[key, asset] : s_Cache)
-			asset->ApplyLit(visible); // loads in flight have no materials yet; they apply it when they finish
-	}
-
-	bool ObjectAsset::AreLitTexturesVisible()
-	{
-		return s_LitVisible;
-	}
-
 	ObjectAsset::~ObjectAsset() = default;
 
 	ObjectLoadState ObjectAsset::GetState() const
@@ -813,10 +793,6 @@ namespace SceneryEditorX::XPlane
 				m_Textures.drapedNormal = TextureLoader::Upload(job.drapedNormal, &drapedNormalInfo);
 				break;
 			}
-			case UploadPacked:
-				if (m_Textures.normal)
-					m_Textures.packed = TextureLoader::Upload(job.packed);
-				break;
 			default:
 				FinishGeometry();
 				break;
@@ -883,7 +859,6 @@ namespace SceneryEditorX::XPlane
 		// Appends the geometry to the renderer's global vertex / index buffers (uploaded at the start of the next frame).
 		if (m_Mesh)
 			m_Mesh->CreateGpuBuffers();
-		ApplyLit(s_LitVisible);
 
 		m_State = ObjectLoadState::Ready;
 	}
@@ -914,7 +889,8 @@ namespace SceneryEditorX::XPlane
 		// Only the parts of the draw state the renderer can express split materials.
 		const auto same_material = [](const Obj8DrawState &a, const Obj8DrawState &b)
 		{
-			return a.cull == b.cull && a.draped == b.draped && a.blend == b.blend && (a.blend || a.alphaCutoff == b.alphaCutoff);
+			return a.cull == b.cull && a.draped == b.draped && a.blend == b.blend && (a.blend || a.alphaCutoff == b.alphaCutoff) &&
+				a.shinyRatio == b.shinyRatio && a.hasLightLevel == b.hasLightLevel && a.lightLevelBrightness == b.lightLevelBrightness;
 		};
 
 		for (uint32_t i = 0; i < static_cast<uint32_t>(m_MaterialStates.size()); ++i)
@@ -925,7 +901,7 @@ namespace SceneryEditorX::XPlane
 
 		ImageResource *albedo = useDraped ? m_Textures.drapedAlbedo.Get() : m_Textures.albedo.Get();
 		ImageResource *normal = useDraped ? m_Textures.drapedNormal.Get() : m_Textures.normal.Get();
-		ImageResource *packed = useDraped ? nullptr : m_Textures.packed.Get();
+		ImageResource *lit = useDraped ? nullptr : m_Textures.lit.Get();	// Draped geometry has no LIT texture of its own in OBJ8
 
 		Ref<MaterialAsset> material = CreateRef<MaterialAsset>();
 		material->SetName(m_Path.stem().string() + "_" + std::to_string(m_Materials.size()));
@@ -939,20 +915,29 @@ namespace SceneryEditorX::XPlane
 		material->SetProperty(MaterialClass::TextureTilingX, 1.0f);
 		material->SetProperty(MaterialClass::TextureTilingY, 1.0f);
 
-		if (packed)
-		{
-			// The packed map carries roughness (G) and metalness (B); the scalars become multipliers.
-			material->SetProperty(MaterialClass::Roughness, 1.0f);
-			material->SetProperty(MaterialClass::Metalness, 1.0f);
-		}
-		else
-		{
-			const float specular = m_Data.hasGlobalSpecular ? m_Data.globalSpecular : (normal ? 1.0f : 0.0f);
-			material->SetProperty(MaterialClass::Roughness, std::clamp(1.0f - 0.6f * specular, 0.3f, 1.0f));
-			material->SetProperty(MaterialClass::Metalness, 0.0f);
-		}
-
+		// X-Plane 12's material rules (xp_material.slang): the normal map carries gloss (A) and, with NORMAL_METALNESS,
+		// F0 / metalness (B); GLOBAL_specular / ATTR_shiny_rat scale the gloss (1 with a normal map when neither is set)
+		const bool translucency = !useDraped && m_Data.normalTranslucency;
+		const bool metalness = useDraped ? m_Data.drapedNormalMetalness : m_Data.normalMetalness;
+		const float specularGain = std::max(m_Data.hasGlobalSpecular ? m_Data.globalSpecular : (state.shinyRatio > 0.0f ? state.shinyRatio : (normal ? 1.0f : 0.0f)), 0.0f);
+		const float defaultF0 = m_Data.blendGlass ? 0.06f : (translucency ? 0.0f : ((normal || specularGain > 0.0f) ? 0.04f : 0.0f));
+		material->SetProperty(MaterialProperty::XpMaterial, 1.0f);
+		material->SetProperty(MaterialProperty::XpNormalMode, normal ? (metalness ? 2.0f : (translucency ? 3.0f : 1.0f)) : 0.0f);
+		material->SetProperty(MaterialProperty::XpSpecularGain, specularGain);
+		material->SetProperty(MaterialProperty::XpSuperRoughness, std::clamp(m_Data.superRoughness, 0.0f, 1.0f));
+		material->SetProperty(MaterialProperty::XpDefaultF0, defaultF0);
+		material->SetProperty(MaterialClass::Roughness, 1.0f);
+		material->SetProperty(MaterialClass::Metalness, 0.0f);
 		material->SetProperty(MaterialClass::Normal, normal ? 1.0f : 0.0f);
+
+		// LIT textures are luminance in nits: ATTR_light_level's brightness, else GLOBAL_luminance, else X-Plane's
+		// scenery default (lighting/scenery_ref_nts, 33 nits). Never hidden in daylight: exposure is.
+		if (lit)
+		{
+			const float nits = state.hasLightLevel && state.lightLevelBrightness > 0.0f ? state.lightLevelBrightness
+				: (m_Data.globalLuminance > 0.0f ? m_Data.globalLuminance : DEFAULT_SCENERY_LIT_NITS);
+			material->SetProperty(MaterialProperty::EmissiveNits, std::min(nits, MAX_LIT_NITS));
+		}
 		material->SetProperty(MaterialProperty::CullMode, static_cast<float>(state.cull ? CullMode::Back : CullMode::None));
 
 		// Blended surfaces are split: the deferred passes keep texels at or above the cutoff, the forward transparent
@@ -962,27 +947,11 @@ namespace SceneryEditorX::XPlane
 
 		material->SetTexture(MaterialTextureType::Color, albedo);
 		material->SetTexture(MaterialTextureType::Normal, normal);
-		if (packed)
-		{
-			// The shader samples the packed map for both; the typed slots only raise the "has texture" flags.
-			material->SetTexture(MaterialTextureType::None, packed);
-			material->SetTexture(MaterialTextureType::Roughness, packed);
-			material->SetTexture(MaterialTextureType::Metalness, packed);
-		}
+		material->SetTexture(MaterialTextureType::Emission, lit);
 
 		m_Materials.push_back(material);
 		m_MaterialStates.push_back(state);
 		return static_cast<uint32_t>(m_Materials.size()) - 1;
-	}
-
-	void ObjectAsset::ApplyLit(const bool visible)
-	{
-		for (size_t i = 0; i < m_Materials.size(); ++i)
-		{
-			// Draped geometry has no LIT texture of its own in OBJ8.
-			const bool draped = m_MaterialStates[i].draped && m_Textures.drapedAlbedo;
-			m_Materials[i]->SetTexture(MaterialTextureType::Emission, visible && !draped ? m_Textures.lit.Get() : nullptr);
-		}
 	}
 
 }

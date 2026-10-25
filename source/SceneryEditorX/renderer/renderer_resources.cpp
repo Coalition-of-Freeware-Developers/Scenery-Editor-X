@@ -29,6 +29,7 @@
  * -------------------------------------------------------
  */
 // ReSharper disable CommentTypo
+#include "env_probes.h"
 #include "gbuffer.h"
 #include "renderer.h"
 #include "renderer_buffers.h"
@@ -60,6 +61,7 @@ namespace SceneryEditorX
 	static std::array<Ref<Sampler>, static_cast<uint32_t>(Renderer_Sampler::MaxEnum)>			 s_Samplers;
 	static std::array<Ref<Buffer>,  static_cast<uint32_t>(Renderer_Buffer::MaxEnum)>			 s_Buffers;
 	static std::array<Ref<ImageResource>, static_cast<uint32_t>(Renderer_RenderTarget::MaxEnum)> s_RenderTargets;
+	static bool s_CreatingViewTargets = false;	// CreateViewRenderTargets: leave out the shared targets
 	Ref<Font>																					 s_StandardFont;
 	Ref<MaterialAsset>                                                                           s_StandardMaterial;
 	std::array<Ref<ImageResource>, static_cast<uint32_t>(Renderer_StandardTexture::MaxEnum)>	 s_StandardTextures;
@@ -93,9 +95,11 @@ namespace SceneryEditorX
 	// Static members defined here (declared in renderer.h)
 	PushConstantBuffer_Pass Renderer::m_Pcb_Pass_Cpu;
 	ConstantBuffer_Frame    Renderer::m_Cb_Frame_Cpu = {};
+	ConstantBuffer_Environment Renderer::m_Cb_Environment_Cpu = {};
 	uint32_t           Renderer::m_DrawCall_Count           = 0;
 	Flag               Renderer::m_BindlessSamplers_Dirty;
 	uint32_t           Renderer::m_DrawCalls_Prepass_Count  = 0;
+	uint32_t           Renderer::m_DrawCalls_Shadow_Count   = 0;
 	uint32_t           Renderer::m_Indirect_DrawCount       = 0;
 	bool               Renderer::m_Transparents_Present     = false;
 	bool               Renderer::m_Is_Hiz_Suppressed        = false;
@@ -103,6 +107,7 @@ namespace SceneryEditorX
 	// Additional static member definitions centralized here
 	std::array<Renderer_DrawCall, RENDERER_MAX_DRAW_CALLS> Renderer::m_DrawCalls;
 	std::array<Renderer_DrawCall, RENDERER_MAX_DRAW_CALLS> Renderer::m_DrawCalls_Prepass;
+	std::array<Renderer_DrawCall, RENDERER_MAX_DRAW_CALLS> Renderer::m_DrawCalls_Shadow;
 	std::array<ShaderBuffer_IndirectDrawArgs, MAX_ARRAY_SIZE> Renderer::m_Indirect_DrawArgs;
 	std::array<ShaderBuffer_DrawData, MAX_ARRAY_SIZE> Renderer::m_Indirect_DrawData;
 
@@ -175,6 +180,13 @@ namespace SceneryEditorX
 				s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::frame_render_opaque)] = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D,
 					widthRender, heightRender, 1, 1, VK_FORMAT_R16G16B16A16_SFLOAT, ShaderViews | RenderTargetViews | BlitClear, "frame_render_opaque"});
 				SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::frame_render_opaque)] != nullptr, "Failed to create frame_render_opaque render target");
+
+				// The reflection history (ssr_trace.slang): the finished frame kept for the next one's screen-space
+				// reflections, every mip down to 1 x 1 (rough reflections read the blurred ones)
+				const uint32_t historyMips = static_cast<uint32_t>(floor(log2(static_cast<float>(xMath::Max(widthRender, heightRender))))) + 1;
+				s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::frame_render_previous)] = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D,
+					widthRender, heightRender, 1, historyMips, VK_FORMAT_R16G16B16A16_SFLOAT, UnorderedAccessView | ShaderViews | PerMipViews | BlitClear, "frame_render_previous"});
+				SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::frame_render_previous)] != nullptr, "Failed to create frame_render_previous render target");
 			}
 #pragma endregion
 #pragma region G-Buffer Render Targets
@@ -182,7 +194,7 @@ namespace SceneryEditorX
 			{
 				uint32_t flags = RenderTargetViews | ShaderViews | BlitClear | QueueShare;
 
-				s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_color)]    = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, widthRender, heightRender, 1, 1, VK_FORMAT_R8G8B8A8_UNORM, flags, "gbuffer_color"});
+				s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_color)]    = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, widthRender, heightRender, 1, 1, VK_FORMAT_R8G8B8A8_SRGB, flags, "gbuffer_color"});
 				SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_color)] != nullptr, "Failed to create gbuffer_color render target");
 
 				s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_normal)]   = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, widthRender, heightRender, 1, 1, VK_FORMAT_R16G16B16A16_SFLOAT, flags, "gbuffer_normal"});
@@ -200,6 +212,13 @@ namespace SceneryEditorX
 				// editor picking: written by the g-buffer pass, read by the selection outline (storage) and copied for readback
 				s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_pick)]     = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, widthRender, heightRender, 1, 1, VK_FORMAT_R32_UINT, RenderTargetViews | UnorderedAccessView | BlitClear, "gbuffer_pick"});
 				SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_pick)] != nullptr, "Failed to create gbuffer_pick render target");
+
+				// X-Plane 12 layout: emissive luminance (pre-exposed) and weather receptivity, read by lighting / weather apply
+				s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_emissive)] = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, widthRender, heightRender, 1, 1, VK_FORMAT_R16G16B16A16_SFLOAT, flags, "gbuffer_emissive"});
+				SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_emissive)] != nullptr, "Failed to create gbuffer_emissive render target");
+
+				s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_weather)]  = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, widthRender, heightRender, 1, 1, VK_FORMAT_R8G8B8A8_UNORM, flags, "gbuffer_weather"});
+				SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_weather)] != nullptr, "Failed to create gbuffer_weather render target");
 			}
 #pragma endregion
 #pragma region Lighting Render Targets
@@ -224,10 +243,11 @@ namespace SceneryEditorX
 				s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_depth_occluders)] = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, widthRender, heightRender, 1, 1, VK_FORMAT_D32_SFLOAT, RenderTargetViews | ShaderViews, "depth_occluders"});
 				SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_depth_occluders)] != nullptr, "Failed to create depth_occluders render target");
 
-				// full mip chain so the cull shader can pick a level where the aabb fits in ~1-2 texels
+				// The min / max depth pyramid (z_minmax.slang: r farthest, g nearest), a full mip chain so the cull shader can
+				// pick a level where the aabb fits in ~1-2 texels and the reflections' march can step across the screen
 				uint32_t hizMipCount = static_cast<uint32_t>(floor(log2(static_cast<float>(xMath::Max(widthRender, heightRender))))) + 1;
 
-				s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_depth_occluders_hiz)] = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, widthRender, heightRender, 1, hizMipCount, VK_FORMAT_R32_SFLOAT, UnorderedAccessView | ShaderViews | BlitClear | PerMipViews, "depth_occluders_hiz"});
+				s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_depth_occluders_hiz)] = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, widthRender, heightRender, 1, hizMipCount, VK_FORMAT_R32G32_SFLOAT, UnorderedAccessView | ShaderViews | BlitClear | PerMipViews, "depth_occluders_hiz"});
 				SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_depth_occluders_hiz)] != nullptr, "Failed to create depth_occluders_hiz render target");
 			}
 #pragma endregion
@@ -238,7 +258,27 @@ namespace SceneryEditorX
 			s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::reflections)]        = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, widthRender, heightRender, 1, 1, VK_FORMAT_R16G16B16A16_SFLOAT, UnorderedAccessView | ShaderViews | BlitClear, "reflections"});
 			SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::reflections)] != nullptr, "Failed to create reflections render target");
 
-			// optional render targets (ssao, rt reflections, restir)
+			// exposure fusion (exposure_fusion.slang): half the render resolution, pyramids of up to 6 levels
+			// (exposure_fusion/max_mip 5)
+			{
+				const uint32_t fusionWidth  = xMath::Max(widthRender / 2, 1u);
+				const uint32_t fusionHeight = xMath::Max(heightRender / 2, 1u);
+				const uint32_t fusionMips   = xMath::Min(6u, compute_mip_count(fusionWidth, fusionHeight, 8));
+				const auto fusion_target = [&](const Renderer_RenderTarget target, const uint32_t mips, const VkFormat format, const char *name)
+				{
+					s_RenderTargets[static_cast<uint8_t>(target)] = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, fusionWidth, fusionHeight, 1, mips, format, UnorderedAccessView | ShaderViews | PerMipViews | BlitClear, name});
+					SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(target)] != nullptr, "Failed to create an exposure fusion render target");
+				};
+				fusion_target(Renderer_RenderTarget::exposure_fusion_exposures, fusionMips, VK_FORMAT_R16G16B16A16_SFLOAT, "exposure_fusion_exposures");
+				fusion_target(Renderer_RenderTarget::exposure_fusion_weights, fusionMips, VK_FORMAT_R16G16B16A16_SFLOAT, "exposure_fusion_weights");
+				fusion_target(Renderer_RenderTarget::exposure_fusion_result, fusionMips, VK_FORMAT_R16G16B16A16_SFLOAT, "exposure_fusion_result");
+				fusion_target(Renderer_RenderTarget::exposure_fusion_guide, 1, VK_FORMAT_R16_SFLOAT, "exposure_fusion_guide");
+			}
+
+			// ambient occlusion (renderer_ao.cpp): the result and CACAO's buffers, at the AO quality's resolution
+			CreateAmbientOcclusionTargets(true);
+
+			// optional render targets (rt reflections, restir)
 			UpdateOptionalRenderTargets();
 			
 			const Ref<Device> device = RenderContext::Get()->GetLogicalDevice();
@@ -253,8 +293,11 @@ namespace SceneryEditorX
 				SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::shading_rate)] != nullptr, "Failed to create shading_rate render target");
 			}
 
-			s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::shadow_atlas)] = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, 8192, 8192, 1, 1, VK_FORMAT_D32_SFLOAT, RenderTargetViews | ShaderViews | BlitClear, "shadow_atlas"});
-			SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::shadow_atlas)] != nullptr, "Failed to create shadow_atlas render target");
+			if (!s_CreatingViewTargets)	// Every view draws its shadows into the same atlas
+			{
+				s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::shadow_atlas)] = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, 8192, 8192, 1, 1, VK_FORMAT_D32_SFLOAT, RenderTargetViews | ShaderViews | BlitClear, "shadow_atlas"});
+				SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::shadow_atlas)] != nullptr, "Failed to create shadow_atlas render target");
+			}
 		}
 
 #pragma region Resolution Output Render Targets
@@ -303,11 +346,8 @@ namespace SceneryEditorX
 		if (!s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::lut_brdf_specular)])
 		{
 			// lookup tables
-			s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::lut_brdf_specular)]           = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, 512, 512, 1, 1, VK_FORMAT_R16G16_SFLOAT, UnorderedAccessView | ShaderViews, "lut_brdf_specular"});
+			s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::lut_brdf_specular)]           = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, 256, 256, 1, 1, VK_FORMAT_R32G32_SFLOAT, UnorderedAccessView | ShaderViews | BlitClear, "lut_brdf_specular"});
 			SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::lut_brdf_specular)] != nullptr, "Failed to create lut_brdf_specular render target");
-
-			s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::lut_atmosphere_scatter)]      = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type3D, 256, 256, 32, 1, VK_FORMAT_R16G16B16A16_SFLOAT, UnorderedAccessView | ShaderViews, "lut_atmosphere_scatter"});
-			SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::lut_atmosphere_scatter)] != nullptr, "Failed to create lut_atmosphere_scatter render target");
 
 			s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::lut_atmosphere_transmittance)] = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, 256, 64, 1, 1, VK_FORMAT_R16G16B16A16_SFLOAT, UnorderedAccessView | ShaderViews, "lut_atmosphere_transmittance"});
 			SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::lut_atmosphere_transmittance)] != nullptr, "Failed to create lut_atmosphere_transmittance render target");
@@ -315,13 +355,24 @@ namespace SceneryEditorX
 			s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::lut_atmosphere_multiscatter)] = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, 32,  32, 1, 1, VK_FORMAT_R16G16B16A16_SFLOAT, UnorderedAccessView | ShaderViews, "lut_atmosphere_multiscatter"});
 			SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::lut_atmosphere_multiscatter)] != nullptr, "Failed to create lut_atmosphere_multi-scatter render target");
 
+			// the atmosphere (plan TASK-045) and the environment probes (TASK-049)
+			const auto lut = [](const Renderer_RenderTarget target, const ImageType type, const uint32_t width, const uint32_t height, const uint32_t depth,
+								const uint32_t mips, const VkFormat format, const char *name)
+			{
+				const uint32_t flags = mips > 1 ? (UnorderedAccessView | ShaderViews | PerMipViews) : (UnorderedAccessView | ShaderViews);
+				s_RenderTargets[static_cast<uint8_t>(target)] = CreateRef<ImageResource>(ImgResourceSpec{type, width, height, depth, mips, format, flags, name});
+				SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(target)] != nullptr, "Failed to create an atmosphere render target");
+			};
+			lut(Renderer_RenderTarget::lut_sky_view, ImageType::Type2D, 192, 108, 1, 1, VK_FORMAT_R16G16B16A16_SFLOAT, "lut_sky_view");
+			lut(Renderer_RenderTarget::lut_sky_ambient, ImageType::Type2D, 64, 16, 1, 1, VK_FORMAT_R16G16B16A16_SFLOAT, "lut_sky_ambient");
+			lut(Renderer_RenderTarget::lut_aerial_inscatter, ImageType::Type3D, 32, 32, 32, 1, VK_FORMAT_B10G11R11_UFLOAT_PACK32, "lut_aerial_inscatter");
+			lut(Renderer_RenderTarget::lut_aerial_transmittance, ImageType::Type3D, 32, 32, 32, 1, VK_FORMAT_B10G11R11_UFLOAT_PACK32, "lut_aerial_transmittance");
+			lut(Renderer_RenderTarget::env_probes, ImageType::TypeCubeArray, ENV_PROBE_SIZE, ENV_PROBE_SIZE, ENV_PROBE_COUNT * 6, ENV_PROBE_MIPS,
+				VK_FORMAT_R16G16B16A16_SFLOAT, "env_probes");
+
 			// Misc
 			s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::blur)] = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, 4096, 4096, 1, 1, VK_FORMAT_R16G16B16A16_SFLOAT, UnorderedAccessView | ShaderViews, "blur_scratch"});
 			SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::blur)] != nullptr, "Failed to create blur render target");
-
-			constexpr uint32_t lowestDimension = 16; // lowest mip is 16x16, preserving directional detail for diffuse IBL (1x1 loses directionality)
-			s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::skysphere)] = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, 4096, 2048, 1, compute_mip_count(4096, 2048, lowestDimension), VK_FORMAT_B10G11R11_UFLOAT_PACK32, UnorderedAccessView | ShaderViews | PerMipViews | BlitClear | QueueShare, "skysphere"});
-			SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::skysphere)] != nullptr, "Failed to create skysphere render target");
 
 			// Auto-Exposure
 			s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::auto_exposure)]          = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, 1, 1, 1, 1, VK_FORMAT_R32_SFLOAT, UnorderedAccessView | ShaderViews | BlitClear, "auto_exposure_1"});
@@ -337,31 +388,21 @@ namespace SceneryEditorX
 			s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::cloud_noise_detail)] = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type3D, 32,  32,  32,  1, VK_FORMAT_R16G16B16A16_SFLOAT, UnorderedAccessView | ShaderViews | QueueShare, "cloud_noise_detail"});
 			SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::cloud_noise_detail)] != nullptr, "Failed to create cloud_noise_detail render target");
 
-			s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::cloud_shadow)]       = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, 1024, 1024, 1, 1, VK_FORMAT_R16_SFLOAT, UnorderedAccessView | ShaderViews | QueueShare, "cloud_shadow"});
+			// Cloud shadows (plan TASK-055; XP12: clouds/shadow_size 1024, cloud/shadow_cascades 2): sunlight through the cloud
+			// layers, one world-space cascade per layer of the array (Pass_CloudShadow)
+			s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::cloud_shadow)]       = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2DArray, CLOUD_SHADOW_SIZE, CLOUD_SHADOW_SIZE, CLOUD_SHADOW_CASCADES, 1, VK_FORMAT_R16_SFLOAT, UnorderedAccessView | ShaderViews, "cloud_shadow"});
 			SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::cloud_shadow)] != nullptr, "Failed to create cloud_shadow render target");
+
+			// Sun shadow cascades (plan TASK-051), at the shadow quality's map size; Pass_ShadowCascades makes it again when
+			// the quality asks for another size
+			CreateShadowCascadeTarget(GetShadowQuality(GetQualityPreset().shadows).mapSize);
 		}
 #pragma endregion
 	}
 
 	void Renderer::UpdateOptionalRenderTargets()
 	{
-		uint32_t width  = static_cast<uint32_t>(GetRendererResolution().x);
-		uint32_t height = static_cast<uint32_t>(GetRendererResolution().y);
-		uint32_t flags  = UnorderedAccessView | ShaderViews | BlitClear;
-		
-		// (SSAO) Screen-space ambient occlusion - optional since it can be expensive and not noticeable in many scenes
-		bool needSSAO = false; /* TODO: Have the option settable in user settings */
-		if (needSSAO && !s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::ssao)])
-		{
-		    s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::ssao)] = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, width, height, 1, 1, VK_FORMAT_R16G16B16A16_SFLOAT, flags | QueueShare, "ssao"});
-			SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::ssao)] != nullptr, "Failed to create ssao render target");
-		}
-		else if (!needSSAO && s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::ssao)])
-		{
-			s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::ssao)] = nullptr;
-			SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::ssao)] == nullptr, "Failed to destroy ssao render target");
-		}
-
+		// The ssao target is the ambient occlusion's (CreateAmbientOcclusionTargets, plan Phase 8)
 		{
 			s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_reflections_position)]  = nullptr;
 			SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::gbuffer_reflections_position)] == nullptr, "Failed to destroy gbuffer_reflections_position render target");
@@ -589,6 +630,10 @@ namespace SceneryEditorX
 			{
 				mipBiasNew = log2f(GetRendererResolution().x / GetOutputResolution().x) - 1.0f;
 			}
+			// FSR 1 asks for its preset's texture LOD bias (plan TASK-044; applied when the samplers are made)
+			const FsrQuality fsr = GetFsrQuality(GetQualityPreset().fsr);
+			if (GetFeatures().fsr1 && fsr.enabled)
+				mipBiasNew += fsr.textureLodBias;
 
 			static float mipBias = std::numeric_limits<float>::max();
 			if (mipBiasNew != mipBias)
@@ -789,7 +834,20 @@ namespace SceneryEditorX
 		std::array<Instance, MAX_INSTANCE_COUNT> identity;
 		identity.fill(Instance::GetIdentity());
 
-		At(s_Buffers, Renderer_Buffer::ConstantFrame)      = CreateRef<Buffer>(sizeof(ConstantBuffer_Frame), elementCount, nullptr, true, "frame");
+		// One frame / environment / ambient occlusion update per view per frame (the main view and the extra ones, RenderExtraViews)
+		const uint32_t constantCount = elementCount * (1 + MAX_EXTRA_VIEWS);
+		At(s_Buffers, Renderer_Buffer::ConstantFrame)      = CreateRef<Buffer>(sizeof(ConstantBuffer_Frame), constantCount, nullptr, true, "frame");
+		At(s_Buffers, Renderer_Buffer::ConstantEnvironment) = CreateRef<Buffer>(sizeof(ConstantBuffer_Environment), constantCount, nullptr, true, "environment");
+		At(s_Buffers, Renderer_Buffer::ConstantCacao)       = CreateRef<Buffer>(sizeof(CacaoConstants), constantCount, nullptr, true, "cacao");
+
+		// exposure (plan TASK-038): the histogram stays on the GPU (zeroed here, then by exposure_adapt.slang after each
+		// read); the state is host visible so the CPU can read the EV back for the next frame's pre-exposure
+		{
+			const std::array<uint32_t, EXPOSURE_HISTOGRAM_BINS> bins{};
+			At(s_Buffers, Renderer_Buffer::ExposureHistogram) = CreateRef<Buffer>(sizeof(uint32_t), EXPOSURE_HISTOGRAM_BINS, bins.data(), false, "exposure_histogram");
+			const std::array<float, EXPOSURE_STATE_FLOATS> state{};
+			At(s_Buffers, Renderer_Buffer::ExposureState) = CreateRef<Buffer>(sizeof(float), EXPOSURE_STATE_FLOATS, state.data(), true, "exposure_state");
+		}
 		At(s_Buffers, Renderer_Buffer::MaterialParameters) = CreateRef<Buffer>(static_cast<uint32_t>(sizeof(ShaderBuffer_Material)), MAX_MATERIAL_TEXTURES, nullptr, true, "materials");
 		At(s_Buffers, Renderer_Buffer::LightParameters)    = CreateRef<Buffer>(static_cast<uint32_t>(sizeof(ShaderBuffer_Light)), MAX_ARRAY_SIZE, nullptr, true, "lights");
 		At(s_Buffers, Renderer_Buffer::DummyInstance)      = CreateRef<Buffer>(sizeof(Instance), static_cast<uint32_t>(identity.size()), &identity, true, "dummy_instance_buffer");
@@ -877,6 +935,9 @@ namespace SceneryEditorX
 		for (Ref<ImageResource>& texture : s_StandardTextures)
 			texture.Reset();
 
+		// Its atlas images and buffers must go before the device, not in the CRT's static destructors
+		s_StandardFont.Reset();
+
 		for (Ref<Sampler>& sampler : s_Samplers)
 			sampler.Reset();
 
@@ -899,6 +960,29 @@ namespace SceneryEditorX
 	}
 
 #pragma endregion
+
+	void Renderer::CreateViewRenderTargets(const uint32_t width, const uint32_t height, std::array<Ref<ImageResource>, static_cast<uint32_t>(Renderer_RenderTarget::MaxEnum)> &out)
+	{
+		// The main view's targets and sizes are put back after: what CreateRenderTargets replaced is the view's
+		const auto saved = s_RenderTargets;
+		const Vec2 render = GetRendererResolution();
+		const Vec2 output = GetOutputResolution();
+		SetRendererResolution(width, height, false);
+		SetOutputResolution(width, height, false);
+		s_CreatingViewTargets = true;
+		CreateRenderTargets(true, true, false);
+		s_CreatingViewTargets = false;
+
+		out = {};
+		for (size_t i = 0; i < s_RenderTargets.size(); ++i)
+		{
+			if (s_RenderTargets[i] != saved[i])
+				out[i] = s_RenderTargets[i];
+		}
+		s_RenderTargets = saved;
+		SetRendererResolution(static_cast<uint32_t>(render.x), static_cast<uint32_t>(render.y), false);
+		SetOutputResolution(static_cast<uint32_t>(output.x), static_cast<uint32_t>(output.y), false);
+	}
 
 	std::array<Ref<ImageResource>, static_cast<uint32_t>(Renderer_RenderTarget::MaxEnum)> &Renderer::GetRenderTargets()
 	{

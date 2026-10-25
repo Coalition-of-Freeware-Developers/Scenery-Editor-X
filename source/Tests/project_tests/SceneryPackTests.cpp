@@ -292,6 +292,76 @@ TEST_CASE("CreateAirportProject lays the pack out like Custom Scenery's", "[pack
 	CHECK(error.find("already exists") != std::string::npos);
 }
 
+TEST_CASE("Projects without an airport: scenery and library packs", "[pack][create]")
+{
+	Scratch scratch;
+	NewSceneryProject spec;
+	spec.name = "Seattle Waterfront";
+	spec.location = scratch.path;
+	spec.author = "Tester";
+	spec.latitude = 47.6062;
+	spec.longitude = -122.3321;
+	spec.elevationMeters = 54.0;
+
+	// Checked field by field
+	CHECK(ValidateNewSceneryProject(spec).empty());
+	NewSceneryProject bad = spec;
+	bad.name = "";
+	bad.latitude = 0.0;
+	bad.longitude = 0.0;
+	bad.location = scratch.path / "missing";
+	const std::vector<FieldProblem> problems = ValidateNewSceneryProject(bad);
+	const auto has = [&problems](const char *field) { return std::ranges::any_of(problems, [field](const FieldProblem &p) { return p.field == field; }); };
+	CHECK(has("name"));
+	CHECK(has("latitude"));
+	CHECK(has("location"));
+	bad = spec;
+	bad.hasReferencePoint = false;
+	bad.latitude = 0.0;
+	bad.longitude = 0.0;
+	CHECK(ValidateNewSceneryProject(bad).empty());	// Without a reference point the coordinates don't matter
+
+	// A scenery pack: no airport, the reference point as the datum the scene centers on
+	fs::path projectFile;
+	std::string error;
+	REQUIRE(CreateSceneryProject(spec, projectFile, &error));
+	const fs::path pack = scratch.path / "Seattle Waterfront";
+	CHECK(projectFile == pack / "Seattle Waterfront.edX");
+	CHECK(fs::is_directory(pack / "Earth nav data"));
+	CHECK(fs::is_directory(pack / "objects"));
+	CHECK(fs::exists(pack / ".gitattributes"));
+	SceneryProject loaded;
+	REQUIRE(LoadProjectFile(projectFile, loaded, nullptr, nullptr, &error));
+	CHECK(loaded.airports.empty());
+	CHECK(loaded.info.kind == ProjectKind::Scenery);
+	CHECK(loaded.info.author == "Tester");
+	REQUIRE(loaded.datum.valid);
+	CHECK(loaded.datum.latitude == Approx(47.6062));
+	CHECK(loaded.datum.elevation == Approx(54.0));
+	double latitude = 0.0, longitude = 0.0;
+	REQUIRE(GetProjectCenter(loaded, latitude, longitude));
+	CHECK(longitude == Approx(-122.3321));
+
+	fs::path again;
+	CHECK_FALSE(CreateSceneryProject(spec, again, &error));
+	CHECK(error.find("already exists") != std::string::npos);
+
+	// A library: library.txt being authored, no Earth nav data, no datum
+	NewSceneryProject library;
+	library.kind = ProjectKind::Library;
+	library.name = "My Hangars Library";
+	library.location = scratch.path;
+	library.hasReferencePoint = false;
+	REQUIRE(CreateSceneryProject(library, projectFile, &error));
+	SceneryProject lib;
+	REQUIRE(LoadProjectFile(projectFile, lib, nullptr, nullptr, &error));
+	CHECK(lib.info.kind == ProjectKind::Library);
+	CHECK(lib.library.has_value());
+	CHECK_FALSE(lib.datum.valid);
+	CHECK_FALSE(fs::exists(scratch.path / "My Hangars Library" / "Earth nav data"));
+	CHECK(fs::is_directory(scratch.path / "My Hangars Library" / "objects"));
+}
+
 TEST_CASE("ExportSceneryPack writes apt.dat, DSF tiles and the pack's art", "[pack][export]")
 {
 	Scratch scratch;

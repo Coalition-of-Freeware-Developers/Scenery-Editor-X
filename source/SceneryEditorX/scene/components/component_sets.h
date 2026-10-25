@@ -463,7 +463,8 @@ namespace SceneryEditorX
 		
 		enum class ProjectionType { Perspective = 0, Orthographic = 1 };
 		ProjectionType projectionType = ProjectionType::Perspective;
-	
+		float orthographicHeight = 100.0f;	// Orthographic: meters the view shows from bottom to top
+
 		bool isPrimary = true; // Used by the renderer to find the main view
 		bool useJitter = true; // For TAA/DLSS in your Vulkan pipeline
 	};

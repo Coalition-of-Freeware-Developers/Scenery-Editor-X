@@ -43,6 +43,7 @@
 #include "node_tool.h"
 #include "tools_selftest.h"
 #include "transform_tool.h"
+#include "viewport_gizmo.h"
 #include "viewport_menus.h"
 #include <algorithm>
 #include <cmath>
@@ -132,6 +133,24 @@ namespace SceneryEditorX::EditorTools
 		uint64_t RequestAround(const int x, const int y, const int radius)
 		{
 			return ScenePicking::Request(x - radius, y - radius, static_cast<uint32_t>(radius * 2 + 1), static_cast<uint32_t>(radius * 2 + 1));
+		}
+
+		bool IsTransformTool(const Tool tool)
+		{
+			return tool == Tool::Move || tool == Tool::Rotate || tool == Tool::Scale;
+		}
+
+		/**
+		 * @brief Whether the tools work on nodes: the node tool, or move / rotate / scale while nodes are selected (a
+		 * modeling package's vertex level). A transform drag in progress stays on what it started on.
+		 */
+		bool OnNodes(const Tool tool)
+		{
+			if (tool == Tool::Nodes)
+				return true;
+			if (!IsTransformTool(tool) || TransformTool::IsUsing())
+				return false;
+			return NodeTool::IsDragging() || NodeTool::HasNodeSelection();
 		}
 
 		/* @brief The pick id nearest the cursor's pixel in a result (0 when the region is empty). */
@@ -374,6 +393,9 @@ namespace SceneryEditorX::EditorTools
 			NodeTool::Cancel();
 		if (FacadeTool::IsDrawing())
 			FacadeTool::Cancel();
+		// Picked nodes stay picked for move / rotate / scale (their gizmo works on them); the other tools leave the node level
+		if (tool == Tool::Select || tool == Tool::Facade)
+			NodeTool::ClearNodeSelection();
 		s.tool = tool;
 	}
 
@@ -424,9 +446,12 @@ namespace SceneryEditorX::EditorTools
 		switch (tool)
 		{
 			case Tool::Select:	return "Select (Q)\nClick: select what is under the cursor\nShift: add, Ctrl: toggle, drag: box select";
-			case Tool::Move:	return "Move (W)\nDrag the gizmo's arrows or planes; objects on the ground stay on it\nCtrl: snap (inverts the snapping setting)";
-			case Tool::Rotate:	return "Rotate (E)\nTurn about the vertical (X-Plane objects and rows have a heading only)\nCtrl: snap";
-			case Tool::Scale:	return "Scale (R)\nScale shapes on the ground, entities on any axis\nCtrl: snap";
+			case Tool::Move:	return "Move (W)\nDrag the gizmo's arrows, planes or center; objects on the ground stay on it\n"
+										"With nodes selected (V), it moves the nodes. Ctrl: snap (inverts the snapping setting)";
+			case Tool::Rotate:	return "Rotate (E)\nDrag a ring of the gizmo: X-Plane objects and rows turn about the vertical (their heading)\n"
+										"With nodes selected (V), it turns the nodes. Ctrl: snap";
+			case Tool::Scale:	return "Scale (R)\nDrag the gizmo's boxes or center: shapes scale on the ground, entities on any axis\n"
+										"With nodes selected (V), it scales the nodes. Ctrl: snap";
 			case Tool::Nodes:	return "Nodes (V)\nEdit the bezier nodes of pavement, lines, boundaries, runway ends and project shapes\n"
 										"Drag nodes, handles or the curve itself; double-click a curve to insert; Ctrl+click past a line's end to extend it\n"
 										"Shift+C/S/Y/F: corner, smooth, symmetric, free nodes; Shift+B: edit as a B-spline; Del deletes nodes";
@@ -450,14 +475,25 @@ namespace SceneryEditorX::EditorTools
 		switch (s.tool)
 		{
 			case Tool::Move:
-				owns = TransformTool::OnViewportGui(context, view, TransformTool::Operation::Translate, allowInput);
-				break;
 			case Tool::Rotate:
-				owns = TransformTool::OnViewportGui(context, view, TransformTool::Operation::Rotate, allowInput);
-				break;
 			case Tool::Scale:
-				owns = TransformTool::OnViewportGui(context, view, TransformTool::Operation::Scale, allowInput);
+			{
+				// The gizmo goes on the selected nodes when there are any, else on the selection
+				const bool input = allowInput && !ViewportMenus::IsOpen();
+				if (OnNodes(s.tool))
+				{
+					using ViewportGizmo::Mode;
+					const Mode mode = s.tool == Tool::Move ? Mode::Translate : (s.tool == Tool::Rotate ? Mode::Rotate : Mode::Scale);
+					owns = NodeTool::OnTransformGui(context, view, mode, input);
+				}
+				else
+				{
+					using TransformTool::Operation;
+					const Operation operation = s.tool == Tool::Move ? Operation::Translate : (s.tool == Tool::Rotate ? Operation::Rotate : Operation::Scale);
+					owns = TransformTool::OnViewportGui(context, view, operation, input);
+				}
 				break;
+			}
 			case Tool::Nodes:
 				owns = NodeTool::OnViewportGui(context, view, allowInput && !ViewportMenus::IsOpen());
 				break;
@@ -500,8 +536,8 @@ namespace SceneryEditorX::EditorTools
 					{
 						const ImVec2 min(std::max(view.imageMin.x, std::min(mouse.x, s.pressMouse.x)), std::max(view.imageMin.y, std::min(mouse.y, s.pressMouse.y)));
 						const ImVec2 max(std::min(view.imageMin.x + view.imageSize.x, std::max(mouse.x, s.pressMouse.x)), std::min(view.imageMin.y + view.imageSize.y, std::max(mouse.y, s.pressMouse.y)));
-						// The node tool boxes nodes (drawn on screen, no readback needed); everything else boxes objects
-						if (!(s.tool == Tool::Nodes && NodeTool::SelectNodesInRect(min, max, s.pressMode != Mode::Replace)))
+						// Working on nodes boxes nodes (drawn on screen, no readback needed); everything else boxes objects
+						if (!(OnNodes(s.tool) && NodeTool::SelectNodesInRect(min, max, s.pressMode != Mode::Replace)))
 						{
 							int x0 = 0, y0 = 0, x1 = 0, y1 = 0;
 							ToPixel(view, renderWidth, renderHeight, min, x0, y0);
@@ -529,7 +565,13 @@ namespace SceneryEditorX::EditorTools
 			// A quick right-click (no drag: a drag looks around) opens the quad menu for what is under the cursor, once its
 			// pick comes back. While a facade is being drawn it finishes the shape instead (3ds Max style).
 			const bool overImage = canvasHovered || (s.toolOwnsMouse && view.Contains(mouse));
-			if (overImage && ImGui::IsMouseClicked(ImGuiMouseButton_Right))
+			if (ImGui::IsMouseClicked(ImGuiMouseButton_Right) && (TransformTool::IsUsing() || ViewportGizmo::IsActive()))
+			{
+				// A right click while dragging the gizmo cancels the drag, as in modeling packages (no menu)
+				Escape(context);
+				s.rightPressed = false;
+			}
+			else if (overImage && ImGui::IsMouseClicked(ImGuiMouseButton_Right) && !io.KeyAlt)	// Alt + right drags zoom (Maya)
 			{
 				s.rightPressed = true;
 				s.rightPressMouse = mouse;
@@ -583,7 +625,7 @@ namespace SceneryEditorX::EditorTools
 		if (view.valid)
 		{
 			// Wall labels of the selected facades follow the other tools too (the facade tool draws its own)
-			if (s.tool != Tool::Facade && s.tool != Tool::Nodes)
+			if (s.tool != Tool::Facade && !OnNodes(s.tool))
 				FacadeTool::DrawLabels(view);
 			DrawOverlay(view);
 		}
@@ -600,7 +642,8 @@ namespace SceneryEditorX::EditorTools
 	void HandleShortcuts(EditorContext *context)
 	{
 		const ImGuiIO &io = ImGui::GetIO();
-		if (io.WantTextInput)
+		// Self-tests drive the tools themselves: keys pressed in a window that just took the focus mustn't switch them
+		if (io.WantTextInput || ToolsSelfTest::IsEnabled())
 			return;
 
 		// Del and Esc wherever the keyboard isn't typing (routed globally, so a focused text field wins)
@@ -639,8 +682,7 @@ namespace SceneryEditorX::EditorTools
 			SetTool(Tool::Nodes);
 		if (ImGui::IsKeyPressed(ImGuiKey_B, false) && !io.KeyShift)
 			SetTool(Tool::Facade);
-		if (ImGui::IsKeyPressed(ImGuiKey_F, false))
-			FrameSelection();
+		// F (frame) and the view keys belong to the navigation keymap (EditorCamera::HandleShortcuts)
 		if (ImGui::IsKeyPressed(ImGuiKey_X, false))
 			TransformTool::GetSettings().localSpace = !TransformTool::GetSettings().localSpace;
 	}
@@ -657,48 +699,20 @@ namespace SceneryEditorX::EditorTools
 		return true;
 	}
 
-	void FrameSelection()
+	bool FrameSelection()
 	{
+		// Keep looking the way the camera looks (tilting down from the horizon); back off until the selection fits
 		Point3 center;
 		double radius = 0.0;
-		if (!TransformTool::GetSelectionCenter(center, radius))
-			return;
-
-		Camera *camera = EditorCamera::Get();
-		entt::registry *registry = EditorScene::GetRegistry();
-		if (!camera || !registry)
-			return;
-		auto view = registry->view<TransformComponent, CameraComponent>();
-		for (const entt::entity handle : view)
-		{
-			if (!view.get<CameraComponent>(handle).isPrimary)
-				continue;
-			TransformComponent &transform = view.get<TransformComponent>(handle);
-			const CameraComponent &cameraData = view.get<CameraComponent>(handle);
-
-			// Keep looking the way the camera looks; back off until the selection fits the narrower field of view
-			const Vec3 euler = transform.GetRotationEuler();
-			const double cosPitch = std::cos(static_cast<double>(euler.x));
-			Point3 forward{ cosPitch * std::sin(static_cast<double>(euler.y)), std::sin(static_cast<double>(euler.x)), cosPitch * std::cos(static_cast<double>(euler.y)) };
-			if (forward.y > -0.2)
-			{
-				// Looking at or above the horizon: tilt down so the ground selection is seen from above
-				const double yaw = euler.y;
-				const double pitch = -0.6;
-				forward = { std::cos(pitch) * std::sin(yaw), std::sin(pitch), std::cos(pitch) * std::cos(yaw) };
-			}
-			const double halfFov = std::max(0.1, static_cast<double>(cameraData.horizontalFov_Rad) * 0.5 * 0.75);
-			const double distance = std::max(8.0, radius / std::tan(halfFov) * 1.15);
-			const Vec3 target(static_cast<float>(center.x), static_cast<float>(center.y), static_cast<float>(center.z));
-			const Vec3 eye(static_cast<float>(center.x - forward.x * distance), static_cast<float>(center.y - forward.y * distance), static_cast<float>(center.z - forward.z * distance));
-			camera->LookAt(transform, eye, target);
-			break;
-		}
+		if (!TransformTool::GetSelectionCenter(center, radius) || !EditorCamera::Get())
+			return false;
+		EditorCamera::Frame(center, std::max(radius, 3.0));
+		return true;
 	}
 
 	bool DeleteSelection(EditorContext *context)
 	{
-		if (GetTool() == Tool::Nodes && NodeTool::GetSelectedNodeCount() > 0)
+		if (OnNodes(GetTool()) && NodeTool::GetSelectedNodeCount() > 0)
 			return NodeTool::DeleteSelectedNodes();
 		if (TransformTool::IsUsing() || NodeTool::IsDragging())
 			return false;
@@ -804,7 +818,8 @@ namespace SceneryEditorX::EditorTools
 			s.marquee = false;
 			return;
 		}
-		if (GetTool() == Tool::Nodes && NodeTool::GetSelectedNodeCount() > 0)
+		// Picked nodes go first (move / rotate / scale then work on the whole shape again), then the selection
+		if (OnNodes(GetTool()) && NodeTool::GetSelectedNodeCount() > 0)
 		{
 			NodeTool::ClearNodeSelection();
 			return;
@@ -816,7 +831,7 @@ namespace SceneryEditorX::EditorTools
 	{
 		const State &s = S();
 		if (s.pressed && s.marquee)
-			return s.tool == Tool::Nodes && NodeTool::HasShapes() ? "Box: select the nodes inside" : "Box: select everything visible inside (Shift adds, Ctrl removes)";
+			return OnNodes(s.tool) && NodeTool::HasShapes() ? "Box: select the nodes inside" : "Box: select everything visible inside (Shift adds, Ctrl removes)";
 
 		switch (s.tool)
 		{
@@ -824,6 +839,15 @@ namespace SceneryEditorX::EditorTools
 			case Tool::Rotate:
 			case Tool::Scale:
 			{
+				if (OnNodes(s.tool))
+				{
+					if (const std::string &status = NodeTool::GetStatus(); !status.empty())
+						return status;
+					const size_t count = NodeTool::GetSelectedNodeCount();
+					return std::string(GetToolName(s.tool)) + " " + std::to_string(count) + (count == 1 ? " node" : " nodes") +
+						"  |  drag the gizmo  |  click or box nodes to pick others  |  Esc: the whole shape" +
+						(TransformTool::GetSettings().snap ? "  |  snapping (Ctrl: off)" : "  |  Ctrl: snap");
+				}
 				if (const std::string &status = TransformTool::GetStatus(); !status.empty())
 					return status;
 				const TransformTool::Capabilities capabilities = TransformTool::GetCapabilities();
@@ -842,8 +866,14 @@ namespace SceneryEditorX::EditorTools
 			case Tool::Facade:
 				return FacadeTool::GetHint();
 			default:
-				return EditorSelection::IsEmpty() ? std::string("Click to select  |  drag a box  |  right-click: quad menu, hold Space: hotbox  |  Alt+LMB orbit, MMB pan, RMB look (+WASD)")
-												  : std::to_string(EditorSelection::Get().size()) + " selected  |  W move, E rotate, R scale, V nodes, B facades, F frame, Del delete  |  right-click: menu";
+			{
+				// The navigation keymap's own mouse bindings, and its frame key
+				const NavigationKeymap keymap = EditorPreferences::Get().keymap;
+				if (EditorSelection::IsEmpty())
+					return std::string("Click to select  |  drag a box  |  right-click: quad menu, hold Space: hotbox  |  ") + ViewportCamera::GetKeymapSummary(keymap);
+				return std::to_string(EditorSelection::Get().size()) + " selected  |  W move, E rotate, R scale, V nodes, B facades, " +
+					   (keymap == NavigationKeymap::Max ? "Z" : "F") + " frame, Del delete  |  right-click: menu";
+			}
 		}
 	}
 }

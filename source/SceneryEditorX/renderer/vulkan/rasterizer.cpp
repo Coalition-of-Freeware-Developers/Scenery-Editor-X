@@ -51,6 +51,7 @@ namespace SceneryEditorX
 		m_Hash = HashCombine(m_Hash, static_cast<uint64_t>(m_Spec.depthClipEnabled));
 		m_Hash = HashCombine(m_Hash, static_cast<uint64_t>(m_Spec.lineWidth));
 		m_Hash = HashCombine(m_Hash, static_cast<uint64_t>(hasher(m_Spec.depthBiasEnabled)));
+		m_Hash = HashCombine(m_Hash, static_cast<uint64_t>(hasher(m_Spec.depthBiasConstant)));	// pipelines differ by it too
 		m_Hash = HashCombine(m_Hash, static_cast<uint64_t>(hasher(m_Spec.depthBiasClamp)));
 		m_Hash = HashCombine(m_Hash, static_cast<uint64_t>(hasher(m_Spec.depthBiasSlope)));
 		m_Hash = HashCombine(m_Hash, static_cast<uint64_t>(hasher(m_Spec.lineWidth)));
