@@ -1183,7 +1183,9 @@ namespace SceneryEditorX::XPlane
 					}
 				}
 
-				if (m_Data.texture.empty())
+				// Draped batches take TEXTURE_DRAPED: only geometry that isn't draped needs TEXTURE
+				const bool undraped = std::ranges::any_of(m_Data.batches, [](const Obj8Batch &batch) { return !batch.state.draped; });
+				if (m_Data.texture.empty() && undraped)
 					Warn("No TEXTURE: the object draws with a gray proxy texture");
 			}
 

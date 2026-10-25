@@ -29,6 +29,7 @@
  * -------------------------------------------------------
  */
 #include "xp_scene.h"
+#include "xp_airport_scene.h"
 #include "xp_datarefs.h"
 #include "xp_weather_art.h"
 #include <algorithm>
@@ -68,6 +69,9 @@ namespace SceneryEditorX::XPlane
 
 		/* @brief Placement to frame once its asset has loaded (the latest FrameObject() request wins), or 0. */
 		uint64_t s_FrameWhenLoaded = 0;
+
+		/* @brief Draped OBJ batches in the order they were built: within a layer, later ones draw on top. */
+		uint32_t s_DrapedBatchSequence = 0;
 
 		/* @brief Roots placed while their asset loads: BuildLoadedObjects() visits these instead of every placement. */
 		std::vector<uint64_t> s_PendingRoots;
@@ -520,13 +524,25 @@ namespace SceneryEditorX::XPlane
 				Attach(registry, handle, parent);
 				batchEntities.push_back(GetId(registry, handle));
 
+				// ATTR_draped geometry (ground decals: grunge, sand patches, painted stops) is a drape like the .pol ones:
+				// drawn in its ATTR_layer_group_draped layer's order over the pavement, lifted to that layer so it never
+				// fights the ground, no shadow
+				float drapeHeight = 0.0f;
+				if (batch.draped)
+				{
+					drapeHeight = SceneAirports::GetOverlayLayerHeight(data.layerGroupDraped.name, data.layerGroupDraped.offset);
+					registry.get<TransformComponent>(handle).translation.y += drapeHeight;
+				}
+
 				if (Entity *stored = Scene::GetStoredEntity(entity))
 				{
 					if (Renderable *renderable = stored->AddComponent<Renderable>())
 					{
 						renderable->SetMesh(asset->GetMesh(), batch.subMesh);
 						renderable->SetMaterial(Ref<MaterialAsset>(asset->GetMaterial(batch.material)));
-						renderable->SetFlag(CastsShadows, batch.castShadow);
+						renderable->SetFlag(CastsShadows, batch.castShadow && !batch.draped);
+						if (batch.draped)
+							renderable->SetDrapeOrder(Renderable::MakeDrapeOrder(drapeHeight, s_DrapedBatchSequence++));
 					}
 				}
 			}
