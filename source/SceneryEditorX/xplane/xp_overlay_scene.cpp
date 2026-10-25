@@ -29,6 +29,7 @@
  * -------------------------------------------------------
  */
 #include "xp_overlay_scene.h"
+#include "xp_forest3d.h"
 #include "xp_scene.h"
 #include "xp_terrain_scene.h"
 #include "xp_texture_loader.h"
@@ -75,6 +76,7 @@ namespace SceneryEditorX::XPlane
 			bool cutout = false;
 			float cutoff = 0.5f;
 			bool blended = false;
+			bool lodSwitch = false;			// Forest billboards handing over to 3D trees near the camera (XPlane::Forest3d)
 			std::vector<Vertex_PosTexNorTan> vertices;
 			std::vector<uint32_t> indices;
 			Bounds2 bounds;
@@ -237,6 +239,8 @@ namespace SceneryEditorX::XPlane
 			const bool foliage = part.kind == OverlayKind::Forest;
 			if (foliage)
 				key += "|foliage";
+			if (part.lodSwitch)
+				key += "|far";
 
 			if (const auto it = materials.find(key); it != materials.end())
 				return it->second;
@@ -258,6 +262,11 @@ namespace SceneryEditorX::XPlane
 			material->SetProperty(MaterialProperty::AlphaCutoff, blended ? BLEND_SPLIT_ALPHA : (cutout ? std::clamp(part.cutoff, 0.001f, 1.0f) : 0.0f));
 			material->SetProperty(MaterialProperty::BlendMode, blended ? 1.0f : 0.0f);
 			material->SetProperty(MaterialProperty::XpFoliage, foliage ? 1.0f : 0.0f);
+			if (part.lodSwitch)
+			{
+				material->SetProperty(MaterialProperty::XpLodSwitchMode, 1.0f);
+				material->SetProperty(MaterialProperty::XpLodSwitchDistance, Forest3d::GetSwitchDistance());
+			}
 			if (image)
 				material->SetTexture(MaterialTextureType::Color, image);
 			materials.emplace(key, material);
@@ -299,11 +308,27 @@ namespace SceneryEditorX::XPlane
 			static const TerrainSurface flat;
 			const TerrainSurface &surface = onTerrain ? SceneTerrain::GetSurface() : flat;
 			OverlayMesh draped;
+			std::map<fs::path, std::vector<OverlayTree3d>> trees3d;	// X-Plane 12 forests' 3D trees, on the ground
 			for (const OverlayMesh *mesh : group.meshes)
 			{
 				if (!mesh || mesh->indices.empty())
 					continue;
-				const auto [it, added] = byMaterial.emplace(MaterialKey(*mesh), parts.size());
+				const bool lodSwitch = mesh->kind == OverlayKind::Forest && !mesh->trees3d.empty() && Forest3d::DrawsEveryTree(mesh->forestFile);
+				if (lodSwitch)
+				{
+					std::vector<OverlayTree3d> &planted = trees3d[mesh->forestFile];
+					for (OverlayTree3d tree : mesh->trees3d)
+					{
+						if (float ground = 0.0f; !surface.IsEmpty())
+						{
+							if (!surface.HeightAt(tree.x, tree.z, ground) && clip)
+								continue;
+							tree.y = ground;
+						}
+						planted.push_back(tree);
+					}
+				}
+				const auto [it, added] = byMaterial.emplace(MaterialKey(*mesh) + (lodSwitch ? "|3d" : ""), parts.size());
 				if (added)
 				{
 					Part &part = parts.emplace_back();
@@ -314,6 +339,7 @@ namespace SceneryEditorX::XPlane
 					part.cutout = mesh->cutout;
 					part.cutoff = mesh->cutoff;
 					part.blended = mesh->blended;
+					part.lodSwitch = lodSwitch;
 					part.height = mesh->vertices.empty() ? 0.0f : mesh->vertices.front().y;
 					part.placement = mesh->placement;
 				}
@@ -398,6 +424,9 @@ namespace SceneryEditorX::XPlane
 					addRenderable(partHandle, part);
 				}
 			}
+
+			for (const auto &[forestFile, trees] : trees3d)
+				Forest3d::Plant(registry, handle, forestFile, trees, (group.name.empty() ? std::string("Forest") : group.name) + " 3D trees");
 
 			for (const OverlayObject *object : group.objects)
 			{
@@ -626,8 +655,8 @@ namespace SceneryEditorX::XPlane
 
 		impl.stats.buildMilliseconds = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
 		impl.Recount();
-		SEDX_CORE_INFO_TAG(LOG_TAG, "{}: {} groups ({} built, {} kept), {} parts, {} triangles, {} objects in {:.0f} ms{}", rootName, impl.stats.groups, built, kept, impl.stats.parts,
-			impl.stats.triangles, impl.stats.objects, impl.stats.buildMilliseconds,
+		SEDX_CORE_INFO_TAG(LOG_TAG, "{}: {} groups ({} built, {} kept), {} parts, {} triangles, {} objects in {:.0f} ms ({} 3D trees in all){}", rootName, impl.stats.groups, built, kept,
+			impl.stats.parts, impl.stats.triangles, impl.stats.objects, impl.stats.buildMilliseconds, Forest3d::GetTreeCount(),
 			failed ? "; " + std::to_string(failed) + " objects could not be placed: " + firstError : std::string());
 		return impl.root;
 	}

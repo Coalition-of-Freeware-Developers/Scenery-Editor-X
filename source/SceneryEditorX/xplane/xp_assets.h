@@ -211,9 +211,41 @@ namespace SceneryEditorX::XPlane
 			float maxHeight = 20.0f;
 			int quads = 2;					// Crossed quads making up the tree
 			int layer = 0;
+			float nominalHeight = 0.0f;		// TREE2: height of an unscaled tree (0: the meshes are one unit tall)
+			std::vector<int> meshes3d;		// MESH_3D: its 3D LOD steps, nearest first (indices into meshes)
 		};
 
-		std::string texture;
+		/* @brief SHADER_2D / SHADER_3D material commands (the standard shading options). */
+		struct Material
+		{
+			std::string texture;			// Relative to the .for file
+			std::string textureNormal;
+			float normalRatio = 1.0f;
+			bool normalMetalness = false;	// NORMAL_METALNESS: normal map blue = F0 / metalness
+			bool normalTranslucency = false;	// NORMAL_TRANSLUCENCY: normal map blue = translucency
+			std::string weather;			// WEATHER mask
+			float blendHash = 0.0f;			// BLEND_HASH <cutoff>: hashed alpha (0: none)
+			float superRoughness = 0.0f;
+		};
+
+		/**
+		 * MESH <name> <lod near> <lod far> <vertices> <indices> <bend> <displacement> <speed> [NO_SHADOW] and its VERTEX /
+		 * IDX rows (X-Plane 12): a 3D tree, about one unit tall, x east, y up, z south like OBJ8. Wind weights aren't kept.
+		 */
+		struct Mesh
+		{
+			std::string name;
+			float lodNear = 0.0f;			// Meters: fully shown from here ...
+			float lodFar = 500.0f;			// ... to here
+			bool noShadow = false;
+			std::vector<float> vertices;	// x y z, nx ny nz, s t per vertex
+			std::vector<uint32_t> indices;
+		};
+
+		std::string texture;				// The 2D shader's TEXTURE (the billboards' atlas)
+		Material material2d;
+		Material material3d;
+		std::vector<Mesh> meshes;
 		float scaleX = 256.0f;				// Texture size in pixels
 		float scaleY = 256.0f;
 		float spacingX = 30.0f;				// Grid spacing, meters

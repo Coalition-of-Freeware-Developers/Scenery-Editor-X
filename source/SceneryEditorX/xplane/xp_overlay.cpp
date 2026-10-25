@@ -1735,6 +1735,7 @@ namespace SceneryEditorX::XPlane
 		mesh.cutout = true;
 		mesh.cutoff = 0.5f;
 		mesh.twoSided = true;
+		mesh.forestFile = file;
 
 		uint32_t seed = m_Seed++ * 7919u + index;
 		const float spacingX = std::max(1.0f, asset->spacingX);
@@ -1845,6 +1846,18 @@ namespace SceneryEditorX::XPlane
 		const float aspect = std::abs(tree.width) / std::max(1.0f, tree.height);
 		const float height = width > 0.0f ? width / std::max(1e-3f, aspect) : tree.minHeight + (tree.maxHeight - tree.minHeight) * Random01(seed);
 		const float treeWidth = width > 0.0f ? width : height * aspect;
+
+		// X-Plane 12 trees with 3D steps: drawn as a mesh near the camera (XPlane::Forest3d), the billboard farther out
+		if (!tree.meshes3d.empty() && !mesh.forestFile.empty())
+		{
+			OverlayTree3d &tree3d = mesh.trees3d.emplace_back();
+			tree3d.tree = static_cast<int>(picked - forest.trees.data());
+			tree3d.x = static_cast<float>(at.x);
+			tree3d.z = static_cast<float>(at.z);
+			tree3d.yaw = static_cast<float>(yaw);
+			tree3d.height = height;
+		}
+
 		const float s1 = tree.s / forest.scaleX, s2 = (tree.s + tree.width) / forest.scaleX;
 		const float t1 = tree.t / forest.scaleY, t2 = (tree.t + tree.height) / forest.scaleY;
 		// Fraction of the width left of the trunk: TREE's offset counts from the rectangle's left edge (not from s = 0, which
@@ -2085,6 +2098,7 @@ namespace SceneryEditorX::XPlane
 		mesh.cutout = true;
 		mesh.cutoff = 0.5f;
 		mesh.twoSided = true;
+		mesh.forestFile = forestFile;
 		uint32_t seed = m_Seed++ * 7919u + index;
 		const auto canStand = [this, &options](const Point2 &p) { return InArea(options, p) && (!options.keepTree || options.keepTree(p)); };
 		const double headingToYaw = kPi / 180.0;

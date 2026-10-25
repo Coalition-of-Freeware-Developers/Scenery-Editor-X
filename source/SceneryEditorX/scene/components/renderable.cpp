@@ -388,17 +388,21 @@ namespace SceneryEditorX
 
 	void Renderable::SetInstances(const std::vector<Instance>& instances)
 	{
+		const bool wasInstanced = !m_instances.empty();
 		if (instances.empty())
 		{
 			m_instances.clear();
 			m_instance_buffer    = nullptr;
 			m_bounding_box_dirty = true;
+			if (wasInstanced)
+				Scene::MarkStructureChanged(); // it may join the GPU scene
 			return;
 		}
 
 		// store instance data
 		m_instances = instances;
-		Scene::MarkStructureChanged(); // instanced renderables stay on the CPU draw path
+		if (!wasInstanced)
+			Scene::MarkStructureChanged(); // instanced renderables stay on the CPU draw path (new instances alone change no structure)
 		m_instance_buffer = CreateRef<Buffer>(
 			sizeof(Instance),
 			static_cast<uint32_t>(instances.size()),

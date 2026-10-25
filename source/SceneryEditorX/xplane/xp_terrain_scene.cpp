@@ -198,6 +198,7 @@ namespace SceneryEditorX::XPlane
 			std::unique_ptr<OverlayScene> scenery;
 			bool sceneryShown = false;
 			bool sceneryAutogen = false;					// What the scenery was built with
+			bool sceneryTrees3d = false;
 
 			// Water parts (plan Phase 11): X-Plane's water (Renderer::Pass_Water) or, with the water switch off, the flat
 			// surface of Phase 10
@@ -785,6 +786,7 @@ namespace SceneryEditorX::XPlane
 			ClearScenery(state);
 			state.sceneryShown = true;
 			state.sceneryAutogen = SceneTerrain::IsAutogenEnabled();
+			state.sceneryTrees3d = Renderer::GetFeatures().trees3d;
 			if (state.surface.IsEmpty() || state.sceneryTiles.empty())
 				return;
 			const auto start = std::chrono::steady_clock::now();
@@ -1408,7 +1410,7 @@ namespace SceneryEditorX::XPlane
 			ShowWater(state, Renderer::GetFeatures().water);
 
 		const bool wanted = IsSceneryEnabled() && state.root != 0;
-		if (wanted == state.sceneryShown && (!wanted || state.sceneryAutogen == IsAutogenEnabled()))
+		if (wanted == state.sceneryShown && (!wanted || (state.sceneryAutogen == IsAutogenEnabled() && state.sceneryTrees3d == Renderer::GetFeatures().trees3d)))
 			return;
 		if (wanted)
 			BuildScenery(state);

@@ -1053,6 +1053,11 @@ namespace SceneryEditorX::XPlane
 		return static_cast<uint32_t>(m_Materials.size()) - 1;
 	}
 
+	void ComputeVertexTangents(std::vector<Vertex_PosTexNorTan> &vertices, const std::vector<uint32_t> &indices)
+	{
+		ComputeTangents(vertices, indices);
+	}
+
 }
 
 // -------------------------------------------------------

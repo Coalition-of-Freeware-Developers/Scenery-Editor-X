@@ -128,6 +128,9 @@ namespace SceneryEditorX::XPlane
 
 	struct ObjectLoadJob;
 
+	/* @brief Per-vertex tangents from UV derivatives (s right, t up), orthogonalized against the normal, as OBJ8s get them. */
+	void ComputeVertexTangents(std::vector<Vertex_PosTexNorTan> &vertices, const std::vector<uint32_t> &indices);
+
 	/**
 	 * @class ObjectAsset
 	 * @brief An OBJ8 file turned into GPU resources: one mesh (a sub-mesh per batch), its materials and textures.

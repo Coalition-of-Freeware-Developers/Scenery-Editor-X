@@ -206,6 +206,8 @@ gbuffer main_frag(gbuffer_vertex vertex, bool is_front_face: SV_IsFrontFace)
 
     // world position and distance
     float3 position_world = get_position(vertex.position.z, ndc_to_uv(position_ndc_jittered));
+    if (xp_lod_switch_discard(material, position_world, vertex.position.xy))	// a forest's billboards or 3D trees
+        discard;
     float3 camera_to_pixel = position_world - get_camera_position();
     float distance = fast_sqrt(dot(camera_to_pixel, camera_to_pixel));
 

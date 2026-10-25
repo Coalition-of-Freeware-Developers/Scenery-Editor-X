@@ -32,6 +32,7 @@
 #include "xp_text.h"
 #include <algorithm>
 #include <cmath>
+#include <unordered_map>
 
 // -------------------------------------------------------
 
@@ -476,24 +477,70 @@ namespace SceneryEditorX::XPlane
 			return false;
 
 		bool shader2d = true;
-		bool inMesh = false;
+		ForestAsset::Mesh *mesh = nullptr;			// The MESH whose VERTEX / IDX rows follow
+		std::unordered_map<std::string, int> meshByName;
 		ForEachRow(text, start, [&](const std::vector<std::string_view> &tokens, const std::string_view line)
 		{
 			const std::string_view key = tokens[0];
-			if (key == "MESH")
+			if (key == "VERTEX" && mesh)
 			{
-				inMesh = true;	// 3D tree meshes: not drawn
+				// x y z, nx ny nz, s t, three wind weights (not kept)
+				if (tokens.size() >= 9)
+				{
+					for (size_t i = 1; i <= 8; ++i)
+						mesh->vertices.push_back(ParseFloat(tokens[i]));
+				}
 				return;
 			}
-			if (inMesh && (key == "VERTEX" || key == "IDX"))
+			if (key == "IDX" && mesh)
+			{
+				for (size_t i = 1; i < tokens.size(); ++i)
+					mesh->indices.push_back(static_cast<uint32_t>(std::max(0, ParseInt(tokens[i], 0))));
 				return;
-			inMesh = false;
+			}
+			mesh = nullptr;
 
-			if (key == "TEXTURE")
+			ForestAsset::Material &material = shader2d ? out.material2d : out.material3d;
+			if (key == "MESH" && tokens.size() >= 6)
 			{
-				if (shader2d)
-					out.texture = CleanPath(RestOfLine(line, 1));
+				ForestAsset::Mesh &added = out.meshes.emplace_back();
+				added.name = std::string(tokens[1]);
+				added.lodNear = ParseFloat(tokens[2], 0.0f);
+				added.lodFar = ParseFloat(tokens[3], 500.0f);
+				added.vertices.reserve(static_cast<size_t>(std::clamp(ParseInt(tokens[4], 0), 0, 1 << 20)) * 8);
+				added.indices.reserve(static_cast<size_t>(std::clamp(ParseInt(tokens[5], 0), 0, 1 << 22)));
+				added.noShadow = tokens.size() >= 10 && tokens[9] == "NO_SHADOW";
+				meshByName[added.name] = static_cast<int>(out.meshes.size() - 1);
+				mesh = &added;
 			}
+			else if (key == "MESH_3D" && tokens.size() >= 2)
+			{
+				// Adds a 3D LOD step to the TREE / TREE2 above it
+				const auto it = meshByName.find(std::string(tokens[1]));
+				if (it != meshByName.end() && !out.trees.empty())
+					out.trees.back().meshes3d.push_back(it->second);
+			}
+			else if (key == "TEXTURE")
+			{
+				material.texture = CleanPath(RestOfLine(line, 1));
+				if (shader2d)
+					out.texture = material.texture;
+			}
+			else if (key == "TEXTURE_NORMAL" && tokens.size() >= 3)
+			{
+				material.normalRatio = ParseFloat(tokens[1], 1.0f);
+				material.textureNormal = CleanPath(RestOfLine(line, 2));
+			}
+			else if (key == "NORMAL_METALNESS")
+				material.normalMetalness = true;
+			else if (key == "NORMAL_TRANSLUCENCY")
+				material.normalTranslucency = true;
+			else if (key == "WEATHER" && tokens.size() >= 2)
+				material.weather = CleanPath(RestOfLine(line, 1));
+			else if (key == "BLEND_HASH")
+				material.blendHash = tokens.size() >= 2 ? ParseFloat(tokens[1], 0.5f) : 0.5f;
+			else if (key == "SUPER_ROUGHNESS" && tokens.size() >= 2)
+				material.superRoughness = ParseFloat(tokens[1], 0.0f);
 			else if (key == "SHADER_2D")
 				shader2d = true;
 			else if (key == "SHADER_3D")
@@ -526,7 +573,10 @@ namespace SceneryEditorX::XPlane
 				tree.maxHeight = ParseFloat(tokens[8], 20.0f);
 				size_t next = 9;
 				if (key == "TREE2")
+				{
+					tree.nominalHeight = ParseFloat(tokens[9], 0.0f);	// then lod_far (the global LOD rules here)
 					next += 2;
+				}
 				tree.quads = next < tokens.size() ? std::max(1, ParseInt(tokens[next], 2)) : 2;
 				tree.layer = next + 1 < tokens.size() ? ParseInt(tokens[next + 1], 0) : 0;
 				if (std::abs(tree.width) > 0.001f && tree.height > 0.001f)

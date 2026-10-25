@@ -98,6 +98,17 @@ namespace SceneryEditorX::XPlane
 		std::filesystem::path texture;
 	};
 
+	/* @brief A 3D tree to plant (X-Plane 12 forests whose trees have MESH_3D steps; XPlane::Forest3d draws them). */
+	struct OverlayTree3d
+	{
+		int tree = 0;							// Index into the forest's trees
+		float x = 0.0f;							// Local meters
+		float y = 0.0f;							// The ground under it (set where the forest is placed on the terrain)
+		float z = 0.0f;
+		float yaw = 0.0f;						// Radians
+		float height = 0.0f;					// Meters
+	};
+
 	/* @brief A textured mesh ready for upload. */
 	struct OverlayMesh
 	{
@@ -127,6 +138,10 @@ namespace SceneryEditorX::XPlane
 		float tangentX = 1.0f;					// Ground direction u increases along (x, z), for normal decals
 		float tangentZ = 0.0f;
 		std::vector<OverlayDecal> decals;
+
+		// Forests: the .for file and the trees drawn in 3D near the camera (the billboards above stand in farther out)
+		std::filesystem::path forestFile;
+		std::vector<OverlayTree3d> trees3d;
 
 		// X-Plane material (the .pol's TEXTURE_NORMAL, NORMAL_METALNESS, SPECULAR, SUPER_ROUGHNESS; xp_material.slang)
 		std::filesystem::path textureNormal;	// Empty: no normal map (the surface keeps a plain matte material)

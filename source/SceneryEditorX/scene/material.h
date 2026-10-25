@@ -122,8 +122,11 @@ namespace SceneryEditorX
 		XpSnowAlbedoLuma			= 67,	// 1: SNOW_ALBEDO_LUMA r g below replaces the default snow receptivity rule
 		XpSnowAlbedoLumaR			= 68,
 		XpSnowAlbedoLumaG			= 69,
+		// Forests with 3D trees (XPlane::Forest3d): 1 the billboards, drawn from the distance on; 2 the 3D trees, nearer
+		XpLodSwitchMode				= 70,
+		XpLodSwitchDistance			= 71,	// Meters from the camera
 		// The last property in use: MaterialAsset sizes its table by it (set past it, a value is dropped). Move it along.
-		LastInUse					= XpSnowAlbedoLumaG,
+		LastInUse					= XpLodSwitchDistance,
 		MaxEnum						= 255
 	};
 

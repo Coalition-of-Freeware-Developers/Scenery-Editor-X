@@ -3617,6 +3617,7 @@ void dynamic_resolution()
 				properties[count].flags |= material->GetTexture(MaterialTextureType::Emission, 3) != nullptr   ? (1U << 22) : 0;
 				properties[count].flags |= material->GetProperty(MaterialProperty::XpWeatherTransparent)       ? (1U << 23) : 0;
 				properties[count].flags |= material->GetProperty(MaterialProperty::XpSnowAlbedoLuma)           ? (1U << 24) : 0;
+				properties[count].flags |= (static_cast<uint32_t>(std::clamp(material->GetProperty(MaterialProperty::XpLodSwitchMode), 0.0f, 2.0f)) & 3U) << 25;
 				properties[count].snow_luma[0] = material->GetProperty(MaterialProperty::XpSnowAlbedoLumaR);
 				properties[count].snow_luma[1] = material->GetProperty(MaterialProperty::XpSnowAlbedoLumaG);
 				// keep in sync with Surface struct in common_structs.slang
@@ -3660,6 +3661,9 @@ void dynamic_resolution()
 					// Draped X-Plane materials (xp_material.slang xp_drape_sample_normal): TEXTURE_NORMAL's ratio, like terrain's
 					properties[count].terrain_base = xMath::Vec4(0.0f, 0.0f, material->GetProperty(MaterialProperty::XpTerrainNormalRatio), 0.0f);
 				}
+				// Forests with 3D trees (xp_material.slang xp_lod_switch_discard): the distance billboards and meshes switch at
+				if (material->GetProperty(MaterialProperty::XpLodSwitchMode) > 0.0f)
+					properties[count].terrain_base.x = material->GetProperty(MaterialProperty::XpLodSwitchDistance);
 			}
 	
 			// textures, in the order of the material_texture_index_* slots in resources.slang

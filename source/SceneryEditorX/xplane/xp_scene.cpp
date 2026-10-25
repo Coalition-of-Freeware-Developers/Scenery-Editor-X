@@ -31,6 +31,7 @@
 #include "xp_scene.h"
 #include "xp_airport_scene.h"
 #include "xp_datarefs.h"
+#include "xp_forest3d.h"
 #include "xp_weather_art.h"
 #include <algorithm>
 #include <array>
@@ -813,6 +814,10 @@ namespace SceneryEditorX::XPlane
 			SEDX_PERF_SCOPE("Objects: build loaded");
 			BuildLoadedObjects(*registry);
 		}
+		{
+			SEDX_PERF_SCOPE("Objects: 3D tree cells");
+			Forest3d::Update();	// Forests' 3D trees near the camera
+		}
 
 		Datarefs::Tick(deltaSeconds);
 
@@ -999,6 +1004,7 @@ namespace SceneryEditorX::XPlane
 		s_FrameWhenLoaded = 0;
 		s_PendingRoots.clear();
 		Renderer::SetLightBillboards({}); // the batches hold the light textures
+		Forest3d::Shutdown();
 		ObjectAsset::ClearCache();
 		TextureLoader::ClearCache();
 	}

@@ -210,6 +210,23 @@ public float4 xp_drape_sample_normal(MaterialParameters material, uint material_
     return normal_map.Sample(samplers[sampler_anisotropic_wrap], uv * ratio);
 }
 
+/**
+ * @brief Forests with 3D trees (XPlane::Forest3d): the billboards draw from terrain_base.x meters from the camera on, the
+ * 3D meshes nearer, the hand-over dithered over a tenth of that distance so neither pops. True when this fragment is on
+ * the other side (discard it). The same test in the g-buffer, depth and shadow passes keeps each tree drawn once.
+ */
+public bool xp_lod_switch_discard(MaterialParameters material, float3 position_world, float2 pixel)
+{
+    const uint mode = material.xp_lod_switch();
+    if (mode == 0u)
+        return false;
+    const float edge = max(material.terrain_base.x, 1.0f);
+    const float band = 0.1f * edge;
+    const float far_side = saturate((length(position_world - get_camera_position()) - (edge - 0.5f * band)) / band);
+    const float dither = frac(52.9829189f * frac(dot(floor(pixel), float2(0.06711056f, 0.00583715f))));
+    return mode == 1u ? far_side < dither : far_side >= dither;
+}
+
 /* @brief UVs in meters (decals repeat per meter). */
 float2 xp_drape_meters(MaterialParameters material, float2 uv)
 {

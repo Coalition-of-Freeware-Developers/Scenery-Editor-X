@@ -449,6 +449,74 @@ TEST_CASE("Forest asset", "[assets]")
 	CHECK(forest.maxHeight == Catch::Approx(24.0f));
 }
 
+TEST_CASE("X-Plane 12 forest asset: shader blocks, 3D meshes and their LOD steps", "[assets]")
+{
+	// As the shipped 1200 forests lay it out: meshes first, then grouped TREE / TREE2 rows naming their MESH_3D steps
+	const char *text =
+		"A\n1200\nFOREST\n\n"
+		"SHADER_2D\n"
+		"\tTEXTURE ../textures/bb.png\n"
+		"\tTEXTURE_NORMAL 2\t../textures/bb_NML.png\n"
+		"\tWEATHER ../textures/bb_SM.png\n"
+		"\tBLEND_HASH 0.5\n"
+		"\tNORMAL_TRANSLUCENCY\n"
+		"SHADER_3D\n"
+		"\tTEXTURE ../textures/3d.png\n"
+		"\tTEXTURE_NORMAL 1\t../textures/3d_NML.png\n"
+		"\tSUPER_ROUGHNESS 1.0\n"
+		"\tNORMAL_TRANSLUCENCY\n"
+		"SCALE_X 2048\nSCALE_Y 4096\nSPACING 16 16\nRANDOM 7 7\n\n"
+		"MESH\t3D_ash\t0\t500\t3\t3\t1.2\t1.0\t10.0\n"
+		"VERTEX 0 0 0 0 1 0 0.1 0.2 0 0 0\n"
+		"VERTEX 1 8 0 0 1 0 0.3 0.4 0 0 0\n"
+		"VERTEX 0 8 1 0 1 0 0.5 0.6 0 0 0\n"
+		"IDX 0 1 2\n"
+		"MESH\tlod_ash\t0\t100\t3\t3\t1.2\t1.0\t10.0\tNO_SHADOW\n"
+		"VERTEX 0 0 0 0 1 0 0 0 0 0 0\n"
+		"VERTEX 1 8 0 0 1 0 1 0 0 0 0\n"
+		"VERTEX 0 8 1 0 1 0 0 1 0 0 0\n"
+		"IDX 0 2 1\n"
+		"GROUP 1 45\n"
+		"\tTREE\t788\t3232\t154\t188\t77\t7\t10\t15\t1\t1\tash\n"
+		"\tMESH_3D\t3D_ash\n"
+		"\tMESH_3D\tlod_ash\n"
+		"\tTREE2\t0\t0\t100\t200\t50\t5\t6\t9\t8\t300\t1\t0\tbush\n";
+
+	ForestAsset forest;
+	std::string error;
+	REQUIRE(ParseForestAsset(text, forest, &error));
+	CHECK(forest.texture == "../textures/bb.png");
+	CHECK(forest.material2d.textureNormal == "../textures/bb_NML.png");
+	CHECK(forest.material2d.normalRatio == Catch::Approx(2.0f));
+	CHECK(forest.material2d.weather == "../textures/bb_SM.png");
+	CHECK(forest.material2d.blendHash == Catch::Approx(0.5f));
+	CHECK(forest.material2d.normalTranslucency);
+	CHECK(forest.material3d.texture == "../textures/3d.png");
+	CHECK(forest.material3d.superRoughness == Catch::Approx(1.0f));
+	CHECK(forest.material3d.normalTranslucency);
+	CHECK_FALSE(forest.material3d.normalMetalness);
+
+	REQUIRE(forest.meshes.size() == 2);
+	const ForestAsset::Mesh &mesh = forest.meshes[0];
+	CHECK(mesh.name == "3D_ash");
+	CHECK(mesh.lodFar == Catch::Approx(500.0f));
+	CHECK_FALSE(mesh.noShadow);
+	REQUIRE(mesh.vertices.size() == 3 * 8);		// x y z, normal, s t; the wind weights are dropped
+	CHECK(mesh.vertices[8 + 1] == Catch::Approx(8.0f));
+	CHECK(mesh.vertices[16 + 7] == Catch::Approx(0.6f));
+	CHECK(mesh.indices == std::vector<uint32_t>{ 0, 1, 2 });
+	CHECK(forest.meshes[1].noShadow);
+
+	REQUIRE(forest.trees.size() == 2);
+	CHECK(forest.trees[0].quads == 1);
+	CHECK(forest.trees[0].layer == 1);
+	CHECK(forest.trees[0].meshes3d == std::vector<int>{ 0, 1 });	// Nearest step first
+	CHECK(forest.trees[0].nominalHeight == Catch::Approx(0.0f));
+	CHECK(forest.trees[1].nominalHeight == Catch::Approx(8.0f));		// TREE2: nominal height, then LOD far
+	CHECK(forest.trees[1].quads == 1);
+	CHECK(forest.trees[1].meshes3d.empty());
+}
+
 TEST_CASE("Type 1 facade asset", "[assets]")
 {
 	FacadeAsset fac;
@@ -918,7 +986,8 @@ TEST_CASE("Overlay builder turns DSF placements into meshes and object placement
 		if (mesh->resource == "facades/shed.fac" && mesh->name == "shed.fac")
 		{
 			shedWalls = true;
-			CHECK(top == Catch::Approx(6.0f).margin(0.01f));
+			// 6 m asked of 3 m BOTTOM + 3 m MIDDLE + 4 m TOP rows: whole rows only, the nearest is 7 m (no MIDDLE)
+			CHECK(top == Catch::Approx(7.0f).margin(0.01f));
 			CHECK(mesh->vertices.size() >= 4 * 4 * 3);	// 4 sides, 3 rows, >= 1 column each
 		}
 		if (mesh->resource == "facades/terminal.fac" && mesh->name == "terminal.fac")

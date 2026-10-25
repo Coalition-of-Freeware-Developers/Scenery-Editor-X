@@ -41,7 +41,7 @@ namespace SceneryEditorX
 		using F = RendererFeatures;
 
 		// A feature's bit is its index here: shaders test some of them (is_feature_enabled, FEATURE_* constants)
-		constexpr std::array<RendererFeatureInfo, 22> FEATURES = { {
+		constexpr std::array<RendererFeatureInfo, 23> FEATURES = { {
 			{ "atmosphere", "Atmosphere", "Sky-view, transmittance and multi-scattering LUTs; the sky", 6, &F::atmosphere },
 			{ "aerial-perspective", "Aerial perspective", "Haze and in-scattering between the camera and what it sees", 6, &F::aerialPerspective },
 			{ "env-probes", "Environment probes", "Image-based lighting from GGX-filtered cube probes", 6, &F::envProbes },
@@ -64,6 +64,7 @@ namespace SceneryEditorX
 			{ "fxaa", "FXAA", "Post-process anti-aliasing", 5, &F::fxaa },
 			{ "fsr1", "FSR 1", "Spatial upscaling (render below output resolution)", 5, &F::fsr1 },
 			{ "sss", "Screen-space shadows", "Bend contact shadows (X-Plane 12.4 has none)", 7, &F::screenSpaceShadows },
+			{ "trees-3d", "3D trees", "X-Plane 12 forests' 3D tree meshes near the camera; off: billboards everywhere", 10, &F::trees3d },
 		} };
 	}
 
