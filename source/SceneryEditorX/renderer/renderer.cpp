@@ -3655,6 +3655,11 @@ void dynamic_resolution()
 					properties[count].terrain_base = xMath::Vec4(material->GetProperty(MaterialProperty::XpWaterMapScaleU), material->GetProperty(MaterialProperty::XpWaterMapOffsetU),
 						material->GetProperty(MaterialProperty::XpWaterMapScaleV), material->GetProperty(MaterialProperty::XpWaterMapOffsetV));
 				}
+				else if (material->GetProperty(MaterialProperty::XpMaterial) > 0.0f)
+				{
+					// Draped X-Plane materials (xp_material.slang xp_drape_sample_normal): TEXTURE_NORMAL's ratio, like terrain's
+					properties[count].terrain_base = xMath::Vec4(0.0f, 0.0f, material->GetProperty(MaterialProperty::XpTerrainNormalRatio), 0.0f);
+				}
 			}
 	
 			// textures, in the order of the material_texture_index_* slots in resources.slang

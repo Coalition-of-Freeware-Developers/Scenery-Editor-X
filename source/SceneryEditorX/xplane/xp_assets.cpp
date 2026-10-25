@@ -231,7 +231,16 @@ namespace SceneryEditorX::XPlane
 				out.wrap = false;
 			}
 			else if (key == "TEXTURE_NORMAL" && tokens.size() >= 3)
+			{
+				out.normalRatio = ParseFloat(tokens[1], 1.0f);
 				out.textureNormal = CleanPath(RestOfLine(line, 2));
+			}
+			else if (key == "NORMAL_METALNESS")
+				out.normalMetalness = true;
+			else if (key == "SPECULAR" && tokens.size() >= 2)
+				out.specular = ParseFloat(tokens[1], 1.0f);
+			else if (key == "SUPER_ROUGHNESS" && tokens.size() >= 2)
+				out.superRoughness = ParseFloat(tokens[1], 0.0f);
 			else if (key == "SCALE" && tokens.size() >= 3)
 			{
 				out.scaleS = ParseFloat(tokens[1], 1000.0f);

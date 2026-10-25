@@ -115,6 +115,10 @@ static float4 sample_texture(gbuffer_vertex vertex, uint texture_index, Surface 
     {
         color = xp_drape_sample_albedo(GetMaterial(), pass_get_material_index(), vertex.uv_misc.xy);	// tile / marking atlases
     }
+    else if (texture_index == material_texture_index_normal && GetMaterial().is_xp_material())
+    {
+        color = xp_drape_sample_normal(GetMaterial(), pass_get_material_index(), vertex.uv_misc.xy);	// ratio, tile atlases
+    }
     else
     {
         color = sample_material_texture(texture_index, vertex.uv_misc.xy);

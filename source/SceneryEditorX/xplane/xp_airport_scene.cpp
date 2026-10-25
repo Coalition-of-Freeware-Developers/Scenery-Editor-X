@@ -232,6 +232,11 @@ namespace SceneryEditorX::XPlane
 			int tileMapWidth = 0, tileMapHeight = 0;
 			float metersPerU = 1.0f, metersPerV = 1.0f;
 			std::vector<OverlayDecal> decals;
+			fs::path textureNormal;			// X-Plane material (OverlayMesh)
+			float normalRatio = 1.0f;
+			bool normalMetalness = false;
+			float specular = 1.0f;
+			float superRoughness = 0.0f;
 			fs::path weatherMask;			// Weather receptivity (OverlayMesh)
 			bool weatherTransparent = false;
 			bool hasSnowAlbedoLuma = false;
@@ -411,6 +416,11 @@ namespace SceneryEditorX::XPlane
 			part.metersPerU = mesh.metersPerU;
 			part.metersPerV = mesh.metersPerV;
 			part.decals = mesh.decals;
+			part.textureNormal = mesh.textureNormal;
+			part.normalRatio = mesh.normalRatio;
+			part.normalMetalness = mesh.normalMetalness;
+			part.specular = mesh.specular;
+			part.superRoughness = mesh.superRoughness;
 			part.weatherMask = mesh.weatherMask;
 			part.weatherTransparent = mesh.weatherTransparent;
 			part.hasSnowAlbedoLuma = mesh.hasSnowAlbedoLuma;
@@ -1405,6 +1415,23 @@ namespace SceneryEditorX::XPlane
 				key += text;
 			}
 
+			// X-Plane's material (xp_material.slang): with a normal map the surface takes its gloss (A, x SPECULAR) and, with
+			// NORMAL_METALNESS, its F0 / metalness (B), as OBJ8s and terrain do; normal slot 0 (decals use 1-2), laid out
+			// like the albedo (tile atlases pick the same cell) at TEXTURE_NORMAL's ratio. Without one it stays plain and matte.
+			if (ImageResource *normalMap = LoadOverlayTexture(loaded, part.textureNormal, TextureUsage::Normal))
+			{
+				material.SetTexture(MaterialTextureType::Normal, normalMap, 0);
+				material.SetProperty(MaterialProperty::XpMaterial, 1.0f);
+				material.SetProperty(MaterialProperty::XpNormalMode, part.normalMetalness ? 2.0f : 1.0f);
+				material.SetProperty(MaterialProperty::XpSpecularGain, part.specular);
+				material.SetProperty(MaterialProperty::XpSuperRoughness, part.superRoughness);
+				material.SetProperty(MaterialProperty::XpDefaultF0, 0.04f);
+				material.SetProperty(MaterialProperty::XpTerrainNormalRatio, part.normalRatio);
+				char text[96];
+				std::snprintf(text, sizeof(text), "|n%.3f,%d,%.3f,%.3f:", part.normalRatio, part.normalMetalness ? 1 : 0, part.specular, part.superRoughness);
+				key += text + part.textureNormal.generic_string();
+			}
+
 			// Weather receptivity (weather.slang): the WEATHER mask in emission slot 3, laid out like the albedo
 			if (ImageResource *mask = LoadOverlayTexture(loaded, part.weatherMask, TextureUsage::Data))
 			{
@@ -1476,7 +1503,8 @@ namespace SceneryEditorX::XPlane
 			material->SetProperty(MaterialClass::TextureTilingY, 1.0f);
 			material->SetProperty(MaterialClass::Roughness, 0.9f);
 			material->SetProperty(MaterialClass::Metalness, 0.0f);
-			material->SetProperty(MaterialClass::Normal, 0.0f);
+			// The normal map's full strength with an X-Plane material (ApplyDrapeShading), else none
+			material->SetProperty(MaterialClass::Normal, material->GetProperty(MaterialProperty::XpMaterial) > 0.0f ? 1.0f : 0.0f);
 			material->SetProperty(MaterialProperty::CullMode, static_cast<float>(CullMode::None));
 			// Like the OBJ8 materials: cutouts alpha-test at the asset's ratio; blended art keeps its opaque texels in the
 			// deferred passes and blends the rest in the transparent pass.

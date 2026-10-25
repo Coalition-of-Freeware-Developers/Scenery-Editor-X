@@ -78,6 +78,10 @@ namespace SceneryEditorX::XPlane
 	{
 		std::string texture;				// Relative to the .pol file
 		std::string textureNormal;
+		float normalRatio = 1.0f;			// TEXTURE_NORMAL <ratio>: normal map repeats per albedo repeat
+		bool normalMetalness = false;		// NORMAL_METALNESS: the normal map's blue is F0 / metalness
+		float specular = 1.0f;				// SPECULAR <ratio>: scales the normal map's gloss
+		float superRoughness = 0.0f;		// SUPER_ROUGHNESS <ratio>: roughness floor (ASSUMPTION, plan RISK-003)
 		bool wrap = true;					// TEXTURE (repeats) vs TEXTURE_NOWRAP (orthophoto, UVs from the DSF)
 		float scaleS = 1000.0f;				// Meters per texture repeat
 		float scaleT = 1000.0f;

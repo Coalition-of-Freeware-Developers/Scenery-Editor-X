@@ -128,6 +128,13 @@ namespace SceneryEditorX::XPlane
 		float tangentZ = 0.0f;
 		std::vector<OverlayDecal> decals;
 
+		// X-Plane material (the .pol's TEXTURE_NORMAL, NORMAL_METALNESS, SPECULAR, SUPER_ROUGHNESS; xp_material.slang)
+		std::filesystem::path textureNormal;	// Empty: no normal map (the surface keeps a plain matte material)
+		float normalRatio = 1.0f;
+		bool normalMetalness = false;
+		float specular = 1.0f;
+		float superRoughness = 0.0f;
+
 		// Weather receptivity (the .pol's WEATHER / WEATHER_TRANSPARENT / SNOW_ALBEDO_LUMA; weather.slang)
 		std::filesystem::path weatherMask;		// Empty: none
 		bool weatherTransparent = false;

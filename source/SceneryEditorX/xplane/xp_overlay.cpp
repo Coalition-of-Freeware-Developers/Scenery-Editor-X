@@ -1180,6 +1180,12 @@ namespace SceneryEditorX::XPlane
 	void OverlayBuilder::ApplyPolygonShading(OverlayMesh &mesh, const PolygonAsset &asset, const fs::path &assetFile, OverlayBuild &out)
 	{
 		GetPolygonUvScale(asset, mesh.metersPerU, mesh.metersPerV);
+		if (!asset.textureNormal.empty())
+			mesh.textureNormal = TexturePath(assetFile, asset.textureNormal);
+		mesh.normalRatio = asset.normalRatio;
+		mesh.normalMetalness = asset.normalMetalness;
+		mesh.specular = asset.specular;
+		mesh.superRoughness = asset.superRoughness;
 		if (!asset.weather.empty())
 			mesh.weatherMask = TexturePath(assetFile, asset.weather);
 		mesh.weatherTransparent = asset.weatherTransparent;

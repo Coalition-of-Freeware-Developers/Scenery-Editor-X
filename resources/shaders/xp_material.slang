@@ -197,6 +197,19 @@ public float4 xp_drape_sample_albedo(MaterialParameters material, uint material_
     return texel;
 }
 
+/**
+ * @brief The normal-map texel of an X-Plane material: TEXTURE_NORMAL's ratio over the albedo's coordinates (terrain_base.z
+ * for drapes; 0, as OBJ8s leave it, means 1), and in tile atlases the same tile as the albedo.
+ */
+public float4 xp_drape_sample_normal(MaterialParameters material, uint material_base, float2 uv)
+{
+    Texture2D normal_map = material_textures[material_base + material_texture_index_normal];
+    if (material.xp_drape_mode() == xp_drape_tiled)
+        return normal_map.SampleGrad(samplers[sampler_anisotropic_wrap], xp_drape_tile_uv(material, material_base, uv), ddx(uv), ddy(uv));
+    const float ratio = material.terrain_base.z > 0.0f ? material.terrain_base.z : 1.0f;
+    return normal_map.Sample(samplers[sampler_anisotropic_wrap], uv * ratio);
+}
+
 /* @brief UVs in meters (decals repeat per meter). */
 float2 xp_drape_meters(MaterialParameters material, float2 uv)
 {

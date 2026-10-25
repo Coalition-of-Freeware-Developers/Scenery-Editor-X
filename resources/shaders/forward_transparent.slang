@@ -89,7 +89,9 @@ float4 main_frag(forward_vertex vertex, bool is_front_face: SV_IsFrontFace) : SV
         discard;
 
     // normal, roughness and metalness / F0 (xp_material.slang); two-sided: back faces of no-cull glass face the camera too
-    const float4 normal_texel = material.has_texture_normal() ? sample_material_texture(material_texture_index_normal, vertex.uv_misc.xy) : float4(0.5f, 0.5f, 1.0f, 1.0f);
+    const float4 normal_texel = !material.has_texture_normal() ? float4(0.5f, 0.5f, 1.0f, 1.0f)
+                              : (material.is_xp_material() ? xp_drape_sample_normal(material, pass_get_material_index(), vertex.uv_misc.xy)
+                                                           : sample_material_texture(material_texture_index_normal, vertex.uv_misc.xy));
     const XpSurfaceMaterial surface_material = xp_decode_material(material, normal_texel);
     float3 normal = normalize(vertex.normal);
     if (material.has_texture_normal())
