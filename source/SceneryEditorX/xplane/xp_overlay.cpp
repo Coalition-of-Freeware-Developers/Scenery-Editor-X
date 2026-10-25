@@ -2314,7 +2314,11 @@ namespace SceneryEditorX::XPlane
 		if (sides.empty())
 			return;
 
-		const double height = placement.parameter > 0 ? static_cast<double>(placement.parameter) : 3.0;
+		double height = placement.parameter > 0 ? static_cast<double>(placement.parameter) : 3.0;
+		// Type 1: a facade without MIDDLE rows is one height whatever the DSF asks (Global Airports places the 2 m
+		// fencing_Wall_2m.fac with height 90 at EIDW), the others stay within their floors' range
+		if (!asset->IsType2())
+			height = SnapFacadeHeight(*asset, height);
 		std::vector<FacadeSideInput> inputs;
 		inputs.reserve(sides.size());
 		for (const WallSide &side : sides)
@@ -2482,7 +2486,8 @@ namespace SceneryEditorX::XPlane
 				for (const Span &c : columns) totalWidth += c.size;
 				for (const Span &r : rows) totalHeight += r.size;
 				const double stretchX = totalWidth > 0.01 ? side.length / totalWidth : 1.0;
-				const double stretchY = totalHeight > 0.01 ? height / totalHeight : 1.0;
+				// A wall without MIDDLE rows keeps its rows' own height (X-Plane doesn't stretch it to the DSF height)
+				const double stretchY = totalHeight > 0.01 && !wall->middleFloors.empty() ? height / totalHeight : 1.0;
 
 				double x = 0.0;
 				for (const Span &column : columns)
