@@ -1847,7 +1847,9 @@ namespace SceneryEditorX::XPlane
 		const float treeWidth = width > 0.0f ? width : height * aspect;
 		const float s1 = tree.s / forest.scaleX, s2 = (tree.s + tree.width) / forest.scaleX;
 		const float t1 = tree.t / forest.scaleY, t2 = (tree.t + tree.height) / forest.scaleY;
-		const float left = (tree.offset - tree.s) / std::max(1.0f, std::abs(tree.width));	// Fraction of the width left of the trunk
+		// Fraction of the width left of the trunk: TREE's offset counts from the rectangle's left edge (not from s = 0, which
+		// put the quads of every tree off the atlas's left column widths away from their trunk, each crossed quad elsewhere)
+		const float left = std::clamp(tree.offset / std::max(1.0f, std::abs(tree.width)), 0.0f, 1.0f);
 		// X-Plane 12 turns a one-quad billboard toward the camera; built once for every view, it is two crossed quads here
 		// (one fixed quad is a sliver seen edge-on, which thinned SEDX's forests)
 		const int quads = std::clamp(tree.quads, 2, 4);
