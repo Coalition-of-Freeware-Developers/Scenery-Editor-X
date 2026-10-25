@@ -1481,6 +1481,8 @@ namespace SceneryEditorX
 	{
 		s_GroundShown.store(shown, std::memory_order_relaxed);
 	}
+			value("sedx/csm_height_near_ratio", c.shadowHeightNearRatio);
+			value("sedx/csm_height_far_ratio", c.shadowHeightFarRatio);
 
 	void Renderer::SetReferenceOverlay(const Ref<ImageResource> &image, const ReferenceOverlayMode mode, const float split, const float differenceGain)
 	{

@@ -378,6 +378,14 @@
 			"value": 1.0,
 			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): radius and fade-in follow the camera's height above the ground"
 		},
+		"sedx/csm_height_near_ratio": {
+			"value": 0.8,
+			"source": "ASSUMPTION: the cascades split from at least 0.8 x the camera height above the airport (the ground starts no nearer from above)"
+		},
+		"sedx/csm_height_far_ratio": {
+			"value": 6.0,
+			"source": "ASSUMPTION fitted to X-Plane 12.4.4 references (2026-10-25): at 600 m up its shadows reach about 3 km though shadow/csm/far_limit_exterior stays 250"
+		},
 		"sedx/csm_receiver_plane": {
 			"value": 1.0,
 			"source": "SEDX: soft shadow lookups compare against the receiver's plane (from the depth buffer), so the casters' slope bias covers half a texel each way. With X-Plane's shadow/bias_slope 2 alone, the calibration panels 5 cm above the ground lose their shadow at cascade 1's 4 cm texels; X-Plane 12.4.4's reference keeps a 12 cm band."

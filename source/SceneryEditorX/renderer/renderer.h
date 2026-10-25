@@ -602,6 +602,10 @@ namespace SceneryEditorX
 			bool shadowReceiverPlane = true;			// sedx/csm_receiver_plane
 			float shadowReceiverPlaneSlopeBias = 1.0f;	// sedx/csm_receiver_plane_slope_bias: the casters' slope bias with it
 			// Cloud shadows (plan TASK-055)
+			// The cascades' split range at least this many times the camera's height above the airport (ASSUMPTION fitted
+			// to X-Plane's 600 m aerial references, where shadows reach about 3 km): near, far
+			float shadowHeightNearRatio = 0.8f;			// sedx/csm_height_near_ratio
+			float shadowHeightFarRatio = 6.0f;			// sedx/csm_height_far_ratio
 			float cloudShadowStrength = 0.75f;			// clouds/cloud_shadow_lighten_ratio (ASSUMPTION: share of the light clouds can take)
 			float cloudShadowExtinction = 0.0125f;		// cloud/shadow_alpha (ASSUMPTION: extinction per meter of cloud cover)
 			float cloudShadowExtentMinKm = 64.0f;		// clouds/shadow_extent_min_km: the first cascade's width
