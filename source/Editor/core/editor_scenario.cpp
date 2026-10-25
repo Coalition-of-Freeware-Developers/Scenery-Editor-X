@@ -78,6 +78,7 @@ namespace SceneryEditorX::EditorScenario
 			bool exitAfterCapture = false;
 			bool waitForAirport = false;					// --xp-airport given: free captures wait for it
 			bool projectEnvironmentReplaced = false;		// The scenario's environment applied again after its project opened
+			bool editorKindsHidden = false;					// The airport's editor-only elements are hidden for the capture
 			uint32_t loadingFrames = 0;						// Frames the settling waited for objects still loading
 			uint64_t structure = 0;							// Scene structure version last frame (entities still being added)
 		};
@@ -335,6 +336,17 @@ namespace SceneryEditorX::EditorScenario
 					// Opening the project put back the world it was saved in (its Environment block): the scenario's wins
 					ApplyEnvironment(scenario);
 					state.projectEnvironmentReplaced = true;
+				}
+				if (!state.editorKindsHidden)
+				{
+					// What X-Plane never draws: the ATC taxi network, the boundary, viewpoints, startup and truck locations
+					// (the editor shows them as lit ribbons and markers over the pavement)
+					using XPlane::AirportElementKind;
+					for (const AirportElementKind kind : { AirportElementKind::TaxiRoutes, AirportElementKind::TaxiNodes, AirportElementKind::Boundary,
+														   AirportElementKind::Viewpoint, AirportElementKind::Startup, AirportElementKind::LegacyStartup,
+														   AirportElementKind::TruckParking, AirportElementKind::TruckDestination })
+						XPlane::SceneAirports::SetKindVisible(kind, false);
+					state.editorKindsHidden = true;
 				}
 				if (!PlaceCamera(scenario))
 					return;
