@@ -36,6 +36,7 @@
 #include "editor_selection.h"
 #include "editor_ui.h"
 #include "project_dialogs.h"
+#include <chrono>
 #include <cmath>
 #include <ctime>
 #include <optional>
@@ -43,8 +44,10 @@
 #include <unordered_set>
 #include <portable-file-dialogs.h>
 #include <SceneryEditorX/core/application/application.h>
+#include <SceneryEditorX/core/frame_profiler.h>
 #include <SceneryEditorX/core/platform/platform_context.h>
 #include <SceneryEditorX/core/window/window.h>
+#include <SceneryEditorX/environment/environment.h>
 #include <SceneryEditorX/filesystem/file_system.h>
 #include <SceneryEditorX/filesystem/vfs.h>
 #include <SceneryEditorX/logging/logging.hpp>
@@ -92,6 +95,7 @@ namespace SceneryEditorX::EditorProjects
 			std::unique_ptr<ProjectCache> cache;
 			ProjectDocument document;
 			Ref<UserPreferences> preferences;
+			uint64_t environmentVersion = 0;	// The world environment's version when the project opened (or last saved)
 
 			// The project in the scene
 			std::unordered_map<std::string, uint64_t> placed;	// Object item id -> root entity UUID
@@ -104,6 +108,7 @@ namespace SceneryEditorX::EditorProjects
 
 			// The other placed items (polygons, lines, strings, forests, facades, autogen) as a DSF through the overlay builder
 			XPlane::OverlayScene scenery;
+			std::unique_ptr<XPlane::OverlayBuilder> builder;	// Kept between rebuilds: the assets it parsed stay parsed
 			uint64_t sceneryRevision = ~0ull;					// Items revision it was built from
 			uint64_t sceneryLibrary = 0;						// Library index generation its assets were resolved with
 			uint64_t sceneryFingerprint = 0;					// GetDsfFingerprint of what it draws
@@ -362,12 +367,15 @@ namespace SceneryEditorX::EditorProjects
 		 * @brief Draws the items that aren't objects (draped polygons and orthophotos, lines, strings, forests, facades,
 		 * .agp autogen) the way the airport scene draws a pack's DSF: the visible items become an in-memory DSF tile
 		 * (ProjectFile::BuildProjectDsf) that the overlay builder turns into meshes and string / facade objects, one
-		 * entity per item. Rebuilt only when what the DSF draws changed (or force: a new frame, a newer library index).
+		 * entity per item. Only the items an edit changed are built again (GetDsfItemFingerprints): the others keep their
+		 * entities, meshes and objects, and the builder keeps the assets it parsed. Force (a new frame, a newer library
+		 * index, reloaded art) starts over.
 		 */
 		void UpdateScenery(EditorContext *context, const bool force)
 		{
 			State &state = GetState();
 			ProjectDocument &document = state.document;
+			const auto start = std::chrono::steady_clock::now();
 			state.sceneryRevision = document.GetItemsRevision();
 			state.sceneryLibrary = XPlane::LibraryManager::GetGeneration();
 
@@ -379,62 +387,137 @@ namespace SceneryEditorX::EditorProjects
 				WarnOnce("dsf:" + warning, warning + " (not drawn)");
 
 			state.sceneryFingerprint = fingerprint;
+			if (force || !state.builder)
+			{
+				// Assets parse again (a newer library index, reloaded art) and the scenery is rebuilt in the current frame
+				state.builder = std::make_unique<XPlane::OverlayBuilder>([](const std::string_view path) { return ResolveResource(std::string(path)); }, state.projection);
+				state.scenery.Clear();
+			}
+
+			// The items to build: not shown yet, or shown from other placements. Roads go together (they share junctions).
+			const std::unordered_map<std::string, DsfItemFingerprint> items = GetItemFingerprints(conversion);
+			const auto changed = [&](const std::string &item) { return state.scenery.GetFingerprint(item) != items.at(item).hash; };
+			bool roadsChanged = false;
+			for (const std::string &item : conversion.roadItems)
+				roadsChanged = roadsChanged || changed(item);
+
+			XPlane::DsfFile dsf;
+			dsf.properties = conversion.dsf.properties;
+			dsf.objectDefinitions = conversion.dsf.objectDefinitions;
+			dsf.polygonDefinitions = conversion.dsf.polygonDefinitions;
+			dsf.networkDefinitions = conversion.dsf.networkDefinitions;
+			std::vector<uint32_t> polygonIndex, objectIndex, roadIndex;	// The partial tile's placements in the whole one
+			for (uint32_t i = 0; i < conversion.dsf.polygons.size(); ++i)
+			{
+				if (changed(conversion.polygonItems[i]))
+				{
+					dsf.polygons.push_back(conversion.dsf.polygons[i]);
+					polygonIndex.push_back(i);
+				}
+			}
+			for (uint32_t i = 0; i < conversion.dsf.objects.size(); ++i)
+			{
+				if (changed(conversion.objectItems[i]))
+				{
+					dsf.objects.push_back(conversion.dsf.objects[i]);
+					objectIndex.push_back(i);
+				}
+			}
+			for (uint32_t i = 0; roadsChanged && i < conversion.dsf.roads.size(); ++i)
+			{
+				dsf.roads.push_back(conversion.dsf.roads[i]);
+				roadIndex.push_back(i);
+			}
 
 			XPlane::OverlayBuild build;
-			if (!conversion.dsf.polygons.empty() || !conversion.dsf.objects.empty() || !conversion.dsf.roads.empty())
+			if (!dsf.polygons.empty() || !dsf.objects.empty() || !dsf.roads.empty())
 			{
-				XPlane::OverlayBuilder builder([](const std::string_view path) { return ResolveResource(std::string(path)); }, state.projection);
 				XPlane::OverlayBuilder::Options options;
 				options.layerHeight = [](const std::string_view group, const int offset) { return XPlane::SceneAirports::GetOverlayLayerHeight(group, offset); };
-				builder.Build(conversion.dsf, options, build);
+				state.builder->Build(dsf, options, build);
 				for (const std::string &warning : build.warnings)
 					WarnOnce("overlay:" + warning, warning);
 			}
 
-			// One entity per item: its meshes and the objects its strings, facades and autogen place
+			// What the partial tile built, back in the whole tile's placements (draped order follows them)
+			const auto whole = [](const std::vector<uint32_t> &index, const uint32_t placement) { return placement < index.size() ? index[placement] : placement; };
+			for (XPlane::OverlayMesh &mesh : build.meshes)
+				mesh.placement = whole(mesh.kind == XPlane::OverlayKind::Autogen ? objectIndex : mesh.kind == XPlane::OverlayKind::Road ? roadIndex : polygonIndex, mesh.placement);
+			for (XPlane::OverlayObject &object : build.objects)
+			{
+				const bool fromObject = object.source == XPlane::OverlayObject::Source::Dsf || object.source == XPlane::OverlayObject::Source::Autogen;
+				object.placement = whole(fromObject ? objectIndex : polygonIndex, object.placement);
+			}
+
+			// One entity per item, in hierarchy order: built ones get the new meshes and objects, unchanged ones stay
 			std::vector<XPlane::OverlayScene::Group> groups;
 			std::unordered_map<std::string, size_t> groupOf;
-			const auto group = [&](const std::vector<std::string> &items, const uint32_t placement) -> XPlane::OverlayScene::Group *
+			std::unordered_set<std::string> rebuilt;
+			const auto group = [&](const std::string &key) -> XPlane::OverlayScene::Group &
 			{
-				if (placement >= items.size())
-					return nullptr;
-				const auto [it, added] = groupOf.emplace(items[placement], groups.size());
+				const auto [it, added] = groupOf.emplace(key, groups.size());
 				if (added)
 				{
 					XPlane::OverlayScene::Group &entry = groups.emplace_back();
-					entry.key = items[placement];
-					const SceneryItem *item = document.FindItem(entry.key);
-					entry.name = !item ? entry.key : !item->name.empty() ? item->name : GetItemKindName(item->kind);
+					entry.key = key;
+					const SceneryItem *item = document.FindItem(key);
+					entry.name = !item ? key : !item->name.empty() ? item->name : GetItemKindName(item->kind);
+					const DsfItemFingerprint &fingerprint = items.at(key);
+					entry.fingerprint = fingerprint.hash;
+					entry.firstPlacement = fingerprint.firstPlacement;
+					entry.reuse = !changed(key);
 				}
-				return &groups[it->second];
+				return groups[it->second];
 			};
+			for (const std::vector<std::string> *list : { &conversion.polygonItems, &conversion.objectItems, &conversion.roadItems })
+			{
+				for (const std::string &key : *list)
+				{
+					// Unchanged items keep what they show (those that drew nothing stay out)
+					if (!groupOf.contains(key) && !changed(key) && state.scenery.FindEntity(key) != 0)
+						group(key);
+				}
+			}
 			for (const XPlane::OverlayMesh &mesh : build.meshes)
 			{
-				// .agp ground tiles come from object placements, roads from road segments, everything else from polygons
-				const std::vector<std::string> &items = mesh.kind == XPlane::OverlayKind::Autogen ? conversion.objectItems :
+				const std::vector<std::string> &list = mesh.kind == XPlane::OverlayKind::Autogen ? conversion.objectItems :
 					mesh.kind == XPlane::OverlayKind::Road ? conversion.roadItems : conversion.polygonItems;
-				if (XPlane::OverlayScene::Group *entry = group(items, mesh.placement))
-					entry->meshes.push_back(&mesh);
+				if (mesh.placement < list.size())
+				{
+					group(list[mesh.placement]).meshes.push_back(&mesh);
+					rebuilt.insert(list[mesh.placement]);
+				}
 			}
 			for (const XPlane::OverlayObject &object : build.objects)
 			{
 				const bool fromObject = object.source == XPlane::OverlayObject::Source::Dsf || object.source == XPlane::OverlayObject::Source::Autogen;
-				if (XPlane::OverlayScene::Group *entry = group(fromObject ? conversion.objectItems : conversion.polygonItems, object.placement))
-					entry->objects.push_back(&object);
+				const std::vector<std::string> &list = fromObject ? conversion.objectItems : conversion.polygonItems;
+				if (object.placement < list.size())
+				{
+					group(list[object.placement]).objects.push_back(&object);
+					rebuilt.insert(list[object.placement]);
+				}
 			}
 
-			// The item entities are replaced (the root stays, so selecting it survives), or all of it goes when nothing is left to draw
-			if (context && context->selectedEntity != 0 && state.scenery.Contains(context->selectedEntity) && (groups.empty() || context->selectedEntity != state.scenery.GetRootId()))
-				context->selectedEntity = 0;
+			// A selected entity of an item that is rebuilt or gone isn't there any more (the root stays)
+			if (context && context->selectedEntity != 0 && state.scenery.Contains(context->selectedEntity) && context->selectedEntity != state.scenery.GetRootId())
+			{
+				const std::string key = state.scenery.FindKey(context->selectedEntity);
+				if (key.empty() || rebuilt.contains(key) || !groupOf.contains(key))
+					context->selectedEntity = 0;
+			}
 			if (groups.empty())
 			{
 				state.scenery.Clear();
 				return;
 			}
-			state.scenery.Build("Project scenery", groups);
+			// Project items draw over the airport scene's art at the same layer height (their DSF order among themselves)
+			state.scenery.SetDrapeSequenceBase(0x80000000u);
+			state.scenery.Update("Project scenery", groups);
 
 			const XPlane::OverlayScene::Stats &stats = state.scenery.GetStats();
-			EDITOR_INFO_TAG(LOG_TAG, "Project scenery: {} items drawn ({} meshes, {} triangles, {} objects){}{}", stats.groups, stats.parts, stats.triangles, stats.objects,
+			EDITOR_INFO_TAG(LOG_TAG, "Project scenery: {} items drawn, {} rebuilt ({} meshes, {} triangles, {} objects) in {:.0f} ms{}{}", stats.groups, rebuilt.size(), stats.parts,
+				stats.triangles, stats.objects, std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count(),
 				conversion.hidden ? ", " + std::to_string(conversion.hidden) + " hidden items left out" : std::string(),
 				build.unsupported ? ", " + std::to_string(build.unsupported) + " autogen strings / blocks not drawn yet" : std::string());
 		}
@@ -457,6 +540,13 @@ namespace SceneryEditorX::EditorProjects
 			state.airportId.clear();
 		}
 
+		/* @brief A point within 20 km of the open airport's datum (a project without an airport of its own is then drawn with it). */
+		bool IsNearOpenAirport(const double latitude, const double longitude)
+		{
+			const XPlane::Point2 local = XPlane::SceneAirports::GetProjection().ToLocal(latitude, longitude);
+			return std::hypot(local.x, local.z) < 20000.0;
+		}
+
 		void LoadIntoScene(EditorContext *context)
 		{
 			State &state = GetState();
@@ -471,9 +561,12 @@ namespace SceneryEditorX::EditorProjects
 			}
 
 			double latitude = 0.0, longitude = 0.0;
+			const bool hasCenter = GetProjectCenter(project, latitude, longitude);
 			if (!state.airportId.empty() && XPlane::SceneAirports::IsLoaded())
 				state.projection = XPlane::SceneAirports::GetProjection();
-			else if (GetProjectCenter(project, latitude, longitude))
+			else if (hasCenter && XPlane::SceneAirports::IsLoaded() && IsNearOpenAirport(latitude, longitude))
+				state.projection = XPlane::SceneAirports::GetProjection();	// Drawn in the open airport's frame, so they line up
+			else if (hasCenter)
 				state.projection = XPlane::GeoProjection(latitude, longitude);
 			else
 				state.projection = XPlane::GeoProjection(0.0, 0.0);
@@ -682,6 +775,11 @@ namespace SceneryEditorX::EditorProjects
 			LoadIntoScene(context);
 			AddRecent(path);
 
+			// The world the project was last viewed in (date, time, weather); the place follows its airport
+			if (const std::optional<Environment::EnvironmentState> &environment = document.GetProject().environment)
+				Environment::Get().SetState(*environment);
+			state.environmentVersion = Environment::Get().GetVersion();
+
 			const SceneryProject &project = document.GetProject();
 			EDITOR_INFO_TAG(LOG_TAG, "Opened {} ({}{}): {} airports, {} items", project.info.name, GetProjectFormatName(document.GetFormat()),
 				document.WasLoadedFromSnapshot() ? ", from the cache" : "", project.airports.size(), project.CountItems());
@@ -807,10 +905,25 @@ namespace SceneryEditorX::EditorProjects
 			}
 		}
 
+		/* @brief The world environment into the project when it has one or it changed while the project was open. */
+		void SyncEnvironment()
+		{
+			State &state = GetState();
+			SceneryProject &project = state.document.GetProject();
+			const Environment::World &world = Environment::Get();
+			if (!project.environment && world.GetVersion() == state.environmentVersion)
+				return;	// Untouched: a project without one saves without one (unchanged bytes)
+			if (project.environment && *project.environment == world.GetState())
+				return;
+			project.environment = world.GetState();
+			state.document.Mark(ProjectDocument::Section::Info);
+		}
+
 		bool SaveTo(const fs::path &path, const ProjectFormat format)
 		{
 			State &state = GetState();
 			SyncFromScene();
+			SyncEnvironment();
 			std::string error;
 			if (!state.document.SaveAs(path, format, &error))
 			{
@@ -821,6 +934,7 @@ namespace SceneryEditorX::EditorProjects
 			state.suggestedPath.clear();
 			state.lastAutosave = ImGui::GetTime();
 			AddRecent(path);
+			state.environmentVersion = Environment::Get().GetVersion();
 			EDITOR_INFO_TAG(LOG_TAG, "Saved {} ({})", ToUtf8(path), GetProjectFormatName(state.document.GetFormat()));
 			return true;
 		}
@@ -918,7 +1032,10 @@ namespace SceneryEditorX::EditorProjects
 			// Item edits (PROJECT panel, scene sync) and a newer library index redraw the project's scenery
 			const bool libraryChanged = state.sceneryLibrary != XPlane::LibraryManager::GetGeneration();
 			if (libraryChanged || state.sceneryRevision != state.document.GetItemsRevision())
+			{
+				SEDX_PERF_SCOPE("Main: project scenery update");
 				UpdateScenery(context, libraryChanged);
+			}
 
 			if (now - state.lastAutosave >= state.autosaveSeconds)
 			{
@@ -930,6 +1047,7 @@ namespace SceneryEditorX::EditorProjects
 
 			if (state.validationRevision != state.document.GetRevision())
 			{
+				SEDX_PERF_SCOPE("Main: project validation");
 				state.validation = ValidateProject(state.document.GetProject());
 				state.validationRevision = state.document.GetRevision();
 			}
@@ -941,6 +1059,28 @@ namespace SceneryEditorX::EditorProjects
 	{
 		State &state = GetState();
 		return state.document.IsOpen() ? &state.document : nullptr;
+	}
+
+	bool SetLibraryFilters(std::vector<LibraryFilter> filters, const std::string &label)
+	{
+		ProjectDocument *document = GetDocument();
+		if (!document)
+			return false;
+		const auto apply = [](const std::vector<LibraryFilter> &value)
+		{
+			ProjectDocument *open = GetDocument();
+			if (!open)
+				return false;
+			open->GetProject().libraryFilters = value;
+			open->Mark(ProjectDocument::Section::Info);
+			return true;
+		};
+		std::vector<LibraryFilter> before = document->GetProject().libraryFilters;
+		apply(filters);
+		EDITOR_INFO_TAG(LOG_TAG, "{} ({} saved library filters)", label, filters.size());
+		const size_t bytes = (before.size() + filters.size()) * sizeof(LibraryFilter) + 64;
+		EditorHistory::Push({ label, [apply, before] { return apply(before); }, [apply, filters] { return apply(filters); }, bytes });
+		return true;
 	}
 
 	bool IsDirty()
@@ -1081,6 +1221,35 @@ namespace SceneryEditorX::EditorProjects
 		}
 		LogWarnings(warnings, "WED export");
 		EDITOR_INFO_TAG(LOG_TAG, "Exported {} for WorldEditor", ToUtf8(path));
+	}
+
+	bool AddNewAirport(const NewAirportProject &spec, EditorContext *context, std::string *error)
+	{
+		State &state = GetState();
+		if (!state.document.IsOpen())
+		{
+			if (error)
+				*error = "No project is open";
+			return false;
+		}
+		SceneryProject made = MakeAirportProject(spec);
+		if (made.airports.empty())
+			return false;
+		ProjectAirport airport = std::move(made.airports.front());
+		if (state.document.FindAirportIndex(airport.airport.id) != ProjectDocument::NO_INDEX)
+		{
+			if (error)
+				*error = "The project already has an airport " + airport.airport.id;
+			return false;
+		}
+		SyncFromScene();
+		const bool hadAirport = !state.document.GetProject().airports.empty();
+		const std::string id = airport.airport.id;
+		state.document.AddAirport(std::move(airport));
+		EDITOR_INFO_TAG(LOG_TAG, "Added the new airport {} to {}", id, state.document.GetProject().info.name);
+		if (!hadAirport)
+			LoadIntoScene(context);
+		return true;
 	}
 
 	void ImportAptDat(EditorContext *context)
@@ -1522,11 +1691,12 @@ namespace SceneryEditorX::EditorProjects
 		State &state = GetState();
 		const bool open = state.document.IsOpen();
 
-		if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_PLANE, "New Airport Project...").c_str(), "Ctrl+N"))
+		if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_FILE, "New Project...").c_str(), "Ctrl+N"))
 			NewProject(context);
-		EditorUI::ItemTooltip("A new scenery pack for an airport: ICAO, name, country and reference point, created in Custom Scenery or a folder you choose");
-		if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_FILE, "New Empty Project...").c_str()))
-			NewEmptyProject(context);
+		EditorUI::ItemTooltip("A new scenery pack (anything, anywhere), an airport or an asset library, created in Custom Scenery or a folder you choose");
+		if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_PLANE, "New Airport in Project...").c_str(), nullptr, false, open))
+			ProjectDialogs::OpenAddAirport();
+		EditorUI::ItemTooltip("Add a new airport (ICAO, name, reference point) to the open project");
 		if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_FOLDER_OPEN, "Open Project...").c_str(), "Ctrl+O"))
 			BrowseOpen(context);
 		if (ImGui::BeginMenu("Open Recent", state.preferences && !state.preferences->GetRecentProjects().empty()))

@@ -307,6 +307,13 @@ namespace SceneryEditorX::EditorAirports
 		}
 	}
 
+	void RequestOpenWhenReady(const std::string &airportId)
+	{
+		State &state = GetState();
+		state.startupAirport = airportId;
+		state.startupDone = false;
+	}
+
 	void Shutdown()
 	{
 		State &state = GetState();

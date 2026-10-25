@@ -158,6 +158,24 @@ namespace SceneryEditorX::XPlane
 		return TryParseFloat(text, value) ? value : fallback;
 	}
 
+	/**
+	 * @brief ParseFloat() that also reads a decimal comma ("20,000000"), as X-Plane does: some shipped .ter and .pol
+	 * files were written with one. Only for formats where a comma never separates values.
+	 */
+	inline float ParseFloatLenient(const std::string_view text, const float fallback = 0.0f)
+	{
+		float value = 0.0f;
+		if (TryParseFloat(text, value))
+			return value;
+
+		const size_t comma = text.find(',');
+		if (comma == std::string_view::npos || text.find(',', comma + 1) != std::string_view::npos || text.find('.') != std::string_view::npos)
+			return fallback;
+		std::string dotted(text);
+		dotted[comma] = '.';
+		return TryParseFloat(dotted, value) ? value : fallback;
+	}
+
 	/* @brief Parses an integer (a float token is truncated), returning fallback when the word isn't a number. */
 	inline int ParseInt(std::string_view text, const int fallback = 0)
 	{

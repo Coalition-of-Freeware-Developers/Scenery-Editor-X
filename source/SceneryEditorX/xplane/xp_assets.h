@@ -57,6 +57,22 @@ namespace SceneryEditorX::XPlane
 	/* @brief Reads the header; returns the position of the first line after it (or npos when it isn't one). */
 	size_t ParseAssetHeader(std::string_view text, AssetHeader &out);
 
+	/**
+	 * @brief A detail or normal decal of a .pol or .dcl: a second texture repeated over the surface at its own scale.
+	 * Detail decals are grey-centred (0.5 = no change) and modulate the albedo; normal decals add their RG slopes to the
+	 * surface normal. X-Plane keys a decal's strength from the albedo / control channels; here the strongest of its
+	 * constant terms stands for it.
+	 */
+	struct PolygonDecal
+	{
+		bool normal = false;				// NORMAL_DECAL_PARAMS[_PROJ] (else DECAL_PARAMS[_PROJ], DECAL, DECAL_RGBA)
+		float scaleS = 1.0f;				// Repeats per texture repeat of the polygon (the albedo's SCALE), along s and t
+		float scaleT = 1.0f;
+		float strength = 1.0f;				// 0..1: how much of the decal applies
+		float gain = 1.0f;					// Normal decals: slope multiplier
+		std::string texture;				// Relative to the file it came from (the .pol or the .dcl)
+	};
+
 	/* @brief .pol: a textured polygon draped on the ground. */
 	struct PolygonAsset
 	{
@@ -70,14 +86,44 @@ namespace SceneryEditorX::XPlane
 		std::string layerGroup;				// LAYER_GROUP name (terrain, beaches, shoulders, taxiways, runways, markings, airports, roads, objects, light_objects, cars)
 		int layerOffset = 0;
 		std::string surface;				// SURFACE asphalt / concrete / ... (physics only)
-		std::string decal;
+		std::string decal;					// DECAL_LIB: a .dcl library path (its decals are in addition to the ones below)
+		std::vector<PolygonDecal> decals;	// DECAL_PARAMS[_PROJ] / NORMAL_DECAL_PARAMS[_PROJ] / DECAL / DECAL_RGBA rows
 		bool tiled = false;					// TEXTURE_TILE / RUNWAY_TILE present
-		int tilesX = 1;						// The texture is an atlas of tilesX x tilesY variants, each covering SCALE
-		int tilesY = 1;						// meters (drawn in atlas order here; X-Plane picks them at random)
+		int tilesX = 1;						// The texture is an atlas of tilesX x tilesY variants
+		int tilesY = 1;
+
+		/**
+		 * RUNWAY_TILE <tiles x> <tiles y> <map width> <map height> <map.png> (X-Plane 12 runway and taxiway art): SCALE
+		 * covers the whole atlas, so one tile is SCALE / tiles meters. Each tile-sized cell of the surface shows the tile
+		 * its texel of the mapping texture names: R = column x tiles / 256, G = row x tiles / 256, the map repeating every
+		 * map width x height cells. TEXTURE_TILE (no map, older art) keeps SCALE as one tile.
+		 */
+		bool runwayTile = false;
+		std::string tileMap;				// Relative to the .pol; empty: cells pick tiles at random
+		int tileMapWidth = 0;
+		int tileMapHeight = 0;
+		float noiseParams[5] = {};			// RUNWAY_NOISE_PARAMS (kept, not drawn)
+
+		/**
+		 * RUNWAY_MARKINGS <r> <g> <b> <a> <atlas>: the atlas runway markings are painted from when this polygon is a
+		 * runway's surface. Its R channel is the paint, G (where it reaches past R) a dark border; r g b are the paint
+		 * color, a the border's opacity.
+		 */
+		std::string runwayMarkings;			// Relative to the .pol; empty: none
+		float runwayMarkingsColor[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
 	};
 
 	bool ParsePolygonAsset(std::string_view text, PolygonAsset &out, std::string *error = nullptr);
 	bool LoadPolygonAsset(const std::filesystem::path &path, PolygonAsset &out, std::string *error = nullptr);
+
+	/* @brief .dcl: a decal library (A 1000 DECAL) a .pol / .obj names with DECAL_LIB. */
+	struct DecalLibraryAsset
+	{
+		std::vector<PolygonDecal> decals;
+	};
+
+	bool ParseDecalLibraryAsset(std::string_view text, DecalLibraryAsset &out, std::string *error = nullptr);
+	bool LoadDecalLibraryAsset(const std::filesystem::path &path, DecalLibraryAsset &out, std::string *error = nullptr);
 
 	/* @brief .lin: a painted line following a path. */
 	struct LineAsset

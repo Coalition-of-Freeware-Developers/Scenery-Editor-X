@@ -29,6 +29,8 @@
  * -------------------------------------------------------
  */
 #include "asset_shelf_panel.h"
+#include <Editor/core/asset_thumbnails.h>
+#include <SceneryEditorX/xplane/xp_thumbnail.h>
 #include <algorithm>
 #include <cctype>
 #include <Editor/core/editor_theme.h>
@@ -276,13 +278,20 @@ namespace SceneryEditorX
 			if (selected)
 				drawList->AddRect(tileMin, tileMax, ToU32(Palette::Accent), 2.0f * dpi, 0, 2.0f * dpi);
 
-			// Large glyph in the middle of the tile (fonts are rasterized on demand at this size)
-			ImGui::PushFont(nullptr, style.FontSizeBase * (m_TileSize / 36.0f));
-			const char *icon = KindIcon(entry.kind);
-			const ImVec2 iconSize = ImGui::CalcTextSize(icon);
-			drawList->AddText(ImVec2(tileMin.x + (tile - iconSize.x) * 0.5f, tileMin.y + (tile - iconSize.y) * 0.5f),
-				ToU32(entry.kind == AssetKind::Folder ? Palette::Warning : Palette::TextLabel), icon);
-			ImGui::PopFont();
+			// X-Plane art and textures show their thumbnail (tiles on screen only); the rest, and those still drawing, a large
+			// glyph in the middle of the tile (fonts are rasterized on demand at this size)
+			const float inset = 3.0f * dpi;
+			const bool thumbnail = entry.kind != AssetKind::Folder && ImGui::IsItemVisible() && XPlane::CanMakeThumbnail(entry.path.string()) &&
+				AssetThumbnails::Draw(entry.path, ImVec2(tileMin.x + inset, tileMin.y + inset), ImVec2(tileMax.x - inset, tileMax.y - inset));
+			if (!thumbnail)
+			{
+				ImGui::PushFont(nullptr, style.FontSizeBase * (m_TileSize / 36.0f));
+				const char *icon = KindIcon(entry.kind);
+				const ImVec2 iconSize = ImGui::CalcTextSize(icon);
+				drawList->AddText(ImVec2(tileMin.x + (tile - iconSize.x) * 0.5f, tileMin.y + (tile - iconSize.y) * 0.5f),
+					ToU32(entry.kind == AssetKind::Folder ? Palette::Warning : Palette::TextLabel), icon);
+				ImGui::PopFont();
+			}
 
 			// Name under the tile, clipped with an ellipsis
 			const ImVec2 labelMin(tileMin.x, tileMax.y + 2.0f * dpi);

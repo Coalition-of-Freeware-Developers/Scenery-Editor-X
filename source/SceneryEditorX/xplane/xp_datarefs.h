@@ -70,11 +70,12 @@ namespace SceneryEditorX::XPlane
 	};
 
 	/* @brief Environment the built-in datarefs derive from. */
+	/**
+	 * @brief Dataref-only settings. Time, place and weather live in the world environment (environment/environment.h),
+	 * which the sim/time, sun and weather datarefs read.
+	 */
 	struct DatarefEnvironment
 	{
-		float localTimeHours = 12.0f;	// 0..24
-		float windDirectionDeg = 270.0f;	// Direction the wind blows FROM, true degrees
-		float windSpeedKnots = 8.0f;
 		bool forceLightsOn = false;		// Show LIT textures and lights in daylight
 	};
 

@@ -30,7 +30,9 @@
  */
 #include "tools_selftest.h"
 #include "airport_edit.h"
+#include "asset_thumbnails.h"
 #include "editor_airports.h"
+#include "editor_camera.h"
 #include "editor_history.h"
 #include "editor_project.h"
 #include "editor_scene.h"
@@ -40,18 +42,24 @@
 #include "facade_tool.h"
 #include "node_tool.h"
 #include "transform_tool.h"
+#include "viewport_gizmo.h"
 #include "viewport_menus.h"
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <format>
 #include <map>
 #include <optional>
 #include <SceneryEditorX/logging/logging.hpp>
+#include <SceneryEditorX/renderer/gbuffer.h>
+#include <SceneryEditorX/renderer/renderer.h>
 #include <SceneryEditorX/renderer/gpu_scene.h>
 #include <SceneryEditorX/renderer/scene_picking.h>
+#include <SceneryEditorX/renderer/ui/ui_impl.h>
 #include <SceneryEditorX/scene/components/renderable.h>
 #include <SceneryEditorX/filesystem/vfs.h>
 #include <SceneryEditorX/xplane/xp_facade_writer.h>
+#include <SceneryEditorX/xplane/xp_library_manager.h>
 #include <SceneryEditorX/xplane/xp_texture_loader.h>
 #include <SceneryEditorX/xplane/xp_scene.h>
 
@@ -71,6 +79,19 @@ namespace SceneryEditorX::ToolsSelfTest
 			WaitScene,
 			Pick,
 			WaitPick,
+			OrthoTop,
+			OrthoPick,
+			OrthoWaitPick,
+			LibraryFilters,
+			LargePolygonCreate,
+			LargePolygonSelect,
+			LargePolygonEdit,
+			LargePolygonCheck,
+			Thumbnails,
+			ThumbnailsWait,
+			ExtraView,
+			ExtraViewResize,
+			ExtraViewCheck,
 			ItemMove,
 			ItemUndo,
 			ItemRedo,
@@ -80,6 +101,25 @@ namespace SceneryEditorX::ToolsSelfTest
 			ObjectUndo,
 			RowMove,
 			RowUndo,
+			GizmoBegin,
+			GizmoObjectSelect,
+			GizmoObjectMove,
+			GizmoObjectMoveCheck,
+			GizmoObjectCancel,
+			GizmoObjectCancelCheck,
+			GizmoObjectRotate,
+			GizmoObjectRotateCheck,
+			GizmoShapeSelect,
+			GizmoShapeScale,
+			GizmoShapeScaleCheck,
+			GizmoNodesSelect,
+			GizmoNodesPick,
+			GizmoNodesMove,
+			GizmoNodesMoveCheck,
+			GizmoNodesRotate,
+			GizmoNodesRotateCheck,
+			GizmoEnd,
+			GizmoDrag,
 			NodeSelect,
 			NodeMove,
 			NodeUndo,
@@ -122,6 +162,8 @@ namespace SceneryEditorX::ToolsSelfTest
 			ShowcaseNodes,
 			ShowcaseHold,
 			ShowcaseUndo,
+			GizmoShowcase,
+			GizmoShowcaseHold,
 			Cleanup,
 			Reselect,
 			Done
@@ -137,6 +179,17 @@ namespace SceneryEditorX::ToolsSelfTest
 			uint64_t structure = 0;
 			uint64_t ticket = 0;
 			int pickAttempts = 0;
+			std::optional<ViewportCamera::Rig> rigBefore;
+			std::string largeItem;					// A ~3000 node polygon (editing big shapes stays smooth)
+			int largeEdits = 0;
+			float largeWorstFrame = 0.0f;			// Seconds, the slowest frame while editing it
+			uint32_t largeVerticesBefore = 0;		// Global geometry buffer size before the edits
+			std::vector<std::filesystem::path> thumbnailFiles;	// One library asset of each kind with a thumbnail
+			int thumbnailFrames = 0;
+			uint32_t extraView = 0;					// A second renderer view (VIEWPORT 2's kind), made and resized here
+			uint32_t extraViewsBefore = 0;
+			int extraViewFrames = 0;
+			uint32_t largeVerticesAfterAdd = 0;	// The view before the orthographic steps (put back after)
 			int passed = 0;
 			int failed = 0;
 
@@ -168,6 +221,28 @@ namespace SceneryEditorX::ToolsSelfTest
 			std::vector<std::pair<Target, AirportEdit::Snapshot>> showcaseRows;
 			int showcaseEdits = 0;				// Undo steps the showcase pushed
 			int holdFrames = 0;
+
+			// Gizmo checks: scripted mouse drags on the gizmo's handles
+			bool gizmoOnly = false;				// --gizmo-selftest / --gizmo-showcase: just these
+			bool gizmoShowcase = false;			// --gizmo-showcase: then each gizmo held for screenshots
+			bool snapBefore = false;
+			bool localBefore = false;
+			std::optional<ViewportCamera::Rig> gizmoRig;	// The view before (the checks frame what they drag)
+			std::string gizmoObject;			// A placed .obj project item
+			std::string gizmoShape;				// A project polygon
+			std::optional<ProjectFile::SceneryItem> gizmoBefore;
+			uint32_t gizmoPavement = ~0u;		// An airport pavement, for the node gizmo
+			AirportEdit::Snapshot gizmoRow;
+			double expected = 0.0;				// What the drag should do: meters, degrees or a factor
+			ViewportGizmo::Handle dragHandle = ViewportGizmo::HandleNone;
+			ImVec2 dragFrom, dragMid, dragTo;
+			bool dragCancel = false;			// Esc halfway through
+			bool dragRetried = false;			// The hover was checked again once
+			int dragPhase = 0;
+			bool dragHold = false;				// Showcase: stays pressed at the midpoint until the hold ends
+			Step dragNext = Step::Done;
+			uint64_t historyBefore = 0;
+			int showcaseStage = 0;
 		};
 
 		State &S()
@@ -263,7 +338,7 @@ namespace SceneryEditorX::ToolsSelfTest
 		}
 
 		/* @brief The pick ids line up with what is drawn: sampled pixels fall inside the projected boxes of the entities they name. */
-		void CheckPicks(const ViewportView &view, const ScenePicking::Result &result, const float renderWidth, const float renderHeight)
+		void CheckPicks(const ViewportView &view, const ScenePicking::Result &result, const float renderWidth, const float renderHeight, const bool remember = true)
 		{
 			State &s = S();
 			entt::registry *registry = EditorScene::GetRegistry();
@@ -316,6 +391,9 @@ namespace SceneryEditorX::ToolsSelfTest
 			EDITOR_INFO_TAG(LOG_TAG, "Pick alignment: {} of {} sampled pixels inside their entity's projected box", inside, checked);
 			Check(checked >= 3 && inside * 10 >= checked * 9, "pick ids line up with the drawn image (not flipped or offset)");
 
+			if (!remember)
+				return;
+
 			// What clicking the most covered entity selects
 			uint32_t largest = 0;
 			size_t most = 0;
@@ -360,6 +438,135 @@ namespace SceneryEditorX::ToolsSelfTest
 			});
 			return found;
 		}
+
+		// -------------------------------------------------------
+		// Gizmo checks
+
+		ImVec2 ScreenAdd(const ImVec2 &a, const ImVec2 &b, const float scale = 1.0f)
+		{
+			return { a.x + b.x * scale, a.y + b.y * scale };
+		}
+
+		/* @brief A screen position as the mouse reports it: ImGui floors mouse positions to whole pixels. */
+		ImVec2 Pixel(const ImVec2 &p)
+		{
+			return { std::floor(p.x), std::floor(p.y) };
+		}
+
+		ImVec2 ScreenDirection(const ImVec2 &from, const ImVec2 &to)
+		{
+			const float dx = to.x - from.x, dy = to.y - from.y;
+			const float length = std::sqrt(dx * dx + dy * dy);
+			return length > 1e-4f ? ImVec2(dx / length, dy / length) : ImVec2(1.0f, 0.0f);
+		}
+
+		/* @brief A screen point turned about a center (radians, clockwise on screen for positive angles). */
+		ImVec2 ScreenTurn(const ImVec2 &point, const ImVec2 &center, const double angle)
+		{
+			const double dx = point.x - center.x, dy = point.y - center.y;
+			const double c = std::cos(angle), s = std::sin(angle);
+			return { center.x + static_cast<float>(dx * c - dy * s), center.y + static_cast<float>(dx * s + dy * c) };
+		}
+
+		/* @brief Starts a scripted mouse drag on a gizmo handle (Step::GizmoDrag); next comes once it is released. */
+		void StartDrag(State &s, const ViewportGizmo::Handle handle, const ImVec2 &from, const ImVec2 &mid, const ImVec2 &to, const Step next, const bool cancel = false)
+		{
+			s.dragHandle = handle;
+			s.dragFrom = from;
+			s.dragMid = mid;
+			s.dragTo = to;
+			s.dragNext = next;
+			s.dragCancel = cancel;
+			s.dragHold = false;
+			s.dragRetried = false;
+			s.dragPhase = 0;
+			s.historyBefore = EditorHistory::GetRevision();
+			s.step = Step::GizmoDrag;
+		}
+
+		/**
+		 * @brief Meters from the pivot along an axis to the point whose projection lands on a screen position on the axis'
+		 * line: Newton steps on the camera's projection alone (an independent check of the gizmo's ray math).
+		 */
+		std::optional<double> AlongAxis(const ViewportView &view, const Point3 &pivot, const Point3 &axis, const ImVec2 &screen)
+		{
+			const auto project = [&](const double t, ImVec2 &out) { return view.WorldToScreen({ pivot.x + axis.x * t, pivot.y + axis.y * t, pivot.z + axis.z * t }, out); };
+			const double step = 1.0 / std::max(1e-6, view.PixelsPerMeter(pivot));	// About a pixel
+			ImVec2 center, ahead;
+			if (!project(0.0, center) || !project(step * 20.0, ahead))
+				return std::nullopt;
+			const ImVec2 direction = ScreenDirection(center, ahead);
+			const auto along = [&](const ImVec2 &p) { return static_cast<double>((p.x - center.x) * direction.x + (p.y - center.y) * direction.y); };
+			const double target = along(screen);
+			double t = 0.0;
+			for (int i = 0; i < 60; ++i)
+			{
+				ImVec2 a, b;
+				if (!project(t, a) || !project(t + step, b))
+					return std::nullopt;
+				const double slope = (along(b) - along(a)) / step;
+				if (std::abs(slope) < 1e-9)
+					return std::nullopt;
+				const double error = target - along(a);
+				t += error / slope;
+				if (std::abs(error) < 1e-4)
+					break;
+			}
+			return t;
+		}
+
+		/* @brief The angle (radians, counter-clockwise seen from above) the cursor swept about a pivot, on the horizontal plane through it. */
+		std::optional<double> SweptOnGround(const ViewportView &view, const Point3 &pivot, const ImVec2 &from, const ImVec2 &to)
+		{
+			Point3 a, b;
+			if (!view.RayToPlane(from, pivot.y, a) || !view.RayToPlane(to, pivot.y, b))
+				return std::nullopt;
+			const double ax = a.x - pivot.x, az = a.z - pivot.z, bx = b.x - pivot.x, bz = b.z - pivot.z;
+			// About +Y: (a x b).y = az * bx - ax * bz
+			return std::atan2(az * bx - ax * bz, ax * bx + az * bz);
+		}
+
+		/* @brief Whether the view sees the ground steeply enough for a ring about the vertical to be grabbed on its plane. */
+		bool SeesGround(const ViewportView &view, const Point3 &pivot)
+		{
+			if (view.orthographic)
+				return std::abs(view.forward.y) > 0.3;
+			const double dx = pivot.x - view.eye.x, dy = pivot.y - view.eye.y, dz = pivot.z - view.eye.z;
+			return std::abs(dy) / std::max(1e-9, std::sqrt(dx * dx + dy * dy + dz * dz)) > 0.3;
+		}
+
+		XPlane::Point2 ItemLocal(const ProjectFile::SceneryItem &item)
+		{
+			return EditorProjects::GetProjection().ToLocal(item.latitude, item.longitude);
+		}
+
+		/* @brief The ground extent (meters east, meters south) of a project item's nodes. */
+		std::pair<double, double> ItemExtent(const ProjectFile::SceneryItem &item)
+		{
+			XPlane::Bounds2 bounds;
+			for (const ProjectFile::GeoRing &ring : item.rings)
+				for (const ProjectFile::GeoNode &node : ring)
+					bounds.Add(EditorProjects::GetProjection().ToLocal(node.latitude, node.longitude));
+			return { bounds.maxX - bounds.minX, bounds.maxZ - bounds.minZ };
+		}
+
+		XPlane::Point2 PavementNode(const uint32_t pavement, const uint32_t node)
+		{
+			const XPlane::AirportDocument *airport = EditorAirports::GetDocument();
+			if (!airport || pavement >= airport->airport.pavements.size() || airport->airport.pavements[pavement].rings.empty())
+				return {};
+			const std::vector<XPlane::AptNode> &nodes = airport->airport.pavements[pavement].rings[0].nodes;
+			return node < nodes.size() ? XPlane::SceneAirports::GetProjection().ToLocal(nodes[node].latitude, nodes[node].longitude) : XPlane::Point2{};
+		}
+
+		XPlane::Point2 SnapshotNode(const AirportEdit::Snapshot &row, const uint32_t node)
+		{
+			const std::vector<XPlane::AptNodeChain> *rings = PavementRings(row);
+			if (!rings || rings->empty() || node >= rings->front().nodes.size())
+				return {};
+			const XPlane::AptNode &apt = rings->front().nodes[node];
+			return XPlane::SceneAirports::GetProjection().ToLocal(apt.latitude, apt.longitude);
+		}
 	}
 
 	void Enable()
@@ -377,6 +584,12 @@ namespace SceneryEditorX::ToolsSelfTest
 		S().facadeShowcase = true;
 	}
 
+	void EnableGizmoTests(const bool showcase)
+	{
+		S().gizmoOnly = true;
+		S().gizmoShowcase = showcase;
+	}
+
 	bool IsEnabled()
 	{
 		return S().enabled;
@@ -388,6 +601,9 @@ namespace SceneryEditorX::ToolsSelfTest
 		if (!s.enabled || s.step == Step::Done || !view.valid)
 			return;
 		++s.frames;
+		// Every frame while the large polygon is edited counts, waiting ones included (that is when its scenery rebuilds)
+		if (s.step == Step::LargePolygonEdit || s.step == Step::LargePolygonCheck)
+			s.largeWorstFrame = std::max(s.largeWorstFrame, ImGui::GetIO().DeltaTime);
 		if (s.wait > 0)
 		{
 			--s.wait;
@@ -410,7 +626,7 @@ namespace SceneryEditorX::ToolsSelfTest
 					const ProjectFile::ProjectDocument *project = EditorProjects::GetDocument();
 					s.hadRecovery = project && project->GetRecovery().has_value();
 					EDITOR_INFO_TAG(LOG_TAG, "Scene settled after {} frames: starting", s.frames);
-					s.step = Step::Pick;
+					s.step = s.gizmoOnly ? Step::GizmoBegin : Step::Pick;
 				}
 				break;
 			}
@@ -442,6 +658,294 @@ namespace SceneryEditorX::ToolsSelfTest
 					break;
 				}
 				CheckPicks(view, result, renderWidth, renderHeight);
+				s.step = Step::OrthoTop;
+				break;
+			}
+
+			case Step::OrthoTop:
+			{
+				// Numpad 7 then 5: straight down, orthographic. The renderer's projection must match the tools' (picks line up)
+				ViewportCamera::Rig rig;
+				if (!EditorCamera::GetRig(rig))
+				{
+					s.step = Step::ItemMove;
+					break;
+				}
+				s.rigBefore = rig;
+				double yaw = 0.0, pitch = 0.0;
+				ViewportCamera::GetPresetDirection(ViewportCamera::ViewPreset::Top, yaw, pitch);
+				rig.yaw = yaw;
+				rig.pitch = pitch;
+				rig.preset = ViewportCamera::ViewPreset::Top;
+				rig.orthographic = true;
+				EditorCamera::SetRig(rig);
+				s.pickAttempts = 0;
+				s.wait = 90;
+				s.step = Step::OrthoPick;
+				break;
+			}
+
+			case Step::OrthoPick:
+			{
+				Check(view.orthographic && EditorCamera::IsProjection(CameraType::Orthographic) && EditorCamera::GetViewPreset() == ViewportCamera::ViewPreset::Top,
+					"orthographic top view (numpad 7 + 5)");
+				Check(std::abs(view.forward.y + 1.0) < 1e-6 && std::abs(view.up.z + 1.0) < 1e-6, "the top view looks straight down with north up");
+
+				// A ground point under the middle of the image comes back to the same pixel, and a meter covers the same
+				// pixels wherever it is (parallel projection)
+				const ImVec2 middle(view.imageMin.x + view.imageSize.x * 0.5f, view.imageMin.y + view.imageSize.y * 0.5f);
+				Point3 ground;
+				ImVec2 back;
+				const bool hit = view.RayToPlane(middle, 0.0, ground) && view.WorldToScreen(ground, back);
+				Check(hit && std::abs(back.x - middle.x) < 0.5f && std::abs(back.y - middle.y) < 0.5f, "orthographic rays and projection agree");
+				Check(std::abs(view.PixelsPerMeter(ground) - view.PixelsPerMeter({ ground.x + 500.0, ground.y + 30.0, ground.z })) < 1e-9, "orthographic scale is the same everywhere");
+
+				s.ticket = ScenePicking::Request(0, 0, static_cast<uint32_t>(renderWidth), static_cast<uint32_t>(renderHeight));
+				s.step = Step::OrthoWaitPick;
+				break;
+			}
+
+			case Step::OrthoWaitPick:
+			{
+				ScenePicking::Result result;
+				if (!ScenePicking::TryGetResult(s.ticket, result))
+				{
+					if (s.frames > 12000)
+					{
+						Check(false, "orthographic pick readback arrived");
+						s.step = Step::ItemMove;
+					}
+					break;
+				}
+				if (std::ranges::none_of(result.ids, [](const uint32_t id) { return id != 0; }) && ++s.pickAttempts < 4)
+				{
+					s.wait = 120;
+					s.ticket = ScenePicking::Request(0, 0, static_cast<uint32_t>(renderWidth), static_cast<uint32_t>(renderHeight));
+					break;
+				}
+				EDITOR_INFO_TAG(LOG_TAG, "Orthographic top view: {:.0f} x {:.0f} m", view.halfWidth * 2.0, view.halfHeight * 2.0);
+				CheckPicks(view, result, renderWidth, renderHeight, false);
+				if (s.rigBefore)
+					EditorCamera::SetRig(*s.rigBefore);
+				s.wait = 60;
+				s.step = Step::LibraryFilters;
+				break;
+			}
+
+			case Step::LibraryFilters:
+			{
+				// A library-browser filter saved in the project: an undoable edit that marks the project changed
+				ProjectFile::ProjectDocument *document = EditorProjects::GetDocument();
+				s.step = Step::ItemMove;
+				if (!document)
+					break;
+				const std::vector<ProjectFile::LibraryFilter> before = document->GetProject().libraryFilters;
+				const uint64_t revision = document->GetRevision();
+				ProjectFile::LibraryFilter filter;
+				filter.name = "SelfTest Sidewalks";
+				filter.search = "sidewalk";
+				filter.types = { "fac", "lin" };
+				std::vector<ProjectFile::LibraryFilter> saved = before;
+				saved.push_back(filter);
+				Check(EditorProjects::SetLibraryFilters(saved, "Save library filter SelfTest Sidewalks"), "library filters: saved in the open project");
+				Check(document->GetProject().libraryFilters == saved && document->GetRevision() != revision && document->IsDirty(), "library filters: the project holds it and has unsaved changes");
+				Check(EditorHistory::Undo() && document->GetProject().libraryFilters == before, "library filters: undo takes it back out");
+				Check(EditorHistory::Redo() && document->GetProject().libraryFilters == saved, "library filters: redo puts it back");
+				EditorHistory::Undo();
+				s.step = Step::LargePolygonCreate;
+				break;
+			}
+
+			case Step::LargePolygonCreate:
+			{
+				// A big draped polygon: a 300 m circle of 3000 nodes 700 m north of the scene's center
+				s.step = Step::ItemMove;
+				if (!EditorProjects::GetDocument())
+					break;
+				ProjectFile::SceneryItem item;
+				item.kind = ProjectFile::ItemKind::Polygon;
+				item.name = "SelfTest Large Polygon";
+				item.resource = "lib/airport/ground/pavement/asphalt_L/plain.pol";
+				std::vector<ProjectFile::GeoNode> ring;
+				constexpr int NODES = 3000;
+				for (int i = 0; i < NODES; ++i)
+				{
+					const double angle = 6.283185307179586 * i / NODES;
+					ProjectFile::GeoNode node;
+					projectProjection.ToGeo(XPlane::Point2{ 300.0 * std::sin(angle), -700.0 - 300.0 * std::cos(angle) }, node.latitude, node.longitude);
+					ring.push_back(node);
+				}
+				item.rings.push_back(std::move(ring));
+				s.largeVerticesBefore = GeometryBuffer::GetVertexCount();
+				s.largeItem = EditorProjects::AddItem(item, context, "Add SelfTest Large Polygon");
+				Check(!s.largeItem.empty(), "large polygon: a 3000 node polygon added to the project");
+				s.largeEdits = 0;
+				s.largeWorstFrame = 0.0f;
+				s.wait = 60;
+				s.step = s.largeItem.empty() ? Step::ItemMove : Step::LargePolygonSelect;
+				break;
+			}
+
+			case Step::LargePolygonSelect:
+			{
+				s.largeVerticesAfterAdd = GeometryBuffer::GetVertexCount();
+				EditorSelection::Select(context, Target::ForItem(s.largeItem));
+				EditorTools::SetTool(EditorTools::Tool::Nodes);
+				s.largeWorstFrame = 0.0f;
+				s.wait = 20;
+				s.step = Step::LargePolygonEdit;
+				break;
+			}
+
+			case Step::LargePolygonEdit:
+			{
+				// Eight node moves a few frames apart, as quick clicks and drags would make; the slowest frame is kept
+				s.largeWorstFrame = std::max(s.largeWorstFrame, ImGui::GetIO().DeltaTime);
+				if (s.wait == 0 && s.largeEdits < 8)
+				{
+					const auto start = std::chrono::steady_clock::now();
+					NodeTool::SelectNode(0, 0, static_cast<uint32_t>(s.largeEdits * 300), false);
+					NodeTool::TranslateSelectedNodes(2.0, 1.0);
+					EDITOR_INFO_TAG(LOG_TAG, "Large polygon edit {}: {:.1f} ms in the node tool", s.largeEdits + 1,
+						std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count());
+					++s.largeEdits;
+					s.wait = 8;
+					break;
+				}
+				if (s.largeEdits >= 8)
+				{
+					s.wait = 30;
+					s.step = Step::LargePolygonCheck;
+				}
+				break;
+			}
+
+			case Step::LargePolygonCheck:
+			{
+				const uint32_t vertices = GeometryBuffer::GetVertexCount();
+				const uint32_t added = s.largeVerticesAfterAdd > s.largeVerticesBefore ? s.largeVerticesAfterAdd - s.largeVerticesBefore : 0;
+				const uint32_t grown = vertices > s.largeVerticesAfterAdd ? vertices - s.largeVerticesAfterAdd : 0;
+				EDITOR_INFO_TAG(LOG_TAG, "Large polygon: slowest frame {:.1f} ms over 8 edits; geometry buffer {} -> {} (+{} for the polygon) -> {} vertices", s.largeWorstFrame * 1000.0f,
+					s.largeVerticesBefore, s.largeVerticesAfterAdd, added, vertices);
+				Check(s.largeWorstFrame < 0.25f, "large polygon: no frame over 250 ms while editing its nodes");
+				Check(grown <= added + added / 2, "large polygon: edits reuse the scene's geometry space instead of piling it up");
+				for (int i = 0; i < s.largeEdits; ++i)
+					EditorHistory::Undo();
+				EditorHistory::Undo();	// The add
+				Check(FindItem(s.largeItem) == nullptr, "large polygon: undo takes the edits and the polygon back out");
+				EditorTools::SetTool(EditorTools::Tool::Select);
+				EditorSelection::Clear(context);
+				s.wait = 30;
+				s.step = Step::Thumbnails;
+				break;
+			}
+
+			case Step::Thumbnails:
+			{
+				// One library asset of each kind that has a thumbnail
+				s.step = Step::ItemMove;
+				s.thumbnailFiles.clear();
+				const std::shared_ptr<const XPlane::LibraryIndex> index = XPlane::LibraryManager::GetIndex();
+				if (!index)
+					break;
+				for (const XPlane::AssetType type : { XPlane::AssetType::Object, XPlane::AssetType::Facade, XPlane::AssetType::Forest, XPlane::AssetType::Polygon,
+					XPlane::AssetType::Line, XPlane::AssetType::String, XPlane::AssetType::AutogenPoint })
+				{
+					for (const XPlane::LibraryAsset &asset : index->GetAssets())
+					{
+						const XPlane::AssetProvider *resolved = asset.GetResolved();
+						if (asset.type == type && resolved && resolved->fileExists && !asset.IsPrivate() && !asset.IsDeprecated())
+						{
+							s.thumbnailFiles.push_back(resolved->realPath);
+							break;
+						}
+					}
+				}
+				if (s.thumbnailFiles.empty())
+				{
+					EDITOR_INFO_TAG(LOG_TAG, "No library assets: skipping the thumbnail tests");
+					break;
+				}
+				s.thumbnailFrames = 0;
+				s.step = Step::ThumbnailsWait;
+				break;
+			}
+
+			case Step::ThumbnailsWait:
+			{
+				// Asked for every frame, as a panel showing them does (requests nobody draws are dropped)
+				size_t ready = 0, failed = 0;
+				std::string errors;
+				for (const std::filesystem::path &file : s.thumbnailFiles)
+				{
+					AssetThumbnails::Thumbnail thumbnail;
+					const AssetThumbnails::State state = AssetThumbnails::Get(file, thumbnail);
+					ready += state == AssetThumbnails::State::Ready && thumbnail.texture != ImTextureID_Invalid ? 1 : 0;
+					if (state == AssetThumbnails::State::Failed)
+					{
+						++failed;
+						errors += "\n  " + VFS::ToUtf8(file.filename()) + ": " + AssetThumbnails::GetError(file);
+					}
+				}
+				if (ready + failed < s.thumbnailFiles.size() && ++s.thumbnailFrames < 1200)
+					break;
+
+				const AssetThumbnails::Stats stats = AssetThumbnails::GetStats();
+				size_t cached = 0;
+				std::error_code ec;
+				for (std::filesystem::directory_iterator it(VFS::GetAppLocation(VFS::AppLocation::Cache) / "thumbnails", ec), end; !ec && it != end; it.increment(ec))
+					cached += it->path().extension() == ".png" ? 1 : 0;
+				EDITOR_INFO_TAG(LOG_TAG, "Thumbnails: {} of {} drawn, {} failed, in {} frames ({} rendered in {:.0f} ms, {} from the disk cache, {} cached files){}", ready,
+					s.thumbnailFiles.size(), failed, s.thumbnailFrames, stats.rendered, stats.renderMilliseconds, stats.fromDisk, cached, errors);
+				Check(ready + failed == s.thumbnailFiles.size(), "thumbnails: every request finished");
+				Check(ready + 1 >= s.thumbnailFiles.size(), "thumbnails: library objects, facades, forests, polygons, lines and strings are drawn");
+				Check(cached >= ready, "thumbnails: kept in the disk cache");
+				s.step = Step::ExtraView;
+				break;
+			}
+
+			case Step::ExtraView:
+			{
+				// A second view drawn after the main one (VIEWPORT 2): a top view of the scene's center
+				s.extraViewsBefore = Renderer::GetViewCount();
+				s.extraView = Renderer::CreateView();
+				Renderer::SetViewResolution(s.extraView, 320, 200);
+				ImageResource *output = Renderer::GetViewOutput(s.extraView);
+				Check(s.extraView != 0 && Renderer::GetViewCount() == s.extraViewsBefore + 1, "extra view: created");
+				Check(output && output->GetWidth() == 320 && output->GetHeight() == 200, "extra view: its own 320 x 200 render targets");
+				s.extraViewFrames = 0;
+				s.step = Step::ExtraViewResize;
+				break;
+			}
+
+			case Step::ExtraViewResize:
+			case Step::ExtraViewCheck:
+			{
+				// Drawn every frame its camera is set; resized once halfway
+				Renderer::ViewCamera camera;
+				camera.position = Vec3(0.0f, 600.0f, 0.0f);
+				camera.pitch = -1.5707f;
+				camera.orthographic = true;
+				camera.orthographicHeight = 800.0f;
+				Renderer::SetViewCamera(s.extraView, camera);
+				if (++s.extraViewFrames < 30)
+					break;
+				if (s.step == Step::ExtraViewResize)
+				{
+					Renderer::SetViewResolution(s.extraView, 400, 300);
+					ImageResource *output = Renderer::GetViewOutput(s.extraView);
+					Check(output && output->GetWidth() == 400 && output->GetHeight() == 300, "extra view: resized to 400 x 300");
+					s.extraViewFrames = 0;
+					s.step = Step::ExtraViewCheck;
+					break;
+				}
+				const ImageResource *output = Renderer::GetViewOutput(s.extraView);
+				Check(output && output->GetLayout(0) == Layout::ImageLayout::ShaderRead, "extra view: its output drawn and ready to show");
+				const ImageResource *main = Renderer::GetRenderTarget(Renderer_RenderTarget::frame_output);
+				Check(main && main != output && main->GetWidth() != 400, "extra view: the main view kept its own targets");
+				Renderer::DestroyView(s.extraView);
+				Check(Renderer::GetViewOutput(s.extraView) == nullptr && Renderer::GetViewCount() == s.extraViewsBefore, "extra view: destroyed with its targets");
+				s.extraView = 0;
 				s.step = Step::ItemMove;
 				break;
 			}
@@ -577,7 +1081,7 @@ namespace SceneryEditorX::ToolsSelfTest
 				if (s.pavement == ~0u)
 				{
 					EDITOR_INFO_TAG(LOG_TAG, "No airport pavement: skipping the airport row tests");
-					s.step = Step::Delete;
+					s.step = Step::GizmoBegin;
 					break;
 				}
 				s.rowBefore = AirportEdit::Capture(airport->airport, AirportElementKind::Pavement, s.pavement);
@@ -601,7 +1105,418 @@ namespace SceneryEditorX::ToolsSelfTest
 				XPlane::AirportDocument *airport = EditorAirports::GetDocument();
 				Check(airport && SameChains(airport->airport.pavements[s.pavement].rings, *PavementRings(s.rowBefore)), "undo puts the pavement back bit for bit");
 				s.wait = 4;
-				s.step = Step::NodeSelect;
+				s.step = Step::GizmoBegin;
+				break;
+			}
+
+			// The gizmo, dragged with a scripted mouse: hover a handle, press, drag, release, then check what moved
+			// against the cursor's path (worked out from the camera alone), and undo it
+			case Step::GizmoBegin:
+			{
+				TransformTool::Settings &settings = TransformTool::GetSettings();
+				s.snapBefore = settings.snap;
+				s.localBefore = settings.localSpace;
+				settings.snap = false;			// Exact amounts (Ctrl stays up)
+				settings.localSpace = false;	// World axes: X east
+				ViewportCamera::Rig rig;
+				if (EditorCamera::GetRig(rig))
+					s.gizmoRig = rig;
+				s.gizmoObject = FindProjectItem(ProjectFile::ItemKind::Object, true);
+				s.gizmoShape = FindProjectItem(ProjectFile::ItemKind::Polygon, false);
+				s.gizmoPavement = ~0u;
+				if (const XPlane::AirportDocument *airport = EditorAirports::GetDocument())
+				{
+					for (uint32_t i = 0; i < airport->airport.pavements.size() && s.gizmoPavement == ~0u; ++i)
+						if (!airport->airport.pavements[i].rings.empty() && airport->airport.pavements[i].rings[0].nodes.size() >= 4)
+							s.gizmoPavement = i;
+				}
+				EDITOR_INFO_TAG(LOG_TAG, "Gizmo checks: object '{}', polygon '{}', pavement {}", s.gizmoObject, s.gizmoShape, static_cast<int>(s.gizmoPavement));
+				s.step = Step::GizmoObjectSelect;
+				break;
+			}
+
+			case Step::GizmoObjectSelect:
+			{
+				const ProjectFile::SceneryItem *item = FindItem(s.gizmoObject);
+				if (!item)
+				{
+					EDITOR_INFO_TAG(LOG_TAG, "No placed project object: skipping the object gizmo checks");
+					s.step = Step::GizmoShapeSelect;
+					break;
+				}
+				s.gizmoBefore = *item;
+				EditorSelection::Select(context, Target::ForItem(s.gizmoObject));
+				EditorTools::SetTool(EditorTools::Tool::Move);
+				EditorTools::FrameSelection();
+				s.wait = 60;	// The camera settles on it
+				s.step = Step::GizmoObjectMove;
+				break;
+			}
+
+			case Step::GizmoObjectMove:
+			case Step::GizmoObjectCancel:
+			{
+				// The X arrow, dragged 80 pixels further out along its line (Esc halfway, the second time)
+				const bool cancel = s.step == Step::GizmoObjectCancel;
+				ImVec2 grip, center;
+				ViewportGizmo::Frame frame;
+				const bool shown = ViewportGizmo::GetHandleScreen(ViewportGizmo::AxisX, grip) && ViewportGizmo::GetFrame(frame) && view.WorldToScreen(frame.pivot, center);
+				if (!cancel)
+					Check(shown && ViewportGizmo::GetHandleScreen(ViewportGizmo::Center, center), "the Move tool shows a gizmo with an X arrow and a center on '" + s.gizmoBefore->name + "'");
+				if (!shown)
+				{
+					s.step = Step::GizmoShapeSelect;
+					break;
+				}
+				const ImVec2 direction = ScreenDirection(center, grip);
+				ImVec2 to = ScreenAdd(grip, direction, 80.0f);
+				if (!view.Contains(to))
+					to = ScreenAdd(grip, direction, -40.0f);
+				// Whole pixels, off the axis' line by less than one: the drag projects onto the axis, the check does too
+				grip = Pixel(grip);
+				to = Pixel(to);
+				const std::optional<double> a = AlongAxis(view, frame.pivot, frame.axes[0], grip);
+				const std::optional<double> b = AlongAxis(view, frame.pivot, frame.axes[0], to);
+				s.expected = a && b ? *b - *a : 1e30;
+				StartDrag(s, ViewportGizmo::AxisX, grip, ScreenAdd(grip, ScreenAdd(to, grip, -1.0f), 0.5f), to,
+					cancel ? Step::GizmoObjectCancelCheck : Step::GizmoObjectMoveCheck, cancel);
+				break;
+			}
+
+			case Step::GizmoObjectMoveCheck:
+			{
+				const ProjectFile::SceneryItem *item = FindItem(s.gizmoObject);
+				Check(EditorHistory::GetRevision() != s.historyBefore, "releasing the drag makes an undo step");
+				if (item)
+				{
+					const XPlane::Point2 before = ItemLocal(*s.gizmoBefore), after = ItemLocal(*item);
+					const double east = after.x - before.x, north = before.z - after.z;
+					Check(std::abs(east - s.expected) < std::max(0.03, std::abs(s.expected) * 0.02) && std::abs(north) < 0.03,
+						std::format("dragging the X arrow moved the object {:.3f} m east (the cursor's path says {:.3f}) and {:.3f} m north", east, s.expected, north));
+				}
+				EditorHistory::Undo();
+				item = FindItem(s.gizmoObject);
+				Check(item && std::abs(item->latitude - s.gizmoBefore->latitude) < 1e-7 && std::abs(item->longitude - s.gizmoBefore->longitude) < 1e-7, "undo puts the dragged object back");
+				s.wait = 3;
+				s.step = Step::GizmoObjectCancel;
+				break;
+			}
+
+			case Step::GizmoObjectCancelCheck:
+			{
+				const ProjectFile::SceneryItem *item = FindItem(s.gizmoObject);
+				Check(EditorHistory::GetRevision() == s.historyBefore && item && std::abs(item->latitude - s.gizmoBefore->latitude) < 1e-7 &&
+					std::abs(item->longitude - s.gizmoBefore->longitude) < 1e-7, "Esc halfway through a drag leaves the object where it was, with no undo step");
+				EditorTools::SetTool(EditorTools::Tool::Rotate);
+				s.wait = 3;
+				s.step = Step::GizmoObjectRotate;
+				break;
+			}
+
+			case Step::GizmoObjectRotate:
+			{
+				// The Y ring (an object only turns about the vertical), grabbed nearest the camera and swept 35 degrees on screen
+				ImVec2 grip, center;
+				ViewportGizmo::Frame frame;
+				const bool shown = ViewportGizmo::GetHandleScreen(ViewportGizmo::AxisY, grip) && ViewportGizmo::GetFrame(frame) && view.WorldToScreen(frame.pivot, center);
+				ImVec2 unused;
+				Check(shown && !ViewportGizmo::GetHandleScreen(ViewportGizmo::AxisX, unused) && !ViewportGizmo::GetHandleScreen(ViewportGizmo::ViewRing, unused),
+					"the Rotate tool shows only the Y ring on an X-Plane object (it has a heading only)");
+				if (!shown || !SeesGround(view, frame.pivot))
+				{
+					EDITOR_INFO_TAG(LOG_TAG, "The ring isn't shown or is seen edge-on: skipping the drag");
+					s.step = Step::GizmoShapeSelect;
+					break;
+				}
+				constexpr double SWEEP = -35.0 / 57.29577951308232;
+				const ImVec2 to = Pixel(ScreenTurn(grip, center, SWEEP));
+				grip = Pixel(grip);
+				const std::optional<double> swept = SweptOnGround(view, frame.pivot, grip, to);
+				s.expected = swept ? *swept * 57.29577951308232 : 1e30;
+				StartDrag(s, ViewportGizmo::AxisY, grip, Pixel(ScreenTurn(grip, center, SWEEP * 0.5)), to, Step::GizmoObjectRotateCheck);
+				break;
+			}
+
+			case Step::GizmoObjectRotateCheck:
+			{
+				const ProjectFile::SceneryItem *item = FindItem(s.gizmoObject);
+				if (item)
+				{
+					// Headings run clockwise: a counter-clockwise turn lowers them
+					const double turned = std::remainder(static_cast<double>(item->heading) - s.gizmoBefore->heading, 360.0);
+					const XPlane::Point2 before = ItemLocal(*s.gizmoBefore), after = ItemLocal(*item);
+					Check(std::abs(turned + s.expected) < 0.3 && std::hypot(after.x - before.x, after.z - before.z) < 0.03,
+						std::format("dragging the Y ring turned the object's heading by {:.2f} deg (the cursor swept {:.2f} counter-clockwise) about its own pivot", turned, s.expected));
+				}
+				EditorHistory::Undo();
+				item = FindItem(s.gizmoObject);
+				Check(item && std::abs(std::remainder(static_cast<double>(item->heading) - s.gizmoBefore->heading, 360.0)) < 0.01, "undo turns it back");
+				s.wait = 3;
+				s.step = Step::GizmoShapeSelect;
+				break;
+			}
+
+			case Step::GizmoShapeSelect:
+			{
+				const ProjectFile::SceneryItem *item = FindItem(s.gizmoShape);
+				if (!item)
+				{
+					EDITOR_INFO_TAG(LOG_TAG, "No project polygon: skipping the scale gizmo check");
+					s.step = Step::GizmoNodesSelect;
+					break;
+				}
+				s.gizmoBefore = *item;
+				EditorSelection::Select(context, Target::ForItem(s.gizmoShape));
+				EditorTools::SetTool(EditorTools::Tool::Scale);
+				EditorTools::FrameSelection();
+				s.wait = 60;
+				s.step = Step::GizmoShapeScale;
+				break;
+			}
+
+			case Step::GizmoShapeScale:
+			{
+				// The X box, dragged to half as far again from the center: x1.5 along X
+				ImVec2 grip, center;
+				ViewportGizmo::Frame frame;
+				const bool shown = ViewportGizmo::GetHandleScreen(ViewportGizmo::AxisX, grip) && ViewportGizmo::GetFrame(frame) && view.WorldToScreen(frame.pivot, center);
+				Check(shown, "the Scale tool shows a gizmo with an X box on the polygon");
+				if (!shown)
+				{
+					s.step = Step::GizmoNodesSelect;
+					break;
+				}
+				// The gizmo scales by how far along the axis' screen direction the cursor is, against where it pressed
+				const ImVec2 out = ScreenAdd(grip, center, -1.0f);
+				const ImVec2 direction = ScreenDirection(center, grip);
+				const ImVec2 from = Pixel(grip), to = Pixel(ScreenAdd(center, out, 1.5f));
+				const auto along = [&](const ImVec2 &p) { return static_cast<double>((p.x - center.x) * direction.x + (p.y - center.y) * direction.y); };
+				s.expected = along(to) / along(from);
+				StartDrag(s, ViewportGizmo::AxisX, from, Pixel(ScreenAdd(center, out, 1.25f)), to, Step::GizmoShapeScaleCheck);
+				break;
+			}
+
+			case Step::GizmoShapeScaleCheck:
+			{
+				const ProjectFile::SceneryItem *item = FindItem(s.gizmoShape);
+				if (item)
+				{
+					const auto [width0, depth0] = ItemExtent(*s.gizmoBefore);
+					const auto [width1, depth1] = ItemExtent(*item);
+					const double ratioX = width1 / std::max(1e-9, width0), ratioZ = depth1 / std::max(1e-9, depth0);
+					Check(std::abs(ratioX - s.expected) < 0.01 && std::abs(ratioZ - 1.0) < 0.002,
+						std::format("dragging the X box scaled the polygon x{:.4f} east-west (expected x{:.2f}) and x{:.4f} north-south", ratioX, s.expected, ratioZ));
+				}
+				EditorHistory::Undo();
+				item = FindItem(s.gizmoShape);
+				Check(item && SameItem(*item, *s.gizmoBefore), "undo of the scale restores the polygon bit for bit");
+				s.wait = 3;
+				s.step = Step::GizmoNodesSelect;
+				break;
+			}
+
+			case Step::GizmoNodesSelect:
+			{
+				XPlane::AirportDocument *airport = EditorAirports::GetDocument();
+				if (!airport || s.gizmoPavement == ~0u)
+				{
+					EDITOR_INFO_TAG(LOG_TAG, "No airport pavement: skipping the node gizmo checks");
+					s.step = Step::GizmoEnd;
+					break;
+				}
+				s.gizmoRow = AirportEdit::Capture(airport->airport, AirportElementKind::Pavement, s.gizmoPavement);
+				EditorTools::SetTool(EditorTools::Tool::Nodes);
+				EditorSelection::Select(context, Target::ForElement(AirportElementKind::Pavement, s.gizmoPavement));
+				s.wait = 2;	// The node tool opens its sessions on the next frames
+				s.step = Step::GizmoNodesPick;
+				break;
+			}
+
+			case Step::GizmoNodesPick:
+			{
+				// Two nodes picked with the node tool, then W: the gizmo goes on them, not on the pavement
+				const bool picked = NodeTool::SelectNode(0, 0, 0, false) && NodeTool::SelectNode(0, 0, 1, true);
+				EditorTools::SetTool(EditorTools::Tool::Move);
+				Check(picked && NodeTool::HasNodeSelection() && NodeTool::GetSelectedNodeCount() == 2, "nodes picked with V stay picked when switching to Move (W)");
+				EditorTools::FrameSelection();
+				s.wait = 60;
+				s.step = Step::GizmoNodesMove;
+				break;
+			}
+
+			case Step::GizmoNodesMove:
+			{
+				ImVec2 grip, center;
+				ViewportGizmo::Frame frame;
+				const bool shown = ViewportGizmo::GetHandleScreen(ViewportGizmo::AxisX, grip) && ViewportGizmo::GetFrame(frame) && view.WorldToScreen(frame.pivot, center);
+				const XPlane::Point2 a = SnapshotNode(s.gizmoRow, 0), b = SnapshotNode(s.gizmoRow, 1);
+				Check(shown && std::hypot(frame.pivot.x - (a.x + b.x) * 0.5, frame.pivot.z - (a.z + b.z) * 0.5) < 0.01, "the Move gizmo sits between the two picked nodes");
+				if (!shown)
+				{
+					s.step = Step::GizmoEnd;
+					break;
+				}
+				const ImVec2 direction = ScreenDirection(center, grip);
+				ImVec2 to = ScreenAdd(grip, direction, 60.0f);
+				if (!view.Contains(to))
+					to = ScreenAdd(grip, direction, -30.0f);
+				grip = Pixel(grip);
+				to = Pixel(to);
+				const std::optional<double> from = AlongAxis(view, frame.pivot, frame.axes[0], grip);
+				const std::optional<double> until = AlongAxis(view, frame.pivot, frame.axes[0], to);
+				s.expected = from && until ? *until - *from : 1e30;
+				StartDrag(s, ViewportGizmo::AxisX, grip, ScreenAdd(grip, ScreenAdd(to, grip, -1.0f), 0.5f), to, Step::GizmoNodesMoveCheck);
+				break;
+			}
+
+			case Step::GizmoNodesMoveCheck:
+			{
+				// Every apt.dat row after the edit is a row from before, either where it was or moved by the drag (rows are
+				// matched by position: writing the ring back may order or group them differently)
+				const std::vector<XPlane::AptNodeChain> *rings = PavementRings(s.gizmoRow);
+				const XPlane::AirportDocument *airport = EditorAirports::GetDocument();
+				std::vector<XPlane::Point2> before, after;
+				if (rings && !rings->empty())
+					for (uint32_t n = 0; n < rings->front().nodes.size(); ++n)
+						before.push_back(SnapshotNode(s.gizmoRow, n));
+				if (airport && s.gizmoPavement < airport->airport.pavements.size() && !airport->airport.pavements[s.gizmoPavement].rings.empty())
+					for (uint32_t n = 0; n < airport->airport.pavements[s.gizmoPavement].rings[0].nodes.size(); ++n)
+						after.push_back(PavementNode(s.gizmoPavement, n));
+				const double tolerance = std::max(0.03, std::abs(s.expected) * 0.02);
+				uint32_t moved = 0, kept = 0, unexplained = 0;
+				for (const XPlane::Point2 &p : after)
+				{
+					const auto movedBy = [&](const double dx) { return std::ranges::any_of(before, [&](const XPlane::Point2 &b) { return std::abs(p.x - b.x - dx) < (dx == 0.0 ? 1e-6 : tolerance) && std::abs(p.z - b.z) < (dx == 0.0 ? 1e-6 : 0.03); }); };
+					if (movedBy(0.0))
+						++kept;
+					else if (movedBy(s.expected))
+						++moved;
+					else
+						++unexplained;
+				}
+				Check(moved >= 2 && kept >= 1 && unexplained == 0, std::format("dragging the X arrow moved the picked nodes {:.3f} m east ({} rows) and left the rest where they were ({} rows, {} rows unexplained)",
+					s.expected, moved, kept, unexplained));
+				EditorHistory::Undo();
+				airport = EditorAirports::GetDocument();
+				Check(airport && SameChains(airport->airport.pavements[s.gizmoPavement].rings, *PavementRings(s.gizmoRow)), "undo of the node move restores the pavement bit for bit");
+				EditorTools::SetTool(EditorTools::Tool::Rotate);
+				s.wait = 3;
+				s.step = Step::GizmoNodesRotate;
+				break;
+			}
+
+			case Step::GizmoNodesRotate:
+			{
+				ImVec2 grip, center;
+				ViewportGizmo::Frame frame;
+				const bool shown = NodeTool::GetSelectedNodeCount() == 2 && ViewportGizmo::GetHandleScreen(ViewportGizmo::AxisY, grip) && ViewportGizmo::GetFrame(frame) &&
+					view.WorldToScreen(frame.pivot, center);
+				Check(shown, "the Rotate tool (E) shows the Y ring on the picked nodes");
+				if (!shown || !SeesGround(view, frame.pivot))
+				{
+					s.step = Step::GizmoEnd;
+					break;
+				}
+				constexpr double SWEEP = 40.0 / 57.29577951308232;
+				const ImVec2 to = Pixel(ScreenTurn(grip, center, SWEEP));
+				grip = Pixel(grip);
+				const std::optional<double> swept = SweptOnGround(view, frame.pivot, grip, to);
+				s.expected = swept ? *swept * 57.29577951308232 : 1e30;
+				StartDrag(s, ViewportGizmo::AxisY, grip, Pixel(ScreenTurn(grip, center, SWEEP * 0.5)), to, Step::GizmoNodesRotateCheck);
+				break;
+			}
+
+			case Step::GizmoNodesRotateCheck:
+			{
+				const XPlane::Point2 a0 = SnapshotNode(s.gizmoRow, 0), b0 = SnapshotNode(s.gizmoRow, 1);
+				const XPlane::Point2 a1 = PavementNode(s.gizmoPavement, 0), b1 = PavementNode(s.gizmoPavement, 1);
+				const double vx0 = b0.x - a0.x, vz0 = b0.z - a0.z, vx1 = b1.x - a1.x, vz1 = b1.z - a1.z;
+				const double turned = std::atan2(vz0 * vx1 - vx0 * vz1, vx0 * vx1 + vz0 * vz1) * 57.29577951308232;
+				Check(std::abs(std::hypot(vx1, vz1) - std::hypot(vx0, vz0)) < 0.02 && std::abs(turned - s.expected) < 0.3,
+					std::format("dragging the Y ring turned the two nodes {:.2f} deg about their center (the cursor swept {:.2f}), keeping their distance", turned, s.expected));
+				EditorHistory::Undo();
+				XPlane::AirportDocument *airport = EditorAirports::GetDocument();
+				Check(airport && SameChains(airport->airport.pavements[s.gizmoPavement].rings, *PavementRings(s.gizmoRow)), "undo of the node turn restores the pavement bit for bit");
+				s.wait = 3;
+				s.step = Step::GizmoEnd;
+				break;
+			}
+
+			case Step::GizmoEnd:
+			{
+				NodeTool::ClearNodeSelection();
+				EditorTools::SetTool(EditorTools::Tool::Select);
+				TransformTool::Settings &settings = TransformTool::GetSettings();
+				settings.snap = s.snapBefore;
+				settings.localSpace = s.localBefore;
+				if (s.gizmoRig)
+					EditorCamera::SetRig(*s.gizmoRig);
+				s.wait = 10;
+				s.step = s.gizmoOnly ? Step::Finish : (s.pavement == ~0u ? Step::Delete : Step::NodeSelect);
+				break;
+			}
+
+			case Step::GizmoDrag:
+			{
+				// One phase a frame: what is queued now reaches the tools on the next frame
+				switch (s.dragPhase++)
+				{
+					case 0:
+						UI::SetScriptedMouse(s.dragFrom, false);
+						break;
+					case 1:
+					{
+						const bool hovered = ViewportGizmo::GetHovered() == s.dragHandle;
+						if (!hovered && !s.dragRetried)
+						{
+							// Real input reaching the window (a key, a button) can get in the way once: look again shortly
+							const ImGuiIO &io = ImGui::GetIO();
+							ImVec2 now(-1.0f, -1.0f);
+							const bool shown = ViewportGizmo::GetHandleScreen(s.dragHandle, now);
+							EDITOR_WARN_TAG(LOG_TAG, "The handle isn't hovered: mouse ({:.0f}, {:.0f}), handle {} at ({:.0f}, {:.0f}), hovered {}, Alt {}, right {}, middle {}: trying again",
+								io.MousePos.x, io.MousePos.y, shown ? "shown" : "not shown", now.x, now.y, static_cast<int>(ViewportGizmo::GetHovered()), io.KeyAlt,
+								ImGui::IsMouseDown(ImGuiMouseButton_Right), ImGui::IsMouseDown(ImGuiMouseButton_Middle));
+							s.dragRetried = true;
+							s.dragPhase = 1;
+							s.wait = 10;
+							break;
+						}
+						Check(hovered, "the handle under the cursor lights up (hovered)");
+						UI::SetScriptedMouse(s.dragFrom, true);
+						break;
+					}
+					case 2:
+						Check(ViewportGizmo::IsActive() && ViewportGizmo::GetHovered() == s.dragHandle, "pressing on it starts a drag on that handle");
+						UI::SetScriptedMouse(s.dragMid, true);
+						break;
+					case 3:
+						if (s.dragHold)
+						{
+							// Showcase: held halfway until the hold ends (Escape, then let go)
+							--s.dragPhase;
+							if (--s.holdFrames > 0)
+								break;
+							EditorTools::Escape(context);
+							s.dragPhase = 4;
+							UI::SetScriptedMouse(s.dragMid, false);
+							break;
+						}
+						if (s.dragCancel)
+						{
+							EditorTools::Escape(context);
+							Check(!ViewportGizmo::IsActive() && !TransformTool::IsUsing(), "Esc ends the drag");
+						}
+						UI::SetScriptedMouse(s.dragTo, true);
+						break;
+					case 4:
+						UI::SetScriptedMouse(s.dragHold ? s.dragMid : s.dragTo, false);
+						break;
+					default:
+						UI::SetScriptedMouse(std::nullopt);
+						s.wait = 3;	// Edited rows / items are rebuilt
+						s.step = s.dragNext;
+						break;
+				}
 				break;
 			}
 
@@ -1495,8 +2410,112 @@ namespace SceneryEditorX::ToolsSelfTest
 				if (s.picked)
 					EditorSelection::Select(context, *s.picked);
 				EDITOR_INFO_TAG(LOG_TAG, "Done: {} passed, {} failed. Selected '{}' for the outline", s.passed, s.failed, s.picked ? EditorSelection::Describe(*s.picked) : std::string("nothing"));
-				s.step = s.showcase ? Step::Showcase : Step::Cleanup;
+				s.step = s.showcase ? Step::Showcase : (s.gizmoShowcase ? Step::GizmoShowcase : Step::Cleanup);
 				break;
+
+			case Step::GizmoShowcase:
+			{
+				// Each gizmo held for a few seconds for screenshots: its target selected and framed, then hovered or
+				// halfway through a drag. Stages: move, rotate (object), scale (polygon), move, rotate (picked nodes)
+				const int stage = s.showcaseStage;
+				if (stage >= 5)
+				{
+					UI::SetScriptedMouse(std::nullopt);
+					NodeTool::ClearNodeSelection();
+					EditorTools::SetTool(EditorTools::Tool::Select);
+					if (s.gizmoRig)
+						EditorCamera::SetRig(*s.gizmoRig);
+					EDITOR_INFO_TAG(LOG_TAG, "Gizmo showcase finished");
+					s.step = Step::Cleanup;
+					break;
+				}
+				bool ready = false;
+				if (stage <= 1 && FindItem(s.gizmoObject))
+				{
+					EditorSelection::Select(context, Target::ForItem(s.gizmoObject));
+					EditorTools::SetTool(stage == 0 ? EditorTools::Tool::Move : EditorTools::Tool::Rotate);
+					ready = true;
+				}
+				else if (stage == 2 && FindItem(s.gizmoShape))
+				{
+					EditorSelection::Select(context, Target::ForItem(s.gizmoShape));
+					EditorTools::SetTool(EditorTools::Tool::Scale);
+					ready = true;
+				}
+				else if (stage >= 3 && s.gizmoPavement != ~0u)
+				{
+					EditorTools::SetTool(EditorTools::Tool::Nodes);
+					EditorSelection::Select(context, Target::ForElement(AirportElementKind::Pavement, s.gizmoPavement));
+					ready = true;
+				}
+				if (!ready)
+				{
+					++s.showcaseStage;
+					break;
+				}
+				if (stage != 1 && stage != 4)
+					EditorTools::FrameSelection();
+				s.dragPhase = -1;
+				s.wait = 60;
+				s.step = Step::GizmoShowcaseHold;
+				break;
+			}
+
+			case Step::GizmoShowcaseHold:
+			{
+				static constexpr const char *STAGES[] = { "move", "rotate", "scale", "nodes move", "nodes rotate" };
+				const int stage = s.showcaseStage;
+				if (s.dragPhase == -1)
+				{
+					// Nodes: three picked with the node tool, then W or E
+					if (stage >= 3)
+					{
+						NodeTool::SelectNode(0, 0, 0, false);
+						NodeTool::SelectNode(0, 0, 1, true);
+						NodeTool::SelectNode(0, 0, 2, true);
+						EditorTools::SetTool(stage == 3 ? EditorTools::Tool::Move : EditorTools::Tool::Rotate);
+						s.wait = 3;
+					}
+					s.dragPhase = -2;
+					break;
+				}
+				if (s.dragPhase == -3)
+				{
+					// Hovered: hold, then hand the mouse back
+					if (--s.holdFrames > 0)
+						break;
+					UI::SetScriptedMouse(std::nullopt);
+					++s.showcaseStage;
+					s.step = Step::GizmoShowcase;
+					break;
+				}
+
+				const bool hover = stage == 0 || stage == 3;
+				const ViewportGizmo::Handle handle = stage == 0 ? ViewportGizmo::AxisX : (stage == 3 ? ViewportGizmo::PlaneXZ : (stage == 2 ? ViewportGizmo::AxisX : ViewportGizmo::AxisY));
+				ImVec2 grip, center;
+				ViewportGizmo::Frame frame;
+				if (!ViewportGizmo::GetHandleScreen(handle, grip) || !ViewportGizmo::GetFrame(frame) || !view.WorldToScreen(frame.pivot, center))
+				{
+					EDITOR_WARN_TAG(LOG_TAG, "Gizmo showcase: {} has no handle to show", STAGES[stage]);
+					++s.showcaseStage;
+					s.step = Step::GizmoShowcase;
+					break;
+				}
+				s.holdFrames = 300;
+				EDITOR_INFO_TAG(LOG_TAG, "Gizmo showcase: {} for {} frames (from frame {})", STAGES[stage], s.holdFrames, s.frames);
+				if (hover)
+				{
+					UI::SetScriptedMouse(grip, false);
+					s.dragPhase = -3;
+					break;
+				}
+				// Halfway through a drag: turned 40 degrees on screen, or scaled x1.4
+				const ImVec2 held = stage == 2 ? ScreenAdd(center, ScreenAdd(grip, center, -1.0f), 1.4f) : ScreenTurn(grip, center, 40.0 / 57.29577951308232);
+				++s.showcaseStage;
+				StartDrag(s, handle, grip, held, held, Step::GizmoShowcase);
+				s.dragHold = true;
+				break;
+			}
 
 			case Step::Showcase:
 			{

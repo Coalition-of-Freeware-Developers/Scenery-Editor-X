@@ -55,13 +55,19 @@ namespace SceneryEditorX
 		gbuffer_velocity,
 		gbuffer_depth,
 		gbuffer_depth_occluders,
-		gbuffer_depth_occluders_hiz,
+		gbuffer_depth_occluders_hiz,	// RG32F min / max depth pyramid, full mip chain (z_minmax.slang): r farthest, g nearest
 		gbuffer_depth_opaque_output,
 		gbuffer_pick,				// R32_UINT: pick id (entity index + 1) of the surface in each pixel, 0 for none (ScenePicking)
+		gbuffer_emissive,			// RGBA16F: emissive luminance (nits) x pre-exposure (X-Plane LIT textures)
+		gbuffer_weather,			// RGBA8: weather receptivity (R rain / damp, G puddles, B snow 0.5 + 0.5 s, A ice)
 		lut_brdf_specular,
-		lut_atmosphere_scatter,
-		lut_atmosphere_transmittance,
-		lut_atmosphere_multiscatter,
+		lut_atmosphere_transmittance,	// 256x64: transmittance to space by height and view zenith (atmosphere_luts.slang)
+		lut_atmosphere_multiscatter,	// 32x32: Hillaire's multiple-scattering transfer
+		lut_sky_view,					// 192x108: the sky from the camera, pre-exposed (sky_view_lut.slang)
+		lut_sky_ambient,				// 64x16: sky irradiance on a level surface per unit light (sky_ambient_lut.slang)
+		lut_aerial_inscatter,			// 32x32x32: froxel in-scattering, pre-exposed (aerial_perspective.slang)
+		lut_aerial_transmittance,		// 32x32x32: froxel transmittance
+		env_probes,						// cube array, 8 probes x 6 faces, 128 px, 7 mips (cube_filter.slang)
 		light_diffuse,
 		light_specular,
 		light_volumetric,
@@ -75,12 +81,12 @@ namespace SceneryEditorX
 		gbuffer_reflections_normal,
 		gbuffer_reflections_albedo,
 		sss,
-		skysphere,
 		bloom,
 		blur,
 		outline,
 		shading_rate,
 		shadow_atlas,
+		shadow_csm,						// sun shadow cascades: 2D array, 4 layers, D32F, size from the shadow quality (csm.h)
 		auto_exposure,
 		auto_exposure_previous,
 		// restir reservoir buffers (current frame)
@@ -114,6 +120,23 @@ namespace SceneryEditorX
 		nrd_out_spec_radiance_hitdist,
 		// debug
 		debug_output,
+		// exposure fusion (exposure_fusion.slang), half the render resolution: three synthetic exposures and their weights
+		// (Gaussian pyramids), the blended result (Laplacian collapse), and the R16F gain guide the tone map applies
+		exposure_fusion_exposures,
+		exposure_fusion_weights,
+		exposure_fusion_result,
+		exposure_fusion_guide,
+		// ambient occlusion (cacao.slang; ssao is the result): CACAO's deinterleaved buffers, sized by renderer/cacao.h
+		cacao_depths,				// 2D array, 4 layers, 4 mips, R16F: view depth
+		cacao_normals,				// 2D array, 4 layers, RGBA8 SNORM: view-space normals
+		cacao_ssao_ping,			// 2D array, 4 layers, RG8: AO and packed edges
+		cacao_ssao_pong,
+		cacao_importance,			// R8: where the adaptive (highest) quality adds samples
+		cacao_importance_pong,
+		cacao_load_counter,		// 1 x 1 R32_UINT: summed importance (highest quality)
+		// screen-space reflections (ssr_trace.slang): the finished frame kept for the next one, its mips blurred
+		// (RGBA16F, alpha the pre-exposure it was lit with); the reflections target holds what the trace found
+		frame_render_previous,
 		MaxEnum
 	};
 
@@ -160,22 +183,16 @@ namespace SceneryEditorX
 		bloom_blend_frame,
 		bloom_upsample_blend_mip,
 		bloom_downsample,
-		output,
 		light_integration_brdf_specular_lut,
 		light_integration_environment_filter,
 		light,
 		light_composition,
-		light_image_based,
 		line,
 		grid,
 		outline,
 		font,
 		ssao,
 		sss_bend,
-		skysphere,
-		skysphere_lut,
-		skysphere_transmittance_lut,
-		skysphere_multiscatter_lut,
 		blur_gaussian,
 		blur_gaussian_bilateral,
 		variable_rate_shading,
@@ -187,12 +204,10 @@ namespace SceneryEditorX
 		icon,
 		dithering,
 		transparency_reflection_refraction,
-		auto_exposure,
 		// volumetric clouds
 		cloud_noise_shape,
 		cloud_noise_detail,
 		cloud_shadow,
-		light_reflections,
 		// gpu-driven indirect rendering
 		indirect_cull,
 		gbuffer_indirect,
@@ -213,8 +228,54 @@ namespace SceneryEditorX
 		gpu_cull_late,			// two-phase occlusion culling: the instances not drawn early, against the Hi-Z
 		depth_prepass_gpu,
 		gbuffer_gpu,
-		downsample_min,			// one level of a min mip chain (Hi-Z), until the FidelityFX SPD shaders are ported
 		selection_outline,		// editor selection / hover outlines from the pick ids (ScenePicking)
+		reference_overlay,		// viewport reference image: split / difference / full over frame_output (parity harness)
+		tonemap,				// output transform: exposure + tone curve to frame_output (XP12: hdr)
+		debug_view,				// RENDERER panel DEBUG VIEW
+		// plan Phase 5: HDR clean-up, exposure, local tone mapping, upscaling
+		fix_hdr,
+		luminance_histogram,
+		exposure_adapt,
+		exposure_fusion_exposures,
+		exposure_fusion_downsample,
+		exposure_fusion_collapse,
+		exposure_fusion_guide,
+		fsr1_easu,
+		fsr1_rcas,
+		// plan Phase 6: the atmosphere (XP12: scatter_compute_*), the sky, environment probes
+		atmosphere_transmittance_lut,
+		atmosphere_multiscatter_lut,
+		sky_view_lut,
+		sky_ambient_lut,
+		aerial_perspective,
+		sky,
+		cube_filter_capture,
+		cube_filter_ggx,
+		cube_filter_irradiance,
+		// plan Phase 7: sun shadows (XP12: the CSM pass) and cloud shadows
+		gpu_cull_shadow,		// GPU-scene instances into each shadow cascade's draws
+		depth_light_csm,		// shadow casters into a cascade of shadow_csm (CPU draws)
+		depth_light_csm_gpu,	// the same for GPU-scene instances
+		// plan Phase 8: ambient occlusion (XP12: cacao), AMD FidelityFX CACAO ported to cacao.slang
+		cacao_prepare_depths,
+		cacao_prepare_normals,
+		cacao_generate_q1,		// CACAO medium
+		cacao_generate_q2,		// CACAO high
+		cacao_generate_q3,		// CACAO highest (adaptive)
+		cacao_generate_q3_base,
+		cacao_importance_map,
+		cacao_importance_map_a,
+		cacao_importance_map_b,
+		cacao_blur,
+		cacao_apply,
+		cacao_upscale,
+		cacao_upscale_smart,
+		// plan Phase 9: the min / max depth pyramid (XP12: z_minmax) and screen-space reflections (XP12: ssr_deferred)
+		z_minmax_depth,			// level 0 from the depth buffer
+		z_minmax,				// one level from the level above (occlusion culling's Hi-Z too)
+		ssr_trace,				// the deferred surfaces' reflections into the reflections target
+		ssr_history_copy,		// the finished frame into the reflection history's level 0
+		ssr_history_mip,		// one level of the reflection history
 		MaxEnum
 	};
 
@@ -237,22 +298,16 @@ namespace SceneryEditorX
 		case Renderer_Shader::bloom_blend_frame: return "bloom_blend_frame";
 		case Renderer_Shader::bloom_upsample_blend_mip: return "bloom_upsample_blend_mip";
 		case Renderer_Shader::bloom_downsample: return "bloom_downsample";
-		case Renderer_Shader::output: return "output";
 		case Renderer_Shader::light_integration_brdf_specular_lut: return "light_integration_brdf_specular_lut";
 		case Renderer_Shader::light_integration_environment_filter: return "light_integration_environment_filter";
 		case Renderer_Shader::light: return "light";
 		case Renderer_Shader::light_composition: return "light_composition";
-		case Renderer_Shader::light_image_based: return "light_image_based";
 		case Renderer_Shader::line: return "line";
 		case Renderer_Shader::grid: return "grid";
 		case Renderer_Shader::outline: return "outline";
 		case Renderer_Shader::font: return "font";
 		case Renderer_Shader::ssao: return "ssao";
 		case Renderer_Shader::sss_bend: return "sss_bend";
-		case Renderer_Shader::skysphere: return "skysphere";
-		case Renderer_Shader::skysphere_lut: return "skysphere_lut";
-		case Renderer_Shader::skysphere_transmittance_lut: return "skysphere_transmittance_lut";
-		case Renderer_Shader::skysphere_multiscatter_lut: return "skysphere_multiscatter_lut";
 		case Renderer_Shader::blur_gaussian: return "blur_gaussian";
 		case Renderer_Shader::blur_gaussian_bilateral: return "blur_gaussian_bilateral";
 		case Renderer_Shader::variable_rate_shading: return "variable_rate_shading";
@@ -264,11 +319,9 @@ namespace SceneryEditorX
 		case Renderer_Shader::icon: return "icon";
 		case Renderer_Shader::dithering: return "dithering";
 		case Renderer_Shader::transparency_reflection_refraction: return "transparency_reflection_refraction";
-		case Renderer_Shader::auto_exposure: return "auto_exposure";
 		case Renderer_Shader::cloud_noise_shape: return "cloud_noise_shape";
 		case Renderer_Shader::cloud_noise_detail: return "cloud_noise_detail";
 		case Renderer_Shader::cloud_shadow: return "cloud_shadow";
-		case Renderer_Shader::light_reflections: return "light_reflections";
 		case Renderer_Shader::indirect_cull: return "indirect_cull";
 		case Renderer_Shader::gbuffer_indirect: return "gbuffer_indirect";
 		case Renderer_Shader::depth_prepass_indirect: return "depth_prepass_indirect";
@@ -284,8 +337,49 @@ namespace SceneryEditorX
 		case Renderer_Shader::gpu_cull_late: return "gpu_cull_late";
 		case Renderer_Shader::depth_prepass_gpu: return "depth_prepass_gpu";
 		case Renderer_Shader::gbuffer_gpu: return "gbuffer_gpu";
-		case Renderer_Shader::downsample_min: return "downsample_min";
 		case Renderer_Shader::selection_outline: return "selection_outline";
+		case Renderer_Shader::reference_overlay: return "reference_overlay";
+		case Renderer_Shader::tonemap: return "tonemap";
+		case Renderer_Shader::debug_view: return "debug_view";
+		case Renderer_Shader::fix_hdr: return "fix_hdr";
+		case Renderer_Shader::luminance_histogram: return "luminance_histogram";
+		case Renderer_Shader::exposure_adapt: return "exposure_adapt";
+		case Renderer_Shader::exposure_fusion_exposures: return "exposure_fusion_exposures";
+		case Renderer_Shader::exposure_fusion_downsample: return "exposure_fusion_downsample";
+		case Renderer_Shader::exposure_fusion_collapse: return "exposure_fusion_collapse";
+		case Renderer_Shader::exposure_fusion_guide: return "exposure_fusion_guide";
+		case Renderer_Shader::fsr1_easu: return "fsr1_easu";
+		case Renderer_Shader::fsr1_rcas: return "fsr1_rcas";
+		case Renderer_Shader::atmosphere_transmittance_lut: return "atmosphere_transmittance_lut";
+		case Renderer_Shader::atmosphere_multiscatter_lut: return "atmosphere_multiscatter_lut";
+		case Renderer_Shader::sky_view_lut: return "sky_view_lut";
+		case Renderer_Shader::sky_ambient_lut: return "sky_ambient_lut";
+		case Renderer_Shader::aerial_perspective: return "aerial_perspective";
+		case Renderer_Shader::sky: return "sky";
+		case Renderer_Shader::cube_filter_capture: return "cube_filter_capture";
+		case Renderer_Shader::cube_filter_ggx: return "cube_filter_ggx";
+		case Renderer_Shader::cube_filter_irradiance: return "cube_filter_irradiance";
+		case Renderer_Shader::gpu_cull_shadow: return "gpu_cull_shadow";
+		case Renderer_Shader::depth_light_csm: return "depth_light_csm";
+		case Renderer_Shader::depth_light_csm_gpu: return "depth_light_csm_gpu";
+		case Renderer_Shader::cacao_prepare_depths: return "cacao_prepare_depths";
+		case Renderer_Shader::cacao_prepare_normals: return "cacao_prepare_normals";
+		case Renderer_Shader::cacao_generate_q1: return "cacao_generate_q1";
+		case Renderer_Shader::cacao_generate_q2: return "cacao_generate_q2";
+		case Renderer_Shader::cacao_generate_q3: return "cacao_generate_q3";
+		case Renderer_Shader::cacao_generate_q3_base: return "cacao_generate_q3_base";
+		case Renderer_Shader::cacao_importance_map: return "cacao_importance_map";
+		case Renderer_Shader::cacao_importance_map_a: return "cacao_importance_map_a";
+		case Renderer_Shader::cacao_importance_map_b: return "cacao_importance_map_b";
+		case Renderer_Shader::cacao_blur: return "cacao_blur";
+		case Renderer_Shader::cacao_apply: return "cacao_apply";
+		case Renderer_Shader::cacao_upscale: return "cacao_upscale";
+		case Renderer_Shader::cacao_upscale_smart: return "cacao_upscale_smart";
+		case Renderer_Shader::z_minmax_depth: return "z_minmax_depth";
+		case Renderer_Shader::z_minmax: return "z_minmax";
+		case Renderer_Shader::ssr_trace: return "ssr_trace";
+		case Renderer_Shader::ssr_history_copy: return "ssr_history_copy";
+		case Renderer_Shader::ssr_history_mip: return "ssr_history_mip";
 		case Renderer_Shader::MaxEnum: return "MaxEnum";
 		default: return "unknown";
 		}
@@ -334,6 +428,10 @@ namespace SceneryEditorX
 		IndirectDrawArgsOut,
 		IndirectDrawCount,
 		DrawData, // bindless per-draw data (transforms, material index, etc.)
+		ConstantEnvironment, // the world environment (ConstantBuffer_Environment, binding 201)
+		ExposureHistogram,   // 256 log2-luminance bins (luminance_histogram.slang -> exposure_adapt.slang), device local
+		ExposureState,       // EXPOSURE_STATE_* floats (resources.slang), host visible: the CPU reads the EV back
+		ConstantCacao,       // ambient occlusion constants (CacaoConstants, renderer/cacao.h; binding 202)
 
 		// gpu-driven particles
 		ParticleBufferA,
@@ -405,6 +503,8 @@ namespace SceneryEditorX
 		gbuffer_material = 2,
 		gbuffer_velocity = 3,
 		gbuffer_depth    = 4,
+		gbuffer_emissive = 5,
+		gbuffer_weather  = 54,
 
 		// values are the vk::binding numbers declared in resources/shaders/resources.slang
 
@@ -434,6 +534,30 @@ namespace SceneryEditorX
 		tex3d_cloud_shape  = 52,
 		tex3d_cloud_detail = 53,
 
+		// the atmosphere and environment probes (atmosphere_common.slang)
+		env_probes           = 55,
+		aerial_inscatter     = 56,
+		aerial_transmittance = 57,
+		sky_view             = 58,
+		transmittance        = 59,
+		multiscatter         = 60,
+		sky_ambient          = 61,
+
+		// sun and cloud shadows (csm_sample.slang)
+		shadow_csm   = 62,
+		cloud_shadow = 63,
+
+		// ambient occlusion (cacao.slang): what a CACAO kernel reads
+		cacao_depth      = 64,
+		cacao_normals    = 65,
+		cacao_ssao       = 66,
+		cacao_importance = 67,
+
+		// screen-space reflections (ssr_common.slang)
+		ssr         = 68,	// the deferred surfaces' reflections (reflections target)
+		hiz         = 69,	// the min / max depth pyramid (gbuffer_depth_occluders_hiz), every level
+		ssr_history = 70,	// the previous frame lit, with mips (frame_render_previous)
+
 		// restir reservoir srv bindings (for temporal/spatial read)
 		reservoir_prev0    = 21,
 		reservoir_prev1    = 22,
@@ -457,8 +581,16 @@ namespace SceneryEditorX
 		tex4          = 3,
 		tex3d         = 4,
 		tex_sss       = 5,
+		tex_array     = 6,	// RWTexture2DArray (cube faces); atmosphere_common.slang
+		tex3d_2       = 7,	// a second RWTexture3D
 		sb_spd        = 44,
 		tex_spd       = 8,
+
+		// ambient occlusion (cacao.slang): what a CACAO kernel writes
+		cacao_depth_mips = 9,	// RWTexture2DArray[4]: the view depth's mips
+		cacao_normals    = 10,
+		cacao_ssao       = 11,
+		cacao_importance = 12,
 
 		// restir reservoir uav bindings
 		reservoir0    = 20,
@@ -490,6 +622,10 @@ namespace SceneryEditorX
 
 		// editor selection (ScenePicking): 2 bits per entity index, selected / hovered
 		selection_mask         = 45,
+
+		// exposure (Renderer_Buffer::ExposureHistogram / ExposureState)
+		exposure_histogram     = 46,
+		exposure_state         = 47,
 	};
 
 	// -------------------------------------------------------
@@ -557,10 +693,12 @@ namespace SceneryEditorX
 		bool        cameraVisible    = false;   // Passes frustum / occlusion cull
 		bool        isOccluder       = false;   // Used as Hi-Z occluder mesh
 		bool        gpuDriven        = false;   // The GPU scene draws it in the deferred passes (listed for the forward pass)
+		uint64_t    drapeOrder       = 0;       // Renderable::GetDrapeOrder(): draped geometry, drawn in this order (0: not draped)
 		uint32_t    drawData_Index   = 0;       // Index into the GPU draw-data buffer
 		uint32_t    lodIndex         = 0;       // LOD level to render
 		uint32_t    instanceIndex    = 0;       // First instance offset
 		uint32_t    instanceCount    = 1;       // Number of instances
+		uint32_t    shadowCascades   = 0;       // Sun-shadow cascades it casts into (bit per cascade; CPU shadow draw list)
 	};
 
 	// -------------------------------------------------------

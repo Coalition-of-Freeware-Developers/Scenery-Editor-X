@@ -239,6 +239,30 @@ namespace SceneryEditorX::UI
 		return s_Backend.linearColorTarget;
 	}
 
+	namespace
+	{
+		std::optional<ImVec2> s_ScriptedMousePosition;
+		bool s_ScriptedMouseDown = false;
+	}
+
+	void SetScriptedMouse(const std::optional<ImVec2> &position, const bool leftDown)
+	{
+		// Let the button go before handing the mouse back, so nothing stays pressed
+		if (!position && s_ScriptedMouseDown && ImGui::GetCurrentContext())
+			ImGui::GetIO().AddMouseButtonEvent(ImGuiMouseButton_Left, false);
+		s_ScriptedMousePosition = position;
+		s_ScriptedMouseDown = position && leftDown;
+	}
+
+	void ApplyScriptedMouse()
+	{
+		if (!s_ScriptedMousePosition || !ImGui::GetCurrentContext())
+			return;
+		ImGuiIO &io = ImGui::GetIO();
+		io.AddMousePosEvent(s_ScriptedMousePosition->x, s_ScriptedMousePosition->y);
+		io.AddMouseButtonEvent(ImGuiMouseButton_Left, s_ScriptedMouseDown);
+	}
+
 	void RenderMainViewport(VkCommandBuffer commandBuffer)
 	{
 		if (!s_Backend.initialized || commandBuffer == VK_NULL_HANDLE || !ImGui::GetCurrentContext())

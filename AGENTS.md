@@ -43,7 +43,12 @@ The dependency-light, cross-platform Catch2 unit suites that only need `source/`
   `[library-sweep]`, a few seconds; exclude with `"~[library-sweep]"`); `xp_facade_authoring.*` type 1 facades from a
   texture (panel edges, roofs), type 2 sidewalks / curbs generated from a cross-section), and finding X-Plane 11 / 12
   installs (`InstallFinderTests.cpp`: `xp_install_finder.*` install lists, Steam libraryfolders.vdf / appmanifests,
-  uninstall entries and usual folders, deduplicated and ranked complete / newest version / most recently run first)
+  uninstall entries and usual folders, deduplicated and ranked complete / newest version / most recently run first),
+  and the split-sum BRDF table (`BrdfLutTests.cpp`: `environment/brdf_lut.*`, GGX with height-correlated Smith; with an
+  X-Plane 12 install listed it is compared against `Resources/brdf_lookup`, tag `[xplane-install]`, about a second), and
+  asset thumbnails (`ThumbnailTests.cpp`: `xp_thumbnail.*` BC1-BC5 DDS decoding and mip choice, the software rasterizer's
+  framing / depth / draped painter's order / cutout, WorldEditor-style previews per kind; with an X-Plane 12 install listed it
+  draws default library assets, tag `[xplane-install]`, and `SEDX_THUMBNAIL_DUMP=<folder>` writes them as PNGs)
   (`SceneryEditorX/xplane/xp_obj8.*`, `xp_library.*`, `xp_lights.*`, `xp_apt.*`, `xp_apt_geometry.*`,
   `xp_airport_index.*`, `xp_gateway_types.*`, `xp_dsf.*`, `xp_assets.*`, `xp_overlay.*`, plus `filesystem/vfs.*`,
   which every reader goes through for case-insensitive lookups and atomic writes). Standard library
@@ -68,6 +73,27 @@ The dependency-light, cross-platform Catch2 unit suites that only need `source/`
   `filesystem/vfs.*`, `xplane/xp_apt.*`, `xp_library.*`, `xp_apt_geometry.*`, `xp_airport_document.*`,
   `xp_airport_index.*`, `xp_dsf.*`, `xp_assets.*`, `xp_overlay.*`). Standard library plus `dependency/json`, fully green. Its
   `[performance]` case times a 22k-item project; exclude it with `"~[performance]"` for quick runs.
+
+- **`EnvironmentTests`** (`source/Tests/environment_tests`) — the XP12 environment model behind the viewport's
+  X-Plane 12 emulation (`plan/feature-xp12-environment-rendering-1.md`): parity scenario files
+  (`ParityScenarioTests.cpp`: `environment/parity_scenario.*`, the format `tools/xp12_reference_probe` and
+  `--env-scenario` share, plus the shipped `tools/xp12_reference_probe/scenarios/xp12_parity.json` when run from the repo
+  root) and the environment model (`EnvironmentTests.cpp`: NOAA sun against an independent almanac formula, Meeus moon
+  examples 47.a / 48.a, the 16 runway-friction states and the wetting / drying integrator, seasons from date and latitude
+  or DSF ranges, sky-condition weights, world-frame directions, the `World` object, the atmosphere's medium (X-Plane
+  12.4.4's dumped values, visibility to the surface haze layer at 1% contrast, per-channel Mie, sky-condition multipliers,
+  `environment/atmosphere_params.*`), the interim CPU sky light
+  model (transmittance, sun / sky illuminance, energy bounds, `environment/sky_light.*`), plus the renderer's X-Plane
+  quality levels (`renderer/renderer_quality.*`, from `settings.txt`), feature switches (`renderer/renderer_features.*`),
+  exposure (`renderer/exposure.*`: EV100 camera mapping to middle grey, X-Plane 12.4.4's sun-elevation target and gains,
+  histogram metering, adaptation) and when the environment
+  probe is captured again (`renderer/env_probes.*`), and the sun-shadow cascades (`renderer/csm.*`: X-Plane 12.4.4's practical
+  split scheme, slice bounding spheres, texel snapping that keeps edges still while the camera pans, caster culling), and
+  the CPU half of the CACAO ambient occlusion (`renderer/cacao.*`, tag `[cacao]`: buffer sizes, the constants for SEDX's
+  reverse-Z camera and their std140 layout, X-Plane 12.4.4's dynamic values by camera height, the dispatches per preset),
+  and the CPU half of the screen-space reflections (`renderer/ssr.*`, tag `[ssr]`: X-Plane's gloss and `ssr/*` weights,
+  the lobe's history mip, the min / max depth pyramid with odd sizes, and the hierarchical-Z march against an analytic
+  ground-and-wall scene). Standard library plus `dependency/json`, fully green.
 
 The other suites are **not** Linux-buildable as written: `SettingsTest` links Windows libs
 (`dxgi`, `d3d12`, `Shell32.lib`); `MemoryAllocatorTests` links `vulkan-1` and needs the Vulkan
@@ -132,6 +158,8 @@ g++ -std=c++20 -O2 -pthread $INCS source/Tests/xplane_tests/XPlaneFormatTests.cp
     source/Tests/xplane_tests/AirportTests.cpp source/Tests/xplane_tests/OverlayTests.cpp \
     source/Tests/xplane_tests/DsfWriterTests.cpp source/Tests/xplane_tests/FacadeTests.cpp \
     source/Tests/xplane_tests/FacadeWriterTests.cpp source/Tests/xplane_tests/InstallFinderTests.cpp \
+    source/Tests/xplane_tests/BrdfLutTests.cpp source/SceneryEditorX/environment/brdf_lut.cpp \
+    source/Tests/xplane_tests/ThumbnailTests.cpp source/SceneryEditorX/xplane/xp_thumbnail.cpp \
     source/SceneryEditorX/filesystem/vfs.cpp \
     source/SceneryEditorX/xplane/xp_obj8.cpp source/SceneryEditorX/xplane/xp_library.cpp \
     source/SceneryEditorX/xplane/xp_lights.cpp source/SceneryEditorX/xplane/xp_apt.cpp \
@@ -160,6 +188,17 @@ g++ -std=c++20 -O2 -pthread $INCS source/Tests/project_tests/ProjectFormatTests.
     source/SceneryEditorX/xplane/xp_facade.cpp source/SceneryEditorX/xplane/xp_overlay.cpp $LIBS \
     -o build_linux_tests/ProjectFormatTests
 ./build_linux_tests/ProjectFormatTests "~[performance]"
+
+# 6. EnvironmentTests (fully green; run from the repo root so the shipped scenario file is checked)
+ENV=source/SceneryEditorX/environment
+g++ -std=c++20 -O2 -pthread $INCS source/Tests/environment_tests/ParityScenarioTests.cpp \
+    source/Tests/environment_tests/EnvironmentTests.cpp $ENV/parity_scenario.cpp $ENV/solar_position.cpp \
+    $ENV/surface_weather.cpp $ENV/season_model.cpp $ENV/sky_conditions.cpp $ENV/environment_state.cpp \
+    $ENV/environment.cpp $ENV/sky_light.cpp $ENV/atmosphere_params.cpp source/SceneryEditorX/renderer/renderer_quality.cpp \
+    source/SceneryEditorX/renderer/renderer_features.cpp source/SceneryEditorX/renderer/exposure.cpp \
+    source/SceneryEditorX/renderer/env_probes.cpp source/SceneryEditorX/renderer/csm.cpp source/SceneryEditorX/renderer/cacao.cpp \
+    source/SceneryEditorX/renderer/ssr.cpp $LIBS -o build_linux_tests/EnvironmentTests
+./build_linux_tests/EnvironmentTests
 ```
 
 `build_linux_tests/` and `dependency/Catch2/build-linux/` are throwaway build output — do not commit them.

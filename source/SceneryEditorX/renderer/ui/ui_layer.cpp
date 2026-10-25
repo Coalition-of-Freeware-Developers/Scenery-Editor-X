@@ -123,6 +123,7 @@ namespace SceneryEditorX
 
 		UI::NewFrame();
 		ImGui_ImplSDL3_NewFrame();
+		UI::ApplyScriptedMouse();
 		ImGui::NewFrame();
 		ImGuizmo::BeginFrame();
 	}

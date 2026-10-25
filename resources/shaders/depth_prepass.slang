@@ -32,6 +32,7 @@ import common;
 import resources;
 import position;
 import vertex_processing;
+import xp_material;
 #ifdef GPU_SCENE
 import gpu_scene;
 #endif
@@ -60,7 +61,11 @@ depth_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID,
     float3 position_world_previous = 0.0f;
     gbuffer_vertex vertex          = transform_to_world_space(input, instance_id, _draw.transform, position_world, position_world_previous);
     vertex.material_index          = _draw.material_index;
-    return to_depth_vertex(transform_to_clip_space(vertex, position_world, position_world_previous));
+    vertex                         = transform_to_clip_space(vertex, position_world, position_world_previous);
+#if !defined(GPU_SCENE) && !defined(INDIRECT_DRAW)
+    vertex                         = apply_drape_depth(vertex, _draw.drape_rank); // the drape depth pass (rank 0 elsewhere)
+#endif
+    return vertex;
 }
 
 [shader("fragment")]
@@ -75,7 +80,7 @@ void main_frag(depth_vertex vertex)
     const float3 position_world = get_position(vertex.position.z, screen_uv);
     const float material_cutoff = GetMaterial().alpha_cutoff;
     const float alpha_threshold = material_cutoff > 0.0f ? material_cutoff : get_alpha_threshold(position_world);
-    const float alpha = has_albedo ? material_textures[pass_get_material_index() + material_texture_index_albedo].Sample(samplers[sampler_anisotropic_wrap], vertex.uv_misc.xy).a : 1.0f;
+    const float alpha = has_albedo ? xp_drape_sample_albedo(GetMaterial(), pass_get_material_index(), vertex.uv_misc.xy).a : 1.0f; // plain texels unless a draped atlas
 
     if (material_cutoff > 0.0f ? alpha < alpha_threshold : (has_albedo && alpha <= alpha_threshold))
         discard;

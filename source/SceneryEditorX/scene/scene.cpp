@@ -43,6 +43,7 @@
 #include <filesystem>
 #include <Editor/modules/scene_render.h>
 #include <SceneryEditorX/core/window/window.h>
+#include <SceneryEditorX/environment/environment.h>
 #include <SceneryEditorX/scene/camera.h>
 #include <entt/entity/fwd.hpp>
 
@@ -698,13 +699,14 @@ namespace SceneryEditorX
 
 	float Scene::GetTimeOfDay()
 	{
-		return DateTime::Instance().Hour() + DateTime::Instance().Minute() / 60.0f +
-			   DateTime::Instance().Second() / 3600.0f;
+		// The world environment's local time (hours), the one the sun and the datarefs follow
+		return static_cast<float>(Environment::Get().GetState().localTimeHours);
 	}
 
 	void Scene::SetTimeOfDay(float timeOfDay)
 	{
 		DateTime::SetTimeOfDay(timeOfDay);
+		Environment::Get().Edit([timeOfDay](Environment::EnvironmentState &state) { state.localTimeHours = std::clamp(static_cast<double>(timeOfDay), 0.0, 24.0); });
 	}
 
 	std::string &Scene::GetFilePath()

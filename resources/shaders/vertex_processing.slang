@@ -451,3 +451,14 @@ gbuffer_vertex transform_to_clip_space(gbuffer_vertex vertex, float3 position, f
 
     return vertex;
 }
+
+// Drapes write depth (drape depth pass) and are tested (forward pass) a little nearer than they are, more for later
+// drapes: coplanar drapes then resolve by rank at any distance. Relative to depth (reverse-Z), so a rank step is about
+// four ULPs of a 32-bit float depth everywhere; the g-buffer draws them in rank order without this (painter's order).
+static const float drape_depth_step = 4.76837158e-7f; // 2^-21
+
+gbuffer_vertex apply_drape_depth(gbuffer_vertex vertex, uint drape_rank)
+{
+    vertex.position.z *= 1.0f + float(drape_rank) * drape_depth_step;
+    return vertex;
+}

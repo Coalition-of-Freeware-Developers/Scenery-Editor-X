@@ -54,7 +54,7 @@ namespace SceneryEditorX
 		static void Shutdown();
 
 		/**
-		 * @brief Appends vertices to the global buffer, returns the base vertex offset.
+		 * @brief Puts vertices in the global buffer: in space freed earlier when a range fits, else at the end.
 		 * @param data Pointer to the vertex data to append.
 		 * @param count Number of vertices to append.
 		 * @return The base vertex offset in the global buffer.
@@ -62,12 +62,19 @@ namespace SceneryEditorX
 		static uint32_t AppendVertices(const Vertex_PosTexNorTan *data, uint32_t count);
 
 		/**
-		 * @brief Appends indices to the global buffer, returns the base index offset.
+		 * @brief Puts indices in the global buffer, like AppendVertices.
 		 * @param data Pointer to the index data to append.
 		 * @param count Number of indices to append.
 		 * @return The base index offset in the global buffer.
 		 */
 		static uint32_t AppendIndices(const uint32_t *data, uint32_t count);
+
+		/**
+		 * @brief Gives a mesh's ranges back (the mesh is gone or rebuilt). They are reused only some frames later, once
+		 * the frames in flight that might still draw them have finished, so editing never overwrites what the GPU reads.
+		 */
+		static void FreeVertices(uint32_t offset, uint32_t count);
+		static void FreeIndices(uint32_t offset, uint32_t count);
 
 		/**
 		 * @brief Updates existing vertices in-place (cpu + gpu), used by deformable meshes like cloth
@@ -98,6 +105,9 @@ namespace SceneryEditorX
 		 */
 		static uint64_t GetGeneration();
 
+		/** @brief Vertices the global buffer holds (CPU side), live and freed alike: what a full rebuild uploads. */
+		static uint32_t GetVertexCount();
+
 
 		/** @brief Get the static quad index buffer. */
 		static Buffer *GetIndexBuffer();
@@ -126,8 +136,31 @@ namespace SceneryEditorX
 		static uint64_t m_Generation;
 		static std::mutex m_Mutex;
 
+		// freed space: ranges waiting out the frames in flight, then reusable (sorted, merged); ranges rewritten below
+		// the committed counts, uploaded at the next BuildIfDirty
+		struct Range
+		{
+			uint32_t offset = 0;
+			uint32_t count = 0;
+		};
+		struct PendingRange
+		{
+			Range range;
+			uint64_t frame = 0;		// m_Frame when it was freed
+			bool indices = false;
+		};
+		static std::vector<Range> m_FreeVertexRanges;
+		static std::vector<Range> m_FreeIndexRanges;
+		static std::vector<PendingRange> m_PendingRanges;
+		static std::vector<Range> m_DirtyVertexRanges;
+		static std::vector<Range> m_DirtyIndexRanges;
+		static uint64_t m_Frame;	// BuildIfDirty calls (once a frame)
+
 		// growth factor applied when allocating gpu buffers
 		static constexpr float GROWTH_FACTOR = 1.25f;
+
+		// frames a freed range waits before it is reused (more than the frames in flight)
+		static constexpr uint64_t FREE_DELAY_FRAMES = 4;
 	 };
 
 }

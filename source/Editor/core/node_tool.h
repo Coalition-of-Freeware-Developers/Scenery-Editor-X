@@ -29,6 +29,7 @@
  * -------------------------------------------------------
  */
 #pragma once
+#include "viewport_gizmo.h"
 #include "viewport_view.h"
 #include <cstddef>
 #include <string>
@@ -58,7 +59,9 @@ namespace SceneryEditorX::NodeTool
 	 *    the line's other end to close it.
 	 *  - A chain can be edited as a B-spline: its control polygon is drawn and dragged instead of nodes and handles,
 	 *    the curve stays C2-smooth, and the nodes the formats store follow it exactly.
-	 *  - Two or more selected nodes get a gizmo to move, turn and scale them together.
+	 *  - With nodes selected, the move / rotate / scale tools (W / E / R) put their gizmo on the nodes instead of the
+	 *    whole shape (like a modeling package's vertex level): they move, turn and scale together about their center,
+	 *    a single node turning or scaling its handles. Clicking nodes still picks them; Esc goes back to the shape.
 	 * While dragging, the edited outline is drawn over the scene; releasing writes it into the airport / project,
 	 * rebuilds just that row / item and records one undo step.
 	 */
@@ -66,9 +69,19 @@ namespace SceneryEditorX::NodeTool
 	/**
 	 * @brief Draws the selected shapes' nodes and handles the mouse on them. Call inside the viewport window, before
 	 * the image's input item.
-	 * @return True when the tool takes the mouse this frame (a node, handle, edge or its gizmo is hovered or dragged).
+	 * @return True when the tool takes the mouse this frame (a node, handle or edge is hovered or dragged).
 	 */
 	bool OnViewportGui(EditorContext *context, const ViewportView &view, bool allowInput);
+
+	/**
+	 * @brief The move / rotate / scale tools on the selected nodes: the node tool's overlay and clicks, with the
+	 * operation's gizmo at the selected nodes' center. Call instead of the transform tool while HasNodeSelection().
+	 * @return True when it takes the mouse this frame.
+	 */
+	bool OnTransformGui(EditorContext *context, const ViewportView &view, ViewportGizmo::Mode mode, bool allowInput);
+
+	/* @brief True when nodes of the selected shapes are selected: the move / rotate / scale tools then work on them. */
+	bool HasNodeSelection();
 
 	/* @brief The NODES section of the PROPERTIES panel (positions, types, handles, the chain's length and curve mode). */
 	void DrawProperties(EditorContext *context);

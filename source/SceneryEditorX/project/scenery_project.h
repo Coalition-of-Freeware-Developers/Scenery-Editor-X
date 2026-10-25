@@ -29,6 +29,7 @@
  * -------------------------------------------------------
  */
 #pragma once
+#include <SceneryEditorX/environment/environment_state.h>
 #include <SceneryEditorX/xplane/xp_apt.h>
 #include <SceneryEditorX/xplane/xp_library.h>
 #include <cstdint>
@@ -261,6 +262,22 @@ namespace SceneryEditorX::ProjectFile
 		PropertyList properties;			// "other-properties" (for example "MagVar")
 	};
 
+	/**
+	 * @brief A named filter of the editor's X-Plane library browser, saved with the project so a team shares its views
+	 * of the libraries (sidewalks, this airport's hangars, broken exports...).
+	 */
+	struct LibraryFilter
+	{
+		std::string name;
+		std::string search;					// The search box's text (ImGuiTextFilter syntax: words, -excluded)
+		std::vector<std::string> types;		// Asset types by file extension ("obj", "fac", "lin"...); empty: every type
+		std::vector<std::string> libraries;	// Library packages by folder name; empty: every library
+		bool showHidden = false;			// Private and deprecated assets too
+		bool onlyMissing = false;			// Only assets whose file is missing
+
+		bool operator==(const LibraryFilter &) const = default;
+	};
+
 	/* @brief A whole project. */
 	struct SceneryProject
 	{
@@ -270,8 +287,10 @@ namespace SceneryEditorX::ProjectFile
 		std::vector<ProjectAirport> airports;
 		std::vector<SceneryItem> items;					// The scene hierarchy ("Assets"); top level = WorldEditor's world
 		std::optional<XPlane::LibraryFile> library;		// Library projects: the library.txt being authored
+		std::optional<Environment::EnvironmentState> environment;	// The world the project was last viewed in (date, weather...)
 		PropertyList wedPreferences;					// WorldEditor <prefs>, kept for the round trip
 		PropertyList properties;						// "other-properties"
+		std::vector<LibraryFilter> libraryFilters;		// The library browser's saved filters (not in WorldEditor files)
 
 		[[nodiscard]] ProjectAirport *FindAirport(std::string_view id);
 		[[nodiscard]] const ProjectAirport *FindAirport(std::string_view id) const;

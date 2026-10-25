@@ -100,10 +100,12 @@ struct Surface
         flags = material.flags;
         albedo = replace_color_with_one ? 1.0f : sample_albedo.rgb;
         alpha = sample_albedo.a;
-        roughness = sample_material.r;
-        metallic = sample_material.g;
-        emissive = sample_material.b;
-        F0 = lerp(0.04f, albedo, metallic);
+        // g-buffer material (gbuffer.slang): R lighting factor, G perceptual roughness, B metalness / F0 value v,
+        // A occlusion. X-Plane's single value: F0 = lerp(min(v, 0.08), albedo, v), diffuse x (1 - v)
+        roughness = sample_material.g;
+        metallic = sample_material.b;
+        emissive = 0.0f; // gbuffer_emissive, added by light_composition.slang
+        F0 = lerp(min(metallic, 0.08f).xxx, albedo, metallic);
         anisotropic = material.anisotropic;
         anisotropic_rotation = material.anisotropic_rotation;
         clearcoat = material.clearcoat;
@@ -121,9 +123,9 @@ struct Surface
         bool is_fully_opaque = sample_albedo.a >= 0.999f;
         if (is_ssao_enabled() && is_fully_opaque)
         {
-            float4 normal_sample = tex_ssao.SampleLevel(samplers[sampler_point_clamp], uv, 0);
-            bent_normal = normal_sample.rgb;
-            occlusion = min(sample_material.a, normal_sample.a); // use the minimum of the ssao and material occlusion
+            // the ssao target holds the visibility alone (R16F, CACAO or ssao.slang)
+            const float ssao_visibility = tex_ssao.SampleLevel(samplers[sampler_point_clamp], uv, 0).r;
+            occlusion = min(sample_material.a, ssao_visibility); // use the minimum of the ssao and material occlusion
         }
 
         if (!is_fully_opaque)
@@ -453,7 +455,9 @@ struct Light
         atlas_scale = light.atlas_scales;
         atlas_texel_size = light.atlas_texel_sizes;
 
-        radiance = color * intensity * attenuation * n_dot_l;
+        // intensity is radiometric (W/sr, or W/m^2 for a directional light; Light::GetIntensityWatt): x 683 lm/W back to
+        // candela / lux, then pre-exposed like every lighting write (plan TASK-039)
+        radiance = color * intensity * attenuation * n_dot_l * 683.0f * get_pre_exposure();
     }
 };
 

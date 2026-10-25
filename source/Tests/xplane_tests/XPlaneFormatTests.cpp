@@ -15,6 +15,7 @@
 #include <SceneryEditorX/xplane/xp_library.h>
 #include <SceneryEditorX/xplane/xp_lights.h>
 #include <SceneryEditorX/xplane/xp_obj8.h>
+#include <SceneryEditorX/xplane/xp_text.h>
 #include <cmath>
 #include <filesystem>
 #include <fstream>
@@ -158,6 +159,85 @@ TEST_CASE("OBJ8 parses textures, geometry, LODs, animation groups and batches", 
 	CHECK(data.datarefs[0].dataref.name == "sim/time/total_running_time_sec");
 	CHECK(data.datarefs[0].useCount == 2);
 	CHECK(data.warnings.empty());
+}
+
+TEST_CASE("OBJ8 parses X-Plane 12 material directives", "[xplane][obj8]")
+{
+	// Forms found in X-Plane 12's shipped art (tabs, misspellings, trailing values)
+	constexpr const char *MATERIAL_OBJ = "I\n800\nOBJ\n"
+		"TEXTURE\tbuildings_ALB.png\n"
+		"TEXTURE_MAP normal buildings_NML.png\n"
+		"TEXTURE_MAP material_gloss buildings_MG.png\n"
+		"NORMAL_TRANSLUCENCY\n"
+		"BLEND_HASH 0.25\n"
+		"SUPER_ROUGHNESS 0.5\n"
+		"WEATHER ../../textures/buildings_1_WM.png\n"
+		"\tWEATHER_TRANSPARENT\t\n"
+		"\tSNOW_ALBEDO_LUMA\t0.2 0.2 0.0 0.0\n"
+		"DECAL_LIB\tlib/g10/decals/bld_hangar_1.dcl\n"
+		"DECAL_PARAMS 50 0 0 0 0 0 0.5 0 0 0 0 0 0 0 DECALS/DECAL CARPET.png\n"
+		"NORMAL_DECAL_PARAMS 50 0 0 0 0 1 0 DECAL_GRAIN_DENSE_normal.png 0.5\n"
+		"TEXTURE_CONTROL ../textures12/apt/ter_sfx_conc_CTL.png\n"
+		"TEXTURE_MODULATOR\t../../textures/hangars_5_MOD.png\n"
+		"TEXTURE_TERRAIN 160.0 160.0 ../textures12/apt/apt_desert_01.png\n";
+
+	Obj8Data data;
+	REQUIRE(ParseObj8(MATERIAL_OBJ, data));
+	CHECK(data.unknownCommandCount == 0);
+	CHECK(data.warnings.empty());
+
+	CHECK(data.textureNormal == "buildings_NML.png");
+	CHECK(data.textureMaterialGloss == "buildings_MG.png");
+	CHECK(data.normalTranslucency);
+	CHECK_FALSE(data.normalMetalness);
+	CHECK(data.blendHash);
+	CHECK(data.blendHashRatio == Approx(0.25f));
+	CHECK(data.superRoughness == Approx(0.5f));
+	CHECK(data.weatherMask == "../../textures/buildings_1_WM.png");
+	CHECK(data.weatherTransparent);
+	CHECK(data.hasSnowAlbedoLuma);
+	CHECK(data.snowAlbedoLuma[0] == Approx(0.2f));
+	CHECK(data.snowAlbedoLuma[3] == Approx(0.0f));
+	CHECK(data.decalLibrary == "lib/g10/decals/bld_hangar_1.dcl");
+	CHECK(data.textureControl == "../textures12/apt/ter_sfx_conc_CTL.png");
+	CHECK(data.textureModulator == "../../textures/hangars_5_MOD.png");
+	CHECK(data.textureTerrain == "../textures12/apt/apt_desert_01.png");
+	CHECK(data.textureTerrainScale[0] == Approx(160.0f));
+
+	REQUIRE(data.decals.size() == 2);
+	CHECK(data.decals[0].directive == "DECAL_PARAMS");
+	CHECK(data.decals[0].values.size() == 14);
+	CHECK(data.decals[0].values[6] == Approx(0.5f));
+	CHECK(data.decals[0].texture == "DECALS/DECAL CARPET.png");
+	CHECK(data.decals[0].trailing.empty());
+	CHECK(data.decals[1].directive == "NORMAL_DECAL_PARAMS");
+	CHECK(data.decals[1].values.size() == 7);
+	CHECK(data.decals[1].texture == "DECAL_GRAIN_DENSE_normal.png");
+	REQUIRE(data.decals[1].trailing.size() == 1);
+	CHECK(data.decals[1].trailing[0] == Approx(0.5f));
+
+	// NORMAL_METALNESS as shipped misspelled, after the draped normal map too
+	for (const char *spelling : { "NORMAL_METALNESS", "NORMAL_metalness", "NORMAL METALNESS" })
+	{
+		Obj8Data metal;
+		REQUIRE(ParseObj8(std::string("I\n800\nOBJ\nTEXTURE_NORMAL n.png\n") + spelling + "\nTEXTURE_DRAPED_NORMAL 1.0 d.png\n" + spelling + "\n", metal));
+		INFO(spelling);
+		CHECK(metal.normalMetalness);
+		CHECK(metal.drapedNormalMetalness);
+		CHECK(metal.unknownCommandCount == 0);
+	}
+}
+
+TEST_CASE("Lenient numbers accept the decimal comma some shipped files use", "[xplane][text]")
+{
+	CHECK(ParseFloatLenient("20,000000") == Approx(20.0f));
+	CHECK(ParseFloatLenient("-0,5") == Approx(-0.5f));
+	CHECK(ParseFloatLenient("1.25") == Approx(1.25f));
+	CHECK(ParseFloatLenient("1,2,3", 7.0f) == Approx(7.0f));		// Not a number
+	CHECK(ParseFloatLenient("1.5,0", 7.0f) == Approx(7.0f));		// Both separators: not a number
+	CHECK(ParseFloatLenient("abc", 7.0f) == Approx(7.0f));
+	CHECK(ParseFloat("20,000000", 7.0f) == Approx(7.0f));			// The strict parser stays strict
+	CHECK(ToNativeRelativePath(R"(..\textures\a.png)") == ToNativeRelativePath("../textures/a.png"));
 }
 
 TEST_CASE("OBJ8 merges consecutive TRIS with the same state", "[xplane][obj8]")
