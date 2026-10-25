@@ -22,13 +22,14 @@
       "parts": [
         {
           "title": "Building and Contributing",
-          "description": "Getting the code, building it, testing it, packaging it for testers, and the house style.",
+          "description": "Getting the code, building it, testing it, packaging it for testers, the house style, and the third-party code the editor carries.",
           "documents": [
             { "path": "README.md", "title": "The project README" },
             { "path": "BUILD_SETUP_WINDOWS.md", "title": "Windows build setup" },
             { "path": "AGENTS.md", "title": "Test suites and headless builds" },
             { "path": "installer/README.md", "title": "The Windows installer" },
             { "path": "docs/coding-style.md", "title": "Coding style" },
+            { "path": "docs/third_party/README.md", "title": "Third-party code and licenses" },
             { "path": "SECURITY.md", "title": "Security policy" }
           ]
         },
@@ -109,8 +110,9 @@
         },
         {
           "title": "Rendering and Vulkan",
-          "description": "The renderer's integration, the render context and dispatcher, command submission, and the Vulkan buffer, memory and enum layers.",
+          "description": "What the viewport reproduces of X-Plane 12's rendering; the renderer's integration, the render context and dispatcher, command submission, and the Vulkan buffer, memory and enum layers.",
           "documents": [
+            { "path": "docs/xplane/xp12_render_reference.md", "title": "X-Plane 12 rendering reference" },
             { "path": "docs/Renderer_Integration.md", "title": "Renderer integration" },
             { "path": "docs/render-context-documentation.md", "title": "Render context" },
             { "path": "docs/render-context-comprehensive-documentation.md", "title": "Render context in depth" },
