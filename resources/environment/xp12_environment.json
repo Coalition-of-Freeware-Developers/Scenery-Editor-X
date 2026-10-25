@@ -128,15 +128,15 @@
 		},
 		"color_management/sdr/slope_red": {
 			"value": 0.837,
-			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20)"
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25): the day grade (where middle grey lands, per channel)"
 		},
 		"color_management/sdr/slope_green": {
 			"value": 1.0,
-			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20)"
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25): the day grade (where middle grey lands, per channel)"
 		},
 		"color_management/sdr/slope_blue": {
 			"value": 1.132,
-			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20)"
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25): the day grade (where middle grey lands, per channel)"
 		},
 		"color_management/sdr/saturation": {
 			"value": 1.0,
@@ -159,20 +159,24 @@
 			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20)"
 		},
 		"color_management/sdr/power_red": {
-			"value": 1.44,
-			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): read as a gamma (1 / power) on display-encoded values, which the references match"
+			"value": 1.6,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25): the day grade, the contrast around middle grey in scene linear (155 of 195 shots; 1.44 / 1.44 / 1.5408 with snow on the ground, 1 at night)"
 		},
 		"color_management/sdr/power_green": {
-			"value": 1.44,
-			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20)"
+			"value": 1.6,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
 		},
 		"color_management/sdr/power_blue": {
-			"value": 1.5408,
-			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20)"
+			"value": 1.712,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
 		},
 		"color_management/sdr/output_gamma": {
 			"value": 1.0,
 			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20)"
+		},
+		"color_management/compression": {
+			"value": 0.075,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25): the display curve's working space, read as each channel keeping 1 - c of itself and taking c of the luminance (ASSUMPTION about the construction; abney_correction 1.22 is not applied)"
 		},
 		"shadow/csm/lambda": {
 			"value": 1.0,
@@ -237,10 +241,6 @@
 		"sedx/probe_specular_bias": {
 			"value": 0.0,
 			"source": "REQ-005 specular LOD bias"
-		},
-		"sedx/sdr_slope_strength": {
-			"value": 0.5,
-			"source": "SEDX: share of color_management/sdr/slope_* applied (slope^strength). X-Plane's tone curve (tonemap/mode 6) keeps bright neutrals warm and the slope cools them back; after SEDX's AgX, which whitens them, the full slope turns lit ground and fog cyan while the sky matches. 0.5 balances them against the 12.4.4 references at KSEA (sky r/g +0.15, ground -0.15 log2)"
 		},
 		"shadow/csm_split_exterior": {
 			"value": 3.0,
@@ -601,6 +601,58 @@
 		"sedx/water_tessellation_px": {
 			"value": 6.0,
 			"source": "SEDX: target length of a tessellated water edge on screen (pixels)"
+		},
+		"sedx/sdr_night_slope_red": {
+			"value": 0.35,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25): X-Plane's night grade (30 night shots, sun -10.6 deg and below), not an art control of its own"
+		},
+		"sedx/sdr_night_slope_green": {
+			"value": 0.35,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"sedx/sdr_night_slope_blue": {
+			"value": 0.35,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"sedx/sdr_night_power_red": {
+			"value": 1.0,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"sedx/sdr_night_power_green": {
+			"value": 1.0,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"sedx/sdr_night_power_blue": {
+			"value": 1.0,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"sedx/sdr_night_output_gain": {
+			"value": 2.0,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25): color_management/sdr/output_gain at night"
+		},
+		"sedx/sdr_night_start_deg": {
+			"value": 0.0,
+			"source": "ASSUMPTION: sun elevation where the night grade starts (the day grade still holds at 7.6 deg)"
+		},
+		"sedx/sdr_night_full_deg": {
+			"value": -6.0,
+			"source": "ASSUMPTION: sun elevation where the night grade is complete (it holds at -10.6 deg)"
+		},
+		"sedx/sdr_snow_power_scale": {
+			"value": 0.9,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25): with snow on the ground the day power is 0.9 x (1.44 / 1.44 / 1.5408)"
+		},
+		"sedx/sdr_snow_cover": {
+			"value": 0.5,
+			"source": "ASSUMPTION: snow cover at which the snow grade is complete (cover 0.87 and 1 dump the same power)"
+		},
+		"sedx/tonemap_middle_grey": {
+			"value": 0.18,
+			"source": "ASSUMPTION: the display transform's pivot; with exposure 18 / (K x 2^EV) a metered scene's average lands on it"
+		},
+		"sedx/fusion_strength": {
+			"value": 0.0,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25): X-Plane's exposure_fusion/shadows reads 0.0001-0.011 in every daylight shot (about 2.5 x autoexposure/contrast_score) and 0.19 with snow, so its local tone mapping barely changes the frame; SEDX's fusion is off until it follows that adaptive amount"
 		}
 	}
 }

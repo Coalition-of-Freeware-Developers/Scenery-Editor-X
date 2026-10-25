@@ -121,7 +121,7 @@ namespace SceneryEditorX
 		// XP12 emulation state (RENDERER panel, command line); set while the render thread is idle
 		RendererFeatures s_Features;
 		Renderer_DebugView s_DebugView = Renderer_DebugView::None;
-		int s_ToneCurve = 1;	// tonemap.slang: 1 AgX (X-Plane 12.2+), 2 ACES fit, 3 Reinhard
+		int s_ToneCurve = 4;	// tonemap.slang: 4 X-Plane 12 (the parity transform), 1 AgX, 2 ACES fit, 3 Reinhard
 		RendererQualityPreset s_Quality = GetDefaultQualityPreset();
 		Renderer::EnvironmentConstants s_EnvironmentConstants;
 
@@ -430,8 +430,8 @@ namespace SceneryEditorX
 			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_depth, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
 			cmdList->SetBuffer(Renderer_BindingsUav::exposure_state, GetBuffer(Renderer_Buffer::ExposureState));
 
-			// Tone curve: AgX, X-Plane 12's since 12.2 (tonemap.slang: 0 none, 1 AgX, 2 ACES fit, 3 Reinhard); bloom weight
-			// and the normalization of the summed mips; fusion strength
+			// Tone curve (tonemap.slang: 4 X-Plane 12's display transform, 1 AgX, 2 ACES fit, 3 Reinhard); bloom weight and
+			// the normalization of the summed mips; fusion strength
 			const float bloomWeight = bloomMips > 0 ? std::clamp(constants.bloomIntensity, 0.0f, 1.0f) : 0.0f;
 			const float bloomNormalize = bloomMips > 0 ? 1.0f / static_cast<float>(bloomMips) : 0.0f;
 			const float fusionStrength = fusion ? std::max(constants.fusionStrength, 0.0f) : 0.0f;
@@ -1208,7 +1208,7 @@ namespace SceneryEditorX
 
 	void Renderer::SetToneCurve(const int curve)
 	{
-		s_ToneCurve = std::clamp(curve, 1, 3);
+		s_ToneCurve = std::clamp(curve, 1, 4);
 	}
 
 	const Renderer::EnvironmentConstants &Renderer::GetEnvironmentConstants()
@@ -1294,6 +1294,7 @@ namespace SceneryEditorX
 			value("color_management/sdr/power_green", c.colorPower.y);
 			value("color_management/sdr/power_blue", c.colorPower.z);
 			value("color_management/sdr/output_gamma", c.colorPower.w);
+			value("color_management/compression", c.toneCompression);
 
 			// Sun and cloud shadows (plan Phase 7). The shadow quality sets the cascade count, far limit, fade and map size
 			// over these each frame, as X-Plane's renopt_shadow_quality does.
@@ -1407,7 +1408,19 @@ namespace SceneryEditorX
 			value("sedx/fusion_sigma", c.exposureFusion.y);
 			value("sedx/fusion_highlights_ev", c.fusionHighlights);
 			value("sedx/bloom_intensity", c.bloomIntensity);
-			value("sedx/sdr_slope_strength", c.colorSlopeStrength);
+			value("sedx/sdr_night_slope_red", c.nightSlope.x);
+			value("sedx/sdr_night_slope_green", c.nightSlope.y);
+			value("sedx/sdr_night_slope_blue", c.nightSlope.z);
+			value("sedx/sdr_night_output_gain", c.nightSlope.w);
+			value("sedx/sdr_night_power_red", c.nightPower.x);
+			value("sedx/sdr_night_power_green", c.nightPower.y);
+			value("sedx/sdr_night_power_blue", c.nightPower.z);
+			value("sedx/sdr_night_start_deg", c.gradeNightStartDeg);
+			value("sedx/sdr_night_full_deg", c.gradeNightFullDeg);
+			value("sedx/sdr_snow_power_scale", c.snowPowerScale);
+			value("sedx/sdr_snow_cover", c.snowGradeCover);
+			value("sedx/tonemap_middle_grey", c.toneMiddleGrey);
+			value("sedx/fusion_strength", c.fusionStrength);
 			value("sedx/aerial_range_m", c.aerialRangeM);
 			value("sedx/airglow_nits", c.airglowNits);
 			value("sedx/star_brightness", c.starBrightness);

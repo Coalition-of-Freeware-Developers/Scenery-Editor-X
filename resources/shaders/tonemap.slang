@@ -29,8 +29,8 @@
  * -------------------------------------------------------
  *
  * The output transform (plan TASK-025, TASK-041): the pre-exposed HDR frame -> residual exposure -> bloom ->
- * exposure fusion -> tone curve -> ASC-CDL grade -> output gain / gamma -> display-referred LINEAR values in 0-1
- * (the sRGB swapchain does the encoding; ImGui samples frame_output as is).
+ * exposure fusion -> display transform -> display-referred LINEAR values in 0-1 (the sRGB swapchain does the encoding;
+ * ImGui samples frame_output as is).
  *   tex       frame_render (radiance x pre-exposure)
  *   tex2      bloom, mip 0 (the summed mip chain, pre-exposed)
  *   tex3      exposure_fusion_guide (log2 gain, half resolution)
@@ -38,11 +38,16 @@
  *   tex_depth g-buffer depth (the fusion fades with distance)
  *   exposure_state  EXPOSURE_STATE_EV: the EV100 this frame is shown at; the residual is its scale / get_pre_exposure()
  *   tex_uav   output
- *   pass_get_f4_value(): x curve (0 none, 1 AgX, 2 ACES fit, 3 Reinhard), y bloom weight (0: none), z 1 / bloom mip
- *   count, w exposure fusion strength (0: none)
+ *   pass_get_f4_value(): x curve (0 none, 1 AgX, 2 ACES fit, 3 Reinhard, 4 X-Plane 12), y bloom weight (0: none),
+ *   z 1 / bloom mip count, w exposure fusion strength (0: none)
  *
- * XP12: hdr (AgX since X-Plane 12.2). AgX after Troy Sobotka's AgX; the contrast curve is Benjamin Wrensch's 6th order
- * polynomial fit (MIT), as published in "Minimal AgX implementation" (iolite engine, 2023).
+ * XP12: hdr. Curve 4 is X-Plane 12.4.4's SDR transform (tonemap/mode 6), rebuilt from its art controls and output:
+ * the ASC-CDL grade works on exposed scene-linear values around middle grey (power is the contrast around grey, as the
+ * 2026-10-25 references show; the 2026-10-20 calibration read it as a display gamma against references that carried
+ * snow and stuck exposures), then a per-channel Reinhard curve that keeps grey where the grade put it, in a working
+ * space pulled toward the achromatic axis by color_management/compression. The other curves are for comparison and
+ * take no grade. AgX after Troy Sobotka's AgX; its contrast curve is Benjamin Wrensch's 6th order polynomial fit
+ * (MIT), as published in "Minimal AgX implementation" (iolite engine, 2023).
  */
 
 import common;
@@ -54,6 +59,7 @@ static const uint CURVE_NONE = 0;
 static const uint CURVE_AGX = 1;
 static const uint CURVE_ACES = 2;
 static const uint CURVE_REINHARD = 3;
+static const uint CURVE_XP12 = 4;
 
 float3 agx_contrast(float3 x)
 {
@@ -138,19 +144,38 @@ float fusion_distance_weight(uint2 pixel, float2 uv)
     return 1.0f - saturate((km - near_km) / (far_km - near_km));
 }
 
-// The SDR grade on display-encoded values (color_management/sdr/*): slope, offset, then power read as a gamma
-// (1 / power: X-Plane 12.4.4's references match that, not the ASC-CDL exponent), then saturation (Rec. 709 luma)
-float3 grade(float3 display)
-{
-    const float4 slope = buffer_environment.color_slope;
-    const float4 offset = buffer_environment.color_offset;
-    const float4 power = buffer_environment.color_power;
-    float3 c = pow(max(display * slope.rgb + offset.rgb, 0.0f), 1.0f / max(power.rgb, 0.01f));
-    const float luma = dot(c, LUMA);
-    c = luma + slope.w * (c - luma);
+// X-Plane 12's working space: each channel keeps (1 - c) of itself and takes c of the luminance, so the per-channel
+// curve below bends saturated colours less toward their primaries; leaving it spreads them back out
+float3 to_working_space(float3 c, float compression) { return (1.0f - compression) * c + compression * dot(c, LUMA); }
+float3 from_working_space(float3 c, float compression) { return (c - compression * dot(c, LUMA)) / max(1.0f - compression, 1e-3f); }
 
-    // Output gain and gamma
-    return pow(max(c * offset.w, 0.0f), 1.0f / max(power.w, 0.01f));
+// ASC-CDL on exposed scene-linear values with the slope given where middle grey lands (grey -> slope x grey) and the
+// power as the contrast around it: grey x slope x (x / grey)^power with no offset
+float3 grade_scene_linear(float3 x, float grey)
+{
+    const float3 slope = max(buffer_environment.color_slope.rgb, 1e-3f);
+    const float3 power = max(buffer_environment.color_power.rgb, 0.01f);
+    const float3 gain = pow(slope * grey, 1.0f / power) / grey;
+    return pow(max(gain * x + buffer_environment.color_offset.rgb, 0.0f), power);
+}
+
+// The display transform (curve 4): grade, Reinhard in the working space with middle grey kept in place, then
+// saturation (Rec. 709 luma), output gain and output gamma (color_management/sdr/*), clipped to the display
+float3 xp12_display(float3 x)
+{
+    const float4 tonemap = buffer_environment.tonemap;
+    const float grey = clamp(tonemap.x, 0.01f, 0.99f);
+    const float compression = clamp(tonemap.y, 0.0f, 0.9f);
+    const float display_max = max(tonemap.z, 1e-3f);
+
+    float3 c = to_working_space(grade_scene_linear(x, grey), compression);
+    c = c / (c + display_max * (1.0f - grey));
+    c = from_working_space(c, compression);
+
+    const float luma = dot(c, LUMA);
+    c = luma + buffer_environment.color_slope.w * (c - luma);
+    c = pow(max(c * buffer_environment.color_offset.w, 0.0f), max(buffer_environment.color_power.w, 0.01f));
+    return saturate(c) * display_max;
 }
 
 [shader("compute")]
@@ -185,16 +210,15 @@ void main_comp(uint3 thread_id: SV_DispatchThreadID)
             color *= exp2(fusion_gain(uv, dot(color, LUMA)) * strength);
     }
 
-    if (curve == CURVE_AGX)
+    if (curve == CURVE_XP12)
+        color = xp12_display(color);
+    else if (curve == CURVE_AGX)
         color = agx_eotf(agx(color));
     else if (curve == CURVE_ACES)
         color = aces_fit(color);
     else if (curve == CURVE_REINHARD)
         color = color / (1.0 + color);
     // CURVE_NONE: the frame as rendered (the sRGB target clips above 1)
-
-    // The grade works on display-encoded values (power 2.2, as the curves' outputs are before their EOTF)
-    color = pow(grade(pow(saturate(color), 1.0f / 2.2f)), 2.2f);
 
     tex_uav[thread_id.xy] = float4(saturate(color), 1.0);
 }

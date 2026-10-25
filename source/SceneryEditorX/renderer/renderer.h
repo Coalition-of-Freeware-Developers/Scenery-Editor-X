@@ -570,13 +570,23 @@ namespace SceneryEditorX
 			float starBrightness = 1.0f;				// Procedural stars (1: magnitudes as given)
 			float probeSpecularBias = 0.0f;				// REQ-005 specular LOD bias
 
-			// color_management/sdr/*: ASC-CDL after the tone curve, identity by default
+			// color_management/sdr/*: the ASC-CDL grade of X-Plane's display transform (tonemap.slang xp12_display), identity
+			// by default. X-Plane 12.4.4 switches between three grades (reference probe dumps, 2026-10-25): these are the day
+			// grade; the night grade replaces slope, power and output gain; snow on the ground scales the day power.
 			xMath::Vec4 colorSlope = xMath::Vec4(1.0f, 1.0f, 1.0f, 1.0f);		// rgb slope, w saturation
 			xMath::Vec4 colorOffset = xMath::Vec4(0.0f, 0.0f, 0.0f, 1.0f);	// rgb offset, w output gain
 			xMath::Vec4 colorPower = xMath::Vec4(1.0f, 1.0f, 1.0f, 1.0f);		// rgb power, w output gamma
-			// How much of the slope applies (slope^strength): X-Plane's tone curve keeps bright neutrals warm and its grade
-			// cools them back; after SEDX's AgX, which whitens them, half the slope balances sky and ground
-			float colorSlopeStrength = 0.5f;
+			xMath::Vec4 nightSlope = xMath::Vec4(1.0f, 1.0f, 1.0f, 1.0f);		// night grade: rgb slope, w output gain
+			xMath::Vec4 nightPower = xMath::Vec4(1.0f, 1.0f, 1.0f, 0.0f);		// night grade: rgb power
+			// Sun elevations (deg) where the night grade starts taking over and has taken over (ASSUMPTION: the dumps show
+			// the day grade at 7.6 deg and the night grade at -10.6 deg and below, nothing between)
+			float gradeNightStartDeg = 0.0f;
+			float gradeNightFullDeg = -6.0f;
+			float snowPowerScale = 1.0f;				// The day power times this with snow on the ground
+			float snowGradeCover = 0.5f;				// Snow cover at which the snow grade is complete (ASSUMPTION: 0.87 and 1 dump alike)
+			float toneMiddleGrey = 0.18f;				// The transform's pivot: exposed middle grey (ASSUMPTION)
+			float toneCompression = 0.0f;				// color_management/compression: working-space inset toward the achromatic axis
+			float displayMaximum = 1.0f;				// SDR display white
 
 			// Sun shadows (plan Phase 7): X-Plane's shadow controls. The quality preset's shadow level sets the cascade
 			// count, far limit, fade and map size over these (renopt_shadow_quality does the same in X-Plane).

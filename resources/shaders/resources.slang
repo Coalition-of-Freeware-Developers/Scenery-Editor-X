@@ -378,7 +378,7 @@ public struct EnvironmentData
     public float4 exposure_target;   // ev100_mid and ev100_bias for the sun's elevation, gain below mid, gain above
     public float4 exposure_extra;    // x compensation (EV, positive brightens)
     public float4 atmosphere_scattering; // rgb Mie spectral factor (Angstrom exponent, green 1), w multiple-scattering ratio
-    public float4 color_slope;       // ASC-CDL rgb slope, w saturation
+    public float4 color_slope;       // ASC-CDL rgb slope (scene linear, around middle grey), w saturation
     public float4 color_offset;      // rgb offset, w output gain
     public float4 color_power;       // rgb power, w output gamma
     public float4 post;              // bloom intensity, exposure fusion highlights (EV), fusion strength
@@ -407,7 +407,8 @@ public struct EnvironmentData
     public float4 water_foam;        // foam bias, ratio, scale, share fading per second
     public float4 water_floor;       // floor albedo rgb, water/sea_floor_coef (share of the floor seen)
     public float4 water_tessellation; // target edge pixels, max factor, pond wave scale (0: fetch ignored), frame time step (s)
-    public float4 padding_environment[3];
+    public float4 tonemap;           // X-Plane 12's display transform: middle grey, working-space compression, display maximum, unused
+    public float4 padding_environment[2];
 };
 public [[vk::binding(201)]] cbuffer BufferEnvironment : register(b201) { public EnvironmentData buffer_environment; };
 

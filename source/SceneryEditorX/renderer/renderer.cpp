@@ -3416,13 +3416,24 @@ void dynamic_resolution()
 			env.exposure_extra = xMath::Vec4(exposure.compensation, 0.0f, 0.0f, 0.0f);
 		}
 		env.exposure_fusion = constants.exposureFusion;
+
+		// The SDR grade (tonemap.slang xp12_display): the day grade toward the night grade as the sun sets, the day power
+		// eased by snow on the ground, as X-Plane 12.4.4 switches its color_management/sdr/* values
 		{
-			const float strength = std::clamp(constants.colorSlopeStrength, 0.0f, 1.0f);
-			const auto part = [strength](const float slope) { return std::pow(std::max(slope, 1e-3f), strength); };
-			env.color_slope = xMath::Vec4(part(constants.colorSlope.x), part(constants.colorSlope.y), part(constants.colorSlope.z), constants.colorSlope.w);
+			const float sunElevation = static_cast<float>(derived.sun.apparentElevationDeg);
+			const float nightSpan = std::min(constants.gradeNightFullDeg - constants.gradeNightStartDeg, -1e-3f);
+			const float night = std::clamp((sunElevation - constants.gradeNightStartDeg) / nightSpan, 0.0f, 1.0f);
+			const float snow = std::clamp(derived.surface.snow / std::max(constants.snowGradeCover, 1e-3f), 0.0f, 1.0f);
+			const float powerScale = 1.0f + (constants.snowPowerScale - 1.0f) * snow;
+			const auto blend = [night](const float day, const float nightValue) { return day + (nightValue - day) * night; };
+
+			env.color_slope = xMath::Vec4(blend(constants.colorSlope.x, constants.nightSlope.x), blend(constants.colorSlope.y, constants.nightSlope.y),
+										  blend(constants.colorSlope.z, constants.nightSlope.z), constants.colorSlope.w);
+			env.color_offset = xMath::Vec4(constants.colorOffset.x, constants.colorOffset.y, constants.colorOffset.z, blend(constants.colorOffset.w, constants.nightSlope.w));
+			env.color_power = xMath::Vec4(blend(constants.colorPower.x * powerScale, constants.nightPower.x), blend(constants.colorPower.y * powerScale, constants.nightPower.y),
+										  blend(constants.colorPower.z * powerScale, constants.nightPower.z), constants.colorPower.w);
+			env.tonemap = xMath::Vec4(constants.toneMiddleGrey, constants.toneCompression, constants.displayMaximum, 0.0f);
 		}
-		env.color_offset = constants.colorOffset;
-		env.color_power = constants.colorPower;
 		env.post = xMath::Vec4(constants.bloomIntensity, constants.fusionHighlights, constants.fusionStrength, 0.0f);
 
 		env.camera = xMath::Vec4(altitudeM, state.elevationM, derived.nightFactor, state.rainPercent);

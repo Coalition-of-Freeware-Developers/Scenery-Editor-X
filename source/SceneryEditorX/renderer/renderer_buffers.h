@@ -343,7 +343,8 @@ namespace SceneryEditorX
 		xMath::Vec4 exposure_extra;			// x exposure compensation (EV, positive brightens), yzw unused
 		xMath::Vec4 atmosphere_scattering;	// rgb Mie spectral factor (scattering/mie_*_exponent; green 1), w scattering/multi_rat
 
-		// The SDR grade after the tone curve (color_management/sdr/*, ASC-CDL; identity by default) and the post chain
+		// The SDR grade (color_management/sdr/*, ASC-CDL in scene linear around middle grey: the day, night and snow grades
+		// already blended on the CPU) and the post chain
 		xMath::Vec4 color_slope;			// rgb slope, w saturation
 		xMath::Vec4 color_offset;			// rgb offset, w output gain
 		xMath::Vec4 color_power;			// rgb power, w output gamma (1: none)
@@ -384,7 +385,10 @@ namespace SceneryEditorX
 		xMath::Vec4 water_foam;				// foam bias, ratio, scale, share fading per second
 		xMath::Vec4 water_floor;			// floor albedo rgb, water/sea_floor_coef (share of the floor seen)
 		xMath::Vec4 water_tessellation;		// target edge pixels, max factor, pond wave scale (0: fetch ignored), frame time step (s)
-		xMath::Vec4 padding[3];				// to 1536 bytes
+
+		// X-Plane 12's display transform (tonemap.slang xp12_display)
+		xMath::Vec4 tonemap;				// middle grey, working-space compression (color_management/compression), display maximum, unused
+		xMath::Vec4 padding[2];				// to 1536 bytes
 	};
 
 	// sizes the shaders see (resources.slang: cbuffer std140, structured buffers std430)

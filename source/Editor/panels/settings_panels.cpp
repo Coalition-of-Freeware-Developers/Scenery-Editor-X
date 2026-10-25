@@ -355,12 +355,15 @@ namespace SceneryEditorX
 					Renderer::SetFeatures(features);
 
 				EditorUI::PropertyLabel("Tone curve");
-				static constexpr const char *curves[] = { "AgX (X-Plane 12.2+)", "ACES fit", "Reinhard" };
-				int curve = Renderer::GetToneCurve() - 1;
+				// Listed with X-Plane 12's transform first; the values are tonemap.slang's curve numbers
+				static constexpr const char *curves[] = { "X-Plane 12", "AgX", "ACES fit", "Reinhard" };
+				static constexpr int curveValues[] = { 4, 1, 2, 3 };
+				int curve = static_cast<int>(std::find(std::begin(curveValues), std::end(curveValues), Renderer::GetToneCurve()) - std::begin(curveValues));
 				ImGui::BeginDisabled(!features.tonemap);
-				if (ImGui::Combo("##ToneCurve", &curve, curves, 3))
-					Renderer::SetToneCurve(curve + 1);
+				if (ImGui::Combo("##ToneCurve", &curve, curves, 4))
+					Renderer::SetToneCurve(curveValues[curve]);
 				ImGui::EndDisabled();
+				EditorUI::ItemTooltip("X-Plane 12: its display transform and grade (the parity look); the others are ungraded, for comparison");
 
 				EditorUI::PropertyLabel("Passes");
 				if (ImGui::Button("All off"))
@@ -433,12 +436,11 @@ namespace SceneryEditorX
 				EditorUI::PropertyLabel("Saturation");
 				ImGui::SetNextItemWidth(-FLT_MIN);
 				ImGui::SliderFloat("##Saturation", &constants.colorSlope.w, 0.0f, 2.0f, "%.2f");
-				EditorUI::ItemTooltip("ASC-CDL saturation after the tone curve (color_management/sdr)");
-				EditorUI::PropertyLabel("Grade slope");
+				EditorUI::ItemTooltip("Saturation after the display curve (color_management/sdr/saturation)");
+				EditorUI::PropertyLabel("Gamut compression");
 				ImGui::SetNextItemWidth(-FLT_MIN);
-				ImGui::SliderFloat("##SlopeStrength", &constants.colorSlopeStrength, 0.0f, 1.0f, "%.2f");
-				EditorUI::ItemTooltip("Share of X-Plane's color_management/sdr/slope applied after SEDX's AgX (0.5 balances sky and ground "
-									  "against X-Plane 12.4.4; 1 is X-Plane's full cooling)");
+				ImGui::SliderFloat("##ToneCompression", &constants.toneCompression, 0.0f, 0.5f, "%.3f");
+				EditorUI::ItemTooltip("How far the display curve's working space is pulled toward grey (color_management/compression)");
 				EditorUI::PropertyLabel("FSR sharpness");
 				ImGui::SetNextItemWidth(-FLT_MIN);
 				ImGui::SliderFloat("##RcasSharpness", &constants.rcasSharpness, 0.0f, 1.0f, "%.2f");
