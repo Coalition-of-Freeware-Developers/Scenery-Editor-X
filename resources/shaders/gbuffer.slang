@@ -71,7 +71,6 @@ static const float3 flower_base = float3(0.05f, 0.07f, 0.03f);
 static const float3 flower_blue = float3(0.529f, 0.808f, 0.922f);
 static const float3 flower_red = float3(0.8f, 0.2f, 0.2f);
 static const float3 flower_yellow = float3(0.9f, 0.8f, 0.1f);
-static const float3 snow_color = float3(0.95f, 0.95f, 0.95f);
 
 // rotate uv around center (0.5, 0.5) by angle
 static float2 rotate_uv(float2 uv, float angle)
@@ -274,10 +273,6 @@ gbuffer main_frag(gbuffer_vertex vertex, bool is_front_face: SV_IsFrontFace)
         variation_tint = lerp(variation_tint, vegetation_browner, step(0.5f, variation));
         albedo.rgb = lerp(albedo.rgb, variation_tint, 0.15f);
     }
-
-    // snow blending (applies to all surfaces)
-    float snow_factor = get_snow_blend_factor(position_world, vertex.normal);
-    albedo.rgb = lerp(albedo.rgb, snow_color, snow_factor);
 
     // alpha: opaque pass forces alpha to 1 for non-transparent pixels
     albedo.a = lerp(albedo.a, 1.0f, step(albedo_sample.a, 1.0f) * pass_is_opaque());
