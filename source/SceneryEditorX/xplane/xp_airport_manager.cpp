@@ -122,7 +122,7 @@ namespace SceneryEditorX::XPlane
 			}
 			catch (const std::exception &e)
 			{
-				SEDX_CORE_WARN_TAG(LOG_TAG, "Ignoring unreadable {}: {}", GetSettingsPath().string(), e.what());
+				SEDX_CORE_WARN_TAG(LOG_TAG, "Ignoring unreadable {}: {}", VFS::ToUtf8(GetSettingsPath()), e.what());
 			}
 		}
 
@@ -262,7 +262,7 @@ namespace SceneryEditorX::XPlane
 
 					index->Finish();
 					if (!index->SaveCache(GetCachePath()))
-						SEDX_CORE_WARN_TAG(LOG_TAG, "Could not write the airport cache {}", GetCachePath().string());
+						SEDX_CORE_WARN_TAG(LOG_TAG, "Could not write the airport cache {}", VFS::ToUtf8(GetCachePath()));
 
 					size_t packs = 0;
 					for (const AirportSource &source : index->GetSources())
