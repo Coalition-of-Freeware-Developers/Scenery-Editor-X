@@ -42,13 +42,15 @@
  * Output/sedx_probe/.
  *
  * Reads and writes only public SDK datarefs plus the sim/private/controls/ values X-Plane exposes to plugins; it never
- * reads X-Plane's own files.
+ * reads X-Plane's own files. Living Scenery Technology is switched off for a run and back on after it.
  */
 
 #include <XPLMCamera.h>
 #include <XPLMDataAccess.h>
+#include <XPLMDisplay.h>
 #include <XPLMGraphics.h>
 #include <XPLMMenus.h>
+#include <XPLMNavigation.h>
 #include <XPLMPlanes.h>
 #include <XPLMPlugin.h>
 #include <XPLMProcessing.h>
@@ -60,6 +62,7 @@
 #include <cmath>
 #include <cstdio>
 #include <cstring>
+#include <ctime>
 #include <filesystem>
 #include <fstream>
 #include <optional>
@@ -80,9 +83,28 @@ namespace
 	constexpr const char *PROBE_SIGNATURE = "org.cofd.sedx.reference_probe";
 	constexpr const char *PROBE_DESCRIPTION = "Renders Scenery Editor X parity scenarios and dumps art-control values.";
 
-	constexpr int SCENERY_LOAD_FRAMES = 300;		// After moving to another airport, before probing the terrain
-	constexpr int SCREENSHOT_STABLE_FRAMES = 10;	// The screenshot file kept its size this long: X-Plane finished it
-	constexpr int SCREENSHOT_TIMEOUT_FRAMES = 1200;
+	constexpr int SCENERY_LOAD_FRAMES = 300;		// At another airport: terrain under the camera and X-Plane not loading, this long
+	constexpr int SCENERY_TIMEOUT_FRAMES = 7200;	// Not loaded after this long: a new flight there (no terrain), or shoot anyway
+	constexpr const char *SCENERY_LOADING = "sim/graphics/scenery/async_scenery_load_in_progress";
+	// X-Plane writes a screenshot in 4 KB pieces between compression bursts, so a size that held still for 10 frames
+	// (0.1 s at 100 fps) was no proof: four night shots of the first airport run were cut off at a multiple of 4096 bytes.
+	// A screenshot is done when it ends in its IEND chunk and kept its size this many frames and this long.
+	constexpr int SCREENSHOT_STABLE_FRAMES = 10;
+	constexpr double SCREENSHOT_STABLE_SECONDS = 1.0;
+	constexpr double SCREENSHOT_TIMEOUT_SECONDS = 60.0;
+	// After the camera arrives X-Plane goes on loading LODs, textures and objects for a while (600 frames passed in about
+	// 6 s at 100 fps), so a view settles at least this long and settle_frames frames, then until X-Plane hasn't loaded
+	// scenery for SETTLE_QUIET_FRAMES frames in a row; still loading after SETTLE_TIMEOUT_SECONDS, the shot is taken anyway
+	constexpr double SETTLE_SECONDS = 15.0;
+	constexpr int SETTLE_QUIET_FRAMES = 120;
+	constexpr double SETTLE_TIMEOUT_SECONDS = 180.0;
+	// The status window (top left): shown while a run moves and settles, hidden this many frames before each screenshot
+	// until the file is written (X-Plane's screenshots include plugin windows), "finished" stays up this long
+	constexpr int STATUS_HIDDEN_FRAMES = 5;
+	constexpr double STATUS_FINISHED_SECONDS = 20.0;
+	constexpr int STATUS_WIDTH = 480;
+	constexpr int STATUS_LINE_HEIGHT = 18;
+	constexpr int STATUS_LINES = 4;
 	constexpr double METERS_PER_STATUTE_MILE = 1609.344;
 	constexpr double PI = 3.14159265358979323846;
 
@@ -96,7 +118,7 @@ namespace
 	};
 	constexpr ScenarioSet SCENARIO_SETS[] = {
 		{ "scenarios.json", "Run all parity scenarios (KSEA)", "Resume the parity scenarios (skip captured ones)", "Run the first parity scenario" },
-		{ "airports.json", "Run all test-airport scenarios (KGON KDEN KORD KBOS KBTV)", "Resume the test-airport scenarios (skip captured ones)",
+		{ "airports.json", "Run all test-airport scenarios (15 airports)", "Resume the test-airport scenarios (skip captured ones)",
 		  "Run the first test-airport scenario" },
 	};
 
@@ -113,6 +135,9 @@ namespace
 	constexpr const char *OVERRIDE_PLANE_PATH = "sim/operation/override/override_planepath";
 	constexpr double USER_BEHIND_CAMERA_M = 6000.0;
 	constexpr double USER_ABOVE_CAMERA_M = 1200.0;
+
+	// Plugins switched off for a run (see DisablePlugins): Living Scenery Technology
+	constexpr const char *PLUGINS_OFF_DURING_RUN[] = { "com.x-codrdesigns.livingscenerytech" };
 
 	// -------------------------------------------------------
 
@@ -149,15 +174,19 @@ namespace
 	enum class Stage
 	{
 		Idle,
-		MoveToAirport,		// Placed at the airport, waiting for its scenery
-		Settle,				// Camera, time and weather set; exposure and weather settling
-		WaitScreenshot,		// Screenshot command sent; waiting for the file to appear and stop growing
+		MoveToAirport,		// Aircraft and camera moved to the airport, waiting for its scenery
+		Settle,				// Camera, time and weather set; exposure, weather and scenery settling
+		HideStatus,			// Status window hidden; a few frames before the screenshot so it isn't in it
+		WaitScreenshot,		// Screenshot command sent; waiting for the file to be complete
 		Finished
 	};
+
+	using Clock = std::chrono::steady_clock;
 
 	struct Probe
 	{
 		XPLMMenuID menu = nullptr;
+		XPLMWindowID statusWindow = nullptr;
 		XPLMProbeRef terrain = nullptr;
 		fs::path pluginFolder;		// SEDXReferenceProbe/ (holding 64/)
 		fs::path xplaneFolder;
@@ -165,11 +194,19 @@ namespace
 		std::ofstream log;
 
 		std::vector<Scenario> scenarios;
+		std::string runFile;		// The scenario set being run (scenarios.json, airports.json)
 		size_t index = 0;
 		bool runAll = true;
 		bool quitWhenDone = false;
 		Stage stage = Stage::Idle;
 		int framesLeft = 0;
+		Clock::time_point stageStart{};		// When the move, the settling or the screenshot began
+		Clock::time_point finishedAt{};
+		int quietFrames = 0;				// Frames in a row X-Plane loaded no scenery while settling
+		double settledSeconds = 0.0;		// How long the shot's view settled
+		bool settledLoading = false;		// X-Plane was still loading scenery when the shot was taken
+		int sceneryTimeout = 0;		// Frames left for the scenery of the airport being moved to
+		bool newFlight = false;		// The move fell back to a new flight at that airport
 		std::string loadedAirport;
 
 		// Camera pose in world coordinates, resolved to local coordinates every frame
@@ -187,12 +224,16 @@ namespace
 		fs::path screenshotFile;
 		std::uintmax_t screenshotSize = 0;
 		int screenshotStable = 0;
+		Clock::time_point screenshotStableSince{};
 
 		// Values to restore after the run
 		std::optional<float> savedEv100Min, savedEv100Max, savedFov;
 		std::vector<std::pair<std::string, float>> savedArtControls;	// What the current shot's art_controls replaced
 		std::optional<int> savedUseSystemTime;
 		std::optional<int> savedOverridePlanePath;
+		bool disablePluginsPending = false;		// Switched off in the run's first flight loop
+		std::vector<std::pair<XPLMPluginID, std::string>> disabledPlugins;	// To switch back on (id, signature)
+		std::vector<std::string> statusLines;	// What the status window shows, built by the flight loop
 
 		std::vector<std::string> artControls;
 	};
@@ -207,9 +248,24 @@ namespace
 		XPLMDebugString(line.c_str());
 		if (g.log.is_open())
 		{
-			g.log << message << '\n';
+			// probe_log.txt lines carry the local time, so slow moves and settles show
+			const std::time_t now = std::time(nullptr);
+			std::tm local{};
+#ifdef _WIN32
+			localtime_s(&local, &now);
+#else
+			localtime_r(&now, &local);
+#endif
+			char stamp[16] = {};
+			std::strftime(stamp, sizeof(stamp), "%H:%M:%S ", &local);
+			g.log << stamp << message << '\n';
 			g.log.flush();
 		}
+	}
+
+	double SecondsSince(const Clock::time_point start)
+	{
+		return std::chrono::duration<double>(Clock::now() - start).count();
 	}
 
 	XPLMDataRef Find(const char *name)
@@ -641,12 +697,15 @@ namespace
 	}
 
 	/**
-	 * @brief Keeps the user aircraft where the run put it (g.userLat / userLon / userMsl), out of the shot. Moving it
-	 * with XPLMPlaceUserAtLocation starts a new flight every time (X-Plane reloads its sim objects and tells every
-	 * plugin the user moved): at KDEN, X-Coder's Living Scenery Technology package (v1.11.6) deleted a flight loop
-	 * twice on the second one and X-Plane's plugin manager stopped the sim. Here the run overrides the plane's flight
-	 * path (override_planepath[0], put back by ReleaseUser) and moves it through its position datarefs, the way
-	 * plugins move a plane mid-flight; called every frame, as X-Plane may shift its local frame while we wait.
+	 * @brief Keeps the user aircraft where the run put it (g.userLat / userLon / userMsl), out of the shot, for the whole
+	 * run: shots and airport changes alike. Moving it with XPLMPlaceUserAtLocation / XPLMPlaceUserAtAirport starts a
+	 * new flight (X-Plane reloads the aircraft and its plugins and tells every plugin the user moved), and X-Coder's
+	 * Living Scenery Technology (v1.11.6) doesn't survive new flights: X-Plane destroys one of its flight loops in the
+	 * first one, and LST deletes that loop again later (at the second new flight at KDEN, or when the move from KBOS to
+	 * KBTV took it out of KBOS's range), so X-Plane's plugin manager stops the sim ("Contains(list_head, who)"). Here the
+	 * run overrides the plane's flight path (override_planepath[0], put back by ReleaseUser) and moves it through its
+	 * position datarefs, the way plugins move a plane mid-flight; called every frame, as X-Plane may shift its local
+	 * frame while we wait.
 	 */
 	void HoldUser()
 	{
@@ -669,7 +728,10 @@ namespace
 		SetFloatArray("sim/flightmodel/position/q", { static_cast<float>(std::cos(halfPsi)), 0.0f, 0.0f, static_cast<float>(std::sin(halfPsi)) });
 	}
 
-	/* @brief Gives the plane's flight path back to X-Plane; parked at the run's last airport when asked (not on shutdown). */
+	/**
+	 * @brief Gives the plane's flight path back to X-Plane; parked at the run's last airport when asked (a new flight, so
+	 * not on shutdown, nor when X-Plane quits after the run).
+	 */
 	void ReleaseUser(const bool parkAtAirport)
 	{
 		if (!g.userHeld)
@@ -680,21 +742,61 @@ namespace
 			XPLMPlaceUserAtAirport(g.loadedAirport.c_str());	// At the airport: not left hanging in the air without a flight path
 	}
 
-	/* @brief Places the camera and moves the user aircraft out of sight (behind and above the camera). */
-	void PlaceCameraAndUser(const Scenario &s)
+	/* @brief The scenario's camera pose over ground at groundMsl, and the user aircraft's spot behind and above it. */
+	void SetPose(const Scenario &s, const double groundMsl)
 	{
-		const std::optional<double> ground = GroundMsl(s.lat, s.lon);
-		if (!ground)
-			Log(s.id + ": no terrain under the camera yet; using 0 m MSL as the ground");
 		g.cameraLat = s.lat;
 		g.cameraLon = s.lon;
-		g.cameraMsl = ground.value_or(0.0) + s.altMAgl;
+		g.cameraMsl = groundMsl + s.altMAgl;
 		g.cameraHeading = s.heading;
 		g.cameraPitch = s.pitch;
 
 		Offset(s.lat, s.lon, s.heading + 180.0, USER_BEHIND_CAMERA_M, g.userLat, g.userLon);
 		g.userMsl = g.cameraMsl + USER_ABOVE_CAMERA_M;
 		g.userHeading = s.heading;
+	}
+
+	/* @brief The scenario airport's elevation from X-Plane's nav database (MSL), 0 m where it isn't there. */
+	double AirportElevation(const Scenario &s)
+	{
+		if (s.icao.empty())
+			return 0.0;
+		float lat = static_cast<float>(s.lat), lon = static_cast<float>(s.lon);
+		const XPLMNavRef airport = XPLMFindNavAid(nullptr, s.icao.c_str(), &lat, &lon, nullptr, xplm_Nav_Airport);
+		if (airport == XPLM_NAV_NOT_FOUND)
+			return 0.0;
+		float height = 0.0f;
+		XPLMGetNavAidInfo(airport, nullptr, nullptr, nullptr, &height, nullptr, nullptr, nullptr, nullptr, nullptr);
+		return std::max(height, 0.0f);
+	}
+
+	/**
+	 * @brief Takes the held aircraft and the camera to the scenario's airport without a new flight (see HoldUser):
+	 * X-Plane loads the scenery around the aircraft as it does for a plane flying there. Until the terrain is in, the
+	 * airport's elevation stands in for the ground.
+	 */
+	void MoveHeldUser(const Scenario &s)
+	{
+		SetPose(s, AirportElevation(s));
+		HoldUser();
+	}
+
+	/* @brief The terrain under the scenario's camera is in and X-Plane isn't loading or unloading scenery. */
+	bool SceneryReady(const Scenario &s)
+	{
+		if (!GroundMsl(s.lat, s.lon))
+			return false;
+		const std::optional<float> loading = GetFloat(SCENERY_LOADING);
+		return !loading || *loading == 0.0f;
+	}
+
+	/* @brief Places the camera and moves the user aircraft out of sight (behind and above the camera). */
+	void PlaceCameraAndUser(const Scenario &s)
+	{
+		const std::optional<double> ground = GroundMsl(s.lat, s.lon);
+		if (!ground)
+			Log(s.id + ": no terrain under the camera yet; using 0 m MSL as the ground");
+		SetPose(s, ground.value_or(0.0));
 		HoldUser();
 
 		SetFloat("sim/graphics/view/field_of_view_deg", s.fov);
@@ -723,6 +825,19 @@ namespace
 		return newest;
 	}
 
+	/* @brief The file is a whole PNG: it ends in the IEND chunk (X-Plane writes screenshots in pieces). */
+	bool PngComplete(const fs::path &path)
+	{
+		static constexpr unsigned char IEND[12] = { 0, 0, 0, 0, 'I', 'E', 'N', 'D', 0xAE, 0x42, 0x60, 0x82 };
+		std::ifstream file(path, std::ios::binary | std::ios::ate);
+		if (!file || file.tellg() < static_cast<std::streamoff>(sizeof(IEND)))
+			return false;
+		char tail[sizeof(IEND)] = {};
+		file.seekg(-static_cast<std::streamoff>(sizeof(IEND)), std::ios::end);
+		file.read(tail, sizeof(tail));
+		return file && std::memcmp(tail, IEND, sizeof(IEND)) == 0;
+	}
+
 	void WriteDump(const Scenario &s, const fs::path &screenshot)
 	{
 		Json dump;
@@ -741,6 +856,8 @@ namespace
 		applied["camera_msl_m"] = g.cameraMsl;
 		applied["camera_heading"] = g.cameraHeading;
 		applied["camera_pitch"] = g.cameraPitch;
+		applied["settle_seconds"] = g.settledSeconds;
+		applied["scenery_still_loading"] = g.settledLoading;
 		dump["applied"] = applied;
 
 		Json sim;
@@ -784,6 +901,33 @@ namespace
 	}
 
 	// -------------------------------------------------------
+
+	/**
+	 * @brief Switches off the plugins in PLUGINS_OFF_DURING_RUN for the run. Living Scenery Technology (v1.11.6) stops
+	 * X-Plane after a new flight (see HoldUser), and its moving vehicles, boats and people are art SEDX doesn't draw.
+	 * Done in the run's first flight loop, before anything moves: once a new flight has destroyed one of LST's flight
+	 * loops, its own clean-up (which disabling runs) would trip over it too.
+	 */
+	void DisablePlugins()
+	{
+		for (const char *signature : PLUGINS_OFF_DURING_RUN)
+		{
+			const XPLMPluginID id = XPLMFindPluginBySignature(signature);
+			if (id == XPLM_NO_PLUGIN_ID || !XPLMIsPluginEnabled(id))
+				continue;
+			XPLMDisablePlugin(id);
+			g.disabledPlugins.emplace_back(id, signature);
+			Log(std::string("Disabled ") + signature + " for the run");
+		}
+	}
+
+	/* @brief Switches DisablePlugins' plugins back on: before the aircraft is parked (a new flight), never when quitting. */
+	void EnablePlugins()
+	{
+		for (const auto &[id, signature] : g.disabledPlugins)
+			Log((XPLMEnablePlugin(id) ? "Enabled " : "Could not enable ") + signature + " again");
+		g.disabledPlugins.clear();
+	}
 
 	void Restore(const bool parkUser)
 	{
@@ -839,8 +983,10 @@ namespace
 			g.savedUseSystemTime = static_cast<int>(*useSystem);
 
 		g.index = 0;
+		g.runFile = set.file;
 		g.runAll = mode != RunMode::First;
 		g.loadedAirport.clear();
+		g.disablePluginsPending = true;
 		g.stage = Stage::MoveToAirport;
 		g.framesLeft = -1;	// Not placed yet
 		Log(std::string("Run started: ") + (mode == RunMode::All ? "all scenarios" : mode == RunMode::Missing ? "the scenarios not captured yet" : "the first scenario") +
@@ -849,8 +995,11 @@ namespace
 
 	void FinishRun()
 	{
-		Restore(true);
+		if (!g.quitWhenDone)
+			EnablePlugins();
+		Restore(!g.quitWhenDone);
 		g.stage = Stage::Finished;
+		g.finishedAt = Clock::now();
 		Log("Run finished: " + std::to_string(g.index) + " scenarios in " + g.outputFolder.string());
 		if (g.quitWhenDone)
 		{
@@ -877,10 +1026,114 @@ namespace
 		g.framesLeft = -1;
 	}
 
+	// -------------------------------------------------------
+
+	std::string Seconds(const double seconds)
+	{
+		return std::to_string(static_cast<int>(std::ceil(std::max(seconds, 0.0)))) + " s";
+	}
+
+	/* @brief The status window's lines: the run and scenario, what the probe waits for, and the countdown to the shot. */
+	std::vector<std::string> StatusLines()
+	{
+		if (g.stage == Stage::Finished)
+			return { std::string(PROBE_NAME) + ": run finished", std::to_string(g.index) + " scenarios of " + g.runFile,
+					 "Screenshots and dumps in Output/sedx_probe", "Details in Output/sedx_probe/probe_log.txt" };
+		if (g.index >= g.scenarios.size())
+			return {};
+
+		const Scenario &s = g.scenarios[g.index];
+		std::vector<std::string> lines;
+		lines.push_back(std::string(PROBE_NAME) + "  -  " + g.runFile + "  " + std::to_string(g.index + 1) + " / " + std::to_string(g.scenarios.size()));
+		lines.push_back(s.id + (s.icao.empty() ? std::string() : "  (" + s.icao + ")"));
+
+		const std::optional<float> loading = GetFloat(SCENERY_LOADING);
+		const bool xplaneLoading = loading && *loading != 0.0f;
+		if (g.stage == Stage::MoveToAirport)
+		{
+			std::string waiting = "applying time and weather";
+			if (g.framesLeft > 0 && !GroundMsl(s.lat, s.lon))
+				waiting = "waiting for the terrain";
+			else if (g.framesLeft > 0 && xplaneLoading)
+				waiting = "X-Plane is loading scenery";
+			else if (g.framesLeft > 0)
+				waiting = "steady for " + std::to_string(g.framesLeft) + " more frames";
+			lines.push_back("Loading " + s.icao + " (" + Seconds(SecondsSince(g.stageStart)) + "): " + waiting);
+		}
+		else
+		{
+			const double settled = SecondsSince(g.stageStart);
+			if (settled < SETTLE_SECONDS)
+				lines.push_back("Capture in " + Seconds(SETTLE_SECONDS - settled) + (xplaneLoading ? "  (X-Plane is loading scenery)" : ""));
+			else if (g.framesLeft >= 0)
+				lines.push_back("Capture in " + std::to_string(g.framesLeft + 1) + " frames");
+			else
+				lines.push_back("Capture once X-Plane stops loading scenery (" + Seconds(SETTLE_TIMEOUT_SECONDS - settled) + " at most)");
+		}
+		lines.push_back(std::string(g.disabledPlugins.empty() ? "" : "Living Scenery Technology off for the run  |  ") + "Stop: Plugins > " + PROBE_NAME);
+		return lines;
+	}
+
+	/* @brief Shows the status window while the run moves and settles; hidden around screenshots (see STATUS_HIDDEN_FRAMES). */
+	void UpdateStatusWindow()
+	{
+		if (!g.statusWindow)
+			return;
+		const bool running = g.stage == Stage::MoveToAirport || g.stage == Stage::Settle;
+		const bool finished = g.stage == Stage::Finished && SecondsSince(g.finishedAt) < STATUS_FINISHED_SECONDS;
+		const int visible = running || finished ? 1 : 0;
+		if (visible)
+			g.statusLines = StatusLines();
+		if (XPLMGetWindowIsVisible(g.statusWindow) != visible)
+			XPLMSetWindowIsVisible(g.statusWindow, visible);
+	}
+
+	void DrawStatus(XPLMWindowID window, void *)
+	{
+		int left = 0, top = 0, right = 0, bottom = 0;
+		XPLMGetWindowGeometry(window, &left, &top, &right, &bottom);
+		XPLMDrawTranslucentDarkBox(left, top, right, bottom);
+		float title[3] = { 1.0f, 1.0f, 1.0f };
+		float text[3] = { 0.78f, 0.78f, 0.78f };
+		float countdown[3] = { 1.0f, 0.8f, 0.3f };
+		int y = top - STATUS_LINE_HEIGHT;
+		for (size_t i = 0; i < g.statusLines.size(); ++i, y -= STATUS_LINE_HEIGHT)
+			XPLMDrawString(i == 0 ? title : i == 2 ? countdown : text, left + 10, y, g.statusLines[i].c_str(), nullptr, xplmFont_Proportional);
+	}
+
+	/* @brief The status window, top left of the main screen below the menu bar; it ignores the mouse and the keyboard. */
+	void CreateStatusWindow()
+	{
+		int screenLeft = 0, screenTop = 0, screenRight = 0, screenBottom = 0;
+		XPLMGetScreenBoundsGlobal(&screenLeft, &screenTop, &screenRight, &screenBottom);
+		XPLMCreateWindow_t params{};
+		params.structSize = sizeof(params);
+		params.left = screenLeft + 20;
+		params.top = screenTop - 60;
+		params.right = params.left + STATUS_WIDTH;
+		params.bottom = params.top - (STATUS_LINES * STATUS_LINE_HEIGHT + 12);
+		params.visible = 0;
+		params.drawWindowFunc = DrawStatus;
+		params.handleMouseClickFunc = [](XPLMWindowID, int, int, XPLMMouseStatus, void *) { return 0; };
+		params.handleRightClickFunc = [](XPLMWindowID, int, int, XPLMMouseStatus, void *) { return 0; };
+		params.handleKeyFunc = [](XPLMWindowID, char, XPLMKeyFlags, char, void *, int) {};
+		params.handleCursorFunc = [](XPLMWindowID, int, int, void *) { return static_cast<XPLMCursorStatus>(xplm_CursorDefault); };
+		params.handleMouseWheelFunc = [](XPLMWindowID, int, int, int, int, void *) { return 0; };
+		params.decorateAsFloatingWindow = xplm_WindowDecorationNone;
+		params.layer = xplm_WindowLayerFloatingWindows;
+		g.statusWindow = XPLMCreateWindowEx(&params);
+	}
+
 	float FlightLoop(float, float, int, void *)
 	{
+		UpdateStatusWindow();
 		if (g.stage == Stage::Idle || g.stage == Stage::Finished)
 			return -1.0f;
+		if (g.disablePluginsPending)
+		{
+			g.disablePluginsPending = false;
+			DisablePlugins();
+		}
 		const Scenario &s = g.scenarios[g.index];
 
 		switch (g.stage)
@@ -892,14 +1145,37 @@ namespace
 					if (s.icao != g.loadedAirport)
 					{
 						Log(s.id + ": moving to " + s.icao);
-						ReleaseUser(false);		// X-Plane places the plane at the airport itself: one new flight per airport
-						XPLMPlaceUserAtAirport(s.icao.c_str());
+						MoveHeldUser(s);
+						g.stageStart = Clock::now();
 						g.loadedAirport = s.icao;
+						g.sceneryTimeout = SCENERY_TIMEOUT_FRAMES;
+						g.newFlight = false;
 						g.framesLeft = SCENERY_LOAD_FRAMES;
 					}
 					else
 						g.framesLeft = 0;
 					return -1.0f;
+				}
+				if (g.userHeld)
+					HoldUser();
+				if (g.framesLeft > 0 && !SceneryReady(s))
+				{
+					// The scenery must be in for SCENERY_LOAD_FRAMES frames in a row
+					g.framesLeft = SCENERY_LOAD_FRAMES;
+					if (g.sceneryTimeout-- > 0)
+						return -1.0f;
+					if (!g.newFlight && !GroundMsl(s.lat, s.lon))
+					{
+						// X-Plane loaded nothing around the held aircraft: let it place the user at the airport itself
+						Log(s.id + ": no terrain at " + s.icao + " after " + std::to_string(SCENERY_TIMEOUT_FRAMES) + " frames; starting a new flight there");
+						ReleaseUser(false);
+						XPLMPlaceUserAtAirport(s.icao.c_str());
+						g.newFlight = true;
+						g.sceneryTimeout = SCENERY_TIMEOUT_FRAMES;
+						return -1.0f;
+					}
+					Log(s.id + ": scenery at " + s.icao + " still loading after " + std::to_string(SCENERY_TIMEOUT_FRAMES) + " frames; going on");
+					g.framesLeft = 0;
 				}
 				if (g.framesLeft-- > 0)
 					return -1.0f;
@@ -909,8 +1185,10 @@ namespace
 				ApplyArtControls(s);
 				PlaceCameraAndUser(s);
 				g.framesLeft = s.settleFrames;
+				g.stageStart = Clock::now();
+				g.quietFrames = 0;
 				g.stage = Stage::Settle;
-				Log(s.id + ": settling for " + std::to_string(s.settleFrames) + " frames");
+				Log(s.id + ": settling for at least " + std::to_string(static_cast<int>(SETTLE_SECONDS)) + " s and " + std::to_string(s.settleFrames) + " frames");
 				return -1.0f;
 			}
 
@@ -926,6 +1204,30 @@ namespace
 					if (const std::optional<double> ground = GroundMsl(s.lat, s.lon))
 						g.cameraMsl = *ground + s.altMAgl;
 				}
+				--g.framesLeft;
+				const std::optional<float> loading = GetFloat(SCENERY_LOADING);
+				g.quietFrames = loading && *loading != 0.0f ? 0 : g.quietFrames + 1;
+				const double settled = SecondsSince(g.stageStart);
+				if (g.framesLeft >= 0 || settled < SETTLE_SECONDS)
+					return -1.0f;
+				if (g.quietFrames < SETTLE_QUIET_FRAMES)
+				{
+					if (settled < SETTLE_TIMEOUT_SECONDS)
+						return -1.0f;
+					Log(s.id + ": scenery still loading after " + std::to_string(static_cast<int>(settled)) + " s; taking the shot anyway");
+				}
+				g.settledSeconds = settled;
+				g.settledLoading = g.quietFrames < SETTLE_QUIET_FRAMES;
+				g.framesLeft = STATUS_HIDDEN_FRAMES;
+				g.stage = Stage::HideStatus;
+				return -1.0f;
+			}
+
+			case Stage::HideStatus:
+			{
+				ApplyTime(s);
+				ApplyExposureLock(s);
+				HoldUser();
 				if (g.framesLeft-- > 0)
 					return -1.0f;
 
@@ -935,7 +1237,7 @@ namespace
 				g.screenshotFile.clear();
 				g.screenshotSize = 0;
 				g.screenshotStable = 0;
-				g.framesLeft = SCREENSHOT_TIMEOUT_FRAMES;
+				g.stageStart = Clock::now();
 				if (XPLMCommandRef screenshot = XPLMFindCommand("sim/operation/screenshot"))
 					XPLMCommandOnce(screenshot);
 				else
@@ -961,23 +1263,32 @@ namespace
 						g.screenshotFile = newest;
 						g.screenshotSize = size;
 						g.screenshotStable = 0;
+						g.screenshotStableSince = Clock::now();
 					}
-					if (g.screenshotStable >= SCREENSHOT_STABLE_FRAMES)
+					if (g.screenshotStable >= SCREENSHOT_STABLE_FRAMES && SecondsSince(g.screenshotStableSince) >= SCREENSHOT_STABLE_SECONDS &&
+						PngComplete(newest))
 					{
+						// A copy cut short (X-Plane still had the file open) is tried again next frame
 						const fs::path target = g.outputFolder / (s.id + ".png");
 						fs::copy_file(newest, target, fs::copy_options::overwrite_existing, ec);
-						if (ec)
-							Log(s.id + ": could not copy " + newest.string() + ": " + ec.message());
-						else
+						if (!ec && PngComplete(target))
+						{
 							Log(s.id + ": " + target.string());
-						WriteDump(s, newest);
-						NextScenario();
-						return -1.0f;
+							WriteDump(s, newest);
+							NextScenario();
+							return -1.0f;
+						}
 					}
 				}
-				if (g.framesLeft-- <= 0)
+				if (SecondsSince(g.stageStart) > SCREENSHOT_TIMEOUT_SECONDS)
 				{
-					Log(s.id + ": no screenshot appeared in Output/screenshots; skipped");
+					// Without its png the scenario counts as not captured: Resume takes it again
+					if (g.screenshotFile.empty())
+						Log(s.id + ": no screenshot appeared in Output/screenshots; skipped");
+					else
+						Log(s.id + ": " + g.screenshotFile.string() + " never became a complete png (or could not be copied); skipped");
+					std::error_code removeError;
+					fs::remove(g.outputFolder / (s.id + ".png"), removeError);
 					WriteDump(s, fs::path());
 					NextScenario();
 				}
@@ -998,8 +1309,11 @@ namespace
 		else if (command == MENU_STOP && g.stage != Stage::Idle && g.stage != Stage::Finished)
 		{
 			Log("Run stopped");
+			g.disablePluginsPending = false;
+			EnablePlugins();
 			Restore(true);
 			g.stage = Stage::Finished;
+			g.finishedAt = Clock::now();
 		}
 	}
 }
@@ -1054,6 +1368,7 @@ PLUGIN_API int XPluginEnable(void)
 		XPLMAppendMenuItem(g.menu, SCENARIO_SETS[set].runFirst, reinterpret_cast<void *>(base | static_cast<intptr_t>(RunMode::First)), 0);
 	}
 	XPLMAppendMenuItem(g.menu, "Stop", reinterpret_cast<void *>(MENU_STOP), 0);
+	CreateStatusWindow();
 
 	// Unattended runs: Output/sedx_probe/autorun ("quit" inside: exit X-Plane when done; "airports": the test-airport set;
 	// "resume": skip the scenarios already captured)
@@ -1071,10 +1386,18 @@ PLUGIN_API int XPluginEnable(void)
 
 PLUGIN_API void XPluginDisable(void)
 {
+	// Shutting down or switched off mid-run: other plugins are left as they are (Plugin Admin switches them back on)
+	for (const auto &[id, signature] : g.disabledPlugins)
+		Log(signature + " stays disabled until X-Plane restarts or Plugin Admin enables it");
+	g.disabledPlugins.clear();
+	g.disablePluginsPending = false;
 	Restore(false);
 	if (g.menu)
 		XPLMDestroyMenu(g.menu);
 	g.menu = nullptr;
+	if (g.statusWindow)
+		XPLMDestroyWindow(g.statusWindow);
+	g.statusWindow = nullptr;
 	g.stage = Stage::Idle;
 }
 

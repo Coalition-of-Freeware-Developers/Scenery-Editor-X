@@ -1,6 +1,7 @@
 """Writes the scenario sets X-Plane 12 (through the reference probe) and SEDX (through --env-scenario) both render:
 xp12_parity.json, the KSEA parity set (plan TASK-004 / TASK-102), and xp12_airports.json, the same kinds of views at
-the standard test airports (KGON, KDEN, KORD, KBOS, KBTV) used for feature, performance and parity checks.
+the standard test airports used for feature, performance and parity checks: KGON, KDEN, KORD, KBOS, KBTV in the United
+States, and EIDW, LEBL, EGLL, LSZH, OMDB, RCTP, RJTT, YSSY, SBGR, CYYZ around the world.
 
 Run with:  python -I tools/xp12_reference_probe/scenarios/make_parity_scenarios.py
 Standard library only. Local times for the sun-elevation sweep are solved with the NOAA solar-position
@@ -98,6 +99,8 @@ def morning_time_for_elevation(lat, lon, date, utc_offset, target):
     # Solar noon: the maximum elevation, searched on a 1-minute grid
     noon = max((h / 60.0 for h in range(0, 24 * 60)),
                key=lambda local: sun_elevation(lat, lon, year, month, day, local - utc_offset))
+    if sun_elevation(lat, lon, year, month, day, noon - utc_offset) < target:
+        raise ValueError(f'the sun never reaches {target} deg at ({lat}, {lon}) on {year}-{month:02d}-{day:02d}')
     lo, hi = noon - 12.0, noon
     for _ in range(60):
         mid = 0.5 * (lo + hi)
@@ -147,26 +150,62 @@ WEATHER = {
 }
 
 # The standard test airports, each from the pack X-Plane uses for it (scenery_packs.ini order, then Global Airports):
-# field datum (apt.dat 1302 datum_lat / datum_lon), elevation, summer UTC offset, a runway threshold and the threshold
-# it looks toward (apt.dat 12.00), and for coastal fields a low view over the water inside the terrain area.
+# field datum (apt.dat 1302 datum_lat / datum_lon), elevation, UTC offset on the summer date and in winter (standard
+# time; the same where there is no daylight saving), a runway threshold and the threshold it looks toward (apt.dat
+# 12.00), and for coastal fields a low view over the water inside the terrain area (airport + 1 mile). Southern
+# fields take mid-January as their summer date and mid-July for the winter shot (aerial_season07): in July the sun
+# never reaches 40 deg at YSSY.
 TEST_AIRPORTS = [
     {'icao': 'KGON', 'notes': 'Groton-New London (Global Airports): small coastal field on Long Island Sound',
-     'datum': (41.330055556, -72.045138889), 'elevation_ft': 7.0, 'utc_offset': -4.0,
+     'datum': (41.330055556, -72.045138889), 'elevation_ft': 7.0, 'utc_offset': -4.0, 'utc_offset_winter': -5.0,
      'runway': ('05', (41.3250320, -72.0480260), (41.3364130, -72.0378530)),
      'water': {'lat': 41.3225, 'lon': -72.0455, 'alt_m_agl': 60.0, 'heading': 180.0, 'pitch': -8.0}},
     {'icao': 'KDEN', 'notes': "Denver International (X-Coder's custom scenery, its overlay and mesh packs)",
-     'datum': (39.861666667, -104.673166667), 'elevation_ft': 5434.0, 'utc_offset': -6.0,
+     'datum': (39.861666667, -104.673166667), 'elevation_ft': 5434.0, 'utc_offset': -6.0, 'utc_offset_winter': -7.0,
      'runway': ('34L', (39.8518877, -104.6965861), (39.8957903, -104.6960844))},
     {'icao': 'KORD', 'notes': "Chicago O'Hare (Global Airports): very large default airport",
-     'datum': (41.977319444, -87.908005556), 'elevation_ft': 666.0, 'utc_offset': -5.0,
+     'datum': (41.977319444, -87.908005556), 'elevation_ft': 666.0, 'utc_offset': -5.0, 'utc_offset_winter': -6.0,
      'runway': ('28R', (41.9690623, -87.8837878), (41.9689863, -87.9315632))},
     {'icao': 'KBOS', 'notes': "Boston Logan (Zero Dollar Payware's scenery and library): harbour on three sides",
-     'datum': (42.362944444, -71.006388889), 'elevation_ft': 19.0, 'utc_offset': -4.0,
+     'datum': (42.362944444, -71.006388889), 'elevation_ft': 19.0, 'utc_offset': -4.0, 'utc_offset_winter': -5.0,
      'runway': ('22L', (42.3769075, -70.9992907), (42.3510634, -71.0117945)),
      'water': {'lat': 42.3530, 'lon': -70.9890, 'alt_m_agl': 60.0, 'heading': 135.0, 'pitch': -8.0}},
     {'icao': 'KBTV', 'notes': "Burlington (Global Airports): Laminar Research's home field, extra care in its default art",
-     'datum': (44.471955556, -73.153277778), 'elevation_ft': 333.0, 'utc_offset': -4.0,
+     'datum': (44.471955556, -73.153277778), 'elevation_ft': 333.0, 'utc_offset': -4.0, 'utc_offset_winter': -5.0,
      'runway': ('33', (44.4657555, -73.1417677), (44.4806823, -73.1658848))},
+    {'icao': 'EIDW', 'notes': 'Dublin (Global Airports): northern Europe',
+     'datum': (53.421388889, -6.27), 'elevation_ft': 242.0, 'utc_offset': 1.0, 'utc_offset_winter': 0.0,
+     'runway': ('28R', (53.4348400, -6.2382354), (53.4373999, -6.2848230))},
+    {'icao': 'LEBL', 'notes': 'Barcelona-El Prat (Global Airports): Mediterranean coast, runway 06R/24L beside the beach',
+     'datum': (41.296944444, 2.078333333), 'elevation_ft': 14.0, 'utc_offset': 2.0, 'utc_offset_winter': 1.0,
+     'runway': ('24R', (41.3057260, 2.1037290), (41.2932451, 2.0672749)),
+     'water': {'lat': 41.2776, 'lon': 2.0951, 'alt_m_agl': 60.0, 'heading': 154.0, 'pitch': -8.0}},
+    {'icao': 'EGLL', 'notes': 'London Heathrow (custom freeware pack "EGLL - Heathrow v0.4.0"): very large European hub',
+     'datum': (51.4775, -0.461388889), 'elevation_ft': 83.0, 'utc_offset': 1.0, 'utc_offset_winter': 0.0,
+     'runway': ('27R', (51.4776701, -0.4332308), (51.4774794, -0.4894472))},
+    {'icao': 'LSZH', 'notes': 'Zurich (Global Airports): Alpine foreland, 432 m up',
+     'datum': (47.458055556, 8.548055556), 'elevation_ft': 1416.0, 'utc_offset': 2.0, 'utc_offset_winter': 1.0,
+     'runway': ('16', (47.4757789, 8.5358680), (47.4454458, 8.5567363))},
+    {'icao': 'OMDB', 'notes': 'Dubai International (Global Airports): desert, high sun, no daylight saving',
+     'datum': (25.252777778, 55.364444444), 'elevation_ft': 62.0, 'utc_offset': 4.0, 'utc_offset_winter': 4.0,
+     'runway': ('30L', (25.2353015, 55.3960034), (25.2561923, 55.3583180))},
+    {'icao': 'RCTP', 'notes': 'Taiwan Taoyuan (Global Airports): subtropical East Asia',
+     'datum': (25.080277778, 121.232222222), 'elevation_ft': 106.0, 'utc_offset': 8.0, 'utc_offset_winter': 8.0,
+     'runway': ('05R', (25.0608389, 121.2234970), (25.0832667, 121.2519944))},
+    {'icao': 'RJTT', 'notes': 'Tokyo Haneda (Global Airports): on Tokyo Bay, runway 16L/34R along the shore',
+     'datum': (35.553333333, 139.781111111), 'elevation_ft': 20.0, 'utc_offset': 9.0, 'utc_offset_winter': 9.0,
+     'runway': ('34R', (35.5396871, 139.8051580), (35.5658965, 139.7865529)),
+     'water': {'lat': 35.5573, 'lon': 139.8054, 'alt_m_agl': 60.0, 'heading': 60.0, 'pitch': -8.0}},
+    {'icao': 'YSSY', 'notes': 'Sydney Kingsford Smith (Global Airports): southern hemisphere, runways out into Botany Bay',
+     'datum': (-33.946111111, 151.177222222), 'elevation_ft': 20.0, 'utc_offset': 11.0, 'utc_offset_winter': 10.0, 'southern': True,
+     'runway': ('16R', (-33.9293426, 151.1715901), (-33.9642672, 151.1806464)),
+     'water': {'lat': -33.9751, 'lon': 151.1806, 'alt_m_agl': 60.0, 'heading': 180.0, 'pitch': -8.0}},
+    {'icao': 'SBGR', 'notes': 'Sao Paulo/Guarulhos (Global Airports): southern hemisphere, South America, 749 m up',
+     'datum': (-23.435555556, -46.473055556), 'elevation_ft': 2458.0, 'utc_offset': -3.0, 'utc_offset_winter': -3.0, 'southern': True,
+     'runway': ('10L', (-23.4342870, -46.4833810), (-23.4248980, -46.4486340))},
+    {'icao': 'CYYZ', 'notes': 'Toronto Pearson (Global Airports): large Canadian hub',
+     'datum': (43.6817, -79.632), 'elevation_ft': 541.0, 'utc_offset': -4.0, 'utc_offset_winter': -5.0,
+     'runway': ('23', (43.6951488, -79.6335940), (43.6741405, -79.6640579))},
 ]
 AIRPORT_AERIAL_ALT_M = 600.0
 AIRPORT_AERIAL_PITCH = -20.0        # The datum in the middle of the image: the camera stands 600 / tan(20 deg) m north of it
@@ -204,13 +243,14 @@ def airport_cameras(airport):
 def airport_scenarios():
     """Per airport: sun 40 deg (auto and locked exposure) from the runway and the aerial, low sun, night, haze,
     overcast 600 m above the field, a wet runway, snow, winter noon and the water views (waves 0.6 m)."""
-    summer = (2026, 7, 15)
-    winter = (2026, 1, 15)
     scenarios = []
     for airport in TEST_AIRPORTS:
         icao = airport['icao'].lower()
         lat, lon = airport['datum']
         utc_offset = airport['utc_offset']
+        southern = airport.get('southern', False)
+        summer = (2026, 1, 15) if southern else (2026, 7, 15)
+        winter = (2026, 7, 15) if southern else (2026, 1, 15)
         cameras = airport_cameras(airport)
         elevation_m = airport['elevation_ft'] * 0.3048
         runway = airport['runway'][0]
@@ -245,7 +285,9 @@ def airport_scenarios():
         add('aerial_overcast', 'aerial', summer, day40, utc_offset, overcast, 'aerial; 8/8 stratus 600 m above the field')
         add('rwy_wet5', 'rwy', summer, day40, utc_offset, WEATHER['wet5'], f'{rwy_note}; sun elevation 40 deg, rain, runway friction 5')
         add('aerial_snowy', 'aerial', summer, day40, utc_offset, WEATHER['snowy'], 'aerial; sun elevation 40 deg, snow cover 1')
-        add('aerial_season01', 'aerial', winter, 12.0, utc_offset - 1.0, clean, 'aerial; mid-January, local solar noon (12:00 standard time)')
+        month = 'July (southern winter)' if southern else 'January'
+        add(f'aerial_season{winter[1]:02d}', 'aerial', winter, 12.0, airport['utc_offset_winter'], clean,
+            f'aerial; mid-{month}, local solar noon (12:00 standard time)')
         if 'water' in cameras:
             add('water_sunp40', 'water', summer, day40, utc_offset, clean, 'low over the water; sun elevation 40 deg, waves 0.6 m from 210 deg',
                 **WAVES)
@@ -336,8 +378,8 @@ def main():
 
     write(OUT, scenarios, 'Parity scenarios rendered by X-Plane 12 (tools/xp12_reference_probe) and SEDX (--env-scenario).')
     write(OUT_AIRPORTS, airport_scenarios(),
-          'The standard test airports (KGON, KDEN, KORD, KBOS, KBTV) rendered by X-Plane 12 (the reference probe\'s '
-          'airport set) and SEDX (--env-scenario; tools/xp12_reference_probe/render_scenarios.py also logs performance).')
+          'The standard test airports (' + ', '.join(a['icao'] for a in TEST_AIRPORTS) + ') rendered by X-Plane 12 (the '
+          'reference probe\'s airport set) and SEDX (--env-scenario; tools/xp12_reference_probe/render_scenarios.py also logs performance).')
 
 
 if __name__ == '__main__':

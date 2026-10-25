@@ -247,9 +247,22 @@ TEST_CASE("Parity scenarios: the test-airport set", "[environment][scenario]")
 	REQUIRE(LoadParityScenarios(path, file, &error));
 	CHECK(file.xpBuild == "12.4.4-b4");
 
-	// Field elevations (m), for the overcast layer 600 m above each field
-	const std::pair<const char *, float> airports[] = { { "KGON", 2.1f }, { "KDEN", 1656.3f }, { "KORD", 203.0f }, { "KBOS", 5.8f }, { "KBTV", 101.5f } };
-	for (const auto &[icao, elevationM] : airports)
+	// Field elevation (m), for the overcast layer 600 m above each field; the winter shot's month (southern fields take
+	// January as summer, July as winter) and the hours daylight saving adds on the summer date
+	struct TestAirport
+	{
+		const char *icao;
+		float elevationM;
+		int winterMonth;
+		float daylightSavingHours;
+	};
+	const TestAirport airports[] = {
+		{ "KGON", 2.1f, 1, 1.0f },	 { "KDEN", 1656.3f, 1, 1.0f }, { "KORD", 203.0f, 1, 1.0f }, { "KBOS", 5.8f, 1, 1.0f },
+		{ "KBTV", 101.5f, 1, 1.0f }, { "EIDW", 73.8f, 1, 1.0f },   { "LEBL", 4.3f, 1, 1.0f },	{ "EGLL", 25.3f, 1, 1.0f },
+		{ "LSZH", 431.6f, 1, 1.0f }, { "OMDB", 18.9f, 1, 0.0f },   { "RCTP", 32.3f, 1, 0.0f },	{ "RJTT", 6.1f, 1, 0.0f },
+		{ "YSSY", 6.1f, 7, 1.0f },	 { "SBGR", 749.2f, 7, 0.0f },  { "CYYZ", 164.9f, 1, 1.0f },
+	};
+	for (const auto &[icao, elevationM, winterMonth, daylightSavingHours] : airports)
 	{
 		std::string prefix = icao;
 		std::ranges::transform(prefix, prefix.begin(), [](const char c) { return static_cast<char>(std::tolower(static_cast<unsigned char>(c))); });
@@ -273,16 +286,17 @@ TEST_CASE("Parity scenarios: the test-airport set", "[environment][scenario]")
 		REQUIRE(overcast);
 		CHECK(overcast->clouds[0].coverage == Approx(1.0f));
 		CHECK(overcast->clouds[0].baseMslM == Approx(elevationM + 600.0f).margin(1.0f));
-		const ParityScenario *winter = FindParityScenario(file, prefix + "_aerial_season01");
+		const ParityScenario *winter = FindParityScenario(file, prefix + (winterMonth == 1 ? "_aerial_season01" : "_aerial_season07"));
 		REQUIRE(winter);
-		CHECK(winter->month == 1);
-		CHECK(winter->utcOffsetHours == Approx(runway->utcOffsetHours - 1.0f));
+		CHECK(winter->month == winterMonth);
+		CHECK(runway->month == (winterMonth == 1 ? 7 : 1));
+		CHECK(winter->utcOffsetHours == Approx(runway->utcOffsetHours - daylightSavingHours));
 		REQUIRE(FindParityScenario(file, prefix + "_aerial_snowy"));
 		CHECK(FindParityScenario(file, prefix + "_aerial_snowy")->snowCover == Approx(1.0f));
 	}
 
 	// The coastal fields' low views over the water carry a sea state
-	for (const char *id : { "kgon_water_sunp40", "kbos_water_sunp40" })
+	for (const char *id : { "kgon_water_sunp40", "kbos_water_sunp40", "lebl_water_sunp40", "rjtt_water_sunp40", "yssy_water_sunp40" })
 	{
 		INFO(id);
 		const ParityScenario *water = FindParityScenario(file, id);
