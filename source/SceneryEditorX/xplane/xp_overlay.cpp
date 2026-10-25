@@ -1180,6 +1180,12 @@ namespace SceneryEditorX::XPlane
 	void OverlayBuilder::ApplyPolygonShading(OverlayMesh &mesh, const PolygonAsset &asset, const fs::path &assetFile, OverlayBuild &out)
 	{
 		GetPolygonUvScale(asset, mesh.metersPerU, mesh.metersPerV);
+		if (!asset.weather.empty())
+			mesh.weatherMask = TexturePath(assetFile, asset.weather);
+		mesh.weatherTransparent = asset.weatherTransparent;
+		mesh.hasSnowAlbedoLuma = asset.hasSnowAlbedoLuma;
+		mesh.snowAlbedoLuma[0] = asset.snowAlbedoLuma[0];
+		mesh.snowAlbedoLuma[1] = asset.snowAlbedoLuma[1];
 		if (asset.runwayTile && (asset.tilesX > 1 || asset.tilesY > 1))
 		{
 			mesh.shading = OverlayShading::Tiled;

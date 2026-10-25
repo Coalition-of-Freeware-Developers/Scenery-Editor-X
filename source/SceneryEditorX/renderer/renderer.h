@@ -37,6 +37,7 @@
 #include "renderer_features.h"
 #include "renderer_quality.h"
 #include "ssr.h"
+#include "weather_surface.h"
 #include "font/font.h"
 #include "vulkan/blend_states.h"
 #include "vulkan/command_list.h"
@@ -601,11 +602,11 @@ namespace SceneryEditorX
 			// references show casting a shadow) at cascade 1's 4 cm texels
 			bool shadowReceiverPlane = true;			// sedx/csm_receiver_plane
 			float shadowReceiverPlaneSlopeBias = 1.0f;	// sedx/csm_receiver_plane_slope_bias: the casters' slope bias with it
-			// Cloud shadows (plan TASK-055)
 			// The cascades' split range at least this many times the camera's height above the airport (ASSUMPTION fitted
 			// to X-Plane's 600 m aerial references, where shadows reach about 3 km): near, far
 			float shadowHeightNearRatio = 0.8f;			// sedx/csm_height_near_ratio
 			float shadowHeightFarRatio = 6.0f;			// sedx/csm_height_far_ratio
+			// Cloud shadows (plan TASK-055)
 			float cloudShadowStrength = 0.75f;			// clouds/cloud_shadow_lighten_ratio (ASSUMPTION: share of the light clouds can take)
 			float cloudShadowExtinction = 0.0125f;		// cloud/shadow_alpha (ASSUMPTION: extinction per meter of cloud cover)
 			float cloudShadowExtentMinKm = 64.0f;		// clouds/shadow_extent_min_km: the first cascade's width
@@ -620,6 +621,9 @@ namespace SceneryEditorX
 
 			// Water (plan Phase 11): X-Plane's water/* controls and SEDX's own (sedx/water_*)
 			OceanSettings water;
+
+			// Weather on surfaces (plan Phase 12): X-Plane's twxr / snow luma controls and wxr keyframes
+			WeatherSurfaceSettings weather;
 		};
 		static const EnvironmentConstants &GetEnvironmentConstants();
 		static EnvironmentConstants &EditEnvironmentConstants();
@@ -667,6 +671,24 @@ namespace SceneryEditorX
 		 */
 		static void SetWaterFixedTimeStep(float seconds);
 		static void ResetWaterTime();
+
+		/**
+		 * @brief X-Plane's weather art (Resources/bitmaps/world/weather, plan TASK-076): what snow and ice look like and the
+		 * noise that breaks up wet, snowy and icy patches. The X-Plane module loads it from the user's install and hands it
+		 * over; without it the surfaces still wet, take a plain snow white and no ice detail (weather.slang).
+		 */
+		struct WeatherArt
+		{
+			Ref<ImageResource> snowAlbedo;			// snow_ALB: rgb colour, a height (the coverage's blend)
+			Ref<ImageResource> snowNormal;			// snow_NML: X-Plane normal map (rg normal, b F0, a gloss)
+			Ref<ImageResource> snowDecal;			// snow_DCL: grey detail that breaks up the edge
+			Ref<ImageResource> iceAlbedo;
+			Ref<ImageResource> iceNormal;
+			Ref<ImageResource> iceDecal;
+			Ref<ImageResource> noise;				// noise: grey, the patches of wet, snowy and icy ground
+		};
+		static void SetWeatherArt(const WeatherArt &art);
+		[[nodiscard]] static bool HasWeatherArt();
 
 		/* @brief What the last frame's screen-space reflections ran with (RENDERER panel). */
 		struct SsrReadout
@@ -982,6 +1004,19 @@ namespace SceneryEditorX
 		static void Pass_Water(CommandList *cmdList, ImageResource *frame);
 		/* @brief Binds the baked cascades to a pass whose shaders import ocean_common.slang. */
 		static void BindOcean(CommandList *cmdList);
+
+#pragma endregion
+#pragma region Weather
+
+		// Weather on surfaces (plan Phase 12, renderer_weather.cpp, weather.slang)
+		/* @brief The thresholds from the environment's surface weather and the weather controls (renderer/weather_surface.h). */
+		static void WriteWeatherConstants(ConstantBuffer_Environment &env);
+		/* @brief The hidden material carrying the weather art's textures through the bindless table (null until loaded). */
+		static MaterialAsset *GetWeatherMaterial();
+		/* @brief The weather art changed since the last call: the material table must be rebuilt. */
+		static bool ConsumeWeatherArtChange();
+		/* @brief Drops the art and its material (shutdown). */
+		static void ReleaseWeatherArt();
 
 #pragma endregion
 #pragma region Lighting passes

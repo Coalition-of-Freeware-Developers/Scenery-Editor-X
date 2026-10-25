@@ -179,25 +179,30 @@ TEST_CASE("Environment: the moon's parallax and phases", "[environment][moon]")
 
 TEST_CASE("Environment: runway friction states", "[environment][surface]")
 {
+	// Levels in quarters: X-Plane 12.4.4 reports rain 0.517 and puddles 0.511 for puddly (medium)
 	CHECK(DecodeRunwayFriction(0) == SurfaceWeather{});
-	CHECK(DecodeRunwayFriction(1).wetness == Approx(1.0f / 3.0f));
-	CHECK(DecodeRunwayFriction(2).wetness == Approx(2.0f / 3.0f));
-	CHECK(DecodeRunwayFriction(3).wetness == Approx(1.0f));
+	CHECK(DecodeRunwayFriction(1).wetness == Approx(0.25f));
+	CHECK(DecodeRunwayFriction(2).wetness == Approx(0.5f));
+	CHECK(DecodeRunwayFriction(3).wetness == Approx(0.75f));
 	for (int f = 4; f <= 6; ++f)
 	{
 		const SurfaceWeather s = DecodeRunwayFriction(f);
-		CHECK(s.wetness == 1.0f);
-		CHECK(s.puddles == Approx((f - 3) / 3.0f));
+		CHECK(s.wetness == Approx((f - 3) / 4.0f));
+		CHECK(s.puddles == Approx((f - 3) / 4.0f));
 	}
 	for (int f = 7; f <= 9; ++f)
-		CHECK(DecodeRunwayFriction(f).snow == Approx((f - 6) / 3.0f));
+	{
+		const SurfaceWeather s = DecodeRunwayFriction(f);
+		CHECK(s.snow == Approx((f - 6) / 4.0f));
+		CHECK(s.ice == Approx(s.snow * 2.0f / 3.0f));	// snowy (heavy): ice 0.4-0.5 in X-Plane
+	}
 	for (int f = 10; f <= 12; ++f)
-		CHECK(DecodeRunwayFriction(f).ice == Approx((f - 9) / 3.0f));
+		CHECK(DecodeRunwayFriction(f).ice == Approx((f - 9) / 4.0f));
 	for (int f = 13; f <= 15; ++f)
 	{
 		const SurfaceWeather s = DecodeRunwayFriction(f);
-		CHECK(s.snow == Approx((f - 12) / 3.0f));
-		CHECK(s.ice == Approx((f - 12) / 3.0f));
+		CHECK(s.snow == Approx((f - 12) / 4.0f));
+		CHECK(s.ice == Approx((f - 12) / 4.0f));
 		CHECK(s.wetness == 0.0f);
 	}
 	CHECK(DecodeRunwayFriction(-3) == SurfaceWeather{});
@@ -210,6 +215,29 @@ TEST_CASE("Environment: runway friction states", "[environment][surface]")
 		CHECK(EncodeRunwayFriction(DecodeRunwayFriction(f)) == f);
 	}
 	CHECK(std::string(GetRunwayFrictionName(5)) == "puddly (medium)");
+}
+
+TEST_CASE("Environment: weather thresholds follow X-Plane's keyframes", "[environment][surface]")
+{
+	// None of a kind: a threshold no receptivity passes; all of it: nearly everything passes
+	CHECK(SNOW_THRESHOLDS.Evaluate(0.0f) == Approx(1.25f));
+	CHECK(SNOW_THRESHOLDS.Evaluate(1.0f) == Approx(0.07f));
+	CHECK(RAIN_THRESHOLDS.Evaluate(0.0f) > 1.0f);
+	CHECK(ICE_THRESHOLDS.Evaluate(0.0f) > 1.0f);
+	CHECK(PUDDLE_THRESHOLDS.Evaluate(0.0f) > 1.0f);
+
+	// Linear between keyframes, held past the ends
+	CHECK(SNOW_THRESHOLDS.Evaluate(0.125f) == Approx(0.8f));
+	CHECK(RAIN_THRESHOLDS.Evaluate(0.75f) == Approx((0.3125f + 0.05f) * 0.5f));
+	CHECK(PUDDLE_THRESHOLDS.Evaluate(-1.0f) == Approx(1.1f));
+	CHECK(ICE_THRESHOLDS.Evaluate(3.0f) == Approx(0.195f));
+
+	// More of a kind never raises its threshold
+	for (const WeatherThresholdCurve *curve : { &RAIN_THRESHOLDS, &PUDDLE_THRESHOLDS, &SNOW_THRESHOLDS, &ICE_THRESHOLDS })
+	{
+		for (int i = 1; i <= 100; ++i)
+			CHECK(curve->Evaluate(i / 100.0f) <= curve->Evaluate((i - 1) / 100.0f));
+	}
 }
 
 TEST_CASE("Environment: wetness builds in rain and dries afterwards", "[environment][surface]")
@@ -432,7 +460,7 @@ TEST_CASE("Environment: derived values follow the state", "[environment][state]"
 	state.runwayFriction = 5;
 	state.snowCover = 0.4f;
 	d = Derive(state);
-	CHECK(d.surface.puddles == Approx(2.0f / 3.0f));
+	CHECK(d.surface.puddles == Approx(0.5f));
 	CHECK(d.surface.snow == Approx(0.4f));
 
 	state.season = SeasonOverride::Winter;

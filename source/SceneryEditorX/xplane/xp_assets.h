@@ -111,6 +111,12 @@ namespace SceneryEditorX::XPlane
 		 */
 		std::string runwayMarkings;			// Relative to the .pol; empty: none
 		float runwayMarkingsColor[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
+
+		// Weather receptivity (weather.slang)
+		std::string weather;				// WEATHER <mask>: R rain, G puddles, B snow; relative to the .pol
+		bool weatherTransparent = false;	// WEATHER_TRANSPARENT: takes the weather of what lies under it
+		bool hasSnowAlbedoLuma = false;		// SNOW_ALBEDO_LUMA <r> <g>: snow receptivity weights for the albedo
+		float snowAlbedoLuma[2] = {};
 	};
 
 	bool ParsePolygonAsset(std::string_view text, PolygonAsset &out, std::string *error = nullptr);

@@ -45,6 +45,7 @@
 #include "vulkan/shader/shader_manager.h"
 #include <algorithm>
 #include <atomic>
+#include <format>
 #include <fstream>
 #include <mutex>
 #include <nlohmann/json.hpp>
@@ -1400,6 +1401,57 @@ namespace SceneryEditorX
 			value("water/spectrum/short_waves_fade", water.shortWavesFade);
 			value("water/sea_floor_coef", water.seaFloorCoef);
 
+			// Weather on surfaces (plan Phase 12, renderer/weather_surface.h): the twxr controls, the snow luma rule and the
+			// keyframes that turn amounts into thresholds (hack/petr/wxr/kf/<kind>_in_N / _out_N)
+			WeatherSurfaceSettings &weather = c.weather;
+			const auto keyframes = [&value](const char *kind, Environment::WeatherThresholdCurve &curve)
+			{
+				for (size_t i = 0; i < curve.amount.size(); ++i)
+				{
+					value(std::format("hack/petr/wxr/kf/{}_in_{}", kind, i).c_str(), curve.amount[i]);
+					value(std::format("hack/petr/wxr/kf/{}_out_{}", kind, i).c_str(), curve.threshold[i]);
+				}
+			};
+			keyframes("rain", weather.rainThresholds);
+			keyframes("puddles", weather.puddleThresholds);
+			keyframes("snow", weather.snowThresholds);
+			keyframes("ice", weather.iceThresholds);
+			value("twxr/rain_area_scale", weather.rainAreaScaleM);
+			value("twxr/rain_area_width", weather.rainAreaWidth);
+			value("twxr/rain_noise_modifier", weather.rainNoiseModifier);
+			value("twxr/rain_darkening_scale", weather.darkeningScale);
+			value("twxr/rain_darkening_start", weather.darkeningStart);
+			value("twxr/rain_darkening_end", weather.darkeningEnd);
+			value("twxr/rain_darkening_strength", weather.darkeningStrength);
+			value("twxr/rain_darkening_roughness_start", weather.darkeningRoughnessStart);
+			value("twxr/rain_darkening_roughness_end", weather.darkeningRoughnessEnd);
+			value("twxr/rain_darkening_roughness_multiplier_dark", weather.roughnessMultiplierDark);
+			value("twxr/rain_darkening_roughness_multiplier_light", weather.roughnessMultiplierLight);
+			value("twxr/rain_darken_albedo_rat", weather.darkenAlbedoRatio);
+			value("twxr/rain_darken_gloss_rat", weather.darkenGlossRatio);
+			value("twxr/snow_area_scale", weather.snowAreaScaleM);
+			value("twxr/snow_area_width", weather.snowAreaWidth);
+			value("twxr/snow/noise_depth", weather.snowNoiseDepth);
+			value("twxr/snow/slope_min", weather.snowSlopeMin);
+			value("twxr/snow/slope_max", weather.snowSlopeMax);
+			value("twxr/snow/scale_albedo", weather.snowAlbedoM);
+			value("twxr/snow/scale_normal", weather.snowNormalM);
+			value("twxr/snow/scale_decal", weather.snowDecalM);
+			value("twxr/snow/decal1_k", weather.snowDecal1K);
+			value("twxr/snow/decal2_k", weather.snowDecal2K);
+			value("twxr/ice_area_scale", weather.iceAreaScaleM);
+			value("twxr/ice_area_width", weather.iceAreaWidth);
+			value("twxr/ice/scale_albedo", weather.iceAlbedoM);
+			value("twxr/ice/scale_normal", weather.iceNormalM);
+			value("twxr/ice/scale_decal", weather.iceDecalM);
+			value("twxr/ice/decal1_k", weather.iceDecal1K);
+			value("twxr/ice/decal2_k", weather.iceDecal2K);
+			value("snow/luma_r", weather.snowLuma[0]);
+			value("snow/luma_g", weather.snowLuma[1]);
+			value("snow/luma_b", weather.snowLuma[2]);
+			value("snow/luma_a", weather.snowLuma[3]);
+			value("sedx/weather_water_gloss", weather.waterGloss);
+
 			// SEDX's own controls (no X-Plane counterpart, or one whose meaning differs)
 			value("sedx/meter_trim_lo", c.exposure.trimLow);
 			value("sedx/meter_trim_hi", c.exposure.trimHigh);
@@ -1429,6 +1481,8 @@ namespace SceneryEditorX
 			value("sedx/csm_receiver_plane", receiverPlane);
 			c.shadowReceiverPlane = receiverPlane > 0.5f;
 			value("sedx/csm_receiver_plane_slope_bias", c.shadowReceiverPlaneSlopeBias);
+			value("sedx/csm_height_near_ratio", c.shadowHeightNearRatio);
+			value("sedx/csm_height_far_ratio", c.shadowHeightFarRatio);
 			value("sedx/ssr_gloss_fade", ssr.glossFade);
 			float maxSteps = static_cast<float>(ssr.maxSteps);
 			value("sedx/ssr_max_steps", maxSteps);
@@ -1481,8 +1535,6 @@ namespace SceneryEditorX
 	{
 		s_GroundShown.store(shown, std::memory_order_relaxed);
 	}
-			value("sedx/csm_height_near_ratio", c.shadowHeightNearRatio);
-			value("sedx/csm_height_far_ratio", c.shadowHeightFarRatio);
 
 	void Renderer::SetReferenceOverlay(const Ref<ImageResource> &image, const ReferenceOverlayMode mode, const float split, const float differenceGain)
 	{
@@ -1601,6 +1653,8 @@ namespace SceneryEditorX
 		BindAtmosphere(cmdList, ATMOSPHERE_LIGHTING);
 		BindShadows(cmdList);
 		BindReflections(cmdList);	// glossy blended surfaces trace their own (ssr_common.slang)
+		// WEATHER_TRANSPARENT drapes take the receptivity of the deferred surface under them (weather.slang)
+		cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_weather, GetRenderTarget(Renderer_RenderTarget::gbuffer_weather));
 		for (const ForwardDraw &draw : draws)
 		{
 			const Renderer_DrawCall &drawCall = m_DrawCalls[draw.drawCall];

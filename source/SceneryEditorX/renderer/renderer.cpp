@@ -722,6 +722,7 @@ void dynamic_resolution()
 		// Wait for all GPU work to complete
 		device->GetQueueManager()->WaitIdleAll();
 		s_ExtraViews.clear();	// Their render targets
+		ReleaseWeatherArt();	// Static references to images: gone before the device
 
 		// Release the immediate-execution command lists/pools now, while the device and loggers are alive.
 		CommandList::ShutdownImmediateExecution();
@@ -1011,7 +1012,8 @@ void dynamic_resolution()
 
 				{
 					SEDX_PERF_SCOPE("Render: Materials");
-					if (initialize || Scene::UpdateSceneChanges(ComponentType::Material).IsDirty())
+					const bool weatherArtChanged = ConsumeWeatherArtChange();
+					if (initialize || Scene::UpdateSceneChanges(ComponentType::Material).IsDirty() || weatherArtChanged)
 					{
 						UpdateMaterials(m_CmdList_Present);
 						BindlessManager::UpdateImages(&m_Bindless_Textures, m_Bindless_TextureCount);
@@ -3385,8 +3387,7 @@ void dynamic_resolution()
 			env.celestial[2] = xMath::Vec4(pole.x, pole.y, pole.z, 0.0f);
 		}
 		env.haze = xMath::Vec4(state.visibilityM, constants.hazeTopM, constants.hazeBandM, static_cast<float>(m_Cb_Frame_Cpu.time));
-		env.weather = xMath::Vec4(derived.surface.wetness, derived.surface.ice, derived.surface.snow, derived.surface.puddles);
-		env.season = xMath::Vec4(derived.season.ratio, static_cast<float>(derived.season.season), static_cast<float>(derived.dayOfYear), static_cast<float>(state.latitudeDeg));
+		env.season =xMath::Vec4(derived.season.ratio, static_cast<float>(derived.season.season), static_cast<float>(derived.dayOfYear), static_cast<float>(state.latitudeDeg));
 
 		// Exposure (plan TASK-038, TASK-039): this frame's lighting is pre-exposed with the EV the GPU last reported
 		// (manual mode: the manual EV); before the first report, the EV a grey card under this light would meter
@@ -3458,6 +3459,9 @@ void dynamic_resolution()
 
 		// Water (plan Phase 11, renderer_water.cpp): the sea state, the ocean's time, the water's optics
 		WriteWaterConstants(env);
+
+		// Weather on surfaces (plan Phase 12, renderer_weather.cpp): thresholds, the twxr controls, the art's slot
+		WriteWeatherConstants(env);
 
 		environmentBuffer->Update(cmdList, &env);
 	}
@@ -3609,6 +3613,12 @@ void dynamic_resolution()
 				const uint32_t drapeMode = static_cast<uint32_t>(std::clamp(material->GetProperty(MaterialProperty::XpDrapeMode), 0.0f, 3.0f));
 				properties[count].flags |= (drapeMode & 3U) << 19;
 				properties[count].flags |= material->GetProperty(MaterialProperty::XpFoliage)                  ? (1U << 21) : 0;
+				// Weather receptivity (weather.slang): the WEATHER mask rides in emission slot 3
+				properties[count].flags |= material->GetTexture(MaterialTextureType::Emission, 3) != nullptr   ? (1U << 22) : 0;
+				properties[count].flags |= material->GetProperty(MaterialProperty::XpWeatherTransparent)       ? (1U << 23) : 0;
+				properties[count].flags |= material->GetProperty(MaterialProperty::XpSnowAlbedoLuma)           ? (1U << 24) : 0;
+				properties[count].snow_luma[0] = material->GetProperty(MaterialProperty::XpSnowAlbedoLumaR);
+				properties[count].snow_luma[1] = material->GetProperty(MaterialProperty::XpSnowAlbedoLumaG);
 				// keep in sync with Surface struct in common_structs.slang
 
 				properties[count].alpha_cutoff = material->GetProperty(MaterialProperty::AlphaCutoff);
@@ -3675,6 +3685,10 @@ void dynamic_resolution()
 		{
 			for (MaterialAsset* material : Scene::GetRenderableMaterials())
 				update_material(material);
+
+			// X-Plane's weather art (renderer_weather.cpp): drawn by nothing, sampled by weather.slang through its slot
+			if (MaterialAsset *weather = GetWeatherMaterial())
+				update_material(weather);
 		};
 	
 		// cpu

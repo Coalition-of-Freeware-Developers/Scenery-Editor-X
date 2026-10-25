@@ -29,6 +29,7 @@
  * -------------------------------------------------------
  */
 #pragma once
+#include <array>
 #include <cstdint>
 
 // -------------------------------------------------------
@@ -48,8 +49,10 @@ namespace SceneryEditorX::Environment
 
 	/**
 	 * @brief X-Plane's sim/weather/region/runway_friction states: 0 dry; 1-3 wet; 4-6 puddly; 7-9 snowy; 10-12 icy;
-	 * 13-15 snowy and icy. Within a group the level rises in thirds (wet 1 = 0.33, 3 = 1). Puddly ground is soaked,
-	 * so it carries full wetness too.
+	 * 13-15 snowy and icy. Within a group the level rises in quarters (light 0.25, medium 0.5, heavy 0.75): X-Plane
+	 * 12.4.4 reports rain 0.517 and puddles 0.511 for puddly (medium) (wxr/rain_now, puddles_now; reference probe dumps,
+	 * 2026-10-25), so puddly ground is as wet as its puddles, and snowy (heavy) ice 0.4-0.5, so snow carries ice at two
+	 * thirds of its level. Light and heavy are ASSUMPTIONS from the medium step.
 	 */
 	SurfaceWeather DecodeRunwayFriction(int friction);
 
@@ -58,6 +61,27 @@ namespace SceneryEditorX::Environment
 
 	/* @brief The X-Plane name of a friction state ("dry", "wet (light)" ... "snowy and icy (heavy)"). */
 	const char *GetRunwayFrictionName(int friction);
+
+	/**
+	 * @struct WeatherThresholdCurve
+	 * @brief How X-Plane 12 turns an amount of rain, puddles, snow or ice (0-1) into the threshold a surface's
+	 * receptivity must pass to show it: a curve through five keyframes (its hack/petr/wxr/kf/<kind>_in_N / _out_N art
+	 * controls). A threshold above 1 lets nothing through; a low one lets nearly everything through.
+	 */
+	struct WeatherThresholdCurve
+	{
+		std::array<float, 5> amount{};		// Rising
+		std::array<float, 5> threshold{};
+
+		/* @brief The threshold for an amount, linear between keyframes, held past the ends. */
+		[[nodiscard]] float Evaluate(float value) const;
+	};
+
+	/* @brief X-Plane 12.4.4's keyframes (reference probe dumps, 2026-10-25). */
+	inline constexpr WeatherThresholdCurve RAIN_THRESHOLDS = { { 0.0f, 0.1f, 0.25f, 0.5f, 1.0f }, { 1.1f, 0.68f, 0.47f, 0.3125f, 0.05f } };
+	inline constexpr WeatherThresholdCurve PUDDLE_THRESHOLDS = { { 0.0f, 0.15f, 0.35f, 0.65f, 1.0f }, { 1.1f, 0.7736f, 0.5016f, 0.3384f, 0.2295f } };
+	inline constexpr WeatherThresholdCurve SNOW_THRESHOLDS = { { 0.0f, 0.25f, 0.7f, 0.85f, 1.0f }, { 1.25f, 0.35f, 0.12f, 0.0865f, 0.07f } };
+	inline constexpr WeatherThresholdCurve ICE_THRESHOLDS = { { 0.0f, 0.1f, 0.25f, 0.5f, 1.0f }, { 2.0f, 0.8267f, 0.556f, 0.3755f, 0.195f } };
 
 	/**
 	 * @class SurfaceWeatherIntegrator

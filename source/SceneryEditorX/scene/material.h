@@ -117,8 +117,13 @@ namespace SceneryEditorX
 		XpWaterMapOffsetU			= 63,
 		XpWaterMapScaleV			= 64,
 		XpWaterMapOffsetV			= 65,
+		// Weather receptivity (weather.slang). A WEATHER mask is a texture: emission slot 3 (R rain, G puddles, B snow).
+		XpWeatherTransparent		= 66,	// 1: WEATHER_TRANSPARENT, the surface takes no weather of its own
+		XpSnowAlbedoLuma			= 67,	// 1: SNOW_ALBEDO_LUMA r g below replaces the default snow receptivity rule
+		XpSnowAlbedoLumaR			= 68,
+		XpSnowAlbedoLumaG			= 69,
 		// The last property in use: MaterialAsset sizes its table by it (set past it, a value is dropped). Move it along.
-		LastInUse					= XpWaterMapOffsetV,
+		LastInUse					= XpSnowAlbedoLumaG,
 		MaxEnum						= 255
 	};
 

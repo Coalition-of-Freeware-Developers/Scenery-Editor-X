@@ -28,6 +28,7 @@ import position;
 import environment_lighting;
 import xp_material;
 import ssr_common;
+import weather;
 
 // what the fragment stage reads: exporting the whole gbuffer_vertex would leave the previous position, width and
 // pick id interpolants unread (validation: WARNING-Shader-OutputNotConsumed)
@@ -102,6 +103,21 @@ float4 main_frag(forward_vertex vertex, bool is_front_face: SV_IsFrontFace) : SV
     // view
     const float2 screen_uv = vertex.position.xy / (get_resolution_render() * get_resolution_scale());
     float3 position_world = get_position(vertex.position.z, screen_uv);
+
+    // Weather (weather.slang) on blended drapes, as the g-buffer does on the rest; a WEATHER_TRANSPARENT drape takes the
+    // receptivity of the surface under it. Glass takes none.
+    if (!glass && weather_active())
+    {
+        const float3 receptivity = material.is_weather_transparent() ? weather_decode(tex_weather.Load(int3(int2(vertex.position.xy), 0)))
+                                                                     : weather_receptivity(material, pass_get_material_index(), vertex.uv_misc.xy, albedo);
+        WeatherSurface weathered = weather_surface(albedo.rgb, roughness, metalness, normal);
+        apply_surface_weather(weathered, position_world, receptivity);
+        albedo.rgb = weathered.albedo;
+        roughness = clamp(weather_roughness(weathered), 0.04f, 1.0f);
+        metalness = weathered.v;
+        normal = weathered.normal;
+    }
+
     float3 v = normalize(get_camera_position() - position_world);
     float n_dot_v = saturate(dot(normal, v));
 

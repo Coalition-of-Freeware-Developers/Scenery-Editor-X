@@ -131,7 +131,7 @@ public struct MaterialParameters
     public float anisotropic_rotation;
     public float clearcoat;
     public float clearcoat_roughness;
-    public float2 padding3;
+    public float2 snow_luma;         // SNOW_ALBEDO_LUMA (has_snow_albedo_luma()): snow receptivity weights for the linear albedo's r and g
 
     // X-Plane materials (xp_material.slang): specular gain, super roughness floor, F0 when the normal map carries
     // none, emissive luminance in nits (0: emissive texels are display values)
@@ -167,6 +167,10 @@ public struct MaterialParameters
     public bool is_xp_material() { return (flags & (1 << 18)) != 0; }
     public uint xp_drape_mode() { return (flags >> 19) & 3u; }	// xp_material.slang xp_drape_*
     public bool is_xp_foliage() { return (flags & (1 << 21)) != 0; }	// .for trees: canopy normals, kept on back faces
+    // Weather receptivity (weather.slang): a WEATHER mask in the emission slot 3, WEATHER_TRANSPARENT, SNOW_ALBEDO_LUMA
+    public bool has_weather_mask() { return (flags & (1 << 22)) != 0; }
+    public bool is_weather_transparent() { return (flags & (1 << 23)) != 0; }
+    public bool has_snow_albedo_luma() { return (flags & (1 << 24)) != 0; }
 };
 
 // struct which forms the bindless light parameters array
@@ -360,7 +364,7 @@ public struct EnvironmentData
     public float4 ozone;             // rgb absorption, w tent center altitude
     public float4 planet;            // ozone half width, earth radius, atmosphere radius, ground albedo
     public float4 haze;              // visibility, haze top, haze band, time
-    public float4 weather;           // rain wetness, ice, snow level, puddles
+    public float4 weather;           // thresholds a surface's receptivity must pass (weather.slang): rain, ice, snow, puddles
     public float4 snow_projection_x;
     public float4 snow_projection_z;
     public float4 season;            // ratio, index, day of year, latitude
@@ -408,7 +412,18 @@ public struct EnvironmentData
     public float4 water_floor;       // floor albedo rgb, water/sea_floor_coef (share of the floor seen)
     public float4 water_tessellation; // target edge pixels, max factor, pond wave scale (0: fetch ignored), frame time step (s)
     public float4 tonemap;           // X-Plane 12's display transform: middle grey, working-space compression, display maximum, unused
-    public float4 padding_environment[2];
+    public float4 weather_rain;      // weather.slang: 1 / noise repeat (1/m), threshold edge width, receptivity added before the noise, darkening scale
+    public float4 weather_darkening; // darkening start, end (wetness), bright-surface relief, albedo ratio
+    public float4 weather_darkening_gloss; // gloss ramp start, end, multiplier for dark albedo, for light albedo
+    public float4 weather_water;     // share of the water film's gloss a wet surface takes, the film's gloss
+    public float4 weather_snow;      // 1 / noise repeat (1/m), threshold edge width, noise depth
+    public float4 weather_snow_detail; // slope min, slope max (up . normal), decal 1 weight, decal 2 weight
+    public float4 weather_snow_scale; // 1 / repeat (1/m) of the albedo, normal and decal textures
+    public float4 weather_ice;       // 1 / noise repeat (1/m), threshold edge width, decal 1 weight, decal 2 weight
+    public float4 weather_ice_scale; // 1 / repeat (1/m) of the albedo, normal and decal textures
+    public float4 weather_snow_luma; // snow receptivity without a WEATHER mask: weights for the linear albedo's r, g, b, a
+    public float4 weather_textures;  // bindless material slot of the weather art, art loaded (0 / 1)
+    public float4 padding_environment[7];
 };
 public [[vk::binding(201)]] cbuffer BufferEnvironment : register(b201) { public EnvironmentData buffer_environment; };
 

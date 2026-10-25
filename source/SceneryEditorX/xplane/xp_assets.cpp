@@ -282,6 +282,16 @@ namespace SceneryEditorX::XPlane
 					out.runwayMarkingsColor[i] = std::clamp(ParseFloat(tokens[i + 1], 1.0f), 0.0f, 1.0f);
 				out.runwayMarkings = CleanPath(RestOfLine(line, 5));
 			}
+			else if (key == "WEATHER" && tokens.size() >= 2)
+				out.weather = CleanPath(RestOfLine(line, 1));
+			else if (key == "WEATHER_TRANSPARENT")
+				out.weatherTransparent = true;
+			else if (key == "SNOW_ALBEDO_LUMA" && tokens.size() >= 3)
+			{
+				out.hasSnowAlbedoLuma = true;
+				out.snowAlbedoLuma[0] = ParseFloat(tokens[1], 0.0f);
+				out.snowAlbedoLuma[1] = ParseFloat(tokens[2], 0.0f);
+			}
 			else
 			{
 				PolygonDecal decal;

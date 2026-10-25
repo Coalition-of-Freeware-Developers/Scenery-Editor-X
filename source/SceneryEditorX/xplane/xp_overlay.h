@@ -127,6 +127,12 @@ namespace SceneryEditorX::XPlane
 		float tangentX = 1.0f;					// Ground direction u increases along (x, z), for normal decals
 		float tangentZ = 0.0f;
 		std::vector<OverlayDecal> decals;
+
+		// Weather receptivity (the .pol's WEATHER / WEATHER_TRANSPARENT / SNOW_ALBEDO_LUMA; weather.slang)
+		std::filesystem::path weatherMask;		// Empty: none
+		bool weatherTransparent = false;
+		bool hasSnowAlbedoLuma = false;
+		float snowAlbedoLuma[2] = {};
 	};
 
 	/* @brief An OBJ8 to place through the object loader. */

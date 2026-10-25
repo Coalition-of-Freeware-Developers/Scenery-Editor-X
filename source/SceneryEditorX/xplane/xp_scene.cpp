@@ -30,6 +30,7 @@
  */
 #include "xp_scene.h"
 #include "xp_datarefs.h"
+#include "xp_weather_art.h"
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -788,6 +789,7 @@ namespace SceneryEditorX::XPlane
 		{
 			SEDX_PERF_SCOPE("Objects: asset uploads");
 			ObjectAsset::Update();
+			WeatherArt::Update();
 		}
 		entt::registry *registry = GetRegistry();
 		if (registry)

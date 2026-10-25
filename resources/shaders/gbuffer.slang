@@ -43,6 +43,7 @@ import color;
 import terrain;
 import xp_material;
 import xp_terrain;
+import weather;
 #ifdef GPU_SCENE
 import gpu_scene;
 #endif
@@ -401,6 +402,23 @@ gbuffer main_frag(gbuffer_vertex vertex, bool is_front_face: SV_IsFrontFace)
     if (!is_front_face && !(surface.is_grass_blade() || surface.is_flower()) && !material.is_xp_foliage())
         normal = -normal;
 
+    // Weather (weather.slang): the art's receptivity, then the environment's wet ground, puddles, snow and ice. A
+    // WEATHER_TRANSPARENT surface takes none of its own (it keeps what lies under it only in the forward pass).
+    float3 receptivity = float3(0.0f, 0.0f, -1.0f);
+    if (!material.is_weather_transparent())
+    {
+        receptivity = weather_receptivity(material, pass_get_material_index(), vertex.uv_misc.xy, albedo);
+        if (weather_active())
+        {
+            WeatherSurface weathered = weather_surface(albedo.rgb, roughness, metalness, normal);
+            apply_surface_weather(weathered, position_world, receptivity);
+            albedo.rgb = weathered.albedo;
+            roughness = weather_roughness(weathered);
+            metalness = weathered.v;
+            normal = weathered.normal;
+        }
+    }
+
     // output
     gbuffer g_buffer;
     g_buffer.albedo = albedo;
@@ -409,7 +427,6 @@ gbuffer main_frag(gbuffer_vertex vertex, bool is_front_face: SV_IsFrontFace)
     g_buffer.velocity = velocity;
     g_buffer.pick = vertex.pick_id;
     g_buffer.emissive = float4(emissive, 1.0f);
-    // Receptivity until the WEATHER / SNOW_ALBEDO_LUMA rules arrive (plan Phase 12): wets, takes snow and ice, no puddles
-    g_buffer.weather = float4(1.0f, 0.0f, 1.0f, 1.0f);
+    g_buffer.weather = weather_encode(receptivity);
     return g_buffer;
 }

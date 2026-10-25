@@ -76,6 +76,7 @@ namespace SceneryEditorX::XPlane
 		DecodedTexture lit;
 		DecodedTexture drapedAlbedo;
 		DecodedTexture drapedNormal;
+		DecodedTexture weather;				// WEATHER mask
 		std::vector<std::pair<PolygonDecal, DecodedTexture>> decals;
 		float boundsMin[3] = { 0.0f, 0.0f, 0.0f };
 		float boundsMax[3] = { 0.0f, 0.0f, 0.0f };
@@ -384,6 +385,7 @@ namespace SceneryEditorX::XPlane
 			job.lit = DecodeTexture(folder, data.textureLit, TextureUsage::Lit);
 			job.drapedAlbedo = DecodeTexture(folder, data.textureDraped, TextureUsage::Albedo);
 			job.drapedNormal = DecodeTexture(folder, data.textureDrapedNormal, TextureUsage::Normal);
+			job.weather = DecodeTexture(folder, data.weatherMask, TextureUsage::Data);
 			DecodeDecals(job, folder);
 
 			ResolveLights(job);
@@ -849,6 +851,7 @@ namespace SceneryEditorX::XPlane
 					if (Ref<ImageResource> image = TextureLoader::Upload(texture))
 						m_Textures.decals.push_back({ decal, std::move(image) });
 				}
+				m_Textures.weather = TextureLoader::Upload(job.weather);
 				break;
 			default:
 				FinishGeometry();
@@ -1005,6 +1008,14 @@ namespace SceneryEditorX::XPlane
 		material->SetTexture(MaterialTextureType::Color, albedo);
 		material->SetTexture(MaterialTextureType::Normal, normal);
 		material->SetTexture(MaterialTextureType::Emission, lit);
+
+		// Weather receptivity (weather.slang): the WEATHER mask in emission slot 3; SNOW_ALBEDO_LUMA keeps its r and g
+		// weights (the shipped art leaves b and a at 0)
+		material->SetTexture(MaterialTextureType::Emission, m_Textures.weather.Get(), 3);
+		material->SetProperty(MaterialProperty::XpWeatherTransparent, m_Data.weatherTransparent ? 1.0f : 0.0f);
+		material->SetProperty(MaterialProperty::XpSnowAlbedoLuma, m_Data.hasSnowAlbedoLuma ? 1.0f : 0.0f);
+		material->SetProperty(MaterialProperty::XpSnowAlbedoLumaR, m_Data.snowAlbedoLuma[0]);
+		material->SetProperty(MaterialProperty::XpSnowAlbedoLumaG, m_Data.snowAlbedoLuma[1]);
 
 		// Decals (xp_material.slang xp_drape_*): color slots 2-3, normal slots 1-2; their scales repeat per albedo tile,
 		// so the UVs are the "meters" they count in. Their strength is the rows' constant term (TEXTURE_CONTROL keys

@@ -88,6 +88,7 @@ namespace SceneryEditorX::XPlane
 		Ref<ImageResource> lit;
 		Ref<ImageResource> drapedAlbedo;
 		Ref<ImageResource> drapedNormal;
+		Ref<ImageResource> weather;			// WEATHER mask (weather.slang)
 		TextureInfo albedoInfo;
 		TextureInfo normalInfo;
 		TextureInfo litInfo;

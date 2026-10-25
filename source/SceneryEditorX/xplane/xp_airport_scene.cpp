@@ -232,6 +232,10 @@ namespace SceneryEditorX::XPlane
 			int tileMapWidth = 0, tileMapHeight = 0;
 			float metersPerU = 1.0f, metersPerV = 1.0f;
 			std::vector<OverlayDecal> decals;
+			fs::path weatherMask;			// Weather receptivity (OverlayMesh)
+			bool weatherTransparent = false;
+			bool hasSnowAlbedoLuma = false;
+			float snowAlbedoLuma[2] = {};
 
 			std::vector<Vertex_PosTexNorTan> vertices;
 			std::vector<uint32_t> indices;
@@ -407,6 +411,11 @@ namespace SceneryEditorX::XPlane
 			part.metersPerU = mesh.metersPerU;
 			part.metersPerV = mesh.metersPerV;
 			part.decals = mesh.decals;
+			part.weatherMask = mesh.weatherMask;
+			part.weatherTransparent = mesh.weatherTransparent;
+			part.hasSnowAlbedoLuma = mesh.hasSnowAlbedoLuma;
+			part.snowAlbedoLuma[0] = mesh.snowAlbedoLuma[0];
+			part.snowAlbedoLuma[1] = mesh.snowAlbedoLuma[1];
 		}
 
 		/* @brief Appends an overlay mesh's textured geometry (positions, UVs and normals as built). */
@@ -1393,6 +1402,27 @@ namespace SceneryEditorX::XPlane
 				material.SetProperty(MaterialProperty::XpDrapeMetersV, part.metersPerV);
 				char text[64];
 				std::snprintf(text, sizeof(text), "|m%.3f,%.3f", part.metersPerU, part.metersPerV);
+				key += text;
+			}
+
+			// Weather receptivity (weather.slang): the WEATHER mask in emission slot 3, laid out like the albedo
+			if (ImageResource *mask = LoadOverlayTexture(loaded, part.weatherMask, TextureUsage::Data))
+			{
+				material.SetTexture(MaterialTextureType::Emission, mask, 3);
+				key += "|wm" + part.weatherMask.generic_string();
+			}
+			if (part.weatherTransparent)
+			{
+				material.SetProperty(MaterialProperty::XpWeatherTransparent, 1.0f);
+				key += "|wt";
+			}
+			if (part.hasSnowAlbedoLuma)
+			{
+				material.SetProperty(MaterialProperty::XpSnowAlbedoLuma, 1.0f);
+				material.SetProperty(MaterialProperty::XpSnowAlbedoLumaR, part.snowAlbedoLuma[0]);
+				material.SetProperty(MaterialProperty::XpSnowAlbedoLumaG, part.snowAlbedoLuma[1]);
+				char text[64];
+				std::snprintf(text, sizeof(text), "|sl%.3f,%.3f", part.snowAlbedoLuma[0], part.snowAlbedoLuma[1]);
 				key += text;
 			}
 			material.SetProperty(MaterialProperty::XpDrapeMode, mode);
