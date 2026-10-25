@@ -38,7 +38,8 @@
  * Output/sedx_probe/<id>.json with what it applied and the live value of every art control in art_controls.txt.
  *
  * Start it from Plugins > SEDX Reference Probe, or put a file named "autorun" (containing "quit" to exit X-Plane
- * afterwards, "airports" to run the test-airport set, "resume" to skip the scenarios already captured) into
+ * afterwards, "airports" to run the test-airport set, "resume" to skip the scenarios already captured, "snow" to take
+ * only the snowy scenarios again) into
  * Output/sedx_probe/.
  *
  * Reads and writes only public SDK datarefs plus the sim/private/controls/ values X-Plane exposes to plugins; it never
@@ -98,6 +99,17 @@ namespace
 	constexpr double SETTLE_SECONDS = 15.0;
 	constexpr int SETTLE_QUIET_FRAMES = 120;
 	constexpr double SETTLE_TIMEOUT_SECONDS = 180.0;
+	// X-Plane builds a new ground snow cover over minutes, and its readback is no guide: in the first 15-airport run
+	// region/snow_cover read 0 for the first two snowy shots after the probe set 1, and the terrain turned white in steps
+	// every few seconds; in the snow-only run it stopped at 0.86 while the airport was fully white about 120 s after the
+	// probe set 1 (the runway's own snow, wxr/snow_now, is there at once). So the wait is timed: when a scenario's snow
+	// cover differs from the one the probe last let X-Plane build (at the start of a run: what X-Plane reads), the probe
+	// sets it and the temperature again every frame for SNOW_BUILD_SECONDS, then settles; later scenarios with the same
+	// cover don't wait, whatever X-Plane reads back.
+	constexpr const char *SNOW_COVER = "sim/weather/region/snow_cover";
+	constexpr const char *SEALEVEL_TEMPERATURE = "sim/weather/region/sealevel_temperature_c";
+	constexpr float SNOW_COVER_TOLERANCE = 0.02f;
+	constexpr double SNOW_BUILD_SECONDS = 150.0;
 	// The status window (top left): shown while a run moves and settles, hidden this many frames before each screenshot
 	// until the file is written (X-Plane's screenshots include plugin windows), "finished" stays up this long
 	constexpr int STATUS_HIDDEN_FRAMES = 5;
@@ -115,19 +127,25 @@ namespace
 		const char *runAll;
 		const char *runMissing;
 		const char *runFirst;
+		const char *runSnowy;
 	};
 	constexpr ScenarioSet SCENARIO_SETS[] = {
-		{ "scenarios.json", "Run all parity scenarios (KSEA)", "Resume the parity scenarios (skip captured ones)", "Run the first parity scenario" },
+		{ "scenarios.json", "Run all parity scenarios (KSEA)", "Resume the parity scenarios (skip captured ones)", "Run the first parity scenario",
+		  "Run the snowy parity scenarios only (retakes them)" },
 		{ "airports.json", "Run all test-airport scenarios (15 airports)", "Resume the test-airport scenarios (skip captured ones)",
-		  "Run the first test-airport scenario" },
+		  "Run the first test-airport scenario", "Run the snowy test-airport scenarios only (retakes them)" },
 	};
 
-	/* @brief What a run covers: every scenario, the ones without a screenshot and dump yet, or the first one. */
+	/**
+	 * @brief What a run covers: every scenario, the ones without a screenshot and dump yet, the first one, or the snowy
+	 * ones (taken again, without the rest of the set).
+	 */
 	enum class RunMode : intptr_t
 	{
 		All = 1,
 		First = 2,
-		Missing = 3
+		Missing = 3,
+		Snowy = 4
 	};
 	constexpr intptr_t MENU_STOP = 0xFF;	// Menu item refs: set index << 8 | RunMode; MENU_STOP stops a run
 
@@ -175,6 +193,7 @@ namespace
 	{
 		Idle,
 		MoveToAirport,		// Aircraft and camera moved to the airport, waiting for its scenery
+		WaitSnow,			// Camera, time and weather set; letting X-Plane build a new snow cover (SNOW_BUILD_SECONDS)
 		Settle,				// Camera, time and weather set; exposure, weather and scenery settling
 		HideStatus,			// Status window hidden; a few frames before the screenshot so it isn't in it
 		WaitScreenshot,		// Screenshot command sent; waiting for the file to be complete
@@ -205,6 +224,8 @@ namespace
 		int quietFrames = 0;				// Frames in a row X-Plane loaded no scenery while settling
 		double settledSeconds = 0.0;		// How long the shot's view settled
 		bool settledLoading = false;		// X-Plane was still loading scenery when the shot was taken
+		double snowWaitSeconds = 0.0;		// How long the shot waited for X-Plane's snow to build (0: no change)
+		std::optional<float> builtSnowCover;	// The snow cover X-Plane last had time to build (see SNOW_BUILD_SECONDS)
 		int sceneryTimeout = 0;		// Frames left for the scenery of the airport being moved to
 		bool newFlight = false;		// The move fell back to a new flight at that airport
 		std::string loadedAirport;
@@ -478,6 +499,12 @@ namespace
 		}
 	}
 
+	/* @brief A snow scenario: snow cover, or rain below freezing (the last group of a run, and a snowy-only run's set). */
+	bool Snowy(const Scenario &s)
+	{
+		return s.snowCover > 0.0f || (s.temperatureC <= 0.0f && s.rainPercent > 0.0f);
+	}
+
 	/**
 	 * @brief Weather X-Plane can't take back at once runs last: snow cover melts and wet runways dry over minutes of sim
 	 * time, and the first run's calibration and season shots, taken after the snowy ones, were still white. Clear and
@@ -489,7 +516,7 @@ namespace
 	{
 		const auto rank = [](const Scenario &s)
 		{
-			if (s.snowCover > 0.0f || (s.temperatureC <= 0.0f && s.rainPercent > 0.0f))
+			if (Snowy(s))
 				return 3;
 			if (s.rainPercent > 0.0f || s.runwayFriction > 0.0f)
 				return 2;
@@ -686,9 +713,9 @@ namespace
 		SetFloatArray("sim/weather/region/cloud_type", type);
 		SetFloat("sim/weather/region/rain_percent", s.rainPercent);
 		SetFloat("sim/weather/region/runway_friction", s.runwayFriction);
-		if (!SetFloat("sim/weather/region/snow_cover", s.snowCover))
+		if (!SetFloat(SNOW_COVER, s.snowCover))
 			Log("sim/weather/region/snow_cover is not writable here: the snow scenario keeps X-Plane's own cover");
-		SetFloat("sim/weather/region/sealevel_temperature_c", s.temperatureC);
+		SetFloat(SEALEVEL_TEMPERATURE, s.temperatureC);
 		if (s.waveAmplitudeM)
 			SetFloat("sim/weather/region/wave_amplitude", *s.waveAmplitudeM);
 		if (s.waveDirectionDeg)
@@ -790,6 +817,19 @@ namespace
 		return !loading || *loading == 0.0f;
 	}
 
+	std::string Fixed(const double value, const int decimals)
+	{
+		char text[32] = {};
+		std::snprintf(text, sizeof(text), "%.*f", decimals, value);
+		return text;
+	}
+
+	/* @brief The scenario's snow cover isn't the one X-Plane last had time to build (see SNOW_BUILD_SECONDS). */
+	bool SnowChanges(const Scenario &s)
+	{
+		return g.builtSnowCover && std::fabs(*g.builtSnowCover - s.snowCover) > SNOW_COVER_TOLERANCE;
+	}
+
 	/* @brief Places the camera and moves the user aircraft out of sight (behind and above the camera). */
 	void PlaceCameraAndUser(const Scenario &s)
 	{
@@ -856,6 +896,7 @@ namespace
 		applied["camera_msl_m"] = g.cameraMsl;
 		applied["camera_heading"] = g.cameraHeading;
 		applied["camera_pitch"] = g.cameraPitch;
+		applied["snow_wait_seconds"] = g.snowWaitSeconds;
 		applied["settle_seconds"] = g.settledSeconds;
 		applied["scenery_still_loading"] = g.settledLoading;
 		dump["applied"] = applied;
@@ -868,7 +909,8 @@ namespace
 								  "sim/weather/region/snow_cover", "sim/weather/region/cloud_coverage_percent", "sim/weather/region/cloud_base_msl_m",
 								  "sim/weather/view/rain_ratio", "sim/weather/view/snow_ratio", "sim/weather/region/wave_amplitude",
 								  "sim/weather/region/wave_dir", "sim/weather/region/wave_length", "sim/weather/region/wave_speed",
-								  "sim/weather/region/wind_speed_msc", "sim/weather/region/wind_direction_degt" })
+								  "sim/weather/region/wind_speed_msc", "sim/weather/region/wind_direction_degt", SEALEVEL_TEMPERATURE,
+								  "sim/weather/aircraft/temperature_ambient_deg_c" })
 		{
 			if (XPLMDataRef ref = Find(name))
 				sim[name] = ReadValue(ref);
@@ -970,6 +1012,14 @@ namespace
 			if (g.scenarios.empty())
 				return;
 		}
+		else if (mode == RunMode::Snowy)
+		{
+			// Only the snow group, taken again over what is there (the first one waits for X-Plane's snow, see WaitSnow)
+			std::erase_if(g.scenarios, [](const Scenario &s) { return !Snowy(s); });
+			Log("Snowy scenarios only: " + std::to_string(g.scenarios.size()) + " to take");
+			if (g.scenarios.empty())
+				return;
+		}
 		LoadArtControls();
 		std::error_code ec;
 		fs::create_directories(g.outputFolder, ec);
@@ -981,6 +1031,7 @@ namespace
 		g.savedFov = GetFloat("sim/graphics/view/field_of_view_deg");
 		if (const std::optional<float> useSystem = GetFloat("sim/time/use_system_time"))
 			g.savedUseSystemTime = static_cast<int>(*useSystem);
+		g.builtSnowCover = GetFloat(SNOW_COVER);	// What X-Plane has when the run starts counts as built
 
 		g.index = 0;
 		g.runFile = set.file;
@@ -989,8 +1040,8 @@ namespace
 		g.disablePluginsPending = true;
 		g.stage = Stage::MoveToAirport;
 		g.framesLeft = -1;	// Not placed yet
-		Log(std::string("Run started: ") + (mode == RunMode::All ? "all scenarios" : mode == RunMode::Missing ? "the scenarios not captured yet" : "the first scenario") +
-			" of " + set.file);
+		const char *what = mode == RunMode::All ? "all scenarios" : mode == RunMode::Missing ? "the scenarios not captured yet" : mode == RunMode::Snowy ? "the snowy scenarios" : "the first scenario";
+		Log(std::string("Run started: ") + what + " of " + set.file);
 	}
 
 	void FinishRun()
@@ -1006,6 +1057,15 @@ namespace
 			if (XPLMCommandRef quit = XPLMFindCommand("sim/operation/quit"))
 				XPLMCommandOnce(quit);
 		}
+	}
+
+	void StartSettle(const Scenario &s)
+	{
+		g.framesLeft = s.settleFrames;
+		g.stageStart = Clock::now();
+		g.quietFrames = 0;
+		g.stage = Stage::Settle;
+		Log(s.id + ": settling for at least " + std::to_string(static_cast<int>(SETTLE_SECONDS)) + " s and " + std::to_string(s.settleFrames) + " frames");
 	}
 
 	void NextScenario()
@@ -1060,6 +1120,11 @@ namespace
 				waiting = "steady for " + std::to_string(g.framesLeft) + " more frames";
 			lines.push_back("Loading " + s.icao + " (" + Seconds(SecondsSince(g.stageStart)) + "): " + waiting);
 		}
+		else if (g.stage == Stage::WaitSnow)
+		{
+			lines.push_back("Letting X-Plane build the snow: " + Seconds(SNOW_BUILD_SECONDS - SecondsSince(g.stageStart)) + " left (cover reads " +
+							Fixed(GetFloat(SNOW_COVER).value_or(0.0f), 2) + "), then settling");
+		}
 		else
 		{
 			const double settled = SecondsSince(g.stageStart);
@@ -1079,7 +1144,7 @@ namespace
 	{
 		if (!g.statusWindow)
 			return;
-		const bool running = g.stage == Stage::MoveToAirport || g.stage == Stage::Settle;
+		const bool running = g.stage == Stage::MoveToAirport || g.stage == Stage::WaitSnow || g.stage == Stage::Settle;
 		const bool finished = g.stage == Stage::Finished && SecondsSince(g.finishedAt) < STATUS_FINISHED_SECONDS;
 		const int visible = running || finished ? 1 : 0;
 		if (visible)
@@ -1184,11 +1249,35 @@ namespace
 				ApplyExposureLock(s);
 				ApplyArtControls(s);
 				PlaceCameraAndUser(s);
-				g.framesLeft = s.settleFrames;
-				g.stageStart = Clock::now();
-				g.quietFrames = 0;
-				g.stage = Stage::Settle;
-				Log(s.id + ": settling for at least " + std::to_string(static_cast<int>(SETTLE_SECONDS)) + " s and " + std::to_string(s.settleFrames) + " frames");
+				g.snowWaitSeconds = 0.0;
+				if (SnowChanges(s))
+				{
+					g.stageStart = Clock::now();
+					g.stage = Stage::WaitSnow;
+					Log(s.id + ": snow cover " + Fixed(*g.builtSnowCover, 2) + " -> " + Fixed(s.snowCover, 2) + "; letting X-Plane build it for " +
+						std::to_string(static_cast<int>(SNOW_BUILD_SECONDS)) + " s");
+					return -1.0f;
+				}
+				StartSettle(s);
+				return -1.0f;
+			}
+
+			case Stage::WaitSnow:
+			{
+				ApplyTime(s);
+				ApplyExposureLock(s);
+				HoldUser();
+				// Set again every frame: X-Plane takes a new cover late
+				SetFloat(SNOW_COVER, s.snowCover);
+				SetFloat(SEALEVEL_TEMPERATURE, s.temperatureC);
+				const double waited = SecondsSince(g.stageStart);
+				if (waited < SNOW_BUILD_SECONDS)
+					return -1.0f;
+				Log(s.id + ": snow built for " + std::to_string(static_cast<int>(waited)) + " s; X-Plane reads a cover of " +
+					Fixed(GetFloat(SNOW_COVER).value_or(0.0f), 2));
+				g.snowWaitSeconds = waited;
+				g.builtSnowCover = s.snowCover;
+				StartSettle(s);
 				return -1.0f;
 			}
 
@@ -1366,12 +1455,13 @@ PLUGIN_API int XPluginEnable(void)
 		XPLMAppendMenuItem(g.menu, SCENARIO_SETS[set].runAll, reinterpret_cast<void *>(base | static_cast<intptr_t>(RunMode::All)), 0);
 		XPLMAppendMenuItem(g.menu, SCENARIO_SETS[set].runMissing, reinterpret_cast<void *>(base | static_cast<intptr_t>(RunMode::Missing)), 0);
 		XPLMAppendMenuItem(g.menu, SCENARIO_SETS[set].runFirst, reinterpret_cast<void *>(base | static_cast<intptr_t>(RunMode::First)), 0);
+		XPLMAppendMenuItem(g.menu, SCENARIO_SETS[set].runSnowy, reinterpret_cast<void *>(base | static_cast<intptr_t>(RunMode::Snowy)), 0);
 	}
 	XPLMAppendMenuItem(g.menu, "Stop", reinterpret_cast<void *>(MENU_STOP), 0);
 	CreateStatusWindow();
 
 	// Unattended runs: Output/sedx_probe/autorun ("quit" inside: exit X-Plane when done; "airports": the test-airport set;
-	// "resume": skip the scenarios already captured)
+	// "resume": skip the scenarios already captured; "snow": only the snowy scenarios, taken again)
 	std::ifstream autorun(g.outputFolder / "autorun");
 	if (autorun)
 	{
@@ -1379,7 +1469,7 @@ PLUGIN_API int XPluginEnable(void)
 		g.quitWhenDone = text.find("quit") != std::string::npos;
 		const ScenarioSet &set = SCENARIO_SETS[text.find("airports") != std::string::npos ? 1 : 0];
 		Log(std::string("autorun found: ") + set.file + (g.quitWhenDone ? " (quit when done)" : ""));
-		StartRun(set, text.find("resume") != std::string::npos ? RunMode::Missing : RunMode::All);
+		StartRun(set, text.find("snow") != std::string::npos ? RunMode::Snowy : text.find("resume") != std::string::npos ? RunMode::Missing : RunMode::All);
 	}
 	return 1;
 }

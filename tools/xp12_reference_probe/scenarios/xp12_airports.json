@@ -192,14 +192,14 @@
 			"alt_m_agl": 600.0,
 			"heading": 180.0,
 			"pitch": -20.0,
-			"date": "2026-07-15",
-			"local_time": "09:14:13",
-			"utc_offset": -4.0,
+			"date": "2026-01-15",
+			"local_time": "12:00:00",
+			"utc_offset": -5.0,
 			"visibility_m": 30000.0,
 			"snow_cover": 1.0,
 			"runway_friction": 9,
-			"temperature_c": -5.0,
-			"notes": "aerial; sun elevation 40 deg, snow cover 1"
+			"notes": "aerial; mid-January, local solar noon (12:00 standard time), snow cover 1, -3 C at sea level",
+			"temperature_c": -3.0
 		},
 		{
 			"id": "kgon_aerial_season01",
@@ -407,14 +407,14 @@
 			"alt_m_agl": 600.0,
 			"heading": 180.0,
 			"pitch": -20.0,
-			"date": "2026-07-15",
-			"local_time": "09:24:05",
-			"utc_offset": -6.0,
+			"date": "2026-01-15",
+			"local_time": "12:00:00",
+			"utc_offset": -7.0,
 			"visibility_m": 30000.0,
 			"snow_cover": 1.0,
 			"runway_friction": 9,
-			"temperature_c": -5.0,
-			"notes": "aerial; sun elevation 40 deg, snow cover 1"
+			"notes": "aerial; mid-January, local solar noon (12:00 standard time), snow cover 1, -1 C at sea level",
+			"temperature_c": -1.0
 		},
 		{
 			"id": "kden_aerial_season01",
@@ -606,14 +606,14 @@
 			"alt_m_agl": 600.0,
 			"heading": 180.0,
 			"pitch": -20.0,
-			"date": "2026-07-15",
-			"local_time": "09:18:04",
-			"utc_offset": -5.0,
+			"date": "2026-01-15",
+			"local_time": "12:00:00",
+			"utc_offset": -6.0,
 			"visibility_m": 30000.0,
 			"snow_cover": 1.0,
 			"runway_friction": 9,
-			"temperature_c": -5.0,
-			"notes": "aerial; sun elevation 40 deg, snow cover 1"
+			"notes": "aerial; mid-January, local solar noon (12:00 standard time), snow cover 1, -5 C at sea level",
+			"temperature_c": -5.0
 		},
 		{
 			"id": "kord_aerial_season01",
@@ -805,14 +805,14 @@
 			"alt_m_agl": 600.0,
 			"heading": 180.0,
 			"pitch": -20.0,
-			"date": "2026-07-15",
-			"local_time": "09:10:41",
-			"utc_offset": -4.0,
+			"date": "2026-01-15",
+			"local_time": "12:00:00",
+			"utc_offset": -5.0,
 			"visibility_m": 30000.0,
 			"snow_cover": 1.0,
 			"runway_friction": 9,
-			"temperature_c": -5.0,
-			"notes": "aerial; sun elevation 40 deg, snow cover 1"
+			"notes": "aerial; mid-January, local solar noon (12:00 standard time), snow cover 1, -3 C at sea level",
+			"temperature_c": -3.0
 		},
 		{
 			"id": "kbos_aerial_season01",
@@ -1020,14 +1020,14 @@
 			"alt_m_agl": 600.0,
 			"heading": 180.0,
 			"pitch": -20.0,
-			"date": "2026-07-15",
-			"local_time": "09:20:52",
-			"utc_offset": -4.0,
+			"date": "2026-01-15",
+			"local_time": "12:00:00",
+			"utc_offset": -5.0,
 			"visibility_m": 30000.0,
 			"snow_cover": 1.0,
 			"runway_friction": 9,
-			"temperature_c": -5.0,
-			"notes": "aerial; sun elevation 40 deg, snow cover 1"
+			"notes": "aerial; mid-January, local solar noon (12:00 standard time), snow cover 1, -8 C at sea level",
+			"temperature_c": -8.0
 		},
 		{
 			"id": "kbtv_aerial_season01",
@@ -1219,14 +1219,14 @@
 			"alt_m_agl": 600.0,
 			"heading": 180.0,
 			"pitch": -20.0,
-			"date": "2026-07-15",
-			"local_time": "10:06:45",
-			"utc_offset": 1.0,
+			"date": "2026-01-15",
+			"local_time": "12:00:00",
+			"utc_offset": 0.0,
 			"visibility_m": 30000.0,
 			"snow_cover": 1.0,
 			"runway_friction": 9,
-			"temperature_c": -5.0,
-			"notes": "aerial; sun elevation 40 deg, snow cover 1"
+			"notes": "aerial; mid-January, local solar noon (12:00 standard time), snow cover 1, -1 C at sea level",
+			"temperature_c": -1.0
 		},
 		{
 			"id": "eidw_aerial_season01",
@@ -1409,23 +1409,6 @@
 			"rain_percent": 0.6,
 			"temperature_c": 12.0,
 			"notes": "runway 24R threshold, 2 m up; sun elevation 40 deg, rain, runway friction 5"
-		},
-		{
-			"id": "lebl_aerial_snowy",
-			"icao": "LEBL",
-			"lat": 41.3117696,
-			"lon": 2.0783333,
-			"alt_m_agl": 600.0,
-			"heading": 180.0,
-			"pitch": -20.0,
-			"date": "2026-07-15",
-			"local_time": "10:17:35",
-			"utc_offset": 2.0,
-			"visibility_m": 30000.0,
-			"snow_cover": 1.0,
-			"runway_friction": 9,
-			"temperature_c": -5.0,
-			"notes": "aerial; sun elevation 40 deg, snow cover 1"
 		},
 		{
 			"id": "lebl_aerial_season01",
@@ -1633,14 +1616,14 @@
 			"alt_m_agl": 600.0,
 			"heading": 180.0,
 			"pitch": -20.0,
-			"date": "2026-07-15",
-			"local_time": "09:39:23",
-			"utc_offset": 1.0,
+			"date": "2026-01-15",
+			"local_time": "12:00:00",
+			"utc_offset": 0.0,
 			"visibility_m": 30000.0,
 			"snow_cover": 1.0,
 			"runway_friction": 9,
-			"temperature_c": -5.0,
-			"notes": "aerial; sun elevation 40 deg, snow cover 1"
+			"notes": "aerial; mid-January, local solar noon (12:00 standard time), snow cover 1, -1 C at sea level",
+			"temperature_c": -1.0
 		},
 		{
 			"id": "egll_aerial_season01",
@@ -1832,14 +1815,14 @@
 			"alt_m_agl": 600.0,
 			"heading": 180.0,
 			"pitch": -20.0,
-			"date": "2026-07-15",
-			"local_time": "09:57:03",
-			"utc_offset": 2.0,
+			"date": "2026-01-15",
+			"local_time": "12:00:00",
+			"utc_offset": 1.0,
 			"visibility_m": 30000.0,
 			"snow_cover": 1.0,
 			"runway_friction": 9,
-			"temperature_c": -5.0,
-			"notes": "aerial; sun elevation 40 deg, snow cover 1"
+			"notes": "aerial; mid-January, local solar noon (12:00 standard time), snow cover 1, -1 C at sea level",
+			"temperature_c": -1.0
 		},
 		{
 			"id": "lszh_aerial_season01",
@@ -2024,23 +2007,6 @@
 			"notes": "runway 30L threshold, 2 m up; sun elevation 40 deg, rain, runway friction 5"
 		},
 		{
-			"id": "omdb_aerial_snowy",
-			"icao": "OMDB",
-			"lat": 25.267603,
-			"lon": 55.3644444,
-			"alt_m_agl": 600.0,
-			"heading": 180.0,
-			"pitch": -20.0,
-			"date": "2026-07-15",
-			"local_time": "08:45:40",
-			"utc_offset": 4.0,
-			"visibility_m": 30000.0,
-			"snow_cover": 1.0,
-			"runway_friction": 9,
-			"temperature_c": -5.0,
-			"notes": "aerial; sun elevation 40 deg, snow cover 1"
-		},
-		{
 			"id": "omdb_aerial_season01",
 			"icao": "OMDB",
 			"lat": 25.267603,
@@ -2221,23 +2187,6 @@
 			"rain_percent": 0.6,
 			"temperature_c": 12.0,
 			"notes": "runway 05R threshold, 2 m up; sun elevation 40 deg, rain, runway friction 5"
-		},
-		{
-			"id": "rctp_aerial_snowy",
-			"icao": "RCTP",
-			"lat": 25.095103,
-			"lon": 121.2322222,
-			"alt_m_agl": 600.0,
-			"heading": 180.0,
-			"pitch": -20.0,
-			"date": "2026-07-15",
-			"local_time": "08:22:15",
-			"utc_offset": 8.0,
-			"visibility_m": 30000.0,
-			"snow_cover": 1.0,
-			"runway_friction": 9,
-			"temperature_c": -5.0,
-			"notes": "aerial; sun elevation 40 deg, snow cover 1"
 		},
 		{
 			"id": "rctp_aerial_season01",
@@ -2429,14 +2378,14 @@
 			"alt_m_agl": 600.0,
 			"heading": 180.0,
 			"pitch": -20.0,
-			"date": "2026-07-15",
-			"local_time": "08:04:57",
+			"date": "2026-01-15",
+			"local_time": "12:00:00",
 			"utc_offset": 9.0,
 			"visibility_m": 30000.0,
 			"snow_cover": 1.0,
 			"runway_friction": 9,
-			"temperature_c": -5.0,
-			"notes": "aerial; sun elevation 40 deg, snow cover 1"
+			"notes": "aerial; mid-January, local solar noon (12:00 standard time), snow cover 1, -1 C at sea level",
+			"temperature_c": -1.0
 		},
 		{
 			"id": "rjtt_aerial_season01",
@@ -2637,23 +2586,6 @@
 			"notes": "runway 16R threshold, 2 m up; sun elevation 40 deg, rain, runway friction 5"
 		},
 		{
-			"id": "yssy_aerial_snowy",
-			"icao": "YSSY",
-			"lat": -33.9312859,
-			"lon": 151.1772222,
-			"alt_m_agl": 600.0,
-			"heading": 180.0,
-			"pitch": -20.0,
-			"date": "2026-01-15",
-			"local_time": "09:23:28",
-			"utc_offset": 11.0,
-			"visibility_m": 30000.0,
-			"snow_cover": 1.0,
-			"runway_friction": 9,
-			"temperature_c": -5.0,
-			"notes": "aerial; sun elevation 40 deg, snow cover 1"
-		},
-		{
 			"id": "yssy_aerial_season07",
 			"icao": "YSSY",
 			"lat": -33.9312859,
@@ -2852,23 +2784,6 @@
 			"notes": "runway 10L threshold, 2 m up; sun elevation 40 deg, rain, runway friction 5"
 		},
 		{
-			"id": "sbgr_aerial_snowy",
-			"icao": "SBGR",
-			"lat": -23.4207304,
-			"lon": -46.4730556,
-			"alt_m_agl": 600.0,
-			"heading": 180.0,
-			"pitch": -20.0,
-			"date": "2026-01-15",
-			"local_time": "08:38:04",
-			"utc_offset": -3.0,
-			"visibility_m": 30000.0,
-			"snow_cover": 1.0,
-			"runway_friction": 9,
-			"temperature_c": -5.0,
-			"notes": "aerial; sun elevation 40 deg, snow cover 1"
-		},
-		{
 			"id": "sbgr_aerial_season07",
 			"icao": "SBGR",
 			"lat": -23.4207304,
@@ -3058,14 +2973,14 @@
 			"alt_m_agl": 600.0,
 			"heading": 180.0,
 			"pitch": -20.0,
-			"date": "2026-07-15",
-			"local_time": "09:46:08",
-			"utc_offset": -4.0,
+			"date": "2026-01-15",
+			"local_time": "12:00:00",
+			"utc_offset": -5.0,
 			"visibility_m": 30000.0,
 			"snow_cover": 1.0,
 			"runway_friction": 9,
-			"temperature_c": -5.0,
-			"notes": "aerial; sun elevation 40 deg, snow cover 1"
+			"notes": "aerial; mid-January, local solar noon (12:00 standard time), snow cover 1, -6 C at sea level",
+			"temperature_c": -6.0
 		},
 		{
 			"id": "cyyz_aerial_season01",
