@@ -140,7 +140,7 @@ namespace SceneryEditorX
 
                 /// Get fragmentation stats
                 auto stats = allocator->GetStats();
-                REQUIRE(stats.fragmentationRatio >= 0.0f);
+                REQUIRE(stats.fragRatio >= 0.0f);
 
                 /// Try to defragment
                 REQUIRE_NOTHROW(allocator->BeginDefragmentation());
@@ -249,7 +249,7 @@ namespace SceneryEditorX
             BENCHMARK("Memory strategy switching")
             {
                 /// Test how quickly we can change strategies and allocate
-                allocator->SetAllocationStrategy(MemoryAllocator::AllocationStrategy::SpeedOptimized);
+                allocator->SetAllocationStrategy(MemoryAllocator::AllocationStrategy::SPEED_OPTIMIZED);
 
                 MockAllocationTracker tracker;
 
@@ -264,7 +264,7 @@ namespace SceneryEditorX
                 allocator->DestroyBuffer(tracker.buffer, tracker.allocation);
 
                 /// Switch back
-                allocator->SetAllocationStrategy(MemoryAllocator::AllocationStrategy::Default);
+                allocator->SetAllocationStrategy(MemoryAllocator::AllocationStrategy::DEFAULT);
                 return tracker.buffer != VK_NULL_HANDLE;
             };
         }

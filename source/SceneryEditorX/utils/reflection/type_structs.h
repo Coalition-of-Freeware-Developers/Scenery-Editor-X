@@ -1,15 +1,33 @@
 ﻿/**
-* -------------------------------------------------------
-* Scenery Editor X
-* -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
-* Copyright (c) 2025 Coalition of Freeware Developers
-* -------------------------------------------------------
-* type_structs.h
-* -------------------------------------------------------
-* Created: 9/7/2025
-* -------------------------------------------------------
-*/
+ * -------------------------------------------------------
+ * Scenery Editor X
+ * -------------------------------------------------------
+ * Copyright (c) 2026 Thomas Ray 
+ * Copyright (c) 2026 Coalition of Freeware Developers
+ * -------------------------------------------------------
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ * -------------------------------------------------------
+ * type_structs.h
+ * -------------------------------------------------------
+ * Created: 9/7/2025
+ * -------------------------------------------------------
+ */
 #pragma once
 #include <string>
 #include <type_traits>
@@ -17,7 +35,7 @@
 #include "type_descriptors.h"
 #include "SceneryEditorX/utils/string_utils.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX::Types
 {
@@ -28,13 +46,13 @@ namespace SceneryEditorX::Types
 			std::string Name;
 			size_t Size; /// 0 if function
 			std::string TypeName;
-	
+
 			enum EType : uint8_t
 			{
 				Function,
 				Data
 			} Type;
-	
+
 			bool operator==(const Member& other) const
 			{
 				return Name == other.Name
@@ -44,32 +62,32 @@ namespace SceneryEditorX::Types
 			}
 		};
 
-        /// -------------------------------------------------------
-	
+        // -------------------------------------------------------
+
 		struct ClassInfo
 		{
 			std::string Name;
 			size_t Size;					/// sizeof(T)
 			std::vector<Member> Members;	/// "described" members
-	
+
 			template<class T>
 			static ClassInfo Of()
 			{
 	            static_assert(Described<T>::value, "Type must be 'Described'.");
-	
+
 				/// Parse info using type Description
-	
+
 				ClassInfo info;
 				using Descr = Types::Description<T>;
-	
+
 				info.Name = Descr::ClassName;
 				info.Size = sizeof(T);
-	
+
 				for (const auto& memberName : Descr::MemberNames)
 				{
 					const bool isFunction = *Descr::IsFunctionByName(memberName);
 					const auto typeName = *Descr::GetTypeNameByName(memberName);
-	
+
 					info.Members.push_back(
 						Member{
 							/*.Name*/{ memberName },
@@ -78,10 +96,10 @@ namespace SceneryEditorX::Types
 							/*.type*/{ isFunction ? Member::Function : Member::Data }
 						});
 				}
-	
+
 				return info;
 			}
-	
+
 			bool operator==(const ClassInfo& other) const
 			{
 				return Name == other.Name
@@ -92,7 +110,7 @@ namespace SceneryEditorX::Types
 
 	}
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	struct TestStruct
 	{
@@ -106,21 +124,21 @@ namespace SceneryEditorX::Types
         { return true; }
 	};
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	namespace Type
 	{
 		DESCRIBED(TestStruct, &TestStruct::i, &TestStruct::f, &TestStruct::ch, &TestStruct::pi, &TestStruct::vfunc, &TestStruct::bfunc);
 	}
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	namespace Reflection
 	{
         inline bool ClassInfoTest()
 		{
 			static const ClassInfo cl = ClassInfo::Of<TestStruct>();
-	
+
 			static const ClassInfo ExpectedInfo
 			{
 				/*.Name =*/
@@ -136,35 +154,35 @@ namespace SceneryEditorX::Types
 					    /*.TypeName =*/ .TypeName = "int",
 					    /*.type =*/.type = Member::Data
 					},
-	
+
 					{
 					    /*.Name =*/ .Name = "f",
 					    /*.Size =*/ .Size = 4,
 					    /*.TypeName =*/ .TypeName = "float",
 					    /*.type =*/ .type = Member::Data
 					},
-	
+
 					{
 					    /*.Name =*/ .Name = "ch",
 					    /*.Size =*/ .Size = 1,
 					    /*.TypeName =*/ .TypeName = "char",
 					    /*.type =*/ .type = Member::Data
 					},
-	
+
 					{
 					    /*.Name =*/ .Name = "pi",
 					    /*.Size =*/ .Size = 8,
 					    /*.TypeName =*/ .TypeName = "int*",
 					    /*.type =*/ .type = Member::Data
 					},
-	
+
 					{
 					    /*.Name =*/ .Name = "vfunc",
 					    /*.Size =*/ .Size = 0,
 					    /*.TypeName =*/ .TypeName = "void",
 					    /*.type =*/ .type = Member::EType::Function
 					},
-	
+
 					{
 					    /*.Name =*/ .Name = "bfunc",
 					    /*.Size =*/ .Size = 0,
@@ -173,11 +191,11 @@ namespace SceneryEditorX::Types
 					},
 				}
 			};
-	
+
 			return cl == ExpectedInfo;
 		}
 	}
-	
+
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

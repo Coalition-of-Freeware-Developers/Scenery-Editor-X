@@ -1,33 +1,52 @@
-/**
-* -------------------------------------------------------
-* Scenery Editor X
-* -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray
-* Copyright (c) 2025 Coalition of Freeware Developers
-* -------------------------------------------------------
-* system_detection.h
-* -------------------------------------------------------
-* Created: 16/3/2025
-* -------------------------------------------------------
-*/
+﻿/**
+ * -------------------------------------------------------
+ * Scenery Editor X
+ * -------------------------------------------------------
+ * Copyright (c) 2026 Thomas Ray 
+ * Copyright (c) 2026 Coalition of Freeware Developers
+ * -------------------------------------------------------
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ * -------------------------------------------------------
+ * system_detection.h
+ * -------------------------------------------------------
+ * Created: 16/3/2025
+ * -------------------------------------------------------
+ */
 #pragma once
 //////////////////////////////////////////////////////
 ///			   COMPILER TYPE DETECTION			   ///
 //////////////////////////////////////////////////////
-#if defined(__GNUC__)
-	#if defined(__clang__)
-		#define SEDX_COMPILER_CLANG
-	#else
-		#define SEDX_COMPILER_GCC
-	#endif
-#elif defined(_MSC_VER)
+#if defined(_MSC_VER)
 	#define SEDX_COMPILER_MSVC
+#elif defined(__clang__)
+	#define SEDX_COMPILER_CLANG
+	#pragma clang diagnostic ignored "-Wmissing-braces"
+#elif defined(__GNUC__)
+		#define SEDX_COMPILER_GCC
+#else
+	#error  "Unknown Compiler! If you are using a compiler that is not listed here, please report it to the Scenery Editor X team."
 #endif
 //////////////////////////////////////////////////////
 #ifdef SEDX_COMPILER_MSVC
 	#define SEDX_FORCE_INLINE __forceinline
 	#define SEDX_EXPLICIT_STATIC static
-#elif defined(__GNUC__)
+#elif defined(SEDX_COMPILER_GCC)
 	#define SEDX_FORCE_INLINE __attribute__((always_inline)) inline
 	#define SEDX_EXPLICIT_STATIC
 #else
@@ -35,49 +54,28 @@
 	#define SEDX_EXPLICIT_STATIC
 #endif
 //////////////////////////////////////////////////////
-///				BUILD TYPE DETECTION			   ///
-//////////////////////////////////////////////////////
-#ifdef SEDX_DEBUG
-    #define SEDX_BUILD_TYPE "Debug"
-#elif defined(SEDX_RELEASE)
-    #define SEDX_BUILD_TYPE "Release"
-#endif
-
-//////////////////////////////////////////////////////
 ///           WINDOWS PLATFORM DETECTION		   ///
 //////////////////////////////////////////////////////
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(WINDOWS) || defined(WIN64) || defined(_MSC_VER)
-    #ifdef _WIN64
+	#ifdef _WIN64
 	/** Windows x64  **/
-        #define SEDX_PLATFORM_WINDOWS
-        #define SEDX_PLATFORM_NAME "Windowsx64"
+		#define SEDX_PLATFORM_WINDOWS
+		#define SEDX_PLATFORM_NAME "Windowsx64"
 		#include <Windows.h>
 		#ifndef VK_USE_PLATFORM_WIN32_KHR
-		#define VK_USE_PLATFORM_WIN32_KHR
+			#define VK_USE_PLATFORM_WIN32_KHR
 		#endif
-        constexpr char dirSeparator = '\\';
-		#if defined(_DEBUG) || defined(DEBUG)
-			#ifndef SEDX_DEBUG
-            #define SEDX_DEBUG
-			#endif
-			#define SEDX_DEBUGBREAK() __debugbreak()
-			#define APP_USE_VULKAN_DEBUG_REPORT
-		#endif
-		#if defined(_RELEASE) || defined(NDEBUG) || defined(RELEASE)
-		    #ifndef SEDX_RELEASE
-		    #define SEDX_RELEASE
-		    #endif
-		#endif
-    #elif
+		constexpr char dirSeparator = '\\';
+	#elif
 	/** Windows x86 **/
-    #error "x86 Builds are not supported!"
-    #endif
+	#error "x86 Builds are not supported!"
+	#endif
 //////////////////////////////////////////////////////
 ///         APPLE/MAC PLATFORM DETECTION		   ///
 //////////////////////////////////////////////////////
 #elif defined(__APPLE__) || defined(__MACH__) || (defined(VK_USE_PLATFORM_IOS_MVK) || defined(VK_USE_PLATFORM_MACOS_MVK) || defined(VK_USE_PLATFORM_METAL_EXT))
-    #define SEDX_PLATFORM_APPLE
-    #define SEDX_PLATFORM_NAME "MacOS"
+	#define SEDX_PLATFORM_APPLE
+	#define SEDX_PLATFORM_NAME "MacOS"
 	#include <TargetConditionals.h>
 	/**
 	 * TARGET_OS_MAC exists on all the platforms
@@ -86,19 +84,19 @@
 	 * and not some other Apple platform
 	 */
 	#if TARGET_IPHONE_SIMULATOR == 1
-	    #error "IOS simulator is not supported!"
+		#error "IOS simulator is not supported!"
 	#elif TARGET_OS_IPHONE == 1
-	    #define SEDX_PLATFORM_IOS
-	    #error "IOS is not supported!"
-    #elif TARGET_OS_MAC == 1
-	    #define SEDX_PLATFORM_MACOS
+		#define SEDX_PLATFORM_IOS
+		#error "IOS is not supported!"
+	#elif TARGET_OS_MAC == 1
+		#define SEDX_PLATFORM_MACOS
 		#include <unistd.h>
 		#include <sys/types.h>
 		#include <pwd.h>
 		#define VK_USE_PLATFORM_METAL_EXT
 		#include <vulkan/vulkan.h>
-    #else
-	    #error "Unknown Apple platform!"
+	#else
+		#error "Unknown Apple platform!"
 	#endif
 //////////////////////////////////////////////////////
 ///			  ANDROID PLATFORM DETECTION		   ///
@@ -116,8 +114,8 @@
 ///			   LINUX PLATFORM DETECTION			   ///
 //////////////////////////////////////////////////////
 #elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__gnu_linux__)
-    #define SEDX_PLATFORM_LINUX
-    #define SEDX_PLATFORM_NAME "Linux"
+	#define SEDX_PLATFORM_LINUX
+	#define SEDX_PLATFORM_NAME "Linux"
 	#include <unistd.h>
 	#include <csignal>
 	#include <sys/types.h>
@@ -127,17 +125,31 @@
 	#endif
 	#include <vulkan/vulkan.h>
 	constexpr char dirSeparator = '/';
-	#if defined(_DEBUG) || defined(DEBUG)
-		#ifndef SEDX_DEBUG
-        #define SEDX_DEBUG
-		#endif
-		#define SEDX_DEBUGBREAK() raise(SIGTRAP)
-	#endif
 #else
 	/* Unknown compiler/platform */
-    #define SEDX_PLATFORM_NAME "Unknown"
-    #error "Unknown platform!"
-#endif 
+	#define SEDX_PLATFORM_NAME "Unknown"
+	#error "Unknown platform!"
+#endif
 
 //////////////////////////////////////////////////////
+///				BUILD TYPE DETECTION			   ///
+//////////////////////////////////////////////////////
 
+#if defined(_DEBUG) || defined(DEBUG)
+	#ifndef SEDX_DEBUG
+		#define SEDX_DEBUG
+	#endif
+	#define SEDX_BUILD_TYPE "Debug"
+	#define SEDX_DEBUGBREAK() __debugbreak()
+	#if defined(SEDX_PLATFORM_LINUX)
+		#define SEDX_DEBUGBREAK() raise(SIGTRAP)
+	#endif
+	#define APP_USE_VULKAN_DEBUG_REPORT
+#elif defined(_RELEASE) || defined(NDEBUG) || defined(RELEASE)
+	#ifndef SEDX_RELEASE
+		#define SEDX_RELEASE
+	#endif
+		#define SEDX_BUILD_TYPE "Release"
+#endif
+
+//////////////////////////////////////////////////////

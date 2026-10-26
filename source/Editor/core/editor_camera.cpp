@@ -1,307 +1,460 @@
-﻿/**
-* -------------------------------------------------------
-* Scenery Editor X
-* -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray
-* Copyright (c) 2025 Coalition of Freeware Developers
-* -------------------------------------------------------
-* editor_camera.cpp
-* -------------------------------------------------------
-* Created: 1/8/2025
-* -------------------------------------------------------
-*/
+/**
+ * -------------------------------------------------------
+ * Scenery Editor X
+ * -------------------------------------------------------
+ * Copyright (c) 2026 Thomas Ray
+ * Copyright (c) 2026 Coalition of Freeware Developers
+ * -------------------------------------------------------
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ * -------------------------------------------------------
+ * editor_camera.cpp
+ * -------------------------------------------------------
+ * Created: 17/10/2026
+ * -------------------------------------------------------
+ */
 #include "editor_camera.h"
-#if __has_include(<SceneryEditorX/utils/math/math.h>)
-#include <SceneryEditorX/utils/math/math.h>
-#else
-#include "../../SceneryEditorX/utils/math/math.h"
-#endif
-#if __has_include(<SceneryEditorX/core/input/input.h>)
-#include <SceneryEditorX/core/input/input.h>
-#else
-#include "../../SceneryEditorX/core/input/input.h"
-#endif
-#if __has_include(<SceneryEditorX/ui/ui_manager.h>)
-#include <SceneryEditorX/ui/ui_manager.h>
-#else
-#include "../../SceneryEditorX/ui/ui_manager.h"
-#endif
 #include <algorithm>
 #include <cmath>
-#include <SceneryEditorX/core/input/input.h>
-#include <SceneryEditorX/ui/ui_manager.h>
+#include <cctype>
+#include <Editor/core/editor_airports.h>
+#include <Editor/core/editor_context.h>
+#include <Editor/core/editor_project.h>
+#include <Editor/core/editor_scene.h>
+#include <Editor/core/editor_tools.h>
+#include <SceneryEditorX/core/application/application.h>
+#include <SceneryEditorX/scene/scene.h>
+#include <SceneryEditorX/xplane/xp_airport_scene.h>
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
-namespace SceneryEditorX
+namespace SceneryEditorX::EditorCamera
 {
-
-    EditorCamera::EditorCamera(const float degFov, const float width, const float height, const float nearP, const float farP)
-        : Camera(PerspectiveFov(ToRadians(degFov), width, height, farP, nearP),
-                 PerspectiveFov(ToRadians(degFov), width, height, nearP, farP)),
-          m_FocalPoint(0.0f), m_VerticalFOV(ToRadians(degFov)), m_NearClip(nearP), m_FarClip(farP)
+	namespace
 	{
-		Init();
+		using ViewportCamera::Rig;
+		using ViewportCamera::ViewPreset;
+
+		struct State
+		{
+			bool homeCaptured = false;
+			Rig home;
+			ViewportCamera::Controller controller;
+			ViewPreset preset = ViewPreset::Free;	// The entity keeps no preset: the last one set, while the camera looks along it
+			double aspect = 16.0 / 9.0;				// The viewport's, for the orthographic height and framing
+
+			// --camera-view / --camera-ortho, waiting for the startup airport or project
+			bool startupPending = false;
+			ViewPreset startupPreset = ViewPreset::Free;
+			bool startupOrthographic = false;
+			int startupFrames = 0;
+		};
+
+		State &S()
+		{
+			static State state;
+			return state;
+		}
+
+		/* @brief The primary camera entity's transform and camera component (the renderer draws through them). */
+		bool GetPrimary(TransformComponent *&transform, CameraComponent *&component)
+		{
+			entt::registry *registry = EditorScene::GetRegistry();
+			if (!registry)
+				return false;
+			auto view = registry->view<TransformComponent, CameraComponent>();
+			for (const entt::entity handle : view)
+			{
+				if (!view.get<CameraComponent>(handle).isPrimary)
+					continue;
+				transform = &view.get<TransformComponent>(handle);
+				component = &view.get<CameraComponent>(handle);
+				return true;
+			}
+			return false;
+		}
+
+		Point3 ToPoint(const Vec3 &v)
+		{
+			return { v.x, v.y, v.z };
+		}
+
+		Vec3 ToVec(const Point3 &p)
+		{
+			return Vec3(static_cast<float>(p.x), static_cast<float>(p.y), static_cast<float>(p.z));
+		}
+
+		/* @brief Whether the camera still looks along a preset (it stays the active one until the camera turns away). */
+		bool LooksAlong(const Rig &rig, const ViewPreset preset)
+		{
+			double yaw = 0.0, pitch = 0.0;
+			if (!ViewportCamera::GetPresetDirection(preset, yaw, pitch))
+				return true;
+			return std::abs(std::remainder(rig.yaw - yaw, 6.283185307179586)) < 1e-3 && std::abs(rig.pitch - pitch) < 1e-3;
+		}
 	}
 
-	void EditorCamera::Init()
+	Camera *Get()
 	{
-    Vec3 position = {-5.0f, 5.0f, 5.0f};
-    m_Distance = Distance(position, m_FocalPoint);
-
-    m_Yaw = 3.0f * PI / 4.0f;
-    m_Pitch = PI / 4.0f;
-
-        m_Position = CalculatePosition();
-        const Quat orientation = GetOrientation();
-        m_Direction = orientation.ToEulerDegrees();
-        m_ViewMatrix = Mat4::Translate(m_Position) * orientation.ToMatrix();
-        m_ViewMatrix = m_ViewMatrix.GetInverse();
+		return Scene::GetCamera();
 	}
 
-    static void DisableMouse()
-    {
-        Input::SetCursorMode(CursorMode::Locked);
-        UI::SetInputEnabled(false);
-    }
-
-    static void EnableMouse()
-    {
-        Input::SetCursorMode(CursorMode::Normal);
-        UI::SetInputEnabled(true);
-    }
-
-	void EditorCamera::Focus(const Vec3 &focusPoint)
+	bool GetRig(Rig &rig)
 	{
-        m_FocalPoint = focusPoint;
-        m_CameraMode = CameraMode::FLY;
-        if (m_Distance > m_MinFocusDistance)
-        {
-            m_Distance -= m_Distance - m_MinFocusDistance;
-            m_Position = m_FocalPoint - GetForwardDirection() * m_Distance;
-        }
-        m_Position = m_FocalPoint - GetForwardDirection() * m_Distance;
-        UpdateCameraView();
+		Camera *camera = Get();
+		TransformComponent *transform = nullptr;
+		CameraComponent *component = nullptr;
+		if (!camera || !GetPrimary(transform, component))
+			return false;
+
+		const Vec3 euler = transform->GetRotationEuler();
+		rig.pitch = euler.x;
+		rig.yaw = euler.y;
+		rig.distance = std::max(0.1, static_cast<double>(camera->GetOrbitDistance()));
+		rig.fovHorizontal = component->horizontalFov_Rad;
+		rig.orthographic = component->projectionType == CameraComponent::ProjectionType::Orthographic;
+		rig.fly = camera->mode == FLY;
+
+		// The pivot, unless something moved the eye without it: then the eye wins (it is what the user sees)
+		const Point3 eye = ToPoint(transform->translation);
+		rig.pivot = ToPoint(camera->center);
+		const Point3 expected = rig.Eye();
+		const double drift = std::hypot(expected.x - eye.x, expected.y - eye.y, expected.z - eye.z);
+		if (drift > 1e-3 * std::max(1.0, rig.distance))
+			rig.KeepEye(eye);
+
+		rig.preset = LooksAlong(rig, S().preset) ? S().preset : ViewPreset::Free;
+		return true;
 	}
 
-	void EditorCamera::OnUpdate(DeltaTime dt)
+	void SetRig(const Rig &rig)
 	{
-        const Vec2 mouse{Input::GetMouseX(), Input::GetMouseY()};
-        const Vec2 delta = (mouse - m_InitialMousePosition) * 0.002f;
+		Camera *camera = Get();
+		TransformComponent *transform = nullptr;
+		CameraComponent *component = nullptr;
+		if (!camera || !GetPrimary(transform, component))
+			return;
 
-        if (!m_IsActive)
-        {
-            if (!UI::IsInputEnabled())
-                UI::SetInputEnabled(true);
+		const Vec3 eye = ToVec(rig.Eye());
+		const Vec3 rotation(static_cast<float>(rig.pitch), static_cast<float>(rig.yaw), 0.0f);
+		transform->translation = eye;
+		transform->SetRotationEuler(rotation);
+		component->projectionType = rig.orthographic ? CameraComponent::ProjectionType::Orthographic : CameraComponent::ProjectionType::Perspective;
+		component->orthographicHeight = static_cast<float>(rig.OrthographicHeight(S().aspect));
+		component->horizontalFov_Rad = static_cast<float>(std::clamp(rig.fovHorizontal, 0.05, 3.0));
 
-            m_InitialMousePosition = mouse;
-            return;
-        }
-
-        if (Input::IsMouseButtonDown(MouseButton::Right) && !Input::IsKeyDown(KeyCode::LeftAlt))
-        {
-            m_CameraMode = CameraMode::FLY;
-            DisableMouse();
-
-            const float yawSign = GetUpDirection().y < 0 ? -1.0f : 1.0f;
-            const float speed = GetCameraSpeed();
-
-            if (Input::IsKeyDown(KeyCode::Q))
-                m_PositionDelta -= dt.GetMilliseconds() * speed * Vec3{0.f, yawSign, 0.f};
-            if (Input::IsKeyDown(KeyCode::E))
-                m_PositionDelta += dt.GetMilliseconds() * speed * Vec3{0.f, yawSign, 0.f};
-            if (Input::IsKeyDown(KeyCode::S))
-                m_PositionDelta -= dt.GetMilliseconds() * speed * m_Direction;
-            if (Input::IsKeyDown(KeyCode::W))
-                m_PositionDelta += dt.GetMilliseconds() * speed * m_Direction;
-            if (Input::IsKeyDown(KeyCode::A))
-                m_PositionDelta -= dt.GetMilliseconds() * speed * m_RightDirection;
-            if (Input::IsKeyDown(KeyCode::D))
-                m_PositionDelta += dt.GetMilliseconds() * speed * m_RightDirection;
-
-            constexpr float maxRate{0.12f};
-            m_YawDelta += Math::Clamp(yawSign * delta.x * RotationSpeed(), -maxRate, maxRate);
-            m_PitchDelta += Math::Clamp(delta.y * RotationSpeed(), -maxRate, maxRate);
-
-            m_RightDirection = Cross(m_Direction, Vec3{0.f, yawSign, 0.f});
-
-            const Quat pitchQ = Quat::AngleAxisRadians(-m_PitchDelta, m_RightDirection);
-            const Quat yawQ = Quat::AngleAxisRadians(-m_YawDelta, Vec3{0.f, yawSign, 0.f});
-            m_Direction = Quat::Normalize(yawQ * pitchQ) * m_Direction;
-
-            const float distance = Distance(m_FocalPoint, m_Position);
-            m_FocalPoint = m_Position + GetForwardDirection() * distance;
-            m_Distance = distance;
-        }
-        else if (Input::IsKeyDown(KeyCode::LeftAlt))
-        {
-            m_CameraMode = CameraMode::ORBIT;
-
-            if (Input::IsMouseButtonDown(MouseButton::Middle))
-            {
-                DisableMouse();
-                MousePan(delta);
-            }
-            else if (Input::IsMouseButtonDown(MouseButton::Left))
-            {
-                DisableMouse();
-                MouseRotate(delta);
-            }
-            else if (Input::IsMouseButtonDown(MouseButton::Right))
-            {
-                DisableMouse();
-                MouseZoom((delta.x + delta.y) * 0.1f);
-            }
-            else
-                EnableMouse();
-        }
-        else
-        {
-            EnableMouse();
-        }
-
-        m_InitialMousePosition = mouse;
-        m_Position += m_PositionDelta;
-        m_Yaw += m_YawDelta;
-        m_Pitch += m_PitchDelta;
-
-        if (m_CameraMode == CameraMode::ORBIT)
-            m_Position = CalculatePosition();
-
-        UpdateCameraView();
+		camera->eye = eye;
+		camera->rotation = rotation;
+		camera->center = ToVec(rig.pivot);
+		camera->SetOrbitDistance(static_cast<float>(rig.distance));
+		camera->mode = rig.fly ? FLY : ORBIT;
+		camera->cameraType = rig.orthographic ? CameraType::Orthographic : CameraType::Perspective;
+		camera->SetProjection(camera->cameraType);
+		S().preset = rig.preset;
 	}
 
-	void EditorCamera::OnEvent(Event &event)
-    {
-        EventDispatcher dispatcher(event);
-        dispatcher.Dispatch<MouseScrolledEvent>([this](MouseScrolledEvent &e) { return OnMouseScroll(e); });
-    }
-
-	Vec3 EditorCamera::GetUpDirection() const
+	void CaptureHome()
 	{
-        // Rotate world up by current orientation
-        return GetOrientation() * Vec3(0.0f, 1.0f, 0.0f);
+		Rig rig;
+		if (!GetRig(rig))
+			return;
+		S().homeCaptured = true;
+		S().home = rig;
 	}
 
-	Vec3 EditorCamera::GetRightDirection() const
+	void ReadCommandLine()
 	{
-        return GetOrientation() * Vec3(1.f, 0.f, 0.f);
+		const PlatformContext *platform = Application::Get().GetPlatformContext();
+		if (!platform)
+			return;
+		State &s = S();
+		const std::vector<std::string> &args = platform->GetCommandLineArgs();
+		for (size_t i = 0; i < args.size(); ++i)
+		{
+			if (args[i] == "--camera-ortho")
+			{
+				s.startupOrthographic = true;
+				s.startupPending = true;
+			}
+			else if (args[i] == "--camera-view" && i + 1 < args.size())
+			{
+				const std::string &name = args[++i];
+				for (const ViewPreset preset : { ViewPreset::Top, ViewPreset::Bottom, ViewPreset::Front, ViewPreset::Back, ViewPreset::Left, ViewPreset::Right })
+				{
+					std::string lower = ViewportCamera::GetPresetName(preset);
+					std::ranges::transform(lower, lower.begin(), [](const unsigned char c) { return static_cast<char>(std::tolower(c)); });
+					if (lower == name)
+						s.startupPreset = preset;
+				}
+				if (s.startupPreset == ViewPreset::Free)
+					EDITOR_WARN_TAG("Camera", "--camera-view wants top, bottom, front, back, left or right (got '{}')", name);
+				s.startupPending = true;
+			}
+		}
 	}
 
-	Vec3 EditorCamera::GetForwardDirection() const
+	void Reset()
 	{
-        return GetOrientation() * Vec3(0.0f, 0.0f, -1.0f);
+		State &s = S();
+		Rig rig;
+		if (!s.homeCaptured || !GetRig(rig))
+			return;
+		Rig target = s.home;
+		target.orthographic = rig.orthographic;	// The projection stays the user's choice
+		target.fly = rig.fly;
+		s.controller.MoveTo(rig, target);
+		SetRig(rig);
 	}
 
-    Quat EditorCamera::GetOrientation() const
+	void SetMode(const CameraMode mode)
 	{
-        return Quat::FromEulerDegrees(Vec3(-m_Pitch - m_PitchDelta, -m_Yaw - m_YawDelta, 0.0f));
+		Rig rig;
+		if (!GetRig(rig))
+			return;
+		rig.fly = mode == FLY;
+		SetRig(rig);
 	}
 
-	float EditorCamera::GetCameraSpeed() const
+	bool IsMode(const CameraMode mode)
 	{
-        float speed = m_NormalSpeed;
-        if (Input::IsKeyDown(KeyCode::LeftControl))
-            speed /= 2 - std::log(m_NormalSpeed);
-        if (Input::IsKeyDown(KeyCode::LeftShift))
-            speed *= 2 - std::log(m_NormalSpeed);
-
-        return Math::Clamp(speed, MIN_SPEED, MAX_SPEED);
+		const Camera *camera = Get();
+		return camera && camera->mode == mode;
 	}
 
-	void EditorCamera::UpdateCameraView()
+	void SetProjection(const CameraType projection)
 	{
-        const float yawSign = GetUpDirection().y < 0 ? -1.0f : 1.0f;
-
-        /// Extra step to handle the problem when the camera direction is the same as the up vector
-        const float cosAngle = Dot(GetForwardDirection(), GetUpDirection());
-        if (cosAngle * yawSign > 0.99f)
-            m_PitchDelta = 0.f;
-
-        const Vec3 lookAt = m_Position + GetForwardDirection();
-        m_Direction = Normalize(lookAt - m_Position);
-        m_Distance = Distance(m_Position, m_FocalPoint);
-        m_ViewMatrix = Mat4::LookAt(m_Position, lookAt, Vec3{0.f, yawSign, 0.f});
-
-        ///Damping for smooth camera
-        m_YawDelta *= 0.6f;
-        m_PitchDelta *= 0.6f;
-        m_PositionDelta *= 0.8f;
+		Rig rig;
+		if (!GetRig(rig))
+			return;
+		ViewportCamera::Controller::SetOrthographic(rig, projection == CameraType::Orthographic);
+		SetRig(rig);
 	}
 
-	bool EditorCamera::OnMouseScroll(MouseScrolledEvent &e)
+	bool IsProjection(const CameraType projection)
 	{
-        if (Input::IsMouseButtonDown(MouseButton::Right))
-        {
-            m_NormalSpeed += e.GetYOffset() * 0.3f * m_NormalSpeed;
-            m_NormalSpeed = std::clamp(m_NormalSpeed, MIN_SPEED, MAX_SPEED);
-        }
-        else
-        {
-            MouseZoom(e.GetYOffset() * 0.1f);
-            UpdateCameraView();
-        }
-
-        return true;
+		TransformComponent *transform = nullptr;
+		CameraComponent *component = nullptr;
+		if (!GetPrimary(transform, component))
+			return false;
+		const bool orthographic = component->projectionType == CameraComponent::ProjectionType::Orthographic;
+		return orthographic == (projection == CameraType::Orthographic);
 	}
 
-	void EditorCamera::MousePan(const Vec2 &delta)
+	void ToggleProjection()
 	{
-        auto [xSpeed, ySpeed] = PanSpeed();
-        m_FocalPoint -= GetRightDirection() * delta.x * xSpeed * m_Distance;
-        m_FocalPoint += GetUpDirection() * delta.y * ySpeed * m_Distance;
+		SetProjection(IsProjection(CameraType::Orthographic) ? CameraType::Perspective : CameraType::Orthographic);
 	}
 
-	void EditorCamera::MouseRotate(const Vec2 &delta)
+	const char *GetModeName()
 	{
-        const float yawSign = GetUpDirection().y < 0.0f ? -1.0f : 1.0f;
-        m_YawDelta += yawSign * delta.x * RotationSpeed();
-        m_PitchDelta += delta.y * RotationSpeed();
+		const Camera *camera = Get();
+		if (!camera)
+			return "None";
+
+		switch (camera->mode)
+		{
+			case ORBIT:	return "Orbit";
+			case FLY:	return "Fly";
+			case FREE:	return "Free";
+			case FIXED:	return "Fixed";
+			default:	return "None";
+		}
 	}
 
-	void EditorCamera::MouseZoom(float delta)
+	void SetViewPreset(const ViewPreset preset)
 	{
-        m_Distance -= delta * ZoomSpeed();
-        const Vec3 forwardDir = GetForwardDirection();
-        m_Position = m_FocalPoint - forwardDir * m_Distance;
-        if (m_Distance < 1.0f)
-        {
-            m_FocalPoint += forwardDir * m_Distance;
-            m_Distance = 1.0f;
-        }
-        m_PositionDelta += delta * ZoomSpeed() * forwardDir;
+		Rig rig;
+		if (!GetRig(rig))
+			return;
+		S().controller.SetPreset(rig, preset);
+		SetRig(rig);
 	}
 
-	Vec3 EditorCamera::CalculatePosition() const
+	ViewPreset GetViewPreset()
 	{
-        // Orbit calculation: position = focalPoint - forward * distance
-        return m_FocalPoint - GetForwardDirection() * m_Distance;
+		Rig rig;
+		return GetRig(rig) ? rig.preset : ViewPreset::Free;
 	}
 
-	std::pair<float, float> EditorCamera::PanSpeed() const
+	void Frame(const Point3 &center, const double radius)
 	{
-        const float x = Math::Min(float(m_ViewportRight - m_ViewportLeft) / 1000.0f, 2.4f); // max = 2.4f
-        const float xFactor = 0.0366f * (x * x) - 0.1778f * x + 0.3021f;
-
-        const float y = Math::Min(float(m_ViewportBottom - m_ViewportTop) / 1000.0f, 2.4f); // max = 2.4f
-        const float yFactor = 0.0366f * (y * y) - 0.1778f * y + 0.3021f;
-
-        return {xFactor, yFactor};
+		Rig rig;
+		if (!GetRig(rig))
+			return;
+		S().controller.Frame(rig, center, radius, S().aspect);
+		SetRig(rig);
 	}
 
-	float EditorCamera::RotationSpeed() const
+	bool FrameAll()
 	{
-        return 0.3f;
+		// The open airport's focus (its outliers left out), else everything the scene draws
+		float x = 0.0f, z = 0.0f, radius = 0.0f;
+		if (XPlane::SceneAirports::GetFocus(x, z, radius))
+		{
+			Frame({ x, 0.0, z }, radius);
+			return true;
+		}
+
+		bool any = false;
+		Vec3 lo(0.0f), hi(0.0f);
+		for (Entity *entity : Scene::GetRenderableEntities())
+		{
+			const Renderable *renderable = entity ? entity->GetComponent<Renderable>() : nullptr;
+			if (!renderable || !entity->GetActive())
+				continue;
+			const BoundingBox &box = renderable->GetBoundingBox();
+			const Vec3 bmin = box.GetMin(), bmax = box.GetMax();
+			if (!(bmin.x <= bmax.x) || std::abs(bmin.x) > 1e7f || std::abs(bmax.x) > 1e7f)
+				continue;
+			lo = any ? Vec3(std::min(lo.x, bmin.x), std::min(lo.y, bmin.y), std::min(lo.z, bmin.z)) : bmin;
+			hi = any ? Vec3(std::max(hi.x, bmax.x), std::max(hi.y, bmax.y), std::max(hi.z, bmax.z)) : bmax;
+			any = true;
+		}
+		if (!any)
+			return false;
+		const Point3 center{ (lo.x + hi.x) * 0.5, (lo.y + hi.y) * 0.5, (lo.z + hi.z) * 0.5 };
+		const double extent = std::hypot(static_cast<double>(hi.x - lo.x), static_cast<double>(hi.y - lo.y), static_cast<double>(hi.z - lo.z)) * 0.5;
+		Frame(center, std::min(extent, 4000.0));
+		return true;
 	}
 
-	float EditorCamera::ZoomSpeed() const
+	void Orbit(const double yawDegrees, const double pitchDegrees)
 	{
-        float distance = m_Distance * 0.2f;
-        distance = Math::Max(distance, 0.0f);
-        float speed = distance * distance;
-        speed = Math::Min(speed, 50.0f); // max speed = 50
-        return speed;
+		Rig rig;
+		if (!GetRig(rig))
+			return;
+		S().controller.Orbit(rig, yawDegrees, pitchDegrees);
+		SetRig(rig);
+	}
+
+	void ViewFromOtherSide()
+	{
+		Rig rig;
+		if (!GetRig(rig))
+			return;
+		S().controller.ViewFromOtherSide(rig);
+		SetRig(rig);
+	}
+
+	void Update(const ViewportCamera::Input &input)
+	{
+		State &s = S();
+		Rig rig;
+		if (!GetRig(rig))
+			return;
+
+		const double aspect = std::max(input.aspect, 1e-3);
+		const bool shapeChanged = std::abs(aspect - s.aspect) > 1e-6;
+		s.aspect = aspect;
+
+		// Startup view flags, a few frames after the startup airport or project framed the camera
+		bool changed = false;
+		if (s.startupPending && (EditorAirports::GetDocument() || EditorProjects::GetDocument()) && ++s.startupFrames > 10)
+		{
+			s.startupPending = false;
+			double yaw = rig.yaw, pitch = rig.pitch;
+			if (ViewportCamera::GetPresetDirection(s.startupPreset, yaw, pitch))
+			{
+				rig.yaw = yaw;
+				rig.pitch = pitch;
+				rig.preset = s.startupPreset;
+			}
+			rig.orthographic = rig.orthographic || s.startupOrthographic;
+			changed = true;
+			EDITOR_INFO_TAG("Camera", "Startup view: {} {}", ViewportCamera::GetPresetName(rig.preset), rig.orthographic ? "orthographic" : "perspective");
+		}
+
+		ViewportCamera::Input frame = input;
+		frame.locked = input.locked || Camera::IsInputLocked();
+		changed |= s.controller.Navigate(rig, frame);
+		changed |= s.controller.Animate(rig, ImGui::GetIO().DeltaTime);
+		if (changed || (shapeChanged && rig.orthographic))
+			SetRig(rig);
+	}
+
+	bool IsNavigating()
+	{
+		return S().controller.IsDragging();
+	}
+
+	void HandleShortcuts(EditorContext *context)
+	{
+		const ImGuiIO &io = ImGui::GetIO();
+		if (io.WantTextInput || !context || !(context->viewportHovered || context->viewportFocused) || !Get() || Camera::IsInputLocked())
+			return;
+
+		// Numpad views in every keymap (Blender's layout)
+		const bool ctrl = io.KeyCtrl;
+		const auto pressed = [](const ImGuiKey key) { return ImGui::IsKeyPressed(key, false); };
+		if (pressed(ImGuiKey_Keypad7))
+			SetViewPreset(ctrl ? ViewPreset::Bottom : ViewPreset::Top);
+		if (pressed(ImGuiKey_Keypad1))
+			SetViewPreset(ctrl ? ViewPreset::Back : ViewPreset::Front);
+		if (pressed(ImGuiKey_Keypad3))
+			SetViewPreset(ctrl ? ViewPreset::Left : ViewPreset::Right);
+		if (pressed(ImGuiKey_Keypad5))
+			ToggleProjection();
+		if (pressed(ImGuiKey_Keypad9))
+			ViewFromOtherSide();
+		if (ImGui::IsKeyPressed(ImGuiKey_Keypad4))
+			Orbit(-15.0, 0.0);
+		if (ImGui::IsKeyPressed(ImGuiKey_Keypad6))
+			Orbit(15.0, 0.0);
+		if (ImGui::IsKeyPressed(ImGuiKey_Keypad8))
+			Orbit(0.0, -15.0);
+		if (ImGui::IsKeyPressed(ImGuiKey_Keypad2))
+			Orbit(0.0, 15.0);
+		if (pressed(ImGuiKey_KeypadDecimal))
+			EditorTools::FrameSelection();
+		if (pressed(ImGuiKey_Home) && !ctrl)
+			FrameAll();
+
+		// Letter keys: no modifiers, and not while the right button flies the camera (WASD) or the middle one drags it
+		if (io.KeyCtrl || io.KeyAlt || io.KeyShift || io.KeySuper || ImGui::IsMouseDown(ImGuiMouseButton_Right) || ImGui::IsMouseDown(ImGuiMouseButton_Middle))
+			return;
+		switch (EditorPreferences::Get().keymap)
+		{
+			case NavigationKeymap::Max:
+				if (pressed(ImGuiKey_T))
+					SetViewPreset(ViewPreset::Top);
+				if (pressed(ImGuiKey_F))
+					SetViewPreset(ViewPreset::Front);
+				if (pressed(ImGuiKey_L))
+					SetViewPreset(ViewPreset::Left);
+				if (pressed(ImGuiKey_P))
+					SetProjection(CameraType::Perspective);
+				if (pressed(ImGuiKey_U))
+					SetProjection(CameraType::Orthographic);
+				if (pressed(ImGuiKey_Z) && !EditorTools::FrameSelection())
+					FrameAll();
+				break;
+			case NavigationKeymap::Maya:
+				if (pressed(ImGuiKey_F))
+					EditorTools::FrameSelection();
+				if (pressed(ImGuiKey_A))
+					FrameAll();
+				break;
+			default:
+				if (pressed(ImGuiKey_F))
+					EditorTools::FrameSelection();
+				break;
+		}
 	}
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

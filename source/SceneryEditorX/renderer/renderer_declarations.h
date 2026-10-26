@@ -1,0 +1,728 @@
+/**
+ * -------------------------------------------------------
+ * Scenery Editor X
+ * -------------------------------------------------------
+ * Copyright (c) 2026 Thomas Ray 
+ * Copyright (c) 2026 Coalition of Freeware Developers
+ * -------------------------------------------------------
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ * -------------------------------------------------------
+ * renderer_declarations.h
+ * -------------------------------------------------------
+ * Created: 04/03/2026
+ * -------------------------------------------------------
+ */
+#pragma once
+#include <SceneryEditorX/scene/components/lights.h>
+#include <SceneryEditorX/scene/components/renderable.h>
+
+// -------------------------------------------------------
+
+namespace SceneryEditorX
+{
+	class Buffer;
+
+	/**
+	 * @enum Renderer_RenderTarget
+	 * @brief Enumeration of renderer render targets.
+	 *
+	 * This enum provides a type-safe way to identify and reference
+	 * the different render targets used in the rendering system.
+	 *
+	 * @note - The values in this enum are designed to be compatible with Vulkan's render target types.
+	 */
+	enum class Renderer_RenderTarget : uint8_t
+	{
+		gbuffer_color,
+		gbuffer_normal,
+		gbuffer_material,
+		gbuffer_velocity,
+		gbuffer_depth,
+		gbuffer_depth_occluders,
+		gbuffer_depth_occluders_hiz,	// RG32F min / max depth pyramid, full mip chain (z_minmax.slang): r farthest, g nearest
+		gbuffer_depth_opaque_output,
+		gbuffer_pick,				// R32_UINT: pick id (entity index + 1) of the surface in each pixel, 0 for none (ScenePicking)
+		gbuffer_emissive,			// RGBA16F: emissive luminance (nits) x pre-exposure (X-Plane LIT textures)
+		gbuffer_weather,			// RGBA8: weather receptivity (R rain / damp, G puddles, B snow 0.5 + 0.5 s, A ice)
+		lut_brdf_specular,
+		lut_atmosphere_transmittance,	// 256x64: transmittance to space by height and view zenith (atmosphere_luts.slang)
+		lut_atmosphere_multiscatter,	// 32x32: Hillaire's multiple-scattering transfer
+		lut_sky_view,					// 192x108: the sky from the camera, pre-exposed (sky_view_lut.slang)
+		lut_sky_ambient,				// 64x16: sky irradiance on a level surface per unit light (sky_ambient_lut.slang)
+		lut_aerial_inscatter,			// 32x32x32: froxel in-scattering, pre-exposed (aerial_perspective.slang)
+		lut_aerial_transmittance,		// 32x32x32: froxel transmittance
+		env_probes,						// cube array, 8 probes x 6 faces, 128 px, 7 mips (cube_filter.slang)
+		light_diffuse,
+		light_specular,
+		light_volumetric,
+		frame_render,
+		frame_render_opaque,
+		frame_output,
+		frame_output_2,
+		ssao,
+		reflections,
+		gbuffer_reflections_position,
+		gbuffer_reflections_normal,
+		gbuffer_reflections_albedo,
+		sss,
+		bloom,
+		blur,
+		outline,
+		shading_rate,
+		shadow_atlas,
+		shadow_csm,						// sun shadow cascades: 2D array, 4 layers, D32F, size from the shadow quality (csm.h)
+		auto_exposure,
+		auto_exposure_previous,
+		// restir reservoir buffers (current frame)
+		restir_reservoir0,
+		restir_reservoir1,
+		restir_reservoir2,
+		restir_reservoir3,
+		restir_reservoir4,
+		// restir reservoir buffers (previous frame for temporal)
+		restir_reservoir_prev0,
+		restir_reservoir_prev1,
+		restir_reservoir_prev2,
+		restir_reservoir_prev3,
+		restir_reservoir_prev4,
+		// restir reservoir buffers (spatial ping-pong)
+		restir_reservoir_spatial0,
+		restir_reservoir_spatial1,
+		restir_reservoir_spatial2,
+		restir_reservoir_spatial3,
+		restir_reservoir_spatial4,
+		// volumetric clouds
+		cloud_noise_shape,
+		cloud_noise_detail,
+		cloud_shadow,
+		// nrd denoiser textures
+		nrd_viewz,
+		nrd_normal_roughness,
+		nrd_diff_radiance_hitdist,
+		nrd_spec_radiance_hitdist,
+		nrd_out_diff_radiance_hitdist,
+		nrd_out_spec_radiance_hitdist,
+		// debug
+		debug_output,
+		// exposure fusion (exposure_fusion.slang), half the render resolution: three synthetic exposures and their weights
+		// (Gaussian pyramids), the blended result (Laplacian collapse), and the R16F gain guide the tone map applies
+		exposure_fusion_exposures,
+		exposure_fusion_weights,
+		exposure_fusion_result,
+		exposure_fusion_guide,
+		// ambient occlusion (cacao.slang; ssao is the result): CACAO's deinterleaved buffers, sized by renderer/cacao.h
+		cacao_depths,				// 2D array, 4 layers, 4 mips, R16F: view depth
+		cacao_normals,				// 2D array, 4 layers, RGBA8 SNORM: view-space normals
+		cacao_ssao_ping,			// 2D array, 4 layers, RG8: AO and packed edges
+		cacao_ssao_pong,
+		cacao_importance,			// R8: where the adaptive (highest) quality adds samples
+		cacao_importance_pong,
+		cacao_load_counter,		// 1 x 1 R32_UINT: summed importance (highest quality)
+		// screen-space reflections (ssr_trace.slang): the finished frame kept for the next one, its mips blurred
+		// (RGBA16F, alpha the pre-exposure it was lit with); the reflections target holds what the trace found
+		frame_render_previous,
+		MaxEnum
+	};
+
+	/**
+	 * @enum Renderer_StandardTexture
+	 * @brief Enumeration of standard textures used by the renderer.
+	 *
+	 * This enum provides a type-safe way to identify and reference
+	 * the different standard textures used in the rendering system.
+	 */
+	enum class Renderer_StandardTexture : uint8_t
+	{
+		Noise_perlin,
+		Noise_blue, // single blue noise texture (was 8, only 1 used)
+		Checkerboard,
+		Gizmo_light_directional,
+		Gizmo_light_point,
+		Gizmo_light_spot,
+		Gizmo_audio_source,
+		Black,
+		White,
+		MaxEnum
+	};
+
+	/**
+	 * @enum Renderer_Shader
+	 * @brief Enumeration of renderer shader stages.
+	 *
+	 * This enum provides a type-safe way to identify and reference
+	 * the different shader stages used in the rendering system.
+	 */
+	enum class Renderer_Shader : uint8_t
+	{
+		tessellation,
+		gbuffer,
+		depth_prepass,
+		depth_light,
+		fxaa,
+		film_grain_comp,
+		motion_blur,
+		depth_of_field,
+		chromatic_aberration,
+		bloom_luminance,
+		bloom_blend_frame,
+		bloom_upsample_blend_mip,
+		bloom_downsample,
+		light_integration_brdf_specular_lut,
+		light_integration_environment_filter,
+		light,
+		light_composition,
+		line,
+		grid,
+		outline,
+		font,
+		ssao,
+		sss_bend,
+		blur_gaussian,
+		blur_gaussian_bilateral,
+		variable_rate_shading,
+		ffx_cas,
+		ffx_spd_average,
+		ffx_spd_min,
+		ffx_spd_max,
+		blit,
+		icon,
+		dithering,
+		transparency_reflection_refraction,
+		// volumetric clouds
+		cloud_noise_shape,
+		cloud_noise_detail,
+		cloud_shadow,
+		// gpu-driven indirect rendering
+		indirect_cull,
+		gbuffer_indirect,
+		depth_prepass_indirect,
+		// gpu-driven particles
+		particle_emit,
+		particle_simulate,
+		particle_render,
+		// gpu texture compression
+		texture_compress_bc1,
+		texture_compress_bc3,
+		texture_compress_bc5,
+		// forward passes drawn over the composed frame
+		forward_transparent,
+		light_billboard,
+		// GPU scene (GpuScene): culling + LOD compute, instanced indirect geometry passes
+		gpu_cull,
+		gpu_cull_late,			// two-phase occlusion culling: the instances not drawn early, against the Hi-Z
+		depth_prepass_gpu,
+		gbuffer_gpu,
+		selection_outline,		// editor selection / hover outlines from the pick ids (ScenePicking)
+		reference_overlay,		// viewport reference image: split / difference / full over frame_output (parity harness)
+		tonemap,				// output transform: exposure + tone curve to frame_output (XP12: hdr)
+		debug_view,				// RENDERER panel DEBUG VIEW
+		// plan Phase 5: HDR clean-up, exposure, local tone mapping, upscaling
+		fix_hdr,
+		luminance_histogram,
+		exposure_adapt,
+		exposure_fusion_exposures,
+		exposure_fusion_downsample,
+		exposure_fusion_collapse,
+		exposure_fusion_guide,
+		fsr1_easu,
+		fsr1_rcas,
+		// plan Phase 6: the atmosphere (XP12: scatter_compute_*), the sky, environment probes
+		atmosphere_transmittance_lut,
+		atmosphere_multiscatter_lut,
+		sky_view_lut,
+		sky_ambient_lut,
+		aerial_perspective,
+		sky,
+		cube_filter_capture,
+		cube_filter_ggx,
+		cube_filter_irradiance,
+		// plan Phase 7: sun shadows (XP12: the CSM pass) and cloud shadows
+		gpu_cull_shadow,		// GPU-scene instances into each shadow cascade's draws
+		depth_light_csm,		// shadow casters into a cascade of shadow_csm (CPU draws)
+		depth_light_csm_gpu,	// the same for GPU-scene instances
+		// plan Phase 8: ambient occlusion (XP12: cacao), AMD FidelityFX CACAO ported to cacao.slang
+		cacao_prepare_depths,
+		cacao_prepare_normals,
+		cacao_generate_q1,		// CACAO medium
+		cacao_generate_q2,		// CACAO high
+		cacao_generate_q3,		// CACAO highest (adaptive)
+		cacao_generate_q3_base,
+		cacao_importance_map,
+		cacao_importance_map_a,
+		cacao_importance_map_b,
+		cacao_blur,
+		cacao_apply,
+		cacao_upscale,
+		cacao_upscale_smart,
+		// plan Phase 9: the min / max depth pyramid (XP12: z_minmax) and screen-space reflections (XP12: ssr_deferred)
+		z_minmax_depth,			// level 0 from the depth buffer
+		z_minmax,				// one level from the level above (occlusion culling's Hi-Z too)
+		ssr_trace,				// the deferred surfaces' reflections into the reflections target
+		ssr_history_copy,		// the finished frame into the reflection history's level 0
+		ssr_history_mip,		// one level of the reflection history
+		MaxEnum
+	};
+
+	/**
+	 * @brief Converts a Renderer_Shader enum value to its corresponding string representation.
+	 * @param stage The Renderer_Shader enum value.
+	 * @return The string representation of the Renderer_Shader enum value.
+	 */
+	inline const char *RendererShaderStageToString(const Renderer_Shader stage)
+	{
+		switch (stage)
+		{
+
+		case Renderer_Shader::fxaa: return "FXAA";
+		case Renderer_Shader::film_grain_comp: return "film_grain_comp";
+		case Renderer_Shader::motion_blur: return "motion_blur";
+		case Renderer_Shader::depth_of_field: return "depth_of_field";
+		case Renderer_Shader::chromatic_aberration: return "chromatic_aberration";
+		case Renderer_Shader::bloom_luminance: return "bloom_luminance";
+		case Renderer_Shader::bloom_blend_frame: return "bloom_blend_frame";
+		case Renderer_Shader::bloom_upsample_blend_mip: return "bloom_upsample_blend_mip";
+		case Renderer_Shader::bloom_downsample: return "bloom_downsample";
+		case Renderer_Shader::light_integration_brdf_specular_lut: return "light_integration_brdf_specular_lut";
+		case Renderer_Shader::light_integration_environment_filter: return "light_integration_environment_filter";
+		case Renderer_Shader::light: return "light";
+		case Renderer_Shader::light_composition: return "light_composition";
+		case Renderer_Shader::line: return "line";
+		case Renderer_Shader::grid: return "grid";
+		case Renderer_Shader::outline: return "outline";
+		case Renderer_Shader::font: return "font";
+		case Renderer_Shader::ssao: return "ssao";
+		case Renderer_Shader::sss_bend: return "sss_bend";
+		case Renderer_Shader::blur_gaussian: return "blur_gaussian";
+		case Renderer_Shader::blur_gaussian_bilateral: return "blur_gaussian_bilateral";
+		case Renderer_Shader::variable_rate_shading: return "variable_rate_shading";
+		case Renderer_Shader::ffx_cas: return "ffx_cas";
+		case Renderer_Shader::ffx_spd_average: return "ffx_spd_average";
+		case Renderer_Shader::ffx_spd_min: return "ffx_spd_min";
+		case Renderer_Shader::ffx_spd_max: return "ffx_spd_max";
+		case Renderer_Shader::blit: return "blit";
+		case Renderer_Shader::icon: return "icon";
+		case Renderer_Shader::dithering: return "dithering";
+		case Renderer_Shader::transparency_reflection_refraction: return "transparency_reflection_refraction";
+		case Renderer_Shader::cloud_noise_shape: return "cloud_noise_shape";
+		case Renderer_Shader::cloud_noise_detail: return "cloud_noise_detail";
+		case Renderer_Shader::cloud_shadow: return "cloud_shadow";
+		case Renderer_Shader::indirect_cull: return "indirect_cull";
+		case Renderer_Shader::gbuffer_indirect: return "gbuffer_indirect";
+		case Renderer_Shader::depth_prepass_indirect: return "depth_prepass_indirect";
+		case Renderer_Shader::particle_emit: return "particle_emit";
+		case Renderer_Shader::particle_simulate: return "particle_simulate";
+		case Renderer_Shader::particle_render: return "particle_render";
+		case Renderer_Shader::texture_compress_bc1: return "texture_compress_bc1";
+		case Renderer_Shader::texture_compress_bc3: return "texture_compress_bc3";
+		case Renderer_Shader::texture_compress_bc5: return "texture_compress_bc5";
+		case Renderer_Shader::forward_transparent: return "forward_transparent";
+		case Renderer_Shader::light_billboard: return "light_billboard";
+		case Renderer_Shader::gpu_cull: return "gpu_cull";
+		case Renderer_Shader::gpu_cull_late: return "gpu_cull_late";
+		case Renderer_Shader::depth_prepass_gpu: return "depth_prepass_gpu";
+		case Renderer_Shader::gbuffer_gpu: return "gbuffer_gpu";
+		case Renderer_Shader::selection_outline: return "selection_outline";
+		case Renderer_Shader::reference_overlay: return "reference_overlay";
+		case Renderer_Shader::tonemap: return "tonemap";
+		case Renderer_Shader::debug_view: return "debug_view";
+		case Renderer_Shader::fix_hdr: return "fix_hdr";
+		case Renderer_Shader::luminance_histogram: return "luminance_histogram";
+		case Renderer_Shader::exposure_adapt: return "exposure_adapt";
+		case Renderer_Shader::exposure_fusion_exposures: return "exposure_fusion_exposures";
+		case Renderer_Shader::exposure_fusion_downsample: return "exposure_fusion_downsample";
+		case Renderer_Shader::exposure_fusion_collapse: return "exposure_fusion_collapse";
+		case Renderer_Shader::exposure_fusion_guide: return "exposure_fusion_guide";
+		case Renderer_Shader::fsr1_easu: return "fsr1_easu";
+		case Renderer_Shader::fsr1_rcas: return "fsr1_rcas";
+		case Renderer_Shader::atmosphere_transmittance_lut: return "atmosphere_transmittance_lut";
+		case Renderer_Shader::atmosphere_multiscatter_lut: return "atmosphere_multiscatter_lut";
+		case Renderer_Shader::sky_view_lut: return "sky_view_lut";
+		case Renderer_Shader::sky_ambient_lut: return "sky_ambient_lut";
+		case Renderer_Shader::aerial_perspective: return "aerial_perspective";
+		case Renderer_Shader::sky: return "sky";
+		case Renderer_Shader::cube_filter_capture: return "cube_filter_capture";
+		case Renderer_Shader::cube_filter_ggx: return "cube_filter_ggx";
+		case Renderer_Shader::cube_filter_irradiance: return "cube_filter_irradiance";
+		case Renderer_Shader::gpu_cull_shadow: return "gpu_cull_shadow";
+		case Renderer_Shader::depth_light_csm: return "depth_light_csm";
+		case Renderer_Shader::depth_light_csm_gpu: return "depth_light_csm_gpu";
+		case Renderer_Shader::cacao_prepare_depths: return "cacao_prepare_depths";
+		case Renderer_Shader::cacao_prepare_normals: return "cacao_prepare_normals";
+		case Renderer_Shader::cacao_generate_q1: return "cacao_generate_q1";
+		case Renderer_Shader::cacao_generate_q2: return "cacao_generate_q2";
+		case Renderer_Shader::cacao_generate_q3: return "cacao_generate_q3";
+		case Renderer_Shader::cacao_generate_q3_base: return "cacao_generate_q3_base";
+		case Renderer_Shader::cacao_importance_map: return "cacao_importance_map";
+		case Renderer_Shader::cacao_importance_map_a: return "cacao_importance_map_a";
+		case Renderer_Shader::cacao_importance_map_b: return "cacao_importance_map_b";
+		case Renderer_Shader::cacao_blur: return "cacao_blur";
+		case Renderer_Shader::cacao_apply: return "cacao_apply";
+		case Renderer_Shader::cacao_upscale: return "cacao_upscale";
+		case Renderer_Shader::cacao_upscale_smart: return "cacao_upscale_smart";
+		case Renderer_Shader::z_minmax_depth: return "z_minmax_depth";
+		case Renderer_Shader::z_minmax: return "z_minmax";
+		case Renderer_Shader::ssr_trace: return "ssr_trace";
+		case Renderer_Shader::ssr_history_copy: return "ssr_history_copy";
+		case Renderer_Shader::ssr_history_mip: return "ssr_history_mip";
+		case Renderer_Shader::MaxEnum: return "MaxEnum";
+		default: return "unknown";
+		}
+	}
+
+	/**
+	 * @enum Renderer_Sampler
+	 * @brief Enumeration of renderer samplers.
+	 *
+	 * This enum provides a type-safe way to identify and reference
+	 * the different samplers used in the rendering system.
+	 */
+	enum class Renderer_Sampler : uint8_t
+	{
+		Compare_depth,
+		Point_clamp_edge,
+		Point_clamp_border,
+		Point_wrap,
+		Bilinear_clamp_edge,
+		Bilinear_clamp_border,
+		Bilinear_wrap,
+		Trilinear_clamp,
+		Anisotropic_wrap,
+		MaxEnum
+	};
+
+	/**
+	 * @enum Renderer_Buffer
+	 * @brief Enumeration of renderer buffers.
+	 *
+	 * This enum provides a type-safe way to identify and reference
+	 * the different buffers used in the rendering system.
+	 */
+	enum class Renderer_Buffer : uint8_t
+	{
+		ConstantFrame,
+		SpdCounter,
+		MaterialParameters,
+		LightParameters,
+		DummyInstance,
+		AABBs,
+		GeometryInfo,
+		IndirectDrawArgs,
+		IndirectDrawData,
+		IndirectDrawDataOut,
+		IndirectDrawArgsOut,
+		IndirectDrawCount,
+		DrawData, // bindless per-draw data (transforms, material index, etc.)
+		ConstantEnvironment, // the world environment (ConstantBuffer_Environment, binding 201)
+		ExposureHistogram,   // 256 log2-luminance bins (luminance_histogram.slang -> exposure_adapt.slang), device local
+		ExposureState,       // EXPOSURE_STATE_* floats (resources.slang), host visible: the CPU reads the EV back
+		ConstantCacao,       // ambient occlusion constants (CacaoConstants, renderer/cacao.h; binding 202)
+
+		// gpu-driven particles
+		ParticleBufferA,
+		ParticleBufferB,
+		ParticleCounter,
+		ParticleEmitter,
+		MaxEnum
+	};
+
+	/**
+	 * @enum StandardTexture
+	 * @brief Enumeration of standard textures provided by the renderer.
+	 * 
+	 * This enum provides a type-safe way to identify and reference
+	 * the different standard textures used in the rendering system.
+	 */
+	enum class StandardTexture : uint8_t
+	{
+		Noise_perlin,
+		Noise_blue, // single blue noise texture (was 8, only 1 used)
+		Checkerboard,
+		Gizmo_light_directional,
+		Gizmo_light_point,
+		Gizmo_light_spot,
+		Gizmo_audio_source,
+		Black,
+		White,
+		MaxEnum
+	};
+
+	/**
+	 * @enum Renderer_RasterizerState
+	 * @brief Enumerates the rasterizer pipeline state presets available to the renderer.
+	 */
+	enum class Renderer_RasterizerState : uint8_t
+	{
+		Solid,
+		Wireframe,
+		Light_point_spot,
+		Light_directional,
+		MaxEnum
+	};
+
+	/**
+	 * @enum Renderer_DepthStencilState
+	 * @brief Enumerates depth/stencil test and write configuration presets.
+	 */
+	enum class Renderer_DepthStencilState : uint8_t
+	{
+		Off,
+		ReadEqual,
+		ReadGreaterEqual,
+		ReadWrite,
+		MaxEnum
+	};
+
+	/**
+	 * @enum Renderer_BindingsSrv
+	 *  @brief Enumerates shader resource view (SRV) bindings used by the renderer.
+	 *	
+	 * This enum provides a type-safe way to identify and reference
+	 * the different SRV bindings used in the rendering system.
+	 */
+	enum class Renderer_BindingsSrv
+	{
+		// g-buffer
+		gbuffer_albedo   = 0,
+		gbuffer_normal   = 1,
+		gbuffer_material = 2,
+		gbuffer_velocity = 3,
+		gbuffer_depth    = 4,
+		gbuffer_emissive = 5,
+		gbuffer_weather  = 54,
+
+		// values are the vk::binding numbers declared in resources/shaders/resources.slang
+
+		// other
+		ssao = 6,
+
+		// misc
+		tex   = 7,
+		tex2  = 8,
+		tex3  = 9,
+		tex4  = 10,
+		tex5  = 11,
+		tex6  = 12,
+		tex3d = 13,
+
+		// noise
+		tex_perlin = 14,
+
+		// bindless (bound through BindlessManager sets, listed for reference)
+		bindless_material_textures   = 15,
+		bindless_material_parameters = 16,
+		bindless_light_parameters    = 17,
+		bindless_aabbs               = 18,
+		bindless_draw_data           = 19,
+
+		// volumetric clouds 3D noise
+		tex3d_cloud_shape  = 52,
+		tex3d_cloud_detail = 53,
+
+		// the atmosphere and environment probes (atmosphere_common.slang)
+		env_probes           = 55,
+		aerial_inscatter     = 56,
+		aerial_transmittance = 57,
+		sky_view             = 58,
+		transmittance        = 59,
+		multiscatter         = 60,
+		sky_ambient          = 61,
+
+		// sun and cloud shadows (csm_sample.slang)
+		shadow_csm   = 62,
+		cloud_shadow = 63,
+
+		// ambient occlusion (cacao.slang): what a CACAO kernel reads
+		cacao_depth      = 64,
+		cacao_normals    = 65,
+		cacao_ssao       = 66,
+		cacao_importance = 67,
+
+		// screen-space reflections (ssr_common.slang)
+		ssr         = 68,	// the deferred surfaces' reflections (reflections target)
+		hiz         = 69,	// the min / max depth pyramid (gbuffer_depth_occluders_hiz), every level
+		ssr_history = 70,	// the previous frame lit, with mips (frame_render_previous)
+
+		// restir reservoir srv bindings (for temporal/spatial read)
+		reservoir_prev0    = 21,
+		reservoir_prev1    = 22,
+		reservoir_prev2    = 23,
+		reservoir_prev3    = 24,
+		reservoir_prev4    = 25,
+	};
+
+	/**
+	 * @enum Renderer_BindingsUav
+	 *  @brief Enumerates unordered access view (UAV) bindings used by the renderer.
+	 *	
+	 * This enum provides a type-safe way to identify and reference
+	 * the different UAV bindings used in the rendering system.
+	 */
+	enum class Renderer_BindingsUav : uint32_t
+	{
+		tex           = 0,
+		tex2          = 1,
+		tex3          = 2,
+		tex4          = 3,
+		tex3d         = 4,
+		tex_sss       = 5,
+		tex_array     = 6,	// RWTexture2DArray (cube faces); atmosphere_common.slang
+		tex3d_2       = 7,	// a second RWTexture3D
+		sb_spd        = 44,
+		tex_spd       = 8,
+
+		// ambient occlusion (cacao.slang): what a CACAO kernel writes
+		cacao_depth_mips = 9,	// RWTexture2DArray[4]: the view depth's mips
+		cacao_normals    = 10,
+		cacao_ssao       = 11,
+		cacao_importance = 12,
+
+		// restir reservoir uav bindings
+		reservoir0    = 20,
+		reservoir1    = 21,
+		reservoir2    = 22,
+		reservoir3    = 23,
+		reservoir4    = 24,
+
+		// integer format textures (vrs, etc)
+		tex_uint               = 30,
+
+		// gpu-driven indirect drawing
+		indirect_draw_args     = 31,
+		indirect_draw_data     = 32,
+		indirect_draw_args_out = 33,
+		indirect_draw_data_out = 34,
+		indirect_draw_count    = 35,
+
+		// gpu-driven particles
+		particle_buffer_a      = 36,
+		particle_buffer_b      = 37,
+		particle_counter       = 38,
+		particle_emitter       = 39,
+
+		// gpu texture compression
+		compress_input         = 40,
+		compress_output        = 41,
+		compress_output_bc1    = 42,
+
+		// editor selection (ScenePicking): 2 bits per entity index, selected / hovered
+		selection_mask         = 45,
+
+		// exposure (Renderer_Buffer::ExposureHistogram / ExposureState)
+		exposure_histogram     = 46,
+		exposure_state         = 47,
+	};
+
+	// -------------------------------------------------------
+	// Renderer_BlendState: Alpha-blend preset enumeration
+	// -------------------------------------------------------
+
+	/**
+	 * @enum Renderer_BlendState
+	 * @brief Enumerates blending mode presets used when configuring render passes.
+	 */
+	enum class Renderer_BlendState : uint8_t
+	{
+		Off,
+		Alpha,
+		Additive,
+		Premultiplied,
+		MaxEnum
+	};
+
+	// -------------------------------------------------------
+	// Renderer_DownsampleFilter: mip-chain downscale filter modes
+	// -------------------------------------------------------
+
+	/**
+	 * @enum Renderer_DownsampleFilter
+	 * @brief Filter kernel used by Pass_Downscale when building mip chains via SPD.
+	 */
+	enum class Renderer_DownsampleFilter : uint8_t
+	{
+		Average,
+		Min,
+		Max,
+		MaxEnum
+	};
+
+	// -------------------------------------------------------
+	// BarrierType: simplified image barrier intent
+	// -------------------------------------------------------
+
+	/**
+	 * @enum BarrierType
+	 * @brief Coarse-grained barrier intent used by CommandList::InsertBarrier(ImageResource*, BarrierType).
+	 * The command list maps these to the correct Vulkan pipeline-stage and access-mask pairs.
+	 */
+	enum class BarrierType : uint8_t
+	{
+		EnsureWriteThenRead,   // Make previous UAV writes visible to subsequent reads
+		EnsureReadThenWrite,   // Ensure prior reads complete before next UAV write
+		EnsureWriteThenWrite,  // Serialise two consecutive UAV writes
+		MaxEnum
+	};
+
+	// -------------------------------------------------------
+	// Renderer_DrawCall: per-draw submission record
+	// -------------------------------------------------------
+
+	/**
+	 * @struct Renderer_DrawCall
+	 * @brief Represents one opaque or transparent draw call submitted to the renderer.
+	 * Populated by scene traversal, consumed by render passes.
+	 */
+	struct Renderer_DrawCall
+	{
+		Renderable* renderable       = nullptr; // Scene renderable to draw
+		bool        cameraVisible    = false;   // Passes frustum / occlusion cull
+		bool        isOccluder       = false;   // Used as Hi-Z occluder mesh
+		bool        gpuDriven        = false;   // The GPU scene draws it in the deferred passes (listed for the forward pass)
+		uint64_t    drapeOrder       = 0;       // Renderable::GetDrapeOrder(): draped geometry, drawn in this order (0: not draped)
+		uint32_t    drawData_Index   = 0;       // Index into the GPU draw-data buffer
+		uint32_t    lodIndex         = 0;       // LOD level to render
+		uint32_t    instanceIndex    = 0;       // First instance offset
+		uint32_t    instanceCount    = 1;       // Number of instances
+		uint32_t    shadowCascades   = 0;       // Sun-shadow cascades it casts into (bit per cascade; CPU shadow draw list)
+	};
+
+	// -------------------------------------------------------
+	// CVar: lightweight console-variable stub
+	// Provides GetValue() / GetValueAs<T>() used by renderer passes.
+	// Replace with the real console-variable system when available.
+	// -------------------------------------------------------
+
+	/**
+	 * @struct CVar
+	 * @brief Lightweight console-variable stub consumed by renderer pass code.
+	 */
+	struct CVar
+	{
+		float m_Value = 0.0f;
+
+		float GetValue() const { return m_Value; }
+
+		template<typename T>
+		T GetValueAs() const { return static_cast<T>(m_Value != 0.0f); }
+
+		void SetValue(float v) { m_Value = v; }
+	};
+
+}
+
+// -------------------------------------------------------

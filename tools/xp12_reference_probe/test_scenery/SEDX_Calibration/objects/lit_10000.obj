@@ -1,0 +1,26 @@
+I
+800
+OBJ
+
+TEXTURE ../textures/lit_10000_alb.png
+TEXTURE_NORMAL ../textures/lit_10000_nml.png
+NORMAL_METALNESS
+GLOBAL_specular 1.0
+TEXTURE_LIT ../textures/lit_white.png
+GLOBAL_luminance 10000
+
+POINT_COUNTS 4 0 0 6
+
+VT -1.0 0.05 -1.0 0 1 0 0 1
+VT 1.0 0.05 -1.0 0 1 0 1 1
+VT 1.0 0.05 1.0 0 1 0 1 0
+VT -1.0 0.05 1.0 0 1 0 0 0
+
+IDX 0
+IDX 1
+IDX 2
+IDX 0
+IDX 2
+IDX 3
+
+TRIS 0 6

@@ -10,21 +10,21 @@ This document provides immediate, copy-paste examples for common memory manageme
 
 ```cpp
 // Basic tracked allocation with automatic source location
-MyClass* obj = hnew MyClass(arg1, arg2);
-uint8_t* buffer = hnew uint8_t[1024];
+MyClass* obj = new MyClass(arg1, arg2);
+uint8_t* buffer = new uint8_t[1024];
 
 // Corresponding deallocation  
-hdelete obj;
-hdelete[] buffer;
+delete obj;
+delete[] buffer;
 
 // Category-based allocation for subsystem tracking
 Texture* tex = new("Renderer::Textures") Texture(width, height);
 AudioBuffer* audio = new("Audio::Buffers") AudioBuffer(sampleCount);
 PhysicsBody* body = new("Physics::Bodies") RigidBody(mass);
 
-hdelete tex;    // Category is preserved in tracking
-hdelete audio;
-hdelete body;
+delete tex;    // Category is preserved in tracking
+delete audio;
+delete body;
 ```
 
 ### Application Initialization Template
@@ -77,7 +77,7 @@ public:
   
     ~TrackedResource() {
         if (resource_) {
-            hdelete resource_;
+            delete resource_;
         }
     }
   
@@ -92,7 +92,7 @@ public:
   
     TrackedResource& operator=(TrackedResource&& other) noexcept {
         if (this != &other) {
-            if (resource_) hdelete resource_;
+            if (resource_) delete resource_;
             resource_ = other.resource_;
             category_ = other.category_;
             other.resource_ = nullptr;
@@ -118,7 +118,7 @@ TrackedResource<VertexBuffer> vertices("Renderer::Buffers::Vertex", vertexCount)
 template<typename T>
 struct TrackedDeleter {
     void operator()(T* ptr) {
-        hdelete ptr;
+        delete ptr;
     }
 };
 
@@ -232,7 +232,7 @@ protected:
   
     template<typename T>
     void FreeComponentMemory(T* ptr) {
-        hdelete ptr;
+        delete ptr;
     }
   
 public:
@@ -312,7 +312,7 @@ public:
     }
   
     ~TrackedMemoryPool() {
-        hdelete[] static_cast<uint8_t*>(poolMemory_);
+        delete[] static_cast<uint8_t*>(poolMemory_);
   
         SEDX_CORE_INFO("Memory pool '{}' destroyed. {} allocations were made.", 
                        poolCategory_, allocatedSizes_.size());
@@ -402,7 +402,7 @@ public:
   
     ~SafeTrackedAllocation() {
         if (ptr_) {
-            hdelete ptr_;
+            delete ptr_;
         }
     }
   
@@ -417,7 +417,7 @@ public:
   
     SafeTrackedAllocation& operator=(SafeTrackedAllocation&& other) noexcept {
         if (this != &other) {
-            if (ptr_) hdelete ptr_;
+            if (ptr_) delete ptr_;
             ptr_ = other.ptr_;
             category_ = other.category_;
             other.ptr_ = nullptr;
@@ -471,7 +471,7 @@ T* ConditionalTrackedNew(const char* category, Args&&... args) {
 template<typename T>
 void ConditionalTrackedDelete(T* ptr) {
     #ifdef SEDX_TRACK_MEMORY
-        hdelete ptr;
+        delete ptr;
     #else
         delete ptr;
     #endif
@@ -480,7 +480,7 @@ void ConditionalTrackedDelete(T* ptr) {
 // Macro for easy conditional tracking
 #ifdef SEDX_TRACK_MEMORY
     #define TRACKED_NEW(category, type, ...) new(category) type(__VA_ARGS__)
-    #define TRACKED_DELETE(ptr) hdelete ptr
+    #define TRACKED_DELETE(ptr) delete ptr
 #else
     #define TRACKED_NEW(category, type, ...) new type(__VA_ARGS__)
     #define TRACKED_DELETE(ptr) delete ptr
@@ -526,7 +526,7 @@ public:
     }
   
     void Destroy(Base* obj) {
-        hdelete obj;
+        delete obj;
     }
 };
 
@@ -584,9 +584,9 @@ void ExamplePerformanceMonitoring() {
         PerformanceMonitor monitor("Complex Algorithm");
   
         // Perform memory-intensive operations
-        auto* data = hnew uint8_t[1024 * 1024]; // 1MB allocation
+        auto* data = new uint8_t[1024 * 1024]; // 1MB allocation
         ProcessData(data);
-        hdelete[] data;
+        delete[] data;
   
         // Monitor reports performance and memory usage automatically
     }
@@ -599,9 +599,9 @@ void ExampleMacroUsage() {
     MONITOR_PERFORMANCE("Texture Loading");
   
     // Load and process textures...
-    auto* texture = hnew TextureData(width, height);
+    auto* texture = new TextureData(width, height);
     // ... processing
-    hdelete texture;
+    delete texture;
   
     // Performance report generated automatically at scope exit
 }

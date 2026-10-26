@@ -1,20 +1,39 @@
 ﻿/**
-* -------------------------------------------------------
-* Scenery Editor X
-* -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray
-* Copyright (c) 2025 Coalition of Freeware Developers
-* -------------------------------------------------------
-* application_data.h
-* -------------------------------------------------------
-* Created: 23/4/2025
-* -------------------------------------------------------
-*/
+ * -------------------------------------------------------
+ * Scenery Editor X
+ * -------------------------------------------------------
+ * Copyright (c) 2026 Thomas Ray 
+ * Copyright (c) 2026 Coalition of Freeware Developers
+ * -------------------------------------------------------
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ * -------------------------------------------------------
+ * application_data.h
+ * -------------------------------------------------------
+ * Created: 23/4/2025
+ * -------------------------------------------------------
+ */
 #pragma once
 #include <filesystem>
 #include <string>
+#include <SceneryEditorX/core/threading/render_thread.h>
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -28,36 +47,37 @@ namespace SceneryEditorX
 	 */
 	struct AppData
 	{
-	    /**
+		/**
 		 * @brief Application name displayed in window title and about dialogs.
 		 */
-	    std::string appName = "Scenery Editor X";
 		uint32_t WinWidth = 1280;
-        uint32_t WinHeight = 720;
+		uint32_t WinHeight = 720;
 
-	    GLOBAL inline std::string renderName = "X-Plane 12 Graphics Emulator";
-
-	    /**
+		/**
 		 * @brief Human-readable version string of the application.
 		 * Defined by SEDX_VERSION_STRING macro
 		 */
-	    GLOBAL inline std::string versionString = SEDX_VERSION_STRING;
+		static inline std::string versionString = SEDX_VERSION_STRING;
 
-	    /**
+		/**
 		 * @brief Numeric version identifier.
 		 * Used for version comparison and compatibility checks
 		 * Defined by SEDX_VERSION macro
 		 */
-	    GLOBAL inline uint32_t version = SEDX_VERSION;
+		static inline uint32_t version = SEDX_VERSION;
 
-        bool Fullscreen = false;
-	    bool NoTitlebar = false;
+		ThreadingPolicy coreThreadingPolicy = ThreadingPolicy::MultiThreaded;
+		bool fullscreen = false;
+		bool noTitlebar = false;
 		bool VSync = false;
-        bool StartMaximized = true;
-        bool Resizable = true;
-        bool EnableImGui = true;
-        std::string WorkingDirectory;
-        std::filesystem::path IconPath;
+		bool startMaximized = true;
+		bool resizable = true;
+		bool decorated = true;
+		bool splashScreen = false;
+		bool enableUI = true;			// Create the Dear ImGui layer (docking + multi-viewport)
+		bool enableUIViewports = true;	// Allow UI panels to float in their own OS windows
+		std::string workingDirectory;
+		std::filesystem::path iconPath;
 	};
 
 	/**
@@ -67,41 +87,41 @@ namespace SceneryEditorX
 	 * Contains version information, installation paths, and configuration
 	 * data related to the X-Plane flight simulator that the editor interfaces with.
 	 */
-    struct XPlaneStats
-    {
-        /**
-	     * @brief Current X-Plane version string.
-	     * Identifies the version of X-Plane that the editor is configured to work with.
-	     */
-        std::string xPlaneVersion;
+	struct XPlaneStats
+	{
+		/**
+		 * @brief Current X-Plane version string.
+		 * Identifies the version of X-Plane that the editor is configured to work with.
+		 */
+		std::string xPlaneVersion;
 
-        /**
-	     * @brief Root installation path of X-Plane.
-	     * The main directory where X-Plane is installed.
-	     */
-        std::string xPlanePath;
+		/**
+		 * @brief Root installation path of X-Plane.
+		 * The main directory where X-Plane is installed.
+		 */
+		std::string xPlanePath;
 
-        /**
-	     * @brief Path to X-Plane executables.
-	     * Directory containing the X-Plane binary files.
-	     */
-        std::string xPlaneBinPath;
+		/**
+		 * @brief Path to X-Plane executables.
+		 * Directory containing the X-Plane binary files.
+		 */
+		std::string xPlaneBinPath;
 
-        /**
-	     * @brief Path to X-Plane resources.
-	     * Directory containing X-Plane resource files needed by the editor.
-	     */
-        std::string xPlaneResourcesPath;
+		/**
+		 * @brief Path to X-Plane resources.
+		 * Directory containing X-Plane resource files needed by the editor.
+		 */
+		std::string xPlaneResourcesPath;
 
-        /**
-	     * @brief Flag indicating if this is a Steam installation.
-	     * When true, X-Plane was installed through the Steam platform,
-	     * which may affect certain file paths and integration features.
-	     */
-        bool isSteam = false;
-    };
+		/**
+		 * @brief Flag indicating if this is a Steam installation.
+		 * When true, X-Plane was installed through the Steam platform,
+		 * which may affect certain file paths and integration features.
+		 */
+		bool isSteam = false;
+	};
 
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

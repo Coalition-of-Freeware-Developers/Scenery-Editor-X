@@ -1,12 +1,10 @@
 {
     "dependencies": [
-        "vulkan-memory-allocator",
-		"msdfgen",
-		"imguizmo",
+        "msdfgen",
         "portable-file-dialogs",
         "spdlog",
         "stb",
-		"tracy",
-        { "name": "curl", "features": [ "http2", "idn", "ssl"] }
+        "zlib",
+        { "name": "curl", "features": ["http2", "idn", "ssl"] }
     ]
-  }
+}

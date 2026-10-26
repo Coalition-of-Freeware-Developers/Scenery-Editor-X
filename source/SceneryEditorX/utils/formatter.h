@@ -1,30 +1,43 @@
 ﻿/**
-* -------------------------------------------------------
-* Scenery Editor X
-* -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray
-* Copyright (c) 2025 Coalition of Freeware Developers
-* -------------------------------------------------------
-* formatter.h
-* -------------------------------------------------------
-* Created: 18/5/2025
-* -------------------------------------------------------
-*/
+ * -------------------------------------------------------
+ * Scenery Editor X
+ * -------------------------------------------------------
+ * Copyright (c) 2026 Thomas Ray 
+ * Copyright (c) 2026 Coalition of Freeware Developers
+ * -------------------------------------------------------
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ * -------------------------------------------------------
+ * formatter.h
+ * -------------------------------------------------------
+ * Created: 18/5/2025
+ * -------------------------------------------------------
+ */
 #pragma once
 #include <filesystem>
 #include <cmath>      // Ensure math classification functions available before <format>
 #include <format>
 #include <string>
-#include "../core/base.hpp"
+#include <SceneryEditorX/core/base.h>
+#include <SceneryEditorX/core/identifiers/uuid.h>
 // Prefer public math umbrella include path; fallback to relative if not available
-#if __has_include(<Math/includes/vector.h>)
-#  include <Math/includes/vector.h>
-#elif __has_include("../../Math/includes/vector.h")
-#  include "../../Math/includes/vector.h"
-#elif __has_include("../math/vector.h")
-#  include "../math/vector.h"
-#endif
-#include <cstdlib>
+#include <vulkan/vulkan_core.h>
+#include <xMath/includes/vector.h>
 
 // Optional fmt support: enable by defining SEDX_ENABLE_FMT in targets that set proper encoding flags
 #if defined(SEDX_ENABLE_FMT)
@@ -38,7 +51,7 @@
 #  define SEDX_HAS_FMT 0
 #endif
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 #if SEDX_HAS_FMT
 template <>
@@ -70,8 +83,8 @@ struct fmt::formatter<Vec2>
 };
 #endif // SEDX_HAS_FMT
 
-/// -------------------------------------------------------
-///
+// -------------------------------------------------------
+
 namespace std
 {
 #if !defined(__cpp_lib_format)
@@ -93,21 +106,58 @@ namespace std
 	template <>
 	struct formatter<filesystem::path> : formatter<string>
 	{
-	    /**
+		/**
 		 * Formats the filesystem::path object into the output.
 		 *
 		 * @param path The filesystem path object to format
 		 * @param ctx The formatting context that receives the formatted output
 		 * @return Iterator pointing past the end of the formatted output
 		 */
-	    template <typename FormatContext>
-	    typename FormatContext::iterator format(const filesystem::path &path, FormatContext &ctx) const
-	    {
-	        return formatter<string>::format(path.string(), ctx);
-	    }
+		template <typename FormatContext>
+		typename FormatContext::iterator format(const filesystem::path &path, FormatContext &ctx) const
+		{
+			return formatter<string>::format(path.string(), ctx);
+		}
 	};
 
-	/// -------------------------------------------------------
+	/**
+	 * @struct formatter
+	 * @brief Specialization of the std::formatter for VkResult enum.
+	 *
+	 * This formatter enables using std::format() and std::format_to() with
+	 * VkResult values in format strings. It inherits from formatter<int>
+	 * to leverage integer formatting capabilities for the underlying
+	 * integer representation of the VkResult enum.
+	 *
+	 * @param v The VkResult value to format
+	 * @param ctx The formatting context that receives the formatted output
+	 * @return Iterator pointing past the end of the formatted output
+	 */
+	template <>
+	struct formatter<VkResult, char> : formatter<int, char>
+	{
+		template <class FormatContext>
+		auto format(VkResult v, FormatContext &ctx) const
+		{
+			return formatter<int, char>::format(static_cast<int>(v), ctx);
+		}
+	};
+
+	/**
+	 * @struct formatter
+	 * @brief Specialization of std::formatter for SceneryEditorX::UUID.
+	 */
+	template <>
+	struct formatter<SceneryEditorX::UUID, char> : formatter<uint64_t, char>
+	{
+		template <class FormatContext>
+		auto format(const SceneryEditorX::UUID& value, FormatContext& ctx) const
+		{
+			return formatter<uint64_t, char>::format(static_cast<uint64_t>(value), ctx);
+		}
+	};
+
+	// -------------------------------------------------------
 
 	/**
 	 * @struct formatter
@@ -125,9 +175,9 @@ namespace std
 	template <>
 	struct formatter<Vec2>
 	{
-	    char presentation = 'f';
+		char presentation = 'f';
 
-	    /**
+		/**
 		 * @brief Parses the format specification for the vector.
 		 *
 		 * Accepts 'f' for fixed-point notation (default) or 'e' for scientific notation.
@@ -136,20 +186,20 @@ namespace std
 		 * @return Iterator pointing past the parsed format specification
 		 * @throws format_error if the format specification is invalid
 		 */
-	    constexpr auto parse(format_parse_context &ctx) -> decltype(ctx.begin())
-	    {
-	        auto it = ctx.begin();
-            const auto end = ctx.end();
-            if (it != end && (*it == 'f' || *it == 'e'))
-	            presentation = *it++;
+		constexpr auto parse(format_parse_context &ctx) -> decltype(ctx.begin())
+		{
+			auto it = ctx.begin();
+			const auto end = ctx.end();
+			if (it != end && (*it == 'f' || *it == 'e'))
+				presentation = *it++;
 
-	        if (it != end && *it != '}')
-	            throw format_error("invalid format");
+			if (it != end && *it != '}')
+				throw format_error("invalid format");
 
-	        return it;
-	    }
+			return it;
+		}
 
-	    /**
+		/**
 		 * @brief Formats the Vec2 object into the output.
 		 *
 		 * Renders the vector as "(x, y)" with 3 decimal places in either
@@ -159,15 +209,15 @@ namespace std
 		 * @param ctx The formatting context that receives the formatted output
 		 * @return Iterator pointing past the end of the formatted output
 		 */
-	    template <typename FormatContext>
-	    auto format(const Vec2 &vec, FormatContext &ctx) const -> decltype(ctx.out())
-	    {
-	        return presentation == 'f' ? format_to(ctx.out(), "({:.3f}, {:.3f})", vec.x, vec.y)
-	                                   : format_to(ctx.out(), "({:.3e}, {:.3e})", vec.x, vec.y);
-	    }
+		template <typename FormatContext>
+		auto format(const Vec2 &vec, FormatContext &ctx) const -> decltype(ctx.out())
+		{
+			return presentation == 'f' ? format_to(ctx.out(), "({:.3f}, {:.3f})", vec.x, vec.y)
+									   : format_to(ctx.out(), "({:.3e}, {:.3e})", vec.x, vec.y);
+		}
 	};
 
-	/// -------------------------------------------------------
+	// -------------------------------------------------------
 
 	/**
 	 * @struct formatter
@@ -185,9 +235,9 @@ namespace std
 	template <>
 	struct formatter<Vec3>
 	{
-	    char presentation = 'f';
+		char presentation = 'f';
 
-	    /**
+		/**
 		 * @brief Parses the format specification for the vector.
 		 *
 		 * Accepts 'f' for fixed-point notation (default) or 'e' for scientific notation.
@@ -196,20 +246,20 @@ namespace std
 		 * @return Iterator pointing past the parsed format specification
 		 * @throws format_error if the format specification is invalid
 		 */
-	    constexpr auto parse(format_parse_context &ctx) -> decltype(ctx.begin())
-	    {
-	        auto it = ctx.begin();
-            const auto end = ctx.end();
-            if (it != end && (*it == 'f' || *it == 'e'))
-	            presentation = *it++;
+		constexpr auto parse(format_parse_context &ctx) -> decltype(ctx.begin())
+		{
+			auto it = ctx.begin();
+			const auto end = ctx.end();
+			if (it != end && (*it == 'f' || *it == 'e'))
+				presentation = *it++;
 
-	        if (it != end && *it != '}')
-	            throw format_error("invalid format");
+			if (it != end && *it != '}')
+				throw format_error("invalid format");
 
-	        return it;
-	    }
+			return it;
+		}
 
-	    /**
+		/**
 		 * @brief Formats the Vec3 object into the output.
 		 *
 		 * Renders the vector as "(x, y, z)" with 3 decimal places in either
@@ -219,15 +269,15 @@ namespace std
 		 * @param ctx The formatting context that receives the formatted output
 		 * @return Iterator pointing past the end of the formatted output
 		 */
-	    template <typename FormatContext>
-	    auto format(const Vec3 &vec, FormatContext &ctx) const -> decltype(ctx.out())
-	    {
-	        return presentation == 'f' ? format_to(ctx.out(), "({:.3f}, {:.3f}, {:.3f})", vec.x, vec.y, vec.z)
-	                                   : format_to(ctx.out(), "({:.3e}, {:.3e}, {:.3e})", vec.x, vec.y, vec.z);
-	    }
+		template <typename FormatContext>
+		auto format(const Vec3 &vec, FormatContext &ctx) const -> decltype(ctx.out())
+		{
+			return presentation == 'f' ? format_to(ctx.out(), "({:.3f}, {:.3f}, {:.3f})", vec.x, vec.y, vec.z)
+									   : format_to(ctx.out(), "({:.3e}, {:.3e}, {:.3e})", vec.x, vec.y, vec.z);
+		}
 	};
 
-	/// -------------------------------------------------------
+	// -------------------------------------------------------
 
 	/**
 	 * @struct formatter
@@ -245,9 +295,9 @@ namespace std
 	template <>
 	struct formatter<Vec4>
 	{
-	    char presentation = 'f';
+		char presentation = 'f';
 
-	    /**
+		/**
 		 * @brief Parses the format specification for the vector.
 		 *
 		 * Accepts 'f' for fixed-point notation (default) or 'e' for scientific notation.
@@ -256,20 +306,20 @@ namespace std
 		 * @return Iterator pointing past the parsed format specification
 		 * @throws format_error if the format specification is invalid
 		 */
-	    constexpr auto parse(format_parse_context &ctx) -> decltype(ctx.begin())
-	    {
-	        auto it = ctx.begin();
-            const auto end = ctx.end();
-            if (it != end && (*it == 'f' || *it == 'e'))
-	            presentation = *it++;
+		constexpr auto parse(format_parse_context &ctx) -> decltype(ctx.begin())
+		{
+			auto it = ctx.begin();
+			const auto end = ctx.end();
+			if (it != end && (*it == 'f' || *it == 'e'))
+				presentation = *it++;
 
-	        if (it != end && *it != '}')
-	            throw format_error("invalid format");
+			if (it != end && *it != '}')
+				throw format_error("invalid format");
 
-	        return it;
-	    }
+			return it;
+		}
 
-	    /**
+		/**
 		 * @brief Formats the Vec4 object into the output.
 		 *
 		 * Renders the vector as "(x, y, z, w)" with 3 decimal places in either
@@ -279,16 +329,16 @@ namespace std
 		 * @param ctx The formatting context that receives the formatted output
 		 * @return Iterator pointing past the end of the formatted output
 		 */
-	    template <typename FormatContext>
-	    auto format(const Vec4 &vec, FormatContext &ctx) const -> decltype(ctx.out())
-	    {
-	        return presentation == 'f'
-	                   ? format_to(ctx.out(), "({:.3f}, {:.3f}, {:.3f}, {:.3f})", vec.x, vec.y, vec.z, vec.w)
-	                   : format_to(ctx.out(), "({:.3e}, {:.3e}, {:.3e}, {:.3e})", vec.x, vec.y, vec.z, vec.w);
-	    }
+		template <typename FormatContext>
+		auto format(const Vec4 &vec, FormatContext &ctx) const -> decltype(ctx.out())
+		{
+			return presentation == 'f'
+					   ? format_to(ctx.out(), "({:.3f}, {:.3f}, {:.3f}, {:.3f})", vec.x, vec.y, vec.z, vec.w)
+					   : format_to(ctx.out(), "({:.3e}, {:.3e}, {:.3e}, {:.3e})", vec.x, vec.y, vec.z, vec.w);
+		}
 	};
 #endif // __cpp_lib_format
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

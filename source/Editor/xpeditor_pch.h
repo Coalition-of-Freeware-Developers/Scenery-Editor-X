@@ -17,7 +17,7 @@
 
 /**
 ##########################################################
-                     C++ 20 INCLUDES
+					 C++ 20 INCLUDES
 ##########################################################
 */
 #include <algorithm>
@@ -48,28 +48,24 @@
 
 /**
 ##########################################################
-                    PLATFORM SPECIFIC
+					PLATFORM SPECIFIC
 ##########################################################
 */
 #ifdef SEDX_PLATFORM_WINDOWS
-    #include <Windows.h>
+	#include <Windows.h>
 #endif
 
 /**
 ##########################################################
-					 GLFW INCLUDES & DEFINES
+					 SDL3 INCLUDES & DEFINES
 ##########################################################
 */
-
-//#define VK_NO_PROTOTYPES
-#define GLFW_INCLUDE_VULKAN
-//#define IMGUI_IMPL_VULKAN_USE_VOLK
-
-#include <GLFW/glfw3.h>
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_vulkan.h>
 
 /**
 ##########################################################
-                        GLM LIBRARY
+						GLM LIBRARY
 ##########################################################
 */
 
@@ -86,11 +82,11 @@
 //#include <glm/gtx/transform.hpp>
 
 /// GLM dependency removed – using internal math system (Vec*, Mat*, Quat, Transforms) defined in <Math/includes/xmath.hpp>
-#include <Math/includes/xmath.hpp>
+#include <xMath/includes/xmath.hpp>
 
 /**
 ##########################################################
-                        CONFIG FILE
+						CONFIG FILE
 ##########################################################
 */
 
@@ -100,7 +96,7 @@
 
 /**
 ##########################################################
-                        SPDLOG LOGGER
+						SPDLOG LOGGER
 ##########################################################
 */
 
@@ -111,7 +107,7 @@
 
 /**
 ##########################################################
-                         FMT Library
+						 FMT Library
 ##########################################################
 */
 #include <fmt/core.h>
@@ -119,16 +115,15 @@
 
 /**
 ##########################################################
-                     Project Includes
+					 Project Includes
 ##########################################################
 */
 
-#include <SceneryEditorX/resource.h>
+#include <resource.h>
 #include <SceneryEditorX/utils/pointers.h>
-#include <SceneryEditorX/core/base.hpp>
+#include <SceneryEditorX/core/base.h>
 #include <SceneryEditorX/logging/logging.hpp>
 #include <SceneryEditorX/logging/asserts.h>
-#include <SceneryEditorX/utils/static_states.h>
 
 /**
 ##########################################################
@@ -137,12 +132,12 @@
 */
 
 #ifdef SEDX_DEBUG
-    extern std::filesystem::path workingDir;
+	extern std::filesystem::path workingDir;
 #endif
 
 #if defined(SEDX_DEBUG) && defined(SEDX_PROFILING_ENABLED)
-    #include <SceneryEditorX/logging/profiler.hpp>
-    #define TRACY_ENABLE
+	#include <SceneryEditorX/logging/profiler.hpp>
+	#define TRACY_ENABLE
 #endif
 
 /// -------------------------------------------------------
@@ -159,31 +154,31 @@
 template <typename T>
 void ErrMsg(const T &errorMessage)
 {
-    /// Use fmt::format to convert errorMessage to a string
-    std::string errorStr = fmt::format("{}", errorMessage);
+	/// Use fmt::format to convert errorMessage to a string
+	std::string errorStr = fmt::format("{}", errorMessage);
 
 #ifdef SEDX_PLATFORM_WINDOWS
-    /// Convert to wide string for Windows
-    const std::wstring errorWStr(errorStr.begin(), errorStr.end());
-    MessageBoxW(nullptr, errorWStr.c_str(), L"Error", MB_OK | MB_ICONERROR);
+	/// Convert to wide string for Windows
+	const std::wstring errorWStr(errorStr.begin(), errorStr.end());
+	MessageBoxW(nullptr, errorWStr.c_str(), L"Error", MB_OK | MB_ICONERROR);
 #endif
 #ifdef SEDX_PLATFORM_APPLE
-    autoreleasepool {
+	autoreleasepool {
 		NSString *errorStr = [NSString stringWithUTF8String:errorMessage.c_str()];
 		NSString *nsTitle = [NSString stringWithUTF8String:"Error"];
 
-    	NSAlert *alert = [[NSAlert alloc] init];
+		NSAlert *alert = [[NSAlert alloc] init];
 		[alert setMessageText:nsTitle];
 		[alert setInformativeText:errorStr];
 		[alert setAlertStyle:NSAlertStyleCritical]; /// Use Critical style for errors
 		[alert runModal];
-    }
-    /// For other platforms, log to console and potentially show via GLFW
-    spdlog::error("Error: {}", errorStr);
-    /// Note: If you have an active GLFW window, you could trigger a custom ImGui popup here
+	}
+	/// For other platforms, log to console and potentially show via GLFW
+	spdlog::error("Error: {}", errorStr);
+	/// Note: If you have an active GLFW window, you could trigger a custom ImGui popup here
 #endif
 #ifdef SEDX_PLATFORM_LINUX
-    throw std::runtime_error(errorStr);
+	throw std::runtime_error(errorStr);
 #endif
 };
 

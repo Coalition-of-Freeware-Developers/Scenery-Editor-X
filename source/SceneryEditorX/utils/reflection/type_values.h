@@ -1,15 +1,33 @@
 ﻿/**
-* -------------------------------------------------------
-* Scenery Editor X
-* -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray
-* Copyright (c) 2025 Coalition of Freeware Developers
-* -------------------------------------------------------
-* type_values.h
-* -------------------------------------------------------
-* Created: 15/12/2025
-* -------------------------------------------------------
-*/
+ * -------------------------------------------------------
+ * Scenery Editor X
+ * -------------------------------------------------------
+ * Copyright (c) 2026 Thomas Ray 
+ * Copyright (c) 2026 Coalition of Freeware Developers
+ * -------------------------------------------------------
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ * -------------------------------------------------------
+ * type_values.h
+ * -------------------------------------------------------
+ * Created: 15/12/2025
+ * -------------------------------------------------------
+ */
 #pragma once
 #include <algorithm>
 #include <exception>
@@ -19,14 +37,14 @@
 #include <vector>
 #include "SceneryEditorX/logging/logging.hpp"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-    ///< Forward declare existing classes for integration
+    // Forward declare existing classes for integration
     class Allocator;
 
-    ///< Forward declare Types namespace for integration
+    // Forward declare Types namespace for integration
     namespace Types
     {
         class Type;
@@ -36,13 +54,13 @@ namespace SceneryEditorX
 
     namespace Values
     {
-        ///< Forward declarations
+        // Forward declarations
         class Value;
         class ValueView;
         class StringDictionary;
         struct MemberNameAndValue;
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
         /**
          * @brief Custom exception for value system errors
@@ -56,7 +74,7 @@ namespace SceneryEditorX
             const char* description;
         };
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
         /**
          * @brief Throws an error exception with SceneryEditorX logging integration
@@ -78,7 +96,7 @@ namespace SceneryEditorX
                 ThrowError(errorMessage);
         }
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
         /**
          * @brief Storage type for boolean values in the value system
@@ -86,7 +104,7 @@ namespace SceneryEditorX
          */
         using BoolStorageType = uint32_t;
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
         /**
          * @brief Input data structure for deserialization operations
@@ -97,7 +115,7 @@ namespace SceneryEditorX
             const uint8_t* end;
         };
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
         /**
          * @brief Serialized data container for Value/ValueView objects
@@ -128,7 +146,7 @@ namespace SceneryEditorX
             void Write(const void* ptr, size_t size);
         };
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
         /**
          * @brief SceneryEditorX-integrated allocator wrapper
@@ -155,8 +173,8 @@ namespace SceneryEditorX
             virtual void* Allocate(const size_t size)
             {
                 if (size == 0) return nullptr;
-                ///< For now, use standard allocation - this will be properly integrated with SceneryEditorX allocator
-                ///< TODO: Integrate with SceneryEditorX::Allocator::Allocate(size, m_Category)
+                // For now, use standard allocation - this will be properly integrated with SceneryEditorX allocator
+                // TODO: Integrate with SceneryEditorX::Allocator::Allocate(size, m_Category)
                 return std::malloc(size);
             }
 
@@ -168,8 +186,8 @@ namespace SceneryEditorX
              */
             virtual void* ResizeIfPossible(void* data, size_t requestedSize)
             {
-                ///< Standard allocator doesn't support in-place resize
-                ///< Return original pointer to indicate resize not possible
+                // Standard allocator doesn't support in-place resize
+                // Return original pointer to indicate resize not possible
                 return data;
             }
 
@@ -179,8 +197,8 @@ namespace SceneryEditorX
              */
             virtual void Free(void* ptr) noexcept
             {
-                ///< For now, use standard free - this will be properly integrated with SceneryEditorX allocator
-                ///< TODO: Integrate with SceneryEditorX::Allocator::Free(ptr)
+                // For now, use standard free - this will be properly integrated with SceneryEditorX allocator
+                // TODO: Integrate with SceneryEditorX::Allocator::Free(ptr)
                 std::free(ptr);
             }
 
@@ -194,7 +212,7 @@ namespace SceneryEditorX
             const char* m_Category;
         };
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
         /**
          * @brief Fixed-size pool allocator for high-performance scenarios
@@ -235,7 +253,7 @@ namespace SceneryEditorX
             {
                 if (size == 0) return nullptr;
 
-                ///< Align to pointer size for better performance
+                // Align to pointer size for better performance
                 constexpr size_t alignment = sizeof(void*);
                 const size_t alignedSize = (size + alignment - 1) & ~(alignment - 1);
 
@@ -260,27 +278,27 @@ namespace SceneryEditorX
                 if (!data)
                     return nullptr;
 
-                ///< Check if this is the last allocation
+                // Check if this is the last allocation
                 if (data != &m_Pool[m_LastAllocationPosition])
-                    return data; ///< Can't resize, not the last allocation
+                    return data; // Can't resize, not the last allocation
 
                 constexpr size_t alignment = sizeof(void*);
                 const size_t alignedSize = (requiredSize + alignment - 1) & ~(alignment - 1);
                 if (const size_t currentSize = m_Position - m_LastAllocationPosition; alignedSize <= currentSize)
                 {
-                    ///< Shrinking - adjust position
+                    // Shrinking - adjust position
                     m_Position = m_LastAllocationPosition + alignedSize;
                     return data;
                 }
 
-                ///< Growing - check if we have space
+                // Growing - check if we have space
                 if (m_LastAllocationPosition + alignedSize <= totalSize)
                 {
                     m_Position = m_LastAllocationPosition + alignedSize;
                     return data;
                 }
 
-                return data; ///< Can't resize
+                return data; // Can't resize
             }
 
             /**
@@ -304,7 +322,7 @@ namespace SceneryEditorX
             char m_Pool[totalSize];
         };
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
         /**
          * @brief String dictionary for efficient string storage and deduplication
@@ -419,7 +437,7 @@ namespace SceneryEditorX
             std::unordered_map<std::string, Handle> m_StringToHandle;
         };
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
         /**
          * @brief Simple string dictionary implementation for basic use cases
@@ -430,7 +448,7 @@ namespace SceneryEditorX
             SimpleStringDictionary() : StringDictionary(std::make_shared<ValueAllocator>("Values::SimpleStrings")) {}
         };
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
         /**
          * @brief Type wrapper that provides a simple interface for the value system
@@ -634,7 +652,7 @@ namespace SceneryEditorX
             {
                 if (m_Data)
                 {
-                    ///< Use SceneryEditorX memory allocator for cleanup
+                    // Use SceneryEditorX memory allocator for cleanup
                     GetValueAllocator().Free(m_Data);
                     m_Data = nullptr;
                 }
@@ -696,8 +714,8 @@ namespace SceneryEditorX
             [[nodiscard]] ValueView GetView() const;
 
         private:
-            Type m_Type;      ///< Type descriptor
-            void* m_Data;     ///< Raw data pointer
+            Type m_Type;      // Type descriptor
+            void* m_Data;     // Raw data pointer
 
             /** Get the global value allocator */
             static ValueAllocator& GetValueAllocator()
@@ -792,7 +810,7 @@ namespace SceneryEditorX
 
         };
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
         /**
          * @brief Non-owning view of a Value for efficient access
@@ -868,15 +886,15 @@ namespace SceneryEditorX
                 if (!IsValid())
                     return {}; /// Empty value
 
-                ///< TODO: Implementation will copy data using type system
+                // TODO: Implementation will copy data using type system
                 Value result;
                 // SEDX_CORE_TRACE_TAG("VALUE", "Created copy from ValueView");
                 return result;
             }
 
         private:
-            Type m_Type;         ///< Type descriptor (not owned)
-            const void* m_Data;  ///< Data pointer (not owned)
+            Type m_Type;         // Type descriptor (not owned)
+            const void* m_Data;  // Data pointer (not owned)
 
             /** Validate type match */
             template<typename T>
@@ -904,9 +922,9 @@ namespace SceneryEditorX
         /// Implement Value::GetView() now that ValueView is defined
         inline ValueView Value::GetView() const { return ValueView(*this); }
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
         /// Template specializations for common C++ types
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
         template<>
         inline Type Value::GetTypeDescriptorImpl<bool>()
@@ -960,4 +978,4 @@ namespace SceneryEditorX
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

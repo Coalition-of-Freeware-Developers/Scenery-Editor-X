@@ -1,176 +1,145 @@
-﻿/**
-* -------------------------------------------------------
-* Scenery Editor X
-* -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray
-* Copyright (c) 2025 Coalition of Freeware Developers
-* -------------------------------------------------------
-* asset_extensions.h
-* -------------------------------------------------------
-* Created: 11/7/2025
-* -------------------------------------------------------
-*/
-
 /**
-* @file asset_extensions.h
-* @brief Asset file extension mapping system for type resolution
-* 
-* This file provides a comprehensive mapping system that associates file extensions
-* with their corresponding asset types in Scenery Editor X. The system supports
-* both native editor formats and external formats including X-Plane scenery files,
-* mesh formats, textures, and fonts.
-* 
-* The extension mapping is used throughout the asset management system for:
-* - Automatic asset type detection during import
-* - File filtering in dialogs and browsers  
-* - Asset pipeline routing and processing
-* - Serialization format selection
-* 
-* @note - Some extensions like ".obj" appear multiple times with different asset types.
-*       The asset manager uses additional context (file location, content analysis)
-*       to resolve ambiguities between X-Plane objects and mesh source files.
-*/
+ * -------------------------------------------------------
+ * Scenery Editor X
+ * -------------------------------------------------------
+ * Copyright (c) 2026 Thomas Ray 
+ * Copyright (c) 2026 Coalition of Freeware Developers
+ * -------------------------------------------------------
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ * -------------------------------------------------------
+ * asset_extensions.h
+ * -------------------------------------------------------
+ * Created: 19/03/2026
+ * -------------------------------------------------------
+ */
 #pragma once
-#include <unordered_map>
-#include <variant>
 #include "asset_types.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
+
 	/**
-	* @brief Global asset extension to type mapping table
-	* 
-	* This static map provides a comprehensive lookup system for determining asset types
-	* based on file extensions. The map uses std::variant to handle both native editor
-	* asset types (AssetType) and X-Plane specific asset types (XPlaneAssetType).
-	* 
-	* **Extension Categories:**
-	* 
-	* **Native Scenery Editor X Formats (.edX.*)**
-	* - `.edX.proj`		- Scene/Project files containing complete scene hierarchies
-	* - `.edX.mesh`		- Processed mesh assets with optimization and LOD data
-	* - `.edX.mat`		- Material definitions with PBR properties and texture references
-	* - `.edX.prefab`	- Reusable object templates with component configurations
-	* - `.edX.lib`		- X-Plane scenery asset libraries containing collections of related assets
-	* 
-	* **X-Plane Scenery Formats**
-	* - `.dsf`		- Distributed Scenery Format files (terrain and vector data)
-	* - `.pol`		- Polygon definition files for 2D airport layouts
-	* - `.obj`		- X-Plane 3D object files (different from mesh .obj files)
-	* - `.ter`		- Terrain definition and configuration files
-	* - `.for`		- Forest and vegetation placement data
-	* - `.dat`		- Airport layout and navigation data
-	* - `.ags/.agb` - Autogen string and block definitions
-	* - `.lin`		- Linear feature definitions (roads, railways, etc.)
-	* - `.fac`		- Facade building definitions
-	* - `.net`		- Road network topology data
-	* - `.str`		- Object string placement data
-	* 
-	* **Mesh and Animation Sources**
-	* - `.fbx`			- Autodesk FBX format with animations and materials
-	* - `.gltf/.glb`	- Khronos GLTF format (JSON/Binary variants)
-	* - `.obj`			- Wavefront OBJ geometry files (mesh source, not X-Plane)
-	* - `.dae`			- COLLADA format with scene graph support
-	* - `.usd`			- Universal Scene Description format
-	* 
-	* **Texture Formats**
-	* - Standard formats: `.png`, `.jpg/.jpeg`, `.bmp`, `.tga`
-	* - HDR formats: `.hdr` for high dynamic range textures
-	* - Compressed: `.dds` with mipmap and compression support
-	* 
-	* **Font Assets**
-	* - `.ttf/.ttc` - TrueType fonts (single/collection)
-	* - `.otf`		- OpenType fonts with advanced typography
-	* 
-	* **Script Files**
-	* - `.py` - Python plugin scripts for editor automation and custom tools
-	* 
-	* @warning Extension conflicts: The ".obj" extension maps to both XPlaneAssetType::Object
-	*          and AssetType::MeshSource. Asset importers must use additional context
-	*          (file location, header analysis) to resolve the correct type.
-	* 
-	* @note - This map is used extensively by:
-	*       - AssetImporter for type detection during drag-and-drop operations
-	*       - FileDialog filters for showing relevant files
-	*       - AssetBrowser for icon selection and categorization
-	*       - Project serialization for dependency tracking
-	* 
-	* **Usage Example:**
-	* @code
-	* std::string extension = ".edX.mat";
-	* auto it = s_AssetExtensionMap.find(extension);
-	* if (it != s_AssetExtensionMap.end())
-	* {
-	*     if (std::holds_alternative<AssetType>(it->second))
-	*     {
-	*         AssetType type = std::get<AssetType>(it->second);
-	*         // Handle native editor asset type
-	*     }
-	*     else if (std::holds_alternative<XPlaneAssetType>(it->second))
-	*     {
-	*         XPlaneAssetType type = std::get<XPlaneAssetType>(it->second);
-	*         // Handle X-Plane specific asset type
-	*     }
-	* }
-	* @endcode
-	* 
-	* @see AssetType for native editor asset type definitions
-	* @see XPlaneAssetType for X-Plane specific asset type definitions
-	* @see AssetImporter for usage in asset import pipeline
-	* @see AssetManager for asset type resolution and loading
-	*/
-	inline static std::unordered_map<std::string, std::variant<AssetType, XPlaneAssetType>> s_AssetExtensionMap =
+	 * @brief A mapping of file extensions to their corresponding asset types. 
+	 * This is used to determine the type of asset based on its file extension when loading or importing assets into the editor.
+	 */
+	inline static std::unordered_map<std::string, AssetType> s_AssetExtensionMap =
 	{
-		///< Scenery Editor X - extension types
-		{ ".edX.proj", 	AssetType::Scene },
-		{ ".edX.mesh", 	AssetType::Mesh },
-		{ ".edX.mat", 	AssetType::Material },
-		{ ".edX.prefab",	AssetType::Prefab },
-		{ ".edX.lib",		AssetType::Library },
+		// Scenery Editor X Format Types
+		{ ".sex",  AssetType::Scene }, // Scenery Editor- X scene format
+		{ ".edx",  AssetType::Scene }, // Scenery Editor- X compressed serialized binary format
+		{ ".edm",  AssetType::Mesh },  // Scenery Editor- X mesh format
+		{ ".edt",  AssetType::Texture },  // Scenery Editor- X texture format
+		{ ".wed.xml", AssetType::Scene}, // WED (World Editor) XML project format
+		{ ".wed.bak.xml", AssetType::Scene}, // WED (World Editor) XML project backup format
 
-		///< X-Plane Scenery extensions
-		{ ".dsf",		XPlaneAssetType::DSF },
-		{ ".pol",		XPlaneAssetType::Polygon },
-		{ ".obj",		XPlaneAssetType::Object },
-		{ ".ter",		XPlaneAssetType::Terrain },
-		{ ".for",		XPlaneAssetType::Forest },
-		{ ".dat",		XPlaneAssetType::AirportData },
-		{ ".ags",		XPlaneAssetType::AutogenString },
-		{ ".agb",		XPlaneAssetType::AutogenBlock },
-		{ ".lin",		XPlaneAssetType::Line },
-		{ ".fac",		XPlaneAssetType::Facade },
-		{ ".net",		XPlaneAssetType::RoadNetwork },
-		{ ".str",		XPlaneAssetType::ObjString },
+		// Mesh/Models
+		{ ".fbx",  AssetType::Mesh },
+		{ ".gltf", AssetType::Mesh },
+		{ ".glb",  AssetType::Mesh },
+		{ ".obj",  AssetType::Mesh },
 
-		///< Python Plugin Script Extensions
-		{ ".py",		AssetType::ScriptFile },
+		// Textures
+		{ ".dds",  AssetType::Texture },
+		{ ".ktx",  AssetType::Texture },
+		{ ".png",  AssetType::Texture },
+		{ ".tga",  AssetType::Texture },
+		{ ".jpg",  AssetType::Texture },
+		{ ".jpeg", AssetType::Texture },
+		{ ".hdr",  AssetType::EnvMap },
 
-		///< Non X-Plane Mesh/animation extensions
-		{ ".fbx",		AssetType::MeshSource },
-		{ ".gltf",	AssetType::MeshSource },
-		{ ".glb",		AssetType::MeshSource },
-		{ ".obj",		AssetType::MeshSource },
-		{ ".dae",		AssetType::MeshSource },
-		{ ".usd",		AssetType::MeshSource },
-
-		///< Textures
-		{ ".png",		AssetType::Texture },
-		{ ".jpg",		AssetType::Texture },
-		{ ".jpeg",	AssetType::Texture },
-		{ ".bmp",		AssetType::Texture },
-		{ ".tga",		AssetType::Texture },
-		{ ".hdr",		AssetType::Texture },
-		{ ".dds",		AssetType::Texture },
-
-		///< Fonts
-		{ ".ttf",		AssetType::Font },
-		{ ".ttc",		AssetType::Font },
-		{ ".otf",		AssetType::Font },
+		// Fonts
+		{ ".ttf", AssetType::Font },
+		{ ".ttc", AssetType::Font },
+		{ ".otf", AssetType::Font },
 
 	};
 
+	/**
+	 * @brief A mapping of X-Plane specific file extensions to their corresponding asset types.
+	 * This is used to determine the type of asset based on its file extension when loading or importing X-Plane assets into the editor.
+	 */
+	inline static std::unordered_map<std::string, AssetType> s_XPlaneAssetExtensionMap =
+	{
+		{ ".obj", AssetType::Mesh }, // X-Plane OBJ8 format (with custom extensions for materials and animations)
+		{ ".agp", AssetType::Mesh }, // X-Plane Autogen points
+		{ ".agb", AssetType::Mesh }, // X-Plane Autogen blocks
+		{ ".ags", AssetType::Mesh }, // X-Plane Autogen strings
+		{ ".fac", AssetType::Mesh }, // X-Plane facade format
+		{ ".for", AssetType::Mesh }, // X-Plane forest format
+		{ ".net", AssetType::Mesh }, // X-Plane network format
+		{ ".dsf", AssetType::Mesh }, // X-Plane DSF format
+		{ ".ter", AssetType::Mesh }, // X-Plane terrain format
+		{ ".lin", AssetType::Mesh }, // X-Plane painted line format
+		{ ".pol", AssetType::Mesh }, // X-Plane polygon format
+		{ ".str", AssetType::Mesh }, // X-Plane string format
+		{ ".dat", AssetType::Mesh }, // X-Plane data format
+	};
+
+	/**
+	 * @brief Checks if the given asset type has a valid extension.
+	 * @param type The asset type to check.
+	 * @return True if the asset type has a valid extension, false otherwise.
+	 */
+	inline static bool IsValidExtension(const AssetType type)
+	{
+		for (const auto &val : s_AssetExtensionMap | std::views::values)
+		{
+			if (val == type)
+				return true;
+		}
+
+		return false;
+	}
+
+	/**
+	 * @brief Gets the asset type based on the given asset type.
+	 * @param type The asset type to check.
+	 * @return The corresponding asset type if found, AssetType::None otherwise.
+	 */
+	inline static AssetType GetAssetType(const AssetType type)
+	{
+		for (const auto &assetType : s_AssetExtensionMap | std::views::values)
+		{
+			if (assetType == type)
+				return assetType;
+		}
+
+		return AssetType::None;
+	}
+
+	/**
+	 * @brief Gets the asset type based on the given file extension.
+	 * @param type The file extension to check.
+	 * @return The corresponding asset type if found, AssetType::None otherwise.
+	 */
+	inline static AssetType GetAssetType(const std::string &type)
+	{
+		for (const auto &[ext, assetType] : s_AssetExtensionMap)
+		{
+			if (ext == type)
+				return assetType;
+		}
+
+		return AssetType::None;
+	}
 }
 
-/// --------------------------------------------------------
+// -------------------------------------------------------

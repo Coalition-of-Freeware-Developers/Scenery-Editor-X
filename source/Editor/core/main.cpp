@@ -1,143 +1,257 @@
+﻿/**
+ * -------------------------------------------------------
+ * Scenery Editor X
+ * -------------------------------------------------------
+ * Copyright (c) 2026 Thomas Ray 
+ * Copyright (c) 2026 Coalition of Freeware Developers
+ * -------------------------------------------------------
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ * -------------------------------------------------------
+ * main.cpp
+ * -------------------------------------------------------
+ * Created: 16/3/2025
+ * -------------------------------------------------------
+ */
+#include "editor_layer.h"
+#include <SceneryEditorX/core/platform/entrypoint.h>
+
+// -------------------------------------------------------
+
+static std::filesystem::path s_ProjectSolutionPath = "";
+static std::vector<std::string> s_ClArguments;
+static std::string s_TempDirectory;
+static uint32_t s_ClArg_Flags = 0;
+static bool s_CacheClearedByCli = false;
+static auto operator<(const ImVec2 &lhs, const ImVec2 &rhs) { return lhs.x < rhs.x && lhs.y < rhs.y; }
+
 /**
-* -------------------------------------------------------
-* Scenery Editor X
-* -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray
-* Copyright (c) 2025 Coalition of Freeware Developers
-* -------------------------------------------------------
-* main.cpp
-* -------------------------------------------------------
-* Created: 16/3/2025
-* -------------------------------------------------------
-*/
-#include <Editor/core/editor.h>
-#include <SceneryEditorX/EntryPoint.h>
-#include <SceneryEditorX/platform/settings/settings.h>
-
-/// -------------------------------------------------------
-
-/*
-std::string getDumpDirectory()
+ * @brief Clears temporary cache files under the platform temp directory.
+ */
+static void ClearTempCache()
 {
-    return std::filesystem::temp_directory_path().string();
-}
-*/
+	if (s_CacheClearedByCli)
+		return;
 
-// Initialize the application log and crash handler
-void initCrashHandlerServices()
-{
-    // Initialize the application logging system
-    //SceneryEditorX::Log::Init();
-    //SceneryEditorX::Log::LogHeader();
-    //EDITOR_INFO("Scenery Editor X Engine is starting...");
+	if (s_TempDirectory.empty())
+	{
+		EDITOR_WARN_TAG("Editor", "Cannot clear cache: temp directory is empty");
+		return;
+	}
 
-    // Initialize the Crash Handler
-    /*
-    CrashHandler::CrashService::CrashHandlerConfig config;
-    config.appVersion = SEDX_VERSION_STRING;
-    config.dumpDir = getDumpDirectory();
-    config.onCrashDetectedCallback = [](const std::string &dumpPath)
-    {
-        // Optional callback - called in the crash context, keep it minimal
-        spdlog::critical("Crash detected, dump saved to: {}", dumpPath);
-    };
-    CrashHandler::CrashService::Init(config);
-    */
+	const std::filesystem::path tempRoot = std::filesystem::path(s_TempDirectory) / "SceneryEditorX";
+	std::error_code ec;
+
+	if (!std::filesystem::exists(tempRoot, ec))
+	{
+		EDITOR_INFO_TAG("Editor", "--clear-cache requested, but no temp cache folder found at '{}'", tempRoot.string());
+		s_CacheClearedByCli = true;
+		return;
+	}
+
+	const uintmax_t removed = std::filesystem::remove_all(tempRoot, ec);
+	if (ec)
+	{
+		EDITOR_ERROR_TAG("Editor", "Failed to clear temp cache '{}' ({}): {}", tempRoot.string(), ec.value(), ec.message());
+		return;
+	}
+
+	EDITOR_INFO_TAG("Editor", "Cleared temp cache folder '{}' (removed {} entries)", tempRoot.string(), removed);
+	s_CacheClearedByCli = true;
 }
 
-// Shutdown application services
-void endCrashHandlerServices()
+/**
+ * @brief Check if a specific command line argument is present.
+ * @param argument The command line argument to check for.
+ * @return True if the argument is present, false otherwise.
+ */
+static bool HasArgument(const std::string &argument)
 {
-    // Shut down crash handler before exit
-    // CrashHandler::CrashService::Shutdown();
+	for (const auto &arg : s_ClArguments)
+	{
+		if (arg == argument)
+			return true;
+	}
 
-    //EDITOR_INFO("Scenery Editor X Engine is shutting down...");
-    //SceneryEditorX::Log::FlushAll(); // Make sure to flush logs before shutdown
-    //SceneryEditorX::Log::ShutDown();
+	return false;
 }
 
-namespace SceneryEditorX
+/**
+ * @brief Write a CI test file with the specified value.
+ * @param value The value to write to the CI test file.
+ */
+static void WriteCiTestFile(const uint32_t value)
 {
-    class EditorX : public Application
-    {
-    public:
-        EditorX(const AppData &appData, std::string_view projPath) : Application(appData), m_ProjectPath(projPath)
-        {
-            if (projPath.empty())
-                m_ProjectPath = "SceneryEditorX/Projects/Default.edX";
-                
-            ///< Initialize application services
-            initCrashHandlerServices();
-        }
-
-        virtual ~EditorX() override
-        {
-            ///< Clean up application services
-            endCrashHandlerServices();
-        }
-
-        virtual void OnInit() override  
-        {  
-            ///< Initialize the user settings  
-            m_UserSettings = CreateRef<ApplicationSettings>("settings.cfg");
-            if (!m_UserSettings->ReadSettings())  
-            {  
-                EDITOR_ERROR_TAG("Core", "Failed to initialize user settings for project: {}", m_ProjectPath);  
-                return;  
-            }  
-            
-            try 
-            {
-                m_EditorApp->InitEditor();
-            }
-            catch (const std::exception &e)
-            {
-                EDITOR_ERROR_TAG("Core", "Failed to initialize editor: {}", e.what());
-            }
-        }
-        
-        virtual void OnUpdate() override
-        {
-            if (m_EditorApp)
-                m_EditorApp->Update();
-        }
-        
-        virtual void OnShutdown() override
-        {
-            ///< Clean up editor application before the main Application is destroyed
-            if (m_EditorApp)
-                m_EditorApp.reset();
-
-            Application::OnShutdown();
-        }
-
-    private:
-        std::string m_ProjectPath;
-        Ref<ApplicationSettings> m_UserSettings{};
-        Scope<EditorApplication> m_EditorApp{};
-    };
+	if (HasArgument("-ci_test"))
+	{
+		if (std::ofstream file("ci_test.txt"); file.is_open())
+		{
+			file << value;
+			file.close();
+		}
+	}
 }
 
-/// -------------------------------------------------------
-
-SceneryEditorX::Application* SceneryEditorX::CreateApplication(int argc, char** argv)
+/**
+ * @brief Process command line arguments and set internal flags accordingly.
+ */
+static void ProcessClArgs()
 {
-    /// Parse command line arguments for project path
-    std::string_view projectPath;
-    if (argc > 1)
-        projectPath = argv[1];
+	// Common simple flags that exist in the repo already:
+	// -ci_test  -> used by CI to write a small indicator file (see WriteCiTestFile above)
+	// You can add more handlers here for other flags (e.g. --headless, --log=level, --no-gui, etc.)
 
-    /// Create the application with default settings
-	AppData windowData;
-	windowData.appName = "Scenery Editor X";
-	windowData.WinWidth = 1280;
-	windowData.WinHeight = 720;
-	windowData.Resizable = true;
-	windowData.Fullscreen = true;
-    windowData.VSync = true;
+	EDITOR_TRACE_TAG("Editor", "Processing command line arguments");
 
-    /// Return a new instance of the editor application
-    return new EditorX(windowData, projectPath);
+	// Example: existing helper writes a CI file when -ci_test is present
+	if (HasArgument("-ci_test"))
+	{
+		// The helper in this TU will write "ci_test.txt" containing 1
+		WriteCiTestFile(1);
+	}
+
+	// Iterate and parse key=value style args
+	for (const auto &arg : s_ClArguments)
+	{
+		if (arg == "--clear-cache")
+		{
+			EDITOR_INFO_TAG("Editor", "Clearing temporary cache due to CLI argument: {}", arg);
+			ClearTempCache();
+		}
+
+		if (arg == "--recompile-shaders")
+		{
+			EDITOR_INFO_TAG("Editor", "Shader cache bypass requested via CLI argument: {}", arg);
+		}
+
+		// --headless or -no-ui : run without showing UI (example usage, implement the mode as needed)
+		if (arg == "--headless" || arg == "-no-ui")
+		{
+			EDITOR_INFO_TAG("Editor", "Starting in headless/no-ui mode due to argument: {}", arg);
+			// Set any internal flags or call methods to enter headless mode
+			// e.g., Application::Get().SetHeadless(true);   // implement as needed
+		}
+
+		// Change logging level at startup
+		// THIS HAS BEEN MOVED TO PLATFORM CONTEXT INIT
+		/*
+		constexpr std::string logPrefix = "--verbose";
+		if (arg.starts_with(logPrefix))
+		{
+			std::string level = arg.substr(logPrefix.size());
+			EDITOR_INFO_TAG("Editor", "Requested log level: {}", level);
+			// Use your logging API to set the level, e.g. Log::SetLevelFromString(level);
+			// If you don't have such a helper, map strings to levels here and call Log::SetLevel(...)
+		}
+		*/
+
+		// Example: --run-task=name  -> you could dispatch internal tasks or tests
+		constexpr std::string_view taskPrefix = "--run-task=";
+		if (arg.starts_with(taskPrefix))
+		{
+			std::string taskName = arg.substr(taskPrefix.size());
+			EDITOR_INFO_TAG("Editor", "Dispatching startup task: {}", taskName);
+			// Dispatch your task: if (taskName == "build-shaders") BuildShaderPack();
+		}
+	}
 }
 
-/// -------------------------------------------------------
+/**
+ * @class Editor
+ * @brief Main application class for the Scenery Editor X.
+ *
+ * The Editor class serves as the central controller for the editor,
+ * managing the lifecycle of the application and coordinating between the graphics engine,
+ * UI system, asset management, and viewport rendering. It handles initialization,
+ * main loop execution, frame rendering, and resource management.
+ */
+class Editor : public SceneryEditorX::Application
+{
+public:
+	explicit Editor(const SceneryEditorX::PlatformContext& context) : Application(context) {}
+
+	Editor(const SceneryEditorX::PlatformContext &context, const SceneryEditorX::Ref<SceneryEditorX::UserPreferences> &userPreferences) 
+	: Application(context), m_UserPreferences(userPreferences)
+	{
+		s_ClArguments = context.GetCommandLineArgs();
+		s_TempDirectory = context.GetTempDirectory();
+		ProcessClArgs(); // Process command line arguments to set internal flags before initialization
+		EDITOR_INFO_TAG("Editor", "=== Initializing Editor with PlatformContext and UserPreferences ===");
+		EDITOR_INFO_TAG("Editor", "Working Directory: {}", context.GetWorkingDirectory());
+		EDITOR_INFO_TAG("Editor", "Temp Directory: {}", context.GetTempDirectory());
+	}
+
+	virtual void OnInit() override
+	{
+		const auto start = std::chrono::high_resolution_clock::now();
+		std::filesystem::path appdata = SceneryEditorX::IO::FileSystem::GetPersistentStoragePath();
+
+		// Persistent Storage
+		{
+			m_PersistentStoragePath = appdata;
+
+			if (!SceneryEditorX::IO::FileSystem::Exists(m_PersistentStoragePath))
+				SceneryEditorX::IO::FileSystem::CreateDir(m_PersistentStoragePath);
+		}
+
+	    if (!m_UserPreferences)
+		{
+			EDITOR_INFO_TAG("Main", "User Preferences not initialized. Creating default preferences and continuing initialization.");
+			m_UserPreferences = SceneryEditorX::CreateRef<SceneryEditorX::UserPreferences>();
+		}
+
+		m_UserPreferences->LoadPreferences();
+
+		if (m_UserPreferences->GetRecentProjects().empty() && !m_ProjectPath.empty())
+		{
+		    m_UserPreferences->SetStartupProject(m_ProjectPath);
+			m_ProjectPath = m_UserPreferences->GetStartupProject();
+			m_UserPreferences->LoadPreferences();
+		}
+
+		if (!SceneryEditorX::Window::IsVisible())
+		{
+			EDITOR_WARN_TAG("Editor", "Main window is not visible after creation.");
+		}
+		
+		PushLayer(new SceneryEditorX::EditorLayer(m_UserPreferences));
+
+		const auto end = std::chrono::high_resolution_clock::now();
+		auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+		EDITOR_INFO_TAG("Editor", "Editor initialization complete ({} ms)", duration);
+	}
+
+private:
+	std::string m_ProjectPath;
+	std::filesystem::path m_PersistentStoragePath;
+	SceneryEditorX::Ref<SceneryEditorX::UserPreferences> m_UserPreferences;
+};
+
+// -------------------------------------------------------
+
+SceneryEditorX::Application* SceneryEditorX::CreateApplication(const PlatformContext& context)
+{
+	s_ClArguments = context.GetCommandLineArgs();
+	s_TempDirectory = context.GetTempDirectory();
+	ProcessClArgs(); // Process command line arguments to set internal flags before initialization
+
+	// Return a new instance of the editor application using PlatformContext
+	return new Editor(context);
+}
+
+// -------------------------------------------------------

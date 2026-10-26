@@ -1,24 +1,41 @@
 ﻿/**
-* -------------------------------------------------------
-* Scenery Editor X
-* -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray
-* Copyright (c) 2025 Coalition of Freeware Developers
-* -------------------------------------------------------
-* uuid.cpp
-* -------------------------------------------------------
-* Created: 13/7/2025
-* -------------------------------------------------------
-*
-* This file implements the UUID (Universally Unique Identifier) system for
-* the Scenery Editor X application. It provides 32-bit, 64-bit, and 128-bit UUID
-* variants with cryptographically secure random generation, as well as utility
-* functions for encoding, decoding, and hashing operations.
-*
-* The implementation uses thread-safe random number generators to ensure
-* uniqueness across multiple threads and application instances.
-* -------------------------------------------------------
-*/
+ * -------------------------------------------------------
+ * Scenery Editor X
+ * -------------------------------------------------------
+ * Copyright (c) 2026 Thomas Ray 
+ * Copyright (c) 2026 Coalition of Freeware Developers
+ * -------------------------------------------------------
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ * -------------------------------------------------------
+ * uuid.cpp
+ * -------------------------------------------------------
+ * Created: 13/7/2025
+ * -------------------------------------------------------
+ * This file implements the UUID (Universally Unique Identifier) system for
+ * the Scenery Editor X application. It provides 32-bit, 64-bit, and 128-bit UUID
+ * variants with cryptographically secure random generation, as well as utility
+ * functions for encoding, decoding, and hashing operations.
+ *
+ * The implementation uses thread-safe random number generators to ensure
+ * uniqueness across multiple threads and application instances.
+ * -------------------------------------------------------
+ */
 #include "uuid.h"
 #include <algorithm>
 #include <array>
@@ -26,31 +43,29 @@
 #include <stdexcept>
 #include <string>
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-	/// @brief Base64 character set used for encoding binary data to text
-	static const std::string base64Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+	/* @brief Base64 character set used for encoding binary data to text */
+	static const std::string BASE64_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-	/// @brief Random device for UUID generation
+	/* @brief Random device for UUID generation */
 	static std::random_device s_RandomDevice;
 
-	/// @brief 64-bit Mersenne Twister random number generator
+	/* @brief 64-bit Mersenne Twister random number generator */
 	static std::mt19937_64 s_Engine64(s_RandomDevice());
 
-	/// @brief Uniform distribution for generating 64-bit UUID values
+	/* @brief Uniform distribution for generating 64-bit UUID values */
 	static std::uniform_int_distribution<uint64_t> s_UniformDistribution64;
 
-	/// @brief 32-bit Mersenne Twister random number generator
+	/* @brief 32-bit Mersenne Twister random number generator */
 	static std::mt19937 s_Engine32(s_RandomDevice());
 
-	/// @brief Uniform distribution for generating 32-bit UUID values
+	/* @brief Uniform distribution for generating 32-bit UUID values */
 	static std::uniform_int_distribution<uint32_t> s_UniformDistribution32;
 
-	/**
-	 * @brief Checks if a character is a valid Base64 character
-	 */
+	/* @brief Checks if a character is a valid Base64 character */
 	static bool IsBase64(const unsigned char c)
 	{
 		return (c == 43 ||              // +
@@ -60,7 +75,7 @@ namespace SceneryEditorX
 	}
 
 	// -------------------------------------------------------
-	// UUIDUtilities Implementation
+	// UUID Utilities Implementation
 	// -------------------------------------------------------
 
 	/*
@@ -214,6 +229,21 @@ namespace SceneryEditorX
 	}
 	*/
 
+    UUID::UUID(UUID &&other) noexcept : m_UUID(other.m_UUID)
+    {
+        other.m_UUID = 0; // Reset the moved-from object to a default state
+    }
+
+    UUID &UUID::operator=(UUID &&other) noexcept
+    {
+        if (this != &other)
+        {
+            m_UUID = other.m_UUID;
+            other.m_UUID = 0; // Reset the moved-from object to a default state
+        }
+        return *this;
+    }
+
 	// -------------------------------------------------------
 	// UUID (64-bit) Implementation
 	// -------------------------------------------------------
@@ -225,10 +255,10 @@ namespace SceneryEditorX
 	UUID::UUID(const UUID& other) = default;
 
 	// -------------------------------------------------------
-	// UUID32 Implementation
+	// UUID32 (32-bit) Implementation
 	// -------------------------------------------------------
 
-	UUID32::UUID32() : m_UUID(s_UniformDistribution32(s_Engine32)) {}
+    UUID32::UUID32() : m_UUID(s_UniformDistribution32(s_Engine32)) {}
 
 	UUID32::UUID32(const uint32_t uuid) : m_UUID(uuid) {}
 
@@ -236,4 +266,4 @@ namespace SceneryEditorX
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

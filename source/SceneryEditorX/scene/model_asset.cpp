@@ -1,22 +1,41 @@
 ﻿/**
-* -------------------------------------------------------
-* Scenery Editor X
-* -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
-* Copyright (c) 2025 Coalition of Freeware Developers
-* -------------------------------------------------------
-* model.cpp
-* -------------------------------------------------------
-* Created: 15/4/2025
-* -------------------------------------------------------
-*/
-#include "model_asset.h"
-#include "SceneryEditorX/platform/config/editor_config.hpp"
-#include <tiny_gltf.h>
-#include <tiny_obj_loader.h>
+ * -------------------------------------------------------
+ * Scenery Editor X
+ * -------------------------------------------------------
+ * Copyright (c) 2026 Thomas Ray 
+ * Copyright (c) 2026 Coalition of Freeware Developers
+ * -------------------------------------------------------
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ * -------------------------------------------------------
+ * model.cpp
+ * -------------------------------------------------------
+ * Created: 15/4/2025
+ * -------------------------------------------------------
+ */
+//#include "model_asset.h"
+//#include "SceneryEditorX/platform/config/editor_config.hpp"
+//#include <tiny_gltf.h>
+//#include <tiny_obj_loader.h>
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
+/*
 template <>
 struct std::hash<SceneryEditorX::MeshVertex>
 {
@@ -28,9 +47,11 @@ struct std::hash<SceneryEditorX::MeshVertex>
         return h1 ^ (h2 << 1) ^ (h3 << 2); /// Combine the hashes
     }
 };
+*/
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
+/*
 namespace SceneryEditorX
 {
 
@@ -46,7 +67,7 @@ namespace SceneryEditorX
 
     ModelAsset::~ModelAsset() = default;
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	void ModelAsset::Load(const std::string &path)
 	{
@@ -62,7 +83,7 @@ namespace SceneryEditorX
         /// Construct the model path using the modelFolder from config
         std::string fullModelPath = config.modelFolder + "/" + path;
 
-        SEDX_CORE_INFO("Loading 3D model from: {}", fullModelPath);
+        SEDX_CORE_TRACE("Loading 3D model from: {}", fullModelPath);
 
         tinyobj::attrib_t attrib;
         std::vector<tinyobj::shape_t> shapes;
@@ -77,7 +98,7 @@ namespace SceneryEditorX
             return;
         }
 
-        SEDX_CORE_INFO("Model loaded successfully: {} vertices, {} shapes", attrib.vertices.size() / 3, shapes.size());
+        SEDX_CORE_TRACE("Model loaded successfully: {} vertices, {} shapes", attrib.vertices.size() / 3, shapes.size());
 
         std::unordered_map<MeshVertex, uint32_t> uniqueVertices{};
 
@@ -109,7 +130,7 @@ namespace SceneryEditorX
             }
         }
 
-        SEDX_CORE_INFO("Model processing complete: {} unique vertices, {} indices", vertices.size(), indices.size());
+        SEDX_CORE_TRACE("Model processing complete: {} unique vertices, {} indices", vertices.size(), indices.size());
         loaded = true;
 	}
     
@@ -118,7 +139,7 @@ namespace SceneryEditorX
         vertices.clear();
         indices.clear();
         loaded = false;
-        SEDX_CORE_INFO("Model unloaded: {}", modelPath);
+        SEDX_CORE_TRACE("Model unloaded: {}", modelPath);
     }
     
     void ModelAsset::SetName(const std::string &name)
@@ -149,10 +170,11 @@ namespace SceneryEditorX
         // This will depend on the exact implementation of the Serializer class
         // For now, providing a minimal implementation
     }
-    */
+    #1#
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 }
+*/
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

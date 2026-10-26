@@ -1,29 +1,49 @@
 ﻿/**
-* -------------------------------------------------------
-* Scenery Editor X
-* -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray
-* Copyright (c) 2025 Coalition of Freeware Developers
-* -------------------------------------------------------
-* graph_serializer.cpp
-* -------------------------------------------------------
-* Created: 11/7/2025
-* -------------------------------------------------------
-*/
+ * -------------------------------------------------------
+ * Scenery Editor X
+ * -------------------------------------------------------
+ * Copyright (c) 2026 Thomas Ray 
+ * Copyright (c) 2026 Coalition of Freeware Developers
+ * -------------------------------------------------------
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ * -------------------------------------------------------
+ * graph_serializer.cpp
+ * -------------------------------------------------------
+ * Created: 11/7/2025
+ * -------------------------------------------------------
+ */
+/*
 #include "graph_serializer.h"
-#include <imgui.h>
+#include <Editor/ui/source/imgui/imgui.h>
 #include <nlohmann/json.hpp>
 #include "serialization_macros.h"
 #include "SceneryEditorX/utils/string_utils.h"
+*/
 
-/// -----------------------------------------------------------
+// -----------------------------------------------------------
 
 namespace SceneryEditorX
 {
 
 	/*
 	namespace Utils
-    {
+	{
 		std::string StorageKindToString(StorageKind storageKind)
 		{
 			return std::string(magic_enum::enum_name<StorageKind>(storageKind));
@@ -55,7 +75,7 @@ namespace SceneryEditorX
 	}
 	*/
 
-    /// -------------------------------------------------------
+	// -------------------------------------------------------
 
 	/*
 	void DefaultGraphSerializer::SerializeNodes(nlohmann::json& out, const std::vector<GraphNode*>& nodes, std::function<void(nlohmann::json&, const GraphNode*)> nodeCallback)
@@ -114,15 +134,15 @@ namespace SceneryEditorX
 			nodeObj["Outputs"] = outputsArray;
 
 			if (nodeCallback)
-                nodeCallback(nodeObj, node);
+				nodeCallback(nodeObj, node);
 
-            nodesArray.push_back(nodeObj);
+			nodesArray.push_back(nodeObj);
 		}
 		out["Nodes"] = nodesArray;
 	}
 	*/
 
-    /// -------------------------------------------------------
+	// -------------------------------------------------------
 
 	/*
 	void DefaultGraphSerializer::SerializeLinks(nlohmann::json& out, const std::vector<Link>& links, std::function<void(nlohmann::json&, const Link&)> linkCallback)
@@ -142,15 +162,15 @@ namespace SceneryEditorX
 			SEDX_SERIALIZE_PROPERTY(Color, colOut, linkObj);
 
 			if (linkCallback)
-                linkCallback(linkObj, link);
+				linkCallback(linkObj, link);
 
-            linksArray.push_back(linkObj);
+			linksArray.push_back(linkObj);
 		}
 		out["Links"] = linksArray;
 	}
 	*/
 
-    /// -------------------------------------------------------
+	// -------------------------------------------------------
 
 	/*
 	using PinCandidate = DefaultGraphSerializer::DeserializationFactory::PinCandidate;
@@ -169,7 +189,7 @@ namespace SceneryEditorX
 			UUID ID;
 			std::string pinName;
 			std::string valueStr;
-            Values::Value value;
+			Values::Value value;
 			std::string pinType;
 			std::string pinStorage;
 
@@ -178,7 +198,7 @@ namespace SceneryEditorX
 			SEDX_DESERIALIZE_PROPERTY(Type, pinType, in, std::string())
 			SEDX_DESERIALIZE_PROPERTY(Storage, pinStorage, in, std::string())
 			SEDX_DESERIALIZE_PROPERTY(Value, valueStr, in, std::string())
-            SEDX_DESERIALIZE_PROPERTY(Value, value, in, Values::Value())
+			SEDX_DESERIALIZE_PROPERTY(Value, value, in, Values::Value())
 
 			// TODO: load legacy saved valueStr, or manually rewrite JSON files for the new format?
 
@@ -197,7 +217,7 @@ namespace SceneryEditorX
 	}
 	*/
 
-    /// -------------------------------------------------------
+	// -------------------------------------------------------
 
 	/*
 	[[nodiscard]] static std::optional<std::vector<PinCandidate>> TryLoadOutputs(const nlohmann::json& outputs, const NodeCandidate& node)
@@ -213,7 +233,7 @@ namespace SceneryEditorX
 			UUID ID;
 			std::string pinName;
 			std::string valueStr;
-            Values::Value value;
+			Values::Value value;
 			std::string pinType;
 			std::string pinStorage;
 
@@ -239,7 +259,7 @@ namespace SceneryEditorX
 	}
 	*/
 
-    /// -------------------------------------------------------
+	// -------------------------------------------------------
 
 	/*
 	void DefaultGraphSerializer::TryLoadNodes(nlohmann::json& data, std::vector<GraphNode*>& nodes, const DeserializationFactory& factory)
@@ -295,31 +315,31 @@ namespace SceneryEditorX
 			if (node.contains("Inputs") && node["Inputs"].is_array())
 			{
 				if (!(candidateInputs = TryLoadInputs(node["Inputs"], candidate)))
-                    ///< JSON file contains "Inputs" but we've failed to parse them
-                    throw std::runtime_error("Failed to load editor Node inputs '" + candidate.Name + "' inputs.");
-                if (candidateInputs->size() != candidate.NumInputs)
-                    ///< JSON file contains different number of entries for the Inputs than we've managed to deserialize
-                    throw std::runtime_error("Deserialized Node Inputs list doesn't match the number of serialized Node '" + candidate.Name + "' inputs.");
-            }
+					// JSON file contains "Inputs" but we've failed to parse them
+					throw std::runtime_error("Failed to load editor Node inputs '" + candidate.Name + "' inputs.");
+				if (candidateInputs->size() != candidate.NumInputs)
+					// JSON file contains different number of entries for the Inputs than we've managed to deserialize
+					throw std::runtime_error("Deserialized Node Inputs list doesn't match the number of serialized Node '" + candidate.Name + "' inputs.");
+			}
 
 			if (node.contains("Outputs") && node["Outputs"].is_array())
 			{
 				if (!(candidateOutputs = TryLoadOutputs(node["Outputs"], candidate)))
-                    ///< JSON file contains "Outputs" but we've failed to parse them
-                    throw std::runtime_error("Failed to load editor Node '" + candidate.Name + "' outputs.");
-                if (candidateOutputs->size() != candidate.NumOutputs)
-                    ///< JSON file contains different number of entries for the Outputs than we've managed to deserialize
-                    throw std::runtime_error("Deserialized Node Outputs list doesn't match the number of serialized Node '" + candidate.Name + "' outputs.");
-            }
+					// JSON file contains "Outputs" but we've failed to parse them
+					throw std::runtime_error("Failed to load editor Node '" + candidate.Name + "' outputs.");
+				if (candidateOutputs->size() != candidate.NumOutputs)
+					// JSON file contains different number of entries for the Outputs than we've managed to deserialize
+					throw std::runtime_error("Deserialized Node Outputs list doesn't match the number of serialized Node '" + candidate.Name + "' outputs.");
+			}
 
-			///< This is not going to load old Node configurations and enforce old to new Topology compatibility
-			///< TODO: Might want to still load old topology as an "invalid" dummy node to display it to the user
+			// This is not going to load old Node configurations and enforce old to new Topology compatibility
+			// TODO: Might want to still load old topology as an "invalid" dummy node to display it to the user
 			GraphNode* newNode = factory.ConstructNode(candidate, candidateInputs, candidateOutputs);
 
 			if (!newNode)
-                throw std::runtime_error("Failed to construct deserialized Node '" + candidate.Name + "'.");
+				throw std::runtime_error("Failed to construct deserialized Node '" + candidate.Name + "'.");
 
-            newNode->ID = candidate.ID;
+			newNode->ID = candidate.ID;
 			newNode->State = location;
 			newNode->Color = ImColor(nodeColor.x, nodeColor.y, nodeColor.z, nodeColor.w);
 			newNode->Size = ImVec2(nodeSize.x, nodeSize.y);
@@ -356,12 +376,12 @@ namespace SceneryEditorX
 						if (!factory.DeserializePin(*candidatePin, factoryPin, candidate))
 						{
 							delete newNode;
-							///< This error is pushed by the implementation
+							// This error is pushed by the implementation
 							throw std::runtime_error("Failed to deserialize/validate input Pin '" + candidatePin->Name + "' for a Node '" + candidate.Name + "'.");
 						}
 
 						factoryPin->ID = candidatePin->ID;
-						///< There could be multiple candidates with same name, so remove deserialized candidate from list
+						// There could be multiple candidates with same name, so remove deserialized candidate from list
 						std::erase_if(*candidateInputs, [candidatePin](const PinCandidate& pin) { return pin.ID == candidatePin->ID; });
 					}
 					else
@@ -379,7 +399,7 @@ namespace SceneryEditorX
 				{
 					Pin* factoryPin = newNode->Outputs[i];
 
-					///< find candidate with same name as factory pin
+					// find candidate with same name as factory pin
 					PinCandidate* candidatePin = nullptr;
 					for (auto& pin : *candidateOutputs)
 					{
@@ -395,12 +415,12 @@ namespace SceneryEditorX
 						if (!factory.DeserializePin(*candidatePin, factoryPin, candidate))
 						{
 							delete newNode;
-							///< This error is pushed by the implementation
+							// This error is pushed by the implementation
 							throw std::runtime_error("Failed to deserialize/validate output Pin '" + candidatePin->Name + "' for a Node '" + candidate.Name + "'.");
 						}
 
 						factoryPin->ID = candidatePin->ID;
-						///< There could be multiple candidates with same name, so remove deserialized candidate from list
+						// There could be multiple candidates with same name, so remove deserialized candidate from list
 						std::erase_if(*candidateOutputs, [candidatePin](const PinCandidate& pin) { return pin.ID == candidatePin->ID; });
 					}
 					else
@@ -413,14 +433,14 @@ namespace SceneryEditorX
 			}
 
 			if (factory.PostConstructNode)
-                factory.PostConstructNode(node, newNode);
+				factory.PostConstructNode(node, newNode);
 
-            nodes.push_back(newNode);
+			nodes.push_back(newNode);
 		}
 	}
 	*/
 
-    /// -------------------------------------------------------
+	// -------------------------------------------------------
 
 	/*
 	void DefaultGraphSerializer::TryLoadLinks(nlohmann::json &data, std::vector<Link>& links, std::function<void(nlohmann::json&, Link&)> linkCallback)
@@ -457,8 +477,8 @@ namespace SceneryEditorX
 	}
 	*/
 
-    /// -------------------------------------------------------
+	// -------------------------------------------------------
 
 }
 
-/// -----------------------------------------------------------
+// -----------------------------------------------------------

@@ -810,6 +810,17 @@ static inline std::string toString(const T &t) {
   return ss.str();
 }
 
+static inline std::string removeUtf8Bom(const std::string& input) {
+    // UTF-8 BOM = 0xEF,0xBB,0xBF
+    if (input.size() >= 3 &&
+        static_cast<unsigned char>(input[0]) == 0xEF &&
+        static_cast<unsigned char>(input[1]) == 0xBB &&
+        static_cast<unsigned char>(input[2]) == 0xBF) {
+        return input.substr(3); // Skip BOM
+    }
+    return input;
+}
+
 struct warning_context {
   std::string *warn;
   size_t line_number;
@@ -2110,6 +2121,9 @@ void LoadMtl(std::map<std::string, int> *material_map,
     if (linebuf.empty()) {
       continue;
     }
+    if (line_no == 1) {
+      linebuf = removeUtf8Bom(linebuf);
+    }
 
     // Skip leading space.
     const char *token = linebuf.c_str();
@@ -2134,6 +2148,7 @@ void LoadMtl(std::map<std::string, int> *material_map,
 
       has_d = false;
       has_tr = false;
+      has_kd = false;
 
       // set new mtl name
       token += 7;
@@ -2636,6 +2651,9 @@ bool LoadObj(attrib_t *attrib, std::vector<shape_t> *shapes,
     if (linebuf.empty()) {
       continue;
     }
+    if (line_num == 1) {
+      linebuf = removeUtf8Bom(linebuf);
+    }
 
     // Skip leading space.
     const char *token = linebuf.c_str();
@@ -2708,7 +2726,7 @@ bool LoadObj(attrib_t *attrib, std::vector<shape_t> *shapes,
 
       sw.vertex_id = vid;
 
-      while (!IS_NEW_LINE(token[0])) {
+      while (!IS_NEW_LINE(token[0]) && token[0] != '#') {
         real_t j, w;
         // joint_id should not be negative, weight may be negative
         // TODO(syoyo): # of elements check
@@ -2749,7 +2767,7 @@ bool LoadObj(attrib_t *attrib, std::vector<shape_t> *shapes,
 
       __line_t line;
 
-      while (!IS_NEW_LINE(token[0])) {
+      while (!IS_NEW_LINE(token[0]) && token[0] != '#') {
         vertex_index_t vi;
         if (!parseTriple(&token, static_cast<int>(v.size() / 3),
                          static_cast<int>(vn.size() / 3),
@@ -2780,7 +2798,7 @@ bool LoadObj(attrib_t *attrib, std::vector<shape_t> *shapes,
 
       __points_t pts;
 
-      while (!IS_NEW_LINE(token[0])) {
+      while (!IS_NEW_LINE(token[0]) && token[0] != '#') {
         vertex_index_t vi;
         if (!parseTriple(&token, static_cast<int>(v.size() / 3),
                          static_cast<int>(vn.size() / 3),
@@ -2815,7 +2833,7 @@ bool LoadObj(attrib_t *attrib, std::vector<shape_t> *shapes,
       face.smoothing_group_id = current_smoothing_id;
       face.vertex_indices.reserve(3);
 
-      while (!IS_NEW_LINE(token[0])) {
+      while (!IS_NEW_LINE(token[0]) && token[0] != '#') {
         vertex_index_t vi;
         if (!parseTriple(&token, static_cast<int>(v.size() / 3),
                          static_cast<int>(vn.size() / 3),
@@ -2951,7 +2969,7 @@ bool LoadObj(attrib_t *attrib, std::vector<shape_t> *shapes,
 
       std::vector<std::string> names;
 
-      while (!IS_NEW_LINE(token[0])) {
+      while (!IS_NEW_LINE(token[0]) && token[0] != '#') {
         std::string str = parseString(&token);
         names.push_back(str);
         token += strspn(token, " \t\r");  // skip tag
@@ -3245,7 +3263,7 @@ bool LoadObjWithCallback(std::istream &inStream, const callback_t &callback,
       token += strspn(token, " \t");
 
       indices.clear();
-      while (!IS_NEW_LINE(token[0])) {
+      while (!IS_NEW_LINE(token[0]) && token[0] != '#') {
         vertex_index_t vi = parseRawTriple(&token);
 
         index_t idx;
@@ -3360,7 +3378,7 @@ bool LoadObjWithCallback(std::istream &inStream, const callback_t &callback,
     if (token[0] == 'g' && IS_SPACE((token[1]))) {
       names.clear();
 
-      while (!IS_NEW_LINE(token[0])) {
+      while (!IS_NEW_LINE(token[0]) && token[0] != '#') {
         std::string str = parseString(&token);
         names.push_back(str);
         token += strspn(token, " \t\r");  // skip tag

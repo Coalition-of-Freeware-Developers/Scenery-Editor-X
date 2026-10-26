@@ -1,22 +1,40 @@
 ﻿/**
-* -------------------------------------------------------
-* Scenery Editor X
-* -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray
-* Copyright (c) 2025 Coalition of Freeware Developers
-* -------------------------------------------------------
-* logging.hpp
-* -------------------------------------------------------
-* Created: 25/1/2025
-* -------------------------------------------------------
-*/
+ * -------------------------------------------------------
+ * Scenery Editor X
+ * -------------------------------------------------------
+ * Copyright (c) 2026 Thomas Ray 
+ * Copyright (c) 2026 Coalition of Freeware Developers
+ * -------------------------------------------------------
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ * -------------------------------------------------------
+ * logging.hpp
+ * -------------------------------------------------------
+ * Created: 25/1/2025
+ * -------------------------------------------------------
+ */
 #pragma once
+#include <SceneryEditorX/utils/formatter.h>
 #include <spdlog/logger.h>
 #include <spdlog/spdlog.h>
-#include "SceneryEditorX/utils/formatter.h"
-#include "SceneryEditorX/renderer/vulkan/vk_includes.h"
+#include <vulkan/vulkan_core.h>
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 #define SEDX_ASSERT_MESSAGE_BOX (!SEDX_RELEASE && SEDX_PLATFORM_WINDOWS)
 #if defined SEDX_ASSERT_MESSAGE_BOX
@@ -25,7 +43,7 @@
 	#endif
 #endif
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -42,8 +60,8 @@ namespace SceneryEditorX
 	{
 	public:
 
-        /**
-         * @enum Type
+		/**
+		 * @enum Type
 		 * @brief An enumeration of log types.
 		 *
 		 * This enum is used to specify the type of logger being used.
@@ -54,32 +72,32 @@ namespace SceneryEditorX
 		 * @note - The Core logger is used for core application logging,
 		 * while the Editor logger is used for editor-specific logging.
 		 */
-	    enum class Type : uint8_t
-	    {
-	        Core = 0,
-	        Editor = 1,
-            Launcher = 2
-	    };
+		enum class Type : uint8_t
+		{
+			Core		= 0,
+			Editor		= 1,
+			Launcher	= 2
+		};
 
-	    /**
-	     * @enum Level
+		/**
+		 * @enum Level
 		 * @brief An enumeration of log levels.
 		 *
 		 * This enum is used to specify the severity of log messages.
 		 * It includes levels such as Trace, Info, Warn, Error, and Fatal.
 		 * These levels can be used to filter log messages based on their severity.
 		 */
-	    enum class Level : uint8_t
-	    {
-	        Trace = 0,
-	        Info,
-	        Warn,
-	        Error,
-	        Fatal
-	    };
+		enum class Level : uint8_t
+		{
+			Trace	= 0,
+			Info	= 1,
+			Warn	= 2,
+			Error	= 3,
+			Fatal	= 4
+		};
 
-	    /**
-	     * @struct TagDetails
+		/**
+		 * @struct TagDetails
 		 * @brief A structure to hold the details of a tag.
 		 *
 		 * This structure contains information about whether a tag is enabled
@@ -91,64 +109,70 @@ namespace SceneryEditorX
 		 *
 		 * @note - The LevelFilter field can be used to filter log messages based on their severity.
 		 */
-	    struct TagDetails
-	    {
-	        bool Enabled = true;
-	        Level LevelFilter = Level::Trace;
-	    };
+		struct TagDetails
+		{
+			bool enabled = true;
+			Level levelFilter = Level::Trace;
+		};
 
-	    /// ------------------------------------------------
+		// ------------------------------------------------
 
-	    /**
-	     * @fn Init
+		/**
+		 * @fn Init
 		 * @brief Initializes the logger instance.
 		 *
 		 * This function initializes the logger instance with the desired settings.
 		 */
-	    static void Init();
+		static void Init();
 
-	    /**
-	     * @fn LogHeader
+		/**
+		 * @fn LogHeader
 		 * @brief Logs system information to the console.
 		 *
 		 * This function logs system information to the console. It logs the
 		 * operating system version, processor architecture, number of processors,
 		 * page size, and processor type.
 		 */
-	    static void LogHeader();
+		static void LogHeader();
 
-	    /**
-	     * @fn ShutDown
+		/**
+		 * @fn ShutDown
 		 * @brief Shuts down the logger instance.
 		 *
 		 * This function shuts down the logger instance and releases any resources
 		 * associated with it. It should be called before the application exits to
 		 * ensure that all log messages are properly flushed.
 		 */
-	    static void ShutDown();
+		static void ShutDown();
 
-	    /**
-	     * @fn LogVulkanDebug
+		/**
+		 * @brief Converts a Vulkan result code to a human-readable string.
+		 * @param result The Vulkan result code to convert.
+		 * @return A string representation of the Vulkan result code.
+		 */
+		static const char *VkErrorString(VkResult result);
+
+		/**
+		 * @fn LogVulkanDebug
 		 * @brief Logs a message with the specified vulkan log level.
 		 *
 		 * This function logs a message with the vulkan log level to the console and the log file.
 		 *
 		 * @param message The message to log.
 		 */
-	    static void LogVulkanDebug(const std::string &message);
+		static void LogVulkanDebug(const std::string &message);
 
-        /**
-         * @fn LogVulkanDebug
-         * @brief Logs a Vulkan result with the specified operation.
-         *
-         * This function logs a Vulkan result with the specified operation to the console and the log file.
-         *
-         * @param result The Vulkan result to log.
-         * @param operation The operation that was performed.
-         */
-        static void LogVulkanResult(VkResult result, const std::string &operation);
+		/**
+		 * @brief Reports an assertion failure.
+		 * @param expr The expression that failed.
+		 * @param file The file in which the assertion failed.
+		 * @param line The line number at which the assertion failed.
+		 * @param message The message associated with the assertion failure.
+		 * @return True if the assertion failure was reported successfully, false otherwise.
+		 */
+		static bool ReportAssertion(const char *expr, const char *file, int line, const std::string &message);
 
-	    /**
+		/**
 		 * @brief Gets the logger instance.
 		 * @return A shared pointer to the logger instance.
 		 *
@@ -157,173 +181,202 @@ namespace SceneryEditorX
 		 *
 		 * @note - The logger instance is initialized in the Init function.
 		 */
-        static std::shared_ptr<spdlog::logger> &GetCoreLogger() { return CoreLogger; }
+		static std::shared_ptr<spdlog::logger> &GetCoreLogger() { return m_CoreLogger; }
 
-        /**
-         * @fn GetEditorLogger
-         * @brief Gets the editor logger instance.
-         *
-         * This function returns a shared pointer to the editor logger instance.
-         * It can be used to access the editor logger for logging messages.
-         *
-         * @note - The editor logger instance is initialized in the Init function.
-         * @return A shared pointer to the editor logger instance.
-         */
-        static std::shared_ptr<spdlog::logger> &GetEditorLogger() { return EditorLogger; }
+		/**
+		 * @fn GetEditorLogger
+		 * @brief Gets the editor logger instance.
+		 *
+		 * This function returns a shared pointer to the editor logger instance.
+		 * It can be used to access the editor logger for logging messages.
+		 *
+		 * @note - The editor logger instance is initialized in the Init function.
+		 * @return A shared pointer to the editor logger instance.
+		 */
+		static std::shared_ptr<spdlog::logger> &GetEditorLogger() { return m_EditorLogger; }
 
-        /**
-         * @fn GetEditorConsoleLogger
-         * @brief Gets the editor console logger instance.
-         *
-         * This function returns a shared pointer to the editor console logger instance.
-         * It can be used to access the editor console logger for logging messages.
-         *
-         * @return A shared pointer to the editor console logger instance.
-         */
-        static std::shared_ptr<spdlog::logger> &GetEditorConsoleLogger() { return EditorConsoleLogger; }
+		/**
+		 * @fn GetEditorConsoleLogger
+		 * @brief Gets the editor console logger instance.
+		 *
+		 * This function returns a shared pointer to the editor console logger instance.
+		 * It can be used to access the editor console logger for logging messages.
+		 *
+		 * @return A shared pointer to the editor console logger instance.
+		 */
+		static std::shared_ptr<spdlog::logger> &GetEditorConsoleLogger() { return m_ConsoleLogger; }
 
-	    /**
-         * @fn GetLauncherLogger
-         * @brief Gets the launcher logger instance.
-         *
-         * This function returns a shared pointer to the launcher logger instance.
-         * It can be used to access the launcher logger for logging messages.
-         *
-         * @return A shared pointer to the launcher logger instance.
-         */
-		static std::shared_ptr<spdlog::logger> &GetLauncherLogger() { return LauncherLogger; }
+		/**
+		 * @fn GetLauncherLogger
+		 * @brief Gets the launcher logger instance.
+		 *
+		 * This function returns a shared pointer to the launcher logger instance.
+		 * It can be used to access the launcher logger for logging messages.
+		 *
+		 * @return A shared pointer to the launcher logger instance.
+		 */
+		static std::shared_ptr<spdlog::logger> &GetLauncherLogger() { return m_LauncherLogger; }
 
-	    /// -------------------------------------------------------------
+		// -------------------------------------------------------------
 
-        /**
-         * @brief Checks if a tag is enabled.
-         *
-         * @param tag The tag to check.
-         * @return True if the tag is enabled, false otherwise.
-         */
-        static bool HasTag(const std::string &tag) { return EnabledTags_.contains(std::string(tag.data(), tag.size())); }
+		/**
+		 * @brief Checks if a tag is enabled.
+		 *
+		 * @param tag The tag to check.
+		 * @return True if the tag is enabled, false otherwise.
+		 */
+		static bool HasTag(const std::string &tag) { return m_EnabledTags.contains(std::string(tag.data(), tag.size())); }
 
-        /**
-         * @brief Gets the tag details for a specific tag.
-         *
-         * @return The tag details for the specified tag.
-         */
-        static std::map<std::string, TagDetails> &EnabledTags() { return EnabledTags_; }
+		/**
+		 * @brief Gets the tag details for a specific tag.
+		 * @return The tag details for the specified tag.
+		 */
+		static std::map<std::string, TagDetails> &EnabledTags() { return m_EnabledTags; }
 
-        /**
-         * @brief Sets the tag details for a specific tag.
-         */
-        static void SetDefaultTagSettings();
+		/* @brief Sets the tag details for a specific tag. */
+		static void SetDefaultTagSettings();
 
-	    /// -----------------------------------------------------------
+		/**
+		 * @brief Sets the global log level.
+		 * @param level The log level to set.
+		 */
+		static void SetGlobalLevel(Level level);
 
-#ifdef SEDX_PLATFORM_WINDOWS
-        template <typename... Args>
-        static void PrintMessage(Log::Type type, Log::Level level, std::format_string<Args...> format, Args &&...args);
-#else
+		/**
+		 * @brief Gets the global spdlog log level.
+		 * @return The global spdlog log level.
+		 */
+		static spdlog::level::level_enum GetGlobalLogLevel();
+
+		/**
+		 * @brief Sets the initial log level.
+		 * @param level The initial log level to set.
+		 */
+		static void SetInitialLevel(const Level level) { m_InitialLevel = level; }
+
+		/**
+		 * @brief Gets the initial log level.
+		 * @return The initial log level.
+		 */
+		static Level GetInitialLevel() { return m_InitialLevel; }
+
+		/** 
+		 * @brief Get the log level filter for a specific tag.
+		 * @param tag Tag name (empty string = default/global tag)
+		 * @return The configured Level for the tag or the default level if not configured.
+		 */
+		static Level GetTagLevel(const std::string &tag);
+
+		// -----------------------------------------------------------
+
+	#ifdef SEDX_PLATFORM_WINDOWS
+		template <typename... Args>
+		static void PrintMessage(Log::Type type, Log::Level level, std::format_string<Args...> format, Args &&...args);
+	#else
 		template<typename... Args>
 		static void PrintMessage(Log::Type type, Log::Level level, const std::string_view format, Args&&... args);
-#endif
-	    template <typename... Args>
-	    static void PrintMessageTag(Log::Type type, Log::Level level, std::string_view tag, std::format_string<Args...> format, Args &&...args);
+	#endif
+		template <typename... Args>
+		static void PrintMessageTag(Log::Type type, Log::Level level, std::string_view tag, std::format_string<Args...> format, Args &&...args);
 
-	    static void PrintMessageTag(Log::Type type, Log::Level level, std::string_view tag, std::string_view message);
+		static void PrintMessageTag(Log::Type type, Log::Level level, std::string_view tag, std::string_view message);
 
-	    template <typename... Args>
-	    static void PrintAssertMessage(Log::Type type, std::string_view prefix, std::format_string<Args...> message, Args &&...args);
+		template <typename... Args>
+		static void PrintAssertMessage(Log::Type type, std::string_view prefix, std::format_string<Args...> message, Args &&...args);
 
-	    static void PrintAssertMessage(Log::Type type, std::string_view prefix);
+		static void PrintAssertMessage(Log::Type type, std::string_view prefix);
 
-	    /// -----------------------------------------------------------
+		// -----------------------------------------------------------
 
-	    /**
+		/**
 		 * @brief Converts a log level to a string.
 		 * @param level The log level to convert.
 		 * @return The string representation of the log level.
 		 */
-	    static const char *LevelToString(Level level)
-	    {
-	        switch (level)
-	        {
-	        case Level::Trace: return "Trace";
-	        case Level::Info: return "Info";
-	        case Level::Warn: return "Warn";
-	        case Level::Error: return "Error";
-	        case Level::Fatal: return "Fatal";
-	        }
-	        return "";
-	    }
+		static const char *LevelToString(const Level level)
+		{
+			switch (level)
+			{
+				case Level::Trace: return "Trace";
+				case Level::Info:  return "Info";
+				case Level::Warn:  return "Warn";
+				case Level::Error: return "Error";
+				case Level::Fatal: return "Fatal";
+			}
+			return "";
+		}
 
-	    /**
+		/**
 		* @brief Converts a string to a log level.
 		* @param string The string to convert.
 		* @return The log level corresponding to the string.
 		*/
-	    static Level LevelFromString(std::string_view string)
-	    {
-	        if (string == "Trace")	return Level::Trace;
-	        if (string == "Info")	return Level::Info;
-	        if (string == "Warn")	return Level::Warn;
-	        if (string == "Error")	return Level::Error;
-	        if (string == "Fatal")	return Level::Fatal;
+		static Level LevelFromString(std::string_view string)
+		{
+			if (string == "Trace")	return Level::Trace;
+			if (string == "Info")	return Level::Info;
+			if (string == "Warn")	return Level::Warn;
+			if (string == "Error")	return Level::Error;
+			if (string == "Fatal")	return Level::Fatal;
 
-	        return Level::Trace;
-	    }
+			return Level::Trace;
+		}
 
-        /**
-         * @brief Flushes all loggers.
-         *
-         * This function flushes all loggers to ensure that all log messages
-         * are written to the log files and console.
-         *
-         * @note - This function should be called before the application exits
-         * to ensure that all log messages are properly flushed.
-         */
-        static void FlushAll()
-        {
-            if (CoreLogger) CoreLogger->flush();
-            if (EditorLogger) EditorLogger->flush();
-            if (EditorConsoleLogger) EditorConsoleLogger->flush();
-			if (LauncherLogger) LauncherLogger->flush();
-        }
+		/**
+		 * @brief Flushes all loggers.
+		 *
+		 * This function flushes all loggers to ensure that all log messages
+		 * are written to the log files and console.
+		 *
+		 * @note - This function should be called before the application exits
+		 * to ensure that all log messages are properly flushed.
+		 */
+		static void FlushAll()
+		{
+			if (m_CoreLogger)		m_CoreLogger->flush();
+			if (m_EditorLogger)		m_EditorLogger->flush();
+			if (m_ConsoleLogger)	m_ConsoleLogger->flush();
+			if (m_LauncherLogger)	m_LauncherLogger->flush();
+		}
 
 	private:
-	    /**
+		/**
 		 * @brief The logger instances for the Core Logger, Editor Logger, and Editor Debug Logger for the UI debug console.
 		 */
-	    static std::shared_ptr<spdlog::logger> CoreLogger;
-	    static std::shared_ptr<spdlog::logger> EditorLogger;
-	    static std::shared_ptr<spdlog::logger> EditorConsoleLogger;
-        static std::shared_ptr<spdlog::logger> LauncherLogger;
+		static std::shared_ptr<spdlog::logger> m_CoreLogger;
+		static std::shared_ptr<spdlog::logger> m_EditorLogger;
+		static std::shared_ptr<spdlog::logger> m_ConsoleLogger;
+		static std::shared_ptr<spdlog::logger> m_LauncherLogger;
 
-	    inline static std::map<std::string, TagDetails> EnabledTags_;
-	    static std::map<std::string, TagDetails> DefaultTagDetails_;
+		inline static Level m_InitialLevel = Level::Info;
+		static std::map<std::string, TagDetails> m_DefaultTagDetails;
+		inline static std::map<std::string, TagDetails> m_EnabledTags;
 	};
+
 
 } // namespace SceneryEditorX
 
-
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// Tagged logs (prefer these!)                                                                                    ///
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-/// Core logging
+// Core logging
 #define SEDX_CORE_TRACE_TAG(tag, ...) ::SceneryEditorX::Log::PrintMessageTag(::SceneryEditorX::Log::Type::Core, ::SceneryEditorX::Log::Level::Trace, tag, __VA_ARGS__)
 #define SEDX_CORE_INFO_TAG(tag, ...)  ::SceneryEditorX::Log::PrintMessageTag(::SceneryEditorX::Log::Type::Core, ::SceneryEditorX::Log::Level::Info, tag, __VA_ARGS__)
 #define SEDX_CORE_WARN_TAG(tag, ...)  ::SceneryEditorX::Log::PrintMessageTag(::SceneryEditorX::Log::Type::Core, ::SceneryEditorX::Log::Level::Warn, tag, __VA_ARGS__)
 #define SEDX_CORE_ERROR_TAG(tag, ...) ::SceneryEditorX::Log::PrintMessageTag(::SceneryEditorX::Log::Type::Core, ::SceneryEditorX::Log::Level::Error, tag, __VA_ARGS__)
 #define SEDX_CORE_FATAL_TAG(tag, ...) ::SceneryEditorX::Log::PrintMessageTag(::SceneryEditorX::Log::Type::Core, ::SceneryEditorX::Log::Level::Fatal, tag, __VA_ARGS__)
 
-/// Editor logging
+// Editor logging
 #define EDITOR_TRACE_TAG(tag, ...) ::SceneryEditorX::Log::PrintMessageTag(::SceneryEditorX::Log::Type::Editor, ::SceneryEditorX::Log::Level::Trace, tag, __VA_ARGS__)
 #define EDITOR_INFO_TAG(tag, ...)  ::SceneryEditorX::Log::PrintMessageTag(::SceneryEditorX::Log::Type::Editor, ::SceneryEditorX::Log::Level::Info, tag, __VA_ARGS__)
 #define EDITOR_WARN_TAG(tag, ...)  ::SceneryEditorX::Log::PrintMessageTag(::SceneryEditorX::Log::Type::Editor, ::SceneryEditorX::Log::Level::Warn, tag, __VA_ARGS__)
 #define EDITOR_ERROR_TAG(tag, ...) ::SceneryEditorX::Log::PrintMessageTag(::SceneryEditorX::Log::Type::Editor, ::SceneryEditorX::Log::Level::Error, tag, __VA_ARGS__)
 #define EDITOR_FATAL_TAG(tag, ...) ::SceneryEditorX::Log::PrintMessageTag(::SceneryEditorX::Log::Type::Editor, ::SceneryEditorX::Log::Level::Fatal, tag, __VA_ARGS__)
 
-/// Launcher logging
+// Launcher logging
 #define LAUNCHER_TRACE_TAG(tag, ...) ::SceneryEditorX::Log::PrintMessageTag(::SceneryEditorX::Log::Type::Launcher, ::SceneryEditorX::Log::Level::Trace, tag, __VA_ARGS__)
 #define LAUNCHER_INFO_TAG(tag, ...)  ::SceneryEditorX::Log::PrintMessageTag(::SceneryEditorX::Log::Type::Launcher, ::SceneryEditorX::Log::Level::Info, tag, __VA_ARGS__)
 #define LAUNCHER_WARN_TAG(tag, ...)  ::SceneryEditorX::Log::PrintMessageTag(::SceneryEditorX::Log::Type::Launcher, ::SceneryEditorX::Log::Level::Warn, tag, __VA_ARGS__)
@@ -332,21 +385,21 @@ namespace SceneryEditorX
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-/// Core Logging
+// Core Logging
 #define SEDX_CORE_TRACE(...) ::SceneryEditorX::Log::PrintMessage(::SceneryEditorX::Log::Type::Core, ::SceneryEditorX::Log::Level::Trace, __VA_ARGS__)
 #define SEDX_CORE_INFO(...)  ::SceneryEditorX::Log::PrintMessage(::SceneryEditorX::Log::Type::Core, ::SceneryEditorX::Log::Level::Info, __VA_ARGS__)
 #define SEDX_CORE_WARN(...)  ::SceneryEditorX::Log::PrintMessage(::SceneryEditorX::Log::Type::Core, ::SceneryEditorX::Log::Level::Warn, __VA_ARGS__)
 #define SEDX_CORE_ERROR(...) ::SceneryEditorX::Log::PrintMessage(::SceneryEditorX::Log::Type::Core, ::SceneryEditorX::Log::Level::Error, __VA_ARGS__)
 #define SEDX_CORE_FATAL(...) ::SceneryEditorX::Log::PrintMessage(::SceneryEditorX::Log::Type::Core, ::SceneryEditorX::Log::Level::Fatal, __VA_ARGS__)
 
-/// Client Logging
+// Client Logging
 #define EDITOR_TRACE(...) ::SceneryEditorX::Log::PrintMessage(::SceneryEditorX::Log::Type::Editor, ::SceneryEditorX::Log::Level::Trace, __VA_ARGS__)
 #define EDITOR_INFO(...)  ::SceneryEditorX::Log::PrintMessage(::SceneryEditorX::Log::Type::Editor, ::SceneryEditorX::Log::Level::Info, __VA_ARGS__)
 #define EDITOR_WARN(...)  ::SceneryEditorX::Log::PrintMessage(::SceneryEditorX::Log::Type::Editor, ::SceneryEditorX::Log::Level::Warn, __VA_ARGS__)
 #define EDITOR_ERROR(...) ::SceneryEditorX::Log::PrintMessage(::SceneryEditorX::Log::Type::Editor, ::SceneryEditorX::Log::Level::Error, __VA_ARGS__)
 #define EDITOR_FATAL(...) ::SceneryEditorX::Log::PrintMessage(::SceneryEditorX::Log::Type::Editor, ::SceneryEditorX::Log::Level::Fatal, __VA_ARGS__)
 
-/// Editor Console Logging Macros
+// Editor Console Logging Macros
 #define EDITOR_CONSOLE_LOG_TRACE(...) ::SceneryEditorX::Log::GetEditorConsoleLogger()->trace(__VA_ARGS__)
 #define EDITOR_CONSOLE_LOG_INFO(...)  ::SceneryEditorX::Log::GetEditorConsoleLogger()->info(__VA_ARGS__)
 #define EDITOR_CONSOLE_LOG_WARN(...)  ::SceneryEditorX::Log::GetEditorConsoleLogger()->warn(__VA_ARGS__)
@@ -362,7 +415,7 @@ namespace SceneryEditorX
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-/// ----------------------------------------------------
+// ----------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -374,148 +427,186 @@ namespace SceneryEditorX
 	void Log::PrintMessage(Log::Type type, Log::Level level, const std::string_view format, Args &&...args)
 #endif
 	{
-	    auto &detail = EnabledTags_[""];
-	    if (detail.Enabled && detail.LevelFilter <= level)
-	    {
-	        auto logger = (type == Type::Core) ? GetCoreLogger() : GetEditorLogger();
-	        switch (level)
-	        {
-	        case Level::Trace:
-	            logger->trace(format, std::forward<Args>(args)...);
-	            break;
-	        case Level::Info:
-	            logger->info(format, std::forward<Args>(args)...);
-	            break;
-	        case Level::Warn:
-	            logger->warn(format, std::forward<Args>(args)...);
-	            break;
-	        case Level::Error:
-	            logger->error(format, std::forward<Args>(args)...);
-	            break;
-	        case Level::Fatal:
-	            logger->critical(format, std::forward<Args>(args)...);
-	            break;
-	        }
-	    }
+		// Loggers are reset by Log::ShutDown(); objects destroyed later (statics, late Ref releases) must not crash here.
+		auto logger = (type == Type::Core) ? GetCoreLogger() : GetEditorLogger();
+		if (!logger)
+			return;
+
+		if (auto &detail = m_EnabledTags[""]; detail.enabled && detail.levelFilter <= level)
+		{
+			switch (level)
+			{
+			case Level::Trace:
+				logger->trace(format, std::forward<Args>(args)...);
+				break;
+			case Level::Info:
+				logger->info(format, std::forward<Args>(args)...);
+				break;
+			case Level::Warn:
+				logger->warn(format, std::forward<Args>(args)...);
+				break;
+			case Level::Error:
+				logger->error(format, std::forward<Args>(args)...);
+				break;
+			case Level::Fatal:
+				logger->critical(format, std::forward<Args>(args)...);
+				break;
+			}
+		}
 	}
 
-	/// ----------------------------------------------------
+	// ----------------------------------------------------
 
 	template <typename... Args>
 	void Log::PrintMessageTag(Log::Type type, Log::Level level, std::string_view tag, const std::format_string<Args...> format, Args &&...args)
 	{
-	    auto &detail = EnabledTags_[std::string(tag)];
-	    if (detail.Enabled && detail.LevelFilter <= level)
-	    {
-	        auto logger = (type == Type::Core) ? GetCoreLogger() : GetEditorLogger();
-	        std::string formatted = std::format(format, std::forward<Args>(args)...);
-	        switch (level)
-	        {
-	        case Level::Trace:
-	            logger->trace("[{}] {}", tag, formatted);
-	            break;
-	        case Level::Info:
-	            logger->info("[{}] {}", tag, formatted);
-	            break;
-	        case Level::Warn:
-	            logger->warn("[{}] {}", tag, formatted);
-	            break;
-	        case Level::Error:
-	            logger->error("[{}] {}", tag, formatted);
-	            break;
-	        case Level::Fatal:
-	            logger->critical("[{}] {}", tag, formatted);
-	            break;
-	        }
-	    }
+		auto logger = (type == Type::Core) ? GetCoreLogger() : GetEditorLogger();
+		if (!logger)
+			return;
+
+		if (auto &detail = m_EnabledTags[std::string(tag)]; detail.enabled && detail.levelFilter <= level)
+		{
+			std::string formatted = std::format(format, std::forward<Args>(args)...);
+			switch (level)
+			{
+			case Level::Trace:
+				logger->trace("[{}] {}", tag, formatted);
+				break;
+			case Level::Info:
+				logger->info("[{}] {}", tag, formatted);
+				break;
+			case Level::Warn:
+				logger->warn("[{}] {}", tag, formatted);
+				break;
+			case Level::Error:
+				logger->error("[{}] {}", tag, formatted);
+				break;
+			case Level::Fatal:
+				logger->critical("[{}] {}", tag, formatted);
+				break;
+			}
+		}
 	}
 
-	/// ----------------------------------------------------
+	// ----------------------------------------------------
 
 	inline void Log::PrintMessageTag(Log::Type type, Log::Level level, std::string_view tag, std::string_view message)
 	{
-	    auto &detail = EnabledTags_[std::string(tag.data(), tag.size())]; // Convert fmt::string_view to std::string properly
-	    if (detail.Enabled && detail.LevelFilter <= level)
-	    {
-	        auto logger = (type == Type::Core) ? GetCoreLogger() : GetEditorLogger();
-	        switch (level)
-	        {
-	        case Level::Trace:
-	            logger->trace("[{}] {}", tag, message); // Use curly braces instead of {0} for fmt format strings
-	            break;
-	        case Level::Info:
-	            logger->info("[{}] {}", tag, message);
-	            break;
-	        case Level::Warn:
-	            logger->warn("[{}] {}", tag, message);
-	            break;
-	        case Level::Error:
-	            logger->error("[{}] {}", tag, message);
-	            break;
-	        case Level::Fatal:
-	            logger->critical("[{}] {}", tag, message);
-	            break;
-	        }
-	    }
+		auto logger = (type == Type::Core) ? GetCoreLogger() : GetEditorLogger();
+		if (!logger)
+			return;
+
+		if (auto &detail = m_EnabledTags[std::string(tag.data(), tag.size())]; detail.enabled && detail.levelFilter <= level)
+		{
+			switch (level)
+			{
+			case Level::Trace:
+				logger->trace("[{}] {}", tag, message); // Use curly braces instead of {0} for fmt format strings
+				break;
+			case Level::Info:
+				logger->info("[{}] {}", tag, message);
+				break;
+			case Level::Warn:
+				logger->warn("[{}] {}", tag, message);
+				break;
+			case Level::Error:
+				logger->error("[{}] {}", tag, message);
+				break;
+			case Level::Fatal:
+				logger->critical("[{}] {}", tag, message);
+				break;
+			}
+		}
 	}
 
-	/// ----------------------------------------------------
+	// ----------------------------------------------------
 
 	template <typename... Args>
 	void Log::PrintAssertMessage(Log::Type type, std::string_view prefix, std::format_string<Args...> message, Args &&...args)
 	{
-	    auto logger = (type == Type::Core) ? GetCoreLogger() :
-	                  (type == Type::Editor) ? GetEditorLogger() :
-	                  GetLauncherLogger();
-	    auto formatted = std::format(message, std::forward<Args>(args)...);
-	    logger->error("{}: {}", prefix, formatted);
+		auto logger = (type == Type::Core) ? GetCoreLogger() : (type == Type::Editor) ? GetEditorLogger() : GetLauncherLogger();
+		auto formatted = std::format(message, std::forward<Args>(args)...);
+		if (logger)
+			logger->error("{}: {}", prefix, formatted);
 	#ifdef SEDX_ASSERT_MESSAGE_BOX
-	    MessageBoxA(nullptr, formatted.c_str(), "Scenery Editor X | Assert", MB_OK | MB_ICONERROR);
+		MessageBoxA(nullptr, formatted.c_str(), "Scenery Editor X | Assert", MB_OK | MB_ICONERROR);
 	#endif
 	}
 
 
-	/// ----------------------------------------------------
+	// ----------------------------------------------------
 
 	inline void Log::PrintAssertMessage(Log::Type type, std::string_view prefix)
 	{
-	    auto logger = (type == Type::Core) ? GetCoreLogger() :
-	                  (type == Type::Editor) ? GetEditorLogger() :
-	                  GetLauncherLogger();
-	    logger->error("{}", prefix);
+		auto logger = (type == Type::Core) ? GetCoreLogger() : (type == Type::Editor) ? GetEditorLogger() : GetLauncherLogger();
+		if (logger)
+			logger->error("{}", prefix);
 	#ifdef SEDX_ASSERT_MESSAGE_BOX
-	    MessageBoxA(nullptr, "- No message -", "Scenery Editor X | Assert", MB_OK | MB_ICONERROR);
+		MessageBoxA(nullptr, "- No message -", "Scenery Editor X | Assert", MB_OK | MB_ICONERROR);
 	#endif
 	}
 
 } // namespace SceneryEditorX
 
-/// ----------------------------------------------------
+// ----------------------------------------------------
+
+/**
+ *
+ * Launcher Log Macros
+ *
+ * @brief A macro to log a message with the specified log level.
+ *
+ * This macro logs a message with the specified log level to the console and the log file.
+ */
+#define LAUNCHER_LOG_TRACE(...)		::SceneryEditorX::Log::GetEditorLogger()->trace(__VA_ARGS__)
+#define LAUNCHER_LOG_INFO(...)		::SceneryEditorX::Log::GetEditorLogger()->info(__VA_ARGS__)
+#define LAUNCHER_LOG_WARN(...)		::SceneryEditorX::Log::GetEditorLogger()->warn(__VA_ARGS__)
+#define LAUNCHER_LOG_ERROR(...)		::SceneryEditorX::Log::GetEditorLogger()->error(__VA_ARGS__)
+#define LAUNCHER_LOG_CRITICAL(...)  ::SceneryEditorX::Log::GetEditorLogger()->critical(__VA_ARGS__);
+
+/**
+ * Editor Log Macros
+ */
+#define EDITOR_LOG_TRACE(...)    ::SceneryEditorX::Log::GetEditorLogger()->trace(__VA_ARGS__)
+#define EDITOR_LOG_INFO(...)     ::SceneryEditorX::Log::GetEditorLogger()->info(__VA_ARGS__)
+#define EDITOR_LOG_WARN(...)     ::SceneryEditorX::Log::GetEditorLogger()->warn(__VA_ARGS__)
+#define EDITOR_LOG_ERROR(...)    ::SceneryEditorX::Log::GetEditorLogger()->error(__VA_ARGS__)
+#define EDITOR_LOG_CRITICAL(...) ::SceneryEditorX::Log::GetEditorLogger()->critical(__VA_ARGS__);
+// ----------------------------------------------------
+
+#define VK_CHECK_RESULT(result, operation)																		\
+	if (CoreLogger)																								\
+	{																											\
+		if (result != VK_SUCCESS)																				\
+		{																										\
+			const char *resultString = vkErrorString(result);													\
+			std::string message = std::format("Vulkan operation '{}' returned {}", operation, resultString);	\
+																												\
+			if (result < 0)																						\
+			{ /* Negative values are errors */																	\
+				SceneryEditorX::Log::CoreLogger->error("{}", message);											\
+			}																									\
+			else																								\
+			{ /* Non-zero positive values are warnings/info */													\
+				CoreLogger->warn("{}", message);																\
+			}																									\
+																												\
+			CoreLogger->flush();																				\
+		}																										\
+		else																									\
+		{																										\
+			/* Optionally log successful operations at trace level */											\
+			CoreLogger->trace("Vulkan operation '{}' completed successfully", operation);						\
+		}																										\
+	}
+
+// ----------------------------------------------------
+
+#if SEDX_LOG_ASSETREGISTRY
+	#define LOG_ASSET(...) SEDX_CORE_TRACE_TAG("ASSET", __VA_ARGS__)
+#else 
+	#define LOG_ASSET(...)
+#endif
 
 
-	/**
-	 *
-	 * Launcher Log Macros
-	 *
-	 * @brief A macro to log a message with the specified log level.
-	 *
-	 * This macro logs a message with the specified log level to the console and the log file.
-	 */
-	#define LAUNCHER_LOG_TRACE(...)		::SceneryEditorX::Log::GetEditorLogger()->trace(__VA_ARGS__)
-	#define LAUNCHER_LOG_INFO(...)		::SceneryEditorX::Log::GetEditorLogger()->info(__VA_ARGS__)
-	#define LAUNCHER_LOG_WARN(...)		::SceneryEditorX::Log::GetEditorLogger()->warn(__VA_ARGS__)
-	#define LAUNCHER_LOG_ERROR(...)		::SceneryEditorX::Log::GetEditorLogger()->error(__VA_ARGS__)
-	#define LAUNCHER_LOG_CRITICAL(...)  ::SceneryEditorX::Log::GetEditorLogger()->critical(__VA_ARGS__);
-
-	/**
-	 *
-	 * Editor Log Macros
-	 *
-	 */
-	#define EDITOR_LOG_TRACE(...)    ::SceneryEditorX::Log::GetEditorLogger()->trace(__VA_ARGS__)
-	#define EDITOR_LOG_INFO(...)     ::SceneryEditorX::Log::GetEditorLogger()->info(__VA_ARGS__)
-	#define EDITOR_LOG_WARN(...)     ::SceneryEditorX::Log::GetEditorLogger()->warn(__VA_ARGS__)
-	#define EDITOR_LOG_ERROR(...)    ::SceneryEditorX::Log::GetEditorLogger()->error(__VA_ARGS__)
-	#define EDITOR_LOG_CRITICAL(...) ::SceneryEditorX::Log::GetEditorLogger()->critical(__VA_ARGS__);
-
-/// -------------------------------------------------------
+// -------------------------------------------------------
