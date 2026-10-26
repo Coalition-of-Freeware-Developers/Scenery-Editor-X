@@ -35,7 +35,8 @@ The dependency-light, cross-platform Catch2 unit suites that only need `source/`
   reader and writer (`DsfWriterTests.cpp`: 16-bit pool quantization, MD5 footer, airport filters, per-tile
   split, road networks as 32-bit pools of junction-to-junction segments), the .pol/.lin/.str/.for/.fac/.agp
   and .net (road types, virtual types, draped strips) asset parsers and the overlay geometry builder (roads
-  drawn as their road type's strips) and facades (`FacadeTests.cpp`: `xp_facade.*` WALL_RULE / SEGMENT_CURVED /
+  drawn as their road type's strips; `.lin` lines blended with their X-Plane material; the light fixtures, runway
+  lights and tire rubber X-Plane builds from apt.dat rows) and facades (`FacadeTests.cpp`: `xp_facade.*` WALL_RULE / SEGMENT_CURVED /
   roof directives, X-Plane's floor and wall-rule choice, WorldEditor's spelling choice, natural wall lengths,
   curved walls bent along their bezier), the .fac writer and facade authoring (`FacadeWriterTests.cpp`:
   `xp_facade_writer.*` parse -> write -> parse gives the same asset for type 1 / type 2 facades, the install's
