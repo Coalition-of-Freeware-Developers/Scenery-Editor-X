@@ -357,8 +357,8 @@ namespace SceneryEditorX
 
 		// The atmosphere (plan Phase 6, atmosphere_common.slang)
 		xMath::Vec4 light_toa;				// rgb sun illuminance outside the atmosphere (lux), w the moon's (lux, x illuminated fraction)
-		xMath::Vec4 atmosphere_haze;		// haze extinction at the ground (1/m), scattering albedo, layer top above the ground (m), fade band (m)
-		xMath::Vec4 atmosphere_view;		// aerial perspective range (m), airglow (nits), star brightness scale, haze multiple-scattering gain
+		xMath::Vec4 atmosphere_haze;		// haze extinction at the ground (1/m, extra Mie, green), fog scattering albedo, layer top above the ground (m), fade band (m)
+		xMath::Vec4 atmosphere_view;		// aerial perspective range (m), airglow (nits), star brightness scale, fog extinction at the ground (1/m)
 		xMath::Vec4 probe;					// xyz environment probe 0 (world), w specular LOD bias
 		xMath::Vec4 celestial[3];			// rows of the world -> equatorial rotation (x vernal equinox, z north pole): stars
 

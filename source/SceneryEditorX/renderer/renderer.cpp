@@ -3239,7 +3239,10 @@ void dynamic_resolution()
 			params.mieSpectral = Environment::MieSpectralFactors(params.rayleighScattering, c.mieAngstrom);
 			params.multipleScattering = c.multipleScattering;
 			params.visibilityContrast = c.visibilityContrast;
-			params.hazeScatteringAlbedo = c.fogAlbedo;
+			params.hazeScatteringAlbedo = c.mie.y > 0.0f ? c.mie.x / c.mie.y : 0.9;	// the haze is extra Mie
+			params.fogScatteringAlbedo = c.fogAlbedo;
+			params.fogStartVisibilityM = c.fogStartVisibilityM;
+			params.fogFullVisibilityM = c.fogFullVisibilityM;
 			params.ozoneAbsorption = { c.ozone.x, c.ozone.y, c.ozone.z };
 			params.ozoneCenter = c.ozone.w;
 			params.ozoneHalfWidth = c.planet.x;
@@ -3256,7 +3259,7 @@ void dynamic_resolution()
 		{
 			uint64_t key = 0;
 			for (const double v : { a.rayleighScattering[0], a.rayleighScattering[1], a.rayleighScattering[2], a.mieScattering, a.mieExtinction, a.hazeExtinction,
-					 a.hazeScatteringAlbedo, a.hazeTopM, a.groundElevationM, a.groundAlbedo, a.mieSpectral[0], a.mieSpectral[2], a.multipleScattering,
+					 a.hazeScatteringAlbedo, a.fogExtinction, a.fogScatteringAlbedo, a.hazeTopM, a.groundElevationM, a.groundAlbedo, a.mieSpectral[0], a.mieSpectral[2], a.multipleScattering,
 					 a.ozoneAbsorption[0], a.ozoneAbsorption[1], a.ozoneAbsorption[2], a.ozoneCenter, a.mieG })
 				key = HashCombine(key, v);
 			return key;
@@ -3361,15 +3364,12 @@ void dynamic_resolution()
 		env.ozone = constants.ozone;
 		env.atmosphere_scattering = ToVec4(atmosphere.mieSpectral, static_cast<float>(atmosphere.multipleScattering));
 		env.planet = constants.planet;
-		env.atmosphere_haze = xMath::Vec4(static_cast<float>(atmosphere.hazeExtinction), static_cast<float>(atmosphere.hazeScatteringAlbedo),
+		env.atmosphere_haze = xMath::Vec4(static_cast<float>(atmosphere.hazeExtinction), static_cast<float>(atmosphere.fogScatteringAlbedo),
 			static_cast<float>(atmosphere.hazeTopM), static_cast<float>(atmosphere.hazeBandM));
 		env.light_toa = xMath::Vec4(static_cast<float>(constants.sunIlluminanceLux * Environment::SUN_COLOR[0]),
 			static_cast<float>(constants.sunIlluminanceLux * Environment::SUN_COLOR[1]), static_cast<float>(constants.sunIlluminanceLux * Environment::SUN_COLOR[2]),
 			static_cast<float>(moonLux));
-		// The haze's multiple-scattering gain grows with its layer's vertical optical depth (the fade band counts half)
-		const double hazeDepth = atmosphere.hazeExtinction * (atmosphere.hazeTopM + 0.5 * atmosphere.hazeBandM);
-		const float hazeGain = 1.0f + std::max(constants.hazeMultipleBoost, 0.0f) * static_cast<float>(1.0 - std::exp(-std::max(hazeDepth, 0.0)));
-		env.atmosphere_view = xMath::Vec4(constants.aerialRangeM, constants.airglowNits, constants.starBrightness, hazeGain);
+		env.atmosphere_view = xMath::Vec4(constants.aerialRangeM, constants.airglowNits, constants.starBrightness, static_cast<float>(atmosphere.fogExtinction));
 		{
 			const ProbeVec3 probe = SnapProbePosition({ s_MainCameraPosition.x, s_MainCameraPosition.y, s_MainCameraPosition.z });	// Captured around the main view
 			env.probe = xMath::Vec4(static_cast<float>(probe[0]), static_cast<float>(probe[1]), static_cast<float>(probe[2]), constants.probeSpecularBias);

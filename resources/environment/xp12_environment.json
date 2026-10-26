@@ -96,7 +96,15 @@
 		},
 		"atmo/fog_albedo": {
 			"value": 0.9,
-			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): scattering albedo of the visibility haze"
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): scattering albedo of the visibility fog"
+		},
+		"sedx/fog_start_visibility_m": {
+			"value": 20000.0,
+			"source": "SEDX, from X-Plane 12.4.4's stats/scattering/est_view_vis_fog (reference probe dumps, 2026-10-25): FLT_MAX (no fog) at 20, 30 and 80 km visibility, where X-Plane only thickens its Mie. The visibility's layer has no fog at this visibility and more"
+		},
+		"sedx/fog_full_visibility_m": {
+			"value": 8000.0,
+			"source": "SEDX calibration (2026-10-26): the clean *_aerial_hazy shots (8 km) match with the whole layer as fog (luminance within 0.2 EV, the veil's colour); ASSUMPTION: linear from fog_start_visibility_m. X-Plane's own fog sees 14,488 m from 600 m up there, so its layer thins with height faster than SEDX's"
 		},
 		"scattering/g_cornette_shanks": {
 			"value": 0.76,
@@ -649,10 +657,6 @@
 		"sedx/tonemap_middle_grey": {
 			"value": 0.18,
 			"source": "ASSUMPTION: the display transform's pivot; with exposure 18 / (K x 2^EV) a metered scene's average lands on it"
-		},
-		"sedx/haze_multiple_boost": {
-			"value": 3.4,
-			"source": "SEDX calibration (2026-10-25): extra multiple scattering of an optically thick visibility haze layer over Hillaire's isotropic estimate (gain 1 + this x (1 - e^-tau), tau the layer's vertical optical depth). Fitted on the *_aerial_hazy views whose X-Plane 12.4.4 shots had no leftover cloud layer (KGON, LEBL; 8 km: gain ~3.3, X-Plane ~2.4x the estimate's brightness); clear 80 km air gets ~1.27"
 		},
 		"sedx/fusion_strength": {
 			"value": 0.0,

@@ -40,20 +40,6 @@ import constants;
 import atmosphere_common;
 
 static const float TRANSMITTANCE_STEPS = 40.0f;
-static const float DIFFUSE_TRANSMITTANCE_STEPS = 12.0f;
-
-/* @brief Transmittance toward a light through the delta-scaled medium (0 behind the planet). */
-float3 diffuse_transmittance_to_space(AtmosphereParameters a, float3 position, float3 direction)
-{
-    if (ray_sphere_nearest(position, direction, a.bottom_radius) >= 0.0f)
-        return 0.0f;
-    const float length_km = max(ray_sphere_nearest(position, direction, a.top_radius), 0.0f);
-    float3 optical_depth = 0.0f;
-    const float dt = length_km / DIFFUSE_TRANSMITTANCE_STEPS;
-    for (float s = 0.0f; s < DIFFUSE_TRANSMITTANCE_STEPS; s += 1.0f)
-        optical_depth += sample_medium_diffuse(a, position + direction * ((s + 0.5f) * dt)).extinction * dt;
-    return exp(-optical_depth);
-}
 static const float MULTISCATTER_STEPS = 20.0f;
 static const uint MULTISCATTER_DIRECTIONS_SQRT = 8;
 
@@ -78,13 +64,12 @@ void main_comp(uint3 thread_id: SV_DispatchThreadID)
     float3 optical_depth = 0.0f;
     const float dt = length_km / TRANSMITTANCE_STEPS;
     for (float s = 0.0f; s < TRANSMITTANCE_STEPS; s += 1.0f)
-        optical_depth += sample_medium(a, position + direction * ((s + 0.5f) * dt)).extinction * dt;
+        optical_depth += sample_medium_without_fog(a, position + direction * ((s + 0.5f) * dt)).extinction * dt;
     tex_uav[thread_id.xy] = float4(exp(-optical_depth), 1.0f);
 #elif MULTISCATTER
     // Hillaire 2020, section 5.5: second-order light from every direction (isotropic phase, unit sun) and the
-    // fraction f_ms the medium re-scatters, summed as the geometric series L2 / (1 - f_ms). Through the delta-scaled
-    // medium (sample_medium_diffuse), with the sun's light reaching each point through it too, so a thick haze layer
-    // passes its diffuse light down instead of going dark inside
+    // fraction f_ms the medium re-scatters, summed as the geometric series L2 / (1 - f_ms). Without the fog, the sun's
+    // light from the transmittance LUT (X-Plane 12.4.4 leaves its fog out of both)
     const float cos_sun_zenith = from_sub_uv_to_unit(uv.x, MULTISCATTER_LUT_SIZE.x) * 2.0f - 1.0f;
     const float view_height = a.bottom_radius + saturate(from_sub_uv_to_unit(uv.y, MULTISCATTER_LUT_SIZE.y)) * (a.top_radius - a.bottom_radius);
     const float3 position = float3(0.0f, view_height + 1e-4f, 0.0f);
@@ -113,10 +98,10 @@ void main_comp(uint3 thread_id: SV_DispatchThreadID)
         for (float s = 0.0f; s < MULTISCATTER_STEPS; s += 1.0f)
         {
             const float3 p = position + direction * ((s + 0.3f) * dt);
-            const MediumSample medium = sample_medium_diffuse(a, p);
+            const MediumSample medium = sample_medium_without_fog(a, p);
             const float3 step_transmittance = exp(-medium.extinction * dt);
             const float3 extinction = max(medium.extinction, 1e-6f);
-            const float3 light = medium.scattering * isotropic * diffuse_transmittance_to_space(a, p, sun);
+            const float3 light = medium.scattering * isotropic * get_transmittance_to_space(a, p, sun);
             luminance += throughput * (light - light * step_transmittance) / extinction;
             medium_transfer += throughput * (medium.scattering - medium.scattering * step_transmittance) / extinction;
             throughput *= step_transmittance;
@@ -127,7 +112,7 @@ void main_comp(uint3 thread_id: SV_DispatchThreadID)
         {
             const float3 p = position + direction * ground;
             const float3 normal = normalize(p);
-            luminance += throughput * diffuse_transmittance_to_space(a, p + normal * 1e-3f, sun) * saturate(dot(normal, sun)) * a.ground_albedo * INV_PI;
+            luminance += throughput * get_transmittance_to_space(a, p + normal * 1e-3f, sun) * saturate(dot(normal, sun)) * a.ground_albedo * INV_PI;
         }
 
         second_order += luminance;

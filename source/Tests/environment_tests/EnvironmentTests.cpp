@@ -667,16 +667,30 @@ TEST_CASE("Sky light: a clear day's sun and sky", "[environment][sky-light]")
 	const SkyLight night = ComputeSkyLight(hazy, 0.0, -30.0, 115000.0, 30.0, 0.25);
 	CHECK(Lum(night.irradiance) == 0.0);
 
-	// Thicker haze: less direct sun, never more light on the ground than arrives at the top
+	// Thicker haze: less direct sun, never more light on the ground than arrives at the top, down to where fog starts
+	const double sunUp = std::sin(60.0 * std::numbers::pi / 180.0);
 	double previousSun = sun;
-	for (const double visibility : { 40000.0, 20000.0, 10000.0 })
+	for (const double visibility : { 40000.0, 30000.0, AtmosphereParams{}.fogStartVisibilityM })
 	{
 		const SkyLight hazier = ComputeSkyLight(WithVisibility(AtmosphereParams{}, visibility), 0.0, 60.0, 115000.0, -20.0, 0.25);
 		const double direct = Lum(hazier.sunIlluminance);
-		const double diffuse = Lum(hazier.irradiance);
 		CHECK(direct < previousSun);
-		CHECK(diffuse + direct * std::sin(60.0 * std::numbers::pi / 180.0) < 115000.0 * std::sin(60.0 * std::numbers::pi / 180.0));
+		CHECK(Lum(hazier.irradiance) + direct * sunUp < 115000.0 * sunUp);
 		previousSun = direct;
+	}
+
+	// All fog: it dims the sun no more than clear air (its light goes round X-Plane 12.4.4's fog); the sky sends down no
+	// more than 85% of what the fog would take from the beam
+	const double clearSun = Lum(ComputeSkyLight(WithVisibility(AtmosphereParams{}, 1.0e6), 0.0, 60.0, 115000.0, -20.0, 0.25).sunIlluminance);
+	for (const double visibility : { 8000.0, 3000.0 })
+	{
+		const AtmosphereParams medium = WithVisibility(AtmosphereParams{}, visibility);
+		const SkyLight foggier = ComputeSkyLight(medium, 0.0, 60.0, 115000.0, -20.0, 0.25);
+		CHECK(Lum(foggier.sunIlluminance) == Catch::Approx(clearSun));
+		CHECK(Lum(foggier.irradiance) > 0.0);
+		const double through = ComputeTransmittance(medium, 0.0, sunUp, 40, true)[1];
+		CHECK(through < ComputeTransmittance(medium, 0.0, sunUp)[1]);
+		CHECK(foggier.irradiance[1] <= 0.85 * 115000.0 * SUN_COLOR[1] * sunUp * (1.0 - through) * (1.0 + 1e-9));
 	}
 }
 
@@ -687,16 +701,35 @@ TEST_CASE("Atmosphere: visibility to haze", "[environment][atmosphere]")
 	CHECK(VisibilityExtinction(10000.0, 0.02) == Catch::Approx(3.912e-4).epsilon(1e-4));
 	CHECK(VisibilityExtinction(0.0) == 0.0);
 
-	// The haze layer takes what the clear layers don't give at the ground, scattering with atmo/fog_albedo
+	// What the clear layers don't give at the ground in blue (contrast falls there first): extra Mie, spectral like the
+	// clear Mie, as X-Plane 12.4.4 draws no fog at 20 km and more
 	const AtmosphereParams clear;
 	const AtmosphereParams hazy = WithVisibility(clear, 40000.0);
 	const double cutoff = -std::log(0.01);
-	CHECK(hazy.hazeExtinction == Catch::Approx(cutoff / 40000.0 - 11.75e-6 - 4.44e-6).epsilon(1e-9));
+	CHECK(hazy.hazeExtinction == Catch::Approx((cutoff / 40000.0 - 27.68e-6 - 4.44e-6 * clear.mieSpectral[2]) / clear.mieSpectral[2]).epsilon(1e-9));
+	CHECK(hazy.fogExtinction == 0.0);
+	CHECK(WithVisibility(clear, 20000.0).fogExtinction == 0.0);
 	CHECK(hazy.hazeScatteringAlbedo == Catch::Approx(0.9));
 	CHECK(hazy.mieExtinction == clear.mieExtinction);
 	CHECK(WithVisibility(clear, 1.0e6).hazeExtinction == 0.0);	// never cleaner than clear air
 	const MediumSample ground = SampleMedium(hazy, 0.0);
-	CHECK(ground.Extinction()[1] == Catch::Approx(cutoff / 40000.0).epsilon(1e-6));	// green: the visibility
+	CHECK(ground.Extinction()[2] == Catch::Approx(cutoff / 40000.0).epsilon(1e-6));	// blue: the visibility
+	CHECK(ground.Extinction()[1] < ground.Extinction()[2]);
+	CHECK(ground.ExtinctionWithoutFog()[2] == ground.Extinction()[2]);
+
+	// Shorter visibilities turn it into grey fog, all of it at 8 km (X-Plane's fog-white haze), half of it at 14 km
+	const AtmosphereParams thick = WithVisibility(clear, 8000.0);
+	CHECK(thick.hazeExtinction == 0.0);
+	CHECK(thick.fogExtinction == Catch::Approx(cutoff / 8000.0 - 27.68e-6 - 4.44e-6 * clear.mieSpectral[2]).epsilon(1e-9));
+	CHECK(thick.fogScatteringAlbedo == Catch::Approx(0.9));
+	const AtmosphereParams between = WithVisibility(clear, 14000.0);
+	CHECK(between.fogExtinction == Catch::Approx(between.hazeExtinction * clear.mieSpectral[2]).epsilon(1e-9));
+	CHECK(WithVisibility(clear, 3000.0).hazeExtinction == 0.0);
+	const MediumSample foggy = SampleMedium(thick, 0.0);
+	CHECK(foggy.Extinction()[2] == Catch::Approx(cutoff / 8000.0).epsilon(1e-6));
+	CHECK(foggy.fogScattering == Catch::Approx(0.9 * thick.fogExtinction));
+	CHECK(foggy.Extinction()[1] - foggy.ExtinctionWithoutFog()[1] == Catch::Approx(thick.fogExtinction));	// the sun's light goes round it
+	CHECK(foggy.Extinction()[0] - foggy.ExtinctionWithoutFog()[0] == Catch::Approx(foggy.Extinction()[2] - foggy.ExtinctionWithoutFog()[2]));	// grey
 
 	// Mie and haze per channel: Angstrom -1.3 with the wavelengths the Rayleigh coefficients imply (blue scatters 1.32x)
 	const Rgb spectral = MieSpectralFactors(clear.rayleighScattering, -1.3);
@@ -706,17 +739,19 @@ TEST_CASE("Atmosphere: visibility to haze", "[environment][atmosphere]")
 	CHECK(spectral[2] == Catch::Approx(clear.mieSpectral[2]).margin(1e-3));
 	CHECK(MieSpectralFactors(clear.rayleighScattering, 0.0)[2] == 1.0);
 	CHECK(SampleMedium(clear, 0.0).mieExtinction[2] / SampleMedium(clear, 0.0).mieExtinction[1] == Catch::Approx(clear.mieSpectral[2]));
-	CHECK(ground.mieExtinction[2] - ground.mieExtinction[1] == Catch::Approx(SampleMedium(clear, 0.0).mieExtinction[2] - SampleMedium(clear, 0.0).mieExtinction[1]));	// the haze is grey
+	CHECK(ground.mieExtinction[2] / ground.mieExtinction[1] == Catch::Approx(clear.mieSpectral[2]));	// the haze is spectral too
 
-	// The layer: uniform to its top above the ground, fading over the band, gone above it; on an elevated airport too
+	// The layer: uniform to its top above the ground, easing out over the band, gone above it; on an elevated airport too
 	const AtmosphereParams fog = WithVisibility(clear, 1000.0, 400.0);
 	CHECK(fog.hazeTopM == Catch::Approx(1500.0));
 	CHECK(HazeTopFromVisibility(200000.0) == Catch::Approx(4000.0));
 	CHECK(HazeProfile(fog, 400.0) == 1.0);
 	CHECK(HazeProfile(fog, 1899.0) == 1.0);
 	CHECK(HazeProfile(fog, 1900.0 + fog.hazeBandM * 0.5) == Catch::Approx(0.5));
+	CHECK(HazeProfile(fog, 1900.0 + fog.hazeBandM * 0.25) == Catch::Approx(0.84375));	// smoothstep
 	CHECK(HazeProfile(fog, 1900.0 + fog.hazeBandM) == 0.0);
-	CHECK(SampleMedium(fog, 400.0).Extinction()[1] == Catch::Approx(cutoff / 1000.0).epsilon(1e-6));
+	CHECK(SampleMedium(fog, 400.0).Extinction()[2] == Catch::Approx(cutoff / 1000.0).epsilon(1e-6));
+	CHECK(SampleMedium(fog, 5000.0).fogExtinction == 0.0);
 	CHECK(SampleMedium(fog, 5000.0).mieExtinction[1] < 1e-5);
 
 	// Sky-condition multipliers scale the scattering, not the absorption
@@ -725,6 +760,7 @@ TEST_CASE("Atmosphere: visibility to haze", "[environment][atmosphere]")
 	CHECK(doubled.mieScattering == Catch::Approx(2.0 * clear.mieScattering));
 	CHECK(doubled.mieExtinction - doubled.mieScattering == Catch::Approx(clear.mieExtinction - clear.mieScattering));
 	CHECK(doubled.hazeExtinction * doubled.hazeScatteringAlbedo == Catch::Approx(2.0 * hazy.hazeExtinction * hazy.hazeScatteringAlbedo));
+	CHECK(WithSkyMultipliers(thick, 2.0, 2.0).fogExtinction == thick.fogExtinction);	// the fog isn't the Mie
 }
 
 TEST_CASE("Sky light: the Mie phase function is normalized", "[environment][sky-light]")

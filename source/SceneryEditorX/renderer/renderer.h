@@ -552,14 +552,11 @@ namespace SceneryEditorX
 			float mieAngstrom = -1.3f;					// scattering/mie_scattering_exponent (and _absorption_)
 			float multipleScattering = 1.25f;			// scattering/multi_rat
 			float visibilityContrast = 0.01f;			// scattering/vis_cutoff_ratio
-			float fogAlbedo = 0.9f;						// atmo/fog_albedo: the visibility haze's scattering albedo
+			float fogAlbedo = 0.9f;						// atmo/fog_albedo: the visibility fog's scattering albedo
+			float fogStartVisibilityM = 20000.0f;		// sedx/fog_start_visibility_m: no visibility fog at this visibility and more
+			float fogFullVisibilityM = 8000.0f;			// sedx/fog_full_visibility_m: all fog (no extra Mie) at this visibility and less
 			float hazeTopM = 1500.0f;
 			float hazeBandM = 1000.0f;
-			// Extra multiple scattering of an optically thick visibility haze layer over Hillaire's isotropic estimate,
-			// which falls short the thicker the haze: the haze's share of that estimate is raised by 1 + this x (1 - e^-tau),
-			// tau the layer's vertical optical depth. X-Plane 12.4.4's 8 km haze outshines its sunlit ground ~2.5x where
-			// the estimate alone left it about even (calibrated on the clean *_aerial_hazy probe shots)
-			float hazeMultipleBoost = 0.0f;				// sedx/haze_multiple_boost
 			ExposureSettings exposure;					// photometric/*, exposure/*, autoexposure/* (renderer/exposure.h)
 
 			// exposure_fusion/shadows (EV), sigma, dis_near, dis_far (km); shadows 1 EV is an ASSUMPTION
