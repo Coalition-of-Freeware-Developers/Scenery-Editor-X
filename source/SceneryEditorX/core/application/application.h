@@ -194,7 +194,7 @@ namespace SceneryEditorX
 		bool m_ShowStats = true;
 
 		const PlatformContext* m_PlatformContext = nullptr;
-		Settings m_Settings = Settings(VFS::GetAppLocation(VFS::AppLocation::Settings) / "settings.cfg");	// Not the working folder: an install's is read-only
+		Settings m_Settings;	// user:/settings.cfg, opened once SetUpAppLocations mounted user:/ (not the working folder: an install's is read-only)
 		static Application *s_AppInstance;
 		PerformanceProfiler *m_Profiler = nullptr; // TODO: Should be null in Dist
 		std::unordered_map<const char *, PerformanceProfiler::PerFrameData> m_ProfilerPreviousFrameData;

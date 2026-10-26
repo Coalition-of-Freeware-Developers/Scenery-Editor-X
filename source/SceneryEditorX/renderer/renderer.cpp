@@ -1581,6 +1581,8 @@ void dynamic_resolution()
 		submitInfo.pSignalSemaphores = &s_RenderSemaphoreHandles[m_SwapchainImageIndex];
 
 		VkResult submitResult = vkQueueSubmit(graphicsQueue, 1, &submitInfo, s_FenceHandles[m_CurrentFrameIndex]);
+		if (submitResult == VK_ERROR_DEVICE_LOST)
+			Device::SetDeviceLost();
 		SEDX_VK_RESULT_ASSERT(submitResult, "vkQueueSubmit failed");
 
 		// Present the rendered image

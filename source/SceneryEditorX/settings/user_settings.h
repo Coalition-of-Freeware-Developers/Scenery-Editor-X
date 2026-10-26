@@ -29,25 +29,24 @@
  * -------------------------------------------------------
  */
 #pragma once
+#include <ctime>
 #include <filesystem>
 #include <map>
 #include <string>
 #include <SceneryEditorX/project/project_settings.h>
+#include <SceneryEditorX/settings/config_file.h>
 #include <SceneryEditorX/utils/pointers.h>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-	// Forward declarations
-	class Settings;
-
 	// ----------------------------------------------------
 	// Date/Time Formatting Utilities
 	// ----------------------------------------------------
 
 	/**
-	 * @brief Converts a time_t value to a formatted date/time string.
+	 * @brief Converts a time_t value to a formatted date/time string (local time) for display.
 	 *
 	 * Formats the time using DD/MM/YYYY HH:MM:SS format by default, or adapts to the user's
 	 * operating system regional settings when useSystemFormat is true.
@@ -59,10 +58,18 @@ namespace SceneryEditorX
 	std::string TimeToString(time_t time, bool useSystemFormat = true);
 
 	/**
-	 * @brief Converts a formatted date/time string back to time_t.
+	 * @brief A time as ISO 8601 in UTC ("2026-10-24T13:45:10Z"), which reads the same on every machine whatever its
+	 * regional settings or time zone. StringToTime reads it back.
+	 * @return The text, or "" for 0 / a time that can't be converted
+	 */
+	std::string TimeToIso8601(time_t time);
+
+	/**
+	 * @brief Converts a stored date/time string back to time_t.
 	 *
-	 * Parses strings in DD/MM/YYYY HH:MM:SS format or attempts to parse
-	 * system-specific formats if detected.
+	 * Reads ISO 8601 ("2026-10-24T13:45:10Z" is UTC) and the formats the preference files hold in local time
+	 * (DD/MM/YYYY HH:MM:SS, DD:MM:YYYY HH:MM:SS, YYYY-MM-DD HH:MM:SS), never the regional format, so a day can never
+	 * be read as a month ("10/06/2026" is 10 June, wherever the editor runs).
 	 *
 	 * @param timeString The formatted time string to parse
 	 * @return time_t value, or 0 if parsing fails
@@ -91,25 +98,28 @@ namespace SceneryEditorX
 	 * @brief Manages user-specific preferences and settings for the application.
 	 *
 	 * Stores user preferences such as welcome screen visibility, startup project,
-	 * and recent project history. Uses the ApplicationSettings system for persistent
-	 * storage in .cfg format.
+	 * and recent project history in their own .cfg file (a ConfigFile, so it goes
+	 * through the VFS: the same on Windows, macOS and Linux, written atomically).
 	 */
 	class UserPreferences : public RefCounted
 	{
 	public:
+		/* @brief Where the editor keeps them: the roaming settings folder. */
+		static constexpr const char *DEFAULT_LOCATION = "user:/user_preferences.cfg";
+
 		/**
-		 * @brief Constructs user preferences with default configuration file path.
+		 * @brief Constructs user preferences kept at DEFAULT_LOCATION (user:/ is mounted at startup).
 		 */
 		UserPreferences();
 
 		/**
 		 * @brief Constructs user preferences with custom configuration file path.
-		 * @param configPath Path to the user preferences configuration file
+		 * @param configPath Path to the user preferences configuration file (physical, or a virtual "mount:/path")
 		 */
 		explicit UserPreferences(std::filesystem::path configPath);
 
 		/**
-		 * @brief Destructor that automatically saves preferences.
+		 * @brief Destructor that saves preferences changed since they were last saved.
 		 */
 		virtual ~UserPreferences();
 
@@ -148,8 +158,9 @@ namespace SceneryEditorX
 		[[nodiscard]] std::map<time_t, RecentProject, std::greater<>> GetRecentProjects() const { return m_RecentProjects; }
 
 		/**
-		 * @brief Adds a project to the recent projects list.
-		 * @param project Recent project information to add
+		 * @brief Adds a project to the recent projects list (replacing an entry for the same file, however its path is
+		 * spelled: "C:\a\b.edX" and "c:/a/b.edX" are one file on Windows and macOS).
+		 * @param project Recent project information to add (a lastOpened of 0 means now)
 		 */
 		void AddRecentProject(const RecentProject& project);
 
@@ -169,22 +180,28 @@ namespace SceneryEditorX
 		// ----------------------------------------------------
 
 		/**
-		 * @brief Loads user preferences from the configuration file.
-		 * @return true if preferences were successfully loaded, false otherwise
+		 * @brief Loads user preferences from the configuration file (defaults for anything missing).
+		 * @return true if preferences were successfully loaded, false otherwise (the defaults are in use)
 		 */
 		bool LoadPreferences();
 
 		/**
-		 * @brief Saves user preferences to the configuration file.
+		 * @brief Saves user preferences to the configuration file (nothing is written when nothing changed).
 		 * @return true if preferences were successfully saved, false otherwise
 		 */
 		bool SavePreferences();
 
 		/**
 		 * @brief Gets the configuration file path.
-		 * @return Path to the configuration file being used
+		 * @return Where the configuration file is on disk
 		 */
-		[[nodiscard]] const std::filesystem::path& GetConfigPath() const { return m_ConfigPath; }
+		[[nodiscard]] std::filesystem::path GetConfigPath() const { return m_File.GetPhysicalPath(); }
+
+		/* @brief The configuration file's location as given (virtual "user:/user_preferences.cfg" by default). */
+		[[nodiscard]] std::string GetLocation() const { return m_File.GetLocation(); }
+
+		/* @brief True when something changed since the preferences were last loaded or saved. */
+		[[nodiscard]] bool IsDirty() const { return m_Dirty; }
 
 	private:
 		// User preference data
@@ -193,13 +210,20 @@ namespace SceneryEditorX
 		std::map<time_t, RecentProject, std::greater<>> m_RecentProjects;
 
 		// Configuration management
-		std::filesystem::path m_ConfigPath;
-		Ref<Settings> m_Settings;
+		ConfigFile m_File;
+		bool m_Dirty = false;			// Changed since the last load / save
+		bool m_Writable = true;			// False when the file is there but couldn't be read: it's never written over
 
 		// Maximum number of recent projects to keep
 		static constexpr size_t MAX_RECENT_PROJECTS = 10;
 
-		void Init();
+		void Init(std::string location);
+
+		/**
+		 * @brief Takes out what versions up to 0.2.30 copied into this file from settings.cfg (the application,
+		 * x_plane, ui and project sections: settings.cfg keeps them).
+		 */
+		void RemoveLegacySections();
 
 		/**
 		 * @brief Loads recent projects from settings.
@@ -225,14 +249,14 @@ namespace SceneryEditorX
 	 * @brief Creates and loads user preferences from default location.
 	 * @return Shared pointer to loaded user preferences
 	 */
-	UserPreferences CreateUserPreferences();
+	Ref<UserPreferences> CreateUserPreferences();
 
 	/**
 	 * @brief Creates and loads user preferences from custom location.
 	 * @param configPath Path to configuration file
 	 * @return Shared pointer to loaded user preferences
 	 */
-	UserPreferences CreateUserPreferences(const std::filesystem::path& configPath);
+	Ref<UserPreferences> CreateUserPreferences(const std::filesystem::path& configPath);
 
 }
 

@@ -30,6 +30,7 @@
  */
 #pragma once
 #include <SceneryEditorX/utils/formatter.h>
+#include <filesystem>
 #include <spdlog/logger.h>
 #include <spdlog/spdlog.h>
 #include <vulkan/vulkan_core.h>
@@ -217,6 +218,30 @@ namespace SceneryEditorX
 		 */
 		static std::shared_ptr<spdlog::logger> &GetLauncherLogger() { return m_LauncherLogger; }
 
+		/**
+		 * @fn GetLogFilePath
+		 * @brief Gets the main log file this process writes.
+		 *
+		 * The first running editor writes SceneryEditorX.log in the log folder; while it runs, the next one writes
+		 * SceneryEditorX_2.log, and so on (see GetLogInstance()). The path stays valid after ShutDown().
+		 *
+		 * @return The file's path, or an empty path before Init() or when Init() couldn't open the log files.
+		 */
+		static const std::filesystem::path &GetLogFilePath() { return m_LogFile; }
+
+		/**
+		 * @fn GetLogInstance
+		 * @brief Gets the log instance this process claimed in the log folder.
+		 *
+		 * Several editors can run at once, and each writes its own files: instance 1 SceneryEditorX.log,
+		 * EditorConsoleOut.log, Launcher.log and SceneryEditorX_crash.dmp, instance n the same names with "_n" after
+		 * the stem (SceneryEditorX_2.log, SceneryEditorX_2_crash.dmp, ...). An editor takes the lowest instance no
+		 * running editor holds; one that exits or crashes frees its instance for the next.
+		 *
+		 * @return The instance, 1 or higher, or 0 before Init() or when Init() couldn't open the log files.
+		 */
+		static uint32_t GetLogInstance() { return m_LogInstance; }
+
 		// -------------------------------------------------------------
 
 		/**
@@ -347,6 +372,9 @@ namespace SceneryEditorX
 		static std::shared_ptr<spdlog::logger> m_EditorLogger;
 		static std::shared_ptr<spdlog::logger> m_ConsoleLogger;
 		static std::shared_ptr<spdlog::logger> m_LauncherLogger;
+
+		inline static std::filesystem::path m_LogFile;
+		inline static uint32_t m_LogInstance = 0;
 
 		inline static Level m_InitialLevel = Level::Info;
 		static std::map<std::string, TagDetails> m_DefaultTagDetails;
