@@ -75,15 +75,16 @@ public struct AtmosphereParameters
     public float rayleigh_exp_scale;    // -1 / scale height (1/km)
     public float3 mie_scattering;       // Per channel: the green value times the Angstrom factors
     public float3 mie_extinction;
-    public float3 mie_spectral;         // Those factors (green 1); the visibility haze is grey (X-Plane's fog is white)
+    public float3 mie_spectral;         // Those factors (green 1)
     public float mie_exp_scale;
     public float mie_g;
     public float multiple_ratio;        // X-Plane scattering/multi_rat on the multiple-scattering estimate
     public float3 ozone_absorption;
     public float ozone_center;          // km
     public float ozone_half_width;
-    public float haze_extinction;       // 1/km inside the surface haze layer (green)
-    public float haze_albedo;
+    public float haze_extinction;       // 1/km inside the surface haze layer: extra Mie (green; per channel x mie_spectral)
+    public float fog_extinction;        // 1/km inside the same layer: X-Plane's fog, grey
+    public float fog_albedo;
     public float haze_top;              // km above sea level
     public float haze_band;             // km
     public float3 ground_albedo;
@@ -108,7 +109,8 @@ public AtmosphereParameters get_atmosphere()
     a.ozone_center = e.ozone.w * 0.001f;
     a.ozone_half_width = max(e.planet.x * 0.001f, 0.001f);
     a.haze_extinction = e.atmosphere_haze.x * 1000.0f;
-    a.haze_albedo = e.atmosphere_haze.y;
+    a.fog_extinction = e.atmosphere_view.w * 1000.0f;
+    a.fog_albedo = e.atmosphere_haze.y;
     a.haze_top = (max(e.camera.y, 0.0f) + e.atmosphere_haze.z) * 0.001f;
     a.haze_band = max(e.atmosphere_haze.w * 0.001f, 1e-3f);
     a.ground_albedo = e.planet.w;
@@ -132,49 +134,77 @@ public float3 world_to_atmosphere(AtmosphereParameters a, float3 world)
 // The medium
 // -------------------------------------------------------
 
+/**
+ * The medium at a point. The visibility thickens the Mie over a layer from the ground (X-Plane 12.4.4 raises its
+ * turbidity: the extra Mie is spectral, has the Mie's lobe and is in the sun's way too) and, for short visibilities
+ * (sedx/fog_start_visibility_m, sedx/fog_full_visibility_m), turns into X-Plane's fog (scatter_compute_* behaviour):
+ * grey, scattering isotropically, and only on view paths. The sun's light reaches every point (and the ground) without the fog (the transmittance and
+ * multi-scattering LUTs leave it out), so thick fog glows white instead of going dark.
+ */
 public struct MediumSample
 {
     public float3 rayleigh_scattering;
-    public float3 mie_scattering;
-    public float3 scattering;
+    public float3 mie_scattering;       // The clear Mie and the haze
+    public float fog_scattering;
+    public float3 scattering;           // All of it
     public float3 extinction;
 };
 
+/* @brief The haze and fog layer's density: 1 up to its top, easing to 0 over the band above (smoothstep). */
 public float haze_profile(AtmosphereParameters a, float altitude)
 {
-    return saturate(1.0f - (altitude - a.haze_top) / a.haze_band);
+    return smoothstep(0.0f, 1.0f, saturate(1.0f - (altitude - a.haze_top) / a.haze_band));
 }
 
-public MediumSample sample_medium(AtmosphereParameters a, float3 position)
+/* @brief The medium without the fog: what the sun's light crosses on its way in (the transmittance and multi-scattering LUTs). */
+public MediumSample sample_medium_without_fog(AtmosphereParameters a, float3 position)
 {
     const float altitude = max(length(position) - a.sea_radius, 0.0f);
     const float rayleigh = exp(altitude * a.rayleigh_exp_scale);
     const float mie = exp(altitude * a.mie_exp_scale);
     const float ozone = max(0.0f, 1.0f - abs(altitude - a.ozone_center) / a.ozone_half_width);
-    const float haze = a.haze_extinction * haze_profile(a, altitude);
+    const float3 haze = a.haze_extinction * haze_profile(a, altitude) * a.mie_spectral;
 
     MediumSample m;
     m.rayleigh_scattering = a.rayleigh_scattering * rayleigh;
-    m.mie_scattering = a.mie_scattering * mie + haze * a.haze_albedo;
+    m.mie_scattering = a.mie_scattering * mie + haze * (a.mie_scattering.g / max(a.mie_extinction.g, 1e-9f));	// the haze scatters like the clear Mie
+    m.fog_scattering = 0.0f;
     m.scattering = m.rayleigh_scattering + m.mie_scattering;
-    m.extinction = m.rayleigh_scattering + (a.mie_extinction * mie + haze) + a.ozone_absorption * ozone;
+    m.extinction = m.rayleigh_scattering + a.mie_extinction * mie + haze + a.ozone_absorption * ozone;
     return m;
 }
 
-/**
- * @brief The medium as multiple scattering sees it: the Mie (clear and haze) delta-Eddington scaled, f = g^2. Forward-
- * peaked scattering hardly turns light aside, so for light diffusing through thick haze it barely counts as extinction;
- * Hillaire's isotropic multiple-scattering estimate needs this to light the inside of a dense haze layer.
- */
-public MediumSample sample_medium_diffuse(AtmosphereParameters a, float3 position)
+/* @brief The medium a view ray crosses: with the fog. */
+public MediumSample sample_medium(AtmosphereParameters a, float3 position)
 {
-    MediumSample m = sample_medium(a, position);
-    const float f = a.mie_g * a.mie_g;
-    const float3 removed = f * m.mie_scattering;
-    m.mie_scattering -= removed;
-    m.scattering -= removed;
-    m.extinction -= removed;
+    MediumSample m = sample_medium_without_fog(a, position);
+    const float fog = a.fog_extinction * haze_profile(a, max(length(position) - a.sea_radius, 0.0f));
+    m.fog_scattering = fog * a.fog_albedo;
+    m.scattering += m.fog_scattering;
+    m.extinction += fog;
     return m;
+}
+
+/* @brief Optical depth (grey) of the fog along a ray from position (km) for up to length km. */
+public float fog_optical_depth(AtmosphereParameters a, float3 position, float3 direction, float length_km)
+{
+    if (a.fog_extinction <= 0.0f)
+        return 0.0f;
+    // Only where the ray is inside the layer's top
+    const float radius = a.sea_radius + a.haze_top + a.haze_band;
+    const float b = dot(position, direction);
+    const float discriminant = b * b - (dot(position, position) - radius * radius);
+    if (discriminant <= 0.0f)
+        return 0.0f;
+    const float t0 = max(-b - sqrt(discriminant), 0.0f);
+    const float t1 = min(-b + sqrt(discriminant), length_km);
+    if (t1 <= t0)
+        return 0.0f;
+    float depth = 0.0f;
+    const float dt = (t1 - t0) / 16.0f;
+    for (float s = 0.0f; s < 16.0f; s += 1.0f)
+        depth += haze_profile(a, max(length(position + direction * (t0 + (s + 0.5f) * dt)) - a.sea_radius, 0.0f)) * dt;
+    return depth * a.fog_extinction;
 }
 
 // -------------------------------------------------------
@@ -378,7 +408,8 @@ public float3 get_moon_illuminance_toa() { return buffer_environment.light_toa.w
 
 /**
  * @brief In-scattered radiance (nits, not pre-exposed) per unit length at a point from one light: single scattering
- * (the light's transmittance, the planet's shadow, both phase functions) plus Hillaire's multiple-scattering term.
+ * (the light's transmittance without the fog, the planet's shadow; Rayleigh and Cornette-Shanks phases, the fog
+ * isotropic) plus Hillaire's multiple-scattering term on all of it.
  */
 public float3 light_scattering(AtmosphereParameters a, float3 position, MediumSample medium, float3 view_direction, float3 light_direction, float3 illuminance)
 {
@@ -386,7 +417,8 @@ public float3 light_scattering(AtmosphereParameters a, float3 position, MediumSa
     const float3 up = position / height;
     const float cos_light_zenith = dot(up, light_direction);
     const float cos_theta = dot(view_direction, light_direction);
-    const float3 phase_scattering = medium.rayleigh_scattering * rayleigh_phase(cos_theta) + medium.mie_scattering * cornette_shanks_phase(cos_theta, a.mie_g);
+    const float3 phase_scattering = medium.rayleigh_scattering * rayleigh_phase(cos_theta) + medium.mie_scattering * cornette_shanks_phase(cos_theta, a.mie_g) +
+                                    medium.fog_scattering / (4.0f * PI);
     const float3 to_light = get_transmittance_to_space(a, position, light_direction);
     const float3 multiple = get_multiple_scattering(a, position, cos_light_zenith);
     return illuminance * (phase_scattering * to_light + multiple * medium.scattering);

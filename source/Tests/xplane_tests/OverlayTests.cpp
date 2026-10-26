@@ -233,6 +233,21 @@ namespace
 		"TREE 0 0 256 512 128 60 12 24 2 0\n"
 		"TREE 256 0 256 512 128 40 8 16 2 0\n";
 
+	// X-Plane 12's coastlines.bch, cut down: two pieces of type 1 (an 80 m shore), one of type 2, transitions
+	const char *BCH_TEXT =
+		"A\n800\nBEACH\n\n"
+		"TEXTURE coast.png\n"
+		"TEXTURE_NORMAL 1.0 coast_NML.png\n"
+		"SCALE_X 2048\nSCALE_Y 2048\n"
+		"SIZE_X 512\nSIZE_Y 512\n"
+		"DECAL_LIB lib/g10/decals/coast.dcl\n"
+		"GROUP 0 0\nGROUP 101 1\nGROUP 102 2\n"
+		"TILE  1\t\t0    256\t1730 1808 2048\n"
+		"TILE  1\t\t256  512\t1730 1808 2048\n"
+		"TILE  2\t\t0    256\t1570 1648 1728\n"
+		"XONL2 1 \t1544 1792\t2 80 320\n"
+		"XONLG 101 102\t1800  1920\t1410 1488 1728\n";
+
 	const char *FAC1_TEXT =
 		"A\n800\nFACADE\n\n"
 		"TEXTURE wall.png\n"
@@ -432,6 +447,74 @@ TEST_CASE("Forest asset", "[assets]")
 	CHECK(forest.trees[0].maxHeight == Catch::Approx(24.0f));
 	CHECK(forest.trees[1].s == Catch::Approx(256.0f));
 	CHECK(forest.maxHeight == Catch::Approx(24.0f));
+}
+
+TEST_CASE("X-Plane 12 forest asset: shader blocks, 3D meshes and their LOD steps", "[assets]")
+{
+	// As the shipped 1200 forests lay it out: meshes first, then grouped TREE / TREE2 rows naming their MESH_3D steps
+	const char *text =
+		"A\n1200\nFOREST\n\n"
+		"SHADER_2D\n"
+		"\tTEXTURE ../textures/bb.png\n"
+		"\tTEXTURE_NORMAL 2\t../textures/bb_NML.png\n"
+		"\tWEATHER ../textures/bb_SM.png\n"
+		"\tBLEND_HASH 0.5\n"
+		"\tNORMAL_TRANSLUCENCY\n"
+		"SHADER_3D\n"
+		"\tTEXTURE ../textures/3d.png\n"
+		"\tTEXTURE_NORMAL 1\t../textures/3d_NML.png\n"
+		"\tSUPER_ROUGHNESS 1.0\n"
+		"\tNORMAL_TRANSLUCENCY\n"
+		"SCALE_X 2048\nSCALE_Y 4096\nSPACING 16 16\nRANDOM 7 7\n\n"
+		"MESH\t3D_ash\t0\t500\t3\t3\t1.2\t1.0\t10.0\n"
+		"VERTEX 0 0 0 0 1 0 0.1 0.2 0 0 0\n"
+		"VERTEX 1 8 0 0 1 0 0.3 0.4 0 0 0\n"
+		"VERTEX 0 8 1 0 1 0 0.5 0.6 0 0 0\n"
+		"IDX 0 1 2\n"
+		"MESH\tlod_ash\t0\t100\t3\t3\t1.2\t1.0\t10.0\tNO_SHADOW\n"
+		"VERTEX 0 0 0 0 1 0 0 0 0 0 0\n"
+		"VERTEX 1 8 0 0 1 0 1 0 0 0 0\n"
+		"VERTEX 0 8 1 0 1 0 0 1 0 0 0\n"
+		"IDX 0 2 1\n"
+		"GROUP 1 45\n"
+		"\tTREE\t788\t3232\t154\t188\t77\t7\t10\t15\t1\t1\tash\n"
+		"\tMESH_3D\t3D_ash\n"
+		"\tMESH_3D\tlod_ash\n"
+		"\tTREE2\t0\t0\t100\t200\t50\t5\t6\t9\t8\t300\t1\t0\tbush\n";
+
+	ForestAsset forest;
+	std::string error;
+	REQUIRE(ParseForestAsset(text, forest, &error));
+	CHECK(forest.texture == "../textures/bb.png");
+	CHECK(forest.material2d.textureNormal == "../textures/bb_NML.png");
+	CHECK(forest.material2d.normalRatio == Catch::Approx(2.0f));
+	CHECK(forest.material2d.weather == "../textures/bb_SM.png");
+	CHECK(forest.material2d.blendHash == Catch::Approx(0.5f));
+	CHECK(forest.material2d.normalTranslucency);
+	CHECK(forest.material3d.texture == "../textures/3d.png");
+	CHECK(forest.material3d.superRoughness == Catch::Approx(1.0f));
+	CHECK(forest.material3d.normalTranslucency);
+	CHECK_FALSE(forest.material3d.normalMetalness);
+
+	REQUIRE(forest.meshes.size() == 2);
+	const ForestAsset::Mesh &mesh = forest.meshes[0];
+	CHECK(mesh.name == "3D_ash");
+	CHECK(mesh.lodFar == Catch::Approx(500.0f));
+	CHECK_FALSE(mesh.noShadow);
+	REQUIRE(mesh.vertices.size() == 3 * 8);		// x y z, normal, s t; the wind weights are dropped
+	CHECK(mesh.vertices[8 + 1] == Catch::Approx(8.0f));
+	CHECK(mesh.vertices[16 + 7] == Catch::Approx(0.6f));
+	CHECK(mesh.indices == std::vector<uint32_t>{ 0, 1, 2 });
+	CHECK(forest.meshes[1].noShadow);
+
+	REQUIRE(forest.trees.size() == 2);
+	CHECK(forest.trees[0].quads == 1);
+	CHECK(forest.trees[0].layer == 1);
+	CHECK(forest.trees[0].meshes3d == std::vector<int>{ 0, 1 });	// Nearest step first
+	CHECK(forest.trees[0].nominalHeight == Catch::Approx(0.0f));
+	CHECK(forest.trees[1].nominalHeight == Catch::Approx(8.0f));		// TREE2: nominal height, then LOD far
+	CHECK(forest.trees[1].quads == 1);
+	CHECK(forest.trees[1].meshes3d.empty());
 }
 
 TEST_CASE("Type 1 facade asset", "[assets]")
@@ -903,7 +986,8 @@ TEST_CASE("Overlay builder turns DSF placements into meshes and object placement
 		if (mesh->resource == "facades/shed.fac" && mesh->name == "shed.fac")
 		{
 			shedWalls = true;
-			CHECK(top == Catch::Approx(6.0f).margin(0.01f));
+			// 6 m asked of 3 m BOTTOM + 3 m MIDDLE + 4 m TOP rows: whole rows only, the nearest is 7 m (no MIDDLE)
+			CHECK(top == Catch::Approx(7.0f).margin(0.01f));
 			CHECK(mesh->vertices.size() >= 4 * 4 * 3);	// 4 sides, 3 rows, >= 1 column each
 		}
 		if (mesh->resource == "facades/terminal.fac" && mesh->name == "terminal.fac")
@@ -1148,6 +1232,36 @@ TEST_CASE("Decal library asset", "[assets]")
 	CHECK(dcl.decals[2].gain == Catch::Approx(2.0f));
 
 	CHECK_FALSE(ParseDecalLibraryAsset("A\n850\nDRAPED_POLYGON\n", dcl));
+}
+
+TEST_CASE("Decal keys: each part's strength comes from the base texel and the row's two trailing terms", "[assets]")
+{
+	// X-Plane 12's lib/g10/decals/apt_ter_dirtroad_1.dcl: RGB detail everywhere (0 + 1.25), alpha where red > 0.375
+	const char *text =
+		"A\n1000\nDECAL\n\n"
+		"DECAL_PARAMS_PROJ\t4.0\t4.0\t0.5\t\t0.00\t0.00\t0.00\t0\t1.25\t0.0\t\t4.00\t0.00\t0.00\t0\t0.5\t-2.0\t \ttextures/RGBA_dirt_cmb_1.png\n"
+		"DECAL_PARAMS\t30.0\t0.0\t\t0.00\t0.00\t0.00\t0\t0\t0.0\t\t0.00\t0.00\t0.00\t0.3\t0.00\t-0.10\t \ttextures/A_skids.png\n"
+		"DECAL_PARAMS\t30.0\t0.0\t\t0 0 0 0 0 0\t\t0 0 0 0 0 -1\t \ttextures/never.png\n";
+	DecalLibraryAsset dcl;
+	REQUIRE(ParseDecalLibraryAsset(text, dcl));
+	REQUIRE(dcl.decals.size() == 3);
+
+	const DecalKeys &dirt = dcl.decals[0].keys;
+	CHECK(dirt.rgb[0] == Catch::Approx(0.0f));
+	CHECK(dirt.rgbBias == Catch::Approx(1.25f));		// modulator + constant
+	CHECK(dirt.alpha[0] == Catch::Approx(4.0f));
+	CHECK(dirt.alphaBias == Catch::Approx(-1.5f));
+	CHECK(dcl.decals[0].strength == Catch::Approx(1.0f));
+
+	// Skid marks: alpha only, at 0.3 x the texel's alpha less 0.1
+	const DecalKeys &skids = dcl.decals[1].keys;
+	CHECK(skids.rgbBias == Catch::Approx(0.0f));
+	CHECK(skids.alpha[3] == Catch::Approx(0.3f));
+	CHECK(skids.alphaBias == Catch::Approx(-0.1f));
+	CHECK(dcl.decals[1].strength == Catch::Approx(0.2f));
+
+	// A row no texel can turn on
+	CHECK(dcl.decals[2].strength == Catch::Approx(0.0f));
 }
 
 TEST_CASE("Runway marking atlas sprites", "[overlay]")
@@ -1787,4 +1901,199 @@ TEST_CASE("A facade without wall meshes still places its attached objects", "[ov
 	for (const OverlayObject &object : out.objects)
 		doors += object.source == OverlayObject::Source::Facade ? 1 : 0;
 	CHECK(doors >= 4);
+}
+
+TEST_CASE("Beaches (.bch) parse", "[overlay][assets]")
+{
+	BeachAsset beach;
+	REQUIRE(ParseBeachAsset(BCH_TEXT, beach));
+	CHECK(beach.texture == "coast.png");
+	CHECK(beach.textureNormal == "coast_NML.png");
+	CHECK(beach.normalRatio == 1.0f);
+	CHECK(beach.decalLibrary == "lib/g10/decals/coast.dcl");
+	CHECK(beach.scaleX == 2048.0f);
+	CHECK(beach.sizeY == 512.0f);
+	CHECK(beach.groups.size() == 3);
+	REQUIRE(beach.tiles.size() == 3);
+	CHECK(beach.GetTiles(1).size() == 2);
+	CHECK(beach.GetTiles(2).size() == 1);
+	CHECK(beach.GetTiles(3).empty());
+	CHECK(beach.tiles[1].s1 == 256.0f);
+	CHECK(beach.tiles[2].t2 == 1648.0f);
+	REQUIRE(beach.transitions.size() == 2);
+	CHECK(beach.transitions[0].kind == "XONL2");
+	CHECK(beach.transitions[0].from == 1);
+	CHECK(beach.transitions[1].kind == "XONLG");
+	CHECK(beach.transitions[1].to == 102);
+	CHECK(beach.transitions[1].tile.t3 == 1728.0f);
+
+	// X-Plane 9's spelling of the texture
+	REQUIRE(ParseBeachAsset("A\n800\nBEACH\n\nBASE_TEX coast.png\nSCALE_X 1024\nSCALE_Y 1024\nSIZE_X 3072\nSIZE_Y 3072\nTILE 1 640 896 960 992 1024\n", beach));
+	CHECK(beach.texture == "coast.png");
+	CHECK_FALSE(ParseBeachAsset("A\n800\nBEACH\n\nTEXTURE coast.png\n", beach));
+	CHECK_FALSE(ParseBeachAsset("A\n800\nFOREST\n\nTEXTURE coast.png\nTILE 1 0 256 0 1 2\n", beach));
+}
+
+TEST_CASE("Beaches are laid along the shore, water on the left", "[overlay]")
+{
+	BeachAsset beach;
+	REQUIRE(ParseBeachAsset(BCH_TEXT, beach));
+	// Type 1: 19.5 m into the water (t 1730..1808), 60 m inland (1808..2048); 64 m pieces (256 px of 0.25 m)
+	constexpr double water = 19.5, land = 60.0;
+
+	// A 100 m lake: counter-clockwise from above (x east, z south), so its inside is on the left
+	const std::vector<Point2> lake = { { 0.0, 0.0 }, { 100.0, 0.0 }, { 100.0, -100.0 }, { 0.0, -100.0 } };
+	const auto distanceToShore = [&lake](const double x, const double z)
+	{
+		double nearest = 1e30;
+		for (size_t i = 0; i < lake.size(); ++i)
+		{
+			const Point2 &a = lake[i], &b = lake[(i + 1) % lake.size()];
+			const double dx = b.x - a.x, dz = b.z - a.z;
+			const double t = std::clamp(((x - a.x) * dx + (z - a.z) * dz) / (dx * dx + dz * dz), 0.0, 1.0);
+			nearest = std::min(nearest, std::hypot(x - (a.x + dx * t), z - (a.z + dz * t)));
+		}
+		return nearest;
+	};
+	const auto inLake = [](const double x, const double z) { return x > 0.0 && x < 100.0 && z > -100.0 && z < 0.0; };
+
+	SECTION("A ring of one type")
+	{
+		OverlayMesh mesh;
+		REQUIRE(AppendBeach(mesh, beach, lake, { 1, 1, 1, 1 }, true, 0.01f, 7) == 1);
+		// 400 m in 64 m pieces, also cut at the corners: 10 pieces of 6 vertices, 4 triangles each
+		CHECK(mesh.vertices.size() == 60);
+		CHECK(mesh.indices.size() == 120);
+		for (const OverlayVertex &vertex : mesh.vertices)
+		{
+			CHECK(vertex.y == 0.01f);
+			CHECK(vertex.u >= 0.0f);
+			CHECK(vertex.u <= 512.0f / 2048.0f + 1e-6f);
+			const double offset = distanceToShore(vertex.x, vertex.z);
+			const bool corner = std::abs(std::abs(vertex.x - 50.0) - 50.0) < 1e-3 || std::abs(std::abs(vertex.z + 50.0) - 50.0) < 1e-3;
+			if (std::abs(vertex.v - 1808.0f / 2048.0f) < 1e-6f)
+				CHECK(offset < 1e-3);					// The shoreline on the polygon
+			else if (std::abs(vertex.v - 1730.0f / 2048.0f) < 1e-6f)
+			{
+				CHECK(inLake(vertex.x, vertex.z));		// The wet edge in the water
+				if (!corner)
+					CHECK(offset == Catch::Approx(water).margin(1e-3));
+			}
+			else
+			{
+				CHECK(vertex.v == 1.0f);				// The land edge outside
+				CHECK_FALSE(inLake(vertex.x, vertex.z));
+				CHECK(offset >= land - 1e-3);
+			}
+		}
+		// Facing up, wound as the other drapes
+		for (size_t i = 0; i + 2 < mesh.indices.size(); i += 3)
+		{
+			const OverlayVertex &a = mesh.vertices[mesh.indices[i]], &b = mesh.vertices[mesh.indices[i + 1]], &c = mesh.vertices[mesh.indices[i + 2]];
+			CHECK((b.z - a.z) * (c.x - a.x) - (b.x - a.x) * (c.z - a.z) > 0.0f);
+		}
+	}
+	SECTION("No beach where the type is 0")
+	{
+		OverlayMesh mesh;
+		// The east side (edge 1) has none: one run from the north side round to the south side
+		CHECK(AppendBeach(mesh, beach, lake, { 1, 0, 1, 1 }, true, 0.0f, 7) == 1);
+		for (const OverlayVertex &vertex : mesh.vertices)
+		{
+			if (std::abs(vertex.v - 1808.0f / 2048.0f) < 1e-6f)
+				CHECK_FALSE((std::abs(vertex.x - 100.0) < 1e-3 && vertex.z < -1.0 && vertex.z > -99.0));
+		}
+		OverlayMesh none;
+		CHECK(AppendBeach(none, beach, lake, { 0, 0, 0, 0 }, true, 0.0f, 7) == 0);
+		CHECK(AppendBeach(none, beach, lake, { 3, 3, 3, 3 }, true, 0.0f, 7) == 0);	// A type without pieces
+		CHECK(none.vertices.empty());
+	}
+	SECTION("Chains and type changes")
+	{
+		OverlayMesh mesh;
+		// Open along three sides, the last one a different type: two runs
+		CHECK(AppendBeach(mesh, beach, lake, { 1, 1, 2, 2 }, false, 0.0f, 7) == 2);
+		bool type2 = false;
+		for (const OverlayVertex &vertex : mesh.vertices)
+			type2 |= std::abs(vertex.v - 1648.0f / 2048.0f) < 1e-6f;
+		CHECK(type2);
+		// Nothing along the closing side of the chain (west, x = 0) but its end points
+		for (const OverlayVertex &vertex : mesh.vertices)
+		{
+			if (std::abs(vertex.v - 1808.0f / 2048.0f) < 1e-6f || std::abs(vertex.v - 1648.0f / 2048.0f) < 1e-6f)
+				CHECK_FALSE((std::abs(vertex.x) < 1e-3 && vertex.z < -1.0 && vertex.z > -99.0));
+		}
+	}
+}
+
+TEST_CASE("DSF beach placements and trees kept to where they may stand", "[overlay]")
+{
+	TempDir temp;
+	temp.Write("beaches/coast.bch", BCH_TEXT);
+	temp.Write("forests/trees.for", FOR_TEXT);
+	const fs::path package = temp.path;
+	const AssetResolver resolver = [&](const std::string_view path) -> fs::path
+	{
+		const fs::path local = package / fs::path(std::string(path));
+		return fs::exists(local) ? local : fs::path();
+	};
+	const GeoProjection projection(45.6, -122.6);
+	const auto geo = [&projection](const double x, const double z, const double type = -1.0)
+	{
+		DsfPoint p;
+		p.planes = type < 0.0 ? 2 : 3;
+		projection.ToGeo(Point2{ x, z }, p.v[1], p.v[0]);
+		p.v[2] = type < 0.0 ? 0.0 : type;
+		return p;
+	};
+
+	SECTION("A beach ring")
+	{
+		OverlayBuilder builder(resolver, projection);
+		DsfFile dsf;
+		dsf.polygonDefinitions = { "beaches/coast.bch" };
+		DsfPolygonPlacement ring;
+		ring.parameter = 1;
+		ring.planes = 3;
+		ring.windings = { { geo(0, 0, 1), geo(100, 0, 1), geo(100, -100, 1), geo(0, -100, 1), geo(0, 0, 1) } };	// Closing point repeated
+		dsf.polygons.push_back(ring);
+		OverlayBuild out;
+		builder.Build(dsf, OverlayBuilder::Options{}, out);
+		CHECK(out.warnings.empty());
+		REQUIRE(out.meshes.size() == 1);
+		const OverlayMesh &mesh = out.meshes[0];
+		CHECK(mesh.kind == OverlayKind::Beach);
+		CHECK(mesh.blended);
+		CHECK(mesh.texture.filename() == "coast.png");
+		CHECK(mesh.vertices.size() == 60);
+		CHECK(std::string(GetOverlayKindName(mesh.kind)) == "Beach");
+	}
+	SECTION("Trees: within the area and where the caller allows")
+	{
+		OverlayBuilder builder(resolver, projection);
+		DsfFile dsf;
+		dsf.polygonDefinitions = { "forests/trees.for" };
+		DsfPolygonPlacement forest;
+		forest.parameter = 255;
+		forest.windings = { { geo(-2000, 2000), geo(2000, 2000), geo(2000, -2000), geo(-2000, -2000) } };
+		dsf.polygons.push_back(forest);
+
+		OverlayBuilder::Options options;
+		options.area.Add(Point2{ -300.0, -300.0 });
+		options.area.Add(Point2{ 300.0, 300.0 });
+		options.areaMargin = 100.0;
+		options.keepTree = [](const Point2 &point) { return point.x >= 0.0; };
+		OverlayBuild out;
+		builder.Build(dsf, options, out);
+		REQUIRE(out.meshes.size() == 1);
+		const OverlayMesh &mesh = out.meshes[0];
+		CHECK(mesh.vertices.size() > 100);
+		constexpr double crown = 20.0;
+		for (const OverlayVertex &vertex : mesh.vertices)
+		{
+			CHECK(vertex.x > -crown);
+			CHECK(vertex.x < 400.0 + crown);
+			CHECK(std::abs(vertex.z) < 400.0 + crown);
+		}
+	}
 }

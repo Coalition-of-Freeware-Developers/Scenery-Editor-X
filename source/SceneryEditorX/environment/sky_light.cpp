@@ -80,13 +80,13 @@ namespace SceneryEditorX::Environment
 			return t >= -1e-6 ? std::max(t, 0.0) : -1.0;	// 0: leaving the ground downward (an observer standing on it)
 		}
 
-		/* @brief Optical depth (extinction x length) accumulated along a path. */
+		/* @brief Optical depth (extinction x length) accumulated along a path, with the fog or without. */
 		struct Depth
 		{
 			Rgb tau{};
-			void Add(const MediumSample &m, const double length)
+			void Add(const MediumSample &m, const double length, const bool fog = true)
 			{
-				const Rgb e = m.Extinction();
+				const Rgb e = fog ? m.Extinction() : m.ExtinctionWithoutFog();
 				for (int c = 0; c < 3; ++c)
 					tau[c] += e[c] * length;
 			}
@@ -110,7 +110,7 @@ namespace SceneryEditorX::Environment
 		}
 	}
 
-	Rgb ComputeTransmittance(const AtmosphereParams &atmosphere, const double altitudeM, const double cosZenith, const int steps)
+	Rgb ComputeTransmittance(const AtmosphereParams &atmosphere, const double altitudeM, const double cosZenith, const int steps, const bool throughFog)
 	{
 		const Vec p{ 0.0, atmosphere.groundRadius + std::max(altitudeM, 0.0), 0.0 };
 		const double mu = std::clamp(cosZenith, -1.0, 1.0);
@@ -126,17 +126,18 @@ namespace SceneryEditorX::Environment
 		for (int i = 0; i < steps; ++i)
 		{
 			const Vec q = p + d * ((i + 0.5) * dt);
-			depth.Add(SampleMedium(atmosphere, q.Length() - atmosphere.groundRadius), dt);
+			depth.Add(SampleMedium(atmosphere, q.Length() - atmosphere.groundRadius), dt, throughFog);
 		}
 		return Exp(depth.tau);
 	}
 
 	namespace
 	{
-		/* @brief One view ray: Rayleigh in-scattering (with its phase), Mie in-scattering without its phase, and G. */
+		/* @brief One view ray: Rayleigh and fog in-scattering (with their phases), the Mie's without its phase, and G. */
 		struct Marched
 		{
 			Rgb rayleigh{};
+			Rgb fog{};
 			Rgb mie{};
 			double gather = 0.0;	// How much of an isotropic field the ray picks up (green): the multiple-scattering estimate
 			double cosTheta = 1.0;	// Between the view and the sun
@@ -174,9 +175,10 @@ namespace SceneryEditorX::Environment
 				{
 					const double light = toObserver[c] * toSun[c] * sunLux * SUN_COLOR[c] * dt;
 					out.rayleigh[c] += light * m.rayleighScattering[c] * phaseR;
+					out.fog[c] += light * m.fogScattering / (4.0 * PI);
 					out.mie[c] += light * m.mieScattering[c];
 				}
-				out.gather += toObserver[1] * (m.rayleighScattering[1] + m.mieScattering[1]) * dt;
+				out.gather += toObserver[1] * m.Scattering()[1] * dt;
 				depth.Add(m, dt);
 			}
 			return out;
@@ -193,7 +195,7 @@ namespace SceneryEditorX::Environment
 	{
 		const Marched m = March(atmosphere, altitudeM, viewElevationDeg, viewAzimuthFromSunDeg, sunElevationDeg, sunLux, steps);
 		const double phaseM = MiePhase(m.cosTheta, atmosphere.mieG);
-		return { m.rayleigh[0] + m.mie[0] * phaseM, m.rayleigh[1] + m.mie[1] * phaseM, m.rayleigh[2] + m.mie[2] * phaseM };
+		return { m.rayleigh[0] + m.fog[0] + m.mie[0] * phaseM, m.rayleigh[1] + m.fog[1] + m.mie[1] * phaseM, m.rayleigh[2] + m.fog[2] + m.mie[2] * phaseM };
 	}
 
 	SkyLight ComputeSkyLight(const AtmosphereParams &atmosphere, const double altitudeM, const double sunElevationDeg, const double sunLux,
@@ -244,7 +246,7 @@ namespace SceneryEditorX::Environment
 				const Marched m = sky(elevation, (a + 0.5) * 180.0 / HALF_AZIMUTHS);
 				const double phaseM = MiePhase(m.cosTheta, atmosphere.mieG);
 				for (int c = 0; c < 3; ++c)
-					single[c] += (m.rayleigh[c] + m.mie[c] * phaseM) * weight;
+					single[c] += (m.rayleigh[c] + m.fog[c] + m.mie[c] * phaseM) * weight;
 				gatherCos += m.gather * weight;
 				gatherMean += m.gather * solid / (2.0 * PI);
 			}
@@ -264,7 +266,7 @@ namespace SceneryEditorX::Environment
 		{
 			Rgb out{};
 			for (int c = 0; c < 3; ++c)
-				out[c] = m.rayleigh[c] + diffuse[c] * m.gather;
+				out[c] = m.rayleigh[c] + m.fog[c] + diffuse[c] * m.gather;
 			return out;
 		};
 		light.zenith = base(zenith);
@@ -279,9 +281,11 @@ namespace SceneryEditorX::Environment
 		for (int c = 0; c < 3; ++c)
 			light.irradiance[c] = single[c] + diffuse[c] * gatherCos;
 
-		// Energy: the sky can't send down more than the beam lost on its way, of which forward-scattering haze sends
-		// most down (ASSUMPTION: at most 85%); the isotropic estimate overshoots in thick haze
-		const double lost = std::max(sunLux * SUN_COLOR[1] * sunUp - light.sunIlluminance[1] * sunUp, 0.0);
+		// Energy: the sky can't send down more than the beam lost on its way (the fog counted, though the sun's light
+		// doesn't go through it), of which forward-scattering haze sends most down (ASSUMPTION: at most 85%); the
+		// isotropic estimate overshoots in thick haze
+		const double throughFog = ComputeTransmittance(atmosphere, altitudeM, std::sin(sunElevationDeg * DEG), 40, true)[1];
+		const double lost = std::max(sunLux * SUN_COLOR[1] * sunUp * (1.0 - throughFog), 0.0);
 		const double cap = 0.85 * lost;
 		if (sunUp > 0.0 && light.irradiance[1] > cap)
 		{

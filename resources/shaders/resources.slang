@@ -131,7 +131,7 @@ public struct MaterialParameters
     public float anisotropic_rotation;
     public float clearcoat;
     public float clearcoat_roughness;
-    public float2 padding3;
+    public float2 snow_luma;         // SNOW_ALBEDO_LUMA (has_snow_albedo_luma()): snow receptivity weights for the linear albedo's r and g
 
     // X-Plane materials (xp_material.slang): specular gain, super roughness floor, F0 when the normal map carries
     // none, emissive luminance in nits (0: emissive texels are display values)
@@ -145,6 +145,19 @@ public struct MaterialParameters
     public float4 drape_normal_decal;
     public float4 drape_misc;
 
+    // X-Plane terrain (.ter, xp_terrain.slang): base (projected s / t meters a repeat, normal map repeats per base repeat,
+    // flags), composite (s / t meters, noise mask center / half width), slopes (hill start / end, cliff start / end
+    // degrees), slope textures (hill s / t, cliff s / t meters), lit (s / t meters, distance fade start / end), far
+    // (s / t meters, start / end distance)
+    public float4 terrain_base;
+    public float4 terrain_composite;
+    public float4 terrain_slope;
+    public float4 terrain_slope_scale;
+    public float4 terrain_lit;
+    public float4 terrain_far;
+    public float4 drape_decal_key[4];   // Detail decal keys: decal 0 RGB, decal 0 alpha, decal 1 RGB, decal 1 alpha (xp_drape_apply_detail_decals)
+    public float4 drape_decal_bias;     // Their biases, in the same order
+
     public bool has_texture_albedo() { return (flags & (1 << 2)) != 0; }
     public bool has_texture_normal() { return (flags & (1 << 1)) != 0; }
     public bool has_texture_occlusion() { return (flags & (1 << 7)) != 0; }
@@ -155,6 +168,13 @@ public struct MaterialParameters
     public uint xp_normal_mode() { return (flags >> 16) & 3u; }	// xp_material.slang xp_normal_*
     public bool is_xp_material() { return (flags & (1 << 18)) != 0; }
     public uint xp_drape_mode() { return (flags >> 19) & 3u; }	// xp_material.slang xp_drape_*
+    public bool is_xp_foliage() { return (flags & (1 << 21)) != 0; }	// .for trees: canopy normals, kept on back faces
+    // Weather receptivity (weather.slang): a WEATHER mask in the emission slot 3, WEATHER_TRANSPARENT, SNOW_ALBEDO_LUMA
+    public bool has_weather_mask() { return (flags & (1 << 22)) != 0; }
+    public bool is_weather_transparent() { return (flags & (1 << 23)) != 0; }
+    public bool has_snow_albedo_luma() { return (flags & (1 << 24)) != 0; }
+    public uint xp_lod_switch() { return (flags >> 25) & 3u; }	// forests with 3D trees: 1 billboards (far side), 2 meshes (near side)
+    public uint xp_texture_map() { return (flags >> 27) & 3u; }	// xp_material.slang xp_texture_map_*
 };
 
 // struct which forms the bindless light parameters array
@@ -348,7 +368,7 @@ public struct EnvironmentData
     public float4 ozone;             // rgb absorption, w tent center altitude
     public float4 planet;            // ozone half width, earth radius, atmosphere radius, ground albedo
     public float4 haze;              // visibility, haze top, haze band, time
-    public float4 weather;           // rain wetness, ice, snow level, puddles
+    public float4 weather;           // thresholds a surface's receptivity must pass (weather.slang): rain, ice, snow, puddles
     public float4 snow_projection_x;
     public float4 snow_projection_z;
     public float4 season;            // ratio, index, day of year, latitude
@@ -366,13 +386,13 @@ public struct EnvironmentData
     public float4 exposure_target;   // ev100_mid and ev100_bias for the sun's elevation, gain below mid, gain above
     public float4 exposure_extra;    // x compensation (EV, positive brightens)
     public float4 atmosphere_scattering; // rgb Mie spectral factor (Angstrom exponent, green 1), w multiple-scattering ratio
-    public float4 color_slope;       // ASC-CDL rgb slope, w saturation
+    public float4 color_slope;       // ASC-CDL rgb slope (scene linear, around middle grey), w saturation
     public float4 color_offset;      // rgb offset, w output gain
     public float4 color_power;       // rgb power, w output gamma
     public float4 post;              // bloom intensity, exposure fusion highlights (EV), fusion strength
     public float4 light_toa;         // rgb sun illuminance outside the atmosphere (lux), w the moon's (lux, x fraction)
-    public float4 atmosphere_haze;   // haze extinction (1/m), scattering albedo, layer top above the ground (m), fade band (m)
-    public float4 atmosphere_view;   // aerial perspective range (m), airglow (nits), star brightness, unused
+    public float4 atmosphere_haze;   // haze extinction (1/m, extra Mie, green), fog scattering albedo, layer top above the ground (m), fade band (m)
+    public float4 atmosphere_view;   // aerial perspective range (m), airglow (nits), star brightness, fog extinction (1/m)
     public float4 probe;             // xyz environment probe 0 (world), w specular LOD bias
     public float4 celestial[3];      // rows of the world -> equatorial rotation (x vernal equinox, z north pole)
     public float4x4 csm_view_projection[4]; // sun shadows (renderer/csm.h): the light's view-projection per cascade
@@ -386,7 +406,28 @@ public struct EnvironmentData
     public float4 ssr;               // screen-space reflections (ssr_common.slang): min gloss, gloss fade, LOD bias, use prefiltered (0 / 1)
     public float4 ssr_trace;         // max Hi-Z steps, thickness (m), thickness per meter of view depth, edge fade (share of the screen)
     public float4 ssr_history;       // history clamp (pre-exposed), lobe half width per GGX alpha, trace every pixel (debug), SSR active
-    public float4 padding_environment[15];
+    public float4 ocean;             // water (renderer/ocean.h, ocean_common.slang): time (s), choppiness, height scale, wave travel direction (rad, atan2(z, x))
+    public float4 ocean_cascade[4];  // per cascade: tile size (m), first and past-last wave number (rad/m), water/cascade_N_scale
+    public float4 ocean_sea;         // wind speed (m/s), swell, spread blend, short waves fade (m)
+    public float4 ocean_jonswap;     // alpha, peak omega (rad/s), gamma, spectrum depth (m)
+    public float4 water_surface;     // F0, surface roughness (perceptual, from water/gloss), refractive index, turbidity on (0 / 1)
+    public float4 water_volume;      // water/turbidity, turbidity cutoff (ln), clearest-water floor (m), shore depth (m)
+    public float4 water_foam;        // foam bias, ratio, scale, share fading per second
+    public float4 water_floor;       // floor albedo rgb, water/sea_floor_coef (share of the floor seen)
+    public float4 water_tessellation; // target edge pixels, max factor, pond wave scale (0: fetch ignored), frame time step (s)
+    public float4 tonemap;           // X-Plane 12's display transform: middle grey, working-space compression, display maximum, unused
+    public float4 weather_rain;      // weather.slang: 1 / noise repeat (1/m), threshold edge width, receptivity added before the noise, darkening scale
+    public float4 weather_darkening; // darkening start, end (wetness), bright-surface relief, albedo ratio
+    public float4 weather_darkening_gloss; // gloss ramp start, end, multiplier for dark albedo, for light albedo
+    public float4 weather_water;     // share of the water film's gloss a wet surface takes, the film's gloss
+    public float4 weather_snow;      // 1 / noise repeat (1/m), threshold edge width, noise depth
+    public float4 weather_snow_detail; // slope min, slope max (up . normal), decal 1 weight, decal 2 weight
+    public float4 weather_snow_scale; // 1 / repeat (1/m) of the albedo, normal and decal textures
+    public float4 weather_ice;       // 1 / noise repeat (1/m), threshold edge width, decal 1 weight, decal 2 weight
+    public float4 weather_ice_scale; // 1 / repeat (1/m) of the albedo, normal and decal textures
+    public float4 weather_snow_luma; // snow receptivity without a WEATHER mask: weights for the linear albedo's r, g, b, a
+    public float4 weather_textures;  // bindless material slot of the weather art, art loaded (0 / 1)
+    public float4 padding_environment[7];
 };
 public [[vk::binding(201)]] cbuffer BufferEnvironment : register(b201) { public EnvironmentData buffer_environment; };
 

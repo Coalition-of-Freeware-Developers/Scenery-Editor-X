@@ -39,8 +39,9 @@ namespace SceneryEditorX::Environment
 
 	/**
 	 * The atmosphere's medium (plan REQ-008, TASK-046), Bruneton / Hillaire parameterization plus X-Plane 12.4's surface
-	 * haze: Rayleigh and Mie layers falling off exponentially with altitude, an ozone tent, and a haze layer of uniform
-	 * extra Mie extinction from the ground up to hazeTopM that fades to clear air over hazeBandM. Units: meters and 1/m.
+	 * haze: Rayleigh and Mie layers falling off exponentially with altitude, an ozone tent, and the visibility's layer
+	 * from the ground up to hazeTopM that eases to clear air over hazeBandM: extra Mie, and grey fog for short
+	 * visibilities. Units: meters and 1/m.
 	 * The defaults are X-Plane 12.4.4's clear atmosphere as the reference probe dumped it (atmo/*, scattering/*), which
 	 * resources/environment/xp12_environment.json repeats. The GPU (atmosphere_common.slang) samples the same medium
 	 * from the environment buffer.
@@ -62,9 +63,16 @@ namespace SceneryEditorX::Environment
 		double topRadius = 6460000.0;
 		double groundAlbedo = 0.15;				// scattering/earth_albedo
 
-		// The surface haze layer (12.4.4 behaviour): Mie on top of the clear layer, from the visibility (WithVisibility)
-		double hazeExtinction = 0.0;			// 1/m inside the layer, grey (fog and haze droplets: X-Plane's fog is white)
-		double hazeScatteringAlbedo = 0.9;		// atmo/fog_albedo
+		// The visibility's layer (WithVisibility): extra Mie (X-Plane 12.4.4 raises its turbidity: spectral, the
+		// Cornette-Shanks lobe, in the sun's way too) and, for short visibilities, X-Plane's fog (scatter_compute_*
+		// behaviour): grey, scattering isotropically, and only on view paths (the sun's light reaches every point
+		// without it). The fog's share of the layer grows from none at fogStartVisibilityM to all at fogFullVisibilityM
+		double hazeExtinction = 0.0;			// 1/m: the extra Mie, green; per channel the Mie's Angstrom factors (mieSpectral)
+		double hazeScatteringAlbedo = 0.9;		// scattering/mie_albedo, like the clear Mie
+		double fogExtinction = 0.0;				// 1/m: the fog, grey
+		double fogScatteringAlbedo = 0.9;		// atmo/fog_albedo
+		double fogStartVisibilityM = 20000.0;	// sedx/fog_start_visibility_m: no fog at this visibility and more
+		double fogFullVisibilityM = 8000.0;		// sedx/fog_full_visibility_m: all fog at this visibility and less
 		double hazeTopM = 1500.0;				// Above the ground
 		double hazeBandM = 1000.0;				// Fade to clear air above the top
 		double visibilityContrast = 0.01;		// scattering/vis_cutoff_ratio (VisibilityExtinction)
@@ -90,28 +98,32 @@ namespace SceneryEditorX::Environment
 	double HazeTopFromVisibility(double visibilityM, double minimumTopM = 1500.0);
 
 	/**
-	 * @brief The medium for a visibility at the ground: the haze layer takes the extinction the clear Rayleigh and Mie
-	 * layers don't give (never negative), scattering as much of it as the clear Mie does. The layer's top is
-	 * HazeTopFromVisibility with the given atmosphere's hazeTopM as the minimum.
+	 * @brief The medium for a visibility at the ground: the extinction the clear Rayleigh and Mie layers don't give in
+	 * the bluest channel (never negative), where contrast falls to the cutoff first, shared between extra Mie and grey
+	 * fog (none at fogStartVisibilityM and more, all at fogFullVisibilityM and less, linear in between). The layer's
+	 * top is HazeTopFromVisibility with the given atmosphere's hazeTopM as the minimum.
 	 */
 	AtmosphereParams WithVisibility(const AtmosphereParams &atmosphere, double visibilityM, double groundElevationM = 0.0);
 
 	/* @brief The sky-condition multipliers (X-Plane skyc ratios for Rayleigh and Mie) applied to the scattering. */
 	AtmosphereParams WithSkyMultipliers(const AtmosphereParams &atmosphere, double rayleigh, double mie);
 
-	/* @brief The haze layer's density at an altitude (MSL): 1 inside, fading linearly to 0 over the band above it. */
+	/* @brief The haze and fog layer's density at an altitude (MSL): 1 inside, easing to 0 over the band above it (smoothstep). */
 	double HazeProfile(const AtmosphereParams &atmosphere, double altitudeMslM);
 
 	/* @brief The medium at an altitude above the ground sphere (meters; negative is treated as 0). */
 	struct MediumSample
 	{
 		Rgb rayleighScattering{};
-		Rgb mieScattering{};
+		Rgb mieScattering{};				// The clear Mie and the haze
 		Rgb mieExtinction{};
 		Rgb ozoneAbsorption{};
+		double fogScattering = 0.0;			// The fog (grey, isotropic)
+		double fogExtinction = 0.0;
 
-		[[nodiscard]] Rgb Extinction() const;
-		[[nodiscard]] Rgb Scattering() const;
+		[[nodiscard]] Rgb Extinction() const;			// Everything: what a view ray crosses
+		[[nodiscard]] Rgb ExtinctionWithoutFog() const;	// What the sun's light crosses on its way in
+		[[nodiscard]] Rgb Scattering() const;			// Everything
 	};
 	MediumSample SampleMedium(const AtmosphereParams &atmosphere, double altitudeMslM);
 }

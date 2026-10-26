@@ -48,8 +48,8 @@ namespace SceneryEditorX::Environment
 		Rgb sunTransmittance = { 0.0, 0.0, 0.0 };	// Toward the sun (0 below the horizon)
 		Rgb sunIlluminance = { 0.0, 0.0, 0.0 };		// On a surface facing the sun
 		Rgb moonIlluminance = { 0.0, 0.0, 0.0 };
-		// Sky radiance without the Mie lobe (Rayleigh plus every higher order), and the Mie single scattering with its
-		// phase factored out: radiance = base + MiePhaseCornetteShanks(cos(view, sun), g) x mie. Straight up, at the
+		// Sky radiance without the Mie lobe (Rayleigh, the isotropic fog and every higher order), and the Mie's single
+		// scattering with its phase factored out: radiance = base + MiePhaseCornetteShanks(cos(view, sun), g) x mie. Straight up, at the
 		// horizon (toward the sun's azimuth, 90 degrees off, away) and 30 degrees up (same azimuths).
 		Rgb zenith = { 0.0, 0.0, 0.0 };
 		std::array<Rgb, 3> horizon{};
@@ -63,8 +63,11 @@ namespace SceneryEditorX::Environment
 	/* @brief The extraterrestrial sun's colour, linear sRGB scaled to unit luminance (ASSUMPTION: about 5900 K). */
 	constexpr Rgb SUN_COLOR = { 1.0236, 0.9961, 0.9693 };
 
-	/* @brief Fraction of light passing from altitude (m) to space along a ray at cosZenith (0 when it meets the ground). */
-	Rgb ComputeTransmittance(const AtmosphereParams &atmosphere, double altitudeM, double cosZenith, int steps = 40);
+	/**
+	 * @brief Fraction of light passing from altitude (m) to space along a ray at cosZenith (0 when it meets the ground):
+	 * without the fog, as the sun's light comes in (X-Plane 12.4.4 leaves its fog out), or through the fog too.
+	 */
+	Rgb ComputeTransmittance(const AtmosphereParams &atmosphere, double altitudeM, double cosZenith, int steps = 40, bool throughFog = false);
 
 	/**
 	 * @brief Single-scattered sky radiance (nits) seen from altitudeM along a direction (elevation above the horizon,

@@ -49,11 +49,13 @@
 #include <cmath>
 #include <map>
 #include <memory>
+#include <unordered_map>
 #include <unordered_set>
 #include <SceneryEditorX/logging/logging.hpp>
 #include <SceneryEditorX/renderer/font/font_awesome.h>
 #include <SceneryEditorX/renderer/scene_picking.h>
 #include <SceneryEditorX/scene/camera.h>
+#include <SceneryEditorX/xplane/xp_terrain_scene.h>
 
 // -------------------------------------------------------
 
@@ -153,17 +155,33 @@ namespace SceneryEditorX::EditorTools
 			return NodeTool::IsDragging() || NodeTool::HasNodeSelection();
 		}
 
-		/* @brief The pick id nearest the cursor's pixel in a result (0 when the region is empty). */
+		/* @brief True for the ids of the base terrain: the ground, never a selection target (clicking it is clicking nothing). */
+		bool IsTerrainPick(const uint32_t pickId, std::unordered_map<uint32_t, bool> &cache)
+		{
+			if (pickId == 0 || !XPlane::SceneTerrain::IsLoaded())
+				return false;
+			const auto [it, added] = cache.try_emplace(pickId, false);
+			if (added)
+			{
+				entt::registry *registry = EditorScene::GetRegistry();
+				const entt::entity handle = registry ? ScenePicking::Resolve(*registry, pickId) : entt::null;
+				it->second = handle != entt::null && XPlane::SceneTerrain::Contains(EditorScene::GetID(handle));
+			}
+			return it->second;
+		}
+
+		/* @brief The pick id nearest the cursor's pixel in a result, the terrain left out (0 when the region is empty). */
 		uint32_t NearestId(const ScenePicking::Result &result, const int centerX, const int centerY)
 		{
 			uint32_t best = 0;
 			int bestDistance = 1 << 30;
+			std::unordered_map<uint32_t, bool> terrain;
 			for (uint32_t row = 0; row < result.height; ++row)
 			{
 				for (uint32_t column = 0; column < result.width; ++column)
 				{
 					const uint32_t id = result.ids[static_cast<size_t>(row) * result.width + column];
-					if (id == 0)
+					if (id == 0 || IsTerrainPick(id, terrain))
 						continue;
 					const int dx = static_cast<int>(result.x + column) - centerX;
 					const int dy = static_cast<int>(result.y + row) - centerY;
@@ -184,7 +202,7 @@ namespace SceneryEditorX::EditorTools
 			if (!registry || pickId == 0)
 				return std::nullopt;
 			const entt::entity handle = ScenePicking::Resolve(*registry, pickId);
-			if (handle == entt::null)
+			if (handle == entt::null || XPlane::SceneTerrain::Contains(EditorScene::GetID(handle)))
 				return std::nullopt;
 			return EditorSelection::FromPick(EditorScene::GetID(handle));
 		}
@@ -252,7 +270,7 @@ namespace SceneryEditorX::EditorTools
 						FacadeTool::SelectWalls(wall->first, { wall->second });
 				}
 				Point3 ground;
-				const bool onGround = s.menuView.RayToPlane(s.menuMouse, 0.0, ground);
+				const bool onGround = s.menuView.RayToGround(s.menuMouse, ground);
 				ViewportMenus::OpenQuadMenu(context, s.menuMouse, target, onGround ? std::optional<Point3>(ground) : std::nullopt);
 			}
 		}
@@ -691,7 +709,7 @@ namespace SceneryEditorX::EditorTools
 	{
 		const ViewportView &view = S().lastView;
 		Point3 ground;
-		if (!view.valid || !view.RayToPlane(ImVec2(view.imageMin.x + view.imageSize.x * 0.5f, view.imageMin.y + view.imageSize.y * 0.5f), 0.0, ground))
+		if (!view.valid || !view.RayToGround(ImVec2(view.imageMin.x + view.imageSize.x * 0.5f, view.imageMin.y + view.imageSize.y * 0.5f), ground))
 			return false;
 		position[0] = static_cast<float>(ground.x);
 		position[1] = static_cast<float>(ground.y);

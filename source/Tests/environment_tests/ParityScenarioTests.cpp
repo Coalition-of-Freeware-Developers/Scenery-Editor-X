@@ -34,6 +34,7 @@
 #include <catch2/catch_all.hpp>
 #include <SceneryEditorX/environment/parity_scenario.h>
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <filesystem>
 #include <string>
@@ -227,4 +228,113 @@ TEST_CASE("Parity scenarios: the shipped scenario set", "[environment][scenario]
 		CHECK(withoutSsr->runwayFriction == withSsr->runwayFriction);
 		CHECK(withoutSsr->localTimeHours == Approx(withSsr->localTimeHours));
 	}
+
+	// Snow in winter: mid-January at local solar noon (12:00 PST), below freezing
+	for (const char *id : { "ksea_rwy16l_snowy", "ksea_aerial_snowy", "ksea_calib_snowy" })
+	{
+		INFO(id);
+		const ParityScenario *snowy = FindParityScenario(file, id);
+		REQUIRE(snowy);
+		CHECK(snowy->snowCover == Approx(1.0f));
+		CHECK(snowy->month == 1);
+		CHECK(snowy->localTimeHours == Approx(12.0));
+		CHECK(snowy->utcOffsetHours == Approx(-8.0f));
+		CHECK(snowy->temperatureC <= 0.0f);
+	}
+}
+
+TEST_CASE("Parity scenarios: the test-airport set", "[environment][scenario]")
+{
+	// tools/xp12_reference_probe/scenarios/xp12_airports.json: the standard test airports' views
+	std::filesystem::path path = "tools/xp12_reference_probe/scenarios/xp12_airports.json";
+	for (int up = 0; up < 4 && !std::filesystem::exists(path); ++up)
+		path = std::filesystem::path("..") / path;
+	if (!std::filesystem::exists(path))
+	{
+		WARN("xp12_airports.json not found from the working folder: skipped");
+		return;
+	}
+
+	ParityScenarioFile file;
+	std::string error;
+	REQUIRE(LoadParityScenarios(path, file, &error));
+	CHECK(file.xpBuild == "12.4.4-b4");
+
+	// Field elevation (m), for the overcast layer 600 m above each field; the winter shot's month (southern fields take
+	// January as summer, July as winter), the hours daylight saving adds on the summer date, and whether snow lies there
+	// in winter (a snowy shot)
+	struct TestAirport
+	{
+		const char *icao;
+		float elevationM;
+		int winterMonth;
+		float daylightSavingHours;
+		bool snow;
+	};
+	const TestAirport airports[] = {
+		{ "KGON", 2.1f, 1, 1.0f, true },	{ "KDEN", 1656.3f, 1, 1.0f, true }, { "KORD", 203.0f, 1, 1.0f, true },
+		{ "KBOS", 5.8f, 1, 1.0f, true },	{ "KBTV", 101.5f, 1, 1.0f, true },	{ "EIDW", 73.8f, 1, 1.0f, true },
+		{ "LEBL", 4.3f, 1, 1.0f, false },	{ "EGLL", 25.3f, 1, 1.0f, true },	{ "LSZH", 431.6f, 1, 1.0f, true },
+		{ "OMDB", 18.9f, 1, 0.0f, false },	{ "RCTP", 32.3f, 1, 0.0f, false },	{ "RJTT", 6.1f, 1, 0.0f, true },
+		{ "YSSY", 6.1f, 7, 1.0f, false },	{ "SBGR", 749.2f, 7, 0.0f, false }, { "CYYZ", 164.9f, 1, 1.0f, true },
+	};
+	for (const auto &[icao, elevationM, winterMonth, daylightSavingHours, snow] : airports)
+	{
+		std::string prefix = icao;
+		std::ranges::transform(prefix, prefix.begin(), [](const char c) { return static_cast<char>(std::tolower(static_cast<unsigned char>(c))); });
+		INFO(icao);
+		for (const char *view : { "_rwy_sunp40", "_aerial_sunp40", "_aerial_sunp08" })
+		{
+			INFO(view);
+			const ParityScenario *autoExposure = FindParityScenario(file, prefix + view);
+			const ParityScenario *locked = FindParityScenario(file, prefix + view + "_ev");
+			REQUIRE(autoExposure);
+			REQUIRE(locked);
+			CHECK(autoExposure->icao == icao);
+			CHECK_FALSE(autoExposure->ev100Lock.has_value());
+			CHECK(locked->ev100Lock.has_value());
+			CHECK(locked->localTimeHours == Approx(autoExposure->localTimeHours));
+		}
+		const ParityScenario *runway = FindParityScenario(file, prefix + "_rwy_sunp40");
+		REQUIRE(runway);
+		CHECK(runway->altitudeMAgl == Approx(2.0f));
+		const ParityScenario *overcast = FindParityScenario(file, prefix + "_aerial_overcast");
+		REQUIRE(overcast);
+		CHECK(overcast->clouds[0].coverage == Approx(1.0f));
+		CHECK(overcast->clouds[0].baseMslM == Approx(elevationM + 600.0f).margin(1.0f));
+		const ParityScenario *winter = FindParityScenario(file, prefix + (winterMonth == 1 ? "_aerial_season01" : "_aerial_season07"));
+		REQUIRE(winter);
+		CHECK(winter->month == winterMonth);
+		CHECK(runway->month == (winterMonth == 1 ? 7 : 1));
+		CHECK(winter->utcOffsetHours == Approx(runway->utcOffsetHours - daylightSavingHours));
+
+		// Snow only where it lies, on the winter shot's date and time, below freezing at sea level and on the field (the
+		// probe gives temperature_c to X-Plane as its sea-level temperature; SEDX melts snow above 0)
+		const ParityScenario *snowy = FindParityScenario(file, prefix + "_aerial_snowy");
+		if (!snow)
+		{
+			CHECK_FALSE(snowy);
+			continue;
+		}
+		REQUIRE(snowy);
+		CHECK(snowy->snowCover == Approx(1.0f));
+		CHECK(snowy->month == winter->month);
+		CHECK(snowy->day == winter->day);
+		CHECK(snowy->localTimeHours == Approx(winter->localTimeHours));
+		CHECK(snowy->utcOffsetHours == Approx(winter->utcOffsetHours));
+		CHECK(snowy->temperatureC <= 0.0f);
+		CHECK(snowy->temperatureC - 0.0065f * elevationM <= 0.0f);
+	}
+
+	// The coastal fields' low views over the water carry a sea state
+	for (const char *id : { "kgon_water_sunp40", "kbos_water_sunp40", "lebl_water_sunp40", "rjtt_water_sunp40", "yssy_water_sunp40" })
+	{
+		INFO(id);
+		const ParityScenario *water = FindParityScenario(file, id);
+		REQUIRE(water);
+		REQUIRE(water->waveAmplitudeM.has_value());
+		CHECK(*water->waveAmplitudeM == Approx(0.6f));
+		REQUIRE(water->waveDirectionDeg.has_value());
+	}
+	CHECK_FALSE(FindParityScenario(file, "kden_water_sunp40"));
 }

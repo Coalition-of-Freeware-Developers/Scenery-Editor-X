@@ -32,10 +32,12 @@
 #include "cacao.h"
 #include "csm.h"
 #include "exposure.h"
+#include "ocean.h"
 #include "renderer_buffers.h"
 #include "renderer_features.h"
 #include "renderer_quality.h"
 #include "ssr.h"
+#include "weather_surface.h"
 #include "font/font.h"
 #include "vulkan/blend_states.h"
 #include "vulkan/command_list.h"
@@ -550,7 +552,9 @@ namespace SceneryEditorX
 			float mieAngstrom = -1.3f;					// scattering/mie_scattering_exponent (and _absorption_)
 			float multipleScattering = 1.25f;			// scattering/multi_rat
 			float visibilityContrast = 0.01f;			// scattering/vis_cutoff_ratio
-			float fogAlbedo = 0.9f;						// atmo/fog_albedo: the visibility haze's scattering albedo
+			float fogAlbedo = 0.9f;						// atmo/fog_albedo: the visibility fog's scattering albedo
+			float fogStartVisibilityM = 20000.0f;		// sedx/fog_start_visibility_m: no visibility fog at this visibility and more
+			float fogFullVisibilityM = 8000.0f;			// sedx/fog_full_visibility_m: all fog (no extra Mie) at this visibility and less
 			float hazeTopM = 1500.0f;
 			float hazeBandM = 1000.0f;
 			ExposureSettings exposure;					// photometric/*, exposure/*, autoexposure/* (renderer/exposure.h)
@@ -569,13 +573,23 @@ namespace SceneryEditorX
 			float starBrightness = 1.0f;				// Procedural stars (1: magnitudes as given)
 			float probeSpecularBias = 0.0f;				// REQ-005 specular LOD bias
 
-			// color_management/sdr/*: ASC-CDL after the tone curve, identity by default
+			// color_management/sdr/*: the ASC-CDL grade of X-Plane's display transform (tonemap.slang xp12_display), identity
+			// by default. X-Plane 12.4.4 switches between three grades (reference probe dumps, 2026-10-25): these are the day
+			// grade; the night grade replaces slope, power and output gain; snow on the ground scales the day power.
 			xMath::Vec4 colorSlope = xMath::Vec4(1.0f, 1.0f, 1.0f, 1.0f);		// rgb slope, w saturation
 			xMath::Vec4 colorOffset = xMath::Vec4(0.0f, 0.0f, 0.0f, 1.0f);	// rgb offset, w output gain
 			xMath::Vec4 colorPower = xMath::Vec4(1.0f, 1.0f, 1.0f, 1.0f);		// rgb power, w output gamma
-			// How much of the slope applies (slope^strength): X-Plane's tone curve keeps bright neutrals warm and its grade
-			// cools them back; after SEDX's AgX, which whitens them, half the slope balances sky and ground
-			float colorSlopeStrength = 0.5f;
+			xMath::Vec4 nightSlope = xMath::Vec4(1.0f, 1.0f, 1.0f, 1.0f);		// night grade: rgb slope, w output gain
+			xMath::Vec4 nightPower = xMath::Vec4(1.0f, 1.0f, 1.0f, 0.0f);		// night grade: rgb power
+			// Sun elevations (deg) where the night grade starts taking over and has taken over (ASSUMPTION: the dumps show
+			// the day grade at 7.6 deg and the night grade at -10.6 deg and below, nothing between)
+			float gradeNightStartDeg = 0.0f;
+			float gradeNightFullDeg = -6.0f;
+			float snowPowerScale = 1.0f;				// The day power times this with snow on the ground
+			float snowGradeCover = 0.5f;				// Snow cover at which the snow grade is complete (ASSUMPTION: 0.87 and 1 dump alike)
+			float toneMiddleGrey = 0.18f;				// The transform's pivot: exposed middle grey (ASSUMPTION)
+			float toneCompression = 0.0f;				// color_management/compression: working-space inset toward the achromatic axis
+			float displayMaximum = 1.0f;				// SDR display white
 
 			// Sun shadows (plan Phase 7): X-Plane's shadow controls. The quality preset's shadow level sets the cascade
 			// count, far limit, fade and map size over these (renopt_shadow_quality does the same in X-Plane).
@@ -590,6 +604,10 @@ namespace SceneryEditorX
 			// references show casting a shadow) at cascade 1's 4 cm texels
 			bool shadowReceiverPlane = true;			// sedx/csm_receiver_plane
 			float shadowReceiverPlaneSlopeBias = 1.0f;	// sedx/csm_receiver_plane_slope_bias: the casters' slope bias with it
+			// The cascades' split range at least this many times the camera's height above the airport (ASSUMPTION fitted
+			// to X-Plane's 600 m aerial references, where shadows reach about 3 km): near, far
+			float shadowHeightNearRatio = 0.8f;			// sedx/csm_height_near_ratio
+			float shadowHeightFarRatio = 6.0f;			// sedx/csm_height_far_ratio
 			// Cloud shadows (plan TASK-055)
 			float cloudShadowStrength = 0.75f;			// clouds/cloud_shadow_lighten_ratio (ASSUMPTION: share of the light clouds can take)
 			float cloudShadowExtinction = 0.0125f;		// cloud/shadow_alpha (ASSUMPTION: extinction per meter of cloud cover)
@@ -602,6 +620,12 @@ namespace SceneryEditorX
 
 			// Screen-space reflections (plan Phase 9): X-Plane's ssr/* controls and SEDX's own (sedx/ssr_*)
 			SsrSettings ssr;
+
+			// Water (plan Phase 11): X-Plane's water/* controls and SEDX's own (sedx/water_*)
+			OceanSettings water;
+
+			// Weather on surfaces (plan Phase 12): X-Plane's twxr / snow luma controls and wxr keyframes
+			WeatherSurfaceSettings weather;
 		};
 		static const EnvironmentConstants &GetEnvironmentConstants();
 		static EnvironmentConstants &EditEnvironmentConstants();
@@ -632,6 +656,41 @@ namespace SceneryEditorX
 			uint32_t height = 0;
 		};
 		static const AoReadout &GetAoReadout();
+
+		/* @brief What the last frame's water ran with (RENDERER panel). */
+		struct WaterReadout
+		{
+			bool ran = false;						// The ocean's cascades were made this frame
+			uint32_t draws = 0;						// Water draws in the main view
+			OceanSpectrum spectrum;					// The sea state (after NormalizeOceanSpectrum)
+			double time = 0.0;						// The ocean's time (s)
+		};
+		static const WaterReadout &GetWaterReadout();
+
+		/**
+		 * @brief Advances the ocean's waves by this step every frame instead of the frame's real time (0: real time), and
+		 * starts them over: parity captures (--env-scenario) see the same sea every run.
+		 */
+		static void SetWaterFixedTimeStep(float seconds);
+		static void ResetWaterTime();
+
+		/**
+		 * @brief X-Plane's weather art (Resources/bitmaps/world/weather, plan TASK-076): what snow and ice look like and the
+		 * noise that breaks up wet, snowy and icy patches. The X-Plane module loads it from the user's install and hands it
+		 * over; without it the surfaces still wet, take a plain snow white and no ice detail (weather.slang).
+		 */
+		struct WeatherArt
+		{
+			Ref<ImageResource> snowAlbedo;			// snow_ALB: rgb colour, a height (the coverage's blend)
+			Ref<ImageResource> snowNormal;			// snow_NML: X-Plane normal map (rg normal, b F0, a gloss)
+			Ref<ImageResource> snowDecal;			// snow_DCL: grey detail that breaks up the edge
+			Ref<ImageResource> iceAlbedo;
+			Ref<ImageResource> iceNormal;
+			Ref<ImageResource> iceDecal;
+			Ref<ImageResource> noise;				// noise: grey, the patches of wet, snowy and icy ground
+		};
+		static void SetWeatherArt(const WeatherArt &art);
+		[[nodiscard]] static bool HasWeatherArt();
 
 		/* @brief What the last frame's screen-space reflections ran with (RENDERER panel). */
 		struct SsrReadout
@@ -667,6 +726,9 @@ namespace SceneryEditorX
 		/* @brief Draws the editor grid (on by default; parity captures hide it, X-Plane has none). */
 		static void SetGridVisible(bool visible);
 		static bool IsGridVisible();
+
+		/* @brief Terrain is drawn (SceneTerrain): the grid, a plane at y = 0, stays hidden as it would cut through the ground. */
+		static void SetGroundShown(bool shown);
 
 		/* @brief What the viewport reference overlay shows over frame_output (reference_overlay.slang). */
 		enum class ReferenceOverlayMode : uint8_t
@@ -928,6 +990,35 @@ namespace SceneryEditorX
 		/* @brief Binds the reflections, the pyramid and the history (black where they aren't ready) to a pass whose shaders
 		 * import ssr_common.slang, and the g-buffer normals the march checks hits against. */
 		static void BindReflections(CommandList *cmdList);
+
+#pragma endregion
+#pragma region Water
+
+		// Water (plan Phase 11, renderer_water.cpp; XP12: ocean_spectrum, compute_fft, ocean_bake_textures, ocean_shading)
+		/* @brief The sea state from the environment's waves and the water constants (renderer/ocean.h); the ocean's time
+		 * advances once a frame (extra views reuse it). */
+		static void WriteWaterConstants(ConstantBuffer_Environment &env);
+		/* @brief Water is drawn in this view: the feature is on, water draws are visible and the shaders are built. */
+		static bool IsWaterVisible();
+		/* @brief The FFT ocean's cascades at this frame's time (ocean.slang), once a frame; they end shader-readable. */
+		static void Pass_Ocean(CommandList *cmdList);
+		/* @brief Step (13): the water draws over the composed frame (water.slang), opaque, their depth written. */
+		static void Pass_Water(CommandList *cmdList, ImageResource *frame);
+		/* @brief Binds the baked cascades to a pass whose shaders import ocean_common.slang. */
+		static void BindOcean(CommandList *cmdList);
+
+#pragma endregion
+#pragma region Weather
+
+		// Weather on surfaces (plan Phase 12, renderer_weather.cpp, weather.slang)
+		/* @brief The thresholds from the environment's surface weather and the weather controls (renderer/weather_surface.h). */
+		static void WriteWeatherConstants(ConstantBuffer_Environment &env);
+		/* @brief The hidden material carrying the weather art's textures through the bindless table (null until loaded). */
+		static MaterialAsset *GetWeatherMaterial();
+		/* @brief The weather art changed since the last call: the material table must be rebuilt. */
+		static bool ConsumeWeatherArtChange();
+		/* @brief Drops the art and its material (shutdown). */
+		static void ReleaseWeatherArt();
 
 #pragma endregion
 #pragma region Lighting passes
@@ -1262,9 +1353,11 @@ namespace SceneryEditorX
 		static std::array<Renderer_DrawCall, RENDERER_MAX_DRAW_CALLS> m_DrawCalls;
 		static std::array<Renderer_DrawCall, RENDERER_MAX_DRAW_CALLS> m_DrawCalls_Prepass;
 		static std::array<Renderer_DrawCall, RENDERER_MAX_DRAW_CALLS> m_DrawCalls_Shadow; // CPU-drawn sun-shadow casters (shadowCascades set)
+		static std::array<Renderer_DrawCall, RENDERER_MAX_WATER_DRAW_CALLS> m_DrawCalls_Water; // Visible water (materials with MaterialProperty::Water): Pass_Water only
 		static uint32_t m_DrawCall_Count;
 		static uint32_t m_DrawCalls_Prepass_Count;
 		static uint32_t m_DrawCalls_Shadow_Count;
+		static uint32_t m_DrawCalls_Water_Count;
 		static uint32_t m_Indirect_DrawCount;
 		static bool     m_Transparents_Present;
 		static bool     m_Is_Hiz_Suppressed;

@@ -45,6 +45,7 @@
 #include "vulkan/shader/shader_manager.h"
 #include <algorithm>
 #include <atomic>
+#include <format>
 #include <fstream>
 #include <mutex>
 #include <nlohmann/json.hpp>
@@ -109,6 +110,7 @@ namespace SceneryEditorX
 		}
 
 		std::atomic<bool> s_GridVisible{ true };
+		std::atomic<bool> s_GroundShown{ false };	// SetGroundShown(): terrain is drawn, the y = 0 grid would cut through it
 
 		// Viewport reference overlay (Renderer::SetReferenceOverlay), read by the render thread
 		std::mutex s_ReferenceMutex;
@@ -120,7 +122,7 @@ namespace SceneryEditorX
 		// XP12 emulation state (RENDERER panel, command line); set while the render thread is idle
 		RendererFeatures s_Features;
 		Renderer_DebugView s_DebugView = Renderer_DebugView::None;
-		int s_ToneCurve = 1;	// tonemap.slang: 1 AgX (X-Plane 12.2+), 2 ACES fit, 3 Reinhard
+		int s_ToneCurve = 4;	// tonemap.slang: 4 X-Plane 12 (the parity transform), 1 AgX, 2 ACES fit, 3 Reinhard
 		RendererQualityPreset s_Quality = GetDefaultQualityPreset();
 		Renderer::EnvironmentConstants s_EnvironmentConstants;
 
@@ -203,6 +205,11 @@ namespace SceneryEditorX
 			Pass_CloudShadow(cmd);
 		}
 
+		// (2b) The FFT ocean's cascades at this frame's time (XP12: ocean_spectrum, compute_fft, ocean_bake_textures;
+		//      renderer_water.cpp), once a frame and only with water in view; times its own steps
+		if (IsWaterVisible() && valid())
+			Pass_Ocean(cmd);
+
 		Camera *camera = Scene::GetCamera();
 		if (!camera)
 		{
@@ -252,9 +259,9 @@ namespace SceneryEditorX
 			GetRenderTarget(Renderer_RenderTarget::gbuffer_weather)->SetLayout(Layout::ImageLayout::ShaderRead, cmd, 0, 0);
 			GetRenderTarget(Renderer_RenderTarget::gbuffer_depth)->SetLayout(Layout::ImageLayout::ShaderRead, cmd, 0, 0);
 
-			// (5) Min / max depth pyramid (XP12: z_minmax; renderer_ssr.cpp) of the finished depth, for the reflections (light
-			//     tiling and volumetrics later)
-			if (AreReflectionsAvailable())
+			// (5) Min / max depth pyramid (XP12: z_minmax; renderer_ssr.cpp) of the finished depth, for the reflections and the
+			//     water (what lies under it); light tiling and volumetrics later
+			if (AreReflectionsAvailable() || IsWaterVisible())
 			{
 				GpuTimer::Scope scope(cmd, "depth pyramid");
 				Pass_ReflectionDepthPyramid(cmd);
@@ -293,8 +300,7 @@ namespace SceneryEditorX
 			if (!valid())
 				return;
 
-			// (12) Water (XP12: ocean_shading): Phase 11
-			// (13) Sky where nothing was drawn (XP12: sky); volumetric apply: Phase 15
+			// (12) Sky where nothing was drawn (XP12: sky); volumetric apply: Phase 15
 			if (features.atmosphere)
 			{
 				GpuTimer::Scope scope(cmd, "sky");
@@ -302,6 +308,16 @@ namespace SceneryEditorX
 				if (!valid())
 					return;
 				ReadyAtmosphereTextures(cmd);
+			}
+
+			// (13) Water (XP12: ocean_shading, "mix down water"; renderer_water.cpp): tessellated and displaced by the ocean's
+			//      cascades, over the sky and the surfaces under it, its depth written for the forward passes
+			if (IsWaterVisible())
+			{
+				GpuTimer::Scope scope(cmd, "water");
+				Pass_Water(cmd, rt_render);
+				if (!valid())
+					return;
 			}
 
 			// (14) Forward passes over the composed frame, depth tested against the g-buffer: grid, blended surfaces, lights
@@ -415,8 +431,8 @@ namespace SceneryEditorX
 			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_depth, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
 			cmdList->SetBuffer(Renderer_BindingsUav::exposure_state, GetBuffer(Renderer_Buffer::ExposureState));
 
-			// Tone curve: AgX, X-Plane 12's since 12.2 (tonemap.slang: 0 none, 1 AgX, 2 ACES fit, 3 Reinhard); bloom weight
-			// and the normalization of the summed mips; fusion strength
+			// Tone curve (tonemap.slang: 4 X-Plane 12's display transform, 1 AgX, 2 ACES fit, 3 Reinhard); bloom weight and
+			// the normalization of the summed mips; fusion strength
 			const float bloomWeight = bloomMips > 0 ? std::clamp(constants.bloomIntensity, 0.0f, 1.0f) : 0.0f;
 			const float bloomNormalize = bloomMips > 0 ? 1.0f / static_cast<float>(bloomMips) : 0.0f;
 			const float fusionStrength = fusion ? std::max(constants.fusionStrength, 0.0f) : 0.0f;
@@ -1069,7 +1085,7 @@ namespace SceneryEditorX
 
 	void Renderer::Pass_Grid(CommandList *cmdList, ImageResource *out)
 	{
-		if (!cvar_grid.GetValueAs<bool>() || !s_GridVisible.load(std::memory_order_relaxed))
+		if (!cvar_grid.GetValueAs<bool>() || !s_GridVisible.load(std::memory_order_relaxed) || s_GroundShown.load(std::memory_order_relaxed))
 			return;
 
 		if (!cmdList || cmdList->IsStickyInvalid())
@@ -1193,7 +1209,7 @@ namespace SceneryEditorX
 
 	void Renderer::SetToneCurve(const int curve)
 	{
-		s_ToneCurve = std::clamp(curve, 1, 3);
+		s_ToneCurve = std::clamp(curve, 1, 4);
 	}
 
 	const Renderer::EnvironmentConstants &Renderer::GetEnvironmentConstants()
@@ -1245,6 +1261,8 @@ namespace SceneryEditorX
 			value("atmo/ozone_width", ozoneWidth);
 			c.planet.x = std::max(ozoneWidth * 0.5f, 1.0f);
 			value("atmo/fog_albedo", c.fogAlbedo);
+			value("sedx/fog_start_visibility_m", c.fogStartVisibilityM);
+			value("sedx/fog_full_visibility_m", c.fogFullVisibilityM);
 			value("scattering/earth_albedo", c.planet.w);
 			value("scattering/g_cornette_shanks", c.mie.w);
 			float mieAlbedo = c.mie.y > 0.0f ? c.mie.x / c.mie.y : 0.9f;
@@ -1279,6 +1297,7 @@ namespace SceneryEditorX
 			value("color_management/sdr/power_green", c.colorPower.y);
 			value("color_management/sdr/power_blue", c.colorPower.z);
 			value("color_management/sdr/output_gamma", c.colorPower.w);
+			value("color_management/compression", c.toneCompression);
 
 			// Sun and cloud shadows (plan Phase 7). The shadow quality sets the cascade count, far limit, fade and map size
 			// over these each frame, as X-Plane's renopt_shadow_quality does.
@@ -1351,6 +1370,90 @@ namespace SceneryEditorX
 			value("ssr/sample_count", samples);
 			ssr.sampleCount = static_cast<uint32_t>(std::clamp(std::lround(samples), 1l, 64l));
 
+			// Water (plan Phase 11)
+			OceanSettings &water = c.water;
+			const auto flag = [&value](const char *name, bool &out)
+			{
+				float v = out ? 1.0f : 0.0f;
+				value(name, v);
+				out = v > 0.5f;
+			};
+			value("water/F0", water.f0);
+			value("water/gloss", water.gloss);
+			value("water/turbidity", water.turbidity);
+			value("water/turbidity/cutoff", water.turbidityCutoff);
+			flag("water/enable_turbidity", water.enableTurbidity);
+			value("water/foam_bias", water.foamBias);
+			value("water/foam_ratio", water.foamRatio);
+			value("water/foam_scale", water.foamScale);
+			value("water/h_displace_lambda", water.displaceLambda);
+			value("water/cascade_0_scale", water.cascadeScale[0]);
+			value("water/cascade_1_scale", water.cascadeScale[1]);
+			value("water/cascade_2_scale", water.cascadeScale[2]);
+			value("water/cascade_3_scale", water.cascadeScale[3]);
+			value("water/spectrum/fetch_lo_m", water.fetchLoM);
+			value("water/spectrum/fetch_hi_m", water.fetchHiM);
+			value("water/spectrum/fetch_multiplier", water.fetchMultiplier);
+			value("water/spectrum/height_lo_m", water.heightLoM);
+			value("water/spectrum/height_hi_m", water.heightHiM);
+			value("water/spectrum/height_no_swell_m", water.heightNoSwellM);
+			value("water/spectrum/height_swell_m", water.heightSwellM);
+			value("water/spectrum/max_swell", water.maxSwell);
+			value("water/spectrum/spread_blend", water.spreadBlend);
+			value("water/spectrum/short_waves_fade", water.shortWavesFade);
+			value("water/sea_floor_coef", water.seaFloorCoef);
+
+			// Weather on surfaces (plan Phase 12, renderer/weather_surface.h): the twxr controls, the snow luma rule and the
+			// keyframes that turn amounts into thresholds (hack/petr/wxr/kf/<kind>_in_N / _out_N)
+			WeatherSurfaceSettings &weather = c.weather;
+			const auto keyframes = [&value](const char *kind, Environment::WeatherThresholdCurve &curve)
+			{
+				for (size_t i = 0; i < curve.amount.size(); ++i)
+				{
+					value(std::format("hack/petr/wxr/kf/{}_in_{}", kind, i).c_str(), curve.amount[i]);
+					value(std::format("hack/petr/wxr/kf/{}_out_{}", kind, i).c_str(), curve.threshold[i]);
+				}
+			};
+			keyframes("rain", weather.rainThresholds);
+			keyframes("puddles", weather.puddleThresholds);
+			keyframes("snow", weather.snowThresholds);
+			keyframes("ice", weather.iceThresholds);
+			value("twxr/rain_area_scale", weather.rainAreaScaleM);
+			value("twxr/rain_area_width", weather.rainAreaWidth);
+			value("twxr/rain_noise_modifier", weather.rainNoiseModifier);
+			value("twxr/rain_darkening_scale", weather.darkeningScale);
+			value("twxr/rain_darkening_start", weather.darkeningStart);
+			value("twxr/rain_darkening_end", weather.darkeningEnd);
+			value("twxr/rain_darkening_strength", weather.darkeningStrength);
+			value("twxr/rain_darkening_roughness_start", weather.darkeningRoughnessStart);
+			value("twxr/rain_darkening_roughness_end", weather.darkeningRoughnessEnd);
+			value("twxr/rain_darkening_roughness_multiplier_dark", weather.roughnessMultiplierDark);
+			value("twxr/rain_darkening_roughness_multiplier_light", weather.roughnessMultiplierLight);
+			value("twxr/rain_darken_albedo_rat", weather.darkenAlbedoRatio);
+			value("twxr/rain_darken_gloss_rat", weather.darkenGlossRatio);
+			value("twxr/snow_area_scale", weather.snowAreaScaleM);
+			value("twxr/snow_area_width", weather.snowAreaWidth);
+			value("twxr/snow/noise_depth", weather.snowNoiseDepth);
+			value("twxr/snow/slope_min", weather.snowSlopeMin);
+			value("twxr/snow/slope_max", weather.snowSlopeMax);
+			value("twxr/snow/scale_albedo", weather.snowAlbedoM);
+			value("twxr/snow/scale_normal", weather.snowNormalM);
+			value("twxr/snow/scale_decal", weather.snowDecalM);
+			value("twxr/snow/decal1_k", weather.snowDecal1K);
+			value("twxr/snow/decal2_k", weather.snowDecal2K);
+			value("twxr/ice_area_scale", weather.iceAreaScaleM);
+			value("twxr/ice_area_width", weather.iceAreaWidth);
+			value("twxr/ice/scale_albedo", weather.iceAlbedoM);
+			value("twxr/ice/scale_normal", weather.iceNormalM);
+			value("twxr/ice/scale_decal", weather.iceDecalM);
+			value("twxr/ice/decal1_k", weather.iceDecal1K);
+			value("twxr/ice/decal2_k", weather.iceDecal2K);
+			value("snow/luma_r", weather.snowLuma[0]);
+			value("snow/luma_g", weather.snowLuma[1]);
+			value("snow/luma_b", weather.snowLuma[2]);
+			value("snow/luma_a", weather.snowLuma[3]);
+			value("sedx/weather_water_gloss", weather.waterGloss);
+
 			// SEDX's own controls (no X-Plane counterpart, or one whose meaning differs)
 			value("sedx/meter_trim_lo", c.exposure.trimLow);
 			value("sedx/meter_trim_hi", c.exposure.trimHigh);
@@ -1359,7 +1462,19 @@ namespace SceneryEditorX
 			value("sedx/fusion_sigma", c.exposureFusion.y);
 			value("sedx/fusion_highlights_ev", c.fusionHighlights);
 			value("sedx/bloom_intensity", c.bloomIntensity);
-			value("sedx/sdr_slope_strength", c.colorSlopeStrength);
+			value("sedx/sdr_night_slope_red", c.nightSlope.x);
+			value("sedx/sdr_night_slope_green", c.nightSlope.y);
+			value("sedx/sdr_night_slope_blue", c.nightSlope.z);
+			value("sedx/sdr_night_output_gain", c.nightSlope.w);
+			value("sedx/sdr_night_power_red", c.nightPower.x);
+			value("sedx/sdr_night_power_green", c.nightPower.y);
+			value("sedx/sdr_night_power_blue", c.nightPower.z);
+			value("sedx/sdr_night_start_deg", c.gradeNightStartDeg);
+			value("sedx/sdr_night_full_deg", c.gradeNightFullDeg);
+			value("sedx/sdr_snow_power_scale", c.snowPowerScale);
+			value("sedx/sdr_snow_cover", c.snowGradeCover);
+			value("sedx/tonemap_middle_grey", c.toneMiddleGrey);
+			value("sedx/fusion_strength", c.fusionStrength);
 			value("sedx/aerial_range_m", c.aerialRangeM);
 			value("sedx/airglow_nits", c.airglowNits);
 			value("sedx/star_brightness", c.starBrightness);
@@ -1368,6 +1483,8 @@ namespace SceneryEditorX
 			value("sedx/csm_receiver_plane", receiverPlane);
 			c.shadowReceiverPlane = receiverPlane > 0.5f;
 			value("sedx/csm_receiver_plane_slope_bias", c.shadowReceiverPlaneSlopeBias);
+			value("sedx/csm_height_near_ratio", c.shadowHeightNearRatio);
+			value("sedx/csm_height_far_ratio", c.shadowHeightFarRatio);
 			value("sedx/ssr_gloss_fade", ssr.glossFade);
 			float maxSteps = static_cast<float>(ssr.maxSteps);
 			value("sedx/ssr_max_steps", maxSteps);
@@ -1377,6 +1494,25 @@ namespace SceneryEditorX
 			value("sedx/ssr_edge_fade", ssr.edgeFade);
 			value("sedx/ssr_history_clamp", ssr.historyClamp);
 			value("sedx/ssr_lobe_scale", ssr.lobeScale);
+			value("sedx/water_cascade_size_0", water.cascadeSizeM[0]);
+			value("sedx/water_cascade_size_1", water.cascadeSizeM[1]);
+			value("sedx/water_cascade_size_2", water.cascadeSizeM[2]);
+			value("sedx/water_cascade_size_3", water.cascadeSizeM[3]);
+			value("sedx/water_cascade_min_cycles", water.cascadeMinCycles);
+			value("sedx/water_spectrum_depth_m", water.spectrumDepthM);
+			value("sedx/water_height_per_amplitude", water.heightFromAmplitude);
+			value("sedx/water_foam_decay", water.foamDecay);
+			value("sedx/water_ior", water.refractiveIndex);
+			value("sedx/water_floor_albedo_r", water.floorAlbedo[0]);
+			value("sedx/water_floor_albedo_g", water.floorAlbedo[1]);
+			value("sedx/water_floor_albedo_b", water.floorAlbedo[2]);
+			value("sedx/water_floor_decal_m", water.floorDecalMeters);
+			value("sedx/water_clarity_min_m", water.clarityMinM);
+			value("sedx/water_shore_depth_m", water.shoreDepthM);
+			value("sedx/water_pond_wave_scale", water.pondWaveScale);
+			flag("sedx/water_use_fetch", water.useFetch);
+			value("sedx/water_grid_m", water.gridCellM);
+			value("sedx/water_tessellation_px", water.tessellationPixels);
 			return true;
 		}
 		catch (const std::exception &e)
@@ -1395,6 +1531,11 @@ namespace SceneryEditorX
 	bool Renderer::IsGridVisible()
 	{
 		return s_GridVisible.load(std::memory_order_relaxed);
+	}
+
+	void Renderer::SetGroundShown(const bool shown)
+	{
+		s_GroundShown.store(shown, std::memory_order_relaxed);
 	}
 
 	void Renderer::SetReferenceOverlay(const Ref<ImageResource> &image, const ReferenceOverlayMode mode, const float split, const float differenceGain)
@@ -1514,6 +1655,8 @@ namespace SceneryEditorX
 		BindAtmosphere(cmdList, ATMOSPHERE_LIGHTING);
 		BindShadows(cmdList);
 		BindReflections(cmdList);	// glossy blended surfaces trace their own (ssr_common.slang)
+		// WEATHER_TRANSPARENT drapes take the receptivity of the deferred surface under them (weather.slang)
+		cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_weather, GetRenderTarget(Renderer_RenderTarget::gbuffer_weather));
 		for (const ForwardDraw &draw : draws)
 		{
 			const Renderer_DrawCall &drawCall = m_DrawCalls[draw.drawCall];
