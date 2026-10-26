@@ -43,6 +43,7 @@
 #include "pipeline/pipeline_cache.h"
 #include "pipeline/pipeline_state.h"
 #include "shader/shader.h"
+#include <algorithm>
 #include <array>
 #include <chrono>
 #include <limits>
@@ -2391,6 +2392,18 @@ namespace SceneryEditorX
 		constexpr uint32_t cacaoConstantBufferBinding = 202;
 		if (Buffer* cacaoConstants = Renderer::GetBuffer(Renderer_Buffer::ConstantCacao))
 			m_DescriptorLayout_Current->SetConstantBuffer(cacaoConstantBufferBinding, cacaoConstants);
+		// The Perlin noise texture (resources.slang: [[vk::binding(14)]] tex_perlin) that vertex_processing.slang's wind and
+		// flutter sample, for the programs that declare it. No pass bound it, so those draws read an unwritten descriptor.
+		{
+			constexpr uint32_t perlinBinding = static_cast<uint32_t>(Renderer_BindingsSrv::tex_perlin);
+			const auto &descriptors = m_DescriptorLayout_Current->GetDescriptors();
+			const bool declared = std::ranges::any_of(descriptors, [](const Descriptor &descriptor)
+			{
+				return descriptor.GetSlot() == perlinBinding && descriptor.GetType() == DescriptorType::Image;
+			});
+			if (declared)
+				SetTexture(perlinBinding, Renderer::GetStandardTexture(Renderer_StandardTexture::Noise_perlin));
+		}
 
 		if (pso.shaders[static_cast<uint32_t>(StageType::Compute)])
 		{
@@ -2403,6 +2416,8 @@ namespace SceneryEditorX
 			if (GetPipelineHandle() != VK_NULL_HANDLE && GetPipelineLayoutHandle() != VK_NULL_HANDLE)
 			{
 				vkCmdBindPipeline(m_CmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, GetPipelineHandle());
+				if (Debugging::IsBreadcrumbsEnabled())
+					Debugging::SetBreadcrumb(this, Debugging::InternBreadcrumb(pso.name ? pso.name : "<unnamed compute PSO>"));
 				m_NeedsDynamicBind = true;
 			}
 			else
@@ -2477,6 +2492,8 @@ namespace SceneryEditorX
 
 		vkCmdBindPipeline(m_CmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, GetPipelineHandle());
 		m_NeedsDynamicBind = true;
+		if (Debugging::IsBreadcrumbsEnabled())
+			Debugging::SetBreadcrumb(this, Debugging::InternBreadcrumb(pso.name ? pso.name : "<unnamed graphics PSO>"));
 
 		// The dynamic render pass is begun lazily by PreDraw() -> BeginRenderPass(), which attaches every color
 		// target and the depth target with the PSO's load/clear operations.
