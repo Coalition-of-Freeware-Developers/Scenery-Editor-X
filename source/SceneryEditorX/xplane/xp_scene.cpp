@@ -270,7 +270,6 @@ namespace SceneryEditorX::XPlane
 			bool hasCamera = false;
 			float night = 0.0f;					// Datarefs::GetNightFactor(): lights only show at night or when forced on
 			double time = 0.0;					// Sim clock (flashing)
-			DatarefReader reader;
 			Ref<ImageResource> atlas;			// lights.txt texture
 			float atlasInset[2] = { 0.0f, 0.0f };	// Half a texel: cells sit edge to edge
 			Renderer_LightBillboardBatch atlasBatch;
@@ -384,7 +383,7 @@ namespace SceneryEditorX::XPlane
 				TransformPoint(world, light.position, lightWorld[i].data());
 
 				lightVisible[i] = lightsOn && IsLodVisible(data, light.lod, object.cameraDistance, object.lodOverride) &&
-								  EvaluateVisibility(data, light.visibility, frame.reader);
+								  EvaluateVisibilityAt(data, light.visibility, object.datarefValues);
 				if (!lightVisible[i])
 					continue;
 
@@ -683,32 +682,34 @@ namespace SceneryEditorX::XPlane
 			}
 		}
 
-		/* @brief Animation, camera distance, LOD and hide / show for one loaded placement. */
+		/* @brief Animation groups evaluated and of those moved since the last Tick() (--perf-log counters). */
+		uint32_t s_GroupsPosed = 0;
+		uint32_t s_GroupsMoved = 0;
+
+		/**
+		 * @brief Reads the datarefs a placement's animation and hide / show rules use (Obj8Data::datarefs) into
+		 * datarefValues. Main thread only.
+		 * @return True when any of them moved since the last read.
+		 */
+		bool RefreshInputs(XPlaneObjectComponent &object, const DatarefReader &reader)
+		{
+			static std::vector<float> values; // scratch: swapped with the placement's
+			ReadDatarefs(object.asset->GetData(), reader, values);
+			if (values == object.datarefValues)
+				return false;
+			object.datarefValues.swap(values);
+			return true;
+		}
+
+		/**
+		 * @brief Camera distance, LOD, hide / show and animation for one loaded placement.
+		 * @param inputsChanged Its datarefs (RefreshInputs()) or its settings changed since it was last evaluated.
+		 */
 		void UpdateObject(entt::registry &registry, const entt::entity rootHandle, XPlaneObjectComponent &object, const bool hasCamera,
-			const Vec3 &cameraPosition, const DatarefReader &reader, ParentWorldCache &parentCache)
+			const Vec3 &cameraPosition, const bool inputsChanged, ParentWorldCache &parentCache)
 		{
 			ResolveEntities(registry, rootHandle, object);
 			const Obj8Data &data = object.asset->GetData();
-
-			// Animation groups
-			if (object.animate)
-			{
-				for (size_t i = 0; i < object.nodeHandles.size() && i < data.nodes.size(); ++i)
-				{
-					const entt::entity handle = object.nodeHandles[i];
-					TransformComponent *transform = handle != entt::null ? registry.try_get<TransformComponent>(handle) : nullptr;
-					if (!transform)
-						continue;
-
-					const RigidTransform local = EvaluateAnimNode(data.nodes[i], reader);
-					transform->translation = Vec3(local.translation[0], local.translation[1], local.translation[2]);
-					transform->SetRotation(Quat(local.rotation[3], local.rotation[0], local.rotation[1], local.rotation[2]));
-				}
-
-				// animated batches follow the pose the same frame
-				if (!object.nodeHandles.empty())
-					GpuScene::MarkTransformDirty(rootHandle);
-			}
 
 			// Camera distance for LOD selection, from the middle of the object's bounds (X-Plane measures from there: a
 			// terminal's origin can sit hundreds of meters from its middle)
@@ -730,6 +731,16 @@ namespace SceneryEditorX::XPlane
 			object.evaluatedStamp = s_CameraStamp;
 			object.evaluatedVisible = object.visible;
 			object.evaluatedLodOverride = object.lodOverride;
+			object.evaluatedAnimate = object.animate;
+
+			// Groups that draw: a visible batch or a light below them (scratch, per Obj8Data::nodes entry)
+			static std::vector<uint8_t> drawn;
+			drawn.assign(data.nodes.size(), 0);
+			const auto markDrawn = [](const int node)
+			{
+				if (node >= 0 && static_cast<size_t>(node) < drawn.size())
+					drawn[static_cast<size_t>(node)] = 1;
+			};
 
 			// Batches: LOD + hide / show
 			object.visibleBatches = 0;
@@ -743,14 +754,60 @@ namespace SceneryEditorX::XPlane
 
 				const ObjectBatch &batch = batches[i];
 				const bool visible = object.visible && IsLodVisible(data, batch.lod, distance, object.lodOverride, defaultFar) &&
-									 EvaluateVisibility(data, batch.visibility, reader);
+									 EvaluateVisibilityAt(data, batch.visibility, object.datarefValues);
 				if (stored->GetActive() != visible)
 					stored->SetActive(visible);
 				if (visible)
 				{
 					++object.visibleBatches;
 					object.visibleTriangles += batch.triangleCount;
+					markDrawn(batch.node);
 				}
+			}
+
+			// Animation groups, once the LODs are known: like X-Plane, only geometry that draws is animated. KDEN's concourse
+			// posters are some 36,000 clock-driven groups in their 0-200 m LODs (the far LODs are static). A group left out
+			// stays stale and is posed once it draws; groups with lights always are (the lights follow them at night).
+			if (!object.animate)
+				return; // groups hold their pose; switching it back on is a settings change, which poses them again
+			object.staleGroups.resize(data.nodes.size(), 1);
+			if (inputsChanged)
+				std::ranges::fill(object.staleGroups, uint8_t(1));
+			for (const ObjectLight &light : object.asset->GetLights())
+				markDrawn(light.node);
+			for (size_t i = data.nodes.size(); i-- > 0;) // parents precede their children
+			{
+				if (drawn[i])
+					markDrawn(data.nodes[i].parent);
+			}
+
+			for (size_t i = 0; i < object.nodeHandles.size() && i < data.nodes.size(); ++i)
+			{
+				if (!object.staleGroups[i] || !drawn[i])
+					continue;
+				object.staleGroups[i] = 0;
+
+				const entt::entity handle = object.nodeHandles[i];
+				TransformComponent *transform = handle != entt::null ? registry.try_get<TransformComponent>(handle) : nullptr;
+				if (!transform)
+					continue;
+
+				const RigidTransform local = EvaluateAnimNodeAt(data.nodes[i], object.datarefValues);
+				const Vec3 translation(local.translation[0], local.translation[1], local.translation[2]);
+				const Quat rotation(local.rotation[3], local.rotation[0], local.rotation[1], local.rotation[2]);
+				++s_GroupsPosed;
+
+				// Only the groups whose pose changed are written (SetRotation() derives Euler angles) and re-read by the GPU
+				// scene: stepped keyframe tables (signs, posters) hold most groups still while the sim clock runs
+				const Quat current = transform->GetRotation();
+				if (transform->translation.x == translation.x && transform->translation.y == translation.y && transform->translation.z == translation.z &&
+					current.w == rotation.w && current.x == rotation.x && current.y == rotation.y && current.z == rotation.z)
+					continue;
+
+				transform->translation = translation;
+				transform->SetRotation(rotation);
+				GpuScene::MarkTransformDirty(handle); // its batches follow the pose the same frame
+				++s_GroupsMoved;
 			}
 		}
 	}
@@ -805,7 +862,8 @@ namespace SceneryEditorX::XPlane
 			ParentWorldCache parentCache;
 			if (XPlaneObjectComponent *object = registry->try_get<XPlaneObjectComponent>(rootHandle); object && object->loaded)
 			{
-				UpdateObject(*registry, rootHandle, *object, hasCamera, cameraPosition, Datarefs::GetReader(), parentCache);
+				RefreshInputs(*object, Datarefs::GetReader());
+				UpdateObject(*registry, rootHandle, *object, hasCamera, cameraPosition, true, parentCache);
 				object->evaluatedStamp = 0; // again next Tick(): the caller may still attach the root under a group
 			}
 		}
@@ -860,7 +918,6 @@ namespace SceneryEditorX::XPlane
 		lights.hasCamera = hasCamera;
 		lights.night = Datarefs::GetNightFactor();
 		lights.time = Datarefs::GetSimTime();
-		lights.reader = reader;
 		if (lights.night > 0.0f)
 		{
 			TextureInfo atlasInfo;
@@ -882,6 +939,8 @@ namespace SceneryEditorX::XPlane
 
 		ParentWorldCache parentCache;
 		uint64_t index = 0;
+		s_GroupsPosed = 0;
+		s_GroupsMoved = 0;
 		auto view = registry->view<XPlaneObjectComponent>();
 		for (const entt::entity rootHandle : view)
 		{
@@ -889,18 +948,23 @@ namespace SceneryEditorX::XPlane
 			if (!object.asset || !object.loaded)
 				continue; // still loading
 
-			// Static placements keep their batch states until the camera moves (LODs) or their settings change
-			const bool settingsChanged = object.evaluatedStamp == 0 || object.visible != object.evaluatedVisible || object.lodOverride != object.evaluatedLodOverride;
+			// A placement is evaluated again when a dataref its animation or hide / show rules read moved (the sim clock
+			// does every frame), when the camera moved (LODs) or when its settings changed; otherwise it keeps its state
+			const bool inputsChanged = object.dynamicState && RefreshInputs(object, reader);
+			const bool settingsChanged = object.evaluatedStamp == 0 || object.visible != object.evaluatedVisible ||
+										 object.lodOverride != object.evaluatedLodOverride || object.animate != object.evaluatedAnimate;
 			const bool inPhase = !cameraMoving || index++ % LOD_PHASES == phase;
 			const bool cameraMatters = object.usesDistance && object.evaluatedStamp != s_CameraStamp && inPhase;
-			if (object.dynamicState || settingsChanged || cameraMatters)
-				UpdateObject(*registry, rootHandle, object, hasCamera, cameraPosition, reader, parentCache);
+			if (inputsChanged || settingsChanged || cameraMatters)
+				UpdateObject(*registry, rootHandle, object, hasCamera, cameraPosition, inputsChanged || settingsChanged, parentCache);
 			else
 				ResolveEntities(*registry, rootHandle, object); // the lights below use the entity pointers
 
 			// Lights: billboards and spill candidates
 			CollectObjectLights(*registry, rootHandle, object, lights, parentCache);
 		}
+		Perf::SetCounter("anim groups posed", s_GroupsPosed);
+		Perf::SetCounter("anim groups moved", s_GroupsMoved);
 
 		// Spill: only the nearest lights light the scene
 		std::ranges::sort(lights.spills, [](const SpillCandidate &a, const SpillCandidate &b) { return a.distanceSquared < b.distanceSquared; });

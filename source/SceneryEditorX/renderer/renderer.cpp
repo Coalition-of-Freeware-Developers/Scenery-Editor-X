@@ -1160,6 +1160,7 @@ void dynamic_resolution()
 					Perf::SetCounter("gpu batches", stats.batches);
 					Perf::SetCounter("gpu commands drawn", stats.drawnCommands);
 					Perf::SetCounter("gpu uploads", stats.uploadedInstances);
+					Perf::SetCounter("gpu validated", stats.validatedTransforms);
 					Perf::SetCounter("gpu shadow draws", stats.shadowInstances);
 					Perf::SetCounter("cpu shadow casters", m_DrawCalls_Shadow_Count);
 					Perf::SetCounter("shadow cascades", GetShadowCascades().count);

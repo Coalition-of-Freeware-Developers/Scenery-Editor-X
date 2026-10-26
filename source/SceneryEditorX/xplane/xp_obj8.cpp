@@ -1259,8 +1259,26 @@ namespace SceneryEditorX::XPlane
 
 				m_Data.datarefs.clear();
 				m_Data.datarefs.reserve(usages.size());
+				std::map<std::string, int> indexOf;
 				for (auto &[name, usage] : usages)
+				{
+					indexOf.emplace(name, static_cast<int>(m_Data.datarefs.size()));
 					m_Data.datarefs.push_back(std::move(usage));
+				}
+
+				// Each op and rule points at its entry (EvaluateAnimNodeAt / EvaluateVisibilityAt)
+				const auto find = [&indexOf](const DatarefRef &ref)
+				{
+					const auto it = ref.IsSet() ? indexOf.find(ref.ToString()) : indexOf.end();
+					return it != indexOf.end() ? it->second : -1;
+				};
+				for (Obj8AnimNode &node : m_Data.nodes)
+				{
+					for (Obj8AnimOp &op : node.ops)
+						op.datarefIndex = find(op.dataref);
+				}
+				for (Obj8VisibilityCmd &rule : m_Data.visibility)
+					rule.datarefIndex = find(rule.dataref);
 			}
 
 			// -------------------------------------------------------
@@ -1339,6 +1357,12 @@ namespace SceneryEditorX::XPlane
 
 			const float span = keys[index + 1].value - keys[index].value;
 			fraction = std::abs(span) > 1e-12f ? (value - keys[index].value) / span : 0.0f;
+		}
+
+		/* @brief A ReadDatarefs() value by datarefIndex; 0 (an unset dataref) when there is none. */
+		float ValueAt(const std::vector<float> &values, const int index)
+		{
+			return index >= 0 && static_cast<size_t>(index) < values.size() ? values[static_cast<size_t>(index)] : 0.0f;
 		}
 	}
 
@@ -1527,6 +1551,39 @@ namespace SceneryEditorX::XPlane
 
 			const Obj8VisibilityCmd &rule = data.visibility[ruleIndex];
 			const float value = ApplyKeyframeLoop(rule.dataref.IsSet() && reader ? reader(rule.dataref) : 0.0f, rule.loop);
+			const float lo = std::min(rule.v1, rule.v2);
+			const float hi = std::max(rule.v1, rule.v2);
+			if (value >= lo && value <= hi)
+				visible = !rule.hide;
+		}
+		return visible;
+	}
+
+	void ReadDatarefs(const Obj8Data &data, const DatarefReader &reader, std::vector<float> &values)
+	{
+		values.resize(data.datarefs.size());
+		for (size_t i = 0; i < data.datarefs.size(); ++i)
+			values[i] = reader ? reader(data.datarefs[i].dataref) : 0.0f;
+	}
+
+	RigidTransform EvaluateAnimNodeAt(const Obj8AnimNode &node, const std::vector<float> &datarefValues)
+	{
+		RigidTransform result;
+		for (const Obj8AnimOp &op : node.ops)
+			result = result.Compose(EvaluateAnimOp(op, ValueAt(datarefValues, op.datarefIndex)));
+		return result;
+	}
+
+	bool EvaluateVisibilityAt(const Obj8Data &data, const std::vector<uint32_t> &rules, const std::vector<float> &datarefValues)
+	{
+		bool visible = true;
+		for (const uint32_t ruleIndex : rules)
+		{
+			if (ruleIndex >= data.visibility.size())
+				continue;
+
+			const Obj8VisibilityCmd &rule = data.visibility[ruleIndex];
+			const float value = ApplyKeyframeLoop(ValueAt(datarefValues, rule.datarefIndex), rule.loop);
 			const float lo = std::min(rule.v1, rule.v2);
 			const float hi = std::max(rule.v1, rule.v2);
 			if (value >= lo && value <= hi)

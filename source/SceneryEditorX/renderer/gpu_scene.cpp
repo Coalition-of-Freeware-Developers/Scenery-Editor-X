@@ -472,6 +472,7 @@ namespace SceneryEditorX
 		/* @brief Moves the instances below the entities passed to MarkTransformDirty() onto the per-frame check. */
 		void ApplyPendingTransforms(State &s)
 		{
+			SEDX_PERF_SCOPE("Render: GpuScene marked transforms");
 			std::vector<entt::entity> pending;
 			{
 				std::scoped_lock lock(s.pendingMutex);
