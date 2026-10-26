@@ -555,6 +555,11 @@ namespace SceneryEditorX
 			float fogAlbedo = 0.9f;						// atmo/fog_albedo: the visibility haze's scattering albedo
 			float hazeTopM = 1500.0f;
 			float hazeBandM = 1000.0f;
+			// Extra multiple scattering of an optically thick visibility haze layer over Hillaire's isotropic estimate,
+			// which falls short the thicker the haze: the haze's share of that estimate is raised by 1 + this x (1 - e^-tau),
+			// tau the layer's vertical optical depth. X-Plane 12.4.4's 8 km haze outshines its sunlit ground ~2.5x where
+			// the estimate alone left it about even (calibrated on the clean *_aerial_hazy probe shots)
+			float hazeMultipleBoost = 0.0f;				// sedx/haze_multiple_boost
 			ExposureSettings exposure;					// photometric/*, exposure/*, autoexposure/* (renderer/exposure.h)
 
 			// exposure_fusion/shadows (EV), sigma, dis_near, dis_far (km); shadows 1 EV is an ASSUMPTION

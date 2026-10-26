@@ -389,7 +389,7 @@ public struct EnvironmentData
     public float4 post;              // bloom intensity, exposure fusion highlights (EV), fusion strength
     public float4 light_toa;         // rgb sun illuminance outside the atmosphere (lux), w the moon's (lux, x fraction)
     public float4 atmosphere_haze;   // haze extinction (1/m), scattering albedo, layer top above the ground (m), fade band (m)
-    public float4 atmosphere_view;   // aerial perspective range (m), airglow (nits), star brightness, unused
+    public float4 atmosphere_view;   // aerial perspective range (m), airglow (nits), star brightness, haze multiple-scattering gain
     public float4 probe;             // xyz environment probe 0 (world), w specular LOD bias
     public float4 celestial[3];      // rows of the world -> equatorial rotation (x vernal equinox, z north pole)
     public float4x4 csm_view_projection[4]; // sun shadows (renderer/csm.h): the light's view-projection per cascade

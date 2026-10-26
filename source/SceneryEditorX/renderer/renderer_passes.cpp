@@ -1268,6 +1268,7 @@ namespace SceneryEditorX
 			c.mie.y = c.mie.x / std::clamp(mieAlbedo, 0.01f, 1.0f);
 			value("scattering/mie_scattering_exponent", c.mieAngstrom);
 			value("scattering/multi_rat", c.multipleScattering);
+			value("sedx/haze_multiple_boost", c.hazeMultipleBoost);
 			value("scattering/vis_cutoff_ratio", c.visibilityContrast);
 			value("exposure_fusion/dis_near", c.exposureFusion.z);
 			value("exposure_fusion/dis_far", c.exposureFusion.w);

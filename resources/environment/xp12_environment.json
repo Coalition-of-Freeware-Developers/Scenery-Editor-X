@@ -650,6 +650,10 @@
 			"value": 0.18,
 			"source": "ASSUMPTION: the display transform's pivot; with exposure 18 / (K x 2^EV) a metered scene's average lands on it"
 		},
+		"sedx/haze_multiple_boost": {
+			"value": 3.4,
+			"source": "SEDX calibration (2026-10-25): extra multiple scattering of an optically thick visibility haze layer over Hillaire's isotropic estimate (gain 1 + this x (1 - e^-tau), tau the layer's vertical optical depth). Fitted on the *_aerial_hazy views whose X-Plane 12.4.4 shots had no leftover cloud layer (KGON, LEBL; 8 km: gain ~3.3, X-Plane ~2.4x the estimate's brightness); clear 80 km air gets ~1.27"
+		},
 		"sedx/fusion_strength": {
 			"value": 0.0,
 			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25): X-Plane's exposure_fusion/shadows reads 0.0001-0.011 in every daylight shot (about 2.5 x autoexposure/contrast_score) and 0.19 with snow, so its local tone mapping barely changes the frame; SEDX's fusion is off until it follows that adaptive amount"

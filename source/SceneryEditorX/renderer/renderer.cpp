@@ -3364,7 +3364,10 @@ void dynamic_resolution()
 		env.light_toa = xMath::Vec4(static_cast<float>(constants.sunIlluminanceLux * Environment::SUN_COLOR[0]),
 			static_cast<float>(constants.sunIlluminanceLux * Environment::SUN_COLOR[1]), static_cast<float>(constants.sunIlluminanceLux * Environment::SUN_COLOR[2]),
 			static_cast<float>(moonLux));
-		env.atmosphere_view = xMath::Vec4(constants.aerialRangeM, constants.airglowNits, constants.starBrightness, 0.0f);
+		// The haze's multiple-scattering gain grows with its layer's vertical optical depth (the fade band counts half)
+		const double hazeDepth = atmosphere.hazeExtinction * (atmosphere.hazeTopM + 0.5 * atmosphere.hazeBandM);
+		const float hazeGain = 1.0f + std::max(constants.hazeMultipleBoost, 0.0f) * static_cast<float>(1.0 - std::exp(-std::max(hazeDepth, 0.0)));
+		env.atmosphere_view = xMath::Vec4(constants.aerialRangeM, constants.airglowNits, constants.starBrightness, hazeGain);
 		{
 			const ProbeVec3 probe = SnapProbePosition({ s_MainCameraPosition.x, s_MainCameraPosition.y, s_MainCameraPosition.z });	// Captured around the main view
 			env.probe = xMath::Vec4(static_cast<float>(probe[0]), static_cast<float>(probe[1]), static_cast<float>(probe[2]), constants.probeSpecularBias);

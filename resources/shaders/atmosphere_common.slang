@@ -86,6 +86,7 @@ public struct AtmosphereParameters
     public float haze_albedo;
     public float haze_top;              // km above sea level
     public float haze_band;             // km
+    public float haze_multiple_gain;    // On the haze's share of the multiple-scattering estimate: 1 + boost (1 - e^-tau), from the CPU
     public float3 ground_albedo;
 };
 
@@ -111,6 +112,7 @@ public AtmosphereParameters get_atmosphere()
     a.haze_albedo = e.atmosphere_haze.y;
     a.haze_top = (max(e.camera.y, 0.0f) + e.atmosphere_haze.z) * 0.001f;
     a.haze_band = max(e.atmosphere_haze.w * 0.001f, 1e-3f);
+    a.haze_multiple_gain = e.atmosphere_view.w;
     a.ground_albedo = e.planet.w;
     return a;
 }
@@ -138,6 +140,7 @@ public struct MediumSample
     public float3 mie_scattering;
     public float3 scattering;
     public float3 extinction;
+    public float3 haze_scattering;      // The visibility haze's part of mie_scattering
 };
 
 public float haze_profile(AtmosphereParameters a, float altitude)
@@ -155,7 +158,8 @@ public MediumSample sample_medium(AtmosphereParameters a, float3 position)
 
     MediumSample m;
     m.rayleigh_scattering = a.rayleigh_scattering * rayleigh;
-    m.mie_scattering = a.mie_scattering * mie + haze * a.haze_albedo;
+    m.haze_scattering = haze * a.haze_albedo;
+    m.mie_scattering = a.mie_scattering * mie + m.haze_scattering;
     m.scattering = m.rayleigh_scattering + m.mie_scattering;
     m.extinction = m.rayleigh_scattering + (a.mie_extinction * mie + haze) + a.ozone_absorption * ozone;
     return m;
@@ -171,6 +175,7 @@ public MediumSample sample_medium_diffuse(AtmosphereParameters a, float3 positio
     MediumSample m = sample_medium(a, position);
     const float f = a.mie_g * a.mie_g;
     const float3 removed = f * m.mie_scattering;
+    m.haze_scattering -= f * m.haze_scattering;
     m.mie_scattering -= removed;
     m.scattering -= removed;
     m.extinction -= removed;
@@ -378,7 +383,9 @@ public float3 get_moon_illuminance_toa() { return buffer_environment.light_toa.w
 
 /**
  * @brief In-scattered radiance (nits, not pre-exposed) per unit length at a point from one light: single scattering
- * (the light's transmittance, the planet's shadow, both phase functions) plus Hillaire's multiple-scattering term.
+ * (the light's transmittance, the planet's shadow, both phase functions) plus Hillaire's multiple-scattering term, the
+ * visibility haze's share of it raised by haze_multiple_gain (the isotropic estimate falls short in thick haze, which
+ * X-Plane draws white).
  */
 public float3 light_scattering(AtmosphereParameters a, float3 position, MediumSample medium, float3 view_direction, float3 light_direction, float3 illuminance)
 {
@@ -389,7 +396,8 @@ public float3 light_scattering(AtmosphereParameters a, float3 position, MediumSa
     const float3 phase_scattering = medium.rayleigh_scattering * rayleigh_phase(cos_theta) + medium.mie_scattering * cornette_shanks_phase(cos_theta, a.mie_g);
     const float3 to_light = get_transmittance_to_space(a, position, light_direction);
     const float3 multiple = get_multiple_scattering(a, position, cos_light_zenith);
-    return illuminance * (phase_scattering * to_light + multiple * medium.scattering);
+    const float3 multiple_scattering = medium.scattering + (a.haze_multiple_gain - 1.0f) * medium.haze_scattering;
+    return illuminance * (phase_scattering * to_light + multiple * multiple_scattering);
 }
 
 /* @brief Both lights. */
