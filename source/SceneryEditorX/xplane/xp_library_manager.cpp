@@ -144,6 +144,7 @@ namespace SceneryEditorX::XPlane
 
 			std::atomic<ScanState> scanState{ ScanState::Idle };
 			std::atomic<uint64_t> generation{ 0 };
+			std::atomic<uint8_t> season{ 0 };						// SetSeason()
 
 			std::thread worker;
 			std::condition_variable wake;
@@ -647,19 +648,45 @@ namespace SceneryEditorX::XPlane
 		return state.index;
 	}
 
+	void LibraryManager::SetSeason(const uint8_t season)
+	{
+		GetState().season.store(season);
+	}
+
+	uint8_t LibraryManager::GetSeason()
+	{
+		return GetState().season.load();
+	}
+
 	fs::path LibraryManager::Resolve(const std::string_view virtualPath)
 	{
-		return GetIndex()->Resolve(virtualPath);
+		const std::shared_ptr<const LibraryIndex> index = GetIndex();
+		if (const uint8_t season = GetSeason())
+		{
+			LibraryIndex::ResolveContext context;
+			context.season = season;
+			if (fs::path file = index->Resolve(virtualPath, context); !file.empty())
+				return file;
+		}
+		return index->Resolve(virtualPath);
 	}
 
 	fs::path LibraryManager::ResolveAt(const std::string_view virtualPath, const double latitude, const double longitude, const uint8_t season)
 	{
+		const std::shared_ptr<const LibraryIndex> index = GetIndex();
 		LibraryIndex::ResolveContext context;
 		context.hasLocation = true;
 		context.latitude = latitude;
 		context.longitude = longitude;
-		context.season = season;
-		return GetIndex()->Resolve(virtualPath, context);
+		context.season = season ? season : GetSeason();
+		fs::path file = index->Resolve(virtualPath, context);
+		if (file.empty() && context.season != 0)
+		{
+			// Exports for other seasons only: X-Plane would still draw something
+			context.season = 0;
+			file = index->Resolve(virtualPath, context);
+		}
+		return file;
 	}
 
 	double LibraryManager::GetLastScanMilliseconds()

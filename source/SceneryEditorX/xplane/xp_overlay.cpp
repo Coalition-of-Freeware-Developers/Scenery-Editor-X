@@ -1736,6 +1736,8 @@ namespace SceneryEditorX::XPlane
 		mesh.cutoff = 0.5f;
 		mesh.twoSided = true;
 		mesh.forestFile = file;
+		if (!asset->material2d.weather.empty())
+			mesh.weatherMask = TexturePath(file, asset->material2d.weather);
 
 		uint32_t seed = m_Seed++ * 7919u + index;
 		const float spacingX = std::max(1.0f, asset->spacingX);
@@ -2099,6 +2101,8 @@ namespace SceneryEditorX::XPlane
 		mesh.cutoff = 0.5f;
 		mesh.twoSided = true;
 		mesh.forestFile = forestFile;
+		if (!forest->material2d.weather.empty())
+			mesh.weatherMask = TexturePath(forestFile, forest->material2d.weather);
 		uint32_t seed = m_Seed++ * 7919u + index;
 		const auto canStand = [this, &options](const Point2 &p) { return InArea(options, p) && (!options.keepTree || options.keepTree(p)); };
 		const double headingToYaw = kPi / 180.0;

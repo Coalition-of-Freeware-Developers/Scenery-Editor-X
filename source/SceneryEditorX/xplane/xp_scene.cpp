@@ -32,6 +32,7 @@
 #include "xp_airport_scene.h"
 #include "xp_datarefs.h"
 #include "xp_forest3d.h"
+#include "xp_library_manager.h"
 #include "xp_weather_art.h"
 #include <algorithm>
 #include <array>
@@ -802,6 +803,9 @@ namespace SceneryEditorX::XPlane
 
 	void SceneObjects::Tick(const double deltaSeconds)
 	{
+		// Seasonal library art follows the world's season (the terrain reloads when it changes: SceneTerrain::Update)
+		LibraryManager::SetSeason(Environment::Get().GetDerived().season.bits);
+
 		// Background loads: upload what the workers finished, then fill in the placements that were waiting for it.
 		{
 			SEDX_PERF_SCOPE("Objects: asset uploads");

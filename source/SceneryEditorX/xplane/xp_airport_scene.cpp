@@ -32,6 +32,7 @@
 #include "xp_dsf.h"
 #include "xp_library_manager.h"
 #include "xp_overlay.h"
+#include "xp_overlay_shading.h"
 #include "xp_scene.h"
 #include "xp_terrain_scene.h"
 #include "xp_texture_loader.h"
@@ -1336,126 +1337,6 @@ namespace SceneryEditorX::XPlane
 			return it->second.image.Get();
 		}
 
-		/**
-		 * @brief Draped-polygon shading on an overlay material (xp_material.slang xp_drape_*): the tile atlas's mapping
-		 * texture in color slot 1, detail decals in color slots 2-3, normal decals in normal slots 1-2 (slot 0 stays empty:
-		 * overlays draw without a normal map). Returns what it adds to the material's cache key.
-		 */
-		std::string ApplyDrapeShading(Loaded &loaded, const Part &part, MaterialAsset &material)
-		{
-			std::string key;
-			float mode = 0.0f;
-			if (part.shading == OverlayShading::Markings)
-			{
-				// The atlas's channels are masks: R paint, G border (loaded linear, decoded in the shader)
-				mode = 2.0f;
-				material.SetProperty(MaterialProperty::XpDrapeMiscR, part.color[0]);
-				material.SetProperty(MaterialProperty::XpDrapeMiscG, part.color[1]);
-				material.SetProperty(MaterialProperty::XpDrapeMiscB, part.color[2]);
-				material.SetProperty(MaterialProperty::XpDrapeMiscA, part.color[3]);
-				char text[96];
-				std::snprintf(text, sizeof(text), "|markings%.3f,%.3f,%.3f,%.3f", part.color[0], part.color[1], part.color[2], part.color[3]);
-				key += text;
-			}
-			else if (part.shading == OverlayShading::Tiled)
-			{
-				mode = 1.0f;
-				ImageResource *map = LoadOverlayTexture(loaded, part.tileMap, TextureUsage::Data);
-				material.SetProperty(MaterialProperty::XpTilesX, static_cast<float>(part.tilesX));
-				material.SetProperty(MaterialProperty::XpTilesY, static_cast<float>(part.tilesY));
-				material.SetProperty(MaterialProperty::XpTileMapWidth, map ? static_cast<float>(part.tileMapWidth) : 0.0f);
-				material.SetProperty(MaterialProperty::XpTileMapHeight, map ? static_cast<float>(part.tileMapHeight) : 0.0f);
-				if (map)
-					material.SetTexture(MaterialTextureType::Color, map, 1);
-				key += "|tiles" + std::to_string(part.tilesX) + "x" + std::to_string(part.tilesY) + (map ? "|" + part.tileMap.generic_string() : std::string());
-			}
-
-			// Up to two detail and two normal decals, in file order
-			int details = 0, normals = 0;
-			for (const OverlayDecal &decal : part.decals)
-			{
-				const bool normal = decal.normal;
-				int &count = normal ? normals : details;
-				if (count >= 2)
-					continue;
-				ImageResource *image = LoadOverlayTexture(loaded, decal.texture, normal ? TextureUsage::Normal : TextureUsage::Data);
-				if (!image)
-					continue;
-				// Repeats per meter, so decals keep their own scale whatever the atlas's
-				const float perMeterS = decal.scaleS / std::max(0.01f, part.metersPerU);
-				const float perMeterT = decal.scaleT / std::max(0.01f, part.metersPerV);
-				const int slot = count;
-				if (normal)
-				{
-					material.SetTexture(MaterialTextureType::Normal, image, 1 + slot);
-					material.SetProperty(slot == 0 ? MaterialProperty::XpNormalDecal0Scale : MaterialProperty::XpNormalDecal1Scale, perMeterS);
-					material.SetProperty(slot == 0 ? MaterialProperty::XpNormalDecal0Gain : MaterialProperty::XpNormalDecal1Gain, decal.strength * decal.gain);
-				}
-				else
-				{
-					material.SetTexture(MaterialTextureType::Color, image, 2 + slot);
-					material.SetProperty(slot == 0 ? MaterialProperty::XpDecal0Scale : MaterialProperty::XpDecal1Scale, perMeterS);
-					material.SetProperty(slot == 0 ? MaterialProperty::XpDecal0Strength : MaterialProperty::XpDecal1Strength, decal.strength);
-				}
-				// t repeats per meter relative to s (1 for square decal texels; a _PROJ row may set its own)
-				if (slot == 0)
-					material.SetProperty(normal ? MaterialProperty::XpNormalDecalAspect : MaterialProperty::XpDecalAspect, perMeterT / std::max(1e-6f, perMeterS));
-				++count;
-				char text[160];
-				std::snprintf(text, sizeof(text), "|%s%.4f,%.4f,%.3f,%.3f:", normal ? "nd" : "d", decal.scaleS, decal.scaleT, decal.strength, decal.gain);
-				key += text + decal.texture.generic_string();
-			}
-			if (details + normals > 0)
-			{
-				// u / v units in meters: the shader turns UVs into meters for the decals' per-meter scales
-				material.SetProperty(MaterialProperty::XpDrapeMetersU, part.metersPerU);
-				material.SetProperty(MaterialProperty::XpDrapeMetersV, part.metersPerV);
-				char text[64];
-				std::snprintf(text, sizeof(text), "|m%.3f,%.3f", part.metersPerU, part.metersPerV);
-				key += text;
-			}
-
-			// X-Plane's material (xp_material.slang): with a normal map the surface takes its gloss (A, x SPECULAR) and, with
-			// NORMAL_METALNESS, its F0 / metalness (B), as OBJ8s and terrain do; normal slot 0 (decals use 1-2), laid out
-			// like the albedo (tile atlases pick the same cell) at TEXTURE_NORMAL's ratio. Without one it stays plain and matte.
-			if (ImageResource *normalMap = LoadOverlayTexture(loaded, part.textureNormal, TextureUsage::Normal))
-			{
-				material.SetTexture(MaterialTextureType::Normal, normalMap, 0);
-				material.SetProperty(MaterialProperty::XpMaterial, 1.0f);
-				material.SetProperty(MaterialProperty::XpNormalMode, part.normalMetalness ? 2.0f : 1.0f);
-				material.SetProperty(MaterialProperty::XpSpecularGain, part.specular);
-				material.SetProperty(MaterialProperty::XpSuperRoughness, part.superRoughness);
-				material.SetProperty(MaterialProperty::XpDefaultF0, 0.04f);
-				material.SetProperty(MaterialProperty::XpTerrainNormalRatio, part.normalRatio);
-				char text[96];
-				std::snprintf(text, sizeof(text), "|n%.3f,%d,%.3f,%.3f:", part.normalRatio, part.normalMetalness ? 1 : 0, part.specular, part.superRoughness);
-				key += text + part.textureNormal.generic_string();
-			}
-
-			// Weather receptivity (weather.slang): the WEATHER mask in emission slot 3, laid out like the albedo
-			if (ImageResource *mask = LoadOverlayTexture(loaded, part.weatherMask, TextureUsage::Data))
-			{
-				material.SetTexture(MaterialTextureType::Emission, mask, 3);
-				key += "|wm" + part.weatherMask.generic_string();
-			}
-			if (part.weatherTransparent)
-			{
-				material.SetProperty(MaterialProperty::XpWeatherTransparent, 1.0f);
-				key += "|wt";
-			}
-			if (part.hasSnowAlbedoLuma)
-			{
-				material.SetProperty(MaterialProperty::XpSnowAlbedoLuma, 1.0f);
-				material.SetProperty(MaterialProperty::XpSnowAlbedoLumaR, part.snowAlbedoLuma[0]);
-				material.SetProperty(MaterialProperty::XpSnowAlbedoLumaG, part.snowAlbedoLuma[1]);
-				char text[64];
-				std::snprintf(text, sizeof(text), "|sl%.3f,%.3f", part.snowAlbedoLuma[0], part.snowAlbedoLuma[1]);
-				key += text;
-			}
-			material.SetProperty(MaterialProperty::XpDrapeMode, mode);
-			return key;
-		}
-
 		/* @brief The material for library / DSF art: its texture (loaded once per file) with the asset's alpha treatment. */
 		Ref<MaterialAsset> GetOverlayMaterial(Loaded &loaded, const Part &part)
 		{
@@ -1487,7 +1368,7 @@ namespace SceneryEditorX::XPlane
 			// The shading's textures load before the lookup: they are part of the key
 			Ref<MaterialAsset> material = CreateRef<MaterialAsset>();
 			if (image)
-				key += ApplyDrapeShading(loaded, part, *material);
+				key += ApplyDrapeShading(part, [&loaded](const fs::path &texture, const TextureUsage usage) { return LoadOverlayTexture(loaded, texture, usage); }, *material);
 
 			auto it = loaded.overlayMaterials.find(key);
 			if (it != loaded.overlayMaterials.end())
@@ -1503,7 +1384,7 @@ namespace SceneryEditorX::XPlane
 			material->SetProperty(MaterialClass::TextureTilingY, 1.0f);
 			material->SetProperty(MaterialClass::Roughness, 0.9f);
 			material->SetProperty(MaterialClass::Metalness, 0.0f);
-			// The normal map's full strength with an X-Plane material (ApplyDrapeShading), else none
+			// The normal map's full strength with an X-Plane material (ApplyDrapeShading, xp_overlay_shading.h), else none
 			material->SetProperty(MaterialClass::Normal, material->GetProperty(MaterialProperty::XpMaterial) > 0.0f ? 1.0f : 0.0f);
 			material->SetProperty(MaterialProperty::CullMode, static_cast<float>(CullMode::None));
 			// Like the OBJ8 materials: cutouts alpha-test at the asset's ratio; blended art keeps its opaque texels in the

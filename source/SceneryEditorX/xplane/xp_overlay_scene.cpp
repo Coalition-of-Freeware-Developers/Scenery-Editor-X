@@ -30,6 +30,7 @@
  */
 #include "xp_overlay_scene.h"
 #include "xp_forest3d.h"
+#include "xp_overlay_shading.h"
 #include "xp_scene.h"
 #include "xp_terrain_scene.h"
 #include "xp_texture_loader.h"
@@ -83,6 +84,7 @@ namespace SceneryEditorX::XPlane
 			uint32_t subMesh = 0;
 			float height = 0.0f;			// Draped kinds: the layer height the builder drew them at
 			uint32_t placement = 0;			// The DSF placement of the first mesh
+			const OverlayMesh *shading = nullptr;	// The first mesh: its drape shading (normal map, decals, tiles, WEATHER mask)
 		};
 
 		/* @brief Kinds drawn flat on the ground, in drape order (Renderable::SetDrapeOrder) rather than by depth. */
@@ -95,22 +97,37 @@ namespace SceneryEditorX::XPlane
 		{
 			char color[64];
 			std::snprintf(color, sizeof(color), "|%.3f,%.3f,%.3f,%.3f", mesh.color[0], mesh.color[1], mesh.color[2], mesh.color[3]);
-			return std::to_string(static_cast<int>(mesh.kind)) + "|" + mesh.texture.generic_string() + color + (mesh.cutout ? "|c" + std::to_string(mesh.cutoff) : "") + (mesh.blended ? "|b" : "");
+			std::string key = std::to_string(static_cast<int>(mesh.kind)) + "|" + mesh.texture.generic_string() + color + (mesh.cutout ? "|c" + std::to_string(mesh.cutoff) : "") +
+				(mesh.blended ? "|b" : "");
+			// Meshes of one texture with other shading (decals, normal map, mask) get their own part
+			std::vector<std::pair<fs::path, TextureUsage>> textures;
+			GetDrapeShadingTextures(mesh, textures);
+			key += "|s" + std::to_string(static_cast<int>(mesh.shading));
+			for (const auto &[file, usage] : textures)
+				key += "|" + file.generic_string();
+			return key;
 		}
 
-		/* @brief Appends a mesh's geometry as built (positions, UVs, normals) with a tangent perpendicular to the normal. */
+		/* @brief Appends a mesh's geometry as built (positions, UVs, normals) with a tangent along u (ground) or the ground (walls). */
 		void Append(Part &part, const OverlayMesh &mesh)
 		{
 			const uint32_t base = static_cast<uint32_t>(part.vertices.size());
 			for (const OverlayVertex &vertex : mesh.vertices)
 			{
 				const Vec3 normal(vertex.nx, vertex.ny, vertex.nz);
-				const Vec3 tangent = std::abs(vertex.ny) > 0.9f ? Vec3(1.0f, 0.0f, 0.0f) : xMath::Normalize(xMath::Cross(Vec3(0.0f, 1.0f, 0.0f), normal));
+				// Along u for ground (the texture heading, for normal maps and decals), along the ground for walls
+				const Vec3 tangent = std::abs(vertex.ny) > 0.9f ? Vec3(mesh.tangentX, 0.0f, mesh.tangentZ) : xMath::Normalize(xMath::Cross(Vec3(0.0f, 1.0f, 0.0f), normal));
 				part.vertices.push_back(Vertex_PosTexNorTan(Vec3(vertex.x, vertex.y, vertex.z), Vec2(vertex.u, vertex.v), normal, tangent));
 			}
 			for (const uint32_t index : mesh.indices)
 				part.indices.push_back(base + index);
 			part.bounds.Add(mesh.bounds);
+		}
+
+		/* @brief A texture cache key: the usage it loads as (albedo, normal, data) and its file. */
+		std::string TextureKey(const fs::path &texture, const TextureUsage usage)
+		{
+			return std::to_string(static_cast<int>(usage)) + "|" + texture.generic_string();
 		}
 
 		entt::registry *GetRegistry()
@@ -187,12 +204,34 @@ namespace SceneryEditorX::XPlane
 			uint32_t missingTextures = 0;
 		};
 
+		/* @brief A texture of the scenes' art, loaded once per file and usage (null when missing; warned once). */
+		ImageResource *LoadTexture(const fs::path &texture, const TextureUsage usage, TextureInfo *info = nullptr)
+		{
+			if (texture.empty())
+				return nullptr;
+			const std::string key = TextureKey(texture, usage);
+			auto it = textures.find(key);
+			if (it == textures.end())
+			{
+				TextureEntry entry;
+				const fs::path file = TextureLoader::ResolveTexturePath(texture.parent_path(), texture.filename().string());
+				if (!file.empty())
+					entry.image = TextureLoader::Load(file, usage, &entry.info);
+				if (!entry.image)
+					SEDX_CORE_WARN_TAG(LOG_TAG, "Texture not found or unreadable: {}{}", texture.generic_string(), entry.info.error.empty() ? std::string() : " (" + entry.info.error + ")");
+				it = textures.emplace(key, std::move(entry)).first;
+			}
+			if (info)
+				*info = it->second.info;
+			return it->second.image.Get();
+		}
+
 		uint64_t root = 0;
 		uint32_t drapeSequenceBase = 0;								// SetDrapeSequenceBase()
 		bool onTerrain = false;										// SetOnTerrain()
 		bool clip = false;
 		std::map<std::string, Ref<MaterialAsset>> materials;		// By texture + alpha treatment (or color)
-		std::map<std::string, TextureEntry> textures;				// By file
+		std::map<std::string, TextureEntry> textures;				// By usage and file (TextureKey)
 		std::unordered_map<std::string, GroupState> groups;		// By group key
 		std::unordered_map<uint64_t, std::string> keys;			// Group, part and object root entities -> group key
 		Bounds2 bounds;
@@ -207,20 +246,10 @@ namespace SceneryEditorX::XPlane
 			missingTexture = false;
 			if (!part.texture.empty())
 			{
+				TextureInfo info;
+				image = LoadTexture(part.texture, TextureUsage::Albedo, &info);
+				hasAlpha = info.hasAlpha;
 				key = part.texture.generic_string();
-				auto it = textures.find(key);
-				if (it == textures.end())
-				{
-					TextureEntry entry;
-					const fs::path file = TextureLoader::ResolveTexturePath(part.texture.parent_path(), part.texture.filename().string());
-					if (!file.empty())
-						entry.image = TextureLoader::Load(file, TextureUsage::Albedo, &entry.info);
-					if (!entry.image)
-						SEDX_CORE_WARN_TAG(LOG_TAG, "Texture not found or unreadable: {}{}", key, entry.info.error.empty() ? std::string() : " (" + entry.info.error + ")");
-					it = textures.emplace(key, std::move(entry)).first;
-				}
-				image = it->second.image.Get();
-				hasAlpha = it->second.info.hasAlpha;
 				missingTexture = image == nullptr;
 			}
 			if (!image)
@@ -242,10 +271,14 @@ namespace SceneryEditorX::XPlane
 			if (part.lodSwitch)
 				key += "|far";
 
+			// The shading's textures load before the lookup: they are part of the key
+			Ref<MaterialAsset> material = CreateRef<MaterialAsset>();
+			if (image && part.shading)
+				key += ApplyDrapeShading(*part.shading, [this](const fs::path &texture, const TextureUsage usage) { return LoadTexture(texture, usage); }, *material);
+
 			if (const auto it = materials.find(key); it != materials.end())
 				return it->second;
 
-			Ref<MaterialAsset> material = CreateRef<MaterialAsset>();
 			material->SetName(image ? "Overlay " + part.texture.filename().string() : "Overlay color");
 			material->SetProperty(MaterialClass::ColorR, image ? 1.0f : part.color[0]);
 			material->SetProperty(MaterialClass::ColorG, image ? 1.0f : part.color[1]);
@@ -255,7 +288,8 @@ namespace SceneryEditorX::XPlane
 			material->SetProperty(MaterialClass::TextureTilingY, 1.0f);
 			material->SetProperty(MaterialClass::Roughness, 0.9f);
 			material->SetProperty(MaterialClass::Metalness, 0.0f);
-			material->SetProperty(MaterialClass::Normal, 0.0f);
+			// The normal map's full strength with an X-Plane material (ApplyDrapeShading), else none
+			material->SetProperty(MaterialClass::Normal, material->GetProperty(MaterialProperty::XpMaterial) > 0.0f ? 1.0f : 0.0f);
 			material->SetProperty(MaterialProperty::CullMode, static_cast<float>(CullMode::None));
 			// Like the OBJ8 materials: cutouts alpha-test at the asset's ratio; blended art keeps its opaque texels in the
 			// deferred passes and blends the rest in the transparent pass.
@@ -340,6 +374,7 @@ namespace SceneryEditorX::XPlane
 					part.cutoff = mesh->cutoff;
 					part.blended = mesh->blended;
 					part.lodSwitch = lodSwitch;
+					part.shading = mesh;
 					part.height = mesh->vertices.empty() ? 0.0f : mesh->vertices.front().y;
 					part.placement = mesh->placement;
 				}
@@ -472,22 +507,31 @@ namespace SceneryEditorX::XPlane
 			{
 				std::string key;
 				fs::path file;
+				TextureUsage usage = TextureUsage::Albedo;
 				DecodedTexture decoded;
 			};
 			std::vector<Request> requests;
 			std::unordered_map<std::string, bool> seen;
+			std::vector<std::pair<fs::path, TextureUsage>> wanted;
 			for (const Group &group : groups)
 			{
 				for (const OverlayMesh *mesh : group.meshes)
 				{
 					if (!mesh || mesh->texture.empty())
 						continue;
-					std::string key = mesh->texture.generic_string();
-					if (textures.contains(key) || !seen.emplace(key, true).second)
-						continue;
-					Request &request = requests.emplace_back();
-					request.file = TextureLoader::ResolveTexturePath(mesh->texture.parent_path(), mesh->texture.filename().string());
-					request.key = std::move(key);
+					wanted.clear();
+					wanted.emplace_back(mesh->texture, TextureUsage::Albedo);
+					GetDrapeShadingTextures(*mesh, wanted);
+					for (const auto &[texture, usage] : wanted)
+					{
+						std::string key = TextureKey(texture, usage);
+						if (textures.contains(key) || !seen.emplace(key, true).second)
+							continue;
+						Request &request = requests.emplace_back();
+						request.file = TextureLoader::ResolveTexturePath(texture.parent_path(), texture.filename().string());
+						request.usage = usage;
+						request.key = std::move(key);
+					}
 				}
 			}
 			if (requests.empty())
@@ -502,7 +546,7 @@ namespace SceneryEditorX::XPlane
 					for (size_t i = next++; i < requests.size(); i = next++)
 					{
 						if (!requests[i].file.empty())
-							requests[i].decoded = TextureLoader::Decode(requests[i].file, TextureUsage::Albedo);
+							requests[i].decoded = TextureLoader::Decode(requests[i].file, requests[i].usage);
 					}
 				});
 			}

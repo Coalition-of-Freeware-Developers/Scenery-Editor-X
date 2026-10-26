@@ -186,6 +186,8 @@ namespace SceneryEditorX::XPlane
 			GeoProjection projection;
 			std::string areaKey;
 			double datumElevation = 0.0;
+			double fallbackElevation = 0.0;					// Load()'s, for loading again in another season
+			uint8_t season = 0;								// The library season the art was resolved for
 			uint64_t generation = 0;
 			SceneTerrain::Stats stats;
 
@@ -947,7 +949,8 @@ namespace SceneryEditorX::XPlane
 			Unload();
 			return false;
 		}
-		const std::string areaKey = MakeAreaKey(projection, area) + "#" + std::to_string(LibraryManager::GetGeneration());
+		const uint8_t season = LibraryManager::GetSeason();
+		const std::string areaKey = MakeAreaKey(projection, area) + "#" + std::to_string(LibraryManager::GetGeneration()) + "#s" + std::to_string(season);
 		if (state.root != 0 && state.areaKey == areaKey)
 		{
 			if (entt::registry *registry = GetRegistry(); registry && FindHandle(*registry, state.root) != entt::null)
@@ -956,6 +959,8 @@ namespace SceneryEditorX::XPlane
 		Unload();
 		state.areaKey = areaKey;
 		state.projection = projection;
+		state.season = season;
+		state.fallbackElevation = fallbackElevation;
 
 		const auto start = std::chrono::steady_clock::now();
 		entt::registry *registry = GetRegistry();
@@ -1406,6 +1411,16 @@ namespace SceneryEditorX::XPlane
 	void SceneTerrain::Update()
 	{
 		State &state = GetState();
+		// Another season: its terrain and scenery art (EXPORT_SEASON) in place of this one's, as X-Plane reloads them
+		if (state.root != 0 && state.season != LibraryManager::GetSeason())
+		{
+			const GeoProjection projection = state.projection;
+			const TerrainArea area = state.area;
+			const std::string name = state.name;
+			const std::vector<std::vector<Point2>> grounds = state.grounds;
+			SEDX_CORE_INFO_TAG(LOG_TAG, "{}: the season changed, loading the terrain again", name);
+			Load(projection, area, name, state.fallbackElevation, grounds);
+		}
 		if (Renderer::GetFeatures().water != state.waterShown)
 			ShowWater(state, Renderer::GetFeatures().water);
 
