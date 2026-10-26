@@ -146,9 +146,12 @@ namespace SceneryEditorX::XPlane
 		 * Heights above the ground plane, so stacked flat geometry doesn't fight for the same pixels. From the bottom:
 		 * boundary, DSF polygons in the terrain / beaches / shoulders groups, apt.dat pavement (first row on top),
 		 * DSF "taxiways", runways, DSF "runways", painted lines, DSF "markings" and the higher groups, taxi routes,
-		 * markers. Reverse-Z depth keeps millimeters apart out to a few kilometers.
+		 * markers. Reverse-Z depth keeps millimeters apart out to a few kilometers. Transparent (surface 15) runways,
+		 * pavement and helipads sit just above the boundary, under every DSF group: X-Plane draws nothing for them, so
+		 * the pack's own art (its orthophotos and pavement polygons) must cover their editing tint.
 		 */
 		constexpr float HEIGHT_BOUNDARY = 0.00f;
+		constexpr float HEIGHT_TRANSPARENT = 0.002f;
 		constexpr float HEIGHT_PAVEMENT = 0.03f;
 		constexpr float HEIGHT_RUNWAY_ABOVE_PAVEMENT = 0.02f;
 		constexpr float HEIGHT_HELIPAD_EXTRA = 0.01f;
@@ -290,6 +293,12 @@ namespace SceneryEditorX::XPlane
 				case SurfaceFamily::Transparent:	return Paint::Transparent;
 				default:							return runway ? Paint::RunwayAsphalt : Paint::Asphalt;
 			}
+		}
+
+		/* @brief Height of a surface drawn in its flat paint: its place in the stack, or under all DSF art when transparent. */
+		float FlatHeight(const Paint paint, const float height)
+		{
+			return paint == Paint::Transparent ? HEIGHT_TRANSPARENT : height;
 		}
 
 		Paint LinePaint(const int lineType)
@@ -704,6 +713,23 @@ namespace SceneryEditorX::XPlane
 				overlay->BuildAirportSurfaces(airport, pavementHeights, runwayHeight, lineHeight, options, surfaces);
 				for (const OverlayMesh &mesh : surfaces.meshes)
 					textured[{ static_cast<int>(mesh.kind), mesh.placement }].push_back(&mesh);
+
+				// Which library art each runway got, for comparing with X-Plane (transparent runways leave it to the pack's DSF)
+				if (!filter && !airport.runways.empty())
+				{
+					std::string art;
+					for (uint32_t i = 0; i < airport.runways.size(); ++i)
+					{
+						const AptRunway &runway = airport.runways[i];
+						const auto it = textured.find({ static_cast<int>(OverlayKind::Runway), i });
+						art += (art.empty() ? "" : "; ") + runway.GetName() + " surface " + std::to_string(runway.surface) + " -> ";
+						if (it == textured.end())
+							art += GetSurfaceFamily(runway.surface) == SurfaceFamily::Transparent ? "none (transparent)" : "flat color";
+						else
+							art += it->second.front()->resource + " (" + it->second.front()->texture.filename().string() + ")";
+					}
+					SEDX_CORE_INFO_TAG(LOG_TAG, "{} runway art: {}", airport.id, art);
+				}
 				lightsAsObjects = !surfaces.objects.empty() || overlay->GetString(OverlayBuilder::GetLightStringLibraryPath(101), nullptr, surfaces) != nullptr;
 				for (OverlayObject &object : surfaces.objects)
 					out.objects.push_back(std::move(object));
@@ -743,7 +769,7 @@ namespace SceneryEditorX::XPlane
 					std::vector<Point2> points;
 					std::vector<uint32_t> indices;
 					if (!rings.empty() && TriangulatePolygon(rings, points, indices))
-						EmitTriangles(part, points, indices, pavementHeights[i]);
+						EmitTriangles(part, points, indices, FlatHeight(part.paint, pavementHeights[i]));
 					else if (!rings.empty())
 					{
 						// Degenerate outline: keep its footprint so the entity can still be framed and selected.
@@ -816,7 +842,7 @@ namespace SceneryEditorX::XPlane
 				{
 					Point2 corners[4];
 					GetRunwayCorners(runway, projection, corners, false);
-					EmitQuad(part, corners, runwayHeight);
+					EmitQuad(part, corners, FlatHeight(part.paint, runwayHeight));
 				}
 
 				// Blast pads, a shade lower so the runway proper reads on top
@@ -826,7 +852,7 @@ namespace SceneryEditorX::XPlane
 					GetRunwayCorners(runway, projection, padded, true);
 					Part &pads = start_part(AirportElementKind::Runway, static_cast<uint32_t>(i), "Runway " + runway.GetName() + " blast pads", SurfacePaint(runway.surface, false));
 					pads.subIndex = 1;
-					EmitQuad(pads, padded, runwayHeight - 0.005f);
+					EmitQuad(pads, padded, pads.paint == Paint::Transparent ? HEIGHT_TRANSPARENT - 0.0005f : runwayHeight - 0.005f);
 				}
 			}
 
@@ -857,7 +883,7 @@ namespace SceneryEditorX::XPlane
 				{
 					Point2 corners[4];
 					GetHelipadCorners(helipad, projection, corners);
-					EmitQuad(part, corners, runwayHeight + HEIGHT_HELIPAD_EXTRA);
+					EmitQuad(part, corners, FlatHeight(part.paint, runwayHeight + HEIGHT_HELIPAD_EXTRA));
 				}
 			}
 
