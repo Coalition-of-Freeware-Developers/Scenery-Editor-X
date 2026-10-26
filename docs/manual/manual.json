@@ -1,0 +1,53 @@
+{
+  "title": "Scenery Editor X",
+  "subtitle": "User Manual",
+  "organization": "Coalition of Freeware Developers",
+  "tagline": "Build, edit and preview X-Plane 12 scenery in a real-time 3D editor that draws it the way X-Plane does.",
+  "description": "The user manual for Scenery Editor X, the 3D scenery editor for X-Plane 12: installing, the workspace, projects, airports, the library, facades, export and reference.",
+  "copyright": "© 2026 Coalition of Freeware Developers · MIT License",
+  "repository": "https://github.com/Coalition-of-Freeware-Developers/Scenery-Editor-X",
+  "branch": "dev",
+  "versionHeader": "source/resource.h",
+  "pdfName": "SceneryEditorX-Manual.pdf",
+  "startHere": "tutorial-first-airport",
+  "colophon": [
+    "This manual describes Scenery Editor X, a free, open-source scenery editor for X-Plane 12 made by the Coalition of Freeware Developers.",
+    "Part I gets you installed and walks you through your first airport. Part II explains the workspace. Part III covers each kind of scenery work in turn, and Part IV is the reference you come back to: shortcuts, menus, panels, files and fixes.",
+    "Scenery Editor X is alpha software. Features change between test builds; where this manual and the editor disagree, the editor is right, and the manual is out of date: please tell us.",
+    "X-Plane is a trademark of Laminar Research. Scenery Editor X is not made or endorsed by Laminar Research."
+  ],
+  "quickLinks": [
+    { "title": "Keyboard and mouse", "text": "Every shortcut, per navigation keymap", "chapter": "shortcuts" },
+    { "title": "Your first airport", "text": "Create, lay out, export and fly it", "chapter": "tutorial-first-airport" },
+    { "title": "Exporting a pack", "text": "apt.dat, DSF tiles and art for X-Plane", "chapter": "import-export" },
+    { "title": "Troubleshooting", "text": "Vulkan, X-Plane detection, recovery, logs", "chapter": "troubleshooting" }
+  ],
+  "parts": [
+    {
+      "title": "Getting Started",
+      "description": "What Scenery Editor X is, how to install it, what happens the first time it runs, and a guided first airport from an empty folder to a pack you can fly in X-Plane.",
+      "chapters": ["welcome", "installing", "first-launch", "tutorial-first-airport"]
+    },
+    {
+      "title": "The Workspace",
+      "description": "The panels, tool strips and status bar; moving around the 3D viewport with the keymap you know; selecting, transforming and undoing.",
+      "chapters": ["interface", "viewport-navigation", "selecting-and-editing"]
+    },
+    {
+      "title": "Building Scenery",
+      "description": "Each kind of scenery work in turn: projects, airports, the X-Plane library, shapes and paths, facades, roads, the X-Plane 12 environment, and getting a pack into the sim.",
+      "chapters": ["projects", "airports", "library", "node-editing", "facades", "facade-editor", "roads", "environment", "import-export"]
+    },
+    {
+      "title": "Reference",
+      "description": "Look-up material: shortcuts, menus, panels, command-line options, file formats, where the editor keeps its files, troubleshooting and a glossary.",
+      "chapters": ["shortcuts", "menus", "panels", "command-line", "file-formats", "file-locations", "troubleshooting", "glossary"]
+    },
+    {
+      "title": "For Contributors",
+      "appendix": true,
+      "description": "For contributors: building the editor from source, and how this manual is written and built.",
+      "chapters": ["building-from-source", "writing-the-manual"]
+    }
+  ]
+}
