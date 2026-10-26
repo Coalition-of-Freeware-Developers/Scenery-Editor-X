@@ -59,6 +59,7 @@
 #include <XPLMUtilities.h>
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cmath>
 #include <cstdio>
@@ -175,6 +176,7 @@ namespace
 		double lat = 0.0, lon = 0.0;
 		float altMAgl = 2.0f, heading = 0.0f, pitch = 0.0f, fov = 60.0f;
 		int month = 7, day = 15, year = 2026;
+		std::optional<std::array<int, 3>> sceneryDate;	// "scenery_date": the date the airport's scenery loads on (else the date)
 		double localTimeHours = 12.0;
 		float utcOffset = 0.0f;
 		float visibilityM = 80000.0f;
@@ -229,6 +231,8 @@ namespace
 		int sceneryTimeout = 0;		// Frames left for the scenery of the airport being moved to
 		bool newFlight = false;		// The move fell back to a new flight at that airport
 		std::string loadedAirport;
+		std::string sceneryDate;	// The date the loaded airport's scenery was loaded on ("YYYY-MM-DD"; empty: not by this run)
+		bool reloadPending = false;	// XPLMReloadScenery() in the next frame (see Stage::MoveToAirport)
 
 		// Camera pose in world coordinates, resolved to local coordinates every frame
 		double cameraLat = 0.0, cameraLon = 0.0, cameraMsl = 0.0;
@@ -467,6 +471,14 @@ namespace
 		ReadField(object, "settle_frames", s.settleFrames);
 		if (const auto it = object.find("date"); it != object.end() && it->is_string())
 			ParseDate(it->get<std::string>(), s.year, s.month, s.day);
+		if (const auto it = object.find("scenery_date"); it != object.end())
+		{
+			std::array<int, 3> date{};
+			if (it->is_string() && ParseDate(it->get<std::string>(), date[0], date[1], date[2]))
+				s.sceneryDate = date;
+			else
+				s.sceneryDate.reset();
+		}
 		if (const auto it = object.find("local_time"); it != object.end() && it->is_string())
 			ParseTime(it->get<std::string>(), s.localTimeHours);
 		if (const auto it = object.find("ev100_lock"); it != object.end())
@@ -651,14 +663,32 @@ namespace
 		outLon = l2 * 180.0 / PI;
 	}
 
-	void ApplyTime(const Scenario &s)
+	void ApplyDate(const std::array<int, 3> &date)
 	{
 		SetInt("sim/time/use_system_time", 0);
+		SetInt("sim/time/local_date_days", DayOfYearZeroBased(date[0], date[1], date[2]));
+	}
+
+	void ApplyTime(const Scenario &s)
+	{
 		double zulu = std::fmod(s.localTimeHours - s.utcOffset, 24.0);
 		if (zulu < 0.0)
 			zulu += 24.0;
+		ApplyDate({ s.year, s.month, s.day });
 		SetFloat("sim/time/zulu_time_sec", static_cast<float>(zulu * 3600.0));
-		SetInt("sim/time/local_date_days", DayOfYearZeroBased(s.year, s.month, s.day));
+	}
+
+	/* @brief The date the scenario's scenery loads on: its "scenery_date", else its date. */
+	std::array<int, 3> SceneryDateOf(const Scenario &s)
+	{
+		return s.sceneryDate.value_or(std::array<int, 3>{ s.year, s.month, s.day });
+	}
+
+	std::string FormatDate(const std::array<int, 3> &date)
+	{
+		char text[16] = {};
+		std::snprintf(text, sizeof(text), "%04d-%02d-%02d", date[0], date[1], date[2]);
+		return text;
 	}
 
 	void ApplyExposureLock(const Scenario &s)
@@ -899,6 +929,7 @@ namespace
 		applied["snow_wait_seconds"] = g.snowWaitSeconds;
 		applied["settle_seconds"] = g.settledSeconds;
 		applied["scenery_still_loading"] = g.settledLoading;
+		applied["scenery_date"] = g.sceneryDate;	// The date the airport's scenery (and its seasonal art) was loaded on
 		dump["applied"] = applied;
 
 		Json sim;
@@ -1037,6 +1068,8 @@ namespace
 		g.runFile = set.file;
 		g.runAll = mode != RunMode::First;
 		g.loadedAirport.clear();
+		g.sceneryDate.clear();
+		g.reloadPending = false;
 		g.disablePluginsPending = true;
 		g.stage = Stage::MoveToAirport;
 		g.framesLeft = -1;	// Not placed yet
@@ -1207,15 +1240,28 @@ namespace
 			{
 				if (g.framesLeft < 0)
 				{
-					if (s.icao != g.loadedAirport)
+					// X-Plane picks a tile's seasonal library art (EXPORT_SEASON terrain, autogen, airport art) as it
+					// loads the tile and keeps it when the date changes: the first 15-airport run moved first and set the
+					// date after, so most July shots had the terrain of the January shot before them. The scenery date
+					// goes in before the move, and a new date at the same airport (or the run's first airport, which may
+					// be loaded already) reloads the scenery
+					const std::string sceneryDate = FormatDate(SceneryDateOf(s));
+					const bool move = s.icao != g.loadedAirport;
+					if (move || sceneryDate != g.sceneryDate)
 					{
-						Log(s.id + ": moving to " + s.icao);
-						MoveHeldUser(s);
+						ApplyDate(SceneryDateOf(s));
+						if (move)
+						{
+							Log(s.id + ": moving to " + s.icao + " (scenery date " + sceneryDate + ")");
+							MoveHeldUser(s);
+							g.loadedAirport = s.icao;
+							g.newFlight = false;
+						}
+						g.reloadPending = !move || g.sceneryDate.empty();
+						g.sceneryDate = sceneryDate;
 						g.stageStart = Clock::now();
-						g.loadedAirport = s.icao;
 						g.sceneryTimeout = SCENERY_TIMEOUT_FRAMES;
-						g.newFlight = false;
-						g.framesLeft = SCENERY_LOAD_FRAMES;
+						g.framesLeft = move ? SCENERY_LOAD_FRAMES : 0;
 					}
 					else
 						g.framesLeft = 0;
@@ -1244,6 +1290,16 @@ namespace
 				}
 				if (g.framesLeft-- > 0)
 					return -1.0f;
+				if (g.reloadPending)
+				{
+					// Once the scenery is in: load it again on the scenery date, and wait for it as for a move
+					Log(s.id + ": reloading the scenery at " + s.icao + " for " + g.sceneryDate);
+					g.reloadPending = false;
+					XPLMReloadScenery();
+					g.sceneryTimeout = SCENERY_TIMEOUT_FRAMES;
+					g.framesLeft = SCENERY_LOAD_FRAMES;
+					return -1.0f;
+				}
 				ApplyTime(s);
 				ApplyWeather(s);
 				ApplyExposureLock(s);

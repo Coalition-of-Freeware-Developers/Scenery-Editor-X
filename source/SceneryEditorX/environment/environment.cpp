@@ -90,6 +90,7 @@ namespace SceneryEditorX::Environment
 
 	void World::ApplyScenario(const ParityScenario &scenario)
 	{
+		SetSceneryDate(scenario.sceneryDate);
 		Edit([&](EnvironmentState &s)
 		{
 			s.year = scenario.year;
@@ -122,6 +123,15 @@ namespace SceneryEditorX::Environment
 		});
 	}
 
+	void World::SetSceneryDate(const std::optional<std::array<int, 3>> &date)
+	{
+		const std::optional<int> day = date ? std::optional<int>(DayOfYear((*date)[0], (*date)[1], (*date)[2])) : std::nullopt;
+		if (day == m_SceneryDayOfYear)
+			return;
+		m_SceneryDayOfYear = day;
+		Rederive();
+	}
+
 	bool World::LoadSkyConditions(const std::filesystem::path &path, std::string *error)
 	{
 		if (!m_SkyTable.Load(path, error))
@@ -140,6 +150,9 @@ namespace SceneryEditorX::Environment
 	{
 		const SurfaceWeather integrated = m_Integrator.Get();
 		m_Derived = Derive(m_State, m_ObserverAltitudeM, &m_SkyTable, &integrated);
+		// Scenery loaded on another date keeps that date's seasonal art (a season the user forces applies to both)
+		if (m_SceneryDayOfYear && m_State.season == SeasonOverride::Auto)
+			m_Derived.scenerySeason = ComputeSeason(*m_SceneryDayOfYear, m_State.latitudeDeg, nullptr);
 		++m_Version;
 		std::scoped_lock lock(m_SnapshotMutex);
 		m_Snapshot.state = m_State;

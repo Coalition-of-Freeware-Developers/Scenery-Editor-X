@@ -134,6 +134,7 @@ namespace SceneryEditorX::Environment
 		}
 		if (state.seasonRatioOverride >= 0.0f)
 			derived.season.ratio = std::clamp(state.seasonRatioOverride, 0.0f, 1.0f);
+		derived.scenerySeason = derived.season;
 
 		derived.skyWeights = ComputeSkyWeights(state, observerAltitudeMslM, state.elevationM);
 		derived.sky = table ? table->Blend(derived.skyWeights) : SkyMultipliers{};

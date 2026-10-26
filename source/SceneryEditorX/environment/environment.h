@@ -30,9 +30,11 @@
  */
 #pragma once
 #include "environment_state.h"
+#include <array>
 #include <cstdint>
 #include <filesystem>
 #include <mutex>
+#include <optional>
 
 // -------------------------------------------------------
 
@@ -87,8 +89,15 @@ namespace SceneryEditorX::Environment
 		/* @brief Advances what changes over time (the integrated surface); call once per frame. */
 		void Tick(double deltaSeconds);
 
-		/* @brief Sets the date, time, place and weather a parity scenario names. */
+		/* @brief Sets the date, time, place and weather a parity scenario names (and its scenery date, see SetSceneryDate). */
 		void ApplyScenario(const ParityScenario &scenario);
+
+		/**
+		 * @brief The date the scenery was loaded on, when not the state's date (nullopt: the same). X-Plane resolves a
+		 * tile's seasonal library art as it loads the tile and keeps it when the date changes; with a scenery date the
+		 * derived scenerySeason follows it while the season (sun, trees) follows the state. Not saved with projects.
+		 */
+		void SetSceneryDate(const std::optional<std::array<int, 3>> &date);
 
 		/* @brief Loads resources/environment/xp12_sky_conditions.json (sky-class multipliers). */
 		bool LoadSkyConditions(const std::filesystem::path &path, std::string *error = nullptr);
@@ -105,6 +114,7 @@ namespace SceneryEditorX::Environment
 		SkyConditionTable m_SkyTable;
 		SurfaceWeatherIntegrator m_Integrator;
 		float m_ObserverAltitudeM = 0.0f;
+		std::optional<int> m_SceneryDayOfYear;		// SetSceneryDate()
 		uint64_t m_Version = 1;
 
 		mutable std::mutex m_SnapshotMutex;

@@ -127,6 +127,38 @@ TEST_CASE("Parity scenarios: defaults apply under each entry", "[environment][sc
 	CHECK(FindParityScenario(file, "c") == nullptr);
 }
 
+TEST_CASE("Parity scenarios: the scenery date", "[environment][scenario]")
+{
+	// The date the scenery loaded on (X-Plane keeps a tile's seasonal art from then): optional, a default for every
+	// entry, and null puts an entry back on its own date
+	const char *json = R"({
+		"defaults": { "scenery_date": "2026-01-15" },
+		"scenarios": [
+			{ "id": "a", "date": "2026-07-15" },
+			{ "id": "b", "date": "2026-07-15", "scenery_date": "2026-10-25" },
+			{ "id": "c", "date": "2026-07-15", "scenery_date": null }
+		]
+	})";
+	ParityScenarioFile file;
+	std::string error;
+	REQUIRE(ParseParityScenarios(json, file, &error));
+	REQUIRE(file.scenarios.size() == 3);
+	REQUIRE(file.scenarios[0].sceneryDate.has_value());
+	CHECK(*file.scenarios[0].sceneryDate == std::array<int, 3>{ 2026, 1, 15 });
+	CHECK(file.scenarios[0].month == 7);
+	REQUIRE(file.scenarios[1].sceneryDate.has_value());
+	CHECK(*file.scenarios[1].sceneryDate == std::array<int, 3>{ 2026, 10, 25 });
+	CHECK_FALSE(file.scenarios[2].sceneryDate.has_value());
+
+	REQUIRE(ParseParityScenarios(R"({ "scenarios": [ { "id": "a" } ] })", file, &error));
+	CHECK_FALSE(file.scenarios.back().sceneryDate.has_value());
+
+	CHECK_FALSE(ParseParityScenarios(R"({ "scenarios": [ { "id": "a", "scenery_date": "2026-13-01" } ] })", file, &error));
+	CHECK(error.find("scenery_date") != std::string::npos);
+	CHECK_FALSE(ParseParityScenarios(R"({ "scenarios": [ { "id": "a", "scenery_date": 20260115 } ] })", file, &error));
+	CHECK(error.find("scenery_date") != std::string::npos);
+}
+
 TEST_CASE("Parity scenarios: problems are reported, nothing half-read is kept", "[environment][scenario]")
 {
 	ParityScenarioFile file;

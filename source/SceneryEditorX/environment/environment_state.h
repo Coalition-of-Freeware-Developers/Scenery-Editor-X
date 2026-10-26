@@ -125,6 +125,8 @@ namespace SceneryEditorX::Environment
 
 		SurfaceWeather surface;
 		SeasonResult season;
+		SeasonResult scenerySeason;			// What seasonal library art (terrain, autogen, airport art) is resolved for: the
+											// season, unless the scenery was loaded on another date (World::SetSceneryDate)
 		SkyWeights skyWeights{};
 		SkyMultipliers sky;
 

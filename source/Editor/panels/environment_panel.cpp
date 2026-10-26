@@ -403,6 +403,16 @@ namespace SceneryEditorX
 		EditorUI::PropertyLabel("Result");
 		ImGui::TextDisabled("%s, %.0f%% toward %s", GetSeasonName(derived.season.season), derived.season.ratio * 100.0f, GetSeasonName(NextSeason(derived.season.season)));
 
+		// A scenario's scenery loaded on another date (World::SetSceneryDate): the terrain keeps that date's season
+		if (derived.scenerySeason.bits != derived.season.bits)
+		{
+			EditorUI::PropertyLabel("Scenery art");
+			ImGui::TextDisabled("%s (loaded on another date)", GetSeasonName(derived.scenerySeason.season));
+			ImGui::SameLine();
+			if (ImGui::SmallButton("Follow the date"))
+				Get().SetSceneryDate(std::nullopt);
+		}
+
 		EditorUI::EndPropertyGrid();
 		return changed;
 	}

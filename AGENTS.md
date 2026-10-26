@@ -93,7 +93,8 @@ The dependency-light, cross-platform Catch2 unit suites that only need `source/`
 - **`EnvironmentTests`** (`source/Tests/environment_tests`) — the XP12 environment model behind the viewport's
   X-Plane 12 emulation (`plan/feature-xp12-environment-rendering-1.md`): parity scenario files
   (`ParityScenarioTests.cpp`: `environment/parity_scenario.*`, the format `tools/xp12_reference_probe` and
-  `--env-scenario` share, plus the shipped `tools/xp12_reference_probe/scenarios/xp12_parity.json` and `xp12_airports.json`
+  `--env-scenario` share, `scenery_date` included (X-Plane keeps a tile's seasonal art from the date it loaded on;
+  `World::SetSceneryDate`), plus the shipped `tools/xp12_reference_probe/scenarios/xp12_parity.json` and `xp12_airports.json`
   when run from the repo root) and the environment model (`EnvironmentTests.cpp`: NOAA sun against an independent almanac formula, Meeus moon
   examples 47.a / 48.a, the 16 runway-friction states and the wetting / drying integrator, seasons from date and latitude
   or DSF ranges, sky-condition weights, world-frame directions, the `World` object, the atmosphere's medium (X-Plane

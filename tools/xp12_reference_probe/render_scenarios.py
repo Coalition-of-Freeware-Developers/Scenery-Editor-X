@@ -64,6 +64,73 @@ def default_exe():
 
 
 # -------------------------------------------------------
+# The reference shots' scenery dates
+
+RUN_GAP_S = 600     # Shots further apart than this belong to different probe runs
+
+
+def reference_scenery_dates(folder):
+    """The date X-Plane had when it loaded each reference shot's airport: X-Plane picks a tile's seasonal library art
+    (terrain, autogen, airport art) as it loads the tile and keeps it when the date changes. Probe runs record it
+    (applied.scenery_date); for references from before that it is worked out from the order the shots were taken in:
+    the probe moved to an airport and set the shot's date after, so an airport's scenery loaded on the date of the shot
+    before it (unknown at a run's first airport). Returns {id: 'YYYY-MM-DD'}."""
+    shots = []
+    for name in os.listdir(folder):
+        if not name.endswith('.json'):
+            continue
+        try:
+            with open(os.path.join(folder, name), encoding='utf-8') as f:
+                dump = json.load(f)
+        except (OSError, ValueError):
+            continue
+        scenario = dump.get('scenario') if isinstance(dump, dict) else None
+        if not isinstance(scenario, dict) or not dump.get('id'):
+            continue
+        taken = re.search(r'(\d{4})-(\d\d)-(\d\d) (\d\d)\.(\d\d)\.(\d\d)', dump.get('screenshot') or '')
+        when = time.mktime(tuple(int(v) for v in taken.groups()) + (0, 0, -1)) if taken else None
+        recorded = (dump.get('applied') or {}).get('scenery_date')
+        shots.append((when or 0.0, dump['id'], scenario.get('icao'), scenario.get('date'), recorded, when is not None))
+    shots.sort()
+    dates = {}
+    previous = None     # (time, airport, date) of the shot before
+    loaded = None
+    for when, sid, icao, date, recorded, timed in shots:
+        if recorded:
+            loaded = recorded
+        elif not timed:
+            loaded = None
+        elif previous is None or when - previous[0] > RUN_GAP_S:
+            loaded = None   # A run's first airport: whatever date X-Plane had before the run
+        elif icao != previous[1]:
+            loaded = previous[2]
+        if loaded:
+            dates[sid] = loaded
+        previous = (when, icao, date) if timed else None
+    return dates
+
+
+def with_scenery_dates(scenario_file, ids, dates, out):
+    """A copy of the scenario file whose scenarios carry the scenery date their reference was shot with, where it isn't
+    their date (SEDX then resolves seasonal art for that date: --env-scenario's scenery_date). Returns its path and the
+    ids that got one."""
+    with open(os.path.join(REPO, scenario_file), encoding='utf-8') as f:
+        data = json.load(f)
+    default_date = (data.get('defaults') or {}).get('date')
+    changed = []
+    for entry in data['scenarios']:
+        scenery_date = dates.get(entry['id'])
+        if entry['id'] in ids and scenery_date and scenery_date != entry.get('date', default_date) and 'scenery_date' not in entry:
+            entry['scenery_date'] = scenery_date
+            changed.append(entry['id'])
+    path = os.path.join(out, os.path.splitext(os.path.basename(scenario_file))[0] + '_scenery_dates.json')
+    with open(path, 'w', encoding='utf-8', newline='\n') as f:
+        json.dump(data, f, indent='\t')
+        f.write('\n')
+    return path, changed
+
+
+# -------------------------------------------------------
 # Peak memory of the editor process (Windows: the peaks only grow, so the last sample before exit is the run's peak)
 
 class _MemoryCounters(ctypes.Structure):
@@ -314,6 +381,8 @@ def main():
     parser.add_argument('--vsync', action='store_true', help='keep vsync on (runs pass --no-vsync otherwise)')
     parser.add_argument('--extra', default='', help='more editor arguments, e.g. "--no-water --no-autogen"')
     parser.add_argument('--summarize-only', action='store_true', help='parse the logs already in the output folder again')
+    parser.add_argument('--references', help='the probe\'s output folder: render each scenario with the scenery date its '
+                                             'reference was shot with (the seasonal art X-Plane loaded)')
     args = parser.parse_args()
     args.extra = shlex.split(args.extra)
 
@@ -326,6 +395,9 @@ def main():
         sys.exit('no scenario matches ' + ' '.join(args.patterns))
     out = os.path.abspath(args.out or default_out_folder(scenario_file))
     os.makedirs(out, exist_ok=True)
+    if args.references and not args.summarize_only:
+        scenario_file, changed = with_scenery_dates(scenario_file, set(ids), reference_scenery_dates(args.references), out)
+        print(f'{len(changed)} of {len(ids)} scenarios take the scenery date of their reference: ' + (', '.join(changed) or '-'), flush=True)
 
     # What only the run itself saw (exit code, time, memory) comes back from the earlier summary
     earlier = {}

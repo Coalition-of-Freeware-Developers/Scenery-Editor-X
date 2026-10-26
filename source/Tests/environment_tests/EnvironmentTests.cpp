@@ -490,6 +490,29 @@ TEST_CASE("Environment: the world versions its changes and takes scenarios", "[e
 	CHECK(world.GetState().visibilityM == 800.0f);
 	CHECK(world.GetDerived().surface.snow == Approx(1.0f));
 	CHECK(world.GetDerived().season.season == Season::Winter);
+	CHECK(world.GetDerived().scenerySeason.season == Season::Winter);
+
+	// Scenery loaded on another date keeps that date's seasonal art; the season itself (sun, trees) follows the date
+	ParityScenarioFile stale;
+	REQUIRE(ParseParityScenarios(R"({ "scenarios": [ { "id": "y", "date": "2026-07-15", "scenery_date": "2026-01-15",
+		"lat": 53.43, "lon": -6.27 } ] })", stale));
+	world.ApplyScenario(stale.scenarios[0]);
+	CHECK(world.GetDerived().season.season == Season::Summer);
+	CHECK(world.GetDerived().scenerySeason.season == Season::Winter);
+	CHECK(world.GetSnapshot().derived.scenerySeason.bits == GetSeasonBit(Season::Winter));
+	// A season the user forces applies to both
+	world.Edit([](EnvironmentState &s) { s.season = SeasonOverride::Fall; });
+	CHECK(world.GetDerived().scenerySeason.season == Season::Fall);
+	world.Edit([](EnvironmentState &s) { s.season = SeasonOverride::Auto; });
+	CHECK(world.GetDerived().scenerySeason.season == Season::Winter);
+	world.SetSceneryDate(std::nullopt);
+	CHECK(world.GetDerived().scenerySeason.season == Season::Summer);
+	// A scenario without one follows its own date again
+	ParityScenarioFile fresh;
+	REQUIRE(ParseParityScenarios(R"({ "scenarios": [ { "id": "z", "date": "2026-07-15", "lat": 53.43, "lon": -6.27 } ] })", fresh));
+	world.SetSceneryDate(std::array<int, 3>{ 2026, 1, 15 });
+	world.ApplyScenario(fresh.scenarios[0]);
+	CHECK(world.GetDerived().scenerySeason.season == Season::Summer);
 
 	// Following the airport: the datum replaces the place; a manual place ignores it
 	world.Edit([](EnvironmentState &s) { s.followAirport = true; });
