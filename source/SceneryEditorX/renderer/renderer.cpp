@@ -3252,6 +3252,8 @@ void dynamic_resolution()
 			params.groundAlbedo = c.planet.w;
 			params.hazeTopM = c.hazeTopM;
 			params.hazeBandM = c.hazeBandM;
+			params.hazeMieScale = c.hazeMieScale;
+			params.sunTint = { c.sunTintRed, 1.0, c.sunTintBlue };
 			return params;
 		}
 
@@ -3367,9 +3369,9 @@ void dynamic_resolution()
 		env.planet = constants.planet;
 		env.atmosphere_haze = xMath::Vec4(static_cast<float>(atmosphere.hazeExtinction), static_cast<float>(atmosphere.fogScatteringAlbedo),
 			static_cast<float>(atmosphere.hazeTopM), static_cast<float>(atmosphere.hazeBandM));
-		env.light_toa = xMath::Vec4(static_cast<float>(constants.sunIlluminanceLux * Environment::SUN_COLOR[0]),
-			static_cast<float>(constants.sunIlluminanceLux * Environment::SUN_COLOR[1]), static_cast<float>(constants.sunIlluminanceLux * Environment::SUN_COLOR[2]),
-			static_cast<float>(moonLux));
+		const Environment::Rgb sunColor = Environment::SunColor(atmosphere);	// SUN_COLOR tinted by sedx/sun_tint_*
+		env.light_toa = xMath::Vec4(static_cast<float>(constants.sunIlluminanceLux * sunColor[0]), static_cast<float>(constants.sunIlluminanceLux * sunColor[1]),
+			static_cast<float>(constants.sunIlluminanceLux * sunColor[2]), static_cast<float>(moonLux));
 		env.atmosphere_view = xMath::Vec4(constants.aerialRangeM, constants.airglowNits, constants.starBrightness, static_cast<float>(atmosphere.fogExtinction));
 		{
 			const ProbeVec3 probe = SnapProbePosition({ s_MainCameraPosition.x, s_MainCameraPosition.y, s_MainCameraPosition.z });	// Captured around the main view

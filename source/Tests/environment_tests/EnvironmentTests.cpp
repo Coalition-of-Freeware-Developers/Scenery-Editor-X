@@ -761,6 +761,36 @@ TEST_CASE("Atmosphere: visibility to haze", "[environment][atmosphere]")
 	CHECK(doubled.mieExtinction - doubled.mieScattering == Catch::Approx(clear.mieExtinction - clear.mieScattering));
 	CHECK(doubled.hazeExtinction * doubled.hazeScatteringAlbedo == Catch::Approx(2.0 * hazy.hazeExtinction * hazy.hazeScatteringAlbedo));
 	CHECK(WithSkyMultipliers(thick, 2.0, 2.0).fogExtinction == thick.fogExtinction);	// the fog isn't the Mie
+
+	// sedx/haze_mie_scale thins the extra Mie, not the fog
+	AtmosphereParams thinner = clear;
+	thinner.hazeMieScale = 0.55;
+	CHECK(WithVisibility(thinner, 40000.0).hazeExtinction == Catch::Approx(0.55 * hazy.hazeExtinction).epsilon(1e-12));
+	CHECK(WithVisibility(thinner, 14000.0).hazeExtinction == Catch::Approx(0.55 * between.hazeExtinction).epsilon(1e-12));
+	CHECK(WithVisibility(thinner, 14000.0).fogExtinction == between.fogExtinction);
+	CHECK(WithVisibility(thinner, 8000.0).fogExtinction == thick.fogExtinction);
+}
+
+TEST_CASE("Sky light: the sun's colour and its tint", "[environment][sky-light]")
+{
+	const auto luminance = [](const Rgb &c) { return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
+	CHECK(luminance(SUN_COLOR) == Catch::Approx(1.0).epsilon(1e-4));
+	const AtmosphereParams clear;
+	for (int c = 0; c < 3; ++c)
+		CHECK(SunColor(clear)[c] == Catch::Approx(SUN_COLOR[c] / luminance(SUN_COLOR)).epsilon(1e-12));
+
+	// A tint shifts the colour at the same luminance, and lights the sky model with it
+	AtmosphereParams warm = clear;
+	warm.sunTint = { 1.08, 1.0, 0.98 };
+	const Rgb color = SunColor(warm);
+	CHECK(luminance(color) == Catch::Approx(1.0).epsilon(1e-12));
+	CHECK(color[0] / color[1] == Catch::Approx(1.08 * SUN_COLOR[0] / SUN_COLOR[1]).epsilon(1e-12));
+	CHECK(color[2] / color[1] == Catch::Approx(0.98 * SUN_COLOR[2] / SUN_COLOR[1]).epsilon(1e-12));
+	const SkyLight plain = ComputeSkyLight(clear, 0.0, 40.0, 133000.0, -20.0, 0.0);
+	const SkyLight warmer = ComputeSkyLight(warm, 0.0, 40.0, 133000.0, -20.0, 0.0);
+	CHECK(warmer.sunIlluminance[0] / warmer.sunIlluminance[1] == Catch::Approx(1.08 * plain.sunIlluminance[0] / plain.sunIlluminance[1]).epsilon(1e-9));
+	CHECK(warmer.zenith[0] / warmer.zenith[1] > plain.zenith[0] / plain.zenith[1]);
+	CHECK(luminance(warmer.sunIlluminance) == Catch::Approx(luminance(plain.sunIlluminance)).epsilon(0.02));
 }
 
 TEST_CASE("Sky light: the Mie phase function is normalized", "[environment][sky-light]")
