@@ -33,6 +33,7 @@
 #include "descriptor_binding.h"
 #include "descriptor_layout.h"
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 #include <SceneryEditorX/core/identifiers/flag.h>
 #include <SceneryEditorX/utils/inheritance.h>
@@ -65,7 +66,8 @@ namespace SceneryEditorX
 		DescriptorSet(const std::vector<::VkDescriptorImageInfo>& textureDescriptors);
 
 		/**
-		 * @brief Construct a new Descriptor Set object.
+		 * @brief Construct a layout-only Descriptor Set object (a PSO's layout and binding state, see PipelineCache).
+		 * It takes no VkDescriptorSet from the shared pool: the sets it binds come from GetOrCreateDescriptorSet().
 		 * @param descriptors Pointer to an array of descriptors.
 		 * @param count The number of descriptors in the array.
 		 * @param name The name of the descriptor set.
@@ -135,6 +137,15 @@ namespace SceneryEditorX
 		 * @return Pointer to the Vulkan descriptor set handle.
 		 */
 		void *GetOrCreateDescriptorSet();
+
+		/**
+		 * @brief Free the cached binding sets (BindlessManager::GetDescriptorSets()) that bind any of the given resources.
+		 * Only call while the GPU is idle and no command list is recording, e.g. for render targets a resize replaces: their
+		 * sets then go straight back to the shared pool instead of waiting for the deletion queue to destroy the old views.
+		 * @param resources The bound objects (ImageResource / Buffer pointers) to look for.
+		 * @return The number of sets freed.
+		 */
+		static size_t EvictCachedSets(const std::unordered_set<const void*>& resources);
 
 		/**
 		 * @brief Destroy the descriptor set and free the associated resources. 
@@ -210,9 +221,10 @@ namespace SceneryEditorX
 
 	private:
 		/**
-		 * @brief Create the descriptor set and allocate the necessary resources.
+		 * @brief Create the descriptor set layout and, when asked, allocate a VkDescriptorSet for it from the shared pool.
+		 * @param allocateSet False for a layout-only object (a PSO's layout holder), true for a cached binding set.
 		 */
-		void Create();
+		void Create(bool allocateSet);
 
 		/**
 		 * @brief Write every bound resource into m_Set (unbound slots stay unwritten; the layout is partially bound).
