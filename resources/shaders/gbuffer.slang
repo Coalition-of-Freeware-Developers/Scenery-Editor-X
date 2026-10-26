@@ -300,7 +300,8 @@ gbuffer main_frag(gbuffer_vertex vertex, bool is_front_face: SV_IsFrontFace)
     // normal map: normal, roughness and metalness / F0 (xp_material.slang)
     const float4 normal_texel = xp_terrain ? terrain_surface.normal_texel
                               : (surface.has_texture_normal() ? sample_texture(vertex, material_texture_index_normal, surface, position_world) : float4(0.5f, 0.5f, 1.0f, 1.0f));
-    const XpSurfaceMaterial surface_material = xp_decode_material(material, normal_texel);
+    const float4 material_texel = !xp_terrain && xp_has_material_map(material) ? sample_texture(vertex, xp_slot_material_map, surface, position_world) : float4(0.0f, 1.0f, 0.0f, 1.0f);
+    const XpSurfaceMaterial surface_material = xp_decode_material(material, normal_texel, material_texel);
     float roughness = surface_material.roughness;
     float metalness = surface_material.v;
 

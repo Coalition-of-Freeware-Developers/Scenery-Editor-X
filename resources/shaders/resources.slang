@@ -174,6 +174,7 @@ public struct MaterialParameters
     public bool is_weather_transparent() { return (flags & (1 << 23)) != 0; }
     public bool has_snow_albedo_luma() { return (flags & (1 << 24)) != 0; }
     public uint xp_lod_switch() { return (flags >> 25) & 3u; }	// forests with 3D trees: 1 billboards (far side), 2 meshes (near side)
+    public uint xp_texture_map() { return (flags >> 27) & 3u; }	// xp_material.slang xp_texture_map_*
 };
 
 // struct which forms the bindless light parameters array

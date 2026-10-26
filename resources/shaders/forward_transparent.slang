@@ -92,7 +92,8 @@ float4 main_frag(forward_vertex vertex, bool is_front_face: SV_IsFrontFace) : SV
     const float4 normal_texel = !material.has_texture_normal() ? float4(0.5f, 0.5f, 1.0f, 1.0f)
                               : (material.is_xp_material() ? xp_drape_sample_normal(material, pass_get_material_index(), vertex.uv_misc.xy)
                                                            : sample_material_texture(material_texture_index_normal, vertex.uv_misc.xy));
-    const XpSurfaceMaterial surface_material = xp_decode_material(material, normal_texel);
+    const float4 material_texel = xp_has_material_map(material) ? sample_material_texture(xp_slot_material_map, vertex.uv_misc.xy) : float4(0.0f, 1.0f, 0.0f, 1.0f);
+    const XpSurfaceMaterial surface_material = xp_decode_material(material, normal_texel, material_texel);
     float3 normal = normalize(vertex.normal);
     if (material.has_texture_normal())
         normal = normalize(mul(surface_material.tangent_normal, make_tangent_to_world_matrix(normalize(vertex.normal), normalize(vertex.tangent))).xyz);

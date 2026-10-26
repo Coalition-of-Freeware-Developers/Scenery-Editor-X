@@ -262,6 +262,7 @@ namespace SceneryEditorX::XPlane
 		std::string textureDrapedNormal;
 		std::string textureMaterialGloss;	// TEXTURE_MAP material_gloss (X-Plane 12)
 		std::string textureGloss;			// TEXTURE_MAP gloss (X-Plane 12)
+		bool normalFromTextureMap = false;	// textureNormal is a TEXTURE_MAP normal: the normal alone (RG), no gloss / material in B / A
 		float normalRatio = 1.0f;			// TEXTURE_NORMAL ratio (repeats per albedo tile)
 		bool normalMetalness = false;		// NORMAL_METALNESS: normal map blue = metalness
 		bool drapedNormalMetalness = false;

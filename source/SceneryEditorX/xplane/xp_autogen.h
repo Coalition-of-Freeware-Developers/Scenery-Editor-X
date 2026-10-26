@@ -51,9 +51,9 @@ namespace SceneryEditorX::XPlane
 	 * to be checked against X-Plane (plan Phase 16):
 	 *   - ROTATION turns a tile's texture n x 90 degrees counter-clockwise; afterwards the tile's bottom edge is its front.
 	 *     A string's tiles stand with their front on the polygon side and reach into the polygon (left of a
-	 *     counter-clockwise side), ANCHOR_PT on the side line; a point's front faces the DSF heading (so an unrotated
-	 *     point at heading 0 has its bottom edge to the north, as the spec says); a block's grid has its bottom on the
-	 *     first polygon side.
+	 *     counter-clockwise side), ANCHOR_PT on the side line; a point's texture up faces the DSF heading (an unrotated
+	 *     point at heading 0 lies north up; the spec says its bottom edge faces north, but WorldEditor draws it north up
+	 *     and so does X-Plane 12: X-Coder's KDEN concourses); a block's grid has its bottom on the first polygon side.
 	 *   - Annotation headings are clockwise from the texture's up direction (house fronts in the shipped tiles face the
 	 *     street with that reading).
 	 *   - Strings: corners first (3-tile corners joined at their pivot points, the middle tile turned half the corner's
@@ -314,6 +314,9 @@ namespace SceneryEditorX::XPlane
 
 	/* @brief An .agp at a point and true heading: one tile (picked at random when there are several). */
 	void LayoutAutogenPoint(const AutogenAsset &asset, Point2 at, double headingDegrees, const AutogenLayoutOptions &options, AutogenLayout &out);
+
+	/* @brief How far an .agp's tiles reach from their anchor, meters (the farthest corner of any tile). */
+	double GetAutogenReach(const AutogenAsset &asset);
 
 	/**
 	 * @brief An .ags over a DSF polygon: its contours as polylines (a closed one repeats its first point), the first

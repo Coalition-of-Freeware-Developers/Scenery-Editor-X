@@ -3623,6 +3623,7 @@ void dynamic_resolution()
 				properties[count].flags |= material->GetProperty(MaterialProperty::XpWeatherTransparent)       ? (1U << 23) : 0;
 				properties[count].flags |= material->GetProperty(MaterialProperty::XpSnowAlbedoLuma)           ? (1U << 24) : 0;
 				properties[count].flags |= (static_cast<uint32_t>(std::clamp(material->GetProperty(MaterialProperty::XpLodSwitchMode), 0.0f, 2.0f)) & 3U) << 25;
+				properties[count].flags |= (static_cast<uint32_t>(std::clamp(material->GetProperty(MaterialProperty::XpTextureMap), 0.0f, 3.0f)) & 3U) << 27;
 				properties[count].snow_luma[0] = material->GetProperty(MaterialProperty::XpSnowAlbedoLumaR);
 				properties[count].snow_luma[1] = material->GetProperty(MaterialProperty::XpSnowAlbedoLumaG);
 				// keep in sync with Surface struct in common_structs.slang

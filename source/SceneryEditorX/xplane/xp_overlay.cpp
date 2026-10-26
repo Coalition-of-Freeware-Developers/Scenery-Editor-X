@@ -1324,6 +1324,30 @@ namespace SceneryEditorX::XPlane
 
 	void OverlayBuilder::Build(const DsfFile &dsf, const Options &options, OverlayBuild &out)
 	{
+		// Objects. Within the limit the file's order dropped whatever it lists last (X-Coder's KDEN lists its terminal and
+		// concourse .agp points after some 50000 objects). Autogen points go first, nearest the area's centre first counting
+		// from the nearest edge of their tiles, with half the limit for their objects (more when there are few plain
+		// objects): an airport pack's terminals often are autogen points, a default airport's car parks too. Their ground,
+		// facades and trees are laid out whatever the limit. Then the plain objects nearest the centre fill the rest.
+		const auto resourceOf = [&dsf](const DsfObjectPlacement &placement)
+		{
+			std::string resource = dsf.objectDefinitions[placement.definition];
+			for (char &c : resource)
+			{
+				if (c == '\\')
+					c = '/';
+			}
+			return resource;
+		};
+		struct Candidate
+		{
+			uint32_t index = 0;
+			Point2 local;
+			double distance = 0.0;
+			bool autogen = false;
+		};
+		std::vector<Candidate> candidates;
+		const Point2 center = options.area.valid ? Point2{ 0.5 * (options.area.minX + options.area.maxX), 0.5 * (options.area.minZ + options.area.maxZ) } : Point2{ 0.0, 0.0 };
 		for (uint32_t i = 0; i < dsf.objects.size(); ++i)
 		{
 			const DsfObjectPlacement &placement = dsf.objects[i];
@@ -1335,25 +1359,45 @@ namespace SceneryEditorX::XPlane
 				++out.culled;
 				continue;
 			}
-
-			std::string resource = dsf.objectDefinitions[placement.definition];
-			for (char &c : resource)
+			const std::string resource = resourceOf(placement);
+			const bool autogen = EndsWith(resource, ".agp");
+			if (!autogen && !options.placeObjects)
+				continue;
+			double distance = std::hypot(local.x - center.x, local.z - center.z);
+			if (autogen)
 			{
-				if (c == '\\')
-					c = '/';
+				if (const AutogenAsset *asset = GetAutogen(resource, nullptr, out))
+					distance = std::max(0.0, distance - GetAutogenReach(*asset));
 			}
+			candidates.push_back({ i, local, distance, autogen });
+		}
+		std::ranges::sort(candidates, [](const Candidate &a, const Candidate &b)
+		{
+			if (a.autogen != b.autogen)
+				return a.autogen;
+			return a.distance != b.distance ? a.distance < b.distance : a.index < b.index;
+		});
 
-			if (EndsWith(resource, ".agp"))
+		const size_t limit = static_cast<size_t>(std::max(0.0, options.maxObjects));
+		const size_t plainCount = static_cast<size_t>(std::ranges::count_if(candidates, [](const Candidate &candidate) { return !candidate.autogen; }));
+		Options autogenOptions = options;
+		autogenOptions.maxObjects = static_cast<double>(std::max(limit / 2, limit > plainCount ? limit - plainCount : 0));
+		size_t skipped = 0;
+		for (const Candidate &candidate : candidates)
+		{
+			const uint32_t i = candidate.index;
+			const DsfObjectPlacement &placement = dsf.objects[i];
+			const Point2 local = candidate.local;
+			const std::string resource = resourceOf(placement);
+			if (candidate.autogen)
 			{
-				BuildAutogen(placement, i, resource, options, out);
+				BuildAutogen(placement, i, resource, autogenOptions, out);
 				continue;
 			}
-			if (!options.placeObjects)
-				continue;
-			if (out.objects.size() >= static_cast<size_t>(options.maxObjects))
+			if (out.objects.size() >= limit)
 			{
-				Warn(out, "Object limit reached; the rest of the tile's objects were skipped");
-				break;
+				++skipped;
+				continue;
 			}
 
 			const fs::path file = ResolveFile(resource);
@@ -1376,6 +1420,8 @@ namespace SceneryEditorX::XPlane
 			object.placement = i;
 			out.objects.push_back(std::move(object));
 		}
+		if (skipped > 0)
+			Warn(out, "Object limit: the " + std::to_string(skipped) + " object placements farthest from the airport were skipped");
 
 		for (uint32_t i = 0; i < dsf.polygons.size(); ++i)
 		{

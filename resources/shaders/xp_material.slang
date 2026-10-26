@@ -31,7 +31,8 @@
  * X-Plane 12 material rules (docs/xplane/xp12_render_reference.md, "Materials"), shared by the g-buffer and the
  * forward transparent pass:
  *   - The normal map carries the normal in RG (Z rebuilt), gloss in A and, by mode, F0 / metalness (NORMAL_METALNESS)
- *     or translucency (NORMAL_TRANSLUCENCY) in B.
+ *     or translucency (NORMAL_TRANSLUCENCY) in B. X-Plane 12's TEXTURE_MAP splits it: a normal map with the normal
+ *     alone (RG), and a material_gloss map (R the material value, G gloss) or a gloss map (R gloss).
  *   - Perceptual roughness = 1 - 0.96875 gloss; gloss is scaled by GLOBAL_specular / ATTR_shiny_rat.
  *   - One value v carries metalness and F0: F0 = lerp(min(v, 0.08), albedo, v), diffuse x (1 - v).
  *   - Emissive (LIT) texels are luminance in nits, pre-exposed like the rest of the frame.
@@ -47,6 +48,20 @@ public static const uint xp_normal_none         = 0;	// No normal map
 public static const uint xp_normal_legacy       = 1;	// RG normal, A gloss, B unused
 public static const uint xp_normal_metalness    = 2;	// NORMAL_METALNESS: B = F0 / metalness
 public static const uint xp_normal_translucency = 3;	// NORMAL_TRANSLUCENCY: B = translucency (vegetation)
+
+public static const uint xp_texture_map_none           = 0;	// TEXTURE_NORMAL: the normal map carries gloss and the material value
+public static const uint xp_texture_map_normal         = 1;	// TEXTURE_MAP normal alone: RG normal, gloss from GLOBAL_specular alone
+public static const uint xp_texture_map_material_gloss = 2;	// + material_gloss: R the material value (by mode), G gloss
+public static const uint xp_texture_map_gloss          = 3;	// + gloss: R gloss
+
+/* @brief Where a TEXTURE_MAP material_gloss / gloss map is bound. */
+public static const uint xp_slot_material_map = material_texture_index_roughness + 0;
+
+/* @brief Whether a material's surface reads a material_gloss / gloss map (sample xp_slot_material_map for it). */
+public bool xp_has_material_map(MaterialParameters material)
+{
+    return material.is_xp_material() && material.xp_texture_map() >= xp_texture_map_material_gloss;
+}
 
 /* @brief A surface's material values after the X-Plane rules (or the editor's own, for non X-Plane materials). */
 public struct XpSurfaceMaterial
@@ -72,8 +87,9 @@ public float3 xp_f0(float3 albedo, float v)
 /**
  * @brief Decodes a material's normal / roughness / metalness.
  * @param normal_texel The normal map texel as stored (0-1 per channel); ignored without a normal map.
+ * @param material_texel The TEXTURE_MAP material_gloss / gloss texel (xp_has_material_map()); ignored without one.
  */
-public XpSurfaceMaterial xp_decode_material(MaterialParameters material, float4 normal_texel)
+public XpSurfaceMaterial xp_decode_material(MaterialParameters material, float4 normal_texel, float4 material_texel = float4(0.0f, 1.0f, 0.0f, 1.0f))
 {
     XpSurfaceMaterial result;
     result.tangent_normal = float3(0.0f, 0.0f, 1.0f);
@@ -82,19 +98,33 @@ public XpSurfaceMaterial xp_decode_material(MaterialParameters material, float4 
     const bool has_normal = material.has_texture_normal();
     if (material.is_xp_material())
     {
-        // material.xp: x specular gain, y super roughness floor, z F0 when B carries none, w emissive nits
+        // material.xp: x specular gain, y super roughness floor, z F0 when no texture carries one, w emissive nits
         float gloss = material.xp.x;
         result.v = material.xp.z;
+        const uint map = material.xp_texture_map();
         if (has_normal)
-        {
             result.tangent_normal.xy = normal_texel.xy * 2.0f - 1.0f;
+
+        // Gloss and the material value (F0 / metalness or translucency, by mode): from the normal map's A and B, or from
+        // TEXTURE_MAP's material_gloss (R value, G gloss) or gloss (R) map
+        float material_value = -1.0f;
+        if (map == xp_texture_map_none && has_normal)
+        {
             gloss *= normal_texel.a;
-            const uint mode = material.xp_normal_mode();
-            if (mode == xp_normal_metalness)
-                result.v = normal_texel.b;
-            else if (mode == xp_normal_translucency)
-                result.translucency = normal_texel.b;
+            material_value = normal_texel.b;
         }
+        else if (map == xp_texture_map_material_gloss)
+        {
+            gloss *= material_texel.g;
+            material_value = material_texel.r;
+        }
+        else if (map == xp_texture_map_gloss)
+            gloss *= material_texel.r;
+        const uint mode = material.xp_normal_mode();
+        if (material_value >= 0.0f && mode == xp_normal_metalness)
+            result.v = material_value;
+        else if (material_value >= 0.0f && mode == xp_normal_translucency)
+            result.translucency = material_value;
         result.roughness = max(xp_roughness_from_gloss(gloss), material.xp.y);
     }
     else

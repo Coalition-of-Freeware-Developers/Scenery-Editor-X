@@ -37,6 +37,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <limits>
 #include <unordered_map>
 #include <unordered_set>
 #include <SceneryEditorX/asset/standards.h>
@@ -60,6 +61,10 @@ namespace SceneryEditorX::XPlane
 	{
 		constexpr const char *LOG_TAG = "XPlaneScene";
 		constexpr float kDegToRad = 3.14159265358979323846f / 180.0f;
+		// An OBJ without ATTR_LOD draws to a distance X-Plane picks from its bounding sphere ("where nobody would notice it
+		// go"; the formula isn't published). ASSUMPTION: until it covers about 2 pixels at 1080 lines and 60 degrees, which is
+		// some 500 radii: a car goes at about 1 km, a 10 m hangar at 5 km.
+		constexpr float DEFAULT_LOD_RADII = 500.0f;
 
 		/* @brief Spill lights that light the scene at once, nearest first (the light pass loops over every light per pixel). */
 		constexpr uint32_t MAX_SPILL_LIGHTS = 48;
@@ -180,10 +185,16 @@ namespace SceneryEditorX::XPlane
 		}
 
 		/* @brief Which LODs are drawn for a camera distance (X-Plane rules, or the component's override). */
-		bool IsLodVisible(const Obj8Data &data, const int lod, const float distance, const int lodOverride)
+		/**
+		 * @brief Whether a batch or light of an LOD shows at a camera distance (from the object's middle, as X-Plane measures).
+		 * @param defaultFar How far an object without ATTR_LOD draws (DEFAULT_LOD_RADII), infinity to always draw it.
+		 */
+		bool IsLodVisible(const Obj8Data &data, const int lod, const float distance, const int lodOverride, const float defaultFar = std::numeric_limits<float>::infinity())
 		{
-			if (lod < 0 || lodOverride == -2)
+			if (lodOverride == -2)
 				return true;
+			if (lod < 0)
+				return lodOverride >= 0 || !data.lods.empty() || distance < defaultFar;
 			if (lodOverride >= 0)
 				return lod == lodOverride;
 
@@ -602,7 +613,9 @@ namespace SceneryEditorX::XPlane
 			component.dynamicState = !data.nodes.empty() ||
 				std::ranges::any_of(batches, [](const ObjectBatch &batch) { return !batch.visibility.empty(); }) ||
 				std::ranges::any_of(lights, [](const ObjectLight &light) { return !light.visibility.empty(); });
-			component.usesDistance = std::ranges::any_of(batches, [](const ObjectBatch &batch) { return batch.lod >= 0; }) ||
+			// Without ATTR_LOD the object still has a range (DEFAULT_LOD_RADII)
+			component.usesDistance = (data.lods.empty() && !batches.empty()) ||
+				std::ranges::any_of(batches, [](const ObjectBatch &batch) { return batch.lod >= 0; }) ||
 				std::ranges::any_of(lights, [](const ObjectLight &light) { return light.lod >= 0; });
 			component.evaluatedStamp = 0;
 			component.nodeEntities = std::move(nodeEntities);
@@ -697,15 +710,22 @@ namespace SceneryEditorX::XPlane
 					GpuScene::MarkTransformDirty(rootHandle);
 			}
 
-			// Camera distance for LOD selection, from the root's world position
+			// Camera distance for LOD selection, from the middle of the object's bounds (X-Plane measures from there: a
+			// terminal's origin can sit hundreds of meters from its middle)
+			const float *low = object.asset->GetBoundsMin(), *high = object.asset->GetBoundsMax();
+			const float middle[3] = { 0.5f * (low[0] + high[0]), 0.5f * (low[1] + high[1]), 0.5f * (low[2] + high[2]) };
+			const float radius = 0.5f * std::sqrt((high[0] - low[0]) * (high[0] - low[0]) + (high[1] - low[1]) * (high[1] - low[1]) + (high[2] - low[2]) * (high[2] - low[2]));
 			float distance = 0.0f;
 			if (hasCamera && object.rootStored)
 			{
 				const xMath::Matrix world = RootWorld(registry, rootHandle, *object.rootStored, parentCache);
-				const Vec3 delta(world.m30 - cameraPosition.x, world.m31 - cameraPosition.y, world.m32 - cameraPosition.z);
+				float at[3];
+				TransformPoint(world, middle, at);
+				const Vec3 delta(at[0] - cameraPosition.x, at[1] - cameraPosition.y, at[2] - cameraPosition.z);
 				distance = std::sqrt(delta.x * delta.x + delta.y * delta.y + delta.z * delta.z);
 			}
 			object.cameraDistance = distance;
+			const float defaultFar = std::max(radius, 1.0f) * DEFAULT_LOD_RADII;
 
 			object.evaluatedStamp = s_CameraStamp;
 			object.evaluatedVisible = object.visible;
@@ -722,7 +742,7 @@ namespace SceneryEditorX::XPlane
 					continue;
 
 				const ObjectBatch &batch = batches[i];
-				const bool visible = object.visible && IsLodVisible(data, batch.lod, distance, object.lodOverride) &&
+				const bool visible = object.visible && IsLodVisible(data, batch.lod, distance, object.lodOverride, defaultFar) &&
 									 EvaluateVisibility(data, batch.visibility, reader);
 				if (stored->GetActive() != visible)
 					stored->SetActive(visible);

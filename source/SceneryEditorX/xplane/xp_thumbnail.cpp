@@ -1480,7 +1480,7 @@ namespace SceneryEditorX::XPlane
 			dsf.objectDefinitions.push_back(resource);
 			DsfObjectPlacement placement;
 			placement.definition = 0;
-			placement.heading = 180.0;	// The texture upright (an unrotated autogen point at heading 0 has its bottom edge north)
+			placement.heading = 0.0;	// The texture upright: an unrotated autogen point at heading 0 lies north up
 			dsf.objects.push_back(placement);
 		}
 		else

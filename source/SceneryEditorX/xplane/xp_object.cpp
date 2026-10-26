@@ -78,6 +78,7 @@ namespace SceneryEditorX::XPlane
 		DecodedTexture drapedAlbedo;
 		DecodedTexture drapedNormal;
 		DecodedTexture weather;				// WEATHER mask
+		DecodedTexture materialMap;			// TEXTURE_MAP material_gloss, else gloss
 		std::vector<std::pair<PolygonDecal, DecodedTexture>> decals;
 		float boundsMin[3] = { 0.0f, 0.0f, 0.0f };
 		float boundsMax[3] = { 0.0f, 0.0f, 0.0f };
@@ -383,6 +384,7 @@ namespace SceneryEditorX::XPlane
 			const std::filesystem::path folder = path.parent_path();
 			job.albedo = DecodeTexture(folder, data.texture, TextureUsage::Albedo);
 			job.normal = DecodeTexture(folder, data.textureNormal, TextureUsage::Normal);
+			job.materialMap = DecodeTexture(folder, !data.textureMaterialGloss.empty() ? data.textureMaterialGloss : data.textureGloss, TextureUsage::Data);
 			job.lit = DecodeTexture(folder, data.textureLit, TextureUsage::Lit);
 			job.drapedAlbedo = DecodeTexture(folder, data.textureDraped, TextureUsage::Albedo);
 			job.drapedNormal = DecodeTexture(folder, data.textureDrapedNormal, TextureUsage::Normal);
@@ -833,6 +835,7 @@ namespace SceneryEditorX::XPlane
 				break;
 			case UploadNormal:
 				m_Textures.normal = TextureLoader::Upload(job.normal, &m_Textures.normalInfo);
+				m_Textures.materialMap = TextureLoader::Upload(job.materialMap);
 				break;
 			case UploadLit:
 				m_Textures.lit = TextureLoader::Upload(job.lit, &m_Textures.litInfo);
@@ -977,13 +980,20 @@ namespace SceneryEditorX::XPlane
 		material->SetProperty(MaterialClass::TextureTilingY, 1.0f);
 
 		// X-Plane 12's material rules (xp_material.slang): the normal map carries gloss (A) and, with NORMAL_METALNESS,
-		// F0 / metalness (B); GLOBAL_specular / ATTR_shiny_rat scale the gloss (1 with a normal map when neither is set)
+		// F0 / metalness (B); GLOBAL_specular / ATTR_shiny_rat scale the gloss (1 with a normal map when neither is set).
+		// TEXTURE_MAP splits it: the normal map carries the normal alone, a material_gloss map the material value (R)
+		// and gloss (G), a gloss map gloss (R).
+		ImageResource *materialMap = useDraped ? nullptr : m_Textures.materialMap.Get();
+		const bool textureMap = !useDraped && (m_Data.normalFromTextureMap || materialMap);
+		const float textureMapMode = !textureMap ? 0.0f : (!materialMap ? 1.0f : (!m_Data.textureMaterialGloss.empty() ? 2.0f : 3.0f));
 		const bool translucency = !useDraped && m_Data.normalTranslucency;
 		const bool metalness = useDraped ? m_Data.drapedNormalMetalness : m_Data.normalMetalness;
-		const float specularGain = std::max(m_Data.hasGlobalSpecular ? m_Data.globalSpecular : (state.shinyRatio > 0.0f ? state.shinyRatio : (normal ? 1.0f : 0.0f)), 0.0f);
-		const float defaultF0 = m_Data.blendGlass ? 0.06f : (translucency ? 0.0f : ((normal || specularGain > 0.0f) ? 0.04f : 0.0f));
+		const bool surfaceMaps = normal || materialMap;
+		const float specularGain = std::max(m_Data.hasGlobalSpecular ? m_Data.globalSpecular : (state.shinyRatio > 0.0f ? state.shinyRatio : (surfaceMaps ? 1.0f : 0.0f)), 0.0f);
+		const float defaultF0 = m_Data.blendGlass ? 0.06f : (translucency ? 0.0f : ((surfaceMaps || specularGain > 0.0f) ? 0.04f : 0.0f));
 		material->SetProperty(MaterialProperty::XpMaterial, 1.0f);
-		material->SetProperty(MaterialProperty::XpNormalMode, normal ? (metalness ? 2.0f : (translucency ? 3.0f : 1.0f)) : 0.0f);
+		material->SetProperty(MaterialProperty::XpNormalMode, surfaceMaps ? (metalness ? 2.0f : (translucency ? 3.0f : 1.0f)) : 0.0f);
+		material->SetProperty(MaterialProperty::XpTextureMap, textureMapMode);
 		material->SetProperty(MaterialProperty::XpSpecularGain, specularGain);
 		material->SetProperty(MaterialProperty::XpSuperRoughness, std::clamp(m_Data.superRoughness, 0.0f, 1.0f));
 		material->SetProperty(MaterialProperty::XpDefaultF0, defaultF0);
@@ -1008,6 +1018,7 @@ namespace SceneryEditorX::XPlane
 
 		material->SetTexture(MaterialTextureType::Color, albedo);
 		material->SetTexture(MaterialTextureType::Normal, normal);
+		material->SetTexture(MaterialTextureType::Roughness, materialMap);	// xp_material.slang xp_slot_material_map
 		material->SetTexture(MaterialTextureType::Emission, lit);
 
 		// Weather receptivity (weather.slang): the WEATHER mask in emission slot 3; SNOW_ALBEDO_LUMA keeps its r and g

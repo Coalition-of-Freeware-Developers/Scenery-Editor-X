@@ -1170,13 +1170,24 @@ namespace SceneryEditorX::XPlane
 			return;
 		Random random(options.seed);
 		const AutogenTile &tile = asset.tiles[random.Pick(asset.tiles.size())];
-		// The front (bottom edge after ROTATION) faces the heading
-		const Point2 n{ -HeadingToDirection(headingDegrees).x, -HeadingToDirection(headingDegrees).z };
+		// The texture's up (after ROTATION) faces the heading, s to its right: unrotated at heading 0 the tile lies as
+		// drawn, north up, the way WorldEditor previews it and X-Plane 12 draws X-Coder's KDEN concourses
 		Frame frame;
 		frame.origin = at;
-		frame.n = n;
-		frame.d = Right(n);
+		frame.n = HeadingToDirection(headingDegrees);
+		frame.d = Right(frame.n);
 		EmitTile(asset, tile, frame, 0.0f, nullptr, options, random, out);
+	}
+
+	double GetAutogenReach(const AutogenAsset &asset)
+	{
+		double reach = 0.0;
+		for (const AutogenTile &tile : asset.tiles)
+		{
+			const Extent extent = TileExtent(tile);
+			reach = std::max(reach, std::hypot(std::max(-extent.uMin, extent.uMax), std::max(-extent.vMin, extent.vMax)));
+		}
+		return reach;
 	}
 
 	// -------------------------------------------------------

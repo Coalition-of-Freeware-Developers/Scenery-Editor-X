@@ -147,8 +147,12 @@ namespace SceneryEditorX
 		XpDecal1AlphaKeyB			= 89,
 		XpDecal1AlphaKeyA			= 90,
 		XpDecal1AlphaKeyBias		= 91,
+		// X-Plane 12's TEXTURE_MAP (xp_material.slang xp_texture_map_*): 0 a TEXTURE_NORMAL (RG normal, B / A material
+		// and gloss), 1 TEXTURE_MAP normal alone (RG normal), 2 with material_gloss (roughness slot 0: R the material
+		// value, G gloss), 3 with gloss (roughness slot 0: R gloss)
+		XpTextureMap				= 92,
 		// The last property in use: MaterialAsset sizes its table by it (set past it, a value is dropped). Move it along.
-		LastInUse					= XpDecal1AlphaKeyBias,
+		LastInUse					= XpTextureMap,
 		MaxEnum						= 255
 	};
 

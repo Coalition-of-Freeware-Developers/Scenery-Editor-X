@@ -273,15 +273,19 @@ TEST_CASE("Autogen points face their heading", "[autogen]")
 	AutogenLayoutOptions options;
 	options.objectLevel = 6;
 
-	SECTION("Unrotated: the bottom edge to the north at heading 0")
+	SECTION("Unrotated: north up at heading 0")
 	{
 		AutogenLayout layout;
 		LayoutAutogenPoint(asset, { 0.0, 0.0 }, 0.0, options, layout);
 		REQUIRE(layout.objects.size() == 2);
-		// (50, 10) is 40 px below the anchor: 40 m north; the texture's up points south
+		// (50, 10) is 40 px below the anchor: 40 m south; the texture's up points north
 		CHECK(layout.objects[0].at.x == Approx(0.0).margin(1e-6));
-		CHECK(layout.objects[0].at.z == Approx(-40.0));
-		CHECK(layout.objects[0].heading == Approx(180.0));
+		CHECK(layout.objects[0].at.z == Approx(40.0));
+		CHECK(layout.objects[0].heading == Approx(0.0).margin(1e-9));
+		// s runs east: the tree at (80, 80) stands 30 m east, 30 m north
+		REQUIRE(layout.trees.size() == 1);
+		CHECK(layout.trees[0].at.x == Approx(30.0));
+		CHECK(layout.trees[0].at.z == Approx(-30.0));
 		REQUIRE(layout.ground.size() == 1);
 		CHECK(layout.ground[0].ring.size() == 4);
 		CHECK(SignedArea(layout.ground[0].ring) > 0.0);
@@ -290,17 +294,24 @@ TEST_CASE("Autogen points face their heading", "[autogen]")
 		CHECK(layout.objects[1].ground.x == Approx(0.0).margin(1e-6));
 		CHECK(layout.objects[1].ground.z == Approx(0.0).margin(1e-6));
 	}
-	SECTION("ROTATION 2 at heading 90: the texture's up to the east")
+	SECTION("Reach: the farthest tile corner from the anchor")
+	{
+		CHECK(GetAutogenReach(asset) == Approx(std::hypot(50.0, 50.0)));
+		AutogenAsset offCenter = asset;
+		offCenter.tiles[0].anchor[0] = 10.0f;	// 90 px to the far side, 50 up or down
+		CHECK(GetAutogenReach(offCenter) == Approx(std::hypot(90.0, 50.0)));
+	}
+	SECTION("ROTATION 2 at heading 90: the texture's up to the west")
 	{
 		AutogenAsset rotated = asset;
 		rotated.tiles[0].rotation = 2;
 		AutogenLayout layout;
 		LayoutAutogenPoint(rotated, { 100.0, 100.0 }, 90.0, options, layout);
 		REQUIRE(layout.objects.size() == 2);
-		CHECK(layout.objects[0].at.x == Approx(60.0));	// 40 m west, behind the front
+		CHECK(layout.objects[0].at.x == Approx(140.0));	// 40 m east: the texture's bottom faces the heading
 		CHECK(layout.objects[0].at.z == Approx(100.0));
-		CHECK(layout.objects[0].heading == Approx(90.0));
-		CHECK(layout.objects[1].heading == Approx(180.0));	// 90 clockwise of the tile's up
+		CHECK(layout.objects[0].heading == Approx(270.0));
+		CHECK(layout.objects[1].heading == Approx(0.0).margin(1e-9));	// 90 clockwise of the tile's up
 		REQUIRE(layout.trees.size() == 1);
 		CHECK(layout.trees[0].width == 6.0f);
 	}

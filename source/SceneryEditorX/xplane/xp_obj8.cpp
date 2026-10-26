@@ -944,7 +944,7 @@ namespace SceneryEditorX::XPlane
 
 				if (cmd == "TEXTURE" || cmd == "TEXTURE_NOWRAP")							{ m_Data.texture = read_path(nullptr); return; }
 				if (cmd == "TEXTURE_LIT" || cmd == "TEXTURE_LIT_NOWRAP")					{ m_Data.textureLit = read_path(nullptr); return; }
-				if (cmd == "TEXTURE_NORMAL" || cmd == "TEXTURE_NORMAL_NOWRAP")				{ m_Data.textureNormal = read_path(&m_Data.normalRatio); m_LastNormalDraped = false; return; }
+				if (cmd == "TEXTURE_NORMAL" || cmd == "TEXTURE_NORMAL_NOWRAP")				{ m_Data.textureNormal = read_path(&m_Data.normalRatio); m_Data.normalFromTextureMap = false; m_LastNormalDraped = false; return; }
 				if (cmd == "TEXTURE_DRAPED")												{ m_Data.textureDraped = read_path(nullptr); return; }
 				if (cmd == "TEXTURE_DRAPED_NORMAL")
 				{
@@ -1015,6 +1015,7 @@ namespace SceneryEditorX::XPlane
 					if (t[1] == "normal")
 					{
 						m_Data.textureNormal = path;
+						m_Data.normalFromTextureMap = true;
 						m_LastNormalDraped = false;
 					}
 					else if (t[1] == "material_gloss")

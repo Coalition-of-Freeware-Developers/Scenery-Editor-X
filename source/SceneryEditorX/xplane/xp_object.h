@@ -89,6 +89,7 @@ namespace SceneryEditorX::XPlane
 		Ref<ImageResource> drapedAlbedo;
 		Ref<ImageResource> drapedNormal;
 		Ref<ImageResource> weather;			// WEATHER mask (weather.slang)
+		Ref<ImageResource> materialMap;		// TEXTURE_MAP material_gloss, else gloss (X-Plane 12)
 		TextureInfo albedoInfo;
 		TextureInfo normalInfo;
 		TextureInfo litInfo;
