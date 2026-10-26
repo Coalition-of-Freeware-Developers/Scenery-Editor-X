@@ -43,7 +43,13 @@
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <vulkan/vulkan.h>
 #ifdef _WIN32
+	#include <Windows.h>
+	#include <io.h>
+	#include <process.h>
 	#include <share.h>
+#else
+	#include <sys/file.h>
+	#include <unistd.h>
 #endif
 
 // -------------------------------------------------------
@@ -53,29 +59,115 @@ namespace SceneryEditorX
 
 	namespace
 	{
+		/* Editors running at once, each with its own numbered log files, before Log::Init() gives up on the files. */
+		constexpr uint32_t MAX_LOG_INSTANCES = 64;
+
+		/* Opens for binary appending, shared like spdlog's files (crash diagnostics appends while it's open). */
+		std::FILE *OpenForAppend(const std::filesystem::path &path)
+		{
+		#ifdef _WIN32
+			return _wfsopen(path.c_str(), L"ab", _SH_DENYNO);
+		#else
+			return std::fopen(path.c_str(), "ab");
+		#endif
+		}
+
+		/* Empties a file opened by OpenForAppend; it is in append mode, so the next line lands at the start. */
+		void Truncate(std::FILE *file)
+		{
+		#ifdef _WIN32
+			(void)_chsize_s(_fileno(file), 0);
+		#else
+			(void)ftruncate(fileno(file), 0);
+		#endif
+		}
+
+		/*
+		 * Claims an open log file for this process, without waiting: false while another running editor holds it.
+		 * The lock goes with the file handle, so the OS drops it when the process closes the file, exits or crashes,
+		 * and a claimed log never stays taken. It keeps other editors out, not readers or crash diagnostics' appends:
+		 * on Windows it covers one byte far past any real log size, and on Linux and macOS flock() is advisory.
+		 * A file system without locks (some network shares) can't tell instances apart; the log is used unlocked there.
+		 */
+		bool TryClaim(std::FILE *file)
+		{
+		#ifdef _WIN32
+			const auto handle = reinterpret_cast<HANDLE>(_get_osfhandle(_fileno(file)));
+			OVERLAPPED at{};
+			at.Offset = 0xFFFFFFF0u;
+			at.OffsetHigh = 0x7FFFFFFFu;
+			if (LockFileEx(handle, LOCKFILE_EXCLUSIVE_LOCK | LOCKFILE_FAIL_IMMEDIATELY, 0, 1, 0, &at))
+				return true;
+			return GetLastError() != ERROR_LOCK_VIOLATION;
+		#else
+			if (flock(fileno(file), LOCK_EX | LOCK_NB) == 0)
+				return true;
+			return errno != EWOULDBLOCK;
+		#endif
+		}
+
+		/* What every file of instance n ends with: nothing for the first editor, "_2", "_3", ... for the others. */
+		std::string InstanceSuffix(const uint32_t instance)
+		{
+			return instance <= 1 ? std::string() : std::format("_{}", instance);
+		}
+
+		struct ClaimedLog
+		{
+			std::FILE *file = nullptr;
+			std::filesystem::path path;
+			uint32_t instance = 0;
+		};
+
+		/*
+		 * Opens the first SceneryEditorX.log, SceneryEditorX_2.log, ... in the folder that no other running editor
+		 * holds, claims it and empties it. Several editors used to share (and truncate) one SceneryEditorX.log.
+		 */
+		ClaimedLog ClaimMainLog(const std::filesystem::path &folder)
+		{
+			for (uint32_t instance = 1; instance <= MAX_LOG_INSTANCES; ++instance)
+			{
+				const std::filesystem::path path = folder / ("SceneryEditorX" + InstanceSuffix(instance) + ".log");
+				std::FILE *file = OpenForAppend(path);
+				if (!file)
+					continue;
+
+				if (!TryClaim(file))
+				{
+					std::fclose(file);
+					continue;
+				}
+
+				Truncate(file);
+				return { file, path, instance };
+			}
+			throw spdlog::spdlog_ex(std::format("Failed opening a log file in {}: SceneryEditorX.log to SceneryEditorX_{}.log are all in use or not writable",
+				VFS::ToUtf8(folder), MAX_LOG_INSTANCES), errno);
+		}
+
+		/* Opens one of the claimed instance's other log files, emptied for this run. */
+		std::FILE *CreateLogFile(const std::filesystem::path &path)
+		{
+			std::FILE *file = OpenForAppend(path);
+			if (!file)
+				throw spdlog::spdlog_ex("Failed opening file " + VFS::ToUtf8(path) + " for writing", errno);
+			Truncate(file);
+			return file;
+		}
+
 		/**
-		 * @brief spdlog's basic_file_sink, opened from a std::filesystem::path.
+		 * @brief spdlog's basic_file_sink, writing to a file opened from a std::filesystem::path.
 		 *
 		 * spdlog takes file names as std::string and opens them with the narrow _fsopen on Windows (the vcpkg build
 		 * has no SPDLOG_WCHAR_FILENAMES), so a log folder outside the ANSI code page, such as a profile in
-		 * C:\Users\日本, can't be opened (and path::string() throws before that). This opens the file with the
-		 * wide-character API instead; on Linux and macOS paths are UTF-8 already.
+		 * C:\Users\日本, can't be opened (and path::string() throws before that). OpenForAppend uses the
+		 * wide-character API instead; on Linux and macOS paths are UTF-8 already. The sink owns the file and closes
+		 * it (letting go of a claim on it) when the last logger using it goes.
 		 */
 		class PathFileSink final : public spdlog::sinks::base_sink<std::mutex>
 		{
 		public:
-			PathFileSink(const std::filesystem::path &path, const bool truncate)
-			{
-				// Like spdlog: truncate, then append, so two sinks on one file both write at its end
-				if (truncate)
-				{
-					if (std::FILE *file = Open(path, false))
-						std::fclose(file);
-				}
-				m_File = Open(path, true);
-				if (!m_File)
-					throw spdlog::spdlog_ex("Failed opening file " + VFS::ToUtf8(path) + " for writing", errno);
-			}
+			explicit PathFileSink(std::FILE *file) : m_File(file) {}
 
 			~PathFileSink() override
 			{
@@ -98,17 +190,19 @@ namespace SceneryEditorX
 
 		private:
 			std::FILE *m_File = nullptr;
-
-			/* @brief Opens for binary writing, shared like spdlog's files (crash diagnostics appends while it's open). */
-			static std::FILE *Open(const std::filesystem::path &path, const bool append)
-			{
-			#ifdef _WIN32
-				return _wfsopen(path.c_str(), append ? L"ab" : L"wb", _SH_DENYNO);
-			#else
-				return std::fopen(path.c_str(), append ? "ab" : "wb");
-			#endif
-			}
 		};
+
+		/* The loggers Log::Init() creates; spdlog's registry knows them by these names. */
+		constexpr const char *LOGGER_NAMES[] = { "Core", "SceneryEditorX", "Vulkan", "Launcher" };
+
+		uint32_t CurrentProcessId()
+		{
+		#ifdef _WIN32
+			return static_cast<uint32_t>(_getpid());
+		#else
+			return static_cast<uint32_t>(getpid());
+		#endif
+		}
 	}
 
 	/**
@@ -163,33 +257,26 @@ namespace SceneryEditorX
 	/**
 	 * @brief Initializes the logging system with console and file sinks.
 	 *
-	 * This method sets up the logging system to output logs to both the console
-	 * and a file named "SceneryEditorX.log". It configures the log patterns for
-	 * each sink and sets the logging level to trace. The logger is also set to
-	 * flush on every trace level log entry.
+	 * This method sets up the logging system to output logs to both the console and this process's log files in
+	 * the log folder. Each running editor gets its own files: the first SceneryEditorX.log, EditorConsoleOut.log and
+	 * Launcher.log, the second SceneryEditorX_2.log, EditorConsoleOut_2.log and Launcher_2.log, and so on (see
+	 * GetLogInstance()). It configures the log patterns for each sink, sets the logging level to trace and flushes
+	 * on info level entries and above.
 	 */
 	void Log::Init()
 	{
+		// A second Init() without ShutDown(): let go of the files (and the claimed instance) first
+		for (const char *name : LOGGER_NAMES)
+			spdlog::drop(name);
+		m_CoreLogger.reset();
+		m_EditorLogger.reset();
+		m_ConsoleLogger.reset();
+		m_LauncherLogger.reset();
+		m_LogFile.clear();
+		m_LogInstance = 0;
+
 		try
 		{
-			// Check if loggers already exist and drop them
-			if (spdlog::get("SceneryEditorX-Core"))
-			{
-				spdlog::drop("SceneryEditorX-Core");
-			}
-			if (spdlog::get("SceneryEditorX-Editor"))
-			{
-				spdlog::drop("SceneryEditorX-Editor");
-			}
-			//if (spdlog::get("VulkanDebug"))
-			//    spdlog::drop("VulkanDebug");
-			if (spdlog::get("Launcher"))
-			{
-				spdlog::drop("Launcher");
-			}
-
-		  // -------------------------------------------------------
-
 			// The layout's log folder (VFS AppLocation::Logs: %APPDATA%\SceneryEditorX\logs on Windows)
 			std::filesystem::path appLogDir = VFS::GetAppLocation(VFS::AppLocation::Logs);
 
@@ -197,38 +284,41 @@ namespace SceneryEditorX
 			std::error_code ec;
 			std::filesystem::create_directories(appLogDir, ec);
 
-			std::vector<spdlog::sink_ptr> coreSinks = {
-				std::make_shared<PathFileSink>(appLogDir / "SceneryEditorX.log", true),
-				std::make_shared<spdlog::sinks::stdout_color_sink_mt>()};
+			// Every file sink is opened once and shared by the loggers writing to that file: two FILE handles on one
+			// file buffer separately, so their lines come out of order, and on Windows they overwrite each other.
+			const ClaimedLog mainLog = ClaimMainLog(appLogDir);
+			const auto mainFileSink = std::make_shared<PathFileSink>(mainLog.file);
+			m_LogFile = mainLog.path;
+			m_LogInstance = mainLog.instance;
 
-			std::vector<spdlog::sink_ptr> editorSinks = {
-				std::make_shared<spdlog::sinks::stdout_color_sink_mt>(),
-				std::make_shared<PathFileSink>(appLogDir / "SceneryEditorX.log", true)};
+			const std::string suffix = InstanceSuffix(mainLog.instance);
+			const auto consoleFileSink = std::make_shared<PathFileSink>(CreateLogFile(appLogDir / ("EditorConsoleOut" + suffix + ".log")));
+			const auto launcherFileSink = std::make_shared<PathFileSink>(CreateLogFile(appLogDir / ("Launcher" + suffix + ".log")));
 
-			std::vector<spdlog::sink_ptr> editorConsoleSinks = {
-				std::make_shared<spdlog::sinks::stdout_color_sink_mt>(),
-				std::make_shared<PathFileSink>(appLogDir / "EditorConsoleOut.log", true)};
+			const auto coreStdoutSink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+			const auto editorStdoutSink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+			const auto consoleStdoutSink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+			const auto launcherStdoutSink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
 
-			std::vector <spdlog::sink_ptr> launcherSinks = {
-				std::make_shared<spdlog::sinks::stdout_color_sink_mt>(),
-				std::make_shared<PathFileSink>(appLogDir / "Launcher.log", true)};
 			// -------------------------------------------------------
 
 			// Pattern for console sinks
-			coreSinks[1]->set_pattern("%^[%T] %n: %v%$");
-			editorSinks[0]->set_pattern("%^[%T] %n: %v%$");
-			launcherSinks[1]->set_pattern("%^[%T] %n: %v%$");
+			coreStdoutSink->set_pattern("%^[%T] %n: %v%$");
+			editorStdoutSink->set_pattern("%^[%T] %n: %v%$");
+			consoleStdoutSink->set_pattern("%^%v%$");
+			launcherStdoutSink->set_pattern("%^[%T] %n: %v%$");
 
 			// -------------------------------------------------------
 
-			// Pattern for file sinks - note the correct indices
-			coreSinks[0]->set_pattern("[%T] [%l] %n: %v");
-			editorSinks[1]->set_pattern("[%T] [%l] %n: %v");
-			for (const auto &sink : editorConsoleSinks)
-			{
-				sink->set_pattern("%^%v%$");
-			}
-			launcherSinks[1]->set_pattern("[%T] [%l] %n: %v");
+			// Pattern for file sinks
+			mainFileSink->set_pattern("[%T] [%l] %n: %v");
+			consoleFileSink->set_pattern("%^%v%$");
+			launcherFileSink->set_pattern("[%T] [%l] %n: %v");
+
+			const std::vector<spdlog::sink_ptr> coreSinks = { mainFileSink, coreStdoutSink };
+			const std::vector<spdlog::sink_ptr> editorSinks = { editorStdoutSink, mainFileSink };
+			const std::vector<spdlog::sink_ptr> editorConsoleSinks = { consoleStdoutSink, consoleFileSink };
+			const std::vector<spdlog::sink_ptr> launcherSinks = { launcherStdoutSink, launcherFileSink };
 
 			// -------------------------------------------------------
 
@@ -258,11 +348,15 @@ namespace SceneryEditorX
 			SetDefaultTagSettings();
 			SetGlobalLevel(m_InitialLevel); // Ensure the default global filter is Info (prevents trace spam)
 
-			m_CoreLogger->info("Log system initialized successfully");
+			m_CoreLogger->info("Log system initialized successfully, writing {}", VFS::ToUtf8(m_LogFile));
+			if (m_LogInstance > 1)
+				m_CoreLogger->info("Other Scenery Editor X instances are running: this one is log instance {}", m_LogInstance);
 			m_CoreLogger->flush();
 		}
 		catch (const std::exception& ex)	// spdlog_ex, or a path the file system refused: run on without the files
 		{
+			m_LogFile.clear();
+			m_LogInstance = 0;
 			std::cerr << "Log initialization failed: " << ex.what() << '\n';
 		}
 
@@ -538,6 +632,8 @@ namespace SceneryEditorX
 		SEDX_CORE_INFO("Coalition of Freeware Developers");
 		SEDX_CORE_INFO("Copyright (C) 2026");
 		SEDX_CORE_INFO("============================================");
+		SEDX_CORE_INFO("Process ID: {}", CurrentProcessId());
+		SEDX_CORE_INFO("Log instance: {} ({})", m_LogInstance, VFS::ToUtf8(m_LogFile.filename()));
 		SEDX_CORE_INFO("============================================");
 	}
 

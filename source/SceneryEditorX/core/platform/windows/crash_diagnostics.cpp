@@ -63,11 +63,14 @@ namespace SceneryEditorX::Diagnostics
 		std::mutex s_ReportMutex;
 		bool s_Installed = false;
 
-		/* SceneryEditorX.log, for crashes after Log::ShutDown() (static destructors). A plain array: it must outlive them. */
+		/*
+		 * This process's SceneryEditorX[_n].log (Log::GetLogFilePath()), for crashes after Log::ShutDown() (static
+		 * destructors). A plain array: it must outlive them.
+		 */
 		wchar_t s_FallbackLogPath[MAX_PATH] = {};
 		FILE *s_FallbackLog = nullptr;
 
-		/* Minidump of the process written next to the log on an unhandled exception (open it in Visual Studio). */
+		/* Minidump of the process written next to its log on an unhandled exception (open it in Visual Studio). */
 		wchar_t s_DumpPath[MAX_PATH] = {};
 
 		/* Frames logged for each thread other than the crashing one, and how much of its stack is copied for them. */
@@ -84,15 +87,6 @@ namespace SceneryEditorX::Diagnostics
 
 		/* The snapshot being walked (under s_ReportMutex): ReadSnapshotMemory serves its stack from the copy. */
 		const ThreadSnapshot *s_WalkedSnapshot = nullptr;
-
-		void FlushLogs()
-		{
-			for (const std::shared_ptr<spdlog::logger> *logger : { &Log::GetCoreLogger(), &Log::GetEditorLogger(), &Log::GetEditorConsoleLogger() })
-			{
-				if (*logger)
-					(*logger)->flush();
-			}
-		}
 
 		/* Writes one report line: through the engine log while it is up, otherwise appended to the log file directly. */
 		template <typename... Args>
@@ -430,7 +424,7 @@ namespace SceneryEditorX::Diagnostics
 			if (exception)
 				WriteMiniDump(exception);
 
-			FlushLogs();
+			Log::FlushAll();
 			if (s_FallbackLog)
 				std::fflush(s_FallbackLog);
 		}
@@ -501,19 +495,33 @@ namespace SceneryEditorX::Diagnostics
 
 	void InstallCrashHandlers()
 	{
+		// Every call: Log::Init() runs again when the editor restarts in-process, and may get another log instance then
+		{
+			std::lock_guard lock(s_ReportMutex);
+
+			// Other running editors write their own SceneryEditorX_<n>.log and SceneryEditorX_<n>_crash.dmp
+			std::filesystem::path logPath = Log::GetLogFilePath();
+			if (logPath.empty())	// Log::Init() couldn't open its files
+				logPath = VFS::GetAppLocation(VFS::AppLocation::Logs) / "SceneryEditorX.log";
+
+			if (s_FallbackLog)
+			{
+				std::fclose(s_FallbackLog);
+				s_FallbackLog = nullptr;
+			}
+			s_FallbackLogPath[0] = L'\0';
+			if (const std::wstring path = logPath.wstring(); path.size() < std::size(s_FallbackLogPath))
+				wcscpy_s(s_FallbackLogPath, path.c_str());
+
+			s_DumpPath[0] = L'\0';
+			if (const std::wstring path = (logPath.parent_path() / (logPath.stem().wstring() + L"_crash.dmp")).wstring(); path.size() < std::size(s_DumpPath))
+				wcscpy_s(s_DumpPath, path.c_str());
+		}
+
 		if (s_Installed)
 			return;
 
 		s_Installed = true;
-		const std::filesystem::path logFolder = VFS::GetAppLocation(VFS::AppLocation::Logs);
-		const std::wstring logPath = (logFolder / "SceneryEditorX.log").wstring();
-		if (logPath.size() < std::size(s_FallbackLogPath))
-			wcscpy_s(s_FallbackLogPath, logPath.c_str());
-
-		const std::wstring dumpPath = (logFolder / "SceneryEditorX_crash.dmp").wstring();
-		if (dumpPath.size() < std::size(s_DumpPath))
-			wcscpy_s(s_DumpPath, dumpPath.c_str());
-
 		std::signal(SIGABRT, OnAbortSignal);
 		std::set_terminate(OnTerminate);
 		_CrtSetReportHook2(_CRT_RPTHOOK_INSTALL, OnCrtReport);
