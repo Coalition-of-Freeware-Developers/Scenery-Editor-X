@@ -111,7 +111,7 @@ namespace SceneryEditorX
 		 * later on top, instead of by depth among other drapes, so coplanar drapes never fight (X-Plane draws them in
 		 * layer order the same way). 0: not draped. See MakeDrapeOrder().
 		 */
-		void SetDrapeOrder(const uint64_t order) { m_drape_order = order; }
+		void SetDrapeOrder(uint64_t order);
 		uint64_t GetDrapeOrder() const           { return m_drape_order; }
 		bool IsDraped() const                    { return m_drape_order != 0; }
 

@@ -462,6 +462,18 @@ namespace SceneryEditorX
 			m_flags  &= ~static_cast<uint32_t>(flag);
 			disabled  = true;
 		}
+
+		// the GPU scene keeps its own copy of the cast-shadows flag
+		if ((enabled || disabled) && GetEntity())
+			Scene::MarkRenderStateChanged(static_cast<entt::entity>(*GetEntity()));
+	}
+
+	void Renderable::SetDrapeOrder(const uint64_t order)
+	{
+		const bool wasDraped = IsDraped();
+		m_drape_order = order;
+		if (IsDraped() != wasDraped)
+			Scene::MarkStructureChanged(); // drapes stay on the CPU draw path
 	}
 
 	void Renderable::UpdateAabb()
