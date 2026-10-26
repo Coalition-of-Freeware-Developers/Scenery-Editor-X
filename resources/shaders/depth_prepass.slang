@@ -65,7 +65,7 @@ depth_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID,
 #if !defined(GPU_SCENE) && !defined(INDIRECT_DRAW)
     vertex                         = apply_drape_depth(vertex, _draw.drape_rank); // the drape depth pass (rank 0 elsewhere)
 #endif
-    return vertex;
+    return to_depth_vertex(vertex);
 }
 
 [shader("fragment")]

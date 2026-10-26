@@ -1576,15 +1576,39 @@ namespace SceneryEditorX
 	void CommandList::Draw(const uint32_t vertexCount, const uint32_t vertexOffset)
 	{
 		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command List must be in Recording state to issue draw calls.");
-		PreDraw();
+		if (!PrepareDraw("Draw"))
+			return;
+
 		vkCmdDraw(m_CmdBuffer, vertexCount, 1, vertexOffset, 0);
 	}
 	
 	void CommandList::DrawIndexed(const uint32_t indexCount, const uint32_t instCount, const uint32_t indexOffset, const uint32_t vertexOffset, const uint32_t instIndex)
 	{
 		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command List must be in Recording state to issue draw calls.");
-		PreDraw();
+		if (!PrepareDraw("DrawIndexed"))
+			return;
+
 		vkCmdDrawIndexed(m_CmdBuffer, indexCount, instCount, indexOffset, static_cast<int32_t>(vertexOffset), instIndex);
+	}
+
+	bool CommandList::PrepareDraw(const char *caller)
+	{
+		// A PSO whose shaders did not compile leaves the list sticky-invalid with no pipeline bound and no render pass begun:
+		// a draw recorded then is outside a render pass (VUID-vkCmdDrawIndexed-renderpass) and loses the device
+		if (!m_StickyInvalidState && m_pso.IsGraphics())
+		{
+			PreDraw();
+			if (m_RenderPassActive)
+				return true;
+		}
+
+		static bool warnedInvalidDraw = false;
+		if (!warnedInvalidDraw)
+		{
+			SEDX_CORE_WARN_TAG("CommandList", "{} skipped for '{}': no graphics pipeline or render pass is active", caller, m_ObjectName.c_str());
+			warnedInvalidDraw = true;
+		}
+		return false;
 	}
 
 	void CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z /*= 1*/)
