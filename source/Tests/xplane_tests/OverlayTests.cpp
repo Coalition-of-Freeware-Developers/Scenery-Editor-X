@@ -1234,6 +1234,36 @@ TEST_CASE("Decal library asset", "[assets]")
 	CHECK_FALSE(ParseDecalLibraryAsset("A\n850\nDRAPED_POLYGON\n", dcl));
 }
 
+TEST_CASE("Decal keys: each part's strength comes from the base texel and the row's two trailing terms", "[assets]")
+{
+	// X-Plane 12's lib/g10/decals/apt_ter_dirtroad_1.dcl: RGB detail everywhere (0 + 1.25), alpha where red > 0.375
+	const char *text =
+		"A\n1000\nDECAL\n\n"
+		"DECAL_PARAMS_PROJ\t4.0\t4.0\t0.5\t\t0.00\t0.00\t0.00\t0\t1.25\t0.0\t\t4.00\t0.00\t0.00\t0\t0.5\t-2.0\t \ttextures/RGBA_dirt_cmb_1.png\n"
+		"DECAL_PARAMS\t30.0\t0.0\t\t0.00\t0.00\t0.00\t0\t0\t0.0\t\t0.00\t0.00\t0.00\t0.3\t0.00\t-0.10\t \ttextures/A_skids.png\n"
+		"DECAL_PARAMS\t30.0\t0.0\t\t0 0 0 0 0 0\t\t0 0 0 0 0 -1\t \ttextures/never.png\n";
+	DecalLibraryAsset dcl;
+	REQUIRE(ParseDecalLibraryAsset(text, dcl));
+	REQUIRE(dcl.decals.size() == 3);
+
+	const DecalKeys &dirt = dcl.decals[0].keys;
+	CHECK(dirt.rgb[0] == Catch::Approx(0.0f));
+	CHECK(dirt.rgbBias == Catch::Approx(1.25f));		// modulator + constant
+	CHECK(dirt.alpha[0] == Catch::Approx(4.0f));
+	CHECK(dirt.alphaBias == Catch::Approx(-1.5f));
+	CHECK(dcl.decals[0].strength == Catch::Approx(1.0f));
+
+	// Skid marks: alpha only, at 0.3 x the texel's alpha less 0.1
+	const DecalKeys &skids = dcl.decals[1].keys;
+	CHECK(skids.rgbBias == Catch::Approx(0.0f));
+	CHECK(skids.alpha[3] == Catch::Approx(0.3f));
+	CHECK(skids.alphaBias == Catch::Approx(-0.1f));
+	CHECK(dcl.decals[1].strength == Catch::Approx(0.2f));
+
+	// A row no texel can turn on
+	CHECK(dcl.decals[2].strength == Catch::Approx(0.0f));
+}
+
 TEST_CASE("Runway marking atlas sprites", "[overlay]")
 {
 	// Glyphs 1..9, 0, L, R, C every 288 px of a 4096 px atlas from x = 296; quads 200 px wide, 520 tall, v up

@@ -41,6 +41,7 @@ module xp_material;
 
 import common;
 import resources;
+import color;
 
 public static const uint xp_normal_none         = 0;	// No normal map
 public static const uint xp_normal_legacy       = 1;	// RG normal, A gloss, B unused
@@ -234,22 +235,34 @@ float2 xp_drape_meters(MaterialParameters material, float2 uv)
 }
 
 /* @brief Albedo (linear) after the detail decals: 2x modulation by grey-centred textures, weighted by strength. */
-public float3 xp_drape_apply_detail_decals(MaterialParameters material, uint material_base, float2 uv, float3 albedo)
+public float3 xp_drape_apply_detail_decals(MaterialParameters material, uint material_base, float2 uv, float4 albedo)
 {
     if (material.xp_drape_mode() == xp_drape_markings || material.drape_decal.x <= 0.0f)
-        return albedo;
+        return albedo.rgb;
     const float2 meters = xp_drape_meters(material, uv) * float2(1.0f, max(material.drape_misc.x, 1e-3f));
+    // X-Plane 12 works on the texels as stored (sRGB-encoded, keys included) and converts to linear after the decals
+    float4 base = float4(linear_to_srgb(albedo.rgb), albedo.a);
     [unroll]
     for (uint i = 0; i < 2; i++)
     {
         const float scale = i == 0 ? material.drape_decal.x : material.drape_decal.z;
-        const float strength = i == 0 ? material.drape_decal.y : material.drape_decal.w;
         if (scale <= 0.0f)
             continue;
-        const float3 decal = material_textures[material_base + xp_drape_slot_decal + i].Sample(samplers[sampler_anisotropic_wrap], meters * scale).rgb;
-        albedo *= lerp(1.0f, 2.0f * decal, saturate(strength));
+        // X-Plane 12's decals, as strongly as their keys give for this texel (the previous decal's result for the second):
+        // the RGB adds the decal's detail (its texel less its average: the coarsest mip), so the mean colour stays; the
+        // alpha then lightens (above 0.5) or darkens (below) like an overlay
+        Texture2D decal_texture = material_textures[material_base + xp_drape_slot_decal + i];
+        const float2 decal_uv = meters * scale;
+        const float4 decal = decal_texture.Sample(samplers[sampler_anisotropic_wrap], decal_uv);
+        const float3 average = decal_texture.SampleLevel(samplers[sampler_anisotropic_wrap], decal_uv, 16.0f).rgb;
+        const float rgb_amount = saturate(dot(base, material.drape_decal_key[i * 2]) + (i == 0 ? material.drape_decal_bias.x : material.drape_decal_bias.z));
+        const float alpha_amount = saturate(dot(base, material.drape_decal_key[i * 2 + 1]) + (i == 0 ? material.drape_decal_bias.y : material.drape_decal_bias.w));
+        float3 color = base.rgb + (decal.rgb - average) * rgb_amount;
+        const float modulator = lerp(0.5f, decal.a, alpha_amount);
+        color = modulator > 0.5f ? 1.0f - (1.0f - color) * (2.0f - 2.0f * modulator) : color * (2.0f * modulator);
+        base.rgb = saturate(color);
     }
-    return albedo;
+    return srgb_to_linear(base.rgb);
 }
 
 /* @brief Tangent-space normal from the normal decals ((0, 0, 1) without any). */

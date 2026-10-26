@@ -58,18 +58,34 @@ namespace SceneryEditorX::XPlane
 	size_t ParseAssetHeader(std::string_view text, AssetHeader &out);
 
 	/**
+	 * @brief How strongly a detail decal applies at a texel (X-Plane 12's keys): for its RGB detail and for its alpha
+	 * modulation separately, saturate(dot(base texel RGBA, key) + bias), the bias being the row's two trailing terms.
+	 */
+	struct DecalKeys
+	{
+		float rgb[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+		float rgbBias = 1.0f;
+		float alpha[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+		float alphaBias = 0.0f;
+
+		/* @brief The most either part can reach on any texel (0: the decal never shows). */
+		[[nodiscard]] float GetMaxStrength() const;
+	};
+
+	/**
 	 * @brief A detail or normal decal of a .pol or .dcl: a second texture repeated over the surface at its own scale.
-	 * Detail decals are grey-centred (0.5 = no change) and modulate the albedo; normal decals add their RG slopes to the
-	 * surface normal. X-Plane keys a decal's strength from the albedo / control channels; here the strongest of its
-	 * constant terms stands for it.
+	 * Detail decals add their RGB detail (the texel less the decal's average) and lighten or darken by their alpha
+	 * around 0.5, each as strongly as its key gives (DecalKeys); normal decals add their RG slopes to the surface normal,
+	 * at the strongest of their constant terms.
 	 */
 	struct PolygonDecal
 	{
 		bool normal = false;				// NORMAL_DECAL_PARAMS[_PROJ] (else DECAL_PARAMS[_PROJ], DECAL, DECAL_RGBA)
 		float scaleS = 1.0f;				// Repeats per texture repeat of the polygon (the albedo's SCALE), along s and t
 		float scaleT = 1.0f;
-		float strength = 1.0f;				// 0..1: how much of the decal applies
+		float strength = 1.0f;				// 0..1: how much of the decal applies at most (normal decals: always)
 		float gain = 1.0f;					// Normal decals: slope multiplier
+		DecalKeys keys;						// Detail decals
 		std::string texture;				// Relative to the file it came from (the .pol or the .dcl)
 	};
 

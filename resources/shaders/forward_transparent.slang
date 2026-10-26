@@ -79,7 +79,7 @@ float4 main_frag(forward_vertex vertex, bool is_front_face: SV_IsFrontFace) : SV
         float4 albedo_sample = xp_drape_sample_albedo(material, pass_get_material_index(), vertex.uv_misc.xy);	// plain texels unless a draped atlas
         albedo_sample.rgb = srgb_to_linear(albedo_sample.rgb);
         albedo *= albedo_sample;
-        albedo.rgb = xp_drape_apply_detail_decals(material, pass_get_material_index(), vertex.uv_misc.xy, albedo.rgb);
+        albedo.rgb = xp_drape_apply_detail_decals(material, pass_get_material_index(), vertex.uv_misc.xy, albedo);
     }
 
     // texels at or above the cutoff were drawn opaque by the deferred passes

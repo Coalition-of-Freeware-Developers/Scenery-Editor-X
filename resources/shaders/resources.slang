@@ -155,6 +155,8 @@ public struct MaterialParameters
     public float4 terrain_slope_scale;
     public float4 terrain_lit;
     public float4 terrain_far;
+    public float4 drape_decal_key[4];   // Detail decal keys: decal 0 RGB, decal 0 alpha, decal 1 RGB, decal 1 alpha (xp_drape_apply_detail_decals)
+    public float4 drape_decal_bias;     // Their biases, in the same order
 
     public bool has_texture_albedo() { return (flags & (1 << 2)) != 0; }
     public bool has_texture_normal() { return (flags & (1 << 1)) != 0; }

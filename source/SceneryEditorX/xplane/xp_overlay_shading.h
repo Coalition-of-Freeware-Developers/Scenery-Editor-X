@@ -42,6 +42,19 @@
 
 namespace SceneryEditorX::XPlane
 {
+	/* @brief A detail decal's keys on a material, decal slot 0 or 1 (MaterialProperty::XpDecal0KeyR on). */
+	inline void SetDecalKeys(MaterialAsset &material, const int slot, const DecalKeys &keys)
+	{
+		const int first = static_cast<int>(MaterialProperty::XpDecal0KeyR) + slot * 10;
+		for (int i = 0; i < 4; ++i)
+		{
+			material.SetProperty(static_cast<MaterialProperty>(first + i), keys.rgb[i]);
+			material.SetProperty(static_cast<MaterialProperty>(first + 5 + i), keys.alpha[i]);
+		}
+		material.SetProperty(static_cast<MaterialProperty>(first + 4), keys.rgbBias);
+		material.SetProperty(static_cast<MaterialProperty>(first + 9), keys.alphaBias);
+	}
+
 	/**
 	 * @brief The textures an overlay's shading samples besides its albedo (tile map, decals, normal map, WEATHER mask),
 	 * with the usage each loads as: for loading them ahead of ApplyDrapeShading().
@@ -56,7 +69,7 @@ namespace SceneryEditorX::XPlane
 		{
 			int &count = decal.normal ? normals : details;
 			if (count++ < 2)
-				out.emplace_back(decal.texture, decal.normal ? TextureUsage::Normal : TextureUsage::Data);
+				out.emplace_back(decal.texture, decal.normal ? TextureUsage::Normal : TextureUsage::Decal);
 		}
 		if (!shading.textureNormal.empty())
 			out.emplace_back(shading.textureNormal, TextureUsage::Normal);
@@ -110,7 +123,7 @@ namespace SceneryEditorX::XPlane
 			int &count = normal ? normals : details;
 			if (count >= 2)
 				continue;
-			ImageResource *image = load(decal.texture, normal ? TextureUsage::Normal : TextureUsage::Data);
+			ImageResource *image = load(decal.texture, normal ? TextureUsage::Normal : TextureUsage::Decal);
 			if (!image)
 				continue;
 			// Repeats per meter, so decals keep their own scale whatever the atlas's
@@ -128,13 +141,16 @@ namespace SceneryEditorX::XPlane
 				material.SetTexture(MaterialTextureType::Color, image, 2 + slot);
 				material.SetProperty(slot == 0 ? MaterialProperty::XpDecal0Scale : MaterialProperty::XpDecal1Scale, perMeterS);
 				material.SetProperty(slot == 0 ? MaterialProperty::XpDecal0Strength : MaterialProperty::XpDecal1Strength, decal.strength);
+				SetDecalKeys(material, slot, decal.keys);
 			}
 			// t repeats per meter relative to s (1 for square decal texels; a _PROJ row may set its own)
 			if (slot == 0)
 				material.SetProperty(normal ? MaterialProperty::XpNormalDecalAspect : MaterialProperty::XpDecalAspect, perMeterT / std::max(1e-6f, perMeterS));
 			++count;
 			char text[160];
-			std::snprintf(text, sizeof(text), "|%s%.4f,%.4f,%.3f,%.3f:", normal ? "nd" : "d", decal.scaleS, decal.scaleT, decal.strength, decal.gain);
+			std::snprintf(text, sizeof(text), "|%s%.4f,%.4f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f:", normal ? "nd" : "d", decal.scaleS, decal.scaleT,
+				decal.strength, decal.gain, decal.keys.rgb[0], decal.keys.rgb[1], decal.keys.rgb[2], decal.keys.rgb[3], decal.keys.rgbBias, decal.keys.alpha[0], decal.keys.alpha[1],
+				decal.keys.alpha[2], decal.keys.alpha[3], decal.keys.alphaBias);
 			key += text + decal.texture.generic_string();
 		}
 		if (details + normals > 0)

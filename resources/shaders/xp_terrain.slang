@@ -120,15 +120,20 @@ public XpTerrainSurface xp_terrain_shade(MaterialParameters material, uint mater
     const float2 base_scale = max(material.terrain_base.xy, 1e-3f);
     const float2 base_uv = meters / base_scale;
 
-    // Base texture (a tile atlas picks a tile per projected repeat)
+    // Base texture (a tile atlas picks a tile per projected repeat); its alpha keys the decals
     float3 albedo;
+    float base_alpha = 1.0f;
     if ((flags & xp_terrain_tiled) != 0)
     {
         const float2 atlas_uv = xp_drape_tile_uv(material, material_base, base_uv / max(material.drape_tiles.xy, 1.0f));
         albedo = srgb_to_linear(material_textures[material_base + material_texture_index_albedo].SampleGrad(samplers[sampler_anisotropic_wrap], atlas_uv, ddx(base_uv), ddy(base_uv)).rgb);
     }
     else
-        albedo = sample_albedo(material_base, material_texture_index_albedo, base_uv);
+    {
+        const float4 texel = sample_wrap(material_base, material_texture_index_albedo, base_uv);
+        albedo = srgb_to_linear(texel.rgb);
+        base_alpha = texel.a;
+    }
 
     // Composite: a second texture through the noise mask
     float noise = 0.5f;
@@ -168,7 +173,7 @@ public XpTerrainSurface xp_terrain_shade(MaterialParameters material, uint mater
     }
 
     // Detail decals, per meter of ground
-    albedo = xp_drape_apply_detail_decals(material, material_base, meters, albedo);
+    albedo = xp_drape_apply_detail_decals(material, material_base, meters, float4(albedo, base_alpha));
 
     // Border patches: in where the mask (luminance) reaches past the noise (COMPOSITE_BORDERS), else at half
     if ((flags & xp_terrain_border) != 0)

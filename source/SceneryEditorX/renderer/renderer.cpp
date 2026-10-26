@@ -3633,6 +3633,14 @@ void dynamic_resolution()
 					material->GetProperty(MaterialProperty::XpTileMapWidth), material->GetProperty(MaterialProperty::XpTileMapHeight));
 				properties[count].drape_decal = xMath::Vec4(material->GetProperty(MaterialProperty::XpDecal0Scale), material->GetProperty(MaterialProperty::XpDecal0Strength),
 					material->GetProperty(MaterialProperty::XpDecal1Scale), material->GetProperty(MaterialProperty::XpDecal1Strength));
+				for (int key = 0; key < 4; ++key)
+				{
+					// decal 0 RGB, decal 0 alpha, decal 1 RGB, decal 1 alpha: five properties each from XpDecal0KeyR
+					const int first = static_cast<int>(MaterialProperty::XpDecal0KeyR) + key * 5;
+					const auto at = [&](const int offset) { return material->GetProperty(static_cast<MaterialProperty>(first + offset)); };
+					properties[count].drape_decal_key[key] = xMath::Vec4(at(0), at(1), at(2), at(3));
+					(&properties[count].drape_decal_bias.x)[key] = at(4);
+				}
 				properties[count].drape_normal_decal = xMath::Vec4(material->GetProperty(MaterialProperty::XpNormalDecal0Scale), material->GetProperty(MaterialProperty::XpNormalDecal0Gain),
 					material->GetProperty(MaterialProperty::XpNormalDecal1Scale), material->GetProperty(MaterialProperty::XpNormalDecal1Gain));
 				properties[count].drape_misc = drapeMode == 2

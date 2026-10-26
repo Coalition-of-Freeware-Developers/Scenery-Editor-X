@@ -667,6 +667,7 @@ namespace SceneryEditorX::XPlane
 
 		out.width = static_cast<uint32_t>(width);
 		out.height = static_cast<uint32_t>(height);
+		out.sourceChannels = channels;
 		out.pixels.resize(static_cast<size_t>(width) * height * 4);
 
 		// Flip so row 0 is the bottom of the image (t = 0), matching X-Plane's DDS files.
@@ -693,7 +694,7 @@ namespace SceneryEditorX::XPlane
 			return out;
 		}
 
-		out.cacheKey = CacheKey(path, "");
+		out.cacheKey = CacheKey(path, usage == TextureUsage::Decal ? "decal" : "");
 		{
 			std::scoped_lock lock(s_Mutex);
 			if (const auto it = s_Cache.find(out.cacheKey); it != s_Cache.end())
@@ -743,6 +744,15 @@ namespace SceneryEditorX::XPlane
 			CpuImage image;
 			if (DecodeRGBA(path, image, &result.error))
 			{
+				// A grey-only decal is an alpha modulator (A_LF_asphalt1.png): X-Plane reads its one channel as alpha
+				if (usage == TextureUsage::Decal && image.sourceChannels == 1)
+				{
+					for (size_t i = 0; i + 3 < image.pixels.size(); i += 4)
+					{
+						image.pixels[i + 3] = image.pixels[i];
+						image.pixels[i] = image.pixels[i + 1] = image.pixels[i + 2] = 128;
+					}
+				}
 				result.width = image.width;
 				result.height = image.height;
 				result.format = VK_FORMAT_R8G8B8A8_UNORM;

@@ -30,6 +30,7 @@
  */
 #include "xp_object.h"
 #include "xp_library_manager.h"
+#include "xp_overlay_shading.h"
 #include <atomic>
 #include <chrono>
 #include <cmath>
@@ -302,7 +303,7 @@ namespace SceneryEditorX::XPlane
 				int &count = decal.normal ? normals : details;
 				if (count >= 2)
 					continue;
-				DecodedTexture texture = DecodeTexture(base, decal.texture, decal.normal ? TextureUsage::Normal : TextureUsage::Data);
+				DecodedTexture texture = DecodeTexture(base, decal.texture, decal.normal ? TextureUsage::Normal : TextureUsage::Decal);
 				if (!texture.valid)
 					continue;
 				++count;
@@ -1038,6 +1039,7 @@ namespace SceneryEditorX::XPlane
 				material->SetTexture(MaterialTextureType::Color, entry.image.Get(), 2 + slot);
 				material->SetProperty(slot == 0 ? MaterialProperty::XpDecal0Scale : MaterialProperty::XpDecal1Scale, decal.scaleS);
 				material->SetProperty(slot == 0 ? MaterialProperty::XpDecal0Strength : MaterialProperty::XpDecal1Strength, decal.strength);
+				SetDecalKeys(*material, slot, decal.keys);
 			}
 			if (slot == 0)
 				material->SetProperty(decal.normal ? MaterialProperty::XpNormalDecalAspect : MaterialProperty::XpDecalAspect, decal.scaleT / std::max(1e-6f, decal.scaleS));

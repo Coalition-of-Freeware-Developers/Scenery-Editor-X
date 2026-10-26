@@ -125,8 +125,30 @@ namespace SceneryEditorX
 		// Forests with 3D trees (XPlane::Forest3d): 1 the billboards, drawn from the distance on; 2 the 3D trees, nearer
 		XpLodSwitchMode				= 70,
 		XpLodSwitchDistance			= 71,	// Meters from the camera
+		// Detail decal keys (X-Plane 12): each decal's RGB detail and alpha modulation apply as strongly as
+		// saturate(dot(base texel RGBA, key) + bias); see XPlane::DecalKeys and SetDecalKeys()
+		XpDecal0KeyR				= 72,
+		XpDecal0KeyG				= 73,
+		XpDecal0KeyB				= 74,
+		XpDecal0KeyA				= 75,
+		XpDecal0KeyBias				= 76,
+		XpDecal0AlphaKeyR			= 77,
+		XpDecal0AlphaKeyG			= 78,
+		XpDecal0AlphaKeyB			= 79,
+		XpDecal0AlphaKeyA			= 80,
+		XpDecal0AlphaKeyBias		= 81,
+		XpDecal1KeyR				= 82,	// Decal 1: the same ten, 10 on
+		XpDecal1KeyG				= 83,
+		XpDecal1KeyB				= 84,
+		XpDecal1KeyA				= 85,
+		XpDecal1KeyBias				= 86,
+		XpDecal1AlphaKeyR			= 87,
+		XpDecal1AlphaKeyG			= 88,
+		XpDecal1AlphaKeyB			= 89,
+		XpDecal1AlphaKeyA			= 90,
+		XpDecal1AlphaKeyBias		= 91,
 		// The last property in use: MaterialAsset sizes its table by it (set past it, a value is dropped). Move it along.
-		LastInUse					= XpLodSwitchDistance,
+		LastInUse					= XpDecal1AlphaKeyBias,
 		MaxEnum						= 255
 	};
 

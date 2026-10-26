@@ -95,6 +95,7 @@ namespace SceneryEditorX::XPlane
 		float scaleT = 1.0f;
 		float strength = 1.0f;
 		float gain = 1.0f;
+		DecalKeys keys;							// Detail decals: how strongly they apply per texel
 		std::filesystem::path texture;
 	};
 

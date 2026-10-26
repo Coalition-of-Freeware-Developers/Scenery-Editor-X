@@ -32,6 +32,7 @@
 #include "xp_assets.h"
 #include "xp_library_manager.h"
 #include "xp_overlay_scene.h"
+#include "xp_overlay_shading.h"
 #include "xp_terrain.h"
 #include "xp_texture_loader.h"
 #include <algorithm>
@@ -530,7 +531,7 @@ namespace SceneryEditorX::XPlane
 				int &count = decal.normal ? normals : details;
 				if (count >= 2)
 					continue;
-				ImageResource *image = texture(decal.texture, decal.normal ? TextureUsage::Normal : TextureUsage::Data, base);
+				ImageResource *image = texture(decal.texture, decal.normal ? TextureUsage::Normal : TextureUsage::Decal, base);
 				if (!image)
 					continue;
 				const float perMeterS = decal.scaleS / std::max(0.01f, projectedS);
@@ -547,6 +548,7 @@ namespace SceneryEditorX::XPlane
 					material->SetTexture(MaterialTextureType::Color, image, 2 + slot);
 					material->SetProperty(slot == 0 ? MaterialProperty::XpDecal0Scale : MaterialProperty::XpDecal1Scale, perMeterS);
 					material->SetProperty(slot == 0 ? MaterialProperty::XpDecal0Strength : MaterialProperty::XpDecal1Strength, decal.strength);
+					SetDecalKeys(*material, slot, decal.keys);
 				}
 				if (slot == 0)
 					material->SetProperty(decal.normal ? MaterialProperty::XpNormalDecalAspect : MaterialProperty::XpDecalAspect, perMeterT / std::max(1e-6f, perMeterS));
@@ -1121,7 +1123,7 @@ namespace SceneryEditorX::XPlane
 					{
 						int &count = decal.normal ? normals : details;
 						if (count++ < 2)
-							request(base, decal.texture, decal.normal ? TextureUsage::Normal : TextureUsage::Data);
+							request(base, decal.texture, decal.normal ? TextureUsage::Normal : TextureUsage::Decal);
 					}
 				}
 				types.emplace(key, std::move(type));

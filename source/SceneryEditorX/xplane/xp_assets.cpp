@@ -115,26 +115,41 @@ namespace SceneryEditorX::XPlane
 		 *   NORMAL_DECAL_PARAMS_PROJ <scale s> <scale t> <dither> <r g b a keys> <constant> <texture> <gain>
 		 * Each key group is four albedo keys, a control key and a constant; their largest value is the strength.
 		 */
+		/* @brief A key group of a DECAL_PARAMS row: R G B A weights, then two terms X-Plane adds (modulator, constant). */
+		void ParseKeyGroup(const std::vector<std::string_view> &tokens, const size_t first, float (&key)[4], float &bias)
+		{
+			for (size_t i = 0; i < 4; ++i)
+				key[i] = ParseFloat(tokens[first + i], 0.0f);
+			bias = ParseFloat(tokens[first + 4], 0.0f) + ParseFloat(tokens[first + 5], 0.0f);
+		}
+
 		bool ParseDecalRow(const std::vector<std::string_view> &tokens, PolygonDecal &out)
 		{
 			const std::string_view key = tokens[0];
 			out = PolygonDecal();
 			if ((key == "DECAL" || key == "DECAL_RGBA") && tokens.size() >= 3)
 			{
+				// Without keys: the RGB detail in full, and with DECAL_RGBA the alpha modulation too
 				out.scaleS = out.scaleT = ParseFloat(tokens[1], 1.0f);
+				out.keys.alphaBias = key == "DECAL_RGBA" ? 1.0f : 0.0f;
 				out.texture = CleanPath(tokens[2]);
 			}
 			else if (key == "DECAL_PARAMS" && tokens.size() >= 16)
 			{
+				// DECAL_PARAMS <scale> <dither> <RGB key: r g b a modulator constant> <alpha key: same> <file>
 				out.scaleS = out.scaleT = ParseFloat(tokens[1], 1.0f);
-				out.strength = std::max(MaxOf(tokens, 3, 6), MaxOf(tokens, 9, 6));
+				ParseKeyGroup(tokens, 3, out.keys.rgb, out.keys.rgbBias);
+				ParseKeyGroup(tokens, 9, out.keys.alpha, out.keys.alphaBias);
+				out.strength = out.keys.GetMaxStrength();
 				out.texture = CleanPath(tokens[15]);
 			}
 			else if (key == "DECAL_PARAMS_PROJ" && tokens.size() >= 17)
 			{
 				out.scaleS = ParseFloat(tokens[1], 1.0f);
 				out.scaleT = ParseFloat(tokens[2], 1.0f);
-				out.strength = std::max(MaxOf(tokens, 4, 6), MaxOf(tokens, 10, 6));
+				ParseKeyGroup(tokens, 4, out.keys.rgb, out.keys.rgbBias);
+				ParseKeyGroup(tokens, 10, out.keys.alpha, out.keys.alphaBias);
+				out.strength = out.keys.GetMaxStrength();
 				out.texture = CleanPath(tokens[16]);
 			}
 			else if (key == "NORMAL_DECAL_PARAMS" && tokens.size() >= 9)
@@ -162,6 +177,19 @@ namespace SceneryEditorX::XPlane
 	}
 
 	// -------------------------------------------------------
+
+	float DecalKeys::GetMaxStrength() const
+	{
+		// The texel's channels run 0..1: the most a key reaches is its bias plus its positive weights
+		const auto reach = [](const float (&key)[4], const float bias)
+		{
+			float most = bias;
+			for (const float weight : key)
+				most += std::max(weight, 0.0f);
+			return std::clamp(most, 0.0f, 1.0f);
+		};
+		return std::max(reach(rgb, rgbBias), reach(alpha, alphaBias));
+	}
 
 	bool ParsePolygonDecalRow(const std::vector<std::string_view> &tokens, PolygonDecal &out)
 	{

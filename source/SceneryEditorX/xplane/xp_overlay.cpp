@@ -1214,6 +1214,7 @@ namespace SceneryEditorX::XPlane
 			resolved.scaleT = decal.scaleT;
 			resolved.strength = decal.strength;
 			resolved.gain = decal.gain;
+			resolved.keys = decal.keys;
 			resolved.texture = TexturePath(file, decal.texture);
 			if (resolved.strength > 0.0f)
 				mesh.decals.push_back(std::move(resolved));

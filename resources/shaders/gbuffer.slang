@@ -247,7 +247,7 @@ gbuffer main_frag(gbuffer_vertex vertex, bool is_front_face: SV_IsFrontFace)
         albedo_sample = sample_texture(vertex, material_texture_index_albedo, surface, position_world);
         albedo_sample.rgb = srgb_to_linear(albedo_sample.rgb);
         albedo *= albedo_sample;
-        albedo.rgb = xp_drape_apply_detail_decals(material, pass_get_material_index(), vertex.uv_misc.xy, albedo.rgb);
+        albedo.rgb = xp_drape_apply_detail_decals(material, pass_get_material_index(), vertex.uv_misc.xy, albedo);
 
         // Cut-out texels: the depth prepass discards them, but this pass only tests depth (greater-equal, no write),
         // so a cut-out texel with nothing nearer behind it would still be written solid (a decal over pavement, a

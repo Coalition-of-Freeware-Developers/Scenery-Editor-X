@@ -167,6 +167,10 @@ namespace SceneryEditorX
 		xMath::Vec4 terrain_slope_scale = xMath::Vec4{0.0f, 0.0f, 0.0f, 0.0f};
 		xMath::Vec4 terrain_lit = xMath::Vec4{0.0f, 0.0f, 0.0f, 0.0f};
 		xMath::Vec4 terrain_far = xMath::Vec4{0.0f, 0.0f, 0.0f, 0.0f};
+
+		// Detail decal keys (xp_drape_apply_detail_decals): decal 0 RGB, decal 0 alpha, decal 1 RGB, decal 1 alpha; their biases
+		xMath::Vec4 drape_decal_key[4] = {};
+		xMath::Vec4 drape_decal_bias = xMath::Vec4{0.0f, 0.0f, 0.0f, 0.0f};
 	};
 
 	/**
@@ -408,7 +412,7 @@ namespace SceneryEditorX
 	// sizes the shaders see (resources.slang: cbuffer std140, structured buffers std430)
 	static_assert(sizeof(ConstantBuffer_Frame) == 1024, "ConstantBuffer_Frame must match FrameBufferData in resources.slang");
 	static_assert(sizeof(ConstantBuffer_Environment) == 1792, "ConstantBuffer_Environment must match EnvironmentData in resources.slang");
-	static_assert(sizeof(ShaderBuffer_Material) == 288, "ShaderBuffer_Material must match MaterialParameters in resources.slang");
+	static_assert(sizeof(ShaderBuffer_Material) == 368, "ShaderBuffer_Material must match MaterialParameters in resources.slang");
 	static_assert(sizeof(ShaderBuffer_Light) == 608, "ShaderBuffer_Light must match LightParameters in resources.slang");
 	static_assert(sizeof(ShaderBuffer_DrawData) == 160, "ShaderBuffer_DrawData must match DrawData in resources.slang");
 
