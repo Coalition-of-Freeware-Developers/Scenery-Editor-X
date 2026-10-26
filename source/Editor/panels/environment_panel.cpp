@@ -377,7 +377,8 @@ namespace SceneryEditorX
 			return false;
 
 		EditorUI::PropertyLabel("Season");
-		static constexpr const char *seasons[] = { "Auto (date and latitude)", "Spring", "Summer", "Fall", "Winter" };
+		// Auto: the place's base DSF season rasters once an airport opened there, else fixed dates by latitude
+		const char *seasons[] = { Get().GetSeasonRanges() ? "Auto (date and the DSF)" : "Auto (date and latitude)", "Spring", "Summer", "Fall", "Winter" };
 		int season = static_cast<int>(state.season);
 		ImGui::SetNextItemWidth(-FLT_MIN);
 		if (ImGui::Combo("##Season", &season, seasons, 5))

@@ -99,6 +99,16 @@ namespace SceneryEditorX::Environment
 		 */
 		void SetSceneryDate(const std::optional<std::array<int, 3>> &date);
 
+		/**
+		 * @brief The seasons of the base DSF at a place (MakeDsfSeasonRanges of its season rasters there), as X-Plane takes
+		 * them: while the state's place stays within half a degree of it, the season and the scenery season come from these
+		 * ranges instead of the fixed dates by latitude. nullopt forgets them. Not saved with projects.
+		 */
+		void SetSeasonRanges(const std::optional<DsfSeasonRanges> &ranges, double latitudeDeg = 0.0, double longitudeDeg = 0.0);
+
+		/* @brief The ranges the seasons come from now: null when none are set or the place moved away from theirs. */
+		[[nodiscard]] const DsfSeasonRanges *GetSeasonRanges() const;
+
 		/* @brief Loads resources/environment/xp12_sky_conditions.json (sky-class multipliers). */
 		bool LoadSkyConditions(const std::filesystem::path &path, std::string *error = nullptr);
 		[[nodiscard]] const SkyConditionTable &GetSkyConditions() const { return m_SkyTable; }
@@ -115,6 +125,9 @@ namespace SceneryEditorX::Environment
 		SurfaceWeatherIntegrator m_Integrator;
 		float m_ObserverAltitudeM = 0.0f;
 		std::optional<int> m_SceneryDayOfYear;		// SetSceneryDate()
+		std::optional<DsfSeasonRanges> m_SeasonRanges;	// SetSeasonRanges(), sampled at:
+		double m_SeasonRangesLatitude = 0.0;
+		double m_SeasonRangesLongitude = 0.0;
 		uint64_t m_Version = 1;
 
 		mutable std::mutex m_SnapshotMutex;

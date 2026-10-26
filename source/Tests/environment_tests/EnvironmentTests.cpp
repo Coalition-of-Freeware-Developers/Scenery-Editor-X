@@ -328,6 +328,177 @@ TEST_CASE("Environment: seasons from DSF ranges", "[environment][season]")
 	CHECK(ComputeSeason(200, 47.0, &twoState).season == Season::Summer);
 }
 
+namespace
+{
+	/* @brief Season raster values as X-Plane 12's Global Scenery stores them (bytes, x 365 / 183 = day of year), spr1 ... win2. */
+	std::array<float, 8> RasterDays(const std::array<int, 8> &stored)
+	{
+		std::array<float, 8> days{};
+		for (size_t i = 0; i < days.size(); ++i)
+			days[i] = static_cast<float>(stored[i]) * 365.0f / 183.0f;
+		return days;
+	}
+
+	// The test airports' datum cells (DSFTool / XP12 Global Scenery, 2026-10-26)
+	constexpr std::array<int, 8> EIDW_RASTERS = { 47, 60, 96, 98, 138, 140, 5, 7 };				// +53-007
+	constexpr std::array<int, 8> OMDB_RASTERS = { 0, 0, 183, 183, 183, 183, 183, 183 };			// +25+055, SBGR's too
+	constexpr std::array<int, 8> SEA_RASTERS = { 0, 0, 0, 0, 0, 0, 183, 0 };					// +30+082 (open water)
+	constexpr std::array<int, 8> RCTP_RASTERS = { 8, 10, 12, 0, 2, 4, 6, 6 };					// +25+121
+	constexpr std::array<int, 8> YSSY_RASTERS = { 120, 122, 124, 64, 66, 68, 70, 118 };			// -34+151
+	constexpr std::array<int, 8> LEBL_RASTERS = { 18, 20, 46, 152, 172, 174, 176, 16 };			// +41+002
+	constexpr std::array<int, 8> EQUATOR_RASTERS = { 112, 114, 116, 109, 111, 113, 115, 110 };	// +06+010 (Cameroon)
+}
+
+TEST_CASE("Environment: season ranges from a DSF's season rasters", "[environment][season]")
+{
+	// EIDW: spring 94-120, summer 191-195, fall 275-279, winter 10-14; the gaps belong to the season before them
+	const std::optional<DsfSeasonRanges> eidw = MakeDsfSeasonRanges(RasterDays(EIDW_RASTERS));
+	REQUIRE(eidw);
+	CHECK(eidw->start == std::array<int, 4>{ 94, 191, 275, 10 });
+	CHECK(eidw->end == std::array<int, 4>{ 120, 195, 279, 14 });
+	CHECK(eidw->valid == std::array<bool, 4>{ true, true, true, true });
+	CHECK(ComputeSeason(166, 53.42, &*eidw).season == Season::Spring);		// 2026-06-15 (the fixed dates: summer)
+	CHECK(ComputeSeason(166, 53.42).season == Season::Summer);
+	CHECK(ComputeSeason(258, 53.42, &*eidw).season == Season::Summer);		// 2026-09-15 (the fixed dates: fall)
+	CHECK(ComputeSeason(258, 53.42).season == Season::Fall);
+	CHECK(ComputeSeason(190, 53.42, &*eidw).season == Season::Spring);		// Jul 9
+	CHECK(ComputeSeason(191, 53.42, &*eidw).season == Season::Summer);		// Jul 10
+	CHECK(ComputeSeason(274, 53.42, &*eidw).season == Season::Summer);		// Oct 1
+	CHECK(ComputeSeason(275, 53.42, &*eidw).season == Season::Fall);
+	CHECK(ComputeSeason(15, 53.42, &*eidw).season == Season::Winter);		// Jan 15 and Jul 15 agree with the fixed dates
+	CHECK(ComputeSeason(196, 53.42, &*eidw).season == Season::Summer);
+	// Spring moves toward summer across the gap after its range
+	CHECK(ComputeSeason(166, 53.42, &*eidw).ratio == Approx(46.0f / 71.0f));
+	CHECK(ComputeSeason(110, 53.42, &*eidw).ratio == 0.0f);
+
+	// The southern hemisphere's cycle runs through the year end: YSSY's summer from Sep 4, fall May 12, winter May 20, spring Aug 27
+	const std::optional<DsfSeasonRanges> yssy = MakeDsfSeasonRanges(RasterDays(YSSY_RASTERS));
+	REQUIRE(yssy);
+	CHECK(ComputeSeason(15, -33.95, &*yssy).season == Season::Summer);
+	CHECK(ComputeSeason(196, -33.95, &*yssy).season == Season::Winter);
+	CHECK(ComputeSeason(133, -33.95, &*yssy).season == Season::Fall);
+
+	// Short seasons stay: LEBL's fall is Dec 9-16
+	const std::optional<DsfSeasonRanges> lebl = MakeDsfSeasonRanges(RasterDays(LEBL_RASTERS));
+	REQUIRE(lebl);
+	CHECK(ComputeSeason(330, 41.3, &*lebl).season == Season::Summer);
+	CHECK(ComputeSeason(345, 41.3, &*lebl).season == Season::Fall);
+	CHECK(ComputeSeason(355, 41.3, &*lebl).season == Season::Winter);
+
+	// No cycle (every value on the same day): no seasons, summer all year
+	for (const std::array<int, 8> &stored : { OMDB_RASTERS, SEA_RASTERS })
+	{
+		const std::optional<DsfSeasonRanges> none = MakeDsfSeasonRanges(RasterDays(stored));
+		REQUIRE(none);
+		CHECK(none->valid == std::array<bool, 4>{ false, true, false, false });
+		for (const int day : { 1, 15, 100, 196, 300, 365 })
+		{
+			CHECK(ComputeSeason(day, 25.25, &*none).season == Season::Summer);
+			CHECK(ComputeSeason(day, 25.25, &*none).ratio == 0.0f);
+		}
+	}
+	CHECK(ComputeSeason(15, 25.25).season == Season::Winter);					// OMDB on the fixed dates
+
+	// RCTP's cycle is squeezed into January (fall 4-8, winter 12, spring 16-20, summer 24 to the year end): taken as it is
+	const std::optional<DsfSeasonRanges> rctp = MakeDsfSeasonRanges(RasterDays(RCTP_RASTERS));
+	REQUIRE(rctp);
+	CHECK(rctp->start == std::array<int, 4>{ 16, 24, 4, 12 });
+	CHECK(rctp->end == std::array<int, 4>{ 20, 365, 8, 12 });
+	CHECK(ComputeSeason(2, 25.08, &*rctp).season == Season::Summer);
+	CHECK(ComputeSeason(5, 25.08, &*rctp).season == Season::Fall);
+	CHECK(ComputeSeason(15, 25.08, &*rctp).season == Season::Winter);
+	CHECK(ComputeSeason(18, 25.08, &*rctp).season == Season::Spring);
+	CHECK(ComputeSeason(166, 25.08, &*rctp).season == Season::Summer);
+	CHECK(ComputeSeason(330, 25.08, &*rctp).season == Season::Summer);
+
+	// Values that go round the year more than once (the seasons overlap) give none: the fixed dates apply
+	CHECK_FALSE(MakeDsfSeasonRanges(RasterDays(EQUATOR_RASTERS)));
+	CHECK(ComputeSeason(150, 6.5).season == Season::Summer);
+
+	// Day 0 is the year's last day; values past the year are clamped and wrap (366 is January 1)
+	const std::optional<DsfSeasonRanges> wrapped = MakeDsfSeasonRanges({ 400.0f, 90.0f, 91.0f, 180.0f, 181.0f, 270.0f, 271.0f, 0.0f });
+	REQUIRE(wrapped);
+	CHECK(wrapped->start[static_cast<size_t>(Season::Spring)] == 1);
+	CHECK(wrapped->end[static_cast<size_t>(Season::Winter)] == 365);
+	CHECK(ComputeSeason(365, 47.0, &*wrapped).season == Season::Winter);
+	CHECK(ComputeSeason(1, 47.0, &*wrapped).season == Season::Spring);
+}
+
+TEST_CASE("Environment: the world takes the place's DSF seasons", "[environment][season][world]")
+{
+	World world;
+	world.Edit([](EnvironmentState &s)
+	{
+		s.year = 2026;
+		s.month = 6;
+		s.day = 15;
+		s.latitudeDeg = 53.4213;
+		s.longitudeDeg = -6.2701;
+		s.season = SeasonOverride::Auto;
+	});
+	CHECK(world.GetDerived().season.season == Season::Summer);			// The fixed dates
+	CHECK_FALSE(world.GetDerived().seasonFromDsf);
+	CHECK(world.GetSeasonRanges() == nullptr);
+
+	// EIDW's rasters: June 15 is spring, for the sun and trees and for the scenery's art
+	const std::optional<DsfSeasonRanges> eidw = MakeDsfSeasonRanges(RasterDays(EIDW_RASTERS));
+	REQUIRE(eidw);
+	uint64_t version = world.GetVersion();
+	world.SetSeasonRanges(eidw, 53.4213, -6.2701);
+	CHECK(world.GetVersion() > version);
+	REQUIRE(world.GetSeasonRanges() != nullptr);
+	CHECK(*world.GetSeasonRanges() == *eidw);
+	CHECK(world.GetDerived().season.season == Season::Spring);
+	CHECK(world.GetDerived().scenerySeason.season == Season::Spring);
+	CHECK(world.GetDerived().scenerySeason.bits == GetSeasonBit(Season::Spring));
+	CHECK(world.GetDerived().seasonFromDsf);
+	CHECK(world.GetSnapshot().derived.season.season == Season::Spring);
+
+	// The same ranges again change nothing
+	version = world.GetVersion();
+	world.SetSeasonRanges(eidw, 53.4213, -6.2701);
+	CHECK(world.GetVersion() == version);
+
+	// September 15 is still summer there (fall on the fixed dates)
+	world.Edit([](EnvironmentState &s) { s.month = 9; });
+	CHECK(world.GetDerived().season.season == Season::Summer);
+	CHECK(world.GetDerived().scenerySeason.bits == GetSeasonBit(Season::Summer));
+
+	// Scenery loaded on another date follows the same ranges: July 5 is spring art
+	world.SetSceneryDate(std::array<int, 3>{ 2026, 7, 5 });
+	CHECK(world.GetDerived().season.season == Season::Summer);
+	CHECK(world.GetDerived().scenerySeason.season == Season::Spring);
+	world.SetSceneryDate(std::nullopt);
+
+	// A place nearby keeps them (a scenario's camera); one a degree away goes back to the fixed dates
+	world.Edit([](EnvironmentState &s) { s.latitudeDeg = 53.45; s.longitudeDeg = -6.0; });
+	CHECK(world.GetDerived().seasonFromDsf);
+	CHECK(world.GetDerived().season.season == Season::Summer);
+	world.Edit([](EnvironmentState &s) { s.latitudeDeg = 52.4; });
+	CHECK(world.GetSeasonRanges() == nullptr);
+	CHECK_FALSE(world.GetDerived().seasonFromDsf);
+	CHECK(world.GetDerived().season.season == Season::Fall);
+	world.Edit([](EnvironmentState &s) { s.latitudeDeg = 53.4213; s.longitudeDeg = -6.2701; });
+	CHECK(world.GetDerived().seasonFromDsf);
+
+	// A season the user forces wins over them
+	world.Edit([](EnvironmentState &s) { s.season = SeasonOverride::Winter; });
+	CHECK(world.GetDerived().season.season == Season::Winter);
+	CHECK(world.GetDerived().scenerySeason.season == Season::Winter);
+	CHECK_FALSE(world.GetDerived().seasonFromDsf);
+	world.Edit([](EnvironmentState &s) { s.season = SeasonOverride::Auto; });
+
+	// A tile without seasons (OMDB) is summer whatever the date; forgetting the ranges brings the fixed dates back
+	world.Edit([](EnvironmentState &s) { s.month = 1; s.latitudeDeg = 25.2528; s.longitudeDeg = 55.3644; });
+	CHECK(world.GetDerived().season.season == Season::Winter);
+	world.SetSeasonRanges(MakeDsfSeasonRanges(RasterDays(OMDB_RASTERS)), 25.2528, 55.3644);
+	CHECK(world.GetDerived().season.season == Season::Summer);
+	CHECK(world.GetDerived().season.ratio == 0.0f);
+	world.SetSeasonRanges(std::nullopt);
+	CHECK(world.GetSeasonRanges() == nullptr);
+	CHECK(world.GetDerived().season.season == Season::Winter);
+}
+
 TEST_CASE("Environment: sky-condition weights", "[environment][sky]")
 {
 	EnvironmentState state;

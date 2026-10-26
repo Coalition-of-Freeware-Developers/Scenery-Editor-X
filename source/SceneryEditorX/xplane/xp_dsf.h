@@ -182,6 +182,9 @@ namespace SceneryEditorX::XPlane
 
 		/* @brief Bilinear value at a point of the tile bounds (clamped to the edges). */
 		[[nodiscard]] float Sample(double longitude, double latitude, double west, double south, double east, double north) const;
+
+		/* @brief The nearest cell's value (rasters that don't blend: the season days, where 360 and 10 are 15 days apart). */
+		[[nodiscard]] float SampleNearest(double longitude, double latitude, double west, double south, double east, double north) const;
 	};
 
 	/* @brief Elevation in a vertex that asks for the elevation raster's value instead. */

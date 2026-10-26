@@ -57,7 +57,8 @@ The dependency-light, cross-platform Catch2 unit suites that only need `source/`
   (`xp_terrain_mesh.*`: heights, rays, exact draping across a crease, clipped at the terrain's edge; water meshes cut into
   64 m cells without T-junctions for tessellation, `CutTerrainAlongGrid`, and the floor's depth from X-Plane 12's depth
   ratio and the bathymetry, `WaterFloorDepth`, tag `[water]`); with an X-Plane 12
-  install listed it reads KSEA's 7-zip Global Scenery tile and its scenery within a mile, tag `[xplane-install]`, about two
+  install listed it reads KSEA's 7-zip Global Scenery tile and its scenery within a mile and the test airports' season
+  rasters (EIDW spring on 2026-06-15, summer on 2026-09-15; needs `environment/season_model.cpp`), tag `[xplane-install]`, about two
   seconds), and the terrain's own scenery in `OverlayTests.cpp` (`.bch` beaches parsed and laid along shores with the
   water on the left, forests planted only in the area and where the caller allows), and autogen (`AutogenTests.cpp`:
   `xp_autogen.*` .agp / .ags / .agb parsing, points facing their heading, strings lining their sides with corners,
@@ -97,7 +98,8 @@ The dependency-light, cross-platform Catch2 unit suites that only need `source/`
   `World::SetSceneryDate`), plus the shipped `tools/xp12_reference_probe/scenarios/xp12_parity.json` and `xp12_airports.json`
   when run from the repo root) and the environment model (`EnvironmentTests.cpp`: NOAA sun against an independent almanac formula, Meeus moon
   examples 47.a / 48.a, the 16 runway-friction states and the wetting / drying integrator, seasons from date and latitude
-  or DSF ranges, sky-condition weights, world-frame directions, the `World` object, the atmosphere's medium (X-Plane
+  or DSF ranges, the ranges from a base DSF's season rasters (`MakeDsfSeasonRanges`: EIDW, YSSY, LEBL, RCTP's squeezed
+  January cycle, OMDB / SBGR / the sea without seasons, overlapping cycles near the equator) and `World::SetSeasonRanges`, sky-condition weights, world-frame directions, the `World` object, the atmosphere's medium (X-Plane
   12.4.4's dumped values, visibility to the surface haze layer at 1% contrast, per-channel Mie, sky-condition multipliers,
   `environment/atmosphere_params.*`), the interim CPU sky light
   model (transmittance, sun / sky illuminance, energy bounds, `environment/sky_light.*`), plus the renderer's X-Plane
@@ -193,7 +195,7 @@ g++ -std=c++20 -O2 -pthread $INCS source/Tests/xplane_tests/XPlaneFormatTests.cp
     source/Tests/xplane_tests/AirportTests.cpp source/Tests/xplane_tests/OverlayTests.cpp \
     source/Tests/xplane_tests/DsfWriterTests.cpp source/Tests/xplane_tests/FacadeTests.cpp \
     source/Tests/xplane_tests/FacadeWriterTests.cpp source/Tests/xplane_tests/InstallFinderTests.cpp \
-    source/Tests/xplane_tests/BrdfLutTests.cpp source/SceneryEditorX/environment/brdf_lut.cpp \
+    source/Tests/xplane_tests/BrdfLutTests.cpp source/SceneryEditorX/environment/brdf_lut.cpp source/SceneryEditorX/environment/season_model.cpp \
     source/Tests/xplane_tests/ThumbnailTests.cpp source/SceneryEditorX/xplane/xp_thumbnail.cpp \
     source/Tests/xplane_tests/TerrainTests.cpp source/Tests/xplane_tests/AutogenTests.cpp source/SceneryEditorX/xplane/xp_7z.cpp \
     source/SceneryEditorX/xplane/xp_terrain.cpp source/SceneryEditorX/xplane/xp_terrain_mesh.cpp \

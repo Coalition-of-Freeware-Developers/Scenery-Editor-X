@@ -132,6 +132,25 @@ namespace SceneryEditorX::Environment
 		Rederive();
 	}
 
+	void World::SetSeasonRanges(const std::optional<DsfSeasonRanges> &ranges, const double latitudeDeg, const double longitudeDeg)
+	{
+		if (ranges == m_SeasonRanges && (!ranges || (latitudeDeg == m_SeasonRangesLatitude && longitudeDeg == m_SeasonRangesLongitude)))
+			return;
+		m_SeasonRanges = ranges;
+		m_SeasonRangesLatitude = latitudeDeg;
+		m_SeasonRangesLongitude = longitudeDeg;
+		Rederive();
+	}
+
+	const DsfSeasonRanges *World::GetSeasonRanges() const
+	{
+		// A raster cell is under a kilometre across, but a camera place near the airport (a scenario's) must keep them
+		constexpr double reach = 0.5;
+		if (!m_SeasonRanges || std::abs(m_State.latitudeDeg - m_SeasonRangesLatitude) > reach || std::abs(m_State.longitudeDeg - m_SeasonRangesLongitude) > reach)
+			return nullptr;
+		return &*m_SeasonRanges;
+	}
+
 	bool World::LoadSkyConditions(const std::filesystem::path &path, std::string *error)
 	{
 		if (!m_SkyTable.Load(path, error))
@@ -149,10 +168,11 @@ namespace SceneryEditorX::Environment
 	void World::Rederive()
 	{
 		const SurfaceWeather integrated = m_Integrator.Get();
-		m_Derived = Derive(m_State, m_ObserverAltitudeM, &m_SkyTable, &integrated);
+		const DsfSeasonRanges *ranges = GetSeasonRanges();
+		m_Derived = Derive(m_State, m_ObserverAltitudeM, &m_SkyTable, &integrated, ranges);
 		// Scenery loaded on another date keeps that date's seasonal art (a season the user forces applies to both)
 		if (m_SceneryDayOfYear && m_State.season == SeasonOverride::Auto)
-			m_Derived.scenerySeason = ComputeSeason(*m_SceneryDayOfYear, m_State.latitudeDeg, nullptr);
+			m_Derived.scenerySeason = ComputeSeason(*m_SceneryDayOfYear, m_State.latitudeDeg, ranges);
 		++m_Version;
 		std::scoped_lock lock(m_SnapshotMutex);
 		m_Snapshot.state = m_State;

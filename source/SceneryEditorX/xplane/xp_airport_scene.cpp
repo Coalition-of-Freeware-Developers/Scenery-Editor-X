@@ -46,6 +46,7 @@
 #include <memory>
 #include <set>
 #include <unordered_set>
+#include <SceneryEditorX/environment/environment.h>
 #include <SceneryEditorX/filesystem/vfs.h>
 #include <SceneryEditorX/logging/logging.hpp>
 #include <SceneryEditorX/renderer/gpu_scene.h>
@@ -1276,6 +1277,7 @@ namespace SceneryEditorX::XPlane
 			uint64_t revision = 0;
 			uint64_t geometryRevision = 0;
 			uint64_t libraryGeneration = 0;
+			std::optional<uint64_t> seasonsGeneration;	// The library generation the place's seasons were read with (ApplyPlaceSeasons)
 			SceneAirports::Stats stats;
 			std::array<bool, static_cast<size_t>(AirportElementKind::Count)> kindVisible;
 
@@ -1497,6 +1499,34 @@ namespace SceneryEditorX::XPlane
 			if (area.rings.empty())
 				return;
 			SceneTerrain::Load(projection, area, document.airport.id, document.airport.elevationFt * 0.3048, grounds);
+		}
+
+		/**
+		 * @brief The place's seasons from its base DSF's season rasters at the datum, as X-Plane takes them (instead of the
+		 * fixed dates by latitude), set before any of the airport's art is resolved: its seasonal art and the terrain's are
+		 * picked for them on the first try, and the terrain then reads the tile this unpacked instead of the disk.
+		 */
+		void ApplyPlaceSeasons(const AirportDocument &document, const GeoProjection &projection)
+		{
+			const double latitude = projection.GetDatumLatitude(), longitude = projection.GetDatumLongitude();
+			Environment::World &world = Environment::Get();
+			world.SetAirportLocation(latitude, longitude, static_cast<float>(document.airport.elevationFt * 0.3048));	// The editor does it next frame: too late
+			std::array<float, 8> days{};
+			const auto start = std::chrono::steady_clock::now();
+			const bool read = SceneTerrain::ReadSeasonRasters(latitude, longitude, days);
+			const double milliseconds = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
+			world.SetSeasonRanges(read ? Environment::MakeDsfSeasonRanges(days) : std::nullopt, latitude, longitude);
+			const Environment::EnvironmentDerived &derived = world.GetDerived();
+			LibraryManager::SetSeason(derived.scenerySeason.bits);
+
+			const char *source = derived.seasonFromDsf ? "the DSF's season rasters" : "the fixed dates by latitude";
+			if (read)
+				SEDX_CORE_INFO_TAG(LOG_TAG, "{}: {} on day {} from {} (spring {:.0f}-{:.0f}, summer {:.0f}-{:.0f}, fall {:.0f}-{:.0f}, winter {:.0f}-{:.0f}; read in {:.0f} ms); scenery art: {}",
+					document.airport.id, Environment::GetSeasonName(derived.season.season), derived.dayOfYear, source, days[0], days[1], days[2], days[3], days[4], days[5], days[6],
+					days[7], milliseconds, Environment::GetSeasonName(derived.scenerySeason.season));
+			else
+				SEDX_CORE_INFO_TAG(LOG_TAG, "{}: {} on day {} from {} (no season rasters); scenery art: {}", document.airport.id, Environment::GetSeasonName(derived.season.season),
+					derived.dayOfYear, source, Environment::GetSeasonName(derived.scenerySeason.season));
 		}
 
 		/**
@@ -1737,6 +1767,14 @@ namespace SceneryEditorX::XPlane
 			{
 				loaded.projection = GeoProjection(datumLat, datumLon);
 				loaded.hasProjection = true;
+			}
+
+			// The place's seasons before any art is resolved; again with another library (its base mesh may have changed)
+			// and when the terrain is switched on
+			if (loaded.hasProjection && SceneTerrain::IsEnabled() && loaded.seasonsGeneration != loaded.libraryGeneration)
+			{
+				loaded.seasonsGeneration = loaded.libraryGeneration;
+				ApplyPlaceSeasons(document, loaded.projection);
 			}
 
 			// The apt.dat rows' art builder lives on for their rebuilds (it caches the library assets it parsed); the
