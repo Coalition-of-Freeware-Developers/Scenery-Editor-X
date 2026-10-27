@@ -117,7 +117,8 @@ namespace SceneryEditorX
 		/**
 		 * @brief Creates an image resource with the specified properties.
 		 * @param spec The specification of the image resource.
-		 * @param data The initial data for the image resource.
+		 * @param data The initial data for the image resource: uploaded, then released (GetMip / GetSlice return
+		 * nullptr afterwards; the texels live on the GPU only).
 		 */
 		ImageResource(const ImgResourceSpec &spec, std::vector<Slice> data);
 

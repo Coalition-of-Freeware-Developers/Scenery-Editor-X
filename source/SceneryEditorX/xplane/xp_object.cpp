@@ -54,6 +54,8 @@ namespace SceneryEditorX::XPlane
 	 */
 	struct ObjectLoadJob
 	{
+		~ObjectLoadJob();
+
 		struct Batch
 		{
 			ObjectBatch batch;						// subMesh and material are filled in on the main thread
@@ -84,6 +86,7 @@ namespace SceneryEditorX::XPlane
 		float boundsMax[3] = { 0.0f, 0.0f, 0.0f };
 		std::string error;
 		float cpuMilliseconds = 0.0f;
+		uint64_t decodedBytes = 0;					// What the worker left for the upload; counts towards s_DecodedBytes while the job lives
 
 		// Main thread: how far the upload got
 		uint32_t step = 0;
@@ -124,6 +127,13 @@ namespace SceneryEditorX::XPlane
 		 */
 		constexpr uint32_t MAX_CONCURRENT_LOADS = 4;
 
+		/*
+		 * Decoded loads waiting for their upload. Uploads are the slower half (a few steps a frame), so the workers used
+		 * to decode far ahead and the waiting mip chains and vertices piled up (KDEN: past 30 GB before anything was on
+		 * screen). New loads start only while less than this waits; one always may, so a load bigger than this still goes.
+		 */
+		constexpr uint64_t MAX_DECODED_BYTES = 512ull << 20;
+
 		/* @brief Upload steps of a decoded load: the textures one by one, then geometry and materials. */
 		enum UploadStep : uint32_t
 		{
@@ -140,6 +150,7 @@ namespace SceneryEditorX::XPlane
 		std::vector<Ref<ObjectAsset>> s_Pending;					// In flight, in request order
 		std::deque<std::shared_ptr<ObjectLoadJob>> s_Waiting;		// Requested, not handed to the thread pool yet
 		std::vector<std::shared_ptr<ObjectLoadJob>> s_Running;		// Handed to the thread pool, not decoded yet
+		std::atomic<uint64_t> s_DecodedBytes = 0;					// decodedBytes of the jobs alive (workers add, any thread drops)
 		uint32_t s_LoadsRequested = 0;								// Since s_Pending was last empty
 		uint32_t s_LoadsFinished = 0;
 		uint64_t s_UpdateFrame = 0;									// Counts ObjectAsset::Update() calls (upload statistics)
@@ -475,6 +486,12 @@ namespace SceneryEditorX::XPlane
 				job.batches.push_back(std::move(out));
 			}
 
+			// The batches and lights hold what the vertex tables had; the asset would keep the tables for good (KDEN: ~1 GB)
+			std::vector<Obj8Vertex>().swap(data.vertices);
+			std::vector<uint32_t>().swap(data.indices);
+			std::vector<Obj8Vertex>().swap(data.lineVertices);
+			std::vector<Obj8Vertex>().swap(data.lightVertices);
+
 			if (job.batches.empty() && job.lights.empty())
 			{
 				job.error = "The object has no triangles or lights to draw";
@@ -492,6 +509,26 @@ namespace SceneryEditorX::XPlane
 				firstVertex = false;
 			}
 			return true;
+		}
+
+		uint64_t GetDecodedBytes(const DecodedTexture &texture)
+		{
+			uint64_t bytes = 0;
+			for (const MipBytes &mip : texture.mips)
+				bytes += mip.bytes.size();
+			return bytes;
+		}
+
+		/* @brief Memory a decoded load holds until its upload: mip chains and vertices (the OBJ's own tables are gone). */
+		uint64_t GetDecodedBytes(const ObjectLoadJob &job)
+		{
+			uint64_t bytes = GetDecodedBytes(job.albedo) + GetDecodedBytes(job.normal) + GetDecodedBytes(job.lit) + GetDecodedBytes(job.drapedAlbedo) +
+							 GetDecodedBytes(job.drapedNormal) + GetDecodedBytes(job.weather) + GetDecodedBytes(job.materialMap);
+			for (const auto &[decal, texture] : job.decals)
+				bytes += GetDecodedBytes(texture);
+			for (const ObjectLoadJob::Batch &batch : job.batches)
+				bytes += batch.vertices.size() * sizeof(Vertex_PosTexNorTan) + batch.indices.size() * sizeof(uint32_t);
+			return bytes;
 		}
 
 		/* @brief Thread pool task: runs the CPU half of a load and hands it to the main thread through the job's state. */
@@ -517,10 +554,18 @@ namespace SceneryEditorX::XPlane
 			}
 
 			job.cpuMilliseconds = MillisecondsSince(start);
+			if (built)
+			{
+				job.decodedBytes = GetDecodedBytes(job);
+				s_DecodedBytes.fetch_add(job.decodedBytes, std::memory_order_relaxed);
+			}
 			job.state.store(built ? ObjectLoadState::Uploading : ObjectLoadState::Failed, std::memory_order_release);
 		}
 
-		/* @brief Hands waiting loads to the thread pool while fewer than MAX_CONCURRENT_LOADS are decoding. */
+		/*
+		 * @brief Hands waiting loads to the thread pool while fewer than MAX_CONCURRENT_LOADS are decoding and less than
+		 * MAX_DECODED_BYTES waits for its upload.
+		 */
 		void SubmitWaitingLoads()
 		{
 			std::erase_if(s_Running, [](const std::shared_ptr<ObjectLoadJob> &job)
@@ -532,7 +577,7 @@ namespace SceneryEditorX::XPlane
 			// Leave a core for the main thread on small machines.
 			const uint32_t threads = ThreadPool::GetThreadCount();
 			const uint32_t limit = std::clamp(threads > 1 ? threads - 1 : 1u, 1u, MAX_CONCURRENT_LOADS);
-			while (!s_Waiting.empty() && s_Running.size() < limit)
+			while (!s_Waiting.empty() && s_Running.size() < limit && s_DecodedBytes.load(std::memory_order_relaxed) < MAX_DECODED_BYTES)
 			{
 				std::shared_ptr<ObjectLoadJob> job = std::move(s_Waiting.front());
 				s_Waiting.pop_front();
@@ -544,11 +589,23 @@ namespace SceneryEditorX::XPlane
 					continue;
 				}
 
-				// The task keeps the job alive: an asset dropped meanwhile (ClearCache) just discards the result.
-				job->done = ThreadPool::Submit([job] { RunLoadJob(*job); });
+				// The task holds the job weakly: the job keeps the task's future, whose state keeps the task, so a strong
+				// reference here made a cycle and no job (nor what its upload left in it) was ever freed. A worker keeps the
+				// job alive while it decodes; an asset dropped meanwhile (ClearCache) skips the load or discards the result.
+				job->done = ThreadPool::Submit([weak = std::weak_ptr<ObjectLoadJob>(job)]
+				{
+					if (const std::shared_ptr<ObjectLoadJob> held = weak.lock())
+						RunLoadJob(*held);
+				});
 				s_Running.push_back(std::move(job));
 			}
 		}
+	}
+
+	// The job goes once its upload finished, failed or was dropped (ClearCache), whichever thread lets go of it last.
+	ObjectLoadJob::~ObjectLoadJob()
+	{
+		s_DecodedBytes.fetch_sub(decodedBytes, std::memory_order_relaxed);
 	}
 
 	// -------------------------------------------------------
@@ -920,9 +977,13 @@ namespace SceneryEditorX::XPlane
 		}
 		job.batches.clear();
 
-		// Appends the geometry to the renderer's global vertex / index buffers (uploaded at the start of the next frame).
+		// Appends the geometry to the renderer's global vertex / index buffers (uploaded at the start of the next frame),
+		// which keep it from there: placements read the LODs' bounds, nothing reads the mesh's own copy (KDEN: ~2 GB).
 		if (m_Mesh)
+		{
 			m_Mesh->CreateGpuBuffers();
+			m_Mesh->ReleaseCpuGeometry();
+		}
 
 		m_State = ObjectLoadState::Ready;
 	}

@@ -106,6 +106,25 @@ namespace SceneryEditorX
 		static uint64_t GetStructureVersion();
 		static void MarkStructureChanged();
 
+		/**
+		 * @brief Registers a reader of the render state that changes without a structure change: entities switched on or
+		 * off (Entity::SetActive) and renderable flags (Renderable::SetFlag). A per-frame pass that keeps its own copy of
+		 * that state (GpuScene, the renderer's CPU draw list) then reads only what changed, not every entity each frame.
+		 * @return The reader's id for TakeRenderStateChanges(). Its first take asks for a full read.
+		 */
+		static uint32_t AddRenderStateReader();
+
+		/**
+		 * @brief The entities whose render state changed since the reader's last take, in order. An entity can be listed
+		 * more than once, or be destroyed since: compare with what you kept and skip handles that are no longer live.
+		 * @return False (and no changes) when the reader has to re-read every entity instead: its first take, after
+		 * Shutdown(), or when it fell so far behind that its changes were dropped.
+		 */
+		static bool TakeRenderStateChanges(uint32_t reader, std::vector<entt::entity> &changes);
+
+		/* @brief Queues an entity for every reader (Entity::SetActive, Renderable::SetFlag call it on a change). Any thread. */
+		static void MarkRenderStateChanged(entt::entity entity);
+
 		/* @brief Bumped only when an entity is destroyed: caches of Entity pointers revalidate when it moves. */
 		static uint64_t GetDestroyVersion();
 

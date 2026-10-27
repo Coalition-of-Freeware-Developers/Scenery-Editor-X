@@ -108,6 +108,7 @@ namespace SceneryEditorX
 		constexpr uint32_t ShadowCommand(const uint32_t lateOffset, const uint32_t cascade) { return 2u * lateOffset + 1u + cascade * lateOffset; }
 
 		constexpr uint32_t NO_BATCH = UINT32_MAX;
+		constexpr uint32_t NO_INDEX = UINT32_MAX;
 		/* @brief Frames an instance keeps being checked every frame after its transform last changed. */
 		constexpr uint32_t DYNAMIC_FRAMES = 240;
 		/* @brief Share of the static instances whose transform is re-read each frame (they all are within this many frames). */
@@ -168,6 +169,8 @@ namespace SceneryEditorX
 			uint32_t batch = NO_BATCH;
 			uint64_t seenGeneration = 0;
 			uint32_t dynamicFrames = 0;	// > 0: checked every frame (counts down while the transform holds still)
+			uint32_t dynamicIndex = NO_INDEX; // its place in State::dynamicSlots
+			uint64_t checkedPass = 0;	// the ValidateInstances() pass that last re-read its transform
 			bool live = false;
 			bool enabled = false;
 			bool castsShadow = false;	// RenderableFlags::CastsShadows as last written
@@ -195,8 +198,17 @@ namespace SceneryEditorX
 			std::vector<uint32_t> freeSlots;
 			std::unordered_map<const Renderable *, uint32_t> slotOf;
 			uint32_t liveProxies = 0;
+			uint32_t enabledProxies = 0;				// Live proxies of active entities
 			uint64_t syncedStructureVersion = 0;
+			uint64_t syncedDrawPathVersion = 0;			// MaterialAsset::GetDrawPathVersion() at the last sync
 			uint64_t generation = 0;
+
+			// Active flags and cast-shadow switches arrive as Scene render-state changes; transforms are re-read for the
+			// proxies that moved recently (dynamicSlots, which may still list some that went inactive) and a round-robin window
+			uint32_t renderStateReader = NO_INDEX;		// Scene::AddRenderStateReader(), on the first validation
+			std::vector<entt::entity> renderStateChanges;
+			std::vector<uint32_t> dynamicSlots;			// Proxies with dynamicFrames > 0 (Proxy::dynamicIndex)
+			uint64_t validatePass = 0;
 
 			std::vector<Batch> batches;
 			std::unordered_map<BatchKey, uint32_t, BatchKeyHash> batchOf;
@@ -270,6 +282,29 @@ namespace SceneryEditorX
 			key.lod0 = { renderable.GetIndexCount(0), renderable.GetIndexOffset(0), static_cast<int32_t>(renderable.GetVertexOffset(0)) };
 			key.material = material;
 			return key.lod0.indexCount > 0;
+		}
+
+		/* @brief Puts a proxy on the per-frame transform check (it stays there while dynamicFrames > 0 and it's enabled). */
+		void AddDynamic(State &s, const uint32_t slot)
+		{
+			Proxy &proxy = s.proxies[slot];
+			if (proxy.dynamicIndex == NO_INDEX)
+			{
+				proxy.dynamicIndex = static_cast<uint32_t>(s.dynamicSlots.size());
+				s.dynamicSlots.push_back(slot);
+			}
+		}
+
+		void DropDynamic(State &s, const uint32_t slot)
+		{
+			Proxy &proxy = s.proxies[slot];
+			if (proxy.dynamicIndex == NO_INDEX)
+				return;
+			const uint32_t moved = s.dynamicSlots.back();
+			s.dynamicSlots[proxy.dynamicIndex] = moved;
+			s.proxies[moved].dynamicIndex = proxy.dynamicIndex;
+			s.dynamicSlots.pop_back();
+			proxy.dynamicIndex = NO_INDEX;
 		}
 
 		void MarkDirty(State &s, const uint32_t slot)
@@ -393,6 +428,7 @@ namespace SceneryEditorX
 
 			s.slotOf[&renderable] = slot;
 			++s.liveProxies;
+			s.enabledProxies += proxy.enabled ? 1u : 0u;
 			WriteInstance(s, slot);
 			return slot;
 		}
@@ -403,6 +439,8 @@ namespace SceneryEditorX
 			if (!proxy.live)
 				return;
 
+			DropDynamic(s, slot);
+			s.enabledProxies -= proxy.enabled ? 1u : 0u;
 			ReleaseBatch(s, proxy.batch);
 			if (const auto it = s.slotOf.find(proxy.renderable); it != s.slotOf.end() && it->second == slot)
 				s.slotOf.erase(it);
@@ -499,7 +537,10 @@ namespace SceneryEditorX
 					if (const Renderable *renderable = stored->GetComponent<Renderable>())
 					{
 						if (const auto it = s.slotOf.find(renderable); it != s.slotOf.end())
+						{
 							s.proxies[it->second].dynamicFrames = DYNAMIC_FRAMES;
+							AddDynamic(s, it->second);
+						}
 					}
 				}
 
@@ -515,62 +556,118 @@ namespace SceneryEditorX
 		}
 
 		/**
-		 * @brief Active flags of every instance, and transforms of the enabled ones that moved recently plus a
-		 * round-robin share of the rest (an animated object is noticed within ROUND_ROBIN_FRAMES and then followed).
+		 * @brief Re-reads an enabled proxy's world matrix, once per pass: one that moved is checked every frame for the
+		 * next DYNAMIC_FRAMES.
+		 */
+		void CheckTransform(State &s, const uint32_t slot, uint32_t &validated)
+		{
+			Proxy &proxy = s.proxies[slot];
+			if (proxy.checkedPass == s.validatePass)
+				return;
+			proxy.checkedPass = s.validatePass;
+			++validated;
+
+			const xMath::Matrix world = proxy.entity->GetMatrix();
+			if (std::memcmp(&world, &proxy.world, sizeof(world)) != 0)
+			{
+				proxy.world = world;
+				proxy.dynamicFrames = DYNAMIC_FRAMES;
+				AddDynamic(s, slot);
+				WriteInstance(s, slot);
+			}
+			else if (proxy.dynamicFrames > 0)
+			{
+				--proxy.dynamicFrames;
+			}
+		}
+
+		/* @brief Takes a live proxy's active flag and cast-shadows switch from its entity; one just enabled re-reads its transform. */
+		void ReadRenderState(State &s, const uint32_t slot, uint32_t &validated)
+		{
+			Proxy &proxy = s.proxies[slot];
+			const bool enabled = proxy.entity->GetActive();
+			const bool castsShadow = proxy.renderable->HasFlag(RenderableFlags::CastsShadows);
+			if (enabled == proxy.enabled && castsShadow == proxy.castsShadow)
+				return;
+
+			const bool justEnabled = enabled && !proxy.enabled;
+			s.enabledProxies = s.enabledProxies + (enabled ? 1u : 0u) - (proxy.enabled ? 1u : 0u);
+			proxy.enabled = enabled;
+			proxy.castsShadow = castsShadow;
+			WriteInstance(s, slot);
+			if (justEnabled)
+			{
+				CheckTransform(s, slot, validated);
+				if (proxy.dynamicFrames > 0)
+					AddDynamic(s, slot); // dropped from the list while it was off
+			}
+		}
+
+		/**
+		 * @brief Active flags and cast-shadow switches that changed (Scene's render-state changes), and transforms of the
+		 * enabled instances that moved recently plus a round-robin share of the rest (an animated object is noticed
+		 * within ROUND_ROBIN_FRAMES and then followed). Costs what changed, not every instance.
 		 */
 		void ValidateInstances(State &s)
 		{
 			SEDX_PERF_SCOPE("Render: GpuScene validate");
-			const uint32_t count = static_cast<uint32_t>(s.proxies.size());
-			if (count == 0)
-				return;
+			if (s.renderStateReader == NO_INDEX)
+				s.renderStateReader = Scene::AddRenderStateReader();
 
-			const uint32_t budget = std::max(256u, count / ROUND_ROBIN_FRAMES + 1);
-			const uint32_t windowStart = s.roundRobinCursor % count;
-			s.roundRobinCursor = (windowStart + budget) % count;
-
+			++s.validatePass;
 			uint32_t validated = 0;
-			uint32_t enabledCount = 0;
-			for (uint32_t slot = 0; slot < count; ++slot)
+			const uint32_t count = static_cast<uint32_t>(s.proxies.size());
+
+			// Active flags and the PROPERTIES panel's cast-shadows switch (neither changes the structure version)
+			if (Scene::TakeRenderStateChanges(s.renderStateReader, s.renderStateChanges))
 			{
-				Proxy &proxy = s.proxies[slot];
-				if (!proxy.live)
-					continue;
-
-				const bool enabled = proxy.entity->GetActive();
-				enabledCount += enabled ? 1u : 0u;
-				const bool justEnabled = enabled && !proxy.enabled;
-				const bool inWindow = (slot + count - windowStart) % count < budget;
-				bool changed = enabled != proxy.enabled;
-				proxy.enabled = enabled;
-
-				// the PROPERTIES panel's cast-shadows switch changes no structure version: noticed here
-				const bool castsShadow = proxy.renderable->HasFlag(RenderableFlags::CastsShadows);
-				changed |= castsShadow != proxy.castsShadow;
-				proxy.castsShadow = castsShadow;
-
-				if (enabled && (justEnabled || inWindow || proxy.dynamicFrames > 0))
+				for (const entt::entity handle : s.renderStateChanges)
 				{
-					++validated;
-					const xMath::Matrix world = proxy.entity->GetMatrix();
-					if (std::memcmp(&world, &proxy.world, sizeof(world)) != 0)
-					{
-						proxy.world = world;
-						proxy.dynamicFrames = DYNAMIC_FRAMES;
-						changed = true;
-					}
-					else if (proxy.dynamicFrames > 0)
-					{
-						--proxy.dynamicFrames;
-					}
+					const Entity *stored = Scene::GetStoredEntity(handle);
+					const Renderable *renderable = stored ? stored->GetComponent<Renderable>() : nullptr;
+					if (!renderable)
+						continue;
+					if (const auto it = s.slotOf.find(renderable); it != s.slotOf.end() && s.proxies[it->second].live && s.proxies[it->second].entity == stored)
+						ReadRenderState(s, it->second, validated);
 				}
+			}
+			else
+			{
+				// first pass, or changes were missed
+				for (uint32_t slot = 0; slot < count; ++slot)
+				{
+					if (s.proxies[slot].live)
+						ReadRenderState(s, slot, validated);
+				}
+			}
 
-				if (changed)
-					WriteInstance(s, slot);
+			// Transforms: the round-robin window over every slot, then whatever moved recently
+			if (count > 0)
+			{
+				const uint32_t budget = std::max(256u, count / ROUND_ROBIN_FRAMES + 1);
+				const uint32_t windowStart = s.roundRobinCursor % count;
+				s.roundRobinCursor = (windowStart + budget) % count;
+				for (uint32_t i = 0; i < std::min(budget, count); ++i)
+				{
+					const uint32_t slot = (windowStart + i) % count;
+					if (s.proxies[slot].live && s.proxies[slot].enabled)
+						CheckTransform(s, slot, validated);
+				}
+			}
+			for (size_t i = 0; i < s.dynamicSlots.size();)
+			{
+				const uint32_t slot = s.dynamicSlots[i];
+				const Proxy &proxy = s.proxies[slot];
+				if (proxy.enabled && proxy.dynamicFrames > 0)
+					CheckTransform(s, slot, validated);
+				if (!proxy.enabled || proxy.dynamicFrames == 0)
+					DropDynamic(s, slot); // the last entry moves into i
+				else
+					++i;
 			}
 
 			s.stats.validatedTransforms = validated;
-			s.stats.enabledInstances = enabledCount;
+			s.stats.enabledInstances = s.enabledProxies;
 		}
 
 		/* @brief Command ranges per bucket, visible-list regions per command, the batch table and the command templates. */
@@ -825,6 +922,12 @@ namespace SceneryEditorX
 		return s.drawable && s.enabled && renderable && MakeKey(*renderable, key);
 	}
 
+	bool GpuScene::IsDrawing()
+	{
+		const State &s = S();
+		return s.drawable && s.enabled;
+	}
+
 	void GpuScene::OnMaterialsChanged()
 	{
 		// Buckets (cull mode, alpha test) and the bindless material slots are re-read in Update(), after the sync:
@@ -890,6 +993,8 @@ namespace SceneryEditorX
 					RemoveProxy(s, slot);
 				s.syncedStructureVersion = 0;
 			}
+			if (s.renderStateReader != NO_INDEX)
+				Scene::TakeRenderStateChanges(s.renderStateReader, s.renderStateChanges); // a restart reads every entity anyway
 			return;
 		}
 
@@ -906,10 +1011,15 @@ namespace SceneryEditorX
 			s.layoutDirty = true;
 		}
 
-		if (const uint64_t version = Scene::GetStructureVersion(); version != s.syncedStructureVersion)
+		// a material that started or stopped blending, tessellating, ... moves its renderables in or out (and its cull
+		// mode picks the bucket)
+		const uint64_t drawPaths = MaterialAsset::GetDrawPathVersion();
+		if (const uint64_t version = Scene::GetStructureVersion(); version != s.syncedStructureVersion || drawPaths != s.syncedDrawPathVersion)
 		{
 			SyncStructure(s);
+			s.materialsDirty |= drawPaths != s.syncedDrawPathVersion;
 			s.syncedStructureVersion = version;
+			s.syncedDrawPathVersion = drawPaths;
 		}
 		if (s.materialsDirty)
 		{
@@ -1169,12 +1279,15 @@ namespace SceneryEditorX
 		s.dirtySlots.clear();
 		s.gpuBatches.clear();
 		s.commandTemplates.clear();
+		s.dynamicSlots.clear();
 		s.buckets = {};
 		s.liveProxies = 0;
+		s.enabledProxies = 0;
 		s.lateOffset = 0;
 		s.visibleSlots = 0;
 		s.instanceCapacity = s.batchCapacity = s.commandCapacity = s.visibleCapacity = s.visibilityCapacity = 0;
 		s.syncedStructureVersion = 0;
+		s.syncedDrawPathVersion = 0;
 		s.layoutDirty = true;
 		s.hasDraws = false;
 		s.occlusionActive = false;
