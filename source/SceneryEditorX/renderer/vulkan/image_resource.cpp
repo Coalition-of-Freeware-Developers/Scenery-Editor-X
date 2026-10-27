@@ -352,8 +352,10 @@ namespace SceneryEditorX
 
 		CreateViews(viewCI);
 
-		// copy the initial mips into the image and leave it ready for sampling
+		// copy the initial mips into the image and leave it ready for sampling, then drop the CPU copy: nothing reads it
+		// back, and keeping it held every loaded texture twice (KDEN: GBs of decoded PNGs in system memory)
 		UploadSlices();
+		std::vector<Slice>().swap(m_Slices);
 
 		// First-use policy: keep newly-created images in UNDEFINED. We transition at the
 		// first real use site (UAV write -> GENERAL, SRV read -> SHADER_READ_ONLY_OPTIMAL,
