@@ -175,6 +175,7 @@ public struct MaterialParameters
     public bool has_snow_albedo_luma() { return (flags & (1 << 24)) != 0; }
     public uint xp_lod_switch() { return (flags >> 25) & 3u; }	// forests with 3D trees: 1 billboards (far side), 2 meshes (near side)
     public uint xp_texture_map() { return (flags >> 27) & 3u; }	// xp_material.slang xp_texture_map_*
+    public bool has_normal_companion() { return (flags & (1u << 29)) != 0; }	// BC5 normal map: blue and alpha in xp_slot_normal_companion
 };
 
 // struct which forms the bindless light parameters array
@@ -426,7 +427,7 @@ public struct EnvironmentData
     public float4 weather_ice;       // 1 / noise repeat (1/m), threshold edge width, decal 1 weight, decal 2 weight
     public float4 weather_ice_scale; // 1 / repeat (1/m) of the albedo, normal and decal textures
     public float4 weather_snow_luma; // snow receptivity without a WEATHER mask: weights for the linear albedo's r, g, b, a
-    public float4 weather_textures;  // bindless material slot of the weather art, art loaded (0 / 1)
+    public float4 weather_textures;  // bindless material slot of the weather art, art loaded (0 / 1), snow / ice normal map's blue and alpha in normal slot 2 / 3 (0 / 1)
     public float4 padding_environment[7];
 };
 public [[vk::binding(201)]] cbuffer BufferEnvironment : register(b201) { public EnvironmentData buffer_environment; };

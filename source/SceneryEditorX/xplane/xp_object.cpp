@@ -516,6 +516,8 @@ namespace SceneryEditorX::XPlane
 			uint64_t bytes = 0;
 			for (const MipBytes &mip : texture.mips)
 				bytes += mip.bytes.size();
+			for (const MipBytes &mip : texture.companionMips)
+				bytes += mip.bytes.size();
 			return bytes;
 		}
 
@@ -1079,6 +1081,7 @@ namespace SceneryEditorX::XPlane
 
 		material->SetTexture(MaterialTextureType::Color, albedo);
 		material->SetTexture(MaterialTextureType::Normal, normal);
+		material->SetTexture(MaterialTextureType::Normal, TextureLoader::GetNormalCompanion(normal).Get(), NORMAL_COMPANION_SLOT);	// a compressed PNG's blue and alpha
 		material->SetTexture(MaterialTextureType::Roughness, materialMap);	// xp_material.slang xp_slot_material_map
 		material->SetTexture(MaterialTextureType::Emission, lit);
 

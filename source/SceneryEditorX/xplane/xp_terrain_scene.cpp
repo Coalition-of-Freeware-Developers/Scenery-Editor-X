@@ -470,7 +470,10 @@ namespace SceneryEditorX::XPlane
 			// Normal map, gloss and F0 by X-Plane 12's rules (xp_material.slang)
 			ImageResource *normal = texture(ter.textureNormal, TextureUsage::Normal);
 			if (normal)
+			{
 				material->SetTexture(MaterialTextureType::Normal, normal, 0);
+				material->SetTexture(MaterialTextureType::Normal, TextureLoader::GetNormalCompanion(normal).Get(), NORMAL_COMPANION_SLOT);
+			}
 			material->SetProperty(MaterialProperty::XpTerrainNormalRatio, ter.normalRatio);
 			material->SetProperty(MaterialProperty::XpNormalMode, normal ? (ter.normalMetalness ? 2.0f : 1.0f) : 0.0f);
 			material->SetProperty(MaterialProperty::XpSpecularGain, normal ? (ter.specular >= 0.0f ? ter.specular : 1.0f) : 0.0f);
@@ -1113,7 +1116,7 @@ namespace SceneryEditorX::XPlane
 			TileWater &water = tileWater[entry.tile];
 			water.map = WaterMapPath(entry.tile->lat, entry.tile->lon);
 			if (!water.map.empty())
-				request(water.map.parent_path(), water.map.filename().string(), TextureUsage::Albedo);
+				request(water.map.parent_path(), water.map.filename().string(), TextureUsage::DataAlbedo);
 			PolygonDecal decal;
 			fs::path base;
 			if (FindSeaFloorDecal(entry.tile->lat, entry.tile->lon, decal, base))
@@ -1227,7 +1230,7 @@ namespace SceneryEditorX::XPlane
 					if (it == state.materials.end())
 					{
 						const TileWater &water = tileWater[entry.tile];
-						it = state.materials.emplace(key, MakeWaterMaterial(state, entry.tile->lat, entry.tile->lon, loadedTexture(water.map, TextureUsage::Albedo),
+						it = state.materials.emplace(key, MakeWaterMaterial(state, entry.tile->lat, entry.tile->lon, loadedTexture(water.map, TextureUsage::DataAlbedo),
 							loadedTexture(water.floorDecal, TextureUsage::Data), water.floorStrength)).first;
 					}
 					item.material = it->second;
