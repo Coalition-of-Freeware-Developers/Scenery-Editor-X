@@ -1047,8 +1047,15 @@ namespace SceneryEditorX::XPlane
 				for (const Station &station : strip)
 				{
 					const double v = textureV(station.distance);
+					// u grows from the right edge (s1) to the left (s2): the tangent points left of travel
+					const double miterLength = std::max(1e-9, std::hypot(station.miter.x, station.miter.z));
+					const float tx = static_cast<float>(-station.miter.x / miterLength), tz = static_cast<float>(-station.miter.z / miterLength);
 					AddVertex(mesh, station.position.x + station.miter.x * right, y, station.position.z + station.miter.z * right, sRight, v);
+					mesh.vertices.back().tx = tx;
+					mesh.vertices.back().tz = tz;
 					AddVertex(mesh, station.position.x + station.miter.x * left, y, station.position.z + station.miter.z * left, sLeft, v);
+					mesh.vertices.back().tx = tx;
+					mesh.vertices.back().tz = tz;
 				}
 				for (size_t i = 0; i + 1 < strip.size(); ++i)
 				{
@@ -1205,7 +1212,38 @@ namespace SceneryEditorX::XPlane
 			}
 		}
 
-		// Decals: the .pol's own rows, then its DECAL_LIB library's (paths relative to the file that names them)
+		AddDecals(mesh, asset.decals, asset.decal, assetFile, out);
+	}
+
+	void OverlayBuilder::ApplyLineShading(OverlayMesh &mesh, const LineAsset &asset, const fs::path &assetFile, OverlayBuild &out)
+	{
+		// X-Plane 12 blends a line's alpha over what lies under it: its grunge, dirt, crack and soft-edge lines are mostly
+		// 10-40% alpha, and an alpha test at 0.5 dropped all but their crisp cracks
+		mesh.cutout = asset.noBlendCutoff >= 0.0f;
+		mesh.cutoff = mesh.cutout ? asset.noBlendCutoff : 0.5f;
+		mesh.blended = !asset.noAlpha && !mesh.cutout;
+
+		// AppendLinePaint's UVs: u is the texture's width (SCALE s meters), v one repeat along the line (SCALE t meters)
+		mesh.metersPerU = asset.scaleS;
+		mesh.metersPerV = asset.scaleT > 0.001f ? asset.scaleT : 1.0f;
+		if (!asset.textureNormal.empty())
+			mesh.textureNormal = TexturePath(assetFile, asset.textureNormal);
+		mesh.normalRatio = asset.normalRatio;
+		mesh.normalMetalness = asset.normalMetalness;
+		mesh.specular = asset.specular;
+		mesh.superRoughness = asset.superRoughness;
+		if (!asset.weather.empty())
+			mesh.weatherMask = TexturePath(assetFile, asset.weather);
+		mesh.weatherTransparent = asset.weatherTransparent;
+		mesh.hasSnowAlbedoLuma = asset.hasSnowAlbedoLuma;
+		mesh.snowAlbedoLuma[0] = asset.snowAlbedoLuma[0];
+		mesh.snowAlbedoLuma[1] = asset.snowAlbedoLuma[1];
+		AddDecals(mesh, asset.decals, asset.decal, assetFile, out);
+	}
+
+	void OverlayBuilder::AddDecals(OverlayMesh &mesh, const std::vector<PolygonDecal> &decals, const std::string &library, const fs::path &assetFile, OverlayBuild &out)
+	{
+		// The asset's own rows, then its DECAL_LIB library's (paths relative to the file that names them)
 		const auto add = [&mesh](const PolygonDecal &decal, const fs::path &file)
 		{
 			OverlayDecal resolved;
@@ -1219,14 +1257,14 @@ namespace SceneryEditorX::XPlane
 			if (resolved.strength > 0.0f)
 				mesh.decals.push_back(std::move(resolved));
 		};
-		for (const PolygonDecal &decal : asset.decals)
+		for (const PolygonDecal &decal : decals)
 			add(decal, assetFile);
-		if (!asset.decal.empty())
+		if (!library.empty())
 		{
 			fs::path libraryFile;
-			if (const DecalLibraryAsset *library = GetDecalLibrary(asset.decal, &libraryFile, out))
+			if (const DecalLibraryAsset *decalLibrary = GetDecalLibrary(library, &libraryFile, out))
 			{
-				for (const PolygonDecal &decal : library->decals)
+				for (const PolygonDecal &decal : decalLibrary->decals)
 					add(decal, libraryFile);
 			}
 		}
@@ -1717,9 +1755,8 @@ namespace SceneryEditorX::XPlane
 		mesh.name = BaseName(resource);
 		mesh.placement = index;
 		mesh.texture = TexturePath(file, asset->texture);
-		mesh.cutout = true;
-		mesh.cutoff = 0.5f;
 		AppendLinePaint(mesh, *asset, path, closed, Height(options, asset->layerGroup, asset->layerOffset));
+		ApplyLineShading(mesh, *asset, file, out);
 		if (!mesh.indices.empty())
 			out.meshes.push_back(std::move(mesh));
 	}
@@ -2753,11 +2790,20 @@ namespace SceneryEditorX::XPlane
 		return "lib/airport/lines/" + std::to_string(lineType) + "_";
 	}
 
-	std::string OverlayBuilder::GetLightStringLibraryPath(const int lightType)
+	std::string OverlayBuilder::GetLightStringLibraryPath(const int lightType, const bool fixtures)
 	{
 		if (lightType < 101 || lightType > 108)
 			return {};
-		return "lib/airport/lights/fast/" + std::to_string(lightType) + "_";
+		return std::string(fixtures ? "lib/airport/lights/slow/" : "lib/airport/lights/fast/") + std::to_string(lightType) + "_";
+	}
+
+	std::string OverlayBuilder::ResolveLightStringLibraryPath(const int lightType)
+	{
+		// The fixtures where the library has them: the light-only set draws nothing by day
+		std::string library = GetLightStringLibraryPath(lightType, true);
+		if (!library.empty() && !m_Strings.contains(library) && ResolveFile(library).empty())
+			library = GetLightStringLibraryPath(lightType, false);
+		return library;
 	}
 
 	double OverlayBuilder::GetLightStringSpacing(const int lightType)
@@ -2769,6 +2815,288 @@ namespace SceneryEditorX::XPlane
 			case 103: case 104:						return 1.5;		// Hold short bars
 			default:								return 20.0;
 		}
+	}
+
+	// -------------------------------------------------------
+	// Runway lights and rubber, which X-Plane makes from the apt.dat runway row itself
+
+	namespace
+	{
+		constexpr double FEET = 0.3048;
+		constexpr double EDGE_LIGHT_SPACING = 200.0 * FEET;
+		constexpr double EDGE_LIGHT_OUTSIDE = 0.6;					// Elevated edge lights stand this far off the pavement
+		constexpr double CAUTION_ZONE = 2000.0 * FEET;				// Yellow edge lights toward traffic (instrument runways)
+		constexpr double CENTERLINE_SPACING = 50.0 * FEET;
+		constexpr double CENTERLINE_OFFSET = 2.0 * FEET;			// Right of the centerline, travelling from end 0 (X-Plane's side at KORD 10L/28R)
+		constexpr double CENTERLINE_ALTERNATE = 3000.0 * FEET;		// Remaining distance where red / white starts
+		constexpr double CENTERLINE_RED = 1000.0 * FEET;			// ... and where it turns all red
+		constexpr double THRESHOLD_LIGHT_SPACING = 10.0 * FEET;
+		constexpr double TDZ_SPACING = 100.0 * FEET;
+		constexpr double TDZ_LENGTH = 3000.0 * FEET;
+		constexpr double TDZ_INNER = 36.0 * FEET;					// Centerline to a barrette's inner light
+		constexpr double TDZ_LIGHT_SPACING = 5.0 * FEET;
+		constexpr double REIL_OUTSIDE = 40.0 * FEET;				// Runway edge to a REIL strobe
+
+		constexpr const char *RUNWAY_RUBBER = "lib/airport/default_runways/rubber.pol";
+		constexpr double RUBBER_MIN_RUNWAY = 800.0;					// Shorter runways get none
+		// Where the rubber starts past the threshold: 5% of the landing length, at least near the threshold bars' far end
+		// (X-Plane keeps them clean: streaks from ~45 m on KGON's 1219 m runway 5, ~200 m on KORD's 3962 m 28R)
+		constexpr double RUBBER_START = 0.05;
+		constexpr double RUBBER_START_MIN = 40.0;
+		constexpr double RUBBER_START_MAX = 300.0;
+		constexpr double RUBBER_TILE = 30.0;						// One texture repeat along the runway (SCALE t)
+		constexpr double RUBBER_COLUMN = 7.5;						// One of the texture's four columns (SCALE s / 4)
+		constexpr double RUBBER_WIDTH = 0.6;						// Of the runway's width
+		constexpr double RUBBER_ZONE = 0.4;							// Of the landing length, at most RUBBER_MAX_LENGTH
+		constexpr double RUBBER_MAX_LENGTH = 600.0;
+
+		/* @brief The color a runway light shows toward one direction of travel: 'w' white, 'y' yellow, 'r' red. */
+		char EdgeLightColor(const double along, const double length, const double displaced, const bool instrument)
+		{
+			if (displaced > 0.0 && along < displaced)
+				return 'r';	// Before the displaced threshold of the end this traffic lands on
+			const double remaining = length - along;
+			return instrument && remaining < std::min(CAUTION_ZONE, length * 0.5) ? 'y' : 'w';
+		}
+
+		char CenterlineLightColor(const double remaining, const int light)
+		{
+			if (remaining <= CENTERLINE_RED)
+				return 'r';
+			if (remaining <= CENTERLINE_ALTERNATE)
+				return light % 2 == 0 ? 'r' : 'w';
+			return 'w';
+		}
+
+		/**
+		 * @brief The library fixture showing color a toward traffic along the runway (end 0 to end 1) and b toward the
+		 * other way: X-Plane's two-color fixtures are named for what they show along their heading first ("yw": yellow,
+		 * white behind), so a pair the library lacks is the reverse pair turned around.
+		 */
+		std::string PickTwoColorFixture(const char a, const char b, const std::vector<std::string> &pairs, bool &reversed)
+		{
+			const std::string forward{ a, b };
+			const std::string backward{ b, a };
+			reversed = false;
+			if (std::ranges::find(pairs, forward) != pairs.end())
+				return forward;
+			if (std::ranges::find(pairs, backward) != pairs.end())
+			{
+				reversed = true;
+				return backward;
+			}
+			return pairs.empty() ? std::string() : pairs.front();
+		}
+	}
+
+	void OverlayBuilder::PlaceRunwayLights(const AptRunway &runway, const uint32_t index, const float insetHeight, OverlayBuild &out)
+	{
+		const Point2 end0 = m_Projection.ToLocal(runway.ends[0].latitude, runway.ends[0].longitude);
+		const Point2 end1 = m_Projection.ToLocal(runway.ends[1].latitude, runway.ends[1].longitude);
+		const double length = std::hypot(end1.x - end0.x, end1.z - end0.z);
+		if (length < 1.0)
+			return;
+		const Point2 along{ (end1.x - end0.x) / length, (end1.z - end0.z) / length };
+		const Point2 right{ -along.z, along.x };	// Right of travel from end 0 to end 1
+		const double heading = runway.GetHeading();
+		const double headings[2] = { heading, std::fmod(heading + 180.0, 360.0) };
+		const double displaced[2] = { std::clamp<double>(runway.ends[0].displacedThreshold, 0.0, length), std::clamp<double>(runway.ends[1].displacedThreshold, 0.0, length) };
+		const double halfWidth = runway.width * 0.5;
+
+		// One fixture, at a distance along the runway from end 0 and to the right of it, by its library name
+		const auto place = [&](const std::string &fixture, const double s, const double lateral, const double objectHeading, const float y)
+		{
+			const std::string path = "lib/airport/lights/slow/" + fixture + ".obj";
+			const fs::path file = ResolveFile(path);
+			if (file.empty())
+			{
+				Warn(out, "Runway light fixture not found: " + path);
+				return;
+			}
+			OverlayObject object;
+			object.source = OverlayObject::Source::AirportLights;
+			object.file = file;
+			object.resource = path;
+			object.name = fixture;
+			object.x = end0.x + along.x * s + right.x * lateral;
+			object.z = end0.z + along.z * s + right.z * lateral;
+			object.y = y;
+			object.heading = static_cast<float>(std::fmod(objectHeading + 360.0, 360.0));
+			object.placement = AIRPORT_LIGHTS_RUNWAY | (index & AIRPORT_LIGHTS_INDEX_MASK);
+			out.objects.push_back(std::move(object));
+		};
+
+		// Edge lights
+		if (runway.edgeLights >= 1)
+		{
+			const bool low = runway.edgeLights == 1;
+			const std::string family = low ? "LIRL" : runway.edgeLights == 2 ? "MIRL" : "HIRL";
+			const std::vector<std::string> pairs = low ? std::vector<std::string>{ "ww" } : std::vector<std::string>{ "ww", "yw", "rw", "yy", "ry" };
+			const bool instrument[2] = { runway.ends[0].marking >= 2, runway.ends[1].marking >= 2 };
+			const int count = std::max(1, static_cast<int>(std::ceil(length / EDGE_LIGHT_SPACING)));
+			for (int k = 0; k <= count; ++k)
+			{
+				const double s = length * k / count;
+				// What traffic landing on end 0 sees, then traffic landing on end 1 (which travels the other way)
+				const char toward0 = EdgeLightColor(s, length, displaced[0], instrument[0]);
+				const char toward1 = EdgeLightColor(length - s, length, displaced[1], instrument[1]);
+				bool reversed = false;
+				const std::string pair = PickTwoColorFixture(toward0, toward1, pairs, reversed);
+				for (const double side : { -1.0, 1.0 })
+					place(family + "_" + pair, s, side * (halfWidth + EDGE_LIGHT_OUTSIDE), headings[reversed ? 1 : 0], 0.0f);
+			}
+		}
+
+		// Threshold bars across each end: green toward landing traffic, red end lights toward traffic rolling out
+		// (a displaced threshold splits them: green at the threshold, red at the pavement's end)
+		if (runway.edgeLights >= 1)
+		{
+			const std::string family = runway.edgeLights == 1 ? "lirl" : runway.edgeLights == 2 ? "mirl" : "hirl";
+			const int lights = std::max(2, static_cast<int>(std::floor(runway.width / THRESHOLD_LIGHT_SPACING)) + 1);
+			for (int end = 0; end < 2; ++end)
+			{
+				const double sEnd = end == 0 ? 0.0 : length;
+				const double inward = end == 0 ? 1.0 : -1.0;
+				const double sThreshold = sEnd + inward * displaced[end];
+				for (int k = 0; k < lights; ++k)
+				{
+					const double lateral = -halfWidth + runway.width * (k + 0.5) / lights;
+					if (displaced[end] > 0.0)
+					{
+						place("thr_g_inset_" + family, sThreshold, lateral, headings[end], insetHeight);
+						place("thr_r_inset_" + family, sEnd, lateral, headings[1 - end], insetHeight);
+					}
+					else
+						place("thr_gr_inset_" + family, sEnd, lateral, headings[end], insetHeight);
+				}
+			}
+		}
+
+		// Centerline lights
+		if (runway.centerlineLights)
+		{
+			const int count = static_cast<int>(std::floor(length / CENTERLINE_SPACING));
+			const double first = (length - (count - 1) * CENTERLINE_SPACING) * 0.5;
+			for (int k = 0; k < count; ++k)
+			{
+				const double s = first + k * CENTERLINE_SPACING;
+				const char toward0 = CenterlineLightColor(length - s, count - 1 - k);
+				const char toward1 = CenterlineLightColor(s, k);
+				bool reversed = false;
+				const std::string pair = PickTwoColorFixture(toward0, toward1, { "ww", "rw", "rr" }, reversed);
+				place("RCLS_" + pair, s, CENTERLINE_OFFSET, headings[reversed ? 1 : 0], insetHeight);
+			}
+		}
+
+		// Touchdown zone barrettes and REILs, per landing end
+		for (int end = 0; end < 2; ++end)
+		{
+			const AptRunwayEnd &landing = runway.ends[end];
+			const double inward = end == 0 ? 1.0 : -1.0;
+			const double sThreshold = (end == 0 ? 0.0 : length) + inward * displaced[end];
+			const double sideToLeft = end == 0 ? -1.0 : 1.0;	// Left of the landing traffic, in end 0's lateral frame
+			if (landing.touchdownZoneLights && runway.width > 2.0 * (TDZ_INNER + 2.0 * TDZ_LIGHT_SPACING))
+			{
+				const double zone = std::min(TDZ_LENGTH, (length - displaced[0] - displaced[1]) * 0.5);
+				for (double d = TDZ_SPACING; d <= zone + 1e-6; d += TDZ_SPACING)
+				{
+					for (int light = 0; light < 3; ++light)
+					{
+						const double offset = TDZ_INNER + light * TDZ_LIGHT_SPACING;
+						place("TDZL_left", sThreshold + inward * d, sideToLeft * offset, headings[end], insetHeight);
+						place("TDZL_right", sThreshold + inward * d, -sideToLeft * offset, headings[end], insetHeight);
+					}
+				}
+			}
+			if (landing.reil == 1 || landing.reil == 2)
+			{
+				const std::string fixture = landing.reil == 1 ? "REIL_strobe_omni" : "REIL_strobe_uni";
+				for (const double side : { -1.0, 1.0 })
+					place(fixture, sThreshold, side * (halfWidth + REIL_OUTSIDE), headings[end], 0.0f);
+			}
+		}
+	}
+
+	void OverlayBuilder::AppendRunwayRubber(const AptRunway &runway, const uint32_t index, const Options &options, OverlayBuild &out)
+	{
+		const SurfaceFamily family = GetSurfaceFamily(runway.surface);
+		if (family != SurfaceFamily::Asphalt && family != SurfaceFamily::Concrete)
+			return;
+		const Point2 end0 = m_Projection.ToLocal(runway.ends[0].latitude, runway.ends[0].longitude);
+		const Point2 end1 = m_Projection.ToLocal(runway.ends[1].latitude, runway.ends[1].longitude);
+		const double length = std::hypot(end1.x - end0.x, end1.z - end0.z);
+		if (length < RUBBER_MIN_RUNWAY)
+			return;
+		// Optional art: an X-Plane 11 style library without it draws no rubber and warns about nothing
+		if (!m_Polygons.contains(RUNWAY_RUBBER) && ResolveFile(RUNWAY_RUBBER).empty())
+			return;
+		fs::path file;
+		const PolygonAsset *asset = GetPolygon(RUNWAY_RUBBER, &file, out);
+		if (!asset)
+			return;
+
+		OverlayMesh mesh;
+		mesh.kind = OverlayKind::Runway;
+		mesh.resource = RUNWAY_RUBBER;
+		mesh.name = "Runway " + runway.GetName() + " rubber";
+		mesh.placement = index;
+		mesh.texture = TexturePath(file, asset->texture);
+		mesh.cutout = asset->noBlendCutoff >= 0.0f;
+		mesh.cutoff = mesh.cutout ? asset->noBlendCutoff : 0.5f;
+		mesh.blended = !asset->noAlpha && !mesh.cutout;
+		const float y = Height(options, asset->layerGroup, asset->layerOffset);
+
+		const Point2 along{ (end1.x - end0.x) / length, (end1.z - end0.z) / length };
+		const double displaced[2] = { std::clamp<double>(runway.ends[0].displacedThreshold, 0.0, length), std::clamp<double>(runway.ends[1].displacedThreshold, 0.0, length) };
+		const double landing = std::max(0.0, length - displaced[0] - displaced[1]);
+		const double width = std::clamp(runway.width * RUBBER_WIDTH, RUBBER_COLUMN, 4.0 * RUBBER_COLUMN);
+		const int strips = std::max(1, static_cast<int>(std::lround(width / RUBBER_COLUMN)));
+		const double stripWidth = width / strips;
+		const int tiles = static_cast<int>(std::floor(std::min(RUBBER_MAX_LENGTH, landing * RUBBER_ZONE) / RUBBER_TILE));
+		if (tiles < 2)
+			return;
+
+		uint32_t seed = 0x9E3779B9u ^ (index * 2654435761u);
+		for (int end = 0; end < 2; ++end)
+		{
+			// Landing direction and its right, from this end's threshold
+			const Point2 dir = end == 0 ? along : Point2{ -along.x, -along.z };
+			const Point2 right{ -dir.z, dir.x };
+			const Point2 origin = end == 0 ? end0 : end1;
+			const double start = displaced[end] + std::clamp(landing * RUBBER_START, RUBBER_START_MIN, RUBBER_START_MAX);
+			for (int tile = 0; tile < tiles; ++tile)
+			{
+				const double s0 = start + tile * RUBBER_TILE, s1 = s0 + RUBBER_TILE;
+				for (int strip = 0; strip < strips; ++strip)
+				{
+					// The fade at both ends of the zone (reversed at the far end), dense columns, then lighter ones
+					int column = 0;
+					bool reversed = false;
+					if (tile == tiles - 1)
+						reversed = true;
+					else if (tile > 0)
+						column = (tile - 1) * 2 < tiles - 2 ? 1 + static_cast<int>(Random01(seed) * 2.0f) : 2 + static_cast<int>(Random01(seed) * 2.0f);
+					column = std::clamp(column, 0, 3);
+					const double l0 = -width * 0.5 + strip * stripWidth, l1 = l0 + stripWidth;
+					const double u0 = column * 0.25, u1 = u0 + 0.25;
+					const double v0 = reversed ? 1.0 : 0.0, v1 = reversed ? 0.0 : 1.0;
+					const auto at = [&](const double s, const double lateral) { return Point2{ origin.x + dir.x * s + right.x * lateral, origin.z + dir.z * s + right.z * lateral }; };
+					const Point2 c0 = at(s0, l0), c1 = at(s0, l1), c2 = at(s1, l1), c3 = at(s1, l0);
+					const double corners[4][3] = { { c0.x, y, c0.z }, { c1.x, y, c1.z }, { c2.x, y, c2.z }, { c3.x, y, c3.z } };
+					const double uvs[4][2] = { { u0, v0 }, { u1, v0 }, { u1, v1 }, { u0, v1 } };
+					constexpr float up[3] = { 0.0f, 1.0f, 0.0f };
+					AddQuad(mesh, corners, uvs, up);
+					for (size_t c = mesh.vertices.size() - 4; c < mesh.vertices.size(); ++c)
+					{
+						mesh.vertices[c].tx = static_cast<float>(right.x);
+						mesh.vertices[c].tz = static_cast<float>(right.z);
+					}
+				}
+			}
+		}
+		ApplyPolygonShading(mesh, *asset, file, out);
+		if (!mesh.indices.empty())
+			out.meshes.push_back(std::move(mesh));
 	}
 
 	void OverlayBuilder::BuildAirportSurfaces(const AptAirport &airport, const std::vector<float> &pavementHeights, const float runwayHeight, const float lineHeight, const Options &options, OverlayBuild &out)
@@ -2832,7 +3160,12 @@ namespace SceneryEditorX::XPlane
 		for (uint32_t i = 0; i < airport.runways.size(); ++i)
 		{
 			const AptRunway &runway = airport.runways[i];
-			if (GetSurfaceFamily(runway.surface) == SurfaceFamily::Transparent || !wanted(OverlayKind::Runway, i))
+			if (!wanted(OverlayKind::Runway, i))
+				continue;
+			// The lights its row asks for, which X-Plane adds by itself whatever the surface (transparent runways too)
+			if (options.placeStrings)
+				PlaceRunwayLights(runway, i, lineHeight, out);
+			if (GetSurfaceFamily(runway.surface) == SurfaceFamily::Transparent)
 				continue;
 			OverlayMesh mesh;
 			const PolygonAsset *asset = nullptr;
@@ -2869,6 +3202,9 @@ namespace SceneryEditorX::XPlane
 			out.meshes.push_back(std::move(mesh));
 			if (!markings.indices.empty())
 				out.meshes.push_back(std::move(markings));
+
+			// Tire rubber in the touchdown zones, which X-Plane also adds by itself
+			AppendRunwayRubber(runway, i, options, out);
 		}
 
 		for (uint32_t i = 0; i < airport.helipads.size(); ++i)
@@ -2940,9 +3276,8 @@ namespace SceneryEditorX::XPlane
 									mesh.name = what + ": " + GetLineTypeName(style);
 									mesh.placement = index;
 									mesh.texture = TexturePath(file, asset->texture);
-									mesh.cutout = true;
-									mesh.cutoff = 0.5f;
 									AppendLinePaint(mesh, *asset, path, run.closed, lineHeight);
+									ApplyLineShading(mesh, *asset, file, out);
 									if (!mesh.indices.empty())
 										out.meshes.push_back(std::move(mesh));
 								}
@@ -2950,10 +3285,12 @@ namespace SceneryEditorX::XPlane
 							else if (options.placeStrings)
 							{
 								fs::path file;
-								const std::string library = GetLightStringLibraryPath(style);
+								const std::string library = ResolveLightStringLibraryPath(style);
 								const ObjectStringAsset *asset = library.empty() ? nullptr : GetString(library, &file, out);
+								// Inset fixtures (on the line) stand on the pavement's drape, elevated ones (offset to the side) on the ground
 								if (asset)
-									PlaceObjectString(*asset, file, library, path, run.closed, GetLightStringSpacing(style), 0.0f, lineKind == OverlayKind::PaintedLine ? index : 0x80000000u | index, out, OverlayObject::Source::AirportLights);
+									PlaceObjectString(*asset, file, library, path, run.closed, GetLightStringSpacing(style), asset->offset == 0.0f ? lineHeight : 0.0f,
+										lineKind == OverlayKind::PaintedLine ? index : AIRPORT_LIGHTS_PAVEMENT_EDGE | index, out, OverlayObject::Source::AirportLights);
 							}
 						}
 						start = end;

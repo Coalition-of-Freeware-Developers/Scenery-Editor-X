@@ -417,6 +417,45 @@ TEST_CASE("Line asset", "[assets]")
 	CHECK(lin.segments[1].layer == 1);
 	// 16 pixels of 1024 over 12 meters, less a pixel margin each side
 	CHECK(lin.GetWidthMeters(0) == Catch::Approx(14.0f / 1024.0f * 12.0f).margin(0.02f));
+	CHECK_FALSE(lin.noAlpha);
+	CHECK(lin.noBlendCutoff < 0.0f);
+	CHECK(lin.decals.empty());
+
+	// X-Plane 12's pavement FX lines: the standard shader's material, alpha and decal rows (twy_cracks_shld_1a.lin)
+	LineAsset fx;
+	REQUIRE(ParseLineAsset(
+		"A\n850\nLINE_PAINT\n\n"
+		"TEXTURE ../textures/apt_sfx1_ALB.png\n"
+		"TEXTURE_NORMAL 2.0 ../textures/apt_sfx1_NML.png\n"
+		"SNOW_ALBEDO_LUMA 5.0 3.0 0.0 0.0\n"
+		"NORMAL_METALNESS\n"
+		"SPECULAR 0.5\n"
+		"WEATHER_TRANSPARENT\n"
+		"TEX_WIDTH 2048\nTEX_HEIGHT 2048\nSCALE 65 65\nALIGN 16\n"
+		"S_OFFSET 0\t1152 1216 1280\n"
+		"LAYER_GROUP runways +5\n"
+		"DITHER_ALPHA 0.25 1.0\n"
+		"DECAL_PARAMS 30.0 0.0 0.00 0.00 0.00 0 0 0.0 0.00 0.00 0.00 0.3 0.00 -0.10 textures/A_skids.png\n"
+		"DECAL_LIB lib/g10/decals/apt_fx_twydirt_1.dcl\n", fx));
+	CHECK(fx.textureNormal == "../textures/apt_sfx1_NML.png");
+	CHECK(fx.normalRatio == Catch::Approx(2.0f));
+	CHECK(fx.normalMetalness);
+	CHECK(fx.specular == Catch::Approx(0.5f));
+	CHECK(fx.weatherTransparent);
+	CHECK(fx.hasSnowAlbedoLuma);
+	CHECK(fx.snowAlbedoLuma[0] == Catch::Approx(5.0f));
+	CHECK(fx.ditherAlpha[0] == Catch::Approx(0.25f));
+	CHECK(fx.ditherAlpha[1] == Catch::Approx(1.0f));
+	CHECK(fx.layerGroup == "runways");
+	CHECK(fx.layerOffset == 5);
+	CHECK(fx.decal == "lib/g10/decals/apt_fx_twydirt_1.dcl");
+	REQUIRE(fx.decals.size() == 1);
+	CHECK(fx.decals[0].texture == "textures/A_skids.png");
+
+	LineAsset opaque;
+	REQUIRE(ParseLineAsset("A\n850\nLINE_PAINT\n\nTEXTURE a.png\nS_OFFSET 0 0 8 16\nNO_BLEND 0.4\nNO_ALPHA\n", opaque));
+	CHECK(opaque.noBlendCutoff == Catch::Approx(0.4f));
+	CHECK(opaque.noAlpha);
 }
 
 TEST_CASE("Object string asset", "[assets]")
@@ -960,7 +999,14 @@ TEST_CASE("Overlay builder turns DSF placements into meshes and object placement
 	REQUIRE(byKind[OverlayKind::Line].size() == 1);
 	const OverlayMesh &lineMesh = *byKind[OverlayKind::Line][0];
 	CHECK(lineMesh.texture.filename() == "apt_lines.png");
-	CHECK(lineMesh.cutout);
+	// Lines blend their alpha like X-Plane (an alpha test dropped the soft grunge / dirt / edge lines)
+	CHECK_FALSE(lineMesh.cutout);
+	CHECK(lineMesh.blended);
+	CHECK(lineMesh.metersPerU == Catch::Approx(12.0f));
+	CHECK(lineMesh.metersPerV == Catch::Approx(3.0f));
+	// Each vertex carries u's ground direction: across the line, left of travel
+	for (const OverlayVertex &vertex : lineMesh.vertices)
+		CHECK(std::hypot(vertex.tx, vertex.tz) == Catch::Approx(1.0f).margin(1e-4f));
 	// Both S_OFFSET rows, mirrored every 3 m along the 80 m line: 27 strips of two stations each per row
 	CHECK(lineMesh.vertices.size() == 2 * 27 * 4);
 	bool rowZero = false, rowOne = false;
@@ -1518,7 +1564,9 @@ TEST_CASE("Overlay builder library mappings", "[overlay]")
 	CHECK(OverlayBuilder::GetLineLibraryPath(1) == "lib/airport/lines/1_");
 	CHECK(OverlayBuilder::GetLineLibraryPath(51) == "lib/airport/lines/51_");
 	CHECK(OverlayBuilder::GetLineLibraryPath(0).empty());
-	CHECK(OverlayBuilder::GetLightStringLibraryPath(102) == "lib/airport/lights/fast/102_");
+	// The fixtures ("slow": inset / elevated fixture plus its lights), else the lights alone ("fast")
+	CHECK(OverlayBuilder::GetLightStringLibraryPath(102) == "lib/airport/lights/slow/102_");
+	CHECK(OverlayBuilder::GetLightStringLibraryPath(102, false) == "lib/airport/lights/fast/102_");
 	CHECK(OverlayBuilder::GetLightStringLibraryPath(100).empty());
 	CHECK(OverlayBuilder::GetLightStringSpacing(101) == Catch::Approx(15.0));
 	CHECK(OverlayBuilder::GetLightStringSpacing(103) < OverlayBuilder::GetLightStringSpacing(102));
@@ -1618,7 +1666,8 @@ TEST_CASE("Overlay builder textures apt.dat surfaces through the library", "[ove
 	CHECK(pavementLines == 1);
 	CHECK(paintedLines == 1);
 
-	// Light string along the pavement ring: 400 m at 15 m
+	// Light string along the pavement ring: 400 m at 15 m, from the light-only set (the library has no fixtures).
+	// On the line (no OFFSET): inset, standing on the lines' height over the pavement's drape
 	size_t lights101 = 0;
 	for (const OverlayObject &object : out.objects)
 	{
@@ -1626,6 +1675,8 @@ TEST_CASE("Overlay builder textures apt.dat surfaces through the library", "[ove
 		{
 			++lights101;
 			CHECK(object.name == "light.obj");
+			CHECK(object.y == Catch::Approx(0.3));
+			CHECK((object.placement & AIRPORT_LIGHTS_PAVEMENT_EDGE) != 0);
 		}
 	}
 	CHECK(lights101 >= 26);
@@ -1636,6 +1687,222 @@ TEST_CASE("Overlay builder textures apt.dat surfaces through the library", "[ove
 	for (const std::string &warning : out.warnings)
 		unknownWarnings += warning.find("lines/99_") != std::string::npos;
 	CHECK(unknownWarnings == 1);
+}
+
+TEST_CASE("Overlay builder adds X-Plane's runway lights and tire rubber", "[overlay]")
+{
+	TempDir temp;
+	const fs::path runwayPol = temp.Write("lib/rwy_concrete.pol", "A\n850\nDRAPED_POLYGON\n\nTEXTURE runway.png\nSCALE 22 44\nLAYER_GROUP runways 0\n");
+	const fs::path rubberPol = temp.Write("lib/rwy_skids_1.pol",
+		"A\n850\nDRAPED_POLYGON\n\nLAYER_GROUP markings +5\nTEXTURE RWY_skids_1.png\nTEXTURE_NORMAL 64.0 RWY_skids_NML.png\nSCALE 30 30\nDITHER_ALPHA 0.9 1.0\n");
+	const fs::path fixture = temp.Write("lib/fixture.obj", "I\n800\nOBJ\n");
+
+	// Every slow light fixture resolves to one object; the runway and rubber polygons by their exports
+	const AssetResolver resolver = [&](const std::string_view path) -> fs::path
+	{
+		if (path.starts_with("lib/airport/lights/slow/") && path.ends_with(".obj"))
+			return fixture;
+		if (path == "lib/airport/default_runways/concrete/runway.pol")
+			return runwayPol;
+		if (path == "lib/airport/default_runways/rubber.pol")
+			return rubberPol;
+		return {};
+	};
+
+	// 1000 m north-south, 45 m wide, HIRL edges and centerline lights; end 0 (south) a precision end with a 100 m
+	// displaced threshold and touchdown zone lights, end 1 (north) a visual end with unidirectional REILs
+	const GeoProjection projection(45.6, -122.6);
+	AptAirport airport;
+	airport.id = "TEST";
+	AptRunway runway;
+	runway.width = 45.0f;
+	runway.surface = 2;
+	runway.edgeLights = 3;
+	runway.centerlineLights = true;
+	projection.ToGeo(Point2{ 0.0, 500.0 }, runway.ends[0].latitude, runway.ends[0].longitude);
+	projection.ToGeo(Point2{ 0.0, -500.0 }, runway.ends[1].latitude, runway.ends[1].longitude);
+	runway.ends[0].designator = "36";
+	runway.ends[0].marking = 3;
+	runway.ends[0].displacedThreshold = 100.0f;
+	runway.ends[0].touchdownZoneLights = true;
+	runway.ends[1].designator = "18";
+	runway.ends[1].marking = 1;
+	runway.ends[1].reil = 2;
+	airport.runways.push_back(runway);
+
+	OverlayBuilder builder(resolver, projection);
+	OverlayBuilder::Options options;
+	OverlayBuild out;
+	builder.BuildAirportSurfaces(airport, {}, 0.2f, 0.3f, options, out);
+
+	std::map<std::string, std::vector<const OverlayObject *>> byFixture;
+	for (const OverlayObject &object : out.objects)
+	{
+		REQUIRE(object.source == OverlayObject::Source::AirportLights);
+		CHECK(object.placement == (AIRPORT_LIGHTS_RUNWAY | 0u));
+		byFixture[object.name].push_back(&object);
+	}
+	const auto count = [&](const std::string &prefix)
+	{
+		size_t n = 0;
+		for (const auto &[name, objects] : byFixture)
+			n += name.starts_with(prefix) ? objects.size() : 0;
+		return n;
+	};
+	const auto distanceFromEnd0 = [](const OverlayObject &object) { return 500.0 - object.z; };
+
+	// Edge lights: ceil(1000 / 200 ft) = 17 spans, 18 stations a side, elevated on the ground just off the pavement
+	CHECK(count("HIRL_") == 36);
+	for (const auto &[name, objects] : byFixture)
+	{
+		if (!name.starts_with("HIRL_"))
+			continue;
+		for (const OverlayObject *object : objects)
+		{
+			CHECK(std::abs(object->x) == Catch::Approx(22.5 + 0.6).margin(1e-3));
+			CHECK(object->y == Catch::Approx(0.0));
+		}
+	}
+	// Red toward traffic landing on 36 before its displaced threshold, white toward the other way
+	REQUIRE(byFixture["HIRL_rw"].size() >= 2);
+	for (const OverlayObject *object : byFixture["HIRL_rw"])
+	{
+		CHECK(distanceFromEnd0(*object) < 100.0);
+		CHECK(object->heading == Catch::Approx(0.0f).margin(1e-3f));
+	}
+	// Yellow toward 36's traffic in its last 500 m (half the runway: shorter than 2000 ft); end 18 is visual: no yellow
+	REQUIRE(byFixture["HIRL_yw"].size() >= 2);
+	for (const OverlayObject *object : byFixture["HIRL_yw"])
+	{
+		CHECK(distanceFromEnd0(*object) > 500.0);
+		CHECK(object->heading == Catch::Approx(0.0f).margin(1e-3f));
+	}
+	CHECK(byFixture["HIRL_ww"].size() >= 2);
+	CHECK(byFixture["HIRL_ry"].empty());
+
+	// Threshold bars, 15 inset lights across 45 m: green at 36's displaced threshold, red at its pavement end, both ways at 18
+	CHECK(count("thr_g_inset_hirl") == 15);
+	CHECK(count("thr_r_inset_hirl") == 15);
+	CHECK(count("thr_gr_inset_hirl") == 15);
+	for (const OverlayObject *object : byFixture["thr_g_inset_hirl"])
+	{
+		CHECK(distanceFromEnd0(*object) == Catch::Approx(100.0).margin(1e-3));
+		CHECK(object->heading == Catch::Approx(0.0f).margin(1e-3f));
+		CHECK(object->y == Catch::Approx(0.3));
+	}
+	for (const OverlayObject *object : byFixture["thr_r_inset_hirl"])
+		CHECK(object->heading == Catch::Approx(180.0f).margin(1e-3f));
+	for (const OverlayObject *object : byFixture["thr_gr_inset_hirl"])
+	{
+		CHECK(distanceFromEnd0(*object) == Catch::Approx(1000.0).margin(1e-3));
+		CHECK(object->heading == Catch::Approx(180.0f).margin(1e-3f));
+	}
+
+	// Centerline lights every 50 ft, 2 ft right of the centerline from end 0 (east), inset; red toward traffic in its last 1000 ft
+	CHECK(count("RCLS_") == 65);
+	for (const auto &[name, objects] : byFixture)
+	{
+		if (!name.starts_with("RCLS_"))
+			continue;
+		for (const OverlayObject *object : objects)
+		{
+			CHECK(object->x == Catch::Approx(0.6096).margin(1e-3));
+			CHECK(object->y == Catch::Approx(0.3));
+		}
+	}
+	REQUIRE_FALSE(byFixture["RCLS_rw"].empty());
+	bool redNear18 = false, redNear36 = false;
+	for (const OverlayObject *object : byFixture["RCLS_rw"])
+	{
+		// Red faces the traffic along the fixture's heading
+		if (distanceFromEnd0(*object) > 1000.0 - 304.8)
+			redNear18 |= object->heading == Catch::Approx(0.0f).margin(1e-3f);
+		if (distanceFromEnd0(*object) < 304.8)
+			redNear36 |= object->heading == Catch::Approx(180.0f).margin(1e-3f);
+	}
+	CHECK(redNear18);
+	CHECK(redNear36);
+	// Mid-runway lights are white both ways; red-red only where one way's last 1000 ft meets the other's alternating part
+	REQUIRE_FALSE(byFixture["RCLS_ww"].empty());
+	for (const OverlayObject *object : byFixture["RCLS_ww"])
+		CHECK(std::abs(distanceFromEnd0(*object) - 500.0) < 500.0 - 304.8);
+
+	// Touchdown zone: 36 only, half its 900 m landing length (450 m) at 100 ft = 14 rows of two 3-light barrettes
+	CHECK(count("TDZL_left") == 42);
+	CHECK(count("TDZL_right") == 42);
+	for (const OverlayObject *object : byFixture["TDZL_left"])
+	{
+		CHECK(object->x < -10.9);	// Left of northbound traffic is west
+		CHECK(distanceFromEnd0(*object) > 100.0);
+		CHECK(distanceFromEnd0(*object) < 100.0 + 450.0 + 1e-3);
+		CHECK(object->heading == Catch::Approx(0.0f).margin(1e-3f));
+	}
+
+	// REILs at 18's threshold, 40 ft off each edge, pointing south
+	REQUIRE(count("REIL_strobe_uni") == 2);
+	for (const OverlayObject *object : byFixture["REIL_strobe_uni"])
+	{
+		CHECK(std::abs(object->x) == Catch::Approx(22.5 + 12.192).margin(1e-3));
+		CHECK(distanceFromEnd0(*object) == Catch::Approx(1000.0).margin(1e-3));
+		CHECK(object->heading == Catch::Approx(180.0f).margin(1e-3f));
+	}
+
+	// Rubber: 40% of the 900 m landing length = 360 m = 12 tiles from each threshold, 60% of the width = 27 m in 4 strips
+	const OverlayMesh *rubber = nullptr;
+	size_t runwayMeshes = 0;
+	for (const OverlayMesh &mesh : out.meshes)
+	{
+		if (mesh.kind != OverlayKind::Runway)
+			continue;
+		++runwayMeshes;
+		if (mesh.name.ends_with("rubber"))
+			rubber = &mesh;
+	}
+	CHECK(runwayMeshes == 2);
+	REQUIRE(rubber);
+	CHECK(rubber->name == "Runway 36/18 rubber");
+	CHECK(rubber->texture.filename() == "RWY_skids_1.png");
+	CHECK(rubber->blended);
+	CHECK(rubber->placement == 0);
+	CHECK(rubber->metersPerU == Catch::Approx(30.0f));
+	CHECK(rubber->vertices.size() == 2 * 12 * 4 * 4);
+	CHECK(rubber->indices.size() == 2 * 12 * 4 * 6);
+	double nearest36 = 1e9, farthest36 = -1e9;
+	for (const OverlayVertex &vertex : rubber->vertices)
+	{
+		CHECK(std::abs(vertex.x) <= 13.5 + 1e-3);
+		CHECK(vertex.u >= 0.0f);
+		CHECK(vertex.u <= 1.0f);
+		CHECK(std::hypot(vertex.tx, vertex.tz) == Catch::Approx(1.0f).margin(1e-4f));
+		const double s = 500.0 - vertex.z;
+		if (s < 550.0)	// 36's zone; 18's runs from 955 m back to 595 m
+		{
+			nearest36 = std::min(nearest36, s);
+			farthest36 = std::max(farthest36, s);
+		}
+	}
+	CHECK(nearest36 == Catch::Approx(145.0).margin(1e-3));		// 5% of 900 m past 36's displaced threshold: its bars stay clean
+	CHECK(farthest36 == Catch::Approx(505.0).margin(1e-3));
+	// The first tile is the fade column (u 0..0.25) for every strip
+	for (size_t q = 0; q < 4; ++q)
+		for (size_t c = 0; c < 4; ++c)
+			CHECK(rubber->vertices[q * 4 + c].u <= 0.25f + 1e-6f);
+
+	// A grass runway: lights, no rubber; no edge lights code: no edge or threshold lights
+	airport.runways[0].surface = 3;
+	airport.runways[0].edgeLights = 0;
+	OverlayBuild grass;
+	builder.BuildAirportSurfaces(airport, {}, 0.2f, 0.3f, options, grass);
+	size_t grassEdge = 0, grassCenter = 0;
+	for (const OverlayObject &object : grass.objects)
+	{
+		grassEdge += object.name.starts_with("HIRL_") || object.name.starts_with("thr_");
+		grassCenter += object.name.starts_with("RCLS_");
+	}
+	CHECK(grassEdge == 0);
+	CHECK(grassCenter == 65);
+	for (const OverlayMesh &mesh : grass.meshes)
+		CHECK_FALSE(mesh.name.ends_with("rubber"));
 }
 
 TEST_CASE("Overlay builder prefers X-Plane 12's runway and taxiway art", "[overlay]")

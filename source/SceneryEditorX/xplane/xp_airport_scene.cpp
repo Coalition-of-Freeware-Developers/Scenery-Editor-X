@@ -446,8 +446,11 @@ namespace SceneryEditorX::XPlane
 			for (const OverlayVertex &vertex : mesh.vertices)
 			{
 				const Vec3 normal(vertex.nx, vertex.ny, vertex.nz);
-				// A tangent perpendicular to the normal: along u for ground (the texture heading), along the ground for walls
-				const Vec3 tangent = std::abs(vertex.ny) > 0.9f ? Vec3(mesh.tangentX, 0.0f, mesh.tangentZ) : xMath::Normalize(xMath::Cross(Vec3(0.0f, 1.0f, 0.0f), normal));
+				// A tangent perpendicular to the normal: along u for ground (the vertex's own where a line bends, else the
+				// texture heading), along the ground for walls
+				const bool ownTangent = vertex.tx != 0.0f || vertex.tz != 0.0f;
+				const Vec3 tangent = std::abs(vertex.ny) > 0.9f ? (ownTangent ? Vec3(vertex.tx, 0.0f, vertex.tz) : Vec3(mesh.tangentX, 0.0f, mesh.tangentZ))
+					: xMath::Normalize(xMath::Cross(Vec3(0.0f, 1.0f, 0.0f), normal));
 				part.vertices.push_back(Vertex_PosTexNorTan(Vec3(vertex.x, vertex.y, vertex.z), Vec2(vertex.u, vertex.v), normal, tangent));
 			}
 			for (const uint32_t index : mesh.indices)
@@ -731,7 +734,7 @@ namespace SceneryEditorX::XPlane
 					}
 					SEDX_CORE_INFO_TAG(LOG_TAG, "{} runway art: {}", airport.id, art);
 				}
-				lightsAsObjects = !surfaces.objects.empty() || overlay->GetString(OverlayBuilder::GetLightStringLibraryPath(101), nullptr, surfaces) != nullptr;
+				lightsAsObjects = !surfaces.objects.empty() || overlay->GetString(overlay->ResolveLightStringLibraryPath(101), nullptr, surfaces) != nullptr;
 				for (OverlayObject &object : surfaces.objects)
 					out.objects.push_back(std::move(object));
 				out.warnings.insert(out.warnings.end(), surfaces.warnings.begin(), surfaces.warnings.end());
@@ -822,21 +825,16 @@ namespace SceneryEditorX::XPlane
 				Part &part = start_part(AirportElementKind::Runway, static_cast<uint32_t>(i), "Runway " + runway.GetName(), SurfacePaint(runway.surface, true));
 				if (const auto *meshes = texturedMeshes(OverlayKind::Runway, static_cast<uint32_t>(i)))
 				{
+					// The surface first; painted markings and tire rubber over it, each a part (and a blended material) of its own
 					ApplyOverlayMaterial(part, *meshes->front());
-					for (const OverlayMesh *mesh : *meshes)
+					AppendOverlayMesh(part, *meshes->front());
+					for (size_t m = 1; m < meshes->size(); ++m)
 					{
-						if (mesh->shading != OverlayShading::Markings)
-							AppendOverlayMesh(part, *mesh);
-					}
-					// Painted markings: their own part (blended, a material of their own), drawn over the surface
-					for (const OverlayMesh *mesh : *meshes)
-					{
-						if (mesh->shading != OverlayShading::Markings)
-							continue;
-						Part &markings = start_part(AirportElementKind::Runway, static_cast<uint32_t>(i), mesh->name, Paint::WhiteLine);
-						markings.subIndex = 2;
-						ApplyOverlayMaterial(markings, *mesh);
-						AppendOverlayMesh(markings, *mesh);
+						const OverlayMesh *mesh = (*meshes)[m];
+						Part &layer = start_part(AirportElementKind::Runway, static_cast<uint32_t>(i), mesh->name, mesh->shading == OverlayShading::Markings ? Paint::WhiteLine : Paint::RunwayAsphalt);
+						layer.subIndex = mesh->shading == OverlayShading::Markings ? 2 : 3;
+						ApplyOverlayMaterial(layer, *mesh);
+						AppendOverlayMesh(layer, *mesh);
 					}
 				}
 				else
@@ -1621,9 +1619,10 @@ namespace SceneryEditorX::XPlane
 				root.kind = kind;
 				if (object.source == OverlayObject::Source::AirportLights)
 				{
-					// The light string's row: bit 31 marks a pavement edge, else a linear feature (OverlayBuilder::BuildAirportSurfaces)
-					root.sourceKind = (object.placement & 0x80000000u) != 0 ? AirportElementKind::Pavement : AirportElementKind::LinearFeature;
-					root.sourceIndex = object.placement & 0x7FFFFFFFu;
+					// The lights' row: a pavement edge, a runway or else a linear feature (OverlayBuilder::BuildAirportSurfaces)
+					root.sourceKind = (object.placement & AIRPORT_LIGHTS_PAVEMENT_EDGE) != 0 ? AirportElementKind::Pavement
+						: (object.placement & AIRPORT_LIGHTS_RUNWAY) != 0 ? AirportElementKind::Runway : AirportElementKind::LinearFeature;
+					root.sourceIndex = object.placement & AIRPORT_LIGHTS_INDEX_MASK;
 				}
 				++placed;
 			}

@@ -77,6 +77,7 @@ namespace SceneryEditorX::XPlane
 		float x = 0.0f, y = 0.0f, z = 0.0f;
 		float u = 0.0f, v = 0.0f;
 		float nx = 0.0f, ny = 1.0f, nz = 0.0f;
+		float tx = 0.0f, tz = 0.0f;			// Ground direction u increases along here (lines bend); 0, 0: the mesh's tangentX / Z
 	};
 
 	/* @brief How an overlay mesh's texture is read (the draped-polygon shader paths). */
@@ -157,6 +158,14 @@ namespace SceneryEditorX::XPlane
 		bool hasSnowAlbedoLuma = false;
 		float snowAlbedoLuma[2] = {};
 	};
+
+	/**
+	 * Airport light placements (OverlayObject::Source::AirportLights) name the apt.dat row they belong to: its index,
+	 * with one of these bits for pavement edge lights or runway lights (neither: a linear feature's lights).
+	 */
+	constexpr uint32_t AIRPORT_LIGHTS_PAVEMENT_EDGE = 0x80000000u;
+	constexpr uint32_t AIRPORT_LIGHTS_RUNWAY = 0x40000000u;
+	constexpr uint32_t AIRPORT_LIGHTS_INDEX_MASK = 0x3FFFFFFFu;
 
 	/* @brief An OBJ8 to place through the object loader. */
 	struct OverlayObject
@@ -279,6 +288,12 @@ namespace SceneryEditorX::XPlane
 		 */
 		void ApplyPolygonShading(OverlayMesh &mesh, const PolygonAsset &asset, const std::filesystem::path &assetFile, OverlayBuild &out);
 
+		/**
+		 * @brief A painted line's material from its .lin, like ApplyPolygonShading: its alpha (blended unless NO_BLEND /
+		 * NO_ALPHA), normal map, gloss, weather and the decals of its rows and DECAL_LIB. Call after AppendLinePaint.
+		 */
+		void ApplyLineShading(OverlayMesh &mesh, const LineAsset &asset, const std::filesystem::path &assetFile, OverlayBuild &out);
+
 		/* @brief Meters one texture repeat covers along s and t: SCALE, or SCALE x tiles for TEXTURE_TILE atlases (one tile per SCALE). */
 		static void GetPolygonUvScale(const PolygonAsset &asset, float &scaleS, float &scaleT);
 
@@ -298,11 +313,44 @@ namespace SceneryEditorX::XPlane
 		/* @brief Library .lin for an apt.dat painted line code (1..59), empty when unknown. */
 		static std::string GetLineLibraryPath(int lineType);
 
-		/* @brief Library .str for an apt.dat light string code (101..108), empty when unknown. */
-		static std::string GetLightStringLibraryPath(int lightType);
+		/**
+		 * @brief Library .str prefix for an apt.dat light string code (101..108), empty when unknown. fixtures: X-Plane 12's
+		 * "slow" set, whose objects carry the inset / elevated fixture as well as its lights; else the "fast" set, lights only
+		 * (nothing to see by day).
+		 */
+		static std::string GetLightStringLibraryPath(int lightType, bool fixtures = true);
+
+		/* @brief The light string library path to draw: the fixtures, or the light-only set when the library has no fixtures. */
+		std::string ResolveLightStringLibraryPath(int lightType);
 
 		/* @brief Spacing in meters X-Plane uses for an apt.dat light string code. */
 		static double GetLightStringSpacing(int lightType);
+
+		/**
+		 * @brief A runway's lights from its apt.dat row, laid out with the library's light fixtures
+		 * (lib/airport/lights/slow/...), which carry the inset or elevated fixture as well as its lights. FAA spacing and
+		 * colors (ASSUMPTION: X-Plane's own layout is in the simulator, not the library; calibrate against its night shots):
+		 * - Edge lights (row 100's code: LIRL / MIRL / HIRL) every 200 ft just off both edges: white, yellow toward
+		 *   traffic in the last 2000 ft (or half) of an instrument end, red toward traffic before a displaced threshold.
+		 * - Centerline lights every 50 ft, 2 ft right of the centerline from end 0: white, alternating red / white in the last
+		 *   3000 ft, red in the last 1000 ft.
+		 * - Touchdown zone barrettes (3 lights, 5 ft apart, inner light 36 ft out) every 100 ft for 3000 ft (or half).
+		 * - Threshold bars (green toward landing traffic, red end lights toward the other way) and REILs.
+		 * Inset fixtures stand at insetHeight (over the runway's drape), elevated ones on the ground.
+		 * Their placement is runway index | AIRPORT_LIGHTS_RUNWAY.
+		 */
+		void PlaceRunwayLights(const AptRunway &runway, uint32_t index, float insetHeight, OverlayBuild &out);
+
+		/**
+		 * @brief Tire rubber in a paved runway's touchdown zones (lib/airport/default_runways/rubber.pol), as one mesh of
+		 * kind Runway named "<runway> rubber". The texture is four 7.5 m streak columns, 30 m long: a fade (dense at its
+		 * top), two dense ones and a light one. From past each threshold (5% of the landing length, 40-300 m: its bars
+		 * stay clean) along the landing direction, rows of 30 m tiles cover
+		 * the central 60% of the width in column-wide strips: the fade first (sparse toward the threshold), dense columns,
+		 * then lighter ones, and the fade reversed at the far end. ASSUMPTION: X-Plane generates rubber itself; length
+		 * and width are fitted by eye to its KGON / KORD reference shots. Nothing for unpaved or short runways.
+		 */
+		void AppendRunwayRubber(const AptRunway &runway, uint32_t index, const Options &options, OverlayBuild &out);
 
 	private:
 		template<typename Asset>
@@ -318,6 +366,9 @@ namespace SceneryEditorX::XPlane
 
 		void Warn(OverlayBuild &out, const std::string &message);
 		float Height(const Options &options, std::string_view group, int offset) const;
+
+		/* @brief Adds an asset's decal rows (paths relative to assetFile) and its DECAL_LIB library's decals to a mesh. */
+		void AddDecals(OverlayMesh &mesh, const std::vector<PolygonDecal> &decals, const std::string &library, const std::filesystem::path &assetFile, OverlayBuild &out);
 
 		/* @brief The resolver, with its answers remembered per path (thousands of placements share a few objects). */
 		std::filesystem::path ResolveFile(std::string_view path);
