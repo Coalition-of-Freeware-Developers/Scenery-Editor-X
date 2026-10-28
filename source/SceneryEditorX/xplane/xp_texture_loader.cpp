@@ -787,6 +787,8 @@ namespace SceneryEditorX::XPlane
 			std::scoped_lock lock(s_Mutex);
 			if (const auto it = s_Cache.find(texture.cacheKey); it != s_Cache.end())
 			{
+				// Another load decoded the file too and uploaded it first: this copy goes now
+				std::vector<MipBytes>().swap(texture.mips);
 				if (info)
 					*info = it->second.info;
 				return it->second.image;

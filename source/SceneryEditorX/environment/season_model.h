@@ -31,6 +31,7 @@
 #pragma once
 #include <array>
 #include <cstdint>
+#include <optional>
 #include <string_view>
 
 // -------------------------------------------------------
@@ -69,7 +70,25 @@ namespace SceneryEditorX::Environment
 		std::array<int, 4> start = { 0, 0, 0, 0 };	// Day of year, 1-366, indexed by Season
 		std::array<int, 4> end = { 0, 0, 0, 0 };
 		std::array<bool, 4> valid = { false, false, false, false };
+
+		bool operator==(const DsfSeasonRanges &) const = default;
 	};
+
+	/* @brief A base DSF's season rasters, in the order MakeDsfSeasonRanges takes their values. */
+	inline constexpr std::array<const char *, 8> DSF_SEASON_RASTERS = { "spr1", "spr2", "sum1", "sum2", "fal1", "fal2", "win1", "win2" };
+
+	/**
+	 * @brief The ranges at one cell of a base DSF's season rasters (their values there in DSF_SEASON_RASTERS order, days
+	 * of the year: the stored byte x 365 / 183, so 0 and 365 are the same day).
+	 *
+	 * The values normally go once round the year in that order, each season's start and end before the next season's
+	 * (EIDW: spring 94-120, summer 191-195, fall 275-279, winter 10-14), and are taken as they are, ranges of no days
+	 * included (RCTP's 0-24 squeezes fall, winter and spring into January 4-23, winter on the 12th alone). Cells with no
+	 * cycle, every value on the same day (OMDB and SBGR: spring 0-0, the rest 365-365; the sea), have no seasons: summer
+	 * alone, which ComputeSeason makes summer all year. Cells whose values go round the year more than once (seasons
+	 * that overlap, seen near the equator) give nullopt: the fixed dates by latitude apply there.
+	 */
+	std::optional<DsfSeasonRanges> MakeDsfSeasonRanges(const std::array<float, 8> &days);
 
 	/* @brief A season and how far it has moved toward the next one. */
 	struct SeasonResult

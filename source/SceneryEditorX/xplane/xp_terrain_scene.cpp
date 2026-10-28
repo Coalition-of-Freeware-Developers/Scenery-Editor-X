@@ -29,6 +29,7 @@
  * -------------------------------------------------------
  */
 #include "xp_terrain_scene.h"
+#include "xp_7z.h"
 #include "xp_assets.h"
 #include "xp_library_manager.h"
 #include "xp_overlay_scene.h"
@@ -45,6 +46,8 @@
 #include <thread>
 #include <map>
 #include <set>
+#include <utility>
+#include <SceneryEditorX/environment/season_model.h>
 #include <SceneryEditorX/filesystem/vfs.h>
 #include <SceneryEditorX/logging/logging.hpp>
 #include <SceneryEditorX/renderer/renderer.h>
@@ -176,6 +179,9 @@ namespace SceneryEditorX::XPlane
 			uint32_t unsupported = 0;
 		};
 
+		/* @brief DSF files read ahead, unpacked, by path: Load() reads them from here instead of the disk. */
+		using ReadAhead = std::map<fs::path, std::shared_ptr<const std::vector<uint8_t>>>;
+
 		struct State
 		{
 			uint64_t root = 0;
@@ -191,6 +197,7 @@ namespace SceneryEditorX::XPlane
 			uint8_t season = 0;								// The library season the art was resolved for
 			uint64_t generation = 0;
 			SceneTerrain::Stats stats;
+			ReadAhead readAhead;							// ReadSeasonRasters()' files, for the next Load()
 
 			// The tile's scenery
 			std::string name;
@@ -269,13 +276,27 @@ namespace SceneryEditorX::XPlane
 			return key;
 		}
 
+		/* @brief "spring" ... "winter" for a library season bit, "unseasoned" for none. */
+		std::string SeasonArtName(const uint8_t bits)
+		{
+			for (uint8_t s = 0; s < 4; ++s)
+			{
+				const Environment::Season season = static_cast<Environment::Season>(s);
+				if (bits == Environment::GetSeasonBit(season))
+				{
+					std::string name = Environment::GetSeasonName(season);
+					name[0] = static_cast<char>(std::tolower(static_cast<unsigned char>(name[0])));
+					return name;
+				}
+			}
+			return "unseasoned";
+		}
+
 		/**
-		 * @brief The DSF holding a tile's base mesh: the highest-priority enabled scenery pack (custom scenery in
-		 * scenery_packs.ini order, then the Global Scenery folders) whose tile isn't an overlay. Reads it with terrain and
-		 * rasters (limited to the area), and collects the exclusion zones of the overlays above it (Global Airports, custom
-		 * scenery).
+		 * @brief A tile's DSFs in the enabled scenery packs, highest priority first (custom scenery in scenery_packs.ini
+		 * order, then the Global Scenery folders; the demo areas last).
 		 */
-		bool ReadBaseMesh(const int lat, const int lon, const DsfReadOptions &options, DsfFile &out, fs::path &file, std::vector<DsfExclusion> &exclusions)
+		std::vector<fs::path> FindTileFiles(const int lat, const int lon)
 		{
 			const std::shared_ptr<const LibraryIndex> index = LibraryManager::GetIndex();
 			std::vector<const LibraryPackage *> packages;
@@ -293,16 +314,32 @@ namespace SceneryEditorX::XPlane
 				return a->priority < b->priority;
 			});
 
+			std::vector<fs::path> files;
 			for (const LibraryPackage *package : packages)
 			{
-				const std::optional<fs::path> found = VFS::FindCaseInsensitive(GetDsfTilePath(package->path, lat + 0.5, lon + 0.5));
-				if (!found)
-					continue;
+				if (std::optional<fs::path> found = VFS::FindCaseInsensitive(GetDsfTilePath(package->path, lat + 0.5, lon + 0.5)))
+					files.push_back(std::move(*found));
+			}
+			return files;
+		}
+
+		/**
+		 * @brief The DSF holding a tile's base mesh: the first of its files (FindTileFiles) that isn't an overlay. Reads it
+		 * with terrain and rasters (limited to the area), and collects the exclusion zones of the overlays above it (Global
+		 * Airports, custom scenery). Files read ahead are read from there.
+		 */
+		bool ReadBaseMesh(const int lat, const int lon, const DsfReadOptions &options, const ReadAhead &readAhead, DsfFile &out, fs::path &file,
+						  std::vector<DsfExclusion> &exclusions)
+		{
+			for (const fs::path &found : FindTileFiles(lat, lon))
+			{
 				DsfFile dsf;
 				std::string error;
-				if (!LoadDsf(*found, dsf, options, &error))
+				const auto ahead = readAhead.find(found);
+				const bool read = ahead != readAhead.end() ? ReadDsf(ahead->second->data(), ahead->second->size(), dsf, options, &error) : LoadDsf(found, dsf, options, &error);
+				if (!read)
 				{
-					SEDX_CORE_WARN_TAG(LOG_TAG, "{}: {}", VFS::ToUtf8(*found), error);
+					SEDX_CORE_WARN_TAG(LOG_TAG, "{}: {}", VFS::ToUtf8(found), error);
 					continue;
 				}
 				if (dsf.IsOverlay())
@@ -312,7 +349,7 @@ namespace SceneryEditorX::XPlane
 					continue;
 				}
 				out = std::move(dsf);
-				file = *found;
+				file = found;
 				return true;
 			}
 			return false;
@@ -946,6 +983,7 @@ namespace SceneryEditorX::XPlane
 							const std::vector<std::vector<Point2>> &grounds)
 	{
 		State &state = GetState();
+		const ReadAhead readAhead = std::exchange(state.readAhead, {});	// Dropped once this load is done
 		if (!IsEnabled())
 		{
 			Unload();
@@ -990,12 +1028,12 @@ namespace SceneryEditorX::XPlane
 		{
 			for (int lon = static_cast<int>(std::floor(options.areaWest)); lon <= static_cast<int>(std::floor(options.areaEast)); ++lon)
 			{
-				reads.push_back(std::async(std::launch::async, [lat, lon, options]() -> std::unique_ptr<Tile>
+				reads.push_back(std::async(std::launch::async, [lat, lon, options, &readAhead]() -> std::unique_ptr<Tile>
 				{
 					auto tile = std::make_unique<Tile>();
 					tile->lat = lat;
 					tile->lon = lon;
-					return ReadBaseMesh(lat, lon, options, tile->dsf, tile->file, tile->exclusions) ? std::move(tile) : nullptr;
+					return ReadBaseMesh(lat, lon, options, readAhead, tile->dsf, tile->file, tile->exclusions) ? std::move(tile) : nullptr;
 				}));
 			}
 		}
@@ -1274,8 +1312,9 @@ namespace SceneryEditorX::XPlane
 		std::string files;
 		for (const std::unique_ptr<Tile> &tile : tiles)
 			files += (files.empty() ? "" : ", ") + tile->file.filename().string() + " (" + tile->file.parent_path().parent_path().parent_path().filename().string() + ")";
-		SEDX_CORE_INFO_TAG(LOG_TAG, "{}: {} triangles in {} parts from {} ({} land classes, {} missing; {} textures), y = 0 at {:.1f} m MSL, in {:.0f} ms ({:.0f} ms reading)",
-			name, triangles, drawn.size(), files, state.stats.terrainTypes, missing, state.stats.textures, state.datumElevation, state.stats.loadMilliseconds, readMilliseconds);
+		SEDX_CORE_INFO_TAG(LOG_TAG, "{}: {} triangles in {} parts from {} ({} land classes, {} missing; {} textures; {} art), y = 0 at {:.1f} m MSL, in {:.0f} ms ({:.0f} ms reading, {} file{} read ahead)",
+			name, triangles, drawn.size(), files, state.stats.terrainTypes, missing, state.stats.textures, SeasonArtName(season), state.datumElevation, state.stats.loadMilliseconds,
+			readMilliseconds, readAhead.size(), readAhead.size() == 1 ? "" : "s");
 
 		// The tiles' own scenery, kept filtered so its switch can show it again without reading the tiles
 		state.name = name;
@@ -1301,9 +1340,65 @@ namespace SceneryEditorX::XPlane
 		return true;
 	}
 
+	bool SceneTerrain::ReadSeasonRasters(const double latitude, const double longitude, std::array<float, 8> &days)
+	{
+		State &state = GetState();
+		state.readAhead.clear();
+		if (!LibraryManager::GetIndex())
+			return false;
+
+		DsfReadOptions options;
+		options.overlays = false;
+		options.rasters = true;
+		options.rasterNames.assign(Environment::DSF_SEASON_RASTERS.begin(), Environment::DSF_SEASON_RASTERS.end());
+		const int lat = static_cast<int>(std::floor(latitude)), lon = static_cast<int>(std::floor(longitude));
+		for (const fs::path &file : FindTileFiles(lat, lon))
+		{
+			// Unpacked once: the rasters come from these bytes, and so does the terrain the next Load() builds
+			std::string bytes, error;
+			if (!VFS::ReadFile(file, bytes, &error))
+			{
+				SEDX_CORE_WARN_TAG(LOG_TAG, "{}: {}", VFS::ToUtf8(file), error);
+				continue;
+			}
+			auto unpacked = std::make_shared<std::vector<uint8_t>>();
+			const uint8_t *data = reinterpret_cast<const uint8_t *>(bytes.data());
+			if (!Is7zArchive(data, bytes.size()))
+				unpacked->assign(data, data + bytes.size());
+			else if (!Extract7zFirstFile(data, bytes.size(), *unpacked, &error))
+			{
+				SEDX_CORE_WARN_TAG(LOG_TAG, "{}: the compressed DSF can't be unpacked: {}", VFS::ToUtf8(file), error);
+				continue;
+			}
+			bytes = {};
+			DsfFile dsf;
+			if (!ReadDsf(unpacked->data(), unpacked->size(), dsf, options, &error))
+			{
+				SEDX_CORE_WARN_TAG(LOG_TAG, "{}: {}", VFS::ToUtf8(file), error);
+				continue;
+			}
+			if (IsEnabled())
+				state.readAhead.emplace(file, std::move(unpacked));
+			if (dsf.IsOverlay())
+				continue;
+
+			// The base mesh: its rasters at the place
+			for (size_t i = 0; i < days.size(); ++i)
+			{
+				const DsfRaster *raster = dsf.FindRaster(Environment::DSF_SEASON_RASTERS[i]);
+				if (!raster)
+					return false;
+				days[i] = raster->SampleNearest(longitude, latitude, dsf.west, dsf.south, dsf.east, dsf.north);
+			}
+			return true;
+		}
+		return false;
+	}
+
 	void SceneTerrain::Unload()
 	{
 		State &state = GetState();
+		state.readAhead.clear();
 		if (state.root != 0 || !state.surface.IsEmpty())
 			++state.generation;
 		ClearScenery(state);

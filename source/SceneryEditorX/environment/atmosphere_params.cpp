@@ -78,7 +78,7 @@ namespace SceneryEditorX::Environment
 		double fog = 0.0;
 		if (visibilityM > 0.0)
 			fog = span > 0.0 ? std::clamp((atmosphere.fogStartVisibilityM - visibilityM) / span, 0.0, 1.0) : (visibilityM < atmosphere.fogStartVisibilityM ? 1.0 : 0.0);
-		out.hazeExtinction = (1.0 - fog) * needed / std::max(atmosphere.mieSpectral[2], 1e-3);
+		out.hazeExtinction = std::max(atmosphere.hazeMieScale, 0.0) * (1.0 - fog) * needed / std::max(atmosphere.mieSpectral[2], 1e-3);
 		out.fogExtinction = fog * needed;
 		return out;
 	}

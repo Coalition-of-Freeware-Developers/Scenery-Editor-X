@@ -405,7 +405,35 @@ namespace SceneryEditorX::XPlane
 			if (key == "TEXTURE")
 				out.texture = CleanPath(RestOfLine(line, 1));
 			else if (key == "TEXTURE_NORMAL" && tokens.size() >= 3)
+			{
+				out.normalRatio = ParseFloat(tokens[1], 1.0f);
 				out.textureNormal = CleanPath(RestOfLine(line, 2));
+			}
+			else if (key == "NORMAL_METALNESS")
+				out.normalMetalness = true;
+			else if (key == "SPECULAR" && tokens.size() >= 2)
+				out.specular = ParseFloat(tokens[1], 1.0f);
+			else if (key == "SUPER_ROUGHNESS" && tokens.size() >= 2)
+				out.superRoughness = ParseFloat(tokens[1], 0.0f);
+			else if (key == "NO_ALPHA")
+				out.noAlpha = true;
+			else if (key == "NO_BLEND")
+				out.noBlendCutoff = tokens.size() >= 2 ? ParseFloat(tokens[1], 0.5f) : 0.5f;
+			else if (key == "DITHER_ALPHA")
+			{
+				out.ditherAlpha[0] = tokens.size() >= 2 ? ParseFloat(tokens[1], 0.0f) : 0.0f;
+				out.ditherAlpha[1] = tokens.size() >= 3 ? ParseFloat(tokens[2], 0.0f) : 0.0f;
+			}
+			else if (key == "WEATHER" && tokens.size() >= 2)
+				out.weather = CleanPath(RestOfLine(line, 1));
+			else if (key == "WEATHER_TRANSPARENT")
+				out.weatherTransparent = true;
+			else if (key == "SNOW_ALBEDO_LUMA" && tokens.size() >= 3)
+			{
+				out.hasSnowAlbedoLuma = true;
+				out.snowAlbedoLuma[0] = ParseFloat(tokens[1], 0.0f);
+				out.snowAlbedoLuma[1] = ParseFloat(tokens[2], 0.0f);
+			}
 			else if (key == "SCALE" && tokens.size() >= 3)
 			{
 				out.scaleS = ParseFloat(tokens[1], 100.0f);
@@ -430,6 +458,12 @@ namespace SceneryEditorX::XPlane
 			}
 			else if (key == "DECAL_LIB" && tokens.size() >= 2)
 				out.decal = std::string(RestOfLine(line, 1));
+			else
+			{
+				PolygonDecal decal;
+				if (ParseDecalRow(tokens, decal))
+					out.decals.push_back(std::move(decal));
+			}
 		});
 
 		if (out.texture.empty())
@@ -1497,10 +1531,12 @@ namespace SceneryEditorX::XPlane
 
 	int GetLayerGroupOrder(const std::string_view group)
 	{
+		// X-Plane ignores the case: WorldEditor writes its orthophotos' .pol with "LAYER_GROUP TERRAIN 1"
 		static constexpr const char *ORDER[] = { "terrain", "beaches", "shoulders", "taxiways", "runways", "markings", "airports", "roads", "objects", "light_objects", "cars" };
+		const std::string name = ToLower(group);
 		for (int i = 0; i < static_cast<int>(std::size(ORDER)); ++i)
 		{
-			if (group == ORDER[i])
+			if (name == ORDER[i])
 				return i;
 		}
 		return 8;	// objects

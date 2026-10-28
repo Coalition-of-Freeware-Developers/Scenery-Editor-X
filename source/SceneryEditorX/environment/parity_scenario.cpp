@@ -109,6 +109,19 @@ namespace SceneryEditorX::Environment
 					return false;
 				}
 			}
+			if (const auto it = object.find("scenery_date"); it != object.end())
+			{
+				std::array<int, 3> date{};
+				if (it->is_null())
+					scenario.sceneryDate.reset();
+				else if (it->is_string() && ParseIsoDate(it->get<std::string>(), date[0], date[1], date[2]))
+					scenario.sceneryDate = date;
+				else
+				{
+					error = "\"scenery_date\" is not YYYY-MM-DD: " + it->dump();
+					return false;
+				}
+			}
 			if (const auto it = object.find("local_time"); it != object.end() && it->is_string())
 			{
 				if (!ParseClockTime(it->get<std::string>(), scenario.localTimeHours))

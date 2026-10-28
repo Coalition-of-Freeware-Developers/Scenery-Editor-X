@@ -256,6 +256,111 @@ void dynamic_resolution()
 		}
 
 		/**
+		 * @struct CpuDrawList
+		 * @brief The renderables UpdateDrawCalls looks at: the ones the GPU scene doesn't draw, plus the blended ones it
+		 * does (the forward pass draws their blended part). At X-Coder's KDEN that is 78k of 277k renderables, 11k of them
+		 * active, so a frame walks only the active ones instead of every renderable. Rebuilt when the structure, a
+		 * material's draw path or the GPU scene's availability changes; active flags follow Scene's render-state changes.
+		 * Kept in GetRenderableEntities() order, so the draw calls come out in the order a full walk gives them.
+		 */
+		struct CpuDrawList
+		{
+			std::vector<Entity *> entities;
+			std::vector<entt::entity> handles;		// Per entry, to tell a recycled entity index from the listed one
+			std::vector<uint8_t> active;			// Per entry, the entity's active flag
+			std::vector<uint32_t> entryOf;			// By entity index (entt::to_entity): its entry, or UINT32_MAX
+			std::vector<Entity *> activeEntities;	// The active entries, in list order
+			std::vector<entt::entity> changes;		// Scratch for Scene::TakeRenderStateChanges
+			uint64_t structureVersion = 0;
+			uint64_t drawPathVersion = 0;
+			uint32_t reader = UINT32_MAX;
+			bool gpuSceneDrawing = false;
+			bool built = false;
+		};
+		CpuDrawList s_CpuDrawList;
+
+		void RebuildCpuDrawList(CpuDrawList &list)
+		{
+			SEDX_PERF_SCOPE("Render: CPU draw list rebuild");
+			list.entities.clear();
+			list.handles.clear();
+			list.active.clear();
+			std::ranges::fill(list.entryOf, UINT32_MAX);
+
+			for (Entity *entity : Scene::GetRenderableEntities())
+			{
+				const Renderable *renderable = entity ? entity->GetComponent<Renderable>() : nullptr;
+				const MaterialAsset *material = renderable ? renderable->GetMaterialAsset() : nullptr;
+				if (!material || renderable->GetLodCount() == 0)
+					continue;
+				// the same test as UpdateDrawCalls: the GPU scene draws the opaque renderables it takes
+				if (material->GetProperty(MaterialProperty::BlendMode) <= 0.0f && GpuScene::IsGpuDriven(renderable))
+					continue;
+
+				const entt::entity handle = static_cast<entt::entity>(*entity);
+				const size_t index = static_cast<size_t>(entt::to_entity(handle));
+				if (index >= list.entryOf.size())
+					list.entryOf.resize(index + 1, UINT32_MAX);
+				list.entryOf[index] = static_cast<uint32_t>(list.entities.size());
+				list.entities.push_back(entity);
+				list.handles.push_back(handle);
+				list.active.push_back(entity->GetActive() ? 1 : 0);
+			}
+
+			list.structureVersion = Scene::GetStructureVersion();
+			list.drawPathVersion = MaterialAsset::GetDrawPathVersion();
+			list.gpuSceneDrawing = GpuScene::IsDrawing();
+			list.built = true;
+		}
+
+		/* @brief The active entries of the CPU draw list, brought up to date with what changed since the last call. */
+		const std::vector<Entity *> &GetActiveCpuDrawEntities()
+		{
+			CpuDrawList &list = s_CpuDrawList;
+			if (list.reader == UINT32_MAX)
+				list.reader = Scene::AddRenderStateReader();
+
+			const bool incremental = Scene::TakeRenderStateChanges(list.reader, list.changes);
+			bool activeChanged = false;
+			if (!list.built || list.structureVersion != Scene::GetStructureVersion() || list.drawPathVersion != MaterialAsset::GetDrawPathVersion() ||
+				list.gpuSceneDrawing != GpuScene::IsDrawing())
+			{
+				RebuildCpuDrawList(list);
+				activeChanged = true;
+			}
+			else if (!incremental)
+			{
+				for (size_t i = 0; i < list.entities.size(); ++i)
+					list.active[i] = list.entities[i]->GetActive() ? 1 : 0;
+				activeChanged = true;
+			}
+			else
+			{
+				for (const entt::entity handle : list.changes)
+				{
+					const size_t index = static_cast<size_t>(entt::to_entity(handle));
+					const uint32_t entry = index < list.entryOf.size() ? list.entryOf[index] : UINT32_MAX;
+					if (entry == UINT32_MAX || list.handles[entry] != handle)
+						continue;
+					const uint8_t active = list.entities[entry]->GetActive() ? 1 : 0;
+					activeChanged |= active != list.active[entry];
+					list.active[entry] = active;
+				}
+			}
+
+			if (activeChanged)
+			{
+				list.activeEntities.clear();
+				for (size_t i = 0; i < list.entities.size(); ++i)
+				{
+					if (list.active[i])
+						list.activeEntities.push_back(list.entities[i]);
+				}
+			}
+			return list.activeEntities;
+		}
+
+		/**
 		 * @struct GpuMatrix
 		 * @brief 4x4 column-vector matrix (clip = M * position) stored row-major: element (r, c) at m[r * 4 + c].
 		 *
@@ -955,6 +1060,8 @@ void dynamic_resolution()
 				UpdateDrawCalls(m_CmdList_Present);
 				Perf::SetCounter("entities", static_cast<double>(Scene::GetEntities().size()));
 				Perf::SetCounter("cpu draw calls", static_cast<double>(m_DrawCall_Count));
+				Perf::SetCounter("cpu draw list", static_cast<double>(s_CpuDrawList.entities.size()));
+				Perf::SetCounter("cpu draw list active", static_cast<double>(s_CpuDrawList.activeEntities.size()));
 				Perf::SetCounter("drapes", static_cast<double>(s_DrapeDrawCount));
 			}
 
@@ -2942,8 +3049,9 @@ void dynamic_resolution()
 		const CsmSetup &shadows = GetShadowCascades();
 		const uint32_t allCascades = (1u << shadows.count) - 1u;
 
-		// collect draw calls: renderables the GPU scene doesn't draw, plus the blended part of the ones it does
-		for (Entity* entity : Scene::GetRenderableEntities())
+		// collect draw calls: renderables the GPU scene doesn't draw, plus the blended part of the ones it does (the active
+		// entries of the CPU draw list; the tests below still decide)
+		for (Entity* entity : GetActiveCpuDrawEntities())
 		{
 			if (!entity || !entity->GetActive())
 				continue;
@@ -2989,7 +3097,7 @@ void dynamic_resolution()
 				water.cameraVisible = true;
 				water.lodIndex = std::min(renderable->GetLodIndex(), renderable->GetLodCount() - 1);
 				water.instanceCount = renderable->GetInstanceCount();
-				water.drawData_Index = WriteDrawData(world, entity->GetMatrixPrevious(), material->GetIndex(), 0, 0);
+				water.drawData_Index = WriteDrawData(world, entity->GetMatrixPrevious(world), material->GetIndex(), 0, 0);
 				continue;
 			}
 
@@ -3016,7 +3124,8 @@ void dynamic_resolution()
 			if (inView)
 				m_Transparents_Present |= isTransparent;
 
-			const uint32_t drawDataIndex = WriteDrawData(world, entity->GetMatrixPrevious(), material->GetIndex(), isTransparent ? 1 : 0, ScenePicking::GetPickId(static_cast<entt::entity>(*entity)));
+			// the blended draws never store a previous matrix (only the g-buffer does): no second walk up the parents for them
+			const uint32_t drawDataIndex = WriteDrawData(world, entity->GetMatrixPrevious(world), material->GetIndex(), isTransparent ? 1 : 0, ScenePicking::GetPickId(static_cast<entt::entity>(*entity)));
 
 			Renderer_DrawCall drawCall;
 			drawCall.renderable         = renderable;
@@ -3252,6 +3361,8 @@ void dynamic_resolution()
 			params.groundAlbedo = c.planet.w;
 			params.hazeTopM = c.hazeTopM;
 			params.hazeBandM = c.hazeBandM;
+			params.hazeMieScale = c.hazeMieScale;
+			params.sunTint = { c.sunTintRed, 1.0, c.sunTintBlue };
 			return params;
 		}
 
@@ -3367,9 +3478,9 @@ void dynamic_resolution()
 		env.planet = constants.planet;
 		env.atmosphere_haze = xMath::Vec4(static_cast<float>(atmosphere.hazeExtinction), static_cast<float>(atmosphere.fogScatteringAlbedo),
 			static_cast<float>(atmosphere.hazeTopM), static_cast<float>(atmosphere.hazeBandM));
-		env.light_toa = xMath::Vec4(static_cast<float>(constants.sunIlluminanceLux * Environment::SUN_COLOR[0]),
-			static_cast<float>(constants.sunIlluminanceLux * Environment::SUN_COLOR[1]), static_cast<float>(constants.sunIlluminanceLux * Environment::SUN_COLOR[2]),
-			static_cast<float>(moonLux));
+		const Environment::Rgb sunColor = Environment::SunColor(atmosphere);	// SUN_COLOR tinted by sedx/sun_tint_*
+		env.light_toa = xMath::Vec4(static_cast<float>(constants.sunIlluminanceLux * sunColor[0]), static_cast<float>(constants.sunIlluminanceLux * sunColor[1]),
+			static_cast<float>(constants.sunIlluminanceLux * sunColor[2]), static_cast<float>(moonLux));
 		env.atmosphere_view = xMath::Vec4(constants.aerialRangeM, constants.airglowNits, constants.starBrightness, static_cast<float>(atmosphere.fogExtinction));
 		{
 			const ProbeVec3 probe = SnapProbePosition({ s_MainCameraPosition.x, s_MainCameraPosition.y, s_MainCameraPosition.z });	// Captured around the main view

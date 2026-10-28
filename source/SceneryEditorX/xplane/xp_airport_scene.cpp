@@ -46,6 +46,7 @@
 #include <memory>
 #include <set>
 #include <unordered_set>
+#include <SceneryEditorX/environment/environment.h>
 #include <SceneryEditorX/filesystem/vfs.h>
 #include <SceneryEditorX/logging/logging.hpp>
 #include <SceneryEditorX/renderer/gpu_scene.h>
@@ -146,9 +147,12 @@ namespace SceneryEditorX::XPlane
 		 * Heights above the ground plane, so stacked flat geometry doesn't fight for the same pixels. From the bottom:
 		 * boundary, DSF polygons in the terrain / beaches / shoulders groups, apt.dat pavement (first row on top),
 		 * DSF "taxiways", runways, DSF "runways", painted lines, DSF "markings" and the higher groups, taxi routes,
-		 * markers. Reverse-Z depth keeps millimeters apart out to a few kilometers.
+		 * markers. Reverse-Z depth keeps millimeters apart out to a few kilometers. Transparent (surface 15) runways,
+		 * pavement and helipads sit just above the boundary, under every DSF group: X-Plane draws nothing for them, so
+		 * the pack's own art (its orthophotos and pavement polygons) must cover their editing tint.
 		 */
 		constexpr float HEIGHT_BOUNDARY = 0.00f;
+		constexpr float HEIGHT_TRANSPARENT = 0.002f;
 		constexpr float HEIGHT_PAVEMENT = 0.03f;
 		constexpr float HEIGHT_RUNWAY_ABOVE_PAVEMENT = 0.02f;
 		constexpr float HEIGHT_HELIPAD_EXTRA = 0.01f;
@@ -290,6 +294,12 @@ namespace SceneryEditorX::XPlane
 				case SurfaceFamily::Transparent:	return Paint::Transparent;
 				default:							return runway ? Paint::RunwayAsphalt : Paint::Asphalt;
 			}
+		}
+
+		/* @brief Height of a surface drawn in its flat paint: its place in the stack, or under all DSF art when transparent. */
+		float FlatHeight(const Paint paint, const float height)
+		{
+			return paint == Paint::Transparent ? HEIGHT_TRANSPARENT : height;
 		}
 
 		Paint LinePaint(const int lineType)
@@ -436,8 +446,11 @@ namespace SceneryEditorX::XPlane
 			for (const OverlayVertex &vertex : mesh.vertices)
 			{
 				const Vec3 normal(vertex.nx, vertex.ny, vertex.nz);
-				// A tangent perpendicular to the normal: along u for ground (the texture heading), along the ground for walls
-				const Vec3 tangent = std::abs(vertex.ny) > 0.9f ? Vec3(mesh.tangentX, 0.0f, mesh.tangentZ) : xMath::Normalize(xMath::Cross(Vec3(0.0f, 1.0f, 0.0f), normal));
+				// A tangent perpendicular to the normal: along u for ground (the vertex's own where a line bends, else the
+				// texture heading), along the ground for walls
+				const bool ownTangent = vertex.tx != 0.0f || vertex.tz != 0.0f;
+				const Vec3 tangent = std::abs(vertex.ny) > 0.9f ? (ownTangent ? Vec3(vertex.tx, 0.0f, vertex.tz) : Vec3(mesh.tangentX, 0.0f, mesh.tangentZ))
+					: xMath::Normalize(xMath::Cross(Vec3(0.0f, 1.0f, 0.0f), normal));
 				part.vertices.push_back(Vertex_PosTexNorTan(Vec3(vertex.x, vertex.y, vertex.z), Vec2(vertex.u, vertex.v), normal, tangent));
 			}
 			for (const uint32_t index : mesh.indices)
@@ -704,7 +717,24 @@ namespace SceneryEditorX::XPlane
 				overlay->BuildAirportSurfaces(airport, pavementHeights, runwayHeight, lineHeight, options, surfaces);
 				for (const OverlayMesh &mesh : surfaces.meshes)
 					textured[{ static_cast<int>(mesh.kind), mesh.placement }].push_back(&mesh);
-				lightsAsObjects = !surfaces.objects.empty() || overlay->GetString(OverlayBuilder::GetLightStringLibraryPath(101), nullptr, surfaces) != nullptr;
+
+				// Which library art each runway got, for comparing with X-Plane (transparent runways leave it to the pack's DSF)
+				if (!filter && !airport.runways.empty())
+				{
+					std::string art;
+					for (uint32_t i = 0; i < airport.runways.size(); ++i)
+					{
+						const AptRunway &runway = airport.runways[i];
+						const auto it = textured.find({ static_cast<int>(OverlayKind::Runway), i });
+						art += (art.empty() ? "" : "; ") + runway.GetName() + " surface " + std::to_string(runway.surface) + " -> ";
+						if (it == textured.end())
+							art += GetSurfaceFamily(runway.surface) == SurfaceFamily::Transparent ? "none (transparent)" : "flat color";
+						else
+							art += it->second.front()->resource + " (" + it->second.front()->texture.filename().string() + ")";
+					}
+					SEDX_CORE_INFO_TAG(LOG_TAG, "{} runway art: {}", airport.id, art);
+				}
+				lightsAsObjects = !surfaces.objects.empty() || overlay->GetString(overlay->ResolveLightStringLibraryPath(101), nullptr, surfaces) != nullptr;
 				for (OverlayObject &object : surfaces.objects)
 					out.objects.push_back(std::move(object));
 				out.warnings.insert(out.warnings.end(), surfaces.warnings.begin(), surfaces.warnings.end());
@@ -743,7 +773,7 @@ namespace SceneryEditorX::XPlane
 					std::vector<Point2> points;
 					std::vector<uint32_t> indices;
 					if (!rings.empty() && TriangulatePolygon(rings, points, indices))
-						EmitTriangles(part, points, indices, pavementHeights[i]);
+						EmitTriangles(part, points, indices, FlatHeight(part.paint, pavementHeights[i]));
 					else if (!rings.empty())
 					{
 						// Degenerate outline: keep its footprint so the entity can still be framed and selected.
@@ -795,28 +825,23 @@ namespace SceneryEditorX::XPlane
 				Part &part = start_part(AirportElementKind::Runway, static_cast<uint32_t>(i), "Runway " + runway.GetName(), SurfacePaint(runway.surface, true));
 				if (const auto *meshes = texturedMeshes(OverlayKind::Runway, static_cast<uint32_t>(i)))
 				{
+					// The surface first; painted markings and tire rubber over it, each a part (and a blended material) of its own
 					ApplyOverlayMaterial(part, *meshes->front());
-					for (const OverlayMesh *mesh : *meshes)
+					AppendOverlayMesh(part, *meshes->front());
+					for (size_t m = 1; m < meshes->size(); ++m)
 					{
-						if (mesh->shading != OverlayShading::Markings)
-							AppendOverlayMesh(part, *mesh);
-					}
-					// Painted markings: their own part (blended, a material of their own), drawn over the surface
-					for (const OverlayMesh *mesh : *meshes)
-					{
-						if (mesh->shading != OverlayShading::Markings)
-							continue;
-						Part &markings = start_part(AirportElementKind::Runway, static_cast<uint32_t>(i), mesh->name, Paint::WhiteLine);
-						markings.subIndex = 2;
-						ApplyOverlayMaterial(markings, *mesh);
-						AppendOverlayMesh(markings, *mesh);
+						const OverlayMesh *mesh = (*meshes)[m];
+						Part &layer = start_part(AirportElementKind::Runway, static_cast<uint32_t>(i), mesh->name, mesh->shading == OverlayShading::Markings ? Paint::WhiteLine : Paint::RunwayAsphalt);
+						layer.subIndex = mesh->shading == OverlayShading::Markings ? 2 : 3;
+						ApplyOverlayMaterial(layer, *mesh);
+						AppendOverlayMesh(layer, *mesh);
 					}
 				}
 				else
 				{
 					Point2 corners[4];
 					GetRunwayCorners(runway, projection, corners, false);
-					EmitQuad(part, corners, runwayHeight);
+					EmitQuad(part, corners, FlatHeight(part.paint, runwayHeight));
 				}
 
 				// Blast pads, a shade lower so the runway proper reads on top
@@ -826,7 +851,7 @@ namespace SceneryEditorX::XPlane
 					GetRunwayCorners(runway, projection, padded, true);
 					Part &pads = start_part(AirportElementKind::Runway, static_cast<uint32_t>(i), "Runway " + runway.GetName() + " blast pads", SurfacePaint(runway.surface, false));
 					pads.subIndex = 1;
-					EmitQuad(pads, padded, runwayHeight - 0.005f);
+					EmitQuad(pads, padded, pads.paint == Paint::Transparent ? HEIGHT_TRANSPARENT - 0.0005f : runwayHeight - 0.005f);
 				}
 			}
 
@@ -857,7 +882,7 @@ namespace SceneryEditorX::XPlane
 				{
 					Point2 corners[4];
 					GetHelipadCorners(helipad, projection, corners);
-					EmitQuad(part, corners, runwayHeight + HEIGHT_HELIPAD_EXTRA);
+					EmitQuad(part, corners, FlatHeight(part.paint, runwayHeight + HEIGHT_HELIPAD_EXTRA));
 				}
 			}
 
@@ -1250,6 +1275,7 @@ namespace SceneryEditorX::XPlane
 			uint64_t revision = 0;
 			uint64_t geometryRevision = 0;
 			uint64_t libraryGeneration = 0;
+			std::optional<uint64_t> seasonsGeneration;	// The library generation the place's seasons were read with (ApplyPlaceSeasons)
 			SceneAirports::Stats stats;
 			std::array<bool, static_cast<size_t>(AirportElementKind::Count)> kindVisible;
 
@@ -1474,6 +1500,34 @@ namespace SceneryEditorX::XPlane
 		}
 
 		/**
+		 * @brief The place's seasons from its base DSF's season rasters at the datum, as X-Plane takes them (instead of the
+		 * fixed dates by latitude), set before any of the airport's art is resolved: its seasonal art and the terrain's are
+		 * picked for them on the first try, and the terrain then reads the tile this unpacked instead of the disk.
+		 */
+		void ApplyPlaceSeasons(const AirportDocument &document, const GeoProjection &projection)
+		{
+			const double latitude = projection.GetDatumLatitude(), longitude = projection.GetDatumLongitude();
+			Environment::World &world = Environment::Get();
+			world.SetAirportLocation(latitude, longitude, static_cast<float>(document.airport.elevationFt * 0.3048));	// The editor does it next frame: too late
+			std::array<float, 8> days{};
+			const auto start = std::chrono::steady_clock::now();
+			const bool read = SceneTerrain::ReadSeasonRasters(latitude, longitude, days);
+			const double milliseconds = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
+			world.SetSeasonRanges(read ? Environment::MakeDsfSeasonRanges(days) : std::nullopt, latitude, longitude);
+			const Environment::EnvironmentDerived &derived = world.GetDerived();
+			LibraryManager::SetSeason(derived.scenerySeason.bits);
+
+			const char *source = derived.seasonFromDsf ? "the DSF's season rasters" : "the fixed dates by latitude";
+			if (read)
+				SEDX_CORE_INFO_TAG(LOG_TAG, "{}: {} on day {} from {} (spring {:.0f}-{:.0f}, summer {:.0f}-{:.0f}, fall {:.0f}-{:.0f}, winter {:.0f}-{:.0f}; read in {:.0f} ms); scenery art: {}",
+					document.airport.id, Environment::GetSeasonName(derived.season.season), derived.dayOfYear, source, days[0], days[1], days[2], days[3], days[4], days[5], days[6],
+					days[7], milliseconds, Environment::GetSeasonName(derived.scenerySeason.season));
+			else
+				SEDX_CORE_INFO_TAG(LOG_TAG, "{}: {} on day {} from {} (no season rasters); scenery art: {}", document.airport.id, Environment::GetSeasonName(derived.season.season),
+					derived.dayOfYear, source, Environment::GetSeasonName(derived.scenerySeason.season));
+		}
+
+		/**
 		 * @brief Puts a part on the terrain: flat kinds are draped (cut along the terrain's triangles, lifted onto it),
 		 * facades and forests stand on the ground under each vertex. Placed parts move with their entity instead.
 		 */
@@ -1565,9 +1619,10 @@ namespace SceneryEditorX::XPlane
 				root.kind = kind;
 				if (object.source == OverlayObject::Source::AirportLights)
 				{
-					// The light string's row: bit 31 marks a pavement edge, else a linear feature (OverlayBuilder::BuildAirportSurfaces)
-					root.sourceKind = (object.placement & 0x80000000u) != 0 ? AirportElementKind::Pavement : AirportElementKind::LinearFeature;
-					root.sourceIndex = object.placement & 0x7FFFFFFFu;
+					// The lights' row: a pavement edge, a runway or else a linear feature (OverlayBuilder::BuildAirportSurfaces)
+					root.sourceKind = (object.placement & AIRPORT_LIGHTS_PAVEMENT_EDGE) != 0 ? AirportElementKind::Pavement
+						: (object.placement & AIRPORT_LIGHTS_RUNWAY) != 0 ? AirportElementKind::Runway : AirportElementKind::LinearFeature;
+					root.sourceIndex = object.placement & AIRPORT_LIGHTS_INDEX_MASK;
 				}
 				++placed;
 			}
@@ -1711,6 +1766,14 @@ namespace SceneryEditorX::XPlane
 			{
 				loaded.projection = GeoProjection(datumLat, datumLon);
 				loaded.hasProjection = true;
+			}
+
+			// The place's seasons before any art is resolved; again with another library (its base mesh may have changed)
+			// and when the terrain is switched on
+			if (loaded.hasProjection && SceneTerrain::IsEnabled() && loaded.seasonsGeneration != loaded.libraryGeneration)
+			{
+				loaded.seasonsGeneration = loaded.libraryGeneration;
+				ApplyPlaceSeasons(document, loaded.projection);
 			}
 
 			// The apt.dat rows' art builder lives on for their rebuilds (it caches the library assets it parsed); the

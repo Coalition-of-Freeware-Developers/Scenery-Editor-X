@@ -279,6 +279,7 @@ ADD_EXECUTABLE(XPlaneFormatTests
     ${CMAKE_CURRENT_SOURCE_DIR}/xplane_tests/TerrainTests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/xplane_tests/AutogenTests.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/environment/brdf_lut.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/environment/season_model.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/filesystem/vfs.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_obj8.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_library.cpp

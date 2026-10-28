@@ -77,7 +77,8 @@ namespace SceneryEditorX
 		static void FreeIndices(uint32_t offset, uint32_t count);
 
 		/**
-		 * @brief Updates existing vertices in-place (cpu + gpu), used by deformable meshes like cloth
+		 * @brief Updates existing vertices in-place (on the GPU, and in the upload still waiting), used by deformable
+		 * meshes like cloth
 		 * @param data Pointer to the vertex data to update.
 		 * @param offset Offset in the global buffer where the update should start.
 		 * @param count Number of vertices to update.
@@ -85,10 +86,10 @@ namespace SceneryEditorX
 		static void UpdateVertices(const Vertex_PosTexNorTan *data, uint32_t offset, uint32_t count);
 
 		/**
-		 * @brief Synchronizes GPU buffers with CPU data if they are marked as dirty.
-		 * @note If no gpu buffer exists, create one with headroom and upload everything
-		 * @note If new data fits within existing capacity, upload only the new portion
-		 * @note If capacity is exceeded, recreate with headroom
+		 * @brief Uploads what was put in the buffers since the last call, in one copy. The GPU buffers are the only copy
+		 * of the geometry: appends wait here only until this uploads them.
+		 * @note If no gpu buffer exists, create one with headroom
+		 * @note If capacity is exceeded, recreate with headroom and copy the old buffers into the new ones on the GPU
 		 */
 		static void BuildIfDirty();
 
@@ -105,7 +106,7 @@ namespace SceneryEditorX
 		 */
 		static uint64_t GetGeneration();
 
-		/** @brief Vertices the global buffer holds (CPU side), live and freed alike: what a full rebuild uploads. */
+		/** @brief Vertices the global buffer spans, live and freed alike: what a full rebuild copies. */
 		static uint32_t GetVertexCount();
 
 
@@ -116,16 +117,25 @@ namespace SceneryEditorX
 		static Buffer *GetVertexBuffer();
 
 	 private:
-		// cpu-side accumulators
-		static std::vector<Vertex_PosTexNorTan> m_Vertices;
-		static std::vector<uint32_t> m_Indices;
+		// what the buffers span (element counts, live and freed alike) and what was put there since the last upload: no
+		// CPU copy of the whole buffers is kept (KDEN's ~2 GB of vertices lived on the CPU and the GPU before)
+		template <typename Element>
+		struct Upload
+		{
+			uint32_t offset = 0;
+			std::vector<Element> elements;
+		};
+		static uint32_t m_VertexCount;
+		static uint32_t m_IndexCount;
+		static std::vector<Upload<Vertex_PosTexNorTan>> m_VertexUploads;
+		static std::vector<Upload<uint32_t>> m_IndexUploads;
 
 		// gpu buffers
 		static Scope<Buffer> m_VertexBuffer;
 		static Scope<Buffer> m_IndexBuffer;
 
 		// capacity tracking (element counts)
-		static uint32_t m_VertexCount_Committed; // elements uploaded to gpu
+		static uint32_t m_VertexCount_Committed; // elements the gpu buffers hold, uploaded or copied over
 		static uint32_t m_IndexCount_Committed;
 		static uint32_t m_Vertex_Capacity;        // total gpu buffer capacity
 		static uint32_t m_Index_Capacity;
@@ -136,8 +146,7 @@ namespace SceneryEditorX
 		static uint64_t m_Generation;
 		static std::mutex m_Mutex;
 
-		// freed space: ranges waiting out the frames in flight, then reusable (sorted, merged); ranges rewritten below
-		// the committed counts, uploaded at the next BuildIfDirty
+		// freed space: ranges waiting out the frames in flight, then reusable (sorted, merged)
 		struct Range
 		{
 			uint32_t offset = 0;
@@ -152,8 +161,6 @@ namespace SceneryEditorX
 		static std::vector<Range> m_FreeVertexRanges;
 		static std::vector<Range> m_FreeIndexRanges;
 		static std::vector<PendingRange> m_PendingRanges;
-		static std::vector<Range> m_DirtyVertexRanges;
-		static std::vector<Range> m_DirtyIndexRanges;
 		static uint64_t m_Frame;	// BuildIfDirty calls (once a frame)
 
 		// growth factor applied when allocating gpu buffers
