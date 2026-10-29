@@ -30,6 +30,7 @@
  */
 #include "font_importer.h"
 
+#include "SceneryEditorX/filesystem/vfs.h"
 #include "SceneryEditorX/renderer/font/font.h"
 #include "SceneryEditorX/renderer/vulkan/image_resource.h"
 
@@ -408,9 +409,16 @@ namespace SceneryEditorX
 
 	bool FontImporter::LoadFromFile(Font* font, const std::string & file_path)
 	{
+		// Read the file ourselves: FT_New_Face opens narrow (ANSI) names on Windows, and the path is UTF-8.
+		// The bytes have to outlive the face, which is done at the end of this function.
+		std::string fontBytes;
+		if (!VFS::ReadFile(VFS::FromUtf8(file_path), fontBytes))
+			return false;
+
 		// load font (called face)
 		FT_Face ft_font = nullptr;
-		if (!ft_helper::handle_error(FT_New_Face(library, file_path.c_str(), 0, &ft_font)))
+		if (!ft_helper::handle_error(FT_New_Memory_Face(library, reinterpret_cast<const FT_Byte *>(fontBytes.data()),
+			static_cast<FT_Long>(fontBytes.size()), 0, &ft_font)))
 		{
 			ft_helper::handle_error(FT_Done_Face(ft_font));
 			return false;

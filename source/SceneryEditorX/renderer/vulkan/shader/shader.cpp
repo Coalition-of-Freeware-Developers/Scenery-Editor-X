@@ -36,6 +36,7 @@
 #include "slang_compiler.h"
 #include "spirv_hash.h"
 #include <SceneryEditorX/core/identifiers/hash.h>
+#include <SceneryEditorX/filesystem/vfs.h>
 #include <SceneryEditorX/utils/pointers.h>
 #include <algorithm>
 #include <fstream>
@@ -96,7 +97,7 @@ namespace SceneryEditorX
 
 		[[nodiscard]] std::string ExtractShaderName(const std::filesystem::path& path)
 		{
-			return path.stem().string();
+			return VFS::ToUtf8(path.stem());
 		}
 
 		[[nodiscard]] VkDevice GetActiveVkDevice()
@@ -136,7 +137,7 @@ namespace SceneryEditorX
 
 		[[nodiscard]] std::filesystem::path NormalizeShaderPath(const std::string& filepath)
 		{
-			std::filesystem::path path(filepath);
+			std::filesystem::path path = VFS::FromUtf8(filepath);
 			if (path.is_relative())
 				path = std::filesystem::path(kShaderDirectoryPath) / path;
 			return path.lexically_normal();
@@ -221,14 +222,14 @@ namespace SceneryEditorX
 
 		// Slang source compiles through the Slang front-end (with reflection); anything else is treated as precompiled SPIR-V.
 		if (sourcePath.extension() == ".slang")
-			return SlangCompiler::Compile(sourcePath.string(), forceCompile, disableOptimization);
+			return SlangCompiler::Compile(VFS::ToUtf8(sourcePath), forceCompile, disableOptimization);
 
-		const std::filesystem::path spirvPath = ShaderCache::ResolveSpirvPath(sourcePath.string());
+		const std::filesystem::path spirvPath = ShaderCache::ResolveSpirvPath(VFS::ToUtf8(sourcePath));
 
 		std::vector<uint32_t> spirv;
 		if (!ShaderCache::TryLoadSpirv(spirvPath, spirv))
 		{
-			SEDX_CORE_ERROR_TAG("Shader", "Failed to load SPIR-V for shader '{}'", sourcePath.string());
+			SEDX_CORE_ERROR_TAG("Shader", "Failed to load SPIR-V for shader '{}'", VFS::ToUtf8(sourcePath));
 			return nullptr;
 		}
 
@@ -339,7 +340,7 @@ namespace SceneryEditorX
 		if (m_AssetPath.empty())
 			return false;
 
-		const std::filesystem::path spirvPath = ShaderCache::ResolveSpirvPath(m_AssetPath.string());
+		const std::filesystem::path spirvPath = ShaderCache::ResolveSpirvPath(VFS::ToUtf8(m_AssetPath));
 		if (!std::filesystem::exists(spirvPath))
 			return false;
 

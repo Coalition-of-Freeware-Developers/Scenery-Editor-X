@@ -259,7 +259,7 @@ namespace SceneryEditorX
 			for (SlangInt32 i = 0; i < module->getDependencyFileCount(); ++i)
 			{
 				if (const char* dependency = module->getDependencyFilePath(i); dependency && dependency[0] != '\0')
-					add(dependency);
+					add(VFS::FromUtf8(dependency));	// Slang reports UTF-8
 			}
 
 			return dependencies;
@@ -267,7 +267,7 @@ namespace SceneryEditorX
 
 		[[nodiscard]] std::filesystem::path GetProgramCacheFile(const ShaderCompileOptions& options, const std::filesystem::path& sourcePath)
 		{
-			std::string key = std::format("{}|{}|{}|{}|{}", options.name, sourcePath.generic_string(), options.disableOptimization,
+			std::string key = std::format("{}|{}|{}|{}|{}", options.name, VFS::ToGenericUtf8(sourcePath), options.disableOptimization,
 										  kCompilerCacheRevision, spGetBuildTagString());
 			for (const ShaderType stage : options.stages)
 				key += std::format("|s{}", static_cast<uint32_t>(stage));
@@ -367,19 +367,20 @@ namespace SceneryEditorX
 			std::ifstream file(sourcePath, std::ios::binary);
 			if (!file)
 			{
-				SEDX_CORE_ERROR_TAG("SlangCompiler", "Shader '{}': cannot read '{}'", options.name, sourcePath.string());
+				SEDX_CORE_ERROR_TAG("SlangCompiler", "Shader '{}': cannot read '{}'", options.name, VFS::ToUtf8(sourcePath));
 				return false;
 			}
 
 			const std::string source((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
 			if (source.empty())
 			{
-				SEDX_CORE_ERROR_TAG("SlangCompiler", "Shader '{}': '{}' is empty", options.name, sourcePath.string());
+				SEDX_CORE_ERROR_TAG("SlangCompiler", "Shader '{}': '{}' is empty", options.name, VFS::ToUtf8(sourcePath));
 				return false;
 			}
 
 			// Session: SPIR-V for Vulkan, column-major matrices, variant macros, imports resolved next to the source.
-			const std::string searchPath = sourcePath.parent_path().string();
+			// Slang takes UTF-8 paths (the install folder can be outside the ANSI code page).
+			const std::string searchPath = VFS::ToUtf8(sourcePath.parent_path());
 			const char* searchPaths[] = { searchPath.c_str() };
 
 			std::vector<slang::PreprocessorMacroDesc> macros;
@@ -420,8 +421,8 @@ namespace SceneryEditorX
 			Slang::ComPtr<slang::IBlob> sourceBlob;
 			sourceBlob.attach(slang_createBlob(source.data(), source.size()));
 
-			const std::string moduleName = sourcePath.stem().string();
-			const std::string modulePath = sourcePath.string();
+			const std::string moduleName = VFS::ToUtf8(sourcePath.stem());
+			const std::string modulePath = VFS::ToUtf8(sourcePath);
 			Slang::ComPtr<slang::IBlob> diagnostics;
 			Slang::ComPtr<slang::IModule> module;
 			module = session->loadModuleFromSource(moduleName.c_str(), modulePath.c_str(), sourceBlob.get(), diagnostics.writeRef());
@@ -618,7 +619,7 @@ namespace SceneryEditorX
 		const std::filesystem::path sourcePath = ResolveSourcePath(options.sourcePath);
 		if (sourcePath.empty())
 		{
-			SEDX_CORE_ERROR_TAG("SlangCompiler", "Shader '{}': source '{}' not found", options.name, options.sourcePath.string());
+			SEDX_CORE_ERROR_TAG("SlangCompiler", "Shader '{}': source '{}' not found", options.name, VFS::ToUtf8(options.sourcePath));
 			return nullptr;
 		}
 
@@ -633,7 +634,7 @@ namespace SceneryEditorX
 			return BuildShader(options, sourcePath, program);
 		}
 
-		SEDX_CORE_INFO_TAG("SlangCompiler", "Compiling shader '{}' from '{}'", options.name, sourcePath.string());
+		SEDX_CORE_INFO_TAG("SlangCompiler", "Compiling shader '{}' from '{}'", options.name, VFS::ToUtf8(sourcePath));
 		if (!CompileWithSlang(options, sourcePath, program))
 			return nullptr;
 
@@ -646,8 +647,8 @@ namespace SceneryEditorX
 	Ref<Shader> SlangCompiler::Compile(std::string_view path, bool forceCompile, bool disableOptimization)
 	{
 		ShaderCompileOptions options;
-		options.sourcePath = std::filesystem::path(path);
-		options.name = options.sourcePath.stem().string();
+		options.sourcePath = VFS::FromUtf8(path);
+		options.name = VFS::ToUtf8(options.sourcePath.stem());
 		options.forceCompile = forceCompile;
 		options.disableOptimization = disableOptimization;
 		return Compile(options);

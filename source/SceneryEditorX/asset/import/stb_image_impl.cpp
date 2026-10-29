@@ -31,9 +31,12 @@
 
 // -------------------------------------------------------
 
+// File names are UTF-8, opened with _wfopen on Windows: ANSI fopen can't open a folder outside the ANSI code page
+#define STBI_WINDOWS_UTF8
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
+#define STBIW_WINDOWS_UTF8
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_image_write.h>
 

@@ -55,7 +55,7 @@ namespace SceneryEditorX
 
 	std::filesystem::path ShaderCache::ResolveSpirvPath(std::string_view sourcePath)
 	{
-		std::filesystem::path path(sourcePath);
+		std::filesystem::path path = VFS::FromUtf8(sourcePath);	// UTF-8, like every path string
 		if (path.extension() == ".slang" || path.extension() == ".hlsl" || path.extension() == ".glsl")
 			path.replace_extension(".spv");
 

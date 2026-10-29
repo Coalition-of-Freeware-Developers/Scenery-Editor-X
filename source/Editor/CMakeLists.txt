@@ -35,6 +35,7 @@ ADD_EXECUTABLE(SceneryEditorX WIN32
 	# --------------------------------
 	${RESOURCE_FILE}
 	SceneryEditorX.rc
+	SceneryEditorX.manifest
 )
 
 # --------------------------------
@@ -60,6 +61,7 @@ SOURCE_GROUP("Settings" FILES
 SOURCE_GROUP("Resource" FILES
 	${RESOURCE_FILE}
 	SceneryEditorX.rc
+	SceneryEditorX.manifest
 )
 SOURCE_GROUP("Resource/Icons" FILES
 	${ICON_FILES}

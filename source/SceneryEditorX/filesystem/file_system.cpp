@@ -139,7 +139,7 @@ namespace SceneryEditorX::IO
 
 	bool FileSystem::CreateDir(const std::string &directory)
 	{
-		return CreateDir(std::filesystem::path(directory));
+		return CreateDir(VFS::FromUtf8(directory));
 	}
 
 	bool FileSystem::DirExists(const std::filesystem::path &directory)
@@ -149,7 +149,7 @@ namespace SceneryEditorX::IO
 
 	bool FileSystem::DirExists(const std::string &directory)
 	{
-		return DirExists(std::filesystem::path(directory));
+		return DirExists(VFS::FromUtf8(directory));
 	}
 
 	bool FileSystem::DeleteFile(const std::filesystem::path &filepath)
@@ -177,7 +177,7 @@ namespace SceneryEditorX::IO
 
 	bool FileSystem::Exists(const std::string &filepath)
 	{
-		return std::filesystem::exists(std::filesystem::path(filepath));
+		return std::filesystem::exists(VFS::FromUtf8(filepath));
 	}
 
 	bool FileSystem::Exists(const std::filesystem::path &filepath)
@@ -192,7 +192,8 @@ namespace SceneryEditorX::IO
 
 		try
 		{
-			if (std::filesystem::exists(path) && std::filesystem::is_regular_file(path))
+			const std::filesystem::path file = VFS::FromUtf8(path);
+			if (std::filesystem::exists(file) && std::filesystem::is_regular_file(file))
 				return true;
 		}
 		catch (std::filesystem::filesystem_error &e)
@@ -682,25 +683,26 @@ namespace SceneryEditorX::IO
 
 	std::string FileSystem::GetWorkingDirectory()
 	{
-		return std::filesystem::current_path().generic_string();
+		// UTF-8: generic_string() throws on MSVC for a folder outside the ANSI code page (an install under C:\Users\日本)
+		return VFS::ToGenericUtf8(std::filesystem::current_path());
 	}
 
 	std::string FileSystem::GetRootDirectory(const std::string &path)
 	{
-		return std::filesystem::path(path).root_directory().generic_string();
+		return VFS::ToGenericUtf8(VFS::FromUtf8(path).root_directory());
 	}
 	std::string FileSystem::GetRelativePath(const std::string &path)
 	{
-		if (std::filesystem::path(path).is_relative())
+		if (VFS::FromUtf8(path).is_relative())
 			return path;
 
 		// create absolute paths
-		const std::filesystem::path p = std::filesystem::absolute(path);
-		const std::filesystem::path r = std::filesystem::absolute(GetWorkingDirectory());
+		const std::filesystem::path p = std::filesystem::absolute(VFS::FromUtf8(path));
+		const std::filesystem::path r = std::filesystem::current_path();
 
 		// if root paths are different, return absolute path
 		if (p.root_path() != r.root_path())
-			return p.generic_string();
+			return VFS::ToGenericUtf8(p);
 
 		// initialize relative path
 		std::filesystem::path result;
@@ -732,18 +734,18 @@ namespace SceneryEditorX::IO
 			++itr_path;
 		}
 
-		return result.generic_string();
+		return VFS::ToGenericUtf8(result);
 	}
 
 	std::string FileSystem::GetParentDirectory(const std::string &path)
 	{
-		auto parentPath = std::filesystem::path(path).parent_path();
+		auto parentPath = VFS::FromUtf8(path).parent_path();
 
 		// If there is no parent path, return path as is
 		if (parentPath.empty())
 			return path;
 
-		return parentPath.generic_string();
+		return VFS::ToGenericUtf8(parentPath);
 	}
 
 	std::string FileSystem::GetFileNameWithoutExtensionFromFilePath(const std::string &path)
@@ -761,30 +763,21 @@ namespace SceneryEditorX::IO
 
 	std::string FileSystem::GetFileNameFromFilePath(const std::string &path)
 	{
-		return std::filesystem::path(path).filename().generic_string();
+		return VFS::ToGenericUtf8(VFS::FromUtf8(path).filename());
 	}
 
 	std::vector<std::string> FileSystem::GetFilesInDirectory(const std::string &path)
 	{
 		std::vector<std::string> filePaths;
 		const std::filesystem::directory_iterator it_end; // default construction yields past-the-end
-		for (std::filesystem::directory_iterator it(path); it != it_end; ++it)
+		for (std::filesystem::directory_iterator it(VFS::FromUtf8(path)); it != it_end; ++it)
 		{
 			if (!std::filesystem::is_regular_file(it->status()))
 			{
 				continue;
 			}
 
-			try
-			{
-				// a crash is possible if the characters are
-				// something that can't be converted, like Russian.
-				filePaths.emplace_back(it->path().string());
-			}
-			catch (std::system_error &e)
-			{
-				SEDX_CORE_WARN("Failed to read a file path. {}", e.what());
-			}
+			filePaths.emplace_back(VFS::ToUtf8(it->path()));
 		}
 
 		return filePaths;
