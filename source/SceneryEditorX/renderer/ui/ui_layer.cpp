@@ -196,7 +196,7 @@ namespace SceneryEditorX
 	void UILayer::LoadFonts()
 	{
 		const std::string fontDir = ResourceCache::GetResourceDirectory(ResourceDirectory::Fonts) + "/";
-		if (!std::filesystem::exists(fontDir + "opensans/OpenSans-Regular.ttf"))
+		if (!IO::FileSystem::Exists(fontDir + "opensans/OpenSans-Regular.ttf"))	// UTF-8, like ImGui's font file names
 		{
 			SEDX_CORE_WARN_TAG("UILayer", "UI fonts not found under '{}', falling back to the ImGui default font", fontDir);
 			return;

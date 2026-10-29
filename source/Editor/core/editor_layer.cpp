@@ -334,7 +334,7 @@ namespace SceneryEditorX
 	{
 		m_PanelManager = CreateScope<PanelManager>();
 
-		const std::filesystem::path resources = ResourceCache::GetResourceDirectory();
+		const std::filesystem::path resources = VFS::FromUtf8(ResourceCache::GetResourceDirectory());
 
 		m_PanelManager->AddPanel<SceneViewport>(PanelCategory::Viewer, PANEL_VIEWPORT.id, "Viewport", true, &m_Context);
 		m_PanelManager->AddPanel<SecondViewportPanel>(PanelCategory::Viewer, PANEL_VIEWPORT2.id, "Viewport 2", false, &m_Context);
