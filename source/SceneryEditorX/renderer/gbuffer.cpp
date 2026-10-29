@@ -31,6 +31,9 @@
 #include "gbuffer.h"
 #include <algorithm>
 #include <atomic>
+#include <cstring>
+#include <SceneryEditorX/renderer/vulkan/buffer.h>
+#include <SceneryEditorX/renderer/vulkan/command_list.h>
 #include <SceneryEditorX/renderer/vulkan/queue_manager.h>
 #include <SceneryEditorX/renderer/vulkan/render_context.h>
 
@@ -71,8 +74,10 @@ namespace SceneryEditorX
 	static Ref<Buffer> s_GeometryQuadVertexBuffer = nullptr;
 	static Ref<Buffer> s_GeometryQuadIndexBuffer  = nullptr;
 
-	std::vector<Vertex_PosTexNorTan> GeometryBuffer::m_Vertices;
-	std::vector<uint32_t> GeometryBuffer::m_Indices;
+	uint32_t GeometryBuffer::m_VertexCount = 0;
+	uint32_t GeometryBuffer::m_IndexCount  = 0;
+	std::vector<GeometryBuffer::Upload<Vertex_PosTexNorTan>> GeometryBuffer::m_VertexUploads;
+	std::vector<GeometryBuffer::Upload<uint32_t>> GeometryBuffer::m_IndexUploads;
 	std::unique_ptr<Buffer> GeometryBuffer::m_VertexBuffer;
 	std::unique_ptr<Buffer> GeometryBuffer::m_IndexBuffer;
 	uint32_t GeometryBuffer::m_VertexCount_Committed = 0;
@@ -86,8 +91,6 @@ namespace SceneryEditorX
 	std::vector<GeometryBuffer::Range> GeometryBuffer::m_FreeVertexRanges;
 	std::vector<GeometryBuffer::Range> GeometryBuffer::m_FreeIndexRanges;
 	std::vector<GeometryBuffer::PendingRange> GeometryBuffer::m_PendingRanges;
-	std::vector<GeometryBuffer::Range> GeometryBuffer::m_DirtyVertexRanges;
-	std::vector<GeometryBuffer::Range> GeometryBuffer::m_DirtyIndexRanges;
 	uint64_t GeometryBuffer::m_Frame = 0;
 	
 #pragma endregion
@@ -159,13 +162,13 @@ namespace SceneryEditorX
 
 		// Start a re-init from an empty global geometry buffer.
 		s_Accepting = false;
-		std::vector<Vertex_PosTexNorTan>().swap(m_Vertices);
-		std::vector<uint32_t>().swap(m_Indices);
+		m_VertexCount = 0;
+		m_IndexCount  = 0;
+		std::vector<Upload<Vertex_PosTexNorTan>>().swap(m_VertexUploads);
+		std::vector<Upload<uint32_t>>().swap(m_IndexUploads);
 		m_FreeVertexRanges.clear();
 		m_FreeIndexRanges.clear();
 		m_PendingRanges.clear();
-		m_DirtyVertexRanges.clear();
-		m_DirtyIndexRanges.clear();
 		m_VertexCount_Committed = 0;
 		m_IndexCount_Committed  = 0;
 		m_Vertex_Capacity       = 0;
@@ -178,11 +181,11 @@ namespace SceneryEditorX
 	namespace
 	{
 		/**
-		 * @brief Writes count elements into the smallest freed range that holds them (what is left of it stays free);
-		 * returns its offset, or the vector's end when none fits (the elements are appended there).
+		 * @brief Finds room for count elements: the smallest freed range that holds them (what is left of it stays free),
+		 * else the end of the buffer (size grows). Returns the offset.
 		 */
-		template <typename Element, typename Range>
-		uint32_t Place(std::vector<Element> &elements, std::vector<Range> &free, std::vector<Range> &dirty, const uint32_t committed, const Element *data, const uint32_t count)
+		template <typename Range>
+		uint32_t Place(uint32_t &size, std::vector<Range> &free, const uint32_t count)
 		{
 			auto best = free.end();
 			for (auto it = free.begin(); it != free.end(); ++it)
@@ -192,8 +195,8 @@ namespace SceneryEditorX
 			}
 			if (best == free.end() || count == 0)
 			{
-				const uint32_t offset = static_cast<uint32_t>(elements.size());
-				elements.insert(elements.end(), data, data + count);
+				const uint32_t offset = size;
+				size += count;
 				return offset;
 			}
 
@@ -202,10 +205,52 @@ namespace SceneryEditorX
 			best->count -= count;
 			if (best->count == 0)
 				free.erase(best);
-			std::copy(data, data + count, elements.begin() + offset);
-			if (offset < committed)
-				dirty.push_back({ offset, std::min(count, committed - offset) });	// Beyond committed, the normal upload covers it
 			return offset;
+		}
+
+		/* @brief Writes data over the parts of the waiting uploads it covers. */
+		template <typename Element, typename Upload>
+		void PatchUploads(std::vector<Upload> &uploads, const Element *data, const uint32_t offset, const uint32_t count)
+		{
+			for (Upload &upload : uploads)
+			{
+				const uint32_t begin = std::max(offset, upload.offset);
+				const uint32_t end = std::min(offset + count, upload.offset + static_cast<uint32_t>(upload.elements.size()));
+				if (begin < end)
+					std::copy(data + (begin - offset), data + (end - offset), upload.elements.begin() + (begin - upload.offset));
+			}
+		}
+
+		/* @brief Bytes the waiting uploads take, each placed at a 16-byte boundary of the staging buffer. */
+		template <typename Upload>
+		VkDeviceSize GetStagingBytes(const std::vector<Upload> &uploads)
+		{
+			VkDeviceSize total = 0;
+			for (const Upload &upload : uploads)
+				total += (upload.elements.size() * sizeof(upload.elements[0]) + 15) & ~static_cast<VkDeviceSize>(15);
+			return total;
+		}
+
+		/**
+		 * @brief Puts the waiting uploads that are still inside the buffer (size elements) into the staging memory at
+		 * offset and adds their copies; drops them all.
+		 */
+		template <typename Upload>
+		void StageUploads(std::vector<Upload> &uploads, const uint32_t size, uint8_t *staging, VkDeviceSize &offset, std::vector<VkBufferCopy> &copies)
+		{
+			for (const Upload &upload : uploads)
+			{
+				// TrimEnd may have dropped the end of the buffer since (the elements were freed)
+				const uint32_t count = upload.offset < size ? std::min(static_cast<uint32_t>(upload.elements.size()), size - upload.offset) : 0;
+				if (count == 0)
+					continue;
+
+				const VkDeviceSize elementBytes = sizeof(upload.elements[0]);
+				std::memcpy(staging + offset, upload.elements.data(), count * elementBytes);
+				copies.push_back({ offset, upload.offset * elementBytes, count * elementBytes });
+				offset += (upload.elements.size() * elementBytes + 15) & ~static_cast<VkDeviceSize>(15);
+			}
+			std::vector<Upload>().swap(uploads);
 		}
 
 		/* @brief Adds a range to a sorted free list, merging it with its neighbours. */
@@ -226,22 +271,24 @@ namespace SceneryEditorX
 			}
 		}
 
-		/* @brief Drops a free range that reaches the end of the elements: the vector shrinks instead. */
-		template <typename Element, typename Range>
-		void TrimEnd(std::vector<Element> &elements, std::vector<Range> &free, uint32_t &committed)
+		/* @brief Drops a free range that reaches the end of the buffer: the buffer's size shrinks instead. */
+		template <typename Range>
+		void TrimEnd(uint32_t &size, std::vector<Range> &free, uint32_t &committed)
 		{
-			if (free.empty() || free.back().offset + free.back().count != elements.size())
+			if (free.empty() || free.back().offset + free.back().count != size)
 				return;
-			elements.resize(free.back().offset);
+			size = free.back().offset;
 			free.pop_back();
-			committed = std::min(committed, static_cast<uint32_t>(elements.size()));
+			committed = std::min(committed, size);
 		}
 	}
 
 	uint32_t GeometryBuffer::AppendVertices(const Vertex_PosTexNorTan *data, uint32_t count)
 	{
 		std::scoped_lock lock(m_Mutex);
-		const uint32_t offset = Place(m_Vertices, m_FreeVertexRanges, m_DirtyVertexRanges, m_VertexCount_Committed, data, count);
+		const uint32_t offset = Place(m_VertexCount, m_FreeVertexRanges, count);
+		if (count > 0)
+			m_VertexUploads.push_back({ offset, std::vector<Vertex_PosTexNorTan>(data, data + count) });
 		m_Dirty.SetDirty();
 		return offset;
 	}
@@ -249,7 +296,9 @@ namespace SceneryEditorX
 	uint32_t GeometryBuffer::AppendIndices(const uint32_t *data, uint32_t count)
 	{
 		std::scoped_lock lock(m_Mutex);
-		const uint32_t offset = Place(m_Indices, m_FreeIndexRanges, m_DirtyIndexRanges, m_IndexCount_Committed, data, count);
+		const uint32_t offset = Place(m_IndexCount, m_FreeIndexRanges, count);
+		if (count > 0)
+			m_IndexUploads.push_back({ offset, std::vector<uint32_t>(data, data + count) });
 		m_Dirty.SetDirty();
 		return offset;
 	}
@@ -259,7 +308,7 @@ namespace SceneryEditorX
 		if (count == 0 || !s_Accepting.load())
 			return;
 		std::scoped_lock lock(m_Mutex);
-		if (offset + count <= m_Vertices.size())
+		if (offset + count <= m_VertexCount)
 			m_PendingRanges.push_back({ { offset, count }, m_Frame, false });
 	}
 
@@ -268,7 +317,7 @@ namespace SceneryEditorX
 		if (count == 0 || !s_Accepting.load())
 			return;
 		std::scoped_lock lock(m_Mutex);
-		if (offset + count <= m_Indices.size())
+		if (offset + count <= m_IndexCount)
 			m_PendingRanges.push_back({ { offset, count }, m_Frame, true });
 	}
 
@@ -276,13 +325,15 @@ namespace SceneryEditorX
 	{
 		std::scoped_lock lock(m_Mutex);
 
-		SEDX_CORE_ASSERT(offset + count <= static_cast<uint32_t>(m_Vertices.size()), "Vertex update range out of bounds");
-		memcpy(m_Vertices.data() + offset, data, count * sizeof(Vertex_PosTexNorTan));
+		SEDX_CORE_ASSERT(offset + count <= m_VertexCount, "Vertex update range out of bounds");
 
-		if (m_VertexBuffer && offset + count <= m_VertexCount_Committed)
+		// what waits for its upload is patched there; what the GPU already holds is written now
+		PatchUploads(m_VertexUploads, data, offset, count);
+		if (m_VertexBuffer && offset < m_VertexCount_Committed)
 		{
+			const uint32_t uploaded = std::min(count, m_VertexCount_Committed - offset);
 			uint64_t byteOffset = static_cast<uint64_t>(offset) * sizeof(Vertex_PosTexNorTan);
-			uint64_t byteSize   = static_cast<uint64_t>(count) * sizeof(Vertex_PosTexNorTan);
+			uint64_t byteSize   = static_cast<uint64_t>(uploaded) * sizeof(Vertex_PosTexNorTan);
 			m_VertexBuffer->UploadSubRegion(data, byteOffset, byteSize);
 		}
 	}
@@ -302,55 +353,112 @@ namespace SceneryEditorX
 				AddFree(pending.indices ? m_FreeIndexRanges : m_FreeVertexRanges, pending.range);
 				return true;
 			});
-			TrimEnd(m_Vertices, m_FreeVertexRanges, m_VertexCount_Committed);
-			TrimEnd(m_Indices, m_FreeIndexRanges, m_IndexCount_Committed);
+			TrimEnd(m_VertexCount, m_FreeVertexRanges, m_VertexCount_Committed);
+			TrimEnd(m_IndexCount, m_FreeIndexRanges, m_IndexCount_Committed);
 		}
 
-		if (!m_Dirty.IsDirty() || m_Vertices.empty() || m_Indices.empty())
+		if (!m_Dirty.IsDirty() || m_VertexCount == 0 || m_IndexCount == 0)
 			return;
 
-		uint32_t vertexCount = static_cast<uint32_t>(m_Vertices.size());
-		uint32_t indexCount  = static_cast<uint32_t>(m_Indices.size());
+		const uint32_t vertexCount = m_VertexCount;
+		const uint32_t indexCount  = m_IndexCount;
 
 		m_WasRebuilt            = false;
 		bool needsFullRebuild = !m_VertexBuffer || !m_IndexBuffer || vertexCount > m_Vertex_Capacity || indexCount > m_Index_Capacity;
 
+		// a rebuild keeps the old buffers until the new ones hold what they had: the GPU copies it over
+		Scope<Buffer> oldVertexBuffer;
+		Scope<Buffer> oldIndexBuffer;
 		if (needsFullRebuild)
 		{
-			// destroy existing gpu buffers before creating new ones. Buffers are freed immediately (no deletion queue)
-			// while frames in flight still read them through the bindless geometry descriptors, so drain the GPU first.
-			// Capacity grows geometrically, so this only happens when a load outgrows the headroom.
+			// Buffers are freed immediately (no deletion queue) while frames in flight still read them through the
+			// bindless geometry descriptors, so drain the GPU first. Capacity grows geometrically, so this only happens
+			// when a load outgrows the headroom.
 			if (m_VertexBuffer || m_IndexBuffer)
 				QueueManager::WaitIdleAll();
 
-			ReleaseBuffer(m_VertexBuffer);
-			ReleaseBuffer(m_IndexBuffer);
+			oldVertexBuffer = std::move(m_VertexBuffer);
+			oldIndexBuffer  = std::move(m_IndexBuffer);
 
 			// allocate with headroom so late-arriving meshes don't trigger another rebuild
 			m_Vertex_Capacity = static_cast<uint32_t>(vertexCount * GROWTH_FACTOR);
 			m_Index_Capacity  = static_cast<uint32_t>(indexCount * GROWTH_FACTOR);
 
-			// create vertex buffer with capacity (no initial data - we upload via sub-region)
-			m_VertexBuffer = CreateScope<Buffer>(sizeof(Vertex_PosTexNorTan), m_Vertex_Capacity,
-				nullptr, // no initial data
-				false, "geometry_buffer_vertex");
+			m_VertexBuffer = CreateScope<Buffer>(sizeof(Vertex_PosTexNorTan), m_Vertex_Capacity, nullptr, false, "geometry_buffer_vertex");
+			m_IndexBuffer  = CreateScope<Buffer>(sizeof(uint32_t), m_Index_Capacity, nullptr, false, "geometry_buffer_index");
+		}
 
-			// create index buffer with capacity (no initial data)
-			m_IndexBuffer = CreateScope<Buffer>(sizeof(uint32_t), m_Index_Capacity,
-				nullptr, // no initial data
-				false, "geometry_buffer_index");
+		// what the old buffers held and what was put in since the last call go over in one submission
+		const uint32_t keptVertices = oldVertexBuffer ? std::min(m_VertexCount_Committed, vertexCount) : 0;
+		const uint32_t keptIndices  = oldIndexBuffer ? std::min(m_IndexCount_Committed, indexCount) : 0;
+		const size_t uploads = m_VertexUploads.size() + m_IndexUploads.size();
+		const VkDeviceSize stagingBytes = GetStagingBytes(m_VertexUploads) + GetStagingBytes(m_IndexUploads);
+		std::vector<VkBufferCopy> vertexCopies;
+		std::vector<VkBufferCopy> indexCopies;
 
-			// upload all committed data into the newly allocated buffers
-			m_VertexBuffer->UploadSubRegion(m_Vertices.data(), 0, vertexCount * sizeof(Vertex_PosTexNorTan));
-			m_IndexBuffer->UploadSubRegion(m_Indices.data(), 0, indexCount * sizeof(uint32_t));
+		Buffer *staging = stagingBytes > 0 ? static_cast<Buffer *>(Buffer::AcquireStagingBuffer(stagingBytes)) : nullptr;
+		if (auto *mapped = staging ? static_cast<uint8_t *>(staging->Map()) : nullptr)
+		{
+			VkDeviceSize stagingOffset = 0;
+			StageUploads(m_VertexUploads, vertexCount, mapped, stagingOffset, vertexCopies);
+			StageUploads(m_IndexUploads, indexCount, mapped, stagingOffset, indexCopies);
+			staging->Unmap();
+		}
+		else if (stagingBytes > 0)
+		{
+			SEDX_CORE_ERROR_TAG("GBuffer", "Failed to get a {} byte staging buffer: {} geometry uploads are lost", stagingBytes, uploads);
+			std::vector<Upload<Vertex_PosTexNorTan>>().swap(m_VertexUploads);
+			std::vector<Upload<uint32_t>>().swap(m_IndexUploads);
+		}
 
-			m_VertexCount_Committed = vertexCount;
-			m_IndexCount_Committed  = indexCount;
+		if (keptVertices > 0 || keptIndices > 0 || !vertexCopies.empty() || !indexCopies.empty())
+		{
+			// use graphics queue to avoid a cross-queue sync hazard with draw commands that read the same buffers
+			if (CommandList *cmdList = CommandList::BeginImmediateExecution(QueueType::Graphics))
+			{
+				const VkCommandBuffer cmd = cmdList->GetCommandBuffer();
+				if (keptVertices > 0)
+				{
+					const VkBufferCopy copy{ 0, 0, static_cast<VkDeviceSize>(keptVertices) * sizeof(Vertex_PosTexNorTan) };
+					vkCmdCopyBuffer(cmd, oldVertexBuffer->Get(), m_VertexBuffer->Get(), 1, &copy);
+				}
+				if (keptIndices > 0)
+				{
+					const VkBufferCopy copy{ 0, 0, static_cast<VkDeviceSize>(keptIndices) * sizeof(uint32_t) };
+					vkCmdCopyBuffer(cmd, oldIndexBuffer->Get(), m_IndexBuffer->Get(), 1, &copy);
+				}
+				if (keptVertices > 0 || keptIndices > 0)
+				{
+					// space freed earlier and written again lies inside what was copied: the new content lands after it
+					VkMemoryBarrier barrier{ VK_STRUCTURE_TYPE_MEMORY_BARRIER };
+					barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+					barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+					vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 1, &barrier, 0, nullptr, 0, nullptr);
+				}
+				if (!vertexCopies.empty())
+					vkCmdCopyBuffer(cmd, staging->Get(), m_VertexBuffer->Get(), static_cast<uint32_t>(vertexCopies.size()), vertexCopies.data());
+				if (!indexCopies.empty())
+					vkCmdCopyBuffer(cmd, staging->Get(), m_IndexBuffer->Get(), static_cast<uint32_t>(indexCopies.size()), indexCopies.data());
+				CommandList::EndImmediateExecution(cmdList);
+			}
+			else
+			{
+				SEDX_CORE_ERROR_TAG("GBuffer", "No immediate command list available to upload the global geometry buffer");
+			}
+		}
+
+		if (staging)
+			Buffer::ReleaseStagingBuffer(staging);
+		ReleaseBuffer(oldVertexBuffer);
+		ReleaseBuffer(oldIndexBuffer);
+
+		m_VertexCount_Committed = vertexCount;
+		m_IndexCount_Committed  = indexCount;
+
+		if (needsFullRebuild)
+		{
 			m_WasRebuilt = true;
 			++m_Generation;
-			m_DirtyVertexRanges.clear();
-			m_DirtyIndexRanges.clear();
-
 
 			SEDX_CORE_INFO_TAG("GBuffer","Global geometry buffer built: {} vertices ({:.2f} MB), {} indices ({:.2f} MB), capacity: {} vertices, {} indices",
 				vertexCount, (vertexCount * sizeof(Vertex_PosTexNorTan)) / (1024.0f * 1024.0f),
@@ -359,45 +467,7 @@ namespace SceneryEditorX
 		}
 		else
 		{
-			// space freed earlier and written again: upload those ranges where they lie
-			for (const Range &range : m_DirtyVertexRanges)
-			{
-				if (range.offset + range.count <= vertexCount)
-					m_VertexBuffer->UploadSubRegion(m_Vertices.data() + range.offset, static_cast<uint64_t>(range.offset) * sizeof(Vertex_PosTexNorTan),
-						static_cast<uint64_t>(range.count) * sizeof(Vertex_PosTexNorTan));
-			}
-			for (const Range &range : m_DirtyIndexRanges)
-			{
-				if (range.offset + range.count <= indexCount)
-					m_IndexBuffer->UploadSubRegion(m_Indices.data() + range.offset, static_cast<uint64_t>(range.offset) * sizeof(uint32_t),
-						static_cast<uint64_t>(range.count) * sizeof(uint32_t));
-			}
-			const size_t reused = m_DirtyVertexRanges.size() + m_DirtyIndexRanges.size();
-			m_DirtyVertexRanges.clear();
-			m_DirtyIndexRanges.clear();
-
-			// the new data fits within the pre-allocated capacity, upload only the new portion
-			const uint32_t newVertices = vertexCount > m_VertexCount_Committed ? vertexCount - m_VertexCount_Committed : 0;
-			const uint32_t newIndices  = indexCount > m_IndexCount_Committed ? indexCount - m_IndexCount_Committed : 0;
-
-			if (newVertices > 0)
-			{
-				uint64_t offset = static_cast<uint64_t>(m_VertexCount_Committed) * sizeof(Vertex_PosTexNorTan);
-				uint64_t size   = static_cast<uint64_t>(newVertices) * sizeof(Vertex_PosTexNorTan);
-				m_VertexBuffer->UploadSubRegion(m_Vertices.data() + m_VertexCount_Committed, offset, size);
-			}
-
-			if (newIndices > 0)
-			{
-				uint64_t offset = static_cast<uint64_t>(m_IndexCount_Committed) * sizeof(uint32_t);
-				uint64_t size   = static_cast<uint64_t>(newIndices) * sizeof(uint32_t);
-				m_IndexBuffer->UploadSubRegion(m_Indices.data() + m_IndexCount_Committed, offset, size);
-			}
-
-			m_VertexCount_Committed = vertexCount;
-			m_IndexCount_Committed  = indexCount;
-
-			SEDX_CORE_TRACE_TAG("GBuffer","Global geometry buffer updated: +{} vertices, +{} indices, {} reused ranges (sub-region uploads, no rebuild)", newVertices, newIndices, reused);
+			SEDX_CORE_TRACE_TAG("GBuffer","Global geometry buffer updated: {} uploads ({:.2f} MB, no rebuild)", uploads, stagingBytes / (1024.0f * 1024.0f));
 		}
 
 		m_Dirty.Check();
@@ -418,7 +488,7 @@ namespace SceneryEditorX
 	uint32_t GeometryBuffer::GetVertexCount()
 	{
 		std::scoped_lock lock(m_Mutex);
-		return static_cast<uint32_t>(m_Vertices.size());
+		return m_VertexCount;
 	}
 
 	Buffer *GeometryBuffer::GetIndexBuffer() { return m_IndexBuffer.get(); }

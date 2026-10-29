@@ -1263,6 +1263,9 @@ namespace SceneryEditorX
 			value("atmo/fog_albedo", c.fogAlbedo);
 			value("sedx/fog_start_visibility_m", c.fogStartVisibilityM);
 			value("sedx/fog_full_visibility_m", c.fogFullVisibilityM);
+			value("sedx/sun_tint_red", c.sunTintRed);
+			value("sedx/sun_tint_blue", c.sunTintBlue);
+			value("sedx/haze_mie_scale", c.hazeMieScale);
 			value("scattering/earth_albedo", c.planet.w);
 			value("scattering/g_cornette_shanks", c.mie.w);
 			float mieAlbedo = c.mie.y > 0.0f ? c.mie.x / c.mie.y : 0.9f;

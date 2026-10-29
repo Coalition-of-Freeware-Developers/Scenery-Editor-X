@@ -117,7 +117,8 @@ namespace SceneryEditorX
 		/**
 		 * @brief Creates an image resource with the specified properties.
 		 * @param spec The specification of the image resource.
-		 * @param data The initial data for the image resource.
+		 * @param data The initial data for the image resource: uploaded, then released (GetMip / GetSlice return
+		 * nullptr afterwards; the texels live on the GPU only).
 		 */
 		ImageResource(const ImgResourceSpec &spec, std::vector<Slice> data);
 
@@ -337,6 +338,13 @@ namespace SceneryEditorX
 		bool IsSemiTransparent() const { return m_Spec.flags & Transparent; }
 
 		/**
+		 * @brief An image the shaders sample together with this one, kept alive with it (a block-compressed X-Plane
+		 * normal map's blue and alpha: XPlane::TextureLoader::GetNormalCompanion).
+		 */
+		void SetCompanion(const Ref<ImageResource> &companion) { m_Companion = companion; }
+		[[nodiscard]] const Ref<ImageResource> &GetCompanion() const { return m_Companion; }
+
+		/**
 		 * @brief Returns true if the specified format is a compressed format.
 		 * @param format The format to check.
 		 * @return True if the format is compressed, false otherwise.
@@ -488,6 +496,7 @@ namespace SceneryEditorX
 		VmaAllocation m_Allocation = nullptr;
 		VkDeviceMemory m_DeviceMemory = nullptr;
 		VkFormat m_CompressionFormat = VK_FORMAT_UNDEFINED;
+		Ref<ImageResource> m_Companion;	// SetCompanion()
 
 		VkImageView m_ShaderResourceView												= nullptr;     // an srv with all mips
 		std::array<VkImageView, MAX_MIP_COUNT> m_ShaderResourceView_mips				= { nullptr }; // an srv for each mip

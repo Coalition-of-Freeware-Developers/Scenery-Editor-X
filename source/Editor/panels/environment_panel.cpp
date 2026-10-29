@@ -377,7 +377,8 @@ namespace SceneryEditorX
 			return false;
 
 		EditorUI::PropertyLabel("Season");
-		static constexpr const char *seasons[] = { "Auto (date and latitude)", "Spring", "Summer", "Fall", "Winter" };
+		// Auto: the place's base DSF season rasters once an airport opened there, else fixed dates by latitude
+		const char *seasons[] = { Get().GetSeasonRanges() ? "Auto (date and the DSF)" : "Auto (date and latitude)", "Spring", "Summer", "Fall", "Winter" };
 		int season = static_cast<int>(state.season);
 		ImGui::SetNextItemWidth(-FLT_MIN);
 		if (ImGui::Combo("##Season", &season, seasons, 5))
@@ -402,6 +403,16 @@ namespace SceneryEditorX
 
 		EditorUI::PropertyLabel("Result");
 		ImGui::TextDisabled("%s, %.0f%% toward %s", GetSeasonName(derived.season.season), derived.season.ratio * 100.0f, GetSeasonName(NextSeason(derived.season.season)));
+
+		// A scenario's scenery loaded on another date (World::SetSceneryDate): the terrain keeps that date's season
+		if (derived.scenerySeason.bits != derived.season.bits)
+		{
+			EditorUI::PropertyLabel("Scenery art");
+			ImGui::TextDisabled("%s (loaded on another date)", GetSeasonName(derived.scenerySeason.season));
+			ImGui::SameLine();
+			if (ImGui::SmallButton("Follow the date"))
+				Get().SetSceneryDate(std::nullopt);
+		}
 
 		EditorUI::EndPropertyGrid();
 		return changed;

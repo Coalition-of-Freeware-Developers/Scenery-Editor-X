@@ -30,6 +30,7 @@
  */
 #pragma once
 #include "xp_terrain_mesh.h"
+#include <array>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -80,6 +81,15 @@ namespace SceneryEditorX::XPlane
 		 */
 		static bool Load(const GeoProjection &projection, const TerrainArea &area, const std::string &name, double fallbackElevation,
 						 const std::vector<std::vector<Point2>> &grounds = {});
+
+		/**
+		 * @brief The base mesh's season rasters at a place (Environment::DSF_SEASON_RASTERS order, days of the year, the
+		 * nearest cell), read before an airport resolves any seasonal art so that it and the terrain are picked for the
+		 * place's own seasons. With the terrain on, the tile's files stay unpacked for the next Load(), which reads them
+		 * from there instead of the disk (the next Load or Unload drops them): the tile is still unpacked once.
+		 * @return False when no base mesh with season rasters covers the place.
+		 */
+		static bool ReadSeasonRasters(double latitude, double longitude, std::array<float, 8> &days);
 
 		/* @brief Removes the terrain from the scene (and the surface: drapes go flat). */
 		static void Unload();

@@ -29,6 +29,7 @@
  * -------------------------------------------------------
  */
 #pragma once
+#include <atomic>
 #include <SceneryEditorX/asset/asset.h>
 #include <SceneryEditorX/renderer/vulkan/image_view.h>
 #include <SceneryEditorX/renderer/vulkan/shader/shader.h>
@@ -424,9 +425,19 @@ namespace SceneryEditorX
 		}
 		void SetProperty(MaterialProperty prop, const float value)
 		{
-			if (const uint32_t index = static_cast<uint32_t>(prop); index < m_RenderSettings.size())
+			if (const uint32_t index = static_cast<uint32_t>(prop); index < m_RenderSettings.size() && m_RenderSettings[index] != value)
+			{
 				m_RenderSettings[index] = value;
+				if (prop == MaterialProperty::BlendMode || prop == MaterialProperty::Tessellation || prop == MaterialProperty::Water || prop == MaterialProperty::CullMode)
+					s_DrawPathVersion.fetch_add(1, std::memory_order_relaxed);
+			}
 		}
+
+		/**
+		 * @brief Bumped when any material's blending, tessellation, water or cull mode changes: the properties that decide
+		 * whether the GPU scene or the CPU passes draw its renderables (both sort them again when it moves).
+		 */
+		static uint64_t GetDrawPathVersion() { return s_DrawPathVersion.load(std::memory_order_relaxed); }
 		virtual uint32_t GetIndex() const { return m_Index; }
 		virtual bool  HasTextureOfType(MaterialTextureType t) const { return GetTexture(t) != nullptr; }
 		uint32_t GetUsedSlotCount() const;
@@ -501,6 +512,8 @@ namespace SceneryEditorX
 		std::array<ImageResource*, static_cast<uint32_t>(MaterialTextureType::MaxEnum) * SLOTS_PER_TEXTURE> m_Textures{};
 
 		bool m_Transparent = false;
+
+		static inline std::atomic<uint64_t> s_DrawPathVersion = 1; // GetDrawPathVersion(); materials are built on loader threads too
 
 		friend class AssetManager;
 	};

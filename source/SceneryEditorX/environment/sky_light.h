@@ -63,6 +63,9 @@ namespace SceneryEditorX::Environment
 	/* @brief The extraterrestrial sun's colour, linear sRGB scaled to unit luminance (ASSUMPTION: about 5900 K). */
 	constexpr Rgb SUN_COLOR = { 1.0236, 0.9961, 0.9693 };
 
+	/* @brief The sun's colour an atmosphere lights with: SUN_COLOR times its sunTint, back at unit luminance. */
+	Rgb SunColor(const AtmosphereParams &atmosphere);
+
 	/**
 	 * @brief Fraction of light passing from altitude (m) to space along a ray at cosZenith (0 when it meets the ground):
 	 * without the fog, as the sun's light comes in (X-Plane 12.4.4 leaves its fog out), or through the fog too.

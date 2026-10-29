@@ -169,6 +169,7 @@ namespace SceneryEditorX::XPlane
 		if (ImageResource *normalMap = load(shading.textureNormal, TextureUsage::Normal))
 		{
 			material.SetTexture(MaterialTextureType::Normal, normalMap, 0);
+			material.SetTexture(MaterialTextureType::Normal, TextureLoader::GetNormalCompanion(normalMap).Get(), NORMAL_COMPANION_SLOT);
 			material.SetProperty(MaterialProperty::XpMaterial, 1.0f);
 			material.SetProperty(MaterialProperty::XpNormalMode, shading.normalMetalness ? 2.0f : 1.0f);
 			material.SetProperty(MaterialProperty::XpSpecularGain, shading.specular);

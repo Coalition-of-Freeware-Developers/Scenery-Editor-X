@@ -79,7 +79,13 @@ For each scenario the probe
    crash X-Plane with Living Scenery Technology v1.11.6 installed: X-Plane destroys one of its flight loops in the first
    one, LST deletes it again later, and the plugin manager stops the sim with `Contains(list_head, who)`; first at KDEN,
    then on the way from KBOS to KBTV.) At the end the aircraft is parked at the last airport (a new flight, skipped
-   when X-Plane quits after the run),
+   when X-Plane quits after the run). X-Plane picks a tile's seasonal library art (the `EXPORT_SEASON` terrain,
+   autogen and airport art) as it loads the tile and keeps it when the date changes, while the trees follow the date.
+   So the probe sets the scenario's scenery date (`scenery_date`, else `date`) before it moves, and when a shot at the
+   same airport has another scenery date (the `season01` shots), or at the run's first airport (its tiles may be in
+   already), it calls `XPLMReloadScenery` once the scenery is in and waits for it again. The first 15-airport run
+   (2026-10-25) moved first and set the date after: most of its July shots have the terrain of the January shot
+   before them (`render_scenarios.py --references` works those dates out),
 2. sets the date and time (`sim/time/*`), the weather (`sim/weather/region/*`: visibility, three cloud layers, rain,
    runway friction, snow cover, temperature; `update_immediately`), and the field of view,
 3. holds the camera at the scenario's pose (`XPLMControlCamera`) and, for `ev100_lock` scenarios, clamps
@@ -101,8 +107,8 @@ For each scenario the probe
    complete: the file ends in its `IEND` chunk and kept its size for 10 frames and 1 s (X-Plane writes it in 4 KB pieces;
    a size steady for 10 frames alone let four night shots through cut off), and the copy is checked the same way; a
    screenshot that never completes within 60 s is skipped, so **Resume** takes that scenario again,
-7. writes `<id>.json`: the scenario, what was applied (with `snow_wait_seconds`, `settle_seconds` and
-   `scenery_still_loading`), sun position, window size, weather and temperatures as X-Plane reports them, and the value
+7. writes `<id>.json`: the scenario, what was applied (with `snow_wait_seconds`, `settle_seconds`,
+   `scenery_still_loading` and `scenery_date`), sun position, window size, weather and temperatures as X-Plane reports them, and the value
    of every art control it could find
    (`sim/private/controls/<name>`, else `sim/private/stats/<name>`).
 
