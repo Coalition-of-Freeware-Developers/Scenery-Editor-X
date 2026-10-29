@@ -34,6 +34,7 @@
 #include <SceneryEditorX/scene/material.h>
 #include "vulkan/bindless_manager.h"
 #include "vulkan/descriptor_pool_manager.h"
+#include "vulkan/descriptor_set.h"
 #include "vulkan/swapchain.h"
 #include "vulkan/uniform_buffer_set.h"
 #include "vulkan/debug/graphics_debug.h"
@@ -47,6 +48,7 @@
 #include <mutex>
 #include <sstream>
 #include <thread>
+#include <unordered_set>
 #include <Editor/modules/scene_render.h>
 #include <SDL3/SDL.h>
 #include <SceneryEditorX/asset/model.h>
@@ -253,6 +255,28 @@ void dynamic_resolution()
 		{
 			const auto it = std::ranges::find_if(s_ExtraViews, [id](const ExtraView &view) { return view.id == id; });
 			return it != s_ExtraViews.end() ? &*it : nullptr;
+		}
+
+		using RenderTargets = std::array<Ref<ImageResource>, static_cast<uint32_t>(Renderer_RenderTarget::MaxEnum)>;
+
+		/**
+		 * @brief Free the cached descriptor sets that bind render targets a resize replaces (or a closed view releases).
+		 * Only for callers that waited for the GPU, from the UI (the render thread is idle): the sets go straight back to
+		 * the shared pool. Left to the deletion queue they stayed until it destroyed the old views, which waits for the
+		 * queue to go unchanged for 100 frames; a few resizes closer together than that ran the pool out.
+		 * @param targets The targets in use before the change.
+		 * @param current The targets after it (slots holding the same target keep their sets), or nullptr when all go.
+		 */
+		void EvictTargetDescriptorSets(const RenderTargets &targets, const RenderTargets *current = nullptr)
+		{
+			std::unordered_set<const void *> replaced;
+			for (size_t i = 0; i < targets.size(); ++i)
+			{
+				if (targets[i] && (!current || (*current)[i] != targets[i]))
+					replaced.insert(targets[i].Get());
+			}
+			const size_t evicted = DescriptorSet::EvictCachedSets(replaced);
+			SEDX_CORE_TRACE_TAG("Renderer", "Freed {} cached descriptor sets of {} replaced render targets", evicted, replaced.size());
 		}
 
 		/**
@@ -2259,7 +2283,9 @@ void dynamic_resolution()
 				RenderContext::Get()->GetDevice()->GetQueueManager()->WaitIdleAll();
 			}
 
+			const RenderTargets previous = GetRenderTargets();
 			CreateRenderTargets(true, false, true);
+			EvictTargetDescriptorSets(previous, &GetRenderTargets());
 		}
 
 		SEDX_CORE_TRACE_TAG("Renderer", "Render resolution set to {}x{}", width, height);
@@ -2285,7 +2311,13 @@ void dynamic_resolution()
 
 		if (recreateResources && m_ResourcesInitialized)
 		{
+			// The old outputs' descriptor sets are freed at once, so frames in flight must be done with them
+			if (RenderContext::Get()->GetDevice())
+				RenderContext::Get()->GetDevice()->GetQueueManager()->WaitIdleAll();
+
+			const RenderTargets previous = GetRenderTargets();
 			CreateRenderTargets(false, true, false);
+			EvictTargetDescriptorSets(previous, &GetRenderTargets());
 		}
 
 		SEDX_CORE_TRACE_TAG("Renderer", "Output resolution set to {}x{}", width, height);
@@ -2327,6 +2359,7 @@ void dynamic_resolution()
 			return;
 		if (RenderContext::Get() && RenderContext::Get()->GetDevice())
 			RenderContext::Get()->GetDevice()->GetQueueManager()->WaitIdleAll();	// Frames in flight still use its targets
+		EvictTargetDescriptorSets(it->targets);
 		s_ExtraViews.erase(it);
 		SEDX_CORE_INFO_TAG("Renderer", "Extra view {} destroyed", view);
 	}
@@ -2347,6 +2380,7 @@ void dynamic_resolution()
 			return;
 		if (RenderContext::Get() && RenderContext::Get()->GetDevice())
 			RenderContext::Get()->GetDevice()->GetQueueManager()->WaitIdleAll();	// Frames in flight still use the old targets
+		EvictTargetDescriptorSets(extra->targets);	// CreateViewRenderTargets replaces all of them
 		CreateViewRenderTargets(width, height, extra->targets);
 		extra->width = width;
 		extra->height = height;
