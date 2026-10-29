@@ -29,14 +29,17 @@
  * -------------------------------------------------------
  */
 #include "editor_layer.h"
+#include "asset_thumbnails.h"
 #include "editor_airports.h"
 #include "editor_project.h"
+#include "editor_scenario.h"
 #include "editor_camera.h"
 #include "editor_commands.h"
 #include "editor_history.h"
 #include "editor_scene.h"
 #include "editor_selection.h"
 #include "editor_tools.h"
+#include "editor_welcome.h"
 #include "project_dialogs.h"
 #include "tools_selftest.h"
 #include "editor_theme.h"
@@ -48,14 +51,18 @@
 #include <Editor/panels/airport_panel.h>
 #include <Editor/panels/asset_shelf_panel.h>
 #include <Editor/panels/console_panel.h>
+#include <Editor/panels/environment_panel.h>
 #include <Editor/panels/facade_editor_panel.h>
 #include <Editor/panels/facade_inspector_panel.h>
 #include <Editor/panels/outliner_panel.h>
 #include <Editor/panels/project_panel.h>
 #include <Editor/panels/properties_panel.h>
 #include <Editor/panels/scene_viewport.h>
+#include <Editor/panels/second_viewport_panel.h>
 #include <Editor/panels/settings_panels.h>
 #include <Editor/panels/xplane_library_panel.h>
+#include <Editor/settings/editor_preferences.h>
+#include <Editor/settings/editor_settings.h>
 #include <algorithm>
 #include <chrono>
 #include <cstdlib>
@@ -69,6 +76,8 @@
 #include <SceneryEditorX/core/resource/resource_cache.h>
 #include <SceneryEditorX/core/time/fps_timer.h>
 #include <SceneryEditorX/core/window/window.h>
+#include <SceneryEditorX/environment/environment.h>
+#include <SceneryEditorX/environment/parity_scenario.h>
 #include <SceneryEditorX/logging/logging.hpp>
 #include <SceneryEditorX/renderer/gpu_scene.h>
 #include <SceneryEditorX/renderer/renderer.h>
@@ -76,8 +85,11 @@
 #include <SceneryEditorX/renderer/ui/resources/fonts.h>
 #include <SceneryEditorX/renderer/ui/source/imgui/imgui_internal.h>
 #include <SceneryEditorX/renderer/vulkan/debug/render_doc.h>
+#include <SceneryEditorX/renderer/vulkan/swapchain.h>
 #include <SceneryEditorX/scene/entity.h>
+#include <SceneryEditorX/project/project_document.h>
 #include <SceneryEditorX/xplane/xp_airport_manager.h>
+#include <SceneryEditorX/xplane/xp_airport_scene.h>
 #include <SceneryEditorX/xplane/xp_datarefs.h>
 #include <SceneryEditorX/xplane/xp_library_manager.h>
 #include <SceneryEditorX/xplane/xp_scene.h>
@@ -100,6 +112,7 @@ namespace SceneryEditorX
 		};
 
 		constexpr PanelInfo PANEL_VIEWPORT			= { "Viewport",			"VIEWPORT###Viewport",				SEDX_ICON_DESKTOP };
+		constexpr PanelInfo PANEL_VIEWPORT2			= { "Viewport2",		"VIEWPORT 2###Viewport2",			SEDX_ICON_CLONE };
 		constexpr PanelInfo PANEL_PROPERTIES		= { "Properties",		"PROPERTIES###Properties",			SEDX_ICON_SLIDERS };
 		constexpr PanelInfo PANEL_OUTLINER			= { "Outliner",			"OUTLINER###Outliner",				SEDX_ICON_LIST };
 		constexpr PanelInfo PANEL_ASSETS			= { "Assets",			"ASSETS###Assets",					SEDX_ICON_FOLDER_OPEN };
@@ -112,14 +125,15 @@ namespace SceneryEditorX
 		constexpr PanelInfo PANEL_PROJECT			= { "Project",			"PROJECT###Project",				SEDX_ICON_FILE_TEXT };
 		constexpr PanelInfo PANEL_FACADES			= { "FacadeInspector",	"FACADES###FacadeInspector",		SEDX_ICON_BUILDING_O };
 		constexpr PanelInfo PANEL_FACADE_EDITOR		= { "FacadeEditor",		"FACADE EDITOR###FacadeEditor",		SEDX_ICON_PICTURE_O };
+		constexpr PanelInfo PANEL_ENVIRONMENT		= { "Environment",		"ENVIRONMENT###Environment",		SEDX_ICON_SUN_O };
 
 		constexpr PanelInfo s_StripPanels[] =
 		{
-			PANEL_PROPERTIES, PANEL_OUTLINER, PANEL_PROJECT, PANEL_AIRPORTS, PANEL_XPLANE, PANEL_FACADES, PANEL_FACADE_EDITOR, PANEL_ASSETS, PANEL_CONSOLE, PANEL_SCENE_SETTINGS, PANEL_CAMERA, PANEL_RENDERER, PANEL_VIEWPORT
+			PANEL_PROPERTIES, PANEL_OUTLINER, PANEL_PROJECT, PANEL_AIRPORTS, PANEL_XPLANE, PANEL_FACADES, PANEL_FACADE_EDITOR, PANEL_ENVIRONMENT, PANEL_ASSETS, PANEL_CONSOLE, PANEL_SCENE_SETTINGS, PANEL_CAMERA, PANEL_RENDERER, PANEL_VIEWPORT, PANEL_VIEWPORT2
 		};
 
 		/* Bump when the default layout changes so existing users get the new arrangement once. */
-		constexpr const char *DOCKSPACE_NAME = "SEDX_EditorDockspace_v7";
+		constexpr const char *DOCKSPACE_NAME = "SEDX_EditorDockspace_v8";
 
 		constexpr ImGuiWindowFlags SIDE_BAR_FLAGS = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoSavedSettings;
 
@@ -266,14 +280,24 @@ namespace SceneryEditorX
 		XPlane::LibraryManager::Init();
 		EditorAirports::Init();
 		EditorProjects::Init(m_UserPreferences);
-		ReadStartupObjects();
+		LoadEnvironmentTables();
+		EditorScenario::Init();		// --env-scenario: after the airports, so its airport wins over --xp-airport
+		ReadStartupObjects();		// After the scenario, so --env-* flags override its environment
+		// The user's snapping and gizmo options (user:/editor_settings.cfg); scripted self-tests start from the defaults
+		// and leave the file alone
+		if (!ToolsSelfTest::IsEnabled())
+			EditorSettingsSerializer::Init();
 		RegisterPanels();
 		// Commands the menus offer (menu bar, right-click quad menu, Space hotbox), and the menus themselves
 		ViewportMenus::RegisterCommands();
 		FacadeTool::RegisterCommands();
 		FacadeAuthoring::RegisterCommands();
 		BuildMainMenus();
+		// The viewports drive the camera (keymaps, several viewports): the engine camera reads no input of its own
+		Camera::SetInputExternal(true);
 		EditorCamera::CaptureHome();
+		EditorCamera::ReadCommandLine();
+		EditorWelcome::Init();
 		UpdateWindowTitle();
 
 		if (!ImGui::GetCurrentContext())
@@ -295,7 +319,10 @@ namespace SceneryEditorX
 	{
 		// The UI layer (an overlay) detaches first, so ImGui is already gone here: no ImGui calls.
 		Camera::SetInputEnabled(true);
+		Camera::SetInputExternal(false);
+		EditorSettingsSerializer::Shutdown();	// The tools' snapping and gizmo options, when they changed
 		m_PanelManager.reset();
+		AssetThumbnails::Shutdown();	// Before the renderer frees the device: the thumbnail atlas is on the GPU
 		EditorProjects::Shutdown();	// Keeps unsaved project work as recovery data while the scene still exists
 		EditorAirports::Shutdown();
 		XPlane::SceneObjects::Shutdown();
@@ -310,6 +337,7 @@ namespace SceneryEditorX
 		const std::filesystem::path resources = VFS::FromUtf8(ResourceCache::GetResourceDirectory());
 
 		m_PanelManager->AddPanel<SceneViewport>(PanelCategory::Viewer, PANEL_VIEWPORT.id, "Viewport", true, &m_Context);
+		m_PanelManager->AddPanel<SecondViewportPanel>(PanelCategory::Viewer, PANEL_VIEWPORT2.id, "Viewport 2", false, &m_Context);
 		m_PanelManager->AddPanel<PropertiesPanel>(PanelCategory::Editor, PANEL_PROPERTIES.id, "Properties", true, &m_Context);
 		m_PanelManager->AddPanel<OutlinerPanel>(PanelCategory::Editor, PANEL_OUTLINER.id, "Outliner", true, &m_Context);
 		m_PanelManager->AddPanel<AssetShelfPanel>(PanelCategory::Editor, PANEL_ASSETS.id, "Assets", true, resources);
@@ -319,12 +347,18 @@ namespace SceneryEditorX
 		m_PanelManager->AddPanel<ProjectPanel>(PanelCategory::Editor, PANEL_PROJECT.id, "Project", true, &m_Context);
 		m_PanelManager->AddPanel<FacadeInspectorPanel>(PanelCategory::Editor, PANEL_FACADES.id, "Facades", true, &m_Context);
 		m_PanelManager->AddPanel<FacadeEditorPanel>(PanelCategory::Editor, PANEL_FACADE_EDITOR.id, "Facade Editor", false, &m_Context);
+		m_PanelManager->AddPanel<EnvironmentPanel>(PanelCategory::Editor, PANEL_ENVIRONMENT.id, "Environment", true, &m_Context);
 		m_PanelManager->AddPanel<SceneSettingsPanel>(PanelCategory::Settings, PANEL_SCENE_SETTINGS.id, "Scene Settings", true);
 		m_PanelManager->AddPanel<CameraSettingsPanel>(PanelCategory::Settings, PANEL_CAMERA.id, "Camera", true);
 		m_PanelManager->AddPanel<RendererStatsPanel>(PanelCategory::Settings, PANEL_RENDERER.id, "Renderer", true);
 
 		// Restore which panels were open last session.
 		m_PanelManager->Deserialize();
+
+		// Except VIEWPORT 2: the editor starts with one viewport, and the second opens only on request
+		// (Window > New Viewport, its strip button, --viewport2)
+		if (PanelData *panel = FindPanel(PANEL_VIEWPORT2.id))
+			panel->IsOpen = false;
 	}
 
 	void EditorLayer::AttachLogSink()
@@ -378,10 +412,14 @@ namespace SceneryEditorX
 			XPlane::SceneObjects::Tick(ImGui::GetIO().DeltaTime);
 		}
 
+		// World environment: place from the open airport (or project), the camera's altitude, surface wetting over time
+		UpdateEnvironment();
+
 		// Airports: the startup airport, scene rebuilds after edits, finished Gateway downloads
 		{
 			SEDX_PERF_SCOPE("Main: EditorAirports::Tick");
 			EditorAirports::Tick(&m_Context);
+			EditorScenario::Tick(&m_Context);	// Parity scenario: camera, settling, --capture-png
 		}
 
 		// Project: the startup project, scene edits flowing into it, autosave, the window title
@@ -390,6 +428,9 @@ namespace SceneryEditorX
 			EditorProjects::Tick(&m_Context);
 			FacadeAuthoring::Tick();	// The facade editor's live preview
 		}
+
+		// Asset thumbnails the panels asked for last frame: finished ones uploaded, workers started
+		AssetThumbnails::Update();
 
 		// Selection: follow what other panels selected last frame, drop what rebuilds removed
 		EditorSelection::Sync(&m_Context);
@@ -409,8 +450,35 @@ namespace SceneryEditorX
 			m_PanelManager->OnUIRender();
 		}
 
+		// VIEWPORT 2: opened by Window > New Viewport (or --viewport2); closed, its renderer view and targets go
+		if (PanelData *panel = FindPanel(PANEL_VIEWPORT2.id))
+		{
+			if (m_OpenViewport2)
+			{
+				panel->IsOpen = true;
+				ImGui::SetWindowFocus(PANEL_VIEWPORT2.window);
+				m_OpenViewport2 = false;
+			}
+			else if (!panel->IsOpen && panel->Panel)
+				static_cast<SecondViewportPanel *>(panel->Panel.Get())->Release();
+		}
+
 		// The viewport's right-click quad menu and Space hotbox, over the panels
 		ViewportMenus::Draw(&m_Context);
+
+		// --focus-panel: once the dock layout has been built (a few frames in)
+		if (!m_FocusPanel.empty() && ++m_FocusPanelFrames > 3)
+		{
+			for (const PanelInfo &info : s_StripPanels)
+			{
+				if (m_FocusPanel != info.id)
+					continue;
+				if (PanelData *panel = FindPanel(info.id))
+					panel->IsOpen = true;
+				ImGui::SetWindowFocus(info.window);
+			}
+			m_FocusPanel.clear();
+		}
 
 		// Inspect (menus, PROPERTIES, the library panel) brings the FACADES panel up
 		if (FacadeTool::ConsumeOpenRequest())
@@ -446,6 +514,7 @@ namespace SceneryEditorX
 		}
 
 		DrawAboutPopup();
+		EditorWelcome::Draw();	// First-launch keymap choice and Edit > Preferences
 		DrawDebugWindows();
 		EditorAirports::DrawModals(&m_Context);
 		EditorProjects::DrawModals(&m_Context);
@@ -465,6 +534,10 @@ namespace SceneryEditorX
 		{
 			if (ImGui::MenuItem("About Scenery Editor X"))
 				m_ShowAbout = true;
+			if (ImGui::MenuItem("Choose a Navigation Keymap..."))
+				EditorWelcome::OpenWelcome();
+			if (ImGui::MenuItem("Controls && Shortcuts..."))
+				EditorWelcome::OpenPreferences();
 			ImGui::Separator();
 			ImGui::TextDisabled("Viewport: right-click for the quad menu, hold Space for the hotbox");
 		});
@@ -500,7 +573,7 @@ namespace SceneryEditorX
 		EditorCommands::MenuItem("item.duplicate", &m_Context);
 		if (ImGui::MenuItem("Deselect", "Esc", false, !EditorSelection::IsEmpty()))
 			EditorSelection::Clear(&m_Context);
-		if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_CROSSHAIRS, "Frame Selection").c_str(), "F", false, !EditorSelection::IsEmpty()))
+		if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_CROSSHAIRS, "Frame Selection").c_str(), EditorPreferences::Get().keymap == NavigationKeymap::Max ? "Z" : "F", false, !EditorSelection::IsEmpty()))
 			EditorTools::FrameSelection();
 		ImGui::Separator();
 		EditorCommands::MenuItem("item.hide", &m_Context);
@@ -513,6 +586,9 @@ namespace SceneryEditorX
 			if (ImGui::MenuItem(EditorUI::IconLabel(EditorTools::GetToolIcon(tool), EditorTools::GetToolName(tool)).c_str(), EditorTools::GetToolKey(tool), EditorTools::GetTool() == tool))
 				EditorTools::SetTool(tool);
 		}
+		ImGui::Separator();
+		if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_COG, "Preferences...").c_str()))
+			EditorWelcome::OpenPreferences();
 	}
 
 	void EditorLayer::DrawSceneMenu()
@@ -636,6 +712,13 @@ namespace SceneryEditorX
 
 	void EditorLayer::DrawWindowMenu()
 	{
+		// A second camera on the scene, dockable or floating on another monitor
+		const PanelData *viewport2 = FindPanel(PANEL_VIEWPORT2.id);
+		if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_CLONE, "New Viewport").c_str(), nullptr, false, viewport2 && !viewport2->IsOpen))
+			m_OpenViewport2 = true;
+		EditorUI::ItemTooltip("Opens VIEWPORT 2: its own camera, a top view to start with. Drag its tab out of the window to put it on another monitor");
+		ImGui::Separator();
+
 		for (const PanelInfo &info : s_StripPanels)
 		{
 			if (PanelData *panel = FindPanel(info.id))
@@ -664,13 +747,35 @@ namespace SceneryEditorX
 		if (ImGui::MenuItem("Fly Navigation", nullptr, EditorCamera::IsMode(FLY), hasCamera))
 			EditorCamera::SetMode(FLY);
 		ImGui::Separator();
-		if (ImGui::MenuItem("Perspective", nullptr, EditorCamera::IsProjection(CameraType::Perspective), hasCamera))
+		if (ImGui::MenuItem("Perspective", "Numpad 5", EditorCamera::IsProjection(CameraType::Perspective), hasCamera))
 			EditorCamera::SetProjection(CameraType::Perspective);
-		if (ImGui::MenuItem("Orthographic", nullptr, EditorCamera::IsProjection(CameraType::Orthographic), hasCamera))
+		if (ImGui::MenuItem("Orthographic", "Numpad 5", EditorCamera::IsProjection(CameraType::Orthographic), hasCamera))
 			EditorCamera::SetProjection(CameraType::Orthographic);
 		ImGui::Separator();
-		if (ImGui::MenuItem("Reset Camera", "Home", false, hasCamera))
+		using ViewportCamera::ViewPreset;
+		const ViewPreset preset = EditorCamera::GetViewPreset();
+		if (ImGui::MenuItem("Top", "Numpad 7", preset == ViewPreset::Top, hasCamera))
+			EditorCamera::SetViewPreset(ViewPreset::Top);
+		if (ImGui::MenuItem("Bottom", "Ctrl+Numpad 7", preset == ViewPreset::Bottom, hasCamera))
+			EditorCamera::SetViewPreset(ViewPreset::Bottom);
+		if (ImGui::MenuItem("Front", "Numpad 1", preset == ViewPreset::Front, hasCamera))
+			EditorCamera::SetViewPreset(ViewPreset::Front);
+		if (ImGui::MenuItem("Back", "Ctrl+Numpad 1", preset == ViewPreset::Back, hasCamera))
+			EditorCamera::SetViewPreset(ViewPreset::Back);
+		if (ImGui::MenuItem("Right", "Numpad 3", preset == ViewPreset::Right, hasCamera))
+			EditorCamera::SetViewPreset(ViewPreset::Right);
+		if (ImGui::MenuItem("Left", "Ctrl+Numpad 3", preset == ViewPreset::Left, hasCamera))
+			EditorCamera::SetViewPreset(ViewPreset::Left);
+		ImGui::Separator();
+		if (ImGui::MenuItem("Frame Selection", "Numpad .", false, hasCamera && !EditorSelection::IsEmpty()))
+			EditorTools::FrameSelection();
+		if (ImGui::MenuItem("Frame All", "Home", false, hasCamera))
+			EditorCamera::FrameAll();
+		if (ImGui::MenuItem("Reset Camera", nullptr, false, hasCamera))
 			EditorCamera::Reset();
+		ImGui::Separator();
+		if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_KEYBOARD_O, "Navigation Keymap...").c_str()))
+			EditorWelcome::OpenPreferences();
 	}
 
 	void EditorLayer::DrawStatusBar()
@@ -765,22 +870,25 @@ namespace SceneryEditorX
 			ImGui::Separator();
 			ImGui::BeginDisabled(EditorCamera::Get() == nullptr);
 
-			if (EditorUI::StripButton(SEDX_ICON_REFRESH, "Orbit navigation\nAlt+LMB orbit, MMB pan, RMB look, wheel zoom", EditorCamera::IsMode(ORBIT), buttonSize))
+			const std::string orbitTip = std::string("Orbit navigation\n") + ViewportCamera::GetKeymapSummary(EditorPreferences::Get().keymap);
+			if (EditorUI::StripButton(SEDX_ICON_REFRESH, orbitTip.c_str(), EditorCamera::IsMode(ORBIT), buttonSize))
 				EditorCamera::SetMode(ORBIT);
 			if (EditorUI::StripButton(SEDX_ICON_VIDEO_CAMERA, "Fly navigation\nRMB look, hold RMB + WASD move, Q/E down/up", EditorCamera::IsMode(FLY), buttonSize))
 				EditorCamera::SetMode(FLY);
 
 			ImGui::Separator();
 
-			if (EditorUI::StripButton(SEDX_ICON_CUBE, "Perspective projection", EditorCamera::IsProjection(CameraType::Perspective), buttonSize))
+			if (EditorUI::StripButton(SEDX_ICON_CUBE, "Perspective projection (Numpad 5)", EditorCamera::IsProjection(CameraType::Perspective), buttonSize))
 				EditorCamera::SetProjection(CameraType::Perspective);
-			if (EditorUI::StripButton(SEDX_ICON_TH_LARGE, "Orthographic projection", EditorCamera::IsProjection(CameraType::Orthographic), buttonSize))
+			if (EditorUI::StripButton(SEDX_ICON_TH_LARGE, "Orthographic projection (Numpad 5)", EditorCamera::IsProjection(CameraType::Orthographic), buttonSize))
 				EditorCamera::SetProjection(CameraType::Orthographic);
+			if (EditorUI::StripButton(SEDX_ICON_ARROW_DOWN, "Top view (Numpad 7)", EditorCamera::GetViewPreset() == ViewportCamera::ViewPreset::Top, buttonSize))
+				EditorCamera::SetViewPreset(ViewportCamera::ViewPreset::Top);
 
 			ImGui::Separator();
 
-			if (EditorUI::StripButton(SEDX_ICON_CROSSHAIRS, "Reset camera (Home)", false, buttonSize))
-				EditorCamera::Reset();
+			if (EditorUI::StripButton(SEDX_ICON_CROSSHAIRS, "Frame all (Home)", false, buttonSize))
+				EditorCamera::FrameAll();
 
 			ImGui::EndDisabled();
 		}
@@ -839,11 +947,12 @@ namespace SceneryEditorX
 	{
 		m_FocusViewportFrames = 2;
 
-		// Every panel comes back for a reset, including ones the user had closed.
+		// Every panel comes back for a reset, including ones the user had closed. The default layout has one
+		// viewport, so VIEWPORT 2 closes (Window > New Viewport opens it again).
 		for (const PanelInfo &info : s_StripPanels)
 		{
 			if (PanelData *panel = FindPanel(info.id))
-				panel->IsOpen = true;
+				panel->IsOpen = std::string_view(info.id) != PANEL_VIEWPORT2.id;
 		}
 
 		const ImGuiViewport *viewport = ImGui::GetMainViewport();
@@ -873,6 +982,7 @@ namespace SceneryEditorX
 		ImGui::DockBuilderDockWindow(PANEL_RENDERER.window, rightBottom);
 		ImGui::DockBuilderDockWindow(PANEL_FACADES.window, rightBottom);
 		ImGui::DockBuilderDockWindow(PANEL_FACADE_EDITOR.window, rightBottom);
+		ImGui::DockBuilderDockWindow(PANEL_ENVIRONMENT.window, rightBottom);
 		ImGui::DockBuilderDockWindow(PANEL_ASSETS.window, bottom);
 		ImGui::DockBuilderDockWindow(PANEL_CONSOLE.window, bottom);
 		ImGui::DockBuilderDockWindow(PANEL_XPLANE.window, bottom);
@@ -935,8 +1045,8 @@ namespace SceneryEditorX
 		if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_Y, ImGuiInputFlags_RouteGlobal) || ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_Z, ImGuiInputFlags_RouteGlobal))
 			EditorHistory::Redo();
 
-		if (ImGui::Shortcut(ImGuiKey_Home, ImGuiInputFlags_RouteGlobal))
-			EditorCamera::Reset();
+		// Camera: numpad views, Home, and the keymap's own keys (over the viewport)
+		EditorCamera::HandleShortcuts(&m_Context);
 
 		// The open project (which saves its airport too), else the open airport
 		if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_N, ImGuiInputFlags_RouteGlobal))
@@ -971,6 +1081,7 @@ namespace SceneryEditorX
 
 		const std::vector<std::string> &args = platform->GetCommandLineArgs();
 		XPlane::DatarefEnvironment &environment = XPlane::Datarefs::GetEnvironment();
+		Environment::EnvironmentState world = Environment::Get().GetState();
 		for (size_t i = 0; i < args.size(); ++i)
 		{
 			if (args[i] == "--xp-lights-on")
@@ -983,6 +1094,33 @@ namespace SceneryEditorX
 				GpuScene::SetOcclusionCulling(false); // GPU scene without Hi-Z occlusion culling (comparison)
 			else if (args[i] == "--lock-camera")
 				Camera::SetInputLocked(true); // the startup view stays put (captures, A/B measurements)
+			else if (args[i] == "--no-vsync")
+			{
+				// frames as fast as they render: performance runs measure the frame, not the display's refresh (the
+				// frame limiter unlocked too: turning vsync off alone falls back to its 30 fps floor)
+				if (Swapchain *swapchain = Renderer::GetSwapChain())
+					swapchain->SetVsync(false);
+				FPSTimer::SetFpsLimit(std::numeric_limits<float>::max());
+			}
+			else if (args[i] == "--viewport2")
+				m_OpenViewport2 = true; // VIEWPORT 2 open from the start (checks and captures)
+			else if (args[i] == "--all-features-off")
+				Renderer::SetFeatures(RendererFeatures::AllOff()); // the XP12 frame graph with every switchable pass off (A/B)
+			else if (args[i] == "--ao-gtao")
+				Renderer::SetAoTechnique(Renderer::AoTechnique::Gtao); // SEDX's GTAO pass instead of CACAO (A/B)
+			else if (args[i] == "--ssr-trace-all")
+				Renderer::SetSsrTraceAll(true); // every deferred surface traces its reflection as a mirror (with --debug-view reflections)
+			else if (args[i].starts_with("--no-") || args[i].starts_with("--with-"))
+			{
+				// --no-<feature> / --with-<feature>: one XP12 emulation pass off or on (RENDERER panel names)
+				const bool on = args[i].starts_with("--with-");
+				if (const RendererFeatureInfo *feature = FindRendererFeature(std::string_view(args[i]).substr(on ? 7 : 5)))
+				{
+					RendererFeatures features = Renderer::GetFeatures();
+					features.*feature->member = on;
+					Renderer::SetFeatures(features);
+				}
+			}
 			else if (args[i] == "--entity-bench")
 				m_EntityBenchPending = true; // Entity handle lookups / copies, once the scene has settled
 			else if (args[i] == "--tools-selftest")
@@ -997,14 +1135,45 @@ namespace SceneryEditorX
 				ToolsSelfTest::Enable();
 				ToolsSelfTest::EnableFacadeShowcase(); // holds the facade tests' facades with wall labels and the quad menu open (frame captures)
 			}
+			else if (args[i] == "--gizmo-selftest" || args[i] == "--gizmo-showcase")
+			{
+				ToolsSelfTest::Enable();
+				ToolsSelfTest::EnableGizmoTests(args[i] == "--gizmo-showcase"); // only the gizmo checks, dragged with a scripted mouse (then held for screenshots)
+			}
 			else if (i + 1 >= args.size())
 				break;
 			else if (args[i] == "--xp-object")
 				m_StartupObjectFiles.push_back(args[++i]);
+			else if (args[i] == "--ao-quality")
+			{
+				// --ao-quality <0-4>: the QUALITY ambient occlusion level (X-Plane's renopt_SSAO_04: off .. highest at full resolution)
+				RendererQualityPreset preset = Renderer::GetQualityPreset();
+				preset.ao = std::clamp(std::atoi(args[++i].c_str()), 0, AO_LEVELS - 1);
+				Renderer::SetQualityPreset(preset);
+			}
+			else if (args[i] == "--debug-view")
+			{
+				// --debug-view <n | name>: what the frame shows instead of the image (RENDERER panel DEBUG VIEW)
+				const std::string &value = args[++i];
+				for (int v = 0; v < static_cast<int>(Renderer_DebugView::Count); ++v)
+				{
+					std::string name = GetDebugViewName(static_cast<Renderer_DebugView>(v));
+					std::ranges::transform(name, name.begin(), [](const unsigned char c) { return static_cast<char>(std::tolower(c)); });
+					if (value == std::to_string(v) || name.starts_with(value))
+					{
+						Renderer::SetDebugView(static_cast<Renderer_DebugView>(v));
+						break;
+					}
+				}
+			}
+			else if (args[i] == "--focus-panel")
+				m_FocusPanel = args[++i];	// A panel id ("Environment", "RendererStats"...): its tab comes to the front
 			else if (args[i] == "--xp-asset")
 				m_StartupAssets.push_back(args[++i]);
 			else if (args[i] == "--xp-time")
-				environment.localTimeHours = std::clamp(std::strtof(args[++i].c_str(), nullptr), 0.0f, 24.0f); // local time in hours
+				world.localTimeHours = std::clamp(std::strtod(args[++i].c_str(), nullptr), 0.0, 24.0); // local time in hours (alias of --env-time)
+			else if (ParseEnvironmentFlag(args[i], args[i + 1], world))
+				++i;
 			else if (args[i] == "--xp-position")
 			{
 				// "x,y,z" in meters (+X east, +Y up, +Z south)
@@ -1018,6 +1187,124 @@ namespace SceneryEditorX
 				m_HasStartupPosition = true;
 			}
 		}
+		Environment::Get().SetState(world);
+	}
+
+	bool EditorLayer::ParseEnvironmentFlag(const std::string &flag, const std::string &value, Environment::EnvironmentState &state)
+	{
+		// --env-* flags (plan TASK-017): the world environment at startup
+		const auto number = [&value](double &out)
+		{
+			char *end = nullptr;
+			out = std::strtod(value.c_str(), &end);
+			return end && end != value.c_str();
+		};
+		double x = 0.0;
+		if (flag == "--env-date")
+		{
+			if (!Environment::ParseIsoDate(value, state.year, state.month, state.day))
+				EDITOR_ERROR_TAG("Environment", "--env-date wants YYYY-MM-DD, not '{}'", value);
+			return true;
+		}
+		if (flag == "--env-time")
+		{
+			if (!Environment::ParseClockTime(value, state.localTimeHours))
+				EDITOR_ERROR_TAG("Environment", "--env-time wants HH:MM, not '{}'", value);
+			return true;
+		}
+		if (flag == "--env-utc-offset" && number(x))
+		{
+			state.utcOffsetHours = static_cast<float>(std::clamp(x, -14.0, 14.0));
+			return true;
+		}
+		if (flag == "--env-latlon")
+		{
+			double lat = 0.0, lon = 0.0;
+			if (std::sscanf(value.c_str(), "%lf,%lf", &lat, &lon) == 2)
+			{
+				state.latitudeDeg = std::clamp(lat, -90.0, 90.0);
+				state.longitudeDeg = std::clamp(lon, -180.0, 180.0);
+				state.followAirport = false;
+			}
+			else
+				EDITOR_ERROR_TAG("Environment", "--env-latlon wants lat,lon in degrees, not '{}'", value);
+			return true;
+		}
+		if (flag == "--env-visibility" && number(x))
+		{
+			state.visibilityM = static_cast<float>(std::clamp(x, 10.0, 200000.0));
+			return true;
+		}
+		if (flag == "--env-rain" && number(x))
+		{
+			state.rainPercent = static_cast<float>(std::clamp(x, 0.0, 1.0));
+			return true;
+		}
+		if (flag == "--env-snow" && number(x))
+		{
+			state.snowCover = static_cast<float>(std::clamp(x, 0.0, 1.0));
+			return true;
+		}
+		if (flag == "--env-friction" && number(x))
+		{
+			state.runwayFriction = std::clamp(static_cast<int>(x), 0, 15);
+			return true;
+		}
+		if (flag == "--env-temperature" && number(x))
+		{
+			state.temperatureC = static_cast<float>(std::clamp(x, -80.0, 60.0));
+			return true;
+		}
+		if (flag == "--env-season")
+		{
+			Environment::Season season;
+			if (value == "auto")
+				state.season = Environment::SeasonOverride::Auto;
+			else if (Environment::ParseSeasonCode(value, season))
+				state.season = static_cast<Environment::SeasonOverride>(static_cast<uint8_t>(season) + 1);
+			else
+				EDITOR_ERROR_TAG("Environment", "--env-season wants spr, sum, fal, win or auto, not '{}'", value);
+			return true;
+		}
+		return false;
+	}
+
+	void EditorLayer::LoadEnvironmentTables()
+	{
+		const std::filesystem::path table = std::filesystem::path(ResourceCache::GetResourceDirectory()) / "environment" / "xp12_sky_conditions.json";
+		std::string error;
+		if (!Environment::Get().LoadSkyConditions(table, &error))
+			EDITOR_WARN_TAG("Environment", "Sky-condition table not loaded ({}): every class stays at 1", error);
+		const std::filesystem::path constants = std::filesystem::path(ResourceCache::GetResourceDirectory()) / "environment" / "xp12_environment.json";
+		if (!Renderer::LoadEnvironmentConstants(constants, &error))
+			EDITOR_WARN_TAG("Environment", "XP12 constants not loaded ({}): the built-in initial values are used", error);
+	}
+
+	void EditorLayer::UpdateEnvironment()
+	{
+		Environment::World &world = Environment::Get();
+
+		// The place: the open airport's datum, else the open project's center
+		if (world.GetState().followAirport)
+		{
+			if (XPlane::SceneAirports::IsLoaded())
+			{
+				const XPlane::GeoProjection &projection = XPlane::SceneAirports::GetProjection();
+				const XPlane::AirportDocument *airport = EditorAirports::GetDocument();
+				const float elevation = airport ? static_cast<float>(airport->airport.elevationFt) * 0.3048f : world.GetState().elevationM;
+				world.SetAirportLocation(projection.GetDatumLatitude(), projection.GetDatumLongitude(), elevation);
+			}
+			else if (const ProjectFile::ProjectDocument *project = EditorProjects::GetDocument())
+			{
+				double latitude = 0.0, longitude = 0.0;
+				if (ProjectFile::GetProjectCenter(project->GetProject(), latitude, longitude))
+					world.SetAirportLocation(latitude, longitude, static_cast<float>(project->GetProject().datum.valid ? project->GetProject().datum.elevation : world.GetState().elevationM));
+			}
+		}
+
+		if (const Camera *camera = EditorCamera::Get())
+			world.SetObserverAltitude(camera->GetEyePosition().y + world.GetState().elevationM);
+		world.Tick(ImGui::GetIO().DeltaTime);
 	}
 
 	void EditorLayer::PlaceStartupObjects()

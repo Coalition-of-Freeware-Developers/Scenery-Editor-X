@@ -31,6 +31,7 @@
 #include "xp_datarefs.h"
 #include <algorithm>
 #include <cmath>
+#include <SceneryEditorX/environment/environment.h>
 
 // -------------------------------------------------------
 
@@ -46,16 +47,13 @@ namespace SceneryEditorX::XPlane
 		bool s_Playing = true;
 		float s_TimeScale = 1.0f;
 
-		float LocalTimeSeconds()
-		{
-			return std::clamp(s_Environment.localTimeHours, 0.0f, 24.0f) * 3600.0f;
-		}
+		const Environment::EnvironmentState &World() { return Environment::Get().GetState(); }
+		const Environment::EnvironmentDerived &Derived() { return Environment::Get().GetDerived(); }
 
-		/* @brief Rough sun elevation for a mid-latitude equinox: -90 at midnight, +60 at noon. */
+		/* @brief The sun's apparent elevation for the world's date, time and place (NOAA). */
 		float SunPitchDegrees()
 		{
-			const float hours = std::clamp(s_Environment.localTimeHours, 0.0f, 24.0f);
-			return std::sin((hours - 6.0f) / 12.0f * PI) * (hours >= 6.0f && hours <= 18.0f ? 60.0f : 90.0f);
+			return static_cast<float>(Derived().sun.apparentElevationDeg);
 		}
 
 		/* @brief Values for the datarefs the editor derives from the environment (returns false for others). */
@@ -67,15 +65,70 @@ namespace SceneryEditorX::XPlane
 				return true;
 			}
 
-			if (name == "sim/time/local_time_sec" || name == "sim/time/zulu_time_sec")
+			if (name == "sim/time/local_time_sec")
 			{
-				value = LocalTimeSeconds();
+				value = static_cast<float>(std::clamp(World().localTimeHours, 0.0, 24.0) * 3600.0);
+				return true;
+			}
+
+			if (name == "sim/time/zulu_time_sec")
+			{
+				value = static_cast<float>(Derived().utcHours * 3600.0);
+				return true;
+			}
+
+			if (name == "sim/time/local_date_days")
+			{
+				value = static_cast<float>(Derived().dayOfYear - 1);	// Days since January 1st
 				return true;
 			}
 
 			if (name == "sim/graphics/scenery/sun_pitch_degrees")
 			{
 				value = SunPitchDegrees();
+				return true;
+			}
+
+			if (name == "sim/graphics/scenery/sun_heading_degrees")
+			{
+				value = static_cast<float>(Derived().sun.azimuthDeg);
+				return true;
+			}
+
+			if (name == "sim/weather/region/runway_friction")
+			{
+				value = static_cast<float>(World().runwayFriction);
+				return true;
+			}
+
+			if (name == "sim/weather/region/snow_cover")
+			{
+				value = World().snowCover;
+				return true;
+			}
+
+			if (name == "sim/weather/region/rain_percent")
+			{
+				value = World().rainPercent;
+				return true;
+			}
+
+			if (name == "sim/weather/region/visibility_reported_sm")
+			{
+				value = World().visibilityM / 1609.344f;
+				return true;
+			}
+
+			// Precipitation where the camera is: rain above freezing, snow below
+			if (name == "sim/weather/view/rain_ratio")
+			{
+				value = World().temperatureC > 0.0f ? World().rainPercent : 0.0f;
+				return true;
+			}
+
+			if (name == "sim/weather/view/snow_ratio")
+			{
+				value = World().temperatureC > 0.0f ? 0.0f : World().rainPercent;
 				return true;
 			}
 
@@ -87,26 +140,26 @@ namespace SceneryEditorX::XPlane
 
 			if (name == "sim/weather/wind_direction_degt" || name == "sim/weather/aircraft/wind_direction_degt")
 			{
-				value = s_Environment.windDirectionDeg;
+				value = World().windDirectionDegT;
 				return true;
 			}
 
 			if (name == "sim/weather/wind_speed_kt" || name == "sim/weather/aircraft/wind_speed_kts")
 			{
-				value = s_Environment.windSpeedKnots;
+				value = World().windSpeedKt;
 				return true;
 			}
 
 			// Windsocks: psi is the heading the sock points to (downwind), the is the droop (-90 limp .. 0 straight out).
 			if (name == "sim/graphics/animation/windsock_psi")
 			{
-				value = std::fmod(s_Environment.windDirectionDeg + 180.0f, 360.0f);
+				value = std::fmod(World().windDirectionDegT + 180.0f, 360.0f);
 				return true;
 			}
 
 			if (name == "sim/graphics/animation/windsock_the")
 			{
-				const float strength = std::clamp(s_Environment.windSpeedKnots / 15.0f, 0.0f, 1.0f);
+				const float strength = std::clamp(World().windSpeedKt / 15.0f, 0.0f, 1.0f);
 				const float gust = std::sin(static_cast<float>(s_SimTime) * 1.7f) * 3.0f * strength;
 				value = std::clamp(-90.0f + strength * 90.0f + gust, -90.0f, 0.0f);
 				return true;
@@ -281,14 +334,13 @@ namespace SceneryEditorX::XPlane
 			return 1.0f;
 
 		// Lights come on as the sun drops below a few degrees above the horizon.
-		return std::clamp((3.0f - SunPitchDegrees()) / 9.0f, 0.0f, 1.0f);
+		return Derived().nightFactor;
 	}
 
 	float Datarefs::GetDaylight()
 	{
 		// Full daylight once the sun is 8 degrees up, dark once it is 6 degrees below the horizon (civil dusk).
-		const float t = std::clamp((SunPitchDegrees() + 6.0f) / 14.0f, 0.0f, 1.0f);
-		return t * t * (3.0f - 2.0f * t);
+		return Derived().daylight;
 	}
 
 	bool Datarefs::IsBuiltin(const std::string_view name)

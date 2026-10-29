@@ -143,6 +143,21 @@ namespace SceneryEditorX
 		return mipCount;
 	}
 
+	namespace
+	{
+		/* @brief The view of every mip and layer: cube images (6 layers per cube) are sampled as cubes. */
+		VkImageViewType GetFullViewType(const ImageType type, const uint32_t depth)
+		{
+			switch (type)
+			{
+				case ImageType::Type3D: return VK_IMAGE_VIEW_TYPE_3D;
+				case ImageType::TypeCube: return VK_IMAGE_VIEW_TYPE_CUBE;
+				case ImageType::TypeCubeArray: return VK_IMAGE_VIEW_TYPE_CUBE_ARRAY;
+				default: return depth > 1 ? VK_IMAGE_VIEW_TYPE_2D_ARRAY : VK_IMAGE_VIEW_TYPE_2D;
+			}
+		}
+	}
+
 	ImageResource::ImageResource(const ImgResourceSpec &spec) : SharedResource(ResourceType::Image), m_Spec(spec)
 	{
 		m_Device = RenderContext::Get()->GetDevice();
@@ -187,6 +202,8 @@ namespace SceneryEditorX
 		imageCI.tiling = VK_IMAGE_TILING_OPTIMAL;
 		imageCI.usage = usage;
 		imageCI.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		if (m_Spec.type == ImageType::TypeCube || m_Spec.type == ImageType::TypeCubeArray)
+			imageCI.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;	// sampled as cubes, written per face
 
 		uint32_t queueFamilies[2] = {};
 		if ((m_Spec.flags & QueueShare) != 0)
@@ -219,7 +236,7 @@ namespace SceneryEditorX
 		viewCI.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 		viewCI.image = m_Image;
 		viewCI.format = m_Spec.format;
-		viewCI.viewType = (m_Spec.type == ImageType::Type3D) ? VK_IMAGE_VIEW_TYPE_3D : ((m_Depth > 1) ? VK_IMAGE_VIEW_TYPE_2D_ARRAY : VK_IMAGE_VIEW_TYPE_2D);
+		viewCI.viewType = GetFullViewType(m_Spec.type, m_Depth);
 		viewCI.subresourceRange.aspectMask = GetAspectMask(m_Spec.format);
 		viewCI.subresourceRange.baseMipLevel = 0;
 		viewCI.subresourceRange.levelCount = m_Spec.mipCount;
@@ -292,6 +309,8 @@ namespace SceneryEditorX
 		imageCI.tiling = VK_IMAGE_TILING_OPTIMAL;
 		imageCI.usage = usage;
 		imageCI.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		if (m_Spec.type == ImageType::TypeCube || m_Spec.type == ImageType::TypeCubeArray)
+			imageCI.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;	// sampled as cubes, written per face
 
 		uint32_t queueFamilies[2] = {};
 		if ((m_Spec.flags & QueueShare) != 0)
@@ -324,7 +343,7 @@ namespace SceneryEditorX
 		viewCI.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 		viewCI.image = m_Image;
 		viewCI.format = m_Spec.format;
-		viewCI.viewType = (m_Spec.type == ImageType::Type3D) ? VK_IMAGE_VIEW_TYPE_3D : ((m_Depth > 1) ? VK_IMAGE_VIEW_TYPE_2D_ARRAY : VK_IMAGE_VIEW_TYPE_2D);
+		viewCI.viewType = GetFullViewType(m_Spec.type, m_Depth);
 		viewCI.subresourceRange.aspectMask = GetAspectMask(m_Spec.format);
 		viewCI.subresourceRange.baseMipLevel = 0;
 		viewCI.subresourceRange.levelCount = m_Spec.mipCount;
@@ -424,6 +443,66 @@ namespace SceneryEditorX
 		Buffer::ReleaseStagingBuffer(staging);
 	}
 
+	bool ImageResource::WriteRegions(const std::vector<RegionWrite>& writes)
+	{
+		if (writes.empty() || m_Image == VK_NULL_HANDLE || Device::IsDeviceLost() || IsCompressedFormat(m_Spec.format))
+			return false;
+
+		std::vector<VkBufferImageCopy> regions;
+		std::vector<const RegionWrite*> sources;
+		VkDeviceSize totalSize = 0;
+		for (const RegionWrite& write : writes)
+		{
+			if (!write.texels || write.width == 0 || write.height == 0 || write.x + write.width > m_Spec.width || write.y + write.height > m_Spec.height)
+				continue;
+
+			VkBufferImageCopy region{};
+			region.bufferOffset                = totalSize;
+			region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			region.imageSubresource.layerCount = 1;
+			region.imageOffset                 = { static_cast<int32_t>(write.x), static_cast<int32_t>(write.y), 0 };
+			region.imageExtent                 = { write.width, write.height, 1 };
+			regions.push_back(region);
+			sources.push_back(&write);
+			totalSize += (static_cast<VkDeviceSize>(write.width) * write.height * 4 + 15) & ~static_cast<VkDeviceSize>(15);
+		}
+		if (regions.empty())
+			return false;
+
+		auto* staging = static_cast<Buffer*>(Buffer::AcquireStagingBuffer(totalSize));
+		if (!staging)
+		{
+			SEDX_CORE_ERROR_TAG("ImageResource", "Failed to allocate a {} byte staging buffer for '{}'", totalSize, m_ObjectName);
+			return false;
+		}
+		auto* mapped = static_cast<uint8_t*>(staging->Map());
+		if (!mapped)
+		{
+			SEDX_CORE_ERROR_TAG("ImageResource", "Failed to map the staging buffer for '{}'", m_ObjectName);
+			Buffer::ReleaseStagingBuffer(staging);
+			return false;
+		}
+		for (size_t i = 0; i < regions.size(); ++i)
+			std::memcpy(mapped + regions[i].bufferOffset, sources[i]->texels, static_cast<size_t>(sources[i]->width) * sources[i]->height * 4);
+		staging->Unmap();
+
+		bool written = false;
+		if (CommandList* cmdList = CommandList::BeginImmediateExecution(QueueType::Graphics))
+		{
+			cmdList->InsertBarrier(m_Image, m_Spec.format, ALL_MIPS, 0, GetArrayLength(), Layout::ImageLayout::TransferDst);
+			vkCmdCopyBufferToImage(cmdList->GetCommandBuffer(), staging->Get(), m_Image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+				static_cast<uint32_t>(regions.size()), regions.data());
+			cmdList->InsertBarrier(m_Image, m_Spec.format, ALL_MIPS, 0, GetArrayLength(), Layout::ImageLayout::ShaderRead);
+			CommandList::EndImmediateExecution(cmdList);
+			written = true;
+		}
+		else
+			SEDX_CORE_ERROR_TAG("ImageResource", "No immediate command list available to write '{}'", m_ObjectName);
+
+		Buffer::ReleaseStagingBuffer(staging);
+		return written;
+	}
+
 	void ImageResource::CreateViews(const VkImageViewCreateInfo& viewCI)
 	{
 		const VkDevice device = m_Device->GetLogicalDevice();
@@ -450,6 +529,9 @@ namespace SceneryEditorX
 				VkImageViewCreateInfo mipViewCI = viewCI;
 				mipViewCI.subresourceRange.baseMipLevel = mip;
 				mipViewCI.subresourceRange.levelCount   = 1;
+				// a cube's mips are written face by face: storage views can't be cubes
+				if (viewCI.viewType == VK_IMAGE_VIEW_TYPE_CUBE || viewCI.viewType == VK_IMAGE_VIEW_TYPE_CUBE_ARRAY)
+					mipViewCI.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
 				VkImageView mipView = create_view(mipViewCI);
 				m_ImageViews.push_back(mipView);
 				m_ShaderResourceView_mips[mip] = mipView;

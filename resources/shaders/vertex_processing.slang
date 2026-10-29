@@ -100,6 +100,25 @@ struct gbuffer_vertex
     nointerpolation uint pick_id : TEXCOORD4;        // editor picking: the drawing entity's index + 1 (DrawData::pick_id), 0 = none
 };
 
+// what the depth-only passes' alpha test reads (depth_prepass.slang, depth_light.slang): their vertex stages export
+// this rather than the whole gbuffer_vertex, so they write no interpolants the fragment stage never reads
+// (validation: WARNING-Shader-OutputNotConsumed)
+struct depth_vertex
+{
+    precise float4 position : SV_POSITION;
+    float4 uv_misc : TEXCOORD;
+    nointerpolation uint material_index : TEXCOORD3;
+};
+
+depth_vertex to_depth_vertex(gbuffer_vertex vertex)
+{
+    depth_vertex output;
+    output.position       = vertex.position;
+    output.uv_misc        = vertex.uv_misc;
+    output.material_index = vertex.material_index;
+    return output;
+}
+
 float4x4 compose_instance_transform(float instance_position_x, float instance_position_y, float instance_position_z, uint instance_normal_oct, uint instance_yaw, uint instance_scale)
 {
     // compose position
@@ -430,5 +449,16 @@ gbuffer_vertex transform_to_clip_space(gbuffer_vertex vertex, float3 position, f
     vertex.position = mul(float4(position, 1.0f), get_view_projection_matrix());
     vertex.position_previous = mul(float4(position_previous, 1.0f), get_view_projection_previous_matrix());
 
+    return vertex;
+}
+
+// Drapes write depth (drape depth pass) and are tested (forward pass) a little nearer than they are, more for later
+// drapes: coplanar drapes then resolve by rank at any distance. Relative to depth (reverse-Z), so a rank step is about
+// four ULPs of a 32-bit float depth everywhere; the g-buffer draws them in rank order without this (painter's order).
+static const float drape_depth_step = 4.76837158e-7f; // 2^-21
+
+gbuffer_vertex apply_drape_depth(gbuffer_vertex vertex, uint drape_rank)
+{
+    vertex.position.z *= 1.0f + float(drape_rank) * drape_depth_step;
     return vertex;
 }

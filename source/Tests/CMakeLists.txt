@@ -187,9 +187,11 @@ catch_discover_tests(MemoryAllocatorTests)
 # Setting Config Tests
 # --------------------------------
 
-# Define the test executable
+# Define the test executable: ConfigFile (the settings files) over the VFS, standard library + libconfig only
 ADD_EXECUTABLE(SettingsTest
     settings_tests/SettingsTest.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/settings/config_file.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/filesystem/vfs.cpp
 )
 
 # Include directories
@@ -197,16 +199,16 @@ TARGET_INCLUDE_DIRECTORIES(SettingsTest PRIVATE
     ${CMAKE_SOURCE_DIR}/source
 )
 
-# Link with Catch2 and libconfig libraries
+# Link with Catch2 and libconfig++ (named config++ outside MSVC)
+IF(TARGET libconfig++)
+    SET(_SEDX_LIBCONFIGXX libconfig++)
+ELSE()
+    SET(_SEDX_LIBCONFIGXX config++)
+ENDIF()
 TARGET_LINK_LIBRARIES(SettingsTest PRIVATE
     Catch2::Catch2WithMain
-    config++
-    dxgi
-    d3d12
-    Shell32.lib
+    ${_SEDX_LIBCONFIGXX}
 )
-# Disable engine logging; omit Tracy
-TARGET_COMPILE_DEFINITIONS(SettingsTest PRIVATE SEDX_NO_LOGGING ZoneScoped=)
 
 # Enable parallel compilation for MSVC-like compilers
 IF(_SEDX_MSVCLIKE)
@@ -272,6 +274,11 @@ ADD_EXECUTABLE(XPlaneFormatTests
     ${CMAKE_CURRENT_SOURCE_DIR}/xplane_tests/FacadeTests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/xplane_tests/FacadeWriterTests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/xplane_tests/InstallFinderTests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/xplane_tests/BrdfLutTests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/xplane_tests/ThumbnailTests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/xplane_tests/TerrainTests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/xplane_tests/AutogenTests.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/environment/brdf_lut.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/filesystem/vfs.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_obj8.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_library.cpp
@@ -281,12 +288,17 @@ ADD_EXECUTABLE(XPlaneFormatTests
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_airport_index.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_gateway_types.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_dsf.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_7z.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_assets.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_autogen.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_facade.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_facade_writer.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_facade_authoring.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_overlay.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_install_finder.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_thumbnail.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_terrain.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_terrain_mesh.cpp
 )
 
 TARGET_INCLUDE_DIRECTORIES(XPlaneFormatTests PRIVATE
@@ -345,7 +357,9 @@ ADD_EXECUTABLE(ProjectFormatTests
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_library.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_apt_geometry.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_dsf.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_7z.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_assets.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_autogen.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_facade.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_overlay.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_install_finder.cpp
@@ -368,3 +382,50 @@ ENDIF()
 
 catch_discover_tests(ProjectFormatTests)
 
+
+# --------------------------------
+# Environment Tests (the XP12 environment model: parity scenarios, solar position, weather, seasons, quality tables;
+# standard library + nlohmann_json only)
+# --------------------------------
+
+MESSAGE(STATUS "=================================================")
+MESSAGE(STATUS "Generating Environment Unit Tests")
+
+ADD_EXECUTABLE(EnvironmentTests
+    ${CMAKE_CURRENT_SOURCE_DIR}/environment_tests/ParityScenarioTests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/environment_tests/EnvironmentTests.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/environment/parity_scenario.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/environment/solar_position.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/environment/surface_weather.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/environment/season_model.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/environment/sky_conditions.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/environment/environment_state.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/environment/environment.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/environment/sky_light.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/environment/atmosphere_params.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/renderer/renderer_quality.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/renderer/renderer_features.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/renderer/exposure.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/renderer/env_probes.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/renderer/csm.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/renderer/cacao.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/renderer/ssr.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/renderer/ocean.cpp
+)
+
+TARGET_INCLUDE_DIRECTORIES(EnvironmentTests PRIVATE
+    ${CMAKE_SOURCE_DIR}/source
+)
+
+TARGET_LINK_LIBRARIES(EnvironmentTests PRIVATE
+    Catch2::Catch2WithMain
+    nlohmann_json::nlohmann_json
+)
+
+IF(_SEDX_MSVCLIKE)
+    TARGET_COMPILE_OPTIONS(EnvironmentTests PRIVATE /MP /W4)
+ELSE()
+    TARGET_COMPILE_OPTIONS(EnvironmentTests PRIVATE -Wall -Wextra -Wpedantic)
+ENDIF()
+
+catch_discover_tests(EnvironmentTests)

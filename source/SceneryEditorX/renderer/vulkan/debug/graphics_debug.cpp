@@ -29,8 +29,16 @@
  * -------------------------------------------------------
  */
 #include "graphics_debug.h"
+#include <cstring>
+#include <format>
+#include <mutex>
+#include <set>
+#include <string>
+#include <unordered_map>
 #include <utility>
+#include <SceneryEditorX/renderer/vulkan/command_list.h>
 #include <SceneryEditorX/renderer/vulkan/render_context.h>
+#include <volk/volk.h>
 #include <vulkan/vulkan_core.h>
 
 #ifndef RENDERDOC_ENABLED
@@ -56,7 +64,67 @@ namespace SceneryEditorX
 	PFN_vkSetDebugUtilsObjectNameEXT      s_SetDebugObjectName				= nullptr;
 	PFN_vkCmdBeginDebugUtilsLabelEXT      s_MarkerBegin						= nullptr;
 	PFN_vkCmdEndDebugUtilsLabelEXT        s_MarkerEnd						= nullptr;
-	
+
+	thread_local std::string s_CreationContext; // object being created on this thread (Debugging::SetCreationContext)
+
+	// GPU crash breadcrumbs (Debugging::SetBreadcrumbsEnabled): what the device was created with
+	bool s_BreadcrumbCheckpoints = false;	// VK_NV_device_diagnostic_checkpoints
+	bool s_BreadcrumbDeviceFault = false;	// VK_EXT_device_fault
+	bool s_BreadcrumbAddressBinding = false;	// VK_EXT_device_address_binding_report
+	bool s_DeviceLostReported = false;
+
+	// Every GPU address range bound or unbound (VK_EXT_device_address_binding_report) and the debug names given to
+	// objects, so a device fault's address can be traced to the buffer or image there (or the one that was there)
+	struct AddressBinding
+	{
+		uint64_t base = 0;
+		uint64_t size = 0;
+		uint64_t handle = 0;
+		VkObjectType type = VK_OBJECT_TYPE_UNKNOWN;
+		bool bound = true;
+		std::string name;	// The object's debug name when the range was bound or unbound
+	};
+	std::mutex s_BreadcrumbMutex;
+	std::vector<AddressBinding> s_AddressBindings;
+	std::unordered_map<uint64_t, std::string> s_ObjectNames;
+
+	void RecordObjectName(const uint64_t handle, const char *name)
+	{
+		if (!s_BreadcrumbAddressBinding || handle == 0 || name == nullptr)
+			return;
+		std::lock_guard lock(s_BreadcrumbMutex);
+		s_ObjectNames[handle] = name;
+	}
+
+	void RecordAddressBinding(const VkDebugUtilsMessengerCallbackDataEXT *data)
+	{
+		const auto *binding = static_cast<const VkDeviceAddressBindingCallbackDataEXT *>(data->pNext);
+		while (binding && binding->sType != VK_STRUCTURE_TYPE_DEVICE_ADDRESS_BINDING_CALLBACK_DATA_EXT)
+			binding = static_cast<const VkDeviceAddressBindingCallbackDataEXT *>(binding->pNext);
+		if (!binding)
+			return;
+
+		AddressBinding entry;
+		entry.base = binding->baseAddress;
+		entry.size = binding->size;
+		entry.bound = binding->bindingType == VK_DEVICE_ADDRESS_BINDING_TYPE_BIND_EXT;
+		if (data->objectCount > 0)
+		{
+			entry.handle = data->pObjects[0].objectHandle;
+			entry.type = data->pObjects[0].objectType;
+			if (data->pObjects[0].pObjectName)
+				entry.name = data->pObjects[0].pObjectName;
+		}
+
+		std::lock_guard lock(s_BreadcrumbMutex);
+		if (entry.name.empty())
+		{
+			if (const auto it = s_ObjectNames.find(entry.handle); it != s_ObjectNames.end())
+				entry.name = it->second;
+		}
+		s_AddressBindings.push_back(std::move(entry));
+	}
+
 #ifndef RENDERDOC_ENABLED
 	#define RENDERDOC_TOOLING_ENABLED 0
 #else
@@ -73,22 +141,18 @@ namespace SceneryEditorX
 	{
 		// layers configuration: https://vulkan.lunarg.com/doc/view/1.3.296.0/windows/layer_configuration.html
 
+		// The layer checks these at vkCreateInstance and reports wrong types, unknown values and deprecated settings
+		// (message id VALIDATION-SETTINGS), so keep them in step with the installed layer.
 		static const char *s_LayerName = "VK_LAYER_KHRONOS_validation";
 		static const VkBool32 SETTING_VALIDATE_CORE				= VK_TRUE;
 		static const VkBool32 SETTING_VALIDATE_SYNC				= VK_TRUE;
+		static const VkBool32 SETTING_VALIDATE_BEST_PRACTICES	= VK_TRUE;
+		static const VkBool32 SETTING_GPU_ASSISTED				= VK_TRUE;
 		static const VkBool32 SETTING_THREAD_SAFETY				= VK_TRUE;
 		static const VkBool32 SETTING_ENABLE_MESSAGE_LIMIT		= VK_TRUE;
-		static const int32_t SETTING_DUPLICATE_MESSAGE_LIMIT	= 10;
+		static const uint32_t SETTING_DUPLICATE_MESSAGE_LIMIT	= 10;
 		static const char *s_Setting_DebugAction[] = {"VK_DBG_LAYER_ACTION_LOG_MSG"};
-		static const char *s_Setting_ReportFlags[] = {"info", "warn", "perf", "error", "debug"};
-		static const char *s_Setting_Features[] = {
-			"VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT",
-			"VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT",
-			//"VALIDATION_CHECK_ENABLE_VENDOR_SPECIFIC_AMD",
-			//"VALIDATION_CHECK_ENABLE_VENDOR_SPECIFIC_NVIDIA"
-		};
-
-		static const uint32_t SETTING_FEATURES_COUNT = COUNT_OF(s_Setting_Features); // used for safe array handling when optionally appending GPU-assisted validation
+		static const char *s_Setting_ReportFlags[] = {"info", "warn", "perf", "error"};
 
 		static std::vector<VkLayerSettingEXT> s_SettingsStorage; // persistent storage for VkLayerSettingEXT
 
@@ -136,11 +200,16 @@ namespace SceneryEditorX
 				 .type = VK_LAYER_SETTING_TYPE_BOOL32_EXT,
 				 .valueCount = 1,
 				 .pValues = &SETTING_VALIDATE_CORE},
-				{.pLayerName = s_LayerName, 
+				{.pLayerName = s_LayerName,
 				 .pSettingName = "validate_sync",
 				 .type = VK_LAYER_SETTING_TYPE_BOOL32_EXT,
-				 .valueCount = 1, 
+				 .valueCount = 1,
 				 .pValues = &SETTING_VALIDATE_SYNC},
+				{.pLayerName = s_LayerName,
+				 .pSettingName = "validate_best_practices",
+				 .type = VK_LAYER_SETTING_TYPE_BOOL32_EXT,
+				 .valueCount = 1,
+				 .pValues = &SETTING_VALIDATE_BEST_PRACTICES},
 				{.pLayerName = s_LayerName,
 				 .pSettingName = "thread_safety",
 				 .type = VK_LAYER_SETTING_TYPE_BOOL32_EXT,
@@ -154,7 +223,7 @@ namespace SceneryEditorX
 				{.pLayerName = s_LayerName,
 				 .pSettingName = "report_flags",
 				 .type = VK_LAYER_SETTING_TYPE_STRING_EXT,
-				 .valueCount = 5,
+				 .valueCount = static_cast<uint32_t>(COUNT_OF(s_Setting_ReportFlags)),
 				 .pValues = s_Setting_ReportFlags},
 				{.pLayerName = s_LayerName,
 				 .pSettingName = "enable_message_limit",
@@ -163,37 +232,21 @@ namespace SceneryEditorX
 				 .pValues = &SETTING_ENABLE_MESSAGE_LIMIT},
 				{.pLayerName = s_LayerName,
 				 .pSettingName = "duplicate_message_limit",
-				 .type = VK_LAYER_SETTING_TYPE_INT32_EXT,
+				 .type = VK_LAYER_SETTING_TYPE_UINT32_EXT,
 				 .valueCount = 1,
-				 .pValues = &SETTING_DUPLICATE_MESSAGE_LIMIT},
-				{.pLayerName = s_LayerName,
-				 .pSettingName = "enables",
-				 .type = VK_LAYER_SETTING_TYPE_STRING_EXT,
-				 .valueCount = SETTING_FEATURES_COUNT,
-				 .pValues = s_Setting_Features}
+				 .pValues = &SETTING_DUPLICATE_MESSAGE_LIMIT}
 			};
 
-			// optionally append GPU-assisted validation
+			// optionally add GPU-assisted validation
 			if (Debugging::IsGpuAssistedValidationEnabled())
 			{
-				static const char *settingEnableGpuAssisted = "VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_EXT";
-
-				// append to the enables array safely
-				static const char *combinedEnables[5];
-				for (int i = 0; std::cmp_less(i, SETTING_FEATURES_COUNT); ++i)
-				{
-					combinedEnables[i] = s_Setting_Features[i];
-				}
-				combinedEnables[SETTING_FEATURES_COUNT] = settingEnableGpuAssisted;
-
-				// replace the last entry in settings_storage
-				s_SettingsStorage.back() = {
+				s_SettingsStorage.push_back({
 					.pLayerName = s_LayerName,
-					.pSettingName = "enables",
-					.type = VK_LAYER_SETTING_TYPE_STRING_EXT,
-					.valueCount = SETTING_FEATURES_COUNT + 1,
-					.pValues = combinedEnables
-				};
+					.pSettingName = "gpuav_enable",
+					.type = VK_LAYER_SETTING_TYPE_BOOL32_EXT,
+					.valueCount = 1,
+					.pValues = &SETTING_GPU_ASSISTED
+				});
 			}
 
 			return s_SettingsStorage;
@@ -214,7 +267,37 @@ namespace SceneryEditorX
 	 */
 	VKAPI_ATTR VkBool32 VKAPI_CALL VulkanLog(VkDebugUtilsMessageSeverityFlagBitsEXT msgSeverity, VkDebugUtilsMessageTypeFlagsEXT msgType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,  void* pUserData)
 	{
-		std::string msg = "Vulkan: " + std::string(pCallbackData->pMessage);
+		// GPU address ranges (breadcrumbs): recorded for a device loss report, not logged
+		if (msgType & VK_DEBUG_UTILS_MESSAGE_TYPE_DEVICE_ADDRESS_BINDING_BIT_EXT)
+		{
+			RecordAddressBinding(pCallbackData);
+			return VK_FALSE;
+		}
+
+		// The loader reports its layer and driver search at info level on every start (~100 lines): keep only its warnings.
+		const char *messageId = pCallbackData->pMessageIdName;
+		if ((msgSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) && messageId && std::strcmp(messageId, "Loader Message") == 0)
+			return VK_FALSE;
+
+		// "Vulkan [message id]: message", then the named objects involved (or the object being created), so a
+		// message can be traced back to the pass, pipeline or resource that caused it.
+		std::string msg = "Vulkan";
+		if (messageId && *messageId && std::strstr(pCallbackData->pMessage, messageId) == nullptr)
+			msg += std::format(" [{}]", messageId);
+		msg += ": ";
+		msg += pCallbackData->pMessage;
+
+		std::string objects;
+		for (uint32_t i = 0; i < pCallbackData->objectCount; ++i)
+		{
+			const VkDebugUtilsObjectNameInfoEXT &object = pCallbackData->pObjects[i];
+			if (object.pObjectName && *object.pObjectName)
+				objects += std::format("{}'{}'", objects.empty() ? "" : ", ", object.pObjectName);
+		}
+		if (!objects.empty())
+			msg += std::format(" (objects: {})", objects);
+		if (!s_CreationContext.empty())
+			msg += std::format(" (while creating '{}')", s_CreationContext);
 
 		if (/*(msgSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) ||*/ (msgSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT))
 		{
@@ -234,19 +317,15 @@ namespace SceneryEditorX
 
 	/**
 	 * @brief Enables the Vulkan validation layer by creating a debug messenger that will receive validation messages from the Vulkan API.
-	 * This function should be called after the Vulkan instance has been created and the necessary function pointers have been loaded. 
-	 * If the validation layer is not supported or if the debug messenger fails to initialize, this function will log a warning and continue without validation. 
+	 * This function should be called after the Vulkan instance has been created and the necessary function pointers have been loaded.
+	 * If the validation layer is not supported or if the debug messenger fails to initialize, this function will log a warning and continue without validation.
 	 * @param instance The Vulkan instance for which to create the debug messenger.
 	 */
 	static void EnableValidationLayer(const VkInstance instance)
 	{
 		if (s_CreateDebugMessenger)
 		{
-			VkDebugUtilsMessengerCreateInfoEXT createInfo = {};
-			createInfo.sType                              = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-			createInfo.messageSeverity                    = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-			createInfo.messageType                        = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-			createInfo.pfnUserCallback                    = VulkanLog;
+			const VkDebugUtilsMessengerCreateInfoEXT createInfo = Debugging::GetMessengerCreateInfo(Debugging::IsBreadcrumbsEnabled());
 
 			VkResult result = s_CreateDebugMessenger(instance, &createInfo, nullptr, &s_Messenger);
 			if (result == VK_SUCCESS)
@@ -346,8 +425,24 @@ namespace SceneryEditorX
 
 	void Debugging::Shutdown(const VkInstance instance) { DestroyDebugMessenger(instance); }
 
+	VkDebugUtilsMessengerCreateInfoEXT Debugging::GetMessengerCreateInfo(const bool addressBindings)
+	{
+		// Verbose messages are loader chatter and were never logged; info is where the layer reports its active settings.
+		VkDebugUtilsMessengerCreateInfoEXT createInfo = {};
+		createInfo.sType           = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+		createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+		createInfo.messageType     = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+		if (addressBindings)
+			createInfo.messageType |= VK_DEBUG_UTILS_MESSAGE_TYPE_DEVICE_ADDRESS_BINDING_BIT_EXT;	// GPU address ranges for a device loss report
+		createInfo.pfnUserCallback = VulkanLog;
+		return createInfo;
+	}
+
+	void Debugging::SetCreationContext(const char *name) { s_CreationContext = name ? name : ""; }
+
 	void Debugging::SetResourceName(void *resource, const ResourceType type, const char *name)
 	{
+		RecordObjectName(reinterpret_cast<uint64_t>(resource), name);
 		if (!IsValidationLayerEnabled() || !s_SetDebugObjectName)
 			return;
 
@@ -372,6 +467,7 @@ namespace SceneryEditorX
 
 	void Debugging::SetResourceName(VkDevice device, void *resource, const ResourceType type, const char *name)
 	{
+		RecordObjectName(reinterpret_cast<uint64_t>(resource), name);
 		if (!IsValidationLayerEnabled() || !s_SetDebugObjectName)
 			return;
 
@@ -431,6 +527,176 @@ namespace SceneryEditorX
 		}
 
 		s_MarkerEnd(cmdList->GetCommandBuffer());
+	}
+
+	Debugging::BreadcrumbExtensions Debugging::AddBreadcrumbExtensions(VkPhysicalDevice physicalDevice, std::vector<const char *> &extensions)
+	{
+		uint32_t count = 0;
+		vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &count, nullptr);
+		std::vector<VkExtensionProperties> available(count);
+		vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &count, available.data());
+		const auto add = [&](const char *name)
+		{
+			for (const VkExtensionProperties &extension : available)
+			{
+				if (std::strcmp(extension.extensionName, name) == 0)
+				{
+					extensions.push_back(name);
+					return true;
+				}
+			}
+			return false;
+		};
+
+		s_BreadcrumbCheckpoints = add(VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME);
+		s_BreadcrumbDeviceFault = add(VK_EXT_DEVICE_FAULT_EXTENSION_NAME);
+		// The binding reports arrive through the debug messenger, which only exists with the validation layer
+		s_BreadcrumbAddressBinding = IsValidationLayerEnabled() && add(VK_EXT_DEVICE_ADDRESS_BINDING_REPORT_EXTENSION_NAME);
+		SEDX_CORE_INFO_TAG("GPU Crash", "Breadcrumbs: checkpoints {}, device fault report {}, address bindings {}",
+			s_BreadcrumbCheckpoints ? "on" : "not supported", s_BreadcrumbDeviceFault ? "on" : "not supported",
+			s_BreadcrumbAddressBinding ? "on" : "off (needs the validation layer's messenger)");
+		return { .deviceFault = s_BreadcrumbDeviceFault, .addressBinding = s_BreadcrumbAddressBinding };
+	}
+
+	void Debugging::SetBreadcrumb(const CommandList *cmdList, const char *marker)
+	{
+		if (!s_BreadcrumbCheckpoints || cmdList == nullptr || vkCmdSetCheckpointNV == nullptr)
+			return;
+
+		vkCmdSetCheckpointNV(cmdList->GetCommandBuffer(), marker);
+	}
+
+	const char *Debugging::InternBreadcrumb(const std::string_view name)
+	{
+		static std::mutex mutex;
+		static std::set<std::string, std::less<>> names;
+		std::lock_guard lock(mutex);
+		auto it = names.find(name);
+		if (it == names.end())
+			it = names.emplace(name).first;
+		return it->c_str();
+	}
+
+	namespace
+	{
+		/* @brief Logs the objects bound (now or before) at a faulting GPU address, newest last (address binding reports). */
+		void ReportAddressOwners(const uint64_t address, const uint64_t precision)
+		{
+			if (!s_BreadcrumbAddressBinding)
+				return;
+			std::lock_guard lock(s_BreadcrumbMutex);
+			const uint64_t low = address > precision ? address - precision : 0;
+			const uint64_t high = address + precision;
+			std::vector<const AddressBinding *> owners;
+			for (const AddressBinding &binding : s_AddressBindings)
+			{
+				if (binding.base <= high && low < binding.base + binding.size)
+					owners.push_back(&binding);
+			}
+			if (owners.empty())
+			{
+				SEDX_CORE_ERROR_TAG("GPU Crash", "    nothing was ever bound there ({} ranges recorded)", s_AddressBindings.size());
+				return;
+			}
+			const size_t first = owners.size() > 8 ? owners.size() - 8 : 0;
+			for (size_t i = first; i < owners.size(); ++i)
+			{
+				const AddressBinding &binding = *owners[i];
+				std::string name = binding.name;
+				if (name.empty())
+				{
+					if (const auto it = s_ObjectNames.find(binding.handle); it != s_ObjectNames.end())
+						name = it->second;
+				}
+				SEDX_CORE_ERROR_TAG("GPU Crash", "    {} {} 0x{:x} '{}' at 0x{:016x} (+0x{:x})", binding.bound ? "bound" : "UNBOUND",
+					binding.type == VK_OBJECT_TYPE_BUFFER ? "buffer" : binding.type == VK_OBJECT_TYPE_IMAGE ? "image" : "object",
+					binding.handle, name, binding.base, binding.size);
+			}
+		}
+	}
+
+	void Debugging::ReportDeviceLost(VkDevice device, const std::vector<VkQueue> &queues)
+	{
+		if (s_DeviceLostReported || device == VK_NULL_HANDLE)
+			return;
+		s_DeviceLostReported = true;
+
+		if (!s_BreadcrumbCheckpoints && !s_BreadcrumbDeviceFault)
+		{
+			SEDX_CORE_ERROR_TAG("GPU Crash", "Device lost. Run with --gpu-breadcrumbs to log the GPU's last passes and fault report.");
+			return;
+		}
+
+		// The checkpoints the GPU passed: TOP_OF_PIPE = the work after it started, BOTTOM_OF_PIPE = the work before it finished
+		if (s_BreadcrumbCheckpoints && vkGetQueueCheckpointDataNV)
+		{
+			if (queues.empty())
+				SEDX_CORE_ERROR_TAG("GPU Crash", "No queue to read the checkpoints of");
+			for (size_t q = 0; q < queues.size(); ++q)
+			{
+				if (queues[q] == VK_NULL_HANDLE)
+				{
+					SEDX_CORE_ERROR_TAG("GPU Crash", "Queue {}: no handle", q);
+					continue;
+				}
+				uint32_t count = 0;
+				vkGetQueueCheckpointDataNV(queues[q], &count, nullptr);
+				std::vector<VkCheckpointDataNV> checkpoints(count, VkCheckpointDataNV{ .sType = VK_STRUCTURE_TYPE_CHECKPOINT_DATA_NV });
+				vkGetQueueCheckpointDataNV(queues[q], &count, checkpoints.data());
+				SEDX_CORE_ERROR_TAG("GPU Crash", "Queue {}: {} checkpoint(s)", q, count);
+				for (const VkCheckpointDataNV &checkpoint : checkpoints)
+				{
+					const char *stage = checkpoint.stage == VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT ? "last started"
+									  : checkpoint.stage == VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT ? "last finished" : "stage";
+					SEDX_CORE_ERROR_TAG("GPU Crash", "  {} (0x{:x}): {}", stage, static_cast<uint32_t>(checkpoint.stage),
+						checkpoint.pCheckpointMarker ? static_cast<const char *>(checkpoint.pCheckpointMarker) : "<none>");
+				}
+			}
+		}
+
+		if (s_BreadcrumbAddressBinding)
+		{
+			std::lock_guard lock(s_BreadcrumbMutex);
+			SEDX_CORE_ERROR_TAG("GPU Crash", "{} GPU address ranges bound or unbound so far", s_AddressBindings.size());
+		}
+
+		if (s_BreadcrumbDeviceFault && vkGetDeviceFaultInfoEXT)
+		{
+			VkDeviceFaultCountsEXT counts{ .sType = VK_STRUCTURE_TYPE_DEVICE_FAULT_COUNTS_EXT };
+			if (vkGetDeviceFaultInfoEXT(device, &counts, nullptr) != VK_SUCCESS)
+			{
+				SEDX_CORE_ERROR_TAG("GPU Crash", "No device fault report");
+				return;
+			}
+
+			std::vector<VkDeviceFaultAddressInfoEXT> addresses(counts.addressInfoCount);
+			std::vector<VkDeviceFaultVendorInfoEXT> vendorInfos(counts.vendorInfoCount);
+			counts.vendorBinarySize = 0;
+			VkDeviceFaultInfoEXT info{ .sType = VK_STRUCTURE_TYPE_DEVICE_FAULT_INFO_EXT };
+			info.pAddressInfos = addresses.data();
+			info.pVendorInfos = vendorInfos.data();
+			const VkResult result = vkGetDeviceFaultInfoEXT(device, &counts, &info);
+			SEDX_CORE_ERROR_TAG("GPU Crash", "Device fault ({}): {}", static_cast<int>(result), info.description);
+			for (const VkDeviceFaultAddressInfoEXT &address : addresses)
+			{
+				const char *type = "unknown";
+				switch (address.addressType)
+				{
+					case VK_DEVICE_FAULT_ADDRESS_TYPE_NONE_EXT:							type = "none"; break;
+					case VK_DEVICE_FAULT_ADDRESS_TYPE_READ_INVALID_EXT:					type = "invalid read"; break;
+					case VK_DEVICE_FAULT_ADDRESS_TYPE_WRITE_INVALID_EXT:				type = "invalid write"; break;
+					case VK_DEVICE_FAULT_ADDRESS_TYPE_EXECUTE_INVALID_EXT:				type = "invalid execute"; break;
+					case VK_DEVICE_FAULT_ADDRESS_TYPE_INSTRUCTION_POINTER_UNKNOWN_EXT:	type = "instruction pointer (unknown)"; break;
+					case VK_DEVICE_FAULT_ADDRESS_TYPE_INSTRUCTION_POINTER_INVALID_EXT:	type = "instruction pointer (invalid)"; break;
+					case VK_DEVICE_FAULT_ADDRESS_TYPE_INSTRUCTION_POINTER_FAULT_EXT:	type = "instruction pointer (fault)"; break;
+					default: break;
+				}
+				SEDX_CORE_ERROR_TAG("GPU Crash", "  address 0x{:016x} +/- 0x{:x}: {}", address.reportedAddress, address.addressPrecision, type);
+				ReportAddressOwners(address.reportedAddress, address.addressPrecision);
+			}
+			for (const VkDeviceFaultVendorInfoEXT &vendor : vendorInfos)
+				SEDX_CORE_ERROR_TAG("GPU Crash", "  vendor: {} (code 0x{:x}, data 0x{:x})", vendor.description, vendor.vendorFaultCode, vendor.vendorFaultData);
+		}
 	}
 
 	bool Debugging::SetRenderdocEnabled()

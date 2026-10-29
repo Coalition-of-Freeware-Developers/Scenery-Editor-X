@@ -133,6 +133,39 @@ namespace SceneryEditorX::ProjectFile
 	bool CreateAirportProject(const NewAirportProject &spec, std::filesystem::path &projectFile, std::string *error = nullptr);
 
 	// -------------------------------------------------------
+	// New scenery and library projects (no airport)
+
+	/* @brief What the New Project form asks for a project that isn't tied to an airport. */
+	struct NewSceneryProject
+	{
+		ProjectKind kind = ProjectKind::Scenery;	// Scenery (objects, polygons, facades... anywhere) or Library (library.txt exports)
+		std::string name;							// Pack folder and project file name
+		std::filesystem::path location;				// Folder the pack folder is created in
+		std::string author;
+		std::string description;
+		bool hasReferencePoint = true;				// A datum the scene centers on (it can also come later, from what is placed)
+		double latitude = 0.0;						// Decimal degrees, north positive
+		double longitude = 0.0;						// East positive
+		double elevationMeters = 0.0;
+	};
+
+	/* @brief Every problem with a NewSceneryProject's values: fields "name", "latitude", "longitude", "elevation", "location". */
+	std::vector<FieldProblem> ValidateNewSceneryProject(const NewSceneryProject &spec);
+
+	/* @brief The pack folder the form creates: location / name. */
+	std::filesystem::path GetNewProjectFolder(const NewSceneryProject &spec);
+
+	/* @brief The project: its info, the datum when it has a reference point, an empty library.txt for library projects. */
+	SceneryProject MakeSceneryProject(const NewSceneryProject &spec);
+
+	/**
+	 * @brief Creates the pack folder (refused when it already holds files), its folders, "<name>.edX" and the git helper
+	 * files.
+	 * @param projectFile Receives the project file's path.
+	 */
+	bool CreateSceneryProject(const NewSceneryProject &spec, std::filesystem::path &projectFile, std::string *error = nullptr);
+
+	// -------------------------------------------------------
 	// Export
 
 	struct ExportOptions

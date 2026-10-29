@@ -29,14 +29,20 @@
  * -------------------------------------------------------
  */
 #include "xp_scene.h"
+#include "xp_airport_scene.h"
 #include "xp_datarefs.h"
+#include "xp_forest3d.h"
+#include "xp_library_manager.h"
+#include "xp_weather_art.h"
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <limits>
 #include <unordered_map>
 #include <unordered_set>
 #include <SceneryEditorX/asset/standards.h>
 #include <SceneryEditorX/core/frame_profiler.h>
+#include <SceneryEditorX/environment/environment.h>
 #include <SceneryEditorX/logging/logging.hpp>
 #include <SceneryEditorX/renderer/gpu_scene.h>
 #include <SceneryEditorX/renderer/renderer.h>
@@ -55,20 +61,24 @@ namespace SceneryEditorX::XPlane
 	{
 		constexpr const char *LOG_TAG = "XPlaneScene";
 		constexpr float kDegToRad = 3.14159265358979323846f / 180.0f;
+		// An OBJ without ATTR_LOD draws to a distance X-Plane picks from its bounding sphere ("where nobody would notice it
+		// go"; the formula isn't published). ASSUMPTION: until it covers about 2 pixels at 1080 lines and 60 degrees, which is
+		// some 500 radii: a car goes at about 1 km, a 10 m hangar at 5 km.
+		constexpr float DEFAULT_LOD_RADII = 500.0f;
 
 		/* @brief Spill lights that light the scene at once, nearest first (the light pass loops over every light per pixel). */
 		constexpr uint32_t MAX_SPILL_LIGHTS = 48;
-		/*
-		 * Radiant intensity (W/sr) a spill gets per candela^0.75. The bootstrap renderer has no exposure, so intensities
-		 * are compressed: a 15 cd taxiway light still pools on the ground while a 400 000 cd apron flood doesn't burn out.
-		 */
-		constexpr float SPILL_GAIN = 0.25f;
+		/* @brief Luminous efficacy the renderer's radiometric light units assume (Light::GetIntensityWatt): lm per W. */
+		constexpr float LUMENS_PER_WATT = 683.0f;
 		constexpr float LUMENS_PER_WATT_STERADIAN = 683.0f * 4.0f * 3.14159265358979323846f; // inverse of Light::GetIntensityWatt()
 		/* @brief Lights dimmer than this (after direction, flashing and night) are not drawn. */
 		constexpr float MIN_LIGHT_BRIGHTNESS = 0.002f;
 
 		/* @brief Placement to frame once its asset has loaded (the latest FrameObject() request wins), or 0. */
 		uint64_t s_FrameWhenLoaded = 0;
+
+		/* @brief Draped OBJ batches in the order they were built: within a layer, later ones draw on top. */
+		uint32_t s_DrapedBatchSequence = 0;
 
 		/* @brief Roots placed while their asset loads: BuildLoadedObjects() visits these instead of every placement. */
 		std::vector<uint64_t> s_PendingRoots;
@@ -175,10 +185,16 @@ namespace SceneryEditorX::XPlane
 		}
 
 		/* @brief Which LODs are drawn for a camera distance (X-Plane rules, or the component's override). */
-		bool IsLodVisible(const Obj8Data &data, const int lod, const float distance, const int lodOverride)
+		/**
+		 * @brief Whether a batch or light of an LOD shows at a camera distance (from the object's middle, as X-Plane measures).
+		 * @param defaultFar How far an object without ATTR_LOD draws (DEFAULT_LOD_RADII), infinity to always draw it.
+		 */
+		bool IsLodVisible(const Obj8Data &data, const int lod, const float distance, const int lodOverride, const float defaultFar = std::numeric_limits<float>::infinity())
 		{
-			if (lod < 0 || lodOverride == -2)
+			if (lodOverride == -2)
 				return true;
+			if (lod < 0)
+				return lodOverride >= 0 || !data.lods.empty() || distance < defaultFar;
 			if (lodOverride >= 0)
 				return lod == lodOverride;
 
@@ -225,12 +241,16 @@ namespace SceneryEditorX::XPlane
 			return std::max(color[0], std::max(color[1], color[2]));
 		}
 
-		/* @brief Peak radiant intensity (W/sr) of a spill, before night, flashing and its alpha dimmer. */
+		/*
+		 * Peak radiant intensity (W/sr) of a spill, before night, flashing and its alpha dimmer: candela over the luminous
+		 * efficacy, lit and exposed physically (plan Phase 5). Legacy spills give a reach in meters instead: 2 cd per
+		 * square meter of it (ASSUMPTION: about 2 lux at the edge before the window takes it to 0).
+		 */
 		float SpillRadiantIntensity(const LightSpillSpec &spill)
 		{
 			const float range = spill.GetRange();
-			const float candela = spill.IsPhotometric() ? spill.intensity : 2.0f * range * range; // legacy: reach in meters
-			return SPILL_GAIN * std::pow(std::max(candela, 0.0f), 0.75f);
+			const float candela = spill.IsPhotometric() ? spill.intensity : 2.0f * range * range;
+			return std::max(candela, 0.0f) / LUMENS_PER_WATT;
 		}
 
 		/* @brief A spill light that could be lit this frame. */
@@ -250,7 +270,6 @@ namespace SceneryEditorX::XPlane
 			bool hasCamera = false;
 			float night = 0.0f;					// Datarefs::GetNightFactor(): lights only show at night or when forced on
 			double time = 0.0;					// Sim clock (flashing)
-			DatarefReader reader;
 			Ref<ImageResource> atlas;			// lights.txt texture
 			float atlasInset[2] = { 0.0f, 0.0f };	// Half a texel: cells sit edge to edge
 			Renderer_LightBillboardBatch atlasBatch;
@@ -364,7 +383,7 @@ namespace SceneryEditorX::XPlane
 				TransformPoint(world, light.position, lightWorld[i].data());
 
 				lightVisible[i] = lightsOn && IsLodVisible(data, light.lod, object.cameraDistance, object.lodOverride) &&
-								  EvaluateVisibility(data, light.visibility, frame.reader);
+								  EvaluateVisibilityAt(data, light.visibility, object.datarefValues);
 				if (!lightVisible[i])
 					continue;
 
@@ -517,13 +536,25 @@ namespace SceneryEditorX::XPlane
 				Attach(registry, handle, parent);
 				batchEntities.push_back(GetId(registry, handle));
 
+				// ATTR_draped geometry (ground decals: grunge, sand patches, painted stops) is a drape like the .pol ones:
+				// drawn in its ATTR_layer_group_draped layer's order over the pavement, lifted to that layer so it never
+				// fights the ground, no shadow
+				float drapeHeight = 0.0f;
+				if (batch.draped)
+				{
+					drapeHeight = SceneAirports::GetOverlayLayerHeight(data.layerGroupDraped.name, data.layerGroupDraped.offset);
+					registry.get<TransformComponent>(handle).translation.y += drapeHeight;
+				}
+
 				if (Entity *stored = Scene::GetStoredEntity(entity))
 				{
 					if (Renderable *renderable = stored->AddComponent<Renderable>())
 					{
 						renderable->SetMesh(asset->GetMesh(), batch.subMesh);
 						renderable->SetMaterial(Ref<MaterialAsset>(asset->GetMaterial(batch.material)));
-						renderable->SetFlag(CastsShadows, batch.castShadow);
+						renderable->SetFlag(CastsShadows, batch.castShadow && !batch.draped);
+						if (batch.draped)
+							renderable->SetDrapeOrder(Renderable::MakeDrapeOrder(drapeHeight, s_DrapedBatchSequence++));
 					}
 				}
 			}
@@ -581,7 +612,9 @@ namespace SceneryEditorX::XPlane
 			component.dynamicState = !data.nodes.empty() ||
 				std::ranges::any_of(batches, [](const ObjectBatch &batch) { return !batch.visibility.empty(); }) ||
 				std::ranges::any_of(lights, [](const ObjectLight &light) { return !light.visibility.empty(); });
-			component.usesDistance = std::ranges::any_of(batches, [](const ObjectBatch &batch) { return batch.lod >= 0; }) ||
+			// Without ATTR_LOD the object still has a range (DEFAULT_LOD_RADII)
+			component.usesDistance = (data.lods.empty() && !batches.empty()) ||
+				std::ranges::any_of(batches, [](const ObjectBatch &batch) { return batch.lod >= 0; }) ||
 				std::ranges::any_of(lights, [](const ObjectLight &light) { return light.lod >= 0; });
 			component.evaluatedStamp = 0;
 			component.nodeEntities = std::move(nodeEntities);
@@ -649,46 +682,65 @@ namespace SceneryEditorX::XPlane
 			}
 		}
 
-		/* @brief Animation, camera distance, LOD and hide / show for one loaded placement. */
+		/* @brief Animation groups evaluated and of those moved since the last Tick() (--perf-log counters). */
+		uint32_t s_GroupsPosed = 0;
+		uint32_t s_GroupsMoved = 0;
+
+		/**
+		 * @brief Reads the datarefs a placement's animation and hide / show rules use (Obj8Data::datarefs) into
+		 * datarefValues. Main thread only.
+		 * @return True when any of them moved since the last read.
+		 */
+		bool RefreshInputs(XPlaneObjectComponent &object, const DatarefReader &reader)
+		{
+			static std::vector<float> values; // scratch: swapped with the placement's
+			ReadDatarefs(object.asset->GetData(), reader, values);
+			if (values == object.datarefValues)
+				return false;
+			object.datarefValues.swap(values);
+			return true;
+		}
+
+		/**
+		 * @brief Camera distance, LOD, hide / show and animation for one loaded placement.
+		 * @param inputsChanged Its datarefs (RefreshInputs()) or its settings changed since it was last evaluated.
+		 */
 		void UpdateObject(entt::registry &registry, const entt::entity rootHandle, XPlaneObjectComponent &object, const bool hasCamera,
-			const Vec3 &cameraPosition, const DatarefReader &reader, ParentWorldCache &parentCache)
+			const Vec3 &cameraPosition, const bool inputsChanged, ParentWorldCache &parentCache)
 		{
 			ResolveEntities(registry, rootHandle, object);
 			const Obj8Data &data = object.asset->GetData();
 
-			// Animation groups
-			if (object.animate)
-			{
-				for (size_t i = 0; i < object.nodeHandles.size() && i < data.nodes.size(); ++i)
-				{
-					const entt::entity handle = object.nodeHandles[i];
-					TransformComponent *transform = handle != entt::null ? registry.try_get<TransformComponent>(handle) : nullptr;
-					if (!transform)
-						continue;
-
-					const RigidTransform local = EvaluateAnimNode(data.nodes[i], reader);
-					transform->translation = Vec3(local.translation[0], local.translation[1], local.translation[2]);
-					transform->SetRotation(Quat(local.rotation[3], local.rotation[0], local.rotation[1], local.rotation[2]));
-				}
-
-				// animated batches follow the pose the same frame
-				if (!object.nodeHandles.empty())
-					GpuScene::MarkTransformDirty(rootHandle);
-			}
-
-			// Camera distance for LOD selection, from the root's world position
+			// Camera distance for LOD selection, from the middle of the object's bounds (X-Plane measures from there: a
+			// terminal's origin can sit hundreds of meters from its middle)
+			const float *low = object.asset->GetBoundsMin(), *high = object.asset->GetBoundsMax();
+			const float middle[3] = { 0.5f * (low[0] + high[0]), 0.5f * (low[1] + high[1]), 0.5f * (low[2] + high[2]) };
+			const float radius = 0.5f * std::sqrt((high[0] - low[0]) * (high[0] - low[0]) + (high[1] - low[1]) * (high[1] - low[1]) + (high[2] - low[2]) * (high[2] - low[2]));
 			float distance = 0.0f;
 			if (hasCamera && object.rootStored)
 			{
 				const xMath::Matrix world = RootWorld(registry, rootHandle, *object.rootStored, parentCache);
-				const Vec3 delta(world.m30 - cameraPosition.x, world.m31 - cameraPosition.y, world.m32 - cameraPosition.z);
+				float at[3];
+				TransformPoint(world, middle, at);
+				const Vec3 delta(at[0] - cameraPosition.x, at[1] - cameraPosition.y, at[2] - cameraPosition.z);
 				distance = std::sqrt(delta.x * delta.x + delta.y * delta.y + delta.z * delta.z);
 			}
 			object.cameraDistance = distance;
+			const float defaultFar = std::max(radius, 1.0f) * DEFAULT_LOD_RADII;
 
 			object.evaluatedStamp = s_CameraStamp;
 			object.evaluatedVisible = object.visible;
 			object.evaluatedLodOverride = object.lodOverride;
+			object.evaluatedAnimate = object.animate;
+
+			// Groups that draw: a visible batch or a light below them (scratch, per Obj8Data::nodes entry)
+			static std::vector<uint8_t> drawn;
+			drawn.assign(data.nodes.size(), 0);
+			const auto markDrawn = [](const int node)
+			{
+				if (node >= 0 && static_cast<size_t>(node) < drawn.size())
+					drawn[static_cast<size_t>(node)] = 1;
+			};
 
 			// Batches: LOD + hide / show
 			object.visibleBatches = 0;
@@ -701,15 +753,61 @@ namespace SceneryEditorX::XPlane
 					continue;
 
 				const ObjectBatch &batch = batches[i];
-				const bool visible = object.visible && IsLodVisible(data, batch.lod, distance, object.lodOverride) &&
-									 EvaluateVisibility(data, batch.visibility, reader);
+				const bool visible = object.visible && IsLodVisible(data, batch.lod, distance, object.lodOverride, defaultFar) &&
+									 EvaluateVisibilityAt(data, batch.visibility, object.datarefValues);
 				if (stored->GetActive() != visible)
 					stored->SetActive(visible);
 				if (visible)
 				{
 					++object.visibleBatches;
 					object.visibleTriangles += batch.triangleCount;
+					markDrawn(batch.node);
 				}
+			}
+
+			// Animation groups, once the LODs are known: like X-Plane, only geometry that draws is animated. KDEN's concourse
+			// posters are some 36,000 clock-driven groups in their 0-200 m LODs (the far LODs are static). A group left out
+			// stays stale and is posed once it draws; groups with lights always are (the lights follow them at night).
+			if (!object.animate)
+				return; // groups hold their pose; switching it back on is a settings change, which poses them again
+			object.staleGroups.resize(data.nodes.size(), 1);
+			if (inputsChanged)
+				std::ranges::fill(object.staleGroups, uint8_t(1));
+			for (const ObjectLight &light : object.asset->GetLights())
+				markDrawn(light.node);
+			for (size_t i = data.nodes.size(); i-- > 0;) // parents precede their children
+			{
+				if (drawn[i])
+					markDrawn(data.nodes[i].parent);
+			}
+
+			for (size_t i = 0; i < object.nodeHandles.size() && i < data.nodes.size(); ++i)
+			{
+				if (!object.staleGroups[i] || !drawn[i])
+					continue;
+				object.staleGroups[i] = 0;
+
+				const entt::entity handle = object.nodeHandles[i];
+				TransformComponent *transform = handle != entt::null ? registry.try_get<TransformComponent>(handle) : nullptr;
+				if (!transform)
+					continue;
+
+				const RigidTransform local = EvaluateAnimNodeAt(data.nodes[i], object.datarefValues);
+				const Vec3 translation(local.translation[0], local.translation[1], local.translation[2]);
+				const Quat rotation(local.rotation[3], local.rotation[0], local.rotation[1], local.rotation[2]);
+				++s_GroupsPosed;
+
+				// Only the groups whose pose changed are written (SetRotation() derives Euler angles) and re-read by the GPU
+				// scene: stepped keyframe tables (signs, posters) hold most groups still while the sim clock runs
+				const Quat current = transform->GetRotation();
+				if (transform->translation.x == translation.x && transform->translation.y == translation.y && transform->translation.z == translation.z &&
+					current.w == rotation.w && current.x == rotation.x && current.y == rotation.y && current.z == rotation.z)
+					continue;
+
+				transform->translation = translation;
+				transform->SetRotation(rotation);
+				GpuScene::MarkTransformDirty(handle); // its batches follow the pose the same frame
+				++s_GroupsMoved;
 			}
 		}
 	}
@@ -764,7 +862,8 @@ namespace SceneryEditorX::XPlane
 			ParentWorldCache parentCache;
 			if (XPlaneObjectComponent *object = registry->try_get<XPlaneObjectComponent>(rootHandle); object && object->loaded)
 			{
-				UpdateObject(*registry, rootHandle, *object, hasCamera, cameraPosition, Datarefs::GetReader(), parentCache);
+				RefreshInputs(*object, Datarefs::GetReader());
+				UpdateObject(*registry, rootHandle, *object, hasCamera, cameraPosition, true, parentCache);
 				object->evaluatedStamp = 0; // again next Tick(): the caller may still attach the root under a group
 			}
 		}
@@ -782,10 +881,14 @@ namespace SceneryEditorX::XPlane
 
 	void SceneObjects::Tick(const double deltaSeconds)
 	{
+		// Seasonal library art follows the world's season (the terrain reloads when it changes: SceneTerrain::Update)
+		LibraryManager::SetSeason(Environment::Get().GetDerived().season.bits);
+
 		// Background loads: upload what the workers finished, then fill in the placements that were waiting for it.
 		{
 			SEDX_PERF_SCOPE("Objects: asset uploads");
 			ObjectAsset::Update();
+			WeatherArt::Update();
 		}
 		entt::registry *registry = GetRegistry();
 		if (registry)
@@ -793,12 +896,12 @@ namespace SceneryEditorX::XPlane
 			SEDX_PERF_SCOPE("Objects: build loaded");
 			BuildLoadedObjects(*registry);
 		}
+		{
+			SEDX_PERF_SCOPE("Objects: 3D tree cells");
+			Forest3d::Update();	// Forests' 3D trees near the camera
+		}
 
 		Datarefs::Tick(deltaSeconds);
-		ObjectAsset::SetLitTexturesVisible(Datarefs::GetNightFactor() > 0.5f);
-
-		// The placeholder sun and sky follow the emulated time of day.
-		Renderer::SetFallbackDaylight(Datarefs::GetDaylight());
 
 		if (!registry)
 		{
@@ -815,7 +918,6 @@ namespace SceneryEditorX::XPlane
 		lights.hasCamera = hasCamera;
 		lights.night = Datarefs::GetNightFactor();
 		lights.time = Datarefs::GetSimTime();
-		lights.reader = reader;
 		if (lights.night > 0.0f)
 		{
 			TextureInfo atlasInfo;
@@ -837,6 +939,8 @@ namespace SceneryEditorX::XPlane
 
 		ParentWorldCache parentCache;
 		uint64_t index = 0;
+		s_GroupsPosed = 0;
+		s_GroupsMoved = 0;
 		auto view = registry->view<XPlaneObjectComponent>();
 		for (const entt::entity rootHandle : view)
 		{
@@ -844,18 +948,23 @@ namespace SceneryEditorX::XPlane
 			if (!object.asset || !object.loaded)
 				continue; // still loading
 
-			// Static placements keep their batch states until the camera moves (LODs) or their settings change
-			const bool settingsChanged = object.evaluatedStamp == 0 || object.visible != object.evaluatedVisible || object.lodOverride != object.evaluatedLodOverride;
+			// A placement is evaluated again when a dataref its animation or hide / show rules read moved (the sim clock
+			// does every frame), when the camera moved (LODs) or when its settings changed; otherwise it keeps its state
+			const bool inputsChanged = object.dynamicState && RefreshInputs(object, reader);
+			const bool settingsChanged = object.evaluatedStamp == 0 || object.visible != object.evaluatedVisible ||
+										 object.lodOverride != object.evaluatedLodOverride || object.animate != object.evaluatedAnimate;
 			const bool inPhase = !cameraMoving || index++ % LOD_PHASES == phase;
 			const bool cameraMatters = object.usesDistance && object.evaluatedStamp != s_CameraStamp && inPhase;
-			if (object.dynamicState || settingsChanged || cameraMatters)
-				UpdateObject(*registry, rootHandle, object, hasCamera, cameraPosition, reader, parentCache);
+			if (inputsChanged || settingsChanged || cameraMatters)
+				UpdateObject(*registry, rootHandle, object, hasCamera, cameraPosition, inputsChanged || settingsChanged, parentCache);
 			else
 				ResolveEntities(*registry, rootHandle, object); // the lights below use the entity pointers
 
 			// Lights: billboards and spill candidates
 			CollectObjectLights(*registry, rootHandle, object, lights, parentCache);
 		}
+		Perf::SetCounter("anim groups posed", s_GroupsPosed);
+		Perf::SetCounter("anim groups moved", s_GroupsMoved);
 
 		// Spill: only the nearest lights light the scene
 		std::ranges::sort(lights.spills, [](const SpillCandidate &a, const SpillCandidate &b) { return a.distanceSquared < b.distanceSquared; });
@@ -983,6 +1092,7 @@ namespace SceneryEditorX::XPlane
 		s_FrameWhenLoaded = 0;
 		s_PendingRoots.clear();
 		Renderer::SetLightBillboards({}); // the batches hold the light textures
+		Forest3d::Shutdown();
 		ObjectAsset::ClearCache();
 		TextureLoader::ClearCache();
 	}

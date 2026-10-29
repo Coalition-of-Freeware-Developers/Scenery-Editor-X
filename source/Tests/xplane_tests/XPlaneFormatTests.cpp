@@ -15,6 +15,7 @@
 #include <SceneryEditorX/xplane/xp_library.h>
 #include <SceneryEditorX/xplane/xp_lights.h>
 #include <SceneryEditorX/xplane/xp_obj8.h>
+#include <SceneryEditorX/xplane/xp_text.h>
 #include <cmath>
 #include <filesystem>
 #include <fstream>
@@ -160,6 +161,85 @@ TEST_CASE("OBJ8 parses textures, geometry, LODs, animation groups and batches", 
 	CHECK(data.warnings.empty());
 }
 
+TEST_CASE("OBJ8 parses X-Plane 12 material directives", "[xplane][obj8]")
+{
+	// Forms found in X-Plane 12's shipped art (tabs, misspellings, trailing values)
+	constexpr const char *MATERIAL_OBJ = "I\n800\nOBJ\n"
+		"TEXTURE\tbuildings_ALB.png\n"
+		"TEXTURE_MAP normal buildings_NML.png\n"
+		"TEXTURE_MAP material_gloss buildings_MG.png\n"
+		"NORMAL_TRANSLUCENCY\n"
+		"BLEND_HASH 0.25\n"
+		"SUPER_ROUGHNESS 0.5\n"
+		"WEATHER ../../textures/buildings_1_WM.png\n"
+		"\tWEATHER_TRANSPARENT\t\n"
+		"\tSNOW_ALBEDO_LUMA\t0.2 0.2 0.0 0.0\n"
+		"DECAL_LIB\tlib/g10/decals/bld_hangar_1.dcl\n"
+		"DECAL_PARAMS 50 0 0 0 0 0 0.5 0 0 0 0 0 0 0 DECALS/DECAL CARPET.png\n"
+		"NORMAL_DECAL_PARAMS 50 0 0 0 0 1 0 DECAL_GRAIN_DENSE_normal.png 0.5\n"
+		"TEXTURE_CONTROL ../textures12/apt/ter_sfx_conc_CTL.png\n"
+		"TEXTURE_MODULATOR\t../../textures/hangars_5_MOD.png\n"
+		"TEXTURE_TERRAIN 160.0 160.0 ../textures12/apt/apt_desert_01.png\n";
+
+	Obj8Data data;
+	REQUIRE(ParseObj8(MATERIAL_OBJ, data));
+	CHECK(data.unknownCommandCount == 0);
+	CHECK(data.warnings.empty());
+
+	CHECK(data.textureNormal == "buildings_NML.png");
+	CHECK(data.textureMaterialGloss == "buildings_MG.png");
+	CHECK(data.normalTranslucency);
+	CHECK_FALSE(data.normalMetalness);
+	CHECK(data.blendHash);
+	CHECK(data.blendHashRatio == Approx(0.25f));
+	CHECK(data.superRoughness == Approx(0.5f));
+	CHECK(data.weatherMask == "../../textures/buildings_1_WM.png");
+	CHECK(data.weatherTransparent);
+	CHECK(data.hasSnowAlbedoLuma);
+	CHECK(data.snowAlbedoLuma[0] == Approx(0.2f));
+	CHECK(data.snowAlbedoLuma[3] == Approx(0.0f));
+	CHECK(data.decalLibrary == "lib/g10/decals/bld_hangar_1.dcl");
+	CHECK(data.textureControl == "../textures12/apt/ter_sfx_conc_CTL.png");
+	CHECK(data.textureModulator == "../../textures/hangars_5_MOD.png");
+	CHECK(data.textureTerrain == "../textures12/apt/apt_desert_01.png");
+	CHECK(data.textureTerrainScale[0] == Approx(160.0f));
+
+	REQUIRE(data.decals.size() == 2);
+	CHECK(data.decals[0].directive == "DECAL_PARAMS");
+	CHECK(data.decals[0].values.size() == 14);
+	CHECK(data.decals[0].values[6] == Approx(0.5f));
+	CHECK(data.decals[0].texture == "DECALS/DECAL CARPET.png");
+	CHECK(data.decals[0].trailing.empty());
+	CHECK(data.decals[1].directive == "NORMAL_DECAL_PARAMS");
+	CHECK(data.decals[1].values.size() == 7);
+	CHECK(data.decals[1].texture == "DECAL_GRAIN_DENSE_normal.png");
+	REQUIRE(data.decals[1].trailing.size() == 1);
+	CHECK(data.decals[1].trailing[0] == Approx(0.5f));
+
+	// NORMAL_METALNESS as shipped misspelled, after the draped normal map too
+	for (const char *spelling : { "NORMAL_METALNESS", "NORMAL_metalness", "NORMAL METALNESS" })
+	{
+		Obj8Data metal;
+		REQUIRE(ParseObj8(std::string("I\n800\nOBJ\nTEXTURE_NORMAL n.png\n") + spelling + "\nTEXTURE_DRAPED_NORMAL 1.0 d.png\n" + spelling + "\n", metal));
+		INFO(spelling);
+		CHECK(metal.normalMetalness);
+		CHECK(metal.drapedNormalMetalness);
+		CHECK(metal.unknownCommandCount == 0);
+	}
+}
+
+TEST_CASE("Lenient numbers accept the decimal comma some shipped files use", "[xplane][text]")
+{
+	CHECK(ParseFloatLenient("20,000000") == Approx(20.0f));
+	CHECK(ParseFloatLenient("-0,5") == Approx(-0.5f));
+	CHECK(ParseFloatLenient("1.25") == Approx(1.25f));
+	CHECK(ParseFloatLenient("1,2,3", 7.0f) == Approx(7.0f));		// Not a number
+	CHECK(ParseFloatLenient("1.5,0", 7.0f) == Approx(7.0f));		// Both separators: not a number
+	CHECK(ParseFloatLenient("abc", 7.0f) == Approx(7.0f));
+	CHECK(ParseFloat("20,000000", 7.0f) == Approx(7.0f));			// The strict parser stays strict
+	CHECK(ToNativeRelativePath(R"(..\textures\a.png)") == ToNativeRelativePath("../textures/a.png"));
+}
+
 TEST_CASE("OBJ8 merges consecutive TRIS with the same state", "[xplane][obj8]")
 {
 	Obj8Data data;
@@ -247,6 +327,67 @@ TEST_CASE("Hide and show rules evaluate in order with loops", "[xplane][obj8][an
 	CHECK(at(0.75f));
 	CHECK_FALSE(at(3.25f));	// looped by 1 s
 	CHECK(at(3.9f));
+}
+
+TEST_CASE("Dataref values read once evaluate like a reader", "[xplane][obj8][animation]")
+{
+	Obj8Data data;
+	REQUIRE(ParseObj8(R"(I
+800
+OBJ
+TEXTURE t.png
+VT 0 0 0 0 1 0 0 0
+IDX10 0 0 0 0 0 0 0 0 0 0
+ANIM_begin
+ANIM_trans 0 0 0 0 0 0
+ANIM_trans_begin test/slide[2]
+ANIM_trans_key 0 0 0 0
+ANIM_trans_key 1 0 3 0
+ANIM_trans_end
+ANIM_rotate_begin 0 1 0 test/turn
+ANIM_rotate_key 0 0
+ANIM_rotate_key 10 90
+ANIM_rotate_end
+ANIM_hide 0.25 0.5 test/slide[2]
+TRIS 0 3
+ANIM_end
+)", data));
+	REQUIRE(data.nodes.size() == 1);
+	REQUIRE(data.nodes[0].ops.size() == 3);
+	REQUIRE(data.datarefs.size() == 2);
+
+	// Every op and rule with a dataref points at its datarefs entry; the static op at none
+	const Obj8AnimNode &node = data.nodes[0];
+	CHECK(node.ops[0].datarefIndex == -1);
+	REQUIRE(node.ops[1].datarefIndex >= 0);
+	REQUIRE(node.ops[2].datarefIndex >= 0);
+	CHECK(data.datarefs[static_cast<size_t>(node.ops[1].datarefIndex)].dataref == DatarefRef::Parse("test/slide[2]"));
+	CHECK(data.datarefs[static_cast<size_t>(node.ops[2].datarefIndex)].dataref == DatarefRef::Parse("test/turn"));
+	REQUIRE(data.visibility.size() == 1);
+	CHECK(data.visibility[0].datarefIndex == node.ops[1].datarefIndex);
+
+	const DatarefReader reader = [](const DatarefRef &ref) { return ref.name == "test/turn" ? 5.0f : (ref.index == 2 ? 0.3f : 9.0f); };
+	std::vector<float> values;
+	ReadDatarefs(data, reader, values);
+	REQUIRE(values.size() == data.datarefs.size());
+	CHECK(values[static_cast<size_t>(node.ops[1].datarefIndex)] == Approx(0.3f));
+
+	const RigidTransform byReader = EvaluateAnimNode(node, reader);
+	const RigidTransform byValues = EvaluateAnimNodeAt(node, values);
+	for (int i = 0; i < 4; ++i)
+		CHECK(byValues.rotation[i] == byReader.rotation[i]);
+	for (int i = 0; i < 3; ++i)
+		CHECK(byValues.translation[i] == byReader.translation[i]);
+	CHECK(byValues.translation[1] == Approx(0.9f));
+
+	REQUIRE(data.batches.size() == 1);
+	CHECK_FALSE(EvaluateVisibilityAt(data, data.batches[0].visibility, values));
+	CHECK(EvaluateVisibilityAt(data, data.batches[0].visibility, values) == EvaluateVisibility(data, data.batches[0].visibility, reader));
+	values[static_cast<size_t>(data.visibility[0].datarefIndex)] = 0.75f;
+	CHECK(EvaluateVisibilityAt(data, data.batches[0].visibility, values));
+
+	// Missing values read 0, like an unset dataref
+	CHECK(EvaluateAnimNodeAt(node, {}).translation[1] == Approx(0.0f));
 }
 
 // -------------------------------------------------------

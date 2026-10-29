@@ -286,6 +286,13 @@ namespace SceneryEditorX
 		void InsertBarrier(Buffer* buffer);
 
 		/**
+		 * @brief Compute shader writes before later compute reads and writes, of any resource (a UAV barrier). For storage
+		 * images that stay in General from one dispatch to the next: SetTexture inserts no barrier when the layout
+		 * doesn't change.
+		 */
+		void InsertComputeMemoryBarrier();
+
+		/**
 		 * @brief Insert a barrier for an image resource with detailed parameters.
 		 * @param image The image resource.
 		 * @param format The format of the image.
@@ -411,6 +418,15 @@ namespace SceneryEditorX
 		 * @param mipRange The range of mip levels to bind (default is 0).
 		 */
 		void SetTexture(const Renderer_BindingsSrv slot, ImageResource* img,  const uint32_t mipIndex = ALL_MIPS, uint32_t mipRange = 0) { SetTexture(static_cast<uint32_t>(slot), img, mipIndex, mipRange, false); }
+
+		/**
+		 * @brief Whether the bound pipeline's shaders declare a texture at a slot (SetTexture logs an error otherwise):
+		 * for resources a pass binds only where its shader reads them.
+		 */
+		[[nodiscard]] bool UsesTexture(uint32_t slot, bool uav) const;
+		[[nodiscard]] bool UsesTexture(const Renderer_BindingsSrv slot) const { return UsesTexture(static_cast<uint32_t>(slot), false); }
+		[[nodiscard]] bool UsesTexture(const Renderer_BindingsUav slot) const { return UsesTexture(static_cast<uint32_t>(slot), true); }
+		[[nodiscard]] const char *GetPipelineStateName() const { return m_pso.name ? m_pso.name : ""; }
 
 		/**
 		 * @brief Bind a buffer to a specific UAV slot using the typed binding enum.
@@ -570,6 +586,13 @@ namespace SceneryEditorX
 		 * This is called at the beginning of Draw/DrawIndexed/Dispatch to ensure the command list is in the correct state for rendering.
 		 */
 		void PreDraw();
+
+		/**
+		 * @brief PreDraw() for Draw/DrawIndexed, or false (and the draw is skipped) when no graphics pipeline or render pass
+		 * is active, e.g. after SetPipelineState() rejected a PSO whose shaders did not compile.
+		 * @param caller The draw call's name for the log.
+		 */
+		[[nodiscard]] bool PrepareDraw(const char* caller);
 
 		/**
 		 * @brief Begin a render pass if one is not already active.

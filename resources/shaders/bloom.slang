@@ -149,7 +149,7 @@ void main_comp(uint3 thread_id : SV_DispatchThreadID)
     float2 texel_size = 1.0f / resolution_in;
 
     float3 color    = downsample_stable(tex, uv, texel_size);
-    float3 filtered = threshold(color);
+    float3 filtered = color; // energy conserving: no threshold, every pixel blooms a little (plan TASK-042)
 
     tex_uav[thread_id.xy] = float4(filtered, 1.0f);
 }

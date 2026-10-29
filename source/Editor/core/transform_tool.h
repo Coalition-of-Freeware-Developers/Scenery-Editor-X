@@ -86,8 +86,8 @@ namespace SceneryEditorX::TransformTool
 	Capabilities GetCapabilities();
 
 	/**
-	 * @brief Draws the gizmo over the viewport image and applies drags. Call inside the viewport window, before the
-	 * image's input item (ImGuizmo only activates when no ImGui item is hovered).
+	 * @brief Draws the gizmo (ViewportGizmo) at the selection's pivot and applies drags. Call inside the viewport
+	 * window, before the image's input item.
 	 * @param allowInput False while another tool owns the mouse.
 	 * @return True while the gizmo is hovered or dragged: the viewport then leaves the mouse to it.
 	 */

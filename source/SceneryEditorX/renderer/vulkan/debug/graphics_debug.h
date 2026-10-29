@@ -29,6 +29,8 @@
  * -------------------------------------------------------
  */
 #pragma once
+#include <string_view>
+#include <vector>
 #include <SceneryEditorX/renderer/vulkan/enums.h>
 
 // -----------------------------------------------------------------
@@ -87,6 +89,22 @@ namespace SceneryEditorX
 		static void Shutdown(VkInstance instance);
 
 		/**
+		 * @brief Describes the validation messenger (severities, types and callback).
+		 * Chain it into VkInstanceCreateInfo::pNext so messages raised by vkCreateInstance / vkDestroyInstance,
+		 * before or after the persistent messenger exists, reach the same log.
+		 * @param addressBindings Also receive GPU address binding reports (breadcrumbs; persistent messenger only, the
+		 * instance-level one would need the device extension)
+		 */
+		static VkDebugUtilsMessengerCreateInfoEXT GetMessengerCreateInfo(bool addressBindings = false);
+
+		/**
+		 * @brief Names the object the calling thread is about to create (nullptr clears it).
+		 * Validation messages raised inside the create call can't name the object yet (it has no handle), so the
+		 * log adds this name to them instead. Used around pipeline creation.
+		 */
+		static void SetCreationContext(const char *name);
+
+		/**
 		 * @brief Sets a human-readable name for a GPU resource to improve debugging and profiling readability.
 		 *
 		 * Fetches the logical device from RenderContext. Safe to call at any time after RenderContext::Init()
@@ -143,6 +161,46 @@ namespace SceneryEditorX
 		 * @return True if RenderDoc integration was successfully enabled, false if it is not supported or failed to initialize.
 		 */
 		static bool SetRenderdocEnabled();
+
+		/**
+		 * @brief Turns GPU crash breadcrumbs on or off (--gpu-breadcrumbs). Call before RenderContext::Init(): the device is
+		 * then created with VK_NV_device_diagnostic_checkpoints and VK_EXT_device_fault where the GPU has them.
+		 */
+		static void SetBreadcrumbsEnabled(const bool enabled) { m_Breadcrumbs_Enabled = enabled; }
+
+		/* @brief Turns GPU-assisted validation (out-of-bounds shader accesses) on or off (--gpu-av). Call before RenderContext::Init(). */
+		static void SetGpuAssistedValidationEnabled(const bool enabled) { m_Gpu_Assisted_Validation_Enabled = enabled; }
+
+		/* @brief Which breadcrumb extensions AddBreadcrumbExtensions() added, so the device enables their features. */
+		struct BreadcrumbExtensions
+		{
+			bool deviceFault = false;		// VK_EXT_device_fault: VkPhysicalDeviceFaultFeaturesEXT::deviceFault
+			bool addressBinding = false;	// VK_EXT_device_address_binding_report: VkPhysicalDeviceAddressBindingReportFeaturesEXT::reportAddressBinding
+		};
+
+		/**
+		 * @brief Adds the breadcrumb extensions the physical device supports to a device's extension list (Device::Create()).
+		 * @return The added extensions whose features the device must enable.
+		 */
+		static BreadcrumbExtensions AddBreadcrumbExtensions(VkPhysicalDevice physicalDevice, std::vector<const char *> &extensions);
+
+		/**
+		 * @brief Records a breadcrumb into the command list (vkCmdSetCheckpointNV). No-op without breadcrumbs.
+		 * @param cmdList The command list being recorded
+		 * @param marker A string that outlives the GPU work (a literal, or InternBreadcrumb()), logged after a device loss
+		 */
+		static void SetBreadcrumb(const CommandList *cmdList, const char *marker);
+
+		/* @brief A copy of name that lives until exit, for SetBreadcrumb(). */
+		static const char *InternBreadcrumb(std::string_view name);
+
+		/**
+		 * @brief Logs what the GPU reached before a device loss: the last breadcrumbs of each queue and the device fault
+		 * report. Once per run.
+		 * @param device The lost device
+		 * @param queues The queues to read the breadcrumbs of
+		 */
+		static void ReportDeviceLost(VkDevice device, const std::vector<VkQueue> &queues);
 
 		static bool IsValidationLayerEnabled()       { return m_ValidationLayer; }
 		static bool IsGpuAssistedValidationEnabled() { return m_Gpu_Assisted_Validation_Enabled; }

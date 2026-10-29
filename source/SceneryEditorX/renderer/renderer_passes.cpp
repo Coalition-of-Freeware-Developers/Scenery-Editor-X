@@ -29,6 +29,8 @@
  * -------------------------------------------------------
  */
 #include "bend_sss_cpu.h"
+#include "frame_capture.h"
+#include "gpu_timer.h"
 #include "gbuffer.h"
 #include "gpu_scene.h"
 #include "renderer.h"
@@ -42,7 +44,11 @@
 #include "vulkan/pipeline/pipeline_state.h"
 #include "vulkan/shader/shader_manager.h"
 #include <algorithm>
+#include <atomic>
+#include <format>
+#include <fstream>
 #include <mutex>
+#include <nlohmann/json.hpp>
 #include <SceneryEditorX/scene/camera.h>
 #include <SceneryEditorX/scene/entity.h>
 #include <SceneryEditorX/scene/material.h>
@@ -103,14 +109,22 @@ namespace SceneryEditorX
 			}
 		}
 
-		/* @brief Direction towards the placeholder sun light composition and the forward pass use without a directional light. */
-		const xMath::Vec3 &GetFallbackSunDirection()
-		{
-			static const xMath::Vec3 direction = xMath::Normalize(xMath::Vec3(0.35f, 0.85f, -0.4f));
-			return direction;
-		}
+		std::atomic<bool> s_GridVisible{ true };
+		std::atomic<bool> s_GroundShown{ false };	// SetGroundShown(): terrain is drawn, the y = 0 grid would cut through it
 
-		float s_FallbackDaylight = 1.0f;
+		// Viewport reference overlay (Renderer::SetReferenceOverlay), read by the render thread
+		std::mutex s_ReferenceMutex;
+		Ref<ImageResource> s_ReferenceImage;
+		Renderer::ReferenceOverlayMode s_ReferenceMode = Renderer::ReferenceOverlayMode::Off;
+		float s_ReferenceSplit = 0.5f;
+		float s_ReferenceGain = 4.0f;
+
+		// XP12 emulation state (RENDERER panel, command line); set while the render thread is idle
+		RendererFeatures s_Features;
+		Renderer_DebugView s_DebugView = Renderer_DebugView::None;
+		int s_ToneCurve = 4;	// tonemap.slang: 4 X-Plane 12 (the parity transform), 1 AgX, 2 ACES fit, 3 Reinhard
+		RendererQualityPreset s_Quality = GetDefaultQualityPreset();
+		Renderer::EnvironmentConstants s_EnvironmentConstants;
 
 		// Light billboards (Renderer::SetLightBillboards) and the vertex buffers they stream through. Each frame
 		// writes the next buffer of the ring, so a frame still in flight keeps reading its own.
@@ -132,345 +146,322 @@ namespace SceneryEditorX
 	static CVar cvar_variable_rate_shading{ 0.0f };
 	static CVar cvar_hiz_occlusion        { 1.0f };
 	static CVar cvar_ssao                 { 1.0f };
-	static CVar cvar_tonemapping          { 0.0f };
-	static CVar cvar_auto_exposure_adaptation_speed{ 1.0f };
 	static CVar cvar_cloud_coverage       { 0.45f };
-	static CVar cvar_minimal_bootstrap_path{ 1.0f };
 
 	void Renderer::ProduceFrame(CommandList *graphicsPresent, CommandList *compute)
 	{
+		// The XP12 frame graph (plan TASK-024): one ordered sequence on the graphics list, each step behind its feature
+		// flag. Async compute stays off until queue-family ownership transfers exist (plan CON-009).
+		(void)compute;
+		CommandList *cmd = graphicsPresent;
 		ImageResource *rt_render = GetRenderTarget(Renderer_RenderTarget::frame_render);
 		ImageResource *rt_output = GetRenderTarget(Renderer_RenderTarget::frame_output);
-
 		const bool hasRtRender = rt_render && rt_render->Get() && *rt_render->Get() != VK_NULL_HANDLE;
 		const bool hasRtOutput = rt_output && rt_output->Get() && *rt_output->Get() != VK_NULL_HANDLE;
-
-		if (!hasRtRender || !hasRtOutput)
+		if (!cmd || !hasRtRender || !hasRtOutput)
 			return;
 
-		const bool useMinimalBootstrapPath = cvar_minimal_bootstrap_path.GetValueAs<bool>();
-		if (useMinimalBootstrapPath)
-		{
-			// Minimal frame graph for stabilization while descriptor/indexing and
-			// post-process paths are being debugged.
-			// Kept passes: LUTs, skysphere, depth prepass + gbuffer, lighting,
-			// grid, text. Everything else is intentionally skipped.
+		const RendererFeatures &features = GetFeatures();
+		// An extra view (RenderExtraViews) leaves the main view's timings, exposure metering, probes, picking and captures alone
+		const bool mainView = !IsRenderingExtraView();
+		if (mainView)
+			GpuTimer::BeginFrame(cmd);
+		const auto valid = [cmd] { return !cmd->IsStickyInvalid(); };
+		BeginReflectionsFrame();
 
-			if (!m_PassState.m_BRDF_LutProduced)
-			{
-				Pass_Lut_BrdfSpecular(graphicsPresent);
-				m_PassState.m_BRDF_LutProduced = true;
-			}
-
-			/*
-			Pass_CloudNoise(graphicsPresent);
-
-			if (!m_PassState.m_Atmosphere_LutProduced)
-			{
-				Pass_Lut_AtmosphericScattering(graphicsPresent);
-				m_PassState.m_Atmosphere_LutProduced = true;
-			}
-
-			Pass_Skysphere(graphicsPresent);
-			*/
-
-			// Keep bootstrap deterministic: skip cloud-noise + atmospheric LUT + skysphere
-			// until their shader registration/compilation paths are stabilized.
-
-			if (Camera *camera = Scene::GetCamera())
-			{
-				(void)camera;
-
-				if (graphicsPresent->IsStickyInvalid())
-					return;
-
-				GpuScene::Cull(graphicsPresent);
-				Pass_Depth_Prepass(graphicsPresent);
-				if (graphicsPresent->IsStickyInvalid())
-					return;
-				Pass_GBuffer(graphicsPresent, false);
-				if (graphicsPresent->IsStickyInvalid())
-					return;
-
-				GetRenderTarget(Renderer_RenderTarget::gbuffer_color)
-					->SetLayout(Layout::ImageLayout::ShaderRead, graphicsPresent, 0, 0);
-				GetRenderTarget(Renderer_RenderTarget::gbuffer_normal)
-					->SetLayout(Layout::ImageLayout::ShaderRead, graphicsPresent, 0, 0);
-				GetRenderTarget(Renderer_RenderTarget::gbuffer_material)
-					->SetLayout(Layout::ImageLayout::ShaderRead, graphicsPresent, 0, 0);
-				GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity)
-					->SetLayout(Layout::ImageLayout::ShaderRead, graphicsPresent, 0, 0);
-				GetRenderTarget(Renderer_RenderTarget::gbuffer_depth)
-					->SetLayout(Layout::ImageLayout::ShaderRead, graphicsPresent, 0, 0);
-
-				Pass_Light(graphicsPresent, false);
-				if (graphicsPresent->IsStickyInvalid())
-					return;
-				Pass_Light_Composition(graphicsPresent, false);
-				if (graphicsPresent->IsStickyInvalid())
-					return;
-
-				// Pass_Light_ImageBased samples the skysphere, which this path doesn't render yet;
-				// light composition supplies a placeholder sky and ambient term instead.
-
-				// Forward passes depth-test against the opaque depth: grid, then blended surfaces over it, then lights.
-				ImageResource *depthTarget = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
-				depthTarget->SetLayout(Layout::ImageLayout::DepthStencilAttachment, graphicsPresent, 0, 0);
-				Pass_Grid(graphicsPresent, rt_render);
-				if (graphicsPresent->IsStickyInvalid())
-					return;
-				Pass_Forward_Transparent(graphicsPresent, rt_render);
-				if (graphicsPresent->IsStickyInvalid())
-					return;
-				Pass_Light_Billboards(graphicsPresent, rt_render);
-				if (graphicsPresent->IsStickyInvalid())
-					return;
-				depthTarget->SetLayout(Layout::ImageLayout::ShaderRead, graphicsPresent, 0, 0);
-
-				// editor selection / hover outlines over everything drawn into the frame
-				ScenePicking::RecordOutline(graphicsPresent, rt_render);
-				if (graphicsPresent->IsStickyInvalid())
-					return;
-
-				graphicsPresent->Blit(rt_render, rt_output, false);
-				if (graphicsPresent->IsStickyInvalid())
-					return;
-			}
-			else
-			{
-				graphicsPresent->ClearTexture(rt_output, Color::Black());
-			}
-
-			if (!graphicsPresent->IsStickyInvalid())
-			{
-				Pass_Text(graphicsPresent, rt_output);
-			}
-
-			rt_output->SetLayout(Layout::ImageLayout::ShaderRead, graphicsPresent, 0, 0);
-			GetRenderTarget(Renderer_RenderTarget::gbuffer_color)
-				->SetLayout(Layout::ImageLayout::Attachment, graphicsPresent, 0, 0);
-			GetRenderTarget(Renderer_RenderTarget::gbuffer_normal)
-				->SetLayout(Layout::ImageLayout::Attachment, graphicsPresent, 0, 0);
-			GetRenderTarget(Renderer_RenderTarget::gbuffer_material)
-				->SetLayout(Layout::ImageLayout::Attachment, graphicsPresent, 0, 0);
-			GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity)
-				->SetLayout(Layout::ImageLayout::Attachment, graphicsPresent, 0, 0);
-			GetRenderTarget(Renderer_RenderTarget::gbuffer_depth)
-				->SetLayout(Layout::ImageLayout::Attachment, graphicsPresent, 0, 0);
-			ScenePicking::EndFrame(graphicsPresent);
-
-			return;
-		}
-
-		// brdf lut (once)
+		// (0) Environment constants are uploaded with the frame constants (UpdateEnvironmentConstantBuffer);
+		//     environment probes: Phase 6
 		if (!m_PassState.m_BRDF_LutProduced)
 		{
-			Pass_Lut_BrdfSpecular(graphicsPresent);
+			GpuTimer::Scope scope(cmd, "brdf lut");
+			Pass_Lut_BrdfSpecular(cmd);
 			m_PassState.m_BRDF_LutProduced = true;
 		}
+		if (mainView)
+			FrameCapture::RecordDump(cmd, GetRenderTarget(Renderer_RenderTarget::lut_brdf_specular));	// --dump-brdf-lut
 
-		// cloud noise (once)
-		Pass_CloudNoise(graphicsPresent);
-
-		// skysphere (re-render on light/coverage changes, converge over several frames)
-		bool cloudsVisible = cvar_cloud_coverage.GetValue() > 0.0f;
-
-
+		// (1) Atmosphere LUTs (XP12: scatter_compute_*) and the environment probes; whatever the switches, they end in
+		//     shader-read layout for the passes that bind them
+		if (features.atmosphere && valid())
 		{
-			bool updateSkysphere = false;
-			Light* directionalLight = Scene::GetDirectionalLight();
-			
 			{
-				const uint32_t temporalConvergenceFrames = 8;
-				
-				bool hasDirectionalLight = directionalLight != nullptr;
-				float currentCoverage = cvar_cloud_coverage.GetValue();
-				
-				bool lightChanged = (hasDirectionalLight && directionalLight->NeedsSkysphereUpdate()) || 
-									 (hasDirectionalLight != m_PassState.m_SkyHadDirectionalLight);
-				bool cloudParamsChanged = currentCoverage != m_PassState.m_SkyLastCoverage;
-				
-				if (m_PassState.m_SkyFirstFrame || lightChanged || cloudParamsChanged)
-				{
-					m_PassState.m_SkyFramesRemaining = temporalConvergenceFrames;
-				}
-				
-				updateSkysphere = m_PassState.m_SkyFramesRemaining > 0;
-				
-				if (m_PassState.m_SkyFramesRemaining > 0)
-				{
-					m_PassState.m_SkyFramesRemaining--;
-				}
-				
-				m_PassState.m_SkyFirstFrame           = false;
-				m_PassState.m_SkyHadDirectionalLight = hasDirectionalLight;
-				m_PassState.m_SkyLastCoverage         = currentCoverage;
+				GpuTimer::Scope scope(cmd, "atmosphere");
+				Pass_Atmosphere(cmd);
 			}
-			
-			if (updateSkysphere)
+			if (features.envProbes && mainView && valid())
 			{
-				// lut (expensive, only on light change)
-				if (!m_PassState.m_Atmosphere_LutProduced || (directionalLight && directionalLight->NeedsSkysphereUpdate()))
-				{
-					Pass_Lut_AtmosphericScattering(graphicsPresent);
-					m_PassState.m_Atmosphere_LutProduced = true;
-				}
-
-				Pass_Skysphere(graphicsPresent);
+				GpuTimer::Scope scope(cmd, "env probes");
+				Pass_EnvProbes(cmd);
 			}
 		}
+		if (valid())
+			ReadyAtmosphereTextures(cmd);
 
-
-		if (Camera *camera = Scene::GetCamera())
+		// (2) Cloud shadows (XP12: cloud_shadows; renderer_shadows.cpp); cloud weather volumes: Phase 15. Ends shader-readable
+		//     whatever the switches.
+		if (valid())
 		{
-			Pass_VariableRateShading(graphicsPresent);
+			GpuTimer::Scope scope(cmd, "cloud shadows");
+			Pass_CloudShadow(cmd);
+		}
 
-			// graphics phase 1: geometry
+		// (2b) The FFT ocean's cascades at this frame's time (XP12: ocean_spectrum, compute_fft, ocean_bake_textures;
+		//      renderer_water.cpp), once a frame and only with water in view; times its own steps
+		if (IsWaterVisible() && valid())
+			Pass_Ocean(cmd);
+
+		Camera *camera = Scene::GetCamera();
+		if (!camera)
+		{
+			cmd->ClearTexture(rt_output, Color::Black());
+		}
+		else if (valid())
+		{
+			// (3) Culling, then the sun shadow cascades (XP12: the CSM pass; renderer_shadows.cpp), which end shader-readable
+			//     whatever the switches
 			{
-				bool isTransparent = false;
-				Pass_HiZ(graphicsPresent);
-				Pass_IndirectCull(graphicsPresent);
-				GpuScene::Cull(graphicsPresent);
-				Pass_Depth_Prepass(graphicsPresent);
-				Pass_GBuffer(graphicsPresent, isTransparent);
+				GpuTimer::Scope scope(cmd, "cull");
+				GpuScene::Cull(cmd);
+			}
+			if (!valid())
+				return;
+			{
+				GpuTimer::Scope scope(cmd, "shadows");
+				Pass_ShadowCascades(cmd);
+			}
+			if (!valid())
+				return;
+
+			// (4) Depth prepass and g-buffer (terrain: Phase 10)
+			{
+				GpuTimer::Scope scope(cmd, "depth prepass");
+				Pass_Depth_Prepass(cmd);
+			}
+			if (!valid())
+				return;
+			{
+				GpuTimer::Scope scope(cmd, "gbuffer");
+				Pass_GBuffer(cmd, false);
+				if (!valid())
+					return;
+				Pass_Drape_Depth(cmd);
+			}
+			if (!valid())
+				return;
+			if (mainView)
+				GpuScene::RecordReadBack(cmd);	// every cull of the frame has run (stats)
+
+			GetRenderTarget(Renderer_RenderTarget::gbuffer_color)->SetLayout(Layout::ImageLayout::ShaderRead, cmd, 0, 0);
+			GetRenderTarget(Renderer_RenderTarget::gbuffer_normal)->SetLayout(Layout::ImageLayout::ShaderRead, cmd, 0, 0);
+			GetRenderTarget(Renderer_RenderTarget::gbuffer_material)->SetLayout(Layout::ImageLayout::ShaderRead, cmd, 0, 0);
+			GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity)->SetLayout(Layout::ImageLayout::ShaderRead, cmd, 0, 0);
+			GetRenderTarget(Renderer_RenderTarget::gbuffer_emissive)->SetLayout(Layout::ImageLayout::ShaderRead, cmd, 0, 0);
+			GetRenderTarget(Renderer_RenderTarget::gbuffer_weather)->SetLayout(Layout::ImageLayout::ShaderRead, cmd, 0, 0);
+			GetRenderTarget(Renderer_RenderTarget::gbuffer_depth)->SetLayout(Layout::ImageLayout::ShaderRead, cmd, 0, 0);
+
+			// (5) Min / max depth pyramid (XP12: z_minmax; renderer_ssr.cpp) of the finished depth, for the reflections and the
+			//     water (what lies under it); light tiling and volumetrics later
+			if (AreReflectionsAvailable() || IsWaterVisible())
+			{
+				GpuTimer::Scope scope(cmd, "depth pyramid");
+				Pass_ReflectionDepthPyramid(cmd);
+			}
+			if (!valid())
+				return;
+			// (6) Weather apply (XP12: weather_apply_compute): Phase 12
+			// (7) Ambient occlusion (XP12: cacao; renderer_ao.cpp): AMD FidelityFX CACAO at the QUALITY AO level into ssao
+			{
+				GpuTimer::Scope scope(cmd, "ambient occlusion");
+				Pass_AmbientOcclusion(cmd);
+			}
+			if (!valid())
+				return;
+			// (8) Light tiling (XP12: light_tile, light_spill_compact): Phase 14
+			// (9) Screen-space reflections (XP12: ssr_deferred; renderer_ssr.cpp): the glossy g-buffer surfaces' mirrors
+			//     into the reflections target, from the previous frame (blended surfaces trace their own in the forward pass)
+			if (AreReflectionsAvailable())
+			{
+				GpuTimer::Scope scope(cmd, "reflections");
+				Pass_ScreenSpaceReflections(cmd);
+			}
+			if (!valid())
+				return;
+			// (10) Clouds and volumetric fog: Phase 15
+
+			// (11) Deferred lighting: sun, shadows, AO, IBL, SSR, tiled lights, emissive, aerial perspective (later
+			//      phases add to it); spilled light volumes: Phase 14
+			{
+				GpuTimer::Scope scope(cmd, "lighting");
+				Pass_Light(cmd, false);
+				if (!valid())
+					return;
+				Pass_Light_Composition(cmd, false);
+			}
+			if (!valid())
+				return;
+
+			// (12) Sky where nothing was drawn (XP12: sky); volumetric apply: Phase 15
+			if (features.atmosphere)
+			{
+				GpuTimer::Scope scope(cmd, "sky");
+				Pass_Sky(cmd, rt_render);
+				if (!valid())
+					return;
+				ReadyAtmosphereTextures(cmd);
 			}
 
-			// transition g-buffer to shader-readable before submit
-			GetRenderTarget(Renderer_RenderTarget::gbuffer_color)
-				->SetLayout(Layout::ImageLayout::ShaderRead, graphicsPresent, 0, 0);
-			GetRenderTarget(Renderer_RenderTarget::gbuffer_normal)
-				->SetLayout(Layout::ImageLayout::ShaderRead, graphicsPresent, 0, 0);
-			GetRenderTarget(Renderer_RenderTarget::gbuffer_material)
-				->SetLayout(Layout::ImageLayout::ShaderRead, graphicsPresent, 0, 0);
-			GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity)
-				->SetLayout(Layout::ImageLayout::ShaderRead, graphicsPresent, 0, 0);
-			GetRenderTarget(Renderer_RenderTarget::gbuffer_depth)
-				->SetLayout(Layout::ImageLayout::ShaderRead, graphicsPresent, 0, 0);
-
-			// submit phase 1, signal g-buffer ready
-			graphicsPresent->Submit(nullptr, false);
-
-			uint64_t gfxPhase1TimelineValue = graphicsPresent->GetLastTimelineSignalValue();
-			FrameSync *gfxTimeline = graphicsPresent->GetTimelineSemaphore();
-			graphicsPresent->WaitForExecution();
-
-			// async compute: overlaps with shadow rasterization.
-			// Queue ownership transfers between graphics/compute image usage are not fully wired yet,
-			// so only use async compute when both command lists target the same queue family.
-			uint64_t computeTimelineValue = gfxPhase1TimelineValue;
-			FrameSync *computeTimeline = gfxTimeline;
-
-			const bool canUseAsyncCompute = compute && compute->GetQueue() && graphicsPresent->GetQueue() &&
-				(compute->GetQueue()->GetFamilyIndex() == graphicsPresent->GetQueue()->GetFamilyIndex());
-
-			if (canUseAsyncCompute)
+			// (13) Water (XP12: ocean_shading, "mix down water"; renderer_water.cpp): tessellated and displaced by the ocean's
+			//      cascades, over the sky and the surfaces under it, its depth written for the forward passes
+			if (IsWaterVisible())
 			{
-				if (cloudsVisible)
-				{
-					Pass_CloudShadow(compute);
-				}
+				GpuTimer::Scope scope(cmd, "water");
+				Pass_Water(cmd, rt_render);
+				if (!valid())
+					return;
+			}
 
-				Pass_ScreenSpaceAO(compute);
-				// Temporarily disabled: sss_blend.slang is not part of the active Slang module set.
-				// Keep this pass disabled until the shader is fully ported/registered.
-				// Pass_ScreenSpaceShadows(compute);
+			// (14) Forward passes over the composed frame, depth tested against the g-buffer: grid, blended surfaces, lights
+			{
+				GpuTimer::Scope scope(cmd, "forward");
+				ImageResource *depthTarget = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
+				depthTarget->SetLayout(Layout::ImageLayout::DepthStencilAttachment, cmd, 0, 0);
+				Pass_Grid(cmd, rt_render);
+				if (!valid())
+					return;
+				Pass_Forward_Transparent(cmd, rt_render);
+				if (!valid())
+					return;
+				Pass_Light_Billboards(cmd, rt_render);
+				if (!valid())
+					return;
+				depthTarget->SetLayout(Layout::ImageLayout::ShaderRead, cmd, 0, 0);
+			}
 
-				// submit compute, wait on phase 1
-				compute->Submit(nullptr, false, nullptr, gfxTimeline, gfxPhase1TimelineValue);
-				computeTimelineValue = compute->GetLastTimelineSignalValue();
-				computeTimeline = compute->GetTimelineSemaphore();
-				compute->WaitForExecution();
+			// (15) HDR clean-up (XP12: fix_hdr), then the finished frame kept for the next frame's reflections
+			{
+				GpuTimer::Scope scope(cmd, "fix hdr");
+				Pass_FixHdr(cmd, rt_render);
+			}
+			if (!valid())
+				return;
+			if (AreReflectionsAvailable())
+			{
+				GpuTimer::Scope scope(cmd, "reflection history");
+				Pass_ReflectionHistory(cmd, rt_render);
+			}
+			if (!valid())
+				return;
+
+			// (16) Metering and adaptation (manual EV100 when auto exposure is off), then the output chain: exposure
+			//      fusion, bloom, the tone map to display values, FXAA, FSR 1
+			if (mainView)
+			{
+				GpuTimer::Scope scope(cmd, "exposure");
+				Pass_Exposure(cmd, rt_render);	// Extra views use the exposure it adapts
+			}
+			if (!valid())
+				return;
+			if (features.tonemap)
+			{
+				Pass_OutputChain(cmd, rt_render, rt_output);	// Times its own passes (GpuTimer scopes don't nest)
 			}
 			else
 			{
-				static bool warnedNoOwnershipSync = false;
-				if (!warnedNoOwnershipSync)
-				{
-					SEDX_CORE_WARN_TAG(
-						"Renderer",
-						"Async compute disabled: queue-family ownership/layout sync is not fully implemented yet");
-					warnedNoOwnershipSync = true;
-				}
+				GpuTimer::Scope scope(cmd, "output");
+				cmd->Blit(rt_render, rt_output, false);	// The frame as rendered (pre-exposed)
 			}
-
-			// graphics phase 2: shadow maps
-			Ref<QueueManager> queueManager = RenderContext::Get()->GetDevice()->GetQueueManager();
-			graphicsPresent = queueManager->NextCommandList();
-			graphicsPresent->Begin();
-			m_CmdList_Present = graphicsPresent;
-
-			Pass_ShadowMaps(graphicsPresent);
-
-			// graphics phase 3: lighting and post-process (waits on compute)
-			graphicsPresent->Submit(nullptr, false, nullptr, computeTimeline, computeTimelineValue);
-			graphicsPresent->WaitForExecution();
-
-			graphicsPresent = queueManager->NextCommandList();
-			graphicsPresent->Begin();
-			m_CmdList_Present = graphicsPresent;
-
+			if (!valid())
+				return;
+			if (GetDebugView() != Renderer_DebugView::None)
 			{
-				bool isTransparent = false;
-				Pass_Light(graphicsPresent, isTransparent);
-				Pass_Light_Composition(graphicsPresent, isTransparent);
-				graphicsPresent->Blit(GetRenderTarget(Renderer_RenderTarget::frame_render),
-									  GetRenderTarget(Renderer_RenderTarget::frame_render_opaque),
-									  false);
+				GpuTimer::Scope scope(cmd, "debug view");
+				Pass_DebugView(cmd, rt_output);
 			}
 
-			// particles
-			Pass_Particles(graphicsPresent);
+			// Parity captures (--capture-png) read the output before anything editor-only is drawn on it
+			if (mainView)
+				FrameCapture::Record(cmd, rt_output, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
 
-			// transparents
-			if (m_Transparents_Present)
-			{
-				bool isTransparent = true;
-				Pass_GBuffer(graphicsPresent, isTransparent);
-				Pass_Light(graphicsPresent, isTransparent);
-				Pass_Light_Composition(graphicsPresent, isTransparent);
-			}
-
-			Pass_Light_ImageBased(graphicsPresent);
-
-			Pass_Light_Reflections(graphicsPresent);
-
-			Pass_TransparencyReflectionRefraction(graphicsPresent);
-
-			// Infinite editor grid: depth-test against render-resolution depth
-			{
-				ImageResource *depthTarget = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
-				depthTarget->SetLayout(Layout::ImageLayout::DepthStencilAttachment, graphicsPresent, 0, 0);
-				Pass_Grid(graphicsPresent, GetRenderTarget(Renderer_RenderTarget::frame_render));
-				Pass_Forward_Transparent(graphicsPresent, GetRenderTarget(Renderer_RenderTarget::frame_render));
-				Pass_Light_Billboards(graphicsPresent, GetRenderTarget(Renderer_RenderTarget::frame_render));
-				depthTarget->SetLayout(Layout::ImageLayout::ShaderRead, graphicsPresent, 0, 0);
-			}
-			Pass_AA_Upscale(graphicsPresent);
-			Pass_PostProcess(graphicsPresent);
+			// (17) Editor overlays on the display image: selection / hover outlines, the reference image
+			ScenePicking::RecordOutline(cmd, rt_output);
+			if (!valid())
+				return;
+			if (mainView)
+				Pass_ReferenceOverlay(cmd, rt_output);
+			if (!valid())
+				return;
 		}
-		else
+
+		if (valid() && mainView)
+			Pass_Text(cmd, rt_output);
+		if (mainView)
+			GpuTimer::EndFrame(cmd);
+
+		// Early transitions for the next frame
+		rt_output->SetLayout(Layout::ImageLayout::ShaderRead, cmd, 0, 0);
+		GetRenderTarget(Renderer_RenderTarget::gbuffer_color)->SetLayout(Layout::ImageLayout::Attachment, cmd, 0, 0);
+		GetRenderTarget(Renderer_RenderTarget::gbuffer_normal)->SetLayout(Layout::ImageLayout::Attachment, cmd, 0, 0);
+		GetRenderTarget(Renderer_RenderTarget::gbuffer_material)->SetLayout(Layout::ImageLayout::Attachment, cmd, 0, 0);
+		GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity)->SetLayout(Layout::ImageLayout::Attachment, cmd, 0, 0);
+		GetRenderTarget(Renderer_RenderTarget::gbuffer_emissive)->SetLayout(Layout::ImageLayout::Attachment, cmd, 0, 0);
+		GetRenderTarget(Renderer_RenderTarget::gbuffer_weather)->SetLayout(Layout::ImageLayout::Attachment, cmd, 0, 0);
+		GetRenderTarget(Renderer_RenderTarget::gbuffer_depth)->SetLayout(Layout::ImageLayout::Attachment, cmd, 0, 0);
+		ScenePicking::EndFrame(cmd);
+
+		// Submission and synchronization are owned by the caller (Renderer::OnRender)
+	}
+
+	void Renderer::Pass_Tonemap(CommandList *cmdList, ImageResource *in, ImageResource *out, const uint32_t bloomMips, const bool fusion)
+	{
+		if (!ShaderManager::IsShaderAvailable(Renderer_Shader::tonemap))
 		{
-			graphicsPresent->ClearTexture(rt_output, Color::Black());
+			cmdList->Blit(in, out, false);
+			return;
 		}
+		in->SetLayout(Layout::ImageLayout::ShaderRead, cmdList, 0, 0);
+		out->SetLayout(Layout::ImageLayout::General, cmdList, 0, 0);
+		const EnvironmentConstants &constants = GetEnvironmentConstants();
+		Pass_Compute(cmdList, "tonemap", Renderer_Shader::tonemap, in, out, [&]
+		{
+			// The bloom chain, the fusion guide and the exposures it was made from, depth for the fusion's distance fade,
+			// and the exposure state (the residual)
+			cmdList->SetTexture(Renderer_BindingsSrv::tex2, GetRenderTarget(Renderer_RenderTarget::bloom), 0, 1);
+			cmdList->SetTexture(Renderer_BindingsSrv::tex3, GetRenderTarget(Renderer_RenderTarget::exposure_fusion_guide));
+			cmdList->SetTexture(Renderer_BindingsSrv::tex4, GetRenderTarget(Renderer_RenderTarget::exposure_fusion_exposures), 0, 1);
+			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_depth, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
+			cmdList->SetBuffer(Renderer_BindingsUav::exposure_state, GetBuffer(Renderer_Buffer::ExposureState));
 
-		Pass_Text(graphicsPresent, rt_output);
+			// Tone curve (tonemap.slang: 4 X-Plane 12's display transform, 1 AgX, 2 ACES fit, 3 Reinhard); bloom weight and
+			// the normalization of the summed mips; fusion strength
+			const float bloomWeight = bloomMips > 0 ? std::clamp(constants.bloomIntensity, 0.0f, 1.0f) : 0.0f;
+			const float bloomNormalize = bloomMips > 0 ? 1.0f / static_cast<float>(bloomMips) : 0.0f;
+			const float fusionStrength = fusion ? std::max(constants.fusionStrength, 0.0f) : 0.0f;
+			m_Pcb_Pass_Cpu.SetF4Value(static_cast<float>(s_ToneCurve), bloomWeight, bloomNormalize, fusionStrength);
+			cmdList->PushConstants(m_Pcb_Pass_Cpu);
+		});
+	}
 
-		// early transitions for next frame
-		rt_output->SetLayout(Layout::ImageLayout::ShaderRead, graphicsPresent, 0, 0);
-		GetRenderTarget(Renderer_RenderTarget::gbuffer_color)
-			->SetLayout(Layout::ImageLayout::Attachment, graphicsPresent, 0, 0);
-		GetRenderTarget(Renderer_RenderTarget::gbuffer_normal)
-			->SetLayout(Layout::ImageLayout::Attachment, graphicsPresent, 0, 0);
-		GetRenderTarget(Renderer_RenderTarget::gbuffer_material)
-			->SetLayout(Layout::ImageLayout::Attachment, graphicsPresent, 0, 0);
-		GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity)
-			->SetLayout(Layout::ImageLayout::Attachment, graphicsPresent, 0, 0);
-		GetRenderTarget(Renderer_RenderTarget::gbuffer_depth)
-			->SetLayout(Layout::ImageLayout::Attachment, graphicsPresent, 0, 0);
-
-		// Submission and synchronization are owned by the caller (for example,
-		// Renderer::OnRender) so the full frame lifecycle can be coordinated with
-		// the appropriate fence/semaphore primitives.
+	void Renderer::Pass_DebugView(CommandList *cmdList, ImageResource *out)
+	{
+		if (!ShaderManager::IsShaderAvailable(Renderer_Shader::debug_view))
+			return;
+		ImageResource *frame = GetRenderTarget(Renderer_RenderTarget::frame_render);
+		frame->SetLayout(Layout::ImageLayout::ShaderRead, cmdList, 0, 0);
+		out->SetLayout(Layout::ImageLayout::General, cmdList, 0, 0);
+		Pass_Compute(cmdList, "debug_view", Renderer_Shader::debug_view, frame, out, [&]
+		{
+			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_albedo, GetRenderTarget(Renderer_RenderTarget::gbuffer_color));
+			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_normal, GetRenderTarget(Renderer_RenderTarget::gbuffer_normal));
+			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_material, GetRenderTarget(Renderer_RenderTarget::gbuffer_material));
+			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_depth, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
+			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_emissive, GetRenderTarget(Renderer_RenderTarget::gbuffer_emissive));
+			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_weather, GetRenderTarget(Renderer_RenderTarget::gbuffer_weather));
+			BindShadows(cmdList);	// the cascade and cloud-shadow views
+			BindAmbientOcclusion(cmdList);
+			BindReflections(cmdList);
+			m_Pcb_Pass_Cpu.SetF4Value(static_cast<float>(GetDebugView()), 0.0f, 0.0f, 0.0f);
+			cmdList->PushConstants(m_Pcb_Pass_Cpu);
+		});
 	}
 
 	void Renderer::Pass_Lut_BrdfSpecular(CommandList *cmdList)
@@ -499,119 +490,6 @@ namespace SceneryEditorX
 		}
 	}
 
-	void Renderer::Pass_Lut_AtmosphericScattering(CommandList *cmdList)
-	{
-		ImageResource *tex_lut_atmosphere_scatter		= GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_scatter);
-		ImageResource *tex_lut_atmosphere_transmittance = GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_transmittance);
-		ImageResource *tex_lut_atmosphere_multiscatter	= GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_multiscatter);
-
-		{
-			// transmittance lut
-			{
-				PipelineState pso;
-				pso.name = "lut_atmosphere_transmittance";
-				pso.shaders[static_cast<uint32_t>(StageType::Compute)] = ShaderManager::GetShader(Renderer_Shader::skysphere_transmittance_lut);
-				cmdList->SetPipelineState(pso);
-
-				cmdList->SetTexture(Renderer_BindingsUav::tex, tex_lut_atmosphere_transmittance);
-				cmdList->Dispatch(tex_lut_atmosphere_transmittance);
-
-				tex_lut_atmosphere_transmittance->SetLayout(Layout::ImageLayout::ShaderRead, cmdList, 0, 0);
-			}
-
-			// multi-scatter lut
-			{
-				PipelineState pso;
-				pso.name = "lut_atmosphere_multi_scatter";
-				pso.shaders[static_cast<uint32_t>(StageType::Compute)] = ShaderManager::GetShader(Renderer_Shader::skysphere_multiscatter_lut);
-				cmdList->SetPipelineState(pso);
-
-				cmdList->SetTexture(Renderer_BindingsSrv::tex, tex_lut_atmosphere_transmittance);
-				cmdList->SetTexture(Renderer_BindingsUav::tex, tex_lut_atmosphere_multiscatter);
-				cmdList->Dispatch(tex_lut_atmosphere_multiscatter);
-
-				tex_lut_atmosphere_multiscatter->SetLayout(Layout::ImageLayout::ShaderRead, cmdList, 0, 0);
-			}
-
-			// legacy 3d lut
-			{
-				PipelineState pso;
-				pso.name = "lut_atmospheric_scattering";
-				pso.shaders[static_cast<uint32_t>(StageType::Compute)] = ShaderManager::GetShader(Renderer_Shader::skysphere_lut);
-				cmdList->SetPipelineState(pso);
-
-				cmdList->SetTexture(Renderer_BindingsUav::tex3d, tex_lut_atmosphere_scatter);
-				cmdList->Dispatch(tex_lut_atmosphere_scatter);
-
-				tex_lut_atmosphere_scatter->SetLayout(Layout::ImageLayout::ShaderRead, cmdList, 0, 0);
-			}
-		}
-	}
-
-	void Renderer::Pass_Skysphere(CommandList *cmdList)
-	{
-		ImageResource *tex_skysphere = GetRenderTarget(Renderer_RenderTarget::skysphere);
-		ImageResource *tex_lut_atmosphere_scatter = GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_scatter);
-		ImageResource *tex_lut_atmosphere_transmittance = GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_transmittance);
-		ImageResource *tex_lut_atmosphere_multi_scatter = GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_multiscatter);
-		ImageResource *tex_cloud_shape = GetRenderTarget(Renderer_RenderTarget::cloud_noise_shape);
-		ImageResource *tex_cloud_detail = GetRenderTarget(Renderer_RenderTarget::cloud_noise_detail);
-
-		if (Scene::GetDirectionalLight())
-		{
-			PipelineState pso;
-			pso.name = "skysphere_atmospheric_scattering";
-			pso.shaders[static_cast<uint32_t>(StageType::Compute)] = ShaderManager::GetShader(Renderer_Shader::skysphere);
-			cmdList->SetPipelineState(pso);
-
-			cmdList->SetTexture(Renderer_BindingsUav::tex, tex_skysphere);
-			cmdList->SetTexture(Renderer_BindingsSrv::tex, tex_lut_atmosphere_transmittance);
-			cmdList->SetTexture(Renderer_BindingsSrv::tex2, tex_lut_atmosphere_multi_scatter);
-			cmdList->SetTexture(Renderer_BindingsSrv::tex3d, tex_lut_atmosphere_scatter);
-
-			if (tex_cloud_shape)
-			{
-				cmdList->SetTexture(Renderer_BindingsSrv::tex3d_cloud_shape, tex_cloud_shape);
-			}
-			if (tex_cloud_detail)
-			{
-				cmdList->SetTexture(Renderer_BindingsSrv::tex3d_cloud_detail, tex_cloud_detail);
-			}
-
-			cmdList->Dispatch(tex_skysphere);
-		}
-		else
-		{
-			cmdList->ClearTexture(tex_skysphere, Color::Black());
-		}
-
-		// filter all mip levels
-		{
-			Pass_Downscale(cmdList, tex_skysphere, Renderer_DownsampleFilter::Average);
-
-			PipelineState pso;
-			pso.name = "skysphere_filter";
-			pso.shaders[static_cast<uint32_t>(StageType::Compute)] = ShaderManager::GetShader(Renderer_Shader::light_integration_environment_filter);
-			cmdList->SetPipelineState(pso);
-			cmdList->SetTexture(Renderer_BindingsSrv::tex, tex_skysphere);
-
-			for (uint32_t mip_level = 1; mip_level < tex_skysphere->GetImageSpec().mipCount; mip_level++)
-			{
-				cmdList->SetTexture(Renderer_BindingsUav::tex, tex_skysphere, mip_level, 1);
-
-				m_Pcb_Pass_Cpu.SetF3Value(static_cast<float>(mip_level),
-										  static_cast<float>(tex_skysphere->GetImageSpec().mipCount),
-										  0.0f);
-				cmdList->PushConstants(m_Pcb_Pass_Cpu);
-
-				const uint32_t resolutionX = tex_skysphere->GetWidth() >> mip_level;
-				const uint32_t resolutionY = tex_skysphere->GetHeight() >> mip_level;
-				cmdList->Dispatch(resolutionX, resolutionY, 1);
-				cmdList->InsertBarrier(tex_skysphere, BarrierType::EnsureWriteThenRead);
-			}
-		}
-	}
-
 	void Renderer::Pass_HiZ(CommandList *cmdList)
 	{
 		// renders major occluders to a depth buffer and builds a hi-z mip chain.
@@ -622,7 +500,6 @@ namespace SceneryEditorX
 		// cause non-deterministic culling artifacts depending on gpu memory contents.
 
 		ImageResource *tex_occluders = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_occluders);
-		ImageResource *tex_occluders_hiz = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_occluders_hiz);
 
 		bool render_occluders = cvar_hiz_occlusion.GetValueAs<bool>() && !m_Is_Hiz_Suppressed;
 
@@ -673,28 +550,19 @@ namespace SceneryEditorX
 			}
 		}
 
-		// hi-z mip chain (min depth downsample, reverse z)
-		Pass_Blit(cmdList, tex_occluders, tex_occluders_hiz);
-		Pass_Downscale(cmdList, tex_occluders_hiz, Renderer_DownsampleFilter::Min);
+		// hi-z mip chain (the min / max depth pyramid, reverse z; z_minmax.slang)
+		Pass_DepthPyramid(cmdList, tex_occluders);
 	}
 
 	void Renderer::Pass_GpuScene_Occlusion(CommandList *cmdList)
 	{
-		// Between the GPU scene's two culling phases in the depth prepass: a hi-z pyramid of the depth drawn so far
-		// (the instances visible last frame and the CPU draws), then the late cull against it. The hi-z target is shared
-		// with Pass_HiZ, which rebuilds it from scratch before its own use.
+		// Between the GPU scene's two culling phases in the depth prepass: the min / max depth pyramid of the depth drawn so
+		// far (the instances visible last frame and the CPU draws), then the late cull against its farthest depths. The
+		// pyramid target is shared with the reflections (step 5 of ProduceFrame), which rebuild it from the finished depth.
 		ImageResource *tex_depth = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
 		ImageResource *tex_hiz = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_occluders_hiz);
-
-		Pass_Blit(cmdList, tex_depth, tex_hiz);
-		Pass_Downscale(cmdList, tex_hiz, Renderer_DownsampleFilter::Min);
-
-		// the cull samples every level through one view: all of them shader-readable (per mip, the chain left them
-		// in different layouts and a whole-image transition assumes one)
-		for (uint32_t mip = 0; mip < tex_hiz->GetMipCount(); ++mip)
-			tex_hiz->SetLayout(Layout::ImageLayout::ShaderRead, cmdList, mip, 1);
-
-		GpuScene::CullLate(cmdList, tex_hiz);
+		if (Pass_DepthPyramid(cmdList, tex_depth))
+			GpuScene::CullLate(cmdList, tex_hiz);
 	}
 
 	void Renderer::Pass_IndirectCull(CommandList *cmdList)
@@ -911,6 +779,60 @@ namespace SceneryEditorX
 		}
 	}
 
+	void Renderer::Pass_Drape_Depth(CommandList *cmdList)
+	{
+		bool any = false;
+		for (uint32_t i = 0; i < m_DrawCall_Count && !any; i++)
+			any = m_DrawCalls[i].drapeOrder != 0 && m_DrawCalls[i].cameraVisible;
+		if (!any)
+			return;
+
+		PipelineState pso;
+		pso.name = "drape_depth";
+		pso.shaders[static_cast<uint32_t>(StageType::Vertex)] = ShaderManager::GetShader(Renderer_Shader::depth_prepass);
+		pso.rasterizerState = cvar_wireframe.GetValueAs<bool>() ? GetRasterizerState(Renderer_RasterizerState::Wireframe) : GetRasterizerState(Renderer_RasterizerState::Solid);
+		pso.blendState = GetBlendState(Renderer_BlendState::Off);
+		pso.depthStencil_State = GetDepthStencilState(Renderer_DepthStencilState::ReadWrite);
+		pso.renderTarget_DepthTexture = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
+		pso.resolutionScale = true;
+		pso.clearDepth = RHI_DEPTH_LOAD;
+
+		bool pipelineSet = false;
+		for (uint32_t i = 0; i < m_DrawCall_Count; i++)
+		{
+			const Renderer_DrawCall &drawCall = m_DrawCalls[i];
+			Renderable *renderable = drawCall.renderable;
+			MaterialAsset *materialAsset = renderable->GetMaterialAsset();
+			if (drawCall.drapeOrder == 0 || !drawCall.cameraVisible || !materialAsset || materialAsset->IsTransparent())
+				continue;
+
+			// cut-out texels (and the blended texels the forward pass draws) leave the depth to what is below them
+			const bool alphaTested = materialAsset->IsAlphaTested() || materialAsset->GetProperty(MaterialProperty::AlphaCutoff) > 0.0f;
+			Shader *ps = alphaTested ? ShaderManager::GetShader(Renderer_Shader::depth_prepass) : nullptr;
+			if (!pipelineSet || pso.shaders[static_cast<uint32_t>(StageType::Fragment)] != ps)
+			{
+				pso.shaders[static_cast<uint32_t>(StageType::Fragment)] = ps;
+				cmdList->SetPipelineState(pso);
+				pipelineSet = true;
+				if (cmdList->IsStickyInvalid())
+					return;
+			}
+
+			m_Pcb_Pass_Cpu.drawIndex = drawCall.drawData_Index;
+			m_Pcb_Pass_Cpu.isTransparent = 0;
+			m_Pcb_Pass_Cpu.materialIndex = materialAsset->GetIndex();
+			m_Pcb_Pass_Cpu.SetF3Value(0.0f, materialAsset->HasTextureOfType(MaterialTextureType::Color) ? 1.0f : 0.0f, static_cast<float>(i));
+			cmdList->PushConstants(m_Pcb_Pass_Cpu);
+
+			const CullMode cullMode = static_cast<CullMode>(materialAsset->GetProperty(MaterialProperty::CullMode));
+			cmdList->SetCullMode(pso.rasterizerState->GetPolygonMode() == PolygonMode::Wireframe ? CullMode::None : cullMode);
+			cmdList->SetVertexBuffer(renderable->GetVertexBuffer(), renderable->GetInstanceBuffer());
+			cmdList->SetIndexBuffer(renderable->GetIndexBuffer());
+			cmdList->DrawIndexed(renderable->GetIndexCount(drawCall.lodIndex), drawCall.instanceCount, renderable->GetIndexOffset(drawCall.lodIndex),
+								 renderable->GetVertexOffset(drawCall.lodIndex), drawCall.instanceIndex);
+		}
+	}
+
 	void Renderer::Pass_GBuffer(CommandList *cmdList, const bool isTransparentPass)
 	{
 		ImageResource *texColor = GetRenderTarget(Renderer_RenderTarget::gbuffer_color);
@@ -919,6 +841,8 @@ namespace SceneryEditorX
 		ImageResource *texVelocity = GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity);
 		ImageResource *texDepth = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
 		ImageResource *texPick = GetRenderTarget(Renderer_RenderTarget::gbuffer_pick);	// editor picking ids (ScenePicking)
+		ImageResource *texEmissive = GetRenderTarget(Renderer_RenderTarget::gbuffer_emissive);
+		ImageResource *texWeather = GetRenderTarget(Renderer_RenderTarget::gbuffer_weather);
 
 		{
 			if (!isTransparentPass && m_Indirect_DrawCount > 0)
@@ -938,12 +862,16 @@ namespace SceneryEditorX
 				pso.renderTarget_ColorTextures[2] = texMaterial;
 				pso.renderTarget_ColorTextures[3] = texVelocity;
 				pso.renderTarget_ColorTextures[4] = texPick;
+				pso.renderTarget_ColorTextures[5] = texEmissive;
+				pso.renderTarget_ColorTextures[6] = texWeather;
 				pso.renderTarget_DepthTexture = texDepth;
 				pso.clearColor[0] = PipelineStateColor{.r = 0.0f, .g = 0.0f, .b = 0.0f, .a = 0.0f};
 				pso.clearColor[1] = PipelineStateColor{.r = 0.0f, .g = 0.0f, .b = 0.0f, .a = 0.0f};
 				pso.clearColor[2] = PipelineStateColor{.r = 0.0f, .g = 0.0f, .b = 0.0f, .a = 0.0f};
 				pso.clearColor[3] = PipelineStateColor{.r = 0.0f, .g = 0.0f, .b = 0.0f, .a = 0.0f};
 				pso.clearColor[4] = PipelineStateColor{.r = 0.0f, .g = 0.0f, .b = 0.0f, .a = 0.0f};	// pick id 0: nothing
+				pso.clearColor[5] = PipelineStateColor{.r = 0.0f, .g = 0.0f, .b = 0.0f, .a = 0.0f};
+				pso.clearColor[6] = PipelineStateColor{.r = 0.0f, .g = 0.0f, .b = 0.0f, .a = 0.0f};
 				cmdList->SetPipelineState(pso);
 
 				cmdList->SetIndexBuffer(GeometryBuffer::GetIndexBuffer());
@@ -986,6 +914,8 @@ namespace SceneryEditorX
 				pso.renderTarget_ColorTextures[2] = texMaterial;
 				pso.renderTarget_ColorTextures[3] = texVelocity;
 				pso.renderTarget_ColorTextures[4] = texPick;
+				pso.renderTarget_ColorTextures[5] = texEmissive;
+				pso.renderTarget_ColorTextures[6] = texWeather;
 				pso.renderTarget_DepthTexture = texDepth;
 
 				const bool indirectWrote = m_Indirect_DrawCount > 0;
@@ -1033,6 +963,8 @@ namespace SceneryEditorX
 				pso.renderTarget_ColorTextures[2] = texMaterial;
 				pso.renderTarget_ColorTextures[3] = texVelocity;
 				pso.renderTarget_ColorTextures[4] = texPick;
+				pso.renderTarget_ColorTextures[5] = texEmissive;
+				pso.renderTarget_ColorTextures[6] = texWeather;
 				pso.renderTarget_DepthTexture = texDepth;
 				// load when an indirect path already cleared and wrote the g-buffer, otherwise clear on the first draw
 				const bool indirectActive = !isTransparentPass && m_Indirect_DrawCount > 0;
@@ -1042,6 +974,8 @@ namespace SceneryEditorX
 				pso.clearColor[2] = clearOrLoad;
 				pso.clearColor[3] = clearOrLoad;
 				pso.clearColor[4] = clearOrLoad;
+				pso.clearColor[5] = clearOrLoad;
+				pso.clearColor[6] = clearOrLoad;
 
 				bool pipeline_set = false;
 
@@ -1122,27 +1056,9 @@ namespace SceneryEditorX
 			texDepth->SetLayout(Layout::ImageLayout::ShaderRead, cmdList, 0, 0);
 
 			// editor picking: copy the regions the viewport asked for (the outline pass reads the ids later)
-			if (!isTransparentPass)
+			if (!isTransparentPass && !IsRenderingExtraView())
 				ScenePicking::RecordReadbacks(cmdList);
 		}
-	}
-
-	void Renderer::Pass_Output(CommandList *cmdList, ImageResource *in, ImageResource *out)
-	{
-		Shader *shader_c = ShaderManager::GetShader(Renderer_Shader::output);
-
-		PipelineState pso;
-		pso.name = "output";
-		pso.shaders[static_cast<uint32_t>(StageType::Compute)] = shader_c;
-		cmdList->SetPipelineState(pso);
-
-		m_Pcb_Pass_Cpu.SetF3Value(cvar_tonemapping.GetValue(), cvar_auto_exposure_adaptation_speed.GetValue(), 0.0f);
-		cmdList->PushConstants(m_Pcb_Pass_Cpu);
-
-		cmdList->SetTexture(Renderer_BindingsUav::tex, out);
-		cmdList->SetTexture(Renderer_BindingsSrv::tex, in);
-		cmdList->SetTexture(Renderer_BindingsSrv::tex2, GetRenderTarget(Renderer_RenderTarget::auto_exposure));
-		cmdList->Dispatch(out);
 	}
 
 	void Renderer::Pass_Blit(CommandList *cmdList, ImageResource *in, ImageResource *out)
@@ -1169,7 +1085,7 @@ namespace SceneryEditorX
 
 	void Renderer::Pass_Grid(CommandList *cmdList, ImageResource *out)
 	{
-		if (!cvar_grid.GetValueAs<bool>())
+		if (!cvar_grid.GetValueAs<bool>() || !s_GridVisible.load(std::memory_order_relaxed) || s_GroundShown.load(std::memory_order_relaxed))
 			return;
 
 		if (!cmdList || cmdList->IsStickyInvalid())
@@ -1256,14 +1172,403 @@ namespace SceneryEditorX
 		s_LightBillboards = std::move(batches);
 	}
 
-	void Renderer::SetFallbackDaylight(const float daylight)
+	const RendererFeatures &Renderer::GetFeatures()
 	{
-		s_FallbackDaylight = std::clamp(daylight, 0.0f, 1.0f);
+		return s_Features;
 	}
 
-	float Renderer::GetFallbackDaylight()
+	void Renderer::SetFeatures(const RendererFeatures &features)
 	{
-		return s_FallbackDaylight;
+		s_Features = features;
+	}
+
+	Renderer_DebugView Renderer::GetDebugView()
+	{
+		return s_DebugView;
+	}
+
+	void Renderer::SetDebugView(const Renderer_DebugView view)
+	{
+		s_DebugView = view < Renderer_DebugView::Count ? view : Renderer_DebugView::None;
+	}
+
+	const RendererQualityPreset &Renderer::GetQualityPreset()
+	{
+		return s_Quality;
+	}
+
+	void Renderer::SetQualityPreset(const RendererQualityPreset &preset)
+	{
+		s_Quality = preset;
+	}
+
+	int Renderer::GetToneCurve()
+	{
+		return s_ToneCurve;
+	}
+
+	void Renderer::SetToneCurve(const int curve)
+	{
+		s_ToneCurve = std::clamp(curve, 1, 4);
+	}
+
+	const Renderer::EnvironmentConstants &Renderer::GetEnvironmentConstants()
+	{
+		return s_EnvironmentConstants;
+	}
+
+	Renderer::EnvironmentConstants &Renderer::EditEnvironmentConstants()
+	{
+		return s_EnvironmentConstants;
+	}
+
+	bool Renderer::LoadEnvironmentConstants(const std::filesystem::path &path, std::string *error)
+	{
+		// resources/environment/xp12_environment.json: { "controls": { "<art control>": { "value": v, "source": "..." } } }
+		std::ifstream file(path);
+		if (!file)
+		{
+			if (error)
+				*error = "can't open " + path.string();
+			return false;
+		}
+		try
+		{
+			const nlohmann::json root = nlohmann::json::parse(file);
+			const nlohmann::json &controls = root.at("controls");
+			const auto value = [&controls](const char *name, float &out)
+			{
+				const auto it = controls.find(name);
+				if (it != controls.end() && it->contains("value") && (*it)["value"].is_number())
+					out = (*it)["value"].get<float>();
+			};
+			EnvironmentConstants &c = s_EnvironmentConstants;
+
+			// X-Plane art controls, by X-Plane's name (plan GUD-002)
+			value("lighting/E_sun_lx", c.sunIlluminanceLux);
+			value("lighting/E_moon_lx", c.moonIlluminanceLux);
+			float sunDiameterDeg = c.sunAngularRadiusRad * 2.0f / xMath::DEG_TO_RAD;
+			value("sun/angular_diameter", sunDiameterDeg);
+			c.sunAngularRadiusRad = std::max(sunDiameterDeg, 0.01f) * 0.5f * xMath::DEG_TO_RAD;
+			value("atmo/rayleigh_r", c.rayleigh.x);
+			value("atmo/rayleigh_g", c.rayleigh.y);
+			value("atmo/rayleigh_b", c.rayleigh.z);
+			value("atmo/ozone_r", c.ozone.x);
+			value("atmo/ozone_g", c.ozone.y);
+			value("atmo/ozone_b", c.ozone.z);
+			value("atmo/ozone_center", c.ozone.w);
+			float ozoneWidth = c.planet.x * 2.0f;
+			value("atmo/ozone_width", ozoneWidth);
+			c.planet.x = std::max(ozoneWidth * 0.5f, 1.0f);
+			value("atmo/fog_albedo", c.fogAlbedo);
+			value("sedx/fog_start_visibility_m", c.fogStartVisibilityM);
+			value("sedx/fog_full_visibility_m", c.fogFullVisibilityM);
+			value("scattering/earth_albedo", c.planet.w);
+			value("scattering/g_cornette_shanks", c.mie.w);
+			float mieAlbedo = c.mie.y > 0.0f ? c.mie.x / c.mie.y : 0.9f;
+			value("scattering/mie_albedo", mieAlbedo);
+			c.mie.y = c.mie.x / std::clamp(mieAlbedo, 0.01f, 1.0f);
+			value("scattering/mie_scattering_exponent", c.mieAngstrom);
+			value("scattering/multi_rat", c.multipleScattering);
+			value("scattering/vis_cutoff_ratio", c.visibilityContrast);
+			value("exposure_fusion/dis_near", c.exposureFusion.z);
+			value("exposure_fusion/dis_far", c.exposureFusion.w);
+			float maxMip = static_cast<float>(c.fusionMaxMip);
+			value("exposure_fusion/max_mip", maxMip);
+			c.fusionMaxMip = std::clamp(static_cast<int>(std::lround(maxMip)), 1, 5);	// SEDX's pyramid stops at 5
+			value("photometric/K", c.exposure.meterK);
+			value("photometric/ev100_min", c.exposure.evMin);
+			value("photometric/ev100_max", c.exposure.evMax);
+			value("exposure/speed_up", c.exposure.speedUp);
+			value("exposure/speed_down", c.exposure.speedDown);
+			value("autoexposure/gain_lo", c.exposure.gainLow);
+			value("autoexposure/gain_hi", c.exposure.gainHigh);
+			value("autoexposure/_exp_radius", c.exposure.centerRadius);
+			value("reno/rcas_rat", c.rcasSharpness);
+			value("color_management/sdr/slope_red", c.colorSlope.x);
+			value("color_management/sdr/slope_green", c.colorSlope.y);
+			value("color_management/sdr/slope_blue", c.colorSlope.z);
+			value("color_management/sdr/saturation", c.colorSlope.w);
+			value("color_management/sdr/offset_red", c.colorOffset.x);
+			value("color_management/sdr/offset_green", c.colorOffset.y);
+			value("color_management/sdr/offset_blue", c.colorOffset.z);
+			value("color_management/sdr/output_gain", c.colorOffset.w);
+			value("color_management/sdr/power_red", c.colorPower.x);
+			value("color_management/sdr/power_green", c.colorPower.y);
+			value("color_management/sdr/power_blue", c.colorPower.z);
+			value("color_management/sdr/output_gamma", c.colorPower.w);
+			value("color_management/compression", c.toneCompression);
+
+			// Sun and cloud shadows (plan Phase 7). The shadow quality sets the cascade count, far limit, fade and map size
+			// over these each frame, as X-Plane's renopt_shadow_quality does.
+			CsmSettings &shadow = c.shadow;
+			const auto valueD = [&value](const char *name, double &out)
+			{
+				float v = static_cast<float>(out);
+				value(name, v);
+				out = v;
+			};
+			float cascades = static_cast<float>(shadow.cascadeCount);
+			value("shadow/csm_split_exterior", cascades);
+			shadow.cascadeCount = static_cast<uint32_t>(std::clamp(std::lround(cascades), 1l, static_cast<long>(CSM_MAX_CASCADES)));
+			valueD("shadow/csm/near_limit_exterior", shadow.nearLimitM);
+			valueD("shadow/csm/far_limit_exterior", shadow.farLimitM);
+			valueD("shadow/csm/lambda", shadow.lambda);
+			valueD("shadow/overlap_ratio", shadow.overlapRatio);
+			valueD("shadow/total_fade_ratio", shadow.fadeRatio);
+			valueD("shadow/csm/pad_near_const", shadow.padNearConstM);
+			valueD("shadow/csm/pad_near_ratio", shadow.padNearRatio);
+			float mapSize = static_cast<float>(shadow.mapSize);
+			value("fbo/shadow_cam_size", mapSize);
+			shadow.mapSize = static_cast<uint32_t>(std::clamp(std::lround(mapSize), 256l, 8192l));
+			value("shadow/bias_const", c.shadowBiasConst);
+			value("shadow/bias_slope", c.shadowBiasSlope);
+			value("shadow/bias_n_constant", c.shadowNormalBias);
+			value("shadow/bias_n_slope", c.shadowNormalBiasSlope);
+			float soft = c.shadowSoft ? 1.0f : 0.0f;
+			value("shadow/want_soft", soft);
+			c.shadowSoft = soft > 0.5f;
+			value("clouds/cloud_shadow_lighten_ratio", c.cloudShadowStrength);
+			value("cloud/shadow_alpha", c.cloudShadowExtinction);
+			value("clouds/shadow_extent_min_km", c.cloudShadowExtentMinKm);
+			value("clouds/shadow_extent_km", c.cloudShadowExtentKm);
+
+			// Ambient occlusion (plan Phase 8). The AO quality sets ssao/quality_level and downsample over these each frame,
+			// as X-Plane's renopt_SSAO_04 does.
+			CacaoSettings &ao = c.ao;
+			value("ssao/radius", ao.radius);
+			value("ssao/shadow_multiplier", ao.shadowMultiplier);
+			value("ssao/shadow_power", ao.shadowPower);
+			value("ssao/shadow_clamp", ao.shadowClamp);
+			value("ssao/horizon_angle_threshold", ao.horizonAngleThreshold);
+			value("ssao/fade_out_from", ao.fadeOutFromM);
+			value("ssao/fade_out_to", ao.fadeOutToM);
+			value("ssao/fade_in_from", ao.fadeInFromM);
+			value("ssao/fade_in_to", ao.fadeInToM);
+			value("ssao/adaptive_quality_limit", ao.adaptiveQualityLimit);
+			float blurPasses = static_cast<float>(ao.blurPassCount);
+			value("ssao/blur_pass_count", blurPasses);
+			ao.blurPassCount = static_cast<uint32_t>(std::clamp(std::lround(blurPasses), 0l, static_cast<long>(CACAO_MAX_BLUR_PASSES)));
+			value("ssao/sharpness", ao.sharpness);
+			value("ssao/detail_shadow_strength", ao.detailShadowStrength);
+			value("ssao/bilateral_sigma_squared", ao.bilateralSigmaSquared);
+			value("ssao/bilateral_similarity_distance_sigma", ao.bilateralSimilarityDistanceSigma);
+			value("ssao/exterior_strength", ao.exteriorStrength);
+			value("ssao/exterior_curve", ao.exteriorCurve);
+			float dynamicValues = ao.dynamicValues ? 1.0f : 0.0f;
+			value("ssao/dynamic_values", dynamicValues);
+			ao.dynamicValues = dynamicValues > 0.5f;
+
+			// Screen-space reflections (plan Phase 9)
+			SsrSettings &ssr = c.ssr;
+			value("ssr/min_gloss", ssr.minGloss);
+			value("ssr/lod_bias", ssr.lodBias);
+			float prefiltered = ssr.usePrefiltered ? 1.0f : 0.0f;
+			value("ssr/use_prefiltered", prefiltered);
+			ssr.usePrefiltered = prefiltered > 0.5f;
+			float samples = static_cast<float>(ssr.sampleCount);
+			value("ssr/sample_count", samples);
+			ssr.sampleCount = static_cast<uint32_t>(std::clamp(std::lround(samples), 1l, 64l));
+
+			// Water (plan Phase 11)
+			OceanSettings &water = c.water;
+			const auto flag = [&value](const char *name, bool &out)
+			{
+				float v = out ? 1.0f : 0.0f;
+				value(name, v);
+				out = v > 0.5f;
+			};
+			value("water/F0", water.f0);
+			value("water/gloss", water.gloss);
+			value("water/turbidity", water.turbidity);
+			value("water/turbidity/cutoff", water.turbidityCutoff);
+			flag("water/enable_turbidity", water.enableTurbidity);
+			value("water/foam_bias", water.foamBias);
+			value("water/foam_ratio", water.foamRatio);
+			value("water/foam_scale", water.foamScale);
+			value("water/h_displace_lambda", water.displaceLambda);
+			value("water/cascade_0_scale", water.cascadeScale[0]);
+			value("water/cascade_1_scale", water.cascadeScale[1]);
+			value("water/cascade_2_scale", water.cascadeScale[2]);
+			value("water/cascade_3_scale", water.cascadeScale[3]);
+			value("water/spectrum/fetch_lo_m", water.fetchLoM);
+			value("water/spectrum/fetch_hi_m", water.fetchHiM);
+			value("water/spectrum/fetch_multiplier", water.fetchMultiplier);
+			value("water/spectrum/height_lo_m", water.heightLoM);
+			value("water/spectrum/height_hi_m", water.heightHiM);
+			value("water/spectrum/height_no_swell_m", water.heightNoSwellM);
+			value("water/spectrum/height_swell_m", water.heightSwellM);
+			value("water/spectrum/max_swell", water.maxSwell);
+			value("water/spectrum/spread_blend", water.spreadBlend);
+			value("water/spectrum/short_waves_fade", water.shortWavesFade);
+			value("water/sea_floor_coef", water.seaFloorCoef);
+
+			// Weather on surfaces (plan Phase 12, renderer/weather_surface.h): the twxr controls, the snow luma rule and the
+			// keyframes that turn amounts into thresholds (hack/petr/wxr/kf/<kind>_in_N / _out_N)
+			WeatherSurfaceSettings &weather = c.weather;
+			const auto keyframes = [&value](const char *kind, Environment::WeatherThresholdCurve &curve)
+			{
+				for (size_t i = 0; i < curve.amount.size(); ++i)
+				{
+					value(std::format("hack/petr/wxr/kf/{}_in_{}", kind, i).c_str(), curve.amount[i]);
+					value(std::format("hack/petr/wxr/kf/{}_out_{}", kind, i).c_str(), curve.threshold[i]);
+				}
+			};
+			keyframes("rain", weather.rainThresholds);
+			keyframes("puddles", weather.puddleThresholds);
+			keyframes("snow", weather.snowThresholds);
+			keyframes("ice", weather.iceThresholds);
+			value("twxr/rain_area_scale", weather.rainAreaScaleM);
+			value("twxr/rain_area_width", weather.rainAreaWidth);
+			value("twxr/rain_noise_modifier", weather.rainNoiseModifier);
+			value("twxr/rain_darkening_scale", weather.darkeningScale);
+			value("twxr/rain_darkening_start", weather.darkeningStart);
+			value("twxr/rain_darkening_end", weather.darkeningEnd);
+			value("twxr/rain_darkening_strength", weather.darkeningStrength);
+			value("twxr/rain_darkening_roughness_start", weather.darkeningRoughnessStart);
+			value("twxr/rain_darkening_roughness_end", weather.darkeningRoughnessEnd);
+			value("twxr/rain_darkening_roughness_multiplier_dark", weather.roughnessMultiplierDark);
+			value("twxr/rain_darkening_roughness_multiplier_light", weather.roughnessMultiplierLight);
+			value("twxr/rain_darken_albedo_rat", weather.darkenAlbedoRatio);
+			value("twxr/rain_darken_gloss_rat", weather.darkenGlossRatio);
+			value("twxr/snow_area_scale", weather.snowAreaScaleM);
+			value("twxr/snow_area_width", weather.snowAreaWidth);
+			value("twxr/snow/noise_depth", weather.snowNoiseDepth);
+			value("twxr/snow/slope_min", weather.snowSlopeMin);
+			value("twxr/snow/slope_max", weather.snowSlopeMax);
+			value("twxr/snow/scale_albedo", weather.snowAlbedoM);
+			value("twxr/snow/scale_normal", weather.snowNormalM);
+			value("twxr/snow/scale_decal", weather.snowDecalM);
+			value("twxr/snow/decal1_k", weather.snowDecal1K);
+			value("twxr/snow/decal2_k", weather.snowDecal2K);
+			value("twxr/ice_area_scale", weather.iceAreaScaleM);
+			value("twxr/ice_area_width", weather.iceAreaWidth);
+			value("twxr/ice/scale_albedo", weather.iceAlbedoM);
+			value("twxr/ice/scale_normal", weather.iceNormalM);
+			value("twxr/ice/scale_decal", weather.iceDecalM);
+			value("twxr/ice/decal1_k", weather.iceDecal1K);
+			value("twxr/ice/decal2_k", weather.iceDecal2K);
+			value("snow/luma_r", weather.snowLuma[0]);
+			value("snow/luma_g", weather.snowLuma[1]);
+			value("snow/luma_b", weather.snowLuma[2]);
+			value("snow/luma_a", weather.snowLuma[3]);
+			value("sedx/weather_water_gloss", weather.waterGloss);
+
+			// SEDX's own controls (no X-Plane counterpart, or one whose meaning differs)
+			value("sedx/meter_trim_lo", c.exposure.trimLow);
+			value("sedx/meter_trim_hi", c.exposure.trimHigh);
+			value("sedx/exposure_compensation", c.exposure.compensation);
+			value("sedx/fusion_shadows_ev", c.exposureFusion.x);
+			value("sedx/fusion_sigma", c.exposureFusion.y);
+			value("sedx/fusion_highlights_ev", c.fusionHighlights);
+			value("sedx/bloom_intensity", c.bloomIntensity);
+			value("sedx/sdr_night_slope_red", c.nightSlope.x);
+			value("sedx/sdr_night_slope_green", c.nightSlope.y);
+			value("sedx/sdr_night_slope_blue", c.nightSlope.z);
+			value("sedx/sdr_night_output_gain", c.nightSlope.w);
+			value("sedx/sdr_night_power_red", c.nightPower.x);
+			value("sedx/sdr_night_power_green", c.nightPower.y);
+			value("sedx/sdr_night_power_blue", c.nightPower.z);
+			value("sedx/sdr_night_start_deg", c.gradeNightStartDeg);
+			value("sedx/sdr_night_full_deg", c.gradeNightFullDeg);
+			value("sedx/sdr_snow_power_scale", c.snowPowerScale);
+			value("sedx/sdr_snow_cover", c.snowGradeCover);
+			value("sedx/tonemap_middle_grey", c.toneMiddleGrey);
+			value("sedx/fusion_strength", c.fusionStrength);
+			value("sedx/aerial_range_m", c.aerialRangeM);
+			value("sedx/airglow_nits", c.airglowNits);
+			value("sedx/star_brightness", c.starBrightness);
+			value("sedx/probe_specular_bias", c.probeSpecularBias);
+			float receiverPlane = c.shadowReceiverPlane ? 1.0f : 0.0f;
+			value("sedx/csm_receiver_plane", receiverPlane);
+			c.shadowReceiverPlane = receiverPlane > 0.5f;
+			value("sedx/csm_receiver_plane_slope_bias", c.shadowReceiverPlaneSlopeBias);
+			value("sedx/csm_height_near_ratio", c.shadowHeightNearRatio);
+			value("sedx/csm_height_far_ratio", c.shadowHeightFarRatio);
+			value("sedx/ssr_gloss_fade", ssr.glossFade);
+			float maxSteps = static_cast<float>(ssr.maxSteps);
+			value("sedx/ssr_max_steps", maxSteps);
+			ssr.maxSteps = static_cast<uint32_t>(std::clamp(std::lround(maxSteps), 1l, 1024l));
+			value("sedx/ssr_thickness_m", ssr.thicknessM);
+			value("sedx/ssr_thickness_ratio", ssr.thicknessRatio);
+			value("sedx/ssr_edge_fade", ssr.edgeFade);
+			value("sedx/ssr_history_clamp", ssr.historyClamp);
+			value("sedx/ssr_lobe_scale", ssr.lobeScale);
+			value("sedx/water_cascade_size_0", water.cascadeSizeM[0]);
+			value("sedx/water_cascade_size_1", water.cascadeSizeM[1]);
+			value("sedx/water_cascade_size_2", water.cascadeSizeM[2]);
+			value("sedx/water_cascade_size_3", water.cascadeSizeM[3]);
+			value("sedx/water_cascade_min_cycles", water.cascadeMinCycles);
+			value("sedx/water_spectrum_depth_m", water.spectrumDepthM);
+			value("sedx/water_height_per_amplitude", water.heightFromAmplitude);
+			value("sedx/water_foam_decay", water.foamDecay);
+			value("sedx/water_ior", water.refractiveIndex);
+			value("sedx/water_floor_albedo_r", water.floorAlbedo[0]);
+			value("sedx/water_floor_albedo_g", water.floorAlbedo[1]);
+			value("sedx/water_floor_albedo_b", water.floorAlbedo[2]);
+			value("sedx/water_floor_decal_m", water.floorDecalMeters);
+			value("sedx/water_clarity_min_m", water.clarityMinM);
+			value("sedx/water_shore_depth_m", water.shoreDepthM);
+			value("sedx/water_pond_wave_scale", water.pondWaveScale);
+			flag("sedx/water_use_fetch", water.useFetch);
+			value("sedx/water_grid_m", water.gridCellM);
+			value("sedx/water_tessellation_px", water.tessellationPixels);
+			return true;
+		}
+		catch (const std::exception &e)
+		{
+			if (error)
+				*error = e.what();
+			return false;
+		}
+	}
+
+	void Renderer::SetGridVisible(const bool visible)
+	{
+		s_GridVisible.store(visible, std::memory_order_relaxed);
+	}
+
+	bool Renderer::IsGridVisible()
+	{
+		return s_GridVisible.load(std::memory_order_relaxed);
+	}
+
+	void Renderer::SetGroundShown(const bool shown)
+	{
+		s_GroundShown.store(shown, std::memory_order_relaxed);
+	}
+
+	void Renderer::SetReferenceOverlay(const Ref<ImageResource> &image, const ReferenceOverlayMode mode, const float split, const float differenceGain)
+	{
+		std::scoped_lock lock(s_ReferenceMutex);
+		s_ReferenceImage = image;
+		s_ReferenceMode = image ? mode : ReferenceOverlayMode::Off;
+		s_ReferenceSplit = std::clamp(split, 0.0f, 1.0f);
+		s_ReferenceGain = differenceGain;
+	}
+
+	void Renderer::Pass_ReferenceOverlay(CommandList *cmdList, ImageResource *out)
+	{
+		Ref<ImageResource> image;
+		ReferenceOverlayMode mode;
+		float split, gain;
+		{
+			std::scoped_lock lock(s_ReferenceMutex);
+			image = s_ReferenceImage;
+			mode = s_ReferenceMode;
+			split = s_ReferenceSplit;
+			gain = s_ReferenceGain;
+		}
+		if (mode == ReferenceOverlayMode::Off || !image || !image->Get() || *image->Get() == VK_NULL_HANDLE || !out)
+			return;
+		if (!cmdList || cmdList->IsStickyInvalid() || !ShaderManager::IsShaderAvailable(Renderer_Shader::reference_overlay))
+			return;
+
+		Pass_Compute(cmdList, "reference_overlay", Renderer_Shader::reference_overlay, image.Get(), out, [&]
+		{
+			m_Pcb_Pass_Cpu.SetF4Value(static_cast<float>(mode), split, gain, 0.0f);
+			cmdList->PushConstants(m_Pcb_Pass_Cpu);
+		});
 	}
 
 	void Renderer::DestroyForwardResources()
@@ -1283,12 +1588,14 @@ namespace SceneryEditorX
 		if (!cmdList || cmdList->IsStickyInvalid() || !out)
 			return;
 
-		// Blended draws back to front; equal distances keep creation order (an X-Plane object's file order).
+		// Blended drapes first, in drape order (their depth nudged by rank sorts them against the opaque drapes below),
+		// then the rest back to front; equal distances keep creation order (an X-Plane object's file order).
 		struct ForwardDraw
 		{
 			uint32_t drawCall;
 			float distanceSquared;
 			uint64_t order;
+			uint64_t drapeOrder;
 		};
 		static std::vector<ForwardDraw> draws;
 		draws.clear();
@@ -1309,7 +1616,7 @@ namespace SceneryEditorX
 									 c.x * world.m01 + c.y * world.m11 + c.z * world.m21 + world.m31,
 									 c.x * world.m02 + c.y * world.m12 + c.z * world.m22 + world.m32);
 			const xMath::Vec3 d = center - camera;
-			draws.push_back({ i, d.x * d.x + d.y * d.y + d.z * d.z, static_cast<uint64_t>(entt::to_integral(static_cast<entt::entity>(*entity))) });
+			draws.push_back({ i, d.x * d.x + d.y * d.y + d.z * d.z, static_cast<uint64_t>(entt::to_integral(static_cast<entt::entity>(*entity))), drawCall.drapeOrder });
 		}
 
 		if (draws.empty())
@@ -1317,6 +1624,10 @@ namespace SceneryEditorX
 
 		std::ranges::sort(draws, [](const ForwardDraw &a, const ForwardDraw &b)
 		{
+			if ((a.drapeOrder != 0) != (b.drapeOrder != 0))
+				return a.drapeOrder != 0;
+			if (a.drapeOrder != b.drapeOrder)
+				return a.drapeOrder < b.drapeOrder;
 			return a.distanceSquared != b.distanceSquared ? a.distanceSquared > b.distanceSquared : a.order < b.order;
 		});
 
@@ -1339,7 +1650,13 @@ namespace SceneryEditorX
 		if (cmdList->IsStickyInvalid())
 			return;
 
-		const xMath::Vec3 &sun = GetFallbackSunDirection();
+		// The environment's light, as light_composition.slang gives the deferred surfaces (environment_lighting.slang)
+		cmdList->SetTexture(Renderer_BindingsSrv::tex3, GetRenderTarget(Renderer_RenderTarget::lut_brdf_specular));
+		BindAtmosphere(cmdList, ATMOSPHERE_LIGHTING);
+		BindShadows(cmdList);
+		BindReflections(cmdList);	// glossy blended surfaces trace their own (ssr_common.slang)
+		// WEATHER_TRANSPARENT drapes take the receptivity of the deferred surface under them (weather.slang)
+		cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_weather, GetRenderTarget(Renderer_RenderTarget::gbuffer_weather));
 		for (const ForwardDraw &draw : draws)
 		{
 			const Renderer_DrawCall &drawCall = m_DrawCalls[draw.drawCall];
@@ -1349,8 +1666,7 @@ namespace SceneryEditorX
 			m_Pcb_Pass_Cpu.drawIndex = drawCall.drawData_Index;
 			m_Pcb_Pass_Cpu.isTransparent = 1;
 			m_Pcb_Pass_Cpu.materialIndex = materialAsset->GetIndex();
-			m_Pcb_Pass_Cpu.SetF3Value(sun.x, sun.y, sun.z);
-			m_Pcb_Pass_Cpu.SetF2Value(m_Has_DirectionalLight ? 0.0f : 1.0f, s_FallbackDaylight);
+			m_Pcb_Pass_Cpu.SetF4Value(m_Has_DirectionalLight ? 0.0f : 1.0f, 0.0f, 0.0f, 0.0f);
 			cmdList->PushConstants(m_Pcb_Pass_Cpu);
 
 			cmdList->SetCullMode(cvar_wireframe.GetValueAs<bool>() ? CullMode::None :
@@ -1447,6 +1763,7 @@ namespace SceneryEditorX
 			return;
 
 		cmdList->PushConstants(m_Pcb_Pass_Cpu);
+		BindAtmosphere(cmdList, ATMOSPHERE_AERIAL);
 		cmdList->SetCullMode(CullMode::None);
 		cmdList->SetVertexBuffer(buffer.Get(), nullptr);
 		for (const Range &range : ranges)
@@ -1499,8 +1816,13 @@ namespace SceneryEditorX
 		pso.shaders[static_cast<uint32_t>(StageType::Compute)] = shader_ssao;
 
 		{
+			// The g-buffer (not SetCommonTextures: it binds ssao too, which this pass writes)
 			cmdList->SetPipelineState(pso);
-			SetCommonTextures(cmdList);
+			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_albedo,   GetRenderTarget(Renderer_RenderTarget::gbuffer_color));
+			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_normal,   GetRenderTarget(Renderer_RenderTarget::gbuffer_normal));
+			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_material, GetRenderTarget(Renderer_RenderTarget::gbuffer_material));
+			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_velocity, GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity));
+			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_depth,    GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
 			cmdList->SetTexture(Renderer_BindingsUav::tex, tex_ssao);
 			cmdList->Dispatch(tex_ssao, cvar_resolution_scale.GetValue());
 		}
@@ -1698,31 +2020,8 @@ namespace SceneryEditorX
 		if (!img || img->GetImageSpec().mipCount <= 1)
 			return;
 
-		// The SPD shaders aren't ported yet (scale.slang has no entry point): a min chain (hi-z) is reduced one level
-		// per dispatch instead, each reading the level above through its own view
-		if (filter == Renderer_DownsampleFilter::Min && !ShaderManager::IsShaderAvailable(Renderer_Shader::ffx_spd_min))
-		{
-			PipelineState pso;
-			pso.name = "downsample_min";
-			Shader *shader = GetValidComputeShader(Renderer_Shader::downsample_min, pso.name);
-			if (!shader)
-				return;
-			pso.shaders[static_cast<uint32_t>(StageType::Compute)] = shader;
-			cmdList->SetPipelineState(pso);
-
-			for (uint32_t mip = 1; mip < img->GetImageSpec().mipCount; mip++)
-			{
-				// binding the level above moves it to ShaderRead: the barrier after the previous dispatch's writes
-				cmdList->SetTexture(Renderer_BindingsSrv::tex, img, mip - 1, 1);
-				cmdList->SetTexture(Renderer_BindingsUav::tex, img, mip, 1);
-
-				const uint32_t width = xMath::Max(img->GetWidth() >> mip, 1u);
-				const uint32_t height = xMath::Max(img->GetHeight() >> mip, 1u);
-				cmdList->Dispatch((width + 7) / 8, (height + 7) / 8, 1);
-			}
-			return;
-		}
-
+		// The SPD shaders aren't ported yet (scale.slang has no entry point); depth pyramids are built by
+		// Pass_DepthPyramid (z_minmax.slang) instead
 		Renderer_Shader spdShader;
 		switch (filter)
 		{
@@ -1764,41 +2063,6 @@ namespace SceneryEditorX
 			const uint32_t dispatchX = (img->GetWidth()  + 63) / 64;
 			const uint32_t dispatchY = (img->GetHeight() + 63) / 64;
 			cmdList->Dispatch(dispatchX, dispatchY, 1);
-		}
-	}
-
-	// -------------------------------------------------------
-	// Pass_CloudShadow
-	// Projects cloud shadow onto a 2D shadow map consumed by lighting passes.
-	// Requires cloud noise textures to already be in ShaderRead layout.
-	// -------------------------------------------------------
-
-	void Renderer::Pass_CloudShadow(CommandList* cmdList)
-	{
-		ImageResource* texCloudShadow = GetRenderTarget(Renderer_RenderTarget::cloud_shadow);
-		ImageResource* texCloudShape  = GetRenderTarget(Renderer_RenderTarget::cloud_noise_shape);
-		ImageResource* texCloudDetail = GetRenderTarget(Renderer_RenderTarget::cloud_noise_detail);
-
-		if (!texCloudShadow || !texCloudShape)
-			return;
-
-		{
-			PipelineState pso;
-			pso.name = "cloud_shadow";
-			Shader* shader_cloud_shadow = GetValidComputeShader(Renderer_Shader::cloud_shadow, pso.name);
-			if (!shader_cloud_shadow)
-				return;
-			pso.shaders[static_cast<uint32_t>(StageType::Compute)] = shader_cloud_shadow;
-			cmdList->SetPipelineState(pso);
-
-			cmdList->SetTexture(Renderer_BindingsSrv::tex3d_cloud_shape, texCloudShape);
-			if (texCloudDetail)
-				cmdList->SetTexture(Renderer_BindingsSrv::tex3d_cloud_detail, texCloudDetail);
-
-			cmdList->SetTexture(Renderer_BindingsUav::tex, texCloudShadow);
-			cmdList->Dispatch(texCloudShadow);
-
-			texCloudShadow->SetLayout(Layout::ImageLayout::ShaderRead, cmdList, 0, 0);
 		}
 	}
 
@@ -1900,11 +2164,8 @@ namespace SceneryEditorX
 			// Shadow atlas
 			cmdList->SetTexture(Renderer_BindingsSrv::tex,  GetRenderTarget(Renderer_RenderTarget::shadow_atlas));
 
-			// Screen-space ambient occlusion (optional)
-			if (ImageResource* texSsao = GetRenderTarget(Renderer_RenderTarget::ssao))
-			{
-			    cmdList->SetTexture(Renderer_BindingsSrv::ssao, texSsao);
-			}
+			// Ambient occlusion (white when none ran this frame)
+			BindAmbientOcclusion(cmdList);
 
 			// Screen-space shadows
 			cmdList->SetTexture(Renderer_BindingsSrv::tex2, GetRenderTarget(Renderer_RenderTarget::sss));
@@ -1947,99 +2208,24 @@ namespace SceneryEditorX
 			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_normal,   GetRenderTarget(Renderer_RenderTarget::gbuffer_normal));
 			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_material, GetRenderTarget(Renderer_RenderTarget::gbuffer_material));
 			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_depth,    GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
+			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_emissive, GetRenderTarget(Renderer_RenderTarget::gbuffer_emissive));
 			cmdList->SetTexture(Renderer_BindingsSrv::tex,              texDiffuse);
 			cmdList->SetTexture(Renderer_BindingsSrv::tex2,             texSpecular);
+			cmdList->SetTexture(Renderer_BindingsSrv::tex3,             GetRenderTarget(Renderer_RenderTarget::lut_brdf_specular));
 			cmdList->SetTexture(Renderer_BindingsUav::tex,              texFrameRender);
+			BindAtmosphere(cmdList, ATMOSPHERE_LIGHTING);
+			BindShadows(cmdList);
+			BindAmbientOcclusion(cmdList);	// the ambient light's and the reflections' occlusion
+			BindReflections(cmdList);		// the screen-space reflections over the probes
 
-			// Until the scene has a directional light of its own, light_composition.slang lights it with a placeholder
-			// sun + sky (fallback_lighting.slang) dimmed by the daylight setting; point and spot lights add on top.
-			const xMath::Vec3 &fallbackSunDirection = GetFallbackSunDirection();
+			// The environment's sun and moon light the scene unless it has a directional light of its own (Pass_Light
+			// draws that one, in the same units); the sky and the ground always add their ambient light
 			m_Pcb_Pass_Cpu.isTransparent = isTransparentPass ? 1u : 0u;
-			m_Pcb_Pass_Cpu.SetF3Value(fallbackSunDirection.x, fallbackSunDirection.y, fallbackSunDirection.z);
-			m_Pcb_Pass_Cpu.SetF2Value(m_Has_DirectionalLight ? 0.0f : 1.0f, s_FallbackDaylight);
+			m_Pcb_Pass_Cpu.SetF4Value(m_Has_DirectionalLight ? 0.0f : 1.0f, 0.0f, 0.0f, 0.0f);
 			cmdList->PushConstants(m_Pcb_Pass_Cpu);
 
 			cmdList->Dispatch(texFrameRender);
 		}
-	}
-
-	// -------------------------------------------------------
-	// Pass_Light_ImageBased
-	// Applies specular IBL from the filtered skysphere and the BRDF split-sum LUT.
-	// -------------------------------------------------------
-
-	void Renderer::Pass_Light_ImageBased(CommandList* cmdList)
-	{
-		ImageResource* texSkysphere    = GetRenderTarget(Renderer_RenderTarget::skysphere);
-		ImageResource* texLutBrdf     = GetRenderTarget(Renderer_RenderTarget::lut_brdf_specular);
-		ImageResource* texFrameRender = GetRenderTarget(Renderer_RenderTarget::frame_render);
-		if (!texSkysphere || !texLutBrdf)
-			return;
-		Shader* shader_light_ibl = GetValidComputeShader(Renderer_Shader::light_image_based, "light_image_based");
-		if (!shader_light_ibl)
-			return;
-
-		{
-			PipelineState pso;
-			pso.name = "light_image_based";
-			pso.shaders[static_cast<uint32_t>(StageType::Compute)] = shader_light_ibl;
-			cmdList->SetPipelineState(pso);
-
-			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_albedo,   GetRenderTarget(Renderer_RenderTarget::gbuffer_color));
-			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_normal,   GetRenderTarget(Renderer_RenderTarget::gbuffer_normal));
-			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_material, GetRenderTarget(Renderer_RenderTarget::gbuffer_material));
-			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_depth,    GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
-			cmdList->SetTexture(Renderer_BindingsSrv::tex,              texSkysphere);
-			cmdList->SetTexture(Renderer_BindingsSrv::tex2,             texLutBrdf);
-			cmdList->SetTexture(Renderer_BindingsUav::tex,              texFrameRender);
-
-			cmdList->Dispatch(texFrameRender);
-		}
-	}
-
-	// -------------------------------------------------------
-	// Pass_Light_Reflections
-	// Screen-space reflections (SSR) that complement IBL for rough materials.
-	// Outputs a separate reflections buffer that is blended into frame_render.
-	// -------------------------------------------------------
-
-	void Renderer::Pass_Light_Reflections(CommandList* cmdList)
-	{
-		ImageResource* texReflections  = GetRenderTarget(Renderer_RenderTarget::reflections);
-		ImageResource* texFrameRender = GetRenderTarget(Renderer_RenderTarget::frame_render);
-		if (!texReflections)
-			return;
-
-		// Guard: clear reflections if the feature was just toggled off
-		if (m_PassState.m_ClearedReflections)
-		{
-			cmdList->ClearTexture(texReflections, Color::Black());
-			m_PassState.m_ClearedReflections = false;
-		}
-
-		{
-			PipelineState pso;
-			pso.name = "light_reflections";
-			Shader* shader_reflections = GetValidComputeShader(Renderer_Shader::light_reflections, pso.name);
-			if (!shader_reflections)
-				return;
-			pso.shaders[static_cast<uint32_t>(StageType::Compute)] = shader_reflections;
-			cmdList->SetPipelineState(pso);
-
-			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_normal,   GetRenderTarget(Renderer_RenderTarget::gbuffer_normal));
-			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_material, GetRenderTarget(Renderer_RenderTarget::gbuffer_material));
-			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_depth,    GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
-			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_velocity, GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity));
-			cmdList->SetTexture(Renderer_BindingsSrv::tex,              texFrameRender);
-			cmdList->SetTexture(Renderer_BindingsUav::tex,              texReflections);
-
-			cmdList->Dispatch(texReflections);
-		}
-
-		texReflections->SetLayout(Layout::ImageLayout::ShaderRead, cmdList, 0, 0);
-
-		// Composite reflections into the frame buffer using the blit pass
-		Pass_Compute(cmdList, "reflections_composite", Renderer_Shader::blit, texReflections, texFrameRender, nullptr);
 	}
 
 	// -------------------------------------------------------
@@ -2118,7 +2304,6 @@ namespace SceneryEditorX
 	{
 		ImageResource* tex_frame_render        = GetRenderTarget(Renderer_RenderTarget::frame_render);
 		ImageResource* tex_frame_render_opaque = GetRenderTarget(Renderer_RenderTarget::frame_render_opaque);
-		ImageResource* tex_skysphere           = GetRenderTarget(Renderer_RenderTarget::skysphere);
 
 		{
 			PipelineState pso;
@@ -2135,153 +2320,11 @@ namespace SceneryEditorX
 			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_depth,    GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
 			cmdList->SetTexture(Renderer_BindingsSrv::tex,              tex_frame_render_opaque);
 
-			if (tex_skysphere)
-				cmdList->SetTexture(Renderer_BindingsSrv::tex2, tex_skysphere);
+			// tex2 held the old skysphere (gone with plan Phase 6); this pass isn't in the frame graph
 
 			cmdList->SetTexture(Renderer_BindingsUav::tex, tex_frame_render);
 
 			cmdList->Dispatch(tex_frame_render);
-		}
-	}
-
-	// -------------------------------------------------------
-	// Pass_AA_Upscale
-	// Applies CAS (Contrast Adaptive Sharpening) upscale from render to output resolution,
-	// optionally followed by FXAA, then computes auto-exposure from the output luminance.
-	// -------------------------------------------------------
-
-	void Renderer::Pass_AA_Upscale(CommandList* cmdList)
-	{
-		ImageResource* tex_render  = GetRenderTarget(Renderer_RenderTarget::frame_render);
-		ImageResource* tex_output  = GetRenderTarget(Renderer_RenderTarget::frame_output);
-
-		// CAS upscale: render → output
-		Pass_Compute(cmdList, "cas_upscale", Renderer_Shader::ffx_cas, tex_render, tex_output, nullptr);
-
-		// Auto-exposure: sample output luminance into a 1×1 R32_SFLOAT texture
-		{
-			ImageResource* tex_auto_exp          = GetRenderTarget(Renderer_RenderTarget::auto_exposure);
-			ImageResource* tex_auto_exp_previous = GetRenderTarget(Renderer_RenderTarget::auto_exposure_previous);
-
-			PipelineState pso;
-			pso.name = "auto_exposure";
-			Shader* shader_auto_exposure = GetValidComputeShader(Renderer_Shader::auto_exposure, pso.name);
-			if (!shader_auto_exposure)
-				return;
-			pso.shaders[static_cast<uint32_t>(StageType::Compute)] = shader_auto_exposure;
-			cmdList->SetPipelineState(pso);
-
-			cmdList->SetTexture(Renderer_BindingsSrv::tex,  tex_output);
-			cmdList->SetTexture(Renderer_BindingsSrv::tex2, tex_auto_exp_previous);
-			cmdList->SetTexture(Renderer_BindingsUav::tex,  tex_auto_exp);
-
-			cmdList->Dispatch(tex_auto_exp);
-
-			// Ping-pong: swap current ↔ previous for temporal smoothing next frame
-			std::swap(
-				GetRenderTargets()[static_cast<uint32_t>(Renderer_RenderTarget::auto_exposure)],
-				GetRenderTargets()[static_cast<uint32_t>(Renderer_RenderTarget::auto_exposure_previous)]
-			);
-		}
-	}
-
-	// -------------------------------------------------------
-	// Pass_PostProcess
-	// Full post-processing stack: bloom, tone-mapping, film grain, dithering, outline.
-	// Reads from frame_output and writes back to frame_output.
-	// -------------------------------------------------------
-
-	void Renderer::Pass_PostProcess(CommandList* cmdList)
-	{
-		ImageResource* tex_output   = GetRenderTarget(Renderer_RenderTarget::frame_output);
-		ImageResource* tex_output_2 = GetRenderTarget(Renderer_RenderTarget::frame_output_2);
-		ImageResource* tex_bloom    = GetRenderTarget(Renderer_RenderTarget::bloom);
-
-		// Bloom -------------------------------------------------------
-		{
-			// 1. Luminance threshold + downsample to bloom mip-0
-			{
-				PipelineState pso;
-				pso.name = "bloom_luminance";
-				pso.shaders[static_cast<uint32_t>(StageType::Compute)] = ShaderManager::GetShader(Renderer_Shader::bloom_luminance);
-				cmdList->SetPipelineState(pso);
-
-				cmdList->SetTexture(Renderer_BindingsSrv::tex,  tex_output);
-				cmdList->SetTexture(Renderer_BindingsUav::tex,  tex_bloom, 0, 1);
-				cmdList->Dispatch(tex_bloom);
-			}
-
-			// 2. Build full mip chain via SPD average
-			Pass_Downscale(cmdList, tex_bloom, Renderer_DownsampleFilter::Average);
-
-			// 3. Progressive upsample + blend mips (coarse → fine)
-			for (uint32_t mip = tex_bloom->GetImageSpec().mipCount - 1; mip > 0; mip--)
-			{
-				PipelineState pso;
-				pso.name = "bloom_upsample_blend";
-				pso.shaders[static_cast<uint32_t>(StageType::Compute)] = ShaderManager::GetShader(Renderer_Shader::bloom_upsample_blend_mip);
-				cmdList->SetPipelineState(pso);
-
-				cmdList->SetTexture(Renderer_BindingsSrv::tex, tex_bloom, mip,     1);
-				cmdList->SetTexture(Renderer_BindingsUav::tex, tex_bloom, mip - 1, 1);
-				cmdList->Dispatch(tex_bloom);
-
-				cmdList->InsertBarrier(tex_bloom->Get(), tex_bloom->GetImageSpec().format, mip - 1, 1, 0, Layout::ImageLayout::ShaderRead);
-			}
-
-			// 4. Blend full bloom into frame buffer → tex_output_2
-			{
-				PipelineState pso;
-				pso.name = "bloom_blend_frame";
-				pso.shaders[static_cast<uint32_t>(StageType::Compute)] = ShaderManager::GetShader(Renderer_Shader::bloom_blend_frame);
-				cmdList->SetPipelineState(pso);
-
-				cmdList->SetTexture(Renderer_BindingsSrv::tex,  tex_bloom);
-				cmdList->SetTexture(Renderer_BindingsSrv::tex2, tex_output);
-				cmdList->SetTexture(Renderer_BindingsUav::tex,  tex_output_2);
-				cmdList->Dispatch(tex_output_2);
-			}
-		}
-
-		// Tonemapping + auto-exposure (output_c reads from tex_output_2, writes to tex_output)
-		Pass_Output(cmdList, tex_output_2, tex_output);
-
-		// Dithering
-		Pass_Compute(cmdList, "dithering",   Renderer_Shader::dithering,    tex_output, tex_output, nullptr);
-
-		// Film grain
-		Pass_Compute(cmdList, "film_grain",  Renderer_Shader::film_grain_comp,   tex_output, tex_output, nullptr);
-
-		// Selection outline (optional)
-		{
-			ImageResource* tex_outline = GetRenderTarget(Renderer_RenderTarget::outline);
-			if (tex_outline)
-			{
-				PipelineState pso;
-				pso.name = "outline_composite";
-				pso.shaders[static_cast<uint32_t>(StageType::Compute)] = ShaderManager::GetShader(Renderer_Shader::outline);
-				cmdList->SetPipelineState(pso);
-
-				cmdList->SetTexture(Renderer_BindingsSrv::tex, tex_outline);
-				cmdList->SetTexture(Renderer_BindingsUav::tex, tex_output);
-				cmdList->Dispatch(tex_output);
-			}
-		}
-
-		// Debug visualisation (no-op in release)
-		{
-			PipelineState pso;
-			pso.name = "dof";
-			pso.shaders[static_cast<uint32_t>(StageType::Compute)] = ShaderManager::GetShader(Renderer_Shader::depth_of_field);
-			cmdList->SetPipelineState(pso);
-
-			cmdList->SetTexture(Renderer_BindingsSrv::tex,              tex_output);
-			cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_depth,    GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
-			cmdList->SetTexture(Renderer_BindingsUav::tex,              tex_output_2);
-			cmdList->Dispatch(tex_output_2);
-
-			// Blit result back to primary output
-			Pass_Blit(cmdList, tex_output_2, tex_output);
 		}
 	}
 
@@ -2300,7 +2343,7 @@ namespace SceneryEditorX
 			return;
 
 		Ref<Font> font = GetFont();
-		if (!font->HasText())
+		if (!font || !font->HasText())
 			return;
 
 		font->UpdateVertexAndIndexBuffers(cmdList);

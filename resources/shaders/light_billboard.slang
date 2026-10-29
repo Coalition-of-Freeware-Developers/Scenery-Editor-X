@@ -19,6 +19,7 @@
  */
 import resources;
 import color;
+import environment_lighting;
 
 struct BillboardVertex
 {
@@ -34,9 +35,11 @@ struct PixelInput
     float2 uv : TEXCOORD;
     nointerpolation float3 color : COLOR;
     nointerpolation uint mode : MODE;
+    nointerpolation float3 world : WORLD;	// the sprite's centre, for the air between it and the camera
 };
 
 static const float min_radius_pixels = 1.5f; // far lights stay a few pixels wide
+static const float BILLBOARD_NITS = 10.0f;      // luminance of a sprite of brightness 1 (ASSUMPTION until plan Phase 14's photometric lights)
 
 [shader("vertex")]
 PixelInput main_vs(BillboardVertex input)
@@ -66,6 +69,7 @@ PixelInput main_vs(BillboardVertex input)
     output.uv = input.uv;
     output.color = input.normal / grow; // widened sprites spread their light rather than brighten
     output.mode = (uint)round((abs(input.tangent.x) - 1.0f) * 0.5f);
+    output.world = input.position;
     return output;
 }
 
@@ -83,5 +87,9 @@ float4 main_frag(PixelInput input) : SV_TARGET
     else
         result = input.color * rgb;
 
-    return float4(max(result, 0.0f), 0.0f); // additive
+    // A sprite of brightness 1 is BILLBOARD_NITS of luminance, pre-exposed like the rest of the frame, dimmed by the air
+    // between (additive: the frame behind already has the in-scattering)
+    const float2 screen_uv = input.position.xy / get_resolution_render();
+    const float3 air = xp_aerial_transmittance(screen_uv, length(input.world - get_camera_position()));
+    return float4(max(result, 0.0f) * air * BILLBOARD_NITS * get_pre_exposure(), 0.0f); // additive
 }

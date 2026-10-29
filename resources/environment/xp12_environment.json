@@ -1,0 +1,962 @@
+{
+	"about": "X-Plane 12 rendering constants by art-control name (plan REQ-001, GUD-002). Each entry: value and where it came from. X-Plane names carry X-Plane's values as the reference probe dumped them; sedx/* are SEDX's own controls. Exposure tables (photometric/ev100_mid and ev100_bias by sun elevation) are fitted in renderer/exposure.h.",
+	"xp_build": "12.4.4",
+	"controls": {
+		"lighting/E_sun_lx": {
+			"value": 133000.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20)"
+		},
+		"lighting/E_moon_lx": {
+			"value": 0.6,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20)"
+		},
+		"lighting/scenery_ref_nts": {
+			"value": 33.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): luminance of a white LIT texel with no ATTR_LIT_LEVEL (xp_object.cpp)"
+		},
+		"sun/angular_diameter": {
+			"value": 0.52,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): degrees"
+		},
+		"photometric/K": {
+			"value": 12.5,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20)"
+		},
+		"photometric/ev100_min": {
+			"value": 3.5,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20)"
+		},
+		"photometric/ev100_max": {
+			"value": 14.8,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20)"
+		},
+		"autoexposure/gain_lo": {
+			"value": 0.5,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): share of a reading below ev100_mid the exposure takes (fits the one genuine auto readout: EV 4.31 at sun -12 deg)"
+		},
+		"autoexposure/gain_hi": {
+			"value": 0.4,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): share of a reading above ev100_mid"
+		},
+		"autoexposure/_exp_radius": {
+			"value": 0.33,
+			"source": "ASSUMPTION: centre-weight radius in screen heights"
+		},
+		"exposure/speed_up": {
+			"value": 3.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20)"
+		},
+		"exposure/speed_down": {
+			"value": 5.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20)"
+		},
+		"exposure_fusion/max_mip": {
+			"value": 6.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): SEDX clamps to its 5-level pyramid"
+		},
+		"exposure_fusion/dis_near": {
+			"value": 1.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): km"
+		},
+		"exposure_fusion/dis_far": {
+			"value": 4.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): km"
+		},
+		"atmo/rayleigh_r": {
+			"value": 5.596e-06,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): dumped x 1e-6, 1/m"
+		},
+		"atmo/rayleigh_g": {
+			"value": 1.175e-05,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): dumped x 1e-6, 1/m"
+		},
+		"atmo/rayleigh_b": {
+			"value": 2.768e-05,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): dumped x 1e-6, 1/m"
+		},
+		"atmo/ozone_r": {
+			"value": 2.427e-06,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): dumped x 1e-6, 1/m"
+		},
+		"atmo/ozone_g": {
+			"value": 1.508e-06,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): dumped x 1e-6, 1/m"
+		},
+		"atmo/ozone_b": {
+			"value": 1.05e-07,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): dumped x 1e-6, 1/m"
+		},
+		"atmo/ozone_center": {
+			"value": 22300.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): m"
+		},
+		"atmo/ozone_width": {
+			"value": 35600.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): m, full width of the tent"
+		},
+		"atmo/fog_albedo": {
+			"value": 0.9,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): scattering albedo of the visibility fog"
+		},
+		"sedx/fog_start_visibility_m": {
+			"value": 20000.0,
+			"source": "SEDX, from X-Plane 12.4.4's stats/scattering/est_view_vis_fog (reference probe dumps, 2026-10-25): FLT_MAX (no fog) at 20, 30 and 80 km visibility, where X-Plane only thickens its Mie. The visibility's layer has no fog at this visibility and more"
+		},
+		"sedx/fog_full_visibility_m": {
+			"value": 8000.0,
+			"source": "SEDX calibration (2026-10-26): the clean *_aerial_hazy shots (8 km) match with the whole layer as fog (luminance within 0.2 EV, the veil's colour); ASSUMPTION: linear from fog_start_visibility_m. X-Plane's own fog sees 14,488 m from 600 m up there, so its layer thins with height faster than SEDX's"
+		},
+		"scattering/g_cornette_shanks": {
+			"value": 0.76,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20)"
+		},
+		"scattering/earth_albedo": {
+			"value": 0.15,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20)"
+		},
+		"scattering/mie_albedo": {
+			"value": 0.9,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20)"
+		},
+		"scattering/mie_scattering_exponent": {
+			"value": -1.3,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): Angstrom exponent; _absorption_exponent is the same"
+		},
+		"scattering/multi_rat": {
+			"value": 1.25,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20)"
+		},
+		"scattering/vis_cutoff_ratio": {
+			"value": 0.01,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): visibility = distance to 1% contrast: extinction 4.605 / V"
+		},
+		"reno/rcas_rat": {
+			"value": 1.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): FSR 1 RCAS scale"
+		},
+		"color_management/sdr/slope_red": {
+			"value": 0.837,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25): the day grade (where middle grey lands, per channel)"
+		},
+		"color_management/sdr/slope_green": {
+			"value": 1.0,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25): the day grade (where middle grey lands, per channel)"
+		},
+		"color_management/sdr/slope_blue": {
+			"value": 1.132,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25): the day grade (where middle grey lands, per channel)"
+		},
+		"color_management/sdr/saturation": {
+			"value": 1.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20)"
+		},
+		"color_management/sdr/offset_red": {
+			"value": 0.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20)"
+		},
+		"color_management/sdr/offset_green": {
+			"value": 0.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20)"
+		},
+		"color_management/sdr/offset_blue": {
+			"value": 0.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20)"
+		},
+		"color_management/sdr/output_gain": {
+			"value": 1.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20)"
+		},
+		"color_management/sdr/power_red": {
+			"value": 1.6,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25): the day grade, the contrast around middle grey in scene linear (155 of 195 shots; 1.44 / 1.44 / 1.5408 with snow on the ground, 1 at night)"
+		},
+		"color_management/sdr/power_green": {
+			"value": 1.6,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"color_management/sdr/power_blue": {
+			"value": 1.712,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"color_management/sdr/output_gamma": {
+			"value": 1.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20)"
+		},
+		"color_management/compression": {
+			"value": 0.075,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25): the display curve's working space, read as each channel keeping 1 - c of itself and taking c of the luminance (ASSUMPTION about the construction; abney_correction 1.22 is not applied)"
+		},
+		"shadow/csm/lambda": {
+			"value": 1.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): 1 = logarithmic cascade splits"
+		},
+		"shadow/overlap_ratio": {
+			"value": 0.01,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): share of a cascade's depth it blends into the next over"
+		},
+		"twxr/rain_darkening_strength": {
+			"value": 0.25,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"sedx/meter_trim_lo": {
+			"value": 0.5,
+			"source": "SEDX metering: histogram fraction below which nothing meters (reads within 0.3 EV of X-Plane's photometric/ev100_mtr in clear daylight and at night)"
+		},
+		"sedx/meter_trim_hi": {
+			"value": 0.98,
+			"source": "SEDX metering: histogram fraction above which nothing meters"
+		},
+		"sedx/exposure_compensation": {
+			"value": 0.0,
+			"source": "SEDX: EV on top of the automatic exposure, positive brightens"
+		},
+		"sedx/fusion_shadows_ev": {
+			"value": 1.0,
+			"source": "ASSUMPTION: EV the exposure fusion lifts the shadows by (X-Plane exposure_fusion/shadows is an adaptive readout, 0.2 in daylight)"
+		},
+		"sedx/fusion_sigma": {
+			"value": 0.2,
+			"source": "Mertens et al. 2007 well-exposedness width, as in Wronski 2022 (X-Plane exposure_fusion/sigma 5.5 means something else)"
+		},
+		"sedx/fusion_highlights_ev": {
+			"value": 1.0,
+			"source": "ASSUMPTION: EV the exposure fusion lowers the highlights by"
+		},
+		"sedx/bloom_intensity": {
+			"value": 0.04,
+			"source": "ASSUMPTION: share of the bloom chain in the frame (X-Plane hdr/bloom1 -5.9, bloom_exponent 1.51 not mapped yet)"
+		},
+		"sedx/aerial_range_m": {
+			"value": 128000.0,
+			"source": "aerial perspective volume depth (X-Plane scattering/cache_distance_max 250 km, 25 km in fog)"
+		},
+		"sedx/airglow_nits": {
+			"value": 0.0002,
+			"source": "ASSUMPTION: moonless night sky, about 22 mag/arcsec^2"
+		},
+		"sedx/star_brightness": {
+			"value": 1.0,
+			"source": "procedural stars: 1 = catalogue magnitudes (X-Plane stars/gain_photometric 20 not mapped)"
+		},
+		"sedx/probe_specular_bias": {
+			"value": 0.0,
+			"source": "REQ-005 specular LOD bias"
+		},
+		"shadow/csm_split_exterior": {
+			"value": 3.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): sun-shadow cascades; the shadow quality level sets it (renopt_shadow_quality)"
+		},
+		"shadow/csm/near_limit_exterior": {
+			"value": 4.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): m, where the split scheme starts (the first cascade still starts at the camera)"
+		},
+		"shadow/csm/far_limit_exterior": {
+			"value": 250.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): m of view depth; the shadow quality level sets it"
+		},
+		"shadow/total_fade_ratio": {
+			"value": 0.7,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): shadows fade out from this share of the far limit (ASSUMPTION about its meaning); the shadow quality level sets it"
+		},
+		"shadow/csm/pad_near_const": {
+			"value": 100.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): m the near plane moves toward the light"
+		},
+		"shadow/csm/pad_near_ratio": {
+			"value": 1.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): plus this share of the cascade's radius (ASSUMPTION: radius, not diameter)"
+		},
+		"fbo/shadow_cam_size": {
+			"value": 2048.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): shadow-map size; the shadow quality level sets it"
+		},
+		"shadow/bias_const": {
+			"value": 1.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): constant depth bias on the casters, in depth units (read as polygon-offset units)"
+		},
+		"shadow/bias_slope": {
+			"value": 2.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): slope-scaled depth bias on the casters (read as polygon-offset slope factor)"
+		},
+		"shadow/bias_n_constant": {
+			"value": 0.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): receiver normal offset, texels"
+		},
+		"shadow/bias_n_slope": {
+			"value": 0.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): receiver normal offset per unit of tan(angle to the light), texels"
+		},
+		"shadow/want_soft": {
+			"value": 1.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): 3 x 3 filtered lookups"
+		},
+		"clouds/cloud_shadow_lighten_ratio": {
+			"value": 0.75,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): read as the share of the light clouds can take away (ASSUMPTION)"
+		},
+		"cloud/shadow_alpha": {
+			"value": 0.0125,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): read as extinction per meter of cloud cover along the light (ASSUMPTION)"
+		},
+		"clouds/shadow_extent_min_km": {
+			"value": 64.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): the first cloud-shadow cascade's width"
+		},
+		"clouds/shadow_extent_km": {
+			"value": 256.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): the last cloud-shadow cascade's width"
+		},
+		"ssao/radius": {
+			"value": 2.1,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): m, view space; with ssao/dynamic_values X-Plane wrote 2.1 at 2-8 m above the ground and 22 at 600 m (renderer/cacao.h scales it with the height)"
+		},
+		"ssao/shadow_multiplier": {
+			"value": 1.4,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): CACAO's shadowMultiplier (x 4.3 in the shaders)"
+		},
+		"ssao/shadow_power": {
+			"value": 2.4,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20)"
+		},
+		"ssao/shadow_clamp": {
+			"value": 1.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20)"
+		},
+		"ssao/horizon_angle_threshold": {
+			"value": 0.4,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20)"
+		},
+		"ssao/fade_out_from": {
+			"value": 1000.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): m"
+		},
+		"ssao/fade_out_to": {
+			"value": 10000.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): m"
+		},
+		"ssao/fade_in_from": {
+			"value": 0.5,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): m, X-Plane's own fade near the camera (not in AMD's CACAO)"
+		},
+		"ssao/fade_in_to": {
+			"value": 2.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): m; 100 at 600 m above the ground (dynamic values)"
+		},
+		"ssao/adaptive_quality_limit": {
+			"value": 0.75,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): CACAO highest only"
+		},
+		"ssao/blur_pass_count": {
+			"value": 3.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20)"
+		},
+		"ssao/sharpness": {
+			"value": 1.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20)"
+		},
+		"ssao/detail_shadow_strength": {
+			"value": 0.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20)"
+		},
+		"ssao/bilateral_sigma_squared": {
+			"value": 2.4,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): half-resolution upscale"
+		},
+		"ssao/bilateral_similarity_distance_sigma": {
+			"value": 2.7,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20)"
+		},
+		"ssao/exterior_strength": {
+			"value": 1.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): applied as lerp(1, ao ^ curve, strength) (ASSUMPTION; identity at these values)"
+		},
+		"ssao/exterior_curve": {
+			"value": 1.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20)"
+		},
+		"ssao/dynamic_values": {
+			"value": 1.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): radius and fade-in follow the camera's height above the ground"
+		},
+		"sedx/csm_receiver_plane": {
+			"value": 1.0,
+			"source": "SEDX: soft shadow lookups compare against the receiver's plane (from the depth buffer), so the casters' slope bias covers half a texel each way. With X-Plane's shadow/bias_slope 2 alone, the calibration panels 5 cm above the ground lose their shadow at cascade 1's 4 cm texels; X-Plane 12.4.4's reference keeps a 12 cm band."
+		},
+		"sedx/csm_receiver_plane_slope_bias": {
+			"value": 1.0,
+			"source": "SEDX: the casters' slope-scaled depth bias with the receiver plane on (half a texel each way of the 2 x 2 gathers)"
+		},
+		"sedx/csm_height_near_ratio": {
+			"value": 0.8,
+			"source": "ASSUMPTION: the cascades split from at least 0.8 x the camera height above the airport (the ground starts no nearer from above)"
+		},
+		"sedx/csm_height_far_ratio": {
+			"value": 6.0,
+			"source": "ASSUMPTION fitted to X-Plane 12.4.4 references (2026-10-25): at 600 m up its shadows reach about 3 km though shadow/csm/far_limit_exterior stays 250"
+		},
+		"ssr/min_gloss": {
+			"value": 0.5,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): surfaces less glossy (gloss = (1 - roughness) / 0.96875) keep the probes' reflections alone"
+		},
+		"ssr/lod_bias": {
+			"value": 0.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): added to the history mip a reflection reads"
+		},
+		"ssr/use_prefiltered": {
+			"value": 1.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): glossy lobes read blurred mips of the previous frame (SEDX: the mip the lobe's footprint covers)"
+		},
+		"ssr/sample_count": {
+			"value": 1.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): rays per pixel (SEDX traces the mirror direction)"
+		},
+		"sedx/ssr_gloss_fade": {
+			"value": 0.1,
+			"source": "SEDX (ASSUMPTION): gloss over which reflections fade in above ssr/min_gloss, so the edge to the probes doesn't show"
+		},
+		"sedx/ssr_max_steps": {
+			"value": 96.0,
+			"source": "SEDX: hierarchical-Z iterations before a ray gives up (FidelityFX SSSR's max_traversal_intersections is 128)"
+		},
+		"sedx/ssr_thickness_m": {
+			"value": 0.25,
+			"source": "SEDX (ASSUMPTION): how far behind the depth buffer's surface a hit still counts"
+		},
+		"sedx/ssr_thickness_ratio": {
+			"value": 0.015,
+			"source": "SEDX (ASSUMPTION): plus this share of the hit's view depth (depth precision falls with distance)"
+		},
+		"sedx/ssr_edge_fade": {
+			"value": 0.05,
+			"source": "SEDX: reflections fade out over this share of the screen height at its edges (FidelityFX SSSR's vignette)"
+		},
+		"sedx/ssr_history_clamp": {
+			"value": 256.0,
+			"source": "SEDX: brightest pre-exposed luminance the reflection history keeps (about 10 EV over middle grey), so the sun disc doesn't glare in blurred mips (X-Plane 12.3.0 fixed 'glaring light blooms from SSR')"
+		},
+		"sedx/ssr_lobe_scale": {
+			"value": 1.3,
+			"source": "SEDX (ASSUMPTION): the GGX lobe's half width as a tangent per unit alpha (half maximum of the reflected lobe: about 1.29 alpha), which sizes the history mip"
+		},
+		"water/F0": {
+			"value": 0.02,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): Fresnel reflectance of the water surface at normal incidence"
+		},
+		"water/gloss": {
+			"value": 0.78,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): the surface's own gloss (roughness 1 - 0.96875 gloss) before the waves' slope variance widens it (SEDX: added to the variance, ASSUMPTION)"
+		},
+		"water/turbidity": {
+			"value": 2.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20) (SEDX ASSUMPTION about its meaning: clarity distance = turbidity / (1 - the water map's alpha), meters)"
+		},
+		"water/turbidity/cutoff": {
+			"value": -4.605170249938965,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): ln(0.01): light left at the clarity distance"
+		},
+		"water/enable_turbidity": {
+			"value": 1.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20)"
+		},
+		"water/sea_floor_coef": {
+			"value": 0.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20) (SEDX ASSUMPTION about its meaning: share of the sea floor at the bathymetry's depth seen through the water; its lakes show none)"
+		},
+		"water/foam_bias": {
+			"value": 0.8,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): waves break where the Jacobian of their choppy displacement falls below this"
+		},
+		"water/foam_ratio": {
+			"value": 2.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20) (SEDX ASSUMPTION about its meaning: foam per unit of Jacobian below the bias)"
+		},
+		"water/foam_scale": {
+			"value": 2.4,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20) (meaning unknown; SEDX doesn't use it yet)"
+		},
+		"water/h_displace_lambda": {
+			"value": 1.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): choppiness, the horizontal displacement's scale"
+		},
+		"water/cascade_0_scale": {
+			"value": 1.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20)"
+		},
+		"water/cascade_1_scale": {
+			"value": 1.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20)"
+		},
+		"water/cascade_2_scale": {
+			"value": 1.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20)"
+		},
+		"water/cascade_3_scale": {
+			"value": 1.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20)"
+		},
+		"water/spectrum/fetch_lo_m": {
+			"value": 1000.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): fetch at height_lo_m (SEDX ASSUMPTION: times fetch_multiplier, rising to fetch_hi_m at height_hi_m)"
+		},
+		"water/spectrum/fetch_hi_m": {
+			"value": 5000.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20)"
+		},
+		"water/spectrum/fetch_multiplier": {
+			"value": 10.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20)"
+		},
+		"water/spectrum/height_lo_m": {
+			"value": 0.3048,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): 1 ft"
+		},
+		"water/spectrum/height_hi_m": {
+			"value": 1.8288,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): 6 ft"
+		},
+		"water/spectrum/height_no_swell_m": {
+			"value": 0.1524,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): no swell at or below this height (SEDX ASSUMPTION: max_swell from height_swell_m up)"
+		},
+		"water/spectrum/height_swell_m": {
+			"value": 1.8288,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20)"
+		},
+		"water/spectrum/max_swell": {
+			"value": 0.8,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20)"
+		},
+		"water/spectrum/spread_blend": {
+			"value": 1.0,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): 0 waves from every direction, 1 the directional spreading (Horvath 2015)"
+		},
+		"water/spectrum/short_waves_fade": {
+			"value": 0.01,
+			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20): waves shorter than about this many meters fade (exp(-(k l)^2))"
+		},
+		"sedx/water_cascade_size_0": {
+			"value": 500.0,
+			"source": "SEDX (ASSUMPTION; X-Plane's cascade sizes aren't exposed): meters across the first FFT cascade"
+		},
+		"sedx/water_cascade_size_1": {
+			"value": 120.0,
+			"source": "SEDX (ASSUMPTION)"
+		},
+		"sedx/water_cascade_size_2": {
+			"value": 30.0,
+			"source": "SEDX (ASSUMPTION)"
+		},
+		"sedx/water_cascade_size_3": {
+			"value": 7.0,
+			"source": "SEDX (ASSUMPTION)"
+		},
+		"sedx/water_cascade_min_cycles": {
+			"value": 4.0,
+			"source": "SEDX: a smaller cascade starts at waves this many times across its tile; the larger one holds the longer ones"
+		},
+		"sedx/water_spectrum_depth_m": {
+			"value": 100.0,
+			"source": "SEDX (ASSUMPTION): water depth the spectrum's dispersion and TMA factor assume"
+		},
+		"sedx/water_height_per_amplitude": {
+			"value": 2.0,
+			"source": "SEDX (ASSUMPTION): significant wave height per meter of sim/weather/region/wave_amplitude"
+		},
+		"sedx/water_foam_decay": {
+			"value": 0.6,
+			"source": "SEDX (ASSUMPTION): share of the foam that fades each second"
+		},
+		"sedx/water_ior": {
+			"value": 1.333,
+			"source": "SEDX: refractive index of water"
+		},
+		"sedx/water_floor_albedo_r": {
+			"value": 0.3,
+			"source": "SEDX (ASSUMPTION): sea floor albedo under the floor decal (water/sea_floor_coef > 0 only)"
+		},
+		"sedx/water_floor_albedo_g": {
+			"value": 0.27,
+			"source": "SEDX (ASSUMPTION)"
+		},
+		"sedx/water_floor_albedo_b": {
+			"value": 0.2,
+			"source": "SEDX (ASSUMPTION)"
+		},
+		"sedx/water_floor_decal_m": {
+			"value": 25.0,
+			"source": "SEDX (ASSUMPTION): meters one repeat of the sea floor decal (lib/g10/decals/water.dcl) covers"
+		},
+		"sedx/water_clarity_min_m": {
+			"value": 0.5,
+			"source": "SEDX: clarity distance floor for a water map alpha near 1"
+		},
+		"sedx/water_shore_depth_m": {
+			"value": 0.5,
+			"source": "SEDX: waves rise to full height over this floor depth, so shores stay put (the bathymetry under lakes is often only 1-2 m: a deeper fade shows the 64 m cells)"
+		},
+		"sedx/water_use_fetch": {
+			"value": 1.0,
+			"source": "SEDX (ASSUMPTION): the DSF's per-vertex fetch ratio scales the waves (X-Plane 12.4.4's dsf/kill_fetch is 1, but its references show calm lakes mirroring their shores)"
+		},
+		"sedx/water_pond_wave_scale": {
+			"value": 0.08,
+			"source": "SEDX (ASSUMPTION): wave height at fetch ratio 0 (a few hundred meters of fetch: about 0.09 m under a 1 m sea)"
+		},
+		"sedx/water_grid_m": {
+			"value": 64.0,
+			"source": "SEDX: water meshes are cut into cells this size so tessellation has vertices where the camera is"
+		},
+		"sedx/water_tessellation_px": {
+			"value": 6.0,
+			"source": "SEDX: target length of a tessellated water edge on screen (pixels)"
+		},
+		"sedx/sdr_night_slope_red": {
+			"value": 0.35,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25): X-Plane's night grade (30 night shots, sun -10.6 deg and below), not an art control of its own"
+		},
+		"sedx/sdr_night_slope_green": {
+			"value": 0.35,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"sedx/sdr_night_slope_blue": {
+			"value": 0.35,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"sedx/sdr_night_power_red": {
+			"value": 1.0,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"sedx/sdr_night_power_green": {
+			"value": 1.0,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"sedx/sdr_night_power_blue": {
+			"value": 1.0,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"sedx/sdr_night_output_gain": {
+			"value": 2.0,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25): color_management/sdr/output_gain at night"
+		},
+		"sedx/sdr_night_start_deg": {
+			"value": 0.0,
+			"source": "ASSUMPTION: sun elevation where the night grade starts (the day grade still holds at 7.6 deg)"
+		},
+		"sedx/sdr_night_full_deg": {
+			"value": -6.0,
+			"source": "ASSUMPTION: sun elevation where the night grade is complete (it holds at -10.6 deg)"
+		},
+		"sedx/sdr_snow_power_scale": {
+			"value": 0.9,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25): with snow on the ground the day power is 0.9 x (1.44 / 1.44 / 1.5408)"
+		},
+		"sedx/sdr_snow_cover": {
+			"value": 0.5,
+			"source": "ASSUMPTION: snow cover at which the snow grade is complete (cover 0.87 and 1 dump the same power)"
+		},
+		"sedx/tonemap_middle_grey": {
+			"value": 0.18,
+			"source": "ASSUMPTION: the display transform's pivot; with exposure 18 / (K x 2^EV) a metered scene's average lands on it"
+		},
+		"sedx/fusion_strength": {
+			"value": 0.0,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25): X-Plane's exposure_fusion/shadows reads 0.0001-0.011 in every daylight shot (about 2.5 x autoexposure/contrast_score) and 0.19 with snow, so its local tone mapping barely changes the frame; SEDX's fusion is off until it follows that adaptive amount"
+		},
+		"twxr/rain_area_scale": {
+			"value": 500.0,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25): meters per repeat of the noise that patches wet ground (ASSUMPTION about the unit)"
+		},
+		"twxr/rain_area_width": {
+			"value": 0.15,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"twxr/rain_noise_modifier": {
+			"value": 0.4,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"twxr/rain_darkening_scale": {
+			"value": 1.0,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"twxr/rain_darkening_start": {
+			"value": 0.0,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"twxr/rain_darkening_end": {
+			"value": 0.35,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"twxr/rain_darkening_roughness_start": {
+			"value": 0.0,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"twxr/rain_darkening_roughness_end": {
+			"value": 0.7,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"twxr/rain_darkening_roughness_multiplier_dark": {
+			"value": 2.35,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"twxr/rain_darkening_roughness_multiplier_light": {
+			"value": 1.35,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"twxr/rain_darken_albedo_rat": {
+			"value": 1.0,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"twxr/rain_darken_gloss_rat": {
+			"value": 0.75,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"twxr/snow_area_scale": {
+			"value": 500.0,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"twxr/snow_area_width": {
+			"value": 0.25,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"twxr/snow/noise_depth": {
+			"value": 0.04,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"twxr/snow/slope_min": {
+			"value": 0.25,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"twxr/snow/slope_max": {
+			"value": 0.75,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"twxr/snow/scale_albedo": {
+			"value": 8.0,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25): meters per repeat of snow_ALB (ASSUMPTION about the unit; scale_normal and scale_decal alike)"
+		},
+		"twxr/snow/scale_normal": {
+			"value": 0.25,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"twxr/snow/scale_decal": {
+			"value": 42.0,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"twxr/snow/decal1_k": {
+			"value": 0.0,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"twxr/snow/decal2_k": {
+			"value": 0.5,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"twxr/ice_area_scale": {
+			"value": 100.0,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"twxr/ice_area_width": {
+			"value": 0.75,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"twxr/ice/scale_albedo": {
+			"value": 40.0,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25): meters per repeat of ice_ALB (ASSUMPTION about the unit)"
+		},
+		"twxr/ice/scale_normal": {
+			"value": 8.0,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"twxr/ice/scale_decal": {
+			"value": 4.0,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"twxr/ice/decal1_k": {
+			"value": 1.0,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"twxr/ice/decal2_k": {
+			"value": 0.5,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"snow/luma_r": {
+			"value": 1.2,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25): snow receptivity without a WEATHER mask = these weights . the linear albedo (r, g, b, a)"
+		},
+		"snow/luma_g": {
+			"value": 1.5,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"snow/luma_b": {
+			"value": 0.0,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"snow/luma_a": {
+			"value": 0.0,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"hack/petr/wxr/kf/rain_in_0": {
+			"value": 0.0,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25): keyframes turning an amount (in) into the threshold a receptivity must pass (out)"
+		},
+		"hack/petr/wxr/kf/rain_out_0": {
+			"value": 1.1,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"hack/petr/wxr/kf/rain_in_1": {
+			"value": 0.1,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"hack/petr/wxr/kf/rain_out_1": {
+			"value": 0.68,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"hack/petr/wxr/kf/rain_in_2": {
+			"value": 0.25,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"hack/petr/wxr/kf/rain_out_2": {
+			"value": 0.47,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"hack/petr/wxr/kf/rain_in_3": {
+			"value": 0.5,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"hack/petr/wxr/kf/rain_out_3": {
+			"value": 0.3125,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"hack/petr/wxr/kf/rain_in_4": {
+			"value": 1.0,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"hack/petr/wxr/kf/rain_out_4": {
+			"value": 0.05,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"hack/petr/wxr/kf/puddles_in_0": {
+			"value": 0.0,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"hack/petr/wxr/kf/puddles_out_0": {
+			"value": 1.1,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"hack/petr/wxr/kf/puddles_in_1": {
+			"value": 0.15,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"hack/petr/wxr/kf/puddles_out_1": {
+			"value": 0.7736,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"hack/petr/wxr/kf/puddles_in_2": {
+			"value": 0.35,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"hack/petr/wxr/kf/puddles_out_2": {
+			"value": 0.5016,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"hack/petr/wxr/kf/puddles_in_3": {
+			"value": 0.65,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"hack/petr/wxr/kf/puddles_out_3": {
+			"value": 0.3384,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"hack/petr/wxr/kf/puddles_in_4": {
+			"value": 1.0,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"hack/petr/wxr/kf/puddles_out_4": {
+			"value": 0.2295,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"hack/petr/wxr/kf/snow_in_0": {
+			"value": 0.0,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"hack/petr/wxr/kf/snow_out_0": {
+			"value": 1.25,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"hack/petr/wxr/kf/snow_in_1": {
+			"value": 0.25,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"hack/petr/wxr/kf/snow_out_1": {
+			"value": 0.35,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"hack/petr/wxr/kf/snow_in_2": {
+			"value": 0.7,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"hack/petr/wxr/kf/snow_out_2": {
+			"value": 0.12,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"hack/petr/wxr/kf/snow_in_3": {
+			"value": 0.85,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"hack/petr/wxr/kf/snow_out_3": {
+			"value": 0.0865,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"hack/petr/wxr/kf/snow_in_4": {
+			"value": 1.0,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"hack/petr/wxr/kf/snow_out_4": {
+			"value": 0.07,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"hack/petr/wxr/kf/ice_in_0": {
+			"value": 0.0,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"hack/petr/wxr/kf/ice_out_0": {
+			"value": 2.0,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"hack/petr/wxr/kf/ice_in_1": {
+			"value": 0.1,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"hack/petr/wxr/kf/ice_out_1": {
+			"value": 0.82675,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"hack/petr/wxr/kf/ice_in_2": {
+			"value": 0.25,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"hack/petr/wxr/kf/ice_out_2": {
+			"value": 0.556,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"hack/petr/wxr/kf/ice_in_3": {
+			"value": 0.5,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"hack/petr/wxr/kf/ice_out_3": {
+			"value": 0.3755,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"hack/petr/wxr/kf/ice_in_4": {
+			"value": 1.0,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"hack/petr/wxr/kf/ice_out_4": {
+			"value": 0.195,
+			"source": "X-Plane 12.4.4 (reference probe dumps, 2026-10-25)"
+		},
+		"sedx/weather_water_gloss": {
+			"value": 0.95,
+			"source": "ASSUMPTION: gloss of the water film on wet ground and in puddles (X-Plane takes it from its animated rain droplets texture, which SEDX does not make yet)"
+		}
+	}
+}

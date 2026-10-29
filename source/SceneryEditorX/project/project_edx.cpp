@@ -55,6 +55,8 @@ namespace SceneryEditorX::ProjectFile
 		constexpr const char *KEY_AIRPORT_LEGACY = "Airport";
 		constexpr const char *KEY_ASSETS = "Assets";
 		constexpr const char *KEY_LIBRARY = "Library";
+		constexpr const char *KEY_ENVIRONMENT = "Environment";
+		constexpr const char *KEY_LIBRARY_FILTERS = "LibraryFilters";
 		constexpr const char *KEY_WED = "WED";
 		constexpr const char *KEY_PROPERTIES = "other-properties";
 
@@ -106,6 +108,12 @@ namespace SceneryEditorX::ProjectFile
 				{ T::Recorded, "recorded" }, { T::Unicom, "unicom" }, { T::Clearance, "clearance" }, { T::Ground, "ground" },
 				{ T::Tower, "tower" }, { T::Approach, "approach" }, { T::Departure, "departure" }
 			};
+		};
+
+		template<> struct EnumTable<Environment::SeasonOverride>
+		{
+			using T = Environment::SeasonOverride;
+			static constexpr std::pair<T, const char *> values[] = { { T::Auto, "auto" }, { T::Spring, "spr" }, { T::Summer, "sum" }, { T::Fall, "fal" }, { T::Winter, "win" } };
 		};
 
 		template<> struct EnumTable<XPlane::ExportKind>
@@ -1111,6 +1119,10 @@ namespace SceneryEditorX::ProjectFile
 		root[KEY_ASSETS] = ToJson(project.items, context);
 		if (project.library)
 			root[KEY_LIBRARY] = ToJson(*project.library, context);
+		if (project.environment)
+			root[KEY_ENVIRONMENT] = ToJson(*project.environment, context);
+		if (!project.libraryFilters.empty())
+			root[KEY_LIBRARY_FILTERS] = ToJson(project.libraryFilters, context);
 		if (!project.wedPreferences.empty())
 		{
 			Json prefs = Json::object();
@@ -1205,6 +1217,20 @@ namespace SceneryEditorX::ProjectFile
 			used.insert(KEY_LIBRARY);
 			out.library.emplace();
 			FromJson(*it, *out.library, context, KEY_LIBRARY);
+		}
+		if (const auto it = root.find(KEY_ENVIRONMENT); it != root.end())
+		{
+			used.insert(KEY_ENVIRONMENT);
+			out.environment.emplace();
+			FromJson(*it, *out.environment, context, KEY_ENVIRONMENT);
+		}
+		if (const auto it = root.find(KEY_LIBRARY_FILTERS); it != root.end())
+		{
+			used.insert(KEY_LIBRARY_FILTERS);
+			if (it->is_array())
+				FromJson(*it, out.libraryFilters, context, KEY_LIBRARY_FILTERS);
+			else
+				context.Warn(KEY_LIBRARY_FILTERS, "expected a list of filters");
 		}
 		if (const auto it = root.find(KEY_WED); it != root.end())
 		{

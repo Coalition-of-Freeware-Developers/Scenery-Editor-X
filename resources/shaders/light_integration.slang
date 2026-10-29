@@ -32,50 +32,43 @@ float2 hammersley(uint i, uint n)
 	return float2(float(i) / float(n), radical_inverse_vdc(i));
 }
 
-float3 importance_sample_ggx(float2 xi, float roughness, float3 n)
+// A GGX half vector around N = +Z. Built in that frame directly (phi measured from +X, where V lies): the table is a
+// finite Hammersley sum, and a frame rotated around N would sum different points (0.03 apart at grazing angles)
+float3 importance_sample_ggx(float2 xi, float roughness)
 {
 	float a = roughness * roughness;
 	float phi = 2.0f * PI * xi.x;
 	float cos_theta = sqrt((1.0f - xi.y) / (1.0f + (a * a - 1.0f) * xi.y));
 	float sin_theta = sqrt(max(1.0f - cos_theta * cos_theta, 0.0f));
-
-	float3 h;
-	h.x = cos(phi) * sin_theta;
-	h.y = sin(phi) * sin_theta;
-	h.z = cos_theta;
-
-	float3 up = abs(n.z) < 0.999f ? float3(0.0f, 0.0f, 1.0f) : float3(1.0f, 0.0f, 0.0f);
-	float3 tangent = normalize(cross(up, n));
-	float3 bitangent = cross(n, tangent);
-
-	return normalize(tangent * h.x + bitangent * h.y + n * h.z);
+	return float3(cos(phi) * sin_theta, sin(phi) * sin_theta, cos_theta);
 }
 
-float geometry_schlick_ggx(float n_dot_v, float roughness)
+// Height-correlated Smith visibility (Heitz 2014), V = G2 / (4 N.L N.V), alpha2 = alpha^2 = roughness^4
+float visibility_smith_correlated(float n_dot_v, float n_dot_l, float alpha2)
 {
-	float r = roughness + 1.0f;
-	float k = (r * r) / 8.0f;
-	return n_dot_v / max(n_dot_v * (1.0f - k) + k, 1e-5f);
+	float lambda_v = n_dot_l * sqrt(n_dot_v * n_dot_v * (1.0f - alpha2) + alpha2);
+	float lambda_l = n_dot_v * sqrt(n_dot_l * n_dot_l * (1.0f - alpha2) + alpha2);
+	return 0.5f / max(lambda_v + lambda_l, 1e-20f);
 }
 
-float geometry_smith(float n_dot_v, float n_dot_l, float roughness)
-{
-	return geometry_schlick_ggx(n_dot_v, roughness) * geometry_schlick_ggx(n_dot_l, roughness);
-}
-
+// The split-sum scale (A) and bias (B) of F0 for X-Plane 12's BRDF: GGX with alpha = roughness^2, height-correlated
+// Smith, Schlick Fresnel (environment/brdf_lut.cpp computes the same table; it matches X-Plane's Resources/brdf_lookup)
 float2 integrate_brdf(float n_dot_v, float roughness)
 {
 	const uint sample_count = 1024u;
+	n_dot_v = max(n_dot_v, 1e-5f);
+	roughness = max(roughness, 1e-3f);
+	float alpha = roughness * roughness;
+	float alpha2 = alpha * alpha;
 	float3 v = float3(sqrt(max(1.0f - n_dot_v * n_dot_v, 0.0f)), 0.0f, n_dot_v);
 	float a = 0.0f;
 	float b = 0.0f;
 
-	float3 n = float3(0.0f, 0.0f, 1.0f);
 	for (uint i = 0u; i < sample_count; i++)
 	{
 		float2 xi = hammersley(i, sample_count);
-		float3 h = importance_sample_ggx(xi, roughness, n);
-		float3 l = normalize(2.0f * dot(v, h) * h - v);
+		float3 h = importance_sample_ggx(xi, roughness);
+		float3 l = 2.0f * dot(v, h) * h - v;
 
 		float n_dot_l = saturate(l.z);
 		float n_dot_h = saturate(h.z);
@@ -83,8 +76,7 @@ float2 integrate_brdf(float n_dot_v, float roughness)
 
 		if (n_dot_l > 0.0f)
 		{
-			float g = geometry_smith(n_dot_v, n_dot_l, roughness);
-			float g_vis = (g * v_dot_h) / max(n_dot_h * n_dot_v, 1e-5f);
+			float g_vis = 4.0f * visibility_smith_correlated(n_dot_v, n_dot_l, alpha2) * n_dot_l * v_dot_h / max(n_dot_h, 1e-12f);
 			float fc = pow(1.0f - v_dot_h, 5.0f);
 
 			a += (1.0f - fc) * g_vis;
@@ -134,11 +126,10 @@ void main_comp(uint3 thread_id : SV_DispatchThreadID)
 		return;
 	}
 
-	// BRDF LUT integration mode.
-	float2 uv = (float2(thread_id.xy) + 0.5f) / resolution_out;
-	float n_dot_v = saturate(uv.x);
-	float roughness = saturate(uv.y);
-	float2 brdf = integrate_brdf(n_dot_v, roughness);
+	// BRDF LUT integration mode: texel (x, y) holds N.V = x / size, roughness = y / size (X-Plane's brdf_lookup
+	// layout); sample at uv = value + 0.5 / size
+	float2 coordinates = float2(thread_id.xy) / resolution_out;
+	float2 brdf = integrate_brdf(coordinates.x, coordinates.y);
 
 	tex_uav[thread_id.xy] = validate_output(float4(brdf, 0.0f, 1.0f));
 }

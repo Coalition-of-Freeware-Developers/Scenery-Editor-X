@@ -49,8 +49,8 @@ namespace SceneryEditorX::XPlane
 	 * @brief Registry component on the root entity of a placed X-Plane object.
 	 *
 	 * A placed OBJ is a small entity tree: the root carries the placement transform, every animation group is a
-	 * child entity whose transform is re-evaluated from datarefs each frame, and every batch is a leaf entity with
-	 * a Renderable. Batches are switched on and off for LODs and ANIM_hide / ANIM_show.
+	 * child entity whose transform is re-evaluated from datarefs when one it reads moves (and the object draws), and
+	 * every batch is a leaf entity with a Renderable. Batches are switched on and off for LODs and ANIM_hide / ANIM_show.
 	 *
 	 * Lights follow their animation group the same way: each spill is a leaf entity with a Light component, and
 	 * billboards are evaluated every frame from the group's world transform and handed to the renderer. Both only
@@ -87,12 +87,15 @@ namespace SceneryEditorX::XPlane
 		bool spillsDark = false;				// Lights are off and every spill entity is switched off
 
 		// What makes the placement's batch states change, worked out when its tree is built. A placement with
-		// neither is evaluated once per change of visible / lodOverride and otherwise skipped by Tick().
-		bool dynamicState = true;				// Animation groups or hide / show rules: evaluated every frame
+		// neither is evaluated once per change of visible / lodOverride / animate and otherwise skipped by Tick().
+		bool dynamicState = true;				// Animation groups or hide / show rules: evaluated when a dataref they read moves
 		bool usesDistance = true;				// LODs (batches or lights): re-evaluated when the camera moves
 		uint64_t evaluatedStamp = 0;			// SceneObjects' camera stamp it was last evaluated at
-		bool evaluatedVisible = false;			// visible / lodOverride it was last evaluated with
+		bool evaluatedVisible = false;			// visible / lodOverride / animate it was last evaluated with
 		int evaluatedLodOverride = 0;
+		bool evaluatedAnimate = true;
+		std::vector<float> datarefValues;		// Obj8Data::datarefs as last read (ReadDatarefs), what the batch states and the pose follow
+		std::vector<uint8_t> staleGroups;		// Per animation group: its pose lags datarefValues (it hasn't drawn since); posed once it draws
 
 
 		bool logPlacement = true;				// Log placing and building it (off for the thousands an airport places)

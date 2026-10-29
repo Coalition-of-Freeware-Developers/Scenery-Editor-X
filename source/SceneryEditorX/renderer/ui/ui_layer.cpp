@@ -36,6 +36,7 @@
 #include "source/imguizmo/ImGuizmo.h"
 #include <SceneryEditorX/core/resource/resource_cache.h>
 #include <SceneryEditorX/core/window/window.h>
+#include <SceneryEditorX/filesystem/vfs.h>
 #include <SceneryEditorX/logging/asserts.h>
 #include <SceneryEditorX/renderer/font/font_awesome.h>
 
@@ -43,6 +44,30 @@
 
 namespace SceneryEditorX
 {
+	namespace
+	{
+		// The dock layout and window placement, in ImGui's own format. Read and written through the VFS (ImGui's
+		// file IO is off): atomic writes, and the same roaming settings folder on Windows, macOS and Linux.
+		constexpr const char *INI_FILE = "user:/editor.ini";
+
+		void LoadIniSettings()
+		{
+			std::string text;
+			if (VFS::Get().Read(INI_FILE, text))
+				ImGui::LoadIniSettingsFromMemory(text.data(), text.size());
+		}
+
+		void SaveIniSettings()
+		{
+			size_t size = 0;
+			const char *text = ImGui::SaveIniSettingsToMemory(&size);
+			ImGui::GetIO().WantSaveIniSettings = false;
+
+			std::string error;
+			if (!VFS::Get().Write(INI_FILE, std::string_view(text, size), &error))
+				SEDX_CORE_WARN_TAG("UILayer", "Could not save the window layout: {}", error);
+		}
+	}
 
 	UILayer::UILayer(const bool enableViewports) : Layer("UILayer"), m_EnableViewports(enableViewports)
 	{
@@ -62,9 +87,9 @@ namespace SceneryEditorX
 		io.ConfigWindowsMoveFromTitleBarOnly = true;	// Dragging inside a panel (e.g. the viewport) must not move it
 		io.ConfigViewportsNoTaskBarIcon = true;			// Floating panels don't clutter the OS taskbar
 
-		// Store the ini path in a member so io.IniFilename points to a stable string (C26815).
-		m_IniFilePath = (IO::FileSystem::GetPersistentStoragePath() / "editor.ini").string();
-		io.IniFilename = m_IniFilePath.c_str();
+		// The layout comes from user:/editor.ini through the VFS; ImGui asks for saves with io.WantSaveIniSettings
+		io.IniFilename = nullptr;
+		LoadIniSettings();
 
 		ImGui::StyleColorsDark();
 		ImGui::GetStyle().FontScaleDpi = Window::GetDpiScale();
@@ -103,6 +128,7 @@ namespace SceneryEditorX
 			return;
 
 		Window::SetNativeEventHook(nullptr);
+		SaveIniSettings();	// ImGui's own save at DestroyContext is off with its file IO
 		UI::ShutdownBackend();
 		ImGui_ImplSDL3_Shutdown();
 		ImGui::DestroyContext();
@@ -123,6 +149,7 @@ namespace SceneryEditorX
 
 		UI::NewFrame();
 		ImGui_ImplSDL3_NewFrame();
+		UI::ApplyScriptedMouse();
 		ImGui::NewFrame();
 		ImGuizmo::BeginFrame();
 	}
@@ -134,6 +161,10 @@ namespace SceneryEditorX
 
 		// Builds the draw data the render thread records into the swapchain pass this frame.
 		ImGui::Render();
+
+		// A moved panel or a docking change: ImGui asks (io.IniSavingRate after the last change) for the layout to be saved
+		if (ImGui::GetIO().WantSaveIniSettings)
+			SaveIniSettings();
 
 		// Panels dragged out of the main window live in their own OS windows and swapchains. ImGui renders and
 		// presents those here; the render thread is idle while the main thread runs, so the queue is ours.

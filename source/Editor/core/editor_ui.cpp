@@ -103,7 +103,7 @@ namespace SceneryEditorX::EditorUI
 		ImGui::TableNextRow();
 		ImGui::TableNextColumn();
 		ImGui::AlignTextToFramePadding();
-		ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
+		ImGui::PushStyleColor(ImGuiCol_Text, EditorTheme::ToStyle(EditorTheme::Palette::TextLabel));
 		ImGui::TextUnformatted(label);
 		ImGui::PopStyleColor();
 		ImGui::TableNextColumn();

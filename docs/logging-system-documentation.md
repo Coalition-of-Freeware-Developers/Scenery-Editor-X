@@ -22,28 +22,28 @@ The Scenery Editor X logging system provides a comprehensive, multi-channel logg
 
 - **Purpose**: Core application and engine logging
 - **Usage**: Internal engine operations, system initialization, critical errors
-- **File Output**: `../logs/SceneryEditorX.log`
+- **File Output**: `logs/SceneryEditorX.log` (see [Log File Structure](#log-file-structure) for the folder and for running several editors at once)
 - **Console Output**: Colored console output with timestamps
 
 #### Editor Logger (`EditorLogger`)
 
 - **Purpose**: Editor-specific functionality and user interactions
 - **Usage**: UI operations, editor tools, user-facing messages
-- **File Output**: `../logs/SceneryEditorX.log` (shared with Core)
+- **File Output**: `logs/SceneryEditorX.log` (shared with Core: both loggers write through one file sink)
 - **Console Output**: Colored console output with timestamps
 
 #### Editor Console Logger (`EditorConsoleLogger`)
 
 - **Purpose**: In-editor debug console output
 - **Usage**: Debug information displayed within the editor's UI console
-- **File Output**: `../logs/EditorConsoleOut.log`
+- **File Output**: `logs/EditorConsoleOut.log`
 - **Console Output**: Raw output without timestamps for UI display
 
 #### Launcher Logger (`LauncherLogger`)
 
 - **Purpose**: Application launcher and startup logging
 - **Usage**: Launcher operations, application startup, pre-initialization
-- **File Output**: `../logs/Launcher.log`
+- **File Output**: `logs/Launcher.log`
 - **Console Output**: Colored console output with timestamps
 
 ## Logging Levels
@@ -214,12 +214,39 @@ Both use the logging system to output formatted error messages before triggering
 
 ### Log File Structure
 
+The files live in the editor's log folder (`VFS::AppLocation::Logs`, mounted as `logs:/`): `%APPDATA%\SceneryEditorX\logs`
+on Windows, a `logs` folder inside the settings folder on Linux and macOS. Each run empties its files when it starts.
+
 ```
 logs/
-├── SceneryEditorX.log      # Core and Editor output
-├── EditorConsoleOut.log    # Editor console output
-└── Launcher.log            # Launcher output
+├── SceneryEditorX.log          # Core and Editor output
+├── EditorConsoleOut.log        # Editor console output
+├── Launcher.log                # Launcher output
+└── SceneryEditorX_crash.dmp    # Minidump of an unhandled exception (Windows)
 ```
+
+#### Several editors at once
+
+Every running editor writes its own set of files, so editors started side by side no longer overwrite each other's
+logs. `Log::Init()` claims the lowest free *log instance* in the folder and names all of the process's files after it:
+
+| Instance | Main log | Console log | Launcher log | Crash dump |
+| --- | --- | --- | --- | --- |
+| 1 | `SceneryEditorX.log` | `EditorConsoleOut.log` | `Launcher.log` | `SceneryEditorX_crash.dmp` |
+| 2 | `SceneryEditorX_2.log` | `EditorConsoleOut_2.log` | `Launcher_2.log` | `SceneryEditorX_2_crash.dmp` |
+| n | `SceneryEditorX_n.log` | `EditorConsoleOut_n.log` | `Launcher_n.log` | `SceneryEditorX_n_crash.dmp` |
+
+- An instance is held by a lock on the open main log (`LockFileEx` on Windows, `flock` on Linux and macOS), which
+  the operating system drops when the process closes the file, exits or crashes. An editor that quits or crashes
+  frees its instance for the next one; a file is only emptied by the editor that claimed it.
+- The lock keeps other editors out, not readers: the files can be opened, copied and tailed while an editor runs,
+  and crash diagnostics can still append to the log after `Log::ShutDown()`.
+- `Log::GetLogInstance()` and `Log::GetLogFilePath()` say which instance and file the process got. The log header
+  lists the process ID and the instance, and an editor that isn't instance 1 says so at startup.
+- Up to 64 editors can run at once; past that `Log::Init()` fails as it does when the folder can't be written
+  (console output only).
+- On a file system without lock support (some network shares) instances can't be told apart, and every editor
+  uses `SceneryEditorX.log`.
 
 ### Log File Patterns
 

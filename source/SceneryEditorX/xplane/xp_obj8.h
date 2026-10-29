@@ -29,6 +29,7 @@
  * -------------------------------------------------------
  */
 #pragma once
+#include <array>
 #include <cstdint>
 #include <filesystem>
 #include <functional>
@@ -100,6 +101,7 @@ namespace SceneryEditorX::XPlane
 		std::vector<Obj8TransKey> transKeys;	// Type::Translate
 		std::vector<Obj8RotKey> rotKeys;		// Type::Rotate
 		DatarefRef dataref;						// Unset: the op is static and evaluates at its first key
+		int datarefIndex = -1;					// Obj8Data::datarefs entry of dataref, -1 when unset
 		float loop = 0.0f;						// ANIM_keyframe_loop period, 0 when the op does not loop
 	};
 
@@ -121,6 +123,7 @@ namespace SceneryEditorX::XPlane
 		float v1 = 0.0f;
 		float v2 = 0.0f;
 		DatarefRef dataref;
+		int datarefIndex = -1;	// Obj8Data::datarefs entry of dataref, -1 when unset
 		float loop = 0.0f;	// ANIM_keyframe_loop period (flashing lights), 0 when the rule does not loop
 	};
 
@@ -232,6 +235,19 @@ namespace SceneryEditorX::XPlane
 	};
 
 	/**
+	 * @struct Obj8Decal
+	 * @brief A detail or normal decal directive (DECAL, DECAL_RGBA, DECAL_KEYED, DECAL_PARAMS, DECAL_PARAMS_PROJ,
+	 * NORMAL_DECAL_PARAMS): its leading numbers, the texture, and numbers after it (NORMAL_DECAL_PARAMS ends with one).
+	 */
+	struct Obj8Decal
+	{
+		std::string directive;
+		std::vector<float> values;
+		std::string texture;
+		std::vector<float> trailing;
+	};
+
+	/**
 	 * @struct Obj8Data
 	 * @brief Everything the editor needs from an OBJ8 file to draw and animate it.
 	 */
@@ -248,10 +264,27 @@ namespace SceneryEditorX::XPlane
 		std::string textureDrapedNormal;
 		std::string textureMaterialGloss;	// TEXTURE_MAP material_gloss (X-Plane 12)
 		std::string textureGloss;			// TEXTURE_MAP gloss (X-Plane 12)
+		bool normalFromTextureMap = false;	// textureNormal is a TEXTURE_MAP normal: the normal alone (RG), no gloss / material in B / A
 		float normalRatio = 1.0f;			// TEXTURE_NORMAL ratio (repeats per albedo tile)
 		bool normalMetalness = false;		// NORMAL_METALNESS: normal map blue = metalness
 		bool drapedNormalMetalness = false;
 		bool blendGlass = false;			// BLEND_GLASS
+
+		// X-Plane 12 material directives (some undocumented, found in shipped art)
+		bool normalTranslucency = false;	// NORMAL_TRANSLUCENCY: normal map blue = translucency (vegetation)
+		bool blendHash = false;				// BLEND_HASH: hashed (dithered) alpha instead of blending
+		float blendHashRatio = 0.0f;
+		float superRoughness = 0.0f;		// SUPER_ROUGHNESS: roughness floor (ASSUMPTION, plan RISK-003)
+		std::string weatherMask;			// WEATHER <mask texture>: weather receptivity
+		bool weatherTransparent = false;	// WEATHER_TRANSPARENT
+		bool hasSnowAlbedoLuma = false;		// SNOW_ALBEDO_LUMA a b c d: snow receptivity from albedo luma
+		std::array<float, 4> snowAlbedoLuma = { 0.0f, 0.0f, 0.0f, 0.0f };
+		std::string decalLibrary;			// DECAL_LIB <.dcl>
+		std::vector<Obj8Decal> decals;
+		std::string textureControl;			// TEXTURE_CONTROL: decal keys / baked shadow
+		std::string textureModulator;		// TEXTURE_MODULATOR: albedo variation
+		std::string textureTerrain;			// TEXTURE_TERRAIN <scale x> <scale z> <texture>
+		float textureTerrainScale[2] = { 0.0f, 0.0f };
 
 		// Global state
 		bool hasGlobalNoBlend = false;
@@ -283,7 +316,7 @@ namespace SceneryEditorX::XPlane
 		std::vector<Obj8VisibilityCmd> visibility;
 		std::vector<Obj8Batch> batches;
 		std::vector<Obj8Light> lights;
-		std::vector<Obj8DatarefUsage> datarefs;
+		std::vector<Obj8DatarefUsage> datarefs;	// Every dataref the ops, hide / show rules and ATTR_light_level read, once each
 
 		// Diagnostics
 		uint32_t trisCommandCount = 0;
@@ -368,6 +401,19 @@ namespace SceneryEditorX::XPlane
 	 * @param rules Indices into data.visibility.
 	 */
 	bool EvaluateVisibility(const Obj8Data &data, const std::vector<uint32_t> &rules, const DatarefReader &reader);
+
+	/**
+	 * @brief Reads every dataref the object uses, once each: values[i] is data.datarefs[i]'s value. The evaluators below
+	 * take these instead of a reader (ops and rules find theirs by datarefIndex), so a placement reads each dataref once
+	 * per frame instead of once per op, and can tell from the values alone whether its pose can have changed.
+	 */
+	void ReadDatarefs(const Obj8Data &data, const DatarefReader &reader, std::vector<float> &values);
+
+	/* @brief EvaluateAnimNode() at the values ReadDatarefs() read (an op without a value reads 0). */
+	RigidTransform EvaluateAnimNodeAt(const Obj8AnimNode &node, const std::vector<float> &datarefValues);
+
+	/* @brief EvaluateVisibility() at the values ReadDatarefs() read (a rule without a value reads 0). */
+	bool EvaluateVisibilityAt(const Obj8Data &data, const std::vector<uint32_t> &rules, const std::vector<float> &datarefValues);
 
 }
 

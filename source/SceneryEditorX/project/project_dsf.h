@@ -33,6 +33,7 @@
 #include <SceneryEditorX/xplane/xp_dsf.h>
 #include <cstdint>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 // -------------------------------------------------------
@@ -81,11 +82,28 @@ namespace SceneryEditorX::ProjectFile
 		uint32_t hidden = 0;						// Items left out because they (or a container above them) are hidden
 	};
 
-	/* @brief Converts every overlay item of a project (depth-first, in hierarchy order). */
+	/**
+	 * @brief Converts every overlay item of a project, depth-first. Objects and roads keep the hierarchy order; polygons
+	 * are written bottom of the hierarchy first, so in X-Plane (later polygons of a layer on top) the item at the top
+	 * draws over the ones below it, as in WorldEditor.
+	 */
 	DsfConversion BuildProjectDsf(const SceneryProject &project, const DsfConversionOptions &options = {});
 
 	/* @brief Hash of everything a DSF draws (definitions, placements, properties): equal hashes draw the same. */
 	uint64_t GetDsfFingerprint(const XPlane::DsfFile &dsf);
+
+	/* @brief What one item contributes to a conversion. */
+	struct DsfItemFingerprint
+	{
+		uint64_t hash = 0;					// Its placements with their definitions' paths: equal hashes draw the same
+		uint32_t firstPlacement = 0;		// Its first entry in the list it is in (polygons, objects or roads)
+	};
+
+	/**
+	 * @brief Per item id, so an editor can redraw only the items an edit changed. An item's hash leaves out where its
+	 * placements sit in the lists (other items coming and going don't change it); roads include the junction ids they share.
+	 */
+	std::unordered_map<std::string, DsfItemFingerprint> GetItemFingerprints(const DsfConversion &conversion);
 
 	/* @brief Draped polygon parameter: whole degrees plus 360 x 1/128ths of a degree (WorldEditor's encode_heading). */
 	uint16_t EncodePolygonHeading(double heading);

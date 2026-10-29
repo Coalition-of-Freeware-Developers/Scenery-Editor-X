@@ -44,6 +44,7 @@
 #include <SceneryEditorX/renderer/vulkan/shader/shader.h>
 #include <SceneryEditorX/renderer/vulkan/queue_manager.h>
 #include <SceneryEditorX/utils/size_macro_utils.h>
+#include <algorithm>
 #include <cstring>
 #include <volk/volk.h>
 
@@ -307,6 +308,7 @@ namespace SceneryEditorX
 			pipelineInfo.layout = m_Layout;
 			pipelineInfo.stage = computeStage;
 
+			Debugging::SetCreationContext(state.name);
 			VkResult createResult = vkCreateComputePipelines(m_Device->GetLogicalDevice(), static_cast<VkPipelineCache>(GetPipelineCache()),
 				1, &pipelineInfo, nullptr, reinterpret_cast<VkPipeline*>(&m_Pipeline));
 
@@ -322,6 +324,7 @@ namespace SceneryEditorX
 				createResult = vkCreateComputePipelines(m_Device->GetLogicalDevice(), static_cast<VkPipelineCache>(GetPipelineCache()),
 					1, &pipelineInfo, nullptr, reinterpret_cast<VkPipeline*>(&m_Pipeline));
 			}
+			Debugging::SetCreationContext(nullptr);
 
 			SEDX_VK_RESULT_ASSERT(createResult);
 
@@ -469,6 +472,19 @@ namespace SceneryEditorX
 					vertexAttributeDescs.emplace_back(startIndex++, 1, VK_FORMAT_R8_UINT, static_cast<uint32_t>(offsetof(Instance, yaw_Packed)));
 					vertexAttributeDescs.emplace_back(startIndex++, 1, VK_FORMAT_R8_UINT, static_cast<uint32_t>(offsetof(Instance, scale_Packed)));
 				}
+
+				// Keep only the attributes the vertex stage reads, and the bindings they come from: the layout describes the
+				// whole vertex (and instance) format, but the grid reads only POSITION and the light billboards no instance
+				// data (validation: WARNING-Shader-OutputNotConsumed for every unread attribute). Strides stay as they are.
+				const uint32_t consumedLocations = shaderVertex->GetVertexInputLocations();
+				std::erase_if(vertexAttributeDescs, [consumedLocations](const VkVertexInputAttributeDescription &attribute)
+				{
+					return attribute.location < 32 && (consumedLocations & (1u << attribute.location)) == 0;
+				});
+				std::erase_if(vertexInputBindingDescs, [&vertexAttributeDescs](const VkVertexInputBindingDescription &binding)
+				{
+					return std::ranges::none_of(vertexAttributeDescs, [&binding](const VkVertexInputAttributeDescription &attribute) { return attribute.binding == binding.binding; });
+				});
 			}
 
 #pragma endregion
@@ -703,6 +719,7 @@ namespace SceneryEditorX
 					pipelineInfo.layout = m_Layout;
 					pipelineInfo.flags = m_State.vrsInputTexture ? VK_PIPELINE_CREATE_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR : 0;
 
+					Debugging::SetCreationContext(state.name);
 					VkResult createResult = vkCreateGraphicsPipelines(
 						m_Device->GetLogicalDevice(),
 						static_cast<VkPipelineCache>(GetPipelineCache()),
@@ -739,6 +756,7 @@ namespace SceneryEditorX
 								reinterpret_cast<VkPipeline*>(&m_Pipeline));
 						}
 					}
+					Debugging::SetCreationContext(nullptr);
 
 					SEDX_VK_RESULT_ASSERT(createResult);
 

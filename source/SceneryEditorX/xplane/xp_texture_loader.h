@@ -56,7 +56,8 @@ namespace SceneryEditorX::XPlane
 		Albedo,
 		Normal,
 		Lit,
-		Data
+		Data,
+		Decal		// A detail decal: a single grey channel is its alpha (X-Plane's A_* modulators), its RGB a neutral 0.5
 	};
 
 	/* @brief What the loader found out about a texture file. */
@@ -78,6 +79,7 @@ namespace SceneryEditorX::XPlane
 		uint32_t width = 0;
 		uint32_t height = 0;
 		std::vector<uint8_t> pixels;	// width * height * 4
+		int sourceChannels = 4;			// Channels the file had (1 grey, 2 grey + alpha, 3, 4)
 
 		[[nodiscard]] bool IsValid() const { return width > 0 && height > 0 && pixels.size() == static_cast<size_t>(width) * height * 4; }
 	};
@@ -138,7 +140,7 @@ namespace SceneryEditorX::XPlane
 		/**
 		 * @brief Creates the GPU image for a decoded texture and caches it (or returns the image already cached for the
 		 * file, e.g. when two loads decoded it at once). Main thread. Consumes the texture's mips.
-		 * @param texture From Decode() or DecodePackedMaterial().
+		 * @param texture From Decode().
 		 * @param info Receives size, format and alpha information (optional).
 		 * @return The texture, or nullptr when there is none or decoding failed.
 		 */
@@ -149,16 +151,6 @@ namespace SceneryEditorX::XPlane
 		 * uncompressed DDS; block-compressed DDS files can't be decoded on the CPU.
 		 */
 		static bool DecodeRGBA(const std::filesystem::path &path, CpuImage &out, std::string *error = nullptr);
-
-		/**
-		 * @brief Builds the renderer's packed material map (R occlusion, G roughness, B metalness) from an X-Plane
-		 * normal map: alpha is gloss (scaled by GLOBAL_specular), blue is metalness with NORMAL_METALNESS.
-		 * Cached per (normal map, metalness flag, specular). Main thread: DecodePackedMaterial() then Upload().
-		 */
-		static Ref<ImageResource> LoadPackedMaterial(const std::filesystem::path &normalMapPath, bool normalMetalness, float specular);
-
-		/* @brief The CPU half of LoadPackedMaterial(): decodes the normal map and builds the packed map. Thread-safe. */
-		static DecodedTexture DecodePackedMaterial(const std::filesystem::path &normalMapPath, bool normalMetalness, float specular);
 
 		/* @brief Releases every cached texture. Only safe when no material references them any more. */
 		static void ClearCache();

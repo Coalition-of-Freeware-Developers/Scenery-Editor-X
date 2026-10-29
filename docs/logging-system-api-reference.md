@@ -91,9 +91,12 @@ Initializes the logging system with all logger instances and their configured si
 
 **File Outputs Created:**
 
-- `../logs/SceneryEditorX.log`: Core and Editor logging
-- `../logs/EditorConsoleOut.log`: Editor console output
-- `../logs/Launcher.log`: Launcher logging
+- `logs/SceneryEditorX.log`: Core and Editor logging
+- `logs/EditorConsoleOut.log`: Editor console output
+- `logs/Launcher.log`: Launcher logging
+
+While other editors run, the process claims the next free log instance and its files get an `_<n>` suffix
+(`SceneryEditorX_2.log`, `EditorConsoleOut_2.log`, ...); see `GetLogInstance()` / `GetLogFilePath()`.
 
 **Usage Example:**
 

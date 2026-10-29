@@ -43,6 +43,7 @@
 #include "pipeline/pipeline_cache.h"
 #include "pipeline/pipeline_state.h"
 #include "shader/shader.h"
+#include <algorithm>
 #include <array>
 #include <chrono>
 #include <limits>
@@ -1251,6 +1252,30 @@ namespace SceneryEditorX
 	   }
 	}
 
+	void CommandList::InsertComputeMemoryBarrier()
+	{
+		if (m_StickyInvalidState || m_CmdBuffer == VK_NULL_HANDLE || m_State != CommandState::Recording)
+		{
+			SEDX_CORE_WARN_TAG("CommandList", "InsertComputeMemoryBarrier skipped: '{}' is not recording", m_ObjectName.c_str());
+			return;
+		}
+		if (m_RenderPassActive)
+			EndRenderPass();
+
+		VkMemoryBarrier2 barrier{};
+		barrier.sType         = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2;
+		barrier.srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+		barrier.srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT;
+		barrier.dstStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+		barrier.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT;
+
+		VkDependencyInfo depInfo{};
+		depInfo.sType              = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+		depInfo.memoryBarrierCount = 1;
+		depInfo.pMemoryBarriers    = &barrier;
+		vkCmdPipelineBarrier2(m_CmdBuffer, &depInfo);
+	}
+
 	void CommandList::InsertBarrier(Buffer *buffer)
 	{
 		if (buffer == nullptr || buffer->Get() == VK_NULL_HANDLE)
@@ -1552,15 +1577,39 @@ namespace SceneryEditorX
 	void CommandList::Draw(const uint32_t vertexCount, const uint32_t vertexOffset)
 	{
 		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command List must be in Recording state to issue draw calls.");
-		PreDraw();
+		if (!PrepareDraw("Draw"))
+			return;
+
 		vkCmdDraw(m_CmdBuffer, vertexCount, 1, vertexOffset, 0);
 	}
 	
 	void CommandList::DrawIndexed(const uint32_t indexCount, const uint32_t instCount, const uint32_t indexOffset, const uint32_t vertexOffset, const uint32_t instIndex)
 	{
 		SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command List must be in Recording state to issue draw calls.");
-		PreDraw();
+		if (!PrepareDraw("DrawIndexed"))
+			return;
+
 		vkCmdDrawIndexed(m_CmdBuffer, indexCount, instCount, indexOffset, static_cast<int32_t>(vertexOffset), instIndex);
+	}
+
+	bool CommandList::PrepareDraw(const char *caller)
+	{
+		// A PSO whose shaders did not compile leaves the list sticky-invalid with no pipeline bound and no render pass begun:
+		// a draw recorded then is outside a render pass (VUID-vkCmdDrawIndexed-renderpass) and loses the device
+		if (!m_StickyInvalidState && m_pso.IsGraphics())
+		{
+			PreDraw();
+			if (m_RenderPassActive)
+				return true;
+		}
+
+		static bool warnedInvalidDraw = false;
+		if (!warnedInvalidDraw)
+		{
+			SEDX_CORE_WARN_TAG("CommandList", "{} skipped for '{}': no graphics pipeline or render pass is active", caller, m_ObjectName.c_str());
+			warnedInvalidDraw = true;
+		}
+		return false;
 	}
 
 	void CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z /*= 1*/)
@@ -1714,6 +1763,24 @@ namespace SceneryEditorX
 
 		m_CullMode = GetCullingType(cullMode);
 		vkCmdSetCullMode(m_CmdBuffer, m_CullMode);
+	}
+
+	bool CommandList::UsesTexture(const uint32_t slot, const bool uav) const
+	{
+		if (!m_DescriptorLayout_Current)
+			return false;
+		const auto matches = [&](const uint32_t candidate)
+		{
+			if (!m_DescriptorLayout_Current->FindBinding(candidate))
+				return false;
+			for (const Descriptor &descriptor : m_DescriptorLayout_Current->GetDescriptors())
+			{
+				if (descriptor.GetSlot() == candidate)
+					return uav ? descriptor.GetType() == DescriptorType::TextureStorage : descriptor.GetType() == DescriptorType::Image;
+			}
+			return false;
+		};
+		return matches(slot) || matches(slot + (uav ? SHADER_REGISTER_SHIFT_U : SHADER_REGISTER_SHIFT_T));
 	}
 
 	void CommandList::SetTexture(const uint32_t slot, ImageResource* img, const uint32_t mipIndex /*= all_mips*/, uint32_t mipRange /*= 0*/, const bool uav /*= false*/)
@@ -2317,6 +2384,26 @@ namespace SceneryEditorX
 		constexpr uint32_t frameConstantBufferBinding = 200;
 		if (Buffer* frameConstants = Renderer::GetBuffer(Renderer_Buffer::ConstantFrame))
 			m_DescriptorLayout_Current->SetConstantBuffer(frameConstantBufferBinding, frameConstants);
+		// The world environment ([[vk::binding(201)]] cbuffer BufferEnvironment), for the shaders that read it
+		constexpr uint32_t environmentConstantBufferBinding = 201;
+		if (Buffer* environmentConstants = Renderer::GetBuffer(Renderer_Buffer::ConstantEnvironment))
+			m_DescriptorLayout_Current->SetConstantBuffer(environmentConstantBufferBinding, environmentConstants);
+		// Ambient occlusion ([[vk::binding(202)]] cbuffer BufferCacao, cacao.slang)
+		constexpr uint32_t cacaoConstantBufferBinding = 202;
+		if (Buffer* cacaoConstants = Renderer::GetBuffer(Renderer_Buffer::ConstantCacao))
+			m_DescriptorLayout_Current->SetConstantBuffer(cacaoConstantBufferBinding, cacaoConstants);
+		// The Perlin noise texture (resources.slang: [[vk::binding(14)]] tex_perlin) that vertex_processing.slang's wind and
+		// flutter sample, for the programs that declare it. No pass bound it, so those draws read an unwritten descriptor.
+		{
+			constexpr uint32_t perlinBinding = static_cast<uint32_t>(Renderer_BindingsSrv::tex_perlin);
+			const auto &descriptors = m_DescriptorLayout_Current->GetDescriptors();
+			const bool declared = std::ranges::any_of(descriptors, [](const Descriptor &descriptor)
+			{
+				return descriptor.GetSlot() == perlinBinding && descriptor.GetType() == DescriptorType::Image;
+			});
+			if (declared)
+				SetTexture(perlinBinding, Renderer::GetStandardTexture(Renderer_StandardTexture::Noise_perlin));
+		}
 
 		if (pso.shaders[static_cast<uint32_t>(StageType::Compute)])
 		{
@@ -2329,6 +2416,8 @@ namespace SceneryEditorX
 			if (GetPipelineHandle() != VK_NULL_HANDLE && GetPipelineLayoutHandle() != VK_NULL_HANDLE)
 			{
 				vkCmdBindPipeline(m_CmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, GetPipelineHandle());
+				if (Debugging::IsBreadcrumbsEnabled())
+					Debugging::SetBreadcrumb(this, Debugging::InternBreadcrumb(pso.name ? pso.name : "<unnamed compute PSO>"));
 				m_NeedsDynamicBind = true;
 			}
 			else
@@ -2403,6 +2492,8 @@ namespace SceneryEditorX
 
 		vkCmdBindPipeline(m_CmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, GetPipelineHandle());
 		m_NeedsDynamicBind = true;
+		if (Debugging::IsBreadcrumbsEnabled())
+			Debugging::SetBreadcrumb(this, Debugging::InternBreadcrumb(pso.name ? pso.name : "<unnamed graphics PSO>"));
 
 		// The dynamic render pass is begun lazily by PreDraw() -> BeginRenderPass(), which attaches every color
 		// target and the depth target with the PSO's load/clear operations.

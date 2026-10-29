@@ -33,7 +33,9 @@
 #include <Editor/core/editor_ui.h>
 #include <SceneryEditorX/core/application/application.h>
 #include <SceneryEditorX/core/time/fps_timer.h>
+#include <SceneryEditorX/environment/environment.h>
 #include <SceneryEditorX/renderer/gpu_scene.h>
+#include <SceneryEditorX/renderer/gpu_timer.h>
 #include <SceneryEditorX/renderer/renderer.h>
 #include <SceneryEditorX/renderer/ui/ui_impl.h>
 #include <SceneryEditorX/renderer/vulkan/swapchain.h>
@@ -147,24 +149,48 @@ namespace SceneryEditorX
 					if (ImGui::Combo("##Projection", &projection, "Perspective\0Orthographic\0"))
 						EditorCamera::SetProjection(projection == 1 ? CameraType::Orthographic : CameraType::Perspective);
 
-					if (camera->mode == ORBIT)
+					ViewportCamera::Rig rig;
+					if (EditorCamera::GetRig(rig))
 					{
+						EditorUI::PropertyLabel("View");
+						ImGui::TextUnformatted(ViewportCamera::GetPresetName(rig.preset));
+
 						EditorUI::PropertyLabel("Orbit center");
-						float center[3] = { camera->center.x, camera->center.y, camera->center.z };
+						float center[3] = { static_cast<float>(rig.pivot.x), static_cast<float>(rig.pivot.y), static_cast<float>(rig.pivot.z) };
 						if (ImGui::DragFloat3("##Center", center, 0.05f))
-							camera->center = Vec3(center[0], center[1], center[2]);
+						{
+							rig.pivot = { center[0], center[1], center[2] };
+							EditorCamera::SetRig(rig);
+						}
 
 						EditorUI::PropertyLabel("Distance");
-						float distance = camera->GetOrbitDistance();
-						if (ImGui::DragFloat("##Distance", &distance, 0.05f, 0.1f, 100000.0f, "%.2f"))
-							camera->SetOrbitDistance(distance);
-					}
-					else
-					{
+						float distance = static_cast<float>(rig.distance);
+						if (ImGui::DragFloat("##Distance", &distance, 0.05f, 0.5f, 5000.0f, "%.2f m"))
+						{
+							rig.distance = std::max(0.5f, distance);
+							EditorCamera::SetRig(rig);
+						}
+						EditorUI::ItemTooltip("Orthographic views show twice this distance times tan(vertical fov / 2) from bottom to top");
+
 						EditorUI::PropertyLabel("Position");
-						float eye[3] = { camera->eye.x, camera->eye.y, camera->eye.z };
-						if (ImGui::DragFloat3("##Eye", eye, 0.05f))
-							camera->eye = Vec3(eye[0], eye[1], eye[2]);
+						const Point3 eye = rig.Eye();
+						float position[3] = { static_cast<float>(eye.x), static_cast<float>(eye.y), static_cast<float>(eye.z) };
+						if (ImGui::DragFloat3("##Eye", position, 0.05f))
+						{
+							rig.KeepEye({ position[0], position[1], position[2] });
+							EditorCamera::SetRig(rig);
+						}
+
+						EditorUI::PropertyLabel("Heading / pitch");
+						float angles[2] = { static_cast<float>(std::fmod(std::fmod(180.0 - rig.yaw * 57.29577951308232, 360.0) + 360.0, 360.0)), static_cast<float>(rig.pitch * 57.29577951308232) };
+						if (ImGui::DragFloat2("##Angles", angles, 0.25f, 0.0f, 0.0f, "%.1f deg"))
+						{
+							// Heading: compass degrees the camera looks toward (0 north, 90 east)
+							rig.yaw = (180.0 - angles[0]) / 57.29577951308232;
+							rig.pitch = std::clamp(static_cast<double>(angles[1]), -90.0, 90.0) / 57.29577951308232;
+							rig.preset = ViewportCamera::ViewPreset::Free;
+							EditorCamera::SetRig(rig);
+						}
 					}
 
 					EditorUI::PropertyLabel("Reset");
@@ -176,10 +202,18 @@ namespace SceneryEditorX
 
 				if (EditorUI::SectionHeader("LENS") && EditorUI::BeginPropertyGrid("##CameraLens"))
 				{
-					EditorUI::PropertyLabel("Field of view");
-					float fov = camera->GetFovHorizontalDeg();
-					if (ImGui::SliderFloat("##Fov", &fov, 10.0f, 150.0f, "%.0f deg"))
-						camera->SetFovHorizontalDeg(fov);
+					// The renderer reads the field of view from the camera entity (Camera's own copy is overwritten every frame)
+					ViewportCamera::Rig rig;
+					if (EditorCamera::GetRig(rig))
+					{
+						EditorUI::PropertyLabel("Field of view");
+						float fov = static_cast<float>(rig.fovHorizontal * 57.29577951308232);
+						if (ImGui::SliderFloat("##Fov", &fov, 10.0f, 150.0f, "%.0f deg"))
+						{
+							rig.fovHorizontal = fov / 57.29577951308232;
+							EditorCamera::SetRig(rig);
+						}
+					}
 
 					ValueText("Near / far", "%.2f / %.0f", camera->GetNearPlane(), camera->GetFarPlane());
 					EditorUI::EndPropertyGrid();
@@ -291,6 +325,458 @@ namespace SceneryEditorX
 				ValueText("Batches", "%u", stats.batches);
 				ValueText("Draw commands", "%u of %u drawing", stats.drawnCommands, stats.commands);
 				ValueText("Uploads", "%u instances, %u transforms checked", stats.uploadedInstances, stats.validatedTransforms);
+				EditorUI::EndPropertyGrid();
+			}
+
+			if (EditorUI::SectionHeader("XP12 EMULATION") && EditorUI::BeginPropertyGrid("##RendererXp12"))
+			{
+				// The switchable passes of the X-Plane 12 frame graph (--no-<name> / --with-<name> on the command line)
+				RendererFeatures features = Renderer::GetFeatures();
+				bool changed = false;
+				for (const RendererFeatureInfo &feature : GetRendererFeatureTable())
+				{
+					const bool available = feature.implementedInPhase <= RENDERER_IMPLEMENTED_PHASE;
+					EditorUI::PropertyLabel(feature.label);
+					ImGui::PushID(feature.name);
+					ImGui::BeginDisabled(!available);
+					changed |= ImGui::Checkbox("##Feature", &(features.*feature.member));
+					ImGui::EndDisabled();
+					ImGui::PopID();
+					if (available)
+						EditorUI::ItemTooltip(feature.description);
+					else
+					{
+						char tooltip[256];
+						snprintf(tooltip, sizeof(tooltip), "%s\nNot in this build yet (plan phase %d)", feature.description, feature.implementedInPhase);
+						EditorUI::ItemTooltip(tooltip);
+					}
+				}
+				if (changed)
+					Renderer::SetFeatures(features);
+
+				EditorUI::PropertyLabel("Tone curve");
+				// Listed with X-Plane 12's transform first; the values are tonemap.slang's curve numbers
+				static constexpr const char *curves[] = { "X-Plane 12", "AgX", "ACES fit", "Reinhard" };
+				static constexpr int curveValues[] = { 4, 1, 2, 3 };
+				int curve = static_cast<int>(std::find(std::begin(curveValues), std::end(curveValues), Renderer::GetToneCurve()) - std::begin(curveValues));
+				ImGui::BeginDisabled(!features.tonemap);
+				if (ImGui::Combo("##ToneCurve", &curve, curves, 4))
+					Renderer::SetToneCurve(curveValues[curve]);
+				ImGui::EndDisabled();
+				EditorUI::ItemTooltip("X-Plane 12: its display transform and grade (the parity look); the others are ungraded, for comparison");
+
+				EditorUI::PropertyLabel("Passes");
+				if (ImGui::Button("All off"))
+					Renderer::SetFeatures(RendererFeatures::AllOff());
+				ImGui::SameLine();
+				if (ImGui::Button("Defaults"))
+					Renderer::SetFeatures(RendererFeatures{});
+				EditorUI::ItemTooltip("All off: the frame graph with every switchable pass off (A/B against the plain renderer)");
+				EditorUI::EndPropertyGrid();
+			}
+
+			if (EditorUI::SectionHeader("EXPOSURE", false) && EditorUI::BeginPropertyGrid("##RendererExposure"))
+			{
+				// X-Plane 12's camera: histogram-metered EV100 pulled toward the sun elevation's target (or a fixed EV100),
+				// then the output chain's art controls. Edits apply from the next frame; resources/environment/xp12_environment.json has the defaults.
+				Renderer::EnvironmentConstants &constants = Renderer::EditEnvironmentConstants();
+				ExposureSettings &exposure = constants.exposure;
+
+				EditorUI::PropertyLabel("Mode");
+				int mode = exposure.automatic ? 0 : 1;
+				static constexpr const char *modes[] = { "Auto (metered)", "Manual" };
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				if (ImGui::Combo("##ExposureMode", &mode, modes, 2))
+				{
+					exposure.automatic = mode == 0;
+					Renderer::ResetExposure();
+				}
+				EditorUI::PropertyLabel("Manual EV100");
+				ImGui::BeginDisabled(exposure.automatic);
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##ManualEv", &exposure.manualEv100, -2.0f, 18.0f, "%.2f");
+				ImGui::EndDisabled();
+				EditorUI::PropertyLabel("Compensation");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##Compensation", &exposure.compensation, -4.0f, 4.0f, "%+.2f EV");
+				EditorUI::ItemTooltip("On top of the automatic exposure; positive brightens");
+
+				const Renderer::ExposureReadout readout = Renderer::GetExposureReadout();
+				if (readout.valid)
+				{
+					ValueText("Exposed at", "EV100 %.2f", readout.ev100);
+					const float sunElevation = static_cast<float>(Environment::Get().GetSnapshot().derived.sun.apparentElevationDeg);
+					ValueText("Metered", "EV100 %.2f", readout.meteredEv100);
+					ValueText("Target", "EV100 %.2f (mid %.2f, bias %+.2f, range %.1f-%.1f)", readout.targetEv100, GetExposureMid(exposure, sunElevation),
+						GetExposureBias(exposure, sunElevation), exposure.evMin, exposure.evMax);
+					ValueText("Mean luminance", "%.3g nits", std::exp2(readout.meanLog2Nits));
+				}
+				else
+				{
+					ValueText("Exposed at", "not metered yet");
+				}
+				EditorUI::PropertyLabel("Adaptation");
+				if (ImGui::Button("Reset"))
+					Renderer::ResetExposure();
+				EditorUI::ItemTooltip("Jump straight to the metered exposure");
+
+				EditorUI::PropertyLabel("Bloom");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##Bloom", &constants.bloomIntensity, 0.0f, 0.25f, "%.3f");
+				EditorUI::PropertyLabel("Fusion shadows");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##FusionShadows", &constants.exposureFusion.x, 0.0f, 4.0f, "%.2f EV");
+				EditorUI::ItemTooltip("Exposure fusion: how far the shadows exposure is lifted (exposure_fusion/shadows)");
+				EditorUI::PropertyLabel("Fusion highlights");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##FusionHighlights", &constants.fusionHighlights, 0.0f, 4.0f, "%.2f EV");
+				EditorUI::PropertyLabel("Fusion strength");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##FusionStrength", &constants.fusionStrength, 0.0f, 1.0f, "%.2f");
+				EditorUI::PropertyLabel("Saturation");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##Saturation", &constants.colorSlope.w, 0.0f, 2.0f, "%.2f");
+				EditorUI::ItemTooltip("Saturation after the display curve (color_management/sdr/saturation)");
+				EditorUI::PropertyLabel("Gamut compression");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##ToneCompression", &constants.toneCompression, 0.0f, 0.5f, "%.3f");
+				EditorUI::ItemTooltip("How far the display curve's working space is pulled toward grey (color_management/compression)");
+				EditorUI::PropertyLabel("FSR sharpness");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##RcasSharpness", &constants.rcasSharpness, 0.0f, 1.0f, "%.2f");
+				EditorUI::EndPropertyGrid();
+			}
+
+			if (EditorUI::SectionHeader("ATMOSPHERE", false) && EditorUI::BeginPropertyGrid("##RendererAtmosphere"))
+			{
+				// The sky, haze and probes of plan Phase 6 (the visibility itself is in the ENVIRONMENT panel)
+				Renderer::EnvironmentConstants &constants = Renderer::EditEnvironmentConstants();
+				EditorUI::PropertyLabel("Haze layer top");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##HazeTop", &constants.hazeTopM, 100.0f, 5000.0f, "%.0f m");
+				EditorUI::ItemTooltip("The surface haze layer's top above the ground (at least; very clear air mixes higher)");
+				EditorUI::PropertyLabel("Haze fade band");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##HazeBand", &constants.hazeBandM, 10.0f, 5000.0f, "%.0f m");
+				EditorUI::PropertyLabel("Aerial range");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##AerialRange", &constants.aerialRangeM, 16000.0f, 256000.0f, "%.0f m");
+				EditorUI::ItemTooltip("How far the aerial perspective volume reaches");
+				EditorUI::PropertyLabel("Airglow");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##Airglow", &constants.airglowNits, 0.0f, 0.01f, "%.5f nits", ImGuiSliderFlags_Logarithmic);
+				EditorUI::ItemTooltip("The night sky's floor: airglow and unresolved starlight");
+				EditorUI::PropertyLabel("Stars");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##Stars", &constants.starBrightness, 0.0f, 16.0f, "%.2f", ImGuiSliderFlags_Logarithmic);
+				EditorUI::PropertyLabel("Probe LOD bias");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##ProbeBias", &constants.probeSpecularBias, -2.0f, 2.0f, "%.2f");
+				EditorUI::ItemTooltip("Reflections' blur: added to roughness x 5 when the probes are sampled");
+				EditorUI::EndPropertyGrid();
+			}
+
+			if (EditorUI::SectionHeader("SHADOWS", false) && EditorUI::BeginPropertyGrid("##RendererShadows"))
+			{
+				// Sun and cloud shadows of plan Phase 7 (X-Plane's shadow controls; the QUALITY shadow level sets the cascades)
+				Renderer::EnvironmentConstants &constants = Renderer::EditEnvironmentConstants();
+				EditorUI::PropertyLabel("Soft edges");
+				ImGui::Checkbox("##ShadowSoft", &constants.shadowSoft);
+				EditorUI::ItemTooltip("3 x 3 filtered shadow-map lookups (shadow/want_soft)");
+				EditorUI::PropertyLabel("Receiver plane");
+				ImGui::Checkbox("##ShadowReceiverPlane", &constants.shadowReceiverPlane);
+				EditorUI::ItemTooltip("Soft lookups compare against the receiver's own plane, so thin gaps keep their shadow "
+									  "(sedx/csm_receiver_plane); off: X-Plane's caster bias alone");
+				EditorUI::PropertyLabel("Slope bias");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				float &slopeBias = constants.shadowReceiverPlane ? constants.shadowReceiverPlaneSlopeBias : constants.shadowBiasSlope;
+				ImGui::SliderFloat("##ShadowBiasSlope", &slopeBias, 0.0f, 8.0f, "%.2f");
+				EditorUI::ItemTooltip("Casters pushed away from the light by this many times their depth slope (shadow/bias_slope, "
+									  "or sedx/csm_receiver_plane_slope_bias with the receiver plane)");
+				EditorUI::PropertyLabel("Normal offset");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##ShadowNormalBias", &constants.shadowNormalBias, 0.0f, 4.0f, "%.2f texels");
+				EditorUI::ItemTooltip("Receivers moved along their normal before the lookup (shadow/bias_n_constant; X-Plane uses 0)");
+				EditorUI::PropertyLabel("Split lambda");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				float lambda = static_cast<float>(constants.shadow.lambda);
+				if (ImGui::SliderFloat("##ShadowLambda", &lambda, 0.0f, 1.0f, "%.2f"))
+					constants.shadow.lambda = lambda;
+				EditorUI::ItemTooltip("1 logarithmic .. 0 uniform cascade splits (shadow/csm/lambda)");
+				EditorUI::PropertyLabel("Cloud shadows");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##CloudShadowStrength", &constants.cloudShadowStrength, 0.0f, 1.0f, "%.2f");
+				EditorUI::ItemTooltip("Share of the sunlight clouds can take away (clouds/cloud_shadow_lighten_ratio)");
+
+				const CsmSetup &cascades = Renderer::GetShadowCascades();
+				static constexpr const char *lights[] = { "none", "the sun", "the moon" };
+				ValueText("Cast by", "%s", lights[std::min(Renderer::GetShadowLight(), 2u)]);
+				for (uint32_t i = 0; i < cascades.count; ++i)
+				{
+					char label[32];
+					snprintf(label, sizeof(label), "Cascade %u", i);
+					ValueText(label, "%.1f - %.1f m, %.1f cm texels", cascades.cascades[i].depthNear, cascades.cascades[i].depthFar,
+						cascades.cascades[i].texelSize * 100.0);
+				}
+				ValueText("GPU casters", "%u instance draws", GpuScene::GetStats().shadowInstances);
+				EditorUI::EndPropertyGrid();
+			}
+
+			if (EditorUI::SectionHeader("AMBIENT OCCLUSION", false) && EditorUI::BeginPropertyGrid("##RendererAo"))
+			{
+				// Plan Phase 8: X-Plane's CACAO controls (ssao/*); the QUALITY AO level sets the CACAO quality and resolution
+				Renderer::EnvironmentConstants &constants = Renderer::EditEnvironmentConstants();
+				CacaoSettings &ao = constants.ao;
+				EditorUI::PropertyLabel("Technique");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				static constexpr const char *techniques[] = { "CACAO (X-Plane 12)", "GTAO (fallback)" };
+				int technique = static_cast<int>(Renderer::GetAoTechnique());
+				if (ImGui::Combo("##AoTechnique", &technique, techniques, IM_ARRAYSIZE(techniques)))
+					Renderer::SetAoTechnique(static_cast<Renderer::AoTechnique>(technique));
+				EditorUI::ItemTooltip("CACAO is X-Plane 12's ambient occlusion; GTAO is SEDX's older pass, for comparison");
+				EditorUI::PropertyLabel("Follow height");
+				ImGui::Checkbox("##AoDynamic", &ao.dynamicValues);
+				EditorUI::ItemTooltip("Radius and fade-in grow with the camera's height above the ground, as X-Plane's do "
+									  "(ssao/dynamic_values)");
+				EditorUI::PropertyLabel("Radius");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##AoRadius", &ao.radius, 0.1f, 30.0f, "%.2f m");
+				EditorUI::ItemTooltip("Size of the occlusion sphere near the ground (ssao/radius)");
+				EditorUI::PropertyLabel("Strength");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##AoStrength", &ao.shadowMultiplier, 0.0f, 3.0f, "%.2f");
+				EditorUI::ItemTooltip("ssao/shadow_multiplier");
+				EditorUI::PropertyLabel("Power");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##AoPower", &ao.shadowPower, 0.5f, 5.0f, "%.2f");
+				EditorUI::ItemTooltip("ssao/shadow_power");
+				EditorUI::PropertyLabel("Horizon angle");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##AoHorizon", &ao.horizonAngleThreshold, 0.0f, 1.0f, "%.2f");
+				EditorUI::ItemTooltip("Limits self-occlusion on slopes and coarse geometry (ssao/horizon_angle_threshold)");
+				EditorUI::PropertyLabel("Sharpness");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##AoSharpness", &ao.sharpness, 0.0f, 1.0f, "%.2f");
+				EditorUI::ItemTooltip("1: the blur never crosses depth or normal edges (ssao/sharpness)");
+				EditorUI::PropertyLabel("Blur passes");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				int blurPasses = static_cast<int>(ao.blurPassCount);
+				if (ImGui::SliderInt("##AoBlur", &blurPasses, 0, static_cast<int>(CACAO_MAX_BLUR_PASSES)))
+					ao.blurPassCount = static_cast<uint32_t>(blurPasses);
+				EditorUI::ItemTooltip("ssao/blur_pass_count");
+				EditorUI::PropertyLabel("Detail");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##AoDetail", &ao.detailShadowStrength, 0.0f, 5.0f, "%.2f");
+				EditorUI::ItemTooltip("Extra occlusion from the neighbouring pixels (ssao/detail_shadow_strength)");
+				EditorUI::PropertyLabel("Fade in");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::DragFloatRange2("##AoFadeIn", &ao.fadeInFromM, &ao.fadeInToM, 0.05f, 0.0f, 1000.0f, "%.1f m", "%.1f m");
+				EditorUI::ItemTooltip("No occlusion nearer the camera than the first distance, all of it from the second "
+									  "(ssao/fade_in_from, fade_in_to)");
+				EditorUI::PropertyLabel("Fade out");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::DragFloatRange2("##AoFadeOut", &ao.fadeOutFromM, &ao.fadeOutToM, 10.0f, 0.0f, 100000.0f, "%.0f m", "%.0f m");
+				EditorUI::ItemTooltip("ssao/fade_out_from, fade_out_to");
+
+				const Renderer::AoReadout &readout = Renderer::GetAoReadout();
+				if (!readout.ran)
+				{
+					ValueText("Last frame", "%s", "off");
+				}
+				else if (readout.technique == Renderer::AoTechnique::Gtao)
+				{
+					ValueText("Last frame", "GTAO, %u x %u", readout.width, readout.height);
+				}
+				else
+				{
+					static constexpr const char *qualities[] = { "lowest", "low", "medium", "high", "highest" };
+					ValueText("Last frame", "CACAO %s, %s resolution, 4 x %u x %u", qualities[static_cast<int>(readout.quality)],
+						readout.halfResolution ? "half" : "full", readout.width, readout.height);
+					ValueText("In use", "radius %.1f m, fade-in to %.1f m", readout.settings.radius, readout.settings.fadeInToM);
+				}
+				EditorUI::EndPropertyGrid();
+			}
+
+			if (EditorUI::SectionHeader("REFLECTIONS", false) && EditorUI::BeginPropertyGrid("##RendererSsr"))
+			{
+				// Plan Phase 9: X-Plane's screen-space reflection controls (ssr/*) and SEDX's (sedx/ssr_*)
+				Renderer::EnvironmentConstants &constants = Renderer::EditEnvironmentConstants();
+				SsrSettings &ssr = constants.ssr;
+				EditorUI::PropertyLabel("Minimum gloss");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##SsrMinGloss", &ssr.minGloss, 0.0f, 1.0f, "%.2f");
+				char tooltip[160];
+				snprintf(tooltip, sizeof(tooltip), "Surfaces less glossy keep the probes' reflections alone (ssr/min_gloss; roughness %.3f)",
+					RoughnessFromGloss(ssr.minGloss));
+				EditorUI::ItemTooltip(tooltip);
+				EditorUI::PropertyLabel("Gloss fade");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##SsrGlossFade", &ssr.glossFade, 0.0f, 0.5f, "%.2f");
+				EditorUI::ItemTooltip("Gloss over which reflections fade in above the minimum (sedx/ssr_gloss_fade)");
+				EditorUI::PropertyLabel("Blur rough");
+				ImGui::Checkbox("##SsrPrefiltered", &ssr.usePrefiltered);
+				EditorUI::ItemTooltip("Glossy lobes read blurred mips of the previous frame (ssr/use_prefiltered); off: every "
+									  "reflection is sharp");
+				EditorUI::PropertyLabel("LOD bias");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##SsrLodBias", &ssr.lodBias, -2.0f, 4.0f, "%.2f");
+				EditorUI::ItemTooltip("Added to the history mip a reflection reads (ssr/lod_bias)");
+				EditorUI::PropertyLabel("Thickness");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##SsrThickness", &ssr.thicknessM, 0.01f, 5.0f, "%.2f m");
+				snprintf(tooltip, sizeof(tooltip), "How far behind a surface in the depth buffer a hit still counts, plus %.1f%% of its "
+					"distance (sedx/ssr_thickness_m, sedx/ssr_thickness_ratio)", ssr.thicknessRatio * 100.0f);
+				EditorUI::ItemTooltip(tooltip);
+				EditorUI::PropertyLabel("Max steps");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				int steps = static_cast<int>(ssr.maxSteps);
+				if (ImGui::SliderInt("##SsrSteps", &steps, 8, 256))
+					ssr.maxSteps = static_cast<uint32_t>(steps);
+				EditorUI::ItemTooltip("Hierarchical-Z iterations before a ray gives up (sedx/ssr_max_steps)");
+				EditorUI::PropertyLabel("Trace everything");
+				bool traceAll = Renderer::GetSsrTraceAll();
+				if (ImGui::Checkbox("##SsrTraceAll", &traceAll))
+					Renderer::SetSsrTraceAll(traceAll);
+				EditorUI::ItemTooltip("Debug: every surface traces as a mirror (see the Reflections debug view); the lighting "
+									  "takes them too");
+
+				const Renderer::SsrReadout &readout = Renderer::GetSsrReadout();
+				if (!readout.ran)
+					ValueText("Last frame", "%s", "off");
+				else
+					ValueText("Last frame", "%u x %u, pyramid %u levels, history %u levels%s", readout.width, readout.height,
+						readout.pyramidLevels, readout.historyLevels, readout.history ? "" : " (none yet)");
+				EditorUI::EndPropertyGrid();
+			}
+
+			if (EditorUI::SectionHeader("WATER", false) && EditorUI::BeginPropertyGrid("##RendererWater"))
+			{
+				// Plan Phase 11: X-Plane's water controls (water/*) and SEDX's (sedx/water_*); the waves' height and direction
+				// are the ENVIRONMENT panel's
+				Renderer::EnvironmentConstants &constants = Renderer::EditEnvironmentConstants();
+				OceanSettings &water = constants.water;
+				EditorUI::PropertyLabel("Gloss");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##WaterGloss", &water.gloss, 0.0f, 1.0f, "%.2f");
+				EditorUI::ItemTooltip("The surface's own gloss before the waves roughen it (water/gloss)");
+				EditorUI::PropertyLabel("F0");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##WaterF0", &water.f0, 0.0f, 0.1f, "%.3f");
+				EditorUI::ItemTooltip("Reflectance looking straight down (water/F0)");
+				EditorUI::PropertyLabel("Turbidity");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##WaterTurbidity", &water.turbidity, 0.1f, 20.0f, "%.1f");
+				EditorUI::ItemTooltip("What stands in the water fades over turbidity / (1 - the water map's alpha) meters (water/turbidity)");
+				EditorUI::PropertyLabel("Choppiness");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##WaterChoppy", &water.displaceLambda, 0.0f, 2.0f, "%.2f");
+				EditorUI::ItemTooltip("Horizontal displacement that sharpens the crests (water/h_displace_lambda)");
+				EditorUI::PropertyLabel("Foam");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##WaterFoam", &water.foamBias, 0.0f, 1.5f, "%.2f");
+				EditorUI::ItemTooltip("Waves break where their surface folds tighter than this (water/foam_bias): higher, more foam");
+				EditorUI::PropertyLabel("Calm ponds");
+				ImGui::Checkbox("##WaterFetch", &water.useFetch);
+				EditorUI::ItemTooltip("The DSF's fetch ratio scales the waves: lakes and ponds stay calm (sedx/water_use_fetch)");
+				EditorUI::PropertyLabel("Sea floor");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##WaterFloor", &water.seaFloorCoef, 0.0f, 1.0f, "%.2f");
+				EditorUI::ItemTooltip("Share of the sea floor seen through clear water (water/sea_floor_coef; 0 in X-Plane 12.4.4)");
+
+				const Renderer::WaterReadout &readout = Renderer::GetWaterReadout();
+				const OceanSpectrum &sea = readout.spectrum;
+				if (!readout.ran)
+					ValueText("Last frame", "%s", readout.draws == 0 ? "no water in view" : "off");
+				else
+					ValueText("Last frame", "%u water draws, 4 cascades of 256 x 256", readout.draws);
+				if (sea.peakOmega > 0.0f)
+				{
+					ValueText("Sea", "Hs %.2f m, wind %.1f m/s, fetch %.0f km, swell %.2f", sea.significantHeightM, sea.windSpeed, sea.fetchM / 1000.0f, sea.swell);
+					const float period = 2.0f * OCEAN_PI / sea.peakOmega;
+					ValueText("Peak waves", "%.1f s, %.0f m long", period, OCEAN_GRAVITY * period * period / (2.0f * OCEAN_PI));
+				}
+				EditorUI::EndPropertyGrid();
+			}
+
+			if (EditorUI::SectionHeader("QUALITY", false) && EditorUI::BeginPropertyGrid("##RendererQuality"))
+			{
+				// X-Plane 12's graphics settings levels (Resources/settings.txt); passes read them as they arrive
+				RendererQualityPreset preset = Renderer::GetQualityPreset();
+				bool changed = false;
+				const auto level = [&changed](const char *label, const char *id, int &value, const int count, const char *(*name)(int))
+				{
+					EditorUI::PropertyLabel(label);
+					ImGui::SetNextItemWidth(-FLT_MIN);
+					if (ImGui::BeginCombo(id, name(value)))
+					{
+						for (int i = 0; i < count; ++i)
+						{
+							if (ImGui::Selectable(name(i), i == value))
+							{
+								value = i;
+								changed = true;
+							}
+						}
+						ImGui::EndCombo();
+					}
+				};
+				level("Shadows", "##Shadows", preset.shadows, SHADOW_LEVELS, GetShadowLevelName);
+				level("Ambient occlusion", "##Ao", preset.ao, AO_LEVELS, GetAoLevelName);
+				level("Clouds", "##Clouds", preset.clouds, CLOUD_LEVELS, GetCloudLevelName);
+				level("FSR", "##Fsr", preset.fsr, FSR_LEVELS, GetFsrLevelName);
+				level("Draw distance", "##DrawDistance", preset.drawDistance, DRAW_DISTANCE_LEVELS, GetDrawDistanceLevelName);
+				EditorUI::PropertyLabel("FXAA");
+				changed |= ImGui::Checkbox("##Fxaa", &preset.fxaa);
+				EditorUI::PropertyLabel("Preset");
+				if (ImGui::Button("X-Plane defaults"))
+				{
+					preset = GetDefaultQualityPreset();
+					changed = true;
+				}
+				EditorUI::ItemTooltip("X-Plane 12's defaults for desktop Vulkan (vkmtl_async): what the parity references use");
+				if (changed)
+					Renderer::SetQualityPreset(preset);
+				const ShadowQuality shadow = GetShadowQuality(preset.shadows);
+				ValueText("Shadow maps", "%d cascades to %.0f m, %u px", shadow.exteriorCascades, shadow.exteriorFarM, shadow.mapSize);
+				const AoQuality aoQuality = GetAoQuality(preset.ao);
+				static constexpr const char *cacaoQualities[] = { "lowest", "low", "medium", "high", "highest" };
+				if (aoQuality.enabled)
+					ValueText("Ambient occlusion", "CACAO %s, %s resolution", cacaoQualities[std::clamp(aoQuality.cacaoQuality, 0, 4)],
+						aoQuality.halfResolution ? "half" : "full");
+				else
+					ValueText("Ambient occlusion", "%s", "none");
+				EditorUI::EndPropertyGrid();
+			}
+
+			if (EditorUI::SectionHeader("DEBUG VIEW", false) && EditorUI::BeginPropertyGrid("##RendererDebugView"))
+			{
+				EditorUI::PropertyLabel("Show");
+				const Renderer_DebugView current = Renderer::GetDebugView();
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				if (ImGui::BeginCombo("##DebugView", GetDebugViewName(current)))
+				{
+					for (int v = 0; v < static_cast<int>(Renderer_DebugView::Count); ++v)
+					{
+						const Renderer_DebugView view = static_cast<Renderer_DebugView>(v);
+						const int phase = GetDebugViewPhase(view);
+						char label[96];
+						if (phase > RENDERER_IMPLEMENTED_PHASE)
+							snprintf(label, sizeof(label), "%s (phase %d)", GetDebugViewName(view), phase);
+						else
+							snprintf(label, sizeof(label), "%s", GetDebugViewName(view));
+						if (ImGui::Selectable(label, view == current))
+							Renderer::SetDebugView(view);
+					}
+					ImGui::EndCombo();
+				}
+				EditorUI::EndPropertyGrid();
+			}
+
+			if (EditorUI::SectionHeader("GPU TIMINGS", false) && EditorUI::BeginPropertyGrid("##RendererGpuTimings"))
+			{
+				// Per pass, from timestamp queries of the last finished frame (also in the --perf-log counters)
+				for (const GpuTimer::Result &result : GpuTimer::GetResults())
+					ValueText(result.name.c_str(), "%.3f ms", result.milliseconds);
 				EditorUI::EndPropertyGrid();
 			}
 

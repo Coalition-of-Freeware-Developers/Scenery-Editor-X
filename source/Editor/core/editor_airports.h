@@ -83,6 +83,12 @@ namespace SceneryEditorX::EditorAirports
 	 */
 	void MarkElementsEdited(const std::vector<XPlane::SceneAirports::ElementRef> &rows);
 
+	/**
+	 * @brief Opens an airport by id once the airport and library indexes are ready (as --xp-airport does), so its
+	 * library art resolves on the first build. Parity scenarios use it.
+	 */
+	void RequestOpenWhenReady(const std::string &airportId);
+
 	/* @brief Opens an airport the index found, replacing the open one (asks about unsaved changes via the modal). */
 	bool OpenAirport(const XPlane::AirportEntry &entry, EditorContext *context);
 

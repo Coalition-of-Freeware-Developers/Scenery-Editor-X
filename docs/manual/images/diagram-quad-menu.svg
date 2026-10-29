@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 600" width="1100" height="600" role="img" aria-labelledby="title desc">
+  <title id="title">The quad menu over a facade</title>
+  <desc id="desc">Four menus around the cursor. Top left, FACADE: wall type, height, replace with, pick walls, make picked wall the front, draw with this facade, inspect, edit. Bottom left, REBUILD: subdivide curved walls, square corners, reverse direction, add around, nodes tool. Top right, DISPLAY: frame selection, hide selection, show all hidden, lock, wall labels, reset camera. Bottom right, TRANSFORM: the six tools, duplicate, delete, deselect.</desc>
+  <defs>
+    <pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse">
+      <path d="M24 0H0V24" fill="none" stroke="#6cc3ff" stroke-opacity=".07"/>
+    </pattern>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#14232f"/><stop offset="1" stop-color="#0d1720"/>
+    </linearGradient>
+    <style>
+      text { white-space: pre; font-family: "Segoe UI", "Open Sans", Helvetica, Arial, sans-serif; }
+      .menu { fill: #232323; stroke: #444444; stroke-width: 1.2; }
+      .head { fill: #2d2d2d; }
+      .htext { fill: #ffffff; font-size: 12.5px; font-weight: 800; letter-spacing: .12em; }
+      .item { fill: #d8d8d8; font-size: 14px; }
+      .short { fill: #8d8d8d; font-size: 13px; text-anchor: end; }
+      .sub { fill: #8d8d8d; font-size: 13px; text-anchor: end; }
+      .sep { stroke: #3a3a3a; }
+      .hl { fill: #1f8ad6; fill-opacity: .9; }
+      .accent { fill: #1f8ad6; }
+    </style>
+  </defs>
+  <rect width="1100" height="600" fill="url(#bg)"/>
+  <rect width="1100" height="600" fill="url(#grid)"/>
+
+  <!-- cursor at 550,300 -->
+  <circle cx="550" cy="300" r="22" fill="none" stroke="#6cc3ff" stroke-opacity=".5" stroke-dasharray="4 4"/>
+  <path d="M547 292 L547 316 L553 310 L558 321 L562 319 L557 308 L565 308 Z" fill="#ffffff" stroke="#0d1720" stroke-width="1.5"/>
+
+  <!-- FACADE (top left) -->
+  <g transform="translate(150 40)">
+    <rect width="380" height="250" rx="6" class="menu"/>
+    <rect width="380" height="30" rx="6" class="head"/><rect y="28" width="380" height="2" class="accent"/>
+    <text x="16" y="20" class="htext">FACADE</text>
+    <text x="16" y="56" class="item">Wall Type (wall 2)</text><text x="364" y="56" class="sub">›</text>
+    <text x="16" y="82" class="item">Height</text><text x="364" y="82" class="sub">›</text>
+    <text x="16" y="108" class="item">Replace With</text><text x="364" y="108" class="sub">›</text>
+    <text x="16" y="134" class="item">Pick Walls</text>
+    <text x="16" y="160" class="item">Make Picked Wall the Front</text>
+    <line x1="10" y1="172" x2="370" y2="172" class="sep"/>
+    <text x="16" y="194" class="item">Draw With This Facade</text>
+    <text x="16" y="220" class="item">Inspect Facade</text>
+    <text x="16" y="244" class="item">Edit Facade</text>
+  </g>
+
+  <!-- DISPLAY (top right) -->
+  <g transform="translate(570 80)">
+    <rect width="380" height="210" rx="6" class="menu"/>
+    <rect width="380" height="30" rx="6" class="head"/><rect y="28" width="380" height="2" class="accent"/>
+    <text x="16" y="20" class="htext">DISPLAY</text>
+    <rect x="4" y="38" width="372" height="26" rx="4" class="hl"/>
+    <text x="16" y="56" class="item" fill="#ffffff">Frame Selection</text><text x="364" y="56" class="short" fill="#e8f3fc">F</text>
+    <text x="16" y="82" class="item">Hide Selection</text>
+    <text x="16" y="108" class="item">Show All Hidden</text>
+    <text x="16" y="134" class="item">Lock / Unlock</text>
+    <line x1="10" y1="146" x2="370" y2="146" class="sep"/>
+    <text x="16" y="170" class="item">Wall Labels</text>
+    <text x="16" y="196" class="item">Reset Camera</text><text x="364" y="196" class="short">Home</text>
+  </g>
+
+  <!-- REBUILD (bottom left) -->
+  <g transform="translate(150 316)">
+    <rect width="380" height="166" rx="6" class="menu"/>
+    <rect width="380" height="30" rx="6" class="head"/><rect y="28" width="380" height="2" class="accent"/>
+    <text x="16" y="20" class="htext">REBUILD</text>
+    <text x="16" y="56" class="item">Subdivide Curved Walls</text>
+    <text x="16" y="82" class="item">Square Corners</text>
+    <text x="16" y="108" class="item">Reverse Direction</text>
+    <text x="16" y="134" class="item">Add Around</text><text x="364" y="134" class="sub">›</text>
+    <text x="16" y="158" class="item">Nodes Tool</text><text x="364" y="158" class="short">V</text>
+  </g>
+
+  <!-- TRANSFORM (bottom right) -->
+  <g transform="translate(570 316)">
+    <rect width="380" height="270" rx="6" class="menu"/>
+    <rect width="380" height="30" rx="6" class="head"/><rect y="28" width="380" height="2" class="accent"/>
+    <text x="16" y="20" class="htext">TRANSFORM</text>
+    <text x="16" y="56" class="item">Select Tool</text><text x="364" y="56" class="short">Q</text>
+    <text x="16" y="80" class="item">Move Tool</text><text x="364" y="80" class="short">W</text>
+    <text x="16" y="104" class="item">Rotate Tool</text><text x="364" y="104" class="short">E</text>
+    <text x="16" y="128" class="item">Scale Tool</text><text x="364" y="128" class="short">R</text>
+    <text x="16" y="152" class="item">Nodes Tool</text><text x="364" y="152" class="short">V</text>
+    <text x="16" y="176" class="item">Facade Tool</text><text x="364" y="176" class="short">B</text>
+    <line x1="10" y1="188" x2="370" y2="188" class="sep"/>
+    <text x="16" y="210" class="item">Duplicate</text><text x="364" y="210" class="short">Ctrl+D</text>
+    <text x="16" y="234" class="item">Delete</text><text x="364" y="234" class="short">Del</text>
+    <text x="16" y="258" class="item">Deselect</text><text x="364" y="258" class="short">Esc</text>
+  </g>
+</svg>

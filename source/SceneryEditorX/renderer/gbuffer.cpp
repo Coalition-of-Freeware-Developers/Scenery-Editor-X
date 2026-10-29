@@ -29,6 +29,8 @@
  * -------------------------------------------------------
  */
 #include "gbuffer.h"
+#include <algorithm>
+#include <atomic>
 #include <SceneryEditorX/renderer/vulkan/queue_manager.h>
 #include <SceneryEditorX/renderer/vulkan/render_context.h>
 
@@ -47,6 +49,9 @@ namespace SceneryEditorX
 			xMath::Vec3 position;
 			xMath::Vec2 uv;
 		};
+
+		/* @brief Set while the global buffer takes frees: off after Shutdown, when meshes destroyed at exit must not touch it. */
+		std::atomic<bool> s_Accepting = true;
 
 		/** @brief Frees a buffer's GPU memory now (~Buffer would too, but logs it as a leak) and drops the owner. */
 		template <typename Owner>
@@ -78,12 +83,19 @@ namespace SceneryEditorX
 	bool GeometryBuffer::m_WasRebuilt;
 	uint64_t GeometryBuffer::m_Generation = 0;
 	std::mutex GeometryBuffer::m_Mutex;
+	std::vector<GeometryBuffer::Range> GeometryBuffer::m_FreeVertexRanges;
+	std::vector<GeometryBuffer::Range> GeometryBuffer::m_FreeIndexRanges;
+	std::vector<GeometryBuffer::PendingRange> GeometryBuffer::m_PendingRanges;
+	std::vector<GeometryBuffer::Range> GeometryBuffer::m_DirtyVertexRanges;
+	std::vector<GeometryBuffer::Range> GeometryBuffer::m_DirtyIndexRanges;
+	uint64_t GeometryBuffer::m_Frame = 0;
 	
 #pragma endregion
 
 	void GeometryBuffer::Initialize()
 	{
 		SEDX_CORE_TRACE_TAG("RendererResources", "Initializing GeometryBuffer/G-Buffer");
+		s_Accepting = true;
 		if (s_GeometryQuadVertexBuffer && s_GeometryQuadIndexBuffer)
 			return;
 
@@ -146,8 +158,14 @@ namespace SceneryEditorX
 		ReleaseBuffer(m_IndexBuffer);
 
 		// Start a re-init from an empty global geometry buffer.
+		s_Accepting = false;
 		std::vector<Vertex_PosTexNorTan>().swap(m_Vertices);
 		std::vector<uint32_t>().swap(m_Indices);
+		m_FreeVertexRanges.clear();
+		m_FreeIndexRanges.clear();
+		m_PendingRanges.clear();
+		m_DirtyVertexRanges.clear();
+		m_DirtyIndexRanges.clear();
 		m_VertexCount_Committed = 0;
 		m_IndexCount_Committed  = 0;
 		m_Vertex_Capacity       = 0;
@@ -157,25 +175,101 @@ namespace SceneryEditorX
 		SEDX_CORE_TRACE_TAG("RendererResources", "Shutting down GeometryBuffer/G-Buffer");
 	}
 
+	namespace
+	{
+		/**
+		 * @brief Writes count elements into the smallest freed range that holds them (what is left of it stays free);
+		 * returns its offset, or the vector's end when none fits (the elements are appended there).
+		 */
+		template <typename Element, typename Range>
+		uint32_t Place(std::vector<Element> &elements, std::vector<Range> &free, std::vector<Range> &dirty, const uint32_t committed, const Element *data, const uint32_t count)
+		{
+			auto best = free.end();
+			for (auto it = free.begin(); it != free.end(); ++it)
+			{
+				if (it->count >= count && (best == free.end() || it->count < best->count))
+					best = it;
+			}
+			if (best == free.end() || count == 0)
+			{
+				const uint32_t offset = static_cast<uint32_t>(elements.size());
+				elements.insert(elements.end(), data, data + count);
+				return offset;
+			}
+
+			const uint32_t offset = best->offset;
+			best->offset += count;
+			best->count -= count;
+			if (best->count == 0)
+				free.erase(best);
+			std::copy(data, data + count, elements.begin() + offset);
+			if (offset < committed)
+				dirty.push_back({ offset, std::min(count, committed - offset) });	// Beyond committed, the normal upload covers it
+			return offset;
+		}
+
+		/* @brief Adds a range to a sorted free list, merging it with its neighbours. */
+		template <typename Range>
+		void AddFree(std::vector<Range> &free, const Range range)
+		{
+			auto it = std::lower_bound(free.begin(), free.end(), range.offset, [](const Range &r, const uint32_t offset) { return r.offset < offset; });
+			it = free.insert(it, range);
+			if (it + 1 != free.end() && it->offset + it->count == (it + 1)->offset)
+			{
+				it->count += (it + 1)->count;
+				free.erase(it + 1);
+			}
+			if (it != free.begin() && (it - 1)->offset + (it - 1)->count == it->offset)
+			{
+				(it - 1)->count += it->count;
+				free.erase(it);
+			}
+		}
+
+		/* @brief Drops a free range that reaches the end of the elements: the vector shrinks instead. */
+		template <typename Element, typename Range>
+		void TrimEnd(std::vector<Element> &elements, std::vector<Range> &free, uint32_t &committed)
+		{
+			if (free.empty() || free.back().offset + free.back().count != elements.size())
+				return;
+			elements.resize(free.back().offset);
+			free.pop_back();
+			committed = std::min(committed, static_cast<uint32_t>(elements.size()));
+		}
+	}
+
 	uint32_t GeometryBuffer::AppendVertices(const Vertex_PosTexNorTan *data, uint32_t count)
 	{
 		std::scoped_lock lock(m_Mutex);
-
-		uint32_t baseOffset = static_cast<uint32_t>(m_Vertices.size());
-		m_Vertices.insert(m_Vertices.end(), data, data + count);
+		const uint32_t offset = Place(m_Vertices, m_FreeVertexRanges, m_DirtyVertexRanges, m_VertexCount_Committed, data, count);
 		m_Dirty.SetDirty();
-		return baseOffset;
+		return offset;
 	}
 
 	uint32_t GeometryBuffer::AppendIndices(const uint32_t *data, uint32_t count)
 	{
 		std::scoped_lock lock(m_Mutex);
-
-		uint32_t baseOffset = static_cast<uint32_t>(m_Indices.size());
-		m_Indices.insert(m_Indices.end(), data, data + count);
+		const uint32_t offset = Place(m_Indices, m_FreeIndexRanges, m_DirtyIndexRanges, m_IndexCount_Committed, data, count);
 		m_Dirty.SetDirty();
+		return offset;
+	}
 
-		return baseOffset;
+	void GeometryBuffer::FreeVertices(const uint32_t offset, const uint32_t count)
+	{
+		if (count == 0 || !s_Accepting.load())
+			return;
+		std::scoped_lock lock(m_Mutex);
+		if (offset + count <= m_Vertices.size())
+			m_PendingRanges.push_back({ { offset, count }, m_Frame, false });
+	}
+
+	void GeometryBuffer::FreeIndices(const uint32_t offset, const uint32_t count)
+	{
+		if (count == 0 || !s_Accepting.load())
+			return;
+		std::scoped_lock lock(m_Mutex);
+		if (offset + count <= m_Indices.size())
+			m_PendingRanges.push_back({ { offset, count }, m_Frame, true });
 	}
 
 	void GeometryBuffer::UpdateVertices(const Vertex_PosTexNorTan *data, uint32_t offset, uint32_t count)
@@ -196,6 +290,21 @@ namespace SceneryEditorX
 	void GeometryBuffer::BuildIfDirty()
 	{
 		std::scoped_lock lock(m_Mutex);
+
+		// Freed ranges become reusable once the frames that might still draw them are done
+		++m_Frame;
+		if (!m_PendingRanges.empty())
+		{
+			std::erase_if(m_PendingRanges, [](const PendingRange &pending)
+			{
+				if (m_Frame < pending.frame + FREE_DELAY_FRAMES)
+					return false;
+				AddFree(pending.indices ? m_FreeIndexRanges : m_FreeVertexRanges, pending.range);
+				return true;
+			});
+			TrimEnd(m_Vertices, m_FreeVertexRanges, m_VertexCount_Committed);
+			TrimEnd(m_Indices, m_FreeIndexRanges, m_IndexCount_Committed);
+		}
 
 		if (!m_Dirty.IsDirty() || m_Vertices.empty() || m_Indices.empty())
 			return;
@@ -239,6 +348,8 @@ namespace SceneryEditorX
 			m_IndexCount_Committed  = indexCount;
 			m_WasRebuilt = true;
 			++m_Generation;
+			m_DirtyVertexRanges.clear();
+			m_DirtyIndexRanges.clear();
 
 
 			SEDX_CORE_INFO_TAG("GBuffer","Global geometry buffer built: {} vertices ({:.2f} MB), {} indices ({:.2f} MB), capacity: {} vertices, {} indices",
@@ -248,9 +359,26 @@ namespace SceneryEditorX
 		}
 		else
 		{
+			// space freed earlier and written again: upload those ranges where they lie
+			for (const Range &range : m_DirtyVertexRanges)
+			{
+				if (range.offset + range.count <= vertexCount)
+					m_VertexBuffer->UploadSubRegion(m_Vertices.data() + range.offset, static_cast<uint64_t>(range.offset) * sizeof(Vertex_PosTexNorTan),
+						static_cast<uint64_t>(range.count) * sizeof(Vertex_PosTexNorTan));
+			}
+			for (const Range &range : m_DirtyIndexRanges)
+			{
+				if (range.offset + range.count <= indexCount)
+					m_IndexBuffer->UploadSubRegion(m_Indices.data() + range.offset, static_cast<uint64_t>(range.offset) * sizeof(uint32_t),
+						static_cast<uint64_t>(range.count) * sizeof(uint32_t));
+			}
+			const size_t reused = m_DirtyVertexRanges.size() + m_DirtyIndexRanges.size();
+			m_DirtyVertexRanges.clear();
+			m_DirtyIndexRanges.clear();
+
 			// the new data fits within the pre-allocated capacity, upload only the new portion
-			uint32_t newVertices = vertexCount - m_VertexCount_Committed;
-			uint32_t newIndices  = indexCount - m_IndexCount_Committed;
+			const uint32_t newVertices = vertexCount > m_VertexCount_Committed ? vertexCount - m_VertexCount_Committed : 0;
+			const uint32_t newIndices  = indexCount > m_IndexCount_Committed ? indexCount - m_IndexCount_Committed : 0;
 
 			if (newVertices > 0)
 			{
@@ -269,7 +397,7 @@ namespace SceneryEditorX
 			m_VertexCount_Committed = vertexCount;
 			m_IndexCount_Committed  = indexCount;
 
-			SEDX_CORE_INFO_TAG("GBuffer","Global geometry buffer updated: +{} vertices, +{} indices (sub-region upload, no rebuild)", newVertices, newIndices);
+			SEDX_CORE_TRACE_TAG("GBuffer","Global geometry buffer updated: +{} vertices, +{} indices, {} reused ranges (sub-region uploads, no rebuild)", newVertices, newIndices, reused);
 		}
 
 		m_Dirty.Check();
@@ -285,6 +413,12 @@ namespace SceneryEditorX
 	uint64_t GeometryBuffer::GetGeneration()
 	{
 		return m_Generation;
+	}
+
+	uint32_t GeometryBuffer::GetVertexCount()
+	{
+		std::scoped_lock lock(m_Mutex);
+		return static_cast<uint32_t>(m_Vertices.size());
 	}
 
 	Buffer *GeometryBuffer::GetIndexBuffer() { return m_IndexBuffer.get(); }
