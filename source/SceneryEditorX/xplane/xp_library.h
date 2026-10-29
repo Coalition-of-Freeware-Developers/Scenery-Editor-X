@@ -32,6 +32,7 @@
 #include <array>
 #include <cstdint>
 #include <filesystem>
+#include <functional>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -133,7 +134,17 @@ namespace SceneryEditorX::XPlane
 		std::string bitmap;
 		std::vector<Condition> conditions;
 
-		/* @brief True when the 1x1 degree tile containing (lat, lon) is inside the region (bitmaps count as inside). */
+		// REGION_BITMAP: the image (resolved against its package by LibraryIndex::Build) and, once LoadRegionBitmaps ran,
+		// one byte per pixel (non-zero inside) over the whole world, row 0 the northern edge (360 x 180: a pixel a tile)
+		std::filesystem::path bitmapFile;
+		std::vector<uint8_t> bitmapMask;
+		uint32_t bitmapWidth = 0;
+		uint32_t bitmapHeight = 0;
+
+		/**
+		 * @brief True when the 1x1 degree tile containing (lat, lon) is inside the region. A bitmap region whose mask
+		 * isn't loaded counts as everywhere.
+		 */
 		[[nodiscard]] bool Contains(double latitude, double longitude) const;
 	};
 
@@ -260,6 +271,37 @@ namespace SceneryEditorX::XPlane
 
 		/* @brief The file X-Plane would load for a virtual path (no region / season), or an empty path. */
 		[[nodiscard]] std::filesystem::path Resolve(std::string_view virtualPath) const;
+
+		/* @brief Where and when a virtual path is resolved (Resolve with a context). */
+		struct ResolveContext
+		{
+			bool hasLocation = false;		// Without one, regions don't narrow the choice (as Resolve() without a context)
+			double latitude = 0.0;
+			double longitude = 0.0;
+			uint8_t season = 0;				// One SeasonBits value; 0: seasons don't narrow the choice
+			uint64_t placementHash = 0;		// Picks among EXPORT_RATIO alternatives (0: the first)
+		};
+
+		/**
+		 * @brief The export X-Plane would use at a place and season: the highest-priority package with an export whose
+		 * REGION contains the place and whose seasons include the season (file order decides within a package, as the
+		 * specific regions come before the catch-all one in X-Plane's libraries); EXPORT_RATIO alternatives in that
+		 * package are picked by the placement hash weighted by ratio; an EXPORT_EXTEND-only package adds the next one's
+		 * choices; EXPORT_BACKUP only fills gaps. Null when nothing applies.
+		 */
+		[[nodiscard]] const AssetProvider *ResolveProvider(std::string_view virtualPath, const ResolveContext &context) const;
+
+		/* @brief ResolveProvider()'s file, or an empty path. */
+		[[nodiscard]] std::filesystem::path Resolve(std::string_view virtualPath, const ResolveContext &context) const;
+
+		/* @brief A region by name, or nullptr. */
+		[[nodiscard]] const LibraryRegion *FindRegion(std::string_view name) const;
+
+		/* @brief Decodes a REGION_BITMAP image: width, height and one byte per pixel (its red channel; non-zero inside). */
+		using RegionBitmapLoader = std::function<bool(const std::filesystem::path &file, uint32_t &width, uint32_t &height, std::vector<uint8_t> &mask)>;
+
+		/* @brief Loads the masks of bitmap regions, so they cover their pixels instead of the whole world. */
+		void LoadRegionBitmaps(const RegionBitmapLoader &loader);
 
 		[[nodiscard]] uint32_t GetExportCount() const { return m_ExportCount; }
 		[[nodiscard]] uint32_t GetMissingFileCount() const { return m_MissingFileCount; }

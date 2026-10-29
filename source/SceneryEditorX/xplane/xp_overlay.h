@@ -32,6 +32,7 @@
 #include "xp_apt.h"
 #include "xp_apt_geometry.h"
 #include "xp_assets.h"
+#include "xp_autogen.h"
 #include "xp_dsf.h"
 #include <cstdint>
 #include <filesystem>
@@ -65,7 +66,8 @@ namespace SceneryEditorX::XPlane
 		Helipad,		// apt.dat helipad with a library texture (placement = helipad index)
 		PaintedLine,	// apt.dat linear feature with a library .lin (placement = feature index)
 		PavementLine,	// apt.dat pavement edge line with a library .lin (placement = pavement index)
-		Road			// .net road segment (placement = index into DsfFile::roads)
+		Road,			// .net road segment (placement = index into DsfFile::roads)
+		Beach			// .bch strip along a shore
 	};
 
 	const char *GetOverlayKindName(OverlayKind kind);
@@ -93,7 +95,19 @@ namespace SceneryEditorX::XPlane
 		float scaleT = 1.0f;
 		float strength = 1.0f;
 		float gain = 1.0f;
+		DecalKeys keys;							// Detail decals: how strongly they apply per texel
 		std::filesystem::path texture;
+	};
+
+	/* @brief A 3D tree to plant (X-Plane 12 forests whose trees have MESH_3D steps; XPlane::Forest3d draws them). */
+	struct OverlayTree3d
+	{
+		int tree = 0;							// Index into the forest's trees
+		float x = 0.0f;							// Local meters
+		float y = 0.0f;							// The ground under it (set where the forest is placed on the terrain)
+		float z = 0.0f;
+		float yaw = 0.0f;						// Radians
+		float height = 0.0f;					// Meters
 	};
 
 	/* @brief A textured mesh ready for upload. */
@@ -125,6 +139,23 @@ namespace SceneryEditorX::XPlane
 		float tangentX = 1.0f;					// Ground direction u increases along (x, z), for normal decals
 		float tangentZ = 0.0f;
 		std::vector<OverlayDecal> decals;
+
+		// Forests: the .for file and the trees drawn in 3D near the camera (the billboards above stand in farther out)
+		std::filesystem::path forestFile;
+		std::vector<OverlayTree3d> trees3d;
+
+		// X-Plane material (the .pol's TEXTURE_NORMAL, NORMAL_METALNESS, SPECULAR, SUPER_ROUGHNESS; xp_material.slang)
+		std::filesystem::path textureNormal;	// Empty: no normal map (the surface keeps a plain matte material)
+		float normalRatio = 1.0f;
+		bool normalMetalness = false;
+		float specular = 1.0f;
+		float superRoughness = 0.0f;
+
+		// Weather receptivity (the .pol's WEATHER / WEATHER_TRANSPARENT / SNOW_ALBEDO_LUMA; weather.slang)
+		std::filesystem::path weatherMask;		// Empty: none
+		bool weatherTransparent = false;
+		bool hasSnowAlbedoLuma = false;
+		float snowAlbedoLuma[2] = {};
 	};
 
 	/* @brief An OBJ8 to place through the object loader. */
@@ -143,9 +174,12 @@ namespace SceneryEditorX::XPlane
 		std::filesystem::path file;
 		std::string resource;					// As named by the DSF / string / autogen
 		std::string name;
-		double x = 0.0, y = 0.0, z = 0.0;		// Local meters
+		double x = 0.0, y = 0.0, z = 0.0;		// Local meters; y above the ground (or, msl, meters above sea level)
 		float heading = 0.0f;					// True degrees
 		uint32_t placement = 0;
+		bool msl = false;						// y is an elevation above sea level (DSF objects placed MSL)
+		bool graded = false;					// Autogen OBJ_GRADED: y above the ground under (groundX, groundZ), not under itself
+		double groundX = 0.0, groundZ = 0.0;
 	};
 
 	struct OverlayBuild
@@ -154,7 +188,7 @@ namespace SceneryEditorX::XPlane
 		std::vector<OverlayObject> objects;
 		std::vector<std::string> warnings;		// Assets that couldn't be resolved or parsed (deduplicated)
 		uint32_t culled = 0;					// Placements outside the area of interest
-		uint32_t unsupported = 0;				// Placements of asset kinds not drawn (.ags, .agb, roads)
+		uint32_t unsupported = 0;				// Placements of asset kinds not drawn (.ags, .agb autogen)
 	};
 
 	/* @brief Finds the file behind an asset path: a library virtual path or a path relative to the scenery pack. */
@@ -179,9 +213,25 @@ namespace SceneryEditorX::XPlane
 			bool drawLines = true;
 			bool drawPolygons = true;
 			bool drawRoads = true;
+			bool drawBeaches = true;
+			bool drawAutogen = true;			// .ags / .agb polygons (.agp points follow placeObjects)
+			int autogenObjectLevel = 5;			// AutogenLayoutOptions::objectLevel
 			bool placeObjects = true;
 			bool placeStrings = true;
 			uint32_t forestTreeLimit = 40000;	// Trees per forest polygon
+
+			/**
+			 * Where a forest's trees may stand (local meters): false leaves that tree out (X-Plane applies forest
+			 * exclusions tree by tree). Null: anywhere in the polygon. With a valid area, trees are only planted
+			 * within it (plus margin).
+			 */
+			std::function<bool(const Point2 &point)> keepTree;
+
+			/**
+			 * Where autogen may put a tile, object or facade (local meters): false leaves it out (the airport's grounds,
+			 * the edge of the terrain). Null: anywhere. Autogen trees go through keepTree.
+			 */
+			std::function<bool(const Point2 &point)> keepAutogen;
 
 			/**
 			 * Height above the ground for a draped LAYER_GROUP (name, offset), so the scene can slot DSF polygons
@@ -218,9 +268,10 @@ namespace SceneryEditorX::XPlane
 		const ObjectStringAsset *GetString(std::string_view path, std::filesystem::path *file, OverlayBuild &out);
 		const ForestAsset *GetForest(std::string_view path, std::filesystem::path *file, OverlayBuild &out);
 		const FacadeAsset *GetFacade(std::string_view path, std::filesystem::path *file, OverlayBuild &out);
-		const AutogenPointAsset *GetAutogen(std::string_view path, std::filesystem::path *file, OverlayBuild &out);
+		const AutogenAsset *GetAutogen(std::string_view path, std::filesystem::path *file, OverlayBuild &out);
 		const RoadNetworkAsset *GetRoadNetwork(std::string_view path, std::filesystem::path *file, OverlayBuild &out);
 		const DecalLibraryAsset *GetDecalLibrary(std::string_view path, std::filesystem::path *file, OverlayBuild &out);
+		const BeachAsset *GetBeach(std::string_view path, std::filesystem::path *file, OverlayBuild &out);
 
 		/**
 		 * @brief A draped mesh's shading from its .pol: RUNWAY_TILE atlas and mapping texture, the decals of its rows
@@ -282,6 +333,15 @@ namespace SceneryEditorX::XPlane
 		void BuildString(const DsfPolygonPlacement &placement, uint32_t index, const std::string &resource, const Options &options, OverlayBuild &out);
 		void BuildAutogen(const DsfObjectPlacement &placement, uint32_t index, const std::string &resource, const Options &options, OverlayBuild &out);
 		void BuildRoad(const DsfRoadSegment &segment, uint32_t index, const std::string &resource, const Options &options, OverlayBuild &out);
+		void BuildBeach(const DsfPolygonPlacement &placement, uint32_t index, const std::string &resource, const Options &options, OverlayBuild &out);
+		void BuildAutogenPolygon(const DsfPolygonPlacement &placement, uint32_t index, const std::string &resource, const Options &options, OverlayBuild &out);
+
+		/* @brief An autogen layout as meshes (ground tiles, trees), objects and facades. */
+		void EmitAutogen(const AutogenLayout &layout, const AutogenAsset &asset, const std::filesystem::path &assetFile, const std::string &resource, uint32_t index,
+						 const Options &options, OverlayBuild &out);
+
+		/* @brief A tree of a forest's layer (any tree when the layer has none), a width (0: its own height range) and yaw. */
+		void AppendForestTree(OverlayMesh &mesh, const ForestAsset &forest, int layer, const Point2 &at, float width, double yawRadians, uint32_t &seed) const;
 
 		AssetResolver m_Resolver;
 		GeoProjection m_Projection;
@@ -290,9 +350,10 @@ namespace SceneryEditorX::XPlane
 		std::map<std::string, Cached<ObjectStringAsset>> m_Strings;
 		std::map<std::string, Cached<ForestAsset>> m_Forests;
 		std::map<std::string, Cached<FacadeAsset>> m_Facades;
-		std::map<std::string, Cached<AutogenPointAsset>> m_Autogens;
+		std::map<std::string, Cached<AutogenAsset>> m_Autogens;
 		std::map<std::string, Cached<RoadNetworkAsset>> m_Roads;
 		std::map<std::string, Cached<DecalLibraryAsset>> m_DecalLibraries;
+		std::map<std::string, Cached<BeachAsset>> m_Beaches;
 		std::map<std::string, bool> m_Warned;
 		std::map<std::string, std::filesystem::path> m_Resolved;
 		uint32_t m_Seed = 12345;
@@ -349,6 +410,16 @@ namespace SceneryEditorX::XPlane
 	 * END_CAP rows at the ends; MIRROR runs the texture back and forth, ALIGN ends it on a whole fraction of a repeat.
 	 */
 	void AppendLinePaint(OverlayMesh &mesh, const LineAsset &asset, const std::vector<Point2> &path, bool closed, float y);
+
+	/**
+	 * @brief Appends a .bch beach along a shore the way the DSF gives it: each point's type for the edge starting there
+	 * (0: no beach), the water on the left of travel (rings run counter-clockwise around lakes). Each run of one type is
+	 * laid with that type's TILE pieces one after another (picked at random with the seed), SIZE_X / SCALE_X meters a
+	 * pixel along the shore and SIZE_Y / SCALE_Y across it, from the water edge across the shoreline (the path) to the
+	 * land edge. Transition pieces aren't drawn. UVs are X-Plane's (pixels / SCALE).
+	 * @return Runs drawn.
+	 */
+	uint32_t AppendBeach(OverlayMesh &mesh, const BeachAsset &asset, const std::vector<Point2> &path, const std::vector<int> &types, bool closed, float y, uint32_t seed);
 
 	/* @brief Resamples a polyline (open or closed) at a spacing: positions and headings (degrees) along it. */
 	void ResamplePath(const std::vector<Point2> &path, bool closed, double spacing, double startOffset, std::vector<Point2> &outPoints, std::vector<double> &outHeadings);

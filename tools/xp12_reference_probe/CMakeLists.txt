@@ -53,8 +53,9 @@ set_target_properties(SEDXReferenceProbe PROPERTIES
 	LIBRARY_OUTPUT_DIRECTORY "$<1:${SEDX_PROBE_OUT}/64>"
 	RUNTIME_OUTPUT_DIRECTORY "$<1:${SEDX_PROBE_OUT}/64>")
 
-# The scenario set and the art-control names travel with the plugin
+# The scenario sets (the KSEA parity set and the test airports) and the art-control names travel with the plugin
 add_custom_command(TARGET SEDXReferenceProbe POST_BUILD
 	COMMAND ${CMAKE_COMMAND} -E copy_if_different "${SEDX_PROBE_ROOT}/scenarios/xp12_parity.json" "${SEDX_PROBE_OUT}/scenarios.json"
+	COMMAND ${CMAKE_COMMAND} -E copy_if_different "${SEDX_PROBE_ROOT}/scenarios/xp12_airports.json" "${SEDX_PROBE_OUT}/airports.json"
 	COMMAND ${CMAKE_COMMAND} -E copy_if_different "${SEDX_REPO_ROOT}/docs/xplane/xp12_art_controls.txt" "${SEDX_PROBE_OUT}/art_controls.txt"
 	COMMAND ${CMAKE_COMMAND} -E copy_if_different "${SEDX_PROBE_ROOT}/README.md" "${SEDX_PROBE_OUT}/README.md")

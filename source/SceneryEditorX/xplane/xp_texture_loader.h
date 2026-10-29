@@ -56,7 +56,8 @@ namespace SceneryEditorX::XPlane
 		Albedo,
 		Normal,
 		Lit,
-		Data
+		Data,
+		Decal		// A detail decal: a single grey channel is its alpha (X-Plane's A_* modulators), its RGB a neutral 0.5
 	};
 
 	/* @brief What the loader found out about a texture file. */
@@ -78,6 +79,7 @@ namespace SceneryEditorX::XPlane
 		uint32_t width = 0;
 		uint32_t height = 0;
 		std::vector<uint8_t> pixels;	// width * height * 4
+		int sourceChannels = 4;			// Channels the file had (1 grey, 2 grey + alpha, 3, 4)
 
 		[[nodiscard]] bool IsValid() const { return width > 0 && height > 0 && pixels.size() == static_cast<size_t>(width) * height * 4; }
 	};

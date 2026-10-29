@@ -329,6 +329,67 @@ TEST_CASE("Hide and show rules evaluate in order with loops", "[xplane][obj8][an
 	CHECK(at(3.9f));
 }
 
+TEST_CASE("Dataref values read once evaluate like a reader", "[xplane][obj8][animation]")
+{
+	Obj8Data data;
+	REQUIRE(ParseObj8(R"(I
+800
+OBJ
+TEXTURE t.png
+VT 0 0 0 0 1 0 0 0
+IDX10 0 0 0 0 0 0 0 0 0 0
+ANIM_begin
+ANIM_trans 0 0 0 0 0 0
+ANIM_trans_begin test/slide[2]
+ANIM_trans_key 0 0 0 0
+ANIM_trans_key 1 0 3 0
+ANIM_trans_end
+ANIM_rotate_begin 0 1 0 test/turn
+ANIM_rotate_key 0 0
+ANIM_rotate_key 10 90
+ANIM_rotate_end
+ANIM_hide 0.25 0.5 test/slide[2]
+TRIS 0 3
+ANIM_end
+)", data));
+	REQUIRE(data.nodes.size() == 1);
+	REQUIRE(data.nodes[0].ops.size() == 3);
+	REQUIRE(data.datarefs.size() == 2);
+
+	// Every op and rule with a dataref points at its datarefs entry; the static op at none
+	const Obj8AnimNode &node = data.nodes[0];
+	CHECK(node.ops[0].datarefIndex == -1);
+	REQUIRE(node.ops[1].datarefIndex >= 0);
+	REQUIRE(node.ops[2].datarefIndex >= 0);
+	CHECK(data.datarefs[static_cast<size_t>(node.ops[1].datarefIndex)].dataref == DatarefRef::Parse("test/slide[2]"));
+	CHECK(data.datarefs[static_cast<size_t>(node.ops[2].datarefIndex)].dataref == DatarefRef::Parse("test/turn"));
+	REQUIRE(data.visibility.size() == 1);
+	CHECK(data.visibility[0].datarefIndex == node.ops[1].datarefIndex);
+
+	const DatarefReader reader = [](const DatarefRef &ref) { return ref.name == "test/turn" ? 5.0f : (ref.index == 2 ? 0.3f : 9.0f); };
+	std::vector<float> values;
+	ReadDatarefs(data, reader, values);
+	REQUIRE(values.size() == data.datarefs.size());
+	CHECK(values[static_cast<size_t>(node.ops[1].datarefIndex)] == Approx(0.3f));
+
+	const RigidTransform byReader = EvaluateAnimNode(node, reader);
+	const RigidTransform byValues = EvaluateAnimNodeAt(node, values);
+	for (int i = 0; i < 4; ++i)
+		CHECK(byValues.rotation[i] == byReader.rotation[i]);
+	for (int i = 0; i < 3; ++i)
+		CHECK(byValues.translation[i] == byReader.translation[i]);
+	CHECK(byValues.translation[1] == Approx(0.9f));
+
+	REQUIRE(data.batches.size() == 1);
+	CHECK_FALSE(EvaluateVisibilityAt(data, data.batches[0].visibility, values));
+	CHECK(EvaluateVisibilityAt(data, data.batches[0].visibility, values) == EvaluateVisibility(data, data.batches[0].visibility, reader));
+	values[static_cast<size_t>(data.visibility[0].datarefIndex)] = 0.75f;
+	CHECK(EvaluateVisibilityAt(data, data.batches[0].visibility, values));
+
+	// Missing values read 0, like an unset dataref
+	CHECK(EvaluateAnimNodeAt(node, {}).translation[1] == Approx(0.0f));
+}
+
 // -------------------------------------------------------
 // Library system
 // -------------------------------------------------------

@@ -40,6 +40,7 @@
 #include <SceneryEditorX/renderer/csm.h>
 #include <SceneryEditorX/renderer/env_probes.h>
 #include <SceneryEditorX/renderer/exposure.h>
+#include <SceneryEditorX/renderer/ocean.h>
 #include <SceneryEditorX/renderer/renderer_features.h>
 #include <SceneryEditorX/renderer/renderer_quality.h>
 #include <SceneryEditorX/renderer/ssr.h>
@@ -178,25 +179,30 @@ TEST_CASE("Environment: the moon's parallax and phases", "[environment][moon]")
 
 TEST_CASE("Environment: runway friction states", "[environment][surface]")
 {
+	// Levels in quarters: X-Plane 12.4.4 reports rain 0.517 and puddles 0.511 for puddly (medium)
 	CHECK(DecodeRunwayFriction(0) == SurfaceWeather{});
-	CHECK(DecodeRunwayFriction(1).wetness == Approx(1.0f / 3.0f));
-	CHECK(DecodeRunwayFriction(2).wetness == Approx(2.0f / 3.0f));
-	CHECK(DecodeRunwayFriction(3).wetness == Approx(1.0f));
+	CHECK(DecodeRunwayFriction(1).wetness == Approx(0.25f));
+	CHECK(DecodeRunwayFriction(2).wetness == Approx(0.5f));
+	CHECK(DecodeRunwayFriction(3).wetness == Approx(0.75f));
 	for (int f = 4; f <= 6; ++f)
 	{
 		const SurfaceWeather s = DecodeRunwayFriction(f);
-		CHECK(s.wetness == 1.0f);
-		CHECK(s.puddles == Approx((f - 3) / 3.0f));
+		CHECK(s.wetness == Approx((f - 3) / 4.0f));
+		CHECK(s.puddles == Approx((f - 3) / 4.0f));
 	}
 	for (int f = 7; f <= 9; ++f)
-		CHECK(DecodeRunwayFriction(f).snow == Approx((f - 6) / 3.0f));
+	{
+		const SurfaceWeather s = DecodeRunwayFriction(f);
+		CHECK(s.snow == Approx((f - 6) / 4.0f));
+		CHECK(s.ice == Approx(s.snow * 2.0f / 3.0f));	// snowy (heavy): ice 0.4-0.5 in X-Plane
+	}
 	for (int f = 10; f <= 12; ++f)
-		CHECK(DecodeRunwayFriction(f).ice == Approx((f - 9) / 3.0f));
+		CHECK(DecodeRunwayFriction(f).ice == Approx((f - 9) / 4.0f));
 	for (int f = 13; f <= 15; ++f)
 	{
 		const SurfaceWeather s = DecodeRunwayFriction(f);
-		CHECK(s.snow == Approx((f - 12) / 3.0f));
-		CHECK(s.ice == Approx((f - 12) / 3.0f));
+		CHECK(s.snow == Approx((f - 12) / 4.0f));
+		CHECK(s.ice == Approx((f - 12) / 4.0f));
 		CHECK(s.wetness == 0.0f);
 	}
 	CHECK(DecodeRunwayFriction(-3) == SurfaceWeather{});
@@ -209,6 +215,29 @@ TEST_CASE("Environment: runway friction states", "[environment][surface]")
 		CHECK(EncodeRunwayFriction(DecodeRunwayFriction(f)) == f);
 	}
 	CHECK(std::string(GetRunwayFrictionName(5)) == "puddly (medium)");
+}
+
+TEST_CASE("Environment: weather thresholds follow X-Plane's keyframes", "[environment][surface]")
+{
+	// None of a kind: a threshold no receptivity passes; all of it: nearly everything passes
+	CHECK(SNOW_THRESHOLDS.Evaluate(0.0f) == Approx(1.25f));
+	CHECK(SNOW_THRESHOLDS.Evaluate(1.0f) == Approx(0.07f));
+	CHECK(RAIN_THRESHOLDS.Evaluate(0.0f) > 1.0f);
+	CHECK(ICE_THRESHOLDS.Evaluate(0.0f) > 1.0f);
+	CHECK(PUDDLE_THRESHOLDS.Evaluate(0.0f) > 1.0f);
+
+	// Linear between keyframes, held past the ends
+	CHECK(SNOW_THRESHOLDS.Evaluate(0.125f) == Approx(0.8f));
+	CHECK(RAIN_THRESHOLDS.Evaluate(0.75f) == Approx((0.3125f + 0.05f) * 0.5f));
+	CHECK(PUDDLE_THRESHOLDS.Evaluate(-1.0f) == Approx(1.1f));
+	CHECK(ICE_THRESHOLDS.Evaluate(3.0f) == Approx(0.195f));
+
+	// More of a kind never raises its threshold
+	for (const WeatherThresholdCurve *curve : { &RAIN_THRESHOLDS, &PUDDLE_THRESHOLDS, &SNOW_THRESHOLDS, &ICE_THRESHOLDS })
+	{
+		for (int i = 1; i <= 100; ++i)
+			CHECK(curve->Evaluate(i / 100.0f) <= curve->Evaluate((i - 1) / 100.0f));
+	}
 }
 
 TEST_CASE("Environment: wetness builds in rain and dries afterwards", "[environment][surface]")
@@ -431,7 +460,7 @@ TEST_CASE("Environment: derived values follow the state", "[environment][state]"
 	state.runwayFriction = 5;
 	state.snowCover = 0.4f;
 	d = Derive(state);
-	CHECK(d.surface.puddles == Approx(2.0f / 3.0f));
+	CHECK(d.surface.puddles == Approx(0.5f));
 	CHECK(d.surface.snow == Approx(0.4f));
 
 	state.season = SeasonOverride::Winter;
@@ -554,6 +583,20 @@ TEST_CASE("Renderer feature switches", "[environment][quality]")
 	CHECK_FALSE(features.csmShadows);
 	CHECK(FindRendererFeature("nonsense") == nullptr);
 	CHECK(std::string(GetDebugViewName(Renderer_DebugView::Normals)) == "Normals");
+
+	// Shaders test these bits by their index in the table (FEATURE_* in environment_lighting, csm_sample and ssr_common.slang)
+	const auto bit = [](const char *name) { return FindRendererFeature(name) - GetRendererFeatureTable().data(); };
+	CHECK(bit("atmosphere") == 0);
+	CHECK(bit("aerial-perspective") == 1);
+	CHECK(bit("env-probes") == 2);
+	CHECK(bit("cloud-shadows") == 3);
+	CHECK(bit("csm") == 4);
+	CHECK(bit("ssr") == 11);
+	CHECK(bit("water") == 14);	// ocean_common.slang FEATURE_WATER
+	REQUIRE(FindRendererFeature("terrain-scenery"));
+	REQUIRE(FindRendererFeature("autogen"));
+	CHECK(defaults.terrainScenery);
+	CHECK(defaults.autogen);
 }
 
 // -------------------------------------------------------
@@ -624,16 +667,30 @@ TEST_CASE("Sky light: a clear day's sun and sky", "[environment][sky-light]")
 	const SkyLight night = ComputeSkyLight(hazy, 0.0, -30.0, 115000.0, 30.0, 0.25);
 	CHECK(Lum(night.irradiance) == 0.0);
 
-	// Thicker haze: less direct sun, never more light on the ground than arrives at the top
+	// Thicker haze: less direct sun, never more light on the ground than arrives at the top, down to where fog starts
+	const double sunUp = std::sin(60.0 * std::numbers::pi / 180.0);
 	double previousSun = sun;
-	for (const double visibility : { 40000.0, 20000.0, 10000.0 })
+	for (const double visibility : { 40000.0, 30000.0, AtmosphereParams{}.fogStartVisibilityM })
 	{
 		const SkyLight hazier = ComputeSkyLight(WithVisibility(AtmosphereParams{}, visibility), 0.0, 60.0, 115000.0, -20.0, 0.25);
 		const double direct = Lum(hazier.sunIlluminance);
-		const double diffuse = Lum(hazier.irradiance);
 		CHECK(direct < previousSun);
-		CHECK(diffuse + direct * std::sin(60.0 * std::numbers::pi / 180.0) < 115000.0 * std::sin(60.0 * std::numbers::pi / 180.0));
+		CHECK(Lum(hazier.irradiance) + direct * sunUp < 115000.0 * sunUp);
 		previousSun = direct;
+	}
+
+	// All fog: it dims the sun no more than clear air (its light goes round X-Plane 12.4.4's fog); the sky sends down no
+	// more than 85% of what the fog would take from the beam
+	const double clearSun = Lum(ComputeSkyLight(WithVisibility(AtmosphereParams{}, 1.0e6), 0.0, 60.0, 115000.0, -20.0, 0.25).sunIlluminance);
+	for (const double visibility : { 8000.0, 3000.0 })
+	{
+		const AtmosphereParams medium = WithVisibility(AtmosphereParams{}, visibility);
+		const SkyLight foggier = ComputeSkyLight(medium, 0.0, 60.0, 115000.0, -20.0, 0.25);
+		CHECK(Lum(foggier.sunIlluminance) == Catch::Approx(clearSun));
+		CHECK(Lum(foggier.irradiance) > 0.0);
+		const double through = ComputeTransmittance(medium, 0.0, sunUp, 40, true)[1];
+		CHECK(through < ComputeTransmittance(medium, 0.0, sunUp)[1]);
+		CHECK(foggier.irradiance[1] <= 0.85 * 115000.0 * SUN_COLOR[1] * sunUp * (1.0 - through) * (1.0 + 1e-9));
 	}
 }
 
@@ -644,16 +701,35 @@ TEST_CASE("Atmosphere: visibility to haze", "[environment][atmosphere]")
 	CHECK(VisibilityExtinction(10000.0, 0.02) == Catch::Approx(3.912e-4).epsilon(1e-4));
 	CHECK(VisibilityExtinction(0.0) == 0.0);
 
-	// The haze layer takes what the clear layers don't give at the ground, scattering with atmo/fog_albedo
+	// What the clear layers don't give at the ground in blue (contrast falls there first): extra Mie, spectral like the
+	// clear Mie, as X-Plane 12.4.4 draws no fog at 20 km and more
 	const AtmosphereParams clear;
 	const AtmosphereParams hazy = WithVisibility(clear, 40000.0);
 	const double cutoff = -std::log(0.01);
-	CHECK(hazy.hazeExtinction == Catch::Approx(cutoff / 40000.0 - 11.75e-6 - 4.44e-6).epsilon(1e-9));
+	CHECK(hazy.hazeExtinction == Catch::Approx((cutoff / 40000.0 - 27.68e-6 - 4.44e-6 * clear.mieSpectral[2]) / clear.mieSpectral[2]).epsilon(1e-9));
+	CHECK(hazy.fogExtinction == 0.0);
+	CHECK(WithVisibility(clear, 20000.0).fogExtinction == 0.0);
 	CHECK(hazy.hazeScatteringAlbedo == Catch::Approx(0.9));
 	CHECK(hazy.mieExtinction == clear.mieExtinction);
 	CHECK(WithVisibility(clear, 1.0e6).hazeExtinction == 0.0);	// never cleaner than clear air
 	const MediumSample ground = SampleMedium(hazy, 0.0);
-	CHECK(ground.Extinction()[1] == Catch::Approx(cutoff / 40000.0).epsilon(1e-6));	// green: the visibility
+	CHECK(ground.Extinction()[2] == Catch::Approx(cutoff / 40000.0).epsilon(1e-6));	// blue: the visibility
+	CHECK(ground.Extinction()[1] < ground.Extinction()[2]);
+	CHECK(ground.ExtinctionWithoutFog()[2] == ground.Extinction()[2]);
+
+	// Shorter visibilities turn it into grey fog, all of it at 8 km (X-Plane's fog-white haze), half of it at 14 km
+	const AtmosphereParams thick = WithVisibility(clear, 8000.0);
+	CHECK(thick.hazeExtinction == 0.0);
+	CHECK(thick.fogExtinction == Catch::Approx(cutoff / 8000.0 - 27.68e-6 - 4.44e-6 * clear.mieSpectral[2]).epsilon(1e-9));
+	CHECK(thick.fogScatteringAlbedo == Catch::Approx(0.9));
+	const AtmosphereParams between = WithVisibility(clear, 14000.0);
+	CHECK(between.fogExtinction == Catch::Approx(between.hazeExtinction * clear.mieSpectral[2]).epsilon(1e-9));
+	CHECK(WithVisibility(clear, 3000.0).hazeExtinction == 0.0);
+	const MediumSample foggy = SampleMedium(thick, 0.0);
+	CHECK(foggy.Extinction()[2] == Catch::Approx(cutoff / 8000.0).epsilon(1e-6));
+	CHECK(foggy.fogScattering == Catch::Approx(0.9 * thick.fogExtinction));
+	CHECK(foggy.Extinction()[1] - foggy.ExtinctionWithoutFog()[1] == Catch::Approx(thick.fogExtinction));	// the sun's light goes round it
+	CHECK(foggy.Extinction()[0] - foggy.ExtinctionWithoutFog()[0] == Catch::Approx(foggy.Extinction()[2] - foggy.ExtinctionWithoutFog()[2]));	// grey
 
 	// Mie and haze per channel: Angstrom -1.3 with the wavelengths the Rayleigh coefficients imply (blue scatters 1.32x)
 	const Rgb spectral = MieSpectralFactors(clear.rayleighScattering, -1.3);
@@ -663,17 +739,19 @@ TEST_CASE("Atmosphere: visibility to haze", "[environment][atmosphere]")
 	CHECK(spectral[2] == Catch::Approx(clear.mieSpectral[2]).margin(1e-3));
 	CHECK(MieSpectralFactors(clear.rayleighScattering, 0.0)[2] == 1.0);
 	CHECK(SampleMedium(clear, 0.0).mieExtinction[2] / SampleMedium(clear, 0.0).mieExtinction[1] == Catch::Approx(clear.mieSpectral[2]));
-	CHECK(ground.mieExtinction[2] - ground.mieExtinction[1] == Catch::Approx(SampleMedium(clear, 0.0).mieExtinction[2] - SampleMedium(clear, 0.0).mieExtinction[1]));	// the haze is grey
+	CHECK(ground.mieExtinction[2] / ground.mieExtinction[1] == Catch::Approx(clear.mieSpectral[2]));	// the haze is spectral too
 
-	// The layer: uniform to its top above the ground, fading over the band, gone above it; on an elevated airport too
+	// The layer: uniform to its top above the ground, easing out over the band, gone above it; on an elevated airport too
 	const AtmosphereParams fog = WithVisibility(clear, 1000.0, 400.0);
 	CHECK(fog.hazeTopM == Catch::Approx(1500.0));
 	CHECK(HazeTopFromVisibility(200000.0) == Catch::Approx(4000.0));
 	CHECK(HazeProfile(fog, 400.0) == 1.0);
 	CHECK(HazeProfile(fog, 1899.0) == 1.0);
 	CHECK(HazeProfile(fog, 1900.0 + fog.hazeBandM * 0.5) == Catch::Approx(0.5));
+	CHECK(HazeProfile(fog, 1900.0 + fog.hazeBandM * 0.25) == Catch::Approx(0.84375));	// smoothstep
 	CHECK(HazeProfile(fog, 1900.0 + fog.hazeBandM) == 0.0);
-	CHECK(SampleMedium(fog, 400.0).Extinction()[1] == Catch::Approx(cutoff / 1000.0).epsilon(1e-6));
+	CHECK(SampleMedium(fog, 400.0).Extinction()[2] == Catch::Approx(cutoff / 1000.0).epsilon(1e-6));
+	CHECK(SampleMedium(fog, 5000.0).fogExtinction == 0.0);
 	CHECK(SampleMedium(fog, 5000.0).mieExtinction[1] < 1e-5);
 
 	// Sky-condition multipliers scale the scattering, not the absorption
@@ -682,6 +760,7 @@ TEST_CASE("Atmosphere: visibility to haze", "[environment][atmosphere]")
 	CHECK(doubled.mieScattering == Catch::Approx(2.0 * clear.mieScattering));
 	CHECK(doubled.mieExtinction - doubled.mieScattering == Catch::Approx(clear.mieExtinction - clear.mieScattering));
 	CHECK(doubled.hazeExtinction * doubled.hazeScatteringAlbedo == Catch::Approx(2.0 * hazy.hazeExtinction * hazy.hazeScatteringAlbedo));
+	CHECK(WithSkyMultipliers(thick, 2.0, 2.0).fogExtinction == thick.fogExtinction);	// the fog isn't the Mie
 }
 
 TEST_CASE("Sky light: the Mie phase function is normalized", "[environment][sky-light]")
@@ -1536,4 +1615,221 @@ TEST_CASE("Screen-space reflections: the hierarchical-Z march finds what a mirro
 		const SsrMarchResult march = MarchHiZ(pyramid, origin, { end.u - origin.u, end.v - origin.v, end.z - origin.z }, settings.maxSteps);
 		CHECK_FALSE(march.hit);
 	}
+}
+
+// -------------------------------------------------------
+// Water (renderer/ocean.*): the FFT ocean's sea state, spectrum and cascades, the CPU twin of its FFT, the water's optics
+// -------------------------------------------------------
+
+TEST_CASE("Water: the cascades hold every wave number once", "[environment][ocean]")
+{
+	using namespace SceneryEditorX;
+	const OceanSettings settings;
+	const std::array<OceanCascade, OCEAN_CASCADES> cascades = ComputeOceanCascades(settings);
+	CHECK(cascades[0].kMin == 0.0f);
+	for (uint32_t c = 0; c < OCEAN_CASCADES; ++c)
+	{
+		INFO("cascade " << c);
+		CHECK(cascades[c].sizeM == settings.cascadeSizeM[c]);
+		CHECK(cascades[c].kMin < cascades[c].kMax);
+		// No wave shorter than two of its grid's cells
+		CHECK(cascades[c].kMax <= OCEAN_PI * static_cast<float>(OCEAN_FFT_SIZE) / cascades[c].sizeM * 1.0001f);
+		if (c > 0)
+		{
+			CHECK(cascades[c].kMin == cascades[c - 1].kMax);	// Contiguous: no band left out or counted twice
+			// The smaller tile takes over a few waves across it: its longest wave fits its tile cascadeMinCycles times
+			CHECK_THAT(2.0f * OCEAN_PI / cascades[c].kMin, Catch::Matchers::WithinRel(cascades[c].sizeM / settings.cascadeMinCycles, 1e-4f));
+		}
+	}
+	// The last cascade ends at its Nyquist limit: ~5 cm waves for a 7 m tile of 256 cells
+	CHECK_THAT(2.0f * OCEAN_PI / cascades[OCEAN_CASCADES - 1].kMax, Catch::Matchers::WithinRel(2.0f * 7.0f / 256.0f, 1e-4f));
+	CHECK(OceanGridWaveNumber(1, 500.0f) == Approx(2.0f * OCEAN_PI / 500.0f));
+	CHECK(OceanGridWaveNumber(255, 500.0f) == Approx(-2.0f * OCEAN_PI / 500.0f));	// The FFT order: the top half is negative
+	CHECK(OceanGridWaveNumber(128, 500.0f) == Approx(-128.0f * 2.0f * OCEAN_PI / 500.0f));
+}
+
+TEST_CASE("Water: the sea state for a wave amplitude", "[environment][ocean]")
+{
+	using namespace SceneryEditorX;
+	const OceanSettings settings;
+
+	// From the west: the waves travel east (+x); from the north: south (+z)
+	CHECK(ComputeOceanSpectrum(0.5f, 270.0f, settings).directionRad == Approx(0.0f).margin(1e-5f));
+	CHECK(ComputeOceanSpectrum(0.5f, 0.0f, settings).directionRad == Approx(0.5f * OCEAN_PI).margin(1e-5f));
+
+	// Height picks the fetch (fetch_lo_m .. fetch_hi_m, times fetch_multiplier) and the swell (0 .. max_swell)
+	const OceanSpectrum calm = ComputeOceanSpectrum(0.05f, 270.0f, settings);
+	CHECK(calm.significantHeightM == Approx(0.1f));
+	CHECK(calm.fetchM == Approx(settings.fetchLoM * settings.fetchMultiplier));
+	CHECK(calm.swell == 0.0f);
+	const OceanSpectrum rough = ComputeOceanSpectrum(1.5f, 270.0f, settings);
+	CHECK(rough.fetchM == Approx(settings.fetchHiM * settings.fetchMultiplier));
+	CHECK(rough.swell == Approx(settings.maxSwell));
+
+	// The wind raises that height over that fetch (JONSWAP: Hs = 0.0016 U sqrt(F / g)), never less than a fully developed
+	// sea of that height needs (Hs = 0.21 U^2 / g)
+	for (const float amplitude : { 0.1f, 0.25f, 0.5f, 1.0f })
+	{
+		const OceanSpectrum sea = ComputeOceanSpectrum(amplitude, 270.0f, settings);
+		INFO("amplitude " << amplitude);
+		const float fetchLimited = 0.0016f * sea.windSpeed * std::sqrt(sea.fetchM / OCEAN_GRAVITY);
+		const float developed = 0.21f * sea.windSpeed * sea.windSpeed / OCEAN_GRAVITY;
+		CHECK(std::max(fetchLimited, developed) >= sea.significantHeightM * 0.999f);
+		CHECK(sea.peakOmega >= 0.855f * OCEAN_GRAVITY / sea.windSpeed * 0.999f);
+		CHECK(sea.alpha > 0.0f);
+	}
+	// Longer waves for a higher sea
+	CHECK(ComputeOceanSpectrum(1.0f, 270.0f, settings).peakOmega < ComputeOceanSpectrum(0.25f, 270.0f, settings).peakOmega);
+	CHECK(ComputeOceanSpectrum(0.0f, 270.0f, settings).significantHeightM == 0.0f);
+}
+
+TEST_CASE("Water: JONSWAP, TMA and the dispersion relation", "[environment][ocean]")
+{
+	using namespace SceneryEditorX;
+	const OceanSpectrum sea = ComputeOceanSpectrum(0.5f, 270.0f, OceanSettings());
+
+	// The spectrum peaks at the peak frequency
+	float best = 0.0f, bestOmega = 0.0f;
+	for (float omega = 0.2f * sea.peakOmega; omega < 4.0f * sea.peakOmega; omega += 0.001f)
+	{
+		const float s = JonswapSpectrum(omega, sea);
+		if (s > best)
+		{
+			best = s;
+			bestOmega = omega;
+		}
+	}
+	CHECK(bestOmega == Approx(sea.peakOmega).epsilon(0.01));
+	CHECK(JonswapSpectrum(0.0f, sea) == 0.0f);
+
+	// TMA: nothing changes in deep water, the low-frequency limit is w^2 h / 2g
+	CHECK(TmaAttenuation(2.0f, 100.0f) == 1.0f);
+	CHECK(TmaAttenuation(0.1f, 1.0f) == Approx(0.5f * 0.01f / OCEAN_GRAVITY));
+
+	// Deep water: w^2 = g k and dw / dk = g / 2w; shallow water: w = k sqrt(g h)
+	CHECK(OceanDispersion(1.0f, 1000.0f) == Approx(std::sqrt(OCEAN_GRAVITY)));
+	CHECK(OceanDispersionDerivative(1.0f, 1000.0f) == Approx(OCEAN_GRAVITY / (2.0f * std::sqrt(OCEAN_GRAVITY))));
+	CHECK(OceanDispersion(0.01f, 1.0f) == Approx(0.01f * std::sqrt(OCEAN_GRAVITY)).epsilon(0.001));
+	// The derivative against a finite difference
+	const float k = 0.3f, h = 5.0f;
+	CHECK(OceanDispersionDerivative(k, h) == Approx((OceanDispersion(k + 1e-3f, h) - OceanDispersion(k - 1e-3f, h)) / 2e-3f).epsilon(0.002));
+}
+
+TEST_CASE("Water: directional spreading", "[environment][ocean]")
+{
+	using namespace SceneryEditorX;
+	OceanSpectrum sea = ComputeOceanSpectrum(1.0f, 270.0f, OceanSettings());
+	const auto integral = [&sea](const float omega)
+	{
+		double sum = 0.0;
+		constexpr int steps = 4000;
+		for (int i = 0; i < steps; ++i)
+		{
+			const float theta = -OCEAN_PI + (static_cast<float>(i) + 0.5f) * 2.0f * OCEAN_PI / steps;
+			sum += OceanDirectionalSpread(omega, theta, sea) * 2.0 * OCEAN_PI / steps;
+		}
+		return sum;
+	};
+	for (const float ratio : { 0.5f, 1.0f, 2.0f, 5.0f })
+	{
+		INFO("w / wp " << ratio);
+		const float omega = ratio * sea.peakOmega;
+		CHECK(integral(omega) == Approx(1.0).epsilon(1e-3));
+		// Most along the sea's direction, least against it
+		CHECK(OceanDirectionalSpread(omega, 0.0f, sea) > OceanDirectionalSpread(omega, 0.5f * OCEAN_PI, sea));
+		CHECK(OceanDirectionalSpread(omega, 0.5f * OCEAN_PI, sea) >= OceanDirectionalSpread(omega, OCEAN_PI, sea));
+	}
+	// Swell narrows the spreading; a spread blend of 0 spreads evenly
+	OceanSpectrum swell = sea;
+	swell.swell = 1.0f;
+	sea.swell = 0.0f;
+	CHECK(OceanDirectionalSpread(sea.peakOmega, 0.0f, swell) > OceanDirectionalSpread(sea.peakOmega, 0.0f, sea));
+	sea.spreadBlend = 0.0f;
+	CHECK(OceanDirectionalSpread(sea.peakOmega, 1.0f, sea) == Approx(1.0f / (2.0f * OCEAN_PI)));
+}
+
+TEST_CASE("Water: the cascades make the requested significant height", "[environment][ocean]")
+{
+	using namespace SceneryEditorX;
+	const OceanSettings settings;
+	const std::array<OceanCascade, OCEAN_CASCADES> cascades = ComputeOceanCascades(settings);
+	for (const float amplitude : { 0.1f, 0.5f, 1.5f })
+	{
+		OceanSpectrum sea = ComputeOceanSpectrum(amplitude, 200.0f, settings);
+		NormalizeOceanSpectrum(sea, cascades);
+		INFO("amplitude " << amplitude);
+		REQUIRE(sea.heightScale > 0.0f);
+		CHECK(OceanCascadesSignificantHeight(sea, cascades) * sea.heightScale == Approx(sea.significantHeightM).epsilon(1e-4));
+		CHECK(sea.heightScale == Approx(1.0f).margin(0.5f));	// The JONSWAP sea of that wind and fetch is about that high already
+	}
+	OceanSpectrum flat = ComputeOceanSpectrum(0.0f, 0.0f, settings);
+	NormalizeOceanSpectrum(flat, cascades);
+	CHECK(flat.heightScale == 0.0f);
+}
+
+TEST_CASE("Water: the inverse FFT", "[environment][ocean]")
+{
+	using namespace SceneryEditorX;
+	CHECK(OceanBitReverse(1, 8) == 128u);
+	CHECK(OceanBitReverse(6, 3) == 3u);
+
+	// ocean.slang's 256-point transform against the direct sum (no 1 / n)
+	std::vector<std::complex<float>> data(OCEAN_FFT_SIZE), direct(OCEAN_FFT_SIZE);
+	for (uint32_t i = 0; i < OCEAN_FFT_SIZE; ++i)
+		data[i] = { std::sin(0.37f * static_cast<float>(i)) + 0.25f, std::cos(1.3f * static_cast<float>(i * i % 17)) };
+	for (uint32_t x = 0; x < OCEAN_FFT_SIZE; ++x)
+	{
+		std::complex<double> sum = 0.0;
+		for (uint32_t k = 0; k < OCEAN_FFT_SIZE; ++k)
+			sum += std::complex<double>(data[k]) * std::polar(1.0, 2.0 * std::numbers::pi * static_cast<double>(k * x % OCEAN_FFT_SIZE) / OCEAN_FFT_SIZE);
+		direct[x] = std::complex<float>(sum);
+	}
+	OceanInverseFft(data);
+	float error = 0.0f;
+	for (uint32_t i = 0; i < OCEAN_FFT_SIZE; ++i)
+		error = std::max(error, std::abs(data[i] - direct[i]));
+	CHECK(error < 2e-3f);
+
+	// A single wave number gives a real cosine when its conjugate partner is set (the surface is real)
+	std::vector<std::complex<float>> wave(16);
+	wave[3] = { 0.5f, 0.0f };
+	wave[13] = { 0.5f, 0.0f };
+	OceanInverseFft(wave);
+	for (uint32_t x = 0; x < 16; ++x)
+	{
+		CHECK(wave[x].real() == Approx(std::cos(2.0f * OCEAN_PI * 3.0f * static_cast<float>(x) / 16.0f)).margin(1e-5f));
+		CHECK(wave[x].imag() == Approx(0.0f).margin(1e-5f));
+	}
+}
+
+TEST_CASE("Water: optics, wave scale and tessellation", "[environment][ocean]")
+{
+	using namespace SceneryEditorX;
+	OceanSettings settings;
+
+	// X-Plane's open water (any.png alpha 191) is clear for about 8 m; the floor fades to 1% there
+	const float clarity = WaterClarityDistance(191.0f / 255.0f, settings);
+	CHECK(clarity == Approx(settings.turbidity / (1.0f - 191.0f / 255.0f)));
+	CHECK(WaterTransmittance(clarity, clarity, settings) == Approx(0.01f).epsilon(1e-3));
+	CHECK(WaterTransmittance(0.0f, clarity, settings) == 1.0f);
+	CHECK(WaterClarityDistance(1.0f, settings) >= settings.clarityMinM);
+	settings.enableTurbidity = false;
+	CHECK(WaterTransmittance(100.0f, clarity, settings) == 1.0f);
+
+	// Ponds are calm, the open sea has the full height; the shore keeps still
+	settings = OceanSettings();
+	CHECK(WaterWaveScale(1.0f, 50.0f, settings) == Approx(1.0f));
+	CHECK(WaterWaveScale(0.0f, 50.0f, settings) == Approx(settings.pondWaveScale));
+	CHECK(WaterWaveScale(1.0f, 0.0f, settings) == 0.0f);
+	CHECK(WaterWaveScale(1.0f, 0.5f * settings.shoreDepthM, settings) == Approx(0.5f));
+	settings.useFetch = false;
+	CHECK(WaterWaveScale(0.0f, 50.0f, settings) == Approx(1.0f));
+
+	// Edges as long as tessellationPixels pixels stay whole; longer ones are cut, up to the hardware limit
+	settings = OceanSettings();
+	const float pixelAngle = 0.001f;
+	CHECK(WaterTessellationFactor(settings.tessellationPixels * 0.1f, 100.0f, pixelAngle, settings) == Approx(1.0f));
+	CHECK(WaterTessellationFactor(settings.tessellationPixels * 0.1f * 10.0f, 100.0f, pixelAngle, settings) == Approx(10.0f));
+	CHECK(WaterTessellationFactor(64.0f, 0.5f, pixelAngle, settings) == settings.maxTessellation);
+	CHECK(WaterTessellationFactor(1.0f, 10000.0f, pixelAngle, settings) == 1.0f);
 }

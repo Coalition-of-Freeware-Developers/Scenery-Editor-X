@@ -143,7 +143,8 @@ namespace SceneryEditorX
 		float clearcoat;
 		float clearcoat_roughness;
 
-		float padding3[2] = {};
+		// SNOW_ALBEDO_LUMA (flags bit 24): the snow receptivity's weights for the linear albedo's r and g (weather.slang)
+		float snow_luma[2] = {};
 
 		// X-Plane materials (xp_material.slang): specular gain, super roughness floor, F0 when the normal map carries
 		// none, emissive luminance in nits (0: emissive texels are display values)
@@ -156,6 +157,20 @@ namespace SceneryEditorX
 		xMath::Vec4 drape_decal = xMath::Vec4{0.0f, 0.0f, 0.0f, 0.0f};
 		xMath::Vec4 drape_normal_decal = xMath::Vec4{0.0f, 0.0f, 0.0f, 0.0f};
 		xMath::Vec4 drape_misc = xMath::Vec4{0.0f, 0.0f, 0.0f, 0.0f};
+
+		// X-Plane terrain (.ter, xp_terrain.slang): base (projected s / t meters, normal map repeats per base repeat, flags),
+		// composite (s / t, noise mask center / half width), slopes (hill / cliff start and end degrees), slope textures (s / t
+		// meters), lit (s / t meters, fade start / end), far (s / t meters, start / end)
+		xMath::Vec4 terrain_base = xMath::Vec4{0.0f, 0.0f, 0.0f, 0.0f};
+		xMath::Vec4 terrain_composite = xMath::Vec4{0.0f, 0.0f, 0.0f, 0.0f};
+		xMath::Vec4 terrain_slope = xMath::Vec4{0.0f, 0.0f, 0.0f, 0.0f};
+		xMath::Vec4 terrain_slope_scale = xMath::Vec4{0.0f, 0.0f, 0.0f, 0.0f};
+		xMath::Vec4 terrain_lit = xMath::Vec4{0.0f, 0.0f, 0.0f, 0.0f};
+		xMath::Vec4 terrain_far = xMath::Vec4{0.0f, 0.0f, 0.0f, 0.0f};
+
+		// Detail decal keys (xp_drape_apply_detail_decals): decal 0 RGB, decal 0 alpha, decal 1 RGB, decal 1 alpha; their biases
+		xMath::Vec4 drape_decal_key[4] = {};
+		xMath::Vec4 drape_decal_bias = xMath::Vec4{0.0f, 0.0f, 0.0f, 0.0f};
 	};
 
 	/**
@@ -308,7 +323,7 @@ namespace SceneryEditorX
 		xMath::Vec4 ozone;					// rgb absorption (1/m), w tent center altitude (m)
 		xMath::Vec4 planet;					// ozone tent half width (m), earth radius (m), atmosphere top radius (m), ground albedo
 		xMath::Vec4 haze;					// visibility (m), haze layer top (m), haze fade band (m), time (s)
-		xMath::Vec4 weather;				// rain wetness, ice, snow level, puddles (0-1)
+		xMath::Vec4 weather;				// thresholds a surface's receptivity must pass (weather.slang): rain, ice, snow, puddles
 		xMath::Vec4 snow_projection_x;		// world xz -> snow coverage map u (Phase 12)
 		xMath::Vec4 snow_projection_z;		// world xz -> snow coverage map v
 		xMath::Vec4 season;					// ratio toward the next season, season index (0 spr .. 3 win), day of year, latitude
@@ -333,7 +348,8 @@ namespace SceneryEditorX
 		xMath::Vec4 exposure_extra;			// x exposure compensation (EV, positive brightens), yzw unused
 		xMath::Vec4 atmosphere_scattering;	// rgb Mie spectral factor (scattering/mie_*_exponent; green 1), w scattering/multi_rat
 
-		// The SDR grade after the tone curve (color_management/sdr/*, ASC-CDL; identity by default) and the post chain
+		// The SDR grade (color_management/sdr/*, ASC-CDL in scene linear around middle grey: the day, night and snow grades
+		// already blended on the CPU) and the post chain
 		xMath::Vec4 color_slope;			// rgb slope, w saturation
 		xMath::Vec4 color_offset;			// rgb offset, w output gain
 		xMath::Vec4 color_power;			// rgb power, w output gamma (1: none)
@@ -341,8 +357,8 @@ namespace SceneryEditorX
 
 		// The atmosphere (plan Phase 6, atmosphere_common.slang)
 		xMath::Vec4 light_toa;				// rgb sun illuminance outside the atmosphere (lux), w the moon's (lux, x illuminated fraction)
-		xMath::Vec4 atmosphere_haze;		// haze extinction at the ground (1/m), scattering albedo, layer top above the ground (m), fade band (m)
-		xMath::Vec4 atmosphere_view;		// aerial perspective range (m), airglow (nits), star brightness scale, unused
+		xMath::Vec4 atmosphere_haze;		// haze extinction at the ground (1/m, extra Mie, green), fog scattering albedo, layer top above the ground (m), fade band (m)
+		xMath::Vec4 atmosphere_view;		// aerial perspective range (m), airglow (nits), star brightness scale, fog extinction at the ground (1/m)
 		xMath::Vec4 probe;					// xyz environment probe 0 (world), w specular LOD bias
 		xMath::Vec4 celestial[3];			// rows of the world -> equatorial rotation (x vernal equinox, z north pole): stars
 
@@ -362,13 +378,41 @@ namespace SceneryEditorX
 		xMath::Vec4 ssr;					// ssr/min_gloss, sedx/ssr_gloss_fade, ssr/lod_bias, ssr/use_prefiltered (0 / 1)
 		xMath::Vec4 ssr_trace;				// max Hi-Z steps, thickness (m), thickness per meter of view depth, edge fade (share of the screen)
 		xMath::Vec4 ssr_history;			// history clamp (pre-exposed), lobe half width per GGX alpha, trace every pixel (debug), SSR active (0 / 1)
-		xMath::Vec4 padding[15];			// to 1536 bytes
+
+		// Water (plan Phase 11, renderer/ocean.h, ocean_common.slang, water.slang): the FFT ocean's sea state and cascades, the
+		// water's surface, volume and foam
+		xMath::Vec4 ocean;					// time (s), choppiness (water/h_displace_lambda), height scale, wave travel direction (rad, atan2(z, x))
+		xMath::Vec4 ocean_cascade[4];		// per cascade: tile size (m), first and past-last wave number (rad/m), water/cascade_N_scale
+		xMath::Vec4 ocean_sea;				// wind speed (m/s), swell, spread blend, short waves fade (m)
+		xMath::Vec4 ocean_jonswap;			// alpha, peak omega (rad/s), gamma, spectrum depth (m)
+		xMath::Vec4 water_surface;			// F0, surface roughness (perceptual, from water/gloss), refractive index, turbidity on (0 / 1)
+		xMath::Vec4 water_volume;			// water/turbidity, turbidity cutoff (ln), clearest-water floor (m), shore depth (m)
+		xMath::Vec4 water_foam;				// foam bias, ratio, scale, share fading per second
+		xMath::Vec4 water_floor;			// floor albedo rgb, water/sea_floor_coef (share of the floor seen)
+		xMath::Vec4 water_tessellation;		// target edge pixels, max factor, pond wave scale (0: fetch ignored), frame time step (s)
+
+		// X-Plane 12's display transform (tonemap.slang xp12_display)
+		xMath::Vec4 tonemap;				// middle grey, working-space compression (color_management/compression), display maximum, unused
+
+		// Weather on surfaces (plan Phase 12, renderer/weather_surface.h, weather.slang); the thresholds are in weather
+		xMath::Vec4 weather_rain;			// 1 / noise repeat (1/m), threshold edge width, receptivity added before the noise, darkening scale
+		xMath::Vec4 weather_darkening;		// darkening start, end (wetness), bright-surface relief, albedo ratio
+		xMath::Vec4 weather_darkening_gloss;	// gloss ramp start, end, multiplier for dark albedo, for light albedo
+		xMath::Vec4 weather_water;			// share of the water film's gloss a wet surface takes, the film's gloss, unused, unused
+		xMath::Vec4 weather_snow;			// 1 / noise repeat (1/m), threshold edge width, noise depth, unused
+		xMath::Vec4 weather_snow_detail;	// slope min, slope max (up . normal), decal 1 (colour) weight, decal 2 (edge) weight
+		xMath::Vec4 weather_snow_scale;		// 1 / repeat (1/m) of the albedo, normal and decal textures, unused
+		xMath::Vec4 weather_ice;			// 1 / noise repeat (1/m), threshold edge width, decal 1 weight, decal 2 weight
+		xMath::Vec4 weather_ice_scale;		// 1 / repeat (1/m) of the albedo, normal and decal textures, unused
+		xMath::Vec4 weather_snow_luma;		// snow receptivity without a WEATHER mask: weights for the linear albedo's r, g, b, a
+		xMath::Vec4 weather_textures;		// bindless material slot of the weather art (Renderer weather material), art loaded (0 / 1), unused, unused
+		xMath::Vec4 padding[7];				// to 1792 bytes
 	};
 
 	// sizes the shaders see (resources.slang: cbuffer std140, structured buffers std430)
 	static_assert(sizeof(ConstantBuffer_Frame) == 1024, "ConstantBuffer_Frame must match FrameBufferData in resources.slang");
-	static_assert(sizeof(ConstantBuffer_Environment) == 1536, "ConstantBuffer_Environment must match EnvironmentData in resources.slang");
-	static_assert(sizeof(ShaderBuffer_Material) == 192, "ShaderBuffer_Material must match MaterialParameters in resources.slang");
+	static_assert(sizeof(ConstantBuffer_Environment) == 1792, "ConstantBuffer_Environment must match EnvironmentData in resources.slang");
+	static_assert(sizeof(ShaderBuffer_Material) == 368, "ShaderBuffer_Material must match MaterialParameters in resources.slang");
 	static_assert(sizeof(ShaderBuffer_Light) == 608, "ShaderBuffer_Light must match LightParameters in resources.slang");
 	static_assert(sizeof(ShaderBuffer_DrawData) == 160, "ShaderBuffer_DrawData must match DrawData in resources.slang");
 

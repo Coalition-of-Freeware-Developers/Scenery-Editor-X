@@ -41,6 +41,7 @@
 #include <SceneryEditorX/renderer/ui/ui_impl.h>
 #include <SceneryEditorX/scene/camera.h>
 #include <SceneryEditorX/xplane/xp_airport_scene.h>
+#include <SceneryEditorX/xplane/xp_terrain_scene.h>
 
 // -------------------------------------------------------
 
@@ -137,14 +138,14 @@ namespace SceneryEditorX
 		float x = 0.0f, z = 0.0f, radius = 0.0f;
 		Point3 center;
 		if (XPlane::SceneAirports::GetFocus(x, z, radius))
-			center = { x, 0.0, z };
+			center = { x, XPlane::SceneTerrain::GetHeight(x, z), z };
 		else
 		{
 			Rig main;
 			if (!jump || m_FrameWaitFrames < 120 || !EditorCamera::GetRig(main))
 				return false;
 			const Point3 eye = main.Eye();
-			center = { eye.x, 0.0, eye.z };
+			center = { eye.x, XPlane::SceneTerrain::GetHeight(eye.x, eye.z), eye.z };
 			radius = static_cast<float>(std::clamp(eye.y, 50.0, 5000.0));
 		}
 		Rig target = m_Rig;

@@ -40,6 +40,7 @@
 #include <SceneryEditorX/core/application/application.h>
 #include <SceneryEditorX/scene/scene.h>
 #include <SceneryEditorX/xplane/xp_airport_scene.h>
+#include <SceneryEditorX/xplane/xp_terrain_scene.h>
 
 // -------------------------------------------------------
 
@@ -306,7 +307,7 @@ namespace SceneryEditorX::EditorCamera
 		float x = 0.0f, z = 0.0f, radius = 0.0f;
 		if (XPlane::SceneAirports::GetFocus(x, z, radius))
 		{
-			Frame({ x, 0.0, z }, radius);
+			Frame({ x, XPlane::SceneTerrain::GetHeight(x, z), z }, radius);
 			return true;
 		}
 

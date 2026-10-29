@@ -85,6 +85,7 @@
 #include <SceneryEditorX/renderer/ui/resources/fonts.h>
 #include <SceneryEditorX/renderer/ui/source/imgui/imgui_internal.h>
 #include <SceneryEditorX/renderer/vulkan/debug/render_doc.h>
+#include <SceneryEditorX/renderer/vulkan/swapchain.h>
 #include <SceneryEditorX/scene/entity.h>
 #include <SceneryEditorX/project/project_document.h>
 #include <SceneryEditorX/xplane/xp_airport_manager.h>
@@ -333,7 +334,7 @@ namespace SceneryEditorX
 	{
 		m_PanelManager = CreateScope<PanelManager>();
 
-		const std::filesystem::path resources = ResourceCache::GetResourceDirectory();
+		const std::filesystem::path resources = VFS::FromUtf8(ResourceCache::GetResourceDirectory());
 
 		m_PanelManager->AddPanel<SceneViewport>(PanelCategory::Viewer, PANEL_VIEWPORT.id, "Viewport", true, &m_Context);
 		m_PanelManager->AddPanel<SecondViewportPanel>(PanelCategory::Viewer, PANEL_VIEWPORT2.id, "Viewport 2", false, &m_Context);
@@ -1093,6 +1094,14 @@ namespace SceneryEditorX
 				GpuScene::SetOcclusionCulling(false); // GPU scene without Hi-Z occlusion culling (comparison)
 			else if (args[i] == "--lock-camera")
 				Camera::SetInputLocked(true); // the startup view stays put (captures, A/B measurements)
+			else if (args[i] == "--no-vsync")
+			{
+				// frames as fast as they render: performance runs measure the frame, not the display's refresh (the
+				// frame limiter unlocked too: turning vsync off alone falls back to its 30 fps floor)
+				if (Swapchain *swapchain = Renderer::GetSwapChain())
+					swapchain->SetVsync(false);
+				FPSTimer::SetFpsLimit(std::numeric_limits<float>::max());
+			}
 			else if (args[i] == "--viewport2")
 				m_OpenViewport2 = true; // VIEWPORT 2 open from the start (checks and captures)
 			else if (args[i] == "--all-features-off")

@@ -31,6 +31,7 @@
 // ReSharper disable CommentTypo
 #include "env_probes.h"
 #include "gbuffer.h"
+#include "ocean.h"
 #include "renderer.h"
 #include "renderer_buffers.h"
 #include "renderer_declarations.h"
@@ -100,6 +101,7 @@ namespace SceneryEditorX
 	Flag               Renderer::m_BindlessSamplers_Dirty;
 	uint32_t           Renderer::m_DrawCalls_Prepass_Count  = 0;
 	uint32_t           Renderer::m_DrawCalls_Shadow_Count   = 0;
+	uint32_t           Renderer::m_DrawCalls_Water_Count    = 0;
 	uint32_t           Renderer::m_Indirect_DrawCount       = 0;
 	bool               Renderer::m_Transparents_Present     = false;
 	bool               Renderer::m_Is_Hiz_Suppressed        = false;
@@ -108,6 +110,7 @@ namespace SceneryEditorX
 	std::array<Renderer_DrawCall, RENDERER_MAX_DRAW_CALLS> Renderer::m_DrawCalls;
 	std::array<Renderer_DrawCall, RENDERER_MAX_DRAW_CALLS> Renderer::m_DrawCalls_Prepass;
 	std::array<Renderer_DrawCall, RENDERER_MAX_DRAW_CALLS> Renderer::m_DrawCalls_Shadow;
+	std::array<Renderer_DrawCall, RENDERER_MAX_WATER_DRAW_CALLS> Renderer::m_DrawCalls_Water;
 	std::array<ShaderBuffer_IndirectDrawArgs, MAX_ARRAY_SIZE> Renderer::m_Indirect_DrawArgs;
 	std::array<ShaderBuffer_DrawData, MAX_ARRAY_SIZE> Renderer::m_Indirect_DrawData;
 
@@ -309,18 +312,19 @@ namespace SceneryEditorX
 			s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::frame_output)]   = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, widthOutput, heightOutput, 1, mipCount, VK_FORMAT_R16G16B16A16_SFLOAT, UnorderedAccessView | ShaderViews | RenderTargetViews | BlitClear | PerMipViews | QueueShare, "frame_output"});
 			SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::frame_output)] != nullptr, "Failed to create frame_output render target");
 
-			// Transition frame_output to General during bootstrap. Using UNDEFINED ->
-			// SHADER_READ_ONLY_OPTIMAL can trigger validation warnings because that pattern
-			// discards contents and immediately declares a read-only layout. General keeps
-			// the image valid for early compute write/read usage until pass code performs
-			// the first explicit read-only transition.
+			// The UI can show a new frame_output before anything renders into it: a 3D view in its own platform window is
+			// drawn and submitted on the main thread (UILayer::EndRendering) right after a resize made its targets again,
+			// ahead of the render thread's next frame, and UI::GetTextureID samples it in shader-read layout. Cleared to
+			// black and left in that layout, it can be shown from the start; the passes move it to the layouts they write
+			// in, as they do every frame.
 			if (ImageResource* frameOutput = s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::frame_output)].Get())
 			{
 				if (CommandList* initCmd = CommandList::BeginImmediateExecution(QueueType::Graphics))
 				{
-					frameOutput->SetLayout(Layout::ImageLayout::General, initCmd, ALL_MIPS, 0);
+					initCmd->ClearTexture(frameOutput, Color::Black());
+					frameOutput->SetLayout(Layout::ImageLayout::ShaderRead, initCmd, ALL_MIPS, 0);
 					CommandList::EndImmediateExecution(initCmd);
-					SEDX_CORE_TRACE_TAG("RendererResources", "Transitioned frame_output to General layout");
+					SEDX_CORE_TRACE_TAG("RendererResources", "Cleared frame_output, left in shader-read layout");
 				}
 			}
 
@@ -392,6 +396,22 @@ namespace SceneryEditorX
 			// layers, one world-space cascade per layer of the array (Pass_CloudShadow)
 			s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::cloud_shadow)]       = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2DArray, CLOUD_SHADOW_SIZE, CLOUD_SHADOW_SIZE, CLOUD_SHADOW_CASCADES, 1, VK_FORMAT_R16_SFLOAT, UnorderedAccessView | ShaderViews, "cloud_shadow"});
 			SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::cloud_shadow)] != nullptr, "Failed to create cloud_shadow render target");
+
+			// The FFT ocean (plan TASK-072, renderer_water.cpp): every view reads the same cascades. The spectrum and the
+			// transform in 32-bit floats; the baked cascades in 16-bit with every mip (distant water reads coarse ones)
+			{
+				const auto ocean = [](const Renderer_RenderTarget target, const uint32_t layers, const uint32_t mips, const VkFormat format, const char *name)
+				{
+					const uint32_t flags = UnorderedAccessView | ShaderViews | (mips > 1 ? (PerMipViews | BlitClear) : 0u);
+					s_RenderTargets[static_cast<uint8_t>(target)] = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2DArray, OCEAN_FFT_SIZE, OCEAN_FFT_SIZE, layers, mips, format, flags, name});
+					SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(target)] != nullptr, "Failed to create an ocean render target");
+				};
+				const uint32_t oceanMips = static_cast<uint32_t>(std::log2(static_cast<float>(OCEAN_FFT_SIZE))) + 1;
+				ocean(Renderer_RenderTarget::ocean_h0, OCEAN_CASCADES, 1, VK_FORMAT_R32G32B32A32_SFLOAT, "ocean_h0");
+				ocean(Renderer_RenderTarget::ocean_fft, OCEAN_CASCADES * 2, 1, VK_FORMAT_R32G32B32A32_SFLOAT, "ocean_fft");
+				ocean(Renderer_RenderTarget::ocean_displacement, OCEAN_CASCADES, oceanMips, VK_FORMAT_R16G16B16A16_SFLOAT, "ocean_displacement");
+				ocean(Renderer_RenderTarget::ocean_slopes, OCEAN_CASCADES, oceanMips, VK_FORMAT_R16G16B16A16_SFLOAT, "ocean_slopes");
+			}
 
 			// Sun shadow cascades (plan TASK-051), at the shadow quality's map size; Pass_ShadowCascades makes it again when
 			// the quality asks for another size

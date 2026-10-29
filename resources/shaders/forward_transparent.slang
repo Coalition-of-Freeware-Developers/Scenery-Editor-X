@@ -28,6 +28,18 @@ import position;
 import environment_lighting;
 import xp_material;
 import ssr_common;
+import weather;
+
+// what the fragment stage reads: exporting the whole gbuffer_vertex would leave the previous position, width and
+// pick id interpolants unread (validation: WARNING-Shader-OutputNotConsumed)
+struct forward_vertex
+{
+    precise float4 position : SV_POSITION;
+    float3 normal : NORMAL_WORLD;
+    float3 tangent : TANGENT_WORLD;
+    float4 uv_misc : TEXCOORD;
+    nointerpolation uint material_index : TEXCOORD3;
+};
 
 [shader("vertex")]
 forward_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id: SV_InstanceID)
@@ -38,7 +50,15 @@ forward_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id: SV_InstanceID
     float3 position_world_previous = 0.0f;
     gbuffer_vertex vertex = transform_to_world_space(input, instance_id, _draw.transform, position_world, position_world_previous);
     vertex.material_index = _draw.material_index;
-    return apply_drape_depth(transform_to_clip_space(vertex, position_world, position_world_previous), _draw.drape_rank);
+    vertex = apply_drape_depth(transform_to_clip_space(vertex, position_world, position_world_previous), _draw.drape_rank);
+
+    forward_vertex output;
+    output.position       = vertex.position;
+    output.normal         = vertex.normal;
+    output.tangent        = vertex.tangent;
+    output.uv_misc        = vertex.uv_misc;
+    output.material_index = vertex.material_index;
+    return output;
 }
 
 static float4 sample_material_texture(uint texture_index, float2 uv)
@@ -59,7 +79,7 @@ float4 main_frag(forward_vertex vertex, bool is_front_face: SV_IsFrontFace) : SV
         float4 albedo_sample = xp_drape_sample_albedo(material, pass_get_material_index(), vertex.uv_misc.xy);	// plain texels unless a draped atlas
         albedo_sample.rgb = srgb_to_linear(albedo_sample.rgb);
         albedo *= albedo_sample;
-        albedo.rgb = xp_drape_apply_detail_decals(material, pass_get_material_index(), vertex.uv_misc.xy, albedo.rgb);
+        albedo.rgb = xp_drape_apply_detail_decals(material, pass_get_material_index(), vertex.uv_misc.xy, albedo);
     }
 
     // texels at or above the cutoff were drawn opaque by the deferred passes
@@ -69,8 +89,11 @@ float4 main_frag(forward_vertex vertex, bool is_front_face: SV_IsFrontFace) : SV
         discard;
 
     // normal, roughness and metalness / F0 (xp_material.slang); two-sided: back faces of no-cull glass face the camera too
-    const float4 normal_texel = material.has_texture_normal() ? sample_material_texture(material_texture_index_normal, vertex.uv_misc.xy) : float4(0.5f, 0.5f, 1.0f, 1.0f);
-    const XpSurfaceMaterial surface_material = xp_decode_material(material, normal_texel);
+    const float4 normal_texel = !material.has_texture_normal() ? float4(0.5f, 0.5f, 1.0f, 1.0f)
+                              : (material.is_xp_material() ? xp_drape_sample_normal(material, pass_get_material_index(), vertex.uv_misc.xy)
+                                                           : sample_material_texture(material_texture_index_normal, vertex.uv_misc.xy));
+    const float4 material_texel = xp_has_material_map(material) ? sample_material_texture(xp_slot_material_map, vertex.uv_misc.xy) : float4(0.0f, 1.0f, 0.0f, 1.0f);
+    const XpSurfaceMaterial surface_material = xp_decode_material(material, normal_texel, material_texel);
     float3 normal = normalize(vertex.normal);
     if (material.has_texture_normal())
         normal = normalize(mul(surface_material.tangent_normal, make_tangent_to_world_matrix(normalize(vertex.normal), normalize(vertex.tangent))).xyz);
@@ -83,6 +106,21 @@ float4 main_frag(forward_vertex vertex, bool is_front_face: SV_IsFrontFace) : SV
     // view
     const float2 screen_uv = vertex.position.xy / (get_resolution_render() * get_resolution_scale());
     float3 position_world = get_position(vertex.position.z, screen_uv);
+
+    // Weather (weather.slang) on blended drapes, as the g-buffer does on the rest; a WEATHER_TRANSPARENT drape takes the
+    // receptivity of the surface under it. Glass takes none.
+    if (!glass && weather_active())
+    {
+        const float3 receptivity = material.is_weather_transparent() ? weather_decode(tex_weather.Load(int3(int2(vertex.position.xy), 0)))
+                                                                     : weather_receptivity(material, pass_get_material_index(), vertex.uv_misc.xy, albedo);
+        WeatherSurface weathered = weather_surface(albedo.rgb, roughness, metalness, normal);
+        apply_surface_weather(weathered, position_world, receptivity);
+        albedo.rgb = weathered.albedo;
+        roughness = clamp(weather_roughness(weathered), 0.04f, 1.0f);
+        metalness = weathered.v;
+        normal = weathered.normal;
+    }
+
     float3 v = normalize(get_camera_position() - position_world);
     float n_dot_v = saturate(dot(normal, v));
 

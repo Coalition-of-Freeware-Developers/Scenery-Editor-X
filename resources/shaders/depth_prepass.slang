@@ -65,7 +65,7 @@ depth_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID,
 #if !defined(GPU_SCENE) && !defined(INDIRECT_DRAW)
     vertex                         = apply_drape_depth(vertex, _draw.drape_rank); // the drape depth pass (rank 0 elsewhere)
 #endif
-    return vertex;
+    return to_depth_vertex(vertex);
 }
 
 [shader("fragment")]
@@ -78,6 +78,8 @@ void main_frag(depth_vertex vertex)
     const bool has_albedo       = GetMaterial().has_texture_albedo(); // also right for GPU-scene draws (no per-draw constants)
     const float2 screen_uv      = vertex.position.xy / (get_resolution_render() * get_resolution_scale());
     const float3 position_world = get_position(vertex.position.z, screen_uv);
+    if (xp_lod_switch_discard(GetMaterial(), position_world, vertex.position.xy))	// a forest's billboards or 3D trees
+        discard;
     const float material_cutoff = GetMaterial().alpha_cutoff;
     const float alpha_threshold = material_cutoff > 0.0f ? material_cutoff : get_alpha_threshold(position_world);
     const float alpha = has_albedo ? xp_drape_sample_albedo(GetMaterial(), pass_get_material_index(), vertex.uv_misc.xy).a : 1.0f; // plain texels unless a draped atlas

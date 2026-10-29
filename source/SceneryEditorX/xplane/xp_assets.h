@@ -58,18 +58,34 @@ namespace SceneryEditorX::XPlane
 	size_t ParseAssetHeader(std::string_view text, AssetHeader &out);
 
 	/**
+	 * @brief How strongly a detail decal applies at a texel (X-Plane 12's keys): for its RGB detail and for its alpha
+	 * modulation separately, saturate(dot(base texel RGBA, key) + bias), the bias being the row's two trailing terms.
+	 */
+	struct DecalKeys
+	{
+		float rgb[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+		float rgbBias = 1.0f;
+		float alpha[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+		float alphaBias = 0.0f;
+
+		/* @brief The most either part can reach on any texel (0: the decal never shows). */
+		[[nodiscard]] float GetMaxStrength() const;
+	};
+
+	/**
 	 * @brief A detail or normal decal of a .pol or .dcl: a second texture repeated over the surface at its own scale.
-	 * Detail decals are grey-centred (0.5 = no change) and modulate the albedo; normal decals add their RG slopes to the
-	 * surface normal. X-Plane keys a decal's strength from the albedo / control channels; here the strongest of its
-	 * constant terms stands for it.
+	 * Detail decals add their RGB detail (the texel less the decal's average) and lighten or darken by their alpha
+	 * around 0.5, each as strongly as its key gives (DecalKeys); normal decals add their RG slopes to the surface normal,
+	 * at the strongest of their constant terms.
 	 */
 	struct PolygonDecal
 	{
 		bool normal = false;				// NORMAL_DECAL_PARAMS[_PROJ] (else DECAL_PARAMS[_PROJ], DECAL, DECAL_RGBA)
 		float scaleS = 1.0f;				// Repeats per texture repeat of the polygon (the albedo's SCALE), along s and t
 		float scaleT = 1.0f;
-		float strength = 1.0f;				// 0..1: how much of the decal applies
+		float strength = 1.0f;				// 0..1: how much of the decal applies at most (normal decals: always)
 		float gain = 1.0f;					// Normal decals: slope multiplier
+		DecalKeys keys;						// Detail decals
 		std::string texture;				// Relative to the file it came from (the .pol or the .dcl)
 	};
 
@@ -78,6 +94,10 @@ namespace SceneryEditorX::XPlane
 	{
 		std::string texture;				// Relative to the .pol file
 		std::string textureNormal;
+		float normalRatio = 1.0f;			// TEXTURE_NORMAL <ratio>: normal map repeats per albedo repeat
+		bool normalMetalness = false;		// NORMAL_METALNESS: the normal map's blue is F0 / metalness
+		float specular = 1.0f;				// SPECULAR <ratio>: scales the normal map's gloss
+		float superRoughness = 0.0f;		// SUPER_ROUGHNESS <ratio>: roughness floor (ASSUMPTION, plan RISK-003)
 		bool wrap = true;					// TEXTURE (repeats) vs TEXTURE_NOWRAP (orthophoto, UVs from the DSF)
 		float scaleS = 1000.0f;				// Meters per texture repeat
 		float scaleT = 1000.0f;
@@ -111,6 +131,12 @@ namespace SceneryEditorX::XPlane
 		 */
 		std::string runwayMarkings;			// Relative to the .pol; empty: none
 		float runwayMarkingsColor[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
+
+		// Weather receptivity (weather.slang)
+		std::string weather;				// WEATHER <mask>: R rain, G puddles, B snow; relative to the .pol
+		bool weatherTransparent = false;	// WEATHER_TRANSPARENT: takes the weather of what lies under it
+		bool hasSnowAlbedoLuma = false;		// SNOW_ALBEDO_LUMA <r> <g>: snow receptivity weights for the albedo
+		float snowAlbedoLuma[2] = {};
 	};
 
 	bool ParsePolygonAsset(std::string_view text, PolygonAsset &out, std::string *error = nullptr);
@@ -123,6 +149,12 @@ namespace SceneryEditorX::XPlane
 	};
 
 	bool ParseDecalLibraryAsset(std::string_view text, DecalLibraryAsset &out, std::string *error = nullptr);
+
+	/**
+	 * @brief Reads one decal row (DECAL, DECAL_RGBA, DECAL_PARAMS[_PROJ], NORMAL_DECAL_PARAMS[_PROJ]) of the standard
+	 * shader formats (.pol, .dcl, .ter, ...), tokenized; false for other rows.
+	 */
+	bool ParsePolygonDecalRow(const std::vector<std::string_view> &tokens, PolygonDecal &out);
 	bool LoadDecalLibraryAsset(const std::filesystem::path &path, DecalLibraryAsset &out, std::string *error = nullptr);
 
 	/* @brief .lin: a painted line following a path. */
@@ -195,9 +227,41 @@ namespace SceneryEditorX::XPlane
 			float maxHeight = 20.0f;
 			int quads = 2;					// Crossed quads making up the tree
 			int layer = 0;
+			float nominalHeight = 0.0f;		// TREE2: height of an unscaled tree (0: the meshes are one unit tall)
+			std::vector<int> meshes3d;		// MESH_3D: its 3D LOD steps, nearest first (indices into meshes)
 		};
 
-		std::string texture;
+		/* @brief SHADER_2D / SHADER_3D material commands (the standard shading options). */
+		struct Material
+		{
+			std::string texture;			// Relative to the .for file
+			std::string textureNormal;
+			float normalRatio = 1.0f;
+			bool normalMetalness = false;	// NORMAL_METALNESS: normal map blue = F0 / metalness
+			bool normalTranslucency = false;	// NORMAL_TRANSLUCENCY: normal map blue = translucency
+			std::string weather;			// WEATHER mask
+			float blendHash = 0.0f;			// BLEND_HASH <cutoff>: hashed alpha (0: none)
+			float superRoughness = 0.0f;
+		};
+
+		/**
+		 * MESH <name> <lod near> <lod far> <vertices> <indices> <bend> <displacement> <speed> [NO_SHADOW] and its VERTEX /
+		 * IDX rows (X-Plane 12): a 3D tree, about one unit tall, x east, y up, z south like OBJ8. Wind weights aren't kept.
+		 */
+		struct Mesh
+		{
+			std::string name;
+			float lodNear = 0.0f;			// Meters: fully shown from here ...
+			float lodFar = 500.0f;			// ... to here
+			bool noShadow = false;
+			std::vector<float> vertices;	// x y z, nx ny nz, s t per vertex
+			std::vector<uint32_t> indices;
+		};
+
+		std::string texture;				// The 2D shader's TEXTURE (the billboards' atlas)
+		Material material2d;
+		Material material3d;
+		std::vector<Mesh> meshes;
 		float scaleX = 256.0f;				// Texture size in pixels
 		float scaleY = 256.0f;
 		float spacingX = 30.0f;				// Grid spacing, meters
@@ -210,6 +274,53 @@ namespace SceneryEditorX::XPlane
 
 	bool ParseForestAsset(std::string_view text, ForestAsset &out, std::string *error = nullptr);
 	bool LoadForestAsset(const std::filesystem::path &path, ForestAsset &out, std::string *error = nullptr);
+
+	/**
+	 * @brief .bch: the strips drawn along coasts and lake shores. A DSF beach polygon gives each point a beach type (the
+	 * type of the edge starting there, 0 none); a type's TILE rows are pieces of the atlas a strip is laid with, one
+	 * after another along the shore: s across the piece's length, t across the shore from its water edge (t1) through
+	 * the shoreline (t2, on the polygon's edge) to its land edge (t3). Pixels count in SCALE_X / SCALE_Y; the whole
+	 * texture covers SIZE_X x SIZE_Y meters. Types are grouped (GROUP group type) for the transition pieces
+	 * (XONL2 / XONR2 within a type, XONLG / XONRG between groups, to group 0 at dead ends).
+	 */
+	struct BeachAsset
+	{
+		struct Tile
+		{
+			int type = 0;
+			float s1 = 0.0f, s2 = 0.0f;		// Pixels along the shore
+			float t1 = 0.0f;				// Water edge (pixels)
+			float t2 = 0.0f;				// Shoreline
+			float t3 = 0.0f;				// Land edge
+		};
+
+		/* @brief A transition piece: its kind (XONL2, XONR2, XONLG, XONRG), the type or groups it joins, its rectangle. */
+		struct Transition
+		{
+			std::string kind;
+			int from = 0;					// Type (XONL2 / XONR2) or group the shore comes from
+			int to = 0;						// Group it goes to (XONLG / XONRG; 0 a dead end)
+			Tile tile;
+		};
+
+		std::string texture;				// TEXTURE (X-Plane 12) or BASE_TEX
+		std::string textureNormal;
+		float normalRatio = 1.0f;
+		std::string decalLibrary;			// DECAL_LIB
+		float scaleX = 1.0f;				// Pixels across the texture
+		float scaleY = 1.0f;
+		float sizeX = 1.0f;					// Meters the whole texture covers
+		float sizeY = 1.0f;
+		std::vector<Tile> tiles;
+		std::vector<Transition> transitions;
+		std::vector<std::pair<int, int>> groups;	// (group, type)
+
+		/* @brief The TILE rows of a type, in file order. */
+		[[nodiscard]] std::vector<const Tile *> GetTiles(int type) const;
+	};
+
+	bool ParseBeachAsset(std::string_view text, BeachAsset &out, std::string *error = nullptr);
+	bool LoadBeachAsset(const std::filesystem::path &path, BeachAsset &out, std::string *error = nullptr);
 
 	/* @brief .fac: a building (or fence) extruded along a polygon. */
 	struct FacadeAsset

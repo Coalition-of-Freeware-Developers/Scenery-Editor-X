@@ -59,6 +59,8 @@ namespace SceneryEditorX
 		};
 
 		constexpr ShaderType VS = ShaderType::Vertex;
+		constexpr ShaderType TCS = ShaderType::TessellationControl;
+		constexpr ShaderType TES = ShaderType::TessellationEvaluation;
 		constexpr ShaderType FS = ShaderType::Fragment;
 		constexpr ShaderType CS = ShaderType::Compute;
 
@@ -125,6 +127,15 @@ namespace SceneryEditorX
 				{ Renderer_Shader::cacao_apply,             "cacao_apply",              "cacao.slang", {CS}, {{"CACAO_APPLY"}}, VertexType::MaxEnum, true },
 				{ Renderer_Shader::cacao_upscale,           "cacao_upscale",            "cacao.slang", {CS}, {{"CACAO_UPSCALE"}, {"CACAO_SMART", "0"}}, VertexType::MaxEnum, true },
 				{ Renderer_Shader::cacao_upscale_smart,     "cacao_upscale_smart",      "cacao.slang", {CS}, {{"CACAO_UPSCALE"}, {"CACAO_SMART", "1"}}, VertexType::MaxEnum, true },
+
+				// water (plan Phase 11; XP12: ocean_spectrum, compute_fft, ocean_bake_textures, ocean_shading): the FFT ocean's
+				// cascades and the tessellated surface
+				{ Renderer_Shader::ocean_spectrum, "ocean_spectrum", "ocean.slang", {CS}, {{"OCEAN_SPECTRUM"}}, VertexType::MaxEnum, true },
+				{ Renderer_Shader::ocean_evolve,   "ocean_evolve",   "ocean.slang", {CS}, {{"OCEAN_EVOLVE"}},   VertexType::MaxEnum, true },
+				{ Renderer_Shader::ocean_fft,      "ocean_fft",      "ocean.slang", {CS}, {{"OCEAN_FFT"}},      VertexType::MaxEnum, true },
+				{ Renderer_Shader::ocean_bake,     "ocean_bake",     "ocean.slang", {CS}, {{"OCEAN_BAKE"}},     VertexType::MaxEnum, true },
+				{ Renderer_Shader::ocean_mip,      "ocean_mip",      "ocean.slang", {CS}, {{"OCEAN_MIP"}},      VertexType::MaxEnum, true },
+				{ Renderer_Shader::water,          "water",          "water.slang", {VS, TCS, TES, FS}, {}, VertexType::PositionUvNormalTangent, true },
 
 				// the atmosphere (plan Phase 6), the sky, environment probes
 				{ Renderer_Shader::atmosphere_transmittance_lut, "atmosphere_transmittance_lut", "atmosphere_luts.slang",    {CS}, {{"TRANSMITTANCE"}}, VertexType::MaxEnum, true },

@@ -355,12 +355,15 @@ namespace SceneryEditorX
 					Renderer::SetFeatures(features);
 
 				EditorUI::PropertyLabel("Tone curve");
-				static constexpr const char *curves[] = { "AgX (X-Plane 12.2+)", "ACES fit", "Reinhard" };
-				int curve = Renderer::GetToneCurve() - 1;
+				// Listed with X-Plane 12's transform first; the values are tonemap.slang's curve numbers
+				static constexpr const char *curves[] = { "X-Plane 12", "AgX", "ACES fit", "Reinhard" };
+				static constexpr int curveValues[] = { 4, 1, 2, 3 };
+				int curve = static_cast<int>(std::find(std::begin(curveValues), std::end(curveValues), Renderer::GetToneCurve()) - std::begin(curveValues));
 				ImGui::BeginDisabled(!features.tonemap);
-				if (ImGui::Combo("##ToneCurve", &curve, curves, 3))
-					Renderer::SetToneCurve(curve + 1);
+				if (ImGui::Combo("##ToneCurve", &curve, curves, 4))
+					Renderer::SetToneCurve(curveValues[curve]);
 				ImGui::EndDisabled();
+				EditorUI::ItemTooltip("X-Plane 12: its display transform and grade (the parity look); the others are ungraded, for comparison");
 
 				EditorUI::PropertyLabel("Passes");
 				if (ImGui::Button("All off"))
@@ -433,12 +436,11 @@ namespace SceneryEditorX
 				EditorUI::PropertyLabel("Saturation");
 				ImGui::SetNextItemWidth(-FLT_MIN);
 				ImGui::SliderFloat("##Saturation", &constants.colorSlope.w, 0.0f, 2.0f, "%.2f");
-				EditorUI::ItemTooltip("ASC-CDL saturation after the tone curve (color_management/sdr)");
-				EditorUI::PropertyLabel("Grade slope");
+				EditorUI::ItemTooltip("Saturation after the display curve (color_management/sdr/saturation)");
+				EditorUI::PropertyLabel("Gamut compression");
 				ImGui::SetNextItemWidth(-FLT_MIN);
-				ImGui::SliderFloat("##SlopeStrength", &constants.colorSlopeStrength, 0.0f, 1.0f, "%.2f");
-				EditorUI::ItemTooltip("Share of X-Plane's color_management/sdr/slope applied after SEDX's AgX (0.5 balances sky and ground "
-									  "against X-Plane 12.4.4; 1 is X-Plane's full cooling)");
+				ImGui::SliderFloat("##ToneCompression", &constants.toneCompression, 0.0f, 0.5f, "%.3f");
+				EditorUI::ItemTooltip("How far the display curve's working space is pulled toward grey (color_management/compression)");
 				EditorUI::PropertyLabel("FSR sharpness");
 				ImGui::SetNextItemWidth(-FLT_MIN);
 				ImGui::SliderFloat("##RcasSharpness", &constants.rcasSharpness, 0.0f, 1.0f, "%.2f");
@@ -644,6 +646,55 @@ namespace SceneryEditorX
 				else
 					ValueText("Last frame", "%u x %u, pyramid %u levels, history %u levels%s", readout.width, readout.height,
 						readout.pyramidLevels, readout.historyLevels, readout.history ? "" : " (none yet)");
+				EditorUI::EndPropertyGrid();
+			}
+
+			if (EditorUI::SectionHeader("WATER", false) && EditorUI::BeginPropertyGrid("##RendererWater"))
+			{
+				// Plan Phase 11: X-Plane's water controls (water/*) and SEDX's (sedx/water_*); the waves' height and direction
+				// are the ENVIRONMENT panel's
+				Renderer::EnvironmentConstants &constants = Renderer::EditEnvironmentConstants();
+				OceanSettings &water = constants.water;
+				EditorUI::PropertyLabel("Gloss");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##WaterGloss", &water.gloss, 0.0f, 1.0f, "%.2f");
+				EditorUI::ItemTooltip("The surface's own gloss before the waves roughen it (water/gloss)");
+				EditorUI::PropertyLabel("F0");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##WaterF0", &water.f0, 0.0f, 0.1f, "%.3f");
+				EditorUI::ItemTooltip("Reflectance looking straight down (water/F0)");
+				EditorUI::PropertyLabel("Turbidity");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##WaterTurbidity", &water.turbidity, 0.1f, 20.0f, "%.1f");
+				EditorUI::ItemTooltip("What stands in the water fades over turbidity / (1 - the water map's alpha) meters (water/turbidity)");
+				EditorUI::PropertyLabel("Choppiness");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##WaterChoppy", &water.displaceLambda, 0.0f, 2.0f, "%.2f");
+				EditorUI::ItemTooltip("Horizontal displacement that sharpens the crests (water/h_displace_lambda)");
+				EditorUI::PropertyLabel("Foam");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##WaterFoam", &water.foamBias, 0.0f, 1.5f, "%.2f");
+				EditorUI::ItemTooltip("Waves break where their surface folds tighter than this (water/foam_bias): higher, more foam");
+				EditorUI::PropertyLabel("Calm ponds");
+				ImGui::Checkbox("##WaterFetch", &water.useFetch);
+				EditorUI::ItemTooltip("The DSF's fetch ratio scales the waves: lakes and ponds stay calm (sedx/water_use_fetch)");
+				EditorUI::PropertyLabel("Sea floor");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				ImGui::SliderFloat("##WaterFloor", &water.seaFloorCoef, 0.0f, 1.0f, "%.2f");
+				EditorUI::ItemTooltip("Share of the sea floor seen through clear water (water/sea_floor_coef; 0 in X-Plane 12.4.4)");
+
+				const Renderer::WaterReadout &readout = Renderer::GetWaterReadout();
+				const OceanSpectrum &sea = readout.spectrum;
+				if (!readout.ran)
+					ValueText("Last frame", "%s", readout.draws == 0 ? "no water in view" : "off");
+				else
+					ValueText("Last frame", "%u water draws, 4 cascades of 256 x 256", readout.draws);
+				if (sea.peakOmega > 0.0f)
+				{
+					ValueText("Sea", "Hs %.2f m, wind %.1f m/s, fetch %.0f km, swell %.2f", sea.significantHeightM, sea.windSpeed, sea.fetchM / 1000.0f, sea.swell);
+					const float period = 2.0f * OCEAN_PI / sea.peakOmega;
+					ValueText("Peak waves", "%.1f s, %.0f m long", period, OCEAN_GRAVITY * period * period / (2.0f * OCEAN_PI));
+				}
 				EditorUI::EndPropertyGrid();
 			}
 

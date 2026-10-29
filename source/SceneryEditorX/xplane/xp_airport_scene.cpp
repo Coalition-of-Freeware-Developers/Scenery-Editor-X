@@ -32,7 +32,9 @@
 #include "xp_dsf.h"
 #include "xp_library_manager.h"
 #include "xp_overlay.h"
+#include "xp_overlay_shading.h"
 #include "xp_scene.h"
+#include "xp_terrain_scene.h"
 #include "xp_texture_loader.h"
 #include <algorithm>
 #include <array>
@@ -231,11 +233,21 @@ namespace SceneryEditorX::XPlane
 			int tileMapWidth = 0, tileMapHeight = 0;
 			float metersPerU = 1.0f, metersPerV = 1.0f;
 			std::vector<OverlayDecal> decals;
+			fs::path textureNormal;			// X-Plane material (OverlayMesh)
+			float normalRatio = 1.0f;
+			bool normalMetalness = false;
+			float specular = 1.0f;
+			float superRoughness = 0.0f;
+			fs::path weatherMask;			// Weather receptivity (OverlayMesh)
+			bool weatherTransparent = false;
+			bool hasSnowAlbedoLuma = false;
+			float snowAlbedoLuma[2] = {};
 
 			std::vector<Vertex_PosTexNorTan> vertices;
 			std::vector<uint32_t> indices;
 			Bounds2 bounds;					// Airport-space footprint (for placed parts: around the origin)
 			uint32_t subMesh = 0;
+			float layerHeight = 0.0f;		// Height above the ground it was built at (its drape order), before draping
 
 			// Point features: geometry built at the origin pointing north; the entity transform places it
 			bool placed = false;
@@ -308,13 +320,11 @@ namespace SceneryEditorX::XPlane
 		void EmitTriangles(Part &part, const std::vector<Point2> &points, const std::vector<uint32_t> &indices, const float y)
 		{
 			const uint32_t base = static_cast<uint32_t>(part.vertices.size());
-			part.vertices.reserve(part.vertices.size() + points.size());
 			for (const Point2 &point : points)
 			{
 				part.vertices.push_back(MakeVertex(point, y));
 				part.bounds.Add(point);
 			}
-			part.indices.reserve(part.indices.size() + indices.size());
 			for (const uint32_t index : indices)
 				part.indices.push_back(base + index);
 		}
@@ -407,13 +417,22 @@ namespace SceneryEditorX::XPlane
 			part.metersPerU = mesh.metersPerU;
 			part.metersPerV = mesh.metersPerV;
 			part.decals = mesh.decals;
+			part.textureNormal = mesh.textureNormal;
+			part.normalRatio = mesh.normalRatio;
+			part.normalMetalness = mesh.normalMetalness;
+			part.specular = mesh.specular;
+			part.superRoughness = mesh.superRoughness;
+			part.weatherMask = mesh.weatherMask;
+			part.weatherTransparent = mesh.weatherTransparent;
+			part.hasSnowAlbedoLuma = mesh.hasSnowAlbedoLuma;
+			part.snowAlbedoLuma[0] = mesh.snowAlbedoLuma[0];
+			part.snowAlbedoLuma[1] = mesh.snowAlbedoLuma[1];
 		}
 
 		/* @brief Appends an overlay mesh's textured geometry (positions, UVs and normals as built). */
 		void AppendOverlayMesh(Part &part, const OverlayMesh &mesh)
 		{
 			const uint32_t base = static_cast<uint32_t>(part.vertices.size());
-			part.vertices.reserve(part.vertices.size() + mesh.vertices.size());
 			for (const OverlayVertex &vertex : mesh.vertices)
 			{
 				const Vec3 normal(vertex.nx, vertex.ny, vertex.nz);
@@ -421,7 +440,6 @@ namespace SceneryEditorX::XPlane
 				const Vec3 tangent = std::abs(vertex.ny) > 0.9f ? Vec3(mesh.tangentX, 0.0f, mesh.tangentZ) : xMath::Normalize(xMath::Cross(Vec3(0.0f, 1.0f, 0.0f), normal));
 				part.vertices.push_back(Vertex_PosTexNorTan(Vec3(vertex.x, vertex.y, vertex.z), Vec2(vertex.u, vertex.v), normal, tangent));
 			}
-			part.indices.reserve(part.indices.size() + mesh.indices.size());
 			for (const uint32_t index : mesh.indices)
 				part.indices.push_back(base + index);
 			part.bounds.Add(mesh.bounds);
@@ -1319,88 +1337,6 @@ namespace SceneryEditorX::XPlane
 			return it->second.image.Get();
 		}
 
-		/**
-		 * @brief Draped-polygon shading on an overlay material (xp_material.slang xp_drape_*): the tile atlas's mapping
-		 * texture in color slot 1, detail decals in color slots 2-3, normal decals in normal slots 1-2 (slot 0 stays empty:
-		 * overlays draw without a normal map). Returns what it adds to the material's cache key.
-		 */
-		std::string ApplyDrapeShading(Loaded &loaded, const Part &part, MaterialAsset &material)
-		{
-			std::string key;
-			float mode = 0.0f;
-			if (part.shading == OverlayShading::Markings)
-			{
-				// The atlas's channels are masks: R paint, G border (loaded linear, decoded in the shader)
-				mode = 2.0f;
-				material.SetProperty(MaterialProperty::XpDrapeMiscR, part.color[0]);
-				material.SetProperty(MaterialProperty::XpDrapeMiscG, part.color[1]);
-				material.SetProperty(MaterialProperty::XpDrapeMiscB, part.color[2]);
-				material.SetProperty(MaterialProperty::XpDrapeMiscA, part.color[3]);
-				char text[96];
-				std::snprintf(text, sizeof(text), "|markings%.3f,%.3f,%.3f,%.3f", part.color[0], part.color[1], part.color[2], part.color[3]);
-				key += text;
-			}
-			else if (part.shading == OverlayShading::Tiled)
-			{
-				mode = 1.0f;
-				ImageResource *map = LoadOverlayTexture(loaded, part.tileMap, TextureUsage::Data);
-				material.SetProperty(MaterialProperty::XpTilesX, static_cast<float>(part.tilesX));
-				material.SetProperty(MaterialProperty::XpTilesY, static_cast<float>(part.tilesY));
-				material.SetProperty(MaterialProperty::XpTileMapWidth, map ? static_cast<float>(part.tileMapWidth) : 0.0f);
-				material.SetProperty(MaterialProperty::XpTileMapHeight, map ? static_cast<float>(part.tileMapHeight) : 0.0f);
-				if (map)
-					material.SetTexture(MaterialTextureType::Color, map, 1);
-				key += "|tiles" + std::to_string(part.tilesX) + "x" + std::to_string(part.tilesY) + (map ? "|" + part.tileMap.generic_string() : std::string());
-			}
-
-			// Up to two detail and two normal decals, in file order
-			int details = 0, normals = 0;
-			for (const OverlayDecal &decal : part.decals)
-			{
-				const bool normal = decal.normal;
-				int &count = normal ? normals : details;
-				if (count >= 2)
-					continue;
-				ImageResource *image = LoadOverlayTexture(loaded, decal.texture, normal ? TextureUsage::Normal : TextureUsage::Data);
-				if (!image)
-					continue;
-				// Repeats per meter, so decals keep their own scale whatever the atlas's
-				const float perMeterS = decal.scaleS / std::max(0.01f, part.metersPerU);
-				const float perMeterT = decal.scaleT / std::max(0.01f, part.metersPerV);
-				const int slot = count;
-				if (normal)
-				{
-					material.SetTexture(MaterialTextureType::Normal, image, 1 + slot);
-					material.SetProperty(slot == 0 ? MaterialProperty::XpNormalDecal0Scale : MaterialProperty::XpNormalDecal1Scale, perMeterS);
-					material.SetProperty(slot == 0 ? MaterialProperty::XpNormalDecal0Gain : MaterialProperty::XpNormalDecal1Gain, decal.strength * decal.gain);
-				}
-				else
-				{
-					material.SetTexture(MaterialTextureType::Color, image, 2 + slot);
-					material.SetProperty(slot == 0 ? MaterialProperty::XpDecal0Scale : MaterialProperty::XpDecal1Scale, perMeterS);
-					material.SetProperty(slot == 0 ? MaterialProperty::XpDecal0Strength : MaterialProperty::XpDecal1Strength, decal.strength);
-				}
-				// t repeats per meter relative to s (1 for square decal texels; a _PROJ row may set its own)
-				if (slot == 0)
-					material.SetProperty(normal ? MaterialProperty::XpNormalDecalAspect : MaterialProperty::XpDecalAspect, perMeterT / std::max(1e-6f, perMeterS));
-				++count;
-				char text[160];
-				std::snprintf(text, sizeof(text), "|%s%.4f,%.4f,%.3f,%.3f:", normal ? "nd" : "d", decal.scaleS, decal.scaleT, decal.strength, decal.gain);
-				key += text + decal.texture.generic_string();
-			}
-			if (details + normals > 0)
-			{
-				// u / v units in meters: the shader turns UVs into meters for the decals' per-meter scales
-				material.SetProperty(MaterialProperty::XpDrapeMetersU, part.metersPerU);
-				material.SetProperty(MaterialProperty::XpDrapeMetersV, part.metersPerV);
-				char text[64];
-				std::snprintf(text, sizeof(text), "|m%.3f,%.3f", part.metersPerU, part.metersPerV);
-				key += text;
-			}
-			material.SetProperty(MaterialProperty::XpDrapeMode, mode);
-			return key;
-		}
-
 		/* @brief The material for library / DSF art: its texture (loaded once per file) with the asset's alpha treatment. */
 		Ref<MaterialAsset> GetOverlayMaterial(Loaded &loaded, const Part &part)
 		{
@@ -1425,11 +1361,14 @@ namespace SceneryEditorX::XPlane
 				key += "|cut" + std::to_string(part.cutoff);
 			if (blended)
 				key += "|blend";
+			const bool foliage = part.kind == AirportElementKind::Forest;
+			if (foliage)
+				key += "|foliage";
 
 			// The shading's textures load before the lookup: they are part of the key
 			Ref<MaterialAsset> material = CreateRef<MaterialAsset>();
 			if (image)
-				key += ApplyDrapeShading(loaded, part, *material);
+				key += ApplyDrapeShading(part, [&loaded](const fs::path &texture, const TextureUsage usage) { return LoadOverlayTexture(loaded, texture, usage); }, *material);
 
 			auto it = loaded.overlayMaterials.find(key);
 			if (it != loaded.overlayMaterials.end())
@@ -1445,12 +1384,14 @@ namespace SceneryEditorX::XPlane
 			material->SetProperty(MaterialClass::TextureTilingY, 1.0f);
 			material->SetProperty(MaterialClass::Roughness, 0.9f);
 			material->SetProperty(MaterialClass::Metalness, 0.0f);
-			material->SetProperty(MaterialClass::Normal, 0.0f);
+			// The normal map's full strength with an X-Plane material (ApplyDrapeShading, xp_overlay_shading.h), else none
+			material->SetProperty(MaterialClass::Normal, material->GetProperty(MaterialProperty::XpMaterial) > 0.0f ? 1.0f : 0.0f);
 			material->SetProperty(MaterialProperty::CullMode, static_cast<float>(CullMode::None));
 			// Like the OBJ8 materials: cutouts alpha-test at the asset's ratio; blended art keeps its opaque texels in the
 			// deferred passes and blends the rest in the transparent pass.
 			material->SetProperty(MaterialProperty::AlphaCutoff, blended ? BLEND_SPLIT_ALPHA : (cutout ? std::clamp(part.cutoff, 0.001f, 1.0f) : 0.0f));
 			material->SetProperty(MaterialProperty::BlendMode, blended ? 1.0f : 0.0f);
+			material->SetProperty(MaterialProperty::XpFoliage, foliage ? 1.0f : 0.0f);
 			if (image)
 				material->SetTexture(MaterialTextureType::Color, image);
 			loaded.overlayMaterials.emplace(key, material);
@@ -1495,6 +1436,91 @@ namespace SceneryEditorX::XPlane
 			return groupHandle;
 		}
 
+		// -------------------------------------------------------
+		// The terrain under the airport (plan Phase 10): its property plus a mile, everything draped on it
+
+		constexpr double TERRAIN_MARGIN = 1609.344;		// One statute mile around the airport property
+
+		/**
+		 * @brief Loads the base terrain for the airport: its boundary rows (130) near the field, or the working area
+		 * when it has none, plus a mile.
+		 */
+		void LoadTerrain(const AirportDocument &document, const Build &build, const GeoProjection &projection)
+		{
+			if (!SceneTerrain::IsEnabled())
+				return;
+			TerrainArea area;
+			area.margin = TERRAIN_MARGIN;
+			const Bounds2 &focus = build.focus.valid ? build.focus : build.bounds;
+			std::vector<std::vector<Point2>> grounds;	// The boundary: the tile's trees and buildings inside it aren't drawn
+			for (const AptBoundary &boundary : document.airport.boundaries)
+			{
+				for (const AptNodeChain &chain : boundary.rings)
+				{
+					std::vector<Point2> ring;
+					FlattenChain(chain, projection, ring, 20.0);
+					const Bounds2 ringBounds = GetBounds(ring);
+					// KSEA outlines the Space Needle 19 km away: keep the rings that touch the field
+					if (ring.size() >= 3 && focus.valid && ringBounds.maxX >= focus.minX && ringBounds.minX <= focus.maxX && ringBounds.maxZ >= focus.minZ && ringBounds.minZ <= focus.maxZ)
+						grounds.push_back(std::move(ring));
+				}
+			}
+			area.rings = grounds;
+			if (area.rings.empty() && focus.valid)
+				area.rings.push_back({ Point2{ focus.minX, focus.minZ }, Point2{ focus.maxX, focus.minZ }, Point2{ focus.maxX, focus.maxZ }, Point2{ focus.minX, focus.maxZ } });
+			if (area.rings.empty())
+				return;
+			SceneTerrain::Load(projection, area, document.airport.id, document.airport.elevationFt * 0.3048, grounds);
+		}
+
+		/**
+		 * @brief Puts a part on the terrain: flat kinds are draped (cut along the terrain's triangles, lifted onto it),
+		 * facades and forests stand on the ground under each vertex. Placed parts move with their entity instead.
+		 */
+		void DrapePart(Part &part, const TerrainSurface &surface)
+		{
+			if (surface.IsEmpty() || part.indices.empty() || part.placed)
+				return;
+			std::vector<OverlayVertex> vertices;
+			vertices.reserve(part.vertices.size());
+			for (const Vertex_PosTexNorTan &v : part.vertices)
+			{
+				OverlayVertex vertex;
+				vertex.x = v.pos[0];
+				vertex.y = v.pos[1];
+				vertex.z = v.pos[2];
+				vertex.u = v.tex[0];
+				vertex.v = v.tex[1];
+				vertex.nx = v.nor[0];
+				vertex.ny = v.nor[1];
+				vertex.nz = v.nor[2];
+				vertices.push_back(vertex);
+			}
+			if (IsDraped(part.kind))
+				surface.Drape(vertices, part.indices);
+			else
+				surface.Lift(vertices);
+
+			part.vertices.clear();
+			part.vertices.reserve(vertices.size());
+			for (const OverlayVertex &vertex : vertices)
+			{
+				const Vec3 normal(vertex.nx, vertex.ny, vertex.nz);
+				const Vec3 tangent = std::abs(vertex.ny) > 0.9f ? xMath::Normalize(Vec3(1.0f, 0.0f, 0.0f) - normal * vertex.nx) : xMath::Normalize(xMath::Cross(Vec3(0.0f, 1.0f, 0.0f), normal));
+				part.vertices.emplace_back(Vec3(vertex.x, vertex.y, vertex.z), Vec2(vertex.u, vertex.v), normal, tangent);
+			}
+		}
+
+		/* @brief y of a placed OBJ8: on the ground, above it (AGL) or at its MSL elevation. */
+		float ObjectHeight(const OverlayObject &object)
+		{
+			if (object.msl && SceneTerrain::IsLoaded())
+				return SceneTerrain::ElevationToY(object.y, object.x, object.z);
+			if (object.graded)
+				return SceneTerrain::GetHeight(object.groundX, object.groundZ) + static_cast<float>(object.y);	// Autogen OBJ_GRADED
+			return SceneTerrain::GetHeight(object.x, object.z) + static_cast<float>(object.msl ? 0.0 : object.y);
+		}
+
 		/* @brief Places the OBJ8s (DSF objects, strings, facade attachments, light strings) under their groups. */
 		void PlaceObjects(Loaded &loaded, entt::registry &registry, const entt::entity rootHandle, const Build &build)
 		{
@@ -1512,7 +1538,7 @@ namespace SceneryEditorX::XPlane
 
 				SceneObjects::PlaceOptions options;
 				options.position[0] = static_cast<float>(object.x);
-				options.position[1] = static_cast<float>(object.y);
+				options.position[1] = ObjectHeight(object);
 				options.position[2] = static_cast<float>(object.z);
 				options.headingDegrees = object.heading;
 				options.virtualPath = object.resource.starts_with("lib/") ? object.resource : std::string();
@@ -1560,13 +1586,16 @@ namespace SceneryEditorX::XPlane
 		 */
 		Ref<Mesh> CreateParts(Loaded &loaded, entt::registry &registry, const entt::entity rootHandle, std::vector<Part> &parts, const std::string &meshName, std::vector<uint64_t> &created)
 		{
-			// One mesh, a sub-mesh per part
+			// One mesh, a sub-mesh per part, each on the terrain
 			Ref<Mesh> mesh;
 			bool anyGeometry = false;
+			const TerrainSurface &surface = SceneTerrain::GetSurface();
 			for (Part &part : parts)
 			{
 				if (part.indices.empty())
 					continue;
+				part.layerHeight = part.vertices.empty() ? 0.0f : part.vertices.front().pos[1];
+				DrapePart(part, surface);
 				if (!mesh)
 				{
 					mesh = CreateRef<Mesh>();
@@ -1606,7 +1635,7 @@ namespace SceneryEditorX::XPlane
 				{
 					// Heading is clockwise from north (-Z), like DSF placements; the entity's yaw is the opposite sense.
 					TransformComponent &transform = registry.get<TransformComponent>(handle);
-					transform.translation = Vec3(static_cast<float>(part.origin.x), 0.0f, static_cast<float>(part.origin.z));
+					transform.translation = Vec3(static_cast<float>(part.origin.x), SceneTerrain::GetHeight(part.origin.x, part.origin.z), static_cast<float>(part.origin.z));
 					transform.SetRotationEuler(Vec3(0.0f, -static_cast<float>(part.heading) * kDegToRad, 0.0f));
 				}
 
@@ -1648,7 +1677,7 @@ namespace SceneryEditorX::XPlane
 							if (!part.placed && IsDraped(part.kind) && !part.vertices.empty())
 							{
 								const uint32_t sequence = (std::min(part.index, (1u << 26) - 1) << 5) | static_cast<uint32_t>(part.kind);
-								renderable->SetDrapeOrder(Renderable::MakeDrapeOrder(part.vertices.front().pos[1], sequence));
+								renderable->SetDrapeOrder(Renderable::MakeDrapeOrder(part.layerHeight, sequence));
 							}
 						}
 						if (!loaded.kindVisible[static_cast<size_t>(part.kind)])
@@ -1695,6 +1724,7 @@ namespace SceneryEditorX::XPlane
 			{
 				OverlayBuilder overlay(MakeResolver(document.GetPackageFolder()), loaded.projection);
 				BuildOverlay(document, build, overlay);
+				LoadTerrain(document, build, loaded.projection);
 			}
 			loaded.projection = build.projection;
 			loaded.bounds = build.bounds;
@@ -2104,6 +2134,7 @@ namespace SceneryEditorX::XPlane
 
 	void SceneAirports::Unload()
 	{
+		SceneTerrain::Unload();
 		if (!s_Loaded)
 			return;
 		if (entt::registry *registry = GetRegistry())
@@ -2188,7 +2219,7 @@ namespace SceneryEditorX::XPlane
 				continue;
 
 			TransformComponent &transform = registry->get<TransformComponent>(handle);
-			transform.translation = Vec3(static_cast<float>(origin.x), 0.0f, static_cast<float>(origin.z));
+			transform.translation = Vec3(static_cast<float>(origin.x), SceneTerrain::GetHeight(origin.x, origin.z), static_cast<float>(origin.z));
 			transform.SetRotationEuler(Vec3(0.0f, -static_cast<float>(heading) * kDegToRad, 0.0f));
 			GpuScene::MarkTransformDirty(handle);
 
@@ -2315,7 +2346,7 @@ namespace SceneryEditorX::XPlane
 			return;
 		const Bounds2 &focus = FocusOf(*s_Loaded);
 		const Point2 center = focus.GetCenter();
-		FrameSphere(Vec3(static_cast<float>(center.x), 0.0f, static_cast<float>(center.z)) + RootOffset(*s_Loaded), static_cast<float>(focus.GetRadius()), -50.0f);
+		FrameSphere(Vec3(static_cast<float>(center.x), SceneTerrain::GetHeight(center.x, center.z), static_cast<float>(center.z)) + RootOffset(*s_Loaded), static_cast<float>(focus.GetRadius()), -50.0f);
 	}
 
 	bool SceneAirports::GetFocus(float &centerX, float &centerZ, float &radius)
@@ -2343,15 +2374,17 @@ namespace SceneryEditorX::XPlane
 		}
 		const Point2 center = component->bounds.GetCenter();
 		const Vec3 offset = RootOffset(*s_Loaded);
-		FrameSphere(Vec3(static_cast<float>(center.x), 0.0f, static_cast<float>(center.z)) + offset, std::max(3.0f, static_cast<float>(component->bounds.GetRadius())), -35.0f);
+		FrameSphere(Vec3(static_cast<float>(center.x), SceneTerrain::GetHeight(center.x, center.z), static_cast<float>(center.z)) + offset, std::max(3.0f, static_cast<float>(component->bounds.GetRadius())), -35.0f);
 	}
 
 	void SceneAirports::LookFrom(const float x, const float y, const float z, const float yawDegrees, const float pitchDegrees)
 	{
 		if (!IsLoaded() || !FocusOf(*s_Loaded).valid)
 			return;
+		// Heights are above the ground under the eye
 		const Point2 center = FocusOf(*s_Loaded).GetCenter();
-		const Vec3 eye = Vec3(static_cast<float>(center.x), 0.0f, static_cast<float>(center.z)) + RootOffset(*s_Loaded) + Vec3(x, y, z);
+		const float ground = SceneTerrain::GetHeight(center.x + x, center.z + z);
+		const Vec3 eye = Vec3(static_cast<float>(center.x), ground, static_cast<float>(center.z)) + RootOffset(*s_Loaded) + Vec3(x, y, z);
 		const float yaw = yawDegrees * kDegToRad;
 		const float pitch = pitchDegrees * kDegToRad;
 		PlaceCamera(eye, eye + ViewForward(yaw, pitch) * 100.0f, yaw, pitch);
@@ -2363,7 +2396,7 @@ namespace SceneryEditorX::XPlane
 			return false;
 		// The scene was built with the projection's datum at the root's origin; +X east, +Z south
 		const Point2 local = s_Loaded->projection.ToLocal(latitude, longitude);
-		const Vec3 eye = Vec3(static_cast<float>(local.x), heightMeters, static_cast<float>(local.z)) + RootOffset(*s_Loaded);
+		const Vec3 eye = Vec3(static_cast<float>(local.x), heightMeters + SceneTerrain::GetHeight(local.x, local.z), static_cast<float>(local.z)) + RootOffset(*s_Loaded);
 		// Yaw 0 looks along +Z (south): a true heading h looks along yaw 180 - h
 		const float yaw = (180.0f - headingTrueDegrees) * kDegToRad;
 		const float pitch = pitchDegrees * kDegToRad;
@@ -2391,6 +2424,7 @@ namespace SceneryEditorX::XPlane
 	void SceneAirports::Shutdown()
 	{
 		Unload();
+		SceneTerrain::Shutdown();
 	}
 }
 

@@ -78,6 +78,9 @@ namespace SceneryEditorX::VFS
 	/* @brief A path as UTF-8 text (generic '/' separators are not forced: it is the path as the OS spells it). */
 	std::string ToUtf8(const std::filesystem::path &path);
 
+	/* @brief A path as UTF-8 text with generic '/' separators (path::generic_string() without the code page). */
+	std::string ToGenericUtf8(const std::filesystem::path &path);
+
 	/* @brief A path from UTF-8 text. */
 	std::filesystem::path FromUtf8(std::string_view text);
 

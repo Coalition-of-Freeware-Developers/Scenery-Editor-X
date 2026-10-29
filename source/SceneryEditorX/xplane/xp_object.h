@@ -29,6 +29,7 @@
  * -------------------------------------------------------
  */
 #pragma once
+#include "xp_assets.h"
 #include "xp_lights.h"
 #include "xp_obj8.h"
 #include "xp_texture_loader.h"
@@ -72,6 +73,13 @@ namespace SceneryEditorX::XPlane
 		ResolvedLight resolved;
 	};
 
+	/* @brief A detail or normal decal of an OBJ (its rows and DECAL_LIB's), with its texture. */
+	struct ObjectDecal
+	{
+		PolygonDecal decal;					// scaleS / scaleT: repeats per albedo tile (per unit of the OBJ's UVs)
+		Ref<ImageResource> image;
+	};
+
 	/* @brief The textures an OBJ resolved, with what the loader learned about them. */
 	struct ObjectTextures
 	{
@@ -80,10 +88,13 @@ namespace SceneryEditorX::XPlane
 		Ref<ImageResource> lit;
 		Ref<ImageResource> drapedAlbedo;
 		Ref<ImageResource> drapedNormal;
+		Ref<ImageResource> weather;			// WEATHER mask (weather.slang)
+		Ref<ImageResource> materialMap;		// TEXTURE_MAP material_gloss, else gloss (X-Plane 12)
 		TextureInfo albedoInfo;
 		TextureInfo normalInfo;
 		TextureInfo litInfo;
 		TextureInfo drapedInfo;
+		std::vector<ObjectDecal> decals;	// Up to two detail and two normal decals, in file order
 	};
 
 	/* @brief Where an object file is in its load. */
@@ -117,6 +128,9 @@ namespace SceneryEditorX::XPlane
 	};
 
 	struct ObjectLoadJob;
+
+	/* @brief Per-vertex tangents from UV derivatives (s right, t up), orthogonalized against the normal, as OBJ8s get them. */
+	void ComputeVertexTangents(std::vector<Vertex_PosTexNorTan> &vertices, const std::vector<uint32_t> &indices);
 
 	/**
 	 * @class ObjectAsset
