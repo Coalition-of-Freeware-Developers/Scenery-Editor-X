@@ -7,6 +7,7 @@
 #include <stb_image_write.h>
 #include <math_utils.h>
 #include <SceneryEditorX/filesystem/file_manager.hpp>
+#include <SceneryEditorX/filesystem/vfs.h>
 
 namespace SceneryEditorX
 {
@@ -101,7 +102,7 @@ namespace SceneryEditorX
     Memory::Buffer TextureImporter::ToBufferFromFile(const std::filesystem::path& path, VkFormat& outFormat, uint32_t& outWidth, uint32_t& outHeight)
     {
         Memory::Buffer imageBuffer;
-        std::string pathString = path.string();
+        std::string pathString = VFS::ToUtf8(path);	// stb_image takes UTF-8 names (STBI_WINDOWS_UTF8)
         bool isSRGB = (outFormat == VkFormat::VK_FORMAT_R8G8B8_SRGB) || (outFormat == VkFormat::VK_FORMAT_R8G8B8A8_SRGB);
 
         int width = 0;

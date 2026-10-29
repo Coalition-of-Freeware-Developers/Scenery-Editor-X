@@ -427,3 +427,19 @@ TEST_CASE("UTF-8 survives the trip through paths", "[vfs][paths]")
 	REQUIRE(entries.size() == 1);
 	CHECK(entries[0].name == name);
 }
+
+TEST_CASE("Folders outside the ANSI code page convert without the code page", "[vfs][paths]")
+{
+	// An install under a Japanese user name: path::string() / generic_string() throw for it on Windows (MSVC)
+	const std::string folder = "C:/Users/\xE6\x97\xA5\xE6\x9C\xAC/AppData/Local/Programs/SceneryEditorX";
+	const fs::path resources = VFS::FromUtf8(folder) / "resources" / "shaders";
+	CHECK(VFS::ToGenericUtf8(resources) == folder + "/resources/shaders");
+	CHECK(VFS::FromUtf8(VFS::ToUtf8(resources)) == resources);
+
+	Scratch scratch;
+	const fs::path file = scratch.path / VFS::FromUtf8("\xE6\x97\xA5\xE6\x9C\xAC") / "font.ttf";
+	Touch(file, "bytes");
+	std::string bytes;
+	REQUIRE(VFS::ReadFile(VFS::FromUtf8(VFS::ToUtf8(file)), bytes));
+	CHECK(bytes == "bytes");
+}

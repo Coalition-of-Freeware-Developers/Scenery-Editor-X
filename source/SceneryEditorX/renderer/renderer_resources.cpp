@@ -312,18 +312,19 @@ namespace SceneryEditorX
 			s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::frame_output)]   = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, widthOutput, heightOutput, 1, mipCount, VK_FORMAT_R16G16B16A16_SFLOAT, UnorderedAccessView | ShaderViews | RenderTargetViews | BlitClear | PerMipViews | QueueShare, "frame_output"});
 			SEDX_CORE_ASSERT(s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::frame_output)] != nullptr, "Failed to create frame_output render target");
 
-			// Transition frame_output to General during bootstrap. Using UNDEFINED ->
-			// SHADER_READ_ONLY_OPTIMAL can trigger validation warnings because that pattern
-			// discards contents and immediately declares a read-only layout. General keeps
-			// the image valid for early compute write/read usage until pass code performs
-			// the first explicit read-only transition.
+			// The UI can show a new frame_output before anything renders into it: a 3D view in its own platform window is
+			// drawn and submitted on the main thread (UILayer::EndRendering) right after a resize made its targets again,
+			// ahead of the render thread's next frame, and UI::GetTextureID samples it in shader-read layout. Cleared to
+			// black and left in that layout, it can be shown from the start; the passes move it to the layouts they write
+			// in, as they do every frame.
 			if (ImageResource* frameOutput = s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::frame_output)].Get())
 			{
 				if (CommandList* initCmd = CommandList::BeginImmediateExecution(QueueType::Graphics))
 				{
-					frameOutput->SetLayout(Layout::ImageLayout::General, initCmd, ALL_MIPS, 0);
+					initCmd->ClearTexture(frameOutput, Color::Black());
+					frameOutput->SetLayout(Layout::ImageLayout::ShaderRead, initCmd, ALL_MIPS, 0);
 					CommandList::EndImmediateExecution(initCmd);
-					SEDX_CORE_TRACE_TAG("RendererResources", "Transitioned frame_output to General layout");
+					SEDX_CORE_TRACE_TAG("RendererResources", "Cleared frame_output, left in shader-read layout");
 				}
 			}
 
