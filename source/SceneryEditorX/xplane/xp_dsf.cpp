@@ -459,31 +459,51 @@ namespace SceneryEditorX::XPlane
 		return values[static_cast<size_t>(std::min(y, height - 1)) * width + std::min(x, width - 1)];
 	}
 
+	namespace
+	{
+		/* @brief A point of the tile bounds in raster cells, clamped to the edges; false for an empty raster or bounds. */
+		bool ToRasterCell(const DsfRaster &raster, const double longitude, const double latitude, const double west, const double south, const double east, const double north,
+						  double &x, double &y)
+		{
+			if (raster.width == 0 || raster.height == 0 || east <= west || north <= south)
+				return false;
+			const double u = (longitude - west) / (east - west);
+			const double v = (latitude - south) / (north - south);
+			if (raster.IsPostCentric())
+			{
+				x = u * static_cast<double>(raster.width - 1);
+				y = v * static_cast<double>(raster.height - 1);
+			}
+			else
+			{
+				x = u * static_cast<double>(raster.width) - 0.5;
+				y = v * static_cast<double>(raster.height) - 0.5;
+			}
+			x = std::clamp(x, 0.0, static_cast<double>(raster.width - 1));
+			y = std::clamp(y, 0.0, static_cast<double>(raster.height - 1));
+			return true;
+		}
+	}
+
 	float DsfRaster::Sample(const double longitude, const double latitude, const double west, const double south, const double east, const double north) const
 	{
-		if (width == 0 || height == 0 || east <= west || north <= south)
-			return 0.0f;
-		const double u = (longitude - west) / (east - west);
-		const double v = (latitude - south) / (north - south);
 		double x, y;
-		if (IsPostCentric())
-		{
-			x = u * static_cast<double>(width - 1);
-			y = v * static_cast<double>(height - 1);
-		}
-		else
-		{
-			x = u * static_cast<double>(width) - 0.5;
-			y = v * static_cast<double>(height) - 0.5;
-		}
-		x = std::clamp(x, 0.0, static_cast<double>(width - 1));
-		y = std::clamp(y, 0.0, static_cast<double>(height - 1));
+		if (!ToRasterCell(*this, longitude, latitude, west, south, east, north, x, y))
+			return 0.0f;
 		const uint32_t x0 = static_cast<uint32_t>(x), y0 = static_cast<uint32_t>(y);
 		const uint32_t x1 = std::min(x0 + 1, width - 1), y1 = std::min(y0 + 1, height - 1);
 		const float fx = static_cast<float>(x - x0), fy = static_cast<float>(y - y0);
 		const float bottom = At(x0, y0) + (At(x1, y0) - At(x0, y0)) * fx;
 		const float top = At(x0, y1) + (At(x1, y1) - At(x0, y1)) * fx;
 		return bottom + (top - bottom) * fy;
+	}
+
+	float DsfRaster::SampleNearest(const double longitude, const double latitude, const double west, const double south, const double east, const double north) const
+	{
+		double x, y;
+		if (!ToRasterCell(*this, longitude, latitude, west, south, east, north, x, y))
+			return 0.0f;
+		return At(static_cast<uint32_t>(std::lround(x)), static_cast<uint32_t>(std::lround(y)));
 	}
 
 	// -------------------------------------------------------

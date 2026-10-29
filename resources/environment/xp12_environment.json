@@ -106,6 +106,18 @@
 			"value": 8000.0,
 			"source": "SEDX calibration (2026-10-26): the clean *_aerial_hazy shots (8 km) match with the whole layer as fog (luminance within 0.2 EV, the veil's colour); ASSUMPTION: linear from fog_start_visibility_m. X-Plane's own fog sees 14,488 m from 600 m up there, so its layer thins with height faster than SEDX's"
 		},
+		"sedx/sun_tint_red": {
+			"value": 1.08,
+			"source": "SEDX calibration (2026-10-26) against the 15 X-Plane 12.4.4 *_rwy_sunp40 shots: the sun's red over green on environment/sky_light.h SUN_COLOR, at the same luminance. X-Plane's runway paint (RUNWAY_MARKINGS 1 1 1, the same white in both) came out 6% redder than SEDX's (log2 r/g -0.07 on screen, about 11% in scene-linear light); with this and haze_mie_scale the paint is within -0.01 and the sky's blue within 0.03 in the upper bands. X-Plane doesn't show its u_E_sun colour"
+		},
+		"sedx/sun_tint_blue": {
+			"value": 0.98,
+			"source": "SEDX calibration (2026-10-26), with sun_tint_red: the sun's blue over green on SUN_COLOR, at the same luminance"
+		},
+		"sedx/haze_mie_scale": {
+			"value": 0.55,
+			"source": "SEDX calibration (2026-10-26), with sun_tint_red: X-Plane 12.4.4's 80 km runway skies are bluer than the whole visibility deficit as extra Mie gives (upper sky b/g -0.08, then 0.00 with 0.55; 0.32 overshoots, +0.07, and darkens the upper sky). On the extra Mie only, so the fog of short visibilities (fog_full_visibility_m and less) keeps its calibration"
+		},
 		"scattering/g_cornette_shanks": {
 			"value": 0.76,
 			"source": "X-Plane 12.4.4 (reference probe dump, 2026-10-20)"

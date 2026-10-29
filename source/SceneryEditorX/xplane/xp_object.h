@@ -203,6 +203,7 @@ namespace SceneryEditorX::XPlane
 		[[nodiscard]] const std::string &GetError() const { return m_Error; }
 
 		[[nodiscard]] const std::filesystem::path &GetPath() const { return m_Path; }
+		/* @brief The parsed OBJ without its vertex tables (vertices, indices, line and light vertices): GetMesh() has the geometry. */
 		[[nodiscard]] const Obj8Data &GetData() const { return m_Data; }
 		[[nodiscard]] Mesh *GetMesh() const { return m_Mesh.Get(); }
 		[[nodiscard]] const std::vector<ObjectBatch> &GetBatches() const { return m_Batches; }

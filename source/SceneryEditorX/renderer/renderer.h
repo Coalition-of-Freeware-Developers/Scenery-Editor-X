@@ -557,6 +557,9 @@ namespace SceneryEditorX
 			float fogFullVisibilityM = 8000.0f;			// sedx/fog_full_visibility_m: all fog (no extra Mie) at this visibility and less
 			float hazeTopM = 1500.0f;
 			float hazeBandM = 1000.0f;
+			float sunTintRed = 1.08f;					// sedx/sun_tint_red / _blue: the sun's colour over Environment::SUN_COLOR, at the same luminance
+			float sunTintBlue = 0.98f;
+			float hazeMieScale = 0.55f;					// sedx/haze_mie_scale: on the visibility's extra Mie (AtmosphereParams::hazeMieScale)
 			ExposureSettings exposure;					// photometric/*, exposure/*, autoexposure/* (renderer/exposure.h)
 
 			// exposure_fusion/shadows (EV), sigma, dis_near, dis_far (km); shadows 1 EV is an ASSUMPTION

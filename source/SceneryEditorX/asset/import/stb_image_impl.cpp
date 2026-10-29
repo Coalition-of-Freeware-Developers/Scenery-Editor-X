@@ -40,4 +40,8 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_image_write.h>
 
+// BC1 / BC3 encoder (XPlane::TextureLoader compresses PNGs on load)
+#define STB_DXT_IMPLEMENTATION
+#include <stb_dxt.h>
+
 // -------------------------------------------------------

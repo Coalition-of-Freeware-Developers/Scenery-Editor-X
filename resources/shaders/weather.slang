@@ -172,7 +172,11 @@ WeatherLayer weather_layer(float amount, float2 xz, float4 scale, float decal1, 
     const float4 albedo = weather_sample(slot_albedo, xz * scale.x);
     const float2 decal_uv = xz * scale.z;
     const float4 decal = weather_sample(slot_decal, decal_uv);
-    const float4 normal = weather_sample(slot_normal, xz * scale.y);
+    float4 normal = weather_sample(slot_normal, xz * scale.y);
+    // A block-compressed normal map keeps its blue and alpha two slots up (weather_textures.z snow, .w ice)
+    const float companion = slot_normal == weather_slot_snow_normal ? buffer_environment.weather_textures.z : buffer_environment.weather_textures.w;
+    if (companion > 0.5f)
+        normal.ba = weather_sample(slot_normal + 2, xz * scale.y).rg;
 
     // The amount (0-2) raises the art's height channel; the decal's alpha breaks up the edge, its colour adds detail
     const float height_blend = saturate(amount - 1.0f + albedo.a);

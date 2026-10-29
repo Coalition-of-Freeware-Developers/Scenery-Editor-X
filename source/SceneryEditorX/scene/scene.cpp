@@ -87,6 +87,19 @@ namespace SceneryEditorX
 	static uint64_t s_MaterialHashesListVersion = 0;
 	static uint64_t s_LightHashesListVersion = 0;
 
+	// Render-state changes (Scene::MarkRenderStateChanged), queued per reader
+	namespace
+	{
+		struct RenderStateReader
+		{
+			std::vector<entt::entity> changes;
+			bool fullRead = true; // its next take asks for a full read: the first one, or changes were dropped
+		};
+	}
+	static constexpr size_t MAX_RENDER_STATE_CHANGES = size_t(1) << 20; // per reader; past this it re-reads everything
+	static std::mutex s_RenderStateMutex;
+	static std::vector<RenderStateReader> s_RenderStateReaders;
+
 	/**
 	 * @enum EntityChange
 	 * @brief Flags representing changes to an entity that affect rendering.
@@ -390,6 +403,15 @@ namespace SceneryEditorX
 		s_MaterialHashKeys.clear();
 		s_LightHashesListVersion = 0;
 		s_MaterialHashesListVersion = 0;
+		{
+			// queued handles name the old registry's entities; a later scene's can reuse them
+			std::scoped_lock lock(s_RenderStateMutex);
+			for (RenderStateReader &reader : s_RenderStateReaders)
+			{
+				reader.changes = {};
+				reader.fullRead = true;
+			}
+		}
 		MarkStructureChanged();
 		s_ActiveScene.reset();
 	}
@@ -518,6 +540,48 @@ namespace SceneryEditorX
 	void Scene::MarkStructureChanged()
 	{
 		++s_StructureVersion;
+	}
+
+	uint32_t Scene::AddRenderStateReader()
+	{
+		std::scoped_lock lock(s_RenderStateMutex);
+		s_RenderStateReaders.emplace_back();
+		return static_cast<uint32_t>(s_RenderStateReaders.size() - 1);
+	}
+
+	bool Scene::TakeRenderStateChanges(const uint32_t reader, std::vector<entt::entity> &changes)
+	{
+		changes.clear();
+		std::scoped_lock lock(s_RenderStateMutex);
+		if (reader >= s_RenderStateReaders.size())
+			return false;
+
+		RenderStateReader &state = s_RenderStateReaders[reader];
+		if (state.fullRead)
+		{
+			state.fullRead = false;
+			state.changes.clear();
+			return false;
+		}
+		changes.swap(state.changes); // the queue keeps the caller's (cleared) storage
+		return true;
+	}
+
+	void Scene::MarkRenderStateChanged(const entt::entity entity)
+	{
+		std::scoped_lock lock(s_RenderStateMutex);
+		for (RenderStateReader &reader : s_RenderStateReaders)
+		{
+			if (reader.fullRead)
+				continue; // it re-reads everything anyway
+			if (reader.changes.size() >= MAX_RENDER_STATE_CHANGES)
+			{
+				reader.changes = {};
+				reader.fullRead = true;
+				continue;
+			}
+			reader.changes.push_back(entity);
+		}
 	}
 
 	uint64_t Scene::GetDestroyVersion()

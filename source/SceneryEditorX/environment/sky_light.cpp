@@ -160,6 +160,7 @@ namespace SceneryEditorX::Environment
 				return out;
 
 			const double phaseR = RayleighPhase(out.cosTheta);
+			const Rgb sun = SunColor(atmosphere);
 			Depth depth;	// observer -> sample
 			const double dt = length / steps;
 			for (int i = 0; i < steps; ++i)
@@ -173,7 +174,7 @@ namespace SceneryEditorX::Environment
 				const Rgb toSun = ComputeTransmittance(atmosphere, r - atmosphere.groundRadius, q.Dot(s) / r, 16);
 				for (int c = 0; c < 3; ++c)
 				{
-					const double light = toObserver[c] * toSun[c] * sunLux * SUN_COLOR[c] * dt;
+					const double light = toObserver[c] * toSun[c] * sunLux * sun[c] * dt;
 					out.rayleigh[c] += light * m.rayleighScattering[c] * phaseR;
 					out.fog[c] += light * m.fogScattering / (4.0 * PI);
 					out.mie[c] += light * m.mieScattering[c];
@@ -183,6 +184,23 @@ namespace SceneryEditorX::Environment
 			}
 			return out;
 		}
+	}
+
+	Rgb SunColor(const AtmosphereParams &atmosphere)
+	{
+		constexpr Rgb LUMA = { 0.2126, 0.7152, 0.0722 };
+		Rgb color{};
+		double luminance = 0.0;
+		for (int c = 0; c < 3; ++c)
+		{
+			color[c] = SUN_COLOR[c] * std::max(atmosphere.sunTint[c], 0.0);
+			luminance += LUMA[c] * color[c];
+		}
+		if (luminance <= 1e-9)
+			return SUN_COLOR;
+		for (double &c : color)
+			c /= luminance;
+		return color;
 	}
 
 	double MiePhaseCornetteShanks(const double cosTheta, const double g)
@@ -202,11 +220,12 @@ namespace SceneryEditorX::Environment
 		const double moonElevationDeg, const double moonLux)
 	{
 		SkyLight light;
+		const Rgb sun = SunColor(atmosphere);
 		light.sunTransmittance = ComputeTransmittance(atmosphere, altitudeM, std::sin(sunElevationDeg * DEG));
 		const Rgb moonTransmittance = ComputeTransmittance(atmosphere, altitudeM, std::sin(moonElevationDeg * DEG));
 		for (int c = 0; c < 3; ++c)
 		{
-			light.sunIlluminance[c] = sunLux * SUN_COLOR[c] * light.sunTransmittance[c];
+			light.sunIlluminance[c] = sunLux * sun[c] * light.sunTransmittance[c];
 			light.moonIlluminance[c] = moonLux * SUN_COLOR[c] * moonTransmittance[c];
 		}
 
@@ -285,7 +304,7 @@ namespace SceneryEditorX::Environment
 		// doesn't go through it), of which forward-scattering haze sends most down (ASSUMPTION: at most 85%); the
 		// isotropic estimate overshoots in thick haze
 		const double throughFog = ComputeTransmittance(atmosphere, altitudeM, std::sin(sunElevationDeg * DEG), 40, true)[1];
-		const double lost = std::max(sunLux * SUN_COLOR[1] * sunUp * (1.0 - throughFog), 0.0);
+		const double lost = std::max(sunLux * sun[1] * sunUp * (1.0 - throughFog), 0.0);
 		const double cap = 0.85 * lost;
 		if (sunUp > 0.0 && light.irradiance[1] > cap)
 		{

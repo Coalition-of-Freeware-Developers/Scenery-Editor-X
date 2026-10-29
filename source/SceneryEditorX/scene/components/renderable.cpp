@@ -278,6 +278,10 @@ namespace SceneryEditorX
 			}
 			m_bounding_box_mesh = BoundingBox(lo, hi);
 		}
+		else if (lod0->vertex_count > 0)
+		{
+			m_bounding_box_mesh = lod0->aabb; // Mesh::ReleaseCpuGeometry() kept the bounds (the same min / max)
+		}
 
 		Tick(); // update bounding boxes, frustum and distance culling
 	}
@@ -462,6 +466,18 @@ namespace SceneryEditorX
 			m_flags  &= ~static_cast<uint32_t>(flag);
 			disabled  = true;
 		}
+
+		// the GPU scene keeps its own copy of the cast-shadows flag
+		if ((enabled || disabled) && GetEntity())
+			Scene::MarkRenderStateChanged(static_cast<entt::entity>(*GetEntity()));
+	}
+
+	void Renderable::SetDrapeOrder(const uint64_t order)
+	{
+		const bool wasDraped = IsDraped();
+		m_drape_order = order;
+		if (IsDraped() != wasDraped)
+			Scene::MarkStructureChanged(); // drapes stay on the CPU draw path
 	}
 
 	void Renderable::UpdateAabb()

@@ -12,6 +12,7 @@
  * -------------------------------------------------------
  */
 #include <catch2/catch_all.hpp>
+#include <SceneryEditorX/environment/season_model.h>
 #include <SceneryEditorX/filesystem/vfs.h>
 #include <SceneryEditorX/xplane/xp_7z.h>
 #include <SceneryEditorX/xplane/xp_assets.h>
@@ -904,6 +905,88 @@ TEST_CASE("Every X-Plane 12 default .ter parses with its textures", "[assets][te
 	// A stray "EXCEPTION: NULL" line ships in two files; nothing else is unknown
 	for (const std::string &key : unknown)
 		CHECK(key == "EXCEPTION:");
+}
+
+TEST_CASE("DSF rasters sampled at the nearest cell", "[dsf][terrain]")
+{
+	// Season days 360 | 10 side by side: blending them gives a day that is in neither season
+	DsfRaster raster;
+	raster.flags = 2 | 4;	// Unsigned, post-centric
+	raster.width = 2;
+	raster.height = 2;
+	raster.values = { 360.0f, 10.0f, 350.0f, 20.0f };	// Row 0 is the south
+	CHECK_THAT(raster.Sample(0.4, 0.0, 0.0, 0.0, 1.0, 1.0), WithinAbs(220.0, 1e-3));
+	CHECK(raster.SampleNearest(0.4, 0.0, 0.0, 0.0, 1.0, 1.0) == 360.0f);
+	CHECK(raster.SampleNearest(0.6, 0.0, 0.0, 0.0, 1.0, 1.0) == 10.0f);
+	CHECK(raster.SampleNearest(0.6, 0.9, 0.0, 0.0, 1.0, 1.0) == 20.0f);
+	CHECK(raster.SampleNearest(-5.0, 5.0, 0.0, 0.0, 1.0, 1.0) == 350.0f);	// Clamped to the edges
+
+	// Pixel-centric: four cells, each the nearest over its quarter
+	raster.flags = 2;
+	CHECK(raster.SampleNearest(0.2, 0.2, 0.0, 0.0, 1.0, 1.0) == 360.0f);
+	CHECK(raster.SampleNearest(0.7, 0.2, 0.0, 0.0, 1.0, 1.0) == 10.0f);
+	CHECK(raster.SampleNearest(0.2, 0.7, 0.0, 0.0, 1.0, 1.0) == 350.0f);
+
+	DsfRaster empty;
+	CHECK(empty.SampleNearest(0.5, 0.5, 0.0, 0.0, 1.0, 1.0) == 0.0f);
+}
+
+TEST_CASE("The test airports' seasons from X-Plane 12's Global Scenery rasters", "[dsf][terrain][xplane-install]")
+{
+	using namespace SceneryEditorX::Environment;
+	const fs::path xplane = FindXPlane();
+	const fs::path tiles = xplane / "Global Scenery" / "X-Plane 12 Global Scenery" / "Earth nav data";
+	if (xplane.empty() || !fs::exists(tiles / "+50-010" / "+53-007.dsf"))
+	{
+		WARN("No X-Plane 12 Global Scenery tile +53-007 found: skipped");
+		return;
+	}
+
+	// The datum cell's ranges, as SceneTerrain::ReadSeasonRasters samples them
+	const auto ranges = [&tiles](const char *folder, const char *file, const double latitude, const double longitude) -> std::optional<DsfSeasonRanges>
+	{
+		DsfReadOptions options;
+		options.overlays = false;
+		options.rasters = true;
+		options.rasterNames.assign(DSF_SEASON_RASTERS.begin(), DSF_SEASON_RASTERS.end());
+		DsfFile dsf;
+		std::string error;
+		REQUIRE(LoadDsf(tiles / folder / file, dsf, options, &error));
+		REQUIRE(dsf.rasters.size() == 8);
+		std::array<float, 8> days{};
+		for (size_t i = 0; i < days.size(); ++i)
+		{
+			const DsfRaster *raster = dsf.FindRaster(DSF_SEASON_RASTERS[i]);
+			REQUIRE(raster);
+			CHECK(raster->width == 128);
+			days[i] = raster->SampleNearest(longitude, latitude, dsf.west, dsf.south, dsf.east, dsf.north);
+		}
+		return MakeDsfSeasonRanges(days);
+	};
+
+	// EIDW: spring until July 9, summer from July 10 to October 1
+	const std::optional<DsfSeasonRanges> eidw = ranges("+50-010", "+53-007.dsf", 53.4213, -6.2701);
+	REQUIRE(eidw);
+	CHECK(ComputeSeason(166, 53.4213, &*eidw).season == Season::Spring);		// 2026-06-15
+	CHECK(ComputeSeason(258, 53.4213, &*eidw).season == Season::Summer);		// 2026-09-15
+	CHECK(ComputeSeason(15, 53.4213, &*eidw).season == Season::Winter);
+	CHECK(ComputeSeason(196, 53.4213, &*eidw).season == Season::Summer);
+
+	// OMDB: no seasons (summer in January too); RCTP: summer but for January 4-23
+	if (fs::exists(tiles / "+20+050" / "+25+055.dsf"))
+	{
+		const std::optional<DsfSeasonRanges> omdb = ranges("+20+050", "+25+055.dsf", 25.2528, 55.3644);
+		REQUIRE(omdb);
+		CHECK(omdb->valid == std::array<bool, 4>{ false, true, false, false });
+		CHECK(ComputeSeason(15, 25.2528, &*omdb).season == Season::Summer);
+	}
+	if (fs::exists(tiles / "+20+120" / "+25+121.dsf"))
+	{
+		const std::optional<DsfSeasonRanges> rctp = ranges("+20+120", "+25+121.dsf", 25.0777, 121.2328);
+		REQUIRE(rctp);
+		CHECK(ComputeSeason(15, 25.0777, &*rctp).season == Season::Winter);
+		CHECK(ComputeSeason(30, 25.0777, &*rctp).season == Season::Summer);
+	}
 }
 
 TEST_CASE("The terrain around KSEA from X-Plane 12's Global Scenery", "[dsf][terrain][xplane-install]")

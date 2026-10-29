@@ -1497,10 +1497,12 @@ namespace SceneryEditorX::XPlane
 
 	int GetLayerGroupOrder(const std::string_view group)
 	{
+		// X-Plane ignores the case: WorldEditor writes its orthophotos' .pol with "LAYER_GROUP TERRAIN 1"
 		static constexpr const char *ORDER[] = { "terrain", "beaches", "shoulders", "taxiways", "runways", "markings", "airports", "roads", "objects", "light_objects", "cars" };
+		const std::string name = ToLower(group);
 		for (int i = 0; i < static_cast<int>(std::size(ORDER)); ++i)
 		{
-			if (group == ORDER[i])
+			if (name == ORDER[i])
 				return i;
 		}
 		return 8;	// objects

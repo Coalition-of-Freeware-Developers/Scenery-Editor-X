@@ -881,8 +881,8 @@ namespace SceneryEditorX::XPlane
 
 	void SceneObjects::Tick(const double deltaSeconds)
 	{
-		// Seasonal library art follows the world's season (the terrain reloads when it changes: SceneTerrain::Update)
-		LibraryManager::SetSeason(Environment::Get().GetDerived().season.bits);
+		// Seasonal library art follows the scenery's season (the terrain reloads when it changes: SceneTerrain::Update)
+		LibraryManager::SetSeason(Environment::Get().GetDerived().scenerySeason.bits);
 
 		// Background loads: upload what the workers finished, then fill in the placements that were waiting for it.
 		{

@@ -195,6 +195,7 @@ namespace SceneryEditorX::XPlane
 			material->SetProperty(MaterialProperty::XpLodSwitchDistance, SWITCH_DISTANCE);
 			material->SetTexture(MaterialTextureType::Color, albedo.Get());
 			material->SetTexture(MaterialTextureType::Normal, normal.Get());
+			material->SetTexture(MaterialTextureType::Normal, TextureLoader::GetNormalCompanion(normal.Get()).Get(), NORMAL_COMPANION_SLOT);
 			material->SetTexture(MaterialTextureType::Emission, weather.Get(), 3);	// WEATHER mask (weather.slang)
 			s_Materials.emplace(key, material);
 			return material;

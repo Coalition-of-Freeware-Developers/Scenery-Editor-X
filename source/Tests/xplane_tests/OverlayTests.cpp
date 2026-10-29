@@ -603,6 +603,13 @@ TEST_CASE("Layer group order", "[assets]")
 	CHECK(GetLayerGroupOrder("markings") < GetLayerGroupOrder("objects"));
 	CHECK(GetLayerGroupOrder("objects") < GetLayerGroupOrder("cars"));
 	CHECK(GetLayerGroupOrder("whatever") == GetLayerGroupOrder("objects"));
+
+	// Names are case-insensitive: WorldEditor's orthophoto .pol files say "LAYER_GROUP TERRAIN 1" and stay under the runways
+	CHECK(GetLayerGroupOrder("TERRAIN") == GetLayerGroupOrder("terrain"));
+	CHECK(GetLayerGroupOrder("TERRAIN") < GetLayerGroupOrder("runways"));
+	CHECK(GetLayerGroupOrder("Runways") == GetLayerGroupOrder("runways"));
+	CHECK(GetLayerGroupOrder("OBJECTS") == GetLayerGroupOrder("objects"));
+	CHECK(GetLayerGroupOrder("Light_Objects") == GetLayerGroupOrder("light_objects"));
 }
 
 // -------------------------------------------------------

@@ -93,6 +93,7 @@
 #include <SceneryEditorX/xplane/xp_datarefs.h>
 #include <SceneryEditorX/xplane/xp_library_manager.h>
 #include <SceneryEditorX/xplane/xp_scene.h>
+#include <SceneryEditorX/xplane/xp_texture_loader.h>
 
 // ---------------------------------------------------------
 
@@ -824,6 +825,12 @@ namespace SceneryEditorX
 			{
 				s_Memory = Renderer::GetGPUMemoryStats();
 				s_MemoryQueriedAt = now;
+
+				// --perf-log: what VMA holds (on Windows device-local memory also counts toward the process's commit)
+				constexpr double MIB = 1024.0 * 1024.0;
+				Perf::SetCounter("vma MiB", static_cast<double>(s_Memory.used) / MIB);
+				Perf::SetCounter("vma images MiB", static_cast<double>(s_Memory.imageAllocationSize) / MIB);
+				Perf::SetCounter("vma buffers MiB", static_cast<double>(s_Memory.bufferAllocationSize) / MIB);
 			}
 
 			const double frameMs = FPSTimer::GetDeltaTimeSmoothedMs();
@@ -1110,6 +1117,8 @@ namespace SceneryEditorX
 				Renderer::SetAoTechnique(Renderer::AoTechnique::Gtao); // SEDX's GTAO pass instead of CACAO (A/B)
 			else if (args[i] == "--ssr-trace-all")
 				Renderer::SetSsrTraceAll(true); // every deferred surface traces its reflection as a mirror (with --debug-view reflections)
+			else if (args[i] == "--no-texture-compression")
+				XPlane::TextureLoader::SetCompression(false); // PNG / JPG / TGA / BMP art uploads as RGBA8 mips (A/B against BC1 / BC3 / BC5)
 			else if (args[i].starts_with("--no-") || args[i].starts_with("--with-"))
 			{
 				// --no-<feature> / --with-<feature>: one XP12 emulation pass off or on (RENDERER panel names)

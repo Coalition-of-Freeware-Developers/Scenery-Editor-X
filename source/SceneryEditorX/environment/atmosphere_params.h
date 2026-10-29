@@ -77,6 +77,10 @@ namespace SceneryEditorX::Environment
 		double hazeBandM = 1000.0;				// Fade to clear air above the top
 		double visibilityContrast = 0.01;		// scattering/vis_cutoff_ratio (VisibilityExtinction)
 		double groundElevationM = 0.0;			// MSL of the ground the layer sits on
+		double hazeMieScale = 1.0;				// sedx/haze_mie_scale: on the extra Mie WithVisibility gives (not the fog)
+
+		// The sun's colour over SUN_COLOR (sky_light.h), red and blue over green (sedx/sun_tint_*): SunColor()
+		Rgb sunTint = { 1.0, 1.0, 1.0 };
 	};
 
 	/* @brief X-Plane's scattering/vis_cutoff_ratio: visibility is where contrast falls to 1% (Koschmieder's 2% is 3.912 / V). */
