@@ -1,0 +1,40 @@
+name: Claude Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  claude_review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write # post comments on the PR diff
+      id-token: write      # the action exchanges this for a Claude GitHub App token
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Claude Code Review
+        uses: anthropics/claude-code-action@v1
+        with:
+          # Made with `claude setup-token`, stored as a repository secret
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ github.event.pull_request.number }}
+
+            The PR branch is already checked out in the current working directory.
+            Read AGENTS.md first for the project's conventions.
+
+            Scan this PR for bugs, architectural code quality problems and logic errors.
+            Scenery Editor X is a C++20 / Vulkan editor that must build on Windows, Linux and macOS,
+            so also flag anything that only works on one platform.
+
+            Use `mcp__github_inline_comment__create_inline_comment` (with `confirmed: true`) for
+            issues tied to specific lines, and `gh pr comment` for one top-level summary.
+            Only post GitHub comments - don't submit review text as messages.
+          claude_args: |
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*)"
