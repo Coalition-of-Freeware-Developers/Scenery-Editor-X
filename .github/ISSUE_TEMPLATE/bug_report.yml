@@ -1,0 +1,84 @@
+name: Bug Report - Scenery Editor X
+description: Generalized bug report template for Scenery Editor X.
+title: "[BUG] <short task title>"
+labels: ["BUG"]
+assignees: [The3dVehicleguy]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        # Scenery Editor X – Bug Report
+        Describe the bug clearly and concisely. Include steps to reproduce (if you can), expected behavior, and actual behavior.
+
+        > Tips:
+        > * Reference other tasks with `#ID` or external issues via full URL.
+        > * Keep acceptance criteria testable.
+        > * Use the dynamic **Task Checklist (Markdown)** section for arbitrary length lists.
+
+  - type: input
+    id: task
+    attributes:
+      label: Bug Title
+      description: Short imperative summary.
+      placeholder: "Crash when opening large scene"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component / Area
+      description: Affected subsystem.
+      options:
+        - Math Library
+        - Renderer
+        - Assets
+        - UI
+        - Core / Application
+        - Build / Tooling
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Describe the bug in detail. Include screenshots/log excerpts if helpful.
+      placeholder: |
+        - What steps reproduce the bug?
+		- What is the expected behavior?
+		- What is the actual behavior?
+		- Is there already a known issue for this?
+		- Has this happened before?
+    validations:
+      required: true
+
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies / Blockers
+      description: Link issues, PRs, or external tasks that must be completed first.
+      placeholder: "Depends on #456 for base quaternion implementation."
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Additional Notes
+      description: Miscellaneous context, references, benchmarks, or design links.
+
+  - type: markdown
+    attributes:
+      value: |
+        ---
+        **Submission Checklist (author)**
+        - Ensure all mandatory fields are filled.
+        - Provide actionable acceptance criteria.
+        - Include links to related issues/PRs.
+		- Provide at least a baseline reproduction scenario or detailed description of the bug.
+
+        **After Creation**
+        - Refine checklist items as work clarifies.
+        - Link PRs in the issue description (they auto-link back).
+        - Keep the checklist updated to reflect progress.
