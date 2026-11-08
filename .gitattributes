@@ -2,6 +2,9 @@
 # Set default behavior to automatically normalize line endings.
 ###############################################################################
 * text=auto
+# Shell scripts keep LF on Windows checkouts too (core.autocrlf=true), or bash stops at the first \r: the unit-tests
+# workflow runs scripts/ci/build_unit_tests.sh on a Windows runner.
+*.sh text eol=lf
 *.ttf
 ###############################################################################
 # Set default behavior for command prompt diff.

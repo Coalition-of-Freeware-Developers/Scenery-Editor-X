@@ -264,6 +264,13 @@ g++ -std=c++20 -O2 -pthread -DLIBCONFIG_STATIC -DLIBCONFIGXX_STATIC $INCS -I$LC 
 MinGW (MSYS2) has no `fsync`, which libconfig's `wincompat.h` maps its `posix_fsync` to there: on that toolchain drop the
 `HAVE_*LOCALE` defines and add `-Wno-error=implicit-function-declaration` to the `gcc` line (wincompat.c then supplies it).
 
+`scripts/ci/build_unit_tests.sh [--no-run] [Suite ...]` does all of the above in one go (parallel compiles, output in
+`build/unit-tests/`, JUnit reports in its `reports/`), with g++ on Linux, Apple clang on macOS (deployment target 13.0)
+and MSYS2 g++ on Windows; it leaves out `[xplane-install]` / `[library-sweep]` cases. The **Unit tests** workflow
+(`.github/workflows/unit-tests.yml`) runs it on ubuntu-latest, macos-latest and windows-latest for pull requests into
+`dev` and pushes to `dev` / `master`. When a suite gains an engine source, add it to the script's list as well as to the
+recipe above (test files are picked up from the suite's folder).
+
 `build_linux_tests/` and `dependency/Catch2/build-linux/` are throwaway build output — do not commit them.
 
 ### Full cross-platform build (reference; needs a Vulkan-capable host, not this VM)
