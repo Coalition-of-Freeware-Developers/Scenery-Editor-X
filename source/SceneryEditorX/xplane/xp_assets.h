@@ -175,6 +175,10 @@ namespace SceneryEditorX::XPlane
 
 		std::string texture;
 		std::string textureNormal;
+		float normalRatio = 1.0f;			// TEXTURE_NORMAL <ratio>
+		bool normalMetalness = false;		// NORMAL_METALNESS
+		float specular = 1.0f;				// SPECULAR <ratio>
+		float superRoughness = 0.0f;		// SUPER_ROUGHNESS <ratio>
 		float scaleS = 100.0f;				// Meters the whole texture width covers
 		float scaleT = 100.0f;				// Meters per texture repeat along the line
 		float textureWidth = 1024.0f;		// Pixels (S_OFFSET values are pixels)
@@ -186,7 +190,23 @@ namespace SceneryEditorX::XPlane
 		int align = 0;						// ALIGN: snap length to whole repeats
 		std::string layerGroup = "markings";
 		int layerOffset = 0;
-		std::string decal;
+		std::string decal;					// DECAL_LIB
+		std::vector<PolygonDecal> decals;	// The line's own decal rows
+
+		/**
+		 * Alpha, as for .pol: lines blend their alpha over what lies under them (X-Plane 12's grunge, dirt, crack and
+		 * soft-edge lines are mostly 10-40% alpha) unless NO_BLEND alpha-tests them or NO_ALPHA makes them opaque.
+		 * DITHER_ALPHA <softness> <bleed> is X-Plane's dithered version of the same blend (kept, drawn as a blend).
+		 */
+		bool noAlpha = false;
+		float noBlendCutoff = -1.0f;		// NO_BLEND <ratio>, -1 when blended
+		float ditherAlpha[2] = { -1.0f, -1.0f };
+
+		// Weather receptivity (weather.slang)
+		std::string weather;				// WEATHER <mask>, relative to the .lin
+		bool weatherTransparent = false;
+		bool hasSnowAlbedoLuma = false;
+		float snowAlbedoLuma[2] = {};
 
 		/* @brief Painted width in meters (one transparent pixel margin on each side, like WorldEditor assumes). */
 		[[nodiscard]] float GetWidthMeters(size_t segment = 0) const;
