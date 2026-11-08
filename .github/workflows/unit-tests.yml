@@ -64,7 +64,7 @@ jobs:
       - name: Submodules (json, Catch2, libconfig)
         shell: bash
         run: >-
-          git -c url."https://github.com/".insteadOf="git@github.com:"
+          git -c 'url.https://github.com/.insteadOf=git@github.com:'
           submodule update --init --depth 1 dependency/json dependency/Catch2 dependency/libconfig
 
       # Installed from the image's own package database, so nothing is partially upgraded (MSYS2 doesn't support
