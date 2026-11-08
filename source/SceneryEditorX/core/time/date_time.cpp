@@ -109,38 +109,6 @@ namespace SceneryEditorX
 	void DateTime::SetCurrentTime(const int year, const int month, const int day, const int hour, const int minute, const int second)
 	{
 
-		/*
-		if (!Calendar::IsValidDate(year, month, day) || !IsValidTime(hour, minute, second))
-		{
-			return;
-		}
-
-		DateTime& instance        = Instance();
-		instance.m_current_year   = year;
-		instance.m_current_month  = static_cast<float>(month);
-		instance.m_current_day    = day;
-		instance.m_current_hour   = static_cast<float>(hour);
-		instance.m_current_minute = minute;
-		instance.m_current_second = second;
-		instance.m_time_of_day    = (static_cast<float>(hour) + minute / 60.0f + second / 3600.0f) / 24.0f;
-
-		tm local_tm{};
-		local_tm.tm_year   = year - 1900;
-		local_tm.tm_mon    = month - 1;
-		local_tm.tm_mday   = day;
-		local_tm.tm_hour   = hour;
-		local_tm.tm_min    = minute;
-		local_tm.tm_sec    = second;
-		time_t target_time = to_utc_time_t(local_tm, TimeZone::GetTimeZoneOffsetHours());
-		if (target_time == -1)
-		{
-			return;
-		}
-
-		auto target_tp = std::chrono::system_clock::from_time_t(target_time);
-		auto offset    = std::chrono::duration_cast<std::chrono::seconds>(target_tp - std::chrono::system_clock::now());
-		Calendar::SetCurrentTimeOffset(offset);
-		*/
 	}
 
 	void DateTime::AddSeconds(const int seconds)

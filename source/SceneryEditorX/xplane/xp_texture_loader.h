@@ -48,16 +48,30 @@ namespace SceneryEditorX::XPlane
 	 * BCx_y_flip); every texture then has row 0 at t = 0 and meshes keep their (s, t) coordinates unchanged.
 	 *
 	 * Lookup: like X-Plane, a reference to "foo.png" loads "foo.dds" when that file exists.
+	 *
+	 * Compression: like X-Plane 12 (read off its texture cache, Output/texturecache), PNG / JPG / TGA / BMP files are
+	 * block-compressed when they load, after the flip, every mip from the RGBA8 chain:
+	 *  - albedo and LIT: BC1, BC3 when some texels have alpha below ~1;
+	 *  - normal maps: BC5 holding the normal (red, green), plus a companion BC5 holding blue (F0 / metalness or
+	 *    translucency) as red and alpha (gloss) as green. The normal map's image holds it (ImageResource::GetCompanion),
+	 *    materials bind it in normal slot NORMAL_COMPANION_SLOT and the shaders put it back in the texel's blue and alpha
+	 *    (xp_material.slang xp_slot_normal_companion);
+	 *  - data maps (tile maps, masks, water maps, material maps) and detail decals stay RGBA8, as X-Plane keeps them.
+	 * DDS files upload as stored. SetCompression(false) (--no-texture-compression) loads everything as before (A/B).
 	 */
 
-	/* @brief What a texture is used for (selects the fallback and the alpha scan). */
+	/* @brief Normal slot that holds a compressed normal map's blue and alpha (renderer flag bit 29). */
+	constexpr uint32_t NORMAL_COMPANION_SLOT = 3;
+
+	/* @brief What a texture is used for (selects the fallback, the alpha scan and the compression). */
 	enum class TextureUsage : uint8_t
 	{
 		Albedo,
 		Normal,
 		Lit,
-		Data,
-		Decal		// A detail decal: a single grey channel is its alpha (X-Plane's A_* modulators), its RGB a neutral 0.5
+		Data,		// Values rather than colours (tile maps, masks, material maps): never compressed
+		Decal,		// A detail decal: a single grey channel is its alpha (X-Plane's A_* modulators), its RGB a neutral 0.5
+		DataAlbedo	// Values in an albedo slot (water maps): flagged transparent like an albedo, never compressed
 	};
 
 	/* @brief What the loader found out about a texture file. */
@@ -67,9 +81,10 @@ namespace SceneryEditorX::XPlane
 		uint32_t width = 0;
 		uint32_t height = 0;
 		uint32_t mipCount = 0;
-		VkFormat format = VK_FORMAT_UNDEFINED;
+		VkFormat format = VK_FORMAT_UNDEFINED;	// What the GPU image holds (a PNG's BC format once compressed)
 		bool fromDds = false;
-		bool hasAlpha = false;			// Some texels have alpha below ~1 (drives alpha testing)
+		bool hasAlpha = false;			// Some texels have alpha below ~1 (drives alpha testing); read before compression
+		bool hasCompanion = false;		// A compressed normal map: blue and alpha are in GetNormalCompanion()
 		std::string error;
 	};
 
@@ -93,6 +108,7 @@ namespace SceneryEditorX::XPlane
 	{
 		TextureInfo info;					// Also filled in on failure (error)
 		std::vector<MipBytes> mips;			// Empty when decoding failed or the GPU cache already had the file
+		std::vector<MipBytes> companionMips;	// A compressed normal map's blue and alpha (BC5), else empty
 		std::string cacheKey;				// Empty for "no texture"
 		std::string name;					// Debug name of the GPU image
 		std::filesystem::path filePath;		// The image's resource file path (empty for generated maps)
@@ -151,6 +167,19 @@ namespace SceneryEditorX::XPlane
 		 * uncompressed DDS; block-compressed DDS files can't be decoded on the CPU.
 		 */
 		static bool DecodeRGBA(const std::filesystem::path &path, CpuImage &out, std::string *error = nullptr);
+
+		/**
+		 * @brief The texture holding a compressed normal map's blue (red) and alpha (green), for normal slot
+		 * NORMAL_COMPANION_SLOT; nullptr for every other texture (DDS and uncompressed normal maps carry their own).
+		 */
+		static Ref<ImageResource> GetNormalCompanion(const ImageResource *normal);
+
+		/* @brief Whether PNG / JPG / TGA / BMP files are block-compressed from now on (default on; files loaded before keep their format). */
+		static void SetCompression(bool enabled);
+		static bool IsCompressionEnabled();
+
+		/* @brief Short name of a texture format ("BC1", "RGBA8", ...) for logs and panels. */
+		static const char *FormatName(VkFormat format);
 
 		/* @brief Releases every cached texture. Only safe when no material references them any more. */
 		static void ClearCache();

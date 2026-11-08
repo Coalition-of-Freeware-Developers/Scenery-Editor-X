@@ -48,7 +48,7 @@ If you want to build the editor from source or help develop it, see [Building fr
 - Paths such as `Custom Scenery/My Airport/Earth nav data/apt.dat` use forward slashes. On Windows they are the same folders with backslashes.
 
 > [!NOTE]
-> Scenery Editor X is alpha software and changes quickly between test builds. This edition describes version 0.2.28. If something on your screen doesn't match the manual, the editor has probably moved on: please [open an issue](https://github.com/Coalition-of-Freeware-Developers/Scenery-Editor-X/issues) so the manual can catch up.
+> Scenery Editor X is alpha software and changes quickly between test builds. This edition describes version 0.2.28. If something on your screen doesn't match the manual, the editor has probably moved on: please [open an issue](https://github.com/The3dVehicleguy/Scenery-Editor-X/issues) so the manual can catch up.
 
 ## What isn't there yet
 

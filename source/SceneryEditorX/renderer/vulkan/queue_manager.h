@@ -193,42 +193,65 @@ namespace SceneryEditorX
 		uint32_t GetFamilyIndexByType(QueueType type) const;
 	
 		/**
+		 * @brief Rendered frames a queued resource waits before it is destroyed.
+		 *
+		 * Far more than the frames whose command buffers can still be executing: NextCommandList() waits for a list's
+		 * previous submission before it records the list again, and there are QueueConfig::cmdListsPerQueue of them.
+		 * It is the minimum wait the queue always had (it used to free everything only after its size stayed unchanged
+		 * for 100 frames). Only rendered frames count: while nothing renders (minimized), nothing is freed, and nothing
+		 * is submitted or replaced either.
+		 */
+		static constexpr uint64_t DELETION_DELAY_FRAMES = 100;
+
+		/**
 		 * @brief Add a resource to the deletion queue for deferred destruction.
 		 * @param type The type of resource to delete.
 		 * @param resource Pointer to the resource to delete.
+		 * @return False when it was not queued (null, or the queue is shut down): the caller still owns it.
 		*/
-		static void AddDeletionQueue(ResourceType type, void *resource);
+		static bool AddDeletionQueue(ResourceType type, void *resource);
 
 		/**
 		 * @brief Add a resource and optional allocation metadata to the deletion queue.
 		 * @param type The type of resource to delete.
 		 * @param resource Pointer to the resource to delete.
 		 * @param allocation The VMA allocation associated with the resource.
+		 * @return False when it was not queued (null, an image without its allocation, or the queue is shut down): the
+		 * caller still owns it.
 		 */
-		static void AddDeletionQueue(ResourceType type, void *resource, VmaAllocation allocation);
-	
-		/**
-		 * @brief Parse and process the deletion queue, destroying resources as needed.
-		 */
-		static void ParseDeletionQueue();
+		static bool AddDeletionQueue(ResourceType type, void *resource, VmaAllocation allocation);
 
 		/**
-		 * @brief Check if the deletion queue needs to be parsed.
-		 * @return True if the deletion queue needs to be parsed, false otherwise.
+		 * @brief Destroys queued resources.
+		 * @param everything True destroys every entry: only once the device is idle (shutdown). False destroys only the
+		 * entries queued at least DELETION_DELAY_FRAMES rendered frames ago, which no command buffer in flight can use.
 		 */
-		static bool NeedToParseDeletionQueue();
+		static void ParseDeletionQueue(bool everything);
+
+		/**
+		 * @brief Counts a rendered frame and tells whether an entry has waited DELETION_DELAY_FRAMES frames.
+		 * @note Exactly one call per rendered frame (Renderer::Tick): every extra call shortens the delay. Then
+		 * ParseDeletionQueue(false) when it returns true.
+		 * @return True when ParseDeletionQueue(false) has something to destroy.
+		 */
+		static bool AdvanceDeletionFrame();
 
 		/**
 		 * @brief Signal that the renderer has fully shut down and no further
 		 * resources will legitimately be enqueued for deletion.
 		 *
 		 * After this call any AddDeletionQueue invocation (e.g. from Ref<> destructors
-		 * running in the CRT static-dtor phase) is silently discarded, preventing a
+		 * running in the CRT static-dtor phase) is refused, preventing a
 		 * use-after-free on the already-destroyed s_DeletionQueue map.
+		 * It first destroys what is still queued (layouts the final flush queued again, late
+		 * releases) until nothing more is queued, then closes the queue under its lock.
 		 * Called by Device::Destroy() right after the final ParseDeletionQueue() flush,
-		 * before vkDestroyDevice.
+		 * with the device idle, before vkDestroyDevice.
 		 */
 		static void NotifyShutdown();
+
+		/* @brief True once NotifyShutdown() closed the deletion queue (the device was idled). */
+		static bool IsDeletionQueueShutDown();
 
 		/**
 		 * @brief Get the next available command list for the current queue index, cycling through the pre-allocated command lists.

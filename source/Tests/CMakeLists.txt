@@ -278,6 +278,7 @@ ADD_EXECUTABLE(XPlaneFormatTests
     ${CMAKE_CURRENT_SOURCE_DIR}/xplane_tests/ThumbnailTests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/xplane_tests/TerrainTests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/xplane_tests/AutogenTests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/xplane_tests/BlockCompressTests.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/environment/brdf_lut.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/environment/season_model.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/filesystem/vfs.cpp
@@ -298,6 +299,7 @@ ADD_EXECUTABLE(XPlaneFormatTests
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_overlay.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_install_finder.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_thumbnail.cpp
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_block_compress.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_terrain.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/xplane/xp_terrain_mesh.cpp
 )

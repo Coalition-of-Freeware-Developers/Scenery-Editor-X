@@ -164,10 +164,21 @@ namespace SceneryEditorX
 		static void FreeImageBuffer(VkImage image, VmaAllocation allocation);
 
 		/*
-		 * @brief Destroys the buffer and releases its resources. 
+		 * @brief Destroys the buffer and releases its resources now.
+		 * @note Only when no command buffer in flight can still use it (staging buffers after an immediate submission,
+		 * after a GPU wait, at shutdown). Otherwise use DestroyDeferred().
 		 * @note Explicitly free the underlying VMA resources before m_Allocator destruction
 		 */
 		void Destroy();
+
+		/**
+		 * @brief Hands the buffer to the deletion queue, which destroys it once no frame in flight can use it
+		 * (QueueManager::DELETION_DELAY_FRAMES); the object is empty afterwards.
+		 * @note For buffers the frames in flight may have drawn with. Destroys at once when the queue is shut down.
+		 * @note The caller must be the buffer's only user: every other Ref or raw pointer to it sees an empty buffer
+		 * (VK_NULL_HANDLE) afterwards.
+		 */
+		void DestroyDeferred();
 
 		/**
 		 * @brief Gets the stride of the buffer.

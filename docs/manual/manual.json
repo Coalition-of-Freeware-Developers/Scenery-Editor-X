@@ -5,7 +5,7 @@
   "tagline": "Build, edit and preview X-Plane 12 scenery in a real-time 3D editor that draws it the way X-Plane does.",
   "description": "The user manual for Scenery Editor X, the 3D scenery editor for X-Plane 12: installing, the workspace, projects, airports, the library, facades, export and reference.",
   "copyright": "© 2026 Coalition of Freeware Developers · MIT License",
-  "repository": "https://github.com/Coalition-of-Freeware-Developers/Scenery-Editor-X",
+  "repository": "https://github.com/The3dVehicleguy/Scenery-Editor-X",
   "branch": "dev",
   "versionHeader": "source/resource.h",
   "pdfName": "SceneryEditorX-Manual.pdf",

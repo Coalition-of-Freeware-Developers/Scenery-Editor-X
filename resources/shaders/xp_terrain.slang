@@ -192,7 +192,10 @@ public XpTerrainSurface xp_terrain_shade(MaterialParameters material, uint mater
 
     // Normal map: repeats ratio times per base repeat
     surface.has_normal_map = material.has_texture_normal();
-    surface.normal_texel = surface.has_normal_map ? sample_wrap(material_base, material_texture_index_normal, base_uv * max(material.terrain_base.z, 1e-3f)) : float4(0.5f, 0.5f, 1.0f, 1.0f);
+    const float2 normal_uv = base_uv * max(material.terrain_base.z, 1e-3f);
+    surface.normal_texel = surface.has_normal_map ? sample_wrap(material_base, material_texture_index_normal, normal_uv) : float4(0.5f, 0.5f, 1.0f, 1.0f);
+    if (surface.has_normal_map && material.has_normal_companion())
+        surface.normal_texel.ba = sample_wrap(material_base, xp_slot_normal_companion, normal_uv).rg;	// a compressed PNG's blue and alpha
 
     // Night lighting: nits, faded in with distance when LIT_FADE_PARAMS says so (ASSUMPTION: a smoothstep across its range)
     if ((flags & xp_terrain_lit) != 0 && material.xp.w > 0.0f)

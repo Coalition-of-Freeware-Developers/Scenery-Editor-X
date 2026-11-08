@@ -383,46 +383,6 @@ namespace SceneryEditorX
 			std::vector<Vertex_PosTexNorTan> prev_vertices = vertices;
 			std::vector<uint32_t> prev_indices                 = indices;
 
-			/*
-			for (uint32_t lod_level = 1; lod_level < MESH_LOD_COUNT; lod_level++)
-			{
-				// use previous lod as starting point for simplification
-				std::vector<Vertex_PosTexNorTan> lod_vertices = prev_vertices;
-				std::vector<uint32_t> lod_indices                 = prev_indices;
-
-				// geometry too simple to benefit from further simplification
-				if (lod_indices.size() <= 64)
-					break;
-
-				// compute optimal simplification target from screen coverage ratio
-				// since visible detail scales with screen coverage, and we want
-				// imperceptible quality loss, we use: target = coverage / base_coverage
-				// this gives ~2x reduction per lod, matching the ~2x screen size steps
-				float coverage      = SCREEN_THRESHOLDS[lod_level];
-				float base_coverage = SCREEN_THRESHOLDS[0];
-				float target_ratio  = coverage / base_coverage;
-
-				// apply target relative to original mesh (not previous lod)
-				// this ensures consistent quality targets regardless of actual achieved reduction
-				size_t target_index_count = xMath::Max(static_cast<size_t>(64), static_cast<size_t>(original_index_count * target_ratio));
-
-				// simplify geometry
-				bool preserve_uvs   = true;
-				bool preserve_edges = m_Flags & static_cast<uint32_t>(MeshFlags::PostProcessPreserveTerrainEdges);
-				geometry_processing::simplify(lod_indices, lod_vertices, target_index_count, preserve_uvs, preserve_edges);
-
-				// stop if simplification couldn't reduce complexity further
-				if (lod_indices.size() >= prev_indices.size())
-					break;
-
-				// add simplified geometry as new lod
-				AddLod(lod_vertices, lod_indices, current_sub_mesh_index);
-
-				// update for next iteration
-				prev_vertices = std::move(lod_vertices);
-				prev_indices  = std::move(lod_indices);
-			}
-			*/
 		}
 
 		// return the sub-mesh index if requested

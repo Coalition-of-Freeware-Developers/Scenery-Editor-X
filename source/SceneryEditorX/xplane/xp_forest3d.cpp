@@ -64,7 +64,6 @@ namespace SceneryEditorX::XPlane
 		constexpr float REFILL_STEP = 32.0f;		// Meters the camera moves before the trees in reach are picked again
 		constexpr float CROWN_MARGIN = 20.0f;		// Meters a crown reaches nearer the camera than its trunk
 		constexpr float BUCKET_SIZE = 64.0f;		// Meters: the grid trees are looked up in
-		constexpr uint64_t BUFFER_GRACE_FRAMES = 8;	// Frames a replaced instance buffer outlives its last draw (frames in flight, render thread)
 		constexpr float TWO_PI = 6.28318530718f;
 
 		/* @brief A 3D tree mesh, uploaded once for every forest that names the same art. */
@@ -115,8 +114,6 @@ namespace SceneryEditorX::XPlane
 		std::map<std::string, ForestEntry> s_Forests;				// By .for file
 		std::vector<Ref<ImageResource>> s_Images;					// What the materials sample (they keep raw pointers)
 		std::vector<std::unique_ptr<Planting>> s_Plantings;
-		std::vector<std::pair<uint64_t, Ref<Buffer>>> s_RetiredBuffers;	// Replaced instance buffers and the frame they went
-		uint64_t s_Frame = 0;
 		uint32_t s_DrawnTrees = 0;
 
 		uint64_t BucketKey(const int x, const int z)
@@ -195,6 +192,7 @@ namespace SceneryEditorX::XPlane
 			material->SetProperty(MaterialProperty::XpLodSwitchDistance, SWITCH_DISTANCE);
 			material->SetTexture(MaterialTextureType::Color, albedo.Get());
 			material->SetTexture(MaterialTextureType::Normal, normal.Get());
+			material->SetTexture(MaterialTextureType::Normal, TextureLoader::GetNormalCompanion(normal.Get()).Get(), NORMAL_COMPANION_SLOT);
 			material->SetTexture(MaterialTextureType::Emission, weather.Get(), 3);	// WEATHER mask (weather.slang)
 			s_Materials.emplace(key, material);
 			return material;
@@ -413,10 +411,7 @@ namespace SceneryEditorX::XPlane
 				if (!renderable)
 					continue;
 				registry.get<TransformComponent>(handle).translation = anchor;
-				// Frames still in flight may draw the old instances: their buffer goes a few frames later
-				if (Buffer *old = renderable->GetInstanceBuffer())
-					s_RetiredBuffers.emplace_back(s_Frame, Ref<Buffer>(old));
-				renderable->SetInstances(instances[k]);
+				renderable->SetInstances(instances[k]);	// The old instance buffer goes through the deletion queue: frames in flight may draw it
 				if (!stored->GetActive())
 					stored->SetActive(true);
 				planting.drawn += static_cast<uint32_t>(instances[k].size());
@@ -426,15 +421,6 @@ namespace SceneryEditorX::XPlane
 
 	void Forest3d::Update()
 	{
-		++s_Frame;
-		std::erase_if(s_RetiredBuffers, [](std::pair<uint64_t, Ref<Buffer>> &retired)
-		{
-			if (s_Frame - retired.first < BUFFER_GRACE_FRAMES)
-				return false;
-			retired.second->Destroy();
-			return true;
-		});
-
 		Camera *camera = Scene::GetCamera();
 		entt::registry *registry = GetRegistry();
 		if (s_Plantings.empty() || !camera || !registry)
@@ -497,9 +483,6 @@ namespace SceneryEditorX::XPlane
 			}
 		}
 		s_Plantings.clear();
-		for (auto &[frame, buffer] : s_RetiredBuffers)
-			buffer->Destroy();
-		s_RetiredBuffers.clear();
 		s_DrawnTrees = 0;
 		s_Forests.clear();
 		s_Materials.clear();

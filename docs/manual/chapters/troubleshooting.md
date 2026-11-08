@@ -108,7 +108,7 @@ Backups of the last five saves are in the project's cache folder: see [The proje
 
 ## Reporting a problem
 
-Report problems on the project's [issue tracker](https://github.com/Coalition-of-Freeware-Developers/Scenery-Editor-X/issues). A good report has:
+Report problems on the project's [issue tracker](https://github.com/The3dVehicleguy/Scenery-Editor-X/issues). A good report has:
 
 - **the version**, from **Help › About Scenery Editor X**;
 - **what you did**, step by step, what you expected, and what happened instead;

@@ -665,34 +665,6 @@ namespace SceneryEditorX
 		[[nodiscard]] Entity GetParent() const;
 		*/
 
-		/*
-		void SetParent(Entity parent)
-		{
-			Entity currentParent = GetParent();
-			if (currentParent == parent)
-			{
-				return;
-			}
-
-			// If changing parent, remove child from existing parent
-			if (currentParent)
-			{
-				currentParent.RemoveChild(*this);
-			}
-
-			// Setting to null is okay
-			SetParentUUID(parent.GetUUID());
-
-			if (parent)
-			{
-				auto& parentChildren = parent.Children();
-				if (UUID uuid = GetUUID(); std::ranges::find(parentChildren, uuid) == parentChildren.end())
-				{
-					parentChildren.emplace_back(GetUUID());
-				}
-			}
-		}
-		*/
 
 		/**
 		 * @brief 

@@ -405,7 +405,7 @@ namespace SceneryEditorX
 		xMath::Vec4 weather_ice;			// 1 / noise repeat (1/m), threshold edge width, decal 1 weight, decal 2 weight
 		xMath::Vec4 weather_ice_scale;		// 1 / repeat (1/m) of the albedo, normal and decal textures, unused
 		xMath::Vec4 weather_snow_luma;		// snow receptivity without a WEATHER mask: weights for the linear albedo's r, g, b, a
-		xMath::Vec4 weather_textures;		// bindless material slot of the weather art (Renderer weather material), art loaded (0 / 1), unused, unused
+		xMath::Vec4 weather_textures;		// bindless material slot of the weather art (Renderer weather material), art loaded (0 / 1), snow / ice normal map's blue and alpha in normal slot 2 / 3 (0 / 1)
 		xMath::Vec4 padding[7];				// to 1792 bytes
 	};
 

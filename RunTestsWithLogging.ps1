@@ -82,7 +82,7 @@ if (!$SkipBuild) {
 
     # Build all tests
     Write-Host "Building all test targets..."
-    cmake --build build --target RefTests MemoryAllocatorTests SettingsTest FormatTester --config Debug --parallel
+    cmake --build build --target RefTests MemoryAllocatorTests SettingsTest --config Debug --parallel
     if ($LASTEXITCODE -ne 0) {
         Write-ColoredOutput "Build failed!" "Red"
         exit 1
@@ -108,11 +108,6 @@ $tests = @(
         Name = "SettingsTests"
         Exe = "build\source\Tests\Debug\SettingsTest.exe"
         Args = "--reporter console --verbosity high"
-    },
-    @{
-        Name = "FormatTester"
-        Exe = "build\source\Tests\Debug\FormatTester.exe"
-        Args = ""
     }
 )
 

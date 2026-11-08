@@ -997,7 +997,7 @@ namespace SceneryEditorX
 
 		// Destroy everything still waiting in the deferred deletion queue, then stop accepting entries:
 		// nothing queued after this point could be destroyed once the device is gone.
-		QueueManager::ParseDeletionQueue();
+		QueueManager::ParseDeletionQueue(true); // the device is idle: everything, however recently queued
 		QueueManager::NotifyShutdown();
 
 		MemoryAllocator::Shutdown();

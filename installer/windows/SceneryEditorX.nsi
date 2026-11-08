@@ -53,7 +53,7 @@ SetCompressorDictSize 64
 !define APP_ID "SceneryEditorX"
 !define APP_DESCRIPTION "A 3D scenery editor for X-Plane 12 airports."
 !define PUBLISHER "Coalition of Freeware Developers"
-!define HELP_URL "https://github.com/Coalition-of-Freeware-Developers/Scenery-Editor-X"
+!define HELP_URL "https://github.com/The3dVehicleguy/Scenery-Editor-X"
 !define ISSUES_URL "${HELP_URL}/issues"
 
 !define APP_KEY "Software\${APP_ID}"

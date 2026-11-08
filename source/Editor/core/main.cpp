@@ -95,40 +95,12 @@ static bool HasArgument(const std::string &argument)
 }
 
 /**
- * @brief Write a CI test file with the specified value.
- * @param value The value to write to the CI test file.
- */
-static void WriteCiTestFile(const uint32_t value)
-{
-	if (HasArgument("-ci_test"))
-	{
-		if (std::ofstream file("ci_test.txt"); file.is_open())
-		{
-			file << value;
-			file.close();
-		}
-	}
-}
-
-/**
  * @brief Process command line arguments and set internal flags accordingly.
  */
 static void ProcessClArgs()
 {
-	// Common simple flags that exist in the repo already:
-	// -ci_test  -> used by CI to write a small indicator file (see WriteCiTestFile above)
-	// You can add more handlers here for other flags (e.g. --headless, --log=level, --no-gui, etc.)
-
 	EDITOR_TRACE_TAG("Editor", "Processing command line arguments");
 
-	// Example: existing helper writes a CI file when -ci_test is present
-	if (HasArgument("-ci_test"))
-	{
-		// The helper in this TU will write "ci_test.txt" containing 1
-		WriteCiTestFile(1);
-	}
-
-	// Iterate and parse key=value style args
 	for (const auto &arg : s_ClArguments)
 	{
 		if (arg == "--clear-cache")
@@ -140,36 +112,6 @@ static void ProcessClArgs()
 		if (arg == "--recompile-shaders")
 		{
 			EDITOR_INFO_TAG("Editor", "Shader cache bypass requested via CLI argument: {}", arg);
-		}
-
-		// --headless or -no-ui : run without showing UI (example usage, implement the mode as needed)
-		if (arg == "--headless" || arg == "-no-ui")
-		{
-			EDITOR_INFO_TAG("Editor", "Starting in headless/no-ui mode due to argument: {}", arg);
-			// Set any internal flags or call methods to enter headless mode
-			// e.g., Application::Get().SetHeadless(true);   // implement as needed
-		}
-
-		// Change logging level at startup
-		// THIS HAS BEEN MOVED TO PLATFORM CONTEXT INIT
-		/*
-		constexpr std::string logPrefix = "--verbose";
-		if (arg.starts_with(logPrefix))
-		{
-			std::string level = arg.substr(logPrefix.size());
-			EDITOR_INFO_TAG("Editor", "Requested log level: {}", level);
-			// Use your logging API to set the level, e.g. Log::SetLevelFromString(level);
-			// If you don't have such a helper, map strings to levels here and call Log::SetLevel(...)
-		}
-		*/
-
-		// Example: --run-task=name  -> you could dispatch internal tasks or tests
-		constexpr std::string_view taskPrefix = "--run-task=";
-		if (arg.starts_with(taskPrefix))
-		{
-			std::string taskName = arg.substr(taskPrefix.size());
-			EDITOR_INFO_TAG("Editor", "Dispatching startup task: {}", taskName);
-			// Dispatch your task: if (taskName == "build-shaders") BuildShaderPack();
 		}
 	}
 }

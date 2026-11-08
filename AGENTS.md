@@ -28,7 +28,11 @@ The dependency-light, cross-platform Catch2 unit suites that only need `source/`
 - **`ConversionTests`** (`source/Tests/conversion_tests`) — unit-conversion utilities
   (`SceneryEditorX/utils/conversions/...`). Header-only, fully green.
 - **`RefTests`** (`source/Tests/pointer_tests`) — the `Ref`/`WeakRef` smart-pointer system
-  (`SceneryEditorX/utils/pointers.h`). Builds and runs.
+  (`SceneryEditorX/utils/pointers.h`), including its thread safety (`RefThreadSafetyTest.cpp`: `WeakRef::Lock()`
+  racing the release of the last `Ref`, copies / resets on many threads, the control-block registry) and WeakRefs
+  of one object as different static types (`WeakRefTest.cpp`: one control block per object, keyed by its
+  `RefCounted` part, expired by the last owner of any type, multiple and virtual inheritance). Fully green,
+  a few seconds for every case.
 - **`XPlaneFormatTests`** (`source/Tests/xplane_tests`) — OBJ8 parsing/animation evaluation, the
   `library.txt` / `scenery_packs.ini` parsers + library index, the `lights.txt` light catalog, and the
   apt.dat 12.00 parser/writer, airport geometry, airport index, Scenery Gateway JSON records, the DSF
@@ -65,7 +69,9 @@ The dependency-light, cross-platform Catch2 unit suites that only need `source/`
   `xp_autogen.*` .agp / .ags / .agb parsing, points facing their heading, strings lining their sides with corners,
   atomic spellings, stop points and holes, blocks fitting their grid with slop and GROUND_PT_FORMULA, object detail levels,
   the overlay builder's ground tiles / objects / facades / fill trees; every shipped autogen parses and lays out, tag
-  `[library-sweep]`)
+  `[library-sweep]`), and the block compression PNG normal maps load with (`BlockCompressTests.cpp`: `xp_block_compress.*`
+  BC4 / BC5 encoding of X-Plane 12's split normal maps, BC5 normal + BC5 blue / alpha, and edge blocks of small mips,
+  decoded with xp_thumbnail's DDS reader; tag `[texture-compression]`)
   (`SceneryEditorX/xplane/xp_obj8.*`, `xp_library.*`, `xp_lights.*`, `xp_apt.*`, `xp_apt_geometry.*`,
   `xp_airport_index.*`, `xp_gateway_types.*`, `xp_dsf.*`, `xp_7z.*`, `xp_assets.*`, `xp_overlay.*`, `xp_terrain.*`,
   `xp_terrain_mesh.*`, plus `filesystem/vfs.*`,
@@ -158,11 +164,11 @@ SDK; `VulkanSmokeTests` (opt-in via `SEDX_ENABLE_VULKAN_SMOKE_TESTS`) needs the 
   resolves to `clang++`, which fails to link with `cannot find -lstdc++`. Pass
   `-DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++` to CMake, or invoke `g++` directly.
 - **Everything is C++20** (`std::ranges`, `std::numbers`, `set::contains`). Compile with `-std=c++20`.
-- **`RefTests` has a pre-existing crash on `dev`:** the "Ref interoperability with
-  std::shared_ptr / Construction from std::shared_ptr" case (`source/Tests/pointer_tests/RefTest.cpp`)
-  aborts with a double-free/`SIGABRT`. This is a code bug on this branch, not an environment
-  issue. Its `[performance]`/`[stress]`/`[thread]`/`[race]` cases are very slow — exclude them
-  with the tag filter below when you just want correctness results.
+- **`RefTests` thread-safety tests follow two rules.** Worker threads never call Catch2 assertions (they are not
+  thread-safe in this build): they record failures in `ThreadChecks` and the main thread asserts after `join()`.
+  And no thread changes a `Ref` / `WeakRef` variable another thread reads (unsupported, as for
+  `std::shared_ptr` / `std::weak_ptr`); threads share objects through their own copies. The race cases count
+  destructions to catch double deletes; on Windows, clang64 `-fsanitize=address` also catches use-after-free.
 
 ### Build & run the Linux-buildable tests (from repo root, after submodules are fetched)
 
@@ -182,14 +188,14 @@ g++ -std=c++20 -O2 -pthread $INCS source/Tests/conversion_tests/*.cpp $LIBS \
     -o build_linux_tests/ConversionTests
 ./build_linux_tests/ConversionTests
 
-# 3. RefTests (exclude slow perf/concurrency tags)
+# 3. RefTests (fully green; the thread-safety set alone is "[thread],[Threading],[race],[safety]")
 g++ -std=c++20 -O2 -pthread -DSEDX_NO_LOGGING -DZoneScoped= $INCS \
     source/Tests/pointer_tests/RefTest.cpp \
     source/Tests/pointer_tests/WeakRefTest.cpp \
     source/Tests/pointer_tests/RefPerformanceTest.cpp \
     source/Tests/pointer_tests/RefThreadSafetyTest.cpp $LIBS \
     -o build_linux_tests/RefTests
-./build_linux_tests/RefTests "~[performance]~[stress]~[thread]~[race]~[safety]~[Threading]"
+./build_linux_tests/RefTests
 
 # 4. XPlaneFormatTests (fully green)
 g++ -std=c++20 -O2 -pthread $INCS source/Tests/xplane_tests/XPlaneFormatTests.cpp \
@@ -198,6 +204,7 @@ g++ -std=c++20 -O2 -pthread $INCS source/Tests/xplane_tests/XPlaneFormatTests.cp
     source/Tests/xplane_tests/FacadeWriterTests.cpp source/Tests/xplane_tests/InstallFinderTests.cpp \
     source/Tests/xplane_tests/BrdfLutTests.cpp source/SceneryEditorX/environment/brdf_lut.cpp source/SceneryEditorX/environment/season_model.cpp \
     source/Tests/xplane_tests/ThumbnailTests.cpp source/SceneryEditorX/xplane/xp_thumbnail.cpp \
+    source/Tests/xplane_tests/BlockCompressTests.cpp source/SceneryEditorX/xplane/xp_block_compress.cpp \
     source/Tests/xplane_tests/TerrainTests.cpp source/Tests/xplane_tests/AutogenTests.cpp source/SceneryEditorX/xplane/xp_7z.cpp \
     source/SceneryEditorX/xplane/xp_terrain.cpp source/SceneryEditorX/xplane/xp_terrain_mesh.cpp \
     source/SceneryEditorX/filesystem/vfs.cpp \

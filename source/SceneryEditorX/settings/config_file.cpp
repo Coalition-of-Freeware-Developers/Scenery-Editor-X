@@ -32,12 +32,15 @@
 #include <atomic>
 #include <charconv>
 #include <chrono>
+#include <cmath>
 #include <cstdio>
 #include <cstring>
 #include <functional>
 #include <libconfig.h++>
 #include <limits>
+#include <locale>
 #include <random>
+#include <sstream>
 #include <SceneryEditorX/filesystem/vfs.h>
 #include <type_traits>
 
@@ -149,10 +152,32 @@ namespace SceneryEditorX
 		{
 			const char *first = text.data();
 			const char *last = text.data() + text.size();
-			while (first < last && (*first == ' ' || *first == '\t'))
+			while (first < last && (*first == ' ' || *first == '	'))
 				++first;
+		#if defined(__cpp_lib_to_chars) && __cpp_lib_to_chars >= 201611L
 			const auto [end, ec] = std::from_chars(first, last, value);
 			return ec == std::errc() && end == last;
+		#else
+			/* Apple libc++ before Xcode 16 has no floating point from_chars: read with the C locale instead. */
+			if constexpr (std::is_floating_point_v<T>)
+			{
+				if (first == last || *first == '+')
+					return false;
+				std::istringstream stream{ std::string(first, last) };
+				stream.imbue(std::locale::classic());
+				T parsed{};
+				stream >> parsed;
+				if (stream.fail() || stream.peek() != std::char_traits<char>::eof())
+					return false;
+				value = parsed;
+				return true;
+			}
+			else
+			{
+				const auto [end, ec] = std::from_chars(first, last, value);
+				return ec == std::errc() && end == last;
+			}
+		#endif
 		}
 
 		/* @brief A number value as T, with int / int64 / float converting into one another (and text that is a number). */
@@ -204,9 +229,25 @@ namespace SceneryEditorX
 				case Setting::TypeInt64:	return std::to_string(static_cast<long long>(setting));
 				case Setting::TypeFloat:
 				{
+					const double number = static_cast<double>(setting);
+				#if defined(__cpp_lib_to_chars) && __cpp_lib_to_chars >= 201611L
 					char text[64];
-					const auto [end, ec] = std::to_chars(text, text + sizeof(text), static_cast<double>(setting));
+					const auto [end, ec] = std::to_chars(text, text + sizeof(text), number);
 					return ec == std::errc() ? std::string(text, end) : std::string();
+				#else
+					/* Shortest text that reads back as the same double, in the C locale (no floating point to_chars here). */
+					for (int precision = 1; precision <= 17; ++precision)
+					{
+						std::ostringstream stream;
+						stream.imbue(std::locale::classic());
+						stream.precision(precision);
+						stream << number;
+						double back = 0.0;
+						if (ParseNumber(stream.str(), back) && back == number)
+							return stream.str();
+					}
+					return std::string();
+				#endif
 				}
 				case Setting::TypeString:	return setting.c_str();
 				default:					return {};

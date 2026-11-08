@@ -63,7 +63,7 @@ namespace SceneryEditorX
 		s_WeatherArt = art;
 
 		// Texture slots (weather.slang weather_* indices): albedo 0 snow, 1 ice, 2 snow decal, 3 ice decal; normal 0 snow,
-		// 1 ice; roughness 0 the noise
+		// 1 ice, 2 / 3 their blue and alpha when they were block-compressed (ImageResource::GetCompanion); roughness 0 the noise
 		Ref<MaterialAsset> material = CreateRef<MaterialAsset>();
 		material->SetName("X-Plane weather art");
 		material->SetTexture(MaterialTextureType::Color, art.snowAlbedo.Get(), 0);
@@ -72,6 +72,8 @@ namespace SceneryEditorX
 		material->SetTexture(MaterialTextureType::Color, art.iceDecal.Get(), 3);
 		material->SetTexture(MaterialTextureType::Normal, art.snowNormal.Get(), 0);
 		material->SetTexture(MaterialTextureType::Normal, art.iceNormal.Get(), 1);
+		material->SetTexture(MaterialTextureType::Normal, art.snowNormal ? art.snowNormal->GetCompanion().Get() : nullptr, 2);
+		material->SetTexture(MaterialTextureType::Normal, art.iceNormal ? art.iceNormal->GetCompanion().Get() : nullptr, 3);
 		material->SetTexture(MaterialTextureType::Roughness, art.noise.Get(), 0);
 		s_WeatherMaterial = material;
 		s_WeatherArtChanged = true;
@@ -128,7 +130,9 @@ namespace SceneryEditorX
 		// The art's material slot; UpdateMaterials placed it after the scene's materials this frame or earlier
 		const MaterialAsset *material = GetWeatherMaterial();
 		const bool art = material && HasWeatherArt();
-		env.weather_textures = xMath::Vec4(art ? static_cast<float>(material->GetIndex()) : 0.0f, art ? 1.0f : 0.0f, 0.0f, 0.0f);
+		const auto companion = [art](const Ref<ImageResource> &normal) { return art && normal && normal->GetCompanion() ? 1.0f : 0.0f; };
+		env.weather_textures = xMath::Vec4(art ? static_cast<float>(material->GetIndex()) : 0.0f, art ? 1.0f : 0.0f,
+			companion(s_WeatherArt.snowNormal), companion(s_WeatherArt.iceNormal));
 	}
 }
 

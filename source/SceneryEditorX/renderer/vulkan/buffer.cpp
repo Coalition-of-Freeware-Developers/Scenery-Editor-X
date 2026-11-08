@@ -133,8 +133,9 @@ namespace SceneryEditorX
 	{
 		if (m_Buffer != VK_NULL_HANDLE || m_Allocation != VK_NULL_HANDLE)
 		{
-			SEDX_CORE_WARN_TAG("Buffer", "Destroying leaked buffer in destructor");
-			Destroy();
+			// The owner should have called Destroy() or DestroyDeferred(); frames in flight may still use it
+			SEDX_CORE_WARN_TAG("Buffer", "Destroying leaked buffer '{}' in destructor", GetObjectName());
+			DestroyDeferred();
 		}
 	}
 
@@ -387,6 +388,32 @@ namespace SceneryEditorX
 			MemoryAllocator::DestroyBuffer(m_Buffer, m_Allocation);
 		}
 	
+		m_Buffer = VK_NULL_HANDLE;
+		m_Allocation = VK_NULL_HANDLE;
+		m_DeviceAddress = 0;
+	}
+
+	void Buffer::DestroyDeferred()
+	{
+		if (m_Buffer == VK_NULL_HANDLE && m_Allocation == VK_NULL_HANDLE)
+			return;
+
+		// The queue frees the pair with vmaDestroyBuffer, so it takes neither half alone; once it is shut down the
+		// device was idled, and destroying now is safe.
+		if (m_Buffer == VK_NULL_HANDLE || m_Allocation == VK_NULL_HANDLE || QueueManager::IsDeletionQueueShutDown())
+		{
+			Destroy();
+			return;
+		}
+
+		if (m_Allocator != VK_NULL_HANDLE && m_ExplicitlyMapped)
+			MemoryAllocator::UnmapMemory(m_Allocation);
+		m_MappedData = nullptr;
+		m_ExplicitlyMapped = false;
+
+		if (!QueueManager::AddDeletionQueue(ResourceType::Buffer, m_Buffer, m_Allocation))
+			MemoryAllocator::DestroyBuffer(m_Buffer, m_Allocation);
+
 		m_Buffer = VK_NULL_HANDLE;
 		m_Allocation = VK_NULL_HANDLE;
 		m_DeviceAddress = 0;

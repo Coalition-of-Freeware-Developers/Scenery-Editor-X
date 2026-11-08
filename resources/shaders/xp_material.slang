@@ -57,6 +57,13 @@ public static const uint xp_texture_map_gloss          = 3;	// + gloss: R gloss
 /* @brief Where a TEXTURE_MAP material_gloss / gloss map is bound. */
 public static const uint xp_slot_material_map = material_texture_index_roughness + 0;
 
+/**
+ * @brief Where a block-compressed normal map's blue (as red) and alpha (as green) are bound when the material says so
+ * (has_normal_companion): the normal map itself is then BC5, red and green only. XPlane::TextureLoader compresses PNG
+ * normal maps that way, as X-Plane 12 does; DDS normal maps carry all four channels themselves.
+ */
+public static const uint xp_slot_normal_companion = material_texture_index_normal + 3;
+
 /* @brief Whether a material's surface reads a material_gloss / gloss map (sample xp_slot_material_map for it). */
 public bool xp_has_material_map(MaterialParameters material)
 {
@@ -235,10 +242,20 @@ public float4 xp_drape_sample_albedo(MaterialParameters material, uint material_
 public float4 xp_drape_sample_normal(MaterialParameters material, uint material_base, float2 uv)
 {
     Texture2D normal_map = material_textures[material_base + material_texture_index_normal];
+    Texture2D companion = material_textures[material_base + xp_slot_normal_companion];
     if (material.xp_drape_mode() == xp_drape_tiled)
-        return normal_map.SampleGrad(samplers[sampler_anisotropic_wrap], xp_drape_tile_uv(material, material_base, uv), ddx(uv), ddy(uv));
+    {
+        const float2 tile_uv = xp_drape_tile_uv(material, material_base, uv);
+        float4 texel = normal_map.SampleGrad(samplers[sampler_anisotropic_wrap], tile_uv, ddx(uv), ddy(uv));
+        if (material.has_normal_companion())
+            texel.ba = companion.SampleGrad(samplers[sampler_anisotropic_wrap], tile_uv, ddx(uv), ddy(uv)).rg;
+        return texel;
+    }
     const float ratio = material.terrain_base.z > 0.0f ? material.terrain_base.z : 1.0f;
-    return normal_map.Sample(samplers[sampler_anisotropic_wrap], uv * ratio);
+    float4 texel = normal_map.Sample(samplers[sampler_anisotropic_wrap], uv * ratio);
+    if (material.has_normal_companion())
+        texel.ba = companion.Sample(samplers[sampler_anisotropic_wrap], uv * ratio).rg;
+    return texel;
 }
 
 /**

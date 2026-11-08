@@ -33,7 +33,6 @@
 #include "resources/fonts.h"
 #include "source/imgui/imgui.h"
 #include "source/imgui/backends/imgui_impl_sdl3.h"
-#include "source/imguizmo/ImGuizmo.h"
 #include <SceneryEditorX/core/resource/resource_cache.h>
 #include <SceneryEditorX/core/window/window.h>
 #include <SceneryEditorX/filesystem/vfs.h>
@@ -151,7 +150,6 @@ namespace SceneryEditorX
 		ImGui_ImplSDL3_NewFrame();
 		UI::ApplyScriptedMouse();
 		ImGui::NewFrame();
-		ImGuizmo::BeginFrame();
 	}
 
 	void UILayer::EndRendering()
@@ -196,7 +194,7 @@ namespace SceneryEditorX
 	void UILayer::LoadFonts()
 	{
 		const std::string fontDir = ResourceCache::GetResourceDirectory(ResourceDirectory::Fonts) + "/";
-		if (!std::filesystem::exists(fontDir + "opensans/OpenSans-Regular.ttf"))
+		if (!IO::FileSystem::Exists(fontDir + "opensans/OpenSans-Regular.ttf"))	// UTF-8, like ImGui's font file names
 		{
 			SEDX_CORE_WARN_TAG("UILayer", "UI fonts not found under '{}', falling back to the ImGui default font", fontDir);
 			return;

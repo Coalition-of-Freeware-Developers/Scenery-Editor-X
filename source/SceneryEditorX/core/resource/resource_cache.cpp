@@ -31,6 +31,7 @@
 #include "resource_cache.h"
 #include "SceneryEditorX/renderer/vulkan/image_resource.h"
 #include <SceneryEditorX/filesystem/file_manager.hpp>
+#include <SceneryEditorX/filesystem/vfs.h>
 #include <SceneryEditorX/renderer/vulkan/enums.h>
 
 // -----------------------------------------------------------
@@ -82,46 +83,6 @@ namespace SceneryEditorX
 		/*m_default_icons.clear();*/
 	}
 
-	/*
-	void ResourceCache::LoadDefaultResources()
-	{
-		const std::string dataDir = std::string(GetResourceDirectory()) + "\\";
-	
-		m_default_icons[IconType::Console]			= Load<Texture>(dataDir + "icons\\console.png");
-		m_default_icons[IconType::File]				= Load<Texture>(dataDir + "icons\\file.png");
-		m_default_icons[IconType::Folder]			= Load<Texture>(dataDir + "icons\\folder.png");
-		m_default_icons[IconType::Audio]			= Load<Texture>(dataDir + "icons\\audio.png");
-		m_default_icons[IconType::Model]			= Load<Texture>(dataDir + "icons\\model.png");
-		m_default_icons[IconType::World]			= Load<Texture>(dataDir + "icons\\world.png");
-		m_default_icons[IconType::Material]			= Load<Texture>(dataDir + "icons\\material.png");
-		m_default_icons[IconType::Shader]			= Load<Texture>(dataDir + "icons\\shader.png");
-		m_default_icons[IconType::Xml]				= Load<Texture>(dataDir + "icons\\xml.png");
-		m_default_icons[IconType::Dll]				= Load<Texture>(dataDir + "icons\\dll.png");
-		m_default_icons[IconType::Txt]				= Load<Texture>(dataDir + "icons\\txt.png");
-		m_default_icons[IconType::Ini]				= Load<Texture>(dataDir + "icons\\ini.png");
-		m_default_icons[IconType::Exe]				= Load<Texture>(dataDir + "icons\\exe.png");
-		m_default_icons[IconType::Font]				= Load<Texture>(dataDir + "icons\\font.png");
-		m_default_icons[IconType::Screenshot]		= Load<Texture>(dataDir + "icons\\screenshot.png");
-		m_default_icons[IconType::Gear]				= Load<Texture>(dataDir + "icons\\gear.png");
-		m_default_icons[IconType::Play]				= Load<Texture>(dataDir + "icons\\play.png");
-		m_default_icons[IconType::Profiler]			= Load<Texture>(dataDir + "icons\\timer.png");
-		m_default_icons[IconType::ResourceCache]	= Load<Texture>(dataDir + "icons\\resource_viewer.png");
-		m_default_icons[IconType::RenderDoc]		= Load<Texture>(dataDir + "icons\\renderdoc.png");
-		m_default_icons[IconType::Shader]			= Load<Texture>(dataDir + "icons\\code.png");
-		m_default_icons[IconType::Texture]			= Load<Texture>(dataDir + "icons\\texture.png");
-		m_default_icons[IconType::Minimize]			= Load<Texture>(dataDir + "icons\\window_minimise.png");
-		m_default_icons[IconType::Maximize]			= Load<Texture>(dataDir + "icons\\window_maximise.png");
-		m_default_icons[IconType::Close]			= Load<Texture>(dataDir + "icons\\window_close.png");
-		m_default_icons[IconType::Hybrid]			= Load<Texture>(dataDir + "icons\\hybrid.png");
-		m_default_icons[IconType::Audio]			= Load<Texture>(dataDir + "icons\\audio.png");
-		m_default_icons[IconType::Terrain]			= Load<Texture>(dataDir + "icons\\terrain.png");
-		m_default_icons[IconType::Entity]			= Load<Texture>(dataDir + "icons\\entity.png");
-		m_default_icons[IconType::Light]			= Load<Texture>(dataDir + "icons\\light.png");
-		m_default_icons[IconType::Camera]			= Load<Texture>(dataDir + "icons\\camera.png");
-		m_default_icons[IconType::Physics]			= Load<Texture>(dataDir + "icons\\physics.png");
-		m_default_icons[IconType::Compressed]		= Load<Texture>(dataDir + "icons\\compressed.png");
-	}
-	*/
 
 	IResource* ResourceCache::GetByName(const std::string &name, const ResourceType type)
 	{
@@ -223,9 +184,9 @@ namespace SceneryEditorX
 
 	std::string ResourceCache::GetResourceDirectory()
 	{
-		// The platform layer starts every build in the folder holding resources/ (the install folder, or the checkout)
-		const std::filesystem::path resourceDir = IO::FileSystem::GetWorkingDirectory() + "\\resources";
-		return resourceDir.string();
+		// The platform layer starts every build in the folder holding resources/ (the install folder, or the checkout).
+		// UTF-8 like every path string here: the install folder can be outside the ANSI code page (C:\Users\日本\...).
+		return VFS::ToUtf8(std::filesystem::current_path() / "resources");
 	}
 
 	std::vector<Ref<SharedResource>> &ResourceCache::GetResources()

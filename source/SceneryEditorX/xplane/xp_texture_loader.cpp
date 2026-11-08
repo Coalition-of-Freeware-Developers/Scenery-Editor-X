@@ -29,12 +29,18 @@
  * -------------------------------------------------------
  */
 #include "xp_texture_loader.h"
+#include "xp_block_compress.h"
 #include "xp_text.h"
+#include <atomic>
+#include <condition_variable>
 #include <cstring>
 #include <deque>
+#include <functional>
 #include <mutex>
+#include <stb_dxt.h>
 #include <stb_image.h>
 #include <unordered_map>
+#include <SceneryEditorX/core/threading/thread_pool.h>
 #include <SceneryEditorX/logging/logging.hpp>
 #include <SceneryEditorX/renderer/vulkan/device.h>
 
@@ -48,7 +54,7 @@ namespace SceneryEditorX::XPlane
 
 		struct CacheEntry
 		{
-			Ref<ImageResource> image;
+			Ref<ImageResource> image;	// A compressed normal map holds its blue and alpha (ImageResource::GetCompanion)
 			TextureInfo info;
 			uint64_t bytes = 0;
 		};
@@ -56,6 +62,7 @@ namespace SceneryEditorX::XPlane
 		std::mutex s_Mutex;
 		std::unordered_map<std::string, CacheEntry> s_Cache;
 		std::deque<std::string> s_Names; // ImgResourceSpec keeps a raw name pointer, so names live for the session
+		std::atomic<bool> s_Compression{ true };
 
 		const char *PersistName(std::string name)
 		{
@@ -95,19 +102,27 @@ namespace SceneryEditorX::XPlane
 			return static_cast<bool>(file.read(reinterpret_cast<char *>(bytes.data()), size));
 		}
 
+		/* @brief Whether the GPU can sample a format with optimal tiling (asked once per format, once a device exists). */
+		bool IsSampleable(const VkFormat format)
+		{
+			static std::mutex mutex;
+			static std::unordered_map<VkFormat, bool> known;
+			std::scoped_lock lock(mutex);
+			if (const auto it = known.find(format); it != known.end())
+				return it->second;
+
+			const VkPhysicalDevice physical = Device::GetPhysicalDevice();
+			if (physical == VK_NULL_HANDLE)
+				return false;
+
+			VkFormatProperties properties{};
+			vkGetPhysicalDeviceFormatProperties(physical, format, &properties);
+			return known[format] = (properties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT) != 0;
+		}
+
 		bool IsBlockCompressionAvailable()
 		{
-			static const bool available = []
-			{
-				const VkPhysicalDevice physical = Device::GetPhysicalDevice();
-				if (physical == VK_NULL_HANDLE)
-					return false;
-
-				VkFormatProperties properties{};
-				vkGetPhysicalDeviceFormatProperties(physical, VK_FORMAT_BC3_UNORM_BLOCK, &properties);
-				return (properties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT) != 0;
-			}();
-			return available;
+			return IsSampleable(VK_FORMAT_BC3_UNORM_BLOCK);
 		}
 
 		// -------------------------------------------------------
@@ -562,6 +577,133 @@ namespace SceneryEditorX::XPlane
 			return mips;
 		}
 
+		// -------------------------------------------------------
+		// Block compression (X-Plane 12's choices, see xp_texture_loader.h)
+		// -------------------------------------------------------
+
+		/* @brief The block format a decoded file is compressed to, or VK_FORMAT_UNDEFINED to keep RGBA8. */
+		VkFormat CompressedFormat(const TextureUsage usage, const bool hasAlpha)
+		{
+			switch (usage)
+			{
+				case TextureUsage::Albedo:
+				case TextureUsage::Lit:
+					return hasAlpha ? VK_FORMAT_BC3_UNORM_BLOCK : VK_FORMAT_BC1_RGB_UNORM_BLOCK;
+				case TextureUsage::Normal:
+					return VK_FORMAT_BC5_UNORM_BLOCK;	// red and green; blue and alpha go to the companion
+				default:
+					return VK_FORMAT_UNDEFINED;
+			}
+		}
+
+		/**
+		 * @brief Runs `work(i)` for every i below `count` on this thread and on idle pool workers. Workers only take what
+		 * is left when they start, so this never waits on a task that hasn't begun (no deadlock from inside a worker).
+		 */
+		void ParallelFor(const uint32_t count, const std::function<void(uint32_t)> &work)
+		{
+			const uint32_t helpers = std::min(count > 0 ? count - 1 : 0, ThreadPool::GetIdleThreadCount());
+			if (helpers == 0)
+			{
+				for (uint32_t i = 0; i < count; ++i)
+					work(i);
+				return;
+			}
+
+			struct Shared
+			{
+				const std::function<void(uint32_t)> *work = nullptr;
+				uint32_t count = 0;
+				std::atomic<uint32_t> next{ 0 };
+				std::atomic<uint32_t> done{ 0 };
+				std::mutex mutex;
+				std::condition_variable finished;
+			};
+			const auto shared = std::make_shared<Shared>();
+			shared->work = &work;
+			shared->count = count;
+
+			const auto run = [](Shared &state)
+			{
+				for (uint32_t i = state.next.fetch_add(1); i < state.count; i = state.next.fetch_add(1))
+				{
+					(*state.work)(i);
+					if (state.done.fetch_add(1) + 1 == state.count)
+					{
+						std::scoped_lock lock(state.mutex);
+						state.finished.notify_all();
+					}
+				}
+			};
+			for (uint32_t i = 0; i < helpers; ++i)
+				ThreadPool::Submit([shared, run] { run(*shared); });
+			run(*shared);
+
+			std::unique_lock lock(shared->mutex);
+			shared->finished.wait(lock, [&] { return shared->done.load() == shared->count; });
+		}
+
+		/**
+		 * @brief Block-compresses one RGBA8 mip (rows past the edge repeat the last row / column).
+		 * @param channel BC5 only: the first of the two channels it keeps (0: red and green, 2: blue and alpha).
+		 */
+		std::vector<std::byte> CompressMip(const uint8_t *pixels, const uint32_t width, const uint32_t height, const VkFormat format, const int channel = 0)
+		{
+			const uint32_t blocksX = BlockCompress::BlocksAcross(width);
+			const uint32_t blocksY = BlockCompress::BlocksDown(height);
+			const size_t blockBytes = format == VK_FORMAT_BC1_RGB_UNORM_BLOCK ? 8 : 16;
+			std::vector<std::byte> out(static_cast<size_t>(blocksX) * blocksY * blockBytes);
+
+			const auto encodeRows = [&](const uint32_t firstRow, const uint32_t endRow)
+			{
+				if (format == VK_FORMAT_BC5_UNORM_BLOCK)
+				{
+					BlockCompress::CompressBc5Rows(pixels, width, height, channel, firstRow, endRow, out.data());
+					return;
+				}
+
+				// BC1 / BC3 colour blocks: stb_dxt's high-quality mode (two refinement passes)
+				uint8_t block[64];
+				for (uint32_t by = firstRow; by < endRow; ++by)
+				{
+					for (uint32_t bx = 0; bx < blocksX; ++bx)
+					{
+						BlockCompress::ReadBlock(pixels, width, height, bx, by, block);
+						auto *dest = reinterpret_cast<unsigned char *>(out.data() + (static_cast<size_t>(by) * blocksX + bx) * blockBytes);
+						stb_compress_dxt_block(dest, block, format == VK_FORMAT_BC3_UNORM_BLOCK ? 1 : 0, STB_DXT_HIGHQUAL);
+					}
+				}
+			};
+
+			// Big mips in bands of block rows across idle workers (a 4096 x 4096 mip is ~0.3 s on one core)
+			constexpr uint32_t BAND_ROWS = 32;
+			const uint32_t bands = (blocksY + BAND_ROWS - 1) / BAND_ROWS;
+			if (bands <= 1)
+				encodeRows(0, blocksY);
+			else
+				ParallelFor(bands, [&](const uint32_t band) { encodeRows(band * BAND_ROWS, std::min(blocksY, (band + 1) * BAND_ROWS)); });
+			return out;
+		}
+
+		/**
+		 * @brief Compresses an RGBA8 mip chain in place. A BC5 normal map also fills `companion` with its blue and alpha.
+		 */
+		void CompressMipChain(std::vector<MipBytes> &mips, const uint32_t width, const uint32_t height, const VkFormat format,
+							  std::vector<MipBytes> *companion)
+		{
+			if (companion)
+				companion->resize(mips.size());
+			for (size_t mip = 0; mip < mips.size(); ++mip)
+			{
+				const uint32_t w = std::max(1u, width >> mip);
+				const uint32_t h = std::max(1u, height >> mip);
+				const auto *pixels = reinterpret_cast<const uint8_t *>(mips[mip].bytes.data());
+				if (companion)
+					(*companion)[mip].bytes = CompressMip(pixels, w, h, VK_FORMAT_BC5_UNORM_BLOCK, 2);
+				mips[mip].bytes = CompressMip(pixels, w, h, format, 0);
+			}
+		}
+
 		Ref<ImageResource> CreateImage(const std::string &name, const uint32_t width, const uint32_t height, const VkFormat format,
 									   std::vector<MipBytes> mips, const bool transparent)
 		{
@@ -758,6 +900,17 @@ namespace SceneryEditorX::XPlane
 				result.format = VK_FORMAT_R8G8B8A8_UNORM;
 				result.hasAlpha = PixelsHaveAlpha(image.pixels.data(), static_cast<size_t>(image.width) * image.height);
 				mips = BuildMipChain(image.pixels.data(), image.width, image.height);
+				std::vector<uint8_t>().swap(image.pixels);
+
+				// X-Plane 12 compresses these on load too; the rows are already flipped, so the blocks need no flip
+				const VkFormat compressed = s_Compression.load(std::memory_order_relaxed) ? CompressedFormat(usage, result.hasAlpha) : VK_FORMAT_UNDEFINED;
+				if (compressed != VK_FORMAT_UNDEFINED && IsSampleable(compressed))
+				{
+					const bool companion = compressed == VK_FORMAT_BC5_UNORM_BLOCK;
+					CompressMipChain(mips, image.width, image.height, compressed, companion ? &out.companionMips : nullptr);
+					result.format = compressed;
+					result.hasCompanion = companion;
+				}
 			}
 		}
 
@@ -771,7 +924,7 @@ namespace SceneryEditorX::XPlane
 		out.mips = std::move(mips);
 		out.name = "xp:" + path.filename().string();
 		out.filePath = path;
-		out.transparent = usage == TextureUsage::Albedo && result.hasAlpha;
+		out.transparent = (usage == TextureUsage::Albedo || usage == TextureUsage::DataAlbedo) && result.hasAlpha;
 		out.valid = true;
 		return out;
 	}
@@ -789,6 +942,7 @@ namespace SceneryEditorX::XPlane
 			{
 				// Another load decoded the file too and uploaded it first: this copy goes now
 				std::vector<MipBytes>().swap(texture.mips);
+				std::vector<MipBytes>().swap(texture.companionMips);
 				if (info)
 					*info = it->second.info;
 				return it->second.image;
@@ -803,16 +957,27 @@ namespace SceneryEditorX::XPlane
 		}
 
 		const TextureInfo &result = texture.info;
-		const uint64_t bytes = EstimateBytes(texture.mips);
+		const uint64_t bytes = EstimateBytes(texture.mips) + EstimateBytes(texture.companionMips);
 		Ref<ImageResource> image = CreateImage(texture.name, result.width, result.height, result.format, std::move(texture.mips), texture.transparent);
 		texture.mips.clear();
 		if (image && !texture.filePath.empty())
 			image->SetResourceFilePath(texture.filePath.string());
 
+		// The normal map holds its companion: materials keep raw pointers, so both live exactly as long as the normal map
+		Ref<ImageResource> companion;
+		if (image && !texture.companionMips.empty())
+		{
+			companion = CreateImage(texture.name + " (blue, alpha)", result.width, result.height, VK_FORMAT_BC5_UNORM_BLOCK, std::move(texture.companionMips), false);
+			if (companion && !texture.filePath.empty())
+				companion->SetResourceFilePath(texture.filePath.string());
+			image->SetCompanion(companion);
+		}
+		texture.companionMips.clear();
+
 		if (!texture.filePath.empty())
 		{
-			SEDX_CORE_TRACE_TAG(LOG_TAG, "Loaded '{}' ({}x{}, {} mips, {}{})", texture.filePath.string(), result.width, result.height, result.mipCount,
-				result.fromDds ? "DDS" : "RGBA8", result.hasAlpha ? ", alpha" : "");
+			SEDX_CORE_TRACE_TAG(LOG_TAG, "Loaded '{}' ({}x{}, {} mips, {}{}{})", texture.filePath.string(), result.width, result.height, result.mipCount,
+				result.fromDds ? "DDS " : "", FormatName(result.format), companion ? " + BC5 blue / alpha" : (result.hasAlpha ? ", alpha" : ""));
 		}
 
 		{
@@ -820,6 +985,37 @@ namespace SceneryEditorX::XPlane
 			s_Cache[texture.cacheKey] = CacheEntry{ image, result, bytes };
 		}
 		return image;
+	}
+
+	Ref<ImageResource> TextureLoader::GetNormalCompanion(const ImageResource *normal)
+	{
+		return normal ? normal->GetCompanion() : nullptr;
+	}
+
+	void TextureLoader::SetCompression(const bool enabled)
+	{
+		s_Compression.store(enabled, std::memory_order_relaxed);
+	}
+
+	bool TextureLoader::IsCompressionEnabled()
+	{
+		return s_Compression.load(std::memory_order_relaxed);
+	}
+
+	const char *TextureLoader::FormatName(const VkFormat format)
+	{
+		switch (format)
+		{
+			case VK_FORMAT_R8G8B8A8_UNORM:			return "RGBA8";
+			case VK_FORMAT_BC1_RGB_UNORM_BLOCK:
+			case VK_FORMAT_BC1_RGBA_UNORM_BLOCK:	return "BC1";
+			case VK_FORMAT_BC2_UNORM_BLOCK:			return "BC2";
+			case VK_FORMAT_BC3_UNORM_BLOCK:			return "BC3";
+			case VK_FORMAT_BC4_UNORM_BLOCK:			return "BC4";
+			case VK_FORMAT_BC5_UNORM_BLOCK:			return "BC5";
+			case VK_FORMAT_BC7_UNORM_BLOCK:			return "BC7";
+			default:								return "?";
+		}
 	}
 
 	void TextureLoader::ClearCache()

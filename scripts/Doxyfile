@@ -968,10 +968,8 @@ WARN_LOGFILE           =
 # Note: If this tag is empty the current directory is searched.
 
 INPUT                  = ../source \
-						 ../source/CrashHandler \
                          ../source/Editor \
                          ../source/edX \
-                         ../source/Launcher \
 						 ../source/Math \
                          ../source/SceneryEditorX \
 						 ../source/Tests \
@@ -2524,7 +2522,6 @@ INCLUDE_PATH           = ../assets \
                          ../source/X-PlaneSceneryLibrary \
                          ../source/VulkanRenderer \
                          ../source/SceneryEditorX \
-                         ../source/Launcher \
                          ../source/edX \
                          ../source/EditorFramework
 
