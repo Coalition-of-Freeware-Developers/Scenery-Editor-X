@@ -64,6 +64,11 @@ namespace SceneryEditorX
 	/// Rendered frames counted by NeedToParseDeletionQueue(). Entries are stamped with it under s_MutexDeletionQueue, so
 	/// each type's entries are in frame order.
 	static std::atomic<uint64_t> s_DeletionFrame{0};
+
+	/// Destroys entries taken out of the deletion queue, and the cached descriptor sets that refer to a destroyed buffer
+	/// or image view. Call it without s_MutexDeletionQueue held: erasing a descriptor set releases its layout, which
+	/// enqueues the VkDescriptorSetLayout again.
+	static void DestroyEntries(const Ref<Device> &device, const std::unordered_map<ResourceType, std::vector<DeletionQueueEntry>> &pending);
 	
 	// -------------------------------------------------------
 	
@@ -607,6 +612,11 @@ namespace SceneryEditorX
 		}
 
 		std::scoped_lock guard(s_MutexDeletionQueue);
+		if (s_DeletionQueueDestroyed.load(std::memory_order_acquire)) // NotifyShutdown() closed it meanwhile
+		{
+			SEDX_CORE_WARN_TAG("QueueManager", "AddDeletionQueue called after shutdown — resource of type {} will be leaked", static_cast<uint32_t>(type));
+			return false;
+		}
 		s_DeletionQueue[type].emplace_back(DeletionQueueEntry{resource, allocation, s_DeletionFrame.load(std::memory_order_relaxed)});
 		SEDX_CORE_TRACE_TAG("QueueManager", "Added resource of type {} to deletion queue", static_cast<uint32_t>(type));
 		return true;
@@ -621,8 +631,8 @@ namespace SceneryEditorX
 		Ref<Device> device = RenderContext::Get()->GetDevice();
 
 		// Take the pending entries and release the lock before destroying anything: erasing a cached descriptor
-		// set below releases its layout, which enqueues the VkDescriptorSetLayout again via AddDeletionQueue.
-		// Entries enqueued while this runs stay in s_DeletionQueue for the next parse.
+		// set releases its layout, which enqueues the VkDescriptorSetLayout again via AddDeletionQueue.
+		// Entries enqueued while this runs stay in s_DeletionQueue for the next parse (or NotifyShutdown()).
 		std::unordered_map<ResourceType, std::vector<DeletionQueueEntry>> pending;
 		{
 			std::scoped_lock guard(s_MutexDeletionQueue);
@@ -650,7 +660,30 @@ namespace SceneryEditorX
 				}
 			}
 		}
-	
+
+		DestroyEntries(device, pending);
+		SEDX_CORE_TRACE_TAG("QueueManager", "Cleared deletion queue after parsing");
+		device.Reset();
+	}
+
+	void QueueManager::NotifyShutdown()
+	{
+		// Close it under the lock, then destroy what the final ParseDeletionQueue() left: the descriptor set layouts
+		// its erasures queued again, and anything released since. The device is idle, and there is no later parse.
+		std::unordered_map<ResourceType, std::vector<DeletionQueueEntry>> remaining;
+		{
+			std::scoped_lock guard(s_MutexDeletionQueue);
+			s_DeletionQueueDestroyed.store(true, std::memory_order_release);
+			remaining.swap(s_DeletionQueue);
+		}
+		if (!remaining.empty())
+			DestroyEntries(RenderContext::Get()->GetDevice(), remaining);
+
+		SEDX_CORE_INFO_TAG("QueueManager", "Deletion queue marked as shut down; late AddDeletionQueue calls will be dropped");
+	}
+
+	static void DestroyEntries(const Ref<Device> &device, const std::unordered_map<ResourceType, std::vector<DeletionQueueEntry>> &pending)
+	{
 		for (auto &it : pending)
 		{
 			ResourceType type = it.first;
@@ -742,15 +775,6 @@ namespace SceneryEditorX
 				// samplers are bindless so they just update the set again
 			}
 		}
-	
-		SEDX_CORE_TRACE_TAG("QueueManager", "Cleared deletion queue after parsing");
-		device.Reset();
-	}
-
-	void QueueManager::NotifyShutdown()
-	{
-		s_DeletionQueueDestroyed.store(true, std::memory_order_release);
-		SEDX_CORE_INFO_TAG("QueueManager", "Deletion queue marked as shut down; late AddDeletionQueue calls will be dropped");
 	}
 
 	bool QueueManager::IsDeletionQueueShutDown()

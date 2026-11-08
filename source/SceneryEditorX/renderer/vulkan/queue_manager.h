@@ -237,10 +237,12 @@ namespace SceneryEditorX
 		 * resources will legitimately be enqueued for deletion.
 		 *
 		 * After this call any AddDeletionQueue invocation (e.g. from Ref<> destructors
-		 * running in the CRT static-dtor phase) is silently discarded, preventing a
+		 * running in the CRT static-dtor phase) is refused, preventing a
 		 * use-after-free on the already-destroyed s_DeletionQueue map.
+		 * It closes the queue under its lock and destroys what is still queued (layouts the
+		 * final flush queued again, late releases).
 		 * Called by Device::Destroy() right after the final ParseDeletionQueue() flush,
-		 * before vkDestroyDevice.
+		 * with the device idle, before vkDestroyDevice.
 		 */
 		static void NotifyShutdown();
 
