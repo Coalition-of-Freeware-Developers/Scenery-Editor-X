@@ -38,6 +38,7 @@
 #include <string_view>
 #include <vector>
 #include <SceneryEditorX/filesystem/vfs.h>
+#include <SceneryEditorX/utils/float_chars.h>
 
 // -------------------------------------------------------
 
@@ -147,7 +148,7 @@ namespace SceneryEditorX::XPlane
 		if (text.empty())
 			return false;
 
-		const auto [ptr, ec] = std::from_chars(text.data(), text.data() + text.size(), value);
+		const auto [ptr, ec] = Utils::FloatChars::FromChars(text.data(), text.data() + text.size(), value);
 		return ec == std::errc() && ptr == text.data() + text.size();
 	}
 

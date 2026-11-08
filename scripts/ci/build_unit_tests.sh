@@ -18,6 +18,8 @@
 #                     compiler changes. Every other path is relative to the repository root, so its location doesn't
 #                     matter; CC and CXX may hold a launcher too ("ccache g++").
 #   SEDX_TEST_JOBS    parallel compiles (default: the number of CPUs)
+#   SEDX_TEST_CXXFLAGS  extra flags for the suites' C++ compiles and links, not Catch2's: e.g. -fsanitize=address,
+#                     or -DSEDX_FLOAT_CHARS_FALLBACK to run every suite on the float text fallback macOS builds use
 #   MACOSX_DEPLOYMENT_TARGET   macOS only, default 13.0 like cmake/toolchains/sedx-mac.cmake, so a libc++ function
 #                     only newer macOS versions ship fails here as it does in the editor build
 #
@@ -78,15 +80,17 @@ case "$PLATFORM" in
 esac
 
 CXX_BASE="-std=c++20 -O2 -pthread $PLATFORM_FLAGS"
+EXTRA_CXXFLAGS=${SEDX_TEST_CXXFLAGS:-}
+export SEDX_TEST_CXXFLAGS="$EXTRA_CXXFLAGS"
 INCS="-I$CATCH/src -I$CATCH_BUILD/generated-includes -Isource -Idependency/json/include"
 
 # @brief The compiler flags of a flag set: std (most suites), ref (RefTests), settings (SettingsTest) or libconfig (C).
 flags_for()
 {
 	case "$1" in
-		std) echo "$CXX_BASE $INCS" ;;
-		ref) echo "$CXX_BASE -DSEDX_NO_LOGGING -DZoneScoped= $INCS" ;;
-		settings) echo "$CXX_BASE -DLIBCONFIG_STATIC -DLIBCONFIGXX_STATIC $INCS -I$LC" ;;
+		std) echo "$CXX_BASE $EXTRA_CXXFLAGS $INCS" ;;
+		ref) echo "$CXX_BASE $EXTRA_CXXFLAGS -DSEDX_NO_LOGGING -DZoneScoped= $INCS" ;;
+		settings) echo "$CXX_BASE $EXTRA_CXXFLAGS -DLIBCONFIG_STATIC -DLIBCONFIGXX_STATIC $INCS -I$LC" ;;
 		libconfig) echo "-O2 -DLIBCONFIG_STATIC $C_PLATFORM_FLAGS -I$LC" ;;
 		*) echo "unknown flag set $1" >&2; return 1 ;;
 	esac
@@ -205,6 +209,7 @@ JOBS=${SEDX_TEST_JOBS:-$(cpu_count)}
 echo "Platform $PLATFORM ($(uname -s)), $JOBS jobs, output in $OUT"
 echo "CC  = $CC: $($CC --version 2>&1 | head -n 1)"
 echo "CXX = $CXX: $($CXX --version 2>&1 | head -n 1)"
+[ -z "$EXTRA_CXXFLAGS" ] || echo "SEDX_TEST_CXXFLAGS = $EXTRA_CXXFLAGS"
 [ "$PLATFORM" != macos ] || echo "MACOSX_DEPLOYMENT_TARGET = $MACOSX_DEPLOYMENT_TARGET"
 # A file from each submodule: an uninitialized one is an empty folder
 for file in dependency/json/include/nlohmann/json.hpp "$CATCH/CMakeLists.txt" "$LC/libconfig.c"; do
@@ -230,6 +235,7 @@ if [ ! -f "$CATCH_BUILD/src/libCatch2Main.a" ] || [ "$(cat "$CATCH_BUILD/.sedx-s
 	echo "$catch_stamp" > "$CATCH_BUILD/.sedx-stamp"
 	endgroup
 fi
+# Release names: a Debug Catch2 build adds a d (libCatch2d.a), so change both if the build type above changes
 CATCH_LIBS="$CATCH_BUILD/src/libCatch2Main.a $CATCH_BUILD/src/libCatch2.a"
 
 rm -rf "$OBJ" "$REPORTS"
@@ -259,7 +265,7 @@ build_suite()
 	fi
 	echo "  link $BIN/$suite"
 	# shellcheck disable=SC2086
-	$CXX $CXX_BASE -o "$BIN/$suite" $objects $CATCH_LIBS $SYSTEM_LIBS
+	$CXX $CXX_BASE $EXTRA_CXXFLAGS -o "$BIN/$suite" $objects $CATCH_LIBS $SYSTEM_LIBS
 }
 
 # @brief Runs a suite from the repository root with the console and JUnit reporters.

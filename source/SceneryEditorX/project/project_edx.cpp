@@ -35,6 +35,7 @@
 #include <cstdlib>
 #include <limits>
 #include <set>
+#include <SceneryEditorX/utils/float_chars.h>
 #include <nlohmann/json.hpp>
 
 // -------------------------------------------------------
@@ -184,7 +185,7 @@ namespace SceneryEditorX::ProjectFile
 			if (!std::isfinite(value))
 				return nullptr;
 			char text[32];
-			const auto result = std::to_chars(text, text + sizeof(text), value);
+			const auto result = Utils::FloatChars::ToChars(text, text + sizeof(text), value);
 			*result.ptr = '\0';
 			return std::strtod(text, nullptr);
 		}
