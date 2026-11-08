@@ -62,7 +62,17 @@ namespace SceneryEditorX
 
 	Renderable::~Renderable()
 	{
+		ReleaseInstanceBuffer();
 		m_mesh = nullptr;
+	}
+
+	void Renderable::ReleaseInstanceBuffer()
+	{
+		if (m_instance_buffer)
+		{
+			m_instance_buffer->DestroyDeferred();
+			m_instance_buffer = nullptr;
+		}
 	}
 
 	/*
@@ -393,10 +403,10 @@ namespace SceneryEditorX
 	void Renderable::SetInstances(const std::vector<Instance>& instances)
 	{
 		const bool wasInstanced = !m_instances.empty();
+		ReleaseInstanceBuffer(); // frames in flight may still draw the old instances
 		if (instances.empty())
 		{
 			m_instances.clear();
-			m_instance_buffer    = nullptr;
 			m_bounding_box_dirty = true;
 			if (wasInstanced)
 				Scene::MarkStructureChanged(); // it may join the GPU scene

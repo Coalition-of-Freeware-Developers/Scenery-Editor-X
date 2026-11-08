@@ -1582,7 +1582,11 @@ namespace SceneryEditorX
 		}
 
 		for (Ref<Buffer> &buffer : s_BillboardBuffers)
+		{
+			if (buffer)
+				buffer->DestroyDeferred();
 			buffer.Reset();
+		}
 		s_BillboardBufferCapacity.fill(0);
 	}
 
@@ -1744,6 +1748,8 @@ namespace SceneryEditorX
 		uint32_t &capacity = s_BillboardBufferCapacity[s_BillboardBufferIndex];
 		if (!buffer || capacity < vertexCount)
 		{
+			if (buffer)
+				buffer->DestroyDeferred(); // a frame in flight may still draw with it
 			capacity = std::max(vertexCount + vertexCount / 2, 6u * 256u);
 			buffer = CreateRef<Buffer>(sizeof(Vertex_PosTexNorTan), capacity, nullptr, true, "light_billboards");
 		}

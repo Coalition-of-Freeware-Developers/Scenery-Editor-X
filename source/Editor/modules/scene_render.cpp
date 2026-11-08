@@ -48,6 +48,9 @@ namespace SceneryEditorX
 
 	Render::~Render()
 	{
+		// frames in flight may still draw with the instance buffer
+		if (m_instance_buffer)
+			m_instance_buffer->DestroyDeferred();
 		m_mesh = nullptr;
 	}
 
@@ -232,10 +235,14 @@ namespace SceneryEditorX
 
 	void Render::SetInstances(const std::vector<Instance>& instances)
 	{
+		// frames in flight may still draw the old instances
+		if (m_instance_buffer)
+			m_instance_buffer->DestroyDeferred();
+		m_instance_buffer = nullptr;
+
 		if (instances.empty())
 		{
 			m_instances.clear();
-			m_instance_buffer    = nullptr;
 			m_bounding_box_dirty = true;
 			return;
 		}

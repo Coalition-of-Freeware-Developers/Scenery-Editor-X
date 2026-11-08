@@ -44,6 +44,7 @@ namespace SceneryEditorX
 	{
 		void *resource = nullptr;
 		VmaAllocation allocation = VK_NULL_HANDLE;
+		uint64_t frame = 0; // s_DeletionFrame when it was queued
 	};
 	
 #pragma region Static Members
@@ -59,6 +60,10 @@ namespace SceneryEditorX
 	/// (e.g. from Ref<ImageResource> destructors running during the CRT static-dtor phase)
 	/// is silently dropped rather than touching the already-destroyed map.
 	static std::atomic<bool> s_DeletionQueueDestroyed{false};
+
+	/// Rendered frames counted by NeedToParseDeletionQueue(). Entries are stamped with it under s_MutexDeletionQueue, so
+	/// each type's entries are in frame order.
+	static std::atomic<uint64_t> s_DeletionFrame{0};
 	
 	// -------------------------------------------------------
 	
@@ -573,38 +578,39 @@ namespace SceneryEditorX
 		return (std::numeric_limits<uint32_t>::max)();
 	}
 	
-	void QueueManager::AddDeletionQueue(ResourceType type, void *resource)
+	bool QueueManager::AddDeletionQueue(ResourceType type, void *resource)
 	{
-		AddDeletionQueue(type, resource, VK_NULL_HANDLE);
+		return AddDeletionQueue(type, resource, VK_NULL_HANDLE);
 	}
 
-	void QueueManager::AddDeletionQueue(ResourceType type, void *resource, VmaAllocation allocation)
+	bool QueueManager::AddDeletionQueue(ResourceType type, void *resource, VmaAllocation allocation)
 	{
 		if (s_DeletionQueueDestroyed.load(std::memory_order_acquire))
 		{
 			SEDX_CORE_WARN_TAG("QueueManager", "AddDeletionQueue called after shutdown — resource of type {} will be leaked (static destruction order issue)", static_cast<uint32_t>(type));
-			return;
+			return false;
 		}
 
 		if (!resource)
 		{
 			SEDX_CORE_WARN_TAG("QueueManager", "Attempted to add null resource to deletion queue");
-			return;
+			return false;
 		}
-	
+
 		// For image resources, ensure an allocation is provided. If not, log and skip enqueueing
 		if (type == ResourceType::Image && allocation == VK_NULL_HANDLE)
 		{
 			SEDX_CORE_ERROR_TAG("QueueManager", "Attempted to enqueue Image for deletion without VMA allocation; skipping to avoid crash");
-			return;
+			return false;
 		}
 
 		std::scoped_lock guard(s_MutexDeletionQueue);
-		s_DeletionQueue[type].emplace_back(DeletionQueueEntry{resource, allocation});
+		s_DeletionQueue[type].emplace_back(DeletionQueueEntry{resource, allocation, s_DeletionFrame.load(std::memory_order_relaxed)});
 		SEDX_CORE_TRACE_TAG("QueueManager", "Added resource of type {} to deletion queue", static_cast<uint32_t>(type));
+		return true;
 	}
-	
-	void QueueManager::ParseDeletionQueue()
+
+	void QueueManager::ParseDeletionQueue(const bool everything)
 	{
 		// Closed by NotifyShutdown(); the queue map may already be gone in the CRT static-dtor phase.
 		if (s_DeletionQueueDestroyed.load(std::memory_order_acquire))
@@ -618,7 +624,29 @@ namespace SceneryEditorX
 		std::unordered_map<ResourceType, std::vector<DeletionQueueEntry>> pending;
 		{
 			std::scoped_lock guard(s_MutexDeletionQueue);
-			pending.swap(s_DeletionQueue);
+			if (everything)
+			{
+				pending.swap(s_DeletionQueue);
+			}
+			else
+			{
+				// Each type's entries are in frame order: the ones that waited long enough are a prefix
+				const uint64_t frame = s_DeletionFrame.load(std::memory_order_relaxed);
+				for (auto it = s_DeletionQueue.begin(); it != s_DeletionQueue.end();)
+				{
+					std::vector<DeletionQueueEntry> &entries = it->second;
+					const auto waiting = std::ranges::find_if(entries, [frame](const DeletionQueueEntry &entry)
+					{
+						return frame - entry.frame < DELETION_DELAY_FRAMES;
+					});
+					if (waiting != entries.begin())
+					{
+						pending[it->first].assign(entries.begin(), waiting);
+						entries.erase(entries.begin(), waiting);
+					}
+					it = entries.empty() ? s_DeletionQueue.erase(it) : std::next(it);
+				}
+			}
 		}
 	
 		for (auto &it : pending)
@@ -723,54 +751,24 @@ namespace SceneryEditorX
 		SEDX_CORE_INFO_TAG("QueueManager", "Deletion queue marked as shut down; late AddDeletionQueue calls will be dropped");
 	}
 
+	bool QueueManager::IsDeletionQueueShutDown()
+	{
+		return s_DeletionQueueDestroyed.load(std::memory_order_acquire);
+	}
+
 	bool QueueManager::NeedToParseDeletionQueue()
 	{
-		static uint32_t framesEquilibrium = 0;
-		static uint32_t objectsToDeletePrevious = 0;
-	
-		// count deletions in the queue
-		uint32_t objectsToDelete = 0;
+		// Each entry waits its own DELETION_DELAY_FRAMES: resources released every few frames (instance buffers
+		// replaced while the camera moves) never hold back the older ones.
+		const uint64_t frame = s_DeletionFrame.fetch_add(1, std::memory_order_relaxed) + 1;
 
 		// Acquire the same mutex used by AddDeletionQueue / ParseDeletionQueue
 		std::scoped_lock guard(s_MutexDeletionQueue);
-
-		for (uint32_t i = 0; i < static_cast<uint32_t>(ResourceType::MaxEnum); ++i)
+		for (const auto &[type, entries] : s_DeletionQueue)
 		{
-			auto it = s_DeletionQueue.find(static_cast<ResourceType>(i));
-			if (it != s_DeletionQueue.end())
-			{
-				objectsToDelete += static_cast<uint32_t>(it->second.size());
-				SEDX_CORE_TRACE_TAG("QueueManager", "ResourceType {} has {} objects pending deletion", i, it->second.size());
-			}
-			else
-			{
-				SEDX_CORE_TRACE_TAG("QueueManager", "ResourceType {} has 0 objects pending deletion", i);
-			}
-		}
-	
-		// check if the number of objects to delete has remained unchanged
-		if (objectsToDelete > 0 && objectsToDelete == objectsToDeletePrevious)
-		{
-			framesEquilibrium++;
-	
-			// if it’s been stable for frame_self life frames, reset counter and delete
-			if (framesEquilibrium >= 100) // Renderer resource frame lifetime
-			{
-				framesEquilibrium = 0;
+			if (!entries.empty() && frame - entries.front().frame >= DELETION_DELAY_FRAMES)
 				return true;
-			}
-	
-			SEDX_CORE_TRACE_TAG("QueueManager", "Deletion queue stable for {} frames with {} objects pending deletion", framesEquilibrium, objectsToDelete);
 		}
-		else
-		{
-			SEDX_CORE_TRACE_TAG("QueueManager", "Deletion queue changed or empty at frame {} with {} objects pending deletion", framesEquilibrium, objectsToDelete);
-			framesEquilibrium = 0; // Reset counter if the count changed or if nothing is in the queue
-		}
-
-		objectsToDeletePrevious = objectsToDelete; // Update the previous object count to the current count
-		SEDX_CORE_TRACE_TAG("QueueManager", "Updated previous deletion count to {}", objectsToDeletePrevious);
-	
 		return false;
 	}
 	

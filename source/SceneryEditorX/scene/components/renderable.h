@@ -151,6 +151,9 @@ namespace SceneryEditorX
 		void UpdateFrustumAndDistanceCulling();
 		void UpdateLodIndices();
 
+		/* @brief Drops the instance buffer through the deletion queue: frames in flight may still draw with it. */
+		void ReleaseInstanceBuffer();
+
 		// geometry/mesh
 		Mesh* m_mesh                          = nullptr;
 		uint32_t m_sub_mesh_index             = 0;

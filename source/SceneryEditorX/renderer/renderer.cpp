@@ -1092,10 +1092,10 @@ void dynamic_resolution()
 			// retire cached pipelines that stopped being used (e.g. built for render targets replaced on resize)
 			PipelineCache::Tick();
 
-			// resource cleanup - frame-based retirement, no gpu stall required
+			// resource cleanup - frame-based retirement, no gpu stall required: only what no frame in flight can use
 			if (QueueManager::NeedToParseDeletionQueue())
 			{
-				QueueManager::ParseDeletionQueue();
+				QueueManager::ParseDeletionQueue(false);
 			}
 
 			// reset constant buffer offset periodically
