@@ -315,6 +315,8 @@ namespace SceneryEditorX
 		SEDX_CORE_TRACE_TAG("QueueManager", "Command pool created for graphics queue family {}", m_FamilyIndices.graphics);
 
 		const uint32_t cmdListCount = std::max(1u, m_Config.cmdListsPerQueue);
+		// Deferred deletions rely on every list being waited for (NextCommandList) before an entry is DELETION_DELAY_FRAMES old
+		SEDX_CORE_ASSERT(cmdListCount < DELETION_DELAY_FRAMES, "{} command lists can outlast the deletion queue's {} frame delay", cmdListCount, DELETION_DELAY_FRAMES);
 		m_CmdLists.resize(cmdListCount);
 
 		// Populate m_CmdLists - this is what NextCommandList() cycles through

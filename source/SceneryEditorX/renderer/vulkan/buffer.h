@@ -175,6 +175,8 @@ namespace SceneryEditorX
 		 * @brief Hands the buffer to the deletion queue, which destroys it once no frame in flight can use it
 		 * (QueueManager::DELETION_DELAY_FRAMES); the object is empty afterwards.
 		 * @note For buffers the frames in flight may have drawn with. Destroys at once when the queue is shut down.
+		 * @note The caller must be the buffer's only user: every other Ref or raw pointer to it sees an empty buffer
+		 * (VK_NULL_HANDLE) afterwards.
 		 */
 		void DestroyDeferred();
 
