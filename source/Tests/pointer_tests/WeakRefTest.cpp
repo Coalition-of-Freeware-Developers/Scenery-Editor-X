@@ -281,6 +281,37 @@ TEST_CASE_METHOD(WeakRefTestFixture, "WeakRef - Expiration Detection", "[SmartPo
     }
 }
 
+TEST_CASE_METHOD(WeakRefTestFixture, "WeakRef - Objects destroyed without their last Ref release", "[SmartPointers][WeakRef][Expiration]")
+{
+    // Misuse (an object should die with its last Ref), but the registry must not keep the control block of an address the
+    // next object may get: the old WeakRefs would lock that object. The slot object puts the next one at the same address.
+    WeakRef<WeakTestObject> weak;
+    WeakRef<SlotWeakTestObject> weakSlot;
+    {
+        Ref<SlotWeakTestObject> ref = CreateRef<SlotWeakTestObject>(7, "destroyed by hand");
+        weak = ref;
+        weakSlot = ref;
+        REQUIRE(weak.Lock().Get() == ref.Get());	// A stale block at this address would make it expired at once
+        SlotWeakTestObject *raw = ref.Get();
+        raw->IncRefCount();	// Keeps it alive past its Ref
+        ref.Reset();
+
+        SECTION("Deleted by hand once no Ref counts it")
+        {
+            raw->DecRefCount();
+            delete raw;
+        }
+        SECTION("Deleted while still counted, as a stack or member object a Ref pointed to is")
+        {
+            delete raw;
+        }
+    }
+
+    REQUIRE(SlotWeakTestObject::s_Destroyed == 1);
+    RequireAllExpired(weak, weakSlot);
+    RequireStayExpiredWhenTheSlotIsReused(weak, weakSlot);
+}
+
 TEST_CASE_METHOD(WeakRefTestFixture, "WeakRef - Copy Operations", "[SmartPointers][WeakRef][Copy]")
 {
     SECTION("Copy construction from weak reference")

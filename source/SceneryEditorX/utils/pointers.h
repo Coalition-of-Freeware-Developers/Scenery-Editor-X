@@ -85,8 +85,16 @@ namespace SceneryEditorX
 		/** @brief Move assignment operator doesn't affect reference count. */
 		RefCounted& operator=(RefCounted&&) noexcept { return *this; }
 
-		/** @brief Virtual destructor for proper polymorphic behavior. */
-		virtual ~RefCounted() = default;
+		/**
+		 * @brief Virtual destructor for proper polymorphic behavior.
+		 *
+		 * Expires the object's WeakRefs if it still has a control block, which happens only when it was destroyed
+		 * without its last Ref release (that release expires them first): deleted by hand, or a stack or member
+		 * object a Ref pointed to. Both are misuse, but the registry would otherwise keep the block of an address the
+		 * next object may get, and the old WeakRefs would lock that object. Objects that never had a WeakRef, or
+		 * whose last Ref expired them, skip the registry (one atomic load).
+		 */
+		virtual ~RefCounted();
 
 		/**
 		 * @brief Increments the reference count.
@@ -136,8 +144,9 @@ namespace SceneryEditorX
 		// Using mutable to allow const objects to be reference counted
 		mutable std::atomic<uint32_t> m_RefCount{0};
 
-		// Set (never cleared) when the first WeakRef to this object is made: only then does its last release
-		// have a control block to expire. Not copied, like the count: it belongs to the object's identity.
+		// Set when the first WeakRef to this object is made, cleared when its control block is removed: only while it
+		// is set does the object have a control block to expire. Not copied, like the count: it belongs to the
+		// object's identity.
 		mutable std::atomic<bool> m_HasWeakRefs{false};
 	};
 
@@ -284,8 +293,9 @@ namespace SceneryEditorX
 			/**
 			 * @brief Expires the WeakRefs to an object whose last Ref was just released
 			 *
-			 * Called by the last release, before the object is deleted, through a Ref of any type. Objects that
-			 * never had a WeakRef have no control block: they skip the registry and its mutex.
+			 * Called by the last release, before the object is deleted, through a Ref of any type, and by
+			 * ~RefCounted() for an object destroyed some other way. Objects without a control block (they never had
+			 * a WeakRef, or it was already removed) skip the registry and its mutex.
 			 *
 			 * The m_HasWeakRefs flag is set (under the registry's mutex) by a thread holding a strong reference,
 			 * and that reference's release comes before the count reaches 0, so the last release sees it.
@@ -382,7 +392,8 @@ namespace SceneryEditorX
 			 * This method is called when an object is being destroyed, before it is deleted. It sets
 			 * the object pointer in the control block to nullptr to indicate that the object is no
 			 * longer valid and releases the weak reference held for the living object; the control
-			 * block is deleted when no WeakRef uses it any more.
+			 * block is deleted when no WeakRef uses it any more. It also clears the object's
+			 * m_HasWeakRefs, so its destructor doesn't look for the block again.
 			 *
 			 * @param object The RefCounted part of the object whose control block should be removed
 			 */
@@ -400,6 +411,7 @@ namespace SceneryEditorX
 					block = it->second;
 					m_Blocks.erase(it);
 					block->SetPtr(nullptr);
+					object->m_HasWeakRefs.store(false, std::memory_order_release);
 				}
 
 				// May delete the block, if no WeakRef uses it
@@ -468,6 +480,8 @@ namespace SceneryEditorX
 		};
 
 	} // namespace Internal
+
+	inline RefCounted::~RefCounted() { Internal::ControlBlockRegistry::ExpireWeakRefs(this); }
 
 	// -----------------------------------------------------------
 
