@@ -140,7 +140,7 @@ namespace SceneryEditorX::XPlane
 		int shoulder = 0;					// Surface code, or surface + 100 * shoulder width (12.00)
 		float smoothness = 0.25f;
 		bool centerlineLights = false;
-		int edgeLights = 0;					// 0 none, 2 medium intensity
+		int edgeLights = 0;					// 0 none, 1 low (LIRL), 2 medium (MIRL), 3 high intensity (HIRL): X-Plane 12's own apt.dat has all four
 		bool distanceSigns = false;
 		AptRunwayEnd ends[2];
 
