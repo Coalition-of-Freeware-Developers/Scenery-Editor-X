@@ -137,6 +137,11 @@ namespace SceneryEditorX
 		// screen-space reflections (ssr_trace.slang): the finished frame kept for the next one, its mips blurred
 		// (RGBA16F, alpha the pre-exposure it was lit with); the reflections target holds what the trace found
 		frame_render_previous,
+		// water (ocean.slang, water.slang): the FFT ocean's cascades, 256 x 256, one array layer per cascade
+		ocean_h0,						// RGBA32F x 4: h0(k), conj(h0(-k)) of every cell (when the sea state changes)
+		ocean_fft,						// RGBA32F x 8: the cascades' fields at the ocean's time, transformed in place (2 layers a cascade)
+		ocean_displacement,				// RGBA16F x 4, mips: displacement (m), foam
+		ocean_slopes,					// RGBA16F x 4, mips: x / z slopes and their squares (LEAN variance)
 		MaxEnum
 	};
 
@@ -276,6 +281,13 @@ namespace SceneryEditorX
 		ssr_trace,				// the deferred surfaces' reflections into the reflections target
 		ssr_history_copy,		// the finished frame into the reflection history's level 0
 		ssr_history_mip,		// one level of the reflection history
+		// plan Phase 11: water (XP12: ocean_spectrum, compute_fft, ocean_bake_textures, ocean_shading)
+		ocean_spectrum,			// h0 of every cell from the sea state
+		ocean_evolve,			// the cells at the ocean's time, packed for the transform
+		ocean_fft,				// one pass of the inverse FFT (rows or columns)
+		ocean_bake,				// displacement, foam and slopes from the transformed fields
+		ocean_mip,				// one mip of the baked cascades
+		water,					// the water surface (vertex, tessellation, fragment)
 		MaxEnum
 	};
 
@@ -380,6 +392,12 @@ namespace SceneryEditorX
 		case Renderer_Shader::ssr_trace: return "ssr_trace";
 		case Renderer_Shader::ssr_history_copy: return "ssr_history_copy";
 		case Renderer_Shader::ssr_history_mip: return "ssr_history_mip";
+		case Renderer_Shader::ocean_spectrum: return "ocean_spectrum";
+		case Renderer_Shader::ocean_evolve: return "ocean_evolve";
+		case Renderer_Shader::ocean_fft: return "ocean_fft";
+		case Renderer_Shader::ocean_bake: return "ocean_bake";
+		case Renderer_Shader::ocean_mip: return "ocean_mip";
+		case Renderer_Shader::water: return "water";
 		case Renderer_Shader::MaxEnum: return "MaxEnum";
 		default: return "unknown";
 		}
@@ -558,6 +576,11 @@ namespace SceneryEditorX
 		hiz         = 69,	// the min / max depth pyramid (gbuffer_depth_occluders_hiz), every level
 		ssr_history = 70,	// the previous frame lit, with mips (frame_render_previous)
 
+		// water (ocean_common.slang, water.slang)
+		ocean_displacement = 71,	// the baked cascades: displacement and foam (or one mip of it, for the next)
+		ocean_slopes       = 72,	// slopes and their squares
+		water_opaque       = 73,	// the frame composed before the water (frame_render_opaque)
+
 		// restir reservoir srv bindings (for temporal/spatial read)
 		reservoir_prev0    = 21,
 		reservoir_prev1    = 22,
@@ -591,6 +614,12 @@ namespace SceneryEditorX
 		cacao_normals    = 10,
 		cacao_ssao       = 11,
 		cacao_importance = 12,
+
+		// the FFT ocean (ocean_common.slang): RWTexture2DArrays
+		ocean_a = 13,	// h0
+		ocean_b = 14,	// the transformed fields
+		ocean_c = 15,	// displacement and foam (one mip)
+		ocean_d = 16,	// slopes (one mip)
 
 		// restir reservoir uav bindings
 		reservoir0    = 20,

@@ -44,6 +44,7 @@
 #include <SceneryEditorX/project/spline_edit.h>
 #include <SceneryEditorX/renderer/gpu_scene.h>
 #include <SceneryEditorX/xplane/xp_scene.h>
+#include <SceneryEditorX/xplane/xp_terrain_scene.h>
 
 // -------------------------------------------------------
 
@@ -316,7 +317,7 @@ namespace SceneryEditorX::TransformTool
 			if (!bounds.valid)
 				return;
 			const XPlane::Point2 center = bounds.GetCenter();
-			descriptor.center = { center.x, 0.0, center.z };
+			descriptor.center = { center.x, XPlane::SceneTerrain::GetHeight(center.x, center.z), center.z };
 			descriptor.radius = std::max(1.0, bounds.GetRadius());
 			descriptor.staticCenter = true;
 		}
@@ -394,7 +395,7 @@ namespace SceneryEditorX::TransformTool
 						if (!placedObject)
 						{
 							const XPlane::Point2 local = EditorProjects::GetProjection().ToLocal(item->latitude, item->longitude);
-							descriptor.center = { local.x, 0.0, local.z };
+							descriptor.center = { local.x, XPlane::SceneTerrain::GetHeight(local.x, local.z), local.z };
 							descriptor.staticCenter = true;
 						}
 						return descriptor;
@@ -545,16 +546,24 @@ namespace SceneryEditorX::TransformTool
 
 		void ApplyPreview(State &s, const Mat4d &delta)
 		{
+			const bool terrain = XPlane::SceneTerrain::IsLoaded();
 			for (Item &item : s.items)
 			{
+				// Objects and point features stand on the terrain: moved across it they keep their height above the ground
+				const bool followGround = terrain && (item.descriptor.kind == ItemKind::Object || item.descriptor.kind == ItemKind::ProjectPoint || item.descriptor.kind == ItemKind::AirportPoint);
 				for (const Preview &preview : item.previews)
 				{
 					const entt::entity handle = EditorScene::FindHandle(preview.entity);
 					TransformComponent *transform = EditorScene::TryGet<TransformComponent>(handle);
 					if (!transform)
 						continue;
-					const Mat4d local = preview.startWorld * delta * preview.parentInverse;
-					Decompose(local, *transform);
+					Mat4d world = preview.startWorld * delta;
+					if (followGround)
+					{
+						const Point3 from = preview.startWorld.GetTranslation(), to = world.GetTranslation();
+						world.m[3][1] += XPlane::SceneTerrain::GetHeight(to.x, to.z) - XPlane::SceneTerrain::GetHeight(from.x, from.z);
+					}
+					Decompose(world * preview.parentInverse, *transform);
 					GpuScene::MarkTransformDirty(handle);
 				}
 			}

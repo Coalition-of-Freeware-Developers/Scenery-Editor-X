@@ -125,6 +125,9 @@ namespace SceneryEditorX::Environment
 
 		SurfaceWeather surface;
 		SeasonResult season;
+		SeasonResult scenerySeason;			// What seasonal library art (terrain, autogen, airport art) is resolved for: the
+											// season, unless the scenery was loaded on another date (World::SetSceneryDate)
+		bool seasonFromDsf = false;			// Both came from the base DSF's season rasters, not the fixed dates by latitude
 		SkyWeights skyWeights{};
 		SkyMultipliers sky;
 
@@ -143,9 +146,10 @@ namespace SceneryEditorX::Environment
 	 * given (EnvironmentState::integrateSurface); X-Plane's snow_cover raises the snow level too.
 	 * @param observerAltitudeMslM Camera altitude, for the high-altitude / orbit sky classes.
 	 * @param table Sky-class multipliers; nullptr blends to 1.
+	 * @param seasonRanges The place's base DSF season ranges (World::SetSeasonRanges); nullptr: the fixed dates by latitude.
 	 */
 	EnvironmentDerived Derive(const EnvironmentState &state, float observerAltitudeMslM = 0.0f, const SkyConditionTable *table = nullptr,
-		const SurfaceWeather *integratedSurface = nullptr);
+		const SurfaceWeather *integratedSurface = nullptr, const DsfSeasonRanges *seasonRanges = nullptr);
 }
 
 // -------------------------------------------------------

@@ -115,7 +115,6 @@ namespace SceneryEditorX
 
 		Scope<UIRenderer> m_UIRenderer;					// Legacy hook for older panels; rendering goes through UI::RenderMainViewport().
 		std::vector<Ref<UI::EditorPanel>> m_UIPanels;	// List of editor panels managed by the UILayer.
-		std::string m_IniFilePath;						// Owns the imgui ini path string so io.IniFilename never dangles (C26815).
 		bool m_EnableViewports = true;
 		bool m_AllowInput = true;
 		bool m_Initialized = false;

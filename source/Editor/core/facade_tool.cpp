@@ -869,7 +869,7 @@ namespace SceneryEditorX::FacadeTool
 
 		// The ground under the cursor, snapped, fitted and constrained
 		Point3 hit;
-		s.cursorValid = view.Contains(mouse) && view.RayToPlane(mouse, 0.0, hit);
+		s.cursorValid = view.Contains(mouse) && view.RayToGround(mouse, hit);
 		s.closeHovered = false;
 		if (s.cursorValid)
 		{

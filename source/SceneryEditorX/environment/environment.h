@@ -30,9 +30,11 @@
  */
 #pragma once
 #include "environment_state.h"
+#include <array>
 #include <cstdint>
 #include <filesystem>
 #include <mutex>
+#include <optional>
 
 // -------------------------------------------------------
 
@@ -87,8 +89,25 @@ namespace SceneryEditorX::Environment
 		/* @brief Advances what changes over time (the integrated surface); call once per frame. */
 		void Tick(double deltaSeconds);
 
-		/* @brief Sets the date, time, place and weather a parity scenario names. */
+		/* @brief Sets the date, time, place and weather a parity scenario names (and its scenery date, see SetSceneryDate). */
 		void ApplyScenario(const ParityScenario &scenario);
+
+		/**
+		 * @brief The date the scenery was loaded on, when not the state's date (nullopt: the same). X-Plane resolves a
+		 * tile's seasonal library art as it loads the tile and keeps it when the date changes; with a scenery date the
+		 * derived scenerySeason follows it while the season (sun, trees) follows the state. Not saved with projects.
+		 */
+		void SetSceneryDate(const std::optional<std::array<int, 3>> &date);
+
+		/**
+		 * @brief The seasons of the base DSF at a place (MakeDsfSeasonRanges of its season rasters there), as X-Plane takes
+		 * them: while the state's place stays within half a degree of it, the season and the scenery season come from these
+		 * ranges instead of the fixed dates by latitude. nullopt forgets them. Not saved with projects.
+		 */
+		void SetSeasonRanges(const std::optional<DsfSeasonRanges> &ranges, double latitudeDeg = 0.0, double longitudeDeg = 0.0);
+
+		/* @brief The ranges the seasons come from now: null when none are set or the place moved away from theirs. */
+		[[nodiscard]] const DsfSeasonRanges *GetSeasonRanges() const;
 
 		/* @brief Loads resources/environment/xp12_sky_conditions.json (sky-class multipliers). */
 		bool LoadSkyConditions(const std::filesystem::path &path, std::string *error = nullptr);
@@ -105,6 +124,10 @@ namespace SceneryEditorX::Environment
 		SkyConditionTable m_SkyTable;
 		SurfaceWeatherIntegrator m_Integrator;
 		float m_ObserverAltitudeM = 0.0f;
+		std::optional<int> m_SceneryDayOfYear;		// SetSceneryDate()
+		std::optional<DsfSeasonRanges> m_SeasonRanges;	// SetSeasonRanges(), sampled at:
+		double m_SeasonRangesLatitude = 0.0;
+		double m_SeasonRangesLongitude = 0.0;
 		uint64_t m_Version = 1;
 
 		mutable std::mutex m_SnapshotMutex;

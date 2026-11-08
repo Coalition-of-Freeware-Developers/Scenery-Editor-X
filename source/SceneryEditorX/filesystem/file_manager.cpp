@@ -30,6 +30,7 @@
  */
 #include "file_manager.hpp"
 #include "file_system.h"
+#include "vfs.h"
 #include <codecvt>
 #include <commdlg.h>
 #include <SDL3/SDL_misc.h>
@@ -248,7 +249,7 @@ namespace SceneryEditorX::IO
 	void FileDialogs::ReadTexture(const std::filesystem::path &path, std::vector<uint8_t> &data, int32_t &w, int32_t &h)
 	{
 		int32_t channels = 4;
-		uint8_t *indata = stbi_load(path.string().c_str(), &w, &h, &channels, 4);
+		uint8_t *indata = stbi_load(VFS::ToUtf8(path).c_str(), &w, &h, &channels, 4);
 		data.resize(w * h * 4);
 		memcpy(data.data(), indata, data.size());
 		stbi_image_free(indata);
@@ -256,7 +257,7 @@ namespace SceneryEditorX::IO
 
 	void FileDialogs::ImportTexture(const std::filesystem::path &path, Ref<TextureAsset> &t)
 	{
-		uint8_t *indata = stbi_load(path.string().c_str(), &t->width, &t->height, &t->channels, 4);
+		uint8_t *indata = stbi_load(VFS::ToUtf8(path).c_str(), &t->width, &t->height, &t->channels, 4);
 		t->data.resize(t->width * t->height * 4);
 		memcpy(t->data.data(), indata, t->data.size());
 		t->channels = 4;

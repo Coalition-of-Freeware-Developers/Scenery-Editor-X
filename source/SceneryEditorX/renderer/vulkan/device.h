@@ -201,8 +201,8 @@ namespace SceneryEditorX
 		 */
 		static bool IsDeviceLost()  { return m_DeviceLost; }
 
-		/* @brief Set the device loss flag to true, indicating that the device is considered lost and unusable. */
-		static void SetDeviceLost() { m_DeviceLost = true; }
+		/* @brief Set the device loss flag to true, indicating that the device is considered lost and unusable. The first call logs the GPU crash breadcrumbs. */
+		static void SetDeviceLost();
 	
 		/**
 		 * @brief 

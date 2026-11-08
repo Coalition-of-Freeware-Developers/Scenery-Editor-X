@@ -169,8 +169,8 @@ void main_comp(uint3 thread_id: SV_DispatchThreadID)
     }
     else
     {
-        // Through the whole atmosphere: the discs, the stars, and the airglow under it all
-        const float3 to_space = get_transmittance_to_space(a, camera, direction);
+        // Through the whole atmosphere: the discs, the stars, and the airglow under it all (the LUT has no fog in it)
+        const float3 to_space = get_transmittance_to_space(a, camera, direction) * exp(-fog_optical_depth(a, camera, direction, atmosphere_ray_length(a, camera, direction)));
         const float pixel_angle = 2.0f / (resolution.y * abs(get_projection_matrix()[1][1]));
         const float3 beyond = sun_disc(direction) + moon_disc(direction) + star_field(direction, max(pixel_angle, 2e-4f));
         color += (beyond * to_space + buffer_environment.atmosphere_view.y) * pre_exposure;

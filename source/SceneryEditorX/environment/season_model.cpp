@@ -142,6 +142,40 @@ namespace SceneryEditorX::Environment
 		return false;
 	}
 
+	std::optional<DsfSeasonRanges> MakeDsfSeasonRanges(const std::array<float, 8> &days)
+	{
+		std::array<int, 8> day{};
+		for (size_t i = 0; i < day.size(); ++i)
+		{
+			const int rounded = static_cast<int>(std::lround(std::clamp(days[i], 0.0f, 366.0f)));
+			day[i] = ((rounded - 1) % YEAR_DAYS + YEAR_DAYS) % YEAR_DAYS + 1;	// 1-365: day 0 is Dec 31
+		}
+
+		// The days travelled going round the year through the values in turn: a year for one cycle, none without
+		int travelled = 0;
+		for (size_t i = 0; i < day.size(); ++i)
+			travelled += DaysForward(day[i], day[(i + 1) % day.size()]);
+
+		DsfSeasonRanges ranges;
+		if (travelled == 0)
+		{
+			// No seasons: summer all year
+			ranges.start[static_cast<size_t>(Season::Summer)] = 1;
+			ranges.end[static_cast<size_t>(Season::Summer)] = YEAR_DAYS;
+			ranges.valid[static_cast<size_t>(Season::Summer)] = true;
+			return ranges;
+		}
+		if (travelled != YEAR_DAYS)
+			return std::nullopt;	// The seasons overlap
+		for (size_t s = 0; s < 4; ++s)
+		{
+			ranges.start[s] = day[2 * s];
+			ranges.end[s] = day[2 * s + 1];
+			ranges.valid[s] = true;
+		}
+		return ranges;
+	}
+
 	SeasonResult ComputeSeason(int dayOfYear, const double latitudeDeg, const DsfSeasonRanges *ranges)
 	{
 		dayOfYear = std::clamp(dayOfYear, 1, 366);

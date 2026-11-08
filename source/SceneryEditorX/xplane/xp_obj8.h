@@ -101,6 +101,7 @@ namespace SceneryEditorX::XPlane
 		std::vector<Obj8TransKey> transKeys;	// Type::Translate
 		std::vector<Obj8RotKey> rotKeys;		// Type::Rotate
 		DatarefRef dataref;						// Unset: the op is static and evaluates at its first key
+		int datarefIndex = -1;					// Obj8Data::datarefs entry of dataref, -1 when unset
 		float loop = 0.0f;						// ANIM_keyframe_loop period, 0 when the op does not loop
 	};
 
@@ -122,6 +123,7 @@ namespace SceneryEditorX::XPlane
 		float v1 = 0.0f;
 		float v2 = 0.0f;
 		DatarefRef dataref;
+		int datarefIndex = -1;	// Obj8Data::datarefs entry of dataref, -1 when unset
 		float loop = 0.0f;	// ANIM_keyframe_loop period (flashing lights), 0 when the rule does not loop
 	};
 
@@ -262,6 +264,7 @@ namespace SceneryEditorX::XPlane
 		std::string textureDrapedNormal;
 		std::string textureMaterialGloss;	// TEXTURE_MAP material_gloss (X-Plane 12)
 		std::string textureGloss;			// TEXTURE_MAP gloss (X-Plane 12)
+		bool normalFromTextureMap = false;	// textureNormal is a TEXTURE_MAP normal: the normal alone (RG), no gloss / material in B / A
 		float normalRatio = 1.0f;			// TEXTURE_NORMAL ratio (repeats per albedo tile)
 		bool normalMetalness = false;		// NORMAL_METALNESS: normal map blue = metalness
 		bool drapedNormalMetalness = false;
@@ -313,7 +316,7 @@ namespace SceneryEditorX::XPlane
 		std::vector<Obj8VisibilityCmd> visibility;
 		std::vector<Obj8Batch> batches;
 		std::vector<Obj8Light> lights;
-		std::vector<Obj8DatarefUsage> datarefs;
+		std::vector<Obj8DatarefUsage> datarefs;	// Every dataref the ops, hide / show rules and ATTR_light_level read, once each
 
 		// Diagnostics
 		uint32_t trisCommandCount = 0;
@@ -398,6 +401,19 @@ namespace SceneryEditorX::XPlane
 	 * @param rules Indices into data.visibility.
 	 */
 	bool EvaluateVisibility(const Obj8Data &data, const std::vector<uint32_t> &rules, const DatarefReader &reader);
+
+	/**
+	 * @brief Reads every dataref the object uses, once each: values[i] is data.datarefs[i]'s value. The evaluators below
+	 * take these instead of a reader (ops and rules find theirs by datarefIndex), so a placement reads each dataref once
+	 * per frame instead of once per op, and can tell from the values alone whether its pose can have changed.
+	 */
+	void ReadDatarefs(const Obj8Data &data, const DatarefReader &reader, std::vector<float> &values);
+
+	/* @brief EvaluateAnimNode() at the values ReadDatarefs() read (an op without a value reads 0). */
+	RigidTransform EvaluateAnimNodeAt(const Obj8AnimNode &node, const std::vector<float> &datarefValues);
+
+	/* @brief EvaluateVisibility() at the values ReadDatarefs() read (a rule without a value reads 0). */
+	bool EvaluateVisibilityAt(const Obj8Data &data, const std::vector<uint32_t> &rules, const std::vector<float> &datarefValues);
 
 }
 

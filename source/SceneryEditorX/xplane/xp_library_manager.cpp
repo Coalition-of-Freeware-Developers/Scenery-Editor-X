@@ -39,7 +39,9 @@
 #include <thread>
 #include <nlohmann/json.hpp>
 #include <SceneryEditorX/filesystem/file_system.h>
+#include <SceneryEditorX/filesystem/vfs.h>
 #include <SceneryEditorX/logging/logging.hpp>
+#include <stb_image.h>
 
 #ifdef _WIN32
 	#include <windows.h>
@@ -57,6 +59,33 @@ namespace SceneryEditorX::XPlane
 	{
 		constexpr const char *LOG_TAG = "XPlaneLibrary";
 		constexpr const char *SETTINGS_FILE = "xplane_library.json";
+
+		/* @brief A REGION_BITMAP world map: its red channel, one byte a pixel (non-zero inside the region). */
+		bool LoadRegionBitmap(const fs::path &file, uint32_t &width, uint32_t &height, std::vector<uint8_t> &mask)
+		{
+			std::string bytes;
+			if (!VFS::ReadFile(file, bytes))
+			{
+				SEDX_CORE_WARN_TAG(LOG_TAG, "Region bitmap not found: {}", VFS::ToUtf8(file));
+				return false;
+			}
+			int w = 0, h = 0, channels = 0;
+			stbi_uc *pixels = stbi_load_from_memory(reinterpret_cast<const stbi_uc *>(bytes.data()), static_cast<int>(bytes.size()), &w, &h, &channels, 4);
+			if (!pixels || w <= 0 || h <= 0)
+			{
+				if (pixels)
+					stbi_image_free(pixels);
+				SEDX_CORE_WARN_TAG(LOG_TAG, "Region bitmap unreadable: {}", VFS::ToUtf8(file));
+				return false;
+			}
+			width = static_cast<uint32_t>(w);
+			height = static_cast<uint32_t>(h);
+			mask.resize(static_cast<size_t>(w) * h);
+			for (size_t i = 0; i < mask.size(); ++i)
+				mask[i] = pixels[i * 4];
+			stbi_image_free(pixels);
+			return true;
+		}
 
 		using VFS::FromUtf8;
 		using VFS::IsDirectory;
@@ -115,6 +144,7 @@ namespace SceneryEditorX::XPlane
 
 			std::atomic<ScanState> scanState{ ScanState::Idle };
 			std::atomic<uint64_t> generation{ 0 };
+			std::atomic<uint8_t> season{ 0 };						// SetSeason()
 
 			std::thread worker;
 			std::condition_variable wake;
@@ -179,7 +209,7 @@ namespace SceneryEditorX::XPlane
 			}
 			catch (const std::exception &e)
 			{
-				SEDX_CORE_WARN_TAG(LOG_TAG, "Ignoring unreadable {}: {}", GetSettingsPath().string(), e.what());
+				SEDX_CORE_WARN_TAG(LOG_TAG, "Ignoring unreadable {}: {}", VFS::ToUtf8(GetSettingsPath()), e.what());
 			}
 		}
 
@@ -326,6 +356,7 @@ namespace SceneryEditorX::XPlane
 					LibraryIndex::BuildOptions options;
 					options.checkFilesExist = settings.checkFiles;
 					index->Build(std::move(packages), options);
+					index->LoadRegionBitmaps(&LoadRegionBitmap);
 
 					uint32_t libraries = 0, tracked = 0;
 					for (const LibraryPackage &package : index->GetPackages())
@@ -446,7 +477,7 @@ namespace SceneryEditorX::XPlane
 			{
 				if (InspectInstall(candidate.root).IsValid())
 				{
-					SEDX_CORE_INFO_TAG(LOG_TAG, "Detected X-Plane {} at '{}' ({})", candidate.majorVersion, candidate.root.string(), GetInstallSourceName(candidate.source));
+					SEDX_CORE_INFO_TAG(LOG_TAG, "Detected X-Plane {} at '{}' ({})", candidate.majorVersion, VFS::ToUtf8(candidate.root), GetInstallSourceName(candidate.source));
 					installPath = candidate.root;
 					break;
 				}
@@ -509,7 +540,7 @@ namespace SceneryEditorX::XPlane
 		const InstallInfo info = InspectInstall(path);
 		if (!info.IsValid())
 		{
-			SEDX_CORE_WARN_TAG(LOG_TAG, "'{}' is not an X-Plane folder: {}", path.string(), info.GetProblem());
+			SEDX_CORE_WARN_TAG(LOG_TAG, "'{}' is not an X-Plane folder: {}", VFS::ToUtf8(path), info.GetProblem());
 			return false;
 		}
 
@@ -519,7 +550,7 @@ namespace SceneryEditorX::XPlane
 		state.installInfo = info;
 		SaveSettings(state.settings);
 		RequestScanLocked(state);
-		SEDX_CORE_INFO_TAG(LOG_TAG, "X-Plane folder set to '{}'", path.string());
+		SEDX_CORE_INFO_TAG(LOG_TAG, "X-Plane folder set to '{}'", VFS::ToUtf8(path));
 		return true;
 	}
 
@@ -534,7 +565,7 @@ namespace SceneryEditorX::XPlane
 			return false;
 
 		if (!IsFile(path / "library.txt"))
-			SEDX_CORE_WARN_TAG(LOG_TAG, "'{}' has no library.txt yet; it will be indexed once it has one", path.string());
+			SEDX_CORE_WARN_TAG(LOG_TAG, "'{}' has no library.txt yet; it will be indexed once it has one", VFS::ToUtf8(path));
 
 		State &state = GetState();
 		std::scoped_lock lock(state.mutex);
@@ -617,9 +648,45 @@ namespace SceneryEditorX::XPlane
 		return state.index;
 	}
 
+	void LibraryManager::SetSeason(const uint8_t season)
+	{
+		GetState().season.store(season);
+	}
+
+	uint8_t LibraryManager::GetSeason()
+	{
+		return GetState().season.load();
+	}
+
 	fs::path LibraryManager::Resolve(const std::string_view virtualPath)
 	{
-		return GetIndex()->Resolve(virtualPath);
+		const std::shared_ptr<const LibraryIndex> index = GetIndex();
+		if (const uint8_t season = GetSeason())
+		{
+			LibraryIndex::ResolveContext context;
+			context.season = season;
+			if (fs::path file = index->Resolve(virtualPath, context); !file.empty())
+				return file;
+		}
+		return index->Resolve(virtualPath);
+	}
+
+	fs::path LibraryManager::ResolveAt(const std::string_view virtualPath, const double latitude, const double longitude, const uint8_t season)
+	{
+		const std::shared_ptr<const LibraryIndex> index = GetIndex();
+		LibraryIndex::ResolveContext context;
+		context.hasLocation = true;
+		context.latitude = latitude;
+		context.longitude = longitude;
+		context.season = season ? season : GetSeason();
+		fs::path file = index->Resolve(virtualPath, context);
+		if (file.empty() && context.season != 0)
+		{
+			// Exports for other seasons only: X-Plane would still draw something
+			context.season = 0;
+			file = index->Resolve(virtualPath, context);
+		}
+		return file;
 	}
 
 	double LibraryManager::GetLastScanMilliseconds()

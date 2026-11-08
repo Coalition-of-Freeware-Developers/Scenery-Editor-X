@@ -588,6 +588,13 @@ namespace SceneryEditorX
 		void PreDraw();
 
 		/**
+		 * @brief PreDraw() for Draw/DrawIndexed, or false (and the draw is skipped) when no graphics pipeline or render pass
+		 * is active, e.g. after SetPipelineState() rejected a PSO whose shaders did not compile.
+		 * @param caller The draw call's name for the log.
+		 */
+		[[nodiscard]] bool PrepareDraw(const char* caller);
+
+		/**
 		 * @brief Begin a render pass if one is not already active.
 		 * This is called by PreDraw() to ensure a render pass is active before drawing.
 		 */

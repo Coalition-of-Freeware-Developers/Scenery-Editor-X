@@ -4,447 +4,268 @@
 
 ## Overview
 
-The Settings System in Scenery Editor X provides a comprehensive configuration management framework built on top of the libconfig++ library. It handles application settings, X-Plane integration paths, user preferences, and runtime configuration with automatic detection, validation, and persistence capabilities.
+The Settings System keeps the editor's configuration in a few small files in the user's settings folder. Every one of
+them is read and written through the **virtual file system** (`filesystem/vfs.h`), so the same code works on Windows,
+macOS and Linux:
+
+- Files are addressed with virtual paths such as `user:/settings.cfg`. The `user:/` mount is the roaming settings
+  folder each platform has, mounted at startup by `IO::FileSystem::InitAppLocations()`.
+- Reads find a file whatever case the disk spells it in (settings copied from Windows to a case-sensitive Linux disk
+  still load).
+- Writes are atomic: the bytes go to a temporary file that is checked and then renamed over the target, so a crash,
+  a full disk or a failed write never leaves a half-written settings file.
+- Paths are UTF-8 everywhere (`VFS::ToUtf8` / `VFS::FromUtf8` at the `std::filesystem` boundary), so a user folder such
+  as `C:\Users\Zoë` or `/home/日本` works.
+- A file that doesn't parse is never silently overwritten: it is kept as `<name>.invalid` before the defaults replace
+  it, and when even that copy can't be made the file is left alone and the defaults are used in memory only.
+
+## Where the files are
+
+| File | Virtual path | Contents | Class |
+|---|---|---|---|
+| `settings.cfg` | `user:/settings.cfg` | X-Plane install, application, UI and project defaults | `Settings` (`Application::GetSettings()`) |
+| `user_preferences.cfg` | `user:/user_preferences.cfg` | Welcome screen, startup project, recent projects | `UserPreferences` |
+| `editor_settings.cfg` | `user:/editor_settings.cfg` | Snapping steps, gizmo axes / pivot, viewport and display options | `EditorSettingsManager` / `EditorSettingsSerializer` |
+| `editor_preferences.json` | `user:/editor_preferences.json` | Navigation keymap, orbit / zoom speeds, VIEWPORT 2 camera | `EditorPreferences` |
+| `editor.ini` | `user:/editor.ini` | ImGui's dock layout and window placement | `UILayer` (ImGui's own file IO is off) |
+
+`user:/` is:
+
+| Platform | Folder |
+|---|---|
+| Windows | `%APPDATA%\SceneryEditorX` |
+| macOS | `~/Library/Application Support/SceneryEditorX` |
+| Linux | `$XDG_CONFIG_HOME/SceneryEditorX` (`~/.config/SceneryEditorX`) |
+
+The other mounts the editor sets up are `data:/` (machine-local data), `cache:/` (rebuildable caches), `logs:/` and
+`temp:/`; see `VFS::AppLocation` in `filesystem/vfs.h`.
 
 ## Architecture
 
-### Core Components
+### ConfigFile
 
-#### ApplicationSettings Class
+**Location:** `source/SceneryEditorX/settings/config_file.h/.cpp`
 
-The `ApplicationSettings` class serves as the central configuration manager, inheriting from `RefCounted` for proper memory management within the smart pointer system.
-
-**Location:** `source/SceneryEditorX/platform/settings.h` and `source/SceneryEditorX/platform/settings.cpp`
-
-**Key Features:**
-
-- Hierarchical configuration structure using libconfig format
-- Automatic X-Plane path detection via Steam and common paths
-- Type-safe setting storage and retrieval
-- Validation and error handling
-- Platform-specific path resolution
-- Runtime configuration updates
-
-### Data Structures
-
-#### AppData Structure
-
-Stores global application configuration and version information.
+One libconfig (`.cfg`) document and the file it lives in. Every instance has its own document and every method is
+thread safe. It depends on the standard library, libconfig and `vfs.h` only, so it is unit tested on every platform
+(`source/Tests/settings_tests/SettingsTest.cpp`).
 
 ```cpp
-struct AppData
+ConfigFile file("user:/my_module.cfg");      // or a physical path (UTF-8); an optional VFS::FileSystem * for tests
+
+switch (file.Load(&error))
 {
-    std::string appName = "Scenery Editor X";
-    uint32_t WinWidth = 1280;
-    uint32_t WinHeight = 720;
-    std::string renderName = "X-Plane 12 Graphics Emulator";
-    std::string versionString = SEDX_VERSION_STRING;
-    uint32_t version = SEDX_VERSION;
-  
-    bool Fullscreen = false;
-    bool NoTitlebar = false;
-    bool VSync = false;
-    bool StartMaximized = true;
-    bool Resizable = true;
-    bool EnableImGui = true;
-    std::string WorkingDirectory;
-    std::filesystem::path IconPath;
-};
+    case ConfigFile::LoadResult::Loaded:  break;           // read and parsed
+    case ConfigFile::LoadResult::Missing: break;           // no file yet: empty document
+    case ConfigFile::LoadResult::Invalid: file.Backup(".invalid"); break;  // doesn't parse: file left as it is
+    case ConfigFile::LoadResult::Failed:  break;           // unreadable (or the mount isn't there): don't save over it
+}
+
+file.AddIntOption("module.size", 3);               // dotted paths; groups are created on the way
+const int size = file.GetIntOption("module.size", 1);
+if (file.IsDirty())
+    file.Save(&error);                              // atomic, folders created as needed
 ```
 
-#### XPlaneStats Structure
+Value rules:
 
-Contains X-Plane simulator configuration and path information.
+- `Add*Option(path, value)` stores a value and returns `false` when the path can't hold one: a name libconfig doesn't
+  allow (`2d`, `a b`), a value where a group should be, or a group where the value would go. A value of another type is
+  replaced (an older version wrote it differently).
+- `Get*Option(path, default)` returns the default when there's no value. Numbers convert between int, int64 and float;
+  text that is a number or `true` / `false` reads as one (that is what `SetOption` stores).
+- `HasOption` is true for values, `HasGroup` for groups; `RemoveOption` removes either.
+- `GetChildNames(group)` and `GetOptionPaths()` list what's there in file order.
+- `IsDirty()` is true only when something actually changed since the last `Load` / `Save`, so callers can skip writes.
+
+### Settings
+
+**Location:** `source/SceneryEditorX/settings/settings.h/.cpp`
+
+The application's settings: a `ConfigFile` (so the whole option API above works on it) plus the X-Plane install and
+application values. The editor keeps one for its lifetime, `Application::GetSettings()`, opened right after the app's
+folders are set up (`Application::SetUpAppLocations()`), so `user:/` is mounted and older versions' files have moved.
 
 ```cpp
-struct XPlaneStats
+Settings &settings = Application::Get().GetSettings();
+const std::string xplane = settings.GetXPlanePath();
+const std::filesystem::path projects = settings.GetDefaultProjectFolder();   // "~" expanded, platform default
+
+if (settings.SetXPlanePath(folder))      // validated (Resources/default scenery + Custom Scenery)
+    settings.WriteSettings();
+```
+
+`Settings::Open(location)`:
+
+1. Reads the file (`ReadSettings`). A file that doesn't parse is kept as `settings.cfg.invalid`.
+2. Fills in every section and value the file lacks (`ApplyDefaults`): a new file, or one an older version wrote, gets
+   the new settings without losing what's there.
+3. Upgrades values older versions wrote that no longer work (the Windows-only `~\Documents\SceneryEditorX` project
+   folder becomes the platform's Documents folder).
+4. Searches for X-Plane when the saved folder isn't an X-Plane install (`DetectXPlanePath`, the X-Plane library's
+   install finder: install lists, Steam, the registry, common folders).
+5. Writes the file when anything changed. A file that exists but couldn't be read is never written over.
+
+### UserPreferences
+
+**Location:** `source/SceneryEditorX/settings/user_settings.h/.cpp`
+
+Welcome screen, startup project and the recent projects list, in their own `ConfigFile`
+(`UserPreferences::DEFAULT_LOCATION`, or a path passed to the constructor).
+
+- Recent projects are matched by file, not by spelling: `C:\a\b.edX` and `c:/a/b.edX` are one entry on Windows and
+  macOS (`VFS::PathKey`). The list keeps the 10 most recent; two projects opened in the same second keep their order.
+- Times are stored as `DD/MM/YYYY HH:MM:SS` in local time, which every version reads. `StringToTime` parses them with
+  fixed formats only (older versions tried the regional format first, which could read a day as a month), and it also
+  reads ISO 8601 (`2026-10-24T13:45:10Z`, `TimeToIso8601`): the files can move to ISO once builds older than this one
+  are no longer in use.
+- `SavePreferences()` writes only when something changed; the destructor saves unsaved changes.
+- Versions up to 0.2.30 shared one document between every settings file, so `user_preferences.cfg` got a copy of
+  `settings.cfg`'s sections. They are removed the first time the file is loaded.
+
+```
+user =
 {
-    std::string xPlaneVersion;         // X-Plane version identifier
-    std::string xPlanePath;            // Root installation path
-    std::string xPlaneBinPath;         // Executable directory path
-    std::string xPlaneResourcesPath;   // Resources directory path
-    bool isSteam = false;              // Steam installation flag
+  show_welcome_screen = true;
+  startup_project = "";
+  recent_projects =
+  {
+    project_0 =
+    {
+      name = "5S4 - Toledo State";
+      file_path = "K:/X-Plane 12/Custom Scenery/5S4 - Toledo State/5S4.edX";
+      last_opened = "24/10/2026 13:45:10";
+    };
+    count = 1;
+  };
 };
 ```
 
-## Configuration File Structure
+### EditorSettings
 
-The settings system uses a hierarchical configuration format with the following sections:
+**Location:** `source/Editor/settings/editor_settings.h/.cpp`
 
-### Application Section
+`EditorSettings` holds the editor's tool options; `EditorSettingsManager` reads and writes one to its own `ConfigFile`
+(`user:/editor_settings.cfg`); `EditorSettingsSerializer` is what the editor calls:
+
+- `EditorSettingsSerializer::Init()` (in `EditorLayer::OnAttach`) loads the file into `EditorSettings::Get()` and applies
+  the snapping and gizmo options to the transform tool (`TransformTool::GetSettings()`), so snapping on/off, the
+  move / rotate / scale steps, local axes and the active-object pivot survive a restart.
+- `EditorSettingsSerializer::Shutdown()` (in `EditorLayer::OnDetach`) reads the tool's current options back and saves
+  them when they changed.
+- Scripted self-tests (`--tools-selftest`, `--gizmo-selftest`, ...) start from the defaults and never write the file.
 
 ```
-application: {
-    version = "0.2.27";
-    no_titlebar = false;
+editor =
+{
+  snapping = { enabled = false; translation = 1.0; rotation = 15.0; scale = 0.1; };
+  gizmo = { local_space = false; pivot_active = false; };
+  viewport = { show_colliders = false; show_lights = true; show_grid = true; };
+  display = { vsync = true; max_fps = 144; };
 };
 ```
 
-### X-Plane Section
+The `viewport` and `display` values are stored but not read by the viewport overlays or the frame limiter yet.
+
+### EditorPreferences
+
+**Location:** `source/Editor/settings/editor_preferences.h/.cpp`
+
+The navigation keymap (Blender, 3ds Max, Maya), orbit inversion and speeds, smooth views and VIEWPORT 2's camera, kept
+as JSON in `user:/editor_preferences.json` and written with `VFS::FileSystem::Write`. Edit them through
+`EditorPreferences::Get()` and call `EditorPreferences::Save()` after a change (Edit > Preferences does).
+
+### The ImGui layout (editor.ini)
+
+`UILayer` turns ImGui's own file IO off (`io.IniFilename = nullptr`), loads `user:/editor.ini` with
+`ImGui::LoadIniSettingsFromMemory` before the first frame, writes it through the VFS whenever ImGui sets
+`io.WantSaveIniSettings` (a few seconds after a panel moved or docked) and once more when the UI shuts down.
+
+## settings.cfg reference
 
 ```
-x_plane: {
-    version = "X-Plane 12.06b1";
-    path = "C:\\Program Files\\X-Plane 12";
-    bin_path = "C:\\Program Files\\X-Plane 12\\bin";
-    resources_path = "C:\\Program Files\\X-Plane 12\\Resources";
-    is_steam = false;
-};
-```
-
-### UI Section
-
-```
-ui: {
-    theme = "dark";
-    font_size = 12;
-    language = "english";
-};
-```
-
-### Project Section
-
-```
-project: {
-    auto_save = true;
-    auto_save_interval = 5;  # minutes
-    backup_count = 3;
-    default_project_dir = "C:\\Users\\User\\Documents\\SceneryEditorX";
-};
-```
-
-## API Reference
-
-### Constructor
-
-```cpp
-explicit ApplicationSettings(std::filesystem::path filepath);
-```
-
-**Purpose:** Initializes the settings manager with the specified configuration file path.
-**Parameters:**
-
-- `filepath`: Path to the configuration file to use
-
-**Behavior:**
-
-1. Attempts to read existing configuration
-2. If configuration doesn't exist, creates minimal default configuration
-3. Attempts automatic X-Plane path detection
-4. Validates X-Plane paths if found in existing configuration
-5. Saves initial or updated configuration
-
-### Core File Operations
-
-#### ReadSettings()
-
-```cpp
-bool ReadSettings();
-```
-
-**Purpose:** Reads settings from the configuration file into memory.
-**Returns:** `true` if settings were successfully loaded, `false` otherwise
-**Error Handling:** Handles file I/O errors, parse errors, and configuration exceptions
-
-#### WriteSettings()
-
-```cpp
-void WriteSettings();
-```
-
-**Purpose:** Writes current in-memory settings to the configuration file.
-**Side Effects:**
-
-- Ensures all required sections exist
-- Updates configuration from internal data structures
-- Updates the internal settings map
-
-### Setting Management
-
-#### String Options
-
-```cpp
-void SetOption(const std::string &key, const std::string &value);
-void GetOption(const std::string &key, std::string &value);
-bool HasOption(const std::string &key) const;
-void RemoveOption(const std::string &key);
-```
-
-#### Typed Options
-
-```cpp
-// Adding options
-void AddIntOption(const std::string &path, int value);
-void AddFloatOption(const std::string &path, double value);
-void AddBoolOption(const std::string &path, bool value);
-void AddStringOption(const std::string &path, const std::string &value);
-
-// Retrieving options
-int GetIntOption(const std::string &path, int defaultValue = 0) const;
-double GetFloatOption(const std::string &path, double defaultValue = 0.0) const;
-bool GetBoolOption(const std::string &path, bool defaultValue = false) const;
-std::string GetStringOption(const std::string &path, const std::string &defaultValue = "") const;
-```
-
-**Path Format:** Uses dot notation for hierarchical settings (e.g., `"ui.theme"`, `"project.auto_save"`)
-
-### X-Plane Integration
-
-#### Automatic Detection
-
-```cpp
-bool DetectXPlanePath();
-```
-
-**Purpose:** Automatically detects X-Plane installation path using multiple detection methods.
-**Detection Methods:**
-
-1. Steam installation detection via `SteamGameFinder`
-2. Common installation paths per platform
-3. Registry checks (Windows)
-4. Standard application directories (macOS/Linux)
-
-**Platform-Specific Paths:**
-
-- **Windows:** `C:\X-Plane 12`, `C:\Program Files\X-Plane 12`, etc.
-- **macOS:** `/Applications/X-Plane 12`, `~/Applications/X-Plane 12`
-- **Linux:** `/opt/X-Plane 12`, `~/Games/X-Plane 12`
-
-#### Manual Configuration
-
-```cpp
-bool SetXPlanePath(const std::string &path);
-std::string GetXPlanePath() const;
-bool ValidateXPlanePaths() const;
-void UpdateDerivedXPlanePaths();
-```
-
-**SetXPlanePath:** Validates and sets the X-Plane installation path, automatically deriving bin and resources paths.
-
-**ValidateXPlanePaths:** Ensures all required X-Plane files and directories exist.
-
-**UpdateDerivedXPlanePaths:** Updates bin and resources paths based on the main installation path.
-
-### Data Access
-
-#### Application Data
-
-```cpp
-const AppData& GetAppStats() const;
-AppData& GetAppStats();
-```
-
-#### X-Plane Data
-
-```cpp
-const XPlaneStats& GetXPlaneStats() const;
-XPlaneStats& GetXPlaneStats();
-```
-
-## Implementation Details
-
-### Configuration Templates
-
-The system uses predefined templates for creating default configuration sections:
-
-```cpp
-INTERNAL constexpr const char *APPLICATION_SECTION_TEMPLATE = R"(
-  # Application settings
-  version = "${APP_VERSION}";
+application =
+{
+  version = "0.2.30.531";      # Written by the version that last saved the file
   no_titlebar = false;
-)";
+};
+x_plane =
+{
+  version = "X-Plane 12";
+  path = "K:\\SteamLibrary\\steamapps\\common\\X-Plane 12";
+  bin_path = "K:\\SteamLibrary\\steamapps\\common\\X-Plane 12\\bin";
+  resources_path = "K:\\SteamLibrary\\steamapps\\common\\X-Plane 12\\Resources";
+  is_steam = true;
+};
+ui =
+{
+  theme = "dark";
+  font_size = 12;
+  language = "english";
+};
+project =
+{
+  auto_save = true;
+  auto_save_interval = 5;     # minutes
+  backup_count = 3;
+  default_project_dir = "C:\\Users\\me\\Documents\\SceneryEditorX";   # "~/..." is expanded to the home folder
+};
 ```
 
-### Path Creation Algorithm
+Paths are stored as the operating system spells them (backslashes on Windows, escaped by libconfig).
 
-The `CreateSettingPath` template method handles creating hierarchical configuration paths:
+## Adding a setting
 
-1. Splits the path by dots to identify hierarchy levels
-2. Navigates or creates configuration groups as needed
-3. Adds the final value with appropriate type
-4. Updates the internal settings map
+1. Pick the file: application-wide behaviour goes in `settings.cfg` (`Settings`), tool options in
+   `editor_settings.cfg` (`EditorSettings`), per-user history in `user_preferences.cfg` (`UserPreferences`).
+2. Give it a default where the class fills in defaults (`Settings::ApplyDefaults`, the `EditorSettings` field
+   initializer plus `EditorSettingsManager::ReadSettings` / `WriteSettings`). Files written by older versions then get
+   it automatically.
+3. Clamp numbers you read to the range the UI allows.
+4. Never open the file with `std::ofstream`, `fopen` or libconfig's `readFile` / `writeFile`: go through `ConfigFile`
+   (or `VFS::Get().Read` / `Write` for other formats).
 
-### Error Handling Strategy
-
-The settings system employs multiple error handling strategies:
-
-1. **Graceful Degradation:** Missing configuration files trigger creation of minimal default configuration
-2. **Validation Recovery:** Invalid X-Plane paths trigger automatic re-detection
-3. **Exception Safety:** All libconfig exceptions are caught and logged appropriately
-4. **Default Values:** All getter methods provide sensible default values
-
-### Memory Management
-
-- Uses the custom smart pointer system (`RefCounted` inheritance)
-- Automatic cleanup of libconfig resources
-- Settings map provides fast string-based access without repeated parsing
-
-### Thread Safety
-
-**Important:** The ApplicationSettings class is **not thread-safe**. Access from multiple threads requires external synchronization using the threading system's mechanisms.
-
-## Configuration File Lifecycle
-
-### Initialization Sequence
-
-1. **Constructor Called** with configuration file path
-2. **ReadSettings()** attempts to load existing configuration
-3. If loading fails:
-   - **InitMinConfig()** creates minimal default configuration
-   - **DetectXPlanePath()** attempts automatic X-Plane detection
-   - **WriteSettings()** persists initial configuration
-4. If loading succeeds:
-   - **ValidateXPlanePaths()** checks X-Plane configuration validity
-   - Re-detection and update if paths are invalid
-
-### Runtime Updates
-
-1. Settings modified via API calls
-2. Internal data structures updated immediately
-3. **WriteSettings()** called to persist changes
-4. **LoadSettingsToMap()** refreshes fast-access map
-
-### Default Value Strategy
-
-The system provides intelligent defaults:
-
-- **Application:** Version from build configuration, sensible UI defaults
-- **X-Plane:** Empty paths if detection fails (user must configure manually)
-- **UI:** Dark theme, 12pt font, English language
-- **Project:** Auto-save enabled, 5-minute intervals, user documents directory
-
-## Platform Considerations
-
-### Windows
-
-- Uses `USERPROFILE` environment variable for home directory
-- Checks multiple drive letters for X-Plane installations
-- Registry integration for Steam detection
-
-### macOS
-
-- Uses `HOME` environment variable
-- Checks standard application directories
-- Handles app bundle structures
-
-### Linux
-
-- Uses `HOME` environment variable
-- Checks `/opt` and user directories
-- Handles package manager installations
-
-## Integration with Other Systems
-
-### Logging System
-
-All operations use tagged logging for better categorization:
+A new kind of file:
 
 ```cpp
-SEDX_CORE_INFO_TAG("SETTINGS", "Settings successfully written to: {}", filePath.string());
-SEDX_CORE_ERROR_TAG("SETTINGS", "X-Plane paths in configuration are invalid");
+class MyModuleSettings
+{
+public:
+    MyModuleSettings() : m_File("user:/my_module.cfg") { Load(); }
+
+    void Load()
+    {
+        std::string error;
+        if (m_File.Load(&error) == ConfigFile::LoadResult::Invalid)
+            m_File.Backup(".invalid");
+        m_Size = std::clamp(m_File.GetIntOption("my_module.size", 3), 1, 64);
+    }
+
+    bool Save()
+    {
+        m_File.AddIntOption("my_module.size", m_Size);
+        return !m_File.IsDirty() || m_File.Save();
+    }
+
+private:
+    ConfigFile m_File;
+    int m_Size = 3;
+};
 ```
 
-### Smart Pointer System
+## Testing
 
-Settings objects are managed via the custom smart pointer system:
+`SettingsTest` (`source/Tests/settings_tests/SettingsTest.cpp`) covers `ConfigFile`: every value type, conversions,
+type replacement, groups never replaced by values, dirty tracking, saving through a VFS mount (atomic, no temporary
+files left), two instances never sharing values, case-insensitive lookups, files that don't parse (reported with the
+line, left alone, backed up), byte order marks, missing and read-only mounts, and physical UTF-8 paths. It needs only
+the standard library and libconfig, so it builds with MSVC, GCC and Clang; see AGENTS.md for the command line.
 
-```cpp
-auto settings = CreateRef<ApplicationSettings>("config/settings.cfg");
-```
+## Platform notes
 
-### Steam Integration
-
-Utilizes the `SteamGameFinder` class for automatic X-Plane detection in Steam installations.
-
-## Performance Characteristics
-
-### File I/O
-
-- Configuration file reading/writing is performed synchronously
-- Minimal file I/O - only on initialization and explicit save operations
-- Text-based configuration format for human readability and debugging
-
-### Memory Usage
-
-- Maintains two representations: libconfig tree and fast-access string map
-- Memory usage scales linearly with configuration size
-- Automatic cleanup via smart pointer system
-
-### Access Patterns
-
-- String map provides O(1) access for frequent lookups
-- Typed getters parse on-demand for type safety
-- Hierarchical paths support logical organization
-
-## Error Codes and Diagnostics
-
-### Common Error Scenarios
-
-1. **Configuration File Not Found**
-
-   - Creates default configuration automatically
-   - Logs trace-level message for debugging
-2. **Parse Errors**
-
-   - Logs detailed parse error information (file, line, error description)
-   - Falls back to default configuration
-3. **X-Plane Path Invalid**
-
-   - Triggers automatic re-detection
-   - Logs warning with suggested manual configuration
-4. **Permission Errors**
-
-   - Logs file I/O errors with full path information
-   - Settings remain in memory until next successful write
-
-### Logging Categories
-
-- **SETTINGS:** General settings operations
-- **CONFIG:** Configuration file operations
-- **XPLANE:** X-Plane specific operations
-
-## Best Practices
-
-### Initialization
-
-1. Create settings instance early in application lifecycle
-2. Check X-Plane path validity before renderer initialization
-3. Handle missing X-Plane gracefully for partial functionality
-
-### Setting Management
-
-1. Use hierarchical paths for logical organization
-2. Provide meaningful default values for all settings
-3. Validate user input before calling setter methods
-
-### Error Handling
-
-1. Always check return values for critical operations
-2. Implement fallback behavior for missing configurations
-3. Use appropriate logging levels for different error scenarios
-
-### Performance
-
-1. Cache frequently accessed settings in local variables
-2. Batch setting updates when possible
-3. Minimize WriteSettings() calls during runtime
-
-## Security Considerations
-
-### Path Validation
-
-- All X-Plane paths are validated before use
-- Steam detection uses safe path parsing
-- User-provided paths undergo sanitization
-
-### Configuration Integrity
-
-- libconfig provides built-in parsing validation
-- Type checking prevents invalid data storage
-- Graceful handling of malformed configuration files
-
-### File Permissions
-
-- Respects system file permissions
-- Handles permission errors gracefully
-- No elevation of privileges required
+- **Windows:** `%APPDATA%` comes from the wide environment (`_wgetenv`), so profile folders with any characters work.
+  The regional date format (`GetSystemDateTimeFormat`, display only) is read with `GetLocaleInfoW`.
+- **macOS:** `~/Library/Application Support/SceneryEditorX`. The regional format comes from Core Foundation and its
+  ICU pattern is converted to a `strftime` format.
+- **Linux:** the XDG base directories are honoured (`$XDG_CONFIG_HOME`, and `XDG_DOCUMENTS_DIR` for the default
+  project folder). The regional format is read with `newlocale` / `nl_langinfo_l`, without changing the process locale.

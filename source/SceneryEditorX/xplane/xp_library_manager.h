@@ -123,8 +123,23 @@ namespace SceneryEditorX::XPlane
 		/* @brief The latest published index; never null after Init() (empty before the first scan finishes). */
 		static std::shared_ptr<const LibraryIndex> GetIndex();
 
-		/* @brief File X-Plane would load for a virtual path ("lib/airport/..."), or empty. */
+		/**
+		 * @brief The season seasonal exports (EXPORT_SEASON ...) resolve for, as X-Plane picks the season's art: a SeasonBits
+		 * value, 0 for none (the first export in priority order wins). Resolve() and ResolveAt() without a season of their
+		 * own use it. The world environment's season is copied in once per frame (SceneObjects::Tick). Thread-safe.
+		 */
+		static void SetSeason(uint8_t season);
+		[[nodiscard]] static uint8_t GetSeason();
+
+		/* @brief File X-Plane would load for a virtual path ("lib/airport/...") in the current season, or empty. */
 		static std::filesystem::path Resolve(std::string_view virtualPath);
+
+		/**
+		 * @brief File X-Plane would load for a virtual path at a place (its library REGIONs: terrain picks regional land
+		 * classes) and season (a SeasonBits value; 0 = the current season), or empty. A path the season has no export for
+		 * resolves as if seasons didn't matter.
+		 */
+		static std::filesystem::path ResolveAt(std::string_view virtualPath, double latitude, double longitude, uint8_t season = 0);
 
 		/* @brief Duration of the last completed scan, in milliseconds. */
 		static double GetLastScanMilliseconds();

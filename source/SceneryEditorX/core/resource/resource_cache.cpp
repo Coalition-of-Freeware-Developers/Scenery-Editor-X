@@ -31,6 +31,7 @@
 #include "resource_cache.h"
 #include "SceneryEditorX/renderer/vulkan/image_resource.h"
 #include <SceneryEditorX/filesystem/file_manager.hpp>
+#include <SceneryEditorX/filesystem/vfs.h>
 #include <SceneryEditorX/renderer/vulkan/enums.h>
 
 // -----------------------------------------------------------
@@ -223,9 +224,9 @@ namespace SceneryEditorX
 
 	std::string ResourceCache::GetResourceDirectory()
 	{
-		// The platform layer starts every build in the folder holding resources/ (the install folder, or the checkout)
-		const std::filesystem::path resourceDir = IO::FileSystem::GetWorkingDirectory() + "\\resources";
-		return resourceDir.string();
+		// The platform layer starts every build in the folder holding resources/ (the install folder, or the checkout).
+		// UTF-8 like every path string here: the install folder can be outside the ANSI code page (C:\Users\日本\...).
+		return VFS::ToUtf8(std::filesystem::current_path() / "resources");
 	}
 
 	std::vector<Ref<SharedResource>> &ResourceCache::GetResources()

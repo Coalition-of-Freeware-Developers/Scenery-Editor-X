@@ -30,11 +30,10 @@
  */
 #pragma once
 #include <filesystem>
-#include <map>
 #include <string>
 #include <SceneryEditorX/core/application/application_data.h>
+#include <SceneryEditorX/settings/config_file.h>
 #include <SceneryEditorX/utils/pointers.h>
-#include <libconfig/lib/libconfig.h++>
 
 // -------------------------------------------------------
 
@@ -42,175 +41,110 @@ namespace SceneryEditorX
 {
 	/**
 	 * @class Settings
-	 * @brief Manages application configuration settings and X-Plane integration.
+	 * @brief The application's settings (settings.cfg): the X-Plane install, application, UI and project defaults.
 	 *
-	 * Provides functionality for reading and writing application settings, handling X-Plane
-	 * path detection and validation, and storing key-value configuration options in various formats.
-	 * Settings are stored in a configuration file using libconfig format.
+	 * A ConfigFile, so the file is read and written through the VFS (the same on Windows, macOS and Linux, atomic
+	 * writes) and the generic option API (AddIntOption, GetStringOption, ...) works on it. Every instance has its own
+	 * document: the user preferences and the editor settings are separate files with their own ConfigFile.
+	 *
+	 * The editor keeps one instance for its lifetime (Application::GetSettings) at "user:/settings.cfg", the roaming
+	 * settings folder each platform has (%APPDATA%, ~/Library/Application Support, $XDG_CONFIG_HOME).
 	 */
-	class Settings : public RefCounted
+	class Settings : public RefCounted, public ConfigFile
 	{
 	public:
-		/**
-		 * @brief Constructs settings manager with specified config file path.
-		 * @param filepath Path to the configuration file to use
-		 */
-		explicit Settings(std::filesystem::path filepath);
+		/* @brief Where the editor keeps them. */
+		static constexpr const char *DEFAULT_LOCATION = "user:/settings.cfg";
+
+		/* @brief Settings with nothing read yet: Open() names the file. */
+		Settings();
+
+		/* @brief Open(location) at once. */
+		explicit Settings(std::string location);
 
 		/**
-		 * @brief Reads settings from the configuration file.
-		 * @return true if settings were successfully loaded, false otherwise
+		 * @brief Reads the settings at @p location (a virtual "mount:/path" or a physical path) and makes the file
+		 * complete: a missing file is created with the defaults, values a newer version added are filled in, a file
+		 * that doesn't parse is kept as "<name>.invalid" before the defaults replace it, and X-Plane is searched for
+		 * when the saved folder isn't an X-Plane install.
+		 * @return False when the file couldn't be read or written (the defaults are in use).
+		 */
+		bool Open(std::string location);
+
+		/**
+		 * @brief Reads the file into the settings (Open() does this and more).
+		 * @return True when the file was there and parsed.
 		 */
 		virtual bool ReadSettings();
 
 		/**
-		 * @brief Writes current settings to the configuration file.
+		 * @brief Writes the settings (atomically) with the X-Plane and application values brought up to date.
+		 * @return False (and a log line) when the file couldn't be written.
 		 */
-		virtual void WriteSettings();
+		virtual bool WriteSettings();
 
 		// ----------------------------------------------------
-
-		/**
-		 * @brief Sets a string option with the specified key.
-		 * @param key The setting identifier
-		 * @param value The string value to store
-		 */
-		static void SetOption(const std::string &key, const std::string &value);
-
-		/**
-		 * @brief Gets a string option by key.
-		 * @param key The setting identifier
-		 * @param value Reference to store the retrieved value
-		 */
-		static void GetOption(const std::string &key, std::string &value);
-
-		/**
-		 * @brief Checks if a specific option exists.
-		 * @param key The setting identifier to check
-		 * @return true if the option exists, false otherwise
-		 */
-		[[nodiscard]] static bool HasOption(const std::string &key);
-
-		/**
-		 * @brief Removes an option from settings.
-		 * @param key The setting identifier to remove
-		 */
-		static void RemoveOption(const std::string &key);
-
-		/**
-		 * @brief Adds an integer option.
-		 * @param path The hierarchical path for the option
-		 * @param value Integer value to store
-		 */
-		static void AddIntOption(const std::string &path, int value);
-
-		/**
-		 * @brief Adds a floating point option.
-		 * @param path The hierarchical path for the option
-		 * @param value Floating point value to store
-		 */
-		static void AddFloatOption(const std::string &path, double value);
-
-		/**
-		 * @brief Adds a boolean option.
-		 * @param path The hierarchical path for the option
-		 * @param value Boolean value to store
-		 */
-		static void AddBoolOption(const std::string &path, bool value);
-
-		/**
-		 * @brief Adds a string option.
-		 * @param path The hierarchical path for the option
-		 * @param value String value to store
-		 */
-		static void AddStringOption(const std::string &path, const std::string &value);
-
-		/**
-		 * @brief Retrieves a boolean option.
-		 * @param path The hierarchical path for the option
-		 * @param defaultValue Value to return if option doesn't exist
-		 * @return The boolean value or defaultValue if not found
-		 */
-		[[nodiscard]] static bool GetBoolOption(const std::string &path, bool defaultValue = false);
-
-		/**
-		 * @brief Retrieves an integer option.
-		 * @param path The hierarchical path for the option
-		 * @param defaultValue Value to return if option doesn't exist
-		 * @return The integer value or defaultValue if not found
-		 */
-		[[nodiscard]] static int GetIntOption(const std::string &path, int defaultValue = 0);
-
-		/**
-		 * @brief Retrieves a floating point option.
-		 * @param path The hierarchical path for the option
-		 * @param defaultValue Value to return if option doesn't exist
-		 * @return The floating point value or defaultValue if not found
-		 */
-		[[nodiscard]] static double GetFloatOption(const std::string &path, double defaultValue = 0.0);
-
-		/**
-		 * @brief Retrieves a string option.
-		 * @param path The hierarchical path for the option
-		 * @param defaultValue Value to return if option doesn't exist
-		 * @return The string value or defaultValue if not found
-		 */
-		[[nodiscard]] static std::string GetStringOption(const std::string &path, const std::string &defaultValue = "");
 
 		/**
 		 * @brief Automatically detects X-Plane installation path.
 		 * @return true if X-Plane path was successfully detected, false otherwise
 		 */
-		static bool DetectXPlanePath();
+		bool DetectXPlanePath();
 
 		/**
-		 * @brief Sets the X-Plane installation path manually.
-		 * @param path Directory path to X-Plane installation
+		 * @brief Sets the X-Plane installation path manually (WriteSettings saves it).
+		 * @param path Directory path to X-Plane installation (UTF-8)
 		 * @return true if path was valid and successfully set, false otherwise
 		 */
-		static bool SetXPlanePath(const std::string &path);
+		bool SetXPlanePath(const std::string &path);
 
 		/**
 		 * @brief Gets the current X-Plane installation path.
-		 * @return Path to X-Plane installation directory
+		 * @return Path to X-Plane installation directory (UTF-8)
 		 */
-		[[nodiscard]] static std::string GetXPlanePath();
+		[[nodiscard]] std::string GetXPlanePath() const;
 
 		/**
 		 * @brief Validates that all required X-Plane paths and files exist.
 		 * @return true if all required X-Plane paths are valid, false otherwise
 		 */
-		[[nodiscard]] static bool ValidateXPlanePaths();
+		[[nodiscard]] bool ValidateXPlanePaths() const;
 
 		/**
 		 * @brief Updates derived paths based on main X-Plane path.
-		 * Updates resource paths, binary paths, etc. based on the main X-Plane path
+		 * Updates resource paths, binary paths, etc. based on the main X-Plane path (as the disk spells them)
 		 */
-		static void UpdateDerivedXPlanePaths();
+		void UpdateDerivedXPlanePaths();
+
+		/**
+		 * @brief The folder new projects go in by default: project.default_project_dir with a leading "~" expanded
+		 * to the home folder, else <Documents>/SceneryEditorX.
+		 */
+		[[nodiscard]] std::filesystem::path GetDefaultProjectFolder() const;
 
 		/**
 		 * @brief Gets read-only access to X-Plane stats.
 		 * @return Const reference to X-Plane statistics
 		 */
-		[[nodiscard]] const XPlaneStats& GetXPlaneStats() const { return xPlaneStats; }
+		[[nodiscard]] const XPlaneStats& GetXPlaneStats() const { return m_XPlaneStats; }
 
 		/**
 		 * @brief Gets modifiable access to X-Plane stats.
 		 * @return Reference to X-Plane statistics
 		 */
-		XPlaneStats& GetXPlaneStats() { return xPlaneStats; }
+		XPlaneStats& GetXPlaneStats() { return m_XPlaneStats; }
 
 		/**
 		 * @brief Gets read-only access to application stats.
 		 * @return Const reference to application statistics
 		 */
-		[[nodiscard]] const AppData& GetAppStats() const { return appStats; }
+		[[nodiscard]] const AppData& GetAppStats() const { return m_AppStats; }
 
 		/**
 		 * @brief Gets modifiable access to application stats.
 		 * @return Reference to application statistics
 		 */
-		AppData& GetAppStats() { return appStats; }
+		AppData& GetAppStats() { return m_AppStats; }
 
 		/**
 		 * @brief Gets the custom buffer size to be used for allocations.
@@ -235,44 +169,23 @@ namespace SceneryEditorX
 		//static bool ValidateBufferSize(VkDeviceSize size, const VkPhysicalDeviceLimits& deviceLimits);
 	private:
 		/**
-		 * @brief Initializes config with default minimal settings.
-		 * Called when no config file exists or when initialization is needed
+		 * @brief Adds every section and value the settings have that the file lacks (a new file, or one an older
+		 * version wrote). Values that are there are kept.
 		 */
-		static void InitMinConfig();
+		void ApplyDefaults();
 
-		/**
-		 * @brief Updates libconfig structure from internal data.
-		 * Converts internal application and X-Plane stats to configuration format
-		 */
-		static void UpdateConfigFromData();
+		/* @brief Values older versions wrote that no longer work (the Windows-only "~\Documents" project folder). */
+		void UpgradeOldValues();
 
-		/**
-		 * @brief Loads settings from config to internal map.
-		 * Populates the settings map with data from the configuration file
-		 */
-		static void LoadSettingsToMap();
+		/* @brief The X-Plane and application values from the document. */
+		void LoadDataFromConfig();
 
-		/**
-		 * @brief Ensures that required configuration sections exist.
-		 * Creates any missing required sections in the configuration
-		 */
-		static void EnsureRequiredSections();
+		/* @brief The X-Plane and application values into the document. */
+		void UpdateConfigFromData();
 
-		/**
-		 * @brief Creates a setting path with arbitrary type value.
-		 * @tparam T Type of the value to store
-		 * @param path The hierarchical path for the setting
-		 * @param value Value to store at the specified path
-		 */
-		template <typename T>
-		static void CreateSettingPath(const std::string &path, const T &value);
-
-		static libconfig::Config cfg;						// Configuration object
-		static XPlaneStats xPlaneStats;						// X-Plane statistics and paths
-		static AppData appStats;							// Application statistics
-		static std::filesystem::path filePath;				// Path to configuration file
-		static std::map<std::string, std::string> settings; // Key-value settings map
-		static bool configInitialized;						// Flag indicating if config is initialized
+		XPlaneStats m_XPlaneStats;		// X-Plane statistics and paths
+		AppData m_AppStats;				// Application statistics
+		LoadResult m_LoadResult = LoadResult::Missing;	// Failed: the file is there but unreadable, so it's never written over
 	};
 
 }

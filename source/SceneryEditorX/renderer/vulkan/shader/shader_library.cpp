@@ -32,6 +32,7 @@
 #include "shader_library.h"
 #include "shader_cache.h"
 #include "shader_pack.h"
+#include <SceneryEditorX/filesystem/vfs.h>
 #include <SceneryEditorX/utils/pointers.h>
 #include <SceneryEditorX/logging/asserts.h>
 #include <SceneryEditorX/logging/logging.hpp>
@@ -104,7 +105,7 @@ namespace SceneryEditorX
 		if (!m_ShaderPack->IsLoaded())
 		{
 			m_ShaderPack = nullptr;
-			SEDX_CORE_ERROR_TAG("ShaderLibrary","Could not load shader pack: {}", path.string());
+			SEDX_CORE_ERROR_TAG("ShaderLibrary","Could not load shader pack: {}", VFS::ToUtf8(path));
 		}
 	}
 
@@ -135,7 +136,7 @@ namespace SceneryEditorX
 				continue;
 			}
 
-			const std::filesystem::path spirvPath = ShaderCache::ResolveSpirvPath(shader->GetAssetPath().string());
+			const std::filesystem::path spirvPath = ShaderCache::ResolveSpirvPath(VFS::ToUtf8(shader->GetAssetPath()));
 			if (!std::filesystem::exists(spirvPath))
 				continue;
 

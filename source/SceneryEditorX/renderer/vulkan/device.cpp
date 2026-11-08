@@ -33,7 +33,9 @@
 #include "enums.h"
 #include "memory_allocator.h"
 #include "queue_manager.h"
+#include "render_context.h"
 #include "swapchain.h"
+#include "debug/graphics_debug.h"
 #include <algorithm>
 #include <SceneryEditorX/core/window/window.h>
 #include <volk/volk.h>
@@ -1005,6 +1007,31 @@ namespace SceneryEditorX
 		SEDX_CORE_TRACE_TAG("Device", "Logical device destroyed");
 	}
 
+	void Device::SetDeviceLost()
+	{
+		if (!m_DeviceLost)
+		{
+			// The first detection logs what the GPU reached (Debugging breadcrumbs), before anything waits on it again
+			if (Ref<RenderContext> context = RenderContext::Get(); context && context->GetDevice())
+			{
+				const Ref<Device> device = context->GetDevice();
+				std::vector<VkQueue> queues;
+				if (const Ref<QueueManager> &queueManager = device->GetQueueManager())
+				{
+					for (const QueueType type : { QueueType::Graphics, QueueType::Compute, QueueType::Transfer })
+					{
+						const Ref<Queue> *queue = queueManager->GetQueue(type);
+						const VkQueue handle = queue && *queue ? (*queue)->GetQueue() : VK_NULL_HANDLE;
+						if (handle != VK_NULL_HANDLE && std::ranges::find(queues, handle) == queues.end())
+							queues.push_back(handle);
+					}
+				}
+				Debugging::ReportDeviceLost(device->GetLogicalDevice(), queues);
+			}
+		}
+		m_DeviceLost = true;
+	}
+
 	void Device::SetVariableRateShading(const CommandList *cmd, const bool enabled)
 	{
 		if (!GetDeviceStatics().isShadingRateSupported)
@@ -1197,6 +1224,10 @@ namespace SceneryEditorX
 		// Add VK_KHR_swapchain extension which is required for rendering
 		deviceExtensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
+		// GPU crash breadcrumbs (--gpu-breadcrumbs): checkpoints and the device fault report, where supported
+		const Debugging::BreadcrumbExtensions breadcrumbs = Debugging::IsBreadcrumbsEnabled()
+			? Debugging::AddBreadcrumbExtensions(m_PhysicalDevice, deviceExtensions) : Debugging::BreadcrumbExtensions{};
+
 		deviceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
 		deviceCreateInfo.ppEnabledExtensionNames = deviceExtensions.data();
 
@@ -1295,6 +1326,21 @@ namespace SceneryEditorX
 
 		features.RebuildPNextChain(); // Fix dangling pointers
 		deviceCreateInfo.pNext = &features.s_Features;
+
+		VkPhysicalDeviceFaultFeaturesEXT faultFeatures{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FAULT_FEATURES_EXT };
+		if (breadcrumbs.deviceFault)
+		{
+			faultFeatures.deviceFault = VK_TRUE;
+			faultFeatures.pNext = const_cast<void *>(deviceCreateInfo.pNext);
+			deviceCreateInfo.pNext = &faultFeatures;
+		}
+		VkPhysicalDeviceAddressBindingReportFeaturesEXT addressBindingFeatures{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ADDRESS_BINDING_REPORT_FEATURES_EXT };
+		if (breadcrumbs.addressBinding)
+		{
+			addressBindingFeatures.reportAddressBinding = VK_TRUE;
+			addressBindingFeatures.pNext = const_cast<void *>(deviceCreateInfo.pNext);
+			deviceCreateInfo.pNext = &addressBindingFeatures;
+		}
 
 		VkDevice device = VK_NULL_HANDLE;
 		if (VkResult r = vkCreateDevice(m_PhysicalDevice, &deviceCreateInfo, nullptr, &device); r != VK_SUCCESS)

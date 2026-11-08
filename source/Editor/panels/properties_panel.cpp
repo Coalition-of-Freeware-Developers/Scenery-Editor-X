@@ -75,8 +75,8 @@ namespace SceneryEditorX
 
 			char tooltip[512];
 			if (loaded)
-				snprintf(tooltip, sizeof(tooltip), "%s\n%ux%u, %u mips, %s%s", info.path.string().c_str(), info.width, info.height, info.mipCount,
-					info.fromDds ? "DDS" : "PNG/RGBA8", info.hasAlpha ? ", alpha" : "");
+				snprintf(tooltip, sizeof(tooltip), "%s\n%ux%u, %u mips, %s%s%s%s", info.path.string().c_str(), info.width, info.height, info.mipCount,
+					info.fromDds ? "DDS " : "", XPlane::TextureLoader::FormatName(info.format), info.hasCompanion ? " + BC5 blue / alpha" : "", info.hasAlpha ? ", alpha" : "");
 			else
 				snprintf(tooltip, sizeof(tooltip), "%s\n%s", reference.c_str(), info.error.empty() ? "Not loaded" : info.error.c_str());
 			EditorUI::ItemTooltip(tooltip);

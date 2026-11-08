@@ -31,6 +31,8 @@
 #include "render_context.h"
 #include "debug/graphics_debug.h"
 #include "descriptor_pool_manager.h"
+#include <algorithm>
+#include <SceneryEditorX/core/application/application.h>
 #include <SceneryEditorX/core/application/application_data.h>
 #include <SceneryEditorX/logging/asserts.h>
 #include <SceneryEditorX/utils/repeat_call_tracker.h>
@@ -140,6 +142,17 @@ namespace SceneryEditorX
 			{
 				SEDX_CORE_WARN_TAG("Validation Layer", "Requested validation layer '{}' is not available. Continuing without validation.", Debugging::GetValidationLayerName());
 				Debugging::SetValidationLayerEnabled(false);
+			}
+
+			// --gpu-breadcrumbs: on a device loss the log shows the GPU's last passes and its fault report
+			// --gpu-av: the validation layer also checks shaders' memory accesses (slow; Debug builds)
+			if (const PlatformContext *platform = Application::Get().GetPlatformContext())
+			{
+				const std::vector<std::string> &args = platform->GetCommandLineArgs();
+				if (std::ranges::find(args, std::string("--gpu-breadcrumbs")) != args.end())
+					Debugging::SetBreadcrumbsEnabled(true);
+				if (std::ranges::find(args, std::string("--gpu-av")) != args.end())
+					Debugging::SetGpuAssistedValidationEnabled(true);
 			}
 
 			// Create the singleton instance if it doesn't exist
@@ -260,6 +273,15 @@ namespace SceneryEditorX
 				if (createInfo.pNext == &layerSettings.createInfo && !isAvailable(VK_EXT_LAYER_SETTINGS_EXTENSION_NAME))
 					createInfo.pNext = nullptr;
 		#endif
+			}
+
+			// Route messages from vkCreateInstance / vkDestroyInstance (before or after Debugging's messenger exists) to the log too.
+			VkDebugUtilsMessengerCreateInfoEXT instanceMessengerInfo = Debugging::GetMessengerCreateInfo();
+			if (Debugging::IsValidationLayerEnabled() &&
+				std::ranges::any_of(instanceExtensions, [](const char *name) { return std::strcmp(name, VK_EXT_DEBUG_UTILS_EXTENSION_NAME) == 0; }))
+			{
+				instanceMessengerInfo.pNext = createInfo.pNext;
+				createInfo.pNext = &instanceMessengerInfo;
 			}
 
 			createInfo.enabledExtensionCount = static_cast<uint32_t>(instanceExtensions.size());

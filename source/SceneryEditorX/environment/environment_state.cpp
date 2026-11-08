@@ -101,7 +101,8 @@ namespace SceneryEditorX::Environment
 			AddDays(year, month, day, shift);
 	}
 
-	EnvironmentDerived Derive(const EnvironmentState &state, const float observerAltitudeMslM, const SkyConditionTable *table, const SurfaceWeather *integratedSurface)
+	EnvironmentDerived Derive(const EnvironmentState &state, const float observerAltitudeMslM, const SkyConditionTable *table, const SurfaceWeather *integratedSurface,
+		const DsfSeasonRanges *seasonRanges)
 	{
 		EnvironmentDerived derived;
 		int y = 0, m = 0, d = 0;
@@ -125,7 +126,10 @@ namespace SceneryEditorX::Environment
 
 		// Season
 		if (state.season == SeasonOverride::Auto)
-			derived.season = ComputeSeason(derived.dayOfYear, state.latitudeDeg, nullptr);
+		{
+			derived.season = ComputeSeason(derived.dayOfYear, state.latitudeDeg, seasonRanges);
+			derived.seasonFromDsf = seasonRanges != nullptr;
+		}
 		else
 		{
 			derived.season.season = static_cast<Season>(static_cast<uint8_t>(state.season) - 1);
@@ -134,6 +138,7 @@ namespace SceneryEditorX::Environment
 		}
 		if (state.seasonRatioOverride >= 0.0f)
 			derived.season.ratio = std::clamp(state.seasonRatioOverride, 0.0f, 1.0f);
+		derived.scenerySeason = derived.season;
 
 		derived.skyWeights = ComputeSkyWeights(state, observerAltitudeMslM, state.elevationM);
 		derived.sky = table ? table->Blend(derived.skyWeights) : SkyMultipliers{};

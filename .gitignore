@@ -214,3 +214,7 @@ lib/*
 # Parity harness: Python environment for tools/image_compare
 /tools/image_compare/.venv/
 build_linux_tests
+
+# The user manual's built website and PDFs (python docs/manual/build.py), and its scripts' bytecode
+docs/manual/site/
+docs/manual/**/__pycache__/

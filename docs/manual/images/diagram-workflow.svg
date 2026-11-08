@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 520" width="1200" height="520" role="img" aria-labelledby="title desc">
+  <title id="title">From a project to X-Plane</title>
+  <desc id="desc">A project saved as .edX or .sex is exported to a scenery pack (apt.dat, DSF tiles and art) that X-Plane 12 loads from Custom Scenery. WorldEditor projects are opened, imported and exported as earth.wed.xml. Airports come from the X-Plane install or the Scenery Gateway.</desc>
+  <defs>
+    <pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse">
+      <path d="M24 0H0V24" fill="none" stroke="#6cc3ff" stroke-opacity=".07"/>
+    </pattern>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#14232f"/><stop offset="1" stop-color="#0d1720"/>
+    </linearGradient>
+    <linearGradient id="hero" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1f8ad6"/><stop offset="1" stop-color="#1670b4"/>
+    </linearGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 Z" fill="#6cc3ff"/>
+    </marker>
+    <style>
+      text { white-space: pre; font-family: "Segoe UI", "Open Sans", Helvetica, Arial, sans-serif; }
+      .box { fill: #1b2833; stroke: #8fcdf7; stroke-opacity: .5; stroke-width: 1.5; }
+      .box-hero { fill: url(#hero); stroke: #8fcdf7; stroke-width: 1.5; }
+      .kicker { fill: #6cc3ff; font-size: 12px; font-weight: 700; letter-spacing: .16em; }
+      .kicker-hero { fill: #d7ecfb; font-size: 12px; font-weight: 700; letter-spacing: .16em; }
+      .title { fill: #ffffff; font-size: 22px; font-weight: 800; }
+      .item { fill: #c7d5e0; font-size: 14px; }
+      .mono { fill: #e8eef3; font-size: 13.5px; font-family: "Cascadia Mono", Consolas, monospace; }
+      .flow { stroke: #6cc3ff; stroke-width: 2; fill: none; }
+      .flow-dash { stroke: #6cc3ff; stroke-width: 2; fill: none; stroke-dasharray: 7 6; }
+      .step { fill: #ffffff; font-size: 14px; font-weight: 700; }
+      .note { fill: #9fb2c1; font-size: 13px; }
+      .key { fill: #0d1720; stroke: #6cc3ff; stroke-opacity: .7; }
+      .keytext { fill: #e8eef3; font-size: 12px; font-weight: 700; text-anchor: middle; }
+    </style>
+  </defs>
+  <rect width="1200" height="520" fill="url(#bg)"/>
+  <rect width="1200" height="520" fill="url(#grid)"/>
+
+  <!-- Project -->
+  <rect x="60" y="150" width="300" height="200" rx="14" class="box-hero"/>
+  <text x="84" y="185" class="kicker-hero">YOU WORK IN</text>
+  <text x="84" y="216" class="title">The project</text>
+  <text x="84" y="250" class="mono">MyPack.edX   text, for git</text>
+  <text x="84" y="274" class="mono">MyPack.sex   binary, compact</text>
+  <text x="84" y="310" class="item" fill="#eaf4fc">airports · objects · facades · forests</text>
+  <text x="84" y="330" class="item" fill="#eaf4fc">lines · polygons · roads · library</text>
+
+  <!-- Export arrow -->
+  <path d="M360 250 H500" class="flow" marker-end="url(#arrow)"/>
+  <text x="386" y="236" class="step">Export</text>
+  <rect x="384" y="262" width="56" height="22" rx="5" class="key"/><text x="412" y="278" class="keytext">Ctrl+E</text>
+
+  <!-- Scenery pack -->
+  <rect x="510" y="150" width="320" height="200" rx="14" class="box"/>
+  <text x="534" y="185" class="kicker">X-PLANE READS</text>
+  <text x="534" y="216" class="title">The scenery pack</text>
+  <text x="534" y="250" class="mono">Earth nav data/apt.dat</text>
+  <text x="534" y="274" class="mono">Earth nav data/+30-100/+38-099.dsf</text>
+  <text x="534" y="298" class="mono">objects/  textures/  facades/</text>
+  <text x="534" y="322" class="mono">library.txt   (libraries)</text>
+
+  <!-- X-Plane -->
+  <path d="M830 250 H950" class="flow" marker-end="url(#arrow)"/>
+  <text x="852" y="236" class="step">Loads</text>
+  <rect x="960" y="170" width="200" height="160" rx="14" class="box"/>
+  <text x="984" y="205" class="kicker">FLY IT IN</text>
+  <text x="984" y="236" class="title">X-Plane 12</text>
+  <text x="984" y="268" class="item">Custom Scenery</text>
+  <text x="984" y="290" class="item">scenery_packs.ini</text>
+  <text x="984" y="312" class="note">first listed = top priority</text>
+
+  <!-- WorldEditor -->
+  <rect x="60" y="410" width="300" height="80" rx="14" class="box"/>
+  <text x="84" y="442" class="kicker">WORLDEDITOR</text>
+  <text x="84" y="470" class="mono">earth.wed.xml</text>
+  <path d="M170 410 V352" class="flow-dash" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <text x="182" y="385" class="note">open · import · save · export</text>
+
+  <!-- Sources of airports -->
+  <rect x="60" y="30" width="300" height="80" rx="14" class="box"/>
+  <text x="84" y="62" class="kicker">AIRPORTS FROM</text>
+  <text x="84" y="90" class="item">your X-Plane install · the Scenery Gateway</text>
+  <path d="M210 110 V148" class="flow" marker-end="url(#arrow)"/>
+
+  <!-- Gateway note -->
+  <path d="M670 350 V450 H364" class="flow-dash" marker-end="url(#arrow)"/>
+  <text x="392" y="478" class="note">For the Gateway: tick earth.wed.xml when you export,</text>
+  <text x="392" y="498" class="note">then upload the pack from WorldEditor.</text>
+</svg>

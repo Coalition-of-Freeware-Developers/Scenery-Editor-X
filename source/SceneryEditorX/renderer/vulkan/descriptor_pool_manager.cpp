@@ -137,13 +137,15 @@ namespace SceneryEditorX
 
 		// Generous per-type counts sized for the whole application lifetime.
 		// Covers dynamic descriptor sets, per-object material sets, and fixed-count bindings.
+		// The bindless material texture set (BindlessManager) alone takes MAX_MATERIAL_TEXTURES sampled images; a
+		// smaller pool works on NVIDIA but fails with VK_ERROR_OUT_OF_POOL_MEMORY on stricter drivers.
 		constexpr uint32_t kSetCount = MAX_DESCRIPTOR_SET_COUNT;
 
 		static std::array<VkDescriptorPoolSize, 8> poolSizes =
 		{
 			VkDescriptorPoolSize{.type = VK_DESCRIPTOR_TYPE_SAMPLER,					.descriptorCount = 32  * kSetCount },
 			VkDescriptorPoolSize{.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,		.descriptorCount = kSetCount + MAX_ARRAY_SIZE },
-			VkDescriptorPoolSize{.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,				.descriptorCount = MAX_ARRAY_SIZE + 32 * kSetCount },
+			VkDescriptorPoolSize{.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,				.descriptorCount = MAX_MATERIAL_TEXTURES + 32 * kSetCount },
 			VkDescriptorPoolSize{.type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,				.descriptorCount = MAX_ARRAY_SIZE },
 			VkDescriptorPoolSize{.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,				.descriptorCount = 32  * kSetCount },
 			VkDescriptorPoolSize{.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,		.descriptorCount = 32  * kSetCount },

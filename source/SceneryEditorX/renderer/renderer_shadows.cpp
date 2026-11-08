@@ -199,6 +199,13 @@ namespace SceneryEditorX
 				settings.farLimitM = quality.exteriorFarM;
 				settings.fadeRatio = quality.fadeRatio;
 				settings.mapSize = quality.mapSize;
+
+				// X-Plane 12.4.4 keeps the ground's shadows out to kilometers when the eye is high, with the same 250 m far
+				// limit (600 m up, buildings 3 km away still cast them): the split range grows with the camera's height above
+				// the airport (world y), so the cascades cover the ground the view reaches (ASSUMPTION, plan TASK-096)
+				const double heightM = std::max(0.0, camera->position[1]);
+				settings.nearLimitM = std::max(settings.nearLimitM, heightM * constants.shadowHeightNearRatio);
+				settings.farLimitM = std::max(settings.farLimitM, heightM * constants.shadowHeightFarRatio);
 				FitCsm(settings, *camera, towardLight, s_Cascades);
 			}
 		}

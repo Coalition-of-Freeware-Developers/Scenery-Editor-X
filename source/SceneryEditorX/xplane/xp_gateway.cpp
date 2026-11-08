@@ -257,7 +257,7 @@ namespace SceneryEditorX::XPlane
 					if (!ParseGatewayAirports(body, *airports, &error))
 						return fail(error);
 					if (!fromCache && !WriteCacheFile(cachePath, body))
-						SEDX_CORE_WARN_TAG(LOG_TAG, "Could not cache the airport list in {}", cachePath.string());
+						SEDX_CORE_WARN_TAG(LOG_TAG, "Could not cache the airport list in {}", VFS::ToUtf8(cachePath));
 
 					request.m_FromCache.store(fromCache);
 					request.airports = airports;
@@ -306,7 +306,7 @@ namespace SceneryEditorX::XPlane
 						return fail(error);
 					}
 					if (!fromCache && !WriteCacheFile(cachePath, body))
-						SEDX_CORE_WARN_TAG(LOG_TAG, "Could not cache scenery {} in {}", sceneryId, cachePath.string());
+						SEDX_CORE_WARN_TAG(LOG_TAG, "Could not cache scenery {} in {}", sceneryId, VFS::ToUtf8(cachePath));
 
 					request.m_FromCache.store(fromCache);
 					request.scenery = pack;
@@ -469,7 +469,7 @@ namespace SceneryEditorX::XPlane
 		// The cached airport list is big enough to be worth parsing off the main thread, and nothing goes to the
 		// network until the user asks for it.
 		Enqueue(GatewayRequest::Kind::Airports, std::string(), "/airports", false, true);
-		SEDX_CORE_INFO_TAG(LOG_TAG, "Gateway client ready (cache: {})", CacheDirectory().string());
+		SEDX_CORE_INFO_TAG(LOG_TAG, "Gateway client ready (cache: {})", VFS::ToUtf8(CacheDirectory()));
 	}
 
 	void GatewayClient::Shutdown()

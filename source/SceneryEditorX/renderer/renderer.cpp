@@ -30,9 +30,11 @@
  */
 #include "renderer.h"
 #include "renderer_buffers.h"
+#include <SceneryEditorX/asset/import/font_importer.h>
 #include <SceneryEditorX/scene/material.h>
 #include "vulkan/bindless_manager.h"
 #include "vulkan/descriptor_pool_manager.h"
+#include "vulkan/descriptor_set.h"
 #include "vulkan/swapchain.h"
 #include "vulkan/uniform_buffer_set.h"
 #include "vulkan/debug/graphics_debug.h"
@@ -46,6 +48,7 @@
 #include <mutex>
 #include <sstream>
 #include <thread>
+#include <unordered_set>
 #include <Editor/modules/scene_render.h>
 #include <SDL3/SDL.h>
 #include <SceneryEditorX/asset/model.h>
@@ -252,6 +255,133 @@ void dynamic_resolution()
 		{
 			const auto it = std::ranges::find_if(s_ExtraViews, [id](const ExtraView &view) { return view.id == id; });
 			return it != s_ExtraViews.end() ? &*it : nullptr;
+		}
+
+		using RenderTargets = std::array<Ref<ImageResource>, static_cast<uint32_t>(Renderer_RenderTarget::MaxEnum)>;
+
+		/**
+		 * @brief Free the cached descriptor sets that bind render targets a resize replaces (or a closed view releases).
+		 * Only for callers that waited for the GPU, from the UI (the render thread is idle): the sets go straight back to
+		 * the shared pool. Left to the deletion queue they stayed until it destroyed the old views, which waits for the
+		 * queue to go unchanged for 100 frames; a few resizes closer together than that ran the pool out.
+		 * @param targets The targets in use before the change.
+		 * @param current The targets after it (slots holding the same target keep their sets), or nullptr when all go.
+		 */
+		void EvictTargetDescriptorSets(const RenderTargets &targets, const RenderTargets *current = nullptr)
+		{
+			std::unordered_set<const void *> replaced;
+			for (size_t i = 0; i < targets.size(); ++i)
+			{
+				if (targets[i] && (!current || (*current)[i] != targets[i]))
+					replaced.insert(targets[i].Get());
+			}
+			const size_t evicted = DescriptorSet::EvictCachedSets(replaced);
+			SEDX_CORE_TRACE_TAG("Renderer", "Freed {} cached descriptor sets of {} replaced render targets", evicted, replaced.size());
+		}
+
+		/**
+		 * @struct CpuDrawList
+		 * @brief The renderables UpdateDrawCalls looks at: the ones the GPU scene doesn't draw, plus the blended ones it
+		 * does (the forward pass draws their blended part). At X-Coder's KDEN that is 78k of 277k renderables, 11k of them
+		 * active, so a frame walks only the active ones instead of every renderable. Rebuilt when the structure, a
+		 * material's draw path or the GPU scene's availability changes; active flags follow Scene's render-state changes.
+		 * Kept in GetRenderableEntities() order, so the draw calls come out in the order a full walk gives them.
+		 */
+		struct CpuDrawList
+		{
+			std::vector<Entity *> entities;
+			std::vector<entt::entity> handles;		// Per entry, to tell a recycled entity index from the listed one
+			std::vector<uint8_t> active;			// Per entry, the entity's active flag
+			std::vector<uint32_t> entryOf;			// By entity index (entt::to_entity): its entry, or UINT32_MAX
+			std::vector<Entity *> activeEntities;	// The active entries, in list order
+			std::vector<entt::entity> changes;		// Scratch for Scene::TakeRenderStateChanges
+			uint64_t structureVersion = 0;
+			uint64_t drawPathVersion = 0;
+			uint32_t reader = UINT32_MAX;
+			bool gpuSceneDrawing = false;
+			bool built = false;
+		};
+		CpuDrawList s_CpuDrawList;
+
+		void RebuildCpuDrawList(CpuDrawList &list)
+		{
+			SEDX_PERF_SCOPE("Render: CPU draw list rebuild");
+			list.entities.clear();
+			list.handles.clear();
+			list.active.clear();
+			std::ranges::fill(list.entryOf, UINT32_MAX);
+
+			for (Entity *entity : Scene::GetRenderableEntities())
+			{
+				const Renderable *renderable = entity ? entity->GetComponent<Renderable>() : nullptr;
+				const MaterialAsset *material = renderable ? renderable->GetMaterialAsset() : nullptr;
+				if (!material || renderable->GetLodCount() == 0)
+					continue;
+				// the same test as UpdateDrawCalls: the GPU scene draws the opaque renderables it takes
+				if (material->GetProperty(MaterialProperty::BlendMode) <= 0.0f && GpuScene::IsGpuDriven(renderable))
+					continue;
+
+				const entt::entity handle = static_cast<entt::entity>(*entity);
+				const size_t index = static_cast<size_t>(entt::to_entity(handle));
+				if (index >= list.entryOf.size())
+					list.entryOf.resize(index + 1, UINT32_MAX);
+				list.entryOf[index] = static_cast<uint32_t>(list.entities.size());
+				list.entities.push_back(entity);
+				list.handles.push_back(handle);
+				list.active.push_back(entity->GetActive() ? 1 : 0);
+			}
+
+			list.structureVersion = Scene::GetStructureVersion();
+			list.drawPathVersion = MaterialAsset::GetDrawPathVersion();
+			list.gpuSceneDrawing = GpuScene::IsDrawing();
+			list.built = true;
+		}
+
+		/* @brief The active entries of the CPU draw list, brought up to date with what changed since the last call. */
+		const std::vector<Entity *> &GetActiveCpuDrawEntities()
+		{
+			CpuDrawList &list = s_CpuDrawList;
+			if (list.reader == UINT32_MAX)
+				list.reader = Scene::AddRenderStateReader();
+
+			const bool incremental = Scene::TakeRenderStateChanges(list.reader, list.changes);
+			bool activeChanged = false;
+			if (!list.built || list.structureVersion != Scene::GetStructureVersion() || list.drawPathVersion != MaterialAsset::GetDrawPathVersion() ||
+				list.gpuSceneDrawing != GpuScene::IsDrawing())
+			{
+				RebuildCpuDrawList(list);
+				activeChanged = true;
+			}
+			else if (!incremental)
+			{
+				for (size_t i = 0; i < list.entities.size(); ++i)
+					list.active[i] = list.entities[i]->GetActive() ? 1 : 0;
+				activeChanged = true;
+			}
+			else
+			{
+				for (const entt::entity handle : list.changes)
+				{
+					const size_t index = static_cast<size_t>(entt::to_entity(handle));
+					const uint32_t entry = index < list.entryOf.size() ? list.entryOf[index] : UINT32_MAX;
+					if (entry == UINT32_MAX || list.handles[entry] != handle)
+						continue;
+					const uint8_t active = list.entities[entry]->GetActive() ? 1 : 0;
+					activeChanged |= active != list.active[entry];
+					list.active[entry] = active;
+				}
+			}
+
+			if (activeChanged)
+			{
+				list.activeEntities.clear();
+				for (size_t i = 0; i < list.entities.size(); ++i)
+				{
+					if (list.active[i])
+						list.activeEntities.push_back(list.entities[i]);
+				}
+			}
+			return list.activeEntities;
 		}
 
 		/**
@@ -671,7 +801,8 @@ void dynamic_resolution()
 			CreateStandardMeshes();
 			CreateStandardTextures();
 			CreateStandardMaterials();
-			CreateFonts();
+			// FreeType for CreateFonts(), which the application calls once ResourceCache::Init() has set the font folder
+			FontImporter::Initialize();
 			LoadShaders();
 			m_ResourcesInitialized = true;
 
@@ -720,6 +851,7 @@ void dynamic_resolution()
 		// Wait for all GPU work to complete
 		device->GetQueueManager()->WaitIdleAll();
 		s_ExtraViews.clear();	// Their render targets
+		ReleaseWeatherArt();	// Static references to images: gone before the device
 
 		// Release the immediate-execution command lists/pools now, while the device and loggers are alive.
 		CommandList::ShutdownImmediateExecution();
@@ -802,6 +934,7 @@ void dynamic_resolution()
 		SetReferenceOverlay(nullptr, ReferenceOverlayMode::Off);
 		GeometryBuffer::Shutdown();
 		DestroyResources();
+		FontImporter::Shutdown();
 		DestroyFrameResources();
 		if (s_AssetManager)
 		{
@@ -951,6 +1084,8 @@ void dynamic_resolution()
 				UpdateDrawCalls(m_CmdList_Present);
 				Perf::SetCounter("entities", static_cast<double>(Scene::GetEntities().size()));
 				Perf::SetCounter("cpu draw calls", static_cast<double>(m_DrawCall_Count));
+				Perf::SetCounter("cpu draw list", static_cast<double>(s_CpuDrawList.entities.size()));
+				Perf::SetCounter("cpu draw list active", static_cast<double>(s_CpuDrawList.activeEntities.size()));
 				Perf::SetCounter("drapes", static_cast<double>(s_DrapeDrawCount));
 			}
 
@@ -1008,7 +1143,8 @@ void dynamic_resolution()
 
 				{
 					SEDX_PERF_SCOPE("Render: Materials");
-					if (initialize || Scene::UpdateSceneChanges(ComponentType::Material).IsDirty())
+					const bool weatherArtChanged = ConsumeWeatherArtChange();
+					if (initialize || Scene::UpdateSceneChanges(ComponentType::Material).IsDirty() || weatherArtChanged)
 					{
 						UpdateMaterials(m_CmdList_Present);
 						BindlessManager::UpdateImages(&m_Bindless_Textures, m_Bindless_TextureCount);
@@ -1155,6 +1291,7 @@ void dynamic_resolution()
 					Perf::SetCounter("gpu batches", stats.batches);
 					Perf::SetCounter("gpu commands drawn", stats.drawnCommands);
 					Perf::SetCounter("gpu uploads", stats.uploadedInstances);
+					Perf::SetCounter("gpu validated", stats.validatedTransforms);
 					Perf::SetCounter("gpu shadow draws", stats.shadowInstances);
 					Perf::SetCounter("cpu shadow casters", m_DrawCalls_Shadow_Count);
 					Perf::SetCounter("shadow cascades", GetShadowCascades().count);
@@ -1576,6 +1713,8 @@ void dynamic_resolution()
 		submitInfo.pSignalSemaphores = &s_RenderSemaphoreHandles[m_SwapchainImageIndex];
 
 		VkResult submitResult = vkQueueSubmit(graphicsQueue, 1, &submitInfo, s_FenceHandles[m_CurrentFrameIndex]);
+		if (submitResult == VK_ERROR_DEVICE_LOST)
+			Device::SetDeviceLost();
 		SEDX_VK_RESULT_ASSERT(submitResult, "vkQueueSubmit failed");
 
 		// Present the rendered image
@@ -2144,7 +2283,9 @@ void dynamic_resolution()
 				RenderContext::Get()->GetDevice()->GetQueueManager()->WaitIdleAll();
 			}
 
+			const RenderTargets previous = GetRenderTargets();
 			CreateRenderTargets(true, false, true);
+			EvictTargetDescriptorSets(previous, &GetRenderTargets());
 		}
 
 		SEDX_CORE_TRACE_TAG("Renderer", "Render resolution set to {}x{}", width, height);
@@ -2170,7 +2311,13 @@ void dynamic_resolution()
 
 		if (recreateResources && m_ResourcesInitialized)
 		{
+			// The old outputs' descriptor sets are freed at once, so frames in flight must be done with them
+			if (RenderContext::Get()->GetDevice())
+				RenderContext::Get()->GetDevice()->GetQueueManager()->WaitIdleAll();
+
+			const RenderTargets previous = GetRenderTargets();
 			CreateRenderTargets(false, true, false);
+			EvictTargetDescriptorSets(previous, &GetRenderTargets());
 		}
 
 		SEDX_CORE_TRACE_TAG("Renderer", "Output resolution set to {}x{}", width, height);
@@ -2212,6 +2359,7 @@ void dynamic_resolution()
 			return;
 		if (RenderContext::Get() && RenderContext::Get()->GetDevice())
 			RenderContext::Get()->GetDevice()->GetQueueManager()->WaitIdleAll();	// Frames in flight still use its targets
+		EvictTargetDescriptorSets(it->targets);
 		s_ExtraViews.erase(it);
 		SEDX_CORE_INFO_TAG("Renderer", "Extra view {} destroyed", view);
 	}
@@ -2232,6 +2380,7 @@ void dynamic_resolution()
 			return;
 		if (RenderContext::Get() && RenderContext::Get()->GetDevice())
 			RenderContext::Get()->GetDevice()->GetQueueManager()->WaitIdleAll();	// Frames in flight still use the old targets
+		EvictTargetDescriptorSets(extra->targets);	// CreateViewRenderTargets replaces all of them
 		CreateViewRenderTargets(width, height, extra->targets);
 		extra->width = width;
 		extra->height = height;
@@ -2891,6 +3040,7 @@ void dynamic_resolution()
 		m_DrawCall_Count          = 0;
 		m_DrawCalls_Prepass_Count = 0;
 		m_DrawCalls_Shadow_Count  = 0;
+		m_DrawCalls_Water_Count   = 0;
 		m_Transparents_Present    = false;
 
 		// The per-draw indirect path (indirect_cull) stays off: GpuScene draws the deferred geometry instead.
@@ -2933,8 +3083,9 @@ void dynamic_resolution()
 		const CsmSetup &shadows = GetShadowCascades();
 		const uint32_t allCascades = (1u << shadows.count) - 1u;
 
-		// collect draw calls: renderables the GPU scene doesn't draw, plus the blended part of the ones it does
-		for (Entity* entity : Scene::GetRenderableEntities())
+		// collect draw calls: renderables the GPU scene doesn't draw, plus the blended part of the ones it does (the active
+		// entries of the CPU draw list; the tests below still decide)
+		for (Entity* entity : GetActiveCpuDrawEntities())
 		{
 			if (!entity || !entity->GetActive())
 				continue;
@@ -2966,6 +3117,24 @@ void dynamic_resolution()
 			const xMath::Matrix world = entity->GetMatrix();
 			const bool inView = !hasFrustum || renderable->HasInstancing() || frustum.IntersectsBox(renderable->GetBoundingBoxMesh(), world);
 
+			// Water (plan Phase 11) is drawn by Pass_Water alone: not in the g-buffer, the shadows or the GPU scene. Waves
+			// rise a few meters above the mesh: its box is grown by that much for the test.
+			if (material->GetProperty(MaterialProperty::Water) > 0.0f)
+			{
+				const xMath::BoundingBox &mesh = renderable->GetBoundingBoxMesh();
+				const xMath::BoundingBox box(mesh.GetMin() - xMath::Vec3(8.0f, 8.0f, 8.0f), mesh.GetMax() + xMath::Vec3(8.0f, 8.0f, 8.0f));
+				if ((hasFrustum && !frustum.IntersectsBox(box, world)) || m_DrawCalls_Water_Count >= static_cast<uint32_t>(m_DrawCalls_Water.size()))
+					continue;
+				Renderer_DrawCall &water = m_DrawCalls_Water[m_DrawCalls_Water_Count++];
+				water = Renderer_DrawCall();
+				water.renderable = renderable;
+				water.cameraVisible = true;
+				water.lodIndex = std::min(renderable->GetLodIndex(), renderable->GetLodCount() - 1);
+				water.instanceCount = renderable->GetInstanceCount();
+				water.drawData_Index = WriteDrawData(world, entity->GetMatrixPrevious(world), material->GetIndex(), 0, 0);
+				continue;
+			}
+
 			// Sun-shadow casters the GPU scene doesn't draw (plan TASK-053): opaque or cut-out, not draped, casting; in view
 			// or not. Instanced ones (their box is one instance's) go into every cascade.
 			const bool isTransparent = material->IsTransparent();
@@ -2989,7 +3158,8 @@ void dynamic_resolution()
 			if (inView)
 				m_Transparents_Present |= isTransparent;
 
-			const uint32_t drawDataIndex = WriteDrawData(world, entity->GetMatrixPrevious(), material->GetIndex(), isTransparent ? 1 : 0, ScenePicking::GetPickId(static_cast<entt::entity>(*entity)));
+			// the blended draws never store a previous matrix (only the g-buffer does): no second walk up the parents for them
+			const uint32_t drawDataIndex = WriteDrawData(world, entity->GetMatrixPrevious(world), material->GetIndex(), isTransparent ? 1 : 0, ScenePicking::GetPickId(static_cast<entt::entity>(*entity)));
 
 			Renderer_DrawCall drawCall;
 			drawCall.renderable         = renderable;
@@ -3213,7 +3383,10 @@ void dynamic_resolution()
 			params.mieSpectral = Environment::MieSpectralFactors(params.rayleighScattering, c.mieAngstrom);
 			params.multipleScattering = c.multipleScattering;
 			params.visibilityContrast = c.visibilityContrast;
-			params.hazeScatteringAlbedo = c.fogAlbedo;
+			params.hazeScatteringAlbedo = c.mie.y > 0.0f ? c.mie.x / c.mie.y : 0.9;	// the haze is extra Mie
+			params.fogScatteringAlbedo = c.fogAlbedo;
+			params.fogStartVisibilityM = c.fogStartVisibilityM;
+			params.fogFullVisibilityM = c.fogFullVisibilityM;
 			params.ozoneAbsorption = { c.ozone.x, c.ozone.y, c.ozone.z };
 			params.ozoneCenter = c.ozone.w;
 			params.ozoneHalfWidth = c.planet.x;
@@ -3222,6 +3395,8 @@ void dynamic_resolution()
 			params.groundAlbedo = c.planet.w;
 			params.hazeTopM = c.hazeTopM;
 			params.hazeBandM = c.hazeBandM;
+			params.hazeMieScale = c.hazeMieScale;
+			params.sunTint = { c.sunTintRed, 1.0, c.sunTintBlue };
 			return params;
 		}
 
@@ -3230,7 +3405,7 @@ void dynamic_resolution()
 		{
 			uint64_t key = 0;
 			for (const double v : { a.rayleighScattering[0], a.rayleighScattering[1], a.rayleighScattering[2], a.mieScattering, a.mieExtinction, a.hazeExtinction,
-					 a.hazeScatteringAlbedo, a.hazeTopM, a.groundElevationM, a.groundAlbedo, a.mieSpectral[0], a.mieSpectral[2], a.multipleScattering,
+					 a.hazeScatteringAlbedo, a.fogExtinction, a.fogScatteringAlbedo, a.hazeTopM, a.groundElevationM, a.groundAlbedo, a.mieSpectral[0], a.mieSpectral[2], a.multipleScattering,
 					 a.ozoneAbsorption[0], a.ozoneAbsorption[1], a.ozoneAbsorption[2], a.ozoneCenter, a.mieG })
 				key = HashCombine(key, v);
 			return key;
@@ -3335,12 +3510,12 @@ void dynamic_resolution()
 		env.ozone = constants.ozone;
 		env.atmosphere_scattering = ToVec4(atmosphere.mieSpectral, static_cast<float>(atmosphere.multipleScattering));
 		env.planet = constants.planet;
-		env.atmosphere_haze = xMath::Vec4(static_cast<float>(atmosphere.hazeExtinction), static_cast<float>(atmosphere.hazeScatteringAlbedo),
+		env.atmosphere_haze = xMath::Vec4(static_cast<float>(atmosphere.hazeExtinction), static_cast<float>(atmosphere.fogScatteringAlbedo),
 			static_cast<float>(atmosphere.hazeTopM), static_cast<float>(atmosphere.hazeBandM));
-		env.light_toa = xMath::Vec4(static_cast<float>(constants.sunIlluminanceLux * Environment::SUN_COLOR[0]),
-			static_cast<float>(constants.sunIlluminanceLux * Environment::SUN_COLOR[1]), static_cast<float>(constants.sunIlluminanceLux * Environment::SUN_COLOR[2]),
-			static_cast<float>(moonLux));
-		env.atmosphere_view = xMath::Vec4(constants.aerialRangeM, constants.airglowNits, constants.starBrightness, 0.0f);
+		const Environment::Rgb sunColor = Environment::SunColor(atmosphere);	// SUN_COLOR tinted by sedx/sun_tint_*
+		env.light_toa = xMath::Vec4(static_cast<float>(constants.sunIlluminanceLux * sunColor[0]), static_cast<float>(constants.sunIlluminanceLux * sunColor[1]),
+			static_cast<float>(constants.sunIlluminanceLux * sunColor[2]), static_cast<float>(moonLux));
+		env.atmosphere_view = xMath::Vec4(constants.aerialRangeM, constants.airglowNits, constants.starBrightness, static_cast<float>(atmosphere.fogExtinction));
 		{
 			const ProbeVec3 probe = SnapProbePosition({ s_MainCameraPosition.x, s_MainCameraPosition.y, s_MainCameraPosition.z });	// Captured around the main view
 			env.probe = xMath::Vec4(static_cast<float>(probe[0]), static_cast<float>(probe[1]), static_cast<float>(probe[2]), constants.probeSpecularBias);
@@ -3363,8 +3538,7 @@ void dynamic_resolution()
 			env.celestial[2] = xMath::Vec4(pole.x, pole.y, pole.z, 0.0f);
 		}
 		env.haze = xMath::Vec4(state.visibilityM, constants.hazeTopM, constants.hazeBandM, static_cast<float>(m_Cb_Frame_Cpu.time));
-		env.weather = xMath::Vec4(derived.surface.wetness, derived.surface.ice, derived.surface.snow, derived.surface.puddles);
-		env.season = xMath::Vec4(derived.season.ratio, static_cast<float>(derived.season.season), static_cast<float>(derived.dayOfYear), static_cast<float>(state.latitudeDeg));
+		env.season =xMath::Vec4(derived.season.ratio, static_cast<float>(derived.season.season), static_cast<float>(derived.dayOfYear), static_cast<float>(state.latitudeDeg));
 
 		// Exposure (plan TASK-038, TASK-039): this frame's lighting is pre-exposed with the EV the GPU last reported
 		// (manual mode: the manual EV); before the first report, the EV a grey card under this light would meter
@@ -3394,13 +3568,24 @@ void dynamic_resolution()
 			env.exposure_extra = xMath::Vec4(exposure.compensation, 0.0f, 0.0f, 0.0f);
 		}
 		env.exposure_fusion = constants.exposureFusion;
+
+		// The SDR grade (tonemap.slang xp12_display): the day grade toward the night grade as the sun sets, the day power
+		// eased by snow on the ground, as X-Plane 12.4.4 switches its color_management/sdr/* values
 		{
-			const float strength = std::clamp(constants.colorSlopeStrength, 0.0f, 1.0f);
-			const auto part = [strength](const float slope) { return std::pow(std::max(slope, 1e-3f), strength); };
-			env.color_slope = xMath::Vec4(part(constants.colorSlope.x), part(constants.colorSlope.y), part(constants.colorSlope.z), constants.colorSlope.w);
+			const float sunElevation = static_cast<float>(derived.sun.apparentElevationDeg);
+			const float nightSpan = std::min(constants.gradeNightFullDeg - constants.gradeNightStartDeg, -1e-3f);
+			const float night = std::clamp((sunElevation - constants.gradeNightStartDeg) / nightSpan, 0.0f, 1.0f);
+			const float snow = std::clamp(derived.surface.snow / std::max(constants.snowGradeCover, 1e-3f), 0.0f, 1.0f);
+			const float powerScale = 1.0f + (constants.snowPowerScale - 1.0f) * snow;
+			const auto blend = [night](const float day, const float nightValue) { return day + (nightValue - day) * night; };
+
+			env.color_slope = xMath::Vec4(blend(constants.colorSlope.x, constants.nightSlope.x), blend(constants.colorSlope.y, constants.nightSlope.y),
+										  blend(constants.colorSlope.z, constants.nightSlope.z), constants.colorSlope.w);
+			env.color_offset = xMath::Vec4(constants.colorOffset.x, constants.colorOffset.y, constants.colorOffset.z, blend(constants.colorOffset.w, constants.nightSlope.w));
+			env.color_power = xMath::Vec4(blend(constants.colorPower.x * powerScale, constants.nightPower.x), blend(constants.colorPower.y * powerScale, constants.nightPower.y),
+										  blend(constants.colorPower.z * powerScale, constants.nightPower.z), constants.colorPower.w);
+			env.tonemap = xMath::Vec4(constants.toneMiddleGrey, constants.toneCompression, constants.displayMaximum, 0.0f);
 		}
-		env.color_offset = constants.colorOffset;
-		env.color_power = constants.colorPower;
 		env.post = xMath::Vec4(constants.bloomIntensity, constants.fusionHighlights, constants.fusionStrength, 0.0f);
 
 		env.camera = xMath::Vec4(altitudeM, state.elevationM, derived.nightFactor, state.rainPercent);
@@ -3422,6 +3607,12 @@ void dynamic_resolution()
 			env.ssr_trace = xMath::Vec4(static_cast<float>(ssr.maxSteps), ssr.thicknessM, ssr.thicknessRatio, ssr.edgeFade);
 			env.ssr_history = xMath::Vec4(ssr.historyClamp, ssr.lobeScale, GetSsrTraceAll() ? 1.0f : 0.0f, AreReflectionsAvailable() ? 1.0f : 0.0f);
 		}
+
+		// Water (plan Phase 11, renderer_water.cpp): the sea state, the ocean's time, the water's optics
+		WriteWaterConstants(env);
+
+		// Weather on surfaces (plan Phase 12, renderer_weather.cpp): thresholds, the twxr controls, the art's slot
+		WriteWeatherConstants(env);
 
 		environmentBuffer->Update(cmdList, &env);
 	}
@@ -3572,6 +3763,17 @@ void dynamic_resolution()
 				properties[count].flags |= material->GetProperty(MaterialProperty::XpMaterial)                 ? (1U << 18) : 0;
 				const uint32_t drapeMode = static_cast<uint32_t>(std::clamp(material->GetProperty(MaterialProperty::XpDrapeMode), 0.0f, 3.0f));
 				properties[count].flags |= (drapeMode & 3U) << 19;
+				properties[count].flags |= material->GetProperty(MaterialProperty::XpFoliage)                  ? (1U << 21) : 0;
+				// Weather receptivity (weather.slang): the WEATHER mask rides in emission slot 3
+				properties[count].flags |= material->GetTexture(MaterialTextureType::Emission, 3) != nullptr   ? (1U << 22) : 0;
+				properties[count].flags |= material->GetProperty(MaterialProperty::XpWeatherTransparent)       ? (1U << 23) : 0;
+				properties[count].flags |= material->GetProperty(MaterialProperty::XpSnowAlbedoLuma)           ? (1U << 24) : 0;
+				properties[count].flags |= (static_cast<uint32_t>(std::clamp(material->GetProperty(MaterialProperty::XpLodSwitchMode), 0.0f, 2.0f)) & 3U) << 25;
+				properties[count].flags |= (static_cast<uint32_t>(std::clamp(material->GetProperty(MaterialProperty::XpTextureMap), 0.0f, 3.0f)) & 3U) << 27;
+				// A block-compressed X-Plane normal map (BC5 normal) has its blue and alpha in normal slot 3 (xp_material.slang)
+				properties[count].flags |= material->GetTexture(MaterialTextureType::Normal, 3) != nullptr     ? (1U << 29) : 0;
+				properties[count].snow_luma[0] = material->GetProperty(MaterialProperty::XpSnowAlbedoLumaR);
+				properties[count].snow_luma[1] = material->GetProperty(MaterialProperty::XpSnowAlbedoLumaG);
 				// keep in sync with Surface struct in common_structs.slang
 
 				properties[count].alpha_cutoff = material->GetProperty(MaterialProperty::AlphaCutoff);
@@ -3582,6 +3784,14 @@ void dynamic_resolution()
 					material->GetProperty(MaterialProperty::XpTileMapWidth), material->GetProperty(MaterialProperty::XpTileMapHeight));
 				properties[count].drape_decal = xMath::Vec4(material->GetProperty(MaterialProperty::XpDecal0Scale), material->GetProperty(MaterialProperty::XpDecal0Strength),
 					material->GetProperty(MaterialProperty::XpDecal1Scale), material->GetProperty(MaterialProperty::XpDecal1Strength));
+				for (int key = 0; key < 4; ++key)
+				{
+					// decal 0 RGB, decal 0 alpha, decal 1 RGB, decal 1 alpha: five properties each from XpDecal0KeyR
+					const int first = static_cast<int>(MaterialProperty::XpDecal0KeyR) + key * 5;
+					const auto at = [&](const int offset) { return material->GetProperty(static_cast<MaterialProperty>(first + offset)); };
+					properties[count].drape_decal_key[key] = xMath::Vec4(at(0), at(1), at(2), at(3));
+					(&properties[count].drape_decal_bias.x)[key] = at(4);
+				}
 				properties[count].drape_normal_decal = xMath::Vec4(material->GetProperty(MaterialProperty::XpNormalDecal0Scale), material->GetProperty(MaterialProperty::XpNormalDecal0Gain),
 					material->GetProperty(MaterialProperty::XpNormalDecal1Scale), material->GetProperty(MaterialProperty::XpNormalDecal1Gain));
 				properties[count].drape_misc = drapeMode == 2
@@ -3589,6 +3799,33 @@ void dynamic_resolution()
 						material->GetProperty(MaterialProperty::XpDrapeMiscB), material->GetProperty(MaterialProperty::XpDrapeMiscA))
 					: xMath::Vec4(material->GetProperty(MaterialProperty::XpDecalAspect), material->GetProperty(MaterialProperty::XpNormalDecalAspect),
 						material->GetProperty(MaterialProperty::XpDrapeMetersU), material->GetProperty(MaterialProperty::XpDrapeMetersV));
+				if (material->GetProperty(MaterialProperty::Terrain) > 0.0f)
+				{
+					const auto vec4 = [material](const MaterialProperty a, const MaterialProperty b, const MaterialProperty c, const MaterialProperty d)
+					{
+						return xMath::Vec4(material->GetProperty(a), material->GetProperty(b), material->GetProperty(c), material->GetProperty(d));
+					};
+					properties[count].terrain_base = vec4(MaterialProperty::XpTerrainProjectedS, MaterialProperty::XpTerrainProjectedT, MaterialProperty::XpTerrainNormalRatio, MaterialProperty::XpTerrainFlags);
+					properties[count].terrain_composite = vec4(MaterialProperty::XpTerrainCompositeS, MaterialProperty::XpTerrainCompositeT, MaterialProperty::XpTerrainCompositeCenter, MaterialProperty::XpTerrainCompositeWidth);
+					properties[count].terrain_slope = vec4(MaterialProperty::XpTerrainHillStart, MaterialProperty::XpTerrainHillEnd, MaterialProperty::XpTerrainCliffStart, MaterialProperty::XpTerrainCliffEnd);
+					properties[count].terrain_slope_scale = vec4(MaterialProperty::XpTerrainHillS, MaterialProperty::XpTerrainHillT, MaterialProperty::XpTerrainCliffS, MaterialProperty::XpTerrainCliffT);
+					properties[count].terrain_lit = vec4(MaterialProperty::XpTerrainLitS, MaterialProperty::XpTerrainLitT, MaterialProperty::XpTerrainLitFadeStart, MaterialProperty::XpTerrainLitFadeEnd);
+					properties[count].terrain_far = vec4(MaterialProperty::XpTerrainFarS, MaterialProperty::XpTerrainFarT, MaterialProperty::XpTerrainFarStart, MaterialProperty::XpTerrainFarEnd);
+				}
+				else if (material->GetProperty(MaterialProperty::Water) > 0.0f)
+				{
+					// water.slang: the tile's water map over the world's x / z
+					properties[count].terrain_base = xMath::Vec4(material->GetProperty(MaterialProperty::XpWaterMapScaleU), material->GetProperty(MaterialProperty::XpWaterMapOffsetU),
+						material->GetProperty(MaterialProperty::XpWaterMapScaleV), material->GetProperty(MaterialProperty::XpWaterMapOffsetV));
+				}
+				else if (material->GetProperty(MaterialProperty::XpMaterial) > 0.0f)
+				{
+					// Draped X-Plane materials (xp_material.slang xp_drape_sample_normal): TEXTURE_NORMAL's ratio, like terrain's
+					properties[count].terrain_base = xMath::Vec4(0.0f, 0.0f, material->GetProperty(MaterialProperty::XpTerrainNormalRatio), 0.0f);
+				}
+				// Forests with 3D trees (xp_material.slang xp_lod_switch_discard): the distance billboards and meshes switch at
+				if (material->GetProperty(MaterialProperty::XpLodSwitchMode) > 0.0f)
+					properties[count].terrain_base.x = material->GetProperty(MaterialProperty::XpLodSwitchDistance);
 			}
 	
 			// textures, in the order of the material_texture_index_* slots in resources.slang
@@ -3619,6 +3856,10 @@ void dynamic_resolution()
 		{
 			for (MaterialAsset* material : Scene::GetRenderableMaterials())
 				update_material(material);
+
+			// X-Plane's weather art (renderer_weather.cpp): drawn by nothing, sampled by weather.slang through its slot
+			if (MaterialAsset *weather = GetWeatherMaterial())
+				update_material(weather);
 		};
 	
 		// cpu

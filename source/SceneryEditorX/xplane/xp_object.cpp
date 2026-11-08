@@ -30,6 +30,7 @@
  */
 #include "xp_object.h"
 #include "xp_library_manager.h"
+#include "xp_overlay_shading.h"
 #include <atomic>
 #include <chrono>
 #include <cmath>
@@ -53,6 +54,8 @@ namespace SceneryEditorX::XPlane
 	 */
 	struct ObjectLoadJob
 	{
+		~ObjectLoadJob();
+
 		struct Batch
 		{
 			ObjectBatch batch;						// subMesh and material are filled in on the main thread
@@ -76,10 +79,14 @@ namespace SceneryEditorX::XPlane
 		DecodedTexture lit;
 		DecodedTexture drapedAlbedo;
 		DecodedTexture drapedNormal;
+		DecodedTexture weather;				// WEATHER mask
+		DecodedTexture materialMap;			// TEXTURE_MAP material_gloss, else gloss
+		std::vector<std::pair<PolygonDecal, DecodedTexture>> decals;
 		float boundsMin[3] = { 0.0f, 0.0f, 0.0f };
 		float boundsMax[3] = { 0.0f, 0.0f, 0.0f };
 		std::string error;
 		float cpuMilliseconds = 0.0f;
+		uint64_t decodedBytes = 0;					// What the worker left for the upload; counts towards s_DecodedBytes while the job lives
 
 		// Main thread: how far the upload got
 		uint32_t step = 0;
@@ -120,6 +127,13 @@ namespace SceneryEditorX::XPlane
 		 */
 		constexpr uint32_t MAX_CONCURRENT_LOADS = 4;
 
+		/*
+		 * Decoded loads waiting for their upload. Uploads are the slower half (a few steps a frame), so the workers used
+		 * to decode far ahead and the waiting mip chains and vertices piled up (KDEN: past 30 GB before anything was on
+		 * screen). New loads start only while less than this waits; one always may, so a load bigger than this still goes.
+		 */
+		constexpr uint64_t MAX_DECODED_BYTES = 512ull << 20;
+
 		/* @brief Upload steps of a decoded load: the textures one by one, then geometry and materials. */
 		enum UploadStep : uint32_t
 		{
@@ -128,6 +142,7 @@ namespace SceneryEditorX::XPlane
 			UploadLit,
 			UploadDrapedAlbedo,
 			UploadDrapedNormal,
+			UploadDecals,
 			UploadGeometry
 		};
 
@@ -135,6 +150,7 @@ namespace SceneryEditorX::XPlane
 		std::vector<Ref<ObjectAsset>> s_Pending;					// In flight, in request order
 		std::deque<std::shared_ptr<ObjectLoadJob>> s_Waiting;		// Requested, not handed to the thread pool yet
 		std::vector<std::shared_ptr<ObjectLoadJob>> s_Running;		// Handed to the thread pool, not decoded yet
+		std::atomic<uint64_t> s_DecodedBytes = 0;					// decodedBytes of the jobs alive (workers add, any thread drops)
 		uint32_t s_LoadsRequested = 0;								// Since s_Pending was last empty
 		uint32_t s_LoadsFinished = 0;
 		uint64_t s_UpdateFrame = 0;									// Counts ObjectAsset::Update() calls (upload statistics)
@@ -260,6 +276,53 @@ namespace SceneryEditorX::XPlane
 			return TextureLoader::Decode(file, usage);
 		}
 
+		/**
+		 * @brief The OBJ's detail and normal decals (its rows, then its DECAL_LIB library's), up to two of each, decoded:
+		 * standard shading options (12.1.0+) that draw like the draped polygons' (xp_material.slang xp_drape_*).
+		 */
+		void DecodeDecals(ObjectLoadJob &job, const std::filesystem::path &folder)
+		{
+			std::vector<std::pair<PolygonDecal, std::filesystem::path>> rows;
+			for (const Obj8Decal &row : job.data.decals)
+			{
+				// Back to the row's words: directive, leading numbers, texture, trailing numbers
+				std::vector<std::string> words = { row.directive };
+				for (const float value : row.values)
+					words.push_back(std::to_string(value));
+				words.push_back(row.texture);
+				for (const float value : row.trailing)
+					words.push_back(std::to_string(value));
+				const std::vector<std::string_view> tokens(words.begin(), words.end());
+				PolygonDecal decal;
+				if (ParsePolygonDecalRow(tokens, decal))
+					rows.emplace_back(decal, folder);
+			}
+			if (!job.data.decalLibrary.empty())
+			{
+				const std::filesystem::path library = LibraryManager::Resolve(job.data.decalLibrary);
+				DecalLibraryAsset asset;
+				std::string error;
+				if (!library.empty() && LoadDecalLibraryAsset(library, asset, &error))
+				{
+					for (const PolygonDecal &decal : asset.decals)
+						rows.emplace_back(decal, library.parent_path());
+				}
+			}
+
+			int details = 0, normals = 0;
+			for (const auto &[decal, base] : rows)
+			{
+				int &count = decal.normal ? normals : details;
+				if (count >= 2)
+					continue;
+				DecodedTexture texture = DecodeTexture(base, decal.texture, decal.normal ? TextureUsage::Normal : TextureUsage::Decal);
+				if (!texture.valid)
+					continue;
+				++count;
+				job.decals.emplace_back(decal, std::move(texture));
+			}
+		}
+
 		/* @brief Resolves the OBJ's lights against lights.txt (unknown names are left out). */
 		void ResolveLights(ObjectLoadJob &job)
 		{
@@ -332,9 +395,12 @@ namespace SceneryEditorX::XPlane
 			const std::filesystem::path folder = path.parent_path();
 			job.albedo = DecodeTexture(folder, data.texture, TextureUsage::Albedo);
 			job.normal = DecodeTexture(folder, data.textureNormal, TextureUsage::Normal);
+			job.materialMap = DecodeTexture(folder, !data.textureMaterialGloss.empty() ? data.textureMaterialGloss : data.textureGloss, TextureUsage::Data);
 			job.lit = DecodeTexture(folder, data.textureLit, TextureUsage::Lit);
 			job.drapedAlbedo = DecodeTexture(folder, data.textureDraped, TextureUsage::Albedo);
 			job.drapedNormal = DecodeTexture(folder, data.textureDrapedNormal, TextureUsage::Normal);
+			job.weather = DecodeTexture(folder, data.weatherMask, TextureUsage::Data);
+			DecodeDecals(job, folder);
 
 			ResolveLights(job);
 
@@ -420,6 +486,12 @@ namespace SceneryEditorX::XPlane
 				job.batches.push_back(std::move(out));
 			}
 
+			// The batches and lights hold what the vertex tables had; the asset would keep the tables for good (KDEN: ~1 GB)
+			std::vector<Obj8Vertex>().swap(data.vertices);
+			std::vector<uint32_t>().swap(data.indices);
+			std::vector<Obj8Vertex>().swap(data.lineVertices);
+			std::vector<Obj8Vertex>().swap(data.lightVertices);
+
 			if (job.batches.empty() && job.lights.empty())
 			{
 				job.error = "The object has no triangles or lights to draw";
@@ -437,6 +509,28 @@ namespace SceneryEditorX::XPlane
 				firstVertex = false;
 			}
 			return true;
+		}
+
+		uint64_t GetDecodedBytes(const DecodedTexture &texture)
+		{
+			uint64_t bytes = 0;
+			for (const MipBytes &mip : texture.mips)
+				bytes += mip.bytes.size();
+			for (const MipBytes &mip : texture.companionMips)
+				bytes += mip.bytes.size();
+			return bytes;
+		}
+
+		/* @brief Memory a decoded load holds until its upload: mip chains and vertices (the OBJ's own tables are gone). */
+		uint64_t GetDecodedBytes(const ObjectLoadJob &job)
+		{
+			uint64_t bytes = GetDecodedBytes(job.albedo) + GetDecodedBytes(job.normal) + GetDecodedBytes(job.lit) + GetDecodedBytes(job.drapedAlbedo) +
+							 GetDecodedBytes(job.drapedNormal) + GetDecodedBytes(job.weather) + GetDecodedBytes(job.materialMap);
+			for (const auto &[decal, texture] : job.decals)
+				bytes += GetDecodedBytes(texture);
+			for (const ObjectLoadJob::Batch &batch : job.batches)
+				bytes += batch.vertices.size() * sizeof(Vertex_PosTexNorTan) + batch.indices.size() * sizeof(uint32_t);
+			return bytes;
 		}
 
 		/* @brief Thread pool task: runs the CPU half of a load and hands it to the main thread through the job's state. */
@@ -462,10 +556,18 @@ namespace SceneryEditorX::XPlane
 			}
 
 			job.cpuMilliseconds = MillisecondsSince(start);
+			if (built)
+			{
+				job.decodedBytes = GetDecodedBytes(job);
+				s_DecodedBytes.fetch_add(job.decodedBytes, std::memory_order_relaxed);
+			}
 			job.state.store(built ? ObjectLoadState::Uploading : ObjectLoadState::Failed, std::memory_order_release);
 		}
 
-		/* @brief Hands waiting loads to the thread pool while fewer than MAX_CONCURRENT_LOADS are decoding. */
+		/*
+		 * @brief Hands waiting loads to the thread pool while fewer than MAX_CONCURRENT_LOADS are decoding and less than
+		 * MAX_DECODED_BYTES waits for its upload.
+		 */
 		void SubmitWaitingLoads()
 		{
 			std::erase_if(s_Running, [](const std::shared_ptr<ObjectLoadJob> &job)
@@ -477,7 +579,7 @@ namespace SceneryEditorX::XPlane
 			// Leave a core for the main thread on small machines.
 			const uint32_t threads = ThreadPool::GetThreadCount();
 			const uint32_t limit = std::clamp(threads > 1 ? threads - 1 : 1u, 1u, MAX_CONCURRENT_LOADS);
-			while (!s_Waiting.empty() && s_Running.size() < limit)
+			while (!s_Waiting.empty() && s_Running.size() < limit && s_DecodedBytes.load(std::memory_order_relaxed) < MAX_DECODED_BYTES)
 			{
 				std::shared_ptr<ObjectLoadJob> job = std::move(s_Waiting.front());
 				s_Waiting.pop_front();
@@ -489,11 +591,23 @@ namespace SceneryEditorX::XPlane
 					continue;
 				}
 
-				// The task keeps the job alive: an asset dropped meanwhile (ClearCache) just discards the result.
-				job->done = ThreadPool::Submit([job] { RunLoadJob(*job); });
+				// The task holds the job weakly: the job keeps the task's future, whose state keeps the task, so a strong
+				// reference here made a cycle and no job (nor what its upload left in it) was ever freed. A worker keeps the
+				// job alive while it decodes; an asset dropped meanwhile (ClearCache) skips the load or discards the result.
+				job->done = ThreadPool::Submit([weak = std::weak_ptr<ObjectLoadJob>(job)]
+				{
+					if (const std::shared_ptr<ObjectLoadJob> held = weak.lock())
+						RunLoadJob(*held);
+				});
 				s_Running.push_back(std::move(job));
 			}
 		}
+	}
+
+	// The job goes once its upload finished, failed or was dropped (ClearCache), whichever thread lets go of it last.
+	ObjectLoadJob::~ObjectLoadJob()
+	{
+		s_DecodedBytes.fetch_sub(decodedBytes, std::memory_order_relaxed);
 	}
 
 	// -------------------------------------------------------
@@ -780,6 +894,7 @@ namespace SceneryEditorX::XPlane
 				break;
 			case UploadNormal:
 				m_Textures.normal = TextureLoader::Upload(job.normal, &m_Textures.normalInfo);
+				m_Textures.materialMap = TextureLoader::Upload(job.materialMap);
 				break;
 			case UploadLit:
 				m_Textures.lit = TextureLoader::Upload(job.lit, &m_Textures.litInfo);
@@ -793,6 +908,14 @@ namespace SceneryEditorX::XPlane
 				m_Textures.drapedNormal = TextureLoader::Upload(job.drapedNormal, &drapedNormalInfo);
 				break;
 			}
+			case UploadDecals:
+				for (auto &[decal, texture] : job.decals)
+				{
+					if (Ref<ImageResource> image = TextureLoader::Upload(texture))
+						m_Textures.decals.push_back({ decal, std::move(image) });
+				}
+				m_Textures.weather = TextureLoader::Upload(job.weather);
+				break;
 			default:
 				FinishGeometry();
 				break;
@@ -856,9 +979,13 @@ namespace SceneryEditorX::XPlane
 		}
 		job.batches.clear();
 
-		// Appends the geometry to the renderer's global vertex / index buffers (uploaded at the start of the next frame).
+		// Appends the geometry to the renderer's global vertex / index buffers (uploaded at the start of the next frame),
+		// which keep it from there: placements read the LODs' bounds, nothing reads the mesh's own copy (KDEN: ~2 GB).
 		if (m_Mesh)
+		{
 			m_Mesh->CreateGpuBuffers();
+			m_Mesh->ReleaseCpuGeometry();
+		}
 
 		m_State = ObjectLoadState::Ready;
 	}
@@ -916,13 +1043,20 @@ namespace SceneryEditorX::XPlane
 		material->SetProperty(MaterialClass::TextureTilingY, 1.0f);
 
 		// X-Plane 12's material rules (xp_material.slang): the normal map carries gloss (A) and, with NORMAL_METALNESS,
-		// F0 / metalness (B); GLOBAL_specular / ATTR_shiny_rat scale the gloss (1 with a normal map when neither is set)
+		// F0 / metalness (B); GLOBAL_specular / ATTR_shiny_rat scale the gloss (1 with a normal map when neither is set).
+		// TEXTURE_MAP splits it: the normal map carries the normal alone, a material_gloss map the material value (R)
+		// and gloss (G), a gloss map gloss (R).
+		ImageResource *materialMap = useDraped ? nullptr : m_Textures.materialMap.Get();
+		const bool textureMap = !useDraped && (m_Data.normalFromTextureMap || materialMap);
+		const float textureMapMode = !textureMap ? 0.0f : (!materialMap ? 1.0f : (!m_Data.textureMaterialGloss.empty() ? 2.0f : 3.0f));
 		const bool translucency = !useDraped && m_Data.normalTranslucency;
 		const bool metalness = useDraped ? m_Data.drapedNormalMetalness : m_Data.normalMetalness;
-		const float specularGain = std::max(m_Data.hasGlobalSpecular ? m_Data.globalSpecular : (state.shinyRatio > 0.0f ? state.shinyRatio : (normal ? 1.0f : 0.0f)), 0.0f);
-		const float defaultF0 = m_Data.blendGlass ? 0.06f : (translucency ? 0.0f : ((normal || specularGain > 0.0f) ? 0.04f : 0.0f));
+		const bool surfaceMaps = normal || materialMap;
+		const float specularGain = std::max(m_Data.hasGlobalSpecular ? m_Data.globalSpecular : (state.shinyRatio > 0.0f ? state.shinyRatio : (surfaceMaps ? 1.0f : 0.0f)), 0.0f);
+		const float defaultF0 = m_Data.blendGlass ? 0.06f : (translucency ? 0.0f : ((surfaceMaps || specularGain > 0.0f) ? 0.04f : 0.0f));
 		material->SetProperty(MaterialProperty::XpMaterial, 1.0f);
-		material->SetProperty(MaterialProperty::XpNormalMode, normal ? (metalness ? 2.0f : (translucency ? 3.0f : 1.0f)) : 0.0f);
+		material->SetProperty(MaterialProperty::XpNormalMode, surfaceMaps ? (metalness ? 2.0f : (translucency ? 3.0f : 1.0f)) : 0.0f);
+		material->SetProperty(MaterialProperty::XpTextureMap, textureMapMode);
 		material->SetProperty(MaterialProperty::XpSpecularGain, specularGain);
 		material->SetProperty(MaterialProperty::XpSuperRoughness, std::clamp(m_Data.superRoughness, 0.0f, 1.0f));
 		material->SetProperty(MaterialProperty::XpDefaultF0, defaultF0);
@@ -947,11 +1081,58 @@ namespace SceneryEditorX::XPlane
 
 		material->SetTexture(MaterialTextureType::Color, albedo);
 		material->SetTexture(MaterialTextureType::Normal, normal);
+		material->SetTexture(MaterialTextureType::Normal, TextureLoader::GetNormalCompanion(normal).Get(), NORMAL_COMPANION_SLOT);	// a compressed PNG's blue and alpha
+		material->SetTexture(MaterialTextureType::Roughness, materialMap);	// xp_material.slang xp_slot_material_map
 		material->SetTexture(MaterialTextureType::Emission, lit);
+
+		// Weather receptivity (weather.slang): the WEATHER mask in emission slot 3; SNOW_ALBEDO_LUMA keeps its r and g
+		// weights (the shipped art leaves b and a at 0)
+		material->SetTexture(MaterialTextureType::Emission, m_Textures.weather.Get(), 3);
+		material->SetProperty(MaterialProperty::XpWeatherTransparent, m_Data.weatherTransparent ? 1.0f : 0.0f);
+		material->SetProperty(MaterialProperty::XpSnowAlbedoLuma, m_Data.hasSnowAlbedoLuma ? 1.0f : 0.0f);
+		material->SetProperty(MaterialProperty::XpSnowAlbedoLumaR, m_Data.snowAlbedoLuma[0]);
+		material->SetProperty(MaterialProperty::XpSnowAlbedoLumaG, m_Data.snowAlbedoLuma[1]);
+
+		// Decals (xp_material.slang xp_drape_*): color slots 2-3, normal slots 1-2; their scales repeat per albedo tile,
+		// so the UVs are the "meters" they count in. Their strength is the rows' constant term (TEXTURE_CONTROL keys
+		// aren't read yet)
+		int details = 0, normals = 0;
+		for (const ObjectDecal &entry : m_Textures.decals)
+		{
+			const PolygonDecal &decal = entry.decal;
+			const int slot = decal.normal ? normals++ : details++;
+			if (slot >= 2)
+				continue;
+			if (decal.normal)
+			{
+				material->SetTexture(MaterialTextureType::Normal, entry.image.Get(), 1 + slot);
+				material->SetProperty(slot == 0 ? MaterialProperty::XpNormalDecal0Scale : MaterialProperty::XpNormalDecal1Scale, decal.scaleS);
+				material->SetProperty(slot == 0 ? MaterialProperty::XpNormalDecal0Gain : MaterialProperty::XpNormalDecal1Gain, decal.strength * decal.gain);
+			}
+			else
+			{
+				material->SetTexture(MaterialTextureType::Color, entry.image.Get(), 2 + slot);
+				material->SetProperty(slot == 0 ? MaterialProperty::XpDecal0Scale : MaterialProperty::XpDecal1Scale, decal.scaleS);
+				material->SetProperty(slot == 0 ? MaterialProperty::XpDecal0Strength : MaterialProperty::XpDecal1Strength, decal.strength);
+				SetDecalKeys(*material, slot, decal.keys);
+			}
+			if (slot == 0)
+				material->SetProperty(decal.normal ? MaterialProperty::XpNormalDecalAspect : MaterialProperty::XpDecalAspect, decal.scaleT / std::max(1e-6f, decal.scaleS));
+		}
+		if (!m_Textures.decals.empty())
+		{
+			material->SetProperty(MaterialProperty::XpDrapeMetersU, 1.0f);
+			material->SetProperty(MaterialProperty::XpDrapeMetersV, 1.0f);
+		}
 
 		m_Materials.push_back(material);
 		m_MaterialStates.push_back(state);
 		return static_cast<uint32_t>(m_Materials.size()) - 1;
+	}
+
+	void ComputeVertexTangents(std::vector<Vertex_PosTexNorTan> &vertices, const std::vector<uint32_t> &indices)
+	{
+		ComputeTangents(vertices, indices);
 	}
 
 }

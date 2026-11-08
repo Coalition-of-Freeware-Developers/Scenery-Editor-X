@@ -29,6 +29,7 @@
  * -------------------------------------------------------
  */
 #include "queue.h"
+#include "device.h"
 #include "render_context.h"
 #include "swapchain.h"
 #include "SceneryEditorX/renderer/renderer.h"
@@ -230,7 +231,10 @@ namespace SceneryEditorX
 	void Queue::Submit(const VkSubmitInfo2 &submitInfo, const VkFence fence)
 	{
 		SEDX_CORE_ASSERT(m_Queue.handle != VK_NULL_HANDLE, "Queue handle is invalid - was Init() called?");
-		SEDX_VK_RESULT_ASSERT(vkQueueSubmit2(m_Queue.handle, 1, &submitInfo, fence), "vkQueueSubmit2 failed");
+		const VkResult result = vkQueueSubmit2(m_Queue.handle, 1, &submitInfo, fence);
+		if (result == VK_ERROR_DEVICE_LOST)
+			Device::SetDeviceLost();
+		SEDX_VK_RESULT_ASSERT(result, "vkQueueSubmit2 failed");
 	}
 
 	/**

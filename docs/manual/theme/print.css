@@ -1,0 +1,237 @@
+/*
+ * Scenery Editor X manual: the printed book (print.html -> PDF through headless Chrome / Edge).
+ * A4, a full-bleed cover and part dividers, page numbers in the margin boxes, chapters on new pages.
+ */
+
+@page {
+  size: A4;
+  margin: 19mm 18mm 21mm 18mm;
+  @bottom-left { content: "Scenery Editor X  ·  User Manual"; font-family: "Open Sans", sans-serif; font-size: 7.5pt; color: #8b959e; }
+  @bottom-right { content: counter(page); font-family: "Open Sans", sans-serif; font-size: 8pt; font-weight: 700; color: #4f5a64; }
+}
+@page cover { margin: 0; @bottom-left { content: none; } @bottom-right { content: none; } }
+@page divider { margin: 0; @bottom-left { content: none; } @bottom-right { content: none; } }
+@page front { @bottom-left { content: none; } }
+
+html, body { background: #fff !important; }
+* { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+body.print-page {
+  --text: #1b2127; --text-soft: #3f4a54; --muted: #66727e; --border: #dfe4e9; --border-strong: #c8d0d8;
+  --surface: #fff; --surface-2: #f3f6f8; --accent: #1670b4; --accent-strong: #0e5d99; --accent-soft: #eaf3fb; --accent-line: #b9d8f2;
+  --code-bg: #f1f4f7; --code-text: #23303b; --pre-bg: #f4f6f8; --pre-text: #1f2a33; --kbd-bg: #fff; --kbd-border: #c4ccd4;
+  --bg: #fff; --shadow: none; --shadow-sm: none;
+  font-size: 9.8pt; line-height: 1.58; color: var(--text);
+}
+
+.anchor, .copy-button, .chapter-meta { display: none !important; }
+a { color: var(--accent); }
+a:hover { text-decoration: none; }
+
+/* ---------------------------------------------------------------------------------------------------------------- */
+/* Cover */
+
+.cover {
+  page: cover;
+  position: relative; height: 296.5mm; overflow: hidden;
+  background:
+    linear-gradient(rgba(108, 195, 255, .07) 1px, transparent 1px) 0 0 / 9mm 9mm,
+    linear-gradient(90deg, rgba(108, 195, 255, .07) 1px, transparent 1px) 0 0 / 9mm 9mm,
+    linear-gradient(180deg, #13212d 0%, #0d1720 100%);
+  color: #e8eef3;
+  break-after: page;
+}
+.cover-art {
+  position: absolute; left: 0; right: 0; top: 0; height: 118mm;
+  background-size: 100% auto; background-repeat: no-repeat; background-position: center top;
+  -webkit-mask-image: linear-gradient(180deg, #000 70%, transparent 96%);
+  mask-image: linear-gradient(180deg, #000 70%, transparent 96%);
+  opacity: .95;
+}
+.cover-text { position: absolute; left: 22mm; right: 22mm; top: 140mm; }
+.cover-icon { width: 22mm; height: 22mm; border-radius: 5mm; margin-bottom: 9mm; box-shadow: 0 4mm 10mm rgba(0, 0, 0, .45); }
+.cover .kicker { color: #6cc3ff; font-size: 8.5pt; letter-spacing: .22em; margin-bottom: 4mm; }
+.cover h1 { margin: 0; font-size: 44pt; line-height: 1; font-weight: 800; letter-spacing: -.03em; color: #fff; }
+.cover-subtitle { margin: 3mm 0 0; font-size: 22pt; font-weight: 400; color: #8fcdf7; letter-spacing: -.01em; }
+.cover-tagline { margin: 9mm 0 0; max-width: 135mm; font-size: 11pt; line-height: 1.55; color: #b8c6d1; }
+.cover-footer {
+  position: absolute; left: 22mm; right: 22mm; bottom: 16mm;
+  display: flex; justify-content: space-between;
+  padding-top: 4mm; border-top: .3mm solid rgba(143, 205, 247, .35);
+  font-size: 8.5pt; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #8fa3b3;
+}
+
+/* ---------------------------------------------------------------------------------------------------------------- */
+/* The complete documentation's sheets: cover, volume pages and back, each a chart from art/ with the type set over its
+   quiet lower field (the titles light and left on the charts' 14 mm margin) */
+
+.sheet {
+  page: cover;
+  position: relative; height: 296.5mm; overflow: hidden; break-before: page; break-after: page;
+  background: #0a131b; color: #e8f3fb;
+}
+.sheet-cover { break-before: auto; }
+.sheet-art { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+.sheet-text { position: absolute; left: 14mm; right: 14mm; top: 186mm; }
+.sheet-volume .sheet-text { top: 200mm; }
+.sheet-eyebrow { margin: 0 0 3.5mm; font-size: 7pt; font-weight: 400; letter-spacing: .34em; text-transform: uppercase; color: #7fc6f2; }
+.sheet h1 { margin: 0; font-size: 46pt; font-weight: 300; line-height: 1.04; letter-spacing: -.02em; color: #f1f7fb; }
+.sheet-subtitle { margin: 2.5mm 0 0; font-size: 18pt; font-weight: 300; letter-spacing: -.005em; color: #9fcdee; }
+.sheet-rule { width: 16mm; margin: 8mm 0 6mm; border-top: .3mm solid rgba(127, 198, 242, .65); }
+.sheet-volumes { list-style: none; margin: 0; padding: 0; }
+.sheet-volumes li { display: flex; align-items: baseline; padding: 1.2mm 0; font-size: 11.5pt; font-weight: 300; color: #dce8f1; }
+.sheet-volumes li span { flex: 0 0 27mm; font-size: 6.8pt; font-weight: 400; letter-spacing: .3em; text-transform: uppercase; color: #7fc6f2; }
+.sheet-description { max-width: 142mm; margin: 0; font-size: 10.5pt; font-weight: 300; line-height: 1.62; color: #c3d3df; }
+.sheet-meta { margin: 8mm 0 0; font-size: 6.8pt; line-height: 2; letter-spacing: .26em; text-transform: uppercase; color: #9fb7c8; }
+.sheet-volume h1 { font-size: 40pt; }
+.sheet-back .sheet-text { left: 32mm; right: 32mm; top: 212mm; text-align: center; }
+.sheet-back .sheet-rule { margin-left: auto; margin-right: auto; }
+.sheet-tagline { max-width: 118mm; margin: 0 auto; font-size: 11pt; font-weight: 300; line-height: 1.62; color: #c3d3df; }
+
+/* ---------------------------------------------------------------------------------------------------------------- */
+/* Front matter */
+
+.colophon { page: front; break-after: page; padding-top: 120mm; max-width: 125mm; }
+.colophon h2, .print-toc h2 {
+  margin: 0 0 6mm; font-size: 20pt; font-weight: 800; letter-spacing: -.02em;
+}
+.colophon h2::after, .print-toc h2::after {
+  content: ""; display: block; width: 14mm; height: .9mm; margin-top: 4mm; border-radius: .5mm; background: linear-gradient(90deg, #1f8ad6, #6cc3ff);
+}
+.colophon p { margin: 0 0 3.5mm; color: var(--text-soft); font-size: 9.5pt; }
+.colophon .colophon-meta { margin-top: 8mm; color: var(--muted); font-size: 8.5pt; }
+
+.colophon .colophon-note { margin-top: 6mm; font-size: 8.5pt; font-style: italic; color: var(--muted); }
+
+/* Contents: a dotted leader to each page number (the build prints twice, the second time with the numbers) */
+.print-toc { page: front; break-after: page; }
+.print-toc ol { list-style: none; margin: 0; padding: 0; }
+.print-toc a { color: var(--text); }
+.print-toc .toc-fill { flex: 1 1 auto; min-width: 6mm; margin: 0 2.5mm; border-bottom: .3mm dotted #aab4bd; transform: translateY(-1mm); }
+.print-toc .toc-page { min-width: 8mm; text-align: right; font-variant-numeric: tabular-nums; }
+.print-toc .toc-part { margin: 0 0 5mm; break-inside: avoid; }
+.print-toc .toc-part > a {
+  display: flex; flex-wrap: wrap; align-items: baseline; padding: 2mm 0 1.5mm; margin-bottom: 1mm;
+  font-size: 11.5pt; font-weight: 800; border-bottom: .3mm solid var(--border-strong);
+}
+.print-toc .toc-part > a .toc-label { flex: 0 0 100%; font-size: 7pt; letter-spacing: .18em; text-transform: uppercase; color: var(--accent); }
+.print-toc .toc-part > a .toc-fill { border-bottom: 0; }
+.print-toc .toc-part > a .toc-page { font-size: 9.5pt; color: var(--accent-strong); }
+.print-toc .toc-part li a { display: flex; align-items: baseline; padding: 1.1mm 0; font-size: 10pt; }
+.print-toc .toc-part li .toc-label { flex: 0 0 9mm; color: var(--muted); font-weight: 700; font-size: 8.5pt; }
+.print-toc .toc-part li .toc-page { font-size: 9pt; font-weight: 600; color: var(--text-soft); }
+
+/* The complete documentation's contents: a volume at a time */
+.book-toc .toc-volume + .toc-volume { break-before: page; }
+.book-toc .toc-volume > a {
+  display: flex; flex-wrap: wrap; align-items: baseline; padding: 0 0 3mm; margin: 0 0 6mm;
+  font-size: 18pt; font-weight: 300; letter-spacing: -.01em; border-bottom: .5mm solid var(--text);
+}
+.book-toc .toc-volume > a .toc-label {
+  flex: 0 0 100%; margin-bottom: 1.5mm; font-size: 7pt; font-weight: 600; letter-spacing: .3em; text-transform: uppercase; color: var(--accent);
+}
+.book-toc .toc-volume > a .toc-fill { border-bottom: 0; }
+.book-toc .toc-volume > a .toc-page { font-size: 10.5pt; font-weight: 600; }
+.book-toc .toc-part li a { padding: .9mm 0; font-size: 9.6pt; }
+
+/* ---------------------------------------------------------------------------------------------------------------- */
+/* Part dividers */
+
+.part-divider {
+  page: divider;
+  position: relative; height: 296.5mm; overflow: hidden; break-before: page; break-after: page;
+  padding: 92mm 22mm 0;
+  background:
+    linear-gradient(rgba(108, 195, 255, .07) 1px, transparent 1px) 0 0 / 9mm 9mm,
+    linear-gradient(90deg, rgba(108, 195, 255, .07) 1px, transparent 1px) 0 0 / 9mm 9mm,
+    linear-gradient(160deg, #15242f 0%, #0d1720 100%);
+  color: #e8eef3;
+}
+.part-numeral {
+  position: absolute; right: 16mm; top: 22mm; margin: 0;
+  font-size: 150pt; font-weight: 300; line-height: 1; letter-spacing: -.02em;
+  color: rgba(127, 198, 242, .06); -webkit-text-stroke: .3mm rgba(127, 198, 242, .42);
+}
+.part-divider .kicker { color: #7fc6f2; font-size: 8pt; font-weight: 600; letter-spacing: .3em; }
+.part-divider h1 { margin: 2mm 0 6mm; font-size: 36pt; line-height: 1.05; font-weight: 300; letter-spacing: -.02em; color: #f1f7fb; }
+.part-divider .part-description { max-width: 130mm; margin: 0 0 12mm; color: #b8c6d1; font-size: 10.5pt; font-weight: 300; line-height: 1.6; }
+.part-chapters { list-style: none; margin: 0; padding: 0; max-width: 150mm; border-top: .3mm solid rgba(143, 205, 247, .3); }
+.part-chapters li { display: flex; align-items: baseline; gap: 5mm; padding: 2.4mm 0; border-bottom: .3mm solid rgba(143, 205, 247, .14); font-size: 10.5pt; color: #e2e9ef; }
+.part-chapters li span { min-width: 7mm; color: #7fc6f2; font-weight: 600; font-variant-numeric: tabular-nums; }
+.part-chapters li em { margin-left: auto; padding-left: 4mm; font-style: normal; font-size: 8.5pt; color: #8fa3b3; font-variant-numeric: tabular-nums; }
+.part-divider.many { padding-top: 66mm; }
+.part-divider.many .part-numeral { top: 14mm; font-size: 116pt; }
+.part-divider.many .part-description { margin-bottom: 9mm; }
+.part-divider.many .part-chapters li { padding: 1.45mm 0; font-size: 9.6pt; }
+
+/* ---------------------------------------------------------------------------------------------------------------- */
+/* Chapters */
+
+.print-chapter { break-before: page; max-width: none; }
+.print-chapter .chapter-header { padding-top: 8mm; }
+.print-chapter .chapter-header h1 { font-size: 26pt; margin-bottom: 9mm; }
+.print-chapter .chapter-header h1::after { margin-top: 5mm; width: 14mm; height: .9mm; }
+.print-chapter .kicker { font-size: 7.5pt; }
+.print-chapter .chapter-header h1:has(+ .chapter-origin) { margin-bottom: 4mm; }
+.chapter-origin { margin: 0 0 9mm; font-family: var(--font-mono); font-size: 8pt; color: var(--muted); }
+.chapter-origin span {
+  margin-right: 2.5mm; font-family: var(--font); font-size: 6.5pt; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--accent);
+}
+
+.chapter-body > p:first-child { font-size: 11.5pt; }
+.chapter-body h2 { font-size: 15.5pt; margin: 9mm 0 3mm; padding-top: 4mm; break-after: avoid; }
+.chapter-body h3 { font-size: 12pt; margin: 6mm 0 2mm; break-after: avoid; }
+.chapter-body h4 { font-size: 7.8pt; margin: 5mm 0 1.5mm; break-after: avoid; }
+.chapter-body h5, .chapter-body h6 { font-size: 9.6pt; margin: 4mm 0 1.5mm; break-after: avoid; }
+/* The developer reference names functions and types in its small headings: no capitals there */
+.reference .chapter-body h4 { font-size: 10.4pt; letter-spacing: 0; text-transform: none; color: var(--text); }
+.reference .chapter-body h4 code, .reference .chapter-body h5 code { font-size: .9em; }
+/* Its documents rule a line before each section, and the section heading draws one of its own */
+.reference .chapter-body > hr:first-child, .reference .chapter-body hr:has(+ h2), .reference .chapter-body hr:last-child { display: none; }
+.dead-link { color: inherit; }
+.chapter-body p, .chapter-body li { orphans: 3; widows: 3; }
+.chapter-body p:has(+ .table-wrap), .chapter-body p:has(+ figure), .chapter-body p:has(+ ol.steps) { break-after: avoid; }
+
+figure, .table-wrap, pre.code, .callout, ol.steps > li, ul.cards > li, tr { break-inside: avoid; }
+pre.code.long, .table-wrap.long { break-inside: auto; }  /* Kept whole, these would leave half pages empty */
+.chapter-body figure { margin: 5mm 0 6mm; }
+.chapter-body figure img { max-height: 118mm; width: auto; max-width: 100%; border-radius: 2mm; }
+.chapter-body figcaption { font-size: 8.3pt; }
+
+.table-wrap { overflow: visible; border-radius: 2mm; }
+.chapter-body table { font-size: 8.8pt; }
+.chapter-body th { font-size: 6.8pt; padding: 2mm 3mm; }
+.chapter-body td { padding: 1.8mm 3mm; }
+.chapter-body tbody tr:hover td { background: none; }
+
+pre.code {
+  margin: 3.5mm 0 4.5mm; padding: 3mm 4mm; border: .3mm solid var(--border);
+  font-size: 7.9pt; line-height: 1.45; white-space: pre-wrap; word-break: break-word;
+}
+pre.code[data-lang]::before { right: 3mm; color: #8b959e; }
+/* Code on paper: the screen's colours, darkened for a light page. The print pages' script turns the token spans into
+   highlight ranges (build.py PRINT_SCRIPT); the class rules are for when it can't */
+.tok-com { color: #6f7c88; font-style: italic; }
+.tok-str { color: #2e7330; }
+.tok-num, .tok-flag { color: #a8501f; }
+.tok-kw, .tok-key, .tok-cmd { color: #0e5d99; }
+.tok-ty { color: #0b7069; }
+.tok-fn, .tok-var { color: #8a5200; }
+.tok-pp { color: #7a3fb0; }
+::highlight(tok-com) { color: #6f7c88; }
+::highlight(tok-str) { color: #2e7330; }
+::highlight(tok-num), ::highlight(tok-flag) { color: #a8501f; }
+::highlight(tok-kw), ::highlight(tok-key), ::highlight(tok-cmd) { color: #0e5d99; }
+::highlight(tok-ty) { color: #0b7069; }
+::highlight(tok-fn), ::highlight(tok-var) { color: #8a5200; }
+::highlight(tok-pp) { color: #7a3fb0; }
+code { font-size: .84em; }
+kbd { box-shadow: none; }
+
+.callout { padding: 3mm 4mm 3mm 11mm; border-radius: 2mm; }
+
+/* Step markers float instead of being positioned: a positioned marker of a step that moves to the next page leaves a
+   sliver behind at the foot of the previous one */
+ol.steps > li::before { position: relative; top: 0; left: 0; float: left; margin-left: -3.1em; box-shadow: none; }
+ol.steps > li::after { display: none; }
+.callout::before { left: 3.5mm; top: 3.4mm; width: 4.5mm; height: 4.5mm; }

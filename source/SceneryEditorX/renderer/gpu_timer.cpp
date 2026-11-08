@@ -30,6 +30,7 @@
  */
 #include "gpu_timer.h"
 #include "vulkan/command_list.h"
+#include "vulkan/debug/graphics_debug.h"
 #include "vulkan/device.h"
 #include "vulkan/render_context.h"
 #include <mutex>
@@ -102,6 +103,7 @@ namespace SceneryEditorX
 
 	void GpuTimer::BeginFrame(CommandList *cmdList)
 	{
+		Debugging::SetBreadcrumb(cmdList, "frame start");
 		State &s = S();
 		std::lock_guard lock(s.mutex);
 		s.current = nullptr;
@@ -169,6 +171,7 @@ namespace SceneryEditorX
 
 	void GpuTimer::EndFrame(CommandList *cmdList)
 	{
+		Debugging::SetBreadcrumb(cmdList, "frame end");
 		State &s = S();
 		std::lock_guard lock(s.mutex);
 		if (Write(s, cmdList) >= 0)
@@ -181,6 +184,12 @@ namespace SceneryEditorX
 
 	GpuTimer::Scope::Scope(CommandList *cmdList, const char *name) : m_CmdList(cmdList)
 	{
+		if (Debugging::IsBreadcrumbsEnabled())
+		{
+			Debugging::SetBreadcrumb(cmdList, name);
+			m_EndBreadcrumb = Debugging::InternBreadcrumb(std::string(name) + " (end)");
+		}
+
 		State &s = S();
 		std::lock_guard lock(s.mutex);
 		ListQueries *queries = Current(s);
@@ -196,6 +205,8 @@ namespace SceneryEditorX
 
 	GpuTimer::Scope::~Scope()
 	{
+		if (m_EndBreadcrumb)
+			Debugging::SetBreadcrumb(m_CmdList, m_EndBreadcrumb);
 		if (m_Index < 0)
 			return;
 		State &s = S();

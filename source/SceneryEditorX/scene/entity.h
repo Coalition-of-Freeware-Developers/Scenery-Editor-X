@@ -75,7 +75,8 @@ namespace SceneryEditorX
 		[[nodiscard]] bool GetActive() const;
 
 		/**
-		 * @brief Enables or disables the entity (for example animation hide / show and LOD switching).
+		 * @brief Enables or disables the entity (for example animation hide / show and LOD switching). A change reaches
+		 * the per-frame passes through Scene::MarkRenderStateChanged().
 		 * @param active New state.
 		 */
 		void SetActive(bool active);
@@ -105,6 +106,9 @@ namespace SceneryEditorX
 		 * @return The stored previous matrix, or the current one before the first frame was rendered.
 		 */
 		[[nodiscard]] xMath::Matrix GetMatrixPrevious() const;
+
+		/* @brief GetMatrixPrevious() for a caller that has this frame's GetMatrix() already: the same result, without walking the parents again. */
+		[[nodiscard]] xMath::Matrix GetMatrixPrevious(const xMath::Matrix &world) const;
 
 		/**
 		 * @brief 
@@ -896,8 +900,11 @@ namespace SceneryEditorX
 
 	inline void Entity::SetActive(const bool active)
 	{
-		if (EntityRuntime *runtime = GetRuntime())
+		if (EntityRuntime *runtime = GetRuntime(); runtime && runtime->active != active)
+		{
 			runtime->active = active;
+			Scene::MarkRenderStateChanged(m_EntityHandle); // the GPU scene and the CPU draw list follow it
+		}
 	}
 
 	inline void Entity::SetMatrixPrevious(const xMath::Matrix &m)
@@ -913,6 +920,12 @@ namespace SceneryEditorX
 	{
 		const EntityRuntime *runtime = GetRuntime();
 		return runtime && runtime->hasMatrixPrevious ? runtime->matrixPrevious : GetMatrix();
+	}
+
+	inline xMath::Matrix Entity::GetMatrixPrevious(const xMath::Matrix &world) const
+	{
+		const EntityRuntime *runtime = GetRuntime();
+		return runtime && runtime->hasMatrixPrevious ? runtime->matrixPrevious : world;
 	}
 
 	inline float Entity::GetTimeSinceLastTransform() const

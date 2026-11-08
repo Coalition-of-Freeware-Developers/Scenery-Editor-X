@@ -62,8 +62,9 @@ BEGIN
     BEGIN
         BLOCK "040904b0"
         BEGIN
+            VALUE "Comments", "3D airport and scenery editor for X-Plane 12 flight simulator."
             VALUE "CompanyName", "Coalition of Freeware Developers"
-            VALUE "FileDescription", "3D airport and scenery editor for X-Plane 12 flight simulator."
+            VALUE "FileDescription", "Scenery Editor X"
             VALUE "FileVersion", SEDX_VERSION_STRING
             VALUE "InternalName", "Scenery Editor X.exe"
             VALUE "LegalCopyright", "Copyright (C) 2025"

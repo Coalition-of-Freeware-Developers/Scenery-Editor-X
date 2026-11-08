@@ -36,6 +36,7 @@
 #include "slang_compiler.h"
 #include "spirv_hash.h"
 #include <SceneryEditorX/core/identifiers/hash.h>
+#include <SceneryEditorX/filesystem/vfs.h>
 #include <SceneryEditorX/utils/pointers.h>
 #include <algorithm>
 #include <fstream>
@@ -55,9 +56,48 @@ namespace SceneryEditorX
 			return spirv.size() >= 5u && spirv.front() == kSpirvMagic;
 		}
 
+		/**
+		 * @brief Locations of a module's user inputs: Input-storage variables decorated with Location (built-ins such as
+		 * SV_VertexID carry BuiltIn instead). Bit n = location n. Each variable counts its first location only, which
+		 * covers the scalar and vector vertex attributes the engine's vertex formats use (no matrix attributes).
+		 */
+		[[nodiscard]] uint32_t ReflectInputLocations(const std::vector<uint32_t>& spirv)
+		{
+			constexpr uint32_t kOpVariable = 59;
+			constexpr uint32_t kOpDecorate = 71;
+			constexpr uint32_t kDecorationLocation = 30;
+			constexpr uint32_t kStorageClassInput = 1;
+
+			std::unordered_map<uint32_t, uint32_t> locations; // result id -> Location
+			std::vector<uint32_t> inputs;                     // result ids of Input variables
+			for (size_t word = 5; word < spirv.size();)
+			{
+				const uint32_t wordCount = spirv[word] >> 16;
+				const uint32_t opcode = spirv[word] & 0xFFFFu;
+				if (wordCount == 0 || word + wordCount > spirv.size())
+					break;
+
+				if (opcode == kOpDecorate && wordCount >= 4 && spirv[word + 2] == kDecorationLocation)
+					locations[spirv[word + 1]] = spirv[word + 3];
+				else if (opcode == kOpVariable && wordCount >= 4 && spirv[word + 3] == kStorageClassInput)
+					inputs.push_back(spirv[word + 2]);
+
+				word += wordCount;
+			}
+
+			uint32_t mask = 0;
+			for (const uint32_t id : inputs)
+			{
+				const auto it = locations.find(id);
+				if (it != locations.end() && it->second < 32)
+					mask |= 1u << it->second;
+			}
+			return mask;
+		}
+
 		[[nodiscard]] std::string ExtractShaderName(const std::filesystem::path& path)
 		{
-			return path.stem().string();
+			return VFS::ToUtf8(path.stem());
 		}
 
 		[[nodiscard]] VkDevice GetActiveVkDevice()
@@ -97,7 +137,7 @@ namespace SceneryEditorX
 
 		[[nodiscard]] std::filesystem::path NormalizeShaderPath(const std::string& filepath)
 		{
-			std::filesystem::path path(filepath);
+			std::filesystem::path path = VFS::FromUtf8(filepath);
 			if (path.is_relative())
 				path = std::filesystem::path(kShaderDirectoryPath) / path;
 			return path.lexically_normal();
@@ -182,14 +222,14 @@ namespace SceneryEditorX
 
 		// Slang source compiles through the Slang front-end (with reflection); anything else is treated as precompiled SPIR-V.
 		if (sourcePath.extension() == ".slang")
-			return SlangCompiler::Compile(sourcePath.string(), forceCompile, disableOptimization);
+			return SlangCompiler::Compile(VFS::ToUtf8(sourcePath), forceCompile, disableOptimization);
 
-		const std::filesystem::path spirvPath = ShaderCache::ResolveSpirvPath(sourcePath.string());
+		const std::filesystem::path spirvPath = ShaderCache::ResolveSpirvPath(VFS::ToUtf8(sourcePath));
 
 		std::vector<uint32_t> spirv;
 		if (!ShaderCache::TryLoadSpirv(spirvPath, spirv))
 		{
-			SEDX_CORE_ERROR_TAG("Shader", "Failed to load SPIR-V for shader '{}'", sourcePath.string());
+			SEDX_CORE_ERROR_TAG("Shader", "Failed to load SPIR-V for shader '{}'", VFS::ToUtf8(sourcePath));
 			return nullptr;
 		}
 
@@ -268,6 +308,7 @@ namespace SceneryEditorX
 		m_SourceDependencies = std::move(other.m_SourceDependencies);
 		m_BuildTime = other.m_BuildTime;
 		m_VertexType = other.m_VertexType;
+		m_VertexInputLocations = other.m_VertexInputLocations;
 		m_PushConstantSize = other.m_PushConstantSize;
 		m_HasBindingConflicts = other.m_HasBindingConflicts;
 	}
@@ -299,7 +340,7 @@ namespace SceneryEditorX
 		if (m_AssetPath.empty())
 			return false;
 
-		const std::filesystem::path spirvPath = ShaderCache::ResolveSpirvPath(m_AssetPath.string());
+		const std::filesystem::path spirvPath = ShaderCache::ResolveSpirvPath(VFS::ToUtf8(m_AssetPath));
 		if (!std::filesystem::exists(spirvPath))
 			return false;
 
@@ -502,6 +543,7 @@ namespace SceneryEditorX
 		const VkDevice device = GetActiveVkDevice();
 		m_ShaderData.clear();
 		m_PipelineShaderStageCreateInfos.clear();
+		m_VertexInputLocations = ~0u;
 
 		for (const auto& [stage, spirv] : shaderModules)
 		{
@@ -512,6 +554,8 @@ namespace SceneryEditorX
 			}
 
 			m_ShaderData.emplace(stage, spirv);
+			if (stage == ShaderType::Vertex)
+				m_VertexInputLocations = ReflectInputLocations(spirv);
 
 			auto module = CreateRef<VulkanShaderStage>(stage, spirv, device);
 			m_ShaderHandles.emplace(stage, module);

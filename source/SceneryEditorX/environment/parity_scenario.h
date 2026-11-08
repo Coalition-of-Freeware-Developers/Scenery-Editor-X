@@ -79,6 +79,10 @@ namespace SceneryEditorX::Environment
 		int day = 15;
 		double localTimeHours = 12.0;
 		float utcOffsetHours = 0.0f;
+		// The date the airport's scenery was loaded on, when not the date above ("scenery_date"): X-Plane picks a tile's
+		// seasonal library art (EXPORT_SEASON terrain, autogen, airport art) as it loads the tile and keeps it when the
+		// date changes, so the terrain shows that date's season while the sun and the trees follow the date above
+		std::optional<std::array<int, 3>> sceneryDate;	// Year, month, day
 
 		// Weather and surface
 		float visibilityM = 80000.0f;
@@ -87,6 +91,8 @@ namespace SceneryEditorX::Environment
 		int runwayFriction = 0;							// 0-15, sim/weather/region/runway_friction
 		float snowCover = 0.0f;							// 0-1
 		float temperatureC = 15.0f;
+		std::optional<float> waveAmplitudeM;			// sim/weather/region/wave_amplitude (m); none = the sim's own sea
+		std::optional<float> waveDirectionDeg;			// sim/weather/region/wave_dir (deg true, where the waves come from)
 
 		// Capture
 		uint32_t settleFrames = 600;					// Frames before the screenshot: exposure and weather settle

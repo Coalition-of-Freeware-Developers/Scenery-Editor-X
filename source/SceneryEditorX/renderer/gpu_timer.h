@@ -73,6 +73,7 @@ namespace SceneryEditorX
 		private:
 			CommandList *m_CmdList = nullptr;
 			int m_Index = -1;
+			const char *m_EndBreadcrumb = nullptr;	// GPU crash breadcrumb after the scope (Debugging::SetBreadcrumb)
 		};
 
 		/* @brief The last frame that finished on the GPU: one entry per pass in recording order, then "total". */

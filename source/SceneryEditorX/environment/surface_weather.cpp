@@ -38,9 +38,11 @@ namespace SceneryEditorX::Environment
 {
 	namespace
 	{
+		constexpr float LEVEL_STEPS = 4.0f;		// 1, 2, 3 -> 0.25, 0.5, 0.75
+
 		float Level(const int stepInGroup)
 		{
-			return static_cast<float>(stepInGroup) / 3.0f;	// 1, 2, 3 -> 0.33, 0.67, 1
+			return static_cast<float>(stepInGroup) / LEVEL_STEPS;
 		}
 
 		/* @brief First-order approach of value toward target with a time constant (exact for a constant target). */
@@ -63,8 +65,8 @@ namespace SceneryEditorX::Environment
 		switch (group)
 		{
 			case 0: surface.wetness = level; break;
-			case 1: surface.wetness = 1.0f; surface.puddles = level; break;
-			case 2: surface.snow = level; break;
+			case 1: surface.wetness = level; surface.puddles = level; break;
+			case 2: surface.snow = level; surface.ice = level * (2.0f / 3.0f); break;
 			case 3: surface.ice = level; break;
 			default: surface.snow = level; surface.ice = level; break;
 		}
@@ -73,20 +75,37 @@ namespace SceneryEditorX::Environment
 
 	int EncodeRunwayFriction(const SurfaceWeather &surface)
 	{
-		const auto step = [](const float value) { return std::clamp(static_cast<int>(std::lround(value * 3.0f)), 0, 3); };
+		const auto step = [](const float value) { return std::clamp(static_cast<int>(std::lround(value * LEVEL_STEPS)), 0, 3); };
 		const int snow = step(surface.snow);
 		const int ice = step(surface.ice);
-		if (snow > 0 && ice > 0)
+		// Snowy ground carries some ice of its own (DecodeRunwayFriction): only ice beyond that makes it snowy and icy
+		if (snow > 0 && ice > 0 && surface.ice > surface.snow * (2.0f / 3.0f) + 0.01f)
 			return 12 + std::max(snow, ice);
-		if (ice > 0)
-			return 9 + ice;
 		if (snow > 0)
 			return 6 + snow;
+		if (ice > 0)
+			return 9 + ice;
 		if (const int puddles = step(surface.puddles); puddles > 0)
 			return 3 + puddles;
 		if (const int wet = step(surface.wetness); wet > 0)
 			return wet;
 		return 0;
+	}
+
+	float WeatherThresholdCurve::Evaluate(const float value) const
+	{
+		if (value <= amount.front())
+			return threshold.front();
+		for (size_t i = 1; i < amount.size(); ++i)
+		{
+			if (value <= amount[i])
+			{
+				const float span = amount[i] - amount[i - 1];
+				const float t = span > 0.0f ? (value - amount[i - 1]) / span : 1.0f;
+				return threshold[i - 1] + (threshold[i] - threshold[i - 1]) * t;
+			}
+		}
+		return threshold.back();
 	}
 
 	const char *GetRunwayFrictionName(const int friction)

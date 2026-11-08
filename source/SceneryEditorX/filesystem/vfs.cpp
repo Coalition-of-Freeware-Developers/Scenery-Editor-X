@@ -241,6 +241,12 @@ namespace SceneryEditorX::VFS
 		return std::string(text.begin(), text.end());
 	}
 
+	std::string ToGenericUtf8(const fs::path &path)
+	{
+		const std::u8string text = path.generic_u8string();
+		return std::string(text.begin(), text.end());
+	}
+
 	fs::path FromUtf8(const std::string_view text)
 	{
 		return fs::path(std::u8string(text.begin(), text.end()));

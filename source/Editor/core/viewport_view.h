@@ -92,6 +92,15 @@ namespace SceneryEditorX
 		/* @brief Where the ray through a screen position meets the horizontal plane y = planeY (false when it doesn't). */
 		bool RayToPlane(const ImVec2 &screen, double planeY, Point3 &hit) const;
 
+		/**
+		 * @brief Where the ray through a screen position meets the ground: the loaded terrain (SceneTerrain), and the plane
+		 * y = 0 beyond it or without one (false when it meets neither).
+		 */
+		bool RayToGround(const ImVec2 &screen, Point3 &hit) const;
+
+		/* @brief The ground's height (the terrain's; 0 without one) under a point of the ground plane. */
+		static double GroundHeight(double x, double z);
+
 		/* @brief Screen pixels a meter covers at a world point (for hit tolerances and handle sizes). */
 		double PixelsPerMeter(const Point3 &world) const;
 

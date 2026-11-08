@@ -62,8 +62,10 @@ namespace SceneryEditorX
 	 * phases' commands (the early ones, then the late ones at GetLateCommandOffset()).
 	 *
 	 * Render thread (Renderer::Tick and the passes). Entity, renderable and material changes arrive through
-	 * Scene::GetStructureVersion() and OnMaterialsChanged(). Transforms of instances that moved recently are checked
-	 * every frame and the rest round-robin; MarkTransformDirty() makes an edited subtree update the same frame.
+	 * Scene::GetStructureVersion(), MaterialAsset::GetDrawPathVersion() and OnMaterialsChanged(); active flags and
+	 * cast-shadow switches as Scene render-state changes (Scene::TakeRenderStateChanges), so a frame costs what changed,
+	 * not every instance. Transforms of instances that moved recently are checked every frame and the rest
+	 * round-robin; MarkTransformDirty() makes an edited subtree update the same frame.
 	 */
 	class GpuScene
 	{
@@ -152,6 +154,9 @@ namespace SceneryEditorX
 		 * transparent pass still draws its blended part). Cheap, no lookup: the same test Update() uses.
 		 */
 		[[nodiscard]] static bool IsGpuDriven(const Renderable *renderable);
+
+		/* @brief Whether IsGpuDriven() can be true at all: enabled, and its shaders were built when Update() last ran. */
+		[[nodiscard]] static bool IsDrawing();
 
 		[[nodiscard]] static const std::array<Bucket, BUCKET_COUNT> &GetBuckets();
 

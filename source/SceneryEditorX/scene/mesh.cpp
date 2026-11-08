@@ -290,6 +290,17 @@ namespace SceneryEditorX
 
 		const MeshLod& lod = sub_mesh.lods[0];
 
+		// ReleaseCpuGeometry() left only the GPU copy
+		if (static_cast<size_t>(lod.vertex_offset) + lod.vertex_count > m_vertices.size() ||
+			static_cast<size_t>(lod.index_offset) + lod.index_count > m_indices.size())
+		{
+			if (indices)
+				indices->clear();
+			if (vertices)
+				vertices->clear();
+			return;
+		}
+
 		if (indices)
 		{
 			SEDX_CORE_ASSERT(lod.index_count != 0, "Index count can't be 0");
@@ -481,6 +492,13 @@ namespace SceneryEditorX
 			m_global_vertex_count  = static_cast<uint32_t>(m_vertices.size());
 			m_global_index_count   = static_cast<uint32_t>(m_indices.size());
 		}
+	}
+
+	void Mesh::ReleaseCpuGeometry()
+	{
+		std::scoped_lock lock(m_mutex);
+		std::vector<Vertex_PosTexNorTan>().swap(m_vertices);
+		std::vector<uint32_t>().swap(m_indices);
 	}
 
 	void Mesh::BuildAccelerationStructure(CommandList* cmd_list, bool allow_update)

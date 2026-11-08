@@ -216,7 +216,7 @@ namespace SceneryEditorX::XPlane
 		/**
 		 * @brief Puts the camera at an offset from the airport's center (on the ground plane) looking along a heading,
 		 * for repeatable views such as a ground-level one (--xp-airport-camera).
-		 * @param x, y, z Meters from the center (+X east, +Y up, +Z south).
+		 * @param x, y, z Meters from the center (+X east, +Y up, +Z south); y is above the ground (the terrain) under the eye.
 		 * @param yawDegrees Heading of the view, the convention Frame() uses (0 looks along +Z).
 		 * @param pitchDegrees Above (> 0) or below the horizon.
 		 */
@@ -225,7 +225,7 @@ namespace SceneryEditorX::XPlane
 		/**
 		 * @brief Puts the camera at a geographic position over the loaded airport's ground plane, as X-Plane's camera
 		 * would be placed (parity scenarios).
-		 * @param heightMeters Above the ground plane (the airport's elevation).
+		 * @param heightMeters Above the ground (the terrain under the camera; the airport's ground plane without terrain).
 		 * @param headingTrueDegrees Clockwise from true north.
 		 * @param pitchDegrees Above (> 0) or below the horizon.
 		 * @return False when no airport is loaded.

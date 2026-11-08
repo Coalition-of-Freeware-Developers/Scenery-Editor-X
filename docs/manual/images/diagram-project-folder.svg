@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 460" width="1100" height="460" role="img" aria-labelledby="title desc">
+  <title id="title">A project's folder</title>
+  <desc id="desc">Custom Scenery holds the pack folder XTUT - Tutorial Field. Inside it: the project file XTUT - Tutorial Field.edX; Earth nav data with apt.dat and the DSF tiles the export writes; objects, textures and facades folders for the pack's own art.</desc>
+  <defs>
+    <pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse">
+      <path d="M24 0H0V24" fill="none" stroke="#6cc3ff" stroke-opacity=".07"/>
+    </pattern>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#14232f"/><stop offset="1" stop-color="#0d1720"/>
+    </linearGradient>
+    <style>
+      text { white-space: pre; font-family: "Segoe UI", "Open Sans", Helvetica, Arial, sans-serif; }
+      .tree { stroke: #6cc3ff; stroke-opacity: .55; stroke-width: 1.5; fill: none; }
+      .folder { fill: #e9b949; }
+      .file { fill: #d8e3ec; }
+      .file-hero { fill: #1f8ad6; }
+      .name { fill: #ffffff; font-size: 16px; font-weight: 600; }
+      .name-dim { fill: #c7d5e0; font-size: 15px; }
+      .mono { font-family: "Cascadia Mono", Consolas, monospace; }
+      .tag { font-size: 12px; font-weight: 700; letter-spacing: .12em; }
+      .tag-blue { fill: #6cc3ff; }
+      .tag-green { fill: #5fd39b; }
+      .tag-amber { fill: #f0c46a; }
+      .note { fill: #9fb2c1; font-size: 13.5px; }
+      .pill-blue { fill: none; stroke: #6cc3ff; stroke-opacity: .6; }
+      .pill-green { fill: none; stroke: #5fd39b; stroke-opacity: .6; }
+      .pill-amber { fill: none; stroke: #f0c46a; stroke-opacity: .6; }
+    </style>
+    <symbol id="folder" viewBox="0 0 24 20"><path d="M0 3a2 2 0 0 1 2-2h7l2 3h11a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2Z"/></symbol>
+    <symbol id="file" viewBox="0 0 18 22"><path d="M0 2a2 2 0 0 1 2-2h9l7 7v13a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2Z"/></symbol>
+  </defs>
+  <rect width="1100" height="460" fill="url(#bg)"/>
+  <rect width="1100" height="460" fill="url(#grid)"/>
+
+  <!-- tree lines -->
+  <path d="M62 64 V100 H84" class="tree"/>
+  <path d="M106 112 V400" class="tree"/>
+  <path d="M106 152 H128 M106 202 H128 M106 330 H128 M106 365 H128 M106 400 H128" class="tree"/>
+  <path d="M150 214 V280" class="tree"/>
+  <path d="M150 245 H172 M150 280 H172" class="tree"/>
+
+  <!-- Custom Scenery -->
+  <use href="#folder" x="40" y="30" width="28" height="23" class="folder"/>
+  <text x="78" y="48" class="name">Custom Scenery</text>
+  <text x="222" y="48" class="note">in your X-Plane 12 folder</text>
+
+  <!-- Pack folder -->
+  <use href="#folder" x="84" y="88" width="28" height="23" class="folder"/>
+  <text x="122" y="106" class="name">XTUT - Tutorial Field</text>
+  <text x="300" y="106" class="note">the project's folder is the scenery pack</text>
+
+  <!-- project file -->
+  <use href="#file" x="132" y="140" width="18" height="22" class="file-hero"/>
+  <text x="160" y="157" class="name mono" font-size="15">XTUT - Tutorial Field.edX</text>
+  <rect x="610" y="140" width="130" height="24" rx="12" class="pill-blue"/>
+  <text x="675" y="157" class="tag tag-blue" text-anchor="middle">THE PROJECT</text>
+  <text x="756" y="157" class="note">you open and save this</text>
+
+  <!-- Earth nav data -->
+  <use href="#folder" x="128" y="190" width="28" height="23" class="folder"/>
+  <text x="166" y="208" class="name">Earth nav data</text>
+  <use href="#file" x="176" y="234" width="18" height="22" class="file"/>
+  <text x="204" y="251" class="name-dim mono">apt.dat</text>
+  <use href="#file" x="176" y="269" width="18" height="22" class="file"/>
+  <text x="204" y="286" class="name-dim mono">+30-100/+38-099.dsf</text>
+  <rect x="610" y="232" width="150" height="24" rx="12" class="pill-green"/>
+  <text x="685" y="249" class="tag tag-green" text-anchor="middle">WRITTEN BY EXPORT</text>
+  <text x="776" y="249" class="note">what X-Plane reads:</text>
+  <text x="776" y="270" class="note">airports, and a DSF tile per</text>
+  <text x="776" y="291" class="note">1° × 1° the pack places things in</text>
+
+  <!-- art folders -->
+  <use href="#folder" x="128" y="318" width="28" height="23" class="folder"/>
+  <text x="166" y="336" class="name">objects</text>
+  <use href="#folder" x="128" y="353" width="28" height="23" class="folder"/>
+  <text x="166" y="371" class="name">textures</text>
+  <use href="#folder" x="128" y="388" width="28" height="23" class="folder"/>
+  <text x="166" y="406" class="name">facades</text>
+  <rect x="610" y="352" width="120" height="24" rx="12" class="pill-amber"/>
+  <text x="670" y="369" class="tag tag-amber" text-anchor="middle">YOUR OWN ART</text>
+  <text x="746" y="369" class="note">objects, textures and facades the pack ships</text>
+  <text x="746" y="390" class="note">(facades/ appears when you make one)</text>
+</svg>

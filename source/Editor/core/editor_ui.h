@@ -61,7 +61,7 @@ namespace SceneryEditorX::EditorUI
 	 */
 	bool BeginPropertyGrid(const char *id, float labelWidth = 120.0f);
 
-	/* @brief Starts a grid row: draws the dim label and moves to a full-width value cell. */
+	/* @brief Starts a grid row: draws the label in Palette::TextLabel and moves to a full-width value cell. */
 	void PropertyLabel(const char *label);
 
 	/* @brief Ends a grid started with BeginPropertyGrid(). */

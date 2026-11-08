@@ -110,6 +110,13 @@ namespace SceneryEditorX
 
 		// gpu buffers
 		void CreateGpuBuffers();
+
+		/**
+		 * @brief Drops the CPU copy of the vertices and indices once CreateGpuBuffers() handed them to the global geometry
+		 * buffer. The sub-meshes' LODs (offsets, counts, bounds) stay, so the mesh still draws; GetGeometry() returns
+		 * nothing afterwards and CreateGpuBuffers() has nothing to build again.
+		 */
+		void ReleaseCpuGeometry();
 		void BuildAccelerationStructure(CommandList* cmd_list, bool allow_update = false);
 		virtual Buffer* GetIndexBuffer();
 		virtual Buffer* GetVertexBuffer();

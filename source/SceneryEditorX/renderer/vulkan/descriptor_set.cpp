@@ -227,7 +227,9 @@ namespace SceneryEditorX
 	    m_Device = RenderContext::Get()->GetDevice();
 		if (hasSlotTypeConflict)
 			return;
-		Create();
+
+		// Layout only: a pool set here was never bound, and every resize made one per PSO (its render targets are in the PSO hash)
+		Create(false);
 	}
 	
 	// -----------------------------------------------------------------------
@@ -281,7 +283,7 @@ namespace SceneryEditorX
 		m_Device = RenderContext::Get()->GetDevice();
 		if (hasSlotTypeConflict)
 			return;
-		Create();
+		Create(true);
 		Write();
 	}
 	
@@ -518,7 +520,19 @@ namespace SceneryEditorX
 	
 	    return it->second.GetResource();
 	}
-	
+
+	size_t DescriptorSet::EvictCachedSets(const std::unordered_set<const void*>& resources)
+	{
+		if (resources.empty())
+			return 0;
+
+		// Freed at once (no deletion queue): the caller guarantees no command buffer still refers to the sets
+		return std::erase_if(BindlessManager::GetDescriptorSets(), [&resources](const auto& entry)
+		{
+			return std::ranges::any_of(entry.second.m_Bindings, [&resources](const DescriptorBinding& binding) { return resources.contains(binding.GetResource()); });
+		});
+	}
+
 	// -----------------------------------------------------------------------
 	// DescriptorSet — lifetime
 	// -----------------------------------------------------------------------
@@ -621,7 +635,7 @@ namespace SceneryEditorX
 	// DescriptorSet::Create — layout-only (VkDescriptorSet allocated lazily)
 	// -----------------------------------------------------------------------
 	
-	void DescriptorSet::Create()
+	void DescriptorSet::Create(const bool allocateSet)
 	{
 		SEDX_CORE_ASSERT(m_Layout == VK_NULL_HANDLE, "DescriptorSet::Create called with existing layout");
 		
@@ -703,8 +717,9 @@ namespace SceneryEditorX
 		m_LayoutObject = DescriptorLayout::Create(createInfo, m_ObjectName.c_str());
 		SEDX_CORE_ASSERT(m_LayoutObject && m_LayoutObject->IsValid(), "DescriptorSet::Create: failed to create VkDescriptorSetLayout");
 		m_Layout = m_LayoutObject->GetLayout();
+		if (!allocateSet)
+			return;
 		
-		// Allocate a VkDescriptorSet from the shared pool immediately
 		m_Set = DescriptorPoolManager::Get().Allocate(m_Layout);
 		SEDX_CORE_ASSERT(m_Set != VK_NULL_HANDLE, "DescriptorSet::Create: failed to allocate VkDescriptorSet");
 	}
@@ -743,8 +758,8 @@ namespace SceneryEditorX
 			const Descriptor& descriptor = m_Descriptors[i];
 			const DescriptorBinding& binding = m_Bindings[i];
 
-			// Unbound slots stay unwritten (the layout is partially bound); bindless arrays live in their own sets.
-			if (!binding.IsBound() || (descriptor.IsArray() && descriptor.GetArrayLength() == MAX_ARRAY_SIZE))
+			// Bindless arrays live in their own sets.
+			if (descriptor.IsArray() && descriptor.GetArrayLength() == MAX_ARRAY_SIZE)
 				continue;
 
 			const DescriptorType type = descriptor.GetType();
@@ -755,6 +770,36 @@ namespace SceneryEditorX
 			write.dstBinding      = descriptor.GetSlot();
 			write.dstArrayElement = 0;
 			write.descriptorType  = ToVkDescriptorType(type);
+
+			// A slot the pass left unbound gets null descriptors (nullDescriptor: reads return 0, writes are dropped).
+			// Unwritten, it keeps what the recycled pool memory held, often the descriptor of a destroyed render target:
+			// a shader reading it faults the GPU (VK_ERROR_DEVICE_LOST, and the reset takes every app on it down).
+			// Dynamic uniform buffers need a real buffer for their offsets; the per-frame ones are always bound.
+			if (!binding.IsBound())
+			{
+				if (type == DescriptorType::Image || type == DescriptorType::TextureStorage)
+				{
+					const uint32_t elementCount = descriptor.IsArray() ? std::max(1u, descriptor.GetArrayLength()) : 1u;
+					const size_t first = imageInfos.size();
+					for (uint32_t element = 0; element < elementCount; ++element)
+						imageInfos.push_back(VkDescriptorImageInfo{ .sampler = VK_NULL_HANDLE, .imageView = VK_NULL_HANDLE, .imageLayout = VK_IMAGE_LAYOUT_UNDEFINED });
+					write.descriptorCount = elementCount;
+					write.pImageInfo      = imageInfos.data() + first;
+				}
+				else if (type == DescriptorType::StructuredBuffer)
+				{
+					bufferInfos.push_back(VkDescriptorBufferInfo{ .buffer = VK_NULL_HANDLE, .offset = 0, .range = VK_WHOLE_SIZE });
+					write.descriptorCount = 1;
+					write.pBufferInfo     = &bufferInfos.back();
+				}
+				else
+				{
+					continue;
+				}
+
+				writes.push_back(write);
+				continue;
+			}
 
 			switch (type)
 			{

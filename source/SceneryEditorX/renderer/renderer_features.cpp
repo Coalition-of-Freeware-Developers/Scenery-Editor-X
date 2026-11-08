@@ -40,13 +40,16 @@ namespace SceneryEditorX
 	{
 		using F = RendererFeatures;
 
-		constexpr std::array<RendererFeatureInfo, 20> FEATURES = { {
+		// A feature's bit is its index here: shaders test some of them (is_feature_enabled, FEATURE_* constants)
+		constexpr std::array<RendererFeatureInfo, 23> FEATURES = { {
 			{ "atmosphere", "Atmosphere", "Sky-view, transmittance and multi-scattering LUTs; the sky", 6, &F::atmosphere },
 			{ "aerial-perspective", "Aerial perspective", "Haze and in-scattering between the camera and what it sees", 6, &F::aerialPerspective },
 			{ "env-probes", "Environment probes", "Image-based lighting from GGX-filtered cube probes", 6, &F::envProbes },
 			{ "cloud-shadows", "Cloud shadows", "World-space cloud shadow cascades", 7, &F::cloudShadows },
 			{ "csm", "Sun shadows", "Cascaded shadow maps from the sun", 7, &F::csmShadows },
 			{ "terrain", "Base terrain", "DSF terrain patches and .ter materials around the airport", 10, &F::terrain },
+			{ "terrain-scenery", "Terrain scenery", "The base tile's own forests, roads, beaches and buildings within a mile of the airport", 10, &F::terrainScenery },
+			{ "autogen", "Autogen", "The base tile's autogen (houses, blocks, their trees) with the terrain scenery", 10, &F::autogen },
 			{ "weather", "Weather surfaces", "Wetness, puddles, snow and ice applied to the g-buffer", 12, &F::weatherApply },
 			{ "ao", "Ambient occlusion", "FidelityFX CACAO", 8, &F::ao },
 			{ "tiled-lights", "Tiled lights", "Photometric night lighting: tiles of up to 512 lights, spill volumes", 14, &F::tiledLights },
@@ -61,6 +64,7 @@ namespace SceneryEditorX
 			{ "fxaa", "FXAA", "Post-process anti-aliasing", 5, &F::fxaa },
 			{ "fsr1", "FSR 1", "Spatial upscaling (render below output resolution)", 5, &F::fsr1 },
 			{ "sss", "Screen-space shadows", "Bend contact shadows (X-Plane 12.4 has none)", 7, &F::screenSpaceShadows },
+			{ "trees-3d", "3D trees", "X-Plane 12 forests' 3D tree meshes near the camera; off: billboards everywhere", 10, &F::trees3d },
 		} };
 	}
 

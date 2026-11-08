@@ -43,6 +43,7 @@
 #include <SceneryEditorX/xplane/xp_airport_manager.h>
 #include <SceneryEditorX/xplane/xp_gateway_types.h>
 #include <SceneryEditorX/xplane/xp_library_manager.h>
+#include <SceneryEditorX/xplane/xp_terrain_scene.h>
 
 // -------------------------------------------------------
 
@@ -73,6 +74,7 @@ namespace SceneryEditorX::EditorAirports
 			std::vector<std::string> validation;
 			uint64_t validationRevision = ~0ull;
 			std::vector<SceneAirports::ElementRef> editedRows;	// Rows whose geometry changed, rebuilt on the next Tick
+			bool terrainEnabled = true;				// SceneTerrain::IsEnabled() the open airport was built with
 
 			std::string startupAirport;			// --xp-airport <id>, opened once the index is ready
 			bool startupDone = false;
@@ -116,6 +118,7 @@ namespace SceneryEditorX::EditorAirports
 			State &state = GetState();
 			if (!state.document)
 				return;
+			state.terrainEnabled = SceneTerrain::IsEnabled();
 			const uint64_t root = SceneAirports::Load(*state.document, frame);
 			if (context && root != 0)
 				context->selectedEntity = root;
@@ -391,11 +394,19 @@ namespace SceneryEditorX::EditorAirports
 					}
 				}
 
+				// The tile scenery's switch (RENDERER panel, --no-terrain-scenery) shows or removes it on the same terrain
+				SceneTerrain::Update();
+
 				// A newer library index (first scan finished after the airport opened, a rescan, a library added):
-				// rebuild once so the art that couldn't be found before is drawn.
-				if (libraryReady && LibraryManager::GetScanState() != ScanState::Scanning && SceneAirports::GetBuiltLibraryGeneration() != LibraryManager::GetGeneration())
+				// rebuild once so the art that couldn't be found before is drawn. The terrain switch (RENDERER panel,
+				// --no-terrain) rebuilds too: the airport stands on the terrain, or on the flat ground plane.
+				const bool libraryChanged = libraryReady && LibraryManager::GetScanState() != ScanState::Scanning && SceneAirports::GetBuiltLibraryGeneration() != LibraryManager::GetGeneration();
+				const bool terrainSwitched = SceneTerrain::IsEnabled() != state.terrainEnabled;
+				if (libraryChanged || terrainSwitched)
 				{
-					EDITOR_INFO_TAG(LOG_TAG, "The X-Plane library index changed: rebuilding {}", state.document->GetTitle());
+					EDITOR_INFO_TAG(LOG_TAG, "{}: rebuilding {}", libraryChanged ? "The X-Plane library index changed" : SceneTerrain::IsEnabled() ? "Terrain switched on" : "Terrain switched off",
+						state.document->GetTitle());
+					state.terrainEnabled = SceneTerrain::IsEnabled();
 					const bool rootSelected = context && context->selectedEntity == SceneAirports::GetRootId();
 					SceneAirports::Rebuild(*state.document);
 					if (rootSelected)
