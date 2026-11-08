@@ -3,10 +3,10 @@
 # Needs the repository secret PROJECT_TOKEN: the workflow's own GITHUB_TOKEN can't write to an organization's project.
 # Make a fine-grained personal access token with resource owner Coalition-of-Freeware-Developers and
 # Organization permissions › Projects: Read and write (a classic token needs the `project` scope instead), then add it
-# under Settings › Secrets and variables › Actions. Without the secret the run only logs a warning.
+# under Settings › Secrets and variables › Actions. Without the secret this workflow does nothing (it logs a notice).
 #
 # Issue forms also add issues through their projects: key, but GitHub only does that when the person opening the issue
-# can write to the project; this workflow covers everyone else. Actions › Add issues to project › Run workflow adds
+# can write to the project; this workflow covers everyone else once the secret exists. Actions › Add issues to project › Run workflow adds
 # an existing issue by number. Issue events run the copy of this workflow on the default branch (master).
 name: Add issues to project
 
@@ -32,14 +32,14 @@ jobs:
     steps:
       - name: Check for the project token
         if: env.PROJECT_TOKEN == ''
-        run: echo "::warning::PROJECT_TOKEN isn't set, so the issue wasn't added to the project. See the comment at the top of add-to-project.yml."
+        run: echo "::notice::PROJECT_TOKEN isn't set, so this workflow didn't add the issue to the project (the issue form may have). See the comment at the top of add-to-project.yml."
 
       - name: Checkout the project setting
         if: env.PROJECT_TOKEN != ''
         uses: actions/checkout@v7
         with:
           sparse-checkout: .github
-          persist-credentials: false
+          # Not persist-credentials: false: checkout then runs `git submodule foreach` in the step, which aborts on dependency/json-cpp-gen (a gitlink with no .gitmodules entry).
 
       - name: Add to project
         if: env.PROJECT_TOKEN != ''
