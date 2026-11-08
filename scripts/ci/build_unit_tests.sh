@@ -13,8 +13,10 @@
 #
 # Environment:
 #   CC, CXX           compilers (default gcc / g++; clang / clang++ on macOS)
-#   SEDX_TEST_OUT     output folder (default build/unit-tests): Catch2, objects, executables in bin/, JUnit reports
-#                     in reports/<Suite>.xml. Objects are rebuilt on every run; Catch2 only when the compiler changes.
+#   SEDX_TEST_OUT     output folder (default build/unit-tests), without spaces: Catch2, objects, executables in bin/,
+#                     JUnit reports in reports/<Suite>.xml. Objects are rebuilt on every run; Catch2 only when the
+#                     compiler changes. Every other path is relative to the repository root, so its location doesn't
+#                     matter; CC and CXX may hold a launcher too ("ccache g++").
 #   SEDX_TEST_JOBS    parallel compiles (default: the number of CPUs)
 #   MACOSX_DEPLOYMENT_TARGET   macOS only, default 13.0 like cmake/toolchains/sedx-mac.cmake, so a libc++ function
 #                     only newer macOS versions ship fails here as it does in the editor build
@@ -47,6 +49,9 @@ fi
 export CC CXX
 
 OUT=${SEDX_TEST_OUT:-build/unit-tests}
+case "$OUT" in
+	*" "*) echo "SEDX_TEST_OUT ($OUT) can't contain spaces: the compiler flags hold paths in it" >&2; exit 2 ;;
+esac
 OBJ=$OUT/obj
 BIN=$OUT/bin
 REPORTS=$OUT/reports
@@ -272,6 +277,7 @@ EOF
 }
 
 # @brief An attribute of the <testsuite> element of a suite's JUnit report; nothing when the suite has no report.
+# Catch2 v3's JUnit reporter counts assertions in tests= and failures= (not test cases), hence the summary's columns.
 report_attribute()
 {
 	[ -f "$REPORTS/$1.xml" ] || return 0

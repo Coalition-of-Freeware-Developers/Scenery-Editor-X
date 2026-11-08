@@ -67,11 +67,25 @@ jobs:
           git -c url."https://github.com/".insteadOf="git@github.com:"
           submodule update --init --depth 1 dependency/json dependency/Catch2 dependency/libconfig
 
+      # Installed from the image's own package database, so nothing is partially upgraded (MSYS2 doesn't support
+      # `pacman -Sy` without -u). If that database is too old for the mirrors, update all of MSYS2 first the way
+      # msys2/setup-msys2 does: the first pass may replace the MSYS2 runtime, which needs every MSYS2 process stopped.
+      # PowerShell, not the MSYS2 shell, so the update can't stop the shell running this step.
       - name: MSYS2 UCRT64 toolchain
         if: runner.os == 'Windows'
-        run: >-
-          pacman -Sy --noconfirm --needed
-          mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-cmake mingw-w64-ucrt-x86_64-ninja
+        shell: pwsh
+        run: |
+          $bash = 'C:\msys64\usr\bin\bash.exe'
+          $install = 'pacman -S --noconfirm --needed mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-cmake mingw-w64-ucrt-x86_64-ninja'
+          & $bash -lc $install
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host 'Installing from the image database failed: updating MSYS2, then installing again'
+            & $bash -lc 'pacman -Syuu --noconfirm --overwrite "*"'
+            taskkill /F /FI "MODULES eq msys-2.0.dll"
+            & $bash -lc 'pacman -Syuu --noconfirm --overwrite "*"'
+            & $bash -lc $install
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
 
       - name: Build and run the suites
         run: bash scripts/ci/build_unit_tests.sh
