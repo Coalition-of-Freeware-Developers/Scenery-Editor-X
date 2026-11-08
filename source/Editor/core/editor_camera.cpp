@@ -32,6 +32,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cctype>
+#include <cstdlib>
 #include <Editor/core/editor_airports.h>
 #include <Editor/core/editor_context.h>
 #include <Editor/core/editor_project.h>
@@ -64,6 +65,13 @@ namespace SceneryEditorX::EditorCamera
 			ViewPreset startupPreset = ViewPreset::Free;
 			bool startupOrthographic = false;
 			int startupFrames = 0;
+
+			// --camera-fly <m/s>: the pivot circles the startup view's pivot, for measuring what camera movement costs
+			double flySpeed = 0.0;
+			int flyFrames = 0;
+			bool flying = false;
+			Point3 flyCenter;
+			double flyAngle = 0.0;
 		};
 
 		State &S()
@@ -205,6 +213,10 @@ namespace SceneryEditorX::EditorCamera
 				if (s.startupPreset == ViewPreset::Free)
 					EDITOR_WARN_TAG("Camera", "--camera-view wants top, bottom, front, back, left or right (got '{}')", name);
 				s.startupPending = true;
+			}
+			else if (args[i] == "--camera-fly" && i + 1 < args.size())
+			{
+				s.flySpeed = std::max(0.0, std::strtod(args[++i].c_str(), nullptr));
 			}
 		}
 	}
@@ -384,6 +396,23 @@ namespace SceneryEditorX::EditorCamera
 		frame.locked = input.locked || Camera::IsInputLocked();
 		changed |= s.controller.Navigate(rig, frame);
 		changed |= s.controller.Animate(rig, ImGui::GetIO().DeltaTime);
+
+		// --camera-fly: a while after the startup airport or project framed the camera, its pivot circles that pivot
+		// 1 km out at the given speed, view direction and distance unchanged (with --lock-camera, runs repeat)
+		if (s.flySpeed > 0.0 && (EditorAirports::GetDocument() || EditorProjects::GetDocument()) && ++s.flyFrames > 60)
+		{
+			constexpr double FLY_RADIUS = 1000.0;
+			if (!s.flying)
+			{
+				s.flying = true;
+				s.flyCenter = rig.pivot;
+				EDITOR_INFO_TAG("Camera", "Flying at {:.0f} m/s on a {:.0f} m circle around the startup pivot", s.flySpeed, FLY_RADIUS);
+			}
+			s.flyAngle += s.flySpeed * static_cast<double>(ImGui::GetIO().DeltaTime) / FLY_RADIUS;
+			rig.pivot.x = s.flyCenter.x + FLY_RADIUS * std::cos(s.flyAngle);
+			rig.pivot.z = s.flyCenter.z + FLY_RADIUS * std::sin(s.flyAngle);
+			changed = true;
+		}
 		if (changed || (shapeChanged && rig.orthographic))
 			SetRig(rig);
 	}

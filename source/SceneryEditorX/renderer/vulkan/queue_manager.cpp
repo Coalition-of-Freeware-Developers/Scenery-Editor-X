@@ -31,9 +31,11 @@
 #include "queue_manager.h"
 #include "bindless_manager.h"
 #include "device.h"
+#include "memory_allocator.h"
 #include "render_context.h"
 #include <algorithm>
 #include <string>
+#include <SceneryEditorX/core/frame_profiler.h>
 #include <SceneryEditorX/logging/profiler.hpp>
 
 // -------------------------------------------------------
@@ -800,6 +802,30 @@ namespace SceneryEditorX
 		return s_DeletionQueueDestroyed.load(std::memory_order_acquire);
 	}
 
+	/// --perf-log counters (call under s_MutexDeletionQueue): what the deletion queue holds, and the GPU memory of it
+	static void ReportDeletionQueue()
+	{
+		if (!Perf::IsEnabled())
+			return;
+		size_t entries = 0;
+		VkDeviceSize bytes = 0;
+		const VmaAllocator allocator = MemoryAllocator::GetAllocator();
+		for (const auto &[type, queued] : s_DeletionQueue)
+		{
+			entries += queued.size();
+			for (const DeletionQueueEntry &entry : queued)
+			{
+				if (allocator == VK_NULL_HANDLE || entry.allocation == VK_NULL_HANDLE)
+					continue;
+				VmaAllocationInfo info{};
+				vmaGetAllocationInfo(allocator, entry.allocation, &info);
+				bytes += info.size;
+			}
+		}
+		Perf::SetCounter("deletion queue entries", static_cast<double>(entries));
+		Perf::SetCounter("deletion queue MB", static_cast<double>(bytes) / (1024.0 * 1024.0));
+	}
+
 	bool QueueManager::AdvanceDeletionFrame()
 	{
 		// Each entry waits its own DELETION_DELAY_FRAMES: resources released every few frames (instance buffers
@@ -808,6 +834,7 @@ namespace SceneryEditorX
 
 		// Acquire the same mutex used by AddDeletionQueue / ParseDeletionQueue
 		std::scoped_lock guard(s_MutexDeletionQueue);
+		ReportDeletionQueue();
 		for (const auto &[type, entries] : s_DeletionQueue)
 		{
 			if (!entries.empty() && frame - entries.front().frame >= DELETION_DELAY_FRAMES)

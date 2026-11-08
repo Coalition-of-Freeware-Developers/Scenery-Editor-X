@@ -7,6 +7,11 @@ versions.
 
 ## Unreleased
 
+### Added
+
+- `--camera-fly <m/s>`: the camera circles its startup point 1 km out at that speed, for measuring what camera movement
+  costs. `--perf-log` also reports what the GPU deletion queue holds ("deletion queue entries / MB"). (#69, 0.2.66.567)
+
 ### Removed
 
 - `Ref(const std::shared_ptr<T>&)` in `utils/pointers.h`, removed in 0.2.52.553 (merged to `master` with PR #65). It shared
