@@ -61,7 +61,7 @@ namespace SceneryEditorX
 	/// is silently dropped rather than touching the already-destroyed map.
 	static std::atomic<bool> s_DeletionQueueDestroyed{false};
 
-	/// Rendered frames counted by NeedToParseDeletionQueue(). Entries are stamped with it under s_MutexDeletionQueue, so
+	/// Rendered frames counted by AdvanceDeletionFrame(). Entries are stamped with it under s_MutexDeletionQueue, so
 	/// each type's entries are in frame order.
 	static std::atomic<uint64_t> s_DeletionFrame{0};
 
@@ -799,7 +799,7 @@ namespace SceneryEditorX
 		return s_DeletionQueueDestroyed.load(std::memory_order_acquire);
 	}
 
-	bool QueueManager::NeedToParseDeletionQueue()
+	bool QueueManager::AdvanceDeletionFrame()
 	{
 		// Each entry waits its own DELETION_DELAY_FRAMES: resources released every few frames (instance buffers
 		// replaced while the camera moves) never hold back the older ones.

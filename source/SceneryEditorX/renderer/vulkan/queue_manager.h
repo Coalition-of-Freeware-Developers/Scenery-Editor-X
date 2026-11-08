@@ -230,10 +230,11 @@ namespace SceneryEditorX
 
 		/**
 		 * @brief Counts a rendered frame and tells whether an entry has waited DELETION_DELAY_FRAMES frames.
-		 * @note Call it once per rendered frame, then ParseDeletionQueue(false) when it returns true.
+		 * @note Exactly one call per rendered frame (Renderer::Tick): every extra call shortens the delay. Then
+		 * ParseDeletionQueue(false) when it returns true.
 		 * @return True when ParseDeletionQueue(false) has something to destroy.
 		 */
-		static bool NeedToParseDeletionQueue();
+		static bool AdvanceDeletionFrame();
 
 		/**
 		 * @brief Signal that the renderer has fully shut down and no further

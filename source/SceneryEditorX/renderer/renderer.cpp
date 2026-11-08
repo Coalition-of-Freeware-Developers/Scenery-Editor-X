@@ -1054,8 +1054,8 @@ namespace SceneryEditorX
 			PipelineCache::Tick();
 
 			// resource cleanup - frame-based retirement, no gpu stall required: only what no frame in flight can use.
-			// Call NeedToParseDeletionQueue() here only, once per rendered frame: it counts the frames the delay is in.
-			if (QueueManager::NeedToParseDeletionQueue())
+			// The one AdvanceDeletionFrame() call per rendered frame: it counts the frames the delay is measured in.
+			if (QueueManager::AdvanceDeletionFrame())
 			{
 				QueueManager::ParseDeletionQueue(false);
 			}
