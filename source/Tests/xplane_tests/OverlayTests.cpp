@@ -1692,6 +1692,62 @@ TEST_CASE("Overlay builder textures apt.dat surfaces through the library", "[ove
 	CHECK(unknownWarnings == 1);
 }
 
+TEST_CASE("Overlay builder reports the light fixture fallback once per builder", "[overlay]")
+{
+	// No lib/airport/lights/slow/, only the light-only set: every run of the same light type falls back to it
+	TempDir temp;
+	const fs::path lights = temp.Write("lib/102_edge.str", "A\n850\nOBJECT_STRING\n\nOBJECT 0 0 light.obj\n");
+	temp.Write("lib/light.obj", "I\n800\nOBJ\n");
+	const AssetResolver resolver = [&](const std::string_view path) -> fs::path
+	{
+		if (path == "lib/airport/lights/fast/102_")
+			return lights;
+		const fs::path direct{ std::string(path) };
+		return direct.is_absolute() && fs::exists(direct) ? direct : fs::path();
+	};
+
+	// Three separate runs of edge lights, one linear feature each
+	const GeoProjection projection(45.6, -122.6);
+	AptAirport airport;
+	airport.id = "TEST";
+	for (int run = 0; run < 3; ++run)
+	{
+		AptLinearFeature feature;
+		AptNodeChain chain;
+		for (const double x : { 0.0, 100.0 })
+		{
+			AptNode node;
+			projection.ToGeo(Point2{ x, 50.0 * run }, node.latitude, node.longitude);
+			node.lightType = 102;
+			chain.nodes.push_back(node);
+		}
+		feature.chains.push_back(chain);
+		airport.linearFeatures.push_back(feature);
+	}
+
+	const auto fallbacks = [](const OverlayBuild &build)
+	{
+		return std::ranges::count_if(build.warnings, [](const std::string &warning)
+			{ return warning.find("lib/airport/lights/slow/102_") != std::string::npos; });
+	};
+
+	OverlayBuilder builder(resolver, projection);
+	OverlayBuild first;
+	builder.BuildAirportSurfaces(airport, {}, 0.2f, 0.3f, OverlayBuilder::Options{}, first);
+	CHECK(fallbacks(first) == 1);
+	CHECK(std::ranges::count_if(first.objects, [](const OverlayObject &object) { return object.source == OverlayObject::Source::AirportLights; }) >= 3);
+
+	// A builder warns once in its life: SceneAirports keeps one for row rebuilds, which report no warnings, and makes a
+	// new one for each full build, which warns again
+	OverlayBuild rebuild;
+	builder.BuildAirportSurfaces(airport, {}, 0.2f, 0.3f, OverlayBuilder::Options{}, rebuild);
+	CHECK(fallbacks(rebuild) == 0);
+	OverlayBuilder fresh(resolver, projection);
+	OverlayBuild full;
+	fresh.BuildAirportSurfaces(airport, {}, 0.2f, 0.3f, OverlayBuilder::Options{}, full);
+	CHECK(fallbacks(full) == 1);
+}
+
 TEST_CASE("Overlay builder places no edge lights for an unknown edge light code", "[overlay]")
 {
 	TempDir temp;
