@@ -20,6 +20,9 @@ versions.
   pointed to) now expires. Before, the object's control block stayed registered under its old address, and the next
   object there inherited it: that object's new WeakRefs were expired at once, or the old ones locked it. Both cases are
   misuse; `~RefCounted()` now cleans up after them. (#67, 0.2.64.565)
+- A GPU buffer or image released after the device shut down (a static one destroyed with the program) is leaked with one
+  warning instead of being freed through an allocator that is gone or a device that is: before, that dereferenced a
+  null allocator. (#70, 0.2.66.567)
 
 ### Changed
 

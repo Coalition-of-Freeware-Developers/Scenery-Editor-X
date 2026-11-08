@@ -247,6 +247,11 @@ namespace SceneryEditorX
 		 * releases) until nothing more is queued, then closes the queue under its lock.
 		 * Called by Device::Destroy() right after the final ParseDeletionQueue() flush,
 		 * with the device idle, before vkDestroyDevice.
+		 *
+		 * Precondition: nothing can submit any more. Application::~Application() stops the render thread and the
+		 * thread pool before RenderContext::Shutdown(), and Device::Destroy() waits for the device to be idle first.
+		 * That is what makes the releases after this call safe to do at once: Buffer::DestroyDeferred() destroys its
+		 * buffer then, and once MemoryAllocator::Shutdown() has run as well, MemoryAllocator leaks with a warning instead.
 		 */
 		static void NotifyShutdown();
 

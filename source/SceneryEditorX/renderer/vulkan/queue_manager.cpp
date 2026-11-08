@@ -676,12 +676,13 @@ namespace SceneryEditorX
 		// releases) while the queue still takes what destroying it queues, then close it under its lock once it is
 		// empty. The device is idle. Layouts queue nothing more, so this ends after a pass or two.
 		constexpr uint32_t MAX_PASSES = 8;
-		for (uint32_t pass = 0;; ++pass)
+		uint32_t passes = 0;
+		for (;; ++passes)
 		{
 			std::unordered_map<ResourceType, std::vector<DeletionQueueEntry>> remaining;
 			{
 				std::scoped_lock guard(s_MutexDeletionQueue);
-				if (s_DeletionQueue.empty() || !deviceAlive || pass == MAX_PASSES)
+				if (s_DeletionQueue.empty() || !deviceAlive || passes == MAX_PASSES)
 				{
 					size_t leaked = 0;
 					for (const auto &[type, entries] : s_DeletionQueue)
@@ -696,7 +697,7 @@ namespace SceneryEditorX
 			DestroyEntries(device, remaining);
 		}
 
-		SEDX_CORE_INFO_TAG("QueueManager", "Deletion queue marked as shut down; late AddDeletionQueue calls will be dropped");
+		SEDX_CORE_INFO_TAG("QueueManager", "Deletion queue marked as shut down after {} passes; late AddDeletionQueue calls will be dropped", passes);
 	}
 
 	static void DestroyEntries(const Ref<Device> &device, const std::unordered_map<ResourceType, std::vector<DeletionQueueEntry>> &pending)
