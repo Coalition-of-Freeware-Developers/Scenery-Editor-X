@@ -54,6 +54,14 @@ namespace SceneryEditorX::XPlane
 		constexpr std::string_view LIGHT_FIXTURES_LIBRARY = "lib/airport/lights/slow/";
 		constexpr std::string_view LIGHTS_ONLY_LIBRARY = "lib/airport/lights/fast/";
 
+		/* @brief A drape's alpha from its .pol / .lin: NO_BLEND <cutoff> alpha-tests, NO_ALPHA draws opaque, else it blends. */
+		void SetDrapeAlpha(OverlayMesh &mesh, const float noBlendCutoff, const bool noAlpha)
+		{
+			mesh.cutout = noBlendCutoff >= 0.0f;
+			mesh.cutoff = mesh.cutout ? noBlendCutoff : 0.5f;
+			mesh.blended = !noAlpha && !mesh.cutout;
+		}
+
 		// Draw heights above the ground for draped overlay groups (LAYER_GROUP), so stacked layers don't fight
 		constexpr float LAYER_BASE_HEIGHT = 0.4f;
 		constexpr float LAYER_STEP = 0.012f;
@@ -1222,9 +1230,7 @@ namespace SceneryEditorX::XPlane
 	{
 		// X-Plane 12 blends a line's alpha over what lies under it: its grunge, dirt, crack and soft-edge lines are mostly
 		// 10-40% alpha, and an alpha test at 0.5 dropped all but their crisp cracks
-		mesh.cutout = asset.noBlendCutoff >= 0.0f;
-		mesh.cutoff = mesh.cutout ? asset.noBlendCutoff : 0.5f;
-		mesh.blended = !asset.noAlpha && !mesh.cutout;
+		SetDrapeAlpha(mesh, asset.noBlendCutoff, asset.noAlpha);
 
 		// AppendLinePaint's UVs: u is the texture's width (SCALE s meters), v one repeat along the line (SCALE t meters)
 		mesh.metersPerU = asset.scaleS;
@@ -1689,9 +1695,7 @@ namespace SceneryEditorX::XPlane
 		mesh.name = BaseName(resource);
 		mesh.placement = index;
 		mesh.texture = TexturePath(file, asset->texture);
-		mesh.cutout = asset->noBlendCutoff >= 0.0f;
-		mesh.cutoff = asset->noBlendCutoff >= 0.0f ? asset->noBlendCutoff : 0.5f;
-		mesh.blended = !asset->noAlpha && !mesh.cutout;
+		SetDrapeAlpha(mesh, asset->noBlendCutoff, asset->noAlpha);
 		const float y = Height(options, asset->layerGroup, asset->layerOffset);
 
 		if (uvMapped)
@@ -2800,12 +2804,17 @@ namespace SceneryEditorX::XPlane
 		return std::string(fixtures ? LIGHT_FIXTURES_LIBRARY : LIGHTS_ONLY_LIBRARY) + std::to_string(lightType) + "_";
 	}
 
-	std::string OverlayBuilder::ResolveLightStringLibraryPath(const int lightType)
+	std::string OverlayBuilder::ResolveLightStringLibraryPath(const int lightType, OverlayBuild *out)
 	{
 		// The fixtures where the library has them: the light-only set draws nothing by day
 		std::string library = GetLightStringLibraryPath(lightType, true);
 		if (!library.empty() && !m_Strings.contains(library) && ResolveFile(library).empty())
+		{
+			const std::string fixtures = library;
 			library = GetLightStringLibraryPath(lightType, false);
+			if (out && !ResolveFile(library).empty())
+				Warn(*out, "Light fixtures not in the library (" + fixtures + "): using " + library + ", lights only, which draws nothing by day");
+		}
 		return library;
 	}
 
@@ -2957,7 +2966,8 @@ namespace SceneryEditorX::XPlane
 		}
 
 		// Threshold bars across each end: green toward landing traffic, red end lights toward traffic rolling out
-		// (a displaced threshold splits them: green at the threshold, red at the pavement's end)
+		// (a displaced threshold splits them: green at the threshold, red at the pavement's end). apt.dat has no threshold
+		// light field: the bars come with the edge lighting, in its intensity (ASSUMPTION, like the layout above)
 		if (runway.edgeLights >= 1)
 		{
 			const std::string family = runway.edgeLights == 1 ? "lirl" : runway.edgeLights == 2 ? "mirl" : "hirl";
@@ -3050,9 +3060,7 @@ namespace SceneryEditorX::XPlane
 		mesh.name = "Runway " + runway.GetName() + " rubber";
 		mesh.placement = index;
 		mesh.texture = TexturePath(file, asset->texture);
-		mesh.cutout = asset->noBlendCutoff >= 0.0f;
-		mesh.cutoff = mesh.cutout ? asset->noBlendCutoff : 0.5f;
-		mesh.blended = !asset->noAlpha && !mesh.cutout;
+		SetDrapeAlpha(mesh, asset->noBlendCutoff, asset->noAlpha);
 		const float y = Height(options, asset->layerGroup, asset->layerOffset);
 
 		const Point2 along{ (end1.x - end0.x) / length, (end1.z - end0.z) / length };
@@ -3296,7 +3304,7 @@ namespace SceneryEditorX::XPlane
 							else if (options.placeStrings)
 							{
 								fs::path file;
-								const std::string library = ResolveLightStringLibraryPath(style);
+								const std::string library = ResolveLightStringLibraryPath(style, &out);
 								const ObjectStringAsset *asset = library.empty() ? nullptr : GetString(library, &file, out);
 								// Inset fixtures (on the line) stand on the pavement's drape, elevated ones (offset to the side) on the ground
 								if (asset)

@@ -165,7 +165,9 @@ namespace SceneryEditorX::XPlane
 	 */
 	constexpr uint32_t AIRPORT_LIGHTS_PAVEMENT_EDGE = 0x80000000u;
 	constexpr uint32_t AIRPORT_LIGHTS_RUNWAY = 0x40000000u;
-	constexpr uint32_t AIRPORT_LIGHTS_INDEX_MASK = 0x3FFFFFFFu;
+	constexpr uint32_t AIRPORT_LIGHTS_INDEX_MASK = 0x3FFFFFFFu;	// Row indices up to 2^30 - 1, far beyond any apt.dat
+	static_assert(((AIRPORT_LIGHTS_PAVEMENT_EDGE | AIRPORT_LIGHTS_RUNWAY) & AIRPORT_LIGHTS_INDEX_MASK) == 0 &&
+		(AIRPORT_LIGHTS_PAVEMENT_EDGE & AIRPORT_LIGHTS_RUNWAY) == 0, "airport light placement flags overlap the row index");
 
 	/* @brief An OBJ8 to place through the object loader. */
 	struct OverlayObject
@@ -320,8 +322,11 @@ namespace SceneryEditorX::XPlane
 		 */
 		static std::string GetLightStringLibraryPath(int lightType, bool fixtures = true);
 
-		/* @brief The light string library path to draw: the fixtures, or the light-only set when the library has no fixtures. */
-		std::string ResolveLightStringLibraryPath(int lightType);
+		/**
+		 * @brief The light string library path to draw: the fixtures, or the light-only set when the library has no fixtures
+		 * (then a warning in out, once, when out is given: those lights show nothing by day).
+		 */
+		std::string ResolveLightStringLibraryPath(int lightType, OverlayBuild *out = nullptr);
 
 		/* @brief Spacing in meters X-Plane uses for an apt.dat light string code. */
 		static double GetLightStringSpacing(int lightType);

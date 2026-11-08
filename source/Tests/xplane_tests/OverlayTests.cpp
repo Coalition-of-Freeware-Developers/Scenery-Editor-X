@@ -1637,6 +1637,9 @@ TEST_CASE("Overlay builder textures apt.dat surfaces through the library", "[ove
 	OverlayBuilder::Options options;
 	OverlayBuild out;
 	builder.BuildAirportSurfaces(airport, { 0.1f }, 0.2f, 0.3f, options, out);
+	// Only the lights-only set: it is used, with a warning that those lights draw nothing by day
+	CHECK(std::ranges::count_if(out.warnings, [](const std::string &warning)
+		{ return warning.find("lib/airport/lights/slow/101_") != std::string::npos && warning.find("lights only") != std::string::npos; }) == 1);
 
 	size_t pavements = 0, runways = 0, pavementLines = 0, paintedLines = 0;
 	for (const OverlayMesh &mesh : out.meshes)
