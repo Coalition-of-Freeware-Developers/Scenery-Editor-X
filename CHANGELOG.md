@@ -9,8 +9,9 @@ versions.
 
 ### Added
 
-- `--camera-fly <m/s>`: the camera circles its startup point 1 km out at that speed, for measuring what camera movement
-  costs. `--perf-log` also reports what the GPU deletion queue holds ("deletion queue entries / MB"). (#69, 0.2.66.567)
+- `--camera-fly <m/s>`: the camera flies 1 km out of its startup point and circles it at that speed, for measuring what
+  camera movement costs. `--perf-log` also reports what the GPU deletion queue holds ("deletion queue entries / MB").
+  (#69, 0.2.66.567; flying out instead of jumping, and counters kept as running totals, 0.2.67.568)
 
 ### Removed
 

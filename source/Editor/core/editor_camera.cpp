@@ -66,12 +66,13 @@ namespace SceneryEditorX::EditorCamera
 			bool startupOrthographic = false;
 			int startupFrames = 0;
 
-			// --camera-fly <m/s>: the pivot circles the startup view's pivot, for measuring what camera movement costs
+			// --camera-fly <m/s>: the pivot flies out of the startup view's pivot and circles it, for measuring what camera
+			// movement costs
 			double flySpeed = 0.0;
 			int flyFrames = 0;
 			bool flying = false;
 			Point3 flyCenter;
-			double flyAngle = 0.0;
+			double flyDistance = 0.0;	// Meters flown: out along +X first, then around the circle
 		};
 
 		State &S()
@@ -397,8 +398,9 @@ namespace SceneryEditorX::EditorCamera
 		changed |= s.controller.Navigate(rig, frame);
 		changed |= s.controller.Animate(rig, ImGui::GetIO().DeltaTime);
 
-		// --camera-fly: a while after the startup airport or project framed the camera, its pivot circles that pivot
-		// 1 km out at the given speed, view direction and distance unchanged (with --lock-camera, runs repeat)
+		// --camera-fly: a while after the startup airport or project framed the camera, its pivot flies east 1 km at the
+		// given speed and then circles the startup pivot at that radius, view direction and distance unchanged (no jump:
+		// it moves at that speed from the first frame; with --lock-camera, runs repeat)
 		if (s.flySpeed > 0.0 && (EditorAirports::GetDocument() || EditorProjects::GetDocument()) && ++s.flyFrames > 60)
 		{
 			constexpr double FLY_RADIUS = 1000.0;
@@ -406,11 +408,13 @@ namespace SceneryEditorX::EditorCamera
 			{
 				s.flying = true;
 				s.flyCenter = rig.pivot;
-				EDITOR_INFO_TAG("Camera", "Flying at {:.0f} m/s on a {:.0f} m circle around the startup pivot", s.flySpeed, FLY_RADIUS);
+				EDITOR_INFO_TAG("Camera", "Flying at {:.0f} m/s: {:.0f} m out, then around the startup pivot", s.flySpeed, FLY_RADIUS);
 			}
-			s.flyAngle += s.flySpeed * static_cast<double>(ImGui::GetIO().DeltaTime) / FLY_RADIUS;
-			rig.pivot.x = s.flyCenter.x + FLY_RADIUS * std::cos(s.flyAngle);
-			rig.pivot.z = s.flyCenter.z + FLY_RADIUS * std::sin(s.flyAngle);
+			s.flyDistance += s.flySpeed * static_cast<double>(ImGui::GetIO().DeltaTime);
+			const double out = std::min(s.flyDistance, FLY_RADIUS);
+			const double angle = std::max(0.0, s.flyDistance - FLY_RADIUS) / FLY_RADIUS;
+			rig.pivot.x = s.flyCenter.x + out * std::cos(angle);
+			rig.pivot.z = s.flyCenter.z + out * std::sin(angle);
 			changed = true;
 		}
 		if (changed || (shapeChanged && rig.orthographic))

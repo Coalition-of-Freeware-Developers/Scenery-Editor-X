@@ -43,7 +43,7 @@ SceneryEditorX.exe --project "D:\Scenery\KSEA Seattle\KSEA Seattle.edX" --env-ti
 | `--camera-view <view>` | Starts in a view preset: `top`, `bottom`, `front`, `back`, `left` or `right`. |
 | `--camera-ortho` | Starts in orthographic projection. |
 | `--lock-camera` | Freezes the startup view: the mouse and keys don't move the camera. For captures and comparisons. |
-| `--camera-fly <m/s>` | 60 frames after the startup airport or project opens, the camera circles its startup point 1 km out at that speed, looking the same way. For measuring what camera movement costs; with `--lock-camera` runs repeat. Combine with `--xp-airport-camera` for a low view. |
+| `--camera-fly <m/s>` | 60 frames after the startup airport or project opens, the camera flies 1 km east of its startup point and then circles it at that radius, at that speed, looking the same way. For measuring what camera movement costs; with `--lock-camera` runs repeat. Combine with `--xp-airport-camera` for a low view. |
 
 ## Renderer and environment
 

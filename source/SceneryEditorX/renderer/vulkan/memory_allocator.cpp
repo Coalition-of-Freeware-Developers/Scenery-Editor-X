@@ -31,6 +31,7 @@
 #include "memory_allocator.h"
 #include "render_context.h"
 #include <algorithm>
+#include <atomic>
 #include <chrono>
 #include <cstdlib>
 #include <mutex>
@@ -98,7 +99,10 @@ namespace SceneryEditorX
 	static Renderer_AllocatorData *s_AllocatorData; // Pointer to the allocator data, initialized in MemoryAllocator::Init()
 	static std::map<VmaAllocation, AllocInfo> s_AllocationMap; // Map to track active allocations and their information
 	static std::mutex s_MutexAllocator; // Mutex to protect access to the allocation map for thread safety
-	static bool s_ShutDown = false; // Set by Shutdown(): its device is destroyed right after, whether or not the allocator was kept
+	// Set by Shutdown(): its device is destroyed right after, whether or not the allocator was kept. Atomic: any thread that
+	// releases a buffer or image reads it (IsLateRelease)
+	static std::atomic<bool> s_ShutDown{false};
+	static std::atomic<bool> s_LateReleaseWarned{false};
 
 	/**
 	 * @brief True (after one warning) for a release that comes after Shutdown(), which must then leak.
@@ -109,12 +113,10 @@ namespace SceneryEditorX
 	 */
 	static bool IsLateRelease(const char *what)
 	{
-		if (!s_ShutDown && s_AllocatorData)
+		if (!s_ShutDown.load(std::memory_order_acquire) && s_AllocatorData)
 			return false;
-		static bool warned = false;
-		if (!warned)
+		if (!s_LateReleaseWarned.exchange(true, std::memory_order_relaxed))
 		{
-			warned = true;
 			SEDX_CORE_WARN_TAG("MemoryAllocator", "{} released after the allocator shut down (its device is gone): leaked, with any "
 				"others like it. A GPU object outlived RenderContext::Shutdown()", what);
 		}
@@ -202,7 +204,7 @@ namespace SceneryEditorX
 	{
 		SEDX_CORE_ASSERT(device.GetLogicalDevice() != VK_NULL_HANDLE, "Logical device cannot be VK_NULL_HANDLE when initializing VMA allocator");
 		SEDX_CORE_ASSERT(Device::GetPhysicalDevice() != VK_NULL_HANDLE, "Physical device cannot be VK_NULL_HANDLE when initializing VMA allocator");
-		s_ShutDown = false;
+		s_ShutDown.store(false, std::memory_order_release);
 		s_AllocatorData = new Renderer_AllocatorData();
 
 		// Zero-initialize and provide the two root function pointers.
@@ -273,7 +275,7 @@ namespace SceneryEditorX
 
 	void MemoryAllocator::Shutdown()
 	{
-		s_ShutDown = true;	// Whatever happens below, the device goes next: later releases leak (IsLateRelease)
+		s_ShutDown.store(true, std::memory_order_release);	// Whatever happens below, the device goes next: later releases leak (IsLateRelease)
 		if (!s_AllocatorData)
 			return;
 

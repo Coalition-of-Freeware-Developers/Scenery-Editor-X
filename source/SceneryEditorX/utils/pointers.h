@@ -98,7 +98,7 @@ namespace SceneryEditorX
 		 * runs. In the misuse paths this runs last, so another thread's Lock() can still get the object while its
 		 * derived part is being destroyed.
 		 */
-		virtual ~RefCounted();
+		virtual ~RefCounted() noexcept;	// Explicitly: ExpireWeakRefs may lock the registry mutex, and a throw from here must terminate
 
 		/**
 		 * @brief Increments the reference count.
@@ -485,7 +485,7 @@ namespace SceneryEditorX
 
 	} // namespace Internal
 
-	inline RefCounted::~RefCounted() { Internal::ControlBlockRegistry::ExpireWeakRefs(this); }
+	inline RefCounted::~RefCounted() noexcept { Internal::ControlBlockRegistry::ExpireWeakRefs(this); }
 
 	// -----------------------------------------------------------
 
