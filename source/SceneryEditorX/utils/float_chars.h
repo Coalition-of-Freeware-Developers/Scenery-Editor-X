@@ -135,23 +135,42 @@ namespace SceneryEditorX::Utils::FloatChars
 				return true;
 			}
 
-			/* @brief strtod / strtof in the "C" locale, whatever the process or thread locale is: correctly rounded. */
+			/**
+			 * @brief strtod / strtof in the "C" locale, whatever the process or thread locale is: correctly rounded. If
+			 * that locale couldn't be made (out of memory), the plain ones: a null locale_t is undefined behaviour.
+			 */
 		#if defined(_WIN32)
 			inline _locale_t CLocale()
 			{
 				static const _locale_t locale = _create_locale(LC_ALL, "C");
 				return locale;
 			}
-			inline double Parse(const char *text, double *) { return _strtod_l(text, nullptr, CLocale()); }
-			inline float Parse(const char *text, float *) { return _strtof_l(text, nullptr, CLocale()); }
+			inline double Parse(const char *text, double *)
+			{
+				const _locale_t locale = CLocale();
+				return locale ? _strtod_l(text, nullptr, locale) : std::strtod(text, nullptr);
+			}
+			inline float Parse(const char *text, float *)
+			{
+				const _locale_t locale = CLocale();
+				return locale ? _strtof_l(text, nullptr, locale) : std::strtof(text, nullptr);
+			}
 		#else
 			inline locale_t CLocale()
 			{
 				static const locale_t locale = newlocale(LC_ALL_MASK, "C", static_cast<locale_t>(0));
 				return locale;
 			}
-			inline double Parse(const char *text, double *) { return strtod_l(text, nullptr, CLocale()); }
-			inline float Parse(const char *text, float *) { return strtof_l(text, nullptr, CLocale()); }
+			inline double Parse(const char *text, double *)
+			{
+				const locale_t locale = CLocale();
+				return locale ? strtod_l(text, nullptr, locale) : std::strtod(text, nullptr);
+			}
+			inline float Parse(const char *text, float *)
+			{
+				const locale_t locale = CLocale();
+				return locale ? strtof_l(text, nullptr, locale) : std::strtof(text, nullptr);
+			}
 		#endif
 
 			/* @brief snprintf's %.*e / %.*f of value with '.' as the decimal point (snprintf uses the C locale's). */
