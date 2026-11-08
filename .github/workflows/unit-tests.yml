@@ -43,7 +43,9 @@ jobs:
           - name: Windows (MSYS2 UCRT64 g++)
             os: windows-latest
             platform: windows
-            shell: msys2 {0}
+            # The runner image's own MSYS2 as a login shell, the way msys2/setup-msys2 runs it (that action isn't in
+            # this repository's allowed actions, so using it stops the whole workflow before any job starts)
+            shell: 'C:\msys64\usr\bin\bash.exe -leo pipefail {0}'
             cc: gcc
             cxx: g++
     defaults:
@@ -52,6 +54,9 @@ jobs:
     env:
       CC: ${{ matrix.cc }}
       CXX: ${{ matrix.cxx }}
+      # Read only by the MSYS2 login shell on Windows: put UCRT64's bin first on PATH and stay in the workspace
+      MSYSTEM: UCRT64
+      CHERE_INVOKING: '1'
     steps:
       - uses: actions/checkout@v7
 
@@ -64,13 +69,9 @@ jobs:
 
       - name: MSYS2 UCRT64 toolchain
         if: runner.os == 'Windows'
-        uses: msys2/setup-msys2@v2
-        with:
-          msystem: UCRT64
-          install: >-
-            mingw-w64-ucrt-x86_64-gcc
-            mingw-w64-ucrt-x86_64-cmake
-            mingw-w64-ucrt-x86_64-ninja
+        run: >-
+          pacman -Sy --noconfirm --needed
+          mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-cmake mingw-w64-ucrt-x86_64-ninja
 
       - name: Build and run the suites
         run: bash scripts/ci/build_unit_tests.sh
