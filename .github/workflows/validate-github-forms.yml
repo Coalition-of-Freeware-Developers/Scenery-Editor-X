@@ -26,7 +26,8 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
-        # Not persist-credentials: false: checkout then runs `git submodule foreach` in the step, which aborts on dependency/json-cpp-gen (a gitlink with no .gitmodules entry).
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-python@v7
         with:
@@ -49,7 +50,8 @@ jobs:
       ACTIONLINT_VERSION: 1.7.12
     steps:
       - uses: actions/checkout@v7
-        # Not persist-credentials: false: checkout then runs `git submodule foreach` in the step, which aborts on dependency/json-cpp-gen (a gitlink with no .gitmodules entry).
+        with:
+          persist-credentials: false
 
       - name: Install actionlint
         run: |

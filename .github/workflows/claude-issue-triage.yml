@@ -38,7 +38,7 @@ jobs:
           ref: dev
           # Enough history for git log / blame to find the change that caused a regression.
           fetch-depth: 500
-          # Not persist-credentials: false: checkout then runs `git submodule foreach` in the step, which aborts on dependency/json-cpp-gen (a gitlink with no .gitmodules entry).
+          persist-credentials: false
 
       - name: Claude
         uses: anthropics/claude-code-action@v1

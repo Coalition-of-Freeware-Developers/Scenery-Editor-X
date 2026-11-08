@@ -39,7 +39,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           sparse-checkout: .github
-          # Not persist-credentials: false: checkout then runs `git submodule foreach` in the step, which aborts on dependency/json-cpp-gen (a gitlink with no .gitmodules entry).
+          persist-credentials: false
 
       - name: Add to project
         if: env.PROJECT_TOKEN != ''
