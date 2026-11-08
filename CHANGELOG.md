@@ -1,7 +1,9 @@
 # Changelog
 
 Notable changes to Scenery Editor X, newest first. It starts after 0.2.63.564; earlier changes are in the pull request
-descriptions and the git history. Versions are `SEDX_VERSION_STRING` in `source/resource.h`.
+descriptions and the git history. Versions are `SEDX_VERSION_STRING` in `source/resource.h`, which goes up with every
+change set (so running builds can be told apart), not only at a release: entries in one section can name different
+versions.
 
 ## Unreleased
 
