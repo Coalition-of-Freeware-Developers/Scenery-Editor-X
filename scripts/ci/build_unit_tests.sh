@@ -113,7 +113,7 @@ SUITES=""
 for arg in "$@"; do
 	case "$arg" in
 		--no-run) RUN=0 ;;
-		-h|--help) sed -n '2,26p' "$SCRIPT"; exit 0 ;;
+		-h|--help) awk 'NR > 1 && /^#/ { print; next } NR > 1 { exit }' "$SCRIPT"; exit 0 ;;	# The header comment
 		-*) echo "unknown option $arg" >&2; exit 2 ;;
 		*)
 			case " $ALL_SUITES " in
@@ -201,9 +201,10 @@ echo "Platform $PLATFORM ($(uname -s)), $JOBS jobs, output in $OUT"
 echo "CC  = $CC: $($CC --version 2>&1 | head -n 1)"
 echo "CXX = $CXX: $($CXX --version 2>&1 | head -n 1)"
 [ "$PLATFORM" != macos ] || echo "MACOSX_DEPLOYMENT_TARGET = $MACOSX_DEPLOYMENT_TARGET"
-for dir in dependency/json/include "$CATCH/src" "$LC"; do
-	if [ ! -d "$dir" ]; then
-		echo "$dir is missing: fetch the submodules first (see the top of $SCRIPT)" >&2
+# A file from each submodule: an uninitialized one is an empty folder
+for file in dependency/json/include/nlohmann/json.hpp "$CATCH/CMakeLists.txt" "$LC/libconfig.c"; do
+	if [ ! -f "$file" ]; then
+		echo "$file is missing: fetch the submodules first (see the top of $SCRIPT)" >&2
 		exit 2
 	fi
 done
