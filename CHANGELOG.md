@@ -12,7 +12,7 @@ versions.
 - `Ref(const std::shared_ptr<T>&)` in `utils/pointers.h`, removed in 0.2.52.553 (merged to `master` with PR #65). It shared
   the object with the `shared_ptr` without the `shared_ptr` knowing: unless the `shared_ptr` came from
   `Ref::ToSharedPtr()`, each side deleted the object on its own last release. Keep the object in a `Ref`
-  (`CreateRef<T>(...)`) and call `ToSharedPtr()` where an API wants a `std::shared_ptr`. (#66)
+  (`CreateRef<T>(...)`) and call `ToSharedPtr()` where an API wants a `std::shared_ptr`. (#66, 0.2.52.553)
 
 ### Fixed
 

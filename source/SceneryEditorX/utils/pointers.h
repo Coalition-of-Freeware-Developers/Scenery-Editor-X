@@ -93,6 +93,10 @@ namespace SceneryEditorX
 		 * object a Ref pointed to. Both are misuse, but the registry would otherwise keep the block of an address the
 		 * next object may get, and the old WeakRefs would lock that object. Objects that never had a WeakRef, or
 		 * whose last Ref expired them, skip the registry (one atomic load).
+		 *
+		 * Only the last Ref release is safe against other threads: it expires the WeakRefs before any destructor
+		 * runs. In the misuse paths this runs last, so another thread's Lock() can still get the object while its
+		 * derived part is being destroyed.
 		 */
 		virtual ~RefCounted();
 
