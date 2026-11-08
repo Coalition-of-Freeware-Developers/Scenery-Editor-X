@@ -185,7 +185,9 @@ namespace SceneryEditorX::ProjectFile
 			if (!std::isfinite(value))
 				return nullptr;
 			char text[32];
-			const auto result = Utils::FloatChars::ToChars(text, text + sizeof(text), value);
+			const auto result = Utils::FloatChars::ToChars(text, text + sizeof(text) - 1, value);	// Room for the '\0'
+			if (result.ec != std::errc())
+				return static_cast<double>(value);
 			*result.ptr = '\0';
 			return std::strtod(text, nullptr);
 		}

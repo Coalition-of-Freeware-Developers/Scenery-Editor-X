@@ -267,7 +267,10 @@ namespace SceneryEditorX::ProjectFile
 			if (std::strtod(text, nullptr) == value)
 				return text;
 			const auto result = Utils::FloatChars::ToChars(text, text + sizeof(text), value);
-			return std::string(text, result.ptr);
+			if (result.ec == std::errc())
+				return std::string(text, result.ptr);
+			std::snprintf(text, sizeof(text), "%.17g", static_cast<double>(value));	// Reads back too; 64 characters always fit the above
+			return text;
 		}
 
 		std::string FormatFloat(const float value, const int decimals)
@@ -279,7 +282,10 @@ namespace SceneryEditorX::ProjectFile
 			if (static_cast<float>(std::strtod(text, nullptr)) == value)
 				return text;
 			const auto result = Utils::FloatChars::ToChars(text, text + sizeof(text), value);
-			return std::string(text, result.ptr);
+			if (result.ec == std::errc())
+				return std::string(text, result.ptr);
+			std::snprintf(text, sizeof(text), "%.17g", static_cast<double>(value));	// Reads back too; 64 characters always fit the above
+			return text;
 		}
 
 		std::string FormatInt(const int value) { return std::to_string(value); }

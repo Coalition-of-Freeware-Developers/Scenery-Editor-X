@@ -64,13 +64,30 @@
  * run as they do on macOS, from any platform).
  */
 #if defined(_LIBCPP_VERSION)
+/*
+ * libc++: its own availability macros where it has them, since they follow the deployment target exactly. They're
+ * internal, so if a release renames them: libc++'s version and, on Apple, the first macOS that ships the functions
+ * (from_chars 26.0, to_chars 13.3). __builtin_available can't help: libc++ marks them strict, an error at compile time.
+ * test_float_chars.cpp fails if a toolchain known to have them stops calling them.
+ */
+#if defined(__APPLE__) && defined(__ENVIRONMENT_MACOS_VERSION_MIN_REQUIRED__)
+#define SEDX_FLOAT_CHARS_MACOS_TARGET __ENVIRONMENT_MACOS_VERSION_MIN_REQUIRED__
+#elif defined(__APPLE__)
+#define SEDX_FLOAT_CHARS_MACOS_TARGET 0				// iOS and the like: the fallback unless libc++ says otherwise
+#else
+#define SEDX_FLOAT_CHARS_MACOS_TARGET 999999		// Not Apple: no deployment target to wait for
+#endif
 #if defined(_LIBCPP_AVAILABILITY_HAS_FROM_CHARS_FLOATING_POINT)
 #define SEDX_STD_FLOAT_FROM_CHARS_AVAILABLE _LIBCPP_AVAILABILITY_HAS_FROM_CHARS_FLOATING_POINT
+#elif _LIBCPP_VERSION >= 200000 && SEDX_FLOAT_CHARS_MACOS_TARGET >= 260000
+#define SEDX_STD_FLOAT_FROM_CHARS_AVAILABLE 1
 #else
 #define SEDX_STD_FLOAT_FROM_CHARS_AVAILABLE 0
 #endif
 #if defined(_LIBCPP_AVAILABILITY_HAS_TO_CHARS_FLOATING_POINT)
 #define SEDX_STD_FLOAT_TO_CHARS_AVAILABLE _LIBCPP_AVAILABILITY_HAS_TO_CHARS_FLOATING_POINT
+#elif _LIBCPP_VERSION >= 170000 && SEDX_FLOAT_CHARS_MACOS_TARGET >= 130300
+#define SEDX_STD_FLOAT_TO_CHARS_AVAILABLE 1
 #else
 #define SEDX_STD_FLOAT_TO_CHARS_AVAILABLE 0
 #endif

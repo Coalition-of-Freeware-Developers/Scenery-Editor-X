@@ -86,6 +86,31 @@ namespace
 	}
 }
 
+TEST_CASE("FloatChars calls the standard functions where the toolchain has them", "[conversions][float-chars]")
+{
+	// float_chars.h detects libc++'s floating point charconv through its internal availability macros; if a release
+	// renamed them, FloatChars would quietly use the fallback everywhere. This catches that, and the same on the others.
+#if defined(SEDX_FLOAT_CHARS_FALLBACK)
+	SKIP("The fallback is forced (SEDX_FLOAT_CHARS_FALLBACK)");
+#else
+#if (defined(_GLIBCXX_RELEASE) && _GLIBCXX_RELEASE >= 11) || (defined(_MSVC_STL_VERSION) && _MSVC_STL_VERSION >= 142)
+	constexpr bool expectFrom = true, expectTo = true;
+#elif defined(_LIBCPP_VERSION) && !defined(__APPLE__)
+	constexpr bool expectFrom = _LIBCPP_VERSION >= 200000, expectTo = _LIBCPP_VERSION >= 170000;
+#elif defined(_LIBCPP_VERSION) && defined(__ENVIRONMENT_MACOS_VERSION_MIN_REQUIRED__)
+	constexpr bool expectFrom = _LIBCPP_VERSION >= 200000 && __ENVIRONMENT_MACOS_VERSION_MIN_REQUIRED__ >= 260000;
+	constexpr bool expectTo = _LIBCPP_VERSION >= 170000 && __ENVIRONMENT_MACOS_VERSION_MIN_REQUIRED__ >= 130300;
+#else
+	constexpr bool expectFrom = false, expectTo = false;
+#endif
+	if constexpr (expectFrom)
+		CHECK(FloatChars::STD_FROM_CHARS);
+	if constexpr (expectTo)
+		CHECK(FloatChars::STD_TO_CHARS);
+	SUCCEED("standard from_chars " << FloatChars::STD_FROM_CHARS << ", to_chars " << FloatChars::STD_TO_CHARS);
+#endif
+}
+
 TEST_CASE("FloatChars writes known text", "[conversions][float-chars]")
 {
 	CHECK(Write(0.1f) == "0.1");
