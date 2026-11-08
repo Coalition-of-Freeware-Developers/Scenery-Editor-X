@@ -53,6 +53,7 @@ namespace SceneryEditorX::XPlane
 		// apt.dat light fixtures: "slow" carries the inset / elevated fixture as well as its lights, "fast" the lights alone
 		constexpr std::string_view LIGHT_FIXTURES_LIBRARY = "lib/airport/lights/slow/";
 		constexpr std::string_view LIGHTS_ONLY_LIBRARY = "lib/airport/lights/fast/";
+		constexpr float INSET_OFFSET = 0.01f;	// A light string within 1 cm of its line is inset (on it), not elevated beside it
 
 		/* @brief A drape's alpha from its .pol / .lin: NO_BLEND <cutoff> alpha-tests, NO_ALPHA draws opaque, else it blends. */
 		void SetDrapeAlpha(OverlayMesh &mesh, const float noBlendCutoff, const bool noAlpha)
@@ -3308,7 +3309,7 @@ namespace SceneryEditorX::XPlane
 								const ObjectStringAsset *asset = library.empty() ? nullptr : GetString(library, &file, out);
 								// Inset fixtures (on the line) stand on the pavement's drape, elevated ones (offset to the side) on the ground
 								if (asset)
-									PlaceObjectString(*asset, file, library, path, run.closed, GetLightStringSpacing(style), asset->offset == 0.0f ? lineHeight : 0.0f,
+									PlaceObjectString(*asset, file, library, path, run.closed, GetLightStringSpacing(style), std::abs(asset->offset) < INSET_OFFSET ? lineHeight : 0.0f,
 										lineKind == OverlayKind::PaintedLine ? index : AIRPORT_LIGHTS_PAVEMENT_EDGE | index, out, OverlayObject::Source::AirportLights);
 							}
 						}
