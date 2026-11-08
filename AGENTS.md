@@ -197,6 +197,15 @@ g++ -std=c++20 -O2 -pthread -DSEDX_NO_LOGGING -DZoneScoped= $INCS \
     -o build_linux_tests/RefTests
 ./build_linux_tests/RefTests
 
+# 3b. RefTests under AddressSanitizer + UBSan: the WeakRef cases destroy objects outside a Ref release and race the last
+#     release, which a plain build only catches if it crashes. On Windows use MSYS2 clang64 with the same flags and a
+#     catch_amalgamated.cpp built by clang (MinGW g++ has no ASan).
+g++ -std=c++20 -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined -fno-omit-frame-pointer -pthread \
+    -DSEDX_NO_LOGGING -DZoneScoped= $INCS source/Tests/pointer_tests/RefTest.cpp \
+    source/Tests/pointer_tests/WeakRefTest.cpp source/Tests/pointer_tests/RefPerformanceTest.cpp \
+    source/Tests/pointer_tests/RefThreadSafetyTest.cpp $LIBS -o build_linux_tests/RefTests_sanitized
+./build_linux_tests/RefTests_sanitized
+
 # 4. XPlaneFormatTests (fully green)
 g++ -std=c++20 -O2 -pthread $INCS source/Tests/xplane_tests/XPlaneFormatTests.cpp \
     source/Tests/xplane_tests/AirportTests.cpp source/Tests/xplane_tests/OverlayTests.cpp \

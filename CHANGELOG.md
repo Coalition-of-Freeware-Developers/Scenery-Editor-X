@@ -23,6 +23,8 @@ descriptions and the git history. Versions are `SEDX_VERSION_STRING` in `source/
 
 - `MemoryAllocator::Init` takes `const Device&` instead of `const Ref<Device>&`. `Device`'s constructor called it with
   `this`, which made a temporary `Ref` that was only safe because the `QueueManager` already held one. (#68, 0.2.64.565)
+- `Device`'s constructor holds a reference of its own while it runs, so a `Ref` made from `this` in there can't delete
+  the device, whoever keeps theirs. (#68, 0.2.65.566)
 - Documented on `Ref(T*)` and `WeakRef`: a temporary `Ref` made from `this` in a constructor or destructor deletes the
   object unless another `Ref` to it is kept, and an object whose reference count is 0 counts as destroyed, like with
   `std::weak_ptr`. (#68)
