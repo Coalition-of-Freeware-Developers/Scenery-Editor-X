@@ -253,6 +253,13 @@ namespace SceneryEditorX
 		 * The registry is implemented as a singleton to provide global access while ensuring
 		 * there's only one instance managing all control blocks for a given type T.
 		 *
+		 * @warning Known limitation: blocks are kept per static type, and Ref<U>::InternalRelease() only
+		 *          clears ControlBlockRegistry<U>. The guarantee that a non-null block pointer points to a
+		 *          living object (which TryLock() and UseCount() rely on) therefore holds only while the
+		 *          object's last Ref has the WeakRef's static type T. A WeakRef<Base> to an object whose
+		 *          last owner is a Ref<Derived> is not expired when the object dies, and using it is a
+		 *          use-after-free. A single registry keyed by the RefCounted subobject would fix it.
+		 *
 		 * @tparam T The type of objects being tracked in this registry
 		 */
 		template <typename T>
@@ -320,8 +327,12 @@ namespace SceneryEditorX
 			{
 				std::lock_guard<std::mutex> lock(m_Mutex);
 				T *ptr = block->GetPtr();
-				if (ptr && ptr->TryIncRefCount())
+				if (!ptr)
+					return nullptr;
+				if (ptr->TryIncRefCount())
 					return ptr;
+
+				ExpireDying(block);
 				return nullptr;
 			}
 
@@ -330,11 +341,17 @@ namespace SceneryEditorX
 			 * @param block A control block the caller holds a weak reference to
 			 * @return The number of strong references, or 0 if the object has been destroyed
 			 */
-			uint32_t UseCount(const ControlBlock<T> *block)
+			uint32_t UseCount(ControlBlock<T> *block)
 			{
 				std::lock_guard<std::mutex> lock(m_Mutex);
 				const T *ptr = block->GetPtr();
-				return ptr ? ptr->GetRefCount() : 0;
+				if (!ptr)
+					return 0;
+
+				const uint32_t count = ptr->GetRefCount();
+				if (count == 0)
+					ExpireDying(block);
+				return count;
 			}
 
 			/**
@@ -396,6 +413,16 @@ namespace SceneryEditorX
 			bool IsShutDown() const noexcept { return m_IsShutDown.load(); }
 
 		private:
+			/**
+			 * @brief Clears a control block whose object's reference count was seen at 0 (call under m_Mutex)
+			 *
+			 * The last Ref is on its way into RemoveControlBlock(), and a count of 0 never goes up again
+			 * (TryIncRefCount() refuses it), so the block can be cleared now. WeakRef::Expired() reads only
+			 * the pointer, without the mutex, and so agrees with a failed lock from here on.
+			 * RemoveControlBlock() still erases the block and releases the object's weak reference.
+			 */
+			static void ExpireDying(ControlBlock<T> *block) noexcept { block->SetPtr(nullptr); }
+
 			/**
 			 * @brief Private constructor to enforce singleton pattern
 			 */
@@ -1413,9 +1440,12 @@ namespace SceneryEditorX
 	 * which triggers the object's deletion. The control block maintains this information
 	 * even after the object is gone.
 	 *
-	 * Like std::weak_ptr::expired(), this is UseCount() == 0, so it agrees with Lock(): while
-	 * the last Ref is being released on another thread (its count is 0 but the control block
-	 * is not cleared yet) the WeakRef is already expired and Lock() fails.
+	 * Takes no lock: it reads only the control block's pointer, which is cleared once and for
+	 * all when the object is released. It agrees with Lock(): it never says a live object is
+	 * expired, and once Lock() or UseCount() has failed or returned 0 it returns true (they
+	 * clear the pointer of an object whose count they see at 0). While the last Ref is being
+	 * released on another thread it may still return false for a moment; as with
+	 * std::weak_ptr::expired(), "not expired" is only a hint, and Lock() is the reliable test.
 	 *
 	 * @return true if the referenced object has been destroyed or if this is an empty WeakRef
 	 * @return false if the referenced object is still alive
@@ -1423,11 +1453,7 @@ namespace SceneryEditorX
 	template <typename T>
 	bool WeakRef<T>::Expired() const noexcept
 	{
-		// A destroyed object never comes back, so a cleared control block needs no lock
-		if (!m_ControlBlock || m_ControlBlock->GetPtr() == nullptr)
-			return true;
-
-		return Internal::ControlBlockRegistry<T>::GetInstance().UseCount(m_ControlBlock) == 0;
+		return !m_ControlBlock || m_ControlBlock->GetPtr() == nullptr;
 	}
 
 	/**

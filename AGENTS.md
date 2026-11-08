@@ -28,7 +28,9 @@ The dependency-light, cross-platform Catch2 unit suites that only need `source/`
 - **`ConversionTests`** (`source/Tests/conversion_tests`) — unit-conversion utilities
   (`SceneryEditorX/utils/conversions/...`). Header-only, fully green.
 - **`RefTests`** (`source/Tests/pointer_tests`) — the `Ref`/`WeakRef` smart-pointer system
-  (`SceneryEditorX/utils/pointers.h`). Builds and runs.
+  (`SceneryEditorX/utils/pointers.h`), including its thread safety (`RefThreadSafetyTest.cpp`: `WeakRef::Lock()`
+  racing the release of the last `Ref`, copies / resets on many threads, the control-block registry). Fully green,
+  a few seconds for every case.
 - **`XPlaneFormatTests`** (`source/Tests/xplane_tests`) — OBJ8 parsing/animation evaluation, the
   `library.txt` / `scenery_packs.ini` parsers + library index, the `lights.txt` light catalog, and the
   apt.dat 12.00 parser/writer, airport geometry, airport index, Scenery Gateway JSON records, the DSF
@@ -159,11 +161,11 @@ SDK; `VulkanSmokeTests` (opt-in via `SEDX_ENABLE_VULKAN_SMOKE_TESTS`) needs the 
   resolves to `clang++`, which fails to link with `cannot find -lstdc++`. Pass
   `-DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++` to CMake, or invoke `g++` directly.
 - **Everything is C++20** (`std::ranges`, `std::numbers`, `set::contains`). Compile with `-std=c++20`.
-- **`RefTests` has a pre-existing crash on `dev`:** the "Ref interoperability with
-  std::shared_ptr / Construction from std::shared_ptr" case (`source/Tests/pointer_tests/RefTest.cpp`)
-  aborts with a double-free/`SIGABRT`. This is a code bug on this branch, not an environment
-  issue. Its `[performance]`/`[stress]`/`[thread]`/`[race]` cases are very slow — exclude them
-  with the tag filter below when you just want correctness results.
+- **`RefTests` thread-safety tests follow two rules.** Worker threads never call Catch2 assertions (they are not
+  thread-safe in this build): they record failures in `ThreadChecks` and the main thread asserts after `join()`.
+  And no thread changes a `Ref` / `WeakRef` variable another thread reads (unsupported, as for
+  `std::shared_ptr` / `std::weak_ptr`); threads share objects through their own copies. The race cases count
+  destructions to catch double deletes; on Windows, clang64 `-fsanitize=address` also catches use-after-free.
 
 ### Build & run the Linux-buildable tests (from repo root, after submodules are fetched)
 
@@ -183,14 +185,14 @@ g++ -std=c++20 -O2 -pthread $INCS source/Tests/conversion_tests/*.cpp $LIBS \
     -o build_linux_tests/ConversionTests
 ./build_linux_tests/ConversionTests
 
-# 3. RefTests (exclude slow perf/concurrency tags)
+# 3. RefTests (fully green; the thread-safety set alone is "[thread],[Threading],[race],[safety]")
 g++ -std=c++20 -O2 -pthread -DSEDX_NO_LOGGING -DZoneScoped= $INCS \
     source/Tests/pointer_tests/RefTest.cpp \
     source/Tests/pointer_tests/WeakRefTest.cpp \
     source/Tests/pointer_tests/RefPerformanceTest.cpp \
     source/Tests/pointer_tests/RefThreadSafetyTest.cpp $LIBS \
     -o build_linux_tests/RefTests
-./build_linux_tests/RefTests "~[performance]~[stress]~[thread]~[race]~[safety]~[Threading]"
+./build_linux_tests/RefTests
 
 # 4. XPlaneFormatTests (fully green)
 g++ -std=c++20 -O2 -pthread $INCS source/Tests/xplane_tests/XPlaneFormatTests.cpp \
