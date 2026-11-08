@@ -1,0 +1,37 @@
+# Creates the labels in .github/labels.json the repository doesn't have, and fixes colours and descriptions.
+# Never deletes or renames a label. Issue forms only apply labels that already exist, so run this
+# (Actions › Sync labels › Run workflow) after adding a label to labels.json.
+name: Sync labels
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [master, dev]
+    paths:
+      - .github/labels.json
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: sync-labels
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout the label list
+        uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github
+          persist-credentials: false
+
+      - name: Sync labels
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const { syncLabels } = require('./.github/scripts/labels.js');
+            await syncLabels({ github, context, core });

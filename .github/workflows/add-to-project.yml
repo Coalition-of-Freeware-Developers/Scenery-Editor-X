@@ -1,0 +1,53 @@
+# Adds every new issue to the Scenery Editor X project (newIssues.project in .github/issue-triage.json).
+#
+# Needs the repository secret PROJECT_TOKEN: the workflow's own GITHUB_TOKEN can't write to an organization's project.
+# Make a fine-grained personal access token with resource owner Coalition-of-Freeware-Developers and
+# Organization permissions › Projects: Read and write (a classic token needs the `project` scope instead), then add it
+# under Settings › Secrets and variables › Actions. Without the secret the run only logs a warning.
+#
+# Issue forms also add issues through their projects: key, but GitHub only does that when the person opening the issue
+# can write to the project; this workflow covers everyone else. Actions › Add issues to project › Run workflow adds
+# an existing issue by number. Issue events run the copy of this workflow on the default branch (master).
+name: Add issues to project
+
+on:
+  issues:
+    types: [opened, reopened, transferred]
+  workflow_dispatch:
+    inputs:
+      issue:
+        description: Issue number
+        required: true
+        type: number
+
+permissions:
+  contents: read
+
+jobs:
+  add:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      PROJECT_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+    steps:
+      - name: Check for the project token
+        if: env.PROJECT_TOKEN == ''
+        run: echo "::warning::PROJECT_TOKEN isn't set, so the issue wasn't added to the project. See the comment at the top of add-to-project.yml."
+
+      - name: Checkout the project setting
+        if: env.PROJECT_TOKEN != ''
+        uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github
+          persist-credentials: false
+
+      - name: Add to project
+        if: env.PROJECT_TOKEN != ''
+        uses: actions/github-script@v9
+        env:
+          ISSUE_NUMBER: ${{ inputs.issue }}
+        with:
+          github-token: ${{ secrets.PROJECT_TOKEN }}
+          script: |
+            const addToProject = require('./.github/scripts/add_to_project.js');
+            await addToProject({ github, context, core }, process.env.ISSUE_NUMBER);

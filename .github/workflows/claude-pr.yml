@@ -13,7 +13,7 @@ jobs:
       id-token: write      # the action exchanges this for a Claude GitHub App token
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 1
 

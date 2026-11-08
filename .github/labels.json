@@ -1,0 +1,45 @@
+{
+	"$comment": "Every label the issue templates and workflows use. sync-labels.yml creates missing ones and fixes colours / descriptions; it never deletes or renames a label. validate_github_forms.py checks templates and issue-triage.json against this list.",
+	"labels": [
+		{ "name": "BUG", "color": "d73a4a", "description": "Something isn't working" },
+		{ "name": "CRASH", "color": "b60205", "description": "Crash, freeze, hang or GPU device lost" },
+		{ "name": "DATA LOSS", "color": "7a0000", "description": "A project, airport or scenery file was lost or damaged" },
+		{ "name": "REGRESSION", "color": "e99695", "description": "Worked in an earlier version" },
+		{ "name": "PERFORMANCE", "color": "f9a03f", "description": "Slow frames, slow loading or high memory use" },
+		{ "name": "XP12 PARITY", "color": "5319e7", "description": "The viewport doesn't match X-Plane 12" },
+		{ "name": "FILE FORMAT", "color": "c5def5", "description": "Files read, saved or exported wrong, or rejected by X-Plane / WorldEditor" },
+		{ "name": "FEATURE REQUEST", "color": "a2eeef", "description": "New feature or request" },
+		{ "name": "FEATURE", "color": "934132", "description": "Feature to be added." },
+		{ "name": "TODO TASK", "color": "ededed", "description": "Scoped development task" },
+		{ "name": "AGENT TASK", "color": "8a63d2", "description": "Written so an AI coding agent can pick it up" },
+		{ "name": "DOCUMENTATION", "color": "0075ca", "description": "Improvements or additions to documentation" },
+
+		{ "name": "CORE", "color": "CCDD26", "description": "Core item/ feature for the program" },
+		{ "name": "UI", "color": "0E6C80", "description": "Issue associated with UI element" },
+		{ "name": "Viewport", "color": "A0EAD9", "description": "Issue associated with 3D Viewport" },
+		{ "name": "GRAPHICS ENGINE", "color": "A7A03E", "description": "Issue associated with Vulkan Graphics Engine" },
+		{ "name": "AIRPORTS", "color": "1d76db", "description": "apt.dat airports and the AIRPORTS panel" },
+		{ "name": "PROJECTS", "color": "0e8a16", "description": ".edX / .sex projects, saving, recovery, WorldEditor import / export" },
+		{ "name": "SCENERY EXPORT", "color": "006b75", "description": "Scenery pack export: DSF, apt.dat, scenery_packs.ini" },
+		{ "name": "X-PLANE ASSETS", "color": "bfd4f2", "description": "Library scan, objects, facades, forests, autogen, thumbnails" },
+		{ "name": "TERRAIN", "color": "8b5a2b", "description": "Roads, base terrain and water" },
+		{ "name": "GATEWAY", "color": "0052cc", "description": "X-Plane Scenery Gateway download, validation and upload" },
+		{ "name": "BUILD", "color": "555555", "description": "Build system, CI, tests, installer and packaging" },
+
+		{ "name": "WINDOWS", "color": "0078d4", "description": "Happens on Windows" },
+		{ "name": "LINUX", "color": "fcc624", "description": "Happens on Linux" },
+		{ "name": "MACOS", "color": "a2aaad", "description": "Happens on macOS" },
+
+		{ "name": "NEEDS TRIAGE", "color": "fbca04", "description": "New: not looked at by a maintainer yet" },
+		{ "name": "FEEDBACK", "color": "d876e3", "description": "Further information is requested." },
+		{ "name": "BACKLOG", "color": "249ACF", "description": "Added to backlog for future implementation or fix." },
+		{ "name": "DUPLICATE ISSUE", "color": "cfd3d7", "description": "This issue or pull request already exists" },
+		{ "name": "wontfix", "color": "ffffff", "description": "This will not be worked on" },
+		{ "name": "CLAUDE", "color": "d97757", "description": "Claude works on this issue and pushes a branch (claude.yml)" },
+		{ "name": "CLAUDE TRIAGE", "color": "f0c3a8", "description": "Claude investigates and posts a triage report without changing code" },
+
+		{ "name": "RELEASE", "color": "FBCA04", "description": "Project release" },
+		{ "name": "BETA", "color": "33F37A", "description": "Beta version release" },
+		{ "name": "PATCH", "color": "33F37A", "description": "Project patch release" }
+	]
+}

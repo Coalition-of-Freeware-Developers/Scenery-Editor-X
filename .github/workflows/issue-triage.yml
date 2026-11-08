@@ -1,0 +1,38 @@
+# Labels issues from their issue-form answers and asks reporters for missing details. No AI involved:
+# the rules are in .github/issue-triage.json and the code in .github/scripts/issue_triage.js.
+# Issue events run the copy of this workflow on the default branch (master).
+name: Issue triage
+
+on:
+  issues:
+    types: [opened, edited, reopened]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: issue-triage-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  triage:
+    # issue_comment also fires for pull request comments.
+    if: ${{ !github.event.issue.pull_request }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout the triage rules
+        uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github
+          persist-credentials: false
+
+      - name: Triage
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const triage = require('./.github/scripts/issue_triage.js');
+            await triage({ github, context, core });

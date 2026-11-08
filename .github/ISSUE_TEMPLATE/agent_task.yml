@@ -1,0 +1,138 @@
+# Indent with spaces only: a tab anywhere in this file makes GitHub reject the whole form.
+name: Agent-Ready Task
+description: A task written so an AI coding agent (Claude) can implement it on its own, for maintainers.
+title: "[AGENT] "
+labels: ["AGENT TASK"]
+assignees: [The3dVehicleguy]
+projects: ["Coalition-of-Freeware-Developers/2"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        An agent only knows what the issue and the repository tell it. Spell out the goal, where to start, the constraints, and how to prove the work is done.
+
+        **To start the work:** add the `CLAUDE` label, or comment `@claude` with instructions. Claude cuts a branch from `dev`, implements the task and links a pull request.
+        **For an analysis only:** add the `CLAUDE TRIAGE` label. Claude reads the code and posts a plan without changing anything.
+        Both need write access to the repository, and run with the repository's `CLAUDE_CODE_OAUTH_TOKEN` secret.
+
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: One or two sentences on what is true when this is done.
+      placeholder: Each placement of an animated object keeps its own dataref values, so changing one jetbridge no longer moves the others.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - "Viewport: camera, selection, gizmo, node editing"
+        - "Rendering: X-Plane 12 emulation, lighting, shadows, sky, water, weather"
+        - "Editor UI: panels, menus, dialogs, docking, shortcuts"
+        - "Airports: apt.dat, AIRPORTS panel, runways, taxiways, signs, airport lights"
+        - "Projects: .edX / .sex files, saving, recovery, WorldEditor import / export"
+        - "Scenery export: scenery packs, DSF, apt.dat, scenery_packs.ini"
+        - "X-Plane library & assets: library scan, objects, forests, autogen, thumbnails"
+        - "Facades: facade tool, FACADE EDITOR, .fac files"
+        - "Roads, base terrain & water"
+        - "Scenery Gateway: download, validation, upload"
+        - "Startup, settings & file locations: Vulkan check, preferences, logs, caches"
+        - "Core engine: memory, threading, logging, smart pointers, math"
+        - "Build system, CI, tests, installer"
+        - "Documentation & user manual"
+        - "Not sure"
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Background
+      description: Why this is needed, what was decided already, and links to the issues, pull requests, plans (`plan/`), reports (`reports/`) or specs it builds on.
+      placeholder: |
+        Reported in #75. Dataref values are edited in PROPERTIES › Animation.
+        X-Plane itself animates each placement from the same datarefs, but the editor lets authors preview placements separately.
+    validations:
+      required: true
+
+  - type: textarea
+    id: start_here
+    attributes:
+      label: Where to start
+      description: Files, classes or functions to read first, and code to copy patterns from.
+      placeholder: |
+        - source/SceneryEditorX/xplane/xp_datarefs.h / .cpp
+        - source/Editor/panels/properties_panel.cpp, the "Animation" section
+        - source/SceneryEditorX/xplane/xp_object.cpp (how placements share one loaded asset)
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: constraints
+    attributes:
+      label: Constraints that apply
+      description: Ticked items are requirements. AGENTS.md has the project's conventions.
+      options:
+        - label: Must build and behave the same on Windows, Linux and macOS (no Win32-only APIs or MSVC-only flags outside per-OS code)
+        - label: No change to the files the editor writes (.edX / .sex, apt.dat, DSF and other X-Plane files)
+        - label: No change to public engine APIs
+        - label: No measurable frame-time or load-time regression at the test airports
+        - label: Bump the version in source/resource.h (SEDX_PATCH and SEDX_BUILD +1)
+        - label: Add an "Unreleased" entry to CHANGELOG.md
+        - label: Update the user manual (docs/manual) for user-visible changes
+
+  - type: textarea
+    id: requirements
+    attributes:
+      label: Requirements and decisions
+      description: Behaviour that must hold, edge cases, and choices already made (so the agent doesn't re-decide them).
+      placeholder: |
+        - Values that match the object's defaults aren't stored.
+        - Undo restores the previous values of the selected placement only.
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Checkable outcomes. The pull request should tick each one.
+      placeholder: |
+        - [ ] Two placements of the same .obj animate independently in the viewport
+        - [ ] New Catch2 case covers it and passes
+        - [ ] Existing XPlaneFormatTests and ProjectFormatTests still pass
+    validations:
+      required: true
+
+  - type: textarea
+    id: verification
+    attributes:
+      label: How to verify
+      description: |
+        Commands that prove it works. On the Linux CI runner an agent can build and run the Catch2 suites in AGENTS.md
+        (ConversionTests, RefTests, XPlaneFormatTests, ProjectFormatTests, EnvironmentTests, SettingsTest); the full editor needs a GPU.
+      render: shell
+      placeholder: |
+        ./build_linux_tests/XPlaneFormatTests "[obj8]"
+        ./build_linux_tests/ProjectFormatTests "~[performance]"
+    validations:
+      required: true
+
+  - type: textarea
+    id: out_of_scope
+    attributes:
+      label: Out of scope
+      description: Related work the agent must not do in this task.
+      placeholder: Don't change how X-Plane exports datarefs; don't touch the GPU instancing path.
+
+  - type: input
+    id: base_branch
+    attributes:
+      label: Base branch
+      description: The branch to cut from and target with the pull request.
+      value: dev
+    validations:
+      required: true
