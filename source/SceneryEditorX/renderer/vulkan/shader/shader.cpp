@@ -245,18 +245,6 @@ namespace SceneryEditorX
 		return shader;
 	}
 
-	Ref<Shader> Shader::LoadFromShaderPack(const std::string& /*filepath*/, bool /*forceCompile*/, bool /*disableOptimization*/)
-	{
-		SEDX_CORE_WARN_TAG("Shader", "LoadFromShaderPack(path) is deprecated; load via ShaderLibrary::LoadShaderPack + ShaderPack::LoadShader");
-		return nullptr;
-	}
-
-	Ref<Shader> Shader::CreateFromString(const std::string& /*source*/)
-	{
-		SEDX_CORE_WARN_TAG("Shader", "CreateFromString is not supported; compile from a .slang file via SlangCompiler::Compile");
-		return nullptr;
-	}
-
 	const std::unordered_map<std::string, ShaderBuffer>& Shader::GetShaderBuffers() const
 	{
 		return m_ShaderBuffers;

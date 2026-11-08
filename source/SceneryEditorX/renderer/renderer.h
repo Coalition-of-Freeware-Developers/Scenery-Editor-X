@@ -367,12 +367,6 @@ namespace SceneryEditorX
 		 */
 		static CommandList* GetCommandListPresent();
 
-		/**
-		 * @brief Returns nullptr — UI rendering is now performed inside RecordRenderCommands
-		 *        via SetExternalRecordingBuffer, so no separate frame command list is needed.
-		 * @deprecated Use GetCommandListPresent() with SetExternalRecordingBuffer instead.
-		 */
-		[[deprecated]] static CommandList* GetCommandListFrame();
 		
 		/* 
 		 * @brief Create shader modules and pipelines. 
@@ -382,11 +376,6 @@ namespace SceneryEditorX
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		/// Util Functions																								  ///
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-		/* 
-		 * @brief Capture a screenshot of the current frame and save it to disk. 
-		 */
-		static void Screenshot();
 
 		/**
 		 * @brief Returns a pointer to the standard mesh for the given type.
@@ -900,18 +889,6 @@ namespace SceneryEditorX
 #pragma region Geometry passes
 
 		/**
-		 * @brief Generate the hierarchical Z-buffer for the current frame.
-		 * @param cmdList Command list to record the pass into.
-		 */
-		static void Pass_HiZ(CommandList *cmdList);
-
-		/**
-		 * @brief Perform indirect culling for the current frame.
-		 * @param cmdList Command list to record the pass into.
-		 */
-		static void Pass_IndirectCull(CommandList *cmdList);
-
-		/**
 		 * @brief GPU-scene occlusion culling between the depth prepass's two phases: builds a min-depth hi-z pyramid of the
 		 * depth drawn so far and runs GpuScene::CullLate() against it.
 		 * @param cmdList Command list to record the pass into.
@@ -940,12 +917,6 @@ namespace SceneryEditorX
 
 #pragma endregion
 #pragma region Shadow passes
-
-		/**
-		 * @brief Render the shadow maps for the current frame.
-		 * @param cmdList Command list to record the pass into.
-		 */
-		static void Pass_ShadowMaps(CommandList *cmdList);
 
 		// Sun and cloud shadows (plan Phase 7, renderer_shadows.cpp)
 		/* @brief The casters into each cascade of shadow_csm: the GPU scene's instances (GpuScene::CullShadows) and the CPU
@@ -1363,12 +1334,9 @@ namespace SceneryEditorX
 		static uint32_t m_DrawCalls_Water_Count;
 		static uint32_t m_Indirect_DrawCount;
 		static bool     m_Transparents_Present;
-		static bool     m_Is_Hiz_Suppressed;
 
 		static CommandList *m_CmdList_Compute;
 		static CommandList *m_CmdList_Present;
-		// @brief Kept as nullptr — UI is now rendered via SetExternalRecordingBuffer inside RecordRenderCommands.
-		static CommandList *m_CmdList_Frame;
 		static Scope<AssetManager> s_AssetManager;
 		static uint32_t m_ResourceIndex;
 

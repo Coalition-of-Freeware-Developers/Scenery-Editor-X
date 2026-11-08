@@ -425,15 +425,6 @@ namespace SceneryEditorX
 		Ref(Ref<U>&& other) noexcept : m_Ptr(other.Get()) { other.m_Ptr = nullptr; }
 
 		/**
-		 * @brief Constructor from std::shared_ptr. Shares ownership of the object.
-		 * @param shared The std::shared_ptr to convert from.
-		 */
-		explicit Ref(const std::shared_ptr<T>& shared) noexcept : m_Ptr(shared.get())
-		{
-			InternalAddRef();
-		}
-
-		/**
 		 * @brief Constructor from WeakRef. Obtains a strong reference if available.
 		 *
 		 * This constructor attempts to obtain a strong reference from a WeakRef.

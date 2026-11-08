@@ -297,22 +297,6 @@ namespace SceneryEditorX
 		 */
 		static Ref<Shader> Create(const std::string& filepath, bool forceCompile = false, bool disableOptimization = false);
 
-		/**
-		 * @brief Loads a shader from a shader pack.
-		 * @param filepath The path to the shader pack file.
-		 * @param forceCompile Whether to force compilation of the shader.
-		 * @param disableOptimization Whether to disable optimization for the shader.
-		 * @return A reference to the loaded shader.
-		 */
-		static Ref<Shader> LoadFromShaderPack(const std::string& filepath, bool forceCompile = false, bool disableOptimization = false);
-
-		/**
-		 * @brief Creates a shader from a string source.
-		 * @param source The shader source code as a string.
-		 * @return A reference to the created shader.
-		 */
-		static Ref<Shader> CreateFromString(const std::string& source);
-
 		~Shader() override;
 
 		[[nodiscard]] const std::unordered_map<std::string, ShaderBuffer>& GetShaderBuffers() const;

@@ -17,7 +17,6 @@ The test suite now includes a comprehensive logging system that captures detaile
 
 - **TestLogger.h**: Lightweight standalone logging system for tests
 - **SimpleTestHelper.h**: RAII helpers and macros for easy test logging
-- **Catch2TestListener.h**: Event listener for automatic Catch2 test event logging
 
 ### Log Output Locations
 

@@ -122,16 +122,6 @@ namespace SceneryEditorX::IO
 		}
 	}
 
-	std::filesystem::path FileSystem::GetWorkingDir()
-	{
-		return std::filesystem::current_path();
-	}
-
-	void FileSystem::SetWorkingDir(const std::filesystem::path &path)
-	{
-		std::filesystem::current_path(path);
-	}
-
 	bool FileSystem::CreateDir(const std::filesystem::path &directory)
 	{
 		return std::filesystem::create_directories(directory);
@@ -150,24 +140,6 @@ namespace SceneryEditorX::IO
 	bool FileSystem::DirExists(const std::string &directory)
 	{
 		return DirExists(VFS::FromUtf8(directory));
-	}
-
-	bool FileSystem::DeleteFile(const std::filesystem::path &filepath)
-	{
-		if (!Exists(filepath))
-			return false;
-
-		if (std::filesystem::is_directory(filepath))
-		{
-			return std::filesystem::remove_all(filepath) > 0;
-		}
-
-		return std::filesystem::remove(filepath);
-	}
-
-	bool FileSystem::MoveFile(const std::filesystem::path &filepath, const std::filesystem::path &dest)
-	{
-		return Move(filepath, dest / filepath.filename());
 	}
 
 	bool FileSystem::CopyFile(const std::filesystem::path &filepath, const std::filesystem::path &dest)
@@ -295,44 +267,9 @@ namespace SceneryEditorX::IO
 		return Move(oldFilepath, newFilepath);
 	}
 
-	bool FileSystem::RenameFilename(const std::filesystem::path &oldFilepath, const std::string &newName)
-	{
-		const std::filesystem::path newPath =
-			oldFilepath.parent_path() / std::filesystem::path(newName + oldFilepath.extension().string());
-		return Rename(oldFilepath, newPath);
-	}
-
 	bool FileSystem::IsDirectory(const std::filesystem::path &filepath)
 	{
 		return std::filesystem::is_directory(filepath);
-	}
-
-	bool FileSystem::IsNewer(const std::filesystem::path &fileA, const std::filesystem::path &fileB)
-	{
-		// returns true <=> fileA was last modified more recently than fileB
-		return std::filesystem::last_write_time(fileA) > std::filesystem::last_write_time(fileB);
-	}
-
-	bool FileSystem::ShowFileInExplorer(const std::filesystem::path &path)
-	{
-		std::error_code ec;
-		const auto absolutePath = std::filesystem::canonical(path, ec);
-		if (ec || !Exists(absolutePath))
-			return false;
-
-#ifdef SEDX_PLATFORM_WINDOWS
-		std::string cmd = std::format("explorer.exe /select,\"{0}\"", absolutePath.string());
-#elif defined(SEDX_PLATFORM_MACOS)
-		std::string cmd = std::format("open -R \"{0}\"", absolutePath.string());
-#else
-		std::string cmd = std::format("xdg-open \"{0}\"", absolutePath.parent_path().string());
-#endif
-#ifdef SEDX_PLATFORM_WINDOWS
-		system(cmd.c_str());	// explorer.exe exits with 1 even when it worked
-		return true;
-#else
-		return system(cmd.c_str()) == 0;
-#endif
 	}
 
 	bool FileSystem::OpenDirectoryInExplorer(const std::filesystem::path &path)
@@ -384,40 +321,6 @@ namespace SceneryEditorX::IO
 #endif
 	}
 
-	std::filesystem::path FileSystem::GetUniqueFileName(const std::filesystem::path &filepath)
-	{
-		if (!Exists(filepath))
-			return filepath;
-
-		int counter = 0;
-		auto check_id = [&counter, filepath](const auto &checkID) -> std::filesystem::path {
-			++counter;
-			const std::string counterStr = [&counter] {
-				if (counter < 10)
-					return "0" + ToString(counter);
-
-				return ToString(counter);
-			}(); // Pad with 0 if < 10;
-
-			std::string newFileName =
-				std::format("{} ({})", Utils::RemoveExtension(filepath.filename().string()), counterStr);
-
-			if (filepath.has_extension())
-			{
-				newFileName = std::format("{}{}", newFileName, filepath.extension().string());
-			}
-
-			if (std::filesystem::exists(filepath.parent_path() / newFileName))
-			{
-				return checkID(checkID);
-			}
-
-			return filepath.parent_path() / newFileName;
-		};
-
-		return check_id(check_id);
-	}
-
 	uint64_t FileSystem::GetLastWriteTime(const std::filesystem::path &filepath)
 	{
 		if (!Exists(filepath))
@@ -441,105 +344,6 @@ namespace SceneryEditorX::IO
 		}
 
 		return true;
-	}
-
-	bool FileSystem::IsAlphanumeric(const std::string &var)
-	{
-		if (IsEmptyOrWhitespace(var))
-			return false;
-
-		for (char _char : var)
-		{
-			if (!isalnum(_char))
-				return false;
-		}
-
-		return true;
-	}
-
-	std::string FileSystem::RemoveIllegalCharacters(const std::string &text)
-	{
-		std::string textLegal = text;
-
-		// Remove characters which are illegal for both names and paths
-		std::string illegal = ":?\"<>|";
-		for (auto it = textLegal.begin(); it < textLegal.end(); ++it)
-		{
-			if (illegal.find(*it) != std::string::npos)
-			{
-				*it = '_';
-			}
-		}
-
-		// If this is a valid path, return it (otherwise it's a name)
-		if (IsDirectory(textLegal))
-			return textLegal;
-
-		// Remove slashes which are illegal characters for names
-		illegal = "\\/";
-		for (auto it = textLegal.begin(); it < textLegal.end(); ++it)
-		{
-			if (illegal.find(*it) != std::string::npos)
-			{
-				*it = '_';
-			}
-		}
-
-		return textLegal;
-	}
-
-	std::string FileSystem::GetStringBeforeExpression(const std::string &str, const std::string &exp)
-	{
-		// ("The quick brown fox", "brown") -> "The quick "
-		const size_t position = str.find(exp);
-		return position != std::string::npos ? str.substr(0, position) : "";
-	}
-
-	std::string FileSystem::GetStringAfterExpression(const std::string &str, const std::string &exp)
-	{
-		// ("The quick brown fox", "brown") -> "fox"
-		const size_t position = str.find(exp);
-		return position != std::string::npos ? str.substr(position + exp.length()) : "";
-	}
-
-	std::string FileSystem::GetStringBetweenExpressions(const std::string &str,
-														const std::string &exp_a,
-														const std::string &exp_b)
-	{
-		// ("The quick brown fox", "The ", " brown") -> "quick"
-		const std::regex baseRegex(exp_a + "(.*)" + exp_b);
-
-		if (std::smatch baseMatch; regex_search(str, baseMatch, baseRegex))
-		{
-			// The first sub_match is the whole string; the next
-			// sub_match is the first parenthesized expression.
-			if (baseMatch.size() == 2)
-				return baseMatch[1].str();
-		}
-
-		return str;
-	}
-
-	std::string FileSystem::ConvertToUppercase(const std::string &lower)
-	{
-		std::string upper;
-		for (const auto &character : lower)
-		{
-			const std::locale loc;
-			upper += toupper(character, loc);
-		}
-
-		return upper;
-	}
-
-	std::string FileSystem::ReplaceExpression(const std::string &str, const std::string &from, const std::string &to)
-	{
-		return regex_replace(str, std::regex(from), to);
-	}
-
-	std::wstring FileSystem::StringToWstring(const std::string &str)
-	{
-		return VFS::FromUtf8(str).wstring();	// UTF-8 in, the platform's wide encoding out (no deprecated <codecvt>)
 	}
 
 	const std::vector<std::string> &FileSystem::InitAppLocations()
@@ -583,94 +387,6 @@ namespace SceneryEditorX::IO
 		return folder;
 	}
 
-	std::filesystem::path FileSystem::GetAppDataLocal()
-	{
-		const std::filesystem::path folder = VFS::GetAppLocation(VFS::AppLocation::Data);
-		VFS::CreateFolders(folder);		// best effort
-		return folder;
-	}
-
-	std::filesystem::path FileSystem::GetProgramFilesPath()
-	{
-	   // Try to detect the platform specific program files location.
-#ifdef SEDX_PLATFORM_WINDOWS
-		// Prefer the 64-bit program files location when available
-		if (const char* p = std::getenv("ProgramW6432"))
-		{
-			return std::filesystem::path(p) / "SceneryEditorX";
-		}
-
-		// Fall back to the standard ProgramFiles environment variable(s)
-		if (const char* p = std::getenv("ProgramFiles"))
-		{
-			return std::filesystem::path(p) / "SceneryEditorX";
-		}
-#else
-		// Non-Windows: prefer common system locations
-		if (std::filesystem::exists("/opt"))
-		{
-			return std::filesystem::path("/opt") / "SceneryEditorX";
-		}
-		if (std::filesystem::exists("/usr/local"))
-		{
-			return std::filesystem::path("/usr/local") / "SceneryEditorX";
-		}
-		if (const char* p = std::getenv("HOME"))
-		{
-			return std::filesystem::path(p) / ".local" / "share" / "SceneryEditorX";
-		}
-#endif
-
-		// Final fallback: use current working directory
-		return std::filesystem::current_path() / "SceneryEditorX";
-	}
-
-	bool FileSystem::CheckEnvVariable(const std::string &key)
-	{
-		if (key.empty())
-			return false;
-
-		const char *val = std::getenv(key.c_str());
-		return val != nullptr;
-	}
-
-	bool FileSystem::SetEnvVariable(const std::string &key, const std::string &value)
-	{
-		if (key.empty())
-			return false;
-
-#ifdef SEDX_PLATFORM_WINDOWS
-		// Use the secure Windows CRT call
-		int result = _putenv_s(key.c_str(), value.c_str());
-		if (result != 0)
-		{
-			SEDX_CORE_ERROR_TAG("File Manager", "Failed to set environment variable: {}", key.c_str());
-			return false;
-		}
-		return true;
-#else
-		// POSIX setenv
-		if (setenv(key.c_str(), value.c_str(), 1) != 0)
-		{
-			SEDX_CORE_ERROR_TAG("File Manager", "Failed to set environment variable: {}", key.c_str());
-			return false;
-		}
-		return true;
-#endif
-	}
-
-	std::string FileSystem::GetEnvVariable(const std::string &key)
-	{
-		if (key.empty())
-			return std::string();
-
-		const char *val = std::getenv(key.c_str());
-		if (!val)
-			return std::string();
-
-		return std::string(val);
-	}
-
 	std::string FileSystem::GetDirectoryFromFilePath(const std::string &path)
 	{
 		const size_t last_index = path.find_last_of("\\/");
@@ -687,10 +403,6 @@ namespace SceneryEditorX::IO
 		return VFS::ToGenericUtf8(std::filesystem::current_path());
 	}
 
-	std::string FileSystem::GetRootDirectory(const std::string &path)
-	{
-		return VFS::ToGenericUtf8(VFS::FromUtf8(path).root_directory());
-	}
 	std::string FileSystem::GetRelativePath(const std::string &path)
 	{
 		if (VFS::FromUtf8(path).is_relative())
@@ -737,17 +449,6 @@ namespace SceneryEditorX::IO
 		return VFS::ToGenericUtf8(result);
 	}
 
-	std::string FileSystem::GetParentDirectory(const std::string &path)
-	{
-		auto parentPath = VFS::FromUtf8(path).parent_path();
-
-		// If there is no parent path, return path as is
-		if (parentPath.empty())
-			return path;
-
-		return VFS::ToGenericUtf8(parentPath);
-	}
-
 	std::string FileSystem::GetFileNameWithoutExtensionFromFilePath(const std::string &path)
 	{
 		const auto fileName = GetFileNameFromFilePath(path);
@@ -764,23 +465,6 @@ namespace SceneryEditorX::IO
 	std::string FileSystem::GetFileNameFromFilePath(const std::string &path)
 	{
 		return VFS::ToGenericUtf8(VFS::FromUtf8(path).filename());
-	}
-
-	std::vector<std::string> FileSystem::GetFilesInDirectory(const std::string &path)
-	{
-		std::vector<std::string> filePaths;
-		const std::filesystem::directory_iterator it_end; // default construction yields past-the-end
-		for (std::filesystem::directory_iterator it(VFS::FromUtf8(path)); it != it_end; ++it)
-		{
-			if (!std::filesystem::is_regular_file(it->status()))
-			{
-				continue;
-			}
-
-			filePaths.emplace_back(VFS::ToUtf8(it->path()));
-		}
-
-		return filePaths;
 	}
 
 	uint32_t FileSystem::GetFileSize(const std::filesystem::path &path)
@@ -839,14 +523,6 @@ namespace SceneryEditorX::IO
 		return count;
 	}
 
-	std::optional<std::filesystem::path> FileSystem::GetUserProfileDir()
-	{
-		std::filesystem::path home = VFS::GetFolder(VFS::Folder::Home);
-		if (home.empty())
-			return std::nullopt;
-		return home;
-	}
-
 	bool FileSystem::Delete(const std::string &path)
 	{
 		try
@@ -896,70 +572,6 @@ namespace SceneryEditorX::IO
 		}
 
 		return false;
-	}
-
-	bool FileSystem::CreateArchive(const std::string &path, const std::vector<std::string> &includePaths)
-	{
-		if (includePaths.empty())
-		{
-			SEDX_CORE_ERROR_TAG("File Manager", "No paths provided to archive");
-			return false;
-		}
-
-		/**
-		 * TODO: Bundle 7z with the editor if the installer doesn't detect an existing user installation of 7Zip 
-		 * and use a fixed relative path to ensure it is always found
-		 */
-		std::string seven_zip_exe;
-
-		// find 7z executable - check all possible locations and names at runtime
-		std::vector<std::string> candidates = {"7z.exe", "scripts/7z.exe", "7z", "7za"};
-
-		for (const auto &candidate : candidates)
-		{
-			if (Exists(candidate) || IsExecutableInPath(candidate))
-			{
-				seven_zip_exe = candidate;
-				break;
-			}
-		}
-
-		if (seven_zip_exe.empty())
-		{
-			SEDX_CORE_ERROR_TAG("File Manager",
-								"7z not found. Please ensure it exists in the current directory, scripts/, or PATH.");
-			return false;
-		}
-
-		// delete existing archive if it exists
-		if (Exists(path))
-		{
-			Delete(path);
-		}
-
-		SEDX_CORE_INFO_TAG("File Manager", "Creating archive: {}", path.c_str());
-
-		// build command arguments: 7z a archive.7z file1 file2 dir1 ...
-		std::vector<std::string> args = {seven_zip_exe, "a", path};
-		for (const std::string &path : includePaths)
-		{
-			args.push_back(path);
-		}
-		// add silent flags
-		args.emplace_back("-bso0");
-		args.emplace_back("-bsp0");
-
-		RunSilentProcess(args);
-
-		// verify archive was created
-		if (!Exists(path))
-		{
-			SEDX_CORE_ERROR_TAG("File Manager", "Failed to create archive: {}", path.c_str());
-			return false;
-		}
-
-		SEDX_CORE_INFO_TAG("File Manager", "Archive created: {}", path.c_str());
-		return true;
 	}
 
 	void FileSystem::OpenUrl(const char *url)
