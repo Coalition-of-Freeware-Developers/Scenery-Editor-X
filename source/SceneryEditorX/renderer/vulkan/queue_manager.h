@@ -197,6 +197,9 @@ namespace SceneryEditorX
 		 *
 		 * Far more than the frames whose command buffers can still be executing: NextCommandList() waits for a list's
 		 * previous submission before it records the list again, and there are QueueConfig::cmdListsPerQueue of them.
+		 * It is the minimum wait the queue always had (it used to free everything only after its size stayed unchanged
+		 * for 100 frames). Only rendered frames count: while nothing renders (minimized), nothing is freed, and nothing
+		 * is submitted or replaced either.
 		 */
 		static constexpr uint64_t DELETION_DELAY_FRAMES = 100;
 

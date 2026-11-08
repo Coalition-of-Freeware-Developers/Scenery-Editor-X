@@ -677,7 +677,14 @@ namespace SceneryEditorX
 			remaining.swap(s_DeletionQueue);
 		}
 		if (!remaining.empty())
-			DestroyEntries(RenderContext::Get()->GetDevice(), remaining);
+		{
+			const Ref<RenderContext> context = RenderContext::Get();
+			const Ref<Device> device = context ? context->GetDevice() : nullptr;
+			if (device && device->GetDevice() != VK_NULL_HANDLE)
+				DestroyEntries(device, remaining);
+			else
+				SEDX_CORE_WARN_TAG("QueueManager", "No device left to destroy the deletion queue's last entries: they are leaked");
+		}
 
 		SEDX_CORE_INFO_TAG("QueueManager", "Deletion queue marked as shut down; late AddDeletionQueue calls will be dropped");
 	}
