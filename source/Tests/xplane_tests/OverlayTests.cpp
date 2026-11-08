@@ -1692,6 +1692,48 @@ TEST_CASE("Overlay builder textures apt.dat surfaces through the library", "[ove
 	CHECK(unknownWarnings == 1);
 }
 
+TEST_CASE("Overlay builder places no edge lights for an unknown edge light code", "[overlay]")
+{
+	TempDir temp;
+	const fs::path fixture = temp.Write("lib/fixture.obj", "I\n800\nOBJ\n");
+	const AssetResolver resolver = [&](const std::string_view path) -> fs::path
+	{
+		return path.starts_with("lib/airport/lights/slow/") && path.ends_with(".obj") ? fixture : fs::path();
+	};
+
+	// Row 100's edge lighting is 0-3: a 5 is a damaged row, not HIRL. The centerline lights it asks for still come
+	const GeoProjection projection(45.6, -122.6);
+	AptAirport airport;
+	airport.id = "TEST";
+	AptRunway runway;
+	runway.width = 45.0f;
+	runway.surface = 2;
+	runway.edgeLights = 5;
+	runway.centerlineLights = true;
+	projection.ToGeo(Point2{ 0.0, 500.0 }, runway.ends[0].latitude, runway.ends[0].longitude);
+	projection.ToGeo(Point2{ 0.0, -500.0 }, runway.ends[1].latitude, runway.ends[1].longitude);
+	runway.ends[0].designator = "36";
+	runway.ends[1].designator = "18";
+	airport.runways.push_back(runway);
+
+	OverlayBuilder builder(resolver, projection);
+	OverlayBuilder::Options options;
+	OverlayBuild out;
+	builder.BuildAirportSurfaces(airport, {}, 0.2f, 0.3f, options, out);
+
+	size_t edge = 0, threshold = 0, centerline = 0;
+	for (const OverlayObject &object : out.objects)
+	{
+		edge += object.name.starts_with("LIRL") || object.name.starts_with("MIRL") || object.name.starts_with("HIRL") ? 1 : 0;
+		threshold += object.name.starts_with("thr_") ? 1 : 0;
+		centerline += object.name.starts_with("RCLS_") ? 1 : 0;
+	}
+	CHECK(edge == 0);
+	CHECK(threshold == 0);
+	CHECK(centerline > 0);
+	CHECK(std::ranges::count_if(out.warnings, [](const std::string &warning) { return warning.find("unknown edge light code 5") != std::string::npos; }) == 1);
+}
+
 TEST_CASE("Overlay builder adds X-Plane's runway lights and tire rubber", "[overlay]")
 {
 	TempDir temp;

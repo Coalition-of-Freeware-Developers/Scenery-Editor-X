@@ -2916,6 +2916,11 @@ namespace SceneryEditorX::XPlane
 		const double displaced[2] = { std::clamp<double>(runway.ends[0].displacedThreshold, 0.0, length), std::clamp<double>(runway.ends[1].displacedThreshold, 0.0, length) };
 		const double halfWidth = runway.width * 0.5;
 
+		// Row 100's edge lighting: 0 none, 1 LIRL, 2 MIRL, 3 HIRL. Another code is a damaged row: no edge lights, not a guess
+		const int edgeLights = runway.edgeLights >= 0 && runway.edgeLights <= 3 ? runway.edgeLights : 0;
+		if (edgeLights != runway.edgeLights)
+			Warn(out, "Runway " + runway.GetName() + ": unknown edge light code " + std::to_string(runway.edgeLights) + ", no edge lights placed");
+
 		// One fixture, at a distance along the runway from end 0 and to the right of it, by its library name. A runway
 		// places hundreds to thousands of lights from a handful of fixtures: each is resolved once per runway
 		std::map<std::string, std::pair<std::string, fs::path>, std::less<>> fixtures;	// Name -> library path, file
@@ -2946,10 +2951,10 @@ namespace SceneryEditorX::XPlane
 		};
 
 		// Edge lights
-		if (runway.edgeLights >= 1)
+		if (edgeLights >= 1)
 		{
-			const bool low = runway.edgeLights == 1;
-			const std::string family = low ? "LIRL" : runway.edgeLights == 2 ? "MIRL" : "HIRL";
+			const bool low = edgeLights == 1;
+			const std::string family = low ? "LIRL" : edgeLights == 2 ? "MIRL" : "HIRL";
 			const std::vector<std::string> pairs = low ? std::vector<std::string>{ "ww" } : std::vector<std::string>{ "ww", "yw", "rw", "yy", "ry" };
 			const bool instrument[2] = { runway.ends[0].marking >= 2, runway.ends[1].marking >= 2 };
 			const int count = std::max(1, static_cast<int>(std::ceil(length / EDGE_LIGHT_SPACING)));
@@ -2969,9 +2974,9 @@ namespace SceneryEditorX::XPlane
 		// Threshold bars across each end: green toward landing traffic, red end lights toward traffic rolling out
 		// (a displaced threshold splits them: green at the threshold, red at the pavement's end). apt.dat has no threshold
 		// light field: the bars come with the edge lighting, in its intensity (ASSUMPTION, like the layout above)
-		if (runway.edgeLights >= 1)
+		if (edgeLights >= 1)
 		{
-			const std::string family = runway.edgeLights == 1 ? "lirl" : runway.edgeLights == 2 ? "mirl" : "hirl";
+			const std::string family = edgeLights == 1 ? "lirl" : edgeLights == 2 ? "mirl" : "hirl";
 			const int lights = std::max(2, static_cast<int>(std::floor(runway.width / THRESHOLD_LIGHT_SPACING)) + 1);
 			for (int end = 0; end < 2; ++end)
 			{
