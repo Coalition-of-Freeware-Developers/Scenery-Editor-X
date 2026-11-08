@@ -190,11 +190,11 @@ namespace SceneryEditorX
 		            REQUIRE(ref->GetId() == 42);
 		        }
 		        
-		        // Weak refs that weren't locked should be expired
+		        // Every weak ref observes the same object, which the locked refs keep alive: none has expired yet
 		        for (size_t i = weakRefCount / 2; i < weakRefCount; ++i)
 				{
-		            REQUIRE(weakRefs[i].Expired());
-		            REQUIRE(weakRefs[i].Lock() == nullptr);
+		            REQUIRE_FALSE(weakRefs[i].Expired());
+		            REQUIRE(weakRefs[i].Lock() != nullptr);
 		        }
 		        
 		        // Destroy the locked refs
@@ -291,10 +291,12 @@ namespace SceneryEditorX
 		            thread.join();
 		        }
 		        
-		        // Verify that all shared objects still have their original IDs
+		        // Verify that all shared objects still have their original IDs, and that every copy the threads
+		        // made was released (the shared Refs are only read while the threads run)
 		        for (size_t i = 0; i < sharedObjects.size(); ++i)
 				{
 		            REQUIRE(sharedObjects[i]->GetId() == static_cast<int>(i));
+		            REQUIRE(sharedObjects[i].UseCount() == 1);
 		        }
 		        
 		        // Clean up
@@ -456,23 +458,8 @@ namespace SceneryEditorX
 		        
 		        auto toSharedEndTime = std::chrono::high_resolution_clock::now();
 		        auto toSharedDuration = std::chrono::duration_cast<std::chrono::milliseconds>(toSharedEndTime - toSharedStartTime).count();
-		        
-		        // Test converting std::shared_ptr to Ref
-		        auto shared = std::make_shared<PerfTestObject>(42);
-		        
-		        auto toRefStartTime = std::chrono::high_resolution_clock::now();
-		        
-		        for (size_t i = 0; i < iterations; ++i)
-				{
-		            Ref<PerfTestObject> convertedRef(shared);
-		            REQUIRE(convertedRef->GetId() == 42);
-		        }
-		        
-		        auto toRefEndTime = std::chrono::high_resolution_clock::now();
-		        auto toRefDuration = std::chrono::duration_cast<std::chrono::milliseconds>(toRefEndTime - toRefStartTime).count();
-		        
+
 		        INFO("Ref to std::shared_ptr conversion time: " << toSharedDuration << " ms");
-		        INFO("std::shared_ptr to Ref conversion time: " << toRefDuration << " ms");
 		    }
 		}
 

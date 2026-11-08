@@ -61,9 +61,6 @@ call :run_test "MemoryTests" "build\source\Tests\Debug\MemoryAllocatorTests.exe"
 echo 3. Running Settings Tests...
 call :run_test "SettingsTests" "build\source\Tests\Debug\SettingsTest.exe" "--reporter console --verbosity high"
 
-echo 4. Running Format Tester...
-call :run_test "FormatTester" "build\source\Tests\Debug\FormatTester.exe" ""
-
 echo === Test Execution Summary ===
 echo All test logs saved to logs\ directory with timestamp: %timestamp%
 echo.

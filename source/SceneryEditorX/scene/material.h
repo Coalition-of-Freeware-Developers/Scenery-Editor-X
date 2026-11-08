@@ -319,40 +319,6 @@ namespace SceneryEditorX
 		virtual Ref<ImageResource> TryGetTexture2D(const std::string& name) = 0;
 		virtual Ref<ImageResource> TryGetTextureCube(const std::string& name) = 0;
 
-#if 0
-		template<typename T>
-		T& Get(const std::string& name)
-		{
-			auto decl = m_Material->FindUniformDeclaration(name);
-			SEDX_CORE_ASSERT(decl, "Could not find uniform with name 'x'");
-			auto& buffer = m_UniformStorageBuffer;
-			return buffer.Read<T>(decl->GetOffset());
-		}
-
-		template<typename T>
-		Ref<T> GetResource(const std::string& name)
-		{
-			auto decl = m_Material->FindResourceDeclaration(name);
-			SEDX_CORE_ASSERT(decl, "Could not find uniform with name 'x'");
-			uint32_t slot = decl->GetRegister();
-			SEDX_CORE_ASSERT(slot < m_Textures.size(), "Texture slot is invalid!");
-			return Ref<T>(m_Textures[slot]);
-		}
-
-		template<typename T>
-		Ref<T> TryGetResource(const std::string& name)
-		{
-			auto decl = m_Material->FindResourceDeclaration(name);
-			if (!decl)
-				return nullptr;
-
-			uint32_t slot = decl->GetRegister();
-			if (slot >= m_Textures.size())
-				return nullptr;
-
-			return Ref<T>(m_Textures[slot]);
-		}
-#endif
 
 		virtual uint32_t GetFlags() const = 0;
 		virtual void SetFlags(uint32_t flags) = 0;

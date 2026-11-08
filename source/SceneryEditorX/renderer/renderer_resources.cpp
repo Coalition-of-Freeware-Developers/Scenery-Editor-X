@@ -104,7 +104,6 @@ namespace SceneryEditorX
 	uint32_t           Renderer::m_DrawCalls_Water_Count    = 0;
 	uint32_t           Renderer::m_Indirect_DrawCount       = 0;
 	bool               Renderer::m_Transparents_Present     = false;
-	bool               Renderer::m_Is_Hiz_Suppressed        = false;
 
 	// Additional static member definitions centralized here
 	std::array<Renderer_DrawCall, RENDERER_MAX_DRAW_CALLS> Renderer::m_DrawCalls;
@@ -442,125 +441,6 @@ namespace SceneryEditorX
 		return s_RenderTargets[static_cast<uint8_t>(type)].Get();
 	}
 
-	/*
-	void Renderer::UpdateFrustumAndDistanceCulling()
-	{
-		if (Camera* camera = Scene::GetCamera())
-		{
-			Vec3 camera_position = camera->GetEntity()->GetPosition();
-
-			const BoundingBox& bounding_box = GetBoundingBox();
-
-			// first, check if the bounding box is in the frustum
-			if (camera->IsInViewFrustum(bounding_box))
-			{
-				// only if in frustum, calculate distance
-				m_distance_squared = Vec3::DistanceSquared(camera_position, bounding_box.GetClosestPoint(camera_position));
-				m_is_visible       = m_distance_squared <= m_max_distance_render * m_max_distance_render;
-			}
-			else
-			{
-				// outside frustum, no need for distance check
-				m_is_visible = false;
-			}
-		}
-		else
-		{
-			m_distance_squared = 0.0f;
-			m_is_visible       = true;
-		}
-	}
-	*/
-
-	/*
-	void Renderable::UpdateLodIndices()
-	{
-		// screen-space coverage based lod selection
-		// this approach (used by unreal, unity, cryengine, frostbite) naturally handles:
-		// - distance: farther objects appear smaller
-		// - object size: larger objects maintain detail longer
-		// - fov: wider fov = everything smaller on screen
-		// - works uniformly for all object types (no special cases needed)
-
-		const uint32_t lod_count = GetLodCount();
-		if (lod_count == 0)
-		{
-			m_lod_index = 0;
-			return;
-		}
-
-		Camera* camera = World::GetCamera();
-		if (!camera)
-		{
-			m_lod_index = lod_count - 1;
-			return;
-		}
-
-		const BoundingBox& box        = GetBoundingBox();
-		const Vec3 camera_position = camera->GetEntity()->GetPosition();
-
-		// camera inside bounding box = maximum detail
-		if (box.Contains(camera_position))
-		{
-			m_lod_index = 0;
-			return;
-		}
-
-		// distance from camera to closest point on bounding box
-		Vec3 closest_point = box.GetClosestPoint(camera_position);
-		float distance        = std::max((closest_point - camera_position).Length(), 0.001f);
-
-		// compute screen-space coverage: fraction of vertical screen space the object covers
-		// screen_fraction = (object_diameter) / (visible_height_at_distance)
-		// visible_height_at_distance = 2 * distance * tan(fov_v / 2)
-		float bounding_diameter = box.GetExtents().Length() * 2.0f;
-		float tan_half_fov      = tan(camera->GetFovVerticalRad() * 0.5f);
-		float screen_fraction   = bounding_diameter / (2.0f * distance * tan_half_fov);
-
-		// lod thresholds as percentage of screen height coverage
-		// calibrated so transitions remain imperceptible to the user
-		// higher threshold = object must cover more screen to qualify for that lod
-		static constexpr std::array<float, 5> screen_thresholds =
-		{
-			0.05f,   // lod0: object covers >= 5% of screen height
-			0.025f,  // lod1: object covers >= 2.5% of screen height
-			0.012f,  // lod2: object covers >= 1.2% of screen height
-			0.006f,  // lod3: object covers >= 0.6% of screen height
-			0.003f   // lod4: object covers >= 0.3% of screen height
-		};
-
-		// hysteresis prevents lod popping at threshold boundaries
-		// upgrading to higher detail requires exceeding threshold by 10%
-		// downgrading to lower detail requires dropping 10% below threshold
-		constexpr float hysteresis = 1.1f;
-
-		uint32_t new_lod = lod_count - 1;
-		for (uint32_t i = 0; i < std::min(lod_count, static_cast<uint32_t>(screen_thresholds.size())); i++)
-		{
-			float threshold = screen_thresholds[i];
-
-			// apply hysteresis based on relationship to current lod
-			if (i < m_lod_index)
-			{
-				// upgrading to higher detail: raise the bar
-				threshold *= hysteresis;
-			}
-			else if (i == m_lod_index)
-			{
-				// staying at current lod: lower the bar (easier to stay)
-				threshold /= hysteresis;
-			}
-
-			if (screen_fraction >= threshold)
-			{
-				new_lod = i;
-				break;
-			}
-		}
-
-		m_lod_index = std::clamp(new_lod, 0u, lod_count - 1);
-	}
-	*/
 
 #pragma region Samplers
 

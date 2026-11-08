@@ -520,35 +520,6 @@ namespace SceneryEditorX
 		#endif
 	}
 
-	/*
-	void Log::LogVulkanResult(VkResult result, const std::string &operation)
-	{
-		if (CoreLogger)
-		{
-			if (result != VK_SUCCESS)
-			{
-				const char *resultString = vkErrorString(result);
-				std::string message = "Vulkan operation '" + operation + "' returned " + resultString;
-
-				if (result < 0)
-				{ // Negative values are errors
-					CoreLogger->error("{}", message);
-				}
-				else
-				{ // Non-zero positive values are warnings/info
-					CoreLogger->warn("{}", message);
-				}
-
-				CoreLogger->flush();
-			}
-			else
-			{
-				// Optionally log successful operations at trace level
-				CoreLogger->trace("Vulkan operation '{}' completed successfully", operation);
-			}
-		}
-	}
-	*/
 
 	/**
 	 * @brief Get the name of the operating system.

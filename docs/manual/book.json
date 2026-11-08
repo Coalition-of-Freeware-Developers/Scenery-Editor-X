@@ -18,7 +18,7 @@
     {
       "title": "Developer Reference",
       "art": "volume-2",
-      "description": "The documents kept in the source repository: how to build and contribute, and how the engine's systems work, from the application framework and memory to serialization, rendering and the file formats. Each chapter names the file it comes from.",
+      "description": "The documents kept in the source repository: how to build and contribute, and how the engine's systems work, from the application framework and memory to rendering and the file formats. Each chapter names the file it comes from.",
       "parts": [
         {
           "title": "Building and Contributing",
@@ -79,29 +79,19 @@
           ]
         },
         {
-          "title": "Strings and Types",
-          "description": "The string classes and utilities, and the compile-time type system: descriptors, names, structs and utilities.",
+          "title": "Strings",
+          "description": "The string classes and utilities.",
           "documents": [
             { "path": "docs/string-h-api-reference.md", "title": "String API (String.h)" },
             { "path": "docs/string-cpp-implementation-guide.md", "title": "String implementation (String.cpp)" },
             { "path": "docs/string-utils-system-documentation.md", "title": "String utilities" },
-            { "path": "docs/string-utils-h-documentation.md", "title": "Low-level string utilities (StringUtils.h)" },
-            { "path": "docs/type-descriptors-documentation.md", "title": "Type descriptors" },
-            { "path": "docs/type-names-documentation.md", "title": "Type names" },
-            { "path": "docs/type-structs-documentation.md", "title": "Type structs" },
-            { "path": "docs/type-utils-documentation.md", "title": "Type utilities" }
+            { "path": "docs/string-utils-h-documentation.md", "title": "Low-level string utilities (StringUtils.h)" }
           ]
         },
         {
-          "title": "Serialization and Encoding",
-          "description": "Reading and writing the engine's data: the serialization system and its reader and writer, text encodings, and the asset manager's file format.",
+          "title": "Encoding",
+          "description": "Text encodings and the asset manager's file format.",
           "documents": [
-            { "path": "docs/serialization-system-documentation.md", "title": "Serialization system" },
-            { "path": "docs/serialization-implementation-guide.md", "title": "Implementing serialization" },
-            { "path": "docs/serialization-system-best-practices.md", "title": "Serialization best practices" },
-            { "path": "docs/serialization-system-examples.md", "title": "Serialization examples" },
-            { "path": "docs/serializer-writer-api-reference.md", "title": "SerializeWriter API" },
-            { "path": "docs/serializer-reader-api-reference.md", "title": "SerializeReader API" },
             { "path": "docs/encoding-system-documentation.md", "title": "Encoding system" },
             { "path": "docs/encoding-system-implementation-guide.md", "title": "Implementing encodings" },
             { "path": "docs/encoding-system-examples.md", "title": "Encoding examples" },

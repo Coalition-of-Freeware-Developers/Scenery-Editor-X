@@ -144,7 +144,6 @@ namespace SceneryEditorX
 	static CVar cvar_grid                 { 1.0f };
 	static CVar cvar_resolution_scale     { 1.0f };
 	static CVar cvar_variable_rate_shading{ 0.0f };
-	static CVar cvar_hiz_occlusion        { 1.0f };
 	static CVar cvar_ssao                 { 1.0f };
 	static CVar cvar_cloud_coverage       { 0.45f };
 
@@ -490,70 +489,6 @@ namespace SceneryEditorX
 		}
 	}
 
-	void Renderer::Pass_HiZ(CommandList *cmdList)
-	{
-		// renders major occluders to a depth buffer and builds a hi-z mip chain.
-		// the indirect cull compute shader samples this for gpu-driven occlusion culling.
-		// the depth texture is ALWAYS cleared to 0.0 (far plane, reverse-z) and the mip
-		// chain is always rebuilt, even when occlusion is disabled or suppressed. this
-		// guarantees the cull shader never reads stale/uninitialized depth, which would
-		// cause non-deterministic culling artifacts depending on gpu memory contents.
-
-		ImageResource *tex_occluders = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_occluders);
-
-		bool render_occluders = cvar_hiz_occlusion.GetValueAs<bool>() && !m_Is_Hiz_Suppressed;
-
-		// always start the render pass so the depth texture is cleared to far plane (0.0).
-		// without this, the blit and downscale would propagate stale depth into the hi-z
-		// mip chain, causing the cull shader to incorrectly occlude objects.
-		{
-			PipelineState pso;
-			pso.name = "occluders";
-			pso.shaders[static_cast<uint32_t>(StageType::Vertex)] = ShaderManager::GetShader(Renderer_Shader::depth_prepass);
-			pso.rasterizerState = GetRasterizerState(Renderer_RasterizerState::Solid);
-			pso.blendState = GetBlendState(Renderer_BlendState::Off);
-			pso.depthStencil_State = GetDepthStencilState(Renderer_DepthStencilState::ReadWrite);
-			pso.renderTarget_DepthTexture = tex_occluders;
-			pso.resolutionScale = true;
-			pso.clearDepth = 0.0f;
-
-			cmdList->SetPipelineState(pso);
-
-			if (render_occluders)
-			{
-				for (uint32_t i = 0; i < m_DrawCalls_Prepass_Count; i++)
-				{
-					const Renderer_DrawCall &draw_call = m_DrawCalls_Prepass[i];
-
-					if (!draw_call.isOccluder)
-						continue;
-
-				    Renderable *renderable = draw_call.renderable;
-					MaterialAsset* materialAsset = renderable->GetMaterialAsset();
-					if (!materialAsset)
-						continue;
-
-					CullMode cull_mode = static_cast<CullMode>(materialAsset->GetProperty(MaterialProperty::CullMode));
-					cull_mode = (pso.rasterizerState->GetPolygonMode() == PolygonMode::Wireframe) ? CullMode::None : cull_mode;
-					cmdList->SetCullMode(cull_mode);
-
-					m_Pcb_Pass_Cpu.drawIndex = draw_call.drawData_Index;
-					cmdList->PushConstants(m_Pcb_Pass_Cpu);
-
-					cmdList->SetVertexBuffer(renderable->GetVertexBuffer(), nullptr);
-					cmdList->SetIndexBuffer(renderable->GetIndexBuffer());
-
-					cmdList->DrawIndexed(renderable->GetIndexCount(draw_call.lodIndex),
-										 renderable->GetIndexOffset(draw_call.lodIndex),
-										 renderable->GetVertexOffset(draw_call.lodIndex));
-				}
-			}
-		}
-
-		// hi-z mip chain (the min / max depth pyramid, reverse z; z_minmax.slang)
-		Pass_DepthPyramid(cmdList, tex_occluders);
-	}
-
 	void Renderer::Pass_GpuScene_Occlusion(CommandList *cmdList)
 	{
 		// Between the GPU scene's two culling phases in the depth prepass: the min / max depth pyramid of the depth drawn so
@@ -563,49 +498,6 @@ namespace SceneryEditorX
 		ImageResource *tex_hiz = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_occluders_hiz);
 		if (Pass_DepthPyramid(cmdList, tex_depth))
 			GpuScene::CullLate(cmdList, tex_hiz);
-	}
-
-	void Renderer::Pass_IndirectCull(CommandList *cmdList)
-	{
-		if (m_Indirect_DrawCount == 0)
-			return;
-
-		{
-			ImageResource *tex_occluders_hiz = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_occluders_hiz);
-
-			PipelineState pso;
-			pso.name = "indirect_cull";
-			pso.shaders[static_cast<uint32_t>(StageType::Compute)] = ShaderManager::GetShader(Renderer_Shader::indirect_cull);
-			cmdList->SetPipelineState(pso);
-
-			cmdList->SetTexture(Renderer_BindingsSrv::tex, tex_occluders_hiz);
-
-			// input
-			cmdList->SetBuffer(Renderer_BindingsUav::indirect_draw_args, GetBuffer(Renderer_Buffer::IndirectDrawArgs));
-			cmdList->SetBuffer(Renderer_BindingsUav::indirect_draw_data, GetBuffer(Renderer_Buffer::IndirectDrawData));
-
-			// output
-			cmdList->SetBuffer(Renderer_BindingsUav::indirect_draw_args_out,
-							   GetBuffer(Renderer_Buffer::IndirectDrawArgsOut));
-			cmdList->SetBuffer(Renderer_BindingsUav::indirect_draw_data_out,
-							   GetBuffer(Renderer_Buffer::IndirectDrawDataOut));
-			cmdList->SetBuffer(Renderer_BindingsUav::indirect_draw_count,
-							   GetBuffer(Renderer_Buffer::IndirectDrawCount));
-
-			m_Pcb_Pass_Cpu.SetF4Value(static_cast<float>(m_Indirect_DrawCount),
-									  static_cast<float>(tex_occluders_hiz->GetImageSpec().mipCount - 1),
-									  0.0f,
-									  0.0f);
-			cmdList->PushConstants(m_Pcb_Pass_Cpu);
-
-			uint32_t thread_group_count = (m_Indirect_DrawCount + 255) / 256;
-			cmdList->Dispatch(thread_group_count, 1, 1);
-
-			// barrier: compute write -> vertex/indirect read
-			cmdList->InsertBarrier(GetBuffer(Renderer_Buffer::IndirectDrawArgsOut));
-			cmdList->InsertBarrier(GetBuffer(Renderer_Buffer::IndirectDrawDataOut));
-			cmdList->InsertBarrier(GetBuffer(Renderer_Buffer::IndirectDrawCount));
-		}
 	}
 
 	void Renderer::Pass_Depth_Prepass(CommandList *cmdList)
@@ -2073,75 +1965,6 @@ namespace SceneryEditorX
 			const uint32_t dispatchY = (img->GetHeight() + 63) / 64;
 			cmdList->Dispatch(dispatchX, dispatchY, 1);
 		}
-	}
-
-	// -------------------------------------------------------
-	// Pass_ShadowMaps
-	// Renders all shadow-casting lights into the shadow atlas (8192×8192 depth texture).
-	// Each light is given a tile inside the atlas; shadow matrices are written to the
-	// per-frame constant buffer before this pass runs.
-	// -------------------------------------------------------
-
-	void Renderer::Pass_ShadowMaps(CommandList* cmdList)
-	{
-		ImageResource* texShadowAtlas = GetRenderTarget(Renderer_RenderTarget::shadow_atlas);
-		if (!texShadowAtlas)
-			return;
-
-		for (Entity* entity : Scene::GetEntities())
-		{
-			Light* light = entity->GetComponent<Light>();
-			if (!light || !light->GetFlag(LightFlags::Shadows) || light->GetIntensityWatt() == 0.0f)
-				continue;
-
-			RasterizerState* rs = (light->GetLightType() == LightType::Directional)
-				? GetRasterizerState(Renderer_RasterizerState::Light_directional) : GetRasterizerState(Renderer_RasterizerState::Light_point_spot);
-
-			PipelineState pso;
-			pso.name = "shadow_map";
-			pso.shaders[static_cast<uint32_t>(StageType::Vertex)]    = ShaderManager::GetShader(Renderer_Shader::depth_light);
-			pso.shaders[static_cast<uint32_t>(StageType::Fragment)]  = ShaderManager::GetShader(Renderer_Shader::depth_light);
-			pso.rasterizerState               = rs;
-			pso.blendState                    = GetBlendState(Renderer_BlendState::Off);
-			pso.depthStencil_State            = GetDepthStencilState(Renderer_DepthStencilState::ReadWrite);
-			pso.renderTarget_DepthTexture     = texShadowAtlas;
-			pso.clearDepth                    = 0.0f; // reverse-z: far = 0
-
-			cmdList->SetPipelineState(pso);
-			cmdList->SetCullMode(CullMode::Back);
-
-			for (uint32_t i = 0; i < m_DrawCalls_Prepass_Count; i++)
-			{
-				const Renderer_DrawCall& draw_call = m_DrawCalls_Prepass[i];
-				Renderable* renderable             = draw_call.renderable;
-				MaterialAsset* materialAsset = renderable->GetMaterialAsset();
-				if (!materialAsset || materialAsset->IsTransparent() || !draw_call.cameraVisible)
-					continue;
-
-				m_Pcb_Pass_Cpu.drawIndex     = draw_call.drawData_Index;
-				m_Pcb_Pass_Cpu.materialIndex = materialAsset->GetIndex();
-				m_Pcb_Pass_Cpu.isTransparent = 0;
-				cmdList->PushConstants(m_Pcb_Pass_Cpu);
-				cmdList->SetVertexBuffer(renderable->GetVertexBuffer(), renderable->GetInstanceBuffer());
-				cmdList->SetIndexBuffer(renderable->GetIndexBuffer());
-
-				// compute lod index
-				bool closeToShadow      = renderable->GetDistanceSquared() < 100.0f * 100.0f; // anything within 100 meters of the shadow caster
-				uint32_t lodIndexBias   = light->GetLightType() == LightType::Directional ? 1 : 0; // bias for directional lights
-				uint32_t lodIndexShadow = xMath::Clamp(renderable->GetLodIndex() + lodIndexBias, 0u, renderable->GetLodCount() - 1); // lod index biased towards lower quality lod
-				uint32_t lodIndex       = closeToShadow ? draw_call.lodIndex : lodIndexShadow; // use normal lod if close to shadow caster, otherwise use light specific lod
-
-				cmdList->DrawIndexed(
-					renderable->GetIndexCount(draw_call.lodIndex),
-					renderable->GetIndexOffset(draw_call.lodIndex),
-					renderable->GetVertexOffset(draw_call.lodIndex),
-					draw_call.instanceIndex,
-					draw_call.instanceCount
-				);
-			}
-		}
-
-		texShadowAtlas->SetLayout(Layout::ImageLayout::ShaderRead, cmdList, 0, 0);
 	}
 
 	// -------------------------------------------------------

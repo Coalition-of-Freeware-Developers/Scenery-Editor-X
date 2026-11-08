@@ -80,18 +80,6 @@ namespace SceneryEditorX::IO
 		};
 
 		/**
-		 * @brief Gets the current working directory.
-		 * @return The current working directory as a std::filesystem::path.
-		 */
-		static std::filesystem::path GetWorkingDir();
-
-		/**
-		 * @brief Sets the current working directory to the specified path.
-		 * @param path The path to set as the current working directory.
-		 */
-		static void SetWorkingDir(const std::filesystem::path &path);
-
-		/**
 		 * @brief Creates a directory at the specified path.
 		 * @param directory The path of the directory to create.
 		 * @return True if the directory was created successfully, false otherwise.
@@ -118,21 +106,6 @@ namespace SceneryEditorX::IO
 		 * @return True if the directory exists, false otherwise.
 		 */
 		static bool DirExists(const std::string &directory);
-
-		/**
-		 * @brief Deletes a file at the specified path.
-		 * @param filepath The path of the file to delete.
-		 * @return True if the file was deleted successfully, false otherwise.
-		 */
-		static bool DeleteFile(const std::filesystem::path &filepath);
-
-		/**
-		 * @brief Moves a file from one location to another.
-		 * @param filepath The path of the file to move.
-		 * @param dest The destination path where the file should be moved.
-		 * @return True if the file was moved successfully, false otherwise.
-		 */
-		static bool MoveFile(const std::filesystem::path &filepath, const std::filesystem::path &dest);
 
 		/**
 		 * @brief Copies a file from one location to another.
@@ -203,34 +176,11 @@ namespace SceneryEditorX::IO
 		static bool Rename(const std::filesystem::path &oldFilepath, const std::filesystem::path &newFilepath);
 
 		/**
-		 * @brief Renames the filename of a file while keeping its directory path unchanged.
-		 * @param oldFilepath The path of the file to rename.
-		 * @param newName The new name for the file.
-		 * @return True if the file was renamed successfully, false otherwise.
-		 */
-		static bool RenameFilename(const std::filesystem::path &oldFilepath, const std::string &newName);
-
-		/**
 		 * @brief Checks if the specified path is a directory.
 		 * @param filepath The path to check.
 		 * @return True if the path is a directory, false otherwise.
 		 */
 		static bool IsDirectory(const std::filesystem::path &filepath);
-
-		/**
-		 * @brief Checks if the first file is newer than the second file.
-		 * @param fileA The first file to compare.
-		 * @param fileB The second file to compare.
-		 * @return True if fileA is newer than fileB, false otherwise.
-		 */
-		static bool IsNewer(const std::filesystem::path &fileA, const std::filesystem::path &fileB);
-
-		/**
-		 * @brief Shows the specified file in the system's file explorer.
-		 * @param path The path of the file to show.
-		 * @return True if the file was successfully shown, false otherwise.
-		 */
-		static bool ShowFileInExplorer(const std::filesystem::path &path);
 
 		/**
 		 * @brief Opens the specified directory in the system's file explorer.
@@ -262,13 +212,6 @@ namespace SceneryEditorX::IO
 		static Memory::Buffer ReadBytes(const std::filesystem::path& filepath);
 
 		/**
-		 * @brief Generates a unique file name based on the specified file path.
-		 * @param filepath The path of the file to generate a unique name for.
-		 * @return A unique file name based on the specified file path.
-		 */
-		static std::filesystem::path GetUniqueFileName(const std::filesystem::path &filepath);
-
-		/**
 		 * @brief Gets the last write time of the specified file.
 		 * @param filepath The path of the file to get the last write time for.
 		 * @return The last write time of the file.
@@ -281,69 +224,6 @@ namespace SceneryEditorX::IO
 		 * @return True if the string is empty or contains only whitespace, false otherwise.
 		 */
 		static bool IsEmptyOrWhitespace(const std::string &var);
-
-		/**
-		 * @brief Checks if the specified string contains only alphanumeric characters.
-		 * @param var The string to check.
-		 * @return True if the string is alphanumeric, false otherwise.
-		 */
-		static bool IsAlphanumeric(const std::string &var);
-
-		/**
-		 * @brief Removes illegal characters from the specified string.
-		 * @param text The string to process.
-		 * @return A string with illegal characters removed.
-		 */
-		static std::string RemoveIllegalCharacters(const std::string &text);
-
-		/**
-		 * @brief Gets the substring before the specified expression.
-		 * @param str The string to process.
-		 * @param exp The expression to search for.
-		 * @return The substring before the specified expression.
-		 */
-		static std::string GetStringBeforeExpression(const std::string &str, const std::string &exp);
-
-		/**
-		 * @brief Gets the substring after the specified expression.
-		 * @param str The string to process.
-		 * @param exp The expression to search for.
-		 * @return The substring after the specified expression.
-		 */
-		static std::string GetStringAfterExpression(const std::string &str, const std::string &exp);
-
-		/**
-		 * @brief 
-		 * @brief Gets the substring between the specified expressions.
-		 * @param str The string to process.
-		 * @param exp_a The starting expression.
-		 * @param exp_b The ending expression.
-		 * @return The substring between the specified expressions.
-		 */
-		static std::string GetStringBetweenExpressions(const std::string &str, const std::string &exp_a, const std::string &exp_b);
-
-		/**
-		 * @brief Converts the specified string to uppercase.
-		 * @param lower The string to convert.
-		 * @return The uppercase version of the string.
-		 */
-		static std::string ConvertToUppercase(const std::string &lower);
-
-		/**
-		 * @brief Replaces all occurrences of a specified substring with another substring.
-		 * @param str The string to process.
-		 * @param from The substring to replace.
-		 * @param to The substring to replace with.
-		 * @return The string with the specified replacements.
-		 */
-		static std::string ReplaceExpression(const std::string &str, const std::string &from, const std::string &to);
-
-		/**
-		 * @brief Converts the specified string to a wide string.
-		 * @param str The string to convert.
-		 * @return The wide string version of the string.
-		 */
-		static std::wstring StringToWstring(const std::string &str);
 
 		/**
 		 * @brief Sets up where the editor keeps its own files (VFS::MakeAppLayout): settings, data, caches, logs and
@@ -368,40 +248,6 @@ namespace SceneryEditorX::IO
 		static std::filesystem::path GetAppDataRoaming();
 
 		/**
-		 * @brief Gets the path to the local application data directory.
-		 * @return The path to the local application data directory.
-		 */
-		static std::filesystem::path GetAppDataLocal();
-
-		/**
-		 * @brief Gets the path to the program files directory.
-		 * @return The path to the program files directory.
-		 */
-		static std::filesystem::path GetProgramFilesPath();
-
-		/**
-		 * @brief Checks if the specified environment variable exists.
-		 * @param key The name of the environment variable.
-		 * @return true if the environment variable exists, false otherwise.
-		 */
-		static bool CheckEnvVariable(const std::string &key);
-
-		/**
-		 * @brief Sets the specified environment variable.
-		 * @param key The name of the environment variable.
-		 * @param value The value to set for the environment variable.
-		 * @return true if the environment variable was set successfully, false otherwise.
-		 */
-		static bool SetEnvVariable(const std::string &key, const std::string &value);
-
-		/**
-		 * @brief Gets the value of the specified environment variable.
-		 * @param key The name of the environment variable.
-		 * @return The value of the environment variable if it exists, an empty string otherwise.
-		 */
-		static std::string GetEnvVariable(const std::string &key);
-
-		/**
 		 * @brief Gets the directory from the specified file path.
 		 * @param path The file path to process.
 		 * @return The directory from the specified file path.
@@ -415,25 +261,11 @@ namespace SceneryEditorX::IO
 		static std::string GetWorkingDirectory();
 
 		/**
-		 * @brief Gets the root directory from the specified file path.
-		 * @param path The file path to process.
-		 * @return The root directory from the specified file path.
-		 */
-		static std::string GetRootDirectory(const std::string &path);
-
-		/**
 		 * @brief Gets the relative path from the specified file path.
 		 * @param path The file path to process.
 		 * @return The relative path from the specified file path.
 		 */
 		static std::string GetRelativePath(const std::string &path);
-
-		/**
-		 * @brief Gets the parent directory from the specified file path.
-		 * @param path The file path to process.
-		 * @return The parent directory from the specified file path.
-		 */
-		static std::string GetParentDirectory(const std::string &path);
 
 		/**
 		 * @brief Gets the file name without the extension from the specified file path.
@@ -450,13 +282,6 @@ namespace SceneryEditorX::IO
 		static std::string GetFileNameFromFilePath(const std::string &path);
 
 		/**
-		 * @brief Gets the list of files in the specified directory.
-		 * @param path The directory path to process.
-		 * @return A vector containing the file names in the specified directory.
-		 */
-		static std::vector<std::string> GetFilesInDirectory(const std::string &path);
-
-		/**
 		 * @brief Gets the size of the specified file.
 		 * @param path The file path to process.
 		 * @return The size of the specified file in bytes.
@@ -471,12 +296,6 @@ namespace SceneryEditorX::IO
 		static uint32_t GetDirFileCount(const std::filesystem::path &path);
 
 		/**
-		 * @brief Gets the path to the user's profile directory.
-		 * @return An optional containing the path to the user's profile directory if available, std::nullopt otherwise.
-		 */
-		static std::optional<std::filesystem::path> GetUserProfileDir();
-
-		/**
 		 * @brief Deletes the specified file or directory.
 		 * @param path The path to the file or directory to delete.
 		 * @return true if the file or directory was deleted successfully, false otherwise.
@@ -489,14 +308,6 @@ namespace SceneryEditorX::IO
 		 * @return true if the executable is found in the PATH, false otherwise.
 		 */
 		static bool IsExecutableInPath(const std::string &executable);
-
-		/**
-		 * @brief Creates an archive at the specified path, including the specified paths.
-		 * @param path The path where the archive will be created.
-		 * @param includePaths The paths to include in the archive.
-		 * @return true if the archive was created successfully, false otherwise.
-		 */
-		static bool CreateArchive(const std::string &path, const std::vector<std::string> &includePaths);
 
 		/**
 		 * @brief Opens the specified URL in the default web browser.
