@@ -281,7 +281,7 @@ namespace SceneryEditorX
 			
 			        if (ImGui::MenuItem("Contributing", nullptr, nullptr))
 			        {
-			            IO::FileSystem::OpenUrl("https://github.com/Coalition-of-Freeware-Developers/Scenery-Editor-X");
+			            IO::FileSystem::OpenUrl("https://github.com/The3dVehicleguy/Scenery-Editor-X");
 			        }
 			
 			        if (ImGui::MenuItem("Report a bug", nullptr, nullptr))

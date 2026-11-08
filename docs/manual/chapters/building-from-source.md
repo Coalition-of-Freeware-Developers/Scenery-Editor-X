@@ -17,7 +17,7 @@ The C++ libraries come from the bundled `vcpkg` submodule; the first configure b
 ## Getting the code
 
 ```bash
-git clone --recurse-submodules https://github.com/Coalition-of-Freeware-Developers/Scenery-Editor-X.git
+git clone --recurse-submodules https://github.com/The3dVehicleguy/Scenery-Editor-X.git
 cd Scenery-Editor-X
 git checkout dev
 ```
@@ -58,6 +58,6 @@ The viewport tools have an automated self-test inside the editor: start it with 
 
 ## Contributing
 
-- Report bugs and request features on the [issue tracker](https://github.com/Coalition-of-Freeware-Developers/Scenery-Editor-X/issues).
+- Report bugs and request features on the [issue tracker](https://github.com/The3dVehicleguy/Scenery-Editor-X/issues).
 - Open pull requests against `dev`.
 - Changes that affect what users see should update this manual too: see [Writing for this manual](writing-the-manual.md).

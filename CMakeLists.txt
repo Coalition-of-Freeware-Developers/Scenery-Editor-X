@@ -38,7 +38,7 @@ PROJECT(SceneryEditorX
 	VERSION 1.0.0
 	DESCRIPTION "A 3d scenery editor for X-Plane 12 airports."
 	LANGUAGES CXX C
-	HOMEPAGE_URL "https://github.com/Coalition-of-Freeware-Developers/Scenery-Editor-X"
+	HOMEPAGE_URL "https://github.com/The3dVehicleguy/Scenery-Editor-X"
 )
 
 ############################################
