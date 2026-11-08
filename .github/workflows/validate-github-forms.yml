@@ -1,0 +1,67 @@
+# Catches broken issue forms and workflows in the pull request, before GitHub rejects them on the
+# New issue page ("There is a problem with this template") or a workflow fails to start.
+name: Validate GitHub forms and workflows
+
+on:
+  pull_request:
+    paths:
+      - .github/**
+  push:
+    branches: [master, dev]
+    paths:
+      - .github/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-github-forms-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  issue-forms:
+    name: Issue forms, labels and triage map
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+
+      - name: Install PyYAML
+        run: python -m pip install --disable-pip-version-check pyyaml==6.0.3
+
+      - name: Validate issue forms
+        run: python .github/scripts/validate_github_forms.py
+
+      - name: Check the triage script parses
+        run: node --check .github/scripts/issue_triage.js && node --check .github/scripts/labels.js
+
+  workflows:
+    name: Workflows (actionlint)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      ACTIONLINT_VERSION: 1.7.12
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Install actionlint
+        run: |
+          # Keep the release's file names: the checksum list refers to them.
+          release="https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}"
+          archive="actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          curl -sSfL "${release}/${archive}" -o "${archive}"
+          curl -sSfL "${release}/actionlint_${ACTIONLINT_VERSION}_checksums.txt" -o checksums.txt
+          grep " ${archive}\$" checksums.txt | sha256sum --check --strict
+          tar -xzf "${archive}" actionlint
+
+      - name: Lint workflows
+        run: ./actionlint -color

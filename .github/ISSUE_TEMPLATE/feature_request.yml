@@ -1,0 +1,107 @@
+# Indent with spaces only: a tab anywhere in this file makes GitHub reject the whole form.
+name: Feature Request
+description: Suggest something Scenery Editor X should do in a future version.
+title: "[FEATURE] "
+labels: ["FEATURE REQUEST"]
+assignees: [The3dVehicleguy]
+projects: ["Coalition-of-Freeware-Developers/2"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the **problem** first, then your idea. Knowing what you're trying to build in your scenery helps us find the best way to support it.
+        Open-ended ideas are welcome in [Discussions](https://github.com/The3dVehicleguy/Scenery-Editor-X/discussions) too.
+
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Before you ask
+      options:
+        - label: I searched the [existing issues](https://github.com/The3dVehicleguy/Scenery-Editor-X/issues?q=is%3Aissue) and this hasn't been requested yet.
+          required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - "Viewport: camera, selection, gizmo, node editing"
+        - "Rendering: X-Plane 12 emulation, lighting, shadows, sky, water, weather"
+        - "Editor UI: panels, menus, dialogs, docking, shortcuts"
+        - "Airports: apt.dat, AIRPORTS panel, runways, taxiways, signs, airport lights"
+        - "Projects: .edX / .sex files, saving, recovery, WorldEditor import / export"
+        - "Scenery export: scenery packs, DSF, apt.dat, scenery_packs.ini"
+        - "X-Plane library & assets: library scan, objects, forests, autogen, thumbnails"
+        - "Facades: facade tool, FACADE EDITOR, .fac files"
+        - "Roads, base terrain & water"
+        - "Scenery Gateway: download, validation, upload"
+        - "Startup, settings & file locations: Vulkan check, preferences, logs, caches"
+        - "Core engine: memory, threading, logging, smart pointers, math"
+        - "Build system, CI, tests, installer"
+        - "Documentation & user manual"
+        - "Not sure"
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What you're trying to do, and what makes it hard or impossible today.
+      placeholder: To check my airport at night I have to export it and start X-Plane every time.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Your idea
+      description: How the feature would work, step by step, from where you'd start it to what you'd see.
+      placeholder: A time-of-day slider in the ENVIRONMENT panel that turns on the airport lights after sunset, like X-Plane does.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reference
+    attributes:
+      label: How other tools do it
+      description: How X-Plane, WorldEditor (WED), Blender, 3ds Max or other scenery tools handle this, with links or screenshots.
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Workarounds and alternatives
+      description: What you do today instead, and other ways the problem could be solved.
+
+  - type: textarea
+    id: mockups
+    attributes:
+      label: Mockups and examples
+      description: Sketches, screenshots or example scenery. Drag files here.
+
+  - type: dropdown
+    id: importance
+    attributes:
+      label: How important is this to you?
+      options:
+        - "Nice to have"
+        - "Important for the scenery I'm making"
+        - "I can't finish my scenery without it"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: help
+    attributes:
+      label: Can you help?
+      options:
+        - label: I can test it in a tester build.
+        - label: I can provide sample scenery or art to test with.
+        - label: I'd like to help write the code or documentation.
+
+  - type: input
+    id: discord
+    attributes:
+      label: Discord username (optional)
+      description: So we can contact you directly about the request.
+      placeholder: username

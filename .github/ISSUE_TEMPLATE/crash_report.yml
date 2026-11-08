@@ -1,0 +1,199 @@
+# Indent with spaces only: a tab anywhere in this file makes GitHub reject the whole form.
+name: Crash or Freeze
+description: The editor crashed, froze, closed by itself, or the GPU driver reset.
+title: "[CRASH] "
+labels: ["BUG", "CRASH"]
+assignees: [The3dVehicleguy]
+projects: ["Coalition-of-Freeware-Developers/2"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        When Scenery Editor X crashes it writes the reason and a call stack to the end of its log, and a crash dump beside it:
+
+        | | Log | Crash dump |
+        |---|---|---|
+        | Windows | `%APPDATA%\SceneryEditorX\logs\SceneryEditorX.log` | `SceneryEditorX_crash.dmp` in the same folder |
+        | Linux | `~/.config/SceneryEditorX/logs/SceneryEditorX.log` | |
+        | macOS | `~/Library/Application Support/SceneryEditorX/logs/SceneryEditorX.log` | |
+
+        A second editor open at the same time writes `SceneryEditorX_2.log` and `SceneryEditorX_2_crash.dmp`, and so on. Copy the files right after the crash: the next start overwrites them.
+
+  - type: input
+    id: version
+    attributes:
+      label: Scenery Editor X version
+      description: From **Help › About Scenery Editor X**, or the `Version:` line near the top of the log.
+      placeholder: "0.2.63.564"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: build
+    attributes:
+      label: How did you get this build?
+      options:
+        - "Installer (tester / alpha build)"
+        - "Built from source"
+        - "Other"
+    validations:
+      required: true
+
+  - type: input
+    id: commit
+    attributes:
+      label: Branch and commit (source builds)
+      placeholder: "dev @ 2ac32933, windows-msvc-vs2026, Debug"
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What happened?
+      options:
+        - "The editor closed suddenly"
+        - "The editor froze or stopped responding"
+        - "The editor closed during startup"
+        - "An error message appeared and then the editor closed"
+        - "The screen went black or the graphics driver reset (GPU device lost)"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: when
+    attributes:
+      label: When did it happen?
+      options:
+        - "During startup"
+        - "Opening an airport or project"
+        - "While editing"
+        - "While moving the camera"
+        - "Saving or exporting"
+        - "Downloading from or uploading to the Scenery Gateway"
+        - "Closing the editor"
+        - "Other"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Where you were working when it crashed. Pick "Not sure" if you can't tell.
+      options:
+        - "Viewport: camera, selection, gizmo, node editing"
+        - "Rendering: X-Plane 12 emulation, lighting, shadows, sky, water, weather"
+        - "Editor UI: panels, menus, dialogs, docking, shortcuts"
+        - "Airports: apt.dat, AIRPORTS panel, runways, taxiways, signs, airport lights"
+        - "Projects: .edX / .sex files, saving, recovery, WorldEditor import / export"
+        - "Scenery export: scenery packs, DSF, apt.dat, scenery_packs.ini"
+        - "X-Plane library & assets: library scan, objects, forests, autogen, thumbnails"
+        - "Facades: facade tool, FACADE EDITOR, .fac files"
+        - "Roads, base terrain & water"
+        - "Scenery Gateway: download, validation, upload"
+        - "Startup, settings & file locations: Vulkan check, preferences, logs, caches"
+        - "Core engine: memory, threading, logging, smart pointers, math"
+        - "Build system, CI, tests, installer"
+        - "Documentation & user manual"
+        - "Not sure"
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: What you did right before the crash, starting from opening the editor.
+      placeholder: |
+        1. Open KDEN from the AIRPORTS panel.
+        2. Wait for the terminal buildings to finish loading.
+        3. Open VIEWPORT 2.
+        4. The editor closes.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: reproducibility
+    attributes:
+      label: How often does it happen?
+      options:
+        - "Every time"
+        - "Sometimes"
+        - "Happened once"
+        - "Haven't tried again"
+    validations:
+      required: true
+
+  - type: textarea
+    id: crash_log
+    attributes:
+      label: Crash report from the log
+      description: |
+        The end of the log, from the first `[Crash]` line to the end of the file (reason, faulting address, call stack, the other threads).
+        No `[Crash]` lines? Paste the last 50 lines instead, and say so below.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: attachments
+    attributes:
+      label: Crash dump and other files
+      description: |
+        Zip `SceneryEditorX_crash.dmp` (GitHub doesn't accept `.dmp` files) and drag it here, with the full log.
+        Over 25 MB? Share a download link instead. Add screenshots of any error message.
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      multiple: true
+      options:
+        - "Windows 11"
+        - "Windows 10"
+        - "Linux"
+        - "macOS"
+        - "Other"
+    validations:
+      required: true
+
+  - type: input
+    id: gpu
+    attributes:
+      label: Graphics card and driver
+      description: On a laptop with two graphics chips, say which one the editor ran on.
+      placeholder: "NVIDIA GeForce RTX 4080, driver 581.57"
+    validations:
+      required: true
+
+  - type: input
+    id: memory
+    attributes:
+      label: Memory (RAM) and other programs running
+      description: Large airports use a lot of memory. Say if X-Plane or another Scenery Editor X was open at the same time.
+      placeholder: "32 GB; X-Plane 12 was running"
+
+  - type: input
+    id: scenery
+    attributes:
+      label: Airport, project or asset
+      placeholder: "KDEN (X-Coder Denver custom scenery)"
+
+  - type: input
+    id: command_line
+    attributes:
+      label: Command line
+      description: "Options you started the editor with, if any. After a GPU device lost, starting with `--gpu-breadcrumbs` writes the GPU's last commands to the log on the next crash (developers)."
+      placeholder: "SceneryEditorX.exe --xp-airport KDEN --verbose"
+
+  - type: textarea
+    id: vulkan_check
+    attributes:
+      label: Vulkan check (startup crashes)
+      description: "Crashes during startup only: run `SceneryEditorX.exe --check-vulkan` in a command prompt, then `echo %ERRORLEVEL%`, and paste both outputs."
+      render: text
+
+  - type: textarea
+    id: developer_notes
+    attributes:
+      label: Notes for developers (optional)
+      description: Suspected cause, the code in the call stack, related issues, or what you already ruled out.
