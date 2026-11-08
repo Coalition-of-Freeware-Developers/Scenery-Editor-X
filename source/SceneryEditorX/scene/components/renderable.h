@@ -61,6 +61,10 @@ namespace SceneryEditorX
 		Renderable(Entity* entity);
 		~Renderable();
 
+		// It owns its instance buffer alone (released with DestroyDeferred): a copy would share it
+		Renderable(const Renderable &) = delete;
+		Renderable &operator=(const Renderable &) = delete;
+
 		/*
 		void Save(pugi::xml_node& node) override;
 		void Load(pugi::xml_node& node) override;

@@ -44,6 +44,10 @@ namespace SceneryEditorX
 		Render(Entity *entity);
 		~Render();
 
+		// It owns its instance buffer alone (released with DestroyDeferred): a copy would share it
+		Render(const Render &) = delete;
+		Render &operator=(const Render &) = delete;
+
 		// mesh
 		void SetMesh(Mesh* mesh, const uint32_t sub_mesh_index = 0);
 		void SetMesh(const MeshType type);

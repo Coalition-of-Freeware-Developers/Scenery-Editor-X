@@ -1092,7 +1092,8 @@ void dynamic_resolution()
 			// retire cached pipelines that stopped being used (e.g. built for render targets replaced on resize)
 			PipelineCache::Tick();
 
-			// resource cleanup - frame-based retirement, no gpu stall required: only what no frame in flight can use
+			// resource cleanup - frame-based retirement, no gpu stall required: only what no frame in flight can use.
+			// Call NeedToParseDeletionQueue() here only, once per rendered frame: it counts the frames the delay is in.
 			if (QueueManager::NeedToParseDeletionQueue())
 			{
 				QueueManager::ParseDeletionQueue(false);
