@@ -53,10 +53,13 @@ jobs:
 
       - name: Install actionlint
         run: |
-          curl -sSfL "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz" -o actionlint.tar.gz
-          curl -sSfL "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_checksums.txt" -o checksums.txt
-          grep " actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz\$" checksums.txt | sha256sum --check --strict
-          tar -xzf actionlint.tar.gz actionlint
+          # Keep the release's file names: the checksum list refers to them.
+          release="https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}"
+          archive="actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          curl -sSfL "${release}/${archive}" -o "${archive}"
+          curl -sSfL "${release}/actionlint_${ACTIONLINT_VERSION}_checksums.txt" -o checksums.txt
+          grep " ${archive}\$" checksums.txt | sha256sum --check --strict
+          tar -xzf "${archive}" actionlint
 
       - name: Lint workflows
         run: ./actionlint -color
