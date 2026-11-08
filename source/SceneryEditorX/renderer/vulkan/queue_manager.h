@@ -226,7 +226,7 @@ namespace SceneryEditorX
 		 * @param everything True destroys every entry: only once the device is idle (shutdown). False destroys only the
 		 * entries queued at least DELETION_DELAY_FRAMES rendered frames ago, which no command buffer in flight can use.
 		 */
-		static void ParseDeletionQueue(bool everything = true);
+		static void ParseDeletionQueue(bool everything);
 
 		/**
 		 * @brief Counts a rendered frame and tells whether an entry has waited DELETION_DELAY_FRAMES frames.
@@ -242,8 +242,8 @@ namespace SceneryEditorX
 		 * After this call any AddDeletionQueue invocation (e.g. from Ref<> destructors
 		 * running in the CRT static-dtor phase) is refused, preventing a
 		 * use-after-free on the already-destroyed s_DeletionQueue map.
-		 * It closes the queue under its lock and destroys what is still queued (layouts the
-		 * final flush queued again, late releases).
+		 * It first destroys what is still queued (layouts the final flush queued again, late
+		 * releases) until nothing more is queued, then closes the queue under its lock.
 		 * Called by Device::Destroy() right after the final ParseDeletionQueue() flush,
 		 * with the device idle, before vkDestroyDevice.
 		 */

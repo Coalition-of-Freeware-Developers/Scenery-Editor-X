@@ -668,22 +668,32 @@ namespace SceneryEditorX
 
 	void QueueManager::NotifyShutdown()
 	{
-		// Close it under the lock, then destroy what the final ParseDeletionQueue() left: the descriptor set layouts
-		// its erasures queued again, and anything released since. The device is idle, and there is no later parse.
-		std::unordered_map<ResourceType, std::vector<DeletionQueueEntry>> remaining;
+		const Ref<RenderContext> context = RenderContext::Get();
+		const Ref<Device> device = context ? context->GetDevice() : nullptr;
+		const bool deviceAlive = device && device->GetDevice() != VK_NULL_HANDLE;
+
+		// Destroy what the final ParseDeletionQueue() left (the descriptor set layouts its erasures queued again, late
+		// releases) while the queue still takes what destroying it queues, then close it under its lock once it is
+		// empty. The device is idle. Layouts queue nothing more, so this ends after a pass or two.
+		constexpr uint32_t MAX_PASSES = 8;
+		for (uint32_t pass = 0;; ++pass)
 		{
-			std::scoped_lock guard(s_MutexDeletionQueue);
-			s_DeletionQueueDestroyed.store(true, std::memory_order_release);
-			remaining.swap(s_DeletionQueue);
-		}
-		if (!remaining.empty())
-		{
-			const Ref<RenderContext> context = RenderContext::Get();
-			const Ref<Device> device = context ? context->GetDevice() : nullptr;
-			if (device && device->GetDevice() != VK_NULL_HANDLE)
-				DestroyEntries(device, remaining);
-			else
-				SEDX_CORE_WARN_TAG("QueueManager", "No device left to destroy the deletion queue's last entries: they are leaked");
+			std::unordered_map<ResourceType, std::vector<DeletionQueueEntry>> remaining;
+			{
+				std::scoped_lock guard(s_MutexDeletionQueue);
+				if (s_DeletionQueue.empty() || !deviceAlive || pass == MAX_PASSES)
+				{
+					size_t leaked = 0;
+					for (const auto &[type, entries] : s_DeletionQueue)
+						leaked += entries.size();
+					if (leaked > 0)
+						SEDX_CORE_WARN_TAG("QueueManager", "{} deletion queue entries are leaked at shutdown ({})", leaked, deviceAlive ? "still queuing more" : "no device left");
+					s_DeletionQueueDestroyed.store(true, std::memory_order_release);
+					break;
+				}
+				remaining.swap(s_DeletionQueue);
+			}
+			DestroyEntries(device, remaining);
 		}
 
 		SEDX_CORE_INFO_TAG("QueueManager", "Deletion queue marked as shut down; late AddDeletionQueue calls will be dropped");
