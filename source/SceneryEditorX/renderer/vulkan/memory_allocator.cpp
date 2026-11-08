@@ -96,7 +96,11 @@ namespace SceneryEditorX
 		AllocationType type = AllocationType::None;
 	};
 
-	static Renderer_AllocatorData *s_AllocatorData; // Pointer to the allocator data, initialized in MemoryAllocator::Init()
+	// The allocator data, created by MemoryAllocator::Init() and freed by Shutdown(). A plain pointer: both run on the main
+	// thread inside Device's constructor and Device::Destroy(), when no other thread creates or releases GPU objects (the
+	// render thread and the thread pool start after the device and stop before it is destroyed); readers only ever see it
+	// set or, at exit, null after Shutdown() (IsLateRelease)
+	static Renderer_AllocatorData *s_AllocatorData;
 	static std::map<VmaAllocation, AllocInfo> s_AllocationMap; // Map to track active allocations and their information
 	static std::mutex s_MutexAllocator; // Mutex to protect access to the allocation map for thread safety
 	// Set by Shutdown(): its device is destroyed right after, whether or not the allocator was kept. Atomic: any thread that
@@ -105,20 +109,25 @@ namespace SceneryEditorX
 	static std::atomic<bool> s_LateReleaseWarned{false};
 
 	/**
-	 * @brief True (after one warning) for a release that comes after Shutdown(), which must then leak.
+	 * @brief True (after one warning) for a release while there is no allocator to free it, which must then leak.
 	 *
 	 * Shutdown() runs just before the device is destroyed (Device::Destroy()), and frees the allocator unless allocations
 	 * were still alive. A buffer or image released later, a static one destroyed with the program, can't be freed:
-	 * the allocator may be gone and the device is, and s_AllocationMap may already be destroyed too.
+	 * the allocator may be gone and the device is, and s_AllocationMap may already be destroyed too. Before Init() there
+	 * is no allocator either (nothing it could have allocated exists yet, so that would be a bug elsewhere).
 	 */
 	static bool IsLateRelease(const char *what)
 	{
-		if (!s_ShutDown.load(std::memory_order_acquire) && s_AllocatorData)
+		const bool shutDown = s_ShutDown.load(std::memory_order_acquire);
+		if (!shutDown && s_AllocatorData)
 			return false;
 		if (!s_LateReleaseWarned.exchange(true, std::memory_order_relaxed))
 		{
-			SEDX_CORE_WARN_TAG("MemoryAllocator", "{} released after the allocator shut down (its device is gone): leaked, with any "
-				"others like it. A GPU object outlived RenderContext::Shutdown()", what);
+			if (shutDown)
+				SEDX_CORE_WARN_TAG("MemoryAllocator", "{} released after the allocator shut down (its device is gone): leaked, with "
+					"any others like it. A GPU object outlived RenderContext::Shutdown()", what);
+			else
+				SEDX_CORE_WARN_TAG("MemoryAllocator", "{} released before the allocator was created: leaked, with any others like it", what);
 		}
 		return true;
 	}

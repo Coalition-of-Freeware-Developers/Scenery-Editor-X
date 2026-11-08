@@ -217,7 +217,13 @@ namespace SceneryEditorX::EditorCamera
 			}
 			else if (args[i] == "--camera-fly" && i + 1 < args.size())
 			{
-				s.flySpeed = std::max(0.0, std::strtod(args[++i].c_str(), nullptr));
+				const std::string &value = args[++i];
+				char *end = nullptr;
+				const double speed = std::strtod(value.c_str(), &end);
+				if (end == value.c_str() || *end != '\0' || !(speed > 0.0))
+					EDITOR_WARN_TAG("Camera", "--camera-fly wants a speed in m/s above 0 (got '{}'): the camera stays put", value);
+				else
+					s.flySpeed = speed;
 			}
 		}
 	}
@@ -398,10 +404,12 @@ namespace SceneryEditorX::EditorCamera
 		changed |= s.controller.Navigate(rig, frame);
 		changed |= s.controller.Animate(rig, ImGui::GetIO().DeltaTime);
 
-		// --camera-fly: a while after the startup airport or project framed the camera, its pivot flies east 1 km at the
+		// --camera-fly: a while after the startup airport or project framed the camera (60 frames, and any glide to the
+		// startup view finished, so the circle's center is where the view settled), its pivot flies east 1 km at the
 		// given speed and then circles the startup pivot at that radius, view direction and distance unchanged (no jump:
 		// it moves at that speed from the first frame; with --lock-camera, runs repeat)
-		if (s.flySpeed > 0.0 && (EditorAirports::GetDocument() || EditorProjects::GetDocument()) && ++s.flyFrames > 60)
+		if (s.flySpeed > 0.0 && (EditorAirports::GetDocument() || EditorProjects::GetDocument()) && ++s.flyFrames > 60 &&
+			(s.flying || !s.controller.IsAnimating()))
 		{
 			constexpr double FLY_RADIUS = 1000.0;
 			if (!s.flying)
