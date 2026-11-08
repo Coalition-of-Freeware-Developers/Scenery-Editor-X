@@ -291,10 +291,12 @@ namespace SceneryEditorX
 		            thread.join();
 		        }
 		        
-		        // Verify that all shared objects still have their original IDs
+		        // Verify that all shared objects still have their original IDs, and that every copy the threads
+		        // made was released (the shared Refs are only read while the threads run)
 		        for (size_t i = 0; i < sharedObjects.size(); ++i)
 				{
 		            REQUIRE(sharedObjects[i]->GetId() == static_cast<int>(i));
+		            REQUIRE(sharedObjects[i].UseCount() == 1);
 		        }
 		        
 		        // Clean up

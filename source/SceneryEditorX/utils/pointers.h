@@ -40,6 +40,7 @@
  #pragma once
  #include <atomic>
  #include <cassert>
+ #include <cstdint>
  #include <memory>
  #include <mutex>
  #include <type_traits>
@@ -88,6 +89,26 @@ namespace SceneryEditorX
 		 * @return The new reference count.
 		 */
 		uint32_t IncRefCount() const noexcept { return ++m_RefCount; }
+
+		/**
+		 * @brief Increments the reference count unless it is 0.
+		 *
+		 * A count of 0 means the last Ref is releasing the object, which must not be brought back:
+		 * WeakRef::Lock() uses this, so a lock racing with the last release either keeps the object
+		 * alive (it incremented first) or fails (the release got to 0 first).
+		 *
+		 * @return True if the count was incremented.
+		 */
+		bool TryIncRefCount() const noexcept
+		{
+			uint32_t count = m_RefCount.load(std::memory_order_relaxed);
+			while (count != 0)
+			{
+				if (m_RefCount.compare_exchange_weak(count, count + 1, std::memory_order_acq_rel, std::memory_order_relaxed))
+					return true;
+			}
+			return false;
+		}
 
 		/**
 		 * @brief Decrements the reference count.
@@ -151,6 +172,11 @@ namespace SceneryEditorX
 		 * When an object is destroyed but weak references to it still exist, the control
 		 * block remains alive (with m_Ptr set to nullptr) until all weak references are gone.
 		 *
+		 * Like std::weak_ptr's control block, the weak count includes one reference held on
+		 * behalf of the living object (released by ControlBlockRegistry::RemoveControlBlock when
+		 * the object is destroyed), so whichever release brings the count to 0 deletes the block,
+		 * exactly once, whether that is the object's destruction or the last WeakRef.
+		 *
 		 * @tparam T The type of object being referenced
 		 */
 		template <typename T>
@@ -158,27 +184,26 @@ namespace SceneryEditorX
 		{
 		public:
 			/**
-			 * @brief Constructs a control block for the specified object
+			 * @brief Constructs a control block for the specified (living) object
 			 * @param ptr Pointer to the object being tracked
 			 */
-			explicit ControlBlock(T *ptr) noexcept : m_Ptr(ptr), m_WeakCount(0) {}
+			explicit ControlBlock(T *ptr) noexcept : m_Ptr(ptr), m_WeakCount(1) {}
 
 			/**
 			 * @brief Increments the weak reference count
 			 * Called when a new WeakRef is created or copied to point to this object
 			 */
-			void IncWeakCount() noexcept { ++m_WeakCount; }
+			void IncWeakCount() noexcept { m_WeakCount.fetch_add(1, std::memory_order_relaxed); }
 
 			/**
 			 * @brief Decrements the weak reference count
 			 *
-			 * When the weak count reaches zero and the object pointer is nullptr
-			 * (indicating the object has been destroyed), the control block
-			 * deletes itself as it's no longer needed.
+			 * Deletes the control block when the count reaches zero: no WeakRef uses it any more
+			 * and the object has been destroyed (it holds a reference while alive).
 			 */
 			void DecWeakCount() noexcept
 			{
-				if (--m_WeakCount == 0 && m_Ptr == nullptr)
+				if (m_WeakCount.fetch_sub(1, std::memory_order_acq_rel) == 1)
 				{
 					delete this;
 				}
@@ -186,9 +211,13 @@ namespace SceneryEditorX
 
 			/**
 			 * @brief Gets the pointer to the managed object
+			 *
+			 * Only a snapshot: another thread may be destroying the object. Use WeakRef::Lock()
+			 * to get a pointer that stays valid.
+			 *
 			 * @return The pointer to the object, or nullptr if the object has been destroyed
 			 */
-			T *GetPtr() const noexcept { return m_Ptr; }
+			T *GetPtr() const noexcept { return m_Ptr.load(std::memory_order_acquire); }
 
 			/**
 			 * @brief Sets the object pointer
@@ -198,19 +227,19 @@ namespace SceneryEditorX
 			 *
 			 * @param ptr The new object pointer value
 			 */
-			void SetPtr(T *ptr) noexcept { m_Ptr = ptr; }
+			void SetPtr(T *ptr) noexcept { m_Ptr.store(ptr, std::memory_order_release); }
 
 			/**
 			 * @brief Gets the current weak reference count
-			 * @return The number of weak references pointing to this control block
+			 * @return The number of weak references pointing to this control block, plus one while the object is alive
 			 */
-			uint32_t GetWeakCount() const noexcept { return m_WeakCount; }
+			uint32_t GetWeakCount() const noexcept { return m_WeakCount.load(std::memory_order_relaxed); }
 
 		private:
-			// Pointer to the managed object, or nullptr if destroyed
-			T *m_Ptr;
+			// Pointer to the managed object, or nullptr once it is destroyed (it never comes back)
+			std::atomic<T *> m_Ptr;
 
-			// Number of weak references to this object
+			// Number of weak references to this block, plus one while the object is alive
 			std::atomic<uint32_t> m_WeakCount;
 		};
 
@@ -242,69 +271,122 @@ namespace SceneryEditorX
 			}
 
 			/**
-			 * @brief Get or create a control block for the specified object pointer
+			 * @brief Get or create the control block for an object and take a weak reference to it
 			 *
 			 * If a control block already exists for the given pointer, it returns that block.
-			 * Otherwise, it creates a new control block, registers it, and returns it.
+			 * Otherwise, it creates a new control block, registers it, and returns it. Either way the
+			 * block's weak count is incremented for the caller, who releases it with DecWeakCount().
 			 *
-			 * @param ptr Pointer to the object for which to get/create a control block
-			 * @return Pointer to the control block, or nullptr if ptr is nullptr
+			 * @param ptr Pointer to a living object the caller holds a strong reference to
+			 * @return Pointer to the control block, or nullptr if ptr is nullptr or the registry is shut down
 			 */
-			ControlBlock<T> *GetControlBlock(T *ptr)
+			ControlBlock<T> *AcquireControlBlock(T *ptr)
 			{
 				if (!ptr)
 					return nullptr;
 
 				std::lock_guard<std::mutex> lock(m_Mutex);
+				if (m_IsShutDown.load())
+					return nullptr;
+
 				auto it = m_Blocks.find(ptr);
+				ControlBlock<T> *block = nullptr;
 				if (it != m_Blocks.end())
 				{
-					return it->second;
+					block = it->second;
+				}
+				else
+				{
+					block = new Internal::ControlBlock<T>(ptr);
+					m_Blocks[ptr] = block;
 				}
 
-				auto block = new Internal::ControlBlock<T>(ptr);
-				m_Blocks[ptr] = block;
+				block->IncWeakCount();
 				return block;
+			}
+
+			/**
+			 * @brief Gets a strong reference to the object of a control block, if it is still alive
+			 *
+			 * The object is only read under the registry's mutex: RemoveControlBlock() clears the
+			 * block under the same mutex before the object is deleted, so a non-null pointer read
+			 * here points to memory that is still valid. The reference count may already be 0 (the
+			 * last Ref is on its way into RemoveControlBlock()), in which case the lock fails.
+			 *
+			 * @param block A control block the caller holds a weak reference to
+			 * @return The object with its reference count incremented for the caller, or nullptr
+			 */
+			T *TryLock(ControlBlock<T> *block)
+			{
+				std::lock_guard<std::mutex> lock(m_Mutex);
+				T *ptr = block->GetPtr();
+				if (ptr && ptr->TryIncRefCount())
+					return ptr;
+				return nullptr;
+			}
+
+			/**
+			 * @brief Gets the reference count of the object of a control block
+			 * @param block A control block the caller holds a weak reference to
+			 * @return The number of strong references, or 0 if the object has been destroyed
+			 */
+			uint32_t UseCount(const ControlBlock<T> *block)
+			{
+				std::lock_guard<std::mutex> lock(m_Mutex);
+				const T *ptr = block->GetPtr();
+				return ptr ? ptr->GetRefCount() : 0;
 			}
 
 			/**
 			 * @brief Remove the control block associated with the specified object pointer
 			 *
-			 * This method is called when an object is being destroyed. It sets the object pointer
-			 * in the control block to nullptr to indicate that the object is no longer valid.
-			 * If there are no weak references to the object, the control block itself is deleted.
+			 * This method is called when an object is being destroyed, before it is deleted. It sets
+			 * the object pointer in the control block to nullptr to indicate that the object is no
+			 * longer valid and releases the weak reference held for the living object; the control
+			 * block is deleted when no WeakRef uses it any more.
 			 *
 			 * @param ptr Pointer to the object whose control block should be removed
 			 */
 			void RemoveControlBlock(T *ptr)
 			{
 				if (!ptr || m_IsShutDown.load()) return;
-				std::lock_guard<std::mutex> lock(m_Mutex);
-				auto it = m_Blocks.find(ptr);
-				if (it != m_Blocks.end())
+
+				ControlBlock<T> *block = nullptr;
 				{
-					it->second->SetPtr(nullptr);
-					if (it->second->GetWeakCount() == 0)
-					{
-						delete it->second;
-					}
+					std::lock_guard<std::mutex> lock(m_Mutex);
+					auto it = m_Blocks.find(ptr);
+					if (it == m_Blocks.end())
+						return;
+
+					block = it->second;
 					m_Blocks.erase(it);
+					block->SetPtr(nullptr);
 				}
+
+				// May delete the block, if no WeakRef uses it
+				block->DecWeakCount();
 			}
 
 			/**
 			 * @brief Shuts down the control block registry, releasing all resources.
 			 *
-			 * This method deletes all control blocks managed by the registry and
-			 * prevents any further allocations or access to control blocks.
+			 * This method expires every control block managed by the registry (WeakRefs that still
+			 * use one see their object as destroyed and delete the block when they are released)
+			 * and prevents any further allocations or access to control blocks.
 			 */
 			void Shutdown()
 			{
-				std::lock_guard<std::mutex> lock(m_Mutex);
-				for (auto& [_, block] : m_Blocks)
-					delete block;
-				m_Blocks.clear();
-				m_IsShutDown = true;
+				std::unordered_map<T *, Internal::ControlBlock<T> *> blocks;
+				{
+					std::lock_guard<std::mutex> lock(m_Mutex);
+					blocks.swap(m_Blocks);
+					for (auto &[_, block] : blocks)
+						block->SetPtr(nullptr);
+					m_IsShutDown = true;
+				}
+
+				for (auto &[_, block] : blocks)
+					block->DecWeakCount();
 			}
 
 			/**
@@ -1010,11 +1092,7 @@ namespace SceneryEditorX
 		if (ref)
 		{
 			m_ControlBlock =
-				Internal::ControlBlockRegistry<T>::GetInstance().GetControlBlock(static_cast<T *>(ref.Get()));
-			if (m_ControlBlock)
-			{
-				m_ControlBlock->IncWeakCount();
-			}
+				Internal::ControlBlockRegistry<T>::GetInstance().AcquireControlBlock(static_cast<T *>(ref.Get()));
 		}
 	}
 
@@ -1048,9 +1126,9 @@ namespace SceneryEditorX
 	 * through the control block system.
 	 *
 	 * The implementation:
-	 * 1. Checks if the source WeakRef has a valid control block
-	 * 2. Retrieves or creates a control block for T* through the registry using a static_cast
-	 * 3. Increments the weak reference count if a valid control block is found
+	 * 1. Locks the source WeakRef, so the object cannot be destroyed while it is registered
+	 * 2. If it is alive, retrieves or creates a control block for T* through the registry using a static_cast
+	 *    and takes a weak reference to it
 	 *
 	 * @tparam U Source type that is convertible to T
 	 * @param other The source WeakRef<U> to convert from
@@ -1060,14 +1138,10 @@ namespace SceneryEditorX
 	template <typename U, typename>
 	WeakRef<T>::WeakRef(const WeakRef<U> &other) noexcept
 	{
-		if (other.m_ControlBlock)
+		if (const Ref<U> strong = other.Lock())
 		{
-			m_ControlBlock = Internal::ControlBlockRegistry<T>::GetInstance().GetControlBlock(
-				static_cast<T *>(other.m_ControlBlock->GetPtr()));
-			if (m_ControlBlock)
-			{
-				m_ControlBlock->IncWeakCount();
-			}
+			m_ControlBlock =
+				Internal::ControlBlockRegistry<T>::GetInstance().AcquireControlBlock(static_cast<T *>(strong.Get()));
 		}
 	}
 
@@ -1103,10 +1177,8 @@ namespace SceneryEditorX
 	 * control block for the target type.
 	 *
 	 * The implementation:
-	 * 1. Checks if the source WeakRef has a valid control block
-	 * 2. If valid, retrieves or creates a control block for the target type through the registry
-	 * 3. Sets the source WeakRef's control block to nullptr to transfer ownership
-	 * 4. No increment of weak reference count is needed as ownership is transferred
+	 * 1. Converts like the copy conversion constructor (the target type has its own control block)
+	 * 2. Resets the source WeakRef, releasing its weak reference
 	 *
 	 * @tparam U Source type that is convertible to T
 	 * @param other The source WeakRef<U> to move from
@@ -1115,14 +1187,9 @@ namespace SceneryEditorX
 	 */
 	template <typename T>
 	template <typename U, typename>
-	WeakRef<T>::WeakRef(WeakRef<U> &&other) noexcept
+	WeakRef<T>::WeakRef(WeakRef<U> &&other) noexcept : WeakRef(static_cast<const WeakRef<U> &>(other))
 	{
-		if (other.m_ControlBlock)
-		{
-			m_ControlBlock = Internal::ControlBlockRegistry<T>::GetInstance().GetControlBlock(
-				static_cast<T *>(other.m_ControlBlock->GetPtr()));
-			other.m_ControlBlock = nullptr;
-		}
+		other.Reset();
 	}
 
 	/**
@@ -1172,17 +1239,19 @@ namespace SceneryEditorX
 	{
 		if (this != &other)
 		{
+			// Take the new reference before releasing the old one
+			Internal::ControlBlock<T> *block = other.m_ControlBlock;
+			if (block)
+			{
+				block->IncWeakCount();
+			}
+
 			if (m_ControlBlock)
 			{
 				m_ControlBlock->DecWeakCount();
 			}
 
-			m_ControlBlock = other.m_ControlBlock;
-
-			if (m_ControlBlock)
-			{
-				m_ControlBlock->IncWeakCount();
-			}
+			m_ControlBlock = block;
 		}
 		return *this;
 	}
@@ -1195,10 +1264,9 @@ namespace SceneryEditorX
 	 * through the control block system.
 	 *
 	 * The implementation:
-	 * 1. Decrements the weak reference count for this WeakRef's current control block (if any)
-	 * 2. Retrieves or creates a control block for the T* pointer obtained by static_casting the U* pointer
-	 *    from the source WeakRef's control block
-	 * 3. Increments the weak reference count if a valid control block is found
+	 * 1. Converts the source like the copy conversion constructor (locking it while the control block
+	 *    for the T* pointer is retrieved or created)
+	 * 2. Releases this WeakRef's current control block (if any) and takes the converted one
 	 *
 	 * @tparam U Source type that is convertible to T
 	 * @param other The source WeakRef<U> to assign from
@@ -1210,23 +1278,7 @@ namespace SceneryEditorX
 	template <typename U, typename>
 	WeakRef<T> &WeakRef<T>::operator=(const WeakRef<U> &other) noexcept
 	{
-		if (m_ControlBlock)
-		{
-			m_ControlBlock->DecWeakCount();
-			m_ControlBlock = nullptr;
-		}
-
-		if (other.m_ControlBlock)
-		{
-			m_ControlBlock = Internal::ControlBlockRegistry<T>::GetInstance().GetControlBlock(
-				static_cast<T *>(other.m_ControlBlock->GetPtr()));
-			if (m_ControlBlock)
-			{
-				m_ControlBlock->IncWeakCount();
-			}
-		}
-
-		return *this;
+		return *this = WeakRef<T>(other);
 	}
 
 	/**
@@ -1272,12 +1324,9 @@ namespace SceneryEditorX
 	 * control block for the target type.
 	 *
 	 * The implementation:
-	 * 1. Decrements the weak reference count of the current control block (if any)
-	 * 2. If the source WeakRef has a valid control block, retrieves or creates a control block
-	 *    for the target type through the registry
-	 * 3. Sets the source WeakRef's control block to nullptr to prevent both instances
-	 *    from managing the same control block
-	 * 4. No increment of weak reference count is needed as ownership is transferred
+	 * 1. Converts like the move conversion constructor (the target type has its own control block,
+	 *    and the source WeakRef is reset)
+	 * 2. Releases this WeakRef's current control block (if any) and takes the converted one
 	 *
 	 * @tparam U Source type that is convertible to T
 	 * @param other The source WeakRef<U> to move from
@@ -1289,20 +1338,7 @@ namespace SceneryEditorX
 	template <typename U, typename>
 	WeakRef<T> &WeakRef<T>::operator=(WeakRef<U> &&other) noexcept
 	{
-		if (m_ControlBlock)
-		{
-			m_ControlBlock->DecWeakCount();
-			m_ControlBlock = nullptr;
-		}
-
-		if (other.m_ControlBlock)
-		{
-			m_ControlBlock = Internal::ControlBlockRegistry<T>::GetInstance().GetControlBlock(
-				static_cast<T *>(other.m_ControlBlock->GetPtr()));
-			other.m_ControlBlock = nullptr;
-		}
-
-		return *this;
+		return *this = WeakRef<T>(std::move(other));
 	}
 
 	/**
@@ -1312,10 +1348,9 @@ namespace SceneryEditorX
 	 * It properly maintains weak reference counting through the control block system.
 	 *
 	 * The implementation:
-	 * 1. Decrements the weak reference count in the current control block (if any)
-	 * 2. Clears the current control block pointer
-	 * 3. If the source reference is valid, retrieves or creates a control block for the referenced object
-	 * 4. Increments the weak reference count if a valid control block is found
+	 * 1. If the source reference is valid, retrieves or creates a control block for the referenced object
+	 *    and takes a weak reference to it
+	 * 2. Releases the current control block (if any) and keeps the new one
 	 *
 	 * @tparam U Source type that is convertible to T
 	 * @param ref The source Ref<U> to assign from
@@ -1327,22 +1362,18 @@ namespace SceneryEditorX
 	template <typename U, typename>
 	WeakRef<T> &WeakRef<T>::operator=(const Ref<U> &ref) noexcept
 	{
+		Internal::ControlBlock<T> *block = nullptr;
+		if (ref)
+		{
+			block = Internal::ControlBlockRegistry<T>::GetInstance().AcquireControlBlock(static_cast<T *>(ref.Get()));
+		}
+
 		if (m_ControlBlock)
 		{
 			m_ControlBlock->DecWeakCount();
-			m_ControlBlock = nullptr;
 		}
 
-		if (ref)
-		{
-			m_ControlBlock =
-				Internal::ControlBlockRegistry<T>::GetInstance().GetControlBlock(static_cast<T *>(ref.Get()));
-			if (m_ControlBlock)
-			{
-				m_ControlBlock->IncWeakCount();
-			}
-		}
-
+		m_ControlBlock = block;
 		return *this;
 	}
 
@@ -1382,13 +1413,21 @@ namespace SceneryEditorX
 	 * which triggers the object's deletion. The control block maintains this information
 	 * even after the object is gone.
 	 *
+	 * Like std::weak_ptr::expired(), this is UseCount() == 0, so it agrees with Lock(): while
+	 * the last Ref is being released on another thread (its count is 0 but the control block
+	 * is not cleared yet) the WeakRef is already expired and Lock() fails.
+	 *
 	 * @return true if the referenced object has been destroyed or if this is an empty WeakRef
 	 * @return false if the referenced object is still alive
 	 */
 	template <typename T>
 	bool WeakRef<T>::Expired() const noexcept
 	{
-		return !m_ControlBlock || m_ControlBlock->GetPtr() == nullptr;
+		// A destroyed object never comes back, so a cleared control block needs no lock
+		if (!m_ControlBlock || m_ControlBlock->GetPtr() == nullptr)
+			return true;
+
+		return Internal::ControlBlockRegistry<T>::GetInstance().UseCount(m_ControlBlock) == 0;
 	}
 
 	/**
@@ -1399,18 +1438,26 @@ namespace SceneryEditorX
 	 * and returns a new Ref<T> pointing to that object, which increments the reference
 	 * count of the object. If the object has been destroyed, it returns an empty Ref<T>.
 	 *
+	 * Safe against another thread releasing the last Ref at the same time: the reference
+	 * count is only incremented if it is not 0 yet, and only under the registry's mutex,
+	 * which the releasing thread takes before the object is deleted (see
+	 * ControlBlockRegistry::TryLock), so the lock either keeps the object alive or fails.
+	 *
 	 * @tparam T The type of the referenced object
 	 * @return Ref<T> A strong reference to the object if it's still alive, or an empty reference otherwise
 	 */
 	template <typename T>
 	Ref<T> WeakRef<T>::Lock() const noexcept
 	{
+		// A destroyed object never comes back, so an expired WeakRef needs no lock
+		Ref<T> ref;
 		if (!m_ControlBlock || m_ControlBlock->GetPtr() == nullptr) {
-			return Ref<T>(nullptr);
+			return ref;
 		}
 
-		T* ptr = static_cast<T*>(m_ControlBlock->GetPtr());
-		return Ref<T>(ptr);
+		// TryLock already incremented the count for the returned Ref
+		ref.m_Ptr = Internal::ControlBlockRegistry<T>::GetInstance().TryLock(m_ControlBlock);
+		return ref;
 	}
 
 	/**
@@ -1455,7 +1502,8 @@ namespace SceneryEditorX
 	{
 		if (m_ControlBlock && m_ControlBlock->GetPtr())
 		{
-			return m_ControlBlock->GetPtr()->GetRefCount();
+			// Read under the registry's mutex: the object may be being destroyed on another thread
+			return Internal::ControlBlockRegistry<T>::GetInstance().UseCount(m_ControlBlock);
 		}
 		return 0;
 	}
@@ -1518,23 +1566,15 @@ namespace SceneryEditorX
 	 * and increments its reference count. If the weak reference is expired (the object
 	 * has been destroyed), the constructor creates an empty Ref (m_Ptr = nullptr).
 	 *
-	 * The implementation:
-	 * 1. Retrieves the object pointer from the weak reference's control block if it exists
-	 * 2. Initializes the internal pointer to the retrieved object or nullptr
-	 * 3. Calls InternalAddRef() to increment the reference count if the pointer is valid
+	 * The implementation locks the weak reference (WeakRef::Lock()), which is safe against
+	 * another thread releasing the last strong reference at the same time.
 	 *
 	 * @param weak The weak reference to convert to a strong reference
 	 * @note - This enables safe conversion from WeakRef<T> to Ref<T>, preventing access to destroyed objects
 	 */
 	template <typename T>
-	inline Ref<T>::Ref(const WeakRef<T> &weak) noexcept
+	inline Ref<T>::Ref(const WeakRef<T> &weak) noexcept : Ref(weak.Lock())
 	{
-		if (weak.GetControlBlock() && weak.GetControlBlock()->GetPtr()) {
-			m_Ptr = static_cast<T*>(weak.GetControlBlock()->GetPtr());
-			InternalAddRef();
-		} else {
-			m_Ptr = nullptr;
-		}
 	}
 
 	/**
