@@ -734,7 +734,13 @@ namespace SceneryEditorX::XPlane
 					}
 					SEDX_CORE_INFO_TAG(LOG_TAG, "{} runway art: {}", airport.id, art);
 				}
-				lightsAsObjects = !surfaces.objects.empty() || overlay->GetString(overlay->ResolveLightStringLibraryPath(101), nullptr, surfaces) != nullptr;
+				// Whether the pavement-edge and line light strings came as library objects (else they get ribbons below).
+				// Runway lights don't count: they are placed whatever the light string library holds
+				const bool stringObjects = std::ranges::any_of(surfaces.objects, [](const OverlayObject &object)
+				{
+					return object.source == OverlayObject::Source::AirportLights && (object.placement & AIRPORT_LIGHTS_RUNWAY) == 0;
+				});
+				lightsAsObjects = stringObjects || overlay->GetString(overlay->ResolveLightStringLibraryPath(101), nullptr, surfaces) != nullptr;
 				for (OverlayObject &object : surfaces.objects)
 					out.objects.push_back(std::move(object));
 				out.warnings.insert(out.warnings.end(), surfaces.warnings.begin(), surfaces.warnings.end());

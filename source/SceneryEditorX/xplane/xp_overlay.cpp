@@ -50,6 +50,9 @@ namespace SceneryEditorX::XPlane
 		constexpr double kPi = 3.14159265358979323846;
 		constexpr double kDegToRad = kPi / 180.0;
 		constexpr float RUNWAY_MARKINGS_LIFT = 0.008f;	// Runway markings above their runway (below the apt.dat lines, 0.03 up)
+		// apt.dat light fixtures: "slow" carries the inset / elevated fixture as well as its lights, "fast" the lights alone
+		constexpr std::string_view LIGHT_FIXTURES_LIBRARY = "lib/airport/lights/slow/";
+		constexpr std::string_view LIGHTS_ONLY_LIBRARY = "lib/airport/lights/fast/";
 
 		// Draw heights above the ground for draped overlay groups (LAYER_GROUP), so stacked layers don't fight
 		constexpr float LAYER_BASE_HEIGHT = 0.4f;
@@ -2794,7 +2797,7 @@ namespace SceneryEditorX::XPlane
 	{
 		if (lightType < 101 || lightType > 108)
 			return {};
-		return std::string(fixtures ? "lib/airport/lights/slow/" : "lib/airport/lights/fast/") + std::to_string(lightType) + "_";
+		return std::string(fixtures ? LIGHT_FIXTURES_LIBRARY : LIGHTS_ONLY_LIBRARY) + std::to_string(lightType) + "_";
 	}
 
 	std::string OverlayBuilder::ResolveLightStringLibraryPath(const int lightType)
@@ -2911,7 +2914,7 @@ namespace SceneryEditorX::XPlane
 			auto [it, added] = fixtures.try_emplace(fixture);
 			if (added)
 			{
-				it->second.first = "lib/airport/lights/slow/" + fixture + ".obj";
+				it->second.first = std::string(LIGHT_FIXTURES_LIBRARY) + fixture + ".obj";
 				it->second.second = ResolveFile(it->second.first);
 				if (it->second.second.empty())
 					Warn(out, "Runway light fixture not found: " + it->second.first);
