@@ -107,40 +107,6 @@ namespace SceneryEditorX
 	
 	// --------------------------------------------------------------
 
-/*
-void dynamic_resolution()
-{
-	if (cvar_dynamic_resolution.GetValue() != 0.0f)
-	{
-		float gpu_time_target   = 16.67f;                                               // target for 60 FPS
-		float adjustment_factor = static_cast<float>(0.05f * DeltaTime::GetDeltaTimeSec()); // how aggressively to adjust screen percentage
-		float screen_percentage = cvar_resolution_scale.GetValue();
-		float gpu_time          = Profiler::GetTimeGpuLast();
-
-		if (gpu_time < gpu_time_target) // gpu is under target, increase resolution
-		{
-			screen_percentage += adjustment_factor * (gpu_time_target - gpu_time);
-		}
-		else // gpu is over target, decrease resolution
-		{
-			screen_percentage -= adjustment_factor * (gpu_time - gpu_time_target);
-		}
-
-		// clamp screen_percentage to a reasonable range
-		screen_percentage = xMath::Clamp(screen_percentage, 0.5f, 1.0f);
-
-		ConsoleRegistry::Get().SetValueFromString("r.resolution_scale", std::to_string(screen_percentage));
-	}
-}
-
-			// ProduceFrame currently records into a QueueManager command list that is not
-			// submitted by SubmitAndPresent(). Seal it so the list returns to Idle and can
-			// be reused next frame, preventing command-list pool starvation.
-			if (m_CmdList_Present && m_CmdList_Present->GetState() == CommandState::Recording)
-			{
-				m_CmdList_Present->Seal();
-			}
-*/
 
 	RendererProperties *Renderer::m_Data = nullptr;
 	static Ref<Swapchain> s_Swapchain = nullptr;
@@ -155,7 +121,6 @@ void dynamic_resolution()
 
 	CommandList *Renderer::m_CmdList_Compute = nullptr;
 	CommandList *Renderer::m_CmdList_Present = nullptr;
-	CommandList *Renderer::m_CmdList_Frame   = nullptr; // per-frame UI command list, submitted alongside swapchain CB
 	Scope<AssetManager> Renderer::s_AssetManager = nullptr;
 	uint32_t Renderer::m_ResourceIndex = 0;
 
@@ -1026,10 +991,6 @@ void dynamic_resolution()
 		}
 		m_CmdList_Present->Begin();
 
-		// m_CmdList_Frame is no longer used — UI rendering happens inside RecordRenderCommands
-		// via SetExternalRecordingBuffer, so the swapchain dynamic render pass is already active.
-		m_CmdList_Frame = nullptr;
-
 #pragma region Compute Command List Setup
 
 		/*
@@ -1326,35 +1287,6 @@ void dynamic_resolution()
 					FirstFrameRenderedEvent event(true);
 			}
 
-			/*
-				bool initialize = GetFrameNumber() == 0;
-
-				// lights
-				if (initialize || Scene::HaveLightsChangedThisFrame())
-				{
-					UpdateShadowAtlas();
-					UpdateLights(m_CmdList_Present);
-					RHI_Device::UpdateBindlessLights(GetBuffer(Renderer_Buffer::LightParameters));
-				}
-
-				// materials
-				if (initialize || Scene::HaveMaterialsChangedThisFrame())
-				{
-					UpdateMaterials(m_CmdList_Present);
-					RHI_Device::UpdateBindlessMaterials(&m_Bindless_Textures, GetBuffer(Renderer_Buffer::MaterialParameters));
-				}
-
-				// samplers
-				if (m_BindlessSamplers_Dirty)
-				{
-					RHI_Device::UpdateBindlessSamplers(&Renderer::GetSamplers());
-					m_BindlessSamplers_Dirty = false;
-				}
-
-				// aabbs (always, they change with entity transforms)
-				{}
-				*/
-
 
 			// Wire the modern pass-based renderer into the active frame loop.
 			// This keeps the existing legacy path intact while enabling
@@ -1384,33 +1316,6 @@ void dynamic_resolution()
 				}
 			}
 
-			/*
-			if (m_CmdList_Present)
-			{
-				ImageResource* rtRender = GetRenderTarget(Renderer_RenderTarget::frame_render);
-				ImageResource* rtOutput = GetRenderTarget(Renderer_RenderTarget::frame_output);
-
-				const bool hasRtRender = rtRender && rtRender->Get() && *rtRender->Get() != VK_NULL_HANDLE;
-				const bool hasRtOutput = rtOutput && rtOutput->Get() && *rtOutput->Get() != VK_NULL_HANDLE;
-
-				if (hasRtRender && hasRtOutput)
-				{
-					ProduceFrame(m_CmdList_Present, m_CmdList_Compute);
-				}
-				else
-				{
-					static bool s_LoggedMissingPassTargets = false;
-					if (!s_LoggedMissingPassTargets)
-					{
-						SEDX_CORE_WARN_TAG("Renderer", "Pass-based renderer disabled: frame render targets are not GPU-initialized yet");
-						s_LoggedMissingPassTargets = true;
-					}
-				}
-			}
-
-			// UI rendering is done inside RecordRenderCommands (inside the dynamic render pass),
-			// so no separate UI command list is needed here.
-			*/
 
 		}
 	}   
@@ -1886,201 +1791,7 @@ void dynamic_resolution()
 	}
 
 	// Create synchronization primitives (fences & semaphores) used per-frame and per-swapchain-image.
-	/*
-	void Renderer::CreateFrameResources()
-	{
-		std::scoped_lock lock(s_FrameSyncMutex);
 
-		SEDX_CORE_TRACE_TAG("Renderer", "CreateFrameResources() - entering");
-
-		// Clear any existing resources
-		s_FenceRefs.clear();
-		s_FenceHandles.clear();
-
-		s_PresentSemaphoreRefs.clear();
-		s_PresentSemaphoreHandles.clear();
-
-		s_RenderSemaphoreRefs.clear();
-		s_RenderSemaphoreHandles.clear();
-
-		// Acquire device
-		Ref<Device> device = RenderContext::Get()->GetDevice();
-		VkDevice vkDevice = VK_NULL_HANDLE;
-		if (device.IsValid())
-		{
-			vkDevice = device->GetDevice();
-		}
-
-		// Reserve vector capacity
-		s_FenceRefs.reserve(MAX_FRAMES_IN_FLIGHT);
-		s_FenceHandles.reserve(MAX_FRAMES_IN_FLIGHT);
-
-		for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
-		{
-			Ref<Fence> fence = CreateRef<Fence>();
-			if (vkDevice != VK_NULL_HANDLE)
-			{
-				fence->CreateSyncObject(vkDevice);
-			}
-			else
-			{
-				fence->CreateSyncObject();
-			}
-			s_FenceRefs.push_back(fence);
-			s_FenceHandles.push_back(fence->GetFence());
-		}
-
-		SEDX_CORE_TRACE_TAG("Renderer", "CreateFrameResources() - created {} fences", s_FenceRefs.size());
-
-		// Present semaphores: one per frame-in-flight
-		s_PresentSemaphoreRefs.reserve(MAX_FRAMES_IN_FLIGHT);
-		s_PresentSemaphoreHandles.reserve(MAX_FRAMES_IN_FLIGHT);
-		for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
-		{
-			Ref<Semaphore> sem = CreateRef<Semaphore>(SyncType::Semaphore);
-			if (vkDevice != VK_NULL_HANDLE)
-			{
-				sem->CreateSyncObject(vkDevice);
-			}
-			else
-			{
-				sem->CreateSyncObject();
-			}
-			s_PresentSemaphoreRefs.push_back(sem);
-			s_PresentSemaphoreHandles.push_back(sem->GetSemaphore());
-		}
-
-		SEDX_CORE_TRACE_TAG("Renderer", "CreateFrameResources() - created {} present semaphores", s_PresentSemaphoreRefs.size());
-
-		// Render semaphores: one per swapchain image
-		uint32_t imageCount = 0;
-		if (s_Swapchain)
-		{
-			imageCount = static_cast<uint32_t>(s_Swapchain->GetImages().size());
-		}
-		if (imageCount == 0)
-			imageCount = SWAPCHAIN_BUFFER_COUNT;
-
-		s_RenderSemaphoreRefs.reserve(imageCount);
-		s_RenderSemaphoreHandles.reserve(imageCount);
-		for (uint32_t i = 0; i < imageCount; ++i)
-		{
-			Ref<Semaphore> sem = CreateRef<Semaphore>(SyncType::Semaphore);
-			if (vkDevice != VK_NULL_HANDLE)
-			{
-				sem->CreateSyncObject(vkDevice);
-			}
-			else
-			{
-				sem->CreateSyncObject();
-			}
-			s_RenderSemaphoreRefs.push_back(sem);
-			s_RenderSemaphoreHandles.push_back(sem->GetSemaphore());
-		}
-
-		SEDX_CORE_TRACE_TAG("Renderer", "CreateFrameResources() - created {} render semaphores for swapchain images", s_RenderSemaphoreRefs.size());
-	}
-	*/
-
-	/*
-	void Renderer::DestroyFrameResources()
-	{
-		SEDX_CORE_TRACE_TAG("Renderer", "Destroying frame resources");
-		std::scoped_lock lock(s_FrameSyncMutex);
-
-		SEDX_CORE_TRACE_TAG("Renderer", "DestroyFrameResources() - entering: fences={}, presentSem={}, renderSem={}",
-			s_FenceRefs.size(), s_PresentSemaphoreRefs.size(), s_RenderSemaphoreRefs.size());
-
-		// Release strong references so underlying objects can destroy their Vulkan handles
-		for (auto &f : s_FenceRefs)
-		{
-			if (f)
-			{
-				f.Reset();
-			}
-		}
-		s_FenceRefs.clear();
-		s_FenceHandles.clear();
-
-		for (auto &s : s_PresentSemaphoreRefs)
-		{
-			if (s)
-			{
-			 s.Reset();
-			}
-		}
-		s_PresentSemaphoreRefs.clear();
-		s_PresentSemaphoreHandles.clear();
-
-		for (auto &s : s_RenderSemaphoreRefs)
-		{
-			if (s)
-			{
-			 s.Reset();
-			}
-		}
-		s_RenderSemaphoreRefs.clear();
-		s_RenderSemaphoreHandles.clear();
-
-		// Clear any pointers exposed to RenderContext to avoid dangling references
-		if (RenderContext::IsInitialized())
-		{
-			RenderContext::Get()->s_Fences = s_FenceHandles.empty() ? nullptr : &s_FenceHandles;
-			RenderContext::Get()->s_PresentSemaphores = s_PresentSemaphoreHandles.empty() ? nullptr : &s_PresentSemaphoreHandles;
-			RenderContext::Get()->s_RenderSemaphores = s_RenderSemaphoreHandles.empty() ? nullptr : &s_RenderSemaphoreHandles;
-		}
-
-		SEDX_CORE_TRACE_TAG("Renderer", "DestroyFrameResources() - complete");
-	}
-	*/
-
-	/*
-	void Renderer::DestroyFrameResources()
-	{
-		SEDX_CORE_TRACE_TAG("Renderer", "Destroying frame resources");
-		std::scoped_lock lock(s_FrameSyncMutex);
-
-		// Release strong references so underlying objects can enqueue their
-		// Vulkan handle destruction via their Destroy() implementations.
-		for (auto &f : s_FenceRefs)
-		{
-			if (f)
-			{
-			 f.Reset();
-			}
-		}
-		s_FenceRefs.clear();
-		s_FenceHandles.clear();
-
-		for (auto &s : s_PresentSemaphoreRefs)
-		{
-			if (s)
-			{
-			 s.Reset();
-			}
-		}
-		s_PresentSemaphoreRefs.clear();
-		s_PresentSemaphoreHandles.clear();
-
-		for (auto &s : s_RenderSemaphoreRefs)
-		{
-			if (s)
-			{
-			 s.Reset();
-			}
-		}
-		s_RenderSemaphoreRefs.clear();
-		s_RenderSemaphoreHandles.clear();
-
-		// Clear any pointers exposed to RenderContext to avoid dangling references
-		if (RenderContext::IsInitialized())
-		{
-			RenderContext::Get()->s_Fences = s_FenceHandles.empty() ? nullptr : &s_FenceHandles;
-			RenderContext::Get()->s_PresentSemaphores = s_PresentSemaphoreHandles.empty() ? nullptr : &s_PresentSemaphoreHandles;
-			RenderContext::Get()->s_RenderSemaphores = s_RenderSemaphoreHandles.empty() ? nullptr : &s_RenderSemaphoreHandles;
-		}
-	}
-	*/
 
 	void Renderer::DestroyFrameResources()
 	{
@@ -2600,11 +2311,6 @@ void dynamic_resolution()
 		return m_CmdList_Present;
 	}
 
-	CommandList* Renderer::GetCommandListFrame()
-	{
-		return m_CmdList_Frame;
-	}
-
 #pragma endregion
 
 	void Renderer::LoadShaders()
@@ -2625,49 +2331,6 @@ void dynamic_resolution()
 			context->pipeline = VK_NULL_HANDLE;
 			context->pipelineLayout = VK_NULL_HANDLE;
 		}
-	}
-
-	void Renderer::Screenshot()
-	{
-		/*
-		static uint32_t screenshot_index = 0;
-
-		ImageResource* frame_output = GetRenderTarget(Renderer_RenderTarget::frame_output);
-		uint32_t width            = frame_output->GetWidth();
-		uint32_t height           = frame_output->GetHeight();
-		uint32_t bits_per_channel = frame_output->GetBitsPerChannel();
-		uint32_t channel_count    = frame_output->GetChannelCount();
-		size_t data_size          = static_cast<size_t>(width) * height * (bits_per_channel / 8) * channel_count;
-
-		bool is_hdr = cvar_hdr.GetValueAs<bool>();
-
-		auto staging = CreateRef<Buffer>(RHI_Buffer_Type::Constant, data_size, 1, nullptr, true, "screenshot_staging");
-
-		if (CommandList* cmd_list = CommandList::BeginImmediateExecution(QueueType::Graphics))
-		{
-			cmd_list->CopyTextureToBuffer(frame_output, staging.get());
-			CommandList::EndImmediateExecution(cmd_list);
-		}
-
-		void* mapped_data = staging->GetMappedData();
-		SEDX_CORE_ASSERT(mapped_data, "Staging buffer not mappable");
-
-		uint32_t index = screenshot_index++;
-		std::string exr_path = "screenshot_" + std::to_string(index) + ".exr";
-		std::string png_path = "screenshot_" + std::to_string(index) + ".png";
-
-		ThreadPool::Submit([=]()
-		{
-			SEDX_CORE_INFO_TAG("Renderer", "Saving screenshots...");
-
-			ImageImporter::Save(exr_path, width, height, channel_count, bits_per_channel, mapped_data);
-
-			ImageImporter::SaveSdr(png_path, width, height, channel_count, bits_per_channel, mapped_data, is_hdr);
-
-			SEDX_CORE_INFO_TAG("Renderer", "Screenshots saved as '{}' and '{}'", exr_path.c_str(), png_path.c_str());
-		});
-		*/
-
 	}
 
 #pragma region Private Rendering Methods

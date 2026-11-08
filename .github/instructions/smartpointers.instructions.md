@@ -1230,25 +1230,29 @@ The weak reference system uses a control block registry to manage the lifetime o
 
 ```cpp
 namespace Internal {
-    template<typename T>
+    // One per object, whatever the static types of the Refs and WeakRefs to it
     class ControlBlock {
-        T* m_Ptr;                          // Pointer to object (nullable)
-        std::atomic<uint32_t> m_WeakCount; // Number of weak references
+        std::atomic<const RefCounted*> m_Ptr; // The object's RefCounted part (nullptr once destroyed)
+        std::atomic<uint32_t> m_WeakCount;    // Weak references, plus one while the object is alive
     };
     
-    template<typename T>
+    // One registry for every type, keyed by the object's RefCounted part
     class ControlBlockRegistry {
-        std::unordered_map<T*, ControlBlock<T>*> m_Blocks;
+        std::unordered_map<const RefCounted*, ControlBlock*> m_Blocks;
         std::mutex m_Mutex;
     };
 }
 ```
 
 ### Lifecycle Management
-1. When first `WeakRef<T>` is created, a control block is allocated
-2. Control block tracks weak reference count
-3. When object is destroyed, control block pointer is set to nullptr
-4. Control block is destroyed when last weak reference expires
+1. When the first `WeakRef` to an object is created, a control block is allocated
+2. Every `WeakRef` to the object shares that block, whatever its type: a `WeakRef<Base>` and a `WeakRef<Derived>` to one
+   object use the same block. Each `WeakRef<T>` also keeps the object as a `T*` (with multiple or virtual inheritance it
+   is not the `RefCounted*` address), used only after a lock proved the object alive
+3. When the last owner releases the object (a `Ref<T>` of any `T`, or the `std::shared_ptr` from `ToSharedPtr()`), the
+   control block's pointer is set to nullptr before the object is deleted, so every `WeakRef` to it expires. Objects
+   that never had a `WeakRef` skip the registry
+4. Control block is destroyed once the object is gone and the last weak reference is released
 
 ## Usage Guidelines
 

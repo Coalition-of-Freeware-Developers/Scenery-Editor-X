@@ -286,7 +286,7 @@ IF(TRACY_ENABLE)
 	IF(DEFINED tracy_SOURCE_DIR) # Add Tracy public include dir to all main targets if tracy is available
 		MESSAGE(STATUS "Adding Tracy public include dir: ${tracy_SOURCE_DIR}/public")
 
-		FOREACH(_tracy_target SceneryEditorX Launcher Editor CrashHandler)
+		FOREACH(_tracy_target SceneryEditorX)
 			IF(TARGET ${_tracy_target})
 				TARGET_INCLUDE_DIRECTORIES(${_tracy_target} PRIVATE ${tracy_SOURCE_DIR}/public)
 			ENDIF()
@@ -439,11 +439,6 @@ ENDIF()
 # libconfig (bundled)
 ############################################
 ADD_SUBDIRECTORY(dependency/libconfig)
-
-############################################
-# Animation Compression Library - ACL
-############################################
-#ADD_SUBDIRECTORY(dependency/acl)
 
 ############################################
 # Catch2 (system or bundled)
@@ -637,52 +632,14 @@ IF(TARGET edX AND TARGET XPSceneryLib)
 ENDIF()
 
 ############################################
-# ImGui (system or bundled sources)
-############################################
-
-#IF(SEDX_BUILD_IMGUI)
-#	ADD_LIBRARY(imgui
-#		${CMAKE_SOURCE_DIR}/dependency/imgui/imgui.cpp
-#		${CMAKE_SOURCE_DIR}/dependency/imgui/imgui_draw.cpp
-#		${CMAKE_SOURCE_DIR}/dependency/imgui/imgui_widgets.cpp
-#		${CMAKE_SOURCE_DIR}/dependency/imgui/imgui_tables.cpp
-#		$<$<BOOL:${SEDX_WITH_IMGUI_DEMO}>:${CMAKE_SOURCE_DIR}/dependency/imgui/imgui_demo.cpp>
-#		${CMAKE_SOURCE_DIR}/dependency/imgui/backends/imgui_impl_sdl3.cpp
-#		${CMAKE_SOURCE_DIR}/dependency/imgui/backends/imgui_impl_vulkan.cpp
-#	)
-#	TARGET_INCLUDE_DIRECTORIES(imgui
-#		PRIVATE
-#			${CMAKE_SOURCE_DIR}/dependency/imgui
-#			${CMAKE_SOURCE_DIR}/dependency/imgui/backends
-#			${CMAKE_SOURCE_DIR}/dependency/imgui/misc
-#	)
-#	TARGET_LINK_LIBRARIES(imgui
-#		PRIVATE
-#			SDL3::SDL3
-#			Vulkan::Vulkan
-#			GPUOpen::VulkanMemoryAllocator
-#	)
-#ENDIF()
-
-############################################
 # AppCore
 ############################################
 ADD_SUBDIRECTORY(source/SceneryEditorX)
 
 ############################################
-# Launcher
-############################################
-ADD_SUBDIRECTORY(source/Launcher)
-
-############################################
 # Scenery Editor X
 ############################################
 ADD_SUBDIRECTORY(source/Editor)
-
-############################################
-# Crash Handler Service
-############################################
-ADD_SUBDIRECTORY(source/CrashHandler)
 
 ############################################
 # Precompiled Headers
@@ -695,7 +652,6 @@ INCLUDE(${CMAKE_SOURCE_DIR}/cmake/sedx_targets.cmake)
 
 SEDX_ENABLE_PCH(SceneryEditorX ${CMAKE_SOURCE_DIR}/source/Editor/xpeditor_pch.h)
 SEDX_ENABLE_PCH(AppCore        ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/app_pch.h)
-SEDX_ENABLE_PCH(Launcher       ${CMAKE_SOURCE_DIR}/source/Launcher/startup_pch.h)
 
 # Group and output dirs
 SEDX_GROUP_TARGETS()
@@ -711,7 +667,7 @@ SEDX_APPLY_OUTPUT_DIRS(${LIBS_DIR} ${BIN_DIR})
 # If the CMake option SEDX_VERBOSE_LOGGING is enabled and the build config is Debug,
 # pass the `--verbose` CLI flag to the debugger so developers get verbose logging
 # automatically when launching from the IDE.
-FOREACH(_sedx_dbg_target SceneryEditorX Launcher CrashHandler)
+FOREACH(_sedx_dbg_target SceneryEditorX)
 	IF(TARGET ${_sedx_dbg_target})
 		# Only add --verbose when building Debug and SEDX_VERBOSE_LOGGING is true
 		SET_TARGET_PROPERTIES(${_sedx_dbg_target} PROPERTIES VS_DEBUGGER_COMMAND_ARGUMENTS "$<$<AND:$<CONFIG:Debug>,$<BOOL:${SEDX_VERBOSE_LOGGING}>>:--verbose>" )

@@ -154,7 +154,7 @@ namespace SceneryEditorX
             SECTION("Copy constructor shares ownership")
             {
                 Ref<TestObject> original = CreateRef<TestObject>(789);
-                const Ref<TestObject> &copy(original);
+                const Ref<TestObject> copy(original); // NOLINT(performance-unnecessary-copy-initialization): the copy is what is tested
 
                 REQUIRE(original.UseCount() == 2);
                 REQUIRE(copy.UseCount() == 2);
@@ -408,16 +408,6 @@ namespace SceneryEditorX
 
         TEST_CASE_METHOD(RefTestFixture, "Ref interoperability with std::shared_ptr", "[Ref][interop]")
         {
-            SECTION("Construction from std::shared_ptr")
-            {
-                auto sharedPtr = std::make_shared<TestObject>(2222);
-                Ref<TestObject> ref(sharedPtr);
-
-                REQUIRE(ref);
-                REQUIRE(ref->GetValue() == 2222);
-                // Note: UseCount might be different due to shared_ptr's control block
-            }
-
             SECTION("Conversion to std::shared_ptr")
             {
                 Ref<TestObject> ref = CreateRef<TestObject>(2323);

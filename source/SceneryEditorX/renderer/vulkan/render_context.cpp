@@ -307,51 +307,6 @@ namespace SceneryEditorX
 			vkEnumerateInstanceLayerProperties(&layerCount, layerNames.data());
 
 
-			/*
-			// Check for validation layer availability
-			if (EnableValidationLayers)
-			{
-				// More thorough validation layer checking
-				GraphicsChecks layerChecker;
-
-				// Check for all validation layers and log available ones
-				std::vector<const char *> layersToCheck = {validationLayer[0]};
-				GraphicsChecks::CheckLayers(layersToCheck);
-
-				// Specifically check for Khronos validation layer
-				khronosAvailable = layerChecker.CheckValidationLayerSupport();
-
-				if (!khronosAvailable)
-					SEDX_CORE_ERROR_TAG("Graphics Engine", "Khronos validation layer requested but not available!");
-				else
-					SEDX_CORE_TRACE_TAG("Graphics Engine", "Validation layers are available and will be enabled");
-			}
-
-
-			// Get all available extensions
-			Extensions extensions;
-			vkEnumerateInstanceExtensionProperties(nullptr, &extensions.extensionCount, nullptr);
-			extensions.instanceExtensions.resize(extensions.extensionCount);
-
-			vkEnumerateInstanceExtensionProperties(nullptr, &extensions.extensionCount, extensions.instanceExtensions.data());
-			if (EnableValidationLayers)
-			{
-				for (const char *valLayer : validationLayer)
-				{
-					uint32_t count = 0;
-					if (VkResult extResult = vkEnumerateInstanceExtensionProperties(valLayer, &count, nullptr); extResult == VK_SUCCESS && count > 0)
-					{
-						const size_t layerSize = extensions.instanceExtensions.size();
-						extensions.instanceExtensions.resize(layerSize + count);
-						vkEnumerateInstanceExtensionProperties(valLayer, &count, extensions.instanceExtensions.data() + layerSize);
-						SEDX_CORE_TRACE_TAG("Render Context", "Added {} extensions from validation layer {}", count, valLayer);
-					}
-				}
-				if (!khronosAvailable)
-					SEDX_CORE_ERROR_TAG("Render Context", "Khronos validation layer not available!");
-			}
-			*/
-
 			s_Instance->m_Device = CreateRef<Device>(s_Instance->m_Instance);
 			if (!s_Instance->m_Device || s_Instance->m_Device->GetLogicalDevice() == VK_NULL_HANDLE)
 			{

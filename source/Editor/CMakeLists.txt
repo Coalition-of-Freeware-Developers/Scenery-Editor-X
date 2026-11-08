@@ -7,10 +7,8 @@ MESSAGE(STATUS "Generating Scenery Editor X Project")
 
 # --------------------------------
 FILE(GLOB CORE LIST_DIRECTORIES false CONFIGURE_DEPENDS core/*.cpp core/*.h core/*.hpp)
-FILE(GLOB CORE_CHILD_WINDOWS core/windows/*.cpp core/windows/*.h core/windows/*.hpp)
 FILE(GLOB MODULES modules/*.cpp modules/*.h modules/*.hpp)
 FILE(GLOB PANELS panels/*.cpp panels/*.h panels/*.hpp)
-FILE(GLOB PROJECT projects/*.cpp projects/*.h projects/*.hpp)
 FILE(GLOB SETTINGS settings/*.cpp settings/*.h settings/*.hpp)
 
 SET (PROJECT_CONFIG_FILES
@@ -24,10 +22,8 @@ SET (PROJECT_CONFIG_FILES
 ADD_EXECUTABLE(SceneryEditorX WIN32
 	entrypoint.cpp
 	${CORE}
-	${CORE_CHILD_WINDOWS}
 	${MODULES}
 	${PANELS}
-	${PROJECT}
 	${SETTINGS}
 
 	${PROJECT_CONFIG_FILES}
@@ -43,17 +39,11 @@ ADD_EXECUTABLE(SceneryEditorX WIN32
 SOURCE_GROUP("Core" FILES
 	${CORE}
 )
-SOURCE_GROUP("Core/Windows" FILES
-	${CORE_CHILD_WINDOWS}
-)
 SOURCE_GROUP("Modules" FILES
 	${MODULES}
 )
 SOURCE_GROUP("UI Panels" FILES
 	${PANELS}
-)
-SOURCE_GROUP("Projects" FILES
-	${PROJECT}
 )
 SOURCE_GROUP("Settings" FILES
 	${SETTINGS}
@@ -75,14 +65,11 @@ TARGET_INCLUDE_DIRECTORIES(SceneryEditorX
 	PRIVATE
 		${CMAKE_SOURCE_DIR}/source
 		${CMAKE_SOURCE_DIR}/dependency
-		${CMAKE_SOURCE_DIR}/dependency/xMath
 		${CMAKE_SOURCE_DIR}/dependency/entt/src
 		${CMAKE_SOURCE_DIR}/dependency/taskflow
 		${CMAKE_SOURCE_DIR}/dependency/ktx/include
 		${CMAKE_SOURCE_DIR}/dependency/ktx/other_include
-		$if(RENDERDOC_ENABLED)
-			${RENDERDOC_INCLUDE_DIRS}
-		$endif()
+		${RENDERDOC_INCLUDE_DIRS}
 		${PORTABLE_FILE_DIALOGS_INCLUDE_DIRS}
 		$ENV{VULKAN_SDK}/Include/
 		$ENV{VULKAN_SDK}/Include/vma

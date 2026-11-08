@@ -762,19 +762,6 @@ namespace SceneryEditorX
 		return fallback;
 	}
 	
-	void MonitorData::UpdateMonitorList()
-	{
-		/**
-		 * @brief UpdateMonitorList is reserved for future API expansion.
-		 *
-		 * Currently, all monitor enumeration and refresh logic is handled by RefreshMonitorList().
-		 * This method exists in the public API for compatibility and future use cases where
-		 * incremental or event-driven monitor updates may be required, distinct from a full refresh.
-		 * For now, calling UpdateMonitorList() has no effect.
-		 *
-		 * See API documentation for details on when to use RefreshMonitorList() vs UpdateMonitorList().
-		 */
-	}
 	
 } // namespace SceneryEditorX
 

@@ -33,7 +33,6 @@
 #include "resources/fonts.h"
 #include "source/imgui/imgui.h"
 #include "source/imgui/backends/imgui_impl_sdl3.h"
-#include "source/imguizmo/ImGuizmo.h"
 #include <SceneryEditorX/core/resource/resource_cache.h>
 #include <SceneryEditorX/core/window/window.h>
 #include <SceneryEditorX/filesystem/vfs.h>
@@ -151,7 +150,6 @@ namespace SceneryEditorX
 		ImGui_ImplSDL3_NewFrame();
 		UI::ApplyScriptedMouse();
 		ImGui::NewFrame();
-		ImGuizmo::BeginFrame();
 	}
 
 	void UILayer::EndRendering()
