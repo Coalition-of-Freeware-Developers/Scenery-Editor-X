@@ -518,8 +518,9 @@ namespace SceneryEditorX
 		 * @warning In a constructor or destructor no Ref owns the object (yet, or any more): a Ref made from `this`
 		 * there takes the count from 0 to 1, and its release brings it back to 0, which deletes the object (the one
 		 * under construction, or a second time). So a temporary made from `this` (`this` passed as a `const Ref<T>&`
-		 * argument, `WeakRef<T>(Ref<T>(this))`) must not be the only one: keep a Ref for the object's lifetime, as
-		 * Device's QueueManager does, or pass a plain reference or pointer.
+		 * argument, `WeakRef<T>(Ref<T>(this))`) must not be the only one. Pass a plain reference or pointer instead,
+		 * or hold a count over the constructor with IncRefCount() / DecRefCount() (DecRefCount() never deletes), as
+		 * Device's constructor does.
 		 *
 		 * @param instance Pointer to the object to manage.
 		 */

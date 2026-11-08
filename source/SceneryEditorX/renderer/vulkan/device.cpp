@@ -920,6 +920,9 @@ namespace SceneryEditorX
 		// No Ref owns the device until CreateRef<Device> returns, so a Ref made from `this` in here (the QueueManager's,
 		// for one) would delete it if its release took the count back to 0. Hold a count of our own until the end, so
 		// that doesn't depend on who keeps theirs (see Ref(T*) in pointers.h).
+		// Not an RAII guard on purpose: if this constructor throws, a guard would drop the count before the members
+		// unwind, and m_QueueManager's release would then delete the device being unwound. Left at 1, nothing deletes
+		// it, and the new expression frees its memory.
 		IncRefCount();
 
 		m_Instance = instance;
