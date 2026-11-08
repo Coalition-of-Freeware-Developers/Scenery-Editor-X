@@ -1053,10 +1053,11 @@ namespace SceneryEditorX
 			// retire cached pipelines that stopped being used (e.g. built for render targets replaced on resize)
 			PipelineCache::Tick();
 
-			// resource cleanup - frame-based retirement, no gpu stall required
-			if (QueueManager::NeedToParseDeletionQueue())
+			// resource cleanup - frame-based retirement, no gpu stall required: only what no frame in flight can use.
+			// The one AdvanceDeletionFrame() call per rendered frame: it counts the frames the delay is measured in.
+			if (QueueManager::AdvanceDeletionFrame())
 			{
-				QueueManager::ParseDeletionQueue();
+				QueueManager::ParseDeletionQueue(false);
 			}
 
 			// reset constant buffer offset periodically
