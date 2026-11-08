@@ -2,7 +2,7 @@ name: TODO TASK - Scenery Editor X
 description: Generalized TODO / implementation task for Scenery Editor X (single scoped deliverable with optional sub‑tasks).
 title: "[TODO] <short task title>"
 labels: ["TODO TASK"]
-assignees: []
+assignees: [The3dVehicleguy]
 body:
   - type: markdown
     attributes:
@@ -41,17 +41,19 @@ body:
     validations:
       required: true
 
-  - type: dropdown
-    id: priority
-    attributes:
-      label: Priority
-      options:
-        - P0 (Critical)
-        - P1 (High)
-        - P2 (Medium)
-        - P3 (Low)
-    validations:
-      required: true
+# Will only be set by the approved maintainers/contributors
+#
+#   - type: dropdown
+#     id: priority
+#     attributes:
+#       label: Priority
+#       options:
+#         - P0 (Critical)
+#         - P1 (High)
+#         - P2 (Medium)
+#         - P3 (Low)
+#     validations:
+#       required: true
 
   - type: textarea
     id: description
