@@ -1,0 +1,46 @@
+{
+  "about": "Touchdown zone lights on runways whose thresholds are less than 6000 ft apart (issue #72): X-Plane 12 and SEDX at night, from above, to count the barrette rows per end. Views computed from the global apt.dat runway rows; regenerate with the script in the issue if they move.",
+  "xp_build": "12.4.4-b4",
+  "defaults": {
+    "fov": 60.0,
+    "width": 1280,
+    "height": 720,
+    "visibility_m": 80000.0,
+    "clouds": [],
+    "rain_percent": 0.0,
+    "runway_friction": 0,
+    "snow_cover": 0.0,
+    "temperature_c": 15.0,
+    "settle_frames": 600,
+    "ev100_lock": null,
+    "ui_mask": []
+  },
+  "scenarios": [
+    {
+      "id": "vidn_tdz_night",
+      "icao": "VIDN",
+      "lat": 30.1816807,
+      "lon": 78.178306,
+      "alt_m_agl": 1500.0,
+      "heading": 349.62,
+      "pitch": -60.0,
+      "date": "2026-07-15",
+      "local_time": "23:30:00",
+      "utc_offset": 5.5,
+      "notes": "runway 08/26 from the side, 1500 m up, centered between the thresholds (08 on the left); thresholds 1101 m apart (0 / 1035 m displaced on a 2136 m runway). 08: SEDX 18 rows (551 m), split at the middle 30 (914 m), no limit 30"
+    },
+    {
+      "id": "kpsp_tdz_night",
+      "icao": "KPSP",
+      "lat": 33.8233797,
+      "lon": -116.513716,
+      "alt_m_agl": 1500.0,
+      "heading": 53.52,
+      "pitch": -60.0,
+      "date": "2026-07-15",
+      "local_time": "23:30:00",
+      "utc_offset": -7.0,
+      "notes": "runway 13R/31L from the side, 1500 m up, centered between the thresholds (13R on the left); thresholds 1675 m apart (917 / 459 m displaced on a 3051 m runway). 13R: SEDX 27 rows (838 m), split at the middle 19 (609 m), no limit 30; 31L: SEDX 27 rows (838 m), split at the middle 30 (914 m), no limit 30"
+    }
+  ]
+}
