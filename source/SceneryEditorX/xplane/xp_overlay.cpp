@@ -2903,16 +2903,22 @@ namespace SceneryEditorX::XPlane
 		const double displaced[2] = { std::clamp<double>(runway.ends[0].displacedThreshold, 0.0, length), std::clamp<double>(runway.ends[1].displacedThreshold, 0.0, length) };
 		const double halfWidth = runway.width * 0.5;
 
-		// One fixture, at a distance along the runway from end 0 and to the right of it, by its library name
+		// One fixture, at a distance along the runway from end 0 and to the right of it, by its library name. A runway
+		// places hundreds to thousands of lights from a handful of fixtures: each is resolved once per runway
+		std::map<std::string, std::pair<std::string, fs::path>, std::less<>> fixtures;	// Name -> library path, file
 		const auto place = [&](const std::string &fixture, const double s, const double lateral, const double objectHeading, const float y)
 		{
-			const std::string path = "lib/airport/lights/slow/" + fixture + ".obj";
-			const fs::path file = ResolveFile(path);
-			if (file.empty())
+			auto [it, added] = fixtures.try_emplace(fixture);
+			if (added)
 			{
-				Warn(out, "Runway light fixture not found: " + path);
-				return;
+				it->second.first = "lib/airport/lights/slow/" + fixture + ".obj";
+				it->second.second = ResolveFile(it->second.first);
+				if (it->second.second.empty())
+					Warn(out, "Runway light fixture not found: " + it->second.first);
 			}
+			const auto &[path, file] = it->second;
+			if (file.empty())
+				return;
 			OverlayObject object;
 			object.source = OverlayObject::Source::AirportLights;
 			object.file = file;
@@ -3199,6 +3205,8 @@ namespace SceneryEditorX::XPlane
 				markings.tangentZ = mesh.tangentZ;
 				AppendRunwayMarkings(markings, runway, m_Projection, runwayHeight + RUNWAY_MARKINGS_LIFT);
 			}
+			// A runway's meshes stay in this order, surface first and then the layers over it (markings, rubber): the
+			// airport scene takes a runway's first mesh as its surface (SceneAirports' runway parts)
 			out.meshes.push_back(std::move(mesh));
 			if (!markings.indices.empty())
 				out.meshes.push_back(std::move(markings));

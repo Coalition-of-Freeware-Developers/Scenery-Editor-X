@@ -825,14 +825,20 @@ namespace SceneryEditorX::XPlane
 				Part &part = start_part(AirportElementKind::Runway, static_cast<uint32_t>(i), "Runway " + runway.GetName(), SurfacePaint(runway.surface, true));
 				if (const auto *meshes = texturedMeshes(OverlayKind::Runway, static_cast<uint32_t>(i)))
 				{
-					// The surface first; painted markings and tire rubber over it, each a part (and a blended material) of its own
+					// The surface first (BuildAirportSurfaces pushes a runway's surface mesh before the layers over it); painted
+					// markings and tire rubber over it, each a part (and a blended material) of its own. Part ids stay unique and
+					// stable: 0 the surface, 1 the blast pads, 2 the markings, 3 and up the other layers in their order
 					ApplyOverlayMaterial(part, *meshes->front());
 					AppendOverlayMesh(part, *meshes->front());
+					bool markingsPlaced = false;
+					uint32_t nextLayer = 3;
 					for (size_t m = 1; m < meshes->size(); ++m)
 					{
 						const OverlayMesh *mesh = (*meshes)[m];
-						Part &layer = start_part(AirportElementKind::Runway, static_cast<uint32_t>(i), mesh->name, mesh->shading == OverlayShading::Markings ? Paint::WhiteLine : Paint::RunwayAsphalt);
-						layer.subIndex = mesh->shading == OverlayShading::Markings ? 2 : 3;
+						const bool markings = mesh->shading == OverlayShading::Markings;
+						Part &layer = start_part(AirportElementKind::Runway, static_cast<uint32_t>(i), mesh->name, markings ? Paint::WhiteLine : Paint::RunwayAsphalt);
+						layer.subIndex = markings && !markingsPlaced ? 2 : nextLayer++;
+						markingsPlaced = markingsPlaced || markings;
 						ApplyOverlayMaterial(layer, *mesh);
 						AppendOverlayMesh(layer, *mesh);
 					}

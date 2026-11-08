@@ -1849,16 +1849,23 @@ TEST_CASE("Overlay builder adds X-Plane's runway lights and tire rubber", "[over
 
 	// Rubber: 40% of the 900 m landing length = 360 m = 12 tiles from each threshold, 60% of the width = 27 m in 4 strips
 	const OverlayMesh *rubber = nullptr;
+	const OverlayMesh *firstRunwayMesh = nullptr;
 	size_t runwayMeshes = 0;
 	for (const OverlayMesh &mesh : out.meshes)
 	{
 		if (mesh.kind != OverlayKind::Runway)
 			continue;
 		++runwayMeshes;
+		if (!firstRunwayMesh)
+			firstRunwayMesh = &mesh;
 		if (mesh.name.ends_with("rubber"))
 			rubber = &mesh;
 	}
 	CHECK(runwayMeshes == 2);
+	// The surface comes before the layers over it: the airport scene takes a runway's first mesh as its surface
+	REQUIRE(firstRunwayMesh);
+	CHECK(firstRunwayMesh->name == "Runway 36/18");
+	CHECK(firstRunwayMesh->shading != OverlayShading::Markings);
 	REQUIRE(rubber);
 	CHECK(rubber->name == "Runway 36/18 rubber");
 	CHECK(rubber->texture.filename() == "RWY_skids_1.png");
