@@ -1957,6 +1957,88 @@ TEST_CASE("Overlay builder adds X-Plane's runway lights and tire rubber", "[over
 		CHECK_FALSE(mesh.name.ends_with("rubber"));
 }
 
+TEST_CASE("Overlay builder puts each airport surface's own mesh first", "[overlay]")
+{
+	// The airport scene takes the first mesh of each runway, pavement and helipad as its surface (its material, and a
+	// runway's part 0); the layers over a runway follow it, markings and then rubber
+	TempDir temp;
+	const fs::path runwayPol = temp.Write("lib/rwy_concrete.pol",
+		"A\n850\nDRAPED_POLYGON\n\nTEXTURE runway.png\nSCALE 22 44\nLAYER_GROUP runways 0\nRUNWAY_MARKINGS 1 0.9 0.8 0.5 RWY_markings.png\n");
+	const fs::path groundPol = temp.Write("lib/ground_concrete.pol", "A\n850\nDRAPED_POLYGON\n\nTEXTURE ground.png\nSCALE 10 10\n");
+	const fs::path rubberPol = temp.Write("lib/rwy_skids_1.pol",
+		"A\n850\nDRAPED_POLYGON\n\nLAYER_GROUP markings +5\nTEXTURE RWY_skids_1.png\nSCALE 30 30\n");
+	const AssetResolver resolver = [&](const std::string_view path) -> fs::path
+	{
+		if (path == "lib/airport/default_runways/concrete/runway.pol")
+			return runwayPol;
+		if (path == "lib/airport/default_runways/rubber.pol")
+			return rubberPol;
+		if (path.starts_with("lib/airport/default_runways/concrete/") || path == "lib/airport/ground/pavement/concrete/new.pol")
+			return groundPol;	// Taxiway and helipad art
+		return {};
+	};
+
+	// Two parallel 3000 m marked runways: the build interleaves their meshes with each other's, not within a runway
+	const GeoProjection projection(47.45, -122.3);
+	AptAirport airport;
+	airport.id = "TEST";
+	airport.runways.push_back(MakeMarkedRunway(projection, 3, 3));
+	AptRunway parallel = MakeMarkedRunway(projection, 1, 1);
+	projection.ToGeo(Point2{ 300.0, 1500.0 }, parallel.ends[0].latitude, parallel.ends[0].longitude);
+	projection.ToGeo(Point2{ 300.0, -1500.0 }, parallel.ends[1].latitude, parallel.ends[1].longitude);
+	parallel.ends[0].designator = "36R";
+	parallel.ends[1].designator = "18L";
+	airport.runways.push_back(parallel);
+
+	AptPavement pavement;
+	pavement.surface = 2;
+	AptNodeChain ring;
+	ring.closed = true;
+	for (const Point2 &corner : { Point2{ -300.0, -50.0 }, Point2{ -200.0, -50.0 }, Point2{ -200.0, 50.0 }, Point2{ -300.0, 50.0 } })
+	{
+		AptNode node;
+		projection.ToGeo(corner, node.latitude, node.longitude);
+		ring.nodes.push_back(node);
+	}
+	pavement.rings.push_back(ring);
+	airport.pavements.push_back(pavement);
+
+	AptHelipad helipad;
+	projection.ToGeo(Point2{ -100.0, 0.0 }, helipad.latitude, helipad.longitude);
+	airport.helipads.push_back(helipad);
+
+	OverlayBuilder builder(resolver, projection);
+	OverlayBuild out;
+	builder.BuildAirportSurfaces(airport, { 0.1f }, 0.2f, 0.3f, OverlayBuilder::Options{}, out);
+
+	// Grouped like the airport scene groups them: by kind and element, in build order
+	std::map<std::pair<OverlayKind, uint32_t>, std::vector<const OverlayMesh *>> byElement;
+	for (const OverlayMesh &mesh : out.meshes)
+		byElement[{ mesh.kind, mesh.placement }].push_back(&mesh);
+
+	for (uint32_t i = 0; i < airport.runways.size(); ++i)
+	{
+		const std::string name = "Runway " + airport.runways[i].GetName();
+		INFO(name);
+		const std::vector<const OverlayMesh *> &meshes = byElement[{ OverlayKind::Runway, i }];
+		REQUIRE(meshes.size() == 3);
+		CHECK(meshes[0]->name == name);
+		CHECK(meshes[0]->resource == "lib/airport/default_runways/concrete/runway.pol");
+		CHECK_FALSE(meshes[0]->blended);
+		CHECK(meshes[1]->name == name + " markings");
+		CHECK(meshes[1]->shading == OverlayShading::Markings);
+		CHECK(meshes[2]->name == name + " rubber");
+	}
+
+	// One mesh each: their first is their surface
+	const std::vector<const OverlayMesh *> &pavements = byElement[{ OverlayKind::Pavement, 0u }];
+	REQUIRE(pavements.size() == 1);
+	CHECK(pavements.front()->name == "Pavement 1");
+	const std::vector<const OverlayMesh *> &helipads = byElement[{ OverlayKind::Helipad, 0u }];
+	REQUIRE(helipads.size() == 1);
+	CHECK(helipads.front()->name == "Helipad H1");
+}
+
 TEST_CASE("Overlay builder prefers X-Plane 12's runway and taxiway art", "[overlay]")
 {
 	TempDir temp;

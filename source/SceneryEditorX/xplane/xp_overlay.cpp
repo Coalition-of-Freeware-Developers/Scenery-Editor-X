@@ -3223,7 +3223,8 @@ namespace SceneryEditorX::XPlane
 				AppendRunwayMarkings(markings, runway, m_Projection, runwayHeight + RUNWAY_MARKINGS_LIFT);
 			}
 			// A runway's meshes stay in this order, surface first and then the layers over it (markings, rubber): the
-			// airport scene takes a runway's first mesh as its surface (SceneAirports' runway parts)
+			// airport scene takes a runway's first mesh as its surface (SceneAirports' runway parts). OverlayTests pins it
+			// ("puts each airport surface's own mesh first")
 			out.meshes.push_back(std::move(mesh));
 			if (!markings.indices.empty())
 				out.meshes.push_back(std::move(markings));
