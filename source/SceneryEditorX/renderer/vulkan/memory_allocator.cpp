@@ -176,11 +176,10 @@ namespace SceneryEditorX
 		SEDX_CORE_TRACE_TAG("MemoryAllocator","Allocation {0}: destroyed", m_ObjectName);
 	}
 
-	void MemoryAllocator::Init(const Ref<Device> &device)
+	void MemoryAllocator::Init(const Device &device)
 	{
-		SEDX_CORE_ASSERT(device != nullptr, "Device cannot be null");
-		SEDX_CORE_ASSERT(device->GetLogicalDevice() != VK_NULL_HANDLE, "Logical device cannot be VK_NULL_HANDLE when initializing VMA allocator");
-		SEDX_CORE_ASSERT(device->GetPhysicalDevice() != VK_NULL_HANDLE, "Physical device cannot be VK_NULL_HANDLE when initializing VMA allocator");
+		SEDX_CORE_ASSERT(device.GetLogicalDevice() != VK_NULL_HANDLE, "Logical device cannot be VK_NULL_HANDLE when initializing VMA allocator");
+		SEDX_CORE_ASSERT(Device::GetPhysicalDevice() != VK_NULL_HANDLE, "Physical device cannot be VK_NULL_HANDLE when initializing VMA allocator");
 		s_AllocatorData = new Renderer_AllocatorData();
 
 		// Zero-initialize and provide the two root function pointers.
@@ -194,8 +193,8 @@ namespace SceneryEditorX
 		VmaAllocatorCreateInfo allocatorInfo = {};
 		allocatorInfo.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
 		allocatorInfo.vulkanApiVersion = VK_API_VERSION_1_3;
-		allocatorInfo.physicalDevice = device->GetPhysicalDevice();
-		allocatorInfo.device = device->GetLogicalDevice();
+		allocatorInfo.physicalDevice = Device::GetPhysicalDevice();
+		allocatorInfo.device = device.GetLogicalDevice();
 		allocatorInfo.instance = RenderContext::GetInstance();
 		allocatorInfo.pVulkanFunctions = &vkFunctions;
 		

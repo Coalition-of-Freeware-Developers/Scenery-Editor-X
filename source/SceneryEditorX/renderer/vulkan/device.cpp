@@ -961,11 +961,14 @@ namespace SceneryEditorX
 		// Initialize QueueManager after device is created
 		QueueManager::QueueConfig config{};
 		config.cmdListsPerQueue = 4; // Default value, adjust as needed
+		// The QueueManager keeps the Ref it makes from `this` (until Destroy()), so the count is 1 here and the device
+		// under construction survives. A temporary Ref made from `this` would take it back to 0 and delete the device
+		// (see Ref(T*) in pointers.h).
 		m_QueueManager = CreateRef<QueueManager>(this, config);
 		SEDX_CORE_ASSERT(m_QueueManager, "Failed to create QueueManager");
 
 		// Initialize memory allocator
-		MemoryAllocator::Init(this);
+		MemoryAllocator::Init(*this);
 		SEDX_CORE_TRACE_TAG("Device", "Device initialization complete");
 	}
 

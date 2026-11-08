@@ -18,3 +18,11 @@ descriptions and the git history. Versions are `SEDX_VERSION_STRING` in `source/
   pointed to) now expires. Before, the object's control block stayed registered under its old address, and the next
   object there inherited it: that object's new WeakRefs were expired at once, or the old ones locked it. Both cases are
   misuse; `~RefCounted()` now cleans up after them. (#67, 0.2.64.565)
+
+### Changed
+
+- `MemoryAllocator::Init` takes `const Device&` instead of `const Ref<Device>&`. `Device`'s constructor called it with
+  `this`, which made a temporary `Ref` that was only safe because the `QueueManager` already held one. (#68, 0.2.64.565)
+- Documented on `Ref(T*)` and `WeakRef`: a temporary `Ref` made from `this` in a constructor or destructor deletes the
+  object unless another `Ref` to it is kept, and an object whose reference count is 0 counts as destroyed, like with
+  `std::weak_ptr`. (#68)
