@@ -1,0 +1,171 @@
+# Indent with spaces only: a tab anywhere in this file makes GitHub reject the whole form.
+name: Performance Problem
+description: Low frame rate, stutter, slow loading or saving, or high memory use.
+title: "[PERF] "
+labels: ["PERFORMANCE"]
+assignees: [The3dVehicleguy]
+projects: ["Coalition-of-Freeware-Developers/2"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Numbers make performance problems fixable. Before reporting:
+
+        1. Start the editor with `--perf-log` (it writes frame timings to the log every two seconds) and reproduce the problem.
+        2. Open the RENDERER panel and look at **FRAME** and **GPU TIMINGS**: a screenshot of both shows where the time goes.
+        3. Say where the camera was. `--xp-airport <ID> --xp-airport-camera x,y,z,yaw,pitch --lock-camera` repeats a view exactly.
+
+  - type: input
+    id: version
+    attributes:
+      label: Scenery Editor X version
+      description: From **Help › About Scenery Editor X**.
+      placeholder: "0.2.63.564"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: build
+    attributes:
+      label: How did you get this build?
+      description: Debug builds from source are several times slower than Release builds. Compare Release builds only.
+      options:
+        - "Installer (tester / alpha build)"
+        - "Built from source: Release"
+        - "Built from source: Debug or FastDebug"
+        - "Other"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What is slow?
+      options:
+        - "Low frame rate or stutter in the viewport"
+        - "Slow startup"
+        - "Slow airport or project loading"
+        - "Slow saving or exporting"
+        - "The editor freezes during an action"
+        - "High memory use or out of memory"
+        - "Other"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - "Viewport: camera, selection, gizmo, node editing"
+        - "Rendering: X-Plane 12 emulation, lighting, shadows, sky, water, weather"
+        - "Editor UI: panels, menus, dialogs, docking, shortcuts"
+        - "Airports: apt.dat, AIRPORTS panel, runways, taxiways, signs, airport lights"
+        - "Projects: .edX / .sex files, saving, recovery, WorldEditor import / export"
+        - "Scenery export: scenery packs, DSF, apt.dat, scenery_packs.ini"
+        - "X-Plane library & assets: library scan, objects, forests, autogen, thumbnails"
+        - "Facades: facade tool, FACADE EDITOR, .fac files"
+        - "Roads, base terrain & water"
+        - "Scenery Gateway: download, validation, upload"
+        - "Startup, settings & file locations: Vulkan check, preferences, logs, caches"
+        - "Core engine: memory, threading, logging, smart pointers, math"
+        - "Build system, CI, tests, installer"
+        - "Documentation & user manual"
+        - "Not sure"
+    validations:
+      required: true
+
+  - type: input
+    id: scenery
+    attributes:
+      label: Airport, project or asset
+      description: Where it's slow. Developers measure the test airports (KGON, KDEN, KORD, KBOS, KBTV, EIDW, LEBL, EGLL, LSZH, OMDB, RCTP, RJTT, YSSY, SBGR, CYYZ), so numbers from one of them are the easiest to compare.
+      placeholder: "KORD (X-Plane default)"
+    validations:
+      required: true
+
+  - type: textarea
+    id: measurements
+    attributes:
+      label: Measurements
+      description: What you measured. Frame time from the status bar, load time from the log, memory from Task Manager.
+      placeholder: |
+        Frame time: 45 ms (22 fps) looking at the terminal from 300 m.
+        Loading KORD took about 95 s, from clicking Open until objects stopped appearing.
+        Memory: 14 GB after loading.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+      description: Your comparison, such as an earlier version, X-Plane 12 at the same spot, or another airport.
+      placeholder: 0.2.56.557 gave 12 ms at the same view. X-Plane 12 runs at 60 fps there.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: regression
+    attributes:
+      label: Did this work in an earlier version?
+      options:
+        - "Yes: it worked in an earlier version"
+        - "No: it never worked"
+        - "Don't know"
+
+  - type: textarea
+    id: perf_log
+    attributes:
+      label: Performance log
+      description: The lines the editor wrote with `--perf-log` while the problem happened (or attach the whole log).
+      render: text
+
+  - type: textarea
+    id: attachments
+    attributes:
+      label: Screenshots
+      description: The RENDERER panel's FRAME and GPU TIMINGS sections, and the view itself.
+
+  - type: textarea
+    id: settings
+    attributes:
+      label: Renderer settings and window size
+      description: RENDERER › QUALITY levels, XP12 EMULATION switches you changed, whether VIEWPORT 2 was open, the monitor resolution and the viewport size.
+      placeholder: "Defaults; VIEWPORT 2 closed; 3840x2160 monitor, viewport about 2600x1500"
+
+  - type: input
+    id: gpu
+    attributes:
+      label: Graphics card and driver
+      placeholder: "NVIDIA GeForce RTX 3060 12 GB, driver 581.57"
+    validations:
+      required: true
+
+  - type: input
+    id: hardware
+    attributes:
+      label: CPU, memory and disk
+      placeholder: "Ryzen 7 5800X, 32 GB, X-Plane on an NVMe SSD"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      multiple: true
+      options:
+        - "Windows 11"
+        - "Windows 10"
+        - "Linux"
+        - "macOS"
+        - "Other"
+    validations:
+      required: true
+
+  - type: textarea
+    id: developer_notes
+    attributes:
+      label: Notes for developers (optional)
+      description: The pass or job you suspect, what changed with `--no-gpu-scene`, `--no-gpu-occlusion`, `--no-texture-compression` or `--no-<feature>`, or a profiler capture.

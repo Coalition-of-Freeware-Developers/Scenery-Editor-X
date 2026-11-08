@@ -1,0 +1,143 @@
+# Indent with spaces only: a tab anywhere in this file makes GitHub reject the whole form.
+name: X-Plane 12 Visual Difference
+description: The viewport looks different from X-Plane 12 at the same place, time and weather.
+title: "[XP12] "
+labels: ["XP12 PARITY"]
+assignees: [The3dVehicleguy]
+projects: ["Coalition-of-Freeware-Developers/2"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The viewport emulates X-Plane 12's renderer, so a difference you can see side by side is a bug.
+        Two screenshots of the **same view** at the **same date, time and weather** let a developer reproduce it exactly.
+
+        To line up the view, start the editor with the airport, the camera and the environment on the command line, for example:
+        ```bat
+        SceneryEditorX.exe --xp-airport KBTV --xp-airport-camera 0,60,-400,0,-10 --env-date 2026-06-15 --env-time 18:30 --lock-camera
+        ```
+        `--reference-image xplane.png --reference-view split` puts the X-Plane screenshot over the viewport to compare. The manual's [Command-line options](https://github.com/The3dVehicleguy/Scenery-Editor-X/blob/master/docs/manual/chapters/command-line.md) list every `--env-*` setting.
+
+  - type: input
+    id: version
+    attributes:
+      label: Scenery Editor X version
+      description: From **Help › About Scenery Editor X**.
+      placeholder: "0.2.63.564"
+    validations:
+      required: true
+
+  - type: input
+    id: xplane
+    attributes:
+      label: X-Plane version
+      placeholder: "X-Plane 12.4.4"
+    validations:
+      required: true
+
+  - type: input
+    id: scenery
+    attributes:
+      label: Airport and scenery pack
+      description: The airport ID, and the custom scenery pack if it isn't X-Plane's default airport.
+      placeholder: "KBTV (X-Plane default)"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: difference
+    attributes:
+      label: What looks different?
+      multiple: true
+      options:
+        - "Overall brightness or exposure"
+        - "Sky / atmosphere / fog / haze"
+        - "Sun / shadows"
+        - "Ambient occlusion"
+        - "Reflections"
+        - "Water / shorelines"
+        - "Terrain / seasons"
+        - "Night lighting / airport lights"
+        - "Rain / snow / wet surfaces"
+        - "Materials / textures / normal maps"
+        - "Pavement / markings / decals"
+        - "Object / facade / forest shape or placement"
+        - "Missing objects or art"
+        - "Other"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the difference
+      description: What X-Plane 12 shows, what Scenery Editor X shows, and where to look in the picture.
+      placeholder: The taxiway shadows from the terminal are much softer in the editor, and the sky near the horizon is bluer than X-Plane's haze.
+    validations:
+      required: true
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots
+      description: Drag in one screenshot from Scenery Editor X and one from X-Plane 12 of the same view. Turn off X-Plane's HUD and cockpit if you can.
+      placeholder: |
+        Scenery Editor X:
+
+        X-Plane 12:
+    validations:
+      required: true
+
+  - type: textarea
+    id: view
+    attributes:
+      label: How to get the same view
+      description: |
+        The command line that opens this view, or the camera and environment you used.
+        An `--env-scenario` file from `tools/xp12_reference_probe` is best; otherwise give the date, local time, visibility, rain and season.
+      render: shell
+      placeholder: SceneryEditorX.exe --xp-airport KBTV --xp-airport-camera 0,60,-400,0,-10 --env-date 2026-06-15 --env-time 18:30 --lock-camera
+    validations:
+      required: true
+
+  - type: textarea
+    id: xplane_settings
+    attributes:
+      label: X-Plane graphics settings
+      description: Rendering quality, shadow quality, ambient occlusion, visual effects, and any plugins or shader mods that change the look (for example a weather or lighting add-on).
+      placeholder: "Max settings, Screen-space ambient occlusion on, no shader mods"
+
+  - type: textarea
+    id: editor_settings
+    attributes:
+      label: Editor renderer settings
+      description: Anything you changed in RENDERER › QUALITY, XP12 EMULATION or the ENVIRONMENT panel, or `--no-<feature>` / `--with-<feature>` options.
+      placeholder: "Defaults, except Shadows: High"
+
+  - type: input
+    id: gpu
+    attributes:
+      label: Graphics card and driver
+      placeholder: "AMD Radeon RX 7900 XT, driver 25.10.2"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      multiple: true
+      options:
+        - "Windows 11"
+        - "Windows 10"
+        - "Linux"
+        - "macOS"
+        - "Other"
+    validations:
+      required: true
+
+  - type: textarea
+    id: developer_notes
+    attributes:
+      label: Notes for developers (optional)
+      description: Which pass you suspect (RENDERER debug views, GPU TIMINGS), what changed when you turned a feature off, related issues, or X-Plane datarefs / settings you compared.

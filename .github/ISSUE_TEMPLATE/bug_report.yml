@@ -1,84 +1,212 @@
-name: Bug Report - Scenery Editor X
-description: Generalized bug report template for Scenery Editor X.
-title: "[BUG] <short task title>"
+# Indent with spaces only: a tab anywhere in this file makes GitHub reject the whole form.
+# .github/scripts/validate_github_forms.py checks this on every pull request (validate-github-forms.yml).
+name: Bug Report
+description: Something in Scenery Editor X doesn't work the way it should.
+title: "[BUG] "
 labels: ["BUG"]
 assignees: [The3dVehicleguy]
+projects: ["Coalition-of-Freeware-Developers/2"]
 body:
   - type: markdown
     attributes:
       value: |
-        # Scenery Editor X – Bug Report
-        Describe the bug clearly and concisely. Include steps to reproduce (if you can), expected behavior, and actual behavior.
+        Thanks for taking the time to report a problem. A report a developer (or an AI agent) can reproduce gets fixed fastest.
 
-        > Tips:
-        > * Reference other tasks with `#ID` or external issues via full URL.
-        > * Keep acceptance criteria testable.
-        > * Use the dynamic **Task Checklist (Markdown)** section for arbitrary length lists.
+        **Use a more specific form if one fits:** *Crash or Freeze*, *X-Plane 12 Visual Difference*, *Performance Problem* or *Scenery Output / File Format Problem*.
+
+        The [Troubleshooting](https://github.com/The3dVehicleguy/Scenery-Editor-X/blob/master/docs/manual/chapters/troubleshooting.md) chapter of the manual answers the most common problems.
+
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Before you report
+      options:
+        - label: I searched the [existing issues](https://github.com/The3dVehicleguy/Scenery-Editor-X/issues?q=is%3Aissue) and this hasn't been reported yet.
+          required: true
+        - label: I'm using the newest build I have access to, or I say below which one I'm on and why.
 
   - type: input
-    id: task
+    id: version
     attributes:
-      label: Bug Title
-      description: Short imperative summary.
-      placeholder: "Crash when opening large scene"
+      label: Scenery Editor X version
+      description: From **Help › About Scenery Editor X**, the window title, or the `Version:` line near the top of the log.
+      placeholder: "0.2.63.564"
     validations:
       required: true
 
   - type: dropdown
-    id: component
+    id: build
     attributes:
-      label: Component / Area
-      description: Affected subsystem.
+      label: How did you get this build?
       options:
-        - Math Library
-        - Renderer
-        - Assets
-        - UI
-        - Core / Application
-        - Build / Tooling
-        - Documentation
-        - Other
+        - "Installer (tester / alpha build)"
+        - "Built from source"
+        - "Other"
+    validations:
+      required: true
+
+  - type: input
+    id: commit
+    attributes:
+      label: Branch and commit (source builds)
+      description: "Built from source? Paste the output of `git rev-parse --abbrev-ref HEAD` and `git rev-parse --short HEAD`, plus the CMake preset and configuration."
+      placeholder: "dev @ 2ac32933, windows-msvc-vs2026, Debug"
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Where in the editor the problem shows up. Pick "Not sure" if you can't tell.
+      options:
+        - "Viewport: camera, selection, gizmo, node editing"
+        - "Rendering: X-Plane 12 emulation, lighting, shadows, sky, water, weather"
+        - "Editor UI: panels, menus, dialogs, docking, shortcuts"
+        - "Airports: apt.dat, AIRPORTS panel, runways, taxiways, signs, airport lights"
+        - "Projects: .edX / .sex files, saving, recovery, WorldEditor import / export"
+        - "Scenery export: scenery packs, DSF, apt.dat, scenery_packs.ini"
+        - "X-Plane library & assets: library scan, objects, forests, autogen, thumbnails"
+        - "Facades: facade tool, FACADE EDITOR, .fac files"
+        - "Roads, base terrain & water"
+        - "Scenery Gateway: download, validation, upload"
+        - "Startup, settings & file locations: Vulkan check, preferences, logs, caches"
+        - "Core engine: memory, threading, logging, smart pointers, math"
+        - "Build system, CI, tests, installer"
+        - "Documentation & user manual"
+        - "Not sure"
     validations:
       required: true
 
   - type: textarea
-    id: description
+    id: actual
     attributes:
-      label: Description
-      description: Describe the bug in detail. Include screenshots/log excerpts if helpful.
+      label: What happened
+      description: What you saw. Quote error messages exactly.
+      placeholder: Changing a dataref on one jetbridge in PROPERTIES moves every jetbridge in the scene.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+      placeholder: Only the selected jetbridge moves.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Start from opening the editor. Name the panels, menus and keys you used.
       placeholder: |
-        - What steps reproduce the bug?
-		- What is the expected behavior?
-		- What is the actual behavior?
-		- Is there already a known issue for this?
-		- Has this happened before?
+        1. Open KBOS from the AIRPORTS panel (Installed tab).
+        2. Click one of the jetbridges at Terminal A.
+        3. In PROPERTIES › Animation, change one of the dataref values.
+        4. Every jetbridge in the scene moves, not only the selected one.
     validations:
       required: true
 
-  - type: textarea
-    id: dependencies
+  - type: dropdown
+    id: reproducibility
     attributes:
-      label: Dependencies / Blockers
-      description: Link issues, PRs, or external tasks that must be completed first.
-      placeholder: "Depends on #456 for base quaternion implementation."
+      label: How often does it happen?
+      options:
+        - "Every time"
+        - "Sometimes"
+        - "Happened once"
+        - "Haven't tried again"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: impact
+    attributes:
+      label: Impact
+      options:
+        - "Blocks my work: no workaround"
+        - "Data loss: a project or scenery file was lost or damaged"
+        - "Wrong result: the editor or exported scenery shows the wrong thing"
+        - "Annoying: there is a workaround"
+        - "Cosmetic"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: regression
+    attributes:
+      label: Did this work in an earlier version?
+      options:
+        - "Yes: it worked in an earlier version"
+        - "No: it never worked"
+        - "Don't know"
+
+  - type: input
+    id: last_good
+    attributes:
+      label: Last version that worked
+      description: Only if it worked before.
+      placeholder: "0.2.56.557"
+
+  - type: input
+    id: scenery
+    attributes:
+      label: Airport, project or asset
+      description: The airport ID and scenery pack, the project file, or the library path of the asset involved.
+      placeholder: "KBOS from Zero Dollar Payware's Boston Logan pack; lib/airport/Common_Elements/Jetways/Jetway_1.obj"
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      multiple: true
+      options:
+        - "Windows 11"
+        - "Windows 10"
+        - "Linux"
+        - "macOS"
+        - "Other"
+    validations:
+      required: true
+
+  - type: input
+    id: gpu
+    attributes:
+      label: Graphics card and driver
+      placeholder: "NVIDIA GeForce RTX 4080, driver 581.57"
+
+  - type: input
+    id: xplane
+    attributes:
+      label: X-Plane version
+      description: The X-Plane install the editor uses (the X-PLANE LIBRARY install bar shows it).
+      placeholder: "X-Plane 12.4.4 (Steam)"
+
+  - type: input
+    id: command_line
+    attributes:
+      label: Command line
+      description: "Only if you started the editor with options. See the manual's [Command-line options](https://github.com/The3dVehicleguy/Scenery-Editor-X/blob/master/docs/manual/chapters/command-line.md); `--xp-airport`, `--xp-airport-camera` and the `--env-*` options make a report easy to replay."
+      placeholder: "SceneryEditorX.exe --xp-airport KBOS --xp-airport-camera 120,40,-300,45,-15"
 
   - type: textarea
-    id: notes
+    id: log
     attributes:
-      label: Additional Notes
-      description: Miscellaneous context, references, benchmarks, or design links.
+      label: Log
+      description: |
+        The CONSOLE panel's messages around the problem, or the matching part of the log file:
+        Windows `%APPDATA%\SceneryEditorX\logs\SceneryEditorX.log`, Linux `~/.config/SceneryEditorX/logs`, macOS `~/Library/Application Support/SceneryEditorX/logs`.
+        When several editors were open, each wrote its own `SceneryEditorX_<n>.log`. Attach the whole file if it's long.
+      render: text
 
-  - type: markdown
+  - type: textarea
+    id: attachments
     attributes:
-      value: |
-        ---
-        **Submission Checklist (author)**
-        - Ensure all mandatory fields are filled.
-        - Provide actionable acceptance criteria.
-        - Include links to related issues/PRs.
-		- Provide at least a baseline reproduction scenario or detailed description of the bug.
+      label: Screenshots and files
+      description: Drag images, videos, or zipped projects and scenery packs here. GitHub doesn't accept `.edX`, `.sex` or `.dsf` attachments directly, so zip them first.
 
-        **After Creation**
-        - Refine checklist items as work clarifies.
-        - Link PRs in the issue description (they auto-link back).
-        - Keep the checklist updated to reflect progress.
+  - type: textarea
+    id: developer_notes
+    attributes:
+      label: Notes for developers (optional)
+      description: Anything that narrows it down, such as a suspected cause, the code involved, related issues or pull requests, or what you already ruled out.
+      placeholder: "Every placement of the same .obj seems to share one set of dataref values. Only objects with animations are affected; static ones are fine."
