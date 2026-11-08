@@ -1953,17 +1953,11 @@ SceneryEditorX/
 ├── resources/                       # Runtime resources
 ├── scripts/                         # Build and utility scripts
 └── source/                          # Main source code
-	├── CrashHandler/              	 # Crash handling and minidump generation
 	├── Editor/              	 	 # The actual runtime editor application
 	│   ├── core/ 			 		 # Core editor systems (UI, input, etc.)
 	│   ├── modules/ 			 	 # Editor modules
-	│   ├── projects/ 			 	 # Code for project management and scene handling
 	│   ├── settings/ 			 	 # Editor settings management
 	│   └── ui/ 			 	 	 # Editor user interface
-	├── Launcher/              	 	 # Scenery Editor X Launcher application
-	│   ├── core/ 			 		 # Core systems
-	│   ├── registry/ 			 	 # Registry key management and utilities
-	│   └── ui/ 			 	 	 # User interface
 	├── SceneryEditorX/              # Core engine/application code
 	│   ├── asset/                   # Asset management code
 	│   ├── core/                    # Core systems (modules, memory, etc.)

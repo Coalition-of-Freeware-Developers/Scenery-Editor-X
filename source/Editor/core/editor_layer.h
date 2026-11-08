@@ -41,7 +41,6 @@
 #include <SceneryEditorX/core/layers/layer.h>
 #include <SceneryEditorX/renderer/ui/panel_manager.h>
 #include <SceneryEditorX/renderer/ui/ui_renderer.h>
-#include <SceneryEditorX/renderer/ui/ui_widget.h>
 #include <SceneryEditorX/scene/camera.h>
 #include <SceneryEditorX/scene/scene.h>
 #include <SceneryEditorX/environment/environment_state.h>

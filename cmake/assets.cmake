@@ -27,12 +27,6 @@ SET(FONT_FILES
     ${FONT_DIR}/opensans/OpenSans-SemiBoldItalic.ttf
 )
 
-SET(REGISTRY_KEYS
-    ${CMAKE_SOURCE_DIR}/source/Launcher/Registry/edXLibReg.rgs
-    ${CMAKE_SOURCE_DIR}/source/Launcher/Registry/edXReg.rgs
-    ${CMAKE_SOURCE_DIR}/source/Launcher/Registry/ProgramReg.rgs
-)
-
 SET(ICON_FILES
     ${ASSET_DIR}/icon.ico
     ${ASSET_DIR}/icon.png

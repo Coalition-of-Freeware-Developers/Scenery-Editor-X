@@ -353,50 +353,6 @@ namespace SceneryEditorX
 
 	void Input::Tick()
 	{
-		/*
-		// Cleanup disconnected controller
-		for (auto it = s_Controllers.begin(); it != s_Controllers.end(); )
-		{
-			int id = it->first;
-			if (glfwJoystickPresent(id) != GLFW_TRUE)
-				it = s_Controllers.erase(it);
-			else
-				it++;
-		}
-
-		// Tick controllers
-		for (int id = GLFW_JOYSTICK_1; id < GLFW_JOYSTICK_LAST; id++)
-		{
-			if (glfwJoystickPresent(id) == GLFW_TRUE)
-			{
-				Controller& controller = s_Controllers[id];
-				controller.ID = id;
-				controller.Name = glfwGetJoystickName(id);
-
-				int buttonCount;
-				const unsigned char* buttons = glfwGetJoystickButtons(id, &buttonCount);
-				for (int i = 0; i < buttonCount; i++)
-				{
-					if(buttons[i] == GLFW_PRESS && !controller.ButtonDown[i])
-						controller.ButtonStates[i].State = KeyState::Pressed;
-					else if(buttons[i] == GLFW_RELEASE && controller.ButtonDown[i])
-						controller.ButtonStates[i].State = KeyState::Released;
-
-					controller.ButtonDown[i] = buttons[i] == GLFW_PRESS;
-				}
-
-				int axisCount;
-				const float* axes = glfwGetJoystickAxes(id, &axisCount);
-				for (int i = 0; i < axisCount; i++)
-					controller.AxisStates[i] = abs(axes[i]) > controller.DeadZones[i] ? axes[i] : 0.0f;
-
-				int hatCount;
-				const unsigned char* hats = glfwGetJoystickHats(id, &hatCount);
-				for (int i = 0; i < hatCount; i++)
-					controller.HatStates[i] = hats[i];
-			}
-		}
-		*/
 	}
 
 	void Input::OnKeyEvent(const SDL_KeyboardEvent &event)

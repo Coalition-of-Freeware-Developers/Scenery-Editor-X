@@ -1,6 +1,6 @@
 # Grouping into solution folders (only if targets exist)
 FUNCTION(SEDX_GROUP_TARGETS)
-	FOREACH(T IN ITEMS CrashHandler TracyClient)
+	FOREACH(T IN ITEMS TracyClient)
 		IF(TARGET ${T})
 			SET_PROPERTY(TARGET ${T} PROPERTY FOLDER "Tools")
 		ENDIF()
@@ -56,7 +56,7 @@ ENDFUNCTION()
 SET(SEDX_OUTPUT_TARGETS
 
 	# Main project targets
-	Launcher SceneryEditorX AppCore CrashHandler edX XPSceneryLib
+	SceneryEditorX AppCore edX XPSceneryLib
 
 	# Project Tests
 	MathTests MemoryAllocatorTests ConversionTests RefTests SettingsTest EdxTests EdxDemoGenerator

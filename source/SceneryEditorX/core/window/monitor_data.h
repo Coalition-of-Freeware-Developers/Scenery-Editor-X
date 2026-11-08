@@ -203,12 +203,6 @@ namespace SceneryEditorX
 		int monitorIndex;   // Index of the currently selected monitor
 		int videoModeIndex; // Index of the currently selected video mode for the current monitor
 	
-		/**
-		 * @brief Reserved for future API expansion - currently a no-op
-		 * @deprecated This method is reserved for future event-driven monitor updates
-		 * @note Use RefreshMonitorList() for full monitor enumeration
-		 */
-		void UpdateMonitorList();
 	};
 
 }
