@@ -1,0 +1,80 @@
+{
+	"$comment": "Read by .github/scripts/issue_triage.js (issue-triage.yml). 'fields' maps an issue form's answer to labels: the key is the field's label (the '### Heading' GitHub writes into the issue), then each dropdown option to the labels it adds (an empty list adds none). validate_github_forms.py fails when a template's dropdown with one of these labels has an option missing here. 'checks' are the details the triage comment asks the reporter for ('ask') when an issue carrying one of 'labels' leaves them out of 'field'. Rules: 'nonempty'; 'pattern' (a JavaScript regular expression the answer must contain); 'attachment' (at least 'min' images or videos, default 1).",
+	"newIssues": {
+		"$comment": "Every new issue is assigned to 'assignees' (issue-triage.yml, when no one is assigned yet) and added to 'project' (add-to-project.yml). The issue forms also list both, under assignees: and projects:.",
+		"assignees": ["The3dVehicleguy"],
+		"project": "https://github.com/orgs/Coalition-of-Freeware-Developers/projects/2"
+	},
+	"fields": {
+		"Area": {
+			"Viewport: camera, selection, gizmo, node editing": ["Viewport"],
+			"Rendering: X-Plane 12 emulation, lighting, shadows, sky, water, weather": ["GRAPHICS ENGINE"],
+			"Editor UI: panels, menus, dialogs, docking, shortcuts": ["UI"],
+			"Airports: apt.dat, AIRPORTS panel, runways, taxiways, signs, airport lights": ["AIRPORTS"],
+			"Projects: .edX / .sex files, saving, recovery, WorldEditor import / export": ["PROJECTS"],
+			"Scenery export: scenery packs, DSF, apt.dat, scenery_packs.ini": ["SCENERY EXPORT"],
+			"X-Plane library & assets: library scan, objects, forests, autogen, thumbnails": ["X-PLANE ASSETS"],
+			"Facades: facade tool, FACADE EDITOR, .fac files": ["X-PLANE ASSETS"],
+			"Roads, base terrain & water": ["TERRAIN"],
+			"Scenery Gateway: download, validation, upload": ["GATEWAY"],
+			"Startup, settings & file locations: Vulkan check, preferences, logs, caches": ["CORE"],
+			"Core engine: memory, threading, logging, smart pointers, math": ["CORE"],
+			"Build system, CI, tests, installer": ["BUILD"],
+			"Documentation & user manual": ["DOCUMENTATION"],
+			"Not sure": []
+		},
+		"Platform": {
+			"Windows 11": ["WINDOWS"],
+			"Windows 10": ["WINDOWS"],
+			"Linux": ["LINUX"],
+			"macOS": ["MACOS"],
+			"Other": []
+		},
+		"Impact": {
+			"Blocks my work: no workaround": [],
+			"Data loss: a project or scenery file was lost or damaged": ["DATA LOSS"],
+			"Wrong result: the editor or exported scenery shows the wrong thing": [],
+			"Annoying: there is a workaround": [],
+			"Cosmetic": []
+		},
+		"Did this work in an earlier version?": {
+			"Yes: it worked in an earlier version": ["REGRESSION"],
+			"No: it never worked": [],
+			"Don't know": []
+		}
+	},
+	"checks": [
+		{
+			"labels": ["BUG", "CRASH", "PERFORMANCE", "XP12 PARITY", "FILE FORMAT"],
+			"field": "Scenery Editor X version",
+			"rule": "pattern",
+			"pattern": "\\b\\d+\\.\\d+\\.\\d+\\.\\d+\\b",
+			"ask": "the exact editor version from **Help › About Scenery Editor X** (four numbers, for example `0.2.63.564`)"
+		},
+		{
+			"labels": ["CRASH"],
+			"field": "Crash report from the log",
+			"rule": "nonempty",
+			"ask": "the end of the log file with the `[Crash]` lines (`%APPDATA%\\SceneryEditorX\\logs\\SceneryEditorX.log`)"
+		},
+		{
+			"labels": ["CRASH", "PERFORMANCE", "XP12 PARITY"],
+			"field": "Graphics card and driver",
+			"rule": "nonempty",
+			"ask": "your graphics card and driver version"
+		},
+		{
+			"labels": ["XP12 PARITY"],
+			"field": "Screenshots",
+			"rule": "attachment",
+			"min": 2,
+			"ask":"a screenshot from Scenery Editor X **and** one from X-Plane 12 of the same view"
+		},
+		{
+			"labels": ["FILE FORMAT"],
+			"field": "The file",
+			"rule": "nonempty",
+			"ask": "the file (zipped), a small sample that shows the problem, or the Scenery Gateway scenery ID"
+		}
+	]
+}

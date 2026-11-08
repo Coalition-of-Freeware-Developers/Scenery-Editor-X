@@ -1,0 +1,62 @@
+# Indent with spaces only: a tab anywhere in this file makes GitHub reject the whole form.
+name: Documentation Problem
+description: Something in the user manual or developer documentation is wrong, missing or unclear.
+title: "[DOCS] "
+labels: ["DOCUMENTATION"]
+assignees: [The3dVehicleguy]
+projects: ["Coalition-of-Freeware-Developers/2"]
+body:
+  - type: dropdown
+    id: doc_kind
+    attributes:
+      label: Which documentation?
+      options:
+        - "User manual (docs/manual)"
+        - "Developer documentation (docs/)"
+        - "README / build instructions / AGENTS.md"
+        - "Code comments or Doxygen"
+        - "Text in the editor (tooltips, messages, dialogs)"
+    validations:
+      required: true
+
+  - type: input
+    id: location
+    attributes:
+      label: Page or file
+      description: The chapter and heading, the file path, or a link.
+      placeholder: "docs/manual/chapters/troubleshooting.md, \"My exported airport doesn't show up in X-Plane\""
+    validations:
+      required: true
+
+  - type: dropdown
+    id: problem
+    attributes:
+      label: What's the problem?
+      options:
+        - "It's wrong or out of date"
+        - "Something is missing"
+        - "It's hard to understand"
+        - "Broken link or image"
+        - "Typo or grammar"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Details
+      description: What it says now, and what's wrong with it.
+    validations:
+      required: true
+
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggested text
+      description: Your wording, if you have one.
+
+  - type: input
+    id: version
+    attributes:
+      label: Scenery Editor X version (for out-of-date docs)
+      placeholder: "0.2.63.564"

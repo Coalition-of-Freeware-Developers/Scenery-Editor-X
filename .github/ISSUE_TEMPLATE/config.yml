@@ -1,0 +1,12 @@
+# The New issue page: the forms in this folder, then these links.
+blank_issues_enabled: true
+contact_links:
+  - name: Question or idea to discuss
+    url: https://github.com/The3dVehicleguy/Scenery-Editor-X/discussions
+    about: Ask how to do something, or talk an idea through before it becomes a feature request.
+  - name: Troubleshooting guide
+    url: https://github.com/The3dVehicleguy/Scenery-Editor-X/blob/master/docs/manual/chapters/troubleshooting.md
+    about: Fixes for the problems testers run into most (Vulkan, libraries, airports, export).
+  - name: Report a security vulnerability
+    url: https://github.com/The3dVehicleguy/Scenery-Editor-X/security/advisories/new
+    about: Report it privately, not in a public issue.
