@@ -29,7 +29,9 @@ The dependency-light, cross-platform Catch2 unit suites that only need `source/`
   (`SceneryEditorX/utils/conversions/...`). Header-only, fully green.
 - **`RefTests`** (`source/Tests/pointer_tests`) — the `Ref`/`WeakRef` smart-pointer system
   (`SceneryEditorX/utils/pointers.h`), including its thread safety (`RefThreadSafetyTest.cpp`: `WeakRef::Lock()`
-  racing the release of the last `Ref`, copies / resets on many threads, the control-block registry). Fully green,
+  racing the release of the last `Ref`, copies / resets on many threads, the control-block registry) and WeakRefs
+  of one object as different static types (`WeakRefTest.cpp`: one control block per object, keyed by its
+  `RefCounted` part, expired by the last owner of any type, multiple and virtual inheritance). Fully green,
   a few seconds for every case.
 - **`XPlaneFormatTests`** (`source/Tests/xplane_tests`) — OBJ8 parsing/animation evaluation, the
   `library.txt` / `scenery_packs.ini` parsers + library index, the `lights.txt` light catalog, and the

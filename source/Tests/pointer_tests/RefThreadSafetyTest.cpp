@@ -20,6 +20,7 @@
 */
 #include <atomic>
 #include <barrier>
+#include <cstdint>
 #include <catch2/catch_test_macros.hpp>
 #include <latch>
 #include <mutex>
@@ -114,6 +115,20 @@ namespace SceneryEditorX
 		private:
 		    const int m_Id;
 		    std::atomic<int> &m_Destructions;
+		};
+
+		/// Comes first in DerivedTrackedObject, so its RefCounted part is not at the start of the object
+		struct ThreadTestHeader
+		{
+		    virtual ~ThreadTestHeader() = default;
+		    std::int64_t m_Header = 0;
+		};
+
+		/// A TrackedObject whose Refs and WeakRefs come in two static types: itself and its TrackedObject base
+		class DerivedTrackedObject : public ThreadTestHeader, public TrackedObject
+		{
+		public:
+		    using TrackedObject::TrackedObject;
 		};
 
 		// Test class with both strong and weak references
@@ -831,6 +846,70 @@ namespace SceneryEditorX
 			        REQUIRE_NO_THREAD_FAILURES(checks);
 			        REQUIRE(destructions == 1);
 			        for (const auto &weak : weakRefs)
+			        {
+			            REQUIRE(weak.Expired());
+			            REQUIRE(weak.Lock() == nullptr);
+			        }
+			    }
+			}
+
+			SECTION("WeakRef<Base> and WeakRef<Derived> locking while the last Ref<Derived> is released")
+			{
+			    constexpr int iterations = 2000;
+			    constexpr int pairCount = 2;
+
+			    for (int iter = 0; iter < iterations; ++iter)
+				{
+			        std::atomic<int> destructions{0};
+			        auto obj = CreateRef<DerivedTrackedObject>(iter, destructions);
+
+			        // Half the threads observe the object as its TrackedObject base, half as itself: one control block
+			        std::vector<WeakRef<TrackedObject>> baseWeakRefs(pairCount, WeakRef<TrackedObject>(obj));
+			        std::vector<WeakRef<DerivedTrackedObject>> derivedWeakRefs(pairCount, WeakRef<DerivedTrackedObject>(obj));
+			        REQUIRE(static_cast<const void *>(baseWeakRefs[0].GetControlBlock()) ==
+			                static_cast<const void *>(derivedWeakRefs[0].GetControlBlock()));
+
+			        ThreadChecks checks;
+			        std::atomic<int> running{0};
+
+			        // Lock until the object is gone. Whichever Ref is released last (the main thread's Ref<Derived> or a
+			        // locked Ref of either type) destroys it and expires every WeakRef, of both types.
+			        const auto lockUntilGone = [iter, &checks, &destructions, &running](const auto &mine)
+			        {
+			            ++running;
+			            while (const auto locked = mine.Lock())
+						{
+			                THREAD_CHECK(checks, destructions == 0);
+			                THREAD_CHECK(checks, locked->GetId() == iter);
+			            }
+			            THREAD_CHECK(checks, mine.Expired());
+			            THREAD_CHECK(checks, mine.UseCount() == 0);
+			        };
+
+			        std::vector<std::thread> threads;
+			        threads.reserve(2 * pairCount);
+			        for (int t = 0; t < pairCount; ++t)
+					{
+			            threads.emplace_back([&lockUntilGone, &baseWeakRefs, t]() { lockUntilGone(baseWeakRefs[t]); });
+			            threads.emplace_back([&lockUntilGone, &derivedWeakRefs, t]() { lockUntilGone(derivedWeakRefs[t]); });
+			        }
+
+			        // Release the only strong reference while every thread is locking
+			        while (running.load() < 2 * pairCount)
+			            std::this_thread::yield();
+			        obj = nullptr;
+
+			        for (auto &thread : threads) { thread.join(); }
+
+			        INFO("Iteration " << iter);
+			        REQUIRE_NO_THREAD_FAILURES(checks);
+			        REQUIRE(destructions == 1);
+			        for (const auto &weak : baseWeakRefs)
+			        {
+			            REQUIRE(weak.Expired());
+			            REQUIRE(weak.Lock() == nullptr);
+			        }
+			        for (const auto &weak : derivedWeakRefs)
 			        {
 			            REQUIRE(weak.Expired());
 			            REQUIRE(weak.Lock() == nullptr);
