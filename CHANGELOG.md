@@ -29,6 +29,10 @@ versions.
   instance of an object its own values; a button on the row hands it back to the shared value. The Simulation tab still
   sets the values every object shares. The tools self-test checks a placement and a twin of it. (#75, 0.2.73.574;
   an own value whose dataref index no longer matches is dropped, and the table edits in place, 0.2.79.580)
+- Saving a WorldEditor project (`earth.wed.xml`) never writes a number with an exponent. A bezier handle moved in the
+  editor sits a few micro-degrees off its node, and its offset came out as `3.702805202010495e-06`, which WorldEditor reads
+  as 3.7 degrees (it stops at the `e`). Such values are now written in full (`0.000003702805202010495`), still exact.
+  (#81, 0.2.76.577)
 - A `WeakRef` to an object destroyed without its last `Ref` release (deleted by hand, or a stack or member object a `Ref`
   pointed to) now expires. Before, the object's control block stayed registered under its old address, and the next
   object there inherited it: that object's new WeakRefs were expired at once, or the old ones locked it. Both cases are
