@@ -82,6 +82,7 @@ namespace SceneryEditorX::ToolsSelfTest
 			OrthoTop,
 			OrthoPick,
 			OrthoWaitPick,
+			FlyNavigation,
 			LibraryFilters,
 			LargePolygonCreate,
 			LargePolygonSelect,
@@ -190,6 +191,14 @@ namespace SceneryEditorX::ToolsSelfTest
 			uint32_t extraViewsBefore = 0;
 			int extraViewFrames = 0;
 			uint32_t largeVerticesAfterAdd = 0;	// The view before the orthographic steps (put back after)
+
+			// FLY navigation (issue 79): scripted keys and Alt + left drags, with the camera's input unlocked for them
+			int flyPhase = 0;
+			int flyFrames = 0;
+			bool flyWasLocked = false;
+			std::optional<ViewportCamera::Rig> flyRig;	// The view before (put back after)
+			ViewportCamera::Rig flyFrom;				// The rig a gesture started from
+
 			int passed = 0;
 			int failed = 0;
 
@@ -728,7 +737,100 @@ namespace SceneryEditorX::ToolsSelfTest
 				if (s.rigBefore)
 					EditorCamera::SetRig(*s.rigBefore);
 				s.wait = 60;
-				s.step = Step::LibraryFilters;
+				s.flyPhase = 0;
+				s.step = Step::FlyNavigation;
+				break;
+			}
+
+			case Step::FlyNavigation:
+			{
+				// One phase a frame: what is queued now reaches the camera on the next frame. An Alt + left drag orbits in
+				// ORBIT navigation (so the scripted drag does reach the camera) and does nothing in FLY navigation, where W
+				// flies forward without a mouse button
+				const ImVec2 middle(std::floor(view.imageMin.x + view.imageSize.x * 0.5f), std::floor(view.imageMin.y + view.imageSize.y * 0.5f));
+				const bool altOrbits = EditorPreferences::Get().keymap != NavigationKeymap::Max;	// Max orbits with Alt + middle
+				ViewportCamera::Rig rig;
+				const bool hasRig = EditorCamera::GetRig(rig);
+				const auto turned = [&](const ViewportCamera::Rig &from) { return std::abs(std::remainder(rig.yaw - from.yaw, 6.283185307179586)) + std::abs(rig.pitch - from.pitch); };
+				const auto drag = [&](const int phase)
+				{
+					// 0: Alt; 1 press; 2..7 move right 12 px a frame; 8 let go
+					if (phase == 0)
+					{
+						s.flyFrom = rig;
+						UI::SetScriptedKeys({ ImGuiMod_Alt });
+						UI::SetScriptedMouse(middle, false);
+					}
+					else if (phase <= 7)
+						UI::SetScriptedMouse(ImVec2(middle.x + 12.0f * static_cast<float>(std::max(0, phase - 1)), middle.y), true);
+					else
+					{
+						UI::SetScriptedMouse(ImVec2(middle.x + 72.0f, middle.y), false);
+						UI::SetScriptedKeys({});
+					}
+				};
+
+				if (!hasRig)
+				{
+					Check(false, "fly navigation: the camera has a rig");
+					s.step = Step::LibraryFilters;
+					break;
+				}
+				const int phase = s.flyPhase++;
+				if (phase == 0)
+				{
+					s.flyRig = rig;
+					s.flyWasLocked = Camera::IsInputLocked();
+					Camera::SetInputLocked(false);
+					EditorCamera::SetMode(ORBIT);
+					UI::SetScriptedMouse(middle, false);
+				}
+				else if (phase >= 1 && phase <= 9)
+				{
+					if (!altOrbits)
+						s.flyPhase = 10;
+					else
+						drag(phase - 1);
+				}
+				else if (phase == 10)
+				{
+					if (altOrbits)
+						Check(turned(s.flyFrom) > 0.05, "orbit navigation: an Alt + left drag orbits");
+					else
+						EDITOR_INFO_TAG(LOG_TAG, "Fly navigation: the 3ds Max keymap orbits with Alt + middle, which isn't scripted: checking that it doesn't orbit only");
+					EditorCamera::SetRig(*s.flyRig);
+					EditorCamera::SetMode(FLY);
+				}
+				else if (phase >= 11 && phase <= 19)
+					drag(phase - 11);
+				else if (phase == 20)
+				{
+					const double shifted = std::abs(rig.pivot.x - s.flyFrom.pivot.x) + std::abs(rig.pivot.y - s.flyFrom.pivot.y) + std::abs(rig.pivot.z - s.flyFrom.pivot.z);
+					EDITOR_INFO_TAG(LOG_TAG, "Fly navigation: the Alt + left drag turned {:.3g} rad, moved the pivot {:.3g} m and the distance {:.3g} m (fly {}, from fly {})",
+						turned(s.flyFrom), shifted, rig.distance - s.flyFrom.distance, rig.fly, s.flyFrom.fly);
+					Check(rig.fly && turned(s.flyFrom) < 1e-6 && shifted < 1e-6 && std::abs(rig.distance - s.flyFrom.distance) < 1e-6, "fly navigation: an Alt + left drag doesn't orbit, pan or zoom");
+					s.flyFrom = rig;
+					s.flyFrames = 0;
+					UI::SetScriptedMouse(middle, false);
+					UI::SetScriptedKeys({ ImGuiKey_W });
+				}
+				else if (phase == 21 && ++s.flyFrames < 20)
+					--s.flyPhase;	// W held for 20 frames
+				else if (phase == 21)
+					UI::SetScriptedKeys({});
+				else
+				{
+					const auto forward = s.flyFrom.Forward();
+					const double moved = (rig.pivot.x - s.flyFrom.pivot.x) * forward.x + (rig.pivot.y - s.flyFrom.pivot.y) * forward.y + (rig.pivot.z - s.flyFrom.pivot.z) * forward.z;
+					EDITOR_INFO_TAG(LOG_TAG, "Fly navigation: W flew {:.2f} m", moved);
+					Check(moved > 0.5 && turned(s.flyFrom) < 1e-6, "fly navigation: W flies forward without a mouse button");
+
+					UI::SetScriptedMouse(std::nullopt);
+					EditorCamera::SetRig(*s.flyRig);	// Its navigation mode too
+					Camera::SetInputLocked(s.flyWasLocked);
+					s.wait = 30;
+					s.step = Step::LibraryFilters;
+				}
 				break;
 			}
 

@@ -22,6 +22,14 @@ versions.
 
 ### Fixed
 
+- **Fly** navigation flies with <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> and <kbd>Q</kbd> / <kbd>E</kbd> without
+  holding the right mouse button (while the mouse is over the viewport or it has the keyboard; not with Ctrl, Alt or Super
+  held), and the keymap's orbit, pan and zoom drags no longer move the camera in it: the right mouse button turns it and
+  the wheel moves it forward and back. In Fly navigation those keys pick no tools, set no node types and (Maya keymap)
+  don't frame everything. The tools self-test drives it with scripted keys (`UI::SetScriptedKeys`). (#79, 0.2.74.575)
+- The self-tests' scripted mouse also reports the main window as the one under the cursor: with the real cursor over
+  another program, nothing was hovered and the gizmo checks of `--tools-selftest` / `--gizmo-selftest` failed.
+  (0.2.74.575)
 - A `WeakRef` to an object destroyed without its last `Ref` release (deleted by hand, or a stack or member object a `Ref`
   pointed to) now expires. Before, the object's control block stayed registered under its old address, and the next
   object there inherited it: that object's new WeakRefs were expired at once, or the old ones locked it. Both cases are

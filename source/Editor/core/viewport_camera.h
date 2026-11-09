@@ -82,6 +82,7 @@ namespace SceneryEditorX::ViewportCamera
 	struct Input
 	{
 		bool hovered = false;	// The mouse is over the image
+		bool focused = false;	// The viewport has the keyboard (FLY navigation's keys work then too)
 		bool blocked = false;	// A tool, gizmo or menu has the mouse: no new camera drag starts
 		bool locked = false;	// --lock-camera: nothing moves the camera
 		ImVec2 imageSize{ 1.0f, 1.0f };
@@ -141,6 +142,12 @@ namespace SceneryEditorX::ViewportCamera
 		int m_Button = 0;		// The mouse button holding the drag
 		Transition m_Transition;
 	};
+
+	/**
+	 * @brief True on the frame W A S D, Q or E goes down (with or without Shift). In FLY navigation they fly the camera
+	 * without a mouse button, so other shortcuts on those keys (tools, node types, Maya's frame all) stand aside.
+	 */
+	bool IsFlyKeyPressed();
 
 	/* @brief One line of a keymap's reference: what it does and the keys / buttons that do it. */
 	struct Binding

@@ -488,7 +488,7 @@ namespace SceneryEditorX::EditorCamera
 			case NavigationKeymap::Maya:
 				if (pressed(ImGuiKey_F))
 					EditorTools::FrameSelection();
-				if (pressed(ImGuiKey_A))
+				if (pressed(ImGuiKey_A) && !IsMode(FLY))	// A flies left in FLY navigation
 					FrameAll();
 				break;
 			default:

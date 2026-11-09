@@ -206,7 +206,9 @@ namespace SceneryEditorX::ViewportCamera
 			return false;
 		}
 
-		// A press over the image starts the drag its keymap gives it; the drag then holds until that button is let go
+		// A press over the image starts the drag its keymap gives it; the drag then holds until that button is let go.
+		// FLY navigation only looks around: the camera turns in place and the keys move it, so the drags that orbit, pan
+		// or dolly around the pivot start nothing there (issue 79).
 		if (m_Drag == Drag::None && input.hovered && !input.blocked)
 		{
 			for (const ImGuiMouseButton button : { ImGuiMouseButton_Left, ImGuiMouseButton_Middle, ImGuiMouseButton_Right })
@@ -214,7 +216,7 @@ namespace SceneryEditorX::ViewportCamera
 				if (!ImGui::IsMouseClicked(button))
 					continue;
 				const int kind = Classify(preferences.keymap, button, io.KeyAlt, io.KeyShift, io.KeyCtrl);
-				if (kind != 0)
+				if (kind != 0 && (!rig.fly || static_cast<Drag>(kind) == Drag::Look))
 				{
 					m_Drag = static_cast<Drag>(kind);
 					m_Button = button;
@@ -286,20 +288,24 @@ namespace SceneryEditorX::ViewportCamera
 			changed = true;
 		}
 
-		// Flying: WASD / Q E while the right button looks around, the arrows and Page Up / Down whenever over the image.
+		// Flying: W A S D / Q E while the right button looks around, and in FLY navigation without it whenever the viewport
+		// has the mouse or the keyboard (not with Ctrl / Alt / Super held, which make other shortcuts: Ctrl+S saves); the
+		// arrows and Page Up / Down whenever over the image. Space rises only while looking (alone it opens the hotbox).
 		// Faster the higher the camera and the farther the pivot (scenery is kilometers across); Shift hurries, Ctrl creeps.
-		if (!io.WantTextInput && (m_Drag == Drag::Look || input.hovered))
+		const bool looking = m_Drag == Drag::Look;
+		const bool flyKeys = looking || (rig.fly && (input.hovered || input.focused) && !io.KeyCtrl && !io.KeyAlt && !io.KeySuper);
+		const bool moveKeys = looking || input.hovered;
+		if (!io.WantTextInput && (flyKeys || moveKeys))
 		{
-			const bool flyKeys = m_Drag == Drag::Look;
 			Point3 move{};
 			const Point3 forward = rig.Forward(), right = rig.Right();
 			const auto held = [](const ImGuiKey key) { return ImGui::IsKeyDown(key); };
-			if ((flyKeys && held(ImGuiKey_W)) || held(ImGuiKey_UpArrow))		move = Add(move, forward);
-			if ((flyKeys && held(ImGuiKey_S)) || held(ImGuiKey_DownArrow))		move = Add(move, forward, -1.0);
-			if ((flyKeys && held(ImGuiKey_D)) || held(ImGuiKey_RightArrow))		move = Add(move, right);
-			if ((flyKeys && held(ImGuiKey_A)) || held(ImGuiKey_LeftArrow))		move = Add(move, right, -1.0);
-			if ((flyKeys && (held(ImGuiKey_E) || held(ImGuiKey_Space))) || held(ImGuiKey_PageUp))	move.y += 1.0;
-			if ((flyKeys && held(ImGuiKey_Q)) || held(ImGuiKey_PageDown))		move.y -= 1.0;
+			if ((flyKeys && held(ImGuiKey_W)) || (moveKeys && held(ImGuiKey_UpArrow)))		move = Add(move, forward);
+			if ((flyKeys && held(ImGuiKey_S)) || (moveKeys && held(ImGuiKey_DownArrow)))	move = Add(move, forward, -1.0);
+			if ((flyKeys && held(ImGuiKey_D)) || (moveKeys && held(ImGuiKey_RightArrow)))	move = Add(move, right);
+			if ((flyKeys && held(ImGuiKey_A)) || (moveKeys && held(ImGuiKey_LeftArrow)))	move = Add(move, right, -1.0);
+			if ((flyKeys && held(ImGuiKey_E)) || (looking && held(ImGuiKey_Space)) || (moveKeys && held(ImGuiKey_PageUp)))	move.y += 1.0;
+			if ((flyKeys && held(ImGuiKey_Q)) || (moveKeys && held(ImGuiKey_PageDown)))		move.y -= 1.0;
 			if (move.x != 0.0 || move.y != 0.0 || move.z != 0.0)
 			{
 				const Point3 eye = rig.Eye();
@@ -406,6 +412,16 @@ namespace SceneryEditorX::ViewportCamera
 
 	// -------------------------------------------------------
 
+	bool IsFlyKeyPressed()
+	{
+		for (const ImGuiKey key : { ImGuiKey_W, ImGuiKey_A, ImGuiKey_S, ImGuiKey_D, ImGuiKey_Q, ImGuiKey_E })
+		{
+			if (ImGui::IsKeyPressed(key, false))
+				return true;
+		}
+		return false;
+	}
+
 	const char *GetKeymapSummary(const NavigationKeymap keymap)
 	{
 		switch (keymap)
@@ -459,6 +475,7 @@ namespace SceneryEditorX::ViewportCamera
 		bindings.insert(bindings.end(), {
 			{ "Look around", "Right mouse drag" },
 			{ "Fly", "Hold right mouse + W A S D, Q / E down / up (Shift faster, Ctrl slower)" },
+			{ "Fly navigation", "W A S D, Q / E without a button; only the right mouse turns the camera" },
 			{ "Move", "Arrow keys, Page Up / Page Down" },
 			{ "Top / bottom view", "Numpad 7  /  Ctrl + Numpad 7" },
 			{ "Front / back view", "Numpad 1  /  Ctrl + Numpad 1" },
