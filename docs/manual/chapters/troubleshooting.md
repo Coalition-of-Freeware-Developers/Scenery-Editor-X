@@ -82,7 +82,7 @@ Orbiting follows the 3D-package convention: the scene turns with the mouse. To m
 
 - Tool and camera keys only work with the mouse over the viewport.
 - No shortcut works while you're typing in a field: click in the viewport first.
-- While the right mouse button is held, <kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd> fly the camera instead of picking tools.
+- While the right mouse button is held, or in **Fly** navigation, <kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd> fly the camera instead of picking tools.
 
 ### The editor is slow
 

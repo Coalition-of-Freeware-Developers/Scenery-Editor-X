@@ -7,7 +7,7 @@ Scenery is kilometers wide and its details are centimeters across, so moving aro
 The camera has two modes. Switch between them with the buttons in the tool strip or the viewport toolbar, or in the **Viewport** menu.
 
 - **Orbit** (the default) turns the camera around a **pivot**: a point in the scene, usually what you're working on. Framing a selection moves the pivot to it. This is the mode for editing.
-- **Fly** turns the camera in place and moves it like a drone. The wheel moves the camera forward and back. Use it to look at the scenery from the ground, the way a pilot will see it.
+- **Fly** turns the camera in place and moves it like a drone: <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> fly it and <kbd>Q</kbd> / <kbd>E</kbd> take it down / up, no mouse button needed, while the mouse is over the viewport or the viewport has the keyboard. The right mouse button turns it; the orbit, pan and zoom drags do nothing in this mode, and the wheel moves the camera forward and back. Use it to look at the scenery from the ground, the way a pilot will see it. While flying, <kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd> don't pick tools: use the toolbar.
 
 In either mode, holding the right mouse button looks around and lets the movement keys fly the camera.
 
@@ -38,6 +38,7 @@ Orbiting follows the 3D-package convention: the scene turns with the mouse. If y
 |---|---|
 | Look around | Right mouse drag |
 | Fly | Hold the right mouse button + <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd>; <kbd>Q</kbd> / <kbd>E</kbd> down / up |
+| Fly in **Fly** navigation | <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd>, <kbd>Q</kbd> / <kbd>E</kbd> without a mouse button |
 | Fly faster / slower | Add <kbd>Shift</kbd> / <kbd>Ctrl</kbd> |
 | Move without the mouse | Arrow keys, <kbd>Page Up</kbd> / <kbd>Page Down</kbd> |
 | Top / bottom view | <kbd>Numpad 7</kbd> / <kbd>Ctrl+Numpad 7</kbd> |

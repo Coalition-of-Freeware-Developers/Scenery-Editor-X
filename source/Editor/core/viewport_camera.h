@@ -82,6 +82,7 @@ namespace SceneryEditorX::ViewportCamera
 	struct Input
 	{
 		bool hovered = false;	// The mouse is over the image
+		bool focused = false;	// The viewport has the keyboard (FLY navigation's keys work then too)
 		bool blocked = false;	// A tool, gizmo or menu has the mouse: no new camera drag starts
 		bool locked = false;	// --lock-camera: nothing moves the camera
 		ImVec2 imageSize{ 1.0f, 1.0f };
@@ -103,6 +104,13 @@ namespace SceneryEditorX::ViewportCamera
 		bool Animate(Rig &rig, float deltaTime);
 
 		[[nodiscard]] bool IsDragging() const { return m_Drag != Drag::None; }
+
+		/**
+		 * @brief True when the last Navigate() flew with W A S D / Q E without a mouse button (FLY navigation, the viewport
+		 * has the mouse or the keyboard, no text field, no Ctrl / Alt / Super, input not locked): other shortcuts on those
+		 * keys stand aside only then.
+		 */
+		[[nodiscard]] bool TakesFlyKeys() const;
 		[[nodiscard]] bool IsAnimating() const { return m_Transition.active; }
 
 		/* @brief Looks along a preset axis around the current pivot (Free leaves the direction alone). */
@@ -139,8 +147,19 @@ namespace SceneryEditorX::ViewportCamera
 
 		Drag m_Drag = Drag::None;
 		int m_Button = 0;		// The mouse button holding the drag
+		bool m_FlyKeys = false;	// TakesFlyKeys()
+		int m_FlyKeysFrame = -1;	// ImGui frame m_FlyKeys was worked out in (a viewport that stops navigating stops taking them)
 		Transition m_Transition;
 	};
+
+	/**
+	 * @brief True on the frame W A S D, Q or E goes down (with or without Shift). In FLY navigation they fly the camera
+	 * without a mouse button, so other shortcuts on those keys (tools, node types, Maya's frame all) stand aside.
+	 */
+	bool IsFlyKeyPressed();
+
+	/* @brief True when a keymap orbits with an Alt + left drag (Blender, Maya; 3ds Max orbits with Alt + middle). */
+	bool OrbitsWithAltLeft(NavigationKeymap keymap);
 
 	/* @brief One line of a keymap's reference: what it does and the keys / buttons that do it. */
 	struct Binding
