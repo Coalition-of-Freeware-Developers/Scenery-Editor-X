@@ -1329,6 +1329,110 @@ TEST_CASE("WED split beziers and raw objects survive the round trip", "[project]
 	CHECK(roadA->FindChild("viewers")->children.front().Attribute("id") == edge->Attribute("id"));
 }
 
+namespace
+{
+	/**
+	 * WorldEditor's reader for a number attribute (WED_PropDoubleText::WantsAttribute): a sign, digits, '.', digits,
+	 * and nothing else. consumed is false when it stopped early ("3.7e-06" reads as 3.7 and stops at the 'e').
+	 */
+	double ReadLikeWed(const std::string_view text, bool &consumed)
+	{
+		size_t at = 0;
+		double sign = 1.0;
+		if (at < text.size() && (text[at] == '-' || text[at] == '+'))
+			sign = text[at++] == '-' ? -1.0 : 1.0;
+		double value = 0.0;
+		while (at < text.size() && text[at] >= '0' && text[at] <= '9')
+			value = 10.0 * value + (text[at++] - '0');
+		if (at < text.size() && text[at] == '.')
+			++at;
+		double decimals = 0.1;
+		while (at < text.size() && text[at] >= '0' && text[at] <= '9')
+		{
+			value += (text[at++] - '0') * decimals;
+			decimals *= 0.1;
+		}
+		consumed = at == text.size();
+		return value * sign;
+	}
+}
+
+TEST_CASE("WED export writes numbers WorldEditor reads: no exponents (issue 81)", "[project][wed]")
+{
+	// A pavement with a curved node: SEDX's edits leave handle offsets with more digits than WED's 9 decimals, which
+	// came out as "3.702805202010495e-06" and read as 3.7 degrees in WED
+	const char *wed = R"XML(<?xml version="1.0" encoding="UTF-8"?>
+<doc>
+  <objects>
+    <object class="WED_Root" id="1" parent_id="0"><children><child id="2"/><child id="3"/><child id="4"/></children><hierarchy name="root"/></object>
+    <object class="WED_Select" id="2" parent_id="1"><children/><hierarchy name="selection"/><selection/></object>
+    <object class="WED_KeyObjects" id="3" parent_id="1"><children/><hierarchy name="choices"/><keys/></object>
+    <object class="WED_Group" id="4" parent_id="1"><children><child id="10"/></children><hierarchy name="world" locked="0" hidden="0"/></object>
+    <object class="WED_Airport" id="10" parent_id="4"><children><child id="11"/></children><hierarchy name="Numbers" locked="0" hidden="0"/><airport kind="Airport" elevation="10.0" has_atc="0" icao="XNUM" always_flatten="0" drive_on_left="0" scenery_id="-1"/><meta_data/></object>
+    <object class="WED_Taxiway" id="11" parent_id="10"><children><child id="12"/></children><hierarchy name="Pad" locked="0" hidden="0"/><taxiway surface="Concrete" roughness="0.25" heading="0.0"/></object>
+    <object class="WED_AirportChain" id="12" parent_id="11"><children><child id="13"/><child id="14"/><child id="15"/></children><hierarchy name="Ring" locked="0" hidden="0"/><airport_chain closed="1"/></object>
+    <object class="WED_AirportNode" id="13" parent_id="12"><children/><hierarchy name="Node 1" locked="0" hidden="0"/><point latitude="41.330000000" longitude="-72.040000000" split="0" ctrl_latitude_lo="0.0" ctrl_longitude_lo="0.0" ctrl_latitude_hi="0.0" ctrl_longitude_hi="0.0"/><markings/></object>
+    <object class="WED_AirportNode" id="14" parent_id="12"><children/><hierarchy name="Node 2" locked="0" hidden="0"/><point latitude="41.331000000" longitude="-72.040000000" split="0" ctrl_latitude_lo="-0.000010000" ctrl_longitude_lo="0.000020000" ctrl_latitude_hi="0.000010000" ctrl_longitude_hi="-0.000020000"/><markings/></object>
+    <object class="WED_AirportNode" id="15" parent_id="12"><children/><hierarchy name="Node 3" locked="0" hidden="0"/><point latitude="41.331000000" longitude="-72.039000000" split="0" ctrl_latitude_lo="0.0" ctrl_longitude_lo="0.0" ctrl_latitude_hi="0.0" ctrl_longitude_hi="0.0"/><markings/></object>
+  </objects>
+</doc>)XML";
+
+	SceneryProject project;
+	std::string error;
+	REQUIRE(ParseWed(wed, project, nullptr, &error));
+	REQUIRE(project.airports.size() == 1);
+	std::vector<XPlane::AptNode> &nodes = project.airports.front().airport.pavements.front().rings.front().nodes;
+	REQUIRE(nodes.size() == 3);
+	REQUIRE(nodes[1].hasControl);
+
+	// The handle as the node tool leaves it: a few micro-degrees off the node, with every bit of a double in use
+	nodes[1].controlLatitude = nodes[1].latitude + 3.702805202010495e-06;
+	nodes[1].controlLongitude = nodes[1].longitude - 1.2345678901234567e-07;
+	const double latitudeOffset = nodes[1].controlLatitude - nodes[1].latitude;
+	const double longitudeOffset = nodes[1].controlLongitude - nodes[1].longitude;
+
+	const std::string xml = WriteWed(project);
+	XmlElement doc;
+	REQUIRE(ParseXml(xml, doc));
+	const XmlElement *node = nullptr;
+	size_t points = 0;
+	for (const XmlElement &object : doc.FindChild("objects")->children)
+	{
+		const XmlElement *point = object.FindChild("point");
+		if (!point)
+			continue;
+		++points;
+		for (const char *name : { "latitude", "longitude", "ctrl_latitude_lo", "ctrl_longitude_lo", "ctrl_latitude_hi", "ctrl_longitude_hi" })
+		{
+			const std::string_view text = point->Attribute(name);
+			if (text.empty())
+				continue;
+			INFO(object.FindChild("hierarchy")->Attribute("name") << " " << name << "=\"" << text << "\"");
+			CHECK(text.find_first_of("eE") == std::string_view::npos);
+			bool consumed = false;
+			ReadLikeWed(text, consumed);
+			CHECK(consumed);	// WED reads the whole number
+		}
+		if (object.FindChild("hierarchy")->Attribute("name") == "Node 2")
+			node = point;
+	}
+	CHECK(points == 3);
+	REQUIRE(node);
+
+	// WED reads the offsets SEDX meant (its digit-by-digit sum is within a few ulps), not 3.7 degrees
+	bool consumed = false;
+	CHECK(std::abs(ReadLikeWed(node->Attribute("ctrl_latitude_hi"), consumed) - latitudeOffset) < 1e-15);
+	CHECK(std::abs(ReadLikeWed(node->Attribute("ctrl_longitude_hi"), consumed) - longitudeOffset) < 1e-15);
+
+	// And the fixed text is still exact: SEDX reads back the same handle
+	SceneryProject again;
+	REQUIRE(ParseWed(xml, again, nullptr, &error));
+	const std::vector<XPlane::AptNode> &read = again.airports.front().airport.pavements.front().rings.front().nodes;
+	REQUIRE(read.size() == 3);
+	CHECK(read[1].controlLatitude - read[1].latitude == latitudeOffset);
+	CHECK(read[1].controlLongitude - read[1].longitude == longitudeOffset);
+}
+
 TEST_CASE("WED import rejects what isn't WorldEditor data", "[project][wed]")
 {
 	SceneryProject project;

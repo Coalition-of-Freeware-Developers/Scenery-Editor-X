@@ -257,19 +257,26 @@ namespace SceneryEditorX::ProjectFile
 		// -------------------------------------------------------
 		// Numbers in attributes
 
-		/* @brief WED's spelling ("0.0" for zero, fixed decimals), or the shortest exact text when the decimals would lose precision. */
+		/**
+		 * WED reads a number as an optional sign, digits, '.' and digits, and stops at anything else
+		 * (WED_PropDoubleText::WantsAttribute): "3.7e-06" reads as 3.7. Numbers are never written with an exponent.
+		 * 400 characters hold any double in fixed notation (309 integer digits, or 0. and 324 decimals).
+		 */
+		constexpr size_t NUMBER_CHARS = 400;
+
+		/* @brief WED's spelling ("0.0" for zero, fixed decimals), or the shortest exact fixed text when the decimals would lose precision. */
 		std::string FormatDouble(const double value, const int decimals)
 		{
 			if (value == 0.0 || !std::isfinite(value))
 				return "0.0";
-			char text[64];
+			char text[NUMBER_CHARS];
 			std::snprintf(text, sizeof(text), "%.*f", decimals, value);
 			if (std::strtod(text, nullptr) == value)
 				return text;
-			const auto result = Utils::FloatChars::ToChars(text, text + sizeof(text), value);
+			const auto result = Utils::FloatChars::ToChars(text, text + sizeof(text), value, std::chars_format::fixed);
 			if (result.ec == std::errc())
 				return std::string(text, result.ptr);
-			std::snprintf(text, sizeof(text), "%.17g", static_cast<double>(value));	// Reads back too; 64 characters always fit the above
+			std::snprintf(text, sizeof(text), "%.*f", decimals, value);	// WED's own precision: it reads, if not exactly
 			return text;
 		}
 
@@ -277,14 +284,14 @@ namespace SceneryEditorX::ProjectFile
 		{
 			if (value == 0.0f || !std::isfinite(value))
 				return "0.0";
-			char text[64];
+			char text[NUMBER_CHARS];
 			std::snprintf(text, sizeof(text), "%.*f", decimals, static_cast<double>(value));
 			if (static_cast<float>(std::strtod(text, nullptr)) == value)
 				return text;
-			const auto result = Utils::FloatChars::ToChars(text, text + sizeof(text), value);
+			const auto result = Utils::FloatChars::ToChars(text, text + sizeof(text), value, std::chars_format::fixed);
 			if (result.ec == std::errc())
 				return std::string(text, result.ptr);
-			std::snprintf(text, sizeof(text), "%.17g", static_cast<double>(value));	// Reads back too; 64 characters always fit the above
+			std::snprintf(text, sizeof(text), "%.*f", decimals, static_cast<double>(value));	// WED's own precision: it reads, if not exactly
 			return text;
 		}
 
