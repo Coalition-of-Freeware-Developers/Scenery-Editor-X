@@ -110,7 +110,7 @@ namespace SceneryEditorX::ViewportCamera
 		 * has the mouse or the keyboard, no text field, no Ctrl / Alt / Super, input not locked): other shortcuts on those
 		 * keys stand aside only then.
 		 */
-		[[nodiscard]] bool TakesFlyKeys() const { return m_FlyKeys; }
+		[[nodiscard]] bool TakesFlyKeys() const;
 		[[nodiscard]] bool IsAnimating() const { return m_Transition.active; }
 
 		/* @brief Looks along a preset axis around the current pivot (Free leaves the direction alone). */
@@ -148,6 +148,7 @@ namespace SceneryEditorX::ViewportCamera
 		Drag m_Drag = Drag::None;
 		int m_Button = 0;		// The mouse button holding the drag
 		bool m_FlyKeys = false;	// TakesFlyKeys()
+		int m_FlyKeysFrame = -1;	// ImGui frame m_FlyKeys was worked out in (a viewport that stops navigating stops taking them)
 		Transition m_Transition;
 	};
 

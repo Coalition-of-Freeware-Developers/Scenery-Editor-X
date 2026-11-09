@@ -27,7 +27,8 @@ versions.
   held), and the keymap's orbit, pan and zoom drags no longer move the camera in it: the right mouse button turns it and
   the wheel moves it forward and back. In Fly navigation those keys pick no tools, set no node types and (Maya keymap)
   don't frame everything. The tools self-test drives it with scripted keys (`UI::SetScriptedKeys`). (#79, 0.2.74.575;
-  those keys stay tool keys whenever the camera doesn't fly with them, such as with its input locked, 0.2.78.579)
+  those keys stay tool keys whenever the camera doesn't fly with them, such as with its input locked, 0.2.78.579; an orbit,
+  pan or zoom drag held while switching to Fly ends, 0.2.80.581)
 - The self-tests' scripted mouse also reports the main window as the one under the cursor: with the real cursor over
   another program, nothing was hovered and the gizmo checks of `--tools-selftest` / `--gizmo-selftest` failed.
   (0.2.74.575)

@@ -200,10 +200,11 @@ namespace SceneryEditorX::ViewportCamera
 	{
 		const ImGuiIO &io = ImGui::GetIO();
 		const EditorPreferences &preferences = EditorPreferences::Get();
+		m_FlyKeys = false;
+		m_FlyKeysFrame = ImGui::GetFrameCount();
 		if (input.locked)
 		{
 			m_Drag = Drag::None;
-			m_FlyKeys = false;
 			return false;
 		}
 
@@ -227,6 +228,10 @@ namespace SceneryEditorX::ViewportCamera
 			}
 		}
 		else if (m_Drag != Drag::None && !ImGui::IsMouseDown(m_Button))
+			m_Drag = Drag::None;
+
+		// An orbit, pan or dolly drag held while the navigation switched to FLY ends there
+		if (rig.fly && m_Drag != Drag::None && m_Drag != Drag::Look)
 			m_Drag = Drag::None;
 
 		bool changed = false;
@@ -323,6 +328,12 @@ namespace SceneryEditorX::ViewportCamera
 			}
 		}
 		return changed;
+	}
+
+	bool Controller::TakesFlyKeys() const
+	{
+		// This frame's or the last one's (shortcuts may run before the viewport navigates in a frame)
+		return m_FlyKeys && ImGui::GetFrameCount() - m_FlyKeysFrame <= 1;
 	}
 
 	bool Controller::Animate(Rig &rig, const float deltaTime)
