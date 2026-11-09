@@ -29,6 +29,7 @@
  * -------------------------------------------------------
  */
 #pragma once
+#include "xp_datarefs.h"
 #include "xp_object.h"
 #include <filesystem>
 #include <string>
@@ -96,6 +97,7 @@ namespace SceneryEditorX::XPlane
 		bool evaluatedAnimate = true;
 		std::vector<float> datarefValues;		// Obj8Data::datarefs as last read (ReadDatarefs), what the batch states and the pose follow
 		std::vector<uint8_t> staleGroups;		// Per animation group: its pose lags datarefValues (it hasn't drawn since); posed once it draws
+		std::vector<DatarefOverride> datarefOverrides;	// This placement's own dataref controls (PROPERTIES); the rest follow the shared table
 
 
 		bool logPlacement = true;				// Log placing and building it (off for the thousands an airport places)

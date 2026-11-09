@@ -33,6 +33,7 @@
 #include <filesystem>
 #include <string>
 #include <vector>
+#include <SceneryEditorX/xplane/xp_datarefs.h>
 #include <SceneryEditorX/xplane/xp_obj8.h>
 
 // -------------------------------------------------------
@@ -89,8 +90,10 @@ namespace SceneryEditorX::EditorXPlane
 	 * @brief Table of dataref controls (driver, value, range).
 	 * @param id ImGui id for the table.
 	 * @param only Restrict to these datarefs (an object's), or nullptr for every registered dataref.
+	 * @param overrides With only: that object's own controls (XPlaneObjectComponent::datarefOverrides). Edits then give
+	 * the object its own value instead of changing the one every object shares, and each row can go back to the shared one.
 	 */
-	void DrawDatarefTable(const char *id, const std::vector<XPlane::Obj8DatarefUsage> *only);
+	void DrawDatarefTable(const char *id, const std::vector<XPlane::Obj8DatarefUsage> *only, std::vector<XPlane::DatarefOverride> *overrides = nullptr);
 
 	/* @brief Sim clock and environment controls (play / pause, speed, time of day, wind, lights). */
 	void DrawSimulationControls();

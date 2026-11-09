@@ -134,24 +134,40 @@ namespace SceneryEditorX::EditorXPlane
 
 	// -------------------------------------------------------
 
-	void DrawDatarefTable(const char *id, const std::vector<XPlane::Obj8DatarefUsage> *only)
+	void DrawDatarefTable(const char *id, const std::vector<XPlane::Obj8DatarefUsage> *only, std::vector<XPlane::DatarefOverride> *overrides)
 	{
 		using namespace XPlane;
 		std::map<std::string, DatarefControl> &controls = Datarefs::GetControls();
 
-		std::vector<DatarefControl *> rows;
+		// A row: the shared control and, in one object's table, the object's own control when it has one
+		struct Row
+		{
+			DatarefControl *shared = nullptr;
+			uint32_t index = 0;		// Into only (the object's Obj8Data::datarefs)
+			int own = -1;			// Into overrides
+		};
+		std::vector<Row> rows;
 		if (only)
 		{
-			for (const Obj8DatarefUsage &usage : *only)
+			for (uint32_t i = 0; i < static_cast<uint32_t>(only->size()); ++i)
 			{
-				if (DatarefControl *control = Datarefs::Find(usage.dataref.ToString()))
-					rows.push_back(control);
+				Row row;
+				row.shared = Datarefs::Find((*only)[i].dataref.ToString());
+				row.index = i;
+				if (!row.shared)
+					continue;
+				for (size_t o = 0; overrides && o < overrides->size(); ++o)
+				{
+					if ((*overrides)[o].index == i)
+						row.own = static_cast<int>(o);
+				}
+				rows.push_back(row);
 			}
 		}
 		else
 		{
 			for (auto &[key, control] : controls)
-				rows.push_back(&control);
+				rows.push_back({ &control, 0, -1 });
 		}
 
 		if (rows.empty())
@@ -160,71 +176,120 @@ namespace SceneryEditorX::EditorXPlane
 			return;
 		}
 
+		// One object's table sets its own values: X-Plane gives each instance of an object its own, and testing one jetway
+		// moved every jetway at the airport (issue 75). The Simulation tab's table sets the values every object shares.
+		const bool perObject = overrides != nullptr;
+		if (perObject)
+			ImGui::TextDisabled("Changes here move this object only.");
+
 		constexpr ImGuiTableFlags flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchProp;
-		if (!ImGui::BeginTable(id, 3, flags))
+		if (!ImGui::BeginTable(id, perObject ? 4 : 3, flags))
 			return;
 
 		ImGui::TableSetupColumn("Dataref", ImGuiTableColumnFlags_WidthStretch, 2.0f);
 		ImGui::TableSetupColumn("Driver", ImGuiTableColumnFlags_WidthStretch, 0.9f);
 		ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch, 1.6f);
+		if (perObject)
+			ImGui::TableSetupColumn("##Scope", ImGuiTableColumnFlags_WidthFixed, ImGui::GetFrameHeight());
 		ImGui::TableHeadersRow();
 
-		for (DatarefControl *control : rows)
+		int release = -1;						// An override going back to the shared control (after the loop: the indices stay valid)
+		std::vector<DatarefOverride> added;	// Rows of this object edited for the first time
+		for (const Row &row : rows)
 		{
-			ImGui::PushID(control->key.c_str());
+			DatarefControl *own = row.own >= 0 ? &(*overrides)[static_cast<size_t>(row.own)].control : nullptr;
+			DatarefControl control = own ? *own : *row.shared;	// Edited here, written back when changed
+			bool changed = false;
+			ImGui::PushID(control.key.c_str());
 			ImGui::TableNextRow();
 
 			ImGui::TableNextColumn();
 			ImGui::AlignTextToFramePadding();
-			const size_t slash = control->key.rfind('/');
-			ImGui::TextUnformatted(slash == std::string::npos ? control->key.c_str() : control->key.c_str() + slash + 1);
-			EditorUI::ItemTooltip(control->key.c_str());
+			const size_t slash = control.key.rfind('/');
+			ImGui::TextUnformatted(slash == std::string::npos ? control.key.c_str() : control.key.c_str() + slash + 1);
+			EditorUI::ItemTooltip(control.key.c_str());
 
 			ImGui::TableNextColumn();
 			ImGui::SetNextItemWidth(-FLT_MIN);
-			const bool builtin = Datarefs::IsBuiltin(control->key);
-			if (ImGui::BeginCombo("##Driver", GetDatarefDriverName(control->driver)))
+			const bool builtin = Datarefs::IsBuiltin(control.key);
+			if (ImGui::BeginCombo("##Driver", GetDatarefDriverName(control.driver)))
 			{
 				for (const DatarefDriver driver : { DatarefDriver::Value, DatarefDriver::Sweep, DatarefDriver::Clock, DatarefDriver::Builtin })
 				{
 					if (driver == DatarefDriver::Builtin && !builtin)
 						continue;
-					if (ImGui::Selectable(GetDatarefDriverName(driver), control->driver == driver))
-						control->driver = driver;
+					if (ImGui::Selectable(GetDatarefDriverName(driver), control.driver == driver))
+					{
+						changed |= control.driver != driver;
+						control.driver = driver;
+					}
 				}
 				ImGui::EndCombo();
 			}
 
 			ImGui::TableNextColumn();
 			ImGui::SetNextItemWidth(-FLT_MIN);
-			switch (control->driver)
+			switch (control.driver)
 			{
 				case DatarefDriver::Value:
-					ImGui::SliderFloat("##Value", &control->value, control->minValue, control->maxValue, "%.3f");
+					changed |= ImGui::SliderFloat("##Value", &control.value, control.minValue, control.maxValue, "%.3f");
 					break;
 				case DatarefDriver::Sweep:
-					ImGui::DragFloat("##Period", &control->period, 0.05f, 0.1f, 600.0f, "%.2f s / cycle");
+					changed |= ImGui::DragFloat("##Period", &control.period, 0.05f, 0.1f, 600.0f, "%.2f s / cycle");
 					break;
 				case DatarefDriver::Clock:
-					ImGui::DragFloat("##Rate", &control->rate, 0.01f, -100.0f, 100.0f, "x%.2f");
+					changed |= ImGui::DragFloat("##Rate", &control.rate, 0.01f, -100.0f, 100.0f, "x%.2f");
 					break;
 				case DatarefDriver::Builtin:
 					ImGui::BeginDisabled();
-					ImGui::SliderFloat("##Live", &control->value, control->minValue, control->maxValue, "%.3f");
+					ImGui::SliderFloat("##Live", &control.value, control.minValue, control.maxValue, "%.3f");
 					ImGui::EndDisabled();
 					break;
 			}
-			if (control->driver != DatarefDriver::Value && control->driver != DatarefDriver::Builtin)
+			if (control.driver != DatarefDriver::Value && control.driver != DatarefDriver::Builtin)
 			{
 				char tooltip[96];
-				snprintf(tooltip, sizeof(tooltip), "Current value %.3f (range %.3f .. %.3f)", control->value, control->minValue, control->maxValue);
+				snprintf(tooltip, sizeof(tooltip), "Current value %.3f (range %.3f .. %.3f)", control.value, control.minValue, control.maxValue);
 				EditorUI::ItemTooltip(tooltip);
 			}
 
+			if (perObject)
+			{
+				ImGui::TableNextColumn();
+				if (own)
+				{
+					if (ImGui::SmallButton(SEDX_ICON_LINK))
+						release = row.own;
+					EditorUI::ItemTooltip("This object's own value. Click to follow the shared one again (the Simulation tab's, which every other object reading it follows)");
+				}
+				else
+				{
+					ImGui::AlignTextToFramePadding();
+					ImGui::TextDisabled("%s", SEDX_ICON_USERS);
+					EditorUI::ItemTooltip("Shared with every object that reads it. A change here gives this object its own value");
+				}
+			}
+
+			if (changed)
+			{
+				if (own)
+					*own = control;
+				else if (perObject)
+					added.push_back({ row.index, control });
+				else
+					*row.shared = control;
+			}
 			ImGui::PopID();
 		}
 
 		ImGui::EndTable();
+
+		if (perObject)
+		{
+			if (release >= 0)
+				overrides->erase(overrides->begin() + release);
+			overrides->insert(overrides->end(), added.begin(), added.end());
+		}
 	}
 
 	void DrawSimulationControls()

@@ -22,6 +22,12 @@ versions.
 
 ### Fixed
 
+- Changing a dataref in a selected object's PROPERTIES (X-PLANE OBJECT › Animation) moves that object only. The table
+  edited the control every object shares, so testing one jetway moved every jetway at the airport, and it did the same
+  for any object with datarefs. Each placement now keeps its own controls for the datarefs changed there
+  (`XPlaneObjectComponent::datarefOverrides`, laid over the shared values when its inputs are read), as X-Plane gives each
+  instance of an object its own values; a button on the row hands it back to the shared value. The Simulation tab still
+  sets the values every object shares. The tools self-test checks a placement and a twin of it. (#75, 0.2.73.574)
 - A `WeakRef` to an object destroyed without its last `Ref` release (deleted by hand, or a stack or member object a `Ref`
   pointed to) now expires. Before, the object's control block stayed registered under its old address, and the next
   object there inherited it: that object's new WeakRefs were expired at once, or the old ones locked it. Both cases are

@@ -695,6 +695,22 @@ namespace SceneryEditorX::XPlane
 		{
 			static std::vector<float> values; // scratch: swapped with the placement's
 			ReadDatarefs(object.asset->GetData(), reader, values);
+
+			// The placement's own controls win over the shared ones for it alone (testing one jetway of many, issue 75)
+			for (DatarefOverride &own : object.datarefOverrides)
+			{
+				if (own.index >= values.size())
+					continue;
+				if (const DatarefControl *shared = Datarefs::Find(own.control.key))
+				{
+					own.control.minValue = shared->minValue;	// Widened as more objects register it
+					own.control.maxValue = shared->maxValue;
+				}
+				const float value = Datarefs::Evaluate(own.control);
+				if (own.control.driver != DatarefDriver::Value)
+					own.control.value = value;	// Shown in the table, like the shared controls' (Datarefs::Tick)
+				values[own.index] = value;
+			}
 			if (values == object.datarefValues)
 				return false;
 			object.datarefValues.swap(values);
