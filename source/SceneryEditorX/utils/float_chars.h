@@ -177,13 +177,13 @@ namespace SceneryEditorX::Utils::FloatChars
 			inline std::string Print(const double value, const char conversion, const int precision)
 			{
 				const char format[] = { '%', '.', '*', conversion, '\0' };
-				char small[64];
-				const int size = std::snprintf(small, sizeof(small), format, precision, value);
+				char buffer[64];	// Not "small": windows.h (rpcndr.h) #defines small as char
+				const int size = std::snprintf(buffer, sizeof(buffer), format, precision, value);
 				std::string text;
 				if (size < 0)
 					return text;
-				if (static_cast<size_t>(size) < sizeof(small))
-					text.assign(small, static_cast<size_t>(size));
+				if (static_cast<size_t>(size) < sizeof(buffer))
+					text.assign(buffer, static_cast<size_t>(size));
 				else
 				{
 					text.resize(static_cast<size_t>(size) + 1);
