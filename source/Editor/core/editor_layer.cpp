@@ -880,7 +880,7 @@ namespace SceneryEditorX
 			const std::string orbitTip = std::string("Orbit navigation\n") + ViewportCamera::GetKeymapSummary(EditorPreferences::Get().keymap);
 			if (EditorUI::StripButton(SEDX_ICON_REFRESH, orbitTip.c_str(), EditorCamera::IsMode(ORBIT), buttonSize))
 				EditorCamera::SetMode(ORBIT);
-			if (EditorUI::StripButton(SEDX_ICON_VIDEO_CAMERA, "Fly navigation\nRMB look, hold RMB + WASD move, Q/E down/up", EditorCamera::IsMode(FLY), buttonSize))
+			if (EditorUI::StripButton(SEDX_ICON_VIDEO_CAMERA, "Fly navigation\nWASD move, Q/E down/up (no button needed), RMB look\nQ/W/E pick no tools in this mode", EditorCamera::IsMode(FLY), buttonSize))
 				EditorCamera::SetMode(FLY);
 
 			ImGui::Separator();

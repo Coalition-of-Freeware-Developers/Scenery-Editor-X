@@ -31,6 +31,7 @@
 #pragma once
 #include "source/imgui/imgui.h"
 #include <optional>
+#include <vector>
 #include <vulkan/vulkan.h>
 
 // -------------------------------------------------------
@@ -103,6 +104,15 @@ namespace SceneryEditorX::UI
 
 	/* @brief Queues the scripted mouse input, if any. Call after the platform backend's NewFrame. */
 	void ApplyScriptedMouse();
+
+	/**
+	 * @brief Scripted keys, for self-tests: each is queued as held after the platform backend's input every frame
+	 * (modifiers as ImGuiMod_Alt / _Shift / _Ctrl), until a later call leaves it out. An empty list lets them all go.
+	 */
+	void SetScriptedKeys(const std::vector<ImGuiKey> &keys);
+
+	/* @brief Queues the scripted keys, if any. Call after the platform backend's NewFrame. */
+	void ApplyScriptedKeys();
 
 }
 

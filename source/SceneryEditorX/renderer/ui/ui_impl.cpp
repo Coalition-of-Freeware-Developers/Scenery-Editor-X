@@ -31,6 +31,7 @@
 #include "ui_impl.h"
 #include "source/imgui/imgui_internal.h"
 #include "source/imgui/backends/imgui_impl_vulkan.h"
+#include <algorithm>
 #include <array>
 #include <unordered_map>
 #include <vector>
@@ -261,6 +262,39 @@ namespace SceneryEditorX::UI
 		ImGuiIO &io = ImGui::GetIO();
 		io.AddMousePosEvent(s_ScriptedMousePosition->x, s_ScriptedMousePosition->y);
 		io.AddMouseButtonEvent(ImGuiMouseButton_Left, s_ScriptedMouseDown);
+
+		// The platform backend reports the OS window under the real cursor as the hovered viewport (none when it is over
+		// another program), which left the scripted position hovering nothing: self-tests' positions are in the main window
+		if (io.BackendFlags & ImGuiBackendFlags_HasMouseHoveredViewport)
+			io.AddMouseViewportEvent(ImGui::GetMainViewport()->ID);
+	}
+
+	namespace
+	{
+		std::vector<ImGuiKey> s_ScriptedKeys;
+	}
+
+	void SetScriptedKeys(const std::vector<ImGuiKey> &keys)
+	{
+		// Let go of the ones no longer held, so nothing stays pressed
+		if (ImGui::GetCurrentContext())
+		{
+			for (const ImGuiKey key : s_ScriptedKeys)
+			{
+				if (std::ranges::find(keys, key) == keys.end())
+					ImGui::GetIO().AddKeyEvent(key, false);
+			}
+		}
+		s_ScriptedKeys = keys;
+	}
+
+	void ApplyScriptedKeys()
+	{
+		if (s_ScriptedKeys.empty() || !ImGui::GetCurrentContext())
+			return;
+		ImGuiIO &io = ImGui::GetIO();
+		for (const ImGuiKey key : s_ScriptedKeys)
+			io.AddKeyEvent(key, true);
 	}
 
 	void RenderMainViewport(VkCommandBuffer commandBuffer)
