@@ -84,7 +84,7 @@ namespace SceneryEditorX::XPlane
 	enum class OverlayShading : uint8_t
 	{
 		Plain,			// The texture as mapped
-		Tiled,			// A RUNWAY_TILE atlas: each tile-sized cell shows the tile its mapping texel names (UVs span the whole atlas)
+		Tiled,			// A RUNWAY_TILE / TEXTURE_TILE atlas: each tile-sized cell shows the tile its mapping texel names (UVs span the whole atlas)
 		Markings		// A RUNWAY_MARKINGS atlas: R paint in the mesh color, G a border darkened by color[3]
 	};
 

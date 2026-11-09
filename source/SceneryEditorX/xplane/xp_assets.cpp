@@ -290,24 +290,23 @@ namespace SceneryEditorX::XPlane
 				out.decal = std::string(RestOfLine(line, 1));
 			else if (key == "TEXTURE_TILE" || key == "RUNWAY_TILE")
 			{
-				// TEXTURE_TILE <x tiles> <y tiles> <x pixels> <y pixels>; RUNWAY_TILE <x tiles> <y tiles> <map width> <map height> <map>
+				// TEXTURE_TILE <x tiles> <y tiles> <x pages> <y pages> [<map>] and RUNWAY_TILE <x tiles> <y tiles> <map width>
+				// <map height> <map>: the same arguments (pages are the mapping texture's pixels; without a map X-Plane picks
+				// tiles from noise)
 				out.tiled = true;
+				out.runwayTile = key == "RUNWAY_TILE";
 				if (tokens.size() >= 3)
 				{
 					out.tilesX = std::clamp(ParseInt(tokens[1], 1), 1, 64);
 					out.tilesY = std::clamp(ParseInt(tokens[2], 1), 1, 64);
 				}
-				if (key == "RUNWAY_TILE")
+				if (tokens.size() >= 5)
 				{
-					out.runwayTile = true;
-					if (tokens.size() >= 5)
-					{
-						out.tileMapWidth = std::clamp(ParseInt(tokens[3], 0), 0, 4096);
-						out.tileMapHeight = std::clamp(ParseInt(tokens[4], 0), 0, 4096);
-					}
-					if (tokens.size() >= 6)
-						out.tileMap = CleanPath(RestOfLine(line, 5));
+					out.tileMapWidth = std::clamp(ParseInt(tokens[3], 0), 0, 4096);
+					out.tileMapHeight = std::clamp(ParseInt(tokens[4], 0), 0, 4096);
 				}
+				if (tokens.size() >= 6)
+					out.tileMap = CleanPath(RestOfLine(line, 5));
 			}
 			else if (key == "RUNWAY_NOISE_PARAMS")
 			{

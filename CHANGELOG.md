@@ -24,7 +24,12 @@ versions.
 
 - The viewport camera (`MainCamera`) is no longer listed in the OUTLINER and can't be deleted: deleting it there, or
   with Del while it was selected, left a camera nothing could move until the editor restarted. `EditorScene::Destroy`
-  refuses it and returns whether it destroyed anything. (#80, 0.2.81.582)
+  refuses it and returns whether it destroyed anything. (#80, 0.2.84.585)
+- Draped polygons with `TEXTURE_TILE` (the tiling shader) keep the size `SCALE` gives their texture: before, `SCALE` was
+  taken as one tile, so a 4 x 4 atlas drew 4 times too large (and a 4 x 2 one under `SCALE 10 20` as a 40 m square).
+  `TEXTURE_TILE` now works like `RUNWAY_TILE`: each tile-sized cell shows the tile its mapping texture picks, or a random
+  one without a map. X-Plane 12's own asphalt taxiway art (`asphalt_*.pol`, `TEXTURE_TILE 4 4`, `SCALE 18 18`) uses it,
+  so default airports' asphalt is affected too. (#82, 0.2.82.583)
 - **Fly** navigation flies with <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> and <kbd>Q</kbd> / <kbd>E</kbd> without
   holding the right mouse button (while the mouse is over the viewport or it has the keyboard; not with Ctrl, Alt or Super
   held), and the keymap's orbit, pan and zoom drags no longer move the camera in it: the right mouse button turns it and
