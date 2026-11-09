@@ -683,8 +683,9 @@ namespace SceneryEditorX::EditorTools
 		if (io.KeyCtrl || io.KeyAlt || io.KeySuper)
 			return;
 		// In FLY navigation W A S D / Q E (Shift: faster) fly the camera without a button: they pick no tools and set no
-		// node types then (issue 79)
-		if (EditorCamera::IsMode(FLY) && ViewportCamera::IsFlyKeyPressed())
+		// node types then (issue 79). Asked of the camera, so they stay tool keys whenever it doesn't fly with them
+		// (input locked, another window has the keyboard).
+		if (EditorCamera::TakesFlyKeys() && ViewportCamera::IsFlyKeyPressed())
 			return;
 		// Shift+letter: the node tool's node types, straighten and B-spline; the facade tool's Enter, Backspace and modes
 		if (GetTool() == Tool::Nodes && NodeTool::HandleShortcuts())

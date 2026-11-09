@@ -104,6 +104,13 @@ namespace SceneryEditorX::ViewportCamera
 		bool Animate(Rig &rig, float deltaTime);
 
 		[[nodiscard]] bool IsDragging() const { return m_Drag != Drag::None; }
+
+		/**
+		 * @brief True when the last Navigate() flew with W A S D / Q E without a mouse button (FLY navigation, the viewport
+		 * has the mouse or the keyboard, no text field, no Ctrl / Alt / Super, input not locked): other shortcuts on those
+		 * keys stand aside only then.
+		 */
+		[[nodiscard]] bool TakesFlyKeys() const { return m_FlyKeys; }
 		[[nodiscard]] bool IsAnimating() const { return m_Transition.active; }
 
 		/* @brief Looks along a preset axis around the current pivot (Free leaves the direction alone). */
@@ -140,6 +147,7 @@ namespace SceneryEditorX::ViewportCamera
 
 		Drag m_Drag = Drag::None;
 		int m_Button = 0;		// The mouse button holding the drag
+		bool m_FlyKeys = false;	// TakesFlyKeys()
 		Transition m_Transition;
 	};
 
@@ -148,6 +156,9 @@ namespace SceneryEditorX::ViewportCamera
 	 * without a mouse button, so other shortcuts on those keys (tools, node types, Maya's frame all) stand aside.
 	 */
 	bool IsFlyKeyPressed();
+
+	/* @brief True when a keymap orbits with an Alt + left drag (Blender, Maya; 3ds Max orbits with Alt + middle). */
+	bool OrbitsWithAltLeft(NavigationKeymap keymap);
 
 	/* @brief One line of a keymap's reference: what it does and the keys / buttons that do it. */
 	struct Binding

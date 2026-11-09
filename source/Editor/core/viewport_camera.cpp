@@ -203,6 +203,7 @@ namespace SceneryEditorX::ViewportCamera
 		if (input.locked)
 		{
 			m_Drag = Drag::None;
+			m_FlyKeys = false;
 			return false;
 		}
 
@@ -293,7 +294,8 @@ namespace SceneryEditorX::ViewportCamera
 		// arrows and Page Up / Down whenever over the image. Space rises only while looking (alone it opens the hotbox).
 		// Faster the higher the camera and the farther the pivot (scenery is kilometers across); Shift hurries, Ctrl creeps.
 		const bool looking = m_Drag == Drag::Look;
-		const bool flyKeys = looking || (rig.fly && (input.hovered || input.focused) && !io.KeyCtrl && !io.KeyAlt && !io.KeySuper);
+		m_FlyKeys = !io.WantTextInput && rig.fly && (input.hovered || input.focused) && !io.KeyCtrl && !io.KeyAlt && !io.KeySuper;
+		const bool flyKeys = looking || m_FlyKeys;
 		const bool moveKeys = looking || input.hovered;
 		if (!io.WantTextInput && (flyKeys || moveKeys))
 		{
@@ -411,6 +413,11 @@ namespace SceneryEditorX::ViewportCamera
 	}
 
 	// -------------------------------------------------------
+
+	bool OrbitsWithAltLeft(const NavigationKeymap keymap)
+	{
+		return Classify(keymap, ImGuiMouseButton_Left, true, false, false) == 1;	// 1: orbit (Classify's codes)
+	}
 
 	bool IsFlyKeyPressed()
 	{

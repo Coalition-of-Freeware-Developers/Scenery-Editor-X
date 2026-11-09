@@ -434,6 +434,11 @@ namespace SceneryEditorX::EditorCamera
 		return S().controller.IsDragging();
 	}
 
+	bool TakesFlyKeys()
+	{
+		return S().controller.TakesFlyKeys();
+	}
+
 	void HandleShortcuts(EditorContext *context)
 	{
 		const ImGuiIO &io = ImGui::GetIO();
@@ -488,7 +493,7 @@ namespace SceneryEditorX::EditorCamera
 			case NavigationKeymap::Maya:
 				if (pressed(ImGuiKey_F))
 					EditorTools::FrameSelection();
-				if (pressed(ImGuiKey_A) && !IsMode(FLY))	// A flies left in FLY navigation
+				if (pressed(ImGuiKey_A) && !TakesFlyKeys())	// A flies left in FLY navigation
 					FrameAll();
 				break;
 			default:

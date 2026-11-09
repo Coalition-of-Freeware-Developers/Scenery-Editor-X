@@ -738,6 +738,7 @@ namespace SceneryEditorX::ToolsSelfTest
 					EditorCamera::SetRig(*s.rigBefore);
 				s.wait = 60;
 				s.flyPhase = 0;
+				s.flyRig.reset();
 				s.step = Step::FlyNavigation;
 				break;
 			}
@@ -748,9 +749,22 @@ namespace SceneryEditorX::ToolsSelfTest
 				// ORBIT navigation (so the scripted drag does reach the camera) and does nothing in FLY navigation, where W
 				// flies forward without a mouse button
 				const ImVec2 middle(std::floor(view.imageMin.x + view.imageSize.x * 0.5f), std::floor(view.imageMin.y + view.imageSize.y * 0.5f));
-				const bool altOrbits = EditorPreferences::Get().keymap != NavigationKeymap::Max;	// Max orbits with Alt + middle
+				const bool altOrbits = ViewportCamera::OrbitsWithAltLeft(EditorPreferences::Get().keymap);	// Not 3ds Max's (Alt + middle)
 				ViewportCamera::Rig rig;
 				const bool hasRig = EditorCamera::GetRig(rig);
+
+				// However the step ends: scripted input let go, the view and navigation mode put back, the input lock too
+				const auto finish = [&s]()
+				{
+					UI::SetScriptedKeys({});
+					UI::SetScriptedMouse(std::nullopt);
+					if (s.flyRig)
+						EditorCamera::SetRig(*s.flyRig);	// Its navigation mode too
+					if (s.flyPhase > 0)
+						Camera::SetInputLocked(s.flyWasLocked);
+					s.wait = 30;
+					s.step = Step::LibraryFilters;
+				};
 				const auto turned = [&](const ViewportCamera::Rig &from) { return std::abs(std::remainder(rig.yaw - from.yaw, 6.283185307179586)) + std::abs(rig.pitch - from.pitch); };
 				const auto drag = [&](const int phase)
 				{
@@ -773,7 +787,7 @@ namespace SceneryEditorX::ToolsSelfTest
 				if (!hasRig)
 				{
 					Check(false, "fly navigation: the camera has a rig");
-					s.step = Step::LibraryFilters;
+					finish();
 					break;
 				}
 				const int phase = s.flyPhase++;
@@ -824,12 +838,7 @@ namespace SceneryEditorX::ToolsSelfTest
 					const double moved = (rig.pivot.x - s.flyFrom.pivot.x) * forward.x + (rig.pivot.y - s.flyFrom.pivot.y) * forward.y + (rig.pivot.z - s.flyFrom.pivot.z) * forward.z;
 					EDITOR_INFO_TAG(LOG_TAG, "Fly navigation: W flew {:.2f} m", moved);
 					Check(moved > 0.5 && turned(s.flyFrom) < 1e-6, "fly navigation: W flies forward without a mouse button");
-
-					UI::SetScriptedMouse(std::nullopt);
-					EditorCamera::SetRig(*s.flyRig);	// Its navigation mode too
-					Camera::SetInputLocked(s.flyWasLocked);
-					s.wait = 30;
-					s.step = Step::LibraryFilters;
+					finish();
 				}
 				break;
 			}
