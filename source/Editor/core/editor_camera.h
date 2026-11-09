@@ -112,6 +112,9 @@ namespace SceneryEditorX::EditorCamera
 	/* @brief True while a camera drag is in progress (tools stand back). */
 	bool IsNavigating();
 
+	/* @brief True when FLY navigation's keys (W A S D / Q E, no button) moved the camera's last frame (Controller::TakesFlyKeys). */
+	bool TakesFlyKeys();
+
 	/* @brief The keymap's view keys over the viewport: numpad views, Home, and T F L P U Z / F A per keymap. */
 	void HandleShortcuts(EditorContext *context);
 }

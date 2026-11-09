@@ -92,6 +92,7 @@ Shortcuts never fire while you're typing in a field. Tool and camera keys only w
 | Right mouse drag | Look around |
 | Hold right mouse + <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> | Fly |
 | Hold right mouse + <kbd>Q</kbd> / <kbd>E</kbd> | Down / up |
+| <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd>, <kbd>Q</kbd> / <kbd>E</kbd> in **Fly** navigation | Fly, down / up, without a mouse button |
 | Add <kbd>Shift</kbd> / <kbd>Ctrl</kbd> | Faster / slower |
 | Arrow keys, <kbd>Page Up</kbd> / <kbd>Page Down</kbd> | Move the camera |
 | <kbd>Numpad 7</kbd> / <kbd>Ctrl+Numpad 7</kbd> | Top / bottom view |
