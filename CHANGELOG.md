@@ -25,6 +25,12 @@ versions.
 - The viewport camera (`MainCamera`) is no longer listed in the OUTLINER and can't be deleted: deleting it there, or
   with Del while it was selected, left a camera nothing could move until the editor restarted. `EditorScene::Destroy`
   refuses it and returns whether it destroyed anything. (#80, 0.2.84.585)
+- Changing a dataref in a selected object's PROPERTIES (X-PLANE OBJECT › Animation) moves that object only. The table
+  edited the control every object shares, so testing one jetway moved every jetway at the airport, and it did the same
+  for any object with datarefs. Each placement now keeps its own controls for the datarefs changed there
+  (`XPlaneObjectComponent::datarefOverrides`, laid over the shared values when its inputs are read), as X-Plane gives each
+  instance of an object its own values; a button on the row hands it back to the shared value. The Simulation tab still
+  sets the values every object shares. The tools self-test checks a placement and a twin of it. (#75, 0.2.83.584)
 - Draped polygons with `TEXTURE_TILE` (the tiling shader) keep the size `SCALE` gives their texture: before, `SCALE` was
   taken as one tile, so a 4 x 4 atlas drew 4 times too large (and a 4 x 2 one under `SCALE 10 20` as a 40 m square).
   `TEXTURE_TILE` now works like `RUNWAY_TILE`: each tile-sized cell shows the tile its mapping texture picks, or a random

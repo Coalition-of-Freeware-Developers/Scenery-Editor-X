@@ -82,6 +82,7 @@ namespace SceneryEditorX::ToolsSelfTest
 			OrthoTop,
 			OrthoPick,
 			OrthoWaitPick,
+			DatarefOverrides,
 			FlyNavigation,
 			LibraryFilters,
 			LargePolygonCreate,
@@ -191,6 +192,17 @@ namespace SceneryEditorX::ToolsSelfTest
 			uint32_t extraViewsBefore = 0;
 			int extraViewFrames = 0;
 			uint32_t largeVerticesAfterAdd = 0;	// The view before the orthographic steps (put back after)
+
+			// Per-object datarefs (issue 75): an animated placement given its own value, and a twin of it that isn't
+			int datarefPhase = 0;
+			uint64_t datarefObject = 0;
+			uint64_t datarefTwin = 0;
+			uint64_t datarefGroup = 0;			// Holds the twin (a root with a parent stays out of the project)
+			uint32_t datarefIndex = 0;			// Into the object's Obj8Data::datarefs
+			std::optional<XPlane::DatarefControl> datarefShared;	// The shared control before (put back after)
+			float datarefOwn = 0.0f;
+			float datarefSharedValue = 0.0f;
+			int datarefWaitFrames = 0;			// Waiting for the twin to load
 
 			// FLY navigation (issue 79): scripted keys and Alt + left drags, with the camera's input unlocked for them
 			int flyPhase = 0;
@@ -758,9 +770,126 @@ namespace SceneryEditorX::ToolsSelfTest
 				if (s.rigBefore)
 					EditorCamera::SetRig(*s.rigBefore);
 				s.wait = 60;
+				s.datarefPhase = 0;
+				s.datarefWaitFrames = 0;
 				s.flyPhase = 0;
 				s.flyRig.reset();
-				s.step = Step::FlyNavigation;
+				s.step = Step::DatarefOverrides;
+				break;
+			}
+
+			case Step::DatarefOverrides:
+			{
+				// Testing one placement's animation leaves the other placements of the same object alone (issue 75: every
+				// jetway at the airport moved with the selected one)
+				const auto object = [](const uint64_t id) { return id != 0 ? XPlane::SceneObjects::FindObject(id) : nullptr; };
+				const auto valueOf = [&s](const XPlane::XPlaneObjectComponent *placement)
+				{
+					return placement && s.datarefIndex < placement->datarefValues.size() ? placement->datarefValues[s.datarefIndex] : 1e30f;
+				};
+				const int phase = s.datarefPhase++;
+				if (phase == 0)
+				{
+					// An animated placement that has loaded, and a dataref it reads with a range
+					XPlane::XPlaneObjectComponent *found = nullptr;
+					if (entt::registry *registry = EditorScene::GetRegistry())
+					{
+						auto placements = registry->view<XPlane::XPlaneObjectComponent>();
+						for (const entt::entity handle : placements)
+						{
+							XPlane::XPlaneObjectComponent &placement = placements.get<XPlane::XPlaneObjectComponent>(handle);
+							if (!placement.loaded || !placement.asset || !placement.dynamicState)
+								continue;
+							const std::vector<XPlane::Obj8DatarefUsage> &datarefs = placement.asset->GetData().datarefs;
+							for (uint32_t i = 0; i < static_cast<uint32_t>(datarefs.size()) && !found; ++i)
+							{
+								const XPlane::DatarefControl *shared = XPlane::Datarefs::Find(datarefs[i].dataref.ToString());
+								if (!shared || !(shared->maxValue > shared->minValue))
+									continue;
+								found = &placement;
+								s.datarefObject = EditorScene::GetID(handle);
+								s.datarefIndex = i;
+								s.datarefShared = *shared;
+							}
+							if (found)
+								break;
+						}
+					}
+					if (!found)
+					{
+						EDITOR_INFO_TAG(LOG_TAG, "Per-object datarefs: no animated object is placed here: skipped");
+						s.step = Step::FlyNavigation;
+						break;
+					}
+
+					// A twin at the same place, under a group of its own
+					s.datarefGroup = EditorScene::CreateEmpty("SelfTest dataref twins");
+					XPlane::SceneObjects::PlaceOptions options;
+					options.frameCamera = false;
+					options.name = "SelfTest dataref twin";
+					options.virtualPath = found->virtualPath;
+					if (const TransformComponent *transform = EditorScene::TryGet<TransformComponent>(EditorScene::FindHandle(s.datarefObject)))
+					{
+						options.position[0] = transform->translation.x;
+						options.position[1] = transform->translation.y;
+						options.position[2] = transform->translation.z;
+					}
+					const std::filesystem::path file = found->asset->GetPath();
+					s.datarefTwin = XPlane::SceneObjects::Place(file, options);
+					Entity twin = Scene::TryGetEntityWithUUID(UUID(s.datarefTwin));
+					const Entity group = Scene::TryGetEntityWithUUID(UUID(s.datarefGroup));
+					if (twin && group)
+						twin.SetParent(group);
+
+					// Shared: the bottom of the range; the placement's own: three quarters up
+					XPlane::DatarefControl *shared = XPlane::Datarefs::Find(s.datarefShared->key);
+					shared->driver = XPlane::DatarefDriver::Value;
+					shared->value = shared->minValue;
+					s.datarefSharedValue = shared->minValue;
+					s.datarefOwn = shared->minValue + 0.75f * (shared->maxValue - shared->minValue);
+					found = object(s.datarefObject);	// Placing may have moved the components
+					XPlane::DatarefOverride own;
+					own.index = s.datarefIndex;
+					own.control = *shared;
+					own.control.value = s.datarefOwn;
+					if (found)
+						found->datarefOverrides.push_back(own);
+					EDITOR_INFO_TAG(LOG_TAG, "Per-object datarefs: {} of {} at {:.3f} for one placement, {:.3f} shared", s.datarefShared->key,
+						file.filename().string(), s.datarefOwn, s.datarefSharedValue);
+					s.wait = 5;
+				}
+				else if (phase == 1)
+				{
+					XPlane::XPlaneObjectComponent *placement = object(s.datarefObject);
+					const XPlane::XPlaneObjectComponent *twin = object(s.datarefTwin);
+					if (twin && !twin->loaded && ++s.datarefWaitFrames < 600)
+					{
+						--s.datarefPhase;	// Its asset is the placement's, already loaded, but placing may still finish later
+						break;
+					}
+					Check(twin && twin->loaded, "per-object datarefs: a second placement of the same object");
+					Check(std::abs(valueOf(placement) - s.datarefOwn) < 1e-4f, "per-object datarefs: the placement follows its own value");
+					Check(std::abs(valueOf(twin) - s.datarefSharedValue) < 1e-4f, "per-object datarefs: the other placement keeps the shared value");
+					if (placement)
+						placement->datarefOverrides.clear();
+					s.wait = 5;
+				}
+				else
+				{
+					Check(std::abs(valueOf(object(s.datarefObject)) - s.datarefSharedValue) < 1e-4f, "per-object datarefs: back to the shared value once its own is dropped");
+
+					// The shared control as it was (its range and users stay what the placements made them)
+					if (XPlane::DatarefControl *shared = s.datarefShared ? XPlane::Datarefs::Find(s.datarefShared->key) : nullptr)
+					{
+						shared->driver = s.datarefShared->driver;
+						shared->value = s.datarefShared->value;
+						shared->period = s.datarefShared->period;
+						shared->rate = s.datarefShared->rate;
+					}
+					EditorScene::Destroy(s.datarefGroup);	// The twin with it
+					s.wait = 30;
+					s.step = Step::FlyNavigation;
+				}
 				break;
 			}
 

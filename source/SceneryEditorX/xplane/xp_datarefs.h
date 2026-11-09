@@ -69,6 +69,18 @@ namespace SceneryEditorX::XPlane
 		uint32_t users = 0;			// Objects that registered the dataref
 	};
 
+	/**
+	 * @struct DatarefOverride
+	 * @brief A placed object's own control for one dataref it reads: it drives that object alone, the way X-Plane gives
+	 * each instance of an object its own values for the datarefs it was created with (XPLMInstanceSetPosition). Lets the
+	 * PROPERTIES panel test one jetway while the others stay put (issue 75); the other objects follow the shared control.
+	 */
+	struct DatarefOverride
+	{
+		uint32_t index = 0;			// Into the object's Obj8Data::datarefs (its datarefValues)
+		DatarefControl control;		// key as the shared control's; the range follows the shared control's
+	};
+
 	/* @brief Environment the built-in datarefs derive from. */
 	/**
 	 * @brief Dataref-only settings. Time, place and weather live in the world environment (environment/environment.h),
@@ -94,6 +106,9 @@ namespace SceneryEditorX::XPlane
 
 		/* @brief Reader for animation evaluation. */
 		static DatarefReader GetReader();
+
+		/* @brief A control's value now (its driver at the sim clock), for controls outside the table (DatarefOverride). */
+		static float Evaluate(const DatarefControl &control);
 
 		/**
 		 * @brief Makes sure a dataref an object reads has a control, widening its range to the object's keyframes.
