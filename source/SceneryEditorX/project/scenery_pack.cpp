@@ -34,6 +34,7 @@
 #include <SceneryEditorX/filesystem/vfs.h>
 #include <SceneryEditorX/xplane/xp_airport_document.h>
 #include <SceneryEditorX/xplane/xp_dsf.h>
+#include <SceneryEditorX/utils/float_chars.h>
 #include <algorithm>
 #include <charconv>
 #include <cmath>
@@ -257,7 +258,7 @@ namespace SceneryEditorX::ProjectFile
 			return Fail(error, "Use at most " + std::to_string(COORDINATE_DECIMALS) + " decimal places");
 
 		double magnitude = 0.0;
-		const auto [end, ec] = std::from_chars(text.data(), text.data() + text.size(), magnitude);
+		const auto [end, ec] = Utils::FloatChars::FromChars(text.data(), text.data() + text.size(), magnitude);
 		if (ec != std::errc() || end != text.data() + text.size())
 			return Fail(error, std::string("Write the ") + what + " in decimal degrees");
 		const double limit = latitude ? 90.0 : 180.0;

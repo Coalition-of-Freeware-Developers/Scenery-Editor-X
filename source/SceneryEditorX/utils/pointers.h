@@ -85,8 +85,20 @@ namespace SceneryEditorX
 		/** @brief Move assignment operator doesn't affect reference count. */
 		RefCounted& operator=(RefCounted&&) noexcept { return *this; }
 
-		/** @brief Virtual destructor for proper polymorphic behavior. */
-		virtual ~RefCounted() = default;
+		/**
+		 * @brief Virtual destructor for proper polymorphic behavior.
+		 *
+		 * Expires the object's WeakRefs if it still has a control block, which happens only when it was destroyed
+		 * without its last Ref release (that release expires them first): deleted by hand, or a stack or member
+		 * object a Ref pointed to. Both are misuse, but the registry would otherwise keep the block of an address the
+		 * next object may get, and the old WeakRefs would lock that object. Objects that never had a WeakRef, or
+		 * whose last Ref expired them, skip the registry (one atomic load).
+		 *
+		 * Only the last Ref release is safe against other threads: it expires the WeakRefs before any destructor
+		 * runs. In the misuse paths this runs last, so another thread's Lock() can still get the object while its
+		 * derived part is being destroyed.
+		 */
+		virtual ~RefCounted() noexcept;	// Explicitly: ExpireWeakRefs may lock the registry mutex, and a throw from here must terminate
 
 		/**
 		 * @brief Increments the reference count.
@@ -136,8 +148,9 @@ namespace SceneryEditorX
 		// Using mutable to allow const objects to be reference counted
 		mutable std::atomic<uint32_t> m_RefCount{0};
 
-		// Set (never cleared) when the first WeakRef to this object is made: only then does its last release
-		// have a control block to expire. Not copied, like the count: it belongs to the object's identity.
+		// Set when the first WeakRef to this object is made, cleared when its control block is removed: only while it
+		// is set does the object have a control block to expire. Not copied, like the count: it belongs to the
+		// object's identity.
 		mutable std::atomic<bool> m_HasWeakRefs{false};
 	};
 
@@ -284,8 +297,9 @@ namespace SceneryEditorX
 			/**
 			 * @brief Expires the WeakRefs to an object whose last Ref was just released
 			 *
-			 * Called by the last release, before the object is deleted, through a Ref of any type. Objects that
-			 * never had a WeakRef have no control block: they skip the registry and its mutex.
+			 * Called by the last release, before the object is deleted, through a Ref of any type, and by
+			 * ~RefCounted() for an object destroyed some other way. Objects without a control block (they never had
+			 * a WeakRef, or it was already removed) skip the registry and its mutex.
 			 *
 			 * The m_HasWeakRefs flag is set (under the registry's mutex) by a thread holding a strong reference,
 			 * and that reference's release comes before the count reaches 0, so the last release sees it.
@@ -382,7 +396,8 @@ namespace SceneryEditorX
 			 * This method is called when an object is being destroyed, before it is deleted. It sets
 			 * the object pointer in the control block to nullptr to indicate that the object is no
 			 * longer valid and releases the weak reference held for the living object; the control
-			 * block is deleted when no WeakRef uses it any more.
+			 * block is deleted when no WeakRef uses it any more. It also clears the object's
+			 * m_HasWeakRefs, so its destructor doesn't look for the block again.
 			 *
 			 * @param object The RefCounted part of the object whose control block should be removed
 			 */
@@ -400,6 +415,7 @@ namespace SceneryEditorX
 					block = it->second;
 					m_Blocks.erase(it);
 					block->SetPtr(nullptr);
+					object->m_HasWeakRefs.store(false, std::memory_order_release);
 				}
 
 				// May delete the block, if no WeakRef uses it
@@ -469,6 +485,8 @@ namespace SceneryEditorX
 
 	} // namespace Internal
 
+	inline RefCounted::~RefCounted() noexcept { Internal::ControlBlockRegistry::ExpireWeakRefs(this); }
+
 	// -----------------------------------------------------------
 
 	template <typename T>
@@ -497,6 +515,17 @@ namespace SceneryEditorX
 
 		/**
 		 * @brief Constructor from raw pointer. Takes ownership of the object.
+		 *
+		 * Adds a reference to the object's own (intrusive) count, so a Ref made from a pointer to an object other
+		 * Refs already own shares it with them. Implicit: passing `this` where a Ref is expected makes one.
+		 *
+		 * @warning In a constructor or destructor no Ref owns the object (yet, or any more): a Ref made from `this`
+		 * there takes the count from 0 to 1, and its release brings it back to 0, which deletes the object (the one
+		 * under construction, or a second time). So a temporary made from `this` (`this` passed as a `const Ref<T>&`
+		 * argument, `WeakRef<T>(Ref<T>(this))`) must not be the only one. Pass a plain reference or pointer instead,
+		 * or hold a count over the constructor with IncRefCount() / DecRefCount() (DecRefCount() never deletes), as
+		 * Device's constructor does.
+		 *
 		 * @param instance Pointer to the object to manage.
 		 */
 		Ref(T *instance) : m_Ptr(instance)
@@ -508,6 +537,9 @@ namespace SceneryEditorX
 
 		/**
 		 * @brief Constructor from raw pointer. Takes ownership of the object.
+		 *
+		 * Adds a reference like Ref(T*), with the same warning about `this` in constructors and destructors.
+		 *
 		 * @param ptr Pointer to the object to manage.
 		 */
 		template <typename U, typename = std::enable_if_t<std::is_convertible_v<U*, T*>>>
@@ -904,6 +936,13 @@ namespace SceneryEditorX
 	 * WeakRef allows observing an object without affecting its lifetime.
 	 * Unlike Ref<T>, WeakRef does not prevent the object from being destroyed.
 	 *
+	 * Like std::weak_ptr:
+	 * - It is made from a Ref (or another WeakRef), never from a raw pointer, so it needs an object a Ref
+	 *   already owns. Don't make one from `this` in a constructor: the temporary Ref that takes would delete the
+	 *   object (see Ref(T*)). Make it once the object is owned, for example in an Init() called after CreateRef().
+	 * - An object whose reference count is 0 counts as destroyed, even while its last release is still running:
+	 *   Lock() returns null and UseCount() 0, and from then on Expired() is true. It never comes back.
+	 *
 	 * @tparam T The type of the managed object.
 	 */
 	template <typename T>
@@ -918,6 +957,10 @@ namespace SceneryEditorX
 
 		/**
 		 * @brief Constructor from a Ref<T>. Creates a weak reference to the object managed by ref.
+		 *
+		 * The object must be owned by a Ref that outlives this call, not a temporary made from `this` in a
+		 * constructor (see the class notes).
+		 *
 		 * @param ref The Ref<T> to observe.
 		 */
 		template <typename U, typename = std::enable_if_t<std::is_convertible_v<U*, T*>>>

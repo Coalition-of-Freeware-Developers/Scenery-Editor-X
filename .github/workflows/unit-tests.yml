@@ -1,0 +1,99 @@
+# Builds and runs the dependency-light Catch2 unit suites (AGENTS.md, "Build & run the Linux-buildable tests") on the
+# three platforms Scenery Editor X ships for: Linux with g++, macOS with Apple clang, Windows with MSYS2 (UCRT64) g++.
+# They need only the standard library and the json, Catch2 and libconfig submodules; the editor itself needs a GPU and
+# isn't built here. scripts/ci/build_unit_tests.sh does the work, so a failing job can be repeated locally with the
+# same command. Each job uploads its Catch2 JUnit reports and writes a per-suite table to the run summary.
+name: Unit tests
+
+on:
+  pull_request:
+    branches: [ dev ]
+  push:
+    branches: [ dev, master ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: unit-tests-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  unit-tests:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux (g++)
+            os: ubuntu-latest
+            platform: linux
+            shell: bash
+            cc: gcc
+            cxx: g++
+          - name: macOS (Apple clang)
+            os: macos-latest
+            platform: macos
+            shell: bash
+            cc: clang
+            cxx: clang++
+          - name: Windows (MSYS2 UCRT64 g++)
+            os: windows-latest
+            platform: windows
+            # The runner image's own MSYS2 as a login shell, the way msys2/setup-msys2 runs it (that action isn't in
+            # this repository's allowed actions, so using it stops the whole workflow before any job starts)
+            shell: 'C:\msys64\usr\bin\bash.exe -leo pipefail {0}'
+            cc: gcc
+            cxx: g++
+    defaults:
+      run:
+        shell: ${{ matrix.shell }}
+    env:
+      CC: ${{ matrix.cc }}
+      CXX: ${{ matrix.cxx }}
+      # Read only by the MSYS2 login shell on Windows: put UCRT64's bin first on PATH and stay in the workspace
+      MSYSTEM: UCRT64
+      CHERE_INVOKING: '1'
+    steps:
+      - uses: actions/checkout@v7
+
+      # The submodules use SSH URLs; only these three are needed (the rest are for the full editor build)
+      - name: Submodules (json, Catch2, libconfig)
+        shell: bash
+        run: >-
+          git -c 'url.https://github.com/.insteadOf=git@github.com:'
+          submodule update --init --depth 1 dependency/json dependency/Catch2 dependency/libconfig
+
+      # Installed from the image's own package database, so nothing is partially upgraded (MSYS2 doesn't support
+      # `pacman -Sy` without -u). If that database is too old for the mirrors, update all of MSYS2 first the way
+      # msys2/setup-msys2 does: the first pass may replace the MSYS2 runtime, which needs every MSYS2 process stopped.
+      # PowerShell, not the MSYS2 shell, so the update can't stop the shell running this step.
+      - name: MSYS2 UCRT64 toolchain
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $bash = 'C:\msys64\usr\bin\bash.exe'
+          $install = 'pacman -S --noconfirm --needed mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-cmake mingw-w64-ucrt-x86_64-ninja'
+          & $bash -lc $install
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host 'Installing from the image database failed: updating MSYS2, then installing again'
+            & $bash -lc 'pacman -Syuu --noconfirm --overwrite "*"'
+            taskkill /F /FI "MODULES eq msys-2.0.dll"
+            & $bash -lc 'pacman -Syuu --noconfirm --overwrite "*"'
+            & $bash -lc $install
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+
+      - name: Build and run the suites
+        run: bash scripts/ci/build_unit_tests.sh
+
+      - name: Upload the JUnit reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: unit-test-reports-${{ matrix.platform }}
+          path: build/unit-tests/reports/*.xml
+          if-no-files-found: warn

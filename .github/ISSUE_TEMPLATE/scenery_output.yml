@@ -1,0 +1,163 @@
+# Indent with spaces only: a tab anywhere in this file makes GitHub reject the whole form.
+name: Scenery Output / File Format Problem
+description: A file is read, saved or exported wrong, or X-Plane, WorldEditor or the Scenery Gateway rejects it.
+title: "[FILE] "
+labels: ["BUG", "FILE FORMAT"]
+assignees: [The3dVehicleguy]
+projects: ["Coalition-of-Freeware-Developers/2"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form when the problem is in a **file**: an airport or project that opens wrong, a save that changes things it shouldn't,
+        an exported scenery pack that X-Plane shows differently or doesn't load, or a package the Gateway refuses.
+
+        The smallest file that shows the problem is the most useful thing you can attach.
+
+  - type: input
+    id: version
+    attributes:
+      label: Scenery Editor X version
+      description: From **Help › About Scenery Editor X**.
+      placeholder: "0.2.63.564"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: file_type
+    attributes:
+      label: File type
+      multiple: true
+      options:
+        - "apt.dat (airport)"
+        - "DSF (scenery tile)"
+        - "earth.wed.xml (WorldEditor project)"
+        - ".edX project"
+        - ".sex project"
+        - "scenery_packs.ini"
+        - "library.txt"
+        - ".obj (OBJ8 object)"
+        - ".fac (facade)"
+        - ".pol / .lin / .str (draped polygon / line / string)"
+        - ".for (forest)"
+        - ".agp / .ags / .agb (autogen)"
+        - ".net (road network)"
+        - ".ter (terrain)"
+        - "Scenery Gateway package"
+        - "Other"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: operation
+    attributes:
+      label: When does it go wrong?
+      options:
+        - "Opening or importing the file in Scenery Editor X"
+        - "Saving a project"
+        - "Opening then saving changes things I didn't edit (round trip)"
+        - "Exporting a scenery pack"
+        - "X-Plane shows the exported scenery differently or not at all"
+        - "WorldEditor can't open or shows the exported file differently"
+        - "Scenery Gateway validation or upload"
+        - "Other"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - "Viewport: camera, selection, gizmo, node editing"
+        - "Rendering: X-Plane 12 emulation, lighting, shadows, sky, water, weather"
+        - "Editor UI: panels, menus, dialogs, docking, shortcuts"
+        - "Airports: apt.dat, AIRPORTS panel, runways, taxiways, signs, airport lights"
+        - "Projects: .edX / .sex files, saving, recovery, WorldEditor import / export"
+        - "Scenery export: scenery packs, DSF, apt.dat, scenery_packs.ini"
+        - "X-Plane library & assets: library scan, objects, forests, autogen, thumbnails"
+        - "Facades: facade tool, FACADE EDITOR, .fac files"
+        - "Roads, base terrain & water"
+        - "Scenery Gateway: download, validation, upload"
+        - "Startup, settings & file locations: Vulkan check, preferences, logs, caches"
+        - "Core engine: memory, threading, logging, smart pointers, math"
+        - "Build system, CI, tests, installer"
+        - "Documentation & user manual"
+        - "Not sure"
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: What's wrong
+      description: What is wrong in the file or in how it's shown. Quote the line from the file if you can.
+      placeholder: |
+        After export, apt.dat has the taxiway sign at row 20 with size 3 instead of 2:
+        20 42.36210 -71.00530 90.00 0 3 {@Y}A1
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+      placeholder: "The sign keeps size 2, as it was in the original apt.dat (and as WorldEditor 2.6 writes it)."
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open KBTV from the AIRPORTS panel.
+        2. Save As… a new pack in Custom Scenery.
+        3. Compare the pack's Earth nav data/apt.dat with the original.
+    validations:
+      required: true
+
+  - type: textarea
+    id: file
+    attributes:
+      label: The file
+      description: |
+        Drag in the file, zipped (GitHub doesn't accept `.edX`, `.sex`, `.dsf` or `.dat` directly), or a small sample that shows the problem.
+        For a Gateway airport, give its scenery ID instead. Say if the file comes from a payware pack you can't share.
+    validations:
+      required: true
+
+  - type: textarea
+    id: messages
+    attributes:
+      label: Messages from the tools
+      description: |
+        The editor's CONSOLE or VALIDATION messages, the lines X-Plane's `Log.txt` writes about the pack,
+        WorldEditor's error, Gateway validation results, or `DSFTool --dsf2text` output for a DSF.
+      render: text
+
+  - type: input
+    id: xplane
+    attributes:
+      label: X-Plane and WorldEditor versions
+      placeholder: "X-Plane 12.4.4, WorldEditor 2.6.0"
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      multiple: true
+      options:
+        - "Windows 11"
+        - "Windows 10"
+        - "Linux"
+        - "macOS"
+        - "Other"
+    validations:
+      required: true
+
+  - type: textarea
+    id: developer_notes
+    attributes:
+      label: Notes for developers (optional)
+      description: The specification section involved (X-Plane's apt.dat 1200 / DSF / OBJ8 specs), the reader or writer you suspect (`source/SceneryEditorX/xplane/`, `source/SceneryEditorX/project/`), or a unit test that would catch it.

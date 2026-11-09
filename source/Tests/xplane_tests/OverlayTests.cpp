@@ -1692,6 +1692,62 @@ TEST_CASE("Overlay builder textures apt.dat surfaces through the library", "[ove
 	CHECK(unknownWarnings == 1);
 }
 
+TEST_CASE("Overlay builder reports the light fixture fallback once per builder", "[overlay]")
+{
+	// No lib/airport/lights/slow/, only the light-only set: every run of the same light type falls back to it
+	TempDir temp;
+	const fs::path lights = temp.Write("lib/102_edge.str", "A\n850\nOBJECT_STRING\n\nOBJECT 0 0 light.obj\n");
+	temp.Write("lib/light.obj", "I\n800\nOBJ\n");
+	const AssetResolver resolver = [&](const std::string_view path) -> fs::path
+	{
+		if (path == "lib/airport/lights/fast/102_")
+			return lights;
+		const fs::path direct{ std::string(path) };
+		return direct.is_absolute() && fs::exists(direct) ? direct : fs::path();
+	};
+
+	// Three separate runs of edge lights, one linear feature each
+	const GeoProjection projection(45.6, -122.6);
+	AptAirport airport;
+	airport.id = "TEST";
+	for (int run = 0; run < 3; ++run)
+	{
+		AptLinearFeature feature;
+		AptNodeChain chain;
+		for (const double x : { 0.0, 100.0 })
+		{
+			AptNode node;
+			projection.ToGeo(Point2{ x, 50.0 * run }, node.latitude, node.longitude);
+			node.lightType = 102;
+			chain.nodes.push_back(node);
+		}
+		feature.chains.push_back(chain);
+		airport.linearFeatures.push_back(feature);
+	}
+
+	const auto fallbacks = [](const OverlayBuild &build)
+	{
+		return std::ranges::count_if(build.warnings, [](const std::string &warning)
+			{ return warning.find("lib/airport/lights/slow/102_") != std::string::npos; });
+	};
+
+	OverlayBuilder builder(resolver, projection);
+	OverlayBuild first;
+	builder.BuildAirportSurfaces(airport, {}, 0.2f, 0.3f, OverlayBuilder::Options{}, first);
+	CHECK(fallbacks(first) == 1);
+	CHECK(std::ranges::count_if(first.objects, [](const OverlayObject &object) { return object.source == OverlayObject::Source::AirportLights; }) >= 3);
+
+	// A builder warns once in its life: SceneAirports keeps one for row rebuilds, which report no warnings, and makes a
+	// new one for each full build, which warns again
+	OverlayBuild rebuild;
+	builder.BuildAirportSurfaces(airport, {}, 0.2f, 0.3f, OverlayBuilder::Options{}, rebuild);
+	CHECK(fallbacks(rebuild) == 0);
+	OverlayBuilder fresh(resolver, projection);
+	OverlayBuild full;
+	fresh.BuildAirportSurfaces(airport, {}, 0.2f, 0.3f, OverlayBuilder::Options{}, full);
+	CHECK(fallbacks(full) == 1);
+}
+
 TEST_CASE("Overlay builder places no edge lights for an unknown edge light code", "[overlay]")
 {
 	TempDir temp;
@@ -1955,6 +2011,88 @@ TEST_CASE("Overlay builder adds X-Plane's runway lights and tire rubber", "[over
 	CHECK(grassCenter == 65);
 	for (const OverlayMesh &mesh : grass.meshes)
 		CHECK_FALSE(mesh.name.ends_with("rubber"));
+}
+
+TEST_CASE("Overlay builder puts each airport surface's own mesh first", "[overlay]")
+{
+	// The airport scene takes the first mesh of each runway, pavement and helipad as its surface (its material, and a
+	// runway's part 0); the layers over a runway follow it, markings and then rubber
+	TempDir temp;
+	const fs::path runwayPol = temp.Write("lib/rwy_concrete.pol",
+		"A\n850\nDRAPED_POLYGON\n\nTEXTURE runway.png\nSCALE 22 44\nLAYER_GROUP runways 0\nRUNWAY_MARKINGS 1 0.9 0.8 0.5 RWY_markings.png\n");
+	const fs::path groundPol = temp.Write("lib/ground_concrete.pol", "A\n850\nDRAPED_POLYGON\n\nTEXTURE ground.png\nSCALE 10 10\n");
+	const fs::path rubberPol = temp.Write("lib/rwy_skids_1.pol",
+		"A\n850\nDRAPED_POLYGON\n\nLAYER_GROUP markings +5\nTEXTURE RWY_skids_1.png\nSCALE 30 30\n");
+	const AssetResolver resolver = [&](const std::string_view path) -> fs::path
+	{
+		if (path == "lib/airport/default_runways/concrete/runway.pol")
+			return runwayPol;
+		if (path == "lib/airport/default_runways/rubber.pol")
+			return rubberPol;
+		if (path.starts_with("lib/airport/default_runways/concrete/") || path == "lib/airport/ground/pavement/concrete/new.pol")
+			return groundPol;	// Taxiway and helipad art
+		return {};
+	};
+
+	// Two parallel 3000 m marked runways: the build interleaves their meshes with each other's, not within a runway
+	const GeoProjection projection(47.45, -122.3);
+	AptAirport airport;
+	airport.id = "TEST";
+	airport.runways.push_back(MakeMarkedRunway(projection, 3, 3));
+	AptRunway parallel = MakeMarkedRunway(projection, 1, 1);
+	projection.ToGeo(Point2{ 300.0, 1500.0 }, parallel.ends[0].latitude, parallel.ends[0].longitude);
+	projection.ToGeo(Point2{ 300.0, -1500.0 }, parallel.ends[1].latitude, parallel.ends[1].longitude);
+	parallel.ends[0].designator = "36R";
+	parallel.ends[1].designator = "18L";
+	airport.runways.push_back(parallel);
+
+	AptPavement pavement;
+	pavement.surface = 2;
+	AptNodeChain ring;
+	ring.closed = true;
+	for (const Point2 &corner : { Point2{ -300.0, -50.0 }, Point2{ -200.0, -50.0 }, Point2{ -200.0, 50.0 }, Point2{ -300.0, 50.0 } })
+	{
+		AptNode node;
+		projection.ToGeo(corner, node.latitude, node.longitude);
+		ring.nodes.push_back(node);
+	}
+	pavement.rings.push_back(ring);
+	airport.pavements.push_back(pavement);
+
+	AptHelipad helipad;
+	projection.ToGeo(Point2{ -100.0, 0.0 }, helipad.latitude, helipad.longitude);
+	airport.helipads.push_back(helipad);
+
+	OverlayBuilder builder(resolver, projection);
+	OverlayBuild out;
+	builder.BuildAirportSurfaces(airport, { 0.1f }, 0.2f, 0.3f, OverlayBuilder::Options{}, out);
+
+	// Grouped like the airport scene groups them: by kind and element, in build order
+	std::map<std::pair<OverlayKind, uint32_t>, std::vector<const OverlayMesh *>> byElement;
+	for (const OverlayMesh &mesh : out.meshes)
+		byElement[{ mesh.kind, mesh.placement }].push_back(&mesh);
+
+	for (uint32_t i = 0; i < airport.runways.size(); ++i)
+	{
+		const std::string name = "Runway " + airport.runways[i].GetName();
+		INFO(name);
+		const std::vector<const OverlayMesh *> &meshes = byElement[{ OverlayKind::Runway, i }];
+		REQUIRE(meshes.size() == 3);
+		CHECK(meshes[0]->name == name);
+		CHECK(meshes[0]->resource == "lib/airport/default_runways/concrete/runway.pol");
+		CHECK_FALSE(meshes[0]->blended);
+		CHECK(meshes[1]->name == name + " markings");
+		CHECK(meshes[1]->shading == OverlayShading::Markings);
+		CHECK(meshes[2]->name == name + " rubber");
+	}
+
+	// One mesh each: their first is their surface
+	const std::vector<const OverlayMesh *> &pavements = byElement[{ OverlayKind::Pavement, 0u }];
+	REQUIRE(pavements.size() == 1);
+	CHECK(pavements.front()->name == "Pavement 1");
+	const std::vector<const OverlayMesh *> &helipads = byElement[{ OverlayKind::Helipad, 0u }];
+	REQUIRE(helipads.size() == 1);
+	CHECK(helipads.front()->name == "Helipad H1");
 }
 
 TEST_CASE("Overlay builder prefers X-Plane 12's runway and taxiway art", "[overlay]")

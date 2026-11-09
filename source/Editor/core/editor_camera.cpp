@@ -32,6 +32,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cctype>
+#include <cstdlib>
 #include <Editor/core/editor_airports.h>
 #include <Editor/core/editor_context.h>
 #include <Editor/core/editor_project.h>
@@ -64,6 +65,14 @@ namespace SceneryEditorX::EditorCamera
 			ViewPreset startupPreset = ViewPreset::Free;
 			bool startupOrthographic = false;
 			int startupFrames = 0;
+
+			// --camera-fly <m/s>: the pivot flies out of the startup view's pivot and circles it, for measuring what camera
+			// movement costs
+			double flySpeed = 0.0;
+			int flyFrames = 0;
+			bool flying = false;
+			Point3 flyCenter;
+			double flyDistance = 0.0;	// Meters flown: out along +X first, then around the circle
 		};
 
 		State &S()
@@ -205,6 +214,16 @@ namespace SceneryEditorX::EditorCamera
 				if (s.startupPreset == ViewPreset::Free)
 					EDITOR_WARN_TAG("Camera", "--camera-view wants top, bottom, front, back, left or right (got '{}')", name);
 				s.startupPending = true;
+			}
+			else if (args[i] == "--camera-fly" && i + 1 < args.size())
+			{
+				const std::string &value = args[++i];
+				char *end = nullptr;
+				const double speed = std::strtod(value.c_str(), &end);
+				if (end == value.c_str() || *end != '\0' || !(speed > 0.0))
+					EDITOR_WARN_TAG("Camera", "--camera-fly wants a speed in m/s above 0 (got '{}'): the camera stays put", value);
+				else
+					s.flySpeed = speed;
 			}
 		}
 	}
@@ -384,6 +403,28 @@ namespace SceneryEditorX::EditorCamera
 		frame.locked = input.locked || Camera::IsInputLocked();
 		changed |= s.controller.Navigate(rig, frame);
 		changed |= s.controller.Animate(rig, ImGui::GetIO().DeltaTime);
+
+		// --camera-fly: a while after the startup airport or project framed the camera (60 frames, and any glide to the
+		// startup view finished, so the circle's center is where the view settled), its pivot flies east 1 km at the
+		// given speed and then circles the startup pivot at that radius, view direction and distance unchanged (no jump:
+		// it moves at that speed from the first frame; with --lock-camera, runs repeat)
+		if (s.flySpeed > 0.0 && (EditorAirports::GetDocument() || EditorProjects::GetDocument()) && ++s.flyFrames > 60 &&
+			(s.flying || !s.controller.IsAnimating()))
+		{
+			constexpr double FLY_RADIUS = 1000.0;
+			if (!s.flying)
+			{
+				s.flying = true;
+				s.flyCenter = rig.pivot;
+				EDITOR_INFO_TAG("Camera", "Flying at {:.0f} m/s: {:.0f} m out, then around the startup pivot", s.flySpeed, FLY_RADIUS);
+			}
+			s.flyDistance += s.flySpeed * static_cast<double>(ImGui::GetIO().DeltaTime);
+			const double out = std::min(s.flyDistance, FLY_RADIUS);
+			const double angle = std::max(0.0, s.flyDistance - FLY_RADIUS) / FLY_RADIUS;
+			rig.pivot.x = s.flyCenter.x + out * std::cos(angle);
+			rig.pivot.z = s.flyCenter.z + out * std::sin(angle);
+			changed = true;
+		}
 		if (changed || (shapeChanged && rig.orthographic))
 			SetRig(rig);
 	}

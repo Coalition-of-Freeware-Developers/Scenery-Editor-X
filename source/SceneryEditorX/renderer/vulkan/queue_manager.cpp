@@ -31,9 +31,11 @@
 #include "queue_manager.h"
 #include "bindless_manager.h"
 #include "device.h"
+#include "memory_allocator.h"
 #include "render_context.h"
 #include <algorithm>
 #include <string>
+#include <SceneryEditorX/core/frame_profiler.h>
 #include <SceneryEditorX/logging/profiler.hpp>
 
 // -------------------------------------------------------
@@ -45,6 +47,7 @@ namespace SceneryEditorX
 		void *resource = nullptr;
 		VmaAllocation allocation = VK_NULL_HANDLE;
 		uint64_t frame = 0; // s_DeletionFrame when it was queued
+		uint64_t bytes = 0; // GPU memory of the allocation, measured when queued while --perf-log is on (else 0)
 	};
 	
 #pragma region Static Members
@@ -64,6 +67,11 @@ namespace SceneryEditorX
 	/// Rendered frames counted by AdvanceDeletionFrame(). Entries are stamped with it under s_MutexDeletionQueue, so
 	/// each type's entries are in frame order.
 	static std::atomic<uint64_t> s_DeletionFrame{0};
+
+	/// --perf-log counters: the entries queued and the GPU memory they hold, kept as entries are queued and destroyed, so
+	/// reporting them takes no lock and no VMA call
+	static std::atomic<uint64_t> s_QueuedEntries{0};
+	static std::atomic<uint64_t> s_QueuedBytes{0};
 
 	/// Destroys entries taken out of the deletion queue, and the cached descriptor sets that refer to a destroyed buffer
 	/// or image view. Call it without s_MutexDeletionQueue held: erasing a descriptor set releases its layout, which
@@ -611,13 +619,27 @@ namespace SceneryEditorX
 			return false;
 		}
 
+		// The GPU memory it holds, for --perf-log: measured once, here, outside the lock
+		uint64_t bytes = 0;
+		if (allocation != VK_NULL_HANDLE && Perf::IsEnabled())
+		{
+			if (const VmaAllocator allocator = MemoryAllocator::GetAllocator(); allocator != VK_NULL_HANDLE)
+			{
+				VmaAllocationInfo info{};
+				vmaGetAllocationInfo(allocator, allocation, &info);
+				bytes = info.size;
+			}
+		}
+
 		std::scoped_lock guard(s_MutexDeletionQueue);
 		if (s_DeletionQueueDestroyed.load(std::memory_order_acquire)) // NotifyShutdown() closed it meanwhile
 		{
 			SEDX_CORE_WARN_TAG("QueueManager", "AddDeletionQueue called after shutdown — resource of type {} will be leaked", static_cast<uint32_t>(type));
 			return false;
 		}
-		s_DeletionQueue[type].emplace_back(DeletionQueueEntry{resource, allocation, s_DeletionFrame.load(std::memory_order_relaxed)});
+		s_DeletionQueue[type].emplace_back(DeletionQueueEntry{resource, allocation, s_DeletionFrame.load(std::memory_order_relaxed), bytes});
+		s_QueuedEntries.fetch_add(1, std::memory_order_relaxed);
+		s_QueuedBytes.fetch_add(bytes, std::memory_order_relaxed);
 		SEDX_CORE_TRACE_TAG("QueueManager", "Added resource of type {} to deletion queue", static_cast<uint32_t>(type));
 		return true;
 	}
@@ -676,12 +698,13 @@ namespace SceneryEditorX
 		// releases) while the queue still takes what destroying it queues, then close it under its lock once it is
 		// empty. The device is idle. Layouts queue nothing more, so this ends after a pass or two.
 		constexpr uint32_t MAX_PASSES = 8;
-		for (uint32_t pass = 0;; ++pass)
+		uint32_t passes = 0;
+		for (;; ++passes)
 		{
 			std::unordered_map<ResourceType, std::vector<DeletionQueueEntry>> remaining;
 			{
 				std::scoped_lock guard(s_MutexDeletionQueue);
-				if (s_DeletionQueue.empty() || !deviceAlive || pass == MAX_PASSES)
+				if (s_DeletionQueue.empty() || !deviceAlive || passes == MAX_PASSES)
 				{
 					size_t leaked = 0;
 					for (const auto &[type, entries] : s_DeletionQueue)
@@ -696,7 +719,7 @@ namespace SceneryEditorX
 			DestroyEntries(device, remaining);
 		}
 
-		SEDX_CORE_INFO_TAG("QueueManager", "Deletion queue marked as shut down; late AddDeletionQueue calls will be dropped");
+		SEDX_CORE_INFO_TAG("QueueManager", "Deletion queue marked as shut down after {} passes; late AddDeletionQueue calls will be dropped", passes);
 	}
 
 	static void DestroyEntries(const Ref<Device> &device, const std::unordered_map<ResourceType, std::vector<DeletionQueueEntry>> &pending)
@@ -706,6 +729,8 @@ namespace SceneryEditorX
 			ResourceType type = it.first;
 			for (const auto &entry : it.second)
 			{
+				s_QueuedEntries.fetch_sub(1, std::memory_order_relaxed);
+				s_QueuedBytes.fetch_sub(entry.bytes, std::memory_order_relaxed);
 				void *resource = entry.resource;
 				switch (type)
 				{
@@ -799,11 +824,21 @@ namespace SceneryEditorX
 		return s_DeletionQueueDestroyed.load(std::memory_order_acquire);
 	}
 
+	/// --perf-log counters: what the deletion queue holds, and the GPU memory of it (running totals: no lock, no VMA call)
+	static void ReportDeletionQueue()
+	{
+		if (!Perf::IsEnabled())
+			return;
+		Perf::SetCounter("deletion queue entries", static_cast<double>(s_QueuedEntries.load(std::memory_order_relaxed)));
+		Perf::SetCounter("deletion queue MB", static_cast<double>(s_QueuedBytes.load(std::memory_order_relaxed)) / (1024.0 * 1024.0));
+	}
+
 	bool QueueManager::AdvanceDeletionFrame()
 	{
 		// Each entry waits its own DELETION_DELAY_FRAMES: resources released every few frames (instance buffers
 		// replaced while the camera moves) never hold back the older ones.
 		const uint64_t frame = s_DeletionFrame.fetch_add(1, std::memory_order_relaxed) + 1;
+		ReportDeletionQueue();
 
 		// Acquire the same mutex used by AddDeletionQueue / ParseDeletionQueue
 		std::scoped_lock guard(s_MutexDeletionQueue);

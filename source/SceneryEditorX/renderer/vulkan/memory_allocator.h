@@ -59,9 +59,13 @@ namespace SceneryEditorX
 
 		/**
 		 * @brief Initializes the memory allocator with the given device.
-		 * @param device The Vulkan device to use for memory allocation.
+		 *
+		 * Takes the device by reference, not as a Ref: Device's constructor calls it with *this, and a temporary
+		 * Ref made from `this` there would delete the device if it held the only reference.
+		 *
+		 * @param device The Vulkan device to use for memory allocation (its logical device created).
 		 */
-		static void Init(const Ref<Device> &device);
+		static void Init(const Device &device);
 
 		/**
 		 * @brief Updates the memory allocator for the given frame count.
