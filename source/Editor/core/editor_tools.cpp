@@ -797,10 +797,11 @@ namespace SceneryEditorX::EditorTools
 		EditorSelection::Clear(context);
 		const bool rowsErased = EraseRows(*deletion);
 		const bool itemsRemoved = RemoveItems(*deletion, context);
+		size_t destroyed = 0;	// The viewport camera stays (EditorScene::Destroy)
 		for (const uint64_t entity : entities)
-			EditorScene::Destroy(entity);
-		if (!entities.empty())
-			EDITOR_WARN_TAG(LOG_TAG, "Deleted {} scene entit{} (not undoable: only airport rows and project items are)", entities.size(), entities.size() == 1 ? "y" : "ies");
+			destroyed += EditorScene::Destroy(entity) ? 1 : 0;
+		if (destroyed > 0)
+			EDITOR_WARN_TAG(LOG_TAG, "Deleted {} scene entit{} (not undoable: only airport rows and project items are)", destroyed, destroyed == 1 ? "y" : "ies");
 
 		if (!deletion->rows.empty() || !deletion->items.empty())
 		{
@@ -814,7 +815,7 @@ namespace SceneryEditorX::EditorTools
 			command.redo = [deletion, context]() { return EraseRows(*deletion) && RemoveItems(*deletion, context); };
 			EditorHistory::Push(std::move(command));
 		}
-		return rowsErased || itemsRemoved || !entities.empty();
+		return rowsErased || itemsRemoved || destroyed > 0;
 	}
 
 	void Escape(EditorContext *context)

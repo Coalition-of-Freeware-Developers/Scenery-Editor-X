@@ -30,7 +30,7 @@ See [Selecting, transforming and undo](selecting-and-editing.md#the-properties-p
 
 ## OUTLINER
 
-Every entity in the scene as a tree: the airport's elements, the project's scenery, placed objects and their parts. Click to select. The **+** button adds an **Empty Entity**.
+Every entity in the scene as a tree: the airport's elements, the project's scenery, placed objects and their parts. Click to select. The **+** button adds an **Empty Entity**. The viewport camera belongs to the editor, not to the scene, so it isn't listed and can't be deleted.
 
 ## PROJECT
 
