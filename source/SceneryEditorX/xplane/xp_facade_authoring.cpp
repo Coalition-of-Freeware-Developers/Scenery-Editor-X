@@ -37,6 +37,7 @@
 #include <map>
 #include <optional>
 #include <SceneryEditorX/filesystem/vfs.h>
+#include <SceneryEditorX/utils/float_chars.h>
 
 // -------------------------------------------------------
 
@@ -616,7 +617,7 @@ namespace SceneryEditorX::XPlane
 			const char *begin = token.data(), *end = token.data() + token.size();
 			if (begin != end && *begin == '+')
 				++begin;
-			const auto [at, ec] = std::from_chars(begin, end, value);
+			const auto [at, ec] = Utils::FloatChars::FromChars(begin, end, value);
 			return ec == std::errc() && at == end;
 		}
 
