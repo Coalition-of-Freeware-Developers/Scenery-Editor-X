@@ -237,7 +237,8 @@ TEST_CASE("Finding installs: every source, once each, complete and newest first"
 	REQUIRE(xp11);
 	CHECK(xp11->source == InstallSource::Steam);
 	CHECK(xp11->majorVersion == 11);					// From the Steam app: no log, and the folder name doesn't say
-	CHECK(xp11->lastRun == fs::file_time_type{});
+	// Compared as a bool: Catch2 can't print a file_time_type on libc++ (macOS), whose duration counts in __int128
+	CHECK((xp11->lastRun == fs::file_time_type{}));
 
 	const InstallCandidate *renamedFound = Find(found, renamed);
 	REQUIRE(renamedFound);

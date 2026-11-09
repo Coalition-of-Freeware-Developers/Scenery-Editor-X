@@ -34,6 +34,7 @@
 #include <cmath>
 #include <limits>
 #include <SceneryEditorX/filesystem/vfs.h>
+#include <SceneryEditorX/utils/float_chars.h>
 
 // -------------------------------------------------------
 
@@ -361,7 +362,7 @@ namespace SceneryEditorX::XPlane
 	void AppendFacadeNumber(std::string &out, const float value)
 	{
 		char buffer[64];
-		const auto [end, ec] = std::to_chars(buffer, buffer + sizeof(buffer), value, std::chars_format::fixed);
+		const auto [end, ec] = Utils::FloatChars::ToChars(buffer, buffer + sizeof(buffer), value, std::chars_format::fixed);
 		if (!std::isfinite(value) || value == 0.0f || ec != std::errc())
 			out += '0';
 		else

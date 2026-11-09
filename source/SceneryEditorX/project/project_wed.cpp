@@ -38,6 +38,7 @@
 #include <optional>
 #include <set>
 #include <unordered_map>
+#include <SceneryEditorX/utils/float_chars.h>
 
 // -------------------------------------------------------
 
@@ -265,8 +266,11 @@ namespace SceneryEditorX::ProjectFile
 			std::snprintf(text, sizeof(text), "%.*f", decimals, value);
 			if (std::strtod(text, nullptr) == value)
 				return text;
-			const auto result = std::to_chars(text, text + sizeof(text), value);
-			return std::string(text, result.ptr);
+			const auto result = Utils::FloatChars::ToChars(text, text + sizeof(text), value);
+			if (result.ec == std::errc())
+				return std::string(text, result.ptr);
+			std::snprintf(text, sizeof(text), "%.17g", static_cast<double>(value));	// Reads back too; 64 characters always fit the above
+			return text;
 		}
 
 		std::string FormatFloat(const float value, const int decimals)
@@ -277,8 +281,11 @@ namespace SceneryEditorX::ProjectFile
 			std::snprintf(text, sizeof(text), "%.*f", decimals, static_cast<double>(value));
 			if (static_cast<float>(std::strtod(text, nullptr)) == value)
 				return text;
-			const auto result = std::to_chars(text, text + sizeof(text), value);
-			return std::string(text, result.ptr);
+			const auto result = Utils::FloatChars::ToChars(text, text + sizeof(text), value);
+			if (result.ec == std::errc())
+				return std::string(text, result.ptr);
+			std::snprintf(text, sizeof(text), "%.17g", static_cast<double>(value));	// Reads back too; 64 characters always fit the above
+			return text;
 		}
 
 		std::string FormatInt(const int value) { return std::to_string(value); }
@@ -289,7 +296,7 @@ namespace SceneryEditorX::ProjectFile
 			while (!trimmed.empty() && (trimmed.front() == ' ' || trimmed.front() == '+'))
 				trimmed.remove_prefix(1);
 			double value = fallback;
-			const auto [ptr, ec] = std::from_chars(trimmed.data(), trimmed.data() + trimmed.size(), value);
+			const auto [ptr, ec] = Utils::FloatChars::FromChars(trimmed.data(), trimmed.data() + trimmed.size(), value);
 			return ec == std::errc() ? value : fallback;
 		}
 

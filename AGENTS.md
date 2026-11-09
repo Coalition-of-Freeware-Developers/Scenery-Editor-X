@@ -26,7 +26,9 @@ a heavy stack: the bundled `dependency/vcpkg` toolchain installs `curl`/`msdfgen
 The dependency-light, cross-platform Catch2 unit suites that only need `source/` headers:
 
 - **`ConversionTests`** (`source/Tests/conversion_tests`) — unit-conversion utilities
-  (`SceneryEditorX/utils/conversions/...`). Header-only, fully green.
+  (`SceneryEditorX/utils/conversions/...`) and float / double text (`test_float_chars.cpp`: `utils/float_chars.h`, its
+  macOS fallback compared character for character with `std::from_chars` / `std::to_chars` where those exist).
+  Header-only, fully green.
 - **`RefTests`** (`source/Tests/pointer_tests`) — the `Ref`/`WeakRef` smart-pointer system
   (`SceneryEditorX/utils/pointers.h`), including its thread safety (`RefThreadSafetyTest.cpp`: `WeakRef::Lock()`
   racing the release of the last `Ref`, copies / resets on many threads, the control-block registry) and WeakRefs
@@ -164,6 +166,11 @@ SDK; `VulkanSmokeTests` (opt-in via `SEDX_ENABLE_VULKAN_SMOKE_TESTS`) needs the 
   resolves to `clang++`, which fails to link with `cannot find -lstdc++`. Pass
   `-DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++` to CMake, or invoke `g++` directly.
 - **Everything is C++20** (`std::ranges`, `std::numbers`, `set::contains`). Compile with `-std=c++20`.
+- **Float / double text goes through `Utils::FloatChars::FromChars` / `ToChars`** (`utils/float_chars.h`), never
+  `std::from_chars` / `std::to_chars` directly: Apple's libc++ marks the floating point ones "introduced in macOS 26.0"
+  (from_chars) and "13.3" (to_chars), the macOS build targets 13.0, so a direct call doesn't compile there. The wrappers
+  call the standard functions wherever they exist and a fallback that writes the same text everywhere else. Integer
+  `std::from_chars` / `to_chars` are fine.
 - **`RefTests` thread-safety tests follow two rules.** Worker threads never call Catch2 assertions (they are not
   thread-safe in this build): they record failures in `ThreadChecks` and the main thread asserts after `join()`.
   And no thread changes a `Ref` / `WeakRef` variable another thread reads (unsupported, as for
@@ -263,6 +270,14 @@ g++ -std=c++20 -O2 -pthread -DLIBCONFIG_STATIC -DLIBCONFIGXX_STATIC $INCS -I$LC 
 
 MinGW (MSYS2) has no `fsync`, which libconfig's `wincompat.h` maps its `posix_fsync` to there: on that toolchain drop the
 `HAVE_*LOCALE` defines and add `-Wno-error=implicit-function-declaration` to the `gcc` line (wincompat.c then supplies it).
+
+`scripts/ci/build_unit_tests.sh [--no-run] [Suite ...]` does all of the above in one go (parallel compiles, output in
+`build/unit-tests/`, JUnit reports in its `reports/`), with g++ on Linux, Apple clang on macOS (deployment target 13.0)
+and MSYS2 g++ on Windows; it leaves out `[xplane-install]` / `[library-sweep]` cases. The **Unit tests** workflow
+(`.github/workflows/unit-tests.yml`) runs it on ubuntu-latest, macos-latest and windows-latest for pull requests into
+`dev` and pushes to `dev` / `master`. When a suite gains an engine source, add it to the script's list as well as to the
+recipe above (test files are picked up from the suite's folder). `SEDX_TEST_CXXFLAGS=-DSEDX_FLOAT_CHARS_FALLBACK
+SEDX_TEST_OUT=build/unit-tests-fallback` runs every suite on the float text fallback the macOS build uses.
 
 `build_linux_tests/` and `dependency/Catch2/build-linux/` are throwaway build output — do not commit them.
 
