@@ -1186,7 +1186,7 @@ TEST_CASE("Forest fill modes: line forests are open chains, point forests single
 	}
 }
 
-TEST_CASE("Tiled pavement atlases: RUNWAY_TILE spans SCALE, TEXTURE_TILE repeats it per tile", "[overlay]")
+TEST_CASE("Tiled pavement atlases: RUNWAY_TILE and TEXTURE_TILE both span SCALE", "[overlay]")
 {
 	PolygonAsset pol;
 	REQUIRE(ParsePolygonAsset("A\n850\nDRAPED_POLYGON\n\nTEXTURE a.png\nRUNWAY_TILE 4 8 256 512 ../maps/noise.png\nSCALE 22 44\n", pol));
@@ -1204,14 +1204,105 @@ TEST_CASE("Tiled pavement atlases: RUNWAY_TILE spans SCALE, TEXTURE_TILE repeats
 	CHECK(scaleS == Catch::Approx(22.0f));
 	CHECK(scaleT == Catch::Approx(44.0f));
 
-	PolygonAsset old;
-	REQUIRE(ParsePolygonAsset("A\n850\nDRAPED_POLYGON\n\nTEXTURE a.png\nTEXTURE_TILE 4 2 256 256\nSCALE 10 20\n", old));
-	CHECK(old.tiled);
-	CHECK_FALSE(old.runwayTile);
-	CHECK(old.tileMap.empty());
-	OverlayBuilder::GetPolygonUvScale(old, scaleS, scaleT);
-	CHECK(scaleS == Catch::Approx(40.0f));
-	CHECK(scaleT == Catch::Approx(40.0f));
+	// The tiling shader: the texture keeps the size SCALE gives it without TEXTURE_TILE, which only rearranges its tiles
+	// (issue 82: SCALE was one tile, so 4 x 2 tiles under SCALE 10 20 drew 40 x 40 m)
+	PolygonAsset noise;
+	REQUIRE(ParsePolygonAsset("A\n850\nDRAPED_POLYGON\n\nTEXTURE a.png\nTEXTURE_TILE 4 2 256 256\nSCALE 10 20\n", noise));
+	CHECK(noise.tiled);
+	CHECK_FALSE(noise.runwayTile);
+	CHECK(noise.tileMap.empty());				// No map: X-Plane's noise picks the tiles
+	CHECK(noise.tileMapWidth == 256);
+	CHECK(noise.tileMapHeight == 256);
+	OverlayBuilder::GetPolygonUvScale(noise, scaleS, scaleT);
+	CHECK(scaleS == Catch::Approx(10.0f));
+	CHECK(scaleT == Catch::Approx(20.0f));
+
+	PolygonAsset mapped;
+	REQUIRE(ParsePolygonAsset("A\n850\nDRAPED_POLYGON\n\nTEXTURE a.png\nSCALE 25 50\nTEXTURE_TILE 8 4 64 32 ../maps/tile map.png\n", mapped));
+	CHECK(mapped.tiled);
+	CHECK_FALSE(mapped.runwayTile);
+	CHECK(mapped.tilesX == 8);
+	CHECK(mapped.tilesY == 4);
+	CHECK(mapped.tileMapWidth == 64);
+	CHECK(mapped.tileMapHeight == 32);
+	CHECK(mapped.tileMap == "../maps/tile map.png");
+	OverlayBuilder::GetPolygonUvScale(mapped, scaleS, scaleT);
+	CHECK(scaleS == Catch::Approx(25.0f));
+	CHECK(scaleT == Catch::Approx(50.0f));
+}
+
+TEST_CASE("TEXTURE_TILE draped polygons keep SCALE and draw through the tile atlas", "[overlay]")
+{
+	// Issue 82's case: a pavement .pol with a mapping texture, placed in a DSF; the same polygon without the directive
+	for (const bool tiled : { true, false })
+	{
+		DYNAMIC_SECTION((tiled ? "with" : "without") << " TEXTURE_TILE")
+		{
+			TempDir temp;
+			const std::string text = std::string("A\n850\nDRAPED_POLYGON\n\nTEXTURE pavement.png\nSCALE 10 20\nLAYER_GROUP taxiways 0\n") +
+				(tiled ? "TEXTURE_TILE 4 2 64 32 mapping.png\n" : "");
+			const fs::path pol = temp.Write("polygons/pavement.pol", text);
+			temp.Write("polygons/pavement.png", "png");
+			const AssetResolver resolver = [&](const std::string_view path) -> fs::path
+			{
+				const fs::path local = temp.path / fs::path(std::string(path));
+				return fs::exists(local) ? local : fs::path();
+			};
+
+			const GeoProjection projection(41.33, -72.04);
+			OverlayBuilder builder(resolver, projection);
+			DsfFile dsf;
+			dsf.polygonDefinitions = { "polygons/pavement.pol" };
+			const auto point = [&](const double east, const double north) -> DsfPoint
+			{
+				DsfPoint p;
+				p.planes = 2;
+				projection.ToGeo(Point2{ east, -north }, p.v[1], p.v[0]);
+				return p;
+			};
+			DsfPolygonPlacement pad;
+			pad.definition = 0;
+			pad.parameter = 0;	// Texture heading north
+			pad.windings = { { point(-50.0, -50.0), point(50.0, -50.0), point(50.0, 50.0), point(-50.0, 50.0) } };
+			dsf.polygons.push_back(pad);
+
+			OverlayBuilder::Options options;
+			options.area.Add(Point2{ -500.0, -500.0 });
+			options.area.Add(Point2{ 500.0, 500.0 });
+			OverlayBuild out;
+			builder.Build(dsf, options, out);
+			REQUIRE(out.meshes.size() == 1);
+			const OverlayMesh &mesh = out.meshes.front();
+			REQUIRE(mesh.kind == OverlayKind::DrapedPolygon);
+			REQUIRE(mesh.vertices.size() >= 4);
+
+			// 100 m across: 10 repeats of the 10 m SCALE one way and 5 of the 20 m the other, tiled or not
+			float uMin = mesh.vertices.front().u, uMax = uMin, vMin = mesh.vertices.front().v, vMax = vMin;
+			for (const OverlayVertex &vertex : mesh.vertices)
+			{
+				uMin = std::min(uMin, vertex.u);
+				uMax = std::max(uMax, vertex.u);
+				vMin = std::min(vMin, vertex.v);
+				vMax = std::max(vMax, vertex.v);
+			}
+			CHECK(uMax - uMin == Catch::Approx(10.0f).epsilon(0.01));
+			CHECK(vMax - vMin == Catch::Approx(5.0f).epsilon(0.01));
+			CHECK(mesh.metersPerU == Catch::Approx(10.0f));
+			CHECK(mesh.metersPerV == Catch::Approx(20.0f));
+
+			if (tiled)
+			{
+				CHECK(mesh.shading == OverlayShading::Tiled);	// Each cell shows the tile the map picks
+				CHECK(mesh.tilesX == 4);
+				CHECK(mesh.tilesY == 2);
+				CHECK(mesh.tileMap == pol.parent_path() / "mapping.png");
+				CHECK(mesh.tileMapWidth == 64);
+				CHECK(mesh.tileMapHeight == 32);
+			}
+			else
+				CHECK(mesh.shading == OverlayShading::Plain);
+		}
+	}
 }
 
 TEST_CASE("Runway polygon directives: markings atlas, noise and decals", "[assets]")

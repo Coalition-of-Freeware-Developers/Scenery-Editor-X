@@ -22,6 +22,11 @@ versions.
 
 ### Fixed
 
+- Draped polygons with `TEXTURE_TILE` (the tiling shader) keep the size `SCALE` gives their texture: before, `SCALE` was
+  taken as one tile, so a 4 x 4 atlas drew 4 times too large (and a 4 x 2 one under `SCALE 10 20` as a 40 m square).
+  `TEXTURE_TILE` now works like `RUNWAY_TILE`: each tile-sized cell shows the tile its mapping texture picks, or a random
+  one without a map. X-Plane 12's own asphalt taxiway art (`asphalt_*.pol`, `TEXTURE_TILE 4 4`, `SCALE 18 18`) uses it,
+  so default airports' asphalt is affected too. (#82, 0.2.77.578)
 - A `WeakRef` to an object destroyed without its last `Ref` release (deleted by hand, or a stack or member object a `Ref`
   pointed to) now expires. Before, the object's control block stayed registered under its old address, and the next
   object there inherited it: that object's new WeakRefs were expired at once, or the old ones locked it. Both cases are

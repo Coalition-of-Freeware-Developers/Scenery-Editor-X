@@ -113,12 +113,13 @@ namespace SceneryEditorX::XPlane
 		int tilesY = 1;
 
 		/**
-		 * RUNWAY_TILE <tiles x> <tiles y> <map width> <map height> <map.png> (X-Plane 12 runway and taxiway art): SCALE
-		 * covers the whole atlas, so one tile is SCALE / tiles meters. Each tile-sized cell of the surface shows the tile
-		 * its texel of the mapping texture names: R = column x tiles / 256, G = row x tiles / 256, the map repeating every
-		 * map width x height cells. TEXTURE_TILE (no map, older art) keeps SCALE as one tile.
+		 * RUNWAY_TILE <tiles x> <tiles y> <map width> <map height> <map.png> (X-Plane 12 runway and taxiway art) and
+		 * TEXTURE_TILE <tiles x> <tiles y> <x pages> <y pages> [<map.png>] (the tiling shader): SCALE covers the whole
+		 * atlas, as it does without them, so one tile is SCALE / tiles meters. Each tile-sized cell of the surface shows
+		 * the tile its texel of the mapping texture names: R = column x tiles / 256, G = row x tiles / 256, the map
+		 * repeating every map width x height cells. Without a map, cells pick tiles at random (X-Plane's noise).
 		 */
-		bool runwayTile = false;
+		bool runwayTile = false;			// RUNWAY_TILE rather than TEXTURE_TILE
 		std::string tileMap;				// Relative to the .pol; empty: cells pick tiles at random
 		int tileMapWidth = 0;
 		int tileMapHeight = 0;
