@@ -149,6 +149,7 @@ namespace SceneryEditorX
 		UI::NewFrame();
 		ImGui_ImplSDL3_NewFrame();
 		UI::ApplyScriptedMouse();
+		UI::ApplyScriptedKeys();
 		ImGui::NewFrame();
 	}
 

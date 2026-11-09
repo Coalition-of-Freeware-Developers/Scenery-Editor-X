@@ -26,7 +26,17 @@ versions.
   taken as one tile, so a 4 x 4 atlas drew 4 times too large (and a 4 x 2 one under `SCALE 10 20` as a 40 m square).
   `TEXTURE_TILE` now works like `RUNWAY_TILE`: each tile-sized cell shows the tile its mapping texture picks, or a random
   one without a map. X-Plane 12's own asphalt taxiway art (`asphalt_*.pol`, `TEXTURE_TILE 4 4`, `SCALE 18 18`) uses it,
-  so default airports' asphalt is affected too. (#82, 0.2.77.578)
+  so default airports' asphalt is affected too. (#82, 0.2.82.583)
+- **Fly** navigation flies with <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> and <kbd>Q</kbd> / <kbd>E</kbd> without
+  holding the right mouse button (while the mouse is over the viewport or it has the keyboard; not with Ctrl, Alt or Super
+  held), and the keymap's orbit, pan and zoom drags no longer move the camera in it: the right mouse button turns it and
+  the wheel moves it forward and back. In Fly navigation those keys pick no tools, set no node types and (Maya keymap)
+  don't frame everything. The tools self-test drives it with scripted keys (`UI::SetScriptedKeys`). (#79, 0.2.74.575;
+  those keys stay tool keys whenever the camera doesn't fly with them, such as with its input locked, 0.2.78.579; an orbit,
+  pan or zoom drag held while switching to Fly ends, 0.2.80.581)
+- The self-tests' scripted mouse also reports the main window as the one under the cursor: with the real cursor over
+  another program, nothing was hovered and the gizmo checks of `--tools-selftest` / `--gizmo-selftest` failed.
+  (0.2.74.575)
 - Saving a WorldEditor project (`earth.wed.xml`) never writes a number with an exponent. A bezier handle moved in the
   editor sits a few micro-degrees off its node, and its offset came out as `3.702805202010495e-06`, which WorldEditor reads
   as 3.7 degrees (it stops at the `e`). Such values are now written in full (`0.000003702805202010495`), still exact.
