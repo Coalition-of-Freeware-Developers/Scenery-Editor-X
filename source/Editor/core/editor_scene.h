@@ -109,6 +109,11 @@ namespace SceneryEditorX::EditorScene
 	 * @brief True for the camera the viewport draws through (Scene::Init's "MainCamera", the primary CameraComponent).
 	 * It belongs to the editor, not to the scenery: the outliner doesn't list it and Destroy() leaves it alone, since
 	 * nothing makes another one and the camera could not move again.
+	 *
+	 * Assumes the viewport camera is the only CameraComponent with isPrimary (which defaults to true), as EditorCamera
+	 * does when it picks the camera to drive. Scene::Init makes the only camera today. Scene cameras added later (an
+	 * imported glTF camera, say) must clear isPrimary or get a marker of their own, or they'd be hidden and kept too.
+	 * Destroy() guards the camera itself, not a parent it hangs under: the camera is a root, and nothing reparents it.
 	 */
 	inline bool IsViewportCamera(const entt::entity handle)
 	{
