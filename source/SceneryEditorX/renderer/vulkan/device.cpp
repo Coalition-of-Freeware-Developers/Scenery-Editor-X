@@ -917,6 +917,14 @@ namespace SceneryEditorX
 	 */
 	Device::Device(const VkInstance instance, GraphicsChecks::InstanceProperties gpuProps) : m_InstanceProps(std::move(gpuProps))
 	{
+		// No Ref owns the device until CreateRef<Device> returns, so a Ref made from `this` in here (the QueueManager's,
+		// for one) would delete it if its release took the count back to 0. Hold a count of our own until the end, so
+		// that doesn't depend on who keeps theirs (see Ref(T*) in pointers.h).
+		// Not an RAII guard on purpose: if this constructor throws, a guard would drop the count before the members
+		// unwind, and m_QueueManager's release would then delete the device being unwound. Left at 1, nothing deletes
+		// it, and the new expression frees its memory.
+		IncRefCount();
+
 		m_Instance = instance;
 		SEDX_CORE_ASSERT(m_Instance != VK_NULL_HANDLE, "Vulkan instance is null.");
 		PopulatePhysicalDevices(m_Instance);
@@ -961,12 +969,16 @@ namespace SceneryEditorX
 		// Initialize QueueManager after device is created
 		QueueManager::QueueConfig config{};
 		config.cmdListsPerQueue = 4; // Default value, adjust as needed
-		m_QueueManager = CreateRef<QueueManager>(this, config);
+		m_QueueManager = CreateRef<QueueManager>(this, config); // Keeps a Ref to this Device until Destroy()
 		SEDX_CORE_ASSERT(m_QueueManager, "Failed to create QueueManager");
 
 		// Initialize memory allocator
-		MemoryAllocator::Init(this);
+		MemoryAllocator::Init(*this);
 		SEDX_CORE_TRACE_TAG("Device", "Device initialization complete");
+
+		// Drop our count: DecRefCount() only counts down, it never deletes, so this is safe even if no Ref was kept.
+		// CreateRef<Device> then adds the owner's.
+		DecRefCount();
 	}
 
 	Device::~Device()

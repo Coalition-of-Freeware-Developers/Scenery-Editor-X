@@ -410,6 +410,9 @@ namespace SceneryEditorX::XPlane
 		std::map<std::string, Cached<RoadNetworkAsset>> m_Roads;
 		std::map<std::string, Cached<DecalLibraryAsset>> m_DecalLibraries;
 		std::map<std::string, Cached<BeachAsset>> m_Beaches;
+		// Warnings already given: each goes into one OverlayBuild in the builder's life, however many rows hit it. Not
+		// cleared per build on purpose: SceneAirports makes a new builder for each full airport build and reuses this
+		// one only for row rebuilds, which report no warnings
 		std::map<std::string, bool> m_Warned;
 		std::map<std::string, std::filesystem::path> m_Resolved;
 		uint32_t m_Seed = 12345;

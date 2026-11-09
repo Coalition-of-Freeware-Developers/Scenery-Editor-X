@@ -200,6 +200,12 @@ namespace SceneryEditorX
 		 * It is the minimum wait the queue always had (it used to free everything only after its size stayed unchanged
 		 * for 100 frames). Only rendered frames count: while nothing renders (minimized), nothing is freed, and nothing
 		 * is submitted or replaced either.
+		 *
+		 * Kept at 100 after measuring what it holds (issue #69, 2026-11-08, Debug build at ~13 fps, so ~8 s of frames;
+		 * `--perf-log` counters "deletion queue entries / MB"): flying 250 m/s 60 m up with `--camera-fly`, the 3D trees
+		 * refill every 32 m and the queue held at most 2593 entries and 1.3 MB at KSEA (2 GB of VMA memory in all),
+		 * 1594 entries and 1.0 MB at KBTV. Forest3d's instance buffers are small; a shorter delay would save about a
+		 * megabyte and lose the margin for queues that submit rarely (NextCommandList() only waits for a list it reuses).
 		 */
 		static constexpr uint64_t DELETION_DELAY_FRAMES = 100;
 
@@ -247,6 +253,11 @@ namespace SceneryEditorX
 		 * releases) until nothing more is queued, then closes the queue under its lock.
 		 * Called by Device::Destroy() right after the final ParseDeletionQueue() flush,
 		 * with the device idle, before vkDestroyDevice.
+		 *
+		 * Precondition: nothing can submit any more. Application::~Application() stops the render thread and the
+		 * thread pool before RenderContext::Shutdown(), and Device::Destroy() waits for the device to be idle first.
+		 * That is what makes the releases after this call safe to do at once: Buffer::DestroyDeferred() destroys its
+		 * buffer then, and once MemoryAllocator::Shutdown() has run as well, MemoryAllocator leaks with a warning instead.
 		 */
 		static void NotifyShutdown();
 

@@ -18,6 +18,7 @@
 #include <SceneryEditorX/utils/pointers.h>
 #include <string>
 #include <thread>
+#include <type_traits>
 #include <vector>
 
 /// -------------------------------------------------------------------
@@ -279,6 +280,61 @@ TEST_CASE_METHOD(WeakRefTestFixture, "WeakRef - Expiration Detection", "[SmartPo
         REQUIRE(!weakRef1.Lock());
         REQUIRE(!weakRef2.Lock());
     }
+}
+
+TEST_CASE_METHOD(WeakRefTestFixture, "WeakRef - Objects destroyed without their last Ref release", "[SmartPointers][WeakRef][Expiration]")
+{
+    // Misuse (an object should die with its last Ref), but the registry must not keep the control block of an address the
+    // next object may get: the old WeakRefs would lock that object. The slot object puts the next one at the same address.
+    WeakRef<WeakTestObject> weak;
+    WeakRef<SlotWeakTestObject> weakSlot;
+    {
+        Ref<SlotWeakTestObject> ref = CreateRef<SlotWeakTestObject>(7, "destroyed by hand");
+        weak = ref;
+        weakSlot = ref;
+        REQUIRE(weak.Lock().Get() == ref.Get());	// A stale block at this address would make it expired at once
+        SlotWeakTestObject *raw = ref.Get();
+        raw->IncRefCount();	// Keeps it alive past its Ref
+        ref.Reset();
+
+        SECTION("Deleted by hand once no Ref counts it")
+        {
+            raw->DecRefCount();
+            delete raw;
+        }
+        SECTION("Deleted while still counted, as a stack or member object a Ref pointed to is")
+        {
+            delete raw;
+        }
+    }
+
+    REQUIRE(SlotWeakTestObject::s_Destroyed == 1);
+    RequireAllExpired(weak, weakSlot);
+    RequireStayExpiredWhenTheSlotIsReused(weak, weakSlot);
+}
+
+TEST_CASE_METHOD(WeakRefTestFixture, "WeakRef - An object whose count is 0 counts as destroyed", "[SmartPointers][WeakRef][Expiration]")
+{
+    // A WeakRef is made from a Ref, never from a raw pointer such as `this` (std::weak_ptr has no such constructor either)
+    STATIC_REQUIRE_FALSE(std::is_constructible_v<WeakRef<WeakTestObject>, WeakTestObject *>);
+    STATIC_REQUIRE_FALSE(std::is_convertible_v<WeakTestObject *, WeakRef<WeakTestObject>>);
+
+    // As with std::weak_ptr, a count of 0 means the last release is under way: the object never comes back, even before
+    // that release has expired the WeakRefs. The extra count stands in for such a release, stopped at that point.
+    auto ref = CreateRef<WeakTestObject>(5);
+    const WeakRef<WeakTestObject> weak = ref;
+    WeakTestObject *raw = ref.Get();
+    raw->IncRefCount();
+    ref.Reset();
+    raw->DecRefCount();
+
+    REQUIRE_FALSE(weak.Lock());
+    REQUIRE(raw->GetRefCount() == 0);	// The failed lock didn't bring it back
+    REQUIRE(weak.UseCount() == 0);
+    REQUIRE(weak.Expired());
+
+    delete raw;
+    RequireExpired(weak);
 }
 
 TEST_CASE_METHOD(WeakRefTestFixture, "WeakRef - Copy Operations", "[SmartPointers][WeakRef][Copy]")

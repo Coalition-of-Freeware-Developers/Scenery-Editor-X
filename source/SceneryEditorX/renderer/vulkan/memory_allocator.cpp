@@ -31,6 +31,7 @@
 #include "memory_allocator.h"
 #include "render_context.h"
 #include <algorithm>
+#include <atomic>
 #include <chrono>
 #include <cstdlib>
 #include <mutex>
@@ -95,9 +96,41 @@ namespace SceneryEditorX
 		AllocationType type = AllocationType::None;
 	};
 
-	static Renderer_AllocatorData *s_AllocatorData; // Pointer to the allocator data, initialized in MemoryAllocator::Init()
+	// The allocator data, created by MemoryAllocator::Init() and freed by Shutdown(). A plain pointer: both run on the main
+	// thread inside Device's constructor and Device::Destroy(), when no other thread creates or releases GPU objects (the
+	// render thread and the thread pool start after the device and stop before it is destroyed); readers only ever see it
+	// set or, at exit, null after Shutdown() (IsLateRelease)
+	static Renderer_AllocatorData *s_AllocatorData;
 	static std::map<VmaAllocation, AllocInfo> s_AllocationMap; // Map to track active allocations and their information
 	static std::mutex s_MutexAllocator; // Mutex to protect access to the allocation map for thread safety
+	// Set by Shutdown(): its device is destroyed right after, whether or not the allocator was kept. Atomic: any thread that
+	// releases a buffer or image reads it (IsLateRelease)
+	static std::atomic<bool> s_ShutDown{false};
+	static std::atomic<bool> s_LateReleaseWarned{false};
+
+	/**
+	 * @brief True (after one warning) for a release while there is no allocator to free it, which must then leak.
+	 *
+	 * Shutdown() runs just before the device is destroyed (Device::Destroy()), and frees the allocator unless allocations
+	 * were still alive. A buffer or image released later, a static one destroyed with the program, can't be freed:
+	 * the allocator may be gone and the device is, and s_AllocationMap may already be destroyed too. Before Init() there
+	 * is no allocator either (nothing it could have allocated exists yet, so that would be a bug elsewhere).
+	 */
+	static bool IsLateRelease(const char *what)
+	{
+		const bool shutDown = s_ShutDown.load(std::memory_order_acquire);
+		if (!shutDown && s_AllocatorData)
+			return false;
+		if (!s_LateReleaseWarned.exchange(true, std::memory_order_relaxed))
+		{
+			if (shutDown)
+				SEDX_CORE_WARN_TAG("MemoryAllocator", "{} released after the allocator shut down (its device is gone): leaked, with "
+					"any others like it. A GPU object outlived RenderContext::Shutdown()", what);
+			else
+				SEDX_CORE_WARN_TAG("MemoryAllocator", "{} released before the allocator was created: leaked, with any others like it", what);
+		}
+		return true;
+	}
 
 	// -------------------------------------------------------
 
@@ -176,11 +209,11 @@ namespace SceneryEditorX
 		SEDX_CORE_TRACE_TAG("MemoryAllocator","Allocation {0}: destroyed", m_ObjectName);
 	}
 
-	void MemoryAllocator::Init(const Ref<Device> &device)
+	void MemoryAllocator::Init(const Device &device)
 	{
-		SEDX_CORE_ASSERT(device != nullptr, "Device cannot be null");
-		SEDX_CORE_ASSERT(device->GetLogicalDevice() != VK_NULL_HANDLE, "Logical device cannot be VK_NULL_HANDLE when initializing VMA allocator");
-		SEDX_CORE_ASSERT(device->GetPhysicalDevice() != VK_NULL_HANDLE, "Physical device cannot be VK_NULL_HANDLE when initializing VMA allocator");
+		SEDX_CORE_ASSERT(device.GetLogicalDevice() != VK_NULL_HANDLE, "Logical device cannot be VK_NULL_HANDLE when initializing VMA allocator");
+		SEDX_CORE_ASSERT(Device::GetPhysicalDevice() != VK_NULL_HANDLE, "Physical device cannot be VK_NULL_HANDLE when initializing VMA allocator");
+		s_ShutDown.store(false, std::memory_order_release);
 		s_AllocatorData = new Renderer_AllocatorData();
 
 		// Zero-initialize and provide the two root function pointers.
@@ -194,8 +227,8 @@ namespace SceneryEditorX
 		VmaAllocatorCreateInfo allocatorInfo = {};
 		allocatorInfo.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
 		allocatorInfo.vulkanApiVersion = VK_API_VERSION_1_3;
-		allocatorInfo.physicalDevice = device->GetPhysicalDevice();
-		allocatorInfo.device = device->GetLogicalDevice();
+		allocatorInfo.physicalDevice = Device::GetPhysicalDevice();
+		allocatorInfo.device = device.GetLogicalDevice();
 		allocatorInfo.instance = RenderContext::GetInstance();
 		allocatorInfo.pVulkanFunctions = &vkFunctions;
 		
@@ -251,6 +284,7 @@ namespace SceneryEditorX
 
 	void MemoryAllocator::Shutdown()
 	{
+		s_ShutDown.store(true, std::memory_order_release);	// Whatever happens below, the device goes next: later releases leak (IsLateRelease)
 		if (!s_AllocatorData)
 			return;
 
@@ -410,6 +444,8 @@ namespace SceneryEditorX
 
 	void MemoryAllocator::DestroyBuffer(VkBuffer buffer, VmaAllocation allocation)
 	{
+		if (IsLateRelease("A buffer"))
+			return;
 		SEDX_CORE_ASSERT(buffer, "Buffer is null");
 		SEDX_CORE_ASSERT(allocation, "Allocation is null");
 		vmaDestroyBuffer(s_AllocatorData->allocator, buffer, allocation);
@@ -430,6 +466,8 @@ namespace SceneryEditorX
 
 	void MemoryAllocator::DestroyImage(VkImage image, VmaAllocation allocation)
 	{
+		if (IsLateRelease("An image"))
+			return;
 		SEDX_CORE_ASSERT(image);
 		SEDX_CORE_ASSERT(allocation);
 		vmaDestroyImage(s_AllocatorData->allocator, image, allocation);
@@ -459,7 +497,7 @@ namespace SceneryEditorX
 
 	VmaAllocator MemoryAllocator::GetAllocator()
 	{
-		return s_AllocatorData->allocator;
+		return s_AllocatorData ? s_AllocatorData->allocator : VK_NULL_HANDLE;	// Null before Init() and after Shutdown()
 	}
 
 	uint64_t MemoryAllocator::GetAllocatedMemory()
@@ -512,6 +550,8 @@ namespace SceneryEditorX
 
 	void MemoryAllocator::UnmapMemory(VmaAllocation allocation)
 	{
+		if (IsLateRelease("A mapped allocation"))
+			return;
 		vmaUnmapMemory(s_AllocatorData->allocator, allocation);
 		SEDX_CORE_TRACE_TAG("MemoryAllocator", "Memory unmapped for allocation {0}", static_cast<void *>(allocation));
 	}
