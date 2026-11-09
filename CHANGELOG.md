@@ -28,6 +28,11 @@ versions.
   (`XPlaneObjectComponent::datarefOverrides`, laid over the shared values when its inputs are read), as X-Plane gives each
   instance of an object its own values; a button on the row hands it back to the shared value. The Simulation tab still
   sets the values every object shares. The tools self-test checks a placement and a twin of it. (#75, 0.2.83.584)
+- Draped polygons with `TEXTURE_TILE` (the tiling shader) keep the size `SCALE` gives their texture: before, `SCALE` was
+  taken as one tile, so a 4 x 4 atlas drew 4 times too large (and a 4 x 2 one under `SCALE 10 20` as a 40 m square).
+  `TEXTURE_TILE` now works like `RUNWAY_TILE`: each tile-sized cell shows the tile its mapping texture picks, or a random
+  one without a map. X-Plane 12's own asphalt taxiway art (`asphalt_*.pol`, `TEXTURE_TILE 4 4`, `SCALE 18 18`) uses it,
+  so default airports' asphalt is affected too. (#82, 0.2.82.583)
 - **Fly** navigation flies with <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> and <kbd>Q</kbd> / <kbd>E</kbd> without
   holding the right mouse button (while the mouse is over the viewport or it has the keyboard; not with Ctrl, Alt or Super
   held), and the keymap's orbit, pan and zoom drags no longer move the camera in it: the right mouse button turns it and
