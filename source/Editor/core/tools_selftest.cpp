@@ -668,7 +668,8 @@ namespace SceneryEditorX::ToolsSelfTest
 				if (const std::optional<EditorSelection::Target> target = camera != 0 ? EditorSelection::FromEntity(camera) : std::nullopt)
 				{
 					EditorSelection::Select(context, *target, EditorSelection::Mode::Replace);
-					EditorTools::DeleteSelection(context);
+					const bool deleted = EditorTools::DeleteSelection(context);
+					Check(!deleted && EditorSelection::Get().size() == 1, "deleting only the viewport camera deletes nothing and keeps the selection");
 				}
 				Check(camera != 0 && EditorScene::FindHandle(camera) != entt::null && EditorCamera::Get() != nullptr, "the viewport camera survives deleting it while selected");
 				EditorSelection::Clear(context);
