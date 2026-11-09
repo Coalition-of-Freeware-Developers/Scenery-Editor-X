@@ -24,7 +24,7 @@ versions.
 
 - The viewport camera (`MainCamera`) is no longer listed in the OUTLINER and can't be deleted: deleting it there, or
   with Del while it was selected, left a camera nothing could move until the editor restarted. `EditorScene::Destroy`
-  refuses it and returns whether it destroyed anything. (#80, 0.2.75.576; 0.2.81.582 once merged with dev)
+  refuses it and returns whether it destroyed anything. (#80, 0.2.81.582)
 - Saving a WorldEditor project (`earth.wed.xml`) never writes a number with an exponent. A bezier handle moved in the
   editor sits a few micro-degrees off its node, and its offset came out as `3.702805202010495e-06`, which WorldEditor reads
   as 3.7 degrees (it stops at the `e`). Such values are now written in full (`0.000003702805202010495`), still exact.
