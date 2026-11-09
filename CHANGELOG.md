@@ -22,6 +22,9 @@ versions.
 
 ### Fixed
 
+- The viewport camera (`MainCamera`) is no longer listed in the OUTLINER and can't be deleted: deleting it there, or
+  with Del while it was selected, left a camera nothing could move until the editor restarted. `EditorScene::Destroy`
+  refuses it and returns whether it destroyed anything. (#80, 0.2.75.576)
 - A `WeakRef` to an object destroyed without its last `Ref` release (deleted by hand, or a stack or member object a `Ref`
   pointed to) now expires. Before, the object's control block stayed registered under its old address, and the next
   object there inherited it: that object's new WeakRefs were expired at once, or the old ones locked it. Both cases are

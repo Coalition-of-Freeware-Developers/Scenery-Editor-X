@@ -97,8 +97,11 @@ namespace SceneryEditorX
 				if (!entity || !*entity)
 					continue;
 
-				// Roots only; children are drawn under their parent.
+				// Roots only; children are drawn under their parent. The viewport camera is the editor's, not the scenery's
+				// (deleting it left the camera unable to move, issue 80).
 				const entt::entity handle = static_cast<entt::entity>(*entity);
+				if (EditorScene::IsViewportCamera(handle))
+					continue;
 				const RelationshipComponent *relationship = EditorScene::TryGet<RelationshipComponent>(handle);
 				if (relationship && EditorScene::FindHandle(static_cast<uint64_t>(relationship->pParentHandle)) != entt::null)
 					continue;
@@ -125,7 +128,7 @@ namespace SceneryEditorX
 				continue;
 
 			const entt::entity handle = static_cast<entt::entity>(*entity);
-			if (m_Filter.PassFilter(EditorScene::GetName(handle)))
+			if (!EditorScene::IsViewportCamera(handle) && m_Filter.PassFilter(EditorScene::GetName(handle)))
 				m_Matches.push_back(handle);
 		}
 		m_MatchFilter = m_Filter.InputBuf;

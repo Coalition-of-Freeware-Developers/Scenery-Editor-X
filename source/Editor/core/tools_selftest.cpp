@@ -632,9 +632,30 @@ namespace SceneryEditorX::ToolsSelfTest
 			}
 
 			case Step::Pick:
+			{
+				// The viewport camera survives Delete, from the outliner or with the camera selected (issue 80)
+				uint64_t camera = 0;
+				if (entt::registry *registry = EditorScene::GetRegistry())
+				{
+					for (const entt::entity handle : registry->view<CameraComponent>())
+					{
+						if (EditorScene::IsViewportCamera(handle))
+							camera = EditorScene::GetID(handle);
+					}
+				}
+				Check(camera != 0 && !EditorScene::Destroy(camera) && EditorScene::FindHandle(camera) != entt::null, "the viewport camera can't be destroyed");
+				if (const std::optional<EditorSelection::Target> target = camera != 0 ? EditorSelection::FromEntity(camera) : std::nullopt)
+				{
+					EditorSelection::Select(context, *target, EditorSelection::Mode::Replace);
+					EditorTools::DeleteSelection(context);
+				}
+				Check(camera != 0 && EditorScene::FindHandle(camera) != entt::null && EditorCamera::Get() != nullptr, "the viewport camera survives deleting it while selected");
+				EditorSelection::Clear(context);
+
 				s.ticket = ScenePicking::Request(0, 0, static_cast<uint32_t>(renderWidth), static_cast<uint32_t>(renderHeight));
 				s.step = Step::WaitPick;
 				break;
+			}
 
 			case Step::WaitPick:
 			{
