@@ -201,6 +201,7 @@ namespace SceneryEditorX::ToolsSelfTest
 			std::optional<XPlane::DatarefControl> datarefShared;	// The shared control before (put back after)
 			float datarefOwn = 0.0f;
 			float datarefSharedValue = 0.0f;
+			int datarefWaitFrames = 0;			// Waiting for the twin to load
 
 			int passed = 0;
 			int failed = 0;
@@ -741,6 +742,7 @@ namespace SceneryEditorX::ToolsSelfTest
 					EditorCamera::SetRig(*s.rigBefore);
 				s.wait = 60;
 				s.datarefPhase = 0;
+				s.datarefWaitFrames = 0;
 				s.step = Step::DatarefOverrides;
 				break;
 			}
@@ -829,6 +831,11 @@ namespace SceneryEditorX::ToolsSelfTest
 				{
 					XPlane::XPlaneObjectComponent *placement = object(s.datarefObject);
 					const XPlane::XPlaneObjectComponent *twin = object(s.datarefTwin);
+					if (twin && !twin->loaded && ++s.datarefWaitFrames < 600)
+					{
+						--s.datarefPhase;	// Its asset is the placement's, already loaded, but placing may still finish later
+						break;
+					}
 					Check(twin && twin->loaded, "per-object datarefs: a second placement of the same object");
 					Check(std::abs(valueOf(placement) - s.datarefOwn) < 1e-4f, "per-object datarefs: the placement follows its own value");
 					Check(std::abs(valueOf(twin) - s.datarefSharedValue) < 1e-4f, "per-object datarefs: the other placement keeps the shared value");

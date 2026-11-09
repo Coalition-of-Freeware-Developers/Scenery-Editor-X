@@ -195,12 +195,19 @@ namespace SceneryEditorX::EditorXPlane
 
 		int release = -1;						// An override going back to the shared control (after the loop: the indices stay valid)
 		std::vector<DatarefOverride> added;	// Rows of this object edited for the first time
+		DatarefControl scratch;					// An object's row it hasn't changed yet: edited as a copy of the shared control
 		for (const Row &row : rows)
 		{
+			// Edited in place: the object's own control, or (the Simulation tab) the shared one. A row of an object that
+			// follows the shared control is copied, and kept as the object's own once it changes
 			DatarefControl *own = row.own >= 0 ? &(*overrides)[static_cast<size_t>(row.own)].control : nullptr;
-			DatarefControl control = own ? *own : *row.shared;	// Edited here, written back when changed
+			DatarefControl *target = own ? own : (perObject ? nullptr : row.shared);
+			if (!target)
+				scratch = *row.shared;
+			DatarefControl &control = target ? *target : scratch;
 			bool changed = false;
 			ImGui::PushID(control.key.c_str());
+			ImGui::PushID(static_cast<int>(row.index));
 			ImGui::TableNextRow();
 
 			ImGui::TableNextColumn();
@@ -270,15 +277,9 @@ namespace SceneryEditorX::EditorXPlane
 				}
 			}
 
-			if (changed)
-			{
-				if (own)
-					*own = control;
-				else if (perObject)
-					added.push_back({ row.index, control });
-				else
-					*row.shared = control;
-			}
+			if (changed && !target)
+				added.push_back({ row.index, control });
+			ImGui::PopID();
 			ImGui::PopID();
 		}
 

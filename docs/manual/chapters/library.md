@@ -126,6 +126,6 @@ Animated objects (windsocks, rotating beacons, radar antennas, vehicles) move ac
 - **Night lighting: Force lights on**, to see lit textures, light billboards and light spill in daylight;
 - a slider for every dataref the placed objects use, with its current value and range. These are the values every placed object shares.
 
-To test one placed object's animation (one jetway among many), select it and change its datarefs in PROPERTIES › **X-PLANE OBJECT** › **Animation** instead: values set there move that object only, as X-Plane gives each placed object its own. The link button beside a changed row hands it back to the shared value.
+To test one placed object's animation (one jetway among many), select it and change its datarefs in PROPERTIES › **X-PLANE OBJECT** › **Animation** instead: values set there move that object only, as X-Plane gives each placed object its own. The link button beside a changed row hands it back to the shared value. These values are for testing: they aren't saved with the project, copied when the object is duplicated, or undone with Ctrl+Z.
 
 The time of day, sun and weather are set in the ENVIRONMENT panel: see [Time, weather and the X-Plane 12 look](environment.md).
