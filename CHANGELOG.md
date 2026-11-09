@@ -24,7 +24,11 @@ versions.
 
 - The viewport camera (`MainCamera`) is no longer listed in the OUTLINER and can't be deleted: deleting it there, or
   with Del while it was selected, left a camera nothing could move until the editor restarted. `EditorScene::Destroy`
-  refuses it and returns whether it destroyed anything. (#80, 0.2.75.576)
+  refuses it and returns whether it destroyed anything. (#80, 0.2.75.576; 0.2.81.582 once merged with dev)
+- Saving a WorldEditor project (`earth.wed.xml`) never writes a number with an exponent. A bezier handle moved in the
+  editor sits a few micro-degrees off its node, and its offset came out as `3.702805202010495e-06`, which WorldEditor reads
+  as 3.7 degrees (it stops at the `e`). Such values are now written in full (`0.000003702805202010495`), still exact.
+  (#81, 0.2.76.577)
 - A `WeakRef` to an object destroyed without its last `Ref` release (deleted by hand, or a stack or member object a `Ref`
   pointed to) now expires. Before, the object's control block stayed registered under its old address, and the next
   object there inherited it: that object's new WeakRefs were expired at once, or the old ones locked it. Both cases are
