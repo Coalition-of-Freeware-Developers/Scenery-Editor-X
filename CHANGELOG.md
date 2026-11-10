@@ -24,7 +24,8 @@ versions.
 
 - The viewport camera (`MainCamera`) is no longer listed in the OUTLINER and can't be deleted: deleting it there, or
   with Del while it was selected, left a camera nothing could move until the editor restarted. `EditorScene::Destroy`
-  refuses it and returns whether it destroyed anything. (#80, 0.2.84.585)
+  refuses it and returns whether it destroyed anything. (#80, 0.2.84.585; Del with only the camera selected deletes
+  nothing and keeps the selection, 0.2.85.586)
 - Changing a dataref in a selected object's PROPERTIES (X-PLANE OBJECT › Animation) moves that object only. The table
   edited the control every object shares, so testing one jetway moved every jetway at the airport, and it did the same
   for any object with datarefs. Each placement now keeps its own controls for the datarefs changed there

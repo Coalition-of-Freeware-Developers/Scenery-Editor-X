@@ -778,7 +778,8 @@ namespace SceneryEditorX::EditorTools
 					break;
 				}
 				case TargetType::Entity:
-					entities.push_back(target.entity);
+					if (!EditorScene::IsViewportCamera(EditorScene::FindHandle(target.entity)))	// Never deleted (EditorScene::Destroy)
+						entities.push_back(target.entity);
 					break;
 			}
 		}
@@ -793,6 +794,10 @@ namespace SceneryEditorX::EditorTools
 		{
 			return a.parentId != b.parentId ? a.parentId < b.parentId : a.index > b.index;
 		});
+
+		// Nothing deletable (only the viewport camera was selected): the selection stays as it was
+		if (deletion->rows.empty() && deletion->items.empty() && entities.empty())
+			return false;
 
 		EditorSelection::Clear(context);
 		const bool rowsErased = EraseRows(*deletion);
