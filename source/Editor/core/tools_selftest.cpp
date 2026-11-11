@@ -182,6 +182,7 @@ namespace SceneryEditorX::ToolsSelfTest
 			Target target;
 			bool node = false;		// Its first node picked with the node tool: just the node is framed
 			bool key = false;		// Framed by pressing F (scripted) with the OUTLINER focused
+			std::vector<Target> others;	// Selected with it (framed together)
 		};
 
 		struct State
@@ -234,6 +235,7 @@ namespace SceneryEditorX::ToolsSelfTest
 			bool frameWasLocked = false;
 			std::optional<ViewportCamera::Rig> frameRig;	// The start view (put back after)
 			ViewFraming::Box frameBox;						// What the case's framing fits
+			double frameMeasureMs = 0.0;					// What working the box out took
 			ViewFraming::Box frameShapeBox;					// The node case: the whole shape, for comparison
 
 			int passed = 0;
@@ -1079,19 +1081,31 @@ namespace SceneryEditorX::ToolsSelfTest
 					if (entt::registry *registry = EditorScene::GetRegistry())
 					{
 						uint64_t root = 0, group = 0;
+						std::vector<Target> groups;
 						for (const entt::entity handle : registry->view<XPlane::AirportElementComponent>())
 						{
 							const uint64_t id = EditorScene::GetID(handle);
 							const XPlane::AirportElementComponent *element = XPlane::SceneAirports::FindElement(id);
 							if (element && element->kind == AirportElementKind::Airport && root == 0)
 								root = id;
-							if (element && element->kind == AirportElementKind::Group && static_cast<AirportElementKind>(element->index) == AirportElementKind::Pavement && group == 0)
-								group = id;
+							if (element && element->kind == AirportElementKind::Group)
+							{
+								groups.push_back(Target::ForEntity(id));
+								if (static_cast<AirportElementKind>(element->index) == AirportElementKind::Pavement && group == 0)
+									group = id;
+							}
 						}
 						if (group != 0)
 							s.frameCases.push_back({ "the airport's pavement group in the OUTLINER", Target::ForEntity(group) });
 						if (root != 0)
 							s.frameCases.push_back({ "the airport itself in the OUTLINER", Target::ForEntity(root) });
+						// Every group of the airport at once (its DSF art and objects included): one framing walks them all
+						if (groups.size() > 1)
+						{
+							FrameCase all{ "all " + std::to_string(groups.size()) + " of the airport's groups in the OUTLINER", groups.front() };
+							all.others.assign(groups.begin() + 1, groups.end());
+							s.frameCases.push_back(std::move(all));
+						}
 					}
 					if (pavement != ~0u)
 					{
@@ -1125,7 +1139,9 @@ namespace SceneryEditorX::ToolsSelfTest
 						EditorCamera::SetRig(*s.frameRig);
 					NodeTool::ClearNodeSelection();
 					EditorTools::SetTool(frame.node ? EditorTools::Tool::Nodes : EditorTools::Tool::Select);
-					EditorSelection::Select(context, frame.target);
+					std::vector<Target> targets = { frame.target };
+					targets.insert(targets.end(), frame.others.begin(), frame.others.end());
+					EditorSelection::Select(context, targets);
 					s.framePhase = 1;
 					s.wait = 2;
 					break;
@@ -1138,7 +1154,9 @@ namespace SceneryEditorX::ToolsSelfTest
 						SelectionBounds::AddTarget(frame.target, s.frameShapeBox);
 						Check(NodeTool::SelectNode(0, 0, 0, false), frame.what + ": the node tool picks it");
 					}
+					const auto measureStart = std::chrono::steady_clock::now();
 					const bool framable = EditorTools::GetFrameBox(s.frameBox);
+					s.frameMeasureMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - measureStart).count();
 					Check(framable, frame.what + ": Frame Selection finds it in the scene");
 					if (!framable)
 					{
@@ -1202,8 +1220,8 @@ namespace SceneryEditorX::ToolsSelfTest
 				const ViewFraming::Point size = box.GetSize();
 				const bool farthest = hasRig && rig.distance >= 4999.0;		// The camera's reach (5 km)
 				const bool nearest = hasRig && rig.distance <= 2.0 + 1e-6;
-				EDITOR_INFO_TAG(LOG_TAG, "Framing {}: {:.1f} x {:.1f} x {:.1f} m, camera {:.1f} m away, {} of 8 corners on the image, {:.0f}% of it",
-					frame.what, size.x, size.y, size.z, hasRig ? rig.distance : 0.0, onImage, fill * 100.0);
+				EDITOR_INFO_TAG(LOG_TAG, "Framing {}: {:.1f} x {:.1f} x {:.1f} m (measured in {:.2f} ms), camera {:.1f} m away, {} of 8 corners on the image, {:.0f}% of it",
+					frame.what, size.x, size.y, size.z, s.frameMeasureMs, hasRig ? rig.distance : 0.0, onImage, fill * 100.0);
 				Check(offCenter < 1e-3 * std::max(1.0, hasRig ? rig.distance : 1.0) + 1e-3, frame.what + ": the camera turns about its center");
 				if (farthest)
 					EDITOR_INFO_TAG(LOG_TAG, "Framing {}: wider than the camera can back off for, the fit isn't checked", frame.what);

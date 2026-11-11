@@ -44,7 +44,8 @@ namespace SceneryEditorX::SelectionBounds
 	 * frame like anything else). Boxes are what is drawn (meshes through their world transforms, the instances of
 	 * instanced ones), plus what a target is made of when it draws little or nothing itself: an apt.dat row's footprint,
 	 * a project item's rings or position, a folder's items. Main thread only; walks the scene, so call it on demand
-	 * (a key press), not every frame.
+	 * (a key press), not every frame. One call walks at most 100,000 entities and 200,000 instances, however many
+	 * targets it frames: past that the box holds what was measured (and a warning says so).
 	 */
 
 	/* @brief Smallest box a framing uses (meters each way): a point, a node or a flat drape still frames from a little way off. */
