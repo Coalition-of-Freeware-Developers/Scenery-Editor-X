@@ -76,6 +76,7 @@ namespace SceneryEditorX::ToolsSelfTest
 	namespace
 	{
 		constexpr const char *LOG_TAG = "SelfTest";
+		constexpr const char *FRAMING_MODAL = "Frame Selection self-test###SelfTestFramingModal";
 
 		enum class Step : uint8_t
 		{
@@ -182,6 +183,7 @@ namespace SceneryEditorX::ToolsSelfTest
 			Target target;
 			bool node = false;		// Its first node picked with the node tool: just the node is framed
 			bool key = false;		// Framed by pressing F (scripted) with the OUTLINER focused
+			bool modal = false;		// F pressed (scripted) while an ImGui modal is open: the camera stays put
 			std::vector<Target> others;	// Selected with it (framed together)
 		};
 
@@ -236,6 +238,9 @@ namespace SceneryEditorX::ToolsSelfTest
 			std::optional<ViewportCamera::Rig> frameRig;	// The start view (put back after)
 			ViewFraming::Box frameBox;						// What the case's framing fits
 			double frameMeasureMs = 0.0;					// What working the box out took
+			std::optional<ViewportCamera::Rig> frameBefore;	// The modal case: the view before F was pressed
+			bool frameModalOpen = false;					// The modal case's modal is up (drawn every frame of it)
+			bool frameModalClose = false;					// ...and closes on its next frame
 			ViewFraming::Box frameShapeBox;					// The node case: the whole shape, for comparison
 
 			int passed = 0;
@@ -1042,6 +1047,18 @@ namespace SceneryEditorX::ToolsSelfTest
 					s.step = Step::LibraryFilters;
 				};
 
+				// The modal case's modal, every frame while it is up (an ImGui modal: F is routed past it like any global shortcut)
+				if (s.frameModalOpen && ImGui::BeginPopupModal(FRAMING_MODAL, nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+				{
+					ImGui::TextUnformatted("Tools self-test: F pressed behind this modal must not move the camera");
+					if (s.frameModalClose)
+					{
+						ImGui::CloseCurrentPopup();
+						s.frameModalOpen = false;
+					}
+					ImGui::EndPopup();
+				}
+
 				if (!s.framePrepared)
 				{
 					s.framePrepared = true;
@@ -1120,6 +1137,10 @@ namespace SceneryEditorX::ToolsSelfTest
 						key.what = "F pressed in the OUTLINER (" + key.what + ")";
 						key.key = true;
 						s.frameCases.push_back(key);
+						FrameCase modal = s.frameCases.front();
+						modal.what = "F pressed behind a modal (" + modal.what + ")";
+						modal.modal = true;
+						s.frameCases.push_back(modal);
 					}
 					EDITOR_INFO_TAG(LOG_TAG, "Framing: {} cases", s.frameCases.size());
 				}
@@ -1170,6 +1191,17 @@ namespace SceneryEditorX::ToolsSelfTest
 						ImGui::SetWindowFocus("OUTLINER###Outliner");
 						UI::SetScriptedKeys({ ImGuiKey_F });
 					}
+					else if (frame.modal)
+					{
+						ViewportCamera::Rig rig;
+						if (EditorCamera::GetRig(rig))
+							s.frameBefore = rig;
+						Camera::SetInputLocked(false);
+						ImGui::OpenPopup(FRAMING_MODAL);
+						s.frameModalOpen = true;
+						s.frameModalClose = false;
+						UI::SetScriptedKeys({ ImGuiKey_F });
+					}
 					else
 						Check(EditorTools::FrameSelection(), frame.what + ": Frame Selection moves the camera");
 					s.frameFrames = 0;
@@ -1180,17 +1212,39 @@ namespace SceneryEditorX::ToolsSelfTest
 				{
 					// The glide, then a few frames for the drawn view to catch up (a scripted F goes back up after a frame)
 					++s.frameFrames;
-					if (frame.key && s.frameFrames == 1)
+					if ((frame.key || frame.modal) && s.frameFrames == 1)
 					{
-						Check(!context->viewportFocused, frame.what + ": the viewport doesn't have the keyboard");
+						if (frame.key)
+							Check(!context->viewportFocused, frame.what + ": the viewport doesn't have the keyboard");
 						UI::SetScriptedKeys({});
 					}
 					if ((EditorCamera::IsAnimating() || s.frameFrames < 5) && s.frameFrames < 600)
 						break;
-					if (frame.key)
+					if (frame.key || frame.modal)
 						Camera::SetInputLocked(s.frameWasLocked);
 					s.framePhase = 3;
-					s.wait = 3;
+					s.wait = frame.modal ? 0 : 3;	// The modal is drawn every frame it is up
+					break;
+				}
+
+				// Behind a modal: the camera hasn't moved; then the modal closes (on its next frame) and the next case starts
+				if (frame.modal)
+				{
+					if (!s.frameModalClose)
+					{
+						ViewportCamera::Rig rig;
+						const bool hasRig = EditorCamera::GetRig(rig) && s.frameBefore;
+						const double moved = hasRig ? std::hypot(rig.pivot.x - s.frameBefore->pivot.x, rig.pivot.y - s.frameBefore->pivot.y, rig.pivot.z - s.frameBefore->pivot.z) : 1e30;
+						const double zoomed = hasRig ? std::abs(rig.distance - s.frameBefore->distance) : 1e30;
+						EDITOR_INFO_TAG(LOG_TAG, "Framing {}: the pivot moved {:.3f} m, the distance {:.3f} m", frame.what, moved, zoomed);
+						Check(s.frameModalOpen && moved < 1e-3 && zoomed < 1e-3, frame.what + ": the camera stays where it was");
+						s.frameModalClose = true;
+						break;
+					}
+					if (s.frameModalOpen)
+						break;	// Closing
+					++s.frameCase;
+					s.framePhase = 0;
 					break;
 				}
 

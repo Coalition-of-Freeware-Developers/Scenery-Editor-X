@@ -66,11 +66,11 @@ namespace SceneryEditorX::SelectionBounds
 		};
 
 		/* @brief Says once per framing that it didn't measure everything (the camera frames what was). */
-		void ReportSpent(const Budget &budget)
+		void ReportSpent(const Budget &budget, const char *what = "the selection")
 		{
 			if (budget.spent)
-				EDITOR_WARN_TAG("Tools", "Frame Selection: the selection is larger than one framing measures ({} entities, {} instances): "
-					"framing the part measured", ENTITY_BUDGET, INSTANCE_BUDGET);
+				EDITOR_WARN_TAG("Tools", "Framing: {} is larger than one framing measures ({} entities, {} instances): "
+					"framing the part measured", what, ENTITY_BUDGET, INSTANCE_BUDGET);
 		}
 
 		ViewFraming::Point ToPoint(const Vec3 &v)
@@ -121,6 +121,8 @@ namespace SceneryEditorX::SelectionBounds
 				budget.spent = true;
 			const uint32_t count = static_cast<uint32_t>(std::min(instances, budget.instances));
 			budget.instances -= count;
+			// Each instance through the entity's world transform, as Renderable::GetInstance(i, true) composes it (and the
+			// renderer draws it), with the world worked out once rather than once per instance
 			bool any = false;
 			for (uint32_t i = 0; i < count; ++i)
 				any |= AddBounds(mesh * (renderable.GetInstance(i, false) * world), box);
@@ -344,15 +346,23 @@ namespace SceneryEditorX::SelectionBounds
 
 	bool AddScene(Box &box)
 	{
+		// The same budget as a framing: past it the box holds the renderables measured (Frame All caps its radius anyway)
 		Budget budget;
 		bool any = false;
 		for (Entity *entity : Scene::GetRenderableEntities())
 		{
+			if (budget.entities == 0)
+			{
+				budget.spent = true;
+				break;
+			}
+			--budget.entities;
 			Renderable *renderable = entity ? entity->GetComponent<Renderable>() : nullptr;
 			if (renderable && entity->GetActive() && !EditorScene::IsViewportCamera(static_cast<entt::entity>(*entity)))
 				any |= AddRenderable(*renderable, entity->GetMatrix(), box, budget);
 		}
-		return any;	// Instances past the budget left out: Frame All caps its radius anyway
+		ReportSpent(budget, "the scene");
+		return any;
 	}
 }
 

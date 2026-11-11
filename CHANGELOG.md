@@ -32,7 +32,8 @@ versions.
   <kbd>F</kbd> with the OUTLINER focused. (0.2.86.587; a Ctrl or Shift double-click in the OUTLINER or PROJECT hierarchy
   frames the item instead of selecting it twice, which toggled it back out; one framing measures at most 100,000
   entities and 200,000 instances however many targets are selected, breadth first so a cut-short walk still spans the
-  selection, 0.2.87.588)
+  selection, 0.2.87.588; F does nothing while a modal or a menu is open, and Frame All without an airport keeps to the
+  same budget, 0.2.88.589)
 
 ### Removed
 

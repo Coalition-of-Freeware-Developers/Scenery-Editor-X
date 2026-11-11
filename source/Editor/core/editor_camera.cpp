@@ -39,6 +39,7 @@
 #include <Editor/core/editor_scene.h>
 #include <Editor/core/editor_tools.h>
 #include <Editor/core/selection_bounds.h>
+#include <Editor/core/viewport_menus.h>
 #include <SceneryEditorX/core/application/application.h>
 #include <SceneryEditorX/scene/scene.h>
 #include <SceneryEditorX/xplane/xp_airport_scene.h>
@@ -458,9 +459,11 @@ namespace SceneryEditorX::EditorCamera
 			return;
 
 		// Not while the right button flies the camera or the middle one drags it; over VIEWPORT 2 it frames in that
-		// view instead (SecondViewportPanel)
+		// view instead (SecondViewportPanel). Not behind a modal or an open menu either: ImGui's global routes don't
+		// stop at them (the quad menu and hotbox hold the tool keys still the same way).
 		const bool cameraDrag = ImGui::IsMouseDown(ImGuiMouseButton_Right) || ImGui::IsMouseDown(ImGuiMouseButton_Middle);
-		if (framePressed && !cameraDrag && !context->secondViewportHovered)
+		const bool popupOpen = ImGui::IsPopupOpen("", ImGuiPopupFlags_AnyPopupId | ImGuiPopupFlags_AnyPopupLevel) || ViewportMenus::IsOpen();
+		if (framePressed && !cameraDrag && !popupOpen && !context->secondViewportHovered)
 			EditorTools::FrameSelection();
 
 		// The rest only over the viewport

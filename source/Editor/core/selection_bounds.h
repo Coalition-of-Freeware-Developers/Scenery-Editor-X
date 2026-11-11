@@ -73,7 +73,7 @@ namespace SceneryEditorX::SelectionBounds
 	/* @brief Grows a box by points on the ground (scene meters, x east / z south), at the terrain's height. */
 	bool AddGroundPoints(const std::vector<XPlane::Point2> &points, ViewFraming::Box &box);
 
-	/* @brief Grows a box by everything the scene draws (Frame All without an airport). False when it draws nothing. */
+	/* @brief Grows a box by everything the scene draws (Frame All without an airport), within the same budget. False when it draws nothing. */
 	bool AddScene(ViewFraming::Box &box);
 }
 
