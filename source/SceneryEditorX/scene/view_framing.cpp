@@ -181,7 +181,7 @@ namespace SceneryEditorX::ViewFraming
 		const double tolerance = 1e-9 * (1.0 + std::abs(depth) + r + u + std::abs(distance));
 		if (depth < nearMargin - tolerance)
 			return false;
-		const double share = std::clamp(fill, 0.0, 1.0);
+		const double share = std::isfinite(fill) ? std::clamp(fill, 0.0, 1.0) : 1.0;	// A bad fill checks the whole view
 		const double reach = lens.orthographic ? distance : depth;	// Orthographic views are as wide everywhere
 		return r <= reach * std::abs(lens.tanHalfX) * share + tolerance && u <= reach * std::abs(lens.tanHalfY) * share + tolerance;
 	}

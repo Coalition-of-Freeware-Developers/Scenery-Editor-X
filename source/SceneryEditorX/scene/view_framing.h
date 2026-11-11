@@ -124,7 +124,8 @@ namespace SceneryEditorX::ViewFraming
 
 	/**
 	 * @brief Whether a point is inside the view of an eye at `distance` behind `pivot` (looking along lens.forward),
-	 * within `fill` of the view and at least `nearMargin` in front of the eye. For checking a framing.
+	 * within `fill` of the view (clamped to 0 - 1; a NaN or infinite fill checks the whole view) and at least `nearMargin`
+	 * in front of the eye. For checking a framing.
 	 */
 	[[nodiscard]] bool IsInView(const Point &point, const Point &pivot, double distance, const Lens &lens, double fill = 1.0, double nearMargin = 0.0);
 }

@@ -277,4 +277,27 @@ TEST_CASE("View framing: a framed sphere is in view all the way round", "[view-f
 	CHECK(FitSphereDistance(std::numeric_limits<double>::quiet_NaN(), RigLens(0.0, 0.0, 60.0, 1.0)) == Approx(DEFAULT_NEAR_MARGIN));
 }
 
+TEST_CASE("View framing: a bad fill neither hides nor fits everything", "[view-framing]")
+{
+	// A point on the edge of the full view, straight ahead of an eye 100 m back: in view at fill 1, not at 0.5
+	const Lens lens = RigLens(0.0, 0.0, 60.0, 1.0);
+	const double edge = 100.0 * lens.tanHalfX;
+	const Point onEdge{ -edge, 0.0, 0.0 };	// The rig's right is -X when looking south
+	CHECK(IsInView(onEdge, Point{}, 100.0, lens, 1.0, 0.0));
+	CHECK_FALSE(IsInView(onEdge, Point{}, 100.0, lens, 0.5, 0.0));
+
+	// NaN or infinite fills check the whole view, as a fill of 1 does (a NaN used to fail every point)
+	const double nan = std::numeric_limits<double>::quiet_NaN();
+	const double inf = std::numeric_limits<double>::infinity();
+	CHECK(IsInView(onEdge, Point{}, 100.0, lens, nan, 0.0));
+	CHECK(IsInView(onEdge, Point{}, 100.0, lens, inf, 0.0));
+	CHECK(IsInView(Point{}, Point{}, 100.0, lens, nan, 0.0));
+	CHECK_FALSE(IsInView(Point{ -edge * 1.01, 0.0, 0.0 }, Point{}, 100.0, lens, nan, 0.0));
+
+	// Fitting with a bad fill falls back on the default share of the view
+	Box box;
+	box.Add(Point{ -10.0, -10.0, -10.0 }, Point{ 10.0, 10.0, 10.0 });
+	CHECK(FitDistance(box, lens, nan) == Approx(FitDistance(box, lens, DEFAULT_FILL)));
+}
+
 // -------------------------------------------------------
