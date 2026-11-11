@@ -435,9 +435,32 @@ namespace SceneryEditorX::EditorSelection
 				SceneAirports::FindLightObjects(target.kind, target.index, out);
 				break;
 			case TargetType::ProjectItem:
+			{
 				if (const uint64_t entity = EditorProjects::GetPlacedEntity(target.itemId))
+				{
 					out.push_back(entity);
+					break;
+				}
+				// A folder draws nothing itself: what its items draw (an airport's are the airport's own, not listed here)
+				ProjectFile::ProjectDocument *document = EditorProjects::GetDocument();
+				const ProjectFile::SceneryItem *item = document ? document->FindItem(target.itemId) : nullptr;
+				if (!item || item->kind != ProjectFile::ItemKind::Group)
+					break;
+				std::vector<const ProjectFile::SceneryItem *> stack = { item };
+				while (!stack.empty())
+				{
+					const ProjectFile::SceneryItem *entry = stack.back();
+					stack.pop_back();
+					for (const ProjectFile::SceneryItem &child : entry->children)
+					{
+						if (const uint64_t entity = EditorProjects::GetPlacedEntity(child.id))
+							out.push_back(entity);
+						if (child.kind == ProjectFile::ItemKind::Group)
+							stack.push_back(&child);
+					}
+				}
 				break;
+			}
 		}
 	}
 

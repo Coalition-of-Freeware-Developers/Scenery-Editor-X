@@ -38,6 +38,7 @@
 #include <Editor/core/editor_project.h>
 #include <Editor/core/editor_scene.h>
 #include <Editor/core/editor_tools.h>
+#include <Editor/core/selection_bounds.h>
 #include <SceneryEditorX/core/application/application.h>
 #include <SceneryEditorX/scene/scene.h>
 #include <SceneryEditorX/xplane/xp_airport_scene.h>
@@ -320,6 +321,15 @@ namespace SceneryEditorX::EditorCamera
 		SetRig(rig);
 	}
 
+	void Frame(const ViewFraming::Box &box)
+	{
+		Rig rig;
+		if (!box.IsValid() || !GetRig(rig))
+			return;
+		S().controller.Frame(rig, box, S().aspect);
+		SetRig(rig);
+	}
+
 	bool FrameAll()
 	{
 		// The open airport's focus (its outliers left out), else everything the scene draws
@@ -330,27 +340,22 @@ namespace SceneryEditorX::EditorCamera
 			return true;
 		}
 
-		bool any = false;
-		Vec3 lo(0.0f), hi(0.0f);
-		for (Entity *entity : Scene::GetRenderableEntities())
-		{
-			const Renderable *renderable = entity ? entity->GetComponent<Renderable>() : nullptr;
-			if (!renderable || !entity->GetActive())
-				continue;
-			const BoundingBox &box = renderable->GetBoundingBox();
-			const Vec3 bmin = box.GetMin(), bmax = box.GetMax();
-			if (!(bmin.x <= bmax.x) || std::abs(bmin.x) > 1e7f || std::abs(bmax.x) > 1e7f)
-				continue;
-			lo = any ? Vec3(std::min(lo.x, bmin.x), std::min(lo.y, bmin.y), std::min(lo.z, bmin.z)) : bmin;
-			hi = any ? Vec3(std::max(hi.x, bmax.x), std::max(hi.y, bmax.y), std::max(hi.z, bmax.z)) : bmax;
-			any = true;
-		}
-		if (!any)
+		ViewFraming::Box box;
+		if (!SelectionBounds::AddScene(box))
 			return false;
-		const Point3 center{ (lo.x + hi.x) * 0.5, (lo.y + hi.y) * 0.5, (lo.z + hi.z) * 0.5 };
-		const double extent = std::hypot(static_cast<double>(hi.x - lo.x), static_cast<double>(hi.y - lo.y), static_cast<double>(hi.z - lo.z)) * 0.5;
-		Frame(center, std::min(extent, 4000.0));
+		const ViewFraming::Point center = box.GetCenter();
+		Frame({ center.x, center.y, center.z }, std::min(box.GetRadius(), 4000.0));
 		return true;
+	}
+
+	double GetAspect()
+	{
+		return S().aspect;
+	}
+
+	bool IsAnimating()
+	{
+		return S().controller.IsAnimating();
 	}
 
 	void Orbit(const double yawDegrees, const double pitchDegrees)
@@ -441,8 +446,25 @@ namespace SceneryEditorX::EditorCamera
 
 	void HandleShortcuts(EditorContext *context)
 	{
+		// F frames the selection in every keymap, wherever the keyboard isn't typing: over the viewport, or in a panel
+		// that lists what is selected (the outliner, the project's hierarchy, PROPERTIES...), as in Unity, Unreal or
+		// Maya. A global route, so a focused window or a text field that takes F itself wins (as for Del). Asked for
+		// every frame: ImGui routes a shortcut from the frame after it is first asked for, so asking only when it may act
+		// (after typing, with the camera unlocked) would drop the first press.
+		const bool framePressed = ImGui::Shortcut(ImGuiKey_F, ImGuiInputFlags_RouteGlobal);
+
 		const ImGuiIO &io = ImGui::GetIO();
-		if (io.WantTextInput || !context || !(context->viewportHovered || context->viewportFocused) || !Get() || Camera::IsInputLocked())
+		if (io.WantTextInput || !context || !Get() || Camera::IsInputLocked())
+			return;
+
+		// Not while the right button flies the camera or the middle one drags it; over VIEWPORT 2 it frames in that
+		// view instead (SecondViewportPanel)
+		const bool cameraDrag = ImGui::IsMouseDown(ImGuiMouseButton_Right) || ImGui::IsMouseDown(ImGuiMouseButton_Middle);
+		if (framePressed && !cameraDrag && !context->secondViewportHovered)
+			EditorTools::FrameSelection();
+
+		// The rest only over the viewport
+		if (!(context->viewportHovered || context->viewportFocused))
 			return;
 
 		// Numpad views in every keymap (Blender's layout)
@@ -471,16 +493,15 @@ namespace SceneryEditorX::EditorCamera
 		if (pressed(ImGuiKey_Home) && !ctrl)
 			FrameAll();
 
-		// Letter keys: no modifiers, and not while the right button flies the camera (WASD) or the middle one drags it
-		if (io.KeyCtrl || io.KeyAlt || io.KeyShift || io.KeySuper || ImGui::IsMouseDown(ImGuiMouseButton_Right) || ImGui::IsMouseDown(ImGuiMouseButton_Middle))
+		// The keymap's letter keys: no modifiers, and not while the right button flies the camera (WASD) or the middle
+		// one drags it. F is Frame Selection above in every keymap (3ds Max's front view stays on Numpad 1).
+		if (io.KeyCtrl || io.KeyAlt || io.KeyShift || io.KeySuper || cameraDrag)
 			return;
 		switch (EditorPreferences::Get().keymap)
 		{
 			case NavigationKeymap::Max:
 				if (pressed(ImGuiKey_T))
 					SetViewPreset(ViewPreset::Top);
-				if (pressed(ImGuiKey_F))
-					SetViewPreset(ViewPreset::Front);
 				if (pressed(ImGuiKey_L))
 					SetViewPreset(ViewPreset::Left);
 				if (pressed(ImGuiKey_P))
@@ -491,14 +512,10 @@ namespace SceneryEditorX::EditorCamera
 					FrameAll();
 				break;
 			case NavigationKeymap::Maya:
-				if (pressed(ImGuiKey_F))
-					EditorTools::FrameSelection();
 				if (pressed(ImGuiKey_A) && !TakesFlyKeys())	// A flies left in FLY navigation
 					FrameAll();
 				break;
 			default:
-				if (pressed(ImGuiKey_F))
-					EditorTools::FrameSelection();
 				break;
 		}
 	}

@@ -32,6 +32,7 @@
 #include <portable-file-dialogs.h>
 #include <Editor/core/editor_project.h>
 #include <Editor/core/editor_selection.h>
+#include <Editor/core/editor_tools.h>
 #include <Editor/core/project_dialogs.h>
 #include <Editor/core/editor_theme.h>
 #include <Editor/core/editor_ui.h>
@@ -312,13 +313,16 @@ namespace SceneryEditorX
 		if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen())
 		{
 			m_SelectedItem = item.id;
-			if (const uint64_t entity = EditorProjects::GetPlacedEntity(item.id); entity != 0 && m_Context)
-				m_Context->selectedEntity = entity;
-			else if (item.kind == ItemKind::Airport)
+			if (item.kind == ItemKind::Airport)
 				EditorProjects::ShowAirport(item.airportId, m_Context);
-			else if (item.kind == ItemKind::RoadNode)
-				EditorSelection::Select(m_Context, EditorSelection::Target::ForItem(item.id));	// A junction draws nothing: select the item itself (the Nodes tool moves it)
+			// The item itself, drawn or not: an object, a shape, a folder, a road junction (the Nodes tool moves it), a
+			// hidden item. Ctrl toggles, Shift adds, as in the OUTLINER; F frames it from here or the viewport.
+			const ImGuiIO &io = ImGui::GetIO();
+			const EditorSelection::Mode mode = io.KeyCtrl ? EditorSelection::Mode::Toggle : io.KeyShift ? EditorSelection::Mode::Add : EditorSelection::Mode::Replace;
+			EditorSelection::Select(m_Context, EditorSelection::Target::ForItem(item.id, EditorProjects::GetPlacedEntity(item.id)), mode);
 		}
+		if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && !ImGui::IsItemToggledOpen())
+			EditorTools::FrameSelection();	// Double-click: frame it, as in the OUTLINER
 		if (ImGui::IsItemHovered() && !item.resource.empty())
 			EditorUI::ItemTooltip(item.resource.c_str());
 
@@ -356,8 +360,11 @@ namespace SceneryEditorX
 		if (!EditorUI::SectionHeader(header.c_str()))
 			return;
 
-		// Keep the tree's selection in step with the scene's
-		if (m_Context && m_Context->selectedEntity != 0)
+		// Keep the tree's selection in step with the scene's (the active item, a folder or a junction included)
+		const EditorSelection::Target *active = EditorSelection::GetActive();
+		if (active && active->type == EditorSelection::TargetType::ProjectItem)
+			m_SelectedItem = active->itemId;
+		else if (m_Context && m_Context->selectedEntity != 0)
 		{
 			if (std::string item = EditorProjects::FindItemForEntity(m_Context->selectedEntity); !item.empty())
 				m_SelectedItem = std::move(item);

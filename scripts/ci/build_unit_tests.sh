@@ -155,7 +155,7 @@ suite_sources()
 				$SE/xplane/xp_facade_authoring.cpp $SE/xplane/xp_overlay.cpp $SE/xplane/xp_install_finder.cpp ;;
 		ProjectFormatTests)
 			echo std source/Tests/project_tests/*.cpp \
-				$SE/project/spline_edit.cpp $SE/project/facade_edit.cpp $SE/project/scenery_pack.cpp \
+				$SE/project/spline_edit.cpp $SE/project/facade_edit.cpp $SE/project/scenery_pack.cpp $SE/scene/view_framing.cpp \
 				$SE/project/scenery_project.cpp $SE/project/project_edx.cpp $SE/project/project_sex.cpp \
 				$SE/project/project_wed.cpp $SE/project/xml_document.cpp $SE/project/project_io.cpp \
 				$SE/project/project_cache.cpp $SE/project/project_document.cpp $SE/project/project_dsf.cpp \

@@ -5,11 +5,11 @@
 //----------------------------------------------------------------------------
 #define SEDX_MAJOR             			0
 #define SEDX_MINOR             			2
-#define SEDX_PATCH             			85
-#define SEDX_BUILD             			586
+#define SEDX_PATCH             			86
+#define SEDX_BUILD             			587
 //----------------------------------------------------------------------------
-#define SEDX_VERSION_STRING            	"0.2.85.586"
-#define SEDX_VERSION                    0x000255024A
+#define SEDX_VERSION_STRING            	"0.2.86.587"
+#define SEDX_VERSION                    0x000256024B
 #define SEDX_FILE_VERSION               SEDX_MAJOR,SEDX_MINOR,SEDX_PATCH,SEDX_BUILD
 //----------------------------------------------------------------------------
 // Scenery Editor X - XPlane Scenery Library Version

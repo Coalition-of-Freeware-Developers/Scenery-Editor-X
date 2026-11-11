@@ -72,7 +72,7 @@ Check, in order:
 
 ### The viewport is empty or grey
 
-The camera is probably far from the scene. Press <kbd>Home</kbd> (frame everything), or **Reset camera** at the right of the viewport toolbar. Some airports have an outlying element far from the field; select something near the field and press <kbd>F</kbd> (<kbd>Z</kbd> in 3ds Max) to frame it.
+The camera is probably far from the scene. Press <kbd>Home</kbd> (frame everything), or **Reset camera** at the right of the viewport toolbar. Some airports have an outlying element far from the field; select something near the field (in the viewport, the OUTLINER or the PROJECT hierarchy) and press <kbd>F</kbd> to frame it.
 
 ### The camera moves the wrong way
 
