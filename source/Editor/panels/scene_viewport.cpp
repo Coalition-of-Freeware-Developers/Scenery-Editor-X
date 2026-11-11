@@ -459,7 +459,7 @@ namespace SceneryEditorX
 		if (ImGui::MenuItem("Orthographic", "Numpad 5", orthographic))
 			EditorCamera::SetProjection(CameraType::Orthographic);
 		ImGui::Separator();
-		if (ImGui::MenuItem("Frame Selection", "Numpad ."))
+		if (ImGui::MenuItem("Frame Selection", "F  /  Numpad ."))
 			EditorTools::FrameSelection();
 		if (ImGui::MenuItem("Frame All", "Home"))
 			EditorCamera::FrameAll();

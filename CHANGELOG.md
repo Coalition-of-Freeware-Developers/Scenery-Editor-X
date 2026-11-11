@@ -13,6 +13,28 @@ versions.
   camera movement costs. `--perf-log` also reports what the GPU deletion queue holds ("deletion queue entries / MB").
   (#69, 0.2.66.567; flying out instead of jumping, and counters kept as running totals, 0.2.67.568)
 
+### Changed
+
+- <kbd>F</kbd> (Frame Selection) frames whatever is selected, so the camera can find anything in a large scene: a model
+  or X-Plane object by what it draws (it was framed as a 5 m point, so big buildings filled the screen), an apt.dat row
+  with its lights, just the picked nodes when working on nodes (the Nodes tool, or Move / Rotate / Scale after picking
+  them), a project item (or where it is when it draws nothing), a PROJECT folder or OUTLINER group with everything in it,
+  and the airport itself. The pack's DSF art, locked items and groups frame too (only what the move gizmo could edit did,
+  so read-only things and groups didn't frame at all). The camera keeps its direction and backs off until every corner of
+  the selection is in view (`scene/view_framing.*`, `ViewFramingTests`): long, flat things such as runways frame tighter
+  than their bounding sphere, and wide lenses no longer frame too close. <kbd>F</kbd> works in every keymap (3ds Max's
+  front view stays on <kbd>Numpad 1</kbd>; <kbd>Z</kbd> still frames there), from any panel that has the keyboard (the
+  OUTLINER, PROJECT, PROPERTIES; it needed the mouse over the viewport) and over VIEWPORT 2, which it frames in its own
+  view. Clicking a folder or another item that draws nothing in the PROJECT hierarchy selects it (Ctrl toggles, Shift
+  adds), a selected folder outlines its items in the viewport, and a double-click frames it as in the OUTLINER; Del never
+  removes an airport selected there (its menu's Remove from project does). Frame All without an airport reads the meshes'
+  real bounds (it read bounding boxes nothing kept up to date). The tools self-test frames each kind of target and presses
+  <kbd>F</kbd> with the OUTLINER focused. (0.2.86.587; a Ctrl or Shift double-click in the OUTLINER or PROJECT hierarchy
+  frames the item instead of selecting it twice, which toggled it back out; one framing measures at most 100,000
+  entities and 200,000 instances however many targets are selected, breadth first so a cut-short walk still spans the
+  selection, 0.2.87.588; F does nothing while a modal or a menu is open, and Frame All without an airport keeps to the
+  same budget, 0.2.88.589)
+
 ### Removed
 
 - `Ref(const std::shared_ptr<T>&)` in `utils/pointers.h`, removed in 0.2.52.553 (merged to `master` with PR #65). It shared

@@ -41,6 +41,7 @@
 #include "editor_theme.h"
 #include "facade_tool.h"
 #include "node_tool.h"
+#include "selection_bounds.h"
 #include "tools_selftest.h"
 #include "transform_tool.h"
 #include "viewport_gizmo.h"
@@ -705,7 +706,7 @@ namespace SceneryEditorX::EditorTools
 			SetTool(Tool::Nodes);
 		if (ImGui::IsKeyPressed(ImGuiKey_B, false) && !io.KeyShift)
 			SetTool(Tool::Facade);
-		// F (frame) and the view keys belong to the navigation keymap (EditorCamera::HandleShortcuts)
+		// F (frame, from any panel too) and the view keys are the camera's (EditorCamera::HandleShortcuts)
 		if (ImGui::IsKeyPressed(ImGuiKey_X, false))
 			TransformTool::GetSettings().localSpace = !TransformTool::GetSettings().localSpace;
 	}
@@ -722,14 +723,26 @@ namespace SceneryEditorX::EditorTools
 		return true;
 	}
 
+	bool GetFrameBox(ViewFraming::Box &box)
+	{
+		box = ViewFraming::Box();
+		// Working on nodes: the picked nodes, not the whole shape (a modeling package's vertex level)
+		std::vector<XPlane::Point2> nodes;
+		if (OnNodes(GetTool()) && NodeTool::GetSelectedNodePoints(nodes))
+			SelectionBounds::AddGroundPoints(nodes, box);
+		if (!box.IsValid() && !SelectionBounds::AddSelection(box))
+			return false;
+		box.Inflate(SelectionBounds::MINIMUM_SIZE);
+		return box.IsValid();
+	}
+
 	bool FrameSelection()
 	{
 		// Keep looking the way the camera looks (tilting down from the horizon); back off until the selection fits
-		Point3 center;
-		double radius = 0.0;
-		if (!TransformTool::GetSelectionCenter(center, radius) || !EditorCamera::Get())
+		ViewFraming::Box box;
+		if (!EditorCamera::Get() || !GetFrameBox(box))
 			return false;
-		EditorCamera::Frame(center, std::max(radius, 3.0));
+		EditorCamera::Frame(box);
 		return true;
 	}
 
@@ -769,6 +782,10 @@ namespace SceneryEditorX::EditorTools
 				{
 					ProjectFile::ProjectDocument *project = EditorProjects::GetDocument();
 					const ProjectFile::SceneryItem *item = project ? project->FindItem(target.itemId) : nullptr;
+					// An airport leaves the project from its menu (PROJECT > Remove from project), never on a stray Del
+					// after clicking it to show or frame it
+					if (item && item->kind == ProjectFile::ItemKind::Airport)
+						break;
 					ItemCopy copy;
 					if (item && EditorProjects::FindItemLocation(target.itemId, copy.parentId, copy.index))
 					{
@@ -896,12 +913,11 @@ namespace SceneryEditorX::EditorTools
 				return FacadeTool::GetHint();
 			default:
 			{
-				// The navigation keymap's own mouse bindings, and its frame key
+				// The navigation keymap's own mouse bindings
 				const NavigationKeymap keymap = EditorPreferences::Get().keymap;
 				if (EditorSelection::IsEmpty())
 					return std::string("Click to select  |  drag a box  |  right-click: quad menu, hold Space: hotbox  |  ") + ViewportCamera::GetKeymapSummary(keymap);
-				return std::to_string(EditorSelection::Get().size()) + " selected  |  W move, E rotate, R scale, V nodes, B facades, " +
-					   (keymap == NavigationKeymap::Max ? "Z" : "F") + " frame, Del delete  |  right-click: menu";
+				return std::to_string(EditorSelection::Get().size()) + " selected  |  W move, E rotate, R scale, V nodes, B facades, F frame, Del delete  |  right-click: menu";
 			}
 		}
 	}

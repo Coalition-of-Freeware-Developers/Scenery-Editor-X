@@ -65,7 +65,7 @@ A field commits when you press <kbd>Enter</kbd> or leave it, and every commit is
 | **Delete** | <kbd>Del</kbd> | Edit menu, quad menu | Removes the selection. With the Nodes tool, deletes the selected nodes instead. |
 | **Duplicate** | <kbd>Ctrl+D</kbd> | Edit menu, quad menu | Copies the selected project items, 3 m to the south-east, and selects the copies. |
 | **Deselect** | <kbd>Esc</kbd> | Edit menu, quad menu | Clears the selection (or cancels the drawing in progress). |
-| **Frame Selection** | <kbd>F</kbd> (<kbd>Z</kbd> in 3ds Max), <kbd>Numpad .</kbd> | Edit menu, quad menu | Turns the camera to the selection and makes it the pivot. |
+| **Frame Selection** | <kbd>F</kbd> (also <kbd>Z</kbd> in 3ds Max), <kbd>Numpad .</kbd> | Edit menu, quad menu, double-click in the OUTLINER or PROJECT hierarchy | Moves the camera so the whole selection fills the view, and makes its center the pivot: models, rows, picked nodes, folders and groups. <kbd>F</kbd> works from the panels too. See [Framing the selection](viewport-navigation.md#framing-the-selection). |
 | **Hide Selection** | | Edit menu, quad menu | Hidden items stay in the project but aren't drawn or exported. |
 | **Show All Hidden** | | Edit menu, quad menu | Shows every hidden project item again. |
 | **Lock / Unlock** | | Edit menu, quad menu | Locked items can't be moved or edited until you unlock them. |

@@ -34,6 +34,7 @@
 #include <vector>
 #include <Editor/core/viewport_view.h>
 #include <Editor/settings/editor_preferences.h>
+#include <SceneryEditorX/scene/view_framing.h>
 
 // -------------------------------------------------------
 
@@ -77,6 +78,9 @@ namespace SceneryEditorX::ViewportCamera
 		/* @brief Moves the pivot so the eye stays where it is (after the direction changed around the eye). */
 		void KeepEye(const Point3 &eye);
 	};
+
+	/* @brief A rig's direction and field of view for a viewport of this shape, for fitting things in view (ViewFraming). */
+	ViewFraming::Lens GetLens(const Rig &rig, double aspect);
 
 	/* @brief What the viewport tells the controller about this frame. */
 	struct Input
@@ -122,6 +126,13 @@ namespace SceneryEditorX::ViewportCamera
 		/* @brief Fits a sphere in view without turning (tilting down if the camera looks at the horizon). */
 		void Frame(Rig &rig, const Point3 &center, double radius, double aspect);
 
+		/**
+		 * @brief Fits a box in view without turning (tilting down if the camera looks at the horizon): the pivot goes to
+		 * its center and the camera backs off until every corner shows, the box filling most of the view (Frame
+		 * Selection). An invalid box leaves the camera alone.
+		 */
+		void Frame(Rig &rig, const ViewFraming::Box &box, double aspect);
+
 		/* @brief Orbits by a step (numpad 2 / 4 / 6 / 8): degrees of yaw to the right, of pitch upward. */
 		void Orbit(Rig &rig, double yawDegrees, double pitchDegrees);
 
@@ -134,6 +145,9 @@ namespace SceneryEditorX::ViewportCamera
 		void Cancel();
 
 	private:
+		/* @brief Where a framing starts from: the rig (or where its glide is going), tilted down if it looks at or above the horizon. */
+		[[nodiscard]] Rig FramingStart(const Rig &rig) const;
+
 		enum class Drag : uint8_t { None, Orbit, Pan, Dolly, Look };
 
 		struct Transition

@@ -194,6 +194,19 @@ namespace SceneryEditorX::ViewportCamera
 		pivot = Add(eye, Forward(), distance);
 	}
 
+	ViewFraming::Lens GetLens(const Rig &rig, const double aspect)
+	{
+		const Point3 forward = rig.Forward(), right = rig.Right(), up = rig.Up();
+		ViewFraming::Lens lens;
+		lens.forward = { forward.x, forward.y, forward.z };
+		lens.right = { right.x, right.y, right.z };
+		lens.up = { up.x, up.y, up.z };
+		lens.tanHalfX = std::tan(rig.fovHorizontal * 0.5);
+		lens.tanHalfY = rig.TanHalfFovY(aspect);
+		lens.orthographic = rig.orthographic;
+		return lens;
+	}
+
 	// -------------------------------------------------------
 
 	bool Controller::Navigate(Rig &rig, const Input &input)
@@ -388,18 +401,34 @@ namespace SceneryEditorX::ViewportCamera
 		rig.orthographic = orthographic;
 	}
 
-	void Controller::Frame(Rig &rig, const Point3 &center, const double radius, const double aspect)
+	Rig Controller::FramingStart(const Rig &rig) const
 	{
 		Rig target = m_Transition.active ? m_Transition.to : rig;
-		target.pivot = center;
 
 		// Looking at or above the horizon in a free view: tilt down so the ground under the selection shows
 		if (target.preset == ViewPreset::Free && target.Forward().y > -0.2)
 			target.pitch = -0.6;
+		return target;
+	}
 
-		// The narrower field of view decides; a little margin around
-		const double tanHalf = std::min(std::tan(target.fovHorizontal * 0.5), target.TanHalfFovY(aspect));
-		target.distance = std::clamp(std::max(radius, 0.5) / std::max(tanHalf, 1e-3) * 1.15, 2.0, MAX_DISTANCE);
+	void Controller::Frame(Rig &rig, const Point3 &center, const double radius, const double aspect)
+	{
+		Rig target = FramingStart(rig);
+		target.pivot = center;
+		// The narrower field of view decides, with a margin around
+		target.distance = std::clamp(ViewFraming::FitSphereDistance(std::max(radius, 0.5), GetLens(target, aspect)), 2.0, MAX_DISTANCE);
+		MoveTo(rig, target);
+	}
+
+	void Controller::Frame(Rig &rig, const ViewFraming::Box &box, const double aspect)
+	{
+		if (!box.IsValid())
+			return;
+		Rig target = FramingStart(rig);
+		const ViewFraming::Point center = box.GetCenter();
+		target.pivot = { center.x, center.y, center.z };
+		// Every corner in view along the direction the camera keeps (closer than the box's sphere for long, flat things)
+		target.distance = std::clamp(ViewFraming::FitDistance(box, GetLens(target, aspect)), 2.0, MAX_DISTANCE);
 		MoveTo(rig, target);
 	}
 
@@ -461,7 +490,7 @@ namespace SceneryEditorX::ViewportCamera
 					{ "Orbit", "Middle mouse drag  /  Alt + left drag" },
 					{ "Pan", "Shift + middle drag  /  Shift + Alt + left drag" },
 					{ "Zoom", "Wheel  /  Ctrl + middle drag  /  Ctrl + Alt + left drag" },
-					{ "Frame selection", "Numpad .  /  F" },
+					{ "Frame selection", "F  /  Numpad ." },
 					{ "Frame everything", "Home" },
 				};
 				break;
@@ -470,9 +499,10 @@ namespace SceneryEditorX::ViewportCamera
 					{ "Orbit", "Alt + middle drag" },
 					{ "Pan", "Middle mouse drag" },
 					{ "Zoom", "Wheel  /  Ctrl + Alt + middle drag" },
-					{ "Frame selection (or everything)", "Z  /  Numpad ." },
+					{ "Frame selection", "F  /  Numpad ." },
+					{ "Frame selection (or everything)", "Z" },
 					{ "Frame everything", "Home" },
-					{ "Top / front / left view", "T  /  F  /  L" },
+					{ "Top / left view", "T  /  L  (front: Numpad 1)" },
 					{ "Perspective / orthographic", "P  /  U" },
 				};
 				break;

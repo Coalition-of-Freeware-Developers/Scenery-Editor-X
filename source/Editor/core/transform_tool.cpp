@@ -864,29 +864,6 @@ namespace SceneryEditorX::TransformTool
 		EndDrag(s);
 		return true;
 	}
-
-	bool GetSelectionCenter(Point3 &center, double &radius)
-	{
-		State &s = S();
-		if (!s.dragging)
-			Refresh(s);
-		if (s.descriptors.empty())
-			return false;
-		XPlane::Bounds2 bounds;
-		double top = 0.0;
-		for (const Descriptor &descriptor : s.descriptors)
-		{
-			const Point3 point = LiveCenter(descriptor);
-			const double r = descriptor.staticCenter ? descriptor.radius : 5.0;
-			bounds.Add(XPlane::Point2{ point.x - r, point.z - r });
-			bounds.Add(XPlane::Point2{ point.x + r, point.z + r });
-			top = std::max(top, point.y);
-		}
-		const XPlane::Point2 middle = bounds.GetCenter();
-		center = { middle.x, top * 0.5, middle.z };
-		radius = std::max(2.0, bounds.GetRadius());
-		return true;
-	}
 }
 
 // -------------------------------------------------------

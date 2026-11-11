@@ -102,9 +102,6 @@ namespace SceneryEditorX::TransformTool
 	/* @brief A line about the drag in progress ("Move 3: 12.40 m"), empty when idle. */
 	const std::string &GetStatus();
 
-	/* @brief Center of the selection in the scene (meters), false when nothing editable is selected. */
-	bool GetSelectionCenter(Point3 &center, double &radius);
-
 	/**
 	 * @brief Moves / turns / scales the selection about its pivot without the gizmo (numeric edits, nudges, tests):
 	 * the same preview, write-back and undo step as a drag.

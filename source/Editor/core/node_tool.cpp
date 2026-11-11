@@ -1932,6 +1932,21 @@ namespace SceneryEditorX::NodeTool
 		return S().selected.size();
 	}
 
+	bool GetSelectedNodePoints(std::vector<XPlane::Point2> &points)
+	{
+		State &s = S();
+		Reload(s);
+		const size_t before = points.size();
+		for (const NodeKey &key : s.selected)
+		{
+			if (!GetNode(s, key.session, key.ref))
+				continue;
+			const auto &point = s.sessions[key.session].shape.chains[key.ref.chain].GetEditPoint(key.ref.node);
+			points.push_back({ point.x, point.z });
+		}
+		return points.size() > before;
+	}
+
 	void ClearNodeSelection()
 	{
 		S().selected.clear();

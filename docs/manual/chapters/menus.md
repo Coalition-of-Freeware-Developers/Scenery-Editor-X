@@ -35,7 +35,7 @@ Every item in the menu bar, in order. Items that need something (an open project
 | Delete | <kbd>Del</kbd> | Removes the selection. |
 | Duplicate | <kbd>Ctrl+D</kbd> | Copies the selected project items 3 m south-east. |
 | Deselect | <kbd>Esc</kbd> | Clears the selection. |
-| Frame Selection | <kbd>F</kbd> (<kbd>Z</kbd> in 3ds Max) | Turns the camera to the selection. |
+| Frame Selection | <kbd>F</kbd> | Moves the camera so the whole selection fills the view. |
 | Hide Selection | | Hidden items aren't drawn or exported. |
 | Show All Hidden | | Shows every hidden project item. |
 | Lock / Unlock | | Locked items can't be moved or edited. |
@@ -111,7 +111,7 @@ The menu ends with the X-Plane folder in use, or what's wrong with it.
 | Top, Bottom | <kbd>Numpad 7</kbd>, <kbd>Ctrl+Numpad 7</kbd> | View presets. |
 | Front, Back | <kbd>Numpad 1</kbd>, <kbd>Ctrl+Numpad 1</kbd> | |
 | Right, Left | <kbd>Numpad 3</kbd>, <kbd>Ctrl+Numpad 3</kbd> | |
-| Frame Selection | <kbd>Numpad .</kbd> | |
+| Frame Selection | <kbd>F</kbd>, <kbd>Numpad .</kbd> | |
 | Frame All | <kbd>Home</kbd> | |
 | Reset Camera | | Back to the startup view. |
 | Navigation Keymap… | | Opens the preferences' Navigation tab. |

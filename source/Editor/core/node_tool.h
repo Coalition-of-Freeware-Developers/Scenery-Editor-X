@@ -33,6 +33,7 @@
 #include "viewport_view.h"
 #include <cstddef>
 #include <string>
+#include <vector>
 #include <SceneryEditorX/project/spline_edit.h>
 
 // -------------------------------------------------------
@@ -99,6 +100,13 @@ namespace SceneryEditorX::NodeTool
 	bool HasShapes();
 
 	size_t GetSelectedNodeCount();
+
+	/**
+	 * @brief Appends where the selected nodes are (or a B-spline's selected control points: what is edited), on the
+	 * ground in scene meters, for framing them (F). False when no selected node is there.
+	 */
+	bool GetSelectedNodePoints(std::vector<XPlane::Point2> &points);
+
 	void ClearNodeSelection();
 	void SelectAllNodes();
 
