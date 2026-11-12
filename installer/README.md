@@ -90,7 +90,8 @@ Steam, the registry and the usual folders.
   The copy isn't in the uninstall list: an update's `/UPGRADE` uninstall leaves it for the new setup to replace, and a
   full uninstall deletes it. If it can't be written, setup sets `NoModify` instead and Settings offers Uninstall only.
 - A copy whose `SceneryEditorX.exe` was deleted is still recognised from its uninstaller and offered Repair (or
-  Update). With `uninstall.exe` missing too it can only be repaired, so the page disables Uninstall.
+  Update). A copy that still has `SceneryEditorX.exe` but lost `uninstall.exe` gets the page too, with Uninstall
+  disabled: only a repair can put the uninstaller back. With both gone, setup treats the folder as a first install.
 - Uninstalling removes only the files it installed, plus its registry entries and shortcuts. Settings, logs, caches
   and unsaved-project recovery data (`%APPDATA%\SceneryEditorX`, `%LOCALAPPDATA%\SceneryEditorX`) are removed only
   if that box is ticked. Project files are never touched.
