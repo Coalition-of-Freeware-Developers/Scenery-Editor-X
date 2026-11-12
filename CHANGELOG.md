@@ -9,6 +9,11 @@ versions.
 
 ### Added
 
+- Windows setup: **Settings › Apps › Installed apps › Scenery Editor X › Modify** (Control Panel's **Change**) opens
+  setup's Update / Repair / Uninstall page, so the editor can be repaired without the setup file it was installed from.
+  Setup keeps a copy of itself in the install folder for that (`setup\SceneryEditorX-Setup.exe`); Settings offered only
+  Uninstall before. A copy whose `SceneryEditorX.exe` was deleted is offered Repair too, where setup took it for a
+  first install. (Setup only: the editor itself is unchanged, so the version stays.)
 - `--camera-fly <m/s>`: the camera flies 1 km out of its startup point and circles it at that speed, for measuring what
   camera movement costs. `--perf-log` also reports what the GPU deletion queue holds ("deletion queue entries / MB").
   (#69, 0.2.66.567; flying out instead of jumping, and counters kept as running totals, 0.2.67.568)

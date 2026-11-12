@@ -83,6 +83,14 @@ Steam, the registry and the usual folders.
   folder and install mode, and the desktop shortcut stays as the tester left it. A silent `/S` setup updates or
   repairs without asking. The installed version's uninstaller first removes the files that version installed, so
   nothing stale is left behind. A user without admin rights can't update an all-users copy, and setup says so.
+- Keeps a copy of itself in the install folder (`setup\SceneryEditorX-Setup.exe`, the size of the setup program) and
+  registers it as the Add/Remove Programs `ModifyPath`. **Settings > Apps > Installed apps > Scenery Editor X >
+  Modify** (Control Panel's **Change**) then opens the same page, so a tester can repair the editor without the setup
+  file they installed from. Windows' own Repair button is only for Windows Installer packages, so `NoRepair` stays set.
+  The copy isn't in the uninstall list: an update's `/UPGRADE` uninstall leaves it for the new setup to replace, and a
+  full uninstall deletes it. If it can't be written, setup sets `NoModify` instead and Settings offers Uninstall only.
+- A copy whose `SceneryEditorX.exe` was deleted is still recognised from its uninstaller and offered Repair (or
+  Update). With `uninstall.exe` missing too it can only be repaired, so the page disables Uninstall.
 - Uninstalling removes only the files it installed, plus its registry entries and shortcuts. Settings, logs, caches
   and unsaved-project recovery data (`%APPDATA%\SceneryEditorX`, `%LOCALAPPDATA%\SceneryEditorX`) are removed only
   if that box is ticked. Project files are never touched.
