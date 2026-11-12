@@ -6,6 +6,7 @@
 ;   - makes Scenery Editor X the handler of .edX (JSON) and .sex (binary) project files
 ;   - adds a Start menu entry, an optional desktop shortcut and an Add/Remove Programs entry
 ;   - over an installed copy, offers to update, repair or uninstall it (same folder, same install mode)
+;   - keeps a copy of itself in the install folder, which Windows Settings > Apps > Modify runs to repair the editor
 ;   - uninstalls exactly the files it installed; user settings and caches only when asked to
 ;
 ; Build it with installer\windows\Build-Installer.ps1, which stages the files and writes the uninstall list.
@@ -58,6 +59,10 @@ SetCompressorDictSize 64
 
 !define APP_KEY "Software\${APP_ID}"
 !define UNINSTALL_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_ID}"
+
+; The copy of this setup that Settings > Apps > Modify (Control Panel's Change) runs: see KeepSetupCopy
+!define SETUP_COPY_DIR "$INSTDIR\setup"
+!define SETUP_COPY "${SETUP_COPY_DIR}\${APP_ID}-Setup.exe"
 
 ; Project file types: extension, ProgID, type name, icon
 !define EDX_PROGID "${APP_ID}.edX"
@@ -233,6 +238,7 @@ Section "!${APP_NAME}" SecEditor
   SetOutPath "$INSTDIR"
   File /r "${STAGE_DIR}\*.*"
   WriteUninstaller "$INSTDIR\uninstall.exe"
+  Call KeepSetupCopy
 
   ; Start menu entry (SetOutPath above makes the install folder its working folder)
   CreateShortCut "$SMPROGRAMS\${APP_NAME}.lnk" "$INSTDIR\${APP_EXE}" "" "$INSTDIR\${APP_EXE}" 0 SW_SHOWNORMAL "" "${APP_DESCRIPTION}"
@@ -255,7 +261,15 @@ Section "!${APP_NAME}" SecEditor
   WriteRegStr SHCTX "${UNINSTALL_KEY}" "QuietUninstallString" '"$INSTDIR\uninstall.exe" /$MultiUser.InstallMode /S'
   WriteRegDWORD SHCTX "${UNINSTALL_KEY}" "VersionMajor" ${VERSION_MAJOR}
   WriteRegDWORD SHCTX "${UNINSTALL_KEY}" "VersionMinor" ${VERSION_MINOR}
-  WriteRegDWORD SHCTX "${UNINSTALL_KEY}" "NoModify" 1
+  ; Modify (Settings > Apps) and Change (Control Panel) run the kept setup, whose maintenance page updates, repairs or
+  ; uninstalls. Windows' own Repair button is for Windows Installer packages only.
+  ${If} ${FileExists} "${SETUP_COPY}"
+    WriteRegStr SHCTX "${UNINSTALL_KEY}" "ModifyPath" '"${SETUP_COPY}" /$MultiUser.InstallMode'
+    DeleteRegValue SHCTX "${UNINSTALL_KEY}" "NoModify"
+  ${Else}
+    DeleteRegValue SHCTX "${UNINSTALL_KEY}" "ModifyPath"
+    WriteRegDWORD SHCTX "${UNINSTALL_KEY}" "NoModify" 1
+  ${EndIf}
   WriteRegDWORD SHCTX "${UNINSTALL_KEY}" "NoRepair" 1
   ${GetSize} "$INSTDIR" "/S=0K" $0 $1 $2
   IntFmt $0 "0x%08X" $0
@@ -360,12 +374,40 @@ SectionEnd
 ; MULTIUSER_INIT has already switched to the installed copy's mode and folder (InstallMode and InstallDir in the
 ; registry). Its setup also wrote the version, so this setup knows whether it updates, repairs or downgrades it.
 
+; Keeps this setup in the install folder, so the installed version can be repaired from Settings > Apps > Modify
+; without the file it was installed from. The uninstall list doesn't include it: an update's /UPGRADE uninstall leaves
+; it for the new setup to replace, and only a full uninstall removes it.
+Function KeepSetupCopy
+  ${If} $EXEPATH == "${SETUP_COPY}"		; Already running from it: a repair started from Settings
+    Return
+  ${EndIf}
+  Delete "${SETUP_COPY}"			; Never leave another version's setup behind if the copy fails
+  CreateDirectory "${SETUP_COPY_DIR}"
+  ClearErrors
+  CopyFiles /SILENT "$EXEPATH" "${SETUP_COPY}"
+  ${If} ${Errors}
+  ${OrIfNot} ${FileExists} "${SETUP_COPY}"
+    DetailPrint "Could not keep a copy of setup in ${SETUP_COPY_DIR}: Settings > Apps won't offer Modify"
+    Delete "${SETUP_COPY}"
+    RMDir "${SETUP_COPY_DIR}"
+    Return
+  ${EndIf}
+  ; Like every other file setup writes, the copy doesn't carry the downloaded setup's internet-zone mark
+  System::Call 'kernel32::DeleteFileW(w "${SETUP_COPY}:Zone.Identifier")'
+FunctionEnd
+
 Function DetectInstalled
   StrCpy $Maintenance ""
   StrCpy $FinishText "${APP_NAME} ${VERSION} has been installed on your computer."
   ReadRegStr $InstalledVersion SHCTX "${APP_KEY}" "Version"
+  ; A copy missing SceneryEditorX.exe still has its uninstaller: it's damaged, and gets the same page to repair it
+  StrCpy $0 0
+  ${If} ${FileExists} "$INSTDIR\${APP_EXE}"
+  ${OrIf} ${FileExists} "$INSTDIR\uninstall.exe"
+    StrCpy $0 1
+  ${EndIf}
   ${If} $InstalledVersion != ""
-  ${AndIf} ${FileExists} "$INSTDIR\${APP_EXE}"
+  ${AndIf} $0 == 1
     ${VersionCompare} $InstalledVersion "${VERSION}" $InstalledCompare
     ${If} $InstalledCompare == 2
       StrCpy $Maintenance "update"
@@ -434,6 +476,10 @@ Function MaintenancePageCreate
   Pop $MaintenanceUninstall
   ${NSD_CreateLabel} 24u 86u -24u 24u "Removes the program, its shortcuts and file associations. The uninstaller asks whether your settings and caches go too."
   Pop $0
+  ${IfNot} ${FileExists} "$INSTDIR\uninstall.exe"	; Damaged: only a repair can put the uninstaller back
+    EnableWindow $MaintenanceUninstall 0
+    EnableWindow $0 0
+  ${EndIf}
   ${NSD_Check} $MaintenanceKeep
   nsDialogs::Show
 FunctionEnd
@@ -483,6 +529,8 @@ Section "-un.${APP_NAME}"
 
   ${If} $UpgradeOnly == 0
     Delete "$INSTDIR\uninstall.exe"
+    Delete "${SETUP_COPY}"
+    RMDir "${SETUP_COPY_DIR}"
     RMDir "$INSTDIR"
   ${EndIf}
 SectionEnd
