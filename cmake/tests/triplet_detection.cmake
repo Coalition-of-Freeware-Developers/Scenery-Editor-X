@@ -107,6 +107,10 @@ sedx_case("VS -A Win32" x86-windows windows DEFINES "${_vs}" -DCMAKE_GENERATOR_P
 sedx_case("VS -A ARM64" arm64-windows windows DEFINES "${_vs}" -DCMAKE_GENERATOR_PLATFORM=ARM64)
 sedx_case("VS -A ARM64EC" arm64ec-windows windows DEFINES "${_vs}" -DCMAKE_GENERATOR_PLATFORM=ARM64EC)
 sedx_case("VS -A ARM" arm-windows windows DEFINES "${_vs}" -DCMAKE_GENERATOR_PLATFORM=ARM)
+sedx_case("VS, no -A, from a VS x86 prompt (VS ignores the prompt)" "MATCHES:^(x64|arm64)-windows$" windows
+          DEFINES "${_vs}" ENV VSCMD_ARG_TGT_ARCH=x86)
+sedx_case("VS -A x64, from a VS x86 prompt" x64-windows windows
+          DEFINES "${_vs}" -DCMAKE_GENERATOR_PLATFORM=x64 ENV VSCMD_ARG_TGT_ARCH=x86)
 sedx_case("VS -A with no vcpkg triplet" ERROR windows DEFINES "${_vs}" -DCMAKE_GENERATOR_PLATFORM=Itanium)
 
 # Windows, Ninja: a Visual Studio developer prompt, MinGW, clang-cl

@@ -19,8 +19,7 @@ if "%_log%"=="" (
     exit /b 2
 )
 REM A name of its own per run: a CMake left running by an earlier window that was closed writes its
-REM own file, never this run's. Files such runs left behind are removed.
-del /f /q "%CD%\cmake_generate.*.exitcode" >nul 2>&1
+REM own file, never this run's. Only this run deletes its file: another window's run may still be going.
 set "_exitfile=%CD%\cmake_generate.%RANDOM%%RANDOM%.exitcode"
 for /f %%A in ('copy /Z "%~f0" nul') do set "CR=%%A"
 

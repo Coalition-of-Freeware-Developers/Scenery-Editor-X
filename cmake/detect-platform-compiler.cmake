@@ -80,8 +80,9 @@ if(NOT DEFINED VCPKG_TARGET_TRIPLET)
                 "but a vcpkg triplet holds one architecture: vcpkg's libraries are built for ${_sedx_raw_arch} only. "
                 "Pass -DVCPKG_TARGET_TRIPLET (and one architecture) to choose.")
         endif()
-    elseif(CMAKE_HOST_WIN32 AND DEFINED ENV{VSCMD_ARG_TGT_ARCH})
-        # Ninja / NMake from a Visual Studio developer prompt
+    elseif(CMAKE_HOST_WIN32 AND DEFINED ENV{VSCMD_ARG_TGT_ARCH} AND NOT CMAKE_GENERATOR MATCHES "^Visual Studio")
+        # Ninja / NMake / Makefiles from a Visual Studio developer prompt. A Visual Studio generator ignores the
+        # prompt and builds for the host without -A, so it takes the host's architecture below.
         set(_sedx_raw_arch "$ENV{VSCMD_ARG_TGT_ARCH}")
     else()
         # Otherwise the build targets the machine it runs on (AMD64, x86_64, arm64, aarch64...)
