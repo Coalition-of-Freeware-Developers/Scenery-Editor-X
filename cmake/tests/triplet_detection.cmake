@@ -148,6 +148,12 @@ sedx_case("MSYS2's own cmake, Ninja, MINGW32 shell" x86-mingw-dynamic msys
           DEFINES -DCMAKE_GENERATOR=Ninja ENV MSYSTEM=MINGW32 MSYSTEM_CARCH=i686)
 sedx_case("MSYS2's own cmake, Ninja, CXX=g++" "MATCHES:^(x64|arm64)-mingw-dynamic$" msys
           DEFINES -DCMAKE_GENERATOR=Ninja ENV CXX=g++)
+sedx_case("Ninja, CXX=cl.exe in a folder named gcc" "MATCHES:^(x64|arm64)-windows$" windows
+          DEFINES -DCMAKE_GENERATOR=Ninja "ENV" "CXX=C:\\tools\\gcc-wrappers\\cl.exe")
+sedx_case("Ninja, CXX=clang++ in a folder named gcc" "MATCHES:^(x64|arm64)-mingw-dynamic$" windows
+          DEFINES -DCMAKE_GENERATOR=Ninja ENV CXX=C:/opt/gcc-12/bin/clang++.exe)
+sedx_case("Ninja, CXX=ccache g++" "MATCHES:^(x64|arm64)-mingw-dynamic$" windows
+          DEFINES -DCMAKE_GENERATOR=Ninja "ENV" "CXX=ccache g++")
 sedx_case("Ninja, CXX=clang-cl" "MATCHES:^(x64|arm64)-windows$" windows DEFINES -DCMAKE_GENERATOR=Ninja ENV CXX=clang-cl)
 
 # macOS

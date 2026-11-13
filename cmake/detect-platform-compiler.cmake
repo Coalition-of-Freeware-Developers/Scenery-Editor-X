@@ -12,16 +12,24 @@ endif()
 if(NOT DEFINED SEDX_PREFERRED_COMPILER)
     # Try to infer from explicit environment hints first
     if(DEFINED ENV{CXX})
+        # The compiler's file name, not its folders ("C:/tools/gcc/cl.exe" is MSVC). CXX may hold a
+        # launcher too ("ccache g++"); its last word is the compiler.
         string(TOLOWER "$ENV{CXX}" _cxx_lower)
-        if(_cxx_lower MATCHES "clang-cl" OR _cxx_lower MATCHES "clang-cl.exe")
+        string(REPLACE "\\" "/" _cxx_lower "${_cxx_lower}")
+        string(REGEX REPLACE "^.*/" "" _cxx_name "${_cxx_lower}")
+        string(REGEX REPLACE "^.* " "" _cxx_name "${_cxx_name}")
+        if(_cxx_name MATCHES "clang-cl")
             set(SEDX_PREFERRED_COMPILER "CLANG_CL" CACHE STRING "Preferred compiler (inferred from CXX)" FORCE)
-        elseif(_cxx_lower MATCHES "clang" OR _cxx_lower MATCHES "clang.exe")
+        elseif(_cxx_name MATCHES "clang")
             set(SEDX_PREFERRED_COMPILER "CLANG" CACHE STRING "Preferred compiler (inferred from CXX)" FORCE)
         # "g\\+\\+" reaches the regex as g\+\+ (a literal "g++"); "g\+\+" reached it as g++, which
         # failed to compile, so CXX=g++ stopped the configure
-        elseif(_cxx_lower MATCHES "g\\+\\+|gcc")
+        elseif(_cxx_name MATCHES "g\\+\\+|gcc")
             set(SEDX_PREFERRED_COMPILER "GCC" CACHE STRING "Preferred compiler (inferred from CXX)" FORCE)
+        elseif(_cxx_name MATCHES "^cl(\\.exe)?$")
+            set(SEDX_PREFERRED_COMPILER "MSVC" CACHE STRING "Preferred compiler (inferred from CXX)" FORCE)
         endif()
+        unset(_cxx_name)
     endif()
 
     # An MSYS2 MinGW-family shell (MSYSTEM UCRT64, MINGW64, MINGW32, CLANG64, CLANGARM64) puts that
