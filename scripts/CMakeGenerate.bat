@@ -23,14 +23,15 @@ REM own file, never this run's. Only this run deletes its file: another window's
 set "_exitfile=%CD%\cmake_generate.%RANDOM%%RANDOM%.exitcode"
 for /f %%A in ('copy /Z "%~f0" nul') do set "CR=%%A"
 
-REM CMake runs in the background (this script's :run mode, below); it writes CMake's exit code to
-REM a file when it ends.
+REM CMake runs in the background (this script's :run mode, below). It creates <exit code file>.started
+REM first, and writes CMake's exit code to the exit code file when it ends.
 start "CMakeGenerate" /b cmd /d /c call "%~f0" :run "%_log%" "%_exitfile%"
 
 setlocal EnableDelayedExpansion
 set "_pad=                                        "
 set "_percent=0"
 set "_text=Starting CMake"
+set "_waited=0"
 call :seconds _start
 
 REM Progress milestones CMake prints after vcpkg is done (in no particular order)
@@ -51,6 +52,18 @@ call :draw
 if exist "!_exitfile!" goto finished
 >nul ping 127.0.0.1 -n 2
 call :update
+REM The background half never started (start failed, no cmd): stop waiting instead of polling forever.
+REM It only has to get going in time; CMake itself may then take as long as it needs.
+if not exist "!_exitfile!.started" (
+    set /a _waited+=1
+    if !_waited! GEQ 30 (
+        set "_text=CMake did not start"
+        call :draw
+        echo.
+        echo CMakeGenerate.bat: the background CMake run did not start ^(waited about 30 seconds^).
+        exit /b 1
+    )
+)
 goto wait
 
 :finished
@@ -60,7 +73,7 @@ for /L %%i in (1,1,20) do if not defined _rc (
     set /p _rc=<"!_exitfile!"
     if not defined _rc >nul ping 127.0.0.1 -n 2
 )
-del /f /q "!_exitfile!" >nul 2>&1
+del /f /q "!_exitfile!" "!_exitfile!.started" >nul 2>&1
 if not defined _rc set "_rc=1"
 set "_rc=!_rc: =!"
 if "!_rc!"=="0" (
@@ -129,6 +142,7 @@ goto :eof
 
 :run_cmake
 REM Background half, started above as: CMakeGenerate.bat :run "<log file>" "<exit code file>"
+> "%~3.started" echo started
 REM "call" so that a cmake.cmd / cmake.bat wrapper on the PATH returns here too.
 call cmake .. >> "%~2" 2>&1
 > "%~3" echo %errorlevel%
