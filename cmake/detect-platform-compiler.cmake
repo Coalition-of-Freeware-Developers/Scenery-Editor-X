@@ -17,7 +17,9 @@ if(NOT DEFINED SEDX_PREFERRED_COMPILER)
             set(SEDX_PREFERRED_COMPILER "CLANG_CL" CACHE STRING "Preferred compiler (inferred from CXX)" FORCE)
         elseif(_cxx_lower MATCHES "clang" OR _cxx_lower MATCHES "clang.exe")
             set(SEDX_PREFERRED_COMPILER "CLANG" CACHE STRING "Preferred compiler (inferred from CXX)" FORCE)
-        elseif(_cxx_lower MATCHES "g\+\+" OR _cxx_lower MATCHES "g++.exe" OR _cxx_lower MATCHES "gcc")
+        # "g\\+\\+" reaches the regex as g\+\+ (a literal "g++"); "g\+\+" reached it as g++, which
+        # failed to compile, so CXX=g++ stopped the configure
+        elseif(_cxx_lower MATCHES "g\\+\\+|gcc")
             set(SEDX_PREFERRED_COMPILER "GCC" CACHE STRING "Preferred compiler (inferred from CXX)" FORCE)
         endif()
     endif()
@@ -68,33 +70,37 @@ endif()
 if(NOT DEFINED VCPKG_TARGET_TRIPLET)
     if(CMAKE_GENERATOR_PLATFORM)
         # Visual Studio generators: -A Win32 | x64 | ARM64
-        set(_sedx_arch "${CMAKE_GENERATOR_PLATFORM}")
+        set(_sedx_raw_arch "${CMAKE_GENERATOR_PLATFORM}")
     elseif(CMAKE_HOST_APPLE AND CMAKE_OSX_ARCHITECTURES)
-        set(_sedx_arch "${CMAKE_OSX_ARCHITECTURES}")
+        set(_sedx_raw_arch "${CMAKE_OSX_ARCHITECTURES}")
         if(CMAKE_OSX_ARCHITECTURES MATCHES ";")
             # A vcpkg triplet holds one architecture: the libraries come out for the first one only
-            list(GET CMAKE_OSX_ARCHITECTURES 0 _sedx_arch)
+            list(GET CMAKE_OSX_ARCHITECTURES 0 _sedx_raw_arch)
             message(WARNING "SEDX: CMAKE_OSX_ARCHITECTURES is \"${CMAKE_OSX_ARCHITECTURES}\" (a universal build), "
-                "but a vcpkg triplet holds one architecture: vcpkg's libraries are built for ${_sedx_arch} only. "
+                "but a vcpkg triplet holds one architecture: vcpkg's libraries are built for ${_sedx_raw_arch} only. "
                 "Pass -DVCPKG_TARGET_TRIPLET (and one architecture) to choose.")
         endif()
     elseif(CMAKE_HOST_WIN32 AND DEFINED ENV{VSCMD_ARG_TGT_ARCH})
         # Ninja / NMake from a Visual Studio developer prompt
-        set(_sedx_arch "$ENV{VSCMD_ARG_TGT_ARCH}")
+        set(_sedx_raw_arch "$ENV{VSCMD_ARG_TGT_ARCH}")
     else()
         # Otherwise the build targets the machine it runs on (AMD64, x86_64, arm64, aarch64...)
-        cmake_host_system_information(RESULT _sedx_arch QUERY OS_PLATFORM)
+        cmake_host_system_information(RESULT _sedx_raw_arch QUERY OS_PLATFORM)
     endif()
-    string(TOLOWER "${_sedx_arch}" _sedx_arch)
-    if(_sedx_arch MATCHES "^(arm64|aarch64)")
+    # vcpkg's names for the architectures. Others (ppc64le, s390x, riscv64, loongarch64...) are already
+    # vcpkg's names; the triplet check below stops on any that vcpkg doesn't have.
+    string(TOLOWER "${_sedx_raw_arch}" _sedx_arch)
+    if(_sedx_arch MATCHES "^(amd64|x86_64|x64)$")
+        set(_sedx_arch "x64")
+    elseif(_sedx_arch STREQUAL "arm64ec")
+        set(_sedx_arch "arm64ec")
+    elseif(_sedx_arch MATCHES "^(arm64|aarch64)")
         set(_sedx_arch "arm64")
     elseif(_sedx_arch MATCHES "^arm")
         # 32-bit ARM: armv7l, armv6l, ARM
         set(_sedx_arch "arm")
     elseif(_sedx_arch MATCHES "^(win32|x86|i[3-6]86)$")
         set(_sedx_arch "x86")
-    else()
-        set(_sedx_arch "x64")
     endif()
 
     if(SEDX_PREFERRED_COMPILER STREQUAL "MSVC" OR SEDX_PREFERRED_COMPILER STREQUAL "CLANG_CL")
@@ -107,9 +113,29 @@ if(NOT DEFINED VCPKG_TARGET_TRIPLET)
     else()
         set(_sedx_triplet_os "linux")
     endif()
-    set(VCPKG_TARGET_TRIPLET "${_sedx_arch}-${_sedx_triplet_os}" CACHE STRING "Default vcpkg target triplet inferred from platform/compiler" FORCE)
+    set(_sedx_triplet "${_sedx_arch}-${_sedx_triplet_os}")
+
+    # Stop here, not in vcpkg, on a combination vcpkg has no triplet for (x86-osx, an architecture vcpkg
+    # doesn't know...). Skipped without the vcpkg submodule or with overlay triplets, which can add names.
+    if(DEFINED VCPKG_ROOT)
+        set(_sedx_vcpkg_root "${VCPKG_ROOT}")
+    else()
+        set(_sedx_vcpkg_root "${CMAKE_CURRENT_LIST_DIR}/../dependency/vcpkg")
+    endif()
+    if(EXISTS "${_sedx_vcpkg_root}/triplets" AND NOT VCPKG_OVERLAY_TRIPLETS
+            AND NOT EXISTS "${_sedx_vcpkg_root}/triplets/${_sedx_triplet}.cmake"
+            AND NOT EXISTS "${_sedx_vcpkg_root}/triplets/community/${_sedx_triplet}.cmake")
+        message(FATAL_ERROR "SEDX: no vcpkg triplet fits this build: ${_sedx_triplet} (from the architecture "
+            "\"${_sedx_raw_arch}\" and the ${SEDX_PREFERRED_COMPILER} compiler) is not one of vcpkg's triplets. "
+            "Pass one with -DVCPKG_TARGET_TRIPLET=<triplet> (see ${_sedx_vcpkg_root}/triplets).")
+    endif()
+
+    set(VCPKG_TARGET_TRIPLET "${_sedx_triplet}" CACHE STRING "Default vcpkg target triplet inferred from platform/compiler" FORCE)
+    unset(_sedx_raw_arch)
     unset(_sedx_arch)
     unset(_sedx_triplet_os)
+    unset(_sedx_triplet)
+    unset(_sedx_vcpkg_root)
 endif()
 
 # Expose a human-readable summary early in configuration

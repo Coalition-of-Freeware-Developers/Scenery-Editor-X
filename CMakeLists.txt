@@ -43,10 +43,11 @@ PROJECT(SceneryEditorX
 
 # vcpkg's libraries must have the compiler's pointer size. A build directory configured before
 # detect-platform-compiler.cmake read the architecture properly keeps x86-windows for a 64-bit
-# build, and find_package then rejects every 32-bit library (first Freetype).
+# build, and find_package then rejects every 32-bit library (first Freetype). Only the architectures
+# SEDX targets are checked; other triplets (wasm32-, ppc64le-, riscv64-...) pass unchecked.
 IF(VCPKG_TARGET_TRIPLET MATCHES "^(x86|arm)-")
 	SET(_sedx_triplet_pointer_size 4)
-ELSEIF(VCPKG_TARGET_TRIPLET MATCHES "^(x64|arm64)-")
+ELSEIF(VCPKG_TARGET_TRIPLET MATCHES "^(x64|arm64|arm64ec)-")
 	SET(_sedx_triplet_pointer_size 8)
 ENDIF()
 IF(DEFINED _sedx_triplet_pointer_size AND CMAKE_SIZEOF_VOID_P

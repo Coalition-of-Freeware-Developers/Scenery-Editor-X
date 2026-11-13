@@ -290,6 +290,9 @@ and MSYS2 g++ on Windows; it leaves out `[xplane-install]` / `[library-sweep]` c
 `dev` and pushes to `dev` / `master`. When a suite gains an engine source, add it to the script's list as well as to the
 recipe above (test files are picked up from the suite's folder). `SEDX_TEST_CXXFLAGS=-DSEDX_FLOAT_CHARS_FALLBACK
 SEDX_TEST_OUT=build/unit-tests-fallback` runs every suite on the float text fallback the macOS build uses.
+The same workflow runs `cmake -P cmake/tests/triplet_detection.cmake` (CMake only, no compiler or vcpkg): the vcpkg
+triplet `cmake/detect-platform-compiler.cmake` picks when neither the user nor a preset sets one, for each host,
+generator and compiler hint. Add a case there when that logic changes.
 
 `build_linux_tests/` and `dependency/Catch2/build-linux/` are throwaway build output — do not commit them.
 
