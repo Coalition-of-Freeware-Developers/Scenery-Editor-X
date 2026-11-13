@@ -19,11 +19,18 @@ if(SEDX_TEST_CASE)
         set(CMAKE_HOST_UNIX "")
         if(SEDX_TEST_HOST STREQUAL "windows")
             set(CMAKE_HOST_WIN32 1)
+            set(CMAKE_HOST_SYSTEM_NAME Windows)
         elseif(SEDX_TEST_HOST STREQUAL "macos")
             set(CMAKE_HOST_APPLE 1)
             set(CMAKE_HOST_UNIX 1)
+            set(CMAKE_HOST_SYSTEM_NAME Darwin)
+        elseif(SEDX_TEST_HOST STREQUAL "msys")
+            # MSYS2's own (MSYS runtime) cmake
+            set(CMAKE_HOST_UNIX 1)
+            set(CMAKE_HOST_SYSTEM_NAME MSYS)
         else()
             set(CMAKE_HOST_UNIX 1)
+            set(CMAKE_HOST_SYSTEM_NAME Linux)
         endif()
     endif()
     # A list can't pass through execute_process as one argument: SEDX_TEST_OSX_ARCHS holds it with commas
@@ -47,7 +54,7 @@ endforeach()
 
 # sedx_case(<name> <expected> <host> [DEFINES -D...] [ENV NAME=VALUE...] [WARNS <regex>])
 # <expected> is a triplet, "MATCHES:<regex>" for cases that depend on the machine running the test, or
-# "ERROR" when the configure must stop. <host> is windows, macos, linux or native. WARNS: a warning the case must print.
+# "ERROR" when the configure must stop. <host> is windows, macos, linux, msys (MSYS2's own cmake) or native. WARNS: a warning the case must print.
 function(sedx_case name expected host)
     cmake_parse_arguments(C "" "WARNS" "DEFINES;ENV" ${ARGN})
     execute_process(
@@ -121,6 +128,8 @@ sedx_case("Ninja, CXX=g++ (MinGW)" "MATCHES:^(x64|arm64)-mingw-dynamic$" windows
 sedx_case("Ninja, CXX=clang (MinGW)" "MATCHES:^(x64|arm64)-mingw-dynamic$" windows DEFINES -DCMAKE_GENERATOR=Ninja ENV CXX=clang)
 sedx_case("Ninja, CXX=clang, VS x64 prompt (MSVC ABI)" x64-windows windows
           DEFINES -DCMAKE_GENERATOR=Ninja ENV CXX=clang VSCMD_ARG_TGT_ARCH=x64)
+sedx_case("MSYS2's own cmake, Ninja, CXX=g++" "MATCHES:^(x64|arm64)-mingw-dynamic$" msys
+          DEFINES -DCMAKE_GENERATOR=Ninja ENV CXX=g++)
 sedx_case("Ninja, CXX=clang-cl" "MATCHES:^(x64|arm64)-windows$" windows DEFINES -DCMAKE_GENERATOR=Ninja ENV CXX=clang-cl)
 
 # macOS
