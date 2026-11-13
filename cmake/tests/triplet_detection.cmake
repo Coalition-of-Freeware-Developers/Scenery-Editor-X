@@ -155,7 +155,17 @@ sedx_case("macOS universal (first architecture)" arm64-osx macos
           DEFINES -DCMAKE_GENERATOR=Ninja ENV SEDX_TEST_OSX_ARCHS=arm64,x86_64 WARNS "a universal build")
 sedx_case("macOS universal, x86_64 first" x64-osx macos
           DEFINES -DCMAKE_GENERATOR=Ninja ENV SEDX_TEST_OSX_ARCHS=x86_64,arm64 WARNS "a universal build")
+sedx_case("macOS Makefiles, CXX=clang++" "MATCHES:^(x64|arm64)-osx$" macos
+          DEFINES "-DCMAKE_GENERATOR=Unix Makefiles" ENV CXX=clang++)
 sedx_case("macOS i386 (vcpkg has no x86-osx)" ERROR macos DEFINES -DCMAKE_GENERATOR=Ninja -DCMAKE_OSX_ARCHITECTURES=i386)
+
+# SEDX_PREFERRED_COMPILER from the environment wins over CXX and the generator
+sedx_case("env SEDX_PREFERRED_COMPILER=GCC, VS generator" "MATCHES:^(x64|arm64)-mingw-dynamic$" windows
+          DEFINES "${_vs}" ENV SEDX_PREFERRED_COMPILER=GCC)
+sedx_case("env SEDX_PREFERRED_COMPILER=CLANG_CL, CXX=g++" "MATCHES:^(x64|arm64)-windows$" windows
+          DEFINES -DCMAKE_GENERATOR=Ninja ENV SEDX_PREFERRED_COMPILER=CLANG_CL CXX=g++)
+sedx_case("env SEDX_PREFERRED_COMPILER=MSVC, MSYS2 UCRT64 shell" x64-windows windows
+          DEFINES -DCMAKE_GENERATOR=Ninja ENV SEDX_PREFERRED_COMPILER=MSVC MSYSTEM=UCRT64 MSYSTEM_CARCH=x86_64)
 
 # Linux, and the machine running the test as it is
 sedx_case("Linux, Makefiles" "MATCHES:^(x64|arm64)-linux$" linux DEFINES "-DCMAKE_GENERATOR=Unix Makefiles")
