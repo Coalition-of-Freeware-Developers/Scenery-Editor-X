@@ -91,6 +91,14 @@ endif()
 # CMAKE_HOST_* variables: WIN32 / APPLE / UNIX only describe the target once project() has run, so this
 # assumes the build targets the host OS (cross builds pass -DVCPKG_TARGET_TRIPLET, as vcpkg also expects).
 if(NOT DEFINED VCPKG_TARGET_TRIPLET)
+    # MSYS2's own cmake (not its UCRT64 / MinGW one) and Cygwin's report a UNIX host, but the build is
+    # still for Windows
+    if(CMAKE_HOST_WIN32 OR CMAKE_HOST_SYSTEM_NAME MATCHES "^(MSYS|CYGWIN)")
+        set(_sedx_host_windows TRUE)
+    else()
+        set(_sedx_host_windows FALSE)
+    endif()
+
     if(CMAKE_GENERATOR_PLATFORM)
         # Visual Studio generators: -A Win32 | x64 | ARM64
         set(_sedx_raw_arch "${CMAKE_GENERATOR_PLATFORM}")
@@ -107,7 +115,7 @@ if(NOT DEFINED VCPKG_TARGET_TRIPLET)
         # Ninja / NMake / Makefiles from a Visual Studio developer prompt. A Visual Studio generator ignores the
         # prompt and builds for the host without -A, so it takes the host's architecture below.
         set(_sedx_raw_arch "$ENV{VSCMD_ARG_TGT_ARCH}")
-    elseif(CMAKE_HOST_WIN32 AND DEFINED ENV{MSYSTEM_CARCH} AND SEDX_PREFERRED_COMPILER MATCHES "^(GCC|CLANG)$")
+    elseif(_sedx_host_windows AND DEFINED ENV{MSYSTEM_CARCH} AND SEDX_PREFERRED_COMPILER MATCHES "^(GCC|CLANG)$")
         # An MSYS2 MinGW-family shell: the architecture of its compiler (x86_64, i686, aarch64)
         set(_sedx_raw_arch "$ENV{MSYSTEM_CARCH}")
     else()
@@ -130,13 +138,6 @@ if(NOT DEFINED VCPKG_TARGET_TRIPLET)
         set(_sedx_arch "x86")
     endif()
 
-    # MSYS2's own cmake (not its UCRT64 / MinGW one) and Cygwin's report a UNIX host, but the build is
-    # still for Windows
-    if(CMAKE_HOST_WIN32 OR CMAKE_HOST_SYSTEM_NAME MATCHES "^(MSYS|CYGWIN)")
-        set(_sedx_host_windows TRUE)
-    else()
-        set(_sedx_host_windows FALSE)
-    endif()
     if(SEDX_PREFERRED_COMPILER STREQUAL "MSVC" OR SEDX_PREFERRED_COMPILER STREQUAL "CLANG_CL")
         set(_sedx_triplet_os "windows")
     elseif(CMAKE_HOST_APPLE)

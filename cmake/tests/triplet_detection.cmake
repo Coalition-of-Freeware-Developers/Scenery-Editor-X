@@ -144,6 +144,8 @@ sedx_case("Ninja, MSYS2 UCRT64 shell inside a VS x64 prompt" x64-windows windows
           DEFINES -DCMAKE_GENERATOR=Ninja ENV MSYSTEM=UCRT64 MSYSTEM_CARCH=x86_64 VSCMD_ARG_TGT_ARCH=x64)
 sedx_case("VS generator, MSYS2 UCRT64 shell" "MATCHES:^(x64|arm64)-windows$" windows
           DEFINES "${_vs}" ENV MSYSTEM=UCRT64 MSYSTEM_CARCH=x86_64)
+sedx_case("MSYS2's own cmake, Ninja, MINGW32 shell" x86-mingw-dynamic msys
+          DEFINES -DCMAKE_GENERATOR=Ninja ENV MSYSTEM=MINGW32 MSYSTEM_CARCH=i686)
 sedx_case("MSYS2's own cmake, Ninja, CXX=g++" "MATCHES:^(x64|arm64)-mingw-dynamic$" msys
           DEFINES -DCMAKE_GENERATOR=Ninja ENV CXX=g++)
 sedx_case("Ninja, CXX=clang-cl" "MATCHES:^(x64|arm64)-windows$" windows DEFINES -DCMAKE_GENERATOR=Ninja ENV CXX=clang-cl)
