@@ -114,6 +114,9 @@ sedx_case("Ninja, VS x64 prompt" x64-windows windows DEFINES -DCMAKE_GENERATOR=N
 sedx_case("Ninja, VS x86 prompt" x86-windows windows DEFINES -DCMAKE_GENERATOR=Ninja ENV VSCMD_ARG_TGT_ARCH=x86)
 sedx_case("Ninja, CXX=g++ (MinGW)" "MATCHES:^(x64|arm64)-mingw-dynamic$" windows
           DEFINES -DCMAKE_GENERATOR=Ninja ENV CXX=g++)
+sedx_case("Ninja, CXX=clang (MinGW)" "MATCHES:^(x64|arm64)-mingw-dynamic$" windows DEFINES -DCMAKE_GENERATOR=Ninja ENV CXX=clang)
+sedx_case("Ninja, CXX=clang, VS x64 prompt (MSVC ABI)" x64-windows windows
+          DEFINES -DCMAKE_GENERATOR=Ninja ENV CXX=clang VSCMD_ARG_TGT_ARCH=x64)
 sedx_case("Ninja, CXX=clang-cl" "MATCHES:^(x64|arm64)-windows$" windows DEFINES -DCMAKE_GENERATOR=Ninja ENV CXX=clang-cl)
 
 # macOS

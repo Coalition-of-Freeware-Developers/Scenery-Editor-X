@@ -107,8 +107,11 @@ if(NOT DEFINED VCPKG_TARGET_TRIPLET)
         set(_sedx_triplet_os "windows")
     elseif(CMAKE_HOST_APPLE)
         set(_sedx_triplet_os "osx")
+    elseif(CMAKE_HOST_WIN32 AND SEDX_PREFERRED_COMPILER STREQUAL "CLANG" AND DEFINED ENV{VSCMD_ARG_TGT_ARCH})
+        # clang (not clang-cl) from a Visual Studio developer prompt: LLVM's clang, MSVC ABI
+        set(_sedx_triplet_os "windows")
     elseif(CMAKE_HOST_WIN32)
-        # clang or gcc on Windows that is not clang-cl: MinGW
+        # gcc, or clang outside a Visual Studio developer prompt, on Windows: MinGW
         set(_sedx_triplet_os "mingw-dynamic")
     else()
         set(_sedx_triplet_os "linux")
@@ -131,6 +134,7 @@ if(NOT DEFINED VCPKG_TARGET_TRIPLET)
     endif()
 
     set(VCPKG_TARGET_TRIPLET "${_sedx_triplet}" CACHE STRING "Default vcpkg target triplet inferred from platform/compiler" FORCE)
+    set(_sedx_triplet_note " (guessed from the platform and compiler; -DVCPKG_TARGET_TRIPLET=<triplet> chooses another)")
     unset(_sedx_raw_arch)
     unset(_sedx_arch)
     unset(_sedx_triplet_os)
@@ -140,7 +144,8 @@ endif()
 
 # Expose a human-readable summary early in configuration
 message(STATUS "SEDX: Preferred compiler -> ${SEDX_PREFERRED_COMPILER}")
-message(STATUS "SEDX: vcpkg target triplet -> ${VCPKG_TARGET_TRIPLET}")
+message(STATUS "SEDX: vcpkg target triplet -> ${VCPKG_TARGET_TRIPLET}${_sedx_triplet_note}")
+unset(_sedx_triplet_note)
 
 # Provide minimal per-compiler default flags if user hasn't set them. These are conservative
 # and intended to give consistent behavior when vcpkg or vendor scripts examine cached flags.
