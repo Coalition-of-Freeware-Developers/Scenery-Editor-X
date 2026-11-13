@@ -164,7 +164,8 @@ sedx_case("env SEDX_PREFERRED_COMPILER=GCC, VS generator" "MATCHES:^(x64|arm64)-
           DEFINES "${_vs}" ENV SEDX_PREFERRED_COMPILER=GCC)
 sedx_case("env SEDX_PREFERRED_COMPILER=CLANG_CL, CXX=g++" "MATCHES:^(x64|arm64)-windows$" windows
           DEFINES -DCMAKE_GENERATOR=Ninja ENV SEDX_PREFERRED_COMPILER=CLANG_CL CXX=g++)
-sedx_case("env SEDX_PREFERRED_COMPILER=MSVC, MSYS2 UCRT64 shell" x64-windows windows
+# MSVC ignores the shell's MSYSTEM_CARCH: the machine running the test decides the architecture
+sedx_case("env SEDX_PREFERRED_COMPILER=MSVC, MSYS2 UCRT64 shell" "MATCHES:^(x64|arm64)-windows$" windows
           DEFINES -DCMAKE_GENERATOR=Ninja ENV SEDX_PREFERRED_COMPILER=MSVC MSYSTEM=UCRT64 MSYSTEM_CARCH=x86_64)
 
 # Linux, and the machine running the test as it is
