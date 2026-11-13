@@ -6,8 +6,13 @@ REM
 REM vcpkg installs the project's packages while CMake configures, which takes many minutes when they
 REM have to be built: the bar follows vcpkg's "Installing N/M <package>" lines (0 - 80%), then CMake's
 REM own milestones (80 - 100%).
+REM
+REM Paths are only ever read as !var! while delayed expansion is on: a %var% holding a "!" (a folder
+REM named "Hello!") would lose it there.
 
 setlocal DisableDelayedExpansion
+if "%~1"==":run" goto run_cmake
+
 set "_log=%~1"
 if "%_log%"=="" (
     echo CMakeGenerate.bat: no log file given.
@@ -15,13 +20,13 @@ if "%_log%"=="" (
 )
 set "_exitfile=%CD%\cmake_generate.exitcode"
 if exist "%_exitfile%" del /f /q "%_exitfile%" >nul 2>&1
+for /f %%A in ('copy /Z "%~f0" nul') do set "CR=%%A"
 
-REM CMake runs in the background and the child cmd writes CMake's exit code to a file when it ends.
-REM This line runs before delayed expansion is turned on, so !errorlevel! reaches the child as it is.
-start "CMakeGenerate" /b cmd /v:on /c "cmake .. >> "%_log%" 2>&1 & >"%_exitfile%" echo !errorlevel!"
+REM CMake runs in the background (this script's :run mode, below); it writes CMake's exit code to
+REM a file when it ends.
+start "CMakeGenerate" /b cmd /d /c call "%~f0" :run "%_log%" "%_exitfile%"
 
 setlocal EnableDelayedExpansion
-for /f %%A in ('copy /Z "%~f0" nul') do set "CR=%%A"
 set "_pad=                                        "
 set "_percent=0"
 set "_text=Starting CMake"
@@ -42,19 +47,19 @@ set k11=Build files have been written
 
 :wait
 call :draw
-if exist "%_exitfile%" goto finished
+if exist "!_exitfile!" goto finished
 >nul ping 127.0.0.1 -n 2
 call :update
 goto wait
 
 :finished
-REM The child creates the file before it writes the code: read it again until the code is there.
+REM The background half creates the file before it writes the code: read it again until it is there.
 set "_rc="
 for /L %%i in (1,1,20) do if not defined _rc (
-    set /p _rc=<"%_exitfile%"
+    set /p _rc=<"!_exitfile!"
     if not defined _rc >nul ping 127.0.0.1 -n 2
 )
-del /f /q "%_exitfile%" >nul 2>&1
+del /f /q "!_exitfile!" >nul 2>&1
 if not defined _rc set "_rc=1"
 set "_rc=!_rc: =!"
 if "!_rc!"=="0" (
@@ -68,12 +73,12 @@ echo.
 exit /b !_rc!
 
 :update
-if not exist "%_log%" goto :eof
-findstr /L /C:"-- Running vcpkg install" "%_log%" >nul 2>&1 && set "_text=vcpkg: checking packages"
+if not exist "!_log!" goto :eof
+findstr /L /C:"-- Running vcpkg install" "!_log!" >nul 2>&1 && set "_text=vcpkg: checking packages"
 
 REM The last "Installing N/M <package>" line: package N of M is being installed.
 set "_vcpkg="
-for /f "delims=" %%L in ('findstr /B /R /C:"Installing [0-9]*/[0-9]* " "%_log%" 2^>nul') do set "_vcpkg=%%L"
+for /f "delims=" %%L in ('findstr /B /R /C:"Installing [0-9]*/[0-9]* " "!_log!" 2^>nul') do set "_vcpkg=%%L"
 if defined _vcpkg (
     for /f "tokens=2,3,4 delims=/ " %%a in ("!_vcpkg!") do (
         set /a "_percent=(%%a - 1) * 80 / %%b"
@@ -81,14 +86,14 @@ if defined _vcpkg (
     )
 )
 
-findstr /L /C:"-- Running vcpkg install - done" "%_log%" >nul 2>&1 && (
+findstr /L /C:"-- Running vcpkg install - done" "!_log!" >nul 2>&1 && (
     set "_percent=80"
     set "_text=Configuring the project"
 )
 
 set "_found=0"
 for /L %%S in (1,1,11) do (
-    findstr /L /C:"!k%%S!" "%_log%" >nul 2>&1 && (
+    findstr /L /C:"!k%%S!" "!_log!" >nul 2>&1 && (
         set /a _found+=1
         set "_text=!k%%S!"
     )
@@ -120,3 +125,10 @@ REM Seconds since midnight from %time% (hh:mm:ss.cc, any separators)
 set "_tm=%time: =0%"
 set /a "%~1=(1%_tm:~0,2% - 100) * 3600 + (1%_tm:~3,2% - 100) * 60 + (1%_tm:~6,2% - 100)"
 goto :eof
+
+:run_cmake
+REM Background half, started above as: CMakeGenerate.bat :run "<log file>" "<exit code file>"
+REM "call" so that a cmake.cmd / cmake.bat wrapper on the PATH returns here too.
+call cmake .. >> "%~2" 2>&1
+> "%~3" echo %errorlevel%
+exit /b

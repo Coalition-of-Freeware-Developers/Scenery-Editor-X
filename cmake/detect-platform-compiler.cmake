@@ -71,6 +71,13 @@ if(NOT DEFINED VCPKG_TARGET_TRIPLET)
         set(_sedx_arch "${CMAKE_GENERATOR_PLATFORM}")
     elseif(CMAKE_HOST_APPLE AND CMAKE_OSX_ARCHITECTURES)
         set(_sedx_arch "${CMAKE_OSX_ARCHITECTURES}")
+        if(CMAKE_OSX_ARCHITECTURES MATCHES ";")
+            # A vcpkg triplet holds one architecture: the libraries come out for the first one only
+            list(GET CMAKE_OSX_ARCHITECTURES 0 _sedx_arch)
+            message(WARNING "SEDX: CMAKE_OSX_ARCHITECTURES is \"${CMAKE_OSX_ARCHITECTURES}\" (a universal build), "
+                "but a vcpkg triplet holds one architecture: vcpkg's libraries are built for ${_sedx_arch} only. "
+                "Pass -DVCPKG_TARGET_TRIPLET (and one architecture) to choose.")
+        endif()
     elseif(CMAKE_HOST_WIN32 AND DEFINED ENV{VSCMD_ARG_TGT_ARCH})
         # Ninja / NMake from a Visual Studio developer prompt
         set(_sedx_arch "$ENV{VSCMD_ARG_TGT_ARCH}")
