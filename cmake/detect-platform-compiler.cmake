@@ -58,34 +58,46 @@ if(NOT DEFINED SEDX_PREFERRED_COMPILER)
     endif()
 endif()
 
-# Set a conservative vcpkg triplet if not already defined by the user or presets
+# Set a vcpkg triplet if the user or a preset didn't.
+# This file runs before project(), so CMAKE_SIZEOF_VOID_P is not known yet: testing it here picked
+# the 32-bit x86-windows triplet for every 64-bit Windows build (vcpkg then built all its ports for
+# 32-bit and find_package(Freetype) rejected them). The target architecture comes from what the
+# generator and the environment say instead, as in vcpkg's own toolchain.
 if(NOT DEFINED VCPKG_TARGET_TRIPLET)
-    if(SEDX_PREFERRED_COMPILER STREQUAL "MSVC" OR SEDX_PREFERRED_COMPILER STREQUAL "CLANG_CL")
-        if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-            set(DEFAULT_VCPKG_TRIPLET "x64-windows")
-        else()
-            set(DEFAULT_VCPKG_TRIPLET "x86-windows")
-        endif()
-    elseif(SEDX_PREFERRED_COMPILER STREQUAL "CLANG")
-        if(APPLE)
-            if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-                set(DEFAULT_VCPKG_TRIPLET "x64-osx")
-            else()
-                set(DEFAULT_VCPKG_TRIPLET "arm64-osx")
-            endif()
-        else()
-            # On Windows clang that is not clang-cl is likely MinGW-style (use mingw triplet)
-            if(WIN32)
-                set(DEFAULT_VCPKG_TRIPLET "x64-mingw")
-            else()
-                set(DEFAULT_VCPKG_TRIPLET "x64-linux")
-            endif()
-        endif()
+    if(CMAKE_GENERATOR_PLATFORM)
+        # Visual Studio generators: -A Win32 | x64 | ARM64
+        set(_sedx_arch "${CMAKE_GENERATOR_PLATFORM}")
+    elseif(APPLE AND CMAKE_OSX_ARCHITECTURES)
+        set(_sedx_arch "${CMAKE_OSX_ARCHITECTURES}")
+    elseif(WIN32 AND DEFINED ENV{VSCMD_ARG_TGT_ARCH})
+        # Ninja / NMake from a Visual Studio developer prompt
+        set(_sedx_arch "$ENV{VSCMD_ARG_TGT_ARCH}")
     else()
-        # GCC default
-        set(DEFAULT_VCPKG_TRIPLET "x64-linux")
+        # Otherwise the build targets the machine it runs on (AMD64, x86_64, arm64, aarch64...)
+        cmake_host_system_information(RESULT _sedx_arch QUERY OS_PLATFORM)
     endif()
-    set(VCPKG_TARGET_TRIPLET "${DEFAULT_VCPKG_TRIPLET}" CACHE STRING "Default vcpkg target triplet inferred from platform/compiler" FORCE)
+    string(TOLOWER "${_sedx_arch}" _sedx_arch)
+    if(_sedx_arch MATCHES "^(arm64|aarch64)")
+        set(_sedx_arch "arm64")
+    elseif(_sedx_arch MATCHES "^(win32|x86|i[3-6]86)$")
+        set(_sedx_arch "x86")
+    else()
+        set(_sedx_arch "x64")
+    endif()
+
+    if(SEDX_PREFERRED_COMPILER STREQUAL "MSVC" OR SEDX_PREFERRED_COMPILER STREQUAL "CLANG_CL")
+        set(_sedx_triplet_os "windows")
+    elseif(APPLE)
+        set(_sedx_triplet_os "osx")
+    elseif(WIN32)
+        # clang or gcc on Windows that is not clang-cl: MinGW
+        set(_sedx_triplet_os "mingw-dynamic")
+    else()
+        set(_sedx_triplet_os "linux")
+    endif()
+    set(VCPKG_TARGET_TRIPLET "${_sedx_arch}-${_sedx_triplet_os}" CACHE STRING "Default vcpkg target triplet inferred from platform/compiler" FORCE)
+    unset(_sedx_arch)
+    unset(_sedx_triplet_os)
 endif()
 
 # Expose a human-readable summary early in configuration
