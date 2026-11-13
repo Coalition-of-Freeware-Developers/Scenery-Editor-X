@@ -1,4 +1,4 @@
-﻿{
+{
   "version": 10,
   "cmakeMinimumRequired": {
     "major": 3,
@@ -60,7 +60,7 @@
       "inherits": "windows-ninja",
       "cacheVariables": {
         "SEDX_PREFERRED_COMPILER": "GCC",
-        "VCPKG_TARGET_TRIPLET": "x64-mingw"
+        "VCPKG_TARGET_TRIPLET": "x64-mingw-dynamic"
       },
       "condition": {
         "type": "equals",

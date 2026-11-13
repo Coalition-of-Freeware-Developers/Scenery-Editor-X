@@ -18,8 +18,10 @@ if "%_log%"=="" (
     echo CMakeGenerate.bat: no log file given.
     exit /b 2
 )
-set "_exitfile=%CD%\cmake_generate.exitcode"
-if exist "%_exitfile%" del /f /q "%_exitfile%" >nul 2>&1
+REM A name of its own per run: a CMake left running by an earlier window that was closed writes its
+REM own file, never this run's. Files such runs left behind are removed.
+del /f /q "%CD%\cmake_generate.*.exitcode" >nul 2>&1
+set "_exitfile=%CD%\cmake_generate.%RANDOM%%RANDOM%.exitcode"
 for /f %%A in ('copy /Z "%~f0" nul') do set "CR=%%A"
 
 REM CMake runs in the background (this script's :run mode, below); it writes CMake's exit code to
