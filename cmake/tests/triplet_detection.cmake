@@ -59,6 +59,7 @@ function(sedx_case name expected host)
     cmake_parse_arguments(C "" "WARNS" "DEFINES;ENV" ${ARGN})
     execute_process(
         COMMAND "${CMAKE_COMMAND}" -E env --unset=CXX --unset=SEDX_PREFERRED_COMPILER --unset=VSCMD_ARG_TGT_ARCH --unset=SEDX_TEST_OSX_ARCHS
+                --unset=MSYSTEM --unset=MSYSTEM_CARCH
                 ${C_ENV}
                 "${CMAKE_COMMAND}" -DSEDX_TEST_CASE=1 "-DSEDX_TEST_HOST=${host}" "-DVCPKG_ROOT=${_fake_vcpkg}"
                 ${C_DEFINES} -P "${_self}"
@@ -128,6 +129,21 @@ sedx_case("Ninja, CXX=g++ (MinGW)" "MATCHES:^(x64|arm64)-mingw-dynamic$" windows
 sedx_case("Ninja, CXX=clang (MinGW)" "MATCHES:^(x64|arm64)-mingw-dynamic$" windows DEFINES -DCMAKE_GENERATOR=Ninja ENV CXX=clang)
 sedx_case("Ninja, CXX=clang, VS x64 prompt (MSVC ABI)" x64-windows windows
           DEFINES -DCMAKE_GENERATOR=Ninja ENV CXX=clang VSCMD_ARG_TGT_ARCH=x64)
+# Windows, MSYS2 MinGW-family shells (MSYSTEM / MSYSTEM_CARCH) without a compiler hint
+sedx_case("Ninja, MSYS2 UCRT64 shell" x64-mingw-dynamic windows
+          DEFINES -DCMAKE_GENERATOR=Ninja ENV MSYSTEM=UCRT64 MSYSTEM_CARCH=x86_64)
+sedx_case("Ninja, MSYS2 MINGW32 shell" x86-mingw-dynamic windows
+          DEFINES -DCMAKE_GENERATOR=Ninja ENV MSYSTEM=MINGW32 MSYSTEM_CARCH=i686)
+sedx_case("Ninja, MSYS2 CLANGARM64 shell" arm64-mingw-dynamic windows
+          DEFINES -DCMAKE_GENERATOR=Ninja ENV MSYSTEM=CLANGARM64 MSYSTEM_CARCH=aarch64)
+sedx_case("MinGW Makefiles, MSYS2 UCRT64 shell" x64-mingw-dynamic windows
+          DEFINES "-DCMAKE_GENERATOR=MinGW Makefiles" ENV MSYSTEM=UCRT64 MSYSTEM_CARCH=x86_64)
+sedx_case("Unix Makefiles, MSYS2 UCRT64 shell" x64-mingw-dynamic windows
+          DEFINES "-DCMAKE_GENERATOR=Unix Makefiles" ENV MSYSTEM=UCRT64 MSYSTEM_CARCH=x86_64)
+sedx_case("Ninja, MSYS2 UCRT64 shell inside a VS x64 prompt" x64-windows windows
+          DEFINES -DCMAKE_GENERATOR=Ninja ENV MSYSTEM=UCRT64 MSYSTEM_CARCH=x86_64 VSCMD_ARG_TGT_ARCH=x64)
+sedx_case("VS generator, MSYS2 UCRT64 shell" "MATCHES:^(x64|arm64)-windows$" windows
+          DEFINES "${_vs}" ENV MSYSTEM=UCRT64 MSYSTEM_CARCH=x86_64)
 sedx_case("MSYS2's own cmake, Ninja, CXX=g++" "MATCHES:^(x64|arm64)-mingw-dynamic$" msys
           DEFINES -DCMAKE_GENERATOR=Ninja ENV CXX=g++)
 sedx_case("Ninja, CXX=clang-cl" "MATCHES:^(x64|arm64)-windows$" windows DEFINES -DCMAKE_GENERATOR=Ninja ENV CXX=clang-cl)
