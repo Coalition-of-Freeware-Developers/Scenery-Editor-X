@@ -92,7 +92,9 @@ The dependency-light, cross-platform Catch2 unit suites that only need `source/`
   uniform cubic B-spline control polygons stored as bezier nodes and recovered from them, extending / closing /
   opening lines, lengths and tightest bend radius), facade footprints (`FacadeEditTests.cpp`: `project/facade_edit.*`
   rectangles / circles counter-clockwise from their front, curved walls cut into 0.5 - 0.8 m pieces (the 3D sidewalk
-  recipe), squared corners, front wall, offsets, wall types moved by name), the cross-platform VFS (`VfsTests.cpp`: `filesystem/vfs.*` mounts, virtual
+  recipe), squared corners, front wall, offsets, wall types moved by name), Frame Selection's fit (`ViewFramingTests.cpp`:
+  `scene/view_framing.*` boxes that leave bad bounds out, every corner in view at the fitted distance and none at a nearer
+  one, perspective / orthographic / wide / narrow lenses, the nearest corner kept in front of the eye, spheres), the cross-platform VFS (`VfsTests.cpp`: `filesystem/vfs.*` mounts, virtual
   paths, portable names, case-insensitive lookups, atomic writes, platform folders; the twin-spelling case only
   runs on a case-sensitive disk) and scenery packs (`SceneryPackTests.cpp`: `project/scenery_pack.*` new airport
   projects, coordinate parsing, export to apt.dat + DSF tiles + copied art) (`SceneryEditorX/project/*` plus
@@ -238,6 +240,7 @@ g++ -std=c++20 -O2 -pthread $INCS source/Tests/xplane_tests/XPlaneFormatTests.cp
 g++ -std=c++20 -O2 -pthread $INCS source/Tests/project_tests/ProjectFormatTests.cpp \
     source/Tests/project_tests/SplineEditTests.cpp source/SceneryEditorX/project/spline_edit.cpp \
     source/Tests/project_tests/FacadeEditTests.cpp source/SceneryEditorX/project/facade_edit.cpp \
+    source/Tests/project_tests/ViewFramingTests.cpp source/SceneryEditorX/scene/view_framing.cpp \
     source/Tests/project_tests/VfsTests.cpp source/Tests/project_tests/SceneryPackTests.cpp \
     source/SceneryEditorX/filesystem/vfs.cpp source/SceneryEditorX/project/scenery_pack.cpp \
     source/SceneryEditorX/xplane/xp_airport_document.cpp source/SceneryEditorX/xplane/xp_airport_index.cpp \
@@ -287,6 +290,9 @@ and MSYS2 g++ on Windows; it leaves out `[xplane-install]` / `[library-sweep]` c
 `dev` and pushes to `dev` / `master`. When a suite gains an engine source, add it to the script's list as well as to the
 recipe above (test files are picked up from the suite's folder). `SEDX_TEST_CXXFLAGS=-DSEDX_FLOAT_CHARS_FALLBACK
 SEDX_TEST_OUT=build/unit-tests-fallback` runs every suite on the float text fallback the macOS build uses.
+The same workflow runs `cmake -P cmake/tests/triplet_detection.cmake` (CMake only, no compiler or vcpkg): the vcpkg
+triplet `cmake/detect-platform-compiler.cmake` picks when neither the user nor a preset sets one, for each host,
+generator and compiler hint. Add a case there when that logic changes.
 
 `build_linux_tests/` and `dependency/Catch2/build-linux/` are throwaway build output — do not commit them.
 

@@ -45,6 +45,7 @@ namespace SceneryEditorX
 		uint64_t selectedEntity = 0;	// UUID of the selected entity, 0 when nothing is selected
 		bool viewportHovered = false;	// Updated by the viewport panel every frame
 		bool viewportFocused = false;
+		bool secondViewportHovered = false;	// VIEWPORT 2's image (it takes F to frame in its own view then)
 		bool requestLayoutReset = false;
 	};
 

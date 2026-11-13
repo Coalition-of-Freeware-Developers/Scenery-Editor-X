@@ -2,7 +2,8 @@
 # three platforms Scenery Editor X ships for: Linux with g++, macOS with Apple clang, Windows with MSYS2 (UCRT64) g++.
 # They need only the standard library and the json, Catch2 and libconfig submodules; the editor itself needs a GPU and
 # isn't built here. scripts/ci/build_unit_tests.sh does the work, so a failing job can be repeated locally with the
-# same command. Each job uploads its Catch2 JUnit reports and writes a per-suite table to the run summary.
+# same command. Each job uploads its Catch2 JUnit reports and writes a per-suite table to the run summary. Each job
+# also runs cmake/tests/triplet_detection.cmake, which checks the vcpkg triplet a plain configure picks.
 name: Unit tests
 
 on:
@@ -89,6 +90,11 @@ jobs:
 
       - name: Build and run the suites
         run: bash scripts/ci/build_unit_tests.sh
+
+      # The vcpkg triplet a configure picks when nothing sets one (cmake/detect-platform-compiler.cmake); CMake only
+      - name: Triplet detection
+        if: ${{ !cancelled() }}
+        run: cmake -P cmake/tests/triplet_detection.cmake
 
       - name: Upload the JUnit reports
         if: always()

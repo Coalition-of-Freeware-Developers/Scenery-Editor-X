@@ -574,7 +574,7 @@ namespace SceneryEditorX
 		EditorCommands::MenuItem("item.duplicate", &m_Context);
 		if (ImGui::MenuItem("Deselect", "Esc", false, !EditorSelection::IsEmpty()))
 			EditorSelection::Clear(&m_Context);
-		if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_CROSSHAIRS, "Frame Selection").c_str(), EditorPreferences::Get().keymap == NavigationKeymap::Max ? "Z" : "F", false, !EditorSelection::IsEmpty()))
+		if (ImGui::MenuItem(EditorUI::IconLabel(SEDX_ICON_CROSSHAIRS, "Frame Selection").c_str(), "F", false, !EditorSelection::IsEmpty()))
 			EditorTools::FrameSelection();
 		ImGui::Separator();
 		EditorCommands::MenuItem("item.hide", &m_Context);
@@ -768,7 +768,7 @@ namespace SceneryEditorX
 		if (ImGui::MenuItem("Left", "Ctrl+Numpad 3", preset == ViewPreset::Left, hasCamera))
 			EditorCamera::SetViewPreset(ViewPreset::Left);
 		ImGui::Separator();
-		if (ImGui::MenuItem("Frame Selection", "Numpad .", false, hasCamera && !EditorSelection::IsEmpty()))
+		if (ImGui::MenuItem("Frame Selection", "F  /  Numpad .", false, hasCamera && !EditorSelection::IsEmpty()))
 			EditorTools::FrameSelection();
 		if (ImGui::MenuItem("Frame All", "Home", false, hasCamera))
 			EditorCamera::FrameAll();
@@ -880,7 +880,7 @@ namespace SceneryEditorX
 			const std::string orbitTip = std::string("Orbit navigation\n") + ViewportCamera::GetKeymapSummary(EditorPreferences::Get().keymap);
 			if (EditorUI::StripButton(SEDX_ICON_REFRESH, orbitTip.c_str(), EditorCamera::IsMode(ORBIT), buttonSize))
 				EditorCamera::SetMode(ORBIT);
-			if (EditorUI::StripButton(SEDX_ICON_VIDEO_CAMERA, "Fly navigation\nRMB look, hold RMB + WASD move, Q/E down/up", EditorCamera::IsMode(FLY), buttonSize))
+			if (EditorUI::StripButton(SEDX_ICON_VIDEO_CAMERA, "Fly navigation\nWASD move, Q/E down/up (no button needed), RMB look\nQ/W/E pick no tools in this mode", EditorCamera::IsMode(FLY), buttonSize))
 				EditorCamera::SetMode(FLY);
 
 			ImGui::Separator();

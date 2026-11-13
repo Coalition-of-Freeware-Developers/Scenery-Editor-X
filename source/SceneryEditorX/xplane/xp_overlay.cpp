@@ -1189,11 +1189,11 @@ namespace SceneryEditorX::XPlane
 
 	void OverlayBuilder::GetPolygonUvScale(const PolygonAsset &asset, float &scaleS, float &scaleT)
 	{
-		// RUNWAY_TILE: SCALE is the whole atlas (X-Plane 12's 4 x 8 runway atlases have square tiles, SCALE 22 44 = 5.5 m
-		// slabs, matching the joints in X-Plane's own frames). TEXTURE_TILE: SCALE is one tile.
-		const bool perTile = asset.tiled && !asset.runwayTile;
-		scaleS = asset.scaleS * (perTile ? static_cast<float>(asset.tilesX) : 1.0f);
-		scaleT = asset.scaleT * (perTile ? static_cast<float>(asset.tilesY) : 1.0f);
+		// SCALE is the whole texture, tiled or not: RUNWAY_TILE and TEXTURE_TILE only choose which tile each cell shows
+		// (X-Plane 12's 4 x 8 runway atlases have square tiles, SCALE 22 44 = 5.5 m slabs, matching the joints in X-Plane's
+		// own frames; TEXTURE_TILE pavement keeps the size it has without the directive, issue 82)
+		scaleS = asset.scaleS;
+		scaleT = asset.scaleT;
 	}
 
 	void OverlayBuilder::ApplyPolygonShading(OverlayMesh &mesh, const PolygonAsset &asset, const fs::path &assetFile, OverlayBuild &out)
@@ -1211,7 +1211,7 @@ namespace SceneryEditorX::XPlane
 		mesh.hasSnowAlbedoLuma = asset.hasSnowAlbedoLuma;
 		mesh.snowAlbedoLuma[0] = asset.snowAlbedoLuma[0];
 		mesh.snowAlbedoLuma[1] = asset.snowAlbedoLuma[1];
-		if (asset.runwayTile && (asset.tilesX > 1 || asset.tilesY > 1))
+		if (asset.tiled && (asset.tilesX > 1 || asset.tilesY > 1))
 		{
 			mesh.shading = OverlayShading::Tiled;
 			mesh.tilesX = asset.tilesX;

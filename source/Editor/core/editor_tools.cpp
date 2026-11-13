@@ -41,6 +41,7 @@
 #include "editor_theme.h"
 #include "facade_tool.h"
 #include "node_tool.h"
+#include "selection_bounds.h"
 #include "tools_selftest.h"
 #include "transform_tool.h"
 #include "viewport_gizmo.h"
@@ -682,6 +683,11 @@ namespace SceneryEditorX::EditorTools
 			EditorCommands::Run("item.duplicate", context);
 		if (io.KeyCtrl || io.KeyAlt || io.KeySuper)
 			return;
+		// In FLY navigation W A S D / Q E (Shift: faster) fly the camera without a button: they pick no tools and set no
+		// node types then (issue 79). Asked of the camera, so they stay tool keys whenever it doesn't fly with them
+		// (input locked, another window has the keyboard).
+		if (EditorCamera::TakesFlyKeys() && ViewportCamera::IsFlyKeyPressed())
+			return;
 		// Shift+letter: the node tool's node types, straighten and B-spline; the facade tool's Enter, Backspace and modes
 		if (GetTool() == Tool::Nodes && NodeTool::HandleShortcuts())
 			return;
@@ -700,7 +706,7 @@ namespace SceneryEditorX::EditorTools
 			SetTool(Tool::Nodes);
 		if (ImGui::IsKeyPressed(ImGuiKey_B, false) && !io.KeyShift)
 			SetTool(Tool::Facade);
-		// F (frame) and the view keys belong to the navigation keymap (EditorCamera::HandleShortcuts)
+		// F (frame, from any panel too) and the view keys are the camera's (EditorCamera::HandleShortcuts)
 		if (ImGui::IsKeyPressed(ImGuiKey_X, false))
 			TransformTool::GetSettings().localSpace = !TransformTool::GetSettings().localSpace;
 	}
@@ -717,14 +723,26 @@ namespace SceneryEditorX::EditorTools
 		return true;
 	}
 
+	bool GetFrameBox(ViewFraming::Box &box)
+	{
+		box = ViewFraming::Box();
+		// Working on nodes: the picked nodes, not the whole shape (a modeling package's vertex level)
+		std::vector<XPlane::Point2> nodes;
+		if (OnNodes(GetTool()) && NodeTool::GetSelectedNodePoints(nodes))
+			SelectionBounds::AddGroundPoints(nodes, box);
+		if (!box.IsValid() && !SelectionBounds::AddSelection(box))
+			return false;
+		box.Inflate(SelectionBounds::MINIMUM_SIZE);
+		return box.IsValid();
+	}
+
 	bool FrameSelection()
 	{
 		// Keep looking the way the camera looks (tilting down from the horizon); back off until the selection fits
-		Point3 center;
-		double radius = 0.0;
-		if (!TransformTool::GetSelectionCenter(center, radius) || !EditorCamera::Get())
+		ViewFraming::Box box;
+		if (!EditorCamera::Get() || !GetFrameBox(box))
 			return false;
-		EditorCamera::Frame(center, std::max(radius, 3.0));
+		EditorCamera::Frame(box);
 		return true;
 	}
 
@@ -764,6 +782,10 @@ namespace SceneryEditorX::EditorTools
 				{
 					ProjectFile::ProjectDocument *project = EditorProjects::GetDocument();
 					const ProjectFile::SceneryItem *item = project ? project->FindItem(target.itemId) : nullptr;
+					// An airport leaves the project from its menu (PROJECT > Remove from project), never on a stray Del
+					// after clicking it to show or frame it
+					if (item && item->kind == ProjectFile::ItemKind::Airport)
+						break;
 					ItemCopy copy;
 					if (item && EditorProjects::FindItemLocation(target.itemId, copy.parentId, copy.index))
 					{
@@ -773,7 +795,8 @@ namespace SceneryEditorX::EditorTools
 					break;
 				}
 				case TargetType::Entity:
-					entities.push_back(target.entity);
+					if (!EditorScene::IsViewportCamera(EditorScene::FindHandle(target.entity)))	// Never deleted (EditorScene::Destroy)
+						entities.push_back(target.entity);
 					break;
 			}
 		}
@@ -789,13 +812,18 @@ namespace SceneryEditorX::EditorTools
 			return a.parentId != b.parentId ? a.parentId < b.parentId : a.index > b.index;
 		});
 
+		// Nothing deletable (only the viewport camera was selected): the selection stays as it was
+		if (deletion->rows.empty() && deletion->items.empty() && entities.empty())
+			return false;
+
 		EditorSelection::Clear(context);
 		const bool rowsErased = EraseRows(*deletion);
 		const bool itemsRemoved = RemoveItems(*deletion, context);
+		size_t destroyed = 0;	// The viewport camera stays (EditorScene::Destroy)
 		for (const uint64_t entity : entities)
-			EditorScene::Destroy(entity);
-		if (!entities.empty())
-			EDITOR_WARN_TAG(LOG_TAG, "Deleted {} scene entit{} (not undoable: only airport rows and project items are)", entities.size(), entities.size() == 1 ? "y" : "ies");
+			destroyed += EditorScene::Destroy(entity) ? 1 : 0;
+		if (destroyed > 0)
+			EDITOR_WARN_TAG(LOG_TAG, "Deleted {} scene entit{} (not undoable: only airport rows and project items are)", destroyed, destroyed == 1 ? "y" : "ies");
 
 		if (!deletion->rows.empty() || !deletion->items.empty())
 		{
@@ -809,7 +837,7 @@ namespace SceneryEditorX::EditorTools
 			command.redo = [deletion, context]() { return EraseRows(*deletion) && RemoveItems(*deletion, context); };
 			EditorHistory::Push(std::move(command));
 		}
-		return rowsErased || itemsRemoved || !entities.empty();
+		return rowsErased || itemsRemoved || destroyed > 0;
 	}
 
 	void Escape(EditorContext *context)
@@ -885,12 +913,11 @@ namespace SceneryEditorX::EditorTools
 				return FacadeTool::GetHint();
 			default:
 			{
-				// The navigation keymap's own mouse bindings, and its frame key
+				// The navigation keymap's own mouse bindings
 				const NavigationKeymap keymap = EditorPreferences::Get().keymap;
 				if (EditorSelection::IsEmpty())
 					return std::string("Click to select  |  drag a box  |  right-click: quad menu, hold Space: hotbox  |  ") + ViewportCamera::GetKeymapSummary(keymap);
-				return std::to_string(EditorSelection::Get().size()) + " selected  |  W move, E rotate, R scale, V nodes, B facades, " +
-					   (keymap == NavigationKeymap::Max ? "Z" : "F") + " frame, Del delete  |  right-click: menu";
+				return std::to_string(EditorSelection::Get().size()) + " selected  |  W move, E rotate, R scale, V nodes, B facades, F frame, Del delete  |  right-click: menu";
 			}
 		}
 	}

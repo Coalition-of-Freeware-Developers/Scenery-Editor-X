@@ -41,6 +41,24 @@ PROJECT(SceneryEditorX
 	HOMEPAGE_URL "https://github.com/The3dVehicleguy/Scenery-Editor-X"
 )
 
+# vcpkg's libraries must have the compiler's pointer size. A build directory configured before
+# detect-platform-compiler.cmake read the architecture properly keeps x86-windows for a 64-bit
+# build, and find_package then rejects every 32-bit library (first Freetype). Only the architectures
+# SEDX targets are checked; other triplets (wasm32-, ppc64le-, riscv64-...) pass unchecked.
+IF(VCPKG_TARGET_TRIPLET MATCHES "^(x86|arm)-")
+	SET(_sedx_triplet_pointer_size 4)
+ELSEIF(VCPKG_TARGET_TRIPLET MATCHES "^(x64|arm64|arm64ec)-")
+	SET(_sedx_triplet_pointer_size 8)
+ENDIF()
+IF(DEFINED _sedx_triplet_pointer_size AND CMAKE_SIZEOF_VOID_P
+		AND NOT CMAKE_SIZEOF_VOID_P EQUAL _sedx_triplet_pointer_size)
+	MATH(EXPR _sedx_compiler_bits "${CMAKE_SIZEOF_VOID_P} * 8")
+	MESSAGE(FATAL_ERROR
+		"The vcpkg triplet ${VCPKG_TARGET_TRIPLET} does not match the ${_sedx_compiler_bits}-bit compiler. "
+		"This build directory kept a wrong triplet from an earlier configure: delete it and configure again "
+		"(SetupProject.bat, answer Y to a fresh build), or pass the right -DVCPKG_TARGET_TRIPLET to a new build directory.")
+ENDIF()
+
 ############################################
 # Platform configuration
 # (Handled by SEDX toolchains; keep module path for local cmake helpers)

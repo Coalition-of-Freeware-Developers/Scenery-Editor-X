@@ -270,6 +270,13 @@ namespace SceneryEditorX::XPlane
 		return [](const DatarefRef &ref) { return Get(ref); };
 	}
 
+	float Datarefs::Evaluate(const DatarefControl &control)
+	{
+		const std::string_view key = control.key;
+		const size_t bracket = key.find('[');
+		return EvaluateControl(control, bracket == std::string_view::npos ? key : key.substr(0, bracket));
+	}
+
 	DatarefControl &Datarefs::Register(const Obj8DatarefUsage &usage)
 	{
 		const std::string key = usage.dataref.ToString();

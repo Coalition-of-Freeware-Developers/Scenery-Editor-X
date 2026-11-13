@@ -92,6 +92,7 @@ Shortcuts never fire while you're typing in a field. Tool and camera keys only w
 | Right mouse drag | Look around |
 | Hold right mouse + <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> | Fly |
 | Hold right mouse + <kbd>Q</kbd> / <kbd>E</kbd> | Down / up |
+| <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd>, <kbd>Q</kbd> / <kbd>E</kbd> in **Fly** navigation | Fly, down / up, without a mouse button |
 | Add <kbd>Shift</kbd> / <kbd>Ctrl</kbd> | Faster / slower |
 | Arrow keys, <kbd>Page Up</kbd> / <kbd>Page Down</kbd> | Move the camera |
 | <kbd>Numpad 7</kbd> / <kbd>Ctrl+Numpad 7</kbd> | Top / bottom view |
@@ -101,7 +102,7 @@ Shortcuts never fire while you're typing in a field. Tool and camera keys only w
 | <kbd>Numpad 4</kbd> / <kbd>Numpad 6</kbd> | Orbit around in 15° steps |
 | <kbd>Numpad 8</kbd> / <kbd>Numpad 2</kbd> | Orbit over in 15° steps |
 | <kbd>Numpad 5</kbd> | Perspective / orthographic |
-| <kbd>Numpad .</kbd> | Frame the selection |
+| <kbd>F</kbd>, <kbd>Numpad .</kbd> | Frame the selection (<kbd>F</kbd> from any panel too) |
 | <kbd>Home</kbd> | Frame everything |
 
 ## Camera: by keymap
@@ -112,9 +113,9 @@ Shortcuts never fire while you're typing in a field. Tool and camera keys only w
 | Orbit | Middle drag; <kbd>Alt</kbd> + left drag | <kbd>Alt</kbd> + middle drag | <kbd>Alt</kbd> + left drag |
 | Pan | <kbd>Shift</kbd> + middle drag; <kbd>Shift+Alt</kbd> + left drag | Middle drag | <kbd>Alt</kbd> + middle drag; middle drag |
 | Zoom | Wheel; <kbd>Ctrl</kbd> + middle drag; <kbd>Ctrl+Alt</kbd> + left drag | Wheel; <kbd>Ctrl+Alt</kbd> + middle drag | Wheel; <kbd>Alt</kbd> + right drag |
-| Frame selection | <kbd>F</kbd> | <kbd>Z</kbd> (everything when nothing is selected) | <kbd>F</kbd> |
+| Frame selection | <kbd>F</kbd> | <kbd>F</kbd>; <kbd>Z</kbd> (everything when nothing is selected) | <kbd>F</kbd> |
 | Frame everything | <kbd>Home</kbd> | <kbd>Home</kbd> | <kbd>A</kbd>, <kbd>Home</kbd> |
-| Views | Numpad | Numpad; <kbd>T</kbd> top, <kbd>F</kbd> front, <kbd>L</kbd> left | Numpad |
+| Views | Numpad | Numpad; <kbd>T</kbd> top, <kbd>L</kbd> left | Numpad |
 | Perspective / orthographic | <kbd>Numpad 5</kbd> | <kbd>P</kbd> / <kbd>U</kbd>, <kbd>Numpad 5</kbd> | <kbd>Numpad 5</kbd> |
 
 ## Panels

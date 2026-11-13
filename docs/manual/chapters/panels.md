@@ -21,7 +21,7 @@ The settings of the active selection, in sections:
 | **AIRPORT** | An airport element: its own fields (runway ends, surfaces, signs, startup locations…) |
 | **GENERAL PROPERTIES** | An entity: name and ID |
 | **TRANSFORM** | An entity: position, rotation, scale |
-| **X-PLANE OBJECT** | A placed object: file, library path, geometry, lights, visibility, animation, level of detail, whether it's in view; its animation datarefs |
+| **X-PLANE OBJECT** | A placed object: file, library path, geometry, lights, visibility, animation, level of detail, whether it's in view; its animation datarefs (values set here move this object only) |
 | **COMPONENTS** | An entity's components |
 | **FACADE** | A facade: facade, kind, height, pick walls, footprint, wall table, rebuilds |
 | **NODES** | Nodes in the Nodes tool: position, handles, type, length, tightest bend, B-spline, closed; for roads, the road type and levels |
@@ -30,7 +30,7 @@ See [Selecting, transforming and undo](selecting-and-editing.md#the-properties-p
 
 ## OUTLINER
 
-Every entity in the scene as a tree: the airport's elements, the project's scenery, placed objects and their parts. Click to select. The **+** button adds an **Empty Entity**.
+Every entity in the scene as a tree: the airport's elements, the project's scenery, placed objects and their parts. Click to select. The **+** button adds an **Empty Entity**. The viewport camera belongs to the editor, not to the scene, so it isn't listed and can't be deleted.
 
 ## PROJECT
 

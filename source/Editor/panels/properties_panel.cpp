@@ -757,7 +757,7 @@ namespace SceneryEditorX
 			if (data.IsAnimated())
 			{
 				ImGui::SeparatorText("Animation");
-				EditorXPlane::DrawDatarefTable("##ObjectDatarefs", &data.datarefs);
+				EditorXPlane::DrawDatarefTable("##ObjectDatarefs", &data.datarefs, &object->datarefOverrides);
 				if (ImGui::TreeNode("Simulation"))
 				{
 					EditorXPlane::DrawSimulationControls();

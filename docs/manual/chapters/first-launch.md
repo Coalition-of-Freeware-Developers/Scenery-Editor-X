@@ -27,7 +27,7 @@ The **Welcome to Scenery Editor X** window asks how the viewport camera should f
 
 Click a card to see its full list of bindings, then click **Start with *keymap*** (or double-click the card, or press <kbd>Enter</kbd>).
 
-Whichever you choose, some controls are the same everywhere: the numeric keypad views (<kbd>Numpad 7</kbd> top, <kbd>Numpad 1</kbd> front, <kbd>Numpad 3</kbd> side, <kbd>Numpad 5</kbd> orthographic, <kbd>Numpad .</kbd> frames the selection), and holding the right mouse button to look around and fly with <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd>.
+Whichever you choose, some controls are the same everywhere: the numeric keypad views (<kbd>Numpad 7</kbd> top, <kbd>Numpad 1</kbd> front, <kbd>Numpad 3</kbd> side, <kbd>Numpad 5</kbd> orthographic, <kbd>F</kbd> or <kbd>Numpad .</kbd> frames the selection), and holding the right mouse button to look around and fly with <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd>.
 
 > [!TIP]
 > Not a user of any of these? Choose **Blender**: everything works with a mouse wheel, the middle button and <kbd>Alt</kbd>, and [Navigating the viewport](viewport-navigation.md) explains it step by step.

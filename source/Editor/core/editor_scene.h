@@ -105,12 +105,30 @@ namespace SceneryEditorX::EditorScene
 		return entity ? GetID(static_cast<entt::entity>(entity)) : 0;
 	}
 
-	/* @brief Destroys the entity with the given UUID value, if it exists. */
-	inline void Destroy(const uint64_t id)
+	/**
+	 * @brief True for the camera the viewport draws through (Scene::Init's "MainCamera", the primary CameraComponent).
+	 * It belongs to the editor, not to the scenery: the outliner doesn't list it and Destroy() leaves it alone, since
+	 * nothing makes another one and the camera could not move again.
+	 *
+	 * Assumes the viewport camera is the only CameraComponent with isPrimary (which defaults to true), as EditorCamera
+	 * does when it picks the camera to drive. Scene::Init makes the only camera today. Scene cameras added later (an
+	 * imported glTF camera, say) must clear isPrimary or get a marker of their own, or they'd be hidden and kept too.
+	 * Destroy() guards the camera itself, not a parent it hangs under: the camera is a root, and nothing reparents it.
+	 */
+	inline bool IsViewportCamera(const entt::entity handle)
+	{
+		const CameraComponent *camera = TryGet<CameraComponent>(handle);
+		return camera && camera->isPrimary;
+	}
+
+	/* @brief Destroys the entity with the given UUID value, if it exists. The viewport camera is never destroyed (false). */
+	inline bool Destroy(const uint64_t id)
 	{
 		const Entity entity = Scene::TryGetEntityWithUUID(UUID(id));
-		if (entity)
-			Scene::DestroyEntity(entity);
+		if (!entity || IsViewportCamera(static_cast<entt::entity>(entity)))
+			return false;
+		Scene::DestroyEntity(entity);
+		return true;
 	}
 
 }

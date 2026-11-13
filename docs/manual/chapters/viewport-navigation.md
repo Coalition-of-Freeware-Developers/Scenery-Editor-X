@@ -7,7 +7,7 @@ Scenery is kilometers wide and its details are centimeters across, so moving aro
 The camera has two modes. Switch between them with the buttons in the tool strip or the viewport toolbar, or in the **Viewport** menu.
 
 - **Orbit** (the default) turns the camera around a **pivot**: a point in the scene, usually what you're working on. Framing a selection moves the pivot to it. This is the mode for editing.
-- **Fly** turns the camera in place and moves it like a drone. The wheel moves the camera forward and back. Use it to look at the scenery from the ground, the way a pilot will see it.
+- **Fly** turns the camera in place and moves it like a drone: <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> fly it and <kbd>Q</kbd> / <kbd>E</kbd> take it down / up, no mouse button needed, while the mouse is over the viewport or the viewport has the keyboard. The right mouse button turns it; the orbit, pan and zoom drags do nothing in this mode, and the wheel moves the camera forward and back. Use it to look at the scenery from the ground, the way a pilot will see it. While flying, <kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd> don't pick tools: use the toolbar.
 
 In either mode, holding the right mouse button looks around and lets the movement keys fly the camera.
 
@@ -21,9 +21,9 @@ The orbit, pan and zoom controls depend on the keymap you chose on the first lau
 | **Orbit** | Middle drag, or <kbd>Alt</kbd> + left drag | <kbd>Alt</kbd> + middle drag | <kbd>Alt</kbd> + left drag (tumble) |
 | **Pan** | <kbd>Shift</kbd> + middle drag, or <kbd>Shift+Alt</kbd> + left drag | Middle drag | <kbd>Alt</kbd> + middle drag, or middle drag (track) |
 | **Zoom** | Wheel, <kbd>Ctrl</kbd> + middle drag, or <kbd>Ctrl+Alt</kbd> + left drag | Wheel, or <kbd>Ctrl+Alt</kbd> + middle drag | Wheel, or <kbd>Alt</kbd> + right drag (dolly) |
-| **Frame selection** | <kbd>F</kbd> or <kbd>Numpad .</kbd> | <kbd>Z</kbd> or <kbd>Numpad .</kbd> (everything when nothing is selected) | <kbd>F</kbd> or <kbd>Numpad .</kbd> |
+| **Frame selection** | <kbd>F</kbd> or <kbd>Numpad .</kbd> | <kbd>F</kbd> or <kbd>Numpad .</kbd>; <kbd>Z</kbd> (everything when nothing is selected) | <kbd>F</kbd> or <kbd>Numpad .</kbd> |
 | **Frame everything** | <kbd>Home</kbd> | <kbd>Home</kbd> | <kbd>A</kbd> or <kbd>Home</kbd> |
-| **Views** | Numpad (below) | Numpad, or <kbd>T</kbd> top, <kbd>F</kbd> front, <kbd>L</kbd> left | Numpad (below) |
+| **Views** | Numpad (below) | Numpad, or <kbd>T</kbd> top, <kbd>L</kbd> left | Numpad (below) |
 | **Perspective / orthographic** | <kbd>Numpad 5</kbd> | <kbd>Numpad 5</kbd>, or <kbd>P</kbd> / <kbd>U</kbd> | <kbd>Numpad 5</kbd> |
 
 Orbiting follows the 3D-package convention: the scene turns with the mouse. If you prefer the camera to move with the mouse instead, tick **Invert orbit horizontally** and **Invert orbit vertically** in the preferences.
@@ -38,6 +38,7 @@ Orbiting follows the 3D-package convention: the scene turns with the mouse. If y
 |---|---|
 | Look around | Right mouse drag |
 | Fly | Hold the right mouse button + <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd>; <kbd>Q</kbd> / <kbd>E</kbd> down / up |
+| Fly in **Fly** navigation | <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd>, <kbd>Q</kbd> / <kbd>E</kbd> without a mouse button |
 | Fly faster / slower | Add <kbd>Shift</kbd> / <kbd>Ctrl</kbd> |
 | Move without the mouse | Arrow keys, <kbd>Page Up</kbd> / <kbd>Page Down</kbd> |
 | Top / bottom view | <kbd>Numpad 7</kbd> / <kbd>Ctrl+Numpad 7</kbd> |
@@ -46,12 +47,28 @@ Orbiting follows the 3D-package convention: the scene turns with the mouse. If y
 | Look from the opposite side | <kbd>Numpad 9</kbd> |
 | Orbit in 15° steps | <kbd>Numpad 4</kbd> / <kbd>Numpad 6</kbd> around, <kbd>Numpad 8</kbd> / <kbd>Numpad 2</kbd> over |
 | Perspective / orthographic | <kbd>Numpad 5</kbd> |
-| Frame the selection | <kbd>Numpad .</kbd> |
+| Frame the selection | <kbd>F</kbd>, <kbd>Numpad .</kbd> |
 | Frame everything | <kbd>Home</kbd> |
 
 Movement speed scales with the scene: the camera moves faster the higher it is and the farther away the pivot, so the same keys cross an airport or nudge along a taxiway line.
 
-The camera keys only work while the mouse is over the viewport, and never while you're typing in a field. While the right mouse button is held, <kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd> fly the camera instead of picking tools.
+The camera keys only work while the mouse is over the viewport, and never while you're typing in a field. <kbd>F</kbd> is the exception: it works from any panel too (below). While the right mouse button is held, <kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd> fly the camera instead of picking tools.
+
+## Framing the selection
+
+Select something and press <kbd>F</kbd>: the camera glides to it, keeping the direction it looks in, and stops where the whole of it fills most of the view. The selection's center becomes the pivot, so orbiting turns around it. It works in every keymap. This is the quickest way to get around a large scene: pick an item in the OUTLINER or the PROJECT panel's hierarchy and press <kbd>F</kbd> (or double-click the item).
+
+| Selected | What <kbd>F</kbd> frames |
+|---|---|
+| A model or an X-Plane object | Everything it draws, its full height included |
+| An apt.dat row (runway, pavement, line, sign...) | The row with its lights |
+| Nodes picked with the Nodes tool (<kbd>V</kbd>), or with Move / Rotate / Scale after picking them | Just the picked nodes, not the whole shape |
+| A project item | What it draws, or where it is when it draws nothing (a hidden item, a road junction) |
+| A folder in the PROJECT hierarchy, or a group in the OUTLINER | Everything inside it |
+| The airport itself in the OUTLINER | The airport, as **Frame everything** shows it |
+| Several things | All of them together |
+
+The pack's own DSF art and locked items frame like anything else; only editing them is blocked. <kbd>F</kbd> works while the mouse is over the viewport and while a panel such as the OUTLINER, PROJECT or PROPERTIES has the keyboard, never while you type in a field. Over **VIEWPORT 2** it frames the selection in that view and leaves the main camera where it is. A selection too large for the camera's reach (about 5 km) is framed from as far back as the camera goes.
 
 ## Views and orthographic projection
 

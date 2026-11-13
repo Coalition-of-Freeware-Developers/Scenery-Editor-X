@@ -72,7 +72,7 @@ Check, in order:
 
 ### The viewport is empty or grey
 
-The camera is probably far from the scene. Press <kbd>Home</kbd> (frame everything), or **Reset camera** at the right of the viewport toolbar. Some airports have an outlying element far from the field; select something near the field and press <kbd>F</kbd> (<kbd>Z</kbd> in 3ds Max) to frame it.
+The camera is probably far from the scene. Press <kbd>Home</kbd> (frame everything), or **Reset camera** at the right of the viewport toolbar. Some airports have an outlying element far from the field; select something near the field (in the viewport, the OUTLINER or the PROJECT hierarchy) and press <kbd>F</kbd> to frame it.
 
 ### The camera moves the wrong way
 
@@ -82,7 +82,7 @@ Orbiting follows the 3D-package convention: the scene turns with the mouse. To m
 
 - Tool and camera keys only work with the mouse over the viewport.
 - No shortcut works while you're typing in a field: click in the viewport first.
-- While the right mouse button is held, <kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd> fly the camera instead of picking tools.
+- While the right mouse button is held, or in **Fly** navigation, <kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd> fly the camera instead of picking tools.
 
 ### The editor is slow
 

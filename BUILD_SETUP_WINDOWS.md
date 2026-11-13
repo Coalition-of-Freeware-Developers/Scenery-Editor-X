@@ -28,13 +28,13 @@ Configure with CMake (examples)
 Single-config Ninja (recommended):
 
 ```powershell
-cmake -DSEDX_PREFERRED_COMPILER=GCC -DVCPKG_TARGET_TRIPLET=x64-mingw -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/sedx-windows.cmake -G Ninja -S . -B build
+cmake -DSEDX_PREFERRED_COMPILER=GCC -DVCPKG_TARGET_TRIPLET=x64-mingw-dynamic -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/sedx-windows.cmake -G Ninja -S . -B build
 ```
 
 If you prefer multi-config generators (Visual Studio / Ninja Multi-Config), ensure the generator is available on your system. The error "CMake was unable to find a build program corresponding to 'Ninja Multi-Config'" typically means the selected generator is not installed or not supported. Use `-G Ninja` on MinGW/GCC systems.
 
 vcpkg note (mingw triplets)
-- This repo normalizes the triplet `x64-mingw` → `x64-mingw-dynamic` for vcpkg. vcpkg may still refuse to build some ports on MinGW (for example, `skia` is known to be unsupported on mingw). If vcpkg fails with an unsupported-port message you can:
+- MinGW builds use vcpkg's `x64-mingw-dynamic` triplet (the `windows-ninja-gcc` preset sets it; vcpkg has no plain `x64-mingw`). A configure without a triplet picks the MinGW triplet when it can tell the compiler is GCC or MinGW clang: `-DSEDX_PREFERRED_COMPILER=GCC` as above, `CXX` set to `g++` / `gcc`, the `MinGW Makefiles` generator, or an MSYS2 UCRT64 / MINGW64 / MINGW32 / CLANG64 shell (`MSYSTEM`; the architecture comes from `MSYSTEM_CARCH`, so MINGW32 gets `x86-mingw-dynamic`). Otherwise a Ninja configure on Windows assumes MSVC and picks `x64-windows`, and so does any configure from a Visual Studio developer prompt. vcpkg may still refuse to build some ports on MinGW (for example, `skia` is known to be unsupported on mingw). If vcpkg fails with an unsupported-port message you can:
   - Switch to an MSVC triplet (`x64-windows`) and build with MSVC, or
   - Re-run vcpkg with `--allow-unsupported` (may produce broken/unstable binaries), or
   - Remove / replace the offending package from `vcpkg.json`.

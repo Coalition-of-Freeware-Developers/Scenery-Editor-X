@@ -183,6 +183,7 @@ namespace SceneryEditorX
 				// Camera navigation with the user's keymap: drags start over the image unless a tool, gizmo or menu has the mouse
 				ViewportCamera::Input navigation;
 				navigation.hovered = imageHovered && !splitHasMouse;
+				navigation.focused = m_Context && m_Context->viewportFocused;	// Last frame's (set below)
 				navigation.blocked = toolHasMouse || EditorTools::IsBusy() || ViewportMenus::IsOpen();
 				navigation.imageSize = imageSize;
 				navigation.aspect = renderWidth / renderHeight;
@@ -458,7 +459,7 @@ namespace SceneryEditorX
 		if (ImGui::MenuItem("Orthographic", "Numpad 5", orthographic))
 			EditorCamera::SetProjection(CameraType::Orthographic);
 		ImGui::Separator();
-		if (ImGui::MenuItem("Frame Selection", "Numpad ."))
+		if (ImGui::MenuItem("Frame Selection", "F  /  Numpad ."))
 			EditorTools::FrameSelection();
 		if (ImGui::MenuItem("Frame All", "Home"))
 			EditorCamera::FrameAll();

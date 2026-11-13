@@ -10,7 +10,7 @@ Scenery Editor X installs with a standard Windows setup program. It takes a minu
 | **Graphics** | A graphics card and driver with **Vulkan 1.3** | Any NVIDIA, AMD or Intel GPU from the last several years, with a current driver. See [Checking Vulkan](#checking-vulkan). |
 | **X-Plane** | X-Plane 12 (an X-Plane 11 install works for its libraries) | The editor reads X-Plane's libraries, airports and lighting tables from your install. It never changes X-Plane's own files. |
 | **Memory** | 16 GB recommended | A large airport with thousands of objects can use several gigabytes on its own. |
-| **Disk** | About 100 MB for the program, plus caches | Caches (airport index, thumbnails, compiled shaders) grow as you work and can always be deleted. |
+| **Disk** | About 130 MB for the program and the copy of setup it keeps for repairs, plus caches | Caches (airport index, thumbnails, compiled shaders) grow as you work and can always be deleted. |
 
 Everything else the editor needs, including the Visual C++ runtime, is installed beside it. The only system-wide requirements are the Vulkan runtime and a Vulkan 1.3 graphics driver.
 
@@ -64,6 +64,8 @@ Run a newer setup program over an installed copy and it skips the first-install 
 - **Uninstall Scenery Editor X.**
 
 Your settings, projects and unsaved-project recovery data are kept whichever you choose. If Scenery Editor X is running, setup asks you to save your work and close it first.
+
+You don't need to keep the setup file to repair the editor. Setup keeps a copy of itself in the install folder, and **Windows Settings › Apps › Installed apps › Scenery Editor X › ⋯ › Modify** (or **Change** in Control Panel's *Programs and Features*) opens the same page from it. Choose **Repair** there if the editor stops starting because a file went missing.
 
 If the editor was installed for all users and you aren't an administrator, setup can't update that copy. It offers to install a separate copy just for you instead.
 

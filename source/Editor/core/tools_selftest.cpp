@@ -33,6 +33,7 @@
 #include "asset_thumbnails.h"
 #include "editor_airports.h"
 #include "editor_camera.h"
+#include "editor_context.h"
 #include "editor_history.h"
 #include "editor_project.h"
 #include "editor_scene.h"
@@ -41,6 +42,7 @@
 #include "facade_authoring.h"
 #include "facade_tool.h"
 #include "node_tool.h"
+#include "selection_bounds.h"
 #include "transform_tool.h"
 #include "viewport_gizmo.h"
 #include "viewport_menus.h"
@@ -48,6 +50,7 @@
 #include <chrono>
 #include <cmath>
 #include <format>
+#include <limits>
 #include <map>
 #include <optional>
 #include <SceneryEditorX/logging/logging.hpp>
@@ -73,6 +76,7 @@ namespace SceneryEditorX::ToolsSelfTest
 	namespace
 	{
 		constexpr const char *LOG_TAG = "SelfTest";
+		constexpr const char *FRAMING_MODAL = "Frame Selection self-test###SelfTestFramingModal";
 
 		enum class Step : uint8_t
 		{
@@ -82,6 +86,9 @@ namespace SceneryEditorX::ToolsSelfTest
 			OrthoTop,
 			OrthoPick,
 			OrthoWaitPick,
+			DatarefOverrides,
+			FlyNavigation,
+			Framing,
 			LibraryFilters,
 			LargePolygonCreate,
 			LargePolygonSelect,
@@ -169,6 +176,17 @@ namespace SceneryEditorX::ToolsSelfTest
 			Done
 		};
 
+		/* @brief One Frame Selection check: what is selected, and how it is framed. */
+		struct FrameCase
+		{
+			std::string what;
+			Target target;
+			bool node = false;		// Its first node picked with the node tool: just the node is framed
+			bool key = false;		// Framed by pressing F (scripted) with the OUTLINER focused
+			bool modal = false;		// F pressed (scripted) while an ImGui modal is open: the camera stays put
+			std::vector<Target> others;	// Selected with it (framed together)
+		};
+
 		struct State
 		{
 			bool enabled = false;
@@ -190,6 +208,41 @@ namespace SceneryEditorX::ToolsSelfTest
 			uint32_t extraViewsBefore = 0;
 			int extraViewFrames = 0;
 			uint32_t largeVerticesAfterAdd = 0;	// The view before the orthographic steps (put back after)
+
+			// Per-object datarefs (issue 75): an animated placement given its own value, and a twin of it that isn't
+			int datarefPhase = 0;
+			uint64_t datarefObject = 0;
+			uint64_t datarefTwin = 0;
+			uint64_t datarefGroup = 0;			// Holds the twin (a root with a parent stays out of the project)
+			uint32_t datarefIndex = 0;			// Into the object's Obj8Data::datarefs
+			std::optional<XPlane::DatarefControl> datarefShared;	// The shared control before (put back after)
+			float datarefOwn = 0.0f;
+			float datarefSharedValue = 0.0f;
+			int datarefWaitFrames = 0;			// Waiting for the twin to load
+
+			// FLY navigation (issue 79): scripted keys and Alt + left drags, with the camera's input unlocked for them
+			int flyPhase = 0;
+			int flyFrames = 0;
+			bool flyWasLocked = false;
+			std::optional<ViewportCamera::Rig> flyRig;	// The view before (put back after)
+			ViewportCamera::Rig flyFrom;				// The rig a gesture started from
+
+			// Frame Selection (F): each kind of target framed in turn from the same start view, the last one by the F key
+			// pressed while another panel has the keyboard
+			std::vector<FrameCase> frameCases;
+			bool framePrepared = false;
+			size_t frameCase = 0;
+			int framePhase = 0;
+			int frameFrames = 0;
+			bool frameWasLocked = false;
+			std::optional<ViewportCamera::Rig> frameRig;	// The start view (put back after)
+			ViewFraming::Box frameBox;						// What the case's framing fits
+			double frameMeasureMs = 0.0;					// What working the box out took
+			std::optional<ViewportCamera::Rig> frameBefore;	// The modal case: the view before F was pressed
+			bool frameModalOpen = false;					// The modal case's modal is up (drawn every frame of it)
+			bool frameModalClose = false;					// ...and closes on its next frame
+			ViewFraming::Box frameShapeBox;					// The node case: the whole shape, for comparison
+
 			int passed = 0;
 			int failed = 0;
 
@@ -632,9 +685,31 @@ namespace SceneryEditorX::ToolsSelfTest
 			}
 
 			case Step::Pick:
+			{
+				// The viewport camera survives Delete, from the outliner or with the camera selected (issue 80)
+				uint64_t camera = 0;
+				if (entt::registry *registry = EditorScene::GetRegistry())
+				{
+					for (const entt::entity handle : registry->view<CameraComponent>())
+					{
+						if (EditorScene::IsViewportCamera(handle))
+							camera = EditorScene::GetID(handle);
+					}
+				}
+				Check(camera != 0 && !EditorScene::Destroy(camera) && EditorScene::FindHandle(camera) != entt::null, "the viewport camera can't be destroyed");
+				if (const std::optional<EditorSelection::Target> target = camera != 0 ? EditorSelection::FromEntity(camera) : std::nullopt)
+				{
+					EditorSelection::Select(context, *target, EditorSelection::Mode::Replace);
+					const bool deleted = EditorTools::DeleteSelection(context);
+					Check(!deleted && EditorSelection::Get().size() == 1, "deleting only the viewport camera deletes nothing and keeps the selection");
+				}
+				Check(camera != 0 && EditorScene::FindHandle(camera) != entt::null && EditorCamera::Get() != nullptr, "the viewport camera survives deleting it while selected");
+				EditorSelection::Clear(context);
+
 				s.ticket = ScenePicking::Request(0, 0, static_cast<uint32_t>(renderWidth), static_cast<uint32_t>(renderHeight));
 				s.step = Step::WaitPick;
 				break;
+			}
 
 			case Step::WaitPick:
 			{
@@ -728,7 +803,494 @@ namespace SceneryEditorX::ToolsSelfTest
 				if (s.rigBefore)
 					EditorCamera::SetRig(*s.rigBefore);
 				s.wait = 60;
-				s.step = Step::LibraryFilters;
+				s.datarefPhase = 0;
+				s.datarefWaitFrames = 0;
+				s.flyPhase = 0;
+				s.flyRig.reset();
+				s.step = Step::DatarefOverrides;
+				break;
+			}
+
+			case Step::DatarefOverrides:
+			{
+				// Testing one placement's animation leaves the other placements of the same object alone (issue 75: every
+				// jetway at the airport moved with the selected one)
+				const auto object = [](const uint64_t id) { return id != 0 ? XPlane::SceneObjects::FindObject(id) : nullptr; };
+				const auto valueOf = [&s](const XPlane::XPlaneObjectComponent *placement)
+				{
+					return placement && s.datarefIndex < placement->datarefValues.size() ? placement->datarefValues[s.datarefIndex] : 1e30f;
+				};
+				const int phase = s.datarefPhase++;
+				if (phase == 0)
+				{
+					// An animated placement that has loaded, and a dataref it reads with a range
+					XPlane::XPlaneObjectComponent *found = nullptr;
+					if (entt::registry *registry = EditorScene::GetRegistry())
+					{
+						auto placements = registry->view<XPlane::XPlaneObjectComponent>();
+						for (const entt::entity handle : placements)
+						{
+							XPlane::XPlaneObjectComponent &placement = placements.get<XPlane::XPlaneObjectComponent>(handle);
+							if (!placement.loaded || !placement.asset || !placement.dynamicState)
+								continue;
+							const std::vector<XPlane::Obj8DatarefUsage> &datarefs = placement.asset->GetData().datarefs;
+							for (uint32_t i = 0; i < static_cast<uint32_t>(datarefs.size()) && !found; ++i)
+							{
+								const XPlane::DatarefControl *shared = XPlane::Datarefs::Find(datarefs[i].dataref.ToString());
+								if (!shared || !(shared->maxValue > shared->minValue))
+									continue;
+								found = &placement;
+								s.datarefObject = EditorScene::GetID(handle);
+								s.datarefIndex = i;
+								s.datarefShared = *shared;
+							}
+							if (found)
+								break;
+						}
+					}
+					if (!found)
+					{
+						EDITOR_INFO_TAG(LOG_TAG, "Per-object datarefs: no animated object is placed here: skipped");
+						s.step = Step::FlyNavigation;
+						break;
+					}
+
+					// A twin at the same place, under a group of its own
+					s.datarefGroup = EditorScene::CreateEmpty("SelfTest dataref twins");
+					XPlane::SceneObjects::PlaceOptions options;
+					options.frameCamera = false;
+					options.name = "SelfTest dataref twin";
+					options.virtualPath = found->virtualPath;
+					if (const TransformComponent *transform = EditorScene::TryGet<TransformComponent>(EditorScene::FindHandle(s.datarefObject)))
+					{
+						options.position[0] = transform->translation.x;
+						options.position[1] = transform->translation.y;
+						options.position[2] = transform->translation.z;
+					}
+					const std::filesystem::path file = found->asset->GetPath();
+					s.datarefTwin = XPlane::SceneObjects::Place(file, options);
+					Entity twin = Scene::TryGetEntityWithUUID(UUID(s.datarefTwin));
+					const Entity group = Scene::TryGetEntityWithUUID(UUID(s.datarefGroup));
+					if (twin && group)
+						twin.SetParent(group);
+
+					// Shared: the bottom of the range; the placement's own: three quarters up
+					XPlane::DatarefControl *shared = XPlane::Datarefs::Find(s.datarefShared->key);
+					shared->driver = XPlane::DatarefDriver::Value;
+					shared->value = shared->minValue;
+					s.datarefSharedValue = shared->minValue;
+					s.datarefOwn = shared->minValue + 0.75f * (shared->maxValue - shared->minValue);
+					found = object(s.datarefObject);	// Placing may have moved the components
+					XPlane::DatarefOverride own;
+					own.index = s.datarefIndex;
+					own.control = *shared;
+					own.control.value = s.datarefOwn;
+					if (found)
+						found->datarefOverrides.push_back(own);
+					EDITOR_INFO_TAG(LOG_TAG, "Per-object datarefs: {} of {} at {:.3f} for one placement, {:.3f} shared", s.datarefShared->key,
+						file.filename().string(), s.datarefOwn, s.datarefSharedValue);
+					s.wait = 5;
+				}
+				else if (phase == 1)
+				{
+					XPlane::XPlaneObjectComponent *placement = object(s.datarefObject);
+					const XPlane::XPlaneObjectComponent *twin = object(s.datarefTwin);
+					if (twin && !twin->loaded && ++s.datarefWaitFrames < 600)
+					{
+						--s.datarefPhase;	// Its asset is the placement's, already loaded, but placing may still finish later
+						break;
+					}
+					Check(twin && twin->loaded, "per-object datarefs: a second placement of the same object");
+					Check(std::abs(valueOf(placement) - s.datarefOwn) < 1e-4f, "per-object datarefs: the placement follows its own value");
+					Check(std::abs(valueOf(twin) - s.datarefSharedValue) < 1e-4f, "per-object datarefs: the other placement keeps the shared value");
+					if (placement)
+						placement->datarefOverrides.clear();
+					s.wait = 5;
+				}
+				else
+				{
+					Check(std::abs(valueOf(object(s.datarefObject)) - s.datarefSharedValue) < 1e-4f, "per-object datarefs: back to the shared value once its own is dropped");
+
+					// The shared control as it was (its range and users stay what the placements made them)
+					if (XPlane::DatarefControl *shared = s.datarefShared ? XPlane::Datarefs::Find(s.datarefShared->key) : nullptr)
+					{
+						shared->driver = s.datarefShared->driver;
+						shared->value = s.datarefShared->value;
+						shared->period = s.datarefShared->period;
+						shared->rate = s.datarefShared->rate;
+					}
+					EditorScene::Destroy(s.datarefGroup);	// The twin with it
+					s.wait = 30;
+					s.step = Step::FlyNavigation;
+				}
+				break;
+			}
+
+			case Step::FlyNavigation:
+			{
+				// One phase a frame: what is queued now reaches the camera on the next frame. An Alt + left drag orbits in
+				// ORBIT navigation (so the scripted drag does reach the camera) and does nothing in FLY navigation, where W
+				// flies forward without a mouse button
+				const ImVec2 middle(std::floor(view.imageMin.x + view.imageSize.x * 0.5f), std::floor(view.imageMin.y + view.imageSize.y * 0.5f));
+				const bool altOrbits = ViewportCamera::OrbitsWithAltLeft(EditorPreferences::Get().keymap);	// Not 3ds Max's (Alt + middle)
+				ViewportCamera::Rig rig;
+				const bool hasRig = EditorCamera::GetRig(rig);
+
+				// However the step ends: scripted input let go, the view and navigation mode put back, the input lock too
+				const auto finish = [&s]()
+				{
+					UI::SetScriptedKeys({});
+					UI::SetScriptedMouse(std::nullopt);
+					if (s.flyRig)
+						EditorCamera::SetRig(*s.flyRig);	// Its navigation mode too
+					if (s.flyPhase > 0)
+						Camera::SetInputLocked(s.flyWasLocked);
+					s.wait = 30;
+					s.step = Step::Framing;
+				};
+				const auto turned = [&](const ViewportCamera::Rig &from) { return std::abs(std::remainder(rig.yaw - from.yaw, 6.283185307179586)) + std::abs(rig.pitch - from.pitch); };
+				const auto drag = [&](const int phase)
+				{
+					// 0: Alt; 1 press; 2..7 move right 12 px a frame; 8 let go
+					if (phase == 0)
+					{
+						s.flyFrom = rig;
+						UI::SetScriptedKeys({ ImGuiMod_Alt });
+						UI::SetScriptedMouse(middle, false);
+					}
+					else if (phase <= 7)
+						UI::SetScriptedMouse(ImVec2(middle.x + 12.0f * static_cast<float>(std::max(0, phase - 1)), middle.y), true);
+					else
+					{
+						UI::SetScriptedMouse(ImVec2(middle.x + 72.0f, middle.y), false);
+						UI::SetScriptedKeys({});
+					}
+				};
+
+				if (!hasRig)
+				{
+					Check(false, "fly navigation: the camera has a rig");
+					finish();
+					break;
+				}
+				const int phase = s.flyPhase++;
+				if (phase == 0)
+				{
+					s.flyRig = rig;
+					s.flyWasLocked = Camera::IsInputLocked();
+					Camera::SetInputLocked(false);
+					EditorCamera::SetMode(ORBIT);
+					UI::SetScriptedMouse(middle, false);
+				}
+				else if (phase >= 1 && phase <= 9)
+				{
+					if (!altOrbits)
+						s.flyPhase = 10;
+					else
+						drag(phase - 1);
+				}
+				else if (phase == 10)
+				{
+					if (altOrbits)
+						Check(turned(s.flyFrom) > 0.05, "orbit navigation: an Alt + left drag orbits");
+					else
+						EDITOR_INFO_TAG(LOG_TAG, "Fly navigation: the 3ds Max keymap orbits with Alt + middle, which isn't scripted: checking that it doesn't orbit only");
+					EditorCamera::SetRig(*s.flyRig);
+					EditorCamera::SetMode(FLY);
+				}
+				else if (phase >= 11 && phase <= 19)
+					drag(phase - 11);
+				else if (phase == 20)
+				{
+					const double shifted = std::abs(rig.pivot.x - s.flyFrom.pivot.x) + std::abs(rig.pivot.y - s.flyFrom.pivot.y) + std::abs(rig.pivot.z - s.flyFrom.pivot.z);
+					EDITOR_INFO_TAG(LOG_TAG, "Fly navigation: the Alt + left drag turned {:.3g} rad, moved the pivot {:.3g} m and the distance {:.3g} m (fly {}, from fly {})",
+						turned(s.flyFrom), shifted, rig.distance - s.flyFrom.distance, rig.fly, s.flyFrom.fly);
+					Check(rig.fly && turned(s.flyFrom) < 1e-6 && shifted < 1e-6 && std::abs(rig.distance - s.flyFrom.distance) < 1e-6, "fly navigation: an Alt + left drag doesn't orbit, pan or zoom");
+					s.flyFrom = rig;
+					s.flyFrames = 0;
+					UI::SetScriptedMouse(middle, false);
+					UI::SetScriptedKeys({ ImGuiKey_W });
+				}
+				else if (phase == 21 && ++s.flyFrames < 20)
+					--s.flyPhase;	// W held for 20 frames
+				else if (phase == 21)
+					UI::SetScriptedKeys({});
+				else
+				{
+					const auto forward = s.flyFrom.Forward();
+					const double moved = (rig.pivot.x - s.flyFrom.pivot.x) * forward.x + (rig.pivot.y - s.flyFrom.pivot.y) * forward.y + (rig.pivot.z - s.flyFrom.pivot.z) * forward.z;
+					EDITOR_INFO_TAG(LOG_TAG, "Fly navigation: W flew {:.2f} m", moved);
+					Check(moved > 0.5 && turned(s.flyFrom) < 1e-6, "fly navigation: W flies forward without a mouse button");
+					finish();
+				}
+				break;
+			}
+
+			case Step::Framing:
+			{
+				// F frames whatever is selected: a placed object, a polygon, a folder of the project, an apt.dat row, the
+				// airport's groups and the airport itself (read-only in the OUTLINER: never framed before), a picked node,
+				// and the F key itself pressed while a panel has the keyboard. Each case starts from the same view; once the
+				// glide settles, every corner of what was framed must be on the image as the renderer draws it, filling a
+				// good part of it.
+				const auto finish = [&s, context]()
+				{
+					UI::SetScriptedKeys({});
+					if (s.frameRig)
+						EditorCamera::SetRig(*s.frameRig);
+					Camera::SetInputLocked(s.frameWasLocked);
+					NodeTool::ClearNodeSelection();
+					EditorTools::SetTool(EditorTools::Tool::Select);
+					EditorSelection::Clear(context);
+					ImGui::SetWindowFocus("VIEWPORT###Viewport");
+					s.wait = 30;
+					s.step = Step::LibraryFilters;
+				};
+
+				// The modal case's modal, every frame while it is up (an ImGui modal: F is routed past it like any global shortcut)
+				if (s.frameModalOpen && ImGui::BeginPopupModal(FRAMING_MODAL, nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+				{
+					ImGui::TextUnformatted("Tools self-test: F pressed behind this modal must not move the camera");
+					if (s.frameModalClose)
+					{
+						ImGui::CloseCurrentPopup();
+						s.frameModalOpen = false;
+					}
+					ImGui::EndPopup();
+				}
+
+				if (!s.framePrepared)
+				{
+					s.framePrepared = true;
+					ViewportCamera::Rig rig;
+					if (EditorCamera::GetRig(rig))
+						s.frameRig = rig;
+					s.frameWasLocked = Camera::IsInputLocked();
+					if (const std::string object = FindProjectItem(ProjectFile::ItemKind::Object, true); !object.empty())
+						s.frameCases.push_back({ "a placed project object", Target::ForItem(object) });
+					if (const std::string polygon = FindProjectItem(ProjectFile::ItemKind::Polygon, false); !polygon.empty())
+						s.frameCases.push_back({ "a project polygon", Target::ForItem(polygon) });
+					if (ProjectFile::ProjectDocument *document = EditorProjects::GetDocument())
+					{
+						// A folder holding something drawn (it draws nothing itself)
+						std::string folder;
+						document->GetProject().ForEachItem([&folder](const ProjectFile::SceneryItem &item, int)
+						{
+							const auto drawn = [](const ProjectFile::SceneryItem &child) { return EditorProjects::GetPlacedEntity(child.id) != 0; };
+							if (item.kind != ProjectFile::ItemKind::Group || !std::ranges::any_of(item.children, drawn))
+								return true;
+							folder = item.id;
+							return false;
+						});
+						if (!folder.empty())
+							s.frameCases.push_back({ "a project folder", Target::ForItem(folder) });
+					}
+					uint32_t pavement = ~0u;
+					if (const XPlane::AirportDocument *airport = EditorAirports::GetDocument())
+					{
+						for (uint32_t i = 0; i < airport->airport.pavements.size() && pavement == ~0u; ++i)
+							if (!airport->airport.pavements[i].rings.empty() && airport->airport.pavements[i].rings[0].nodes.size() >= 4)
+								pavement = i;
+					}
+					if (pavement != ~0u)
+						s.frameCases.push_back({ "an airport pavement row", Target::ForElement(AirportElementKind::Pavement, pavement) });
+					// The airport's pavement group and its root, as the OUTLINER selects them (read-only for the tools)
+					if (entt::registry *registry = EditorScene::GetRegistry())
+					{
+						uint64_t root = 0, group = 0;
+						std::vector<Target> groups;
+						for (const entt::entity handle : registry->view<XPlane::AirportElementComponent>())
+						{
+							const uint64_t id = EditorScene::GetID(handle);
+							const XPlane::AirportElementComponent *element = XPlane::SceneAirports::FindElement(id);
+							if (element && element->kind == AirportElementKind::Airport && root == 0)
+								root = id;
+							if (element && element->kind == AirportElementKind::Group)
+							{
+								groups.push_back(Target::ForEntity(id));
+								if (static_cast<AirportElementKind>(element->index) == AirportElementKind::Pavement && group == 0)
+									group = id;
+							}
+						}
+						if (group != 0)
+							s.frameCases.push_back({ "the airport's pavement group in the OUTLINER", Target::ForEntity(group) });
+						if (root != 0)
+							s.frameCases.push_back({ "the airport itself in the OUTLINER", Target::ForEntity(root) });
+						// Every group of the airport at once (its DSF art and objects included): one framing walks them all
+						if (groups.size() > 1)
+						{
+							FrameCase all{ "all " + std::to_string(groups.size()) + " of the airport's groups in the OUTLINER", groups.front() };
+							all.others.assign(groups.begin() + 1, groups.end());
+							s.frameCases.push_back(std::move(all));
+						}
+					}
+					if (pavement != ~0u)
+					{
+						FrameCase node{ "a picked pavement node", Target::ForElement(AirportElementKind::Pavement, pavement) };
+						node.node = true;
+						s.frameCases.push_back(node);
+					}
+					// The key, from a panel: it used to work only while the viewport had the mouse or the keyboard
+					if (!s.frameCases.empty())
+					{
+						FrameCase key = s.frameCases.front();
+						key.what = "F pressed in the OUTLINER (" + key.what + ")";
+						key.key = true;
+						s.frameCases.push_back(key);
+						FrameCase modal = s.frameCases.front();
+						modal.what = "F pressed behind a modal (" + modal.what + ")";
+						modal.modal = true;
+						s.frameCases.push_back(modal);
+					}
+					EDITOR_INFO_TAG(LOG_TAG, "Framing: {} cases", s.frameCases.size());
+				}
+
+				if (s.frameCase >= s.frameCases.size())
+				{
+					if (s.frameCases.empty())
+						EDITOR_INFO_TAG(LOG_TAG, "Framing: nothing here to frame: skipped");
+					finish();
+					break;
+				}
+				const FrameCase &frame = s.frameCases[s.frameCase];
+				if (s.framePhase == 0)
+				{
+					// From the start view, the case's target selected (the node tool opens its sessions on the next frames)
+					if (s.frameRig)
+						EditorCamera::SetRig(*s.frameRig);
+					NodeTool::ClearNodeSelection();
+					EditorTools::SetTool(frame.node ? EditorTools::Tool::Nodes : EditorTools::Tool::Select);
+					std::vector<Target> targets = { frame.target };
+					targets.insert(targets.end(), frame.others.begin(), frame.others.end());
+					EditorSelection::Select(context, targets);
+					s.framePhase = 1;
+					s.wait = 2;
+					break;
+				}
+				if (s.framePhase == 1)
+				{
+					if (frame.node)
+					{
+						s.frameShapeBox = ViewFraming::Box();
+						SelectionBounds::AddTarget(frame.target, s.frameShapeBox);
+						Check(NodeTool::SelectNode(0, 0, 0, false), frame.what + ": the node tool picks it");
+					}
+					const auto measureStart = std::chrono::steady_clock::now();
+					const bool framable = EditorTools::GetFrameBox(s.frameBox);
+					s.frameMeasureMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - measureStart).count();
+					Check(framable, frame.what + ": Frame Selection finds it in the scene");
+					if (!framable)
+					{
+						++s.frameCase;
+						s.framePhase = 0;
+						break;
+					}
+					if (frame.key)
+					{
+						Camera::SetInputLocked(false);	// The camera's keys work only unlocked
+						ImGui::SetWindowFocus("OUTLINER###Outliner");
+						UI::SetScriptedKeys({ ImGuiKey_F });
+					}
+					else if (frame.modal)
+					{
+						ViewportCamera::Rig rig;
+						if (EditorCamera::GetRig(rig))
+							s.frameBefore = rig;
+						Camera::SetInputLocked(false);
+						ImGui::OpenPopup(FRAMING_MODAL);
+						s.frameModalOpen = true;
+						s.frameModalClose = false;
+						UI::SetScriptedKeys({ ImGuiKey_F });
+					}
+					else
+						Check(EditorTools::FrameSelection(), frame.what + ": Frame Selection moves the camera");
+					s.frameFrames = 0;
+					s.framePhase = 2;
+					break;
+				}
+				if (s.framePhase == 2)
+				{
+					// The glide, then a few frames for the drawn view to catch up (a scripted F goes back up after a frame)
+					++s.frameFrames;
+					if ((frame.key || frame.modal) && s.frameFrames == 1)
+					{
+						if (frame.key)
+							Check(!context->viewportFocused, frame.what + ": the viewport doesn't have the keyboard");
+						UI::SetScriptedKeys({});
+					}
+					if ((EditorCamera::IsAnimating() || s.frameFrames < 5) && s.frameFrames < 600)
+						break;
+					if (frame.key || frame.modal)
+						Camera::SetInputLocked(s.frameWasLocked);
+					s.framePhase = 3;
+					s.wait = frame.modal ? 0 : 3;	// The modal is drawn every frame it is up
+					break;
+				}
+
+				// Behind a modal: the camera hasn't moved; then the modal closes (on its next frame) and the next case starts
+				if (frame.modal)
+				{
+					if (!s.frameModalClose)
+					{
+						ViewportCamera::Rig rig;
+						const bool hasRig = EditorCamera::GetRig(rig) && s.frameBefore;
+						const double moved = hasRig ? std::hypot(rig.pivot.x - s.frameBefore->pivot.x, rig.pivot.y - s.frameBefore->pivot.y, rig.pivot.z - s.frameBefore->pivot.z) : 1e30;
+						const double zoomed = hasRig ? std::abs(rig.distance - s.frameBefore->distance) : 1e30;
+						EDITOR_INFO_TAG(LOG_TAG, "Framing {}: the pivot moved {:.3f} m, the distance {:.3f} m", frame.what, moved, zoomed);
+						Check(s.frameModalOpen && moved < 1e-3 && zoomed < 1e-3, frame.what + ": the camera stays where it was");
+						s.frameModalClose = true;
+						break;
+					}
+					if (s.frameModalOpen)
+						break;	// Closing
+					++s.frameCase;
+					s.framePhase = 0;
+					break;
+				}
+
+				// Every corner of the framed box on the image as drawn, filling a good part of it, the camera on its center
+				const ViewFraming::Box &box = s.frameBox;
+				ViewportCamera::Rig rig;
+				const bool hasRig = EditorCamera::GetRig(rig);
+				const ViewFraming::Point center = box.GetCenter();
+				const double offCenter = hasRig ? std::hypot(rig.pivot.x - center.x, rig.pivot.y - center.y, rig.pivot.z - center.z) : 1e30;
+				int onImage = 0;
+				float left = std::numeric_limits<float>::max(), top = left, right = -left, bottom = -left;
+				for (int corner = 0; corner < 8; ++corner)
+				{
+					const Point3 point{ (corner & 1) ? box.max.x : box.min.x, (corner & 2) ? box.max.y : box.min.y, (corner & 4) ? box.max.z : box.min.z };
+					ImVec2 screen;
+					if (!view.WorldToScreen(point, screen))
+						continue;
+					left = std::min(left, screen.x);
+					right = std::max(right, screen.x);
+					top = std::min(top, screen.y);
+					bottom = std::max(bottom, screen.y);
+					const bool inside = screen.x >= view.imageMin.x - 2.0f && screen.x <= view.imageMin.x + view.imageSize.x + 2.0f &&
+						screen.y >= view.imageMin.y - 2.0f && screen.y <= view.imageMin.y + view.imageSize.y + 2.0f;
+					onImage += inside ? 1 : 0;
+				}
+				const double fill = onImage > 0 ? std::max((right - left) / std::max(1.0f, view.imageSize.x), (bottom - top) / std::max(1.0f, view.imageSize.y)) : 0.0;
+				const ViewFraming::Point size = box.GetSize();
+				const bool farthest = hasRig && rig.distance >= 4999.0;		// The camera's reach (5 km)
+				const bool nearest = hasRig && rig.distance <= 2.0 + 1e-6;
+				EDITOR_INFO_TAG(LOG_TAG, "Framing {}: {:.1f} x {:.1f} x {:.1f} m (measured in {:.2f} ms), camera {:.1f} m away, {} of 8 corners on the image, {:.0f}% of it",
+					frame.what, size.x, size.y, size.z, s.frameMeasureMs, hasRig ? rig.distance : 0.0, onImage, fill * 100.0);
+				Check(offCenter < 1e-3 * std::max(1.0, hasRig ? rig.distance : 1.0) + 1e-3, frame.what + ": the camera turns about its center");
+				if (farthest)
+					EDITOR_INFO_TAG(LOG_TAG, "Framing {}: wider than the camera can back off for, the fit isn't checked", frame.what);
+				else
+					Check(onImage == 8, frame.what + ": every corner of it is on the image");
+				if (!farthest && !nearest)
+					Check(fill > 0.5, frame.what + ": it fills the view (" + std::format("{:.0f}%", fill * 100.0) + ")");
+				if (frame.node)
+				{
+					const double most = SelectionBounds::MINIMUM_SIZE + 1e-6;
+					Check(size.x <= most && size.z <= most && s.frameShapeBox.IsValid() && s.frameShapeBox.GetRadius() > box.GetRadius(),
+						frame.what + ": just the node is framed, not the whole pavement");
+				}
+				++s.frameCase;
+				s.framePhase = 0;
 				break;
 			}
 

@@ -96,8 +96,17 @@ namespace SceneryEditorX::EditorCamera
 	/* @brief Fits a sphere in view without turning. */
 	void Frame(const Point3 &center, double radius);
 
+	/* @brief Fits a box in view without turning (every corner shows): Frame Selection (EditorTools::GetFrameBox). */
+	void Frame(const ViewFraming::Box &box);
+
 	/* @brief Fits everything: the open airport, else the project's scenery, else whatever the scene draws. */
 	bool FrameAll();
+
+	/* @brief The main viewport's width / height, as its navigation last saw it. */
+	double GetAspect();
+
+	/* @brief True while the camera glides to a view (a framing, a preset). */
+	bool IsAnimating();
 
 	/* @brief Orbit steps (numpad 4 / 6 / 8 / 2) and the opposite side (numpad 9). */
 	void Orbit(double yawDegrees, double pitchDegrees);
@@ -112,7 +121,14 @@ namespace SceneryEditorX::EditorCamera
 	/* @brief True while a camera drag is in progress (tools stand back). */
 	bool IsNavigating();
 
-	/* @brief The keymap's view keys over the viewport: numpad views, Home, and T F L P U Z / F A per keymap. */
+	/* @brief True when FLY navigation's keys (W A S D / Q E, no button) moved the camera's last frame (Controller::TakesFlyKeys). */
+	bool TakesFlyKeys();
+
+	/**
+	 * @brief Camera keys: F (Frame Selection, every keymap) wherever the keyboard isn't typing, unless VIEWPORT 2 is
+	 * hovered (it frames there); over the viewport, the numpad views, Home, and the keymap's letters (3ds Max: T L P U
+	 * Z, Maya: A).
+	 */
 	void HandleShortcuts(EditorContext *context);
 }
 

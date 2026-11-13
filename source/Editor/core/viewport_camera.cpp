@@ -194,19 +194,36 @@ namespace SceneryEditorX::ViewportCamera
 		pivot = Add(eye, Forward(), distance);
 	}
 
+	ViewFraming::Lens GetLens(const Rig &rig, const double aspect)
+	{
+		const Point3 forward = rig.Forward(), right = rig.Right(), up = rig.Up();
+		ViewFraming::Lens lens;
+		lens.forward = { forward.x, forward.y, forward.z };
+		lens.right = { right.x, right.y, right.z };
+		lens.up = { up.x, up.y, up.z };
+		lens.tanHalfX = std::tan(rig.fovHorizontal * 0.5);
+		lens.tanHalfY = rig.TanHalfFovY(aspect);
+		lens.orthographic = rig.orthographic;
+		return lens;
+	}
+
 	// -------------------------------------------------------
 
 	bool Controller::Navigate(Rig &rig, const Input &input)
 	{
 		const ImGuiIO &io = ImGui::GetIO();
 		const EditorPreferences &preferences = EditorPreferences::Get();
+		m_FlyKeys = false;
+		m_FlyKeysFrame = ImGui::GetFrameCount();
 		if (input.locked)
 		{
 			m_Drag = Drag::None;
 			return false;
 		}
 
-		// A press over the image starts the drag its keymap gives it; the drag then holds until that button is let go
+		// A press over the image starts the drag its keymap gives it; the drag then holds until that button is let go.
+		// FLY navigation only looks around: the camera turns in place and the keys move it, so the drags that orbit, pan
+		// or dolly around the pivot start nothing there (issue 79).
 		if (m_Drag == Drag::None && input.hovered && !input.blocked)
 		{
 			for (const ImGuiMouseButton button : { ImGuiMouseButton_Left, ImGuiMouseButton_Middle, ImGuiMouseButton_Right })
@@ -214,7 +231,7 @@ namespace SceneryEditorX::ViewportCamera
 				if (!ImGui::IsMouseClicked(button))
 					continue;
 				const int kind = Classify(preferences.keymap, button, io.KeyAlt, io.KeyShift, io.KeyCtrl);
-				if (kind != 0)
+				if (kind != 0 && (!rig.fly || static_cast<Drag>(kind) == Drag::Look))
 				{
 					m_Drag = static_cast<Drag>(kind);
 					m_Button = button;
@@ -224,6 +241,10 @@ namespace SceneryEditorX::ViewportCamera
 			}
 		}
 		else if (m_Drag != Drag::None && !ImGui::IsMouseDown(m_Button))
+			m_Drag = Drag::None;
+
+		// An orbit, pan or dolly drag held while the navigation switched to FLY ends there
+		if (rig.fly && m_Drag != Drag::None && m_Drag != Drag::Look)
 			m_Drag = Drag::None;
 
 		bool changed = false;
@@ -286,20 +307,25 @@ namespace SceneryEditorX::ViewportCamera
 			changed = true;
 		}
 
-		// Flying: WASD / Q E while the right button looks around, the arrows and Page Up / Down whenever over the image.
+		// Flying: W A S D / Q E while the right button looks around, and in FLY navigation without it whenever the viewport
+		// has the mouse or the keyboard (not with Ctrl / Alt / Super held, which make other shortcuts: Ctrl+S saves); the
+		// arrows and Page Up / Down whenever over the image. Space rises only while looking (alone it opens the hotbox).
 		// Faster the higher the camera and the farther the pivot (scenery is kilometers across); Shift hurries, Ctrl creeps.
-		if (!io.WantTextInput && (m_Drag == Drag::Look || input.hovered))
+		const bool looking = m_Drag == Drag::Look;
+		m_FlyKeys = !io.WantTextInput && rig.fly && (input.hovered || input.focused) && !io.KeyCtrl && !io.KeyAlt && !io.KeySuper;
+		const bool flyKeys = looking || m_FlyKeys;
+		const bool moveKeys = looking || input.hovered;
+		if (!io.WantTextInput && (flyKeys || moveKeys))
 		{
-			const bool flyKeys = m_Drag == Drag::Look;
 			Point3 move{};
 			const Point3 forward = rig.Forward(), right = rig.Right();
 			const auto held = [](const ImGuiKey key) { return ImGui::IsKeyDown(key); };
-			if ((flyKeys && held(ImGuiKey_W)) || held(ImGuiKey_UpArrow))		move = Add(move, forward);
-			if ((flyKeys && held(ImGuiKey_S)) || held(ImGuiKey_DownArrow))		move = Add(move, forward, -1.0);
-			if ((flyKeys && held(ImGuiKey_D)) || held(ImGuiKey_RightArrow))		move = Add(move, right);
-			if ((flyKeys && held(ImGuiKey_A)) || held(ImGuiKey_LeftArrow))		move = Add(move, right, -1.0);
-			if ((flyKeys && (held(ImGuiKey_E) || held(ImGuiKey_Space))) || held(ImGuiKey_PageUp))	move.y += 1.0;
-			if ((flyKeys && held(ImGuiKey_Q)) || held(ImGuiKey_PageDown))		move.y -= 1.0;
+			if ((flyKeys && held(ImGuiKey_W)) || (moveKeys && held(ImGuiKey_UpArrow)))		move = Add(move, forward);
+			if ((flyKeys && held(ImGuiKey_S)) || (moveKeys && held(ImGuiKey_DownArrow)))	move = Add(move, forward, -1.0);
+			if ((flyKeys && held(ImGuiKey_D)) || (moveKeys && held(ImGuiKey_RightArrow)))	move = Add(move, right);
+			if ((flyKeys && held(ImGuiKey_A)) || (moveKeys && held(ImGuiKey_LeftArrow)))	move = Add(move, right, -1.0);
+			if ((flyKeys && held(ImGuiKey_E)) || (looking && held(ImGuiKey_Space)) || (moveKeys && held(ImGuiKey_PageUp)))	move.y += 1.0;
+			if ((flyKeys && held(ImGuiKey_Q)) || (moveKeys && held(ImGuiKey_PageDown)))		move.y -= 1.0;
 			if (move.x != 0.0 || move.y != 0.0 || move.z != 0.0)
 			{
 				const Point3 eye = rig.Eye();
@@ -315,6 +341,12 @@ namespace SceneryEditorX::ViewportCamera
 			}
 		}
 		return changed;
+	}
+
+	bool Controller::TakesFlyKeys() const
+	{
+		// This frame's or the last one's (shortcuts may run before the viewport navigates in a frame)
+		return m_FlyKeys && ImGui::GetFrameCount() - m_FlyKeysFrame <= 1;
 	}
 
 	bool Controller::Animate(Rig &rig, const float deltaTime)
@@ -369,18 +401,34 @@ namespace SceneryEditorX::ViewportCamera
 		rig.orthographic = orthographic;
 	}
 
-	void Controller::Frame(Rig &rig, const Point3 &center, const double radius, const double aspect)
+	Rig Controller::FramingStart(const Rig &rig) const
 	{
 		Rig target = m_Transition.active ? m_Transition.to : rig;
-		target.pivot = center;
 
 		// Looking at or above the horizon in a free view: tilt down so the ground under the selection shows
 		if (target.preset == ViewPreset::Free && target.Forward().y > -0.2)
 			target.pitch = -0.6;
+		return target;
+	}
 
-		// The narrower field of view decides; a little margin around
-		const double tanHalf = std::min(std::tan(target.fovHorizontal * 0.5), target.TanHalfFovY(aspect));
-		target.distance = std::clamp(std::max(radius, 0.5) / std::max(tanHalf, 1e-3) * 1.15, 2.0, MAX_DISTANCE);
+	void Controller::Frame(Rig &rig, const Point3 &center, const double radius, const double aspect)
+	{
+		Rig target = FramingStart(rig);
+		target.pivot = center;
+		// The narrower field of view decides, with a margin around
+		target.distance = std::clamp(ViewFraming::FitSphereDistance(std::max(radius, 0.5), GetLens(target, aspect)), 2.0, MAX_DISTANCE);
+		MoveTo(rig, target);
+	}
+
+	void Controller::Frame(Rig &rig, const ViewFraming::Box &box, const double aspect)
+	{
+		if (!box.IsValid())
+			return;
+		Rig target = FramingStart(rig);
+		const ViewFraming::Point center = box.GetCenter();
+		target.pivot = { center.x, center.y, center.z };
+		// Every corner in view along the direction the camera keeps (closer than the box's sphere for long, flat things)
+		target.distance = std::clamp(ViewFraming::FitDistance(box, GetLens(target, aspect)), 2.0, MAX_DISTANCE);
 		MoveTo(rig, target);
 	}
 
@@ -406,6 +454,21 @@ namespace SceneryEditorX::ViewportCamera
 
 	// -------------------------------------------------------
 
+	bool OrbitsWithAltLeft(const NavigationKeymap keymap)
+	{
+		return Classify(keymap, ImGuiMouseButton_Left, true, false, false) == 1;	// 1: orbit (Classify's codes)
+	}
+
+	bool IsFlyKeyPressed()
+	{
+		for (const ImGuiKey key : { ImGuiKey_W, ImGuiKey_A, ImGuiKey_S, ImGuiKey_D, ImGuiKey_Q, ImGuiKey_E })
+		{
+			if (ImGui::IsKeyPressed(key, false))
+				return true;
+		}
+		return false;
+	}
+
 	const char *GetKeymapSummary(const NavigationKeymap keymap)
 	{
 		switch (keymap)
@@ -427,7 +490,7 @@ namespace SceneryEditorX::ViewportCamera
 					{ "Orbit", "Middle mouse drag  /  Alt + left drag" },
 					{ "Pan", "Shift + middle drag  /  Shift + Alt + left drag" },
 					{ "Zoom", "Wheel  /  Ctrl + middle drag  /  Ctrl + Alt + left drag" },
-					{ "Frame selection", "Numpad .  /  F" },
+					{ "Frame selection", "F  /  Numpad ." },
 					{ "Frame everything", "Home" },
 				};
 				break;
@@ -436,9 +499,10 @@ namespace SceneryEditorX::ViewportCamera
 					{ "Orbit", "Alt + middle drag" },
 					{ "Pan", "Middle mouse drag" },
 					{ "Zoom", "Wheel  /  Ctrl + Alt + middle drag" },
-					{ "Frame selection (or everything)", "Z  /  Numpad ." },
+					{ "Frame selection", "F  /  Numpad ." },
+					{ "Frame selection (or everything)", "Z" },
 					{ "Frame everything", "Home" },
-					{ "Top / front / left view", "T  /  F  /  L" },
+					{ "Top / left view", "T  /  L  (front: Numpad 1)" },
 					{ "Perspective / orthographic", "P  /  U" },
 				};
 				break;
@@ -459,6 +523,7 @@ namespace SceneryEditorX::ViewportCamera
 		bindings.insert(bindings.end(), {
 			{ "Look around", "Right mouse drag" },
 			{ "Fly", "Hold right mouse + W A S D, Q / E down / up (Shift faster, Ctrl slower)" },
+			{ "Fly navigation", "W A S D, Q / E without a button; only the right mouse turns the camera" },
 			{ "Move", "Arrow keys, Page Up / Page Down" },
 			{ "Top / bottom view", "Numpad 7  /  Ctrl + Numpad 7" },
 			{ "Front / back view", "Numpad 1  /  Ctrl + Numpad 1" },

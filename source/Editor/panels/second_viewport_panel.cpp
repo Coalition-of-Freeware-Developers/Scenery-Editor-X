@@ -30,7 +30,9 @@
  */
 #include "second_viewport_panel.h"
 #include <Editor/core/editor_camera.h>
+#include <Editor/core/editor_context.h>
 #include <Editor/core/editor_theme.h>
+#include <Editor/core/editor_tools.h>
 #include <Editor/core/editor_ui.h>
 #include <Editor/settings/editor_preferences.h>
 #include <algorithm>
@@ -87,6 +89,9 @@ namespace SceneryEditorX
 
 	void SecondViewportPanel::Release()
 	{
+		m_Hovered = false;
+		if (m_Context)
+			m_Context->secondViewportHovered = false;	// F frames in the main viewport again
 		m_NoView = false;	// Asked again when the panel opens
 		if (m_View == 0)
 			return;
@@ -183,6 +188,8 @@ namespace SceneryEditorX
 		const bool visible = EditorUI::BeginPanel("VIEWPORT 2###Viewport2", &isOpen, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
 		ImGui::PopStyleVar();
 		m_Hovered = false;
+		if (m_Context)
+			m_Context->secondViewportHovered = false;	// Set again below while the image is hovered
 
 		if (visible)
 		{
@@ -226,6 +233,8 @@ namespace SceneryEditorX
 				ImGui::SetCursorScreenPos(imageMin);
 				ImGui::InvisibleButton("##Viewport2Canvas", imageSize, ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight | ImGuiButtonFlags_MouseButtonMiddle);
 				m_Hovered = ImGui::IsItemHovered();
+				if (m_Context)
+					m_Context->secondViewportHovered = m_Hovered;	// F frames here then, not in the main viewport
 				m_Aspect = m_AppliedWidth > 0 && m_AppliedHeight > 0 ? static_cast<double>(m_AppliedWidth) / m_AppliedHeight : imageSize.x / imageSize.y;
 
 				ViewportCamera::Input input;
@@ -337,6 +346,16 @@ namespace SceneryEditorX
 			m_Controller.Orbit(m_Rig, 0.0, 15.0);
 		if (pressed(ImGuiKey_Home) && !ctrl)
 			FrameFocus(false);
+
+		// F: the selection in this view, its own camera (the main viewport's stays put)
+		const bool modifiers = io.KeyCtrl || io.KeyAlt || io.KeyShift || io.KeySuper;
+		const bool cameraDrag = ImGui::IsMouseDown(ImGuiMouseButton_Right) || ImGui::IsMouseDown(ImGuiMouseButton_Middle);
+		if (!modifiers && !cameraDrag && pressed(ImGuiKey_F))
+		{
+			ViewFraming::Box box;
+			if (EditorTools::GetFrameBox(box))
+				m_Controller.Frame(m_Rig, box, m_Aspect);
+		}
 	}
 
 	void SecondViewportPanel::UpdateRenderSize(const uint32_t width, const uint32_t height)

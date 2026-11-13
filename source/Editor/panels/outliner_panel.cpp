@@ -97,8 +97,11 @@ namespace SceneryEditorX
 				if (!entity || !*entity)
 					continue;
 
-				// Roots only; children are drawn under their parent.
+				// Roots only; children are drawn under their parent. The viewport camera is the editor's, not the scenery's
+				// (deleting it left the camera unable to move, issue 80).
 				const entt::entity handle = static_cast<entt::entity>(*entity);
+				if (EditorScene::IsViewportCamera(handle))
+					continue;
 				const RelationshipComponent *relationship = EditorScene::TryGet<RelationshipComponent>(handle);
 				if (relationship && EditorScene::FindHandle(static_cast<uint64_t>(relationship->pParentHandle)) != entt::null)
 					continue;
@@ -125,7 +128,7 @@ namespace SceneryEditorX
 				continue;
 
 			const entt::entity handle = static_cast<entt::entity>(*entity);
-			if (m_Filter.PassFilter(EditorScene::GetName(handle)))
+			if (!EditorScene::IsViewportCamera(handle) && m_Filter.PassFilter(EditorScene::GetName(handle)))
 				m_Matches.push_back(handle);
 		}
 		m_MatchFilter = m_Filter.InputBuf;
@@ -238,7 +241,10 @@ namespace SceneryEditorX
 					if (!active)
 						ImGui::PopStyleColor();
 
-					if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen() && m_Context)
+					// A double-click's second press is a click too: it frames instead of selecting again (a Ctrl toggle
+					// would take the entity back out)
+					const bool doubleClicked = ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && !ImGui::IsItemToggledOpen();
+					if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen() && !doubleClicked && m_Context)
 					{
 						// Ctrl toggles, Shift adds, a plain click replaces the selection
 						const ImGuiIO &io = ImGui::GetIO();
@@ -246,8 +252,14 @@ namespace SceneryEditorX
 						if (const std::optional<EditorSelection::Target> target = EditorSelection::FromEntity(id))
 							EditorSelection::Select(m_Context, *target, mode);
 					}
-					if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && !ImGui::IsItemToggledOpen())
+					if (doubleClicked)
+					{
+						// Back in the selection if its first click was a Ctrl one that took it out, then framed
+						const std::optional<EditorSelection::Target> target = EditorSelection::FromEntity(id);
+						if (target && !EditorSelection::IsSelected(*target))
+							EditorSelection::Select(m_Context, *target, EditorSelection::Mode::Add);
 						EditorTools::FrameSelection();
+					}
 
 					ImGui::PushID(reinterpret_cast<void *>(static_cast<uintptr_t>(id)));
 					if (ImGui::BeginPopupContextItem("##EntityMenu"))
