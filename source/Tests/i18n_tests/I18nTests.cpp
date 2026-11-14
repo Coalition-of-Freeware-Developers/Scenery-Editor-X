@@ -561,6 +561,36 @@ TEST_CASE("Reload keeps the catalog in use when a file can't be read or hasn't c
 	CHECK(std::string(Tr("Save")) == "Speichern");
 	CHECK(std::string(before) == "Sichern");
 
+	// The editor's Reload Translations lists the folders again (SetCatalogFiles) before Reload: the same files keep what
+	// was read from them, so an unchanged file keeps its catalog and an unreadable one keeps the version in use
+	const auto listFiles = [text]
+	{
+		std::vector<CatalogFile> list;
+		list.push_back({ "de", "memory:de.po", [text] { return *text; }, false });
+		return list;
+	};
+	const char *speichern = Tr("Save");
+	SetCatalogFiles(listFiles());
+	REQUIRE(Reload());
+	CHECK(Tr("Save") == speichern);
+	*text = std::nullopt;
+	SetCatalogFiles(listFiles());
+	CHECK_FALSE(Reload());
+	CHECK(GetLanguage() == "de");
+	CHECK(Tr("Save") == speichern);
+	CHECK_FALSE(GetLanguageChoices().front().failed);
+
+	// A translator's copy that appears is a different file: read
+	std::vector<CatalogFile> withUser = listFiles();
+	withUser.push_back({ "de", "user:de.po", [] { return std::optional<std::string>("msgid \"Save\"\nmsgstr \"Sichern!\"\n"); }, true });
+	SetCatalogFiles(std::move(withUser));
+	REQUIRE(Reload());
+	CHECK(std::string(Tr("Save")) == "Sichern!");
+	*text = std::string("msgid \"Save\"\nmsgstr \"Speichern\"\n");
+	SetCatalogFiles(listFiles());	// And gone again: the bundled file
+	REQUIRE(Reload());
+	CHECK(std::string(Tr("Save")) == "Speichern");
+
 	// Switching away and back reuses what was loaded
 	REQUIRE(SetLanguage("en"));
 	const char *english = Tr("Save");
@@ -660,6 +690,26 @@ TEST_CASE("Translation service: fallbacks, overrides, pseudo-locale, stable poin
 	CHECK(TrNF("{} file", "{} files", 2).find("2 ") != std::string::npos);
 	CHECK(Tr("Save") == Tr("Save"));	// Cached
 	CHECK(std::string(sichern) == "Sichern");
+}
+
+TEST_CASE("A catalog that couldn't be read is tried again when the files are listed again", "[i18n][service]")
+{
+	ServiceGuard guard;
+	auto text = std::make_shared<std::optional<std::string>>();
+	const auto files = [text]
+	{
+		std::vector<CatalogFile> list;
+		list.push_back({ "de", "memory:de.po", [text] { return *text; }, false });
+		return list;
+	};
+	SetCatalogFiles(files());
+	CHECK_FALSE(SetLanguage("de"));
+	CHECK(GetLanguageChoices().front().failed);
+
+	*text = std::string("msgid \"Save\"\nmsgstr \"Speichern\"\n");
+	SetCatalogFiles(files());
+	REQUIRE(SetLanguage("de"));
+	CHECK(std::string(Tr("Save")) == "Speichern");
 }
 
 TEST_CASE("Translation service records missing strings", "[i18n][service]")

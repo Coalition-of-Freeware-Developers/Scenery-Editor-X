@@ -102,7 +102,8 @@ namespace SceneryEditorX::I18n
 
 	/**
 	 * @brief Sets the catalogs that can be chosen. A user catalog replaces a bundled one with the same tag. The active
-	 * language keeps its loaded catalog until SetLanguage or Reload.
+	 * language keeps its loaded catalog until SetLanguage or Reload. A file registered again with the same origin keeps
+	 * the catalog read from it (what Reload compares against); one that couldn't be read is tried again.
 	 */
 	void SetCatalogFiles(std::vector<CatalogFile> files);
 

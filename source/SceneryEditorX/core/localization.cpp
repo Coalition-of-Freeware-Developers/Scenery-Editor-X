@@ -38,6 +38,7 @@
 #include <SDL3/SDL_locale.h>
 #include <SDL3/SDL_stdinc.h>
 #include <algorithm>
+#include <atomic>
 #include <charconv>
 #include <cstdint>
 #include <cstdio>
@@ -190,7 +191,7 @@ namespace SceneryEditorX::Localization
 			// fc-match always prints a font when it runs: no output means it isn't there (no fontconfig, a sandbox), which
 			// won't change during the session, so it isn't started again. A search that found nothing usable is retried on
 			// the next language change, but without a process when fontconfig is missing
-			static bool unavailable = false;
+			static std::atomic<bool> unavailable { false };	// Atomic in case a lookup ever runs off the UI thread
 			if (unavailable)
 				return std::nullopt;
 
@@ -363,16 +364,29 @@ namespace SceneryEditorX::Localization
 
 		const std::string before = I18n::GetLanguage();
 		const std::uint64_t generation = I18n::GetGeneration();
+		bool reloaded = false;
 		if (s.reload)
 		{
 			s.reload = false;
-			RegisterCatalogs();	// New files in user:/locale too
-			if (!s.pending)
+			RegisterCatalogs();	// New files in user:/locale too; files already read keep their catalogs
+			// A plain reload reads the active language's files again through I18n::Reload, which keeps the catalog in use
+			// when a file can't be read (mid-save) and doesn't parse an unchanged one again. Only when "system" now means
+			// another language (a translator's file for it appeared) is the language chosen again
+			if (!s.pending && I18n::NormalizeTag(Resolve(s.setting)) == I18n::NormalizeTag(before))
+			{
+				reloaded = true;
+				if (!I18n::Reload())
+					SEDX_CORE_WARN_TAG(LOG_TAG, "A {} catalog couldn't be read again: the version read before stays in use", before);
+			}
+			else if (!s.pending)
 				s.pending = s.setting;
 		}
-		s.setting = *s.pending;
-		s.pending.reset();
-		Activate(s.setting);
+		if (!reloaded)
+		{
+			s.setting = *s.pending;
+			s.pending.reset();
+			Activate(s.setting);
+		}
 		if (I18n::GetLanguage() != before)
 			SEDX_CORE_INFO_TAG(LOG_TAG, "Language changed from {} to {}", before, I18n::GetLanguage());
 		return I18n::GetGeneration() != generation;

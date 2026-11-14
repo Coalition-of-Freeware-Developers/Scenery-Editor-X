@@ -283,6 +283,20 @@ namespace SceneryEditorX::I18n
 			registered.file = std::move(file);
 			registry[registered.file.tag] = std::move(registered);
 		}
+
+		// The same file registered again (the editor re-lists the folders before a reload) keeps what was read from it, so
+		// Reload() can keep the catalog in use when the file is unreadable and reuse it when the file hasn't changed. A file
+		// that couldn't be read is tried afresh
+		for (auto &[tag, registered] : registry)
+		{
+			const auto old = s.registry.find(tag);
+			if (old == s.registry.end() || !old->second.catalog || old->second.file.origin != registered.file.origin ||
+				old->second.file.user != registered.file.user)
+				continue;
+			registered.catalog = old->second.catalog;
+			registered.attempted = old->second.attempted;
+			registered.textHash = old->second.textHash;
+		}
 		s.registry = std::move(registry);
 	}
 
