@@ -160,11 +160,21 @@ namespace SceneryEditorX::Localization
 		 * @brief fontconfig's choice for a language ("file\nindex" from fc-match), or nullopt. fc-match always names some
 		 * font, often one without the language's characters: the caller checks its glyph coverage before using it.
 		 * Without fontconfig (minimal installs, sandboxes such as Flatpak) the failure is logged and the known Noto
-		 * paths are tried.
+		 * paths are tried. The shell command is one of four fixed strings, chosen here from the script, so nothing a
+		 * caller passes ends up in it.
 		 */
-		std::optional<Localization::FontFile> FontConfigMatch(const std::string_view language)
+		std::optional<Localization::FontFile> FontConfigMatch(const I18n::Script script)
 		{
-			const std::string command = "fc-match -f '%{file}\\n%{index}' 'sans-serif:lang=" + std::string(language) + "' 2>/dev/null";
+			const char *language = nullptr;
+			switch (script)
+			{
+				case I18n::Script::HanSimplified: language = "zh-cn"; break;
+				case I18n::Script::HanTraditional: language = "zh-tw"; break;
+				case I18n::Script::Japanese: language = "ja"; break;
+				case I18n::Script::Korean: language = "ko"; break;
+				default: return std::nullopt;
+			}
+			const std::string command = std::string("fc-match -f '%{file}\\n%{index}' 'sans-serif:lang=") + language + "' 2>/dev/null";
 			FILE *pipe = popen(command.c_str(), "r");
 			if (!pipe)
 			{
@@ -303,10 +313,12 @@ namespace SceneryEditorX::Localization
 		}
 
 		State &s = S();
-		s.pending = std::string(setting);
+		// Saved in one spelling: "system", or the catalog's tag ("DE_de" -> "de_DE"; "en" stays "en")
+		const std::string normalized = setting == SYSTEM || setting == I18n::PSEUDO_LANGUAGE ? std::string(setting) : tag;
+		s.pending = normalized;
 		if (s.settings && setting != I18n::PSEUDO_LANGUAGE)	// The pseudo-locale is a test, not a choice to keep
 		{
-			s.settings->AddStringOption(KEY_LANGUAGE, setting);
+			s.settings->AddStringOption(KEY_LANGUAGE, normalized);
 			s.settings->Save();
 		}
 	}
@@ -423,9 +435,7 @@ namespace SceneryEditorX::Localization
 			default: break;
 		}
 #else
-		const char *fontconfigLanguage = script == I18n::Script::HanSimplified ? "zh-cn" : script == I18n::Script::HanTraditional ? "zh-tw" :
-			script == I18n::Script::Japanese ? "ja" : "ko";
-		if (std::optional<FontFile> matched = FontConfigMatch(fontconfigLanguage))
+		if (std::optional<FontFile> matched = FontConfigMatch(script))
 			candidates.push_back(*matched);
 		// Noto Sans CJK collections: JP, KR, SC, TC faces in that order
 		const int face = script == I18n::Script::Japanese ? 0 : script == I18n::Script::Korean ? 1 : script == I18n::Script::HanSimplified ? 2 : 3;
