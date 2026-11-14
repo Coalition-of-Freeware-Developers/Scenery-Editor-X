@@ -117,6 +117,10 @@ incomplete translations**, which also offers the pseudo-locale.
 
 Lookup falls back per string: the language's catalog, then its base language's (`pt_BR` → `pt`), then English.
 
+A language chosen in Preferences is saved at once. If its catalog later goes away (a translator removes their own
+`user:/locale` file, say), the editor starts in English and logs "Language '...' isn't available" at each start until
+another language is chosen; Preferences shows the saved tag until then. A catalog file over 32 MB isn't read.
+
 ### Adding a language
 
 1. If it isn't in `source/SceneryEditorX/i18n/languages.cpp`, add a row (tag in Weblate's form, names, script, CLDR

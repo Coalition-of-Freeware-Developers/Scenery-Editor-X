@@ -244,7 +244,9 @@ namespace SceneryEditorX
 			return;
 
 		// Merged once per script and kept until the editor closes: switching from Japanese to Chinese later keeps the
-		// Japanese font first, so shared Han characters keep its shapes until a restart
+		// Japanese font first, so shared Han characters keep its shapes until a restart. So the search below (file reads,
+		// fc-match on Linux) runs at most once per script per session, when a language change is applied between frames,
+		// never per frame
 		static std::set<I18n::Script> merged;
 		if (!merged.insert(language->script).second)
 			return;

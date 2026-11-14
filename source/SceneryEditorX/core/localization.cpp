@@ -38,6 +38,8 @@
 #include <SDL3/SDL_locale.h>
 #include <SDL3/SDL_stdinc.h>
 #include <algorithm>
+#include <charconv>
+#include <cstdint>
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
@@ -77,8 +79,18 @@ namespace SceneryEditorX::Localization
 			return state;
 		}
 
+		// The bundled catalogs are about 100 KB; anything this big isn't a catalog (and isn't read into memory)
+		constexpr std::uintmax_t MAX_CATALOG_BYTES = 32ull * 1024 * 1024;
+
 		std::optional<std::string> ReadFile(const std::filesystem::path &path)
 		{
+			std::error_code error;
+			const std::uintmax_t size = std::filesystem::file_size(path, error);
+			if (!error && size > MAX_CATALOG_BYTES)
+			{
+				SEDX_CORE_WARN_TAG(LOG_TAG, "{} is {} MB, more than a catalog can be: not read", VFS::ToUtf8(path), size / (1024 * 1024));
+				return std::nullopt;
+			}
 			std::ifstream file(path, std::ios::binary);
 			if (!file)
 				return std::nullopt;
@@ -170,7 +182,13 @@ namespace SceneryEditorX::Localization
 				SEDX_CORE_WARN_TAG(LOG_TAG, "fc-match found no font for '{}' (exit status {}; is fontconfig installed?)", language, status);
 				return std::nullopt;
 			}
-			Localization::FontFile font { output.substr(0, newline), std::atoi(output.c_str() + newline + 1) };
+			// The face index of a collection; anything that isn't a small number means the first face
+			int face = 0;
+			const char *index = output.c_str() + newline + 1;
+			const auto [end, parsed] = std::from_chars(index, output.c_str() + output.size(), face);
+			if (parsed != std::errc() || face < 0 || face > 255 || (*end != '\0' && *end != '\n' && *end != '\r'))
+				face = 0;
+			Localization::FontFile font { output.substr(0, newline), face };
 			if (font.path.empty() || !Exists(font.path))
 			{
 				SEDX_CORE_WARN_TAG(LOG_TAG, "fc-match named '{}' for '{}', which doesn't exist", font.path, language);
