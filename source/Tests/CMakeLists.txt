@@ -260,6 +260,42 @@ INCLUDE(Catch)
 catch_discover_tests(ConversionTests)
 
 # --------------------------------
+# I18n Tests (translation core: PO catalogs, plural rules, languages, formatting; standard library only)
+# --------------------------------
+
+MESSAGE(STATUS "=================================================")
+MESSAGE(STATUS "Generating I18n Unit Tests")
+
+FILE(GLOB I18N_TEST_SOURCES CONFIGURE_DEPENDS
+    ${CMAKE_CURRENT_SOURCE_DIR}/i18n_tests/*.cpp
+)
+FILE(GLOB I18N_CORE_SOURCES CONFIGURE_DEPENDS
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/i18n/*.cpp
+)
+
+ADD_EXECUTABLE(I18nTests
+    ${I18N_TEST_SOURCES}
+    ${I18N_CORE_SOURCES}
+)
+
+TARGET_INCLUDE_DIRECTORIES(I18nTests PRIVATE
+    ${CMAKE_SOURCE_DIR}/source
+)
+
+TARGET_LINK_LIBRARIES(I18nTests PRIVATE
+    Catch2::Catch2WithMain
+)
+
+# /utf-8: the target doesn't link spdlog, whose interface options give the other targets that flag
+IF(_SEDX_MSVCLIKE)
+    TARGET_COMPILE_OPTIONS(I18nTests PRIVATE /MP /W4 /utf-8)
+ELSE()
+    TARGET_COMPILE_OPTIONS(I18nTests PRIVATE -Wall -Wextra -Wpedantic)
+ENDIF()
+
+catch_discover_tests(I18nTests)
+
+# --------------------------------
 # X-Plane Format Tests (OBJ8, library.txt, scenery_packs.ini, apt.dat, airport index; standard library only)
 # --------------------------------
 

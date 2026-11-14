@@ -364,7 +364,7 @@ namespace SceneryEditorX
 				if (EditorAirports::OpenAirport(entry, m_Context))
 					m_SelectAirportTab = true;
 			}
-			EditorUI::ItemTooltip(source.source == PackageSource::GlobalScenery ? "Global Airports is read-only: Save As puts your edits in a pack of your own" : "Load the airport into the scene");
+			EditorUI::ItemTooltip(source.source == PackageSource::GlobalScenery ? Text("Global Airports is read-only: Save As puts your edits in a pack of your own") : Text("Load the airport into the scene"));
 			ImGui::SameLine();
 			if (ImGui::Button(EditorUI::IconLabel(SEDX_ICON_CLOUD_DOWNLOAD, "Gateway").c_str()))
 				SelectGatewayAirport(entry.icao.empty() ? entry.id : entry.icao);
@@ -468,7 +468,7 @@ namespace SceneryEditorX
 			ImGui::TextDisabled("The Gateway airport list hasn't been downloaded yet (about 20 MB)");
 		ImGui::SameLine();
 		ImGui::BeginDisabled(m_AirportsRequest != nullptr);
-		if (ImGui::Button(EditorUI::IconLabel(SEDX_ICON_CLOUD_DOWNLOAD, list ? "Refresh list" : "Download list").c_str()))
+		if (ImGui::Button(EditorUI::IconLabel(SEDX_ICON_CLOUD_DOWNLOAD, list ? Text("Refresh list") : Text("Download list")).c_str()))
 			m_AirportsRequest = GatewayClient::FetchAirports(true);
 		ImGui::EndDisabled();
 		EditorUI::ItemTooltip("Fetch https://gateway.x-plane.com/apiv1/airports (kept for a day)");
@@ -594,7 +594,7 @@ namespace SceneryEditorX
 			ImGui::OpenPopup(INSTALL_POPUP);
 		}
 		ImGui::EndDisabled();
-		EditorUI::ItemTooltip(recommended ? "Download the submission X-Plane ships and open it as a scenery pack" : "This airport has no recommended submission");
+		EditorUI::ItemTooltip(recommended ? Text("Download the submission X-Plane ships and open it as a scenery pack") : Text("This airport has no recommended submission"));
 		ImGui::SameLine();
 		ImGui::BeginDisabled(installing || m_SelectedScenery == 0);
 		if (ImGui::Button(EditorUI::IconLabel(SEDX_ICON_DOWNLOAD, "Install selected...").c_str()))
@@ -697,7 +697,7 @@ namespace SceneryEditorX
 
 		if (ImGui::Button(EditorUI::IconLabel(SEDX_ICON_FLOPPY_O, "Save").c_str()))
 			EditorAirports::SaveAirport();
-		EditorUI::ItemTooltip(document->IsReadOnly() ? "Read-only source: asks for a scenery pack folder" : "Write the pack's apt.dat");
+		EditorUI::ItemTooltip(document->IsReadOnly() ? Text("Read-only source: asks for a scenery pack folder") : Text("Write the pack's apt.dat"));
 		ImGui::SameLine();
 		if (ImGui::Button("Save As..."))
 			EditorAirports::SaveAirportAs();
@@ -939,7 +939,7 @@ namespace SceneryEditorX
 
 			// Validation
 			const std::vector<std::string> &problems = EditorAirports::GetValidationProblems();
-			if (EditorUI::SectionHeader(problems.empty() ? "VALIDATION" : "VALIDATION (PROBLEMS)"))
+			if (EditorUI::SectionHeader(problems.empty() ? Text("VALIDATION") : Text("VALIDATION (PROBLEMS)")))
 			{
 				if (problems.empty())
 				{

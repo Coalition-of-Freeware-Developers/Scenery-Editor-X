@@ -64,6 +64,12 @@ namespace SceneryEditorX::UI
 		return s_Fonts.at(fontName);
 	}
 
+	ImFont* Fonts::Find(const std::string& fontName)
+	{
+		const auto it = s_Fonts.find(fontName);
+		return it == s_Fonts.end() ? nullptr : it->second;
+	}
+
 	void Fonts::PushFont(const std::string& fontName)
 	{
 		const auto& io = ImGui::GetIO();

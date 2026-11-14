@@ -36,7 +36,8 @@ namespace SceneryEditorX::EditorWelcome
 {
 	/**
 	 * The first-launch setup (pick a navigation keymap: Blender, 3ds Max or Maya) and the Preferences window it leads
-	 * to (Edit > Preferences): navigation keymap and options, and the controls of the chosen keymap.
+	 * to (Edit > Preferences): navigation keymap and options, the controls of the chosen keymap, and the interface
+	 * language.
 	 *
 	 * The welcome shows once, when the preferences say no keymap was chosen yet. Runs started with command-line flags
 	 * (self-tests, captures, scripted exports) skip it unless --welcome asks for it.
@@ -48,8 +49,16 @@ namespace SceneryEditorX::EditorWelcome
 	/* @brief Draws the welcome modal and the Preferences window when they are open. Every frame. */
 	void Draw();
 
-	/* @brief Opens the Preferences window (on its navigation page). */
-	void OpenPreferences();
+	/* @brief The pages (tabs) of the Preferences window. */
+	enum class PreferencesPage
+	{
+		Navigation,
+		Tools,
+		Interface
+	};
+
+	/* @brief Opens the Preferences window on a page. */
+	void OpenPreferences(PreferencesPage page = PreferencesPage::Navigation);
 
 	/* @brief Opens the welcome again (Help menu). */
 	void OpenWelcome();

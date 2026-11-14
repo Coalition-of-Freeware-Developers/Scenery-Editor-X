@@ -29,15 +29,22 @@
  * -------------------------------------------------------
  */
 #include "ui_layer.h"
+#include "i18n_imgui.h"
 #include "ui_impl.h"
 #include "resources/fonts.h"
 #include "source/imgui/imgui.h"
 #include "source/imgui/backends/imgui_impl_sdl3.h"
+#include <SceneryEditorX/core/localization.h>
 #include <SceneryEditorX/core/resource/resource_cache.h>
 #include <SceneryEditorX/core/window/window.h>
 #include <SceneryEditorX/filesystem/vfs.h>
 #include <SceneryEditorX/logging/asserts.h>
 #include <SceneryEditorX/renderer/font/font_awesome.h>
+#include <cstdio>
+#include <fstream>
+#include <iterator>
+#include <memory>
+#include <set>
 
 // -------------------------------------------------------
 
@@ -48,6 +55,29 @@ namespace SceneryEditorX
 		// The dock layout and window placement, in ImGui's own format. Read and written through the VFS (ImGui's
 		// file IO is off): atomic writes, and the same roaming settings folder on Windows, macOS and Linux.
 		constexpr const char *INI_FILE = "user:/editor.ini";
+
+		// Every UI font's default size; the renderer backend rasterizes other sizes on demand
+		constexpr float FONT_SIZE = 15.0f;
+
+		// The UI fonts a language font is merged into (each must cover the language, or headers show '?')
+		constexpr const char *UI_FONTS[] = { "Default", "Light", "Medium", "SemiBold", "Bold" };
+
+		/* @brief Decodes UTF-8 into code points (for glyph coverage checks). */
+		std::vector<unsigned> CodePoints(const std::string_view text)
+		{
+			std::vector<unsigned> points;
+			for (std::size_t i = 0; i < text.size();)
+			{
+				const unsigned char lead = static_cast<unsigned char>(text[i]);
+				const std::size_t length = lead < 0x80 ? 1 : (lead & 0xE0) == 0xC0 ? 2 : (lead & 0xF0) == 0xE0 ? 3 : 4;
+				unsigned point = length == 1 ? lead : length == 2 ? lead & 0x1F : length == 3 ? lead & 0x0F : lead & 0x07;
+				for (std::size_t k = 1; k < length && i + k < text.size(); ++k)
+					point = (point << 6) | (static_cast<unsigned char>(text[i + k]) & 0x3F);
+				points.push_back(point);
+				i += length;
+			}
+			return points;
+		}
 
 		void LoadIniSettings()
 		{
@@ -94,6 +124,8 @@ namespace SceneryEditorX
 		ImGui::GetStyle().FontScaleDpi = Window::GetDpiScale();
 
 		LoadFonts();
+		MergeLanguageFont();
+		I18n::ApplyImGuiLocalization();
 
 		SDL_Window *window = Window::GetWindow();
 		SEDX_CORE_ASSERT(window != nullptr, "SDL_Window is null when initializing ImGui SDL backend");
@@ -145,6 +177,13 @@ namespace SceneryEditorX
 	{
 		if (!m_Initialized)
 			return;
+
+		// A language chosen in Preferences takes effect here, between frames: its font may have to be merged first
+		if (Localization::ApplyPendingChange())
+		{
+			MergeLanguageFont();
+			I18n::ApplyImGuiLocalization();
+		}
 
 		UI::NewFrame();
 		ImGui_ImplSDL3_NewFrame();
@@ -201,8 +240,7 @@ namespace SceneryEditorX
 			return;
 		}
 
-		// Sizes are the defaults for each font; the renderer backend rasterizes other sizes on demand.
-		constexpr float baseSize = 15.0f;
+		constexpr float baseSize = FONT_SIZE;
 
 		UI::Fonts::Add({ .FontName = "Default", .FilePath = fontDir + "opensans/OpenSans-Regular.ttf", .Size = baseSize }, true);
 
@@ -213,6 +251,63 @@ namespace SceneryEditorX
 		UI::Fonts::Add({ .FontName = "Medium",   .FilePath = fontDir + "opensans/OpenSans-Medium.ttf",   .Size = baseSize });
 		UI::Fonts::Add({ .FontName = "SemiBold", .FilePath = fontDir + "opensans/OpenSans-SemiBold.ttf", .Size = baseSize });
 		UI::Fonts::Add({ .FontName = "Bold",     .FilePath = fontDir + "opensans/OpenSans-Bold.ttf",     .Size = baseSize });
+	}
+
+	void UILayer::MergeLanguageFont()
+	{
+		const I18n::LanguageInfo *language = I18n::GetLanguageInfo();
+		if (!language || !language->NeedsCjkFont() || !UI::Fonts::Find("Default"))
+			return;
+
+		// Merged once per script and kept until the editor closes: switching from Japanese to Chinese later keeps the
+		// Japanese font first, so shared Han characters keep its shapes until a restart
+		static std::set<I18n::Script> merged;
+		if (!merged.insert(language->script).second)
+			return;
+
+		const std::optional<Localization::FontFile> font = Localization::FindLanguageFont(*language);
+		if (!font)
+		{
+			SEDX_CORE_WARN_TAG("UILayer", "No font for {} found: install the {} language fonts of the operating system, or set ui.language_font "
+				"in settings.cfg to a font file. Its text shows as '?' until then", language->englishName, language->englishName);
+			return;
+		}
+
+		// Read once and shared by the five UI fonts; the atlas doesn't own it, so it stays for the whole session
+		static std::vector<std::unique_ptr<std::string>> fontData;
+		std::ifstream file(VFS::FromUtf8(font->path), std::ios::binary);
+		auto data = std::make_unique<std::string>(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
+		if (data->empty())
+		{
+			SEDX_CORE_WARN_TAG("UILayer", "Can't read the {} font {}", language->englishName, font->path);
+			return;
+		}
+
+		ImGuiIO &io = ImGui::GetIO();
+		for (const char *name : UI_FONTS)
+		{
+			ImFont *target = UI::Fonts::Find(name);
+			if (!target)
+				continue;
+			ImFontConfig config;
+			config.MergeMode = true;
+			config.DstFont = target;
+			config.FontNo = static_cast<ImU32>(font->face);
+			config.FontDataOwnedByAtlas = false;
+			std::snprintf(config.Name, sizeof(config.Name), "%.*s (%s)", static_cast<int>(language->englishName.size()), language->englishName.data(), name);
+			io.Fonts->AddFontFromMemoryTTF(data->data(), static_cast<int>(data->size()), FONT_SIZE, &config);
+		}
+
+		std::size_t missing = 0;
+		ImFont *regular = UI::Fonts::Find("Default");
+		for (const unsigned point : CodePoints(language->Sample()))
+			if (point <= 0xFFFF && !regular->IsGlyphInFont(static_cast<ImWchar>(point)))
+				++missing;
+		if (missing > 0)
+			SEDX_CORE_WARN_TAG("UILayer", "{} (face {}) lacks {} of the {} sample characters", font->path, font->face, missing, language->englishName);
+		SEDX_CORE_INFO_TAG("UILayer", "Merged {} (face {}, {:.1f} MB) into the UI fonts for {}", font->path, font->face,
+			static_cast<double>(data->size()) / (1024.0 * 1024.0), language->englishName);
+		fontData.push_back(std::move(data));
 	}
 
 } // namespace SceneryEditorX

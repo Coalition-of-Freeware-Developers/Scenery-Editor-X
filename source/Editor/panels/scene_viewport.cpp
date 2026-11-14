@@ -280,10 +280,10 @@ namespace SceneryEditorX
 			ImGui::EndPopup();
 		}
 		ImGui::SameLine(0.0f, 2.0f * dpi);
-		if (EditorUI::StripButton(settings.localSpace ? SEDX_ICON_CUBE : SEDX_ICON_GLOBE, settings.localSpace ? "Gizmo: local axes (X)\nClick for world axes" : "Gizmo: world axes (X)\nClick for the active object's axes", settings.localSpace, buttonSize, EditorUI::StripStyle::Tinted))
+		if (EditorUI::StripButton(settings.localSpace ? SEDX_ICON_CUBE : SEDX_ICON_GLOBE, settings.localSpace ? Text("Gizmo: local axes (X)\nClick for world axes") : Text("Gizmo: world axes (X)\nClick for the active object's axes"), settings.localSpace, buttonSize, EditorUI::StripStyle::Tinted))
 			settings.localSpace = !settings.localSpace;
 		ImGui::SameLine(0.0f, 2.0f * dpi);
-		if (EditorUI::StripButton(SEDX_ICON_DOT_CIRCLE_O, settings.pivotActive ? "Pivot: the active object\nClick to turn and scale about the selection's center" : "Pivot: the selection's center\nClick to turn and scale about the active object", settings.pivotActive, buttonSize, EditorUI::StripStyle::Tinted))
+		if (EditorUI::StripButton(SEDX_ICON_DOT_CIRCLE_O, settings.pivotActive ? Text("Pivot: the active object\nClick to turn and scale about the selection's center") : Text("Pivot: the selection's center\nClick to turn and scale about the active object"), settings.pivotActive, buttonSize, EditorUI::StripStyle::Tinted))
 			settings.pivotActive = !settings.pivotActive;
 
 		if (EditorTools::GetTool() == EditorTools::Tool::Nodes)
@@ -328,9 +328,8 @@ namespace SceneryEditorX
 			ImGui::SameLine(0.0f, 8.0f * dpi);
 			ImGui::BeginDisabled(!shapes || !NodeTool::CanUseBSpline());
 			const bool spline = NodeTool::IsBSplineActive();
-			if (EditorUI::StripButton(SEDX_ICON_DIAMOND, spline ? "B-spline (Shift+B)\nEditing the control polygon: click to go back to nodes and handles"
-															   : "B-spline (Shift+B)\nEdit the selected chains through a control polygon: the curve stays smooth (C2)\n"
-																 "and only changes near the points that move. Nodes become the control points",
+			if (EditorUI::StripButton(SEDX_ICON_DIAMOND, spline ? Text("B-spline (Shift+B)\nEditing the control polygon: click to go back to nodes and handles") : Text("B-spline (Shift+B)\nEdit the selected chains through a control polygon: the curve stays smooth (C2)\n"
+																 "and only changes near the points that move. Nodes become the control points"),
 					spline, buttonSize, EditorUI::StripStyle::Tinted))
 				NodeTool::SetBSpline(!spline);
 			ImGui::EndDisabled();
@@ -338,7 +337,7 @@ namespace SceneryEditorX
 			bool closed = false;
 			const bool closable = NodeTool::CanToggleClosed(&closed);
 			ImGui::BeginDisabled(!closable);
-			if (EditorUI::StripButton(SEDX_ICON_CIRCLE_O_NOTCH, closed ? "Open the line at its selected node (or its first)" : "Close the line (lines and strings)\nOr Ctrl+click its other end with one end selected",
+			if (EditorUI::StripButton(SEDX_ICON_CIRCLE_O_NOTCH, closed ? Text("Open the line at its selected node (or its first)") : Text("Close the line (lines and strings)\nOr Ctrl+click its other end with one end selected"),
 					closable && closed, buttonSize, EditorUI::StripStyle::Tinted))
 				NodeTool::ToggleClosed();
 			ImGui::EndDisabled();
@@ -424,7 +423,7 @@ namespace SceneryEditorX
 		// Projection toggle (numpad 5), then the view presets in a drop-down
 		const bool orthographic = EditorCamera::IsProjection(CameraType::Orthographic);
 		if (EditorUI::StripButton(orthographic ? SEDX_ICON_TH_LARGE : SEDX_ICON_CUBE,
-				orthographic ? "Orthographic projection (Numpad 5)\nClick for perspective" : "Perspective projection (Numpad 5)\nClick for orthographic", orthographic, buttonSize, EditorUI::StripStyle::Tinted))
+				orthographic ? Text("Orthographic projection (Numpad 5)\nClick for perspective") : Text("Perspective projection (Numpad 5)\nClick for orthographic"), orthographic, buttonSize, EditorUI::StripStyle::Tinted))
 			EditorCamera::ToggleProjection();
 
 		using ViewportCamera::ViewPreset;

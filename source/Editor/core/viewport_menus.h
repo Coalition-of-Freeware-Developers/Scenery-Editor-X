@@ -36,6 +36,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <SceneryEditorX/i18n/message.h>
 
 // -------------------------------------------------------
 
@@ -62,7 +63,7 @@ namespace SceneryEditorX::ViewportMenus
 	using MenuDrawer = std::function<void()>;
 
 	/* @brief The menu bar's menus (name, items), for the hotbox's top row. */
-	void SetMainMenus(std::vector<std::pair<std::string, MenuDrawer>> menus);
+	void SetMainMenus(std::vector<std::pair<Msg, MenuDrawer>> menus);
 
 	/**
 	 * @brief Opens the quad menu at a screen position.

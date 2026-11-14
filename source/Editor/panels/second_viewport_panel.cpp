@@ -299,8 +299,7 @@ namespace SceneryEditorX
 		presetButton("Right", ViewPreset::Right, "Look west (Numpad 3; Ctrl for the left side)");
 
 		ImGui::SameLine(0.0f, 8.0f * dpi);
-		if (EditorUI::StripButton(m_Rig.orthographic ? SEDX_ICON_SQUARE_O : SEDX_ICON_CUBE, m_Rig.orthographic ? "Orthographic\nClick for perspective (Numpad 5)" :
-			"Perspective\nClick for orthographic (Numpad 5)", m_Rig.orthographic, buttonSize))
+		if (EditorUI::StripButton(m_Rig.orthographic ? SEDX_ICON_SQUARE_O : SEDX_ICON_CUBE, m_Rig.orthographic ? Text("Orthographic\nClick for perspective (Numpad 5)") : Text("Perspective\nClick for orthographic (Numpad 5)"), m_Rig.orthographic, buttonSize))
 			ViewportCamera::Controller::SetOrthographic(m_Rig, !m_Rig.orthographic);
 		ImGui::SameLine(0.0f, 2.0f * dpi);
 		if (EditorUI::StripButton(SEDX_ICON_ARROWS_ALT, "Frame the airport (Home)", false, buttonSize))

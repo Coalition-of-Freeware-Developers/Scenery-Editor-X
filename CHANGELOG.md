@@ -9,6 +9,22 @@ versions.
 
 ### Added
 
+- **Interface languages** (0.2.90.591). The editor can show its menus, panels and messages in other languages:
+  **Edit › Preferences › Interface** (or **Help › Language...**) switches at once, without a restart, and
+  `ui.language = "system"` in `settings.cfg` (the new default) follows the operating system's languages; `--language
+  <tag>` picks one for a run. German and Japanese ship as machine-drafted catalogs for native speakers to review;
+  translations are made on Hosted Weblate (`docs/localization-translator-guide.md`). Chinese, Japanese and Korean use
+  the system's regional font, merged into the UI fonts when chosen. Translated widgets keep their English IDs, so the
+  docking layout and window state stay as they are. `--language qps-ploc` (the pseudo-locale) shows which text isn't
+  translatable yet, `--i18n-log-missing` lists the strings a language lacks, and a translator's copy in the settings
+  folder's `locale` folder replaces the bundled one (**Help › Reload Translations**). For developers: the `Tr`, `TrL`,
+  `TrF`, `TrN`, `TrNF`, `Ctx` and `TrNoop` functions and the `Text` parameter type (`source/SceneryEditorX/i18n`,
+  standard library only, `I18nTests`), `tools/i18n/sedx_i18n.py` (extract, update, check, lint), and the
+  **Localization** workflow, which refreshes `resources/locale` on every pull request into `dev`
+  (`docs/localization-system-documentation.md`). The `EditorUI` helpers translate their text, which covers most panel
+  labels and tooltips; the remaining direct ImGui literals are listed in `tools/i18n/lint_baseline.txt` and converted
+  area by area.
+
 - Windows setup: **Settings › Apps › Installed apps › Scenery Editor X › Modify** (Control Panel's **Change**) opens
   setup's Update / Repair / Uninstall page, so the editor can be repaired without the setup file it was installed from.
   Setup keeps a copy of itself in the install folder for that (`setup\SceneryEditorX-Setup.exe`); Settings offered only

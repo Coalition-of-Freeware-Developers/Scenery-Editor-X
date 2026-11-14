@@ -37,9 +37,9 @@
 
 namespace SceneryEditorX::EditorUI
 {
-	bool BeginPanel(const char *name, bool *open, const ImGuiWindowFlags flags)
+	bool BeginPanel(const Text name, bool *open, const ImGuiWindowFlags flags)
 	{
-		const bool visible = ImGui::Begin(name, open, flags);
+		const bool visible = ImGui::Begin(TrL(name), open, flags);
 
 		// Substance marks the active panel tab with an accent underline rather than a filled tab.
 		ImGuiWindow *window = ImGui::GetCurrentWindow();
@@ -65,7 +65,7 @@ namespace SceneryEditorX::EditorUI
 		ImGui::End();
 	}
 
-	bool SectionHeader(const char *label, const bool defaultOpen)
+	bool SectionHeader(const Text label, const bool defaultOpen)
 	{
 		// Plain uppercase label like Substance's "GENERAL PROPERTIES"; no frame, still collapsible.
 		ImGui::Spacing();
@@ -77,7 +77,7 @@ namespace SceneryEditorX::EditorUI
 		if (defaultOpen)
 			flags |= ImGuiTreeNodeFlags_DefaultOpen;
 
-		const bool open = ImGui::TreeNodeEx(label, flags);
+		const bool open = ImGui::TreeNodeEx(TrL(label), flags);
 
 		ImGui::PopStyleColor(2);
 		UI::Fonts::PopFont();
@@ -98,13 +98,13 @@ namespace SceneryEditorX::EditorUI
 		return true;
 	}
 
-	void PropertyLabel(const char *label)
+	void PropertyLabel(const Text label)
 	{
 		ImGui::TableNextRow();
 		ImGui::TableNextColumn();
 		ImGui::AlignTextToFramePadding();
 		ImGui::PushStyleColor(ImGuiCol_Text, EditorTheme::ToStyle(EditorTheme::Palette::TextLabel));
-		ImGui::TextUnformatted(label);
+		ImGui::TextUnformatted(label.Get());
 		ImGui::PopStyleColor();
 		ImGui::TableNextColumn();
 		ImGui::SetNextItemWidth(-FLT_MIN);
@@ -115,7 +115,7 @@ namespace SceneryEditorX::EditorUI
 		ImGui::EndTable();
 	}
 
-	bool StripButton(const char *icon, const char *tooltip, const bool active, const float size, const StripStyle style)
+	bool StripButton(const char *icon, const Text tooltip, const bool active, const float size, const StripStyle style)
 	{
 		using namespace EditorTheme;
 
@@ -142,29 +142,35 @@ namespace SceneryEditorX::EditorUI
 		return clicked;
 	}
 
-	void EmptyState(const char *text)
+	void EmptyState(const Text text)
 	{
 		ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
-		ImGui::TextUnformatted(text);
+		ImGui::TextUnformatted(text.Get());
 		ImGui::PopStyleColor();
 	}
 
 	void SearchFilter(const char *id, ImGuiTextFilter &filter, const float width)
 	{
 		ImGui::SetNextItemWidth(width);
-		if (ImGui::InputTextWithHint(id, "Search", filter.InputBuf, IM_COUNTOF(filter.InputBuf)))
+		// TRANSLATORS: Placeholder in the search boxes of the panels
+		if (ImGui::InputTextWithHint(id, Tr("Search"), filter.InputBuf, IM_COUNTOF(filter.InputBuf)))
 			filter.Build();
 	}
 
-	void ItemTooltip(const char *text)
+	void ItemTooltip(const Text text)
 	{
-		if (text && text[0] != '\0' && ImGui::IsItemHovered(ImGuiHoveredFlags_ForTooltip))
-			ImGui::SetTooltip("%s", text);
+		// Translated only when shown: most frames hover nothing
+		if (!text.IsEmpty() && ImGui::IsItemHovered(ImGuiHoveredFlags_ForTooltip))
+			ImGui::SetTooltip("%s", text.Get());
 	}
 
-	std::string IconLabel(const char *icon, const char *label)
+	std::string IconLabel(const char *icon, const Text label)
 	{
-		return std::string(icon) + "  " + label;
+		std::string original = std::string(icon) + "  " + label.Source();
+		const char *translated = label.Get();
+		if (translated == label.Source())
+			return original;	// English, untranslated or a run-time string: the label as before
+		return I18n::MakeLabel(std::string(icon) + "  " + translated, original);
 	}
 
 }

@@ -218,3 +218,5 @@ build_linux_tests
 # The user manual's built website and PDFs (python docs/manual/build.py), and its scripts' bytecode
 docs/manual/site/
 docs/manual/**/__pycache__/
+# Python bytecode (tools/i18n and other scripts)
+__pycache__/

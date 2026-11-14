@@ -292,7 +292,7 @@ namespace SceneryEditorX
 		// User interface settings
 		defaultString("ui.theme", "dark");
 		defaultInt("ui.font_size", 12);
-		defaultString("ui.language", "english");
+		defaultString("ui.language", "system");	// Or a catalog tag ("de", "ja"): core/localization.h
 
 		// Project settings
 		defaultBool("project.auto_save", true);

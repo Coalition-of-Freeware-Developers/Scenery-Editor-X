@@ -113,6 +113,9 @@ namespace SceneryEditorX
 		/* @brief Loads the default UI fonts; FontAwesome is merged into the default font for inline icons. */
 		void LoadFonts();
 
+		/* @brief Merges a font for the active language's script into the UI fonts when Open Sans lacks it (CJK). */
+		void MergeLanguageFont();
+
 		Scope<UIRenderer> m_UIRenderer;					// Legacy hook for older panels; rendering goes through UI::RenderMainViewport().
 		std::vector<Ref<UI::EditorPanel>> m_UIPanels;	// List of editor panels managed by the UILayer.
 		bool m_EnableViewports = true;

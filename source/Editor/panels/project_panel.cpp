@@ -271,7 +271,7 @@ namespace SceneryEditorX
 			const std::string label = airport.airport.id + "  " + airport.airport.name;
 			if (ImGui::Selectable(label.c_str(), isShown) && !isShown)
 				EditorProjects::ShowAirport(airport.airport.id, m_Context);
-			EditorUI::ItemTooltip(isShown ? "Shown in the airport editor (AIRPORTS > Airport)\nRight-click to remove it from the project" : "Show in the airport editor\nRight-click to remove it from the project");
+			EditorUI::ItemTooltip(isShown ? Text("Shown in the airport editor (AIRPORTS > Airport)\nRight-click to remove it from the project") : Text("Show in the airport editor\nRight-click to remove it from the project"));
 			if (ImGui::BeginPopupContextItem("##AirportMenu"))
 			{
 				if (ImGui::MenuItem("Remove from project"))

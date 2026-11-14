@@ -311,7 +311,7 @@ namespace SceneryEditorX
 		}
 
 		if (shown == 0)
-			EditorUI::EmptyState(searching ? "No assets match the search" : "This folder is empty");
+			EditorUI::EmptyState(searching ? Text("No assets match the search") : Text("This folder is empty"));
 
 		if (!navigateTo.empty())
 			Navigate(navigateTo);

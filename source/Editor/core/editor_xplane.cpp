@@ -298,7 +298,7 @@ namespace SceneryEditorX::EditorXPlane
 		using namespace XPlane;
 
 		const bool playing = Datarefs::IsPlaying();
-		if (ImGui::Button(EditorUI::IconLabel(playing ? SEDX_ICON_PAUSE : SEDX_ICON_PLAY, playing ? "Pause" : "Play").c_str()))
+		if (ImGui::Button(EditorUI::IconLabel(playing ? SEDX_ICON_PAUSE : SEDX_ICON_PLAY, playing ? Text("Pause") : Text("Play")).c_str()))
 			Datarefs::SetPlaying(!playing);
 		EditorUI::ItemTooltip("Run or freeze the sim clock that drives object animation");
 

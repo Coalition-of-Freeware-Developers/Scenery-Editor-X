@@ -30,10 +30,17 @@
  */
 #pragma once
 #include <string>
+#include <SceneryEditorX/i18n/tr.h>
+#include <SceneryEditorX/renderer/ui/i18n_imgui.h>
 #include <SceneryEditorX/renderer/ui/source/imgui/imgui.h>
 
 // -------------------------------------------------------
 
+/**
+ * The helpers take their text as a Text (i18n/tr.h): a string literal is translated (and extracted into
+ * resources/locale/sedx.pot by tools/i18n/sedx_i18n.py), a run-time string (a name, a path) is shown as it is.
+ * EditorUI::PropertyLabel("Heading") needs no Tr(). Labels that are ImGui IDs keep their English IDs (TrL).
+ */
 namespace SceneryEditorX::EditorUI
 {
 	/**
@@ -44,7 +51,8 @@ namespace SceneryEditorX::EditorUI
 	 * @param flags Extra ImGui window flags.
 	 * @return True when the panel's contents are visible.
 	 */
-	bool BeginPanel(const char *name, bool *open = nullptr, ImGuiWindowFlags flags = 0);
+	// TRANSLATORS: A panel title, shown in capitals: write it in capitals too if your script has them.
+	bool BeginPanel(Text name, bool *open = nullptr, ImGuiWindowFlags flags = 0);
 
 	/* @brief Ends a panel started with BeginPanel(). */
 	void EndPanel();
@@ -53,7 +61,8 @@ namespace SceneryEditorX::EditorUI
 	 * @brief Collapsible uppercase section header ("GENERAL PROPERTIES", "TRANSFORM", ...).
 	 * @return True when the section is expanded.
 	 */
-	bool SectionHeader(const char *label, bool defaultOpen = true);
+	// TRANSLATORS: A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+	bool SectionHeader(Text label, bool defaultOpen = true);
 
 	/**
 	 * @brief Starts a two-column label / value grid. Follow each PropertyLabel() with exactly one widget.
@@ -62,7 +71,7 @@ namespace SceneryEditorX::EditorUI
 	bool BeginPropertyGrid(const char *id, float labelWidth = 120.0f);
 
 	/* @brief Starts a grid row: draws the label in Palette::TextLabel and moves to a full-width value cell. */
-	void PropertyLabel(const char *label);
+	void PropertyLabel(Text label);
 
 	/* @brief Ends a grid started with BeginPropertyGrid(). */
 	void EndPropertyGrid();
@@ -81,10 +90,10 @@ namespace SceneryEditorX::EditorUI
 	 * @brief Square icon button for the tool strips.
 	 * @return True when clicked.
 	 */
-	bool StripButton(const char *icon, const char *tooltip, bool active, float size, StripStyle style = StripStyle::Filled);
+	bool StripButton(const char *icon, Text tooltip, bool active, float size, StripStyle style = StripStyle::Filled);
 
 	/* @brief Draws dim text in the top-left of the remaining panel area (e.g. "No properties found"). */
-	void EmptyState(const char *text);
+	void EmptyState(Text text);
 
 	/**
 	 * @brief Search box for an ImGuiTextFilter with a "Search" placeholder; rebuilds the filter when edited.
@@ -95,10 +104,10 @@ namespace SceneryEditorX::EditorUI
 	void SearchFilter(const char *id, ImGuiTextFilter &filter, float width = -FLT_MIN);
 
 	/* @brief Shows a delayed tooltip for the last item. */
-	void ItemTooltip(const char *text);
+	void ItemTooltip(Text text);
 
-	/* @brief Joins an icon glyph and a label ("<icon>  Label") for buttons and menu items. */
-	std::string IconLabel(const char *icon, const char *label);
+	/* @brief Joins an icon glyph and a label ("<icon>  Label") for buttons and menu items; the ID stays the English one. */
+	std::string IconLabel(const char *icon, Text label);
 
 }
 

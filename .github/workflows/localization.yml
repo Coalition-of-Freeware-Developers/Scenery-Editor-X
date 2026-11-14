@@ -1,0 +1,140 @@
+# Keeps the translation template and catalogs (resources/locale) in step with the code. On every pull request into dev
+# that touches the source, it extracts the translatable strings (tools/i18n/sedx_i18n.py extract), brings the
+# catalogs in line with them (update), lists the text the pull request adds and removes in the run summary, checks the
+# catalogs and the Dear ImGui calls (check, lint), and commits the refreshed files to the pull request's branch.
+# After the merge, Hosted Weblate picks the new template up from dev and its translators see the new strings.
+#
+# Pull requests from forks can't be pushed to with the workflow's token: there the job fails and uploads the changes
+# as a patch, with the commands to run. Pushes to dev only report, since dev takes changes through pull requests.
+# A commit made with the workflow's token doesn't start other workflows, so the unit tests keep the results of the
+# commit before it (which differs only in resources/locale). Pull before pushing again to a branch it committed to.
+name: Localization
+
+on:
+  pull_request:
+    branches: [ dev ]
+    paths:
+      - source/**
+      - resources/locale/**
+      - tools/i18n/**
+      - .github/workflows/localization.yml
+  push:
+    branches: [ dev ]
+    paths:
+      - source/**
+      - resources/locale/**
+      - tools/i18n/**
+      - .github/workflows/localization.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: localization-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tool-tests:
+    name: Tool tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest, macos-latest, windows-latest ]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+
+      - name: sedx_i18n.py unit tests
+        run: python -I -m unittest discover -s tools/i18n -p "test_*.py" -v
+
+  template:
+    name: Template and catalogs
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write   # Commits the refreshed files to the pull request's branch
+    env:
+      SAME_REPOSITORY: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
+      HEAD_REF: ${{ github.head_ref }}
+      BASE_REF: ${{ github.base_ref || 'dev' }}
+    steps:
+      # A pull request from this repository: its branch, so the refreshed files can be committed on top of it.
+      # Anything else: the default (a fork's merge commit, or the pushed commit).
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref || '' }}
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+
+      - name: Template on the base branch
+        run: |
+          if git fetch --quiet --depth=1 origin "$BASE_REF" && git show "FETCH_HEAD:resources/locale/sedx.pot" > "$RUNNER_TEMP/base.pot" 2> /dev/null; then
+            echo "Comparing with the template on $BASE_REF"
+          else
+            : > "$RUNNER_TEMP/base.pot"
+            echo "$BASE_REF has no template yet: every message counts as new"
+          fi
+
+      - name: Extract the strings and update the catalogs
+        id: extract
+        run: |
+          python -I tools/i18n/sedx_i18n.py extract
+          python -I tools/i18n/sedx_i18n.py update
+
+      - name: Summary of the text changes
+        run: python -I tools/i18n/sedx_i18n.py changes "$RUNNER_TEMP/base.pot" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Check the catalogs
+        run: python -I tools/i18n/sedx_i18n.py check
+
+      - name: Untranslated Dear ImGui text
+        run: python -I tools/i18n/sedx_i18n.py lint
+
+      - name: Commit the refreshed files
+        id: commit
+        if: ${{ !cancelled() && steps.extract.outcome == 'success' }}
+        run: |
+          if [ -z "$(git status --porcelain -- resources/locale)" ]; then
+            echo "The template and catalogs match the code." | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          git status --short -- resources/locale
+          if [ "$SAME_REPOSITORY" != "true" ]; then
+            git add -N -- resources/locale
+            git diff -- resources/locale > "$RUNNER_TEMP/localization.patch"
+            message="The translation template is out of date. Run python -I tools/i18n/sedx_i18n.py extract, then python -I tools/i18n/sedx_i18n.py update, and commit resources/locale (or apply the localization-patch artifact)."
+            if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
+              echo "::error::$message"
+              echo "$message" >> "$GITHUB_STEP_SUMMARY"
+              echo "patch=true" >> "$GITHUB_OUTPUT"
+              exit 1
+            fi
+            echo "::warning::$message"
+            echo "patch=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- resources/locale
+          git commit --quiet -m "Update the translation template and catalogs" \
+            -m "Extracted from the code by the localization workflow (tools/i18n/sedx_i18n.py extract and update)."
+          git push origin "HEAD:refs/heads/$HEAD_REF"
+          echo "Committed the refreshed template and catalogs to $HEAD_REF: pull before pushing to it again." | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the changes as a patch
+        if: ${{ always() && steps.commit.outputs.patch == 'true' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: localization-patch
+          path: ${{ runner.temp }}/localization.patch
+          if-no-files-found: ignore
