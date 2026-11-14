@@ -135,9 +135,19 @@ jobs:
           git commit --quiet -m "Update the translation template and catalogs" \
             -m "Extracted from the code by the localization workflow (tools/i18n/sedx_i18n.py extract and update)."
           if ! git push origin "HEAD:refs/heads/$HEAD_REF"; then
-            echo "::notice::$HEAD_REF moved while this ran: the run for its newer commit refreshes the files instead."
-            echo "$HEAD_REF moved while this ran; the run for its newer commit refreshes the files." >> "$GITHUB_STEP_SUMMARY"
-            exit 0
+            # Only a branch that moved since the checkout is fine (the run for its newer commit refreshes the files);
+            # anything else (a protected branch, a token without write access, a network failure) fails the job
+            started=$(git rev-parse HEAD~1)
+            now=$(git ls-remote origin "refs/heads/$HEAD_REF" | cut -f1)
+            if [ -n "$now" ] && [ "$now" != "$started" ]; then
+              echo "::notice::$HEAD_REF moved while this ran: the run for its newer commit refreshes the files instead."
+              echo "$HEAD_REF moved while this ran; the run for its newer commit refreshes the files." >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            echo "::error::Couldn't push the refreshed template and catalogs to $HEAD_REF. Run python -I tools/i18n/sedx_i18n.py extract and update, and commit resources/locale (or apply the localization-patch artifact)."
+            git format-patch -1 --stdout > "$RUNNER_TEMP/localization.patch"
+            echo "patch=true" >> "$GITHUB_OUTPUT"
+            exit 1
           fi
           echo "Committed the refreshed template and catalogs to $HEAD_REF: pull before pushing to it again." | tee -a "$GITHUB_STEP_SUMMARY"
 
