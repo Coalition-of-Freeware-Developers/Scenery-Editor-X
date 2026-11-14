@@ -244,11 +244,12 @@ namespace SceneryEditorX
 			return;
 
 		// Merged once per script and kept until the editor closes: switching from Japanese to Chinese later keeps the
-		// Japanese font first, so shared Han characters keep its shapes until a restart. So the search below (file reads,
-		// fc-match on Linux) runs at most once per script per session, when a language change is applied between frames,
-		// never per frame
+		// Japanese font first, so shared Han characters keep its shapes until a restart. A script counts as merged only
+		// once a font was merged for it, so after a failed search (no font installed yet, a bad ui.language_font) choosing
+		// the language again or Reload Translations searches again. The search (file reads, fc-match on Linux) runs when a
+		// language change is applied between frames, never per frame
 		static std::set<I18n::Script> merged;
-		if (!merged.insert(language->script).second)
+		if (merged.contains(language->script))
 			return;
 
 		// The first candidate that has every character of the language's sample (the user's own choice whatever it has);
@@ -292,6 +293,7 @@ namespace SceneryEditorX
 		static std::vector<std::unique_ptr<std::string>> fontData;
 
 		ImGuiIO &io = ImGui::GetIO();
+		int mergedInto = 0;
 		for (const char *name : UI_FONTS)
 		{
 			ImFont *target = UI::Fonts::Find(name);
@@ -303,12 +305,20 @@ namespace SceneryEditorX
 			config.FontNo = static_cast<ImU32>(font->face);
 			config.FontDataOwnedByAtlas = false;
 			std::snprintf(config.Name, sizeof(config.Name), "%.*s (%s)", static_cast<int>(language->englishName.size()), language->englishName.data(), name);
-			io.Fonts->AddFontFromMemoryTTF(data->data(), static_cast<int>(data->size()), FONT_SIZE, &config);
+			if (io.Fonts->AddFontFromMemoryTTF(data->data(), static_cast<int>(data->size()), FONT_SIZE, &config))
+				++mergedInto;
+		}
+		// The atlas keeps pointing at the data even when a merge failed, so it stays alive either way
+		fontData.push_back(std::move(data));
+		if (mergedInto == 0)
+		{
+			SEDX_CORE_WARN_TAG("UILayer", "Dear ImGui couldn't load {} (face {}) for {}", font->path, font->face, language->englishName);
+			return;
 		}
 
+		merged.insert(language->script);
 		SEDX_CORE_INFO_TAG("UILayer", "Merged {} (face {}, {:.1f} MB) into the UI fonts for {}", font->path, font->face,
-			static_cast<double>(data->size()) / (1024.0 * 1024.0), language->englishName);
-		fontData.push_back(std::move(data));
+			static_cast<double>(fontData.back()->size()) / (1024.0 * 1024.0), language->englishName);
 	}
 
 } // namespace SceneryEditorX

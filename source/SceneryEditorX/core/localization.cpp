@@ -290,6 +290,18 @@ namespace SceneryEditorX::Localization
 
 	void RequestLanguage(const std::string_view setting)
 	{
+		// Only what can be used is saved: "system", English, the pseudo-locale or a catalog that exists now (Preferences
+		// offers nothing else). A saved catalog that goes away later is handled at startup (English, with a warning)
+		const std::string tag = I18n::NormalizeTag(setting);
+		const std::vector<std::string> available = I18n::GetAvailableTags();
+		const bool known = setting == SYSTEM || tag == I18n::SOURCE_LANGUAGE || setting == I18n::PSEUDO_LANGUAGE ||
+			std::find(available.begin(), available.end(), tag) != available.end();
+		if (!known)
+		{
+			SEDX_CORE_WARN_TAG(LOG_TAG, "No catalog for language '{}': the language stays as it is", setting);
+			return;
+		}
+
 		State &s = S();
 		s.pending = std::string(setting);
 		if (s.settings && setting != I18n::PSEUDO_LANGUAGE)	// The pseudo-locale is a test, not a choice to keep
