@@ -50,6 +50,11 @@
  *
  * Threads: lookups may run on any thread. Catalogs are never freed before shutdown (or Reset()), so the const char*
  * a lookup returns stays valid for the session. SetLanguage, SetCatalogFiles and Reload are for the UI thread.
+ *
+ * Memory: a catalog is read once and kept, so switching languages back and forth costs nothing after the first time.
+ * Reload() keeps the catalog it replaces (a few hundred KB) until exit, because its strings may still be on screen or
+ * held by another thread; a reload of a file that hasn't changed, or can't be read, keeps the catalog in use instead of
+ * adding one, so only a translator's actual edits add copies.
  */
 namespace SceneryEditorX::I18n
 {
@@ -123,7 +128,10 @@ namespace SceneryEditorX::I18n
 	/* @brief Changes every time translations may have changed (language switch, reload): caches compare it. */
 	std::uint64_t GetGeneration();
 
-	/* @brief Reads the active language's catalog files again (a translator's edit); false when one fails. */
+	/**
+	 * @brief Reads the active language's catalog files again (a translator's edit). False when one can't be read: the
+	 * version read before then stays in use, and the language stays listed as it was.
+	 */
 	bool Reload();
 
 	// --- Lookups (any thread) ---
@@ -165,7 +173,10 @@ namespace SceneryEditorX::I18n
 	/* @brief The missing messages as PO entries with empty translations, to paste into a catalog. */
 	std::string MissingAsPo();
 
-	/* @brief Forgets every catalog and goes back to English (tests). Invalidates every pointer lookups returned. */
+	/**
+	 * @brief Tests only: forgets every catalog and goes back to English. It frees the strings lookups returned, so it must
+	 * never run while another thread may translate or still holds a translation; the editor never calls it.
+	 */
 	void Reset();
 }
 

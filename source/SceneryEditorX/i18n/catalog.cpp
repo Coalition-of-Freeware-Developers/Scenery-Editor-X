@@ -31,6 +31,7 @@
 #include "catalog.h"
 #include "languages.h"
 #include "message.h"
+#include <unordered_set>
 
 // -------------------------------------------------------
 
@@ -68,8 +69,25 @@ namespace SceneryEditorX::I18n
 		if (rule)
 			catalog->m_Plural = *rule;
 
+		// A message in the file twice counts once (the first is used); a hash collision, practically impossible with 64 bits,
+		// still counts, since that message stays English
+		std::unordered_set<std::string> seen;
 		for (const PoEntry &entry : file.entries)
 		{
+			std::string id;
+			if (entry.hasContext)
+			{
+				id += '\x01';	// Apart from an entry without a context whose msgid starts like this one's context
+				id += entry.context;
+				id += CONTEXT_SEPARATOR;
+			}
+			id += entry.msgid;
+			if (!seen.insert(std::move(id)).second)
+			{
+				report("line " + std::to_string(entry.line) + ": '" + entry.msgid + "' is in the catalog twice; the first is used");
+				continue;
+			}
+
 			++catalog->m_Stats.total;
 			if (entry.fuzzy)
 				++catalog->m_Stats.fuzzy;
@@ -93,11 +111,8 @@ namespace SceneryEditorX::I18n
 			const auto [it, inserted] = catalog->m_Entries.try_emplace(key, std::move(value));
 			if (!inserted)
 			{
-				const Entry &existing = it->second;
-				if (existing.msgid == entry.msgid && existing.context == entry.context && existing.hasContext == entry.hasContext)
-					report("line " + std::to_string(entry.line) + ": '" + entry.msgid + "' is in the catalog twice; the first is used");
-				else
-					report("line " + std::to_string(entry.line) + ": '" + entry.msgid + "' has the same hash as '" + existing.msgid + "'; it stays English");
+				// Duplicates were skipped above: this is a different message with the same hash
+				report("line " + std::to_string(entry.line) + ": '" + entry.msgid + "' has the same hash as '" + it->second.msgid + "'; it stays English");
 				continue;
 			}
 			++catalog->m_Stats.translated;

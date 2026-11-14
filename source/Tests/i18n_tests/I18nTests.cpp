@@ -517,6 +517,57 @@ TEST_CASE("Catalog keeps translated entries and checks plural forms", "[i18n][ca
 	CHECK(wrong->FindPlural(HashKey({}, false, "a"), {}, false, "a", 1) == nullptr);
 	CHECK(*wrong->Find(HashKey({}, false, "c"), {}, false, "c") == "d");	// The first of two duplicates
 	CHECK(problems.size() == 3);
+	CHECK(wrong->GetStats().total == 2);		// The duplicate counts once
+	CHECK(wrong->GetStats().translated == 1);	// The plural entry with the wrong form count stays English
+
+	// A duplicate counts once whether or not either copy is translated; the same msgid with and without a context
+	// are two messages
+	const auto duplicates = Catalog::FromPo(ParsePo(
+		"msgid \"x\"\nmsgstr \"\"\n\nmsgid \"x\"\nmsgstr \"X\"\n\n"
+		"msgctxt \"\"\nmsgid \"x\"\nmsgstr \"Y\"\n\nmsgctxt \"x\"\nmsgid \"\"\nmsgstr \"Z\"\n"), "de");
+	CHECK(duplicates->GetStats().total == 3);
+	CHECK(duplicates->GetStats().translated == 2);
+	CHECK(duplicates->GetStats().Completion() < 1.0f);
+}
+
+TEST_CASE("Reload keeps the catalog in use when a file can't be read or hasn't changed", "[i18n][service]")
+{
+	ServiceGuard guard;
+	auto text = std::make_shared<std::optional<std::string>>(std::string("msgid \"Save\"\nmsgstr \"Sichern\"\n"));
+	std::vector<CatalogFile> files;
+	files.push_back({ "de", "memory:de.po", [text] { return *text; }, false });
+	SetCatalogFiles(std::move(files));
+	REQUIRE(SetLanguage("de"));
+	const char *before = Tr("Save");
+	CHECK(std::string(before) == "Sichern");
+
+	// Unchanged: the same catalog, so the same string
+	REQUIRE(Reload());
+	CHECK(Tr("Save") == before);
+
+	// Unreadable: Reload fails, the catalog read before stays in use and the language isn't listed as failed
+	*text = std::nullopt;
+	CHECK_FALSE(Reload());
+	CHECK(GetLanguage() == "de");
+	CHECK(Tr("Save") == before);
+	const std::vector<LanguageChoice> choices = GetLanguageChoices();
+	REQUIRE(choices.size() == 1);
+	CHECK_FALSE(choices[0].failed);
+	CHECK(choices[0].stats.translated == 1);
+
+	// Edited: the new translation, and the old string stays valid
+	*text = std::string("msgid \"Save\"\nmsgstr \"Speichern\"\n");
+	REQUIRE(Reload());
+	CHECK(std::string(Tr("Save")) == "Speichern");
+	CHECK(std::string(before) == "Sichern");
+
+	// Switching away and back reuses what was loaded
+	REQUIRE(SetLanguage("en"));
+	const char *english = Tr("Save");
+	REQUIRE(SetLanguage("de"));
+	CHECK(std::string(Tr("Save")) == "Speichern");
+	REQUIRE(SetLanguage("en"));
+	CHECK(Tr("Save") == english);
 }
 
 TEST_CASE("Translation service: languages, contexts, plurals, formatting", "[i18n][service]")

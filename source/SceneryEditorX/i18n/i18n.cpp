@@ -60,7 +60,10 @@ namespace SceneryEditorX::I18n
 			CatalogFile file;
 			const Catalog *catalog = nullptr;	// Owned by State::catalogs
 			bool attempted = false;
-			bool failed = false;
+			bool failed = false;				// No usable catalog (the file was never read)
+			bool readFailed = false;			// The last read failed (a reload may have kept the catalog read before)
+			std::uint64_t textHash = 0;			// Of the text the catalog was built from
+			const Catalog *previous = nullptr;	// While reloading: the catalog in use, kept if the file is unreadable or unchanged
 		};
 
 		struct State
@@ -109,13 +112,32 @@ namespace SceneryEditorX::I18n
 				return registered.catalog;
 			registered.attempted = true;
 
+			const Catalog *previous = registered.previous;
+			registered.previous = nullptr;
+
 			std::optional<std::string> text = registered.file.read ? registered.file.read() : std::nullopt;
+			registered.readFailed = !text;
 			if (!text)
 			{
-				registered.failed = true;
 				messages.push_back("Can't read the " + registered.file.tag + " catalog " + registered.file.origin);
+				if (previous)
+				{
+					messages.back() += ": the version read before stays in use";
+					registered.catalog = previous;
+					return previous;
+				}
+				registered.failed = true;
 				return nullptr;
 			}
+
+			// A reload of an unchanged file keeps its catalog: repeated reloads don't pile up copies
+			const std::uint64_t hash = HashAppend(HASH_OFFSET, *text);
+			if (previous && hash == registered.textHash)
+			{
+				registered.catalog = previous;
+				return previous;
+			}
+			registered.textHash = hash;
 
 			const PoFile file = ParsePo(*text);
 			std::vector<std::string> problems;
@@ -127,11 +149,26 @@ namespace SceneryEditorX::I18n
 			return registered.catalog;
 		}
 
+		/* @brief Makes a set active; State::mutex must be held. An identical set made before is reused, so switching
+		 * between languages doesn't add a set each time (sets are kept until Reset: lookups may still read them). */
 		void Activate(std::unique_ptr<ActiveSet> set)
 		{
 			State &s = S();
-			const ActiveSet *pointer = set.get();
-			s.sets.push_back(std::move(set));
+			const ActiveSet *pointer = nullptr;
+			for (const std::unique_ptr<ActiveSet> &existing : s.sets)
+			{
+				if (existing->tag == set->tag && existing->primary == set->primary && existing->base == set->base &&
+					existing->pseudo == set->pseudo && existing->info == set->info)
+				{
+					pointer = existing.get();
+					break;
+				}
+			}
+			if (!pointer)
+			{
+				pointer = set.get();
+				s.sets.push_back(std::move(set));
+			}
 			s.active.store(pointer, std::memory_order_release);
 			s.generation.fetch_add(1, std::memory_order_acq_rel);
 		}
@@ -370,21 +407,35 @@ namespace SceneryEditorX::I18n
 	bool Reload()
 	{
 		const std::string tag = GetLanguage();
+		std::vector<std::string> names = { tag };
+		if (const std::string base = BaseLanguage(tag); base != tag)
+			names.push_back(base);	// pt for pt_BR; "de" has no other (handling it twice would lose the catalog in use)
 		{
 			State &s = S();
 			std::lock_guard lock(s.mutex);
-			for (const std::string &name : { tag, BaseLanguage(tag) })
+			for (const std::string &name : names)
 			{
 				const auto it = s.registry.find(name);
 				if (it == s.registry.end())
 					continue;
-				it->second.attempted = false;	// The old catalog stays alive until Reset (pointers may still be in use)
-				it->second.failed = false;
-				it->second.catalog = nullptr;
+				// Read again on the next load. The catalog in use is kept (lookups may still hold its strings) and stays
+				// in use when the file can't be read or hasn't changed
+				Registered &registered = it->second;
+				registered.previous = registered.catalog;
+				registered.attempted = false;
+				registered.failed = false;
+				registered.catalog = nullptr;
 			}
 		}
 		// Pseudo-locale strings don't depend on catalogs and may still be in use: they stay
-		return SetLanguage(tag);
+		bool ok = SetLanguage(tag);
+		{
+			std::lock_guard lock(S().mutex);
+			for (const std::string &name : names)
+				if (const auto it = S().registry.find(name); it != S().registry.end() && it->second.readFailed)
+					ok = false;
+		}
+		return ok;
 	}
 
 	const char *Translate(const Msg &message)

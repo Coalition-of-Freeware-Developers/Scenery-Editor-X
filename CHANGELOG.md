@@ -18,7 +18,8 @@ versions.
   checked in its character map, 0.2.91.592). Translated widgets keep their English IDs, so the
   docking layout and window state stay as they are. `--language qps-ploc` (the pseudo-locale) shows which text isn't
   translatable yet, `--i18n-log-missing` lists the strings a language lacks, and a translator's copy in the settings
-  folder's `locale` folder replaces the bundled one (**Help › Reload Translations**). For developers: the `Tr`, `TrL`,
+  folder's `locale` folder replaces the bundled one (**Help › Reload Translations**, which keeps the version in use when
+  the file can't be read, 0.2.92.593). For developers: the `Tr`, `TrL`,
   `TrF`, `TrN`, `TrNF`, `Ctx` and `TrNoop` functions and the `Text` parameter type (`source/SceneryEditorX/i18n`,
   standard library only, `I18nTests`), `tools/i18n/sedx_i18n.py` (extract, update, check, lint), and the
   **Localization** workflow, which refreshes `resources/locale` on every pull request into `dev`
