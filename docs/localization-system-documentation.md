@@ -46,7 +46,8 @@ ImGui::TextUnformatted(Tr(KINDS[i]));                            // ...here
 shows run-time strings as they are. The `EditorUI` helpers (`BeginPanel`, `SectionHeader`, `PropertyLabel`,
 `ItemTooltip`, `EmptyState`, `StripButton`, `IconLabel`) all do, so `EditorUI::PropertyLabel("Heading")` needs nothing
 more. To make your own helper translate, declare the parameter as `Text`; the extractor finds such declarations by
-itself. A `?:` of two literals is a `const char *` and is not translated: write `cond ? Text("A") : Text("B")`.
+itself. A `?:` of two literals is a `const char *` and is not translated: write `cond ? Text("A") : Text("B")`
+(`lint` reports the plain form).
 
 **IDs stay English.** `TrL("Reset Layout")` returns `"Layout zurücksetzen###Reset Layout"`. Since Dear ImGui 1.92.6,
 `"a###b"` hashes like `"b"` and only `"b"` goes into `editor.ini`, so translated widgets keep their IDs, and the docking
@@ -95,7 +96,8 @@ python -I -m unittest discover -s tools/i18n -p "test_*.py"
 ```
 
 `lint` knows the Dear ImGui calls that show text. `tools/i18n/lint_baseline.txt` lists the sites not converted yet;
-new ones fail. After converting some, run `lint --update-baseline` so the list only shrinks.
+new ones fail. After converting some, run `lint --update-baseline` so the list only shrinks. `lint` also fails on a
+`cond ? "A" : "B"` passed to a `Text` parameter (no baseline: that text would silently stay English).
 
 ### On pull requests
 
@@ -133,7 +135,7 @@ another language is chosen; Preferences shows the saved tag until then. A catalo
 
 The UI fonts (Open Sans) cover Latin, Greek and Cyrillic. For Chinese, Japanese and Korean the editor merges the
 operating system's regional font into all five UI fonts when that language is chosen: Windows `msyh.ttc`, `msjh.ttc`,
-`YuGothM.ttc`, `malgun.ttf`; macOS PingFang / Hiragino / Apple SD Gothic Neo; Linux fontconfig's choice or Noto Sans
+`YuGothM.ttc`, `malgun.ttf`, then Noto Sans CJK / Source Han Sans installed for everyone or just this user; macOS PingFang / Hiragino / Apple SD Gothic Neo; Linux fontconfig's choice or Noto Sans
 CJK. Each candidate's character map is checked against a sample of the language's characters
 (`i18n/font_coverage.h`) and the first that has them all is used, so a font that only looks right (a Chinese font for
 Japanese, whatever fontconfig answered) is passed over; the log names each one skipped. `ui.language_font` (and

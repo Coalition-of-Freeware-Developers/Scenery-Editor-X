@@ -265,6 +265,27 @@ class ChangesTests(unittest.TestCase):
         self.assertIn("3 new", tool.describe_changes("", new))
 
 
+class TernaryLintTests(unittest.TestCase):
+    def test_literal_ternaries_passed_to_text_parameters(self):
+        with SourceTree({"Editor/ui.h": HELPERS, "Editor/panel.cpp": """
+void Panel(bool a, const char *name)
+{
+	EditorUI::PropertyLabel(a ? "End 1" : "End 2");                 // Flagged
+	EditorUI::PropertyLabel(a ? "One" : "Two" " parts");            // Flagged (adjacent literals)
+	EditorUI::IconLabel(ICON, a ? "Pause" : "Play");                // Flagged (second parameter)
+	EditorUI::PropertyLabel(a ? Text("End 1") : Text("End 2"));     // Right
+	EditorUI::PropertyLabel(a ? name : "Default");                  // Run-time text: not this rule
+	EditorUI::PropertyLabel(Tr(a ? KINDS[0] : KINDS[1]));           // Msg values
+	EditorUI::BeginPropertyGrid(a ? "##a" : "##b", 1.0f);           // Not a Text parameter
+	ImGui::Text(a ? "x" : "y");                                     // Not a Text function
+	foo(f(a ? "p" : "q"), 1);                                       // Not a Text function
+}
+"""}):
+            findings = tool.ternary_findings()
+        self.assertEqual([(line, function) for _, line, function in findings],
+                         [(4, "PropertyLabel"), (5, "PropertyLabel"), (6, "IconLabel")])
+
+
 class LintTests(unittest.TestCase):
     def test_needs_translation(self):
         self.assertTrue(tool.needs_translation("Save"))

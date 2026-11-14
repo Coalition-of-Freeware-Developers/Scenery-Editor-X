@@ -49,6 +49,7 @@
 
 #ifdef _WIN32
 	#include <ShlObj.h>
+	#include <combaseapi.h>	// CoTaskMemFree, whatever ShlObj.h pulls in
 #endif
 
 // -------------------------------------------------------
@@ -147,6 +148,18 @@ namespace SceneryEditorX::Localization
 			for (const std::string &item : items)
 				text += (text.empty() ? "" : ", ") + item;
 			return text.empty() ? "none" : text;
+		}
+
+		/* @brief The face of a script in the Noto Sans CJK / Source Han Sans collections: JP, KR, SC, TC (then HK). */
+		[[maybe_unused]] int NotoCjkFace(const I18n::Script script)
+		{
+			switch (script)
+			{
+				case I18n::Script::Japanese: return 0;
+				case I18n::Script::Korean: return 1;
+				case I18n::Script::HanSimplified: return 2;
+				default: return 3;
+			}
 		}
 
 		bool Exists(const std::string &utf8)
@@ -404,6 +417,24 @@ namespace SceneryEditorX::Localization
 			case I18n::Script::Korean: add("malgun.ttf", 0); add("gulim.ttc", 0); break;
 			default: break;
 		}
+
+		// Then Noto Sans CJK / Source Han Sans installed for all users or, since Windows 10, for this user only
+		// (%LOCALAPPDATA%\Microsoft\Windows\Fonts, which FOLDERID_Fonts doesn't cover)
+		std::vector<std::filesystem::path> folders = { fonts };
+		PWSTR local = nullptr;
+		if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_LocalAppData, 0, nullptr, &local)) && local)
+			folders.push_back(std::filesystem::path(local) / "Microsoft" / "Windows" / "Fonts");
+		CoTaskMemFree(local);
+		const std::string region = script == I18n::Script::HanSimplified ? "SC" : script == I18n::Script::HanTraditional ? "TC" :
+			script == I18n::Script::Japanese ? "JP" : "KR";
+		for (const std::filesystem::path &folder : folders)
+		{
+			for (const char *collection : { "NotoSansCJK-Regular.ttc", "SourceHanSans-Regular.ttc" })
+				candidates.push_back({ VFS::ToUtf8(folder / collection), NotoCjkFace(script) });
+			for (const std::string &single : { "NotoSans" + region + "-Regular.otf", "NotoSans" + region + "-Regular.ttf",
+											   "NotoSans" + region + "-VariableFont_wght.ttf" })
+				candidates.push_back({ VFS::ToUtf8(folder / single), 0 });
+		}
 #elif defined(__APPLE__)
 		const auto add = [&](const std::u8string_view path, const int face)
 		{
@@ -437,11 +468,9 @@ namespace SceneryEditorX::Localization
 #else
 		if (std::optional<FontFile> matched = FontConfigMatch(script))
 			candidates.push_back(*matched);
-		// Noto Sans CJK collections: JP, KR, SC, TC faces in that order
-		const int face = script == I18n::Script::Japanese ? 0 : script == I18n::Script::Korean ? 1 : script == I18n::Script::HanSimplified ? 2 : 3;
 		for (const char *path : { "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc", "/usr/share/fonts/noto-cjk/NotoSansCJK-Regular.ttc",
 								  "/usr/share/fonts/google-noto-cjk/NotoSansCJK-Regular.ttc", "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc" })
-			candidates.push_back({ path, face });
+			candidates.push_back({ path, NotoCjkFace(script) });
 #endif
 		for (const FontFile &candidate : candidates)
 			if (Exists(candidate.path))

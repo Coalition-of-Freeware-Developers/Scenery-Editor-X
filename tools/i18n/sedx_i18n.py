@@ -1229,6 +1229,52 @@ def lint_findings():
     return findings
 
 
+def is_literal_ternary(tokens: list[Token], start: int, end: int) -> bool:
+    """True for an argument that is a ?: whose two branches are both plain string literals: cond ? "A" : "B"."""
+    depth = 0
+    for k in range(start, end):
+        v = tokens[k].value if tokens[k].kind == "punct" else ""
+        if v in ("(", "[", "{"):
+            depth += 1
+        elif v in (")", "]", "}"):
+            depth -= 1
+        elif v == "?" and depth == 0:
+            colon = k + 1
+            while colon < end and tokens[colon].kind == "str":
+                colon += 1
+            if colon == k + 1 or colon >= end or tokens[colon].value != ":":
+                return False
+            rest = range(colon + 1, end)
+            return len(rest) > 0 and all(tokens[i].kind == "str" for i in rest)
+    return False
+
+
+def ternary_findings():
+    """
+    Calls that pass cond ? "A" : "B" to a Text parameter. Two literals of different lengths make a const char*, which
+    Text shows as it is (silently English); equal lengths don't compile. Write cond ? Text("A") : Text("B").
+    """
+    files = {}
+    for path in iter_source_files():
+        all_tokens = tokenize(read_source(path))
+        files[path] = (all_tokens, code_tokens(all_tokens))
+    functions = find_text_functions(files)
+    findings = []
+    for path, (_, tokens) in files.items():
+        for k in range(len(tokens) - 1):
+            t = tokens[k]
+            if t.kind != "id" or t.value not in functions or tokens[k + 1].value != "(":
+                continue
+            if qualifier_of(tokens, k) in FOREIGN_QUALIFIERS:
+                continue
+            close = matching_paren(tokens, k + 1)
+            args = split_arguments(tokens, k + 1, close)
+            for position in sorted(functions[t.value]["positions"]):
+                if position < len(args) and is_literal_ternary(tokens, *args[position]):
+                    findings.append((relative(path), t.line, t.value))
+    return findings
+
+
 def baseline_key(rel, text):
     return f"{rel}\t{po_escape(text)}"
 
@@ -1261,7 +1307,14 @@ def command_lint(args) -> int:
     if fixed:
         print(f"note: {fixed} baseline site(s) are translated now: run lint --update-baseline to shrink {relative(BASELINE)}")
     print(f"lint: {len(findings)} untranslated ImGui literal(s), {len(findings) - len(new)} in the baseline, {len(new)} new")
-    return 1 if new else 0
+
+    # Never baselined: there are none, and each one is text that silently stays English
+    ternaries = ternary_findings()
+    for rel, line, function in ternaries:
+        print(f"error: {rel}:{line}: {function}() is given cond ? \"...\" : \"...\", which stays English: write "
+              f"cond ? Text(\"...\") : Text(\"...\") (source/SceneryEditorX/i18n/tr.h)", file=sys.stderr)
+    print(f"lint: {len(ternaries)} ?: of literals passed to Text parameters")
+    return 1 if new or ternaries else 0
 
 
 def describe_changes(old_text: str, new_text: str, limit: int = 60) -> str:
