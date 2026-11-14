@@ -30,8 +30,10 @@
  */
 #include "format.h"
 #include <SceneryEditorX/utils/float_chars.h>
+#include <clocale>
 #include <cmath>
 #include <cstdio>
+#include <cstring>
 
 // -------------------------------------------------------
 
@@ -319,6 +321,15 @@ namespace SceneryEditorX::I18n
 				else
 					std::snprintf(digits.data(), digits.size(), format, magnitude);
 				digits.resize(static_cast<std::size_t>(length));
+				// snprintf writes the process locale's decimal point. The editor never changes LC_NUMERIC (its file writers
+				// depend on '.'), but if anything did, the UI keeps '.' like std::format (precision is capped at
+				// MAX_PRECISION by ParseSpec, so the length above stays small)
+				if (const std::lconv *locale = std::localeconv(); locale && locale->decimal_point && std::strcmp(locale->decimal_point, ".") != 0)
+				{
+					const std::size_t point = digits.find(locale->decimal_point);
+					if (point != std::string::npos && locale->decimal_point[0] != '\0')
+						digits.replace(point, std::strlen(locale->decimal_point), ".");
+				}
 				// std::format writes hexadecimal floats without the 0x
 				if ((conversion == 'a' || conversion == 'A') && digits.size() > 2 && digits[0] == '0' && (digits[1] == 'x' || digits[1] == 'X'))
 					digits.erase(0, 2);

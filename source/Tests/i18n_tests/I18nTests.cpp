@@ -23,6 +23,8 @@
 #include <SceneryEditorX/i18n/pseudo.h>
 #include <SceneryEditorX/i18n/tr.h>
 #include <algorithm>
+#include <clocale>
+#include <cstring>
 #include <atomic>
 #include <chrono>
 #include <thread>
@@ -117,6 +119,9 @@ TEST_CASE("Msg keys are hashed at compile time like catalog keys", "[i18n][messa
 	static_assert(verb.HasContext() && verb.Context() == "verb" && verb.Id() == "Open");
 	static_assert(verb.key != label.key);
 	CHECK(verb.key == HashKey("verb", true, "Open"));
+	// FNV-1a 64 reference values, also checked by tools/i18n/test_sedx_i18n.py (the extractor hashes keys the same way)
+	static_assert(HashKey({}, false, "") == 0xCBF29CE484222325ull);
+	static_assert(HashKey({}, false, "a") == 0xAF63DC4C8601EC8Cull);
 
 	static constexpr Msg table[] = { TrNoop("Runway"), TrNoop("Taxiway") };
 	static_assert(table[1].Id() == "Taxiway");
@@ -439,6 +444,35 @@ TEST_CASE("Formatting follows std::format's fields and specs", "[i18n][format]")
 	CHECK(Fmt("{}", static_cast<const char *>(nullptr)).empty());
 }
 
+TEST_CASE("Formatting keeps '.' decimals whatever LC_NUMERIC is", "[i18n][format][locale]")
+{
+	// The editor never changes LC_NUMERIC, but the formatter mustn't depend on that: try a locale with a ',' decimal point
+	const std::string saved = std::setlocale(LC_NUMERIC, nullptr) ? std::setlocale(LC_NUMERIC, nullptr) : "C";
+	bool comma = false;
+	for (const char *name : { "de_DE.UTF-8", "de_DE.utf8", "de_DE", "German_Germany.1252", "German", "fr_FR.UTF-8", "fr_FR" })
+	{
+		if (std::setlocale(LC_NUMERIC, name) && std::strcmp(std::localeconv()->decimal_point, ",") == 0)
+		{
+			comma = true;
+			break;
+		}
+	}
+	if (!comma)
+	{
+		std::setlocale(LC_NUMERIC, saved.c_str());
+		SKIP("no locale with a ',' decimal point on this machine");
+	}
+	const std::string fixed = Fmt("{:.2f}", 3.14159), general = Fmt("{:g}", 0.5), exponent = Fmt("{:e}", 1500.0), hex = Fmt("{:a}", 1.5),
+		shortest = Fmt("{}", 0.1);
+	std::setlocale(LC_NUMERIC, saved.c_str());
+	CHECK(fixed == "3.14");
+	CHECK(general == "0.5");
+	CHECK(exponent == "1.500000e+03");
+	CHECK(hex.starts_with("1.8"));	// C libraries differ in the trailing zeros of %a; the point is the '.'
+	CHECK(hex.find(',') == std::string::npos);
+	CHECK(shortest == "0.1");
+}
+
 TEST_CASE("Formatting reports bad patterns instead of throwing", "[i18n][format]")
 {
 	CHECK(Fmt("{", 1).starts_with("ERROR"));
@@ -452,6 +486,9 @@ TEST_CASE("Formatting reports bad patterns instead of throwing", "[i18n][format]
 	CHECK(Fmt("{:d}", "s").starts_with("ERROR"));
 	CHECK(Fmt("{:s}", 1.5).starts_with("ERROR"));
 	CHECK(Fmt("{:99999}", 1).starts_with("ERROR"));
+	CHECK(Fmt("{:.99999999f}", 1.0).starts_with("ERROR"));		// A translator's precision is capped (300)
+	CHECK(Fmt("{:.301f}", 1.0).starts_with("ERROR"));
+	CHECK(Fmt("{:.300f}", 1.0).size() == 302);
 	CHECK(Fmt("{abc}", 1).starts_with("ERROR"));
 	CHECK(Fmt("{:{}}", 1, 2).starts_with("ERROR"));	// Nested fields aren't supported
 

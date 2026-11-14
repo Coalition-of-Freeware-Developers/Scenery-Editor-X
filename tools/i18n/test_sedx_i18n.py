@@ -265,6 +265,30 @@ class ChangesTests(unittest.TestCase):
         self.assertIn("3 new", tool.describe_changes("", new))
 
 
+class MessageKeyTests(unittest.TestCase):
+    def test_keys_match_the_editor(self):
+        # The same values I18nTests checks for I18n::HashKey (FNV-1a 64)
+        self.assertEqual(tool.fnv1a64(b""), 0xCBF29CE484222325)
+        self.assertEqual(tool.message_key(None, "a"), 0xAF63DC4C8601EC8C)
+        self.assertEqual(tool.message_key("verb", "Open"), tool.fnv1a64(b"verb\x04Open"))
+        self.assertNotEqual(tool.message_key("", "x"), tool.message_key(None, "x"))
+
+    def test_colliding_keys_are_errors(self):
+        catalog = tool.Catalog()
+        catalog.add("One", None, None, "a.cpp", None, set(), "a.cpp:1")
+        catalog.add("Two", None, None, "a.cpp", None, set(), "a.cpp:2")
+        tool.check_key_collisions(catalog)
+        self.assertEqual(catalog.errors, [])
+        saved = tool.message_key
+        tool.message_key = lambda context, msgid: 42
+        try:
+            tool.check_key_collisions(catalog)
+        finally:
+            tool.message_key = saved
+        self.assertEqual(len(catalog.errors), 1)
+        self.assertIn("same message key", catalog.errors[0])
+
+
 class TernaryLintTests(unittest.TestCase):
     def test_literal_ternaries_passed_to_text_parameters(self):
         with SourceTree({"Editor/ui.h": HELPERS, "Editor/panel.cpp": """

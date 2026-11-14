@@ -414,6 +414,34 @@ def find_text_functions(files: dict) -> dict:
     return functions
 
 
+FNV_OFFSET = 0xCBF29CE484222325
+FNV_PRIME = 0x100000001B3
+
+
+def fnv1a64(data: bytes) -> int:
+    value = FNV_OFFSET
+    for byte in data:
+        value = ((value ^ byte) * FNV_PRIME) & 0xFFFFFFFFFFFFFFFF
+    return value
+
+
+def message_key(context: str | None, msgid: str) -> int:
+    """The 64-bit key the editor looks a message up by (I18n::HashKey in message.h): msgctxt '\\x04' msgid, FNV-1a."""
+    data = (context.encode("utf-8") + b"\x04" if context is not None else b"") + msgid.encode("utf-8")
+    return fnv1a64(data)
+
+
+def check_key_collisions(catalog: "Catalog") -> None:
+    """Two different messages with the same key would leave the second one English: refuse them at extraction."""
+    seen = {}
+    for key in sorted(catalog.entries, key=lambda k: (k[0] or "", k[1])):
+        value = message_key(*key)
+        other = seen.get(value)
+        if other is not None and other != key:
+            catalog.errors.append(f"'{key[1]}' and '{other[1]}' have the same message key {value:#018x}: reword one of them")
+        seen.setdefault(value, key)
+
+
 def qualifier_of(tokens: list[Token], index: int) -> str | None:
     if index >= 2 and tokens[index - 1].value == "::" and tokens[index - 2].kind == "id":
         return tokens[index - 2].value
@@ -527,6 +555,7 @@ def extract(verbose: bool = False) -> Catalog:
             context, msgid, _ = ctx
             catalog.add(visible(msgid), context, None, reference, translator_comment(all_tokens, tokens[k].line), set(),
                         f"{reference}:{tokens[k].line}")
+    check_key_collisions(catalog)
     return catalog
 
 
